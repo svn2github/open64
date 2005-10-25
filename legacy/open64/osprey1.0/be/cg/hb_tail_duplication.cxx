@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -247,7 +247,7 @@ Rename_Locals(OP* op, hTN_MAP dup_tn_map)
 }
 
 /////////////////////////////////////
-static BB*
+BB*
 Copy_BB_For_Tail_Duplication(HB* hb, BB* old_bb)
 /////////////////////////////////////
 //

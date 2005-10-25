@@ -628,7 +628,7 @@ Add_edges (IP_FILE_HDR& s)
   for (INT i = 0; i < size; ++i) {
 	
     if (IP_PROC_INFO_state (IP_FILE_HDR_proc_info(s)[i]) == IPA_DELETED)
-      return;
+      continue;
 
     (void)Add_Edges_For_Node(s, i, proc_array, symbol_array);
 

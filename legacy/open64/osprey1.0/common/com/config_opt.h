@@ -148,6 +148,8 @@ extern UINT32 Instrumentation_Actions;
 extern BOOL Instrumentation_Unique_Output;
 extern INT32 Feedback_Phase_Num;
 extern OPTION_LIST* Feedback_Option;
+extern UINT32 Phase_Num;
+extern UINT32 Profile_Type;
 #ifdef __cplusplus
 }
 #endif

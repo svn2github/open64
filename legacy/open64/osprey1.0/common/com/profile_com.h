@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -40,7 +40,7 @@
 // Module: profile_com.h
 // $Revision: 1.1.1.1 $
 // $Date: 2005/10/21 19:00:00 $
-// $Author: marcel $
+// $Author: marcel $ 
 // $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/profile_com.h,v $
 //
 // Revision history:
@@ -78,10 +78,20 @@ enum PROFILE_PHASE
   PROFILE_PHASE_BEFORE_LNO	= 1,
   PROFILE_PHASE_BEFORE_WOPT	= 2,
   PROFILE_PHASE_BEFORE_CG	= 3,
-  PROFILE_PHASE_LAST		= 4,
+  PROFILE_PHASE_BEFORE_REGION	= 4,
+  PROFILE_PHASE_LAST		= 5,
   PROFILE_PHASE_MAX             = INT32_MAX  // Fb_Hdr size must be 0 mod 64
 };
 
+// What instrument? Correlates to Profile_Type
+enum PROFILE_TYPE
+{
+  WHIRL_PROFILE     = 1,
+  CG_EDGE_PROFILE   = 2,
+  CG_VALUE_PROFILE  = 4,
+  PROFILE_TYPE_LAST = 8,
+  PROFILE_TYPE_MAX  = INT32_MAX
+};
 
 /* Feedback File Format */
 
@@ -138,9 +148,12 @@ struct Pu_Hdr {
   ULONG pu_num_scircuit_entries;
   ULONG pu_call_offset;
   ULONG pu_num_call_entries;
-
+  ULONG pu_handle;
+  ULONG pu_edge_offset;
+  ULONG pu_num_edge_entries;
+  ULONG pu_instr_count;
+  ULONG pu_instr_exec_count;
+  ULONG pu_value_offset;
   Pu_Hdr() {}
-
 };
-
 #endif /* profile_com_INCLUDED */

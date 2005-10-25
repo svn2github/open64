@@ -104,11 +104,11 @@ F90 = /usr/ia32-sgi-linux/bin/sgif90
 endif
 ifeq ($(BUILD_COMPILER), SGI)
 # sgi compiler should be in path in order to be found
-ASNAME = sgicc
-CCNAME = sgicc
-C++NAME = sgiCC
-F77 = sgif90
-F90 = sgif90
+ASNAME = orcc
+CCNAME = orcc
+C++NAME = orCC
+F77 = orf90
+F90 = orf90
 endif
 ifeq ($(BUILD_COMPILER), EDG)
 ASNAME = cc

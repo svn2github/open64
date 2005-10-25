@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -61,6 +61,7 @@
 #define fb_info_INCLUDED
 
 #include "fb_freq.h"
+#include "fb_tnv.h"
 #include <vector.h>             // STL vector.
 
 #ifdef MONGOOSE_BE
@@ -342,6 +343,30 @@ struct FB_Info_Switch {
   }
 };
 
+//added by dxq
+struct FB_Info_Edge {
+
+  FB_FREQ freq_edge;    // number of times edge
+
+  FB_Info_Edge( FB_FREQ freq)
+    : freq_edge( freq ) {}
+
+  FB_Info_Edge() :
+    freq_edge( FB_FREQ_UNINIT ) {}
+
+  void Print( FILE *fp ) const {
+    fprintf( fp, "FB---> Edge = " );
+    freq_edge.Print( fp );
+  }
+};
+
+struct FB_Info_Value{
+      FB_TNV tnv;
+      void Print( FILE *fp) const {
+      	fprintf(fp, "FB--->Value = ");
+      	tnv.Print( fp );
+      }
+};
 
 // Print the entire FB_Info vector
 template <class T>
@@ -353,7 +378,7 @@ FB_Info_Print (const T& info, const char* name, FILE *fp)
     if (size != 0)
 	fprintf (fp, "%s Profile:\n", name);
     for (size_t i = 0; i < size; i++) {
-	fprintf(fp, "\t%s id = %d\t", name, i);
+	fprintf(fp, "\t%s id = %ld\t", name, i);
 	info[i].Print (fp);
 	fputc ('\n', fp);
     }
@@ -376,6 +401,11 @@ typedef vector<FB_Info_Call, mempool_allocator<FB_Info_Call> >
 					FB_Call_Vector;
 typedef vector<FB_Info_Switch, mempool_allocator<FB_Info_Switch> >
 					FB_Switch_Vector;
+// added by dxq					
+typedef vector<FB_Info_Edge, mempool_allocator<FB_Info_Edge> >
+					FB_Edge_Vector;
+typedef vector<FB_Info_Value, mempool_allocator<FB_Info_Value> >
+                                       FB_Value_Vector;
 
 // ====================================================================
 // FB_EDGE_TYPE -- Indicates the source of a node's frequency data

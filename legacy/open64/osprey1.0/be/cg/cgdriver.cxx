@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -95,6 +95,7 @@
 #include "cgdriver.h"
 #include "register.h"
 #include "pqs_cg.h"
+#include "ipfec_options.h"
 
 extern void Set_File_In_Printsrc(char *);	/* defined in printsrc.c */
 
@@ -149,6 +150,8 @@ static BOOL EBO_Opt_Level_overridden = FALSE;
 static BOOL Integer_Divide_By_Constant_overridden = FALSE;
 static BOOL Integer_Divide_Use_Float_overridden = FALSE;
 static BOOL CG_DEP_Mem_Arc_Pruning_overridden = FALSE;
+static BOOL CGPREP_fold_expanded_daddiu_overridden = FALSE;
+static BOOL CG_LOOP_create_loop_prologs_overridden = FALSE;
 static BOOL clone_incr_overridden = FALSE;
 static BOOL clone_min_incr_overridden = FALSE;
 static BOOL clone_max_incr_overridden = FALSE;
@@ -156,6 +159,8 @@ static BOOL CFLOW_Enable_Clone_overridden = FALSE;
 
 /* Keep	a copy of the command line options for assembly	output:	*/
 static char *option_string;
+
+extern BOOL SWP_KNOB_fatpoint;
 
 /* Software pipelining options: */
 static OPTION_DESC Options_CG_SWP[] = {
@@ -171,8 +176,14 @@ static OPTION_DESC Options_CG_SWP[] = {
     0, 0, INT32_MAX,	&SWP_Options.Heuristics, NULL },
   { OVK_INT32,	OV_INTERNAL,	TRUE, "opt", "opt",
     0, 0, INT32_MAX,	&SWP_Options.Opt_Level, NULL },
+  { OVK_BOOL,	OV_INTERNAL,	TRUE, "do_loop", NULL,
+    0, 0, 0,	&SWP_Options.Enable_Do_Loop, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "while_loop", NULL,
     0, 0, 0,	&SWP_Options.Enable_While_Loop, NULL },
+  { OVK_INT32,	OV_INTERNAL,	TRUE, "miss_ratio", "miss_r",
+    0, 0, INT32_MAX,	&SWP_Options.Load_Cache_Miss_Ratio, NULL },
+  { OVK_INT32,	OV_INTERNAL,	TRUE, "miss_latency", "miss_l",
+    0, 0, INT32_MAX,	&SWP_Options.Load_Cache_Miss_Latency, NULL },
   { OVK_INT32,	OV_INTERNAL,	TRUE, "min_unroll_times", "min_unr",
     0, 0, INT32_MAX,	&SWP_Options.Min_Unroll_Times, &SWP_Options.Max_Unroll_Times_Set },
   { OVK_INT32,	OV_INTERNAL,	TRUE, "max_unroll_times", "max_unr",
@@ -245,7 +256,7 @@ static OPTION_DESC Options_GRA[] = {
   },
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "home", "",
     0,0,0,      &GRA_home, NULL,
-    "Turn on/off gra homing [Default TRUE]"
+    "Turn on/off gra homing [Default FALSE]"
   },
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "remove_spills", "",
     0,0,0,      &GRA_remove_spills, NULL,
@@ -313,6 +324,8 @@ static OPTION_DESC Options_CG[] = {
 
   { OVK_BOOL,	OV_INTERNAL, TRUE, "warn_bad_freqs", "",
     0, 0, 0,	&CG_warn_bad_freqs, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "loop_opt", "loop_opt",
+    0, 0, 0,	&CG_enable_loop_optimizations, NULL },
   { OVK_INT32,	OV_INTERNAL, TRUE, "skip_before", "skip_b",
     0, 0, INT32_MAX, &CG_skip_before, NULL }, 
   { OVK_INT32,	OV_INTERNAL, TRUE, "skip_after", "skip_a",
@@ -338,12 +351,16 @@ static OPTION_DESC Options_CG[] = {
   { OVK_INT32,	OV_INTERNAL, TRUE, "optimization_level", "",
     0, 0, MAX_OPT_LEVEL,
                 &CG_opt_level, &cg_opt_level_overridden },
-
-  // EBO options:
   { OVK_BOOL,	OV_INTERNAL, TRUE, "peephole_optimize", "",
     0, 0, 0,	&Enable_CG_Peephole, &Enable_CG_Peephole_overridden },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "ebo_post_proc_rgn", "",
+    0, 0, 0,	&Enable_EBO_Post_Proc_Rgn , NULL},
   { OVK_BOOL, 	OV_INTERNAL, TRUE, "create_madds", "create_madd",
     0, 0, 0,  &CG_create_madds, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "enable_ipfec_phases", "enable_ipfec",
+    0,0,0,      &CG_Enable_Ipfec_Phases, NULL },
+  { OVK_BOOL, OV_INTERNAL, TRUE,  "enable_cycle_counting", "enable_cycle",
+    0,0,0,      &CG_Enable_Cycle_Count, NULL },   
 
   // CG Dependence Graph related options.
 
@@ -369,7 +386,7 @@ static OPTION_DESC Options_CG[] = {
 
   // Prefetching and load latency options.
  
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"prefetch", "",
+  { OVK_BOOL,	OV_INTERNAL, FALSE,"prefetch", "",
     0, 0, 0, &CG_enable_prefetch, &CG_enable_prefetch_overridden },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"z_conf_prefetch", "",
     0, 0, 0, &CG_enable_z_conf_prefetch,
@@ -401,7 +418,6 @@ static OPTION_DESC Options_CG[] = {
     0, 0, INT32_MAX, &CG_z_conf_L2_ld_latency, NULL },
   { OVK_INT32,	OV_INTERNAL, TRUE, "ld_latency", "",
     0, 0, INT32_MAX, &CG_ld_latency, NULL },
-
   // CGLOOP options.
 
   { OVK_BOOL,	OV_INTERNAL, TRUE, "loop_opt", "loop_opt",
@@ -436,14 +452,6 @@ static OPTION_DESC Options_CG[] = {
   { OVK_INT32, OV_INTERNAL, TRUE, "recurrence_min_omega", "",
     0, 0, INT32_MAX, &CG_LOOP_recurrence_min_omega, NULL },
 
-  // CG Unrolling options - see also OPT:unroll_times_max:unroll_size.
-
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_non_trip_countable", "unroll_non_trip",
-    0, 0, 0, &CG_LOOP_unroll_non_trip_countable, NULL },
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_fully", "unroll_full",
-    0, 0, 0, &CG_LOOP_unroll_fully, NULL },
-  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_remainder_fully", "unroll_remainder_full",
-    0, 0, 0, &CG_LOOP_unroll_remainder_fully, NULL },
 
   // Cross Iteration Loop Optimization options.
 
@@ -457,6 +465,15 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CIO_enable_cse_removal, NULL },
   { OVK_INT32,	OV_INTERNAL, TRUE, "cio_rw_max_omega", "",
     8, 0, INT32_MAX, &CIO_rw_max_omega, NULL },
+
+  // CG Unrolling options - see also OPT:unroll_times_max:unroll_size.
+
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_non_trip_countable", "unroll_non_trip",
+    0, 0, 0, &CG_LOOP_unroll_non_trip_countable, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_fully", "unroll_full",
+    0, 0, 0, &CG_LOOP_unroll_fully, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_remainder_fully", "unroll_remainder_full",
+    0, 0, 0, &CG_LOOP_unroll_remainder_fully, NULL },
 
   // Control flow optimizations (CFLOW) options.
 
@@ -716,6 +733,7 @@ static OPTION_DESC Options_CG[] = {
   { OVK_INT32,	OV_INTERNAL, TRUE, "loop_force_ifc", "",
     0, 0, 2,    &CG_LOOP_force_ifc, NULL },
 
+
   // Emit options
   { OVK_INT32,	OV_INTERNAL, TRUE,"longbranch_limit", "",
     DEFAULT_LONG_BRANCH_LIMIT, 0, INT32_MAX, &EMIT_Long_Branch_Limit, NULL },
@@ -741,6 +759,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &EMIT_stop_bits_for_asm, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"emit_explicit_bundles", "",
     0, 0, 0, &EMIT_explicit_bundles, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"count_cycles_on_ski", "count_cycle",
+    0, 0, 0, &EMIT_count_cycles, NULL,
+    "Add stop bit to divide oversubscripted op groups. [Default off]"
+  },
   { OVK_COUNT },
 
   // Misc:
@@ -793,17 +815,314 @@ static OPTION_DESC Options_CG[] = {
 
   { OVK_BOOL,	OV_INTERNAL, TRUE,"rename", "",
     0, 0, 0, &CG_enable_rename, NULL }
-
 };
 
+/* Ipfec related options: */
+static OPTION_DESC Options_IPFEC[] = {
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "rgn_form", "",
+    0, 0, 0,    &IPFEC_Enable_Region_Formation, NULL,
+    "Use Ipfec region formation instead of original hyperblock formation"},
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "rgn_deco", "",
+    0, 0, 0,    &IPFEC_Enable_Region_Decomposition, NULL,
+    "Use Aurora region decomposition"},
+  { OVK_INT32,   OV_VISIBLE,     TRUE, "rgn_dup", "",
+    0, 0, 0,    &IPFEC_Enable_Tail_Duplication, NULL,
+    "Use Aurora region tail duplication"},
+  { OVK_INT32,   OV_VISIBLE,     TRUE, "rgn_exit", "",
+    0, 0, 0,    &IPFEC_Enable_Exit_Probability, NULL,
+    "Use Aurora region exit probability requirement"},
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "if_conv", "", 
+    0, 0, 0,    &IPFEC_Enable_If_Conversion, NULL, 
+    "Use Ipfec if-convertor instead of original hyperblock formation" },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "force_if_conv", "", 
+    0, 0, 0,    &IPFEC_Force_If_Conv, NULL, 
+    "Use Ipfec if-convertor without profitablity consideration" },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "combine_exit", "", 
+    0, 0, 0,    &IPFEC_Combine_Exit, NULL, 
+    "Enable the combine exits with identical targets" },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "force_para_comp_gen", "", 
+    0, 0, 0,    &IPFEC_Force_Para_Comp_Gen, NULL, 
+    "Generate parallel compare without profitablity consideration" },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "para_comp_gen", "", 
+    0, 0, 0,    &IPFEC_Para_Comp_Gen, NULL, 
+    "generate parallel compare" },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "disable_merge_bb", "", 
+    0, 0, 0,    &IPFEC_Disable_Merge_BB, NULL, 
+    "Use if-convertor without merge basic blocks" },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "prdb", "", 
+    0, 0, 0,    &IPFEC_Enable_PRDB, NULL, 
+    "Use Ipfec PRDB instead of original one" },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "bb_verify", "", 
+    0, 0, 0,    &IPFEC_Enable_BB_Verify, NULL, 
+    "Use Ipfec BB_Verify to check bb attributes" },
+  { OVK_BOOL,   OV_VISIBLE,     TRUE, "cflow_after_schedule", "", 
+    0, 0, 0,    &IPFEC_Enable_Opt_after_schedule, NULL, 
+    "Use Ipfec cflow_after_schedule to delete empty BBs" },  
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "pre_glos", "", 
+    0, 0, 0,	&IPFEC_Enable_Prepass_GLOS, NULL, 
+    "Use Ipfec pre-pass global scheduler" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "post_glos", "", 
+    0, 0, 0,	&IPFEC_Enable_Postpass_GLOS, NULL, 
+    "Use Ipfec post-pass global scheduler" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "pre_locs", "", 
+    0, 0, 0,	&IPFEC_Enable_Prepass_LOCS, NULL, 
+    "Use Ipfec pre-pass local scheduler" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "post_locs", "", 
+    0, 0, 0,	&IPFEC_Enable_Postpass_LOCS, NULL, 
+    "Use Ipfec post-pass local scheduler" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "spec", "", 
+    0, 0, 0,	&IPFEC_Enable_Speculation, NULL, 
+    "Enable speculation" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "data_spec", "", 
+    0, 0, 0,	&IPFEC_Enable_Data_Speculation, NULL, 
+    "Enable data speculation" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "cntl_spec", "", 
+    0, 0, 0,	&IPFEC_Enable_Cntl_Speculation, NULL, 
+    "Enable control speculation" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "cmpsd_tmplt", "", 
+    0, 0, 0,	&IPFEC_Enable_Compressed_Template, NULL, 
+    "Turn on using of Compressed Template" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "pre_bundling", "", 
+    0, 0, 0,	&IPFEC_Enable_Pre_Bundling, NULL, 
+    "Turn on bundling on pre-global scheduling" },
+  { OVK_NAME,	OV_VISIBLE,	TRUE, "edge_profile_instr", "", 
+    0, 0, 0,	&Instru_File_Name, &IPFEC_Enable_Edge_Profile, 
+    "Enable edge profile" },
+  { OVK_NAME,	OV_VISIBLE,	TRUE, "value_profile_instr", "", 
+    0, 0, 0,	&Value_Instru_File_Name,&IPFEC_Enable_Value_Profile, 
+    "Enable value profile" },
+  { OVK_NAME,	OV_VISIBLE,	TRUE, "edge_profile_annot", "", 
+    0, 0, 0,	&Fb_File_Name, &IPFEC_Enable_Edge_Profile_Annot, 
+    "Enable edge profile" },
+  { OVK_NAME,	OV_VISIBLE,	TRUE, "value_profile_annot", "", 
+    0, 0, 0,	&Value_Fb_File_Name,&IPFEC_Enable_Value_Profile_Annot, 
+    "Enable value profile" },
+  { OVK_INT32, OV_INTERNAL, TRUE, "value_instr_range", "", 
+    0, 0, INT32_MAX, &Value_Instr_Range, NULL },
+  { OVK_INT32, OV_INTERNAL, TRUE, "value_instr_pu_id", "",
+    0, 0, INT32_MAX, &Value_Instr_Pu_Id, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "use_random_prob", "", 
+    0, 0, 0,	&IPFEC_Enable_Random_Prob, NULL, 
+    "Enable value profile" }, 
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "chk_fail", "", 
+    0, 0, 0,	&IPFEC_Force_CHK_Fail, NULL, 
+    "Force every chk fail" }, 
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "cascade", "",
+    0, 0, 0,    &IPFEC_Enable_Cascade, NULL,
+    "Enable cascaded speculation" },
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "hold_uses", "",
+    0, 0, 0,    &IPFEC_Hold_Uses, NULL,
+    "Hold the uses of speculative load" },
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "profitability", "",
+    0, 0, 0,    &IPFEC_Profitability, NULL,
+    "Adjust all ipfec flags considering profitability" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "chk_compact", "", 
+    0, 0, 0,	&IPFEC_Chk_Compact, NULL, 
+    "Whether combine chk split BB" },  
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "load_safety", "", 
+    0, 0, 0,	&IPFEC_Enable_Safety_Load, NULL, 
+    "Identify safety load" },   
+/*
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "insert_unat", "", 
+    0, 0, 0,	&IPFEC_Enable_Insert_UNAT, NULL, 
+    "Whether Insert unat code" },   
+*/
+
+  // Flags for research experiments:
+  { OVK_INT32, OV_INTERNAL, TRUE, "care_machine_level", "care_m",
+    0, 0, INT32_MAX, &IPFEC_sched_care_machine, NULL },
+  
+
+  { OVK_COUNT }		/* List terminator -- must be last */
+};
+ /* Cycle Counting related options: */
+static OPTION_DESC Options_CYCLE[] = {
+  { OVK_BOOL, OV_VISIBLE,     TRUE, "cpe", "",
+    0, 0, 0,  &Cycle_PU_Enable, NULL,
+    "Cycle count enable" },
+  { OVK_NAME, OV_VISIBLE,     TRUE, "cbe", "",
+    0, 0, 0,  &Cycle_String, &Cycle_BB_Enable,
+    "Cycle count enable" },
+  { OVK_COUNT }               /* List terminator -- must be last */
+};  
+
+/* VT (Visualization Tool) related options: */
+static OPTION_DESC Options_VT[] = {
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "bb_op", "",
+    0, 0, 0,    &VT_Enable_BB_OP, NULL,
+    "Enable a bb's op  visualization"},
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "glbl_cfg", "",
+    0, 0, 0,    &VT_Enable_Global_CFG, NULL,
+    "Enable global control flow graph visualization"},
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "rgnl_cfg", "",
+    0, 0, 0,    &VT_Enable_Regional_CFG, NULL,
+    "Enable regional control flow graph visualization"},
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "rgn_tree", "",
+    0, 0, 0,    &VT_Enable_Region_Tree, NULL,
+    "Enable region tree visualization"},
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "bb_dag", "",
+    0, 0, 0,    &VT_Enable_BB_DAG, NULL,
+    "Enable bb dependence graph visualization"},
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "rgnl_dag", "",
+    0, 0, 0,    &VT_Enable_Regional_DAG, NULL,
+    "Enable regional dependence graph visualization"},
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "ptn_gph", "",
+    0, 0, 0,    &VT_Enable_Partition_Graph, NULL,
+    "Enable partition graph visualization"},
+
+  // options about features about the visualization graph
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "cfg_label", "",
+    0, 0, 0,    &VT_Enable_CFG_Label, NULL,
+    "Enable edge label when visualizing control flow graph"},
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "dag_br", "",
+    0, 0, 0,    &VT_Enable_DAG_BR, NULL,
+    "Enable PREBR and POSTBR dependencies when visualizing dependence graph"},
+  
+  { OVK_COUNT }		/* List terminator -- must be last */
+};
+
+/*Relation options about skip optimization*/
+static OPTION_DESC Options_SKIP[] = {
+  { OVK_LIST, OV_SHY, FALSE, "locs_skip_bb_before", "locs_skip_bb_b", 
+    0, 0, 4096,      &raw_locs_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "locs_skip_bb_after", "locs_skip_bb_a",
+    0, 0, 4096,	&raw_locs_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "locs_skip_bb_equal", "locs_skip_bb_e",
+    0, 0, 4096,	&raw_locs_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "if_conv_skip_rgn_before", "if_conv_skip_rgn_b",
+    0, 0, 4096,	&raw_if_conv_skip_rgn, NULL, 
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "if_conv_skip_rgn_after", "if_conv_skip_rgn_a",
+    0, 0, 4096,	&raw_if_conv_skip_rgn, NULL,
+    "" }, 
+  { OVK_LIST, OV_SHY, FALSE, "if_conv_skip_rgn_equal", "if_conv_skip_rgn_e",
+    0, 0, 4096,	&raw_if_conv_skip_rgn, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "if_conv_skip_area_after", "if_conv_skip_area_a",
+    0, 0, 4096,	&raw_if_conv_skip_area, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "if_conv_skip_area_before", "if_conv_skip_area_b",
+    0, 0, 4096,	&raw_if_conv_skip_area, NULL,
+    "" },
+  {OVK_LIST, OV_SHY, FALSE, "if_conv_skip_area_equal", "if_conv_skip_area_e",
+    0, 0, 4096,	&raw_if_conv_skip_area, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "glos_skip_rgn_before", "glos_skip_rgn_b",
+    0, 0, 4096,	&raw_glos_skip_rgn, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "glos_skip_rgn_after", "glos_skip_rgn_a",
+    0, 0, 4096,	&raw_glos_skip_rgn, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "glos_skip_rgn_equal", "glos_skip_rgn_e",
+    0, 0, 4096,	&raw_glos_skip_rgn, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_rgn_before", "spec_skip_rgn_b",
+    0, 0, 4096,	&raw_spec_skip_rgn, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_rgn_after", "spec_skip_rgn_a",
+    0, 0, 4096,	&raw_spec_skip_rgn, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_rgn_equal", "spec_skip_rgn_e",
+    0, 0, 4096,	&raw_spec_skip_rgn, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_bb_before", "spec_skip_bb_b",
+    0, 0, 4096,	&raw_spec_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_bb_after", "spec_skip_bb_a",
+    0, 0, 4096,	&raw_spec_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_bb_equal", "spec_skip_bb_e",
+    0, 0, 4096,	&raw_spec_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "msched_skip_bb_before", "msched_skip_bb_b",
+    0, 0, 4096,	&raw_msched_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "msched_skip_bb_after", "msched_skip_bb_a",
+    0, 0, 4096,	&raw_msched_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "msched_skip_bb_equal", "msched_skip_bb_e",
+    0, 0, 4096,	&raw_msched_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "msched_skip_rgn_before", "msched_skip_rgn_b",
+    0, 0, 4096,	&raw_msched_skip_rgn, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "msched_skip_rgn_after", "msched_skip_rgn_a",
+    0, 0, 4096,	&raw_msched_skip_rgn, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "msched_skip_rgn_equal", "msched_skip_rgn_e",
+    0, 0, 4096,	&raw_msched_skip_rgn, NULL,
+    "" }, 
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_PU_before", "spec_skip_PU_b",
+    0, 0, 4096,	&raw_spec_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_PU_after", "spec_skip_PU_a",
+    0, 0, 4096,	&raw_spec_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_PU_equal", "spec_skip_PU_e",
+    0, 0, 4096,	&raw_spec_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "if_conv_skip_PU_before", "if_conv_skip_PU_b",
+    0, 0, 4096,	&raw_if_conv_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "if_conv_skip_PU_after", "if_conv_skip_PU_a",
+    0, 0, 4096,	&raw_if_conv_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "if_conv_skip_PU_equal", "if_conv_skip_PU_e",
+    0, 0, 4096,	&raw_if_conv_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "PRDB_skip_PU_before", "PRDB_skip_PU_b",
+    0, 0, 4096,	&raw_PRDB_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "PRDB_skip_PU_after", "PRDB_skip_PU_a",
+    0, 0, 4096,	&raw_PRDB_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "PRDB_skip_PU_equal", "PRDB_skip_PU_e",
+    0, 0, 4096,	&raw_PRDB_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "pre_glos_skip_PU_before", "pre_glos_skip_PU_b",
+    0, 0, 4096,	&raw_pre_glos_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "pre_glos_skip_PU_after", "pre_glos_skip_PU_a",
+    0, 0, 4096,	&raw_pre_glos_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "pre_glos_skip_PU_equal", "pre_glos_skip_PU_e",
+    0, 0, 4096,	&raw_pre_glos_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "post_locs_skip_PU_before", "post_locs_skip_PU_b",
+    0, 0, 4096,	&raw_post_locs_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "post_locs_skip_PU_after", "post_locs_skip_PU_a",
+    0, 0, 4096,	&raw_post_locs_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "post_locs_skip_PU_equal", "post_locs_skip_PU_e",
+    0, 0, 4096,	&raw_post_locs_skip_PU, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_op_before", "spec_skip_op_b",
+    0, 0, 4096,	&raw_spec_skip_op, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_op_after", "spec_skip_op_a",
+    0, 0, 4096,	&raw_spec_skip_op, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "spec_skip_op_equal", "spec_skip_op_e",
+    0, 0, 4096,	&raw_spec_skip_op, NULL,
+    "" },
+
+  { OVK_COUNT }		/* List terminator -- must be last */
+};
 
 OPTION_GROUP Cg_Option_Groups[] = {
   { "SWP", ':', '=', Options_CG_SWP },
   { "CG", ':', '=', Options_CG },
   { "GRA", ':', '=', Options_GRA },
+  { "IPFEC", ':', '=', Options_IPFEC },
+  { "CYCLE", ':', '=', Options_CYCLE }, 
+  { "VT", ':', '=', Options_VT },
+  { "SKIP", ':', '=', Options_SKIP },
   { NULL }		/* List terminator -- must be last */
 };
-
 
 
 extern INT prefetch_ahead;
@@ -953,7 +1272,7 @@ disable_prefetch:
 static void
 Configure_CG_Options(void)
 {
-  /* Set code generation options -- see	cg.h: */
+ /* Set code generation options -- see	cg.h: */
 
   if ( ! CG_localize_tns_Set)
   	CG_localize_tns = (CG_opt_level <= 1);
@@ -1008,7 +1327,7 @@ Configure_CG_Options(void)
   if ( !CG_enable_spec_idiv_overridden && Enable_Spec_Idiv_For_Target() )
     CG_enable_spec_idiv = FALSE;
 
-  if ( ! CG_LOOP_fix_recurrences_specified
+ if ( ! CG_LOOP_fix_recurrences_specified
        && (      CG_LOOP_back_substitution
               && CG_LOOP_back_substitution_specified
            ||    CG_LOOP_interleave_reductions
@@ -1027,6 +1346,42 @@ Configure_CG_Options(void)
     EBO_Opt_Level = (CG_opt_level > 0) ? EBO_Opt_Level_Default : 0;
   }
   Enable_CG_Peephole = (CG_opt_level > 0) ? TRUE : FALSE;
+  if (CG_opt_level <= 0) 
+      Enable_EBO_Post_Proc_Rgn = FALSE ;
+
+  if ( IPFEC_Profitability ) {
+      // region formation
+      IPFEC_Enable_Region_Formation = FALSE;
+
+      // if-conversion
+      IPFEC_Enable_If_Conversion = TRUE;
+      IPFEC_Force_If_Conv = FALSE;
+      IPFEC_Force_Para_Comp_Gen = FALSE;
+      IPFEC_Para_Comp_Gen = TRUE;
+      IPFEC_Disable_Merge_BB = FALSE;
+
+      // predicate analysis
+      IPFEC_Enable_PRDB= TRUE;
+
+      //opt after schedule
+      IPFEC_Enable_Opt_after_schedule=TRUE;
+
+      // scheduling
+      IPFEC_Enable_Prepass_GLOS = TRUE;
+      IPFEC_Enable_Postpass_LOCS = TRUE;
+
+      // specultion
+      IPFEC_Enable_Data_Speculation = TRUE;
+      IPFEC_Force_CHK_Fail = FALSE;
+      IPFEC_Enable_Cascade = TRUE;
+      IPFEC_Hold_Uses = FALSE;
+      IPFEC_Chk_Compact = TRUE;
+      IPFEC_Enable_Safety_Load = TRUE;
+
+      // micro-scheduling
+      IPFEC_Enable_Compressed_Template = TRUE;
+      IPFEC_Enable_Pre_Bundling = TRUE;
+  }
 
   /* Enable_Fill_Delay_Slots controls the filling of delay slots in locs
      and gcm */
@@ -1045,6 +1400,7 @@ Configure_CG_Options(void)
       CG_maxinss = Split_BB_Length;
     }
   }
+
 
   /* Set BB clone limits
    */
@@ -1091,7 +1447,7 @@ CG_Configure_Opt_Level( INT opt_level )
   Configure_CG_Options();
 }
 
-
+
 /* ====================================================================
  *
  * Build_Option_String
@@ -1139,7 +1495,7 @@ Build_Option_String (INT argc, char **argv)
 	option_string = "none";
     }
 } /* end: Build_Option_String */
-
+
 /* ====================================================================
  *
  * Process_Command_Line
@@ -1195,12 +1551,21 @@ Process_Command_Line (INT argc, char **argv)
                 }
 
                 break;
-
-	    }
+            case 'O':
+                if (!strncasecmp (cp-1, "orc:=",5)) {
+                    cp += 4 ;
+                    if (!strcasecmp (cp, "on") || !strcasecmp(cp, "true")) {
+                        CG_Enable_Ipfec_Phases = TRUE;
+                    } else if (!strcasecmp (cp, "off") || !strcasecmp(cp, "false")) {
+                        CG_Enable_Ipfec_Phases = FALSE;
+                    }
+                }
+                break;
+            }
 	}
     }
 }
-
+
 /* ====================================================================
  *
  * Prepare_Source
@@ -1239,6 +1604,11 @@ Prepare_Source (void)
 	    ErrMsg ( EC_Asm_Open, Asm_File_Name, errno );
 	    Terminate (1);
 	}
+        if (Create_Cycle_Output) {
+                if ( ( Output_h_File = fopen( Output_h_File_Name, "w" ) ) == NULL ) {                        ErrMsg ( EC_Asm_Open, Output_h_File_Name, errno );
+                        Terminate (1);
+                }
+        } 
     }
 
     /* Prepare relocatable object file name: */
@@ -1380,6 +1750,26 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
 
     CG_Configure_Opt_Level(Opt_Level);
 
+   /* Getting the relative skip_list about if_conv, locs etc.*/ 
+    locs_skip_bb = IPFEC_Build_Skiplist(raw_locs_skip_bb);
+
+    if_conv_skip_rgn = IPFEC_Build_Skiplist(raw_if_conv_skip_rgn);
+    if_conv_skip_area = IPFEC_Build_Skiplist(raw_if_conv_skip_area);
+    
+    glos_skip_rgn = IPFEC_Build_Skiplist(raw_glos_skip_rgn);
+    
+    spec_skip_bb = IPFEC_Build_Skiplist(raw_spec_skip_bb);
+    spec_skip_rgn = IPFEC_Build_Skiplist(raw_spec_skip_rgn);    
+    spec_skip_op = IPFEC_Build_Skiplist(raw_spec_skip_op);
+    msched_skip_bb = IPFEC_Build_Skiplist(raw_msched_skip_bb);
+    msched_skip_rgn = IPFEC_Build_Skiplist(raw_msched_skip_rgn);
+    
+    spec_skip_PU = IPFEC_Build_Skiplist(raw_spec_skip_PU);
+    if_conv_skip_PU = IPFEC_Build_Skiplist(raw_if_conv_skip_PU);
+    PRDB_skip_PU = IPFEC_Build_Skiplist(raw_PRDB_skip_PU);
+    pre_glos_skip_PU = IPFEC_Build_Skiplist(raw_pre_glos_skip_PU);
+    post_locs_skip_PU = IPFEC_Build_Skiplist(raw_post_locs_skip_PU);
+    
     Prepare_Source ();
 } /* CG_Process_Command_Line */
 

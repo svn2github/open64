@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -98,6 +98,7 @@ extern void Check_for_Dump (
   struct bb *bb	/* BB to print, or NULL */
 );
 
+
 /* Overloaded version of standard Get_Trace with additional bb
  * parameter. If bb parameter is non-NULL and BBs were explicitly 
  * enabled for tracing, return FALSE unless the given BB is in the 
@@ -110,5 +111,6 @@ extern MEM_POOL MEM_local_region_pool;
 extern MEM_POOL MEM_local_region_nz_pool;
 
 extern RID *Current_Rid;
-
+/* indicate whether region is already been formed. */
+extern BOOL RGN_Formed;
 #endif /* cg_INCLUDED */

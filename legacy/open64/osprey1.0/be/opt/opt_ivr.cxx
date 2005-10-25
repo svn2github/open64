@@ -1032,7 +1032,7 @@ IVR::Ident_all_iv_cands(const BB_LOOP *loop, const BB_NODE *bb)
       // the type of the IV is the type of increment expr.
       MTYPE dtype;
       if (incr->Defstmt()) 
-	dtype = incr->Defstmt()->Rhs()->Dsctyp();
+        dtype = incr->Defstmt()->Rhs()->Dtyp();
       else
 	dtype = incr->Defphi()->OPND(0)->Defstmt()->Rhs()->Dtyp();
       

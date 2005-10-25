@@ -650,7 +650,7 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
 		OPCODE_rtype(scalar_op),
 		Promote_Type(OPCODE_desc(scalar_op))));
       WN_set_ty(scalar_ref,Be_Type_Tbl(Promote_Type(desc))); 
-      WN_offset(scalar_ref)=new_symbol.WN_Offset();
+      WN_set_field_id(scalar_ref, 0); // fix 819155
       if (Alias_Mgr) {
         Create_alias(Alias_Mgr,scalar_ref);
       }

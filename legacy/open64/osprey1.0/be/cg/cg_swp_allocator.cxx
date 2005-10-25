@@ -1024,7 +1024,6 @@ SWP_Is_Variant(TN_SET *invariants, TN *tn)
 	  !TN_SET_MemberP(invariants, tn));
 }
 
-
 static void
 SWP_Update_Lifetime(TN2INT32_MAP &tn2lt_map,
 		    LIFETIME_SET &lt, 
@@ -1345,6 +1344,17 @@ SWP_Allocate_Rotating_Regs(bool                trace,
   //
   used_regs = allocator.num_allocated_regs();
   ctr_pred_loc = SWP_LIFETIME::InvalidLoc;
+
+   //Added to adjust predicate register allocation.
+  if (reg_class == ISA_REGISTER_CLASS_predicate) {
+      #ifdef TARG_IA64
+      BOOL success = allocator.adjust_predicate(op_state,used_regs);
+      /*if (!success) {
+        printf("Do not success because of SWP p63!\n"); 
+        return FALSE;
+      } */ 
+      #endif
+  }
   
   if (is_alloced)
   {
@@ -1359,6 +1369,7 @@ SWP_Allocate_Rotating_Regs(bool                trace,
       if (lt_itr->location() < offset)
 	offset = lt_itr->location();
 
+     
     // Next, update the "allocation" map to reflect our results, and
     // also determine the location of any register without a TN ptr.
     //
@@ -1374,6 +1385,7 @@ SWP_Allocate_Rotating_Regs(bool                trace,
 		 "control predicate location"));
 	
 	ctr_pred_loc = loc;
+	//if (lt_itr->tn() == op_state.control_predicate_tn) ctr_pred_loc = 0;
       }
       if (reg_class != ISA_REGISTER_CLASS_predicate  ||
 	  lt_itr->tn() != NULL) {

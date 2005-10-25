@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -76,7 +76,7 @@ DaVinci_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
   fprintf(stderr, "Node_Select([");
   char *sep = " ";
   for (INT i = 0; i < n_ids; ++i) {
-    fprintf(stderr, "%s%p", sep, id_array[i]);
+    fprintf(stderr, "%s%lx", sep, id_array[i]);
     sep = ", ";
   }
   fprintf(stderr, " ])\n");
@@ -87,7 +87,7 @@ void
 DaVinci_Callback::Edge_Select(const EDGE_ID& id)
 {
 #ifdef CALLBACK_DEBUG
-  fprintf(stderr, "Edge_Select(%p,%p)\n", id.src, id.dst);
+  fprintf(stderr, "Edge_Select(%lx,%lx)\n", id.src, id.dst);
 #endif
 }
 
@@ -272,7 +272,8 @@ DaVinci::IO::In_Line()
 #define FT_UPDATE_BEGIN      FTAG(1 << 13)
 #define FT_NEW_NODE          FTAG(1 << 14)
 #define FT_NEW_EDGE          FTAG(1 << 15)
-#define FT_UPDATE_END        FTAG(1 << 16)
+#define FT_DELETE_EDGE       FTAG(1 << 16)
+#define FT_UPDATE_END        FTAG(1 << 17)
 
 #define BASE_SET ( \
    FT_DAVINCI | FT_TITLE | FT_SHOW_STATUS | FT_SHOW_MESSAGE  \
@@ -302,6 +303,7 @@ DaVinci::Ft_Str(const FTAG ftag)
   case FT_UPDATE_BEGIN:     s = "update_begin";      break;
   case FT_NEW_NODE:         s = "new_node";          break;
   case FT_NEW_EDGE:         s = "new_edge";          break;
+  case FT_DELETE_EDGE:      s = "delete_edge";       break;
   case FT_UPDATE_END:       s = "update_end";        break;
   default:
     ; // unknown tag.
@@ -391,7 +393,7 @@ DaVinci::Parse_Node_Ids(const char *epfx, INT *n_nodes, NODE_ID **node_ids)
 	return false;
       }
     }
-    if ( sscanf( cp, "\"%p\"", &id ) != 1 ) {
+    if ( sscanf( cp, "\"%lx\"", &id ) != 1 ) {
       fprintf(stderr, "BAD NODE_ID (id): .. %s\n", cp);
       return false;
     }
@@ -416,7 +418,7 @@ DaVinci::Parse_Node_Ids(const char *epfx, INT *n_nodes, NODE_ID **node_ids)
 bool
 Parse_Edge_Id( const char *epfx, EVENT_T *event ) // ("node_id:node_id")
 {
-  if ( sscanf(epfx, "(\"%p:%p\")",
+  if ( sscanf(epfx, "(\"%lx:%lx\")",
 	      &event->u.sel_edge.edge_src,
 	      &event->u.sel_edge.edge_dst) != 2 ) {
     fprintf(stderr, "Malformed EDGE_ID %s\n", epfx);
@@ -732,7 +734,7 @@ DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
       // append time to avoid overwriting previous log file,
       // which would happen if daVinci is started more than
       // once in a session.
-      sprintf(fname, "%s.%ld", logfile, time(NULL));
+      sprintf(fname, "%s.%d", logfile, time(NULL));
       execlp ("daVinci", "daVinci", "-pipe", "-log", fname, 0);
     } else {
       execlp ("daVinci", "daVinci", "-pipe", 0);
@@ -758,7 +760,7 @@ DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
   }
   _display_ok = true;
 
-  Emit_Do( "set(font_size(6))" );  // more? provide external control.
+//  Emit_Do( "set(font_size(6))" );  // more? provide external control.
   Emit_Do( "set(gap_height(40))" );
   Emit_Do( "set(gap_width(20))" );
 }
@@ -946,7 +948,7 @@ DaVinci::Node_Begin(NODE_ID id, const char *label, const NODE_TYPE& node_type)
 
   if ( _usage_check ) {
     if ( _node_def_set.count(id) > 0 ) {
-      fprintf(stderr, "DaVinci::Node_Begin USAGE-ERROR, %s 0x%p\n",
+      fprintf(stderr, "DaVinci::Node_Begin USAGE-ERROR, %s %#lx\n",
 	      "duplicate def for node", id);
     } else {
       _node_def_set.insert(id);
@@ -999,7 +1001,7 @@ DaVinci::Graph_End()
       NODE_ID ref_id = *it_ref;
 
       if ( _node_def_set.count(ref_id) == 0 ) {
-	fprintf(stderr, "ERROR DaVinci node 0x%p referenced, %s\n",
+	fprintf(stderr, "ERROR DaVinci node %#lx referenced, %s\n",
 		ref_id, "but not defined.");
       }
     }
@@ -1080,7 +1082,8 @@ DaVinci::New_Edge(const EDGE_ID&   id,
 		  NODE_ID          src,
 		  NODE_ID          dst)
 {
-  if ( ! Usage_Ok( FT_NEW_EDGE, (FT_UPDATE_BEGIN|FT_NEW_NODE|FT_NEW_EDGE) ) ) {
+  if ( ! Usage_Ok( FT_NEW_EDGE,
+         (FT_UPDATE_BEGIN|FT_NEW_NODE|FT_NEW_EDGE|FT_DELETE_EDGE) ) ) {
     return;
   }
   if ( _edge_cnt == 0 ) {
@@ -1093,11 +1096,26 @@ DaVinci::New_Edge(const EDGE_ID&   id,
   _edge_cnt += 1;
 }
 
+void
+DaVinci::Delete_Edge(const EDGE_ID&   id)
+{
+  if ( ! Usage_Ok( FT_DELETE_EDGE,
+         (FT_UPDATE_BEGIN|FT_NEW_NODE|FT_NEW_EDGE|FT_DELETE_EDGE) ) ) {
+    return;
+  }
+  if ( _edge_cnt == 0 ) {
+    _io.Out_Fmt( "],[" );  // end new_node + begin new_edge list.
+  }
+  _io.Out_Fmt( "%sdelete_edge(\"%x:%x\")", (_edge_cnt > 0 ? "," : ""),
+	       id.src, id.dst );
+  _edge_cnt += 1;
+}
+
 DA_ACK
 DaVinci::Update_End()
 {
   if ( ! Usage_Ok( FT_UPDATE_END,
-		   (FT_UPDATE_BEGIN|FT_NEW_NODE|FT_NEW_EDGE) ) ) {
+		 (FT_UPDATE_BEGIN|FT_NEW_NODE|FT_NEW_EDGE|FT_DELETE_EDGE) ) ) {
     return "Usage-error";
   }
   if ( _edge_cnt == 0 ) {

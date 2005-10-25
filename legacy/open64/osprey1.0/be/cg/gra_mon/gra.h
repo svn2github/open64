@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -80,6 +80,8 @@ static char *gra_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_
 #include "register.h"
 #include "bb.h"
 
+extern void GRA_Fat_Point_Estimate(void);
+extern BOOL Check_Self_Recursive(void);
 extern void GRA_Allocate_Global_Registers( BOOL is_region );
 extern void GRA_Initialize(void);
 extern BOOL GRA_Spill_Around_Save_TN_Copies(void);

@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -87,6 +87,9 @@
 #include "hb_hazards.h"
 #include "targ_proc_properties.h"
 
+#include "bb.h"
+#include "op.h"
+#include "scheduler.h"
 
 // ======================================================================
 // IGLS_Schedule_Region 
@@ -316,14 +319,12 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 	should_we_global_schedule) {
 	Stop_Timer (T_Sched_CU);
 
- 	GCM_Schedule_Region (hbs_type);
+        GCM_Schedule_Region (hbs_type);
 
         Set_Error_Phase ("Hyperblock Scheduler (HBS)");
 	Start_Timer (T_Sched_CU);
     }
 
-    // Do local scheduling for BBs which are not part of HBs. 
-    // (after register allocation).
     for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
       if (    ( rid = BB_rid(bb) )
 	      && ( RID_level(rid) >= RL_CGSCHED ) )
@@ -334,10 +335,15 @@ IGLS_Schedule_Region (BOOL before_regalloc)
       if (should_we_do_thr && !skip_bb) Remove_Unnecessary_Check_Instrs(bb);
 
       BOOL resched = !skip_bb && Reschedule_BB(bb); /* FALSE; */
+
+      //If we don't do IPFEC post_locals schedule,
+      //we must reset the flags of ops and bbs.
       if (should_we_schedule && should_we_local_schedule &&
 	  (!skip_bb || resched)) {
-
-	// TODO: try locs_type = LOCS_DEPTH_FIRST also.
+        Clean_Up(bb); 
+        Reset_BB_scheduled(bb);  
+  
+  	// TODO: try locs_type = LOCS_DEPTH_FIRST also.
 	INT32 max_sched = (resched) ?  OP_scycle(BB_last_op(bb))+1 : INT32_MAX;
 	if (LOCS_Enable_Scheduling) {
 	  if (!Sched) {
@@ -365,10 +371,18 @@ IGLS_Schedule_Region (BOOL before_regalloc)
   if (thr) {
 	CXX_DELETE(thr, &MEM_local_pool);
   }
-  L_Free();
 
-  Check_for_Dump (TP_SCHED, NULL);
-  Stop_Timer (T_Sched_CU);
+  L_Free();
+   
+ Check_for_Dump (TP_SCHED, NULL);
+ Stop_Timer (T_Sched_CU);
 }
+
+
+
+
+
+
+
 
 

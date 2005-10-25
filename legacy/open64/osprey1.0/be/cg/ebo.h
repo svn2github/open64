@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -129,6 +129,7 @@ void EBO_Post_Process_Region(RID *rid);
 
 void EBO_Finalize(void);
 
+extern BOOL OP_ld_st_unat(OP *op);
 extern INT32 EBO_Opt_Level_Default;
 extern INT32 EBO_Opt_Level;
 extern BOOL  CG_skip_local_ebo;

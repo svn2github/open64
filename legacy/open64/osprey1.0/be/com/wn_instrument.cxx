@@ -120,16 +120,6 @@
 //   be/be/driver.cxx (through WN_Instrument and wiw_wopt.Tree_Walk)
 
 
-// ====================================================================
-//
-// Instrumentation_File_Name is the prefix for the names of the
-// feedback data files.
-//
-// ====================================================================
-
-
-static char * Instrumentation_File_Name = "";
-
 
 // ====================================================================
 //

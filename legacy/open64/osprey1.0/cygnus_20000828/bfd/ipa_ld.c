@@ -24,7 +24,7 @@
 
 #include "ipa_ld.h"
 
-#define DEFAULT_TOOLROOT "/usr/bin/sgicc"
+#define DEFAULT_TOOLROOT "/usr/bin/orcc"
 
 extern boolean is_ipa;
 
@@ -54,7 +54,7 @@ static mode_t cmask = 0;	    /* file creation mode mask */
 
 static string thisfile = __FILE__;
 
-static char *default_path = "/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0";
+static char *default_path = "/usr/ia64-sgi-linux/lib/gcc-lib/ia64-orc-linux/orcc-1.0";
 static char *env_name = "LD_LIBRARY_PATH";
 
 static string *tmp_list = 0;
@@ -180,8 +180,8 @@ do_compile (string *argv)
 
     argv[0] = concat_names (toolroot, basename (argv[0]));
 
-    if (ld_ipa_opt[LD_IPA_VERBOSE].flag || ld_ipa_opt[LD_IPA_SHOW].flag)
-	dump_argv (argv);
+//    if (ld_ipa_opt[LD_IPA_VERBOSE].flag || ld_ipa_opt[LD_IPA_SHOW].flag)
+//	dump_argv (argv);
 
     pid = fork();
     pid = execve(argv[0], argv, environ_vars);
@@ -278,8 +278,8 @@ cleanup_all_files (void)
 {
     int i;
 
-    if (ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag)
-	return;
+//    if (ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag)
+//	return;
     
     for (i = tmp_list_size - 1; i > 0; i--)
 	UNLINK (tmp_list[i]);
@@ -364,7 +364,7 @@ make_temp_file (string name, char suffix)
 int
 create_tmpdir ( int tracing )
 {
-    int fixedname = is_ipa && ( ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag );
+    int fixedname = is_ipa;// && ( ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag );
 
     if ( is_ipa ) {
 	if ( fixedname ) {
@@ -692,8 +692,8 @@ ld_compile (bfd *abfd)
     argv = get_command_line (abfd, input_path, output_path, &argc);
     
 
-    if (ld_ipa_opt[LD_IPA_VERBOSE].flag || ld_ipa_opt[LD_IPA_SHOW].flag)
-    	fprintf(stderr,"Compiling %s\n",abfd->filename);
+//    if (ld_ipa_opt[LD_IPA_VERBOSE].flag || ld_ipa_opt[LD_IPA_SHOW].flag)
+//    	fprintf(stderr,"Compiling %s\n",abfd->filename);
 
     child_pid = do_compile (argv);
 

@@ -377,21 +377,38 @@ Exp_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant, O
 	}
   }
   else {
-	OPS new_ops;
+	/* Sometimes the whole ops sequence is needed in Expand_OP.
+	So instead of create a new OPS structure, the old one is added.
+	*/
+	if (OPS_length(ops)==0) {
+		OPS new_ops;
   	OPS_Init(&new_ops);
   	Expand_OP (opcode, result, op1, op2, op3, variant, &new_ops);
   	if (Trace_Exp) {
-		#pragma mips_frequency_hint NEVER
-		OP *op;
-		FOR_ALL_OPS_OPs (&new_ops, op) {
-			fprintf(TFile, " into "); Print_OP (op);
-		}
+  		#pragma mips_frequency_hint NEVER
+  		OP *op;
+  		FOR_ALL_OPS_OPs (&new_ops, op) {
+  			fprintf(TFile, " into "); Print_OP (op);
+  		}
   	}
-	/* check if there is at least one OP in the expansion */
-	if (OPS_first(&new_ops) != NULL) {
-		/* Add the new OPs to the end of the list passed in */
-		OPS_Append_Ops(ops, &new_ops);
+		/* check if there is at least one OP in the expansion */
+		if (OPS_first(&new_ops) != NULL) {
+			/* Add the new OPs to the end of the list passed in */
+			OPS_Append_Ops(ops, &new_ops);
   	}
   }
+	else {
+		OP *last_OP = OPS_last(ops);
+  	Expand_OP (opcode, result, op1, op2, op3, variant, ops);
+  	if (Trace_Exp) {
+  		if (OP_next(last_OP)!=NULL) {
+  			#pragma mips_frequency_hint NEVER
+	  		OP *op;
+		  	for (op = OP_next(last_OP); op && op != OP_next(OPS_last(ops)); op = OP_next(op)){
+			  	fprintf(TFile, " into "); Print_OP (op);
+			  }
+		  }
+		}
+	}
 }
-
+}

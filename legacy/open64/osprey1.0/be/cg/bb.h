@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -99,6 +99,10 @@
  *
  *   void Negate_Logif_BB(BB *bb)
  *	Negate the sense of the final branch in the given LOGIF <bb>.
+ *
+ *   void Add_Goto_Op(BB *bb, BB *target_bb)
+ *     Make <bb> goto <target_bb>. <bb> may not already have a brance
+ *     instruction.
  *
  *   void Add_Goto(BB *bb, BB *target_bb)
  *     Make <bb> goto <target_bb>.  <bb> may not already have a branch
@@ -468,6 +472,8 @@ typedef	struct bb {
   WN           *branch_wn;	/* terminating branch whirl node  */
   struct bbregs *bbregs;	/* auxiliary register info (bbregs.h) */
   struct annotation *annotations; /* annotations attached to bb   */
+  INT		bb_cycle;
+  mBB_NUM       id_before_profile;      /* old trace number before any profile process*/
 } BB;
 
 #ifndef	CAN_USE_BB
@@ -480,6 +486,7 @@ typedef	struct bb {
 #define	BB_prev(x)	 (CAN_USE_BB(x)->prev)
 #define	BB_preds(x)	 (CAN_USE_BB(x)->preds)
 #define	BB_succs(x)	 (CAN_USE_BB(x)->succs)
+#define BB_cycle(x)	 (CAN_USE_BB(x)->bb_cycle)
 #if 0
 /* Don't define BB_ops! OPs must only be manipulated with the provided
  * utility routines in order to keep automatically maintained data structures
@@ -498,6 +505,7 @@ typedef	struct bb {
 
 /* rvalue field accessors */
 #define	BB_id(b)	(CAN_USE_BB(b)->id+0)
+#define BB_id_before_profile(b) (CAN_USE_BB(b)->id_before_profile+0)
 #define	BB_first_op(b)	(CAN_USE_BB(b)->ops.first+0)
 #define	BB_last_op(b)	(CAN_USE_BB(b)->ops.last+0)
 #define BB_unrollings(b) (CAN_USE_BB(b)->unrollings+0)
@@ -540,6 +548,15 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 					    label at the end of the BB, rather
 					    than at the beginning */
 
+#define BBM_RECOVERY            0x00400000 /* BB is a recovery block */
+#define BBM_CHK_SPLIT           0x00800000 /* BB splitted from another because of chk insertion */
+#define BBM_EMITTED             0x01000000 /* BB has been emitted */
+#define BBM_PROFILE_SPLITTED    0x02000000 /* BB is bb splitted from old bb by profile */
+#define BBM_PROFILE_CHANGED     0x04000000 /* BB is changed by profile*/
+#define BBM_PROFILE_ADDED       0x08000000 /* BB is new bb added by profile*/
+#define BBM_CHK_SPLIT_HEAD      0x10000000 /* BB splitted from another because of chk insertion */
+
+
 #define	BB_entry(x)		(BB_flag(x) & BBM_ENTRY)
 #define BB_handler(bb)		(BB_flag(bb) & BBM_HANDLER)
 #define	BB_exit(x)		(BB_flag(x) & BBM_EXIT)
@@ -562,6 +579,16 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BB_asm(bb) 		(BB_flag(bb) & BBM_ASM)
 #define BB_predicate_promote(bb) (BB_flag(bb) & BBM_PREDICATE_PROMOTE)
 #define	BB_has_post_label(x)		(BB_flag(x) & BBM_POST_LABEL)
+
+#define BB_recovery(x)          (BB_flag(x) & BBM_RECOVERY)
+#define BB_chk_split(x)         (BB_flag(x) & BBM_CHK_SPLIT)
+#define BB_chk_split_head(x)    (BB_flag(x) & BBM_CHK_SPLIT_HEAD)
+#define BB_emitted(x)           (BB_flag(x) & BBM_EMITTED)
+#define BB_profile_splitted(x)    (BB_flag(x) & BBM_PROFILE_SPLITTED)
+#define BB_profile_changed(x)    (BB_flag(x) & BBM_PROFILE_CHANGED)
+#define BB_profile_added(x)    (BB_flag(x) & BBM_PROFILE_ADDED)
+/* #endif */
+
 
 #define	Set_BB_entry(x)		(BB_flag(x) |= BBM_ENTRY)
 #define Set_BB_handler(bb)	(BB_flag(bb) |= BBM_HANDLER)
@@ -586,6 +613,16 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Set_BB_predicate_promote(bb) 	(BB_flag(bb) |= BBM_PREDICATE_PROMOTE)
 #define	Set_BB_has_post_label(x)	(BB_flag(x) |= BBM_POST_LABEL)
 
+#define Set_BB_recovery(x)          (BB_flag(x) |= BBM_RECOVERY)
+#define Set_BB_chk_split(x)         (BB_flag(x) |= BBM_CHK_SPLIT)
+#define Set_BB_chk_split_head(x)    (BB_flag(x) |= BBM_CHK_SPLIT_HEAD)
+#define Set_BB_emitted(x)           (BB_flag(x) |= BBM_EMITTED)
+#define Set_BB_profile_splitted(x)    (BB_flag(x) |= BBM_PROFILE_SPLITTED)
+#define Set_BB_profile_changed(x)    (BB_flag(x) |= BBM_PROFILE_CHANGED)
+#define Set_BB_profile_added(x)    (BB_flag(x) |= BBM_PROFILE_ADDED)
+/* #endif */
+
+
 #define	Reset_BB_entry(x)	(BB_flag(x) &= ~BBM_ENTRY)
 #define Reset_BB_handler(bb) 	(BB_flag(bb) &= ~BBM_HANDLER)
 #define	Reset_BB_exit(x)	(BB_flag(x) &= ~BBM_EXIT)
@@ -609,9 +646,18 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_predicate_promote(bb) 	(BB_flag(bb) &= ~BBM_PREDICATE_PROMOTE)
 #define	Reset_BB_has_post_label(x)	(BB_flag(x) &= ~BBM_POST_LABEL)
 
+#define Reset_BB_recovery(x)          (BB_flag(x) &= ~BBM_RECOVERY)
+#define Reset_BB_chk_split(x)         (BB_flag(x) &= ~BBM_CHK_SPLIT)
+#define Reset_BB_chk_split_head(x)    (BB_flag(x) &= ~BBM_CHK_SPLIT_HEAD)
+#define Reset_BB_emitted(x)           (BB_flag(x) &= ~BBM_EMITTED)
+#define Reset_BB_profile_splitted(x)    (BB_flag(x) &= ~BBM_PROFILE_SPLITTED)
+#define Reset_BB_profile_changed(x)    (BB_flag(x) &= ~BBM_PROFILE_CHANGED)
+#define Resset_BB_profile_added(x)    (BB_flag(x) &= ~BBM_PROFILE_ADDED)
+/* #endif */
+
 #define BB_tail_call(bb)	(   (BB_flag(bb) & (BBM_CALL | BBM_EXIT)) \
 				 == (BBM_CALL | BBM_EXIT))
-
+
 /* ====================================================================
  *
  * BBKIND -- Basic Block kinds.
@@ -630,6 +676,7 @@ typedef	enum {
   BBKIND_CALL,		/* Function call */
   BBKIND_REGION_EXIT,	/* Region exit */
   BBKIND_TAIL_CALL,	/* Tail call */
+  BBKIND_CHK,       /* end with check */
   BBKIND_LAST		/* > last legal value */
 } BBKIND;
 
@@ -661,12 +708,14 @@ typedef	struct bblist {
     BB		  *item;	/* The BB list element       */
     struct bblist *next;	/* The next list component   */
     float	   prob;	/* probability for this edge */
+    float          freq;        /* frequency for this edge   */
     mUINT16        flags;       /* flags                     */
 } BBLIST;
 
 #define	BBLIST_item(b)	((b)->item)
 #define	BBLIST_next(b)	((b)->next)
 #define BBLIST_prob(b)	((b)->prob) /*** Only valid for succ edges ***/
+#define BBLIST_freq(b)  ((b)->freq) /*** Only valid for succ edges ***/
 #define BBLIST_flags(b) ((b)->flags)
 
 #define BLM_PROB_FB     0x0001 /* bblist::prob based on Feedback. */
@@ -936,6 +985,7 @@ extern void Target_Logif_BB(BB* bb, BB* br_targ_bb, float br_targ_prob,
 				    BB* fall_through);
 extern void Target_Cond_Branch(BB* bb, BB* br_targ_bb, float br_targ_prob);
 extern void Negate_Logif_BB(BB *bb);
+extern void Add_Goto_Op(BB *bb, BB *target_bb);
 extern void Add_Goto(BB *bb, BB *target_bb);
 extern BB* Create_Dummy_BB( BB *dest_bb );
 extern LABEL_IDX Gen_Label_For_BB (BB *bb);
@@ -1048,6 +1098,8 @@ extern void BB_Mark_Unreachable_Blocks (void);
 extern void BB_Transfer_Exitinfo(BB* from, BB* to);
 extern void BB_Transfer_Entryinfo(BB* from, BB* to);
 extern void BB_Transfer_Callinfo(BB* from, BB* to);
+extern void BB_Transfer_Asminfo(BB* from, BB* to);
+
 
 /* Print the given BB or BBLIST: */
 extern void Print_BB_Header ( BB *bp,
@@ -1152,3 +1204,6 @@ void draw_flow_graph(void);
 void verify_flow_graph(void);
 
 #endif /* bb_INCLUDED */
+
+
+

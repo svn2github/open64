@@ -76,6 +76,7 @@ PU_KIND	Cur_PU_Kind = PU_UNKNOWN;
 
 BOOL Symbol_Table_Out = FALSE;	/* Symbol table output (list or trace) */
 BOOL Show_Progress = FALSE;     /* Report progress to stdout */
+BOOL Create_Cycle_Output = FALSE;  
 
 /* ====================================================================
  *
@@ -101,6 +102,13 @@ char *Fe_Version = NULL;
  *
  * ====================================================================
  */
+/*add by cbq */
+int pu_number = 0;
+int bb_number = 0;
+char *Output_h_File_Name = "cycle_output.h";        /* Cycle_Counting Output.h file */
+FILE *Output_h_File = NULL;           /* Cycle counting output.h file */
+char * pu_string[1000]; 
+char * bb_string[1000]; 
 
 /* Current file	names: */
 char *Src_File_Name = NULL;	/* Source file */
@@ -114,6 +122,7 @@ char *IR_File_Name  = NULL;	/* SGIR	file */
 char *Irb_File_Name = NULL;	/* ACIR	intermediate file */
 char *Asm_File_Name = NULL;	/* Assembly file */
 char *Obj_File_Name = NULL;	/* Relocatable object file */
+char *Instrumentation_File_Name = NULL; /* instrumentation file */
 char *Feedback_File_Name = NULL; /* Feedback file */
 #ifndef MONGOOSE_BE
 char *Lib_File_Name = NULL;	/* Program library file	*/

@@ -267,7 +267,7 @@ ipa_compile_init ()
 
   static char* smake_base = "/usr/bin/make";
   static char* tmp_cc_name_base = "/usr/ia64-sgi-linux/bin/sgicc";
-  static char* cc_name_base = "/usr/bin/sgicc";
+  static char* cc_name_base = "/usr/bin/orcc";
 
   if (file_exists(tmp_cc_name_base))
       cc_name_base = tmp_cc_name_base;

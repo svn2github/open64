@@ -265,6 +265,23 @@ Initialize_Register_Class(
       default:
 	Is_True(FALSE, ("unhandled allocations status: %d", alloc_status));
     }
+    
+    // "(rclass==ISA_REGISTER_CLASS_branch && reg==1)" means the branch register <b0>.
+    //This is to set the register <b0> to be non-allocatable during Register allocation.
+    //The reason is : enable <b0> to be allocatable will leads to change content of <b0>,
+    // while the PU need <b0> be the right value as its return address.
+    // By doing this, OPs likes 
+    //
+    //		mov b0,r9;
+    //		br.few b0
+    //		........(the value of b0 has not been saved/restored,so the return value is not correct.)
+    //          br.ret.sptk.many b0 ;;
+    //
+    //	 will not appear. And in those OPs <b0> will be replaced by <b6>.
+    
+    if (rclass==ISA_REGISTER_CLASS_branch && reg==1)
+    	is_allocatable = FALSE;
+
 
     if ( is_allocatable ) {
       allocatable = REGISTER_SET_Union1(allocatable,reg);

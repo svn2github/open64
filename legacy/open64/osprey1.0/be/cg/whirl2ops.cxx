@@ -163,6 +163,128 @@ static WN_MAP WN_to_OP_map;
 
 OP_MAP OP_Asm_Map;
 
+#define Is_Boolean_Operator(opr) (opr==OPR_EQ || opr==OPR_NE || opr==OPR_LE || 	opr==OPR_LT || opr==OPR_GE || opr==OPR_GT)
+#define Is_Old_Boolean_Expression(expr) \
+            (((WN_opcode(expr) == OPC_I8BAND) || (WN_opcode(expr) == OPC_I8BIOR)) &&\
+            Is_Boolean_Operator(WN_operator(WN_kid0(expr))) &&\
+      			Is_Boolean_Operator(WN_operator(WN_kid1(expr))))
+/*
+This function is to transform poorly-handled boolean processing to predicated processing in IA64. 
+Predicates is returned as the result.
+Entry-check is in function Handle_CONDBR.
+Boolean expression must be like:
+	A&&B
+	A||B
+A or B is a boolean expression contains only one logical operator(EQ, NE, LE, LT, GE, GT). A/B must be of
+type integer, short or char. Signed/unsigned doesn't matter.
+The transformation looks like:
+	A&&B -->
+	          Pm = 0 
+	          Pn = 1
+	          Pi, Pj = A
+	          (Pi) Pm, Pn = B
+	A||B -->
+	          Pm = 1
+	          Pn = 0
+	          Pi, Pj = A
+	          (Pj) Pm, Pn = B
+P0 is the predicate always true. Pm/Pn is predicate pair to be returned.
+
+Please note that this is not a perfect solution. More complete solution needs to use LAND/LIOR instead of BAND/BIOR
+in previous phases in boolean expression processing.
+This modification assumes below expressions are short-circuited:
+	1.Float compare; won't have problem;
+	2.Post/pre increment/decrement;
+	3.Operands as function;
+*/
+
+static TN*
+Handle_Bool_As_Predicate(WN*condition, WN*parent, BOOL invert)
+{
+	WN *kid0, *kid1;
+	TN *predicate_result0, *predicate_result1;
+	OPERATOR condition_opr = WN_operator(condition);
+
+	if (Trace_WhirlToOp)
+	  fprintf(TFile, "Use Predicate register to replace band/bior operation in boolean expression!\n");
+	kid0 = WN_kid0(condition);
+	kid1 = WN_kid1(condition);
+	TN*kid0_result = Build_TN_Of_Mtype(MTYPE_B);
+	TN*kid1_result = Build_TN_Of_Mtype(MTYPE_B);
+
+	Expand_Expr(kid0, condition, kid0_result);
+
+	OP *kid0_LastOp = OPS_last(&New_OPs);
+	Expand_Expr(kid1, condition, kid1_result);
+	OP *kid1_LastOp = OPS_last(&New_OPs);
+
+	TN *kid1_predicate;
+	// select one of the two predicate results from kid0 to kid1.
+	kid1_predicate = OP_result(kid0_LastOp, (condition_opr == OPR_BAND) ? 0:1);
+
+	OP *op=OP_next(kid0_LastOp);
+	FmtAssert(op!=NULL, ("boolean expression doesn't generate OPs"));
+
+	// Check if all of the ops expanded from kid1 are guarded by True_TN
+	INT32 bTrue_TN=1;
+	for ( ; op; op = OP_next(op))
+	{
+		if (Trace_WhirlToOp)
+		{
+			fprintf(TFile, "OP to be if-converted:");
+			Print_OP(op);
+		}
+		if (OP_opnd(op,0) != True_TN)
+			bTrue_TN = 0;
+//		FmtAssert(OP_opnd(op,0) == True_TN, ("First operand is not True_TN"));
+//		Set_OP_opnd(op, 0, kid1_predicate);	// replace the True_TN as the predicate result from kid 0
+	}
+	if (bTrue_TN)
+	{
+		if (Trace_WhirlToOp)
+		{
+			fprintf(TFile, "All OPs above will be predicated\n");
+		}
+		for ( op=OP_next(kid0_LastOp); op; op = OP_next(op))
+		{
+			Set_OP_opnd(op, 0, kid1_predicate);	// replace the True_TN as the predicate result from kid 0
+		}
+	}
+	else
+	{
+		if (Trace_WhirlToOp)
+		{
+			fprintf(TFile, "Only last op will be predicated\n");
+		}
+		Set_OP_opnd(kid1_LastOp, 0, kid1_predicate);
+	}
+	
+	predicate_result0 = OP_result(kid1_LastOp, 0);
+	predicate_result1 = OP_result(kid1_LastOp, 1);
+	
+	// insert OP to preset predicate_result0/1 properly
+	// Pls note that this op won't be added to WN2OP and OP2WN map.
+	TN *TN_predicate_1 = Build_Dedicated_TN(ISA_REGISTER_CLASS_predicate,1,0);
+
+	OP *preset_OP;
+	if (condition_opr == OPR_BAND) {
+		OPS_Insert_Op_After(&New_OPs, kid0_LastOp, preset_OP = Mk_OP(TOP_cmp_eq_unc, predicate_result1, predicate_result0, True_TN, Zero_TN, Zero_TN));
+	}
+	else if (condition_opr == OPR_BIOR) {
+		OPS_Insert_Op_After(&New_OPs, kid0_LastOp, preset_OP = Mk_OP(TOP_cmp_eq_unc, predicate_result0, predicate_result1, True_TN, Zero_TN, Zero_TN));
+	}
+	else
+		FmtAssert(true, ("Condition error. This should never happen.\n"));
+
+  if (Trace_WhirlToOp) {
+  	fprintf(TFile, "OP inserted to preset the predicate registers for previous OP:\n");
+	  Print_OP(preset_OP);
+  }
+
+	// Change the result type
+	WN_set_rtype(condition, MTYPE_B);
+	return (invert)?predicate_result1:predicate_result0;
+}
 
 TN *
 Get_Complement_TN(TN *tn)
@@ -2428,6 +2550,20 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
     Allocate_Object (WN_st(expr));
   }
 
+  // Added for handling boolean expressions for OPR_SELECT. Previously BAND/BIOR is used
+  // instead of LAND/LIOR and boolean data is interpreted as 0/1(false/true).
+if (Is_Old_Boolean_Expression(expr))
+	{
+		if (WN_operator(parent)==OPR_SELECT) {
+		  if (Trace_WhirlToOp) {
+		    fprintf(TFile, "Replace select operator\n");
+		    }
+			return Handle_Bool_As_Predicate(expr, parent, 0);
+		  }
+		else
+			FmtAssert(true, ("!!!Operator may handle boolean result improperly, pls check."));
+	}
+
   /* Setup the operands */
   switch (opr) {
 
@@ -3216,25 +3352,40 @@ Handle_CONDBR (WN *branch)
     operand1 = NULL;
   }
   else {
-    operand0 = Expand_Expr (condition, branch, NULL);
-    if (WN_rtype(condition) == MTYPE_B) {
-      Is_True(   WN_operator_is(condition, OPR_LDID) 
-	      && WN_class(condition) == CLASS_PREG,
-	      ("MTYPE_B TRUEBR/FALSEBR condition must be preg or relop"));
+    /* 
+    Ideally MTYPE_B should be used for the return result type of the 
+    condition operator. However, it is used for other purposes already.
+    So the result class type is checked in this case(before checking i
+    the 'condition' result type).
+    */
+    operand0 = NULL;  // set for old branch
+    if (Is_Old_Boolean_Expression(condition)) {
+      operand0 = Handle_Bool_As_Predicate(condition, branch, invert);
       operand1 = NULL;
-      variant = V_BR_P_TRUE;
-      if (invert) {
-	PREG_NUM preg2_num = WN_load_offset(condition) + 1;
-	operand0 = PREG_To_TN_Array[preg2_num];
-      }
-    } else {
+   		variant = V_BR_P_TRUE;
+    }
+    
+    if (operand0==NULL) {
+      operand0 = Expand_Expr (condition, branch, NULL);
+      if (WN_rtype(condition) == MTYPE_B) {
+        Is_True(   WN_operator_is(condition, OPR_LDID) 
+  	      && WN_class(condition) == CLASS_PREG,
+  	      ("MTYPE_B TRUEBR/FALSEBR condition must be preg or relop"));
+        operand1 = NULL;
+        variant = V_BR_P_TRUE;
+        if (invert) {
+  	PREG_NUM preg2_num = WN_load_offset(condition) + 1;
+  	operand0 = PREG_To_TN_Array[preg2_num];
+        }
+      } else {
 #ifndef TARG_IA32
-      operand1 = Zero_TN;
-      variant = (invert) ? V_BR_I8EQ : V_BR_I8NE;
+        operand1 = Zero_TN;
+        variant = (invert) ? V_BR_I8EQ : V_BR_I8NE;
 #else
-      operand1 = Gen_Literal_TN (0, 4);
-      variant = (invert) ? V_BR_I4EQ : V_BR_I4NE;
+        operand1 = Gen_Literal_TN (0, 4);
+        variant = (invert) ? V_BR_I4EQ : V_BR_I4NE;
 #endif
+      }
     }
   }
   target_tn = Gen_Label_TN (Get_WN_Label (branch), 0);

@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -123,6 +123,7 @@
  *   void   DaVinci::Update_Begin()
  *   void   DaVinci::New_Node( node_id, label, node_type )
  *   void   DaVinci::New_Edge( edge_id, edge_type, src, dst )
+ *   void   DaVinci::Delete_Edge(const EDGE_ID& id)
  *   DA_ACK DaVinci::Update_End()
  *      add new nodes/edges.  must list all new nodes before any
  *      new edges in an update group.  i.e., usage symopsis is:
@@ -483,6 +484,7 @@ public:
   void New_Node(NODE_ID id, const char *label, const NODE_TYPE& nt );
   void New_Edge(const EDGE_ID& id, const EDGE_TYPE& et,
 		NODE_ID src, NODE_ID dst);
+  void Delete_Edge(const EDGE_ID& id);
   DA_ACK Update_End();
 };
 

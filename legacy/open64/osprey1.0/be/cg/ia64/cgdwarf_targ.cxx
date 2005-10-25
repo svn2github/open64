@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -349,7 +349,7 @@ Analyze_OP_For_Unwind_Info (OP *op, UINT when, BB *bb)
   TOP opc = OP_code(op);
 
   FmtAssert(!OP_simulated(op) || opc== TOP_asm, 
-	("found a simulated OP"));
+	("Found a simulated OP: %s",TOP_Name(opc)));
   if (opc == TOP_asm) {
 	has_asm = TRUE;
   }
@@ -573,7 +573,7 @@ Find_Unwind_Info (void)
   TN_MAP_Delete (tn_def_op);
 }
 
-
+
 
 // enum of all preserved regs (PR) that can be saved/restored
 typedef enum {
@@ -1222,7 +1222,7 @@ Finalize_Unwind_Info(void)
 {
   ue_list.clear();
 }
-
+
 
 // some regs have special unwind record descriptors,
 // while others use general spill mechanism.
@@ -1367,7 +1367,7 @@ Emit_Unwind_Directives_For_OP(OP *op, FILE *f)
 
   next_when += OP_Real_Inst_Words(op);
 }
-
+
 
 
 static void
@@ -1636,7 +1636,7 @@ Build_Fde_For_Proc (Dwarf_P_Debug dw_dbg, BB *firstbb,
   }
   return NULL;	// no fde when generate unwind stuff
 }
-
+
 #include <elf.h>
 #include <elfaccess.h>
 

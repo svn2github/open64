@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -92,7 +92,10 @@
 #include "lra.h"
 #include "bb_set.h"       // BB_SET_* routines 
 #include "DaVinci.h"
-
+#include "ipfec_options.h"
+#include "cg.h"
+#include "region_bb_util.h"
+#include "region.h"
 /* Allocate basic blocks for the duration of the PU. */
 #define BB_Alloc()  TYPE_PU_ALLOC(BB)
 #define BB_Alloc_N(n) TYPE_PU_ALLOC_N(BB, n)
@@ -513,9 +516,26 @@ Target_Simple_Fall_Through_BB(
 
   BB_next(bb) = target_bb;
   BB_prev(target_bb) = bb;
-
-  Link_Pred_Succ_with_Prob (bb, target_bb, 1.0F);
-
+   
+  if(IPFEC_Enable_Region_Formation && RGN_Formed) {
+    BB *bb_wo_node = NULL;
+    REGIONAL_CFG_NODE *src_node   = Regional_Cfg_Node(bb);
+    REGIONAL_CFG_NODE *target_node = Regional_Cfg_Node(target_bb);
+    Is_True(((src_node != NULL)||(target_node != NULL)),("Two node NULL error in Target Simple Fall Through BB"));
+    if (target_node == NULL) {
+      REGION *rgn = Home_Region(bb);
+      REGIONAL_CFG *regional_cfg = rgn->Regional_Cfg();
+      RGN_Gen_And_Insert_Node(target_bb,NULL,NULL,regional_cfg);
+    } else if (src_node == NULL) {
+      REGION *rgn = Home_Region(target_bb);
+      REGIONAL_CFG *regional_cfg = rgn->Regional_Cfg();
+      RGN_Gen_And_Insert_Node(bb,NULL,NULL,regional_cfg);
+    }
+    RGN_Link_Pred_Succ_With_Prob (bb, target_bb, 1.0F);
+  } else {
+    Link_Pred_Succ_with_Prob (bb, target_bb, 1.0F);
+  }  
+   
   br = BB_Remove_Branch(bb);
   FmtAssert(!(br && OP_cond(br)), ("Unexpected conditional branch."));
 }
@@ -612,14 +632,14 @@ Negate_Logif_BB(
 
 /* =======================================================================
  *
- *  Add_Goto
+ *  Add_Goto_Op
  *
  *  See interface description.
  *
  * =======================================================================
  */
 void
-Add_Goto
+Add_Goto_Op
 (
   BB *bb,
   BB *target_bb
@@ -645,7 +665,23 @@ Add_Goto
       OP_srcpos(op) = srcpos;
   }
   BB_Append_Ops(bb,&ops);
+}
 
+/* =======================================================================
+ *
+ *  Add_Goto
+ *
+ *  See interface description.pt *
+ * =======================================================================
+ */
+void
+Add_Goto
+(
+  BB *bb,
+  BB *target_bb
+)
+{
+  Add_Goto_Op(bb, target_bb);
   Link_Pred_Succ_with_Prob(bb, target_bb, 1.0F);
 }
 
@@ -735,6 +771,10 @@ BB_kind(BB *bb)
    */
   if (BB_call(bb)) return BBKIND_CALL;
 
+  OP *op = BB_last_op(bb);
+  if (op) {
+      if (OP_chk(op)) return BBKIND_LOGIF;
+  }
   /* Get the branch OP and the number of successors.
    */
   br = BB_branch_op(bb);
@@ -904,6 +944,10 @@ Print_BB_Header ( BB *bp, BOOL flow_info_only, BOOL print_tn_info )
     if (BB_call(bp))	fprintf ( TFile, "  Tail call block\n" );
     else		fprintf ( TFile, "  Exit block\n" );
   } else if (BB_call(bp)) fprintf ( TFile, "  Call block\n" );
+  if (BB_chk_split(bp)) 	fprintf ( TFile, "  Check split block\n" );
+  if (BB_chk_split_head(bp)) 	fprintf ( TFile, "  Check split head block\n" );
+  if (BB_recovery(bp)) 	fprintf ( TFile, "  Recovery block\n" );
+  if (BB_scheduled(bp)) 	fprintf ( TFile, "  Scheduled BB\n" );
 
   if (BB_rid(bp)) {
     INT exits;
@@ -1081,7 +1125,7 @@ Print_BB_Pragmas( BB *bp )
       if ((UINT32)pragma >= (UINT32)MAX_WN_PRAGMA) {
 	fprintf(TFile, "%d", pragma);
       } else {
-	fprintf(TFile, "%s", WN_pragmas[WN_pragma(wn)].name);
+        fprintf(TFile, "%s", WN_pragmas[WN_pragma(wn)].name);
       }
       switch (pragma) {
       case WN_PRAGMA_MIPS_FREQUENCY_HINT:
@@ -1155,8 +1199,8 @@ void Print_BB_No_Srclines ( BB *bp )
   NOTE_BB_Act(bp, NOTE_PRINT_TO_FILE, TFile);
   FREQ_Print_BB_Note(bp, TFile);
   if (BB_first_op(bp))	Print_OPs_No_SrcLines(BB_first_op(bp));
-} 
-
+}
+ 
 // Debugging routine
 void dump_bb (BB *bb)
 {

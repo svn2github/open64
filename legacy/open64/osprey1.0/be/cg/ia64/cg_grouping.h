@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -74,6 +74,7 @@
 #include "mempool_allocator.h"
 #include "ti_si.h"
 #include "topcode.h"
+#include "targ_issue_port.h"
 
 typedef mempool_allocator<INT32>           INT32_MEMALLOC;
 typedef std::vector<INT32, INT32_MEMALLOC> INT32_VECTOR;
@@ -240,7 +241,7 @@ public:
   }
 
   INT num_slots(TOP top) const {return ISA_PACK_Inst_Words(top);}
-  INT max_slots_per_group() const {return ISA_MAX_SLOTS * 2; /* Itanium(TM) */}
+  INT max_slots_per_group() const {return ISA_MAX_SLOTS * ISA_MAX_ISSUE_BUNDLES; /* Itanium(TM) */}
 
   INT bundling_order(TOP top) const
   {

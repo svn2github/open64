@@ -85,7 +85,7 @@ LIBSTD	             = $(BUILD_BASE)
 STL_INCLUDE_INTERNAL = $(LIBSTD)/stl
 STD_INCLUDE_INTERNAL = $(LIBSTD)/std
 LIBIO                = $(BUILD_BASE)/../libio
-
+LIBARG               = $(BUILD_TOT)/include/nue
 
 # These are the directories in which to look for source files.
 
@@ -99,7 +99,7 @@ HEADER_DIRS =			\
   $(STL_INCLUDE_INTERNAL)	\
   $(STD_INCLUDE_INTERNAL)	\
   $(LIBIO)          		\
-
+  $(LIBARG)                     \
 
 
 #----------------------------------------------------------------------
@@ -280,7 +280,7 @@ LCINCS   = $(addprefix -I, $(HEADER_DIRS))
 
 LC++OPTS = $(STD_COMPILE_OPTS)
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
-LC++INCS = $(addprefix -I, $(HEADER_DIRS))
+LC++INCS = $(addprefix -I, $(HEADER_DIRS)) 
 
 # setup stuff to build shared or non-shared
 GLDOPTS = $(STD_LOAD_OPTS)

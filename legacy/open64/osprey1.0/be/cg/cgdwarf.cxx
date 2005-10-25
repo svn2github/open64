@@ -709,6 +709,8 @@ put_location (
 
   Base_Symbol_And_Offset (st, &base_st, &base_ofst);
 
+  if (ST_is_not_used(base_st)) return;	/* For fixing undefined refernece bug, Added By: Mike Murphy, 22 Apr 2001 */
+
   deref = FALSE;
   if (DST_IS_deref(flag))  /* f90 formals, dope, etc */
 	deref = TRUE;

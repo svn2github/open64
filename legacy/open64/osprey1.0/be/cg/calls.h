@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -129,6 +129,9 @@ extern void Adjust_Entry_Exit_Code ( ST* pu );
 extern void Adjust_GP_Setup_Code ( ST* pu, BOOL allocate_registers );
 extern void Adjust_LC_Setup_Code ( void);
 extern BOOL LC_Used_In_PU;	/* flag whether LC_TN was used */
+
+/* Cycle Count Call */
+extern void Cycle_Count_Initialize ( ST *pu, BOOL is_region );  
 
 /* Tail calls: */
 extern void Optimize_Tail_Calls( ST* pu );

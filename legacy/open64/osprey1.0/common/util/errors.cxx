@@ -103,7 +103,7 @@ extern "C" {
 #include "ir_reader.h"
 #endif
 
-
+
 /* ====================================================================
  *
  * Global Data
@@ -169,7 +169,7 @@ static SEVERITY_DESCRIPTOR Severities[] = {
 #define SEV_level(n)	(Severities[n].level)
 #define SEV_symbol(n)	(Severities[n].symbol)
 #define SEV_name(n)	(Severities[n].name)
-
+
 /* ====================================================================
  *
  * Error message descriptors
@@ -202,7 +202,7 @@ static char dont_print[RAG_EN_LAST-RAG_EN_FIRST+1];
 	(Dont_Print_Warning(rag_errnum) && (severity < ES_ERRBENIGN) )
 
 extern void Rag_Handle_Woff_Args(char	*wstring);
-
+
 /* ====================================================================
  *
  * Catch_Signal
@@ -288,7 +288,7 @@ Handle_Signals ( void )
     syssgi(SGI_SET_FP_PRESERVE, 1);
 #endif
 }
-
+
 /* ====================================================================
  *
  * Set_Error_File
@@ -345,7 +345,7 @@ Init_Error_File (void)
   }
   return FALSE;		/* No error file specified */
 }
-
+
 /* ====================================================================
  *
  * Set_Error_Trace
@@ -365,7 +365,7 @@ Set_Error_Trace ( FILE *stream )
   else
     Trace_File = stream;
 }
-
+
 /* ====================================================================
  *
  * Set_Error_Source
@@ -453,6 +453,22 @@ Set_Error_Phase ( const char *phase )
 	    Set_Current_Phase_Number(TP_ALIAS);
 	else if (strcmp(phase, "Assembly") == 0)
 	    Set_Current_Phase_Number(TP_EMIT);
+	else if (strcmp(phase, "Ipfec Local Scheduler") == 0){
+	    DevWarn(("TP_IPFEC will be deleted in a week!!!!!!"));
+	    Set_Current_Phase_Number(TP_IPFEC);
+	}
+	else if (strcmp(phase, "Ipfec scheduler") == 0)
+	    Set_Current_Phase_Number(TP_A_SCHED);
+	else if (strcmp(phase, "Ipfec profiling") == 0)
+	    Set_Current_Phase_Number(TP_A_PROF);
+	else if (strcmp(phase, "Ipfec region formation") == 0)
+	    Set_Current_Phase_Number(TP_A_REGION);
+	else if (strcmp(phase, "Ipfec if conversion") == 0)
+	    Set_Current_Phase_Number(TP_A_IFCONV);
+	else if (strcmp(phase, "Ipfec predicate relation database") == 0)
+	    Set_Current_Phase_Number(TP_A_PRDB);
+	else if (strcmp(phase, "Ipfec recovery block generation") == 0)
+	    Set_Current_Phase_Number(TP_A_RBG);
 	break;
 
     case 'C':
@@ -507,7 +523,7 @@ Get_Error_Phase ( void )
 {
   return Current_Phase;
 }
-
+
 /* ====================================================================
  *
  * Get_Error_Count
@@ -563,7 +579,7 @@ Init_Error_Handler ( INT Max_Errors_Allowed )
   Source_Line = ERROR_LINE_UNKNOWN;
   Current_Phase = NULL;
 }
-
+
 /* ====================================================================
  *
  * Find_Error_Desc
@@ -594,7 +610,7 @@ Find_Error_Desc ( INT ecode )
   /* We didn't find it -- return the global unknown error code: */
   return Find_Error_Desc ( EC_Undef_Code );
 }
-
+
 /* ====================================================================
  *
  * Emit_Message
@@ -644,7 +660,7 @@ Emit_Message (
     fflush ( Trace_File );
   }
 }
-
+
 /* ====================================================================
  *
  * ErrMsg_Report
@@ -1015,7 +1031,7 @@ ErrMsg_Report ( INT ecode, INT line, const char *file, va_list vp )
   else
     ErrMsg_Report_Nonuser ( edesc, ecode, line, file, vp );
 }
-
+
 /* ====================================================================
  *
  * ErrMsg / ErrMsgLine / ErrMsgSrcpos
@@ -1066,7 +1082,7 @@ ErrMsgSrcpos ( INT ecode, SRCPOS srcpos, ... )
   va_end ( vp );
 }
 #endif
-
+
 /* ====================================================================
  *
  *  Abort_Compiler_Location
@@ -1094,7 +1110,7 @@ void Abort_Compiler_Location (
   Compiler_File = file_name;
   Compiler_Line = line_number;
 }
-
+
 /* ====================================================================
  *
  * Fail_Assertion
@@ -1113,7 +1129,7 @@ Fail_Assertion ( INT ecode, ... )
   ErrMsg_Report ( ecode, Source_Line, Source_File_Name, vp );
   va_end ( vp );
 }
-
+
 /* ====================================================================
  *
  * Fail_FmtAssertion
@@ -1164,7 +1180,7 @@ Fail_FmtAssertion ( const char *fmt, ... )
   Signal_Cleanup( 0 );
   exit(RC_INTERNAL_ERROR);
 }
-
+
 /* ====================================================================
  *
  * Fatal_Error
@@ -1216,7 +1232,7 @@ Fatal_Error ( const char *fmt, ... )
   Signal_Cleanup( 0 );
   exit(RC_INTERNAL_ERROR);
 }
-
+
 /* ====================================================================
  *
  * Rag_Handle_Woff_Args
@@ -1275,7 +1291,7 @@ Get_Current_Phase_Number( void )
   return Current_Phase_Number;
 }
 
-
+
 #ifndef MONGOOSE_BE
 /* ====================================================================
  *
@@ -1311,7 +1327,7 @@ Set_Error_Descriptor (INT phase, ERROR_DESC *descriptor)
 
     FmtAssert (FALSE, ("Error Phase %d not initialized", phase));
 } /* Set_Error_Descriptor */
-
+
 /* ====================================================================
  *
  * DevWarn
@@ -1353,12 +1369,12 @@ DevWarn( const char *fmt, ... )
   }
 
   /* Finally write to trace file: */
-  if ( Trace_File != NULL ) {
-    fprintf ( Trace_File, "!!! DevWarn during %s: ", phase_name );
-    vfprintf ( Trace_File, fmt, args );
-    fprintf ( Trace_File, "\n" );
-    fflush ( Trace_File );
-  }
+//  if ( Trace_File != NULL ) {
+//    fprintf ( Trace_File, "!!! DevWarn during %s: ", phase_name );
+//    vfprintf ( Trace_File, fmt, args );
+//    fprintf ( Trace_File, "\n" );
+//    fflush ( Trace_File );
+//  }
 
   va_end(args);
 }

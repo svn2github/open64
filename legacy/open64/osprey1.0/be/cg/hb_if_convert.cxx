@@ -32,7 +32,6 @@
 
 */
 
-
 #include <stack.h>
 #include <vector.h>
 #include "defs.h"
@@ -57,6 +56,7 @@
 #include "findloops.h"
 #include "pqs_cg.h"
 
+#include "if_conv.h"
 #include "hb.h"
 #include "hb_trace.h"
 #include "hb_id_candidates.h" // For use in Force_If_Convert
@@ -446,7 +446,7 @@ Merge_Blocks(HB*                  hb,
 
 // want to AND together controlling predicate to existing qualifying predicate
 // such that op is executed iff ptn1 and ptn2 are both true.
-static void
+void
 AND_Predicate_To_OP (OP *op, TN *ptn1, TN *ptn2, 
 	BB *bb_insert_point, OP *op_insert_point, BB_SET *hb_blocks)
 {
@@ -620,7 +620,7 @@ AND_Predicate_To_OP (OP *op, TN *ptn1, TN *ptn2,
 }
 
 /////////////////////////////////////
-static void
+void
 Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
 /////////////////////////////////////
 //
@@ -642,7 +642,22 @@ Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
       if (TN_is_true_pred(OP_opnd(op, OP_PREDICATE_OPND))) {
 	CGTARG_Predicate_OP(bb, op, pred_tn);
 #ifdef TARG_IA64
-	if (OP_icmp(op)) {
+	if (OP_icmp(op)
+	|| OP_code(op) == TOP_tbit_nz
+	|| OP_code(op) == TOP_tbit_z
+	|| OP_code(op) == TOP_fcmp_eq
+        || OP_code(op) == TOP_fcmp_ge
+        || OP_code(op) == TOP_fcmp_gt
+        || OP_code(op) == TOP_fcmp_le
+        || OP_code(op) == TOP_fcmp_lt
+        || OP_code(op) == TOP_fcmp_neq
+        || OP_code(op) == TOP_fcmp_nge
+        || OP_code(op) == TOP_fcmp_ngt
+        || OP_code(op) == TOP_fcmp_nle
+        || OP_code(op) == TOP_fcmp_nlt
+        || OP_code(op) == TOP_fcmp_ord
+        || OP_code(op) == TOP_fcmp_unord) 
+        {
 		// if had a default, non-unconditional compare,
 		// then when change from true_pred to pred_tn,
 		// should also switch to unc form of cmp.
@@ -651,7 +666,11 @@ Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
 			DevWarn("predicate, so change opcode to %s", TOP_Name(top));
 			OP_Change_Opcode(op, top);
 		}
-	}
+	} 
+
+        
+	if (Is_Para_Comp_May_Def(op)) 
+	     continue;
 #endif
 	// Locally predicate-aware GRA_LIVE does a better, safer job of this
 	//
@@ -673,6 +692,7 @@ Predicate_Block(BB* bb, TN *pred_tn, BB_SET *hb_blocks)
 	    }
 	  }
 	}
+	
 	if (all_local && OP_cond_def(op)) {
 	  Set_OP_cond_def_kind(op,OP_ALWAYS_UNC_DEF);
 	}

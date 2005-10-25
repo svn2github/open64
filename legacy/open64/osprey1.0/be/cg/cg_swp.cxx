@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -95,9 +95,8 @@ void SWP_OPTIONS::PU_Configure()
 
 void SWP_OP::Print(FILE *fp) const {
   if (op) 
-    fprintf(fp, "[%d](%s) %s scale=%g cycle=%d mod=%d slot=%d trials=%d dir=%s\n",
-	    Index(), TOP_Name(OP_code(op)),
-	    placed?"placed":"not-placed", scale, cycle, modulo_cycle, 
+    fprintf(fp, "[%d] %s scale=%g cycle=%d mod=%d slot=%d trials=%d dir=%s\n",
+	    Index(), placed?"placed":"not-placed", scale, cycle, modulo_cycle, 
 	    slot, trials,
 	    (direction==SWP_TOP_DOWN) ? "top_down" : 
 	    ((direction==SWP_BOTTOM_UP) ? "bottom_up" : "unknown"));

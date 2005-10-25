@@ -43,6 +43,8 @@ extern string prof_file;        /*  executable file for prof to work upon */
 extern string fb_file;		/* feedback file for -fb */
 extern string fb_xdir;		/* dir where pixie emits dso's */
 extern string fb_cdir;		/* dir where pixie emits count files */
+extern string fb_phase;         /* phase for -fb_phase */
+extern string fb_type;          /* type for -fb_type */
 
 extern string ldpath_for_pixie;  /* Tell pixie where to find ld */
 extern string command_line;	/* original command line */

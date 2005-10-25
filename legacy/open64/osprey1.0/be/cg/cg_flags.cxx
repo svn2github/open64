@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -203,7 +203,7 @@ BOOL LRA_do_reorder = FALSE;
 BOOL GRA_use_old_conflict = FALSE;
 BOOL GRA_shrink_wrap      = TRUE;
 BOOL GRA_loop_splitting   = TRUE;
-BOOL GRA_home             = TRUE;
+BOOL GRA_home             = FALSE;
 BOOL GRA_remove_spills    = TRUE;
 BOOL GRA_preference_globals = TRUE;
 BOOL GRA_preference_dedicated = TRUE;
@@ -267,3 +267,9 @@ INT32 CG_LOOP_recurrence_min_omega = 0;
 // temporary flags for controlling algorithm selection for fdiv, sqrt, etc
 const char *CGEXP_fdiv_algorithm = "sgi";
 const char *CGEXP_sqrt_algorithm = "sgi";
+
+// Cycle Count Flags
+BOOL CG_Enable_Cycle_Count = FALSE;
+BOOL Cycle_PU_Enable = FALSE;  
+BOOL Cycle_BB_Enable = FALSE;  
+const char *Cycle_String = "";

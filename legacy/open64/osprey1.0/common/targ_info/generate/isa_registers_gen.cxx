@@ -359,6 +359,7 @@ void ISA_Registers_End(void)
   int i;
 
   int max_reg = 0;
+  int first_reg = max_reg;
   for (rc_iter = rclasses.begin(); rc_iter != rclasses.end(); ++rc_iter) {
     ISA_REGISTER_CLASS rclass = *rc_iter;
     int class_max = 0;
@@ -396,6 +397,7 @@ void ISA_Registers_End(void)
   Emit_Header (hfile, filename, interface);
   fprintf(hfile,"#include \"targ_isa_subset.h\"\n");
 
+  fprintf(hfile, "\n#define ISA_REGISTER_FIRST (%d)\n", first_reg);  
   fprintf(hfile, "\n#define ISA_REGISTER_MAX (%d)\n", max_reg);
 
   /**************************************************

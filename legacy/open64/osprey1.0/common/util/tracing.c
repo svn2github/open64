@@ -116,7 +116,7 @@ static char *Current_PU_Name = NULL;
 static INT Current_PU_Number = 0;
 static INT Current_Region_Number = 0;  /* for debugging regions */
 
-
+
 /* ====================================================================
  *
  * Phase_Descriptors
@@ -207,12 +207,24 @@ static PDESC Phases[] = {
   { TP_THR,		"THR",	"Tree-Height Reduction" },
   { TP_EMIT,		"EMT",	"Code emission" },
 
+  /* Ipfec related phases: */
+  { TP_IPFEC,		"AUR",	"Ipfec related Phases" },
+  { TP_A_SCHED,         "ASH",  "Ipfec scheduler" },
+  { TP_A_PROF,          "APF",  "Ipfec profiling" },
+  { TP_A_REGION,        "ARN",  "Ipfec region formation" },
+  { TP_A_IFCONV,        "AIC",  "Ipfec if conversion" },
+  { TP_A_PRDB,           "APR",  "Ipfec predicate relatioin database" },
+  { TP_A_RBG,           "ABG",  "Ipfec recovery block generation" },
+  /* Cycle Counting related phases  cbq*/
+  { TP_CYCLE_COUNT,     "TCC",  "Cycle Counting related Phases" },
+  { TP_CYCLE_PU,        "TCP",  "PU Cycle Counting" },   
+
   { TP_TEMP,		"TMP",	"Temporary use" },
 
   /* This one must be last: */
   { TP_COUNT,		NULL,  NULL }
 };
-
+
 /* ====================================================================
  *
  * Get_Trace_Phase_Number
@@ -250,7 +262,7 @@ Get_Trace_Phase_Number (
     return 0;
   }
 }
-
+
 /* ====================================================================
  *
  * List_Phase_Numbers
@@ -274,7 +286,7 @@ List_Phase_Numbers ( void )
     ++phase;
   }
 }
-
+
 /* ====================================================================
  *
  * Set_Trace
@@ -389,7 +401,7 @@ Set_Trace ( INT func, INT arg )
       return;
   }
 }
-
+
 /* Set current PU for pu tracing */
 #define RID_CREATE_NEW_ID -1	/* see be/region/region_util.h */
 void
@@ -458,7 +470,7 @@ Set_Trace_Region_Number ( INT number )
     Region_Num_Enable[REGION_NCnt] = number;
   return;
 }
-
+
 /* ====================================================================
  *
  * Get_BB_Trace
@@ -499,7 +511,7 @@ Get_BB_Trace ( INT32 bb_id )
   /* If there are no -tf or -tb flags, everything is enabled: */
   return enabled;
 }
-
+
 /* ====================================================================
  *
  * Get_Trace
@@ -583,7 +595,7 @@ Get_Trace ( INT func, INT arg )
 
   return result;
 }
-
+
 /* ====================================================================
  *
  * Stop_Execution
@@ -600,7 +612,7 @@ Stop_Execution ( INT phase )
 {
   return phase >= Xstop_Phase;
 }
-
+
 /* ====================================================================
  *
  * Set_Trace_File

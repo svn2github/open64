@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -81,6 +81,7 @@
 #include "cgtarget.h"
 #include "targ_proc_properties.h"
 
+#define TRACE_REMAT 0x2
 static BOOL Trace_Remat; /* Trace rematerialization */
 static BOOL Trace_GRA_spill_placement;
 static const char *Remat_Phase;
@@ -152,6 +153,68 @@ static LOCAL_SPILLS swp_float_spills, swp_int_spills;
 #define Can_Rematerialize_TN(tn, cl) \
 (TN_is_rematerializable(tn) || (TN_is_gra_homeable(tn) && cl == CGSPILL_GRA))
 
+static void
+ld_2_ld_fill (OPS *ops) {
+
+  BOOL ld_is_last_op = TRUE ;
+
+  OP * op = OPS_last(ops);
+
+  if (!OP_load (op)) {
+    if (OP_code(op) == TOP_cmp_i_ne || OP_code(op) == TOP_mov_t_br) {
+      op = OP_prev(op); ld_is_last_op = FALSE ;
+    } else 
+      op = NULL ;
+  }
+
+  if (!op) return ;
+
+  switch (OP_code(op)) {
+  case TOP_ld1:
+  case TOP_ld2:
+  case TOP_ld4:
+  case TOP_ld8:
+      if (!TN_is_take_nat(OP_result(op,0))) break; 
+      OPS_Remove_Op (ops,op);
+      op = Mk_OP(TOP_ld8_fill, OP_result(op,0), 
+                 OP_opnd(op,OP_find_opnd_use(op,OU_predicate)),
+                 Gen_Enum_TN(ECV_ldhint),
+                 OP_opnd(op,OP_find_opnd_use(op,OU_base)));
+
+      if (ld_is_last_op || (OPS_length(ops) == 1)) 
+        OPS_Append_Op (ops,op);
+      else
+        OPS_Insert_Op_Before (ops, OPS_last(ops),op);
+    
+  }
+}
+
+static void 
+st_2_st_spill (OPS * ops) {
+ 
+  OP * op = OPS_last(ops) ;
+  TN *tn = OP_opnd(op,OP_find_opnd_use(op,OU_storeval));
+  switch (OP_code(op)) {
+  case TOP_st1:
+  case TOP_st2:
+  case TOP_st4:
+  case TOP_st8:
+      if (!TN_is_take_nat(tn)) break; 
+      OPS_Remove_Op (ops,op); 
+      op = Mk_OP(TOP_st8_spill, /* op code */
+                 OP_opnd(op,OP_find_opnd_use(op,OU_predicate)), /* guarded predicate */
+                 Gen_Enum_TN(ECV_sthint), /* hint */
+                 OP_opnd(op,OP_find_opnd_use(op,OU_base)),
+                 OP_opnd(op,OP_find_opnd_use(op,OU_storeval)));
+      OPS_Append_Op (ops,op);
+    
+    break ;
+  case TOP_stfs:
+  case TOP_stfd:
+  case TOP_stfe:
+    break ;
+  }
+}
 
 /* =======================================================================
  *
@@ -550,7 +613,9 @@ CGSPILL_Cost_Estimate (TN *tn, ST *mem_loc,
       {
 	OPCODE opcode = WN_opcode(home);
 	Exp_Load (OPCODE_rtype(opcode), OPCODE_desc(opcode), tn, WN_st(home),
-		  WN_offset(home), &OPs, V_NONE);
+		   WN_offset(home), &OPs, V_NONE);
+  ld_2_ld_fill (&OPs) ;
+
 	*restore_cost = OPS_length(&OPs);
 	*store_cost = *restore_cost;
       }
@@ -637,7 +702,8 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
     case OPR_LDID:
       /* homing load */
       Exp_Load (OPCODE_rtype(opcode), OPCODE_desc(opcode), tn,
-		WN_st(home), WN_offset(home), ops, V_NONE);
+		 WN_st(home), WN_offset(home), ops, V_NONE);
+
       if (Trace_Remat && !TN_is_gra_homeable(tn)) {
 #pragma mips_frequency_hint NEVER
 	fprintf(TFile, "<Rematerialize> LDID for rematerializeable TN%d\n",
@@ -648,6 +714,7 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
       Exp_Lda (OPCODE_rtype(opcode), tn, WN_st(home), WN_lda_offset(home),
 	       OPERATOR_UNKNOWN, ops);
       break;
+
     case OPR_CONST:
       Exp_OP1 (opcode, tn, Gen_Symbol_TN(WN_st(home),0,0), ops);
       break;
@@ -691,6 +758,7 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
     /* Must actually load it from memory
      */
     CGTARG_Load_From_Memory(tn, mem_loc, ops);
+    ld_2_ld_fill (ops);
   }
   Max_Sdata_Elt_Size = max_sdata_save;
 }
@@ -703,6 +771,7 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
  * See interface description
  *
  * ======================================================================*/
+
 void 
 CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
 			 CGSPILL_CLIENT client, BB *bb)
@@ -725,7 +794,8 @@ CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
     WN *home = TN_home(src_tn);
     if (WN_operator(home) == OPR_LDID) {
       Exp_Store (OPCODE_desc(WN_opcode(home)), src_tn, WN_st(home),
-		 WN_offset(home), ops, V_NONE);
+		 WN_offset(home), ops,V_NONE);
+      st_2_st_spill (ops) ;
     } else if (Trace_Remat) {
 #pragma mips_frequency_hint NEVER
       Check_Phase_And_PU();
@@ -736,6 +806,8 @@ CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
   }
 
   CGTARG_Store_To_Memory(src_tn, mem_loc, ops);
+  st_2_st_spill (ops);
+
   Max_Sdata_Elt_Size = max_sdata_save;
 }
 

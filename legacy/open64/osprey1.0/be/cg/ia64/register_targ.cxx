@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -59,6 +59,7 @@
 // REGISTER values are biased by REGISTER_MIN, so apply
 // it to get REGISTER value given a machine reg number
 #define FIRST_INPUT_REG (32+REGISTER_MIN)
+//INT FIRST_INPUT_REG = 32 + REGISTER_MIN;
 #define FIRST_OUTPUT_REG (127+REGISTER_MIN)
 #define LAST_STACKED_REG (127+REGISTER_MIN)
 #define FIRST_ROTATING_INTEGER_REG (32+REGISTER_MIN)
@@ -78,7 +79,8 @@ static REGISTER_SET stacked_callee_used;
 REGISTER_SET stacked_caller_used;
 static INT stacked_minimum_output;
 
-
+//INT32 cut_num = 48;
+extern BOOL fat_self_recursive;
 /////////////////////////////////////
 void
 REGISTER_Init_Stacked(ISA_REGISTER_CLASS rclass)
@@ -96,6 +98,9 @@ REGISTER_Init_Stacked(ISA_REGISTER_CLASS rclass)
     // stacked_callee_next points at the last register allocated.
     // stacked_caller_next points at the next register to allocate.
     //
+    /*if (fat_self_recursive) {
+       #define FIRST_INPUT_REG (80 + REGISTER_MIN)
+    }*/
     stacked_callee_next = FIRST_INPUT_REG - 1;
     stacked_caller_next = FIRST_OUTPUT_REG;
     stacked_callee_used = REGISTER_SET_EMPTY_SET;
@@ -165,7 +170,11 @@ REGISTER REGISTER_Request_Stacked_Register(INT has_abi_property,
   if (!REGISTER_Has_Stacked_Registers(rclass)) return REGISTER_UNDEFINED;
 
   if (stacked_callee_next >= stacked_caller_next) return REGISTER_UNDEFINED;
-  
+  INT32 cut_num = 48;
+  if (fat_self_recursive) {
+    //if ((stacked_callee_next + cut_num) >= stacked_caller_next)
+       return REGISTER_UNDEFINED;
+  }
   // callee saved are allocated from the front, caller from the
   // rear.  The two pointers meet when the stack is used up.  The
   // caller saved (i.e. output) registers will be renamed at code

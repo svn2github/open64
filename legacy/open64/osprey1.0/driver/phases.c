@@ -58,7 +58,8 @@ string fb_file = NULL;		/* from -fb <feedback-file> */
 string fb_xdir = NULL;		/* dir where pixie emits dso's */
 string fb_cdir = NULL; 		/* dir where pixie emits count files */
 string command_line = NULL;	/* original command line */
-
+string fb_phase = NULL;         /* from -fb_phase=<phase> */
+string fb_type = NULL;          /* from -fb_type=<type> */
 string source_file = NULL;
 boolean multiple_source_files = FALSE;
 
@@ -1225,7 +1226,7 @@ check_existence_of_phases (void)
 			 " phases; perhaps you need a different toolroot?",
 			 get_phase_dir(phase_order[i])); 
 #else
-		warning ("%s does not contain all of the SGIcc compiler"
+		warning ("%s does not contain all of the ORC compiler"
 			 " phases.", get_phase_dir(phase_order[i])); 
 #endif
 	    break;

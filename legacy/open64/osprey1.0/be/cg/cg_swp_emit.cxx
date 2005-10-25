@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -267,7 +267,9 @@ TN *SWP_REG_ASSIGNMENT::Get_Register_TN(TN *tn, INT adjustment)
   // delay the modulo computation to a postpass (see SWP_Fixup).
   //
   r = r + adjustment + rotating_reg_base[c];
-
+  /*if (c == ISA_REGISTER_CLASS_predicate) {
+    r = r + 2;
+  }*/
   // workaround g++ bug:  Set_CLASS_REG_PAIR_reg(rp, r);
   Set_CLASS_REG_PAIR(rp, c, r);
 
@@ -415,6 +417,7 @@ SWP_Add_Glue(TN *result, TN *opnd, BB *bb, bool append)
     BB_Prepend_Ops(bb, &ops);
 }
 
+
 // Replace the TN in the SWP loop by register-assigned TNs.
 //  - A TN in SWP are used in different stages, hence have
 //    different register allocated.   Since one TN only has
@@ -458,15 +461,11 @@ SWP_Rename_TNs(const SWP_OP_vector& op_state,
 	if (TN_is_register(tn) &&
 	    !TN_is_dedicated(tn)) {
 	  TN *newtn;
-	  if (TN_SET_MemberP(non_rotating, tn)) {
-	    newtn = reg_assign.Get_Non_Rotating_Register_TN(tn);
-	  } else { 
+	  if (!TN_SET_MemberP(non_rotating, tn)) {
 	    INT ofst = reg_assign.Get_Register_Offset(op_state[i].cycle, ii, OP_omega(op,j));
-	    if (SWP_REG_ASSIGNMENT::Trace()) {
-		fprintf(TFile, "op %d: reg ofst for operand tn %d = %d (cycle %d, omega %d)\n", i, TN_number(tn), ofst, op_state[i].cycle, OP_omega(op,j));
-	    }
 	    newtn = reg_assign.Get_Register_TN(tn, ofst);
-	  }
+	  } else 
+	    newtn = reg_assign.Get_Non_Rotating_Register_TN(tn);
 	  Set_OP_opnd(op, j, newtn);
 	}
       }
@@ -477,15 +476,11 @@ SWP_Rename_TNs(const SWP_OP_vector& op_state,
 	  Is_True(!TN_SET_MemberP(invariants, tn),
 		  ("SWP_Rename_Body: result TN%d cannot be an invariant.", TN_number(tn)));
 	  TN *newtn;
-	  if (TN_SET_MemberP(non_rotating, tn)) {
-	    newtn = reg_assign.Get_Non_Rotating_Register_TN(tn);
-	  } else {
+	  if (!TN_SET_MemberP(non_rotating, tn)) {
 	    INT ofst = reg_assign.Get_Register_Offset(op_state[i].cycle, ii, 0);
-	    if (SWP_REG_ASSIGNMENT::Trace()) {
-		fprintf(TFile, "op %d: reg ofst for result tn %d = %d (cycle %d)\n", i, TN_number(tn), ofst, op_state[i].cycle);
-	    }
 	    newtn = reg_assign.Get_Register_TN(tn, ofst);
-	  }
+	  } else
+	    newtn = reg_assign.Get_Non_Rotating_Register_TN(tn);
 	  Set_OP_result(op, k, newtn);
 	}
       }
@@ -518,9 +513,6 @@ SWP_Rename_TNs(const SWP_OP_vector& op_state,
       if (!TN_SET_MemberP(non_rotating, body_tn)) {
 	INT omega = CG_LOOP_BACKPATCH_omega(bp);
 	INT ofst = reg_assign.Get_Liveout_Register_Offset(sc, omega);
-	if (SWP_REG_ASSIGNMENT::Trace()) {
-		fprintf(TFile, "reg ofst for epilog tn %d = %d\n", TN_number(body_tn), ofst);
-	}
 	newtn = reg_assign.Get_Register_TN(body_tn, ofst);
       } else
 	newtn = reg_assign.Get_Non_Rotating_Register_TN(body_tn);
@@ -555,18 +547,13 @@ Fixup_Rotating_Register_TN(TN *tn, const SWP_FIXUP &fixup, bool trace)
     // the rotating register bank.  The following ignores such registers in
     // the fixup algorithm.
     //
-    // WARNING:  REGISTER is an unsigned type. Some of the arithmetic
-    // below (in the predicate case) may produce negative intermediate
-    // results.  Testing them successfully requires explicit
-    // conversions to (int).
-    //
     if (r >= REGISTER_First_Rotating_Registers(rc)) {
       if (rc == ISA_REGISTER_CLASS_predicate) {
 	r -= fixup.control_loc;  // Control lifetime uses first rotating regs
-	if ((int)r < (int)REGISTER_First_Rotating_Registers(rc))
+	if (r < REGISTER_First_Rotating_Registers(rc))
 	  r += REGISTER_Last_Rotating_Registers(rc) - 
 	    REGISTER_First_Rotating_Registers(rc) + 1;
-	else if ((int)r > (int)REGISTER_Last_Rotating_Registers(rc))
+	else if (r > REGISTER_Last_Rotating_Registers(rc))
 	  r -= REGISTER_Last_Rotating_Registers(rc) - 
 	    REGISTER_First_Rotating_Registers(rc) + 1;
       }
@@ -583,12 +570,7 @@ Fixup_Rotating_Register_TN(TN *tn, const SWP_FIXUP &fixup, bool trace)
 
       Is_True(r <= REGISTER_Last_Rotating_Registers(rc) &&
 	      r >= REGISTER_First_Rotating_Registers(rc),
-	      ("%d (class %d:%d:%d:%d) => %d: cannot wrap around twice.",
-	       old_r, rc,
-	       REGISTER_First_Rotating_Registers(rc),
-	       REGISTER_Last_Rotating_Registers(rc),
-	       fixup.control_loc,
-	       r));
+	      ("cannot wrap around twice."));
     }
   }
   if (old_r != r) 

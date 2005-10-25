@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -94,7 +94,11 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 INT GRA_non_preference_tn_id = -1;
 static BOOL gbb_needs_rename;   // Some local renaming required for a GBB
                                 // due to a cgprep failure.  DevWarn and
-                                // rename for robustness.
+                               // rename for robustness.
+BOOL fat_self_recursive = FALSE;
+//BOOL gra_self_recursive = FALSE; 
+extern BOOL gra_self_recursive;
+extern char *Cur_PU_Name;
 
 static void
 Identify_Region_Boundries(void)
@@ -1105,7 +1109,22 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   Initialize_Wired_LRANGEs();
   for (iter.Init(gbb), op_count=1; ! iter.Done(); iter.Step(), op_count++ ) {
     OP*  xop = iter.Current();
-
+     /*if (OP_call(xop)) {
+       for (INT k = 0; k < OP_opnds(xop);k++) {
+          TN *tn = OP_opnd(xop,k);
+          if (TN_is_symbol(tn)) {
+             ST *var = TN_var(tn);
+             if (ST_class(var) !=  CLASS_CONST) {
+                char *called_func = ST_name(var);
+                if (strcmp(called_func,Cur_PU_Name) == 0) {
+                    if (!gra_self_recursive) {
+                      gra_self_recursive = TRUE;
+                    }
+                }  
+              }
+          }
+       }  
+    }*/
     for ( i = OP_opnds(xop) - 1; i >= 0; --i ) {
       TN *op_tn = OP_opnd(xop, i);
       if (! TN_is_register(op_tn))
@@ -1771,6 +1790,57 @@ Create_Interference_Graph(void)
   GRA_Trace_Memory("After Build_Region_Interference_Graph()");
 }
 
+//=============================================================
+//
+// Compute the fatest point value of every function,for those
+// functions too fat and self recursive,we can make some special
+// optimization heuristics.
+//                          -- ORC  
+//
+//============================================================
+static void
+Compute_GRA_Fat_Point(void) {
+    
+  ISA_REGISTER_CLASS           rc;
+  TN*                          tn;
+  //GTN_SET*                     interferences;
+  GRA_REGION_RC_NL_LRANGE_ITER iter0;
+  GRA_REGION_RC_NL_LRANGE_ITER iter1;
+  GRA_REGION_GBB_ITER          gbb_iter;
+  GRA_REGION *region = gra_region_mgr.Complement_Region();
+  MEM_POOL_Push(&MEM_local_nz_pool);
+  //interferences = GTN_SET_Create(GTN_UNIVERSE_size,&MEM_local_nz_pool);
+  typedef mempool_allocator<INT>                 INT_ALLOC;
+  typedef vector<INT,INT_ALLOC>                  INT_VECTOR;
+  INT_VECTOR fats(PU_BB_Count+2, (INT32)0,INT_ALLOC(&MEM_local_nz_pool));
+  FOR_ALL_ISA_REGISTER_CLASS( rc ) { //Perhaps only int register is needed to be computed.
+
+      for (iter0.Init(region,rc); ! iter0.Done(); iter0.Step()) {
+	LRANGE* lrange0 = iter0.Current();
+	LRANGE_LIVE_GBB_ITER live_gbb_iter;
+	
+	//GTN_SET_ClearD(interferences);
+
+	for (live_gbb_iter.Init(lrange0); ! live_gbb_iter.Done(); live_gbb_iter.Step()) {
+	  GRA_BB *live_gbb = live_gbb_iter.Current();
+          //How to new a int vector here?
+	  fats[(live_gbb->Bb())->id] += 1;
+	}
+      }	
+   }
+   INT32 fatest_point = 0; 
+   for (INT32 i = 0;i < PU_BB_Count;i++) {
+       if (fats[i] > fatest_point) fatest_point = fats[i];
+   }    
+   
+   if ((fatest_point > 120)&&(gra_self_recursive)) {
+       fat_self_recursive = TRUE;
+       DevWarn("The fatest point %d is greater than 80 and also self recursive!\n",fatest_point);
+   }    
+   MEM_POOL_Pop(&MEM_local_nz_pool);
+ 
+}
+
 /////////////////////////////////////
 void
 GRA_Create(void)
@@ -1783,6 +1853,7 @@ GRA_Create(void)
   Create_Live_BB_Sets();
   Create_LUNITs();
   Create_Interference_Graph();
+  Compute_GRA_Fat_Point();
 }
 
 

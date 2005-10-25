@@ -236,7 +236,7 @@ main (int argc, char *argv[])
         if (show_version) {
             /* Echo information about the compiler version */
 #ifdef linux
-            fprintf(stderr, "SGIcc Compilers: Version %s\n", compiler_version);
+            fprintf(stderr, "ORC Compilers: Version %s\n", compiler_version);
 #else
             fprintf(stderr, "MIPSpro Compilers: Version %s\n", compiler_version);
 #endif

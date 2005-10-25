@@ -144,12 +144,12 @@ static const char source_file[] = __FILE__;
 #include "cflow.h"
 #include "cg_spill.h"
 #include "targ_proc_properties.h"
-
+#include "vt_region.h"
 #include "ebo.h"
 #include "ebo_info.h"
 #include "ebo_special.h"
 #include "ebo_util.h"
-
+#include "ipfec_options.h"
 /* ===================================================================== */
 /* Global Data:								 */
 /* ===================================================================== */
@@ -190,8 +190,8 @@ BOOL EBO_Trace_Optimization = FALSE;
 BOOL EBO_Trace_Block_Flow   = FALSE;
 BOOL EBO_Trace_Data_Flow    = FALSE;
 BOOL EBO_Trace_Hash_Search  = FALSE;
-
-
+/* Indicate whether this time of EBO is done after region formation. */
+BOOL EBO_After_RGN_Form = FALSE;
 /* ===================================================================== */
 /* Local Data:								 */
 /* ===================================================================== */
@@ -1029,11 +1029,12 @@ find_duplicate_mem_op (BB *bb,
           break;
         }
       } else if (!OP_store(op) && !OP_store(pred_op)) {
-        if ((intervening_opinfo != NULL) &&
-            !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
+
+        if ( (intervening_opinfo != NULL) &&
+            (OP_cond_def(pred_op) || (!EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
                                      opinfo->optimal_opnd[OP_PREDICATE_OPND],
                                      OP_opnd(op,OP_PREDICATE_OPND),
-                                     actual_tninfo[OP_PREDICATE_OPND])) {
+                                     actual_tninfo[OP_PREDICATE_OPND])))) {
 
           if (EBO_Trace_Hash_Search) {
             #pragma mips_frequency_hint NEVER
@@ -1045,10 +1046,11 @@ find_duplicate_mem_op (BB *bb,
           hash_op_matches = FALSE;
           break;
         }
-        if (!EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
+
+        if ((OP_cond_def(pred_op) || !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
                                      opinfo->optimal_opnd[OP_PREDICATE_OPND],
                                      OP_opnd(op,OP_PREDICATE_OPND),
-                                     actual_tninfo[OP_PREDICATE_OPND]) &&
+                                     actual_tninfo[OP_PREDICATE_OPND])) &&
             !EBO_predicate_complements(OP_opnd(op,OP_PREDICATE_OPND),
                                        actual_tninfo[OP_PREDICATE_OPND],
                                        OP_opnd(pred_op,OP_PREDICATE_OPND),
@@ -1065,10 +1067,11 @@ find_duplicate_mem_op (BB *bb,
 
         }
       } else if (!OP_store(op) && OP_store(pred_op)) {
-        if (!EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
+      
+        if ((OP_cond_def(pred_op)|| !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
                                      opinfo->optimal_opnd[OP_PREDICATE_OPND],
                                      OP_opnd(op,OP_PREDICATE_OPND),
-                                     actual_tninfo[OP_PREDICATE_OPND]) &&
+                                     actual_tninfo[OP_PREDICATE_OPND])) &&
             !EBO_predicate_complements(OP_opnd(op,OP_PREDICATE_OPND),
                                        actual_tninfo[OP_PREDICATE_OPND],
                                        OP_opnd(pred_op,OP_PREDICATE_OPND),
@@ -1236,7 +1239,26 @@ find_duplicate_mem_op (BB *bb,
       } else if (op_is_subset) {
         op_replaced = delete_subset_mem_op (op, opnd_tninfo, opinfo, offset_pred, offset_succ);
       } else {
-        op_replaced = delete_duplicate_op (op, opnd_tninfo, opinfo);
+        BOOL must_not_delete=FALSE; 
+        if (pred_op->bb == op->bb) {
+           for (pred_op;pred_op!=op;pred_op=pred_op->next) {
+                if (OP_load(pred_op)) {
+                    INT num_opnds=OP_opnds(pred_op);
+                    if ((num_opnds == 0) && (OP_opnds(op) < 3)) continue;
+            
+            	    TN *tn=OP_opnd(op,2);
+                    for (INT opndnum=0; opndnum<num_opnds; opndnum++) {
+                        TN *tn_opnd=OP_opnd(pred_op,opndnum);
+                        if (tn==tn_opnd) {
+                    	   must_not_delete=TRUE;
+                    	   break;
+                	       }
+                   }
+                   if (must_not_delete==TRUE) break;
+              }
+          }
+      } 
+      if (must_not_delete==FALSE) op_replaced = delete_duplicate_op (op, opnd_tninfo, opinfo);
       }
 
       if (op_replaced) {
@@ -1412,11 +1434,10 @@ find_duplicate_op (BB *bb,
 
     if (hash_op_matches && OP_has_predicate(op)) {
      /* Check predicates for safety. */
-
-        if (!EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
+        if ((OP_cond_def(pred_op) || !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
                                      opinfo->optimal_opnd[OP_PREDICATE_OPND],
                                      OP_opnd(op,OP_PREDICATE_OPND),
-                                     actual_tninfo[OP_PREDICATE_OPND]) &&
+                                     actual_tninfo[OP_PREDICATE_OPND])) &&
             !EBO_predicate_complements(OP_opnd(pred_op,OP_PREDICATE_OPND),
                                        opinfo->optimal_opnd[OP_PREDICATE_OPND],
                                        OP_opnd(op,OP_PREDICATE_OPND),
@@ -1504,7 +1525,8 @@ find_previous_constant (OP *op,
       if ((pred_op != NULL) && OP_has_predicate(op) && OP_has_predicate(pred_op)) {
        /* Check predicates for safety. */
         EBO_OP_INFO *opinfo = locate_opinfo_entry(check_tninfo);
-        if ((opinfo == NULL) ||
+        
+        if ((opinfo == NULL) || OP_cond_def(pred_op) ||
             !EBO_predicate_dominates(OP_opnd(pred_op,OP_PREDICATE_OPND),
                                      opinfo->optimal_opnd[OP_PREDICATE_OPND],
                                      OP_opnd(op,OP_PREDICATE_OPND),
@@ -1891,6 +1913,7 @@ Find_BB_TNs (BB *bb)
       }
       remove_uses (num_opnds, orig_tninfo);
       OP_Change_To_Noop(op);
+      Reset_BB_scheduled(bb);
     } else {
      /* Add this OP to the hash table and define all the result TN's. */
       add_to_hash_table (in_delay_slot, op, orig_tninfo, opnd_tninfo);
@@ -2013,6 +2036,10 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
 
     rslt_count = OP_results(op);
     if (rslt_count == 0) goto op_is_needed;
+    for (int i = rslt_count ; i < rslt_count ; i++) {
+      if (OP_result(op,i) == RA_TN) goto op_is_needed;
+    }
+
     if (op_is_needed_globally(op)) goto op_is_needed;
 
    /* Check that all the result operands can be safely removed. */
@@ -2036,6 +2063,9 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
      /* Zero_TN or True_TN for a result is a no-op. */
       if (tn == Zero_TN) continue;
       if (tn == True_TN) continue;
+
+     /*load and store unat op should be needed!*/
+      if(OP_ld_st_unat(op)) goto op_is_needed;
 
      /* Copies to and from the same register are not needed. */
       if (EBO_in_peep &&
@@ -2087,6 +2117,11 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
     if (opinfo->op_must_not_be_removed) goto op_is_needed;
     if (OP_store(op)) goto op_is_needed;
 
+    /* ld.a, ld.s, ld.sa, ld.c, and ld in recovery block can not be removed.*/
+    if (CGTARG_Is_OP_Speculative(op)) goto op_is_needed;
+    if (CGTARG_Is_OP_Check_Load(op)) goto op_is_needed;
+    if (BB_recovery(OP_bb(op)))  goto op_is_needed;
+    
 can_be_removed:
 
     remove_op (opinfo);
@@ -2118,6 +2153,7 @@ can_be_removed:
       }
     }
 
+    Reset_BB_scheduled(bb);
     continue;
 
 op_is_needed:
@@ -2132,18 +2168,20 @@ op_is_needed:
           (tninfo->same != NULL)) {
         EBO_TN_INFO *next_tninfo = tninfo->same;
 
+        BOOL is_may_def = tninfo->in_op?OP_cond_def(tninfo->in_op):FALSE ;
+        
         while (next_tninfo != NULL) {
           if ((next_tninfo->in_op != NULL) &&
-              (!EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?tninfo->predicate_tninfo->local_tn:True_TN,
+              ((is_may_def || !EBO_predicate_dominates((tninfo->predicate_tninfo != NULL)?tninfo->predicate_tninfo->local_tn:True_TN,
                                          tninfo->predicate_tninfo,
                                          (next_tninfo->predicate_tninfo != NULL)?
                                                next_tninfo->predicate_tninfo->local_tn:True_TN,
-                                         next_tninfo->predicate_tninfo)) &&
-              (!EBO_predicate_complements((tninfo->predicate_tninfo != NULL)?tninfo->predicate_tninfo->local_tn:True_TN,
+                                         next_tninfo->predicate_tninfo))) &&
+              !EBO_predicate_complements((tninfo->predicate_tninfo != NULL)?tninfo->predicate_tninfo->local_tn:True_TN,
                                           tninfo->predicate_tninfo,
                                           (next_tninfo->predicate_tninfo != NULL)?
                                                next_tninfo->predicate_tninfo->local_tn:True_TN,
-                                          next_tninfo->predicate_tninfo))) {
+                                          next_tninfo->predicate_tninfo)){
 
            /* A store into an unresolved predicate is a potential problem     */
            /* because the last store might not completely redefine the first. */
@@ -2170,7 +2208,8 @@ op_is_needed:
               fprintf(TFile,"\n");
             }
 
-            if (EBO_predicate_dominates((next_tninfo->predicate_tninfo != NULL)?
+            BOOL is_next_may_def =  next_tninfo->in_op?OP_cond_def(next_tninfo->in_op):0;
+            if (!is_next_may_def && EBO_predicate_dominates((next_tninfo->predicate_tninfo != NULL)?
                                                next_tninfo->predicate_tninfo->local_tn:True_TN,
                                          next_tninfo->predicate_tninfo,
                                         (tninfo->predicate_tninfo != NULL)?tninfo->predicate_tninfo->local_tn:True_TN,
@@ -2200,7 +2239,9 @@ op_is_needed:
         while (next_tninfo != NULL) {
           if ((next_tninfo->in_op != NULL) &&
               (next_tninfo->omega == tninfo->omega)) {
-            if (EBO_predicate_dominates((next_tninfo->predicate_tninfo != NULL)?
+              
+            BOOL is_may_def = OP_cond_def(next_tninfo ->in_op) ;
+            if (!is_may_def && EBO_predicate_dominates((next_tninfo->predicate_tninfo != NULL)?
                                                next_tninfo->predicate_tninfo->local_tn:True_TN,
                                          next_tninfo->predicate_tninfo,
                                          (tninfo->predicate_tninfo != NULL)?tninfo->predicate_tninfo->local_tn:True_TN,
@@ -2287,8 +2328,8 @@ op_is_needed:
                   EBO_trace_pfx, BB_id(bb));
           Print_OP_No_SrcLine(op);
         }
-
         BB_Remove_Op(bb, op);
+        Reset_BB_scheduled(bb);
       } else if (PROC_has_branch_delay_slot()) {
 	if (in_delay_slot && OP_code(op) == TOP_noop) {
 	   // ugly hack for mips
@@ -2380,7 +2421,6 @@ EBO_Process ( BB *first_bb )
   BB *bb;
 
   rerun_cflow = FALSE;
-
   EBO_Trace_Execution    = Get_Trace(TP_EBO, 0x001);
   EBO_Trace_Optimization = Get_Trace(TP_EBO, 0x002);
   EBO_Trace_Block_Flow   = Get_Trace(TP_EBO, 0x004);
@@ -2391,7 +2431,7 @@ EBO_Process ( BB *first_bb )
                   ("Initial pointers not NULL %o %o",EBO_first_tninfo,EBO_first_opinfo));
 
   EBO_Start();
-
+   
   if (EBO_Trace_Data_Flow || EBO_Trace_Optimization) {
     #pragma mips_frequency_hint NEVER
     fprintf(TFile,">>>> Before EBO");
@@ -2436,9 +2476,15 @@ EBO_Process ( BB *first_bb )
 
  /* Clear the bb flag, in case some other phase uses it. */
   clear_bb_flag (first_bb);
-
   if (rerun_cflow) {
-    CFLOW_Optimize(CFLOW_BRANCH | CFLOW_UNREACHABLE, "CFLOW (from ebo)");
+    //draw_global_cfg("before cflow opt in EBO");
+    if (RGN_Formed) {
+      //draw_global_cfg("before cflow optimization in EBO");     
+      CFLOW_Optimize(CFLOW_BRANCH | CFLOW_UNREACHABLE, "CFLOW (from second ebo)");
+      //draw_global_cfg("After cflow optimization in EBO");     
+    } else {
+      CFLOW_Optimize(CFLOW_BRANCH | CFLOW_UNREACHABLE, "CFLOW (from ebo)");
+    }  
   }
 
   EBO_Finish();

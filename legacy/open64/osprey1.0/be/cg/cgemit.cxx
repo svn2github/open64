@@ -131,7 +131,9 @@
 #include "cgemit_targ.h"
 #include "cg_swp.h"
 #include "tag.h"
-
+#include "targ_issue_port.h"
+#include "cggrp_microsched.h" 
+#include "val_prof.h"
 extern void Early_Terminate (INT status);
 
 #define PAD_SIZE_LIMIT	2048	/* max size to be padded in a section */
@@ -1171,8 +1173,10 @@ static void r_assemble_list (
       ROTATING_KERNEL_INFO *info = ANNOT_rotating_kernel(annot);
       INT ii = info->ii;
       fprintf (Asm_File, " [%d*II+%d]", OP_scycle(op) / ii, OP_scycle(op) % ii);
-    } else if (BB_scheduled(bb)) 
-      fprintf (Asm_File, " [%d]", OP_scycle(op));
+    } else if (BB_scheduled(bb)) {
+	if(!OP_noop(op))
+      		fprintf (Asm_File, " [%d]", OP_scycle(op));
+    }
   if (vstr_len(comment) == 0) {
     WN *wn = Get_WN_From_Memory_OP (op);
     if (wn && Alias_Manager) {
@@ -1197,6 +1201,15 @@ static void r_assemble_list (
 	}
     }
   }
+   /*Add value profile comment "val_prof[id, exec_count]"*/
+  if (OP_flags_val_prof(op) == VAL_PROF_FLAG)
+  {
+    char tbuf[100];
+    tbuf[0] = '\0';
+    sprintf(tbuf, "\tval_prof[%u, %llu]", OP_val_prof_id(op), OP_exec_count(op));
+    comment = vstr_concat(comment, tbuf);
+  }
+
   fprintf (Asm_File, "  %s\n", vstr_str(comment));
   vstr_end(comment);
 }
@@ -1876,15 +1889,26 @@ Assemble_Simulated_OP(OP *op, BB *bb)
   }
 }
 
+
 /* Assemble the OPs in a BB a bundle at a time.
  */
-static void
+static INT
 Assemble_Bundles(BB *bb)
 {
   OP *op;
 
-  FmtAssert(ISA_MAX_SLOTS > 1,
-	    ("Assemble_Bundles shouldn't have been called"));
+  INT bb_cycle_count = 0; //used to count the cycle for the bb cbq
+  extern INT EMIT_count_cycles;
+  extern INT Track_Split(INT template_index, UINT stop_mask, BOOL &extra);
+  OP *last = NULL;
+  
+
+  FmtAssert(ISA_MAX_SLOTS > 1,("Assemble_Bundles shouldn't have been called"));
+
+  if (BB_emitted(bb))
+    return 0;
+ 
+  Set_BB_emitted(bb);
 
   for (op = BB_first_op(bb);;) {
     ISA_BUNDLE bundle;
@@ -1898,28 +1922,41 @@ Assemble_Bundles(BB *bb)
      */
     stop_mask = 0;
     slot_mask = 0;
-    for (slot = 0; op && slot < ISA_MAX_SLOTS; op = OP_next(op)) {
+    for (slot = 0; op && slot < ISA_MAX_SLOTS; op = OP_far_next(op) ) {
       INT words;
       INT w;
+
+      Set_BB_emitted(OP_bb(op));
 
       if (OP_dummy(op)) continue;		// these don't get emitted
 
       if (OP_simulated(op)) {
-	FmtAssert(slot == 0, ("can't bundle a simulated OP in BB:%d.",BB_id(bb)));
-	Assemble_Simulated_OP(op, bb);
-	continue;
+        FmtAssert(slot == 0, ("can't bundle a simulated OP in BB:%d.",BB_id(bb)));
+        Assemble_Simulated_OP(op, bb);
+        continue;
       }
 
       words = ISA_PACK_Inst_Words(OP_code(op));
       for (w = 0; w < words; ++w) {
-	FmtAssert(slot < ISA_MAX_SLOTS, 
-		  ("multi-word inst extends past end of bundle in BB:%d.",
-		   BB_id(bb)));
+        FmtAssert(slot < ISA_MAX_SLOTS,("multi-word inst extends past end of bundle in BB:%d.",BB_id(bb)));
         slot_op[slot++] = op;
-        slot_mask = (slot_mask << ISA_TAG_SHIFT) | ISA_EXEC_Unit_Prop(OP_code(op));
-        stop_mask = stop_mask << 1;
-      }
-      stop_mask |= (OP_end_group(op) != 0);
+        slot_mask = slot_mask << ISA_TAG_SHIFT;
+        if ( EXEC_PROPERTY_is_M_Unit(OP_code(op)) && EXEC_PROPERTY_is_I_Unit(OP_code(op)) ){
+          // A type instruction, identify its property
+	      slot_mask |= OP_m_unit(op)? ISA_EXEC_PROPERTY_M_Unit : ISA_EXEC_PROPERTY_I_Unit;
+        } else { slot_mask |= ISA_EXEC_Unit_Prop(OP_code(op)); }
+          stop_mask = stop_mask << 1;
+        }
+
+        // IPFEC hacker on brp special case
+        // brp can issue in B0 and B2 while pro64 only model in B2
+        PORT_SET b0b2;
+        b0b2 = b0b2 + ip_B0;
+        b0b2 = b0b2 + ip_B2;
+        if (TSI_Issue_Ports(OP_code(op))== b0b2){
+          slot_mask = slot_mask | ISA_EXEC_PROPERTY_B_Unit;
+        }
+        stop_mask |= (OP_end_group(op) != 0);
 
 #ifndef GAS_TAGS_WORKED
 // remove this when gas can handle tags inside explicit bundle
@@ -1928,6 +1965,7 @@ Assemble_Bundles(BB *bb)
 	}
 #endif
     }
+
     if (slot == 0) break;
 
     // Emit the warning only when bundle formation phase is enabled (ON by
@@ -1942,7 +1980,7 @@ Assemble_Bundles(BB *bb)
       UINT64 this_slot_mask = ISA_EXEC_Slot_Mask(ibundle);
       UINT32 this_stop_mask = ISA_EXEC_Stop_Mask(ibundle);
       if (   (slot_mask & this_slot_mask) == this_slot_mask 
-	  && stop_mask == this_stop_mask) break;
+	  && (stop_mask & ~1) == this_stop_mask) break;
     }
 
     // Emit the warning only when bundle formation phase is enabled (ON by
@@ -1954,9 +1992,17 @@ Assemble_Bundles(BB *bb)
         Print_OP_No_SrcLine (slot_op[2]);
       }
       FmtAssert(ibundle != ISA_MAX_BUNDLES,
-	       ("couldn't find bundle for slot mask=0x%llx, stop mask=0x%x in BB:%d\n",
-	        slot_mask, stop_mask, BB_id(bb)));
+                ("couldn't find bundle for slot mask=0x%llx, stop mask=0x%x in BB:%d\n",
+	             slot_mask, stop_mask, BB_id(bb)));
     }
+
+    BOOL split;
+    /* We now use bb cycles from machine model, so don't use stop bit to count */ 
+    bb_cycle_count += Track_Split(ibundle, stop_mask, split);
+    if (split && last && EMIT_count_cycles) { 
+      Set_OP_end_group(last); 
+    }
+    last = slot_op[ISA_MAX_SLOTS-1];
 
     /* Bundle prefix
      */
@@ -1968,16 +2014,20 @@ Assemble_Bundles(BB *bb)
 
     /* Assemble the bundle.
      */
-    slot = 0;
+    INT slot_i = 0;
     do {
-      OP *sl_op = slot_op[slot];
+      OP *sl_op = slot_op[slot_i];
       Perform_Sanity_Checks_For_OP(sl_op, TRUE);
-      slot += r_assemble_op(sl_op, bb, &bundle, slot);
-    } while (slot < ISA_MAX_SLOTS);
+      slot_i += r_assemble_op(sl_op, bb, &bundle, slot_i);
+    } while ((slot_i < ISA_MAX_SLOTS) && (slot_i < slot));
 
     /* Bundle suffix
      */
     if (Object_Code) {
+      TI_ASM_Set_Bundle_Comp(&bundle,
+			     ISA_BUNDLE_PACK_COMP_stop, 
+			     stop_mask & 1);
+
       TI_ASM_Set_Bundle_Comp(&bundle,
 			     ISA_BUNDLE_PACK_COMP_template, 
 			     ibundle);
@@ -1988,17 +2038,23 @@ Assemble_Bundles(BB *bb)
       fprintf(Asm_File, " %s", ISA_PRINT_END_BUNDLE);
     }
   }
+  bb_cycle_count = BB_length(bb) ? BB_cycle(bb) : 0;
   if (Assembly) {
     fprintf(Asm_File, "\n");
+    // output cycle count of the BB cbq
+    fprintf(Asm_File, "// The BB%d cycle counting is %d\n", BB_id(bb),bb_cycle_count);
   }
+  return bb_cycle_count;
 }
 
+
 /* Assemble the OPs in a BB an OP at a time.
  */
-static void
+static INT
 Assemble_Ops(BB *bb)
 {
   OP *op;
+  INT bb_cycle_count = 0;
 
   FmtAssert(ISA_MAX_SLOTS == 1,
 	    ("Assemble_Ops shouldn't have been called"));
@@ -2016,12 +2072,14 @@ Assemble_Ops(BB *bb)
 
     Perform_Sanity_Checks_For_OP(op, TRUE);
     words = r_assemble_op(op, bb, bundle, 0);
+    if (OP_end_group(op))    bb_cycle_count++; 
 
     if (Object_Code) {
       Em_Add_Bytes_To_Scn(PU_section, (char *)bundle,
 			  INST_BYTES * words, INST_BYTES);
     }
   }
+  return bb_cycle_count;
 }
 
 /* ====================================================================
@@ -2117,6 +2175,37 @@ Emit_Loop_Note(BB *bb, FILE *file)
   }
 }
 
+
+static void Emit_Preds_And_Succs(BB*bb, FILE *file)
+{
+  BBLIST *bb_succs = BB_succs(bb);
+  BBLIST *bb_preds = BB_preds(bb);
+
+  fprintf(file, "// Block: %d ", BB_id(bb));
+  
+  fprintf(file, "Pred: ");
+  
+  if (BBlist_Len(bb_preds)>0) {
+    BBLIST *pred;
+
+
+    FOR_ALL_BBLIST_ITEMS(bb_preds, pred) {
+      fprintf(file, "%d ", BB_id(BBLIST_item(pred)));
+      }
+  	}
+
+  fprintf(file, "Succ: ");
+  
+  if (BBlist_Len(bb_succs)>0) {
+  	BBLIST *succ;
+	
+    FOR_ALL_BBLIST_ITEMS(bb_succs, succ) {
+      fprintf(file, "%d ", BB_id(BBLIST_item(succ)));
+      }
+  	}
+  fprintf(file, "\n");
+}
+
 /* ====================================================================
  *
  * EMT_Assemble_BB
@@ -2126,17 +2215,23 @@ Emit_Loop_Note(BB *bb, FILE *file)
  * ====================================================================
  */
 
-static void
+static INT
 EMT_Assemble_BB ( BB *bb, WN *rwn )
 {
   ST *st;
   ANNOTATION *ant;
   RID *rid = BB_rid(bb);
+  INT bb_cycle_count = 0;
 
+  if (Assembly) {
+  	Emit_Preds_And_Succs(bb, Asm_File);
+  }
+  
   if (Trace_Inst) {
 	#pragma mips_frequency_hint NEVER
 	fprintf(TFile, "assemble BB %d\n", BB_id(bb));
   }
+
   if (Assembly) {
     if (rid != NULL && RID_cginfo(rid) != NULL) {
 	if (current_rid == RID_id(rid)) {
@@ -2287,14 +2382,15 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
 #endif
 
   if (ISA_MAX_SLOTS > 1) {
-    Assemble_Bundles(bb);
+    bb_cycle_count = Assemble_Bundles(bb);
   } else {
-    Assemble_Ops(bb);
+    bb_cycle_count = Assemble_Ops(bb);
   }
 
   if (Object_Code && BB_exit(bb)) {
     Em_Add_New_Event (EK_EXIT, PC - 2*INST_BYTES, 0, 0, 0, PU_section);
   }
+  return bb_cycle_count;
 } 
 
 
@@ -4397,6 +4493,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   INT Initial_Pu_PC;
   INT64 ofst;
   INT i;
+  float pu_cycle_count = 0; //PU's cycle count cbq
 
   Trace_Inst	= Get_Trace ( TP_EMIT,1 );
   BOOL trace_unwind = Get_Trace (TP_EMIT, 64);
@@ -4511,9 +4608,13 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 
   /* Assemble each basic block in the PU */
   for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+    int bb_cycle_count;
     Setup_Text_Section_For_BB(bb);
-    EMT_Assemble_BB (bb, rwn);
+    bb_cycle_count = EMT_Assemble_BB (bb, rwn);
+    /* count the cycle for the PU  cbq */
+    pu_cycle_count = pu_cycle_count + bb_cycle_count * bb->freq;
   }
+  fprintf(Asm_File, "//PU cycle count: %f\n", pu_cycle_count);
 
   /* Revert back to the text section to end the PU. */
   Setup_Text_Section_For_BB(REGION_First_BB);
@@ -5179,3 +5280,4 @@ EMT_End_File( void )
 	}
   }
 }
+
