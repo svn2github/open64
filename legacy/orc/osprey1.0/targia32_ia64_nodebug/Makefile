@@ -70,6 +70,8 @@ LIBRARY_SUBDIRS = \
 TOOL_SUBDIRS = \
 	be \
 	cg \
+	orc_intel \
+	orc_ict \
 	crayf90 \
 	driver \
 	dwarfdump \

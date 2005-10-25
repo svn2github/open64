@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -276,6 +276,9 @@
 #ifndef op_INCLUDED
 #define op_INCLUDED
 
+/* Include the values for the variant field: */
+#include "variants.h"
+
 /* to get the definition of SRCPOS. */
 #include "srcpos.h"
 
@@ -317,15 +320,19 @@ typedef struct op {
   OP		*prev;		/* Preceding OP in BB list */
   struct bb	*bb;		/* BB in which this OP lives */
   struct bb	*unroll_bb;	/* BB just after unrolling */
-  mUINT32	flags;		/* attributes associated with OP */
   mUINT16  	order;		/* relative order in BB */
+  mINT16  	variant;	/* Opcode variant */
   mUINT16	map_idx;	/* index used by OP_MAPs; unique in BB */
   mUINT16	orig_idx;	/* index of orig op before unrolling */
   mINT16	scycle;		/* Start cycle */
+  mUINT32	flags;		/* attributes associated with OP */
   mTOP		opr;		/* Opcode. topcode.h */
   mUINT8	unrolling;	/* which unrolled replication (if any) */
   mUINT8	results;	/* Number of results */
   mUINT8	opnds;		/* Number of operands */
+  mUINT8        flag_value_profile;       /* flag to identify value_profile */
+  mUINT32       value_profile_id;       /* unique ID to indicate value profiled No. */
+  mUINT64        exec_count;          /* Number of executed count */
   struct tn     *res_opnd[10];	/* result/operand array (see OP_sizeof for info)
 				 * !!! THIS FIELD MUST BE LAST !!!
 				 */
@@ -352,8 +359,12 @@ typedef struct op {
 
 /* Define the access functions: */
 #define OP_srcpos(o)	((o)->srcpos)
+#define OP_variant(o)	((o)->variant)
 #define OP_scycle(o)	((o)->scycle)
 #define OP_flags(o)	((o)->flags)
+#define OP_flags_val_prof(o)    ((o)->flag_value_profile)
+#define OP_val_prof_id(o)        ((o)->value_profile_id)
+#define OP_exec_count(o)        ((o)->exec_count)
 
 /* These are rvalues */
 #define OP_next(o)	((o)->next+0)
@@ -416,7 +427,6 @@ enum OP_COND_DEF_KIND {
 };
 
 /* Define the flag masks. */
-
 #define OP_MASK_GLUE	  0x00000001 /* Is OP region "glue"? */
 #define OP_MASK_NO_ALIAS  0x00000002 /* Is OP Memop that can't be aliased */
 #define OP_MASK_COPY	  0x00000004 /* Is OP a COPY? */
@@ -434,6 +444,13 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_TAG 	  0x00008000 /* OP has tag */
 #define OP_MASK_SPADJ_PLUS  0x00010000 /* Is OP de-alloca spadjust (plus)? */
 #define OP_MASK_SPADJ_MINUS 0x00020000 /* Is OP alloca spadjust (minus)? */
+#define OP_MASK_START_BD    0x00040000 /* Is OP start of a bundle */
+#define OP_MASK_SAFE_LOAD  0x00080000 /* Is OP safe load */
+#define OP_MASK_PASS_PARA   0x00100000
+#define OP_MASK_CANNOT_SPEC_LD    0x00200000
+
+#define OP_MASK_LAST    OP_MASK_CATCH_NAT
+#define OP_MASK_MAX     0x80000000 
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
 # define Set_OP_glue(o)		(OP_flags(o) |= OP_MASK_GLUE)
@@ -484,9 +501,25 @@ enum OP_COND_DEF_KIND {
 # define OP_spadjust_minus(o)	(OP_flags(o) & OP_MASK_SPADJ_MINUS)
 # define Set_OP_spadjust_minus(o) (OP_flags(o) |= OP_MASK_SPADJ_MINUS)
 # define Reset_OP_spadjust_minus(o) (OP_flags(o) &= ~OP_MASK_SPADJ_MINUS)
+# define OP_start_bundle(o)	(OP_flags(o) & OP_MASK_START_BD)
+# define Set_OP_start_bundle(o)	(OP_flags(o) |= OP_MASK_START_BD)
+# define Reset_OP_start_bundle(o)	(OP_flags(o) &= ~OP_MASK_START_BD)
+# define OP_safe_load(o) (OP_flags(o) & OP_MASK_SAFE_LOAD)
+# define Set_OP_safe_load(o)  (OP_flags(o) |= OP_MASK_SAFE_LOAD)
+# define Reset_OP_safe_load(o) (OP_flags(o) &= ~OP_MASK_SAFE_LOAD)
+# define OP_catch_nat(o)  (OP_flags(o) & OP_MASK_CATCH_NAT)
+# define Set_OP_catch_nat(o)  (OP_flags(o) |= OP_MASK_CATCH_NAT)
+# define Reset_OP_catch_nat(o)  (OP_flags(o) &= ~OP_MASK_CATCH_NAT)
+# define OP_pass_para(o)     (OP_flags(o) & OP_MASK_PASS_PARA)
+# define Set_OP_pass_para(o)    (OP_flags(o) |= OP_MASK_PASS_PARA)
+# define Reset_OP_pass_para(o)  (OP_flags(o) &= ~OP_MASK_PASS_PARA)
+# define OP_cannot_spec(o)         (OP_flags(o) & OP_MASK_CANNOT_SPEC_LD)
+# define Set_OP_cannot_spec(o)     (OP_flags(o) |= OP_MASK_CANNOT_SPEC_LD)
+# define Reset_OP_cannot_spec(o)   (OP_flags(o) &= ~OP_MASK_CANNOT_SPEC_LD)
 
-extern BOOL OP_cond_def(const OP*);
+extern BOOL OP_cond_def( const OP*);
 extern BOOL OP_has_implicit_interactions(OP*);
+extern BOOL OP_xfer(OP*);           // After RBG, chk should be taken as xfer.
 
 /* Convenience access macros for properties of the OP */
 /* TODO: define all the macros for OP properties. */
@@ -497,7 +530,6 @@ extern BOOL OP_has_implicit_interactions(OP*);
 #define OP_memory(o)		(OP_load(o) | OP_store(o) | OP_prefetch(o))
 #define OP_mem_fill_type(o)     (TOP_is_mem_fill_type(OP_code(o)))
 #define OP_call(o)		(TOP_is_call(OP_code(o)))
-#define OP_xfer(o)		(TOP_is_xfer(OP_code(o)))
 #define OP_cond(o)		(TOP_is_cond(OP_code(o)))
 #define OP_likely(o)		(TOP_is_likely(OP_code(o)))
 #define OP_dummy(o)		(TOP_is_dummy(OP_code(o)))
@@ -551,6 +583,50 @@ extern BOOL OP_has_implicit_interactions(OP*);
 #define OP_has_immediate(o)	(OP_immediate_opnd(o) >= 0)
 #define OP_inst_words(o)	(ISA_PACK_Inst_Words(OP_code(o)))
 #define OP_find_opnd_use(o,u)	(TOP_Find_Operand_Use(OP_code(o),(u)))
+
+inline BOOL OP_float_chk(OP *op)
+{
+    mTOP opcode = OP_code(op);
+    switch (opcode) {
+    case TOP_chk_f_a:
+    case TOP_chk_f_s:
+      return TRUE;
+    default:
+      return FALSE;
+    }
+}
+
+inline BOOL OP_chk_a(OP *op)
+{
+    mTOP opcode = OP_code(op);
+    switch (opcode) {
+    case TOP_chk_a:
+    case TOP_chk_f_a:
+      return TRUE;
+    default:
+      return FALSE;
+    }	
+}
+   
+inline BOOL OP_chk_s(OP *op)
+{
+    mTOP opcode = OP_code(op);
+    switch (opcode) {
+    case TOP_chk_s:
+    case TOP_chk_s_i:
+    case TOP_chk_s_m:
+    case TOP_chk_f_s:
+      return TRUE;
+    default:
+      return FALSE;
+    }	
+}
+
+inline BOOL OP_chk(OP *op)
+{
+    return ( OP_chk_s(op) ||
+	     OP_chk_a(op) );
+}
 
 inline INT OP_result_size(OP *op, INT result)
 {
@@ -683,7 +759,7 @@ inline ISA_OPERAND_USE OP_opnd_use(OP *op, INT opnd)
 #define TOP_fixed_opnds(o)	(ISA_OPERAND_INFO_Operands(ISA_OPERAND_Info(o)))
 #define OP_fixed_results(o)	(TOP_fixed_results(OP_code(o)))
 #define OP_fixed_opnds(o)	(TOP_fixed_opnds(OP_code(o)))
-
+
 /* ---------------------------------------------------------------------
  *			       OPS stuff
  * ---------------------------------------------------------------------
@@ -764,7 +840,7 @@ void OPS_Append_Ops(OPS *ops, OPS *insert_ops);
 void OPS_Prepend_Ops(OPS *ops, OPS *insert_ops);
 void OPS_Insert_Op(OPS *ops, OP *point, OP *op, BOOL before);
 void OPS_Insert_Ops(OPS *ops, OP *point, OPS *insert_ops, BOOL before);
-
+
 /* ====================================================================
  *
  * Utility routines which manipulate OPs.

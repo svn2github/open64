@@ -1,6 +1,6 @@
 #
 #
-#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of version 2 of the GNU General Public License as
@@ -94,10 +94,15 @@ HOSTDEFS += -LANG:packed=on
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 HOSTDEFS += -DIs_True_On
+OPTIMIZER += -g -O0
 endif
 
 ifeq ($(BUILD_PCH), USE_PCH)
 HOSTDEFS += -DUSE_PCH
+endif
+
+ifeq ($(BUILD_VARIANT), MEM_STATS)
+HOSTDEFS += -DMEM_STATS
 endif
 
 ifeq ($(BUILD_TARGET), IA64)
@@ -139,6 +144,8 @@ BE_CG_DIR 		= $(BE_DIR)/cg
 BE_CG_GRA_DIR		= $(BE_CG_DIR)/gra_mon
 BE_CG_TARG_DIR		= $(BE_CG_DIR)/$(BUILD_TARGET_DIR)
 BE_COM_DIR 		= $(BE_DIR)/com
+BE_ORC_ICT_DIR	= $(BE_CG_DIR)/orc_ict
+BE_ORC_INTEL_DIR	= $(BE_CG_DIR)/orc_intel
 BE_REGION_DIR 		= $(BE_DIR)/region
 BE_PROMPF_DIR		= $(BE_DIR)/prompf_anl
 BE_OPT_DIR              = $(BE_DIR)/opt
@@ -168,12 +175,14 @@ HEADER_DIRS = \
   $(SRC_DIRS)		\
   $(COMMON_STL_DIR)	\
   $(BE_COM_DIR)		\
+  $(BE_ORC_ICT_DIR)	\
+  $(BE_ORC_INTEL_DIR)	\
   $(BE_REGION_DIR)	\
   $(BE_PROMPF_DIR)	\
   $(BE_OPT_DIR)		\
   $(COMMON_TARG_INFO_ACCESS_DIR) \
   $(TARG_TARG_INFO)	\
-  $(TARG_BE)
+  $(TARG_BE)		
 
 ifeq ($(BUILD_OS), LINUX)
 HEADER_DIRS += $(TARGDIR)/include/libelf
@@ -194,6 +203,7 @@ SETGEN  = $(COMMON_UTIL_DIR)/gen_x_set		\
 	  $(COMMON_UTIL_DIR)/x_set_func.td	\
           $(COMMON_UTIL_DIR)/x_set_interface
 
+
 DERIVED_SRCS = \
 	bb_list.cxx \
 	gra_bb_list.cxx \
@@ -203,7 +213,7 @@ DERIVED_SRCS = \
 	tn_list.cxx \
 	void_list.cxx \
 	cg_loop_scc_prop.cxx \
-	tn_prop.cxx
+	tn_prop.cxx \
 
 # remove all derived files with make clobber.
 LDIRT = $(DERIVED_INCS) $(DERIVED_INCS:.h=.c) $(DERIVED_INCS:.h=.cxx) *.pch
@@ -248,6 +258,8 @@ BE_CG_GRA_CXX_SRCS =		\
   gra_split.cxx			\
   gra_trace.cxx
 
+
+  
 CG_GRA_PCH_CXX_SRCS= $(BE_CG_GRA_CXX_SRCS)
 
 BE_CG_TARG_CXX_SRCS =	\
@@ -265,7 +277,7 @@ BE_CG_TARG_CXX_SRCS =	\
   expand.cxx		\
   pqs_cg.cxx            \
   pqs.cxx		\
-  register_targ.cxx
+  register_targ.cxx     
 
 ifeq ($(BUILD_TARGET), IA64)
   BE_CG_TARG_CXX_SRCS += float_rf.cxx
@@ -286,7 +298,7 @@ CG_CXX_PCH_SRCS = 	\
   lra.cxx		\
   op_map.cxx		\
   oputil.cxx		\
-  tn_map.cxx		\
+  tn_map.cxx            \
   tnutil.cxx
 
 CG_CXX_SRCS = 		\
@@ -357,6 +369,8 @@ else
 CG_CXX_SRCS += $(CG_CXX_PCH_SRCS)
 CG_CXX_SRCS += $(CG_GRA_PCH_CXX_SRCS)
 endif
+
+# We will change this later to build different DSOs.
 
 CG_C_OBJS = $(CG_C_SRCS:.c=.o)
 
@@ -641,6 +655,18 @@ DERIVED_INCS += gtn_set.h gtn_set.td
 gtn_set.h : gtn_set.td
 gtn_set.td : $(SETGEN) $(BE_CG_DIR)/gen_gtn_set
 	csh -f $(BE_CG_DIR)/gen_gtn_set $(COMMON_UTIL_DIR) $(GEN_X_SET_OPTS)
+
+#--------------------------------------------------------------------------
+cggrp_ptn_table.cxx : ptn_table_gen
+	 $(RUN) ./ptn_table_gen
+
+
+#----------------------------------------------------------------------
+# Begin to set new target file generator;
+
+
+  
+#--------------------------------------------------------------------------
 
 # here's the target that gets made recursively
 derived_files : $(DERIVED_SRCS) $(DERIVED_INCS)

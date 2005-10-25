@@ -629,6 +629,11 @@ extern BOOL CG_LOOP_reassociate;
 extern BOOL CG_LOOP_reassociate_specified;
 extern INT32 CG_LOOP_recurrence_min_omega;
 
+// Cycle Count Flags
+extern BOOL CG_Enable_Cycle_Count;
+extern BOOL Cycle_PU_Enable;    
+extern BOOL Cycle_BB_Enable;    
+extern const char *Cycle_String;
 // temporary flags for controlling algorithm selection for fdiv, sqrt, etc
 extern const char *CGEXP_fdiv_algorithm;
 extern const char *CGEXP_sqrt_algorithm;

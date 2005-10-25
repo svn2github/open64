@@ -481,6 +481,8 @@ RELATED_SEGMENTED_ARRAY<T,block_size>::Update_Map(T    *marker,
     map.push_back(std::pair<T*, BOOL>(marker, own_memory));
     new_size -= block_size;
     marker += block_size;
+    own_memory += false;	//Only the first entry can be freed for a block that
+				//is larger than block_size. By: Jon Hsu, 11 May 2001.
   } while (new_size);
 } // RELATED_SEGMENTED_ARRAY<T,block_size>::Update_Map
 

@@ -658,9 +658,14 @@ struct OP_VECTOR {
 
 extern CG_LOOP *Current_CG_LOOP;
 
-extern void Perform_Loop_Optimizations();
+//#ifdef IPFEC
+extern void Perform_Loop_Optimizations(void *rgn_loop_update=NULL);
+extern BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, SWP_FIXUP_VECTOR& fixup, void **, void *);
+//#else
+//extern void Perform_Loop_Optimizations();
+//extern BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, SWP_FIXUP_VECTOR& fixup);
+//#endif
 
-extern BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, SWP_FIXUP_VECTOR& fixup);
 
 extern BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop);
 

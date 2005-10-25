@@ -1,6 +1,6 @@
 #
 #
-#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of version 2 of the GNU General Public License as
@@ -52,7 +52,14 @@ BUILD_INSTALL  = DEFAULT
 BUILD_TARGET   = IA64
 BUILD_COMPILER = GNU
 BUILD_OS       = LINUX
+IPFEC_TARG    = KAPI
 
+# option to use new generator of tagetinfo
+# added by llx
+ifeq "$(IPFEC_TARG)" "KAPI"
+BUILD_BASE     = ../../common/ipfec_targ_info
+endif
+#endif
 
 #ifdef IRIX
 # smake

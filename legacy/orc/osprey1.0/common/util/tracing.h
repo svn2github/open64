@@ -94,7 +94,7 @@ extern char *SBar;	/* Single-dash bar w/NL, full page width */
 extern char *DBar;	/* Double-dash bar w/NL, full page width */
 extern char *Sharps;	/* Sharps w/NL, full page width */
 
-
+
 /* ====================================================================
  *
  * Trace Flag Literals
@@ -229,11 +229,22 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 
 #define TP_TEMP		60	/* Temporary use */
 
+#define TP_IPFEC	61	/* Actualy several phases, but all IPFEC related */
+#define TP_A_SCHED      62      /* "ASH",  "Ipfec scheduler"*/
+#define TP_A_PROF       63      /* "APF",  "Ipfec profiling"*/
+#define TP_A_REGION     64      /* "ARN",  "Ipfec region formation"*/
+#define TP_A_IFCONV     65      /* "AIC",  "Ipfec if conversion"*/
+#define TP_A_PRDB       66      /* "APR",  "Ipfec predicate relation database"*/
+#define TP_A_RBG        67      /* "ABG",  "Ipfec recovery block generation"*/
+
+#define TP_CYCLE_COUNT        68      /* "TCC", */
+#define TP_CYCLE_PU   69      /* "TCP", */  
+
 /* WARNING: TP_LAST must be at least as large as the largest phase
  * number above, and TP_COUNT must be at least one larger.
  */
-#define TP_LAST		60	/* Largest valid phase number */
-#define TP_COUNT	61	/* Number of valid phase numbers */
+#define TP_LAST		69	/* Largest valid phase number */
+#define TP_COUNT	70	/* Number of valid phase numbers */
 
 /* Extract the phase number from a trace option: */
 extern INT32 Get_Trace_Phase_Number ( char **cp, char *arg );
@@ -257,7 +268,7 @@ extern void List_Phase_Numbers ( void );
 #define TP_PTRACE1_PARALLEL  0x200   /* get LNO parallel tracing  */ 
 #define TP_PTRACE1_NOHDR     0x400   /* suppress printing tlog header */ 
 
-
+
 /* ====================================================================
  *
  * Trace Flag Management

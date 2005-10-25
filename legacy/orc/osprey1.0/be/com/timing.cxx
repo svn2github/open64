@@ -74,7 +74,7 @@ static RSTATE *timers[T_LAST+1];
  * for a compilation consisting of a single unit:
  */
 static INT CU_Count = 0;
-
+
 /* ====================================================================
  *
  * Reset_Timers
@@ -93,7 +93,7 @@ Reset_Timers (void)
     for ( i=0; i <= T_LAST; i++ ) Resource_Accum (Timer(i), RR_Clear);
   }
 }
-
+
 /* ====================================================================
  *
  * Initialize_Timing
@@ -229,10 +229,42 @@ Initialize_Timing ( BOOL enable )
 	    Resource_Alloc ( "   Calculate_Dominators", NULL );
     Timer ( T_CalcDom_CU) =
 	    Resource_Alloc ( "  Calculate_Dominators", Timer(T_CalcDom_Comp));
+    Timer ( T_Ipfec_Profiling_Comp ) =
+	    Resource_Alloc ( "  Ipfec Profiling", NULL );
+    Timer ( T_Ipfec_Profiling_CU ) =
+	    Resource_Alloc ( "  Ipfec Profiling", Timer(T_Ipfec_Profiling_Comp));
+    Timer ( T_Ipfec_Region_Comp ) =
+	    Resource_Alloc ( "  Ipfec Region Formation", NULL );
+    Timer ( T_Ipfec_Region_CU ) =
+	    Resource_Alloc ( "  Ipfec Region Formation", Timer(T_Ipfec_Region_Comp));
+    Timer ( T_Ipfec_If_Conv_Comp ) =
+	    Resource_Alloc ( "  Ipfec If-Conversion", NULL );
+    Timer ( T_Ipfec_If_Conv_CU ) =
+	    Resource_Alloc ( "  Ipfec If-Conversion", Timer(T_Ipfec_If_Conv_Comp));
+    Timer ( T_Ipfec_PRDB_Comp ) =
+	    Resource_Alloc ( "  Ipfec PRDB", NULL );
+    Timer ( T_Ipfec_PRDB_CU ) =
+	    Resource_Alloc ( "  Ipfec PRDB", Timer(T_Ipfec_PRDB_Comp));
+    Timer ( T_Ipfec_GLOS_Comp ) =
+	    Resource_Alloc ( "  Ipfec Global scheduling", NULL );
+    Timer ( T_Ipfec_GLOS_CU ) =
+	    Resource_Alloc ( "  Ipfec Global scheduling", Timer(T_Ipfec_GLOS_Comp));
+    Timer (T_Ipfec_GLOS_MISC1_CU) = 
+        Resource_Alloc ( "  Ipfec Global scheduling Miscellaneous1", NULL);
+    Timer (T_Ipfec_GLOS_MISC2_CU) =
+        Resource_Alloc ( "  Ipfec Global scheduling Miscellaneous2" , NULL);
+    Timer ( T_Ipfec_LOCS_Comp ) =
+	    Resource_Alloc ( "  Ipfec Local scheduling", NULL );
+    Timer ( T_Ipfec_LOCS_CU ) =
+	    Resource_Alloc ( "  Ipfec Local scheduling", Timer(T_Ipfec_LOCS_Comp));
+    Timer ( T_Ipfec_Speculation_Comp ) =
+	    Resource_Alloc ( "  Ipfec Speculation", NULL );
+    Timer ( T_Ipfec_Speculation_CU ) =
+	    Resource_Alloc ( "  Ipfec Speculation", Timer(T_Ipfec_Speculation_Comp));
 
   }
 }
-
+
 /* ====================================================================
  *
  * Clear_Timer / Start_Timer / Stop_Timer
@@ -299,7 +331,7 @@ Add_Timer_To_Parent ( INT Timer_ID )
   }
 }
 
-
+
 /* ====================================================================
  *
  * Report_Delta_Time
@@ -344,7 +376,7 @@ Report_Delta_Time (
     fprintf ( file, "\n" );
   }
 }
-
+
 void
 Report_CG_Region_Timing (FILE *file, char *name)
 {
@@ -362,6 +394,13 @@ Report_CG_Region_Timing (FILE *file, char *name)
   Report_Delta_Time ( file, T_CalcDom_CU );
   Report_Delta_Time ( file, T_SWpipe_CU );
   Report_Delta_Time ( file, T_Freq_CU );
+  Report_Delta_Time ( file, T_Ipfec_Profiling_CU );
+  Report_Delta_Time ( file, T_Ipfec_Region_CU );
+  Report_Delta_Time ( file, T_Ipfec_If_Conv_CU );
+  Report_Delta_Time ( file, T_Ipfec_PRDB_CU );
+  Report_Delta_Time ( file, T_Ipfec_GLOS_CU );
+  Report_Delta_Time ( file, T_Ipfec_LOCS_CU );
+  Report_Delta_Time ( file, T_Ipfec_Speculation_CU );
   Report_Delta_Time ( file, T_GRA_CU );
   Report_Delta_Time ( file, T_LRA_CU );
   Report_Delta_Time ( file, T_HBF_CU );
@@ -371,7 +410,7 @@ Report_CG_Region_Timing (FILE *file, char *name)
   Report_Delta_Time ( file, T_Region_Finalize_CU );
   fprintf ( file, "%s\n", DBar );
 }
-
+
 /* ====================================================================
  *
  * Finish_BE_Timing
@@ -419,6 +458,13 @@ Finish_BE_Timing (
 	Report_Delta_Time ( file, T_CalcDom_CU);
 	Report_Delta_Time ( file, T_SWpipe_CU );
 	Report_Delta_Time ( file, T_Freq_CU );
+	Report_Delta_Time ( file, T_Ipfec_Profiling_CU );
+	Report_Delta_Time ( file, T_Ipfec_Region_CU );
+	Report_Delta_Time ( file, T_Ipfec_If_Conv_CU );
+	Report_Delta_Time ( file, T_Ipfec_PRDB_CU );
+	Report_Delta_Time ( file, T_Ipfec_GLOS_CU );
+	Report_Delta_Time ( file, T_Ipfec_LOCS_CU );
+	Report_Delta_Time ( file, T_Ipfec_Speculation_CU );
 	Report_Delta_Time ( file, T_GRA_CU );
 	Report_Delta_Time ( file, T_LRA_CU );
 	Report_Delta_Time ( file, T_HBF_CU );
@@ -453,6 +499,13 @@ Finish_BE_Timing (
     Add_Timer_To_Parent ( T_CalcDom_CU );
     Add_Timer_To_Parent ( T_SWpipe_CU );
     Add_Timer_To_Parent ( T_Freq_CU );
+    Add_Timer_To_Parent ( T_Ipfec_Profiling_CU );
+    Add_Timer_To_Parent ( T_Ipfec_Region_CU );
+    Add_Timer_To_Parent ( T_Ipfec_If_Conv_CU );
+    Add_Timer_To_Parent ( T_Ipfec_PRDB_CU );
+    Add_Timer_To_Parent ( T_Ipfec_GLOS_CU );
+    Add_Timer_To_Parent ( T_Ipfec_LOCS_CU );
+    Add_Timer_To_Parent ( T_Ipfec_Speculation_CU );
     Add_Timer_To_Parent ( T_GRA_CU );
     Add_Timer_To_Parent ( T_LRA_CU );
     Add_Timer_To_Parent ( T_HBF_CU );
@@ -463,7 +516,7 @@ Finish_BE_Timing (
     Add_Timer_To_Parent ( T_Region_Finalize_CU );
   }
 }
-
+
 /* ====================================================================
  *
  * Finish_Compilation_Timing
@@ -510,6 +563,13 @@ Finish_Compilation_Timing (
 	Report_Delta_Time ( file, T_CalcDom_Comp );
 	Report_Delta_Time ( file, T_SWpipe_Comp );
 	Report_Delta_Time ( file, T_Freq_Comp );
+	Report_Delta_Time ( file, T_Ipfec_Profiling_Comp );
+	Report_Delta_Time ( file, T_Ipfec_Region_Comp );
+	Report_Delta_Time ( file, T_Ipfec_If_Conv_Comp );
+	Report_Delta_Time ( file, T_Ipfec_PRDB_Comp );
+	Report_Delta_Time ( file, T_Ipfec_GLOS_Comp );
+	Report_Delta_Time ( file, T_Ipfec_LOCS_Comp );
+	Report_Delta_Time ( file, T_Ipfec_Speculation_Comp );
 	Report_Delta_Time ( file, T_GRA_Comp );
 	Report_Delta_Time ( file, T_LRA_Comp );
 	Report_Delta_Time ( file, T_HBF_Comp );

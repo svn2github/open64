@@ -337,6 +337,8 @@ load_components (INT argc, char **argv)
 
     if (Run_cg) {
       Get_Phase_Args (PHASE_CG, &phase_argc, &phase_argv);
+      load_so ("orc_ict.so", NULL, Show_Progress);
+      load_so ("orc_intel.so", NULL, Show_Progress);
       load_so ("cg.so", CG_Path, Show_Progress);
       CG_Process_Command_Line (phase_argc, phase_argv, argc, argv);
     }
@@ -938,8 +940,8 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 			RID_id(REGION_get_rid(rwn)));
 
       /* Add instrumentation here for wopt. */
-      if (Instrumentation_Enabled
-	  && Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_WOPT) {
+      if (Instrumentation_Enabled && (Profile_Type & WHIRL_PROFILE)
+	  && (Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_WOPT)) {
 	WN_Instrument(rwn, PROFILE_PHASE_BEFORE_WOPT); 
       } else if (Feedback_Enabled[PROFILE_PHASE_BEFORE_WOPT]) {
 	WN_Annotate(rwn, PROFILE_PHASE_BEFORE_WOPT, &MEM_pu_pool);
@@ -974,8 +976,8 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 		RID_id(REGION_get_rid(rwn)));
 
       /* Add instrumentation here for cg. */
-      if (Instrumentation_Enabled
-	  && Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_CG) {
+      if (Instrumentation_Enabled && (Profile_Type & WHIRL_PROFILE)
+	  && (Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_CG)) {
 	rwn = WN_Lower(rwn, LOWER_SCF, NULL, 
 		       "Lower structured control flow");
 	WN_Instrument(rwn, PROFILE_PHASE_BEFORE_CG);
@@ -1197,8 +1199,8 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
     }
 
     /* Add instrumentation here for lno. */
-    if( Instrumentation_Enabled
-       && Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_LNO ) {
+    if( Instrumentation_Enabled && (Profile_Type&WHIRL_PROFILE)
+       && (Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_LNO) ) {
 	WN_Instrument(pu, PROFILE_PHASE_BEFORE_LNO); 
     } else if ( Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO] ) {
       WN_Annotate(pu, PROFILE_PHASE_BEFORE_LNO, &MEM_pu_pool);   
@@ -1406,8 +1408,8 @@ Preprocess_PU (PU_Info *current_pu)
   }
 
   /* Add instrumentation here for vho lower. */
-  if ( Instrumentation_Enabled
-       && Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_VHO ) {
+  if ( Instrumentation_Enabled  && (Profile_Type&WHIRL_PROFILE)
+       && (Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_VHO) ) {
     if (!is_mp_nested_pu )
       WN_Instrument(pu, PROFILE_PHASE_BEFORE_VHO); 
 #if 0
@@ -1646,6 +1648,39 @@ extern "C" {
   void be_debug(void) {}
 }
 
+// Create an output.h for dynamical cycle counting
+BOOL  Create_Output_h_File()
+{
+      INT i;
+
+      /* PU support */
+      fprintf(Output_h_File, "unsigned long int pu_count[%d];\n", pu_number);
+      fprintf(Output_h_File, "char * pu_pointer[%d];\n", pu_number);
+      fprintf(Output_h_File, "#define count() \\\n");
+      fprintf(Output_h_File, "{ \\\n");
+      for(i = 0; i < pu_number; i++){
+              fprintf(Output_h_File, "pu_count[%d] = %s;\\\n", i, pu_string[i]);
+              fprintf(Output_h_File, "pu_pointer[%d] =\"%s\";\\\n", i, pu_string[i]);
+      }
+      fprintf(Output_h_File, "}\n");
+      fprintf(Output_h_File, "int pu_number = %d;\n", pu_number);
+
+      /* BB support */
+      fprintf(Output_h_File, "unsigned long int bb_count[%d];\n", bb_number);
+      fprintf(Output_h_File, "char * bb_pointer[%d];\n", bb_number);
+      fprintf(Output_h_File, "#define bb_count() \\\n");
+      fprintf(Output_h_File, "{ \\\n");
+      for(i = 0; i < bb_number; i++){
+              fprintf(Output_h_File, "bb_count[%d] = %s;\\\n", i, bb_string[i]);
+              fprintf(Output_h_File, "bb_pointer[%d] =\"%s\";\\\n", i, bb_string[i]);
+      }
+      fprintf(Output_h_File, "}\n");
+      fprintf(Output_h_File, "int bb_number = %d;\n", bb_number);
+
+      fclose(Output_h_File);
+      return TRUE;
+}   
+
 INT
 main (INT argc, char **argv)
 {
@@ -1715,19 +1750,18 @@ main (INT argc, char **argv)
   Stop_Timer (T_ReadIR_Comp);
 
   Initialize_Special_Global_Symbols ();
-
   // if compiling an ipa-generated file, do not instrument phases that
   // have already been done at ipl time.
   if (FILE_INFO_ipa (File_info)) {
-      if (Instrumentation_Enabled &&
-	  Instrumentation_Phase_Num <= PROFILE_PHASE_IPA_CUTOFF) {
+      if (Instrumentation_Enabled && (Profile_Type&WHIRL_PROFILE) &&
+	  (Instrumentation_Phase_Num <= PROFILE_PHASE_IPA_CUTOFF)) {
 	  Instrumentation_Enabled = FALSE;
 	  Instrumentation_Phase_Num = PROFILE_PHASE_NONE;
       }
   } else {
       Process_Feedback_Options (Feedback_Option);
   }
-
+  Instrumentation_Phase_Num = Phase_Num;
   //
   // Ordinarily DRA_Initialize() would run as part of Phase_Init(),
   // but we need to run it early, right here. 
@@ -1803,6 +1837,9 @@ main (INT argc, char **argv)
     Preorder_Process_PUs(current_pu);
   }
 
+  /* create output.h file for cycle counting */
+  if (Create_Cycle_Output)
+      Create_Output_h_File(); 
 
   /* Terminate stdout line if showing PUs: */
   if (Show_Progress) {

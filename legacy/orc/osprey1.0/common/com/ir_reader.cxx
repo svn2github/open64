@@ -1006,7 +1006,7 @@ static void ir_put_wn(WN * wn, INT indent)
 	fprintf(ir_ofile, " %lld", WN_element_size(wn));
 
     if (OPCODE_has_num_entries(opcode))
-	fprintf(ir_ofile, " %d", WN_num_entries(wn));
+	fprintf(ir_ofile, " num_entries=%d", WN_num_entries(wn));
     if (OPCODE_has_last_label(opcode))
 	fprintf(ir_ofile, " %d", WN_last_label(wn));
 

@@ -249,7 +249,7 @@ extern const char *BR_Variant_Name(VARIANT variant);
 /* Prefetch flags: The prefetch flags, if any, for a memory OP are
  * stored in the V_PF_FLAGS field.
  */
-#define V_PF_FLAGS		0xffffffff00000000 /* Prefetch flags */
+#define V_PF_FLAGS		0xffffffff00000000ULL /* Prefetch flags */
 
 #define V_pf_flags(v)			((UINT32)(((v) & V_PF_FLAGS) >> 32))
 #define Set_V_pf_flags(v,f)		((v) = ((v) & ~V_PF_FLAGS) | ((VARIANT)(f) << 32))

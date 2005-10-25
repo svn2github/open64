@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -259,7 +259,9 @@ Is_Delay_Slot_Op (OP *op, BB *bb)
 {
   if (op != BB_last_op(bb)) return FALSE;
   OP *xfer_op = OP_prev(op);
-  if (xfer_op == NULL || !OP_xfer(xfer_op)) return FALSE;
+  // if (xfer_op == NULL || !OP_xfer(xfer_op)) return FALSE;
+  if (xfer_op == NULL || !TOP_is_xfer(OP_code(xfer_op))) return FALSE;
+
   return TRUE;
 }
 
@@ -381,7 +383,8 @@ Handle_Post_Hazard (OP *op, INT opnd, INT ops_to_check)
       break;
     }
     ops_to_check -= OP_Real_Ops (scan_op);
-    if (OP_xfer(scan_op)) ops_to_check -= 1;  // account for the delay slot
+    //if (OP_xfer(scan_op)) ops_to_check -= 1;  // account for the delay slot
+    if (TOP_is_xfer(OP_code(scan_op))) ops_to_check -= 1;  // account for the delay slot
   }
   if (add_noops) {
     // add ops_to_check number of noops.
@@ -454,7 +457,7 @@ Handle_Additive_Hazards (OP *op, INT opnd, INT numops)
 // Placeholder routine to check if <op> has any dependence conflict with
 // <prev_op>.
 // ======================================================================
-static BOOL
+BOOL
 Is_There_OP_Dependence(OP *op, OP *prev_op)
 {
 
@@ -480,12 +483,26 @@ Is_There_OP_Dependence(OP *op, OP *prev_op)
       // which sets the predicate and the branch operation which uses
       // the same predicate.
 
-      if (OP_icmp(prev_op) && OP_xfer(op)) {
+      //if (OP_icmp(prev_op) && OP_xfer(op)) {
+      if (OP_icmp(prev_op) && TOP_is_xfer(OP_code(op))) {
+
 	TN *tn1, *tn2;
 	OP *cmp_op;
 	
 	CGTARG_Analyze_Compare(op, &tn1, &tn2, &cmp_op);
 	if (prev_op == cmp_op) continue;
+
+        // add one special case; 
+        // if we caring for predicate compare. 
+        // CGTARG_Analyze_Compare return cmp_op as null;
+        // but when prev_op just condition op it always 
+        // donot have any dependency between prev_op and op
+        // Such as:
+        // (p6) cmp P7,P8 = r3, r4
+        // (p7) br.cond _Lt.1.8
+        // always can be put into one bundle
+        if (read_dependence && OP_has_predicate(prev_op) 
+            && !cmp_op) continue;
       }
 
       // (2) Ignore all dependences originating from p0 predicate.
@@ -500,7 +517,7 @@ Is_There_OP_Dependence(OP *op, OP *prev_op)
 
       // (5) A check load and a subsequent instruction that reads the
       // target of the check load may exist in the same instruction group.
-      if (read_dependence && CGTARG_Is_OP_Speculative(prev_op)) continue;
+      if (read_dependence && CGTARG_Is_OP_Check_Load(prev_op)) continue;
 
       return TRUE;
     }
@@ -538,7 +555,9 @@ Delay_Scheduling_OP(OP *op, INT slot_pos, TI_BUNDLE *bundle)
   // inserted before (instead of after). As a result, any <xfer_op>
   // will be the last_op in a legal bundle.
 
-  if (BB_last_op(OP_bb(op)) == op && OP_xfer(op) && 
+  //if (BB_last_op(OP_bb(op)) == op && OP_xfer(op) && 
+  if (BB_last_op(OP_bb(op)) == op && TOP_is_xfer(OP_code(op)) && 
+
       (slot_pos != (ISA_MAX_SLOTS - 1))) 
     return TRUE;
 
@@ -784,7 +803,9 @@ Check_For_Other_Hazards(OP *op)
 
   if (PROC_has_branch_delay_slot()) {
     // Check for delay slot hazards.
-    if (OP_xfer(op)) {
+    //if (OP_xfer(op)) {
+    if (TOP_is_xfer(OP_code(op))) {
+ 
       Handle_Post_Hazard (op, OPND_NONE, 1);
       Add_Post_Hazard_To_Q (op, OPND_NONE, 1);
     }

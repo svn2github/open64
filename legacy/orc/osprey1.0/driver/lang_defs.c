@@ -56,10 +56,10 @@ static lang_info_t language_info[] = {
 	{'N',	0x00000000,	{""}},		/* NONE */
 	{'A',	0x0fffffff,	{""}},		/* ALL */
 	{'p',	0x00000001,	{"cpp"}},		/* cpp */
-	{'c',	0x00000002,	{"cc","sgicc","ia64-sgi-linux-sgicc","gcc","c89"}},	/* cc */
-	{'C',	0x00000004,	{"CC","sgiCC","sgi++","g++"}},	/* c++ */
-	{'f',	0x00000008,	{"f77","sgif77","gf77","fort77"}}, /* f77 */
-	{'F',	0x00000010,	{"f90","sgif90"}},		/* f90 */
+	{'c',	0x00000002,	{"cc","orcc","sgicc","ia64-sgi-linux-sgicc","gcc","c89"}},	/* cc */
+	{'C',	0x00000004,	{"CC","orCC","orc++","sgiCC","sgi++","g++"}},	/* c++ */
+	{'f',	0x00000008,	{"f77","orf77","sgif77","gf77","fort77"}}, /* f77 */
+	{'F',	0x00000010,	{"f90","orf90","sgif90"}},		/* f90 */
 	{'a',	0x00000020,	{"as","sgias","gas"}},		/* as */
 	{'l',	0x00000040,	{"ld","sgild"}},		/* ld */
 	{'I',	0x80000000,	{"int"}},		/* Internal option */
@@ -74,7 +74,7 @@ static lang_info_t language_info[] = {
 #else
 #define NAMEPREFIX	""
 #define BINPATH		"/usr/bin"
-#define LIBPATH		"/usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0"
+#define LIBPATH		"/usr/lib/gcc-lib/ia64-orc-linux/orcc-1.0"
 #define ALTLIBPATH	"/usr/lib"
 #endif
 #define PHASEPATH	LIBPATH

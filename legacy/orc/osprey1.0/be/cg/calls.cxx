@@ -93,8 +93,12 @@
 #include "cgtarget.h"
 #include "entry_exit_targ.h"
 #include "targ_abi_properties.h"
+#include "targ_isa_registers.h"
+#include "scheduler.h"
 
 INT64 Frame_Len;
+extern BOOL IPFEC_Enable_Edge_Profile;
+extern void Clean_Up(BB* bb);
 
 /* Callee-saved register <-> save symbol/TN map: */
 SAVE_REG *Callee_Saved_Regs;
@@ -130,6 +134,8 @@ static TN *Caller_FP_TN;
 static TN *Caller_Pfs_TN;
 static TN *ra_intsave_tn;
 
+
+
 /* Keep track of a TN with the value of the current PU's stack pointer
  * adjustment (i.e. the frame length):
  */
@@ -137,6 +143,8 @@ static TN *Frame_Len_TN;
 static TN *Neg_Frame_Len_TN;
 
 static BOOL Gen_Frame_Pointer;
+
+void Split_BB_For_br(BB *bb);
 
 /* Trace flags: */
 static BOOL Trace_EE = FALSE;	/* Trace entry/exit processing */
@@ -367,6 +375,46 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
   Callee_Saved_Regs_Count = i;
 }
 
+/* ===================================================================
+ *
+ * vararg_st8_2_st8_spill 
+ * 
+ * convert var-argument spill form from st8 to st8.spill.
+ *
+ * Since var-argument passed by stacked-register may contains NAT bit,
+ * st8 instruction will raise nat-bit-comsumption exception.
+ *
+ * ===================================================================
+ */
+static void
+vararg_st8_2_st8_spill (BB * bb) {
+
+  OP * op ;
+  FOR_ALL_BB_OPs_REV (bb,op) {
+    if (!OP_store(op)) continue ;
+
+    TN * tn = OP_opnd(op,OP_find_opnd_use(op,OU_storeval));
+    PREG_NUM preg = TN_To_PREG(tn);
+
+    if (preg == 0)
+      continue;
+
+    if (preg < First_Int_Preg_Param_Offset || 
+        preg > (First_Int_Preg_Param_Offset + MAX_NUMBER_OF_REGISTER_PARAMETERS))
+      continue ;
+
+    /*ST* st = vararg_symbols[preg-First_Int_Preg_Param_Offset];*/
+    OP* new_op = Mk_OP(TOP_st8_spill, /* op code */
+                OP_opnd(op,OP_find_opnd_use(op,OU_predicate)),
+                Gen_Enum_TN(ECV_sthint), /* hint */
+                OP_opnd(op,OP_find_opnd_use(op,OU_base)),
+                OP_opnd(op,OP_find_opnd_use(op,OU_storeval)));
+    BB_Insert_Op_Before (bb,op,new_op);
+    BB_Remove_Op (bb,op);
+    op=new_op;
+  }
+}
+
 
 /* ====================================================================
  *
@@ -390,6 +438,7 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
  *
  * ====================================================================
  */
+
 
 static void
 Generate_Entry (BB *bb, BOOL gra_run )
@@ -496,9 +545,29 @@ Generate_Entry (BB *bb, BOOL gra_run )
       }
       CGSPILL_Store_To_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb);
     }
-    else {
-      if (gra_run && PU_Has_Calls 
-	&& TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
+    else if (PU_Has_Calls || IPFEC_Enable_Edge_Profile){
+      // Some points need to be noted here:
+      // First,
+      //Currently we know there are two cases need to save/restore b0:
+      //      1 :  PU_Has_Calls
+      //      2 :  PU has "switch" statement, which will lead to such OP:
+      //              "br.few b0","br.few b6" or "br.few b7".
+      // for case1, we handle it here.
+      // for case2, we do not handle it here. We just simply set <b0> not-allocatable
+      //      in register allocation phase to prevent <b0> from being used. This should be safe
+      //      because we know at least <b6> and <b7> can be used in "br.few" alike OPs. But when
+      //      there are many BBs need more than 2 caller-saved branch registers, we will pay for
+      //      more spills. Until now, I have not seen such case, in most case, one branch register
+      //      is enough.
+      // Another reason we set <b0> not allocatable (see register.cxx) is: we are not sure if there
+      //      are other cases which could bring the usage of <b0>.
+      // Second,
+      //Always use "ISA_REGISTER_CLASS_integer" register to save/restore <b0>, in spite of "gra_run".
+      // the purpose is to prevent such CGIR "TN766(sv:b0) :- copy.br TN257(p0) TN123(b0)", if such CGIR
+      // appears, it will become "b6 :- copy.br p0 b0" after register allocation. The problem is: "copy.br"
+      // is a simulated OP, cgdwarf_targ.cxx will make an assertion that no simulated OP appears.
+      // I think this should be a bug. This solution is just to work around it.
+      if ( TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
       {
 	// because has calls, gra will need to spill this.
 	// but if it is not already in an integer reg,
@@ -591,6 +660,10 @@ Generate_Entry (BB *bb, BOOL gra_run )
   if ( Trace_EE ) {
     #pragma mips_frequency_hint NEVER
     Print_OPS (&ops);
+  }
+
+  if (TY_is_varargs(Ty_Table[PU_prototype(Get_Current_PU())])) {
+    vararg_st8_2_st8_spill (bb);
   }
 
   /* Merge the new operations into the beginning of the entry BB: */
@@ -1261,9 +1334,9 @@ Generate_Exit (
       CGSPILL_Load_From_Memory (ra_sv_tn, ra_sv_sym, &ops, CGSPILL_LCL, bb_epi);
       Exp_COPY (RA_TN, ra_sv_tn, &ops);
     }
-    else {
-      if (gra_run && PU_Has_Calls 
-	&& TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
+    else if( PU_Has_Calls || IPFEC_Enable_Edge_Profile) {
+      //Please see comment in similar place in "Generate_Entry" PU.
+      if ( TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer)
       {
 	// because has calls, gra will need to spill this.
 	// but if it is not already in an integer reg,
@@ -2021,6 +2094,7 @@ Adjust_Alloca_Code (void)
 		BB_Insert_Ops_Before(bb, op, &ops);
     		BB_Remove_Op(bb, op);
 		op = OPS_last(&ops);
+		Reset_BB_scheduled(bb);
 	}
   }
 }
@@ -2057,3 +2131,1008 @@ Adjust_Entry_Exit_Code( ST *pu )
 	Adjust_Alloca_Code ();
   }
 }
+
+
+
+/*
+ *==============================================================
+ * The following routines are used to realieze dynamical 
+ *		cycle counting
+ *==============================================================
+ */
+extern void Handle_All_Hazards(BB *bb);
+INT R32;		/* first stack register */
+REGISTER	reg_value_alloc1;
+REGISTER	reg_value_alloc2;
+#define AFTER TRUE 	/* after bb */
+#define BEFORE FALSE 	/* before bb */
+#define Set_TN_reg_value(tn, value)  (tn->u1.reg_tn.class_reg.class_reg.reg = value)
+#define Cp_TN_reg_value(tn1, tn2)  (tn1->u1.reg_tn.class_reg.class_reg.reg = tn2->u1.reg_tn.class_reg.class_reg.reg)
+#define TN_reg_value(tn) tn->u1.reg_tn.class_reg.class_reg.reg
+#define TN_immd_value(tn) tn->u1.value
+#define TO_SAVE_REGISTER	32
+#define PU_IN_ONE_FILE		1000
+#define BB_IN_ONE_PU		1000
+
+typedef struct bb_symbol {
+	mBB_NUM		id;
+	char * 		name;
+	struct bb_symbol * 	next;
+	ST *		global_BB_st;
+	TN* 		BB_var_name_tn;
+} BB_symbol;
+BB_symbol *BB_Symbol_Head;
+BB_symbol *BB_Symbol_Point;
+
+/*
+ * Insert an ld8 r=[r] instruction after bb
+ */
+void Ld8_r_r(BB *new_bb, TN * src)
+{
+	OP *Ld8_Op;
+	TN *Enum_Op1; 
+	TN *Enum_Op2; 
+
+	/* ld8 r=[r] */
+
+	Enum_Op1 = Gen_Enum_TN(ECV_ldtype);
+	Enum_Op2 = Gen_Enum_TN(ECV_ldhint);
+	Ld8_Op = Mk_OP(TOP_ld8, src, True_TN, Enum_Op1, Enum_Op2, src);
+  	BB_Append_Op(new_bb, Ld8_Op);
+}
+
+/*
+ * Insert an st8.spill r1=[r2] instruction after bb
+ */
+void St8_spill_r(BB *new_bb, TN *src, TN *base)
+{
+	OP *St8_Op;
+	TN *Enum_Op2;
+
+	/* st8.spill [src]=base */
+
+	Enum_Op2 = Gen_Enum_TN(ECV_sthint);
+	St8_Op = Mk_OP(TOP_st8_spill, True_TN, Enum_Op2, src, base);
+  	BB_Append_Op(new_bb, St8_Op);
+}
+
+/*
+ * Insert an ld.fill r1=[r2] instruction after bb
+ */
+void Ld8_fill_r(BB *new_bb, TN *src, TN *base)
+{
+	OP *Ld8_Op;
+	TN *Enum_Op2;
+
+	/* ld8.fill base = [src] */
+
+	Enum_Op2 = Gen_Enum_TN(ECV_ldhint);
+	Ld8_Op = Mk_OP(TOP_ld8_fill, base, True_TN, Enum_Op2, src);
+  	BB_Append_Op(new_bb, Ld8_Op);
+}
+
+/*
+ * Insert an addl src=base,gp instruction after bb
+ */
+void Addl(BB *new_bb, TN *src, TN *base)
+{
+	OP *Addl_Op;
+
+	/* addl src=base, gp */
+
+  	Addl_Op = Mk_OP(TOP_addl, src, True_TN, base, GP_TN);
+  	BB_Append_Op(new_bb, Addl_Op);
+}
+
+/*
+ * Insert the assembly fragment which is used to call output function 
+ */
+static void Cycle_Output_Func_Insert(BB *bb, int reg_num, TN **spill_tn, TN *gp_tn, TN *pr_tn, TN **rg_tn, int output_reg_num, char *output_func)
+{
+	BB * new_bb;	
+	TY_IDX ty;
+	ST *call_st;
+  	ST *Atexit_Fun;
+	OP *Mv_Op, *Addl_Op, *Ld8_Op, *St8_Op, *Mov_Op, *Br_Call_Op;
+	TN *var_name_tn;
+	TN *src, *base, *target;
+	TN *Enum_Op1, *Enum_Op2;
+	INT reg_value;
+  	TN *ar_ec = Build_Dedicated_TN( ISA_REGISTER_CLASS_application, (REGISTER)(REGISTER_MIN + 66), 8); 
+	INT i;
+
+	reg_value = R32 + reg_num + 1;
+	new_bb = Gen_And_Insert_BB_After(bb);
+
+	/* mov reg_value = pr */
+
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value + 1);
+	Mov_Op = Mk_OP(TOP_mov_f_pr, src, True_TN);
+  	BB_Append_Op(new_bb, Mov_Op);
+
+	/* addl r=@ltoff(pr_Symbol_Name#), gp */
+
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value);
+	Addl(new_bb, src, pr_tn);
+	
+	/* ld8 reg_value = [reg_value] */
+
+	Ld8_r_r(new_bb, src);
+
+	/* St8.spill src=baes */
+
+	base = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(base, reg_value + 1);
+	St8_spill_r(new_bb, src, base);
+
+	/* addl r=@ltoff(gp_Symbol_Name#), gp */
+
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value);
+	Addl(new_bb, src, gp_tn);
+	
+	/* ld8 reg_value = [reg_value] */
+
+	Ld8_r_r(new_bb, src);
+
+	/* St8.spill src=baes */
+
+	base = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(base, reg_value - output_reg_num - 1);
+	St8_spill_r(new_bb, src, base);
+
+	/* mov reg_value - 1 = gp */
+
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value - output_reg_num - 1);
+	Mov_Op = Mk_OP(TOP_mov, src, True_TN, GP_TN);
+  	BB_Append_Op(new_bb, Mov_Op);
+
+	for (i = 0; i < output_reg_num; i++) {
+
+		/* addl r=@ltoff(Spill_Symbol_Name#), gp */
+
+		src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+		Set_TN_reg_value(src, reg_value);
+		Addl(new_bb, src, spill_tn[i]);
+	
+		Ld8_r_r(new_bb, src);/* ld8 r=[r] */
+
+		/* st8.spill [r] = r1 */
+
+		base = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+		Set_TN_reg_value(base, reg_value - output_reg_num + i);
+		St8_spill_r(new_bb, src, base);
+	}
+
+	for (i = 0; i < TO_SAVE_REGISTER; i++) {
+		src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+		Set_TN_reg_value(src, reg_value);
+		Addl(new_bb, src, rg_tn[i]);
+	
+		Ld8_r_r(new_bb, src);
+		base = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+		Set_TN_reg_value(base, i + 3);
+		St8_spill_r(new_bb, src, base);
+	}
+
+	/* addl r=@ltoff(@fptr(test#)), gp */
+
+	ty = Make_Function_Type(MTYPE_To_TY(MTYPE_V));
+	call_st = Gen_Intrinsic_Function(ty, output_func);
+	Clear_PU_no_side_effects(Pu_Table[ST_pu(call_st)]);
+	Clear_PU_is_pure(Pu_Table[ST_pu(call_st)]);
+	Set_PU_no_delete(Pu_Table[ST_pu(call_st)]);
+	INT64 offset = 0;
+	INT32 relocs = TN_RELOC_IA_LTOFF_FPTR;
+	var_name_tn = Gen_Symbol_TN(call_st, offset, relocs);
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value - output_reg_num);
+  	Addl_Op = Mk_OP(TOP_addl, src, True_TN, var_name_tn, GP_TN);
+  	BB_Append_Op(new_bb, Addl_Op);
+
+	/* ld8 r=[r] */
+
+	Enum_Op1 = Gen_Enum_TN(ECV_ldtype);
+	Enum_Op2 = Gen_Enum_TN(ECV_ldhint);
+	Ld8_Op = Mk_OP(TOP_ld8, src, True_TN, Enum_Op1, Enum_Op2, src);
+  	BB_Append_Op(new_bb, Ld8_Op);
+
+	/* br.call.sptk.many b0=atexit# */
+
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_branch, Pointer_Size);
+	Set_TN_reg_value(src, 1);
+	ty = Make_Function_Type(MTYPE_To_TY(MTYPE_V));
+	Atexit_Fun = Gen_Intrinsic_Function(ty, "atexit");
+	Clear_PU_no_side_effects(Pu_Table[ST_pu(Atexit_Fun)]);
+	Clear_PU_is_pure(Pu_Table[ST_pu(Atexit_Fun)]);
+	Set_PU_no_delete(Pu_Table[ST_pu(Atexit_Fun)]);
+	target = Gen_Symbol_TN(Atexit_Fun, 0, 0);
+  	Br_Call_Op = Mk_OP (TOP_br_call, src, True_TN, Gen_Enum_TN(ECV_bwh_sptk), Gen_Enum_TN(ECV_ph_many), Gen_Enum_TN(ECV_dh), target, ar_ec);
+  	BB_Append_Op(new_bb, Br_Call_Op);
+
+	Handle_All_Hazards(new_bb); /* do with bundle and stop bit */
+
+	/*
+  	 * the following instructions are used to restore the first output register in register stack
+	 */
+	BB * back_bb;
+	back_bb = Gen_And_Insert_BB_After(new_bb);
+
+	/* mov gp = reg_value - 1 */
+
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value - output_reg_num - 1);
+	Mov_Op = Mk_OP(TOP_mov, GP_TN, True_TN, src);
+  	BB_Append_Op(back_bb, Mov_Op);
+
+	/* addl r=@ltoff(gp_Symbol_Name#), gp */
+
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value);
+	Addl(back_bb, src, gp_tn);
+	
+	/* ld8 reg_value = [reg_value] */
+
+	Ld8_r_r(back_bb, src);
+
+	/* Ld8.spill src=base */
+
+	base = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(base, reg_value - output_reg_num - 1);
+	Ld8_fill_r(back_bb, src, base);
+
+	/* addl r=@ltoff(pr_Symbol_Name#), gp */
+
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value);
+	Addl(back_bb, src, pr_tn);
+	
+	/* ld8 reg_value = [reg_value] */
+
+	Ld8_r_r(back_bb, src);
+
+	/* St8.spill src=baes */
+
+	base = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(base, reg_value + 1);
+	Ld8_fill_r(back_bb, src, base);
+
+	/* mov reg_value = pr */
+
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value + 1);
+	Mov_Op = Mk_OP(TOP_mov_t_pr, True_TN, src, Gen_Literal_TN(-1, 8));
+  	BB_Append_Op(back_bb, Mov_Op);
+
+	/* addl r=@ltoff(Spill_Symbol_Name#), gp */
+
+	for (i = 0; i < output_reg_num; i++) {
+		src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+		Set_TN_reg_value(src, reg_value);
+		Addl(back_bb, src, spill_tn[i]);
+
+		Ld8_r_r(back_bb, src);	/* ld8 r=[r] */
+
+		/* ld8 r1 = [r] */
+		base = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+		Set_TN_reg_value(base, reg_value - output_reg_num + i);
+		Ld8_fill_r(back_bb, src, base);
+	}
+
+	/* addl r=@ltoff(Register_Symbol_Name#), gp */
+
+	for (i = 0; i < TO_SAVE_REGISTER; i++) {
+		src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+		Set_TN_reg_value(src, reg_value);
+		Addl(back_bb, src, rg_tn[i]);
+
+		Ld8_r_r(back_bb, src);	
+
+		base = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+		Set_TN_reg_value(base, 3 + i);
+		Ld8_fill_r(back_bb, src, base);
+	}
+
+	Handle_All_Hazards(back_bb); 	/* do with bundle and stop bit */
+}
+
+REGISTER Get_Value_Caller_GP(BB *bb)
+{
+	OP *op;
+	REGISTER reg_value;
+
+	FOR_ALL_BB_OPs_FWD(bb, op) {
+		if ((op->opr == TOP_mov) && (op->res_opnd[2]->u1.reg_tn.class_reg.class_reg.reg == 2)){	
+			reg_value = op->res_opnd[1]->u1.reg_tn.class_reg.class_reg.reg;	
+			return reg_value;
+		}
+	}	
+	return 0;
+}
+
+/*
+ * Insert the cycle count assembly fragment into bbs
+ */
+static void Cycle_Count_Frag_Insert(BB *bb, INT reg_num, TN * var_name_tn, BOOL place, INT bb_cycle)
+{
+	BB * new_bb;
+	INT reg_value;
+	TN *Enum_Op1, *Enum_Op2;
+	TN *src, *base;
+	OP *Addl_Op, *Ld8_Op, *Ld4_Op, *Adds_Op, *St4_Op, *Nop_Op, *Mov_Op;
+	OP *Nop_op;
+	REGISTER caller_gp_reg;
+
+	reg_value = R32 + reg_num + 1;
+
+	/* Insert a new bb after the bb */
+  	FmtAssert (bb != NULL, ("Null bb during insert frag ins in cycle counting"));
+	if (place)
+		new_bb = Gen_And_Insert_BB_After(bb);
+	else
+		new_bb = Gen_And_Insert_BB_Before(bb);
+
+	/* GP = Caller_GP_TN */
+
+	if (!(Caller_GP_TN == NULL) && !(TN_reg_value(Caller_GP_TN) == 0) && BB_call(BB_prev(new_bb))) {
+		src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+		caller_gp_reg = Get_Value_Caller_GP(BB_next(new_bb));
+		if (caller_gp_reg)
+			Set_TN_reg_value(src, caller_gp_reg);
+		else
+			Cp_TN_reg_value(src, Caller_GP_TN);
+		Mov_Op = Mk_OP(TOP_mov, GP_TN, True_TN, src);
+  		BB_Append_Op(new_bb, Mov_Op);
+	}
+	
+	/* The following seems do nothing , But it keep dependence violation away */
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value_alloc1);
+	base = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(base, reg_value_alloc2);
+	Mov_Op = Mk_OP(TOP_mov, src, True_TN, base);
+  	BB_Append_Op(new_bb, Mov_Op);
+	Mov_Op = Mk_OP(TOP_mov, base, True_TN, src);
+  	BB_Append_Op(new_bb, Mov_Op);
+
+  	Nop_op = Mk_OP (TOP_nop_m, True_TN, Gen_Literal_TN(0, 4));
+  	BB_Append_Op(new_bb, Nop_op);
+
+	/* addl r=@ltoff(PU_Symbol_Name#), gp */
+
+	src = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(src, reg_value_alloc1);
+  	Addl_Op = Mk_OP(TOP_addl, src, True_TN, var_name_tn, GP_TN);
+  	BB_Append_Op(new_bb, Addl_Op);
+
+  	Nop_op = Mk_OP (TOP_nop_m, True_TN, Gen_Literal_TN(0, 4));
+  	BB_Append_Op(new_bb, Nop_op);
+
+	/*ld8 r=[r] */
+
+	Enum_Op1 = Gen_Enum_TN(ECV_ldtype);
+	Enum_Op2 = Gen_Enum_TN(ECV_ldhint);
+	Ld8_Op = Mk_OP(TOP_ld8, src, True_TN, Enum_Op1, Enum_Op2, src);
+  	BB_Append_Op(new_bb, Ld8_Op);
+	
+  	Nop_op = Mk_OP (TOP_nop_m, True_TN, Gen_Literal_TN(0, 4));
+  	BB_Append_Op(new_bb, Nop_op);
+
+	/*ld4 r1 = [r] */
+
+	base = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(base, reg_value_alloc2);
+	Ld4_Op = Mk_OP(TOP_ld4, base, True_TN, Enum_Op1, Enum_Op2, src);
+  	BB_Append_Op(new_bb, Ld4_Op);
+
+  	Nop_op = Mk_OP (TOP_nop_m, True_TN, Gen_Literal_TN(0, 4));
+  	BB_Append_Op(new_bb, Nop_op);
+
+	/* adds r1=bb_cycle, r1 */
+
+  	Adds_Op = Mk_OP (TOP_adds, base, True_TN, Gen_Literal_TN(bb_cycle, 4), base);
+  	BB_Append_Op(new_bb, Adds_Op);
+
+	/* st4 [src] = base */
+
+	Enum_Op1 = Gen_Enum_TN(ECV_sttype);
+	Enum_Op2 = Gen_Enum_TN(ECV_sthint);
+	St4_Op = Mk_OP(TOP_st4, True_TN, Enum_Op1, Enum_Op2, src, base);
+  	BB_Append_Op(new_bb, St4_Op);
+
+	Handle_All_Hazards(new_bb); 	/* do with bundle and stop bit */
+}
+/*
+ * retarget the branch instructions
+ */
+void Branch_Retarget(BB *bb)
+{
+	BB *branch_bb;
+	BB *temp_bb;
+	OP *br;
+	BBLIST *list;
+	
+	for (list = bb->preds; list != NULL; list = BBLIST_next(list)) {
+		temp_bb = list->item;
+		BB_Retarget_Branch(temp_bb, bb, bb->prev);
+	}
+}
+
+/*
+ * Insert 'nop' OP before bb
+ */
+void Prepend_Nop_Op(BB *bb, TOP opr)
+{
+	OP *op;
+
+  	op = Mk_OP (opr, True_TN, Gen_Literal_TN(0, 4));
+  	BB_Prepend_Op(bb, op);
+}
+
+/*
+ * Insert 'alloc' instruction before the bb which is entry && exit bb, 
+ * and it don't use alloc in it's entry. So we need to insert one 'alloc'
+ * instruction to get the tmp registers which we need to caculate the cycles
+ */
+BB *Alloc_Inst_Insert_Before(BB *bb)
+{
+	OP *Alloc_Op, *Last_Op, *Mov_Op;
+	BB *new_bb, *Last_bb;
+	TN *saved_pfs;
+	REGISTER reg_value;
+	
+  	FmtAssert(bb != NULL, ("NULL input bb in Alloc_Inst_Insert_Before"));
+	new_bb = Gen_And_Insert_BB_Before(bb);
+  	FmtAssert(new_bb != NULL, ("Failed to get new bb in Alloc_Inst_Insert_Before"));
+	BB_Copy_Annotations(new_bb, bb, ANNOT_ENTRYINFO);
+	REGION_First_BB = new_bb;
+
+	/* create new alloc instruction and insert it in new bb*/
+	reg_value = REGISTER_Request_Stacked_Register(ABI_PROPERTY_caller, ISA_REGISTER_CLASS_integer);
+	saved_pfs = Gen_Register_TN(ISA_REGISTER_CLASS_integer, Pointer_Size);
+	Set_TN_reg_value(saved_pfs, reg_value);
+	Alloc_Op = Mk_OP(TOP_alloc, saved_pfs, Gen_Literal_TN(0, 4), Gen_Literal_TN(3, 4), Gen_Literal_TN(0, 4), Gen_Literal_TN(0, 4));
+	Prepend_Nop_Op(new_bb, TOP_nop_i);
+	Prepend_Nop_Op(new_bb, TOP_nop_m);
+	BB_Prepend_Op(new_bb, Alloc_Op);
+
+	/* do with property and list */
+	new_bb->flags =  new_bb->flags | BBM_ENTRY;
+	bb->flags =  bb->flags & ~BBM_ENTRY;
+	Entry_BB_Head = BB_LIST_Delete(bb, Entry_BB_Head);
+	Entry_BB_Head = BB_LIST_Push(new_bb, Entry_BB_Head, &MEM_pu_pool);
+
+	Handle_All_Hazards(new_bb); /*do with stop bits and bundles */
+	
+	if (BB_call(bb) || (BB_branch_op(bb))) { /* it must be an branch bb, since it's the only one bb in the pu */
+		Split_BB_For_br(bb);
+		Last_bb = bb->next;
+	} else {
+  		FmtAssert(0, ("How can we see a pu that have no branch inst to finish itself "));
+	}
+
+	Mov_Op = Mk_OP(TOP_mov_t_ar_r_i, Pfs_TN, True_TN, saved_pfs);
+	BB_Prepend_Op(Last_bb, Mov_Op);
+
+	Handle_All_Hazards(Last_bb); 
+
+	return new_bb;
+}
+
+/*
+ * Split the entry BB: Insert a new BB before origional BB and put the origional
+ * 'alloc' instruction in the new BB. 
+ */
+BB *Split_Entry_BB(BB *bb)
+{
+	BB *new_bb;
+	OP *op, *temp_op;
+
+	/* create new bb */
+	new_bb = Gen_And_Insert_BB_Before(bb);
+        
+	Clean_Up(bb);
+        for (op = BB_first_op(bb); op != NULL; op = temp_op) {
+            temp_op = OP_next(op);
+            BB_Remove_Op(bb, op);
+            BB_Append_Op(new_bb, op);
+            if (OP_code(op) != TOP_alloc) {
+                    continue;
+            } else {
+                    break;
+            }
+         }
+        
+         FmtAssert( OP_code(op) == TOP_alloc, ("The BB has no 'alloc' instruction "));
+
+         BB_Copy_Annotations(new_bb, bb, ANNOT_ENTRYINFO); /*copy the annotation of orignal bb about entry information to the new bb, since new bb become the entry bb */
+         REGION_First_BB = new_bb;
+         Set_BB_entry(new_bb);
+         Entry_BB_Head = BB_LIST_Push(new_bb, Entry_BB_Head, &MEM_pu_pool); /* insert the new_bb to the Entry_BB_Head list */
+
+         Entry_BB_Head = BB_LIST_Delete(bb, Entry_BB_Head);
+         Reset_BB_entry(bb);
+ 
+         Handle_All_Hazards(bb); /* do with stop bits and bundles with old bb */
+         Handle_All_Hazards(new_bb); /* do with stop bits and bundles */
+
+         return new_bb;
+}
+
+BOOL Selected_PU(char * PU_Name)
+{
+	char *str_point;
+	char *point;
+	char *options;
+	int  str_length;
+	int  i;
+
+	str_length = strlen(Cycle_String);
+	options = (char*)malloc(str_length + 1);
+	strncpy(options, Cycle_String, str_length);
+	options[str_length] = '\0';
+
+	point = str_point = options;	
+	i = 0;
+
+	while (*str_point == '"' || *str_point == ' ' || *str_point == '%'){
+		str_point ++;
+		point ++;
+		i ++;
+	}
+	while(*str_point != '\0') {
+		while (*point != ' ' && *point != '"' && *point != '\0' && *point != '%') {
+			point ++;
+			i ++;
+		}
+		*point = '\0';
+
+		if (strcmp(PU_Name, str_point) == 0){
+			free(options);
+			return TRUE;
+		}
+
+		if (i >= str_length)
+			break;
+		point++;
+		i ++;
+		str_point=point;
+		while(*str_point == '%' && *str_point != '\0') {
+			str_point ++;
+			point ++;
+			i++;
+		}
+	}
+	free(options);
+	return FALSE;
+}
+/*
+ * Do instrumentation work, include: 
+ *	Global Symbol, Cycle Count instructions , Output result instructions
+ */
+void Pu_Cycle_Count_Func_Insert( ST* pu, BOOL is_region )
+{
+	BB_LIST *elist;
+  	BOOL gra_run = ! CG_localize_tns;
+	BB *bb, *temp_bb;
+	OP *op, *br;
+	char *PU_Name;
+	char *PU_Temp_Name;
+	INT num_input, num_local, num_output, num_rotating;
+	char *PU_Symbol_Name;
+	char *Spill_Symbol_Name[ISA_REGISTER_MAX];
+	char *Register_Symbol_Name[TO_SAVE_REGISTER];
+	char *GP_Symbol_Name;
+	char *PR_Symbol_Name;
+	INT i;
+	TN   *spill_var_name_tn[ISA_REGISTER_MAX];
+	TN   *register_var_name_tn[TO_SAVE_REGISTER];
+	TN   *gp_var_name_tn;
+	TN   *pr_var_name_tn;
+	
+	INT max_used_register_stack = 0;
+	
+	num_input = num_local = num_output = num_rotating = 0;
+  	FmtAssert(pu != NULL, ("pu to be null in Pu_Cycle_Count_Func_Insert\n"));
+	/*
+ 	 * suppose there are at most one alloc instruction in each bb
+	 * So we first get the information about the stack register using of each BB 
+	 */
+  	for ( elist = Entry_BB_Head; elist; elist = BB_LIST_rest(elist) ) {
+		bb = BB_LIST_first(elist);
+		/*
+		 * I am not still sure if the alloc instruction will be the first instrcution 
+		 * in a PU in ordinary program. So the following method will have some bad effect
+		 * in certain situation
+		 */
+		FOR_ALL_BB_OPs_FWD(bb, op) {
+			if (OP_code(op) != TOP_alloc) 
+				continue;
+			num_input = TN_immd_value(op->res_opnd[0]);
+			num_local = TN_immd_value(op->res_opnd[1]);
+			num_output = TN_immd_value(op->res_opnd[2]);
+			num_rotating = TN_immd_value(op->res_opnd[3]);
+			max_used_register_stack	= num_input + num_local + num_output;
+			/* to get to output register to be used by us */
+			Set_OP_opnd(op, 2, Gen_Literal_TN(num_output + 2, 4));
+		}
+  	}
+
+        /* alloc two free register for stack registers */
+	reg_value_alloc1 = REGISTER_Request_Stacked_Register(ABI_PROPERTY_caller, ISA_REGISTER_CLASS_integer);
+	reg_value_alloc2 = REGISTER_Request_Stacked_Register(ABI_PROPERTY_caller, ISA_REGISTER_CLASS_integer);
+	/* generate global symbol for count cycle */
+	static MEM_POOL global_symbol_pool;
+
+	PU_Name = ST_name(pu);
+	MEM_POOL_Initialize(&global_symbol_pool, "instrumentation global symbol pool", FALSE);
+	MEM_POOL_Push(&global_symbol_pool);
+
+	PU_Symbol_Name = TYPE_MEM_POOL_ALLOC_N(char, &global_symbol_pool, sizeof(char) * (strlen(Src_File_Name) + strlen(PU_Name) + strlen("Cycle_Symbol") + 3));
+	sprintf(PU_Symbol_Name, "%s_%s_%s", Src_File_Name, PU_Name, "Cycle_Symbol");
+	while((PU_Temp_Name = strchr(PU_Symbol_Name, '.')) != NULL || (PU_Temp_Name = strchr(PU_Symbol_Name, '-')) != NULL)
+	{
+		*PU_Temp_Name = '_';
+	}	
+
+	/* the global symbol used to record the cycle of each PU */
+	TY_IDX ty = MTYPE_To_TY(MTYPE_I8);
+	ST *global_st = New_ST(GLOBAL_SYMTAB);
+	ST_Init(global_st, Save_Str2(PU_Symbol_Name, ""), CLASS_VAR, SCLASS_UGLOBAL, EXPORT_PREEMPTIBLE, ty);
+	Allocate_Object(global_st);
+	INT64 offset = 0;
+	INT32 relocs = TN_RELOC_IA_LTOFF22;
+	TN *var_name_tn = Gen_Symbol_TN(global_st, offset, relocs);
+
+	/* the global symbol used to record the cycle of each BB */
+
+	if (Cycle_BB_Enable && Selected_PU(ST_name(pu))) {
+		BB_Symbol_Point = BB_Symbol_Head = (BB_symbol *)malloc(sizeof(BB_symbol));
+		BB_Symbol_Head->next = NULL;
+		for (bb = REGION_First_BB; bb != NULL; bb = temp_bb) {
+			BB_symbol *BB_Symbol_Name;
+			char bb_id[10];
+	
+			temp_bb = BB_next(bb);
+			br= BB_branch_op(bb);
+			if (!BB_call(bb) && !br && !BB_exit(bb) && BB_length(bb)) { /* do with ordinary BB */ 
+				sprintf(bb_id, "%d", bb->id);
+				BB_Symbol_Point->name = (char *)malloc(sizeof(char)*(strlen(bb_id) + strlen(PU_Name) + 2));
+				sprintf(BB_Symbol_Point->name, "%s_%d", PU_Name, bb->id);
+				BB_Symbol_Name = (BB_symbol *)malloc(sizeof(BB_symbol));
+				BB_Symbol_Point->id = bb->id;
+				BB_Symbol_Point->next = BB_Symbol_Name;
+				BB_Symbol_Name->next = NULL;
+				BB_Symbol_Point = BB_Symbol_Name;
+			}
+		}
+
+		/* symbol used to store the bb cycle */
+		TY_IDX BB_ty = MTYPE_To_TY(MTYPE_I8);
+		BB_Symbol_Point = BB_Symbol_Head;
+		do {
+			BB_Symbol_Point->global_BB_st = New_ST(GLOBAL_SYMTAB);
+			ST_Init(BB_Symbol_Point->global_BB_st, Save_Str2(BB_Symbol_Point->name, ""), CLASS_VAR, SCLASS_UGLOBAL, EXPORT_PREEMPTIBLE, BB_ty);
+			Allocate_Object(BB_Symbol_Point->global_BB_st);
+ 			BB_Symbol_Point->BB_var_name_tn = Gen_Symbol_TN(BB_Symbol_Point->global_BB_st, offset, relocs);
+			BB_Symbol_Point = BB_Symbol_Point->next;
+		} while (BB_Symbol_Point->next != NULL);
+	}
+
+      	if (strcmp(PU_Name, "main") == 0) {
+		GP_Symbol_Name = TYPE_MEM_POOL_ALLOC_N(char, &global_symbol_pool, sizeof(char) * (strlen(PU_Name) + strlen("GP_Symbol") + 2));
+		PR_Symbol_Name = TYPE_MEM_POOL_ALLOC_N(char, &global_symbol_pool, sizeof(char) * (strlen(PU_Name) + strlen("PR_Symbol") + 2));
+
+		sprintf(GP_Symbol_Name, "%s_%s", PU_Name, "GP_Symbol");
+		sprintf(PR_Symbol_Name, "%s_%s", PU_Name, "PR_Symbol");
+
+		for (i = 0; i < num_output ; i++) {
+			if (i > 9)
+				Spill_Symbol_Name[i] = TYPE_MEM_POOL_ALLOC_N(char, &global_symbol_pool, sizeof(char) * (strlen(PU_Name) + strlen("Spill_Symbol") + 5));
+			else
+				Spill_Symbol_Name[i] = TYPE_MEM_POOL_ALLOC_N(char, &global_symbol_pool, sizeof(char) * (strlen(PU_Name) + strlen("Spill_Symbol") + 4));
+			sprintf(Spill_Symbol_Name[i], "%s_%s_%d", PU_Name, "Spill_Symbol", i);
+		}
+	
+		/* Registers need to be saved during instrumentation */
+	
+		for (i = 0; i < TO_SAVE_REGISTER; i++) {
+			if (i > 9)
+				Register_Symbol_Name[i] = TYPE_MEM_POOL_ALLOC_N(char, &global_symbol_pool, sizeof(char) * (strlen(PU_Name) + strlen("Register_Symbol") + 5));
+			else
+				Register_Symbol_Name[i] = TYPE_MEM_POOL_ALLOC_N(char, &global_symbol_pool, sizeof(char) * (strlen(PU_Name) + strlen("Register_Symbol") + 4));
+			sprintf(Register_Symbol_Name[i], "%s_%s_%d", PU_Name, "Register_Symbol", i);
+		}
+	
+		/* 
+		 *create the global symbols which will be used during cycle couting 
+		 */
+	
+		/* data symbol used to store the first output reg */
+		TY_IDX spill_ty = MTYPE_To_TY(MTYPE_I8);
+		for (i = 0; i < num_output ; i++) {
+			ST* global_spill_st = New_ST(GLOBAL_SYMTAB);
+			ST_Init(global_spill_st, Save_Str2(Spill_Symbol_Name[i], ""), CLASS_VAR, SCLASS_UGLOBAL, EXPORT_PREEMPTIBLE, spill_ty);
+			Allocate_Object(global_spill_st);
+ 			spill_var_name_tn[i] = Gen_Symbol_TN(global_spill_st, offset, relocs);
+		}
+	
+		/* data symbol used to store the r2~r31 */
+		TY_IDX register_ty = MTYPE_To_TY(MTYPE_I8);
+		for (i = 0; i < TO_SAVE_REGISTER ; i++) {
+			ST* global_register_st = New_ST(GLOBAL_SYMTAB);
+			ST_Init(global_register_st, Save_Str2(Register_Symbol_Name[i], ""), CLASS_VAR, SCLASS_UGLOBAL, EXPORT_PREEMPTIBLE, register_ty);
+			Allocate_Object(global_register_st);
+ 			register_var_name_tn[i] = Gen_Symbol_TN(global_register_st, offset, relocs);
+		}
+		
+		/* data symbol use to store GP */
+		TY_IDX gp_ty = MTYPE_To_TY(MTYPE_I8);
+		ST* gp_st = New_ST(GLOBAL_SYMTAB);
+		ST_Init(gp_st, Save_Str2(GP_Symbol_Name, ""), CLASS_VAR, SCLASS_UGLOBAL, EXPORT_PREEMPTIBLE, gp_ty);
+		Allocate_Object(gp_st);
+		gp_var_name_tn = Gen_Symbol_TN(gp_st, offset, relocs);
+	
+		/* data symbol use to store Pr */
+		TY_IDX pr_ty = MTYPE_To_TY(MTYPE_I8);
+		ST* pr_st = New_ST(GLOBAL_SYMTAB);
+		ST_Init(pr_st, Save_Str2(PR_Symbol_Name, ""), CLASS_VAR, SCLASS_UGLOBAL, EXPORT_PREEMPTIBLE, pr_ty);
+		Allocate_Object(pr_st);
+		pr_var_name_tn = Gen_Symbol_TN(pr_st, offset, relocs);
+	}
+
+	/* 
+	 *output cycle counting global symbol into pu_output.h
+	 */
+	fprintf(Output_h_File, "extern long int %s;\n", PU_Symbol_Name);
+	pu_string[pu_number] = (char *)malloc(strlen(PU_Symbol_Name) + 1);
+	sprintf(pu_string[pu_number], "%s", PU_Symbol_Name);
+	pu_number ++;
+
+	if (pu_number > PU_IN_ONE_FILE)
+    		FmtAssert(FALSE, ("Too many pu in one file, Can't to handle file in which the number of pu great than 1000"));
+
+	if (Cycle_BB_Enable && Selected_PU(ST_name(pu))) {
+		BB_Symbol_Point = BB_Symbol_Head;
+		while (BB_Symbol_Point->next != NULL) {
+			fprintf(Output_h_File, "extern long int %s;\n", BB_Symbol_Point->name);
+			bb_string[bb_number] = (char *)malloc(strlen(BB_Symbol_Point->name) + 1);
+			sprintf(bb_string[bb_number], "%s", BB_Symbol_Point->name);
+			bb_number ++;
+			BB_Symbol_Point = BB_Symbol_Point->next;
+	
+			if (bb_number > BB_IN_ONE_PU) 
+    				FmtAssert(FALSE, ("Can't handle the PU in which the number of bbs is larege than 1000"));
+		}
+	}
+
+	MEM_POOL_Pop(&global_symbol_pool);
+	MEM_POOL_Delete(&global_symbol_pool);
+
+	/*
+	 * cycle count instrumentation 
+	 */
+
+	for (bb = REGION_First_BB; bb != NULL; bb = temp_bb) {
+		temp_bb = BB_next(bb);
+		br= BB_branch_op(bb);
+		if (!BB_call(bb) && !br && !BB_exit(bb) && BB_length(bb)) { /* do with ordinary BB */ 
+    			Cycle_Count_Frag_Insert (bb, max_used_register_stack, var_name_tn, AFTER, BB_cycle(bb));
+			if (Cycle_BB_Enable && Selected_PU(ST_name(pu))) {
+				BB_Symbol_Point = BB_Symbol_Head;
+				while (BB_Symbol_Point->next != NULL && BB_Symbol_Point->id != bb->id) {
+					BB_Symbol_Point = BB_Symbol_Point->next;
+				}
+				if (BB_Symbol_Point != NULL)
+    					Cycle_Count_Frag_Insert (bb->next, max_used_register_stack, BB_Symbol_Point->BB_var_name_tn, AFTER, BB_cycle(bb));
+			}
+		}
+		if (BB_exit(bb) && (!BB_entry(bb)) && BB_length(bb)) {  /* do with exit BB , but not entry BB at the same time */
+   			Cycle_Count_Frag_Insert (bb, max_used_register_stack, var_name_tn, BEFORE, BB_cycle(bb));
+			Branch_Retarget(bb); /* Since we insert a cycle count BB before exit BB, so, the original relations between BBs, such as prevs BB jmp to the exit BB, Now we must reshcedule these relationship, to maic it jump to the BB we insert, So that , the cycle count will do work */
+		}
+		/* do with the situation where there is only one  BB in a PU */
+		if (BB_exit(bb) && BB_entry(bb) && BB_length(bb)) {
+			BOOL alloc_in = FALSE;
+			BB *new_bb;
+			/* search if there are alloc inst during the bb */
+			FOR_ALL_BB_OPs_FWD(bb, op) {
+				if (OP_code(op) != TOP_alloc) 
+					continue;
+				else
+					alloc_in = TRUE;
+			}
+			if (alloc_in) {
+				new_bb = Split_Entry_BB(bb);/* Suppose the Alloc inst be the first inst in the BB */
+    				Cycle_Count_Frag_Insert (BB_next(new_bb), max_used_register_stack, var_name_tn, BEFORE, BB_cycle(BB_next(new_bb)));
+			} else {
+				/* Don't have alloc inst in BB at all, Then we need insert alloc inst to get stack register */
+				new_bb = Alloc_Inst_Insert_Before(bb);
+				max_used_register_stack = 1;/* the reg used to save pfs*/
+    				Cycle_Count_Frag_Insert (BB_next(new_bb), max_used_register_stack, var_name_tn, AFTER, BB_cycle(BB_next(new_bb)));
+			}
+		}
+  	}
+
+	/* output function instrumentation */
+	/* insert output function call in every entry BB */
+      	if (strcmp(ST_name(pu), "main") == 0) {
+  		BB_LIST *entry_elist;
+  		for ( entry_elist = Entry_BB_Head; entry_elist; 
+			entry_elist = BB_LIST_rest(entry_elist) ) {
+			Cycle_Output_Func_Insert( BB_LIST_first(entry_elist), max_used_register_stack, spill_var_name_tn, gp_var_name_tn, pr_var_name_tn, register_var_name_tn, num_output , "pu_output");
+		}
+	}
+	if (Cycle_BB_Enable && Selected_PU(ST_name(pu))) {
+		while (BB_Symbol_Head != NULL) {
+			BB_Symbol_Point = BB_Symbol_Head;
+			BB_Symbol_Head = BB_Symbol_Point->next;
+			free(BB_Symbol_Point);	
+		}
+	}
+}
+
+/*
+ * After split, Make the succs of old bbs to the second bb .
+ */
+void Change_Succs(BB *bb, BB *last_bb)
+{
+	BBLIST *list, *last_list, *temp_list, *preds_list;
+	BB *temp_bb;
+
+  	FmtAssert(bb != NULL || last_bb != NULL, ("Null BB during the Change_Succs "));
+	/* Set the succs of last bb to bb */
+	bb->succs = last_bb->succs;
+	last_bb->succs = NULL;
+	/*
+ 	 * We also must change the value of the previous bb of the successive bb of the bb
+	 */
+	for (list = bb->succs; list != NULL ; list = list->next) {
+		temp_bb = list->item;
+		temp_list = temp_bb->preds;
+		last_list = NULL;
+		for (preds_list = temp_bb->preds; 
+			(temp_list != last_list) && (temp_list != NULL); preds_list = temp_list) {
+			last_list = preds_list;
+			temp_list = preds_list->next;
+			if (preds_list->item == last_bb)
+				preds_list->item = bb;
+		}
+	}
+}
+
+/*
+ * Check if check inst
+ */
+int Check_Check(OP *op)
+{
+	if (op->opr == TOP_chk_s_i || op->opr == TOP_chk_s_m || 
+		op->opr == TOP_chk_f_s || op->opr == TOP_chk_a || 
+		op->opr == TOP_chk_f_a || op->opr == TOP_chk_s ) 
+		return 1;
+	return 0;
+}
+
+/*
+ * Split BB, put 'br' instruction in 
+ * a new bb which created to contain it.
+ */
+void Split_BB_For_br(BB *bb)
+{
+	BB *new_bb;
+	OP *last_op, *nop_op;
+	INT op_index = 0;
+	OP *br = BB_branch_op(bb);
+  	
+        FmtAssert(bb != NULL, ("Null bb during the Split_BB_For_br "));
+ 
+	last_op = BB_last_op(bb);
+  	FmtAssert(last_op!=NULL, ("To get the last op of the bb failed "));
+	if (BB_call(bb)) { /* br.call */
+		op_index = 1;
+		BB_Remove_Op(bb, last_op);
+	}
+	if (br) { /* br instructions */
+		op_index = 2;
+		BB_Remove_Op(bb, br);
+		if (OP_noop(last_op)) { /* Last inst be a delay noop inst */
+			op_index = 3;
+			BB_Remove_Op(bb, last_op);
+		}
+	}
+
+	/* move br op to new bb, and add other insts to keep the bb comprehensive*/
+	new_bb = Gen_And_Insert_BB_After(bb);
+	switch(op_index) {
+		case 1: /* call instruction , we must set the flags*/
+			Set_BB_call(new_bb);
+			Reset_BB_call(bb);
+		case 2: /* 
+ 			 * br inst and it's last inst, put 'br' inst into the new bb 
+			 * and add nop inst to make bundle comprehensive 
+                         */
+			Prepend_Nop_Op(new_bb, TOP_nop_i);
+			Prepend_Nop_Op(new_bb, TOP_nop_m);
+		  	BB_Append_Op(new_bb, last_op);
+			if (Check_Check(last_op)) 
+  				nop_op = Mk_OP(TOP_nop_i, True_TN, Gen_Literal_TN(0, 4));
+			else
+  				nop_op = Mk_OP(TOP_nop_b, True_TN, Gen_Literal_TN(0, 4));
+			BB_Append_Op(bb, nop_op);
+			break;
+		case 3: /* br inst , not the last inst */
+			BB_Append_Op(new_bb, br);
+			BB_Append_Op(new_bb, last_op);
+			Prepend_Nop_Op(new_bb, TOP_nop_m);
+  			nop_op = Mk_OP(TOP_nop_b, True_TN, Gen_Literal_TN(0, 4));
+			BB_Append_Op(bb, nop_op);
+			BB_Append_Op(bb, nop_op);
+			break;
+		case 0: /* not br inst */
+		default:	
+			FmtAssert(0, ("Fatal Error"));	
+			break;
+	}
+
+	
+	Change_Succs(new_bb, bb); /* Change the succs of bb to new bb */
+}
+
+/*
+ * Split all the BBs in the pu which have 'br' op, 
+ * so that we can insert code after each bb that have no br instruction.
+ * By doing so, we can protect the flow the code running. 
+ */
+void Split_BB()
+{
+  	BB_LIST *elist;
+	BB *bb, *temp_bb;
+  	BOOL gra_run = !CG_localize_tns;
+
+ 	for (bb = REGION_First_BB; bb != NULL; bb = temp_bb) {
+		temp_bb = BB_next(bb); 
+		if (!BB_cycle(bb) && BB_rotating_kernel(bb)) {
+			ANNOTATION *annot = ANNOT_Get(BB_annotations(bb), ANNOT_ROTATING_KERNEL);
+			ROTATING_KERNEL_INFO *info = ANNOT_rotating_kernel(annot);
+			INT ii = info->ii;
+			BB_cycle(bb) = OP_scycle(BB_last_op(bb))%ii;
+		}
+		if (BB_call(bb) || (BB_branch_op(bb) && !BB_exit(bb)))
+    			Split_BB_For_br(bb);
+  	} 
+}
+
+/*
+ * Do instrucmentation, So that we can caculate 
+ * the cycles when the target code running
+ */
+void Cycle_Count_Initialize ( ST *pu, BOOL is_region )
+{
+	int reg_index;
+        BB  *bb, *temp_bb;
+	OP  *op;
+
+  	FmtAssert(pu != NULL, ("Null pu during the initialize "));
+
+	/* get the first stack reg's value */
+	for(reg_index = ISA_REGISTER_FIRST; reg_index < ISA_REGISTER_MAX; reg_index ++){
+		if (ABI_PROPERTY_Is_stacked(ISA_REGISTER_CLASS_integer, reg_index)) {
+			R32 = reg_index;
+			break;
+		}
+	}
+
+  	FmtAssert(R32 != 0, ("Null pu during the initialize "));
+	for (bb = REGION_First_BB; bb != NULL; bb = temp_bb) {/* to rebundle those unbundled_aligned bb */
+                temp_bb = BB_next(bb);
+		Clean_Up(bb);
+                Handle_All_Hazards (bb);
+        }
+  
+	Split_BB(); /* split all bb which have br instruction  */
+	Pu_Cycle_Count_Func_Insert(pu, is_region); /* do instrumentation */
+}
+

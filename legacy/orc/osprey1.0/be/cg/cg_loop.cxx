@@ -173,6 +173,9 @@
 #include "ebo.h"
 #include "hb.h"
 #include "gra_live.h"
+#include "ipfec_options.h"
+#include "if_conv.h"
+#include "region_bb_util.h"
 
 /* Error tolerance for feedback-based frequency info */
 #define FB_TOL 0.05
@@ -2785,8 +2788,17 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
       if (TN_is_register(tn) && ! TN_is_dedicated(tn)
 	  && ! TN_is_const_reg(tn)
 	  && GTN_SET_MemberP(BB_live_in(CG_LOOP_epilog), tn)) {
-	CG_LOOP_Backpatch_Add(CG_LOOP_epilog, tn, tn, 0);
-	CG_LOOP_Backpatch_Add(CG_LOOP_prolog, tn, tn, 1);
+  
+        // fix bug non use even harmful glue copy
+        // eliminate def and noe live use tn.
+        if (! GTN_SET_MemberP(BB_live_def(body), tn) 
+            || GTN_SET_MemberP(BB_live_use(body), tn)
+            || GTN_SET_MemberP(BB_live_out(CG_LOOP_epilog), tn)) {
+            CG_LOOP_Backpatch_Add(CG_LOOP_epilog, tn, tn, 0);
+            CG_LOOP_Backpatch_Add(CG_LOOP_prolog, tn, tn, 1);
+        }else {
+            DevWarn("Eliminate useless backpatchs for TN%d", TN_number(tn));
+        }
       }
     }
 
@@ -4265,6 +4277,30 @@ void Unroll_Dowhile_Loop(LOOP_DESCR *loop, UINT32 ntimes)
   if (ntimes <= 1)
     return;
 
+  // there is an asumption: the predicate of a branch must have reaching
+  // definition. But, now, if the predicate of a branch and the predicate
+  // of the compare are different, the TN_Reaching definition can not 
+  // find the reaching definition of the predicate of the branch.
+  // So, here is to avoid compilation error caused by the above issue.
+  if (CG_Enable_Ipfec_Phases) 
+  {
+      BB *bb;
+      FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), bb)
+      {
+          OP *br = BB_branch_op(bb);
+          if ( BB_succs_len(bb)>=2 && br ) {
+              TN *cond_tn1 = OP_opnd(br,OP_PREDICATE_OPND);
+              if ( cond_tn1 && cond_tn1 != True_TN) 
+              {
+                  DEF_KIND kind;
+                  OP *def_op = TN_Reaching_Value_At_Op(cond_tn1, br, &kind, TRUE);
+                  if (!def_op) return;
+              }
+          }
+      }
+  }
+
+
   MEM_POOL_Push(&MEM_local_nz_pool);
 
   if (Get_Trace(TP_CGLOOP, 2))
@@ -5041,7 +5077,9 @@ void Fix_Backpatches(CG_LOOP& cl, bool trace)
 
 // Perform loop optimizations for one loop
 //
-BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup)
+BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup,
+                      void **par_rgn=NULL,
+                      void *rgn_loop_update=NULL)
 {
   enum LOOP_OPT_ACTION {
     NO_LOOP_OPT,
@@ -5051,6 +5089,11 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup)
     SINGLE_BB_WHILELOOP_UNROLL,
     MULTI_BB_DOLOOP
   };
+  
+  if(IPFEC_Enable_Region_Formation){
+      if(Home_Region(LOOP_DESCR_loophead(loop))->Is_No_Further_Opt())
+          return FALSE;
+  }
 
   //    if (Is_Inner_Loop(loop)) {
   if (!BB_innermost(LOOP_DESCR_loophead(loop))) 
@@ -5080,7 +5123,12 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup)
       Loop_Amenable_For_SWP(loop, trace_loop_opt)) {
 
     BB *new_single_bb;
-    new_single_bb = Force_If_Convert(loop, CG_LOOP_force_ifc >=2);
+    if (IPFEC_Enable_If_Conversion) {
+        IF_CONVERTOR convertor;
+        new_single_bb = convertor.Force_If_Convert(loop, CG_LOOP_force_ifc >= 2);
+    } else {
+        new_single_bb = Force_If_Convert(loop, CG_LOOP_force_ifc >=2);
+    }
     if (new_single_bb) {
       single_bb = TRUE;
     }
@@ -5102,6 +5150,13 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup)
     action = MULTI_BB_DOLOOP;
   } else {
     action = NO_LOOP_OPT;
+  }
+
+    if(IPFEC_Enable_Region_Formation && action!=NO_LOOP_OPT){
+extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
+       (*par_rgn) = Record_And_Del_Loop_Region(loop, rgn_loop_update);
+       if((*par_rgn) == NULL)
+           return FALSE;
   }
 
   switch (action) {
@@ -5436,7 +5491,11 @@ void CG_LOOP_Statistics(LOOP_DESCR *loop)
 // Perform loop optimizations for all inner loops
 // in the PU.
 //
-void Perform_Loop_Optimizations()
+//#ifdef IPFEC
+void Perform_Loop_Optimizations(void *rgn_loop_update=NULL)
+//#else
+//void Perform_Loop_Optimizations()
+//#endif
 {
   MEM_POOL loop_descr_pool;
   MEM_POOL_Initialize(&loop_descr_pool, "loop_descriptors", TRUE);
@@ -5473,8 +5532,19 @@ void Perform_Loop_Optimizations()
     if (trace_general)
       CG_LOOP_Statistics(loop);
 
+//#ifdef IPFEC
+    if(IPFEC_Enable_Region_Formation){
+extern void Rebuild_Loop_Region(void *, void *, BOOL);
+        void *par_rgn=NULL;
+        int succ = CG_LOOP_Optimize(loop, fixup, &par_rgn,rgn_loop_update);
+        if(par_rgn != NULL)
+            Rebuild_Loop_Region(rgn_loop_update, par_rgn, succ);
+    }else
+        CG_LOOP_Optimize(loop, fixup);
+//#else
     // CG_LOOP_Optimize adds fixup requirement to 'fixup'.
-    CG_LOOP_Optimize(loop, fixup);
+//    CG_LOOP_Optimize(loop, fixup);
+//#endif
   }
 
   // Compute correct wrap around values for SWP loops

@@ -325,7 +325,7 @@ Process_Opt_Group ( string opt_args )
   }
   
   /* Go look for -OPT:instrument */
-  optval = Get_Group_Option_Value ( opt_args, "instrument", "instr");
+  optval = Get_Group_Option_Value ( opt_args, "instrumentation", "instr");
   if (optval != NULL) {
      instrumentation_invoked = TRUE;
   }
@@ -997,6 +997,15 @@ if (is_first_count_file && (prof_file == NULL))
 is_first_count_file = FALSE;
 }
 
+Process_fb_type ( char*  typename)
+{
+  char str[10];
+  int flag;
+  fb_type = string_copy(typename);
+  sprintf(str,"type=%s",fb_type);
+  flag = add_string_option (O_OPT_, str);
+  add_option_seen(flag);
+}
 void
 Process_fb_create ( char *fname )
 {
@@ -1009,11 +1018,27 @@ Process_fb_create ( char *fname )
    }
    else {
    	toggle ( &instrumentation_invoked, TRUE );
-   	flag = add_string_option (O_OPT_, "instr=0:instr_unique_output=on");
+        if (fb_phase != NULL){
+          char str[40];
+          sprintf(str,"instr=on:instr_unique_output=on");
+      	  flag = add_string_option (O_OPT_, str);
+        }else
+          flag = add_string_option (O_OPT_, "instr=on:instr_unique_output=on");
    }
    add_option_seen (flag);
+
 }
 
+void 
+Process_fb_phase(char *phase)
+{
+  char str[10];
+  int flag;
+  fb_phase = string_copy(phase);
+  sprintf(str,"phase=%s",fb_phase);
+  flag = add_string_option (O_OPT_, str);
+  add_option_seen(flag);
+}
 void
 Process_fb_opt ( char *fname )
 {

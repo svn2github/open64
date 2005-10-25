@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -61,6 +61,9 @@
 #include "gra_grant.h"
 
 #include "gra_cflow.h"
+#include "ipfec_options.h"
+#include "region_bb_util.h"
+#include "cg.h"
 
 BOOL GRA_split_entry_exit_blocks = TRUE;
     // Split entry and exit blocks before GRA and join them after so that
@@ -327,12 +330,20 @@ GRA_Add_Call_Spill_Block(BB* bb, BB* succ)
 //  See interface description.
 /////////////////////////////////////
 {
-  BB *new_succ = Gen_And_Insert_BB_After(bb);
-
-  BB_freq(new_succ) = BB_freq(bb);
-  Change_Succ(bb, succ, new_succ);
-  Link_Pred_Succ_with_Prob(new_succ, succ, 1.0);
-
+  BB *new_succ = NULL;
+  if(IPFEC_Enable_Region_Formation && RGN_Formed) {
+    new_succ = RGN_Gen_And_Insert_BB_After(bb);
+    BB_freq(new_succ) = BB_freq(bb);
+    RGN_Unlink_Pred_Succ(bb,succ);
+    RGN_Link_Pred_Succ_With_Prob(bb,new_succ,1.0);
+    RGN_Link_Pred_Succ_With_Prob(new_succ, succ, 1.0);
+  } else { 
+    new_succ = Gen_And_Insert_BB_After(bb);
+    BB_freq(new_succ) = BB_freq(bb);
+    Change_Succ(bb, succ, new_succ);
+    Link_Pred_Succ_with_Prob(new_succ, succ, 1.0);
+  } 
+  
   GRA_LIVE_Compute_Local_Info(bb);
   GRA_LIVE_Compute_Local_Info(new_succ);
   GRA_LIVE_Region_Start();

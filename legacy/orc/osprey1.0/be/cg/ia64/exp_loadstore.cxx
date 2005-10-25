@@ -615,15 +615,22 @@ Exp_Ldst (
   }
 
   FOR_ALL_OPS_OPs (&newops, op) {
-  	if (is_load && ST_is_constant(sym) && OP_load(op)) {
+
+    if (OP_load(op)){
+        Set_OP_safe_load(op);
+    }
+	  
+    if (is_load && OP_load(op)) {
   		// If we expanded a load of a constant, 
 		// nothing else can alias with the loads 
 		// we have generated.
-      		Set_OP_no_alias(op);
-	}
-	if (Trace_Exp2) {
-        	fprintf(TFile, "exp_ldst into "); Print_OP (op);
-    	}
+        if (ST_is_constant(sym))
+            Set_OP_no_alias(op);
+
+    }
+    if (Trace_Exp2) {
+      fprintf(TFile, "exp_ldst into "); Print_OP (op);
+    }
   }
   /* Add the new OPs to the end of the list passed in */
   OPS_Append_Ops(ops, &newops);

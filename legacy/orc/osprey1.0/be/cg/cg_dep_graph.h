@@ -324,6 +324,11 @@
  *    INT16 CG_DEP_Oper_Latency(TOP pred_oper, TOP succ_oper,
  *				CG_DEP_KIND kind, UINT8 opnd)
  *
+ *  To inquire the cycle of operator , use:
+ *  Note: we use result cycle as the cycle of the op, I am not sure it's right
+ *
+ *    INT16 CG_DEP_Oper_cycle(TOP oper, CG_DEP_KIND kind);
+ *                                                                  
  *
  *  To delete the dependence graph for a BB or a HB (hyperblock), call:
  *
@@ -413,6 +418,11 @@ static char *cg_dep_graph_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/b
 #define PRUNE_PREDICATE_ARCS TRUE
 #define NO_PRUNE_PREDICATE_ARCS FALSE
 
+#define delete_gtn_use_arcs() { \
+  TN_MAP_Delete(gtn_use_map); \
+  gtn_use_map = NULL; \
+}
+
 /* Exported types and accessors */
 
 /* Define possible kinds for ARCs in the dependency graph:
@@ -450,11 +460,17 @@ typedef enum cg_dep_kind {
 			 * The head must be issued before the control
 			 * transfer takes effect */
   CG_DEP_SCC,		/* Strongly connected component arcs */
+
+  CG_DEP_PRECHK,    /* Pre-chk: the succ is a check op  */
+  CG_DEP_POSTCHK,   /* Post-chk: the pred is a check op */
+
   CG_DEP_MISC,		/* Everything else: the pred must be issued
 			 * before the succ. */
   CG_DEP_NUM_KIND	/* Number (count) of defined CG_DEP_KINDs */
 } CG_DEP_KIND;
 
+enum { PRUNE_NONE, PRUNE_NON_CYCLIC, PRUNE_NON_CYCLIC_WITH_REG,
+       PRUNE_CYCLIC_0, PRUNE_CYCLIC_1 };
 
 /* In addition to the essential ARC attributes (pred, succ, latency,
  * kind, opnd), this implementation of ARCs keeps two "next" pointers:
@@ -569,6 +585,9 @@ inline BOOL ARC_is_anti(ARC *arc)
   return kind == CG_DEP_REGANTI || kind == CG_DEP_MEMANTI;
 }
 
+
+
+
 /* ---------------------------------------------------------------------
  * Some internal globals and types (not exported):
  *
@@ -668,6 +687,7 @@ void CG_DEP_Trace_Op_SCC_Arcs(OP *op);
 
 void CG_DEP_Delete_Graph(void *item);
 
+INT16 CG_DEP_Oper_cycle(TOP oper, CG_DEP_KIND kind);  
 INT16 CG_DEP_Latency(OP *pred, OP *succ, CG_DEP_KIND kind, UINT8 opnd);
 INT16 CG_DEP_Oper_Latency(TOP              pred_oper, 
 			  TOP              succ_oper,
@@ -720,5 +740,7 @@ extern BOOL OP_has_subset_predicate(const void *value1, const void *value2);
 extern BOOL OP_has_disjoint_predicate(const OP *value1, const OP *value2);
 
 extern void CG_DEP_Detach_Arc(ARC *arc);
+
+extern ARC *new_arc(CG_DEP_KIND kind, OP *pred, OP *succ, UINT8 omega, UINT8 opnd, BOOL is_definite);
 
 #endif /* CG_DEP_GRAPH_INCLUDED */

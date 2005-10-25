@@ -242,6 +242,8 @@ I-split_common	;		LINK	ld	"-split_common"
 	"add following directory to the library search path list"
 -L		;		LINK	ld	self
 	""
+-ORC:%s		;		ALL	be	"-ORC:%s"
+	"turning on/off Open-Research-Compiler's phase"
 
 -G		;		cc	ld	self
 	""
@@ -312,6 +314,9 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 -bigp_on toggle(&big_pages,TRUE);  ALL NONE ""
     "Enable large pages"
 
+-fb_phase=%s Process_fb_phase(optargs);        ALL     N       ""
+        "Option needed to tell compile feedback phase "
+
 -fbgen	Gen_feedback=TRUE;		ALL	N	""
 	"Option needed for generating feedback files for spec"
 
@@ -332,6 +337,9 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 
 -fb_opt%s Process_fb_opt(optargs);      ALL     N       ""
         "Option needed for using SPEC feedback files"
+
+-fb_type=%s Process_fb_type(optargs);   ALL    N     ""
+        "Option need for the type of  profiles "
 
 % Basic option groups:
 % See opt_actions.c::Process_Ofast if you change the -OPT: item.

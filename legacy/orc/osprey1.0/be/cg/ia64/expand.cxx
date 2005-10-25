@@ -1845,7 +1845,18 @@ Expand_Select (
   if (TN_register_class(cond_tn) == ISA_REGISTER_CLASS_predicate) {
     TOP tmove, fmove;
     TN *p1 = cond_tn;
-    TN *p2 = Get_Complement_TN(cond_tn);
+
+    // Get_Complement_TN()  can't be used if p1 is not dedicated register.
+//    FmtAssert(ops->length!=0, ("The whole op sequence should be passed in."));
+    TN *p2;
+    if ((ops->length!=0) && (OP_result(OPS_last(ops), 0)==p1)) {
+      p2 = OP_result(OPS_last(ops), 1); // the predicate conversion of boolean exppression gurantees this.
+    }
+    else 
+    	{
+      p2 = Get_Complement_TN(cond_tn);
+    }
+
     if (is_float) {
       tmove = TOP_mov_f;
       fmove = TOP_mov_f;

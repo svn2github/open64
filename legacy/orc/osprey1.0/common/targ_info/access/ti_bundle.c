@@ -255,6 +255,12 @@ BOOL TI_BUNDLE_Stop_Bit_Available(
   /* if <slot> is exceeds the bundle slot capacity, return FALSE */
   if (slot >= ISA_MAX_SLOTS) return FALSE;
 
+//#ifdef IPFEC_Enable_New_Targ
+  /* Can always place a stop bit on the last slot of a bundle */
+  if (slot == (ISA_MAX_SLOTS - 1))
+      return TRUE;
+//#endif
+
   /* Loop through the bundle and slot info. */  
   for (i = 0; i < ISA_MAX_BUNDLES; ++i) {
     match = TRUE;

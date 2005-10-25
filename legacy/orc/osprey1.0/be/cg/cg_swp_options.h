@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -62,6 +62,7 @@ struct SWP_OPTIONS {
   INT32 Sched_Direction;
   INT32 Heuristics;
   INT32 Opt_Level;
+  BOOL  Enable_Do_Loop;
   BOOL  Enable_While_Loop;
   BOOL  Enable_Bundling;
   BOOL  Enable_Post_Incr;
@@ -69,6 +70,8 @@ struct SWP_OPTIONS {
   INT32 Max_Unroll_Times;
   INT32 Min_Unroll_Times_Set;
   INT32 Max_Unroll_Times_Set;
+  INT32 Load_Cache_Miss_Ratio;
+  INT32 Load_Cache_Miss_Latency;
   INT32 Critical_Threshold;
   BOOL  Prep_Only;
   BOOL  Min_Retry; 
@@ -120,6 +123,9 @@ struct SWP_OPTIONS {
     //  
     Opt_Level = 2;
 
+    // Enable SWP of do-loop
+    Enable_Do_Loop = TRUE;
+  
     // Enable SWP of while-loop
     //  - will be disabled in PU_Configure() if the architecture
     //    does not support while-loop SWP.
@@ -150,6 +156,10 @@ struct SWP_OPTIONS {
     //   OPs that uses more than 'Grainy_Resources_Length' are considered
     //   difficult to schedule.  Therefore they are given priority to schedule.
     Grainy_Resources_Length = 10;
+
+    // Adjust Load_Latency for cache missed load
+    Load_Cache_Miss_Ratio = 100;
+    Load_Cache_Miss_Latency = 20;  // should be proc dependent!
 
     // default max unrolling == 8
     Min_Unroll_Times = 1;

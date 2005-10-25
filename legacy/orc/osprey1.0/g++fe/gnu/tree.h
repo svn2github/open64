@@ -1454,7 +1454,7 @@ struct tree_type
 #define DECL_IN_TEXT_SECTION(NODE) (VAR_DECL_CHECK (NODE)->decl.bit_field_flag)
 
 /* In a FUNCTION_DECL, nonzero means a built in function.  */
-#define DECL_BUILT_IN(NODE) (DECL_BUILT_IN_CLASS (NODE) != NOT_BUILT_IN)
+#define DECL_BUILT_IN(NODE) (!(DECL_BUILT_IN_CLASS (NODE) == NOT_BUILT_IN))
 /* For a builtin function, identify which part of the compiler defined it.  */
 #define DECL_BUILT_IN_CLASS(NODE) \
 (FUNCTION_DECL_CHECK (NODE)->decl.built_in_class)

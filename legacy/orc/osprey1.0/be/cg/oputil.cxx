@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -95,10 +95,34 @@
 /* Allocate OPs for the duration of the PU. */
 #define OP_Alloc(size)  ((OP *)Pu_Alloc(size))
 
+/* Locally reuse of OP_flag1 in Ipfec scheduling */
+#define OP_Scheduled          OP_flag1
+
 /* OP mutators that are NOT to be made public */
 #define Set_OP_code(o,opc)	((o)->opr = (mTOP)(opc))
 #define Set_OP_opnds(o,n)	((o)->opnds = (n))
 #define Set_OP_results(o,n)	((o)->results = (n))
+
+
+BOOL
+OP_xfer(OP* op) 
+{
+  if(TOP_is_xfer(OP_code(op))) 
+    return TRUE;
+
+  if(OP_chk(op)){	  
+    BB* home_bb = OP_bb(op);
+    if(!home_bb) 
+        return FALSE;
+    if(BB_succs_len(home_bb) != 2) 
+        return FALSE;
+    if(op != BB_last_op(home_bb)) 
+        return FALSE;    
+    return TRUE;
+  }
+  return FALSE;
+}
+
 
 
 // ----------------------------------------
@@ -160,7 +184,7 @@ Dup_OP ( OP *op )
   
   return new_op;
 }
-
+
 /* =====================================================================
  *			      OPS stuff
  *		(see "op.h" for interface description)
@@ -727,7 +751,7 @@ void BB_Remove_All(BB *bb)
   BB_Remove_Ops(bb, &bb->ops);
   BB_next_op_map_idx(bb) = 0;
 }
-
+
 /* ====================================================================
  *
  * Mk_OP / Mk_VarOP
@@ -795,7 +819,7 @@ Mk_VarOP(TOP opr, INT results, INT opnds, TN **res_tn, TN **opnd_tn)
 
   return op;
 }
-
+
 /* ====================================================================
  *
  * Print_OP / Print_OP_No_SrcLine / Print_OPs / Print_OPS
@@ -812,7 +836,10 @@ void Print_OP_No_SrcLine(const OP *op)
   INT16 i;
   WN *wn;
   BOOL cg_loop_op = Is_CG_LOOP_Op(op);
-  fprintf (TFile, "[%4d] ", Srcpos_To_Line(OP_srcpos(op)));
+  //#ifdef Ipfec
+  if (OP_start_bundle(op)) fprintf( TFile, " }\n{\n");
+  //#endif Ipfec
+  fprintf (TFile, "  [%4d] ", Srcpos_To_Line(OP_srcpos(op)));
   if (OP_has_tag(op)) {
 	LABEL_IDX tag = Get_OP_Tag(op);
 	fprintf (TFile, "<tag %s>: ", LABEL_name(tag));
@@ -823,6 +850,9 @@ void Print_OP_No_SrcLine(const OP *op)
   }
   fprintf(TFile, ":- ");
   fprintf(TFile, "%s ", TOP_Name(OP_code(op)));
+  if ( OP_variant(op) != 0 ) {
+    fprintf ( TFile, "(%x) ", OP_variant(op));
+  }
   for (i=0; i<OP_opnds(op); i++) {
     TN *tn = OP_opnd(op,i);
     Print_TN(tn,FALSE);
@@ -850,6 +880,9 @@ void Print_OP_No_SrcLine(const OP *op)
   if (OP_no_move_before_gra(op)) fprintf (TFile, " no_move");
   if (OP_spadjust_plus(op)) fprintf (TFile, " spadjust_plus");
   if (OP_spadjust_minus(op)) fprintf (TFile, " spadjust_minus");
+  if (OP_Scheduled(op)) fprintf (TFile, " scheduled");
+  if (OP_start_bundle(op)) fprintf (TFile, " start_bundle");
+  if (OP_safe_load(op)) fprintf (TFile, " safe_load");
 
   if (wn = Get_WN_From_Memory_OP(op)) {
     char buf[500];
@@ -897,7 +930,7 @@ void Print_OPS_No_SrcLines( const OPS *ops )
     Print_OP_No_SrcLine(op);
 }
 
-
+
 
 /* ====================================================================
  *
@@ -1097,7 +1130,7 @@ Is_Delay_Slot_Op (OP *xfer_op, OP *op)
 
 
 // Debugging routine
-void dump_op (const OP *op)
+void dump_op(const OP *op)
 {
    FILE *f;
    f = TFile;
@@ -1119,7 +1152,7 @@ void dump_op (const OP *op)
 BOOL OP_cond_def(const OP *op) 
 {
   return OP_cond_def_kind(op) == OP_ALWAYS_COND_DEF ||
-    ((OP_cond_def_kind(op) == OP_PREDICATED_DEF) &&
+    ((OP_cond_def_kind(op) == OP_PREDICATED_DEF) && 
      !TN_is_true_pred(OP_opnd(op, OP_PREDICATE_OPND)));
 }
 
@@ -1185,3 +1218,30 @@ void OP_Base_Offset_TNs(OP *memop, TN **base_tn, TN **offset_tn)
   }
 }
 
+/* ====================================================================
+ * OP_ld_st_unat
+ *
+ * return TRUE if op load/store a unat bit 
+ *
+ * ====================================================================
+ */
+BOOL OP_ld_st_unat(OP *op)
+{
+    mTOP opcode = OP_code(op);
+    if(opcode == TOP_mov_f_ar || opcode == TOP_mov_t_ar_r)
+    {
+        for(INT i=0; i<OP_results(op); i++)
+        {
+            if(OP_result(op,i) == 
+               Build_Dedicated_TN(ISA_REGISTER_CLASS_application,(REGISTER)(REGISTER_MIN + 36),0))
+                 return TRUE;
+        }  
+        for(INT i=0;i<OP_opnds(op); i++)
+        {
+            if(OP_opnd(op,i) == 
+               Build_Dedicated_TN(ISA_REGISTER_CLASS_application,(REGISTER)(REGISTER_MIN + 36),0))
+                return TRUE;
+        }
+    }
+    return FALSE;
+}

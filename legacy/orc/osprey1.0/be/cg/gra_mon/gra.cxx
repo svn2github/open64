@@ -86,7 +86,9 @@ float GRA_call_split_freq;
 float GRA_spill_count_factor;
 
 static BOOL gra_spill_around_save_tn_copies;
-
+//extern BOOL fat_self_recursive;
+BOOL gra_self_recursive = FALSE;
+extern char *Cur_PU_Name;
 
 /////////////////////////////////////
 void 
@@ -196,6 +198,71 @@ Initialize_Flags()
   GRA_spill_count_factor = atof(GRA_spill_count_factor_string);
 }
 
+
+void 
+GRA_Fat_Point_Estimate(void) {
+  //Initialize_Flagsa(a);
+  Initialize_Memory();
+  lrange_sub_mgr.Initialize();
+  lrange_mgr.Initialize();
+  gbb_mgr.Initialize();
+  gra_region_mgr.Initialize();
+
+  GRA_Pre_Create();
+
+  lrange_sub_mgr.Finalize();
+  lrange_mgr.Finalize();
+  gbb_mgr.Finalize();
+  gra_region_mgr.Finalize();
+   
+  Finalize_Memory();
+  //MEM_POOL_Push(&MEM_local_nz_pool);
+  //MEM_POOL_Pop(&MEM_local_nz_pool);
+}
+
+//===================================
+//
+// Test whether this function is a 
+// self_recursive function.
+//
+//===================================
+BOOL 
+Check_Self_Recursive(void) {
+  BB *bb = NULL;
+  OP *op = NULL;
+  INT32 max_live_in = 0;
+  for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+    GTN_SET *live_in = BB_live_out(bb);
+    INT32 size = BS_Size(live_in);
+    if (size > max_live_in) max_live_in = size;
+  }
+  
+  for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+    FOR_ALL_BB_OPs (bb, op) {     
+      if (OP_call(op)) {
+         for (INT k = 0; k < OP_opnds(op);k++) {
+            TN *tn = OP_opnd(op,k);
+            if (TN_is_symbol(tn)) {
+               ST *var = TN_var(tn);
+               if (ST_class(var) !=  CLASS_CONST) {
+                  char *called_func = ST_name(var);
+                  if (strcmp(called_func,Cur_PU_Name) == 0) {
+                      if ((!gra_self_recursive) && (max_live_in > 120)) {
+                        gra_self_recursive = TRUE;
+                        DevWarn("This FUNCTION IS FAT AND SELF_RECURSIVE ONE!The Max_Live_In is %d\n",max_live_in);
+                        return gra_self_recursive;
+                      }
+                  }  
+               }
+            }
+         }  
+      }
+   }
+  }
+  
+  return FALSE;
+}
+
 /////////////////////////////////////
 void
 GRA_Allocate_Global_Registers( BOOL is_region )
@@ -236,6 +303,8 @@ GRA_Allocate_Global_Registers( BOOL is_region )
   gra_region_mgr.Finalize();
 
   GRA_Join_Entry_And_Exit_BBs();
+
+  Gen_UNAT_Spills_Entry_And_Exit_BB();
 
   Clear_Spill_BB_Flags();
 

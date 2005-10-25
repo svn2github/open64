@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -193,6 +193,22 @@ Process_Command_Line (INT argc, char **argv)
 
 	    switch ( *cp++ ) {
               
+	    case 'I':	    /* CG-specific */
+	                    /* -IPFEC: IPFEC related options */
+		add_phase_args (PHASE_CG, argv[i]);
+		break;
+
+            case 'C':       /* CG-specific */
+                           /* -CYCLE: Cycle Counting related options */
+                add_phase_args (PHASE_CG, argv[i]);
+                Create_Cycle_Output = TRUE;
+                break;
+
+	    case 'V':	    /* CG-specific */
+	                    /* -VT: Visualization Tool related options */
+		add_phase_args (PHASE_CG, argv[i]);
+		break;
+
 	    case 'c':
 		if (strcmp (cp, "mds") == 0 && Run_ipl) {
 		    while (i < argc) {
@@ -328,10 +344,17 @@ Process_Command_Line (INT argc, char **argv)
 		}
 		break;
 	
- 	    case 'O':		    /* Optimization level: */
-		Opt_Level = Get_Numeric_Flag (&cp, 0, MAX_OPT_LEVEL,
-					      DEF_O_LEVEL, argv[i] ); 
-		opt_set = TRUE;
+ 	    case 'O':		    
+                if (strncasecmp (cp - 1, "ORC",3)) {
+                  /* Optimization level: */
+
+		  Opt_Level = Get_Numeric_Flag (&cp, 0, MAX_OPT_LEVEL,
+					                            DEF_O_LEVEL, argv[i] ); 
+		  opt_set = TRUE;
+                } else {
+		  add_phase_args (PHASE_CG, argv[i]);
+                }
+
 		break;
 
 	    case 's':

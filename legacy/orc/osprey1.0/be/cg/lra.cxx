@@ -1519,6 +1519,7 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
                 }
 
                 BB_Remove_Op (bb, op);
+                Reset_BB_scheduled(bb);
                 return TRUE;
               }
             }
@@ -1573,7 +1574,7 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
       bool ok_to_free_result = 
         !asm_info || !ASM_OP_result_clobber(asm_info)[resnum];
         
-      if (ok_to_free_result && opnum == LR_first_def(clr)) {
+      if (ok_to_free_result && opnum == LR_first_def(clr) && result_reg <= REGISTER_MAX) {
 
 /*
  * Remember all the information needed to free registers.
@@ -1831,6 +1832,7 @@ Assign_Registers (BB *bb, TN **spill_tn, BOOL *redundant_code)
       // Now delete the unused definition.
       if (!Calculating_Fat_Points()) {
 	BB_Remove_Op (bb, op);
+	Reset_BB_scheduled(bb);
       } else {
 	//
 	// mark the op for removal, and convert it to a noop so that
@@ -2757,8 +2759,10 @@ Spill_Live_Range (
     // TNs later, we will not find the uses added by cloning the 
     // reloadable def.
     Remove_LRs_For_OP (reloadable_def);
-  }
-  else {
+
+    if(!reloadable_def) spill_loc = TN_spill(spill_tn);
+
+  } else {
     // Try using the magic symbol as a last ditch effort. It is 
     // guaranteed to be within 16 bits of sp/fp.
     if (Trip_Count == MAX_TRIP_COUNT &&
@@ -2843,7 +2847,10 @@ Spill_Live_Range (
          OP_Refs_Reg (op, spill_cl, spill_reg)))
     {
       if (!reloadable && Is_OP_Spill_Store (op, spill_loc) &&
-          !already_spilled && (i == last_use)) {
+          !already_spilled && (i == last_use) 
+          && OP_code(op)==TOP_st8_spill) {
+        // fix bug by llx for delete useful store but not spill store
+
         // If the use of spill_tn is a store to the spill location, we 
         // don't have to load from memory. Actually, we can get rid
         // of the store as well, since the memory contents are already
@@ -2865,6 +2872,7 @@ Spill_Live_Range (
       if (!def_available) {
         def_available = TRUE;
         new_tn = Dup_TN_Even_If_Dedicated (spill_tn);
+        Is_True(reloadable_def || spill_loc, ("Attempt to locate a NULL spill_loc!"));
         Set_TN_spill(new_tn, spill_loc);
         Add_Spill_Load_Before_Use (new_tn, spill_loc, reloadable_def, i, bb);
       }

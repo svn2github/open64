@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -203,6 +203,19 @@ struct htn_map64 {
   MEM_POOL *map_pool;
   HASH_ENTRY64 *map_entry[TN_MAP_HASH];
 };
+
+//float hTN_MAP struct
+typedef struct hash_entryf {
+  TN *tn;
+  float value;
+  struct hash_entryf *next;
+} HASH_ENTRYf;
+
+struct htn_mapf {
+  MEM_POOL *map_pool;
+  HASH_ENTRYf *map_entry[TN_MAP_HASH];
+};
+
 
 #define hTN_MAP_pool(map)          ((map)->map_pool)
 #define hTN_MAP_entry(map, index)  ((map)->map_entry[index])
@@ -416,3 +429,50 @@ hTN_MAP64_Get_And_Set(hTN_MAP64 map, TN *tn, INT64 value)
   HASH_ENTRY_value(map_entry) = value;
   return answer;
 }
+
+//float
+hTN_MAPf
+hTN_MAPf_Create(MEM_POOL *pool)
+{
+  hTN_MAPf new_map;
+
+  new_map = TYPE_MEM_POOL_ALLOC(struct htn_mapf, pool);
+  bzero(new_map, sizeof(struct htn_mapf));
+  hTN_MAP_pool(new_map) = pool;
+  return new_map;
+}
+
+void 
+hTN_MAPf_Set(hTN_MAPf map, TN *tn, float value)
+{
+  INT index = TN_number(tn) & (TN_MAP_HASH - 1);
+  HASH_ENTRYf *map_entry = hTN_MAP_entry(map, index);
+
+  while (map_entry != NULL) {
+    if (HASH_ENTRY_tn(map_entry) == tn) break;
+    map_entry = HASH_ENTRY_next(map_entry);
+  }
+  if (map_entry == NULL) {
+    map_entry = TYPE_MEM_POOL_ALLOC(HASH_ENTRYf, hTN_MAP_pool(map));
+    HASH_ENTRY_next(map_entry) = hTN_MAP_entry(map, index);
+    hTN_MAP_entry(map, index) = map_entry;
+    HASH_ENTRY_tn(map_entry) = tn;
+  }
+  HASH_ENTRY_value(map_entry) = value;
+}
+
+float
+hTN_MAPf_Get(hTN_MAPf map, TN *tn)
+{
+  INT index = TN_number(tn) & (TN_MAP_HASH - 1);
+  HASH_ENTRYf *map_entry = hTN_MAP_entry(map, index);
+
+  while (map_entry != NULL) {
+    if (HASH_ENTRY_tn(map_entry) == tn) 
+      return HASH_ENTRY_value(map_entry);
+    map_entry = HASH_ENTRY_next(map_entry);
+  }
+  return 0.0;
+}
+
+

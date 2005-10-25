@@ -98,7 +98,8 @@ static const char source_file[] = __FILE__;
 #include "ebo_info.h"
 #include "ebo_special.h"
 #include "ebo_util.h"
-
+#include "region_bb_util.h"
+#include "ipfec_options.h"
 /* Define a macro to strip off any bits outside of the left most 4 bytes. */
 #define TRUNC_32(val) (val & 0x00000000ffffffffll)
 
@@ -693,6 +694,15 @@ condition_redundant(OP *elim_op,
                 (result_tninfo->reference_count != 0)) goto can_not_combine_ops;
           }
         }
+        if ( pr0 == True_TN ) {
+            if ( (TN_register_class(pr1) ==  TN_register_class(er1))
+              && (TN_register(pr1) ==  TN_register(er1)))
+              goto can_not_combine_ops;
+        } else {
+            if ( (TN_register_class(pr0) ==  TN_register_class(er0))
+              && (TN_register(pr0) ==  TN_register(er0)))
+              goto can_not_combine_ops;
+        }
 
         OP *new_op = Dup_OP(elim_op);
         if (pr0 == True_TN) {
@@ -838,8 +848,15 @@ combine_adjacent_loads(OP *op,
     Print_OP_No_SrcLine(pred_op);
   }
   
+  
   if (!OP_load(op) || !OP_load(pred_op) || (opcode != OP_code(pred_op)) ||
-      (OP_results(op) != 1) || (OP_results(pred_op) != 1) || (base_index < 0)) {
+      (OP_results(op) != 1) || (OP_results(pred_op) != 1) || (base_index < 0) ||
+      
+      /* ld.s, ld.a, ld.sa, ld.c and ld in recovery block must be saved */
+      
+      CGTARG_Is_OP_Speculative(op) || CGTARG_Is_OP_Speculative(pred_op) ||
+      CGTARG_Is_OP_Check_Load(op)  || CGTARG_Is_OP_Check_Load(pred_op)  ||
+      BB_recovery(OP_bb(op))       || BB_recovery(OP_bb(pred_op))) {
     return FALSE;
   }
 
@@ -1230,6 +1247,14 @@ delete_subset_mem_op(OP *op,
     return FALSE;
   }
 
+  /* ld.s, ld.a, ld.sa, ld.c and ld in recovery block must be saved */
+  if (CGTARG_Is_OP_Speculative(op) ||
+      CGTARG_Is_OP_Speculative(pred_op) ||
+      CGTARG_Is_OP_Check_Load(op)  ||
+      CGTARG_Is_OP_Check_Load(pred_op)  ||
+      BB_recovery(OP_bb(op))   || 
+      BB_recovery(OP_bb(pred_op)))    return FALSE;
+  
   byte_offset = offset_succ - offset_pred;
 
   if (OP_load(op) && OP_load(pred_op) &&
@@ -1391,6 +1416,14 @@ delete_reload_across_dependency (OP *op,
        ((OP_results(intervening_op) > 1) &&
         (intervening_inc_idx < 0))))) return FALSE;
 
+  /* ld.s, ld.a, ld.sa, ld.c and ld in recovery block must be saved */
+  if (CGTARG_Is_OP_Speculative(op) ||
+      CGTARG_Is_OP_Speculative(pred_op) ||
+      CGTARG_Is_OP_Check_Load(op)  ||
+      CGTARG_Is_OP_Check_Load(pred_op)  ||
+      BB_recovery(OP_bb(op))   || 
+      BB_recovery(OP_bb(pred_op)))    return FALSE;
+  
  /* Capture the values in the preceeding memory OPs. */
   pred_result = OP_store(pred_op) ? OP_opnd(pred_op,
                                             TOP_Find_Operand_Use(pred_opcode, OU_storeval))
@@ -1603,7 +1636,16 @@ delete_memory_op (OP *op,
   if (OP_load(op) && OP_load(opinfo->in_op)) {
    /* Replace the result tn of the second OP for:
           Load - Load,
-   */
+    */
+
+  /* ld.s, ld.a, ld.sa, ld.c and ld in recovery block must be saved */
+  if (CGTARG_Is_OP_Speculative(op) ||
+      CGTARG_Is_OP_Speculative(opinfo->in_op) ||
+      CGTARG_Is_OP_Check_Load(op)  ||
+      CGTARG_Is_OP_Check_Load(opinfo->in_op)  ||
+      BB_recovery(OP_bb(op))   ||
+      BB_recovery(OP_bb(opinfo->in_op)))    return FALSE;
+      
     if (TOP_Find_Operand_Use(OP_code(op), OU_postincr) >= 0) {
      /* The increment must be preserved. */
       if (EBO_Trace_Data_Flow) {
@@ -2529,6 +2571,20 @@ if (EBO_Trace_Optimization) fprintf(TFile,"replace cmp with cmp_i\n");
 
      /* Scheduling may be better if we don't introduce dependencies. */
       if (!EBO_in_peep) use_increment = FALSE;
+      
+      /* Do not defined an upward-exposed-use var on a speculative train
+       */
+      if (OP_load (memory_op) && OP_speculative(memory_op)) {
+         use_increment = FALSE;
+      }
+
+      /* load is constantly on a critical path, if we expand an extra mov OP,
+       * the path will become even longer
+       */
+      if (use_increment && OP_load(memory_op) && 
+         !tn_registers_identical(tnr, tn1)) {
+         use_increment = FALSE; 
+      }
 
       if (use_increment &&
           (TOP_Find_Operand_Use(new_opcode, OU_postincr) >= 0)) {
@@ -3573,7 +3629,18 @@ Resolve_Conditional_Branch (OP *op, TN **opnd_tn)
        OP_has_predicate(op) &&
       ((OP_opnd (op, OP_PREDICATE_OPND) == True_TN) ||
        TN_Is_Constant(opnd_tn[OP_PREDICATE_OPND]))) {
-
+      //A very weak fix added here,in order to avoid loop nodes
+      //been deleted from node;
+     if(IPFEC_Enable_Region_Formation && RGN_Formed) {
+        if((Home_Region(bb)->Region_Type() == LOOP) && 
+           ((Home_Region(branch_bb) != Home_Region(bb))||
+           (Home_Region(fall_bb) != Home_Region(bb)))) {
+               DevWarn("Give up resolve conditional branch in order to maintain region for BB %d.",BB_id(bb));
+         
+               return FALSE;
+        }
+    } 
+    
     if (EBO_Trace_Optimization) {
       #pragma mips_frequency_hint NEVER
       INT i;
@@ -3587,6 +3654,7 @@ Resolve_Conditional_Branch (OP *op, TN **opnd_tn)
       fprintf(TFile,"\n");
     }
 
+      
     if (opnd_tn[OP_PREDICATE_OPND] == True_TN) {
      /* Branch IS taken - replace the conditional branch with a simple branch. */
       OPS ops = OPS_EMPTY;
@@ -3595,17 +3663,29 @@ Resolve_Conditional_Branch (OP *op, TN **opnd_tn)
                         OP_opnd(op,TOP_Find_Operand_Use(OP_code(op),OU_target)), &ops);
       OP_srcpos(OPS_first(&ops)) = OP_srcpos(op);
       BB_Insert_Ops(OP_bb(op), op, &ops, FALSE);
-      Unlink_Pred_Succ (bb, fall_bb);
+
+      if(RGN_Formed && IPFEC_Enable_Region_Formation){
+        RGN_Unlink_Pred_Succ(bb,fall_bb);
+      } else {
+        Unlink_Pred_Succ (bb, fall_bb);
+      }  
+
       Change_Succ_Prob (bb, branch_bb, 1.0);
 
       return TRUE;;
     } else if (opnd_tn[OP_PREDICATE_OPND] == Zero_TN) {
-     /* Branch NOT taken - delete it and fall through. */
-      Unlink_Pred_Succ (bb, branch_bb);
+      /* Branch NOT taken - delete it and fall through. */
+      if(RGN_Formed && IPFEC_Enable_Region_Formation){
+        RGN_Unlink_Pred_Succ(bb,branch_bb);
+      } else {
+        Unlink_Pred_Succ (bb, branch_bb);
+      }
       Change_Succ_Prob (bb, fall_bb, 1.0);
+
       return TRUE;
     }
   }
+  
   return FALSE;
 }
 
@@ -4279,7 +4359,7 @@ INT EBO_Copy_Operand (OP *op)
   }
 
   if (((opcode == TOP_cmp_eq_unc) ||
-       (opcode == TOP_cmp_eq)) &&
+       (opcode == TOP_cmp_eq && OP_opnd(op,OP_PREDICATE_OPND) == True_TN)) &&
       (OP_opnd(op,1) == Zero_TN) &&
       (OP_opnd(op,2) == Zero_TN)) {
     return 0; /* The predicate value is the result. */

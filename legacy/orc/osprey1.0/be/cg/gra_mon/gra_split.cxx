@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -129,7 +129,7 @@ TYPE_PRQ(GRA_BB,GBBPRQ)
 #ifdef HAS_STACKED_REGISTERS
 extern REGISTER_SET stacked_caller_used;// from register_targ.cxx
 #endif
-
+extern BOOL fat_self_recursive;
 BOOL GRA_split_lranges = TRUE;
 INT GRA_non_split_tn_id = -1;
 
@@ -1763,7 +1763,8 @@ LRANGE_Do_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
 
   if (lrange->Spans_A_Setjmp()) // TODO: do not give up splitting
     return FALSE;
-
+  
+  if (fat_self_recursive) return FALSE;
   GRA_Trace_Color_LRANGE("Splitting",lrange);
 
   gbb_mgr.Begin_Split();

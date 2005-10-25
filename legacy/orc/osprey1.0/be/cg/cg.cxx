@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -44,8 +44,8 @@
  *
  * Description:
  *
- * This	file contains the main driver and initialization,termination
- * routines for	the code generator.
+ * This file contains the main driver and initialization,termination
+ * routines for the code generator.
  *
  * ====================================================================
  * ====================================================================
@@ -102,16 +102,32 @@
 #include "hb.h"
 #include "pqs_cg.h"
 #include "tag.h"
-
-MEM_POOL MEM_local_region_pool;	/* allocations local to processing a region */
+#include "ipfec.h"
+#include "ipfec_defs.h"
+#include "ipfec_options.h"
+#include "region_update.h"
+#include "region_verify.h"
+#include "vt_region.h"
+#include "recovery.h"
+#include "edge_profile.h"
+#include "val_prof.h"
+#include "bb_verifier.h"
+#include "config_opt.h"
+MEM_POOL MEM_local_region_pool; /* allocations local to processing a region */
 MEM_POOL MEM_local_region_nz_pool;
 
 BOOL Trace_REGION_Interface = FALSE;
+
+INT32 current_PU_handle = 0;
 
 BOOL PU_Has_Calls;
 BOOL PU_References_GP;
 
 BOOL CG_PU_Has_Feedback;
+
+BOOL RGN_Formed = FALSE;
+
+BOOL gra_pre_create = TRUE; 
 
 RID *Current_Rid;
 
@@ -121,6 +137,8 @@ TN_MAP TN_To_PREG_Map;
 struct ALIAS_MANAGER *Alias_Manager;
 
 static BOOL Orig_Enable_SWP;
+extern BOOL gra_self_recursive;
+extern BOOL fat_self_recursive;
 
 /* Stuff that needs to be done at the start of each PU in cg. */
 void
@@ -139,15 +157,15 @@ CG_PU_Initialize (WN *wn_pu)
   Regcopies_Translated = FALSE;
 
   CG_Configure_Opt_Level((   pu_num < CG_skip_before
-			  || pu_num > CG_skip_after
-			  || pu_num == CG_skip_equal)
-			 ? 0 : Opt_Level);
+              || pu_num > CG_skip_after
+              || pu_num == CG_skip_equal)
+             ? 0 : Opt_Level);
   pu_num++;
 
   if (PU_has_syscall_linkage(Get_Current_PU())) {
-	// turn off swp so stacked registers are preserved
-	Orig_Enable_SWP = Enable_SWP;
-	Enable_SWP = FALSE;
+    // turn off swp so stacked registers are preserved
+    Orig_Enable_SWP = Enable_SWP;
+    Enable_SWP = FALSE;
   }
 
   Reuse_Temp_TNs = (CG_opt_level == 0);
@@ -159,6 +177,7 @@ CG_PU_Initialize (WN *wn_pu)
   LOOP_DESCR_Init_For_PU();
   TN_MAP_Init();
   BB_MAP_Init();
+  REGION_MAP_Init();
   OP_MAP_Init();
   CGSPILL_Initialize_For_PU ();
   CFLOW_Initialize();
@@ -176,7 +195,7 @@ CG_PU_Initialize (WN *wn_pu)
   REGISTER_Pu_Begin();
 
   Init_Entry_Exit_Code (wn_pu);
-  REGISTER_Reset_FP();	// in case $fp is used, must be after entry_exit init
+  REGISTER_Reset_FP();  // in case $fp is used, must be after entry_exit init
 
   /* Initialize global tn universe */
   GTN_UNIVERSE_Pu_Begin();
@@ -206,7 +225,7 @@ CG_PU_Finalize(void)
   if (Enable_CG_Peephole) EBO_Finalize();
 
   if (PU_has_syscall_linkage(Get_Current_PU())) {
-	Enable_SWP = Orig_Enable_SWP;
+    Enable_SWP = Orig_Enable_SWP;
   }
 
   /* TN_To_PREG_Map is allocated from MEM_pu_pool and so can't be popped
@@ -214,7 +233,7 @@ CG_PU_Finalize(void)
   TN_MAP_Delete(TN_To_PREG_Map);
   TN_To_PREG_Map = NULL;
 
-  Free_BB_Memory();		    /* Free non-BB_Alloc space. */
+  Free_BB_Memory();         /* Free non-BB_Alloc space. */
   MEM_POOL_Pop ( &MEM_local_pool );
   MEM_POOL_Pop ( &MEM_local_nz_pool );
   MEM_POOL_Pop ( &MEM_phase_pool );
@@ -244,7 +263,7 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
   PREG_To_TN_Array = (TN **) Pu_Alloc (sizeof (TN *) * last_preg_num);
   PREG_To_TN_Mtype = (TYPE_ID *) Pu_Alloc (sizeof (TYPE_ID) * last_preg_num);
 
-  PREG_To_TN_Clear();	/* this enforces different preg maps between regions */
+  PREG_To_TN_Clear();   /* this enforces different preg maps between regions */
   if (TN_To_PREG_Map == NULL)
     TN_To_PREG_Map = TN_MAP_Create();
 
@@ -264,7 +283,7 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
  */
 static void
 CG_Region_Finalize (WN *result_before, WN *result_after,
-		    WN *rwn, struct ALIAS_MANAGER *am, BOOL generate_glue_code)
+            WN *rwn, struct ALIAS_MANAGER *am, BOOL generate_glue_code)
 {
   RID *rid;
   CGRIN *cgrin;
@@ -275,7 +294,7 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
   rid = REGION_get_rid( rwn );
   cgrin = RID_cginfo( rid );
   FmtAssert(rid != NULL && cgrin != NULL,
-	    ("CG_Region_Finalize, inconsistent region"));
+        ("CG_Region_Finalize, inconsistent region"));
 
   REGION_set_level(rid, RL_CGSCHED);
 
@@ -293,11 +312,11 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
     for (i=0; i<num_exits; i++) {
       exit_fixup = CGRIN_exit_glue_i( cgrin, i );
       REGION_Exit_PREG_Whirl( rid, i, exit_fixup,
-			     CGRIN_tns_out_i( cgrin, i ), am );
+                 CGRIN_tns_out_i( cgrin, i ), am );
       if ( Trace_REGION_Interface ) {
-	fprintf( TFile, "<region> Exit glue code for exit %d RGN %d\n",
-		i, RID_id(rid) );
-	fdump_tree( TFile, exit_fixup );
+        fprintf( TFile, "<region> Exit glue code for exit %d RGN %d\n",
+                i, RID_id(rid) );
+        fdump_tree( TFile, exit_fixup );
       }
       WN_INSERT_BlockLast( result_after, exit_fixup );
     }
@@ -309,6 +328,45 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
   MEM_POOL_Pop (&MEM_local_region_nz_pool);
 }
 
+static void Config_Ipfec_Flags() {
+  IPFEC_Enable_Edge_Profile = IPFEC_Enable_Edge_Profile || ( Instrumentation_Enabled && (Phase_Num==4 && Profile_Type & CG_EDGE_PROFILE) );
+  IPFEC_Enable_Value_Profile= IPFEC_Enable_Value_Profile || ( Instrumentation_Enabled && (Phase_Num ==4 && Profile_Type & CG_VALUE_PROFILE) ); 
+  IPFEC_Enable_Value_Profile_Annot = IPFEC_Enable_Value_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
+  IPFEC_Enable_Edge_Profile_Annot = IPFEC_Enable_Edge_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
+  IPFEC_Enable_Opt_after_schedule=IPFEC_Enable_Opt_after_schedule && CG_Enable_Ipfec_Phases && CG_opt_level > 1;
+  IPFEC_Enable_Region_Formation = IPFEC_Enable_Region_Formation && CG_Enable_Ipfec_Phases && CG_opt_level > 1;
+  IPFEC_Enable_If_Conversion = IPFEC_Enable_If_Conversion && CG_Enable_Ipfec_Phases;
+  IPFEC_Force_If_Conv = IPFEC_Force_If_Conv && CG_Enable_Ipfec_Phases;
+  IPFEC_Force_Para_Comp_Gen = IPFEC_Force_Para_Comp_Gen && CG_Enable_Ipfec_Phases;
+  IPFEC_Para_Comp_Gen = IPFEC_Para_Comp_Gen && CG_Enable_Ipfec_Phases;
+  IPFEC_Disable_Merge_BB = IPFEC_Disable_Merge_BB && CG_Enable_Ipfec_Phases;
+  IPFEC_Enable_PRDB = IPFEC_Enable_PRDB && CG_Enable_Ipfec_Phases && IPFEC_Enable_Region_Formation && (IPFEC_Enable_Prepass_GLOS || IPFEC_Enable_Postpass_LOCS);
+  IPFEC_Enable_BB_Verify = IPFEC_Enable_BB_Verify && CG_Enable_Ipfec_Phases;
+  IPFEC_Enable_Prepass_GLOS = IPFEC_Enable_Prepass_GLOS && CG_Enable_Ipfec_Phases;
+  IPFEC_Enable_Postpass_GLOS = IPFEC_Enable_Postpass_GLOS && CG_Enable_Ipfec_Phases;
+  IPFEC_Enable_Prepass_LOCS = IPFEC_Enable_Prepass_LOCS && CG_Enable_Ipfec_Phases;
+  IPFEC_Enable_Postpass_LOCS = IPFEC_Enable_Postpass_LOCS && CG_Enable_Ipfec_Phases;
+  IPFEC_Enable_Speculation = IPFEC_Enable_Speculation && CG_Enable_Ipfec_Phases;
+  IPFEC_Enable_Data_Speculation = IPFEC_Enable_Data_Speculation && IPFEC_Enable_Speculation;
+  IPFEC_Enable_Cntl_Speculation = IPFEC_Enable_Cntl_Speculation && IPFEC_Enable_Speculation;
+  IPFEC_Enable_Compressed_Template = IPFEC_Enable_Compressed_Template && CG_Enable_Ipfec_Phases;
+  IPFEC_Enable_Pre_Bundling = IPFEC_Enable_Pre_Bundling && CG_Enable_Ipfec_Phases;
+  IPFEC_Force_CHK_Fail = IPFEC_Force_CHK_Fail && IPFEC_Enable_Speculation;
+  IPFEC_Enable_Cascade = IPFEC_Enable_Cascade && IPFEC_Enable_Speculation;
+  IPFEC_Hold_Uses = IPFEC_Hold_Uses && IPFEC_Enable_Speculation;
+  IPFEC_Chk_Compact = IPFEC_Chk_Compact && IPFEC_Enable_Speculation;
+  IPFEC_Enable_Safety_Load = IPFEC_Enable_Safety_Load && IPFEC_Enable_Speculation;
+  IPFEC_Profitability = IPFEC_Profitability && CG_Enable_Ipfec_Phases;
+
+  if (IPFEC_Chk_Compact && locs_skip_bb) {
+    DevWarn("Although chk_compact is turned on, it should be turned off since some BBs are forced to be skipped in local scheduling phase!");
+    IPFEC_Chk_Compact = 0;
+  } 
+  if (IPFEC_Chk_Compact && !IPFEC_Enable_Postpass_LOCS) {
+    DevWarn("Although chk_compact is turned on, it should be turned off since postpass local scheduling is disabled!");
+    IPFEC_Chk_Compact = 0;
+  }
+}
 
 /* Can be called two ways:
    1) on a region (pu_dst is NULL, returns code)
@@ -323,7 +381,8 @@ CG_Generate_Code(
 {
 /*later:  BOOL region = DST_IS_NULL(pu_dst); */
   BOOL orig_reuse_temp_tns = Reuse_Temp_TNs;
-
+  /* Initialize RGN_Formed to FALSE. */
+  RGN_Formed = FALSE;
   Alias_Manager = alias_mgr;
 
   Set_Error_Phase( "Code Generation" );
@@ -345,7 +404,7 @@ CG_Generate_Code(
   if (WN_operator(rwn) == OPR_FUNC_ENTRY &&
       ST_asm_function_st(*WN_st(rwn))) {
     FmtAssert(Assembly && !Object_Code,
-	      ("Cannot produce non-assembly output with file-scope asm"));
+          ("Cannot produce non-assembly output with file-scope asm"));
     fprintf(Asm_File, "\n%s\n", ST_name(WN_st(rwn)));
     return rwn;
   }
@@ -367,7 +426,7 @@ CG_Generate_Code(
   if (CG_PU_Has_Feedback) {
     Set_Error_Phase ("FREQ");
     Start_Timer (T_Freq_CU);
-    FREQ_Incorporate_Feedback( rwn );
+    FREQ_Incorporate_Feedback ( rwn );
     Stop_Timer (T_Freq_CU);
     Set_Error_Phase ( "Code_Expansion" );
     if (frequency_verify)
@@ -379,9 +438,75 @@ CG_Generate_Code(
   Optimize_Tail_Calls( Get_Current_PU_ST() );
 
   Init_Callee_Saved_Regs_for_REGION( Get_Current_PU_ST(), region );
+
+  //this is a hack for edge profiling
+  //when invoke edge profiling, it does not save/restore b0
+  //while Generate_Entry_Exit_Code will do this instead, but it need to know
+  //IPFEC_Enable_Edge_Profile in time.
+  Config_Ipfec_Flags();
+  
   Generate_Entry_Exit_Code ( Get_Current_PU_ST(), region );
   Stop_Timer ( T_Expand_CU );
   Check_for_Dump ( TP_CGEXP, NULL );
+
+  if (IPFEC_Enable_Edge_Profile && CG_opt_level > 1 )
+  {
+    Set_Error_Phase ( "edge profile instrument" );
+    Start_Timer ( T_Ipfec_Profiling_CU );
+    CG_Edge_Profile_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
+    Stop_Timer( T_Ipfec_Profiling_CU );
+  } else if (IPFEC_Enable_Edge_Profile_Annot && CG_opt_level > 1 ) {
+    Set_Error_Phase ( "edge profile annotation" );
+    CG_Edge_Profile_Annotation(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
+  }
+
+  if (IPFEC_Enable_Value_Profile && CG_opt_level > 1 )
+  {
+    Set_Error_Phase ( "value profile instrument" );
+    if (EBO_Opt_Level != 0) 
+    {
+      DevWarn("Value profiling need -CG:ebo_level=0!! Set ebo_level to 0!!");
+      EBO_Opt_Level = 0;
+    }
+     
+    //We take all load instructions for example to show how to specify the 
+    //OP's type and how it should be value profiled.
+    inst2prof_list.clear();
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld1,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld2,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld4,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld8,0,FALSE),&MEM_pu_pool) );
+    
+    UINT32 Min_Instr_Pu_Id, Max_Instr_Pu_Id;
+    Min_Instr_Pu_Id = Value_Instr_Pu_Id >> 16;
+    Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
+    if (current_PU_handle >= Min_Instr_Pu_Id && current_PU_handle <= Max_Instr_Pu_Id )
+    {
+      Start_Timer ( T_Ipfec_Profiling_CU );
+      CG_VALUE_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
+      Stop_Timer( T_Ipfec_Profiling_CU );
+    }
+    Check_for_Dump(TP_A_PROF, NULL);
+  } else if (IPFEC_Enable_Value_Profile_Annot && CG_opt_level > 1 ) {
+    //We take all load instructions for example to show how to specify the 
+    //OP's type and how it should be value profiled.
+    inst2prof_list.clear();
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld1,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld2,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld4,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld8,0,FALSE),&MEM_pu_pool) );
+
+    Set_Error_Phase ( "value profile annotation" );
+    UINT32 Min_Instr_Pu_Id, Max_Instr_Pu_Id;
+    Min_Instr_Pu_Id = Value_Instr_Pu_Id >> 16;
+    Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
+    if (current_PU_handle >= Min_Instr_Pu_Id && current_PU_handle <= Max_Instr_Pu_Id )
+    {
+      CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
+    }
+  }
+  current_PU_handle++;
+
 
   if (CG_localize_tns) {
     /* turn all global TNs into local TNs */
@@ -413,60 +538,152 @@ CG_Generate_Code(
     // Perform all the optimizations that make things more simple.
     // Reordering doesn't have that property.
     CFLOW_Optimize(  (CFLOW_ALL_OPTS|CFLOW_IN_CGPREP)
-		   & ~(CFLOW_FREQ_ORDER | CFLOW_REORDER),
-		   "CFLOW (first pass)");
+                   & ~(CFLOW_FREQ_ORDER | CFLOW_REORDER),
+                   "CFLOW (first pass)");
     if (frequency_verify && CG_PU_Has_Feedback)
       FREQ_Verify("CFLOW (first pass)");
   }
 
+  if (CG_Enable_Ipfec_Phases && CG_opt_level > 1 &&
+      (IPFEC_Enable_If_Conversion || IPFEC_Enable_PRDB ||
+       IPFEC_Enable_Prepass_GLOS  || IPFEC_Enable_Postpass_GLOS))
+    IPFEC_Enable_Region_Formation = TRUE;
+
+  REGION_TREE *region_tree;
+  if (IPFEC_Enable_Region_Formation) {
+    // Build Ipfec region tree.
+    Set_Error_Phase("Ipfec region formation");
+    Start_Timer(T_Ipfec_Region_CU);
+    region_tree=CXX_NEW(REGION_TREE(REGION_First_BB),&MEM_pu_pool);
+    Stop_Timer(T_Ipfec_Region_CU);
+    RGN_Formed = TRUE;
+  }
+ 
   // Invoke global optimizations before register allocation at -O2 and above.
   if (CG_opt_level > 1) {
+    // Build Ipfec region tree if Ipfec phases enabled.
+    // if (CG_Enable_Ipfec_Phases) {
+    //   REGION_TREE region_tree(REGION_First_BB);
+    // }
 
     // Compute frequencies using heuristics when not using feedback.
     // It is important to do this after the code has been given a
     // cleanup by cflow so that it more closely resembles what it will
     // to the later phases of cg.
-    if (!CG_PU_Has_Feedback) {
+    if (!CG_PU_Has_Feedback && !IPFEC_Enable_Edge_Profile_Annot) {
       Set_Error_Phase("FREQ");
       Start_Timer (T_Freq_CU);
       FREQ_Compute_BB_Frequencies();
       Stop_Timer (T_Freq_CU);
       if (frequency_verify)
-	FREQ_Verify("Heuristic Frequency Computation");
+         FREQ_Verify("Heuristic Frequency Computation");
     }
 
+    if (IPFEC_Enable_Region_Formation) {
+      // Build Ipfec region tree.
+      Set_Error_Phase("Ipfec region formation");
+      Start_Timer(T_Ipfec_Region_CU);
+      REGION *root = region_tree->Root();
+      IPFEC_Enable_Region_Decomposition = TRUE;
+      if (IPFEC_Enable_Region_Decomposition) {
+        region_tree->Decomposition(); 
+        GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid(rwn) : NULL);
+      }
+
+      Stop_Timer(T_Ipfec_Region_CU);
+
+#ifdef Is_True_On
+      if (Get_Trace(TP_IPFEC,TT_IPFEC_GRAPHIC)) {
+        printf("After Region Formation draw global cfg\n"); 
+        draw_global_cfg("after Decompose_Region_To_SEME");
+        printf("After Region Formation draw region tree\n"); 
+        draw_region_tree(region_tree->Root(),"After Region Formation");
+      }
+      Verify_Region_Tree(region_tree, REGION_First_BB);
+#endif
+    }
+    
     // Perform hyperblock formation (if-conversion).  Only works for
     // IA-64 at the moment. 
     //
     if (CGTARG_Can_Predicate()) {
-      // Initialize the predicate query system in the hyperblock formation phase
-      HB_Form_Hyperblocks(region ? REGION_get_rid(rwn) : NULL, NULL);
-      if (!PQSCG_pqs_valid()) {
-	PQSCG_reinit(REGION_First_BB);
+      if (IPFEC_Enable_If_Conversion) {
+        Set_Error_Phase( "Ipfec if conversion"); 
+        IF_CONVERTOR convertor(region_tree);
+#ifdef Is_True_On
+        if (IPFEC_Enable_BB_Verify) {
+          BB_Verify_Flags();
+        }
+        if (Get_Trace(TP_IPFEC,TT_IPFEC_GRAPHIC)) {
+          printf("After If Conversion draw global cfg\n"); 
+          draw_global_cfg("after if conversion");
+          printf("After If Conversion draw tree\n");
+          draw_region_tree(region_tree->Root(),"After If Conversion");
+        }
+        Verify_Region_Tree(region_tree, REGION_First_BB);
+#endif
+      }
+      else if (!IPFEC_Enable_Region_Formation) {
+        // Initialize the predicate query system in the hyperblock
+        // formation phase.
+        HB_Form_Hyperblocks(region ? REGION_get_rid(rwn) : NULL, NULL);
+        if (!PQSCG_pqs_valid()) {
+          PQSCG_reinit(REGION_First_BB);
+        }
       }
       if (frequency_verify)
-	FREQ_Verify("Hyberblock Formation");
+        FREQ_Verify("Hyberblock Formation");
     }
     
+    if (!CG_localize_tns) {
+      /* Initialize liveness info for new parts of the REGION */
+      /* also compute global liveness for the REGION */
+      Set_Error_Phase( "Global Live Range Analysis");
+      Start_Timer( T_GLRA_CU );
+      GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+      Stop_Timer ( T_GLRA_CU );
+      Check_for_Dump ( TP_FIND_GLOB, NULL );
+    }
+
     if (CG_enable_loop_optimizations) {
       Set_Error_Phase("CGLOOP");
       Start_Timer(T_Loop_CU);
-      // Optimize loops (mostly innermost)
-      Perform_Loop_Optimizations();
-      // detect GTN
-      GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);	
+      if (IPFEC_Enable_Region_Formation) {
+        REGION_LOOP_UPDATE    *rgn_loop_update;
+        rgn_loop_update = CXX_NEW(REGION_LOOP_UPDATE(region_tree,REGION_First_BB),&MEM_pu_pool);
+        Perform_Loop_Optimizations(rgn_loop_update);
+        CXX_DELETE(rgn_loop_update, &MEM_pu_pool);
+#ifdef Is_True_On
+        if (Get_Trace(TP_IPFEC,TT_IPFEC_GRAPHIC)) {
+          draw_global_cfg("after loop opt");
+          draw_region_tree(region_tree->Root());
+        }
+        Verify_Region_Tree(region_tree, REGION_First_BB);
+#endif
+      } else {
+        Perform_Loop_Optimizations();
+      }
+      GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
       GRA_LIVE_Rename_TNs();  // rename TNs -- required by LRA
       Stop_Timer(T_Loop_CU);
       Check_for_Dump(TP_CGLOOP, NULL);
       if (frequency_verify)
-	FREQ_Verify("CGLOOP");
+        FREQ_Verify("CGLOOP");
     }
 
     /* Optimize control flow (second pass) */
     if (CFLOW_opt_after_cgprep) {
       CFLOW_Optimize(CFLOW_ALL_OPTS, "CFLOW (second pass)");
       if (frequency_verify)
-	FREQ_Verify("CFLOW (second pass)");
+        FREQ_Verify("CFLOW (second pass)");
+#ifdef Is_True_On
+        if (Get_Trace(TP_IPFEC,TT_IPFEC_GRAPHIC)) {
+          draw_global_cfg("after cflow opt");
+          draw_region_tree(region_tree->Root());
+        }
+        if (IPFEC_Enable_Region_Formation)
+          Verify_Region_Tree(region_tree, REGION_First_BB);
+#endif
     }
 
     if (Enable_CG_Peephole) {
@@ -479,8 +696,13 @@ CG_Generate_Code(
     }
   }
 
+  BOOL locs_bundle_value = LOCS_Enable_Bundle_Formation;
+  BOOL emit_bundle_value = EMIT_explicit_bundles;
+  LOCS_Enable_Bundle_Formation = IPFEC_Enable_Pre_Bundling;
+  EMIT_explicit_bundles = IPFEC_Enable_Pre_Bundling;
+
   if (!Get_Trace (TP_CGEXP, 1024))
-	Reuse_Temp_TNs = TRUE;	/* for spills */
+    Reuse_Temp_TNs = TRUE;  /* for spills */
 
   if (CGSPILL_Enable_Force_Rematerialization)
     CGSPILL_Force_Rematerialization();
@@ -506,7 +728,52 @@ CG_Generate_Code(
    *   - Local scheduling after register allocation
    */
 
-  IGLS_Schedule_Region (TRUE /* before register allocation */);
+  if (!CG_localize_tns) {
+    /* Initialize liveness info for new parts of the REGION */
+    /* also compute global liveness for the REGION */
+    /* Set_Error_Phase( "Global Live Range Analysis");
+    Start_Timer( T_GLRA_CU );
+    GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+    Stop_Timer ( T_GLRA_CU );
+    Check_for_Dump ( TP_FIND_GLOB, NULL ); */
+  }
+
+  //Temporary solution for performance tuning.
+  gra_self_recursive = FALSE;
+  fat_self_recursive = FALSE;
+  //Check_Self_Recursive();
+  if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
+  
+  if (IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
+    Start_Timer( T_GLRA_CU );
+    GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+    Stop_Timer ( T_GLRA_CU );
+    Check_Self_Recursive();
+    Global_Insn_Sched(region_tree, TRUE);
+  } else if (IPFEC_Enable_Prepass_LOCS) {
+    Local_Insn_Sched(TRUE);
+  } else {
+    IGLS_Schedule_Region (TRUE /* before register allocation */);
+  }
+
+  if (IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
+    BOOL need_recalc_liveness = (Generate_Recovery_Code() > 0);
+    Global_Insn_Merge_Splitted_BBs();
+    if (need_recalc_liveness) 
+      GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+  }
+#ifdef Is_True_On
+  if (IPFEC_Enable_BB_Verify) {
+    BB_Verify_Flags();
+  }
+#endif
+
+  if (IPFEC_Enable_Opt_after_schedule) {
+    CFLOW_Optimize(CFLOW_BRANCH|CFLOW_UNREACHABLE|CFLOW_MERGE|CFLOW_REORDER, "CFLOW (third pass)");
+  }
+
+  LOCS_Enable_Bundle_Formation = locs_bundle_value;
+  EMIT_explicit_bundles = emit_bundle_value;
 
   if (!CG_localize_tns)
   {
@@ -519,11 +786,11 @@ CG_Generate_Code(
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
       Stop_Timer ( T_GLRA_CU );
       Check_for_Dump (TP_FIND_GLOB, NULL);
-    } else {
+    } else if (!(IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1)) {
       GRA_LIVE_Rename_TNs ();
     }
 
-    if (GRA_redo_liveness) {
+    if (GRA_redo_liveness || IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
       Start_Timer( T_GLRA_CU );
       GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
       Stop_Timer ( T_GLRA_CU );
@@ -555,7 +822,7 @@ CG_Generate_Code(
     Adjust_Entry_Exit_Code ( Get_Current_PU_ST() );
   }
 
-  if (Enable_CG_Peephole) {
+  if (Enable_EBO_Post_Proc_Rgn) {
     Set_Error_Phase("Extended Block Optimizer");
     Start_Timer(T_EBO_CU);
     EBO_Post_Process_Region (region ? REGION_get_rid(rwn) : NULL);
@@ -563,16 +830,39 @@ CG_Generate_Code(
     Check_for_Dump ( TP_EBO, NULL );
   }
 
-  IGLS_Schedule_Region (FALSE /* after register allocation */);
+  if (IPFEC_Enable_Postpass_LOCS) {
+    if (IPFEC_sched_care_machine!=Sched_care_bundle) {
+      Local_Insn_Sched(FALSE);
+      CGGRP_Bundle();
+    }
+    else{
+      Local_Insn_Sched(FALSE);
+    }
+  } else {
+    if (PRDB_Valid()) Delete_PRDB();
+    IGLS_Schedule_Region (FALSE /* after register allocation */);
+  }
+#ifdef Is_True_On
+  if (IPFEC_Enable_BB_Verify) {
+    BB_Verify_Flags();
+  }
+#endif
 
-  Reuse_Temp_TNs = orig_reuse_temp_tns;		/* restore */
+  if (IPFEC_Force_CHK_Fail)
+    Force_Chk_Fail();
 
+  if (IPFEC_Chk_Compact)
+    Adjust_Recovery_Block();
+  
+  Reuse_Temp_TNs = orig_reuse_temp_tns;     /* restore */
+  
+  if (PRDB_Valid()) Delete_PRDB();
   if (region) {
     /*--------------------------------------------------------------------*/
-    /* old region: rwn, rid_orig					  */
-    /* new region: rwn_new, rid_new (encloses old region)		  */
+    /* old region: rwn, rid_orig                      */
+    /* new region: rwn_new, rid_new (encloses old region)         */
     /*--------------------------------------------------------------------*/
-    WN	*inner_body, *outer_body, *exitBlock, *comment;
+    WN  *inner_body, *outer_body, *exitBlock, *comment;
     WN  *rwn_new, *result_block_before, *result_block_after;
     RID *rid_orig;
     char str[100];
@@ -586,7 +876,7 @@ CG_Generate_Code(
     outer_body = WN_CreateBlock();
     /* put inner region inside outer containment block */
     WN_INSERT_BlockFirst(outer_body, rwn);
-    /* we assembled the new exit block earlier in Build_CFG()		*/
+    /* we assembled the new exit block earlier in Build_CFG()       */
     exitBlock = CGRIN_nested_exit(RID_cginfo(rid_orig));
     WN_region_exits(rwn) = exitBlock; /* PPP ??? */
 
@@ -596,7 +886,7 @@ CG_Generate_Code(
     inner_body = WN_CreateBlock();
     WN_region_body(rwn) = inner_body; /* overwrite old body, now in MOPs */
     sprintf(str,"RGN %d has been lowered to MOPs, level=%s",
-	    RID_id(rid_orig), RID_level_str(rid_orig));
+            RID_id(rid_orig), RID_level_str(rid_orig));
     comment = WN_CreateComment(str);
     WN_INSERT_BlockFirst(inner_body, comment);
 
@@ -612,7 +902,7 @@ CG_Generate_Code(
     Set_Error_Phase("Region Finalize");
     Start_Timer(T_Region_Finalize_CU);
     CG_Region_Finalize( result_block_before, result_block_after,
-		       rwn, alias_mgr, TRUE /* generate_glue_code */ );
+                       rwn, alias_mgr, TRUE /* generate_glue_code */ );
     Stop_Timer(T_Region_Finalize_CU);
 
     /* generate alias information for glue code */
@@ -646,7 +936,9 @@ CG_Generate_Code(
      *   - add nada's to quad-align branch targets for TFP.
      */
     Set_Error_Phase ( "Assembly" );
-    Start_Timer (	T_Emit_CU );
+    Start_Timer (   T_Emit_CU );
+    if (Create_Cycle_Output)
+        Cycle_Count_Initialize(Get_Current_PU_ST(), region);      
     EMT_Emit_PU (Get_Current_PU_ST(), pu_dst, rwn);
     Check_for_Dump (TP_EMIT, NULL);
     Stop_Timer ( T_Emit_CU );
@@ -654,7 +946,7 @@ CG_Generate_Code(
     Set_Error_Phase("Region Finalize");
     Start_Timer(T_Region_Finalize_CU);
     CG_Region_Finalize( NULL, NULL, rwn, alias_mgr,
-		       FALSE /* generate_glue_code */ );
+                        FALSE /* generate_glue_code */ );
     Stop_Timer(T_Region_Finalize_CU);
 
     GRA_LIVE_Finish_PU();
@@ -662,7 +954,7 @@ CG_Generate_Code(
 
     /* List local symbols if desired: */
     if ( List_Symbols )
-	Print_symtab (Lst_File, CURRENT_SYMTAB);
+      Print_symtab (Lst_File, CURRENT_SYMTAB);
 
     Stop_Timer ( T_CodeGen_CU );
     Set_Error_Phase ( "Codegen Driver" );
@@ -672,30 +964,29 @@ CG_Generate_Code(
 }
 
 
-
 /* ================================================================= */
 /* routines for dumping/tracing the program */
 
 void
 Trace_IR(
-  INT phase,		/* Phase after which we're printing */
-  const char *pname,	/* Print name for phase	*/
-  BB *cur_bb)		/* BB to limit traces to */
+  INT phase,        /* Phase after which we're printing */
+  const char *pname,    /* Print name for phase */
+  BB *cur_bb)       /* BB to limit traces to */
 {
   INT cur_bb_id = cur_bb ? BB_id(cur_bb) : 0;
   if (   Get_Trace(TKIND_IR, phase)
       && (cur_bb_id == 0 || Get_BB_Trace(cur_bb_id)))
   {
     fprintf(TFile, "\n%s%s\tIR after %s\n%s%s\n",
-	    DBar, DBar, pname, DBar, DBar);
+            DBar, DBar, pname, DBar, DBar);
     if (cur_bb != NULL) {
       Print_BB(cur_bb);
     } else {
       BB *bb;
-      for (bb = REGION_First_BB; bb; bb = BB_next(bb))	{
-	if (Get_BB_Trace(BB_id(bb)) && Get_Trace(TKIND_IR, phase)) {
-	  Print_BB(bb);
-	}
+      for (bb = REGION_First_BB; bb; bb = BB_next(bb))  {
+        if (Get_BB_Trace(BB_id(bb)) && Get_Trace(TKIND_IR, phase)) {
+          Print_BB(bb);
+        }
       }
     }
     fprintf(TFile, "%s%s\n", DBar, DBar);
@@ -704,29 +995,29 @@ Trace_IR(
 
 static void
 Trace_TN (
-  INT phase,		/* Phase after which we're printing */
-  const char *pname )	/* Print name for phase	*/
+  INT phase,            /* Phase after which we're printing */
+  const char *pname )   /* Print name for phase */
 {
   if ( Get_Trace ( TKIND_TN, phase ) ) {
     fprintf ( TFile, "\n%s%s\tTNs after %s\n%s%s\n",
-	      DBar, DBar, pname, DBar, DBar );
+             DBar, DBar, pname, DBar, DBar );
     Print_TNs ();
   }
 }
 
 static void
 Trace_ST (
-  INT phase,		/* Phase after which we're printing */
-  const char *pname )	/* Print name for phase	*/
+  INT phase,            /* Phase after which we're printing */
+  const char *pname )   /* Print name for phase */
 {
   if ( Get_Trace ( TKIND_SYMTAB, phase ) ) {
-  	fprintf ( TFile, "\n%s%s\tSymbol table after %s\n%s%s\n",
+    fprintf ( TFile, "\n%s%s\tSymbol table after %s\n%s%s\n",
               DBar, DBar, pname, DBar, DBar );
-  	SYMTAB_IDX level = CURRENT_SYMTAB;
-	while (level >= GLOBAL_SYMTAB) {
-	  	Print_symtab (TFile, level);
-		--level;
-	}
+    SYMTAB_IDX level = CURRENT_SYMTAB;
+    while (level >= GLOBAL_SYMTAB) {
+        Print_symtab (TFile, level);
+        --level;
+    }
   }
 }
 
@@ -764,7 +1055,7 @@ Check_for_Dump ( INT32 pass, BB *bb )
   }
 }
 
-BOOL 
+BOOL
 Get_Trace ( INT func, INT arg, BB *bb )
 {
   BOOL result = Get_Trace(func, arg);
@@ -777,26 +1068,26 @@ Get_Trace ( INT func, INT arg, BB *bb )
   return result;
 }
 
+
 void
 CG_Dump_Region(FILE *fd, WN *wn)
 {
-  RID	*rid = REGION_get_rid(wn);
+  RID   *rid = REGION_get_rid(wn);
   Is_True(rid != NULL, ("CG_Dump_Region, NULL RID"));
   if (rid && RID_level(rid) >= RL_CGSCHED) {
     CGRIN  *cgrin = RID_cginfo(rid);
     if (cgrin && CGRIN_entry(cgrin)) {
       BB *bb;
       for (bb=CGRIN_entry(cgrin); bb; bb=BB_next(bb))
-	Print_BB( bb );
+        Print_BB( bb );
     }
   }
 }
 
-
 /* just an externally-visible wrapper to cgemit function */
 extern void
 CG_Change_Elf_Symbol_To_Undefined (ST *st)
 {
-	EMT_Change_Symbol_To_Undefined(st);
+    EMT_Change_Symbol_To_Undefined(st);
 }
 

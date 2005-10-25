@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -91,6 +91,8 @@
 #include "cg_grouping.h"
 #include "calls.h"
 #include "cgtarget.h"
+#include "ipfec_options.h"
+
 
 UINT32 CGTARG_branch_taken_penalty;
 BOOL CGTARG_branch_taken_penalty_overridden = FALSE;
@@ -504,7 +506,9 @@ CGTARG_Handle_Bundle_Hazard (OP                          *op,
 	
 	// Check for conditions if noops need to be inserted before (or
 	// after) <op>.
-	if ((can_fill && !OP_xfer(op) && i >= slot_pos)) { 
+        // fix bug for chk is OP_xfer but not TOP_is_xfer;
+	// if ((can_fill && !OP_xfer(op) && i >= slot_pos)) { 
+	if ((can_fill && !TOP_is_xfer(OP_code(op)) && i >= slot_pos)) { 
 	  BB_Insert_Op_After(OP_bb(op), (prev_op) ? prev_op : op, noop);
  	  OP_scycle(noop) = -1;
 	  prev_op = noop;
@@ -528,7 +532,9 @@ CGTARG_Handle_Bundle_Hazard (OP                          *op,
   // if the <bundle> is full, set the <end_group> marker appropriately.
   if (TI_BUNDLE_Is_Full(bundle, &ti_err)) {
     FmtAssert(ti_err != TI_RC_ERROR, ("%s", TI_errmsg));
-    if (OP_xfer(op)) {
+    // fix bug for chk is OP_xfer but not TOP_is_xfer;
+    // if (OP_xfer(op)) {
+    if (TOP_is_xfer(OP_code(op))) {
       if (BB_last_real_op(OP_bb(op)) == op)	Set_OP_end_group(op);
       if (!can_fill && stop_bit_reqd) {
 	Set_OP_end_group(prev_op);
@@ -701,7 +707,6 @@ Percent_Of_Peak(INT numer, INT denom, INT peak[2])
   if (numer == 0) return 0;
   return (numer * peak[1] * 100) / ((denom * peak[0]) + peak[1] - 1);
 }
-
 
 /* =======================================================================
  *
@@ -1748,12 +1753,28 @@ VARIANT CGTARG_Analyze_Compare(
 	variant = V_BR_FUO;
       }
       break;
-
-    default:
+    case TOP_tbit_z:
+    case TOP_tbit_z_unc:
+     if (CG_Enable_Ipfec_Phases) {
+         variant = V_BR_I4EQ;
+         break;
+     } else {
+         goto no_cmp;
+     }
+     case TOP_tbit_nz:
+     case TOP_tbit_nz_unc: 
+        if ( CG_Enable_Ipfec_Phases) {
+            variant = V_BR_I4NE;
+            break;
+        } else {
+            goto no_cmp;
+        }
+      default:
       // unc?
       // parallel form?
       goto no_cmp;
     }
+
 
     /* If the branch is predicated by the false result of the cmp,
      * then the comparison needs to be negated.
@@ -2831,6 +2852,42 @@ CGTARG_Parallel_Compare(OP* cmp_op, COMPARE_TYPE ctype)
   return TOP_UNDEFINED;
 }
 
+BOOL
+OP_def_use_stack_regs(OP* op)
+{
+  for (INT i = 0; i < OP_results(op); i++) {
+    TN *tn = OP_result(op,i);
+    if (TN_is_register(tn) &&
+        REGISTER_Is_Stacked(TN_register_class(tn), TN_register(tn))) {
+      return TRUE;
+    }
+  }
+
+  for (INT i = 0; i < OP_opnds(op); i++) {
+    TN* tn = OP_opnd(op,i);
+    if (TN_is_register(tn) &&
+        REGISTER_Is_Stacked(TN_register_class(tn), TN_register(tn))) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+BOOL
+OP_use_sp(OP* op)
+{
+  for (INT i = 0; i < OP_opnds(op); i++) {
+    TN* tn = OP_opnd(op,i);
+    if (TN_is_register(tn) &&
+        TN_is_sp_reg(tn)) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
 /* ====================================================================
  *
  * CGTARG_Dependence_Required
@@ -2850,8 +2907,9 @@ CGTARG_Dependence_Required(OP *pred_op, OP *succ_op)
                                    // regs;
     read_write_predicate,	   // all TOPs which read/write predicate regs
     write_predicate,		   // all TOPs which write predicate regs
-    read_write_status_field;       // all TOPs which read/write a specific
+    read_write_status_field,       // all TOPs which read/write a specific
                                    // status field regs
+    read_write_unat ;              // read/write unat register     
 
   read_write_rotating_all = FALSE;
   read_write_rotating_predicate = FALSE;
@@ -2859,6 +2917,7 @@ CGTARG_Dependence_Required(OP *pred_op, OP *succ_op)
   read_write_predicate = FALSE;
   write_predicate = FALSE;
   read_write_status_field = FALSE;
+  read_write_unat = FALSE ;
 
   OP *hazard_op = NULL;
 
@@ -2882,6 +2941,12 @@ CGTARG_Dependence_Required(OP *pred_op, OP *succ_op)
   // this instruction.
 
   switch (OP_code(pred_op)) {
+  case TOP_alloc:
+    hazard_op = pred_op;
+    break;
+  case TOP_spadjust:
+    hazard_op = pred_op;
+    break;
   case TOP_clrrrb:
   case TOP_clrrrb_pr:
     read_write_rotating_all = TRUE;
@@ -2905,8 +2970,20 @@ CGTARG_Dependence_Required(OP *pred_op, OP *succ_op)
     read_write_status_field = TRUE;
     hazard_op = pred_op;
     break;
+
+  case TOP_st8_spill:
+  case TOP_mov_f_ar:
+  case TOP_ld8_fill:
+  case TOP_mov_t_ar_r:
+    read_write_unat = TRUE ;
+    hazard_op = pred_op ;
+    break ;
+
   default:
     switch (OP_code(succ_op)) {
+    case TOP_spadjust:
+      hazard_op = succ_op;
+      break;
     case TOP_clrrrb:
     case TOP_clrrrb_pr:
       read_write_rotating_all = TRUE;
@@ -2936,6 +3013,41 @@ CGTARG_Dependence_Required(OP *pred_op, OP *succ_op)
 
   if (hazard_op) {
     OP *other_op = (hazard_op == pred_op) ? succ_op : pred_op;
+
+    if ((OP_code(hazard_op) == TOP_alloc && OP_def_use_stack_regs(other_op)) ||
+        (OP_code(hazard_op) == TOP_spadjust && OP_use_sp(other_op)))
+      return TRUE;
+
+    // readh/write unat 
+    if (read_write_unat) {
+        mTOP hazard_op_code = OP_code (hazard_op) ;
+        mTOP other_op_code  = OP_code (other_op) ;
+
+        if (hazard_op_code == TOP_st8_spill  && other_op_code == TOP_mov_f_ar  || 
+            hazard_op_code == TOP_mov_f_ar   && other_op_code == TOP_st8_spill || 
+            hazard_op_code == TOP_ld8_fill   && other_op_code == TOP_st8_spill || 
+            hazard_op_code == TOP_st8_spill  && other_op_code == TOP_ld8_fill || 
+            hazard_op_code == TOP_ld8_fill  && other_op_code == TOP_ld8_fill || 
+            hazard_op_code == TOP_st8_spill  && other_op_code == TOP_st8_spill || 
+            hazard_op_code == TOP_mov_t_ar_r && other_op_code == TOP_ld8_fill  ||
+            hazard_op_code == TOP_ld8_fill   && other_op_code == TOP_mov_t_ar_r)
+        {
+            return TRUE;               
+        }
+    }
+
+    // Patch for a failed assertion in
+    // GRA_Remove_Predicates_Save_Restore().
+    // There isn't any arc between a spadjust and a mov_f_pr
+    // or mov_t_pr. So scheduler may move mov_f_pr forward passing
+    // spadjust or move spajust forward passing mov_t_pr. Both will
+    // cause the assertion fail. Don't know why the old scheduler
+    // doesn't have the problem.
+    if ((read_write_rotating_predicate ||
+        read_write_predicate ||
+        write_rotating_predicate ||
+        write_predicate) && OP_code(other_op) == TOP_spadjust)
+      return TRUE;
 
     // Special case clrrrb instructions first since it implicitly 
     // reads/writes all rotating regs.
@@ -3026,24 +3138,28 @@ CGTARG_Dependence_Required(OP *pred_op, OP *succ_op)
   // br.call, 
   // br.ia, 
   // br.ret,
-  // clrrrb.
+  // clrrrb,
+  // cover,
+  // rfi;
 
   if (OP_code(pred_op)  == TOP_alloc &&
       (OP_code(succ_op) == TOP_flushrs ||
-       OP_code(succ_op) == TOP_br_cexit,
+       OP_code(succ_op) == TOP_br_cexit ||
        OP_code(succ_op) == TOP_br_ctop ||
        OP_code(succ_op) == TOP_br_wexit ||
        OP_code(succ_op) == TOP_br_wtop ||
        OP_code(succ_op) == TOP_br_call ||
        OP_code(succ_op) == TOP_br_ia ||
        OP_code(succ_op) == TOP_br_ret ||
+       OP_code(succ_op) == TOP_cover ||
+       OP_code(succ_op) == TOP_rfi ||
        OP_code(succ_op) == TOP_clrrrb ||
        OP_code(succ_op) == TOP_clrrrb_pr)) return TRUE;
   
   return FALSE;
 }
 
-
+#ifndef IPFEC_Enable_New_Targ
 // ??? NOTE: The following and most if not all of Adjust_Latency
 // will be moved into to the targinfo scheduling specification.
 typedef enum {
@@ -4424,6 +4540,7 @@ CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, IN
     }
   }
 }
+#endif /* end of ifndef IPFEC_Enable_New_Targ */
 
 /* ====================================================================
  *

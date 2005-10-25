@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -261,6 +261,7 @@ struct tn {
 #define TN_GRA_HOMEABLE 0x0800      /* TN can be homed by gra */
 #define TN_ENUM		0x1000      /* Constant enum value */
 #define TN_GRA_CANNOT_SPLIT 0x2000  /* its live range not to be split by GRA */
+#define TN_TAKE_NAT   0X4000   /* TN (gr,fpr) may take NaT bit */
 
 /* Define the TN_relocs values */
 
@@ -398,6 +399,9 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define      TN_is_gra_cannot_split(r)  (TN_flags(r) &   TN_GRA_CANNOT_SPLIT)
 #define  Set_TN_is_gra_cannot_split(r)  (TN_flags(r) |=  TN_GRA_CANNOT_SPLIT)
 
+#define        TN_is_take_nat(r)   (TN_flags(r) &   TN_TAKE_NAT)
+#define    Set_TN_is_take_nat(r)   (TN_flags(r) |=  TN_TAKE_NAT)
+#define  Reset_TN_is_take_nat(r)   (TN_flags(r) &= ~TN_TAKE_NAT) 
 
 /* Macros to check if a TN is a particular dedicated register. */
 #define TN_is_sp_reg(r)	   (TN_register_and_class(r) == CLASS_AND_REG_sp)
@@ -636,6 +640,7 @@ extern	TN *Gen_Adjusted_TN( TN *tn, INT64 adjust );
 
 
 /* Trace support: */
+extern char * sPrint_TN ( TN *tn, BOOL verbose, char *buf );
 /* Print TN to a file with given 'fmt'; assume fmt has a %s in it. */
 extern	void  fPrint_TN ( FILE *f, char *fmt, TN *tn);
 #pragma mips_frequency_hint NEVER fPrint_TN

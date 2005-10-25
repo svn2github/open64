@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -622,11 +622,11 @@ GRA_Trace_Memory_Counts()
 /////////////////////////////////////
 {
   if (trace_memory) {
-    fprintf(TFile,"<gra> Memory use for GRA_BBs: %d\n",
+    fprintf(TFile,"<gra> Memory use for GRA_BBs: %ld\n",
 	    gbb_mgr.Alloc_Count()*sizeof(GRA_BB));
     fprintf(TFile,"<gra> Memory count of GRA_BBs: %d\n",
 	    gbb_mgr.Alloc_Count());
-    fprintf(TFile,"<gra> Memory use for GRA_REGIONs: %d\n",
+    fprintf(TFile,"<gra> Memory use for GRA_REGIONs: %ld\n",
 	    gra_region_mgr.Alloc_Count()*sizeof(GRA_REGION));
     fprintf(TFile,"<gra> Memory count of GRA_REGIONs: %d\n",
 	    gra_region_mgr.Alloc_Count());

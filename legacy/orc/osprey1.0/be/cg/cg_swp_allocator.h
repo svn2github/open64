@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -439,7 +439,64 @@ public:
   void dump() {print(stderr, _sc+1, 65);}
   
   bool has_conflicts(); // Expensive correctness verification algorithm
-  
+  bool adjust_predicate(const SWP_OP_vector& op_state,INT32 &used_regs) {
+     INT32 offset = INT32_MAX;
+     
+     for (INT32 i = 0; i < _lifetime.size(); ++i) {
+       SWP_LIFETIME  *lt = &_lifetime[i];
+       if (lt->location() < offset) offset = lt->location();
+     }
+
+     //Should get the control predicate's offset first.
+     //op_state[i]/ii + Op_omega(op,j);
+     
+     INT32 control_pred_loc = 0;
+     BOOL need_adjust = FALSE;
+     for (INT32 i = 0; i < _lifetime.size(); ++i) {
+       SWP_LIFETIME  *lt = &_lifetime[i];
+       const INT32 loc = lt->location() - offset;
+
+        if ((lt->tn() == NULL || lt->tn() == op_state.control_predicate_tn)) {
+          
+          control_pred_loc = loc;
+        }  
+	  }  
+     
+    INT32 adjust_value = 0;
+    //if (need_adjust) {
+    for (INT32 i = 0; i < _lifetime.size(); ++i) {
+      SWP_LIFETIME  *lt = &_lifetime[i];
+      INT32_PAIR     lr = _logical_reg_seq(i, lt->location());
+      INT32 start = lr.first - offset;
+      INT32 end   = lr.second - offset;
+      if ((start < control_pred_loc) && (end >= control_pred_loc)) {
+        INT32 temp_adjust = end - control_pred_loc +1;
+        //if (temp_adjust == 0) temp_adjust = 1; 
+        if (temp_adjust > adjust_value) adjust_value = temp_adjust;
+        
+      }  
+
+      
+     }
+
+     /*if (adjust_value != 0) {
+       return FALSE;
+     } else {
+       return TRUE;
+     } */ 
+    used_regs +=adjust_value;
+    if (adjust_value != 0) {  
+      for (INT32 i = 0; i < _lifetime.size(); ++i) {
+        SWP_LIFETIME *lt = &_lifetime[i];
+        if ((lt->location() - offset) < control_pred_loc ) {
+          INT32 new_loc = lt->location() - adjust_value;
+          lt->set_location(new_loc);
+        }
+      }  
+    }  
+  }  
+  //}
+   
 }; // class SWP_ALLOCATOR
 
 #endif // cg_swp_allocator_INCLUDED

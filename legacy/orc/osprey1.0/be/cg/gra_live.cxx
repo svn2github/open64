@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -85,6 +85,7 @@
 #include "reg_live.h"
 #include "cg_loop.h"
 #include "pqs_cg.h"
+#include "cgtarget.h"
 
 static BB_LIST *region_entry_list;
 static BB_SET  *region_exit_set;
@@ -191,7 +192,7 @@ typedef struct {
  * =======================================================================
  */
 
-
+ 
 /* =======================================================================
  *
  *  TN_BB_LIST_MAP_Create
@@ -591,61 +592,6 @@ Compute_Force_TNs(void)
   }
 }
 
-
-/* =======================================================================
- *
- *  GRA_LIVE_Print_Liveness
- *
- *  See interface description.
- *
- * =======================================================================
- */
-void
-GRA_LIVE_Print_Liveness( BB* bb )
-{
-  if ( GRA_LIVE_Phase_Invoked && BB_bbregs(bb) && BB_live_in(bb) ) {
-    fprintf ( TFile, "  defreach_in : " );
-    GTN_TN_SET_Print( BB_defreach_in(bb), TFile );
-    fprintf ( TFile, "\n" );
-    fprintf ( TFile, "  live_in     : " );
-    GTN_TN_SET_Print( BB_live_in(bb), TFile );
-    fprintf ( TFile, "\n" );
-    fprintf ( TFile, "  defreach_out: " );
-    GTN_TN_SET_Print( BB_defreach_out(bb), TFile );
-    fprintf ( TFile, "\n" );
-    fprintf ( TFile, "  live_out    : " );
-    GTN_TN_SET_Print( BB_live_out(bb), TFile );
-    fprintf ( TFile, "\n" );
-    fprintf ( TFile, "  live_def    : " );
-    GTN_TN_SET_Print( BB_live_def(bb), TFile );
-    fprintf ( TFile, "\n" );
-    fprintf ( TFile, "  live_use    : " );
-    GTN_TN_SET_Print( BB_live_use(bb), TFile );
-    fprintf ( TFile, "\n" );
-  }
-}
-
-void 
-GRA_LIVE_fdump_liveness(FILE *f)
-{
-  FILE *save_tfile=TFile;
-  Set_Trace_File_internal(f);
-  BB *bb;
-
-  fprintf(TFile,"GRA_LIVE dump =======================================================\n");
-  FOR_ALL_BBLIST_ITEMS(REGION_First_BB,bb) {
-    fprintf(TFile,"--- BB %d ----\n",BB_id(bb));
-    GRA_LIVE_Print_Liveness(bb);
-  }
-  fprintf(TFile,"=====================================================================\n");
-  Set_Trace_File_internal(save_tfile);
-}
-
-void
-GRA_LIVE_dump_liveness(void)
-{
-  GRA_LIVE_fdump_liveness(stdout);
-}
 
 /* =======================================================================
  *
@@ -1239,6 +1185,7 @@ GRA_LIVE_Local_Live_Propagate(
                                  BB_live_out(bb),
                                  &liveness_pool);
 
+  
   BB_live_in(bb) = GTN_SET_UnionD(GTN_SET_DifferenceD(BB_live_in(bb),
                                                       BB_live_def(bb)),
                                   BB_live_use(bb),
@@ -1470,13 +1417,9 @@ GRA_LIVE_Region_Compute_Global_Live_Info(void)
   }
   while (change);
 
-  if (Get_Trace(TP_FIND_GLOB, 0x1)) {
-	GRA_LIVE_fdump_liveness(TFile);
-  }
   /* Matches push in _Start function below.
    */
   MEM_POOL_Pop(&gra_live_pool);
-
 }
 
 
@@ -1649,9 +1592,6 @@ BB_REGION_Recompute_Global_Live_Info(const BB_REGION& region, BOOL recompute_loc
   }
   while (change);
 
-  if (Get_Trace(TP_FIND_GLOB, 0x1)) {
-	GRA_LIVE_fdump_liveness(TFile);
-  }
   MEM_POOL_Pop(&gra_live_pool);
 }
 
@@ -2186,6 +2126,60 @@ GRA_LIVE_Compute_Local_Info(
   GRA_LIVE_Init_BB_End(bb);
 }
 
+/* =======================================================================
+ *
+ *  GRA_LIVE_Print_Liveness
+ *
+ *  See interface description.
+ *
+ * =======================================================================
+ */
+void
+GRA_LIVE_Print_Liveness( BB* bb )
+{
+  if ( GRA_LIVE_Phase_Invoked && BB_bbregs(bb) && BB_live_in(bb) ) {
+    fprintf ( TFile, "  defreach_in : " );
+    GTN_TN_SET_Print( BB_defreach_in(bb), TFile );
+    fprintf ( TFile, "\n" );
+    fprintf ( TFile, "  live_in     : " );
+    GTN_TN_SET_Print( BB_live_in(bb), TFile );
+    fprintf ( TFile, "\n" );
+    fprintf ( TFile, "  defreach_out: " );
+    GTN_TN_SET_Print( BB_defreach_out(bb), TFile );
+    fprintf ( TFile, "\n" );
+    fprintf ( TFile, "  live_out    : " );
+    GTN_TN_SET_Print( BB_live_out(bb), TFile );
+    fprintf ( TFile, "\n" );
+    fprintf ( TFile, "  live_def    : " );
+    GTN_TN_SET_Print( BB_live_def(bb), TFile );
+    fprintf ( TFile, "\n" );
+    fprintf ( TFile, "  live_use    : " );
+    GTN_TN_SET_Print( BB_live_use(bb), TFile );
+    fprintf ( TFile, "\n" );
+  }
+}
+
+void 
+GRA_LIVE_fdump_liveness(FILE *f)
+{
+  FILE *save_tfile=TFile;
+  Set_Trace_File_internal(f);
+  BB *bb;
+
+  fprintf(TFile,"GRA_LIVE dump =======================================================\n");
+  FOR_ALL_BBLIST_ITEMS(REGION_First_BB,bb) {
+    fprintf(TFile,"--- BB %d ----\n",BB_id(bb));
+    GRA_LIVE_Print_Liveness(bb);
+  }
+  fprintf(TFile,"=====================================================================\n");
+  Set_Trace_File_internal(save_tfile);
+}
+
+void
+GRA_LIVE_dump_liveness(void)
+{
+  GRA_LIVE_fdump_liveness(stdout);
+}
 
 
 BOOL GRA_LIVE_TN_Live_Outof_BB (TN *tn, BB *bb)
@@ -2232,7 +2226,7 @@ Rename_TN_In_Range (TN *tn, OP *op1, OP *op2)
   OP *op = op1;
   INT i;
   
-  if (Get_Trace(TP_FIND_GLOB, 0x8))
+  if (Get_Trace(TP_CGPREP, 0x8))
     fprintf (TFile, "<Rename_TNs> TN%d renamed to TN%d in BB:%d\n",
 	     TN_number(tn), TN_number(new_tn), BB_id(OP_bb(op1)));
   
@@ -2253,29 +2247,6 @@ Rename_TN_In_Range (TN *tn, OP *op1, OP *op2)
 }
 
 
-/* =======================================================================
- *
- *  Clear_Defreach
- *
- *  Clear the deefreach_in and defreach_out for blocks that are visited.
- *
- * =======================================================================
- */
-static TN *defreach_tn;
-static void
-Clear_Defreach(
-  BB *bb
-)
-{
-  if (GTN_SET_MemberP(BB_defreach_in(bb), defreach_tn))
-    GRA_LIVE_Remove_Defreach_In_GTN(bb, defreach_tn);
-
-  if (GTN_SET_MemberP(BB_defreach_out(bb), defreach_tn)) 
-    GRA_LIVE_Remove_Defreach_Out_GTN(bb, defreach_tn);
-}
-
-
-
 // Detect TNs that should be renamed in the <bb>. 
 void 
 Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set)
@@ -2286,6 +2257,7 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set)
   FOR_ALL_BB_OPs_FWD (bb, op) {
     for (INT i = 0; i < OP_results(op); i++) {
       TN *tn = OP_result(op, i);
+      
       // Don't rename under the following conditions.
       if (TN_is_dedicated(tn) || OP_cond_def(op) || OP_same_res(op)) continue;
 
@@ -2314,12 +2286,14 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set)
 	  // TN doesn't exist in live-sets for any BB.
 
 	  // ONLY need to check for defreach_in and defreach_out sets. 
-          defreach_tn = tn;
-          BB_VISITED_COUNTER counter_data(&gra_live_pool);
-          BB_VISITED_COUNTER *counter = &counter_data;
-          counter->Init();
-          BB_REGION_Forward_Depth_First_Visit_BB (bb, counter, Clear_Defreach, Do_Nothing);
-          MEM_POOL_Pop(&gra_live_pool);
+	  BB *cur_bb;
+	  for (cur_bb = bb; cur_bb != NULL; cur_bb = BB_next(cur_bb)) {
+	    if (GTN_SET_MemberP(BB_defreach_in(cur_bb), tn))
+	      GRA_LIVE_Remove_Defreach_In_GTN(cur_bb, tn);
+
+	    if (GTN_SET_MemberP(BB_defreach_out(cur_bb), tn)) 
+	      GRA_LIVE_Remove_Defreach_Out_GTN(cur_bb, tn);
+	  }
 	  Reset_TN_is_global_reg (tn);
 
 	}
@@ -2351,3 +2325,8 @@ void GRA_LIVE_Rename_TNs (void)
 
   MEM_POOL_Pop (&MEM_local_pool);
 }
+
+
+
+
+

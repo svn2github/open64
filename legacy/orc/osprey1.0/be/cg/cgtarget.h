@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -333,10 +333,10 @@
  *        These routines check to see if <memop> is a speculative,
  *        advanced or check load. Assumes that <memop> is a load operation.
  *  
- *	VARIANT CGTARG_Analyze_Compare(OP *br,
- *				       TN **tn1, 
- *				       TN **tn2, 
- *				       OP **compare_op)
+ *	INT CGTARG_Analyze_Compare(OP *br,
+ *				   TN **tn1, 
+ *				   TN **tn2, 
+ *				   OP **compare_op)
  *	  Analyze a branch to determine the condition of the branch and
  *	  TNs being compared. Where possible and appropriate if the branch
  *	  is based on the result of an slt instruction, take that in to
@@ -353,7 +353,9 @@
  *	  NOTES: Currently restricted to integer branches; also see
  *	  CGTARG_Analyze_Branch
  *
- *      VARIANT CGTARG_Analyze_Branch(OP *br, TN **tn1, TN **tn2)
+ *      INT CGTARG_Analyze_Branch(OP *br,
+ *				  TN **tn1, 
+ *				  TN **tn2)
  *	  Analyze a branch to determine the condition of the branch and
  *	  the operand TNs.
  * 
@@ -540,10 +542,14 @@
 #include "ti_bundle.h"
 #include "cg_thr.h"
 
+#ifdef  IPFEC_Enable_New_Targ
+#include "targ_bypass.h"
+#endif /* END of IPFEC_Enable_New_Targ */
 extern UINT32 CGTARG_branch_taken_penalty;
 extern BOOL CGTARG_branch_taken_penalty_overridden;
 
 #include "cgtarget_arch.h"
+
 
 class CG_GROUPING; // Defined only for isa where it is used (e.g. IA-64).
 
@@ -648,7 +654,7 @@ extern BOOL CGTARG_Is_Long_Latency(TOP op);
 
 extern VARIANT CGTARG_Analyze_Branch(OP *br, TN **tn1, TN **tn2);
 extern VARIANT CGTARG_Analyze_Compare(OP *br, TN **tn1, TN **tn2,
-	 			      OP **compare_op);
+	 			    OP **compare_op);
 
 extern INT32 CGTARG_Special_Min_II(BB* loop_body, BOOL trace);
 
@@ -823,4 +829,6 @@ inline BOOL CGTARG_Use_Load_Latency(OP *pred_op, TN *tn)
 /* Returns TRUE if OP is a suitable candidate for HBF. */
 extern BOOL CGTARG_Check_OP_For_HB_Suitability(OP *op);
 
+/* Return TRUE if OP is def use stack register; */
+extern BOOL OP_def_use_stack_regs(OP* op);
 #endif /* CGTARGET_INCLUDED */
