@@ -235,6 +235,8 @@ BE_ORC_SRCS = 		\
   prdb_util.cxx			\
   init.cxx			\
   multi_branch.cxx		\
+  cache_analysis.cxx            \
+  sched_spec_itf.cxx     \
   $(DERIVED_SRCS)
 
 

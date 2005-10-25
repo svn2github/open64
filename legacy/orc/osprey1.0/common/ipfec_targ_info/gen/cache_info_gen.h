@@ -26,33 +26,33 @@
 */
 
 //-*-c++-*-
-
-#ifndef multibranch_INCLUDED
-#define multibranch_INCLUDED
-
-#include "cg_flags.h"
-#include "ipfec_options.h"
-
-// ==================================================================
+//=============================================================================
 //
-//  Module :  multibranch.h
+//  Module : cache_info_gen.h
 //  $Date  : $
 //  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/orc_intel/multi_branch.h,v $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/ipfec_targ_info/gen/cache_info_gen.h,v $
 //
 //  Description:
 //  ============
+//  Generate issue port function
+//=============================================================================
+/////////////////////////////////////////
 //
-//  This file contains the interface for multiple branch.
-//  - Post_Multi_Branch called after local scheduler, bundling 
-//    multiple branch in different BB into same cycle.
-//  - Check_Cross_Boundary called before local scheduler, find each 
-//    bundle which cross BB boundary is not distroy by other phase.
-//    Then, reschedule ruined BB in local scheduler.
-//    Here we only check cross bundle caused by multi-branch.
-// ==================================================================
+//  Issue_Port_Generator(void *pknobs, GEN_MODE mode);
+//  
+//  Generate issue port information by specifed type(file or debug or screen).
+//
+//
+//
+//
+#ifndef CACHE_INFO_GEN_INCLUDED
+#define CACHE_INFO_GEN_INCLUDED
 
-extern void Check_Cross_Boundary(void);
-extern void Post_Multi_Branch(void);
-extern void Post_Multi_Branch_Collect(void);
-#endif
+
+#include "gen_base.h"
+
+extern void Cache_Info_Generator(void *pknobs, GEN_MODE mode, MACHINE_TYPE type=ITM_TYPE);
+
+#endif /* CACHE_INFO_GEN_INCLUDED */
+

@@ -34,7 +34,7 @@
 #
 
 VER_MAJOR="2"
-VER_MINOR="0"
+VER_MINOR="1"
 #PATCH_LEVEL=""
 VERSION="${VER_MAJOR}.${VER_MINOR}"
 
@@ -160,6 +160,9 @@ INSTALL_WHIRL_STUFF () {
     INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f    ${PHASEPATH}/whirl2f
     INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c.so ${PHASEPATH}/whirl2c.so
     INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f.so ${PHASEPATH}/whirl2f.so
+
+    (cd ${PHASEPATH}; ln -sf ${PHASEPATH}/be whirl2c_be) 
+    (cd ${PHASEPATH}; ln -sf ${PHASEPATH}/be whirl2f_be) 
 
     INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
 

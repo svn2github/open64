@@ -799,6 +799,7 @@ Attempt_Merge(HB_CAND_TREE*        new_region,
     //
     //  See if the fall-through successor to our exit block is the entry to a hammock
     //
+    Remove_Explicit_Branch(hb_exit);
     neighbor = BB_Fall_Thru_Successor(hb_exit);
     if (!neighbor) return FALSE;
     // If we allow this in, we can get some horrendously bad hyperblocks (too many paths)

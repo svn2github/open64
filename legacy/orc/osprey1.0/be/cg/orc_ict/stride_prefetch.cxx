@@ -58,9 +58,17 @@
 #include "stride_prefetch.h"
 #include "val_prof.h"
 
+#include "cg_dep_graph.h"
+#include "targ_cache_info.h"
+#include "cache_analysis.h"
+
+
 #define EMPT   -1
 #define STRONG_SINGL_STRIDE  0x0001
 #define PHASED_MULTI_STRIDE  0x0002
+
+#define MIN_STRIDE 9
+#define MAX_DISTANCE 0x1fff
 
 
 extern OP_MAP OP_to_WN_map;
@@ -119,8 +127,11 @@ protected:
     void    Phased_Multi_Stride_Ins(BB *bb, OP *op, INT32 distance);
 };
 
-
-
+struct pref_dis_map{
+  OP *op;
+  mINT64 dis;
+};
+static vector<struct pref_dis_map> prefetch_list;
 
 
 // do initial work
@@ -437,7 +448,6 @@ void REGION_STRIDE_PREFETCH::Stride_Ins(BB *bb, OP *op, INT32 distance)
         return;
     if (OP_Prefetched(op))
         return;
-    Set_OP_Prefetched(op); 
     FB_TNV *tnv = (FB_TNV *)OP_MAP_Get(op_stride_tnv_map, op);
     UINT64 first_val_freq;
     UINT64 secod_val_freq;
@@ -487,19 +497,55 @@ void REGION_STRIDE_PREFETCH::Strong_Single_Stride_Ins(BB *bb, OP *op, INT32 dist
     mINT64 first_val;
     mINT64 prefetch_distance;
     float  zero_prob;
-    UINT32 i=2;
  
     first_val = tnv->_values[0];
-    if( abs(first_val) < 9) return;
+    if( abs(first_val) < MIN_STRIDE) return;
     prefetch_distance = distance * first_val;
-    if ( prefetch_distance == 0){
+    if ( (prefetch_distance == NULL) || ( prefetch_distance > MAX_DISTANCE ))
         return;
+
+    // consider same cache line to adjust prefetch_distance;
+    OP *cur_op;
+    INT max_dis=0, min_dis=0;
+    if (prefetch_list.size()>0) {
+        max_dis = min_dis = prefetch_list[prefetch_list.size()-1].dis;
     }
+    for(INT i= prefetch_list.size()-1; i>=0; i--){
+        cur_op = prefetch_list[i].op;
+        if (cur_op == op) break;
+        INT diff;
+        if (OP_Prefetched(cur_op)) { 
+            INT cache_line_size = Cache_Line_Size(CACHE_L2);
+            if (Cache_Access_Same_Line(cur_op, op, &diff) && diff <= cache_line_size/2) {
+                max_dis = prefetch_list[i].dis > max_dis ? prefetch_list[i].dis : max_dis;
+                min_dis = prefetch_list[i].dis < min_dis ? prefetch_list[i].dis : min_dis;
+                if (abs(prefetch_distance - prefetch_list[i].dis)<cache_line_size) {
+                  INT value = abs(cache_line_size/first_val)+1;
+                  if (prefetch_distance < prefetch_list[i].dis || distance>8) { 
+                    prefetch_distance -= value*first_val;
+                  } else {
+                    prefetch_distance += value*first_val;
+                  }
+                  INT boundary = first_val>0?max_dis:min_dis;
+                  while(abs(prefetch_distance - boundary) < cache_line_size) {
+                     prefetch_distance += value*first_val;
+                  }
+                  break;
+               }
+           }
+        }
+    }
+    // push op and distance to prefetch list
+    struct pref_dis_map pdm;
+    pdm.op  = op;
+    pdm.dis = prefetch_distance;
+    prefetch_list.push_back(pdm);
+    if (prefetch_list.size()>5) { prefetch_list.erase(prefetch_list.begin());}
+
     zero_prob = ((float)tnv->_zero_std_counter) / tnv->_exec_counter;
     TN *base = Gen_Register_TN( ISA_REGISTER_CLASS_integer, 8 );
     TN *distance_tn = Gen_Register_TN( ISA_REGISTER_CLASS_integer, 8 );
-    OP *op_mov = Mk_OP( TOP_movl, distance_tn, True_TN, Gen_Literal_TN(prefetch_distance, 8)); 
-    OP *op_add = Mk_OP( TOP_add, base, True_TN, distance_tn, OP_opnd(op, 3));
+    OP *op_add = Mk_OP( TOP_adds, base, True_TN, Gen_Literal_TN(prefetch_distance, 8), OP_opnd(op, 3));
     OP *op_prefetch =Mk_Prefetch_OP( zero_prob, base);
     WN * wn = WN_Create(OPC_PREFETCH, 1);
     WN_offset(wn) = prefetch_distance;
@@ -507,10 +553,9 @@ void REGION_STRIDE_PREFETCH::Strong_Single_Stride_Ins(BB *bb, OP *op, INT32 dist
     OP_MAP_Set(OP_to_WN_map, op_prefetch, wn);
     OP_srcpos(op_prefetch) = OP_srcpos(op);
     OP_srcpos(op_add) = OP_srcpos(op);
-    OP_srcpos(op_mov) = OP_srcpos(op);
     BB_Insert_Op_Before(bb, op, op_prefetch);
     BB_Insert_Op_Before(bb, op_prefetch, op_add);
-    BB_Insert_Op_Before(bb, op_add, op_mov);
+    Set_OP_Prefetched(op); 
  }
 
 
@@ -562,6 +607,7 @@ void REGION_STRIDE_PREFETCH::Phased_Multi_Stride_Ins(BB *bb, OP *op, INT32 dista
     BB_Insert_Op_Before(bb, op_prefetch, op_mov);
     BB_Insert_Op_Before(bb, op_mov, op_add);
     BB_Insert_Op_Before(bb, op_add, op_sub);
+    Set_OP_Prefetched(op); 
 }
 
 

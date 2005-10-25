@@ -797,6 +797,8 @@ Spill_Prolog_Epilog_Save_LUNIT(LRANGE* lrange, LUNIT* lunit, GRA_BB* gbb,
   }
 }
 
+extern INIT_USE_ONLY_GTN* GTN_USE_ONLY;
+extern BOOL Search_Used_Only_Once_GTN (TN *find_tn,BB* def_bb);
 
 /////////////////////////////////////
 static void
@@ -834,9 +836,20 @@ LUNIT_Spill(LUNIT* lunit)
       }
 
       gbb->Rename_TN_References(tn,ltn);    
+      BOOL restore_above = FALSE;
+      //
+      //delete unecessary restore and spill during GRA
+      //1:GTN which used only once and its def and use are in the same bb
+      //  do not spill it if the bb is not a loop bb
+      //2:If a used_only_once_GTN does not ld at the beginning,
+      //  do not spill it at the end of bb
+      //3::If 2 op have the same res_tn and guarded by disjoint predicates
+      //   only set the flags of def for the tn ,Not set the flags of use.
+      //
       if (lunit->Has_Exposed_Use() &&
 	  (lunit->Restore_Above() ||
 	   gbb->Is_Live_In_LRANGE(lrange))) {
+           restore_above = TRUE;
 	TN_Restore_Above(ltn,st,gbb,TRUE);
 	gbb->Remove_Live_In_LRANGE(lrange);
       }
@@ -844,8 +857,19 @@ LUNIT_Spill(LUNIT* lunit)
       if (lunit->Has_Def() &&
 	  (lunit->Spill_Below() ||
 	   gbb->Is_Live_Out_LRANGE(lrange))) {
-	TN_Spill_Below(ltn,st,gbb,TRUE);
-	gbb->Remove_Live_Out_LRANGE(lrange);
+              if ((!restore_above)&&(Search_Used_Only_Once_GTN(orig_tn,bb))) {
+              	 gbb->Remove_Live_Out_LRANGE(lrange);
+                 return ;
+
+              }
+              if ((restore_above)&&Search_Used_Only_Once_GTN(orig_tn,bb)){
+                 if (BB_nest_level(bb)==0) {
+               	    gbb->Remove_Live_Out_LRANGE(lrange);
+                    return ;
+                 }
+              }
+              TN_Spill_Below(ltn,st,gbb,TRUE);
+              gbb->Remove_Live_Out_LRANGE(lrange);
       }
     } else {
       Spill_Prolog_Epilog_Save_LUNIT(lrange, lunit, gbb, st);

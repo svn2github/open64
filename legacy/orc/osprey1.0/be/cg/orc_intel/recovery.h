@@ -65,17 +65,17 @@ extern void Force_Chk_Fail();
 
 
 #define  chks_reg_pos  1
-#define  chks_tar_pos  2  
+#define  chks_tgt_pos  2  
 
 #define  chka_reg_pos  2  
-#define  chka_tar_pos  3
+#define  chka_tgt_pos  3
 
 
 //=============================================================================
-// Set_chk_tar
+// Set_chk_tgt
 //   - Set chk_op's branch target opnd.
 //   
-// Get_chk_tar
+// Get_chk_tgt
 //   - Get chk_op's branch target opnd.
 // 
 // Set_chk_reg
@@ -88,24 +88,24 @@ extern void Force_Chk_Fail();
 //   -  If the BB's last op is a chk op, return it, or return NULL.
 //=============================================================================
 inline OP* 
-Set_chk_tar(OP *chk_op, TN *target_tn)
+Set_chk_tgt(OP *chk_op, TN *target_tn)
 {
     Is_True(OP_chk(chk_op),("not a chk op!"));
 
     INT target_pos;
-    target_pos = OP_chk_s(chk_op) ? chks_tar_pos : chka_tar_pos ;
+    target_pos = OP_chk_s(chk_op) ? chks_tgt_pos : chka_tgt_pos ;
     Set_OP_opnd(chk_op, target_pos, target_tn);
 
     return chk_op;
 }
 
 inline TN*
-Get_chk_tar(OP* chk_op)
+Get_chk_tgt(OP* chk_op)
 {
     Is_True(OP_chk(chk_op),("not a chk op!"));
     
-    return ( OP_chk_s(chk_op) ? OP_opnd(chk_op,chks_tar_pos) : 
-                                OP_opnd(chk_op,chka_tar_pos) );
+    return ( OP_chk_s(chk_op) ? OP_opnd(chk_op,chks_tgt_pos) : 
+                                OP_opnd(chk_op,chka_tgt_pos) );
 }
 
 inline OP* 

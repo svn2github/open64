@@ -241,9 +241,6 @@ public:
          */
     EXEC_PATH  (EXEC_PATH_ID id, MEM_POOL* mp) ;
     EXEC_PATH  (const EXEC_PATH& ep, MEM_POOL *mp) ;
-    BOOL Extract_Path_Segment (EXEC_PATH& ep, 
-                               REGIONAL_CFG_NODE * from, 
-                               REGIONAL_CFG_NODE * to=NULL);
 
     ~EXEC_PATH (void) { /* do nothing */ }
     EXEC_PATH& operator = (const EXEC_PATH& ep);
@@ -487,11 +484,10 @@ public:
                                }
 
         /* Size () :   query this set can handle how many path.
-         * Resize () : change the capacity of this set, and return
-         *             the old size
+         * Resize () : change the capacity of this set.
          */
     INT32 Size (void) const         { return _size ; }
-    INT32 Resize (INT32 new_size) ;  /* change the size */ 
+    void Resize (INT32 new_size) ;  /* change the size */ 
 
 
         /* check to see whether <path> is a member of this set

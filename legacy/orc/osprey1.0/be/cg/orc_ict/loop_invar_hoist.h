@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2003, Intel Corporation
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -7,7 +7,7 @@
   
   Redistributions of source code must retain the above copyright notice, this list
   of conditions and the following disclaimer. 
-  
+
   Redistributions in binary form must reproduce the above copyright notice, this list
   of conditions and the following disclaimer in the documentation and/or other materials
   provided with the distribution. 
@@ -24,35 +24,26 @@
   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
+ 
 //-*-c++-*-
 
-#ifndef multibranch_INCLUDED
-#define multibranch_INCLUDED
+ /* =========================================================================
+  * =========================================================================
+  * 
+  * Module: loop_invar_hoist.h 
+  * $Revision: 1.1.1.1 $
+  * $Date: 2005/10/21 19:00:00 $ 
+  * $Author: marcel $
+  * $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/orc_ict/loop_invar_hoist.h,v $
+  *
+  * Revision comments:
+  * 
+  *    14-April-2003 - Initial version
+  * 
+  * ref the header of loop_invar_hoist.cxx for more descriptions. 
+  *
+  * =========================================================================
+  * =========================================================================
+  */
+extern void Perform_Loop_Invariant_Code_Motion (CG_LOOP*);
 
-#include "cg_flags.h"
-#include "ipfec_options.h"
-
-// ==================================================================
-//
-//  Module :  multibranch.h
-//  $Date  : $
-//  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/orc_intel/multi_branch.h,v $
-//
-//  Description:
-//  ============
-//
-//  This file contains the interface for multiple branch.
-//  - Post_Multi_Branch called after local scheduler, bundling 
-//    multiple branch in different BB into same cycle.
-//  - Check_Cross_Boundary called before local scheduler, find each 
-//    bundle which cross BB boundary is not distroy by other phase.
-//    Then, reschedule ruined BB in local scheduler.
-//    Here we only check cross bundle caused by multi-branch.
-// ==================================================================
-
-extern void Check_Cross_Boundary(void);
-extern void Post_Multi_Branch(void);
-extern void Post_Multi_Branch_Collect(void);
-#endif

@@ -59,6 +59,7 @@
 #include "bypass_gen.h"
 #include "proc_gen_new.h"
 #include "proc_properties_gen_new.h"
+#include "cache_info_gen.h"
 
 void Generate_MM(char *knobf, char *eknobf, MACHINE_TYPE type)
 {
@@ -83,6 +84,7 @@ void Generate_MM(char *knobf, char *eknobf, MACHINE_TYPE type)
         Issue_Port_Generator(pknobs, GEN_MODE_FILE, type);
         Itanium_Generator(pknobs, GEN_MODE_FILE, type);
         Bypass_Generator(pknobs, GEN_MODE_FILE, type);
+        Cache_Info_Generator(pknobs, GEN_MODE_FILE, type);
     } else {
 
         // Generate Tables
@@ -99,7 +101,8 @@ void Generate_MM(char *knobf, char *eknobf, MACHINE_TYPE type)
         Bypass_Generator(pknobs, GEN_MODE_FILE);
         Proc_Generator(pknobs, GEN_MODE_FILE);
         Proc_Properties_Generator(pknobs, GEN_MODE_FILE);
-
+        Cache_Info_Generator(pknobs, GEN_MODE_FILE);
+        
     }
     //  release memory
     KAPI_Finalize(pknobs);

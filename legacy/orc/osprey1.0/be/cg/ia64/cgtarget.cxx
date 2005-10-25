@@ -92,7 +92,7 @@
 #include "calls.h"
 #include "cgtarget.h"
 #include "ipfec_options.h"
-
+#include "cache_analysis.h"
 
 UINT32 CGTARG_branch_taken_penalty;
 BOOL CGTARG_branch_taken_penalty_overridden = FALSE;
@@ -3342,14 +3342,26 @@ CGTARG_Generate_Remainder_Branch(TN *trip_count, TN *label_tn,
     Exp_COPY(LC_TN, trip_counter_minus_1, prolog_ops);
   }
 
-  Build_OP (TOP_br_cloop, 
-	    LC_TN,
-	    Gen_Enum_TN(ECV_bwh_dptk),
-	    Gen_Enum_TN(ECV_ph_few),
-	    Gen_Enum_TN(ECV_dh),
-	    label_tn, 
-	    LC_TN,
-	    body_ops);
+if(PROCESSOR_Version == 2)
+  Build_OP (TOP_br_cloop,
+            LC_TN,
+            Gen_Enum_TN(ECV_bwh_sptk),
+            Gen_Enum_TN(ECV_ph_few),
+            Gen_Enum_TN(ECV_dh),
+            label_tn,
+            LC_TN,
+            body_ops);
+else
+  Build_OP (TOP_br_cloop,
+            LC_TN,
+            Gen_Enum_TN(ECV_bwh_dptk),
+            Gen_Enum_TN(ECV_ph_few),
+            Gen_Enum_TN(ECV_dh),
+            label_tn,
+            LC_TN,
+            body_ops);
+
+
 }
 
 
@@ -3387,7 +3399,17 @@ CGTARG_Generate_Branch_Cloop(OP *br_op,
 { 
   LC_Used_In_PU = TRUE;
   if (!CGTARG_OP_is_counted_loop(br_op)) {
-    Build_OP (TOP_br_cloop, 
+    if(PROCESSOR_Version == 2)
+        Build_OP (TOP_br_cloop,
+          LC_TN,
+          Gen_Enum_TN(ECV_bwh_sptk),
+          Gen_Enum_TN(ECV_ph_few),
+          Gen_Enum_TN(ECV_dh),
+          label_tn,
+          LC_TN,
+          body_ops);
+    else
+        Build_OP (TOP_br_cloop,
 	      LC_TN,
 	      Gen_Enum_TN(ECV_bwh_dptk),
 	      Gen_Enum_TN(ECV_ph_few),
@@ -4346,7 +4368,8 @@ CGTARG_Check_OP_For_HB_Suitability(OP *op)
 /* ====================================================================
  * Pad_Cycles_Before
  *
- * Pad cycles before OP in BB with Noop bundles.
+ * Pad cycles before OP in BB with Noop bundles. 
+ * OP should be start of a bundle.
  * ====================================================================
 */
 static void
@@ -4438,6 +4461,10 @@ OP *OP_Replace_With_Noop(BB *bb, OP *op)
     if ( EXEC_PROPERTY_is_M_Unit(OP_code(op)) && EXEC_PROPERTY_is_I_Unit(OP_code(op)) )
         unit = OP_m_unit(op)? ISA_EXEC_PROPERTY_M_Unit : ISA_EXEC_PROPERTY_I_Unit;
     else  unit =  ISA_EXEC_Unit_Prop(OP_code(op));
+
+    // Fix bug when unit is B and B2 unit, 
+    if (EXEC_PROPERTY_is_B_Unit(OP_code(op))) { unit = ISA_EXEC_PROPERTY_B_Unit; }
+
     new_op = Mk_OP (CGTARG_Noop_Top(unit), True_TN, Gen_Literal_TN(0, 4));
     OP_flags(new_op) = OP_flags(op);
     BB_Insert_Op_Before(bb, op, new_op);
@@ -4536,6 +4563,137 @@ Fix_MM_Latency ( BB *bb, TOP_SET *src_op_class, TOP_SET *tgt_op_class, UINT8 cyc
     op = src_op;
     cycles = 0;
     }
-  } /* ?FOR_ALL_BB_OPs_FWD? */ 
+  }
 }
+void Pad_Cycles_Into(BB *bb, OP* src_op, OP *tgt_op, INT cycles)
+{
+    if (cycles <=0) return;
+    // Find suitable position for inserting noop
+    OP *op;
+    
+    for (op = OP_next(src_op); op != tgt_op; op = OP_next(op)) 
+        if (OP_start_bundle(op)) break;
+    
+     /* If src_op and tgt_op are in the same bundle, split it into two bundles */
+    if (op == tgt_op && !OP_start_bundle(tgt_op)) {
+        OPS new_ops = OPS_EMPTY;
+        OP *new_op;
 
+        /* Go backward to the first op in this bundle */
+        op = src_op;
+        while (!OP_start_bundle(op)) op = OP_prev(op);
+
+        /* Duplicate this bundle */
+        do { 
+            new_op = Dup_OP(op);
+            // has problem when creat a new tag
+            if (OP_has_tag(op)) return;
+            /* we must count the new cycles incurred because of split */
+            if (OP_end_group(op)) cycles--;
+            /* For we'll change tgt_op in the old bundle to nop, so we must store 
+               the tgt_op position in the new bundle
+            */
+            if (op == tgt_op) tgt_op = new_op;
+            OPS_Append_Op(&new_ops, new_op);
+            op = OP_next(op);
+        } while (op && !OP_start_bundle(op));
+
+        // because we get imcomplete bundle, then ignore this case
+        if ((OPS_length(&new_ops) % ISA_MAX_SLOTS) !=0) return;
+
+        if (!op) op = BB_last_op(bb); 
+        else op = OP_prev(op);
+        BB_Insert_Ops_After(bb, op, &new_ops);
+                    
+        /* Replace Ops after src_op in the old bundle to Noops */
+        for (op = OP_next(src_op); !OP_start_bundle(op); op = OP_next(op)) {
+           if (OP_dummy(op) || OP_simulated(op) || OP_noop(op)) continue;
+           op = OP_Replace_With_Noop(bb, op);
+        }
+                                   
+        /* Replace Ops before tgt_op in the new bundle to Noops */
+        for ( ; op != tgt_op; op = OP_next(op)) {
+            if (OP_dummy(op) || OP_simulated(op)) continue;
+            op = OP_Replace_With_Noop(bb, op);
+        }
+                  
+        /* Pad cycles before the new bundle */
+        while (!OP_start_bundle(op)) op = OP_prev(op);
+        if (cycles > 0) Pad_Cycles_Before(bb, op, cycles);
+
+    } else { /* In the separate bundles */
+        for (op = tgt_op; !OP_start_bundle(op); op = OP_prev(op));
+        Pad_Cycles_Before(bb, op, cycles);
+    }
+}
+/* ==================================================
+ * Fill all latency for cache conflict, otherwise more
+ * penalty.
+ */
+void Fix_Cache_Conflict_latency(BB *bb){
+    INT op_order = 0;
+    BOOL trace = Get_Trace(TP_A_CANA, 0x1);
+    OP *op;
+    vector <OP *> mem_ops;
+    OP_MAP reverse_order = OP_MAP32_Create();
+    FOR_ALL_BB_OPs_REV(bb,op) {	
+        // backward can give cycle, and give the distance of
+        // conflict ops
+        // Only for load or store op
+
+        if (OP_prev(op) && OP_end_group(OP_prev(op))) {
+            op_order++;
+        }
+
+        if (OP_dummy(op) && OP_simulated(op)) continue;
+        if (!OP_load(op) && !OP_store(op)) continue;
+
+        if (OP_prev(op) && OP_end_group(OP_prev(op)))
+            OP_MAP32_Set(reverse_order,op,op_order-1);
+        else
+            OP_MAP32_Set(reverse_order,op,op_order);
+        
+	for (INT i=0; i<mem_ops.size(); i++) {
+            // op may be removed in Pad_Cycles
+            if (OP_bb(mem_ops[i]) != bb) continue;
+            INT distance=0;
+            BOOL equal;
+            INT succ_order = OP_MAP32_Get(reverse_order,mem_ops[i]);
+            INT cur_order  = OP_MAP32_Get(reverse_order,op);
+	    // determine conflict or not, return true or false.
+            if (Cache_Has_Conflict(op,mem_ops[i], &distance, &equal)) {
+                   if (!equal) continue;
+                   INT current_dist = cur_order - succ_order;
+                   Is_True(current_dist >=0, ("order is not accurate!")); 
+                   if (distance > current_dist) {
+                       if (trace) {
+                           fprintf(TFile, "fill %d cycles with nop in BB %d between\n",
+                                   distance-current_dist,
+                                   BB_id(bb));
+                           Print_OP_No_SrcLine(op);
+                           fprintf(TFile, "and\n");
+                           Print_OP_No_SrcLine(mem_ops[i]);
+                       }
+                       Pad_Cycles_Into(bb,op,mem_ops[i],distance-current_dist);
+
+                       // Update op_order by adding distance-current_dist,
+                       for (INT j=mem_ops.size()-1; j>=0; j--) {
+
+                           // skip update for op after mem_ops or ops in same cycle.
+                           // reverse order is not changed
+                           if (mem_ops[j] == mem_ops[i]) break;
+                           INT updated_order = OP_MAP32_Get(reverse_order,mem_ops[j]);
+                           if (updated_order == succ_order) break;
+                           updated_order = updated_order+distance-current_dist;
+                           OP_MAP32_Set(reverse_order,mem_ops[j],updated_order);
+                       }
+                       cur_order += distance-current_dist;
+                       OP_MAP32_Set(reverse_order,op,cur_order);
+                       op_order  += distance-current_dist;
+                   }
+             }
+	}
+
+        mem_ops.push_back(op);
+    }
+}

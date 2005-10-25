@@ -68,7 +68,7 @@ UNRESOLVED_DEP_LST :: operator = (const UNRESOLVED_DEP_LST& urds) {
 }
 
 
-UNRESOLVED_DEP*
+void
 UNRESOLVED_DEP_LST :: Delete_Item (UNRESOLVED_DEP* dep) {
     
     Is_True (dep->Get_List () == this, 
@@ -123,7 +123,7 @@ UNRESOLVED_DEP_LST :: Append  (UNRESOLVED_DEP* dep) {
 }
 
 
-BOOKEEPING*
+void
 BOOKEEPING_LST :: Delete_Item (BOOKEEPING* item) {
 
     Is_True (item->Get_List () == this, 
@@ -218,6 +218,32 @@ CANDIDATE :: ~CANDIDATE (void) {
     Free_Bookeeping_Lst ();
 }
 
+    /* =========================================================
+     * 
+     *  Get_Up_to_Date_Spec_Type 
+     *   
+     *  Derive speculation type associated with candidate from 
+     *  CURRENT context. The spec-type may vary during the corse
+     *  of scheduling. Take as an example: 
+     * 
+     *  BBx: 
+     *     op1: st8 [addr1], v1
+     *     op2: ld8 v2, [addr2]
+     * 
+     *  Assume op2 alias with op1. At the time when scheduling 
+     *  begins, both OPs can be deemed as candidates, scheduler 
+     *  marks op2 as "data speculation" since OPs can be 
+     *  potentially scheduled prior to OP1. 
+     * 
+     *  However,OP1 can be actually scheduled before OP2. If that
+     *  occurs, the speculation type corresponding to OP2 is become 
+     *  stale. 
+     * 
+     *  Hence, we need to examine the _*CURRENT*_ speculation type 
+     *  for an instruction right before its schedule.   
+     *
+     * =========================================================
+     */
 SPEC_TYPE 
 CANDIDATE :: Get_Up_to_Date_Spec_Type (void) {
 

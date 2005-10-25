@@ -134,6 +134,7 @@
 #include "targ_issue_port.h"
 #include "cggrp_microsched.h" 
 #include "val_prof.h"
+#include "be_util.h" // for current_pu_count
 extern void Early_Terminate (INT status);
 
 #define PAD_SIZE_LIMIT	2048	/* max size to be padded in a section */
@@ -1999,7 +2000,12 @@ Assemble_Bundles(BB *bb)
         slot_mask = slot_mask << ISA_TAG_SHIFT;
         if ( EXEC_PROPERTY_is_M_Unit(OP_code(op)) && EXEC_PROPERTY_is_I_Unit(OP_code(op)) ){
           // A type instruction, identify its property
-	      slot_mask |= OP_m_unit(op)? ISA_EXEC_PROPERTY_M_Unit : ISA_EXEC_PROPERTY_I_Unit;
+
+              slot_mask |= OP_m_unit(op)?
+              ((slot-1)%ISA_MAX_SLOTS==2) ? ISA_EXEC_PROPERTY_I_Unit : ISA_EXEC_PROPERTY_M_Unit
+              : ISA_EXEC_PROPERTY_I_Unit;  //No bundle exists with an M unit in slot 2
+
+	      // slot_mask |= OP_m_unit(op)? ISA_EXEC_PROPERTY_M_Unit : ISA_EXEC_PROPERTY_I_Unit;
         } else { slot_mask |= ISA_EXEC_Unit_Prop(OP_code(op)); }
           stop_mask = stop_mask << 1;
         }
@@ -2046,6 +2052,11 @@ Assemble_Bundles(BB *bb)
         Print_OP_No_SrcLine (slot_op[2]);
       }
     if(ibundle == ISA_MAX_BUNDLES){ 
+
+     // Print_BB(slot_op[0]->bb);
+     Print_OP_No_SrcLine (slot_op[0]);
+     Print_OP_No_SrcLine (slot_op[1]);
+     Print_OP_No_SrcLine (slot_op[2]);
      FmtAssert(ibundle != ISA_MAX_BUNDLES,
                 ("couldn't find bundle for slot mask=0x%llx, stop mask=0x%x in BB:%d\n",
 	             slot_mask, stop_mask, BB_id(bb)));
@@ -3438,7 +3449,8 @@ Check_If_Should_Align_BB (BB *bb, INT32 curpc)
 	}
 	return num_of_ops;
 }
-
+
+
 // When we have bundles, 'num' is the number of bundles, not
 // instructions.
 static void Pad_BB_With_Noops(BB *bb, INT num)
@@ -4720,10 +4732,9 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
     }
   }
   /* Fix MMxx => IALU etc. latency requirement just before assemble BB */
-  if (LOCS_Enable_Bundle_Formation) {
+  if (Target == TARGET_ITANIUM && LOCS_Enable_Bundle_Formation) {
     TOP_SET src_op_class, tgt_op_class;
     UINT8   cycles_apart = 4;
-    UINT slot;
     OP *op;
     UINT count = 0;
     /* set start bundle */
@@ -4743,10 +4754,24 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 	tgt_op_class.push_back(SIC_ILOG);
 	tgt_op_class.push_back(SIC_LD);
 	tgt_op_class.push_back(SIC_ST);
-	for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) 
+	for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
     		Fix_MM_Latency(bb, &src_op_class, &tgt_op_class, cycles_apart);
-  }	
-	
+	}
+  }
+  
+  // Fix cache conflict latency
+  if (LOCS_Enable_Bundle_Formation) {
+      OP *op;
+      UINT count = 0;
+      for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
+          FOR_ALL_BB_OPs(bb,op) {
+            if (OP_dummy(op) || OP_simulated(op)) continue;
+            if (!(count % ISA_MAX_SLOTS)) Set_OP_start_bundle(op);
+            count += ISA_PACK_Inst_Words(OP_code(op));
+          }
+          Fix_Cache_Conflict_latency(bb);
+      }
+  }
   /* Assemble each basic block in the PU */
   for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
     int bb_cycle_count;

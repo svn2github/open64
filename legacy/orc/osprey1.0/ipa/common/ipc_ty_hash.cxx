@@ -606,7 +606,8 @@ void
 Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 {
     // check if the assumption used by fast comparision of structs are valid
-#ifdef  __GNUC__
+#ifdef  __GNUC__ 
+#ifndef TARG_IA64
 
     Is_True ((sizeof(TY) == 24 && __alignof__(TY) == 4) ,
 	     ("Invalid size/alignment assumption"));
@@ -614,6 +615,7 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 	     ("Invalid size/alignment assumption"));
     Is_True (sizeof(ARB) == 32 && __alignof__(ARB) == 4,
 	     ("Invalid size/alignment assumption"));
+#endif
 #else
     Is_True ((sizeof(TY) == 24) && (__builtin_alignof(TY) == 8),
 	     ("Invalid size/alignment assumption"));

@@ -726,8 +726,8 @@ else
     CC_BIN    = $(GCC_BIN)
 
 hosttype_error:
-	@echo check your HOSTTYPE environment variable, should be one of
-	@echo i386, i486 iAPX386, UNIX386, UNIX, MACH386, rs6000, sun4, HP
+	@echo check your HOSTTYPE environment variable $(HOSTTYPE) , should be one of
+	@echo i386, i486, i686, iAPX386, UNIX386, UNIX, MACH386, rs6000, sun4, HP
 	@exit 1
 
 endif

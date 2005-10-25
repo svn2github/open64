@@ -233,7 +233,8 @@ BE_ORC_SRCS = 		\
 	vt_partition.cxx	\
 	vt_region.cxx		\
 	init.cxx		\
-        stride_prefetch.cxx      
+    stride_prefetch.cxx     \
+    loop_invar_hoist.cxx
 
 ifneq "$(ORC_TARG)" "KAPI"
   BE_ORC_SRCS += targ_issue_port.cxx

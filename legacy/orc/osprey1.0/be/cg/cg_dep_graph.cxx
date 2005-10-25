@@ -124,7 +124,10 @@
 #include "op_targ.h"
 #include "dag.h"
 
-#include "ipfec_options.h"
+/* for cache information */
+#include "targ_cache_info.h"
+#include "cache_analysis.h"
+
 // #include "w2op.h"
 
 /* Without this, C++ inlines even with -g */
@@ -249,6 +252,7 @@ BOOL include_memread_arcs;
 BOOL include_memin_arcs;
 BOOL include_control_arcs;
 BOOL tracing;
+
 
 
 //
@@ -903,7 +907,6 @@ ARC *new_arc_with_latency(CG_DEP_KIND kind, OP *pred, OP *succ,
   Set_ARC_is_dotted(arc, FALSE);
 
   attach_arc(arc);
-
   return arc;
 }
 
@@ -1189,7 +1192,6 @@ CG_DEP_Oper_Latency(TOP pred_oper, TOP succ_oper, CG_DEP_KIND kind, UINT8 opnd)
   return latency;
 }
 
-//
 // -----------------------------------------------------------------------
 // See "cg_dep_graph.h" for interface description.
 // -----------------------------------------------------------------------
@@ -1239,10 +1241,14 @@ CG_DEP_Latency(OP *pred, OP *succ, CG_DEP_KIND kind, UINT8 opnd)
 	  }
 	}
       }
-
+      // we need update the latency by using L2 cycle;
+      if (Cache_L2_Has_Data(pred)) {
+         ld_latency_adjust = Cache_Read_Cycle(CACHE_L2) - Cache_Read_Cycle(CACHE_L1D); 
+      }
       ld_latency_adjust = MAX(ld_latency_adjust, CG_ld_latency);
 
       latency += ld_latency_adjust;
+      
     }
   }
 
@@ -2164,6 +2170,7 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
   /* Don't check for MEMREAD (load-load) dependence when:
    *  (a) we're not including MEMREAD arcs in the graph, or
    *  (b) either load is restoring a spill
+   *  (c) don;t access same cache line
    */
   if (memread &&
       (!include_memread_arcs ||
@@ -2667,6 +2674,7 @@ CG_DEP_Mem_Ops_Alias(OP *memop1, OP *memop2, BOOL *identical)
   if (identical) *identical = FALSE;
   return TRUE;
 }
+
 
 // ======================================================================
 // Can_OP_Move_Across_Call
@@ -3189,7 +3197,7 @@ void add_mem_arcs_from(UINT16 op_idx)
 
     if (OP_volatile(succ) && OP_volatile(op)) kind = CG_DEP_MEMVOL;
 
-    if (kind == CG_DEP_MEMREAD && !include_memread_arcs)
+    if (kind == CG_DEP_MEMREAD && !include_memread_arcs) 
       continue;
 
     if (!cyclic && CG_DEP_Mem_Arc_Pruning >= PRUNE_NON_CYCLIC ||
@@ -3216,6 +3224,8 @@ void add_mem_arcs_from(UINT16 op_idx)
       if (!have_latency) latency =
         (CG_DEP_Adjust_OOO_Latency && PROC_is_out_of_order() && !definite) ? 
 	0 : CG_DEP_Latency(op, succ, kind, 0);
+      
+      if (omega == 0) Cache_Adjust_Latency(op,succ,kind,&latency);
 
       /* Build a mem dep arc from <op> to <succ> */
       arc = new_arc_with_latency(kind, op, succ, latency, omega, 0, definite);
@@ -4452,6 +4462,7 @@ Invoke_Init_Routines()
   MEM_POOL_Push(&dep_nz_pool);
   MEM_POOL_Push(&dep_map_nz_pool);
 
+  
   // Initiliaze preparatory routines.
   init_op_info();
   init_reg_assignments();
@@ -4952,7 +4963,8 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
     if (kind == CG_DEP_MEMREAD &&
         OP_volatile(pred) && OP_volatile(op)) kind = CG_DEP_MEMVOL;
 
-    if (kind == CG_DEP_MEMREAD && !_include_memread_arcs)
+    if (kind == CG_DEP_MEMREAD && !_include_memread_arcs && 
+       !Cache_Has_Conflict(pred,op,kind))
       continue;
 
     if (!_cyclic && CG_DEP_Mem_Arc_Pruning >= PRUNE_NON_CYCLIC ||
@@ -4968,7 +4980,8 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
       have_latency = TRUE;
     }
 
-    if (get_mem_dep(pred, op, &definite, _cyclic ? &omega : NULL)) {
+    if (get_mem_dep(pred, op, &definite, _cyclic ? &omega : NULL) ||
+        (kind == CG_DEP_MEMREAD && Cache_Has_Conflict(pred,op,kind))) {
 
       // For OOO machine (eg. T5), non-definite memory dependences can be 
       // relaxed to edges with zero latency. The belief is that this can 
@@ -4977,7 +4990,9 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
       if (!have_latency) latency =
         (CG_DEP_Adjust_OOO_Latency && PROC_is_out_of_order() && !definite) ? 
         0 : CG_DEP_Latency(pred, op, kind, 0);
-
+      
+      if (omega == 0)
+          Cache_Adjust_Latency(pred,op,kind, &latency);
       /* Build a mem dep arc from <op> to <succ> */
 
       if(!definite) {
@@ -5075,7 +5090,8 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
   TN * tn_ptr = OP_opnd (op, OP_PREDICATE_OPND);
 
   // Start building REGIN Arcs .
-  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and new version.
+  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and 
+  // new version.
   
   for (i = 0; i < OP_opnds(op); i++) {
 
@@ -5088,8 +5104,8 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
          ops_iter++) {
             
 #else
-    
-    Get_Define_OPs(op, i, CG_DEP_REGIN);  // get the relative def ops into vect : _Define_OPs[]
+    // get the relative def ops into vect : _Define_OPs[]
+    Get_Define_OPs(op, i, CG_DEP_REGIN); 
     for(DEFINE_OPS_ITER ops_iter=_Define_OPs.begin();
                 ops_iter!=_Define_OPs.end();
                 ops_iter++  ){
@@ -5116,7 +5132,8 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
   
 
   // Start building REGOUT Arcs .
-  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and new version.
+  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and
+  // new version.
   
   for (i = 0; i < OP_results(op); i++) {
 
@@ -5129,8 +5146,8 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
          ops_iter++) {
     
 #else
-    
-    Get_Define_OPs(op, i, CG_DEP_REGOUT); // get the relative def ops into vect : _Define_OPs[]
+    // get the relative def ops into vect : _Define_OPs[]
+    Get_Define_OPs(op, i, CG_DEP_REGOUT);
     for(DEFINE_OPS_ITER ops_iter=_Define_OPs.begin();
                 ops_iter!=_Define_OPs.end();
                 ops_iter++  ){
@@ -5148,7 +5165,8 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
 
 
   // Start building REGANTI Arcs .
-  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and new version.
+  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and 
+  // new version.
   
 #ifndef  DAG_BITSET_SWITCH_ON
   // Build Non-cyclic REGANTI arcs
@@ -5164,7 +5182,8 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
       // if (_include_assigned_registers ||
       //    !OP_has_disjoint_predicate(*ops_iter,op)) {
       TN * tn = OP_result(op,i) ;
-      if (TN_is_register(tn) && TN_register_class(tn) == ISA_REGISTER_CLASS_predicate) {
+      if (TN_is_register(tn) && TN_register_class(tn) == 
+          ISA_REGISTER_CLASS_predicate) {
         tn_def_found = TRUE;
         INT16 opnd_idx = get_opnd_idx (*ops_iter,tn);
         Is_True (opnd_idx >= 0, ("fail to find opnd!"));
@@ -5177,7 +5196,8 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
 
           INT16 opnd_idx = get_opnd_idx (*ops_iter,tn);
           Is_True (opnd_idx >= 0, ("fail to find opnd!"));
-          ARC * arc = new_arc(CG_DEP_REGANTI, *ops_iter, op, 0, (UINT8)opnd_idx, FALSE);
+          ARC * arc = new_arc(CG_DEP_REGANTI, *ops_iter, op, 0,
+                              (UINT8)opnd_idx, FALSE);
           adjust_reganti_latency (arc) ;
         }
       }// else
@@ -5187,8 +5207,8 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
 #else // defined DAG_BITSET_SWITCH_ON  
   
   for(i = 0; i < OP_opnds(op); i++){
-
-    Get_Define_OPs(op, i, CG_DEP_REGANTI); // get the relative def ops into vect : _Define_OPs[]
+    // get the relative def ops into vect : _Define_OPs[]
+    Get_Define_OPs(op, i, CG_DEP_REGANTI);
     for(DEFINE_OPS_ITER ops_iter=_Define_OPs.begin();
                 ops_iter!=_Define_OPs.end();
                 ops_iter++  ){
@@ -5203,7 +5223,8 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
           
         // the following has exchanged *ops_iter and op to each other
         TN * tn = OP_result(*ops_iter,j) ;
-        if (TN_is_register(tn) && TN_register_class(tn) == ISA_REGISTER_CLASS_predicate) {
+        if (TN_is_register(tn) && TN_register_class(tn) == 
+            ISA_REGISTER_CLASS_predicate) {
           tn_def_found = TRUE;
 
           new_arc(CG_DEP_REGANTI, op, *ops_iter, 0, (UINT8)i, FALSE);
@@ -5231,4 +5252,3 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
 
 
 }
-

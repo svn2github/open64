@@ -134,6 +134,7 @@ Calculate_Control_Dependences(HB* hb, BB_MAP control_dependences,
     FOR_ALL_BB_SUCCS(bb,bl) {
       BB* bb_dep;
       BB* bb_succ = BBLIST_item(bl);
+      Remove_Explicit_Branch(bb);
       BOOL true_edge = (BB_Fall_Thru_Successor(bb) != bb_succ);
       //
       // bb_to_add is set to (pdom(bb_succ) - pdom(bb)) & HB_Blocks. 
@@ -214,6 +215,7 @@ Reset_Freq_Data_For_BB(BB *bb, BB_MAP freq_map)
 {
    BBLIST *bl;
    FREQ_DATA *bb_freq_data = (FREQ_DATA *) BB_MAP_Get(freq_map,bb);
+   Remove_Explicit_Branch(bb);
    bb_freq_data->fall_thru = BB_Fall_Thru_Successor(bb);
    if (bb_freq_data->fall_thru) {
       bb_freq_data->branch_prob = 
@@ -787,6 +789,7 @@ Classify_BB(BB *bb, HB *hb)
     result |= NO_MERGE;
   }
   
+  Remove_Explicit_Branch(bb);
   fall_thru = BB_Fall_Thru_Successor(bb);
   other_succ = NULL;
 

@@ -584,6 +584,7 @@ void Register_Generator(void *pknobs, GEN_MODE mode)
     }
     fprintf(c_file, "    { 0 } },\n");
   }
+  free(members);
   fprintf(c_file, "};\n\n");
 
   fprintf(c_file, init_reg_func); 
@@ -687,6 +688,7 @@ void Register_Generator(void *pknobs, GEN_MODE mode)
     }
     fprintf(c_file, "    },\n  },\n");
   }
+  free(reg_class_info);
   fprintf(c_file, "};\n\n");
 
   ///////////////////////////////////////////////////////////////

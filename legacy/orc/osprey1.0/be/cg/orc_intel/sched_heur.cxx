@@ -479,7 +479,7 @@ FAVOR_DELAY_HEUR :: Compute_Delay (REGION *rgn) {
         BB * bb = (*iter)->BB_Node ();
         if (BB_exit (bb) || BB_entry (bb)) continue;
 
-        Compute_Delay ((*iter)->BB_Node ());
+        Compute_Delay (bb);
     }
     
 }
@@ -1575,23 +1575,18 @@ FAVOR_DELAY_HEUR::Upward_Spec_Global_Sched_Is_Profitable
         if (across_chk_num > LD_VIOLATE_CHK_DEP_MAX     ||
             data_spec_num  > LD_VIOLATE_DATA_DEP_MAX    ||
             cntl_spec_num  > LD_VIOLATE_CNTL_DEP_MAX) {
-
             return FALSE ;
         }
 
-        if (Ld_Need_Not_Transform (op)) {
-
-                /* TODO: Assetion on such condition :
-                 *    when a load is "need not transform, it 
-                 *    should not alias with any other OPs.
+        if (OP_no_alias (op) || 
+            Load_Has_Valid_Vaddr (op) && !across_chk_num && !data_spec_num) {
+                /* <op> need not transform for these cases. So 
+                 * we requires higher reach-prob to reduce speculation
+                 * penalty. 
                  */
-            if (across_chk_num || 
-                data_spec_num  ||
-                useful_exec_prob <
-                  SPEC_SAFE_LOAD_WITHOUT_TRANSFORM_REACH_PROB) {
-
+            if (useful_exec_prob < 
+                SPEC_SAFE_LOAD_WITHOUT_TRANSFORM_REACH_PROB) {
                 return FALSE;
-
             }
         } else if (useful_exec_prob < UNSAFE_CNTL_SPEC_PROB) {
             return FALSE; 
@@ -1642,38 +1637,29 @@ FAVOR_DELAY_HEUR::Renaming_Is_Profitable (CANDIDATE *cand)
 {
    OP* op = cand->Op();
    BB* home_bb = OP_bb(op);
-        /* Prune cases unfit for renaming
-         */
-   if ( 
-            /* Don't do renaming for multi-assignment OPs
-             */
-        OP_results(op) != 1
-        
-            /* Don't do renaming again 
-             */
-        || OP_renamed(op)           
-        
-            /*S1:  (p) x = 
-              S2:  (q)  = x
+        /* We don't do renaming for these OPs:
+           1) Multi-assignment OPs
+           2) Defining a dedicated TN
+           3) Already renamed OPs
+           4) Conditional defined OPs.  eg
+                S1:  (p) x = 
+                S2:  (q)  = x
               It's dangerous to rename x because S2 may not definitely use def of S1
-            */   
-        || OP_cond_def(op)  
-        
-            /* To avoid the complexity of renaming chks.
-             */ 
-        || OP_speculative(op) && OP_load(op)
-    ) return FALSE;
-   
-        /* TODO: Add more acurate renaming heuristic here.
+           5) Speculative loads, to avoid the complexity of renaming chks.
          */
+   if (OP_results(op) != 1 || TN_is_dedicated(OP_result(op, 0)) ||
+      OP_renamed(op) ||  OP_cond_def(op) || OP_speculative(op) && OP_load(op))
+   return FALSE;
+   
+        // TODO: Add more acurate renaming heuristic here.
    for (ARC_LIST* arcs = OP_succs(op); arcs; ) {
         ARC *arc = ARC_LIST_first(arcs);
         arcs = ARC_LIST_rest(arcs);
         OP* succ = ARC_succ (arc);   
         if (ARC_kind(arc) == CG_DEP_REGIN &&
             !(OP_speculative(succ) && OP_load(succ)) && // Don't feed into a speculative load
-            ARC_latency(arc) > 1)
-            return TRUE;
+            OP_bb(op) == OP_bb(succ)) // Hope these successors' dependences are resolved earlier, 
+        return TRUE;                  // May be too agreessive 
    }
    
    return FALSE;

@@ -2,27 +2,31 @@
   Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
-  Redistribution and use in source and binary forms, with or without modification,
-  are permitted provided that the following conditions are met:
+  Redistribution and use in source and binary forms, with or without 
+  modification,are permitted provided that the following conditions are 
+  met:
   
-  Redistributions of source code must retain the above copyright notice, this list
-  of conditions and the following disclaimer. 
+  Redistributions of source code must retain the above copyright notice, 
+  this list of conditions and the following disclaimer. 
   
-  Redistributions in binary form must reproduce the above copyright notice, this list
-  of conditions and the following disclaimer in the documentation and/or other materials
-  provided with the distribution. 
+  Redistributions in binary form must reproduce the above copyright notice, 
+  this listof conditions and the following disclaimer in the documentation 
+  and/or other materials provided with the distribution. 
 
-  Neither the name of the owner nor the names of its contributors may be used to endorse or
-  promote products derived from this software without specific prior written permission. 
+  Neither the name of the owner nor the names of its contributors may be used 
+  to endorse or promote products derived from this software without specific 
+  prior written permission. 
 
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
-  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR
-  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+  AND ANY EXPRESS ORIMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+  ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
+  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
+  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY 
+  OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
+  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 //-*-c++-*-
@@ -119,8 +123,9 @@ adjust_reganti_latency (ARC *arc) {
     OP * pred = ARC_pred (arc) ;
     TN * tn = OP_opnd(pred,ARC_opnd(arc)) ;   
 
-    if (TN_is_register(tn) && TN_register_class(tn) == ISA_REGISTER_CLASS_predicate) {
-        return ;    
+    if (TN_is_register(tn) && TN_register_class(tn) == 
+        ISA_REGISTER_CLASS_predicate) {
+      return ;    
     }
     
     arc->latency = 0 ;
@@ -140,11 +145,27 @@ adjust_reganti_latency (BB *bb) {
     }
 }
 
+inline mINT32 DAG_BUILDER::Get_Table_Index(OP* op){
+// get the index of op's BB in _BB_Bitset_Table_Index
+  return _BB_Bitset_Table_Index[BB_id(OP_bb(op))];
+}
+
+inline mINT32 DAG_BUILDER::Get_Table_Index(BB* bb){
+// get the bb's index in _BB_Bitset_Table_Index
+  return _BB_Bitset_Table_Index[BB_id(bb)];
+}
+
+
+inline mINT32 DAG_BUILDER::Get_Table_Index(TN* tn){
+// get the tn's index in _TN_Bitset_Table_Index
+  return _TN_Bitset_Table_Index[TN_number(tn)];
+}
+
 
 BOOL
-DAG_BUILDER::OP_Shadowed_By_Prev_OPs(OP*                defop,
-                                         OPs&               prev_def_ops, 
-                                         COMPARE_FUNCTION   comp_func)
+DAG_BUILDER::OP_Shadowed_By_Prev_OPs(OP* defop,
+                                         OPs& prev_def_ops, 
+                                         COMPARE_FUNCTION comp_func)
 {
   // Place holder for further enhancement.
   return FALSE;
@@ -202,11 +223,16 @@ DAG_BUILDER::Get_Define_OPs(OP *op, UINT8 res, CG_DEP_KIND arc_kind)
   if (arc_kind == CG_DEP_REGIN ||    // RAW 
       arc_kind == CG_DEP_REGOUT ) { // WAW
 
-    // if there is some latest ops inside this BB ,which define tn, then return the latest ops. 
+    // if there is some latest ops inside this BB ,which define tn, 
+    // then return the latest ops. 
     // else push_back  [B].in into vect--def_ops 
     BS* def_ops = BS_Create_Empty (_OP_Count, &_mem_pool);
-    BS_CopyD( def_ops , _BB_Bitset_Table[ _BB_Bitset_Table_Index[BB_id( OP_bb(op) )] ].gen , &_mem_pool );
-    BS_IntersectionD( def_ops , _TN_Bitset_Table[ _TN_Bitset_Table_Index[TN_number(tn)] ].def );// [B].gen & _TN_Bitset_Table[].def
+    BS_CopyD( def_ops , 
+             _BB_Bitset_Table[Get_Table_Index(op)].gen ,
+             &_mem_pool );
+    BS_IntersectionD( def_ops ,
+                    _TN_Bitset_Table[Get_Table_Index(tn)].def );
+         // [B].gen & _TN_Bitset_Table[].def
     
     // find the latest ops inside OP_bb(op) , which def tn
     OP* latest_op=NULL;  // the latest op which def tn
@@ -220,9 +246,14 @@ DAG_BUILDER::Get_Define_OPs(OP *op, UINT8 res, CG_DEP_KIND arc_kind)
     }
         
     // push back the relative ops into _Define_OPs
-    if(latest_op == NULL){   // there is no op inside this bb, which define tn . then return in[B]
-      BS_CopyD( def_ops , _BB_Bitset_Table[ _BB_Bitset_Table_Index[BB_id( OP_bb(op) )] ].in , &_mem_pool );
-      BS_IntersectionD( def_ops , _TN_Bitset_Table[ _TN_Bitset_Table_Index[TN_number(tn)] ].def );// [B].in & _TN_Bitset_Table[].def
+    if(latest_op == NULL){   // there is no op inside this bb, which define tn.
+                             // then return in[B]
+      BS_CopyD( def_ops , 
+                _BB_Bitset_Table[Get_Table_Index(op)].in, 
+                &_mem_pool );
+      BS_IntersectionD( def_ops , 
+                      _TN_Bitset_Table[Get_Table_Index(tn)].def );
+                             // [B].in & _TN_Bitset_Table[].def
       for ( elt = BS_Choose( def_ops );
             elt != BS_CHOOSE_FAILURE ;
             elt = BS_Choose_Next( def_ops, elt ) ){
@@ -236,9 +267,13 @@ DAG_BUILDER::Get_Define_OPs(OP *op, UINT8 res, CG_DEP_KIND arc_kind)
 
     // get def info of this tn in reverse topological order  
     BS* def_ops = BS_Create_Empty (_OP_Count, &_mem_pool);
-    BS_CopyD( def_ops , _BB_Bitset_Table[ _BB_Bitset_Table_Index[BB_id( OP_bb(op) )] ].gen , &_mem_pool );
+    BS_CopyD( def_ops , 
+              _BB_Bitset_Table[Get_Table_Index(op)].gen , 
+              &_mem_pool );
 
-    BS_IntersectionD( def_ops , _TN_Bitset_Table[ _TN_Bitset_Table_Index[TN_number(tn)] ].def );// [B].gen & _TN_Bitset_Table[].def
+    BS_IntersectionD( def_ops , 
+                    _TN_Bitset_Table[Get_Table_Index(tn)].def );
+                             // [B].gen & _TN_Bitset_Table[].def
     
 
 
@@ -246,7 +281,8 @@ DAG_BUILDER::Get_Define_OPs(OP *op, UINT8 res, CG_DEP_KIND arc_kind)
     OP* nearest_op=NULL;  // the nearest op which def tn
 
     BS_ELT elt;
-    for ( elt = OP_To_Gid(op) , elt = BS_Choose_Next( def_ops, elt ) ; // bypass case : i=i+1
+    for ( elt = OP_To_Gid(op) , elt = BS_Choose_Next( def_ops, elt ) ; 
+          // bypass case : i=i+1
           elt != BS_CHOOSE_FAILURE ;
           elt = BS_Choose_Next( def_ops, elt ) ){
       nearest_op=Gid_To_OP(elt);
@@ -255,9 +291,14 @@ DAG_BUILDER::Get_Define_OPs(OP *op, UINT8 res, CG_DEP_KIND arc_kind)
 
 
     // push back the relative ops into _Define_OPs
-    if(nearest_op == NULL){// there is no op inside this bb, which define tn . then return reverse_in[B]
-      BS_CopyD( def_ops , _BB_Bitset_Table[ _BB_Bitset_Table_Index[BB_id( OP_bb(op) )] ].reverse_in , &_mem_pool );
-      BS_IntersectionD( def_ops , _TN_Bitset_Table[ _TN_Bitset_Table_Index[ TN_number(tn) ]].def );// reverse_in[B] & _TN_Bitset_Table[].def
+    if(nearest_op == NULL){// there is no op inside this bb, which define tn . 
+                           //then return reverse_in[B]
+      BS_CopyD( def_ops , 
+                _BB_Bitset_Table[ Get_Table_Index(op)].reverse_in , 
+                &_mem_pool );
+      BS_IntersectionD( def_ops , 
+                      _TN_Bitset_Table[Get_Table_Index(tn)].def );
+                          // reverse_in[B] & _TN_Bitset_Table[].def
 
       for ( elt = BS_Choose( def_ops );
             elt != BS_CHOOSE_FAILURE ;
@@ -326,7 +367,9 @@ DAG_BUILDER::Union_Of_Preds(BB* bb)
        iter ++) {
   
       BB* pred = *iter ;
-      BS_UnionD(_out , _BB_Bitset_Table[ _BB_Bitset_Table_Index[BB_id(pred)] ].out , &_mem_pool);// _out+ out
+      BS_UnionD(_out , 
+                _BB_Bitset_Table[Get_Table_Index(pred)].out , 
+                &_mem_pool);// _out+ out
   }
   return _out;
 
@@ -349,7 +392,9 @@ DAG_BUILDER::Union_Of_Succs(BB* bb)
        iter ++) {
   
       BB* succ = *iter ;
-      BS_UnionD(_reverse_out , _BB_Bitset_Table[ _BB_Bitset_Table_Index[BB_id(succ)] ].reverse_out , &_mem_pool);// reverse_out+out
+      BS_UnionD(_reverse_out , 
+                _BB_Bitset_Table[Get_Table_Index(succ)].reverse_out , 
+                &_mem_pool);// reverse_out+out
   }
   return _reverse_out;
   
@@ -388,11 +433,16 @@ DAG_BUILDER::Set_TN_BB_Bitset_Table(void)
           result_tn = set_representative_tn (result_tn); 
           // if TN is register TN and is not constant register TN
           if (TN_is_register(result_tn)&&!TN_is_true_pred(result_tn)) {
-          // store the OP's Gid which defines result_tn ; modify _TN_Bitset_Table_Index
+          // store the OP's Gid which defines result_tn ; 
+          // modify _TN_Bitset_Table_Index
 
-          if (_TN_Bitset_Table_Index[ TN_number(result_tn) ] == -1) { // result_tn not exists 
-          BS_Union1D(_TN_Bitset_Table[TN_Table_Tail].def,OP_To_Gid(op),&_mem_pool);
-          _TN_Bitset_Table_Index[ TN_number(result_tn) ] = TN_Table_Tail++;// TN_Table_Tail always point to the newest blank element
+          if (_TN_Bitset_Table_Index[ TN_number(result_tn) ] == -1) { 
+                // result_tn not exists 
+          BS_Union1D(_TN_Bitset_Table[TN_Table_Tail].def,
+                     OP_To_Gid(op),
+                     &_mem_pool);
+          _TN_Bitset_Table_Index[ TN_number(result_tn) ] = TN_Table_Tail++;
+          // TN_Table_Tail always point to the newest blank element
   
           // Initialize _TN_Bitset_Table[TN_Table_Tail]
           TN_BITSET_TABLE_ENTRY  Blank_Entry ;
@@ -402,8 +452,9 @@ DAG_BUILDER::Set_TN_BB_Bitset_Table(void)
         
           }
           else{// result_tn has been registered,TN_Table_Tail not increse
-            BS_Union1D(_TN_Bitset_Table[ _TN_Bitset_Table_Index[TN_number(result_tn)] ].def,
-                         OP_To_Gid(op),&_mem_pool);               
+            BS_Union1D(_TN_Bitset_Table[Get_Table_Index(result_tn)].def,
+                       OP_To_Gid(op),
+                       &_mem_pool);               
           }
           
           }
@@ -413,11 +464,16 @@ DAG_BUILDER::Set_TN_BB_Bitset_Table(void)
           opnd_tn = set_representative_tn (opnd_tn);
           // if TN is register TN and is not constant register TN
           if (TN_is_register(opnd_tn)&&!TN_is_true_pred(opnd_tn)) {
-          // store the OP's Gid which uses opnd_tn ; modify _TN_Bitset_Table_Index
+          // store the OP's Gid which uses opnd_tn ; 
+          // modify _TN_Bitset_Table_Index
 
-          if (_TN_Bitset_Table_Index[ TN_number(opnd_tn) ] == -1) {// opnd_tn not exists 
-            BS_Union1D(_TN_Bitset_Table[TN_Table_Tail].use,OP_To_Gid(op),&_mem_pool);
-            _TN_Bitset_Table_Index[ TN_number(opnd_tn) ] = TN_Table_Tail++;// TN_Table_Tail always point to the newest blank element
+          if (_TN_Bitset_Table_Index[ TN_number(opnd_tn) ] == -1) {
+               // opnd_tn not exists 
+            BS_Union1D(_TN_Bitset_Table[TN_Table_Tail].use, 
+                       OP_To_Gid(op),
+                       &_mem_pool);
+            _TN_Bitset_Table_Index[ TN_number(opnd_tn) ] = TN_Table_Tail++;
+            // TN_Table_Tail always point to the newest blank element
   
             // Initialize _TN_Bitset_Table[TN_Table_Tail]
             TN_BITSET_TABLE_ENTRY  Blank_Entry ;
@@ -427,18 +483,22 @@ DAG_BUILDER::Set_TN_BB_Bitset_Table(void)
         
           }
           else{  // opnd_tn has been registered,TN_Table_Tail not increse
-              BS_Union1D(_TN_Bitset_Table[ _TN_Bitset_Table_Index[TN_number(opnd_tn)] ].use,
-                         OP_To_Gid(op),&_mem_pool);               
+              BS_Union1D(_TN_Bitset_Table[Get_Table_Index(opnd_tn)].use,
+                         OP_To_Gid(op),
+                         &_mem_pool);               
           }
           
           }
         }// for
           
         // record this op into _BB_Bitset_Table
-        BS_Union1D(_BB_Bitset_Table[BB_Table_Tail].gen,OP_To_Gid(op),&_mem_pool);
+        BS_Union1D(_BB_Bitset_Table[BB_Table_Tail].gen,
+                   OP_To_Gid(op),
+                   &_mem_pool);
       }// FOR_ALL_BB_OPs(bb, op)
       // Update _BB_Bitset_Table_Index
-      _BB_Bitset_Table_Index[BB_id(bb)]=BB_Table_Tail++;// BB_Table_Tail always point to the newest blank element
+      _BB_Bitset_Table_Index[BB_id(bb)]=BB_Table_Tail++;
+      // BB_Table_Tail always point to the newest blank element
     }
   }
 
@@ -446,9 +506,11 @@ DAG_BUILDER::Set_TN_BB_Bitset_Table(void)
   for(mINT32 Current_BB=0; Current_BB<_BB_Count; Current_BB++){
     
     BS* gen = BS_Create_Empty (_OP_Count, &_mem_pool);
-    BS_CopyD( gen , _BB_Bitset_Table[Current_BB].gen , &_mem_pool );// gen=_BB_Bitset_Table[Current_BB].gen;   
+    BS_CopyD( gen , _BB_Bitset_Table[Current_BB].gen , &_mem_pool );
+    // gen=_BB_Bitset_Table[Current_BB].gen;   
     
-    // Initialize [B].out and [B].reverse_out for the next step(calculate def and use info)
+    // Initialize [B].out and [B].reverse_out for the next step(calculate 
+    // def and use info)
     BS_CopyD(_BB_Bitset_Table[Current_BB].out , gen ,  &_mem_pool );
     BS_CopyD(_BB_Bitset_Table[Current_BB].reverse_out , gen ,  &_mem_pool );
 
@@ -464,7 +526,8 @@ DAG_BUILDER::Set_TN_BB_Bitset_Table(void)
           // if TN is register TN and is not constant register TN
           if (TN_is_register(result_tn)&&!TN_is_true_pred(result_tn)) {
           BS_UnionD(_BB_Bitset_Table[Current_BB].kill ,
-                   _TN_Bitset_Table[ _TN_Bitset_Table_Index[TN_number(result_tn)] ].def ,// ops which define this result_tn
+                    _TN_Bitset_Table[Get_Table_Index(result_tn)].def , 
+                            // ops which define this result_tn
                    &_mem_pool);// kill+def
           // bypass ops which are inside this bb
           BS_DifferenceD(_BB_Bitset_Table[Current_BB].kill , gen);// kill-gen
@@ -481,17 +544,23 @@ DAG_BUILDER::Set_TN_BB_Bitset_Table(void)
 
     change=FALSE;
     for(mINT32 current_bb=0; current_bb<_BB_Count; current_bb++){
-      BS_CopyD(_BB_Bitset_Table[current_bb].in , Union_Of_Preds( _BB_Bitset_Table[current_bb].bb ) ,&_mem_pool );
+      BS_CopyD(_BB_Bitset_Table[current_bb].in , 
+               Union_Of_Preds( _BB_Bitset_Table[current_bb].bb ) ,&_mem_pool );
 
       BS* oldout = BS_Create_Empty (_OP_Count, &_mem_pool);
-      BS_CopyD(oldout , _BB_Bitset_Table[current_bb].out ,&_mem_pool);// oldout=_BB_Bitset_Table[current_bb].out
+      BS_CopyD(oldout , _BB_Bitset_Table[current_bb].out ,&_mem_pool);
+      // oldout=_BB_Bitset_Table[current_bb].out
 
       BS* tmp_set = BS_Create_Empty (_OP_Count, &_mem_pool);
-      BS_CopyD(tmp_set , _BB_Bitset_Table[current_bb].in ,&_mem_pool);// tmp_set=_BB_Bitset_Table[current_bb].in
+      BS_CopyD(tmp_set , _BB_Bitset_Table[current_bb].in ,&_mem_pool);
+      // tmp_set=_BB_Bitset_Table[current_bb].in
 
-      // BS_DifferenceD(tmp_set , _BB_Bitset_Table[current_bb].kill); //in[B]-kill[B]
-      BS_UnionD(tmp_set , _BB_Bitset_Table[current_bb].gen , &_mem_pool);// gen[B]+(in[B]-kill[B])
-      BS_CopyD(_BB_Bitset_Table[current_bb].out , tmp_set , &_mem_pool); // _BB_Bitset_Table[current_bb].out = tmp_set;
+      // BS_DifferenceD(tmp_set , _BB_Bitset_Table[current_bb].kill); 
+      //in[B]-kill[B]
+      BS_UnionD(tmp_set , _BB_Bitset_Table[current_bb].gen , &_mem_pool);
+      // gen[B]+(in[B]-kill[B])
+      BS_CopyD(_BB_Bitset_Table[current_bb].out , tmp_set , &_mem_pool); 
+      // _BB_Bitset_Table[current_bb].out = tmp_set;
 
       if (!BS_EqualP(tmp_set , oldout))  change = TRUE;
     }
@@ -506,16 +575,21 @@ DAG_BUILDER::Set_TN_BB_Bitset_Table(void)
     changeR=FALSE;
     for(mINT32 current_bb=0; current_bb<_BB_Count; current_bb++) {
           
-      BS_CopyD(_BB_Bitset_Table[current_bb].reverse_in , Union_Of_Succs( _BB_Bitset_Table[current_bb].bb ) ,&_mem_pool );
+      BS_CopyD(_BB_Bitset_Table[current_bb].reverse_in , 
+               Union_Of_Succs( _BB_Bitset_Table[current_bb].bb ) ,&_mem_pool );
 
       BS* oldoutR = BS_Create_Empty (_OP_Count, &_mem_pool);
-      BS_CopyD(oldoutR , _BB_Bitset_Table[current_bb].reverse_out ,&_mem_pool);// oldoutR=_BB_Bitset_Table[current_bb].reverse_out
+      BS_CopyD(oldoutR , _BB_Bitset_Table[current_bb].reverse_out ,&_mem_pool);
+      // oldoutR=_BB_Bitset_Table[current_bb].reverse_out
 
       BS* tmp_set = BS_Create_Empty (_OP_Count, &_mem_pool);
-      BS_CopyD(tmp_set , _BB_Bitset_Table[current_bb].reverse_in ,&_mem_pool);// tmp_set=_BB_Bitset_Table[current_bb].reverse_in
+      BS_CopyD(tmp_set , _BB_Bitset_Table[current_bb].reverse_in ,&_mem_pool);
+      // tmp_set=_BB_Bitset_Table[current_bb].reverse_in
 
-      BS_UnionD(tmp_set , _BB_Bitset_Table[current_bb].gen , &_mem_pool);// gen[B]+ reverse_in[B]
-      BS_CopyD(_BB_Bitset_Table[current_bb].reverse_out , tmp_set , &_mem_pool); // _BB_Bitset_Table[current_bb].reverse_out = tmp_set;
+      BS_UnionD(tmp_set , _BB_Bitset_Table[current_bb].gen , &_mem_pool);
+      // gen[B]+ reverse_in[B]
+      BS_CopyD(_BB_Bitset_Table[current_bb].reverse_out , tmp_set , &_mem_pool); 
+      // _BB_Bitset_Table[current_bb].reverse_out = tmp_set;
 
       if (!BS_EqualP(tmp_set , oldoutR))  changeR = TRUE;
     }
@@ -829,7 +903,8 @@ DAG_BUILDER::Build_DAG()
        
         BB* bb = (*cfg_iter)->BB_Node();  
 
-        // _BB_Count only calculate those BB who are not Entry BB or Exit BB here
+        // _BB_Count only calculate those BB who are not Entry BB or 
+        // Exit BB here
         _BB_Count++;
         Update_Max_BB_id(bb);// Update the _Max_BB_id
 
@@ -853,12 +928,14 @@ DAG_BUILDER::Build_DAG()
 
     
 #ifdef   DAG_BITSET_SWITCH_ON  // new version switch defined in dag.h
-    // Initialize  _TN_Bitset_Table_Index , _BB_Bitset_Table_Index[] and _BB_Bitset_Table[]
+    // Initialize  _TN_Bitset_Table_Index , _BB_Bitset_Table_Index[] and 
+    // _BB_Bitset_Table[]
     Init_TN_BB_Bitset_Table();
         
-    // The second foward pass fills the _TN_Bitset_Table and _BB_Bitset_Table .
-    // Traverse each op , and stroe op's Gid into  <def> & <use>  in the TN_Table ;
-    // at the same time ,modify the _BB_Bitset_Table[].gen and _BB_Bitset_Table_Index[];
+    // The second foward pass fills the _TN_Bitset_Table and _BB_Bitset_Table.
+    // Traverse each op , and stroe op's Gid into  <def> & <use>  in the 
+    // TN_Table ; at the same time ,modify the _BB_Bitset_Table[].gen and 
+    // _BB_Bitset_Table_Index[];
     Set_TN_BB_Bitset_Table();
 #endif
 

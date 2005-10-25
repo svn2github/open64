@@ -833,4 +833,5 @@ extern BOOL OP_def_use_stack_regs(OP* op);
 typedef mempool_allocator<SCHED_INFO_CLASS>  SIC_MEM_ALLOC;
 typedef	vector<SCHED_INFO_CLASS, SIC_MEM_ALLOC>  TOP_SET;
 void Fix_MM_Latency ( BB *bb, TOP_SET *src_op_class, TOP_SET *tgt_op_class, UINT8 cycles_apart);
+void Fix_Cache_Conflict_latency( BB *bb);
 #endif /* CGTARGET_INCLUDED */

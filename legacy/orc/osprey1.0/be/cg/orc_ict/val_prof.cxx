@@ -1416,7 +1416,8 @@ void CG_VALUE_ANNOTATE_WALKER::Merge_feedback_data()
 			if ( i >= (*pu_prof_itr)->Get_Value_Table().size() )
 				continue;
 			FB_Info_Value & fb_info_value = Get_Value_Profile( *pu_prof_itr, i );
-			Is_True(fb_info_value.tnv._id == cur_id,("_id not consitent between feedback files"));
+			if((fb_info_value.tnv._id != NULL) && (cur_id!=NULL))
+                                Is_True(fb_info_value.tnv._id == cur_id,("_id not consitent between feedback files"));
 			cur_exec_counter += fb_info_value.tnv._exec_counter;
 			Is_True(fb_info_value.tnv._flag == cur_flag,("_flag not consitent between feedback files"));
 			for ( j=0; j<TNV_N; j++ )
@@ -1513,7 +1514,8 @@ void CG_VALUE_ANNOTATE_WALKER::Merge_stride_feedback_data()
 			if ( i >= (*pu_prof_itr)->Get_Stride_Table().size() )
 				continue;
 			FB_Info_Value & fb_info_stride = Get_Stride_Profile( *pu_prof_itr, i );
-			Is_True(fb_info_stride.tnv._id == cur_id,("_id not consitent between feedback files"));
+                        if((fb_info_stride.tnv._id != NULL) && (cur_id!=NULL))
+			        Is_True(fb_info_stride.tnv._id == cur_id,("_id not consitent between feedback files"));
 			cur_exec_counter += fb_info_stride.tnv._exec_counter;
 			cur_zeroes_counter += fb_info_stride.tnv._zero_std_counter;
 			Is_True(fb_info_stride.tnv._flag == cur_flag,("_flag not consitent between feedback files"));

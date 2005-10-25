@@ -2076,7 +2076,9 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
           has_assigned_reg(tn) &&
           (copy_operand(op) >= 0) &&
           has_assigned_reg(OP_opnd(op,copy_operand(op))) &&
-          (tn_registers_identical(tn, OP_opnd(op,copy_operand(op))))) {
+          (tn_registers_identical(tn, OP_opnd(op,copy_operand(op)))) && 
+          !(OP_has_predicate(op) && tn_registers_identical(tn, OP_opnd(op,OP_PREDICATE_OPND)))
+         ) {
         INT cpo = copy_operand(op);
 
        /* We may be able to get rid of the copy, but be

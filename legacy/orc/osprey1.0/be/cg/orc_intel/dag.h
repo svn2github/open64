@@ -217,11 +217,11 @@ private:
 
     }TN_BITSET_TABLE_ENTRY;
       
-    typedef mempool_allocator<TN_BITSET_TABLE_ENTRY>                 TN_BITSET_TABLE_ALLOC;
-    typedef vector<TN_BITSET_TABLE_ENTRY,TN_BITSET_TABLE_ALLOC>                   TN_BITSET_TABLE;
+    typedef mempool_allocator<TN_BITSET_TABLE_ENTRY>   TN_BITSET_TABLE_ALLOC;
+    typedef vector<TN_BITSET_TABLE_ENTRY,TN_BITSET_TABLE_ALLOC>  TN_BITSET_TABLE;
 
-    typedef mempool_allocator<mTN_INDEX>                 TN_BITSET_TABLE_INDEX_ALLOC;
-    typedef vector<mTN_INDEX,TN_BITSET_TABLE_INDEX_ALLOC>                   TN_BITSET_TABLE_INDEX;
+    typedef mempool_allocator<mTN_INDEX>    TN_BITSET_TABLE_INDEX_ALLOC;
+    typedef vector<mTN_INDEX,TN_BITSET_TABLE_INDEX_ALLOC> TN_BITSET_TABLE_INDEX;
 
 
     /* Define the BB vector
@@ -239,10 +239,10 @@ private:
 
     }BB_BITSET_TABLE_ENTRY;
 
-    typedef mempool_allocator<BB_BITSET_TABLE_ENTRY>                 BB_BITSET_TABLE_ALLOC;
-    typedef vector<BB_BITSET_TABLE_ENTRY,BB_BITSET_TABLE_ALLOC>                   BB_BITSET_TABLE;
-    typedef mempool_allocator<mBB_INDEX>                 BB_BITSET_TABLE_INDEX_ALLOC;
-    typedef vector<mBB_INDEX,BB_BITSET_TABLE_INDEX_ALLOC>                   BB_BITSET_TABLE_INDEX;
+    typedef mempool_allocator<BB_BITSET_TABLE_ENTRY>  BB_BITSET_TABLE_ALLOC;
+    typedef vector<BB_BITSET_TABLE_ENTRY,BB_BITSET_TABLE_ALLOC>  BB_BITSET_TABLE;
+    typedef mempool_allocator<mBB_INDEX>  BB_BITSET_TABLE_INDEX_ALLOC;
+    typedef vector<mBB_INDEX,BB_BITSET_TABLE_INDEX_ALLOC>  BB_BITSET_TABLE_INDEX;
 
     
 
@@ -282,6 +282,9 @@ private:
     /* Internal member functions.
      */
     BOOL OP_Shadowed_By_Prev_OPs (OP*, OPs&, COMPARE_FUNCTION);
+    mINT32 Get_Table_Index(OP* op);
+    mINT32 Get_Table_Index(BB* bb);
+    mINT32 Get_Table_Index(TN* tn);
     BOOL Is_Control_Speculative (OP* pred, OP* succ);
     OPs& Get_Def_Use_OPs    (OP *op, UINT8 res, CG_DEP_KIND arc_kind);
     void Set_Def_Use_OPs    (OP *op);

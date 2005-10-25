@@ -74,10 +74,10 @@ all: build
 $(NATIVE_BUILD_DIR)/driver/driver driver: force
 		gmake -C $(NATIVE_BUILD_DIR)/driver
 
-$(NATIVE_BUILD_DIR)/gccfe/gfec:
+$(NATIVE_BUILD_DIR)/gccfe/gfec: force
 		gmake -C $(NATIVE_BUILD_DIR)/gccfe
 
-$(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:
+$(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc: force
 		gmake -C $(NATIVE_BUILD_DIR)/g++fe
 
 $(NATIVE_BUILD_DIR)/be/be: force
@@ -137,7 +137,7 @@ $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a: force
 $(NATIVE_BUILD_DIR)/cord/gen_cord: force
 		gmake -C $(NATIVE_BUILD_DIR)/cord
 
-$(NATIVE_BUILD_DIR_LD)/ld/ld-new:
+$(NATIVE_BUILD_DIR_LD)/ld/ld-new: 
 		cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE ; gmake
 
 #$(NATIVE_BUILD_DIR)/crayf90/sgi/mfef90: force

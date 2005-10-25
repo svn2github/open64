@@ -2494,6 +2494,7 @@ Adjust_Qualifying_Predicate(OP *cand_op, BB *src_bb, BB *tgt_bb,
 	TN *tn1, *tn2;
 	OP *cmp;
 	CGTARG_Analyze_Compare(tgt_br_op, &tn1, &tn2, &cmp);
+        Remove_Explicit_Branch(tgt_bb);
 	BOOL fall_thru = BB_Fall_Thru_Successor(tgt_bb) == src_bb;
 	
 	// If <!fall_through> set the predicate of <cand_op> to the

@@ -208,16 +208,16 @@ public:
     // For slot 1:
     //
     _no_of_preferences[1] = 4;
-    _bundling_preference[1][0] = ISA_EXEC_PROPERTY_F_Unit;
-    _bundling_preference[1][1] = ISA_EXEC_PROPERTY_I_Unit;
+    _bundling_preference[1][0] = ISA_EXEC_PROPERTY_I_Unit;
+    _bundling_preference[1][1] = ISA_EXEC_PROPERTY_F_Unit;
     _bundling_preference[1][2] = ISA_EXEC_PROPERTY_M_Unit;
     _bundling_preference[1][3] = ISA_EXEC_PROPERTY_B_Unit;
 
     // For slot 2:
     //
     _no_of_preferences[2] = 5;
-    _bundling_preference[2][0] = ISA_EXEC_PROPERTY_F_Unit;
-    _bundling_preference[2][1] = ISA_EXEC_PROPERTY_I_Unit;
+    _bundling_preference[2][0] = ISA_EXEC_PROPERTY_I_Unit;
+    _bundling_preference[2][1] = ISA_EXEC_PROPERTY_F_Unit;
     _bundling_preference[2][2] = ISA_EXEC_PROPERTY_I2_Unit;
     _bundling_preference[2][3] = ISA_EXEC_PROPERTY_B_Unit;
     _bundling_preference[2][4] = ISA_EXEC_PROPERTY_B2_Unit;

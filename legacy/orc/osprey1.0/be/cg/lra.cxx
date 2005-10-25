@@ -144,7 +144,7 @@ static BOOL livethrough_computed;
 
 /* If a result of an undeletable OP is not needed, */
 /* it may be replaced with one of these TNs.         */
-static TN *unused_tn_def[ISA_REGISTER_CLASS_MAX];
+static TN *unused_tn_def[ISA_REGISTER_CLASS_MAX+1];
 
 
 static BOOL do_global_locking = FALSE;

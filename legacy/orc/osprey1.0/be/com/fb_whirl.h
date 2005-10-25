@@ -231,6 +231,7 @@ public:
   void FB_lower_return_val ( WN *wn_return_val, WN *wn_return );
 
   void FB_lower_mstore_to_loop ( WN *wn_mstore, WN *wn_loop, INT64 nMoves );
+  void FB_hoist_case( WN *wn_switch, vector<FB_FREQ>::size_type wcase);
 
   // Goto conversion
 

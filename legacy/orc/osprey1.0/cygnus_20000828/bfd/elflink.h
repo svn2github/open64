@@ -1650,6 +1650,9 @@ elf_link_add_object_symbols (abfd, info)
 		    new_flag |= ELF_LINK_HASH_REF_REGULAR_NONWEAK;
 		}
 	      else
+#ifdef IPA_LINK
+		  if (!ipa_is_whirl(abfd)) 
+#endif
 		new_flag = ELF_LINK_HASH_DEF_REGULAR;
 	      if (info->shared
 		  || (old_flags & (ELF_LINK_HASH_DEF_DYNAMIC

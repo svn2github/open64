@@ -225,6 +225,7 @@ TARG_DSO_SRCS_C = \
 	itanium.c
 TARG_DSO_SRCS_CXX = \
 	targ_issue_port.cxx \
+	targ_cache_info.cxx \
 	targ_bypass.cxx \
 	cggrp_ptn_table.cxx
 
@@ -761,6 +762,7 @@ KNOBS_ACCESS_SRC = \
          ekapi_operands.cxx \
          ekapi_properties.cxx  \
          ekapi_itanium.cxx \
+         ekapi_cache_info.cxx \
          ekapi_bypass.cxx
 
 KNOBS_GEN_SRC = \
@@ -777,7 +779,8 @@ KNOBS_GEN_SRC = \
          itanium_gen.cxx \
          bypass_gen.cxx \
          proc_gen_new.cxx \
-         proc_properties_gen_new.cxx
+         proc_properties_gen_new.cxx\
+         cache_info_gen.cxx 
 
 KNOBS_SRC = \
          ipfec_targ_gen.cxx \

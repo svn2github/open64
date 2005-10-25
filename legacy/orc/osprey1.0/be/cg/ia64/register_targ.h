@@ -185,6 +185,10 @@ extern void REGISTER_Unallocate_Stacked_Register (
 extern BOOL REGISTER_Is_Allocatable_Stacked_Register (
    ISA_REGISTER_CLASS rclass, REGISTER reg);
 
+extern INT32 Get_Stacked_Callee_Used();
+extern INT32 Get_Stacked_Caller_Used();
+ 
+
 extern REGISTER_SET REGISTER_Get_Stacked_Avail_Set(INT has_abi_property,
 						   ISA_REGISTER_CLASS rclass);
 extern BOOL REGISTER_Is_Stacked_Output(ISA_REGISTER_CLASS rclass, REGISTER reg);

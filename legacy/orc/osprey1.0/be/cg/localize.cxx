@@ -304,71 +304,81 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 		/* save of slink */
 	}
 	else if (is_func_arg || is_func_retval) {
-		if (def && is_func_arg && BB_call(current_bb))
-			;	// okay
-		else if (def && is_func_retval && BB_exit(current_bb))
-			;	// okay
+                if (def && is_func_arg && BB_call(current_bb)) {
+                    goto okay;
+		}	// okay
+		if (def && is_func_retval && BB_exit(current_bb)) {
+                    goto okay;
+		}	// okay
 #ifdef TARG_IA32
-		else if (def && is_func_retval && BB_asm(current_bb))
-			;	// okay
+		if (def && is_func_retval && BB_asm(current_bb)) {
+                    goto okay;
+		}	// okay
 #endif
-		else if (def && is_func_arg && BB_asm(current_bb))
-			;	// okay
-		else if (def && is_func_retval && BB_call(current_bb)
-		    && RETURN_INFO_return_via_first_arg(Get_Return_Info(
-			  TY_ret_type(ST_pu_type(CALLINFO_call_st(
-			    ANNOT_callinfo(ANNOT_Get(
-				BB_annotations(current_bb),ANNOT_CALLINFO)) ))),
-			  No_Simulated) ) )
+		if (def && is_func_arg && BB_asm(current_bb)) {
+                    goto okay;
+		}	// okay
+		if (def && is_func_retval && BB_call(current_bb)) {
+                    WN* wn = CALLINFO_call_wn(ANNOT_callinfo(ANNOT_Get(BB_annotations(current_bb),ANNOT_CALLINFO)));
+                    ST* st = CALLINFO_call_st(ANNOT_callinfo(ANNOT_Get(BB_annotations(current_bb),ANNOT_CALLINFO)));
+                    BOOL ok = FALSE;
+                    if(st != NULL ){
+		        ok = RETURN_INFO_return_via_first_arg(Get_Return_Info(TY_ret_type(ST_pu_type(st)),No_Simulated));
+                    }else if(WN_operator(wn) == OPR_ICALL){
+		        ok = RETURN_INFO_return_via_first_arg(Get_Return_Info(TY_ret_type(WN_ty(wn)),No_Simulated));
+                    }
+                    if(ok) goto okay;
 			// can return via first arg in retval reg.
-			;	// okay
-		else if (!def && is_func_retval && BB_entry(current_bb)
+		}	// okay
+		if (!def && is_func_retval && BB_entry(current_bb)
 		    && RETURN_INFO_return_via_first_arg(Get_Return_Info(
 			  TY_ret_type(PU_prototype(Get_Current_PU())), 
 			  No_Simulated) ) )
 			// can return via first arg in retval reg.
-			;	// okay
+		{
+                    goto okay;
+		}	// okay
 		// If arg and retval overlap,
 		// how do we distinguish between def before call
 		// and def before exit?
 		// Could combine the Param_ and Return_ routines,
 		// but instead we search to try and figure out which
 		// case it is.
-		else if (def && is_func_arg && is_func_retval
-			&& !BB_call(current_bb) && !BB_exit(current_bb)) 
-		{
-			if (BB_Is_Followed_By_Call (current_bb)) 
-				Localize_Global_Param_Reg (current_bb, tn);
-			else
-				Localize_Global_Return_Reg_Def (current_bb, tn);
+		if (def && is_func_arg && is_func_retval && !BB_call(current_bb) && !BB_exit(current_bb)) {
+                    if (BB_Is_Followed_By_Call (current_bb)) 
+                        Localize_Global_Param_Reg (current_bb, tn);
+                    else
+                        Localize_Global_Return_Reg_Def (current_bb, tn);
+                    goto okay;
 		}
-		else if (def && is_func_arg && !BB_call(current_bb)) {
-			Localize_Global_Param_Reg (current_bb, tn);
+		if (def && is_func_arg && !BB_call(current_bb)) {
+                    Localize_Global_Param_Reg (current_bb, tn);
+                    goto okay;
 		} 
-		else if (def && is_func_retval && !BB_exit(current_bb)) {
-			Localize_Global_Return_Reg_Def (current_bb, tn);
+		if (def && is_func_retval && !BB_exit(current_bb)) {
+                    Localize_Global_Return_Reg_Def (current_bb, tn);
+                    goto okay;
 		}
-		else if (!def && is_func_arg && BB_entry(current_bb)) 
-			;	// okay
-		else if (!def && is_func_retval 
-		    && BB_prev(current_bb) != NULL 
-		    && BB_call(BB_prev(current_bb)))
-			;	// okay
-		else if (!def && is_func_retval 
-		    && BB_prev(current_bb) != NULL 
-		    && BB_asm(BB_prev(current_bb)))
-			;	// okay
-		else if (!def && is_func_retval
-		    && (BB_prev(current_bb) == NULL 
-			|| ! BB_call(BB_prev(current_bb)))) 
-		{
+		if (!def && is_func_arg && BB_entry(current_bb)) {
+                    goto okay;
+		}	// okay
+		if (!def && is_func_retval && BB_prev(current_bb) != NULL && BB_call(BB_prev(current_bb))) {
+                    goto okay;
+		}	// okay
+		if (!def && is_func_retval && BB_prev(current_bb) != NULL && BB_asm(BB_prev(current_bb))) {
+                    goto okay;
+		}	// okay
+		if (!def && is_func_retval && (BB_prev(current_bb) == NULL || ! BB_call(BB_prev(current_bb)))) {
 			/* not after call, so must span bb's */
-			Localize_Global_Return_Reg (current_bb, tn);
+		    Localize_Global_Return_Reg (current_bb, tn);
+                    goto okay;
 		}
-		else {
-			FmtAssert (FALSE, ("use of param reg TN%d in bb %d is global", TN_number(tn), BB_id(current_bb)));
-		}
+		FmtAssert (FALSE, ("use of param reg TN%d in bb %d is global", TN_number(tn), BB_id(current_bb)));
+
 	} 
+
+okay:
+
 #ifdef HAS_STACKED_REGISTERS
 	// func_arg applies to formal args, 
 	// but actual args may be different numbered registers

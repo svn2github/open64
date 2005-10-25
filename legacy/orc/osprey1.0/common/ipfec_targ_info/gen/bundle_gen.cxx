@@ -426,6 +426,7 @@ void Bundle_Generator(void *pknobs, GEN_MODE mode)
     else 
     	fprintf(c_file, " FALSE");
     fprintf(c_file, "\n  },\n");
+    free(slots);;
   }
   fprintf(c_file, "  {\n\
     \"template_MAX\", \"\", -1,\n\
@@ -553,6 +554,7 @@ void Bundle_Generator(void *pknobs, GEN_MODE mode)
     fprintf(c_file, "   %d, /* ISA_BUNDLE_PACK_%s */\n",
             positions[index], comp_name);
   }
+  free(positions);
   fprintf(c_file, "};\n");
   // End emit declaration and init of bundle pack info
 

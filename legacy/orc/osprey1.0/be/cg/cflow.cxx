@@ -3245,18 +3245,21 @@ Delete_Unreachable_Blocks(void)
      */
     if (!unreachable_bb) continue;
 
+    if (IPFEC_Enable_Speculation) {
+        if (BB_Hold_Disjoint_Speculative_Code(bp)) 
+            continue;
+        Delete_Recovery_Info_For_BB(bp);
+    }
+
     /* Delete the contents or the whole BB, depending on whether or
      * not we need to keep some labels or not.
      */
     if (   has_eh_lab 
-	|| BB_Has_Addr_Taken_Label(bp)
-	|| BB_Has_Outer_Block_Label(bp))
+	       || BB_Has_Addr_Taken_Label(bp)
+	       || BB_Has_Outer_Block_Label(bp))
     {
       Delete_BB_Contents(bp);
     } else {
-      if (IPFEC_Enable_Speculation) {
-          Delete_Recovery_Info_For_BB(bp);
-      }
       Delete_BB(bp, CFLOW_Trace_Unreach);
     }
 
@@ -4119,6 +4122,13 @@ Merge_Blocks ( BOOL in_cgprep )
       suc = BBINFO_succ_bb(b, 0);
       if (suc == b) break;
 
+      /* We don't need not to merge profile added BB.
+       * This modification originated from a bug caused by 
+       * split such a merged. The result is incorrect 
+       * live information and error register allocation.
+       */
+      if (BB_profile_added(b)) break;
+      
       pred = BB_Unique_Predecessor(b);
 
       /* If <suc> has a unique predecessor (it would have to be <b>),
@@ -6520,8 +6530,13 @@ Clone_Blocks ( BOOL in_cgprep )
     BB *pred = cand->pred;
     BB *suc = BBINFO_succ_bb(pred, 0);
 
-    cost = BB_Has_One_Pred(suc) ? 0 : Estimate_BB_Length(suc);
-    cost -= (BB_next(pred) != suc);
+    if(RGN_Formed && Home_Region(pred) != Home_Region(suc) &&
+       BB_succs_len(suc) > 2)
+       cost = CFLOW_clone_max_incr;
+    else {
+      cost = BB_Has_One_Pred(suc) ? 0 : Estimate_BB_Length(suc);
+      cost -= (BB_next(pred) != suc);
+    }
 
     if (cost <= allowance) {
       Append_Succ(pred, suc, in_cgprep, BB_Has_One_Pred(suc));

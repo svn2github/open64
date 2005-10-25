@@ -66,7 +66,7 @@
         #define ALTBINPATH  BINPATH
     #endif 
 
-    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-orc-linux/2.0" 
+    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-orc-linux/2.1" 
     #define ALTLIBPATH	"/usr/" INTERPOSE "/lib"
 
     #define PHASEPATH	    LIBPATH

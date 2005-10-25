@@ -57,6 +57,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #endif
 
 #include <limits.h>
+#include <float.h>
 #include "defs.h"
 #include "errors.h"
 #include "tracing.h"
@@ -98,9 +99,33 @@ static GRA_REGION *GRA_current_region;  // The current region for which we are
 					// allocating registers.
 
 static BB_SET* pred_bb_set;//for remove save/restore pr
-
+extern char *Cur_PU_Name;
 extern BOOL fat_self_recursive;
 extern BOOL gra_self_recursive;
+extern INT32 rse_budget;
+INT32 first_callee_next;
+INT32 first_caller_next;
+BOOL high_freq;
+struct reg_feedback {
+    char _func_name[120];
+    INT32 _stacked_callee_used;
+    INT32 _stacked_caller_used;
+    float _cost[96];
+    reg_feedback() : _stacked_callee_used(0),
+             _stacked_caller_used(0)
+    {
+        for (INT32 i = 0; i < 96; i++) {
+            _cost[i] = 0;
+        }
+    }
+};
+
+struct reg_feedback reg_fb;
+static BOOL have_open_output_file = FALSE;
+static FILE *fout;
+static BOOL have_open_input_file = FALSE;
+static FILE *fin;
+
 
 BOOL can_use_stacked_reg;
 
@@ -145,6 +170,19 @@ public:
 //
 //////////////////////////////////////////////////////////////////////////
 
+static void
+Update_Reg_Cost(LRANGE *lr,INT32 reg)
+{
+    INT32 k = reg - 32;
+    if (lr->Rc() == ISA_REGISTER_CLASS_integer) {
+        if ((reg > first_callee_next)
+            && (reg <= first_caller_next)) {
+            lr->Calculate_Priority();
+            reg_fb._cost[k] = reg_fb._cost[k] + lr->Priority();
+        }
+    }
+}
+
 
 /////////////////////////////////////
 static void
@@ -187,7 +225,7 @@ Update_Register_Info( LRANGE* lrange, REGISTER reg )
   ISA_REGISTER_CLASS rc = lrange->Rc();
 
   lrange->Allocate_Register(reg);
-
+  Update_Reg_Cost(lrange,reg);
   if ( lrange->Has_Preference() ) {
     non_prefrenced_regs[rc] =
         REGISTER_SET_Difference1(non_prefrenced_regs[rc],reg);
@@ -1034,6 +1072,19 @@ GRA_Color_Complement( GRA_REGION* region )
     first->prev = NULL;
     first->next = last;
     //End of Insertion.
+    if (rc == ISA_REGISTER_CLASS_integer) {
+        first_callee_next = Get_Stacked_Callee_Next();
+        first_caller_next = Get_Stacked_Caller_Next();
+        for (INT32 i = 32; i <= first_callee_next; i++) {
+            INT32 k = i - 32;
+            reg_fb._cost[k] = FLT_MAX;
+        }
+
+        for (INT32 i = first_caller_next+1; i <= 128;i++) {
+            INT32 k = i - 32;
+            reg_fb._cost[k] = FLT_MAX;
+        }
+    }
 
     BOOL forced_locals = FALSE;
 
@@ -1148,6 +1199,27 @@ GRA_Color_Complement( GRA_REGION* region )
       }
       
     }
+
+    if (FALSE) {
+    if (rc == ISA_REGISTER_CLASS_integer) {
+        INT32 stacked_callee_next = Get_Stacked_Callee_Next();
+        INT32 stacked_caller_next = Get_Stacked_Caller_Next();
+        strcpy(reg_fb._func_name,Cur_PU_Name);
+        reg_fb._stacked_caller_used = Get_Stacked_Caller_Used();
+        reg_fb._stacked_callee_used = Get_Stacked_Callee_Used();
+        printf("FUNCTION NAME %s\n",reg_fb._func_name);
+        for (INT32 i = 0; i < 96; i++) {
+            printf("COST OF REG %d IS %f \n",i,reg_fb._cost[i]);
+        }
+        if (!have_open_output_file) {
+            fout =  fopen("struc_feedback","a");
+            have_open_output_file = TRUE;
+        }
+
+        fwrite(&reg_fb,1,sizeof(struct reg_feedback),fout);
+    }
+    }
+
     BOOL temp = can_use_stacked_reg;
     can_use_stacked_reg = TRUE; 
     INT32 size = 0;

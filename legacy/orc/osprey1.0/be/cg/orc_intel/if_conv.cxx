@@ -4303,6 +4303,12 @@ IF_CONVERTOR::Force_If_Convert(LOOP_DESCR *loop, BOOL allow_multi_bb)
     {
         fprintf(TFile, " ======start to force_if_convert\n\n");
     }
+
+    if ( Is_In_Infinite_Loop(region) ) 
+    {
+        return NULL;
+    }
+
     If_Conversion_Init(region,areas);
     if (Get_Trace(TP_A_IFCONV, TT_IF_CONV_DETAILED)) 
     {

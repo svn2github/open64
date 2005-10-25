@@ -145,6 +145,7 @@ extern BOOL IPFEC_Enable_Multi_Branch ;
 extern BOOL IPFEC_Enable_Pre_Multi_Branch ;
 extern BOOL IPFEC_Enable_Post_Multi_Branch ;
 extern INT32 IPFEC_Enable_Stride_Prefetch;
+extern BOOL IPFEC_Enable_LICM;
 
 extern char *Instru_File_Name;
 extern char *Fb_File_Name;
@@ -216,6 +217,7 @@ extern BOOL ORC_Enable_Multi_Branch ;
 extern BOOL ORC_Enable_Pre_Multi_Branch ;
 extern BOOL ORC_Enable_Post_Multi_Branch ;
 extern INT32 ORC_Enable_Stride_Prefetch;
+extern BOOL ORC_Enable_Cache_Analysis;
 
 
 extern BOOL ORC_Enable_Compressed_Template;
@@ -227,6 +229,7 @@ extern BOOL ORC_Profitability;
 extern BOOL ORC_Chk_Compact;
 extern BOOL ORC_Enable_Safety_Load;
 extern BOOL ORC_Enable_Insert_UNAT;
+extern BOOL ORC_Enable_LICM;
 
 extern char * ORC_safe_cntl_spec_prob ;
 extern char * ORC_unsafe_cntl_spec_prob ;
@@ -356,7 +359,9 @@ extern SKIPLIST *mlbr_skip_bb;
 extern OPTION_LIST *raw_PRDB_skip_PU;
 extern SKIPLIST *PRDB_skip_PU;
 
-
+// testing for latency2 added by llx
+extern OPTION_LIST *raw_latency2;
+extern SKIPLIST *latency2;
 
 // Copy ORC_Flags into IPFEC_Flags
 void Copy_Ipfec_Flags (void) ;

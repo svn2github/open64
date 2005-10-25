@@ -164,14 +164,24 @@ void REGISTER_Request_Stacked_Rotating_Register()
   }
 }
 
-INT Get_Stacked_Callee_Next() {
+INT32 Get_Stacked_Callee_Used() {
+    INT32 stacked_callee_used = stacked_callee_next - 32;
+    return stacked_callee_used;
+}
+ 
+INT32 Get_Stacked_Caller_Used() {
+    INT32 stacked_caller_used = 128 - stacked_caller_next;
+    return stacked_caller_used;
+}
+ 
+INT32 Get_Stacked_Callee_Next() {
     return stacked_callee_next;
 }
-
-INT Get_Stacked_Caller_Next() {
+ 
+INT32 Get_Stacked_Caller_Next() {
     return stacked_caller_next;
 }
-
+ 
 /////////////////////////////////////
 REGISTER REGISTER_Request_Stacked_Register(INT has_abi_property,
 					   ISA_REGISTER_CLASS rclass)

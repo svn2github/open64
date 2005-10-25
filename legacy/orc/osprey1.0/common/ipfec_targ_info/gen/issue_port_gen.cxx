@@ -116,10 +116,19 @@ void Issue_Port_Generator(void *pknobs, GEN_MODE mode, MACHINE_TYPE type)
 
     fprintf(fph, "extern ISSUE_PORT issue_port_seq[];\n\n");
     fprintf(fpc, "ISSUE_PORT issue_port_seq[]={\n");
+
+    int m_idx = -1;
+    int i_idx = -1;
     for (i=0 ; i< KAPI_EnumCardinality(pknobs, "ut_t"); i++)
     {
         buf  = KAPI_EnumName(pknobs, i, "ut_t");
         buf += strlen("ut") ; //Skip prefix "ut"
+        
+        // We prefer I unit to M unit in Itanium2 microscheduling 
+        if (type == MCK_TYPE && *buf == 'M' && i_idx == -1) { 
+            m_idx = i;
+            continue;
+        }
         for (j=0; j< KAPI_cportCount4ut( pknobs, 0, (kapi_ut_t)i ); j++)
         {
              int k = j;
@@ -127,6 +136,15 @@ void Issue_Port_Generator(void *pknobs, GEN_MODE mode, MACHINE_TYPE type)
                  k = KAPI_cportCount4ut( pknobs, 0, (kapi_ut_t)i ) - j - 1;
              }
              fprintf(fpc, "  ip_%s%d,\n", buf, k);
+        }
+        
+        if (type == MCK_TYPE && *buf == 'I' ) { 
+            i_idx = i;
+            if ( m_idx != -1) {
+                *buf = 'M';
+                for (j=0; j< KAPI_cportCount4ut( pknobs, 0, (kapi_ut_t)m_idx ); j++) 
+                     fprintf(fpc, "  ip_%s%d,\n", buf, j);
+            }
         }
     }
     fprintf(fpc, "  ip_invalid\n};\n");

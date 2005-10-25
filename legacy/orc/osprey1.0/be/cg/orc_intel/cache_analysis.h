@@ -33,27 +33,42 @@
 */
 
 
-/* $Header: /proj/osprey/CVS/open64/osprey1.0/include/stamp.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* =======================================================================
+ * =======================================================================
+ *
+ *  Module: cg_dep_graph.h
+ *  $Revision: 1.1.1.1 $
+ *  $Date: 2005/10/21 19:00:00 $
+ *  $Author: marcel $
+ *  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/orc_intel/cache_analysis.h,v $
+ *
+ *  Revision comments:
+ *
+ *  23-Apr-2003 - Initial version
+ *
+ *  Description:
+ *  ============
+ *
+ *  This module implements the analysis and optimization related with 
+ *  cache. 
+ */
 
-#ifndef __STAMP_H__
-#define __STAMP_H__
+#ifndef CACHE_ANALYSIS_INCLUDED
+#define CACHE_ANALYSIS_INCLUDED
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "op.h"
 
-#ifdef __linux
-#define	MS_STAMP 0
-#define	LS_STAMP 9
-#define INCLUDE_STAMP "2.1"
-#else
-#define	MS_STAMP 7
-#define	LS_STAMP 40
-#define INCLUDE_STAMP "7.40"
-#endif
+// Cache function.
+extern BOOL Cache_Has_Conflict(OP *pred, OP *op, INT *distance, BOOL *equal);
+extern BOOL Cache_Has_Conflict(OP *pred, OP *op, CG_DEP_KIND kind);
 
-#ifdef __cplusplus
-}
-#endif
+extern void Cache_Location_Analysis(void);
+extern void Cache_Analysis_End(void);
 
-#endif  /* __STAMP_H__ */
+extern BOOL Cache_Access_Same_Line(const struct ALIAS_MANAGER *, WN *, WN *, INT *diff);
+extern BOOL Cache_Access_Same_Line(OP *op1, OP *op2, INT *diff);
+extern void Cache_Adjust_Latency(OP *pred, OP *op, CG_DEP_KIND kind, INT *latency);
+
+extern BOOL Cache_L2_Has_Data(OP *op);
+extern BOOL Cache_L1_Has_Data(OP *op);
+#endif /* CACHE_ANALYSIS_INCLUDED */

@@ -3382,7 +3382,7 @@ build1 (code, type, node)
   length = sizeof (struct tree_exp);
 
   if (ggc_p)
-    t = ggc_alloc_tree (length);
+    t = ggc_alloc_tree (length + sizeof(union tree_node *));
   else
     {
       t = (tree) obstack_alloc (obstack, length);

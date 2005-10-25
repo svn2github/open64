@@ -1818,6 +1818,39 @@ BB *BB_Unique_Successor( BB *bb )
   return succ;
 }
 
+void
+Remove_Explicit_Branch (BB *bb)
+/* -----------------------------------------------------------------------
+ * Remove useless explicit branch to BB_next(bb) 
+ * -----------------------------------------------------------------------
+ */
+{
+  if ( bb == NULL) return;
+  BB *next = BB_next(bb);
+
+  if (next && BB_Find_Succ(bb, next)) {
+    /* Make sure it's not a branch target (direct or indirect). */
+    OP *br_op = BB_branch_op(bb);
+    if (br_op) {
+      INT tfirst, tcount;
+      CGTARG_Branch_Info(br_op, &tfirst, &tcount);
+      if (tcount != 0) {
+        TN *dest = OP_opnd(br_op, tfirst);
+        DevAssert(tcount == 1, ("%d branch targets, expected 1", tcount));
+        DevAssert(TN_is_label(dest), ("expected label"));
+        if (Is_Label_For_BB(TN_label(dest), next)) {
+          /* Remove useless explicit branch to <next> */
+          BB_Remove_Op(bb, br_op);
+        } else {
+          DevAssert(OP_cond(br_op), ("BB_succs(BB:%d) wrongly contains BB:%d",
+                                     BB_id(bb), BB_id(next)));
+        }
+      }
+    }
+  }
+}
+
+
 /* =======================================================================
  *
  *  BB_Fall_Thru_Successor

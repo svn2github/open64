@@ -26,33 +26,31 @@
 */
 
 //-*-c++-*-
-
-#ifndef multibranch_INCLUDED
-#define multibranch_INCLUDED
-
-#include "cg_flags.h"
-#include "ipfec_options.h"
-
-// ==================================================================
+//=============================================================================
 //
-//  Module :  multibranch.h
+//  Module : ekapi_cache_info.cxx_
 //  $Date  : $
 //  $Author: marcel $
-//  $Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/orc_intel/multi_branch.h,v $
+//  $Source: /proj/osprey/CVS/open64/osprey1.0/common/ipfec_targ_info/access/ekapi_cache_info.cxx,v $
 //
 //  Description:
 //  ============
-//
-//  This file contains the interface for multiple branch.
-//  - Post_Multi_Branch called after local scheduler, bundling 
-//    multiple branch in different BB into same cycle.
-//  - Check_Cross_Boundary called before local scheduler, find each 
-//    bundle which cross BB boundary is not distroy by other phase.
-//    Then, reschedule ruined BB in local scheduler.
-//    Here we only check cross bundle caused by multi-branch.
-// ==================================================================
+//  hold some many functions for cache information;
+//  and encapsulate KAPI first layer opcode of access layer.
+//=============================================================================
 
-extern void Check_Cross_Boundary(void);
-extern void Post_Multi_Branch(void);
-extern void Post_Multi_Branch_Collect(void);
-#endif
+#include "ekapi_ia64.h"
+#include "ekapi_util.h"
+
+// Return Cache name count.
+int EKAPI_CacheNameCount(void *pknobs)
+{
+    return KAPI_EnumCardinality(pknobs, "cache_names_t");
+}
+
+// Return Enum Class name for each index
+char *EKAPI_CacheName(void *pknobs, int index)
+{
+    return KAPI_EnumName(pknobs, index, "cache_names_t");
+}
+                                             

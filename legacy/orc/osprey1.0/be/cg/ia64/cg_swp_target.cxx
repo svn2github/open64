@@ -67,6 +67,7 @@
 #include "cg_loop.h"
 #include "calls.h"
 #include "tag.h"
+#include "targ_issue_port.h" // To get PROCESSOR_Version
 
 /* ====================================================================
  *
@@ -89,7 +90,16 @@ void Gen_SWP_Branch(CG_LOOP &cl, bool is_doloop)
 
     // Generate br.ctop for doloop
 
-    Build_OP (TOP_br_ctop, 
+    if(PROCESSOR_Version == 2)
+      Build_OP (TOP_br_ctop, 
+	      ar_ec, LC_TN,
+	      Gen_Enum_TN(ECV_bwh_sptk),
+	      Gen_Enum_TN(ECV_ph_few),
+	      Gen_Enum_TN(ECV_dh),
+	      label_tn, 
+	      ar_ec, LC_TN, &ops);
+    else
+      Build_OP (TOP_br_ctop, 
 	      ar_ec, LC_TN,
 	      Gen_Enum_TN(ECV_bwh_dptk),
 	      Gen_Enum_TN(ECV_ph_few),
@@ -172,13 +182,23 @@ void Undo_SWP_Branch(CG_LOOP &cl, bool is_doloop)
 
     // Generate br.ctop for doloop
 
-    Build_OP (TOP_br_cloop, 
+    if(PROCESSOR_Version == 2)
+      Build_OP (TOP_br_cloop, 
+	      LC_TN,
+	      Gen_Enum_TN(ECV_bwh_sptk),
+	      Gen_Enum_TN(ECV_ph_few),
+	      Gen_Enum_TN(ECV_dh),
+	      label_tn, 
+	      LC_TN, &ops);
+    else
+      Build_OP (TOP_br_cloop, 
 	      LC_TN,
 	      Gen_Enum_TN(ECV_bwh_dptk),
 	      Gen_Enum_TN(ECV_ph_few),
 	      Gen_Enum_TN(ECV_dh),
 	      label_tn, 
 	      LC_TN, &ops);
+      
 
     Is_True(OP_code(br_op) == TOP_br_ctop,
 	    ("Undo_SWP_Branch: SWP doloop must use TOP_br_ctop."));

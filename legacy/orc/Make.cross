@@ -139,7 +139,7 @@ $(CROSS_BUILD_DIR)/cord/gen_cord gen_cord: force
 $(CROSS_BUILD_DIR)/crayf90/sgi/mfef90 mfef90: force
 		gmake -C $(CROSS_BUILD_DIR)/crayf90/sgi 
 
-$(CROSS_BUILD_DIR_LD)/ld/ld-new ld-new:
+$(CROSS_BUILD_DIR_LD)/ld/ld-new ld-new: 
 		cd $(CROSS_BUILD_DIR_LD); ./CONFIGURE ; gmake
 
 

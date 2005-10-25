@@ -262,7 +262,101 @@ Check_Self_Recursive(void) {
   
   return FALSE;
 }
+INIT_USE_ONLY_GTN* GTN_USE_ONLY;
 
+void Init_GTN_LIST()
+{
+     GTN_USE_ONLY = NULL;
+}
+INIT_USE_ONLY_GTN* Create_Use_Only_GTN(MEM_POOL *pool)
+{
+   INIT_USE_ONLY_GTN *gtn_use_only =TYPE_MEM_POOL_ALLOC(INIT_USE_ONLY_GTN,pool);
+   gtn_use_only ->TN_Number=0;
+   gtn_use_only ->Used_Time=0;
+   gtn_use_only->Used_In_BB=NULL;
+   gtn_use_only ->next = NULL;
+   return gtn_use_only;
+}
+
+void Free_GTN (MEM_POOL *pool,INIT_USE_ONLY_GTN *delete_tn)
+{
+     MEM_POOL_FREE(pool,delete_tn);
+}
+BOOL Search_Used_Only_Once_GTN (TN *find_tn,BB* def_bb) {
+     
+     INIT_USE_ONLY_GTN *head = GTN_USE_ONLY;
+     if (head==NULL)
+        return FALSE;
+     else
+        while (head !=NULL){
+           if ((head->TN_Number== TN_number(find_tn))&&(head->Used_Time == 1)) {
+              if (head->Used_In_BB == BB_id(def_bb)) 
+              return TRUE;
+           }
+           head = head->next;
+        }
+        return FALSE;
+}
+INIT_USE_ONLY_GTN* Search_GTN_In_List (TN *find_tn) 
+{
+     INIT_USE_ONLY_GTN *head = GTN_USE_ONLY;
+     if (head==NULL) 
+        return NULL;
+     else 
+        while (head !=NULL){
+           if (head->TN_Number== TN_number(find_tn)) {
+              return head;
+           }
+           head = head->next;
+        }
+        return NULL;
+}
+void Build_GTN_In_List (TN *tn,BB* bb)
+{ 
+     INIT_USE_ONLY_GTN *head = GTN_USE_ONLY;
+     if (!TN_is_global_reg(tn)) return;
+     if (head == NULL) {
+        INIT_USE_ONLY_GTN *head = Create_Use_Only_GTN(GRA_pool);
+        head->TN_Number = TN_number(tn);
+        head->Used_In_BB=BB_id(bb);
+        head->Used_Time ++;
+        GTN_USE_ONLY=head;
+        return ;          
+     }else {
+        INIT_USE_ONLY_GTN* find_tn=Search_GTN_In_List(tn);
+        if(find_tn ==NULL) {
+              INIT_USE_ONLY_GTN *insert_tn = Create_Use_Only_GTN(GRA_pool);
+              insert_tn->TN_Number = TN_number(tn);
+              insert_tn->Used_Time ++;
+              insert_tn->Used_In_BB=BB_id(bb);
+              find_tn = GTN_USE_ONLY;
+              while (find_tn->next !=NULL) {
+                    find_tn= find_tn->next;
+              }
+              find_tn->next = insert_tn;
+           }else {
+                 Is_True (find_tn->TN_Number==TN_number(tn), ("Tn has been changed !"));
+                 find_tn->Used_Time ++;
+                 if (find_tn->Used_Time==1) {
+                    find_tn->Used_In_BB=BB_id(bb);
+                 }else {
+                    find_tn->Used_In_BB=0;
+                 }
+           }
+        return;
+     }
+}
+void Print_GTN()
+{
+   INIT_USE_ONLY_GTN *head = GTN_USE_ONLY;
+   fprintf(stdout,"**************Used only once GTN  ********\n" );
+   while (head!=NULL){
+      if (head->Used_Time == 1)
+          fprintf(stdout,"GTN :%d \n",head->TN_Number );
+      head= head->next;
+   }
+   fprintf(stdout,"**************End            GTN  ********\n" );
+}
 /////////////////////////////////////
 void
 GRA_Allocate_Global_Registers( BOOL is_region )
@@ -282,6 +376,7 @@ GRA_Allocate_Global_Registers( BOOL is_region )
   gra_region_mgr.Initialize();
   GRA_Spill_Initialize();
   GRA_Trace_Initialize();
+  Init_GTN_LIST();  
 
   GRA_Split_Entry_And_Exit_BBs(is_region);
 
@@ -291,7 +386,6 @@ GRA_Allocate_Global_Registers( BOOL is_region )
   // Dump out OPs after GRA
   if (Get_Trace(TKIND_IR, TP_GRA, REGION_First_BB))
     Trace_IR(TP_GRA, "GRA0", NULL);
-
   GRA_Spill();      // Actually add the spills.
   GRA_Delete();
 

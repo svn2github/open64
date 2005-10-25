@@ -871,6 +871,9 @@ static OPTION_DESC Options_IPFEC[] = {
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "cflow_after_schedule", "", 
     0, 0, 0,    &ORC_Enable_Opt_after_schedule, NULL, 
     "Use Ipfec cflow_after_schedule to delete empty BBs" },  
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "LICM", "", 
+    1, 0, 0,	&ORC_Enable_LICM, NULL, 
+    "Loop Invariant Code Motion" },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "pre_glos", "", 
     0, 0, 0,	&ORC_Enable_Prepass_GLOS, NULL, 
     "Use Ipfec pre-pass global scheduler" },
@@ -929,7 +932,7 @@ static OPTION_DESC Options_IPFEC[] = {
     0, 0, 0,	&ORC_Enable_Pre_Bundling, NULL, 
     "Turn on bundling on pre-global scheduling" },
    { OVK_INT32,	OV_VISIBLE,	TRUE, "stride_prefetch", "", 
-    0, 0, 3,	&ORC_Enable_Stride_Prefetch, NULL, 
+    3, 0, 3,	&ORC_Enable_Stride_Prefetch, NULL, 
     "Turn on stride prefetching" },
   { OVK_NAME,	OV_VISIBLE,	TRUE, "edge_profile_instr", "", 
     0, 0, 0,	&Instru_File_Name, &ORC_Enable_Edge_Profile, 
@@ -949,6 +952,12 @@ static OPTION_DESC Options_IPFEC[] = {
   { OVK_NAME,	OV_VISIBLE,	TRUE, "stride_profile_annot", "", 
     0, 0, 0,	&Stride_Fb_File_Name,&ORC_Enable_Stride_Profile_Annot, 
     "Enable value profile" },
+  { OVK_NAME,   OV_VISIBLE,  TRUE, "safe_cntl_spec_prob", "",
+    0, 0, 0,    &ORC_safe_cntl_spec_prob, &ORC_Enable_Cntl_Speculation,
+    "Enable control speculation"},
+  { OVK_NAME,   OV_VISIBLE,  TRUE, "unsafe_cntl_spec_prob", "",
+    0, 0, 0,    &ORC_unsafe_cntl_spec_prob, &ORC_Enable_Cntl_Speculation,
+    "Enable control speculation"},
   { OVK_INT32, OV_INTERNAL, TRUE, "value_instr_range", "", 
     0, 0, INT32_MAX, &Value_Instr_Range, NULL },
   { OVK_INT32, OV_INTERNAL, TRUE, "value_instr_pu_id", "",
@@ -983,6 +992,9 @@ static OPTION_DESC Options_IPFEC[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "post_multi_branch", "", 
     0, 0, 0,	&ORC_Enable_Post_Multi_Branch, NULL, 
     "Enable Post Multiple branch" },   
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "cache_ana", "", 
+    0, 0, 0,	&ORC_Enable_Cache_Analysis, NULL, 
+    "Enable Cache conflict Analysis" },   
 /*
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "insert_unat", "", 
     0, 0, 0,	&ORC_Enable_Insert_UNAT, NULL, 
@@ -1197,6 +1209,15 @@ static OPTION_DESC Options_SKIP[] = {
   { OVK_LIST, OV_SHY, FALSE, "glos_rename_skip_op_equal", "glos_rename_skip_op_e",
     0, 0, 4096,	&raw_glos_rename_skip_op, NULL,
     "" },
+  { OVK_LIST, OV_SHY, FALSE, "latency2_before", "latency2_b", 
+    0, 0, 4096,     &raw_latency2, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "latency2_after", "latency2_a",
+    0, 0, 4096,	&raw_latency2, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "latency2_equal", "latency2_e",
+    0, 0, 4096,	&raw_latency2, NULL,
+    "" },
   
   { OVK_COUNT }		/* List terminator -- must be last */
 };
@@ -1325,7 +1346,7 @@ disable_prefetch:
     CG_enable_nz_conf_prefetch = TRUE;
 
   if (Enable_Prefetch_For_Target()) {
-    if ( ! CG_L1_ld_latency_overridden ) CG_L1_ld_latency = 8;
+    if ( ! CG_L1_ld_latency_overridden ) CG_L1_ld_latency = 8; 
     if ( ! CG_enable_pf_L1_ld_overridden ) CG_enable_pf_L1_ld = FALSE;
     if ( ! CG_enable_pf_L1_st_overridden ) CG_enable_pf_L1_st = FALSE;
     if ( ! CG_enable_pf_L2_ld_overridden ) CG_enable_pf_L2_ld = TRUE;
@@ -1860,6 +1881,7 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
     post_locs_skip_PU = IPFEC_Build_Skiplist(raw_post_locs_skip_PU);
     glos_rename_skip_bb = IPFEC_Build_Skiplist(raw_glos_rename_skip_bb);
     glos_rename_skip_op = IPFEC_Build_Skiplist(raw_glos_rename_skip_op);
+    latency2 = IPFEC_Build_Skiplist(raw_latency2);
     Prepare_Source ();
 } /* CG_Process_Command_Line */
 

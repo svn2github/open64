@@ -60,12 +60,13 @@
 #include "cgtarget.h"
 #include "ipfec_options.h"
 
-map<OP*, OP*, compare_op>  Recovery_Info;
 
 
+vector< pair<OP*, OP*> >  load_chk_pairs;
 
-OP 
-*Change_ld_Form(OP *load_op, ISA_ENUM_CLASS_VALUE target_form)
+
+OP*
+Change_ld_Form(OP *load_op, ISA_ENUM_CLASS_VALUE target_form)
 {
     Is_True(OP_load(load_op),("not a load OP!"));
 
@@ -129,6 +130,11 @@ Build_Incoming_Edges(OP *spec_ld, OP *chk)
                 continue;
             }
             Is_True(!OP_br(op),("A branch can not get to here!"));
+        }
+    }
+    for(OP* op = OP_prev(chk); op; op = OP_prev(op)){
+        if(OP_chk(op)){
+            new_arc_with_latency(CG_DEP_PRECHK, op, chk, 0, 0, 0, FALSE);
         }
     }    
 }
@@ -248,8 +254,8 @@ OP_baneful(OP *op)
 //=============================================================================
 static void
 Compute_Topological_Order(REGIONAL_CFG_NODE* root, 
-                          list<REGIONAL_CFG_NODE *>& node_list, 
-                          set<REGIONAL_CFG_NODE *>& visited)
+                          list<REGIONAL_CFG_NODE*>& node_list, 
+                          set<REGIONAL_CFG_NODE*>& visited)
 {
     if( root == NULL ) return;
     for (CFG_SUCC_NODE_ITER succ_iter(root); succ_iter != 0; ++succ_iter) {
@@ -289,18 +295,23 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
         return;
     }
 
-    typedef set<TN*, compare_tn> TNs;
-    typedef map<BB*, TNs, compare_bb >  BB_TNs_MAP;
+    typedef mempool_allocator<TN*> TN_ALLOC;
+    typedef set<TN*, compare_tn, TN_ALLOC> TNs;
+
+    typedef mempool_allocator< pair<BB*, TNs> > BB_TNs_ALLOC;
+    typedef map<BB*, TNs, compare_bb, BB_TNs_ALLOC>  BB_TNs_MAP;
     typedef BB_TNs_MAP::iterator   BB_TNs_MAP_ITER;
 
-    BB_TNs_MAP _live_in_map;  // Record all live in TNs of the speculative chain.
-    BB_TNs_MAP _def_in_map;   // Record all TNs that are defined on the speculative chain.
+    BB_TNs_MAP spec_chain_live;  // Record all live in TNs of the speculative chain.
+    BB_TNs_MAP spec_chain_def;   // Record all TNs that are defined on the speculative chain.
     BB_TNs_MAP _pdef_in_map;  // The same as the above map, but the definition is predicated.
     
     BB* home_bb = OP_bb(chk);
     REGIONAL_CFG_NODE* root = Regional_Cfg_Node(home_bb);
-    list<REGIONAL_CFG_NODE *>  node_list;
-    set<REGIONAL_CFG_NODE *>  visited;
+ 
+    //typedef mempool_allocator<REGIONAL_CFG_NODE*> REGIONAL_CFG_NODE_ALLOC;
+    list<REGIONAL_CFG_NODE* /*REGIONAL_CFG_NODE_ALLOC*/>  node_list;
+    set<REGIONAL_CFG_NODE* /*REGIONAL_CFG_NODE_ALLOC*/>  visited;
     
     Compute_Topological_Order(root, node_list, visited);   
     visited.clear();
@@ -308,30 +319,31 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
     // Initialize the live in set.
     
     for (INT i = 0; i < OP_opnds(spec_ld); i++) {
-        TN *opnd = OP_opnd(spec_ld, i);
+        TN* opnd = OP_opnd(spec_ld, i);
         if (TN_is_register(opnd) && !TN_is_const_reg(opnd)){
             Is_True(!TN_Pair_In_OP(spec_ld, opnd, opnd), ("can not be a post-incr load!"));
-            _live_in_map[home_bb].insert(opnd);
+            spec_chain_live[home_bb].insert(opnd);
         }
     }
     
     // Initialize the definition set.
     
-    TNs unsafe_set;
+    TNs spec_ld_tgt;
     for (INT i = 0; i < OP_results(spec_ld); i++) {
-        TN *rslt = OP_result(spec_ld, i);
+        TN* rslt = OP_result(spec_ld, i);
         Is_True(TN_is_register(rslt), ("rslt tn must be a register tn!"));
-        _def_in_map[home_bb].insert(rslt);
-        unsafe_set.insert(rslt);
+        spec_chain_def[home_bb].insert(rslt);
+        spec_ld_tgt.insert(rslt);
     }
 
-    set<OP*, compare_op> _dependent_set;
+    typedef mempool_allocator<OP*> OP_ALLOC;
+    vector<OP*, OP_ALLOC> dependent_ops;
  
-
+    TN* chk_ptn = OP_opnd(chk,0);
+    TN* spec_ld_ptn = OP_opnd(chk,0); 
     // Iterate all successors, in topological order.
     
-    list<REGIONAL_CFG_NODE*>::iterator iter;
-    for(iter = node_list.begin(); iter != node_list.end(); iter++){
+    for(list<REGIONAL_CFG_NODE*>::iterator iter = node_list.begin(); iter != node_list.end(); iter++){
         if( (*iter)->Is_Region() || BB_exit((*iter)->BB_Node()) )  
             continue; 
         BB* bb = (*iter)->BB_Node();
@@ -342,9 +354,8 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
             if ((*pred_iter)->Is_Region() || visited.find(*pred_iter) == visited.end()) 
                 continue;
             BB* pred = (*pred_iter)->BB_Node();
-            _def_in_map[bb].insert(_def_in_map[pred].begin(), _def_in_map[pred].end());
-            _pdef_in_map[bb].insert(_pdef_in_map[pred].begin(), _pdef_in_map[pred].end());
-            _live_in_map[bb].insert(_live_in_map[pred].begin(), _live_in_map[pred].end());
+            spec_chain_def[bb].insert(spec_chain_def[pred].begin(), spec_chain_def[pred].end());
+            spec_chain_live[bb].insert(spec_chain_live[pred].begin(), spec_chain_live[pred].end());
         }
        
         visited.insert(*iter);
@@ -352,122 +363,149 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
         OP* start_op = bb == OP_bb(chk) ? OP_next(chk): BB_first_op(bb);
         for(OP* op = start_op; op != NULL; op = OP_next(op)) {
 
-            TNs _tmp_live_in;
-            BOOL Flow_Dep = FALSE;
-            BOOL Output_Dep = FALSE;
-            TN* last_flow_dep_tn = NULL;
-            TN* ptn; 
+            TNs  tmp_live_in;
+            BOOL flow_dep = FALSE;
+            BOOL flow_on_predicate = FALSE;
+            BOOL flow_on_opnd = FALSE;
+            BOOL output_dep = FALSE;            
+            TN*  flow_dep_tn = NULL;
+            TN*  cur_ptn = NULL; 
     
             // If current op is already dependent on the chk,
             // go directly to handle its' successors.
-    
-            if(_dependent_set.find(op) != _dependent_set.end())   
-                goto Handle_Succs;
+            for(vector<OP*, OP_ALLOC>::iterator iter = dependent_ops.begin(); 
+			                        iter != dependent_ops.end(); 
+                                                iter++)
+            {
+                if(op == *iter){
+                    goto handle_succs;
+                }
+            }   
 
+            // C1:
             // If the current op is a baneful op that in the same BB
             // as the chk op, make sure it will not be scheduled 
-            // across the chk.
+            // across the chk. Why? I forgot it. This may originated 
+            // from a bug.
     
             if(OP_bb(chk) == OP_bb(op) && OP_baneful(op))
-                goto Gen_Arc;
+                goto gen_arc;
 
+            // C2 & C4:
             // Check to see whether the current op will change 
-            // the value of live TNs.
+            // the value of live TNs or the target register of 
+            // the speculative load.
     
             for(INT i = 0; i < OP_results(op); i++) {
-                TN *rslt = OP_result(op, i);
-                Is_True(TN_is_register(rslt),("can not be a post-incr load!"));
-                if( unsafe_set.find(rslt) != unsafe_set.end() ||
-                    _live_in_map[bb].find(rslt) != _live_in_map[bb].end())
-                    goto Gen_Arc;
-                if(!Output_Dep && 
-                   (_def_in_map[bb].find(rslt) != _def_in_map[bb].end() ||
-                    _pdef_in_map[bb].find(rslt) != _pdef_in_map[bb].end()))
-                    Output_Dep = TRUE;
+                TN* rslt = OP_result(op, i);
+                if(   spec_ld_tgt.find(rslt) != spec_ld_tgt.end() 
+                   || spec_chain_live[bb].find(rslt) != spec_chain_live[bb].end()){
+                    goto gen_arc;
+                }
+                if(spec_chain_def[bb].find(rslt) != spec_chain_def[bb].end()){
+                    output_dep = TRUE;
+                }
             }
             
             for(INT i = 0; i < OP_opnds(op); i++) {
-                TN *opnd = OP_opnd(op, i);
-                if(TN_is_register(opnd) && !TN_is_const_reg(opnd) &&
-                   (_def_in_map[bb].find(opnd) != _def_in_map[bb].end() ||
-                    _pdef_in_map[bb].find(opnd) != _pdef_in_map[bb].end())){
-                    Flow_Dep = TRUE; 
-                    last_flow_dep_tn = opnd;
+                TN* opnd = OP_opnd(op, i);
+                if(    TN_is_register(opnd) 
+                    && !TN_is_const_reg(opnd) 
+                    && spec_chain_def[bb].find(opnd) != spec_chain_def[bb].end()){ 
+                    flow_dep = TRUE; 
+                    if(OP_has_predicate(op) && i == OP_PREDICATE_OPND){
+                        flow_on_predicate = TRUE;
+                    }else{
+                        flow_on_opnd = TRUE;
+                    }
                 }
             }
             
             // If the current op has nothing to do with the speculative load.
             // Nothing will be done.
 
-            if(!Flow_Dep && !Output_Dep)  continue;
+            if(!flow_dep && !output_dep){
+                // Here we include output_dep. Because in recovery block
+                // generation phase, this kind of OPs will be included 
+                // in recovery block. So we should carefully check it to 
+                // make sure it is not a baneful op or other undesirded op. 
+                continue;
+            }
             
             // If it is a baneful op, make sure it will not be  scheduled across
             // the check.
     
-            if(OP_baneful(op))  goto Gen_Arc;
-            
-            // - predicate opnd is not a TRUE tn, 
-            // - predicate opnd is defined on the speculative chain,
-            // - the speculative load is a data speculative load.
-            // prevent it from been schedule across the chk.
+            if(OP_baneful(op)){  
+                goto gen_arc;
+            }
 
-            ptn = OP_opnd(op, 0);
-            if(!TN_is_true_pred(ptn) && CGTARG_Is_OP_Advanced_Load(spec_ld) && 
-                ( _def_in_map[bb].find(ptn) != _def_in_map[bb].end() ||
-                  _pdef_in_map[bb].find(ptn) != _pdef_in_map[bb].end()))
-                    goto Gen_Arc;
-            
+            if(OP_has_predicate(op)){
+                cur_ptn = OP_opnd(op, 0);
+                if(    !flow_on_predicate
+                    && cur_ptn != True_TN 
+                    && cur_ptn != chk_ptn
+                    && cur_ptn != spec_ld_ptn){
+                    goto gen_arc;
+	        }                
+	    }
+ 
+            // C3:
+            //  - predicate opnd is not a TRUE tn, 
+            //  - predicate opnd is defined on the speculative chain,
+            //  - the speculative load is a data speculative load.
+            //  prevent it from been schedule across the chk.
+
+            if(flow_on_predicate && CGTARG_Is_OP_Advanced_Load(spec_ld)){
+                Is_True(!TN_is_true_pred(cur_ptn),("flow dependent can't caused by predicate register!"));
+                goto gen_arc;
+             }
+	    
+            // C5:
             // It is a cascaded load.
     
-            if(Flow_Dep && OP_load(op)){
-                ISA_REGISTER_CLASS rc = TN_register_class(last_flow_dep_tn); 
-                if(rc != ISA_REGISTER_CLASS_predicate){
-                    ARC *arc = new_arc_with_latency(CG_DEP_POSTCHK, chk, op, 0, 0, 0, FALSE);
-                    Set_ARC_is_dotted(arc, TRUE);
-                }
-            }
+            if(flow_dep && flow_on_opnd && OP_load(op))
+            {
+                ARC *arc = new_arc_with_latency(CG_DEP_POSTCHK, chk, op, 0, 0, 0, FALSE);
+                Set_ARC_is_dotted(arc, TRUE);
+             }
 
-            // Prepare to update live in set.
+            // update live in set.
 
             for (INT i = 0; i < OP_opnds(op); i++) {
-                TN *opnd = OP_opnd(op, i);
-                if(TN_is_register(opnd) && !TN_is_const_reg(opnd) &&
-                    _def_in_map[bb].find(opnd) == _def_in_map[bb].end()){ 
-                    _tmp_live_in.insert(opnd);
-                    if(TN_Pair_In_OP(op,opnd,opnd))
-                        goto Gen_Arc;           
+                TN* opnd = OP_opnd(op, i);
+                if(    TN_is_register(opnd) 
+                    && !TN_is_const_reg(opnd) 
+                    && spec_chain_def[bb].find(opnd) == spec_chain_def[bb].end())
+                { 
+                    if(TN_Pair_In_OP(op,opnd,opnd)){
+                        // C2:
+                        goto gen_arc;           
+                    }else{
+                        tmp_live_in.insert(opnd);
+                    }
                 }
             }
-            _live_in_map[bb].insert(_tmp_live_in.begin(),_tmp_live_in.end());
+            spec_chain_live[bb].insert(tmp_live_in.begin(),tmp_live_in.end());
 
-            // Update relative data structures.
-    
-            for (INT i = 0; i < OP_results(op); i++) {
-                TN *rslt = OP_result(op, i);
-                Is_True(TN_is_register(rslt),("can not be a post-incr load!"));
-                if(!Flow_Dep &&
-                    _def_in_map[bb].find(rslt) == _def_in_map[bb].end() &&
-                    _pdef_in_map[bb].find(rslt) == _pdef_in_map[bb].end())
-                    continue;
-                if(TN_is_true_pred(ptn)){
-                    _def_in_map[bb].insert(rslt);
-                    _pdef_in_map[bb].erase(rslt);
-                } else {
-                    if(_def_in_map[bb].find(rslt) == _def_in_map[bb].end())
-                        _pdef_in_map[bb].insert(rslt);
-                }
-            }            
+            // update relative data structures.
+            if(flow_dep){ 
+                for (INT i = 0; i < OP_results(op); i++) {
+                    TN *rslt = OP_result(op, i);
+                    Is_True(TN_is_register(rslt),("result should be a register tn!"));
+                    spec_chain_def[bb].insert(rslt);
+                }            
+	    }
             continue;
 
-Gen_Arc:  
+gen_arc:  
             new_arc_with_latency(CG_DEP_POSTCHK, chk, op, 0, 0, 0, FALSE);  
             
-Handle_Succs:
+handle_succs:
             for (ARC_LIST *arcs = OP_succs(op); arcs; arcs = ARC_LIST_rest(arcs)){
                 ARC *arc = ARC_LIST_first(arcs);
                 OP  *succ = ARC_succ(arc);
                 if(!OP_br(op) && !ARC_is_spec(arc))
-                    _dependent_set.insert(succ);
+                    dependent_ops.push_back(succ);
             }
         }
 
@@ -558,8 +596,8 @@ Local_Insert_CHK(OP *spec_ld, OP *point, TN *pr_tn)
     Build_Outgoing_Edges(spec_ld, chk);     
     Build_Incoming_Edges(spec_ld, chk);
 
-    Recovery_Info[chk] = spec_ld;
-  
+    load_chk_pairs.push_back(pair<OP*,OP*>(spec_ld,chk));
+
     return chk;    
 }
 
@@ -633,15 +671,22 @@ Insert_CHK(OP* primary_ld, vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn)
     if (!copys.empty())
         Connect_Clones_with_CHK(copys,chk);  
 
-    Recovery_Info[chk] = primary_ld;
 
+    load_chk_pairs.push_back(pair<OP*,OP*>(primary_ld,chk));
     return chk;    
 }
 
 void
 Set_Speculative_Chain_Begin_Point(OP* chk_op, OP* load_op)
 {
-    Recovery_Info[chk_op] = load_op;
+    vector< pair<OP*,OP*> >::iterator  iter;
+    for(iter = load_chk_pairs.begin(); iter != load_chk_pairs.end(); ++iter){
+        OP* second = iter->second;
+        if(chk_op == second){
+            iter->first = load_op;
+            break;
+        }
+    }
     return;
 }
 
@@ -691,21 +736,55 @@ Is_Control_Speculation_Gratuitous(OP* load, BB* target_bb, OP* pos)
     }
 }
 
- //======================================================================
- //
- //  Delete_Recovery_Info_For_BB
- //
- //  Delete the chk op from recovery info if this BB is deleted in
- //  cflow optimization.
- //
- //======================================================================
- BOOL
- Delete_Recovery_Info_For_BB(BB *bb) {
-     for (OP *op= BB_first_op(bb);op != NULL;op = OP_next(op)) {
-         Is_True(op != NULL,("OP Can not be NULL!"));
-         if (OP_chk(op)) {
-             Recovery_Info.erase(op);
-         }
-     }
- }
+//======================================================================
+//
+//  Delete_Recovery_Info_For_BB
+//
+//  Delete the chk op from recovery info if this BB is deleted in
+//  cflow optimization.
+//
+//======================================================================
+void
+Delete_Recovery_Info_For_BB(BB *bb) 
+{
+    for (OP *op = BB_first_op(bb); op != NULL; op = OP_next(op)) {
+        if (OP_chk(op)) {
+            vector< pair<OP*,OP*> >::iterator iter;
+            for(iter = load_chk_pairs.begin(); 
+                iter != load_chk_pairs.end(); ++iter)
+            {
+                OP* second = iter->second;
+                if(second == op){
+                    load_chk_pairs.erase(iter);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+//======================================================================
+//  
+//  BB_Hold_Disjoint_Speculative_Code()
+//
+//  Judge where the BB hold a dangle speculative load or chk.
+//  
+//======================================================================
+BOOL
+BB_Hold_Disjoint_Speculative_Code(BB* bb)
+{
+    for(vector< pair<OP*, OP*> >::iterator iter = load_chk_pairs.begin();
+        iter != load_chk_pairs.end(); ++iter)
+    {
+        OP* first = iter->first;
+        OP* second = iter->second;
+        if(first->bb != second->bb &&
+           (first->bb == bb || second->bb == bb))
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
 
