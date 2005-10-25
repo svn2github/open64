@@ -1,0 +1,69 @@
+#
+#
+#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2 of the GNU General Public License as
+#  published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if 
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write the Free Software Foundation, Inc., 59
+#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+
+srcdir = .
+
+#### package, host, target, and site dependent Makefile fragments come in here.
+##
+
+# These are compiled from the corresponding ../ioFOO.c files.
+STDIO_RENAMED_OBJECTS = ... filled in by configure ...
+# These are the files that a libc would want.
+STDIO_OBJECTS = $(STDIO_RENAMED_OBJECTS) \
+  clearerr.o fdopen.o fgetc.o fileno.o \
+  fputc.o freopen.o fseek.o getchar.o getline.o getw.o \
+  popen.o putchar.o putw.o rewind.o \
+  setbuf.o setfileno.o setlinebuf.o snprintf.o \
+  vfprintf.o vfscanf.o vprintf.o vscanf.o vsnprintf.o
+
+CC_FOR_STDIO=$(CC)
+CINCLUDES = -I. -I$(srcdir) -I.. -I$(srcdir)/.. -D__USE_GNU
+
+nothing:
+
+stmp-libio: stdio.list stamp-io
+
+stamp-io:
+	$(AR) $(AR_FLAGS) ../libio.a $(STDIO_OBJECTS)
+	touch stmp-io
+
+stmp-libiostream: stdio.list stamp-streamlib
+
+stamp-streamlib:
+	$(AR) $(AR_FLAGS) ../libiostream.a $(STDIO_OBJECTS)
+	touch stmp-streamlib
+
+stdio.list: stamp-picdir $(STDIO_OBJECTS)
+	@echo "$(STDIO_OBJECTS)" >stdio.list
+

@@ -1,0 +1,406 @@
+#
+#
+#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2 of the GNU General Public License as
+#  published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if 
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write the Free Software Foundation, Inc., 59
+#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+
+#
+#  Makefile.base for gccfe
+#
+
+#----------------------------------------------------------------------
+#  Set environment variables
+#
+#  TARGDIR   :  is the targ specific directory in which we do build. 
+#               e.q.  /d1/cmplrs.src/v4.00/host32
+#
+#----------------------------------------------------------------------
+TARGDIR = $(BUILD_AREA)
+
+#----------------------------------------------------------------------
+#  Include the usual commondefs
+#----------------------------------------------------------------------
+include $(COMMONDEFS)
+
+#----------------------------------------------------------------------
+#  Set environment variables
+#----------------------------------------------------------------------
+ifeq ($(BUILD_COMPILER), EDG)
+CVERSION = -xansi
+else
+CVERSION =
+endif
+
+#----------------------------------------------------------------------
+#  Compiler Options
+#----------------------------------------------------------------------
+
+# These are here because they are needed both in fecc and in common so just
+# putting them in fecc/defines.h is not enough:
+
+HOSTDEFS += -DIN_GCC -DHAVE_CONFIG_H
+
+ifeq ($(BUILD_TARGET), IA64)
+HOSTDEFS += -DTARGET_NAME=\"ia64-linux\"
+HOSTDEFS += -DPREFIX=\"/usr/ia64-sgi-linux\"
+HOSTDEFS += -DGCC_INCLUDE_DIR=\"/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/include/\"
+HOSTDEFS += -DGPLUSPLUS_INCLUDE_DIR=\"/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/include/\"
+endif
+ifeq ($(BUILD_TARGET), IA32)
+HOSTDEFS += -DTARGET_NAME=\"i686-pc-linux-gnu\"
+HOSTDEFS += -DPREFIX=\"/usr/ia32-sgi-linux\"
+HOSTDEFS += -DGCC_INCLUDE_DIR=\"/usr/ia32-sgi-linux/lib/gcc-lib/ia32-sgi-linux/sgicc-1.0/include/\"
+HOSTDEFS += -DGPLUSPLUS_INCLUDE_DIR=\"/usr/ia32-sgi-linux/lib/gcc-lib/ia32-sgi-linux/sgicc-1.0/include/\"
+endif
+
+HOSTDEFS += -DLONGLONG
+HOSTDEFS += -DFRONT_END
+HOSTDEFS += -DUSE_DECL_SRCPOS
+HOSTDEFS += -D_NEW_SYMTAB
+
+HOSTDEFS += -DFRONT_END_C
+HOSTDEFS += -DCFE -DCIL
+HOSTDEFS += -DDO_IL_LOWERING=0
+HOSTDEFS += -DNO_USR_INCLUDE=TRUE
+HOSTDEFS += -DAUTOMATIC_TEMPLATE_INSTANTIATION=0
+HOSTDEFS += -DINSTANTIATION_BY_IMPLICIT_INCLUSION=0
+HOSTDEFS += -DBACK_END_IS_C_GEN_BE=0
+HOSTDEFS += -DMONGOOSE_CIF
+
+HOSTDEFS += -DSGI_RAG_BACKEND
+HOSTDEFS += -DSGI_MONGOOSE
+ifeq ($(BUILD_COMPILER), GNU)
+HOSTDEFS += -DMIPSEL
+endif
+
+ifeq ($(BUILD_OPTIMIZE), DEBUG)
+HOSTDEFS += -DIs_True_On
+HOSTDEFS += -DInsist_On 
+HOSTDEFS += -DDEBUG=1
+HOSTDEFS += -DCHECKING=1
+else
+HOSTDEFS += -DDEBUG=0 
+HOSTDEFS += -DCHECKING=0 
+endif
+
+HOSTDEFS += -DGPLUSPLUS_FE
+
+ifeq ($(BUILD_TARGET), IA64)
+TARGDEFS = -D__MIPS_AND_IA64_ELF_H
+endif
+
+#----------------------------------------------------------------------
+#  List of directories, and source files of interest
+#----------------------------------------------------------------------
+
+FE_DIR 			= $(BUILD_TOT)/g++fe
+COMMON_COM_DIR 		= $(BUILD_TOT)/common/com
+COMMON_COM_TARG_DIR	= $(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR)
+COMMON_TARG_INFO_ACCESS_DIR = $(BUILD_TOT)/common/targ_info/access
+COMMON_UTIL_DIR		= $(BUILD_TOT)/common/util
+COMMON_UTIL_TARG_DIR	= $(BUILD_TOT)/common/util/$(BUILD_TARGET_DIR)
+
+ifeq ($(BUILD_OS), IRIX)
+INCLUDE_DIR 		= $(BUILD_TOT)/include
+else
+INCLUDE_DIR 		= $(BUILD_AREA)/include
+endif
+
+GNU_DIR			= $(BUILD_BASE)
+GNU_CONFIG_DIR		= $(BUILD_BASE)/config
+GNU_COMMON_DIR		= $(BUILD_TOT)/gnu_common
+
+GNU_TARG_DIR = $(GNU_DIR)/$(BUILD_TARGET_DIR)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/$(BUILD_TARGET_DIR)
+ifeq ($(BUILD_TARGET), IA32)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
+endif
+ifeq ($(BUILD_TARGET), MIPS)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/mips
+endif
+
+GNU_CP_DIR		= $(BUILD_BASE)/cp
+
+TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
+# TARG_LIBM_DIR		= $(TARGDIR)/libm
+TARG_CMPLRS_DIR		= $(TARGDIR)/libcmplrs
+TARG_CSUP_DIR		= $(TARGDIR)/libcsup
+TARG_LIBIBERTY_DIR      = $(TARGDIR)/libiberty
+
+# These are the directories in which to look for source files.
+
+SRC_DIRS =		\
+  $(GNU_DIR)		\
+  $(GNU_TARG_DIR)	\
+  $(GNU_CONFIG_TARG_DIR)
+INC_DIRS =		\
+  $(FE_DIR)		\
+  $(GNU_DIR)		\
+  $(GNU_TARG_DIR)	\
+  $(GNU_CONFIG_DIR)	\
+  $(GNU_CONFIG_TARG_DIR)\
+  $(GNU_COMMON_DIR)/include
+
+SRC_DIRS +=		\
+  $(GNU_CP_DIR)
+INC_DIRS +=		\
+  $(GNU_CP_DIR)
+
+#----------------------------------------------------------------------
+#  List of source files.  Please keep them in alphabetical order.
+#----------------------------------------------------------------------
+
+GNU_SRCS =		\
+  alias.c		\
+  bb-reorder.c		\
+  bitmap.c		\
+  builtins.c		\
+  caller-save.c		\
+  calls.c		\
+  combine.c		\
+  conflict.c		\
+  convert.c		\
+  cpperror.c		\
+  cppexp.c		\
+  cppfiles.c		\
+  cpphash.c		\
+  cppinit.c		\
+  cpplib.c		\
+  cse.c			\
+  c-common.c		\
+  c-pragma.c		\
+  dbxout.c		\
+  diagnostic.c		\
+  dwarfout.c		\
+  dwarf2out.c		\
+  dyn-string.c		\
+  emit-rtl.c		\
+  except.c		\
+  explow.c		\
+  expmed.c		\
+  expr.c		\
+  final.c		\
+  flow.c		\
+  fold-const.c		\
+  function.c		\
+  gcse.c		\
+  genrtl.c		\
+  ggc-common.c		\
+  ggc-simple.c		\
+  global.c		\
+  graph.c		\
+  haifa-sched.c		\
+  hash.c		\
+  ifcvt.c		\
+  insn-attrtab.c	\
+  insn-emit.c		\
+  insn-extract.c	\
+  insn-opinit.c		\
+  insn-output.c		\
+  insn-peep.c		\
+  insn-recog.c		\
+  integrate.c		\
+  jump.c		\
+  lcm.c			\
+  lists.c		\
+  local-alloc.c		\
+  loop.c		\
+  mangle.c		\
+  mkdeps.c		\
+  optabs.c		\
+  predict.c		\
+  prefix.c		\
+  print-rtl.c		\
+  print-tree.c		\
+  profile.c		\
+  real.c		\
+  recog.c		\
+  regclass.c		\
+  regmove.c		\
+  regrename.c		\
+  reg-stack.c		\
+  reload.c		\
+  reload1.c		\
+  reorg.c		\
+  resource.c		\
+  rtl.c			\
+  rtlanal.c		\
+  sbitmap.c		\
+  sdbout.c		\
+  sibcall.c		\
+  simplify-rtx.c        \
+  ssa.c			\
+  stmt.c		\
+  stor-layout.c		\
+  timevar.c		\
+  toplev.c		\
+  tree.c		\
+  unroll.c		\
+  varasm.c		\
+  varray.c		\
+  version.c		\
+  xcoffout.c
+
+
+
+ifeq ($(BUILD_TARGET), IA64)
+  GNU_SRCS += ia64.c
+endif
+ifeq ($(BUILD_TARGET), IA32)
+  GNU_SRCS += i386.c
+endif
+ifeq ($(BUILD_TARGET), MIPS)
+  GNU_SRCS += mips.c
+endif
+
+GNU_CP_UNIQ_SRCS =	\
+  call.c		\
+  class.c		\
+  cvt.c			\
+  decl.c		\
+  decl2.c		\
+  dump.c		\
+  error.c		\
+  errfn.c		\
+  friend.c		\
+  init.c		\
+  lex.c			\
+  method.c		\
+  optimize.c		\
+  parse.c		\
+  pt.c			\
+  ptree.c		\
+  repo.c		\
+  rtti.c		\
+  search.c		\
+  semantics.c		\
+  spew.c		\
+  typeck.c		\
+  typeck2.c		\
+  xref.c
+
+GNU_CP_DUP_SRCS =	\
+  except.c		\
+  expr.c		\
+  tree.c
+
+GNU_OBJS = $(GNU_SRCS:.c=.o)
+
+GNU_CP_UNIQ_OBJS = $(GNU_CP_UNIQ_SRCS:.c=.o)
+
+GNU_CP_DUP_OBJS  = cp-except.o cp-expr.o cp-tree.o
+
+GNU_CP_OBJS =  $(GNU_CP_DUP_OBJS) $(GNU_CP_UNIQ_OBJS)
+
+CFILES = $(GNU_SRCS) $(GNU_CP_UNIQ_SRCS)
+
+VPATH    =  $(SRC_DIRS)
+
+LCOPTS = $(STD_COMPILE_OPTS)
+LCDEFS = $(HOSTDEFS) $(TARGDEFS)
+LCINCS = $(addprefix -I, $(INC_DIRS))
+
+LC++OPTS = $(STD_COMPILE_OPTS)
+LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
+LC++INCS = $(LCINCS)
+
+ifneq ($(BUILD_COMPILER), EDG)
+LCOPTS += -fwritable-strings -w
+LC++OPTS += -fwritable-strings -w
+endif
+
+# setup stuff to build shared or non-shared
+GLDOPTS = $(STD_LOAD_OPTS)
+
+LDIRT =
+
+#------------------------------------------------------------
+#  Define target
+#------------------------------------------------------------
+LIBRARY = libgfecc.a
+TARGETS = $(LIBRARY)
+
+#----------------------------------------------------------------------
+#  Variables describing additional sources, objects, and libraries
+#----------------------------------------------------------------------
+COMUTIL_OBJS = $(TARG_COMUTIL_DIR)/libcomutil.a
+# LIBM_OBJS    = $(TARG_LIBM_DIR)/libm.a
+CMPLRS_OBJS  = $(TARG_CMPLRS_DIR)/libcmplrs.a
+CSUP_OBJS    = $(TARG_CSUP_DIR)/libcsup.a
+LIBIBERTY_OBJS = $(TARG_LIBIBERTY_DIR)/libiberty.a
+
+LLDLIBS = $(COMUTIL_OBJS) $(LIBIBERTY_OBJS)
+ifeq ($(BUILD_OS), IRIX)
+LLDLIBS += -lm -lcmplrs -Bstatic -lffio -Bdynamic
+else
+LLDLIBS += -lm $(CMPLRS_OBJS) $(CSUP_OBJS)
+endif
+
+default: first $(TARGETS) last
+
+#----------------------------------------------------------------------
+#  The commands in this section are done BEFORE any other target is 
+#  built.
+#----------------------------------------------------------------------
+first:
+ifeq ($(BUILD_OS), LINUX)
+	cd $(BUILD_AREA)/include && $(MAKE)
+endif
+	cd $(TARG_LIBIBERTY_DIR) && $(MAKE)
+
+#----------------------------------------------------------------------
+#  The commands in this section are done AFTER every other target is 
+#  built.
+#----------------------------------------------------------------------
+last : make_libdeps
+
+install: default
+
+cp-expr.o: $(GNU_CP_DIR)/expr.c
+	$(CCF) -c -o cp-expr.o $(GNU_CP_DIR)/expr.c
+
+cp-except.o: $(GNU_CP_DIR)/except.c
+	$(CCF) -c -o cp-except.o $(GNU_CP_DIR)/except.c
+
+cp-tree.o: $(GNU_CP_DIR)/tree.c
+	$(CCF) -c -o cp-tree.o $(GNU_CP_DIR)/tree.c
+
+tree.o: $(GNU_DIR)/tree.c
+	$(CCF) -c -o tree.o $(GNU_DIR)/tree.c
+
+#----------------------------------------------------------------------
+#  Include the usual commonrules
+#----------------------------------------------------------------------
+include $(COMMONRULES)
+
+.PRECIOUS : $(LIBRARY)
+$(LIBRARY): $(LIBRARY)($(OBJECTS)) $(LIBRARY)($(GNU_CP_DUP_OBJS))
+
