@@ -1,0 +1,419 @@
+Fri Nov 27 22:24:00 MET 1998, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* lib/memset.c: rename and rewrite.
+	* lib/private.h: rename __memset.
+
+Tue Aug 25 17:17:18 MEST 1998, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* aclocal.m4: remove superfluous #include.
+
+	* lib/32.xlatetof.c:
+	* lib/64.xlatetof.c: fix for picky instances of cpp(1).
+
+Sun Aug 23 18:26:53 MEST 1998, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* aclocal.m4:
+	* lib/Makefile.in: add DEPSHLIBS, set to -lc for Linux.
+
+	* README: add DEPSHLIBS description.
+
+Sat Aug 22 15:50:41 MEST 1998, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* lib/begin.c: add workaround for broken ar(1) & friends.
+
+	* lib/32.getshdr.c: fix typo.
+
+Thu Aug  6 18:11:52 MEST 1998, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* lib/getdata.c: fixed SEGV bug.
+
+	* lib/cook.c:
+	* lib/getdata.c:
+	* lib/newdata.c:
+	* lib/rawdata.c:
+	* lib/private.h: removed sd_scn and (Elf_Data*) casts.
+
+Fri Jun 12 21:24:50 MEST 1998, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* lib/*.c: move rcsid[] after <private.h>.
+
+	* lib/32.xlatetof.c:
+	* lib/64.xlatetof.c: replace broken Exn() macro with Cat2().
+
+	* lib/64.xlatetof.c: change `char*' to `unsigned char*'.
+
+	* lib/private.h: add `extern char *realloc();'.
+
+	* aclocal.m4:
+	* configure.in: remove leading spaces in cpp directives.
+
+Sun Jun  7 16:02:31 MEST 1998, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* README: update for 0.7.0 release.
+
+Sun Jun  4 15:26:49 MEST 1998, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* acconfig.h: add __libelf64* and __libelf_*_t.
+
+	* configure.in: clean up, add checks for 64-bit support.
+
+	* lib/64.xlatetof.c: new file, based on lib/32.xlatetof.c.
+
+	* lib/Makefile.in: add target for 64.xlatetof.o.
+
+	* lib/cook.c: check for 32-bit overflow.
+
+	* lib/elf_repl.h:
+	* lib/ext_types.h: add 64-bit data types.
+
+	* lib/private.h: add 64-bit definitions.
+
+	* lib/sys_elf.h.in: add __LIBELF64* and __libelf_*_t.
+
+	* lib/update.c: add full 64-bit support.
+
+Mon Jun  1 16:29:07 MEST 1998, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.7.0.
+
+	* configure.in:
+		add lib/sys_elf.h to AC_CONFIG_HEADER.
+		new option --disable-elf64.
+
+	* Makefile.in: add target for lib/sys_elf.h.
+
+	* acconfig.h: add __LIBELF_HEADER_ELF_H.
+
+	* lib/Makefile.in: add sys_elf.h(.in).
+
+	* lib/32.fsize.c:
+	* lib/32.getehdr.c:
+	* lib/32.getphdr.c:
+	* lib/32.getshdr.c:
+	* lib/32.newehdr.c:
+	* lib/32.newphdr.c:
+	* lib/cook.c:
+	* lib/getdata.c:
+	* lib/libelf.h:
+	* lib/newscn.c:
+	* lib/nlist.c:
+	* lib/opt.delscn.c:
+	* lib/private.h:
+	* lib/update.c:
+		merged with 64bit code.
+
+	* lib/begin.c:
+	* lib/input.c:
+		bug fixes.
+
+Fri Aug  1 19:33:33 MEST 1997, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.6.5.
+	
+	* lib/libelf.h: add declaration for elf_memory.
+
+	* lib/private.h: add e_memory flag.
+	
+	* lib/begin.c: add elf_memory, change archive freezing logic.
+
+	* lib/end.c: do not free e_data if e_memory is set.
+
+Tue Oct 22 21:31:56 MEST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* (all files): add RCS Id, import to CVS.
+
+	* Makefile.in: pass $(CC) to config.status.
+
+	* README: change for upcoming 0.6.5 release.
+
+	* aclocal.m4 (mr_ENABLE_NLS): add --enable-gnu-names option
+
+	* configure.in: change search order for <elf.h>.
+
+	* lib/begin.c (_elf_arhdr): add check for truncated archive member.
+
+	* lib/cook.c (_elf32_cook): add checks for misaligned tables.
+
+	* lib/errors.h:
+		fix wrong error message (ERROR_WRONLY).
+		add error messages for misaligned tables.
+
+	* lib/private.h: add constants for table alignments.
+
+	* po/Makefile.in: do not run mkinstalldirs directly, use $(SHELL).
+
+	* po/libelf.pot: rebuild.
+
+Tue Jul 30 17:22:41 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.6.4.
+
+	* Makefile.in:
+		add DISTSUBDIRS.
+		add po/Makefile target.
+
+	* po/Makefile.in:
+	* po/gmo2msg.c:
+	* po/libelf.pot:
+	* po/stamp-po:
+		new files.
+
+	* aclocal.m4 (mr_ENABLE_NLS):
+		add MSGFILES.
+		set GMOFILES, MSGFILES and POFILES even if NLS is disabled.
+
+	* configure.in:
+		add ALL_LINGUAS.
+
+	* lib/nlist.c:
+		call elf_errno() to clear pending error.
+
+Tue Jul 28 23:53:44 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.6.3.
+
+	* configure.in: fix creation of sys_elf.h.
+
+	* lib/Makefile.in:
+		move elf_repl.h to PRIVHDRS.
+		do not depend on HDRS and AUXHDRS.
+
+Sat Jul 27 18:27:09 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.6.2.
+
+	* Makefile.in:
+		remove support from SUBDIRS.
+		remove subdirs/Makefile target.
+
+	* acconfig.h:
+		add ENABLE_DEBUG.
+		remove HAVE_NLS.
+
+	* aclocal.m4:
+		add mr_ENABLE_DEBUG.
+
+	* configure.in:
+		use mr_ENABLE_DEBUG.
+
+	* lib/Makefile.in:
+		add LD variable.
+		add elf_repl.h to DISTFILES.
+
+	* lib/libelf.h:
+		add check for __LIBELF_INTERNAL__.
+
+	* lib/private.h:
+		#define __LIBELF_INTERNAL__.
+		use ENABLE_DEBUG.
+
+	* support/elf.h:
+		move to lib/elf_repl.h.
+
+	* support/Makefile.in:
+		remove.
+
+Sat Jul 27 06:25:23 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.6.1.
+
+	* aclocal.m4: add shared library support for sparc-sun-solaris2.
+
+	* lib/libelf.h.in: remove.
+
+	* lib/libelf.h: new file.
+
+	* configure.in:
+		remove broken check for existing installation.
+		remove @install_headers@ and @elf_h@.
+		do not build libelf.h from libelf.h.in.
+		create lib/sys_elf.h.
+
+	* lib/Makefile.in:
+		remove libelf.h and $(AUXHDRS) targets.
+		remove libelf.h.in from DISTFILES.
+		add libelf.h to DISTFILES.
+		add dummy_shlib target for broken make.
+
+Sat Jul 27 01:01:45 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.6.0.
+
+	* lib: new directory.
+
+	* config.sub:
+	* config.guess:
+		new files.
+
+	* shared:
+	* shared/Makefile.in:
+		remove.
+
+	* aclocal.m4:
+	* configure.in:
+		add shared library check.
+
+	* Makefile.in:
+	* lib/Makefile.in:
+		change for new directory structure.
+		integrate shared library support.
+
+	* Makefile.in:
+		remove libelf.lsm from DISTFILES.
+
+	* libelf.lsm: remove.
+
+Thu Jul 25 19:35:05 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.5.9.
+
+	* aclocal.m4: rewrite NLS check.
+
+Tue Jul 23 18:59:05 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* Makefile.in: add install-compat and uninstall-compat targets.
+
+	* configure.in:
+	* aclocal.m4:
+		fix check for NLS support.
+
+	* acconfig.h: add HAVE_CATGETS and HAVE_GETTEXT.
+
+	* errmsg.c (elf_errmsg): use HAVE_GETTEXT.
+
+Sun Jul 21 22:52:02 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.5.8.
+
+	* private.h:
+	* 32.getshdr.c:
+	* cook.c:
+	* end.c:
+	* newscn.c:
+	* opt.delscn.c:
+	* update.c:
+		change allocation of section headers.
+
+	* errors.h: fix speeling error.
+
+Sat Jul 13 22:51:16 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.5.7.
+
+	* private.h: add e_dsize member to struct Elf.
+
+	* begin.c (elf_begin): set e_dsize.
+
+	* update.c (_elf32_update_pointers):
+		never let e_data become shorter than e_dsize bytes.
+		use correct base pointer.
+
+Sat Jun 15 16:28:50 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* 32.xlatetof.c: change `char' to `unsigned char'.
+
+Tue May 28 19:00:30 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* Makefile.in:
+		HP-UX make wants non-empty target, change it.
+		add targets for TAGS and libelf.po.
+
+	* errors.h: mark strings for GNU gettext.
+
+	* mkmsgs: recognize new errors.h format.
+
+	* errmsg.c (elf_errmsg): add gettext support.
+
+Mon May 27 20:30:30 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* VERSION: change version to 0.5.6.
+
+	* aclocal.m4:
+	* configure.in: use new AC_CACHE_CHECK macro.
+
+	* Makefile.in:
+	* shared/Makefile.in: use @...dir@.
+
+	* Makefile.in: pass $(SRCS) and $(OBJS) to shared/Makefile.
+
+Sat May 25 01:00:15 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* update.c (elf_update): assert e_data is malloc'ed.
+
+	* begin.c (elf_begin): mmap e_data if possible.
+
+	* end.c (elf_end): munmap e_data if necessary.
+
+	* input.c (_elf_mmap): new function.
+
+	* private.h: add _elf_mmap and e_unmap_data.
+
+	* errmsg.c: make pointer array constant.
+
+Thu May 23 19:24:47 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* update.c (elf_update): mmap(MAP_SHARED) wants non-empty file.
+
+Tue May 21 15:33:07 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* begin.c (elf_begin): re-read memory image of archive members.
+
+	* cook.c (_elf32_item):
+	* getdata.c (_elf32_cook_scn): always use memory image.
+
+	* update.c (_elf_update): use mmap if possible.
+
+	* configure.in: check for mmap.
+
+Mon May 20 18:15:54 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* nlist.c (_elf_nlist): fix broken st_name range check.
+
+	* update.c (_elf32_write): check status of elf_getdata.
+
+	* cook.c (_elf32_item):
+	* getdata.c (_elf32_cook_scn):
+		use memory image when file is not an archive member.
+
+	* rawdata.c (elf_rawdata): copy raw image rather than referencing it.
+
+Wed May 15 20:04:39 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* rawdata.c (elf_rawdata): use raw image if it is present.
+
+	* cntl.c (elf_cntl): fix archive handling, ignore ELF_C_FDREAD for non-ELF files.
+
+Fri May 10 17:16:44 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* begin.c (_elf_arhdr): fix handling of long archive member names.
+
+	* configure.in: move version information to external file.
+
+	* Makefile.in: add VERSION to DISTFILES.
+
+	* VERSION: new file.
+
+Sat May  4 20:56:43 MET DST 1996, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* configure.in: change version to 0.5.5.
+
+	* Makefile.in: add libelf.lsm and ChangeLog to DISTFILES.
+
+	* rawdata.c: reorder cases to avoid unnecessary malloc/free.
+
+	* all files: update copyright phrase.
+
+	* ChangeLog:
+	* libelf.lsm: new files.
+
+Sun Oct 29 19:34:00 MET 1995, Michael Riepe <michael@stud.uni-hannover.de>
+
+	* configure.in: change version to 0.5.3.
+
+	* Makefile.in:
+	* shared/Makefile.in: add opt.delscn.c.
+
+	* libelf.h.in: add declaration for elf_delscn.
+
+	* opt.delscn.c: new file.
+
