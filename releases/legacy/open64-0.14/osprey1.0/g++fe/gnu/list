@@ -1,0 +1,13 @@
+./cp/exception.cc
+./cp/new.cc
+./cp/new2.cc
+./cp/tinfo.cc
+./cp/tinfo.h
+./cp/tinfo2.cc
+./frame.c
+./gbl-ctors.h
+./gthr-single.h
+./gthr.h
+./libgcc2.c
+./list
+./longlong.h
