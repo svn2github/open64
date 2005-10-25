@@ -1,0 +1,77 @@
+#!/bin/csh
+#
+#
+#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2 of the GNU General Public License as
+#  published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if 
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write the Free Software Foundation, Inc., 59
+#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+
+cp -f osprey1.0/targia64/libfortran/libfortran.a         /usr/lib/libfortran.a
+cp -f osprey1.0/targia64/libu/libffio.a                  /usr/lib/libffio.a
+cp -f osprey1.0/targia64/libmsgi/libmsgi.a               /usr/lib/libmsgi.a
+cp -f osprey1.0/targia64/libmv/libmv.a                   /usr/lib/libmv.a
+cp -f osprey1.0/targia64/libgcc/libgcc.a                 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/libgcc.a
+cp -f osprey1.0/targia64/libstdc++/libstdc++.a.2.10.0    /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/libstdc++.a.2.10.0
+cp -f osprey1.0/targia64/init/ftz.o			 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/ftz.o
+cp -f osprey1.0/targia64/libinstr/libinstr.a 		 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/libinstr.a
+ln -sf /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/libstdc++.a.2.10.0 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/libstdc++.a
+cp -f osprey1.0/man/linux/man1/sgicc.1                   /usr/man/man1/sgicc.1
+cp -f osprey1.0/man/linux/man1/sgif90.1                  /usr/man/man1/sgif90.1
+ln -sf /usr/man/man1/sgicc.1                              /usr/man/man1/sgiCC.1
+cp -f osprey1.0/targia32_ia64_nodebug/ir_tools/ir_b2a    /usr/local/bin/ir_b2a
+cp -f osprey1.0/targia32_ia64_nodebug/be/be              /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/be
+cp -f osprey1.0/targia32_ia64_nodebug/be/be.so           /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/be.so
+cp -f osprey1.0/targia32_ia64_nodebug/crayf90/sgi/cf90.cat /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/cf90.cat
+cp -f osprey1.0/targia32_ia64_nodebug/cg/cg.so           /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/cg.so
+cp -f osprey1.0/targia32_ia64_nodebug/driver.nue/driver  /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/driver
+cp -f osprey1.0/targia32_ia64_nodebug/gccfe/gfec         /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/gfec
+cp -f osprey1.0/targia32_ia64_nodebug/g++fe/gfecc        /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/gfecc
+cp -f osprey1.0/targia32_ia64_nodebug/lw_inline/lw_inline   /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/inline
+cp -f osprey1.0/targia32_ia64_nodebug/ipa/ipa.so         /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/ipa.so
+cp -f osprey1.0/targia32_ia64_nodebug/ipl/ipl.so         /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/ipl.so
+cp -f osprey1.0/targia32_ia64_nodebug/targ_info/itanium.so /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/itanium.so
+cp -f osprey1.0/targia32_ia64_nodebug/temp_f90libs/lib.cat /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/lib.cat
+cp -f osprey1.0/targia32_ia64_nodebug/temp_f90libs/lib.exp /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/lib.exp
+cp -f osprey1.0/targia32_ia64_nodebug/lno/lno.so         /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/lno.so
+cp -f osprey1.0/targia32_ia64_nodebug/crayf90/sgi/mfef90 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/mfef90
+cp -f osprey1.0/targia32_ia64_nodebug/whirl2c/whirl2c    /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/whirl2c
+cp -f osprey1.0/targia32_ia64_nodebug/whirl2c/whirl2c.so /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/whirl2c.so
+cp -f osprey1.0/targia32_ia64_nodebug/whirl2f/whirl2f    /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/whirl2f
+cp -f osprey1.0/targia32_ia64_nodebug/whirl2f/whirl2f.so /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/whirl2f.so
+cp -f osprey1.0/targia32_ia64_nodebug/wopt/wopt.so       /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/wopt.so
+cp -f osprey1.0/targcygnus_ia32_ia64/ld/ld-new		/usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/ipa_link
+
+#cp -f osprey1.0/include/nue/stdarg.h                     /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/include/stdarg.h
+#cp -f osprey1.0/include/nue/va-ia64.h                     /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/include/va-ia64.h
+ln -sf /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/be /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/ipl 
+ln -sf /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/driver /usr/bin/sgicc
+ln -sf /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/driver /usr/bin/sgiCC
+ln -sf /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/driver /usr/bin/sgi++
+ln -sf /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/driver /usr/bin/sgif90
