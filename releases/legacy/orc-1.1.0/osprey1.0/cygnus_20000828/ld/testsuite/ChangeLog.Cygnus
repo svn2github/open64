@@ -1,0 +1,8 @@
+1999-12-17  Timothy Wall <twall@cygnus.com>
+
+       * ld-scripts/script.exp: adjust sizes for c54x output
+       * ld-checks/asm.s: move .text/.data out of column zero
+
+1999-07-29  Richard Henderson  <rth@cygnus.com>
+
+	* testsuite/ld-scripts/phdrs.exp: IA-64 is 64-bit ELF too.
