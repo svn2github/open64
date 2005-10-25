@@ -1,0 +1,320 @@
+#
+#
+#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2.1 of the GNU Lesser General Public License 
+#  as published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU Lesser General Public 
+#  License along with this program; if not, write the Free Software 
+#  Foundation, Inc., 59 Temple Place - Suite 330, Boston MA 02111-1307, 
+#  USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+
+# USMID @(#)libfortran/Makefile.base	92.10	11/04/99 11:07:16
+
+#
+#  Makefile.base for libfortran.so
+#
+
+include $(COMMONDEFS)
+
+ifeq ($(BUILD_COMPILER), EDG)
+LCMPWOFFS = -woff 1174,1552
+CVERSION = -xansi
+LCOPTS  = $(STD_COMPILE_OPTS) -dollar -common $(LCMPWOFFS)
+else
+CVERSION =
+endif
+
+ifeq ($(BUILD_OS), LINUX)
+LCDEFS += -D_LITTLE_ENDIAN
+LCINCS += -I$(BUILD_TOT)/clibinc
+LCINCS += -I$(BUILD_TOT)/clibinc/cray
+else
+LCDEFS += -D_FAMILY=_PCC -D_FLEXNAMES -D_SYSV -DSYSV
+LCDEFS += -D__=__P -DTARG_MIPS -D_LIB_INTERNAL -D_SGI_MP_SOURCE
+endif
+
+ifeq ($(BUILD_ARCH), IA32)
+LCDEFS += -D_WORD32
+LCDEFS += -D_LIB_INTERNAL
+LCDEFS += -D_XOPEN_SOURCE -D_XOPEN_SOURCE_EXTENDED 
+LCDEFS += -U__mips
+endif
+ifeq ($(BUILD_ARCH), IA64)
+LCDEFS += -D_LIB_INTERNAL
+LCDEFS += -D_XOPEN_SOURCE -D_XOPEN_SOURCE_EXTENDED 
+LCDEFS += -U__mips
+LCDEFS += -D__STL_USE_STD_ALLOCATORS
+LCDEFS += -D_LANGUAGE_C -DLANGUAGE_C
+LCDEFS += -D_WORD32                      
+endif
+
+LCINCS += -I$(BUILD_TOT)/clibroot
+ifeq ($(BUILD_ABI), N32BIT)
+LCDEFS += -D_WORD32
+endif
+
+LIBFTN_VERSION_NUMBER=1
+# DSOVERSION and DSONAMEOPT override the settings in commondefs
+DSOVERSION = sgi$(LIBFTN_VERSION_NUMBER).0
+DSONAMEOPT = -soname $(DSO_NAME)
+
+LASOPTS = $(STD_COMPILE_OPTS)
+ifeq ($(BUILD_ABI), 64BIT)
+ifeq ($(BUILD_ARCH), MIPS4)
+ifeq  ($(BUILD_TYPE), SHARED)
+LASDEFS += -DPIC
+endif
+endif
+endif
+
+ifneq ($(BUILD_COMPILER), EDG)
+LF77OPTS = $(STD_COMPILE_OPTS)
+FFLAGS_NOLANG = $(FFLAGS:N-LANG\:exceptions=O*)
+else
+LF77OPTS =
+FFLAGS_NOLANG =
+endif
+
+ifeq ($(BUILD_OPTIMIZE), DEBUG)
+LCDEFS += -DLIBDEBUG -D_ASSERT_ON -DDEBUG_MTIO
+endif
+ifeq ($(BUILD_OPTIMIZE), NODEBUG)
+OPTIMIZER = -O3
+F90FLAGS =
+ ifeq ($(BUILD_ARCH), MIPS4)
+#
+#  Temporarily comment out the original F90FLAGS line since the 721
+#  compilers in TOOLROOT don't recognize this -LANG option.  Need to
+#  restore this line in the beta timeframe when TOOLROOT will contain
+#  73 compilers.
+#
+# F90FLAGS = -r10000 -LNO:cs2=512k -LANG:heap_allocation_threshold=1000000
+F90FLAGS = -r10000 -LNO:cs2=512k
+ endif
+ ifeq ($(BUILD_ARCH), IA64)
+OPTIMIZER = -O0
+ endif
+ ifeq ($(BUILD_ARCH), IA32)
+OPTIMIZER = -O0
+ endif
+endif
+
+ifeq ($(BUILD_HOST), MIPS)
+# we assume only -n32/64 -mips3/4
+ ifeq ($(BUILD_ABI), N32BIT)
+O_abi=N32
+ else
+O_abi=64
+ endif
+
+ ifeq ($(BUILD_ARCH), MIPS3)
+O_mipsisa=3
+ else
+O_mipsisa=4
+ endif
+
+LCDEFS += -DT_MIPS$(O_mipsisa)_$(O_abi)
+endif
+
+# use the f90 compiler for fortran
+
+ifeq ($(BUILD_OS), IRIX)
+FC = TOOLROOT=$(TOOLROOT_F90) LD_LIBRARYN32_PATH=$(TOOLROOT_F90)/usr/lib32/mips3:$(TOOLROOT_F90)/usr/lib32 $(TOOLROOT_F90)/usr/bin/f90 -Wf,-eQU
+else
+
+## check F90 boostrap compiler, use -O3 etc etc.. later for linux
+
+FC = $(F90) -Wf,-eQU -c 
+endif
+
+%.o:%.f
+	$(FC) $(FFLAGS_NOLANG) $(F90FLAGS) $<
+
+%.o:%.F90
+	$(FC) $(FFLAGS_NOLANG) $(F90FLAGS) $<
+
+
+LIBRARY = libfortran.a
+DSO = libfortran.so
+DSO_NAME = libfortran.so
+
+# get rid of the duplicate weak definitions in libpthread/libc messages
+ifeq ($(BUILD_COMPILER), EDG)
+STD_DSO_LOADOPTS += -woff 134
+endif
+
+ifeq ($(BUILD_ABI), N32BIT)
+LLDDSOOPTS = -n32
+else
+LLDDSOOPTS =
+endif
+
+ifeq ($(BUILD_TYPE), NONSHARED)
+TARGETS = $(LIBRARY)
+LINK_TARGET = $(LIBRARY)
+else
+TARGETS = $(DSO)
+LINK_TARGET = $(DSO)
+endif
+
+default: first $(TARGETS) last
+
+first:
+ifeq ($(BUILD_OS), LINUX)
+	cd $(BUILD_AREA)/include && $(MAKE)
+endif
+
+last: make_libdeps
+
+
+# from libf
+include $(BUILD_TOT)/libf/auxarr/auxarr.makeinclude
+include $(BUILD_TOT)/libf/fio/fio.gmakeinclude
+include $(BUILD_TOT)/libf/fort/fort.makeinclude
+include $(BUILD_TOT)/libf/include/include.makeinclude
+include $(BUILD_TOT)/libf/pxf/pxf.makeinclude
+include $(BUILD_TOT)/libf/tape/tape.makeinclude
+LCINCS += -I$(BUILD_TOT)/libf/include
+
+# from libfi
+
+include $(BUILD_TOT)/libfi/char/char.makeinclude
+include $(BUILD_TOT)/libfi/dotprod/dotprod.makeinclude
+include $(BUILD_TOT)/libfi/element/element.makeinclude
+include $(BUILD_TOT)/libfi/include/include.makeinclude
+include $(BUILD_TOT)/libfi/mathlb/mathlb.gmakeinclude
+include $(BUILD_TOT)/libfi/matrix/matrix.gmakeinclude
+include $(BUILD_TOT)/libfi/subrtn/subrtn.makeinclude
+include $(BUILD_TOT)/libfi/array/array.gmakeinclude
+include $(BUILD_TOT)/libfi/prodsum/prodsum.makeinclude
+
+# from libF77
+
+ifeq ($(BUILD_OS), LINUX)
+include $(BUILD_TOT)/libF77/libF77aslibfortran.gmakeinclude
+endif
+
+LCINCS += -I$(BUILD_TOT)/libfi/include
+SRC_DIRS += $(BUILD_TOT)/libfi/array \
+        $(BUILD_TOT)/libfi/char \
+        $(BUILD_TOT)/libfi/dotprod \
+        $(BUILD_TOT)/libfi/element \
+        $(BUILD_TOT)/libfi/include \
+        $(BUILD_TOT)/libfi/mathlb \
+        $(BUILD_TOT)/libfi/matrix \
+        $(BUILD_TOT)/libfi/prodsum \
+        $(BUILD_TOT)/libfi/subrtn
+
+# No additional files 
+
+F90OBJECTS = $(F90FILES:.F90=.o)
+
+
+ifeq ($(BUILD_OS), LINUX)
+# relasedefs defines RELEASE needed temporarily since building some ftn library
+# components depends on whether building for redwood or banyan
+# see bug report 250462, dlai
+include $(BUILD_TOT)/linux/make/releasedefs
+else
+include $(RELEASEDEFS)
+endif
+
+ifeq ($(BUILD_COMPILER), EDG)
+# from libI77
+LCDEFS += -D_LONGLONG
+# from libisam
+LCDEFS += -DPLI
+# from libF77
+# releasedefs defines RELEASE needed temporarily since building some ftn library
+LCDEFS += -OPT:IEEE_comparisons
+# next 2 lines are needed until all OS's support xxx64 calls
+LCDEFS += -DRELEASE_MAJOR=$(RELEASE_MAJOR) -DRELEASE_MINOR=$(RELEASE_MINOR)
+LCDEFS += -DRELEASE_MAINT=$(RELEASE_MAINT)
+
+# from libU77
+HOST_CC = $(CC) -32 -mips2 $(CINCS) $(CDEFS) $(MKDEPOPT)
+# from libU77
+LDIRT += mkface *.fc $(MPASFILES) $(SECT2ASFILES)
+endif
+
+
+ifeq ($(BUILD_OPTIMIZE), DEBUG)
+# LCDEFS += -DDEBUG // comment out for now because ffio wont build with it
+LASDEFS += -DDEBUG
+endif
+
+
+LDIRT += $(LIBRARY)
+
+
+# we export the .a file into the root so we can static link the f90 FE
+# but we dont install into the customers images
+exports: default
+ifeq ($(BUILD_OS), LINUX)
+	$(INSTALL) $(STD_INSTALL_READ_MASK) $(TARGETS)
+else
+	$(INSTALL) $(STD_INSTALL_READ_MASK) -F $(STD_LIBRARY_LOC) $(TARGETS)
+ ifeq ($(BUILD_TYPE), SHARED)
+	$(INSTALL) $(STD_INSTALL_READ_MASK) -F $(STD_LIBRARY_LOC) $(LIBRARY)
+ endif
+endif
+
+
+install: default
+ifeq ($(BUILD_OS), LINUX)
+	$(STD_INSTALL) $(STD_INSTALL_READ_MASK) $(TARGETS)
+ ifeq ($(BUILD_TYPE), SHARED)
+	$(STD_INSTALL) $(STD_DSO_LOC) $(IDBTAG) -lns $(LINK) $(DSO)
+ endif
+else
+	$(STD_INSTALL) $(STD_INSTALL_READ_MASK) -F $(STD_LIBRARY_LOC) $(TARGETS)
+ ifeq ($(BUILD_TYPE), SHARED)
+	$(STD_INSTALL) -F $(STD_DSO_LOC) $(IDBTAG) -lns $(LINK) $(DSO)
+ endif
+endif
+
+include $(COMMONRULES)
+
+OBJECTS += $(F90OBJECTS)
+SOURCES += $(F90FILES)
+
+VPATH    = $(SRC_DIRS)
+LCINCS += $(addprefix -I, $(SRC_DIRS))
+
+.PRECIOUS : $(LIBRARY)
+$(LIBRARY): $(LIBRARY)($(OBJECTS))  $(LIBRARY)($(MPOBJECTS)) \
+	    $(LIBRARY)($(SECT2OBJECTS))
+
+### Until hpc is built for non-mips. Also do not use -lftn for non-mips.
+ifeq ($(BUILD_OS), LINUX)
+$(DSO): $(LIBRARY)
+	$(LD) $(STD_DSO_LOADOPTS) $(LIBRARY) -o $@
+else
+$(DSO): $(LIBRARY)
+	$(LD) $(STD_DSO_LOADOPTS) $(LIBRARY) -o $@ -lffio -lftn -lm -lhpc -lc
+endif
