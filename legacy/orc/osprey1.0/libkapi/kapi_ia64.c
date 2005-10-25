@@ -1996,7 +1996,7 @@ kapi_ParseInstOps(knobs_t *pknobs, kapi_fu_t fu,char *pch,
 	*pExplicitOps=pOps;
 
 	/* handle Implicits */
-	nOps = kapi_CharCount(',',pchImplicits);
+	nOps = kapi_CharCount(',',pchImplicits) + 1;
 	pOps = (operand_match_t *)malloc(nOps *  sizeof(operand_match_t));
 
 	strncpy(buffer,pchImplicits,1024);
@@ -2033,7 +2033,6 @@ DecodeInstructionInformation( knobs_t *pknobs, char *pch )
 	/* if instruction has operands information, fix fu string */
 	if (pWalker=strchr(pchfu,':'))
 	   *pWalker=0;
-
 	idx = atoi( pchNumber );
 	if (idx >= pknobs->ninstTable)
 	{

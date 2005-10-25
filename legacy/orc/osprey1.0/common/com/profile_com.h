@@ -66,32 +66,7 @@
 
 #define ULONG mUINT32
 
-// When to instrument?  Correlates to Instrumentation_Phase_Num
-enum PROFILE_PHASE
-{
-  PROFILE_PHASE_NONE            = -1,
-  PROFILE_PHASE_BEFORE_VHO	= 0,
-  PROFILE_PHASE_IPA_CUTOFF	= 0,	// phases less than or equal to
-					// IPA_CUTOFF will not be
-					// instrumented when the input file 
-					// is an ipa-generated file.
-  PROFILE_PHASE_BEFORE_LNO	= 1,
-  PROFILE_PHASE_BEFORE_WOPT	= 2,
-  PROFILE_PHASE_BEFORE_CG	= 3,
-  PROFILE_PHASE_BEFORE_REGION	= 4,
-  PROFILE_PHASE_LAST		= 5,
-  PROFILE_PHASE_MAX             = INT32_MAX  // Fb_Hdr size must be 0 mod 64
-};
-
-// What instrument? Correlates to Profile_Type
-enum PROFILE_TYPE
-{
-  WHIRL_PROFILE     = 1,
-  CG_EDGE_PROFILE   = 2,
-  CG_VALUE_PROFILE  = 4,
-  PROFILE_TYPE_LAST = 8,
-  PROFILE_TYPE_MAX  = INT32_MAX
-};
+#include "profile_type.h"
 
 /* Feedback File Format */
 
@@ -99,7 +74,7 @@ enum PROFILE_TYPE
 
 #define INSTR_MAG          "\177INS"
 
-#define INSTR_CURRENT      1
+#define INSTR_CURRENT      2
 
 struct Fb_Hdr {
   char fb_ident[FB_NIDENT];     /* ident bytes */
@@ -142,6 +117,8 @@ struct Fb_Hdr {
 
 struct Pu_Hdr {
   INT32 pu_checksum;
+  INT32 pu_size;
+  UINT64 runtime_fun_address;
   ULONG pu_name_index;
   ULONG pu_file_offset;
   ULONG pu_inv_offset;
@@ -160,16 +137,23 @@ struct Pu_Hdr {
   ULONG pu_num_scircuit_entries;
   ULONG pu_call_offset;
   ULONG pu_num_call_entries;
+  ULONG pu_icall_offset;
+  ULONG pu_num_icall_entries;
   ULONG pu_handle;
   ULONG pu_edge_offset;
   ULONG pu_num_edge_entries;
   ULONG pu_instr_count;
   ULONG pu_instr_exec_count;
   ULONG pu_value_offset;
-  Pu_Hdr() {}
+  ULONG pu_ld_count;   //prefetch count
+  ULONG pu_stride_offset;
+  
+  Pu_Hdr() {pu_size=54321;pu_handle=11111;pu_edge_offset=222;pu_num_edge_entries=0;pu_instr_count=0;pu_instr_exec_count=0; pu_icall_offset=333;pu_num_icall_entries=0;pu_value_offset=444;pu_ld_count=0;pu_stride_offset=555;}
   void Print( FILE * fp, int id=-1) const {
   	fprintf(fp, "\n**********   PU Header No %d   **************\n", id);
   	fprintf(fp, "pu_checksum = %d\n", pu_checksum);
+  	fprintf(fp, "pu_size = %d\n", pu_size);
+  	fprintf(fp, "runtime_fun_address= %llu\n", runtime_fun_address);
   	fprintf(fp, "pu_name_index = %u\n", pu_name_index);
   	fprintf(fp, "pu_file_offset = %u\n", pu_file_offset);
   	fprintf(fp, "pu_inv_offset = %u\n", pu_inv_offset);
@@ -178,7 +162,7 @@ struct Pu_Hdr {
   	fprintf(fp, "pu_num_br_entries = %u\n", pu_num_br_entries);
   	fprintf(fp, "pu_switch_offset = %u\n", pu_switch_offset);
   	fprintf(fp, "pu_switch_target_offset = %u\n", pu_switch_target_offset);
-  	fprintf(fp, "pu_num_switch_entries = %u\n", pu_switch_target_offset);
+  	fprintf(fp, "pu_num_switch_entries = %u\n", pu_num_switch_entries);
   	fprintf(fp, "pu_cgoto_offset = %u\n", pu_cgoto_offset);
   	fprintf(fp, "pu_cgoto_target_offset = %u\n", pu_cgoto_target_offset);
   	fprintf(fp, "pu_num_cgoto_entries = %u\n", pu_num_cgoto_entries);
@@ -188,12 +172,16 @@ struct Pu_Hdr {
   	fprintf(fp, "pu_num_scircuit_entries = %u\n", pu_num_scircuit_entries);
   	fprintf(fp, "pu_call_offset = %u\n", pu_call_offset);
   	fprintf(fp, "pu_num_call_entries = %u\n", pu_num_call_entries);
+  	fprintf(fp, "pu_icall_offset = %u\n", pu_icall_offset);
+  	fprintf(fp, "pu_num_icall_entries = %u\n", pu_num_icall_entries);
   	fprintf(fp, "pu_handle = %u\n", pu_handle);
   	fprintf(fp, "pu_edge_offset = %u\n", pu_edge_offset);
   	fprintf(fp, "pu_num_edge_entries = %u\n", pu_num_edge_entries);
   	fprintf(fp, "pu_instr_count = %u\n", pu_instr_count);
   	fprintf(fp, "pu_instr_exec_count = %u\n", pu_instr_exec_count);
   	fprintf(fp, "pu_value_offset = %u\n", pu_value_offset);
+  	fprintf(fp, "pu_ld_count = %u\n", pu_ld_count);
+  	fprintf(fp, "pu_stride_offset = %u\n", pu_stride_offset);
   };
 };
 #endif /* profile_com_INCLUDED */

@@ -651,6 +651,7 @@ extern void CHECK_POINTS_TO(POINTS_TO *);
 
 //  Lower ST into the <base,ofst> form
 void Expand_ST_into_base_and_ofst(ST *st, INT64 st_ofst, ST ** base, INT64 *ofst);
+void Expand_ST_into_base_and_ofst(ST *st, ST *base_st, INT64 st_ofst, ST ** base, INT64 *ofst); 
 
 template <class SYMTAB> WN *Find_addr_recur(WN *, const SYMTAB &);
 

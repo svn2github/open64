@@ -549,13 +549,23 @@ Fixup_Rotating_Register_TN(TN *tn, const SWP_FIXUP &fixup, bool trace)
     //
     if (r >= REGISTER_First_Rotating_Registers(rc)) {
       if (rc == ISA_REGISTER_CLASS_predicate) {
-	r -= fixup.control_loc;  // Control lifetime uses first rotating regs
-	if (r < REGISTER_First_Rotating_Registers(rc))
-	  r += REGISTER_Last_Rotating_Registers(rc) - 
-	    REGISTER_First_Rotating_Registers(rc) + 1;
-	else if (r > REGISTER_Last_Rotating_Registers(rc))
-	  r -= REGISTER_Last_Rotating_Registers(rc) - 
-	    REGISTER_First_Rotating_Registers(rc) + 1;
+      	
+        //Bug fix:
+        //The order of calculate must be guarded!
+        
+      	if ( ((int)(r - fixup.control_loc)) < 0 ) {
+          r += REGISTER_Last_Rotating_Registers(rc) - 
+	          REGISTER_First_Rotating_Registers(rc) + 1;
+          r -= fixup.control_loc;
+      	} else {
+	  r -= fixup.control_loc;  // Control lifetime uses first rotating regs
+	  if (r < REGISTER_First_Rotating_Registers(rc))
+	    r += REGISTER_Last_Rotating_Registers(rc) - 
+	            REGISTER_First_Rotating_Registers(rc) + 1;
+	  else if (r > REGISTER_Last_Rotating_Registers(rc))
+	    r -= REGISTER_Last_Rotating_Registers(rc) - 
+	            REGISTER_First_Rotating_Registers(rc) + 1;
+        }
       }
       else if (rc == ISA_REGISTER_CLASS_integer) {
 	if (r >= REGISTER_First_Rotating_Registers(rc) +
@@ -741,7 +751,25 @@ SWP_Emit(SWP_OP_vector& op_state,
 	}
       }
     }
-
+    REGISTER_SET all_non_rotating[ISA_REGISTER_CLASS_MAX+1];
+    ISA_REGISTER_CLASS i;
+    FOR_ALL_ISA_REGISTER_CLASS(i) {
+      all_non_rotating[i] = REGISTER_SET_Difference_Range(REGISTER_CLASS_allocatable(i),
+                                                          REGISTER_First_Rotating_Registers(i),
+                                                          REGISTER_Last_Rotating_Registers(i));
+    }
+    FOR_ALL_BB_OPs(body, op) {
+      for (INT k = 0; k < OP_results(op); k++) {
+        TN *tn = OP_result(op, k);
+        if (!TN_is_const_reg(tn) && TN_register(tn) != REGISTER_UNDEFINED){
+          ISA_REGISTER_CLASS rc = TN_register_class(tn);      
+          REGISTER r = TN_register(tn);
+          if(REGISTER_SET_MemberP(all_non_rotating[rc],r)){
+            ROTATING_KERNEL_INFO_localdef(info).push_back(tn);
+          }
+        }
+      }
+    }
     BB_Add_Annotation(body, ANNOT_ROTATING_KERNEL, (void *)info);
   }
 

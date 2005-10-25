@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -68,6 +68,7 @@ void Dump_Fb_Data(PU_PROFILE_HANDLES fb_handles,FILE* fp=TFile)
   FB_Info_Invoke info_invoke( FB_FREQ_ZERO );
   FB_Info_Edge info_edge( FB_FREQ_ZERO );
   FB_Info_Value info_value;
+  FB_Info_Value info_stride;
   
   for (PU_PROFILE_ITERATOR i( fb_handles.begin() ); i != fb_handles.end (); ++i)
   {
@@ -106,6 +107,12 @@ void Dump_Fb_Data(PU_PROFILE_HANDLES fb_handles,FILE* fp=TFile)
       FB_Info_Value& info = Get_Value_Profile( *i, id );
       info_value = info;
       info_value.Print(fp);
+      fprintf(fp,"\n");
+    }
+   for(int id=0;id< handle->Stride_Profile_Table.size();id++){
+      FB_Info_Value& info = Get_Stride_Profile( *i, id );
+      info_stride = info;
+      info_stride.Print(fp);
       fprintf(fp,"\n");
     }
   }

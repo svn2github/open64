@@ -97,6 +97,11 @@ FB_old_Annotate_whirl(WN *wn)
 }
 
 // ====================================================================
+ADDRESS_NAME_MAP PU_Addr_Name_Map;
+ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
+
+
+// ====================================================================
 
 FEEDBACK *Cur_PU_Feedback = NULL;
 
@@ -106,6 +111,7 @@ FEEDBACK::FEEDBACK( WN *wn, MEM_POOL *m,
 		    INT32 loop_size,
 		    INT32 circuit_size,
 		    INT32 call_size,
+		    INT32 icall_size,
 		    INT32 switch_size, 
 		    WN_MAP_TAB *maptab ) :
   _m( m ),
@@ -119,6 +125,7 @@ FEEDBACK::FEEDBACK( WN *wn, MEM_POOL *m,
   _loops   ( 1, FB_Info_Loop(),    m ),
   _circuits( 1, FB_Info_Circuit(), m ),
   _calls   ( 1, FB_Info_Call(),    m ),
+  _icalls  ( 1, FB_Info_Icall(),   m ),
   _switches( 1, FB_Info_Switch(),  m )
 {
   if ( _trace )
@@ -130,6 +137,7 @@ FEEDBACK::FEEDBACK( WN *wn, MEM_POOL *m,
   _loops.reserve (loop_size);
   _circuits.reserve (circuit_size);
   _calls.reserve (call_size);
+  _icalls.reserve (icall_size);
   _switches.reserve (switch_size);
   
   OPERATOR opr = WN_operator( wn );
@@ -218,9 +226,50 @@ FEEDBACK::Get_index_call( const WN *wn ) const
   Is_True( FB_valid_opr_call( wn ),
 	   ( "FEEDBACK::Get_index_call found unexpected operator" ) );
 
-  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
+  //For those WN* <wn> whose Operator is OPR_ICALL,
+  // to make IPA_WN_MAP32_Get and IPA_WN_MAP32_Set work,
+  // we choose to map OPR_ICALL twice:
+  //   first map to OPERATOR_MAPCAT_CALL, 
+  //   then map to OPERATOR_MAPCAT_ICALL
+  // To do this, we change the operator of wn to OPR_CALL in Annot_call temporarily,
+  // we will immediately restore the correct operator(OPR_ICALL) after Add_index_call.
+  
+  WN * wn_notconst = ( WN * ) wn;
+  OPERATOR old_opr = WN_operator(wn_notconst);
+  if (old_opr == OPR_ICALL)
+  {
+    WN_set_operator(wn_notconst, OPR_CALL);
+  }
+   
+  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn_notconst );
   Is_True( fb_index >= 0 && fb_index < _calls.size(),
 	   ( "FEEDBACK::Get_index_call found out of range fb_index" ) );
+ 
+  Is_True(WN_operator(wn_notconst) != OPR_ICALL,("WN operator must not be icall! icall has been changed to call."));
+  if (old_opr == OPR_ICALL)
+  {
+    WN_set_operator(wn_notconst, old_opr);
+  }
+
+  return fb_index;
+}
+
+INT32
+FEEDBACK::Get_index_icall( const WN *wn ) const
+{
+  Is_True( wn != NULL,
+	   ( "FEEDBACK::Get_index_icall expects non-NULL wn" ) );
+  Is_True( FB_valid_opr_call( wn ),
+	   ( "FEEDBACK::Get_index_icall found unexpected operator" ) );
+
+  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn ); 
+  if (fb_index >= _icalls.size())
+  {
+	DevWarn("FEEDBACK::Get_index_icall found out of range fb_index, suspect it is because call index.");
+	fb_index = 0;
+  }
+  Is_True( fb_index >= 0 && fb_index < _icalls.size(),
+	   ( "FEEDBACK::Get_index_icall found out of range fb_index" ) );
   return fb_index;
 }
 
@@ -306,6 +355,20 @@ FEEDBACK::Add_index_circuit( WN *wn )
 INT32
 FEEDBACK::Add_index_call( WN *wn )
 {
+  //For those WN* <wn> whose Operator is OPR_ICALL,
+  // to make IPA_WN_MAP32_Get and IPA_WN_MAP32_Set work,
+  // we choose to map OPR_ICALL twice:
+  //   first map to OPERATOR_MAPCAT_CALL, 
+  //   then map to OPERATOR_MAPCAT_ICALL
+  // To do this, we change the operator of wn to OPR_CALL in Annot_call temporarily,
+  // we will immediately restore the correct operator(OPR_ICALL) after Add_index_call.
+  
+  OPERATOR old_opr = WN_operator(wn);
+  if (old_opr == OPR_ICALL)
+  {
+    WN_set_operator(wn, OPR_CALL);
+  }
+
   INT32 fb_index = Get_index_call( wn );
   Is_True( fb_index >= 0 && fb_index < _calls.size(),
 	   ( "FEEDBACK::Add_index_call found out of range fb_index" ) );
@@ -313,6 +376,28 @@ FEEDBACK::Add_index_call( WN *wn )
   if (fb_index == 0) {
     fb_index = _calls.size();
     _calls.push_back();
+    IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
+  }
+
+  Is_True(WN_operator(wn) != OPR_ICALL,("WN operator must not be icall! icall has been changed to call."));
+  if (old_opr == OPR_ICALL)
+  {
+	WN_set_operator(wn, old_opr);
+  }
+   
+  return fb_index;
+}
+
+INT32
+FEEDBACK::Add_index_icall( WN *wn )
+{
+  INT32 fb_index = Get_index_icall( wn );
+  Is_True( fb_index >= 0 && fb_index < _icalls.size(),
+	   ( "FEEDBACK::Add_index_icall found out of range fb_index" ) );
+
+  if (fb_index == 0) {
+    fb_index = _icalls.size();
+    _icalls.push_back();
     IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
   }
   return fb_index;
@@ -482,6 +567,13 @@ FEEDBACK::Query_call( const WN *wn ) const
 {
   INT32 fb_index = Get_index_call( wn );
   return _calls[fb_index];
+}
+
+const FB_Info_Icall&
+FEEDBACK::Query_icall( const WN *wn ) const
+{
+  INT32 fb_index = Get_index_icall( wn );
+  return _icalls[fb_index];
 }
 
 const FB_Info_Switch&
@@ -890,6 +982,18 @@ FEEDBACK::Annot_call( WN *wn, const FB_Info_Call& fb_info )
 
   if ( _trace ) {
     fprintf( TFile, "FEEDBACK::Annot_call(0x%p):\n", wn );
+    Print_with_wn( TFile, wn );
+  }
+}
+
+void
+FEEDBACK::Annot_icall( WN *wn, const FB_Info_Icall& fb_info )
+{
+  INT32 fb_index = Add_index_icall( wn );
+  _icalls[fb_index] = fb_info;
+
+  if ( _trace ) {
+    fprintf( TFile, "FEEDBACK::Annot_icall(0x%p):\n", wn );
     Print_with_wn( TFile, wn );
   }
 }
@@ -1440,6 +1544,48 @@ FEEDBACK::FB_lower_call( WN *wn_call, WN *wn_new_call )
 
   if ( wn_call != wn_new_call )
     Delete( wn_call );
+}
+
+void
+FEEDBACK::FB_lower_icall( WN *wn_icall, WN *wn_new_icall, WN * wn_new_call, WN * wn_new_if )
+{
+  if ( _trace )
+    fprintf( TFile, "FEEDBACK::FB_lower_icall(0x%p, 0x%p, 0x%p, 0x%p):\n",
+	     wn_icall, wn_new_icall, wn_new_call, wn_new_if );
+
+  Is_True( wn_icall != NULL,
+	   ( "FEEDBACK::FB_lower_icall expects non-NULL wn_icall" ) );
+
+  Is_True( FB_valid_opr_call( wn_icall ),
+	   ( "FEEDBACK::FB_lower_icall encounted unexpected operator" ) );
+  FB_Info_Call info_call = Query_call( wn_icall );
+  FB_Info_Icall info_icall = Query_icall( wn_icall );
+
+  Is_True( info_call.freq_entry._value >= (float) info_icall.tnv._counters[0], 
+		  ("entry count of icall less than counter[0]! impossible!")  );
+
+  FB_FREQ freq_taken((float)info_icall.tnv._counters[0],true);
+  FB_FREQ freq_nottaken(info_call.freq_entry._value-(float)info_icall.tnv._counters[0],true);
+
+  Is_True( FB_valid_opr_branch(wn_new_if), 
+		  ("FEEDBACK::FB_lower_icall encounted unexpected operator") );
+  Annot_branch(wn_new_if, FB_Info_Branch(freq_taken,freq_nottaken)); //...
+  Is_True( FB_valid_opr_call( wn_new_icall ),
+	   ( "FEEDBACK::FB_lower_icall encounted unexpected operator" ) );
+
+  if ( ! info_call.in_out_same )
+  {
+    Annot_call( wn_new_call, FB_Info_Call(freq_taken,FB_FREQ_UNKNOWN,false) );
+    Annot_call( wn_new_icall, FB_Info_Call(freq_nottaken,FB_FREQ_UNKNOWN,false) );
+  }
+  else
+  {
+    Annot_call( wn_new_call, FB_Info_Call(freq_taken) );
+    Annot_call( wn_new_icall, FB_Info_Call(freq_nottaken) );
+  }
+
+  if ( wn_icall != wn_new_icall )
+    Delete( wn_icall );
 }
 
 

@@ -187,7 +187,8 @@ SRC_DIRS = \
   $(COMMON_UTIL_TARG_DIR)\
   $(BE_BE_DIR)		\
   $(BE_BE_TARG_DIR)	\
-  $(COMMON_INSTR_DIR)
+  $(COMMON_INSTR_DIR)   \
+  $(IPL_DIR)	
 
 HEADER_DIRS = \
   $(SRC_DIRS)		\
@@ -323,9 +324,6 @@ COMMON_COM_TARG_CXX_SRCS =	\
 
 COMMON_TARG_INFO_ACCESS_SRCS=\
   ti_init.c		\
-  ti_res.c		\
-  ti_res_count.c	\
-  ti_res_res.c
 
 ifeq ($(BUILD_TARGET), MIPS)
 COMMON_UTIL_QUAD_SRCS = \
@@ -480,6 +478,8 @@ BE_DRIVER_CXX_SRCS = \
   driver.cxx	        \
   driver_util.cxx	\
   iter.cxx	        \
+  wn_outlining.cxx \
+  ipl_reorder.cxx \
 
 BE_DRIVER_C_SRCS = \
   phase.c        \
@@ -759,7 +759,7 @@ be.so:  $(BE_C_OBJS) $(BE_CXX_OBJS) $(COMMON_COM_PCH_OBJS) $(BE_COM_PCH_OBJS) \
 
 else
 ifeq ($(BUILD_OS), LINUX)
-LINK_TARGET_SO = $(TARGET_SO)
+LINK_TARGET_SO = 
 else
 LINK_TARGET_SO =
 endif

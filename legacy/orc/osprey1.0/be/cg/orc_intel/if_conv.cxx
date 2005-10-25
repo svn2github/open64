@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -158,7 +158,9 @@ Is_Abnormal_Loop(REGION* region)
         REGIONAL_CFG_NODE *node = *iter;
         if ( node -> Succ_Num() == 0) 
         {
-            Is_True(!loop_tail, (" One region can only has one loop tail!\n"));
+            if(loop_tail || 
+              (node -> Is_Region() && node->Region_Node()->Exits().size() >1 ) )
+                return TRUE;
             loop_tail = node;
         }
 
@@ -3319,7 +3321,23 @@ IF_CONVERTOR::Merge_Area(IF_CONV_AREA *area)
                         tgt_info -> Assign_Aux_Predicates(bb, br);
                     
                         // update the prob of bb and its fall-thru-succ
-                        float pb1 = pred_bb ? Prob_Local(pred_bb, bb):1;
+                        float pb1 = 1.0;
+                        if (pred_bb) 
+                        {
+                            BB *other_succ = NULL;
+                            BBLIST *bl;
+                            FOR_ALL_BB_SUCCS(bb, bl)
+                            {  
+                                BB *tmp_bb = BBLIST_item(bl);
+                                if (tmp_bb != bb) 
+                                {   
+                                    other_succ = tmp_bb;
+                                    break;
+                                }
+                            }
+                            if ( other_succ) 
+                                pb1 = 1.0 - Prob_Local(pred_bb,other_succ);
+                        }
                         Set_Prob(bb, fall_thru, pb1);
                     } else {
                         if ( bb != last_bb) 
@@ -3460,6 +3478,7 @@ IF_CONVERTOR::Merge_Area(IF_CONV_AREA *area)
                     } 
                     can_be_merged_into = TRUE;
                     RGN_Unlink_Pred_Succ(bb, other_succ);
+                    // Set_Prob(bb, fall_thru, 1.0);
                 }
                 break;
             }
@@ -3555,7 +3574,7 @@ IF_CONVERTOR::Merge_Area(IF_CONV_AREA *area)
                         if (fall_thru_pred && fall_thru_pred != True_TN) 
                         {
                             Make_Branch_Conditional(fall_thru_goto);
-                            Predicate_Block(fall_thru_goto, 
+                           Predicate_Block(fall_thru_goto, 
                                 fall_thru_pred, area_bb_set);
                         }    
 
@@ -3804,6 +3823,7 @@ IF_CONVERTOR::Merge_Area(IF_CONV_AREA *area)
             }
         }
     }
+    
 }
 BB_MERGE_TYPE
 IF_CONVERTOR::Classify_BB(BB *bb,

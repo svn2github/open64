@@ -146,6 +146,7 @@ static BOOL eh_label_removed;
 #define TRACE_CLONE     0x0080
 #define TRACE_FREQ	0x0100	/* used in freq.c */
 #define TRACE_DOM	0x0200	/* used in dominate.c */
+#define TRACE_Empty_BB_Elim 0x0400/* used in cflow.cxx */
 
 
 BOOL CFLOW_Trace;
@@ -158,6 +159,7 @@ BOOL CFLOW_Trace_Freq_Order;
 BOOL CFLOW_Trace_Clone;
 BOOL CFLOW_Trace_Freq;
 BOOL CFLOW_Trace_Dom;
+BOOL CFLOW_Trace_Empty_BB_Elim;
 
 /* We need to keep some auxilary information for each BB for the various
  * optimizations we perform. The following BB_MAP provides the mechanism
@@ -542,16 +544,9 @@ Cflow_Change_Succ(BB *bb, INT isucc, BB *old_succ, BB *new_succ)
 
   FmtAssert( old_edge, ("Expect old_edge") );
 
-  if ( new_edge
-       && BBLIST_prob_fb_based(new_edge)
-       && BBLIST_prob_fb_based(old_edge) ) {
-    // bb->old; bb->new; so move old edge prob to new edge.
-    BBLIST_prob(new_edge) += BBLIST_prob(old_edge);
-    BBLIST_prob(old_edge)  = 0;
-  }
   Set_BBINFO_succ_bb(bb, isucc, new_succ);
 
-  //more? is following consistency with new edge feedback?
+  //more? is following consistent with new edge feedback?
   for (i = 0; i < nsuccs; ++i) {
     if (i != isucc && BBINFO_succ_bb(bb, i) == old_succ) {
       if ( freqs_computed ) {
@@ -6872,6 +6867,7 @@ CFLOW_Initialize(void)
     CFLOW_Trace_Freq_Order = Get_Trace(TP_FLOWOPT, TRACE_FREQ_ORDER);
     CFLOW_Trace_Freq = Get_Trace(TP_FLOWOPT, TRACE_FREQ);
     CFLOW_Trace_Dom = Get_Trace(TP_FLOWOPT, TRACE_DOM);
+    CFLOW_Trace_Empty_BB_Elim = Get_Trace(TP_FLOWOPT, TRACE_Empty_BB_Elim);
 
     CFLOW_Trace_Branch |= CFLOW_Trace_Detail;
     CFLOW_Trace_Unreach |= CFLOW_Trace_Detail;
@@ -6879,6 +6875,7 @@ CFLOW_Initialize(void)
     CFLOW_Trace_Reorder |= CFLOW_Trace_Detail;
     CFLOW_Trace_Clone |= CFLOW_Trace_Detail;
     CFLOW_Trace_Freq_Order |= CFLOW_Trace_Detail;
+    CFLOW_Trace_Empty_BB_Elim |= CFLOW_Trace_Detail;
   }
 
   if (CFLOW_heuristic_tolerance && CFLOW_heuristic_tolerance[0] != '\0') {
@@ -6997,4 +6994,213 @@ CFLOW_Process(void)
 }
 
 
-        	
+/* ====================================================================
+ *
+ * Initialize_BB_Info_For_Delete
+ *
+ * Only process the info for those BB who are LOGIF and GOTO
+ * This function is to prepare the information for delete empty BB
+ * before emitting the file 
+ * 
+ *
+ * ====================================================================
+ */
+static BOOL
+Initialize_BB_Info_For_Delete(void)
+{
+  BB *bb;
+
+  bb_info_map = BB_MAP_Create();
+  for (bb = REGION_First_BB; bb; bb = BB_next(bb)) {
+    BBINFO *bbinfo;
+    INT bbinfo_size;
+    BBKIND bbkind = BB_kind(bb);
+
+    /* consider the chk bb to be the LOGIF bb */
+    if (bbkind == BBKIND_UNKNOWN) {
+       if (BB_Last_chk_op(bb)) {
+          bbkind = BBKIND_LOGIF;
+       }
+    }
+    /* process the bbinfo structure with this BB.
+     */
+    bbinfo_size = sizeof(BBINFO);
+    bbinfo = (BBINFO *)MEM_POOL_Alloc(&MEM_local_nz_pool, bbinfo_size);
+    BB_MAP_Set(bb_info_map, bb, bbinfo);
+
+    bbinfo->kind = bbkind;
+
+    switch (bbkind) {
+    case BBKIND_GOTO:
+      bbinfo->nsuccs = BB_succs(bb) ? 1 : 0;
+      if (BB_succs(bb)) {
+	TN *lab_tn;
+	BB *target = BBLIST_item(BB_succs(bb));
+
+	bbinfo->succs[0].bb = target;
+	bbinfo->succs[0].offset = 0;
+	bbinfo->succs[0].prob = 1.0;
+      }
+      continue;
+
+    case BBKIND_LOGIF:
+      {
+	INT tfirst;
+	INT tcount;
+	TN *lab_tn;
+	BB *target;
+	BBLIST *target_edge;
+	BBLIST *fall_through_edge;
+	OP *br = BB_branch_op(bb);
+        if ((br == NULL)|| (OP_noop(br)) )
+        {
+           br = BB_Last_chk_op(bb);  
+        }
+
+	/* Get the targets. Note that target[0] is always the "true" target.
+	 */
+	target_edge = BB_succs(bb);
+	fall_through_edge = BBLIST_next(target_edge);
+	target = BBLIST_item(target_edge);
+	if (fall_through_edge == NULL) {
+	  fall_through_edge = target_edge;
+	} else if (target == BB_next(bb)) {
+	  target_edge = fall_through_edge;
+	  fall_through_edge = BB_succs(bb);
+	  target = BBLIST_item(target_edge);
+	}
+
+	bbinfo->nsuccs = 2;
+
+	bbinfo->succs[0].bb = target;
+	bbinfo->succs[0].offset = 0;
+	bbinfo->succs[0].prob = BBLIST_prob(target_edge);
+
+	bbinfo->succs[1].bb = BB_next(bb);
+	bbinfo->succs[1].offset = 0;
+	bbinfo->succs[1].prob = BBLIST_prob(fall_through_edge);
+
+	CGTARG_Branch_Info(br, &tfirst, &tcount);
+	Is_True(tcount == 1, ("unexpected number of branch targets in BB:%d",
+                BB_id(bb)));
+	lab_tn = OP_opnd(br, tfirst);
+	continue;
+      }
+
+    }
+
+  }
+
+  return TRUE;
+}
+/* ====================================================================
+ *
+ * CFLOW_Delete_Empty_BB
+ * 
+ *
+ * Search all the BBs , if a empty bb is founded, the previous bbs of it 
+ * will be handled . If previous bb is LOGIF and GOTO, the corresponding
+ * annotation which includes the label of empty bb will be copied to
+ * the succ bb. 
+ * 
+ *
+ * ====================================================================
+ */       	
+void
+CFLOW_Delete_Empty_BB(void)
+{
+  BB *bp ,*tgt_succ;
+  BB *left_tgt, *right_tgt;
+  INT tgt_num;
+  LABEL_IDX tgt_label;
+  float prob;
+  BB *next_bb;
+  MEM_POOL_Push(&MEM_local_nz_pool);
+  if (!Initialize_BB_Info_For_Delete()) {
+      BB_MAP_Delete(bb_info_map);
+      MEM_POOL_Pop(&MEM_local_nz_pool);
+      return;
+  }
+  for (bp = REGION_First_BB ; bp!=NULL ; bp= next_bb) {
+      next_bb =BB_next(bp) ;
+      if ( BBINFO_kind(bp) == BBKIND_GOTO && !BB_length(bp) ) {
+         Is_True(( BBINFO_nsuccs(bp)&& BBINFO_succ_bb(bp, 0) != bp), 
+                 ("GOTO BB: %d has no succ bb or it is a loop !", BB_id(bp)));
+         BBLIST *prev_bbs, *next_bbs;
+         BB *prev_bb;
+         BOOL can_do ;
+         LABEL_IDX old_label, tgt_lable;
+
+         old_label = Gen_Label_For_BB(bp);
+         tgt_succ = BBINFO_succ_bb(bp, 0);
+         /* if the tgt bb has no label , 
+          * the previous bb must fall though to it. 
+          */
+
+         tgt_label = Gen_Label_For_BB(tgt_succ);
+         if (CFLOW_Trace_Empty_BB_Elim) {
+            fprintf(TFile, "The label %s of empty BB: %d will be copied 
+                            to BB labeled with %s\n", LABEL_name(old_label),
+                            BB_id(bp), LABEL_name(tgt_label));
+         }
+         /* fetch all the previous bb of bp */
+
+         for ( prev_bbs = BB_preds(bp); prev_bbs != NULL; prev_bbs = next_bbs ) {
+             can_do = TRUE;
+             next_bbs = BBLIST_next(prev_bbs);
+             BB *prev_bb = BBLIST_item(prev_bbs) ;
+
+             switch BBINFO_kind(prev_bb) {
+
+             case BBKIND_GOTO :
+                  tgt_num = 0;
+                  break;
+
+             case BBKIND_LOGIF: 
+                  if ((left_tgt = BBINFO_succ_bb(prev_bb, 0)) == bp) {
+                     tgt_num = 0;
+                  }
+                  if ((right_tgt = BBINFO_succ_bb(prev_bb, 1)) == bp) {
+                     tgt_num = 1;
+                  }
+                  break;
+                  
+
+             default: 
+                      /*  do not handle BB of other kinds  */
+                      can_do = FALSE;
+                      continue;
+
+             } 
+
+             /* fetch the label of target bb, if needed , 
+              * set the target of previous bb to new label
+              */
+             if (can_do) {
+
+                /* handle the prob and freq
+                 * the prob of tgt bb should be the prob from prev bb to bp
+                 * the freq of tgt bb should keep intact
+                 */
+             
+                prob = BBINFO_succ_prob(prev_bb,tgt_num);
+                Unlink_Pred_Succ(prev_bb, bp);
+                Link_Pred_Succ_with_Prob(prev_bb, tgt_succ, prob, FALSE, TRUE);
+             } 
+         }
+         /* if bp has annotation , cp all to the tgt_succ 
+          * if bp has no annotation, delete it directly
+          */
+         ANNOTATION  *annotations = BB_annotations(bp);
+         if (annotations ) {
+            BOOL copy_succeed =BB_Copy_Annotations(tgt_succ, bp, ANNOT_kind(annotations)) ;
+            Is_True(copy_succeed,
+                   ("no annotations for BB:%d", BB_id(bp)));
+         }
+         Delete_BB(bp, CFLOW_Trace_Empty_BB_Elim);
+      }
+  } 
+  BB_MAP_Delete(bb_info_map);
+  MEM_POOL_Pop(&MEM_local_nz_pool);
+}
+

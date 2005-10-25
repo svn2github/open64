@@ -64,6 +64,8 @@ extern "C" void add_to_tmp_file_list (char*);
 extern "C" char* create_unique_file (char*, char);
 #pragma weak create_unique_file
 
+extern "C" char* create_tmp_file (char*);
+#pragma weak create_tmp_file
 
 /************************************************************************/
 

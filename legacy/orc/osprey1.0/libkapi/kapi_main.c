@@ -26,7 +26,7 @@
 
 #include <stdio.h>
 
-//#include <conio.h>
+#include <conio.h>
 
 #include <stdlib.h>
 
@@ -43,7 +43,7 @@ static void  Test_bv64Rtns();
 static void  Test_bv32Rtns();
 //extern int trying123;
 
-#if 0
+
 
 void dump_instruction_fus(FILE *fp, void *pknobs)
 
@@ -138,7 +138,7 @@ void dump_instruction_fus(FILE *fp, void *pknobs)
 	//KAPI_fEnableIA64call_from_header(&pknobs,trying,0);
 	//_getch();
 }
-#endif
+
 
 int main( int argc, char *argv[] )
 {
@@ -199,7 +199,7 @@ int main( int argc, char *argv[] )
 	  tmp = KAPI_intra;
 #endif
 
-/*	  dump_instruction_fus(outp,pvoid1);*/
+	  dump_instruction_fus(outp,pvoid1);
       KAPI_Finalize( pvoid1 );
    } else {
       fprintf( stderr, "KAPI_Initialize failed\n" );

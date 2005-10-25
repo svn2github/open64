@@ -1,7 +1,7 @@
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
 /*
- *  Copyright (C) 2000-2002, Intel Corporation
+ *  Copyright (C) 2000-2003, Intel Corporation
  *  All rights reserved.
  *  
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -75,7 +75,7 @@ enum { LINE_MAX_WIDTH = 75, };
  * ==============================================================
  */
 void
-tagCANDIDATE :: Dump (FILE *f, BOOL verbose,
+CANDIDATE :: Dump (FILE *f, BOOL verbose,
                       FAVOR_DELAY_HEUR * heur=NULL) {
 
     if (!Op()) {
@@ -92,7 +92,7 @@ tagCANDIDATE :: Dump (FILE *f, BOOL verbose,
      */
     fprintf (f, " %-9s %s ", 
                  spec_text[_spec_type],
-                 _is_P_ready ? "PREADY" : "MREADY");
+                 Is_P_Ready () ? "PREADY" : "MREADY");
 
     /* print the heuristic stuff associated with this candidate
      */
@@ -184,7 +184,7 @@ CAND_LIST :: Dump (FILE * f=stderr, BOOL verbose=FALSE,
 
     for (CAND_LIST_ITER iter(this) ; !iter.done(); iter.step ()) {
 
-        CANDIDATE * cand = iter.cur ();
+        CANDIDATE* cand = iter.cur ();
 
             /* we should distinguish each candidate, if its dumpped
              * text is terse, it may be illegible.
@@ -216,17 +216,20 @@ SRC_BB_MGR::Dump (FILE *f=stderr) {
     for (SRC_BB_INFO_ITER iter = _src_info_vect.begin () ; 
         iter != _src_info_vect.end() ; iter++) {
 
-        SRC_BB_INFO * info = *iter ;
-        fprintf (f, "\t====> SRC BB:%3d cutting set:", BB_id(info->src));
+        SRC_BB_INFO* info = *iter ;
+        fprintf (f, "\t====> SRC BB:%3d cutting set:", 
+                 BB_id(info->Source_BB ()));
         
-        for (BB_VECTOR_ITER cs_iter = info->siss.begin() ; 
-             cs_iter != info->siss.end() ; cs_iter ++) {
+        BB_VECTOR* bbv = info->Get_Cutting_Set ();
+        for (BB_VECTOR_ITER cs_iter = bbv->begin() ; 
+             cs_iter != bbv->end() ; cs_iter ++) {
             fprintf (f,"BB:%3d ", BB_id(*cs_iter));
         }
 
+        bbv = info->Move_Across_Or_Around_BBs ();
         fprintf (f, "\n\t    BBs between src BB and cutting-set:");
-        for (BB_VECTOR_ITER tmp_iter = info->across_bbs.begin() ;
-             tmp_iter != info->across_bbs.end() ; 
+        for (BB_VECTOR_ITER tmp_iter = bbv->begin() ;
+             tmp_iter != bbv->end() ; 
              tmp_iter++) {
 
             fprintf (f,"BB:%3d ", BB_id(*tmp_iter));
@@ -234,8 +237,9 @@ SRC_BB_MGR::Dump (FILE *f=stderr) {
         }
 
         fprintf (f, "\n\t    Nested REGIONs between src BB and cutting-set:");
-        for (REGION_VECTOR_ITER rgn_iter = info->across_nested_rgns.begin() ;
-             rgn_iter != info->across_nested_rgns.end() ; 
+        REGION_VECTOR* rv = info->Move_Across_Or_Around_Nested_Rgns ();
+        for (REGION_VECTOR_ITER rgn_iter = rv->begin ();
+             rgn_iter != rv->end ();
              rgn_iter ++) {
 
             fprintf (f, "RGN:%3d ", (*rgn_iter)->Id());
@@ -561,8 +565,8 @@ FAVOR_DELAY_HEUR :: Trace_Cand_Sel_Process (const char * fmt, ...) {
 void
 SCHEDULER::Dump_OP_Verbose_Info (OP* op, FILE * f) {
 
-    /* 1. print the <op> itself 
-     */
+        /* 1. print the <op> itself 
+         */
     DUMP_OP_SUMMARY(op,f);
     BEGIN_WITH_NEW_LINE(f);
 
@@ -574,27 +578,23 @@ SCHEDULER::Dump_OP_Verbose_Info (OP* op, FILE * f) {
        fprintf (f,"ISSUE CYCLE: %3d ", OP_scycle(op));  
     }
 
-    /*2. dump heuristic info */
+        /*2. dump heuristic info */
     _heur_mgr.Dump_OP_Heur_Info (op, f,FALSE);
     
-    /*3. dump its associated CADIDATE structure if any
-     */
-    CANDIDATE * cand = _m_ready_cand.Get_Candidate (op) ;
-    if (!cand) {
-        cand=_p_ready_cand.Get_Candidate(op);
-    }
-
+        /*3. dump its associated CADIDATE structure if any
+         */
+    CANDIDATE* cand = _cand_mgr.Get_Candidate (op) ;
     if (cand) { cand->Dump (f,FALSE); }
 
-    /* ??? this should be put into cg_dep_graph.cxx */
+        /* ??? this should be put into cg_dep_graph.cxx */
 
     static char *arc_txt[] = {
         "REGIN", "REGOUT", "REGANTI", "MEMIN", "MEMOUT", "MEMANTI", 
         "MEMVOL", "MEMREAD", "SPILLIN", "PREFIN", "PREFOUT", "PREBR", 
-        "POSTBR", "SCC", "PRECHK", "POSTCHK", "MISC"
+        "POSTBR", "SCC", "PRECHK", "POSTCHK", "CTLSPEC", "MISC"
     };
 
-    /*4. dump predecessors */
+        /*4. dump predecessors */
     fprintf (f, "\nPREDECESSORS:\n");
 
     for (ARC_LIST* arcs = OP_preds(op); 
@@ -615,8 +615,8 @@ SCHEDULER::Dump_OP_Verbose_Info (OP* op, FILE * f) {
         BEGIN_WITH_NEW_LINE(f);
     }
 
-    /*5. dump succs 
-     */
+        /*5. dump succs 
+         */
     fprintf (f,"\nSuccessors:\n") ; 
     for (ARC_LIST* arcs = OP_succs(op); 
          arcs != NULL; arcs = ARC_LIST_rest(arcs)) {

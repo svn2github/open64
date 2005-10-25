@@ -44,6 +44,7 @@ void Initialize_Targ_Info(void)
   ABI_PROPERTIES_ABI abi;
   ISA_SUBSET isa;
   PROCESSOR proc;
+  char version[2]="";
 
   switch (Target_ABI) {
   case ABI_I32:
@@ -70,10 +71,14 @@ void Initialize_Targ_Info(void)
   case TARGET_ITANIUM:
     proc = PROCESSOR_itanium;
     break;
+  case TARGET_ITANIUM2:
+    proc = PROCESSOR_itanium;
+    version = "2";
+    break;
   default:
     FmtAssert(FALSE, ("targinfo doesn't handle target: %s\n", Targ_Name(Target)));
     /*NOTREACHED*/
   }
 
-  TI_Initialize(abi, isa, proc, Targ_Path);
+  TI_Initialize(abi, isa, proc, Targ_Path, version);
 }

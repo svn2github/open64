@@ -314,6 +314,13 @@ WN_MAP_get_map_id (WN_MAP_TAB *maptab, OPERATOR_MAPCAT category, WN *wn)
   }
 
   /* nothing on the free list, give it a new id */
+  if (category == OPERATOR_MAPCAT_CALL || category == OPERATOR_MAPCAT_ICALL)
+  {
+	  if ( maptab->_last_map_id[OPERATOR_MAPCAT_CALL] > maptab->_last_map_id[OPERATOR_MAPCAT_ICALL] )
+		   maptab->_last_map_id[OPERATOR_MAPCAT_ICALL] = maptab->_last_map_id[OPERATOR_MAPCAT_CALL];
+	  else if ( maptab->_last_map_id[OPERATOR_MAPCAT_CALL] < maptab->_last_map_id[OPERATOR_MAPCAT_ICALL] )
+		  maptab->_last_map_id[OPERATOR_MAPCAT_CALL] = maptab->_last_map_id[OPERATOR_MAPCAT_ICALL];
+  }
   WN_map_id(wn) = ++maptab->_last_map_id[category];
   return WN_map_id(wn);
 }

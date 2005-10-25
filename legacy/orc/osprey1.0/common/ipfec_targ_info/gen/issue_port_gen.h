@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -52,7 +52,7 @@
 
 #include "gen_base.h"
 
-extern void Issue_Port_Generator(void *pknobs, GEN_MODE mode);
+extern void Issue_Port_Generator(void *pknobs, GEN_MODE mode, MACHINE_TYPE type=ITM_TYPE);
 
 #endif /* ISSUE_PORT_GEN_INCLUDED */
 

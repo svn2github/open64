@@ -58,6 +58,7 @@
 #include "ipo_defs.h"
 #include "inline_script_parser.h"
 
+#include "ipa_reorder.h"
 FILE* STDOUT = stdout; 
 
 //-----------------------------------------------------------------------
@@ -232,6 +233,8 @@ Perform_Interprocedural_Analysis ()
     BOOL run_autopar = FALSE;
 
     MEM_POOL_Popper pool (MEM_phase_nz_pool_ptr);
+    if(IPA_Enable_Reorder)
+		Init_merge_access();//field reorder
 
     // read PU infos, update summaries, and process globals
     for (UINT i = 0; i < IP_File_header.size(); ++i) {
@@ -240,6 +243,12 @@ Perform_Interprocedural_Analysis ()
 	  has_nested_pu = TRUE;
       if (IP_FILE_HDR_file_header(IP_File_header[i])->Run_AutoPar())
           run_autopar = TRUE;
+    }
+    if ( Get_Trace ( TP_IPA,IPA_TRACE_TUNING_NEW ) && IPA_Enable_Reorder ) {
+      fprintf ( TFile,
+	       "\n%s%s\tstruct_access info after merging\n%s%s\n",
+	       DBar, DBar, DBar, DBar );
+      print_merged_access ();
     }
 
     if (run_autopar) {
@@ -289,7 +298,19 @@ Perform_Interprocedural_Analysis ()
 	    fprintf (TFile, "\t<<<Call Graph Construction begins>>>\n");
 	
 	Build_Call_Graph ();
-	
+//pengzhao
+	if(Get_Trace(TP_IPA, IPA_TRACE_TUNING)) // -tt19:0x40000
+	{
+  	  FILE *tmp_call_graph = fopen("cg_dump.log", "w");
+
+	  if(tmp_call_graph != NULL)
+	  {	  
+	    fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
+  	    IPA_Call_Graph->Print(tmp_call_graph);
+	    fprintf(tmp_call_graph, "\t+++++++++++++++++++++++++++++++++++++++\n");
+	  }
+	  fclose(tmp_call_graph);
+	}	
 	// INLINING TOOL
 	if (INLINE_Enable_Script) {
 	        MEM_POOL script_parser_pool;
@@ -398,7 +419,8 @@ Perform_Interprocedural_Analysis ()
         }
 #endif
     }
-
+    if(IPA_Enable_Reorder && !merged_access->empty())
+		IPA_reorder_legality_process(); 	
     //  mark all unreachable nodes that are either EXPORT_LOCAL (file
     //  static) or EXPORT_INTERNAL *AND* do not have address taken as
     // "deletable".  Functions that are completely inlined to their

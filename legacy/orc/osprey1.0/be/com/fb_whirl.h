@@ -94,6 +94,17 @@
 #define TP_CG_FEEDBACK_DRAW    0x2000
 
 
+// ==================================================================
+// Map to record <pu_runtime_address, pu_name> pair.
+// 
+ __STL_TEMPLATE_NULL  struct hash<UINT64> {
+	 size_t operator()(const UINT64 x)const{return (size_t)x;}
+ };
+
+typedef hash_map<UINT64, char*, hash<UINT64> > ADDRESS_NAME_MAP;
+typedef hash_map<UINT64, INT32, hash<UINT64> > ADDRESS_PUSIZE_MAP;
+
+
 // ====================================================================
 
 // FEEDBACK::Verify(...) and OPT_FEEDBACK::Verify(...) return one of
@@ -126,6 +137,7 @@ private:
   vector< FB_Info_Loop,    mempool_allocator<FB_Info_Loop>    >  _loops;
   vector< FB_Info_Circuit, mempool_allocator<FB_Info_Circuit> >  _circuits;
   vector< FB_Info_Call,    mempool_allocator<FB_Info_Call>    >  _calls;
+  vector< FB_Info_Icall,   mempool_allocator<FB_Info_Icall>   >  _icalls;
   vector< FB_Info_Switch,  mempool_allocator<FB_Info_Switch>  >  _switches;
 
   INT32 Get_index_invoke  ( const WN *wn ) const;
@@ -133,6 +145,7 @@ private:
   INT32 Get_index_loop    ( const WN *wn ) const;
   INT32 Get_index_circuit ( const WN *wn ) const;
   INT32 Get_index_call    ( const WN *wn ) const;
+  INT32 Get_index_icall   ( const WN *wn ) const;
   INT32 Get_index_switch  ( const WN *wn ) const;
 
   INT32 Add_index_invoke  ( WN *wn );
@@ -140,6 +153,7 @@ private:
   INT32 Add_index_loop    ( WN *wn );
   INT32 Add_index_circuit ( WN *wn );
   INT32 Add_index_call    ( WN *wn );
+  INT32 Add_index_icall    ( WN *wn );
   INT32 Add_index_switch  ( WN *wn );
 
 public:
@@ -150,6 +164,7 @@ public:
 	    INT32 loop_size = 1,
 	    INT32 circuit_size = 1,
 	    INT32 call_size = 1,
+	    INT32 icall_size = 1,
 	    INT32 switch_size = 1,
 	    WN_MAP_TAB *maptab = Current_Map_Tab );
 
@@ -167,6 +182,7 @@ public:
   const FB_Info_Loop&    Query_loop    ( const WN *wn ) const;
   const FB_Info_Circuit& Query_circuit ( const WN *wn ) const;
   const FB_Info_Call&    Query_call    ( const WN *wn ) const;
+  const FB_Info_Icall&   Query_icall   ( const WN *wn ) const;
   const FB_Info_Switch&  Query_switch  ( const WN *wn ) const;
 
   FB_FREQ Query      ( const WN *wn, const FB_EDGE_TYPE type ) const;
@@ -178,6 +194,7 @@ public:
   void Annot_loop    ( WN *wn, const FB_Info_Loop   & fb_info );
   void Annot_circuit ( WN *wn, const FB_Info_Circuit& fb_info );
   void Annot_call    ( WN *wn, const FB_Info_Call   & fb_info );
+  void Annot_icall   ( WN *wn, const FB_Info_Icall  & fb_info );
   void Annot_switch  ( WN *wn, const FB_Info_Switch & fb_info );
 
   void Annot         ( WN *wn, const FB_EDGE_TYPE type, FB_FREQ freq );
@@ -210,6 +227,7 @@ public:
   void FB_lower_compgoto ( WN *wn_compgoto, WN *wn_xgoto, WN *wn_branch );
 
   void FB_lower_call ( WN *wn_call, WN *wn_new_call );
+  void FB_lower_icall( WN *wn_icall, WN *wn_new_icall, WN * wn_new_call, WN * wn_new_if );
   void FB_lower_return_val ( WN *wn_return_val, WN *wn_return );
 
   void FB_lower_mstore_to_loop ( WN *wn_mstore, WN *wn_loop, INT64 nMoves );
@@ -281,6 +299,9 @@ public:
 extern "C" void dump_fb ( const FEEDBACK *feedback, const WN *wn );
 
 extern FEEDBACK *Cur_PU_Feedback;
+ 
+extern ADDRESS_NAME_MAP PU_Addr_Name_Map;
+extern ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
 
 extern INT
 Convert_Feedback_Info (const FEEDBACK* fb, const WN* tree,

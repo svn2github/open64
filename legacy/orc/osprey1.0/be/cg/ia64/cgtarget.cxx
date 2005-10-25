@@ -2973,8 +2973,10 @@ CGTARG_Dependence_Required(OP *pred_op, OP *succ_op)
 
   case TOP_st8_spill:
   case TOP_mov_f_ar:
+  case TOP_mov_f_ar_m:
   case TOP_ld8_fill:
   case TOP_mov_t_ar_r:
+  case TOP_mov_t_ar_r_m:
     read_write_unat = TRUE ;
     hazard_op = pred_op ;
     break ;
@@ -3018,10 +3020,15 @@ CGTARG_Dependence_Required(OP *pred_op, OP *succ_op)
         (OP_code(hazard_op) == TOP_spadjust && OP_use_sp(other_op)))
       return TRUE;
 
-    // readh/write unat 
+    // read/write unat 
     if (read_write_unat) {
         mTOP hazard_op_code = OP_code (hazard_op) ;
         mTOP other_op_code  = OP_code (other_op) ;
+
+        if (hazard_op_code == TOP_mov_f_ar_m) hazard_op_code = TOP_mov_f_ar;
+        if (hazard_op_code == TOP_mov_t_ar_r_m) hazard_op_code = TOP_mov_t_ar_r;
+        if (other_op_code == TOP_mov_f_ar_m) other_op_code = TOP_mov_f_ar;
+        if (other_op_code == TOP_mov_t_ar_r_m) other_op_code = TOP_mov_t_ar_r;
 
         if (hazard_op_code == TOP_st8_spill  && other_op_code == TOP_mov_f_ar  || 
             hazard_op_code == TOP_mov_f_ar   && other_op_code == TOP_st8_spill || 
@@ -3158,1049 +3165,11 @@ CGTARG_Dependence_Required(OP *pred_op, OP *succ_op)
   
   return FALSE;
 }
-
-#ifndef IPFEC_Enable_New_Targ
-// ??? NOTE: The following and most if not all of Adjust_Latency
-// will be moved into to the targinfo scheduling specification.
-
-static SCHED_INFO_CLASS Sched_Info_Class(OP *op)
+SCHED_INFO_CLASS Sched_Info_Class(OP *op)
 {
-  switch (OP_code(op)) {
-  case TOP_br_call:
-  case TOP_br_r_call:
-  case TOP_brl_call:
-  case TOP_br_cond:
-  case TOP_br_r_cond:
-  case TOP_brl_cond:
-  case TOP_br_ia:
-  case TOP_br_ret:
-  case TOP_br:
-  case TOP_br_r:
-  case TOP_brl:
-    return SIC_BR;
-  case TOP_br_cexit:
-  case TOP_br_cloop:
-  case TOP_br_ctop:
-  case TOP_br_wexit:
-  case TOP_br_wtop:
-    return SIC_BR_B2;
-  case TOP_brp:
-  case TOP_brp_r:
-  case TOP_brp_ret:
-    return SIC_BRP;
-  case TOP_chk_a:
-  case TOP_chk_f_a:
-    return SIC_CHK_ALAT;
-  case TOP_chk_s_i:
-    return SIC_CHK_I;
-  case TOP_chk_f_s:
-  case TOP_chk_s_m:
-    return SIC_CHK_M;
-  case TOP_fclass_nm:
-  case TOP_fclass_nm_unc:
-  case TOP_fclass_m:
-  case TOP_fclass_m_unc:
-  case TOP_fcmp_eq:
-  case TOP_fcmp_lt:
-  case TOP_fcmp_le:
-  case TOP_fcmp_unord:
-  case TOP_fcmp_eq_unc:
-  case TOP_fcmp_lt_unc:
-  case TOP_fcmp_le_unc:
-  case TOP_fcmp_unord_unc:
-  case TOP_fcmp_gt:
-  case TOP_fcmp_gt_unc:
-  case TOP_fcmp_ge:
-  case TOP_fcmp_ge_unc:
-  case TOP_fcmp_neq:
-  case TOP_fcmp_neq_unc:
-  case TOP_fcmp_nlt:
-  case TOP_fcmp_nlt_unc:
-  case TOP_fcmp_nle:
-  case TOP_fcmp_nle_unc:
-  case TOP_fcmp_ngt:
-  case TOP_fcmp_ngt_unc:
-  case TOP_fcmp_nge:
-  case TOP_fcmp_nge_unc:
-  case TOP_fcmp_ord:
-  case TOP_fcmp_ord_unc:
-    return SIC_FCMP;
-  case TOP_fcvt_fx:
-  case TOP_fcvt_fx_trunc:
-  case TOP_fcvt_fxu:
-  case TOP_fcvt_fxu_trunc:
-  case TOP_fcvt_xf:
-    return SIC_FCVTFX;
-  case TOP_ldf8:
-  case TOP_ldf8_r:
-  case TOP_ldf8_i:
-  case TOP_ldfd:
-  case TOP_ldfd_r:
-  case TOP_ldfd_i:
-  case TOP_ldfe:
-  case TOP_ldfe_r:
-  case TOP_ldfe_i:
-  case TOP_ldf_fill:
-  case TOP_ldf_r_fill:
-  case TOP_ldf_i_fill:
-  case TOP_ldfs:
-  case TOP_ldfs_r:
-  case TOP_ldfs_i:
-    return CGTARG_Is_OP_Check_Load(op) ? SIC_FCLD : SIC_FLD;
-  case TOP_ldfp8:
-  case TOP_ldfp8_i:
-  case TOP_ldfpd:
-  case TOP_ldfpd_i:
-  case TOP_ldfps:
-  case TOP_ldfps_i:
-    return CGTARG_Is_OP_Check_Load(op) ? SIC_FCLD : SIC_FLDP;
-  case TOP_fma:
-  case TOP_fma_s:
-  case TOP_fma_d:
-  case TOP_fms:
-  case TOP_fms_s:
-  case TOP_fms_d:
-  case TOP_fnma:
-  case TOP_fnma_s:
-  case TOP_fnma_d:
-  case TOP_fcvt_xuf:
-  case TOP_fcvt_xuf_d:
-  case TOP_fcvt_xuf_s:
-  case TOP_fadd:
-  case TOP_fadd_d:
-  case TOP_fadd_s:
-  case TOP_fmpy:
-  case TOP_fmpy_d:
-  case TOP_fmpy_s:
-  case TOP_fnmpy:
-  case TOP_fnmpy_d:
-  case TOP_fnmpy_s:
-  case TOP_fnorm:
-  case TOP_fnorm_d:
-  case TOP_fnorm_s:
-  case TOP_fsub:
-  case TOP_fsub_d:
-  case TOP_fsub_s:
-    return SIC_FMAC;
-  case TOP_famax:
-  case TOP_famin:
-  case TOP_fand:
-  case TOP_fandcm:
-  case TOP_fmax:
-  case TOP_fmerge_ns:
-  case TOP_fmerge_s:
-  case TOP_fmerge_se:
-  case TOP_fmin:
-  case TOP_fmix_l:
-  case TOP_fmix_lr:
-  case TOP_fmix_r:
-  case TOP_for:
-  case TOP_fpack:
-  case TOP_frcpa:
-  case TOP_frsqrta:
-  case TOP_fselect:
-  case TOP_fswap:
-  case TOP_fswap_nl:
-  case TOP_fswap_nr:
-  case TOP_fsxt_l:
-  case TOP_fsxt_r:
-  case TOP_fxor:
-  case TOP_fabs:
-  case TOP_fnegabs:
-  case TOP_fneg:
-  case TOP_mov_f:
-    return SIC_FMISC;
-  case TOP_fchkf:
-  case TOP_fclrf:
-  case TOP_fsetc:
-    return SIC_FOTHER;
-  case TOP_mov_f_ar_i:
-    return SIC_FRAR_I;
-  case TOP_mov_f_ar_m:
-    return SIC_FRAR_M;
-  case TOP_mov_f_br:
-    return SIC_FRBR;
-  case TOP_mov_f_cr:
-    return SIC_FRCR;
-  case TOP_getf_sig:
-  case TOP_getf_exp:
-  case TOP_getf_s:
-  case TOP_getf_d:
-    return SIC_FRFR;
-  case TOP_mov_f_ip:
-    return SIC_FRIP;
-  case TOP_mov_f_pr:
-    return SIC_FRPR;
-  case TOP_add:
-  case TOP_add_1:
-  case TOP_addl:
-  case TOP_adds:
-  case TOP_shladd:
-  case TOP_sub:
-  case TOP_sub_i:
-  case TOP_sub_1:
-  case TOP_mov_i:
-  case TOP_mov:
-    return SIC_IALU;
-  case TOP_cmp_eq:
-  case TOP_cmp_eq_and:
-  case TOP_cmp_eq_and_orcm:
-  case TOP_cmp_eq_andcm:
-  case TOP_cmp_eq_or:
-  case TOP_cmp_eq_or_andcm:
-  case TOP_cmp_eq_orcm:
-  case TOP_cmp_eq_unc:
-  case TOP_cmp_ge:
-  case TOP_cmp_ge_and:
-  case TOP_cmp_ge_and_orcm:
-  case TOP_cmp_ge_andcm:
-  case TOP_cmp_ge_or:
-  case TOP_cmp_ge_or_andcm:
-  case TOP_cmp_ge_orcm:
-  case TOP_cmp_ge_unc:
-  case TOP_cmp_geu:
-  case TOP_cmp_geu_unc:
-  case TOP_cmp_gt:
-  case TOP_cmp_gt_and:
-  case TOP_cmp_gt_and_orcm:
-  case TOP_cmp_gt_andcm:
-  case TOP_cmp_gt_or:
-  case TOP_cmp_gt_or_andcm:
-  case TOP_cmp_gt_orcm:
-  case TOP_cmp_gt_unc:
-  case TOP_cmp_gtu:
-  case TOP_cmp_gtu_unc:
-  case TOP_cmp_i_eq:
-  case TOP_cmp_i_eq_and:
-  case TOP_cmp_i_eq_and_orcm:
-  case TOP_cmp_i_eq_andcm:
-  case TOP_cmp_i_eq_or:
-  case TOP_cmp_i_eq_or_andcm:
-  case TOP_cmp_i_eq_orcm:
-  case TOP_cmp_i_eq_unc:
-  case TOP_cmp_i_ge:
-  case TOP_cmp_i_ge_unc:
-  case TOP_cmp_i_geu:
-  case TOP_cmp_i_geu_unc:
-  case TOP_cmp_i_gt:
-  case TOP_cmp_i_gt_unc:
-  case TOP_cmp_i_gtu:
-  case TOP_cmp_i_gtu_unc:
-  case TOP_cmp_i_le:
-  case TOP_cmp_i_le_unc:
-  case TOP_cmp_i_leu:
-  case TOP_cmp_i_leu_unc:
-  case TOP_cmp_i_lt:
-  case TOP_cmp_i_lt_unc:
-  case TOP_cmp_i_ltu:
-  case TOP_cmp_i_ltu_unc:
-  case TOP_cmp_i_ne:
-  case TOP_cmp_i_ne_and:
-  case TOP_cmp_i_ne_and_orcm:
-  case TOP_cmp_i_ne_andcm:
-  case TOP_cmp_i_ne_or:
-  case TOP_cmp_i_ne_or_andcm:
-  case TOP_cmp_i_ne_orcm:
-  case TOP_cmp_i_ne_unc:
-  case TOP_cmp_le:
-  case TOP_cmp_le_and:
-  case TOP_cmp_le_and_orcm:
-  case TOP_cmp_le_andcm:
-  case TOP_cmp_le_or:
-  case TOP_cmp_le_or_andcm:
-  case TOP_cmp_le_orcm:
-  case TOP_cmp_le_unc:
-  case TOP_cmp_leu:
-  case TOP_cmp_leu_unc:
-  case TOP_cmp_lt:
-  case TOP_cmp_lt_and:
-  case TOP_cmp_lt_and_orcm:
-  case TOP_cmp_lt_andcm:
-  case TOP_cmp_lt_or:
-  case TOP_cmp_lt_or_andcm:
-  case TOP_cmp_lt_orcm:
-  case TOP_cmp_lt_unc:
-  case TOP_cmp_ltu:
-  case TOP_cmp_ltu_unc:
-  case TOP_cmp_ne:
-  case TOP_cmp_ne_and:
-  case TOP_cmp_ne_and_orcm:
-  case TOP_cmp_ne_andcm:
-  case TOP_cmp_ne_or:
-  case TOP_cmp_ne_or_andcm:
-  case TOP_cmp_ne_orcm:
-  case TOP_cmp_ne_unc:
-  case TOP_cmp_z1_ge_and:
-  case TOP_cmp_z1_ge_and_orcm:
-  case TOP_cmp_z1_ge_andcm:
-  case TOP_cmp_z1_ge_or:
-  case TOP_cmp_z1_ge_or_andcm:
-  case TOP_cmp_z1_ge_orcm:
-  case TOP_cmp_z1_gt_and:
-  case TOP_cmp_z1_gt_and_orcm:
-  case TOP_cmp_z1_gt_andcm:
-  case TOP_cmp_z1_gt_or:
-  case TOP_cmp_z1_gt_or_andcm:
-  case TOP_cmp_z1_gt_orcm:
-  case TOP_cmp_z1_le_and:
-  case TOP_cmp_z1_le_and_orcm:
-  case TOP_cmp_z1_le_andcm:
-  case TOP_cmp_z1_le_or:
-  case TOP_cmp_z1_le_or_andcm:
-  case TOP_cmp_z1_le_orcm:
-  case TOP_cmp_z1_lt_and:
-  case TOP_cmp_z1_lt_and_orcm:
-  case TOP_cmp_z1_lt_andcm:
-  case TOP_cmp_z1_lt_or:
-  case TOP_cmp_z1_lt_or_andcm:
-  case TOP_cmp_z1_lt_orcm:
-  case TOP_cmp_z2_ge_and:
-  case TOP_cmp_z2_ge_and_orcm:
-  case TOP_cmp_z2_ge_andcm:
-  case TOP_cmp_z2_ge_or:
-  case TOP_cmp_z2_ge_or_andcm:
-  case TOP_cmp_z2_ge_orcm:
-  case TOP_cmp_z2_gt_and:
-  case TOP_cmp_z2_gt_and_orcm:
-  case TOP_cmp_z2_gt_andcm:
-  case TOP_cmp_z2_gt_or:
-  case TOP_cmp_z2_gt_or_andcm:
-  case TOP_cmp_z2_gt_orcm:
-  case TOP_cmp_z2_le_and:
-  case TOP_cmp_z2_le_and_orcm:
-  case TOP_cmp_z2_le_andcm:
-  case TOP_cmp_z2_le_or:
-  case TOP_cmp_z2_le_or_andcm:
-  case TOP_cmp_z2_le_orcm:
-  case TOP_cmp_z2_lt_and:
-  case TOP_cmp_z2_lt_and_orcm:
-  case TOP_cmp_z2_lt_andcm:
-  case TOP_cmp_z2_lt_or:
-  case TOP_cmp_z2_lt_or_andcm:
-  case TOP_cmp_z2_lt_orcm:
-  case TOP_cmp4_eq:
-  case TOP_cmp4_eq_and:
-  case TOP_cmp4_eq_and_orcm:
-  case TOP_cmp4_eq_andcm:
-  case TOP_cmp4_eq_or:
-  case TOP_cmp4_eq_or_andcm:
-  case TOP_cmp4_eq_orcm:
-  case TOP_cmp4_eq_unc:
-  case TOP_cmp4_ge:
-  case TOP_cmp4_ge_and:
-  case TOP_cmp4_ge_and_orcm:
-  case TOP_cmp4_ge_andcm:
-  case TOP_cmp4_ge_or:
-  case TOP_cmp4_ge_or_andcm:
-  case TOP_cmp4_ge_orcm:
-  case TOP_cmp4_ge_unc:
-  case TOP_cmp4_geu:
-  case TOP_cmp4_geu_unc:
-  case TOP_cmp4_gt:
-  case TOP_cmp4_gt_and:
-  case TOP_cmp4_gt_and_orcm:
-  case TOP_cmp4_gt_andcm:
-  case TOP_cmp4_gt_or:
-  case TOP_cmp4_gt_or_andcm:
-  case TOP_cmp4_gt_orcm:
-  case TOP_cmp4_gt_unc:
-  case TOP_cmp4_gtu:
-  case TOP_cmp4_gtu_unc:
-  case TOP_cmp4_i_eq:
-  case TOP_cmp4_i_eq_and:
-  case TOP_cmp4_i_eq_and_orcm:
-  case TOP_cmp4_i_eq_andcm:
-  case TOP_cmp4_i_eq_or:
-  case TOP_cmp4_i_eq_or_andcm:
-  case TOP_cmp4_i_eq_orcm:
-  case TOP_cmp4_i_eq_unc:
-  case TOP_cmp4_i_ge:
-  case TOP_cmp4_i_ge_unc:
-  case TOP_cmp4_i_geu:
-  case TOP_cmp4_i_geu_unc:
-  case TOP_cmp4_i_gt:
-  case TOP_cmp4_i_gt_unc:
-  case TOP_cmp4_i_gtu:
-  case TOP_cmp4_i_gtu_unc:
-  case TOP_cmp4_i_le:
-  case TOP_cmp4_i_le_unc:
-  case TOP_cmp4_i_leu:
-  case TOP_cmp4_i_leu_unc:
-  case TOP_cmp4_i_lt:
-  case TOP_cmp4_i_lt_unc:
-  case TOP_cmp4_i_ltu:
-  case TOP_cmp4_i_ltu_unc:
-  case TOP_cmp4_i_ne:
-  case TOP_cmp4_i_ne_and:
-  case TOP_cmp4_i_ne_and_orcm:
-  case TOP_cmp4_i_ne_andcm:
-  case TOP_cmp4_i_ne_or:
-  case TOP_cmp4_i_ne_or_andcm:
-  case TOP_cmp4_i_ne_orcm:
-  case TOP_cmp4_i_ne_unc:
-  case TOP_cmp4_le:
-  case TOP_cmp4_le_and:
-  case TOP_cmp4_le_and_orcm:
-  case TOP_cmp4_le_andcm:
-  case TOP_cmp4_le_or:
-  case TOP_cmp4_le_or_andcm:
-  case TOP_cmp4_le_orcm:
-  case TOP_cmp4_le_unc:
-  case TOP_cmp4_leu:
-  case TOP_cmp4_leu_unc:
-  case TOP_cmp4_lt:
-  case TOP_cmp4_lt_and:
-  case TOP_cmp4_lt_and_orcm:
-  case TOP_cmp4_lt_andcm:
-  case TOP_cmp4_lt_or:
-  case TOP_cmp4_lt_or_andcm:
-  case TOP_cmp4_lt_orcm:
-  case TOP_cmp4_lt_unc:
-  case TOP_cmp4_ltu:
-  case TOP_cmp4_ltu_unc:
-  case TOP_cmp4_ne:
-  case TOP_cmp4_ne_and:
-  case TOP_cmp4_ne_and_orcm:
-  case TOP_cmp4_ne_andcm:
-  case TOP_cmp4_ne_or:
-  case TOP_cmp4_ne_or_andcm:
-  case TOP_cmp4_ne_orcm:
-  case TOP_cmp4_ne_unc:
-  case TOP_cmp4_z1_ge_and:
-  case TOP_cmp4_z1_ge_and_orcm:
-  case TOP_cmp4_z1_ge_andcm:
-  case TOP_cmp4_z1_ge_or:
-  case TOP_cmp4_z1_ge_or_andcm:
-  case TOP_cmp4_z1_ge_orcm:
-  case TOP_cmp4_z1_gt_and:
-  case TOP_cmp4_z1_gt_and_orcm:
-  case TOP_cmp4_z1_gt_andcm:
-  case TOP_cmp4_z1_gt_or:
-  case TOP_cmp4_z1_gt_or_andcm:
-  case TOP_cmp4_z1_gt_orcm:
-  case TOP_cmp4_z1_le_and:
-  case TOP_cmp4_z1_le_and_orcm:
-  case TOP_cmp4_z1_le_andcm:
-  case TOP_cmp4_z1_le_or:
-  case TOP_cmp4_z1_le_or_andcm:
-  case TOP_cmp4_z1_le_orcm:
-  case TOP_cmp4_z1_lt_and:
-  case TOP_cmp4_z1_lt_and_orcm:
-  case TOP_cmp4_z1_lt_andcm:
-  case TOP_cmp4_z1_lt_or:
-  case TOP_cmp4_z1_lt_or_andcm:
-  case TOP_cmp4_z1_lt_orcm:
-  case TOP_cmp4_z2_ge_and:
-  case TOP_cmp4_z2_ge_and_orcm:
-  case TOP_cmp4_z2_ge_andcm:
-  case TOP_cmp4_z2_ge_or:
-  case TOP_cmp4_z2_ge_or_andcm:
-  case TOP_cmp4_z2_ge_orcm:
-  case TOP_cmp4_z2_gt_and:
-  case TOP_cmp4_z2_gt_and_orcm:
-  case TOP_cmp4_z2_gt_andcm:
-  case TOP_cmp4_z2_gt_or:
-  case TOP_cmp4_z2_gt_or_andcm:
-  case TOP_cmp4_z2_gt_orcm:
-  case TOP_cmp4_z2_le_and:
-  case TOP_cmp4_z2_le_and_orcm:
-  case TOP_cmp4_z2_le_andcm:
-  case TOP_cmp4_z2_le_or:
-  case TOP_cmp4_z2_le_or_andcm:
-  case TOP_cmp4_z2_le_orcm:
-  case TOP_cmp4_z2_lt_and:
-  case TOP_cmp4_z2_lt_and_orcm:
-  case TOP_cmp4_z2_lt_andcm:
-  case TOP_cmp4_z2_lt_or:
-  case TOP_cmp4_z2_lt_or_andcm:
-  case TOP_cmp4_z2_lt_orcm:
-    return SIC_ICMP;
-  case TOP_and:
-  case TOP_and_i:
-  case TOP_andcm:
-  case TOP_andcm_i:
-  case TOP_or:
-  case TOP_or_i:
-  case TOP_xor:
-  case TOP_xor_i:
-    return SIC_ILOG;
-  case TOP_dep:
-  case TOP_dep_i:
-  case TOP_dep_i_z:
-  case TOP_dep_z:
-  case TOP_extr:
-  case TOP_extr_u:
-  case TOP_shrp:
-  case TOP_shl_i:
-  case TOP_shr_i:
-  case TOP_shr_i_u:
-    return SIC_ISHF;
-  case TOP_ld1:
-  case TOP_ld1_i:
-  case TOP_ld1_r:
-  case TOP_ld2:
-  case TOP_ld2_i:
-  case TOP_ld2_r:
-  case TOP_ld4:
-  case TOP_ld4_i:
-  case TOP_ld4_r:
-  case TOP_ld8:
-  case TOP_ld8_i:
-  case TOP_ld8_r:
-  case TOP_ld8_fill:
-  case TOP_ld8_i_fill:
-  case TOP_ld8_r_fill:
-    return CGTARG_Is_OP_Check_Load(op) ? SIC_CLD : SIC_LD;
-  case TOP_lfetch:
-  case TOP_lfetch_excl:
-  case TOP_lfetch_fault:
-  case TOP_lfetch_fault_excl:
-  case TOP_lfetch_i:
-  case TOP_lfetch_i_excl:
-  case TOP_lfetch_i_fault:
-  case TOP_lfetch_i_fault_excl:
-  case TOP_lfetch_r:
-  case TOP_lfetch_r_excl:
-  case TOP_lfetch_r_fault:
-  case TOP_lfetch_r_fault_excl:
-    return SIC_LFETCH;
-  case TOP_movl:
-    return SIC_LONG_I;
-  case TOP_padd1:
-  case TOP_padd2:
-  case TOP_padd1_sss:
-  case TOP_padd2_sss:
-  case TOP_padd1_uuu:
-  case TOP_padd2_uuu:
-  case TOP_padd1_uus:
-  case TOP_padd2_uus:
-  case TOP_padd4:
-  case TOP_pavg1:
-  case TOP_pavg1_raz:
-  case TOP_pavg2:
-  case TOP_pavg2_raz:
-  case TOP_pavgsub1:
-  case TOP_pavgsub2:
-  case TOP_pcmp1_eq:
-  case TOP_pcmp2_eq:
-  case TOP_pcmp4_eq:
-  case TOP_pcmp1_gt:
-  case TOP_pcmp2_gt:
-  case TOP_pcmp4_gt:
-  case TOP_pshladd2:
-  case TOP_pshradd2:
-  case TOP_psub1:
-  case TOP_psub2:
-  case TOP_psub1_sss:
-  case TOP_psub2_sss:
-  case TOP_psub1_uuu:
-  case TOP_psub2_uuu:
-  case TOP_psub1_uus:
-  case TOP_psub2_uus:
-  case TOP_psub4:
-    return SIC_MMALU_A;
-  case TOP_pmax1_u:
-  case TOP_pmax2:
-  case TOP_pmin1_u:
-  case TOP_pmin2:
-  case TOP_psad1:
-    return SIC_MMALU_I;
-  case TOP_pmpy2_l:
-  case TOP_pmpy2_r:
-  case TOP_pmpyshr2:
-  case TOP_pmpyshr2_u:
-  case TOP_popcnt:
-    return SIC_MMMUL;
-  case TOP_mix1_l:
-  case TOP_mix1_r:
-  case TOP_mix2_l:
-  case TOP_mix2_r:
-  case TOP_mix4_l:
-  case TOP_mix4_r:
-  case TOP_mux1:
-  case TOP_mux2:
-  case TOP_pack2_sss:
-  case TOP_pack2_uss:
-  case TOP_pack4_sss:
-  case TOP_pshl2:
-  case TOP_pshl2_i:
-  case TOP_pshl4:
-  case TOP_pshl4_i:
-  case TOP_pshr2:
-  case TOP_pshr2_u:
-  case TOP_pshr2_i:
-  case TOP_pshr2_i_u:
-  case TOP_pshr4:
-  case TOP_pshr4_u:
-  case TOP_pshr4_i:
-  case TOP_pshr4_i_u:
-  case TOP_shl:
-  case TOP_shr:
-  case TOP_shr_u:
-  case TOP_unpack1_h:
-  case TOP_unpack1_l:
-  case TOP_unpack2_h:
-  case TOP_unpack2_l:
-  case TOP_unpack4_h:
-  case TOP_unpack4_l:
-    return SIC_MMSHF;
-  case TOP_break_b:
-  case TOP_nop_b:
-    return SIC_NOP_B;
-  case TOP_break_i:
-  case TOP_nop_i:
-    return SIC_NOP_I;
-  case TOP_break_m:
-  case TOP_nop_m:
-    return SIC_NOP_M;
-  case TOP_break_f:
-  case TOP_nop_f:
-    return SIC_NOP_F;
-  case TOP_break_x:
-  case TOP_nop_x:
-    return SIC_NOP_X;
-  case TOP_addp4:
-  case TOP_addp4_i:
-  case TOP_shladdp4:
-    return SIC_PNT;
-  case TOP_clrrrb:
-  case TOP_clrrrb_pr:
-  case TOP_cover:
-    return SIC_RSE_B;
-  case TOP_flushrs:
-  case TOP_loadrs:
-    return SIC_RSE_M;
-  case TOP_cmpxchg1:
-  case TOP_cmpxchg2:
-  case TOP_cmpxchg4:
-  case TOP_cmpxchg8:
-  case TOP_fetchadd4:
-  case TOP_fetchadd8:
-  case TOP_xchg1:
-  case TOP_xchg2:
-  case TOP_xchg4:
-  case TOP_xchg8:
-    return SIC_SEM;
-  case TOP_fpcvt_fx:
-  case TOP_fpcvt_fx_trunc:
-  case TOP_fpcvt_fxu:
-  case TOP_fpcvt_fxu_trunc:
-    return SIC_SFCVTFX;
-  case TOP_fpma:
-  case TOP_fpms:
-  case TOP_fpnma:
-  case TOP_fpmpy:
-  case TOP_fpnmpy:
-    return SIC_SFMAC;
-  case TOP_fpmerge_se:
-    return SIC_SFMERGESE;
-  case TOP_fpamax:
-  case TOP_fpamin:
-  case TOP_fpcmp_eq:
-  case TOP_fpcmp_ge:
-  case TOP_fpcmp_gt:
-  case TOP_fpcmp_le:
-  case TOP_fpcmp_lt:
-  case TOP_fpcmp_neq:
-  case TOP_fpcmp_nge:
-  case TOP_fpcmp_ngt:
-  case TOP_fpcmp_nle:
-  case TOP_fpcmp_nlt:
-  case TOP_fpcmp_ord:
-  case TOP_fpcmp_unord:
-  case TOP_fpmax:
-  case TOP_fpmerge_ns:
-  case TOP_fpmerge_s:
-  case TOP_fpmin:
-  case TOP_fprcpa:
-  case TOP_fprsqrta:
-  case TOP_fpneg:
-  case TOP_fpnegabs:
-  case TOP_fpabs:
-    return SIC_SFMISC;
-  case TOP_stf8:
-  case TOP_stf8_i:
-  case TOP_stfd:
-  case TOP_stfd_i:
-  case TOP_stfe:
-  case TOP_stfe_i:
-  case TOP_stfs:
-  case TOP_stfs_i:
-  case TOP_stf_spill:
-  case TOP_stf_i_spill:
-    return SIC_STF;
-  case TOP_st1:
-  case TOP_st1_i:
-  case TOP_st2:
-  case TOP_st2_i:
-  case TOP_st4:
-  case TOP_st4_i:
-  case TOP_st8:
-  case TOP_st8_i:
-  case TOP_st8_spill:
-  case TOP_st8_i_spill:
-    return SIC_ST;
-  case TOP_bsw_0:
-  case TOP_bsw_1:
-  case TOP_rfi:
-    return SIC_SYST_B2;
-  case TOP_epc:
-    return SIC_SYST_B;
-  case TOP_mf_a:
-  case TOP_alloc:
-  case TOP_alloc_3:
-  case TOP_fc:
-  case TOP_itc_d:
-  case TOP_itc_i:
-  case TOP_itr_d:
-  case TOP_itr_i:
-  case TOP_probe_i_r:
-  case TOP_probe_i_w:
-  case TOP_probe_r:
-  case TOP_probe_r_fault:
-  case TOP_probe_rw_fault:
-  case TOP_probe_w:
-  case TOP_probe_w_fault:
-  case TOP_ptc_e:
-  case TOP_ptc_g:
-  case TOP_ptc_ga:
-  case TOP_ptc_l:
-  case TOP_ptr_d:
-  case TOP_ptr_i:
-  case TOP_rum:
-  case TOP_sum:
-  case TOP_rsm:
-  case TOP_ssm:
-  case TOP_mov_t_psr:
-  case TOP_tak:
-  case TOP_tpa:
-  case TOP_mov_t_rr:
-  case TOP_mov_t_pkr:
-  case TOP_thash:
-  case TOP_ttag:
-  case TOP_mov_f_psr:
-  case TOP_mov_f_rr:
-  case TOP_mov_f_pkr:
-  case TOP_mov_t_pmd:
-  case TOP_mov_t_pmc:
-  case TOP_mov_t_ibr:
-  case TOP_mov_t_dbr:
-  case TOP_mov_f_pmd:
-  case TOP_mov_f_pmc:
-  case TOP_mov_f_ibr:
-  case TOP_mov_f_dbr:
-  case TOP_mov_f_cpuid:
-    return SIC_SYST_M0;
-  case TOP_fwb:
-  case TOP_invala:
-  case TOP_invala_e:
-  case TOP_invala_f_e:
-  case TOP_mf:
-  case TOP_srlz_d:
-  case TOP_srlz_i:
-  case TOP_sync_i:
-    return SIC_SYST_M;
-  case TOP_tbit_nz:
-  case TOP_tbit_nz_and:
-  case TOP_tbit_nz_or:
-  case TOP_tbit_nz_or_andcm:
-  case TOP_tbit_nz_unc:
-  case TOP_tbit_z:
-  case TOP_tbit_z_and:
-  case TOP_tbit_z_or:
-  case TOP_tbit_z_or_andcm:
-  case TOP_tbit_z_unc:
-    return SIC_TBIT;
-  case TOP_mov_t_ar_r_i:
-  case TOP_mov_t_ar_i_i:
-    return SIC_TOAR_I;
-  case TOP_mov_t_ar_r_m:
-  case TOP_mov_t_ar_i_m:
-    return SIC_TOAR_M;
-  case TOP_mov_t_br:
-  case TOP_mov_t_br_i:
-  case TOP_mov_t_br_ret:
-    return SIC_TOBR;
-  case TOP_mov_t_cr:
-    return SIC_TOCR;
-  case TOP_setf_exp:
-  case TOP_setf_d:
-  case TOP_setf_s:
-  case TOP_setf_sig:
-    return SIC_TOFR;
-  case TOP_mov_t_pr:
-  case TOP_mov_t_pr_i:
-    return SIC_TOPR;
-  case TOP_xma_h:
-  case TOP_xma_hu:
-  case TOP_xma_l:
-  case TOP_xma_lu:
-  case TOP_xmpy_h:
-  case TOP_xmpy_hu:
-  case TOP_xmpy_l:
-  case TOP_xmpy_lu:
-    return SIC_XMA;
-  case TOP_czx1_l:
-  case TOP_czx1_r:
-  case TOP_czx2_l:
-  case TOP_czx2_r:
-  case TOP_sxt1:
-  case TOP_sxt2:
-  case TOP_sxt4:
-  case TOP_zxt1:
-  case TOP_zxt2:
-  case TOP_zxt4:
-    return SIC_XTD;
-  case TOP_mov_t_psrum:
-  case TOP_mov_f_psrum:
-  case TOP_tnat_z:
-  case TOP_tnat_z_unc:
-  case TOP_tnat_z_and:
-  case TOP_tnat_nz_and:
-  case TOP_tnat_z_or:
-  case TOP_tnat_nz_or:
-  case TOP_tnat_z_or_andcm:
-  case TOP_tnat_nz_or_andcm:
-  case TOP_tnat_nz:
-  case TOP_tnat_nz_unc:
-    return SIC_UNKNOWN;
-  case TOP_break:
-  case TOP_nop:
-  case TOP_mov_f_ar:
-  case TOP_mov_t_ar_r:
-  case TOP_mov_t_ar_i:
-  case TOP_chk_s:
-  case TOP_asm:
-  case TOP_intrncall:
-  case TOP_spadjust:
-  case TOP_copy_br:
-  case TOP_dfixup:
-  case TOP_ffixup:
-  case TOP_ifixup:
-  case TOP_begin_pregtn:
-  case TOP_end_pregtn:
-  case TOP_fwd_bar:
-  case TOP_bwd_bar:
-    return SIC_DUMMY;
-  }
-
-  FmtAssert(FALSE, ("no scheduling class for %s", TOP_Name(OP_code(op))));
-  /*NOTREACHED*/
-}
-
-
-static void
-Adjust_Latency_FRAR(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, INT *latency)
-{
-  TN *src = OP_opnd(pred_op,1);
-  INT reg = REGISTER_machine_id(TN_register_class(src), TN_register(src));
-  switch (reg) {
-  case 32:	// ar.ccv
-  case 36:	// ar.unat
-  case 19:	// ar.rnat
-    *latency = 6;
-    break;
-  case 0:	// ar.k0
-  case 1:	// ar.k1
-  case 2:	// ar.k2
-  case 3:	// ar.k3
-  case 4:	// ar.k4
-  case 5:	// ar.k5
-  case 6:	// ar.k6
-  case 7:	// ar.k7
-  case 17:	// ar.bsp
-  case 18:	// ar.bpstore
-  case 16:	// ar.rsc
-  case 40:	// ar.fpsr
-  case 24:	// ar.eflag
-  case 25:	// ar.csd
-  case 26:	// ar.ssd
-  case 27:	// ar.cflg
-  case 28:	// ar.fsr
-    *latency = 13;
-    break;
-  case 65:	// ar.lc
-  case 66:	// ar.ec
-  case 64:	// ar.pfs
-    *latency = 2;
-    break;
-  case 44:	// ar.itc
-  case 29:	// ar.fir
-    *latency = 38;
-    break;
-  case 30:	// ar.fdr
-    *latency = 13;
-    break;
-  case 21:	// ar.fcr
-    *latency = 38;
-    break;
-  }
-}
-
-
-static void
-Adjust_Latency_TOAR(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, INT *latency)
-{
-  TN *dst = OP_result(pred_op,0);
-  INT reg = REGISTER_machine_id(TN_register_class(dst), TN_register(dst));
-  switch (reg) {
-  case 32:	// ar.ccv
-  case 36:	// ar.unat
-    *latency = 5;
-    break;
-  case 65:	// ar.lc
-  case 66:	// ar.ec
-    *latency = 1;
-    break;
-  case 19:	// ar.rnat
-    *latency = 5;	// ??? 9 to spill/fill
-			// ??? 5 to explicit read
-    break;
-  case 0:	// ar.k0
-  case 1:	// ar.k1
-  case 2:	// ar.k2
-  case 3:	// ar.k3
-  case 4:	// ar.k4
-  case 5:	// ar.k5
-  case 6:	// ar.k6
-  case 7:	// ar.k7
-    *latency = 2;
-    break;
-  case 18:	// ar.bpstore
-    *latency = 5;	// ??? 10 to spill/fill
-			// ??? 5 to implicit ar.rnat accesses
-    break;
-  case 16:	// ar.rsc
-    // 10 to spill/fill
-    // if immed form 1 to implicit rnat/bpstore access
-    // if reg form 10 to implicit rnat/bpstore access
-    if (   OP_code(pred_op) == TOP_mov_t_ar_i_i 
-	|| OP_code(pred_op) == TOP_mov_t_ar_i_m)
-    {
-      *latency = 1;
-    } else {
-      *latency = 10;
-    }
-    break;
-  case 40:	// ar.fpsr
-    *latency = 2;	// ??? 9 to FP op
-			// ??? 2 to explicit read
-    break;
-  case 24:	// ar.eflag
-  case 25:	// ar.csd
-  case 26:	// ar.ssd
-  case 27:	// ar.cflg
-    *latency = 2;
-    break;
-  case 44:	// ar.itc
-    *latency = 35;
-    break;
-  case 29:	// ar.fir
-  case 21:	// ar.fcr
-    *latency = 4;
-    break;
-  case 28:	// ar.fsr
-    *latency = 23;
-    break;
-  case 64:	// ar.pfs
-    *latency = 0;	// ??? 0 to br.ret
-    break;
-  case 30:	// ar.fdr
-    *latency = 2;
-    break;
-  }
-}
-
-
-static void
-Adjust_Latency_FRCR(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, INT *latency)
-{
-  TN *src = OP_opnd(pred_op,1);
-  INT reg = REGISTER_machine_id(TN_register_class(src), TN_register(src));
-  switch (reg) {
-  case 17:	// cr.isr
-  case 19:	// cr.iip
-  case 22:	// cr.iipa
-  case 24:	// cr.iim
-  case 2:	// cr.iva
-    *latency = 2;
-    break;
-  case 21:	// cr.itir
-  case 20:	// cr.ifa
-  case 23:	// cr.ifs
-  case 16:	// cr.ipsr
-  case 0:	// cr.dcr
-  case 25:	// cr.iha
-  case 8:	// cr.pta
-    *latency = 13;
-    break;
-  case 1:	// cr.itm
-  case 64:	// cr.lid
-  case 65:	// cr.ivr
-  case 66:	// cr.tpr
-  case 67:	// cr.eoi
-  case 68:	// cr.iir0
-  case 69:	// cr.iir1
-  case 70:	// cr.iir2
-  case 71:	// cr.iir3
-  case 72:	// cr.itv
-  case 73:	// cr.pmv
-  case 74:	// cr.cmcv
-  case 80:	// cr.lrr0
-  case 81:	// cr.lrr1
-    *latency = 38;
-    break;
-  }
-}
-
-
-static void
-Adjust_Latency_TOCR(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, INT *latency)
-{
-  TN *dst = OP_result(pred_op,0);
-  INT reg = REGISTER_machine_id(TN_register_class(dst), TN_register(dst));
-  switch (reg) {
-  case 17:	// cr.isr
-  case 19:	// cr.iip
-  case 22:	// cr.iipa
-    *latency = 5;
-    break;
-  case 24:	// cr.iim
-    *latency = 10;
-    break;
-  case 2:	// cr.iva
-    *latency = 5;
-    break;
-  case 21:	// cr.itir
-  case 20:	// cr.ifa
-    *latency = 10;	// ??? 5 to itc/itr
-			// ??? 10 to srlz
-    break;
-  case 23:	// cr.ifs
-  case 16:	// cr.ipsr
-    *latency = 10;
-    break;
-  case 0:	// cr.dcr
-    *latency = 5;
-    break;
-  case 25:	// cr.iha
-  case 8:	// cr.pta
-    *latency = 10;
-    break;
-  case 1:	// cr.itm
-  case 64:	// cr.lid
-  case 65:	// cr.ivr
-  case 67:	// cr.eoi
-  case 72:	// cr.itv
-  case 73:	// cr.pmv
-  case 74:	// cr.cmcv
-  case 80:	// cr.lrr0
-  case 81:	// cr.lrr1
-    *latency = 35;
-    break;
-  }
-}
-
+  BOOL is_chk = CGTARG_Is_OP_Check_Load(op);  
+  return TARG_Sched_Info_Class(OP_code(op), is_chk);
+} 
 
 /* ====================================================================
  *
@@ -4213,231 +3182,47 @@ Adjust_Latency_TOCR(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, INT 
 void
 CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, INT *latency)
 {
+  INT src_reg, dst_reg;
+  BOOL pred_is_chk, succ_is_chk;
   const TOP pred_code = OP_code(pred_op);
   const TOP succ_code = OP_code(succ_op);
-  const SCHED_INFO_CLASS pred_class = Sched_Info_Class(pred_op);
-  const SCHED_INFO_CLASS succ_class = Sched_Info_Class(succ_op);
+  
 
-  switch (pred_class) {
-  case SIC_FRAR_I:
-  case SIC_FRAR_M:
-    // From-AR register latency is determined by source register
-    Adjust_Latency_FRAR(pred_op, succ_op, kind, opnd, latency);
-
-    switch (succ_class) {
-    case SIC_MMMUL:
-    case SIC_MMSHF:
-    case SIC_MMALU_A:
-    case SIC_MMALU_I:
-      // The latency of a FRxx instruction to a MMxxx instruction is 
-      // one cycle additional.
-      *latency += 1;
-      break;
-    }
-    break;
-  case SIC_TOAR_I:
-  case SIC_TOAR_M:
-    // To-AR register latency is determined by result register
-    Adjust_Latency_TOAR(pred_op, succ_op, kind, opnd, latency);
-
-    // The latency of a TOBR, TOPR or TOAR (pfs only) instruction to
-    // a BR instruction is zero.
-    if (   TN_register(OP_result(pred_op,0)) == REGISTER_pfs
-	&& succ_class == SIC_BR) *latency = 0;
-    break;
-  case SIC_FRCR:
-    // From-CR register latency is determined by source register
-    Adjust_Latency_FRCR(pred_op, succ_op, kind, opnd, latency);
-
-    switch (succ_class) {
-    case SIC_MMMUL:
-    case SIC_MMSHF:
-    case SIC_MMALU_A:
-    case SIC_MMALU_I:
-      // The latency of a FRxx instruction to a MMxxx instruction is 
-      // one cycle additional.
-      *latency += 1;
-      break;
-    }
-    break;
-  case SIC_TOCR:
-    // To-CR register latency is determined by result register
-    Adjust_Latency_TOCR(pred_op, succ_op, kind, opnd, latency);
-    break;
-  case SIC_FCMP:
-  case SIC_ICMP:
-  case SIC_TBIT:
-    // The latency of predicate setting instruction to a dependent
-    // branch is one cycle less than to a non-branch.
-    if (succ_class == SIC_BR) *latency -= 1;
-    break;
-  case SIC_IALU:
-  case SIC_ILOG:
-    switch (succ_class) {
-    case SIC_LD:
-    case SIC_CLD:
-    case SIC_FLD:
-    case SIC_FLDP:
-    case SIC_FCLD:
-    case SIC_ST:
-    case SIC_STF:
-      // The latency of an I-slot IALU or any ILOG instruction to the 
-      // address register of a LD/ST is one additional cycle.
-      if (   (pred_class == SIC_ILOG || EXEC_PROPERTY_is_I_Unit(pred_code))
-	  && TOP_Find_Operand_Use(succ_code, OU_base) == opnd) *latency += 1;
-      break;
-    case SIC_MMMUL:
-    case SIC_MMSHF:
-    case SIC_MMALU_A:
-    case SIC_MMALU_I:
-      // The latency of an IALU/ILOG instruction to an MMMUL, MMSHF,
-      // or MMALU instruction is 2 additional cycles.
-      *latency += 2;
-      break;
-    }
-    break;
-  case SIC_LD:
-    switch (succ_class) {
-    case SIC_LD:
-    case SIC_ST:
-      // The latency of a LD instruction to the address register 
-      // of a LD/ST is one additional cycle.
-      if (TOP_Find_Operand_Use(succ_code, OU_base) == opnd) *latency += 1;
-      break;
-    case SIC_MMMUL:
-    case SIC_MMSHF:
-    case SIC_MMALU_A:
-    case SIC_MMALU_I:
-      // The latency of a LD instruction to an MMxxx instruction
-      // one additional cycle.
-      *latency += 1;
-      break;
-    }
-    break;
-  case SIC_MMMUL:
-  case SIC_MMSHF:
-  case SIC_MMALU_A:
-  case SIC_MMALU_I:
-    switch (succ_class) {
-    case SIC_IALU:
-    case SIC_ILOG:
-    case SIC_ISHF:
-    case SIC_ST:
-    case SIC_LD:
-      // The latency of an MMxxx instruction to an IALU, ILOG, ISHF, ST or LD
-      // instruction is 4 cycles if >= 4 cycles apart, otherwise 10 cycles.
-      *latency = 4;
-      break;
-    }
-    break;
-  case SIC_TOBR:
-  case SIC_TOPR:
-  // case SIC_TOAR_I:	// handled with other TOAR_I exceptions
-  // case SIC_TOAR_M:	// handled with other TOAR_M exceptions
-    // The latency of a TOBR, TOPR or TOAR (pfs only) instruction to
-    // a BR instruction is zero.
-    if (succ_class == SIC_BR) *latency = 0;
-    break;
-  case SIC_FRBR:
-  // case SIC_FRCR:	// handled with other FRCR exceptions
-  case SIC_FRIP:
-  // case SIC_FRAR_I:	// handled with other FRAR_I exceptions
-  // case SIC_FRAR_M:	// handled with other FRAR_M exceptions
-    switch (succ_class) {
-    case SIC_MMMUL:
-    case SIC_MMSHF:
-    case SIC_MMALU_A:
-    case SIC_MMALU_I:
-      // The latency of a FRxx instruction to a MMxxx instruction is 
-      // one cycle additional.
-      *latency += 1;
-      break;
-    }
-    break;
-  case SIC_FMAC:
-    switch (succ_class) {
-    case SIC_FMISC:
-    case SIC_FCVTFX:
-    case SIC_XMA:
-      // The latency of a FMAC instruction to a FMISC, FCVTFX or XMA
-      // instruction is two cycle additionals.
-      *latency += 2;
-      break;
-    case SIC_STF:
-    case SIC_FRFR:
-      // The latency of an FP writing instruction (except loads)
-      // to an STF or FRFR instruction is three cycles additional.
-      *latency += 3;
-      break;
-    case SIC_SFCVTFX:
-    case SIC_SFMAC:
-    case SIC_SFMERGESE:
-    case SIC_SFMISC:
-      // The latency of an Fxxx (64/82-bit floating point) instruction
-      // to an SFxxx (32-bit parallel floating point) instruction is
-      // two cycles additional.
-      *latency += 2;
-      break;
-    }
-    break;
-  case SIC_SFCVTFX:
-  case SIC_SFMAC:
-  case SIC_SFMERGESE:
-  case SIC_SFMISC:
-    switch (succ_class) {
-    case SIC_SFMISC:
-	// The latency of an SFMAC instruction to an SFMISC instruction is
-	// two cycles additional.
-	if (pred_class == SIC_SFMAC) *latency += 2;
-	break;
-    case SIC_FCLD:
-    case SIC_FCMP:
-    case SIC_FCVTFX:
-    case SIC_FLD:
-    case SIC_FLDP:
-    case SIC_FMAC:
-    case SIC_FMISC:
-    case SIC_FOTHER:
-      // The latency of an SFxxx (32-bit parallel floating point) instruction
-      // to an Fxxx (64/82-bit floating point) instruction is
-      // two cycles additional.
-      *latency += 2;
-      break;
-    }
-    break;
-  // case SIC_FCMP:	// not relevant since it doesn't write an FP register
-  case SIC_FCVTFX:
-  case SIC_FLD:
-  // case SIC_FMAC:	// handled with other FMAC exceptions
-  case SIC_FLDP:
-  case SIC_FMISC:
-  case SIC_FOTHER:
-    switch (succ_class) {
-    case SIC_STF:
-    case SIC_FRFR:
-      if (pred_class != SIC_FLD && pred_class != SIC_FLDP) {
-	// The latency of an FP writing instruction (except loads)
-	// to an STF or FRFR instruction is three cycles additional.
-	*latency += 3;
-      }
-      break;
-    case SIC_SFCVTFX:
-    case SIC_SFMAC:
-    case SIC_SFMERGESE:
-    case SIC_SFMISC:
-      // The latency of an Fxxx (64/82-bit floating point) instruction
-      // to an SFxxx (32-bit parallel floating point) instruction is
-      // two cycles additional.
-      *latency += 2;
-      break;
-    }
-    break;
-  case SIC_CLD:
-  case SIC_FCLD:
-    // All dependences from check load instructions are zero.
-    *latency = 0;
-    break;
+  if (OP_opnds(pred_op) > 1) {
+      TN *src = OP_opnd(pred_op,1);
+      if (TN_is_dedicated(src))
+          src_reg = REGISTER_machine_id(TN_register_class(src), TN_register(src));
   }
+  if (OP_results(pred_op) > 0) {
+      TN *dst = OP_result(pred_op,0);
+      if (TN_is_dedicated(dst))
+          dst_reg = REGISTER_machine_id(TN_register_class(dst), TN_register(dst));
+  }
+  
+  pred_is_chk = CGTARG_Is_OP_Check_Load(pred_op);  
+  succ_is_chk = CGTARG_Is_OP_Check_Load(succ_op);
+  TARG_Adjust_Latency(pred_code, succ_code, src_reg, dst_reg, opnd, latency, 
+                      pred_is_chk, succ_is_chk);
+  
+  // TOP_alloc only cannot place one group with flushrs,loadrs,br.call,br1.call
+  // br.ia,br.ret,clrrrb,cover,rfi;
+  if (pred_code == TOP_alloc && OP_def_use_stack_regs(succ_op)) {
+       *latency = 0;
+  }
+  if (pred_code == TOP_alloc &&
+     (succ_code == TOP_flushrs ||
+     succ_code == TOP_br_cexit||
+     succ_code == TOP_br_ctop ||
+     succ_code == TOP_br_wexit ||
+     succ_code == TOP_br_wtop ||
+     succ_code == TOP_br_call ||
+     succ_code == TOP_br_ia ||
+     succ_code == TOP_br_ret ||
+     succ_code == TOP_clrrrb ||
+     succ_code == TOP_clrrrb_pr ||
+     succ_code == TOP_cover ||
+     succ_code == TOP_rfi ))
+       *latency = 1;
 
   // LD -> LD => 0 (for memory dependences)
   // Since IA-64 preserves the order of execution of loads in an 
@@ -4474,8 +3259,58 @@ CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, IN
       if (id == CGTARG_f0_unit_id) *latency = MAX(1, *latency);
     }
   }
+  // REGIN dependence when pred op is an mov_f_ar or mov_t_ar pesudo op
+  // they can not be the same cycle
+  if (kind == CG_DEP_REGIN &&
+      (OP_code(pred_op) == TOP_mov_f_ar ||
+      OP_code(pred_op) == TOP_mov_t_ar_r ||
+      OP_code(pred_op) == TOP_mov_t_ar_i))
+       *latency = MAX(1, *latency);
+
+  if ( (*latency) < 0 && kind == CG_DEP_POSTCHK)
+    *latency =1;
+
+  // When pred op is a mov_t_pr_i and succ op is a cmp_i_eq,
+  // ( e.g. pred_op : mov pr.rot=0 ; succ_op : cmp.eq p17,p0=0,r0 )
+  // We manually adjust the latency between them to 1, so that they can not
+  // be scheduled into the same cycle.
+  if (kind == CG_DEP_MISC &&
+      (OP_code(pred_op)==TOP_mov_t_pr_i) &&
+      (OP_code(succ_op)==TOP_cmp_i_eq) )
+    *latency = MAX(1, *latency);
 }
-#endif /* end of ifndef IPFEC_Enable_New_Targ */
+
+BOOL
+Is_MMX_Dependency (OP* pred_op, OP* succ_op, CG_DEP_KIND kind) {
+        
+    if (kind != CG_DEP_REGIN) { return FALSE; }
+
+    switch (Sched_Info_Class(pred_op)) {
+	case SIC_MMALU_A:
+	case SIC_MMALU_I:
+	case SIC_MMMUL:
+    case SIC_MMSHF:
+        break;
+    default:
+        return FALSE;
+    }
+
+    switch (Sched_Info_Class(succ_op)) {
+	case SIC_IALU:
+	case SIC_ISHF:
+    case SIC_ILOG:
+    case SIC_LD:
+	case SIC_ST:
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+INT32
+MMX_Dep_Latency (void) { 
+    return 4;
+}
 
 /* ====================================================================
  *
@@ -5621,7 +4456,7 @@ OP *OP_Replace_With_Noop(BB *bb, OP *op)
 void
 Fix_MM_Latency ( BB *bb, TOP_SET *src_op_class, TOP_SET *tgt_op_class, UINT8 cycles_apart)
 {
-  UINT i, j, cycles = 0;
+  UINT i, j, k, cycles = 0;
   OP *op, *src_op, *tgt_op;
   ISA_EXEC_UNIT_PROPERTY unit;
   
@@ -5701,6 +4536,6 @@ Fix_MM_Latency ( BB *bb, TOP_SET *src_op_class, TOP_SET *tgt_op_class, UINT8 cyc
     op = src_op;
     cycles = 0;
     }
-  } /* ?FOR_ALL_BB_OPs? */ 
+  } /* ?FOR_ALL_BB_OPs_FWD? */ 
 }
 

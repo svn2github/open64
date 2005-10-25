@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -41,65 +41,64 @@
 
 #include "proc_gen_new.h"
 
-static const char description[]= "\
-/* ====================================================================\n\
- * ====================================================================\n\
- *\n\
- * Description:\n\
- *\n\
- *   A description of the PROC (actually just an enum of all the processors).\n\
- *   The description exports the following:\n\
- *\n\
- *   typedef (enum) PROCESSOR\n\
- *      Contains all the target processors.  Their names have the form\n\
- *      PROCESSOR_<name>.\n\
- *\n\
- *   const PROCESSOR PROCESSOR_UNDEFINED\n\
- *      Useful value guaranteed not to be a valid PROCESSOR.\n\
- *\n\
- *   const int PROCESSOR_count\n\
- *      Gives the number of processors.\n\
- *\n\
- *   PROCESSOR PROCESSOR_Value\n\
- *      The current processor.\n\
- *\n\
- *   const char* PROCESSOR_Name(PROCESSOR topcode)\n\
- *      Returns a name for the given PROCESSOR.\n\
- *\n\
- * ====================================================================\n\
- * ====================================================================\n\
- */";
+static const char* const description[]= {
+"/* ====================================================================",
+" * ====================================================================",
+" *",
+" * Description:",
+" *",
+" *   A description of the PROC (actually just an enum of all the processors).",
+" *   The description exports the following:",
+" *",
+" *   typedef (enum) PROCESSOR",
+" *      Contains all the target processors.  Their names have the form",
+" *      PROCESSOR_<name>.",
+" *",
+" *   const PROCESSOR PROCESSOR_UNDEFINED",
+" *      Useful value guaranteed not to be a valid PROCESSOR.",
+" *",
+" *   const int PROCESSOR_count",
+" *      Gives the number of processors.",
+" *",
+" *   PROCESSOR PROCESSOR_Value",
+" *      The current processor.",
+" *",
+" *   const char* PROCESSOR_Name(PROCESSOR topcode)",
+" *      Returns a name for the given PROCESSOR.",
+" *",
+" * ====================================================================",
+" * ====================================================================",
+" */", NULL};
 
 void Proc_Generator(void *pknobs, GEN_MODE mode)
 {
-	FILE *c_file, *h_file, *export_file;
-	int op_index;
+    FILE *c_file, *h_file, *export_file;
+    int op_index;
 
-	Init_Module_Files(mode, "targ_proc", &c_file, &h_file, &export_file);
-	Emit_Header(h_file, "targ_proc", description);
-	fprintf(c_file, "#include \"targ_proc.h\"\n\n");
+    Init_Module_Files(mode, "targ_proc", &c_file, &h_file, &export_file);
+    Emit_Header(h_file, "targ_proc", description);
+    fprintf(c_file, "#include \"targ_proc.h\"\n\n");
 
-	fprintf(h_file, "typedef enum processor {\n");
+    fprintf(h_file, "typedef enum processor {\n");
     fprintf(c_file, "static const char* const processor_names[] = {\n");
-	char * buf = EKAPI_ProcessName(pknobs);
-	fprintf(c_file, "  \"%s\",\n", buf);
-	fprintf(h_file, "  PROCESSOR_%s,\n", buf);   
-	fprintf(c_file, "  \"UNDEFINED\"\n};\n\n");
-	fprintf(h_file, "  PROCESSOR_UNDEFINED\n} PROCESSOR;\n\n");
-	fprintf(h_file, "#define PROCESSOR_count %d\n\n", 1);
-	
+    char * buf = EKAPI_ProcessName(pknobs);
+    fprintf(c_file, "  \"%s\",\n", buf);
+    fprintf(h_file, "  PROCESSOR_%s,\n", buf);   
+    fprintf(c_file, "  \"UNDEFINED\"\n};\n\n");
+    fprintf(h_file, "  PROCESSOR_UNDEFINED\n} PROCESSOR;\n\n");
+    fprintf(h_file, "#define PROCESSOR_count %d\n\n", 1);
     fprintf(c_file, 
             "PROCESSOR PROCESSOR_Value = PROCESSOR_UNDEFINED;\n\n"
             "const char* PROCESSOR_Name(PROCESSOR proc)\n"
             "{\n"
             "  return processor_names[(int)proc];\n"
             "}\n");
-	fprintf(h_file, 
-			"extern PROCESSOR PROCESSOR_Value;\n\n"
-			"extern const char* PROCESSOR_Name(PROCESSOR proc);\n");
-	fprintf(export_file, "PROCESSOR_Name\n");
+    fprintf(h_file, 
+            "extern PROCESSOR PROCESSOR_Value;\n\n"
+	    "extern const char* PROCESSOR_Name(PROCESSOR proc);\n");
+    fprintf(export_file, "PROCESSOR_Name\n");
 
-	Emit_Tailer(h_file);
-	Close_Module_Files(mode, &c_file, &h_file, &export_file);
+    Emit_Tailer(h_file);
+    Close_Module_Files(mode, &c_file, &h_file, &export_file);
 }
 

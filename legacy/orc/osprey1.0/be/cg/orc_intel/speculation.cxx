@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -120,8 +120,8 @@ Build_Incoming_Edges(OP *spec_ld, OP *chk)
                 new_arc_with_latency(CG_DEP_PRECHK, op, chk, 1, 0, 0, FALSE);
                 continue;
             }
-            if(OP_icmp(op) && ARC_kind(arc) == CG_DEP_REGIN){
-                new_arc(CG_DEP_REGIN, op, chk, 0, 0, FALSE);
+            if(ARC_kind(arc) == CG_DEP_CTLSPEC) {
+                new_arc_with_latency(CG_DEP_CTLSPEC, op, chk, 1, 0, 0, FALSE);
                 continue;
             }
             if(OP_chk(op)){
@@ -637,6 +637,15 @@ Insert_CHK(OP* primary_ld, vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn)
 
     return chk;    
 }
+
+void
+Set_Speculative_Chain_Begin_Point(OP* chk_op, OP* load_op)
+{
+    Recovery_Info[chk_op] = load_op;
+    return;
+}
+
+
 
 /*
  *

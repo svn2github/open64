@@ -47,7 +47,7 @@
 #include <map.h>
 #include <tree.h>
 #include "obj_info.h"
-
+#include "lib_phase_dir.h"
 
 #define PAGESIZE 65536
 int debug = 0;
@@ -207,8 +207,8 @@ void process_object_file (File_Info &fi, Shdr *tag, PROCTAB &procedures)
     char *p = (*it).first;
     int  size = (*it).second;
     bool updated = false;
-    if (strncmp(p, ".text", 5) == 0) {
-      char *procname = p+5;
+    if (strncmp(p, ".text.", 6) == 0) {
+      char *procname = p+6;
       PROCTAB::iterator ip = procedures.find(procname);
       if (ip != procedures.end()) {
 	if (size % 16 != 0)
@@ -221,7 +221,7 @@ void process_object_file (File_Info &fi, Shdr *tag, PROCTAB &procedures)
 	(*ip).second->src_order = src_order++;
       }
     }
-    if (!updated && strcmp(p,".text") != 0)
+    if (!updated && strcmp(p,".text.") != 0)
       if (debug)
 	printf("cannot find %s in call-graph\n", p);
   }
@@ -337,8 +337,8 @@ void emit_lkcord(const char *outfile, vector<PROC*> &proc_layout, vector<PROC*> 
   FILE *bottom;
   char buffer[LEN];
   char* toolroot = getenv("TOOLROOT"); 
-  char* previous_script="/usr/bin/previous";
-  char* bottom_script="/usr/bin/bottom";
+  char* previous_script= BINPATH "/" "cord_prologue";
+  char* bottom_script=  BINPATH "/cord_epilogue";
   char* previous_file;
   char* bottom_file;
   int len;
@@ -366,14 +366,14 @@ void emit_lkcord(const char *outfile, vector<PROC*> &proc_layout, vector<PROC*> 
 
   previous = fopen(previous_file, "r");
   if (previous == NULL ) {
-      printf("Can't previous script file\n");
+      printf("Can't open cord-prologue script file\n");
       perror("previous");
       exit(1);
   }
 
   bottom = fopen(bottom_file, "r");
   if (bottom == NULL ) {
-      printf("Can't bottom script file\n");
+      printf("Can't open cord-epilogue script file\n");
       perror("bottom");
       exit(1);
   }
@@ -389,14 +389,14 @@ void emit_lkcord(const char *outfile, vector<PROC*> &proc_layout, vector<PROC*> 
 	     proc->name,
 	     proc->base ? proc->base->name : "null" , 
 	     proc->offset);
-    fprintf(out, "    *(.text%s)\n", proc->name);
+    fprintf(out, "    *(.text.%s)\n", proc->name);
   }
 
   for (q = src_order_layout.begin(); q != src_order_layout.end(); q++) {
     PROC *proc = *q;
     if (debug)
       printf("src_order:  %s\n", proc->name);
-    fprintf(out, "    *(.text%s)\n", proc->name);
+    fprintf(out, "    *(.text.%s)\n", proc->name);
   }
 
   while (fgets(buffer, LEN, bottom)) 

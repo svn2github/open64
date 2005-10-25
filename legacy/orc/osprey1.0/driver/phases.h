@@ -55,6 +55,7 @@ extern string specmt_pass;
 
 extern string ldpath_for_pixie;  /* Tell pixie where to find ld */
 extern string command_line;	/* original command line */
+extern string dynamic_linker;    /* dynamic-linker for final executable */
 
 extern boolean keep_mp;		/* keep pfa/pca file */
 extern boolean keep_list;	/* keep pfa/pca listing */

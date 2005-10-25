@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -72,13 +72,17 @@ typedef vector<INST_TO_PROFILE *, INST2PROF_ALLOC_TYPE> INST2PROFLIST;
 
 extern INST2PROFLIST inst2prof_list;
 extern OP_MAP op_tnv_map;
-extern void CG_VALUE_Instrument(CGRIN *rin, PROFILE_PHASE phase);
+extern OP_MAP op_stride_tnv_map;
+extern void CG_VALUE_Instrument(CGRIN *rin, PROFILE_PHASE phase,BOOL stride_profiling_flag, BOOL do_value);
 extern void CG_VALUE_Annotate(CGRIN *rin, PROFILE_PHASE phase);
 
 
 #define VAL_PROF_FLAG 121
+#define SRD_PROF_FLAG 131
 #define INVOKE_VALUE_INSTRUMENT_NAME    "__value_profile_invoke"
 #define INVOKE_VALUE_INSTRUMENT_INIT_NAME "__value_profile_pu_init"
+#define INVOKE_STRIDE_INSTRUMENT_NAME    "__stride_profile_invoke"
+#define INVOKE_STRIDE_INSTRUMENT_INIT_NAME "__stride_profile_pu_init"
 
 #define FIRST_OUTPUT_REG (127+REGISTER_MIN)
 #define RETURN_REG   (8+REGISTER_MIN)

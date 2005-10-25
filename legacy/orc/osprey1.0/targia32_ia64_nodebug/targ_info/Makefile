@@ -52,14 +52,13 @@ BUILD_INSTALL  = DEFAULT
 BUILD_TARGET   = IA64
 BUILD_COMPILER = GNU
 BUILD_OS       = LINUX
-IPFEC_TARG    = KAPI
+ORC_TARG       = KAPI
 
 # option to use new generator of tagetinfo
 # added by llx
-ifeq "$(IPFEC_TARG)" "KAPI"
+ifeq "$(ORC_TARG)" "KAPI"
 BUILD_BASE     = ../../common/ipfec_targ_info
 endif
-#endif
 
 #ifdef IRIX
 # smake

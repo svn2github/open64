@@ -333,7 +333,10 @@ typedef struct op {
   mUINT8	opnds;		/* Number of operands */
   mUINT8        flag_value_profile;       /* flag to identify value_profile */
   mUINT32       value_profile_id;       /* unique ID to indicate value profiled No. */
+  mUINT8        flag_stride_profile;      /* flag to identify stride_profile */
+  mUINT32       stride_profile_id;        /*  unique ID to indicate stride profile No. */
   mUINT64        exec_count;          /* Number of executed count */
+  mUINT8        flag_stride_prefetch;     /*flag to identify stride_prefetch */
   struct tn     *res_opnd[10];	/* result/operand array (see OP_sizeof for info)
 				 * !!! THIS FIELD MUST BE LAST !!!
 				 */
@@ -365,6 +368,8 @@ typedef struct op {
 #define OP_flags(o)	((o)->flags)
 #define OP_flags_val_prof(o)    ((o)->flag_value_profile)
 #define OP_val_prof_id(o)        ((o)->value_profile_id)
+#define OP_flags_srd_prof(o)    ((o)->flag_stride_profile)
+#define OP_srd_prof_id(o)        ((o)->stride_profile_id)
 #define OP_exec_count(o)        ((o)->exec_count)
 
 /* These are rvalues */
@@ -452,6 +457,9 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_SCHEDULED   0x00100000 /* Has OP been scheduled */
 #define OP_MASK_CNTL_SPEC   0x00200000 /* Is OP control speculated? */ 
 #define OP_MASK_DATA_SPEC   0x00400000 /* Is OP data speculated? */
+#define OP_MASK_PREFETCHED   0x00800000 /* Has OP been prefetched? */
+#define OP_MASK_IF_CONVERTED 0x01000000 /*Is OP if-converted? */
+#define OP_MASK_RENAMED	0x02000000 /*Is OP renamed by GLOS */
 
 
 #define OP_MASK_LAST    OP_MASK_DATA_SPEC
@@ -517,6 +525,10 @@ enum OP_COND_DEF_KIND {
 # define Set_OP_Scheduled(o)   (OP_flags(o) |= OP_MASK_SCHEDULED)
 # define Reset_OP_Scheduled(o) (OP_flags(o) &= ~OP_MASK_SCHEDULED)
 
+# define OP_Prefetched(o)       (OP_flags(o) & OP_MASK_PREFETCHED)
+# define Set_OP_Prefetched(o)   (OP_flags(o) |= OP_MASK_PREFETCHED)
+# define Reset_OP_Prefetched(o) (OP_flags(o) &= ~OP_MASK_PREFETCHED)
+
 //# define OP_catch_nat(o)  (OP_flags(o) & OP_MASK_CATCH_NAT)
 //# define Set_OP_catch_nat(o)  (OP_flags(o) |= OP_MASK_CATCH_NAT)
 //# define Reset_OP_catch_nat(o)  (OP_flags(o) &= ~OP_MASK_CATCH_NAT)
@@ -526,7 +538,12 @@ enum OP_COND_DEF_KIND {
 # define OP_data_spec(o)           (OP_flags(o) &  OP_MASK_DATA_SPEC)
 # define Set_OP_data_spec(o)       (OP_flags(o) |= OP_MASK_DATA_SPEC)
 # define Reset_OP_data_spec(o)     (OP_flags(o) &= ~OP_MASK_DATA_SPEC)
-
+# define OP_if_converted(o)			(OP_flags(o) & OP_MASK_IF_CONVERTED)
+# define Set_OP_if_converted(o)		(OP_flags(o) |= OP_MASK_IF_CONVERTED)
+# define Reset_OP_if_converted(o)	(OP_flags(o) &= ~OP_MASK_IF_CONVERTED)
+# define OP_renamed(op)			(OP_flags(op) & OP_MASK_RENAMED)
+# define Set_OP_renamed(o)		(OP_flags(o) |= OP_MASK_RENAMED)
+# define Reset_OP_renamed(o)	(OP_flags(o) &= ~OP_MASK_RENAMED)
 
 extern BOOL OP_cond_def( const OP*);
 extern BOOL OP_has_implicit_interactions(OP*);
@@ -535,6 +552,7 @@ extern BOOL OP_xfer(OP*);           // After RBG, chk should be taken as xfer.
 extern BOOL OP_restore_b0(OP*);
 extern BOOL OP_restore_ar_pfs(OP*);
 extern BOOL OP_def_ar_lc(OP*);
+extern BOOL OP_def_return_value(OP*);
 
 /* Convenience access macros for properties of the OP */
 /* TODO: define all the macros for OP properties. */
@@ -641,6 +659,74 @@ inline BOOL OP_chk(OP *op)
 {
     return ( OP_chk_s(op) ||
 	     OP_chk_a(op) );
+}
+
+inline BOOL OP_cmp_unc(OP *op)
+{
+	mTOP opcode = OP_code(op);
+	switch (opcode) {
+	  case TOP_cmp_eq_unc:
+	  case TOP_cmp_lt_unc:
+	  case TOP_cmp_ltu_unc:
+	  case TOP_cmp_i_eq_unc:
+	  case TOP_cmp_i_lt_unc:
+	  case TOP_cmp_i_ltu_unc:
+	  case TOP_cmp4_eq_unc:
+	  case TOP_cmp4_lt_unc:
+	  case TOP_cmp4_ltu_unc:
+	  case TOP_cmp4_i_eq_unc:
+	  case TOP_cmp4_i_lt_unc:
+	  case TOP_cmp4_i_ltu_unc:
+	  case TOP_fclass_m_unc:
+	  case TOP_fcmp_eq_unc:
+	  case TOP_fcmp_lt_unc:
+	  case TOP_fcmp_le_unc:
+	  case TOP_fcmp_unord_unc:
+	  case TOP_tbit_z_unc:
+	  case TOP_tnat_z_unc:
+	  case TOP_cmp_ne_unc:
+	  case TOP_cmp_le_unc:
+	  case TOP_cmp_gt_unc:
+	  case TOP_cmp_ge_unc:
+	  case TOP_cmp_leu_unc:
+	  case TOP_cmp_gtu_unc:
+	  case TOP_cmp_geu_unc:
+	  case TOP_cmp_i_ne_unc:
+	  case TOP_cmp_i_le_unc:
+	  case TOP_cmp_i_gt_unc:
+	  case TOP_cmp_i_ge_unc:
+	  case TOP_cmp_i_leu_unc:
+	  case TOP_cmp_i_gtu_unc:
+	  case TOP_cmp_i_geu_unc:
+	  case TOP_cmp4_ne_unc:
+	  case TOP_cmp4_le_unc:
+	  case TOP_cmp4_gt_unc:
+	  case TOP_cmp4_ge_unc:
+	  case TOP_cmp4_leu_unc:
+	  case TOP_cmp4_gtu_unc:
+	  case TOP_cmp4_geu_unc:
+	  case TOP_cmp4_i_ne_unc:
+	  case TOP_cmp4_i_le_unc:
+	  case TOP_cmp4_i_gt_unc:
+	  case TOP_cmp4_i_ge_unc:
+	  case TOP_cmp4_i_leu_unc:
+	  case TOP_cmp4_i_gtu_unc:
+	  case TOP_cmp4_i_geu_unc:
+	  case TOP_fclass_nm_unc:
+	  case TOP_fcmp_gt_unc:
+	  case TOP_fcmp_ge_unc:
+	  case TOP_fcmp_neq_unc:
+	  case TOP_fcmp_nlt_unc:
+	  case TOP_fcmp_nle_unc:
+	  case TOP_fcmp_ngt_unc:
+	  case TOP_fcmp_nge_unc:
+	  case TOP_fcmp_ord_unc:
+	  case TOP_tbit_nz_unc:
+	  case TOP_tnat_nz_unc:
+	  	return TRUE;
+	  default:
+	  	return FALSE;
+	}
 }
 
 inline INT OP_result_size(OP *op, INT result)

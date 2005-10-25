@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -41,8 +41,8 @@
 
 #include "properties_gen.h"
 
-static const char description[] = "\
-/* ====================================================================\n\
+static const char * const description[] = {
+" /* ====================================================================\n\
  * ====================================================================\n\
  *\n\
  * Description:\n\
@@ -56,7 +56,7 @@ static const char description[] = "\
  *\n\
  * ====================================================================\n\
  * ====================================================================\n\
- */";
+ */", NULL};
  
 void Properties_Generator(void *pknobs, GEN_MODE mode)
 {
@@ -65,7 +65,11 @@ void Properties_Generator(void *pknobs, GEN_MODE mode)
     FILE *c_file, *h_file, *export_file;
     char *prop_name;
     UINT64 prop_value;
-        
+    char suffix_UINT64[10] = "ULL";
+    
+    #ifdef TARG_WIN
+        strcpy(suffix_UINT64, "mUI64");
+    #endif 
     Init_Module_Files(mode, "targ_isa_properties", &c_file, &h_file, &export_file);
     Emit_Header(h_file, "targ_isa_properties", description);
     fprintf(c_file, "#include \"targ_isa_properties.h\"\n");
@@ -85,10 +89,11 @@ void Properties_Generator(void *pknobs, GEN_MODE mode)
             prop_name =buf + strlen("OPP_");
         }
         prop_value = 1ULL << prop_index;
-        fprintf(h_file, "#define PROP_%-16s 0x%llxULL\n",
+        fprintf(h_file, "#define PROP_%-16s 0x%llx%s\n",
                 prop_name,
-                prop_value
-                );
+                prop_value,
+                suffix_UINT64
+               );
         free(buf);
     }
     fprintf(h_file, "\n\n");
@@ -142,7 +147,7 @@ void Properties_Generator(void *pknobs, GEN_MODE mode)
         for(prop_index=0; prop_index<prop_count; prop_index++)
         {
          
-            if (flag & (1ULL << prop_index)) {
+            if (flag & (1 << prop_index)) {
                 char *buf = EKAPI_Oppid2Name(pknobs, prop_index);
                 Is_True(buf, ("Op name return NULL"));
                 
@@ -156,8 +161,8 @@ void Properties_Generator(void *pknobs, GEN_MODE mode)
             
         }    
         strcat(comment," */" );
-        fprintf(c_file,"  0x%016llxULL, %s\n", flag, comment);
-    }
+        fprintf(c_file,"  0x%016llx%s, %s\n", flag, suffix_UINT64, comment);
+   }
     fprintf(c_file, "};\n");
     
     Emit_Tailer(h_file);

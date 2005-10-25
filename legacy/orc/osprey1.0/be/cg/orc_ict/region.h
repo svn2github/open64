@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -366,7 +366,6 @@ private:
         } 
     }
 
-    float Freq(void)       { return _freq; }  
     void  Freq(float freq) { _freq = freq; } 
     
     void                Is_Entry(BOOL is) { _is_entry = is;      }
@@ -470,6 +469,7 @@ public:
     BOOL                 Is_Entry(void)    const { return _is_entry;    }
     BOOL                 Is_Exit(void)     const { return _is_exit;     }
     void                 Id(INT32 id)      { _id = id; }     
+    float                 Freq(void)       { return _freq; }  
 
     void  Print(FILE *f = stderr);
 	BOOL  Is_Loop_Head(void); 
@@ -1813,6 +1813,7 @@ public:
     void Statistic(void);
 
     REGION      *Root(void) { return _root; }
+    REGION_VECTOR Region_Set(void) { return _region_set;}
     INT32        Seq_Num(void) { return _seq_num; } 
     void Print(FILE *f = stderr);
 };

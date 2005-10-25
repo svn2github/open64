@@ -261,8 +261,8 @@ Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 
     DoPreopt = Run_preopt;
     if (Run_preopt && Cur_PU_Feedback) {
-	BOOL pass = Cur_PU_Feedback->Verify ("IPL");
-	if (! pass)
+	BOOL not_pass = Cur_PU_Feedback->Verify ("IPL");
+	if (not_pass) //FB_VERIFY_CONSISTENT = 0 
 	    DevWarn ("Feedback verify fails after preopt");
     }
     
@@ -288,6 +288,8 @@ Ipl_Fini (void)
 void
 Ipl_Extra_Output (Output_File *ir_output)
 {
+	if(IPA_Enable_Reorder)/*&&Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO] )*/
+		Summary->Finish_collect_struct_access();// reorder, free pointers, set hot_flds
     IPA_write_summary(IPA_irb_write_summary, ir_output);
 
     if ( Get_Trace ( TKIND_IR, TP_IPL ) )

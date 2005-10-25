@@ -25,33 +25,6 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
  
-/*
-  Copyright (c) 2001, Intel Corporation
-  All rights reserved.
-  
-  Redistribution and use in source and binary forms, with or without modification,
-  are permitted provided that the following conditions are met:
-  
-  Redistributions of source code must retain the above copyright notice, this list
-  of conditions and the following disclaimer. 
-  
-  Redistributions in binary form must reproduce the above copyright notice, this list
-  of conditions and the following disclaimer in the documentation and/or other materials
-  provided with the distribution. 
-
-  Neither the name of the owner nor the names of its contributors may be used to endorse or
-  promote products derived from this software without specific prior written permission. 
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
-  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR
-  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 //-*-c++-*-
 
 #include <stdlib.h>
@@ -103,6 +76,7 @@ extern BOOL PU_Has_Calls;
 extern SAVE_REG *Return_Address_Reg;
 
 extern char * Instrumentation_File_Name;
+static INT32   pu_num_stride = 0;  
 
 void Handle_All_Hazards (BB *bb);
 BB * Divide_BB(BB *bb, OP *point);
@@ -137,15 +111,20 @@ private:
     UINT32 _st_count;		// counter for type of instruction we are instrumenting//here
 	UINT32 _other_count;   // all other count except load/restore count
 	UINT32 _instrument_count;	// checksum of all inst. instrumented
+	UINT32 _stride_instr_count;	// checksum of all  stride inst. instrumented
     UINT32 _qulified_count;	// counter of all inst. which are qulified to be instrumented
     BOOL _trace; // if true, print trace information into the trace file ( .t file ).
     PROFILE_PHASE _phase; //in which phase the instrumentation occurs
-
+    BOOL _prefetch; //if true,do stride profiling in value profiling
+    BOOL _do_value; //if true ,do value 
+    TN * _pu_hdr_return_tn; //store the value of pu init call 
+    
 public: 
-    CG_VALUE_INSTRUMENT_WALKER(MEM_POOL *m, UINT32 lc, UINT32 sc, UINT32 total, PROFILE_PHASE phase) :
-	_mempool(m), _ld_count(0), _st_count(0), _other_count(0), _instrument_count(0), _qulified_count(0),
+    CG_VALUE_INSTRUMENT_WALKER(MEM_POOL *m, UINT32 lc, UINT32 sc, UINT32 total, PROFILE_PHASE phase, BOOL stride_profiling_flag, BOOL do_value) :
+	_mempool(m), _ld_count(0), _st_count(0), _other_count(0), _instrument_count(0), _stride_instr_count(0), _qulified_count(0),
 		_trace( Get_Trace(TP_A_PROF, TT_VALUE_PROF) ),
-		_phase(phase)
+		_phase(phase),
+		_prefetch(stride_profiling_flag), _do_value(do_value), _pu_hdr_return_tn(NULL)
 	{}
 
 	~CG_VALUE_INSTRUMENT_WALKER(){}
@@ -170,6 +149,7 @@ protected:
 	void Gen_Save_Restore_Return_Addr_Reg_append_ops(OPS * save_ops, OPS * restore_ops);
 	inline void Gen_Save_Restore_Return_Value_Reg_append_ops(OPS * save_ops, OPS * restore_ops);
 	inline void Gen_Save_Restore_GP_Reg_append_ops(OPS * save_ops, OPS * restore_ops);
+	inline void Gen_Call_Init_Return_ops(OPS * restore_ops);
 	void Adjust_Save_Restore_ARPFS();
 	BB * CG_Gen_Call(char * func_name, char * str_arg, INT int_arg1, INT int_arg2);
 	BB * CG_Gen_Call(char * func_name, char * str_arg1, char * str_arg2, INT int_arg1, INT int_arg2);
@@ -178,7 +158,9 @@ protected:
 	void Prepare_Insert_BBs_for_call(BB* bb);
 	void Prepare_Insert_BBs_for_call_init(BB* bb);	
 	void Insert_BBs_for_call(BB* bb, OPS * save_ops, BB * call_bb, OPS * restore_ops);
+	void Insert_BBs_for_call(BB* bb, OPS * save_ops, BB * call_bb, BB * srd_call_bb, OPS * restore_ops);
 	void Insert_BBs_for_call_init(BB* bb, OPS * save_ops, BB * call_bb, OPS * restore_ops);	
+    void Insert_BBs_for_call_init(BB* bb, OPS * save_ops, BB * call_bb, BB * srd_call_bb, OPS * restore_ops);	
     void Update_CFG_around_BB(BB * bb, BB * new_inserted_bb);
    
 	void Request_Output_Registers();
@@ -187,7 +169,6 @@ protected:
     BB * CG_Gen_Call(char *func_name, char * srcfile_pu_name, INT id, TN * res_tn);
     void Do_instrument(INST_TO_PROFILE *p, BB *bb, OP * op, BOOL instr_before);
     void BB_Walk(BB *bb);
-
 public:
 	inline WN *Gen_Param( WN *arg, UINT32 flag )
 	{
@@ -271,7 +252,7 @@ BB * CG_VALUE_INSTRUMENT_WALKER::Val_Prof_Divide_BB(BB *bb, OP *point)
 		if (newbb)
 		{
 	        BB_freq(newbb) = BB_freq(bb);
-    	    Set_Freq(bb,newbb, BB_freq(bb));
+    	        Set_Freq(bb,newbb, BB_freq(bb));
 
         	Set_BB_profile_splitted(bb);
         	Set_BB_profile_splitted(newbb);
@@ -538,7 +519,6 @@ inline void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_Dedicated_Reg_append_op
 #ifndef _maybe_wrong_test
 	Set_TN_is_global_reg( save_tn );
 #endif
-
 	reg_tn = Build_Dedicated_TN( rclass, reg , size );
 #ifdef  _maybe_wrong_test
 	Reset_TN_is_global_reg(reg_tn);
@@ -546,7 +526,6 @@ inline void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_Dedicated_Reg_append_op
 		fprintf(stderr, "Tn is global!\n");
 	else fprintf(stderr, "Tn is local!\n"); 
 #endif
-
 	save_op = Mk_OP(the_mov_opr, save_tn, True_TN, reg_tn);
 	Try_to_set_op_copy(save_op, save_tn, reg_tn);
 	if (no_move)
@@ -554,6 +533,7 @@ inline void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_Dedicated_Reg_append_op
 	OPS_Append_Op( save_ops, save_op);
 
 	restore_op = Mk_OP(the_mov_opr, reg_tn, True_TN, save_tn);
+        if( !IPFEC_Enable_Edge_Profile )
 	Try_to_set_op_copy(restore_op, reg_tn, save_tn);
 	if (no_move)
 		Set_OP_no_move_before_gra(restore_op);
@@ -587,13 +567,13 @@ void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_Return_Addr_Reg_append_ops(OPS
 		save_tn = Build_RCLASS_TN (ISA_REGISTER_CLASS_integer);
 		Set_TN_save_creg (save_tn, TN_class_reg(RA_TN));
 		Exp_COPY (save_tn, RA_TN, save_ops );
+		//Set_TN_is_global_reg( save_tn );
 	} 
 	else 
 	{
 		Exp_COPY (SAVE_tn(Return_Address_Reg), RA_TN, save_ops );
+		//Set_TN_is_global_reg( SAVE_tn(Return_Address_Reg) );
 	}
-	Set_OP_no_move_before_gra(OPS_last(save_ops));
-
 	if ( TN_register_class(RA_TN) != ISA_REGISTER_CLASS_integer )
 	{
 		Exp_COPY (RA_TN, save_tn, restore_ops );
@@ -603,7 +583,6 @@ void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_Return_Addr_Reg_append_ops(OPS
         // Copy back the return address register from the save_tn. 
       	Exp_COPY ( RA_TN, SAVE_tn(Return_Address_Reg), restore_ops );
 	}
-	Set_OP_no_move_before_gra(OPS_last(restore_ops));
 	
 }
 
@@ -618,7 +597,7 @@ inline void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_GP_Reg_append_ops(OPS *
 #endif
 
 	reg_tn = GP_TN;
-
+        Set_TN_is_global_reg( save_tn );
 	save_op = Mk_OP(TOP_mov, save_tn, True_TN, reg_tn);
 	Try_to_set_op_copy(save_op, save_tn, reg_tn);
 	OPS_Append_Op( save_ops, save_op);
@@ -626,6 +605,16 @@ inline void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_GP_Reg_append_ops(OPS *
 	restore_op = Mk_OP(TOP_mov, reg_tn, True_TN, save_tn);
 	Try_to_set_op_copy(restore_op, reg_tn, save_tn);
 	OPS_Prepend_Op( restore_ops, restore_op );
+}
+
+inline void CG_VALUE_INSTRUMENT_WALKER::Gen_Call_Init_Return_ops(OPS * restore_ops)
+{
+    TN * return_reg_tn;
+    OP * save_op;
+    return_reg_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, RETURN_REG, 8);
+    save_op = Mk_OP(TOP_mov, _pu_hdr_return_tn, True_TN, return_reg_tn);
+    Try_to_set_op_copy(save_op, _pu_hdr_return_tn, return_reg_tn);
+    OPS_Insert_Op_After(restore_ops, OPS_first(restore_ops), save_op );
 }
 
 void CG_VALUE_INSTRUMENT_WALKER::Adjust_Save_Restore_ARPFS()
@@ -833,7 +822,7 @@ BB * CG_VALUE_INSTRUMENT_WALKER::CG_Gen_Call(char * func_name, char * str_arg, I
 
   return bb;
 }
-	
+
 OP * CG_VALUE_INSTRUMENT_WALKER::Find_OP_to_split_entry_exit( BB *bb )
 {
 	OP * op;
@@ -896,6 +885,32 @@ void CG_VALUE_INSTRUMENT_WALKER::Insert_BBs_for_call(BB* bb, OPS * save_ops, BB 
 	
 }
 
+void CG_VALUE_INSTRUMENT_WALKER::Insert_BBs_for_call(BB* bb, OPS * save_ops, BB * call_bb, BB * srd_call_bb, OPS * restore_ops)
+{
+   	Is_True(call_bb !=NULL, ("Insert_BBs_for_call:<call_ops> should not be NULL!"));
+
+	BB_Prepend_Ops(call_bb, save_ops);
+
+	Val_Prof_Insert_BB(call_bb, bb);
+	Val_Prof_Insert_BB(srd_call_bb, call_bb);
+//	Update_CFG_around_BB(bb, call_bb);
+
+#ifdef GEN_NEWBB_FOR_RESTORE___Should_disable_ebo
+   	BB * tmpbb;
+	tmpbb = Gen_BB();
+	Set_BB_profile_added(tmpbb);
+	BB_Append_Ops(tmpbb, restore_ops);
+	Val_Prof_Insert_BB(tmpbb, srd_call_bb);
+//	Update_CFG_around_BB(call_bb, tmpbb);
+#else //now it seems this is right.
+	FmtAssert(FALSE, ("Please define GEN_NEWBB_FOR_RESTORE___Should_disable_ebo")); 
+	Is_True(BB_next(srd_call_bb)!=NULL,("NULL????? should not"));
+ 	BB_Prepend_Ops(BB_next(srd_call_bb), restore_ops);
+//	Handle_All_Hazards(BB_next(call_bb));
+#endif 
+	
+}
+
 void CG_VALUE_INSTRUMENT_WALKER::Prepare_Insert_BBs_for_call_init(BB* bb)
 {
    	Is_True(bb!=NULL,("Prepare_Insert_BBs_for_call_init:<bb> should not be NULL!"));
@@ -904,10 +919,13 @@ void CG_VALUE_INSTRUMENT_WALKER::Prepare_Insert_BBs_for_call_init(BB* bb)
 	
 	if ( (BB_exit(bb)) || (BB_branch_op(bb)!=NULL)  || (BB_call(bb)) )
 	{
-		OP * op;
-		op = Find_OP_to_split_entry_exit(bb);
-		Is_True(op !=NULL, ("Prepare_Insert_BBs_for_call_init: do not know where to split the BB"));
-	   	Val_Prof_Divide_BB(bb, op);
+
+            OP * op ;
+	  //  op = BB_xfer_op( bb );
+           // op = OP_prev(op);
+	    op = Find_OP_to_split_entry_exit(bb);
+	    Is_True(op !=NULL, ("Prepare_Insert_BBs_for_call_init: do not know where to split the BB"));
+	    Val_Prof_Divide_BB(bb, op);
 	}
 }
 
@@ -935,21 +953,53 @@ void CG_VALUE_INSTRUMENT_WALKER::Insert_BBs_for_call_init(BB* bb, OPS * save_ops
 	
 }
 
+void CG_VALUE_INSTRUMENT_WALKER::Insert_BBs_for_call_init(BB* bb, OPS * save_ops, BB * call_bb, BB * srd_call_bb, OPS * restore_ops)
+{
+   	Is_True(call_bb !=NULL, ("Insert_BBs_for_call:<call_ops> should not be NULL!"));
+
+	BB_Prepend_Ops(call_bb, save_ops);
+	
+	Val_Prof_Insert_BB(call_bb, bb);
+	Val_Prof_Insert_BB(srd_call_bb, call_bb);
+//	Update_CFG_around_BB(bb, call_bb);
+
+#ifdef GEN_NEWBB_FOR_RESTORE___Should_disable_ebo
+   	BB * tmpbb;
+	tmpbb = Gen_BB();
+	Set_BB_profile_added(tmpbb);
+	BB_Append_Ops(tmpbb, restore_ops);
+	Val_Prof_Insert_BB(tmpbb, srd_call_bb);
+//	Update_CFG_around_BB(call_bb, tmpbb);
+#else //now it seems this is right.
+	FmtAssert(FALSE, ("Please define GEN_NEWBB_FOR_RESTORE___Should_disable_ebo")); 
+	Is_True(BB_next(srd_call_bb)!=NULL,("NULL????? should not"));
+ 	BB_Prepend_Ops(BB_next(srd_call_bb), restore_ops);
+#endif 
+	
+}
+
 
 //instrument the <op> according to the information in <p>, for integer load, the profile target is the first result operand of <op>.
 //if <instr_before> is true, then take the value before <op> executes to do profiling; otherwise the opsite.
 void CG_VALUE_INSTRUMENT_WALKER::Do_instrument(INST_TO_PROFILE *p, BB *bb, OP * op, BOOL instr_before)
-{
+{       
 	UINT32 Min_Instr_Point, Max_Instr_Point;
 	Min_Instr_Point = Value_Instr_Range >> 16;
 	Max_Instr_Point = Value_Instr_Range & 0xffff;
+	BOOL do_value_instr = _do_value;
 	if (_qulified_count < Min_Instr_Point || _qulified_count > Max_Instr_Point )
 	{
 		_qulified_count++;
 		return;
 	}
 	_qulified_count++;
-	if ( _qulified_count > 100)
+	if (_qulified_count > 300)
+		_do_value =FALSE;
+	if ( (_qulified_count > 300 ) && (_stride_instr_count >300)) 
+	{
+        	return;
+	} 
+	else if ( (!_prefetch) && (_qulified_count > 100))
 	{
 		if (_qulified_count % 50 == 0)
 		{
@@ -962,13 +1012,14 @@ void CG_VALUE_INSTRUMENT_WALKER::Do_instrument(INST_TO_PROFILE *p, BB *bb, OP * 
    	
     OPS *save_ops, *restore_ops;
     BB * call_bb;
+    BB * srd_call_bb;
     if (_trace) {
 	fprintf(TFile, "Instrumentation inside BB%d\n",BB_id(bb));
     }
 
 	//split old <bb> at <op> according to <instr_before>
     BB * newbb;
-    if (instr_before )
+    if ( instr_before )
     {
     	if ( BB_first_op(bb) == op )
     	{
@@ -984,7 +1035,7 @@ void CG_VALUE_INSTRUMENT_WALKER::Do_instrument(INST_TO_PROFILE *p, BB *bb, OP * 
     	newbb = Val_Prof_Divide_BB(bb, op);
     }
     Prepare_Insert_BBs_for_call(bb);
-
+    BOOL ld_flag = _prefetch;
 	switch (OP_code(op)) {
     case TOP_ld1:
     case TOP_ld4:
@@ -997,45 +1048,88 @@ void CG_VALUE_INSTRUMENT_WALKER::Do_instrument(INST_TO_PROFILE *p, BB *bb, OP * 
     case TOP_st4:
     case TOP_st8:
     	_st_count++;
+    	_prefetch = FALSE;  //prefech
     	break;
     default:
-    	_other_count++;
+        _other_count++;   
+        _prefetch = FALSE;  //prefetch
     	break;
     }
 
     //Generate save/restore ops, call bb (incluing parameters)
-	save_ops = OPS_Create();
-	restore_ops = OPS_Create();
-	
+    save_ops = OPS_Create();
+    restore_ops = OPS_Create();
+    if(BB_call( bb )){
 	//save & restore Output registers ( pseudo name: r127, r126 ... )
 	Gen_Save_Restore_Output_Reg_append_ops( ISA_REGISTER_CLASS_integer, 8, save_ops, restore_ops);
-	//save & restore Input registers ( r32, r33 ... , r39 ) 
+	} else
+		{
+     BBLIST* edge = BB_succs( bb );
+     INT32 bblist_len =BBlist_Len( edge );
+       while ( edge != NULL && bblist_len-- )
+      {
+    BBLIST* nedge = edge;
+    edge = BBLIST_next( edge );
+
+    BB* target_bb = BBLIST_item( nedge );
+      if(BB_call( target_bb )){
+      	Gen_Save_Restore_Output_Reg_append_ops( ISA_REGISTER_CLASS_integer, 8, save_ops, restore_ops);
+      break;
+      	  }
+        }     
+       }
+        //save & restore Input registers ( r32, r33 ... , r39 ) 
    	Gen_Save_Restore_Input_Reg_append_ops(ISA_REGISTER_CLASS_integer, 8, save_ops, restore_ops);
 	//save & restore Return address register ( b0 ) 
+	if( !IPFEC_Enable_Edge_Profile )
 	Gen_Save_Restore_Return_Addr_Reg_append_ops(save_ops, restore_ops);
 	//save & restore GP register ( gp ) 
-    Gen_Save_Restore_GP_Reg_append_ops(save_ops, restore_ops);
+        Gen_Save_Restore_GP_Reg_append_ops(save_ops, restore_ops);
 	//save & restore Return value register ( r8-r11, f8-f15 ) 
-	Gen_Save_Restore_Return_Value_Reg_append_ops(save_ops, restore_ops);
-    TN * profile_target_tn;
-	profile_target_tn = Find_original_TN( save_ops, OP_result(op,0) );
+	//Gen_Save_Restore_Return_Value_Reg_append_ops(save_ops, restore_ops);
+        TN * profile_target_tn;
+        TN * prefetch_target_tn;
+	profile_target_tn = Find_original_TN( save_ops, OP_result(op, 0) );
 	if (profile_target_tn == NULL)
-		profile_target_tn = OP_result(op,0);
+	    profile_target_tn = OP_result(op,0);
+	if (_prefetch){  
+	    prefetch_target_tn = Find_original_TN( save_ops, OP_opnd(op, 3) );
+		if (prefetch_target_tn == NULL)
+		    prefetch_target_tn = OP_opnd(op, 3); //prefetch
+		}
 	//Other information attached to OP 
 	OP_flags_val_prof(op) = VAL_PROF_FLAG;
 	OP_val_prof_id(op) = _instrument_count;
+	if (_prefetch){
+	    OP_flags_srd_prof(op) = SRD_PROF_FLAG;
+        OP_srd_prof_id(op) = _ld_count;     
+	    }
 	OP_exec_count(op) = -1;
 
-   	call_bb = CG_Gen_Call(INVOKE_VALUE_INSTRUMENT_NAME, get_cat_str(Src_File_Name, Cur_PU_Name, _mempool), _instrument_count, profile_target_tn);
+   	call_bb = CG_Gen_Call(INVOKE_VALUE_INSTRUMENT_NAME, _pu_hdr_return_tn, _instrument_count, profile_target_tn);
    	_instrument_count ++;
    	Is_True(call_bb != NULL, ("Failed to generate call BB during instrument"));
-    
-	Insert_BBs_for_call(bb, save_ops, call_bb, restore_ops);
+   	if (_prefetch){
+   	   _stride_instr_count++;
+   	   srd_call_bb = CG_Gen_Call(INVOKE_STRIDE_INSTRUMENT_NAME, _pu_hdr_return_tn, _stride_instr_count, prefetch_target_tn);
+   	   Is_True(srd_call_bb != NULL, ("Failed to generate stride call BB during instrument"));
+       if (!_do_value)
+           Insert_BBs_for_call(bb, save_ops, srd_call_bb, restore_ops);
+   	   else
+   	       Insert_BBs_for_call(bb, save_ops, call_bb, srd_call_bb, restore_ops);
+   		}
+    else		
+    Insert_BBs_for_call(bb, save_ops, call_bb, restore_ops);
+    _prefetch = ld_flag ;
+    _do_value = do_value_instr;
 }
 
 //traverse the whole <bb>, examine each OP in <bb>, if one op should be instrumented, do it.
 void CG_VALUE_INSTRUMENT_WALKER::BB_Walk(BB *bb) 
 {
+
+    if(!BB_nest_level(bb))        
+        return;
     INST2PROFLIST::iterator i;
    	OP *op, *tmp_op;
     struct INST_TO_PROFILE *p;
@@ -1057,22 +1151,27 @@ void CG_VALUE_INSTRUMENT_WALKER::BB_Walk(BB *bb)
     }
 }
 
+
+
 //traverse the whole CFG, instrument all BBs, also add initialization code for instrumentation.
 //Actually this functions do the complete work of instrumentation we intend to do.
 void CG_VALUE_INSTRUMENT_WALKER::CFG_Walk(CGRIN *rin)
 {
     //request output stack registers for the purpose of pass parameters.
-   Request_Output_Registers();
-	
+    Request_Output_Registers();
+
+	_pu_hdr_return_tn = Gen_Register_TN( ISA_REGISTER_CLASS_integer, 8 );
+	Set_TN_is_global_reg( _pu_hdr_return_tn );
     //traverse all BBs in current PU, process them one by one
    	BB * bb, * tmp_bb;
+        BB* lbb;
  	for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) 
  	{
  		if(!BB_profile_added(bb) && !BB_profile_changed(bb) && !BB_profile_splitted(bb) )
  		bb->id_before_profile = BB_id(bb);
-    }
+        }
  	for (bb = REGION_First_BB; bb != NULL; bb = tmp_bb) 
- 	{
+         {
 		tmp_bb = BB_next(bb); 
 		Is_True(!BB_profile_changed(bb), ("profile changed bb appears in later traverse!"));
 		if (BB_entry(bb) || BB_exit(bb))
@@ -1131,24 +1230,36 @@ void CG_VALUE_INSTRUMENT_WALKER::CFG_Walk(CGRIN *rin)
 		
     	// Insert the call bb into current Entry_bb to do global initialization work for the whole program && for this PU.
     	OPS * save_ops, *restore_ops;
-    	BB * call_bb, * call_bb_global_init;
-		save_ops = OPS_Create();
-		restore_ops = OPS_Create();
-		//save & restore Output registers ( pseudo name: r127, r126 ... )
-    	Gen_Save_Restore_Output_Reg_append_ops(ISA_REGISTER_CLASS_integer, 8, save_ops, restore_ops);
-		//save & restore Input registers ( r32, r33 ... , r39 ) 
+    	BB * call_bb;
+    	BB * srd_call_bb;
+	save_ops = OPS_Create();
+	restore_ops = OPS_Create();
+	//save & restore Output registers ( pseudo name: r127, r126 ... )
+	Gen_Save_Restore_Output_Reg_append_ops( ISA_REGISTER_CLASS_integer, 8, save_ops, restore_ops);
+	//save & restore Input registers ( r32, r33 ... , r39 ) 
     	Gen_Save_Restore_Input_Reg_append_ops(ISA_REGISTER_CLASS_integer, 8, save_ops, restore_ops);
-		//save & restore Return address register ( b0 ) 
+        //save & restore Return address register ( b0 ) 
     	Gen_Save_Restore_Return_Addr_Reg_append_ops(save_ops, restore_ops);
-		//save & restore GP register ( gp ) 
-		Gen_Save_Restore_GP_Reg_append_ops(save_ops, restore_ops);
-		//save & restore Return value register ( r8-r11, f8-f15 ) 
-		Gen_Save_Restore_Return_Value_Reg_append_ops(save_ops, restore_ops);
-		call_bb = CG_Gen_Call(INVOKE_VALUE_INSTRUMENT_INIT_NAME, Value_Instru_File_Name, get_cat_str(Src_File_Name, Cur_PU_Name, _mempool), _phase, _instrument_count);
-
- 		Insert_BBs_for_call_init(bb, save_ops, call_bb, restore_ops);
+	//save & restore GP register ( gp ) 
+	Gen_Save_Restore_GP_Reg_append_ops(save_ops, restore_ops);
+	//save & restore Return value register ( r8-r11, f8-f15 ) 
+        Gen_Save_Restore_Return_Value_Reg_append_ops(save_ops, restore_ops);
+	Gen_Call_Init_Return_ops(restore_ops);
+	call_bb = CG_Gen_Call(INVOKE_VALUE_INSTRUMENT_INIT_NAME, Value_Instru_File_Name, get_cat_str(Src_File_Name, Cur_PU_Name, _mempool), _phase, _instrument_count);
+        if (_prefetch)
+        {   
+            srd_call_bb = CG_Gen_Call(INVOKE_STRIDE_INSTRUMENT_INIT_NAME, Stride_Instru_File_Name, get_cat_str(Src_File_Name, Cur_PU_Name, _mempool), _phase, _stride_instr_count);
+          
+            if (!_do_value)
+            	{
+                Insert_BBs_for_call_init(bb, save_ops, srd_call_bb, restore_ops);
+            	}
+            else 
+                Insert_BBs_for_call_init(bb, save_ops, call_bb, srd_call_bb, restore_ops);
+ 	 }
+ 	 else
+ 	    Insert_BBs_for_call_init(bb, save_ops, call_bb, restore_ops);
     } 
-
     Adjust_Save_Restore_ARPFS();
    	PU_Has_Calls = TRUE;
     //Now the modification work of CGIR finished, it is the time to update the liveness information 
@@ -1174,24 +1285,35 @@ void CG_VALUE_INSTRUMENT_WALKER::Request_Output_Registers()
 }
 
 //external interface,  perform instrumentation 
-void CG_VALUE_Instrument(CGRIN *rin, PROFILE_PHASE phase)
+void CG_VALUE_Instrument(CGRIN *rin, PROFILE_PHASE phase,BOOL stride_profiling_flag, BOOL do_value)
 {
+
   // Create and initialize local memory pool
   MEM_POOL local_mempool;
   MEM_POOL_Initialize( &local_mempool, "CG_VALUE_INSTRUMENT_WALKER_Pool", FALSE );
   MEM_POOL_Push( &local_mempool );
   {
 	if(Instrumentation_File_Name != NULL)
+	{
     	Value_Instru_File_Name = Instrumentation_File_Name;
+    	Stride_Instru_File_Name = Instrumentation_File_Name;
+    }
 	if ( Value_Instru_File_Name == NULL )
 	{
 		DevWarn( "not specify the feedback file!use default feedback file\n" );
 		Value_Instru_File_Name = Src_File_Name;
 	}
+    if ( Stride_Instru_File_Name == NULL )
+	{
+		DevWarn( "not specify the feedback file!use default feedback file\n" );
+		Stride_Instru_File_Name = Src_File_Name;
+	}
 
     // Walk the CFG -- instrument
-    CG_VALUE_INSTRUMENT_WALKER cg_value_instrument_walker(&local_mempool,0,0,0,phase);
+    FREQ_Compute_BB_Frequencies( );
+    CG_VALUE_INSTRUMENT_WALKER cg_value_instrument_walker(&local_mempool,0,0,0,phase,stride_profiling_flag, do_value);
     cg_value_instrument_walker.CFG_Walk(rin);
+
   }
   // Dispose of local memory pool
   MEM_POOL_Pop( &local_mempool );
@@ -1202,6 +1324,7 @@ void CG_VALUE_Instrument(CGRIN *rin, PROFILE_PHASE phase)
 
 //OP_TNV_MAP op_tnv_map;
 OP_MAP op_tnv_map; 
+OP_MAP op_stride_tnv_map;
 
 class CG_VALUE_ANNOTATE_WALKER {
 private:
@@ -1210,15 +1333,18 @@ private:
     PU_PROFILE_HANDLES _fb_handles; //feedback info here.
 	PU_PROFILE_HANDLE _fb_handle_merged; //merged feedback info here.
     UINT32 _instrument_count; //how many OP really instrumented
+    UINT32 _stride_count;       //how many OP really stride instrumented
     UINT32 _annotation_count;  //how many OP really annotated
+    UINT32 _stride_annotation_count; //how many OP really stride annontated
     UINT32 _qulified_count;  //how many OP is qualified to annotation
+    UINT32 _srd_qulified_count;  //how many OP is qualified to stride annotation
     UINT32 _pu_inconsistent_count;  //how many OP whose execution count != BB_freq
 //    static UINT32 _file_inconsistent_count; // how many OP whose execution count != BB_freq in the whole file
    
 public:
 	CG_VALUE_ANNOTATE_WALKER(MEM_POOL *m, PROFILE_PHASE phase, PU_PROFILE_HANDLES fb_handles)
 		:_mempool(m),_phase(phase),_fb_handles(fb_handles),_fb_handle_merged(NULL),
-		_instrument_count(0), _annotation_count(0), _qulified_count(0), _pu_inconsistent_count(0)
+		_instrument_count(0), _stride_count(0), _annotation_count(0), _stride_annotation_count(0), _qulified_count(0), _srd_qulified_count(0), _pu_inconsistent_count(0)
 	{
 	}
 	~CG_VALUE_ANNOTATE_WALKER(){}
@@ -1227,8 +1353,10 @@ public:
 
 protected:
 	void Merge_feedback_data();
+    void Merge_stride_feedback_data();
 	void BB_Walk(BB *bb);
 	void Do_annotation(BB* bb, OP * op);
+	void Do_stride_annotation(BB* bb, OP * op);
 	
 };
 
@@ -1266,7 +1394,12 @@ void CG_VALUE_ANNOTATE_WALKER::Merge_feedback_data()
     		_instrument_count = the_largest_fb->Value_Profile_Table.size();
     	}
 	}
+
 	fb_merged_value_vector.resize(_instrument_count);
+		if (_instrument_count==0)
+		{
+		return;
+		}
 
 	UINT64 * values = TYPE_MEM_POOL_ALLOC_N(UINT64, _mempool, TNV_N*fb_handle_num);
 	UINT64 * counters = TYPE_MEM_POOL_ALLOC_N(UINT64, _mempool, TNV_N*fb_handle_num);
@@ -1328,13 +1461,114 @@ void CG_VALUE_ANNOTATE_WALKER::Merge_feedback_data()
 	}
 }
 
+void CG_VALUE_ANNOTATE_WALKER::Merge_stride_feedback_data()
+{
+    
+	if (_fb_handles.size() == 0)
+	{
+		DevWarn("no feedback data for current PU.\n");
+		_fb_handle_merged = NULL;
+		return; 
+	}
+
+	//Now merge the stride data together.
+	FB_Value_Vector & fb_merged_stride_vector = _fb_handle_merged->Get_Stride_Table();
+	INT fb_handle_num;
+	fb_handle_num = _fb_handles.size();
+	PU_PROFILE_HANDLE the_largest_fb;
+	PU_PROFILE_ITERATOR pu_prof_itr = _fb_handles.begin();
+	the_largest_fb = *pu_prof_itr;
+	_stride_count = the_largest_fb->Get_Stride_Table().size();
+	for (pu_prof_itr= ( _fb_handles.begin() ); pu_prof_itr != _fb_handles.end (); ++pu_prof_itr)
+	{
+    	PU_Profile_Handle * handle=*pu_prof_itr;
+    	if ( _stride_count != handle->Stride_Profile_Table.size() )
+    		DevWarn("Stride_Profile_Table.size() differ in feedback files!");
+    	if ( _stride_count < handle->Stride_Profile_Table.size() )
+    	{
+    		the_largest_fb = handle;
+    		_stride_count = the_largest_fb->Stride_Profile_Table.size();
+    	}
+	}
+
+	fb_merged_stride_vector.resize(_stride_count);
+		if (_stride_count==0)
+		{
+		return;
+		}
+
+	UINT64 * values = TYPE_MEM_POOL_ALLOC_N(UINT64, _mempool, TNV_N*fb_handle_num);
+	UINT64 * counters = TYPE_MEM_POOL_ALLOC_N(UINT64, _mempool, TNV_N*fb_handle_num);
+	INT i, j, k, m, n;
+	for ( i=0; i<_stride_count; i++ )
+	{
+		memset(values, 0, TNV_N*fb_handle_num*sizeof(UINT64));
+		memset(counters, 0, TNV_N*fb_handle_num*sizeof(UINT64));
+		INT32 cur_id = the_largest_fb->Stride_Profile_Table[i].tnv._id;
+		UINT64 cur_exec_counter = 0;
+		UINT64 cur_zeroes_counter = 0;
+		INT cur_flag = the_largest_fb->Stride_Profile_Table[i].tnv._flag;
+		for (pu_prof_itr = _fb_handles.begin(); pu_prof_itr != _fb_handles.end (); ++pu_prof_itr)
+		{
+			if ( i >= (*pu_prof_itr)->Get_Stride_Table().size() )
+				continue;
+			FB_Info_Value & fb_info_stride = Get_Stride_Profile( *pu_prof_itr, i );
+			Is_True(fb_info_stride.tnv._id == cur_id,("_id not consitent between feedback files"));
+			cur_exec_counter += fb_info_stride.tnv._exec_counter;
+			cur_zeroes_counter += fb_info_stride.tnv._zero_std_counter;
+			Is_True(fb_info_stride.tnv._flag == cur_flag,("_flag not consitent between feedback files"));
+			for ( j=0; j<TNV_N; j++ )
+			{
+				if ( fb_info_stride.tnv._counters[j] == 0 )
+					break;
+				for ( m=0;m<TNV_N*fb_handle_num;m++)
+				{
+					if (counters[m] == 0)
+					{
+						values[m] = fb_info_stride.tnv._values[j];
+						counters[m] += fb_info_stride.tnv._counters[j];
+						break;
+					}
+					else if ( fb_info_stride.tnv._values[j] == values[m] )
+					{
+						counters[m] += fb_info_stride.tnv._counters[j];
+						break;
+					}
+				}
+			}
+		}
+		for ( m=0; m<TNV_N*fb_handle_num; m++ )
+			for ( n=m+1; n<TNV_N*fb_handle_num; n++)
+			{
+				if (counters[m] < counters[n])
+				{
+					INT tmp;
+					tmp = counters[m];
+					counters[m] = counters[n];
+					counters[n] = tmp;
+				}
+			}
+		fb_merged_stride_vector[i].tnv._id = cur_id;
+		fb_merged_stride_vector[i].tnv._exec_counter = cur_exec_counter;
+		fb_merged_stride_vector[i].tnv._zero_std_counter = cur_zeroes_counter;
+		fb_merged_stride_vector[i].tnv._flag = cur_flag;
+		for ( m=0; m<TNV_N; m++ )
+		{
+			fb_merged_stride_vector[i].tnv._values[m] = values[m];
+			fb_merged_stride_vector[i].tnv._counters[m] = counters[m];
+		}
+	}
+}
+
 void CG_VALUE_ANNOTATE_WALKER::CFG_Walk(CGRIN *rin)
 {
 	Is_True( _fb_handle_merged == NULL, ("_fb_handle_merged != NULL before merge feedback data.") );
 	Merge_feedback_data();
+	Merge_stride_feedback_data();
 	if (_fb_handle_merged == NULL)
 	{
 		DevWarn("There is no feedback data.\n");
+	   // OP_MAP_Delete(op_stride_tnv_map);
 		return;
 	}
     //traverse all BBs in current PU, process them one by one
@@ -1365,10 +1599,11 @@ void CG_VALUE_ANNOTATE_WALKER::CFG_Walk(CGRIN *rin)
 			DevWarn("BB is scheduled by hbs already, ignored!");
 			continue;
 		}
-    	BB_Walk(bb); 
+
+             BB_Walk(bb);
     }
 
- 	Is_True(_annotation_count == _instrument_count, ("_annotation_count != _instrument_count"));
+ 	Is_True(_annotation_count == _instrument_count, ("_annotation_count != _instrument_count _annotation_count= %d _instrument_count=%d",_annotation_count,_instrument_count));
 
     if ( Get_Trace( TP_A_PROF,TT_PROF_FEEDBACK_DUMP ) )
     {
@@ -1383,12 +1618,14 @@ void CG_VALUE_ANNOTATE_WALKER::CFG_Walk(CGRIN *rin)
     	}
     	fprintf(TFile,"\n================================================\n");
     }
- 	
+
 }
 
 //traverse the whole <bb>, examine each OP in <bb>.
 void CG_VALUE_ANNOTATE_WALKER::BB_Walk(BB *bb) 
 {
+    if(!BB_nest_level(bb))
+       return;
     INST2PROFLIST::iterator i;
    	OP *op, *tmp_op;
     struct INST_TO_PROFILE *p;
@@ -1404,7 +1641,16 @@ void CG_VALUE_ANNOTATE_WALKER::BB_Walk(BB *bb)
 	 			//because BB will be splitted during instrumentation, so 
 	 			//we can not assume <op> belongs to <bb> anymore
 	    		Do_annotation(OP_bb(op),op);
-	 			break;
+	 		    switch (OP_code(op)) {
+                    case TOP_ld1:
+                    case TOP_ld4:
+                    case TOP_ld2:
+                    case TOP_ld8:
+                    Do_stride_annotation(OP_bb(op),op);
+                    default:
+                       ; //nothing need to do
+	 			}
+            	break;
 	    	}
     	}
     }
@@ -1438,16 +1684,32 @@ void CG_VALUE_ANNOTATE_WALKER::Do_annotation(BB* bb, OP * op)
 	this->_annotation_count++;
 }
 
+void CG_VALUE_ANNOTATE_WALKER::Do_stride_annotation(BB* bb, OP * op) 
+{
+	FB_Value_Vector& stride_table = _fb_handle_merged->Get_Stride_Table();
+	_srd_qulified_count++;
+	Is_True(_stride_count == _fb_handle_merged->Get_Stride_Table().size(), ("_stride_count != merged stride table."));
+	if (_qulified_count > _stride_count)
+		return;
+
+	OP_flags_srd_prof(op) |= SRD_PROF_FLAG;
+	OP_srd_prof_id(op) = _stride_annotation_count;
+	OP_exec_count(op) = stride_table[_stride_annotation_count].tnv._exec_counter;
+	OP_MAP_Set( op_stride_tnv_map, op, &(stride_table[_stride_annotation_count].tnv));
+	this->_stride_annotation_count++;
+}
+
 void CG_VALUE_Annotate(CGRIN * rin, PROFILE_PHASE phase)
 {
   // Create and initialize local memory pool
   MEM_POOL local_mempool;
   op_tnv_map = OP_MAP_Create();
+  op_stride_tnv_map = OP_MAP_Create();
   MEM_POOL_Initialize( &local_mempool, "CG_VALUE_INSTRUMENT_WALKER_Pool", FALSE );
   MEM_POOL_Push( &local_mempool );
   {
   	PU_PROFILE_HANDLES fb_handles
-      = Get_CG_PU_Value_Profile( get_cat_str(Src_File_Name, Cur_PU_Name, &local_mempool), Feedback_File_Info[phase] );
+      = Get_CG_PU_Value_Profile( get_cat_str(Src_File_Name, Cur_PU_Name, &local_mempool), Feedback_File_Info[phase]);
 
   	if( Get_Trace( TP_A_PROF,TT_PROF_FEEDBACK_DUMP ) )
   	{

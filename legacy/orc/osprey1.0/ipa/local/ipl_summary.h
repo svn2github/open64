@@ -76,8 +76,13 @@
 #include "fb_whirl.h" 
 #endif 
 
-#define IPA_SUMMARY_REVISION 28
-#define IPA_SUMMARY_MINOR_REVISION 1
+#include <search.h> //for  qsort in reorder's Set_hot_fld()
+#ifndef mempool_INCLUDED
+#include "mempool.h" //for MEM_POOL in SUMMARY_STRUCT_ACCESS
+#endif
+
+#define IPA_SUMMARY_REVISION 29//will later to 29:0
+#define IPA_SUMMARY_MINOR_REVISION 0
 
 // Tracing flags
 
@@ -114,6 +119,7 @@ private:
   Elf64_Word _value_offset, _expr_offset, _phi_offset, _chi_offset;
   Elf64_Word _global_offset;
   Elf64_Word _common_offset, _common_shape_offset;
+  Elf64_Word _struct_access_offset;
 
   // array section flow sensitive analysis information
   Elf64_Word _scalar_node_offset, _cfg_node_offset, _regions_array_offset;
@@ -128,6 +134,7 @@ private:
   mINT32 _formal_size, _actual_size;
   mINT32 _value_size, _expr_size, _phi_size, _chi_size, _global_size;
   mINT32 _common_size, _common_shape_size, _global_stid_size;
+  mINT32 _struct_access_size;
 
   // array section flow sensitive analysis information
   mINT32 _scalar_node_size, _cfg_node_size, _regions_array_size; 
@@ -142,6 +149,7 @@ private:
   mINT32 _value_entry_size, _expr_entry_size, _phi_entry_size;
   mINT32 _chi_entry_size, _global_entry_size;
   mINT32 _common_entry_size, _common_shape_entry_size, _global_stid_entry_size;
+  mUINT32 _struct_access_entry_size;
    // array section flow sensitive analysis information
   mINT32 _scalar_node_entry_size, _cfg_node_entry_size;
   mINT32 _regions_array_entry_size; 
@@ -178,6 +186,9 @@ public:
 						 s;};
   void Set_global_stid_offset(Elf64_Word s) { _global_stid_offset =
 						 s;};
+  void Set_struct_access_offset(Elf64_Word s) { _struct_access_offset =
+						 s;};
+
 
   void Set_opt_level(mUINT8 opt_level) { _opt_level = opt_level;};
 
@@ -216,6 +227,8 @@ public:
 						 s;};
   void Set_global_stid_size(mINT32 s) { _global_stid_size =
 						 s;};
+  void Set_struct_access_size(mINT32 s) { _struct_access_size =
+						 s;};
 
   // array section flow sensitive analysis information
   void Set_scalar_node_size(mINT32 s) { _scalar_node_size = s;};
@@ -248,6 +261,9 @@ public:
     _common_shape_entry_size = s;};
   void Set_global_stid_entry_size(mINT32 s) {
     _global_stid_entry_size = s;};
+  void Set_struct_access_entry_size(mINT32 s) {
+    _struct_access_entry_size = s;};
+    
 
   void Set_scalar_node_entry_size(mINT32 s) { _scalar_node_entry_size = s;};
   void Set_cfg_node_entry_size(mINT32 s) {_cfg_node_entry_size = s;};
@@ -282,6 +298,7 @@ public:
   Elf64_Word Get_common_offset() const	{ return _common_offset;};
   Elf64_Word Get_common_shape_offset() const { return _common_shape_offset;};
   Elf64_Word Get_global_stid_offset() const { return _global_stid_offset;};
+  Elf64_Word Get_struct_access_offset() const { return _struct_access_offset;};
 
   mUINT8  Get_opt_level() const { return _opt_level;};
 
@@ -322,7 +339,8 @@ public:
   mINT32 Get_common_size() const	{ return _common_size;};
   mINT32 Get_common_shape_size() const	{ return _common_shape_size;};
   mINT32 Get_global_stid_size() const	{ return _global_stid_size;};
-
+  mINT32 Get_struct_access_size() const	{ return _struct_access_size;};
+  
   // array section flow sensitive analysis information
   mINT32 Get_scalar_node_size()  const { return _scalar_node_size; };
   mINT32 Get_cfg_node_size()  const { return _cfg_node_size; };
@@ -350,7 +368,8 @@ public:
   mINT32 Get_global_entry_size() { return _global_entry_size;};
   mINT32 Get_common_entry_size() { return _common_entry_size;};
   mINT32 Get_common_shape_entry_size() { return _common_shape_entry_size;};
-
+  mINT32 Get_struct_access_entry_size() { return _struct_access_entry_size;};
+  
   mINT32 Get_scalar_node_entry_size() const  { 
     return _scalar_node_entry_size ;};
   mINT32 Get_cfg_node_entry_size() const  { return _cfg_node_entry_size ;};
@@ -454,6 +473,7 @@ private:
 						   // WN_PRAGMA_PARALLEL_SECTIONS
 #define PROC_HAS_PDO_PRAGMA 		0x20000000 // TY_is_non_pod set for
 						   // LOCAL pragma's st 
+#define PROC_NEVER_INVOKED 		0x40000000 // INLINING_TUNING
     LANGUAGE _l;
 
 public:
@@ -575,6 +595,13 @@ public:
     BOOL Has_PU_freq () const		{ return _state & PROC_HAS_PU_FREQ; }
     void Clear_has_PU_freq () 	 	{ _state &= ~PROC_HAS_PU_FREQ; }
 
+ 
+ // INLINING_TUNING^
+    void Set_Never_Invoked ()		{ _state |= PROC_NEVER_INVOKED; }
+    BOOL Is_Never_Invoked() const		{ return _state & PROC_NEVER_INVOKED; }
+    void Clear_Never_Invoked () 	 	{ _state &= ~PROC_HAS_PU_FREQ; }
+ // INLINING_TUNING$
+	
     void Set_has_formal_pragma()	{ _state |= PROC_HAS_FORMAL_PRAGMA;}
     BOOL Has_formal_pragma() const	{ return _state & PROC_HAS_FORMAL_PRAGMA;}
 
@@ -666,10 +693,22 @@ private:
     FB_FREQ _frequency;			// # of times this PU is invoked
     mUINT16 _effective_bb_count;	// # of bb with non-zero freq.
     mUINT16 _effective_stmt_count;	// # of stmt with non-zero freq.
+	UINT16	_wn_count;	//INLINING_TUNING
+	FB_FREQ	_cycle_count_2;	//INLINING_TUNING
     
 public:
 
     /* access functions */
+
+	//INLINING_TUNING^
+    void Set_wn_count (UINT16 count)	{ _wn_count = count;}
+    UINT16 Get_wn_count () const	{ return _wn_count; }
+    void Inc_wn_count (UINT16 count){ _wn_count += count;}
+
+    void Set_cycle_count_2 (FB_FREQ count)	{ _cycle_count_2 = count; };
+    FB_FREQ Get_cycle_count_2 () const		{ return _cycle_count_2; };
+    void Inc_cycle_count_2 (FB_FREQ count)	{ _cycle_count_2 += count; }
+	//INLINING_TUNING$
 
     void Set_cycle_count (FB_FREQ count)	{ _cycle_count = count; };
     FB_FREQ Get_cycle_count () const		{ return _cycle_count; };
@@ -2284,7 +2323,121 @@ public:
   void WB_Print(FILE* fp, INT common_shape_index);
 
 }; // SUMMARY_COMMON_SHAPE
+//field_reordering
+//-----------------------------------------------------------------
+// summary information for a field_reorder parameter
+//-----------------------------------------------------------------
+	struct STRUCT_ACCESS{//UGLY, to put it outside of SUMMARY! BUT...
+	//should put into SUMMARY_STRUCT_ACCESS
+	//BUT I cannot make qsort() running with Cmp_FLD_COUNT1() as a member func
+	//qsort() cannot find it!!!!
+		mUINT32 field_id;
+		mUINT64 count;
+	};
+	/*assist function for Set_hot_fld()*/
+	inline INT Cmp_FLD_COUNT1(const void *p1,const void*p2){
+		STRUCT_ACCESS* t1,*t2;
+		t1=(STRUCT_ACCESS*)p1;
+		t2=(STRUCT_ACCESS*)p2;
+		  if ( t1->count <t2->count )
+		    return 1;
+		  else if ( t1->count >t2->count  )
+		    return -1;
+		  else
+		    return 0;
+	};
 
+
+class SUMMARY_STRUCT_ACCESS
+{
+	struct Cmp_FLD_COUNT{// no use now! we now use array instead of vector
+		bool operator() (const STRUCT_ACCESS &t1,const STRUCT_ACCESS &t2) const{
+			  if ( t1.count <t2.count )
+			    return 1;
+			  else if ( t1.count >t2.count  )
+			    return -1;
+			  else
+			    return 0;
+		};
+	};
+	#define max_hot_num 8
+private:
+	MEM_POOL *_mem;
+	mUINT32 _ty; //just struct_type
+	mUINT32 _flatten_flds;
+	union{
+	   	STRUCT_ACCESS hot_fld[max_hot_num];// just fld access of hot fields;
+	   	STRUCT_ACCESS* flds; // access count of all fld; field_id is just for sorting
+   	}_u;
+public:
+
+    /* access functions */
+
+    void Set_ty(mUINT32 ty) {	_ty = ty; }		//set ty, and get flatten_flds, malloc flds[]
+    mUINT32 Get_ty() const  		{ return _ty;};
+    mUINT64 Get_hot_fld(mUINT32 hot_num)const	{return _u.hot_fld[hot_num].count;}
+    mUINT32 Get_hot_fld_id(mUINT32 hot_num)const	{return _u.hot_fld[hot_num].field_id;}
+
+    void Set_flatten_flds(mUINT32 flatten_flds) {_flatten_flds=flatten_flds;}
+    mUINT32 Get_flatten_flds()const {return _flatten_flds;};
+    void  Inc_fld_count(mUINT32 fld_id, mUINT64 add_count)
+    	{_u.flds[fld_id].count+=add_count;};
+
+	char* Get_ty_name (void) const  	{TY& ty=Ty_tab[_ty];
+		return Index_To_Str(ty.name_idx);}
+
+
+    void Set_hot_fld (void) // get hottness sorting, put  to hot_fld[], dealloc flds[]
+    {
+		mUINT32 flds;
+		UINT i,num=Get_flatten_flds();
+		FmtAssert(num>=1,
+		("in Set_hot_fld() type fld_num>=1!\n"));
+
+		STRUCT_ACCESS *old,*hot;
+		old=_u.flds; //record flds[]
+		hot=_u.hot_fld;
+		for(i=0;i<num;i++)
+			old[i].field_id=i+1;
+		qsort( old,num, sizeof(STRUCT_ACCESS), Cmp_FLD_COUNT1);
+		//std::sort(old,old+num-1, Cmp_FLD_COUNT());
+		if(num>max_hot_num)
+			num=max_hot_num;
+		for(i=0;i<num;i++)
+			hot[i]=old[i];
+		return;
+	}
+
+    void Set_hot_fld_array(INT32 size)
+    	{ INT i;
+		    for ( i=0; i<size; ++i ) 
+			this[i].Set_hot_fld ();
+	    }; //for all summary_entry, set hot_fld_access info
+
+    /* operations */
+
+    void Init (mUINT32 ty_index,mUINT32 flatten_flds,MEM_POOL * mem){ 
+	    bzero(this, sizeof(SUMMARY_STRUCT_ACCESS)); 
+	    _mem=mem;
+	    Set_ty(ty_index); 
+	    Set_flatten_flds(flatten_flds);
+	    _u.flds= (STRUCT_ACCESS*)MEM_POOL_Alloc_P(_mem,
+			sizeof(STRUCT_ACCESS)*flatten_flds,
+			TRUE,NULL);
+	    fprintf(stderr,"new summary: type%d, \n",ty_index);
+  }
+
+	/*assist subroutine*/
+
+
+    // Tracing:
+    void Print ( FILE *fp ,INT32 id) const;
+    void Trace ( INT32 id ) const;
+    void Print_array ( FILE *fp, INT32 size ) const;
+    void Trace_array ( INT32 size ) const;
+    void WB_Print(FILE* fp, INT fld_access_index);
+
+}; // class SUMMARY_FORMAL
 
 extern SUMMARY_SYMBOL *Ipl_Summary_Symbol;
 extern BOOL IPA_Trace_Mod_Ref;          /* Trace log for Mod_Ref */

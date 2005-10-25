@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -73,7 +73,7 @@ BOOL IPFEC_Enable_Postpass_GLOS = FALSE;
 BOOL IPFEC_Enable_Prepass_LOCS = FALSE;
 BOOL IPFEC_Enable_Postpass_LOCS = TRUE;
 BOOL IPFEC_Enable_Speculation = TRUE;
-BOOL IPFEC_Enable_Data_Speculation = TRUE;
+BOOL IPFEC_Enable_Data_Speculation = FALSE;
 BOOL IPFEC_Enable_Cntl_Speculation = TRUE;
 BOOL IPFEC_Enable_Compressed_Template = TRUE;
 BOOL IPFEC_Glos_Reg_Pressure_Aware = TRUE;
@@ -83,11 +83,15 @@ BOOL IPFEC_Glos_Split_Entry_BB      = TRUE ;
 BOOL IPFEC_Glos_Split_Exit_BB       = TRUE ;
 BOOL IPFEC_Glos_Enable_P_Ready_Code_Motion = TRUE;
 BOOL IPFEC_Glos_Code_Motion_Across_Nested_Rgn = TRUE;
+BOOL IPFEC_Glos_Enable_Cntl_Spec_If_Converted_Code = TRUE;
+BOOL IPFEC_Glos_Enable_Renaming = TRUE;
 BOOL IPFEC_Adjust_Variable_Latency  = TRUE ;
 BOOL IPFEC_Enable_Edge_Profile = FALSE;
 BOOL IPFEC_Enable_Value_Profile = FALSE;
+BOOL IPFEC_Enable_Stride_Profile = FALSE;
 BOOL IPFEC_Enable_Random_Prob = FALSE;
 BOOL IPFEC_Enable_Edge_Profile_Annot = FALSE;
+INT32 IPFEC_Enable_Stride_Prefetch = FALSE;
 INT32 Value_Profile_Pu_ID=-1;
 UINT32 Value_Instr_Range=0x0000ffff;
 UINT32 Value_Instr_Pu_Id=0x0000ffff;
@@ -95,8 +99,11 @@ UINT64 Value_Instr_Pu_Id_Mask=0; //if masked, then do not instrumentation for th
 char *Instru_File_Name = "";
 char *Fb_File_Name = "";
 char *Value_Instru_File_Name = "";
+char *Stride_Instru_File_Name = "";
 char *Value_Fb_File_Name = "";
+char *Stride_Fb_File_Name = "";
 BOOL IPFEC_Enable_Value_Profile_Annot = FALSE;
+BOOL IPFEC_Enable_Stride_Profile_Annot = FALSE;
 BOOL IPFEC_Enable_Pre_Bundling = TRUE;
 BOOL IPFEC_Force_CHK_Fail = FALSE;
 BOOL IPFEC_Chk_Compact = TRUE;
@@ -114,6 +121,76 @@ BOOL IPFEC_Enable_Split_bb = FALSE;
 
 char * IPFEC_safe_cntl_spec_prob ;
 char * IPFEC_unsafe_cntl_spec_prob ;
+
+
+//the following are backup IPFEC_... flags: 
+//when initializing the OPTION_GROUP , use the ORC_...(flags) to store the parameters. 
+//These flags are copied to IPFEC_...(flags) when the func Config_Ipfec_Flags() in cg.cxx is firstly called.
+BOOL ORC_Enable_Region_Formation = TRUE;
+BOOL ORC_Enable_Region_Decomposition = TRUE;
+INT32 ORC_Enable_Tail_Duplication = FALSE;
+INT32 ORC_Enable_Exit_Probability = FALSE;
+INT32 ORC_Stacked_Cut_Num = 0;
+INT32 ORC_Stacked_Spill_Num = 0;
+BOOL ORC_Enable_If_Conversion = TRUE;
+BOOL ORC_Force_If_Conv = FALSE;
+BOOL ORC_Force_Para_Comp_Gen = FALSE;
+BOOL ORC_Para_Comp_Gen = TRUE;
+BOOL ORC_Combine_Exit = FALSE;
+BOOL ORC_Disable_Merge_BB = FALSE;
+BOOL ORC_Enable_PRDB= TRUE;
+BOOL ORC_Enable_BB_Verify = FALSE;
+BOOL ORC_Enable_Prepass_GLOS = TRUE;
+BOOL ORC_Enable_Opt_after_schedule = TRUE;
+BOOL ORC_Enable_Postpass_GLOS = FALSE;
+BOOL ORC_Enable_Prepass_LOCS = FALSE;
+BOOL ORC_Enable_Postpass_LOCS = TRUE;
+BOOL ORC_Enable_Speculation = TRUE;
+BOOL ORC_Enable_Data_Speculation = FALSE;
+BOOL ORC_Enable_Cntl_Speculation = TRUE;
+BOOL ORC_Enable_Compressed_Template = TRUE;
+
+BOOL ORC_Glos_Reg_Pressure_Aware = TRUE;
+BOOL ORC_Stress_Spec             = FALSE;
+BOOL ORC_Glos_Motion_Across_Calls = FALSE ;
+BOOL ORC_Glos_Split_Entry_BB      = TRUE ;
+BOOL ORC_Glos_Split_Exit_BB       = TRUE ;
+BOOL ORC_Glos_Enable_P_Ready_Code_Motion = TRUE;
+BOOL ORC_Glos_Code_Motion_Across_Nested_Rgn = TRUE;
+BOOL ORC_Glos_Enable_Cntl_Spec_If_Converted_Code = TRUE;
+BOOL ORC_Glos_Enable_Renaming = TRUE;
+BOOL ORC_Adjust_Variable_Latency  = TRUE ;
+BOOL ORC_Enable_Multi_Branch = TRUE;
+BOOL ORC_Enable_Pre_Multi_Branch = FALSE;
+BOOL ORC_Enable_Post_Multi_Branch = TRUE;
+
+
+BOOL ORC_Enable_Edge_Profile = FALSE;
+BOOL ORC_Enable_Value_Profile = FALSE;
+BOOL ORC_Enable_Stride_Profile = FALSE;
+BOOL ORC_Enable_Random_Prob = FALSE;
+BOOL ORC_Enable_Edge_Profile_Annot = FALSE;
+
+BOOL ORC_Enable_Value_Profile_Annot = FALSE;
+BOOL ORC_Enable_Stride_Profile_Annot = FALSE;
+
+INT32 ORC_Enable_Stride_Prefetch = FALSE;
+
+BOOL ORC_Enable_Pre_Bundling = TRUE;
+BOOL ORC_Force_CHK_Fail = FALSE;
+BOOL ORC_Chk_Compact = TRUE;
+BOOL ORC_Enable_Cascade = TRUE;
+BOOL ORC_Hold_Uses = FALSE;
+BOOL ORC_Enable_Safety_Load = TRUE;
+BOOL ORC_Profitability = FALSE;   // to set all flags considering profitability
+INT32 ORC_sched_care_machine = Sched_care_bundle;
+BOOL ORC_Enable_Insert_UNAT = TRUE; // insert unat spill and restore code when need
+
+BOOL ORC_Enable_Split_bb = FALSE;
+
+char * ORC_safe_cntl_spec_prob ;
+char * ORC_unsafe_cntl_spec_prob ;
+//end of backup IPFEC_... flags
 
 // VT (Visualization Tool) flag
 BOOL VT_Enable_BB_OP = FALSE;
@@ -167,6 +244,83 @@ OPTION_LIST *raw_post_locs_skip_PU;
 SKIPLIST *post_locs_skip_PU;
 OPTION_LIST *raw_PRDB_skip_PU;
 SKIPLIST *PRDB_skip_PU;
+
+OPTION_LIST *raw_glos_rename_skip_bb;
+SKIPLIST *glos_rename_skip_bb;
+OPTION_LIST *raw_glos_rename_skip_op;
+SKIPLIST *glos_rename_skip_op;
+
+/* ===============================================
+ *
+ * Copy_Ipfec_Flags
+ *
+ * Copy the Flags who have the prefix "ORC_" to those flags who 
+ *  have the prefix "IPFEC_"
+ *
+ * ==============================================
+ */
+void
+Copy_Ipfec_Flags (void) {
+
+  IPFEC_Enable_Region_Formation = ORC_Enable_Region_Formation;
+  IPFEC_Enable_Region_Decomposition = ORC_Enable_Region_Decomposition;
+  IPFEC_Enable_Tail_Duplication = ORC_Enable_Tail_Duplication;
+  IPFEC_Enable_Exit_Probability = ORC_Enable_Exit_Probability;
+  IPFEC_Stacked_Cut_Num = ORC_Stacked_Cut_Num;
+  IPFEC_Stacked_Spill_Num = ORC_Stacked_Spill_Num;
+  IPFEC_Enable_If_Conversion = ORC_Enable_If_Conversion;
+  IPFEC_Force_If_Conv = ORC_Force_If_Conv;
+  IPFEC_Force_Para_Comp_Gen = ORC_Force_Para_Comp_Gen;
+  IPFEC_Para_Comp_Gen = ORC_Para_Comp_Gen;
+  IPFEC_Combine_Exit = ORC_Combine_Exit;
+  IPFEC_Disable_Merge_BB = ORC_Disable_Merge_BB;
+  IPFEC_Enable_PRDB = ORC_Enable_PRDB;
+  IPFEC_Enable_BB_Verify = ORC_Enable_BB_Verify;
+  IPFEC_Enable_Prepass_GLOS = ORC_Enable_Prepass_GLOS;
+  IPFEC_Enable_Opt_after_schedule = ORC_Enable_Opt_after_schedule;
+  IPFEC_Enable_Postpass_GLOS = ORC_Enable_Postpass_GLOS;
+  IPFEC_Enable_Prepass_LOCS = ORC_Enable_Prepass_LOCS;
+  IPFEC_Enable_Postpass_LOCS = ORC_Enable_Postpass_LOCS;
+  IPFEC_Enable_Speculation = ORC_Enable_Speculation;
+  IPFEC_Enable_Data_Speculation = ORC_Enable_Data_Speculation;
+  IPFEC_Enable_Cntl_Speculation = ORC_Enable_Cntl_Speculation;
+  IPFEC_Enable_Compressed_Template = ORC_Enable_Compressed_Template;
+
+  IPFEC_Glos_Reg_Pressure_Aware = ORC_Glos_Reg_Pressure_Aware;
+  IPFEC_Stress_Spec             = ORC_Stress_Spec;
+  IPFEC_Glos_Motion_Across_Calls = ORC_Glos_Motion_Across_Calls;
+  IPFEC_Glos_Split_Entry_BB      = ORC_Glos_Split_Entry_BB      ;
+  IPFEC_Glos_Split_Exit_BB       = ORC_Glos_Split_Exit_BB       ;
+  IPFEC_Glos_Enable_P_Ready_Code_Motion = ORC_Glos_Enable_P_Ready_Code_Motion ;
+  IPFEC_Glos_Code_Motion_Across_Nested_Rgn = ORC_Glos_Code_Motion_Across_Nested_Rgn;
+  IPFEC_Glos_Enable_Cntl_Spec_If_Converted_Code = ORC_Glos_Enable_Cntl_Spec_If_Converted_Code;
+  IPFEC_Glos_Enable_Renaming = ORC_Glos_Enable_Renaming;
+  IPFEC_Adjust_Variable_Latency  = ORC_Adjust_Variable_Latency  ;
+  IPFEC_Enable_Multi_Branch =ORC_Enable_Multi_Branch ;
+  IPFEC_Enable_Pre_Multi_Branch = ORC_Enable_Pre_Multi_Branch;
+  IPFEC_Enable_Post_Multi_Branch = ORC_Enable_Post_Multi_Branch ;
+
+  IPFEC_Enable_Edge_Profile = ORC_Enable_Edge_Profile;
+  IPFEC_Enable_Value_Profile = ORC_Enable_Value_Profile;
+  IPFEC_Enable_Stride_Profile = ORC_Enable_Stride_Profile;
+  IPFEC_Enable_Random_Prob = ORC_Enable_Random_Prob;
+  IPFEC_Enable_Edge_Profile_Annot = ORC_Enable_Edge_Profile_Annot;
+
+  IPFEC_Enable_Value_Profile_Annot = ORC_Enable_Value_Profile_Annot;
+  IPFEC_Enable_Stride_Profile_Annot = ORC_Enable_Stride_Profile_Annot;
+  IPFEC_Enable_Pre_Bundling = ORC_Enable_Pre_Bundling;
+  IPFEC_Force_CHK_Fail = ORC_Force_CHK_Fail;
+  IPFEC_Chk_Compact = ORC_Chk_Compact;
+  IPFEC_Enable_Cascade = ORC_Enable_Cascade;
+  IPFEC_Hold_Uses = ORC_Hold_Uses;
+  IPFEC_Enable_Safety_Load = ORC_Enable_Safety_Load;
+  IPFEC_Profitability = ORC_Profitability;
+  IPFEC_sched_care_machine = ORC_sched_care_machine;
+  IPFEC_Enable_Insert_UNAT = ORC_Enable_Insert_UNAT;
+  IPFEC_Enable_Stride_Prefetch =ORC_Enable_Stride_Prefetch;
+
+  IPFEC_Enable_Split_bb = ORC_Enable_Split_bb;
+}
 
 /* ====================================================================
  *

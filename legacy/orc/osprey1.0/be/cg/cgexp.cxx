@@ -161,23 +161,25 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Abs (result, op1, rtype, ops);
 	break;
   case OPR_MPY:
+  case OPR_MPYU2:
+  case OPR_MPYI2:
 	if (MTYPE_is_float(rtype))
 		Expand_Flop (opcode, result, op1, op2, op3, ops);
 	else
-		Expand_Multiply (result, op1, op2, rtype, ops);
+		Expand_Multiply (result, op1, op2, rtype, ops, opcode);
 	break;
   case OPR_HIGHMPY:
 	Expand_High_Multiply (result, op1, op2, rtype, ops);
 	break;
   case OPR_REM:
-	Expand_Rem (result, op1, op2, rtype, ops);
+	Expand_Rem (result, op1, op2, rtype, ops, opcode);
 	break;
   case OPR_MOD:
 	if (MTYPE_is_signed(rtype))
-		Expand_Mod (result, op1, op2, rtype, ops);
+		Expand_Mod (result, op1, op2, rtype, ops, opcode);
 	else
 		// unsigned MOD acts like REM
-		Expand_Rem (result, op1, op2, rtype, ops);
+		Expand_Rem (result, op1, op2, rtype, ops, opcode);
 	break;
   case OPR_DIV:
 	if (MTYPE_is_float(rtype))
@@ -186,7 +188,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Divide (result, op1, op2, rtype, ops);
 	break;
   case OPR_DIVREM:
-	Expand_DivRem(result, op1, op2, op3, rtype, ops);
+	Expand_DivRem(result, op1, op2, op3, rtype, ops, opcode);
 	break;
   case OPR_SQRT:
 	Expand_Sqrt (result, op1, rtype, ops);

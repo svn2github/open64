@@ -124,6 +124,7 @@
 #include "op_targ.h"
 #include "dag.h"
 
+#include "ipfec_options.h"
 // #include "w2op.h"
 
 /* Without this, C++ inlines even with -g */
@@ -208,6 +209,7 @@ static const struct dep_info dep_info_data[] = {
   { CG_DEP_SCC,     "SCC",     CYC_UNKNOWN, CYC_UNKNOWN, 0 },
   { CG_DEP_PRECHK,  "PRECHK",  CYC_ISSUED,  CYC_COMMIT,  1 },
   { CG_DEP_POSTCHK, "POSTCHK", CYC_ISSUED,  CYC_COMMIT,  1 },
+  { CG_DEP_CTLSPEC, "CTLSPEC", CYC_WRITE, CYC_READ,   0 },
   { CG_DEP_MISC,    "MISC",    CYC_ISSUE,   CYC_ISSUE,   0 },
 };
 
@@ -522,8 +524,19 @@ inline void delete_op_info(OP *op)
 //
 
 BOOL
-OP_has_subset_predicate(const void *value1, const void *value2)
+OP_has_subset_predicate(void *value1, void *value2)
 {
+//use IPFEC aurora PRDB in first priority!
+  if(PRDB_Valid()){
+  	PRDB_GEN* prdb = Get_PRDB();
+  	if(Home_Region(OP_bb((OP*)value1)) != Home_Region(OP_bb((OP*)value2))) return FALSE;
+  	if(Home_Region(OP_bb((OP*)value1))->Region_Type() == IMPROPER ||
+  		Home_Region(OP_bb((OP*)value1))->Is_No_Further_Opt()) return FALSE;
+  	if(!OP_has_predicate((OP*)value1) || !OP_has_predicate((OP*)value2)) return FALSE;
+  	return prdb->Partition_Graph(Home_Region(OP_bb((OP*)value1)))->Is_Subset(
+          TN_OP_PAIR(OP_opnd((OP*)value2, OP_PREDICATE_OPND),(OP*)value2),
+          TN_OP_PAIR(OP_opnd((OP*)value1, OP_PREDICATE_OPND),(OP*)value1));
+  }
 
   BOOL v1P = FALSE; // value1 has a qualifying predicate.
   BOOL v2P = FALSE; // value2 has a qualifying predicate.
@@ -572,8 +585,19 @@ OP_has_subset_predicate(const void *value1, const void *value2)
 }
 
 BOOL
-OP_has_disjoint_predicate(const OP *value1, const OP *value2)
+OP_has_disjoint_predicate(OP *value1, OP *value2)
 {
+//use IPFEC aurora PRDB in first priority!
+  if(PRDB_Valid()){
+  	PRDB_GEN* prdb = Get_PRDB();
+  	if(Home_Region(OP_bb(value1)) != Home_Region(OP_bb(value2))) return FALSE;
+  	if(Home_Region(OP_bb(value1))->Region_Type() == IMPROPER ||
+  		Home_Region(OP_bb(value1))->Is_No_Further_Opt()) return FALSE;
+  	if(!OP_has_predicate(value1) || !OP_has_predicate(value2)) return FALSE;
+  	return prdb->Partition_Graph(Home_Region(OP_bb(value1)))->Is_Disjoint(
+          TN_OP_PAIR(OP_opnd(value1, OP_PREDICATE_OPND),value1),
+          TN_OP_PAIR(OP_opnd(value2, OP_PREDICATE_OPND),value2));
+  }
 
   // Check if OPs have associated predicates and don't execute under same
   // conditions.
@@ -1056,7 +1080,6 @@ static void delete_gtn_use_arc(OP *op, UINT8 opnd)
 #undef ARC_LIST_prev ARC_rest_succs
 #undef Set_ARC_LIST_prev Set_ARC_rest_succs
 #undef Set_ARC_LIST_rest Set_ARC_rest_preds
-
 
 
 /* =====================================================================
@@ -1162,9 +1185,6 @@ CG_DEP_Oper_Latency(TOP pred_oper, TOP succ_oper, CG_DEP_KIND kind, UINT8 opnd)
        kind == CG_DEP_SPILLIN || kind == CG_DEP_MEMOUT ||
        kind == CG_DEP_MEMANTI || kind == CG_DEP_MEMVOL))
     latency = 0;
-
-  if (latency < 0 && kind == CG_DEP_POSTCHK)
-    latency =1;
 
   return latency;
 }
@@ -2186,7 +2206,9 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
       if (omega) *omega = lex_neg;
       if (!CG_DEP_Verify_Mem_Deps) return TRUE;
       break;
+
     case DISTINCT:
+
       if (omega == NULL) {
 	if (!CG_DEP_Verify_Mem_Deps) return FALSE;
       } else {
@@ -3573,7 +3595,7 @@ Add_Forw_REG_Arcs(BB *bb)
 	  // allocated to multiple TNs. This is a deficiency of the 
 	  // current PQS implementation.
 
-	  if (include_assigned_registers ||
+	  if ((!PRDB_Valid() && include_assigned_registers) ||
 	      !OP_has_disjoint_predicate(defop,op)) {
 	    new_arc(CG_DEP_REGIN, defop, op, 0, i, FALSE);
 	  }
@@ -3608,7 +3630,7 @@ Add_Forw_REG_Arcs(BB *bb)
 	  // allocated to multiple TNs. This is a deficiency of the 
 	  // current PQS implementation.
 
-	  if (include_assigned_registers ||
+	  if ((!PRDB_Valid() && include_assigned_registers) ||
 	      !OP_has_disjoint_predicate(prev_defop,op)) {
 	    new_arc(CG_DEP_REGOUT, prev_defop, op, 0, 0, FALSE);
 	  }
@@ -3657,8 +3679,9 @@ Add_Bkwd_REG_Arcs(BB *bb, TN_SET *need_anti_out_dep)
 	  // allocated to multiple TNs. This is a deficiency of the 
 	  // current PQS implementation.
 
-	    if (include_assigned_registers ||
-	      !OP_has_disjoint_predicate(defop,op)) {
+	    if ((!PRDB_Valid() && include_assigned_registers) ||
+	         !OP_has_disjoint_predicate(defop,op) ||
+      	         TN_is_predicate(OP_opnd(op,i))) {  
 	      tn_def_found = TRUE;
 	      /*
 	       * Build non-cyclic REGANTI arc to next def
@@ -4735,6 +4758,171 @@ CG_DEP_Compute_Region_Graph(list<BB*>    bb_region,
   }
 }
 
+OP* get_def_op(OP* op , CG_DEP_KIND kind, UINT8 opnd)
+// get the define op for <op> accroding to CG_DEP_REGIN arc .
+// ARC_LIST_rest only look for ops inside one BB.
+// Note : must ensure one of the two opnd of <op> is const.
+{
+  BB* bb=OP_bb(op);
+  OP *def_op=NULL;
+
+  ARC_LIST *list = OP_preds(op);
+  mUINT16 max_op_order=0;
+  OP* nearest_op=NULL;
+  // Traverse all pred op , and find the nearest def op 
+  for (; list; list = ARC_LIST_rest(list)) {
+    ARC *arc = ARC_LIST_first(list);
+    if ( ARC_kind(arc) == kind && ARC_opnd(arc)==opnd ) {
+      def_op = ARC_pred(arc);
+      if (def_op->order > max_op_order ) {
+      	max_op_order = def_op->order;
+      	nearest_op = def_op;
+      }
+    }
+  }//for
+
+  if (nearest_op==NULL || nearest_op==op || OP_bb(nearest_op) != bb) return NULL;
+  else {
+    // If nearest_op is mov , then continue to find the previous def op
+    if (OP_code(nearest_op)==TOP_mov) {
+      def_op = nearest_op;
+      // Continue to find the pred nearest def of of def_op
+      list = OP_preds(def_op);
+      max_op_order=0;  nearest_op=NULL;
+      for (; list; list = ARC_LIST_rest(list)) {
+      	ARC *arc = ARC_LIST_first(list);
+      	if ( ARC_kind(arc) == CG_DEP_REGIN && ARC_opnd(arc)==1 ) {//opnd 1 are used tn of mov 
+          def_op = ARC_pred(arc);
+          if (def_op->order > max_op_order ) {
+      	    max_op_order = def_op->order;
+      	    nearest_op = def_op;
+          }
+        }
+      }//for
+      if (nearest_op==NULL || nearest_op==op || OP_bb(nearest_op) != bb) return NULL;
+      else return nearest_op ;
+      
+    }
+    else return nearest_op; // Not mov , return def op
+  }//else
+  
+  return NULL;
+}
+
+BOOL similar_ops(OP * op1 , OP* op2)
+// Return TRUE iff op1 and op2 are the same kinds, and they both in the
+// [add, sub , mul, div ] set
+{
+  if ( ( OP_iadd(op1) ||OP_isub(op1)||OP_imul(op1)||OP_idiv(op1) ) && \
+      OP_code(op1)==OP_code(op2)
+    ) return TRUE;
+  else
+    return FALSE;
+}
+
+TN* get_const_tn(OP* op)
+{
+  TN* tn1 = OP_opnd(op, 1);
+  TN* tn2 = OP_opnd(op, 2);
+  if (TN_is_constant(tn1)) {
+    return tn1;
+  }
+  else if (TN_is_constant(tn2)) {
+        return tn2;
+      }
+      else {
+        return NULL;
+      }
+}
+
+UINT get_var_tn_idx(OP* op)
+{
+  TN* tn1 = OP_opnd(op, 1);
+  TN* tn2 = OP_opnd(op, 2);
+  if (TN_is_constant(tn1)) {
+    return 2;
+  }
+  else if (TN_is_constant(tn2)) {
+        return 1;
+      }
+      else {
+        return 0; // both are var tn
+      }
+}
+
+BOOL get_definite_alias_info(OP *pred_op, OP *succ_op)
+// return TRUE : definite alias
+// return FALSE: cannot judge (possibly aliased)
+{
+  Is_True((OP_load(pred_op) || OP_store(pred_op)) &&
+     (OP_load(succ_op) || OP_store(succ_op)) ,
+     ("not a load or store"));
+
+  BB* pred_bb = OP_bb(pred_op); // for debug
+  BB* succ_bb = OP_bb(succ_op); // for debug
+  
+  // Get the TN in the ld or st , which is used in the indirect mem addressing
+  INT pred_op_base_num   = OP_find_opnd_use (pred_op, OU_base);
+  INT succ_op_base_num   = OP_find_opnd_use (succ_op, OU_base);
+
+  TN* pred_op_base_tn = OP_opnd(pred_op, pred_op_base_num); // TN980
+  TN* succ_op_base_tn = OP_opnd(succ_op, succ_op_base_num); // TN988
+
+
+  // Analyse the possible definite alias between pred_op_base_tn and
+  // succ_op_base_tn , if OP_load() find CG_DEP_REGIN arc ,
+  // if OP_strore() find CG_DEP_REGOUT
+  // stops when encountered pred ld(st)
+
+
+  OP *def_of_pred_op = get_def_op(pred_op, CG_DEP_REGIN, pred_op_base_num);
+  OP *def_of_succ_op = get_def_op(succ_op, CG_DEP_REGIN, succ_op_base_num);
+
+
+  UINT pred_op_opnd_idx = pred_op_base_num;
+  UINT succ_op_opnd_idx = succ_op_base_num;
+  
+  for ( ; (def_of_pred_op != NULL) && (def_of_succ_op != NULL) ;
+        def_of_pred_op = get_def_op(def_of_pred_op,CG_DEP_REGIN,pred_op_opnd_idx) ,
+        def_of_succ_op = get_def_op(def_of_succ_op,CG_DEP_REGIN,succ_op_opnd_idx) ) {
+
+    // not the same kind return FALSE
+    if ( OP_code(def_of_pred_op) != OP_code(def_of_succ_op) )return FALSE ;
+
+    // both are load , needs to compare their base TNs
+    if ( OP_load(def_of_pred_op) && OP_load(def_of_succ_op) ) {
+      if ( OP_opnd(def_of_pred_op, OP_find_opnd_use (def_of_pred_op, OU_base)) == \
+          OP_opnd(def_of_succ_op, OP_find_opnd_use (def_of_succ_op, OU_base))
+        ){
+        return TRUE; // load from the same address
+      }
+      else 
+      	return FALSE;
+    }
+
+    // both are ALU operations , compare their constant TN and decide whether to continue
+    if ( similar_ops(def_of_pred_op,def_of_succ_op) ) {
+      TN* pred_const_tn = get_const_tn(def_of_pred_op);
+      TN* succ_const_tn = get_const_tn(def_of_succ_op);
+      if ( (pred_const_tn != NULL ) && (succ_const_tn!=NULL) && \
+          ( TN_value(pred_const_tn)==TN_value(succ_const_tn) )
+        ) {
+        
+        pred_op_opnd_idx = get_var_tn_idx(def_of_pred_op);
+        succ_op_opnd_idx = get_var_tn_idx(def_of_succ_op);
+        continue;
+        
+      }
+      else
+        return FALSE; //const are different , stop to find backwards
+
+    }
+
+  }// end for
+  
+  return FALSE;
+}
+
 extern
 
 void
@@ -4791,6 +4979,11 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
         0 : CG_DEP_Latency(pred, op, kind, 0);
 
       /* Build a mem dep arc from <op> to <succ> */
+
+      if(!definite) {
+        definite = get_definite_alias_info(pred, op);
+      }
+
       arc = new_arc_with_latency(kind, pred, op, latency, omega, 0, definite);
 
       /* if MEMIN dependence is not a definite dependence and 
@@ -4879,25 +5072,30 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
 {
   INT32 i;
 
-  BOOL reg_in_dep_dotted ;
   TN * tn_ptr = OP_opnd (op, OP_PREDICATE_OPND);
-  reg_in_dep_dotted = tn_ptr && TN_is_register(tn_ptr) &&
-    (TN_register_class (tn_ptr) == ISA_REGISTER_CLASS_predicate) &&
-    (tn_ptr != True_TN) &&
-    /* It make no sense to change a control-transfer op to be
-     * non-predicate-guarded version
-     */
-    !OP_xfer(op);
-  
-  reg_in_dep_dotted = FALSE ; 
- 
-  for (i = 0; i < OP_opnds(op); i++) {
-    OPs& def_ops = Get_Def_Use_OPs(op, i, CG_DEP_REGIN);
 
+  // Start building REGIN Arcs .
+  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and new version.
+  
+  for (i = 0; i < OP_opnds(op); i++) {
+
+#ifndef  DAG_BITSET_SWITCH_ON
+    
+    OPs& def_ops = Get_Def_Use_OPs(op, i, CG_DEP_REGIN);
     // Build REGIN arc from operand's def.
     for (OPs::iterator ops_iter = def_ops.begin();
          ops_iter != def_ops.end();
          ops_iter++) {
+            
+#else
+    
+    Get_Define_OPs(op, i, CG_DEP_REGIN);  // get the relative def ops into vect : _Define_OPs[]
+    for(DEFINE_OPS_ITER ops_iter=_Define_OPs.begin();
+                ops_iter!=_Define_OPs.end();
+                ops_iter++  ){
+          
+#endif
+
       // #795487: PQS doesn't work with register allocated code. It
       // uses TN as a handle to query predicate relations and relies
       // on single-reaching definitions. This can no longer be TRUE
@@ -4905,66 +5103,132 @@ DAG_BUILDER::Build_Reg_Arcs(OP* op)
       // allocated to multiple TNs. This is a deficiency of the 
       // current PQS implementation.
       
-      if (!_prdb ||!OP_has_predicate(*ops_iter) ||!OP_has_predicate(op)||(_prdb 
-      	  && !_prdb->Partition_Graph(Home_Region(OP_bb(*ops_iter)))->Is_Disjoint(
-          TN_OP_PAIR(OP_opnd(*ops_iter, OP_PREDICATE_OPND),*ops_iter),
-          TN_OP_PAIR(OP_opnd(op, OP_PREDICATE_OPND),op)))) {
-        ARC *arc_ptr = new_arc(CG_DEP_REGIN, *ops_iter, op, 0, i, FALSE);
-        if (reg_in_dep_dotted)
-            Set_ARC_is_dotted (arc_ptr, TRUE);
+      if (!OP_has_disjoint_predicate(*ops_iter, op)) {
+            if(i == OP_PREDICATE_OPND) {
+                ARC *arc_ptr = new_arc(CG_DEP_CTLSPEC, *ops_iter, op, 0, i, FALSE);
+                Set_ARC_is_dotted (arc_ptr, TRUE);
+            } else {
+                ARC *arc_ptr = new_arc(CG_DEP_REGIN, *ops_iter, op, 0, i, FALSE);
+            }
       }
-    }
+    }// for
   }
+  
 
+  // Start building REGOUT Arcs .
+  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and new version.
+  
   for (i = 0; i < OP_results(op); i++) {
-    OPs& prev_def_ops = Get_Def_Use_OPs(op, i, CG_DEP_REGOUT);
 
+#ifndef  DAG_BITSET_SWITCH_ON
+    
+    OPs& prev_def_ops = Get_Def_Use_OPs(op, i, CG_DEP_REGOUT);
     // Build REGOUT arc from previous def of same result.
     for (OPs::iterator ops_iter = prev_def_ops.begin();
          ops_iter != prev_def_ops.end();
          ops_iter++) {
+    
+#else
+    
+    Get_Define_OPs(op, i, CG_DEP_REGOUT); // get the relative def ops into vect : _Define_OPs[]
+    for(DEFINE_OPS_ITER ops_iter=_Define_OPs.begin();
+                ops_iter!=_Define_OPs.end();
+                ops_iter++  ){
+                        
+#endif
+
       // #795487: See above.
-      //if (_include_assigned_registers ||
+      // if (_include_assigned_registers ||
       //    !OP_has_disjoint_predicate(*ops_iter,op)) {
-      if (!_prdb ||!OP_has_predicate(*ops_iter) ||!OP_has_predicate(op)||
-          (_prdb && !_prdb->Partition_Graph(Home_Region(OP_bb(*ops_iter)))->Is_Disjoint(
-          TN_OP_PAIR(OP_opnd(*ops_iter, OP_PREDICATE_OPND),*ops_iter),
-          TN_OP_PAIR(OP_opnd(op, OP_PREDICATE_OPND),op)))) {
+      if (!OP_has_disjoint_predicate(*ops_iter, op)) {
         new_arc(CG_DEP_REGOUT, *ops_iter, op, 0, 0, FALSE);
       }
-    }
+    }// for
+  }// for(i=0; i<OP_results(op)..)
 
-    // Build Non-cyclic REGANTI arcs
+
+  // Start building REGANTI Arcs .
+  // The switch DAG_BITSET_SWITCH_ON  is used to switch between the old and new version.
+  
+#ifndef  DAG_BITSET_SWITCH_ON
+  // Build Non-cyclic REGANTI arcs
+  for(i = 0; i < OP_results(op); i++){
     OPs& use_ops = Get_Def_Use_OPs(op, i, CG_DEP_REGANTI);
-
-    BOOL tn_def_found = FALSE;
     for (OPs::iterator ops_iter = use_ops.begin();
          ops_iter != use_ops.end();
          ops_iter++) {
+
+      BOOL tn_def_found = FALSE;
+    
       // #795487: See above.
-      //if (_include_assigned_registers ||
+      // if (_include_assigned_registers ||
       //    !OP_has_disjoint_predicate(*ops_iter,op)) {
       TN * tn = OP_result(op,i) ;
       if (TN_is_register(tn) && TN_register_class(tn) == ISA_REGISTER_CLASS_predicate) {
         tn_def_found = TRUE;
         INT16 opnd_idx = get_opnd_idx (*ops_iter,tn);
         Is_True (opnd_idx >= 0, ("fail to find opnd!"));
-        new_arc(CG_DEP_REGANTI, *ops_iter, op, 0, (UINT8)opnd_idx, FALSE);
-        continue ;
+        new_arc(CG_DEP_REGANTI, *ops_iter, op, 0, (UINT8)opnd_idx, FALSE);        
       }
+      else{
 
-      if (!_prdb ||!OP_has_predicate(*ops_iter) ||!OP_has_predicate(op)||
-          (_prdb && !_prdb->Partition_Graph(Home_Region(OP_bb(*ops_iter)))->Is_Disjoint(
-          TN_OP_PAIR(OP_opnd(*ops_iter, OP_PREDICATE_OPND),*ops_iter),
-          TN_OP_PAIR(OP_opnd(op, OP_PREDICATE_OPND),op)))) {
+      if (!OP_has_disjoint_predicate(*ops_iter, op)) {
         tn_def_found = TRUE;
 
-        INT16 opnd_idx = get_opnd_idx (*ops_iter,tn);
-        Is_True (opnd_idx >= 0, ("fail to find opnd!"));
-        ARC * arc = new_arc(CG_DEP_REGANTI, *ops_iter, op, 0, (UINT8)opnd_idx, FALSE);
-        adjust_reganti_latency (arc) ;
-      }
+          INT16 opnd_idx = get_opnd_idx (*ops_iter,tn);
+          Is_True (opnd_idx >= 0, ("fail to find opnd!"));
+          ARC * arc = new_arc(CG_DEP_REGANTI, *ops_iter, op, 0, (UINT8)opnd_idx, FALSE);
+          adjust_reganti_latency (arc) ;
+        }
+      }// else
     }
   }
+  
+#else // defined DAG_BITSET_SWITCH_ON  
+  
+  for(i = 0; i < OP_opnds(op); i++){
+
+    Get_Define_OPs(op, i, CG_DEP_REGANTI); // get the relative def ops into vect : _Define_OPs[]
+    for(DEFINE_OPS_ITER ops_iter=_Define_OPs.begin();
+                ops_iter!=_Define_OPs.end();
+                ops_iter++  ){
+
+      //if(op==*ops_iter) continue;  // omit the case: i=i+1 
+
+        BOOL OUT = FALSE;
+      for(INT32 j = 0; (j < OP_results(*ops_iter)) && (OUT==FALSE); j++){
+
+        BOOL tn_def_found = FALSE;
+        
+          
+        // the following has exchanged *ops_iter and op to each other
+        TN * tn = OP_result(*ops_iter,j) ;
+        if (TN_is_register(tn) && TN_register_class(tn) == ISA_REGISTER_CLASS_predicate) {
+          tn_def_found = TRUE;
+
+          new_arc(CG_DEP_REGANTI, op, *ops_iter, 0, (UINT8)i, FALSE);
+          OUT = TRUE;
+
+        }
+        else{
+
+          if (!_prdb ||!OP_has_predicate(op) ||!OP_has_predicate(*ops_iter)||
+                (_prdb && !_prdb->Partition_Graph(Home_Region(OP_bb(op)))->Is_Disjoint(
+                TN_OP_PAIR(OP_opnd(op, OP_PREDICATE_OPND),op),
+                TN_OP_PAIR(OP_opnd(*ops_iter, OP_PREDICATE_OPND),*ops_iter)))) {
+            tn_def_found = TRUE;
+
+            ARC * arc = new_arc(CG_DEP_REGANTI, op, *ops_iter, 0, (UINT8)i, FALSE);
+            OUT = TRUE;
+            adjust_reganti_latency (arc) ;
+          }
+        }// else
+      }// for(j = 0; j < OP_results(op); j++){
+    }
+  }
+  
+#endif // end of #ifndef  DAG_BITSET_SWITCH_ON
+
+
 }
 

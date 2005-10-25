@@ -277,9 +277,13 @@ skip_till_next_field(FLD_HANDLE  this_fld,
        * allow this for pointers to handle INITVKIND_SYMOFF 
        * initializers).
        */
+     
+      if(next_fld.Is_Null())
+        return next_fld;
       while (!next_fld.Is_Null () &&
 	     (FLD_ofst(this_fld) >= FLD_ofst(next_fld) ||
-	      !PTR_OR_ALIGNED_WITH_STRUCT(FLD_type(next_fld), struct_align) ||
+	 /*It is a bug to use !PTR_....*/
+	      PTR_OR_ALIGNED_WITH_STRUCT(FLD_type(next_fld), struct_align) ||
 	      (!TY_Is_Pointer(FLD_type(next_fld)) &&
 	       FLD_ofst(next_fld) % TY_align(FLD_type(next_fld)) != 0) ||
 	      (!is_union &&
@@ -314,6 +318,20 @@ TY2C_prepend_filler_field(TOKEN_BUFFER decl_tokens, INT64 byte_size)
 } /* TY2C_prepend_filler_field */
 
 
+/*All fields of a structure(except of padding) will be emitted.
+ * The original TY2C_prepend_FLD_list will try to merge not directly used
+ * field of structure into a fill member which may change the alignment.
+ * Such as
+ * struct a{
+ *    char x;
+ *    int y;
+ * };
+ * The original TY2C_prepend_FLD_list may translate it into
+ * struct a{
+ *    char buf[8];
+ * };
+ * so that the alignment will changed from 4 to 1.
+ * */
 static void
 TY2C_prepend_FLD_list(TOKEN_BUFFER decl_tokens,
 		      FLD_HANDLE   fld,
@@ -335,13 +353,16 @@ TY2C_prepend_FLD_list(TOKEN_BUFFER decl_tokens,
    TOKEN_BUFFER fld_tokens;
    INT64        fld_gap;
    const INT64  remaining_bytes = struct_size - FLD_ofst(fld);
-   
+
+/*   
    FLD_HANDLE next_fld = skip_till_next_field(fld,
 					      struct_align,
 					      struct_size,
 					      is_union);
    fld_gap = get_field_gap(fld, next_fld, remaining_bytes, is_union);
-      
+*/
+   FLD_HANDLE next_fld =  FLD_next(fld);
+   fld_gap = 0;
    /* Do the next field before this one, since fields are prepended 
     * (rather than appended) to the token buffer.  Note that filler-
     * fields to precede the next_fld should be prepended after having
@@ -369,7 +390,9 @@ TY2C_prepend_FLD_list(TOKEN_BUFFER decl_tokens,
     * manner.  Note that we cannot redeclare bitfields accurately,
     * since the TY information is too incomplete to allow this.
     */
-   if (!PTR_OR_ALIGNED_WITH_STRUCT(FLD_type(fld), struct_align) ||
+#if 0
+//   if (PTR_OR_ALIGNED_WITH_STRUCT(FLD_type(fld), struct_align) ||
+    if(
        (!is_union &&
 	FLD_Is_Bitfield(fld, FLD_next(fld), remaining_bytes)))
    {
@@ -378,6 +401,7 @@ TY2C_prepend_FLD_list(TOKEN_BUFFER decl_tokens,
 	 TY2C_prepend_filler_field(decl_tokens, fld_gap);
    }
    else /* A regular field, at least we think so */
+#endif
    {
       /* Insert filler to succede this fld, since such fillers are
        * not handled in the processing of the next field.
@@ -392,6 +416,15 @@ TY2C_prepend_FLD_list(TOKEN_BUFFER decl_tokens,
       fld_tokens = New_Token_Buffer();
       Append_Token_String(fld_tokens, W2CF_Symtab_Nameof_Fld(fld));
       TY2C_translate(fld_tokens, FLD_type(fld), context);
+      if(!TY_Is_Structured(FLD_type(fld))&&
+         FLD_Is_Bitfield(fld, FLD_next(fld), remaining_bytes)){
+          char buf[12];
+          if(FLD_bsize(fld)>0){
+           Append_Token_Special(fld_tokens,':');
+           sprintf(buf,"%d",FLD_bsize(fld));
+           Append_Token_String(fld_tokens,buf);
+          }
+      }
       Append_Token_Special(fld_tokens, ';');
       Prepend_And_Reclaim_Token_List(decl_tokens, &fld_tokens);
       Prepend_Indented_Newline(decl_tokens, 1);
@@ -722,15 +755,30 @@ TY2C_pointer(TOKEN_BUFFER decl_tokens, TY_IDX ty, CONTEXT context)
    /* Add qualifiers to the rhs of the '*' and to the left of the
     * decl_tokens.
     */
-   TY2C_prepend_qualifiers(decl_tokens, ty, context);
-   Prepend_Token_Special(decl_tokens, '*');
+   TOKEN_BUFFER point_tokens;
+/*   if(TY_Is_Function(TY_pointed(ty))){
+      point_tokens=New_Token_Buffer();
+      poi
+      TY2C_prepend_qualifiers(point_tokens, ty, context);
+      Prepend_Token_Special(point_tokens,'*');
+   }else
+*/
+  {
+      point_tokens = decl_tokens;
+      TY2C_prepend_qualifiers(point_tokens, ty, context);
+       Prepend_Token_Special(point_tokens, '*');
+   }
 
    if (TY_Is_Array_Or_Function(TY_pointed(ty)))
-      WHIRL2C_parenthesize(decl_tokens);
+      WHIRL2C_parenthesize(point_tokens);
    
    CONTEXT_reset_unqualified_ty2c(context); /* Always qualify pointee type */
    CONTEXT_set_incomplete_ty2c(context); /* Pointee can be incomplete */
-   TY2C_translate(decl_tokens, TY_pointed(ty), context);
+   TY2C_translate(point_tokens, TY_pointed(ty), context);
+/*   if(TY_Is_Function(TY_pointed(ty))){
+      Prepend_And_Reclaim_Token_List(decl_tokens,&point_tokens);
+   }
+*/
 } /* TY2C_pointer */
 
 
@@ -841,12 +889,12 @@ TY2C_get_field_info(TY_IDX struct_ty,      /* base type */
       for (next_fld = skip_till_next_field(this_fld, 
 					   struct_align,
 					   struct_size,
-					   FALSE/*is_union*/);
+					   TY_is_union(struct_ty)/*is_union*/);
 	   !next_fld.Is_Null() && FLD_ofst(next_fld) <= desired_offset;
 	   next_fld = skip_till_next_field(next_fld, 
 					   struct_align,
 					   struct_size,
-					   FALSE/*is_union*/))
+					   TY_is_union(struct_ty)/*is_union*/))
       {
 	 this_fld = next_fld;
       }

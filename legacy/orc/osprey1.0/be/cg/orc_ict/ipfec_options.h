@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -126,28 +126,35 @@ extern BOOL IPFEC_Enable_Data_Speculation;
 extern BOOL IPFEC_Enable_Cntl_Speculation;
 extern BOOL IPFEC_Enable_Edge_Profile;
 extern BOOL IPFEC_Enable_Value_Profile;
+extern BOOL IPFEC_Enable_Stride_Profile;
 extern BOOL IPFEC_Enable_Random_Prob;
 extern BOOL IPFEC_Enable_Edge_Profile_Annot;
 extern BOOL IPFEC_Enable_Value_Profile_Annot;
+extern BOOL IPFEC_Enable_Stride_Profile_Annot;
 extern BOOL IPFEC_Glos_Reg_Pressure_Aware;
 extern BOOL IPFEC_Glos_Split_Entry_BB;
 extern BOOL IPFEC_Glos_Split_Exit_BB;
 extern BOOL IPFEC_Glos_Enable_P_Ready_Code_Motion;
 extern BOOL IPFEC_Glos_Motion_Across_Calls ;
 extern BOOL IPFEC_Glos_Code_Motion_Across_Nested_Rgn;
+extern BOOL IPFEC_Glos_Enable_Cntl_Spec_If_Converted_Code;
+extern BOOL IPFEC_Glos_Enable_Renaming;
 extern BOOL IPFEC_Stress_Spec;
 extern BOOL IPFEC_Adjust_Variable_Latency ;
 extern BOOL IPFEC_Enable_Multi_Branch ;
 extern BOOL IPFEC_Enable_Pre_Multi_Branch ;
 extern BOOL IPFEC_Enable_Post_Multi_Branch ;
+extern INT32 IPFEC_Enable_Stride_Prefetch;
 
 extern char *Instru_File_Name;
 extern char *Fb_File_Name;
 extern char *Value_Instru_File_Name;
+extern char *Stride_Instru_File_Name;
 extern UINT32 Value_Instr_Range;
 extern UINT32 Value_Instr_Pu_Id;
 extern UINT64 Value_Instr_Pu_Id_Mask;
 extern char *Value_Fb_File_Name;
+extern char *Stride_Fb_File_Name;
 
 // This is the flag to control compressed template using. We do not
 // use compressed template if it is turned off.
@@ -164,6 +171,67 @@ extern BOOL IPFEC_Enable_Insert_UNAT;
 extern char * IPFEC_safe_cntl_spec_prob ;
 extern char * IPFEC_unsafe_cntl_spec_prob ;
 
+//backup IPFEC_... flags
+//see ipfec_options.cxx for details
+extern INT32 ORC_Stacked_Cut_Num;
+extern INT32 ORC_Stacked_Spill_Num;
+extern BOOL ORC_Enable_Region_Formation;
+extern BOOL ORC_Enable_Region_Decomposition;
+extern BOOL ORC_Enable_Tail_Duplication;
+extern BOOL ORC_Enable_Exit_Probability;
+extern BOOL ORC_Enable_If_Conversion;
+extern BOOL ORC_Force_If_Conv;
+extern BOOL ORC_Force_Para_Comp_Gen;
+extern BOOL ORC_Para_Comp_Gen;
+extern BOOL ORC_Combine_Exit;
+extern BOOL ORC_Disable_Merge_BB;
+extern BOOL ORC_Enable_PRDB;
+extern BOOL ORC_Enable_BB_Verify;
+extern BOOL ORC_Enable_Opt_after_schedule;
+extern BOOL ORC_Enable_Prepass_GLOS;
+extern BOOL ORC_Enable_Postpass_GLOS;
+extern BOOL ORC_Enable_Prepass_LOCS;
+extern BOOL ORC_Enable_Postpass_LOCS;
+extern BOOL ORC_Enable_Speculation;
+extern BOOL ORC_Enable_Data_Speculation;
+extern BOOL ORC_Enable_Cntl_Speculation;
+extern BOOL ORC_Enable_Edge_Profile;
+extern BOOL ORC_Enable_Value_Profile;
+extern BOOL ORC_Enable_Stride_Profile;
+extern BOOL ORC_Enable_Random_Prob;
+extern BOOL ORC_Enable_Edge_Profile_Annot;
+extern BOOL ORC_Enable_Value_Profile_Annot;
+extern BOOL ORC_Enable_Stride_Profile_Annot;
+extern BOOL ORC_Glos_Reg_Pressure_Aware;
+extern BOOL ORC_Glos_Split_Entry_BB;
+extern BOOL ORC_Glos_Split_Exit_BB;
+extern BOOL ORC_Glos_Enable_P_Ready_Code_Motion;
+extern BOOL ORC_Glos_Motion_Across_Calls ;
+extern BOOL ORC_Glos_Code_Motion_Across_Nested_Rgn;
+extern BOOL ORC_Glos_Enable_Cntl_Spec_If_Converted_Code;
+extern BOOL ORC_Glos_Enable_Renaming;
+extern BOOL ORC_Stress_Spec;
+extern BOOL ORC_Adjust_Variable_Latency ;
+extern BOOL ORC_Enable_Multi_Branch ;
+extern BOOL ORC_Enable_Pre_Multi_Branch ;
+extern BOOL ORC_Enable_Post_Multi_Branch ;
+extern INT32 ORC_Enable_Stride_Prefetch;
+
+
+extern BOOL ORC_Enable_Compressed_Template;
+extern BOOL ORC_Enable_Pre_Bundling;
+extern BOOL ORC_Force_CHK_Fail;
+extern BOOL ORC_Enable_Cascade;
+extern BOOL ORC_Hold_Uses;
+extern BOOL ORC_Profitability;
+extern BOOL ORC_Chk_Compact;
+extern BOOL ORC_Enable_Safety_Load;
+extern BOOL ORC_Enable_Insert_UNAT;
+
+extern char * ORC_safe_cntl_spec_prob ;
+extern char * ORC_unsafe_cntl_spec_prob ;
+//end of backup
+
 // Flags for research experiments
 typedef enum {
   Sched_care_nothing,  /* Machine model always alow scheduling */
@@ -172,6 +240,7 @@ typedef enum {
   Sched_care_bundle    /* Do integerated bundling when scheduling */
 } SCHED_CARE;
 extern INT32 IPFEC_sched_care_machine;
+extern INT32 ORC_sched_care_machine;
 
 // VT (Visualization Tool) flags.
 extern BOOL VT_Enable_BB_OP;
@@ -274,6 +343,10 @@ extern OPTION_LIST *raw_post_locs_skip_PU;
 extern SKIPLIST *post_locs_skip_PU;
 extern OPTION_LIST *raw_locs_skip_bb;
 extern SKIPLIST *locs_skip_bb;
+extern OPTION_LIST *raw_glos_rename_skip_bb;
+extern SKIPLIST *glos_rename_skip_bb;
+extern OPTION_LIST *raw_glos_rename_skip_op;
+extern SKIPLIST *glos_rename_skip_op;
 
 //Skip_list for multi_branch
 extern OPTION_LIST *raw_mlbr_skip_bb;
@@ -282,6 +355,12 @@ extern SKIPLIST *mlbr_skip_bb;
 //Skip_list for PRDB 
 extern OPTION_LIST *raw_PRDB_skip_PU;
 extern SKIPLIST *PRDB_skip_PU;
+
+
+
+// Copy ORC_Flags into IPFEC_Flags
+void Copy_Ipfec_Flags (void) ;
+
 
 //Build skiplist
 extern SKIPLIST* IPFEC_Build_Skiplist ( OPTION_LIST *olist );

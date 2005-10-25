@@ -151,6 +151,7 @@ extern INT32 Feedback_Phase_Num;
 extern OPTION_LIST* Feedback_Option;
 extern UINT32 Phase_Num;
 extern UINT32 Profile_Type;
+extern BOOL Outlining_Enabled; //OUTLINING^$
 #ifdef __cplusplus
 }
 #endif

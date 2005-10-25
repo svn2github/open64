@@ -1130,6 +1130,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       WOPT_Enable_Restricted_Map = FALSE;
   }
 
+  // Allow use of Load/Store offset to enable folding of ILOAD/ISTORE
+  Use_Load_Store_Offset = TRUE;
+
   BOOL Fold_ILOAD_save = WN_Simp_Fold_ILOAD;
   BOOL Fold_LDA_save = WN_Simp_Fold_LDA;
 
@@ -1161,6 +1164,10 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
     else
 	actions |= LOWER_BITS_OP;
     
+    actions |= LOWER_MPY2_OP;
+    
+    actions |= LOWER_TO_MEMLIB; // add memlib transformation
+
     wn_tree = WN_Lower(wn_orig, actions, alias_mgr, "Pre_Opt");
 
     if (Cur_PU_Feedback)
@@ -1447,10 +1454,13 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   }
 #endif
 
+  /* Move this phase to after DCE to avoid live range overlap bug introduced by copy_prop */
+  /*
   if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
     SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
     comp_unit->Fold_lda_iload_istore();
   }
+  */
 
   if (WOPT_Enable_Bool_Simp) {
     SET_OPT_PHASE("Boolean simplification");
@@ -1473,6 +1483,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	 comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
 					       "after Dead Code Elimination" );
   }
+
+  if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
+    SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
+    comp_unit->Fold_lda_iload_istore();
+  }  
 
   for (INT i = 0; i < WOPT_Enable_Extra_Rename_Pass; ++i) {
 
@@ -1510,10 +1525,13 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       comp_unit->Do_copy_propagate();
     }
 
+    /* Move this phase to after DCE to avoid live range overlap bug introduced by copy_prop */
+    /* 
     if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
       SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
       comp_unit->Fold_lda_iload_istore();
     }
+    */
 
     if (WOPT_Enable_DCE) {
       SET_OPT_PHASE("Dead Code Elimination");
@@ -1530,6 +1548,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
       if (!paths_removed) break;
     }
+
+    if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
+      SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
+      comp_unit->Fold_lda_iload_istore();
+    } 
 
     // synchronize CFG and feedback info
     // comp_unit->Cfg()->Feedback().make_coherent();

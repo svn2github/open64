@@ -264,6 +264,12 @@ else
   BUILD_TARGET = MIPS
 endif
 
+ifdef BUILD_ARCH
+ifneq ($(BUILD_ARCH), $(BUILD_TARGET))
+     STD_COMPILE_OPTS += -DCROSS_COMPILATION
+endif 
+endif
+
 ifeq ($(BUILD_TARGET), MIPS)
 BUILD_TARGET_DIR = MIPS
 endif
@@ -293,11 +299,10 @@ else
 endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
-   OPTIMIZER = -g
+   OPTIMIZER = -g -O0
 else
  ifeq ($(BUILD_OPTIMIZE), NODEBUG)
-# -IPA can't be used on libraries, not default
-   OPTIMIZER = -O2
+   OPTIMIZER = -O2 -UIs_True_On
  else
    OPTIMIZER = $(BUILD_OPTIMIZE)
  endif
@@ -424,15 +429,15 @@ endif
 
 ifeq ($(BUILD_COMPILER), EDG)
  ifeq ($(BUILD_TYPE), SHARED)
-   STD_COMPILE_OPTS = -KPIC
+   STD_COMPILE_OPTS += -KPIC
  else
-   STD_COMPILE_OPTS = -non_shared
+   STD_COMPILE_OPTS += -non_shared
  endif
 else
  ifeq ($(BUILD_TYPE), SHARED)
-   STD_COMPILE_OPTS = -fPIC
+   STD_COMPILE_OPTS += -fPIC
  else
-   STD_COMPILE_OPTS = 
+   STD_COMPILE_OPTS += 
  endif
 endif
 
@@ -450,6 +455,10 @@ STD_COMPILE_OPTS += -mips4
 endif
 ifeq ($(BUILD_ARCH), IA64)
 STD_COMPILE_OPTS += -DHOST_IA64
+endif
+
+ifeq ($(ORC_TARG), KAPI)
+STD_COMPILE_OPTS +=-DIPFEC_Enable_New_Targ
 endif
 
 ifneq ($(BUILD_COMPILER), GNU)

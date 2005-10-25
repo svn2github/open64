@@ -144,7 +144,7 @@ SRC_CFILES = \
 	objects.c \
 	phases.c \
 	run.c \
-	special_options.c
+	special_options.c 
 
 CFILES=	\
 	$(SHARED_CFILES) \
@@ -166,6 +166,14 @@ LANGS = as cc c89 CC f77 fort77 f90
 default: first $(TARGETS) last
 
 first:
+	-@if [ ! -L lib_phase_dir.h ] ; then \
+        ln -s -v $(BUILD_TOT)/common/com/lib_phase_dir.h . ; \
+      fi
+
+	-@if [ ! -L profile_type.h  ] ; then \
+        ln -s -v $(BUILD_TOT)/common/com/profile_type.h . ; \
+      fi 
+
 ifeq ($(BUILD_OS), LINUX)
 	cd $(BUILD_AREA)/include && $(MAKE)
 endif

@@ -91,6 +91,13 @@
 /* My changes are a hack till blessed by Steve. (suneel) */
 #define SHORTCIRCUIT_HACK 1
 
+#define MMCOPY_MULT 1.2 
+#define MEMLIB_THRESHOLD_BYTES OPT_Threshold_To_Memlib  //Parameter to adjust
+#define MEMLIB_STRUCT_BYTES 128  //Parameter to adjust
+#define MEMLIB_NUM_STORE 5  //Parameter to adjust
+#define MEMLIB_MAX_NUM 6
+#define DELETED_MAX 20 
+
 /* this next header should be after the external declarations in the others */
 #include "pragma_weak.h"	/* Alias routines defined in wopt.so */
 
@@ -177,6 +184,9 @@ static WN *lower_conditional(WN *, WN *, LABEL_IDX, LABEL_IDX, BOOL,
 			     LOWER_ACTIONS);
 static WN *lower_tree_height(WN *, WN *, LOWER_ACTIONS);
 
+static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
+static WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
+static WN *Lower_STID_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions);
 
 static TY_IDX coerceTY(TY_IDX, TYPE_ID);
 static ST *coerceST(const ST *, TYPE_ID);
@@ -219,7 +229,8 @@ static BOOL traceAlignment       = FALSE;
 static BOOL traceTreeHeight      = FALSE;
 static BOOL traceSplitSymOff     = FALSE;
 static BOOL traceWoptFinishedOpt = FALSE;
-static BOOL traceMload           = FALSE;
+static BOOL traceMload           = false;
+static BOOL traceMemlib          = TRUE;
 // static BOOL traceUplevel = FALSE;
 
 typedef struct CURRENT_STATE
@@ -243,8 +254,22 @@ typedef enum MSTORE_ACTIONS
   MSTORE_loop,
   MSTORE_intrinsic_bzero,
   MSTORE_intrinsic_memset,
-  MSTORE_intrinsic_bcopy
+  MSTORE_intrinsic_memcpy
 } MSTORE_ACTIONS;
+
+enum MEMLIB_ACTIONS
+{
+  IGNORE,
+  ABORT_OPT,
+  CONT_OPT
+};
+
+typedef struct inode {
+   WN *wn;
+   INT start_offset;
+   INT length;
+   struct inode *next;
+} inode_type;
 
 static const char * MSTORE_ACTIONS_name(MSTORE_ACTIONS);
 
@@ -310,6 +335,8 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
 
 #define	lower_truebr(l,c,b,a)	lower_branch_condition(TRUE,l,c,b,a)
 #define	lower_falsebr(l,c,b,a)	lower_branch_condition(FALSE,l,c,b,a)
+
+#define WN_same_id(a,b)    (WN_st(a)==WN_st(b) && WN_offset(a)==WN_offset(b))
 
 /* ====================================================================
  *
@@ -1103,7 +1130,8 @@ extern BOOL lower_is_aliased(WN *wn1, WN *wn2, INT64 size)
     return FALSE;
   }
 
-  if (WN_operator_is(wn1, OPR_LDA) && WN_operator_is(wn2, OPR_LDA)) {
+  if ((WN_operator_is(wn1, OPR_LDA) || WN_operator_is(wn1, OPR_LDID) && TY_is_pointer(WN_ty(wn1))) &&
+      (WN_operator_is(wn2, OPR_LDA) || WN_operator_is(wn2, OPR_LDID) && TY_is_pointer(WN_ty(wn2))) ) {
     ST	*sym1 = WN_st(wn1);
     ST	*sym2 = WN_st(wn2);
     ST	*base1, *base2;
@@ -3588,6 +3616,15 @@ lower_field_id (WN* tree)
   Is_True (! fld.Is_Null (), ("invalid bit-field ID for %s",
 			      OPERATOR_name(opr)));
 
+#if 1 //Fix 12-18-2002
+  if (!is_ptr_type &&
+      (MTYPE_byte_size(WN_desc(tree)) != TY_size(FLD_type(fld)))) {
+     DevWarn("lower_field_id: the sizes of field type %d and desc type %d do not match",
+             TY_mtype(FLD_type(fld)), WN_desc(tree));
+    return;
+  }
+#endif 
+
   WN_set_ty (tree, (is_ptr_type ? Make_Pointer_Type (FLD_type (fld)) :
 		    FLD_type (fld)));
   WN_set_field_id (tree, 0);
@@ -3700,6 +3737,9 @@ static WN *lower_base_reference(WN *tree, ST *base, INT64 offset,
     
     wn =	WN_RIload(WN_rtype(tree), WN_desc(tree), offset, WN_ty(tree),
 			  addr);
+#if 1 //Fix 12-18-2002
+    WN_set_field_id(wn, WN_field_id (tree));
+#endif 
     break;
   case OPR_LDBITS:
     wn =	WN_RIload(WN_rtype(tree), WN_desc(tree), offset, WN_ty(tree),
@@ -4334,6 +4374,69 @@ static BOOL Is_Fast_Divide(WN *wn)
 
   return FALSE;
 }
+
+TYPE_ID Get_Kid_Type(WN * expr)
+{
+  if ( WN_operator(expr) == OPR_ILOAD || WN_operator(expr) == OPR_LDID )
+  {
+	if (WN_rtype(expr)==MTYPE_I1 || WN_rtype(expr)==MTYPE_I2 || WN_rtype(expr)==MTYPE_U1 || WN_rtype(expr)==MTYPE_U2 )
+	{
+		return WN_rtype(expr);
+	}
+  	return WN_desc(expr);
+  }
+  else if ( WN_operator(expr) == OPR_CVTL )
+  {
+    if ( WN_cvtl_bits(expr) == 8 )
+	{
+		if ( WN_rtype(expr)==MTYPE_U2 || WN_rtype(expr)==MTYPE_U4 || WN_rtype(expr)==MTYPE_U8)
+			return MTYPE_U1;
+		else if ( WN_rtype(expr)==MTYPE_I2 || WN_rtype(expr)==MTYPE_I4 || WN_rtype(expr)==MTYPE_I8)
+			return MTYPE_I1;
+	}
+    else if ( WN_cvtl_bits(expr) == 16 )
+	{
+		if ( WN_rtype(expr)==MTYPE_U2 || WN_rtype(expr)==MTYPE_U4 || WN_rtype(expr)==MTYPE_U8)
+			return MTYPE_U2;
+		else if ( WN_rtype(expr)==MTYPE_I2 || WN_rtype(expr)==MTYPE_I4 || WN_rtype(expr)==MTYPE_I8)
+			return MTYPE_I2;
+	}
+	return WN_rtype(expr);
+  }
+  else if ( WN_operator(expr) == OPR_CVT )
+  {
+    if (WN_rtype(expr)==MTYPE_I1 || WN_rtype(expr)==MTYPE_I2 || WN_rtype(expr)==MTYPE_U1 || WN_rtype(expr)==MTYPE_U2 )
+	{
+		return WN_rtype(expr);
+	}
+	if ( WN_rtype(expr)==MTYPE_I4 || WN_rtype(expr)==MTYPE_I8 )
+	{
+    	if ( WN_desc(expr) == MTYPE_I1 || WN_desc(expr) == MTYPE_U1 )   
+	  	  return MTYPE_I1;
+		else if ( WN_desc(expr) == MTYPE_I2 || WN_desc(expr) == MTYPE_U2 ) 
+		  return MTYPE_I2;
+		else if ( WN_desc(expr) == MTYPE_U4 )
+		{
+			return Get_Kid_Type(WN_kid0(expr));
+		}
+	}
+	if ( WN_rtype(expr)==MTYPE_U4 || WN_rtype(expr)==MTYPE_U8 )
+	{
+    	if ( WN_desc(expr) == MTYPE_I1 || WN_desc(expr) == MTYPE_U1 )   
+	  	  return MTYPE_U1;
+		else if ( WN_desc(expr) == MTYPE_I2 || WN_desc(expr) == MTYPE_U2 ) 
+		  return MTYPE_U2;
+		else if ( WN_desc(expr) == MTYPE_I4 )
+		{
+			return Get_Kid_Type(WN_kid0(expr));
+		}
+	}
+	else return Get_Kid_Type(WN_kid0(expr));
+  }
+  return WN_rtype(expr);
+}
+
+
 
 /* ====================================================================
  *
@@ -5169,7 +5272,32 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
     }
   }
+  if (Action(LOWER_MPY2_OP))
+  {
+	if ( WN_operator(tree) == OPR_MPY )
+	{
+	  TYPE_ID kid0type;
+	  TYPE_ID kid1type;
+	  kid0type = Get_Kid_Type(WN_kid0(tree));
+	  kid1type = Get_Kid_Type(WN_kid1(tree));
 
+	  if ( (kid0type==MTYPE_U2||kid0type==MTYPE_U1) && (kid1type==MTYPE_U2||kid1type==MTYPE_U1) )
+	  {
+		WN_set_operator(tree, OPR_MPYU2); 
+  	  }
+	  else if ( (kid0type==MTYPE_I2||kid0type==MTYPE_I1) && (kid1type==MTYPE_I2||kid1type==MTYPE_I1) )
+	  {
+		WN_set_operator(tree, OPR_MPYI2); 
+	  }
+	  else if ( (kid0type==MTYPE_I2||kid0type==MTYPE_I1) && (kid1type==MTYPE_U1) 
+ 	       || (kid1type==MTYPE_I2||kid1type==MTYPE_I1) && (kid0type==MTYPE_U1) )
+	  {
+		WN_set_operator(tree, OPR_MPYI2); 
+	  }
+	}
+  }
+
+ 
   if (WN_nary_intrinsic(tree))
   {
     tree = WN_NaryToExpr(tree);
@@ -5568,6 +5696,14 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
   switch (WN_operator(tree))
   {
   case OPR_ISTORE:
+  
+  // Call the Lower_Mistore_Memlib at the beginning
+    if (Action(LOWER_TO_MEMLIB) && WN_operator(tree) == OPR_ISTORE) {
+        tree = Lower_Mistore_Memlib(block,tree,actions);
+        if (tree == NULL || WN_operator(tree)!=OPR_ISTORE) 
+           return tree; //otherwise continue
+    } 
+  
     if (WN_StoreIsUnused(WN_kid1(tree)))
     {
       WN	*eval;
@@ -5810,6 +5946,13 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
   case OPR_STID:
     {
       PREG_NUM last_preg = Get_Preg_Num (PREG_Table_Size(CURRENT_SYMTAB));
+
+      // Call the Lower_STID_Memlib at the beginning
+      if (Action(LOWER_TO_MEMLIB)) {
+         tree = Lower_STID_Memlib(block,tree,actions);
+         if (tree == NULL || WN_operator(tree) != OPR_STID) // Deleted or transformed already
+            return tree; 
+      } 
 
       if ((WN_class(tree) == CLASS_PREG) &&
 	  (WN_store_offset(tree) > last_preg))
@@ -6203,7 +6346,12 @@ GenerateMstoreAction(WN *size, INT32 offset, TYPE_ID quantum, WN *expr)
     }
     else if (WN_operator_is(expr, OPR_MLOAD))
     {
-      action = MSTORE_intrinsic_bcopy;
+         int sizenum = WN_const_val(size);
+         if (sizeIsConstant && 
+           ((sizenum-offset)%8 == 0 || (sizenum - offset) > MinStructCopyMemIntrSize * 1.5))
+                action = MSTORE_intrinsic_memcpy;
+         else
+           action = MSTORE_loop;
     }
     else
     {
@@ -6951,7 +7099,7 @@ static void copy_aggregate_memset(WN *block, TY_IDX dstTY, WN *src, WN *dst,
   WN_INSERT_BlockLast(block, call);
 }
 
-static void copy_aggregate_bcopy(WN *block, INT32 offset, TY_IDX srcTY,
+static void copy_aggregate_memcpy(WN *block, INT32 offset, TY_IDX srcTY,
 				 TY_IDX dstTY, WN *src, WN *dst, WN *size)
 {
   WN  *call, *parms[3];
@@ -6964,23 +7112,22 @@ static void copy_aggregate_bcopy(WN *block, INT32 offset, TY_IDX srcTY,
   markAddrTakenPassed(src);
   markAddrTakenPassed(dst);
 
-  parms[0]=  WN_CreateParm(WN_rtype(src),
-			   src,
-			   srcTY ? srcTY : MTYPE_To_TY(WN_rtype(src)),
-			   WN_PARM_BY_VALUE);
-
-  parms[1]=  WN_CreateParm(Pointer_type,
+  parms[0]=  WN_CreateParm(Pointer_type,
 			   dst,
 			   dstTY ? dstTY : MTYPE_To_TY(WN_rtype(dst)),
 			   WN_PARM_BY_VALUE);
 
+  parms[1]=  WN_CreateParm(WN_rtype(src),
+			   src,
+			   srcTY ? srcTY : MTYPE_To_TY(WN_rtype(src)),
+			   WN_PARM_BY_VALUE);
 
   parms[2]=  WN_CreateParm(WN_rtype(size),
 			   WN_COPY_Tree(size),
 			   MTYPE_To_TY(WN_rtype(size)),
 			   WN_PARM_BY_VALUE);
 
-  call=	WN_Generate_Intrinsic_Call(block, INTRN_BCOPY, 3, parms);
+  call=	WN_Generate_Intrinsic_Call(block, INTRN_MEMCPY, 3, parms);
 
   WN_INSERT_BlockLast(block, call);
 }
@@ -7307,8 +7454,8 @@ static WN *lower_mstore(WN * /*block*/, WN *mstore, LOWER_ACTIONS actions)
 	copy_aggregate_memset(newblock, WN_ty(mstore), expr, addr, size);
 	break;
 
-      case MSTORE_intrinsic_bcopy:
-	copy_aggregate_bcopy(newblock, 0, TY_pointer(srcTY), TY_pointer(dstTY),
+      case MSTORE_intrinsic_memcpy:
+	copy_aggregate_memcpy(newblock, 0, TY_pointer(srcTY), TY_pointer(dstTY),
 			     expr, addr, size);
 	break;
 
@@ -10121,6 +10268,14 @@ static WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
   Is_True(WN_opcode(tree) == OPC_DO_LOOP,
 	  ("expected DO_LOOP node, not %s", OPCODE_name(WN_opcode(tree))));
 
+  // Transform the loop to memmove/memset
+  if (Action(LOWER_TO_MEMLIB)) {
+     tree = Lower_Memlib(block, tree, actions);
+     // Check if transformed. If not, continue with do_loop 
+     if (WN_opcode(tree) != OPC_DO_LOOP) 
+         return tree; 
+  }
+
   loop_info = WN_do_loop_info(tree);  
   loop_nest_depth = loop_info ? WN_loop_depth(loop_info) : loop_nest_depth+1;
 
@@ -11138,7 +11293,7 @@ static const char * MSTORE_ACTIONS_name(MSTORE_ACTIONS actions)
   case MSTORE_loop:			return "generate loop   ";
   case MSTORE_intrinsic_bzero:		return "intrinsic bzero ";
   case MSTORE_intrinsic_memset:		return "intrinsic memset";
-  case MSTORE_intrinsic_bcopy:		return "intrinsic bcopy";
+  case MSTORE_intrinsic_memcpy:         return "intrinsic memcpy";
   default:				return "<unrecognized>";
   }
 }
@@ -11444,3 +11599,1248 @@ WN *WN_Lower(WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias,
 
   return tree;
 }
+
+/********** Beginning of  memory library transformation  **********/
+
+static WN  *Transform_To_Memset(WN *dst, INT32 offset, TY_IDX dstTY, WN *src, WN *size)
+{
+  WN  *call, *parms[3];
+
+  if (offset && WN_offset(dst) != offset) 
+      dst = WN_Add(Pointer_type, dst, WN_Intconst(Pointer_type, offset));
+
+  parms[0]=  WN_CreateParm(Pointer_type,
+                           dst,
+                           dstTY ? dstTY : MTYPE_To_TY(WN_rtype(dst)),
+                           WN_PARM_BY_VALUE);
+
+  parms[1]=  WN_CreateParm(WN_rtype(src),
+                           src,
+                           MTYPE_To_TY(WN_rtype(src)),
+                           WN_PARM_BY_VALUE);
+
+  parms[2]=  WN_CreateParm(WN_rtype(size),
+                           WN_COPY_Tree(size),
+                           MTYPE_To_TY(WN_rtype(size)),
+                           WN_PARM_BY_VALUE);
+
+  call= WN_Generate_Intrinsic_Call(NULL, INTRN_MEMSET, 3, parms);
+
+  return call;
+}
+
+
+static WN *  Transform_To_Memcpy(WN *dst, WN *src, INT32 offset, TY_IDX dstTY, TY_IDX srcTY, WN *size)
+{
+  WN  *call, *parms[3];
+
+  if (offset)
+  {
+     if (WN_offset(src) != offset) 
+         src = WN_Add(Pointer_type, src, WN_Intconst(Pointer_type, offset)); //Been added
+     if (WN_offset(dst) != offset) 
+         dst = WN_Add(Pointer_type, dst, WN_Intconst(Pointer_type, offset));
+  }
+
+  parms[0]=  WN_CreateParm(Pointer_type,
+                           dst,
+                           dstTY ? dstTY : MTYPE_To_TY(WN_rtype(dst)),
+                           WN_PARM_BY_VALUE);
+
+  parms[1]=  WN_CreateParm(Pointer_type,
+                           src,
+                           srcTY ? srcTY : MTYPE_To_TY(WN_rtype(src)),
+                           WN_PARM_BY_VALUE);
+
+
+  parms[2]=  WN_CreateParm(WN_rtype(size),
+                           WN_COPY_Tree(size),
+                           MTYPE_To_TY(WN_rtype(size)),
+                           WN_PARM_BY_VALUE);
+
+
+  call= WN_Generate_Intrinsic_Call(NULL, INTRN_MEMCPY, 3, parms);
+  return call;
+
+} // Transform_To_Memcpy
+
+static inode_type *Insert_Inode(struct inode  *list, struct inode *node)
+{
+  struct inode *current = list;
+  struct inode *prev = NULL;
+  INT offset = node->start_offset;
+
+  if (list==NULL) { // First element
+      return node;
+  }
+  while (current)  {
+     if (offset <= current->start_offset)
+         break; //Found the place to insert
+     prev = current;
+     current = current->next;
+  }
+
+  //Insert the node before current
+  node->next = current;
+
+  if (prev == NULL) {  // insert as the first element
+      return node;
+  }
+  else {
+      prev->next = node;
+      return list;
+  }
+}
+
+/* Currently, only LDID or   LDID  are accepted
+ *                          ILOAD 
+ */
+static WN *Get_LDID(WN *block,WN *wn, BOOL &is_iload)
+{
+     is_iload =  FALSE;
+
+     WN *return_wn = NULL;
+     if (WN_operator(wn) == OPR_LDID)  {
+        if (WN_class(wn) == CLASS_PREG) {
+            return NULL; 
+        }
+        else 
+            return wn; 
+     }
+     else if (WN_operator(wn) == OPR_ILOAD && WN_operator(WN_kid0(wn)) == OPR_LDID)  {
+         is_iload = TRUE;
+         return WN_kid0(wn);
+     }
+     else return NULL;
+}
+
+static BOOL Check_If_Merged(WN *tree, WN **deleted_wn, INT bound_num)
+{ 
+  INT pp = 0; 
+  if (bound_num == 0) return FALSE;
+  while (pp < bound_num)  {
+     if (deleted_wn[pp] == tree)  
+        return TRUE;
+     pp++;
+  }
+   return FALSE;
+}
+
+/* ====================================================================
+ *
+ * WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
+ *
+ * Perform transformation on a sequence of MISTORE nodes returning
+ * an equivalent memcpy call
+ *
+ * ==================================================================== */
+
+
+static WN *Lower_Mistore_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
+{
+  TY_IDX pty_idx  = WN_ty(tree);
+  TY_IDX  dstTY, srcTY;
+  TY_IDX ty_idx  = TY_pointed(pty_idx);
+  WN *store_base, *load_base ;
+  WN *load_pp, *store_pp;
+  struct inode  *one_node, *istore_list = NULL;
+  struct inode *prev_head, *head_node, *last_node;
+  WN *stmt = tree;
+  INT size, end_offset, total_size, total_num = 0;
+  INT i, const_val;
+  WN *return_block = WN_CreateBlock();
+  BOOL is_const = FALSE;
+  BOOL st_iload, ld_iload, pp_iload;
+ 
+  static INT delete_num = 0;
+  static INT bound_num = 0;
+  static WN *deleted_wn[DELETED_MAX];
+  static WN *delete_base = NULL;
+  
+
+  if (!OPT_Lower_To_Memlib) return tree;  // return if the optimization is off
+
+  Is_True(WN_operator(tree) == OPR_ISTORE,
+	  ("expected mistore node, not %s", OPCODE_name(WN_opcode(tree))));
+
+  Is_True(TY_kind(pty_idx) == KIND_POINTER,
+          ("type specified in MISTORE not pointer"));
+  
+  if (delete_num  && Check_If_Merged(tree, deleted_wn, bound_num)) {
+     delete_num--; //the remaining number of saved deleted WN's
+     return NULL;
+  }
+
+  
+  if (WN_operator_is(WN_kid0(tree), OPR_INTCONST)) {
+     return tree;  //don't handle constant
+  }
+  else load_base =  Get_LDID(block, WN_kid0(tree), ld_iload);
+
+  store_base = Get_LDID(block, WN_kid1(tree), st_iload);
+
+ 
+  if (store_base == NULL || (!is_const && load_base==NULL)) 
+      return tree;
+
+  if (delete_num) { // when some deleted nodes exist, check if the same base 
+      store_pp = Get_LDID(block, delete_base, pp_iload);
+      Is_True(store_pp, ("Expecting non-null saved deleted base "));
+      if (WN_st(store_pp) != WN_st(store_base))
+          DevWarn("Inconsistent base in Mistore_Memlib");
+      return tree; //if same as the deleted base, don't process the node
+  }
+
+  //Start a new round of optimziation
+  Is_True(delete_num == 0, ("Some unclear deleted WN"));
+  delete_num = 0;
+  bound_num = 0;
+  delete_base = NULL;
+
+  //Termination condition: function calls or block end
+  while (stmt && WN_operator(stmt)!= OPR_CALL) {
+
+    if (WN_operator(stmt) != OPR_ISTORE) {
+        stmt = WN_next(stmt);
+        continue; // process the next statement
+     }
+
+     pty_idx  = WN_ty(stmt);
+     ty_idx  = TY_pointed(pty_idx);
+     if (WN_field_id (stmt) != 0)
+        ty_idx = get_field_type (ty_idx, WN_field_id (stmt));
+     size    = TY_size(Ty_Table[ty_idx]);
+     //Is_True(size > 0, ("type in MISTORE cannot be zero size"));
+     if (size == 0)
+         DevWarn ("Type in MISTORE cannot be zero size");
+
+     total_num++;
+
+     // Get LDID 
+     if (is_const)  {
+         if (!WN_operator_is(WN_kid0(stmt), OPR_INTCONST) 
+               || const_val != WN_const_val(WN_kid0(stmt))) {
+            stmt = WN_next(stmt);
+            //continue; // process the next statement
+            return tree; // save compiling time
+         }
+       
+     }
+     else {
+        load_pp =  Get_LDID(block, WN_kid0(stmt), pp_iload);
+        if (pp_iload != ld_iload) return tree;
+     }
+
+     store_pp = Get_LDID(block, WN_kid1(stmt), pp_iload);
+
+     if (store_pp == NULL || pp_iload != st_iload || (!is_const && load_pp == NULL)) {
+          stmt = WN_next(stmt); // process the next statement
+          continue; 
+     }
+
+     if (WN_st(store_pp) !=  WN_st(store_base) ||
+         (!is_const &&  WN_st(load_pp) != WN_st(load_base))) {
+          stmt = WN_next(stmt);
+          continue; // process the next statement
+     }
+
+     if (!is_const && WN_store_offset(stmt) != WN_offset(load_pp)) { // offset 
+          stmt = WN_next(stmt);
+          continue; // process the next statement
+     }
+       
+
+      // Record the ISTORE info
+      one_node = (struct inode *) alloca(sizeof(struct inode));
+      one_node->wn = stmt; 
+      one_node->start_offset= WN_store_offset(stmt); //should work later
+      one_node->length = size;
+      one_node->next = NULL; 
+      istore_list = Insert_Inode(istore_list, one_node);
+      stmt = WN_next(stmt);
+   }
+
+
+  total_num = 0;
+  total_size = 0;
+  end_offset = WN_store_offset(tree);
+  head_node = istore_list;
+  one_node = istore_list;
+
+ 
+  while (one_node) {
+
+     // Check the start_offset
+     if (one_node->start_offset != end_offset)
+         break;  // Exit if non-consecutive
+     else  last_node = one_node;
+
+     total_size += one_node->length;
+     end_offset = one_node->start_offset + one_node->length;
+
+     total_num++;
+     if (total_num > DELETED_MAX) break; // max number to remember
+     one_node = one_node->next;
+  }
+
+  prev_head = head_node;
+  head_node = one_node; //current node for processing
+ 
+
+ 
+  
+  WN * wn_intrinsic = NULL;
+
+  if (total_size >= MEMLIB_STRUCT_BYTES && total_num >= MEMLIB_NUM_STORE) {  //Parameter to adjust
+
+     if (traceMemlib) DevWarn("Original of Struct MEMLIB call \n"); 
+
+     store_base = WN_kid1(tree); // Store address
+
+     // Transform get the starting address correctly
+     if (!TY_is_pointer(WN_ty(store_base))) {
+          store_base = WN_CreateLda(OPR_LDA, Pointer_Mtype, MTYPE_V, WN_store_offset(tree),
+                           Make_Pointer_Type(WN_ty(tree)), WN_st_idx(tree));
+          DevWarn("After make pointer  ...\n");
+     }
+
+     dstTY = TY_pointed(Ty_Table[WN_ty(store_base)]);
+
+     if (is_const) {
+         wn_intrinsic = Transform_To_Memset(WN_COPY_Tree(store_base), WN_store_offset(tree), 
+             TY_pointer(dstTY), WN_kid0(tree), WN_CreateIntconst(OPC_I4INTCONST, total_size));
+     }
+     else {
+
+         load_base = WN_kid0(tree);
+
+         if (!TY_is_pointer(Ty_Table[WN_ty(load_base)])) {
+             load_base = WN_CreateLda(OPR_LDA, Pointer_Mtype, MTYPE_V, WN_offset(tree),
+                           Make_Pointer_Type(WN_ty(load_base)), WN_st_idx(load_base));
+         }
+         srcTY = TY_pointed(Ty_Table[WN_ty(load_base)]);
+
+         wn_intrinsic = Transform_To_Memcpy(WN_COPY_Tree(store_base), WN_COPY_Tree(load_base), WN_store_offset(tree), TY_pointer(dstTY), TY_pointer(srcTY), WN_CreateIntconst(OPC_I4INTCONST, total_size) );
+
+     }
+
+
+     // Skip all the statements that are concatenated
+      // Delete the statements that are concatenated
+      i = 0;
+      prev_head = istore_list; // Delete only subsequent statements
+
+      while (prev_head != NULL && i < total_num)  {
+          i++;
+          deleted_wn[delete_num++] = prev_head->wn;
+          if (delete_num == DELETED_MAX)  DevWarn("Overflow in deleted_wn\n");
+          prev_head = prev_head->next;
+      }
+      bound_num = delete_num; // establish the array of WN's to be searched
+      delete_num--; //exclude the current tree itself
+      delete_base = store_base;
+      
+
+
+      if (traceMemlib) DevWarn("TRANSFORMED MEMCPY (%s: %d) of: Struct (%d bytes of %d istore)\n", Src_File_Name, Srcpos_To_Line(current_srcpos), total_size, total_num);
+
+
+
+
+      WN_INSERT_BlockLast(return_block, wn_intrinsic);
+      return  return_block;
+  }
+  else return tree;
+
+} //Lower_Mistore_Memlib
+
+static WN *Lower_STID_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
+{
+  struct inode  *one_node, *stid_list = NULL;
+  struct inode *prev_head, *head_node, *last_node;
+  INT size, end_offset, total_size, total_num = 0;
+  INT i, const_val;
+  BOOL is_const = FALSE;
+  WN *return_block = WN_CreateBlock();
+  WN *stmt = tree;
+  WN *store_base;
+  WN *load_pp, *store_pp;
+  TY_IDX  dstTY;
+  static WN *deleted_wn[DELETED_MAX];
+  static INT delete_num = 0;
+  static INT delete_bound = 0;
+  static WN * delete_stid = NULL;
+  
+
+  if (!OPT_Lower_To_Memlib) return tree;  // Return if the optimization is off
+
+  Is_True(WN_operator(tree) == OPR_STID,
+	  ("expected STID node, not %s", OPCODE_name(WN_opcode(tree))));
+
+  if (Check_If_Merged(tree, deleted_wn, delete_bound)){
+       delete_num--;
+       return NULL;
+  } 
+
+  if (delete_num) { // when some deleted nodes exist, check if the same base 
+      Is_True(delete_stid, ("Expecting non-null saved deleted STID"));
+      if (WN_st(stmt) != WN_st(delete_stid))
+          DevWarn("Inconsistent base in STID_Memlib");
+      return tree; 
+  }
+
+  //Start a new round of optimization
+  delete_num = 0; 
+  delete_bound = 0; 
+  delete_stid = NULL;
+  
+  if (WN_operator_is(WN_kid0(tree), OPR_INTCONST)) {
+     const_val = WN_const_val(WN_kid0(tree));
+  }
+  else return tree;
+
+
+  //Termination condition: function calls or block end
+  while (stmt && WN_operator(stmt)!= OPR_CALL) {
+
+
+    if (WN_operator(stmt) != OPR_STID) {
+        stmt = WN_next(stmt);
+        continue; // process the next statement
+     }
+
+
+    // Check size
+    //if (WN_field_id (stmt) != 0) lower_field_id (stmt);
+
+     size = MTYPE_byte_size(OPCODE_desc(WN_opcode(stmt)));
+
+     total_num++;
+
+    if (!WN_operator_is(WN_kid0(stmt), OPR_INTCONST) 
+               || const_val != WN_const_val(WN_kid0(stmt))) {
+            stmt = WN_next(stmt);
+            continue; // process the next statement
+            //return tree; // save compiling time
+         }
+       
+
+     if (WN_st(stmt) !=  WN_st(tree)) {
+          stmt = WN_next(stmt);
+          continue; // process the next statement
+          //return tree; // Note: to save compile time 
+     }
+      // Record the ISTORE info
+      one_node = (struct inode *) alloca(sizeof(struct inode));
+      one_node->wn = stmt; 
+      one_node->start_offset= WN_store_offset(stmt); 
+      one_node->length = size;
+      one_node->next = NULL; 
+      stid_list = Insert_Inode(stid_list, one_node);
+      stmt = WN_next(stmt);
+   }
+
+
+  total_num = 0;
+  total_size = 0;
+  end_offset = WN_store_offset(tree);
+  head_node = stid_list;
+  one_node = stid_list;
+
+  while (one_node) {
+     // Check the start_offset
+     if (one_node->start_offset != end_offset)
+         break;  // Exit if non-consecutive
+     else  last_node = one_node;
+
+     total_size += one_node->length;
+     end_offset = one_node->start_offset + one_node->length;
+     total_num++;
+     if (total_num >DELETED_MAX) break; 
+     one_node = one_node->next;
+  }
+
+  prev_head = head_node;
+  head_node = one_node; //current node for processing
+  
+  WN * wn_intrinsic = NULL;
+
+
+  if (total_size >= MEMLIB_STRUCT_BYTES && total_num >= MEMLIB_NUM_STORE) {  //Parameter to adjust
+
+      DevWarn("Original before Struct MEMLIB_set \n"); 
+
+      store_base = WN_CreateLda(OPR_LDA, Pointer_Mtype, MTYPE_V,
+                           WN_store_offset(tree),
+                           Make_Pointer_Type(WN_ty(tree)), WN_st_idx(tree));
+
+      wn_intrinsic = Transform_To_Memset(WN_COPY_Tree(store_base), WN_offset(tree), TY_pointer(dstTY), WN_kid0(tree), WN_CreateIntconst(OPC_I4INTCONST, total_size) );
+
+   
+      DevWarn("TRANSFORMED MEMSET (%s: %d): STID (%d bytes of %d stids \n", Src_File_Name, Srcpos_To_Line(current_srcpos), total_size, total_num); 
+
+
+
+      // Delete the statements that are concatenated
+      i = 0;
+      prev_head = stid_list; // Delete only subsequent statements
+
+      while (prev_head != NULL && i < total_num)  {
+          i++;
+          deleted_wn[delete_num++] = prev_head->wn;
+          if (delete_num == DELETED_MAX)  DevWarn("Overflow \n");
+          prev_head = prev_head->next;
+      }
+
+      delete_bound = delete_num; // establish the array of WN's to be searched
+      delete_num--; //exclude the current tree itself
+      delete_stid = tree;
+
+      WN_INSERT_BlockLast(return_block, wn_intrinsic);
+      return  return_block;
+  }
+  else return tree;
+
+} //Lower_STID_Memlib
+
+
+static int Find_Nums_Induction(WN *exp, WN *ind)
+{
+   int total = 0;
+
+   if (OPCODE_is_leaf(WN_opcode(exp))) {
+
+        if (WN_operator(exp)==OPR_LDID  && WN_st(exp) == WN_st(ind))
+                return 1;
+        else return 0;
+   }
+   else {
+        for (int i=0; i< WN_kid_count(exp); i++)
+             total = total +  Find_Nums_Induction(WN_kid(exp,i), ind);
+
+        return total;
+   }
+}
+static WN * Locate_Ind_Path(WN *exp, WN *ind, int &numMpy)
+{
+   int save_num, num;
+   WN *wn;
+   if (exp == NULL) return FALSE;
+   if (WN_operator(exp) == OPR_LDID && WN_same_id(exp,ind)) {
+       //??   numMpy++; // update the number of multipliers
+     return exp; // return the pointer to the induction
+   }
+
+   if (WN_operator(exp) == OPR_MPY || WN_operator(exp) == OPR_DIV) numMpy++;
+
+   save_num = numMpy;
+   for (int i=0; i< WN_kid_count(exp); i++) {
+          num = save_num;
+          if (wn = Locate_Ind_Path(WN_kid(exp,i), ind, num)) return wn;
+   }
+
+   return  NULL; //none kid contains the induction
+}
+
+
+static BOOL  Valid_Induction_In_Addr(WN *exp, WN *ind, int msize)
+{
+   WN *wn_mult = NULL;
+   int numMpy;
+
+  
+   if (WN_operator(exp)==OPR_ILOAD) // If any ILOAD, it is illegal
+       return FALSE;
+
+   if (WN_operator(exp)==OPR_MPY || WN_operator(exp) == OPR_DIV ) {
+      numMpy = 1;
+      // Check to see if kid0 contains the induction
+      if (Locate_Ind_Path(WN_kid0(exp), ind, numMpy)) {
+         if (numMpy > 1) return FALSE;  //Return FALSE if more than one mult/div
+         else wn_mult = WN_kid1(exp);
+      }
+      else { //Try to find the indctuion in kid1
+         numMpy = 1;
+         if (Locate_Ind_Path(WN_kid1(exp), ind, numMpy)) { 
+            if (numMpy > 1)  return FALSE;  //more than one multiply
+            else wn_mult = WN_kid0(exp);
+         }
+         else return TRUE; //none of the subtrees has the induction
+      }
+       
+      //check if only CNV to the multiplier and the size is msize
+       while (WN_operator(wn_mult) == OPR_CVT) wn_mult = WN_kid0(wn_mult);
+      if (WN_operator_is(wn_mult, OPR_INTCONST) &&  WN_const_val(wn_mult)== msize) 
+         return TRUE;
+      else 
+         return FALSE;
+   } //if OPR_MPY
+
+   // Check if all the kids are valid 
+   for (int i=0; i< WN_kid_count(exp); i++)
+      if (!Valid_Induction_In_Addr(WN_kid(exp,i), ind, msize)) 
+          return FALSE;
+
+   return TRUE; // all kids are valid
+
+} //Valid_Indcution_In_Addr
+
+static BOOL  Valid_Induction_For_Array(WN *exp, WN *ind)
+{
+   WN *wn = NULL;
+   int i;
+   int number;
+
+   // If any ILOAD, it is illegal
+   if (WN_operator_is(exp, OPR_ILOAD) || WN_operator_is(exp, OPR_LDA))
+      return FALSE;
+   
+   if (WN_operator(exp)==OPR_MPY || WN_operator(exp) == OPR_DIV) {
+      //no subtree should contain the induction
+      for (i=0; i< WN_kid_count(exp); i++)
+           number = 1;
+           if (Locate_Ind_Path(WN_kid(exp,i), ind, number) && number > 1) 
+                 return FALSE;
+        return TRUE; //all kids don't contain induction
+   }
+   else  {
+        for (int i=0; i< WN_kid_count(exp); i++)
+           if (!Valid_Induction_For_Array(WN_kid(exp,i), ind)) 
+                return FALSE;
+
+        return TRUE; // all kids are valid
+   }
+} // Valid_Indcution_For_Array
+
+static BOOL Any_Indirect_Load(WN *exp)
+{
+   INT i, total = 0;
+
+   if (WN_operator_is(exp, OPR_ILOAD))
+       return TRUE;
+
+   if (OPCODE_is_leaf(WN_opcode(exp))) 
+       return FALSE;
+
+   for (i=0; i< WN_kid_count(exp); i++)
+        if (Any_Indirect_Load(WN_kid(exp,i))) return TRUE;
+
+   return  FALSE;
+}
+
+static BOOL Valid_Array_Addr(WN *wn, WN *ind, int bytenum)
+{
+  Is_True(WN_operator(wn)==OPR_ARRAY, ("Expecting an ARRAY"));  
+
+  if (WN_num_dim(wn) != 1)  
+      return FALSE; // deal with 1-dim array  only
+  else if (WN_element_size(wn) != bytenum) 
+      return FALSE; //the size should equal
+  else if (Find_Nums_Induction(WN_kid2(wn), ind) != 1) //index
+      return FALSE; //induction should appear exactly once
+  else if (Any_Indirect_Load(WN_kid0(wn))) //base address 
+      return FALSE; //induction should appear exactly once
+  else 
+      return Valid_Induction_For_Array(WN_kid2(wn), ind) &&	
+             Any_Indirect_Load(WN_kid0(wn)); //check validity of index 
+}
+
+
+
+static BOOL  Is_Invaried_Value(WN *expr, WN *ind) 
+{
+   if (WN_operator_is(expr, OPR_INTCONST)) return TRUE;
+
+   //If another indirect load, it may be varied 
+   if (WN_operator_is(expr, OPR_ILOAD) || WN_operator_is(expr, OPR_LDA)) return FALSE; 
+
+   if (WN_operator_is(expr, OPR_LDID)){
+        if (WN_same_id(expr, ind))
+              return FALSE;
+   else // it is not an induction 
+             return TRUE;
+   }
+   
+   else { //check all the kids
+           for (int i=0; i< WN_kid_count(expr); i++) 
+               if (!Is_Invaried_Value(WN_kid(expr,i), ind)) return FALSE;
+
+        return TRUE; //all kids are constant
+  }
+
+}
+
+/* IGNORE: opcode to ignore 
+ * ABORT_OPT: opcode to abort the transformation
+ * CONT_OPT: opcode to continue the transformation
+ * Currently we deal with only ISTORE to perform memmove/memset optimization
+ */
+static MEMLIB_ACTIONS  Memlib_Filter(WN *stmt)
+{
+    switch(WN_operator(stmt)) {
+       case OPR_ISTORE:   
+       case OPR_DO_LOOP:    return CONT_OPT;
+
+      case OPR_PREFETCH:
+      case OPR_PREFETCHX: return IGNORE;
+      
+      default:    return ABORT_OPT;
+    }
+}
+
+static BOOL Is_Preceding_Subtract(WN *addr_exp, WN *ind)
+{
+  WN *wn = NULL;
+  INT i, num = 0;
+
+  if (WN_operator(addr_exp) == OPR_ARRAY)  
+   return Is_Preceding_Subtract(WN_kid2(addr_exp), ind); //check the index expression
+ 
+  // Find a subtraction, check the second kid containing any ind  
+  if (WN_operator(addr_exp)==OPR_SUB) {
+      //check if any inducton in the right subtree and under
+        if (Locate_Ind_Path(WN_kid1(addr_exp), ind, num))
+            return TRUE; // the induction found
+   else return FALSE;  // no induciton
+   }
+   else {
+        for (i=0; i< WN_kid_count(addr_exp); i++)
+           if (Is_Preceding_Subtract(WN_kid(addr_exp,i), ind)) return TRUE;
+
+        return FALSE; // none of the kids has preceding subtract for induction variable
+   }
+
+}
+
+static WN *Start_Addr_To_Transform(WN *block, WN* addr_wn, TY_IDX &desc_idx)
+{
+    WN * target_addr = NULL;
+
+    if (WN_operator(addr_wn) == OPR_ARRAY) {
+       // lowering this array to an address expression
+       desc_idx = Make_Pointer_Type(desc_idx); //NOTE
+       target_addr = lower_expr(block,addr_wn, LOWER_ARRAY);
+       return target_addr;
+   }
+   else  { //general address expression
+           desc_idx = WN_ty(addr_wn); //NOTE
+           return  addr_wn; //original
+   }
+} 
+
+static BOOL Valid_Addr_Expr(WN *addr, WN *ind, int bsize)
+{
+   Is_True (WN_operator(addr) != OPR_ARRAY, ("Should not have any ARRAY")); 
+   //if (WN_operator(addr) == OPR_ARRAY) 
+     // return  Valid_Array_Addr(addr, ind, bsize);
+
+   // Handle the gnenral address
+   if (Find_Nums_Induction(addr, ind) != 1) 
+       return FALSE; //induction should appear exactly once
+   else if (Any_Indirect_Load(addr))  
+       return FALSE; //indirect load should be one
+   else return  Valid_Induction_In_Addr(addr, ind, bsize);
+
+}
+static WN *Find_Pointer(WN *wn, BOOL is_array)
+{
+  INT i;
+  WN *return_wn = NULL;
+
+  if (OPCODE_is_leaf(WN_opcode(wn))) {
+
+     // If it is not an array base, the LDID should be a pointer
+     if (WN_operator_is(wn, OPR_LDID) && (is_array||TY_is_pointer(WN_ty(wn))) 
+          || WN_operator_is(wn, OPR_LDA)) {
+        return wn;
+     }
+     else return NULL; // not a pointer
+
+  } //is_leaf
+
+  for (i=0; i< WN_kid_count(wn); i++) {
+      return_wn = Find_Pointer(WN_kid(wn,i), is_array); 
+      if (return_wn)  return return_wn;
+  }
+  return NULL;
+} 
+
+static BOOL Memlib_Two_Aliased(WN *wn1, WN *wn2, INT bsize)
+{
+      WN *base1;
+      WN *base2;
+
+      if (WN_operator_is(wn1, OPR_ARRAY) && WN_operator_is(wn2, OPR_ARRAY)) {
+          base1 = Find_Pointer(WN_kid0(wn1), 1);
+          base2 = Find_Pointer(WN_kid0(wn2), 1);
+
+      }
+      else { //general address
+          base1 = Find_Pointer(wn1, 0);
+          base2 = Find_Pointer(wn2, 0);
+      }
+
+     Is_True(base1, ("Expecting a non-null base pointer"));
+     Is_True(base2, ("Expecting a non-null base pointer"));
+
+     if (base1 && base2)
+          return lower_is_aliased(base1, base2, bsize);
+     else return TRUE; //worst case
+}
+
+// Return -1 to indicate some failure in the search
+static INT Find_Ind_Var(WN *index_wn, WN *inds[], INT upper)
+{
+  INT i, num, idx = -1;
+  BOOL found = FALSE;
+
+  for (i = 0; i < upper; i++) {
+      if ((num = Find_Nums_Induction(index_wn, inds[i])) > 1)
+          return -1; // appear more than once
+      else if (num == 1) {
+          if (found)  return -1; // find more than 1 induciton inside
+          idx = i;
+          found =TRUE;
+     }
+  } //for
+  return idx;
+}
+
+
+// The routine transforms a multi-dim array initialization to memset
+// Currently only a normalized a[i][j][k] = CONST is transformed
+static WN *Memset_MD_Array(WN *block, WN *tree)
+{
+  INT num_stmt, mbyte_stmt, loop_level = 0;
+  INT total_size = 1;
+  INT trips[MEMLIB_MAX_NUM];
+  OPCODE ub_compare;  
+  TY_IDX desc_idx;
+  WN *ind_vars[MEMLIB_MAX_NUM];
+  WN *stmt, *body = WN_do_body(tree);
+  WN *load_value_wn, *store_addr_wn, *target_addr;
+  WN *loop_indvar,  *trip_count;
+  WN *lower_bound, *upper_bound;
+  WN *enclosing_for, *current_wn = tree;
+  WN *loop_info;
+  WN *return_block = WN_CreateBlock();
+          
+  Is_True(WN_opcode(tree) == OPC_DO_LOOP,
+             ("expected DO_LOOP node, not %s", OPCODE_name(WN_opcode(tree))));
+
+  while (WN_opcode(current_wn) == OPC_DO_LOOP) {
+       loop_info = WN_do_loop_info(current_wn);
+       if (traceMemlib && loop_info == NULL) {
+           DevWarn("NULL loop info in Lower_Memlib: MD_array");
+           return tree;
+       }
+       loop_indvar =  WN_loop_induction(loop_info);
+       trip_count = WN_LOOP_TripCount(current_wn);
+       lower_bound =  WN_LOOP_LowerBound(current_wn);
+       upper_bound =  WN_LOOP_UpperBound(current_wn, &ub_compare);
+
+       if (!WN_operator_is(trip_count, OPR_INTCONST))
+           return tree;  
+       else  trips[loop_level] = WN_const_val(trip_count);
+       ind_vars[loop_level] = loop_indvar;
+       loop_level++;
+
+
+       if (WN_const_val(lower_bound) !=0) {
+           DevWarn("Memlib: mult-dim: lower bound is not 0");
+           return tree;
+       }
+         
+       num_stmt = 0;
+       body = WN_do_body(current_wn);
+
+       //Scan the loop body 
+       for (stmt=WN_first(body); stmt; stmt=WN_next(stmt)) {
+           if (Memlib_Filter(stmt)==ABORT_OPT)  return tree;
+           else if (Memlib_Filter(stmt)== IGNORE ) continue; // go to next statement
+
+           Is_True(WN_opcode(tree) == OPC_DO_LOOP || WN_operator(tree) == OPR_ISTORE,
+             ("expected DO_LOOP node, not %s", OPCODE_name(WN_opcode(tree))));
+
+           if (++num_stmt > 1)
+               return tree;
+
+           enclosing_for = current_wn;
+           current_wn = stmt;
+       } // for
+  } //while
+
+           
+   if (WN_operator(current_wn) != OPR_ISTORE) {
+       DevWarn("Memlib: mult-dim: is not an ISTORE");
+       return tree;
+   }
+
+   mbyte_stmt = MTYPE_byte_size(OPCODE_desc(WN_opcode(current_wn)));
+   load_value_wn = WN_kid0(current_wn);
+   target_addr = WN_kid1(current_wn);
+   store_addr_wn = WN_kid1(current_wn);
+
+   // If assigned a constant 0 or -1, or of size 1, it is allowed to optimize as memset
+   if (!(WN_operator_is(load_value_wn, OPR_INTCONST) && 
+           (WN_const_val(load_value_wn)==0 || WN_const_val(load_value_wn)==-1)) 
+       && mbyte_stmt != 1) {
+         DevWarn("Memlib: multi-dim memset: size is not 1");
+         return tree; 
+   }
+
+  if (!Is_Invaried_Value(load_value_wn, loop_indvar)) {
+         DevWarn("Memlib: multi-dim memset:  not constant");
+         return tree; 
+  }
+
+  // Examine if eligible for full memset
+  INT num_dim = 0;
+  INT indx;
+  while (WN_operator_is(store_addr_wn, OPR_ARRAY)) {
+      num_dim++;
+      indx = Find_Ind_Var(WN_kid2(store_addr_wn), ind_vars, loop_level); 
+      if (!WN_operator_is(WN_kid1(store_addr_wn), OPR_INTCONST) || 
+          trips[indx] != WN_const_val(WN_kid1(store_addr_wn))) {
+	  return tree;
+      }
+      if (Is_Preceding_Subtract(WN_kid2(store_addr_wn), ind_vars[indx])) {
+          DevWarn("Memlib: mult-dim: preceding minus of indunction");
+	  return tree;
+      }
+      total_size *=  trips[indx];
+      store_addr_wn =  WN_kid0(store_addr_wn);
+  } //while
+
+
+  desc_idx = WN_ty(current_wn); //initialization
+  target_addr =  Start_Addr_To_Transform(block, WN_COPY_Tree(target_addr), desc_idx);
+  WN *call = Transform_To_Memset(target_addr, 0, desc_idx, WN_COPY_Tree(load_value_wn),  WN_CreateIntconst (OPC_I4INTCONST, total_size));
+   DevWarn("TRANSFORMED MEMSET (%s: %d): mult-dim", Src_File_Name, Srcpos_To_Line(current_srcpos)); 
+
+
+
+  if (call) {
+     WN_Delete(current_wn);
+     WN_INSERT_BlockLast(return_block, call);
+  }
+  else
+     WN_INSERT_BlockLast(return_block, tree);
+
+  return return_block;
+}
+
+/* ====================================================================
+ *
+ * WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
+ *
+ * Perform memset/memcpy transformation on statements in DO_LOOP node <tree>,
+ * returning correspinding intrinsic calls.  Returned tree will always
+ * have a structured control flow node (at least a BLOCK) at the top.
+ *
+ * ==================================================================== */
+
+static WN *Lower_Memlib(WN *block, WN *tree, LOWER_ACTIONS actions)
+{
+  WN *loop_info;
+  WN *length_wn, *ind_init_val = NULL;
+  WN *load_value_wn, *store_addr_wn, *load_addr_wn;
+  WN *target_addr, *source_addr;
+  WN *stmt, *body = WN_do_body(tree);
+  WN *return_block = WN_CreateBlock();
+  TY_IDX desc_idx, source_idx;
+  OPCODE ub_compare;  
+  BOOL target_minus_ind, source_minus_ind; 
+  BOOL opt_qualified;
+  INT i, elm_size, mbyte_stmt, istore_num = 0;
+  INT freq_count;
+
+  Is_True(WN_opcode(tree)==OPC_DO_LOOP,
+     ("expected DO_LOOP node, not %s", OPCODE_name(WN_opcode(tree))));
+
+  if (!OPT_Lower_To_Memlib) return tree;  // Return if the optimization is off
+
+  // If whirl feedbacks,  set freq_count
+  if (Cur_PU_Feedback)    
+      freq_count = (INT) Cur_PU_Feedback->Query(tree, FB_EDGE_LOOP_ITERATE).Value();
+
+  loop_info = WN_do_loop_info(tree);
+  if (traceMemlib && loop_info == NULL) {
+      DevWarn("NULL loop info in Lower_Memlib");
+      return tree;
+   }
+     
+   WN *loop_indvar =  WN_loop_induction(loop_info);
+   WN *trip_count = WN_LOOP_TripCount(tree);
+   WN *lower_bound =  WN_LOOP_LowerBound(tree);
+   WN *upper_bound =  WN_LOOP_UpperBound(tree, &ub_compare);
+
+   Is_True(WN_opcode(loop_indvar), ("expected a non-NULL loop induction"));
+
+   // Without trip count, the transformation is not allowed
+   if (trip_count == NULL || lower_bound == NULL || upper_bound == NULL) 
+      return tree;
+
+   //If no count for this loop, return tree to ensure the benefit 
+   if (!Cur_PU_Feedback && !WN_operator_is(trip_count, OPR_INTCONST))
+       return tree;
+
+   // If the trip count is constant and too small, don't optimize
+   if (WN_operator_is(trip_count, OPR_INTCONST)) {
+       if (!Cur_PU_Feedback) 
+           freq_count = WN_const_val(trip_count);
+       else if (WN_const_val(trip_count) != freq_count)  {
+           freq_count = WN_const_val(trip_count);
+           DevWarn("Inconsistent constant trip count and feedback");
+       }
+   }
+
+   // If too small, < threshold, don't transform 
+   // If small, < 2*threshold, and not divisible by 8, don't transform 
+    if (freq_count < MEMLIB_THRESHOLD_BYTES || 
+         (freq_count < MEMLIB_THRESHOLD_BYTES * 2 && freq_count % 8 != 0))  
+          return tree;
+
+
+  // Try to find the memset opportunity first
+  // Check if only ISTORE of a constant or an invariant is in the loop body
+  istore_num = 0;
+  opt_qualified = TRUE;
+  for (stmt=WN_first(body); stmt; stmt=WN_next(stmt)) {
+      if (Memlib_Filter(stmt)==ABORT_OPT)  return tree;
+      else if (Memlib_Filter(stmt)== IGNORE ) continue; // go to next statement
+
+      Is_True(Memlib_Filter(stmt)== CONT_OPT, ("Memlib: expect CONT_OPT"));
+
+      // Deal with multi-dim array memset
+      if (WN_operator_is(stmt, OPR_DO_LOOP)) {
+           WN *return_wn = Memset_MD_Array(block,tree);
+           if (! WN_operator_is(return_wn, OPR_DO_LOOP))
+                return return_wn; //transformed successfully
+      } //otherwise continue with other optimization 
+
+      // Currently deal with only non-float types
+      if (MTYPE_is_float(WN_desc(stmt)))
+         return tree;
+
+      load_value_wn = WN_kid0(stmt);
+      store_addr_wn = WN_kid1(stmt);
+
+      mbyte_stmt = MTYPE_byte_size(OPCODE_desc(WN_opcode(stmt)));
+      // If assigned a constant 0 or -1, or of size 1, it is allowed to optimize as memset
+      if (!(WN_operator_is(load_value_wn, OPR_INTCONST) && WN_const_val(load_value_wn)==0) && 
+          !(WN_operator_is(load_value_wn, OPR_INTCONST) && WN_const_val(load_value_wn)==-1) && 
+            mbyte_stmt != 1) {
+              opt_qualified = FALSE;
+              break; //exit memset try
+      }
+
+      if (!Is_Invaried_Value(load_value_wn, loop_indvar)) { 
+            opt_qualified = FALSE;
+            break; //exit memset try
+      } 
+
+     // Lower the array expr
+     if (WN_operator(store_addr_wn) == OPR_ARRAY)
+           store_addr_wn = lower_expr(block, WN_COPY_Tree(store_addr_wn), LOWER_ARRAY);
+  
+     //If illegal address format, abort optimization 
+     if (!Valid_Addr_Expr(store_addr_wn, loop_indvar, mbyte_stmt)) 
+          return tree;
+      ++istore_num;
+
+  } //for loop for memset identification
+
+  // Transform the stmt to be instrinsic memset call
+  if (opt_qualified) {
+      BOOL prev_sign, current_sign; 
+
+      istore_num = 0;
+      
+      for (stmt=WN_first(body); stmt; stmt=WN_next(stmt)) {
+         if (Memlib_Filter(stmt)==ABORT_OPT)  return tree;
+         else if (Memlib_Filter(stmt)== IGNORE ) continue; // go to next statement
+
+         Is_True(mbyte_stmt > 0, 
+            ("expected positive size not %d", MTYPE_byte_size(OPCODE_desc(WN_opcode(stmt)))));
+
+         if (traceMemlib)  DevWarn("Original STMT"); 
+
+         load_value_wn = WN_kid0(stmt);
+         store_addr_wn = WN_kid1(stmt);
+
+         // Create the size wn to be passed to the intrinsic call
+         if ( mbyte_stmt > 1) {
+             OPCODE mpyopcode = OPCODE_make_op(OPR_MPY, WN_rtype(trip_count),MTYPE_V);
+             length_wn = WN_CreateExp2( mpyopcode, WN_COPY_Tree(trip_count), WN_CreateIntconst (OPC_I4INTCONST, mbyte_stmt)); 
+
+          }
+          else length_wn = trip_count;
+
+          desc_idx = WN_ty(stmt); //initialization
+
+          if (WN_operator(store_addr_wn) == OPR_ARRAY)
+               store_addr_wn =  Start_Addr_To_Transform(block, WN_COPY_Tree(store_addr_wn), desc_idx);
+
+
+            //initialize the induction as needed
+            if ( (current_sign = Is_Preceding_Subtract(store_addr_wn, loop_indvar))) {
+        
+               Is_True(trip_count != NULL, ("Memlib: expecting non-null trip count"));
+               OPCODE mpyopcode = OPCODE_make_op(OPR_SUB, WN_rtype(trip_count),MTYPE_V);
+               WN *sub_wn = WN_CreateExp2(mpyopcode, WN_COPY_Tree(trip_count), WN_CreateIntconst(OPC_I4INTCONST, 1)); 
+               ind_init_val = WN_CreateStid(OPC_I4STID, WN_idname_offset(loop_indvar), WN_st(loop_indvar), Be_Type_Tbl(MTYPE_I4), sub_wn, 0); //to trip_count - 1 if minus induction
+                
+            } else if (lower_bound != NULL)  
+                   ind_init_val = WN_CreateStid(OPC_I4STID, WN_idname_offset(loop_indvar), WN_st(loop_indvar),  Be_Type_Tbl(MTYPE_I4), WN_COPY_Tree(lower_bound), 0); //to lower bound
+           
+
+
+           if (ind_init_val) {
+                DevWarn("Initial induction variable"); 
+                WN_INSERT_BlockLast(return_block, ind_init_val);
+           }
+
+          WN *call = Transform_To_Memset(store_addr_wn,0, desc_idx, load_value_wn, length_wn);
+
+          DevWarn("TRANSFORMED MEMSET Memlib (%s, %d) of %d\n", Src_File_Name, Srcpos_To_Line(current_srcpos), freq_count);
+
+          if (call) {
+             WN_Delete(stmt);
+             WN_INSERT_BlockLast(return_block, call);
+          }
+          else {
+              WN_INSERT_BlockLast(return_block, tree); // the remaining
+              break;
+          }
+      } /*for*/
+      return return_block;
+  } /* Done with memset optimization*/
+
+  // Try to find the memmove opportunity then
+  // Check if only one indirect assignment (ISTORE) is in the loop body
+  istore_num = 0;
+  for (stmt=WN_first(body); stmt; stmt=WN_next(stmt)) {
+      if (Memlib_Filter(stmt)==ABORT_OPT) return tree;
+      else if (Memlib_Filter(stmt)==IGNORE) continue;
+      
+      if (++istore_num > 1)  
+          return  tree; //no transformation if more than one Istore
+
+      //if the first kid is not ILOAD, then return
+      if (WN_operator(WN_kid0(stmt))!=OPR_ILOAD)  
+            return tree; 
+        
+      if (MTYPE_byte_size(WN_desc(WN_kid0(stmt))) != MTYPE_byte_size(WN_desc(stmt))) {
+          if (traceMemlib) DevWarn(" Memlib no match  on size for memmove \n");
+          return tree; //don't do any optimization
+        }
+
+      load_addr_wn = WN_kid0(WN_kid0(stmt));
+      store_addr_wn = WN_kid1(stmt);
+      mbyte_stmt = MTYPE_byte_size(OPCODE_desc(WN_opcode(stmt)));
+
+      if (WN_operator(store_addr_wn) == OPR_ARRAY)
+              store_addr_wn =  lower_expr(block, WN_COPY_Tree(store_addr_wn), LOWER_ARRAY);
+      if (WN_operator(load_addr_wn) == OPR_ARRAY)
+              load_addr_wn =  lower_expr(block, WN_COPY_Tree(load_addr_wn), LOWER_ARRAY);
+
+      //need to check legal addresses for optimization
+      if (!Valid_Addr_Expr(store_addr_wn, loop_indvar, mbyte_stmt) || 
+          !Valid_Addr_Expr(load_addr_wn, loop_indvar, mbyte_stmt)) {
+             return tree;
+     }
+     
+
+  } //for 
+ 
+  // Start transforming to instrinsic  call
+  for (stmt=WN_first(body); stmt; stmt=WN_next(stmt)) {
+      if (Memlib_Filter(stmt)==ABORT_OPT) 
+          return tree;
+      else if (Memlib_Filter(stmt)==IGNORE) 
+          continue;
+
+       
+      // if the freq is too low, do't optimize
+      if (Cur_PU_Feedback && Cur_PU_Feedback->Query(tree, FB_EDGE_LOOP_ITERATE).Value() < MMCOPY_MULT  * MEMLIB_THRESHOLD_BYTES ||
+           WN_operator_is(trip_count, OPR_INTCONST) && WN_const_val(trip_count) < MMCOPY_MULT * MEMLIB_THRESHOLD_BYTES) 
+         return tree;
+
+
+      if (traceMemlib) DevWarn("Original STMT \n"); 
+      
+      load_addr_wn = WN_kid0(WN_kid0(stmt));
+      store_addr_wn = WN_kid1(stmt);
+      mbyte_stmt = MTYPE_byte_size(OPCODE_desc(WN_opcode(stmt)));
+
+      
+      /****
+      if (Cur_PU_Feedback && lower_is_aliased(store_addr_wn, load_addr_wn, 
+	    (INT) Cur_PU_Feedback->Query(tree, FB_EDGE_LOOP_ITERATE).Value() * mbyte_stmt) ||
+          trip_count && WN_operator_is(trip_count, OPR_INTCONST) && lower_is_aliased(
+            store_addr_wn, load_addr_wn, WN_const_val(trip_count)*mbyte_stmt) || 
+      ***/
+      if (Memlib_Two_Aliased(store_addr_wn, load_addr_wn, mbyte_stmt)) {
+              if (traceMemlib) DevWarn("Memlib: aliased addresses");
+              return tree;
+      }
+
+      // Create the size wn as trip_count * sizeOfType
+      if ( mbyte_stmt > 1) {
+         OPCODE mpyopcode = OPCODE_make_op(OPR_MPY, WN_rtype(trip_count),MTYPE_V);
+         length_wn = WN_CreateExp2( mpyopcode, WN_COPY_Tree(trip_count), WN_CreateIntconst ( OPC_I4INTCONST, MTYPE_byte_size(OPCODE_desc(WN_opcode(stmt))) ) ); 
+      }
+      else length_wn = trip_count;
+
+
+      desc_idx = WN_ty(stmt); //initialization
+      source_idx = WN_ty(stmt); //initialization
+
+      if (WN_operator(store_addr_wn) == OPR_ARRAY)
+              store_addr_wn =  Start_Addr_To_Transform(block, WN_COPY_Tree(store_addr_wn), desc_idx);
+      if (WN_operator(load_addr_wn) == OPR_ARRAY)
+              load_addr_wn =  Start_Addr_To_Transform(block, WN_COPY_Tree(load_addr_wn), source_idx);
+
+      target_minus_ind = Is_Preceding_Subtract(store_addr_wn, loop_indvar);
+      source_minus_ind = Is_Preceding_Subtract(load_addr_wn, loop_indvar);
+
+      // The two should be consistent to be transformed
+      if (traceMemlib && target_minus_ind != source_minus_ind) {
+         DevWarn("Inconsistent preceding sign for induction");
+         return tree;
+      }
+
+    
+      // Initialize the induction variable
+      if (target_minus_ind) {   //  if minus, set to trip_count-1 
+         Is_True(trip_count != NULL, ("Memlib: expecting non-null upperbound"));
+         OPCODE mpyopcode = OPCODE_make_op(OPR_SUB, WN_rtype(trip_count),MTYPE_V);
+         WN *sub_wn = WN_CreateExp2(mpyopcode, WN_COPY_Tree(trip_count), WN_CreateIntconst(OPC_I4INTCONST, 1)); 
+         ind_init_val = WN_CreateStid(OPC_I4STID, WN_idname_offset(loop_indvar), WN_st(loop_indvar), Be_Type_Tbl(MTYPE_I4), sub_wn, 0); //to trip_count - 1 if minus induction
+        
+      } else
+         ind_init_val = WN_CreateStid(OPC_I4STID, WN_idname_offset(loop_indvar), WN_st(loop_indvar),  Be_Type_Tbl(MTYPE_I4), lower_bound, 0); //to lower bound
+
+      if (ind_init_val) {
+         DevWarn("Initial induction variable"); 
+         WN_INSERT_BlockLast(return_block, ind_init_val);
+      }
+
+      WN * wn_intrinsic = Transform_To_Memcpy(store_addr_wn, load_addr_wn, 0, desc_idx, source_idx, length_wn); 
+
+      DevWarn("TRANSFORMED MEMCPY (%s: %d) of %d\n", Src_File_Name, Srcpos_To_Line(current_srcpos), freq_count); 
+
+
+      if (wn_intrinsic) {
+         WN_INSERT_BlockLast(return_block, wn_intrinsic);
+         WN_Delete(stmt); // Delete the statement that is transformed
+      }
+      else
+         WN_INSERT_BlockLast(return_block, tree); //the  original tree
+
+  } //for
+
+  return return_block;
+}
+

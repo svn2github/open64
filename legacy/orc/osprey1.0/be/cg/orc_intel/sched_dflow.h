@@ -1,6 +1,6 @@
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 /*
- *  Copyright (C) 2000-2002, Intel Corporation
+ *  Copyright (C) 2000-2003, Intel Corporation
  *  All rights reserved.
  *  
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -70,25 +70,25 @@
   *         - void Add_Defs_Live_In (OP * op, BB * bb) 
   *             make *ALL* results that <op> defines live into <bb>
   *
-  *         - void Update_Liveness_After_Upward_Code_Motion
+  *         - void Update_Liveness_After_Upward_Sched
   *                  (OP *op, SRC_BB_INFO * src_info)
   *             this routine maintain the liveness info properly after 
   *             upward code motion.
   *
-  *         - void Update_Liveness_After_Downward_Code_Motion 
+  *         - void Update_Liveness_After_Downward_Sched
   *                  (OP *op, SRC_BB_INFO * src_info);
   *             this routines is dedicated to maintain the liveness info
   *             properly after downward code motion
   *
-  *         - BOOL Upward_Code_Motion_Kill_Some_LiveOut_Defs 
-  *         - BOOL Downard_Code_Motion_Kill_Some_LiveIn_Defs 
+  *         - BOOL Upward_Sched_Kill_Some_LiveOut_Defs 
+  *         - BOOL Downard_Sched_Kill_Some_LiveIn_Defs 
   *             check to see whether the upward code motion of <op>, 
   *             (from <from> to <to> and cutting_set is specified by 
   *              <cutting_set> will kill some live-out definitions.
   * 
   * 
-  *         - BOOL Upward_Code_Motion_Violate_Dflow_Constrait
-  *         - BOOL Downward_Code_Motion_Violate_Dflow_Constrait 
+  *         - BOOL Upward_Sched_Violate_Dflow_Constrait
+  *         - BOOL Downward_Sched_Violate_Dflow_Constrait 
   *             TODO: finish this comments
   * 
   * ==========================================================================
@@ -97,7 +97,9 @@
 
 #include "ipfec_defs.h"
 #include "sched_util.h"
+#include "sched_path.h"
 #include "sched_cflow.h"
+#include "sched_cand.h"
 
     /* =========================================================
      * =========================================================
@@ -107,47 +109,106 @@
      * =========================================================
      * =========================================================
      */ 
+class SRC_BB_INFO;
+class CANDIDATE;
 class SCHED_DFLOW_MGR {
+private:
+
+    BOOL Upward_Sched_Kill_Def_LiveOut_Of_Target_BB
+            (CANDIDATE* cand, SRC_BB_INFO* bb_info,
+             RGN_CFLOW_MGR* cflow_info);
+
+    BOOL Upward_Sched_Kill_Def_LiveOut_Of_Bookeeping_Place 
+            (CANDIDATE* cand, BOOKEEPING* bk,
+             SRC_BB_INFO* bb_info, RGN_CFLOW_MGR* cflow_info) ;
+
+    BOOL P_Ready_Moving_Against_These_Path_Kill_Live_Defs 
+            (CANDIDATE* cand, SRC_BB_INFO* bb_info, BB* to,
+             EXEC_PATH_SET* move_against, RGN_CFLOW_MGR* cflow_info);
+
+
+        /* Exported interface */
 public :
 
     SCHED_DFLOW_MGR  (void) ;
     ~SCHED_DFLOW_MGR (void) ;
 
-    BOOL Are_Defs_Live_Out  (OP * op, BB * bb) ;
-    BOOL Are_Defs_Live_Out  (OP * op, BB_VECTOR* bbv) ;
+    BOOL Are_Defs_Live_In (OP* op, BB* bb);
+    BOOL Are_Defs_Live_In (OP* op, REGION* r);
+    BOOL Are_Defs_Live_In (OP* op, REGIONAL_CFG_NODE* n) {
+                return n->Is_Region () ? 
+                        Are_Defs_Live_In (op,n->Region_Node ()) :
+                        Are_Defs_Live_In (op,n->BB_Node ()) ;
+         }
 
-    BOOL Are_Defs_Live_In   (OP * op, BB * bb);
+    BOOL Are_Defs_Live_Out (OP* op, BB* bb) ;
+    BOOL Are_Defs_Live_Out (OP* op, REGION* r);
+    BOOL Are_Defs_Live_Out (OP* op, REGIONAL_CFG_NODE* n) {
+                return n->Is_Region () ? 
+                        Are_Defs_Live_Out (op,n->Region_Node ()) :
+                        Are_Defs_Live_Out (op,n->BB_Node ());
+         }
+
+    BOOL Are_Defs_Live_Out  (OP* op, BB_VECTOR* bbv) ;
+
     
-    void Add_Defs_Live_Out  (OP * op, BB * bb);
-    void Add_Defs_Live_Out  (OP * op, REGION * rgn);
-    void Add_Defs_Live_In   (OP * op, BB * bb) ;
-    void Add_Defs_Live_In   (OP * op, REGION * rgn);
+    void Add_Defs_Live_Out  (OP* op, BB* bb);
+    void Add_Defs_Live_Out  (OP* op, REGION* rgn);
+    void Add_Defs_Live_In   (OP* op, BB* bb) ;
+    void Add_Defs_Live_In   (OP* op, REGION* rgn);
     
-    void Update_Liveness_After_Upward_Code_Motion
-            (OP *op, SRC_BB_INFO * src_info) ;  
+        /* update liveness after upward/downward code motion.
+         */
+    void Update_Liveness_After_Upward_Sched
+            (CANDIDATE* cand, SRC_BB_INFO* src_info,
+             RGN_CFLOW_MGR* cflow_info);
 
-    void Update_Liveness_After_Downward_Code_Motion 
-            (OP *op, SRC_BB_INFO * src_info);
+    void Update_Liveness_After_Downward_Sched
+            (CANDIDATE* cand, SRC_BB_INFO * src_info, 
+             RGN_CFLOW_MGR* cflow_info);
 
-    BOOL Upward_Code_Motion_Kill_Some_LiveOut_Defs 
-            (OP* op, BB * from, BB * to, 
-             const BB_VECTOR * cutting_set);
 
-    BOOL Downard_Code_Motion_Kill_Some_LiveIn_Defs 
-            (OP* op, BB * from, BB * to, 
-             const BB_VECTOR * cutting_set);
+        /* group1: Check to see whether upward code motion kill some 
+         * liveout/livein defs.
+         */
+    BOOL Upward_Sched_Kill_LiveOut_Defs 
+            (CANDIDATE* cand, SRC_BB_INFO* src_bb_info, 
+             RGN_CFLOW_MGR* cflow_info);
 
-    BOOL Upward_Code_Motion_Violate_Dflow_Constrait
-                (OP * op, BB * from, BB * to, 
-                 const BB_VECTOR * cutting_set,
-                 const REGION_VECTOR *nested_rgns,
-                 RGN_CFLOW_MGR * cflow_info) ;
+    BOOL Downard_Sched_Kill_LiveIn_Defs 
+            (CANDIDATE* cand, SRC_BB_INFO* src_bb_info, 
+             RGN_CFLOW_MGR* cflow_info);
+        
 
-    BOOL Downward_Code_Motion_Violate_Dflow_Constrait 
-            (OP * op, 
-             const BB_VECTOR * cutting_set,
-             const REGION_VECTOR *nested_rgns);
 
+        /* group2: Check to see whether upward/downward code motion 
+         * create interference with live-ranges leading from nested 
+         * REGIONs.
+         */
+    BOOL Upward_Sched_Interfere_Nested_Rgns_LiveRanges 
+            (CANDIDATE* cand, SRC_BB_INFO* bb_info);
+
+    BOOL Downward_Sched_Interfere_Nested_Rgns_LiveRanges 
+            (CANDIDATE* cand, SRC_BB_INFO* src_bb_info);
+
+
+        /* group3 : Check to see whether instruction alias with OPs in 
+         * enclosed by nested rgns.
+         */
+    BOOL Upward_Sched_Alias_With_Nested_Rgn_OPs 
+            (CANDIDATE* cand, SRC_BB_INFO* bb_info);
+
+    BOOL Downward_Sched_Alias_With_Nested_Rgn_OPs 
+            (CANDIDATE* cand, SRC_BB_INFO* bb_info);
+
+
+        /* group 4: functionaly combine group1 through 3 inclusively
+         */
+    BOOL Upward_Sched_Violate_Dflow_Constrait
+            (CANDIDATE* cand, SRC_BB_INFO* bb_info);
+
+    BOOL Downward_Sched_Violate_Dflow_Constrait 
+            (CANDIDATE* cand, SRC_BB_INFO* bb_info);
 };
 
 #endif /* sched_dflow_INCLUDED */

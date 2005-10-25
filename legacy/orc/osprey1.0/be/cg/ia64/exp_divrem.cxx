@@ -2391,7 +2391,7 @@ Expand_Divide (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
 
 void
-Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
+Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE opcode)
 {
   /* Check for undefined operations we can detect at compile-time
    * and when enabled, generate run-time checks.
@@ -2425,7 +2425,7 @@ Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 	/* Generate a multiply:
 	 */
 	mult_tn = Build_TN_Like (result);
-	Expand_Multiply(mult_tn, div_tn, src2, mtype, ops);
+	Expand_Multiply(mult_tn, div_tn, src2, mtype, ops, opcode);
 
 	/* Subtract the result of the multiply from the original value.
 	 */
@@ -2447,7 +2447,7 @@ Expand_Rem (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
  *	  if t4 r=	t1
  */
 void 
-Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
+Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE opcode)
 {
   TN *tmp1;
   TN *tmp2;
@@ -2478,7 +2478,7 @@ Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   /* Calculate remainder 
    */
   tmp1 = Build_TN_Like(result);
-  Expand_Rem(tmp1, src1, src2, mtype, ops);
+  Expand_Rem(tmp1, src1, src2, mtype, ops, opcode);
 
   /* Are signs different? 
    */
@@ -2499,7 +2499,7 @@ Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 
 
 void 
-Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
+Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops, OPCODE opcode)
 {
   /* Check for undefined operations we can detect at compile-time
    * and when enabled, generate run-time checks.
@@ -2562,7 +2562,7 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
         Expand_Power_Of_2_Rem(result2, src1, src2_val, mtype, ops);
       } else {
 	TN *t1 = Build_TN_Like(result);
-	Expand_Multiply(t1, result, src2, mtype, ops);
+	Expand_Multiply(t1, result, src2, mtype, ops, opcode);
 	Build_OP(TOP_sub, result2, True_TN, src1, t1, ops);
       }
       return;

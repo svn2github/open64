@@ -1,7 +1,7 @@
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
 /*
- *  Copyright (C) 2000-2002, Intel Corporation
+ *  Copyright (C) 2000-2003, Intel Corporation
  *  All rights reserved.
  *  
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -69,9 +69,11 @@
 #include "sched_dflow.h"
 #include "sched_cand.h"
 #include "sched_rgn_info.h"
+#include "sched_seq.h"
 
 //for prdb_util
 #include "prdb_util.h"
+#include "pqs_cg.h"
 
 /* memory management */
 #include "cxx_memory.h"
@@ -98,333 +100,605 @@ static char* _Global_Insn_Sched_Phase_Name = "ORC:Global code motion"  ;
 static char* _Local_Insn_Sched_Phase_Name = "ORC:Local code motion" ;
 static char* _Cur_Phase_Name = NULL ;
 
-#define GET_CAND_LIST(x) (!(x)->Is_P_ready () ? &_m_ready_cand : \
-                              &_p_ready_cand)
 
-/* ====================================================================
- *
- *  Rebuild_Cntl_Arcs_From_Scratch:
- * 
- *  We are constantly move OPs across branch, hence make cntl arcs 
- *  leading to OPs in question upside down, these arcs should be 
- *  pruned. 
- *
- *  on the other hand, when OPs is moved across a branch, We should
- *  create cntl-arcs between OP and the branchs which is moved across
- *  by op.
- * 
- *  this routine is used to make the cntl-arcs leading from and to 
- *  <op>, which is moved across some branch, up-to-date and accurate.
- *
- * ===================================================================
- */
+
+    /* ================================================================
+     *
+     *  Cycle_Advance 
+     *
+     * 1. inform micro-scheduler that current cycle cannot bundle any 
+     *    candidates available, to that micro-scheduler reset its 
+     *    internal status and prepare for the next cycle.
+     *
+     * 2. update candidate list, set all candidates, which are tried to 
+     *    be issued in current cycle but fail, to be "untired"
+     * 
+     * 3. Let some new candidates under the control of candidate list.
+     *    (these new candidates depend upon OPs that are issued in 
+     *     current cycle, and the latency between them is non-ZERO)
+     * 
+     * 4. adjust schedule status accordingly.
+     *
+     * ===============================================================
+     */
 void
-SCHEDULER::Rebuild_Cntl_Arcs_From_Scratch (OP* op) {
+SCHEDULER::Cycle_Advance (void) {
 
-    /* 1. prune all control arcs */
-    for (ARC_LIST* arcs = OP_preds(op); arcs != NULL;) {
+    _cand_mgr.M_Ready_Cand_List ()->Clear_All_Cands_Tried_Mark ();
+    _cand_mgr.P_Ready_Cand_List ()->Clear_All_Cands_Tried_Mark ();
 
-        ARC *arc = ARC_LIST_first(arcs);
-        OP *pred = ARC_pred(arc);
+        /* inform micro-scheduler to change its internal status
+         */
+    CGGRP_Cycle_Advance();
 
-        if (ARC_is_br(arc)                                           || 
-            pred->bb != _target_bb && 
-            _cflow_mgr.BB1_Reachable_From_BB2 (pred->bb, _target_bb) ||
-            !_cflow_mgr.BB1_Reachable_From_BB2 (_target_bb,pred->bb)) 
-        {
-            arcs = ARC_LIST_rest(arcs);
-            CG_DEP_Detach_Arc(arc);
-            continue;
-        }
-
-        arcs = ARC_LIST_rest(arcs);
-    }
-
-    for (ARC_LIST* arcs = OP_succs(op); arcs != NULL;) {
-
-        ARC *arc = ARC_LIST_first(arcs);
-        OP *succ = ARC_succ(arc);
-        if (ARC_is_br(arc)) {
-            arcs = ARC_LIST_rest(arcs);
-            CG_DEP_Detach_Arc(arc);
-            continue;
-        }
-
-        arcs = ARC_LIST_rest(arcs);
-    }
-
-    /* 2. create control arcs from scratch 
-     */
-    _dag_constructor.Build_Branch_Arcs(op, INCLUDE_CONTROL_ARCS);
-}
-
-
-/* ================================================================
- *
- *  Cycle_Advance 
- *
- * 1. inform micro-scheduler that current cycle cannot bundle any 
- *    candidates available, to that micro-scheduler reset its 
- *    internal status and prepare for the next cycle.
- *
- * 2. update candidate list, set all candidates, which are tried to 
- *    be issued in current cycle but fail, to be "untired"
- * 
- * 3. Let some new candidates under the control of candidate list.
- *    (these new candidates depend upon OPs that are issued in 
- *     current cycle, and the latency between them is non-ZERO)
- * 
- * 4. adjust schedule status accordingly.
- *
- * ===============================================================
- */
-void
-SCHEDULER::Cycle_Advance () {
-
-    /* make sure all candidates avaiable is untried, so that they
-     * have a change to be issued in next cycle.
-     */
-    _m_ready_cand.Clear_All_Cands_Tried_Mark ();
-    _p_ready_cand.Clear_All_Cands_Tried_Mark ();
-
-    /* let some candidates under the contol of candidate-list
-     */
+        /* let some candidates under the contol of candidate-list
+         */
     Update_Cand_Lst_After_Cycle_Advancing ();
     _heur_mgr.Adjust_Heur_After_Sched_One_Cyc 
                 (_ops_in_cur_cyc,_cur_cyc);
 
-    /* inform micro-scheduler to change its internal status
-     */
-    CGGRP_Cycle_Advance();
 
     if (SCHED_TF_SUMMARY_DUMP) {
         fprintf(TFile, "\n    Cycle: %d\n", _cur_cyc);
     }
 
-    /* reset schedule status 
-     */
+        /* reset schedule status 
+         */
     _ops_in_cur_cyc.clear ();
 
-    /* next cycle start at least _cur_cyc + 1 
-     */
+        /* next cycle start at least _cur_cyc + 1 
+         */
     ++_cur_cyc ; 
 }
 
 
-          /*=============================================
+          /* ====================================================
+           * ====================================================
            *
-           *    Candidates stuff 
+           *            CANDIDATES STUFF 
            *
-           * ============================================
+           * ====================================================
+           * ====================================================
            */
 BOOL
-SCHEDULER::Try_Add_OP_to_Candidate_List (OP* op) {
+SCHEDULER::OP_Cannot_be_Candidate_Since_Obvious_Reason (OP* op) {
 
-    if (OP_Scheduled(op)) return FALSE;
+    if (OP_Scheduled(op)) return TRUE;
 
     if (_prepass&& 
         (OP_glue(op) || OP_chk(op) || OP_no_move_before_gra(op) || 
          OP_access_reg_bank (op)) && 
          OP_bb(op) != _target_bb) {
 
-        return FALSE;
+        return TRUE;
     }
 
     if (OP_bb (op) != _target_bb && 
         OP_Cannot_Be_Moved_Outof_HomeBB (op)) {
-        return FALSE ;
+        return TRUE;
     }
 
-    if (_m_ready_cand.OP_Is_In_Cand_List (op) || 
-        _p_ready_cand.OP_Is_In_Cand_List (op)) {
+
+    return _cand_mgr.OP_Is_In_Cand_List (op);
+}
+
+    /* ========================================================
+     *
+     * Succ_Pred_Transposed_If_Sched 
+     *
+     * ref the header file for details.
+     *
+     * =======================================================
+     */
+BOOL
+SCHEDULER::Succ_Pred_Transposed_If_Sched 
+    (ARC* arc, BB_VECTOR* cutting_set) {
+
+    OP* pred = ARC_pred(arc);
+    BB* pred_home = OP_bb(pred);
+
+    if (OP_Scheduled(pred)) { 
+        if (pred_home != _target_bb || !OP_xfer(pred) || ARC_kind(arc) == CG_DEP_CTLSPEC) {
+            return FALSE;
+        } else {
+            return TRUE;
+        }
+    }
+
+    BB_POS pos = BB_Pos_Analysis (pred_home, cutting_set, &_cflow_mgr);
+
+    BOOL transposed = FALSE;
+    switch (pos) {
+    case ABOVE_SISS:
+        break;
+
+    case IN_SISS:
+        transposed = (pred_home == _target_bb || OP_xfer(pred));
+        break;
+
+    case BELOW_SISS:
+        transposed = TRUE ; 
+        break ;
+
+    default :
+        Is_True (FALSE, ("fail to analysis src position for BB:%d!",
+                BB_id(OP_bb(pred))));
+    }
+
+    return transposed;
+}
+
+
+    /* ===============================================================
+     *
+     * Collect_And_Analyse_Unresolved_Dep
+     *
+     * acquire the barrier that MAY render the code motion impossible 
+     * there are two kind of barriers:
+     *
+     *   - the dependency scheduler should violate.
+     *   - the nested REGION we need moving across.
+     *
+     *
+     *  e.g. assume CFG like this
+     *      
+     *               +--------------------+
+     *               |       BB1          |
+     *               +--------------------+
+     *               /                V
+     *  +-----------------+    +-------------------+
+     *  | BB2: call...    |    | BB:4 empty block  |
+     *  +-----------------+    +-------------------+
+     *          V                     /
+     *  +-----------------+          /  
+     *  | BB3: gp=...     |         /
+     *  +-----------------+        /
+     *                 \          /
+     *                  \        /
+     *          +--------------------+
+     *          |   x=gp+5   BB:5    |
+     *          |   ld y=[x]         |
+     *          +--------------------+
+     * TODO: fini this comment 
+     *
+     * Assumption: 
+     *
+     *     parameter <cand> is newly created(put in other word, 
+     *     <cand> is initialized) except cand->_op is set properly.
+     *
+     * ===============================================================
+     */
+BOOL
+SCHEDULER::Collect_And_Analyse_Unresolved_Dep
+    (CANDIDATE* cand, SRC_BB_INFO* bb_info) {
+
+        /* prepare for the P-ready candidate identification
+         */
+    BOOL donate_p_ready = bb_info->Can_Donate_P_Ready_Cand ();
+    OP* cand_op = cand->Op ();
+    BB* home_bb = OP_bb(cand->Op ());
+
+    cand->Free_Bookeeping_Lst ();
+    cand->Move_Across_Rgns()->clear ();
+    BB_VECTOR* cs_between_targ_src = NULL;
+    EXEC_PATH_SET move_around_paths(&_mem_pool);
+
+    if (donate_p_ready) {
+        cand->Move_Against_Path_Set ()->Clear ();
+        cs_between_targ_src = bb_info->Get_P_Ready_Bookeeping_Blks ();
+        move_around_paths.Resize 
+            (_cflow_mgr.Get_Exec_Path_Mgr()->Path_In_Total ());
+    }
+
+        /* step 1.a : collect some unresolved dependency, analysis 
+         *            is applied upon these depencies to make desition
+         *            whether we simply violate these unresolved deps 
+         *            (speculate load across store) or escape this 
+         *            barrier by P-ready book-keeping/compensation.
+         */
+    for (ARC_LIST* arcs = OP_preds(cand_op);
+         arcs != NULL; 
+         arcs = ARC_LIST_rest(arcs)) {
+
+        ARC* arc  = ARC_LIST_first(arcs) ;
+        OP*  pred = ARC_pred(arc) ;
+
+        if (!_prepass && !_global) {
+
+                /* We can determine whether a op is qualified to be a 
+                 * candidate or not at very early stage. this if-
+                 * statement obiviate the need of going through the rest
+                 * for-loop body to test whether <cand> is qualified.
+                 */ 
+            if (OP_Scheduled(pred)) {
+                continue; 
+            } else { 
+                return FALSE; 
+            }
+        }
+
+        if (!Succ_Pred_Transposed_If_Sched 
+             (arc, bb_info->Get_Cutting_Set ())) {
+
+                /* sequence of pred and succ remains unchanged
+                 */
+            continue;
+        }
         
-        return FALSE ;
-    }
-
-    UNRESOLVED_DEP_LIST * unresolved_dep_lst = NULL;
-
-    SPEC_TYPE spec_type = SPEC_NONE; 
-    BB *      home_bb   = OP_bb (op);
-
-    for (ARC_LIST* arcs = OP_preds(op);
-        arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
-
-        ARC * arc   = ARC_LIST_first(arcs) ;
-        OP  * pred  = ARC_pred(arc) ;
-
-        if (OP_Scheduled(pred)) continue ;
-
-        /* <transpose> indicate whether <op> will transpose with 
-         * <pred> if we sched <op>
-         */
-        BOOL transpose = FALSE ;
-
-        SRC_BB_INFO * src_bb_info = _src_bb_mgr.Get_Src_Info (home_bb);
-        BB_POS pos = BB_Pos_Analysis(OP_bb(pred), &src_bb_info->siss,
-                                     &_cflow_mgr) ;
-        switch (pos) {
-        case ABOVE_SISS:
-            continue ;
-
-        case IN_SISS:
-
-            transpose = (OP_bb(pred) == _target_bb || OP_xfer(pred));
-            break ;
-
-        case BELOW_SISS:
-            transpose = TRUE ; break ;
-
-        default :
-            Is_True (FALSE, ("fail to analysis src position for BB:%d!",
-                              BB_id(OP_bb(pred))));
+        if (ARC_kind(arc) == CG_DEP_CTLSPEC) {
+            cand->Set_If_Converted(TRUE);
+        }
+        
+        SPEC_TYPE spec_tmp = Derive_Spec_Type_If_Violate (arc);
+        if (spec_tmp == SPEC_NONE) {
+                /* case 1: dependency we simply ignore
+                 */
+            continue;
         }
 
-        if (!transpose) {
-            /* the sequence (<op> and <pred>) remain unchanged 
+            /* make the desition for the unresolved dependency, 
+             * violate it (move across) of escape (move around) it. 
              */
-            continue; 
+
+            /* case 2: dependency that we can violate
+             */
+        if (spec_tmp == SPEC_DATA || spec_tmp == SPEC_CNTL || 
+            spec_tmp == SPEC_COMB) {
+
+            cand->Add_Spec (spec_tmp);
+
+                /* keep track of each violated dependece 
+                 */
+            UNRESOLVED_DEP* t = _cand_mgr.New_Unresolved_Dep ();
+            t->Set_Arc (arc); 
+            t->Set_Spec_Type (spec_tmp);
+            cand->Unresolved_Dep_List ()->Prepend (t);
+
+            continue;
         }
 
-
-        /* step1 : examine whether the unfulfilled deps can be violated
-         */
-        SPEC_TYPE spec_tmp = 
-            Dirive_Upward_Code_Motion_Spec_Type_From_Arc (arc);
-
-        switch (spec_tmp) {
-        case SPEC_NONE :
-        case SPEC_DATA :
-        case SPEC_CNTL :
-        case SPEC_DISABLED :
-            break ;
-        default:
-            FmtAssert (FALSE,("Unknow spec_type %d\n", spec_tmp));
-        }
-
+            /* case 3: dependency that we should observe
+             */
+        BB* pred_bb = OP_bb(pred);
         if (spec_tmp == SPEC_DISABLED) {
-            Free_Unresolved_Dep_Lst (unresolved_dep_lst);
-            return FALSE; 
-        }
+            if (!donate_p_ready || pred_bb == _target_bb) {
+                    /* There is no way to move around this 
+                     * barrier.
+                     */
+                return FALSE;
+            }
+            
+            BB_POS pos = BB_Pos_Analysis (pred_bb,
+                                          cs_between_targ_src,
+                                          &_cflow_mgr);
 
-        /* keep track of each violated dependece 
-         */
-        UNRESOLVED_DEP * t = New_Unresolved_Dep ();
+            if (pos == BELOW_SISS) { return FALSE ; }
+            
+            if (pos == IN_SISS || pos == ABOVE_SISS) {
 
-        t->Set_Arc (arc); 
-        t->Set_Spec_Type (spec_tmp);
-        unresolved_dep_lst = Prepend_to_Unresolved_Dep_List 
-                               (unresolved_dep_lst,t);
+                cand->Set_P_ready ();
 
-        spec_type = SPEC_TYPE(spec_type|spec_tmp);
+                for (BB_VECTOR_ITER iter = cs_between_targ_src->begin();
+                     iter != cs_between_targ_src->end (); iter++) {
+
+                    BB* bk_blk = *iter;
+
+                    if (!(cand->Bookeeping_Lst ()->Retrieve (bk_blk)) &&
+                         (bk_blk == pred_bb || 
+                          _cflow_mgr.BB1_Reachable_From_BB2 (bk_blk,pred_bb))) {
+                        
+                        EXEC_PATH_SET* eps_tmp = 
+                            _cflow_mgr.Get_Path_Flow_Thru (bk_blk);
+
+                        BOOKEEPING* bk = _cand_mgr.New_Empty_Bookeeping ();
+                        bk -> Set_Placement (bk_blk);
+                        bk -> Set_P_Ready_Bookeeping ();
+                        cand->Bookeeping_Lst () -> Prepend (bk);
+
+                        move_around_paths += *eps_tmp;
+                    }
+                }
+                
+            } else {
+                FmtAssert (FALSE, ("Unknown BB_POS(%d)", pos));
+                return FALSE;
+            }
+
+        } /* end of 'if (spec_tmp == SPEC_DISABLED)' */
 
     } /* end of for (ARC_LIST* arcs = ... ) */ 
 
+    
+    if (!_global) { return TRUE; }
 
-    /* futher check wether we can speculate this candidate: 
-     * the purposes are twofold:
-     * 
-     *      o.  debugging purpose
-     *      o.  satify data flow constraint. 
-     */
+    if (cand->Is_P_Ready ()) {
 
-    BOOL qualified = TRUE ;
+            /* step 2: calc the move-against paths
+             */
+        EXEC_PATH_SET* eps = cand->Move_Against_Path_Set();
+        *eps = *_cflow_mgr.Get_Path_Flow_Thru (OP_bb(cand->Op()));
+        *eps -= move_around_paths;
+        if (eps->Is_Empty ()) {
+                /* there is no barrier-free exec-path we can moved 
+                 * against from cand's home bb toward target-block.
+                 */
+            return FALSE; 
+        }
 
-    SRC_BB_INFO * bb_info = _src_bb_mgr.Get_Src_Info (home_bb);
-    const BB_VECTOR * cutting_set = &bb_info->siss ;
-    const BB_VECTOR * between_cs_and_src = &bb_info->across_bbs;
+        eps = cand->P_Ready_Bookeeping_Path_Set ();
+        *eps = move_around_paths;
 
-    if (!(spec_type & SPEC_CNTL) & _global) {
-        for (BB_VECTOR_CONST_ITER iter = cutting_set->begin () ;
-            iter != cutting_set->end () ; iter ++) {
-        
-            BB * b = *iter ;
-            if (b != home_bb &&
-                !BB1_Postdominate_BB2 (home_bb, b)) {
-                    spec_type = SPEC_TYPE(spec_type | SPEC_CNTL);
+            /* step 1.b: During the process of step1.a, we analyse 
+             *      each unresolved dependency, determine whether we 
+             *      choose violate- or escape-strategy. However, 
+             *      we my previously encount an violable-unresolved-dep, 
+             *      and we choose violate-strategy, and later on, we 
+             *      encount an shold-be-strictly-observe dependency,
+             *      to make op to be an qualified candidate, we 
+             *      can sched op by P-ready-book-keeping which may shadow
+             *      violable-dep we previously come across. 
+             */
+        UNRESOLVED_DEP* dep, *next_dep;
+        UNRESOLVED_DEP_LST* deplst = cand->Unresolved_Dep_List ();
+
+        for (dep = deplst->First_Item (); dep; dep = next_dep) {
+
+            next_dep = deplst->Next_Item(dep);
+            if (cand->Shadowed_By_P_Ready_Bookeeping 
+                (OP_bb(dep->Pred()), &_cflow_mgr)) {
+                deplst->Delete_Item (dep);
+            }
+
+        }
+    }
+
+        /* step 3 : determine non-p-ready book-keeping places.
+         */
+    Determine_Non_P_Ready_Bookeeping_Places (cand, bb_info);
+
+    cand->Calc_Useful_Exec_Prob (_target_bb,&_cflow_mgr);
+
+        /* step 4 : Futher determine whether code motion is control 
+         *          speculation or not. (We could not figure candidate's
+         *          code motion type just from unresolved dependency.)
+         */
+    if (cand->Is_P_Ready ()) {
+            /* Partial-ready candidate is cntl-speculated anyway
+             */
+        cand->Add_Spec (SPEC_CNTL); 
+
+            /* The following statements does not fit this routine 
+             * very much. but it can improve the compilation time
+             * since we determine at very early stage that to 
+             * schedule some P-ready canidate definitely worthless.
+             */
+        if (cand->Useful_Exec_Prob () < 
+            DONATE_P_READY_CAND_BB_REACH_PROB) {
+            return FALSE;
+        }
+    } else if (!(cand->Spec_Type () & SPEC_CNTL)) {
+
+        BOOKEEPING_LST* bkl = cand->Bookeeping_Lst ();
+             
+        for (BOOKEEPING* bk = bkl->First_Item ();
+             bk != NULL;
+             bk = bkl->Next_Item (bk)) {
+
+            if (!BB1_Postdominate_BB2 (home_bb, bk->Get_Placement ())) {
+                cand->Add_Spec (SPEC_CNTL);
+                break;
             }
         }
-    }     
-
-    if (spec_type != SPEC_NONE) {
-
-        if ((spec_type & SPEC_DATA) && OP_ANNOT_Cannot_Data_Spec (op) ||
-            (spec_type & SPEC_CNTL) && OP_ANNOT_Cannot_Cntl_Spec (op)) {
-            qualified = FALSE ;
-        }
-
-        UNRESOLVED_DEP * dep;
-        FOR_ALL_UNRESOLVED_DEPs(unresolved_dep_lst , dep) {
-
-            SPEC_TYPE spec_tmp = dep->Spec_Type ();
-
-            /* check whether candidate can be cntl-speculated
-             */
-            ARC * arc = dep->Arc ();
-
-            if ((OP_call(ARC_pred(arc)) && !IPFEC_Glos_Motion_Across_Calls)) {
-                qualified = FALSE ; break ;
-            }  
-
-        } /* end of FOR_ALL...DEPS*/
-
     }
-    
-    mBOOL across_nested_rgns = 
-        (bb_info->across_nested_rgns.size () != 0);
-
-        /* check to see whether speculation violate data flow 
-         * constraint.
-         */
-    if (qualified && 
-        (spec_type != SPEC_NONE || across_nested_rgns)) {
-                       
-        if (_dflow_mgr.Upward_Code_Motion_Violate_Dflow_Constrait
-                           (op, OP_bb(op),  /* from */
-                            _target_bb,     /* to */
-                            (const BB_VECTOR*)(void*)cutting_set,
-                            &bb_info->across_nested_rgns,
-                            &_cflow_mgr)) {
-
-            qualified = FALSE ; 
-        }
-    }
-
-        /* check whether this code motion betrate our cost-model principal. 
-         */
-    if (qualified                   && 
-        (spec_type != SPEC_NONE)    && 
-        !_heur_mgr.Spec_Code_Motion_Is_Profitable 
-                    (op, OP_bb(op), 
-                     _target_bb, 
-                     unresolved_dep_lst,
-                     cutting_set,
-                     between_cs_and_src,
-                     &bb_info->across_nested_rgns)) {
-
-        qualified = FALSE ;
-    }
-
-    if (qualified                   && 
-        (spec_type == SPEC_NONE)    &&
-        !_heur_mgr.Upward_Useful_Code_Motion_Is_Profitable 
-                        (op, OP_bb(op),
-                         cutting_set,
-                         between_cs_and_src,
-                         &bb_info->across_nested_rgns)) {
-        qualified = FALSE ;
-    }
-
-    if (!qualified) {
-        Free_Unresolved_Dep_Lst (unresolved_dep_lst);
-        return FALSE ;
-    }
-
-    CANDIDATE * cand = _m_ready_cand.Create_Empty_Cand () ;
-
-    cand->Setup (op, spec_type, FALSE,unresolved_dep_lst);
-    _m_ready_cand.Add_Candidate (cand);
 
     return TRUE;
+}
+
+    /* =======================================================
+     *
+     * Determine_Non_P_Ready_Bookeeping_Places 
+     * 
+     * Determine those blocks we need appending duplicated 
+     * instruction book to.
+     *
+     * Assumption:
+     *
+     *  P-ready bookeeping places have already been specified 
+     *  by <cand>->Bookeeping_Lst(). So this routine should
+     *  be called after <Collect_And_Analyse_Unresolved_Dep>.
+     *
+     * ========================================================
+     */
+void
+SCHEDULER::Determine_Non_P_Ready_Bookeeping_Places 
+    (CANDIDATE* cand, SRC_BB_INFO* bb_info) {
+
+    BB_VECTOR* cs = bb_info->Get_Cutting_Set ();
+    BB* home_bb = OP_bb(cand->Op ());
+
+    if (!cand->Is_P_Ready ()) {
+        
+        for (BB_VECTOR_ITER iter = cs->begin (); 
+             iter != cs->end (); iter ++) {
+
+            BB* bk_blk = *iter;
+            if (bk_blk == _target_bb) { continue; }
+
+            BOOKEEPING* bk = _cand_mgr.New_Empty_Bookeeping ();
+            bk->Set_Placement (bk_blk);
+            bk->Set_Dup_Bookeeping ();
+
+            cand->Bookeeping_Lst () -> Append (bk);
+        }
+
+        return;
+    }
+
+    for (BB_VECTOR_ITER iter = cs->begin (); 
+         iter != cs->end (); iter++) {
+
+        BB* b = *iter;
+        if (b == _target_bb) { continue; }
+
+        if (!cand->Shadowed_By_P_Ready_Bookeeping (b,&_cflow_mgr)) {
+
+            BOOKEEPING* bk = _cand_mgr.New_Empty_Bookeeping ();
+            bk->Set_Placement (b);
+            bk->Set_Dup_Bookeeping ();
+
+            cand->Bookeeping_Lst () -> Append (bk);
+        }
+    }
+}
+
+    /* ==========================================================
+     *
+     *  Collect_And_Analyse_Other_Than_Dep_Constraints 
+     *
+     *  ref the header file for details.
+     *
+     * ==========================================================
+     */
+BOOL
+SCHEDULER::Collect_And_Analyse_Other_Than_Dep_Constraints 
+    (CANDIDATE* cand, SRC_BB_INFO* bb_info) {
+
+    if (!_global && !_prepass) {
+
+       /* since scheduling scope is confined within a single basic block,
+        * and any speculation is turned off, it is no need to checck to 
+        * following conditions.
+        */
+
+        return TRUE;
+    }
+
+    OP* op = cand->Op ();
+
+        /* 1. We do not speculate following two kinds of instructions.
+         *
+         * - Some instrutions(e.g store), by its nature, can not be 
+         *   speculated, 
+         * - For debugging purpose, we do not speculated specific OPs.
+         */ 
+    SPEC_TYPE spec_type = cand->Spec_Type ();
+    if ((spec_type & SPEC_DATA) && OP_ANNOT_Cannot_Data_Spec (op) ||
+        (spec_type & SPEC_CNTL) && OP_ANNOT_Cannot_Cntl_Spec (op)) {
+        return FALSE;
+    }
+
+    /* ld.s --X--> ld.sa  
+     */
+    if ((spec_type & SPEC_DATA) && 
+         OP_load(op) && 
+         CGTARG_Is_OP_Speculative_Load(op) && !CGTARG_Is_OP_Advanced_Load(op)) {
+         return FALSE;	
+	}
+
+    if (cand->Is_If_Converted()) {
+        if (!IPFEC_Glos_Enable_Cntl_Spec_If_Converted_Code ||
+            !Can_Cntl_Spec_If_Converted_Code(cand)) {
+            return FALSE;
+        }
+    }
+    
+    if (OP_bb(op) == _target_bb) {
+           return TRUE; 
+    }
+   
+        /* 2. check to see whether cand will kill some liveout defs. Renaming chances!
+         */
+    if (_dflow_mgr.Upward_Sched_Kill_LiveOut_Defs 
+            (cand, bb_info, &_cflow_mgr)) {
+            
+        /* Now, we just do renaming for single assignment cand.
+         */
+        if (OP_results(op) != 1) {
+            return FALSE;
+        }
+    }
+
+
+        /* 3. find out all move-across-nested-regions.
+         */
+    REGION_VECTOR* rv = cand->Move_Across_Rgns();
+    rv->clear ();
+
+
+    REGION_VECTOR* rv_tmp = bb_info->Move_Across_Or_Around_Nested_Rgns ();
+    for (REGION_VECTOR_ITER iter = rv_tmp->begin (); 
+         iter != rv_tmp->end ();
+         iter ++) {
+
+        REGION *r = *iter;
+        if (cand->Is_M_Ready () || 
+            !cand->Shadowed_By_P_Ready_Bookeeping (r, &_cflow_mgr)) {
+            rv->push_back (r);        
+        }
+    }
+
+        /* 4. check to see whether live-ranges interference with each other.
+         */
+    if (_dflow_mgr.Upward_Sched_Interfere_Nested_Rgns_LiveRanges 
+           (cand, bb_info)) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+    /* =========================================================
+     *
+     * Try_Add_OP_to_Candidate_List 
+     *
+     * ref the header file for details.
+     *
+     * ========================================================
+     */
+BOOL
+SCHEDULER::Try_Add_OP_to_Candidate_List (OP* op) {
+
+    if (OP_Cannot_be_Candidate_Since_Obvious_Reason (op)) {
+        return FALSE;
+    }
+
+    SRC_BB_INFO* bb_info = _src_bb_mgr.Get_Src_Info (OP_bb(op));
+
+    CANDIDATE* cand = _cand_mgr.Create_Empty_Cand ();
+    cand->Set_OP (op);
+
+    
+    if (!Collect_And_Analyse_Unresolved_Dep (cand, bb_info) ||
+        !Collect_And_Analyse_Other_Than_Dep_Constraints 
+            (cand, bb_info)) {
+
+        _cand_mgr.Erase_Cand (cand); 
+        return FALSE;
+
+    }
+
+        /* Now, <op> are qualified as an candidate, but it may not 
+         * be a "good" one. So we need futher check whether it 
+         * satify our cost-model.
+         */
+    if (OP_bb(op) != _target_bb &&
+        !_heur_mgr.Upward_Global_Sched_Is_Profitable 
+            (cand, bb_info, &_cflow_mgr)) {
+
+        _cand_mgr.Erase_Cand (cand); 
+        return FALSE; 
+    }
+
+        /* add this candidate to cand-list.
+         */
+    CAND_LIST* cand_lst = cand->Is_M_Ready () ? 
+                          _cand_mgr.M_Ready_Cand_List () : 
+                          _cand_mgr.P_Ready_Cand_List () ; 
+
+    cand_lst->Add_Candidate (cand);
+
+    return TRUE;
+
 }
 
 
@@ -439,8 +713,8 @@ SCHEDULER::Try_Add_OP_to_Candidate_List (OP* op) {
 void
 SCHEDULER::Find_All_Candidates (void) {
 
-    _m_ready_cand.Erase_All_Cand ();
-    _p_ready_cand.Erase_All_Cand ();
+    _cand_mgr.M_Ready_Cand_List ()-> Erase_All_Cand ();
+    _cand_mgr.P_Ready_Cand_List ()-> Erase_All_Cand ();
 
     if (_global) {
         Determine_P_Ready_is_Profitable_or_not () ;
@@ -448,23 +722,23 @@ SCHEDULER::Find_All_Candidates (void) {
         Disable_P_Pready_Cand () ;
     }
 
-    const BB_VECTOR * src_bbs = _src_bb_mgr.Src_BBs () ;
+    const BB_VECTOR* src_bbs = _src_bb_mgr.Src_BBs () ;
 
     for (BB_VECTOR_CONST_ITER iter = src_bbs->begin(); 
         iter != src_bbs->end(); iter++) {
 
         OP* op;
-        FOR_ALL_BB_OPs(*iter, op) {
+        BB* b = *iter;
+        FOR_ALL_BB_OPs(b, op) {
             Try_Add_OP_to_Candidate_List (op);
         }
     }
   
-    /* Candidate list should not be empty here.
-     */
-    Is_True (!(_m_ready_cand.Cand_Lst_Is_Empty () && 
-              BB_length(_target_bb)),
-
-             ("fail to find any candidate!"));
+        /* Candidate list should not be empty here.
+         */
+    Is_True (!_cand_mgr.M_Ready_Cand_List ()-> Cand_Lst_Is_Empty () ||
+             !BB_length(_target_bb),
+             ("Fail to find any candidate!"));
 
 }
 
@@ -532,14 +806,19 @@ SCHEDULER::Update_Cand_Lst_During_Sched_Cyc (CANDIDATE& cand) {
 
         }
 
-        /* for the case of ZERO latency, _IF_ the non-candidate-
-         * successor become an candidate, add them into 
-         * now becomes a candidates, we add them into candidate
-         * list.
-         */
+            /* for the case of ZERO latency, _IF_ the non-candidate-
+             * successor become an candidate, add them into 
+             * now becomes a candidates, we add them into candidate
+             * list.
+             */
+        CAND_LIST* cand_lst = _cand_mgr.P_Ready_Cand_List ();
+        if (cand_lst->Cand_In_Total ()) {
+            cand_lst-> Erase_Cand (succ,FALSE);
+        }
 
-        BOOL added = Try_Add_OP_to_Candidate_List (succ);
-        if (added && SCHED_TF_SUMMARY_DUMP) {
+        if (Try_Add_OP_to_Candidate_List (succ) &&
+            SCHED_TF_SUMMARY_DUMP) {
+
             fprintf (TFile, "%d ", OP_map_idx(succ));
         }
     }
@@ -547,12 +826,12 @@ SCHEDULER::Update_Cand_Lst_During_Sched_Cyc (CANDIDATE& cand) {
     _heur_mgr.Adjust_Heur_After_Cand_Sched (op, _cur_cyc);
     if (SCHED_TF_SUMMARY_DUMP) { fprintf(TFile, "\n"); }
   
-    /* <cand> has currently scheduled, remove it from candidate list
-     */
-    if (!cand.Is_P_ready ()) {
-        _m_ready_cand.Erase_Cand (&cand) ;
+        /* <cand> has currently scheduled, remove it from candidate list
+         */
+    if (!cand.Is_P_Ready ()) {
+        _cand_mgr.M_Ready_Cand_List () -> Erase_Cand (&cand) ;
     } else {
-        _p_ready_cand.Erase_Cand (&cand);
+        _cand_mgr.P_Ready_Cand_List () -> Erase_Cand (&cand) ;
     }
 }
       
@@ -584,80 +863,42 @@ SCHEDULER::Update_Cand_Lst_After_Cycle_Advancing (void) {
             if (!latency) continue ;
             if (!_src_bb_mgr.Is_Src_BB (OP_bb(succ))) continue;
   
-            INT32 adj = 0 ;
-            if (IPFEC_Adjust_Variable_Latency) {
 
-                /* IPFEC_Adjust_Variable_Latency are used to 
-                 * investigate how the variable-latency affect
-                 * the performance. 
-                 *
-                 * By default, it is turned on. Option (at 
-                 * command line) "-Wb,-IPFEC:adjust_variable_latency=off
-                 * can turn this flag off. 
-                 */
-
-                adj = CGTARG_adjust_latency (
-                                op, CGGRP_OP_Issue_Port (op),
-                                succ,ip_invalid, ARC_kind(arc),
-                                latency);
+            CAND_LIST* cand_lst = _cand_mgr.P_Ready_Cand_List ();
+            if (cand_lst->Cand_In_Total ()) {
+                cand_lst-> Erase_Cand (succ,FALSE);
             }
 
-            if (adj) {
-                arc->latency = (latency += adj) ; 
-            }
-                                              
-            BOOL added = Try_Add_OP_to_Candidate_List(succ);
-            if (SCHED_TF_SUMMARY_DUMP && added) {
+            if (Try_Add_OP_to_Candidate_List(succ) &&
+                SCHED_TF_SUMMARY_DUMP) {
                 fprintf(TFile, "%d ", OP_map_idx(succ));
             }
         }
   
-        if (SCHED_TF_SUMMARY_DUMP) { fprintf(TFile, "\n"); }
+        if (SCHED_TF_SUMMARY_DUMP) { 
+            fprintf(TFile, "\n"); 
+        }
     }
-}
-
-
-void
-SCHEDULER::Determine_P_Ready_is_Profitable_or_not (void) {
-    
-    if (!_global) {
-      _highly_biased_branch_succ = NULL ;
-      return ;
-    }
-
-    BBLIST * succ ; 
-    INT8  branch_num = 0 ;
-    float prob = -1.0f ;
-
-    _highly_biased_branch_succ = NULL ;
-    
-    FOR_ALL_BB_SUCCS(_target_bb,succ) {
-      if (!BB_MAP_Get(bb_node_map, BBLIST_item(succ))) continue ;
-      ++ branch_num ;
-      if (succ->prob > prob) { 
-        prob = succ->prob ; 
-        _highly_biased_branch_succ = succ->item ;
-      }
-    }
-
-    if (branch_num <= 1 || prob < LOWEST_PROB_FOR_HIGHLY_BIASED_BR) {
-       _highly_biased_branch_succ = NULL ;
-    }
-
-    /* P_ready is not implemented in this version 
-     */
-     _highly_biased_branch_succ = NULL ;
 }
 
 
 inline BOOL
 SCHEDULER::OP_Cannot_Be_Moved_Outof_HomeBB (OP* op) {
      
-    return OP_ANNOT_OP_Def_Actual_Para (op) ||
-           OP_xfer (op)                     ||
-           OP_chk  (op) ;
+    return  OP_xfer (op) ||
+            OP_call (op) ||
+            OP_chk  (op) ||
+            OP_ANNOT_OP_Def_Actual_Para (op);
 }
 
+inline BOOL
+SCHEDULER::OP_QP_Cannot_Be_Removed_By_Cntl_Spec (OP* op) {
+
+    return OP_Cannot_Be_Moved_Outof_HomeBB(op) 
+        /* OPs affect architecture state even their QPs are FALSE
+         */
+           || OP_cmp_unc(op);           
+}
 
 SPEC_TYPE
 SCHEDULER::Get_OP_Prohibited_Spec_Type (OP *op) {
@@ -786,12 +1027,76 @@ SCHEDULER::Identify_Cannot_Spec_OPs (REGION *rgn) {
 
 
 void
-SCHEDULER::Init_Sched_Status (BB * bb) {
+SCHEDULER::Init_Sched_Status (void) {
     
     _cur_cyc = (CYCLE)0 ;
 
     _ops_in_cur_cyc.clear ();
-    _frontier_op = BB_length(bb) ? BB_first_op (bb) : NULL;
+    _frontier_op = BB_length(_target_bb) ? 
+                   BB_first_op (_target_bb) : NULL;
+
+    _upward_motion_num = _downward_motion_num = 0;
+    _sched_times = 0;
+
+
+}
+
+void
+SCHEDULER::Adjust_Status_For_Resched (void) {
+
+    _cur_cyc = (CYCLE)0;
+    _ops_in_cur_cyc.clear ();
+
+    _upward_motion_num = _downward_motion_num = 0;
+    _sched_times ++;
+
+    Clean_Up (_target_bb);
+    _frontier_op = BB_first_op(_target_bb);
+
+        /* adjust heuristic stuff 
+         */
+    _heur_mgr.Adjust_Heur_Stuff_When_BB_Changed (_target_bb,_src_bb_mgr);
+
+        /* Initialize the candidate list 
+         */
+    OP_Vector opv(&_mem_pool);
+    for (CAND_LIST_ITER iter(_cand_mgr.M_Ready_Cand_List ()); 
+        !iter.done();) {
+
+        opv.push_back (iter.cur()->Op ());
+        iter.erase_cur_and_advance ();
+
+    }
+
+    for (CAND_LIST_ITER iter(_cand_mgr.P_Ready_Cand_List ()); 
+         !iter.done();) {
+
+        opv.push_back (iter.cur()->Op ());
+        iter.erase_cur_and_advance ();
+
+    }
+
+    OP* op;
+    FOR_ALL_BB_OPs (_target_bb,op) {
+        Try_Add_OP_to_Candidate_List (op);
+    }
+    
+    for (OP_Vector_Iter iter = opv.begin(); iter != opv.end(); iter++) {
+        Try_Add_OP_to_Candidate_List (*iter);
+    }
+
+        /* clear the multiway-branch-spans-bb vector
+         */
+    for (BB_VECTOR_ITER iter = _multiway_br_span_bbs.begin ();
+         iter != _multiway_br_span_bbs.end ();
+         iter ++) {
+
+        BB* b = *iter;
+        _multiway_br_candidates = BB_SET_Difference1D
+             (_multiway_br_candidates, b);
+    }
+
+    _multiway_br_span_bbs.clear ();
 }
 
     /* ==========================================================
@@ -803,23 +1108,23 @@ SCHEDULER::Init_Sched_Status (BB * bb) {
      * =========================================================
      */
 
-/* ==========================================================
- *
- *  Insert_Check 
- *
- *  Insert chk-op at <pos> of <home_bb> for speculative 
- *  load <ld> which resides <home_bb> before it being 
- *  moved. At the same time, maintain dependence 
- *  etc if necessary.
- *  
- *  Not all candidates are leagal to be move across a given
- *  check, however, these candidates may have already been
- *  added into candidate list. We evict these candidates from
- *  cand-list.
- *
- * ==========================================================
- */
-OP *
+    /* ==========================================================
+     *
+     *  Insert_Check 
+     *
+     *  Insert chk-op at <pos> of <home_bb> for speculative 
+     *  load <ld> which resides <home_bb> before it being 
+     *  moved. At the same time, maintain dependence 
+     *  etc if necessary.
+     *  
+     *  Not all candidates are leagal to be move across a given
+     *  check, however, these candidates may have already been
+     *  added into candidate list. We evict these candidates from
+     *  cand-list.
+     *
+     * ==========================================================
+     */
+OP*
 SCHEDULER::Insert_Check (OP * ld, BB * home_bb, OP* pos) {
 
     Is_True (OP_load(ld), ("OP is not load!")) ;
@@ -837,60 +1142,61 @@ SCHEDULER::Insert_Check (OP * ld, BB * home_bb, OP* pos) {
     for (ARC_LIST * arcs = OP_succs(chk_op) ;
          arcs != NULL ; arcs = ARC_LIST_rest (arcs)) {
 
-        ARC * arc = ARC_LIST_first (arcs) ;
-        OP  * succ = ARC_succ (arc);
+        ARC* arc = ARC_LIST_first (arcs) ;
+        OP* succ = ARC_succ (arc);
 
         CAND_LIST       * cand_list = NULL ;
         CANDIDATE       * cand = NULL;
 
-        if (cand = _m_ready_cand.Get_Candidate (succ)) {
-            cand_list = &_m_ready_cand ;
-        } else if (cand = _p_ready_cand.Get_Candidate (succ)) {
-            cand_list = &_p_ready_cand ;
-        }
-
+        cand = _cand_mgr.Get_Candidate (succ);
         if (!cand) {
-            continue ; /* <succ> is not candidate */
-        }
-
-        /* examining whether <succ> is "baneful" from <chk_op>'s
-         * point of view
-         */
-        if (!ARC_is_dotted (arc) || OP_baneful(succ)) {
-
-            /* the 1st logical ORed condition is redundant since 
-             * <OP_baneful> itself consider ARC_succ(<arc>) is 
-             * "baneful" to <chk_op>, but <OP_baneful> is very
-             * expensive. We put the "ARC_is_dotted" condition
-             * ahead to identify some "baneful" OP quickly.
-             */ 
-            cand_list->Erase_Cand (cand);
-
+            continue; /* succ is not candidate */
         } else {
+            cand_list = cand->Is_M_Ready () ? 
+                        _cand_mgr.M_Ready_Cand_List ():
+                        _cand_mgr.P_Ready_Cand_List ();
 
-            if (OP_ANNOT_Cannot_Cntl_Spec (cand->Op())) {
+        } 
+
+            /* examining whether <succ> is "baneful" from 
+             * <chk_op>'s point of view.
+             */
+        BB* b = OP_bb(ARC_pred(arc));
+        if (!cand->Shadowed_By_P_Ready_Bookeeping (b,&_cflow_mgr)) {
+
+            if ((!ARC_is_dotted (arc) || OP_baneful(succ))) {
+
+                /* the 1st logical ORed condition is redundant since 
+                 * <OP_baneful> itself consider ARC_succ(<arc>) is 
+                 * "baneful" to <chk_op>, but <OP_baneful> is very
+                 * expensive. We put the "ARC_is_dotted" condition
+                 * ahead to identify some "baneful" OP quickly.
+                 */ 
                 cand_list->Erase_Cand (cand);
+
             } else {
-                cand->Add_Spec (SPEC_CNTL); 
+
+                if (OP_ANNOT_Cannot_Cntl_Spec (cand->Op())) {
+                    cand_list->Erase_Cand (cand);
+                } else {
+                    cand->Add_Spec (SPEC_CNTL); 
+                }
             }
         }
 
-        if (cand->Safe_Load ()) {
-            cand_list->Erase_Cand (cand) ;
-        }
     }
 
-    /* maintain annotation 
-     */
-    SCHED_BB_ANNOT * bb_annot = sched_annot.Get_BB_Annot (home_bb);
+        /* maintain annotation 
+         */
+    SCHED_BB_ANNOT* bb_annot = sched_annot.Get_BB_Annot (home_bb);
     bb_annot->Init_New_OP_Annot (chk_op);
 
-    /* maintain heuristic data 
-     */
+        /* maintain heuristic data 
+         */
     _heur_mgr.Compute_Heur_Data_For_Inserted_OP (chk_op);
 
-    /* and maintain other miscellaneous things
-     */
+        /* and maintain other miscellaneous things
+         */
     OP_ANNOT_Set_Cannot_Spec (chk_op);
 
     if (BB_call(OP_bb(chk_op))) {
@@ -906,17 +1212,17 @@ SCHEDULER::Insert_Check (OP * ld, BB * home_bb, OP* pos) {
     return chk_op ;
 }
 
-/* =================================================================
- * 
- *  BB_Move_Op_Before 
- * 
- *  move <op> from <from_bb> to <to_bb> right before <point>, 
- *  maintain dependence, annotation if necessary.
- *
- *  if <point> is NIL, we append <op> to <to_bb>.
- *
- * ================================================================
- */
+    /* ===============================================================
+     * 
+     *  BB_Move_Op_Before 
+     * 
+     *  move <op> from <from_bb> to <to_bb> right before <point>, 
+     *  maintain dependence, annotation if necessary.
+     *
+     *  if <point> is NIL, we append <op> to <to_bb>.
+     *
+     * ================================================================
+     */
 void
 SCHEDULER::BB_Move_Op_Before (BB *to_bb, OP *point, BB *from_bb, OP *op) {
     
@@ -938,7 +1244,7 @@ SCHEDULER::BB_Move_Op_Before (BB *to_bb, OP *point, BB *from_bb, OP *op) {
     op_heur  = _heur_mgr.Detach_OP_Heur_Info (op);
 
     if (point) {
-        ::BB_Move_Op_Before (to_bb, _frontier_op, from_bb, op);
+        ::BB_Move_Op_Before (to_bb, point, from_bb, op);
     } else {
         /* "move OP before _NOTHING_", so we append <op> to 
          * the end of <to_bb>
@@ -954,114 +1260,167 @@ SCHEDULER::BB_Move_Op_Before (BB *to_bb, OP *point, BB *from_bb, OP *op) {
     _heur_mgr.Attach_OP_Heur_Info (op,op_heur);
 }
 
-OP * 
-SCHEDULER::Gen_Compensation_Code 
-    (CANDIDATE& model_cand, /* copy the model of this <mode> candidate*/
-     BB * org_home_bb,      /* <model>'s orginal home block */
-     BB * to,               /* where compensation code place */ 
-     BOOL append,           /* append of prepend to block */
-     BOOL maintain_in_coming_arcs) {
-
-    Is_True (!BB_Is_Isolated_From_Sched (to),
-              ("Cannot prepend or append compensation code to a"
-               " 'isolated BB:%d", BB_id(to)));
-
-    /* step 1 : duplication op which is look like <model>.
-     *          copy model's attribute,etc 
+    /* ===================================================
+     * 
+     *  Gen_P_Ready_Bookeeping_OP_DAG 
+     *
+     *  supporint routine to Gen_Compensation_Code.
+     *  this func is supposed to generate dependency ARCs
+     *  for bookeeping instruction.
+     *
+     * ==================================================
      */
+void
+SCHEDULER :: Gen_Bookeeping_OP_DAG 
+    (CANDIDATE& cand, OP* compensate, BOOKEEPING* bk) {
+
+
+    BOOL p_ready_bookeeping = bk->Is_P_Ready_Bookeeping ();
+
+    OP* model = cand.Op ();
+    BB* place = bk->Get_Placement ();
+     
+    BB_OP_MAP_Set (
+        (BB_OP_MAP) BB_MAP_Get(_cg_dep_op_info,place), 
+         compensate, new_op_info ());
+
+        /* generate the out-going ARCs 
+         */
+    ARC_LIST* dep_lst ;
+    for (dep_lst = OP_succs(model); 
+         dep_lst != NULL;
+         dep_lst = ARC_LIST_rest(dep_lst)) {
+
+        ARC* tmp = ARC_LIST_first(dep_lst);
+
+        if (!tmp || ARC_is_br(tmp)) continue ;
+        new_arc_with_latency 
+                (ARC_kind(tmp),  /* arc kind remain unchanged */
+                 compensate,     /* predecessor */
+                 ARC_succ(tmp),  /* successor remains unchanged */
+                 ARC_latency(tmp),
+                 ARC_omega(tmp), /* dose not care */
+                 ARC_opnd(tmp),
+                 ARC_is_definite(tmp));
+    }
+
+        /* generate incoming ARCs
+         */
+    for (dep_lst = OP_preds(model);
+         dep_lst != NULL;
+         dep_lst = ARC_LIST_rest(dep_lst)) {
+
+        ARC* tmp = ARC_LIST_first(dep_lst);
+        if (!tmp || ARC_is_br(tmp)) {
+                /* leave to DAB_BUILDER::Build_Branch_Arcs to 
+                 * regenerate CG_DEP_PRE|POST_BR arcs from scratch.
+                 */
+            continue ;
+        }
+
+        BB* pred_bb = OP_bb(ARC_pred(tmp));
+
+        if (pred_bb == place||
+            _cflow_mgr.BB1_Reachable_From_BB2 (place,pred_bb)) {
+
+            new_arc_with_latency (ARC_kind(tmp), 
+                     ARC_pred(tmp), compensate, 
+                     ARC_latency(tmp), ARC_omega(tmp), 
+                     ARC_opnd(tmp), ARC_is_definite(tmp));
+
+        } else if (_cflow_mgr.BB1_Reachable_From_BB2 (pred_bb,place)) {
+            Gen_Inverted_Arc (&cand, tmp,   /* ref arc */
+                              compensate,   /* pred */
+                              ARC_pred(tmp) /* succ */);
+        }
+    }
+
+    _dag_constructor.Build_Branch_Arcs (compensate, INCLUDE_CONTROL_ARCS);
+}
+
+    /* ===================================================
+     *
+     *  Gen_Compensation_Code 
+     *
+     *  copy a indentical copy to the bookeeping place.
+     *  maintain something associated with <cand>. 
+     *  and return the copied verion.
+     *
+     * ===================================================
+     */
+OP* 
+SCHEDULER::Gen_Compensation_Code 
+    (CANDIDATE& model_cand, BB* org_home, 
+     BOOKEEPING* bk, BOOL append=TRUE) {
+
+    BB* place = bk->Get_Placement ();
+    Is_True (!BB_Is_Isolated_From_Sched (place),
+("Cannot prepend or append compensation code to a isolated BB:%d", 
+            BB_id(place)));
+
+        /* step 1 : duplication op which is look like <model>.
+         *          copy model's attribute,etc 
+         */
     OP* model = model_cand.Op ();
     OP* op    = Dup_OP (model) ;
     OP_srcpos (op) = OP_srcpos(model);
     
-    /* step 4.a  preparation for maintaining annotation 
-     */
-    SCHED_BB_ANNOT * annot = sched_annot.Get_BB_Annot (to);
+        /* step 4.a  preparation for maintaining annotation 
+         */
+    SCHED_BB_ANNOT* annot = sched_annot.Get_BB_Annot (place);
 
-    /* step 2: place compensation code at proper place
-     */
+        /* step 2: place compensation code at proper place
+         */
     BOOL insert_op = FALSE;
     if (append) {
 
-        /* the last op of bb is branch , insert right before it 
-         */
-        OP *last_op = BB_last_op (to) ;
+            /* If the last op of bb is branch , insert right before it 
+             */
+        OP* last_op = BB_last_op (place) ;
         if (last_op && TOP_is_xfer (OP_code(last_op))) {
-            BB_Insert_Op_Before (to, last_op, op) ;
+            BB_Insert_Op_Before (place, last_op, op) ;
             insert_op = TRUE;
         } else {
-            /* empty bb or the last op is not branch, append <op>
-             * at the end of <bb>
-             */
-            BB_Append_Op (to, op) ;
+                /* empty bb or the last op is not branch, append <op>
+                 * at the end of <bb>
+                 */
+            BB_Append_Op (place, op) ;
         }
     } else {
         FmtAssert (FALSE, 
-                   ("OP[%d] which is now in BB:%d is moved downward,"
-                    "however downward code has yet implemented",
-                    OP_map_idx(model),BB_id(to)));
+("OP[%d] which is now in BB:%d is moved downward,however downward code has yet implemented",
+        OP_map_idx(model),BB_id(place)));
     }
 
-    /* step 3 :maintain the Whirl node 
-     */
+        /* step 3 : maintain the Whirl node 
+         */
     if (OP_memory(op)) {
         Copy_WN_For_Memory_OP (op,model);
     }
 
-    /* step 4.b : maintain the annotation 
-     */
-    SCHED_OP_ANNOT * op_annot = annot->Init_New_OP_Annot (op) ;
-    SCHED_OP_ANNOT * model_annot = sched_annot.Get_OP_Annot (model) ;
+        /* step 4.b : maintain the SCHED_OP_ANNOT structure
+         */
+    SCHED_OP_ANNOT* op_annot = annot->Init_New_OP_Annot (op) ;
+    SCHED_OP_ANNOT* model_annot = sched_annot.Get_OP_Annot (model) ;
 
     op_annot->_ext_flags = model_annot->_ext_flags & 
                             (OP_EXT_MASK_NO_CNTL_SPEC | 
                              OP_EXT_MASK_NO_DATA_SPEC |
-                             OP_EXT_MASK_ACTUAL) ; 
+                             OP_EXT_MASK_ACTUAL) |
+                             OP_EXT_MASK_COMPENSATION; 
 
     op_annot->_op = op ;
-    op_annot->_org_home_bb = org_home_bb ;
+    op_annot->_org_home_bb = org_home;
 
 
-    /* step 5: maintain dependence info
-     */
-    BB_OP_MAP_Set ((BB_OP_MAP) BB_MAP_Get(_cg_dep_op_info,OP_bb(op)), 
-                    op, new_op_info ()) ;
-  
-    ARC_LIST * list ;
-    if (maintain_in_coming_arcs) {
-        for (list = OP_preds(model); list ; list = ARC_LIST_rest(list)) {
+        /* step 5: maintain dependence info
+         */
+    Gen_Bookeeping_OP_DAG (model_cand,op,bk);
 
-            ARC* tmp = ARC_LIST_first(list);
 
-            if (!tmp || ARC_is_br(tmp)) continue ;
-
-            BOOL dup = FALSE;
-            if (OP_bb(ARC_pred(tmp)) == to) {
-                Is_True (append, ("cyclic arc!")); 
-                dup = TRUE; 
-            }
-
-            dup |= _cflow_mgr.BB1_Reachable_From_BB2 (to,OP_bb(ARC_pred(tmp)));
-            if (dup) {
-                new_arc (ARC_kind(tmp), ARC_pred(tmp), op, ARC_omega(tmp),
-                     ARC_opnd(tmp), ARC_is_definite(tmp));
-            }
-        }
-    } 
-
-    for (list = OP_succs(model) ; list ; list = ARC_LIST_rest(list)) {
-
-        ARC * tmp = ARC_LIST_first(list);
-
-        if (!tmp || ARC_is_br(tmp)) continue ;
-        new_arc (ARC_kind(tmp), op,ARC_succ(tmp),ARC_omega(tmp),
-                 ARC_opnd(tmp), ARC_is_definite(tmp));
-    }
-
-    _dag_constructor.Build_Branch_Arcs(op, INCLUDE_CONTROL_ARCS);
-
-    /* step 6 : maintain heuristic info. this should be performed 
-     *          after the dependence info become valid up-to-date.
-     */
+        /* step 6 : maintain heuristic info. this should be performed 
+         *          after the dependence info become valid up-to-date.
+         */
     if (append) {
         if (insert_op) {
             _heur_mgr.Compute_Heur_Data_For_Inserted_OP (op);
@@ -1072,17 +1431,17 @@ SCHEDULER::Gen_Compensation_Code
         FmtAssert (FALSE,("Downward code motion has yet implemented\n"));
     }
 
-    /* step 7: other miscellaneous works.
-     */
+        /* step 7: other miscellaneous works.
+         */
     SPEC_TYPE spec_type = model_cand.Spec_Type ();
     if (spec_type & SPEC_DATA) {
         Set_OP_data_spec  (op);
-        Set_OP_orig_bb_id (op,BB_id(org_home_bb));
+        Set_OP_orig_bb_id (op,BB_id(org_home));
     }
 
     if (spec_type & SPEC_CNTL) {
         Set_OP_cntl_spec  (op);
-        Set_OP_orig_bb_id (op,BB_id(org_home_bb));
+        Set_OP_orig_bb_id (op,BB_id(org_home));
     }
 
     return op ;
@@ -1102,10 +1461,10 @@ SCHEDULER::Transform_Load_to_be_Spec (CANDIDATE * cand,
                                       INT32 cutting_set_size) {
     OP * op = cand->Op ();
 
-    if (!OP_load(op)                    || 
-        !cand->Is_Spec ()               || 
-        CGTARG_Is_OP_Speculative(op)    ||
-        CGTARG_Is_OP_Check_Load(op)     || 
+    if (!OP_load(op)                        || 
+        !cand->Is_Spec ()                   || 
+        CGTARG_Is_OP_Speculative_Load(op)   ||
+        CGTARG_Is_OP_Check_Load(op)         || 
         Ld_Need_Not_Transform (op)) {
     
         return FALSE ; /* Means : Ld (if it is) is not transformed, 
@@ -1113,107 +1472,302 @@ SCHEDULER::Transform_Load_to_be_Spec (CANDIDATE * cand,
                         */ 
     }
 
-    if ((cutting_set_size > 1 && IPFEC_Enable_Data_Speculation) || cand->Spec_Type () == SPEC_COMB) {
+    if ((cutting_set_size > 1 && IPFEC_Enable_Data_Speculation) || 
+        cand->Spec_Type () == SPEC_COMB) {
         Change_ld_Form(op, ECV_ldtype_sa);
     } else if (cand->Spec_Type () == SPEC_DATA) {
         Change_ld_Form(op, ECV_ldtype_a);
-    } else { 
-        if(Is_Control_Speculation_Gratuitous(op, _target_bb, _frontier_op)){
-            return FALSE;
-        }else{
-            Change_ld_Form(op, ECV_ldtype_s);
+    } else {
+
+        if (Is_Control_Speculation_Gratuitous(op, _target_bb, _frontier_op)) {
+
+            if (cutting_set_size == 1 && cand->Is_M_Ready ()) { 
+                return FALSE;
+            }
         }
-    } 
+
+        Change_ld_Form(op, ECV_ldtype_s);
+    }
 
     return TRUE ;
 }
 
+    /* ==============================================================
+     *
+     *  Gen_Inverted_Arc 
+     *
+     * ref the header file for details.
+     *
+     * =============================================================
+     */
+void
+SCHEDULER::Gen_Inverted_Arc 
+    (CANDIDATE* cand, ARC* ref_arc, OP* pred, OP* succ) {
+
+    CG_DEP_KIND arc_kind;
+    INT16 arc_opnd = 0;
+    TN*  arc_opnd_tn;
+
+    OP* arc_pred = ARC_pred(ref_arc);
+    OP* arc_succ = ARC_succ(ref_arc);
+     
+
+    switch (ARC_kind(ref_arc)) {
+    case CG_DEP_REGIN:
+        arc_kind = CG_DEP_REGANTI;
+
+        arc_opnd_tn = OP_opnd(arc_succ,ARC_opnd(ref_arc));
+        for (arc_opnd = OP_results(arc_succ) - 1;
+             arc_opnd >= 0;
+             arc_opnd--) {
+            if (OP_result(arc_pred, arc_opnd) == arc_opnd_tn) {
+                break;
+            }
+        }
+
+        arc_opnd = (arc_opnd >= 0) ? arc_opnd : 0;
+        break;
+
+
+    case CG_DEP_REGOUT:
+        arc_kind = CG_DEP_REGIN;
+        break;
+
+
+    case CG_DEP_REGANTI:
+        arc_kind = CG_DEP_REGIN;
+        arc_opnd_tn = OP_result(arc_succ, ARC_opnd(ref_arc));
+        for (arc_opnd = OP_opnds (arc_pred) - 1;
+             arc_opnd >= 0;
+             arc_opnd --) {
+            if (OP_opnd(arc_pred, arc_opnd) == arc_opnd_tn) { break; }
+        }
+
+        arc_opnd = (arc_opnd >= 0) ? arc_opnd : 0;
+        break;
+
+    case CG_DEP_MEMOUT:
+        arc_kind = CG_DEP_MEMOUT; break;
+
+    case CG_DEP_MEMANTI:
+        arc_kind = CG_DEP_MEMIN; break;
+
+    case CG_DEP_MEMVOL:
+        arc_kind = CG_DEP_MEMVOL; break;
+
+    case CG_DEP_MEMREAD:
+        arc_kind = CG_DEP_MEMREAD; break;
+        
+    case CG_DEP_SPILLIN:
+    case CG_DEP_PREFIN:
+    case CG_DEP_PREFOUT:
+    case CG_DEP_SCC:
+    case CG_DEP_MISC:
+    case CG_DEP_CTLSPEC:
+        arc_kind = CG_DEP_MISC; break;
+
+    case CG_DEP_MEMIN:
+        arc_kind = CG_DEP_MEMANTI; break;
+
+    case CG_DEP_PREBR:
+        arc_kind = CG_DEP_POSTBR; break;
+
+    case CG_DEP_PRECHK:
+        arc_kind = CG_DEP_POSTCHK; break;
+
+    case CG_DEP_POSTBR:
+        arc_kind = CG_DEP_PREBR; break;
+
+    case CG_DEP_POSTCHK:
+        arc_kind = CG_DEP_PRECHK; break;
+        break;
+
+    default:
+        FmtAssert (FALSE, ("unknown CG_DEP_KIND %X\n", ARC_kind(ref_arc)));
+        break;
+    } /* end of switch */
+
+    
+        /* this ugly code fragment is just a workaround to new_arc,
+         * which may generate ARC with negative latency.
+         */
+    ARC* New_Arc;
+    switch (ARC_kind(ref_arc)) {
+    case CG_DEP_PREBR:
+    case CG_DEP_POSTBR:
+    case CG_DEP_PRECHK:
+    case CG_DEP_POSTCHK:
+        New_Arc = new_arc_with_latency 
+                      (arc_kind, 
+                       pred, succ, 
+                       0, 0 /* omega. we do not care this parameter */,
+		               arc_opnd, TRUE);
+        break;
+    default:
+        New_Arc = new_arc (arc_kind, pred, succ, 0, arc_opnd, TRUE);
+    }
+
+    Is_True (ARC_latency(New_Arc) >= 0, 
+             ("Negative latency (%d)", ARC_latency(New_Arc)));
+}
+
     /* ===============================================================
      *
-     *  Prune_Upside_Down_Postbr_Arcs 
+     * Maintain_Dep_Arcs_After_Sched 
      *
-     *  ref the header file for details
+     * This should be done after 
+     *  - instruction is actually moved from its original place to 
+     *    new one.
+     *  - 'Gen_Compensation_Code' for all book-keeping.
      *
      * ==============================================================
      */
 void
-SCHEDULER::Prune_Upside_Down_Postbr_Arcs (OP * br) {
+SCHEDULER::Maintain_Dep_Arcs_After_Sched (CANDIDATE* cand) {
 
-    for (ARC_LIST* arcs = OP_succs(br); arcs ;) {
+    OP* op = cand->Op ();
+
+        /* Make sure <op> has already scheduled
+         */
+    Is_True (OP_Scheduled(op), 
+             ("OP:%d(BB:%d) must be scheduled",
+              OP_map_idx(op), BB_id(OP_bb(op))));
+
+        /* Invert Up-side down arcs and prune unnecessary ARCs
+         */
+    for (ARC_LIST* arcs = OP_preds(op); arcs ;) {
 
         ARC *arc = ARC_LIST_first(arcs);
         arcs = ARC_LIST_rest(arcs);
+        OP* pred = ARC_pred (arc);
 
-        if (ARC_kind(arc) == CG_DEP_POSTBR &&
-            OP_bb(ARC_succ(arc)) == OP_bb(br)) {
-            CG_DEP_Detach_Arc(arc);
+        if (OP_Scheduled(pred)) {
+                /* case 1: when this situation occurs, it indicate
+                 *         the dep arc between <pred> and op is not
+                 *         up-side-down with the *EXCEPTION*:
+                 * 
+                 *         ====> EXCEPTION <=======
+                 *
+                 *         cntl-xfer-op (of the same block of <op>) 
+                 *         may be scheduled before op. We categorize
+                 *         this exception to case 3. 
+                 */
+            if (!OP_xfer(pred) || OP_bb(pred) != OP_bb(op)) {
+                continue;
+            }
         }
-    }
+
+            /* case 2 : the arc become a "cross" one. prune these kind
+             *          of arcs.
+             *    e.g 
+             *          cfg : BB1 => { BB2 , BB3 } => BB4.
+             *          'ld4 r2=[r3]' is a instruction of BB4, and it 
+             *          depends upon 'add r2=r5,r6' in BB3. when ld4 is 
+             *          sched from BB4 to BB2 with its duplication ld4'
+             *          being appended to the end of BB3, the arc between
+             *          add and ld4(not ld4') become "cross" arcs.
+             */
+        if (!_cflow_mgr.BB1_Reachable_From_BB2 (OP_bb(op),OP_bb(pred)) &&
+            !_cflow_mgr.BB1_Reachable_From_BB2 (OP_bb(pred),OP_bb(op)) &&
+            OP_bb(op) != OP_bb(pred)) {
+
+           CG_DEP_Detach_Arc (arc);
+           continue;     
+
+        }
+             
+            /* case 3 : after sched, arc become up-side-down.
+             */
+         Gen_Inverted_Arc (cand, arc,   /* ref arc */
+                           ARC_succ(arc),/* pred */
+                           ARC_pred(arc) /* succ */);
+
+         CG_DEP_Detach_Arc (arc);
+          
+    } /* for(ARC_LIST* arcs = OP_preds(br); arcs ;) */
 }
 
-/* ====================================================================
- *
- *  Commit_Schedule 
- *
- *  Commit scheduling of <cand>
- * 
- * ====================================================================
- */
+    /* ===========================================================
+     *
+     *  Commit_Schedule 
+     *
+     *  Commit scheduling of <cand>
+     * 
+     * ===========================================================
+     */
 BOOL
 SCHEDULER::Commit_Schedule (CANDIDATE& cand) {
 
     OP* op              = cand.Op ();
     BB* home_bb         = OP_bb(op);
+    OP* cmp_op          = NULL;
+    TN* op_qp_bak       = NULL;
 
     BOOL insert_chk = FALSE ;
+    BOOL cntl_spec_if_converted_code = FALSE;
     SRC_BB_INFO * src_info = _src_bb_mgr.Get_Src_Info (OP_bb(cand.Op()));
+    
+    if ((OP_load(op) || cand.Is_If_Converted()) && cand.Is_Spec ()) {
+        cand.Get_Up_to_Date_Spec_Type ();
+    }
+
+    if (cand.Is_Spec() && cand.Is_If_Converted()) {
+        cmp_op = cand.Get_Cmp_OP_Of_If_Converted_Code();
+        if (!OP_Scheduled(cmp_op)) cntl_spec_if_converted_code = TRUE;
+        
+        /* backup cand's qp for later PRDB inquiry
+         */
+        op_qp_bak = Dup_TN(OP_opnd(op, OP_PREDICATE_OPND)); 
+    }
 
     if (op != _frontier_op) {
 
         OP* pos = OP_prev(op);
-        BB_VECTOR * cutting_set = &src_info->siss;
+        OP* chk_op = NULL;
+
+        BB_VECTOR* cutting_set = src_info->Get_Cutting_Set ();
 
         if (OP_load(op) && cand.Is_Spec ()) {
-            cand.Get_Up_to_Date_Spec_Type ();
-            insert_chk = Transform_Load_to_be_Spec 
-                            (&cand, cutting_set->size());
+            if (!CGTARG_Is_OP_Speculative(op)) {
+                insert_chk =  Transform_Load_to_be_Spec (&cand, cutting_set->size());
+            }else if (CGTARG_Is_OP_Advanced_Load(op)){
+                Transform_Load_to_be_Spec (&cand, cutting_set->size());
+                insert_chk = FALSE;        
+            }else{
+                insert_chk = FALSE;        
+            }
         }
-
+        
         BB_Move_Op_Before (_target_bb, _frontier_op, OP_bb(op), op) ;
-        if (insert_chk) { Insert_Check (op, home_bb, pos); }
+        if (insert_chk) { chk_op = Insert_Check (op, home_bb, pos); }
 
-        for (BB_VECTOR_ITER iter = cutting_set->begin (); 
-             iter != cutting_set->end () ; iter++) {
-
-             BB * b = *iter ;
-             if (b == _target_bb) continue ;
-             Gen_Compensation_Code (cand, home_bb, b);
+        /* Control speculation of if-converted code.
+        */
+        if (cntl_spec_if_converted_code) {
+            Set_OP_opnd(op, OP_PREDICATE_OPND, True_TN);
         }
+        
+        BOOKEEPING_LST* bkl = cand.Bookeeping_Lst ();
 
-        if (cand.Is_P_ready ()) {
-            /* generate P-ready candidate compensation code */
-        }
+        for (BOOKEEPING* bk = bkl->First_Item ();
+             bk != NULL;
+             bk = bkl->Next_Item (bk)) {
 
+             OP* bookeeping_op = Gen_Compensation_Code (cand, home_bb, bk);
+    	     if (insert_chk && bk->Is_P_Ready_Bookeeping ()) {
+        		Set_Speculative_Chain_Begin_Point (chk_op,bookeeping_op);
+    	     }
+        }        
     } else {
 
         _frontier_op = OP_next(_frontier_op);
 
     }
 
-    if (home_bb != _target_bb) {
-        Rebuild_Cntl_Arcs_From_Scratch (op) ; 
-    }
-
-    /* update the liveness info 
-     */
-    if (home_bb != _target_bb) {
-        _dflow_mgr.
-            Update_Liveness_After_Upward_Code_Motion (op, src_info) ; 
-    }
-
         /* set some flags */
     Set_OP_Scheduled (op);   /* mark inst has been scheduled */
     OP_scycle(op) = (mINT16)_cur_cyc ; /* the issue cycle */
+
 
         /* ASM file annotation support */ 
     SPEC_TYPE spec_type = cand.Spec_Type ();
@@ -1222,20 +1776,191 @@ SCHEDULER::Commit_Schedule (CANDIDATE& cand) {
     if (spec_type & (SPEC_DATA | SPEC_CNTL)) { 
         Set_OP_orig_bb_id (op,BB_id(home_bb));
     }
+    if (cntl_spec_if_converted_code) { Set_OP_if_converted(op); }
 
-    /* Those instructions just becoming ready should be 
-     * added into the list of candidates.
-     */
+    if (cand.Spec_Type () != SPEC_NONE ||
+        home_bb != _target_bb) {
+
+        _upward_motion_num ++;
+
+            /* maintain dependency ARCs */
+        Maintain_Dep_Arcs_After_Sched (&cand);
+    }
+
+    if (cntl_spec_if_converted_code) {
+        Maintain_Dep_Arcs_After_Cntl_Spec_If_Converted_Code(op, op_qp_bak, cmp_op);
+    }
+
+        /* update the liveness info 
+         */
+    if (home_bb != _target_bb) {
+        _dflow_mgr.Update_Liveness_After_Upward_Sched 
+            (&cand,src_info, &_cflow_mgr) ; 
+    }
+
+
+        /* Those instructions just becoming ready should be 
+         * added into the list of candidates.
+         */
     Update_Cand_Lst_During_Sched_Cyc (cand);
 
+    if (cntl_spec_if_converted_code) {
+        Update_Cand_Lst_After_Cntl_Spec_If_Converted_Code(op, op_qp_bak);
+    }
 
-    /* Inform Micro-Scheduler to update its internal state.
-     */
+
+        /* Inform Micro-Scheduler to update its internal state.
+         */
     _ops_in_cur_cyc.push_back(op) ;
     BOOL retcode = CGGRP_Issue_OP(op, TRUE);
     Is_True (retcode, ("fail to issue op"));
 
     return OP_xfer (op);
+}
+
+    /* ===============================================================
+     * Can_Cntl_Spec_If_Converted_Code
+     *
+     * Check whether we can cntl-speculate an if-converted candidate code. 
+     * An example:
+     *    BB1: ...
+     *     s1: (p1) x = 
+     *        ...
+     *     s2: cmp p2, p3 a < b
+     *     s3: (p2) x = 
+     *        ...
+     *     s4: (p4) x = 
+     *        ...
+     *     s5: (p5) = x
+     *
+     *    To find whether s3 can be speculated up across s2(not out of BB1), 
+     *    we scan ops after s2. If there is a use of s2's def(other an inst 
+     *    s5 or x is live-out), through inquirying PRDB, we check whether 
+     *    a def of x may reach s5.  If it is, we cannot speculate s3 (to 
+     *    avoid killing def of x). 
+     *    If s3 is going to be speculated out of BB1, we just simply check 
+     *    whether it's in target BB's live out set
+     * ===============================================================
+     */
+
+BOOL
+SCHEDULER::Can_Cntl_Spec_If_Converted_Code(CANDIDATE *cand) {
+   
+    OP* cand_op = cand->Op();
+    BB* home_bb = OP_bb(cand_op);
+    OP* cmp_op = cand->Get_Cmp_OP_Of_If_Converted_Code();
+
+    if (OP_Scheduled(cmp_op)) return TRUE;
+    if (OP_QP_Cannot_Be_Removed_By_Cntl_Spec(cand_op)) return FALSE;
+
+    BOOL killed = FALSE; 
+    /* Scan insts after the cmp if speculation is not out of BB
+     */
+    if (home_bb == _target_bb) { 
+        for (OP* op = cmp_op; op; op = OP_next(op)) {
+            /* TODO:
+             * Use the example above. If we can judge p2 and p4 are mutually exclusive,
+             * then any defs of x cannot go down across s2, so we can speculate s3(or s4) up.
+             * Add the code below if PRDB can support "is_exclusive" inquiry.
+             *
+             * Note:  is_disjoint != is_exclusive
+             * is_disjoint means two qps may not be true together. But they may be false together
+             */
+             
+            /*
+            if ((!OP_has_predicate(op) ||
+                !OP_cmp_unc(cmp_op) && 
+                PQSCG_is_exclusive (OP_opnd(cand_op, OP_PREDICATE_OPND), 
+                                  OP_opnd(op, OP_PREDICATE_OPND))) &&
+                OP1_Defs_Are_Killed_By_OP2(cand_op, op) &&
+                !OP1_Defs_Are_Used_By_OP2(cand_op, op)
+                ) { 
+                killed = TRUE;
+                break;
+            }
+            */
+            for (INT i = 0; i < OP_results(cand_op); i++) {
+            	if (OP_opnd(op, OP_PREDICATE_OPND) != True_TN &&
+            	    OP_opnd(op, OP_PREDICATE_OPND) == OP_result(cand_op, i)) 
+            	    return FALSE;
+            }
+
+            if ( !OP_has_subset_predicate(cand_op, op) &&
+                OP1_Defs_Are_Used_By_OP2(cand_op, op)){
+                return FALSE;
+            }  
+        }  
+    } 
+    /* Are defs of cand_op live out?
+     */
+    if (!killed) {
+        for (INT i = 0; i < OP_results(cand_op); i++) {
+            if (GTN_SET_MemberP(BB_live_out(_target_bb), OP_result(cand_op, i))) {
+                return FALSE;
+            }
+        }
+    }
+    return TRUE;
+}
+
+    /* ===============================================================
+     * Maitain_Dep_Arcs_After_Cntl_Spec_If_Converted_Code
+     *
+     * OP* sched_op: op just scheduled(It has been if-coverted 
+     *      and cntl-speculated). Now, its qp is changed to p0(ALWAYS TRUE)
+     * TN* sched_qp: sched_op's previous qp
+     * OP* cmp_op:  The cmp op generating sched_qp 
+     *
+     * After <sched_op> is scheduled, place hard arcs between <cmp_op> 
+     * and those insts whose defs may kill <sched_op>'s defs
+     * 
+     * ===============================================================
+     */
+void
+SCHEDULER::Maintain_Dep_Arcs_After_Cntl_Spec_If_Converted_Code
+    (OP* sched_op, TN* sched_qp, OP* cmp_op) {
+
+    for (OP* op = OP_next(cmp_op); op; op = OP_next(op)) {
+        if (!OP_has_predicate(op) ||
+            !PQSCG_is_subset_of(sched_qp, OP_opnd(op, OP_PREDICATE_OPND))) {
+            if (OP1_Defs_Are_Killed_By_OP2(sched_op, op)) {
+                new_arc(CG_DEP_MISC, cmp_op, op, 0, 0, TRUE);
+            }
+        }
+    }    
+}
+
+    /* ===============================================================
+     * Update_Cand_Lst_After_Cntl_Spec_If_Converted_Code
+     * 
+     * After <sched_op> is scheduled, erase those cands in the 
+     * candidate list whose defs may kill <sched_op>'s defs
+     * ===============================================================
+     */
+     
+void
+SCHEDULER::Update_Cand_Lst_After_Cntl_Spec_If_Converted_Code
+    (OP* sched_op, TN* sched_qp) {
+    
+    for (CAND_LIST_ITER cand_iter(_cand_mgr.M_Ready_Cand_List ()); 
+        !cand_iter.done (); ) {
+
+        CANDIDATE* cand = cand_iter.cur ();
+        OP* op = cand->Op();
+        if (!OP_has_predicate(op) ||
+            !PQSCG_is_subset_of(sched_qp, OP_opnd(op, OP_PREDICATE_OPND))) {
+            if (OP1_Defs_Are_Killed_By_OP2(sched_op, op)) {
+
+                cand_iter.erase_cur_and_advance();
+                if (_heur_mgr.Trace_Cand_Sel_Enabled ()) {
+                        _heur_mgr.Trace_Cand_Sel_Process(
+                        "\tDiscard a candidate since it kills some OPs just cntl speculated ");
+                }
+                continue;
+            }
+        }
+        cand_iter.step ();
+    }
 }
 
     /* ===============================================================
@@ -1306,19 +2031,17 @@ SCHEDULER::Identify_Actual_Argument_Defs (BB* bb) {
         };
     }
 
-    BOOL debug = FALSE ;
-    if (debug) {
-        FOR_ALL_BB_OPs(bb,op) {
-            if (OP_ANNOT_OP_Def_Actual_Para(op)) {
-                fprintf (stdout,"%d\n", OP_map_idx(op));
-            }
-        }
-        fflush (stdout);
-    }
 }
 
 
-
+    /* ========================================================
+     *
+     *   Sched_Rgn_Preproc 
+     * 
+     *  Somthing that should be done prior to schedule REGION 
+     *
+     * ========================================================
+     */
 BOOL
 SCHEDULER::Sched_Rgn_Preproc (void) {
 
@@ -1370,6 +2093,20 @@ SCHEDULER::Sched_Rgn_Preproc (void) {
     return TRUE;
 }
 
+    /* ========================================================
+     *
+     * Sched_Rgn_Postproc 
+     * 
+     * Something should be done after schedule REGION.
+     *
+     * =======================================================
+     */
+void 
+SCHEDULER::Sched_Rgn_Postproc (void) {
+    Build_Region_Summary (_region, &_cflow_mgr) ;
+}
+
+
 /* ===========================================================================
  *
  *    Handle GP-problem  
@@ -1394,42 +2131,30 @@ SCHEDULER::Sched_Rgn_Preproc (void) {
  */
 
 void
-SCHEDULER::Preprocess_GP_def_op () {
+SCHEDULER::Preprocess_GP_def_op (void) {
     
     _gp_def_op = NULL ; 
-    if (!BB_length (_target_bb)) return ;
 
-    OP * op = BB_first_op(_target_bb);
-    if (!OP_def_GP (op)) return ; 
-
-    _gp_def_op = op ;
-
-    /* detach all arcs leading from this op
-     */
-    ARC_LIST* list ;
-    while (list = OP_succs(op)) {
-        CG_DEP_Detach_Arc (ARC_LIST_first(list));
+    if (!BB_length(_target_bb) || 
+        !OP_def_GP (BB_first_op(_target_bb))) {
+        return ; 
     }
 
-    BB_Remove_Op (_target_bb,op) ;
-    _frontier_op = BB_first_op (_target_bb);
+    _gp_def_op = BB_first_op(_target_bb);
 }
 
 void
-SCHEDULER::Postprocess_GP_def_op () {
+SCHEDULER::Postprocess_GP_def_op (void) {
 
-    if (_gp_def_op) {
+    if (_gp_def_op && BB_first_op(_target_bb) != _gp_def_op) {
 
-        mUINT16	map_idx = OP_map_idx (_gp_def_op) ;
-        BB_Prepend_Op (_target_bb,_gp_def_op);
-        Set_OP_end_group (_gp_def_op);
-
-        _gp_def_op->map_idx = map_idx ; 
-        _gp_def_op = NULL ;
-
+        BB_Move_Op_Before (_target_bb, 
+                           BB_first_op(_target_bb),
+                           _target_bb, _gp_def_op) ;
         Reset_BB_scheduled (_target_bb); 
-
     }
+
+    _gp_def_op = NULL;
 }
 
 inline BOOL
@@ -1455,15 +2180,15 @@ SCHEDULER::Bug_Workaround_After_Schedule_BB (void) {
 }
 
 void
-SCHEDULER::Preschedule_Target_BB (void) {
-
-    Bug_Workaround_Before_Schedule_BB ();
+SCHEDULER::Glos_Sched_BB_Preproc (void) {
 
     if (_global) {
         Determine_P_Ready_is_Profitable_or_not () ;
     }
 
-    Init_Sched_Status (_target_bb) ;
+    _multiway_br_span_bbs.clear ();
+
+    Init_Sched_Status () ;
 
     /* find out all BBs (including <_target_bb> itself) 
      * that are potentialy donate candidates to be 
@@ -1487,23 +2212,313 @@ SCHEDULER::Preschedule_Target_BB (void) {
 }
 
 
-void
-SCHEDULER::Postschedule_Target_BB (void) {
-
-    /* Inform micro-scheduler to change its internal state.
+    /* ==========================================================
+     *
+     * Glos_Sched_BB_Postproc 
+     * 
+     * Perform something after a basic block has been scheduled
+     *
+     * ==========================================================
      */
+void
+SCHEDULER::Glos_Sched_BB_Postproc (void) {
+
+        /* Inform micro-scheduler to change its internal state.
+         */
     CGGRP_End_BB(); 
     Set_BB_scheduled (_target_bb);
     Isolate_BB_From_Sched_Scope (_target_bb); 
 
-    /* calc total number of cycles required by this bb 
-     */
+        /* calc total number of cycles required by this bb 
+         */
     BB_cycle(_target_bb) = 
-    BB_length(_target_bb) ? _cur_cyc + 1 : 0 ;
+    BB_length(_target_bb) ? _cur_cyc : 0 ;
 
     Verify();
+}
 
-    Bug_Workaround_After_Schedule_BB ();
+    /* ===========================================================
+     *
+     *  Glos_Should_Sched_This_BB 
+     *
+     *  Check to see whether we need schedule a specific block.
+     *
+     * ===========================================================
+     */
+BOOL
+SCHEDULER::Glos_Should_Sched_This_BB (BB* b) {
+
+    if (BB_Is_Isolated_From_Sched (b)) {
+        return FALSE;
+    }
+
+    INT32 len = BB_length(b);
+    if (len > 1)  { return TRUE;  }
+    if (len == 0) { return FALSE; }
+
+        /* 1. provide a latitude for CFLOW to delete blocks that 
+         *    contains only one non-call cntl-xfer op.
+         *
+         * 2. provide a chance for multiway-branch-phase.
+         */ 
+    if (len == 1 && BB_branch_op (b)) {
+
+        if (BB_edge_splitting (b)) {
+            return FALSE;
+        }
+
+        if (BB_SET_MemberP (_multiway_br_candidates, b)) {
+            return FALSE;
+        }
+    }
+
+    if (BB_entry(b) || BB_exit(b)) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+
+/* ==================================================================
+ *
+ *      Schedule_Cycle
+ *
+ * ==================================================================
+ */
+void
+SCHEDULER::Schedule_Cycle (void) {
+
+        /* make sure all candidates avaiable is untried, so that they
+         * have a change to be issued in next cycle.
+         */
+    _cand_mgr.Clear_All_Cands_Tried_Mark ();
+
+    BOOL commit_br = FALSE;
+    while (!_cand_mgr.Cand_Lst_Is_Empty ()) {
+    
+            /* if cycle full or no untried candidates 
+             * are available, advance to next cycle.
+             */
+        if (CGGRP_Cycle_Full() || 
+            _cand_mgr.All_Cands_Have_Been_Tried ()) {
+            return ;
+        }
+
+            /* Select an untried instruction with highest priority.
+             */
+        E_Time_Constraint etime_constraint;
+
+        etime_constraint.threshold  = _cur_cyc;
+        etime_constraint.constraint = 
+            _ops_in_cur_cyc.empty() ? AS_EARLY_AS_POSSIBLE : 
+                                      NO_LATER; 
+
+        CANDIDATE* cand = 
+            _heur_mgr.Select_Best_Candidate (
+                         *_cand_mgr.M_Ready_Cand_List (), 
+                         *_cand_mgr.P_Ready_Cand_List (), 
+                         _target_bb,
+                         &etime_constraint);
+
+        if (!cand) { return ; }
+
+        if (!CGGRP_Issue_OP(cand->Op())) {
+
+                /* This candidate cannot be issued in current cycle
+                 * due to structrual hazard.
+                 */
+            if (_heur_mgr.Trace_Cand_Sel_Enabled ()) {
+                _heur_mgr.Trace_Cand_Sel_Process (
+                   "\tDiscard best candidate due to structual hazard\n");
+            }
+
+            _cand_mgr.Get_Cand_List (cand)->Set_Cand_Has_Been_Tried (cand);
+            continue;
+        }
+      
+            /* check whether candidate kills some liveout definitions.
+             * 
+             * e.g 
+             *    For a diamon-shaped flow, its layout is depicted 
+             *    below:
+             *
+             *    BB1 has two successors, BB2 and BB3, they are also BB4's
+             *    2 preds.
+             *    
+             *    Both OP2(of BB2) and OP3 (of BB3) define same TN, say 
+             *    TN234. at the beginging, both OP2 and OP3 qualified 
+             *    as candidate and they compete a slot in BB1. after 
+             *    speculating OP3 to BB1, OP2 is no longer a candidate
+             *    to BB1, but it still resides in candidate list.
+             */
+        BB *cand_home_bb = OP_bb (cand->Op()) ; 
+
+        SRC_BB_INFO* src_info = _src_bb_mgr.Get_Src_Info (cand_home_bb);
+        if (cand_home_bb != _target_bb &&
+            _dflow_mgr.Upward_Sched_Kill_LiveOut_Defs (
+                    cand, src_info, &_cflow_mgr)) {
+                    
+            if ( IPFEC_Glos_Enable_Renaming &&
+                !IPFEC_Query_Skiplist (glos_rename_skip_bb, BB_id(cand_home_bb), Current_PU_Count()) &&
+                !IPFEC_Query_Skiplist (glos_rename_skip_op, OP_map_idx(cand->Op()), BB_id(cand_home_bb)) &&
+                _heur_mgr.Renaming_Is_Profitable(cand)) {
+
+                Renaming(cand);
+            } else {
+
+                _cand_mgr.Get_Cand_List (cand)-> Erase_Cand (cand);
+                if (_heur_mgr.Trace_Cand_Sel_Enabled ()) {
+                    _heur_mgr.Trace_Cand_Sel_Process(
+                        "\tDiscard best candidate since it kill some live out TN");
+                }
+
+                continue ;
+            }
+        }
+    
+#ifdef Is_True_On 
+
+        if (!_ops_in_cur_cyc.empty ()) {
+            Is_True (_cur_cyc == etime_constraint.threshold , 
+                     ("best candidate [OP%3d][BB%3d] should be issued exactly"
+                      " at cycle %d",
+                      OP_map_idx(cand->Op()),
+                      BB_id(OP_bb(cand->Op())),
+                      _cur_cyc));
+        } else {
+            Is_True (_cur_cyc <= etime_constraint.threshold,
+                     ("best candidate [OP%3d][BB%3d] should be issued" 
+                      " before cycle %d",
+                      OP_map_idx(cand->Op()),
+                      BB_id(OP_bb(cand->Op())),
+                      _cur_cyc));
+        }
+#endif /* Is_True_On */
+
+        _cur_cyc = etime_constraint.threshold ; 
+
+            /* now commit schedule 
+             */
+        OP* op = cand->Op ();
+        if (OP_br(op)) { commit_br = TRUE; }
+
+        Commit_Schedule (*cand);
+        
+        if (OP_call(op) && 
+            !IPFEC_Glos_Motion_Across_Calls) {
+            return;
+        }
+    }
+
+        /* find a chance of multi-way-branch 
+         */
+    if (commit_br && _prepass) {
+
+        BB* b; 
+        BB_VECTOR bbs(&_mem_pool);
+
+        for (b = BB_Fall_Thru_Successor (_target_bb); b ; 
+             b = BB_Fall_Thru_Successor (b)) {
+              
+            if (!BB_Unique_Predecessor (b)) {
+                b = NULL;  break;
+            } 
+
+                /* for the case of empty block 
+                 */
+            if (!BB_length(b)) { continue ; }
+
+                /* for the block which has only one branch op
+                 */
+            if (BB_length(b) == 1 && BB_branch_op (b)) {
+                bbs.push_back (b);
+                if (BB_edge_splitting(b)) { continue; } else break ;
+            }
+                
+            b = NULL; break;
+        }
+
+        if (b && BB_length(b) == 1 && BB_branch_op(b)) {
+
+            if (::Home_Region (b) == _region) {
+                OP* br = BB_branch_op(b);
+                if (br && CGGRP_Issue_OP (br, FALSE)) {
+
+                    for (BB_VECTOR_ITER iter = bbs.begin () ;
+                         iter != bbs.end () ; iter++) {
+
+                        _multiway_br_candidates = BB_SET_Union1D 
+                            (_multiway_br_candidates, *iter, &_mem_pool);
+
+                        _multiway_br_span_bbs.push_back (*iter);
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+    /* ==========================================================
+     *
+     * No_New_Cycle 
+     * 
+     * Check to see whether we need create extra cycle for
+     * target block(_target_bb).
+     *
+     * ==========================================================
+     */
+BOOL
+SCHEDULER :: No_New_Cycle (void) {
+
+    BOOL no_new_cyc = FALSE ;
+
+    if (BB_length(_target_bb) == 0 || 
+        OP_Scheduled(BB_last_op(_target_bb))) {
+        no_new_cyc = TRUE;
+    }
+
+#ifdef Is_True_On
+    if (!no_new_cyc) {
+        Is_True (!_cand_mgr.Cand_Lst_Is_Empty (), 
+                 ("Candidate list is Empty!"));
+    }
+#endif 
+    
+    return no_new_cyc;
+
+}
+
+    /* ====================================================
+     *
+     * Need_Resched_To_Obtain_Better_Performance 
+     *
+     * determine whether <_target_bb> need rescheduling 
+     * to get better performance.
+     *
+     * ====================================================
+     */
+BOOL
+SCHEDULER::Need_Resched_To_Obtain_Better_Performance (void) {
+
+        /* do not reschedule too many times 
+         */ 
+    if (_sched_times >= (MAX_SCHED_TIMES - 1)) { return FALSE ; } 
+
+    if (_src_bb_mgr.Src_BBs ()->size () <= 1) {
+        return FALSE ;
+    }
+
+    if (_cand_mgr.Cand_Lst_Is_Empty ()) {
+        return FALSE;
+    }
+
+    if (_upward_motion_num <= 0) {
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 /* ==================================================================
@@ -1522,167 +2537,43 @@ SCHEDULER::Schedule_Region (void) {
 
     if (!Sched_Rgn_Preproc ()) return;
 
-    SCHED_SEQ seq(_region, &_mem_pool);
-    for (_target_bb = seq.First (); _target_bb ; _target_bb = seq.Next()) {
+    TOPDOWN_SCHED_SEQ seq (_region, &_mem_pool);
+    for (_target_bb = seq.First (); 
+         _target_bb ; 
+         _target_bb = seq.Next()) {
 
-        INT32 len = BB_length(_target_bb);
-
-
-        /* provide a latitude for CFLOW to delete blocks that contains 
-         * only on non-call cntl-xfer op.
-         */ 
-        if (!len || 
-            len == 1 && BB_xfer_op (_target_bb) && 
-            BB_kind(_target_bb) != BBKIND_LOGIF)
-        {
+        if (!Glos_Should_Sched_This_BB (_target_bb)) {
             Isolate_BB_From_Sched_Scope (_target_bb); 
             continue ;
         }
 
-        Preschedule_Target_BB ();
+        Bug_Workaround_Before_Schedule_BB ();
+        Glos_Sched_BB_Preproc ();
 
         BOOL no_new_cycle = FALSE;
         OP * xfer_op = BB_xfer_op(_target_bb);
 
-        while (TRUE) {
+        do {
+            do {
+                Schedule_Cycle ();
+                Cycle_Advance ();
+            } while (!No_New_Cycle ());
 
-            while (!_m_ready_cand.Cand_Lst_Is_Empty () || 
-                   !_p_ready_cand.Cand_Lst_Is_Empty ()) {
+            Glos_Sched_BB_Postproc ();
 
-                /* if cycle full or no untried candidates 
-                 * are available, advance to next cycle.
-                 */
-                if (CGGRP_Cycle_Full() || 
-                    _m_ready_cand.All_Cands_Have_Been_Tried () &&
-                    _p_ready_cand.All_Cands_Have_Been_Tried ()) {
-
-                    Cycle_Advance();
-                    if (no_new_cycle) { --_cur_cyc ; break ; }
-                }
-      
-                /* Select an untried instruction with highest priority.
-                 */
-
-                E_Time_Constraint etime_constraint;
-
-                etime_constraint.threshold = _cur_cyc;
-                etime_constraint.constraint = _ops_in_cur_cyc.empty() ? 
-                                              AS_EARLY_AS_POSSIBLE : 
-                                              NO_LATER; 
-
-                CANDIDATE* cand = _heur_mgr.Select_Best_Candidate (
-                                                _m_ready_cand,
-                                                _p_ready_cand,
-                                                _target_bb,
-                                                &etime_constraint);
-                if (!cand) continue ;
-
-                if (!CGGRP_Issue_OP(cand->Op())) {
-
-                    /* this candidate cannot be issued in current cycle
-                     * due to structrual hazard.
-                     */
-
-                    if (_heur_mgr.Trace_Cand_Sel_Enabled ()) {
-                        _heur_mgr.Trace_Cand_Sel_Process (
-                            "\tDiscard best candidate due to structual hazard\n");
-                    }
-
-                    (GET_CAND_LIST(cand))->Set_Cand_Has_Been_Tried (cand);
-                    continue;
-                }
-      
-                /* check whether candidate kills some liveout definitions.
-                 * 
-                 * e.g 
-                 *    For a diamon-shaped flow, its layout is depicted 
-                 *    below:
-                 *
-                 *    BB1 has two successors, BB2 and BB3, they are also BB4's
-                 *    2 preds.
-                 *    
-                 *    Both OP2(of BB2) and OP3 (of BB3) define same TN, say 
-                 *    TN234. at the beginging, both OP2 and OP3 qualified 
-                 *    as candidate and they compete a slot in BB1. after 
-                 *    speculating OP3 to BB1, OP2 is no longer a candidate
-                 *    to BB1, but it still resides in candidate list.
-                 */
-
-                BB *cand_home_bb = OP_bb (cand->Op()) ; 
-
-                SRC_BB_INFO * src_info = _src_bb_mgr.Get_Src_Info (cand_home_bb);
-                if (cand_home_bb != _target_bb &&
-                    _dflow_mgr.Upward_Code_Motion_Kill_Some_LiveOut_Defs (
-                            cand->Op(),      /* candidate in question */
-                            cand_home_bb,   /* from this bb */
-                            _target_bb,     /* to this bb   */
-                            &src_info->siss) /* cutting set  */) {
-
-                    GET_CAND_LIST(cand)->Erase_Cand (cand);
-                    if (_heur_mgr.Trace_Cand_Sel_Enabled ()) {
-                        _heur_mgr.Trace_Cand_Sel_Process(
-                            "\tDiscard best candidate since it kill some live out TN");
-                    }
-
-                    continue ;
-                }
-
-
-#ifdef Is_True_On 
-
-                if (!_ops_in_cur_cyc.empty ()) {
-                    Is_True (_cur_cyc == etime_constraint.threshold , 
-                            ("best candidate [OP%3d][BB%3d] should be issued exactly"
-                             " at cycle %d",
-                             OP_map_idx(cand->Op()),
-                             BB_id(OP_bb(cand->Op())),
-                             _cur_cyc));
-                } else {
-                    Is_True (_cur_cyc <= etime_constraint.threshold,
-                             ("best candidate [OP%3d][BB%3d] should be issued" 
-                              " before cycle %d",
-                             OP_map_idx(cand->Op()),
-                             BB_id(OP_bb(cand->Op())),
-                             _cur_cyc));
-                }
-#endif
-                _cur_cyc = etime_constraint.threshold ; 
-
-                /* now commit schedule 
-                 */
-                OP * op = cand->Op ();
-                Commit_Schedule (*cand);
-
-                if (!no_new_cycle) {
-                    no_new_cycle = 
-                        _heur_mgr.It_is_Better_No_New_Cycle_For_Cur_BB ();
-
-                    if (xfer_op && OP_Scheduled(xfer_op) && 
-                        OP_call(xfer_op)) {
-                       break ; 
-                    }
-                }
-            } /* end of nested while loop */
-
-            if (!BB_length(_target_bb) || no_new_cycle) {
-                break ; 
+            if (Need_Resched_To_Obtain_Better_Performance ()) {
+                Adjust_Status_For_Resched ();
             } else {
-                Cycle_Advance () ; 
+                break ;
             }
 
-        } /* end of outer while loop */
+        } while (TRUE);
 
-        if (xfer_op) {
-            Prune_Upside_Down_Postbr_Arcs (xfer_op);
-        }
-
-        /* do some miscellaneous work after scheduling BB 
-         */
-        Postschedule_Target_BB ();
+        Bug_Workaround_After_Schedule_BB ();
 
     } /* end of "for (_target_bb = ... = seq.Next())" */
 
-    Build_Region_Summary (_region, &_cflow_mgr) ;
+    Sched_Rgn_Postproc ();
 }
 
 
@@ -1705,7 +2596,7 @@ SCHEDULER::Schedule_Region (void) {
  */
 
 void
-SCHEDULER::Schedule_BB() {
+SCHEDULER::Schedule_BB (void) {
 
     if (BB_length(_target_bb) == 0)  return; 
 
@@ -1735,16 +2626,19 @@ SCHEDULER::Schedule_BB() {
     Find_All_Candidates ();
 
 
-    Init_Sched_Status (_target_bb) ;
+    Init_Sched_Status () ;
 
 
     BOOL last_op_sched = FALSE ;
 
+    CAND_LIST *m_ready_cand = _cand_mgr.M_Ready_Cand_List ();
+    CAND_LIST *p_ready_cand = _cand_mgr.P_Ready_Cand_List ();
+
     while (1) {
-        while (!_m_ready_cand.Cand_Lst_Is_Empty ()) {
+        while (!m_ready_cand->Cand_Lst_Is_Empty ()) {
 
             if (CGGRP_Cycle_Full() ||
-                _m_ready_cand.All_Cands_Have_Been_Tried ()) {
+                m_ready_cand->All_Cands_Have_Been_Tried ()) {
                 Cycle_Advance();
             }
 
@@ -1755,8 +2649,8 @@ SCHEDULER::Schedule_BB() {
                                               AS_EARLY_AS_POSSIBLE : 
                                               NO_LATER; 
             CANDIDATE* cand = _heur_mgr.Select_Best_Candidate (
-                                            _m_ready_cand, 
-                                            _p_ready_cand,
+                                            *m_ready_cand, 
+                                            *p_ready_cand, 
                                             _target_bb, 
                                             &etime_constraint);
 
@@ -1765,7 +2659,7 @@ SCHEDULER::Schedule_BB() {
             if (!CGGRP_Issue_OP(cand->Op())) {
                 /* fail to issue candidate due to structual hazard
                  */ 
-                GET_CAND_LIST(cand)->Set_Cand_Has_Been_Tried (cand); 
+                _cand_mgr.Get_Cand_List(cand)->Set_Cand_Has_Been_Tried (cand); 
 
                 if (_heur_mgr.Trace_Cand_Sel_Enabled ()) {
                     _heur_mgr.Trace_Cand_Sel_Process (
@@ -1818,6 +2712,129 @@ SCHEDULER::Schedule_BB() {
     CG_DEP_Delete_Graph (_target_bb) ;
 }
 
+
+    /* =================================================================
+     * 
+     *  Renaming
+     *  
+     *  Renaming <cand> to schedule it up
+     *
+     * =================================================================
+     */
+void
+SCHEDULER::Renaming (CANDIDATE* cand) 
+{
+    OP* op = cand->Op();
+    BB* home_bb = OP_bb(op);
+    OP* copy_op = NULL;
+    TN *orig_tn = OP_result(op, 0);
+    TN* new_tn = Dup_TN(orig_tn); 
+
+    FmtAssert(OP_results(op) == 1, 
+        ("We don't do renaming for a multi-assignment OP: [OP:%3d][BB:%3d]\n",
+            OP_map_idx(op), BB_id(OP_bb(op)))); 
+    
+    /* rename <orig_tn> to <new_tn> used in the OPs after <op>
+     */
+    for (OP* tmp_op = OP_next(op); tmp_op; tmp_op = OP_next(tmp_op)) {
+        for (INT i = 0; i < OP_opnds(tmp_op); i++) {
+            if (orig_tn == OP_opnd(tmp_op, i))
+                Set_OP_opnd(tmp_op, i, new_tn);
+        }
+        for (INT i = 0; i < OP_results(tmp_op); i++) {
+            if (orig_tn == OP_result(tmp_op, i))
+                Set_OP_result(tmp_op, i, new_tn);
+        }
+    }
+    
+    /* generate a copy op and append it to <home_bb> if necessary
+     */
+    if (_dflow_mgr.Are_Defs_Live_Out(op, home_bb)) {
+        copy_op = Mk_OP(CGTARG_Copy_Op(TN_size(orig_tn), TN_is_float(orig_tn)),
+                         orig_tn, OP_opnd(op, OP_PREDICATE_OPND), new_tn); 
+        OP* xfer_op = BB_xfer_op(home_bb);
+        if (xfer_op) {
+            BB_Insert_Op_Before(home_bb, xfer_op, copy_op);
+        } else {
+            BB_Append_Op(home_bb,   copy_op);
+        }
+    }
+
+    /* maintain dependence arcs
+     */    
+    Maintain_Dep_Arcs_After_Renaming(op, copy_op);
+
+    /* maintain annotation and heuristic data
+     */
+    if(copy_op) {
+        SCHED_BB_ANNOT* bb_annot = sched_annot.Get_BB_Annot (home_bb);
+        bb_annot->Init_New_OP_Annot (copy_op);
+        _heur_mgr.Compute_Heur_Data_For_Inserted_OP (copy_op);
+        Set_OP_renamed(copy_op);
+    }
+
+    /* finally, rename candidate op and annotate it as renamed
+     */
+    Set_OP_result(op, 0, new_tn); 
+    Set_OP_renamed(op);
+         
+}
+
+    /* =================================================================
+     * 
+     *  Maintain_Dep_Arcs_After_Renaming
+     *  
+     *  Re-compute the dependence arcs for the candidate op <renamed_op> and <copy_op>
+     *
+     * =================================================================
+     */
+
+void
+SCHEDULER::Maintain_Dep_Arcs_After_Renaming (OP* renamed_op, OP* copy_op) 
+{
+    for (ARC_LIST* arcs = OP_succs(renamed_op); arcs; ) {
+        ARC *arc = ARC_LIST_first(arcs);
+        arcs = ARC_LIST_rest(arcs);
+        OP* succ = ARC_succ (arc);
+        switch (ARC_kind(arc)) {
+            case CG_DEP_REGOUT:
+                if (copy_op) {
+                    if (OP_bb(renamed_op) != OP_bb(succ)) {
+                        new_arc_with_latency(ARC_kind(arc), copy_op, succ, ARC_latency(arc), 
+                            ARC_omega(arc), ARC_opnd(arc), ARC_is_definite(arc));
+                        CG_DEP_Detach_Arc(arc);
+                    } else {
+                        new_arc(CG_DEP_REGIN,  succ, copy_op, 0, 0, TRUE); 
+                    }
+                }
+                break;
+            case CG_DEP_REGIN:
+                if (copy_op && OP_bb(renamed_op) != OP_bb(succ)) {
+                    new_arc_with_latency(CG_DEP_REGIN, copy_op, succ, ARC_latency(arc),
+                        ARC_omega(arc), ARC_opnd(arc), ARC_is_definite(arc));
+                    CG_DEP_Detach_Arc(arc);
+                }
+                break;
+            case CG_DEP_PREBR:
+            case CG_DEP_POSTBR:
+            case CG_DEP_PRECHK:
+            case CG_DEP_POSTCHK:
+            case CG_DEP_SCC:
+            case CG_DEP_MISC:
+                if (copy_op) {
+                    new_arc_with_latency(ARC_kind(arc), copy_op, succ, ARC_latency(arc), 
+                        ARC_omega(arc), ARC_opnd(arc), ARC_is_definite(arc));
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    
+    if (copy_op) {
+        new_arc(CG_DEP_REGIN, renamed_op, copy_op, 0, 0, TRUE);
+    }      
+}
     /* =================================================================
      * =================================================================
      * 
@@ -1828,25 +2845,27 @@ SCHEDULER::Schedule_BB() {
      */
 SCHEDULER::SCHEDULER (BB* bb, BOOL prepass,PRDB_GEN *prdb) :
         _dag_constructor (bb,prdb),
-        _m_ready_cand (&_mem_pool,TRUE /*host m-ready candidates*/), 
-        _p_ready_cand (&_mem_pool, FALSE /* host p-ready candidates*/),
+        _cand_mgr(&_mem_pool),
         _heur_mgr(&_mem_pool),
         _src_bb_mgr(&_mem_pool),
-        _ops_in_cur_cyc(OP_ALLOC(&_mem_pool))
+        _ops_in_cur_cyc(OP_ALLOC(&_mem_pool)),
+        _multiway_br_span_bbs(&_mem_pool),
+        _global(FALSE), _prepass(prepass)
 {
 
-    _global  = FALSE ;  
-    _prepass = prepass ,
     _region  = NULL;
     _target_bb = bb, 
 
     Get_Sched_Opts (prepass);
     Clean_Up(bb);
 
+        /* local scheduling actually need not use this variable
+         */
+    _multiway_br_candidates = NULL;
+
     _cflow_mgr.Init (_target_bb);
     sched_annot.Init (_target_bb);
 
-    Init_Unresolved_Dep (&_mem_pool);
 }
 
 SCHEDULER::SCHEDULER (struct tagRGN_INFO * rgn_info, BOOL prepass, PRDB_GEN * prdb) :
@@ -1855,15 +2874,14 @@ SCHEDULER::SCHEDULER (struct tagRGN_INFO * rgn_info, BOOL prepass, PRDB_GEN * pr
                           INCLUDE_MEMREAD_ARCS, 
                           NO_MEMIN_ARCS,
                           INCLUDE_CONTROL_ARCS),
-        _m_ready_cand (&_mem_pool, TRUE), 
-        _p_ready_cand (&_mem_pool, FALSE),
+        _cand_mgr(&_mem_pool),
         _src_bb_mgr(&_mem_pool),
         _ops_in_cur_cyc(OP_ALLOC(&_mem_pool)),
-        _heur_mgr(&_mem_pool)
+        _heur_mgr(&_mem_pool),
+        _multiway_br_span_bbs(&_mem_pool),
+        _global (TRUE), _prepass(TRUE)
 {
 
-    _global  = TRUE ;
-    _prepass = TRUE ;
     _region = rgn_info->rgn ;
 
     _target_bb = NULL ;
@@ -1872,7 +2890,6 @@ SCHEDULER::SCHEDULER (struct tagRGN_INFO * rgn_info, BOOL prepass, PRDB_GEN * pr
     _cflow_mgr.Init (_region) ;
     sched_annot.Init (_region);
 
-    Init_Unresolved_Dep (&_mem_pool);
 
     for (TOPOLOGICAL_REGIONAL_CFG_ITER cfg_iter(_region->Regional_Cfg());
          cfg_iter != 0; ++cfg_iter) {
@@ -1884,12 +2901,13 @@ SCHEDULER::SCHEDULER (struct tagRGN_INFO * rgn_info, BOOL prepass, PRDB_GEN * pr
         }
     }
   
+        /* miscellaneous init 
+         */
+    _multiway_br_candidates = BB_SET_Create_Empty (PU_BB_Count, &_mem_pool);
 }
 
 SCHEDULER::~SCHEDULER () {
-
     _heur_mgr.Finialize ();
-    Fini_Unresolved_Dep ();
 }
 
 /* ====================================================================
@@ -1967,34 +2985,42 @@ Global_Insn_Sched_Preproc (
     for (INNERMOST_REGION_FIRST_ITER iter(rgn_tree);
          iter != 0 ; ++iter) {
        
-        RGN_INFO  * rgn_info = Get_Region_Info (*iter);
+        RGN_INFO* rgn_info = Get_Region_Info (*iter);
+
+        #ifdef Is_True_On 
+        if (rgn_info->skip_reason == SKIP_RGN_DEBUG) {
+            DevWarn ("Skip schedule RGN:%d of PU:%d", 
+                      rgn_info->rgn->Id (), Current_PU_Count ());
+        }
+        #endif /* Is_True_On  */
+
         if (rgn_info->skip_reason != SKIP_RGN_NONE) { continue ; }
 
-        /* 1. perform edge splitting 
-         */
+            /* 1. perform edge splitting 
+             */
         rgn_info->rgn->Edge_Splitting () ;
 
         if (RGN_CFLOW_MGR::Critical_Edge_Present(rgn_info->rgn)) {
             
-            /* TODO : Adding ficticious block, and prevent any OPs from 
-             *        being moved into this block to make our global 
-             *        scheduling algorithm still appliable to regions 
-             *        with critical-edge presence.
-             */        
+                /* TODO : Adding ficticious block, and prevent any OPs from 
+                 *        being moved into this block to make our global 
+                 *        scheduling algorithm still appliable to regions 
+                 *        with critical-edge presence.
+                 */        
             rgn_info->skip_reason = SKIP_RGN_CRITICAL_EDGE;
             continue ;    
         }
 
         ++ how_many_rgn_need_sched ;
 
-        /* 2. split (PU) entry-BB in <rgn_info->rgn> if any 
-         */
+            /* 2. split (PU) entry-BB in <rgn_info->rgn> if any 
+             */
         if (IPFEC_Glos_Split_Entry_BB) {
             Split_PU_Entry_BB (rgn_info->rgn);
         }
 
-        /* 3. split (PU) exit-block in <rgn_info->rgn> if any 
-         */
+            /* 3. split (PU) exit-block in <rgn_info->rgn> if any 
+             */
         if (IPFEC_Glos_Split_Exit_BB) {
             Split_PU_Exit_BB (rgn_info->rgn);
         }
@@ -2100,11 +3126,16 @@ Global_Insn_Sched (REGION_TREE* rgn_tree, BOOL prepass) {
                        SKIP_RGN_NO_FURTHER_OPT &&
                        IPFEC_Glos_Code_Motion_Across_Nested_Rgn) {
 
-                RGN_CFLOW_MGR rgn_cflow_mgr ;
-                rgn_cflow_mgr.Init (rgn_info->Region ());
+                        /* Build_Region_Summary does not work with multi
+                         * -entry regions 
+                         */
+                if (rgn_info->Region ()->Entries ().size () == 1) {
+                        RGN_CFLOW_MGR rgn_cflow_mgr ;
+                        rgn_cflow_mgr.Init (rgn_info->Region ());
 
-                ::Build_Region_Summary (rgn_info->Region (), 
-                                        &rgn_cflow_mgr) ;
+                        ::Build_Region_Summary (rgn_info->Region (), 
+                                                &rgn_cflow_mgr) ;
+                }
             }
         }
 
@@ -2172,9 +3203,17 @@ Local_Insn_Sched (BOOL prepass) {
             if (!BB_scheduled(bb) || BB_scheduled_hbs(bb) || BB_entry(bb) || 
                 BB_exit(bb)){
 
-                if (IPFEC_Query_Skiplist(locs_skip_bb, BB_id(bb))) {
+                if (IPFEC_Query_Skiplist(locs_skip_bb, 
+                                         BB_id(bb),
+                                         Current_PU_Count ())) {
+
+                    DevWarn ("Skip local schedule BB:%d of PU:%d", 
+                              BB_id(bb), 
+                              Current_PU_Count ());
+
                     Clean_Up(bb);
                     Handle_All_Hazards (bb);
+                        
                 } else {
                     SCHEDULER local_scheduler(bb, prepass);
                     local_scheduler.Schedule_BB();

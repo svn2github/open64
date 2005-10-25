@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2000-2002, Intel Corporation
+ *  Copyright (C) 2000-2003, Intel Corporation
  *  All rights reserved.
  *  
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -25,7 +25,6 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-
 #ifndef sched_util_INCLUDED
 #define sched_util_INCLUDED
 
@@ -103,52 +102,10 @@ extern const char * spec_text[] ;
 extern const char * arc_text[] ;
 
 extern BOOL Ld_Need_Not_Transform (OP* op) ;
-extern SPEC_TYPE Dirive_Upward_Code_Motion_Spec_Type_From_Arc (ARC* arc) ;
-
-typedef struct tagUNRESOLVED_DEP  UNRESOLVED_DEP ;
-struct tagUNRESOLVED_DEP {
-    ARC *           arc;
-    SPEC_TYPE       spec_type;
-    UNRESOLVED_DEP * next;
-
-    /* accessors */
-    ARC*     Arc (void) const { return arc ; }
-    void Set_Arc (ARC* Arc)   { arc = Arc  ; }
-
-    SPEC_TYPE Spec_Type (void) const   { return spec_type; }
-    void  Set_Spec_Type (SPEC_TYPE st) { spec_type = st ;  }
-
-    OP* Pred (void) const { return ARC_pred(arc); }
-    OP* Succ (void) const { return ARC_succ(arc); }
-}; 
-
-typedef UNRESOLVED_DEP UNRESOLVED_DEP_LIST;
-#define FOR_ALL_UNRESOLVED_DEPs(list, item) \
-    for (item = (UNRESOLVED_DEP *)(void*)(list) ; item != NULL ; item = (item)->next)
-
-void Init_Unresolved_Dep (MEM_POOL *mp) ; 
-inline void Fini_Unresolved_Dep (void) {} ;
-
-extern UNRESOLVED_DEP * New_Unresolved_Dep (void) ;
-extern void Free_Unresolved_Dep (UNRESOLVED_DEP* item) ;
-extern void Free_Unresolved_Dep_Lst (UNRESOLVED_DEP_LIST* lst) ;
-
-inline UNRESOLVED_DEP_LIST * Prepend_to_Unresolved_Dep_List (
-                                    UNRESOLVED_DEP_LIST * lst, 
-                                    UNRESOLVED_DEP *item) {
-
-            item->next = (UNRESOLVED_DEP*)(void*)lst ;
-            return (UNRESOLVED_DEP_LIST*)(void*) item ; 
-       }
-
-
-
-
+extern SPEC_TYPE Derive_Spec_Type_If_Violate (ARC* arc);
 
 
 class RGN_CFLOW_MGR ;
-
-
 
 /* =================================================================
  * =================================================================
@@ -290,7 +247,8 @@ public :
 
 
 
-typedef INT32 REACH_PROB ;
+typedef INT32 REACH_PROB;
+typedef REACH_PROB PROBABILITY;
 #define REACH_PROB_SCALE (100)
 
     /* ======================================================================
@@ -512,6 +470,7 @@ extern SCHED_ANNOT sched_annot ;
 #define OP_EXT_MASK_ACTUAL (0x00000001) /* OP defines autual argument */
 #define OP_EXT_MASK_NO_CNTL_SPEC (0x00000002) /* OP cannot be control-speculated */
 #define OP_EXT_MASK_NO_DATA_SPEC (0x00000004) /* OP cannot be data-speculated */
+#define OP_EXT_MASK_COMPENSATION (0x00000008) /* OP is a compenstation code */
 
 #define Set_OP_Ext_Flag(x,y)  \
     { sched_annot.Get_OP_Annot ((x))->Add_OP_Ext_Flag (OP_EXT_MASK_ ## y); }
@@ -537,6 +496,15 @@ OP_ANNOT_Set_Cannot_Cntl_Spec (OP* op) { Set_OP_Ext_Flag(op, NO_CNTL_SPEC); }
 
 inline void
 OP_ANNOT_Reset_Cannot_Cntl_Spec (OP* op) { Reset_OP_Ext_Flag(op,NO_CNTL_SPEC);}
+
+inline BOOL 
+OP_ANNOT_Is_Compensation (OP * op) { return OP_Ext_Flag(op, COMPENSATION); }
+
+inline void
+OP_ANNOT_Set_Compenstation (OP* op) { Set_OP_Ext_Flag(op, COMPENSATION); }
+
+inline void
+OP_ANNOT_Reset_Compensation (OP* op) { Reset_OP_Ext_Flag(op, COMPENSATION);}
 
 inline BOOL
 OP_ANNOT_Cannot_Spec (OP * op) {
@@ -580,238 +548,14 @@ Delete_BB_From_Isolated_BB_Lst (BB* bb) {
     sched_annot.Delete_BB_From_Isolated_BB_Lst (bb);
 }
 
+extern BOOL
+//OP1_Defs_Are_Used_By_OP2(OP* op1, OP* op2, UINT8 &mask);
+OP1_Defs_Are_Used_By_OP2(OP* op1, OP* op2);
+
+extern BOOL
+OP1_Defs_Are_Killed_By_OP2(OP* op1, OP* op2);
 
 
-    /* ======================================================================
-     * ======================================================================
-     * 
-     *          prototype for class SRC_BB_MGR
-     *
-     * ======================================================================
-     * =====================================================================
-     */
-
-typedef struct tagSRC_BB_INFO {
-    BB * src ;
-    BB * targ ;
-    BB_VECTOR   siss ;      /* cutting set for code motion from 
-                             * <src> to <targ> 
-                             */
-    BB_VECTOR   across_bbs;             /* across BBs */
-    REGION_VECTOR across_nested_rgns;   /* across rgns */
-
-            /* <cold_paths_cutting_set> & <hot_paths_cutting_set>
-             * are used only when <src> donate P-ready candidate 
-             */
-    BB_VECTOR   cold_paths_cutting_set ;
-    BB_VECTOR   hot_paths_cutting_set ;
-
-    mBOOL donate_p_ready_cand ; /* permit <src> donate p-ready candidate 
-                                 * or not */
-    mBOOL _cntl_equiv ;         /* flags indidate whether code motion
-                                 * from <src> to <targ> is control equivalent 
-                                 */
-
-    inline BOOL Is_Cntl_Equiv (void) const { return _cntl_equiv ; }
-    inline BOOL Can_Donate_P_Ready_Cand (void) const {
-                    return donate_p_ready_cand ;  
-                }
-    inline void Set_Cntl_Equiv (void) { _cntl_equiv = TRUE ; }
-
-    tagSRC_BB_INFO (MEM_POOL *mp) : 
-        siss(mp), across_bbs (mp),
-        across_nested_rgns (mp),
-        cold_paths_cutting_set (mp),
-        hot_paths_cutting_set (mp) {
-
-        src = NULL ;
-        _cntl_equiv         = FALSE;
-        donate_p_ready_cand = FALSE;
-    }
-
-} SRC_BB_INFO ;
-
-
-class SRC_BB_MGR {
-private :
-
-    typedef mempool_allocator<SRC_BB_INFO*>	          SRC_BB_INFO_ALLOC;
-    typedef vector<SRC_BB_INFO *, SRC_BB_INFO_ALLOC>  SRC_BB_INFO_VECT; 
-    typedef SRC_BB_INFO_VECT::iterator               SRC_BB_INFO_ITER;
-
-    MEM_POOL *   _mp;           /* underlying MEM_POOL */
-
-    BB_VECTOR  _src_bbs_vect;   /* all source BBs */
-    SRC_BB_INFO_VECT _src_info_vect ;  
-
-    BB_SET *    _src_bbs_set ;  /* store all source BBs into a set for 
-                                 * fast query an check */
-    BB   *      _targ ;         /* the BBs that SCHEDULER is not now engaging
-                                 * with */
-    REGION *    _scope ; 
-    BOOL        _prepass;
-
-
-            /* compute the cutting-set for code motion from <src> to <_targ>
-             */
-    BOOL _compute_cutting_set (BB *src, SRC_BB_INFO * src_info,
-                               RGN_CFLOW_MGR *cflow_info) ;
-
-            /* this routines is called only by Find_Src_BBs */
-    void _find_src_bbs (BB * src,    RGN_CFLOW_MGR * cflow_info) ;
-    void _find_src_bbs (REGION *rgn, REGIONAL_CFG_NODE * n,
-                                     RGN_CFLOW_MGR *cflow_info);
-
-           /* keep track of the nodes Find_Src_BBs accesss 
-            */
-    BB_SET * _find_src_bbs_access_bbs ;
-    BS     * _find_src_bbs_access_rgns ;
-
-            /* check to see whether <src> is qualified to donate candidate
-             * to <_targ>
-             */
-    BOOL _src_bb_is_qualified (BB *src, SRC_BB_INFO * its_info, 
-                                   RGN_CFLOW_MGR * cflow_info) ;
-
-             /* following 9 inline routines are used only by 
-              * _compute_cutting_set. we try to use a single bitset to 
-              * keep track both BB and nested REGION. the prefix
-              * _ubs stands for "uniform bitset".
-              */
-    inline BS * _ubs_union1d (BS * Bitset, BB * bb) ;
-    inline BS * _ubs_union1d (BS * Bitset, REGION *r, INT32 rgn_id_base);
-    inline BS * _ubs_union1d (BS * Bitset, REGIONAL_CFG_NODE *n,
-                                       INT32 rgn_id_base);
-    inline BS * _ubs_diff1d  (BS * Bitset, BB * bb) ;
-    inline BS * _ubs_diff1d  (BS * Bitset, REGION *r,
-                                       INT32 rgn_id_base);
-    inline BS * _ubs_diff1d  (BS * Bitset, REGIONAL_CFG_NODE *n,
-                                       INT32 rgn_id_base);
-
-    inline BOOL _ubs_memberp (BS * Bitset, BB *b) ;
-    inline BOOL _ubs_memberp (BS * Bitset, REGION *r, 
-                                INT32 rgn_id_base);
-    inline BOOL _ubs_memberp (BS *Bitset, REGIONAL_CFG_NODE *n, 
-                                INT32 rgn_id_base);
-    
-        /* EXPORTED INTERFACES 
-         */
-    
-
-public:
-
-    SRC_BB_MGR (MEM_POOL *mp) ;
-    ~SRC_BB_MGR (void) ;
-
-            /* find all BBs that can potentially donate candidates to <targ>
-             */ 
-    const BB_VECTOR * Find_Src_BBs (REGION * scope, BB * targ,
-                                    RGN_CFLOW_MGR *cflow_info, 
-                                    BOOL prepass) ;
-
-            /* return source BBs of <_targ> (data member of this class) 
-             */
-    const BB_VECTOR * Src_BBs (void) { return &_src_bbs_vect ; } 
-
-            /* return the cutting-set for code motion from <src> to <_targ>
-             * with which scheduler is now dealing.*/
-    const BB_VECTOR * Cutting_Set (BB * src) ;     
-
-            /* check to see whether <bb> is one of the source-BB of <_targ> 
-             */
-    BOOL  Is_Src_BB (BB * bb) { return  BB_SET_MemberP (_src_bbs_set, bb); }
-
-            /* return the block scheduler is now scheduling */
-    BB * Targ_BB (void) { return _targ ; }   
-            
-            /* return all BBs that code motion from <src> to <_targ> need
-             * moving across 
-             */
-    const BB_VECTOR * BBs_Between_Cutting_Set_and_Src (BB *src);
-            
-            /* return all REGIONs that code motion from <src> to <_targ> need
-             * moving across
-             */
-    const REGION_VECTOR* Move_Across_Nested_Rgns (BB *src) ;
-    
-            /* return SRC_BB_INFO associated with <bb> 
-             */
-    SRC_BB_INFO  * Get_Src_Info (BB * bb);
-
-            /* dump the status of this class 
-             */
-    void Dump (FILE *f=stderr) ;
-
-#ifdef Is_True_On
-    void gdb_dump (void);    
-#endif 
-
-} ;
-
-
-
-
-
-    /* ==========================================================
-     * ==========================================================
-     *
-     *          Scheduling sequence 
-     *
-     * ==========================================================
-     * ==========================================================
-     */
-class SCHED_SEQ {
-private:
-
-    class NODE_INFO { public: INT32 _n_pred; NODE_INFO() {_n_pred = 0;} };
-    typedef mempool_allocator<pair<REGIONAL_CFG_NODE*,NODE_INFO> > 
-  		    NODE_INFO_ALLOC;
-    template <class _Ptr_Tp>
-    struct ptr_hash {
-        size_t operator()(_Ptr_Tp __x) const { return UINT(__x); }
-    };
-
-    typedef hash_map<REGIONAL_CFG_NODE*, NODE_INFO,
-                 ptr_hash<REGIONAL_CFG_NODE*>,
-                 equal_to<REGIONAL_CFG_NODE*>, NODE_INFO_ALLOC>  
-				 NODE_INFO_MAP;
-
-    NODE_VECTOR _root ;
-        /* _node_info_map:  f: rgn_node -> <has-not-sched-pred-num> 
-         */
-    NODE_INFO_MAP   _node_info_map;  
-    BB *        _cur ;
-    REGION *    _rgn ;
-
-    BOOL _node1_is_sparser (
-            REGIONAL_CFG_NODE *nd1,
-            REGIONAL_CFG_NODE *nd2) {
-
-        /* Favor BB with more bubbles over less one, we assume that BB with 
-         * more OPs is sparer than less one.
-         */
-        INT32 density1 = nd1->Is_Region () ? 0 : BB_length(nd1->BB_Node());
-        INT32 density2 = nd2->Is_Region () ? 0 : BB_length(nd2->BB_Node());
-            
-        return density1 > density2 ;
-    }
-
-    REGIONAL_CFG_NODE * _next (void) ;
-    BOOL _qualified (REGIONAL_CFG_NODE *nd) {
-        if (nd->Is_Region()) return FALSE;
-        BB * bb = nd->BB_Node () ;
-        return !BB_entry(bb) && !BB_exit(bb);
-    }
-
-public: 
-
-    SCHED_SEQ (REGION *rgn, MEM_POOL *mem_pool) ;
-    ~SCHED_SEQ (void) {} ;
-
-    BB * First (void) ;
-    BB * Next (void) ;
-    BB * Cur (void) { Is_True (_cur, ("no CURRENT BB node!")) ;  return _cur ; }
-} ;
 
 
 
@@ -834,8 +578,7 @@ typedef OP_Vector::reverse_iterator OP_Vector_Riter ;
 /* CGGRP_OP_Issue_Port put to microscheduling package 
  */
 inline ISSUE_PORT CGGRP_OP_Issue_Port (OP *op) { return ip_invalid ; } 
-INT32 CGTARG_adjust_latency (OP* pred, ISSUE_PORT pred_port, 
-                             OP* succ, ISSUE_PORT succ_port,
-                             mUINT16  arc_kind, INT32 org_latency);
+INT32 CGTARG_adjust_latency (ARC* arc, ISSUE_PORT pred_port, 
+                             ISSUE_PORT succ_port);
 
 #endif  /* sched_util_INCLUDED */

@@ -602,6 +602,11 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 			 start_idx, 
 			 (_orig_scope_tab[_orig_level].st_attr_tab)->Size());
 
+      (void)Copy_array_range(*_orig_scope_tab[_orig_level].inito_tab, 
+			 *_cloned_scope_tab[_cloned_level].inito_tab, 
+			 start_idx, 
+			 (_orig_scope_tab[_orig_level].inito_tab)->Size());
+
   }
   else {
 	// Need to reset _cloned_label_last_idx to reflect the current cloned SYMTAB
@@ -609,10 +614,6 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 	Set_cloned_inito_last_idx((_cloned_scope_tab[_cloned_level].inito_tab)->Size()-1);
   }
 
-  (void)Copy_array_range(*_orig_scope_tab[_orig_level].inito_tab, 
-			 *_cloned_scope_tab[_cloned_level].inito_tab, 
-			 start_idx, 
-			 (_orig_scope_tab[_orig_level].inito_tab)->Size());
 
   (void)Copy_array_range(*_orig_scope_tab[_orig_level].label_tab, 
 			 *_cloned_scope_tab[_cloned_level].label_tab, 

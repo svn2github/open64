@@ -176,7 +176,11 @@ static void Process_Store(WN *store_wn, VINDEX16 v,
   }
 
   char preg_name[20];
-  TYPE_ID type = WN_desc(store_wn);
+  
+  /* Fix the bug of missing CVTL for U1STID to a preg */
+  // TYPE_ID type = WN_desc(store_wn);
+  TYPE_ID store_type = WN_desc(store_wn); 
+  TYPE_ID type = Promote_Type(store_type);
 
   EINDEX16 e,next_e=0;
   for (e = dep_graph->Get_Out_Edge(v); e; e=next_e) {
@@ -227,14 +231,27 @@ static void Process_Store(WN *store_wn, VINDEX16 v,
 #endif
 	        // replace A[i] = x with "preg = x; A[i] = preg"
 	        OPCODE preg_s_opcode = OPCODE_make_op(OPR_STID,MTYPE_V,type);
-	        preg_store = LWN_CreateStid(preg_s_opcode,preg_num,
-		     preg_st, Be_Type_Tbl(type),WN_kid0(store_wn));
+
+                /* Fix the bug of missing CVTL for U1STID to a preg */
+	        // preg_store = LWN_CreateStid(preg_s_opcode,preg_num,
+		//     preg_st, Be_Type_Tbl(type),WN_kid0(store_wn));
+                // Insert CVTL if necessary
+                WN *wn_value = WN_kid0(store_wn); 
+                if (MTYPE_byte_size(store_type) < MTYPE_byte_size(type))
+                  wn_value = LWN_Int_Type_Conversion(wn_value, store_type); 
+                preg_store = LWN_CreateStid(preg_s_opcode,preg_num,
+                     preg_st, Be_Type_Tbl(type),wn_value);
+
                 WN_Set_Linenum(preg_store,WN_Get_Linenum(store_wn));
 		LWN_Copy_Frequency_Tree(preg_store,store_wn);
                 LWN_Insert_Block_Before(LWN_Get_Parent(store_wn),
 						store_wn,preg_store);
-	        OPCODE preg_l_opcode = OPCODE_make_op(OPR_LDID, 
-					Promote_Type(type),type);
+
+                /* Fix the bug of missing CVTL for U1STID to a preg */
+	        // OPCODE preg_l_opcode = OPCODE_make_op(OPR_LDID, 
+		//			Promote_Type(type),type);
+                OPCODE preg_l_opcode = OPCODE_make_op(OPR_LDID,type,type); 
+
                 WN *preg_load = WN_CreateLdid(preg_l_opcode,preg_num,
 			preg_st, Be_Type_Tbl(type));
 		LWN_Copy_Frequency(preg_load,store_wn);
@@ -246,8 +263,12 @@ static void Process_Store(WN *store_wn, VINDEX16 v,
 	      scalarized_this_store = TRUE;
 
 	      // replace the load with the use of the preg
-	      WN *new_load = WN_CreateLdid(OPCODE_make_op(OPR_LDID,
-		Promote_Type(type),type),preg_num,preg_st,Be_Type_Tbl(type));
+              /* Fix the bug of missing CVTL for U1STID to a preg */ 
+	      // WN *new_load = WN_CreateLdid(OPCODE_make_op(OPR_LDID,
+	      // Promote_Type(type),type),preg_num,preg_st,Be_Type_Tbl(type));
+              WN *new_load = WN_CreateLdid(OPCODE_make_op(OPR_LDID,
+                type,type),preg_num,preg_st,Be_Type_Tbl(type)); 
+
 	      LWN_Copy_Frequency_Tree(new_load,load_wn);
 
               WN *parent = LWN_Get_Parent(load_wn);

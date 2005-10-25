@@ -105,6 +105,7 @@
 #include "inline_script_parser.h"
 
 #include "ipc_option.h"
+#include "ipa_reorder.h" //IPO_Modify_WN_for_field_reorder ()
 
 extern "C" void add_to_tmp_file_list (char*);
 #pragma weak add_to_tmp_file_list
@@ -129,6 +130,8 @@ static IPA_LNO_WRITE_SUMMARY* IPA_LNO_Summary = NULL;
 typedef AUX_IPA_NODE<UINT32> NUM_CALLS_PROCESSED;
 static NUM_CALLS_PROCESSED* Num_In_Calls_Processed;
 static NUM_CALLS_PROCESSED* Num_Out_Calls_Processed;
+
+// FILE *inlining_result ;
 
 static inline BOOL
 All_Calls_Processed (const IPA_NODE* node, const IPA_CALL_GRAPH* cg)
@@ -292,6 +295,16 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     }
 #endif
 
+/* pengzhao
+    if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
+	{
+			
+		fprintf ( inlining_result,"%s inlined into ", DEMANGLE(callee->Name()));
+		fprintf ( inlining_result, "%s (edge# %d)\n", DEMANGLE (caller->Name()), edge->Edge_Index () );
+
+	}
+*/
+
     if ( Trace_IPA || Trace_Perf ) {
 	fprintf ( TFile, "%s inlined into ", DEMANGLE (callee->Name()) );
 	fprintf ( TFile, "%s (edge# %d)", DEMANGLE (caller->Name()), edge->Edge_Index () );
@@ -386,6 +399,11 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
   if (IPA_Enable_Common_Const && node->Has_Propagated_Const()) {
     IPO_propagate_globals(node);
   }
+
+  if(IPA_Enable_Reorder && reorder_candidate.size)
+    IPO_Modify_WN_for_field_reorder(node) ;
+  else //just for debug  feld reorder
+    Compare_whirl_tree(node);
 
   if (IPA_Enable_Cloning && node->Is_Clone_Candidate()) {
 
@@ -809,6 +827,8 @@ IPO_main (IPA_CALL_GRAPH* cg)
     
     Set_Error_Phase ("IPA Transformation");
 
+    // inlining_result = fopen("inlining.log", "w");
+
     if (IPA_Enable_Array_Sections) {
 	IPA_LNO_Summary = CXX_NEW(IPA_LNO_WRITE_SUMMARY(array_pool.Pool ()),
 				  array_pool.Pool ());
@@ -819,6 +839,12 @@ IPO_main (IPA_CALL_GRAPH* cg)
 
     if (IPA_Enable_Split_Common)
 	IPO_Split_Common ();
+
+    // reorder :(the follwoing two lines)
+    if(IPA_Enable_Reorder && reorder_candidate.size){
+       IPO_get_new_ordering();
+       IPO_reorder_Fld_Tab(); 
+    }
 
     Init_Num_Calls_Processed (cg, ipo_pool.Pool ());
 
@@ -839,6 +865,9 @@ IPO_main (IPA_CALL_GRAPH* cg)
 
     }
 
+    if(IPA_Enable_Reorder)
+       IPO_Finish_reorder(); //MEM_POOL_Pop (&reorder_local_pool);pop reorder_candidate
+
     IP_flush_output ();			// Finish writing the PUs
 
     if (IPA_Enable_Array_Sections)
@@ -853,6 +882,8 @@ IPO_main (IPA_CALL_GRAPH* cg)
     if ( INLINE_List_Actions ) {
         fprintf ( stderr, "Total number of edges = %d\n", IPA_Call_Graph->Edge_Size() );
     }
+
+    // fclose (inlining_result);
 
 } // IPO_main
 
@@ -979,6 +1010,98 @@ Perform_Interprocedural_Optimization (void)
     MEM_Trace ();
   }
 #endif
+
+
+//pengzhao
+// this chunk of code print the inlining decision like the ecc style
+if(Get_Trace(TP_IPA, IPA_TRACE_TUNING))
+{
+  FILE *orc_script = fopen ("orc_script.log", "w");
+		  INT32 callsite_linenum;
+		  INT32 callsite_colnum;
+		  USRCPOS callsite_srcpos;
+    	  char  *caller_filename, *callee_filename;
+    	  char  *caller_funcname, *callee_funcname;
+
+  IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
+  fprintf(orc_script, "\n#BEGIN_INLINE\n\n");
+  
+  for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) 
+  {
+
+    IPA_NODE* node = cg_iter.Current();
+	
+    if (node) 
+	{
+
+			// Important for the getting WN from edge
+	  IPA_NODE_CONTEXT context (node);
+	  IPA_Call_Graph->Map_Callsites (node);
+
+	  // get the node-caller's filename
+      IP_FILE_HDR& caller_hdr = node->File_Header ();
+	  caller_filename = (char *) alloca(strlen(caller_hdr.file_name)+1);
+	  strcpy(caller_filename, caller_hdr.file_name);
+			
+	  fprintf(orc_script, "COMPILE (\"%s\",%s,NOREG) {\n", DEMANGLE(caller_filename), DEMANGLE(IPA_Node_Name(node)));
+      BOOL seen_callee = FALSE;
+
+      IPA_SUCC_ITER succ_iter(node);
+      for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) 
+	  {
+		IPA_EDGE* tmp_edge = succ_iter.Current_Edge();
+		if(tmp_edge)
+		{
+		  EDGE_INDEX   tmp_idx = tmp_edge->Edge_Index();
+		  WN* call_wn = tmp_edge->Whirl_Node();
+		  IPA_NODE* callee =IPA_Call_Graph->Callee( tmp_idx ); 
+    	  IP_FILE_HDR& callee_hdr = callee->File_Header ();
+
+    	  if (call_wn == NULL) 
+		  {
+       			fprintf (orc_script, "Warning: no source line number found for call-edge [%s --> %s]\n", node->Name(), callee->Name());
+       	  		callsite_linenum = 0;
+				callsite_colnum = -1;
+
+    	  } else 
+		  {
+      			USRCPOS_srcpos(callsite_srcpos) = WN_Get_Linenum (call_wn);
+      			callsite_linenum = USRCPOS_linenum(callsite_srcpos);
+				callsite_colnum  = USRCPOS_column(callsite_srcpos);
+		  }
+
+  		  callee_filename = (char *) alloca(strlen(callee_hdr.file_name)+1);
+		  strcpy(callee_filename, callee_hdr.file_name);
+		  
+//          if (IPA_NODE* callee =IPA_Call_Graph->Callee( tmp_idx )) 
+		  {
+			if(IPA_Enable_Inline && tmp_edge->Has_Inline_Attrib () && !callee->Has_Noinline_Attrib())
+		    {
+              fprintf(orc_script, "  INLINE (%d,%d,\"%s\",%s,NOREG) {\n  }\n",callsite_linenum,callsite_colnum, callee_filename, DEMANGLE(IPA_Node_Name(callee)) );
+              seen_callee = TRUE;
+            }else // should inline the callee
+		    {
+//              fprintf(orc_script, "  CALL (%s)\n",IPA_Node_Name(callee) );
+              fprintf(orc_script, "  CALL (%d,%d,\"%s\",%s,NOREG)\n",callsite_linenum,callsite_colnum, callee_filename, DEMANGLE(IPA_Node_Name(callee)) );
+		  
+		    }
+//          fprintf(fp, "    %s(%f)->%s (edge_freq = %f, callee_freq = %f)\n", IPA_Node_Name(node),(node->Get_frequency())._value ,IPA_Node_Name(callee), (tmp_edge->Get_frequency())._value, (callee->Get_frequency())._value);
+         }
+		}// if(tmp_edge)
+      }//for all edges
+
+      fprintf(orc_script, "}\n");
+    }// if(node)
+  }// for all node
+  fprintf(orc_script, "\n#END_INLINE\n\n");
+  fclose (orc_script);
+}
+	if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW)) // -tt19:0x80000
+	{
+	    fprintf(TFile, "\t+++++++++++++++++++++++++++++++++++++++\n");
+  	    IPA_Call_Graph->Print_vobose(TFile);
+	    fprintf(TFile, "\t+++++++++++++++++++++++++++++++++++++++\n");
+	}
 
   IPO_main (IPA_Call_Graph);
 

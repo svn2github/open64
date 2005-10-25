@@ -62,7 +62,8 @@ static const char source_file[] = __FILE__;
 
 void MHD::Initialize()
 {
-  if (Target == TARGET_ITANIUM) {
+  if (Target == TARGET_ITANIUM ||
+      Target == TARGET_ITANIUM2 ) {
 
     Non_Blocking_Loads      = TRUE;
     Loop_Overhead_Base      = 18;
@@ -104,7 +105,7 @@ void MHD::Initialize()
 
 #ifdef Is_True_On
     if (LNO_Verbose)
-      printf ("Target Processor: TARGET_ITANIUM. %lld (%d), %lld (%d)\n", 
+      printf ("Target Processor: TARGET_ITANIUM/ITANIUM2. %lld (%d), %lld (%d)\n", 
               L[0].Effective_Size, L[0].Line_Size,
               L[1].Effective_Size, L[1].Line_Size);
 #endif

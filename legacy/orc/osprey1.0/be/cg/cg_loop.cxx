@@ -4807,8 +4807,10 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
 	  if (unroll_times < min_unr){
 		  unroll_times = min_unr;
 	  }
-	  if (swp_trace) {
-		fprintf(TFile, "<swp unroll factor> : old heuristic computed(%d) => changeto(%d)\n", computed, unroll_times);
+	  if (swp_trace ){
+                  if (computed != unroll_times) {
+	             fprintf(TFile, "<swp unroll factor> : old heuristic computed(%d) => changeto(%d)\n", computed, unroll_times);
+                }
 	  }
   }
 

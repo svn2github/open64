@@ -175,6 +175,8 @@ BOOL OPT_Unroll_Analysis = TRUE;	/* Enable unroll limitations? */
 BOOL OPT_Unroll_Analysis_Set = FALSE;	/* ... option seen? */
 BOOL OPT_Lower_Speculate = FALSE;	/* speculate CAND/CIOR */
 BOOL OPT_Lower_Treeheight = FALSE;	/* reassociate commutative ops */
+BOOL OPT_Lower_To_Memlib = TRUE;	/* transform to library calls */
+INT32 OPT_Threshold_To_Memlib = 256;    /* threshold to transform to mem calls */
 static BOOL OPT_Lower_Treeheight_Set = FALSE;
 BOOL OPT_Inline_Divide = TRUE;		/* inline divide sequences */
 static BOOL OPT_Inline_Divide_Set = FALSE;
@@ -188,7 +190,9 @@ BOOL Allow_wrap_around_opt = TRUE;
 static BOOL Allow_wrap_around_opt_Set = FALSE;	/* ... option seen? */
 BOOL Enable_GOT_Call_Conversion = FALSE;	/* %call16 -> %got_disp */
 static BOOL Enable_GOT_Call_overridden = FALSE;	/* ... option seen? */
-BOOL OPT_recompute_addr_flags = FALSE; /* recompute addr saved */
+#if 1 // Fix 10-26-2002: Enhancement to reset addr_saved_flags for local variables
+BOOL OPT_recompute_addr_flags = TRUE; /* recompute addr saved */
+#endif
 BOOL OPT_IPA_addr_analysis = TRUE; /* enable the use of IPA addr analysis result */
 BOOL Delay_U64_Lowering = TRUE;/* Delay unsigned 64-bit lowering to after wopt */
 BOOL OPT_shared_memory = TRUE;	// assume use of shared memory
@@ -210,6 +214,7 @@ BOOL Instrumentation_Enabled = FALSE;
 UINT32 Instrumentation_Actions = 0;
 BOOL Instrumentation_Unique_Output = FALSE; // always create unique output
 OPTION_LIST *Feedback_Option = NULL;
+BOOL Outlining_Enabled = FALSE;	//OUTLINING^$ the outlining switch 
 
 BOOL Instrumentation_Enabled_Before = FALSE;
 
@@ -460,6 +465,14 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "swp",			"swp",
     0, 0, 0,    &Enable_SWP,	&Enable_SWP_overridden,
     "Enable software pipelining" },
+      
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "transform_to_memlib",	"transform",
+    0, 0, 0,	&OPT_Lower_To_Memlib, NULL,
+    "Allow loop or struct memory copy/set to be library calls" },
+
+  { OVK_INT32,	OV_INTERNAL,	TRUE, "threshold_to_memlib",	"",
+    0, 0, INT32_MAX,	&OPT_Threshold_To_Memlib, NULL,
+    "Threshold to transform loop copy/set to be memory library calls" },
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "treeheight",		"",
     0, 0, 0,	&OPT_Lower_Treeheight, &OPT_Lower_Treeheight_Set,
@@ -521,12 +534,18 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,	&Instrumentation_Enabled,NULL,
     "Phases in the compiler where instrumentation needs to be done" },
 
+	//OUTLINING^
+{ OVK_BOOL,  OV_VISIBLE,	TRUE, "outlining",	"outl",
+    0, 0, 0,	&Outlining_Enabled, NULL,
+    "Outlining-based optimization (partial inlining & code placement)" },
+	//OUTLINING$
+	
   { OVK_INT32,  OV_VISIBLE,     TRUE, "phase",       "",
     0, 0, 5,    &Phase_Num, NULL,
     "Phases in the compiler where instrumentation or feedback  needs to be done" },
 
    { OVK_INT32,  OV_VISIBLE,     TRUE, "type",       "",
-    0, 0, 6,    &Profile_Type, NULL,
+    0, 0, 14,    &Profile_Type, NULL,
     "Profile type in the compiler" },
 
   { OVK_UINT32,  OV_INTERNAL,	TRUE, "instrument_action",		"",

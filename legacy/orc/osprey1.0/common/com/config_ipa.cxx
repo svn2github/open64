@@ -76,7 +76,7 @@ SKIPLIST *Build_Skiplist ( OPTION_LIST *olist );
 #define DEFAULT_SMALL_PU	30
 #define DEFAULT_SMALL_CALLEE	500
 #define DEFAULT_MIN_FREQ	100
-#define DEFAULT_MIN_HOTNESS	100
+#define DEFAULT_MIN_HOTNESS	10
 #define DEFAULT_RELA_FREQ	50
 #define DEFAULT_INLINE_Max_Pu_Size 5000
 #define DEFAULT_CLONE_BLOAT_FACTOR 100
@@ -89,6 +89,8 @@ SKIPLIST *Build_Skiplist ( OPTION_LIST *olist );
 						SAVE_SPACE option  
 					      */
 #define DEFAULT_OUTPUT_FILE_SIZE	10000
+
+#define DEFAULT_MAX_DENSITY		11 // INLINING_TUNINING
 
 
 /* #define DEFAULT_GSPACE	65535	-- from config.c */
@@ -170,6 +172,10 @@ BOOL	IPA_Max_Jobs_Set = FALSE;
 /* 100th% of call freq lower than which will not inlined */
 UINT32	IPA_Min_Freq = DEFAULT_MIN_FREQ;	
 
+
+/* For those infrequently invoked PU which however contains hot loops*/
+UINT32  IPA_Max_Density = DEFAULT_MAX_DENSITY;// INLINING_TUNINING
+
 /* % of time that an inlined callee is called by its caller */
 UINT32	IPA_Rela_Freq = DEFAULT_RELA_FREQ;	
 
@@ -220,7 +226,7 @@ BOOL IPA_Enable_Keeplight = TRUE;  /* allow the user to ONLY keep the .I
 				     * and .o in the .ipakeep directory
 				     */
 
-BOOL IPA_Enable_Cord = FALSE;		/* Enable procedure reordering. */
+BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
 BOOL IPA_Enable_Linearization = FALSE;  /* Enable linearization of array */
 BOOL IPA_Use_Intrinsic = FALSE;		/* load intrinsic libraries */
 
@@ -232,6 +238,7 @@ BOOL IPA_Enable_Inline_Char_Array = TRUE;  /* enable inlining of Character Array
 BOOL IPA_Enable_Inline_Optional_Arg = TRUE;  /* enable inlining of functions with optional arguments */
 BOOL IPA_Enable_Inline_Struct_Array_Actual = TRUE;  /* enable inlining of STRUCT for f90 when the actual is an array type */
 BOOL IPA_Enable_Inline_Var_Dim_Array = TRUE;  /* enable inlining of variable-dimensioned array */
+BOOL IPA_Enable_Reorder=FALSE; /*enable field reordering*/
 
 // call preopt during IPA
 BOOL IPA_Enable_Preopt = FALSE;          
@@ -386,6 +393,8 @@ static OPTION_DESC Options_IPA[] = {
 	  DEFAULT_MIN_FREQ, 0, 10000, &IPA_Min_Freq,	NULL},
     { OVK_UINT32,OV_SHY,	FALSE, "min_hotness",	"",
 	  DEFAULT_MIN_HOTNESS, 0, UINT32_MAX, &IPA_Min_Hotness,	NULL},
+    { OVK_UINT32,OV_SHY,	FALSE, "max_density",	"",
+	  DEFAULT_MAX_DENSITY, 0, UINT32_MAX, &IPA_Max_Density,	NULL},
     { OVK_BOOL,	OV_INTERNAL,	FALSE, "reshape",	"",
 	  0, 0, 0,		&IPA_Enable_Reshape,	NULL,
 	  "Reshape analysis for IPA" },
@@ -484,6 +493,9 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_NAME,	OV_INTERNAL,	FALSE, "propagate_annotation_file",	"",
 	  0, 0, 0,		&Annotation_Filename,		NULL,
 	  "Annotation file name which IPA will propagate to next phase" },
+    { OVK_BOOL,	OV_INTERNAL,	FALSE, "field_reorder",	"",
+	  0, 0, 0,		&IPA_Enable_Reorder,	NULL,
+	  "Enable field reordering"},
     { OVK_COUNT }	    /* List terminator -- must be last */
 };
 

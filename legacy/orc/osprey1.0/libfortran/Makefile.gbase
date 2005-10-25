@@ -116,12 +116,6 @@ F90FLAGS =
 # F90FLAGS = -r10000 -LNO:cs2=512k -LANG:heap_allocation_threshold=1000000
 F90FLAGS = -r10000 -LNO:cs2=512k
  endif
- ifeq ($(BUILD_ARCH), IA64)
-OPTIMIZER = -O0
- endif
- ifeq ($(BUILD_ARCH), IA32)
-OPTIMIZER = -O0
- endif
 endif
 
 ifeq ($(BUILD_HOST), MIPS)

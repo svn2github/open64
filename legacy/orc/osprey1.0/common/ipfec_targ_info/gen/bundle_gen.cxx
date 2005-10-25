@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -42,12 +42,12 @@
 #include "bundle_gen.h"
 #include "ekapi_util.h"
 
-static const char description[]= "\
+static const char* const description[]= {"\
 #include \"topcode.h\"\n\
 /* ====================================================================\n\
  * ====================================================================\n\
- *\n\
- * Description:\n\
+ *" ,
+" * Description:\n\
  *\n\
  *   A description of the bundling properties. The interface is\n\
  *   divided into two pieces: scheduling, and packing. The scheduling\n\
@@ -56,8 +56,8 @@ static const char description[]= "\
  *   const INT ISA_MAX_SLOTS\n\
  *       An integer constant that indicates the maximum number of\n\
  *       slots in a bundle.\n\
- *\n\
- *   const INT ISA_TAG_SHIFT\n\
+ *" ,
+" *   const INT ISA_TAG_SHIFT\n\
  *       Maximum number of bits required to encode all the execution\n\
  *       property types.\n\
  *\n\
@@ -66,8 +66,8 @@ static const char description[]= "\
  *\n\
  *       The names have the form ISA_EXEC_PROPERTY_xxx\n\
  *       where 'xxx' is replaced with the EXEC_UNIT_PROPERTY name.\n\
- *\n\
- *   typedef (enum) ISA_EXEC_UNIT\n\
+ *" ,
+" *   typedef (enum) ISA_EXEC_UNIT\n\
  *       An enumeration of the execution units.\n\
  *\n\
  *       The names have the form ISA_EXEC_xxx\n\
@@ -76,8 +76,8 @@ static const char description[]= "\
  *       The values of ISA_EXEC_UNIT and ISA_EXEC_UNIT_PROPERTY are\n\
  *       related in that the bit-mask value of an ISA_EXEC_UNIT_PROPERTY\n\
  *       is equal to 2**ISA_EXEC_UNIT.\n\
- *\n\
- *   const INT ISA_EXEC_MAX\n\
+ *" ,
+" *   const INT ISA_EXEC_MAX\n\
  *       The highest value ISA_EXEC_UNIT value.\n\
  *\n\
  *   BOOL ISA_EXEC_PROPERTY_is_xxx(TOP t) \n\
@@ -86,8 +86,8 @@ static const char description[]= "\
  *   ISA_EXEC_UNIT_PROPERTY ISA_EXEC_Unit_Prop(TOP topcode)\n\
  *       Returns exec_unit_property for the instruction specified\n\
  *       by <topcode>.\n\
- *\n\
- *   ISA_BUNDLE_INFO ISA_EXEC_Bundle_Info(INT index)\n\
+ *" ,
+" *   ISA_BUNDLE_INFO ISA_EXEC_Bundle_Info(INT index)\n\
  *       Return isa_bundle_info specified by <index>. \n\
  *\n\
  *   ISA_EXEC_UNIT_PROPERTY ISA_EXEC_Slot_Prop(INT bundle, INT slot_index)\n\
@@ -96,8 +96,8 @@ static const char description[]= "\
  *\n\
  *   UINT64 ISA_EXEC_Slot_Mask(INT bundle)\n\
  *       Return slot_mask for <bundle>.\n\
- *\n\
- *   BOOL ISA_EXEC_Stop(INT bundle, INT slot_index)\n\
+ *" ,
+" *   BOOL ISA_EXEC_Stop(INT bundle, INT slot_index)\n\
  *       Return stop bit for the slot position <slot_index> in <bundle>.\n\
  *\n\
  *   ISA_EXEC_UNIT ISA_EXEC_Unit(INT bundle, INT slot_index)\n\
@@ -105,8 +105,8 @@ static const char description[]= "\
  *\n\
  *   UINT32 ISA_EXEC_Stop_Mask(INT bundle)\n\
  *       Return stop_mask for <bundle>.\n\
- *\n\
- *   const char *ISA_EXEC_Name(INT bundle)\n\
+ *" ,
+" *   const char *ISA_EXEC_Name(INT bundle)\n\
  *       Return the name for <bundle>.\n\
  *\n\
  *   const char *ISA_EXEC_AsmName(INT bundle)\n\
@@ -114,15 +114,15 @@ static const char description[]= "\
  *\n\
  *   BOOL ISA_EXEC_Stop_Before(INT bundle)\n\
  *       Return stop bit (splite isssue) before <bundle>.\n\
- *\n\
- *   BOOL ISA_EXEC_Stop_After(INT bundle)\n\
+ *" ,
+" *   BOOL ISA_EXEC_Stop_After(INT bundle)\n\
  *       Return stop bit (splite isssue) after <bundle>.\n\
  *\n\
  * ====================================================================\n\
  *\n\
  *   The packing interface exports the following:\n\
- *\n\
- *   typedef ISA_BUNDLE\n\
+ *" ,
+" *   typedef ISA_BUNDLE\n\
  *       A type large enough to hold a bundle. This type will always\n\
  *       be a struct containing an array of either 32-, or 64-bit\n\
  *       unsigned integers.\n\
@@ -132,8 +132,8 @@ static const char description[]= "\
  *\n\
  *   const INT ISA_BUNDLE_PACK_COMP_MAX\n\
  *       The maximum number of components to be packed for a bundle.\n\
- *\n\
- *   typedef (struct) ISA_BUNDLE_PACK_INFO\n\
+ *" ,
+" *   typedef (struct) ISA_BUNDLE_PACK_INFO\n\
  *       Describes how a the components of a bundle are packed.\n\
  *       The contents are private.\n\
  *\n\
@@ -145,8 +145,8 @@ static const char description[]= "\
  *\n\
  *   INT ISA_BUNDLE_PACK_INFO_Comp(const ISA_BUNDLE_PACK_INFO *info)\n\
  *       Identifies the bundle component to be packed.\n\
- *\n\
- *   INT ISA_BUNDLE_PACK_INFO_Index(const ISA_BUNDLE_PACK_INFO *info)\n\
+ *" , 
+" *   INT ISA_BUNDLE_PACK_INFO_Index(const ISA_BUNDLE_PACK_INFO *info)\n\
  *       The index of the bundle word containing the component.\n\
  *\n\
  *       ISA_BUNDLE_PACK_INFO_Index is meaningless for ISA_BUNDLE_PACK_COMP_end.\n\
@@ -154,23 +154,23 @@ static const char description[]= "\
  *   INT ISA_BUNDLE_PACK_INFO_CompPos(const ISA_BUNDLE_PACK_INFO *info)\n\
  *       The offset, in bits, to the start of the component in the\n\
  *       component value.\n\
- *\n\
- *       ISA_BUNDLE_PACK_INFO_CompPos is meaningless for ISA_BUNDLE_PACK_COMP_end.\n\
+ *" ,
+" *       ISA_BUNDLE_PACK_INFO_CompPos is meaningless for ISA_BUNDLE_PACK_COMP_end.\n\
  *\n\
  *   INT ISA_BUNDLE_PACK_INFO_BundlePos(const ISA_BUNDLE_PACK_INFO *info)\n\
  *       The offset, in bits, to the start of the component in the\n\
  *       bundle word.\n\
  *\n\
  *       ISA_BUNDLE_PACK_INFO_BundlePos is meaningless for ISA_BUNDLE_PACK_COMP_end.\n\
- *\n\
- *   UINT64 ISA_BUNDLE_PACK_INFO_Mask(const ISA_BUNDLE_PACK_INFO *info)\n\
+ *" ,
+" *   UINT64 ISA_BUNDLE_PACK_INFO_Mask(const ISA_BUNDLE_PACK_INFO *info)\n\
  *       A bit mask that is as wide as the bundle component being\n\
  *       packed. The mask is shifted to match the field in the\n\
  *       bundle word.\n\
  *\n\
  *       ISA_BUNDLE_PACK_INFO_Mask is meaningless for ISA_BUNDLE_PACK_COMP_end.\n\
- *\n\
- *   INT ISA_BUNDLE_Pack_Info_Index(ISA_BUNDLE_PACK_COMP comp)\n\
+ *" ,
+" *   INT ISA_BUNDLE_Pack_Info_Index(ISA_BUNDLE_PACK_COMP comp)\n\
  *       Index into bundle packing info array (see ISA_BUNDLE_Pack_Info)\n\
  *       to the start of the info for the component <comp>. If there\n\
  *       is no packing info for <comp>, the index is for the 'end'\n\
@@ -178,7 +178,8 @@ static const char description[]= "\
  *\n\
  * ====================================================================\n\
  * ====================================================================\n\
- */";
+ */",
+NULL };
 
 
 static const char bundle_info_struct[]="\
@@ -196,82 +197,83 @@ typedef struct {\n\
   mBOOL stop_af;\n\
 } ISA_BUNDLE_INFO;\n\n";
 
-static const char bundle_info_query[]="\n\
+static const char* const bundle_info_query[]={ 
+"\n\
 inline ISA_EXEC_UNIT_PROPERTY ISA_EXEC_Unit_Prop(TOP topcode)\n\
 {\n\
   return ISA_EXEC_unit_prop[(INT)topcode];\n\
 }\n\
-\n\
-inline ISA_BUNDLE_INFO ISA_EXEC_Bundle_Info(INT index)\n\
+" ,
+"inline ISA_BUNDLE_INFO ISA_EXEC_Bundle_Info(INT index)\n\
 {\n\
   extern const ISA_BUNDLE_INFO ISA_BUNDLE_info[];\n\
   return ISA_BUNDLE_info[index];\n\
 }\n\
-\n\
-inline ISA_EXEC_UNIT_PROPERTY ISA_EXEC_Slot_Prop(INT bundle, INT slot_index)\n\
+" ,
+"inline ISA_EXEC_UNIT_PROPERTY ISA_EXEC_Slot_Prop(INT bundle, INT slot_index)\n\
 {\n\
   extern const ISA_BUNDLE_INFO ISA_BUNDLE_info[];\n\
   const ISA_BUNDLE_INFO *info = ISA_BUNDLE_info + bundle;\n\
   return info->slot[slot_index];\n\
 }\n\
-\n\
-inline UINT64 ISA_EXEC_Slot_Mask(INT bundle)\n\
+" ,
+"inline UINT64 ISA_EXEC_Slot_Mask(INT bundle)\n\
 {\n\
   extern const ISA_BUNDLE_INFO ISA_BUNDLE_info[];\n\
   const ISA_BUNDLE_INFO *info = ISA_BUNDLE_info + bundle;\n\
   return info->slot_mask;\n\
 }\n\
-\n\
-inline BOOL ISA_EXEC_Stop(INT bundle, INT slot_index)\n\
+" ,
+"inline BOOL ISA_EXEC_Stop(INT bundle, INT slot_index)\n\
 {\n\
   extern const ISA_BUNDLE_INFO ISA_BUNDLE_info[];\n\
   const ISA_BUNDLE_INFO *info = ISA_BUNDLE_info + bundle;\n\
   return info->stop[slot_index];\n\
 }\n\
-\n\
-inline ISA_EXEC_UNIT ISA_EXEC_Unit(INT bundle, INT slot_index)\n\
+" ,
+"inline ISA_EXEC_UNIT ISA_EXEC_Unit(INT bundle, INT slot_index)\n\
 {\n\
   extern const ISA_BUNDLE_INFO ISA_BUNDLE_info[];\n\
   const ISA_BUNDLE_INFO *info = ISA_BUNDLE_info + bundle;\n\
   return (ISA_EXEC_UNIT)info->unit[slot_index];\n\
 }\n\
-\n\
-inline UINT32 ISA_EXEC_Stop_Mask(INT bundle)\n\
+" ,
+"inline UINT32 ISA_EXEC_Stop_Mask(INT bundle)\n\
 {\n\
   extern const ISA_BUNDLE_INFO ISA_BUNDLE_info[];\n\
   const ISA_BUNDLE_INFO *info = ISA_BUNDLE_info + bundle;\n\
   return info->stop_mask;\n\
 }\n\
-\n\
-inline const char * ISA_EXEC_Name(INT bundle)\n\
+" ,
+"inline const char * ISA_EXEC_Name(INT bundle)\n\
 {\n\
   extern const ISA_BUNDLE_INFO ISA_BUNDLE_info[];\n\
   const ISA_BUNDLE_INFO *info = ISA_BUNDLE_info + bundle;\n\
   return info->name;\n\
 }\n\
-\n\
-inline const char * ISA_EXEC_AsmName(INT bundle)\n\
+" ,
+"inline const char * ISA_EXEC_AsmName(INT bundle)\n\
 {\n\
   extern const ISA_BUNDLE_INFO ISA_BUNDLE_info[];\n\
   const ISA_BUNDLE_INFO *info = ISA_BUNDLE_info + bundle;\n\
   return info->asm_name;\n\
 }\n\
-\n\
-// Add two function for special slpit issue\n\
+" ,
+"// Add two function for special slpit issue\n\
 inline BOOL ISA_EXEC_Stop_Before(INT bundle)\n\
 {\n\
   extern const ISA_BUNDLE_INFO ISA_BUNDLE_info[];\n\
   const ISA_BUNDLE_INFO *info = ISA_BUNDLE_info + bundle;\n\
   return info->stop_bf;\n\
 }\n\
-\n\
-inline BOOL ISA_EXEC_Stop_After(INT bundle)\n\
+" ,
+"inline BOOL ISA_EXEC_Stop_After(INT bundle)\n\
 {\n\
   extern const ISA_BUNDLE_INFO ISA_BUNDLE_info[];\n\
   const ISA_BUNDLE_INFO *info = ISA_BUNDLE_info + bundle;\n\
   return info->stop_af;\n\
 }\n\
-\n";
+", NULL };
 
 static const char bundle_pack_name[]="\
 typedef enum {\n\
@@ -464,8 +466,8 @@ void Bundle_Generator(void *pknobs, GEN_MODE mode)
             EKAPI_ExecUnitName(pknobs, index),
             EKAPI_ExecUnitName(pknobs, index));
   }
-
-  fprintf(h_file, bundle_info_query);
+  for (int i=0; bundle_info_query[i] != NULL; i++)
+      fprintf(h_file, "%s\n", bundle_info_query[i]);
 
   // Calculate the space needed to emulate a bundle
   int b_width = EKAPI_GetBundleWidth(pknobs);

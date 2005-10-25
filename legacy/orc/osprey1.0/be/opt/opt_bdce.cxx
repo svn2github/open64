@@ -505,7 +505,7 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
 
     // binary ops
 
-    case OPR_ADD: case OPR_SUB: case OPR_MPY:
+    case OPR_ADD: case OPR_SUB: case OPR_MPY: case OPR_MPYU2: case OPR_MPYI2:
       Mark_tree_bits_live(cr->Opnd(0), 
 			  Bits_in_type(dsctyp) & Fill_lower_bits(Livebits(cr)),
 			  stmt_visit);

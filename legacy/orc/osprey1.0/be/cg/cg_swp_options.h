@@ -79,6 +79,9 @@ struct SWP_OPTIONS {
   BOOL  Implicit_Prefetch_Set;
   BOOL  Predicate_Promotion;
   BOOL  Enable_BRP;
+  INT32 FB_Prob1;	// percentage of lower bound of feedback prob
+  INT32 FB_Prob2;	// combined with frequency
+  INT32 FB_Freq;	// lower bound of feedback freqency
 
   // Options not accessible from command line
   //  -  some are basically compile-time constants;
@@ -193,6 +196,15 @@ struct SWP_OPTIONS {
 
     // Generation of branch predict instructions (brp.loop.imp)
     Enable_BRP = TRUE;
+
+    // Percentage of lower bound of feedback prob
+    FB_Prob1 = 10; 	// prob = 0.1
+
+    // Same as FB_Prob1, but used in combination with Freq
+    FB_Prob2 = 50;	// prob = 0.5
+
+    // Lower bound of feedback frequency
+    FB_Freq = 100000;
   }
 
   // PU Configure:

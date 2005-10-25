@@ -1238,13 +1238,16 @@ static void r_assemble_list (
  
   char * spec_str = NULL ;
   if (OP_cntl_spec(op)) {
-    spec_str = "cspec " ;
+    spec_str = "c-spec " ;
+    if (OP_if_converted(op)) {
+        spec_str = "ci-spec";
+    }
   } else if (OP_data_spec(op)) {
-    spec_str = "dspec ";
+    spec_str = "d-spec ";
   }
 
   if (OP_cntl_spec(op) && OP_data_spec(op)) {
-    spec_str = "cdspec" ;
+    spec_str = "cd-spec" ;
   }
 
   if (spec_str) {
@@ -1255,6 +1258,13 @@ static void r_assemble_list (
              OP_orig_bb_id(op));
     comment = vstr_concat(comment, tbuf);
   }
+  
+  if (OP_renamed(op)) {
+    char tbuf[20];
+    sprintf (tbuf, "\t[renamed]");
+    comment = vstr_concat(comment, tbuf);
+  }
+
 
   fprintf (Asm_File, " %s\n", vstr_str(comment));
   vstr_end(comment);
@@ -1995,11 +2005,9 @@ Assemble_Bundles(BB *bb)
         }
 
         // IPFEC hacker on brp special case
-        // brp can issue in B0 and B2 while pro64 only model in B2
-        PORT_SET b0b2;
-        b0b2 = b0b2 + ip_B0;
-        b0b2 = b0b2 + ip_B2;
-        if (TSI_Issue_Ports(OP_code(op))== b0b2){
+        // brp can issue in B0, B1 and B2 while pro64 only model in B2
+        if (TSI_Issue_Ports(OP_code(op)).In(ip_B2) &&
+            TSI_Issue_Ports(OP_code(op)).In(ip_B0)){
           slot_mask = slot_mask | ISA_EXEC_PROPERTY_B_Unit;
         }
         stop_mask |= (OP_end_group(op) != 0);
@@ -2037,9 +2045,11 @@ Assemble_Bundles(BB *bb)
         Print_OP_No_SrcLine (slot_op[1]);
         Print_OP_No_SrcLine (slot_op[2]);
       }
-      FmtAssert(ibundle != ISA_MAX_BUNDLES,
+    if(ibundle == ISA_MAX_BUNDLES){ 
+     FmtAssert(ibundle != ISA_MAX_BUNDLES,
                 ("couldn't find bundle for slot mask=0x%llx, stop mask=0x%x in BB:%d\n",
 	             slot_mask, stop_mask, BB_id(bb)));
+    }
     }
 
     BOOL split;
@@ -3436,20 +3446,18 @@ static void Pad_BB_With_Noops(BB *bb, INT num)
   OP *new_op;
   OPS new_ops = OPS_EMPTY;
 
+  /* If the issue window is two-bundle wide, we can clear the stop bit of bb's last op if it's set */
+  if (ISA_MAX_ISSUE_BUNDLES == 2) Reset_OP_end_group(BB_last_op(bb));
   if (ISA_MAX_SLOTS > 1) {
-    INT ibundle;
-    UINT64 slot_mask;
-
-    /* Choose a bundle for the nops. For now we just pick the first
-     * bundle without a stop bit. We could chose more smartly based
-     * on the previous contents of the BB.
+    UINT64 slot_mask; 
+    /* Choose an mfb type bundle for the nops. For we think it least likely brings hazards 
+     * with its previous bundle and next bundle.
      */
-    for (ibundle = 0; ibundle < ISA_MAX_BUNDLES; ++ibundle) {
-      UINT32 stop_mask = ISA_EXEC_Stop_Mask(ibundle);
-      slot_mask = ISA_EXEC_Slot_Mask(ibundle);
-      if (stop_mask == 0) break;
-    }
-
+    slot_mask = ((UINT64 ISA_EXEC_PROPERTY_M_Unit) << ISA_TAG_SHIFT * (ISA_MAX_SLOTS -1)) +
+                ((UINT64 ISA_EXEC_PROPERTY_F_Unit) << ISA_TAG_SHIFT * (ISA_MAX_SLOTS -2)) +
+                ((UINT64 ISA_EXEC_PROPERTY_B2_Unit) << ISA_TAG_SHIFT * (ISA_MAX_SLOTS -3));
+                /* 0x004010080 for Itanium */
+   
     do {
       INT slot = ISA_MAX_SLOTS - 1;
       do {

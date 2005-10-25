@@ -25,33 +25,6 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/*
-  Copyright (c) 2001, Intel Corporation
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without modification,
-  are permitted provided that the following conditions are met:
-
-  Redistributions of source code must retain the above copyright notice, this list
-  of conditions and the following disclaimer.
-
-  Redistributions in binary form must reproduce the above copyright notice, this list
-  of conditions and the following disclaimer in the documentation and/or other materials
-  provided with the distribution.
-
-  Neither the name of the owner nor the names of its contributors may be used to endorse or
-  promote products derived from this software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
-  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR
-  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 //-*-c++-*-
 
 #include <vector.h>
@@ -140,6 +113,7 @@ static void  _dump_pu_data( FILE * fp )
   	}
   	fprintf(stdout, "*********** value profile info: ************\n");
 	FB_TNV fb_tnv;
+	fseek(fp,pu_headers[i].pu_value_offset,SEEK_SET);
   	for (int j=0; j<pu_headers[i].pu_instr_count ; j++)
   	{
   	  if (fread(&fb_tnv, sizeof(FB_TNV), 1, fp) != 1)
@@ -147,6 +121,20 @@ static void  _dump_pu_data( FILE * fp )
   	    fprintf(stderr, "Error while reading fb_tnv\n");
   	    exit(-1);
   	  }
+  	  
+  	  fb_tnv.Print(stdout);
+  	}
+   long pu_ofst=file_header.fb_profile_offset + pu_headers[i].pu_file_offset;
+  fprintf(stdout, "*********** stride profile info: ************\n");
+  fseek(fp,pu_ofst+pu_headers[i].pu_stride_offset,SEEK_SET);
+  	for (int j=0; j<pu_headers[i].pu_ld_count ; j++)
+  	{
+  	  if (fread(&fb_tnv, sizeof(FB_TNV), 1, fp) != 1)
+  	  {
+  	    fprintf(stderr, "Error while reading fb_tnv\n");
+  	    exit(-1);
+  	  }
+  	 
   	  fb_tnv.Print(stdout);
   	}
   }

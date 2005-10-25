@@ -560,8 +560,7 @@ struct comp_zones {
     bool t = vx > vy;
 
     if (t) {
-      Is_True( !(vy > vx),
-	       ("vx > vy && vy > vx."));
+      FmtAssert( !(vy > vx), ("vx > vy && vy > vx."));
     }
 #endif
     return t;

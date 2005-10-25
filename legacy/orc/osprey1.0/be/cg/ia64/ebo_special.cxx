@@ -1664,6 +1664,7 @@ delete_memory_op (OP *op,
         fprintf(TFile,"%sType mismatch for Load - Load combination\n",
                 EBO_trace_pfx);
       }
+      
       return FALSE;
     }
     if ((size_pred != size_succ) ||
@@ -4963,6 +4964,13 @@ copy_rf_sequence (OP *op,
 
    /* Be sure there is no store between here and the original load. */
     if (l2_opinfo0->op_must_not_be_moved) return FALSE;
+    /*
+     *  Here we turn off the transformation: setf.sig--->ldf .
+     *  This is because ebo can not correctly handle some cases.
+     *  The bug is tough. We can not fix it in short time.
+     *  So, we turn off it.
+     */ 
+    return FALSE;
 
    /* Be sure all the operands are available. */
     for (i = OP_opnds(l2_op0); i >= 0; i--) {

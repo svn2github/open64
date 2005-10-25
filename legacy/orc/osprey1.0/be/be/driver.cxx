@@ -114,6 +114,11 @@
 #include "wb_anl.h"		    /* whirl browser for prompf static anal */ 
 #include "wn_instrument.h"          /* whirl instrumenter */
 #include "mem_ctr.h"
+#include "wn_outlining.h"	//OUTLINING^$
+#ifndef ipl_reorder_INCLUDED // for Preprocess_struct_access()
+#include "ipl_reorder.h"
+#endif
+#include "config_ipa.h"    /*for IPA_Enable_Reorder*/
 
 extern void Initialize_Targ_Info(void);
 
@@ -1278,6 +1283,11 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
     Post_LNO_Processing (current_pu, pu);
     if (!Run_wopt && !Run_cg) return;
 
+    /* Call VHO_Lower again to enable the lowering of MLDID -> LDID for simple structs */
+    VHO_Lower(pu);
+#if 1 // Fix 10-26-2002: Enhancement to reset addr_saved flags before Mainopt    
+    PU_adjust_addr_flags(Get_Current_PU_ST(), pu);
+#endif
     Verify_SYMTAB (CURRENT_SYMTAB);
 
     /* If no early mp processing has been requested, then do it after running
@@ -1378,7 +1388,7 @@ Preprocess_PU (PU_Info *current_pu)
     Current_pu = &PU_Info_pu(current_pu);
     CURRENT_SYMTAB = PU_lexical_level(*Current_pu);
     if ((PU_is_nested_func(*Current_pu) && PU_mp(*Current_pu)) ||
-        Is_Set_PU_Info_flags(current_pu, PU_IS_DRA_CLONE)) {
+        Is_Set_PU_Info_flags(current_pu, PU_IS_DRA_CLONE) || Is_Set_PU_Info_flags(current_pu, PU_OUTLINED)) { //OUTLINING^$
       is_mp_nested_pu = TRUE;
       // hack to restore nested PU's symtab
       Restore_Local_Symtab(current_pu);
@@ -1490,6 +1500,29 @@ Preprocess_PU (PU_Info *current_pu)
     Cur_PU_Feedback->Verify("after VHO lower");
   }
 
+  //OUTLINING^
+  if( Outlining_Enabled && (! Is_Set_PU_Info_flags(current_pu,PU_OUTLINED))
+	   && !Query_Skiplist (Optimization_Skip_List, Current_PU_Count() ))
+	
+  {
+  	Set_Error_Phase("Outlining");
+  	CXX_MEM_POOL local_pool("FUNCTION_SPLITTER", FALSE);
+  	Splitter_mem_pool = local_pool();
+
+    dump_result = Get_Trace(TP_OUTLINING, TP_OUTLINING_RESULT);
+    dump_cwt    = Get_Trace(TP_OUTLINING, TP_OUTLINING_CWT);
+	dump_action = Get_Trace(TP_OUTLINING, TP_OUTLINING_ACTION);
+	dump_tmp    = Get_Trace(TP_OUTLINING, TP_OUTLINING_TMP);
+	dump_vobose = Get_Trace(TP_OUTLINING, TP_OUTLINING_VOBOSE);
+
+  	SPLITTER Outliner(current_pu, pu);	
+	if(Get_Trace(TP_OUTLINING, TP_OUTLINING_VOBOSE))
+	{
+          fdump_tree(TFile, pu);
+	}
+
+  	Outliner.Outlining();
+  } //OUTLINING$
   pu = Adjust_Opt_Level (current_pu, pu, ST_name(PU_Info_proc_sym(current_pu)));
 
   if (wopt_loaded) {
@@ -1827,6 +1860,9 @@ main (INT argc, char **argv)
       Process_Feedback_Options (Feedback_Option);
   }
   Instrumentation_Phase_Num = Phase_Num;
+
+  Outliner_Initialize();  //OUTLINING ^$
+  
   //
   // Ordinarily DRA_Initialize() would run as part of Phase_Init(),
   // but we need to run it early, right here. 
@@ -1900,13 +1936,14 @@ main (INT argc, char **argv)
   if (Tlog_File)
     Print_Tlog_Header(argc, argv);
 
+  if (Run_ipl &&IPA_Enable_Reorder )
+      Preprocess_struct_access();// for field reorder
 
   for (PU_Info *current_pu = pu_tree;
        current_pu != NULL;
        current_pu = PU_Info_next(current_pu)) {
     Preorder_Process_PUs(current_pu);
   }
-
   /* create output.h file for cycle counting */
   if (Create_Cycle_Output)
       Create_Output_h_File(); 
@@ -1993,3 +2030,4 @@ main (INT argc, char **argv)
   /*NOTREACHED*/
 
 } /* main */
+

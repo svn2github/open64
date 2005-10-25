@@ -214,6 +214,9 @@ create_tmpdir ( int);
 extern string
 create_unique_file (const string, char);
 
+extern string
+create_tmp_file (const string);
+
 extern string *
 get_command_line(bfd *, string , string , int *);
 

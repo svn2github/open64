@@ -50,6 +50,10 @@ void Fill_Align_Initialize_Parameters(INT *L1_sz, INT *L2_sz, INT *pg_sz)
       L2_cache_line_sz = 64;
       break;
 
+    TARGET_ITANIUM2:
+      L1_cache_line_sz = 64;
+      L2_cache_line_sz = 128;
+      break;
     default:
       L1_cache_line_sz = 32;
       L2_cache_line_sz = 128;

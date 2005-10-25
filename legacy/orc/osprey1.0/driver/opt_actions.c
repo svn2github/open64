@@ -49,6 +49,8 @@
 #include "objects.h"
 #include "phases.h"
 #include "run.h"
+#include "profile_type.h" /* for enum PROFILE_TYPE */ 
+
 
 /* keep list of previous toggled option names, to give better messages */
 typedef struct toggle_name_struct {
@@ -67,6 +69,7 @@ int default_olevel = UNDEFINED;
 static int default_isa = UNDEFINED;
 static int default_proc = UNDEFINED;
 int instrumentation_invoked = UNDEFINED;
+int profile_type = 0;  
 boolean ftz_crt = FALSE;
 
 /* ====================================================================
@@ -459,7 +462,9 @@ Process_Targ_Group ( string targ_args )
 	break;
 
       case 'e':
+
 	if ( strncasecmp ( cp, "exc_enable", 10 ) == 0 && *(cp+10) == '=' ) {
+         /*
   	  int flag;
   	  buffer_t buf;
 	  int mask = 0;
@@ -480,6 +485,7 @@ Process_Targ_Group ( string targ_args )
 	  sprintf(buf, "-defsym,_IEEE_ENABLE=%#x", mask);
 	  flag = add_string_option(O_WlC, buf);
 	  add_option_seen (flag);
+         */
 	}
 	break;
 
@@ -1026,12 +1032,16 @@ is_first_count_file = FALSE;
 Process_fb_type ( char*  typename)
 {
   char str[10];
-  int flag;
+  int flag, tmp;
   fb_type = string_copy(typename);
   sprintf(str,"type=%s",fb_type);
   flag = add_string_option (O_OPT_, str);
   add_option_seen(flag);
+
+  sscanf (typename, "%d", &tmp);
+  profile_type |= tmp; 
 }
+
 void
 Process_fb_create ( char *fname )
 {

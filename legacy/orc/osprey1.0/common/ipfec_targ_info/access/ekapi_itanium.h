@@ -1,3 +1,30 @@
+/*
+  Copyright (C) 2000-2003, Intel Corporation
+  All rights reserved.
+ 
+  Redistribution and use in source and binary forms, with or without modification,
+  are permitted provided that the following conditions are met:
+ 
+  Redistributions of source code must retain the above copyright notice, this list
+  of conditions and the following disclaimer.
+ 
+  Redistributions in binary form must reproduce the above copyright notice, this list
+  of conditions and the following disclaimer in the documentation and/or other materials
+  provided with the distribution.
+ 
+  Neither the name of the owner nor the names of its contributors may be used to endorse or
+  promote products derived from this software without specific prior written permission.
+ 
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR
+  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 //-*-c++-*-
 //=============================================================================
 //
@@ -29,34 +56,25 @@ extern "C" {
 #include <list.h>
 #include <map.h>
 #include <stdarg.h>
+
 /////////////////////////////////////
-class GNAME {
-/////////////////////////////////////
-// A generated name for a variable in the generated file.  This supports a
-// unified method for naming and getting the names of the objects we generate.
+class VARNAME {
 /////////////////////////////////////
 public:
-    GNAME();
-    // Generate a unique name.  Don't care about prefix.
-    GNAME(char* prefix);
-    // Generate a unique name.  Force a particular prefix.
-    GNAME(GNAME& other);
-    // Generate a name that is a copy of <other>.  The name will not be unique.
-    // Really only useful when <other> is about to be destructed, but we still
-    // need to refer to it.
-    char* Gname();
+    VARNAME();
+    // Generate a unique name for a variable.  Don't care for the prefix.
+    VARNAME(char* prefix);
+    // Generate a unique name for a variable.  Force to use a particular prefix.
+    char* Vname();
     // Return the name.  This is the name under which the object is defined.
-    char* Addr_Of_Gname();
+    char* Addr_Of_Vname();
     // Return a pointer to the named object.
-    void Stub_Out();
-    // We've decided not to define the object after all but we may still want a
-    // pointer to it.  After this call, Addr_Of_Gname will return 0.
-
+    void Clear() { count=0; };
+    // Clear all name object.
+ 
 private:
-    char gname[16];       // Where to keep the name.  (This could be more
-                          //   hi-tech, but why?
-    bool stubbed;         // Stubbed-out?
-    static int count;     // For generating the unique names.
+    char varname[20];       // Where to keep the name.  
+    static int count;     // the count of name For generating the unique names.
 };
 
 class RESOURCE{
@@ -71,7 +89,7 @@ public:
     // cluster/ut/cutport. the parameter ended by -1;
     
  
-    char* Addr_Of_Gname() { return gname.Addr_Of_Gname(); }
+    char* Addr_Of_Vname() { return varname.Addr_Of_Vname(); }
     // Return name of pointer to this resource object (in generated code).
     
     unsigned int Count() const { return count; }
@@ -102,9 +120,10 @@ public:
     
     char const *Name() {return name;}
 
+    void Clear() { total = 0; shift_count_total=0; resources.clear();};
 private:
     char const *name;  // For documentation and debugging
-    GNAME gname;       // Generated symbolic name;
+    VARNAME varname;       // Generated symbolic name;
     int count;         // Available per cycle;
   
     int word;          // Which word in the table?
@@ -145,8 +164,9 @@ public:
     static void Output_OP_SI( void *pknobs, FILE *fd ); // Output all Op's SI address;
     SCHE_INFO(void *pknobs, int fuid);    // Initialize according function class id;
     SCHE_INFO(void *pknobs, char *funame); // Initialize according name self defined
+    SCHE_INFO(void){}; //Initialize a object;
     void Req_Issue_Resource();            // Add Issue Resource to require list
-    
+    void Clear() { total=0; fusi_list.clear();}; // Clear all SI information   
 
 private:    
     int id;          // Id
@@ -169,14 +189,14 @@ private:
     
     BOOL use_res_sem; // use res sem resource or not;
     
-    GNAME res_req_name; // Name of res req struct name in target file;
+    VARNAME res_req_name; // Name of res req struct name in target file;
     
-    GNAME id_set_name;  // Name of id set which keeps rrw_id in target file;
+    VARNAME id_set_name;  // Name of id set which keeps rrw_id in target file;
     
-    GNAME total_res_name; // Name of total_res which keeps all address of resource
+    VARNAME total_res_name; // Name of total_res which keeps all address of resource
                           // required in target file;
                           
-    GNAME si_name;     // Name of SI struct;     
+    VARNAME si_name;     // Name of SI struct;     
     
     static map <int,SCHE_INFO*> fusi_list; // mapping of function class id and si 
     

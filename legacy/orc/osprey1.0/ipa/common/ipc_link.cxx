@@ -44,6 +44,8 @@
 #include "cxx_memory.h"			// for CXX_NEW
 #include "ipc_link.h"
 
+#include "lib_phase_dir.h"              // for BINDIR etc
+
 // We break up the linker command line into two parts. with the list of
 // WHIRL object created by IPA inserted in between.  Sine we no longer
 // maintain a 1-1 relationship between the WHIRL .o's and .I's, we don't
@@ -60,8 +62,8 @@ UINT32 comma_list_byte_count = 0;
 
 #ifdef TARG_IA64
 
-#define LINKER_NAME "collect2"
-#define LINKER_NAME_WITH_SLASH "/collect2"
+#define LINKER_NAME "ld"
+#define LINKER_NAME_WITH_SLASH "/ld"
 
 #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
 
@@ -89,27 +91,34 @@ static bool file_exists(const char* path)
 static char* get_linker_name(int argc, char** argv)
 {
     char * toolroot = getenv("TOOLROOT");
+    if (!toolroot) { toolroot = "" ; }
 
-    for (int i = 1; i < argc; i++) {
-	char *string = argv[i];
-	if (*string == '-' && string[1] == 'L') { // See if collect2 is here
-	    char *linker_name = (char *)concat_names(&string[2], LINKER_NAME_WITH_SLASH);
-     	    if (file_exists(linker_name)) {
-                return (linker_name);
-	    }
-            else
-                free(linker_name);
-	}
+    char* linker_name;
+
+    linker_name = concat_names (toolroot, PHASEPATH LINKER_NAME_WITH_SLASH);
+    if (file_exists (linker_name)) {
+        return linker_name;
     }
-    if (toolroot) {
-	char *linker_name = (char *)concat_names(toolroot, LINKER_NAME_WITH_SLASH);
-        if (file_exists(linker_name)) {
-           return (linker_name);
-	}
-        else
-           free(linker_name);
+    free (linker_name);
+
+    linker_name = concat_names (toolroot, GNUPHASEPATH LINKER_NAME_WITH_SLASH);
+    if (file_exists (linker_name)) {
+        return linker_name;
     }
-	
+    free (linker_name);
+
+    linker_name = concat_names (toolroot, BINPATH LINKER_NAME_WITH_SLASH);
+    if (file_exists (linker_name)) {
+        return linker_name;
+    }
+    free (linker_name);
+        
+    linker_name = concat_names (toolroot, ALTBINPATH LINKER_NAME_WITH_SLASH);
+    if (file_exists (linker_name)) {
+        return linker_name;
+    }
+    free (linker_name);
+
     return (LINKER_NAME);
 }
 

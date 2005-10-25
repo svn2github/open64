@@ -424,6 +424,8 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
     return U64_LOWER_form_node(new_nd, tree);
 
   case OPR_MPY: // coming in must be either 64-bit or 32-bit
+  case OPR_MPYU2:
+  case OPR_MPYI2:
     if (MTYPE_is_integral(res) && res != MTYPE_B) { 
       // in our implementation of int multiply, the high-order bits of the 
       // operands are not looked at and the high-order bits of the result can

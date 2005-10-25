@@ -131,11 +131,11 @@ typedef enum {
 	P_pixie,	/* pixie */
 	P_prof,		/* Prof */
 	P_ar,		/* Archive */
+	P_library,
 
 	/* because -Y can also modify libraries, we include library places */
 	P_startup,
 	P_include,
-	P_library,
 	P_alt_library,	/* alternate library path */
 
 	P_LAST

@@ -980,6 +980,8 @@ count_stats(WN *w, INT32& bbs, INT32& stmts, FB_FREQ& cycles, FB_FREQ freq)
     /* count nscf stmts as bbs, not stmts */
     if (OPERATOR_is_non_scf(opr)) {
 	++bbs;
+	    if (freq.Known())
+	        cycles += freq;
     } else if (OPERATOR_is_stmt(opr)) {
 	if (OPERATOR_is_call(opr)) {
 	    ++bbs;
@@ -1195,3 +1197,252 @@ Count_tree_size (FEEDBACK& fb, WN *wn, INT32 &bbs, INT32 &stmts, FB_FREQ& cycles
   } 
 
 } // Count_tree_size 
+
+//INLINING_TUNING^
+static void 
+count_stats_tuning(WN *w, INT32& bbs, INT32& stmts, FB_FREQ& cycles, FB_FREQ freq, UINT32 &WNs, FB_FREQ &cycle_tuning)
+{
+
+    OPERATOR opr = OPCODE_operator(WN_opcode(w));
+
+    TYPE_ID rtype = OPCODE_rtype(WN_opcode(w));
+
+	if(freq.Known())
+	  cycle_tuning += freq;
+
+    /* count nscf stmts as bbs, not stmts */
+    if (OPERATOR_is_non_scf(opr)) {
+	++bbs;
+	    if (freq.Known())
+	        cycles += freq;
+    } else if (OPERATOR_is_stmt(opr)) {
+	if (OPERATOR_is_call(opr)) {
+	    ++bbs;
+	    if (freq.Known())
+	        cycles += freq;
+	} else if (opr == OPR_IO) {
+	    ++bbs;
+	    if (freq.Known())
+	        cycles += freq;
+	} else if (! OPERATOR_is_not_executable(opr)) {
+	    ++stmts;
+	    if (freq.Known())
+	        cycles += freq;
+	    if (MTYPE_is_complex(rtype) && OPERATOR_is_store(opr)) {
+	        if (freq.Known())
+		    cycles += freq;
+                ++stmts;
+            }
+	}
+    } else if (OPERATOR_is_scf(opr)) {
+	if (opr != OPR_BLOCK) {
+	    /* blocks are counted by parent node */
+	    ++bbs;
+	    if (freq.Known())
+	        cycles += freq;
+	}
+    } else if ((rtype == MTYPE_FQ || rtype == MTYPE_CQ) &&
+	       OPERATOR_is_expression(opr) &&
+	       !OPERATOR_is_load(opr) &&
+	       !OPERATOR_is_leaf(opr) ) {
+	/* quad operators get turned into calls */
+	++bbs;
+	if (freq.Known())
+	    cycles += freq;
+    } else if (opr == OPR_CAND || opr == OPR_CIOR) {
+	/* these may get expanded to if-then-else sequences,
+	 * or they may be optimized to logical expressions.
+	 * use the halfway average of 1 bb */
+	++bbs;
+	if (freq.Known())
+	    cycles += freq;
+    }
+
+}
+
+// When feedback info is available, count the "effective" number of basic
+// blocksand statements, i.e., those whose frequence is non-zero.
+void
+Count_tree_size_tuning (FEEDBACK& fb, WN *wn, INT32 &bbs, INT32 &stmts, FB_FREQ& cycles, FB_FREQ &freq_count, UINT16 &WNs, FB_FREQ &cycle_tuning )
+{
+#if 0
+    if (op != OPC_BLOCK && (OPCODE_is_scf (op) || OPCODE_is_stmt (op)))
+	if (WN_MAP32_Get (WN_MAP_FEEDBACK, w) == 0)
+	    return;
+#endif
+
+  static BOOL init_invoke_seen = FALSE;
+  static FB_FREQ init_invoke;
+
+  if (!init_invoke_seen)
+      init_invoke = freq_count;
+
+#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+  BOOL IPL_Enable_Unknown_Frequency = FALSE;
+#endif // _STANDALONE_INLINER
+
+  if (!freq_count.Known()) {
+      if (!IPL_Enable_Unknown_Frequency) {
+	  cycles = FB_FREQ_UNKNOWN;
+	  cycle_tuning = FB_FREQ_UNKNOWN;
+	  DevWarn ("Unknown frequency found in Count_tree_size_tuning, this should never happen");
+	  return;
+      } else 
+	  freq_count = init_invoke;
+  }
+	
+  if (wn) {
+    WN * wn2;
+
+	WNs++;
+	if(freq_count.Known())
+		cycle_tuning += freq_count;
+
+    switch (WN_operator(wn)) {
+
+    case OPR_BLOCK:
+      wn2 = WN_first(wn);
+      while (wn2) {
+	Count_tree_size_tuning(fb, wn2, bbs, stmts, cycles, freq_count, WNs, cycle_tuning);
+	wn2 = WN_next(wn2);
+      }
+      break;
+
+    case OPR_REGION:
+      Count_tree_size_tuning(fb, WN_region_body(wn), bbs, stmts, cycles, freq_count, WNs, cycle_tuning);
+      break;
+      
+    case OPR_IF:
+      {
+      Count_tree_size_tuning(fb, WN_if_test(wn), bbs, stmts, cycles, freq_count, WNs, cycle_tuning);
+      FB_Info_Branch info_branch = fb.Query_branch( wn );
+      if (!info_branch.freq_taken.Known() ||
+	  !info_branch.freq_not_taken.Known()) {
+	  if (!IPL_Enable_Unknown_Frequency) {
+	      cycles = FB_FREQ_UNKNOWN;
+	      cycle_tuning = FB_FREQ_UNKNOWN;
+	      DevWarn ("Unknown frequency found in IF, this should never happen");
+	      return;
+	  } else {
+	      info_branch.freq_taken = init_invoke;
+	      info_branch.freq_not_taken = init_invoke;
+	  }
+      }
+
+      if (WN_then(wn)) {
+	Count_tree_size_tuning(fb, WN_then(wn), bbs, stmts, cycles, info_branch.freq_taken, WNs, cycle_tuning);
+      }
+      if (WN_else(wn)) {
+	Count_tree_size_tuning(fb, WN_else(wn), bbs, stmts, cycles, info_branch.freq_not_taken, WNs, cycle_tuning);
+      }
+      break;
+      }
+
+    case OPR_DO_LOOP:
+      {
+      FB_Info_Loop fb_info = fb.Query_loop( wn );
+      if (!fb_info.freq_iterate.Known() ||
+	  !fb_info.freq_exit.Known()) {
+	  if (!IPL_Enable_Unknown_Frequency) {
+	      cycles = FB_FREQ_UNKNOWN;
+	      cycle_tuning = FB_FREQ_UNKNOWN;
+	      DevWarn ("Unknown frequency found in OPR_DO_LOOP, this should never happen");
+	      return;
+	  } else {
+	      fb_info.freq_iterate = init_invoke;
+	      fb_info.freq_exit = init_invoke;
+	  }
+      }
+      Count_tree_size_tuning(fb, WN_start(wn), bbs, stmts, cycles, freq_count, WNs, cycle_tuning);
+      Count_tree_size_tuning(fb, WN_step(wn), bbs, stmts, cycles, freq_count, WNs, cycle_tuning);
+      Count_tree_size_tuning(fb, WN_end(wn), bbs, stmts, cycles, freq_count, WNs, cycle_tuning);
+      Count_tree_size_tuning(fb, WN_do_body(wn), bbs, stmts, cycles, fb_info.freq_iterate, WNs, cycle_tuning);
+      freq_count = fb_info.freq_exit;
+      break;
+      }
+
+    case OPR_WHILE_DO:
+    case OPR_DO_WHILE:
+      {
+      Count_tree_size_tuning(fb, WN_while_test(wn), bbs, stmts, cycles, freq_count, WNs, cycle_tuning);
+      FB_Info_Loop fb_info = fb.Query_loop( wn );
+      if (!fb_info.freq_iterate.Known() ||
+	  !fb_info.freq_exit.Known()) {
+	  if (!IPL_Enable_Unknown_Frequency) {
+	      cycles = FB_FREQ_UNKNOWN;
+	      cycle_tuning = FB_FREQ_UNKNOWN;
+	      cycle_tuning = FB_FREQ_UNKNOWN;
+	      DevWarn ("Unknown frequency found in OPR_WHILE_DO/OPR_DO_WHILE, this should never happen");
+	      return;
+	  } else {
+	      fb_info.freq_iterate = init_invoke;
+	      fb_info.freq_exit = init_invoke;
+	  }
+      }
+      Count_tree_size_tuning(fb, WN_while_body(wn), bbs, stmts, cycles, fb_info.freq_iterate, WNs, cycle_tuning);
+      freq_count = fb_info.freq_exit;
+      break;
+      }
+
+    case OPR_SWITCH:
+    case OPR_COMPGOTO:
+    case OPR_XGOTO:
+      {
+      FB_Info_Switch fb_info =  fb.Query_switch( wn );
+      WN *targ_blk = WN_kid1(wn);
+      wn2 = WN_first(targ_blk);
+      INT t = WN_num_entries(wn) - 1;
+      for ( ; t >= 0; --t, wn2 = WN_next(wn2) ) {
+          if (!fb_info[t].Known()) {
+	      if (!IPL_Enable_Unknown_Frequency) {
+		  cycles = FB_FREQ_UNKNOWN;
+	      cycle_tuning = FB_FREQ_UNKNOWN;
+		  DevWarn ("Unknown frequency found in OPR_SWITCH/OPR_COMPGOTO/OPR_XGOTO, this should never happen");
+		  return;
+	      } else 
+		  fb_info[t] = init_invoke;
+	  }
+
+          Count_tree_size_tuning(fb, wn2, bbs, stmts, cycles, fb_info[t], WNs, cycle_tuning);
+      }
+      break;
+      }
+
+    case OPR_LABEL:
+      {
+      FB_Info_Invoke info_invoke = fb.Query_invoke( wn );
+      if (!info_invoke.freq_invoke.Known()) {
+	  if (!IPL_Enable_Unknown_Frequency) {
+	      cycles = FB_FREQ_UNKNOWN;
+	      cycle_tuning = FB_FREQ_UNKNOWN;
+	      DevWarn ("Unknown frequency found in OPR_LABEL, this should never happen");
+	      return;
+	  } else
+	      info_invoke.freq_invoke = init_invoke;
+      }
+
+      freq_count = info_invoke.freq_invoke;
+      break;
+      }
+
+    default: 
+    {
+      INT i;
+      for (i = 0; i < WN_kid_count(wn); i++) 
+	  {
+	    wn2 = WN_kid(wn,i);
+	    if (wn2) 
+		{
+	      Count_tree_size_tuning(fb, wn2, bbs, stmts, cycles, freq_count, WNs, cycle_tuning);
+	    }
+      }
+     }//default
+    }//switch
+
+    count_stats (wn, bbs, stmts, cycles, freq_count);
+	
+  } //if(wn)
+
+} // Count_tree_size_tuning 
+
+//INLINING_TUNING$

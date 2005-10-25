@@ -57,6 +57,8 @@ extern int create_tmpdir ( int tracing );
 
 extern string create_unique_file (string, char);
 
+extern string create_tmp_file (string);
+
 extern string *get_command_line (an_object_file_ptr, string, string, int *);
 
 extern int make_link (const string, const string);

@@ -119,7 +119,8 @@ extern TARGET_ABI Target_ABI;
  */
 typedef enum {
   TARGET_UNDEF,		/* Undefined */
-  TARGET_ITANIUM	/* Intel Itanium */
+  TARGET_ITANIUM,	/* Intel Itanium */
+  TARGET_ITANIUM2	/* Intel Itanium 2*/
 } TARGET_PROCESSOR;
 
 extern TARGET_PROCESSOR Target;		/* -Tc */
@@ -127,7 +128,7 @@ extern TARGET_PROCESSOR Target;		/* -Tc */
 /* return the target name for <target> */
 extern char *Targ_Name (TARGET_PROCESSOR target);
 
-#define Is_Target_Itanium()	(Target==TARGET_ITANIUM)
+#define Is_Target_Itanium()	(Target==TARGET_ITANIUM || Target==TARGET_ITANIUM2)
 
 
 /* ========== */

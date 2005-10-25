@@ -274,7 +274,7 @@ STR_RED::Matches_lhs( const CODEREP *lhs, const CODEREP *rhs ) const
 // case, and less tolerant in the latter.
 //======================================================================
 
-#define INJURY_USE_FREQ_CUTOFF_RATIO 2.0
+#define INJURY_USE_FREQ_CUTOFF_RATIO 2.5
 
 BOOL
 STR_RED::Update_happens_rarely_enough(      BB_NODE *update_bb,

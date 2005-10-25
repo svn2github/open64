@@ -2064,6 +2064,10 @@ void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
   } else if (WN_opcode(wn) == OPC_I8I4CVT) {
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
+  } else if (Allow_wrap_around_opt &&
+              (WN_operator(wn) == OPR_CVT || 
+               WN_operator(wn) == OPR_CVTL) ) {
+    Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
   } else {
     Too_Messy = TRUE;
   }

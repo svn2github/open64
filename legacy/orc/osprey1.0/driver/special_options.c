@@ -178,6 +178,11 @@ set_defaults (void)
 			prepend_option_seen(O_call_shared);
 		}
 	}
+        else if(shared != CALL_SHARED)
+        {
+            flag = add_string_option(O_OPT_, "Olegacy=TRUE");
+            add_option_seen(flag);
+        }
 #ifndef linux
 	if (shared != NON_SHARED) {
 		prepend_option_seen(O_cpp_pic);

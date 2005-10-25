@@ -79,8 +79,7 @@ static PLATFORM_OPTIONS PF_Opts[] =
   /* This is the default -- it must be first.  Nickname is used for
    * default warning messages:
    */
-  { IP0, "ip??", "itanium", PROC_ITANIUM, "Itanium" },
-
+  { IP0, "it1", "itanium", PROC_ITANIUM, "Itanium" },
   { IP_END,	"",	"",	PROC_NONE, "End of list" } /* Must be last */
 };
 

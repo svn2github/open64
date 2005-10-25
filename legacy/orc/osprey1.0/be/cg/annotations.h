@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -219,6 +219,7 @@ struct ROTATING_KERNEL_INFO {
   REGISTER_SET kill[ISA_REGISTER_CLASS_MAX+1];
   vector<struct tn *> copyin;
   vector<struct tn *> copyout;
+  vector<struct tn *> localdef;
 };
 
 #define ROTATING_KERNEL_INFO_succeeded(x)     ((x)->succeeded)
@@ -235,6 +236,7 @@ struct ROTATING_KERNEL_INFO {
 #define ROTATING_KERNEL_INFO_res_counts(x)    ((x)->res_counts)
 #define ROTATING_KERNEL_INFO_copyin(x)        ((x)->copyin)
 #define ROTATING_KERNEL_INFO_copyout(x)       ((x)->copyout)
+#define ROTATING_KERNEL_INFO_localdef(x)      ((x)->localdef)
 
 
 typedef struct asminfo {

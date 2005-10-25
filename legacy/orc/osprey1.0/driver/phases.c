@@ -51,6 +51,7 @@
 #include "run.h"
 #include "objects.h"
 #include "opt_actions.h"
+#include "profile_type.h"    /* for PROFILE_TYPE */
 
 string outfile = NULL;		/* from -o <outfile> */
 string prof_file = NULL;	/* executable file for prof to work upon */
@@ -239,6 +240,28 @@ char *dirname(char *const s)
 
 
 static string input_source ;	/* src to next phase */
+
+static void
+specify_dyn_linker (string_list_t *args) {
+        if (shared == CALL_SHARED) {
+                add_string(args, "-dynamic-linker");
+                add_string(args, dynamic_linker);
+        }
+}
+
+#ifdef CROSS_COMPILATION
+
+static void
+add_rpath_link_option (string_list_t *args) {
+	
+	if (shared == CALL_SHARED) {
+    		
+		add_string (args,"-rpath-link");
+                add_string (args,get_phase_dir(P_alt_library));
+	}
+}
+
+#endif /* CROSS_COMPILE */
 
 static void
 add_file_args (string_list_t *args, phases_t index)
@@ -748,8 +771,7 @@ add_file_args (string_list_t *args, phases_t index)
 		 * Because the path to collect2 varies, 
 		 * just invoke gcc to do the link. */
 
-		/* add lib paths for standard libraries like libgcc.a */
-		append_libraries_to_list (args);
+        append_implicit_lib_path_to_lst (args);
 		if (outfile != NULL) {
 			add_string(args, "-o");
 			add_string(args, outfile);
@@ -763,13 +785,14 @@ add_file_args (string_list_t *args, phases_t index)
 		if (show_version) {
 			add_string(args, "-V");
 		}
-		/* add lib paths for standard libraries */
-		append_libraries_to_list (args);
+
+		append_implicit_lib_path_to_lst (args);
 
 		/* -shared only adds user objects, no predefined stuff */
 		if ((shared != DSO_SHARED) && (shared != RELOCATABLE)
-		    && ! option_was_seen(O_nostartfiles)) 
-		{
+		    && ! option_was_seen(O_nostartfiles) 
+		    && ! option_was_seen(O_nostdlib)) {
+		
 			add_string(args, find_crt_path("crt1.o"));
 			add_string(args, find_crt_path("crti.o"));
 			add_string(args, find_crt_path("crtbegin.o"));
@@ -781,19 +804,22 @@ add_file_args (string_list_t *args, phases_t index)
 			add_string(args, "-o");
 			add_string(args, outfile);
 		}
-		if (instrumentation_invoked == TRUE) {
+
+		if (instrumentation_invoked && index != P_collect) {
 		  if (fb_file != NULL) 
 		       sprintf(buf, "-IPA:propagate_feedback_file=%s", fb_file);
 		  else if (outfile != NULL)
 		       sprintf (buf, "-IPA:propagate_feedback_file=%s", outfile);
-                  else
+		  else
 		       sprintf (buf, "-IPA:propagate_feedback_file=a.out");
-		  add_string(args,buf);
-               } 
-	       if (opt_file != NULL){
-                        sprintf(buf, "-IPA:propagate_annotation_file=%s", opt_file);
-                  	add_string(args,buf);
-	       }
+	         add_string(args,buf);
+		}
+		if (opt_file != NULL && index != P_collect){
+			sprintf(buf, "-IPA:propagate_annotation_file=%s", opt_file);
+			add_string(args,buf);
+		}
+
+
 		/* object file should be in list of options */
 		break;
 	case P_cord:
@@ -886,6 +912,7 @@ add_file_args (string_list_t *args, phases_t index)
 static void
 add_final_ld_args (string_list_t *args)
 {
+
 	/* add -l libs and ending crt files */
 	if ((!option_was_seen(O_nodefaultlibs)) && (shared != RELOCATABLE)) {
 	    if (invoked_lang == L_f90) {
@@ -900,7 +927,8 @@ add_final_ld_args (string_list_t *args)
 		add_string(args, "-lmp");
 	    }
 	}
-	if (ipa == TRUE) {
+
+	if (ipa) {
 	    	if (invoked_lang == L_CC) {
 			add_string(args, "-lstdc++");
 			add_string(args, "-lm");
@@ -908,12 +936,14 @@ add_final_ld_args (string_list_t *args)
 		add_string(args, "-lgcc");
 		add_string(args, "-lc");
 		add_string(args, "-lgcc");
-		if ((shared != DSO_SHARED) && (shared != RELOCATABLE)
-			&& ! option_was_seen(O_nostartfiles)) 
-		{
-			add_string(args, find_crt_path("crtend.o"));
-			add_string(args, find_crt_path("crtn.o"));
-		}
+        }
+
+	if ((shared != DSO_SHARED) && (shared != RELOCATABLE)
+	        && ! option_was_seen(O_nostartfiles)
+		&& ! option_was_seen(O_nostdlib))
+        {
+	        add_string(args, find_crt_path("crtend.o"));
+		add_string(args, find_crt_path("crtn.o"));
 	}
 }
 
@@ -1270,6 +1300,35 @@ check_existence_of_phases (void)
     }
 }
 
+static void
+add_instr_archieve (string_list_t* args) {
+
+	extern int profile_type;
+
+	/* Add instrumentation archieves */
+	if (instrumentation_invoked != UNDEFINED && instrumentation_invoked) {
+
+	  unsigned long f = WHIRL_PROFILE | CG_EDGE_PROFILE | CG_VALUE_PROFILE |
+                CG_STRIDE_PROFILE ;
+	  if (!(profile_type & ~f)) {
+	    if (profile_type & (CG_EDGE_PROFILE | CG_EDGE_PROFILE | 
+	                        CG_VALUE_PROFILE | CG_STRIDE_PROFILE)) {
+          add_string (args,"-lcginstr");
+	    }
+
+	    if (profile_type & WHIRL_PROFILE) {
+          add_string (args, "-linstr");
+	    }
+
+	    add_string (args, "-lstdc++");
+
+	  } else {
+	    fprintf (stderr, "Unknown profile types %#lx\n", profile_type & ~f);
+	  }
+
+	}
+}
+
 extern void
 init_phase_info (void)
 {
@@ -1286,24 +1345,13 @@ init_phase_info (void)
 		/* add toolroot as prefix to phase dirs */
                 prefix_all_phase_dirs(PHASE_MASK, toolroot);
 	}
+
 	comp_target_root = getenv("COMP_TARGET_ROOT");
 	if (comp_target_root != NULL) {
 		/* add comp_target_root as prefix to phase dirs */
                 prefix_all_phase_dirs(LIB_MASK, comp_target_root);
 	}
 
-	/* check whether gcc exists */
-	if (!file_exists (get_full_phase_name(P_ld))) {
-		if (file_exists("/usr/local/bin/gcc")) {
-			set_phase_dir (get_phase_mask(P_gcpp), "/usr/local/bin");
-			set_phase_dir (get_phase_mask(P_gcpp_plus), "/usr/local/bin");
-			set_phase_dir (get_phase_mask(P_ld), "/usr/local/bin");
-			set_phase_dir (get_phase_mask(P_ldplus), "/usr/local/bin");
-		}
-		else {
-			warning ("can't find %s/%s", get_phase_dir(P_ld), get_phase_name(P_ld));
-		}
-	}
 }
 
 extern void
@@ -1315,7 +1363,6 @@ run_dsm_prelink(void)
  	run_phase(P_dsm_prelink, get_full_phase_name(P_dsm_prelink), args);
 }
 
-
 extern void
 run_ld (void)
 {
@@ -1326,11 +1373,8 @@ run_ld (void)
 	if (ipa == TRUE) {
 		ldphase = P_ipa_link;
 	}
-	else if (invoked_lang == L_CC) {
-		ldphase = P_ldplus;
-	}
 	else {
-		ldphase = P_ld;
+                ldphase = P_collect;
 	}
 
 	if (ipa == TRUE) {
@@ -1340,7 +1384,6 @@ run_ld (void)
 		error ("ipa.so is not installed on %s", get_phase_dir (ldphase));
 		return;
 	    }
-	    init_crt_paths ();
 	}
 	ldpath = get_full_phase_name(ldphase);
 
@@ -1356,12 +1399,18 @@ run_ld (void)
 	    if (!multiple_source_files && !((shared == RELOCATABLE) && (ipa == TRUE) && (outfile == NULL)) && !keep_flag)
 		mark_saved_object_for_cleanup();
 	}
+        specify_dyn_linker (args);
+#ifdef CROSS_COMPILATION
+	add_rpath_link_option (args);	
+#endif 
 	add_file_args (args, ldphase);
 
 	if (shared == RELOCATABLE && source_file != NULL)
-	    add_string(args, construct_given_name(source_file,"o",((outfile == NULL))? TRUE: keep_flag));
+	    add_string (args, construct_given_name(source_file,"o",((outfile == NULL))? TRUE: keep_flag));
   	else
 	    append_objects_to_list (args);
+
+    add_instr_archieve (args);
 
 	add_final_ld_args (args);
 	run_phase (ldphase, ldpath, args);

@@ -119,6 +119,7 @@ SCRIPTSDIR = $(INSTALLDIR)/scripts
 ifneq ($(HOSTTYPE), WINNT)
    DATE  := $(shell date "+%d-%m-%y, %H:%M")
    UNAME := $(shell uname)
+   HOSTTYPE := $(shell uname -m)
 endif # of WINNT
 
 
@@ -140,7 +141,11 @@ ifeq ($(HOSTTYPE), i386)
 endif
 
 ifeq ($(HOSTTYPE), i486)
-    HOSTTYPE := UNIX386
+    HOSTTYPE := i486-linux
+endif
+
+ifeq ($(HOSTTYPE), i686)
+    HOSTTYPE := i486-linux
 endif
 
 ifeq ($(HOSTTYPE), iAPX386)
@@ -204,13 +209,13 @@ ifeq ($(OSTYPE), svr5)
 else
     OS_DIR    = svr4
     SYS       = -DSVR4 -DUNIX
-    GCC_BIN       = /usr/local/bin/gcc
-    CC_BIN    = /usr/bin/cc
-    RGCC_BIN  = /usr/topgun/bin/rgcc
-    AWK_BIN       = /usr/bin/nawk
-    AS_BIN    = /usr/bin/as
-    LD_BIN    = /usr/bin/ld
-    YACC_BIN  = /usr/bin/yacc
+    GCC_BIN   = gcc
+    CC_BIN    = cc
+    RGCC_BIN  = rgcc
+    AWK_BIN   = nawk
+    AS_BIN    = as
+    LD_BIN    = ld
+    YACC_BIN  = yacc
     GCC_WARN  = -Wall -Wshadow -Wpointer-arith -Wcast-align \
                 -Wconversion -Wmissing-prototypes -Wnested-externs
     GCC_FLAGS = -m486
@@ -225,13 +230,13 @@ else
     AS_FLAGS  =
     LD_FLAGS  = -r
     YC_FLAGS  = -d -v
-    AR_BIN    = /usr/bin/ar
-    CP_BIN    = /usr/bin/cp
-    LN_BIN    = /usr/bin/ln
-    MV_BIN    = /usr/bin/mv
-    RM_BIN    = /usr/bin/rm
-    CHMOD_BIN = /usr/bin/chmod
-    STRIP_BIN = /usr/bin/strip
+    AR_BIN    = ar
+    CP_BIN    = cp
+    LN_BIN    = ln
+    MV_BIN    = mv
+    RM_BIN    = rm
+    CHMOD_BIN = chmod
+    STRIP_BIN = strip
     AWK       = gawk
     AS_FLAGS = -n
 #    GCC_O_WS = -Wmissing-prototypes
@@ -241,17 +246,17 @@ ifeq ($(HOSTTYPE), i386-linux)
     OS_DIR    = linux
     SYS       = -DSVR4 -DUNIX
 #   GCC_BIN   = /usr/cygnus/redhat-980810/H-i386-pc-linux-gnu/bin/gcc
-    GCC_BIN   = /usr/bin/gcc
+    GCC_BIN   = gcc
 #   CC_BIN    = /usr/cygnus/redhat-980810/H-i386-pc-linux-gnu/bin/gcc
-    CC_BIN    = /usr/bin/cc
+    CC_BIN    = cc
     RC_CC     = $(CC_BIN)
 #   CC_BIN    = /usr/bin/gcc
-    PERL      = /usr/bin/perl
-    RGCC_BIN  = /usr/topgun/bin/rgcc
-    AWK_BIN   = /usr/bin/nawk
-    AS_BIN    = /usr/bin/as
-    LD_BIN    = /usr/bin/ld
-    YACC_BIN  = /usr/bin/yacc
+    PERL      = perl
+    RGCC_BIN  = rgcc
+    AWK_BIN   = nawk
+    AS_BIN    = as
+    LD_BIN    = ld
+    YACC_BIN  = yacc
     GCC_WARN  = -Wall -Wshadow -Wpointer-arith -Wcast-align \
                 -Wconversion -Wmissing-prototypes -Wnested-externs
     GCC_FLAGS = -m486
@@ -266,30 +271,30 @@ ifeq ($(HOSTTYPE), i386-linux)
     AS_FLAGS  =
     LD_FLAGS  = -r
     YC_FLAGS  = -d -v
-    AR_BIN    = /usr/bin/ar
-    CP_BIN    = /bin/cp
-    LN_BIN    = /bin/ln
-    MV_BIN    = /bin/mv
-    RM_BIN    = /bin/rm
-    CHMOD_BIN = /bin/chmod
-    STRIP_BIN = /usr/bin/strip
+    AR_BIN    = ar
+    CP_BIN    = cp
+    LN_BIN    = ln
+    MV_BIN    = mv
+    RM_BIN    = rm
+    CHMOD_BIN = chmod
+    STRIP_BIN = strip
     AWK       = gawk
     AS_FLAGS  = -n
-    CO	      = /usr/bin/co
-    CI	      = /usr/bin/ci
+    CO	      = co
+    CI	      = ci
 else
 ifeq ($(HOSTTYPE), i486-linux)
     OS_DIR    = linux
-    PERL      = /usr/bin/perl
+    PERL      = perl
     SYS       = -DSVR4 -DUNIX
-    GCC_BIN   = /usr/bin/gcc
-    CC_BIN    = /usr/bin/gcc
+    GCC_BIN   = gcc
+    CC_BIN    = gcc
     RC_CC     = $(CC_BIN)
-    RGCC_BIN  = /usr/topgun/bin/rgcc
-    AWK_BIN   = /usr/bin/nawk
-    AS_BIN    = /usr/bin/as
-    LD_BIN    = /usr/bin/ld
-    YACC_BIN  = /usr/bin/yacc
+    RGCC_BIN  = rgcc
+    AWK_BIN   = nawk
+    AS_BIN    = as
+    LD_BIN    = ld
+    YACC_BIN  = yacc
     GCC_WARN  = -Wall -Wshadow -Wpointer-arith -Wcast-align \
                 -Wconversion -Wmissing-prototypes -Wnested-externs
     GCC_FLAGS = -m486
@@ -304,17 +309,17 @@ ifeq ($(HOSTTYPE), i486-linux)
     AS_FLAGS  =
     LD_FLAGS  = -r
     YC_FLAGS  = -d -v
-    AR_BIN    = /usr/bin/ar
-    CP_BIN    = /bin/cp
-    LN_BIN    = /bin/ln
-    MV_BIN    = /bin/mv
-    RM_BIN    = /bin/rm
-    CHMOD_BIN = /bin/chmod
-    STRIP_BIN = /usr/bin/strip
+    AR_BIN    = ar
+    CP_BIN    = cp
+    LN_BIN    = ln
+    MV_BIN    = mv
+    RM_BIN    = rm
+    CHMOD_BIN = chmod
+    STRIP_BIN = strip
     AWK       = gawk
     AS_FLAGS  = -n
-    CO	      = /usr/intel/bin/co
-    CI	      = /usr/intel/bin/ci
+    CO	      = co
+    CI	      = ci
 else
 ifeq ($(HOSTTYPE), PARISC)
     OS_DIR    = $(MACHINE)

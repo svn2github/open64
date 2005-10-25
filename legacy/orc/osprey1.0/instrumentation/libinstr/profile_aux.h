@@ -56,7 +56,7 @@
 
 #include <vector.h>
 #include <hash_map.h>
-
+#include <fb_tnv.h>
 
 // ====================================================================
 
@@ -125,6 +125,10 @@ struct Call_Profile {
    Call_Profile() : entry_count(0), exit_count(0) {}
 };
 
+struct Icall_Profile {
+	FB_TNV fb_tnv;
+};
+
 // All the information about a DO LOOP or WHILE LOOP is stored
 // in the Loop_Profile structure.
 
@@ -188,6 +192,7 @@ typedef vector<Compgoto_Profile>	Compgoto_Profile_Vector;
 typedef vector<Loop_Profile>		Loop_Profile_Vector;
 typedef vector<Short_Circuit_Profile>	Short_Circuit_Profile_Vector;
 typedef vector<Call_Profile>		Call_Profile_Vector;
+typedef vector<Icall_Profile>		Icall_Profile_Vector;
 
 struct PU_Profile_Handle {
     Invoke_Profile_Vector	Invoke_Profile_Table;
@@ -197,14 +202,17 @@ struct PU_Profile_Handle {
     Loop_Profile_Vector		Loop_Profile_Table;
     Short_Circuit_Profile_Vector Short_Circuit_Profile_Table;
     Call_Profile_Vector		Call_Profile_Table;
+    Icall_Profile_Vector	Icall_Profile_Table;
 
     INT32 checksum;
     char *file_name;
     char *pu_name;
+    INT32 pu_size;
+    UINT64 runtime_fun_address;
 
     PU_Profile_Handle() : checksum(0) {}
     
-    PU_Profile_Handle(char *fname, char *pname, INT32 c_sum) {
+    PU_Profile_Handle(char *fname, char *pname, long current_pc, INT32 pusize, INT32 c_sum) {
 	checksum = c_sum;
 	file_name = new char[strlen(fname) + 1];
 	pu_name = new char[strlen(pname) + strlen("/") + strlen(fname) + 1];
@@ -212,6 +220,8 @@ struct PU_Profile_Handle {
 	strcpy(pu_name, fname);
 	strcat(pu_name,"/");
 	strcat(pu_name,pname);
+	pu_size = pusize;
+	runtime_fun_address = current_pc;
     }
 
     ~PU_Profile_Handle() {
@@ -246,6 +256,11 @@ struct PU_Profile_Handle {
     Call_Profile_Vector& Get_Call_Table () {
 	return Call_Profile_Table;
     }
+
+    Icall_Profile_Vector& Get_Icall_Table () {
+	return Icall_Profile_Table;
+    }
+
 
     void Set_file_name(char *s);
     void Set_pu_name(char *s);

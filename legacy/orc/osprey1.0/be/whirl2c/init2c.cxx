@@ -92,7 +92,7 @@ TCON_For_Initv(INITV_IDX initv)
          tcon = INITV_tc_val(Initv_Table[initv]);
          break;
       default:
-         Is_True(FALSE, ("Unexpected initv kind in TCON_For_Initv()"));
+         Is_True(FALSE, ("Unexpected initv kind %d in TCON_For_Initv()",INITV_kind(initv)));
          break;
    }
    return tcon;
@@ -117,8 +117,19 @@ INITV2C_translate(TOKEN_BUFFER tokens,
 		  TY_IDX       ty, 
 		  INITV_IDX    initv); /* Defined below */
 
-
-static void
+/*Some data structure maybe partially initialized, such as array of char:
+ * char a[10]="hello";
+ * 
+ * struct s{
+ *    int a,b;
+ * }x={1};//b is not initialized.
+ * 
+ * So that the INIT value will include some padding data.
+ * But it seems the padding may be ignored if it is the last field.
+ * There's no return value for INITV2C_symoff and INITV2C_val in original version.
+ * Now they return an INT value which tells how much padding is needed after the field.
+ */
+static INT
 INITV2C_symoff(TOKEN_BUFFER tokens, 
 	       TY_IDX       ty, 
 	       INITV_IDX    initv)
@@ -221,7 +232,10 @@ INITV2C_symoff(TOKEN_BUFFER tokens,
 					INITV_ofst(Initv_Table[initv]));
 	 if (!fld_info.found_fld.Is_Null ())
 	 {
-	    Append_Token_Special(tmp_tokens, '.');
+            Append_Token_Special(tmp_tokens, '.');
+	    if(FLD_is_bit_field(fld_info.found_fld)){
+	        Append_Token_String(tmp_tokens,"####Bitfield init not support####");
+	    }
 	    Append_And_Reclaim_Token_List(tmp_tokens, &fld_info.select_tokens);
 	 }
       }
@@ -249,10 +263,11 @@ INITV2C_symoff(TOKEN_BUFFER tokens,
       }
    }
    Append_And_Reclaim_Token_List(tokens, &tmp_tokens);
+   return 0;
 } /* INITV2C_symoff */
 
 
-static void
+static INT
 INITV2C_val(TOKEN_BUFFER tokens,
 	    TY_IDX       ty, 
 	    INITV_IDX    initv)
@@ -281,9 +296,284 @@ INITV2C_val(TOKEN_BUFFER tokens,
 
    /* Translate the constant value */
    TCON2C_translate(tokens, tcon);
+
+   /* patch for deal with special PADDING AFTER ARRAY OF CHARS*/
+   if(TY_Is_Array_Of_Chars(ty)&&TCON_ty(tcon)==MTYPE_STR)
+   {
+       return TY_size(ty)-Targ_String_Length(tcon);
+   }
+   return 0;
 } /* INITV2C_val */
 
+/*function to return the repeat count of an initv
+ * The INITV_repeat could not deal with INITVKIND_PAD correctly.*/
+static INT INITV_repeat_for_all(INITV_IDX initv)
+{
+     if(INITV_kind(initv)!=INITVKIND_PAD)
+         return INITV_repeat(initv);
+     else
+         return INITV_pad(initv);
+}
 
+/*If all values in an initv has been used,
+ * move to the next initv.*/
+static INITV_IDX
+INITV_check_with_repeat(INITV_IDX initv,
+                       INT& repeat)
+{
+        INT initv_repeat = INITV_repeat_for_all(initv);
+        Is_True(repeat<=initv_repeat,("repeat counter out of range"));
+        while(initv&&initv_repeat==repeat)
+        {
+           initv = INITV_next(initv);
+           if(initv)
+               initv_repeat = INITV_repeat_for_all(initv);
+           repeat = 0;
+        }
+        return initv;
+}
+
+static INITV_IDX INITV2C_vals(TOKEN_BUFFER,TY_IDX,INITV_IDX,INT&);
+
+/*INIT for an array store in an INITV whose kind is not INITVKIND_BLOCK
+ * an array or structure may be stored in kind of
+ * INITVKIND_BLOCK or list of INITVKIND_* */
+static INITV_IDX
+INITV2C_array_vals(TOKEN_BUFFER tokens,
+                   TY_IDX ty,
+                   INITV_IDX initv,
+                   INT& repeat
+)
+{
+     Is_True(TY_Is_Array(ty),("Invalid array type %d",ty));
+
+     Append_Token_Special(tokens,'{');
+
+     INT i;
+     BOOL first_element = TRUE;
+
+     /*Get the count of elements in the array.*/
+     INT count = TY_size(ty)/TY_size(TY_AR_etype(ty));
+
+     for(i=0;i<count;++i)
+     {
+	   /*An array may be not fully initialized, 
+	    * The initv may be 0 if there's no initialization after it
+	    * Otherwise there should be a padding with enough padding size*/
+           if(INITV_kind(initv)==INITVKIND_PAD){
+              repeat+=(count-i)*TY_size(TY_AR_etype(ty));
+              Is_True(repeat<=INITV_repeat_for_all(initv),
+                    ("Not enough PAD to skip initialization of array [%d]",
+                    TY_IDX_index(ty)));
+              break;
+           }
+           else{
+             if(!first_element)
+             {
+               Append_Token_Special(tokens,',');
+             }
+             initv = INITV2C_vals(tokens, TY_AR_etype(ty),initv, repeat);
+             first_element=FALSE;
+           }
+          
+           if(initv==0)
+           {
+                   DevWarn("Initialization of array [%d] not finished.",
+                          TY_IDX_index(ty));
+                   break;
+           }
+       }
+
+       Append_Token_Special(tokens,'}');\
+
+       initv=INITV_check_with_repeat(initv,repeat);
+
+       return initv;
+}
+
+static INITV_IDX
+INITV2C_struct_vals(TOKEN_BUFFER tokens,
+            TY_IDX       ty,
+            INITV_IDX    initv,
+            INT&         repeat
+)
+{
+        Is_True(TY_Is_Structured(ty),("Structured type expected"));
+        Is_True(TY_Is_Struct(ty), ("Cannot initilize Union [%d]",
+                                 TY_IDX_index(ty)));
+
+        Append_Token_Special(tokens,'{');
+       
+        FLD_ITER iter = Make_fld_iter( TY_fld(ty) ); 
+        BOOL first_field=TRUE;
+        INT offset=0;
+        INT max_alignment=1;
+	/*The alignment size of a structure should be 
+	 * the max alignment size of all of its fields
+	 * TY_align(ty) is not used because it has returned 
+	 * a wrong value in one SPEC2000 benchmark.
+	 * There maybe some padding between two fields 
+	 * because each field must be aligned by its alignment size*/
+        do
+        {
+	   FLD_HANDLE f(iter);
+            if(FLD_is_bit_field(f)){
+	        Append_Token_String(tokens,"####Bitfield init not support####");
+	    }
+	    
+           if(TY_align(iter->type)>max_alignment)
+               max_alignment=TY_align(iter->type);
+
+	   /*If (not alligned). The code is same as if(offset % TY_align(iter->type) !=0)
+	   * since TY_align(iter->type) is always power of 2*/
+           if(offset&(TY_align(iter->type)-1) )
+           {
+                //If there should be some padding betwwen two fields
+                FmtAssert(INITV_kind(initv)==INITVKIND_PAD,
+				("PADDING for data alignment in structure lost [%d]",ty));
+
+		//Need TY_algin(iter->type) - offset%TY_align(iter->type) bytes
+		//for alignment, where offset%TY_align(iter->type)!=0
+                repeat += TY_align(iter->type) - 
+                         (offset&(TY_align(iter->type)-1));
+
+		//If iter is the last field, there maybe not enough padding data
+                if(repeat>INITV_repeat_for_all(initv))
+                {
+                     initv=INITV_next(initv);
+                     Is_True(initv==0,
+                         ("Not enough PADDING for data alignment "
+                           "in structure [%d]",TY_IDX_index(ty)));
+                     break;
+                }
+                initv = INITV_check_with_repeat(initv, repeat);
+
+                offset+= TY_align(iter->type) -
+                         (offset&(TY_align(iter->type)-1));
+           }
+
+           if(INITV_kind(initv)==INITVKIND_PAD)
+           {//If the field is not initialized, padding data will be needed if it is not last field
+               if(repeat+TY_size(iter->type)>INITV_repeat_for_all(initv))
+               {
+                  initv=INITV_next(initv);
+                  Is_True(initv==0,("Not enough PAD to skip initialization "
+                       "for field of structure [%d]",TY_IDX_index(ty)));
+                  break;
+               }
+               repeat+=TY_size(iter->type);
+               offset+=TY_size(iter->type);
+               initv=INITV_check_with_repeat(initv,repeat);
+           }
+           else
+           {
+               if(initv==0){
+                    DevWarn("Data not enough to  initialized structure [%d]",
+                         TY_IDX_index(ty));
+                    break;
+               }
+               if(!first_field)
+               {
+                  Append_Token_Special(tokens,',');
+               }
+               initv = INITV2C_vals(tokens, iter->type,initv,repeat);
+               first_field = FALSE;
+               offset+=TY_size(iter->type);
+            }
+        }while(!FLD_last_field(iter++));
+
+	//Padding used for alignment of the structure
+        if(initv&&(offset & (max_alignment-1)) )
+        {
+              //Get rid of padding for the structure;
+                //If there should be some padding betwwen two fields
+                Is_True(INITV_kind(initv)==INITVKIND_PAD,
+                       ("PADDING for data alignment in structure lost [%d]",
+                         TY_IDX_index(ty)));
+                repeat += max_alignment -
+                         (offset&(max_alignment-1));
+                Is_True(repeat<=INITV_repeat_for_all(initv),
+                   ("Not enough PADDING for data alignment in structure [%d]",
+                   TY_IDX_index(ty)));
+        }
+
+        Append_Token_Special(tokens,'}');
+
+        initv = INITV_check_with_repeat(initv, repeat);
+
+        return initv;
+ 
+}
+
+static INITV_IDX
+INITV2C_scalar_vals(TOKEN_BUFFER tokens,
+            TY_IDX       ty,
+            INITV_IDX    initv,
+            INT&         repeat
+)
+{
+       INT pad_needed=0;
+       switch(INITV_kind(initv)){
+       case INITVKIND_ZERO:
+       case INITVKIND_ONE:
+       case INITVKIND_VAL:
+           pad_needed=INITV2C_val(tokens,ty,initv);
+           break;
+       case INITVKIND_SYMOFF:
+           pad_needed=INITV2C_symoff(tokens, ty, initv);
+           break;
+       default:
+           Is_True(FALSE,("Invalid INITV_kind %d",INITV_kind(initv)));
+       }
+       ++repeat;
+       initv=INITV_check_with_repeat(initv,repeat);
+
+       if(pad_needed>0&&initv!=0)
+       {//skip padding if padding needed for the symoff.
+           Is_True(INITV_kind(initv)==INITVKIND_PAD,
+               ("Padding cannot be founded for not full"
+                 " initialized char array"));
+
+           if(repeat+pad_needed>INITV_repeat_for_all(initv))
+           {
+               Is_True(INITV_next(initv)==0,
+                 ("Padding is not enough for not full initialized char array"));
+               initv=0;
+               repeat=0;
+           }
+           else
+           {
+              repeat+=pad_needed;
+              initv = INITV_check_with_repeat(initv, repeat);
+           }
+       }
+       return initv;
+ 
+}
+
+static INITV_IDX
+INITV2C_vals(TOKEN_BUFFER tokens,
+            TY_IDX       ty,
+            INITV_IDX    initv,
+            INT&         repeat
+)
+{
+    if(TY_Is_Array(ty)&&(!TY_Is_Array_Of_Chars(ty)||
+           TCON_ty(TCON_For_Initv(initv))!=MTYPE_STR))
+    {
+        return INITV2C_array_vals(tokens, ty, initv, repeat);
+    }
+    else if(TY_Is_Structured(ty))
+    {
+        return INITV2C_struct_vals(tokens, ty, initv, repeat);
+    }
+    else
+    {
+       return INITV2C_scalar_vals(tokens, ty, initv, repeat);
+    }
+}
+
+/*Translating of INITVs in an array whose kind is INITVKIND_BLOCK */
 static void
 INITV2C_array_dimension(TOKEN_BUFFER tokens,
 			TY_IDX       etype, 
@@ -311,7 +601,9 @@ INITV2C_array_dimension(TOKEN_BUFFER tokens,
 	    /* Avoid preceeding the first initializer with a comma */
 	    if (inv != next_initv || repeat < INITV_repeat(inv))
 	       Append_Token_Special(tokens, ',');
-	    
+
+	    /*Now List of INITVs could be translated by INITV2C_translate */
+#if 0	    
 	    if (this_dim < num_dims &&
                 INITV_kind(Initv_Table[inv]) == INITVKIND_BLOCK)
 	       INITV2C_array_dimension(tokens, 
@@ -320,6 +612,7 @@ INITV2C_array_dimension(TOKEN_BUFFER tokens,
 				       this_dim+1,
 				       num_dims);
 	    else
+#endif
 	       INITV2C_translate(tokens, etype, inv);
 	 } /* if */
       } /* for */
@@ -538,16 +831,22 @@ INITV2C_block_struct(TOKEN_BUFFER tokens,
 	   !fld.Is_Null () && inv != 0; 
 	   fld = FLD_next(fld))
       {
-	 if (FLD_ofst(fld) >= local_offset)
+	 /*The original whirl2c will skip definition of some fields so that
+	  some extra code here needed to skip the initialization for them.
+	  Now we could remove them */
+//	 if (FLD_ofst(fld) >= local_offset)
 	 {
 	    /* This field does not overlap any previous fields.
 	     */
+#if 0
 	    fld_info = TY2C_get_field_info(ty,
 					   FLD_type(fld),
 					   MTYPE_V,
 					   FLD_ofst(fld));
 	    if (!fld_info.found_fld.Is_Null ())
+#endif
 	    {
+#if 0
 	       /* This field is declared in the C output.
 		*/
 	       Reclaim_Token_Buffer(&fld_info.select_tokens);
@@ -563,6 +862,7 @@ INITV2C_block_struct(TOKEN_BUFFER tokens,
 				      &inv, &inv_repeat,
 				      &local_offset, FLD_ofst(fld));
 	       }
+#endif
 	       if (inv != 0)
 	       {
 		  /* An initializer exists for this field.
@@ -571,7 +871,7 @@ INITV2C_block_struct(TOKEN_BUFFER tokens,
 		     Append_Token_Special(tokens, ',');
 		  else
 		     a_field_is_initialized = TRUE;
-
+#if 0
 		  /* Work around a Fortran bug! TODO: Rewrite this to
 		   * be more similar to whirl2f and to work for all cases.
 		   */
@@ -609,9 +909,24 @@ INITV2C_block_struct(TOKEN_BUFFER tokens,
 		     }
 		  }
 		  else
-		  {
+#endif
+	    if(FLD_is_bit_field(fld)){
+	        Append_Token_String(tokens,"####Bitfield init not support####");
+	    }
+	  {
+	             //If fld is a bit field, call to INITV2C_translate will not
+			  // be correct. There is still an unhandled problem.
 		     INITV2C_translate(tokens, FLD_type(fld), inv);
 		     INIT2C_Next_Initv(&inv, &inv_repeat);
+                     while(inv&&INITV_kind(inv)==INITVKIND_PAD){
+                         inv=INITV_next(inv);
+                         inv_repeat=0;
+                     }
+                     if(inv==0){
+			 // A sturcture may be partly initialized.
+                         DevWarn("Unfinished initialization for structure");
+                         break;
+                     }
 		  }
 
 		  local_offset += TY_size(FLD_type(fld));
@@ -623,6 +938,7 @@ INITV2C_block_struct(TOKEN_BUFFER tokens,
       /* Explicitly apply any outstanding initializer.  We can here
        * Assert that (fld!=0 xor inv!=0).
        */
+#if 0
       if (local_offset < TY_size(ty) && inv != 0)
       {
 	 if (a_field_is_initialized)
@@ -631,6 +947,7 @@ INITV2C_block_struct(TOKEN_BUFFER tokens,
 			     &inv, &inv_repeat,
 			     &local_offset, TY_size(ty));
       } /*if*/
+#endif
    } /*if*/
    Append_Token_Special(tokens, '}');
 } /* INITV2C_block_struct */
@@ -668,21 +985,25 @@ INITV2C_translate(TOKEN_BUFFER tokens,
 		  TY_IDX       ty, 
 		  INITV_IDX    initv)
 {
+   INT repeat=0;
+
    switch (INITV_kind(Initv_Table[initv]))
    {
    case INITVKIND_UNK:
       Is_True(FALSE, ("Unknown initv kind in INITV2C_translate()"));
       break;
 
+//Kind INITVKIND_SYMOFF, INITVKIND_ZERO, INITVKIND_ONE and INITVKIND_VAL
+//  are processed by INITV2C_vals because they may represent a list of INITV.
    case INITVKIND_SYMOFF:
-      INITV2C_symoff(tokens, ty, initv);
+/*      INITV2C_symoff(tokens, ty, initv);
       break;
-      
+*/      
    case INITVKIND_ZERO:
    case INITVKIND_ONE:
    case INITVKIND_VAL:
       /* May be a scalar or a string initializer */
-      INITV2C_val(tokens, ty, initv);
+      INITV2C_vals(tokens, ty, initv,repeat);
       break;
 
    case INITVKIND_BLOCK:
@@ -720,6 +1041,11 @@ INITO2C_translate(TOKEN_BUFFER tokens, INITO_IDX inito)
     * attribute (offset in data section) has no significance for 
     * the translation to C.
     */
+
+   /*The translation of array and structure will add {} pair, 
+    * so no extra {} are needed now.*/
+#if 0
+   /*This is commented because later phase will produce {} now */
    if (Stab_Is_Common_Block(INITO_st(inito)) ||
        Stab_Is_Equivalence_Block(INITO_st(inito)))
    {
@@ -728,5 +1054,6 @@ INITO2C_translate(TOKEN_BUFFER tokens, INITO_IDX inito)
       Append_Token_Special(tokens, '}');
    }
    else
+#endif
       INITV2C_translate(tokens, ST_type(INITO_st(inito)), INITO_val(inito));
 } /* INITO2C_translate */

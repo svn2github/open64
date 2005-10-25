@@ -146,6 +146,8 @@ IP_READ_pu_infos (IP_FILE_HDR& s)
     }
 
     SUMMARY_FILE_HEADER *file_header = IP_FILE_HDR_file_header (s);
+    UINT vv=file_header->Get_version_number();
+    UINT vv2=IPA_SUMMARY_REVISION;
 
     if (file_header &&
         file_header->Get_version_number() != IPA_SUMMARY_REVISION) {

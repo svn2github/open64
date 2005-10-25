@@ -1284,7 +1284,7 @@ is inheriting pu_recursive OK?
   if (Cur_PU_Feedback) {
     parallel_pu_fb = CXX_NEW(FEEDBACK(func_entry,
                                       MEM_pu_nz_pool_ptr,
-				      1, 1, 1, 1, 1, 1,
+				      1, 1, 1, 1, 1, 1, 1,
 				      cmaptab),
 		             MEM_pu_nz_pool_ptr);
     Set_PU_Info_state(parallel_pu, WT_FEEDBACK, Subsect_InMem);

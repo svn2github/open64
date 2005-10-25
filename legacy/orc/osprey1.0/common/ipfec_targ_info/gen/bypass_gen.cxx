@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -60,9 +60,9 @@ typedef struct bypass_care_fu {
     kapi_fu_t pre_fu;
     SUC_FU_BYPASS *succ_bypass;
 }BYPASS_CARE_FU;
-static BOOL first_in_pre_case = 1;
-static BOOL first_in_suc_case = 1;
-static BOOL last_in_suc_case = 0;
+static BOOL first_in_pre_case = true;
+static BOOL first_in_suc_case = true;
+static BOOL last_in_suc_case = false;
 
 static SUC_FU_BYPASS cur_state;
 static map <int, char*> oddfunc_pair;
@@ -124,19 +124,15 @@ void Print_OddLatency(void *pknobs, FILE *c_file)
                     oddfunc_pair[i] = func_name;
 
                     //  Print odd function body;
-                    fprintf(c_file, "static void\n%s(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, "
-                                    "UINT8 opnd, INT *latency)\n{\n", 
+                    fprintf(c_file, "static void\n%s(TOP pred_code, TOP succ_code, INT src_reg, "
+                                    "INT dst_reg, INT *latency)\n{\n", 
                             func_name
                            ); 
                     if(strstr(func_name, "Odd_Latency_TO")!=NULL) {
-                        fprintf(c_file, "TN *dst = OP_result(pred_op,0);\n");
-                        fprintf(c_file, "INT reg = REGISTER_machine_id("
-                                        "TN_register_class(dst), TN_register(dst));\n");
+                        fprintf(c_file, "INT reg = dst_reg;");
                     }
                     else { 
-                        fprintf(c_file, "TN *src = OP_opnd(pred_op,1);\n");
-                        fprintf(c_file, "INT reg = REGISTER_machine_id("
-                                        "TN_register_class(src), TN_register(src));\n");
+                         fprintf(c_file, "INT reg = src_reg;");
                     } 
                     BOOL find =0;
                     int cur_latency = ol[0].oddlatency;
@@ -282,30 +278,29 @@ void Print_All_Bypass(void *pknobs, FILE *h_file, FILE *c_file)
     SUC_FU_BYPASS *suc_bypass;
     int count = KAPI_fuCount(pknobs);
     
-    // Print bypass function :CGTARG_Adjust_Latency
+    // Print bypass function :TARG_Adjust_Latency
     //  Head of this function
-    fprintf(h_file, "#ifdef IPFEC_Enable_New_Targ\n"); /* IPFEC project use*/
     fprintf(h_file, 
-            "extern void CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, "
-            "CG_DEP_KIND kind,UINT8 opnd, INT *latency);\n");
+            "extern void TARG_Adjust_Latency(TOP pred_code, TOP succ_code,\n"
+            "                  INT src_reg, INT dst_reg, INT opnd, INT *latency, \n"
+            "                  BOOL pred_is_chk=false, BOOL succ_is_chk=false);\n");
  
     fprintf(c_file, 
             "/* =============================================================\n"
             " *\n"
-            " * CGTARG_Adjust_Latency\n"
+            " * TARG_Adjust_Latency\n"
             " *\n"
             " * See interface description\n"
             " *\n"
             " * =============================================================\n"
             " */\n");
     fprintf(c_file, "void\n"
-            "CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, INT *latency)\n"
+            "TARG_Adjust_Latency(TOP pred_code, TOP succ_code, INT src_reg, INT dst_reg,\n" 
+            "                     INT opnd, INT *latency, BOOL pred_is_chk, BOOL succ_is_chk)\n"
             );
     fprintf(c_file, "{\n");
-    fprintf(c_file, "  const TOP pred_code = OP_code(pred_op);\n"
-                    "  const TOP succ_code = OP_code(succ_op);\n"
-                    "  const SCHED_INFO_CLASS pred_class = Sched_Info_Class(pred_op);\n"
-                    "  const SCHED_INFO_CLASS succ_class = Sched_Info_Class(succ_op);\n"
+     fprintf(c_file, "  const SCHED_INFO_CLASS pred_class = TARG_Sched_Info_Class(pred_code, pred_is_chk);\n"
+                    "  const SCHED_INFO_CLASS succ_class = TARG_Sched_Info_Class(succ_code, succ_is_chk);\n"
             );
  
             
@@ -330,7 +325,7 @@ void Print_All_Bypass(void *pknobs, FILE *h_file, FILE *c_file)
             fprintf(c_file, "\t\t\t// From-%s register latency is determined\n", 
                     oddfunc_pair[pre_i]);
             fprintf(c_file, "\t\t\t// by source register\n");
-            fprintf(c_file, "\t\t\t%s(pred_op, succ_op, kind, opnd, latency);\n", 
+            fprintf(c_file, "\t\t\t%s(pred_code, succ_code, src_reg, dst_reg, latency);\n", 
                         oddfunc_pair[pre_i]);
         }
         else {
@@ -431,94 +426,50 @@ void Print_All_Bypass(void *pknobs, FILE *h_file, FILE *c_file)
     }/* all pred fu */
 
     // Some special case;
-    fprintf(c_file, 
-           "  // LD -> LD => 0 (for memory dependences)\n"
-           "  // Since IA-64 preserves the order of execution of loads in an\n" 
-           "  // instruction group, dependent loads (i.e possibly or fully-aliased\n"
-           "  // loads) can fit in the same instr. group. We don't need to special\n" 
-	       "  // case check-loads since this applies uniformly to all load instructions\n"
-           "  // including check loads.\n"
-           "  if (OP_load(pred_op) && OP_load(succ_op) &&\n"
-           "     ((kind == CG_DEP_MEMIN) || (kind == CG_DEP_MEMOUT) ||\n" 
-           "      (kind == CG_DEP_MEMANTI))) {\n"
-           "     *latency = 0;\n"
-           "  }\n");
 
     fprintf(c_file,
            "\n  // TOP_alloc only cannot place one group with flushrs,loadrs,br.call,br1.call\n"
            "  // br.ia,br.ret,clrrrb,cover,rfi;\n"
-           "  if (OP_code(pred_op)==TOP_alloc && OP_def_use_stack_regs(succ_op)) {\n"
-           "       *latency = 0;\n"
-           "  }\n"
-           "  if (OP_code(pred_op)  == TOP_alloc &&\n"
-           "     (OP_code(succ_op) == TOP_flushrs ||\n"
-           "     OP_code(succ_op) == TOP_br_cexit||\n"
-           "     OP_code(succ_op) == TOP_br_ctop ||\n"
-           "     OP_code(succ_op) == TOP_br_wexit ||\n"
-           "     OP_code(succ_op) == TOP_br_wtop ||\n"
-           "     OP_code(succ_op) == TOP_br_call ||\n"
-           "     OP_code(succ_op) == TOP_br_ia ||\n"
-           "     OP_code(succ_op) == TOP_br_ret ||\n"
-           "     OP_code(succ_op) == TOP_clrrrb ||\n"
-           "     OP_code(succ_op) == TOP_clrrrb_pr ||\n"
-           "     OP_code(succ_op) == TOP_cover ||\n"
-           "     OP_code(succ_op) == TOP_rfi ))\n"
+//           "  if (pred_code==TOP_alloc && OP_def_use_stack_regs(succ_op)) {\n"
+//           "       *latency = 0;\n"
+//           "  }\n"
+           "  if (pred_code  == TOP_alloc &&\n"
+           "     (succ_code == TOP_flushrs ||\n"
+           "     succ_code == TOP_br_cexit||\n"
+           "     succ_code == TOP_br_ctop ||\n"
+           "     succ_code == TOP_br_wexit ||\n"
+           "     succ_code == TOP_br_wtop ||\n"
+           "     succ_code == TOP_br_call ||\n"
+           "     succ_code == TOP_br_ia ||\n"
+           "     succ_code == TOP_br_ret ||\n"
+           "     succ_code == TOP_clrrrb ||\n"
+           "     succ_code == TOP_clrrrb_pr ||\n"
+           "     succ_code == TOP_cover ||\n"
+           "     succ_code == TOP_rfi ))\n"
            "       *latency = 1;\n");
 
-    fprintf(c_file, 
-            "\n  // base-update of postincr memop\n"
-            "  if (   OP_store(pred_op)\n"
-            "    || ( OP_load(pred_op)\n"
-	        "    && !CGTARG_Use_Load_Latency(pred_op, OP_opnd(succ_op, opnd)))) {\n"
-            "     *latency = 1;\n"
-            "  }\n");
-
-    fprintf(c_file, 
-            "  // REGOUT dependence OP cannot be scheduled in the same cycle\n"
-            "  if (kind == CG_DEP_REGOUT) *latency = MAX(1, *latency);\n\n"
-            "  // REGANTI dependence:  if the pred uses F-unit and\n"
-            "  // the succ must be in F0-unit, two OPs cannot be scheduled in the same cycle\n"
-            "  if (   kind == CG_DEP_REGANTI\n"
-            "       && EXEC_PROPERTY_is_F_Unit(pred_code)\n"
-            "       && EXEC_PROPERTY_is_F_Unit(succ_code))\n"
-            "  {\n"
-            "    SI_RESOURCE_TOTAL* rvec = TSI_Resource_Total_Vector(succ_code);\n"
-            "    const UINT         size = TSI_Resource_Total_Vector_Size(succ_code);\n"
-            "    for (UINT i = 0; i < size; ++i ) { \n"
-            "      SI_RESOURCE_ID id = SI_RESOURCE_TOTAL_Resource_Id(&rvec[i]);\n"
-            "      if (strcmp(SI_RESOURCE_ID_Name(id),\"floating-point0\")==0)\n"
-            "         *latency = MAX(1, *latency);\n"
-            "    }\n  }\n"
-            "  // REGIN dependence when pred op is an mov_f_ar or mov_t_ar pesudo op\n"
-            "  // they can not be the same cycle\n"
-            "  if (kind == CG_DEP_REGIN &&\n"
-            "      (OP_code(pred_op) == TOP_mov_f_ar ||\n"
-            "      OP_code(pred_op) == TOP_mov_t_ar_r ||\n"
-            "      OP_code(pred_op) == TOP_mov_t_ar_i))\n"
-            "       *latency = MAX(1, *latency);\n");
-         
-    
     fprintf(c_file, "}/* End of Adjust Latency*/\n\n");
 }/* end of Print_Bypass() */
 
 void Print_FU_Class(void *pknobs, FILE *h_file, FILE *c_file)
 {   
     int count = KAPI_fuCount(pknobs); 
-    fprintf(c_file, "/*Function class of op*/\n");
-    fprintf(c_file, "typedef enum {\n");
+    fprintf(h_file, "/*Function class of op*/\n");
+    fprintf(h_file, "typedef enum {\n");
     for(int i=0; i<count; i++)
     {
         char *funame = KAPI_fu2fuName(pknobs, i, 0);
-        fprintf(c_file, "  SIC_%s,\n",Chop_fu(funame));
+        fprintf(h_file, "  SIC_%s,\n",Chop_fu(funame));
     }
-    fprintf(c_file, "  SIC_DUMMY,\n"); /* Two add SIC for requirment*/
-    fprintf(c_file, "  SIC_UNKNOWN\n");
-    fprintf(c_file, "} SCHED_INFO_CLASS;\n\n");
+    fprintf(h_file, "  SIC_DUMMY,\n"); /* Two add SIC for requirment*/
+    fprintf(h_file, "  SIC_UNKNOWN\n");
+    fprintf(h_file, "} SCHED_INFO_CLASS;\n\n");
 
     // Print function which return function class for each op
-    fprintf(c_file, "static SCHED_INFO_CLASS Sched_Info_Class(OP *op)\n{\n");
+    fprintf(h_file, "extern SCHED_INFO_CLASS TARG_Sched_Info_Class(TOP top, BOOL is_chk=false);\n");
+    fprintf(c_file, "SCHED_INFO_CLASS TARG_Sched_Info_Class(TOP top, BOOL is_chk)\n{\n");
     
-    fprintf(c_file, "  switch (OP_code(op)) {\n");
+    fprintf(c_file, "  switch (top) {\n");
     int op_count = EKAPI_OpCount(pknobs);
     char *cur_funame = EKAPI_Op2Fu(pknobs, 0);
     for (int i=0; i<op_count; i++)
@@ -534,24 +485,25 @@ void Print_FU_Class(void *pknobs, FILE *h_file, FILE *c_file)
 	    BOOL special_ld_op = 0;
 	    // Special process for LD op      
        	    if (strcmp(cur_funame,"fuLD")==0) {
-	        fprintf(c_file, "    return CGTARG_Is_OP_Check_Load(op) ? SIC_%s : SIC_%s;\n",
+	        fprintf(c_file, "    return is_chk ? SIC_%s : SIC_%s;\n",
 			"CLD",
 		        Chop_fu(cur_funame) );
                 special_ld_op = 1;
 	    }
             if (strcmp(cur_funame,"fuFLD")==0) {
-	        fprintf(c_file, "    return CGTARG_Is_OP_Check_Load(op) ? SIC_%s : SIC_%s;\n",
+	        fprintf(c_file, "    return is_chk ? SIC_%s : SIC_%s;\n",
 			"FCLD",
 		        Chop_fu(cur_funame) );
                 special_ld_op = 1;
             }
             if (strcmp(cur_funame,"fuFLDP")==0)
 	    {
-	        fprintf(c_file, "    return CGTARG_Is_OP_Check_Load(op) ? SIC_%s : SIC_%s;\n",
+	        fprintf(c_file, "    return is_chk ? SIC_%s : SIC_%s;\n",
 			"FCLD",
 		        Chop_fu(cur_funame) );
                 special_ld_op = 1;
 	    }
+
             if (!special_ld_op)
 	        fprintf(c_file, "    return SIC_%s;\n", Chop_fu(cur_funame));
 	    fprintf(c_file, "  case TOP_%s:\n", op_name);
@@ -564,7 +516,7 @@ void Print_FU_Class(void *pknobs, FILE *h_file, FILE *c_file)
     free(cur_funame);
 
     fprintf(c_file, 
-            "  FmtAssert(FALSE, (\"no scheduling class for %s \", TOP_Name(OP_code(op))));\n",
+            "  FmtAssert(FALSE, (\"no scheduling class for %s \", TOP_Name(top)));\n",
             "%s");
     fprintf(c_file,"  /*NOTREACHED*/\n");
     fprintf(c_file, "}\n");
@@ -577,16 +529,15 @@ void Print_Bypass_Care_FU(void *pknobs, FILE *h_file, FILE *c_file)
     first_in_pre_case = 0;
 
     fprintf(h_file, "extern void "
-            "CGTARG_Adjust_Latency_FU(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, struct PORT_SET ports, INT *adjust);\n"
+            "TARG_Adjust_Latency_FU(TOP pred_code, TOP succ_code, struct PORT_SET ports, INT *adjust);\n"
             );
     fprintf(c_file, "void\n"
-            "CGTARG_Adjust_Latency_FU(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, struct PORT_SET ports, INT *adjust)\n"
+            "TARG_Adjust_Latency_FU(TOP pred_code, TOP *succ_code, struct PORT_SET ports, INT *adjust)\n"
             );
     fprintf(c_file, "{\n");
-    fprintf(c_file, "  const TOP pred_code = OP_code(pred_op);\n"
-                    "  const TOP succ_code = OP_code(succ_op);\n"
-                    "  const SCHED_INFO_CLASS pred_class = Sched_Info_Class(pred_op);\n"
-                    "  const SCHED_INFO_CLASS succ_class = Sched_Info_Class(succ_op);\n"
+    fprintf(c_file, 
+                    "  const SCHED_INFO_CLASS pred_class = TARG_Sched_Info_Class(pred_code);\n"
+                    "  const SCHED_INFO_CLASS succ_class = TARG_Sched_Info_Class(succ_code);\n"
             );
     for (cf_iter = care_fu_bypasslist.begin(); cf_iter != care_fu_bypasslist.end(); ++cf_iter)
     {
@@ -625,42 +576,45 @@ void Print_Bypass_Care_FU(void *pknobs, FILE *h_file, FILE *c_file)
     fprintf(c_file, "}\n/*function end*/"); 
 }
 
-void Bypass_Generator(void *pknobs, GEN_MODE mode)
+void Bypass_Generator(void *pknobs, GEN_MODE mode, MACHINE_TYPE type)
 {
     FILE *c_file, *h_file, *export_file;
     int index;
-    char description[]= "\
+    char * description[]= {"\
 /***************************************************************************\n\
 * Description:\n\
-*	void CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op,\n\
-*                                 CG_DEP_KIND kind, UINT8 opnd, INT *latency)\n\
+*	void TARG_Adjust_Latency(TOP pred_code, TOP succ_code,\n\
+*                                 INT src_reg, INT dst_reg, INT *latency,
+                                  BOOL pred_is_chk, BOOL succ_is_chk)\n\
 *	  Makes any target-specific latency adjustments that may be\n\
-*	  required between <pred_op> and <succ_op>.\n\
-*/\n";
+*	  required between <pred_code> and <succ_code>.\n\
+*/\n", NULL};
     
-    Init_Module_Files(mode, "targ_bypass", &c_file, &h_file, &export_file, 1);
+    first_in_pre_case = true;
+    first_in_suc_case = true;
+    last_in_suc_case = false;
+
+    if (type == MCK_TYPE) 
+        Init_Module_Files(mode, "targ_bypass_mck", &c_file, &h_file, &export_file, 1);
+    else 
+        Init_Module_Files(mode, "targ_bypass", &c_file, &h_file, &export_file, 1);
     Emit_Header(h_file, "targ_bypass", description, 1);
 
-    fprintf(c_file, "#include \"defs.h\"\n");   
     fprintf(c_file, "#include \"errors.h\"\n");
-    fprintf(c_file, "#include \"tn.h\"\n");
-    fprintf(c_file, "#include \"op.h\"\n"); 
-    fprintf(c_file, "#include \"register.h\"\n"); 
     fprintf(c_file, "#include \"targ_isa_lits.h\"\n");
+    fprintf(c_file, "#include \"targ_isa_bundle.h\"\n");
     fprintf(c_file, "#include \"targ_isa_registers.h\"\n");
-    fprintf(c_file, "#include \"cgtarget.h\"\n");
-    fprintf(c_file, "#include \"cg_dep_graph.h\"\n");
-    fprintf(c_file, "#include \"cg_grouping.h\"\n");
     fprintf(c_file, "#include \"targ_issue_port.h\"\n");
-    fprintf(c_file, "#include \"targ_bypass.h\"\n\n\n"); 
+    fprintf(c_file, "#include \"targ_isa_operands.h\"\n");
+
+    // for SIC definition diff, But we can use the new targ bypass
+    // head file which generated for mckinley 
+        fprintf(c_file, "#include \"targ_bypass_mck.h\"\n\n\n"); 
       
-    fprintf(c_file, "#ifdef IPFEC_Enable_New_Targ\n"); /*control IPFEC use only*/
     Print_FU_Class(pknobs, h_file, c_file);
     Print_OddLatency(pknobs, c_file);
     Print_All_Bypass(pknobs, h_file, c_file);
-    fprintf(h_file, "#endif /*IPFEC use only*/\n");
     Emit_Tailer(h_file, 1);
-    fprintf(c_file, "#endif /*ifdef IPFEC_Enable_New_Targ*/\n");
     Close_Module_Files(mode, &c_file, &h_file, &export_file);
     
 }

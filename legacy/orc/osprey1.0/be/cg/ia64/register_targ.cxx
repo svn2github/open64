@@ -164,6 +164,14 @@ void REGISTER_Request_Stacked_Rotating_Register()
   }
 }
 
+INT Get_Stacked_Callee_Next() {
+    return stacked_callee_next;
+}
+
+INT Get_Stacked_Caller_Next() {
+    return stacked_caller_next;
+}
+
 /////////////////////////////////////
 REGISTER REGISTER_Request_Stacked_Register(INT has_abi_property,
 					   ISA_REGISTER_CLASS rclass)

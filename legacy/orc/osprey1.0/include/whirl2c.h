@@ -36,19 +36,17 @@
 #ifndef __WHIRL2C_H__
 #define __WHIRL2C_H__
 
-
-#include <string.h> /* Declares memmove */
+void memmove(char *,char *,int);
 #ifdef _FORTRAN2C
 #include <libftn.h> /* Declares math and io functions */
 #else
 #include <math.h> /* Declares math functions */
 #endif /* _FORTRAN2C */
-
 /*----------- Types used in the whirl2c output files ---------- */
 
 typedef void __UNKNOWN_TYPE;
 typedef char _BOOLEAN;
-typedef signed char _INT8;
+typedef char _INT8;
 typedef signed short _INT16;
 typedef signed int _INT32;
 typedef signed long long _INT64;
@@ -62,6 +60,7 @@ typedef long double _QUAD;
 
 typedef char _STRING[];
 
+#define _IO_putc putc
 #ifndef _FORTRAN2C
 
      /* Declare the complex types, since they are considered builtin
@@ -92,6 +91,11 @@ static const _COMPLEX64 _One_C8 = {1.0, 0.0};
 static const _COMPLEX32 _One_C4 = {1.0F, 0.0F};
 
 #endif /*_FORTRAN2C*/
+
+
+
+#define COMPOSE_BITS(x,y,z,w) ( (x&((1LL<<(z))-1))|(((y)&((1LL<<(w))-1))<<(z)) )
+#define EXTRACT_BITS(x,y,z)   ( ((x)>>(y))&((1LL<<(z))-1) )
 
 /*----------- Operator definitions ---------- */
 
@@ -359,12 +363,12 @@ static const _COMPLEX32 _One_C4 = {1.0F, 0.0F};
 #define _U4LSHR(v1, v2) ((v1) >> ((v2) & 31))
 #define _U8LSHR(v1, v2) ((v1) >> ((v2) & 63LL))
 
-#define _F4RECIP(v) (1.0F/v)
-#define _F8RECIP(v) (1.0/v)
-#define _FQRECIP(v) (1.0L/v)
-#define _C4RECIP(v) _C4DIV(_One_C4, v)
-#define _C8RECIP(v) _C8DIV(_One_C8, v)
-#define _CQRECIP(v) _CQDIV(_One_CQ, v)
+#define _F4RECIP(v) (1.0F/(v))
+#define _F8RECIP(v) (1.0/(v))
+#define _FQRECIP(v) (1.0L/(v))
+#define _C4RECIP(v) _C4DIV(_One_C4, (v))
+#define _C8RECIP(v) _C8DIV(_One_C8, (v))
+#define _CQRECIP(v) _CQDIV(_One_CQ, (v))
 
 #define _F4RSQRT(v) (1.0F/_F4SQRT(v))
 #define _F8RSQRT(v) (1.0/_F8SQRT(v))
@@ -372,5 +376,11 @@ static const _COMPLEX32 _One_C4 = {1.0F, 0.0F};
 #define _C4RSQRT(v) (_Tmp_C4 = _C4SQRT(v), _C4DIV(_One_C4, _Tmp_C4))
 #define _C8RSQRT(v) (_Tmp_C8 = _C8SQRT(v), _C8DIV(_One_C8, _Tmp_C8))
 #define _CQRSQRT(v) (_Tmp_CQ = _CQSQRT(v), _CQDIV(_One_CQ, _Tmp_CQ))
-
+#define __opr_alloca(v) ((void *)(((long)alloca(v+7)+7)&~7))
+#define __opr_dealloca(v,w) 
+void *alloca(long);
+#define ST_BEGIN(x)
+#define ST_LFORK(x)
+#define ORC_LOOP(x)
+#define COMMON 
 #endif /* __WHIRL2C_H__ */

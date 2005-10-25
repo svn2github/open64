@@ -1,3 +1,30 @@
+/*
+  Copyright (C) 2000-2003, Intel Corporation
+  All rights reserved.
+ 
+  Redistribution and use in source and binary forms, with or without modification,
+  are permitted provided that the following conditions are met:
+ 
+  Redistributions of source code must retain the above copyright notice, this list
+  of conditions and the following disclaimer.
+ 
+  Redistributions in binary form must reproduce the above copyright notice, this list
+  of conditions and the following disclaimer in the documentation and/or other materials
+  provided with the distribution.
+ 
+  Neither the name of the owner nor the names of its contributors may be used to endorse or
+  promote products derived from this software without specific prior written permission.
+ 
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR
+  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 //-*-c++-*-
 //=============================================================================
 //
@@ -22,40 +49,26 @@
 #include "ekapi_itanium.h"
 
 //////////////////////////////////////////////////////////////////////////
-// GNAME class
+// VARNAME class
 //////////////////////////////////////////////////////////////////////////
 
-int GNAME::count = 0;
+int VARNAME::count = 0;
 
-GNAME::GNAME() : stubbed(false) {
-    sprintf(gname,"&gname%d",count++);
+VARNAME::VARNAME() {
+    sprintf(varname,"&varname%d",count++);
 }
 
-GNAME::GNAME(char* prefix) : stubbed(false) {
-    assert(strlen(prefix) <= 8);
-    sprintf(gname,"&%s%d",prefix,count++);
+VARNAME::VARNAME(char* prefix) {
+    assert(strlen(prefix) <= 10);
+    sprintf(varname,"&%s%d",prefix,count++);
 }
 
-GNAME::GNAME(GNAME& other) : stubbed(false) {
-    sprintf(gname,"%s",other.gname);
+char* VARNAME::Addr_Of_Vname() {
+        return varname;
 }
 
-char* GNAME::Gname() {
-    if (stubbed)
-        return "0";
-    else
-        return gname + 1;
-}
-
-char* GNAME::Addr_Of_Gname() {
-    if (stubbed)
-        return "0";
-    else
-        return gname;
-}
-
-void GNAME::Stub_Out() {
-    stubbed = true;
+char* VARNAME::Vname() {
+        return varname + 1;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -70,7 +83,7 @@ map <int,RESOURCE*> RESOURCE::resources;
 
 // Initial function
 RESOURCE::RESOURCE(char *name)
- :gname("resource"),name(name),id(total++),count(0)
+ :varname("resource"),name(name),id(total++),count(0)
 {
     resources[id] = this;
 }
@@ -135,7 +148,7 @@ void RESOURCE::Output( FILE* fd )
 /////////////////////////////////////
 {
     fprintf(fd,"SI_RESOURCE %s = {\"%s\",%d,%d,%d,%d};\n",
-               gname.Gname(),
+               varname.Vname(),
                name,
                id,
                count,
@@ -157,15 +170,15 @@ void RESOURCE::Output_All( FILE* fd )
 
     bool is_first = true;
     for ( i = 0; i < total; ++i ) {  
-        fprintf(fd,"\n  %s",resources[i]->gname.Addr_Of_Gname());
+        fprintf(fd,"\n  %s",resources[i]->varname.Addr_Of_Vname());
         if (i!=total) fprintf(fd, ",");
     
         // Caculate initial rrw and over use mask
         _width = resources[i]->field_width;
         _max   = 1ULL << (_width-1);
     
-        init_rrw |= (unsigned long long)(_max - resources[i]->count - 1) << resources[i]->shift_count;
-        over_rrw |= (unsigned long long)(_max) << resources[i]->shift_count;
+        init_rrw |= (UINT64)(_max - resources[i]->count - 1) << resources[i]->shift_count;
+        over_rrw |= (UINT64)(_max) << resources[i]->shift_count;
     }
     fprintf(fd,"\n};\n");
   
@@ -184,7 +197,7 @@ int  SCHE_INFO::total = 0;
 map <int,SCHE_INFO*> SCHE_INFO::fusi_list; // map fuid to schedule infor name;
 
 SCHE_INFO::SCHE_INFO(void *pknobs, int fuid):
-si_name("gname"), res_req_name("res_req"), total_res_name("gname"),id_set_name("gname"), 
+si_name("varname"), res_req_name("res_req"), total_res_name("varname"),id_set_name("varname"), 
 res_req_num(0), id(total++), fu_id(fuid), res_req_cycle(1), use_res_sem(0)
 {
     bv32_t mask;
@@ -214,7 +227,7 @@ res_req_num(0), id(total++), fu_id(fuid), res_req_cycle(1), use_res_sem(0)
 }
 
 SCHE_INFO::SCHE_INFO(void *pknobs, char *funame):
-si_name("gname"), res_req_name("res_req"), total_res_name("gname"),id_set_name("gname"), 
+si_name("varname"), res_req_name("res_req"), total_res_name("varname"),id_set_name("varname"), 
 res_req_num(0), id(total++), fu_id(-1), res_req_cycle(1)
 {
     bv32_t mask;    
@@ -291,14 +304,14 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
     int load_access_time=0;
     int store_avail_time=0;
     
-    GNAME* operand_latency_info = new GNAME("latency");
-    GNAME* result_latency_info  = new GNAME("latency");
+    VARNAME* operand_latency_info = new VARNAME("latency");
+    VARNAME* result_latency_info  = new VARNAME("latency");
     
     max_src  = EKAPI_GetSrcOpndsMax(pknobs);
     max_dest = EKAPI_GetDestOpndsMax(pknobs);
     
     fprintf(fd, "/* Instruction group %s */\n", name);
-    fprintf(fd, "static const SI_RRW %s[] = {\n", res_req_name.Gname());
+    fprintf(fd, "static const SI_RRW %s[] = {\n", res_req_name.Vname());
     
     
     if (res_req_num != 0) {        
@@ -310,7 +323,7 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
         
         fprintf(fd, "\n};\n");        
         
-        fprintf(fd, "static const SI_RESOURCE_ID_SET %s[] = {\n", id_set_name.Gname());        
+        fprintf(fd, "static const SI_RESOURCE_ID_SET %s[] = {\n", id_set_name.Vname());        
         for(i=0; i<res_req_cycle; i++)
         {
             fprintf(fd, "  0x%llx", rrw_id[i]);
@@ -318,11 +331,11 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
         }
         
         fprintf(fd, "\n};\n\n");
-        fprintf(fd, "static SI_RESOURCE_TOTAL %s[] = {\n", total_res_name.Gname());
+        fprintf(fd, "static SI_RESOURCE_TOTAL %s[] = {\n", total_res_name.Vname());
         for (i=0; i<res_req_num; i++)
         {
             fprintf(fd, "  {%s,1}/* %s */", 
-                    RESOURCE::Get(res_req_id[i])->Addr_Of_Gname(),
+                    RESOURCE::Get(res_req_id[i])->Addr_Of_Vname(),
                     RESOURCE::Get(res_req_id[i])->Name()
                     );
             if (i != res_req_num-1 )fprintf(fd, ",\n");
@@ -335,7 +348,7 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
     }
     
     // Print latency source and destine   
-    fprintf(fd, "static const mUINT8 %s[] = {", operand_latency_info->Gname());
+    fprintf(fd, "static const mUINT8 %s[] = {", operand_latency_info->Vname());
     for (i=0; i<max_src; i++)
     {
         fprintf(fd, "%d", 0);
@@ -343,7 +356,7 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
     }
     fprintf(fd, "};\n");
     
-    fprintf(fd, "static const mUINT8 %s[] = {", result_latency_info->Gname());
+    fprintf(fd, "static const mUINT8 %s[] = {", result_latency_info->Vname());
     for (i=0; i<max_dest; i++)
     {
         if (fu_id >= 0) {
@@ -366,13 +379,13 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
         
 
     // print SI struct required resource      
-    fprintf(fd, "static SI %s = {\n", si_name.Gname());
+    fprintf(fd, "static SI %s = {\n", si_name.Vname());
     fprintf(fd,"  \"%s\",\n",name);
     fprintf(fd,"  %-15d, /* id */\n",id);
     fprintf(fd,"  %-15s, /* operand latency */\n",
-               operand_latency_info->Gname());
+               operand_latency_info->Vname());
     fprintf(fd,"  %-15s, /* result latency */\n",
-               result_latency_info->Gname());
+               result_latency_info->Vname());
     fprintf(fd,"  %-15d, /* load access time */\n",
                load_access_time);
     fprintf(fd,"  %-15d, /* last issue cycle */\n",
@@ -380,10 +393,10 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
     fprintf(fd,"  %-15d, /* store available time */\n",
                store_avail_time);
     fprintf(fd,"  %-15s, /* resource requirement */\n",
-               res_req_name.Gname());
+               res_req_name.Vname());
     if (res_req_num != 0) {           
         fprintf(fd,"  %-15s, /* res id used set vec */\n",
-                   id_set_name.Gname());
+                   id_set_name.Vname());
     }
     else {
         fprintf(fd,"  %-15s, /* res id used set vec */\n",
@@ -412,7 +425,7 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
                  
     if (res_req_num != 0) {           
         fprintf(fd,"  %-15s, /* resource count vec */\n",
-                 total_res_name.Gname());
+                 total_res_name.Vname());
     }
     else {
         fprintf(fd,"  %-15s, /* resource count vec */\n",
@@ -424,7 +437,6 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
     fprintf(fd,"};\n");   
     
 }
-
 void SCHE_INFO::Output_SI_ID(FILE *fd)
 //  Output all the SI address;
 {
@@ -432,7 +444,7 @@ void SCHE_INFO::Output_SI_ID(FILE *fd)
     fprintf(fd, "SI * const SI_ID_si[] = {");
     for ( i = 0; i < total; ++i ) 
     {  
-        fprintf(fd,"\n  %s",fusi_list[i]->si_name.Addr_Of_Gname());
+        fprintf(fd,"\n  %s",fusi_list[i]->si_name.Addr_Of_Vname());
         if (i!=total) fprintf(fd, ",");
     }
     
@@ -457,7 +469,7 @@ void SCHE_INFO::Output_OP_SI( void *pknobs, FILE *fd )
         fuid    = EKAPI_Op2FuIndex(pknobs, i);             
         if (fuid>=0) {
             fprintf(fd,"\n  %-12s /* %s */",
-                    fusi_list[fuid]->si_name.Addr_Of_Gname(),
+                    fusi_list[fuid]->si_name.Addr_Of_Vname(),
                     EKAPI_OpName4id(pknobs, i)
                     );
         }
@@ -467,12 +479,12 @@ void SCHE_INFO::Output_OP_SI( void *pknobs, FILE *fd )
             char *funame = EKAPI_Op2Fu(pknobs, i);
             if (strcmp(funame, "fuUNKNOWN") == 0) {
                 fprintf(fd, "\n  %-12s /* %s */", 
-                        fusi_list[total-2]->si_name.Addr_Of_Gname(),
+                        fusi_list[total-2]->si_name.Addr_Of_Vname(),
                         EKAPI_OpName4id(pknobs, i));
             }
             else {
                 fprintf(fd, "\n  %-12s /* %s */", 
-                    fusi_list[total-1]->si_name.Addr_Of_Gname(),
+                    fusi_list[total-1]->si_name.Addr_Of_Vname(),
                     EKAPI_OpName4id(pknobs, i));
             }             
         }
@@ -528,4 +540,14 @@ void EKAPI_CreatResource(char *name, int count, int is_issue)
 {
     RESOURCE *current_resource = new RESOURCE(name); 
     current_resource->Update_Res(count, 0, is_issue);
+}
+void EKAPI_ClearResource(void)
+{
+    char *name="clear";
+    RESOURCE *current_resource = new RESOURCE(name); 
+    current_resource->Clear();
+    VARNAME* varname_clear  = new VARNAME(name);
+    varname_clear->Clear();
+    SCHE_INFO* si_clear = new SCHE_INFO();
+    si_clear->Clear();
 }

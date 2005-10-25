@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -93,6 +93,7 @@ Finalize_Memory(void)
 /////////////////////////////////////
 {
   MEM_POOL_Pop(MLBR_pool);
+  MEM_POOL_Delete(MLBR_pool);
 }
 
 //------------------------------------------------------------
@@ -335,6 +336,9 @@ void Post_Multi_Branch(void)
 
              // call micro-scheduler to find pattern for op list;
              if (valid_ops) {
+                 // save level;
+                 INT32 save = IPFEC_sched_care_machine;
+                 IPFEC_sched_care_machine = Sched_care_bundle;
                  if (CGGRP_Bundle_OPS(&ops, op, stop_idx)) {
 
                      if (Get_Trace(TP_A_MLBR, 0x01)) {
@@ -353,6 +357,8 @@ void Post_Multi_Branch(void)
                      }
 
                  }
+                 // recover msched level
+                 IPFEC_sched_care_machine = save;
              }
 
              // Insert op to bb from ops;

@@ -3362,12 +3362,12 @@ IPO_INLINE::Process()
 #endif
 
   if (Cur_PU_Feedback) {
-      BOOL pass = Cur_PU_Feedback->Verify("IPA/inline");
-      if ( ! pass ) {
+        BOOL not_pass = Cur_PU_Feedback->Verify("IPA/inline");
+      if ( not_pass ) { //FB_VERIFY_CONSISTENT = 0 
 	  DevWarn("Feedback Verify fails after inlining %s to %s",
 		  Callee_node()->Name (), Caller_node()->Name ());
       }
-  }
+}
 
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
   if (IPA_Enable_DST) {

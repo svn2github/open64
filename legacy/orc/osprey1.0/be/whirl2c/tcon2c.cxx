@@ -163,6 +163,12 @@ TCON2C_append_string_char(char *str, char ch)
      escaped_ch = '\"';
      escape = TRUE;
      break;
+  case '\0':
+     /*Translating '\0' into '\0' is needed because it may be 
+      * used inside an array of string in few benchmark*/
+     escaped_ch = '0';
+     escape = TRUE;
+     break;
   default: 
      escaped_ch = ch;
      escape = FALSE;
@@ -189,7 +195,8 @@ TCON2C_Append_String_Const(TOKEN_BUFFER tokens,
    *(str++) = '\"';
    for (stridx = 0; stridx < strlen; stridx++)
       str = TCON2C_append_string_char(str, orig_str[stridx]);
-   while (str[-1] == '\0') str--;
+   //Removing the last "\\0" pairs.
+   while (str>=str_base+2&&str[-1] == '0' && str[-2] == '\\') str-=2;
    *(str++) = '\"';
    *(str++) = '\0';
    Append_Token_String(tokens, str_base);
@@ -242,7 +249,10 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
       }
       TCON2C_Append_String_Const(tokens, strbase, strlen);
       break;
-
+    case MTYPE_B:
+      /*Add initialization for type MTYPE_B*/
+      Append_Token_String(tokens, Targ_Print("%1d",tvalue));
+      break;
     case MTYPE_I1:
     case MTYPE_I2:
     case MTYPE_I4:

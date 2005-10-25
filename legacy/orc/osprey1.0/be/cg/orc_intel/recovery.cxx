@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -380,21 +380,31 @@ Do_Build_Recovery_Block(list<OP*>& Exec_Path)
         }
         if(on_speculative_chain){
             if(OP_baneful(op)){
+                // We should use PRDB here.
                 Is_True(!TN_is_const_reg(OP_opnd(op,0)) && OP_opnd(op,0) != OP_opnd(spec_ld,0),("Find a baneful op on speculative chain!"));
             }else{
                 if(OP_load(op)){ 
                     if(CGTARG_Is_OP_Speculative(op)){ 
-                        if(predicate_dep)
+                        if(predicate_dep){
+                            candidate_ops.insert(op);
+                            Collect_Results(spec_def,op);
                             DevWarn("Do_Build_Recovery_Block: {BB%d,id%d} cascaded load's flow dependent opnd is predicate register!", BB_id(OP_bb(op)), OP_map_idx(op));
-                        cascaded_loads.push_back(op);
-                        cascaded_ops.insert(op);
-                        Collect_Results(cascaded_def,op);                    
+                        }else{
+                            cascaded_loads.push_back(op);
+                            cascaded_ops.insert(op);
+                            Collect_Results(cascaded_def,op);
+                        }
                     }else{
-                        if(!(predicate_dep || (!TN_is_const_reg(OP_opnd(op,0)) && OP_opnd(op,0) != OP_opnd(spec_ld,0))))
+                        // We should use PRDB here.
+                        if(predicate_dep || (!TN_is_const_reg(OP_opnd(op,0)) && OP_opnd(op,0) != OP_opnd(spec_ld,0))){
+                            if(OP_opnd(spec_ld,0) == OP_opnd(op,0) || TN_is_const_reg(OP_opnd(op,0))){
+                                Is_True(CGTARG_Is_OP_Speculative_Load(spec_ld) && !CGTARG_Is_OP_Advanced_Load(spec_ld),("Incorrect cascaded speculative chain: ld.a--->ld"));
+                            }
+                            candidate_ops.insert(op);
+                            Collect_Results(spec_def,op);
+                        }else{
                             FmtAssert(FALSE,("a non-speculative cascaded load!"));
-                        Is_True(CGTARG_Is_OP_Speculative_Load(spec_ld) && !CGTARG_Is_OP_Advanced_Load(spec_ld),("speculative load should be ld.s!"));
-                        candidate_ops.insert(op);
-                        Collect_Results(spec_def,op);
+                        }
                     }
                 }else{
                     candidate_ops.insert(op);

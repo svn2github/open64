@@ -27,6 +27,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 #include "kapi_internal.h"
 #include "kapi_error.h"
 

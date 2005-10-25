@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -41,7 +41,7 @@
 
 #include "proc_properties_gen_new.h"
 
-static const char description[]= "\
+static const char * const description[]= {"\
 /* ====================================================================\n\
  * ====================================================================\n\
  *\n\
@@ -56,7 +56,7 @@ static const char description[]= "\
  *\n\
  * ====================================================================\n\
  * ====================================================================\n\
- */";
+ */", NULL};
 
 void Proc_Properties_Generator(void *pknobs, GEN_MODE mode)
 {

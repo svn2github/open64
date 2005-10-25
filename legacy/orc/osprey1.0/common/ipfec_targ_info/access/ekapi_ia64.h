@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -119,7 +119,7 @@ typedef struct {
     int oddlatency;
 }ODD_LATENCY;
 
-#undef Is_True_On
+#define Is_True_On 1
 
 // Unconditional assertion checking with printf format, always fatal
 #define FmtAssert(Cond, ParmList ) \
@@ -427,6 +427,8 @@ extern void EKAPI_MapResource(void *pknobs, char *name, kapi_cluster_t cluster, 
 // Because some resource are leakage in KAPI. but we plan to 
 // consider them as resource, so we will use creat resource;
 extern void EKAPI_CreatResource(char *name, int count, int is_issue = 0);
+
+extern void EKAPI_ClearResource(void);
 
 /*************  bypass functions  **********************/
 // Return odd latency list of src operand and

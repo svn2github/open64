@@ -105,11 +105,11 @@ void
 EXEC_PATH :: Append_Path_Segment 
     (REGIONAL_CFG_EDGE * in_edge, REGIONAL_CFG_NODE *node) {
 
-    REGIONAL_CFG_NODE * n = in_edge->Dest ();
+    REGIONAL_CFG_NODE* n = in_edge ? in_edge->Dest () : node ;
     float reach_prob ;
     
     if (_path_node_seq.size ()) {
-
+    
         Is_True (node == n && node, ("incoming_edge->Dest () != n"));
 
         reach_prob = 
@@ -185,7 +185,7 @@ EXEC_PATH :: Extract_Path_Segment
      * =====================================================
      * =====================================================
      */
-EXEC_PATH_SET :: EXEC_PATH_SET (mINT32 size, MEM_POOL *mp) {
+EXEC_PATH_SET :: EXEC_PATH_SET (MEM_POOL *mp, mINT32 size=128) {
     _mp       = mp ;
     
     Is_True (size >= 0, ("size should greater than zero!"));
@@ -318,7 +318,7 @@ EXEC_PATH_SET :: operator &  (const EXEC_PATH_SET& eps) {
 
     Equal_Size (eps, TRUE/*abort exec if !equ*/);
 
-    EXEC_PATH_SET *p = CXX_NEW(EXEC_PATH_SET(_size,_mp), _mp);
+    EXEC_PATH_SET *p = CXX_NEW(EXEC_PATH_SET(_mp,_size), _mp);
 
     for (mINT32 i = _bv_words_num - 1; i >= 0; i--) {
         p->_bv[i] &= eps._bv[i];
@@ -340,7 +340,7 @@ EXEC_PATH_SET :: operator &= (const EXEC_PATH_SET& eps) {
 EXEC_PATH_SET&
 EXEC_PATH_SET :: operator ~ (void) {
     
-    EXEC_PATH_SET * p = CXX_NEW(EXEC_PATH_SET(_size,_mp), _mp);
+    EXEC_PATH_SET * p = CXX_NEW(EXEC_PATH_SET(_mp,_size), _mp);
 
     for (mINT32 i = _bv_words_num - 1; i >= 0; i--) {
         p->_bv[i] = ~_bv[i];
@@ -380,7 +380,7 @@ EXEC_PATH_SET :: operator << (const UINT16 shift_l_by) {
     UINT16 d = shift_l_by >> BV_WORD_SIZE_LOG_2;
     UINT16 r = shift_l_by % BV_WORD_SIZE;
 
-    EXEC_PATH_SET * p = CXX_NEW(EXEC_PATH_SET(_size,_mp), _mp);
+    EXEC_PATH_SET * p = CXX_NEW(EXEC_PATH_SET(_mp,_size), _mp);
     *p = *this ;
 
     if (r > 0) {
@@ -478,7 +478,7 @@ EXEC_PATH_SET :: operator | (const EXEC_PATH_SET& eps) {
    
     Equal_Size (eps, TRUE/*abort exec if !equ-size */);
     
-    EXEC_PATH_SET * p = CXX_NEW (EXEC_PATH_SET(_size,_mp), _mp);
+    EXEC_PATH_SET * p = CXX_NEW (EXEC_PATH_SET(_mp,_size), _mp);
 
     for (mINT32 i = _bv_words_num - 1; i >= 0 ; i--) {
        p->_bv[i] = _bv[i] | eps._bv[i];
@@ -502,7 +502,7 @@ EXEC_PATH_SET :: operator |= (const EXEC_PATH_SET& eps) {
 EXEC_PATH_SET&
 EXEC_PATH_SET :: Universe (void) {
     
-    EXEC_PATH_SET * p = CXX_NEW(EXEC_PATH_SET(_size,_mp), _mp);
+    EXEC_PATH_SET * p = CXX_NEW(EXEC_PATH_SET(_mp,_size), _mp);
 
     for (mINT32 i = _bv_words_num - 1; i >= 0; i--) {
         p->_bv[i] = (BV_WORD)(-1);
@@ -541,7 +541,7 @@ EXEC_PATH_SET :: Subset (EXEC_PATH_ID from, EXEC_PATH_ID to) {
     
         /* remove EXEC_PATH_ID less than <from> 
          */
-    EXEC_PATH_SET * p = CXX_NEW(EXEC_PATH_SET(_size, _mp),_mp);
+    EXEC_PATH_SET * p = CXX_NEW(EXEC_PATH_SET(_mp,_size),_mp);
 
     for (mINT32 i = from/BV_WORD_SIZE - 1; i >= 0 ; i--) {
         p->_bv[i] = 0;
@@ -558,6 +558,52 @@ EXEC_PATH_SET :: Subset (EXEC_PATH_ID from, EXEC_PATH_ID to) {
 
     return * p;
 }
+
+    /* ====================================================
+     *
+     * Is_Subset_Of 
+     *
+     * return TRUE iff <*this> is the subset of <eps>
+     *
+     * ====================================================
+     */
+BOOL
+EXEC_PATH_SET :: Is_Subset_Of (EXEC_PATH_SET* eps) {
+
+    Equal_Size (*eps, TRUE/*abort exec if !equ-size*/);
+
+    for (mINT32 i = _bv_words_num - 1; i >= 0; i--) { 
+        if ((_bv[i] & eps->_bv[i]) != _bv[i]) {
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+    /* ====================================================
+     *
+     * Intersection_Is_Empty 
+     *
+     * return TRUE iff the intersection of <*this> and 
+     * <eps> is not empty set.
+     *
+     * ====================================================
+     */
+BOOL
+EXEC_PATH_SET :: Intersection_Is_Empty (EXEC_PATH_SET* eps) {
+
+    Equal_Size (*eps, TRUE/*abort exec if !equ-size*/);
+    
+    for (mINT32 i = _bv_words_num - 1; i >= 0; i--) {
+        if (_bv[i] & eps->_bv[i]) {
+            return FALSE;    
+        }
+    }
+    
+    return TRUE;
+}
+
 
     /* =========================================================
      *
@@ -783,7 +829,7 @@ EXEC_PATH_SET:: operator - (const EXEC_PATH_SET& eps) {
    
     Equal_Size (eps, TRUE/*abort exec if !equ-size*/);
     
-    EXEC_PATH_SET * p = CXX_NEW(EXEC_PATH_SET(_size,_mp),_mp);
+    EXEC_PATH_SET * p = CXX_NEW(EXEC_PATH_SET(_mp,_size),_mp);
     * p = *this ;
 
     p->Bitwise_Not ();
@@ -797,7 +843,7 @@ EXEC_PATH_SET :: operator -= (const EXEC_PATH_SET& eps) {
     
     Equal_Size (eps, TRUE);
 
-    for (mINT32 i = _bv_words_num - 1; i >= 0 ; i++) {
+    for (mINT32 i = _bv_words_num - 1; i >= 0 ; i--) {
         _bv[i] &= ~eps._bv[i]; 
     }
 }
@@ -850,7 +896,11 @@ EXEC_PATH_SET :: Union_Partioned_Path_Set
 EXEC_PATH_MGR :: EXEC_PATH_MGR (MEM_POOL *mp) :
     _mp(mp),  _pathv(mp), 
     _ep_node_info (mp) {
+
+    _path_info_invalid = TRUE;
+    _total_paths = 0;
 }
+
 
 EXEC_PATH_MGR&
 EXEC_PATH_MGR :: operator = (EXEC_PATH_MGR& epm) {
@@ -908,10 +958,14 @@ EXEC_PATH_MGR :: Calc_Subgraph_Path_Num (void) {
             ni->subgraph_path_num += si->subgraph_path_num;
         }
 
-        if (!ni->subgraph_path_num) {
+        mINT32 tmp = ni->subgraph_path_num;
+        if (!tmp) {
             /* <n> is leaf node of <_region>
              */
             ni->subgraph_path_num = 1;
+        } else if (tmp > MAX_PATH_NUM) {
+            _path_info_invalid = TRUE; 
+            return -1;
         }
     }
 
@@ -934,6 +988,7 @@ INT32
 EXEC_PATH_MGR :: Acquire_Path_Info (REGION *r) {
 
     _region = r ;
+    if (!r) { return 0 ; }
 
         /* step 1: initialize the map between each node
          *         and EP_NODE_INFO structure where we 
@@ -945,13 +1000,21 @@ EXEC_PATH_MGR :: Acquire_Path_Info (REGION *r) {
         iter != 0 ; ++iter) {
         
         REGIONAL_CFG_NODE * n = *iter ; 
-        _ep_node_info.Set_Map (n, CXX_NEW(EP_NODE_INFO(n,_mp),_mp));
+        EP_NODE_INFO* t=CXX_NEW(EP_NODE_INFO(n,_mp),_mp);
+        _ep_node_info.Set_Map (n,t);
+
     }
 
         /* step 2: calculate how many path through each node
          */
     mINT32 total_path_num = Calc_Subgraph_Path_Num ();
-     
+    if (total_path_num >= 0) {
+        _total_paths = total_path_num;
+    } else {
+        _path_info_invalid = TRUE;
+        return -1;
+    } 
+
         /* step 3: (1) Initialize each node's path-set. including:
          *            - path-set's size(==total_path_num)
          *            - set root-node's path-set to be 
@@ -1014,6 +1077,11 @@ EXEC_PATH_MGR :: Acquire_Path_Info (REGION *r) {
                          succ_info -> subgraph_path_num,
                          alloc_base);
 
+                /* The following commented out statements are used to 
+                 * collect info of individual paths, however, currently 
+                 * these info does not actually needed during code motion.
+                 */
+            /*
             for (EXEC_PATH_ID pid = succ_eps->First_Path_Id () ; 
                  !EXEC_PATH_ID_IS_INVALID(pid); 
                  pid = succ_eps->Next_Path_Id (pid)) {
@@ -1024,12 +1092,48 @@ EXEC_PATH_MGR :: Acquire_Path_Info (REGION *r) {
                           Path_In_Total ()));
 
                 (_pathv[pid])->Append_Path_Segment (e,e->Dest());
-            }
+            }*/
 
             alloc_base += succ_info -> subgraph_path_num;
         }
     }
+    
+    _path_info_invalid = FALSE;
+
+    return total_path_num;
 }
+
+    /* ====================================================
+     *
+     * Get_Path_Flow_Thru 
+     *
+     * return all path (within <bb>/<r>'s home region) flow 
+     * through <bb>/<r>.
+     *
+     * ====================================================
+     */
+EXEC_PATH_SET* 
+EXEC_PATH_MGR :: Get_Path_Flow_Thru (BB* bb) {
+
+    Is_True (!Path_Info_Is_Invalid (), 
+             ("execution path information does not collect properly"));
+
+    EP_NODE_INFO* t=(EP_NODE_INFO*) _ep_node_info.Get_Map (bb);
+    return t ? &t->eps : NULL;
+
+}
+
+EXEC_PATH_SET*
+EXEC_PATH_MGR :: Get_Path_Flow_Thru (REGION* r) {
+
+    Is_True (!Path_Info_Is_Invalid (), 
+             ("execution path information does not collect properly"));
+
+    EP_NODE_INFO* t=(EP_NODE_INFO*) _ep_node_info.Get_Map (r);
+    return t ? &t->eps : NULL;
+}
+
+
 
     /* ====================================================
      * ====================================================
@@ -1122,8 +1226,6 @@ RGN_CFLOW_MGR::Init (REGION *rgn) {
 
     _cflow_info_valid = TRUE;
     _acquire_cflow_info () ;
-
-    /* _exec_path_mgr.Acquire_Path_Info (rgn); */
 }
 
     /* ========================================================
@@ -1605,7 +1707,7 @@ RGN_CFLOW_MGR::_fused_mult_add (REACH_PROB_VECT * dest, REACH_PROB_VECT *src,
 
     Is_True (dest->elem_num == src->elem_num, ("mismatch vector!"));
 
-    for (INT32 i = dest->elem_num ; i >= 1 ; i --) {
+    for (INT32 i = dest->elem_num - 1 ; i >= 1 ; i --) {
         dest->reach_prob_vect[i] =  
             INT32(dest->reach_prob_vect[i] + src->reach_prob_vect[i] * mult_by) ;
     }
@@ -1692,6 +1794,8 @@ RGN_CFLOW_MGR::_acquire_cflow_info (void) {
     
     _acquire_reachable_info () ;
     _acquire_reach_prob_info () ;
+
+    _exec_path_mgr.Acquire_Path_Info (Scope ());
 }
 
 void
@@ -2198,23 +2302,8 @@ Sink_Return_Val_OP (BB * split, BB * exit) {
         Reset_OP_Should_Sink(op);
     }
 
-    FOR_ALL_BB_OPs (split, op) {
-
-        BOOL need_sinking ;
-
-        need_sinking = FALSE;
-        for (INT i = OP_results(op) - 1 ; i >= 0 ; i--) {
-
-            mTN_NUM n = TN_number(OP_result(op,i));
-            if ((n >= First_Int_Preg_Return_Offset && 
-                 n <= Last_Int_Preg_Return_Offset)       ||
-                (n >= First_Float_Preg_Return_Offset &&
-                 n <= Last_Float_Preg_Return_Offset)) {
-                need_sinking = TRUE;    
-            }
-        } /* end of for */
-            
-        if (need_sinking) {
+    FOR_ALL_BB_OPs (split, op) {     
+        if (OP_def_return_value(op)) {
             Set_OP_Should_Sink(op);
         }
 
@@ -2614,7 +2703,7 @@ Calculate_Dominator_Info (REGION_TREE *rgn_tree) {
 
     Calculate_Dominators () ;
 
-    BS * empty_BB_set = BS_Create_Empty (PU_BB_Count + 2, 
+    BS* empty_BB_set = BS_Create_Empty (PU_BB_Count + 2, 
                                          &MEM_phase_pool);
 
     extern BOOL Is_Abnormal_Loop (REGION* region) ;
@@ -2648,7 +2737,10 @@ Calculate_Dominator_Info (REGION_TREE *rgn_tree) {
                 if ((*iter)->Is_Region ()) continue ;
 
                 BB * b = (*iter)->BB_Node ();
-                Set_BB_dom_set  (b,empty_BB_set);
+
+                    /* dominate-set is correct even in abnormal loop
+                     */
+                //Set_BB_dom_set  (b, empty_BB_set); 
                 Set_BB_pdom_set (b, empty_BB_set);
             }
         }
@@ -2666,6 +2758,21 @@ Calculate_Dominator_Info (REGION_TREE *rgn_tree) {
     } /* end of while */
 }
 
+BOOL
+BB1_Postdominate_BB2 (BB * bb1, BB* bb2) {
+    BOOL b = BB_SET_MemberP (BB_pdom_set(bb2), bb1);
+    if (!b) {
+        if (bb1 == bb2) return TRUE;     
+        for (BB* bb = BB_Unique_Successor(bb2); 
+             bb != NULL; 
+             bb = BB_Unique_Successor (bb)) {
+            if (bb == bb1) { return TRUE; }
+        }
+    }
+
+    return b;
+}
+
     /* ============================================================
      *
      * BB_Pos_Analysis 
@@ -2676,10 +2783,12 @@ Calculate_Dominator_Info (REGION_TREE *rgn_tree) {
      * ============================================================ 
      */
 BB_POS 
-BB_Pos_Analysis (BB * bb, BB_VECTOR * cutting_set, 
-                 RGN_CFLOW_MGR * cflow_info) {
+BB_Pos_Analysis 
+    (BB* bb, BB_VECTOR* cutting_set, RGN_CFLOW_MGR * cflow_info) {
+
     for (BB_VECTOR_CONST_ITER iter = cutting_set->begin () ;
-         iter != cutting_set->end() ; iter++) {
+         iter != cutting_set->end() ; 
+         iter++) {
         
         BB * tmp = *iter ;
         if (tmp == bb) return IN_SISS ;
@@ -2778,7 +2887,7 @@ RGN_CFLOW_MGR :: gdb_dump (void) {
 void
 Workaround_Dom_Info_For_In_Abnormal_Loop_Rgn (REGION * r) {
 
-    BS * empty_BB_set = BS_Create_Empty (1, &MEM_phase_pool);
+    BS* empty_BB_set = BS_Create_Empty (1, &MEM_phase_pool);
 
     for (TOPOLOGICAL_REGIONAL_CFG_ITER iter (r->Regional_Cfg ()) ; 
         iter != 0 ; ++iter) {
@@ -2787,8 +2896,8 @@ Workaround_Dom_Info_For_In_Abnormal_Loop_Rgn (REGION * r) {
             continue ;
         }
 
-        BB * b = (*iter)->BB_Node () ;
+        BB* b = (*iter)->BB_Node () ;
         Set_BB_dom_set  (b,empty_BB_set);
         Set_BB_pdom_set (b, empty_BB_set);
-    } 
+    }
 }

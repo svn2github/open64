@@ -57,7 +57,7 @@
 #include "phases.h"
 #include "opt_actions.h"
 #include "file_utils.h"
-
+#include "lib_phase_dir.h"
 
 boolean show_flag = FALSE;
 boolean execute_flag = TRUE;
@@ -624,6 +624,69 @@ run_phase (phases_t phase, string name, string_list_t *args)
 		    putenv (new_env);
 		}
 #endif
+	        /* set orcc-specific include path to CPATH 
+             */ 
+		if (phase == P_cpp   || phase == P_gcpp || phase == P_gcpp_plus ||
+			phase == P_c_cpp || phase == P_cplus_cpp) {
+
+            string env_val;
+			string tr = getenv ("TOOLROOT");
+            int len; 
+
+			if (!tr) { tr = ""; }
+			
+#ifndef CROSS_COMPILATION 
+            {
+			len = strlen ("CPATH=") + 
+						strlen (tr) + 1 /* for '/' right after TOOLROOT */ +
+						strlen (LIBPATH "/") + 
+                        strlen ("include")   + 1 /* for NULL */; 	
+			env_val = malloc (len);
+			sprintf (env_val, "CPATH=%s/%s/include", tr, LIBPATH);
+            }
+#else 
+            {
+                /* the statements enclosed by {} are very UGLY!!!
+                 *  These statements are added right before 2.0 relase. 
+                 *  at that time, orcc perform cpp via gcc which is
+                 *  shipped with NUE. there are at least two verion of
+                 *  NUE are available, NUE1.0 and NUE1.2. to make them
+                 *  cpp happy, I (shuxin yang) hardwire some absolute
+                 *  header-file-paths. forgive me please!
+                 */
+            string gcc_2_9_ia64_000216_inc;
+            string gcc_2_96_ia64_000717_inc;
+            string cross_inc;
+            
+            gcc_2_9_ia64_000216_inc = 
+                "/nue/usr/lib/gcc-lib/ia64-hp-linux/2.9-ia64-000216/include";
+
+            gcc_2_96_ia64_000717_inc = 
+                "/nue/usr/lib/gcc-lib/ia64-hp-linux/2.96-ia64-000717/include";
+
+            cross_inc = "/nue/usr/ia64-hp-linux/include";
+
+            len = strlen ("CPATH=") + strlen (tr) + 1 /* strlen("/") */ + 
+                     strlen (PHASEPATH) + strlen("/include") + 
+                  1/*strlen(":") */ + strlen (gcc_2_9_ia64_000216_inc)  + 
+                  1/*strlen(":") */ + strlen (gcc_2_96_ia64_000717_inc) + 
+                  1/*strlen(":") */ + strlen (cross_inc) + 
+                  1/* for '\0' */;
+
+			env_val = malloc (len + 32); /* we may make some mistake in the calc 
+                                          * of "len", hence extra 32*/
+
+			sprintf (env_val, "CPATH=%s/%s/include:%s:%s:%s", 
+                               tr, PHASEPATH, 
+                               gcc_2_9_ia64_000216_inc,
+                               gcc_2_96_ia64_000717_inc, 
+                               cross_inc);
+            }
+#endif /* CROSS_COMPILATION */
+
+			putenv (env_val);
+            free (env_val);
+		}
 
 		execv(name, argv);
 		error("cannot exec %s", name);

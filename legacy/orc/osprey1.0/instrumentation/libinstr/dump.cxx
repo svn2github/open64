@@ -342,6 +342,8 @@ Dump_PU_Profile(FILE *fp, PU_PROFILE_HANDLE pu_handle, char * fname,
   Pu_Hdr pu_hdr;
 
   pu_hdr.pu_checksum = pu_handle->checksum;
+  pu_hdr.pu_size = pu_handle->pu_size;
+  pu_hdr.runtime_fun_address = pu_handle->runtime_fun_address;
   pu_hdr.pu_name_index = Str_Offset;
   pu_hdr.pu_file_offset = PU_Offset;
 
@@ -398,6 +400,12 @@ Dump_PU_Profile(FILE *fp, PU_PROFILE_HANDLE pu_handle, char * fname,
       pos = Dump_PU_Profile (fp, offset, fb_info, fname);
       pu_hdr.pu_call_offset = pos.offset;
       pu_hdr.pu_num_call_entries = pos.num_entries;
+  }
+
+  {
+      pos = Dump_PU_Profile (fp, offset, pu_handle->Get_Icall_Table (), fname);
+      pu_hdr.pu_icall_offset = pos.offset;
+      pu_hdr.pu_num_icall_entries = pos.num_entries;
   }
 
   // Enter the PU header

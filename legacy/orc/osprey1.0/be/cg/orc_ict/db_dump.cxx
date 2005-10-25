@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -60,6 +60,10 @@
 #include "region_bb_util.h"
 #include "dominate.h"
 #include "ir_reader.h"
+#include "register.h"
+#include "tn.h"
+#include "annotations.h"
+#include "cg_loop_scc.h"
 
 class dp{
 public:
@@ -78,18 +82,28 @@ public:
   static BB * get_bb (mBB_NUM bb_idg);
   static OP * get_op (mBB_NUM bb_id, mUINT16 map_idxg);
   static void dump_succs(mBB_NUM bb_id, mUINT16 map_idxg);
-  static void dump_succs_p(OP* opg);
+  static void dump_succs_p(OP* op);
   static void dump_preds(mBB_NUM bb_id, mUINT16 map_idxg);
-  static void dump_preds_p(OP* opg);
+  static void dump_preds_p(OP* op);
   static void dump_pdom(mBB_NUM bb_idg);
   static void dump_tn_set (BS *setg);
   static void dump_bb_set(BB_SET* setg);
+  static void dump_reg_set(REGISTER_SET regset);
   static void dump_tn_stl_set(set<TN*>& TNsg);
+  static void dump_rotate_info(struct ROTATING_KERNEL_INFO *info, int type = 0);
   static void tn_num(TN* tng);
   static void dump_wn_stmt(WN* wn);
   static void dump_wn_node(WN* wn);
   static void dump_st_type(ST* stg);
+  static void dump_scc(CG_LOOP_SCC *scc);
 };
+
+void dp::dump_scc(CG_LOOP_SCC *scc)
+{
+    Set_Trace_File_internal(stderr);
+    CG_LOOP_SCC_Print(scc);
+    Set_Trace_File_internal(TFile);
+}
 
 void dp::dump_st_type(ST* st)
 {
@@ -113,14 +127,64 @@ void dp::dump_tn_stl_set(set<TN*>& TNs)
     for(set<TN*>::iterator iter = TNs.begin(); iter != TNs.end(); iter++){
       TN* tn = *iter;
       if(TN_is_global_reg(tn)){
-	      fprintf(stderr,"GTN%d", TN_number(tn));
-	    } else {
-	      fprintf(stderr,"TN%d", TN_number(tn));
-	    }
+        fprintf(stderr,"GTN%d", TN_number(tn));
+      } else {
+        fprintf(stderr,"TN%d", TN_number(tn));
+      }
+    }
+    fprintf(stderr,"\n");   
+    fflush(stderr); 
+}
+
+void dp::dump_rotate_info(struct ROTATING_KERNEL_INFO *info, int type = 0)
+{
+
+    static char *reg_class[] = { "u","r","f","p","b","a","c"};
+    vector<struct tn *> copyin = ROTATING_KERNEL_INFO_copyin(info);  
+    vector<struct tn *> copyout = ROTATING_KERNEL_INFO_copyout(info);  
+    vector<struct tn *> localdef = ROTATING_KERNEL_INFO_localdef(info);  
+ 
+    if(type == 0 || type == 1){ 
+      fprintf(stderr,"Copyin: "); 
+      for(vector<struct tn *>::iterator iter = copyin.begin(); iter != copyin.end(); iter++){
+        TN *tn = *iter;
+        int reg = TN_register(tn) - 1;
+        int regc = TN_register_class(tn);
+        int number = TN_number(tn); 
+        fprintf(stderr,"[%s%d/%d] ", reg_class[regc],reg,number);
+      }
+      fprintf(stderr,"\n");  
+      fflush(stderr); 
+    }
+    if(type == 0 || type == 2){ 
+      fprintf(stderr,"Copyout: "); 
+      for(vector<struct tn *>::iterator iter = copyout.begin(); iter != copyout.end(); iter++){
+        TN *tn = *iter;
+        int reg = TN_register(tn) - 1;
+        int regc = TN_register_class(tn);
+        int number = TN_number(tn); 
+        fprintf(stderr,"[%s%d/%d] ", reg_class[regc],reg,number);
+      }
+      fprintf(stderr,"\n");  
+      fflush(stderr); 
+    }
+    if(type == 0 || type == 3){ 
+      fprintf(stderr,"Zombie: "); 
+      for(vector<struct tn *>::iterator iter = localdef.begin(); iter != localdef.end(); iter++){
+        TN *tn = *iter;
+        int reg = TN_register(tn) - 1;
+        int regc = TN_register_class(tn);
+        int number = TN_number(tn); 
+        fprintf(stderr,"[%s%d/%d] ", reg_class[regc],reg,number);
+      }
+      fprintf(stderr,"\n");  
+      fflush(stderr); 
     }
 
-    fprintf(stderr,"\n");    
+
+
 }
+
 
 void dp::tn_num(TN* tn)
 {
@@ -270,11 +334,12 @@ dp::dump_succs(mBB_NUM bb_id, mUINT16 map_idx) {
     for(ARC_LIST* arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
         ARC *arc = ARC_LIST_first(arcs) ;
         OP *succ = ARC_succ(arc) ;
-        fprintf(stderr,"[%d/%d]\t%p  -->%s\t ARC=%s\t %s\t %s\n", 
+        fprintf(stderr,"[%d/%d]\t-->%p(%s)\t LAT=%d ARC=%s\t %s\t %s\n", 
 			          succ->bb->id, 
 			          succ->map_idx, 
-                succ,
-                TOP_Name((TOP)succ->opr),
+                                  succ,
+                                  TOP_Name((TOP)succ->opr),
+                                  ARC_latency(arc),
 			          arc_txt[ARC_kind(arc)], 
 			          ARC_is_dotted(arc)   ? "dotted"   : "strict", 
 			          ARC_is_definite(arc) ? "definite" : "indefinite");
@@ -300,12 +365,13 @@ dp::dump_preds(mBB_NUM bb_id, mUINT16 map_idx) {
     for(ARC_LIST* arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
         ARC *arc = ARC_LIST_first(arcs) ;
         OP *pred = ARC_pred(arc) ;
-        fprintf(stderr,"[%d/%d]\t%p  %s-->\t ARC=%s\t %s\t %s\n", 
+        fprintf(stderr,"[%d/%d]\t%p(%s)-->\t LAT=%d\tARC=%s\t %s\t %s\n", 
 			          pred->bb->id, 
 			          pred->map_idx,
-                pred,
-                TOP_Name((TOP)pred->opr),
-		       	    arc_txt[ARC_kind(arc)], 
+                                  pred,
+                                  TOP_Name((TOP)pred->opr),
+                                  ARC_latency(arc),
+		       	          arc_txt[ARC_kind(arc)], 
 			          ARC_is_dotted(arc)   ? "dotted"   : "strict", 
 			          ARC_is_definite(arc) ? "definite" : "indefinite");
     }
@@ -351,5 +417,12 @@ dp::dump_bb_set (BB_SET *set) {
   BB_SET_Print (set, stderr) ;
   fprintf (stderr, "\n");
   fflush (stderr) ;
+}
+
+void 
+dp::dump_reg_set(REGISTER_SET regset){
+  REGISTER_SET_Print(regset,stderr);
+  fprintf(stderr, "\n");
+  fflush(stderr);
 }
 

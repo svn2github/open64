@@ -89,7 +89,6 @@ struct PIC_OPT
     PIC_OPT (BOOL cs, BOOL hs) : f_call_shared (cs), hs_ignore (hs) {}
 
     void operator() (UINT32, ST* st) const {
-
 	//
 	// Code replacing Initialize_Addr_Taken() in ipaa.cxx
 	//
@@ -161,14 +160,17 @@ struct PIC_OPT
 	    if (ST_is_weak_symbol (st) && ST_class (st) == CLASS_VAR) {
 		if (ST_export (st) != EXPORT_PREEMPTIBLE &&
 		    ST_st_idx (st) != ST_strong_idx (*st)) {
-		    Set_ST_sclass (st, ST_sclass (ST_strong (st)));
+		    const ST* strong_st = ST_strong(st);
+		    Set_ST_sclass (st, ST_sclass (strong_st));
 		    Clear_ST_is_weak_symbol (st);
+		    Synch_ST_flags(*st, *strong_st);
 		} else 
 		    Set_ST_not_gprel (st);
 	    }
-	    return;
+
+	    if (ST_is_weak_symbol(st))
+	      return;
 	}
-	
 	if(f_call_shared) {
 	    if (AUX_ST_flags(Aux_St_Table[ST_st_idx (st)],USED_IN_DSO)){
 		/* common can be preempted by the def. in a so
@@ -308,7 +310,8 @@ struct Opt_global_var
 	    (aux_st.flags & USED_IN_OBJ) ||
 	    (aux_st.flags & USED_IN_DSO) ||
 	    (export_class != EXPORT_INTERNAL &&
-	     export_class != EXPORT_LOCAL_INTERNAL)) {
+	     export_class != EXPORT_LOCAL_INTERNAL &&
+	     export_class != EXPORT_PROTECTED)) {
 	    
 	    Set_AUX_ST_flags (aux_st, IGNORE_REFCOUNTS);
 	    return;

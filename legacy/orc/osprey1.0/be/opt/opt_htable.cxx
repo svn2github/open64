@@ -4848,7 +4848,12 @@ CODEMAP::Print(FILE *fp) const
     if (bucket)
       fprintf(fp, "----bucket %d\n", codemap_iter.Cur());
     FOR_ALL_NODE(cr, cr_iter, Init(bucket)) {
-      Print_CR(cr, fp);
+#if 1 // Fix 12-20-2002
+      // Some IVAR become dangling node after folding,
+      // which will trigger assertion in Print_CR().
+      // We need to update use_cnt to fix the root cause of this problem.
+      // Print_CR(cr, fp);
+#endif
       count++;
       if (cr->Kind() == CK_IVAR && cr->Opr() != OPR_PREFETCH) 
         ivar_count++;

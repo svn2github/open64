@@ -544,6 +544,8 @@ extern INT32 OPT_unroll_size;
 extern BOOL OPT_unroll_size_overridden;
 extern BOOL OPT_Lower_Speculate;
 extern BOOL OPT_Lower_Treeheight;
+extern BOOL OPT_Lower_To_Memlib;
+extern INT32 OPT_Threshold_To_Memlib; 
 extern BOOL OPT_Inline_Divide;
 extern BOOL OPT_Space;
 extern INT32 Olimit;	/* stop optimization or use regions at this limit */

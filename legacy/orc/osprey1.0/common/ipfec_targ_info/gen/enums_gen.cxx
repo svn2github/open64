@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -41,7 +41,7 @@
 
 #include "enums_gen.h"
 
-static const char description[] = "\
+static const char* const description[] = {"\
 /* ====================================================================\n\
  * ====================================================================\n\
  *\n\
@@ -49,8 +49,8 @@ static const char description[] = "\
  *\n\
  *   A list of all the enum classes used in an ISA.\n\
  *   It exports the following:\n\
- *\n\
- *   typedef (enum) ISA_ENUM_CLASS\n\
+ *",
+" *   typedef (enum) ISA_ENUM_CLASS\n\
  *       An enumeration of the enum classes.\n\
  *\n\
  *   typedef (enum) ISA_ENUM_CLASS_VALUE\n\
@@ -59,8 +59,8 @@ static const char description[] = "\
  *   typedef (struct) ISA_ENUM_CLASS_INFO\n\
  *       Contains info about first and last ECV in the EC.\n\
  *       The contents are private.\n\
- *\n\
- *   typedef (struct) ISA_ENUM_CLASS_VALUE_INFO\n\
+ *",
+" *   typedef (struct) ISA_ENUM_CLASS_VALUE_INFO\n\
  *       Contains info about name and int-value of the ECV.\n\
  *       The contents are private.\n\
  *\n\
@@ -69,21 +69,21 @@ static const char description[] = "\
  *\n\
  *   ISA_ENUM_CLASS_VALUE ISA_EC_First_Value (ISA_ENUM_CLASS)\n\
  *       Returns the first ECV for the specified EC.\n\
- *\n\
- *   ISA_ENUM_CLASS_VALUE ISA_EC_Last_Value (ISA_ENUM_CLASS)\n\
+ *" ,
+" *   ISA_ENUM_CLASS_VALUE ISA_EC_Last_Value (ISA_ENUM_CLASS)\n\
  *       Returns the last ECV for the specified EC.\n\
  *       Note that it assumes all ECV for an EC are in the\n\
  *       first/last range given by the above two functions.\n\
  *\n\
  *   const char * ISA_ECV_Name (ISA_ENUM_CLASS_VALUE)\n\
  *       Returns name of ECV.\n\
- *\n\
- *   INT ISA_ECV_Intval (ISA_ENUM_CLASS_VALUE)\n\
+ *" ,
+" *   INT ISA_ECV_Intval (ISA_ENUM_CLASS_VALUE)\n\
  *       Returns int-value of ECV.\n\
  *\n\
  * ====================================================================\n\
  * ====================================================================\n\
- */";
+ */", NULL};
 
  
 void Enums_Generator(void *pknobs, GEN_MODE mode)

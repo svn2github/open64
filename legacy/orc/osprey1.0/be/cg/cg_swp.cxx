@@ -323,6 +323,28 @@ SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace)
 
   if (total_op_count + SWP_OPS_OVERHEAD > SWP_OPS_LIMIT)
     return SWP_LOOP_LIMIT;
+
+  // Disable SWP loops with low feedback trip count
+  if (CG_PU_Has_Feedback)
+  {
+    BBLIST *bb_succs = BB_succs(body);
+    if (BBlist_Len(bb_succs) > 1 && BB_freq_fb_based(body)) {
+      BBLIST *succ;
+      FOR_ALL_BBLIST_ITEMS(bb_succs,succ) {
+	if (BB_id(body) == BB_id(BBLIST_item(succ))) {
+	  if ((BBLIST_prob(succ) >= 0 && BBLIST_prob(succ) <= 1.0) &&	//test validation first
+	      (BBLIST_prob(succ) <= SWP_Options.FB_Prob1/100.0 || 
+               BBLIST_prob(succ) <= SWP_Options.FB_Prob2/100.0 && 
+	       BB_freq(body) < SWP_Options.FB_Freq && BB_freq(body) > 0)) {
+            if (trace) {
+              fprintf(TFile, "SWP: skip optimization due to feedback low trip count.\n");
+            }
+            return SWP_LOW_TRIP_COUNT;
+          }
+        }
+      }
+    }    
+  }
     
   return SWP_OK;
 }
@@ -615,6 +637,9 @@ Emit_SWP_Note(BB *bb, FILE *file)
       break;
     case SWP_LOOP_LIMIT:
       failure_msg = "loop is too big";
+      break;
+    case SWP_LOW_TRIP_COUNT:
+      failure_msg = "loop has low trip count";
       break;
     default:
       Is_True(FALSE, ("unknown SWP RETURN CODE."));
