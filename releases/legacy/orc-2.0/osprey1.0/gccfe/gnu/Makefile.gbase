@@ -1,0 +1,308 @@
+#
+#
+#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2 of the GNU General Public License as
+#  published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if 
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write the Free Software Foundation, Inc., 59
+#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+
+#
+#  Makefile.base for gccfe
+#
+
+#----------------------------------------------------------------------
+#  Set environment variables
+#
+#  TARGDIR   :  is the targ specific directory in which we do build. 
+#               e.q.  /d1/cmplrs.src/v4.00/host32
+#
+#----------------------------------------------------------------------
+TARGDIR = $(BUILD_AREA)
+
+#----------------------------------------------------------------------
+#  Include the usual commondefs
+#----------------------------------------------------------------------
+include $(COMMONDEFS)
+
+#----------------------------------------------------------------------
+#  Set environment variables
+#----------------------------------------------------------------------
+ifeq ($(BUILD_COMPILER), SGI)
+CVERSION = -xansi
+else
+CVERSION =
+endif
+
+#----------------------------------------------------------------------
+#  Compiler Options
+#----------------------------------------------------------------------
+
+# These are here because they are needed both in fecc and in common so just
+# putting them in fecc/defines.h is not enough:
+
+HOSTDEFS += -DIN_GCC -DHAVE_CONFIG_H
+
+ifeq ($(BUILD_TARGET), IA64)
+HOSTDEFS += -DTARGET_NAME=\"ia64-linux\"
+endif
+ifeq ($(BUILD_TARGET), IA32)
+HOSTDEFS += -DTARGET_NAME=\"i686-pc-linux-gnu\"
+endif
+ifeq ($(BUILD_TARGET), MIPS)
+HOSTDEFS += -DTARGET_NAME=\"mips-sgi-irix6\"
+endif
+
+HOSTDEFS += -DLONGLONG
+HOSTDEFS += -DFRONT_END
+HOSTDEFS += -DUSE_DECL_SRCPOS
+
+HOSTDEFS += -DFRONT_END_C
+HOSTDEFS += -DCFE -DCIL
+HOSTDEFS += -DDO_IL_LOWERING=0
+HOSTDEFS += -DNO_USR_INCLUDE=TRUE
+HOSTDEFS += -DAUTOMATIC_TEMPLATE_INSTANTIATION=0
+HOSTDEFS += -DINSTANTIATION_BY_IMPLICIT_INCLUSION=0
+HOSTDEFS += -DBACK_END_IS_C_GEN_BE=0
+HOSTDEFS += -DMONGOOSE_CIF
+
+HOSTDEFS += -DSGI_RAG_BACKEND
+HOSTDEFS += -DSGI_MONGOOSE
+ifneq ($(BUILD_COMPILER), SGI)
+HOSTDEFS += -DMIPSEL
+endif
+
+ifeq ($(BUILD_OPTIMIZE), DEBUG)
+HOSTDEFS += -DIs_True_On
+HOSTDEFS += -DInsist_On 
+HOSTDEFS += -DDEBUG=1
+HOSTDEFS += -DCHECKING=1
+else
+HOSTDEFS += -DDEBUG=0 
+HOSTDEFS += -DCHECKING=0 
+endif
+
+ifeq ($(BUILD_COMPILER), GNU)
+TARGDEFS = -D__MIPS_AND_IA64_ELF_H
+endif
+
+#----------------------------------------------------------------------
+#  List of directories, and source files of interest
+#----------------------------------------------------------------------
+
+FE_DIR 			= $(BUILD_TOT)/gccfe
+
+ifeq ($(BUILD_OS), IRIX)
+INCLUDE_DIR 		= $(BUILD_TOT)/include
+else
+INCLUDE_DIR 		= $(BUILD_AREA)/include
+endif
+
+GNU_DIR			= $(BUILD_BASE)
+GNU_CONFIG_DIR		= $(BUILD_BASE)/config
+GNU_COMMON_DIR          = $(BUILD_TOT)/gnu_common
+
+GNU_TARG_DIR = $(GNU_DIR)/$(BUILD_TARGET_DIR)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/$(BUILD_TARGET_DIR)
+ifeq ($(BUILD_TARGET), IA32)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
+endif
+ifeq ($(BUILD_TARGET), MIPS)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/mips
+endif
+
+TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
+TARG_LIBM_DIR		= $(TARGDIR)/libm
+TARG_CMPLRS_DIR		= $(TARGDIR)/libcmplrs
+TARG_CSUP_DIR		= $(TARGDIR)/libcsup
+TARG_LIBIBERTY_DIR      = $(TARGDIR)/libiberty
+TARG_GNU_DIR		= $(TARGDIR)/gccfe/gnu
+
+# These are the directories in which to look for source files.
+
+SRC_DIRS =		\
+  $(GNU_DIR)		\
+  $(GNU_TARG_DIR)	\
+  $(GNU_CONFIG_TARG_DIR) 
+
+INC_DIRS =		\
+  $(FE_DIR)		\
+  $(GNU_DIR)		\
+  $(GNU_TARG_DIR)	\
+  $(GNU_CONFIG_DIR)	\
+  $(GNU_CONFIG_TARG_DIR)\
+  $(GNU_COMMON_DIR)/include
+
+#----------------------------------------------------------------------
+#  List of source files.  Please keep them in alphabetical order.
+#----------------------------------------------------------------------
+
+GNU_SRCS =		\
+  alias.c		\
+  bb-reorder.c		\
+  bitmap.c		\
+  builtins.c		\
+  caller-save.c		\
+  calls.c		\
+  combine.c		\
+  conflict.c		\
+  convert.c		\
+  cse.c			\
+  c-common.c		\
+  c-pragma.c		\
+  dbxout.c		\
+  diagnostic.c		\
+  dwarfout.c		\
+  dwarf2out.c		\
+  dyn-string.c		\
+  emit-rtl.c		\
+  except.c		\
+  explow.c		\
+  expmed.c		\
+  expr.c		\
+  final.c		\
+  flow.c		\
+  fold-const.c		\
+  function.c		\
+  gcse.c		\
+  genrtl.c		\
+  ggc-common.c		\
+  ggc-simple.c		\
+  global.c		\
+  graph.c		\
+  hash.c		\
+  haifa-sched.c		\
+  ifcvt.c		\
+  insn-attrtab.c	\
+  insn-emit.c		\
+  insn-extract.c	\
+  insn-opinit.c		\
+  insn-output.c		\
+  insn-peep.c		\
+  insn-recog.c		\
+  integrate.c		\
+  jump.c		\
+  lcm.c			\
+  lists.c		\
+  local-alloc.c		\
+  loop.c		\
+  optabs.c		\
+  predict.c		\
+  print-rtl.c		\
+  print-tree.c		\
+  profile.c		\
+  real.c		\
+  recog.c		\
+  regclass.c		\
+  regmove.c		\
+  regrename.c		\
+  reg-stack.c		\
+  reload.c		\
+  reload1.c		\
+  reorg.c		\
+  resource.c		\
+  rtl.c			\
+  rtlanal.c		\
+  sbitmap.c		\
+  sdbout.c		\
+  sibcall.c		\
+  simplify-rtx.c	\
+  ssa.c		\
+  stmt.c		\
+  stor-layout.c		\
+  timevar.c		\
+  toplev.c		\
+  tree.c		\
+  unroll.c		\
+  varasm.c		\
+  varray.c		\
+  version.c		\
+  xcoffout.c
+
+ifeq ($(BUILD_TARGET), IA64)
+  GNU_SRCS += ia64.c
+endif
+ifeq ($(BUILD_TARGET), IA32)
+  GNU_SRCS += i386.c
+endif
+ifeq ($(BUILD_TARGET), MIPS)
+  GNU_SRCS += mips.c
+endif
+
+GNU_SRCS += 		\
+  c-aux-info.c		\
+  c-convert.c		\
+  c-decl.c		\
+  c-iterate.c		\
+  c-lang.c		\
+  c-lex.c		\
+  c-parse.c		\
+  c-typeck.c
+
+GNU_OBJS = $(GNU_SRCS:.c=.o)
+
+CFILES = $(GNU_SRCS)
+
+VPATH    =  $(SRC_DIRS)
+
+LCOPTS = $(STD_COMPILE_OPTS)
+LCDEFS = $(HOSTDEFS) $(TARGDEFS)
+LCINCS = $(addprefix -I, $(INC_DIRS))
+
+LDIRT =
+
+#------------------------------------------------------------
+#  Define target
+#------------------------------------------------------------
+LIBRARY = libgfec.a
+TARGETS = $(LIBRARY)
+
+default: first $(TARGETS) last
+
+#----------------------------------------------------------------------
+#  The commands in this section are done BEFORE any other target is 
+#  built.
+#----------------------------------------------------------------------
+first:
+	cd $(BUILD_AREA)/include && $(MAKE)
+	cd $(TARG_LIBIBERTY_DIR) && $(MAKE)
+
+#----------------------------------------------------------------------
+#  The commands in this section are done AFTER every other target is 
+#  built.
+#----------------------------------------------------------------------
+last: make_libdeps
+
+include $(COMMONRULES)
+
+install: default
+
+.PRECIOUS : $(LIBRARY)
+
+$(LIBRARY): $(LIBRARY)($(OBJECTS))
+
