@@ -443,6 +443,7 @@ add_special_options (void)
 	if (option_was_seen(O_S) && ipa == TRUE) {
 		turn_off_ipa ("-IPA -S combination not allowed, replaced with -S");
 	}
+#ifdef IPA_PROFILING_O3_NOT_COEXIST
 	if (instrumentation_invoked == TRUE) {
 	    if (ipa == TRUE) {
 		inline_t = FALSE;
@@ -451,6 +452,7 @@ add_special_options (void)
 	    if (olevel > 2)
 		turn_down_opt_level (2, "-fb_create conflicts with -Ofast/-O3; changing to -O2");
 	}
+#endif /* IPA_PROFILING_O3_NOT_COEXIST */
 	if (Gen_feedback && olevel > 0) {
 		turn_down_opt_level(0, "-fbgen conflicts with -O; changing to -O0");
 	}
@@ -516,5 +518,17 @@ add_special_options (void)
 		 * Warn about possible misuse. */
 		warning("Under Linux, -static is a linker option for using static libraries; if you wanted to put local data in static area, use -static-data instead");
 	}
+}
+
+extern void
+add_default_option(void)
+{
+   	toggle(&shared, CALL_SHARED);
+}
+
+extern void
+del_default_option(void)
+{
+   	toggle(&shared, DSO_SHARED);
 }
 

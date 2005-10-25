@@ -88,6 +88,8 @@ static bool file_exists(const char* path)
 
 static char* get_linker_name(int argc, char** argv)
 {
+    char * toolroot = getenv("TOOLROOT");
+
     for (int i = 1; i < argc; i++) {
 	char *string = argv[i];
 	if (*string == '-' && string[1] == 'L') { // See if collect2 is here
@@ -99,6 +101,15 @@ static char* get_linker_name(int argc, char** argv)
                 free(linker_name);
 	}
     }
+    if (toolroot) {
+	char *linker_name = (char *)concat_names(toolroot, LINKER_NAME_WITH_SLASH);
+        if (file_exists(linker_name)) {
+           return (linker_name);
+	}
+        else
+           free(linker_name);
+    }
+	
     return (LINKER_NAME);
 }
 

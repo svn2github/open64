@@ -163,127 +163,290 @@ static WN_MAP WN_to_OP_map;
 
 OP_MAP OP_Asm_Map;
 
-#define Is_Boolean_Operator(opr) (opr==OPR_EQ || opr==OPR_NE || opr==OPR_LE || 	opr==OPR_LT || opr==OPR_GE || opr==OPR_GT)
-#define Is_Old_Boolean_Expression(expr) \
-            (((WN_opcode(expr) == OPC_I8BAND) || (WN_opcode(expr) == OPC_I8BIOR)) &&\
-            Is_Boolean_Operator(WN_operator(WN_kid0(expr))) &&\
-      			Is_Boolean_Operator(WN_operator(WN_kid1(expr))))
+
+inline BOOL 
+WN_Is_Bool_Operator(WN* expr) 
+{
+  OPERATOR opr;
+  opr = WN_operator(expr); 
+  if(opr == OPR_EQ || 
+     opr == OPR_NE || 
+     opr == OPR_LE || 	
+     opr == OPR_LT || 
+     opr == OPR_GE || 
+     opr == OPR_GT )
+  {
+    return TRUE;
+  }else{
+    return FALSE;
+  }
+}
+
+/*
+ *     Identify wn like this:
+ * 
+ *       BBLDID 
+ *     I8BCVT
+ */
+
+inline BOOL
+WN_Is_Convert_Bool(WN* expr)
+{
+  if(WN_operator_is(expr,OPR_CVT)           &&
+     WN_desc(expr) == MTYPE_B               &&
+     WN_operator_is(WN_kid0(expr),OPR_LDID) &&
+     WN_rtype(WN_kid0(expr)) == MTYPE_B     &&
+     WN_class(WN_kid0(expr)) == CLASS_PREG){
+    return TRUE;  
+  }else{
+    return FALSE;  
+  }  
+}
+
+
+inline BOOL 
+Is_Old_Boolean_Expression(WN* expr)
+{
+  if(WN_opcode(expr) == OPC_I8BAND || 
+     WN_opcode(expr) == OPC_I8BIOR )
+  {
+    WN* kid0 = WN_kid0(expr);    
+    WN* kid1 = WN_kid1(expr);    
+    if((WN_Is_Bool_Operator(kid0) || WN_Is_Convert_Bool(kid0)) &&
+       (WN_Is_Bool_Operator(kid1) || WN_Is_Convert_Bool(kid1))){
+      return TRUE;
+    }
+  } 
+  return FALSE;
+}
+
+
 /*
 This function is to transform poorly-handled boolean processing to predicated processing in IA64. 
 Predicates is returned as the result.
 Entry-check is in function Handle_CONDBR.
 Boolean expression must be like:
-	A&&B
-	A||B
+
+	A && B
+	A || B
+        CVT && A  or A && CVT
+        CVT || A  or A || CVT
+        CVT1 && CVT2
+        CVT1 || CVT2
+        
 A or B is a boolean expression contains only one logical operator(EQ, NE, LE, LT, GE, GT). A/B must be of
 type integer, short or char. Signed/unsigned doesn't matter.
+CVT is a convert operator. It's desc type must be Boolean. It's kid0 must be a LDID with rtype = MTYPE_B.
+Moreover, WN_class(kid0) should be CLASS_PREG
+
 The transformation looks like:
-	A&&B -->
-	          Pm = 0 
-	          Pn = 1
-	          Pi, Pj = A
-	          (Pi) Pm, Pn = B
-	A||B -->
-	          Pm = 1
-	          Pn = 0
-	          Pi, Pj = A
-	          (Pj) Pm, Pn = B
+
+        A && B -->
+                     Pi,Pj = A
+                     cmp.eq Pn,Pm = r0,r0 (Pm = 0)
+                (Pi) Pm,Pn = B
+                (Pm) TRUEBR  or 
+                (Pn) FALSEBR
+
+
+        A || B -->
+                     Pi,Pj = A
+                     cmp.eq Pm,Pn = r0,r0 (Pm = 1)
+                (Pj) Pm,Pn = B
+                (Pm) TRUEBR   or
+                (Pn) FALSEBR
+                
+
+        CVT && A 
+        A && CVT -->
+                     Pi,Pj = CVT
+                     cmp.eq Pn,Pm = r0,r0 (Pm = 0)
+                (Pi) Pm,Pn = A
+                (Pm) TRUEBR   or
+                (Pn) FALSEBR
+
+		
+        CVT || A
+        A || CVT -->
+                     Pi,Pj = CVT
+                     cmp.eq Pm,Pn = r0,r0 (Pm = 1)
+                (Pj) Pm,Pn = A
+                (Pm) TRUEBR   or 
+                (Pn) FALSEBR
+
+		
+        CVT1 && CVT2 -->
+                         Pi,Pj = CVT1
+                         Pm,Pn = CVT2
+                         cmp.eq Ps,Pt = r0,r0 (Ps = 1)
+                    (Pj) cmp.eq Pt,Ps = r0,r0
+                    (Pn) cmp.eq Pt,Ps = r0,r0
+                    (Ps) TRUEBR   or
+                    (Pt) FALSEBR
+
+		    
+        CVT1 || CVT2 -->
+                         Pi,Pj = CVT1
+                         Pm,Pn = CVT2
+                         cmp.eq Pt,Ps = r0,r0 (Ps = 0)
+                    (Pi) cmp.eq Ps,Pt = r0,r0
+                    (Pm) cmp.eq Ps,Pt = r0,r0
+                    (Ps) TRUEBR   or   
+                    (Pt) FALSEBR
+
+
 P0 is the predicate always true. Pm/Pn is predicate pair to be returned.
 
 Please note that this is not a perfect solution. More complete solution needs to use LAND/LIOR instead of BAND/BIOR
 in previous phases in boolean expression processing.
 This modification assumes below expressions are short-circuited:
-	1.Float compare; won't have problem;
-	2.Post/pre increment/decrement;
-	3.Operands as function;
+        1.Float compare; won't have problem;
+        2.Post/pre increment/decrement;
+        3.Operands as function;
 */
 
 static TN*
 Handle_Bool_As_Predicate(WN*condition, WN*parent, BOOL invert)
 {
-	WN *kid0, *kid1;
-	TN *predicate_result0, *predicate_result1;
-	OPERATOR condition_opr = WN_operator(condition);
+    WN* kid0 = NULL;
+    WN* kid1 = NULL;
+    OP* last_op = NULL;
+    OP* kid0_last_op = NULL;
+    OP* kid1_last_op = NULL;
+    TN* kid0_result = NULL;
+    TN* kid1_result = NULL;
+    TN* predicate_result0 = NULL;
+    TN* predicate_result1 = NULL;
+    TN* guarder = NULL;
+    OP* first_guardee = NULL;
+    OP *preset_op = NULL;
+    OPERATOR condition_opr = WN_operator(condition);
 
-	if (Trace_WhirlToOp)
-	  fprintf(TFile, "Use Predicate register to replace band/bior operation in boolean expression!\n");
-	kid0 = WN_kid0(condition);
-	kid1 = WN_kid1(condition);
-	TN*kid0_result = Build_TN_Of_Mtype(MTYPE_B);
-	TN*kid1_result = Build_TN_Of_Mtype(MTYPE_B);
+    if (Trace_WhirlToOp)
+      fprintf(TFile, "Use Predicate register to replace band/bior operation in boolean expression!\n");
 
-	Expand_Expr(kid0, condition, kid0_result);
+    kid0 = WN_kid0(condition);
+    kid1 = WN_kid1(condition);
+    kid0_result = Build_TN_Of_Mtype(MTYPE_B);
+    kid1_result = Build_TN_Of_Mtype(MTYPE_B);
 
-	OP *kid0_LastOp = OPS_last(&New_OPs);
-	Expand_Expr(kid1, condition, kid1_result);
-	OP *kid1_LastOp = OPS_last(&New_OPs);
+    last_op = OPS_last(&New_OPs);
+    
+    if(WN_Is_Bool_Operator(kid0)){
+      Expand_Expr(kid0, condition, kid0_result);
+    }else if(WN_Is_Convert_Bool(kid0)){
+      kid0_result = Expand_Expr(WN_kid0(kid0), kid0, NULL);                 
+      Is_True(OPS_last(&New_OPs) == last_op,("kid0: kid of CVT can not generate new OPs!")); 
+    }else{
+      Is_True(FALSE,("Can not handle operators other than bool and convert!"));
+    }
+    kid0_last_op = OPS_last(&New_OPs);
 
-	TN *kid1_predicate;
-	// select one of the two predicate results from kid0 to kid1.
-	kid1_predicate = OP_result(kid0_LastOp, (condition_opr == OPR_BAND) ? 0:1);
+    if(WN_Is_Bool_Operator(kid1)){
+      Expand_Expr(kid1, condition, kid1_result);
+    }else if(WN_Is_Convert_Bool(kid1)){
+      kid1_result = Expand_Expr(WN_kid0(kid1), kid0, NULL);                  
+      Is_True(OPS_last(&New_OPs) == kid0_last_op,("kid1: kid of CVT can not generate new OPs!")); 
+    }else{
+      Is_True(FALSE,("Can not handle operators other than bool and convert!"));
+    }
+    kid1_last_op = OPS_last(&New_OPs);
 
-	OP *op=OP_next(kid0_LastOp);
-	FmtAssert(op!=NULL, ("boolean expression doesn't generate OPs"));
+    if(WN_Is_Convert_Bool(kid0) && WN_Is_Convert_Bool(kid1)){
+      
+      // CVT1 && CVT2; CVT1 || CVT2
+      Is_True(kid0_last_op == last_op,("CVT-LDID can not generate OPs!"));
+      Is_True(kid1_last_op == last_op,("CVT-LDID can not generate OPs!"));
 
-	// Check if all of the ops expanded from kid1 are guarded by True_TN
-	INT32 bTrue_TN=1;
-	for ( ; op; op = OP_next(op))
-	{
-		if (Trace_WhirlToOp)
-		{
-			fprintf(TFile, "OP to be if-converted:");
-			Print_OP(op);
-		}
-		if (OP_opnd(op,0) != True_TN)
-			bTrue_TN = 0;
-//		FmtAssert(OP_opnd(op,0) == True_TN, ("First operand is not True_TN"));
-//		Set_OP_opnd(op, 0, kid1_predicate);	// replace the True_TN as the predicate result from kid 0
-	}
-	if (bTrue_TN)
-	{
-		if (Trace_WhirlToOp)
-		{
-			fprintf(TFile, "All OPs above will be predicated\n");
-		}
-		for ( op=OP_next(kid0_LastOp); op; op = OP_next(op))
-		{
-			Set_OP_opnd(op, 0, kid1_predicate);	// replace the True_TN as the predicate result from kid 0
-		}
-	}
-	else
-	{
-		if (Trace_WhirlToOp)
-		{
-			fprintf(TFile, "Only last op will be predicated\n");
-		}
-		Set_OP_opnd(kid1_LastOp, 0, kid1_predicate);
-	}
-	
-	predicate_result0 = OP_result(kid1_LastOp, 0);
-	predicate_result1 = OP_result(kid1_LastOp, 1);
-	
-	// insert OP to preset predicate_result0/1 properly
-	// Pls note that this op won't be added to WN2OP and OP2WN map.
-	TN *TN_predicate_1 = Build_Dedicated_TN(ISA_REGISTER_CLASS_predicate,1,0);
+      predicate_result0 = Build_TN_Of_Mtype(MTYPE_B);      
+      predicate_result1 = Build_TN_Of_Mtype(MTYPE_B);      
 
-	OP *preset_OP;
-	if (condition_opr == OPR_BAND) {
-		OPS_Insert_Op_After(&New_OPs, kid0_LastOp, preset_OP = Mk_OP(TOP_cmp_eq_unc, predicate_result1, predicate_result0, True_TN, Zero_TN, Zero_TN));
-	}
-	else if (condition_opr == OPR_BIOR) {
-		OPS_Insert_Op_After(&New_OPs, kid0_LastOp, preset_OP = Mk_OP(TOP_cmp_eq_unc, predicate_result0, predicate_result1, True_TN, Zero_TN, Zero_TN));
-	}
-	else
-		FmtAssert(true, ("Condition error. This should never happen.\n"));
+      TN* kid0_guard = condition_opr == OPR_BIOR ? kid0_result : Get_Complement_TN(kid0_result); 
+      TN* kid1_guard = condition_opr == OPR_BIOR ? kid1_result : Get_Complement_TN(kid1_result);
 
-  if (Trace_WhirlToOp) {
-  	fprintf(TFile, "OP inserted to preset the predicate registers for previous OP:\n");
-	  Print_OP(preset_OP);
-  }
+      OP* op1;
+      OP* op2;
+      if(condition_opr == OPR_BIOR){
+        op1 = Mk_OP(TOP_cmp_eq, predicate_result0, predicate_result1, kid0_guard, Zero_TN, Zero_TN);
+        op2 = Mk_OP(TOP_cmp_eq, predicate_result0, predicate_result1, kid1_guard, Zero_TN, Zero_TN);
+        preset_op = Mk_OP(TOP_cmp_eq, predicate_result1, predicate_result0, True_TN, Zero_TN, Zero_TN);
+      }else if(condition_opr == OPR_BAND){
+        op1 = Mk_OP(TOP_cmp_eq, predicate_result1, predicate_result0, kid0_guard, Zero_TN, Zero_TN);
+        op2 = Mk_OP(TOP_cmp_eq, predicate_result1, predicate_result0, kid1_guard, Zero_TN, Zero_TN);
+        preset_op = Mk_OP(TOP_cmp_eq, predicate_result0, predicate_result1, True_TN, Zero_TN, Zero_TN);
+      }else{
+        Is_True(FALSE,("Can not get to here!")); 
+      }
+      OPS_Append_Op(&New_OPs,preset_op); 
+      OPS_Append_Op(&New_OPs,op1); 
+      OPS_Append_Op(&New_OPs,op2);
 
-	// Change the result type
-	WN_set_rtype(condition, MTYPE_B);
-	return (invert)?predicate_result1:predicate_result0;
+    }else{
+
+      if(WN_Is_Convert_Bool(kid0) || WN_Is_Convert_Bool(kid1)){
+
+        // CVT && A or A && CVT; CVT || A or A || CVT
+        TN* tmp_pred;
+        if(WN_Is_Convert_Bool(kid0)){
+          tmp_pred = kid0_result;
+        }else{
+          tmp_pred = kid1_result;
+        }
+        guarder = condition_opr == OPR_BAND ? tmp_pred : Get_Complement_TN(tmp_pred);
+        first_guardee = last_op == NULL ? OPS_first(&New_OPs) : OP_next(last_op);
+        FmtAssert(first_guardee != NULL, ("boolean expression doesn't generate OPs"));
+
+      }else{
+
+        // A && B;  A || B     
+        Is_True(WN_Is_Bool_Operator(kid0) && WN_Is_Bool_Operator(kid1),("kid0 and kid1 should be boolean expression!"));
+        guarder = OP_result(kid0_last_op, condition_opr == OPR_BAND ? 0:1);
+        first_guardee = OP_next(kid0_last_op);
+        FmtAssert(first_guardee != NULL, ("boolean expression doesn't generate OPs"));
+      }
+
+      BOOL all_true = TRUE;
+      for(OP* op = first_guardee; op; op = OP_next(op)){
+        if(OP_opnd(op,0) != True_TN)
+          all_true = FALSE; 
+      }
+
+      if(all_true){
+        for(OP* op = first_guardee; op; op = OP_next(op)){
+          Set_OP_opnd(op, 0, guarder);
+        }
+      }else{
+        Set_OP_opnd(kid1_last_op, 0, guarder);
+      }
+
+      predicate_result0 = OP_result(kid1_last_op, 0);
+      predicate_result1 = OP_result(kid1_last_op, 1);
+    
+      // insert OP to preset predicate_result0/1 properly
+      // Pls note that this op won't be added to WN2OP and OP2WN map.
+
+      if(condition_opr == OPR_BAND) {
+        preset_op = Mk_OP(TOP_cmp_eq_unc, predicate_result1, predicate_result0, True_TN, Zero_TN, Zero_TN);
+        OPS_Insert_Op_Before(&New_OPs, first_guardee, preset_op);
+      }else if(condition_opr == OPR_BIOR) {
+        preset_op = Mk_OP(TOP_cmp_eq_unc, predicate_result0, predicate_result1, True_TN, Zero_TN, Zero_TN);
+        OPS_Insert_Op_Before(&New_OPs, first_guardee, preset_op);
+      }else{
+        FmtAssert(FALSE, ("Condition error. This should never happen.\n"));
+      }
+    }
+
+    if (Trace_WhirlToOp) {
+      fprintf(TFile, "After if-conv has been done: \n");
+      OP* op = last_op == NULL ? OPS_first(&New_OPs) : OP_next(last_op);
+      for(; op; op = OP_next(op)){
+        Print_OP(op);
+      }
+    }
+
+    // Change the result type
+    WN_set_rtype(condition, MTYPE_B);
+    return (invert) ? predicate_result1 : predicate_result0;
 }
 
 TN *

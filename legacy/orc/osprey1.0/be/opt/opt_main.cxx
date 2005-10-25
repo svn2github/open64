@@ -1421,6 +1421,32 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
     comp_unit->Do_copy_propagate();
   }
 
+#ifdef SPECMT_LT
+  if (SPECMT_PASS_NUM == SPECMT_FIRST_PASS || SPECMT_PASS_NUM == SPECMT_SECOND_PASS) {
+            if (phase == PREOPT_PHASE || phase == PREOPT_LNO_PHASE) {
+                SET_OPT_PHASE("SPECMT PREOPT PHASE");
+                comp_unit->Specmt_First_Part_in_Preopt();
+            }
+            if (phase == MAINOPT_PHASE) {
+                SET_OPT_PHASE("SPECMT MAINOPT PHASE");
+                comp_unit->Specmt_Second_Part_in_Mainopt();
+
+                fflush(TFile);
+
+                SET_OPT_PHASE("Additional Control Flow Analysis Caused by SPECMT_LT");
+                //comp_unit->Cfg()->Invalidate_and_update_aux_info();
+                //comp_unit->Cfg()->Invalidate_loops();
+                //comp_unit->Cfg()->Analyze_loops();
+ 
+                //Rename_CODEMAP(comp_unit);  
+
+                fprintf(TFile,"%s FINAL RESULT(%s)\n %s",DBar, Cur_PU_Name, DBar);
+                comp_unit->Cfg()->Print(TFile);
+         
+            }
+  }
+#endif
+
   if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
     SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
     comp_unit->Fold_lda_iload_istore();
@@ -1574,7 +1600,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       if (WOPT_Enable_Exp_PRE) {
 
 	if ( phase == MAINOPT_PHASE ) {
+#ifdef SPECMT_LT
+	  //Skip vnfre for SPECMT_LT
+#else
 	  comp_unit->Do_vnfre(TRUE/*before_epre*/);
+#endif
 	}
 
         SET_OPT_PHASE("SSA PRE");
@@ -1584,8 +1614,12 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
           comp_unit->Htable()->Print(TFile);
         }
 
+#ifdef SPECMT_LT
+        //Skip vnfre for SPECMT_LT
+#else
 	comp_unit->Do_vnfre(FALSE/*before_epre*/);
-
+#endif
+	
 #ifdef Is_True_On  
         SET_OPT_PHASE("Verify CODEMAP");
         Is_True(comp_unit->Verify_IR(comp_unit->Cfg(),comp_unit->Htable(),5),
@@ -1613,6 +1647,10 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 						"after Dead Code"
 						" Elimination 2" );
       }
+#ifdef SPECMT_LT
+      if(phase == MAINOPT_PHASE)
+          goto SPECMT_LT_skip_lower64;
+#endif
 	
       if (Only_Unsigned_64_Bit_Ops && Delay_U64_Lowering) {
         SET_OPT_PHASE("U64 lowering in coderep");
@@ -1718,6 +1756,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 #endif
       }
 
+#ifdef SPECMT_LT
+SPECMT_LT_skip_lower64:
+#endif
       // create RVI instance before emitting anything
       RVI rvi(WOPT_Enable_RVI, comp_unit->Opt_stab(), 
 	      WOPT_Enable_RVI ? comp_unit->Pre_rvi_hooks()->Nbits() : 0,

@@ -757,4 +757,25 @@ Copy_array_range (const RELATED_SEGMENTED_ARRAY<T, block_size>& from_array,
     return entries;
 } // Copy_array_range
 
+/*
+ * If LABEL.name_idx != 0. This may cause multi define in assembly
+ */                                                                                                        
+
+template <class T, UINT block_size>
+UINT32
+Delete_array_item (const RELATED_SEGMENTED_ARRAY<T, block_size>& from_array,
+		  RELATED_SEGMENTED_ARRAY<T, block_size>& to_array,
+		  UINT32 first_idx = 0, UINT32 last_idx = (UINT32) -1)
+{
+  UINT32 index;
+  index = to_array.Size() - from_array.Size();
+ 
+  while ( index < to_array.Size()) {
+	T* block = &to_array[index];
+        if (block->name_idx !=0 )
+                block->name_idx = 0;
+        index ++;
+  }  
+}
+
 #endif // cmplr_segmented_array_INCLUDED

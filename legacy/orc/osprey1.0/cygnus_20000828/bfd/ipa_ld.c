@@ -24,7 +24,7 @@
 
 #include "ipa_ld.h"
 
-#define DEFAULT_TOOLROOT "/usr/bin/orcc"
+#define DEFAULT_TOOLROOT "/usr/orccbin/orcc"
 
 extern boolean is_ipa;
 

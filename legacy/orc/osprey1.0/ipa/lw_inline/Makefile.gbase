@@ -35,7 +35,7 @@
 #
 #  Makefile.base for inline
 #
-
+OPTIMIZER = -O0
 #----------------------------------------------------------------------
 #  Set environment variables
 #
@@ -147,6 +147,7 @@ IPA_ANALYZE_CXX_SRCS = \
 	ipa_inline.cxx \
 	ipa_nested_pu.cxx \
 	ipa_summary.cxx \
+	inline_script_parser.cxx \
 
 
 IPA_OPTIMIZE_CXX_SRCS =	\
@@ -166,6 +167,7 @@ IPA_COMMON_CXX_SRCS = \
 	ip_graph.cxx \
 	ipc_option.cxx \
 	ipc_utils.cxx \
+	ipc_dst_utils.cxx \
 
 BE_COM_CXX_SRCS = \
 	cxx_template.cxx \

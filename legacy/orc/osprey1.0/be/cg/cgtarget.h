@@ -831,4 +831,77 @@ extern BOOL CGTARG_Check_OP_For_HB_Suitability(OP *op);
 
 /* Return TRUE if OP is def use stack register; */
 extern BOOL OP_def_use_stack_regs(OP* op);
+
+#ifndef IPFEC_Enable_New_Targ
+// ??? NOTE: The following and most if not all of Adjust_Latency
+// will be moved into to the targinfo scheduling specification.
+typedef enum {
+  SIC_BR,
+  SIC_BR_B2,
+  SIC_BRP,
+  SIC_CHK_ALAT,
+  SIC_CHK_I,
+  SIC_CHK_M,
+  SIC_CLD,
+  SIC_FCLD,
+  SIC_FCMP,
+  SIC_FCVTFX,
+  SIC_FLD,
+  SIC_FLDP,
+  SIC_FMAC,
+  SIC_FMISC,
+  SIC_FOTHER,
+  SIC_FRAR_I,
+  SIC_FRAR_M,
+  SIC_FRBR,
+  SIC_FRCR,
+  SIC_FRFR,
+  SIC_FRIP,
+  SIC_FRPR,
+  SIC_IALU,
+  SIC_ICMP,
+  SIC_ILOG,
+  SIC_ISHF,
+  SIC_LD,
+  SIC_LFETCH,
+  SIC_LONG_I,
+  SIC_MMALU_A,
+  SIC_MMALU_I,
+  SIC_MMMUL,
+  SIC_MMSHF,
+  SIC_NOP_B,
+  SIC_NOP_I,
+  SIC_NOP_M,
+  SIC_NOP_F,
+  SIC_NOP_X,
+  SIC_PNT,
+  SIC_RSE_B,
+  SIC_RSE_M,
+  SIC_SEM,
+  SIC_SFCVTFX,
+  SIC_SFMAC,
+  SIC_SFMERGESE,
+  SIC_SFMISC,
+  SIC_STF,
+  SIC_ST,
+  SIC_SYST_B2,
+  SIC_SYST_B,
+  SIC_SYST_M0,
+  SIC_SYST_M,
+  SIC_TBIT,
+  SIC_TOAR_I,
+  SIC_TOAR_M,
+  SIC_TOBR,
+  SIC_TOCR,
+  SIC_TOFR,
+  SIC_TOPR,
+  SIC_XMA,
+  SIC_XTD,
+  SIC_UNKNOWN,
+  SIC_DUMMY
+} SCHED_INFO_CLASS;
+typedef mempool_allocator<SCHED_INFO_CLASS>  SIC_MEM_ALLOC;
+typedef	vector<SCHED_INFO_CLASS, SIC_MEM_ALLOC>  TOP_SET;
+void Fix_MM_Latency ( BB *bb, TOP_SET *src_op_class, TOP_SET *tgt_op_class, UINT8 cycles_apart);
+#endif
 #endif /* CGTARGET_INCLUDED */

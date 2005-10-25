@@ -103,8 +103,8 @@ main()
 
   Define_Macro("END_GROUP", ";;");		// end-of-group marker
   Define_Macro("PREDICATE", "(%s)");		// predicate operand format
-  Define_Macro("BEGIN_BUNDLE", "{\t      %s");	// bundle introducer
-  Define_Macro("END_BUNDLE", "};");		// bundle terminator
+  Define_Macro("BEGIN_BUNDLE", "{ %s");	// bundle introducer
+  Define_Macro("END_BUNDLE", "}");		// bundle terminator
 
 /* ===== %5s %s ===== */
   ISA_PRINT_TYPE print_0;

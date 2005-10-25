@@ -598,7 +598,11 @@ Create_ST_For_Tree (tree decl_node)
 	      }
 	      else
               	sclass = SCLASS_EXTERN;
-              eclass = EXPORT_PREEMPTIBLE;
+              if(Use_Call_Shared_Link && ((Gp_Rel_Aggresive_Opt &&  sclass != SCLASS_EXTERN)
+              	|| sclass == SCLASS_DGLOBAL)) 
+                eclass = EXPORT_PROTECTED;
+              else
+                eclass = EXPORT_PREEMPTIBLE;
             }
             else {
               	sclass = SCLASS_FSTATIC;

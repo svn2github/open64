@@ -57,6 +57,8 @@ BOOL IPFEC_Enable_Region_Formation = TRUE;
 BOOL IPFEC_Enable_Region_Decomposition = TRUE;
 INT32 IPFEC_Enable_Tail_Duplication = FALSE;
 INT32 IPFEC_Enable_Exit_Probability = FALSE;
+INT32 IPFEC_Stacked_Cut_Num = 0;
+INT32 IPFEC_Stacked_Spill_Num = 0;
 BOOL IPFEC_Enable_If_Conversion = TRUE;
 BOOL IPFEC_Force_If_Conv = FALSE;
 BOOL IPFEC_Force_Para_Comp_Gen = FALSE;
@@ -74,6 +76,14 @@ BOOL IPFEC_Enable_Speculation = TRUE;
 BOOL IPFEC_Enable_Data_Speculation = TRUE;
 BOOL IPFEC_Enable_Cntl_Speculation = TRUE;
 BOOL IPFEC_Enable_Compressed_Template = TRUE;
+BOOL IPFEC_Glos_Reg_Pressure_Aware = TRUE;
+BOOL IPFEC_Stress_Spec             = FALSE;
+BOOL IPFEC_Glos_Motion_Across_Calls = FALSE ;
+BOOL IPFEC_Glos_Split_Entry_BB      = TRUE ;
+BOOL IPFEC_Glos_Split_Exit_BB       = TRUE ;
+BOOL IPFEC_Glos_Enable_P_Ready_Code_Motion = TRUE;
+BOOL IPFEC_Glos_Code_Motion_Across_Nested_Rgn = TRUE;
+BOOL IPFEC_Adjust_Variable_Latency  = TRUE ;
 BOOL IPFEC_Enable_Edge_Profile = FALSE;
 BOOL IPFEC_Enable_Value_Profile = FALSE;
 BOOL IPFEC_Enable_Random_Prob = FALSE;
@@ -81,6 +91,7 @@ BOOL IPFEC_Enable_Edge_Profile_Annot = FALSE;
 INT32 Value_Profile_Pu_ID=-1;
 UINT32 Value_Instr_Range=0x0000ffff;
 UINT32 Value_Instr_Pu_Id=0x0000ffff;
+UINT64 Value_Instr_Pu_Id_Mask=0; //if masked, then do not instrumentation for the pu id.
 char *Instru_File_Name = "";
 char *Fb_File_Name = "";
 char *Value_Instru_File_Name = "";
@@ -92,6 +103,9 @@ BOOL IPFEC_Chk_Compact = TRUE;
 BOOL IPFEC_Enable_Cascade = TRUE;
 BOOL IPFEC_Hold_Uses = FALSE;
 BOOL IPFEC_Enable_Safety_Load = TRUE;
+BOOL IPFEC_Enable_Multi_Branch = TRUE;
+BOOL IPFEC_Enable_Pre_Multi_Branch = FALSE;
+BOOL IPFEC_Enable_Post_Multi_Branch = TRUE;
 BOOL IPFEC_Profitability = FALSE;   // to set all flags considering profitability
 INT32 IPFEC_sched_care_machine = Sched_care_bundle;
 BOOL IPFEC_Enable_Insert_UNAT = TRUE; // insert unat spill and restore code when need
@@ -115,6 +129,8 @@ BOOL VT_Enable_DAG_BR = FALSE;
 // Various skip lists.
 OPTION_LIST *raw_locs_skip_bb;
 SKIPLIST *locs_skip_bb;
+OPTION_LIST *raw_mlbr_skip_bb;
+SKIPLIST *mlbr_skip_bb;
 
 OPTION_LIST *raw_if_conv_skip_rgn;
 SKIPLIST *if_conv_skip_rgn;
@@ -135,7 +151,6 @@ OPTION_LIST *raw_spec_skip_rgn;
 SKIPLIST *spec_skip_rgn;
 OPTION_LIST *raw_spec_skip_op;
 SKIPLIST *spec_skip_op;
-
 
 OPTION_LIST *raw_msched_skip_bb;
 SKIPLIST *msched_skip_bb;

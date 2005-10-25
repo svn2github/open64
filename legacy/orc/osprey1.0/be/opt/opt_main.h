@@ -182,6 +182,10 @@ public:
   PRE_RVI_HOOKS *Pre_rvi_hooks(void)    { return _pre_rvi_hooks; }
   void           Set_pre_rvi_hooks(PRE_RVI_HOOKS *pre_rvi_hooks)
     { _pre_rvi_hooks = pre_rvi_hooks; }
+#ifdef SPECMT_LT
+  void Specmt_First_Part_in_Preopt(void);
+  void Specmt_Second_Part_in_Mainopt(void);
+#endif
 };
 
 

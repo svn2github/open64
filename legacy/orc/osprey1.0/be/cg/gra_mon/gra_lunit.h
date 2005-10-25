@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -155,6 +155,7 @@ private:
 			// global preferencing.
   INT		last_def; // data on TN definitions within a block needed for 
 			// global preferencing.
+  BOOL          has_use;
   LRANGE*	global_pref; // global lr that is a preference candidate in lunit
 public:
   LUNIT(void) {}
@@ -178,6 +179,8 @@ public:
   void Has_Exposed_Use_Set(void){ flags |= LUNIT_FLAGS_has_exposed_use; }
   BOOL Has_Def(void)	{ return flags & LUNIT_FLAGS_has_def; }
   void Has_Def_Set(void)	{ flags |= LUNIT_FLAGS_has_def; }
+  BOOL Has_Use(void)    {return has_use; }
+  void Has_Use_Set(void)  { has_use = TRUE;}
   BOOL Spill_Below_Sticks(void){ return flags & LUNIT_FLAGS_spill_below_sticks; }
   void Spill_Below_Sticks_Set(void){ flags |= LUNIT_FLAGS_spill_below_sticks; }
   BOOL Split_Lunit(void)	{ return flags & LUNIT_FLAGS_split_lunit; }

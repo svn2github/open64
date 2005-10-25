@@ -54,7 +54,9 @@
 
 string outfile = NULL;		/* from -o <outfile> */
 string prof_file = NULL;	/* executable file for prof to work upon */
-string fb_file = NULL;		/* from -fb <feedback-file> */
+string fb_file = NULL;		/* from -fb_create <feedback-file> */
+string internal_fb_file = NULL;	/* from -fb <feedback-file> */
+string opt_file = NULL;		/* from -fb_opt <feedback-file> */
 string fb_xdir = NULL;		/* dir where pixie emits dso's */
 string fb_cdir = NULL; 		/* dir where pixie emits count files */
 string command_line = NULL;	/* original command line */
@@ -62,6 +64,11 @@ string fb_phase = NULL;         /* from -fb_phase=<phase> */
 string fb_type = NULL;          /* from -fb_type=<type> */
 string source_file = NULL;
 boolean multiple_source_files = FALSE;
+
+#ifdef SPECMT_LT
+/*** used for specmt flags processing ****/
+string  specmt_pass = NULL;
+#endif
 
 boolean keep_mp = FALSE;
 boolean keep_list = FALSE;
@@ -565,72 +572,80 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string(args,"--");
 		add_string(args, source_file);
 		break;
-	case P_ipl:
-		add_language_option ( args );
-		if (source_kind == S_B)
-		    sprintf (buf, "-fB,%s", source_file);
-		else
-		    sprintf(buf, "-fB,%s",
-			    construct_name(source_file,"B"));
-		add_string (args, buf);
+		case P_ipl:
+			add_language_option ( args );
+			if (source_kind == S_B)
+			    sprintf (buf, "-fB,%s", source_file);
+			else
+			    sprintf(buf, "-fB,%s",
+				    construct_name(source_file,"B"));
+			add_string (args, buf);
 
-		if (instrumentation_invoked == TRUE) {
-		  if (fb_file != NULL)
-			sprintf(buf, "-fi,%s.instr", fb_file);
-		  else if (outfile != NULL)
-		       sprintf (buf, "-fi,%s.instr", outfile);
-                  else
-		       sprintf (buf, "-fi,a.out.instr");
-		  add_string(args,buf);
-                }
-		else if (fb_file != NULL) {
-			/* pass feedback file */
-			sprintf(buf, "-ff,%s.instr", fb_file);
-			add_string(args, buf);
-		}
-		current_phase = P_any_as;
-		if (outfile != NULL && last_phase == current_phase
-	 			    && !multiple_source_files
-				    && !(remember_last_phase == P_any_ld &&
-				         (option_was_seen(O_dsm) ||
-				          (invoked_lang==L_CC))))
-			{
-			  sprintf(buf, "-fo,%s", outfile);
-			} else {
-			  sprintf(buf, "-fo,%s", 
-			    construct_given_name(source_file,"o",
-				(keep_flag || multiple_source_files || ((shared == RELOCATABLE) && (ipa == TRUE))) ? TRUE : FALSE));
+			if (instrumentation_invoked == TRUE) {
+			  if (fb_file != NULL)
+				sprintf(buf, "-fi,%s.instr", fb_file);
+			  else if (outfile != NULL)
+			       sprintf (buf, "-fi,%s.instr", outfile);
+			  else
+			       sprintf (buf, "-fi,a.out.instr");
+			  add_string(args,buf);
 			}
-		add_string(args, buf);
-		if (dashdash_flag)
-		  add_string(args,"--");
-		add_string(args, source_file);
+			  if (opt_file != NULL) {
+				sprintf(buf, "-ff,%s.instr", opt_file);
+				add_string(args,buf);
+			  }	
+/*
+			else if (opt_file != NULL) {
+*/
+				/* pass feedback file */
+/*
+				sprintf(buf, "-ff,%s.instr", fb_file);
+				add_string(args, buf);
+			}
+*/
+			current_phase = P_any_as;
+			if (outfile != NULL && last_phase == current_phase
+					    && !multiple_source_files
+					    && !(remember_last_phase == P_any_ld &&
+						 (option_was_seen(O_dsm) ||
+						  (invoked_lang==L_CC))))
+				{
+				  sprintf(buf, "-fo,%s", outfile);
+				} else {
+				  sprintf(buf, "-fo,%s", 
+				    construct_given_name(source_file,"o",
+					(keep_flag || multiple_source_files || ((shared == RELOCATABLE) && (ipa == TRUE))) ? TRUE : FALSE));
+				}
+			add_string(args, buf);
+			if (dashdash_flag)
+			  add_string(args,"--");
+			add_string(args, source_file);
 
-		/* ipl_cmds must be added last */
-		if (ipl_cmds != 0) {
-		    add_string (args, "-cmds");
-		    append_string_lists (args, ipl_cmds);
-		}
-		break; 
-	case P_be:
-		add_language_option ( args );
+			/* ipl_cmds must be added last */
+			if (ipl_cmds != 0) {
+			    add_string (args, "-cmds");
+			    append_string_lists (args, ipl_cmds);
+			}
+			break; 
+		case P_be:
+			add_language_option ( args );
 
-		if (invoked_lang == L_f77) {
-		  if (use_craylibs == TRUE) {
-		    add_string(args,"-TENV:io_library=cray");
-		  } else if (use_mipslibs == TRUE) {
-		    add_string(args,"-TENV:io_library=mips");
-		  } else {
-		    /* This is the default for f77.  For release 7.2 the
-		       default is to use to old (libftn.so.1) library.  For
-		       release 7.3 (?) it should be switched to use the
-		       new (libftn.so.2) library. */
-		    add_string(args,"-TENV:io_library=mips");
-		  }
-		}
+			if (invoked_lang == L_f77) {
+			  if (use_craylibs == TRUE) {
+			    add_string(args,"-TENV:io_library=cray");
+			  } else if (use_mipslibs == TRUE) {
+			    add_string(args,"-TENV:io_library=mips");
+			  } else {
+			    /* This is the default for f77.  For release 7.2 the
+			       default is to use to old (libftn.so.1) library.  For
+			       release 7.3 (?) it should be switched to use the
+			       new (libftn.so.2) library. */
+			    add_string(args,"-TENV:io_library=mips");
+			  }
+			}
 
-		switch (source_kind) {
-		case S_B:
+			switch (source_kind) {
+			case S_B:
 		    if (post_fe_phase () == P_inline) {
 			temp = construct_name(source_file,"I");
 			break;
@@ -660,11 +675,19 @@ add_file_args (string_list_t *args, phases_t index)
 		       sprintf (buf, "-fi,a.out.instr");
 		  add_string(args,buf);
                 }
-		else if (fb_file != NULL) {
+		if (opt_file != NULL) {
+		  sprintf(buf, "-ff,%s.instr", opt_file);
+		  add_string(args,buf);
+		}
+
+		if (internal_fb_file != NULL) {
+
 			/* pass feedback file */
-			sprintf(buf, "-ff,%s.instr", fb_file);
+
+			sprintf(buf, "-ff,%s.instr", internal_fb_file);
 			add_string(args, buf);
 		}
+
 		if (skip_as != TRUE || last_phase == P_be || keep_flag) {
 			/* create .s file */
 			add_string(args, "-s");
@@ -758,6 +781,19 @@ add_file_args (string_list_t *args, phases_t index)
 			add_string(args, "-o");
 			add_string(args, outfile);
 		}
+		if (instrumentation_invoked == TRUE) {
+		  if (fb_file != NULL) 
+		       sprintf(buf, "-IPA:propagate_feedback_file=%s", fb_file);
+		  else if (outfile != NULL)
+		       sprintf (buf, "-IPA:propagate_feedback_file=%s", outfile);
+                  else
+		       sprintf (buf, "-IPA:propagate_feedback_file=a.out");
+		  add_string(args,buf);
+               } 
+	       if (opt_file != NULL){
+                        sprintf(buf, "-IPA:propagate_annotation_file=%s", opt_file);
+                  	add_string(args,buf);
+	       }
 		/* object file should be in list of options */
 		break;
 	case P_cord:

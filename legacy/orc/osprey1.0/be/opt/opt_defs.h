@@ -191,6 +191,17 @@ Is_fortran(void)
 #define FB_PRE_FLAG             0x8 /* trace feedback PRE */
 #define CFG_OPT_FLAG           0x10 /* trace CFG optimzation */
 
+#ifdef SPECMT_LT
+   /*For TP_SPECMT (phase number) */
+   #define SPECMT_PASS1_DUMP_FLAG               0x0001    /*define pass 1/2 compilation*/
+   #define SPECMT_LT_DUMP_FLAG                  0x0002    /*loop structure cfg dump flag*/
+   #define SPECMT_LT_LOOP_DUMP_FLAG             0x0004    /*loop structure dump flag*/
+   #define SPECMT_LT_DAG_SIZE_DUMP_FLAG         0x0100    /*dump out Spec Dependency graph*/
+   #define SPECMT_LT_RESULT_DUMP_FLAG           0x0200    /*dump out partition result*/
+   #define SPECMT_LT_PARTITION_TRACE_OUT        0x0400    /*tracing information in partition*/
+   #define SPECMT_LT_PARTITION_DETAIL           0x8000    /*detail trace in partition*/
+#endif
+
 /* Flags associated with value numbering scheme and the 
  * WOPT_Enable_Value_Numbering option.
  */

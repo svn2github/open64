@@ -314,6 +314,59 @@ extern BOOL   Whirl2c_loaded;    /* Defined in cleanup.c */
 extern void *Current_Dep_Graph;
 FILE *DFile = stderr;
 
+//########################## specmt code ##############################//
+#ifdef SPECMT_LT
+void prepare_for_specmt(void)
+{
+        char name[32];
+
+        if (SPECMT_PASS_NUM == SPECMT_SECOND_PASS) {
+                strcpy(name,"loop_mapping.txt");
+                LoopMappingFile = fopen(name,"r");
+                if (LoopMappingFile == NULL) {
+                    fprintf(stderr,"ERROR: unable to open %s\n",name);
+                    exit(1);
+                }
+        }
+
+        if (SPECMT_PASS_NUM == SPECMT_FIRST_PASS) {
+                strcpy(name,"output_info_by_number.txt");
+                ExchangeFile = fopen(name,"w");
+                if (ExchangeFile == NULL) {
+                    fprintf(stderr,"ERROR: unable to open %s\n",name);
+                    exit(1);
+                }
+                strcpy(name,"loop_mapping.txt");
+                LoopMappingFile = fopen(name,"w");
+                if (LoopMappingFile == NULL) {
+                   fprintf(stderr,"ERROR: unable to open %s\n",name);
+                   exit(1);
+                }
+        }
+}
+
+void finish_for_specmt(void)
+{
+        char name[32];
+
+        if (SPECMT_PASS_NUM == SPECMT_SECOND_PASS) {
+                if(ExchangeFile){
+                     fclose(ExchangeFile);
+                }
+        }
+
+        if (SPECMT_PASS_NUM == SPECMT_FIRST_PASS) {
+                if(ExchangeFile){
+                     fclose(ExchangeFile);
+                }
+
+                if(LoopMappingFile){
+                     fclose(LoopMappingFile);
+                }
+        }
+}
+#endif                                     
+
 static void
 load_components (INT argc, char **argv)
 {
@@ -995,6 +1048,13 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
       if (Run_cg) { /* lower for cg */
 	Set_Error_Phase ("Lowering");
         WB_LWR_Initialize(rwn, alias_mgr);
+
+    /* lowering MLDID/MSTID before lowering to CG */
+    if (!Run_wopt) {
+      rwn = WN_Lower(rwn, LOWER_MLDID_MSTID, alias_mgr, 
+                       "Lower MLDID/MSTID when not running WOPT");
+    }
+ 
 	rwn = WN_Lower(rwn, LOWER_TO_CG, alias_mgr, "Lowering to CG");
 	if (Only_Unsigned_64_Bit_Ops && ! Run_wopt)
 	  U64_lower_wn(rwn, FALSE);
@@ -1181,7 +1241,7 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
     if (WHIRL_Return_Val_On || WHIRL_Mldid_Mstid_On) {
         Is_True(WHIRL_Return_Val_On && WHIRL_Mldid_Mstid_On,
 	        ("-INTERNAL:return_val and -INTERNAL:mldid_mstid must be on the same time"));
-	pu = WN_Lower (pu, LOWER_RETURN_VAL | LOWER_MLDID_MSTID, NULL,
+	pu = WN_Lower (pu, LOWER_RETURN_VAL, NULL,
 		       "RETURN_VAL & MLDID/MSTID lowering");
     }
 
@@ -1285,6 +1345,10 @@ Preprocess_PU (PU_Info *current_pu)
 
   /* read from mmap area */
   Start_Timer ( T_ReadIR_CU );
+
+  if (Instrumentation_Enabled)
+    Instrumentation_Enabled_Before=TRUE;
+
   // The current PU could already be memory as happens when the
   // compiler creates it during back end compilation of an earlier PU. 
   if (PU_Info_state (current_pu, WT_TREE) != Subsect_InMem) {
@@ -1305,7 +1369,7 @@ Preprocess_PU (PU_Info *current_pu)
 			    *pu_hdr);
 	// turn off other feedback I/O
 	Instrumentation_Enabled = FALSE;
-	bzero (Feedback_Enabled, PROFILE_PHASE_LAST * sizeof(BOOL));
+	bzero (Feedback_Enabled, (PROFILE_PHASE_LAST - 1) * sizeof(BOOL));
     } else
 	Cur_PU_Feedback = NULL;
   } else {			    /* retrieve transferred maps */
@@ -1325,7 +1389,7 @@ Preprocess_PU (PU_Info *current_pu)
 	  Is_True(Cur_PU_Feedback, ("invalid PU_Info for feedback"));
               // turn off other feedback I/O
 	  Instrumentation_Enabled = FALSE;
-          bzero(Feedback_Enabled, PROFILE_PHASE_LAST * sizeof(BOOL));
+          bzero(Feedback_Enabled, (PROFILE_PHASE_LAST - 1) * sizeof(BOOL));
       } else
           Cur_PU_Feedback = NULL;
     } else {
@@ -1758,6 +1822,7 @@ main (INT argc, char **argv)
 	  Instrumentation_Enabled = FALSE;
 	  Instrumentation_Phase_Num = PROFILE_PHASE_NONE;
       }
+      Process_Feedback_Options (Feedback_Option);
   } else {
       Process_Feedback_Options (Feedback_Option);
   }
@@ -1821,6 +1886,11 @@ main (INT argc, char **argv)
 
   Phase_Init ();
 
+  //open files for specmt
+  #ifdef SPECMT_LT
+    prepare_for_specmt();
+  #endif  
+
   if (Run_preopt || Run_wopt || Run_lno || Run_Distr_Array || Run_autopar 
 	|| Run_cg) {
     Set_Error_Descriptor (EP_BE, EDESC_BE);
@@ -1848,6 +1918,11 @@ main (INT argc, char **argv)
   }
 
   Phase_Fini ();
+
+  //close files open for specmt
+  #ifdef SPECMT_LT
+    finish_for_specmt();
+  #endif  
 
   /* free the BE symtabs. w2cf requires BE_ST in Phase_Fini */
 

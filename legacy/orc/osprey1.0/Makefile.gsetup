@@ -297,7 +297,7 @@ ifeq ($(BUILD_OPTIMIZE), DEBUG)
 else
  ifeq ($(BUILD_OPTIMIZE), NODEBUG)
 # -IPA can't be used on libraries, not default
-   OPTIMIZER = -O0
+   OPTIMIZER = -O2
  else
    OPTIMIZER = $(BUILD_OPTIMIZE)
  endif
@@ -447,6 +447,9 @@ STD_COMPILE_OPTS += -mips3
 endif
 ifeq ($(BUILD_ARCH), MIPS4)
 STD_COMPILE_OPTS += -mips4
+endif
+ifeq ($(BUILD_ARCH), IA64)
+STD_COMPILE_OPTS += -DHOST_IA64
 endif
 
 ifneq ($(BUILD_COMPILER), GNU)

@@ -542,15 +542,18 @@ return_point:
   if (dli->Est_Num_Iterations == -1) {
     dli->Set_Est_Num_Iterations(stack);
     if (Cur_PU_Feedback && dli->Num_Iterations_Symbolic) {
-      INT32 freq_loop_header = WN_MAP32_Get(WN_MAP_FEEDBACK,WN_start(wn));
-      INT32 freq_loop_body = WN_MAP32_Get(WN_MAP_FEEDBACK,WN_step(wn));
-      if (LNO_Verbose) {
-	fprintf(stdout, "Header executed  %d\n", freq_loop_header);
-	fprintf(stdout, "Body executed  %d\n", freq_loop_body);
-      }
-      
-      if (freq_loop_header > 0) {
-	dli->Est_Num_Iterations = (INT64) (freq_loop_body/freq_loop_header);
+     // INT32 freq_loop_header = WN_MAP32_Get(WN_MAP_FEEDBACK,WN_start(wn));
+     // INT32 freq_loop_body = WN_MAP32_Get(WN_MAP_FEEDBACK,WN_step(wn));
+     // if (LNO_Verbose) {
+     //    fprintf(stdout, "Header executed  %d\n", freq_loop_header);
+     //	   fprintf(stdout, "Body executed  %d\n", freq_loop_body);
+     //    }
+      INT32 loop_info_id = WN_MAP32_Get(WN_MAP_FEEDBACK,wn);
+    // if (freq_loop_header > 0) {
+    //    dli->Est_Num_Iterations = (INT64) (freq_loop_body/freq_loop_header);
+      if (loop_info_id > 0) {
+        const FB_Info_Loop& info_loop=Cur_PU_Feedback->Query_loop(wn);
+        dli->Est_Num_Iterations = (INT64)info_loop.freq_iterate.Value();
 	dli->Num_Iterations_Symbolic = FALSE;
 	dli->Num_Iterations_Profile=TRUE;
 	if (LNO_Verbose)
@@ -595,16 +598,22 @@ extern void LNO_Build_If_Access(WN *wn, DOLOOP_STACK *stack)
   } 
 
   if (Cur_PU_Feedback && info->Freq_True<0 && info->Freq_False<0) {
-    INT32 freq_header = WN_MAP32_Get(WN_MAP_FEEDBACK, wn);
-    if (freq_header > 0) {
-      INT32 freq_true = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_then(wn));
+   // INT32 freq_header = WN_MAP32_Get(WN_MAP_FEEDBACK, wn);
+    INT32 if_info_id = WN_MAP32_Get(WN_MAP_FEEDBACK, wn);
+   // if (freq_header > 0) {
+   //   INT32 freq_true = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_then(wn));
+    if( if_info_id ) {
+      const FB_Info_Branch& info_branch=Cur_PU_Feedback->Query_branch(wn);
+      INT32 freq_true = info_branch.freq_not_taken.Value();
+      INT32 freq_header = info_branch.Total().Value();
       info->Freq_True = (float) freq_true / (float) freq_header;
 
       if (LNO_Verbose) 
 	fprintf(stdout, "True branch frequency %f\n", info->Freq_True);
 
       if (!WN_else_is_empty(wn)) {
-	INT32 freq_false = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_else(wn));
+//	INT32 freq_false = WN_MAP32_Get(WN_MAP_FEEDBACK, WN_else(wn));
+	INT32 freq_false = info_branch.freq_taken.Value();
 	info->Freq_False = (float) freq_false / (float) freq_header;
 	if (LNO_Verbose) 
 	  fprintf(stdout, "False branch frequency %f\n", info->Freq_False);

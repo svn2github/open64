@@ -324,6 +324,7 @@ typedef struct op {
   mINT16  	variant;	/* Opcode variant */
   mUINT16	map_idx;	/* index used by OP_MAPs; unique in BB */
   mUINT16	orig_idx;	/* index of orig op before unrolling */
+  mUINT16	orig_bb_id;	/* id of orig bb before speculation */
   mINT16	scycle;		/* Start cycle */
   mUINT32	flags;		/* attributes associated with OP */
   mTOP		opr;		/* Opcode. topcode.h */
@@ -371,6 +372,7 @@ typedef struct op {
 #define OP_prev(o)	((o)->prev+0)
 #define OP_map_idx(o)	((o)->map_idx+0)
 #define OP_orig_idx(o)	((o)->orig_idx+0)
+#define OP_orig_bb_id(o) ((o)->orig_bb_id+0)
 #define OP_unroll_bb(o)	((o)->unroll_bb+0)
 #define OP_unrolling(o)	((o)->unrolling+0)
 #define OP_bb(o)	((o)->bb+0)
@@ -382,6 +384,7 @@ typedef struct op {
 
 /* Mutators: */
 #define Set_OP_orig_idx(op,idx) ((op)->orig_idx = (idx))
+#define Set_OP_orig_bb_id(op,id) ((op)->orig_bb_id = (id))
 #define Set_OP_unroll_bb(op,bb) ((op)->unroll_bb = (bb))
 #define Set_OP_unrolling(op,u)	((op)->unrolling = (u))
 #define Set_OP_result(o,result,tn) \
@@ -445,11 +448,13 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_SPADJ_PLUS  0x00010000 /* Is OP de-alloca spadjust (plus)? */
 #define OP_MASK_SPADJ_MINUS 0x00020000 /* Is OP alloca spadjust (minus)? */
 #define OP_MASK_START_BD    0x00040000 /* Is OP start of a bundle */
-#define OP_MASK_SAFE_LOAD  0x00080000 /* Is OP safe load */
-#define OP_MASK_PASS_PARA   0x00100000
-#define OP_MASK_CANNOT_SPEC_LD    0x00200000
+#define OP_MASK_SAFE_LOAD   0x00080000 /* Is OP safe load */
+#define OP_MASK_SCHEDULED   0x00100000 /* Has OP been scheduled */
+#define OP_MASK_CNTL_SPEC   0x00200000 /* Is OP control speculated? */ 
+#define OP_MASK_DATA_SPEC   0x00400000 /* Is OP data speculated? */
 
-#define OP_MASK_LAST    OP_MASK_CATCH_NAT
+
+#define OP_MASK_LAST    OP_MASK_DATA_SPEC
 #define OP_MASK_MAX     0x80000000 
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
@@ -507,19 +512,29 @@ enum OP_COND_DEF_KIND {
 # define OP_safe_load(o) (OP_flags(o) & OP_MASK_SAFE_LOAD)
 # define Set_OP_safe_load(o)  (OP_flags(o) |= OP_MASK_SAFE_LOAD)
 # define Reset_OP_safe_load(o) (OP_flags(o) &= ~OP_MASK_SAFE_LOAD)
-# define OP_catch_nat(o)  (OP_flags(o) & OP_MASK_CATCH_NAT)
-# define Set_OP_catch_nat(o)  (OP_flags(o) |= OP_MASK_CATCH_NAT)
-# define Reset_OP_catch_nat(o)  (OP_flags(o) &= ~OP_MASK_CATCH_NAT)
-# define OP_pass_para(o)     (OP_flags(o) & OP_MASK_PASS_PARA)
-# define Set_OP_pass_para(o)    (OP_flags(o) |= OP_MASK_PASS_PARA)
-# define Reset_OP_pass_para(o)  (OP_flags(o) &= ~OP_MASK_PASS_PARA)
-# define OP_cannot_spec(o)         (OP_flags(o) & OP_MASK_CANNOT_SPEC_LD)
-# define Set_OP_cannot_spec(o)     (OP_flags(o) |= OP_MASK_CANNOT_SPEC_LD)
-# define Reset_OP_cannot_spec(o)   (OP_flags(o) &= ~OP_MASK_CANNOT_SPEC_LD)
+
+# define OP_Scheduled(o)       (OP_flags(o) & OP_MASK_SCHEDULED)
+# define Set_OP_Scheduled(o)   (OP_flags(o) |= OP_MASK_SCHEDULED)
+# define Reset_OP_Scheduled(o) (OP_flags(o) &= ~OP_MASK_SCHEDULED)
+
+//# define OP_catch_nat(o)  (OP_flags(o) & OP_MASK_CATCH_NAT)
+//# define Set_OP_catch_nat(o)  (OP_flags(o) |= OP_MASK_CATCH_NAT)
+//# define Reset_OP_catch_nat(o)  (OP_flags(o) &= ~OP_MASK_CATCH_NAT)
+# define OP_cntl_spec(o)           (OP_flags(o) &  OP_MASK_CNTL_SPEC)
+# define Set_OP_cntl_spec(o)       (OP_flags(o) |= OP_MASK_CNTL_SPEC)
+# define Reset_OP_cntl_spec(o)     (OP_flags(o) &= ~OP_MASK_CNTL_SPEC)
+# define OP_data_spec(o)           (OP_flags(o) &  OP_MASK_DATA_SPEC)
+# define Set_OP_data_spec(o)       (OP_flags(o) |= OP_MASK_DATA_SPEC)
+# define Reset_OP_data_spec(o)     (OP_flags(o) &= ~OP_MASK_DATA_SPEC)
+
 
 extern BOOL OP_cond_def( const OP*);
 extern BOOL OP_has_implicit_interactions(OP*);
 extern BOOL OP_xfer(OP*);           // After RBG, chk should be taken as xfer.
+
+extern BOOL OP_restore_b0(OP*);
+extern BOOL OP_restore_ar_pfs(OP*);
+extern BOOL OP_def_ar_lc(OP*);
 
 /* Convenience access macros for properties of the OP */
 /* TODO: define all the macros for OP properties. */

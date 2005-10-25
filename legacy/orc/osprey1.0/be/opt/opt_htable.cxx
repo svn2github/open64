@@ -1659,7 +1659,15 @@ CODEMAP::Hash_Ivar(CODEREP *cr, INT32 mu_vsym_depth)
     cr->IncUsecnt();
     new_cr->Init_expr(opc, exist_cr);
     if (need_cvt == NEED_CVTL) {
-      new_cr->Set_offset(MTYPE_size_min(cr->Dsctyp()));
+       if (cr->Dsctyp() != MTYPE_BS)
+         new_cr->Set_offset(MTYPE_size_min(cr->Dsctyp()));
+       else {
+         UINT cur_field_id = 0;
+         UINT64 field_offset = 0;
+         FLD_HANDLE fld = FLD_And_Offset_From_Field_Id(cr->Ilod_ty(),
+                          cr->I_field_id(), cur_field_id, field_offset);
+         new_cr->Set_offset(FLD_bsize(fld));
+       }                                                                                            
     }
     return Hash_Op(new_cr);
   }
@@ -2159,7 +2167,10 @@ Indices_only_may_overlap(CODEREP *x, CODEREP *y)
 static BOOL
 Ivars_may_overlap(CODEREP *lval, CODEREP *rval)
 {
-  if (lval->Is_ivar_volatile()) return TRUE;
+ if (lval->Is_ivar_volatile()) return TRUE;
+ if (lval->Dsctyp() == MTYPE_M || rval->Dsctyp() == MTYPE_M) {
+   return TRUE;
+ }
   if (lval->Istr_base() == rval->Ilod_base()) {
     INT32 lsize = MTYPE_size_min(lval->Dsctyp()) >> 3; // in bytes
     INT32 rsize = MTYPE_size_min(rval->Dsctyp()) >> 3; // in bytes
@@ -2242,6 +2253,7 @@ CODEMAP::Add_idef(OPCODE opc, OCC_TAB_ENTRY *occ, STMTREP *stmt,
     if (WOPT_Enable_VN_Full && 
 	mnode != NULL &&
 	OPERATOR_is_scalar_iload (cr->Opr()) &&
+	cr->Dtyp() != MTYPE_M &&
 	! cr->Is_ivar_volatile()) {
       // find search distance in the use-def chain of the virtual variable in
       // terms of depth down its coderep stack 
@@ -2266,9 +2278,9 @@ CODEMAP::Add_idef(OPCODE opc, OCC_TAB_ENTRY *occ, STMTREP *stmt,
 	depth--;
     }
     OPERATOR oper = OPCODE_operator(opc);
-    if (OPERATOR_is_scalar_iload (oper) ||
+    if ((OPERATOR_is_scalar_iload (oper) ||
 	oper == OPR_ILOADX ||
-	oper == OPR_PARM) 
+	oper == OPR_PARM) && cr->Dtyp() != MTYPE_M)
       retv = Hash_Ivar(cr, depth);
     else {
       // OPR_MLOAD OPR_PREFETCH

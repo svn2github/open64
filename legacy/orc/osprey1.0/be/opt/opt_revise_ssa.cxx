@@ -540,11 +540,21 @@ OPT_REVISE_SSA::Update_phis(BB_NODE *bb)
       phi->Reset_dse_dead();
       phi->Reset_dce_dead();
       AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(i);
-      MTYPE rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+      MTYPE rtype;
+      TY_IDX ty = TY_IDX_ZERO;
+      ST *st = _opt_stab->St(i);
+      if (st != NULL) ty = ST_type(st);
+      if (sym->Mtype()==MTYPE_M)
+         rtype = sym->Mtype();
+      else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size());
       MTYPE desc = rtype;
+      if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
+        ty = MTYPE_To_TY(rtype);
+      }      
       phi_res = _htable->Add_def(i, -1, NULL, rtype, desc, 
-			 _opt_stab->St_ofst(i), MTYPE_To_TY(rtype), 0, TRUE);
+			 _opt_stab->St_ofst(i), ty, 0, TRUE);
       phi_res->Set_flag(CF_DEF_BY_PHI);
       phi_res->Set_defphi(phi);
       phi->Set_result(phi_res);
@@ -579,11 +589,23 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 	BOOL originally_dead = ! cnode->Live();
 	cnode->Set_live(TRUE);
 	cnode->Set_dse_dead(FALSE);
-        sym = _opt_stab->Aux_stab_entry(i);
-	rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),sym->Byte_size());
+    sym = _opt_stab->Aux_stab_entry(i); 
+    TY_IDX ty = TY_IDX_ZERO;
+    ST *st = _opt_stab->St(i);
+    if (st != NULL) ty = ST_type(st);
+    if (sym->Mtype()==MTYPE_M)
+        rtype = sym->Mtype();
+    else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+						    sym->Byte_size()); 
 	MTYPE desc = rtype;
+
+	if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
+	  ty = MTYPE_To_TY(rtype);
+	}
+	
 	chi_res = _htable->Add_def(i, -1, stmt, rtype, desc, 
-			   _opt_stab->St_ofst(i), MTYPE_To_TY(rtype), 0, TRUE);
+			   _opt_stab->St_ofst(i), ty, 0, TRUE);
 	chi_res->Set_flag(CF_DEF_BY_CHI);
 	chi_res->Set_defchi(cnode);
 	cnode->Set_RESULT(chi_res);
@@ -591,13 +613,27 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 	  cnode->Set_OPND(_htable->Ssa()->Get_zero_version_CR(i, _opt_stab, 0));
 	stmt->Recompute_has_zver();
       }
-      else if (cnode->RESULT()->Dtyp() == MTYPE_UNKNOWN) { // fix the types
+    else if (cnode->RESULT()->Dtyp() == MTYPE_UNKNOWN) { // fix the types
 	chi_res = cnode->RESULT();
-        sym = _opt_stab->Aux_stab_entry(i);
-	rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),sym->Byte_size());
+
+    TY_IDX ty = TY_IDX_ZERO;
+    ST *st = _opt_stab->St(i);
+    if (st != NULL) ty = ST_type(st);
+
+	
+    sym = _opt_stab->Aux_stab_entry(i);
+    if (sym->Mtype()==MTYPE_M)
+        rtype = sym->Mtype();
+    else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+						    sym->Byte_size()); 
+    if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
+      ty = MTYPE_To_TY(rtype);
+    }
+	
 	chi_res->Set_dtyp(rtype);
 	chi_res->Set_dsctyp(rtype);
-	chi_res->Set_lod_ty(MTYPE_To_TY(rtype));
+	chi_res->Set_lod_ty(ty);
       }
       return;
     }
@@ -684,15 +720,30 @@ OPT_REVISE_SSA::Insert_mu_and_chi_list_for_new_var(STMTREP *stmt, AUX_ID i)
     CODEREP *chi_res;
     if (stmt->Chi_list() == NULL) 
       stmt->Set_chi_list(CXX_NEW(CHI_LIST, _htable->Mem_pool()));
+    
     CHI_NODE *newchi = stmt->Chi_list()->New_chi_node(i, _htable->Mem_pool());
     newchi->Set_live(TRUE);
     newchi->Set_dse_dead(FALSE);
     AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(i);
-    MTYPE rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
-						  sym->Byte_size());
+
+    TY_IDX ty = TY_IDX_ZERO;
+    ST *st = _opt_stab->St(i);
+    if (st != NULL) ty = ST_type(st);
+    
+    MTYPE rtype;
+    if (sym->Mtype()==MTYPE_M)
+        rtype = sym->Mtype();
+    else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+						    sym->Byte_size());  
     MTYPE desc = rtype;
+
+	if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
+	  ty = MTYPE_To_TY(rtype);
+	}    
+    
     chi_res = _htable->Add_def(i, -1, stmt, rtype, desc, 
-			 _opt_stab->St_ofst(i), MTYPE_To_TY(rtype), 0, TRUE);
+			 _opt_stab->St_ofst(i), ty, 0, TRUE);
     chi_res->Set_flag(CF_DEF_BY_CHI);
     chi_res->Set_defchi(newchi);
     newchi->Set_RESULT(chi_res);

@@ -226,6 +226,7 @@ private:
   void Add_label( LABEL_IDX labelx, FB_NODEX nx ) { _lblx_to_nx[labelx] = nx; }
 
   void Add_edge(FB_NODEX nx_src, FB_NODEX nx_dst, bool delayed = false );
+  void Adjust_edge( FB_NODEX nodex);
   void Add_delayed_edge( FB_NODEX nx_src, WN *wn );
   void Complete_delayed_edges();
 

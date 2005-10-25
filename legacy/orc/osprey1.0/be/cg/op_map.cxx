@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -513,7 +513,7 @@ BB_OP_MAP BB_OP_MAP_Create_Kind(BB *bb, MEM_POOL *pool, _OP_MAP_KIND kind)
 {
   INT32 size;
   BB_OP_MAP new_map = TYPE_MEM_POOL_ALLOC(struct bb_op_map, pool);
-  INT32 nelem = BB_next_op_map_idx(bb);
+  INT32 nelem = BB_next_op_map_idx(bb) + 20;
 
   new_map->bb = bb;
   new_map->kind = kind;

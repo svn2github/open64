@@ -3241,6 +3241,7 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
     if (Pre_kind() == PK_EPRE && 
 	all_kids_are_terminal &&
 	OPERATOR_is_scalar_iload (x->Opr()) &&
+	x->Dtyp() != MTYPE_M &&
 	! x->Is_ivar_volatile()) {
       // need_rehash must be TRUE
       Is_Trace(Tracing(),
@@ -4257,13 +4258,13 @@ ETABLE::Perform_PRE_optimization(void)
 	    SET_OPT_REPEAT_PHASE(Ssa_min_phase, "New PRE: SSA minimization");
 	    cur_worklst->Minimize_temp_ssa(this, Tracing());
 	  }
-
+	  
 	  if (WOPT_Enable_SSA_Minimization) {
 	    // Free the def-use space.
 	    OPT_POOL_Pop(Etable_local_pool(), -1);
 	  }
 	}
-
+	
 	if (optimization_needed) {
 	  SET_OPT_REPEAT_PHASE(Finalize_phase, "New PRE: CodeMotion");
 	  cur_worklst->Generate_save_reload(this); // Step 6

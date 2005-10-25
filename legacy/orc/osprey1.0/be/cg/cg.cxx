@@ -113,6 +113,12 @@
 #include "val_prof.h"
 #include "bb_verifier.h"
 #include "config_opt.h"
+#include "be_util.h"
+
+#define _value_profile_before_region_formation
+#define can_invoke_profile_with_current_cg_opt_level (CG_opt_level>1)
+//#define can_invoke_profile_with_current_cg_opt_level (1)
+
 MEM_POOL MEM_local_region_pool; /* allocations local to processing a region */
 MEM_POOL MEM_local_region_nz_pool;
 
@@ -122,6 +128,9 @@ INT32 current_PU_handle = 0;
 
 BOOL PU_Has_Calls;
 BOOL PU_References_GP;
+BOOL GRA_optimize_restore_pr;
+BOOL GRA_optimize_restore_b0_ar_pfs;
+BOOL GRA_optimize_restore_ar_lc;
 
 BOOL CG_PU_Has_Feedback;
 
@@ -153,6 +162,9 @@ CG_PU_Initialize (WN *wn_pu)
 
   PU_Has_Calls = FALSE;
   PU_References_GP = FALSE;
+  GRA_optimize_restore_pr = TRUE;
+  GRA_optimize_restore_b0_ar_pfs = TRUE;
+  GRA_optimize_restore_ar_lc = TRUE;
 
   Regcopies_Translated = FALSE;
 
@@ -329,8 +341,8 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
 }
 
 static void Config_Ipfec_Flags() {
-  IPFEC_Enable_Edge_Profile = IPFEC_Enable_Edge_Profile || ( Instrumentation_Enabled && (Phase_Num==4 && Profile_Type & CG_EDGE_PROFILE) );
-  IPFEC_Enable_Value_Profile= IPFEC_Enable_Value_Profile || ( Instrumentation_Enabled && (Phase_Num ==4 && Profile_Type & CG_VALUE_PROFILE) ); 
+  IPFEC_Enable_Edge_Profile = IPFEC_Enable_Edge_Profile || ( (Instrumentation_Enabled || Instrumentation_Enabled_Before) && (Phase_Num==4 && Profile_Type & CG_EDGE_PROFILE) );
+  IPFEC_Enable_Value_Profile= IPFEC_Enable_Value_Profile || ( (Instrumentation_Enabled || Instrumentation_Enabled_Before) && (Phase_Num ==4 && Profile_Type & CG_VALUE_PROFILE) ); 
   IPFEC_Enable_Value_Profile_Annot = IPFEC_Enable_Value_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
   IPFEC_Enable_Edge_Profile_Annot = IPFEC_Enable_Edge_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
   IPFEC_Enable_Opt_after_schedule=IPFEC_Enable_Opt_after_schedule && CG_Enable_Ipfec_Phases && CG_opt_level > 1;
@@ -379,6 +391,7 @@ CG_Generate_Code(
     DST_IDX pu_dst, 
     BOOL region )
 {
+  BOOL value_profile_need_gra = FALSE;
 /*later:  BOOL region = DST_IS_NULL(pu_dst); */
   BOOL orig_reuse_temp_tns = Reuse_Temp_TNs;
   /* Initialize RGN_Formed to FALSE. */
@@ -449,18 +462,21 @@ CG_Generate_Code(
   Stop_Timer ( T_Expand_CU );
   Check_for_Dump ( TP_CGEXP, NULL );
 
-  if (IPFEC_Enable_Edge_Profile && CG_opt_level > 1 )
+  if (IPFEC_Enable_Edge_Profile && can_invoke_profile_with_current_cg_opt_level )
   {
     Set_Error_Phase ( "edge profile instrument" );
     Start_Timer ( T_Ipfec_Profiling_CU );
     CG_Edge_Profile_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
     Stop_Timer( T_Ipfec_Profiling_CU );
-  } else if (IPFEC_Enable_Edge_Profile_Annot && CG_opt_level > 1 ) {
+    Check_for_Dump(TP_A_PROF, NULL);
+  } else if (IPFEC_Enable_Edge_Profile_Annot && can_invoke_profile_with_current_cg_opt_level ) {
     Set_Error_Phase ( "edge profile annotation" );
     CG_Edge_Profile_Annotation(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
+    Check_for_Dump(TP_A_PROF, NULL);
   }
 
-  if (IPFEC_Enable_Value_Profile && CG_opt_level > 1 )
+#ifdef _value_profile_before_region_formation
+  if (IPFEC_Enable_Value_Profile && can_invoke_profile_with_current_cg_opt_level )
   {
     Set_Error_Phase ( "value profile instrument" );
     if (EBO_Opt_Level != 0) 
@@ -478,16 +494,22 @@ CG_Generate_Code(
     inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld8,0,FALSE),&MEM_pu_pool) );
     
     UINT32 Min_Instr_Pu_Id, Max_Instr_Pu_Id;
+    UINT64 tmpmask=1;
+    tmpmask = tmpmask << current_PU_handle;
     Min_Instr_Pu_Id = Value_Instr_Pu_Id >> 16;
     Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
-    if (current_PU_handle >= Min_Instr_Pu_Id && current_PU_handle <= Max_Instr_Pu_Id )
+    if (current_PU_handle >= Min_Instr_Pu_Id
+                && current_PU_handle <= Max_Instr_Pu_Id 
+                && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask ))                )
+
     {
       Start_Timer ( T_Ipfec_Profiling_CU );
       CG_VALUE_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
+      value_profile_need_gra = TRUE;
       Stop_Timer( T_Ipfec_Profiling_CU );
     }
     Check_for_Dump(TP_A_PROF, NULL);
-  } else if (IPFEC_Enable_Value_Profile_Annot && CG_opt_level > 1 ) {
+  } else if (IPFEC_Enable_Value_Profile_Annot && can_invoke_profile_with_current_cg_opt_level ) {
     //We take all load instructions for example to show how to specify the 
     //OP's type and how it should be value profiled.
     inst2prof_list.clear();
@@ -498,17 +520,20 @@ CG_Generate_Code(
 
     Set_Error_Phase ( "value profile annotation" );
     UINT32 Min_Instr_Pu_Id, Max_Instr_Pu_Id;
+    UINT64 tmpmask=1;
+    tmpmask = tmpmask << current_PU_handle;
     Min_Instr_Pu_Id = Value_Instr_Pu_Id >> 16;
     Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
-    if (current_PU_handle >= Min_Instr_Pu_Id && current_PU_handle <= Max_Instr_Pu_Id )
+    if (current_PU_handle >= Min_Instr_Pu_Id
+         && current_PU_handle <= Max_Instr_Pu_Id
+         && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask ))                )
     {
       CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
     }
   }
-  current_PU_handle++;
+#endif
 
-
-  if (CG_localize_tns) {
+  if (CG_localize_tns && !value_profile_need_gra ) {
     /* turn all global TNs into local TNs */
     Set_Error_Phase ( "Localize" );
     Start_Timer ( T_Localize_CU );
@@ -635,7 +660,7 @@ CG_Generate_Code(
         FREQ_Verify("Hyberblock Formation");
     }
     
-    if (!CG_localize_tns) {
+    if (!CG_localize_tns || value_profile_need_gra ) {
       /* Initialize liveness info for new parts of the REGION */
       /* also compute global liveness for the REGION */
       Set_Error_Phase( "Global Live Range Analysis");
@@ -756,11 +781,14 @@ CG_Generate_Code(
     IGLS_Schedule_Region (TRUE /* before register allocation */);
   }
 
+  if (IPFEC_Enable_Opt_after_schedule) {
+    CFLOW_Optimize(CFLOW_BRANCH|CFLOW_UNREACHABLE|CFLOW_MERGE|CFLOW_REORDER, "CFLOW (third pass)");
+  }
+  
   if (IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
-    BOOL need_recalc_liveness = (Generate_Recovery_Code() > 0);
-    Global_Insn_Merge_Splitted_BBs();
-    if (need_recalc_liveness) 
-      GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+     BOOL need_recalc_liveness = (Generate_Recovery_Code() > 0);
+     if (need_recalc_liveness) 
+        GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
   }
 #ifdef Is_True_On
   if (IPFEC_Enable_BB_Verify) {
@@ -768,14 +796,89 @@ CG_Generate_Code(
   }
 #endif
 
-  if (IPFEC_Enable_Opt_after_schedule) {
-    CFLOW_Optimize(CFLOW_BRANCH|CFLOW_UNREACHABLE|CFLOW_MERGE|CFLOW_REORDER, "CFLOW (third pass)");
-  }
+  if(PRDB_Valid()) Delete_PRDB();
+
 
   LOCS_Enable_Bundle_Formation = locs_bundle_value;
   EMIT_explicit_bundles = emit_bundle_value;
+#ifndef _value_profile_before_region_formation
+   if (IPFEC_Enable_Value_Profile && can_invoke_profile_with_current_cg_opt_level )
+  {
+    Set_Error_Phase ( "value profile instrument" );
+        if (EBO_Opt_Level != 0)
+        {
+                DevWarn("Value profiling need -CG:ebo_level=0!! Set ebo_level to 0!!");
+                EBO_Opt_Level = 0;
+        }
+    //We take all load instructions for example to show how to specify the
+    //OP's type and how it should be value profiled.
+    inst2prof_list.clear();
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld1,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld2,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld4,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld8,0,FALSE),&MEM_pu_pool) );
+        UINT32 Min_Instr_Pu_Id, Max_Instr_Pu_Id;
+        UINT64 tmpmask=1;
+        tmpmask = tmpmask << current_PU_handle;
+        Min_Instr_Pu_Id = Value_Instr_Pu_Id >> 16;
+        Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
+        if (current_PU_handle >= Min_Instr_Pu_Id
+                && current_PU_handle <= Max_Instr_Pu_Id
+                && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask ))                )
+        {
+        Start_Timer ( T_Ipfec_Profiling_CU );
+            CG_VALUE_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST);
+            value_profile_need_gra = TRUE;
+        Stop_Timer( T_Ipfec_Profiling_CU );
+#if 0
+                if (CG_localize_tns) {
+                    /* turn all global TNs into local TNs */
+                    Set_Error_Phase ( "Localize" );
+                    Start_Timer ( T_Localize_CU );
+                    Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
+                    Stop_Timer ( T_Localize_CU );
+                    Check_for_Dump ( TP_LOCALIZE, NULL );
+                  } else {
+                    /* Initialize liveness info for new parts of the REGION */                    /* also compute global liveness for the REGION */
+                    Set_Error_Phase( "Global Live Range Analysis");
+                    Start_Timer( T_GLRA_CU );
+                    GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+                    Stop_Timer ( T_GLRA_CU );
+                    Check_for_Dump ( TP_FIND_GLOB, NULL );
+                  }
+#endif
 
-  if (!CG_localize_tns)
+        }
+        Check_for_Dump(TP_A_PROF, NULL);
+
+   } else if (IPFEC_Enable_Value_Profile_Annot && can_invoke_profile_with_current_cg_opt_level ) {
+    //We take all load instructions for example to show how to specify the
+    //OP's type and how it should be value profiled.
+    inst2prof_list.clear();
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld1,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld2,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld4,0,FALSE),&MEM_pu_pool) );
+    inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld8,0,FALSE),&MEM_pu_pool) );
+
+    Set_Error_Phase ( "value profile annotation" );
+        UINT32 Min_Instr_Pu_Id, Max_Instr_Pu_Id;
+        UINT64 tmpmask=1;
+        tmpmask = tmpmask << current_PU_handle;
+        Min_Instr_Pu_Id = Value_Instr_Pu_Id >> 16;
+        Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
+        if (current_PU_handle >= Min_Instr_Pu_Id
+                && current_PU_handle <= Max_Instr_Pu_Id
+                && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask ))                )
+        {
+            CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST);
+        }
+  }
+  DevWarn("Now we are testing instrumentation after RegionFormation!");
+#endif
+  current_PU_handle++;
+
+
+  if (!CG_localize_tns || value_profile_need_gra )
   {
     // Earlier phases (esp. GCM) might have introduced local definitions
     // and uses for global TNs. Rename them to local TNs so that GRA 
@@ -786,11 +889,11 @@ CG_Generate_Code(
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
       Stop_Timer ( T_GLRA_CU );
       Check_for_Dump (TP_FIND_GLOB, NULL);
-    } else if (!(IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1)) {
+    } else if (!(IPFEC_Enable_Prepass_GLOS && (CG_opt_level > 1 || value_profile_need_gra))) {
       GRA_LIVE_Rename_TNs ();
     }
 
-    if (GRA_redo_liveness || IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
+    if (GRA_redo_liveness || IPFEC_Enable_Prepass_GLOS && (CG_opt_level > 1 || value_profile_need_gra)) {
       Start_Timer( T_GLRA_CU );
       GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
       Stop_Timer ( T_GLRA_CU );
@@ -802,7 +905,7 @@ CG_Generate_Code(
 
   LRA_Allocate_Registers (!region);
 
-  if (!CG_localize_tns ) {
+  if (!CG_localize_tns || value_profile_need_gra) {
     Set_Error_Phase ( "GRA_Finish" );
     /* Done with all grant information */
     GRA_Finalize_Grants();
@@ -830,6 +933,9 @@ CG_Generate_Code(
     Check_for_Dump ( TP_EBO, NULL );
   }
 
+  if (CG_opt_level > 1 && IPFEC_Enable_Pre_Multi_Branch) {
+    Check_Cross_Boundary();
+  }
   if (IPFEC_Enable_Postpass_LOCS) {
     if (IPFEC_sched_care_machine!=Sched_care_bundle) {
       Local_Insn_Sched(FALSE);
@@ -851,9 +957,9 @@ CG_Generate_Code(
   if (IPFEC_Force_CHK_Fail)
     Force_Chk_Fail();
 
-  if (IPFEC_Chk_Compact)
-    Adjust_Recovery_Block();
-  
+  if (CG_opt_level > 1 && IPFEC_Enable_Post_Multi_Branch) {
+    Post_Multi_Branch();
+  }
   Reuse_Temp_TNs = orig_reuse_temp_tns;     /* restore */
   
   if (PRDB_Valid()) Delete_PRDB();
@@ -939,6 +1045,10 @@ CG_Generate_Code(
     Start_Timer (   T_Emit_CU );
     if (Create_Cycle_Output)
         Cycle_Count_Initialize(Get_Current_PU_ST(), region);      
+    /* Generate code to call mcount. See description of gcc -pg option.
+     * This instrumentation is done just before code emission.
+     */
+    Instru_Call_Mcount();
     EMT_Emit_PU (Get_Current_PU_ST(), pu_dst, rwn);
     Check_for_Dump (TP_EMIT, NULL);
     Stop_Timer ( T_Emit_CU );
@@ -971,14 +1081,19 @@ void
 Trace_IR(
   INT phase,        /* Phase after which we're printing */
   const char *pname,    /* Print name for phase */
-  BB *cur_bb)       /* BB to limit traces to */
+  BB *cur_bb,       /* BB to limit traces to */
+  BOOL after = TRUE)
 {
   INT cur_bb_id = cur_bb ? BB_id(cur_bb) : 0;
   if (   Get_Trace(TKIND_IR, phase)
       && (cur_bb_id == 0 || Get_BB_Trace(cur_bb_id)))
   {
-    fprintf(TFile, "\n%s%s\tIR after %s\n%s%s\n",
-            DBar, DBar, pname, DBar, DBar);
+    if(after)
+      fprintf(TFile, "\n%s%s\tIR after %s(BEGIN)  PU:%d\n%s%s\n ",
+            DBar, DBar, pname, Current_PU_Count(), DBar, DBar);
+    else
+      fprintf(TFile, "\n%s%s\tIR before %s(BEGIN)  PU:%d\n%s%s\n ",
+            DBar, DBar, pname, Current_PU_Count(), DBar, DBar); 	
     if (cur_bb != NULL) {
       Print_BB(cur_bb);
     } else {
@@ -990,6 +1105,13 @@ Trace_IR(
       }
     }
     fprintf(TFile, "%s%s\n", DBar, DBar);
+    if(after)
+      fprintf(TFile, "\n%s%s\tIR after %s(END)  PU:%d\n%s%s\n ",
+            DBar, DBar, pname, Current_PU_Count(), DBar, DBar);
+    else
+      fprintf(TFile, "\n%s%s\tIR before %s(END)  PU:%d\n%s%s\n ",
+            DBar, DBar, pname, Current_PU_Count(), DBar, DBar);
+    	
   }
 }
 

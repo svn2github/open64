@@ -1520,7 +1520,7 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
   // tell everyone that the generated WHIRL has feedback info if it
   // does
   if (Cur_PU_Feedback) {
-    Set_PU_Info_state(Current_PU_Info, WT_FREQ, Subsect_InMem);
+    Set_PU_Info_state(Current_PU_Info, WT_FEEDBACK, Subsect_InMem);
   }
 
   Is_True(Get_Preg_Num(PREG_Table_Size(CURRENT_SYMTAB)) ==

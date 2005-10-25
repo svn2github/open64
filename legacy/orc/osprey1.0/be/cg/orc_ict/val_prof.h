@@ -42,6 +42,7 @@
 #include "profile_util.h"
 #include "calls.h"
 #include "hash_map.h"
+#include "bb_map.h"
 
 struct INST_TO_PROFILE {
 private:
@@ -66,11 +67,11 @@ public:
 
 typedef mempool_allocator<struct INST_TO_PROFILE *> INST2PROF_ALLOC_TYPE;
 typedef vector<INST_TO_PROFILE *, INST2PROF_ALLOC_TYPE> INST2PROFLIST;
-typedef hash_map<INT32, FB_Info_Value *, hash<INT32> > OP_TNV_MAP;
+//typedef hash_map<INT32, FB_Info_Value *, hash<INT32> > OP_TNV_MAP;
 
 
 extern INST2PROFLIST inst2prof_list;
-extern OP_TNV_MAP op_tnv_map;
+extern OP_MAP op_tnv_map;
 extern void CG_VALUE_Instrument(CGRIN *rin, PROFILE_PHASE phase);
 extern void CG_VALUE_Annotate(CGRIN *rin, PROFILE_PHASE phase);
 

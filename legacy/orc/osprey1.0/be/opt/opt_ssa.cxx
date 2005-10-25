@@ -927,9 +927,15 @@ SSA::Get_zero_version_CR(AUX_ID aux_id, OPT_STAB *opt_stab, VER_ID du)
     if (st != NULL) ty = ST_type(st);
     MTYPE dtype, rtype;
     AUX_STAB_ENTRY *sym = opt_stab->Aux_stab_entry(aux_id);
-    rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), sym->Byte_size());
+   
+    if (sym->Mtype()==MTYPE_M)
+        rtype = sym->Mtype();
+    else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+						    sym->Byte_size());
+
     dtype = rtype;
-    if (rtype != MTYPE_UNKNOWN) {
+    if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
       if (MTYPE_is_integral(rtype) &&
           sym->Byte_size() < (MTYPE_size_min(MTYPE_I4)/8))
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
@@ -990,21 +996,30 @@ SSA::Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du,
 			   opt_stab->Du_st_ofst(du),
 			   ty,
 			   0,		// WN_object_ty already lowered the 
-					// type, so the field id must be 0.
+					    // type, so the field id must be 0.
 			   TRUE);
     } else {
       AUX_STAB_ENTRY *sym = opt_stab->Aux_stab_entry(vse->Aux_id());
-      rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), sym->Byte_size());
+
+      ty = TY_IDX_ZERO;
+      ST *st = opt_stab->St(vse->Aux_id());
+      if (st != NULL) ty = ST_type(st);
+      
+      if (sym->Mtype()==MTYPE_M)
+        rtype = sym->Mtype();
+      else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+						    sym->Byte_size()); 
+
       dtype = rtype;
-      if (rtype != MTYPE_UNKNOWN) {
+      
+      if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
         if (MTYPE_is_integral(rtype) &&
             sym->Byte_size() < (MTYPE_size_min(MTYPE_I4)/8))
           rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
                                                   MTYPE_size_min(MTYPE_I4)/8);
         ty = MTYPE_To_TY(rtype);
       }
-      else
-        ty = TY_IDX_ZERO;
 
       cr = htable->Add_def(opt_stab->Du_aux_id(du),
 			   opt_stab->Du_version(du),

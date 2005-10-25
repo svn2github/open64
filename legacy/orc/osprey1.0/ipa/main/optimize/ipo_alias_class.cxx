@@ -305,6 +305,13 @@ IP_ALIAS_CLASSIFICATION::Classify_wn_and_kids(WN *const wn)
     }
     return Handle_assignment(wn);
   }
+  else if (WN_operator(wn) == OPR_RETURN_VAL) {
+    if (_verbose && Tracing()) {
+      fprintf(TFile, "cwnk: Handling return value:\n");
+      fdump_tree(TFile, wn);
+    }
+    return Handle_return_val(wn);
+  }
   else if (OPCODE_is_call(opc)) {
     if (_verbose && Tracing()) {
       fprintf(TFile, "cwnk: Handling call:\n");
@@ -1451,6 +1458,29 @@ IP_ALIAS_CLASSIFICATION::Handle_assignment(WN *const stmt)
       fprintf(TFile, "    STID placed in ");
       Class_of_base_id(WN_base_id(stmt))->Print(TFile, Global_data_class());
     }
+    Print(TFile);
+#if Is_True_On
+    print_table();
+#endif
+  }
+
+  return WN_next(stmt);
+}
+
+WN *
+IP_ALIAS_CLASSIFICATION::Handle_return_val(WN *const stmt)
+{
+  ST *pu_st = Scope_tab[CURRENT_SYMTAB].st;
+  IP_ALIAS_CLASS_REP *pu_acr =
+    _base_id_map[Base_id(pu_st, 0ll)]->Base_member().Alias_class();
+  IP_ALIAS_CLASS_MEMBER *return_ac_member = pu_acr->Signature().Returns();
+
+  Classify_deref_of_expr(return_ac_member, WN_kid0(stmt), FALSE);
+
+  if (_verbose && Tracing()) {
+    fprintf(TFile, "  after handling return value:\n");
+    fprintf(TFile, "    RETURN_VAL placed in ");
+    pu_acr->Signature().Return_class()->Print(TFile, Global_data_class());
     Print(TFile);
 #if Is_True_On
     print_table();

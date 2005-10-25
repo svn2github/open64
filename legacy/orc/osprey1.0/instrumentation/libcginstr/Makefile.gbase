@@ -105,6 +105,7 @@ LIBINSTR_HEADER_DIRS    = \
  $(BUILD_TOT)/instrumentation/libcginstr \
  $(BUILD_TOT)/common/instrument   \
  $(BUILD_TOT)/common/com         \
+ $(BUILD_TOT)/common/util        \
  $(BUILD_TOT)/gnu_common/libstdc++  
 # These are the directories in which to look for source files.
 

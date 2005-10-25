@@ -102,7 +102,8 @@
 // Ipfec flags.
 extern BOOL CG_Enable_Ipfec_Phases;
 extern BOOL EMIT_count_cycles;
-
+extern INT32 IPFEC_Stacked_Cut_Num;
+extern INT32 IPFEC_Stacked_Spill_Num;
 extern BOOL IPFEC_Enable_Region_Formation;
 extern BOOL IPFEC_Enable_Region_Decomposition;
 extern BOOL IPFEC_Enable_Tail_Duplication;
@@ -128,11 +129,24 @@ extern BOOL IPFEC_Enable_Value_Profile;
 extern BOOL IPFEC_Enable_Random_Prob;
 extern BOOL IPFEC_Enable_Edge_Profile_Annot;
 extern BOOL IPFEC_Enable_Value_Profile_Annot;
+extern BOOL IPFEC_Glos_Reg_Pressure_Aware;
+extern BOOL IPFEC_Glos_Split_Entry_BB;
+extern BOOL IPFEC_Glos_Split_Exit_BB;
+extern BOOL IPFEC_Glos_Enable_P_Ready_Code_Motion;
+extern BOOL IPFEC_Glos_Motion_Across_Calls ;
+extern BOOL IPFEC_Glos_Code_Motion_Across_Nested_Rgn;
+extern BOOL IPFEC_Stress_Spec;
+extern BOOL IPFEC_Adjust_Variable_Latency ;
+extern BOOL IPFEC_Enable_Multi_Branch ;
+extern BOOL IPFEC_Enable_Pre_Multi_Branch ;
+extern BOOL IPFEC_Enable_Post_Multi_Branch ;
+
 extern char *Instru_File_Name;
 extern char *Fb_File_Name;
 extern char *Value_Instru_File_Name;
 extern UINT32 Value_Instr_Range;
 extern UINT32 Value_Instr_Pu_Id;
+extern UINT64 Value_Instr_Pu_Id_Mask;
 extern char *Value_Fb_File_Name;
 
 // This is the flag to control compressed template using. We do not
@@ -260,6 +274,10 @@ extern OPTION_LIST *raw_post_locs_skip_PU;
 extern SKIPLIST *post_locs_skip_PU;
 extern OPTION_LIST *raw_locs_skip_bb;
 extern SKIPLIST *locs_skip_bb;
+
+//Skip_list for multi_branch
+extern OPTION_LIST *raw_mlbr_skip_bb;
+extern SKIPLIST *mlbr_skip_bb;
 
 //Skip_list for PRDB 
 extern OPTION_LIST *raw_PRDB_skip_PU;

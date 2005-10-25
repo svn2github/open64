@@ -151,6 +151,8 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 
     if ( LPRE_do_loads() && 
 	 !cr->Is_var_volatile() && 
+         // screen out MLDID
+         !Opt_stab()->Aux_stab_entry(cr->Aux_id())->No_register() &&
 	 ST_class( Opt_stab()->St(cr->Aux_id()) ) != CLASS_PREG )
       Insert_real_occurrence(cr, stmt, stmt_kid_num, depth, is_store, TRUE);
     break;

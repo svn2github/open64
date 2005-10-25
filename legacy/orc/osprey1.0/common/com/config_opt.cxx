@@ -80,7 +80,8 @@ BOOL Show_OPT_Warnings = TRUE;          /* Display OPT warning messages */
 OPTION_LIST *Alias_Option = NULL;
 BOOL Alias_Pointer_Parms = TRUE;        /* Parms ptr indep? */
 BOOL Alias_Pointer_Cray = FALSE;        /* Cray pointer semantics? */
-BOOL Alias_Pointer_Types = FALSE;	/* Ptrs to distinct basic types indep? */
+BOOL Alias_Pointer_Types = TRUE;	/* Ptrs to distinct basic types indep? */
+/* Changed the value from FALSE to TRUE to set alias=typed default*/
 BOOL Alias_Not_In_Union  = FALSE;	/* Ptrs point to non-union types */
 BOOL Alias_Pointer_Strongly_Typed = FALSE; /* Ptrs to distinct types indep? */
 BOOL Alias_Pointer_Named_Data = FALSE;	/* No pointers to named data? */
@@ -92,7 +93,8 @@ BOOL Alias_Common_Scalar = FALSE;       /* Distinguish scalar from array */
  * for use in overriding the default -- not intended for user use.
  */
 static BOOL Alias_Pointer_Cckr = FALSE;	/* -cckr default rules? */
-static BOOL Alias_Pointer_Types_Set = FALSE;	/* alias=typed set? */
+static BOOL Alias_Pointer_Types_Set = TRUE;	/* alias=typed set? */
+/* Changed the value from FALSE to TRUE to set alias=typed default*/
 static BOOL Alias_Not_In_Union_Set  = FALSE;	/* alias=nounion set? */
 BOOL  Alias_F90_Pointer_Unaliased = FALSE;  /* Are F90 pointers unaliased? */
 
@@ -164,6 +166,7 @@ static OPTION_LIST *Region_Skip = NULL;		/* Raw list */
 SKIPLIST *Region_Skip_List = NULL;		/* Processed list */
 
 /***** Miscellaneous -OPT: group options *****/
+BOOL Olegacy = FALSE;    /* -OPT:Olegacy to resume original default flag*/
 char *Ofast = NULL;		/* -OPT:Ofast platform name */
 BOOL OPT_Pad_Common = FALSE;	/* Do internal common block padding? */
 BOOL OPT_Reorg_Common = FALSE;	/* Do common block reorganization (split)? */
@@ -207,6 +210,8 @@ BOOL Instrumentation_Enabled = FALSE;
 UINT32 Instrumentation_Actions = 0;
 BOOL Instrumentation_Unique_Output = FALSE; // always create unique output
 OPTION_LIST *Feedback_Option = NULL;
+
+BOOL Instrumentation_Enabled_Before = FALSE;
 
 /***** Obsolete options *****/
 static BOOL Fprop_Limit_Set = FALSE;
@@ -551,6 +556,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL, OV_VISIBLE,     FALSE, "ansi_setjmp",           "ansi_setjmp",
     0, 0, 0,  &LANG_Ansi_Setjmp_On,   &LANG_Ansi_Setjmp_Set,
     "C/C++: enable optimization of functions with calls to setjmp" },
+
+  { OVK_BOOL,	OV_SHY,		FALSE, "Olegacy",			"Olegacy",
+    0, 0, 0,	&Olegacy,		NULL,
+    "default options for performance on shared and alias" },
 
 #ifdef __linux__
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wfe_dfe",	"wfe_dfe",

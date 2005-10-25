@@ -29,7 +29,7 @@
 //-*-c++-*-
 
 #ifndef prdb_INCLUDED
-#define	prdb_INCLUDED
+#define prdb_INCLUDED
 
 #include "bb.h"
 #include <bvector.h>
@@ -56,9 +56,9 @@
 //  implementation easier.
 //***************************************************************************
 
-//The INT global_nd_index is a global member to record the currently biggest node
-//index
-extern INT partition_graph_node_number;
+extern MEM_POOL* PRDB_pool;
+extern COMPARE_TYPE Compare_Type(TOP opcode);
+
 
 //*****************************************************************************
 //  CODE_MOTION_TYPE: 
@@ -73,9 +73,9 @@ extern INT partition_graph_node_number;
 //*****************************************************************************
 
 typedef enum {
-		MOVE_TO,
-		COPY_TO,
-		DELETE
+        MOVE_TO,
+        COPY_TO,
+        DELETE
 } CODE_MOTION_TYPE;
 
 //class declaration for subsequent use
@@ -101,7 +101,8 @@ protected:
     MEM_POOL _m;
 
     PRDB_MEM() {
-         MEM_POOL_Initialize( &_m, "PRDB_MEM", true );
+         _m.magic_num = 0;
+         MEM_POOL_Initialize( &_m, "PRDB_MEM", TRUE );
          MEM_POOL_Push( &_m );
     }
     
@@ -153,18 +154,18 @@ typedef vector<PARTITION*, PT_ALLOC>  PT_CONTAINER;
 typedef mempool_allocator<OP*> OP_ALLOC;
 typedef vector<OP*, OP_ALLOC> OP_CONTAINER;
 
-typedef mempool_allocator<bit_vector> BV_ALLOC;
-typedef vector<bit_vector, BV_ALLOC>  BV_CONTAINER;
+typedef mempool_allocator<BOOL> BIT_ALLOC;
+typedef vector<BOOL, BIT_ALLOC> BV_VECTOR;
+typedef mempool_allocator<BV_VECTOR> BV_ALLOC;
+typedef vector<BV_VECTOR, BV_ALLOC>  BV_CONTAINER;
 
 typedef pair<TN*, OP*> TN_OP_PAIR;
-typedef mempool_allocator<TN_OP_PAIR> TP_ALLOCATOR;
-typedef vector<TN_OP_PAIR, TP_ALLOCATOR>  TP_CONTAINER;
-
-typedef mempool_allocator<OP*> OP_ALLOC;
-typedef vector<OP*, OP_ALLOC> OP_CONTAINER;
+typedef mempool_allocator<TN_OP_PAIR*> TP_ALLOCATOR;
+typedef vector<TN_OP_PAIR*, TP_ALLOCATOR>  TP_CONTAINER;
 
 class PARTITION_GRAPH_NODE
 {
+    friend class PARTITION_GRAPH;
 private:
     //define an index marking the node order to ensure all nodes having 
     //different indexes while initialization and update.
@@ -182,41 +183,36 @@ private:
     //all tns or bbs mapped to this partition graph node
     TP_CONTAINER _related_tns; // record TN_OP_PAIRs
     BB_SET*      _related_bbs;
+    TN*           _control_pred; //record bb's control predicate TN;
 
 public:
-    PARTITION_GRAPH_NODE(PRDB_GEN* prdb):
-      _parent_partitions(PT_ALLOC(&(prdb -> _m))),
-      _child_partitions(PT_ALLOC(&(prdb -> _m))),
-      _related_tns(TN_CONTAINER_ALLOC(&(prdb -> _m)))
-
-    {
-          _related_bbs = BB_SET_Create_Empty( PU_BB_Count+2, &(prdb -> _m));
-          _index = partition_graph_node_number++;
-          _level = -1;
-    }
+    PARTITION_GRAPH_NODE();
     ~PARTITION_GRAPH_NODE(){}
 
     //add bb or tn to _related_bbs or _related_tns of this node
-    void Add_Related_BB(BB* bb, MEM_POOL* mp)
+    void Add_Related_BB(BB* bb)
     {
-        BB_SET_Union1D(_related_bbs, bb, mp);
+        BB_SET_Union1D(_related_bbs, bb, PRDB_pool);
     }
-    BOOL Is_Related_TN(TN_OP_PAIR tp)
+    BOOL Is_Related_TN(TN_OP_PAIR* tp)
     {
         TP_CONTAINER::iterator iter;
         for (  iter = _related_tns.begin(); 
         iter!= _related_tns.end(); 
         iter++) 
         {
-            if ( tp == * iter) return true;
+            if ( tp == * iter) return TRUE;
         }
-        return false;
+        return FALSE;
     }
-    void Add_Related_TN(TN_OP_PAIR tp)
+    void Add_Related_TN(TN_OP_PAIR* tp)
     {
         if (!Is_Related_TN(tp))
             _related_tns.push_back(tp);
     }
+
+    TN* Control_Pred() { return _control_pred; }
+    void Control_Pred(TN* tn) { _control_pred = tn; }
 
     TP_CONTAINER& Get_TNs() { return _related_tns; }
     BB_SET* Get_BBs() { return _related_bbs;       }
@@ -271,7 +267,7 @@ private:
 
 public:
 
-    PARTITION(PRDB_GEN* prdb) : _child(PG_ALLOC(&(prdb->_m)))
+    PARTITION() : _child(PG_ALLOC(PRDB_pool))
     {
     };
 
@@ -326,11 +322,15 @@ public:
 class PARTITION_GRAPH
 {
     friend class PRDB_GEN;
-private:
 
+protected:
+    //The INT global_nd_index is a global member to record the currently biggest node
+    //index
+    INT partition_graph_node_number;
+
+private:
     //define some special partition graph nodes to record different node type.
     PARTITION_GRAPH_NODE* _root;
-    //PARTITION_GRAPH_NODE* _false_node;
     PARTITION_GRAPH_NODE* _dummy_node;
 
     OP_MAP _tn_node_map;
@@ -345,68 +345,72 @@ private:
     void Mark_Level(PARTITION_GRAPH_NODE* node);
 
     // result will record des's sibling with respect to anc.
-	void Find_Sibling(PG_CONTAINER* result, PARTITION_GRAPH_NODE* anc, 
+    void Find_Sibling(PG_CONTAINER* result, PARTITION_GRAPH_NODE* anc, 
         PARTITION_GRAPH_NODE* des);
 
-    void Collect_Info(REGION* region, PRDB_GEN*);
-	void Look_For_Partition(REGION* region, PRDB_GEN*);
+    void Collect_Info(REGION* region);
+    void Look_For_Partition(REGION* region);
     void Look_Partition_For_Or_Type(TN* tn, PARTITION_GRAPH_NODE* parent, 
             PARTITION_GRAPH_NODE* child1, PARTITION_GRAPH_NODE* child2, 
-            OP* op, PRDB_GEN* prdb);
+            OP* op);
     void Look_Partition_For_And_Type(TN* tn, PARTITION_GRAPH_NODE* parent, 
             PARTITION_GRAPH_NODE* child1, PARTITION_GRAPH_NODE* child2, 
-            OP* op, PRDB_GEN* prdb);
+            OP* op);
 
     //add edges to connect urreachable nodes from root to form a complete 
     //partition graph
-    void Complete_Partition_Graph(PRDB_GEN*);
+    void Complete_Partition_Graph();
     
     BOOL Find_Reachable_Descendant(PG_CONTAINER*,PARTITION_GRAPH_NODE*);
 
     //least common ancestor
     PARTITION_GRAPH_NODE* Get_Lca(PARTITION_GRAPH_NODE*,PARTITION_GRAPH_NODE*);
     PARTITION_GRAPH_NODE* Get_Gcd(PARTITION_GRAPH_NODE*,PARTITION_GRAPH_NODE*);
+
+    //Get all reachable nodes for NODE
+    PG_CONTAINER* Get_Subset_Nodes(PARTITION_GRAPH_NODE* node);
     
     //the result will record the subset after if subtracts des. And if it
-    //executes successfully, a true value returns; otherwise a false
+    //executes successfully, a true value returns; otherwise a FALSE
     //value will return.
     BOOL Subtract(PG_CONTAINER* result, PARTITION_GRAPH_NODE* des);
 
     BOOL Subtract(PG_CONTAINER* result, PG_CONTAINER* set);
 
-    void Add_Partition(PARTITION_GRAPH_NODE*, PG_CONTAINER&, PRDB_GEN*);
+    void Add_Partition(PARTITION_GRAPH_NODE*, PG_CONTAINER*);
     
     //compute nodes relations such as disjoint, subset, superset
-    void Pre_Computing(PRDB_GEN*);
+    void Pre_Computing();
 
     PARTITION_GRAPH_NODE* Find_Node_In_OP(TN_OP_PAIR* tn_op);
     void Set_Disjoint(PARTITION_GRAPH_NODE*,PARTITION_GRAPH_NODE*);
     void Set_Subset(PARTITION_GRAPH_NODE*,PARTITION_GRAPH_NODE*);
     void Rec_Set_Disjoint(PARTITION_GRAPH_NODE*,PARTITION_GRAPH_NODE*);
-    void Rec_Set_Subset(PARTITION_GRAPH_NODE*,PARTITION_GRAPH_NODE*);
 
-    void Copy_To(OP* op, BB* tgt_BB, PRDB_GEN*);
-    void Move_To(OP* op, BB* tgt_BB, PRDB_GEN* prdb);
-    void Delete(OP* op, PRDB_GEN* prdb);
+    void Copy_To(OP* op, BB* tgt_BB);
+    void Move_To(OP* op, BB* tgt_BB);
+    void Delete(OP* op);
 
     BOOL Is_Complementary(PARTITION_GRAPH_NODE*,PARTITION_GRAPH_NODE*,
         PARTITION_GRAPH_NODE*);
 
-    void Sum(TN_OP_PAIR tp , TP_CONTAINER* );
+    void Sum(TN_OP_PAIR* tp , TP_CONTAINER* );
     void Diff(TN_OP_PAIR tp, TP_CONTAINER*);
     //simplify a predicate set.
     void Reduce(TP_CONTAINER* tp_set, BOOL is_dum);
+    //simplify a partition_graph_node set.
+    void Reduce(PG_CONTAINER* pg_set, BOOL is_dum);
 
 public:
     //return true if cycle is detected;
     BOOL Cycle_Detector();
 
-    //return true with illegal partition
+    //return TRUE with illegal partition
     BOOL Illegal_Partition();
 
     //Constructor and destructor
     PARTITION_GRAPH(){}
-    PARTITION_GRAPH(REGION*, PRDB_GEN* prdb);
+    PARTITION_GRAPH(REGION*);
     ~PARTITION_GRAPH() {
         BB_MAP_Delete(_bb_node_map);
         OP_MAP_Delete(_tn_node_map);
@@ -421,55 +425,29 @@ public:
 
     OP_MAP Tn_Node_Map() { return _tn_node_map; }
     
-    void Add_Node(PARTITION_GRAPH_NODE* pgn) 
+    inline void Add_Node(PARTITION_GRAPH_NODE* pgn) 
     {
         _nodes.push_back (pgn);
     }
 
-    //reset all relations to false if the corresponding node is deleted.
+    //reset all relations to FALSE if the corresponding node is deleted.
     void Del_Relation(INT index)
     {
         if(!index) return;
         PG_CONTAINER::iterator iter;
         for(iter = _nodes.begin(); iter!=_nodes.end(); iter++)
         {
-            _disjoint_relation[index][(*iter)->Index()] = false;
-            _disjoint_relation[(*iter)->Index()][index] = false;
-            _subset_relation[index][(*iter)->Index()] = false;
-            _subset_relation[(*iter)->Index()][index] = false;
+            _disjoint_relation[index][(*iter)->Index()] = FALSE;
+            _disjoint_relation[(*iter)->Index()][index] = FALSE;
+            _subset_relation[index][(*iter)->Index()] = FALSE;
+            _subset_relation[(*iter)->Index()][index] = FALSE;
         }
     }
 
     //recompute disjoint and subset relation when new nodes are added.
     void Add_Relation(PARTITION_GRAPH_NODE* child,
-                      PARTITION_GRAPH_NODE* parent, PRDB_GEN* prdb)
-    {
-        INT index1, index2;
-        index1 = parent->Index();
-        index2 = child->Index();
-        PG_CONTAINER::iterator iter;
-        bit_vector bvector(partition_graph_node_number, &(prdb->_m));
-        for(int i=0;i<partition_graph_node_number;i++)
-        {
-            _disjoint_relation[i].push_back(false);
-            _subset_relation[i].push_back(false);
-            bvector[i] = false;
-        }
-        _disjoint_relation.push_back (bvector);
-        _subset_relation.push_back (bvector);
-        for(iter=_nodes.begin();iter!=_nodes.end();iter++)
-        {
-            if(_disjoint_relation[index1][(*iter)->Index()])
-            {
-                _disjoint_relation[index2][(*iter)->Index()]=true;
-                _disjoint_relation[(*iter)->Index()][index2]=true;
-            }
-            if(_subset_relation[(*iter)->Index()][index1])
-                _subset_relation[(*iter)->Index()][index2] = true;
-        }
-        _subset_relation[index1][index2] = true;
-    }
-            
+                      PARTITION_GRAPH_NODE* parent);
+
     BOOL Is_Disjoint(TN_OP_PAIR, TN_OP_PAIR);
     BOOL Is_Disjoint(BB* , BB*);
     BOOL Is_Subset(TN_OP_PAIR, TN_OP_PAIR);
@@ -478,18 +456,19 @@ public:
     BOOL Is_Superset(BB* , BB*);
     BOOL Get_Complementary(TP_CONTAINER* result,TN_OP_PAIR,TN_OP_PAIR);
     BOOL Get_Complementary(TP_CONTAINER* result,TN_OP_PAIR , BB* base_bb);
+    TN* Get_Complementary(TN_OP_PAIR , BB* base_bb);
     BOOL Is_Complementary(TN_OP_PAIR , TN_OP_PAIR , TN_OP_PAIR);
     BOOL Is_Complementary(TN_OP_PAIR , TN_OP_PAIR, BB*);
     float Get_Probability(TN* tn);
     float Get_Probability(TN* tn1, TN* tn2);
 
-	void Glb_Sum(TN_OP_PAIR tp, TP_CONTAINER* tp_set);
-	void Lub_Sum(TN_OP_PAIR tp, TP_CONTAINER* tp_set);
+    void Glb_Sum(TN_OP_PAIR* tp, TP_CONTAINER* tp_set);
+    void Lub_Sum(TN_OP_PAIR* tp, TP_CONTAINER* tp_set);
     void Lub_Diff(TN_OP_PAIR tp, TP_CONTAINER*);
     void Glb_Diff(TN_OP_PAIR tp, TP_CONTAINER*);
 
     //update PARTITION GRAPH after instructions are moved, copied or deleted.
-    void Update(OP* op, BB* tgt_BB, CODE_MOTION_TYPE, PRDB_GEN* prdb);
+    void Update(OP* op, BB* tgt_BB, CODE_MOTION_TYPE);
     void Print(FILE* file = stderr);
 };
 

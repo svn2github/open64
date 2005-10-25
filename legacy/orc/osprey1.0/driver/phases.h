@@ -40,11 +40,18 @@ extern boolean multiple_source_files;
 
 extern string outfile;		/* outfile for -o */
 extern string prof_file;        /*  executable file for prof to work upon */
-extern string fb_file;		/* feedback file for -fb */
+extern string fb_file;		/* feedback file for -fb_create */
+extern string internal_fb_file;	/* feedback file for -fb */
+extern string opt_file;		/* feedback file for -fb_opt */
 extern string fb_xdir;		/* dir where pixie emits dso's */
 extern string fb_cdir;		/* dir where pixie emits count files */
 extern string fb_phase;         /* phase for -fb_phase */
 extern string fb_type;          /* type for -fb_type */
+
+#ifdef SPECMT_LT
+/**** Used for specmt flags processing ***/
+extern string specmt_pass;
+#endif
 
 extern string ldpath_for_pixie;  /* Tell pixie where to find ld */
 extern string command_line;	/* original command line */

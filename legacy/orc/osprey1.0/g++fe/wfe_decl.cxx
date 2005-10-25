@@ -40,6 +40,7 @@
 #include <elf.h>
 #include "defs.h"
 #include "errors.h"
+#include "config.h"
 #include "gnu_config.h"
 #include "gnu/flags.h"
 extern "C" {
@@ -490,10 +491,17 @@ WFE_Start_Function (tree fndecl)
     WFE_Stmt_Push (vla_block, wfe_stmk_func_body, Get_Srcpos());
 
     ST        *func_st;
-    ST_EXPORT  eclass = TREE_PUBLIC(fndecl) && !DECL_INLINE(fndecl)
-			 || DECL_WEAK(fndecl) ?
-		 EXPORT_PREEMPTIBLE				 :
-                 EXPORT_LOCAL;
+    ST_EXPORT  eclass; 
+    //This is a work around to avoid redundant save/restore gp
+    if(TREE_PUBLIC(fndecl) && !DECL_INLINE(fndecl)|| DECL_WEAK(fndecl)) {
+        if(Gp_Save_Restore_Opt && Use_Call_Shared_Link && 
+          (DECL_INLINE(fndecl) || !DECL_WEAK(fndecl))) 
+            eclass = EXPORT_PROTECTED;
+        else
+            eclass = EXPORT_PREEMPTIBLE;
+    }
+    else
+        eclass = EXPORT_LOCAL;
 
 #ifndef GPLUSPLUS_FE
     if (DECL_INLINE (fndecl) && TREE_PUBLIC (fndecl)) {

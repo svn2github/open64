@@ -66,36 +66,36 @@ public:
   static void bb_dag(BB *bb);
   static void region_cfg(REGION *r);
   static void draw_bb(BB *bb);
-  static void dump_bb(BB *bb, FILE* fp=stderr);
-  static void dump_op(const OP *op, FILE* fp=stderr);
+  static void dump_bb(BB *bbg);
+  static void dump_op(const OP *opg);
   static void region_tree(REGION *r);
   static void partition_graph(PARTITION_GRAPH *pg);
   static void region_partition_graph(REGION *r);
   static void global_cfg();
-  static void dump_bb_vector(BB_VECTOR& bbs, FILE* fp=stderr);
-  static void dump_node_vector(NODE_VECTOR& nodes, FILE* fp=stderr);
+  static void dump_bb_vector(BB_VECTOR& bbsg);
+  static void dump_node_vector(NODE_VECTOR& nodesg);
   static void dump_node_list(list<REGIONAL_CFG_NODE *>& nodes);
-  static BB * get_bb (mBB_NUM bb_id, FILE* fp=stderr);
-  static OP * get_op (mBB_NUM bb_id, mUINT16 map_idx, FILE* fp=stderr);
-  static void dump_succs(mBB_NUM bb_id, mUINT16 map_idx, FILE* fp=stderr);
-  static void dump_succs_p(OP* op, FILE* fp=stderr);
-  static void dump_preds(mBB_NUM bb_id, mUINT16 map_idx, FILE* fp=stderr);
-  static void dump_preds_p(OP* op, FILE* fp=stderr);
-  static void dump_pdom(mBB_NUM bb_id, FILE* fp=stderr);
-  static void dump_tn_set (BS *set, FILE* fp=stderr);
-  static void dump_bb_set(BB_SET* set, FILE* fp=stderr);
-  static void dump_tn_stl_set(set<TN*>& TNs, FILE* fp=stderr);
-  static void tn_num(TN* tn, FILE* fp=stderr);
+  static BB * get_bb (mBB_NUM bb_idg);
+  static OP * get_op (mBB_NUM bb_id, mUINT16 map_idxg);
+  static void dump_succs(mBB_NUM bb_id, mUINT16 map_idxg);
+  static void dump_succs_p(OP* opg);
+  static void dump_preds(mBB_NUM bb_id, mUINT16 map_idxg);
+  static void dump_preds_p(OP* opg);
+  static void dump_pdom(mBB_NUM bb_idg);
+  static void dump_tn_set (BS *setg);
+  static void dump_bb_set(BB_SET* setg);
+  static void dump_tn_stl_set(set<TN*>& TNsg);
+  static void tn_num(TN* tng);
   static void dump_wn_stmt(WN* wn);
   static void dump_wn_node(WN* wn);
-  static void dump_st_type(ST* st, FILE* fp=stderr);
+  static void dump_st_type(ST* stg);
 };
 
-void dp::dump_st_type(ST* st, FILE* fp=stderr)
+void dp::dump_st_type(ST* st)
 {
     TY_IDX ty_idx = ST_type(st);
     TY& ty = Ty_Table[ty_idx];
-    ty.Print(fp);
+    ty.Print(stderr);
 }
 
 void dp::dump_wn_node(WN* wn)
@@ -108,60 +108,60 @@ void dp::dump_wn_stmt(WN* wn)
     dump_tree(wn);
 }
 
-void dp::dump_tn_stl_set(set<TN*>& TNs, FILE* fp=stderr)
+void dp::dump_tn_stl_set(set<TN*>& TNs)
 {
     for(set<TN*>::iterator iter = TNs.begin(); iter != TNs.end(); iter++){
       TN* tn = *iter;
       if(TN_is_global_reg(tn)){
-	      fprintf(fp,"GTN%d", TN_number(tn));
+	      fprintf(stderr,"GTN%d", TN_number(tn));
 	    } else {
-	      fprintf(fp,"TN%d", TN_number(tn));
+	      fprintf(stderr,"TN%d", TN_number(tn));
 	    }
     }
 
-    fprintf(fp,"\n");    
+    fprintf(stderr,"\n");    
 }
 
-void dp::tn_num(TN* tn, FILE* fp=stderr)
+void dp::tn_num(TN* tn)
 {
     if(TN_is_global_reg(tn)){
-        fprintf(fp,"GTN%d", TN_number(tn));
+        fprintf(stderr,"GTN%d", TN_number(tn));
     } else {
-        fprintf(fp,"TN%d", TN_number(tn));
+        fprintf(stderr,"TN%d", TN_number(tn));
     }
 }
 
-void dp::dump_bb_vector(BB_VECTOR& bbs, FILE* fp=stderr) {
+void dp::dump_bb_vector(BB_VECTOR& bbs) {
     for (BB_VECTOR_ITER iter = bbs.begin();iter != bbs.end();iter++) {
-        fprintf(fp,"BB_%d\n",BB_id(*iter));
+        fprintf(stderr,"BB_%d\n",BB_id(*iter));
     }
 }
 
-void dump_node_list(list<REGIONAL_CFG_NODE *>& nodes, FILE* fp=stderr)
+void dump_node_list(list<REGIONAL_CFG_NODE *>& nodes)
 {
     for(list<REGIONAL_CFG_NODE *>::iterator iter = nodes.begin(); iter != nodes.end(); iter++){
 	      REGIONAL_CFG_NODE *node = *iter;
 
         if (!node->Is_Region()) {
-            fprintf(fp,"BB%d",BB_id(node->BB_Node()));     
+            fprintf(stderr,"BB%d",BB_id(node->BB_Node()));     
         } else {
-            fprintf(fp,"RGN%d",(node->Region_Node())->Id());
+            fprintf(stderr,"RGN%d",(node->Region_Node())->Id());
         }
     }
-    fprintf(fp,"\n");
+    fprintf(stderr,"\n");
 }
 
-void dp::dump_node_vector(NODE_VECTOR& nodes, FILE* fp=stderr) {
+void dp::dump_node_vector(NODE_VECTOR& nodes) {
     for (NODE_VECTOR_ITER iter = nodes.begin();iter != nodes.end();iter++) {
         REGIONAL_CFG_NODE *node = *iter;
         
         if (!node->Is_Region()) {
-            fprintf(fp,"BB Node_%d\n",BB_id(node->BB_Node()));     
+            fprintf(stderr,"BB Node_%d\n",BB_id(node->BB_Node()));     
         } else {
-            fprintf(fp,"REGION Node_%d\n",(node->Region_Node())->Id());
+            fprintf(stderr,"REGION Node_%d\n",(node->Region_Node())->Id());
         }
     }
-    fprintf(fp,"\n");
+    fprintf(stderr,"\n");
 }
 
 void dp::region_tree(REGION *r) {
@@ -189,18 +189,18 @@ void dp::draw_bb(BB *bb)
   draw_bb_op (bb,caption);
 }
 
-void dp::dump_bb(BB *bb, FILE* fp=stderr)
+void dp::dump_bb(BB *bb)
 {
-    Set_Trace_File_internal(fp);
+    Set_Trace_File_internal(stderr);
     Print_BB_No_Srclines(bb);
     Set_Trace_File_internal(TFile);
 }
 
 
-void dp::dump_op(const OP *op, FILE* fp=stderr)
+void dp::dump_op(const OP *op)
 {
-   fprintf (fp, "[map_idx %d]" , OP_map_idx(op));
-   Set_Trace_File_internal(fp);
+   fprintf (stderr, "[map_idx %d]" , OP_map_idx(op));
+   Set_Trace_File_internal(stderr);
    Print_OP_No_SrcLine(op);
    Set_Trace_File_internal(TFile);
 }
@@ -216,10 +216,10 @@ void dp::global_cfg()
 }
 
 BB *
-dp::get_bb (mBB_NUM bb_id, FILE* fp=stderr) {
+dp::get_bb (mBB_NUM bb_id) {
     for (BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
       if (BB_id (bb) == bb_id) {
-        fprintf (fp, "BB: %d Address: %p\n", bb_id,bb);
+        fprintf (stderr, "BB: %d Address: %p\n", bb_id,bb);
         return bb ; 
       }
     }
@@ -227,7 +227,7 @@ dp::get_bb (mBB_NUM bb_id, FILE* fp=stderr) {
 }
 
 OP *
-dp::get_op (mBB_NUM bb_id, mUINT16 map_idx, FILE* fp=stderr)
+dp::get_op (mBB_NUM bb_id, mUINT16 map_idx)
 {
   BB * bb = dp::get_bb (bb_id) ;
   if (!bb) return NULL ;
@@ -235,7 +235,7 @@ dp::get_op (mBB_NUM bb_id, mUINT16 map_idx, FILE* fp=stderr)
   OP * op ;
   FOR_ALL_BB_OPs (bb, op) {
     if (OP_map_idx (op) == map_idx) {
-       fprintf (fp, "OP Address: %p\n", op); 
+       fprintf (stderr, "OP Address: %p\n", op); 
        return op ;
     }
   }
@@ -263,14 +263,14 @@ static char *arc_txt[] = {
 };
 
 void
-dp::dump_succs(mBB_NUM bb_id, mUINT16 map_idx, FILE* fp=stderr) {
+dp::dump_succs(mBB_NUM bb_id, mUINT16 map_idx) {
     OP* op = dp::get_op(bb_id, map_idx);
     if (!op) return;
 
     for(ARC_LIST* arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
         ARC *arc = ARC_LIST_first(arcs) ;
         OP *succ = ARC_succ(arc) ;
-        fprintf(fp,"[%d/%d]\t%p  -->%s\t ARC=%s\t %s\t %s\n", 
+        fprintf(stderr,"[%d/%d]\t%p  -->%s\t ARC=%s\t %s\t %s\n", 
 			          succ->bb->id, 
 			          succ->map_idx, 
                 succ,
@@ -284,23 +284,23 @@ dp::dump_succs(mBB_NUM bb_id, mUINT16 map_idx, FILE* fp=stderr) {
 }
 
 void 
-dp::dump_succs_p(OP* op, FILE* fp=stderr)
+dp::dump_succs_p(OP* op)
 {
     mBB_NUM bb_id = op->bb->id;
     mUINT16 map_idx = op->map_idx;
-    dump_succs(bb_id,map_idx,fp);
+    dump_succs(bb_id,map_idx);
 }
 
 
 void
-dp::dump_preds(mBB_NUM bb_id, mUINT16 map_idx, FILE* fp=stderr) {
+dp::dump_preds(mBB_NUM bb_id, mUINT16 map_idx) {
     OP* op = dp::get_op(bb_id, map_idx);
     if (!op) return;
 
     for(ARC_LIST* arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
         ARC *arc = ARC_LIST_first(arcs) ;
         OP *pred = ARC_pred(arc) ;
-        fprintf(fp,"[%d/%d]\t%p  %s-->\t ARC=%s\t %s\t %s\n", 
+        fprintf(stderr,"[%d/%d]\t%p  %s-->\t ARC=%s\t %s\t %s\n", 
 			          pred->bb->id, 
 			          pred->map_idx,
                 pred,
@@ -314,42 +314,42 @@ dp::dump_preds(mBB_NUM bb_id, mUINT16 map_idx, FILE* fp=stderr) {
 }
 
 void
-dp::dump_preds_p(OP* op, FILE* fp=stderr)
+dp::dump_preds_p(OP* op)
 {
     mBB_NUM bb_id = op->bb->id;
     mUINT16 map_idx = op->map_idx;
-    dump_preds(bb_id,map_idx,fp);
+    dump_preds(bb_id,map_idx);
     return;
 }
 
 
 void
-dp::dump_pdom(mBB_NUM bb_id, FILE* fp=stderr) {
+dp::dump_pdom(mBB_NUM bb_id) {
    BB * bb = dp::get_bb(bb_id) ; 
    if (!bb) {
-        fprintf (fp, "no such bb %d\n" , bb_id);
+        fprintf (stderr, "no such bb %d\n" , bb_id);
         return ;
    }
 
-   fprintf (fp,"\n-------- BB (%d)'s post dominator ---------\n",bb_id);
-   BB_SET_Print (BB_pdom_set(bb), fp);
+   fprintf (stderr,"\n-------- BB (%d)'s post dominator ---------\n",bb_id);
+   BB_SET_Print (BB_pdom_set(bb), stderr);
 
    
-   fprintf (fp,"\n");
-   fflush (fp) ;
+   fprintf (stderr,"\n");
+   fflush (stderr) ;
 }
 
 void
-dp::dump_tn_set (BS *set, FILE* fp=stderr) {
-  TN_SET_Print (set, fp) ;
-  fprintf (fp, "\n");
-  fflush (fp) ;
+dp::dump_tn_set (BS *set) {
+  TN_SET_Print (set, stderr) ;
+  fprintf (stderr, "\n");
+  fflush (stderr) ;
 }
 
 void
-dp::dump_bb_set (BB_SET *set, FILE* fp=stderr) {
-  BB_SET_Print (set, fp) ;
-  fprintf (fp, "\n");
-  fflush (fp) ;
+dp::dump_bb_set (BB_SET *set) {
+  BB_SET_Print (set, stderr) ;
+  fprintf (stderr, "\n");
+  fflush (stderr) ;
 }
 

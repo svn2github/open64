@@ -217,12 +217,21 @@ BE_ORC_SRCS = 		\
   if_conv.cxx			\
   track_cycle.cxx		\
   dag.cxx			\
-  scheduler.cxx			\
+  sched_dump.cxx    \
+  sched_cflow.cxx   \
+  sched_dflow.cxx   \
+  sched_heur.cxx    \
+  sched_util.cxx    \
+  sched_cand.cxx    \
+  scheduler.cxx     \
+  sched_rgn_info.cxx \
   speculation.cxx		\
   cggrp_microsched.cxx		\
   recovery.cxx			\
   prdb.cxx			\
   prdb_util.cxx			\
+  init.cxx			\
+  multi_branch.cxx		\
   $(DERIVED_SRCS)
 
 

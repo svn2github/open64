@@ -1885,9 +1885,20 @@ static SAME_ADDR_RESULT CG_DEP_Address_Analyze(OP *pred_op, OP *succ_op)
   (void) OP_Base_Offset_TNs (succ_op, &succ_base, &succ_offset);
 
   diff0 = 0;
+	 /* for constant address */ 	
   if (addr_subtract(pred_op, succ_op, pred_base, succ_base, &diff0) &&
       addr_subtract(pred_op, succ_op, pred_offset, succ_offset, &diff1)) {
     return analyze_overlap(pred_op, succ_op, diff0 + diff1);
+  } else {
+
+  	  /* for variable address */
+      if (pred_base == succ_base && pred_offset == succ_offset) {
+      	 if (CGTARG_Mem_Ref_Bytes (pred_op) == CGTARG_Mem_Ref_Bytes (succ_op)) {
+		     return  IDENTICAL;
+	 	 } else  {
+		 	 return  OVERLAPPING ;
+		 }
+	  }
   }
 
   return DONT_KNOW;
@@ -2169,7 +2180,7 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
       if (!CG_DEP_Verify_Mem_Deps) return TRUE;
       break;
     case OVERLAPPING:
-      *definite = FALSE;
+      *definite = TRUE;
       /* Don't include non-definite MEMREAD arcs */
       if (memread) return FALSE;
       if (omega) *omega = lex_neg;
@@ -3900,36 +3911,42 @@ Add_CHK_Arcs(BB *bb)
 {
     BOOL is_recovery  = BB_recovery(bb);
 
+    if(BB_length(bb) < 2) 
+      return;
+    
     OP* barrier = NULL;
-    if(is_recovery) barrier = BB_first_op(bb);
+    if(is_recovery) {
+      barrier = BB_first_op(bb);
+    }
     for(OP* op = BB_first_op(bb); op; op = OP_next(op)){
+        if(barrier == op) continue;
         if(barrier){
             if(OP_chk(barrier)){
                 new_arc_with_latency(CG_DEP_POSTCHK, barrier, op, 0, 0, 0, FALSE);
-	    }else if(OP_br(barrier)){
+            }else if(OP_xfer(barrier) || OP_call(barrier)){
                 new_arc_with_latency(CG_DEP_POSTBR, barrier, op, 0, 0, 0, FALSE);
-            }else if(is_recovery && OP_load(barrier) && op != barrier){
+            }else{
                 new_arc_with_latency(CG_DEP_MISC, barrier, op, 0, 0, 0, FALSE);
-	    }
+            }
         }
-        if(OP_chk(op) || (is_recovery && OP_br(op)))
+        if(OP_chk(op) || OP_xfer(op) || OP_call(op))
             barrier = op;
     }
     
     barrier = NULL;
     for(OP* op = BB_last_op(bb); op; op = OP_prev(op)){
-        if(barrier && !OP_br(op)){
+        if(barrier && !OP_xfer(op) && !OP_call(op) && !OP_chk(op)){
             if(OP_chk(barrier)){
-                if(OP_store(op)){
+                if(OP_store(op) && OP_chk_a(barrier)){
                     new_arc_with_latency(CG_DEP_PRECHK, op, barrier, 1, 0, 0, FALSE);
-	        }else{
+                }else{
                     new_arc_with_latency(CG_DEP_PRECHK, op, barrier, 0, 0, 0, FALSE);
                 }
             }else{
                 new_arc_with_latency(CG_DEP_PREBR, op, barrier, 0, 0, 0, FALSE);
             }
         }        
-        if(OP_chk(op) || (is_recovery && OP_br(op)))
+        if(OP_chk(op) || OP_xfer(op) || OP_call(op))
             barrier = op;
     }
 }

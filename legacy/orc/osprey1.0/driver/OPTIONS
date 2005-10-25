@@ -301,6 +301,9 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	""
 -multigot	;		ALL	NONE	""
 	""
+% option Olegacy resumes some original default setting
+-Olegacy  Process_Olegacy();         ALL        NONE      ""
+        "set legacy option"
 
 % This option turns on everything of interest to SPEC:
 -Ofast  Process_Ofast("");		ALL	NONE	""
@@ -313,6 +316,11 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 
 -bigp_on toggle(&big_pages,TRUE);  ALL NONE ""
     "Enable large pages"
+
+#ifdef SPECMT_LT
+-SPECMT_PASS=%s Process_specmt_pass(optargs);        ALL     N       ""
+    "used for specmt to control which compilation pass it's in"
+#endif
 
 -fb_phase=%s Process_fb_phase(optargs);        ALL     N       ""
         "Option needed to tell compile feedback phase "
@@ -1329,7 +1337,7 @@ I-template_used		;		CC	cfe	self
 	"Run cord"
 -feedback*%s	add_string(feedback_files,optargs);		ALL	NONE	""
 	"Specify feedback file for cord"
--fb%s	save_name(&fb_file,optargs);		ALL	NONE	""
+-fb%s	save_name(&internal_fb_file,optargs);		ALL	NONE	""
 	"Specify feedback file for be"
 -nodeflib	;			ALL	NONE	""
 	""

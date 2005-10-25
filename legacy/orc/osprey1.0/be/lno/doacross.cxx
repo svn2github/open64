@@ -68,6 +68,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/doacros
 
 #include <sys/types.h>
 #include <stdlib.h>
+#include <float.h>
 #include <limits.h>
 #include <math.h>
 #include "pu_info.h"

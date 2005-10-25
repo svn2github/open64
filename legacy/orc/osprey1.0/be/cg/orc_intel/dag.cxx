@@ -208,11 +208,15 @@ DAG_BUILDER::Set_Def_Use_OPs(OP *op)
 void
 DAG_BUILDER::Compute_Defs_Uses_In(BB* bb)
 {
-  for (CFG_PRED_NODE_ITER pred_iter(Regional_Cfg_Node(bb));
-       pred_iter != 0;
-       ++pred_iter) {
-    if (!(*pred_iter)->Is_Region()) {
-      BB* pred = (*pred_iter)->BB_Node();
+  BB_VECTOR bbv(&_mem_pool);
+
+  Find_Ancestor_BB (bb, &bbv);
+
+  for (BB_VECTOR_ITER iter = bbv.begin () ;
+       iter != bbv.end() ; 
+       iter ++) {
+
+      BB* pred = *iter ;
 
       for (TN_OPs_MAP_ITER iter = _bb_def_info_map[pred].begin();
            iter != _bb_def_info_map[pred].end();
@@ -229,22 +233,24 @@ DAG_BUILDER::Compute_Defs_Uses_In(BB* bb)
           _bb_use_info_map[bb][tn].insert(iter->second.begin(),
                                                  iter->second.end());
       }
-    }
-  }
+   }
 }
 
 void
 DAG_BUILDER::Compute_OPs_In(BB* bb)
 {
-  for (CFG_PRED_NODE_ITER pred_iter(Regional_Cfg_Node(bb));
-       pred_iter != 0;
-       ++pred_iter) {
-    if (!(*pred_iter)->Is_Region()) {
-      BB* pred = (*pred_iter)->BB_Node();
+  BB_VECTOR bbv(&_mem_pool);
+
+  Find_Ancestor_BB (bb, &bbv);
+
+  for (BB_VECTOR_ITER iter = bbv.begin () ;
+       iter != bbv.end() ; 
+       iter ++) {
+  
+      BB* pred = *iter ;
 
       _bb_ops_map[bb].insert(_bb_ops_map[pred].begin(),
                              _bb_ops_map[pred].end());
-    }
   }
 }
 
@@ -265,6 +271,76 @@ DAG_BUILDER::Is_Control_Speculative(OP* pred, OP* succ)
   }
 
   return FALSE;
+}
+
+INT16
+DAG_BUILDER::Find_Ancestor_BB (BB * bb, BB_VECTOR *bbv) {
+
+    bbv->clear ();
+
+    typedef mempool_allocator<REGIONAL_CFG_NODE *>  Node_ALLOC;
+    typedef list<REGIONAL_CFG_NODE*,Node_ALLOC>    NODE_LIST;
+    typedef NODE_LIST::iterator                    NODE_LIST_ITER;
+
+    NODE_LIST nodes (&_mem_pool) ;
+    nodes.push_back (Regional_Cfg_Node(bb));
+
+    BS * visited_rgns = BS_Create_Empty (32/* arbitrary value */, &_mem_pool);
+    for (CFG_PRED_NODE_ITER preds(Regional_Cfg_Node(bb));
+         preds != 0; ++preds) {
+
+         if ((*preds)->Is_Region ()) {
+            nodes.push_back (*preds);
+         } else {
+            BB * b = (*preds)->BB_Node () ;
+            if (find (bbv->begin () , bbv->end (), b) == bbv->end() &&
+                !BB_entry (b) &&
+                !BB_exit  (b)) {
+                bbv->push_back (b);
+            }
+        }
+    }
+
+    while (!nodes.empty ()) {
+
+        REGIONAL_CFG_NODE * n = *(nodes.begin ());
+        nodes.erase (nodes.begin ());
+
+        if (n->Is_Region ()) {
+
+            REGION * r = n->Region_Node ();
+            if (BS_MemberP (visited_rgns, r->Id())) {
+               continue ; 
+            } else {
+
+                visited_rgns = BS_Union1D (visited_rgns, 
+                                           r->Id (), 
+                                           &_mem_pool);
+                for (CFG_PRED_NODE_ITER ps(n); ps != 0; ++ps) {
+                    
+                    if ((*ps)->Is_Region ()) {
+
+                        if (BS_MemberP (visited_rgns, r->Id())) continue ;
+                        nodes.push_back (*ps); 
+
+                    } else {
+
+                        BB * b = (*ps)->BB_Node ();
+                        if (find (bbv->begin (), bbv->end (), b) == bbv->end() && 
+                            !BB_entry (b) && 
+                            !BB_exit  (b)) {
+                           bbv->push_back (b);  
+                        }
+                    }
+                } /* end of for (CFG_PRED...ps...) */
+
+            } /* end of else clause */
+
+        } /* end of if */
+
+    } /* end of while */
+
+    return bbv->size ();
 }
 
 
@@ -357,11 +433,6 @@ DAG_BUILDER::Build_DAG()
           INCLUDE_CONTROL_ARCS,
           NULL);
       adjust_reganti_latency (_bb);
-  }
-
-  if (Get_Trace(TP_A_SCHED, SUMMARY_DUMP)) {
-    fprintf(TFile, "\n%s  Number of data-spec edges: %u\n", SBar, _num_data_spec_arcs);
-    fprintf(TFile, "  Number of control-spec edges: %u\n", _num_cntl_spec_arcs);
   }
 }
 

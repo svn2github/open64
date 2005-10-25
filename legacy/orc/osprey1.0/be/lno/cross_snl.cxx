@@ -38,6 +38,7 @@
 #endif // USE_PCH
 #pragma hdrstop
 
+#include <float.h>
 #include <math.h>
 #include <sys/types.h>
 #include <limits.h>

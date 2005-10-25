@@ -301,6 +301,32 @@ Process_Ofast ( char *ipname )
      add_option_seen ( flag );
    }
 }
+
+extern void del_default_option(void);
+
+/*==============================================================
+* Process_Olegacy
+*
+* argument legacy is reserved
+* Set default non-shared and alias=notyped with Olegacy option
+*===============================================================
+*/
+void
+Process_Olegacy ( void )
+{
+  int flag;
+  char* optname;
+
+  optname = concat_strings ( "Olegacy=", "TRUE");
+  flag = add_string_option ( O_OPT_, optname);
+  add_option_seen ( flag );
+
+  /* We assume that the driver has defaulted CALL-SHARED and alias=typed. */
+//  del_default_option();
+  optname =   "alias=no_typed";
+  flag = add_string_option ( O_OPT_, optname);
+  add_option_seen ( flag );
+}
 
 /* ====================================================================
  *
@@ -1029,6 +1055,20 @@ Process_fb_create ( char *fname )
 
 }
 
+#ifdef SPECMT_LT
+void
+Process_specmt_pass(char *option)
+{
+   char str[20];
+   int flag;
+   specmt_pass = string_copy(option);
+   sprintf(str,"specmt_pass=%s",specmt_pass);
+   flag = add_string_option (O_PHASE_, str);
+   add_option_seen(flag);
+}
+#endif
+
+
 void 
 Process_fb_phase(char *phase)
 {
@@ -1042,7 +1082,8 @@ Process_fb_phase(char *phase)
 void
 Process_fb_opt ( char *fname )
 {
-   fb_file = string_copy(fname);
+   opt_file = string_copy(fname);
+
    toggle ( &instrumentation_invoked, FALSE);
 }
 

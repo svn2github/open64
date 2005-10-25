@@ -57,6 +57,8 @@
 
 /* IPA file variables declared in glob.h: */
 char *Ipa_File_Name = NULL;	/* IPAA summary file name */
+char *Feedback_Filename = NULL;
+char *Annotation_Filename = NULL;
 FILE *Ipa_File = NULL;		/* IPAA summary file (if open) */
 
 /* Skiplist support from config.h: */
@@ -283,8 +285,8 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL,	OV_INTERNAL,	FALSE, "barrier_aliasfarg",	"",
 	  0, 0, 0,		&IPA_Enable_BarrierFarg,	NULL,
 /*
-	  "Enable barrier generation for inlined Fortran aliased actual arg." },
-	  "Enable barrier gen. for inlined aliased Fortran actual" },
+	  "Enable barrier generation for inlined Fortran aliased actual arg." ,
+	  "Enable barrier gen. for inlined aliased Fortran actual" ,
 */
 	  "Enable barrier gen. " },
     { OVK_BOOL, OV_VISIBLE,	FALSE, "cgi",		"",
@@ -476,6 +478,12 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "var_dim_array",             "",
           0, 0, 0,              &IPA_Enable_Inline_Var_Dim_Array,   NULL,
           "Enable inlining of PU with param that is variable-dim array " },
+    { OVK_NAME,	OV_INTERNAL,	FALSE, "propagate_feedback_file",	"",
+	  0, 0, 0,		&Feedback_Filename,		NULL,
+	  "Feedback file name which IPA will propagate to next phase" },
+    { OVK_NAME,	OV_INTERNAL,	FALSE, "propagate_annotation_file",	"",
+	  0, 0, 0,		&Annotation_Filename,		NULL,
+	  "Annotation file name which IPA will propagate to next phase" },
     { OVK_COUNT }	    /* List terminator -- must be last */
 };
 
@@ -520,6 +528,9 @@ BOOL    INLINE_Inlined_Pu_Call_Graph = FALSE; /* impl. 2 of lightweight inliner 
 BOOL    INLINE_Inlined_Pu_Call_Graph2 = FALSE; /* impl. 3 of lightweight inliner -- build a call graph with only the PU tagged inline and its callers */
 BOOL    INLINE_Get_Time_Info = FALSE; 	       /* Generate timing info for different phases of the inliner */
 
+char    *INLINE_Script_Name = NULL;
+BOOL   INLINE_Enable_Script = FALSE;;
+	
 static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL,	OV_VISIBLE,	FALSE, "",	NULL,
 	  0, 0, 0,	&INLINE_Enable,	NULL,
@@ -641,5 +652,8 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "time",          "",
           0, 0, 0,              &INLINE_Get_Time_Info,   NULL,
           "Generate timing info for different phase of the inliner" },
+    { OVK_NAME,	OV_VISIBLE,	TRUE, "inline_script", "", 
+          0, 0, 0,	&INLINE_Script_Name, &INLINE_Enable_Script, 
+          "Enable call-site specific inlining based on inline description file" },
     { OVK_COUNT }	    /* List terminator -- must be last */
 };

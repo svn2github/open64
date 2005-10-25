@@ -69,7 +69,7 @@ void Issue_Port_Generator(void *pknobs, GEN_MODE mode)
     Init_Module_Files(mode, "targ_issue_port", &fpc, &fph, &fp_export, 1);
     Emit_Header(fph, "targ_issue_port", description, 1);
 
-    fprintf(fph, "#include <stdio.h>\n#include \"topcode.h\" \n");
+    fprintf(fph, "#include \"topcode.h\" \n");
     fprintf(fph, "#define ISA_MAX_ISSUE_BUNDLES (%d) "
                  "// Machine width in bunldes\n",
                   KAPI_BundleIssueWidth(pknobs,0));

@@ -524,14 +524,23 @@ namespace
 		continue;
 
 	    if (!Valid_TY_IDX (mapped_kid_idx)) {
+		TY_IDX original_ty_idx;
 		Is_True (TY_Merging (mapped_kid_idx),
 			 ("Invalid state in type merging"));
+
+		// store original idx value
+		original_ty_idx = my_mapped_idx;
+
 		// this is a recursive type, the kid is pointing back to a
 		// previously visited TY.  We now need to search for a
 		// matching recursive type in the merged symtab, if we
 		// haven't already done so.
 		TY_IDX matched_idx = new_recursive_type ? 0 :
 		    Find_Recursive_Type (index, ty_map, str_map, ty);
+
+		if (matched_idx == 0) {
+			my_mapped_idx = Replace_TY_IDX_index(my_mapped_idx, original_ty_idx);
+		}
 		
 		if (matched_idx == 0) {
 		    // No matching cycle is found

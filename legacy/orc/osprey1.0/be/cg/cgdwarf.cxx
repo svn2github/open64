@@ -2249,7 +2249,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
     CGEMIT_Prn_Line_Dir_In_Asm(usrcpos);
     if (List_Source)
     	print_source (srcpos);
-  }
+  } 
   last_srcpos = srcpos;
 }
 

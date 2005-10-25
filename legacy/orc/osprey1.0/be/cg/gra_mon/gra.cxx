@@ -306,6 +306,8 @@ GRA_Allocate_Global_Registers( BOOL is_region )
 
   Gen_UNAT_Spills_Entry_And_Exit_BB();
 
+  GRA_Optimize_Restore();
+
   Clear_Spill_BB_Flags();
 
   Finalize_Memory();

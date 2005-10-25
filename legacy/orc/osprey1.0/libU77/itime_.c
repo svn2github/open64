@@ -44,6 +44,7 @@
  */
 
 #include <sys/types.h>
+#include <time.h>
 #if defined(_SYSV) || defined(_SYSTYPE_SVR4)
 #include <time.h>
 #else

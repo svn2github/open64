@@ -473,10 +473,13 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       // when loading from a preg, the size of the preg might be larger
       // than the size of the high-level type, so fix it.
       if (ST_class (st) == CLASS_PREG &&
+          exp->Dsctyp() != MTYPE_M &&  // added to fix bug #567932
 	  TY_size (ty_idx) != MTYPE_byte_size (exp->Dsctyp())) {
-	Set_TY_IDX_index (ty_idx,
+            DevWarn("PREG (%s) has mismatching MTYPE-size and TY-size; refer to bug #567932", 
+        	     ST_name(st));
+	    Set_TY_IDX_index (ty_idx,
 			  TY_IDX_index(MTYPE_To_TY (exp->Dsctyp())));
-	field_id = 0;
+	    field_id = 0;
       }
       WN_set_ty(wn, ty_idx);
       WN_st_idx(wn) = ST_st_idx(st);
@@ -794,6 +797,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	// when saving to a preg, the size of the preg may be larger than
 	// the size of the high-level type, need to reflect this.
 	if (ST_class (st) == CLASS_PREG &&
+            lhs->Dsctyp() != MTYPE_M &&   // added to fix bug #567932
 	    TY_size(ty_idx) != MTYPE_byte_size (lhs->Dsctyp())) {
 	  Set_TY_IDX_index (ty_idx,
 			    TY_IDX_index(MTYPE_To_TY (lhs->Dsctyp())));

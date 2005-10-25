@@ -195,6 +195,10 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 #define TP_WOPT3	27	/* Even more global optimization */
 #define TP_GLOBOPT	TP_WOPT1
 
+#ifdef SPECMT_LT
+#define TP_SPECMT       28
+#endif
+
 /* Loop nest optimizer phases: */
 #define TP_VECDD	30	/* Vector data dependency analysis */
 #define TP_LNOPT	31	/* Loop Nest Optimization */
@@ -230,21 +234,23 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 #define TP_TEMP		60	/* Temporary use */
 
 #define TP_IPFEC	61	/* Actualy several phases, but all IPFEC related */
-#define TP_A_SCHED      62      /* "ASH",  "Ipfec scheduler"*/
-#define TP_A_PROF       63      /* "APF",  "Ipfec profiling"*/
-#define TP_A_REGION     64      /* "ARN",  "Ipfec region formation"*/
-#define TP_A_IFCONV     65      /* "AIC",  "Ipfec if conversion"*/
-#define TP_A_PRDB       66      /* "APR",  "Ipfec predicate relation database"*/
-#define TP_A_RBG        67      /* "ABG",  "Ipfec recovery block generation"*/
+#define TP_A_GSCHED 62  /* "AGS", Ipfec global scheduler" */
+#define TP_A_LSCHED 63  /* "ALS", Ipfec local scheduler */
+#define TP_A_PROF       64      /* "APF",  "Ipfec profiling"*/
+#define TP_A_REGION     65      /* "ARN",  "Ipfec region formation"*/
+#define TP_A_IFCONV     66      /* "AIC",  "Ipfec if conversion"*/
+#define TP_A_PRDB       67      /* "APR",  "Ipfec predicate relation database"*/
+#define TP_A_RBG        68      /* "ABG",  "Ipfec recovery block generation"*/
 
-#define TP_CYCLE_COUNT        68      /* "TCC", */
-#define TP_CYCLE_PU   69      /* "TCP", */  
+#define TP_CYCLE_COUNT  69      /* "TCC", */
+#define TP_CYCLE_PU     70      /* "TCP", */  
+#define TP_A_MLBR       71      /* "AMB",  "Ipfec post multiple branch"*/
 
 /* WARNING: TP_LAST must be at least as large as the largest phase
  * number above, and TP_COUNT must be at least one larger.
  */
-#define TP_LAST		69	/* Largest valid phase number */
-#define TP_COUNT	70	/* Number of valid phase numbers */
+#define TP_LAST		71  /* Largest valid phase number */
+#define TP_COUNT	72	/* Number of valid phase numbers */
 
 /* Extract the phase number from a trace option: */
 extern INT32 Get_Trace_Phase_Number ( char **cp, char *arg );

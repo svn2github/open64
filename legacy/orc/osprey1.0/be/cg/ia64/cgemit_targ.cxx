@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -85,7 +85,7 @@ CGEMIT_Prn_File_Dir_In_Asm(USRCPOS usrcpos,
       fprintf (Asm_File, "// "); //turn the rest into comment
     }
     fprintf (Asm_File, "\t%s\t%d \"%s/%s\"\n",AS_FILE, 
-		USRCPOS_filenum(usrcpos)-1,
+		USRCPOS_filenum(usrcpos),
 		pathname,filename);
 }
 
@@ -96,7 +96,7 @@ CGEMIT_Prn_Line_Dir_In_Asm (USRCPOS usrcpos)
       fprintf (Asm_File, "// "); //turn the rest into comment
     }
     fprintf (Asm_File, "\t.loc\t%d\t%d\t%d\n", 
-		USRCPOS_filenum(usrcpos)-1,
+		USRCPOS_filenum(usrcpos),
 		USRCPOS_linenum(usrcpos),
 		USRCPOS_column(usrcpos));
 }

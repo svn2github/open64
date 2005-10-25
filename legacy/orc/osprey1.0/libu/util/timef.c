@@ -94,8 +94,8 @@ timef_(void)
 #else
 	{
         struct timeval  buf;
-	struct timezone	buf2;
-	(void) gettimeofday (&buf, &buf2);
+        void	*buf2;
+	(void) gettimeofday (&buf, buf2);
         rt = (long long)buf.tv_sec * 1000000LL + buf.tv_usec;
 	}
 #endif

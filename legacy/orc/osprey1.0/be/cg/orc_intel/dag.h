@@ -212,6 +212,9 @@ private:
     void Build_Misc_Arcs    (OP* op);
     void Build_Branch_Arcs  (OP* op, BOOL include_latency);
   
+    /* misc */
+    INT16 Find_Ancestor_BB (BB * bb, BB_VECTOR * bbv) ;
+
 public:
 
     /* Constructors and Destructors.

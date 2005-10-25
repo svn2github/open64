@@ -728,6 +728,12 @@ static const struct {
   INTRN_SINCOS,			"SINCOS",
   INTRN_SINCOSL,		"SINCOSL",
 
+#ifdef SPECMT_LT
+  INTRN_I4STBEGINe,             "ST_BEGIN",
+  INTRN_I4STLFORKe,             "ST_LFORK",
+  INTRN_I4LOOPe,                "ORC_LOOP",
+#endif
+
   INTRINSIC_LAST,		"INTRINSIC_LAST"
 
 };

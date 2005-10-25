@@ -67,6 +67,7 @@
 
 /* dump flags for prdb*/
 #define  TT_PRDB_VERBOSE        0x0001
+#define  TT_PRDB_APP              0x0002 /*for PRDB testing dump */
 
 /* dump flags for profiling*/
 #define  TT_PROF_FEEDBACK_DUMP   0x0001

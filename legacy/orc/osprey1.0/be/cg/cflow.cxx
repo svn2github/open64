@@ -53,6 +53,7 @@
 #include <alloca.h>
 #include <stdlib.h>
 #include <math.h>
+#include <float.h>
 #include <limits.h>
 
 #include "defs.h"
@@ -99,6 +100,7 @@
 #include "region_bb_util.h"
 #include "vt_region.h"
 #include "ipfec_options.h"
+#include "speculation.h"
 
 #define DEBUG_CFLOW Is_True_On
 
@@ -1766,7 +1768,6 @@ Is_Empty_BB(BB *bb)
   	if (BBINFO_kind(bb) == BBKIND_GOTO
 	&& BBINFO_nsuccs(bb)
 	&& BBINFO_cold(BBINFO_succ_bb(bb, 0)) != BBINFO_cold(bb)) return FALSE;
-    if (OP_chk(BB_last_op(bb))) return FALSE;
     if (BB_branch_op(bb) != NULL && OP_noop(BB_first_op(bb)) && OP_noop(BB_first_op(bb)->next)) return TRUE;
   case 2:
     if (!PROC_has_branch_delay_slot() || !OP_noop(BB_last_op(bb))) return FALSE;
@@ -1775,7 +1776,6 @@ Is_Empty_BB(BB *bb)
     if (BBINFO_kind(bb) == BBKIND_GOTO
 	&& BBINFO_nsuccs(bb)
 	&& BBINFO_cold(BBINFO_succ_bb(bb, 0)) != BBINFO_cold(bb)) return FALSE;
- if (OP_chk(BB_last_op(bb))) return FALSE;
     return BB_branch_op(bb) != NULL;
   case 0:
     return TRUE;
@@ -2963,90 +2963,66 @@ Optimize_Branches()
       case BBKIND_LOGIF:
         if (Convert_If_To_Goto(bp)) {
           old_tgt = BBINFO_succ_bb(bp, 0);
-	        new_tgt = Collapse_Empty_Goto(bp, old_tgt, BB_freq(bp));
-	        if (new_tgt != old_tgt) {
-	          chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
-	        }
-	        if (chan_succ) changed = TRUE;
-	      } else if(OP_chk(BB_last_op(bp))){
-	        old_tgt = BBINFO_succ_bb(bp, 1);
-            i = 1;
-            if(BB_recovery(old_tgt)){
-            	i = 0;
-            	old_tgt = BBINFO_succ_bb(bp, i);
+          new_tgt = Collapse_Empty_Goto(bp, old_tgt, BB_freq(bp));
+          if (new_tgt != old_tgt) {
+            chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
+          }
+          if (chan_succ) {
+            changed = TRUE;
+          }
+        } else {
+          if (freqs_computed) {
+            edge_freq = BBINFO_succ_prob(bp, 0) * BB_freq(bp);
+          }
+          old_tgt = BBINFO_succ_bb(bp, 0);
+          if (IPFEC_Enable_Region_Formation && RGN_Formed) {
+            REGIONAL_CFG_NODE *tgt_node=Regional_Cfg_Node(old_tgt); 
+            if((Home_Region(old_tgt)->Region_Type()==LOOP) && 
+               (tgt_node->Succ_Num() == 0)) {
+              flag=TRUE;
             }
-            new_tgt = Collapse_Empty_Goto(bp, old_tgt, BB_freq(bp));
+          }
+          if (!flag){ 
+            new_tgt = Collapse_Same_Logif(bp, old_tgt, 0, edge_freq);
             if (new_tgt != old_tgt) {
-            	chan_succ = Cflow_Change_Succ(bp, i, old_tgt, new_tgt);
-                if (chan_succ) changed = TRUE;
+              chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
+              if (chan_succ) {
+                changed = TRUE;
+              } else {
+                BB_freq(old_tgt) = edge_freq;
+              }
             }
+          }
 
-	      } else{
-	        if (freqs_computed) {
-	        edge_freq = BBINFO_succ_prob(bp, 0) * BB_freq(bp);
-	      }
-      
-	  old_tgt = BBINFO_succ_bb(bp, 0);
-
-      if (IPFEC_Enable_Region_Formation && RGN_Formed) {
-         REGIONAL_CFG_NODE *tgt_node=Regional_Cfg_Node(old_tgt); 
-         if	((Home_Region(old_tgt)->Region_Type()==LOOP) && (tgt_node->Succ_Num() == 0)) flag=TRUE;
-
-      }
-      if (!OP_chk(BB_last_op(bp)) && !flag){ 
-	       new_tgt = Collapse_Same_Logif(bp, old_tgt, 0, edge_freq);
-       	   if (new_tgt != old_tgt) {
-	       chan_succ = Cflow_Change_Succ(bp, 0, old_tgt, new_tgt);
-	       if (chan_succ) {
-	   	 	   changed = TRUE;
-	   	   }else {
-	   	 	   BB_freq(old_tgt) = edge_freq;
-	   	   }
-	  }
-      }  
-      flag=FALSE;  
-	  if (freqs_computed) {
-	    edge_freq = BBINFO_succ_prob(bp, 1) * BB_freq(bp);
-	  }
-	  old_tgt = BBINFO_succ_bb(bp, 1);
-      if (IPFEC_Enable_Region_Formation && RGN_Formed) {
-         REGIONAL_CFG_NODE *tgt_node=Regional_Cfg_Node(old_tgt); 
-         if	((Home_Region(old_tgt)->Region_Type()==LOOP) && (tgt_node->Succ_Num() == 0)) flag=TRUE;
-
-      }
-      
-      if (!OP_chk(BB_last_op(bp)) && !flag){
-      new_tgt = Collapse_Same_Logif(bp, old_tgt, 1, edge_freq);
-    	  if (new_tgt != old_tgt) {
-	    	 chan_succ = Cflow_Change_Succ(bp, 1, old_tgt, new_tgt);
-	    	 if (chan_succ) {
-	    	 	changed = TRUE;
-	   	    }else {
-	   	 	    BB_freq(old_tgt) = edge_freq;
-	   	 	}
-
-	      }
-      }
-	}
-	break;
-/*    case BBKIND_CHK:
-        old_tgt = BBINFO_succ_bb(bp, 1);
-        i = 1;
-        if(BB_recovery(old_tgt)){
-        	i = 0;
-        	old_tgt = BBINFO_succ_bb(bp, i);
+          flag=FALSE;  
+          if (freqs_computed) {
+            edge_freq = BBINFO_succ_prob(bp, 1) * BB_freq(bp);
+          }
+          old_tgt = BBINFO_succ_bb(bp, 1);
+          if (IPFEC_Enable_Region_Formation && RGN_Formed) {
+            REGIONAL_CFG_NODE *tgt_node=Regional_Cfg_Node(old_tgt); 
+            if((Home_Region(old_tgt)->Region_Type()==LOOP) && 
+               (tgt_node->Succ_Num() == 0)) {
+              flag=TRUE;
+            }
+          }
+          if (!flag){
+            new_tgt = Collapse_Same_Logif(bp, old_tgt, 1, edge_freq);
+            if (new_tgt != old_tgt) {
+              chan_succ = Cflow_Change_Succ(bp, 1, old_tgt, new_tgt);
+              if (chan_succ) {
+                changed = TRUE;
+              } else {
+                BB_freq(old_tgt) = edge_freq;
+              }
+            }
+          }
         }
-        new_tgt = Collapse_Empty_Goto(bp, old_tgt, BB_freq(bp));
-        if (new_tgt != old_tgt) {
-        	chan_succ = Cflow_Change_Succ(bp, i, old_tgt, new_tgt);
-               if (chan_succ) changed = TRUE;
-        }
-        break;*/
+        break;
       case BBKIND_GOTO:
 	if (BBINFO_nsuccs(bp) == 0) break;
 
 	old_tgt = BBINFO_succ_bb(bp, 0);
-        if(BB_last_op(old_tgt) && OP_chk(BB_last_op(old_tgt))) break;
 	new_tgt = Collapse_Empty_Goto(bp, old_tgt, BB_freq(bp));
 
 	if (new_tgt != old_tgt) {
@@ -3178,15 +3154,16 @@ Delete_Unreachable_Blocks(void)
   /* Now make a pass over the BBs and get rid of any that weren't reachable.
    */
   for (bp = REGION_First_BB; bp; bp = next) {
-      if(IPFEC_Enable_Region_Formation && RGN_Formed){    
-          if(Home_Region(bp)->Is_No_Further_Opt()){
-              next = BB_next(bp);
-              continue;
-          }
-      }
     BOOL has_eh_lab = FALSE;
     BOOL unreachable_bb = BB_unreachable(bp);
     next = BB_next(bp);
+    
+    if(!unreachable_bb && IPFEC_Enable_Region_Formation && RGN_Formed){
+        if(Home_Region(bp)->Is_No_Further_Opt()){
+            next = BB_next(bp);
+            continue;
+        }
+    }
 
     /* Special handling is necessary for exception labels. A BB with
      * the 'unreachable' flag set indicates that the code in that
@@ -3282,6 +3259,9 @@ Delete_Unreachable_Blocks(void)
     {
       Delete_BB_Contents(bp);
     } else {
+      if (IPFEC_Enable_Speculation) {
+          Delete_Recovery_Info_For_BB(bp);
+      }
       Delete_BB(bp, CFLOW_Trace_Unreach);
     }
 
@@ -6579,6 +6559,40 @@ Clone_Blocks ( BOOL in_cgprep )
 
   return changed;
 }
+static void
+Adjust_Branch_Hint(void)
+{
+    BB *bp;
+    BB *next;
+    for (bp = REGION_First_BB; bp; bp = next) {
+        TN *enum_tn;
+        OP *br_op;
+        float fall_through_prob,target_prob;
+        BB *fall_through;
+        BB *target;
+        next = BB_next(bp);
+        br_op = BB_xfer_op(bp);
+        if (br_op != NULL) {
+            switch (OP_code(br_op)) {
+            case TOP_br_cond:
+            case TOP_br_r_cond:  
+                fall_through = BBINFO_succ_bb(bp, 1);
+                fall_through_prob = BBINFO_succ_prob(bp, 1);
+                target = BBINFO_succ_bb(bp, 0);
+                target_prob = BBINFO_succ_prob(bp, 0);
+                if (fall_through_prob > target_prob) {
+                    enum_tn = Gen_Enum_TN(ECV_bwh_dpnt);
+                } else {
+                    enum_tn = Gen_Enum_TN(ECV_bwh_dptk);
+                }
+                Set_OP_opnd(br_op, 1, enum_tn);
+                break;
+            default:
+                break;
+            }
+        }
+    }        
+}
  
 /* ====================================================================
  * ====================================================================
@@ -6673,16 +6687,6 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
   // Reset the mapping between BBs and hyperblocks.
   Setup_HB_bb_map();
 
-#if 0
-// this is not ready for prime-time. It is general solution to fix
-// the problem uncovered by pv661478.
-  if (   PROC_has_branch_delay_slot()
-      && current_flags & CFLOW_FILL_DELAY_SLOTS)
-  {
-    flow_change |= Normalize_Delay_Slots();
-  }
-#endif
-
   if (CFLOW_Trace_Detail) {
     #pragma mips_frequency_hint NEVER
     Print_Cflow_Graph("CFLOW_Optimize flow graph -- before optimization");
@@ -6694,13 +6698,7 @@ CFLOW_Optimize(INT32 flags, const char *phase_name)
       fprintf(TFile, "\n%s CFLOW_Optimize: optimizing branches\n%s",
 		     DBar, DBar);
     }
-change = Optimize_Branches();
-#ifdef CFLOW2_REGION_DEBUG
-    if(change && RGN_Formed){
-        printf("Optimize_Branches change cfg\n");
-        draw_global_cfg();
-    }
-#endif
+    change = Optimize_Branches();
     if (CFLOW_Trace_Branch) {
       #pragma mips_frequency_hint NEVER
       if (change) {
@@ -6720,12 +6718,6 @@ change = Optimize_Branches();
     }
     change = Delete_Unreachable_Blocks(); 
 
-#ifdef CFLOW2_REGION_DEBUG
-    if(change && RGN_Formed){
-        printf("Delete_Unreachable_Blocks change cfg\n");
-        draw_global_cfg();
-    }
-#endif
     if (CFLOW_Trace_Unreach) {
       #pragma mips_frequency_hint NEVER
       if (change) {
@@ -6746,12 +6738,6 @@ change = Optimize_Branches();
     }
     change = Reorder_Blocks();
 
-#ifdef CFLOW2_REGION_DEBUG
-    if(change && RGN_Formed){
-        printf("Reorder_Blocks change cfg\n");
-        draw_global_cfg();
-    }
-#endif
     if (CFLOW_Trace_Reorder) {
       #pragma mips_frequency_hint NEVER
       if (change) {
@@ -6791,12 +6777,6 @@ change = Optimize_Branches();
     }
     change = Merge_Blocks(current_flags & CFLOW_IN_CGPREP);
   
-#ifdef CFLOW2_REGION_DEBUG
-    if(change && RGN_Formed){
-        printf("Merge_Blocks change cfg\n");
-        draw_global_cfg();
-    }
-#endif
     if (CFLOW_Trace_Merge) {
       #pragma mips_frequency_hint NEVER
       if (change) {
@@ -6816,12 +6796,6 @@ change = Optimize_Branches();
     }
     change = Clone_Blocks(current_flags & CFLOW_IN_CGPREP);
     
-#ifdef CFLOW2_REGION_DEBUG
-    if(change && RGN_Formed){
-        printf("Clone_Blocks change cfg\n");
-        draw_global_cfg();
-    }
-#endif
     if (CFLOW_Trace_Clone) {
       #pragma mips_frequency_hint NEVER
       if (change) {
@@ -6836,6 +6810,10 @@ change = Optimize_Branches();
   /* If we made any flow changes, re-create the preds and succs lists.
    */
   if (flow_change) Finalize_All_BBs();
+  
+  if (strcmp(phase_name,"CFLOW (third pass)") == 0) {
+      Adjust_Branch_Hint();
+  }
   
   if (CFLOW_Trace) {
     #pragma mips_frequency_hint NEVER

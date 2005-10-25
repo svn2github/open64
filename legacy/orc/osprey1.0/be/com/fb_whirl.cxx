@@ -1849,9 +1849,11 @@ FEEDBACK::FB_set_unknown( WN *wn )
 void
 FEEDBACK::FB_scale_node( WN *wn, FB_FREQ freq_scale )
 {
+/*
   Is_True( freq_scale.Known() &&
 	   freq_scale.Value() >= 0.0 && freq_scale.Value() <= 1.0,
 	   ( "FEEDBACK::FB_scale: freq_scale == %f", freq_scale.Value() ) );
+*/
 
   switch( WN_operator( wn ) ) {
 
@@ -2123,9 +2125,11 @@ FEEDBACK::FB_recombine( WN *wn_origl, WN *wn_extra )
 void
 FEEDBACK::FB_clone_node( WN *wn_origl, WN *wn_clone, FB_FREQ freq_scale )
 {
+/*
   Is_True( freq_scale.Known() &&
 	   freq_scale.Value() >= 0.0 && freq_scale.Value() <= 1.0,
 	   ( "FEEDBACK::FB_scale: freq_scale == %f", freq_scale.Value() ) );
+*/
 
   switch( WN_operator( wn_origl ) ) {
 
@@ -2441,10 +2445,12 @@ FB_IPA_Clone_node( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
 		   WN             *wn_origl, WN             *wn_clone,
 		   FB_FREQ freq_scale )
 {
+/*
   Is_True( freq_scale.Known() &&
 	   freq_scale.Value() >= 0.0 && freq_scale.Value() <= 1.0,
 	   ( "FEEDBACK::FB_IPA_Clone_node: freq_scale == %f",
 	     freq_scale.Value() ) );
+*/
 
   Is_True( feedback_origl != NULL,
 	   ( "FEEDBACK::FB_IPA_Clone_node: feedback_origl == NULL" ) );
@@ -2551,10 +2557,12 @@ FB_IPA_Clone( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
 	      WN             *wn_origl, WN             *wn_clone,
 	      FB_FREQ freq_scale )
 {
+/*
   Is_True( freq_scale.Known() &&
 	   freq_scale.Value() >= 0.0 && freq_scale.Value() <= 1.0,
 	   ( "FEEDBACK::FB_IPA_Clone: freq_scale == %f",
 	     freq_scale.Value() ) );
+*/
 
   if ( feedback_origl == NULL ) {
     if ( freq_scale.Exact() && freq_scale.Zero() )

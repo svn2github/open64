@@ -4789,6 +4789,29 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
     }
   }
 
+  TN *trip_count_tn = CG_LOOP_Trip_Count(loop);
+  if (TN_is_constant(trip_count_tn)) {
+  	if (swp_trace) 
+    	fprintf(TFile, "trip_count is constant, so need not change unroll_times to 2^^n\n");
+  }
+  else{
+	  int computed;
+	  computed = unroll_times;
+	  unroll_times=1;
+	  while (unroll_times < computed || unroll_times < min_unr){
+		  unroll_times *= 2;
+	  }
+	  if ((unroll_times-computed > computed-unroll_times/2) || unroll_times>max_unr ){
+		  unroll_times /= 2;
+	  }
+	  if (unroll_times < min_unr){
+		  unroll_times = min_unr;
+	  }
+	  if (swp_trace) {
+		fprintf(TFile, "<swp unroll factor> : old heuristic computed(%d) => changeto(%d)\n", computed, unroll_times);
+	  }
+  }
+
   if (swp_trace) 
     fprintf(TFile, "<swp unroll factor>  swp_cycles[%d] = %g\n", unroll_times, swp_cycles[unroll_times]);
   

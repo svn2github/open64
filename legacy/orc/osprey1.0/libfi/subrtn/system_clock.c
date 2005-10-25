@@ -102,10 +102,10 @@ void
 _sysclock(int *val, int *wrap)
 {
 	struct timeval	buf;
-	struct timezone	buf2;
+	void *buf2;
 	long long cval;
 
-	(void) gettimeofday (&buf, &buf2);
+	(void) gettimeofday (&buf, buf2);
 
 	/* cast long buf.tv_usec to unsigned long long to avoid sign
 	 * extension which would cause the total to be less than
@@ -223,10 +223,10 @@ void
 _sysclock_4(_f_int4 *val, _f_int4 *wrap)
 {
 	struct timeval	buf;
-	struct timezone	buf2;
+	void *buf2;
 	_f_int8 cval;
 
-	(void) gettimeofday (&buf, &buf2);
+	(void) gettimeofday (&buf, buf2);
 
 	/* cast long buf.tv_usec to unsigned long long to avoid sign
 	 * extension which would cause the total to be less than
@@ -287,10 +287,10 @@ void
 _sysclock_4(_f_int4 *val, _f_int4 *wrap)
 {
 	struct timeval	buf;
-	struct timezone	buf2;
+	void *buf2;
 	long long cval;
 
-	(void) gettimeofday (&buf, &buf2);
+	(void) gettimeofday (&buf, buf2);
 
 	/* cast long buf.tv_usec to unsigned long long to avoid sign
 	 * extension which would cause the total to be less than
@@ -399,10 +399,10 @@ void
 _sysclock_8(_f_int8 *val, _f_int8 *wrap)
 {
 	struct timeval	buf;
-	struct timezone	buf2;
+	void *buf2;
 	_f_int8 cval;
 
-	(void) gettimeofday (&buf, &buf2);
+	(void) gettimeofday (&buf, buf2);
 
 	/* cast long buf.tv_usec to unsigned long long to avoid sign
 	 * extension which would cause the total to be less than
@@ -462,10 +462,10 @@ void
 _sysclock_8(_f_int8 *val, _f_int8 *wrap)
 {
 	struct timeval	buf;
-	struct timezone	buf2;
+	void	*buf2;
 	long long cval;
 
-	(void) gettimeofday (&buf, &buf2);
+	(void) gettimeofday (&buf, buf2);
 
 	/* cast long buf.tv_usec to unsigned long long to avoid sign
 	 * extension which would cause the total to be less than

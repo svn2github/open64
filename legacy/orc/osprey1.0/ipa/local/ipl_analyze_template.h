@@ -1564,7 +1564,10 @@ SUMMARIZE<program>:: Record_ref_formal ( WN* w )
     }
 
     if ( Trace_Modref ) {
-	fprintf ( TFile, " formal %s referenced", ST_name(WN_st(w2)) );
+	if (WN_operator(w) == OPR_ILOAD)
+	  	fprintf ( TFile, " formal %s referenced", ST_name(WN_st(w2)) );
+	else
+	  	fprintf ( TFile, " formal %s referenced", ST_name(WN_st(w)) );
     }
 
 } // SUMMARIZE::Record_ref_formal

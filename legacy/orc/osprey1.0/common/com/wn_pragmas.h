@@ -360,6 +360,11 @@ typedef enum {
   WN_PRAGMA_ASM_CONSTRAINT,	/* constraint string for an ASM operand */
   WN_PRAGMA_ASM_CLOBBER,        /* clobber string for an ASM statement */
 
+#ifdef SPECMT_LT
+  /* "specmt" support */
+  WN_PRAGMA_LOOP_MAPPING,
+#endif
+
   MAX_WN_PRAGMA			/* last one in enum			*/
 } WN_PRAGMA_ID;
 

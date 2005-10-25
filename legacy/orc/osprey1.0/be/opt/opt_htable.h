@@ -490,6 +490,10 @@ public:
 
   void	    Copy(const CODEREP &cr);  // copy fields, no allocate
 
+#ifdef SPECMT_LT
+  void      clone(CODEREP *source);
+#endif        
+
   BOOL      Match(CODEREP *cr, 
 		  INT32 mu_vsym_depth = 0,
 		  OPT_STAB *opt_stab = NULL); // compare two nodes
@@ -990,8 +994,9 @@ public:
   // functions used by SSA PRE
   BOOL      Ivar_has_e_num(void) const { Is_True(Kind() == CK_IVAR,
 						 ("CODEREP::Ivar_has_e_num: illegal kind."));
-                                         return (OPERATOR_is_scalar_iload(Opr()) ||
-						 OPERATOR_is_scalar_istore(Opr()));
+                                         return (Dtyp() != MTYPE_M &&
+                                         	(OPERATOR_is_scalar_iload(Opr()) ||
+						 OPERATOR_is_scalar_istore(Opr())) );
                                        }
   BOOL      Exp_has_e_num(void) const; 
   BOOL      Is_integral_load_store(void) const 

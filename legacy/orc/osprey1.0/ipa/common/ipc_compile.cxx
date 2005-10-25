@@ -1,5 +1,6 @@
 /*
 
+
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -267,7 +268,8 @@ ipa_compile_init ()
 
   static char* smake_base = "/usr/bin/make";
   static char* tmp_cc_name_base = "/usr/ia64-sgi-linux/bin/sgicc";
-  static char* cc_name_base = "/usr/bin/orcc";
+  static char* cc_name_base = "/usr/orccbin/orcc";
+  static char* cord_name_base= "/usr/bin/gen_cord";
 
   if (file_exists(tmp_cc_name_base))
       cc_name_base = tmp_cc_name_base;
@@ -279,9 +281,12 @@ ipa_compile_init ()
   static char* smake_base = "/usr/sbin/smake";
   static char* tmp_cc_name_base = "/usr/bin/cc";
   static char* cc_name_base = "/usr/bin/cc";
+  static char* cord_name_base= "/usr/bin/gen_cord";
 #define MAKE_STRING "smake"
 
 #endif
+
+  (*command_map)["cord"] = cord_name_base;
 
   if (toolroot) {
       static char* new_cc_name_base = concat_names(toolroot, tmp_cc_name_base);
@@ -315,8 +320,9 @@ ipa_compile_init ()
 
   (*command_map)[MAKE_STRING] = smake_name;
 
-#ifdef TODO
+//#ifdef TODO
   if (IPA_Enable_Cord) {
+    cord_output_file_name = create_unique_file ("cord_script", 0);
     call_graph_file_name = create_unique_file ("ipa_cg", 0);
     add_to_tmp_file_list (call_graph_file_name);
     Call_graph_file = FOPEN (call_graph_file_name, "w");
@@ -331,9 +337,9 @@ ipa_compile_init ()
            sys_errlist[errno]); 
 #endif
   }
-#else
-  DevWarn ("TODO: support ipa-cord");
-#endif
+//#else
+//  DevWarn ("TODO: support ipa-cord");
+//#endif
 } // ipa_compile_init
 
 
@@ -383,7 +389,7 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
         if (!file_exists(buf)) {
 	    bzero(buf, strlen(buf));
 	    strcpy(buf, toolroot);
-            strcat(buf, "/usr/bin/");
+            strcat(buf, "/usr/orccbin/");
             strcat(buf, command);
 	}
         (*command_map)[command] = buf;
@@ -470,7 +476,10 @@ ipacom_process_symtab (char* symtab_file)
             && strlen((*command_map)["cc"]) != 0,
           ("Full pathname for cc not set up"));
 
-  sprintf(buf, "%s -c %s %s -o %s -TENV:emit_global_data=%s %s",
+  char* toolroot = getenv("TOOLROOT");
+
+  sprintf(buf, "%s%s -c %s %s -o %s -TENV:emit_global_data=%s %s",
+	    (toolroot != 0) ? toolroot : "",
             (*command_map)["cc"],
             abi(),
             input_symtab_name,
@@ -642,8 +651,21 @@ char* ipc_copy_of (char *str)
   return p;
 } /* ipc_copy_of */
 
+void print_obj_listfiles(const char* dirname, FILE* listfile)
+{
+ 
+  for (vector<const char*>::iterator i = outfiles->begin();
+       i != outfiles->end();
+       ++i)
+    fprintf(listfile, "%s/%s \n", dirname, *i);
+  
+  if (strlen(elf_symtab_name) != 0)
+    fprintf(listfile, "%s/%s \n", dirname, elf_symtab_name);
+}
+
 void print_all_outfiles(const char* dirname)
 {
+ 
   for (vector<const char*>::iterator i = outfiles->begin();
        i != outfiles->end();
        ++i)
@@ -676,13 +698,13 @@ void ipacom_doit (const char* ipaa_filename)
             ("ipacom_doit: symtab not initialized"));
   }
 
-#ifdef TODO
+//#ifdef TODO
   if (IPA_Enable_Cord) {
     FCLOSE (Call_graph_file);
-    if (IPA_Enable_final_link)
-      process_cord_cmd ();
+ //   if (IPA_Enable_final_link)
+ //     process_cord_cmd ();
   }
-#endif
+//#endif
 
   // These are used when compiling each .I file.
   const char* extra_args = get_extra_args(ipaa_filename);
@@ -707,6 +729,9 @@ void ipacom_doit (const char* ipaa_filename)
     fprintf(makefile, ".IGNORE: %s\n\n", executable_macro);
     fprintf(makefile, "%s%s\\\n", executable_macro, TARGET_DELIMITER);
 
+    if (IPA_Enable_Cord) 
+    	fprintf(makefile, "%s%s \\\n", "   ",  cord_output_file_name);
+
     print_all_outfiles(tmpdir_macro);
 
 #if 0
@@ -730,6 +755,11 @@ void ipacom_doit (const char* ipaa_filename)
     	    	    	    	    	    	tmpdir, 
 						elf_symtab_name);
     Is_True(link_line->size() > 1, ("Invalid link line ARGV vector"));
+
+    if (IPA_Enable_Cord) {
+      fputs("-T", cmdfile);
+      fprintf(cmdfile, " %s\n", cord_output_file_name);
+    }
 
     // Print all but link_line[0] into cmdfile.
     ARGV::const_iterator i = link_line->begin();
@@ -821,6 +851,7 @@ void ipacom_doit (const char* ipaa_filename)
 
   // This generates both the .o symtab and the .G symtab.
   if (strlen(elf_symtab_name) != 0) {
+    char* toolroot = getenv("TOOLROOT");
     Is_True(strlen(input_symtab_name) != 0 &&
             strlen(whirl_symtab_name) != 0 &&
             symtab_command_line != 0 && strlen(symtab_command_line) != 0,
@@ -831,11 +862,31 @@ void ipacom_doit (const char* ipaa_filename)
 
 #ifdef TARG_IA64
 
+    if (IPA_Enable_Cord) {
+    	char * obj_listfile_name = create_unique_file("obj_file_list", 0);
+    	FILE* listfile = fopen(obj_listfile_name, "w");
+	print_obj_listfiles(tmpdir, listfile);
+        fclose(listfile);
+	
+    	fprintf(makefile, "%s%s \\\n", cord_output_file_name, TARGET_DELIMITER);
+    	print_all_outfiles(tmpdir_macro);
+    	fprintf(makefile, "\t%s%s -o %s %s %s\n",(toolroot != 0) ? toolroot : "",(*command_map)["cord"], cord_output_file_name, call_graph_file_name, obj_listfile_name);//gen_cord
+    }
+	    
+
     fprintf(makefile, "%s/%s" TARGET_DELIMITER "\n",
             tmpdir_macro, "dummy");
 
-    fprintf(makefile, "\tcd %s; %s %s\n\n",
-            tmpdir_macro, symtab_command_line, symtab_extra_args);
+    if (Feedback_Filename) {
+            fprintf(makefile, "\tcd %s; %s -fb_create %s %s -Wb,-CG:enable_feedback=off\n\n",
+                tmpdir_macro, symtab_command_line, Feedback_Filename, symtab_extra_args);
+    } else if (Annotation_Filename) {
+            fprintf(makefile, "\tcd %s; %s -fb_opt %s %s -Wb,-CG:enable_feedback=off \n\n",
+                tmpdir_macro, symtab_command_line, Annotation_Filename, symtab_extra_args);
+    } else {
+            fprintf(makefile, "\tcd %s; %s %s -Wb,-CG:enable_feedback=off\n\n",
+                tmpdir_macro, symtab_command_line, symtab_extra_args);
+    }                                                                                                                    
       
     fprintf(makefile, "%s/%s" TARGET_DELIMITER "%s/%s %s/%s\n\n",
             tmpdir_macro, elf_symtab_name,
@@ -873,11 +924,27 @@ void ipacom_doit (const char* ipaa_filename)
             tmpdir_macro, whirl_symtab_name,
             tmpdir_macro, (*infiles)[i]);
 #ifdef TARG_IA64
-    fprintf(makefile, "\tcd %s; %s %s\n",
-            tmpdir_macro, (*commands)[i], extra_args);
+    if (Feedback_Filename) {
+        fprintf(makefile, "\tcd %s; %s -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
+                tmpdir_macro, (*commands)[i], Feedback_Filename, extra_args);
+    } else if (Annotation_Filename) {
+        fprintf(makefile, "\tcd %s; %s -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
+                tmpdir_macro, (*commands)[i], Annotation_Filename, extra_args);
+    } else {
+        fprintf(makefile, "\tcd %s; %s %s -Wb,-CG:enable_feedback=off\n",
+                tmpdir_macro, (*commands)[i], extra_args);
+    }                                                                                                                    
 #else
-    fprintf(makefile, "\tcd -P %s; %s %s\n",
-            tmpdir_macro, (*commands)[i], extra_args);
+    if (Feedback_Filename) {
+        fprintf(makefile, "\tcd %s; %s -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
+                tmpdir_macro, (*commands)[i], Feedback_Filename, extra_args);
+    } else if (Annotation_Filename) {
+        fprintf(makefile, "\tcd %s; %s -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
+                tmpdir_macro, (*commands)[i], Annotation_Filename, extra_args);
+    } else {
+        fprintf(makefile, "\tcd -P %s; %s %s -Wb,-CG:enable_feedback=off\n",
+                tmpdir_macro, (*commands)[i], extra_args);
+    }                                                                                                                    
 #endif
 
     const vector<const char*>& com = (*comments)[i];
@@ -1052,14 +1119,6 @@ static const char* get_extra_args(const char* ipaa_filename)
   if (ld_ipa_opt[LD_IPA_SHOW].flag)
     args.push_back("-show");
 
-#ifdef TODO
-  if (IPA_Enable_Cord) {
-    args.push_back("-cord");
-    args.push_back(cord_output_file_name);
-    args.push_back(call_graph_file_name);
-    args.push_back(cord_obj_file_name);
-  }
-#endif
 
   /* If there's an IPAA intermediate file, let WOPT know: */
   if (ipaa_filename) {

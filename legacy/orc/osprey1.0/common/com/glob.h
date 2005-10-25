@@ -112,6 +112,7 @@ extern int pu_number;
 extern int bb_number;
 extern char *Output_h_File_Name;      /* Cycle_Counting Output.h file */
 extern FILE *Output_h_File;           /* Cycle counting output.h file */
+extern FILE *Call_graph_file;	      /* Call graph file */
 extern char * pu_string[1000]; 
 extern char * bb_string[1000]; 
 
@@ -128,6 +129,9 @@ extern char *IR_File_Name;	/* SGIR intermediate file */
 extern char *Ipa_File_Name;	/* IPA file */
 extern char *Asm_File_Name;	/* Assembly file */
 extern char *Obj_File_Name;	/* Relocatable object file */
+extern char *call_graph_file_name; /* Function call graph file */
+extern char *cord_output_file_name; /* Output file name after function layout */
+extern char *cord_obj_file_name;  /* Object file name which will be reorder function layout */
 extern char *Instrumentation_File_Name; /* instrumentation file */
 extern char *Feedback_File_Name;/* feedback file produced from prof */
 #ifndef MONGOOSE_BE
@@ -151,6 +155,15 @@ extern FILE *Asm_File;		/* Assembly file */
 extern FILE *Obj_File;		/* Relocatable object file */
 extern FILE *Lib_File;		/* Program library file */
 extern FILE *Tim_File;		/* Timing info file (usually trace) */
+
+
+#ifdef SPECMT_LT
+  extern FILE *ExchangeFile;              /* exchange file for pseudo-specmt partition */
+  extern FILE *LoopMappingFile;           /* loop mapping file for two pass compilation */
+  #define SPECMT_FIRST_PASS   1
+  #define SPECMT_SECOND_PASS  2
+#endif
+
 #ifdef MONGOOSE_BE
 #define MMAPPED_FILE (1)	/* some components use mmap instead of
 				   stream i/o, in those cases the *_File

@@ -555,7 +555,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_PROFILE_CHANGED     0x04000000 /* BB is changed by profile*/
 #define BBM_PROFILE_ADDED       0x08000000 /* BB is new bb added by profile*/
 #define BBM_CHK_SPLIT_HEAD      0x10000000 /* BB splitted from another because of chk insertion */
-
+#define BBM_PARTIAL_BUNDLE      0x20000000 /* BB partial bundle for across boundary*/
 
 #define	BB_entry(x)		(BB_flag(x) & BBM_ENTRY)
 #define BB_handler(bb)		(BB_flag(bb) & BBM_HANDLER)
@@ -587,6 +587,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BB_profile_splitted(x)    (BB_flag(x) & BBM_PROFILE_SPLITTED)
 #define BB_profile_changed(x)    (BB_flag(x) & BBM_PROFILE_CHANGED)
 #define BB_profile_added(x)    (BB_flag(x) & BBM_PROFILE_ADDED)
+#define BB_partial_bundle(x)	(BB_flag(x) & BBM_PARTIAL_BUNDLE)
 /* #endif */
 
 
@@ -620,6 +621,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Set_BB_profile_splitted(x)    (BB_flag(x) |= BBM_PROFILE_SPLITTED)
 #define Set_BB_profile_changed(x)    (BB_flag(x) |= BBM_PROFILE_CHANGED)
 #define Set_BB_profile_added(x)    (BB_flag(x) |= BBM_PROFILE_ADDED)
+#define Set_BB_partial_bundle(x)    (BB_flag(x) |= BBM_PARTIAL_BUNDLE)
 /* #endif */
 
 
@@ -653,6 +655,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_profile_splitted(x)    (BB_flag(x) &= ~BBM_PROFILE_SPLITTED)
 #define Reset_BB_profile_changed(x)    (BB_flag(x) &= ~BBM_PROFILE_CHANGED)
 #define Resset_BB_profile_added(x)    (BB_flag(x) &= ~BBM_PROFILE_ADDED)
+#define Reset_BB_partial_bundle(x)    (BB_flag(x) &= ~BBM_PARTIAL_BUNDLE)
 /* #endif */
 
 #define BB_tail_call(bb)	(   (BB_flag(bb) & (BBM_CALL | BBM_EXIT)) \
@@ -1064,6 +1067,9 @@ extern struct op *BB_branch_op (BB *);
 /* Return the terminating xfer OP in a given BB */
 extern struct op* BB_xfer_op( BB *bb );
 
+/* Return the call op in a given BB */
+extern struct op* BB_call_op(BB* bb);
+
 /* Return the last OP which isn't a copy/xfer OP in a given BB */
 extern struct op* BB_copy_xfer_op( BB *bb );
 
@@ -1183,6 +1189,8 @@ ST *Gen_ST_For_BB(BB *bb);
 ST *BB_st(BB *bb);
 
 void Split_BBs();
+
+extern BB_SET* Find_BB_Parents(BB* bb);
 
 #ifdef Is_True_On
 extern void Verify_BB(BB *);

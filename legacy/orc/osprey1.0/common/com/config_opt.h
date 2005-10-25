@@ -144,6 +144,7 @@ extern BOOL OPT_shared_memory;	// assume use of shared memory
 /***** Instrumentation related options *****/
 extern INT32 Instrumentation_Phase_Num;
 extern BOOL Instrumentation_Enabled;
+extern BOOL Instrumentation_Enabled_Before;
 extern UINT32 Instrumentation_Actions;
 extern BOOL Instrumentation_Unique_Output;
 extern INT32 Feedback_Phase_Num;
@@ -154,3 +155,4 @@ extern UINT32 Profile_Type;
 }
 #endif
 #endif /* config_opt_INCLUDED */
+

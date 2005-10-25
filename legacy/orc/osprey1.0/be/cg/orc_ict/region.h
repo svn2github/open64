@@ -257,10 +257,11 @@ private:
     float Freq(void)       { return _freq; }  
     void  Freq(float freq) { _freq = freq; } 
     
-    float Prob(void)       { return _prob; }
     void  Prob(float prob) { _prob = prob; }
 
 public:
+
+    float Prob(void) const { return _prob; }
     
     REGIONAL_CFG_EDGE(REGIONAL_CFG_NODE *v, REGIONAL_CFG_NODE *w) {    
         _src   =  v;

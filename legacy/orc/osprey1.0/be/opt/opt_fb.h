@@ -263,6 +263,21 @@ public:
   void Print_edge( FILE *fp, IDTYPE src_nx, IDTYPE dst_nx ) const;
   void Draw() const;
   void Display( WN *wn_tree, const char *caller ) const;
+
+#ifdef SPECMT_LT
+  void          Add_node_for_specmt(IDTYPE nx_dst);
+  void          Clone_edge_for_specmt(IDTYPE nx_src_old, IDTYPE nx_dst_old,
+                         IDTYPE nx_src_new, IDTYPE nx_dst_new, float scale );
+  FB_EDGE_TYPE  Find_edge_type_for_specmt(IDTYPE nx_src, IDTYPE nx_dst );
+  FB_FREQ       Find_edge_freq_for_specmt(IDTYPE nx_src, IDTYPE nx_dst );
+  IDTYPE        Find_edge_for_specmt( IDTYPE nx_src, IDTYPE nx_dst );
+  OPT_FB_EDGE&  Find_edge_for_specmt(IDTYPE ex);
+  OPT_FB_NODE&  Find_fb_node_for_specmt(IDTYPE idx);
+  void          Add_edge_for_specmt(IDTYPE nx_src, IDTYPE nx_dst,
+		 FB_EDGE_TYPE edge_type, FB_FREQ freq);
+  IDTYPE        Return_edge_count();
+  IDTYPE  Find_edge_by_type_for_specmt( IDTYPE nx, FB_EDGE_TYPE edge_type ) const;
+#endif
 };
 
 void dV_view_fb_opt_cfg( const OPT_FEEDBACK& cfg,
