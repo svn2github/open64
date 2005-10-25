@@ -35,52 +35,78 @@
 if [ "`uname -m`" = "ia64" ] ; then
 ROOT=/usr
 else
-ROOT=/nue/usr
+ROOT=/usr     #replace with your destination directory
 fi
-if [ ! -d ${ROOT}/lib/gcc-lib/ia64-orc-linux/ ]; then
-mkdir ${ROOT}/lib/gcc-lib/ia64-orc-linux/
-mkdir ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0
+
+if [ ! -d ${ROOT}/lib/ ]; then
+mkdir ${ROOT}/lib/
 fi
+if [ ! -d ${ROOT}/lib/gcc-lib/ ]; then
+mkdir ${ROOT}/lib/gcc-lib/
+fi
+if [ ! -d ${ROOT}/lib/gcc-lib/ia64-open64-linux/ ]; then
+mkdir ${ROOT}/lib/gcc-lib/ia64-open64-linux/
+mkdir ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14
+mkdir ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/include
+fi
+
 cp -f osprey1.0/targia64/libfortran/libfortran.a         ${ROOT}/lib/libfortran.a
 cp -f osprey1.0/targia64/libu/libffio.a                  ${ROOT}/lib/libffio.a
 cp -f osprey1.0/targia64/libmsgi/libmsgi.a               ${ROOT}/lib/libmsgi.a
 cp -f osprey1.0/targia64/libmv/libmv.a                   ${ROOT}/lib/libmv.a
 cp -f osprey1.0/targia64/libcginstr/libcginstr.a         ${ROOT}/lib/libcginstr.a
-cp -f osprey1.0/targia64/libinstr/libinstr.a             ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/libinstr.a
-cp -f osprey1.0/targia64/libgcc/libgcc.a                 ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/libgcc.a
-cp -f osprey1.0/targia64/libstdc++/libstdc++.a.2.10.0    ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/libstdc++.a.2.10.0
-ln -sf ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/libstdc++.a.2.10.0 ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/libstdc++.a
-cp -f osprey1.0/man/linux/man1/sgicc.1                   ${ROOT}/man/man1/sgicc.1
-cp -f osprey1.0/man/linux/man1/sgif90.1                  ${ROOT}/man/man1/sgif90.1
-ln -sf ${ROOT}/man/man1/sgicc.1                          ${ROOT}/man/man1/sgiCC.1
-cp -f osprey1.0/targia32_ia64_nodebug/ir_tools/ir_b2a    ${ROOT}/local/bin/ir_b2a
-cp -f osprey1.0/targia32_ia64_nodebug/be/be              ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/be
-cp -f osprey1.0/targia32_ia64_nodebug/be/be.so           ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/be.so
-# cp -f osprey1.0/targia32_ia64_nodebug/crayf90/sgi/cf90.cat ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/cf90.cat
-cp -f osprey1.0/targia32_ia64_nodebug/cg/cg.so           ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/cg.so
-cp -f osprey1.0/targia32_ia64_nodebug/orc_ict/orc_ict.so  ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/orc_ict.so
-cp -f osprey1.0/targia32_ia64_nodebug/orc_intel/orc_intel.so  ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/orc_intel.so
-cp -f osprey1.0/targia32_ia64_nodebug/driver.nue/driver  ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/driver
-cp -f osprey1.0/targia32_ia64_nodebug/gccfe/gfec         ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/gfec
-cp -f osprey1.0/targia32_ia64_nodebug/g++fe/gfecc        ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/gfecc
-cp -f osprey1.0/targia32_ia64_nodebug/lw_inline/lw_inline  ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/inline
-cp -f osprey1.0/targia32_ia64_nodebug/ipa/ipa.so         ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/ipa.so
-cp -f osprey1.0/targia32_ia64_nodebug/ipl/ipl.so         ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/ipl.so
-cp -f osprey1.0/targia32_ia64_nodebug/targ_info/itanium.so ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/itanium.so
-cp -f osprey1.0/targia32_ia64_nodebug/temp_f90libs/lib.cat ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/lib.cat
-cp -f osprey1.0/targia32_ia64_nodebug/temp_f90libs/lib.exp ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/lib.exp
-cp -f osprey1.0/targia32_ia64_nodebug/lno/lno.so         ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/lno.so
-# cp -f osprey1.0/targia32_ia64_nodebug/crayf90/sgi/mfef90 ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/mfef90
-cp -f osprey1.0/targia32_ia64_nodebug/whirl2c/whirl2c    ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/whirl2c
-cp -f osprey1.0/targia32_ia64_nodebug/whirl2c/whirl2c.so ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/whirl2c.so
-cp -f osprey1.0/targia32_ia64_nodebug/whirl2f/whirl2f    ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/whirl2f
-cp -f osprey1.0/targia32_ia64_nodebug/whirl2f/whirl2f.so ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/whirl2f.so
-cp -f osprey1.0/targia32_ia64_nodebug/wopt/wopt.so       ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/wopt.so
-cp -f osprey1.0/targcygnus_ia32_ia64/ld/ld-new           ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/ipa_link
-cp -f osprey1.0/include/nue/stdarg.h                    ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/include/stdarg.h
-cp -f osprey1.0/include/nue/va-ia64.h                   ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/include/va-ia64.h
-ln -sf ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/be ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/ipl 
-ln -sf ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/driver ${ROOT}/bin/orcc
-ln -sf ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/driver ${ROOT}/bin/orCC
-ln -sf ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/driver ${ROOT}/bin/orc++
-ln -sf ${ROOT}/lib/gcc-lib/ia64-orc-linux/orcc-1.0/driver ${ROOT}/bin/orf90
+cp -f osprey1.0/targia64/libinstr/libinstr.a             ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/libinstr.a
+cp -f osprey1.0/targia64/libgcc/libgcc.a                 ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/libgcc.a
+cp -f osprey1.0/targia64/libstdc++/libstdc++.a.2.10.0    ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/libstdc++.a.2.10.0
+
+# Man pages
+ln -sf ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/libstdc++.a.2.10.0 ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/libstdc++.a
+if [ ! -d ${ROOT}/man/ ]; then
+mkdir ${ROOT}/man/
+mkdir ${ROOT}/man/man1/
+fi
+cp -f osprey1.0/man/linux/man1/sgicc.1                                ${ROOT}/man/man1/sgicc.1
+cp -f osprey1.0/man/linux/man1/sgif90.1                               ${ROOT}/man/man1/sgif90.1
+ln -sf ${ROOT}/man/man1/sgicc.1                                       ${ROOT}/man/man1/sgiCC.1
+
+if [ ! -d ${ROOT}/local/bin/ ]; then 
+mkdir ${ROOT}/local/
+mkdir ${ROOT}/local/bin/
+ fi
+
+cp -f osprey1.0/targia32_ia64_nodebug/ir_tools/ir_b2a         ${ROOT}/local/bin/ir_b2a
+cp -f osprey1.0/targia32_ia64_nodebug/be/be                   ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/be
+cp -f osprey1.0/targia32_ia64_nodebug/be/be.so                ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/be.so
+# cp -f osprey1.0/targia32_ia64_nodebug/crayf90/sgi/cf90.cat  ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/cf90.cat
+cp -f osprey1.0/targia32_ia64_nodebug/cg/cg.so                ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/cg.so
+cp -f osprey1.0/targia32_ia64_nodebug/orc_ict/orc_ict.so      ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/orc_ict.so
+cp -f osprey1.0/targia32_ia64_nodebug/orc_intel/orc_intel.so  ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/orc_intel.so
+cp -f osprey1.0/targia32_ia64_nodebug/driver.nue/driver       ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/driver
+cp -f osprey1.0/targia32_ia64_nodebug/gccfe/gfec              ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/gfec
+cp -f osprey1.0/targia32_ia64_nodebug/g++fe/gfecc             ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/gfecc
+cp -f osprey1.0/targia32_ia64_nodebug/lw_inline/lw_inline     ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/inline
+cp -f osprey1.0/targia32_ia64_nodebug/ipa/ipa.so              ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/ipa.so
+cp -f osprey1.0/targia32_ia64_nodebug/ipl/ipl.so              ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/ipl.so
+cp -f osprey1.0/targia32_ia64_nodebug/targ_info/itanium.so    ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/itanium.so
+cp -f osprey1.0/targia32_ia64_nodebug/temp_f90libs/lib.cat    ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/lib.cat
+cp -f osprey1.0/targia32_ia64_nodebug/temp_f90libs/lib.exp    ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/lib.exp
+cp -f osprey1.0/targia32_ia64_nodebug/lno/lno.so              ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/lno.so
+# cp -f osprey1.0/targia32_ia64_nodebug/crayf90/sgi/mfef90    ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/mfef90
+cp -f osprey1.0/targia32_ia64_nodebug/whirl2c/whirl2c         ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/whirl2c
+cp -f osprey1.0/targia32_ia64_nodebug/whirl2c/whirl2c.so      ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/whirl2c.so
+cp -f osprey1.0/targia32_ia64_nodebug/whirl2f/whirl2f         ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/whirl2f
+cp -f osprey1.0/targia32_ia64_nodebug/whirl2f/whirl2f.so      ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/whirl2f.so
+cp -f osprey1.0/targia32_ia64_nodebug/wopt/wopt.so            ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/wopt.so
+
+cp -f osprey1.0/targcygnus_ia32_ia64/ld/ld-new                ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/ipa_link
+cp -f osprey1.0/include/nue/stdarg.h                          ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/include/stdarg.h
+cp -f osprey1.0/include/nue/va-ia64.h                         ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/include/va-ia64.h
+
+ln -sf ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/be         ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/ipl 
+
+if [ ! -d ${ROOT}/bin/ ]; then mkdir ${ROOT}/bin/; fi
+ln -sf ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/driver ${ROOT}/bin/opencc
+ln -sf ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/driver ${ROOT}/bin/openCC
+ln -sf ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/driver ${ROOT}/bin/open++
+ln -sf ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.14/driver ${ROOT}/bin/openf90
+
