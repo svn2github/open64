@@ -278,8 +278,7 @@ LCOPTS   = $(STD_COMPILE_OPTS)
 LCDEFS   = $(HOSTDEFS) $(TARGDEFS)
 LCINCS   = $(addprefix -I, $(HEADER_DIRS))
 
-#-CG:emit_asm_dwarf=off to avoid assembler file number error msg.
-LC++OPTS = $(STD_COMPILE_OPTS) -CG:emit_asm_dwarf=off
+LC++OPTS = $(STD_COMPILE_OPTS)
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(addprefix -I, $(HEADER_DIRS)) 
 
