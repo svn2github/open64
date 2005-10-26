@@ -74,7 +74,7 @@ static lang_info_t language_info[] = {
 #else
 #define NAMEPREFIX	""
 #define BINPATH		"/usr/bin"
-#define LIBPATH		"/usr/lib/gcc-lib/ia64-open64-linux/open64-0.14"
+#define LIBPATH		"/usr/lib/gcc-lib/ia64-open64-linux/open64-0.15"
 #define ALTLIBPATH	"/usr/lib"
 #endif
 #define PHASEPATH	LIBPATH
