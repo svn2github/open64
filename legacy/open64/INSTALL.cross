@@ -33,13 +33,16 @@
 #
 #
 
-VER_MAJOR="2"
-VER_MINOR="0"
+VER_MAJOR="0"
+VER_MINOR="16"
 #PATCH_LEVEL=""
 VERSION="${VER_MAJOR}.${VER_MINOR}"
 
+PREBUILT_LIB="./lib"
+PREBUILD_BIN="./bin"
+
     # set the build host
-BUILD_HOST="ia32" ; 
+BUILD_HOST="ia64" ; 
 #[ `uname -m | grep -i 'i[0-9]86' | wc -l` -eq 1 ] && BUILD_HOST="ia32"
 
     # set the target host, it must be "ia64"
@@ -55,13 +58,13 @@ BUILD_OS="linux"
     # everything we will install is under $ROOT
 ROOT=${TOOLROOT}/
 
-INTERPOSE=${TARG_HOST}-orc-${TARG_OS}
+INTERPOSE=#${TARG_HOST}-open64-${TARG_OS}
 [ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
 
 AREA="osprey1.0/targ${BUILD_HOST}_${TARG_HOST}_nodebug"
 
-PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/${TARG_HOST}-orc-linux/${VERSION}/
-NATIVE_LIB_DIR=${COMP_TARGET_ROOT}/usr/${INTERPOSE}/lib
+PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/${TARG_HOST}-open64-linux/${VERSION}/
+NATIVE_LIB_DIR=${PHASEPATH}
 BIN_DIR=${ROOT}/usr/${INTERPOSE}/bin
 ALT_BIN_DIR=${ROOT}/usr/${INTERPOSE}/altbin
 
@@ -97,10 +100,10 @@ INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
 
     [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
-    [ ! -e ${BIN_DIR}/orcc  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/orcc
-    [ ! -e ${BIN_DIR}/orCC  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/orCC
-    [ ! -e ${BIN_DIR}/orc++ ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/orc++
-    [ ! -e ${BIN_DIR}/orf90 ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/orf90
+    [ ! -e ${BIN_DIR}/opencc  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/opencc
+    [ ! -e ${BIN_DIR}/openCC  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openCC
+    [ ! -e ${BIN_DIR}/openc++ ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openc++
+    [ ! -e ${BIN_DIR}/openf90 ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openf90
 
     return 0
 }
@@ -109,11 +112,11 @@ INSTALL_DRIVER () {
 INSTALL_FE () {
 
     INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
-    INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}gfecc
+    INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
 
     # Currently we do not install fortran 90 front-end
-    #INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef90   ${PHASEPATH}/mfef90
-    #INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/cf90.cat ${PHASEPATH}/cf90.cat
+    # INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef90   ${PHASEPATH}/mfef90
+    # INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/cf90.cat ${PHASEPATH}/cf90.cat
 
     return 0
 }
@@ -184,10 +187,8 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         #  SGI implementation for turning on FLUSH to ZERO 
     INSTALL_DATA_SUB $d/init/ftz.o     ${PHASEPATH}/ftz.o
 
-        # libgcc.a and libstdc++.a are deemed as GNU-linker specific 
-        # archieves.
-
-    d="../lib/${TARG_HOST}-${TARG_OS}/gnu/" 
+        # libgcc.a and libstdc++.a are deemed as "GNU link" specific archieves
+    d="${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/" 
     for i in libstdc++.a libgcc.a ; do 
         INSTALL_DATA_SUB ${d}/${i}  ${PHASEPATH}/$i
     done
@@ -207,36 +208,37 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         
         # It seems libm.so sometimes could not work, so we put it at ${PHASEPATH}
         #
-    INSTALL_DATA_SUB ../lib/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
+    INSTALL_DATA_SUB ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/libm.a ${PHASEPATH}/libm.a
 
     return 0
 }
 
 INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP () {
 
-    for i in ../lib/${TARG_HOST}-${TARG_OS}/crt/* ; do 
+    for i in ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/crt/* ; do 
 	[ "`basename $i`" = "CVS" ] && continue
         INSTALL_DATA_SUB $i ${PHASEPATH}/`basename $i`
     done 
-    
+
     return 0
 }
 
 
 INSTALL_PREBUILD_OPEN64_NATIVE_LIB () {
 
-    for i in ../lib/${TARG_HOST}-${TARG_OS}/open64/* ; do 
+    for i in ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/open64/* ; do 
 
-        x=`basename $i`
-        [ "$x" = "CVS" ] && continue;
+        [ "`basename $i`" = "CVS" ] && continue;
 
-        [ "$x" = "libinstr.a" ] &&
-            INSTALL_DATA_SUB $i ${PHASEPATH}/$x && continue;
+        [ "`basename $i`" = "libinstr.a" ] &&
+            INSTALL_DATA_SUB $i ${PHASEPATH}/`basename $i` &&
+            continue;
             
-        [ "$x" = "libcginstr.a" ] &&
-            INSTALL_DATA_SUB $i ${PHASEPATH}/$x && continue;
+        [ "`basename $i`" = "libcginstr.a" ] &&
+            INSTALL_DATA_SUB $i ${PHASEPATH}/`basename $i` &&
+            continue;
 
-        INSTALL_DATA_SUB $i ${NATIVE_LIB_DIR}/$x
+        INSTALL_DATA_SUB $i ${NATIVE_LIB_DIR}/`basename $i`
     done
 
     return 0
@@ -247,11 +249,11 @@ INSTALL_PREBUILD_OPEN64_NATIVE_LIB () {
    # hand.
 INSTALL_PREBUILD_GLIBC_NATIVE_LIB () {
 
-    for i in ../lib/${TARG_HOST}-${TARG_OS}/gnu/* ; do 
+    for i in ${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/* ; do 
         x=`basename $i`
-        [ "$x" = "CVS" ] && continue;
+        [ "$x" = "CVS" ]         && continue;
+        [ "$x" = "libstdc++.a" ] && continue; 
         [ "$x" = "libgcc.a"    ] && continue;
-        [ "$x" = "libstdc++.a" ] && continue;
         INSTALL_EXEC_SUB $i ${NATIVE_LIB_DIR}/`basename $i`
     done  
     
@@ -261,7 +263,8 @@ INSTALL_PREBUILD_GLIBC_NATIVE_LIB () {
 INSTALL_PREBUILD_PHASE () {
 
         # Some prebuild
-    for i in ../bin/${BUILD_HOST}-${BUILD_OS}/phase/* ; do 
+    for i in ${PREBUILT_BIN}/${BUILD_HOST}-${BUILD_OS}/phase/* ; do 
+	[ ! -e $i ] && continue;
 	[ "`basename $i`" = "CVS" ] && continue
         INSTALL_EXEC_SUB $i ${PHASEPATH}/`basename $i`
     done
@@ -271,7 +274,7 @@ INSTALL_PREBUILD_PHASE () {
 
 INSTALL_CROSS_UTIL () {
 
-    for i in ../bin/${BUILD_HOST}-${BUILD_OS}/util/* ; do 
+    for i in ${PREBUILT_BIN}/${BUILD_HOST}-${BUILD_OS}/util/* ; do 
 	[ "`basename $i`" = "CVS" ] && continue
         INSTALL_EXEC_SUB $i ${BIN_DIR}/`basename $i`
     done
@@ -303,7 +306,6 @@ INSTALL_MAN_PAGE () {
 }
 
 INSTALL_MISC () {
-
     INSTALL_EXEC_SUB ${AREA}/wopt/wopt.so         ${PHASEPATH}/wopt.so
     INSTALL_EXEC_SUB ${AREA}/lw_inline/lw_inline  ${PHASEPATH}/inline
     INSTALL_EXEC_SUB ${AREA}/lno/lno.so           ${PHASEPATH}/lno.so
@@ -311,8 +313,15 @@ INSTALL_MISC () {
     INSTALL_EXEC_SUB ${AREA}/targ_info/itanium2.so ${PHASEPATH}/itanium2.so
     [ "$BUILD_HOST" != "$TARG_HOST" ] && ln -s /nue/usr/bin ${ALT_BIN_DIR} 2>/dev/null
 
+    if [ ! -z "$ROOT" ] ; then 
+		for i in gcc f77 as ld g++ gas as ; do 
+			x=`which $i 2>/dev/null`
+			[ ! -z "$x" ] && ln -s $x $BIN_DIR/`basename $x` 2>/dev/null
+		done
+    fi
+
         # install some scripts
-    for i in ../bin/misc/* ; do 
+    for i in ${PREBUILT_BIN}/misc/* ; do 
         [ -f "$i" ] && INSTALL_EXEC_SUB ${i} ${BIN_DIR}/`basename $i`
     done
 
@@ -328,21 +337,20 @@ INSTALL_IPA
 INSTALL_CG 
 INSTALL_WHIRL_STUFF 
 
-    # Install archieves 
 cat << _EOF_
  ------------------------------------------------------------------------
- NOTE: The following native archives are not built by default. They need
-       to be built on IA64 or NUE platform by doing the following:
-       "make build -f Make.NUE.lib"
-       Please refer to the readme for details on some known problems.
-       We have provided the pre-built version, which will be installed by default.
+ NOTE: Following archives may not present. (these archives are built by 
+   by 'make build -f Make.NUE.lib', but do not worry, prebuild verion of
+   them are provided.
      
-       osprey1.0/targia64/{libcginstr.a libinstr.a ftz.o libfortran.a
-                           libffio.a libmsgi.a libmv.a}
+   osprey1.0/targia64/{libcginstr.a libinstr.a ftz.o libfortran.a libffio.a
+                       libmsgi.a libmv.a}
        
+   Normally, you need not to build these archives.
  ------------------------------------------------------------------------
 _EOF_
 
+    # Install archieves 
 INSTALL_PHASE_SPECIFIC_ARCHIVES 
 [ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_PREBUILD_GLIBC_NATIVE_LIB 
 [ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_NATIVE_HEADER 
@@ -356,3 +364,4 @@ INSTALL_PREBUILD_PHASE
 INSTALL_MISC
 
 exit 0
+
