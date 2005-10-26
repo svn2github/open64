@@ -1,0 +1,39 @@
+#!/bin/sh
+# Create shell scripts necessary to install gcc using the Intel tools.
+
+echo "Creating shell scripts to use the Intel tools after installation."
+if [ ! -d gcc ] ; then
+  echo "You must run this command from the toplevel build directory."
+  exit 1
+fi
+
+TOOLDIR=${1?"install-intel-setup: tooldir directory not specified"}
+if [ ! -d $TOOLDIR ] ; then
+  echo $TOOLDIR " does not exist."
+  exit 1
+fi
+
+cd $TOOLDIR
+
+# Create bin directory if it isn't there.
+if [ ! -d bin ] ; then
+  mkdir bin
+fi
+cd bin
+
+# Create as and ld.
+rm -f as
+cat <<'__EOF__' > as
+#!/bin/sh
+exec ias $*
+__EOF__
+chmod +x as
+
+rm -f ld
+cat <<'__EOF__' > ld
+#!/bin/sh
+exec ild $*
+__EOF__
+chmod +x ld
+
+exit 0
