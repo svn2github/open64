@@ -271,7 +271,7 @@ ipa_compile_init ()
 
   static char* smake_base = ALTBINPATH "/make";
   static char* tmp_cc_name_base = "/usr/ia64-sgi-linux/bin/sgicc";
-  static char* cc_name_base = BINPATH "/orcc";
+  static char* cc_name_base = BINPATH "/opencc";
   static char* cord_name_base= BINPATH "/gen_cord";
 
   if (file_exists(tmp_cc_name_base))

@@ -52,7 +52,7 @@
 
     #if CROSS_COMPILATION
 	    #define NAMEPREFIX	""
-	    #define INTERPOSE   "ia64-orc-linux"
+	    #define INTERPOSE   "ia64-open64-linux"
     #else
 	    #define NAMEPREFIX	""
 	    #define INTERPOSE   ""
@@ -66,7 +66,7 @@
         #define ALTBINPATH  BINPATH
     #endif 
 
-    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-orc-linux/2.0" 
+    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-open64-linux/0.16" 
     #define ALTLIBPATH	"/usr/" INTERPOSE "/lib"
 
     #define PHASEPATH	    LIBPATH

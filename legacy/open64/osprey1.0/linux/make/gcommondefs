@@ -33,7 +33,7 @@
 #
 #
 
-#ident "$Revision: 1.1.1.1 $"
+#ident "$Revision: 1.3 $"
 # 
 # This file has been heavily hacked for building on Linux
 #
@@ -100,15 +100,15 @@ ASNAME = gcc
 CCNAME = gcc
 C++NAME = g++
 F77 = g77
-F90 = orf90
+F90 = openf90
 endif
 ifeq ($(BUILD_COMPILER), SGI)
 # sgi compiler should be in path in order to be found
-ASNAME = orcc
-CCNAME = orcc
-C++NAME = orCC
-F77 = orf90
-F90 = orf90
+ASNAME = opencc
+CCNAME = opencc
+C++NAME = openCC
+F77 = openf90
+F90 = openf90
 endif
 ifeq ($(BUILD_COMPILER), EDG)
 ASNAME = cc
