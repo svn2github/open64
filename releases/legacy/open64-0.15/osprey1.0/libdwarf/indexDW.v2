@@ -1,0 +1,273 @@
+DW_ACCESS_private              , 18, 75
+DW_ACCESS_protected            18, 75
+DW_ACCESS_public               18, 75
+DW_ADDR_far                    20
+DW_ADDR_huge                   20
+DW_ADDR_near                   20
+DW_ADDR_none                   19, 20, 75
+DW_AT                          65
+DW_ATE                         65
+DW_ATE_address                 37, 75
+DW_ATE_boolean                 37, 75
+DW_ATE_complex_float           37, 75
+DW_ATE_float                   37, 75
+DW_ATE_hi_user                 75
+DW_ATE_lo_user                 75
+DW_ATE_signed                  37, 75
+DW_ATE_signed_char             37, 75
+DW_ATE_unsigned                37, 75
+DW_ATE_unsigned_char           37, 75, 93
+DW_AT_abstract_origin          8, 30, 31, 71, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92
+DW_AT_accessibility            8, 18, 41, 71, 74, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92
+DW_AT_address_class            8, 19, 26, 38, 71, 85, 88, 89, 90, 92
+DW_AT_artificial               8, 19, 71, 86, 89, 91
+DW_AT_base_types               8, 24, 71, 84
+DW_AT_bit_offset               8, 37, 42, 70, 83, 87
+DW_AT_bit_size                 8, 37, 42, 70, 83, 87
+DW_AT_byte_size                8, 37, 39, 40, 42, 45, 46, 47, 48, 70, 83, 84, 85, 87, 88, 89, 90, 91, 93
+DW_AT_calling_convention       8, 26, 71, 76, 89
+DW_AT_common_reference         8, 27, 70, 84
+DW_AT_comp_dir                 8, 24, 70, 84
+DW_AT_compdir                  93
+DW_AT_const_value              8, 34, 43, 45, 70, 85, 90
+DW_AT_constant_value           85, 91
+DW_AT_containing_type          8, 47, 70, 88
+DW_AT_count                    8, 47, 71, 90
+DW_AT_data_member_location     8, 41, 71, 86, 87
+DW_AT_decl_column              8, 20, 71, 83
+DW_AT_decl_file                8, 20, 71, 83
+DW_AT_decl_line                8, 20, 71, 83
+DW_AT_declaration              8, 20, 25, 33, 40, 71, 83, 84, 85, 87, 88, 89, 90, 91, 92
+DW_AT_default_value            8, 34, 70, 86
+DW_AT_dicsr_list               77
+DW_AT_discr                    8, 44, 70, 92
+DW_AT_discr_list               8, 44, 71, 92
+DW_AT_discr_value              8, 44, 70, 92
+DW_AT_encoding                 8, 37, 71, 74, 83, 93
+DW_AT_external                 8, 25, 33, 71, 85, 89, 91
+DW_AT_frame_base               8, 12, 17, 27, 71, 89
+DW_AT_friend                   8, 41, 71, 86
+DW_AT_friends                  91
+DW_AT_hi_user                  71
+DW_AT_high_pc                  8, 19, 23, 25, 26, 29, 30, 31, 32, 70, 83, 84, 86, 87, 89, 90, 92, 93
+DW_AT_identifier_case          8, 24, 71, 76, 84
+DW_AT_import                   8, 35, 70, 86
+DW_AT_inline                   8, 28, 29, 70, 76, 89
+DW_AT_is_optional              8, 34, 70, 86
+DW_AT_language                 8, 23, 39, 70, 84, 93
+DW_AT_lo_user                  71
+DW_AT_location                 8, 29, 30, 32, 33, 35, 70, 84, 86, 91, 92
+DW_AT_low_pc                   8, 19, 23, 25, 26, 29, 30, 31, 32, 70, 83, 84, 85, 86, 87, 89, 90, 92
+DW_AT_low_poc                  93
+DW_AT_lower_bound              8, 47, 70, 90
+DW_AT_macro_info               8, 24, 71, 84
+DW_AT_name                     8, 21, 23, 24, 25, 28, 31, 32, 33, 35, 37, 38, 39, 40, 41, 43, 45, 46, 47, 48, 49, 70, 83, 84, 85, 86, 87, 88, 89, 90, 91, 93
+DW_AT_namelist_item            8, 35, 71, 87
+DW_AT_ordering                 8, 39, 70, 83
+DW_AT_priority                 8, 25, 71, 87
+DW_AT_producer                 8, 24, 70, 84, 93
+DW_AT_prototyped               8, 26, 45, 70, 89, 90
+DW_AT_return_addr              8, 27, 29, 30, 70, 85, 86, 89
+DW_AT_segment                  8, 19, 26, 29, 30, 33, 71, 83, 85, 86, 87, 88, 89, 90, 91, 92
+DW_AT_sibling                  8, 70, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92
+DW_AT_specification            8, 33, 40, 43, 71, 89, 91
+DW_AT_start_scope              8, 29, 30, 34, 37, 70, 83, 84, 85, 86, 88, 89, 90, 91
+DW_AT_static_link              8, 27, 28, 71, 85, 89
+DW_AT_stmt_list                8, 23, 70, 84, 93
+DW_AT_stride_size              8, 39, 70, 83
+DW_AT_string_length            8, 46, 70, 88
+DW_AT_type                     8, 18, 26, 28, 32, 33, 38, 39, 41, 43, 44, 45, 46, 47, 48, 71, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93
+DW_AT_upper_bound              8, 47, 70, 90
+DW_AT_use_location             8, 47, 48, 71, 88
+DW_AT_variable_parameter       8, 34, 71, 86
+DW_AT_virtuality               8, 19, 41, 43, 71, 75, 86, 89
+DW_AT_visibility               8, 18, 70, 75, 83, 84, 85, 87, 88, 89, 90, 91, 92
+DW_AT_vtable_elem_location     8, 43, 71, 89
+DW_CC_hi_user                  76
+DW_CC_lo_user                  76
+DW_CC_nocall                   26, 76
+DW_CC_normal                   26, 76
+DW_CC_program                  26, 76
+DW_CFA                         65
+DW_CFA_advance_loc             62, 63, 64, 79, 101
+DW_CFA_def_cfa                 63, 79, 100
+DW_CFA_def_cfa_offset          63, 79, 101
+DW_CFA_def_cfa_register        63, 79, 101
+DW_CFA_hi_user                 79
+DW_CFA_lo_user                 79
+DW_CFA_nop                     62, 63, 79, 100, 101
+DW_CFA_offset                  62, 63, 79, 101
+DW_CFA_offset_extended         63, 79
+DW_CFA_register                63, 79, 100
+DW_CFA_remember_state          63, 79
+DW_CFA_restore                 62, 63, 79, 101
+DW_CFA_restore_extended        63, 79
+DW_CFA_restore_state           63, 79
+DW_CFA_same_value              63, 79, 100
+DW_CFA_set_loc                 62, 64, 79
+DW_CFA_undefined               63, 79, 100
+DW_CHILDREN_no                 67, 69, 93
+DW_CHILDREN_yes                67, 69, 93
+DW_DSC_label                   44, 77
+DW_DSC_range                   44, 77
+DW_FORM_addr                   67, 72, 74, 93
+DW_FORM_block                  67, 68, 72
+DW_FORM_data                   68, 69, 72, 93
+DW_FORM_flag                   69, 72
+DW_FORM_indirect               67, 72, 93
+DW_FORM_ref                    69, 72, 93
+DW_FORM_ref_addr               69, 72
+DW_FORM_ref_udata              69, 72
+DW_FORM_sdata                  69, 70, 71, 72
+DW_FORM_string                 70, 72, 93
+DW_FORM_strp                   70, 72
+DW_FORM_udata                  69, 70, 71, 72
+DW_ID_case_insensitive         24, 76
+DW_ID_case_sensitive           24, 76
+DW_ID_down_case                24, 76
+DW_ID_up_case                  24, 76
+DW_INL_declared_inlined        29, 76
+DW_INL_declared_not_inlined    29, 76
+DW_INL_inlined                 29, 76
+DW_INL_not_inlined             29, 76
+DW_LANG                        65
+DW_LANG_Ada                    76
+DW_LANG_C                      23, 76, 93
+DW_LANG_C_plus_plus            23, 76
+DW_LANG_Cobol                  76
+DW_LANG_Fortran                23, 76
+DW_LANG_Modula                 23, 76
+DW_LANG_Pascal                 23, 76
+DW_LANG_hi_user                76
+DW_LANG_lo_user                76
+DW_LNE_define_file             56, 57, 78
+DW_LNE_end_sequence            56, 78, 95, 96
+DW_LNE_set_address             56, 78
+DW_LNS_advance_line            55, 78
+DW_LNS_advance_pc              55, 56, 78, 95
+DW_LNS_const_add_pc            56, 78
+DW_LNS_copy                    55, 78
+DW_LNS_fixed_advance_pc        52, 56, 78, 96
+DW_LNS_negate_stmt             56, 78
+DW_LNS_set_basic_block         56, 78
+DW_LNS_set_column              55, 78
+DW_LNS_set_file                55, 78
+DW_MACINFO_define              57, 58, 59, 78
+DW_MACINFO_end_file            57, 58, 78
+DW_MACINFO_start_file          57, 58, 59, 78
+DW_MACINFO_undef               57, 58, 59, 78
+DW_MACINFO_vendor_ext          57, 58, 78
+DW_OP                          65
+DW_OP_BREG                     74
+DW_OP_LIT                      74
+DW_OP_REG                      74
+DW_OP_abs                      13, 73
+DW_OP_add                      14
+DW_OP_addr                     11, 17, 73
+DW_OP_and                      13, 73
+DW_OP_bra                      15, 74
+DW_OP_breg                     12, 17, 74
+DW_OP_bregx                    12, 17, 74
+DW_OP_const                    11, 73
+DW_OP_consts                   12, 73
+DW_OP_constu                   11, 73
+DW_OP_deref                    12, 13, 17, 73
+DW_OP_deref_size               13, 74
+DW_OP_div                      13, 73
+DW_OP_drop                     12, 16, 73
+DW_OP_dup                      12, 16, 73
+DW_OP_eq                       14, 74
+DW_OP_fbreg                    12, 17, 74
+DW_OP_ge                       14, 74
+DW_OP_gt                       14, 74
+DW_OP_hi_user                  74
+DW_OP_le                       14, 74
+DW_OP_lit                      11, 14, 74
+DW_OP_lo_user                  74
+DW_OP_lt                       14, 74
+DW_OP_minus                    13, 73
+DW_OP_mod                      13, 73
+DW_OP_mul                      14, 73
+DW_OP_ne                       14, 74
+DW_OP_neg                      14, 73
+DW_OP_nop                      15, 74
+DW_OP_not                      14, 73
+DW_OP_or                       14, 73
+DW_OP_over                     12, 16, 73
+DW_OP_pick                     12, 16, 73
+DW_OP_piece                    15, 17, 74
+DW_OP_plus                     14, 73
+DW_OP_plus_uconst              14, 17, 73
+DW_OP_reg                      10, 16, 17, 74
+DW_OP_regx                     10, 16, 17, 74
+DW_OP_rot                      12, 16, 73
+DW_OP_shl                      14, 73
+DW_OP_shr                      14, 73
+DW_OP_shra                     14, 73
+DW_OP_skip                     15, 74
+DW_OP_swap                     12, 16, 73
+DW_OP_xderef                   13, 73
+DW_OP_xderef_size              13, 74
+DW_OP_xor                      14, 74
+DW_ORD_col_major               39, 77
+DW_ORD_row_major               39, 77
+DW_TAG                         65
+DW_TAG_access_declaration      7, 41, 68, 83
+DW_TAG_array_type              7, 39, 68, 83
+DW_TAG_base_type               7, 37, 38, 68, 83, 93
+DW_TAG_catch_block             7, 32, 68, 83
+DW_TAG_class_type              7, 40, 43, 68, 84
+DW_TAG_common_block            7, 35, 68, 84
+DW_TAG_common_inclusion        7, 27, 68, 84
+DW_TAG_compile_unit            7, 23, 66, 68, 84, 93
+DW_TAG_const_type              7, 38, 68, 84
+DW_TAG_constant                7, 33, 68, 85
+DW_TAG_entry_point             7, 25, 68, 85
+DW_TAG_enumeration_type        7, 39, 45, 68, 85
+DW_TAG_enumerator              7, 45, 68, 85
+DW_TAG_file_type               7, 48, 68, 85
+DW_TAG_formal_parameter        7, 32, 33, 45, 68, 86
+DW_TAG_friend                  7, 41, 69, 86
+DW_TAG_hi_user                 65, 69
+DW_TAG_imported_declaration    7, 35, 68, 86
+DW_TAG_inheritance             7, 40, 68, 86
+DW_TAG_inlined_subroutine      7, 25, 29, 30, 31, 68, 86
+DW_TAG_label                   7, 31, 68, 86
+DW_TAG_lexical_block           7, 31, 68, 87
+DW_TAG_lo_user                 65, 69
+DW_TAG_local_variable          30
+DW_TAG_member                  7, 41, 68, 87
+DW_TAG_module                  7, 25, 68, 87
+DW_TAG_namelist                7, 35, 69, 87
+DW_TAG_namelist_item           7, 35, 69, 87
+DW_TAG_packed_type             7, 38, 69, 87
+DW_TAG_pointer_type            7, 38, 68, 88, 93
+DW_TAG_ptr_to_member_type      7, 47, 68, 88
+DW_TAG_reference_type          7, 38, 68, 88
+DW_TAG_set_type                7, 46, 68, 88
+DW_TAG_string_type             7, 46, 68, 88
+DW_TAG_structure_type          7, 40, 68, 89
+DW_TAG_subprogram              7, 25, 28, 30, 43, 69, 89
+DW_TAG_subrange_type           7, 39, 46, 68, 90
+DW_TAG_subroutine_type         7, 45, 68, 90
+DW_TAG_template_type_param     7, 69, 90
+DW_TAG_template_type_parameter 28, 43
+DW_TAG_template_value_param    7, 69, 90
+DW_TAG_template_value_parameter 43
+DW_TAG_thrown_type             7, 28, 69, 90
+DW_TAG_try_block               7, 32, 69, 90
+DW_TAG_typedef                 7, 38, 68, 91, 93
+DW_TAG_union_type              7, 40, 68, 91
+DW_TAG_unspecified_parameters  7, 27, 32, 46, 68, 91
+DW_TAG_variable                7, 33, 69, 91
+DW_TAG_variant                 7, 44, 68, 92
+DW_TAG_variant_part            7, 44, 69, 92
+DW_TAG_volatile_type           7, 38, 69, 92
+DW_TAG_with_statement          92
+DW_TAG_with_stmt               7, 32, 68
+DW_VIRTUALITY_none             19, 75
+DW_VIRTUALITY_pure_virtual     19, 75
+DW_VIRTUALITY_virtual          19, 75
+DW_VIS_exported                19, 75
+DW_VIS_local                   19, 75
+DW_VIS_qualified               19, 75

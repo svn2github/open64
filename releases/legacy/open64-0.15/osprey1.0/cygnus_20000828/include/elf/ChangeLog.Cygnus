@@ -1,0 +1,25 @@
+1999-07-15  Richard Henderson  <rth@cygnus.com>
+
+	* ia64.h: Clarify the status of HP/UX definitions.
+
+1999-07-14  Richard Henderson  <rth@cygnus.com>
+
+	* ia64.h (PF_IA_64_NORECOV): Typo in macro name.
+	(R_IA64_LTOFF22X, R_IA64_LDXMOV): New.
+
+1999-06-21  Richard Henderson  <rth@cygnus.com>
+
+	* ia64.h (PF_IA64_NORECOV, DT_IA_64_PLT_RESERVE): Define.
+	(R_IA64_LTV32*): Fix numbers.
+
+1999-06-15  Richard Henderson  <rth@cygnus.com>
+
+	* ia64.h: Sync with March 1998 SVR4 processor supplement.
+
+1999-06-03  David Mosberger  <davidm@hpl.hp.com>
+
+	* ia64.h: New file.
+
+Mon Dec 15 15:07:49 1997  Nick Clifton  <nickc@cygnus.com>
+
+	* m32r.h (E_M32RX_ARCH): New flag for m32rx architecture.

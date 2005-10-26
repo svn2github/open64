@@ -1,0 +1,108 @@
+#!/bin/bash
+#
+#
+#  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2 of the GNU General Public License as
+#  published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if 
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write the Free Software Foundation, Inc., 59
+#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+if [ "`uname -m`" = "ia64" ] ; then
+    echo "Installation begin ..."
+    ROOT=${TOOLROOT}/usr
+    if [ ! -d ${TOOLROOT}/usr/ ]; then
+      mkdir ${TOOLROOT}
+      mkdir ${TOOLROOT}/usr
+      mkdir ${TOOLROOT}/usr/lib
+      mkdir ${TOOLROOT}/usr/lib/gcc-lib
+      mkdir ${TOOLROOT}/usr/open64bin
+    fi
+    if [ -e ${ROOT}/bin ] ; then
+      echo "You should ensure ${ROOT}/bin is or link to /usr/bin"
+    else
+      ln -sf /usr/bin ${ROOT}/bin
+    fi
+else
+    echo "System type is invalid for this installation."
+    exit 1;
+fi
+
+if [ ! -d ${ROOT}/lib/gcc-lib/ia64-open64-linux/ ]; then
+mkdir ${ROOT}/lib/gcc-lib/ia64-open64-linux/
+mkdir ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15
+fi
+
+install -D osprey1.0/targia64/libfortran/libfortran.a       ${ROOT}/lib/libfortran.a
+install -D osprey1.0/targia64/libu/libffio.a                  ${ROOT}/lib/libffio.a
+install -D osprey1.0/targia64/libmsgi/libmsgi.a               ${ROOT}/lib/libmsgi.a
+install -D osprey1.0/targia64/libmv/libmv.a                   ${ROOT}/lib/libmv.a
+#install -D osprey1.0/targia64/libcginstr/libcginstr.a         ${ROOT}/lib/libcginstr.a
+#install -D osprey1.0/targia64/libinstr/libinstr.a             ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/libinstr.a
+install -D osprey1.0/targia64/libgcc/libgcc.a               ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/libgcc.a
+install -D osprey1.0/targia64/libstdc++/libstdc++.a.2.10.0    ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/libstdc++.a.2.10.0
+ln -sf libstdc++.a.2.10.0 ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/libstdc++.a
+install -D osprey1.0/man/linux/man1/sgicc.1                   ${ROOT}/man/man1/sgicc.1
+install -D osprey1.0/man/linux/man1/sgif90.1                  ${ROOT}/man/man1/sgif90.1
+ln -sf ${ROOT}/man/man1/sgicc.1                          ${ROOT}/man/man1/sgiCC.1
+install -D osprey1.0/targia64_ia64_nodebug/ir_tools/ir_b2a    ${ROOT}/open64bin/ir_b2a
+install -D osprey1.0/targia64_ia64_nodebug/be/be              ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/be
+install -D osprey1.0/targia64_ia64_nodebug/be/be.so           ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/be.so
+#install -D osprey1.0/targia64_ia64_nodebug/crayf90/sgi/cf90.cat ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/cf90.cat
+install -D osprey1.0/targia64_ia64_nodebug/cg/cg.so           ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/cg.so
+install -D osprey1.0/targia64_ia64_nodebug/orc_ict/orc_ict.so  ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/orc_ict.so
+install -D osprey1.0/targia64_ia64_nodebug/orc_intel/orc_intel.so  ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/orc_intel.so
+install -D osprey1.0/targia64_ia64_nodebug/driver.nue/driver  ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/driver
+install -D osprey1.0/targia64_ia64_nodebug/gccfe/gfec         ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/gfec
+install -D osprey1.0/targia64_ia64_nodebug/g++fe/gfecc        ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/gfecc
+install -D osprey1.0/targia64_ia64_nodebug/lw_inline/lw_inline  ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/inline
+install -D osprey1.0/targia64_ia64_nodebug/ipa/ipa.so         ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/ipa.so
+install -D osprey1.0/targia64_ia64_nodebug/ipl/ipl.so         ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/ipl.so
+install -D osprey1.0/targia64_ia64_nodebug/targ_info/itanium.so ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/itanium.so
+install -D osprey1.0/targia64_ia64_nodebug/temp_f90libs/lib.cat ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/lib.cat
+install -D osprey1.0/targia64_ia64_nodebug/temp_f90libs/lib.exp ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/lib.exp
+install -D osprey1.0/targia64_ia64_nodebug/lno/lno.so         ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/lno.so
+#install -D osprey1.0/targia64_ia64_nodebug/crayf90/sgi/mfef90 ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/mfef90
+install -D osprey1.0/targia64_ia64_nodebug/whirl2c/whirl2c    ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/whirl2c
+install -D osprey1.0/targia64_ia64_nodebug/whirl2c/whirl2c.so ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/whirl2c.so
+install -D osprey1.0/targia64_ia64_nodebug/whirl2f/whirl2f    ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/whirl2f
+install -D osprey1.0/targia64_ia64_nodebug/whirl2f/whirl2f.so ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/whirl2f.so
+install -D osprey1.0/targia64_ia64_nodebug/wopt/wopt.so       ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/wopt.so
+install -D osprey1.0/targcygnus_ia64_ia64/ld/ld-new           ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/ipa_link
+
+ln -sf be ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/ipl 
+ln -sf be ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/whirl2c_be 
+ln -sf ../lib/gcc-lib/ia64-open64-linux/open64-0.15/driver ${ROOT}/open64bin/opencc
+ln -sf ../lib/gcc-lib/ia64-open64-linux/open64-0.15/driver ${ROOT}/open64bin/openCC
+ln -sf ../lib/gcc-lib/ia64-open64-linux/open64-0.15/driver ${ROOT}/open64bin/openc++
+ln -sf ../lib/gcc-lib/ia64-open64-linux/open64-0.15/driver ${ROOT}/open64bin/openf90
+
+if [ ! -d ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/include ]; then
+tar zxvf orcc-include.tgz -C ${ROOT}/lib/gcc-lib/ia64-open64-linux/open64-0.15/ &>/dev/null
+fi
+
+echo "Installation end."
