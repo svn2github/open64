@@ -283,7 +283,7 @@ LLDLIBS += -L/usr/ia32-sgi-linux/bin
 endif
 ifeq ($(BUILD_OS), LINUX)
 # ? don't understand why, but -lm doesn't resolve properly?
-LLDLIBS += -lc -lfortran -lffio /usr/lib/libm.a
+LLDLIBS += -L$(TOOLROOT)/usr/lib/gcc-lib/ia64-open64-linux/0.16 -lc -lfortran -lffio /usr/lib/libm.a
 ifeq ($(BUILD_HOST), IA64)
 LDFLAGS += -Wl,-relax
 endif
