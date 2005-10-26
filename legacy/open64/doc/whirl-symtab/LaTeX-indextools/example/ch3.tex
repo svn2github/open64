@@ -1,0 +1,171 @@
+
+{\chapter{Examples}}
+
+
+%%%%%%%%%%
+
+
+{\bf{1.}} Show that
+\[
+T(n) \ = \ 8{\cdot}n^2 - 3{\cdot}n + 5 \ {\mathit{is\ in}} \ \Omega(n^2)
+\]
+\index{Proof}%
+Proof~\cite{book-full}: \\
+We are given $g(n) = n^2$ but we need to find a $c$ and $n_0$. Notice that
+\[
+8{\cdot}n^2 - 3{\cdot}n + 5 \ > \ 7{\cdot}n^2 \ {\mathit{for\ all}} \ n \ge 1.
+\]
+This means that if we let
+\[
+c = 7 \ {\mathit{and}} \ n_0 = 0
+\]
+we have
+\[
+T(n) \ = \ \Omega(n^2)
+\]
+
+
+%%%%%%%%%%
+
+\vspace*{2em}
+
+
+{\bf{2.}} Show that
+\[
+T(n) \ = \ 8{\cdot}n^2 - 3{\cdot}n + 5 \ {\mathit{is\ in}} \ O(n^2)
+\]
+\index{Proof}%
+Proof: \\
+Again we are given $g(n) = n^2$ but we need to find a $c$ and $n_0$.
+Experimenting a little (try plotting) it turns out that
+\[
+8{\cdot}n^2 - 3{\cdot}n + 5 \ < \ 9{\cdot}n^2 \ {\mathit{for\ all}} \ n \ge 1.
+\]
+This means that if we let
+\[
+c = 9 \ {\mathit{and}} \ n_0 = 0
+\]
+we have
+\[
+T(n) \ = \ O(n^2)
+\]
+
+
+%%%%%%%%%%
+
+\vspace*{2em}
+
+
+{\bf{3.}} Show that
+\[
+T(n) \ = \ 8{\cdot}n^2 - 3{\cdot}n + 5 \ {\mathit{is\ in}} \ \Theta(n^2)
+\]
+From our work above: \\
+\[
+T(n) \, = \, O(n^2) \ {\mathit{and}} \ T(n) \, = \, \Omega(n^2)
+\ \Rightarrow \ T(n) \ = \ \Theta(n^2)
+\]
+
+
+%%%%%%%%%%
+
+\vspace*{2em}
+
+
+{\bf{4.}} Show that
+\[
+T(n) \ = \ a{\cdot}3^n + b{\cdot}n^3 + t
+\ {\mathit{with}} \ a > 0 \ {\mathit{is\ in}} \ O(3^n)
+\]
+\index{Proof}%
+Proof: \\
+We are given $g(n) = 3^n$ but as usual we need to find a $c$ and $n_0$.
+We have to worry about whether or not $b$ and $t$ are positive
+or negative. Notice that
+\[
+b{\cdot}n^3 \ \le |b|{\cdot}n^3 \ \le \ |b|{\cdot}3^n
+\]
+and
+\[
+t \ \le |t| \ \le \ |t|{\cdot}3^n
+\]
+so that
+\[
+a{\cdot}3^n + b{\cdot}n^3 + t \ \le
+\ a{\cdot}3^n + |b|{\cdot}3^n + |t|{\cdot}3^n
+\ = \ (a + |b| + |t|){\cdot}3^n \ {\mathit{for\ all}} \ n > 0
+\]
+This means that if we let
+\[
+c \ = \ (a + |b| + |t|) \ {\mathit{and}} \ n_0 = 0
+\]
+we have
+\[
+T(n) \ = \ O(3^n)
+\]
+
+
+%%%%%%%%%%
+
+\vspace*{2em}
+
+
+{\bf{5.}} Show that
+\[
+T(n) \ = \ a{\cdot}3^n + b{\cdot}n^3 + t
+\ {\mathit{with}} \ a > 0 \ {\mathit{is\ in}} \ \Omega(3^n)
+\]
+\index{Proof}%
+Proof: \\
+We are given $g(n) = 3^n$ and we need to find a $c$ and $n_0$ for this case.
+We again have to worry about whether or not $b$ and $t$ are positive
+or negative. Let's try to find $c$. We require:
+\begin{eqnarray*}
+a{\cdot}3^n + b{\cdot}n^3 + t & \ge & c{\cdot}3^n \ > \ 0 \\
+& & \\
+\Rightarrow \ a + b{\cdot}\frac{n^3}{3^n} + \frac{t}{3^n} & \ge & c \ > \ 0 \ {\mathit{for}} \ n > 0 \\
+\end{eqnarray*}
+Consider this last expression in two extreme cases:
+when $b$ and $t$ are both negative and when $b$ and $t$ are both positive.
+For $n=1$ in the first case (both negative) this formula reduces to:
+\[
+a - |b| - |t|
+\]
+This value might be positive or negative. \\
+For $n=1$ in the second case (both positive) this formula will produce:
+\[
+a + |b| + |t|
+\]
+This value is positive.
+
+Since the terms involving $b$ and $t$ will grow very small as $n$ grows
+large, we have:
+\[
+a - |b| - |t| \ \le \ a + b{\cdot}\frac{n^3}{3^n} + \frac{t}{3^n} \ \le \ a + |b| + |t| \ {\mathit{for\ all}} \ n > 0
+\]
+We are looking for a $c > 0$ that is less than or equal to the expression
+(in the middle) for all $n$ above some $n_0$ to be determined.
+Notice that
+\[
+\lim_{n{\rightarrow}\infty}{a + b{\cdot}\frac{n^3}{3^n} + \frac{t}{3^n}} \ = \ a
+\]
+If $b$ and $t$ are both positive, then the expression in the limit is
+greater than $a$ for all finite $n$. If $b$ and $t$ are both negative,
+then the limit approaches $a$ from the left on the number line.
+{\bf{More importantly}}, there must be an $n_0$ such that the expression
+in the limit exceeds any positive fraction of $a$. So let's choose
+$c$ to be some positive fraction of $a$, say $a/2$, and choose our $n_0$ to
+be the first value of $n$ such that the expression is greater or equal to $c$:
+\begin{eqnarray*}
+{a + b{\cdot}\frac{{n_0}^3}{3^{n_0}} + \frac{t}{3^{n_0}}} \ \ge & \frac{a}{2} & = \ c \ > 0 \\
+& & \\
+\Rightarrow {a + b{\cdot}\frac{n^3}{3^n} + \frac{t}{3^n}} \ \ge & \frac{a}{2} & = \ c \ > 0 \ {\mathit{for\ all}} \ n > n_0 \\
+& & \\
+\Rightarrow a{\cdot}3^n + b{\cdot}n^3 + t \ \ge & \frac{a}{2}{\cdot}3^n & = \ c{\cdot}3^n \ > \ 0 \ {\mathit{for\ all}} \ n > n_0 \\
+\end{eqnarray*}
+So finally,
+\[
+T(n) \ = \ \Omega(3^n)
+\]
+
+

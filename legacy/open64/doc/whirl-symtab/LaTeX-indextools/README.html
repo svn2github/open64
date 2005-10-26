@@ -1,0 +1,135 @@
+<HTML>
+
+<HEAD>
+<TITLE>LaTeX index Toolkit</TITLE>
+</HEAD>
+
+<body bgcolor="#FFFFFF" text="#000000">
+
+<CENTER>
+<h2><font color=navy>LaTeX index Toolkit</font></h2>
+<i>Software version 1.1, 1/14/01</i>
+</CENTER>
+
+<pre>
+
+</pre>
+
+<CENTER>
+<p><hr size=2 noshade></p>
+</CENTER>
+
+Download Package: &nbsp; <a href=LaTeX-indextools.tar.gz>LaTeX-indextools.tar.gz</a>
+<p>
+
+Example Usage: &nbsp; see the directory <code>example/</code>.
+<p>
+
+<p>
+Purpose:  &nbsp; 
+Provide simple tools to select, insert, and remove index entries
+from/to LaTeX source files.
+</p>
+
+<p>
+Limitations:  &nbsp; 
+Any existing index entries must reside at the beginning of a line
+and terminate with a percent character:
+<pre>
+     \index{...}%
+</pre>
+No other LaTeX source should appear on the line.  The index entry
+must be followed by either (a) another index entry or (b) the word
+being indexed.  The indexed word should be at the beggining of
+the line the follows the last index entry for that word.
+The text of the index entry can be as complicated
+as you wish -- within the limitations of LaTeX.
+<p>
+
+See Lamport's LaTeX User Guide, Appendix A.
+<p>
+
+RECOMMENDED USAGE:
+<p>
+
+Back up your source files before running any of the following programs.
+<p>
+
+The program
+<pre>
+     indexselect.pl
+</pre>
+will examine the files listed in indexfiles.txt and create a verbose
+list of possible words to index.  The output is sent to indexcandidates.txt.
+The user can manually trim this list to file indexwords.txt for the
+next processing step.  The program will not generate output for occurrences
+of words in \index{...} directives that begin a line.
+<p>
+
+The program
+<pre>
+     indexinsert.pl
+</pre>
+will use the file indexwords.txt to "markup" the text in each of the
+files listed in indexfiles.txt.  The entries are created in the
+simple form
+<pre>
+     \index{something}%
+</pre>
+as the only entry on a line which comes directly before either
+(a) another index entry or (b) the word being indexed. The indexed word
+will be at the beggining of the line the follows the last index entry
+for that word.  The index entries can then be hand-edited for
+index formatting, etc. (See Lamport's LaTeX User Guide, Appendix A).
+The indexinsert algorithm will not alter a line of your source code
+unless an "indexed" word appears in the line.  In this latter case,
+the line will probably be split and any contiguous sequences of white
+space will be reduced to 1 space character.  This might affect verbatim
+environments which contain indexed words.
+<p>
+
+The program
+<pre>
+     indexremove.pl
+</pre>
+will remove all single-line index entries from the files in indexfiles.txt
+and place them in indexstripped.txt.  The indexstripped.txt file is
+formatted as follows:
+<pre>
+     filename indexedword \index{...}
+</pre>
+where the "indexedword" is the first white-space delimited word that
+begins the line following a sequence of one or more \index{...} directives.
+<p>
+
+
+
+<CENTER>
+<p><hr color=navy size=2 noshade></p>
+</CENTER>
+
+<pre>
+#     Copyright (c) 2001
+#
+#          San Diego State University (SDSU)
+#          San Diego, California, USA
+#
+#     Users and possessors of this source code are hereby granted a
+#     nonexclusive, royalty-free copyright and design patent license to
+#     use this code in individual software.  License is not granted for
+#     commercial resale, in whole or in part, without prior written
+#     permission from SDSU.  This source is provided "AS IS" without express
+#     or implied warranty of any kind.
+#
+#     Richard Frost
+#     Computational Sciences
+#     College of Science
+#     San Diego State University
+#     San Diego, CA 92182
+#     http://www.rohan.sdsu.edu/~frostr/
+#     frostr@sdsu.edu
+</pre>
+
+</BODY>
+</HTML>
+

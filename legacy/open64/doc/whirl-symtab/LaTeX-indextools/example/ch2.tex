@@ -1,0 +1,28 @@
+
+{\chapter{Using the Definitions in the Left Direction}}
+
+{\bf{1.}} Suppose you have some $T(n)$, for example $T(n) = 3n^2 - n$
+which you know is less than or equal to $3n^2$ for all
+$n \ge 0$~\cite{whole-journal}.
+Using the definition of $O()$ in the $\Leftarrow$ direction,
+we have $g(n) = n^2$, $c = 3$, and $n_0 = 0$ so that $T(n) = O(n^2)$.
+
+\vspace*{2em}
+
+{\bf{2.}} Suppose you have another $T(n)$,
+for example $T(n) = 5n{\cdot}\log{n} + 42$
+which you know is less than or equal to
+$5n{\cdot}\log{n}$
+for all $n \ge 0$.
+Using the definition of $\Omega()$ in the $\Leftarrow$ direction,
+we have $g(n) = n{\cdot}\log{n}$,
+$c = 5$, and $n_0 = 0$ so that $T(n) = \Omega(n{\cdot}\log{n})$.
+
+\vspace*{2em}
+
+{\bf{3.}} Suppose you have a third $T(n)$
+which you know is in {\bf{both}} $O(n)$ and $\Omega(n)$.
+Using the definition of $\Theta()$ in the $\Leftarrow$ direction,
+we have $T(n) = \Theta(n)$.
+
+
