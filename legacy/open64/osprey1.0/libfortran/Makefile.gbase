@@ -147,6 +147,9 @@ ifeq ($(BUILD_OS), IRIX)
 FC = TOOLROOT=$(TOOLROOT_F90) LD_LIBRARYN32_PATH=$(TOOLROOT_F90)/usr/lib32/mips3:$(TOOLROOT_F90)/usr/lib32 $(TOOLROOT_F90)/usr/bin/f90 -Wf,-eQU
 else
 
+# turn off DWARF to avoid assembler file number error message
+LCDEFS += -CG:emit_asm_dwarf=off
+
 ## check F90 boostrap compiler, use -O3 etc etc.. later for linux
 
 FC = $(F90) -Wf,-eQU -c 
