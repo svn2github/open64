@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -108,6 +108,7 @@ extern BOOL OP_baneful(OP* op);
 extern OP *Change_ld_Form(OP *load_op, ISA_ENUM_CLASS_VALUE target_form);
 extern BOOL Is_Control_Speculation_Gratuitous(OP*, BB*, OP*);
 extern BOOL Delete_Recovery_Info_For_BB(BB *bb);
+extern void Set_Speculative_Chain_Begin_Point(OP*, OP*);
 
 //  ===== (<%pr%p6>) <r7>=<ldtype>,<ldhint>,[<%bs%r7>] ===== 
 //  Instruction_Group("O_108", TOP_ld1, TOP_ld2, TOP_ld4, TOP_ld8, TOP_UNDEFINED);

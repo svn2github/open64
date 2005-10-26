@@ -98,6 +98,9 @@
 
 #define TN_is_local_reg(r)   (!(TN_is_dedicated(r) | TN_is_global_reg(r)))
 
+#define FIRST_INPUT_REG (32+REGISTER_MIN)
+#define LAST_STACKED_REG (127+REGISTER_MIN)
+
 /* regs that need to be saved at prolog and restored at epilog: */
 static REGISTER_SET Callee_Saved_Regs_Used[ISA_REGISTER_CLASS_MAX+1];
 
@@ -113,6 +116,11 @@ static AVAIL_REGS avail_regs[ISA_REGISTER_CLASS_MAX+1];
 
 /* Give register has nat bit or not for integer class? */
 static AVAIL_REGS has_nat_reg;
+
+/* Give the number of spill register with nat bit and
+   all the global register spilled */
+INT spill_nat_num;
+INT spill_global_num;
 
 /* Set of available registers in each register class. */
 static REGISTER_SET avail_set[ISA_REGISTER_CLASS_MAX+1];
@@ -1018,12 +1026,15 @@ Delete_Avail_Reg (ISA_REGISTER_CLASS regclass, REGISTER reg, INT cur_op)
  * Init_Nat_Regs
  *  Set array if <regclass,reg> is possible to carry nat bit for each bb.
  * ======================================================================*/
-static BOOL
+static void 
 Init_Nat_Regs(BB *bb)
 {
     TN *tn;
     REGISTER reg;
     ISA_REGISTER_CLASS cl;
+ 
+    spill_nat_num = 0;
+    spill_global_num = 0;
 
     FOR_ALL_REGISTER_SET_members (avail_set[ISA_REGISTER_CLASS_integer], reg) {
             has_nat_reg.reg[reg] = FALSE;
@@ -1921,6 +1932,16 @@ Compute_Livethrough_Set (BB *bb)
     livethrough[cl] = REGISTER_SET_Difference (
                                     REGISTER_CLASS_allocatable(cl),
                                     avail_set[cl]);
+    /* Force LRA not to use any registers neither granted by GRA nor used
+     * by GRA (LRA may spill a GRA used register and reuse it sometimes).
+     */
+    if (REGISTER_Has_Stacked_Registers(cl)) {
+      for (REGISTER reg = FIRST_INPUT_REG; reg <= LAST_STACKED_REG; reg++) {
+        if (reg > Get_Stacked_Callee_Next() && reg <= Get_Stacked_Caller_Next()) {
+          livethrough[cl] = REGISTER_SET_Difference1 (livethrough[cl], reg);
+        }
+      }
+    }
   }
   FOR_ALL_BB_OPs_FWD (bb, op) {
     INT opndnum;
@@ -1980,6 +2001,29 @@ Analyze_Spilling_Global_Register (
   }
 }
 
+/* ==================================================================
+ * Insert_UNAT_Code
+ *
+ * Insert unat code to top and bottom of BB
+ *===================================================================*/
+static void
+Insert_UNAT_Code(BB *bb)
+{
+  extern void UNAT_Spill_OPS(TN *lrange_tn, ST *lrange_st, OPS *ops, CGSPILL_CLIENT client, BB *bb);
+  extern void UNAT_Restore_OPS(TN *lrange_tn, ST *lrange_st, OPS *ops, CGSPILL_CLIENT client, BB *bb);
+
+  // insert spill code for nat bit
+  OPS spill_nat_ops=OPS_EMPTY;
+  TN *unat_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_application,(REGISTER)(REGISTER_MIN + 36),0);
+  UNAT_Spill_OPS(unat_tn, NULL, &spill_nat_ops, CGSPILL_LRA, bb);
+  CGSPILL_Prepend_Ops (bb, &spill_nat_ops);
+  
+  // insert restore code for nat bit
+  OPS_Remove_All(&spill_nat_ops);
+  UNAT_Restore_OPS(unat_tn, NULL, &spill_nat_ops, CGSPILL_LRA, bb);
+  CGSPILL_Append_Ops(bb, &spill_nat_ops);
+}
+
 /* ======================================================================
  * Spill_Global_Register
  *
@@ -1989,8 +2033,12 @@ Analyze_Spilling_Global_Register (
 static void
 Spill_Global_Register (BB *bb, SPILL_CANDIDATE *best)
 {
+  extern void UNAT_Spill_OPS(TN *lrange_tn, ST *lrange_st, OPS *ops, CGSPILL_CLIENT client, BB *bb);
+  extern void UNAT_Restore_OPS(TN *lrange_tn, ST *lrange_st, OPS *ops, CGSPILL_CLIENT client, BB *bb);
+ 
   OPS spill_ops;
   TN *new_tn;
+  
   REGISTER reg = best->u1.s1.global_spill_reg;
   ISA_REGISTER_CLASS cl = (ISA_REGISTER_CLASS)best->u1.s1.spill_cl;
   BOOL nat_bit_tn = Is_Reg_Has_nat(cl,reg);
@@ -1998,7 +2046,21 @@ Spill_Global_Register (BB *bb, SPILL_CANDIDATE *best)
     DevWarn ("Register %s has nat bit,change format in BB %d!",
               REGISTER_name(cl,reg),
               BB_id(bb));
+    spill_nat_num++;
+
+    /* Spill more than 1 register with nat bit , and the
+       number of spill is over 64, which can destroy nat
+       register, and caused unknown failure. In order to
+       solve this problem, you should spill and restore 
+       Nat register at suitable place.*/ 
+    if (spill_nat_num > 1 && spill_global_num > 64) {
+        DevWarn("Spill too many register with nat bit!"); 
+        Insert_UNAT_Code(bb);
+	spill_nat_num = 0;
+	spill_global_num = 0;
+    }
   }
+  spill_global_num++;
   if (Do_LRA_Trace(Trace_LRA_Spill)) {
     fprintf (TFile, "LRA_SPILL>> Spilled Global Register : %s\n", 
                     REGISTER_name (cl, reg));

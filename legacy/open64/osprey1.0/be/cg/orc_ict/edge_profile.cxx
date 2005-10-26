@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -127,7 +127,8 @@ void CG_Edge_Profile_Annotation( CGRIN* cgrin,PROFILE_PHASE phase )
 	strcpy( srcfile_pu_name,Src_File_Name );
   strcat( srcfile_pu_name,"/" );
   strcat( srcfile_pu_name,Cur_PU_Name);
-  
+
+  FREQ_Compute_BB_Frequencies( );
   PU_PROFILE_HANDLES fb_handles
       = Get_CG_PU_Profile( srcfile_pu_name, Feedback_File_Info[phase] );
   if( fb_handles.empty( ) )
@@ -142,9 +143,14 @@ void CG_Edge_Profile_Annotation( CGRIN* cgrin,PROFILE_PHASE phase )
 
   FREQ_freqs_computed = TRUE;
   CG_PU_Has_Feedback = TRUE;
+
+  edge_done= TRUE;
   
   if( Get_Trace( TP_A_PROF,TT_PROF_FEEDBACK_DUMP ) )
+  {
     Dump_Fb_Data( fb_handles );
+    DevWarn( "find expected feedback data!" );
+  }
   Init_CFG( );			 	
   EDGE_PROFILE edge_prof( cgrin,FALSE, phase, fb_handles );
   edge_prof.CG_Annotate( );
@@ -166,7 +172,7 @@ void EDGE_PROFILE::CG_Instrument( )
  
   // this is the main function for doing instrumentation.
   // It instruments in a PU.
-   _instrument_count = 0;
+  _instrument_count = 0;
   // instrument at each bb branch 
   for( BB* bb =_pu_last_bb; bb != NULL; 
         bb = BB_prev( bb ) )
@@ -331,7 +337,8 @@ void EDGE_PROFILE::Instrument_Entry( )
            }
           // TODO:check and use BB_branch_op or BB_xfer_op
           Change_Tgt_Label( op,tgt_label,instru_bb_label );
-        }
+         }
+        Prepare_Call_Init_Return_BB(BB_next(instru_pu_init_call_bb));
        }
       }else
       {
@@ -382,6 +389,7 @@ void EDGE_PROFILE::Instrument_Entry( )
           Set_Prob( instru_init_call_bb,instru_pu_init_call_bb, 1.0);
           Set_Prob( instru_pu_init_call_bb,target_bb,1.0 );                     
         }  
+       Prepare_Call_Init_Return_BB(BB_next(instru_pu_init_call_bb));
       }
     }else if ( bb != NULL && BB_call( bb ) )
     {
@@ -496,6 +504,7 @@ void EDGE_PROFILE::Instrument_Entry( )
           Set_Prob( instru_pu_init_call_bb,target_bb ,1.0);
         }
       }
+      Prepare_Call_Init_Return_BB(BB_next(instru_pu_init_call_bb));
     }
   }
 }
@@ -623,10 +632,12 @@ void EDGE_PROFILE::Instrument_Indirect_Cond_Branch( BB* bb )
     BBLIST* nedge = edge;
     edge = BBLIST_next( edge );
 
+    BB* target_bb = BBLIST_item( nedge );
+    if ( BB_profile_added(target_bb) )
+    	continue;
+
     INT32 id = _instrument_count++;
     ++_count_indirect_cond_branch;
-
-    BB* target_bb = BBLIST_item( nedge );
     
     BB* instru_bb = Gen_Instru_Call_BB( EDGE_INST_NAME,_srcfile_pu_name,id );
     Set_BB_profile_added(instru_bb);
@@ -735,6 +746,8 @@ void EDGE_PROFILE::Instrument_Ip_Rel_Branch( BB *bb )
     BBLIST* nedge = edge;
     edge = BBLIST_next( edge );
     BB* target_bb = BBLIST_item( nedge );
+    if ( BB_profile_added(target_bb) )
+    	continue;
     LABEL_IDX tgt_label;
     if ( Get_Label_BB( Get_Br_Op_Tgt_Label( op ) ) == target_bb )
         tgt_label = Get_Br_Op_Tgt_Label( op );
@@ -849,10 +862,13 @@ void EDGE_PROFILE::Instrument_Cloop_Branch( BB *bb )
     BBLIST* nedge = edge;
     edge = BBLIST_next( edge );
 
+    BB* target_bb = BBLIST_item( nedge );
+
+     if ( BB_profile_added(target_bb) )
+    	continue;
+
     INT32 id = _instrument_count++;
     ++_count_cloop;
-
-    BB* target_bb = BBLIST_item( nedge );
 
     BB* instru_bb = Gen_Instru_Call_BB( EDGE_INST_NAME,_srcfile_pu_name,id );
     Set_BB_profile_added(instru_bb);
@@ -956,11 +972,16 @@ void EDGE_PROFILE::Instrument_Top_Branch( BB *bb )
   {
     BBLIST* nedge = edge;
     edge = BBLIST_next( edge );
+
+    
+    BB* target_bb = BBLIST_item( nedge );
+
+    if ( BB_profile_added(target_bb) )
+    	continue;
   
     INT32 id = _instrument_count++;
     ++_count_top;
 
-    BB* target_bb = BBLIST_item( nedge );
     BB* instru_bb = Gen_Instru_Call_BB( EDGE_INST_NAME,_srcfile_pu_name,id );
     Set_BB_profile_added(instru_bb); 
     // Generate a label for new BB
@@ -1068,6 +1089,9 @@ void EDGE_PROFILE::Instrument_None_and_Other_Xfer( BB *bb )
     DevWarn( "the next BB of BB %d is not succeed BB!",BB_id( bb ) );
     return;
   }
+
+ if ( BB_profile_added(BB_next( bb )) )
+	return;
   OP* branch_op = BB_xfer_op( bb );
   INT32 id = _instrument_count++;
 
@@ -1078,7 +1102,6 @@ void EDGE_PROFILE::Instrument_None_and_Other_Xfer( BB *bb )
     // Check whether the call function has return value. if has, save 
     // and restore it
     BB* restore_bb = NULL;
-    
     int ret_reg_num = Get_Return_Reg_Sum( target_bb );
     int f_ret_reg_num = Get_Float_Return_Reg_Sum( target_bb );
     Is_True( ret_reg_num <= 0 || f_ret_reg_num <= 0 , 
@@ -1088,7 +1111,7 @@ void EDGE_PROFILE::Instrument_None_and_Other_Xfer( BB *bb )
     {
       restore_bb = Gen_BB( );
       Set_BB_profile_added(restore_bb);
-      bp = Gen_Call_BB( EDGE_INST_NAME,_srcfile_pu_name, id, 1, ret_reg_num );
+      bp = Gen_Call_BB( EDGE_INST_NAME,_pu_hdr_return_tn, id, 1, ret_reg_num );
       Set_BB_profile_added(bp);                          
       for ( int i = 0; i < ret_reg_num; i++ )
       {
@@ -1099,7 +1122,7 @@ void EDGE_PROFILE::Instrument_None_and_Other_Xfer( BB *bb )
     {
       restore_bb = Gen_BB( );
       Set_BB_profile_added(restore_bb);
-      bp = Gen_Call_BB( EDGE_INST_NAME,_srcfile_pu_name, 
+      bp = Gen_Call_BB( EDGE_INST_NAME,_pu_hdr_return_tn, 
                                         id, 2, f_ret_reg_num );
       Set_BB_profile_added(bp);
       for ( int i = 0; i < f_ret_reg_num; i++ )
@@ -1109,7 +1132,7 @@ void EDGE_PROFILE::Instrument_None_and_Other_Xfer( BB *bb )
       }                                  
     }else
     {
-      bp = Gen_Call_BB( EDGE_INST_NAME,_srcfile_pu_name, id, 0);
+      bp = Gen_Call_BB( EDGE_INST_NAME,_pu_hdr_return_tn, id, 0);
       Set_BB_profile_added(bp);
     }
 
@@ -1164,8 +1187,7 @@ void EDGE_PROFILE::Instrument_None_and_Other_Xfer( BB *bb )
     } 
   }else
   {
-    
-    BB* bp = Gen_Call_BB( EDGE_INST_NAME,_srcfile_pu_name, id,0 );
+    BB* bp = Gen_Call_BB( EDGE_INST_NAME,_pu_hdr_return_tn, id,0 );
     Set_BB_profile_added(bp);
     Insert_BB( bp,bb );
     BB* succ = BBLIST_item( BB_succs( bb ) );
@@ -1374,7 +1396,17 @@ void EDGE_PROFILE::Annotate_None_and_Other_Xfer( BB *bb )
     Dump_Edge_Info(bb,edge);
 
 }
-                          
+void EDGE_PROFILE::Prepare_Call_Init_Return_BB(BB * bb)
+{
+    TN * return_reg_tn;
+    OP * save_op;
+    return_reg_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, RETURN_REG, 8);
+    save_op = Mk_OP(TOP_mov, _pu_hdr_return_tn, True_TN, return_reg_tn);
+	if ( TN_is_register(_pu_hdr_return_tn) && TN_is_register(return_reg_tn) )
+		Set_OP_copy(save_op);
+    BB_Prepend_Op(bb, save_op);
+}
+
 BB* EDGE_PROFILE::Gen_Call_BB( char* function_name, char* str_arg, 
                     INT64 int_arg,int restore_type,int restore_sum = 0 )
 {
@@ -1509,11 +1541,129 @@ BB* EDGE_PROFILE::Gen_Call_BB( char* function_name, char* str_arg,
   BB_Add_Annotation ( bb, ANNOT_CALLINFO, call_info );
   return bb;
 }
-                         
+
+BB* EDGE_PROFILE::Gen_Call_BB( char* function_name, TN * PU_Handle, 
+                    INT64 int_arg,int restore_type,int restore_sum = 0 )
+{
+  BB *bb=Gen_BB( );
+  SRCPOS srcpos = REGION_First_BB->ops.last->srcpos;
+  
+  OP* restore_f_reg;
+  OP* restore_reg;
+  OPS* restore_reg_ops = OPS_Create( );
+  OPS* restore_f_reg_ops = OPS_Create( );
+  
+  if ( restore_type == 1 )
+  {
+    for ( int i = 0; i < restore_sum; i++ )  
+    {
+      TN* save_reg_tn1 = Gen_Register_TN( ISA_REGISTER_CLASS_integer,8 );
+      TN* return_result_reg = 
+         Build_Dedicated_TN( ISA_REGISTER_CLASS_integer,RETURN_REG + i ,8 );
+      Set_TN_is_global_reg( save_reg_tn1 );
+      restore_reg = Mk_OP( TOP_mov,return_result_reg,True_TN,save_reg_tn1 );
+      OPS_Insert_Op(restore_reg_ops,NULL,restore_reg,FALSE);
+      OP* mov_op = Mk_OP( TOP_mov,save_reg_tn1,True_TN,return_result_reg );
+      BB_Append_Op( bb,mov_op );
+    }  
+  }
+  
+  if ( restore_type == 2 )
+  { 
+    for ( int i = 0 ; i < restore_sum ; i++)
+    {
+      TN* save_reg_tn2 = Gen_Register_TN( ISA_REGISTER_CLASS_float,8 );
+      TN* f_return_result_reg = Build_Dedicated_TN( 
+                    ISA_REGISTER_CLASS_float,FLOAT_RETURN_REG + i, 0 );
+
+      Set_TN_is_global_reg( save_reg_tn2 );
+      restore_f_reg = Mk_OP( TOP_mov_f,f_return_result_reg,
+                                                True_TN,save_reg_tn2 );
+      OPS_Insert_Op( restore_f_reg_ops,NULL,restore_f_reg,FALSE );
+      OP* mov_f_op = Mk_OP( TOP_mov_f,save_reg_tn2,
+                                         True_TN,f_return_result_reg );
+      BB_Append_Op( bb,mov_f_op );
+    }  
+  }
+
+  // Step I: get gp value
+  // The Generated opcode is like:
+  //    GTN585( gp ) :- mov TN257( p0 ) GTN715 ; copy
+  TN* save_gp_TN = NULL;
+  save_gp_TN = Find_TN( TOP_mov,1,1,GP_TN,2 );
+  if ( save_gp_TN != NULL )
+  {
+    OP* mov_op = Mk_OP( TOP_mov,GP_TN,True_TN,save_gp_TN );
+    BB_Append_Op( bb,mov_op );
+  }  
+  
+  // Step II:genereate arg 1 TN
+  // The Generate opcode is like:
+  //    TN727 :- addl TN257( p0 ) ( sym#ltoff22:.rodata+0 ) GTN585( gp ) ;		
+  //    TN_FIRST_OUTPUT_REG( r127 ) :- ld8 TN257( p0 ) ( enum: ) ( enum: ) TN727 ;
+  TN* TN_FIRST_OUTPUT_REG = Build_Dedicated_TN( ISA_REGISTER_CLASS_integer,
+                        FIRST_OUTPUT_REG, 8 );
+  OP* mov_op = Mk_OP( TOP_mov,TN_FIRST_OUTPUT_REG,True_TN,_pu_hdr_return_tn);
+  BB_Append_Op( bb,mov_op );
+  
+  // Step III:generate arg3
+  // The Generate opcode is like:
+  //    TN126( r125 ) :- mov_i TN257( p0 ) ( 0xj )
+  TN* TN_second_output_reg = Build_Dedicated_TN( ISA_REGISTER_CLASS_integer,
+                        FIRST_OUTPUT_REG - 1, 8 );
+  TN* literal_TN = Gen_Literal_TN( int_arg,8 );
+  OP* mov_i_op = Mk_OP( TOP_mov_i,TN_second_output_reg,True_TN,literal_TN );
+  BB_Append_Op( bb,mov_i_op );
+   
+  // Step IV: Generate call
+  // The Generated opcode is like:
+  //  GTN321(b0) :- br.call TN257(p0)(enum:.sptk) (enum:.many) (enum:)
+  //        (sym:__profile_call_exit+0) GTN395(ar.ec) ; WN=0x809cf60
+  TN* enum_sptk = Gen_Enum_TN( ECV_bwh_sptk );
+  TN* enum_many = Gen_Enum_TN( ECV_ph_many );
+  TN* enum_dh = Gen_Enum_TN( ECV_dh );
+  
+  TN *ar_ec = Build_Dedicated_TN ( ISA_REGISTER_CLASS_application,
+				   ( REGISTER )( REGISTER_MIN + 66 ), 
+				   8 );
+  TY_IDX ty = MTYPE_To_TY( MTYPE_STRING );
+  ty = Make_Function_Type( MTYPE_To_TY( MTYPE_V ) );
+  ST *call_st = Gen_Intrinsic_Function( ty, function_name );
+  Clear_PU_no_side_effects( Pu_Table[ST_pu( call_st )] );
+  Clear_PU_is_pure( Pu_Table[ST_pu( call_st )] );
+  Set_PU_no_delete( Pu_Table[ST_pu( call_st )] );
+  TN *function_name_tn = Gen_Symbol_TN( call_st,0,0 );
+  OP* call_op =Mk_OP( TOP_br_call,RA_TN,True_TN,enum_sptk,enum_many,enum_dh,
+                      function_name_tn,ar_ec );
+                      
+  BB_Append_Op( bb,call_op );
+  if ( restore_type == 1 )
+  {
+    BB_Append_Ops( bb,restore_reg_ops );
+  }else if ( restore_type == 2 )  
+  {
+     BB_Append_Ops( bb,restore_f_reg_ops );  
+  }
+  
+  Set_BB_call( bb );
+  
+  // add annotations about callinfo 
+  WN * arg1 = WN_Intconst( MTYPE_I8, 0 );
+  WN * arg2 = WN_Intconst( MTYPE_I8, int_arg);
+  WN* call = Gen_Call( function_name, arg1 ,arg2 );
+  call_st = WN_st( call );
+  CALLINFO* call_info = TYPE_PU_ALLOC ( CALLINFO );
+  CALLINFO_call_st( call_info ) = call_st;
+  CALLINFO_call_wn( call_info ) = call;
+  BB_Add_Annotation ( bb, ANNOT_CALLINFO, call_info );
+  return bb;
+}
+   
+
 BB* EDGE_PROFILE::Gen_Instru_Call_BB( char* function_name,
                 char* file_pu_name,INT64 id ) 
 {
-  return Gen_Call_BB( function_name,file_pu_name,id,0 );
+  return Gen_Call_BB( function_name,_pu_hdr_return_tn,id,0 );
 }
 
 BB* EDGE_PROFILE::Gen_PU_Init_Call_BB( char* function_name,char* file_pu_name,

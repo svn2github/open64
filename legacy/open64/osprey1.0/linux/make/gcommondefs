@@ -100,7 +100,7 @@ ASNAME = gcc
 CCNAME = gcc
 C++NAME = g++
 F77 = g77
-F90 = /usr/ia32-sgi-linux/bin/sgif90
+F90 = orf90
 endif
 ifeq ($(BUILD_COMPILER), SGI)
 # sgi compiler should be in path in order to be found

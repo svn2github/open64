@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -153,22 +153,19 @@ Find_Reaching_Def_Use_Set(OP_CONTAINER* result_set,
     }
 
     while (op) {
-        if ( reaching_def ) 
+        if ( reaching_def )
         {
-            for(INT16 i = 0; i<OP_results(op); i++){
-                if(tn == OP_result(op, i)){
-                    result_set->push_back(op);
-                    if (!Is_OP_Cond(op) || (home_op && Is_OP_Cond(home_op) &&
-                        OP_bb(op) == home_bb && OP_opnd(op, OP_PREDICATE_OPND)
-                        ==  OP_opnd(home_op, OP_PREDICATE_OPND))) return;
-                }
+            if( OP_Defs_TN(op, tn) ) {
+                result_set->push_back(op);
+                if (!Is_OP_Cond(op) || (home_op && Is_OP_Cond(home_op) &&
+                    OP_bb(op) == home_bb && OP_opnd(op, OP_PREDICATE_OPND)
+                    ==  OP_opnd(home_op, OP_PREDICATE_OPND))) 
+                    return;
             }
         } else {
-            for(INT16 i = 0; i<OP_opnds(op); i++){
-                if(tn == OP_opnd(op, i)){
-                    result_set->push_back(op);
-                    return;
-                }
+            if(OP_Refs_TN(op, tn)){
+                result_set->push_back(op);
+                return;
             }
         }
         op = OP_prev(op);
@@ -1152,10 +1149,11 @@ void PARTITION_GRAPH::Look_For_Partition(REGION *region)
         fprintf(TFile, "\n\nLook for partitions of CFG nodes of region.\n");
     for(top_rg_iter; top_rg_iter != 0; ++top_rg_iter)
     {
-        if ((*top_rg_iter) -> Is_Region() && !(*top_rg_iter) -> Is_Entry())
+        if ((*top_rg_iter) -> Is_Region() && (*top_rg_iter) -> Pred_Num() <= 1
+          && (*top_rg_iter)->Succ_Num() <= 1)
             continue;
 
-        if ((*top_rg_iter) -> Is_Entry())
+        if ((*top_rg_iter) -> Is_Region())
             bb = Find_Region_Entry_BB(region);
         else
             bb=(*top_rg_iter) -> BB_Node();
@@ -1199,9 +1197,9 @@ void PARTITION_GRAPH::Look_For_Partition(REGION *region)
             }
             if(children->size()<=1) {
                 CXX_DELETE(children, PRDB_pool);
-                continue;
+            } else {
+                Add_Partition(cur_node, children);
             }
-            Add_Partition(cur_node, children);
         }//end if of pred iter loop
 
 
@@ -1237,9 +1235,9 @@ void PARTITION_GRAPH::Look_For_Partition(REGION *region)
             }
             if(children->size()<=1) {
                 CXX_DELETE(children, PRDB_pool);
-                continue;
+            } else {
+                Add_Partition(cur_node, children);
             }
-            Add_Partition(cur_node, children);
         }//end if of succ iter
     }//end for topological iter loop
 
@@ -1571,6 +1569,11 @@ PARTITION_GRAPH::Find_Reachable_Descendant(PG_CONTAINER* result,
             }
             if( child ->Is_Reachable())
             {
+                if(child->Child_Partitions().size() <= 1)
+                {
+                    success = FALSE;
+                    break;
+                }
                 tmp_res.push_back(child);
             }else {
                 success &= Find_Reachable_Descendant(&tmp_res,child);
@@ -1963,7 +1966,11 @@ PARTITION_GRAPH::Subtract(PG_CONTAINER* result, PG_CONTAINER* set)
         if(!Subtract(result, *iter))
         {
             result->clear();
-            return FALSE;
+            if(iter == set->begin()) return FALSE;
+            else {
+                result->push_back(_dummy_node);
+                return TRUE;
+            }
         }
     }
     return TRUE;
@@ -2037,6 +2044,8 @@ PARTITION_GRAPH::Is_Disjoint(TN_OP_PAIR tp1, TN_OP_PAIR tp2)
     Is_True(tp1.first&&tp2.first&&tp1.second&&tp2.second,
         ("Illegal input with NULL TN or OP for disjoint!"));
     if(tp1.first == True_TN || tp2.first == True_TN) return FALSE;//Rule out p0 op
+    if(Compare_Type(OP_code(tp1.second)) == COMPARE_TYPE_unc ||
+       Compare_Type(OP_code(tp2.second)) == COMPARE_TYPE_unc) return FALSE;
     INT index1,index2;
     PARTITION_GRAPH_NODE* node = NULL;
     node = Find_Node_In_OP(&tp1);
@@ -2460,6 +2469,7 @@ PARTITION_GRAPH::Update(OP* op, BB* tgt_BB,CODE_MOTION_TYPE type)
 void 
 PARTITION_GRAPH::Copy_To(OP* op, BB* tgt_BB) 
 {
+    Is_True(tgt_BB, ("move op to NULL BB!"));
     TOP opcode = OP_code(op);
     PARTITION_GRAPH_NODE* qp_parent = NULL;
     PARTITION_GRAPH_NODE* tgt_node = 
@@ -2474,10 +2484,7 @@ PARTITION_GRAPH::Copy_To(OP* op, BB* tgt_BB)
         TN* qp = OP_opnd(op,OP_PREDICATE_OPND);
         OP* def_op = TN_Reaching_Value_At_Op(qp, op, &kind, TRUE);
         BB* bb = def_op ? OP_bb(def_op) : NULL;
-        if(bb == tgt_BB || (bb && ((BB_SET_MemberP(BB_dom_set(bb), tgt_BB)
-            &&BB_SET_MemberP(BB_pdom_set(tgt_BB), bb))
-            ||(BB_SET_MemberP(BB_dom_set(tgt_BB), bb)
-            &&BB_SET_MemberP(BB_pdom_set(bb), tgt_BB)))))
+        if(bb == tgt_BB || (bb && BB_MAP_Get(_bb_node_map, bb) == BB_MAP_Get(_bb_node_map, tgt_BB)))
         {
             TN_OP_PAIR* tn_op = CXX_NEW(TN_OP_PAIR, PRDB_pool);
             tn_op->first = qp;

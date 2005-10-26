@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -48,6 +48,13 @@
 #include "region.h"
 #include "recovery.h"
 #include "prdb.h"
+#include "bitset.h"
+
+
+/* Bitset switch used in DAG construction
+ */
+#define    DAG_BITSET_SWITCH_ON
+
 
 /* Functions defined in cg_dep_graph.cxx.
  */
@@ -93,11 +100,17 @@ inline BOOL ARC_is_postchk(ARC *arc)
     return ARC_kind(arc) == CG_DEP_POSTCHK;
 }
 
+inline BOOL ARC_is_ctlspec(ARC *arc)
+{
+    return ARC_kind(arc) == CG_DEP_CTLSPEC;
+}
+
 inline BOOL
 ARC_is_control_spec(ARC* arc) {
     if ( ARC_is_dotted(arc) &&
          ( ARC_is_postbr(arc) && OP_br(ARC_pred(arc)) ||
-           ARC_is_postchk(arc) && OP_chk(ARC_pred(arc)) ) ) {
+           ARC_is_postchk(arc) && OP_chk(ARC_pred(arc)) ||
+           ARC_is_ctlspec(arc)) ) {
         return TRUE;
     }
 
@@ -181,6 +194,59 @@ private:
                    BB_DEF_USE_ALLOC>                    BB_DEF_USE_MAP;
     typedef BB_DEF_USE_MAP::iterator                    BB_DEF_USE_MAP_ITER;
 
+    /* Define the OP vector
+     */ 
+    typedef mempool_allocator<OP*>                 OP_TABLE_ALLOC;
+    typedef vector<OP*,OP_TABLE_ALLOC>                   OP_TABLE;
+    typedef OP_TABLE::iterator                            OP_TABLE_ITER;
+
+    /* Define the Define OPs 
+     */ 
+    typedef mempool_allocator<OP*>                 DEFINE_OPS_ALLOC;
+    typedef vector<OP*,DEFINE_OPS_ALLOC>                   DEFINE_OPS;
+    typedef DEFINE_OPS::iterator                            DEFINE_OPS_ITER;
+
+
+    /* Define the TN vector
+     */
+    typedef mINT32 mTN_INDEX;   
+    typedef struct {
+    	
+        BS*      def ;
+        BS*      use ;
+
+    }TN_BITSET_TABLE_ENTRY;
+      
+    typedef mempool_allocator<TN_BITSET_TABLE_ENTRY>                 TN_BITSET_TABLE_ALLOC;
+    typedef vector<TN_BITSET_TABLE_ENTRY,TN_BITSET_TABLE_ALLOC>                   TN_BITSET_TABLE;
+
+    typedef mempool_allocator<mTN_INDEX>                 TN_BITSET_TABLE_INDEX_ALLOC;
+    typedef vector<mTN_INDEX,TN_BITSET_TABLE_INDEX_ALLOC>                   TN_BITSET_TABLE_INDEX;
+
+
+    /* Define the BB vector
+     */
+    typedef mINT32 mBB_INDEX;   
+    typedef struct{
+
+            BB*      bb;
+            BS*      in;
+            BS*      out;
+            BS*      kill;
+            BS*      gen;
+            BS*      reverse_in;
+            BS*      reverse_out;
+
+    }BB_BITSET_TABLE_ENTRY;
+
+    typedef mempool_allocator<BB_BITSET_TABLE_ENTRY>                 BB_BITSET_TABLE_ALLOC;
+    typedef vector<BB_BITSET_TABLE_ENTRY,BB_BITSET_TABLE_ALLOC>                   BB_BITSET_TABLE;
+    typedef mempool_allocator<mBB_INDEX>                 BB_BITSET_TABLE_INDEX_ALLOC;
+    typedef vector<mBB_INDEX,BB_BITSET_TABLE_INDEX_ALLOC>                   BB_BITSET_TABLE_INDEX;
+
+    
+
+
     BOOL            _cyclic;
     BOOL            _include_assigned_registers;
     BOOL            _include_memread_arcs;
@@ -195,6 +261,20 @@ private:
     BB_DEF_USE_MAP  _bb_use_info_map;
     OPs             _empty_set;
 
+    mINT32       _OP_Count, _BB_Count;
+    OP_TABLE     _OP_Table;
+    DEFINE_OPS _Define_OPs;
+    TN_BITSET_TABLE     _TN_Bitset_Table;
+    TN_BITSET_TABLE_INDEX   _TN_Bitset_Table_Index;
+    mINT32      _Max_TN_number;
+    mINT32      _Max_BB_id;
+    BB_BITSET_TABLE     _BB_Bitset_Table;
+    BB_BITSET_TABLE_INDEX _BB_Bitset_Table_Index;
+    BS* _out;
+    BS* _reverse_out;
+    
+
+
     /* predicate query system 
      */
     PRDB_GEN*       _prdb ;
@@ -205,6 +285,16 @@ private:
     BOOL Is_Control_Speculative (OP* pred, OP* succ);
     OPs& Get_Def_Use_OPs    (OP *op, UINT8 res, CG_DEP_KIND arc_kind);
     void Set_Def_Use_OPs    (OP *op);
+    mUINT16 OP_To_Gid             (OP* op);
+    OP* Gid_To_OP       (mINT32 order);
+    void Set_OP_Order        (OP* op);
+    void Update_Max_TN_number     (OP* op);
+    void Init_TN_BB_Bitset_Table(void);
+    void Set_TN_BB_Bitset_Table(void);
+    void Update_Max_BB_id(BB* bb);
+    BS* Union_Of_Preds(BB* bb);
+    BS* Union_Of_Succs(BB* bb);
+    void Get_Define_OPs(OP *op, UINT8 res, CG_DEP_KIND arc_kind);
     void Compute_Defs_Uses_In (BB* bb);
     void Compute_OPs_In     (BB* bb);
     void Build_Reg_Arcs     (OP* op);
@@ -214,6 +304,7 @@ private:
   
     /* misc */
     INT16 Find_Ancestor_BB (BB * bb, BB_VECTOR * bbv) ;
+    INT16 Find_Successor_BB (BB * bb, BB_VECTOR * bbv) ;
 
 public:
 

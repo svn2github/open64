@@ -441,6 +441,10 @@ void OP_MAP_Delete(OP_MAP map)
   free_maps = map;
 }
 
+BOOL OP_MAP_Is_Delete(OP_MAP map)
+{
+   return map->kind == _DELETED;
+}
 
 void OP_MAP_Set(OP_MAP map, OP *op, void *value)
 {

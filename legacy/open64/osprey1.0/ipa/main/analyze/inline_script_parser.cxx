@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
 
   Redistribution and use in source and binary forms, with or without modification,
@@ -105,6 +105,7 @@ static void Parse_inline_script(const char *script_name, MEM_POOL *parser_pool)
                 ("Inline script parsing error: incorrect input format for caller specification"));
       // Assemble the caller key
       ISP_Fix_Filename(cur_caller_file);
+      ISP_Fix_Filename(cur_caller_func);
       strcat(cur_caller_key, cur_caller_file); 
       strcat(cur_caller_key, cur_caller_func);
 
@@ -132,6 +133,7 @@ cout << "Inline script parsing info : added caller_key " << cur_caller_key << en
       	        ("Inline script parsing error: incorrect input format for callee specification"));
       // Assemble the callee key
       ISP_Fix_Filename(callee_file);
+      ISP_Fix_Filename(callee_func);
       strcat(callee_key, callsite_ln);
       strcat(callee_key, callee_file);
       strcat(callee_key, callee_func);
@@ -180,6 +182,7 @@ cout << "Inline script parsing info : added INLINE type callee_key " << callee_k
       	        ("Inline script parsing error : invalid input format for callee specification"));
       // Assemble the callee key
       ISP_Fix_Filename(callee_file);
+      ISP_Fix_Filename(callee_func);
       strcat(callee_key, callsite_ln);
       strcat(callee_key, callee_file);
       strcat(callee_key, callee_func);

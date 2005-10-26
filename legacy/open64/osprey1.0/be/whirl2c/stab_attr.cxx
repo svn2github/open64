@@ -450,15 +450,22 @@ Stab_Compare_Types(TY_IDX t1,
 		   (!check_scalars || TY_mtype(t1) == TY_mtype(t2)));
 
      case KIND_POINTER:
-	/* Should we also consider MTYPE_STRING identical to a (char*)? */
+/*        if(TY_kind(t2)==KIND_ARRAY&&
+                  TY_pointed(t1)==TY_etype(t2))
+              return TRUE;
+*/	/* Should we also consider MTYPE_STRING identical to a (char*)? */
 	if (ptrs_as_scalars)
 	   return (TY_Is_Pointer_Or_Scalar(t2) &&
 		   (!check_scalars || TY_mtype(t1) == TY_mtype(t2)));
 	else
 	   return 
 	      (TY_Is_Pointer(t2) &&
-	       (TY_kind(TY_pointed(t1)) == KIND_VOID ||
+	       /*void * should not be considered to be compatible with 
+		* any kinds of pointer*/
+	       (TY_kind(TY_pointed(t1)) == KIND_VOID &&
 		TY_kind(TY_pointed(t2)) == KIND_VOID ||
+		TY_kind(TY_pointed(t1)) != KIND_VOID &&
+		TY_kind(TY_pointed(t2)) != KIND_VOID &&
 		Stab_Compare_Types(
 		   TY_pointed(t1), 
 		   TY_pointed(t2), 
@@ -488,7 +495,10 @@ Stab_Compare_Types(TY_IDX t1,
 		);
 
      case KIND_ARRAY:
-	if (TY_Is_String(t2) && TY_Is_Array_Of_Chars(t1))
+/*        if (TY_kind(t2)==KIND_POINTER&&
+                  TY_pointed(t2)==TY_etype(t1))
+             return TRUE;
+*/	if (TY_Is_String(t2) && TY_Is_Array_Of_Chars(t1))
 	   return TRUE;
 	else if (!TY_Is_Array(t2) ||
 		 TY_AR_ndims(t1) != TY_AR_ndims(t2))
@@ -656,7 +666,9 @@ Stab_Get_Mload_Ty(TY_IDX base, STAB_OFFSET offset, STAB_OFFSET size)
    
    Is_True(TY_Is_Structured(base),
 	   ("Expected pointer to struct/union type in TY2C_Get_Mload_Ty()"));
-   Is_True(TY_size(base) <= size,
+
+   /*base size should be no less than type size*/
+   Is_True(TY_size(base) >= size,
 	   ("Expected struct/union type >= size in TY2C_Get_Mload_Ty()"));
    
    if (TY_size(base) == size ||
@@ -761,6 +773,9 @@ void
 Stab_initialize_flags(void)
 {
   W2fc_ty_tab = CXX_NEW(W2FC_FLAG_ARRAY(TY_Table_Size()),Malloc_Mem_Pool);
+
+  /*Initialize flags of ty_tab needed*/
+  W2fc_ty_tab->Clear_w2fc_flags();
 }
 
 void 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -41,7 +41,7 @@
 
 #include "opcode_gen.h"
 
-static const char description[]= "\
+static const char* const description[]= {"\
 /* ====================================================================\n\
  * ====================================================================\n\
  *\n\
@@ -49,8 +49,8 @@ static const char description[]= "\
  *\n\
  *   A description of the ISA (actually just an enum of all the opcodes).\n\
  *   The description exports the following:\n\
- *\n\
- *   TOPCODE stands for Target OPCODE; prefix is TOP.\n\
+ *", 
+" *   TOPCODE stands for Target OPCODE; prefix is TOP.\n\
  *\n\
  *   typedef (enum) TOP\n\
  *      Contains all the target opcodes.  Their names have the form\n\
@@ -59,8 +59,8 @@ static const char description[]= "\
  *   typedef mTOP\n\
  *      The smallest integer type that can contain all values of a TOP,\n\
  *      including TOP_UNDEFINED -- useful for conserving space in tables.\n\
- *\n\
- *   const TOP TOP_UNDEFINED\n\
+ *",
+" *   const TOP TOP_UNDEFINED\n\
  *      Useful value guaranteed not to be a valid TOP.\n\
  *\n\
  *   const int TOP_count\n\
@@ -68,10 +68,10 @@ static const char description[]= "\
  *\n\
  *   const char* TOP_Name(TOP topcode)\n\
  *      Returns an assembler style name for the given TOP.\n\
- *\n\
+ *" ,
+" * ====================================================================\n\
  * ====================================================================\n\
- * ====================================================================\n\
- */";
+ */", NULL };
 
 
 

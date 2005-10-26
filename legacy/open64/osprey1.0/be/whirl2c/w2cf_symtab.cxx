@@ -193,6 +193,7 @@ struct W2CF_Symbol
       } preg;           /* SYMKIND_PREG */
    } attr;
 }; /* W2CF_Symbol */
+
 #define W2CF_SYMBOL_kind(s) (s)->kind
 #define W2CF_SYMBOL_symid(s) (s)->symid
 #define W2CF_SYMBOL_name(s) (s)->name
@@ -212,8 +213,8 @@ struct W2CF_Symbol
 /* Some macros used to interpret symbol symids
  */
 #define W2CF_INVALID_SYMID -2
-#define W2CF_FIRST_VALID_SYMID -1
-#define W2CF_NOSUFFIX_SYMID W2CF_FIRST_VALID_SYMID
+#define W2CF_FIRST_VALID_SYMID 0
+#define W2CF_NOSUFFIX_SYMID -1
 
 
 static void W2CF_Dump_Symbol(W2CF_SYMBOL *sym,W2CF_SYMTAB *symtab=NULL);
@@ -326,17 +327,23 @@ W2CF_Get_Basename(const char *original_name, char *basename, INT32 *sym_id)
    }
    while (name_size >= 0 && isdigit(basename[name_size]))
       name_size--; /* Remove redundant suffix digits */
+
+#if 0
+//disabled by zdu because 0 may be part of suffix
    while (basename[name_size+1] == '0' && suffix_size > 0)
    {
       suffix_size--;
       name_size++; /* Append back in zeros preceeding the numeric suffix */
    }
+#endif
    
    basename[name_size+1] = '\0';
    if (suffix_size > 0)
       *sym_id = numeric_suffix;
    else
-      *sym_id = W2CF_INVALID_SYMID;
+      //W2CF_NOSUFFIX_SYMID means that there're no suffix in current symbol.
+      //We should not use W2CF_INVALID_SYMID because it will not be processed.
+      *sym_id = W2CF_NOSUFFIX_SYMID;
 } /* W2CF_Get_Basename */
 
 
@@ -438,11 +445,26 @@ W2CF_Identical_Symkinds(W2CF_SYMBOL *sym1, W2CF_SYMBOL *sym2)
 	 identical = W2CF_SYMBOL_fld_ptr(sym1) == W2CF_SYMBOL_fld_ptr(sym2);
 	 break;
       case SYMKIND_TY:
-	 identical = W2CF_SYMBOL_ty(sym1) == W2CF_SYMBOL_ty(sym2);
+         {
+             //a type may be multiply defined in TY table, so we must
+		 //filter them here.
+             TY& ty1=Ty_Table[W2CF_SYMBOL_ty(sym1)];
+             TY& ty2=Ty_Table[W2CF_SYMBOL_ty(sym2)];
+  	     identical = (ty1.size==ty2.size&&ty1.kind==ty2.kind&&
+                     ty1.mtype==ty2.mtype&&ty1.flags==ty2.flags&&
+                     ty1.u1.fld==ty2.u1.fld&&ty1.name_idx==ty2.name_idx&&
+                     ty1.u2.etype==ty2.u2.etype);
+         }
 	 break;
       case SYMKIND_ST:
-	 identical = W2CF_SYMBOL_st(sym1) == W2CF_SYMBOL_st(sym2);
+         {
+         //Because global function should never be renamed, we will 
+	 //take any two functions with same name the same function.
+	 if(ST_sym_class(W2CF_SYMBOL_st(sym1))==CLASS_BLOCK||
+           !TY_Is_Function(ST_type(W2CF_SYMBOL_st(sym1))))
+   	     identical = W2CF_SYMBOL_st(sym1) == W2CF_SYMBOL_st(sym2);
 	 break;
+         }
       case SYMKIND_ST_POINTEE:
 	 identical = W2CF_SYMBOL_st_ptr(sym1) == W2CF_SYMBOL_st_ptr(sym2);
 	 break;
@@ -557,6 +579,22 @@ W2CF_Search_Symhdr(W2CF_SYMTAB *symtab, const char *basename)
 
 } /* W2CF_Search_Symhdr */
 
+static W2CF_SYMBOL *
+W2CF_Search_Global_Symbol(W2CF_SYMHDR *symhdr, W2CF_SYMBOL *match_symbol)
+{
+   /* Return NULL when there is no symbol matching the symkind and
+    * associated attributes of the given match_symbol.
+    */
+   W2CF_SYMBOL *symbol;
+   
+   /* Get the matching symbol, if one exists */
+   for (symbol = W2CF_SYMHDR_symbol(symhdr);
+	symbol != NULL && W2CF_SYMBOL_kind(symbol) != W2CF_SYMBOL_kind(match_symbol);
+	symbol = W2CF_SYMBOL_next(symbol));
+   
+   return symbol;
+} /* W2CF_Search_Global_Symbol */
+
 
 static W2CF_SYMBOL *
 W2CF_Search_Symbol(W2CF_SYMHDR *symhdr, W2CF_SYMBOL *match_symbol)
@@ -632,6 +670,27 @@ W2CF_Create_Symhdr(W2CF_SYMTAB *symtab, const char *basename)
    return symhdr;
 } /* W2CF_Create_Symhdr */
 
+/*Table of reserved keyword in c, 
+ * they should never used as name of symbol, struct etc*/
+static const char *reserve_table[]={
+	"char",
+	"int",
+	"long",
+	"signed",
+	"struct",
+	"union",
+	"unsigned"
+};
+
+static BOOL
+Is_Reserved_Symbol(const char *name)
+{
+    INT i;
+    for(i=0;i<sizeof(reserve_table)/sizeof(reserve_table[0]);++i)
+	if(!strcmp(name,reserve_table[i]))
+		return TRUE;
+    return FALSE;
+}
 
 static W2CF_SYMBOL *
 W2CF_Create_Symbol(W2CF_SYMTAB *symtab, 
@@ -653,13 +712,27 @@ W2CF_Create_Symbol(W2CF_SYMTAB *symtab,
    /* Insert the symbol under the given symbol header, possibly 
     * changing the symid if it is already in use or is invalid.
     */
+    BOOL is_reserved_name = Is_Reserved_Symbol(W2CF_SYMHDR_basename_string(symtab, symhdr));
+
+   if(is_reserved_name){
+	  W2CF_SYMBOL *symbol_key = TYPE_ALLOC_N(W2CF_SYMBOL, 1);
+	  W2CF_SYMBOL_kind(symbol_key) = W2CF_SYMBOL_kind(match_symbol);
+          W2CF_SYMBOL_attr(symbol_key) = W2CF_SYMBOL_attr(match_symbol);
+          W2CF_SYMBOL_symid(symbol_key) = W2CF_NOSUFFIX_SYMID;
+   
+	  if(W2CF_SYMBOL_symid(symbol)<0){
+		  W2CF_SYMBOL_symid(symbol)=0;
+	  }
+	  W2CF_Insert_Symbol(symhdr, symbol_key);
+   }
+   
    W2CF_Insert_Symbol(symhdr, symbol);
 
    /* The symbol name will be constructed from the basename and the
     * the symbol identifier.
     */
 
-   if (W2CF_SYMBOL_symid(symbol) == W2CF_NOSUFFIX_SYMID)
+  if (W2CF_SYMBOL_symid(symbol) == W2CF_NOSUFFIX_SYMID)
    {
       W2CF_SYMBOL_name(symbol) = W2CF_SYMHDR_basename(symhdr);
    }
@@ -670,7 +743,7 @@ W2CF_Create_Symbol(W2CF_SYMTAB *symtab,
      if (!W2CF_Avoid_Suffix(symbol))
      {
        symname = Get_Name_Buf_Slot(strlen(symname) + 32);
-       sprintf(symname, "%s%d",
+       sprintf(symname, "%s__%d",
                W2CF_SYMHDR_basename_string(symtab, symhdr), 
                W2CF_SYMBOL_symid(symbol));
      }
@@ -683,6 +756,69 @@ W2CF_Create_Symbol(W2CF_SYMTAB *symtab,
    return symbol;
 
 } /* W2CF_Create_Symbol */
+
+static void
+W2CF_Get_Global_Symbol(W2CF_SYMTAB **found_symtab,
+		W2CF_SYMHDR **found_symhdr,
+		W2CF_SYMBOL **found_symbol,
+		W2CF_SYMBOL  *match_symbol,
+		const char   *basename)
+{
+   /* This function searches for a symbol with the given basename and
+    * symbol attributes and, if found, returns it; otherwise it inserts
+    * a new symbol table entry and returns that.  The W2CF_SYMBOL_kind()
+    * and W2CF_SYMBOL_attr() must have been set appropriately in 
+    * match_symbol.
+    */
+   W2CF_SYMTAB *symtab;
+   W2CF_SYMHDR *symhdr = NULL;
+   W2CF_SYMBOL *symbol = NULL;
+   W2CF_SYMHDR *top_symhdr;
+
+   /* First, check to see if the given symbol is represented somewhere
+    * on the top of the symbol-table stack.
+    */
+   symtab = W2CF_SYMTAB_STACK_top(Symtab_Stack);
+   top_symhdr = W2CF_Search_Symhdr(symtab, basename);
+   if (top_symhdr != NULL)
+      symbol = W2CF_Search_Global_Symbol(top_symhdr, match_symbol);
+
+   /* If the given symbol cannot be found at the top of the stack,
+    * then search through outer levels of scope-nesting.
+    */
+   symtab = W2CF_SYMTAB_up(symtab);
+   while (symtab != NULL && symbol == NULL)
+   {
+      symhdr = W2CF_Search_Symhdr(symtab, basename);
+      if (symhdr != NULL)
+	 symbol = W2CF_Search_Global_Symbol(symhdr, match_symbol);
+      symtab = W2CF_SYMTAB_up(symtab);
+   }
+
+   /* Restore the symtab to where the symbol is (or will be) found.
+    */
+   if (symtab != NULL)
+      symtab = W2CF_SYMTAB_down(symtab);            /* Found local symbol */
+   else if (symbol != NULL)
+      symtab = W2CF_SYMTAB_STACK_bot(Symtab_Stack); /* Found global symbol */
+   else
+      symtab = W2CF_SYMTAB_STACK_top(Symtab_Stack); /* Did not find symbol */
+
+   /* If no symbol was found, then create one.  Symtab is already set to
+    * the most deeply nested one.
+    */
+   if (symbol == NULL)
+   {
+      if (top_symhdr == NULL)
+	 symhdr = W2CF_Create_Symhdr(symtab, basename);
+      else
+	 symhdr = top_symhdr;
+      symbol = W2CF_Create_Symbol(symtab, symhdr, match_symbol);
+   }
+   *found_symtab = symtab;
+   *found_symhdr = symhdr;
+   *found_symbol = symbol;
+} /* W2CF_Get_Global_Symbol */
 
 
 static void
@@ -702,7 +838,10 @@ W2CF_Get_Symbol(W2CF_SYMTAB **found_symtab,
    W2CF_SYMHDR *symhdr = NULL;
    W2CF_SYMBOL *symbol = NULL;
    W2CF_SYMHDR *top_symhdr;
-   
+
+   if(W2CF_SYMBOL_symid(match_symbol)<0)
+	   W2CF_SYMBOL_symid(match_symbol)=0;
+
    /* First, check to see if the given symbol is represented somewhere
     * on the top of the symbol-table stack.
     */
@@ -849,6 +988,13 @@ W2CF_Symtab_Pop(void)
 } /* W2CF_Symtab_Pop */
 
 
+const char *
+W2CF_Symtab_Nameof_Const(const ST *st)
+{
+    Is_True(ST_sym_class(st) == CLASS_CONST, ("const variable required"));
+    return strchr(Targ_Print(NULL, Tcon_Table[ST_tcon(st)]),'\"');
+}
+
 const char * 
 W2CF_Symtab_Nameof_St(const ST *st)
 {
@@ -867,6 +1013,8 @@ W2CF_Symtab_Nameof_St(const ST *st)
    
    if (ST_sym_class(st) != CLASS_CONST) 
 	   valid_name = W2FC_Valid_Name(ST_name(st),WN2F_F90_pu && !ST_is_temp_var(st));
+   else
+	   return W2CF_Symtab_Nameof_Const(st);
 
    if (valid_name == NULL || valid_name[0] == '\0')
    {
@@ -876,15 +1024,27 @@ W2CF_Symtab_Nameof_St(const ST *st)
    {
       valid_name = W2CF_Get_Ftn_St_Name(st, valid_name);
    }
+
    symname = Get_Name_Buf_Slot(strlen(valid_name) + 32);
    W2CF_Get_Basename(valid_name, symname, &symid);
-   
+
    /* Get the associated symbol entry (with a possibly modified symid).
     */
+//   W2CF_SYMBOL_symid(&match_symbol) = W2CF_NOSUFFIX_SYMID;
    W2CF_SYMBOL_symid(&match_symbol) = symid;
    W2CF_SYMBOL_kind(&match_symbol)  = SYMKIND_ST;
    W2CF_SYMBOL_st(&match_symbol)    = st;
-   W2CF_Get_Symbol(&symtab, &symhdr, &symbol, &match_symbol, symname);
+    //never rename name of function and global variable. 
+   //otherwise, there'll be link time error.
+   if(ST_sym_class(st)!=CLASS_BLOCK&&
+	   (TY_Is_Function(ST_type(st))||
+	ST_sclass(st)==SCLASS_EXTERN||
+	ST_sclass(st)==SCLASS_COMMON||
+	ST_sclass(st)==SCLASS_UGLOBAL||
+	ST_sclass(st)==SCLASS_DGLOBAL))
+	   return valid_name;
+   else
+       W2CF_Get_Symbol(&symtab, &symhdr, &symbol, &match_symbol, symname);
    
    /* Return the resultant disambiguated name */
    return W2CF_SYMBOL_name_string(symtab, symbol);
@@ -910,10 +1070,11 @@ W2CF_Symtab_Nameof_St_Pointee(const ST *st)
    pointee_name = Concat2_Strings("deref_", W2CF_Symtab_Nameof_St(st));
    symname = Get_Name_Buf_Slot(strlen(pointee_name) + 32);
    W2CF_Get_Basename(pointee_name, symname, &symid);
-   
+
    /* Get the associated symbol entry (with a possibly modified symid).
     */
-   W2CF_SYMBOL_symid(&match_symbol)  = symid;
+   W2CF_SYMBOL_symid(&match_symbol) = W2CF_NOSUFFIX_SYMID;
+//   W2CF_SYMBOL_symid(&match_symbol)  = symid;
    W2CF_SYMBOL_kind(&match_symbol)   = SYMKIND_ST_POINTEE;
    W2CF_SYMBOL_st_ptr(&match_symbol) = st;
    W2CF_Get_Symbol(&symtab, &symhdr, &symbol, &match_symbol, symname);
@@ -946,10 +1107,11 @@ W2CF_Symtab_Nameof_Ty(TY_IDX ty)
    }
    symname = Get_Name_Buf_Slot(strlen(valid_name) + 32);
    W2CF_Get_Basename(valid_name, symname, &symid);
-   
+
    /* Get the associated symbol entry (with a possibly modified symid).
     */
-   W2CF_SYMBOL_symid(&match_symbol) = symid;
+   W2CF_SYMBOL_symid(&match_symbol) = W2CF_NOSUFFIX_SYMID;
+//   W2CF_SYMBOL_symid(&match_symbol) = symid;
    W2CF_SYMBOL_kind(&match_symbol)  = SYMKIND_TY;
    W2CF_SYMBOL_ty(&match_symbol)    = ty;
    W2CF_Get_Symbol(&symtab, &symhdr, &symbol, &match_symbol, symname);
@@ -982,10 +1144,11 @@ W2CF_Symtab_Nameof_Fld(FLD_HANDLE fld)
    }
    symname = Get_Name_Buf_Slot(strlen(valid_name) + 32);
    W2CF_Get_Basename(valid_name, symname, &symid);
-   
+  
    /* Get the associated symbol entry (with a possibly modified symid).
     */
-   W2CF_SYMBOL_symid(&match_symbol) = symid;
+   W2CF_SYMBOL_symid(&match_symbol) = W2CF_NOSUFFIX_SYMID;
+//   W2CF_SYMBOL_symid(&match_symbol) = symid;
    W2CF_SYMBOL_kind(&match_symbol)  = SYMKIND_FLD;
    W2CF_SYMBOL_fld(&match_symbol)   = fld.Idx ();
    W2CF_Get_Symbol(&symtab, &symhdr, &symbol, &match_symbol, symname);
@@ -1017,7 +1180,8 @@ W2CF_Symtab_Nameof_Fld_Pointee(FLD_HANDLE fld)
    
    /* Get the associated symbol entry (with a possibly modified symid).
     */
-   W2CF_SYMBOL_symid(&match_symbol)   = symid;
+   W2CF_SYMBOL_symid(&match_symbol) = W2CF_NOSUFFIX_SYMID;
+//   W2CF_SYMBOL_symid(&match_symbol)   = symid;
    W2CF_SYMBOL_kind(&match_symbol)    = SYMKIND_FLD_POINTEE;
    W2CF_SYMBOL_fld_ptr(&match_symbol) = fld.Idx ();
    W2CF_Get_Symbol(&symtab, &symhdr, &symbol, &match_symbol, symname);
@@ -1130,7 +1294,8 @@ W2CF_Symtab_Unique_Name(const char *name)
    
    /* Get the associated symbol entry (with a possibly modified symid).
     */
-   W2CF_SYMBOL_symid(&match_symbol)    = symid;
+   W2CF_SYMBOL_symid(&match_symbol) = W2CF_NOSUFFIX_SYMID;
+//   W2CF_SYMBOL_symid(&match_symbol)    = symid;
    W2CF_SYMBOL_kind(&match_symbol)     = SYMKIND_UNIQUE;
    W2CF_Get_Symbol(&symtab, &symhdr, &symbol, &match_symbol, unique_name);
    

@@ -108,7 +108,15 @@ WN_Cvtl_Ty(const WN *wn)
    /* The type of a CVTL node is the return type scaled down to the
     * given bitsize.
     */ 
-   const INT   cvtl_bytes = WN_cvtl_bits(wn)>>3;
+/*   INT   o_cvtl_bytes = (WN_cvtl_bits(wn)+7)>>3;
+
+//Add alignment here
+   if(o_cvtl_bytes==3)o_cvtl_bytes=4;
+   if(o_cvtl_bytes>4&&o_cvtl_bytes<8)o_cvtl_bytes=8;
+   const INT cvtl_bytes = o_cvtl_bytes;
+//End for alignment here
+*/
+   const INT cvtl_bytes = (WN_cvtl_bits(wn))>>3;
    const MTYPE dest_mtype = WN_opc_rtype(wn);
    const BOOL  is_signed = MTYPE_signed(dest_mtype);
    const MTYPE cvtl_mtype = WN_Cvtl_Mtype[is_signed? 1 : 0][cvtl_bytes];
@@ -226,6 +234,7 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
       ret_ty = Stab_Mtype_To_Ty(MTYPE_U4);
       break;
    case IRETURN_U8:
+   case IRETURN_SZT:
       ret_ty = Stab_Mtype_To_Ty(MTYPE_U8);
       break;
    case IRETURN_F4:
@@ -250,6 +259,7 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
       ret_ty = Stab_Pointer_To(Stab_Mtype_To_Ty(MTYPE_V));
       break;
    case IRETURN_PU1:
+   case IRETURN_PC:
       ret_ty = Stab_Pointer_To(Stab_Mtype_To_Ty(MTYPE_U1));
       break;
    case IRETURN_DA1:
@@ -345,31 +355,90 @@ WN_Tree_Type(const WN *wn)
     *
     * Pointer types may be created as a result of a call to this routine.
     */
-   TY_IDX ty = Stab_Mtype_To_Ty(MTYPE_V); /* return value, default = void */
+   TY_IDX ty = WN_ty(wn); /* return value, default = void */
    
-   if (OPCODE_is_expression(WN_opcode(wn)))
+   if (OPCODE_is_expression(WN_opcode(wn))||OPCODE_is_store(WN_opcode(wn)))
    {
       switch (WN_opc_operator(wn))
       {
+      case OPR_ISTORE:
+      case OPR_ISTOREX:
+      case OPR_MSTORE:
+      {
+	  Is_True(TY_Is_Pointer(WN_ty(wn)),("Pointer expected for ISTORE"));
+	  TY_IDX ty = TY_pointed(WN_ty(wn));
+	  if(TY_Is_Structured(ty)&&WN_field_id(wn)){
+                UINT cur_field_id = 0;
+                FLD_HANDLE fld = FLD_get_to_field(ty,
+                           WN_field_id(wn),
+                           cur_field_id);
+               Is_True(! fld.Is_Null(),
+                     ("Desc_type_byte_size: Invalid field id %d for type 0x%x",
+                      WN_field_id(wn), ty ));
+               ty = FLD_type(fld);
+	  }
+	  return Stab_Pointer_To(ty);
+      }
       case OPR_ILOAD:
       case OPR_ILOADX:
       case OPR_LDID:
       case OPR_LDA:
-	 ty = WN_ty(wn);
-	 break;
+      case OPR_STID:
+      {
+            TY_IDX struct_ty = WN_ty(wn);
+
+            if(TY_Is_Structured(struct_ty)&&WN_field_id(wn)){
+                UINT cur_field_id = 0;
+                FLD_HANDLE fld = FLD_get_to_field(struct_ty,
+                           WN_field_id(wn),
+                           cur_field_id);
+               Is_True(! fld.Is_Null(),
+                     ("Desc_type_byte_size: Invalid field id %d for type 0x%x",
+                      WN_field_id(wn), struct_ty ));
+               ty = FLD_type(fld);
+            }else{
+                ty = struct_ty;
+            }
+        }
+        //patch for the WN_ty of LDID:
+        if(WN_opc_operator(wn)==OPR_LDID&&TY_Is_Pointer(ty)){
+	  INT pointer_size=TY_size(Stab_Pointer_To(Stab_Mtype_To_Ty(MTYPE_V)));
+          if(WN_rtype(wn)!=0&&TY_size(WN_rtype(wn)!=pointer_size)){
+		 if(TY_size(TY_pointed(ty))<=TY_size(WN_rtype(wn)))
+                     ty = TY_pointed(ty);
+	  }
+        }
+	if(WN_opc_operator(wn)==OPR_LDA&&!TY_Is_Pointer(ty)){
+		ty=Stab_Pointer_To(ty);
+	}
+        break;
 
       case OPR_MLOAD:
 	 /* There is not much we can do about this case */
 	 if (WN_opc_operator(WN_kid1(wn)) == OPR_INTCONST &&
 	     TY_Is_Structured(TY_pointed(WN_ty(wn))))
-	 {
-	    ty = Stab_Get_Mload_Ty(TY_pointed(WN_ty(wn)), 
+	 {  
+            TY_IDX struct_ty = TY_pointed(WN_ty(wn));
+
+            if(WN_field_id(wn)){
+                UINT cur_field_id = 0;
+                FLD_HANDLE fld = FLD_get_to_field(struct_ty, 
+                           WN_field_id(wn), 
+                           cur_field_id);
+               Is_True(! fld.Is_Null(),
+                     ("Desc_type_byte_size: Invalid field id %d for type 0x%x",
+                      WN_field_id(wn), struct_ty ));
+               ty = FLD_type(fld);
+            }else{
+	        ty = Stab_Get_Mload_Ty(struct_ty, 
 				   WN_load_offset(wn), 
 				   WN_const_val(WN_kid1(wn)));
+            }
+	    ty = Stab_Pointer_To(ty);
 	 }
 	 else
 	 {
-	    ty = TY_pointed(WN_ty(wn));
+	    ty = WN_ty(wn);
 	 }
 	 break;
 	 
@@ -543,6 +612,9 @@ WN_Tree_Type(const WN *wn)
       case OPR_HIGHPART:
       case OPR_LOWPART:
       case OPR_HIGHMPY:
+//Added to support type for bits
+      case OPR_COMPOSE_BITS:
+      case OPR_EXTRACT_BITS:
 	 ty = Stab_Mtype_To_Ty(WN_opc_rtype(wn));
 	 break;
 
@@ -558,6 +630,8 @@ WN_Tree_Type(const WN *wn)
          ty = WN_Tree_Type(WN_kid0(wn));
          break;
 
+      case OPR_STBITS:
+      case OPR_ISTBITS:
       case OPR_ALLOCA:
          ty = WN_ty(wn);
          break;

@@ -41,12 +41,15 @@
 #----------------------------------------------------------------------
 include $(COMMONDEFS)
 
+
 ifeq ($(BUILD_TARGET), IA64)
 # need _ version of targ_ia64
 LCDEFS += -D__MIPS_AND_IA64_ELF_H -DTARG_IA64
 LC++DEFS +=  $(LCDEFS)
 endif
 
+LCDEFS += $(STD_COMPILE_OPTS)
+LC++DEFS += $(STD_COMPILE_OPTS)
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
@@ -194,6 +197,7 @@ IPA_ANALYZE_CXX_SRCS = \
 	ipa_nested_pu.cxx \
         ipa_cost.cxx \
         inline_script_parser.cxx \
+        ipa_reorder.cxx
 
 IPA_OPTIMIZE_SRCS = \
 #	ipo_parent.c \
@@ -279,7 +283,7 @@ LC++INCS = $(LCINCS)
 ifeq ($(BUILD_OS), IRIX)
 LLDLIBS += -lgen -lm
 endif
-OPTIMIZER = -O0
+
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 LCDEFS += 
 #-DIPA_CPROP_TEST

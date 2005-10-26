@@ -57,7 +57,7 @@ extern void add_library_dir (string path);
 
 /* append objects to end of list */
 extern void append_objects_to_list (string_list_t *list);
-extern void append_libraries_to_list (string_list_t *list);
+extern void append_implicit_lib_path_to_lst (string_list_t *list);
 extern void append_cxx_prelinker_objects_to_list (string_list_t *list);
 extern void append_ar_objects_to_list (string_list_t *list);
 

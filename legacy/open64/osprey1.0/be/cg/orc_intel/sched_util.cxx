@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2000-2002, Intel Corporation
+ *  Copyright (C) 2000-2003, Intel Corporation
  *  All rights reserved.
  *  
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -139,8 +139,9 @@ get_spec_prob (void) {
     if (f_safe_cntl_spec_prob > 1.0) f_safe_cntl_spec_prob = 0.2 ;
     if (f_unsafe_cntl_spec_prob > 1.0) f_unsafe_cntl_spec_prob = 0.4 ;
   
-    SAFE_CNTL_SPEC_PROB = INT32(f_safe_cntl_spec_prob * 100);
-    UNSAFE_CNTL_SPEC_PROB = INT32(f_unsafe_cntl_spec_prob * 100);
+    SAFE_CNTL_SPEC_PROB = INT32(f_safe_cntl_spec_prob * REACH_PROB_SCALE);
+    UNSAFE_CNTL_SPEC_PROB = INT32(f_unsafe_cntl_spec_prob * REACH_PROB_SCALE);
+                            
 }
 
 void
@@ -490,737 +491,6 @@ SCHED_ANNOT::Dump (FILE *f) {
 
 
 
-    /* =======================================================================
-     * =======================================================================
-     *
-     *              implementation of SRC_BB_MGR
-     *
-     * =======================================================================
-     * =======================================================================
-     */
-
-SRC_BB_MGR::SRC_BB_MGR (MEM_POOL *mp) : 
-    _mp(mp), 
-    _src_bbs_vect(BB_ALLOC(mp)),
-    _src_info_vect (SRC_BB_INFO_ALLOC(mp)) {
-
-    _src_bbs_set = BB_SET_Create (PU_BB_Count+2, _mp);
-    _targ = NULL;
-    _scope = NULL;
-    _prepass = FALSE;
-
-    _find_src_bbs_access_bbs  = BB_SET_Create_Empty (PU_BB_Count + 2, _mp);
-    _find_src_bbs_access_rgns = BS_Create_Empty (64/* estimated */, _mp);
-}
-
-SRC_BB_MGR :: ~SRC_BB_MGR (void) {
-}
-
-  /* ===================================================================
-   * 
-   *  _find_src_bbs & Find_Src_BBs :
-   * 
-   *  find out all BBs which potentially donate candidates to 
-   *  <_targ>(member of SRC_BB_MGR) .
-   *
-   * ===================================================================
-   */
-BOOL
-SRC_BB_MGR :: _src_bb_is_qualified (BB *src, SRC_BB_INFO * its_info, 
-                                   RGN_CFLOW_MGR * cflow_info) {
-    if (src != _targ) {
-        
-        BB_VECTOR * bb_vect ; 
-
-        bb_vect = &its_info->siss ;
-        for (BB_VECTOR_ITER iter = bb_vect->begin() ; 
-             iter != bb_vect->end (); iter++) {
-
-            if (!IPFEC_Glos_Motion_Across_Calls && 
-                 BB_call(*iter) &&
-                    /* p-ready candidate can by-pass call rather than 
-                     * being moved across it 
-                     */
-                !IPFEC_Glos_Enable_P_Ready_Code_Motion) {
-                return FALSE ;
-            }
-        }
-
-        bb_vect = &its_info->across_bbs;
-        for (BB_VECTOR_ITER iter = bb_vect->begin () ;
-             iter != bb_vect->end () ; iter ++) {
-            
-            if (!IPFEC_Glos_Motion_Across_Calls && BB_call(*iter)) {
-                return FALSE ;
-            }
-        }
-
-        /* fall-thru and routine returns TRUE */
-    }
-
-    return TRUE ;
-}
-
-    /* ===================================================================
-     *
-     *  ::_find_src_bbs
-     *
-     *  Support routine for Find_Src_BBs. _find_src_bbs try to find out
-     *  all BBs that are reachable from nested-<rgn> and potentially donate 
-     *  candidates to <_targ>.
-     *
-     *  <n> is the REGIONAL_CFG_NODE of the REGION which immediatly nests 
-     *  <rgn>. 
-     *
-     * ===================================================================
-     */
-void
-SRC_BB_MGR :: _find_src_bbs (REGION * rgn, 
-                             REGIONAL_CFG_NODE * n,
-                             RGN_CFLOW_MGR * cflow_info) {
-
-    Is_True (n->Region_Node () == rgn,
-             ("n->Region_Node and rgn(%d) does not match !",rgn->Id()));
-    
-    if (BS_MemberP (_find_src_bbs_access_rgns, rgn->Id())) {
-        return ;
-    }
-
-    _find_src_bbs_access_rgns = 
-        BS_Union1D (_find_src_bbs_access_rgns, rgn->Id(), _mp);
-
-    if (!IPFEC_Glos_Code_Motion_Across_Nested_Rgn ||
-        No_OP_Can_be_Moved_Across_Region (rgn)) {
-       return ; 
-    }
-
-    for (CFG_SUCC_NODE_ITER succ_iter(n);
-         succ_iter != 0; 
-         ++succ_iter) {
-        
-        if ((*succ_iter)->Is_Region ()) {
-
-            REGION * r = (*succ_iter)->Region_Node ();
-            if (No_OP_Can_be_Moved_Across_Region (r)) {
-                continue ;
-            } else {
-                _find_src_bbs(r, *succ_iter, cflow_info);
-            }
-        } else {
-           _find_src_bbs ((*succ_iter)->BB_Node (),cflow_info);
-        }
-    }
-}
-
-    /* ===================================================================
-     *
-     *  ::_find_src_bbs
-     *
-     *  Support routine for Find_Src_BBs. _find_src_bbs try to find out
-     *  all BBs that are reachable from <src> and potentially donate 
-     *  candidates to <_targ>.
-     *
-     * ===================================================================
-     */
-void
-SRC_BB_MGR :: _find_src_bbs (BB * src, RGN_CFLOW_MGR * cflow_info) {
-
-    _find_src_bbs_access_bbs = 
-        BB_SET_Union1D (_find_src_bbs_access_bbs, src,_mp);
-
-
-    if (_prepass) {
-        if (BB_entry (src) || BB_exit(src)) {
-            return ;
-        }
-    }
-
-        /* <src> is "isolated" from schedule scope, (mostly for the 
-         * debugging purpose), Do *NOT* schedule any OP out of it. 
-         */
-    if (BB_Is_Isolated_From_Sched (src)) return ;
-
-    SRC_BB_INFO * bb_info = CXX_NEW (SRC_BB_INFO(_mp), _mp);
-    bb_info->src          = src ;
-    bb_info->targ         = _targ ;
-
-    if (!_compute_cutting_set (src, bb_info,cflow_info) ||
-        !_src_bb_is_qualified (src, bb_info,cflow_info)) {
-        return ;
-    }
-
-    /* now, <src> are qualifed being an "source" BB.
-     */
-    if (src != _targ) {
-
-        bb_info->donate_p_ready_cand = FALSE ;
-
-        /*if (IPFEC_Glos_Enable_P_Ready_Code_Motion) {
-            bb_info->donate_p_ready_cand = FALSE ;
-        } else {
-            bb_info->donate_p_ready_cand = 
-                Can_BB_Potentially_Donate_P_Ready_Cands 
-                    (src, _targ, cflow_info);
-        }*/
-        
-        if (bb_info->donate_p_ready_cand) {
-        
-            /*cflow_info->Get_Cold_Paths_Cutting_Set 
-                (src, _targ, TRUE, &bb_info->cold_paths_cutting_set);
-
-            cflow_info->Get_Hot_Paths_Cutting_Set 
-                (src, _targ, FALSE, &bb_info->hot_paths_cutting_set);
-            */
-        } else {
-
-            bb_info->cold_paths_cutting_set.clear ();
-            bb_info->hot_paths_cutting_set.clear  ();
-        }
-    }
-
-    _src_bbs_set = BB_SET_Union1D (_src_bbs_set, src,_mp);
-    _src_bbs_vect.push_back (src);
-    _src_info_vect.push_back (bb_info);
-
-    if (!_scope) {
-        /* we does not specify global-scope (regional-cfg),
-         * hence, current schedule scope is confined within
-         * an BB, namely <_targ>, which should has *ONLY* one
-         * "source" BB -- <_targ> itself.
-         */ 
-        
-        Is_True (src == _targ, 
-                 ("BB:%d should not donate candidte to BB:%d!",
-                   BB_id(src), BB_id(_targ)));
-        return ;
-    }
-
-
-    /* Check whether <src>'s desendants are also qualified as 
-     * "source" BB (to <_targ> BB)
-     */
-    for (CFG_SUCC_NODE_ITER succ_iter(Regional_Cfg_Node(src));
-         succ_iter != 0; 
-         ++succ_iter) 
-    {
-        if ((*succ_iter)->Is_Region()) {
-
-            REGION * r = (*succ_iter)->Region_Node ();
-            if (!BS_MemberP(_find_src_bbs_access_rgns, r->Id()) &&
-                 IPFEC_Glos_Code_Motion_Across_Nested_Rgn       &&
-                !No_OP_Can_be_Moved_Across_Region (r)) {
-
-                _find_src_bbs(r, *succ_iter, cflow_info);
-
-            } else {
-
-                _find_src_bbs_access_rgns = 
-                    BS_Union1D (_find_src_bbs_access_rgns, r->Id(), _mp);
-            }
-
-        } else {
-
-            BB * succ_bb = (*succ_iter)->BB_Node();
-            if (BB_SET_MemberP (_find_src_bbs_access_bbs, succ_bb)) {
-                continue ;
-            }
-
-            _find_src_bbs_access_bbs = 
-                BB_SET_Union1D (_find_src_bbs_access_bbs, succ_bb,_mp);
-
-            if (BB_exit (succ_bb) || BB_Is_Isolated_From_Sched (succ_bb)) {
-                continue ;
-            }
-
-            _find_src_bbs (succ_bb, cflow_info) ;
-        }
-    }
-}
-
-
-    /* ===============================================================
-     *
-     *  Find_Src_BBs 
-     *
-     *  Find out all BBs (in the REGION <scope>) that can potentially
-     *  donate candidates to <targ>.
-     *
-     * ===============================================================
-     */
-const BB_VECTOR * 
-SRC_BB_MGR::Find_Src_BBs (REGION * scope , BB* targ,
-                          RGN_CFLOW_MGR * cflow_info, 
-                          BOOL prepass) 
-{
-    Is_True (!BB_Is_Isolated_From_Sched (targ), 
-             ("BB:%d is isolated from schedule", BB_id(targ)));
-
-    _src_bbs_vect.clear ();
-    _src_info_vect.clear ();
-    _src_bbs_set = BB_SET_ClearD (_src_bbs_set);
-
-    _targ = targ ;
-    _scope = scope ;
-    _prepass = prepass; 
-
-    _find_src_bbs_access_bbs  = BB_SET_ClearD (_find_src_bbs_access_bbs);
-    _find_src_bbs_access_rgns = BS_ClearD (_find_src_bbs_access_rgns);
-
-    _find_src_bbs (targ, cflow_info);
-    
-    return &_src_bbs_vect;
-}
-
-
-    /* ====================================================================
-     *
-     *  _ubs_union1d, _ubs_union1d,  _ubs_memberp, _ubs_memberp
-     *  _ubs_memberp, _ubs_union1d etc
-     *  
-     *  ref the header file for details.
-     *
-     *  !!! NOTE: THESE 6 ROUTINES ARE CALLED ONLY BY <_compute_cutting_set>.
-     *            THEY ARE *NOT* GENERAL PURPOSE FUNCS!
-     * 
-     * =====================================================================
-     */  
-inline BS *
-SRC_BB_MGR :: _ubs_union1d (BS * Bitset, BB * bb) {
-    return BS_Union1D (Bitset, BB_id(bb),_mp);
-}
-
-inline BS * 
-SRC_BB_MGR :: _ubs_union1d (BS * Bitset, REGION *r, INT32 rgn_id_base) {
-   return BS_Union1D (Bitset, r->Id () + rgn_id_base,_mp);
-}
-
-inline BS *
-SRC_BB_MGR :: _ubs_union1d 
-    (BS *Bitset, REGIONAL_CFG_NODE *n, INT32 rgn_base_id) {
-
-    if (n->Is_Region ()) {
-        return _ubs_union1d (Bitset, n->Region_Node(), 
-                             rgn_base_id);
-    }
-
-    return _ubs_union1d (Bitset, n->BB_Node()) ;
-}
-
-
-inline BS *
-SRC_BB_MGR :: _ubs_diff1d  (BS * Bitset, BB * bb) {
-    return BS_Difference1D (Bitset, BB_id(bb)) ;
-}
-
-inline BS *
-SRC_BB_MGR :: _ubs_diff1d  (BS * Bitset, REGION *r, 
-                            INT32 rgn_id_base) {
-    return BS_Difference1D (Bitset, r->Id () + rgn_id_base);
-}
-
-inline BS *
-SRC_BB_MGR :: _ubs_diff1d  (BS * Bitset, REGIONAL_CFG_NODE *n,
-                            INT32 rgn_id_base) {
-
-    if (n->Is_Region ()) {
-        return _ubs_diff1d (Bitset, n->Region_Node (), rgn_id_base);   
-    } 
-
-    return _ubs_diff1d (Bitset, n->BB_Node());
-}
-
-
-inline BOOL
-SRC_BB_MGR :: _ubs_memberp (BS * Bitset, BB *b) {
-   return BS_MemberP (Bitset, BB_id(b));
-}
-
-inline BOOL
-SRC_BB_MGR :: _ubs_memberp (BS * Bitset, REGION *r, INT32 rgn_id_base) {
-    return BS_MemberP (Bitset, r->Id() + rgn_id_base);
-}
-
-inline BOOL
-SRC_BB_MGR :: _ubs_memberp (BS *Bitset, REGIONAL_CFG_NODE *n, 
-                            INT32 rgn_base_id) {
-
-    if (n->Is_Region ()) {
-        return _ubs_memberp (Bitset, n->Region_Node(), rgn_base_id);
-    }
-
-    return _ubs_memberp (Bitset, n->BB_Node());
-}
-
-
-    /* ==============================================================
-     *
-     *  _compute_cutting_set 
-     *
-     *  Compute the cutting set for the code motion from <src>
-     *  to <_targ> and keep the cutting set in src_info if at 
-     *  least one cutting-set is found.
-     *
-     *  return TRUE iff we find one cutting-set, FALSE otherwise.
-     *
-     *  TODO: divide the large routine into some small ones.   
-     *
-     * ==============================================================
-     */
-BOOL
-SRC_BB_MGR::_compute_cutting_set (BB * src, SRC_BB_INFO *src_info,
-                                  RGN_CFLOW_MGR * cflow_info) {
-    src_info->siss.clear () ;
-    src_info->across_bbs.clear   ();
-    src_info->across_nested_rgns.clear ();
-
-    if (_targ == src) {
-
-        src_info->src = src ;
-        src_info->siss.push_back (src);
-
-        return TRUE;
-    }
-
-
-    const INT32 rgn_id_base = cflow_info->Max_BB_Id () + 1;
-
-        /* keep track of the nodes we have accessed
-         */
-    NODE_VECTOR visited_nodes_v(_mp); 
-    BS * visited_nodes_bs = BS_Create_Empty (
-                                cflow_info->Max_BB_Id  () + 
-                                cflow_info->Max_Rgn_Id () + 2,
-                                _mp);
-        
-        /* keep track of the nodes we need moving across 
-         */
-    BB_VECTOR       across_bbs  (_mp);
-    REGION_VECTOR   across_rgns (_mp);
-
-
-        /* cutting-set BBs 
-         */
-    BS * siss_node_set = BS_Create_Empty (
-                            cflow_info->Max_BB_Id  () + 
-                            cflow_info->Max_Rgn_Id () + 2,
-                            _mp);
-
-
-    visited_nodes_v.push_back (::Regional_Cfg_Node(src));
-    visited_nodes_bs = _ubs_union1d (visited_nodes_bs, src);
-
-
-    siss_node_set = _ubs_union1d (siss_node_set, src);
-     
-    while (!_ubs_memberp (siss_node_set, _targ)) {
-
-        BOOL changed = TRUE;
-        while (changed) {
-
-                /* stepping over every node we have accessed 
-                 */
-            changed = FALSE ;
-
-            for (INT32 vect_idx = 0 ; 
-                vect_idx < visited_nodes_v.size() ; 
-                vect_idx ++) {
-
-                REGIONAL_CFG_NODE * member = visited_nodes_v[vect_idx]; 
-                if (!_ubs_memberp(siss_node_set, member, rgn_id_base)) {
-
-                    /* member->BB_Node() is *OBVIOUSLY* not an 
-                     * element of cutting-set, this fact has already 
-                     * been identified in the previous iterations
-                     * of the outer while-statement, but it remains
-                     * undeleted since deleting an element of an 
-                     * vector is quite expensive.
-                     */
-                    continue ;
-                }
-
-                if (!member->Is_Region ()) {
-
-                    BB * b = member->BB_Node ();
-
-                    if (b == _targ) { continue ; }
-                
-                    if (!cflow_info->BB1_Reachable_From_BB2(b,_targ) && 
-                        !BB_Is_Isolated_From_Sched (b)) {
-                        continue ;
-                    }
-                }
-
-                    /* Now, we can draw the conclusion that member is not 
-                     * qualified being an element of cutting-set.
-                     */
-                siss_node_set = _ubs_diff1d(siss_node_set,
-                                            member,
-                                            rgn_id_base);
-                changed = TRUE;
-
-
-                for (CFG_PRED_NODE_ITER pred_iter(member); 
-                     pred_iter != 0; 
-                     ++pred_iter) {
-                        
-                    if (_ubs_memberp (visited_nodes_bs, 
-                                      *pred_iter,
-                                      rgn_id_base)) {
-                        continue ;
-                    }
-
-                    visited_nodes_bs = 
-                        _ubs_union1d (visited_nodes_bs, *pred_iter,rgn_id_base);
-
-                    visited_nodes_v.push_back (*pred_iter);
-                    siss_node_set = _ubs_union1d (siss_node_set, 
-                                                  *pred_iter,
-                                                  rgn_id_base);
-
-                    if ((*pred_iter)->Is_Region ()) {
-
-                        /* pred is nested REGION 
-                         */
-                        REGION * r = (*pred_iter)->Region_Node () ;
-
-                        if (!IPFEC_Glos_Code_Motion_Across_Nested_Rgn ||
-                             No_OP_Can_be_Moved_Across_Region (r)) {
-                            return FALSE;
-                        }
-
-                        /* workaround for Edge_Splitting which currently does not 
-                         * split critical edge leading from an nested region 
-                         */
-                        if (cflow_info->BB_Reachable_From_RGN (_targ, r)) {
-                            return FALSE ;
-                        }
-
-                        across_rgns.push_back ((*pred_iter)->Region_Node());
-
-                    } else {
-
-                        BB * pred_bb = (*pred_iter)->BB_Node () ;
-                        if (BB_Is_Isolated_From_Sched (pred_bb)) {
-                            return FALSE;
-                        }
-
-                        across_bbs.push_back ((*pred_iter)->BB_Node());
-                    }
-
-                } /* end of for(CFG_PRED_NODE_ITER ...(member) */
-
-            } /* end of for (INT32 vect_idx = 0; ...) */
-
-        } /* end of nested while (change) */
-
-    } /* while (_ubs...) */
-
-
-
-    BB_VECTOR * siss_p = &src_info->siss ;
-    BB_VECTOR * across_bbs_p= &src_info->across_bbs;
-
-    for (BB_VECTOR_ITER iter = across_bbs.begin() ; 
-         iter != across_bbs.end () ; 
-         iter ++) {
-
-        BB * b = *iter ;
-        if (_ubs_memberp(siss_node_set, b)) {
-            siss_p->push_back (b);
-        } else if (b != src) {
-            across_bbs_p->push_back (b);
-        }
-    }
-
-    src_info->across_nested_rgns = across_rgns ;
-
-    return TRUE;
-
-}
-
-
-    /* ==================================================================
-     *
-     * ::Cutting_Set 
-     * 
-     * return the cutting-set for the code motion from <src> to <_targ>
-     * (a data member of class SRC_BB_MGR).
-     *
-     * ==================================================================
-     */
-const BB_VECTOR * 
-SRC_BB_MGR :: Cutting_Set (BB * src) {
-
-    Is_True (BB_SET_MemberP (_src_bbs_set, src), 
-             ("BB:%d is not candidate BB of BB:%d", BB_id(src), BB_id(_targ)));
-                
-    for (SRC_BB_INFO_ITER iter = _src_info_vect.begin () ; 
-         iter != _src_info_vect.end () ; iter ++) {
-        SRC_BB_INFO  * info = *iter ;
-        if (info->src == src) return &info->siss;
-    }
-
-    Is_True (FALSE, ("Fail to find BB-info for BB:%d", BB_id(src))); 
-
-}
-
-    /* ===================================================================
-     *
-     *  ::BBs_Between_Cutting_Set_and_Src 
-     * 
-     *  return the cutting-set for the code motion from <src> to <_targ>.
-     *
-     * ===================================================================
-     */
-const BB_VECTOR * 
-SRC_BB_MGR :: BBs_Between_Cutting_Set_and_Src (BB * src) {
-
-    Is_True (BB_SET_MemberP (_src_bbs_set, src), 
-             ("BB:%d is not candidate BB of BB:%d", BB_id(src), BB_id(_targ)));
-                
-    for (SRC_BB_INFO_ITER iter = _src_info_vect.begin () ; 
-         iter != _src_info_vect.end () ; iter ++) {
-        SRC_BB_INFO  * info = *iter ;
-        if (info->src == src) return &info->across_bbs;
-    }
-
-    Is_True (FALSE, ("Fail to find BB-info for BB:%d", BB_id(src))); 
-
-}
-
-    /* =================================================================
-     *
-     *  ::Moved_Across_Nested_Rgns 
-     *
-     *  Returns all nested REGIONs (in REGION_VECTOR) that when code 
-     *  motion from <src> to <_targ> occurs, we need move instruction
-     *  across these REGIONS.
-     *
-     * =================================================================
-     */
-const REGION_VECTOR*
-SRC_BB_MGR :: Move_Across_Nested_Rgns (BB *src) {
-    
-    Is_True (BB_SET_MemberP (_src_bbs_set, src),
-                ("BB:%d is not candidate BB of BB:%d", BB_id(src), BB_id(_targ)));
-    
-    for (SRC_BB_INFO_ITER iter = _src_info_vect.begin () ;
-         iter != _src_info_vect.end () ; iter++) {
-        
-        SRC_BB_INFO * info = *iter ;
-        if (info->src == src) {
-            return &info->across_nested_rgns;
-        }
-    }
-
-    Is_True (FALSE, ("Fail to find BB-info for BB:%d", BB_id(src))); 
-}
-
-    /* =================================================================
-     *
-     *  ::Get_Src_Info 
-     *
-     *  returns SRC_BB_INFO associated with <bb>
-     *
-     * =================================================================
-     */
-SRC_BB_INFO * 
-SRC_BB_MGR::Get_Src_Info (BB * bb) {
-
-    Is_True (Is_Src_BB (bb), ("BB:%d is not Soruce-BB", BB_id(bb)));
-   
-    for (SRC_BB_INFO_ITER iter = _src_info_vect.begin() ;
-         iter != _src_info_vect.end() ; iter++) {
-        if ((*iter)->src == bb) return *iter; 
-    }
-
-    Is_True (FALSE, ("fail to find SRC_BB_INFO for BB:%d", BB_id(bb)));
-    return NULL;
-
-}
-
-
-
-    /* ============================================================
-     * ============================================================
-     *
-     *          SCHED_SEQ implementation
-     *
-     * ============================================================
-     * ============================================================
-     */
-REGIONAL_CFG_NODE* 
-SCHED_SEQ::_next(void) {
-
-    float freq = -1.0f ;
-    REGIONAL_CFG_NODE * best = NULL;
-    INT32  index = -1;
-
-    INT32 root_num = _root.size();
-    for (INT32 idx = root_num - 1 ; idx >= 0 ; idx--) {
-
-        REGIONAL_CFG_NODE  * cand = _root[idx] ;
-        float node_freq = cand->Home_Region ()-> Regional_Cfg ()-> 
-                          Node_Freq (cand);
-        float deviation = node_freq/200.0 ;
-
-        if (!best || (node_freq - deviation) > freq || 
-            node_freq + deviation > freq && 
-            _node1_is_sparser (cand,best)) {
-            best = cand ; 
-            freq = node_freq ;
-            index = idx ;
-        }
-    }
-
-    if (!best) return NULL;
-
-    if (index + 1 != root_num) {
-        _root[index] = _root[root_num - 1];
-    }
-
-    _root.resize(--root_num);
-
-    for (CFG_SUCC_NODE_ITER succs(best) ; succs != 0 ; ++succs) {
-        if (! --_node_info_map[*succs]._n_pred) {
-            _root.push_back(*succs); 
-        }
-    }
-
-    return best ; 
-}
-
-SCHED_SEQ::SCHED_SEQ (REGION *rgn, MEM_POOL *mp) :
-    _rgn(rgn), _root(mp) {
-    _cur = NULL ;
-
-    /* initialize the pred num 
-     */
-    for (TOPOLOGICAL_REGIONAL_CFG_ITER iter(_rgn->Regional_Cfg());
-        iter != 0; ++iter) {
-        _node_info_map[*iter]._n_pred = (*iter)->Pred_Num();
-    }
-}
-
-
-BB *
-SCHED_SEQ::Next (void) {
-    while (REGIONAL_CFG_NODE * nd = _next()) {
-       if (_qualified(nd)) return _cur = nd->BB_Node();
-    }
-
-    return _cur = NULL;
-}
-
-BB *
-SCHED_SEQ::First (void) {
-
-    _root.clear () ;
-    _cur = NULL ;
-    _root.push_back (_rgn->Entries()[0]);
-
-    return Next () ;
-}
 
 
 
@@ -1245,24 +515,28 @@ const char *arc_text[] = {
 };
 
 
-/* note : this func is just for the time-being
- */
+    /* note : this func is just for the time-being
+     */
 INT32 
-CGTARG_adjust_latency (
-    OP* pred, ISSUE_PORT pred_port, 
-    OP* succ, ISSUE_PORT succ_port,
-    mUINT16  arc_kind, INT32 org_latency) {
+CGTARG_adjust_latency (ARC* arc, ISSUE_PORT pred_port, ISSUE_PORT succ_port) {
 
-    if (!EXEC_PROPERTY_is_I_Unit(OP_code(pred)) ||
-        !EXEC_PROPERTY_is_M_Unit(OP_code(pred))) {
+    OP* pred = ARC_pred(arc);
+    OP* succ = ARC_succ(arc);
+
+    if (ARC_kind(arc) != CG_DEP_REGIN) {
         return 0;
     }
 
-    if (OP_load(succ) && OP_bb(succ) == OP_bb(pred) && 
-        (EXEC_PROPERTY_is_M_Unit(OP_code(pred))     || 
-        EXEC_PROPERTY_is_I_Unit(OP_code(pred))      &&
-        OP_m_unit(pred))) {
-        if (org_latency >= 1) {
+    if (!EXEC_PROPERTY_is_I_Unit(OP_code(pred)) ||
+        !EXEC_PROPERTY_is_M_Unit(OP_code(pred)) ||
+        !OP_m_unit(pred)) {
+
+        return 0;
+    }
+
+    if (OP_load(succ) || OP_store(succ)) {
+
+        if (ARC_opnd(arc) == OP_find_opnd_use (succ, OU_base)) {
             return -1;
         }
     }
@@ -1271,7 +545,7 @@ CGTARG_adjust_latency (
 }
 
 SPEC_TYPE
-Dirive_Upward_Code_Motion_Spec_Type_From_Arc (ARC* Arc) {
+Derive_Spec_Type_If_Violate (ARC* Arc) {
 
     if (!ARC_is_dotted(Arc)) { return SPEC_DISABLED; }
 
@@ -1280,11 +554,11 @@ Dirive_Upward_Code_Motion_Spec_Type_From_Arc (ARC* Arc) {
     Is_True (ARC_is_control_spec(Arc), ("Arc is not control speculative!"));
 
 
-    OP * pred = ARC_pred(Arc);
-    OP * succ = ARC_succ(Arc);
+    OP* pred = ARC_pred(Arc);
+    OP* succ = ARC_succ(Arc);
         
-    BB * pred_home = OP_bb(pred);
-    BB * succ_home = OP_bb(succ);
+    BB* pred_home = OP_bb(pred);
+    BB* succ_home = OP_bb(succ);
 
     if (pred_home != succ_home &&
         !OP_call(pred)         &&
@@ -1325,5 +599,30 @@ Ld_Need_Not_Transform (OP* op) {
   
   return OP_no_alias(op) || OP_safe_load(op);
 
+}
+
+BOOL
+OP1_Defs_Are_Used_By_OP2(OP* op1, OP* op2) {
+
+    for (INT16 i = 0; i < OP_results(op1); i++) {
+		for (INT16 j = 0; j < OP_opnds(op2); j++) {
+			if (OP_opnd(op2, j) == OP_result(op1, i)) return TRUE;
+		}
+	}
+    return FALSE;
+}
+
+BOOL
+OP1_Defs_Are_Killed_By_OP2(OP* op1, OP* op2) {
+
+    BOOL killed;
+	for (INT16 i = 0; i < OP_results(op1); i++) {
+	    killed = FALSE;
+		for (INT16 j = 0; j < OP_results(op2); j++) {
+			if (OP_result(op2, j) == OP_result(op1, i)) killed = TRUE;
+		}
+		if (!killed) return FALSE;
+	}
+	return TRUE;
 }
 

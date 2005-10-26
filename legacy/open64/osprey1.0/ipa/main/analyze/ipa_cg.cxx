@@ -83,7 +83,11 @@
 
 #include "ipa_nested_pu.h"
 #include "ipa_cg.h"
+#include "ipa_inline.h"
 
+#include "symtab_idx.h"         //for make_TY_IDX()-- in reorder
+#include "ipa_reorder.h"        //for merged_access --reorder
+#include "ipa_option.h"         // for IPA_Enable_Reorder and Merge_struct_access();
 
 IPA_CALL_GRAPH* IPA_Call_Graph;     // "The" call graph of IPA
 BOOL IPA_Call_Graph_Built = FALSE;
@@ -93,6 +97,12 @@ ALT_ENTRY_MAP *alt_entry_map;		// map from alt entry to base entry
 
 UINT32 Total_Dead_Function_Weight = 0;
 UINT32 Orig_Prog_Weight = 0;
+
+//INLINING_TUNING^
+UINT32 Orig_Prog_WN_Count = 0;
+UINT32 Total_Dead_Function_WN_Count = 0;
+FB_FREQ Total_cycle_count_2(0);
+//INLINING_TUNING$
 
 INT Total_Must_Inlined = 0;
 INT Total_Must_Not_Inlined = 0;
@@ -199,7 +209,19 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
       ivars[i].Set_St_Idx(idx_maps->st[ivars[i].St_Idx()]);
     }
   }
-  
+  // process all ty_idxs found in SUMMARY_STRUCT_ACCESS, and sum them up!
+  if(IPA_Enable_Reorder){
+      INT32 num_tys,new_ty;
+      SUMMARY_STRUCT_ACCESS* access_array = IPA_get_struct_access_file_array(hdr, num_tys);
+      SUMMARY_STRUCT_ACCESS* cur_access;
+      for (i = 0; i < num_tys; ++i) {
+      	  cur_access=&access_array[i];
+          new_ty=idx_maps->ty[make_TY_IDX (cur_access->Get_ty())];
+          Merge_struct_access(cur_access,new_ty>>8);
+          //TODO: put new_ty's access_info to merge_access_list
+      }
+  }
+
 }
 #endif // !_STANDALONE_INLINER
 
@@ -417,7 +439,7 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 		
     ipa_node = 
           IPA_Call_Graph->Add_New_Node (st, file_idx, i, i);
-
+//;;printf( "PU   %-50s (freq = %.1f) \n", IPA_Node_Name(ipa_node), (ipa_node->Get_frequency())._value);//pengzhao
     NODE_INDEX cg_node = ipa_node->Node_Index ();
 	
     Set_AUX_PU_node (Aux_Pu_Table[ST_pu (st)], cg_node);
@@ -454,6 +476,7 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 #endif // _STANDALONE_INLINER
 
     Orig_Prog_Weight += ipa_node->Weight ();
+	Orig_Prog_WN_Count += (UINT32)(ipa_node->Get_wn_count());
 
     if ((ipa_node->Summary_Proc()->Get_lang() == LANG_F77) ||
 	    (ipa_node->Summary_Proc()->Get_lang() == LANG_F90))
@@ -477,6 +500,7 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 
     if (ipa_node->Has_frequency ()) {
 	Total_cycle_count += ipa_node->Get_cycle_count ();
+	Total_cycle_count_2 += ipa_node->Get_cycle_count_2 ();
     }
 
     // Mark overrides for externally visible routines
@@ -947,15 +971,17 @@ Delete_Function (NODE_INDEX node, BOOL update_modref_count, mUINT8 *visited)
 
             const AUX_PU& aux_pu =
                 Aux_Pu_Table [ST_pu (St_Table [PU_Info_proc_sym (pu)])];
-            const IPA_NODE* child = IPA_Call_Graph->Graph()->Node_User (AUX_PU_node (aux_pu));
+            IPA_NODE* child = IPA_Call_Graph->Graph()->Node_User (AUX_PU_node (aux_pu));
             if (child) {
 		NODE_INDEX c_vi = child->Node_Index();
 		visited[c_vi] = VISITED_AND_KEEP;
 	        size += Delete_Function (c_vi, update_modref_count, visited);
+            Orig_Prog_WN_Count -= (UINT32)(child->Get_wn_count());//INLINING_TUNING
 	    }
 	}
     }
 
+    Orig_Prog_WN_Count -= (UINT32)(ipa_node->Get_wn_count());//INLINING_TUNING
     return ipa_node->Weight () + size;
 } // Delete_Function 
 
@@ -1897,6 +1923,206 @@ IPA_CALL_GRAPH::Print (FILE* fp)
 {
   Print(fp, PREORDER);
 }
+void 
+IPA_CALL_GRAPH::Print_vobose (FILE* fp)
+{
+  Print_vobose(fp, PREORDER);
+}
+UINT32
+EFFECTIVE_WEIGHT (const IPA_NODE* node)  {
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+    if (IPA_Use_Effective_Size && node->Has_frequency ()) {
+	SUMMARY_FEEDBACK *fb = node->Get_feedback ();
+	return PU_Weight (fb->Get_effective_bb_count (),
+			  fb->Get_effective_stmt_count (),
+			  node->PU_Size().Call_Count ());
+    } else
+#endif // _STANDALONE_INLINER
+	return node->Weight ();
+}
+
+void 
+IPA_CALL_GRAPH::Print_vobose (FILE* fp, TRAVERSAL_ORDER order)
+{
+  char YN;
+  float hotness=-1.0;
+  float hotness2=-1.0;
+  float density = -1.0;
+  vector<IPA_EDGE_INDEX> callsite_list;
+  IPA_NODE_ITER cg_iter(IPA_Call_Graph, order);
+  AUX_IPA_EDGE<INT32> cost_vector (IPA_Call_Graph, _pool);
+
+fprintf(fp, "Finally, Total_Prog_Size = %d\n", Total_Prog_Size);
+fprintf(fp, SBar);
+fprintf(fp, "Reason0: callee is skipped\n");			
+fprintf(fp, "Reason1: edge is skipped\n");				
+fprintf(fp, "Reason2: call deleted by DCE\n");			
+fprintf(fp, "Reason3: caller is a nested procedure\n");
+fprintf(fp, "Reason4: callee has nested procedure(s) so ignore user MUST inline request\n");
+fprintf(fp, "Reason5: callee has nested procedure(s)\n");
+fprintf(fp, "Reason6: callee is recursive\n");
+fprintf(fp, "Reason7: callee is varargs\n");
+fprintf(fp, "Reason8: function with alternate entry point\n");
+fprintf(fp, "Reason9: number of parameters mismatched\n"); 
+fprintf(fp, "Reason10: callee has pragmas which are associated with formals\n"); 
+fprintf(fp, "Reason11: callee has flag that suggested that it should be MPed\n"); 
+fprintf(fp, "Reason12: callee has parallel pragmas that suggest turning off inlining\n"); 
+fprintf(fp, "Reason13: callee has VLAs and caller has parallel_pragma\n"); 
+fprintf(fp, "Reason14: callee has PDO pramgas and caller has parallel_pragma\n");  
+fprintf(fp, "Reason15: callsite pragma requested not to inline\n"); 
+fprintf(fp, "Reason16: exception handling function\n"); 
+fprintf(fp, "Reason17: exception handling code with pstatics\n");
+fprintf(fp, "Reason18: depth in call graph exceeds specified maximum\n");
+fprintf(fp, "Reason19: user requested not to inline\n"); 
+fprintf(fp, "Reason20: function has local fstatics and is set preemptible\n"); 
+fprintf(fp, "Reason21: function is preemptible and has not been set to mustinline\n"); 
+fprintf(fp, "Reason22: incompatible return types\n"); 
+fprintf(fp, "Reason23: incompatible parameter types\n"); 
+fprintf(fp, "Reason24: not inlining across language boundaries\n"); 
+fprintf(fp, "Reason25: not inlining across language boundaries\n"); 
+
+fprintf(fp, "Reason26: $combined_weight exceeds -IPA:plimit=%d\n", IPA_PU_Limit); 
+fprintf(fp, "Reason27: $hotness < -IPA:min_hotness %d\n", IPA_Min_Hotness); 
+fprintf(fp, "Reason28: $callee_weight > -IPA:callee_limit=%d\n", IPA_Small_Callee_Limit);
+fprintf(fp, "Reason29: $callee_weight > -INLINE:aggressive=off callee limit %d\n", IPA_PU_Minimum_Size + (IPA_PU_Minimum_Size / 2));
+fprintf(fp, "Reason30: small, but $combined_weight exceeds hard function size limit %d\n", IPA_PU_Hard_Limit);
+fprintf(fp, "Reason31: Olimit $Get_combined_olimit(caller->PU_Size(), callee->PU_Size(), callee) exceeds -OPT:Olimit= %d\n", Olimit);
+fprintf(fp, "Reason32: Edge is never invoked\n");
+fprintf(fp, "Reason33: Density is too high (infrequent called but contains hot loops) > %d\n",IPA_Max_Density);
+fprintf(fp, SBar);
+  
+  for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) //all nodes
+  {
+    IPA_NODE* node = cg_iter.Current();
+    if (node) {
+	  IPA_NODE_CONTEXT context (node);
+	  IPA_Call_Graph->Map_Callsites (node);
+
+	  float caller_freq=-1.0;
+	  float cycle = -1.0;
+	  UINT16 wn_count = 0;
+	  if(node->Has_frequency ()) {
+	    caller_freq = (node->Get_frequency())._value;
+            cycle = node->Get_cycle_count_2()._value;
+            wn_count=node->Get_wn_count();
+	  }
+	  
+          fprintf(fp, "PU   %-40s Weight=%-5d Freq=%-10.1f WNs=%-7d Cc=%-15.1f\n", IPA_Node_Name(node), node->Weight(), caller_freq, wn_count, cycle);
+
+          BOOL seen_callee = FALSE;
+          callsite_list.clear ();
+          Get_Sorted_Callsite_List(node, IPA_Call_Graph, cost_vector, callsite_list);
+          vector<IPA_EDGE_INDEX>::const_iterator last = callsite_list.end ();
+	  for(vector<IPA_EDGE_INDEX>::iterator first = callsite_list.begin (); first != last; ++first) {
+              IPA_EDGE* tmp_edge = IPA_Call_Graph->Edge (*first) ; 
+              IPA_EDGE_INDEX idx = tmp_edge->Array_Index ();
+              INT32 callsite_linenum;
+              WN* call_wn = tmp_edge->Whirl_Node();
+              USRCPOS callsite_srcpos;
+
+              if (call_wn == NULL) {
+                  callsite_linenum = 0;	
+              }else{
+                  USRCPOS_srcpos(callsite_srcpos) = WN_Get_Linenum (call_wn);
+                  callsite_linenum = USRCPOS_linenum(callsite_srcpos);
+              }
+
+
+          if (IPA_NODE* callee = Callee(tmp_edge)) {
+              if(IPA_Enable_Inline && tmp_edge->Has_Inline_Attrib () && !callee->Has_Noinline_Attrib()) {
+                  YN= 'Y';
+              }else{
+                  YN= 'N';
+          }
+
+          SUMMARY_FEEDBACK *fb = callee->Get_feedback();
+          INT e_bb_cnt, e_stmt_cnt;
+          e_bb_cnt= e_stmt_cnt = -1;
+
+          if(callee->Has_frequency ()) {
+              e_bb_cnt = (fb==NULL)? -1:fb->Get_effective_bb_count ();
+              e_stmt_cnt = (fb==NULL)? -1:fb->Get_effective_stmt_count ();
+          }
+		  
+          if (!seen_callee) {
+              fprintf(fp, "CALLS: \n");
+              seen_callee = TRUE;
+          }
+
+          char why[50];
+          float callee_freq,edge_freq,callee_cycle_count;
+
+#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+    INT32 cost = callee->Weight ();
+#else
+    INT32 cost = EFFECTIVE_WEIGHT (callee); 
+#endif
+	      if(callee->Has_frequency ()) {
+                  callee_freq = (callee->Get_frequency())._value;   
+                  callee_cycle_count = callee->Get_cycle_count()._value;
+              }else{
+                  callee_freq = -1.0;
+                  callee_cycle_count = -1.0;
+              }
+		  
+              if(tmp_edge->Has_frequency()) {
+                  edge_freq = (tmp_edge->Get_frequency())._value;
+              }else{
+                  edge_freq = -1.0;
+              }
+
+
+              if(tmp_edge->reason_id() > 25){
+                  sprintf(why, "%d,%f", tmp_edge->reason_id(),tmp_edge->reason_data());
+              }else{
+                  sprintf(why, "%d", tmp_edge->reason_id());
+              }
+
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+           if (tmp_edge->Has_frequency () && callee->Has_frequency () &&
+               tmp_edge->Get_frequency().Known() && callee->Get_frequency().Known()) {
+               hotness = compute_hotness (tmp_edge, callee, EFFECTIVE_WEIGHT(callee));
+               FB_FREQ cycle_ratio =
+                   (tmp_edge->Get_frequency () / callee->Get_frequency () *
+                    callee->Get_cycle_count_2 ()) / Total_cycle_count_2;
+
+               float size_ratio = (float) (callee->Get_wn_count()) / (float) Orig_Prog_WN_Count;
+               hotness2 = (cycle_ratio._value / size_ratio * 100.0);
+
+               density = (float) callee->Get_cycle_count().Value() / ((float)EFFECTIVE_WEIGHT (callee) * (float)callee->Get_frequency().Value());
+           }else if(callee->Summary_Proc()->Is_Never_Invoked()) {
+               hotness = -1.0;
+               hotness2 = -1.0;
+               density = -1.0;
+           }
+#endif
+
+
+           fprintf(fp, "%c %-6.1f %-6.1f %s-->%-20s(l=%-5d eid=%-5d ef=%-10.1f cf=%-10.1f ew=%-5d den=%-5.1f Cc=%-12.1f)[?%s]\n", 
+						  YN, 
+						  hotness,
+						  hotness2,
+						  IPA_Node_Name(node),
+						  IPA_Node_Name(callee),
+                                                  callsite_linenum,
+						  tmp_edge->Edge_Index(), 
+						  edge_freq,//(tmp_edge->Get_frequency())._value, 
+						  callee_freq, //(callee->Get_frequency())._value,   
+						  EFFECTIVE_WEIGHT (callee), 
+						  density,
+						  callee_cycle_count,//callee->Get_cycle_count()._value,
+						  why
+						  ); 
+        }//if callee is ok
+      }// for all callee (edge)
+
+      if (!seen_callee) {
+          fprintf(fp, "HAS NO CALLS\n");
+      }
+      fprintf(fp, "\n");
+    }//if caller is ok
+  }//for all nodes
+}//Print-vobose()
 
 // ---------------------------------------------
 // Print all node indices in the specified order
@@ -1910,17 +2136,20 @@ IPA_CALL_GRAPH::Print (FILE* fp, TRAVERSAL_ORDER order)
     IPA_NODE* node = cg_iter.Current();
     if (node) {
 
-      fprintf(fp, "PU    %s\n", IPA_Node_Name(node));
+//pengzhao
+      fprintf(fp, "PU    %s (freq = %.1f) \n", IPA_Node_Name(node), (node->Get_frequency())._value);
       BOOL seen_callee = FALSE;
 
       IPA_SUCC_ITER succ_iter(node);
       for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) {
         if (IPA_NODE* callee = Callee(succ_iter.Current_Edge())) {
           if (!seen_callee) {
-            fprintf(fp, "CALLS");
+            fprintf(fp, "CALLS: \n");
             seen_callee = TRUE;
           }
-          fprintf(fp, "\t%s\n", IPA_Node_Name(callee));
+//pengzhao
+//          fprintf(fp, "\t%s\n", IPA_Node_Name(callee));
+		  fprintf(fp, "    %s(%f)->%s(ef= %.1f,cf=%.1f)\n", IPA_Node_Name(node),(node->Get_frequency())._value ,IPA_Node_Name(callee), (succ_iter.Current_Edge()->Get_frequency())._value, (callee->Get_frequency())._value);
         }
       }
 

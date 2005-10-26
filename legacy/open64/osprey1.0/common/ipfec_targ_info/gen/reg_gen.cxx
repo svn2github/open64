@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -41,183 +41,183 @@
 
 #include "reg_gen.h"
 
-static const char reg_descript[]=
-"/* ====================================================================\n\
- * ====================================================================\n\
- *\n\
- * Description:\n\
- *\n\
- *   A description of the ISA registers. The description exports\n\
- *   the following:\n\
- *\n\
- *   typedef (enum) ISA_REGISTER_CLASS\n\
- *       An enumeration of the register classes.\n\
- *\n\
- *   typedef mISA_REGISTER_CLASS\n\
- *       The most compact (integral) representation that can hold\n\
- *       all values of ISA_REGISTER_CLASS\n\
- *\n\
- *   typedef (struct) ISA_REGISTER_CLASS_INFO\n\
- *       Describes a particular register class. The contents are private.\n\
- *\n\
- *   const INT ISA_REGISTER_CLASS_UNDEFINED\n\
- *       A special register class that is out-of-range of valid\n\
- *       register clases.\n\
- *\n\
- *   const INT ISA_REGISTER_CLASS_MIN\n\
- *       The first register class. The range of register classes\n\
- *       is ISA_REGISTER_CLASS_MIN..ISA_REGISTER_CLASS_MAX\n\
- *	    (this range excludes ISA_REGISTER_CLASS_UNDEFINED). * \n\
- *   const INT ISA_REGISTER_CLASS_MAX\n\
- *       The last register class. The range of register classes\n\
- *       is ISA_REGISTER_CLASS_MIN..ISA_REGISTER_CLASS_MAX\n\
- *	    (this range excludes ISA_REGISTER_CLASS_UNDEFINED). * \n\
- *   const INT ISA_REGISTER_CLASS_COUNT\n\
- *       The number of register classes. The range of register classes\n\
- *       is ISA_REGISTER_CLASS_MIN..ISA_REGISTER_CLASS_MAX\n\
- *	    (this range excludes ISA_REGISTER_CLASS_UNDEFINED). * \n\
- *   (macro) FOR_ALL_ISA_REGISTER_CLASS(cl)\n\
- *       Iterate over all the register class values using the\n\
- *       ISA_REGISTER_CLASS variable <cl>.\n\
- *\n\
- *   (macro) FOR_ALL_ISA_REGISTER_CLASS_IN_REVERSE(cl)\n\
- *       Iterate over all the register class values in reverse order using\n\
- *       the ISA_REGISTER_CLASS variable <cl>.\n\
- *\n\
- *   const INT ISA_REGISTER_MAX\n\
- *       The maximum (highest) register number of all classes.\n\
- *       NOTE: the lowest number register is implicitly 0.\n\
- *\n\
- *   typedef (enum) ISA_REGISTER_SUBCLASS\n\
- *       An enumeration of the register subclasses.\n\
- *\n\
- *   typedef mISA_REGISTER_SUBCLASS\n\
- *       The most compact (integral) representation that can hold\n\
- *       all values of ISA_REGISTER_SUBCLASS\n\
- *\n\
- *   typedef (struct) ISA_REGISTER_SUBCLASS_INFO\n\
- *       Describes a particular register subclass. The contents are private.\n\
- *\n\
- *   const INT ISA_REGISTER_SUBCLASS_UNDEFINED\n\
- *       A special register subclass that is out-of-range of valid\n\
- *       register subclases.\n\
- *\n\
- *   const INT ISA_REGISTER_SUBCLASS_MIN\n\
- *       The first register subclass. The range of register subclasses\n\
- *       is ISA_REGISTER_SUBCLASS_MIN..ISA_REGISTER_SUBCLASS_MAX\n\
- * \n\
- *   const INT ISA_REGISTER_SUBCLASS_MAX\n\
- *       The last register subclass. The range of register subclasses\n\
- *       is ISA_REGISTER_SUBCLASS_MIN..ISA_REGISTER_SUBCLASS_MAX\n\
- * \n\
- *   const INT ISA_REGISTER_SUBCLASS_COUNT\n\
- *       The number of register subclasses.\n\
- * \n\
- *   (macro) FOR_ALL_ISA_REGISTER_SUBCLASS(sc)\n\
- *       Iterate over all the register subclass values using the\n\
- *       the ISA_REGISTER_SUBCLASS variable <sc>.\n\
- *\n\
- *   const ISA_REGISTER_CLASS_INFO *ISA_REGISTER_CLASS_Info(\n\
- *     ISA_REGISTER_CLASS rc\n\
- *   )\n\
- *       Return a pointer to the register class info for class 'rc'.\n\
- *\n\
- *   INT ISA_REGISTER_CLASS_INFO_First_Reg(\n\
- *     const ISA_REGISTER_CLASS_INFO *info\n\
- *   )\n\
- *       Get the first (lowest numbered) register for the class\n\
- *       described by 'info'.\n\
- *\n\
- *   INT ISA_REGISTER_CLASS_INFO_Last_Reg(\n\
- *     const ISA_REGISTER_CLASS_INFO *info\n\
- *   )\n\
- *       Get the last (highest numbered) register for the class\n\
- *       described by 'info'.\n\
- *\n\
- *   INT ISA_REGISTER_CLASS_INFO_Bit_Size(\n\
- *     const ISA_REGISTER_CLASS_INFO *info\n\
- *   )\n\
- *       Get the size, in bits, of the register in the class\n\
- *       described by 'info'.\n\
- *\n\
- *   BOOL ISA_REGISTER_CLASS_INFO_Can_Store(\n\
- *     const ISA_REGISTER_CLASS_INFO *info\n\
- *   )\n\
- *       Return a flag that indicates if the registers in the class\n\
- *       described by 'info' can be stored to memory, i.e. there\n\
- *       is a store instruction for the registers in the class.\n\
- *\n\
- *   BOOL ISA_REGISTER_CLASS_INFO_Multiple_Save(\n\
- *     const ISA_REGISTER_CLASS_INFO *info\n\
- *   )\n\
- *       Return a flag that indicates if the registers in the class\n\
- *       described by 'info' can be saved and restore to memory in\n\
- *       multiples, i.e. as a group.\n\
- *\n\
- *   const char *ISA_REGISTER_CLASS_INFO_Name(\n\
- *     const ISA_REGISTER_CLASS_INFO *info\n\
- *   )\n\
- *       Return the name of the class described by 'info'.\n\
- *\n\
- *   const char *ISA_REGISTER_CLASS_INFO_Reg_Name(\n\
- *     const ISA_REGISTER_CLASS_INFO *info,\n\
- *     INT reg_index\n\
- *   )\n\
- *       Return the name of the 'reg_index'th register in the\n\
- *       class described by 'info'. NOTE: reg_index==0 corresponds\n\
- *       to the first register of the class.\n\
- *\n\
- *   const ISA_REGISTER_SUBCLASS_INFO *ISA_REGISTER_SUBCLASS_Info(\n\
- *     ISA_REGISTER_SUBCLASS sc\n\
- *   )\n\
- *\n\
- *       Return a pointer to the register subclass info for the\n\
- *       subclass 'sc'.\n\
- *\n\
- *   const char *ISA_REGISTER_SUBCLASS_INFO_Name(\n\
- *     const ISA_REGISTER_SUBCLASS_INFO *info\n\
- *   )\n\
- *\n\
- *       Return the name of the subclass described by 'info'.\n\
- *\n\
- *   ISA_REGISTER_CLASS ISA_REGISTER_SUBCLASS_INFO_Class(\n\
- *     const ISA_REGISTER_SUBCLASS_INFO *info\n\
- *   )\n\
- *\n\
- *       Return the base register class for the subclass described\n\
- *       by 'info'.\n\
- *\n\
- *   INT ISA_REGISTER_SUBCLASS_INFO_Count(\n\
- *     const ISA_REGISTER_SUBCLASS_INFO *info\n\
- *   )\n\
- *\n\
- *       Return the number of registers in the subclass described\n\
- *       by 'info'.\n\
- *\n\
- *   UINT ISA_REGISTER_SUBCLASS_INFO_Member(\n\
- *     const ISA_REGISTER_SUBCLASS_INFO *info,\n\
- *     INT n\n\
- *   )\n\
- *\n\
- *       Return the 'n'th member (register) of the subclass described\n\
- *       by 'info'. The order of the registers returned is arbitrary.\n\
- *\n\
- *   const char *ISA_REGISTER_SUBCLASS_INFO_Reg_Name(\n\
- *     const ISA_REGISTER_SUBCLASS_INFO *info,\n\
- *     INT index\n\
- *   )\n\
- *\n\
- *       Return the 'n'th member's register name of the subclass\n\
- *       described by 'info'. If the member does not have a subclass\n\
- *       specific name, NULL is returned.\n\
- *\n\
- *   void ISA_REGISTER_Initialize(void)\n\
- *       Initialize the register package for use with the ISA specified\n\
- *       by ISA_SUBSET_Value.\n\
- *\n\
- * ====================================================================\n\
- * ====================================================================\n\
- */";
+static const char * const reg_descript[]= {
+"/* ====================================================================",
+" * ====================================================================",
+" *",
+" * Description:",
+" *",
+" *   A description of the ISA registers. The description exports",
+" *   the following:",
+" *",
+" *   typedef (enum) ISA_REGISTER_CLASS",
+" *       An enumeration of the register classes.",
+" *",
+" *   typedef mISA_REGISTER_CLASS",
+" *       The most compact (integral) representation that can hold",
+" *       all values of ISA_REGISTER_CLASS",
+" *",
+" *   typedef (struct) ISA_REGISTER_CLASS_INFO",
+" *       Describes a particular register class. The contents are private.",
+" *",
+" *   const INT ISA_REGISTER_CLASS_UNDEFINED",
+" *       A special register class that is out-of-range of valid",
+" *       register clases.",
+" *",
+" *   const INT ISA_REGISTER_CLASS_MIN",
+" *       The first register class. The range of register classes",
+" *       is ISA_REGISTER_CLASS_MIN..ISA_REGISTER_CLASS_MAX",
+" *	    (this range excludes ISA_REGISTER_CLASS_UNDEFINED). * ",
+" *   const INT ISA_REGISTER_CLASS_MAX",
+" *       The last register class. The range of register classes",
+" *       is ISA_REGISTER_CLASS_MIN..ISA_REGISTER_CLASS_MAX",
+" *	    (this range excludes ISA_REGISTER_CLASS_UNDEFINED). * ",
+" *   const INT ISA_REGISTER_CLASS_COUNT",
+" *       The number of register classes. The range of register classes",
+" *       is ISA_REGISTER_CLASS_MIN..ISA_REGISTER_CLASS_MAX",
+" *	    (this range excludes ISA_REGISTER_CLASS_UNDEFINED). * ",
+" *   (macro) FOR_ALL_ISA_REGISTER_CLASS(cl)",
+" *       Iterate over all the register class values using the",
+" *       ISA_REGISTER_CLASS variable <cl>.",
+" *",
+" *   (macro) FOR_ALL_ISA_REGISTER_CLASS_IN_REVERSE(cl)",
+" *       Iterate over all the register class values in reverse order using",
+" *       the ISA_REGISTER_CLASS variable <cl>.",
+" *",
+" *   const INT ISA_REGISTER_MAX",
+" *       The maximum (highest) register number of all classes.",
+" *       NOTE: the lowest number register is implicitly 0.",
+" *",
+" *   typedef (enum) ISA_REGISTER_SUBCLASS",
+" *       An enumeration of the register subclasses.",
+" *",
+" *   typedef mISA_REGISTER_SUBCLASS",
+" *       The most compact (integral) representation that can hold",
+" *       all values of ISA_REGISTER_SUBCLASS",
+" *",
+" *   typedef (struct) ISA_REGISTER_SUBCLASS_INFO",
+" *       Describes a particular register subclass. The contents are private.",
+" *",
+" *   const INT ISA_REGISTER_SUBCLASS_UNDEFINED",
+" *       A special register subclass that is out-of-range of valid",
+" *       register subclases.",
+" *",
+" *   const INT ISA_REGISTER_SUBCLASS_MIN",
+" *       The first register subclass. The range of register subclasses",
+" *       is ISA_REGISTER_SUBCLASS_MIN..ISA_REGISTER_SUBCLASS_MAX",
+" * ",
+" *   const INT ISA_REGISTER_SUBCLASS_MAX",
+" *       The last register subclass. The range of register subclasses",
+" *       is ISA_REGISTER_SUBCLASS_MIN..ISA_REGISTER_SUBCLASS_MAX",
+" * ",
+" *   const INT ISA_REGISTER_SUBCLASS_COUNT",
+" *       The number of register subclasses.",
+" * ",
+" *   (macro) FOR_ALL_ISA_REGISTER_SUBCLASS(sc)",
+" *       Iterate over all the register subclass values using the",
+" *       the ISA_REGISTER_SUBCLASS variable <sc>.",
+" *",
+" *   const ISA_REGISTER_CLASS_INFO *ISA_REGISTER_CLASS_Info(",
+" *     ISA_REGISTER_CLASS rc",
+" *   )",
+" *       Return a pointer to the register class info for class 'rc'.",
+" *",
+" *   INT ISA_REGISTER_CLASS_INFO_First_Reg(",
+" *     const ISA_REGISTER_CLASS_INFO *info",
+" *   )",
+" *       Get the first (lowest numbered) register for the class",
+" *       described by 'info'.",
+" *",
+" *   INT ISA_REGISTER_CLASS_INFO_Last_Reg(",
+" *     const ISA_REGISTER_CLASS_INFO *info",
+" *   )",
+" *       Get the last (highest numbered) register for the class",
+" *       described by 'info'.",
+" *",
+" *   INT ISA_REGISTER_CLASS_INFO_Bit_Size(",
+" *     const ISA_REGISTER_CLASS_INFO *info",
+" *   )",
+" *       Get the size, in bits, of the register in the class",
+" *       described by 'info'.",
+" *",
+" *   BOOL ISA_REGISTER_CLASS_INFO_Can_Store(",
+" *     const ISA_REGISTER_CLASS_INFO *info",
+" *   )",
+" *       Return a flag that indicates if the registers in the class",
+" *       described by 'info' can be stored to memory, i.e. there",
+" *       is a store instruction for the registers in the class.",
+" *",
+" *   BOOL ISA_REGISTER_CLASS_INFO_Multiple_Save(",
+" *     const ISA_REGISTER_CLASS_INFO *info",
+" *   )",
+" *       Return a flag that indicates if the registers in the class",
+" *       described by 'info' can be saved and restore to memory in",
+" *       multiples, i.e. as a group.",
+" *",
+" *   const char *ISA_REGISTER_CLASS_INFO_Name(",
+" *     const ISA_REGISTER_CLASS_INFO *info",
+" *   )",
+" *       Return the name of the class described by 'info'.",
+" *",
+" *   const char *ISA_REGISTER_CLASS_INFO_Reg_Name(",
+" *     const ISA_REGISTER_CLASS_INFO *info,",
+" *     INT reg_index",
+" *   )",
+" *       Return the name of the 'reg_index'th register in the",
+" *       class described by 'info'. NOTE: reg_index==0 corresponds",
+" *       to the first register of the class.",
+" *",
+" *   const ISA_REGISTER_SUBCLASS_INFO *ISA_REGISTER_SUBCLASS_Info(",
+" *     ISA_REGISTER_SUBCLASS sc",
+" *   )",
+" *",
+" *       Return a pointer to the register subclass info for the",
+" *       subclass 'sc'.",
+" *",
+" *   const char *ISA_REGISTER_SUBCLASS_INFO_Name(",
+" *     const ISA_REGISTER_SUBCLASS_INFO *info",
+" *   )",
+" *",
+" *       Return the name of the subclass described by 'info'.",
+" *",
+" *   ISA_REGISTER_CLASS ISA_REGISTER_SUBCLASS_INFO_Class(",
+" *     const ISA_REGISTER_SUBCLASS_INFO *info",
+" *   )",
+" *",
+" *       Return the base register class for the subclass described",
+" *       by 'info'.",
+" *",
+" *   INT ISA_REGISTER_SUBCLASS_INFO_Count(",
+" *     const ISA_REGISTER_SUBCLASS_INFO *info",
+" *   )",
+" *",
+" *       Return the number of registers in the subclass described",
+" *       by 'info'.",
+" *",
+" *   UINT ISA_REGISTER_SUBCLASS_INFO_Member(",
+" *     const ISA_REGISTER_SUBCLASS_INFO *info,",
+" *     INT n",
+" *   )",
+" *",
+" *       Return the 'n'th member (register) of the subclass described",
+" *       by 'info'. The order of the registers returned is arbitrary.",
+" *",
+" *   const char *ISA_REGISTER_SUBCLASS_INFO_Reg_Name(",
+" *     const ISA_REGISTER_SUBCLASS_INFO *info,",
+" *     INT index",
+" *   )",
+" *",
+" *       Return the 'n'th member's register name of the subclass",
+" *       described by 'info'. If the member does not have a subclass",
+" *       specific name, NULL is returned.",
+" *",
+" *   void ISA_REGISTER_Initialize(void)",
+" *       Initialize the register package for use with the ISA specified",
+" *       by ISA_SUBSET_Value.",
+" *",
+" * ====================================================================",
+" * ====================================================================",
+" */", NULL};
 
 
 static const char reg_class_iter[]= "\
@@ -244,128 +244,128 @@ typedef struct {\n\
   const char *reg_name[ISA_REGISTER_MAX+1];\n\
 } ISA_REGISTER_CLASS_INFO;\n\n";
 	
-static const char reg_subclass_query[]="\
-typedef mUINT8 mISA_REGISTER_SUBCLASS;\n\
-\n\
-#define FOR_ALL_ISA_REGISTER_SUBCLASS(sc) \\\n\
-	for (sc = ISA_REGISTER_SUBCLASS_MIN; \\\n\
-	     sc <= ISA_REGISTER_SUBCLASS_MAX; \\\n\
-	     sc = (ISA_REGISTER_SUBCLASS)(sc + 1))\n\
-\n\
-typedef struct {\n\
-  const char *name;\n\
-  mISA_REGISTER_CLASS rclass;\n\
-  mUINT8 count;\n\
-  mUINT8 members[ISA_REGISTER_MAX+1];\n\
-  const char *reg_name[ISA_REGISTER_MAX+1];\n\
-} ISA_REGISTER_SUBCLASS_INFO;\n\
-\n\
-inline const ISA_REGISTER_CLASS_INFO *ISA_REGISTER_CLASS_Info(\n\
-  ISA_REGISTER_CLASS rc\n\
-)\n\
-{\n\
-  extern const ISA_REGISTER_CLASS_INFO ISA_REGISTER_CLASS_info[];\n\
-  extern mUINT8 ISA_REGISTER_CLASS_info_index[];\n\
-  INT index = ISA_REGISTER_CLASS_info_index[(INT)rc];\n\
-  return &ISA_REGISTER_CLASS_info[index];\n\
-}\n\
-\n\
-inline INT ISA_REGISTER_CLASS_INFO_First_Reg(\n\
-  const ISA_REGISTER_CLASS_INFO *info\n\
-)\n\
-{\n\
-  return info->min_regnum;\n\
-}\n\
-\n\
-inline INT ISA_REGISTER_CLASS_INFO_Last_Reg(\n\
-  const ISA_REGISTER_CLASS_INFO *info\n\
-)\n\
-{\n\
-  return info->max_regnum;\n\
-}\n\
-\n\
-inline INT ISA_REGISTER_CLASS_INFO_Bit_Size(\n\
-  const ISA_REGISTER_CLASS_INFO *info\n\
-)\n\
-{\n\
-  return info->bit_size;\n\
-}\n\
-\n\
-inline BOOL ISA_REGISTER_CLASS_INFO_Can_Store(\n\
-  const ISA_REGISTER_CLASS_INFO *info\n\
-)\n\
-{\n\
-  return info->can_store;\n\
-}\n\
-\n\
-inline BOOL ISA_REGISTER_CLASS_INFO_Multiple_Save(\n\
-  const ISA_REGISTER_CLASS_INFO *info\n\
-)\n\
-{\n\
-  return info->multiple_save;\n\
-}\n\
-\n\
-inline const char *ISA_REGISTER_CLASS_INFO_Name(\n\
-  const ISA_REGISTER_CLASS_INFO *info\n\
-)\n\
-{\n\
-  return info->name;\n\
-}\n\
-\n\
-inline const char *ISA_REGISTER_CLASS_INFO_Reg_Name(\n\
-  const ISA_REGISTER_CLASS_INFO *info,\n\
-  INT reg_index\n\
-)\n\
-{\n\
-  return info->reg_name[reg_index];\n\
-}\n\
-\n\
-inline const ISA_REGISTER_SUBCLASS_INFO *ISA_REGISTER_SUBCLASS_Info(\n\
-  ISA_REGISTER_SUBCLASS sc\n\
-)\n\
-{\n\
-  extern const ISA_REGISTER_SUBCLASS_INFO ISA_REGISTER_SUBCLASS_info[];\n\
-  return &ISA_REGISTER_SUBCLASS_info[sc];\n\
-}\n\
-\n\
-inline const char *ISA_REGISTER_SUBCLASS_INFO_Name(\n\
-  const ISA_REGISTER_SUBCLASS_INFO *info\n\
-)\n\
-{\n\
-  return info->name;\n\
-}\n\
-\n\
-inline ISA_REGISTER_CLASS ISA_REGISTER_SUBCLASS_INFO_Class(\n\
-  const ISA_REGISTER_SUBCLASS_INFO *info\n\
-)\n\
-{\n\
-  return (ISA_REGISTER_CLASS)info->rclass;\n\
-}\n\
-\n\
-inline INT ISA_REGISTER_SUBCLASS_INFO_Count(\n\
-  const ISA_REGISTER_SUBCLASS_INFO *info\n\
-)\n\
-{\n\
-  return info->count;\n\
-}\n\
-\n\
-inline UINT ISA_REGISTER_SUBCLASS_INFO_Member(\n\
-  const ISA_REGISTER_SUBCLASS_INFO *info,\n\
-  INT n\n\
-)\n\
-{\n\
-  return info->members[n];\n\
-}\n\
-\n\
-inline const char *ISA_REGISTER_SUBCLASS_INFO_Reg_Name(\n\
-  const ISA_REGISTER_SUBCLASS_INFO *info,\n\
-  INT n\n\
-)\n\
-{\n\
-  return info->reg_name[n];\n\
-}\n\
-\n\
-extern void ISA_REGISTER_Initialize(void);\n";
+static const char * const reg_subclass_query[]={
+"typedef mUINT8 mISA_REGISTER_SUBCLASS;",
+"",
+"#define FOR_ALL_ISA_REGISTER_SUBCLASS(sc) \\",
+"	for (sc = ISA_REGISTER_SUBCLASS_MIN; \\",
+"	     sc <= ISA_REGISTER_SUBCLASS_MAX; \\",
+"	     sc = (ISA_REGISTER_SUBCLASS)(sc + 1))",
+"",
+"typedef struct {",
+"  const char *name;",
+"  mISA_REGISTER_CLASS rclass;",
+"  mUINT8 count;",
+"  mUINT8 members[ISA_REGISTER_MAX+1];",
+"  const char *reg_name[ISA_REGISTER_MAX+1];",
+"} ISA_REGISTER_SUBCLASS_INFO;",
+"",
+"inline const ISA_REGISTER_CLASS_INFO *ISA_REGISTER_CLASS_Info(",
+"  ISA_REGISTER_CLASS rc",
+")",
+"{",
+"  extern const ISA_REGISTER_CLASS_INFO ISA_REGISTER_CLASS_info[];",
+"  extern mUINT8 ISA_REGISTER_CLASS_info_index[];",
+"  INT index = ISA_REGISTER_CLASS_info_index[(INT)rc];",
+"  return &ISA_REGISTER_CLASS_info[index];",
+"}",
+"",
+"inline INT ISA_REGISTER_CLASS_INFO_First_Reg(",
+"  const ISA_REGISTER_CLASS_INFO *info",
+")",
+"{",
+"  return info->min_regnum;",
+"}",
+"",
+"inline INT ISA_REGISTER_CLASS_INFO_Last_Reg(",
+"  const ISA_REGISTER_CLASS_INFO *info",
+")",
+"{",
+"  return info->max_regnum;",
+"}",
+"",
+"inline INT ISA_REGISTER_CLASS_INFO_Bit_Size(",
+"  const ISA_REGISTER_CLASS_INFO *info",
+")",
+"{",
+"  return info->bit_size;",
+"}",
+"",
+"inline BOOL ISA_REGISTER_CLASS_INFO_Can_Store(",
+"  const ISA_REGISTER_CLASS_INFO *info",
+")",
+"{",
+"  return info->can_store;",
+"}",
+"",
+"inline BOOL ISA_REGISTER_CLASS_INFO_Multiple_Save(",
+"  const ISA_REGISTER_CLASS_INFO *info",
+")",
+"{",
+"  return info->multiple_save;",
+"}",
+"",
+"inline const char *ISA_REGISTER_CLASS_INFO_Name(",
+"  const ISA_REGISTER_CLASS_INFO *info",
+")",
+"{",
+"  return info->name;",
+"}",
+"",
+"inline const char *ISA_REGISTER_CLASS_INFO_Reg_Name(",
+"  const ISA_REGISTER_CLASS_INFO *info,",
+"  INT reg_index",
+")",
+"{",
+"  return info->reg_name[reg_index];",
+"}",
+"",
+"inline const ISA_REGISTER_SUBCLASS_INFO *ISA_REGISTER_SUBCLASS_Info(",
+"  ISA_REGISTER_SUBCLASS sc",
+")",
+"{",
+"  extern const ISA_REGISTER_SUBCLASS_INFO ISA_REGISTER_SUBCLASS_info[];",
+"  return &ISA_REGISTER_SUBCLASS_info[sc];",
+"}",
+"",
+"inline const char *ISA_REGISTER_SUBCLASS_INFO_Name(",
+"  const ISA_REGISTER_SUBCLASS_INFO *info",
+")",
+"{",
+"  return info->name;",
+"}",
+"",
+"inline ISA_REGISTER_CLASS ISA_REGISTER_SUBCLASS_INFO_Class(",
+"  const ISA_REGISTER_SUBCLASS_INFO *info",
+")",
+"{",
+"  return (ISA_REGISTER_CLASS)info->rclass;",
+"}",
+"",
+"inline INT ISA_REGISTER_SUBCLASS_INFO_Count(",
+"  const ISA_REGISTER_SUBCLASS_INFO *info",
+")",
+"{",
+"  return info->count;",
+"}",
+"",
+"inline UINT ISA_REGISTER_SUBCLASS_INFO_Member(",
+"  const ISA_REGISTER_SUBCLASS_INFO *info,",
+"  INT n",
+")",
+"{",
+"  return info->members[n];",
+"}",
+"",
+"inline const char *ISA_REGISTER_SUBCLASS_INFO_Reg_Name(",
+"  const ISA_REGISTER_SUBCLASS_INFO *info,",
+"  INT n",
+")",
+"{",
+"  return info->reg_name[n];",
+"}",
+"",
+"extern void ISA_REGISTER_Initialize(void);\n", NULL};
 
 static const char init_reg_func[]= "\
 void ISA_REGISTER_Initialize(void)\n\
@@ -381,51 +381,51 @@ void ISA_REGISTER_Initialize(void)\n\
 }\n";
 
 
-static const char abi_descript[]= "\
-/* ====================================================================\n\
- * ====================================================================\n\
- *\n\
- * Description:\n\
- *\n\
- *   A description of the ABI properties. The description exports\n\
- *   the following:\n\
- *\n\
- *   typedef (enum) ABI_PROPERTIES_ABI\n\
- *\n\
- *       An enumeration of the ABIs described. The names have the form:\n\
- *\n\
- *          ABI_PROPERTIES_ABI_xxx\n\
- *\n\
- *       where 'xxx' is replaced with the ABI name.\n\
- *\n\
- *   const ABI_PROPERTIES_ABI ABI_PROPERTIES_ABI_UNDEFINED\n\
- *       Useful value guaranteed not to be a valid ABI_PROPERTIES_ABI.\n\
- *\n\
- *   ABI_PROPERTIES_ABI ABI_PROPERTIES_ABI_Value\n\
- *       A variable containing the current ABI value.\n\
- *\n\
- *   const char *ABI_PROPERTIES_ABI_Name(ABI_PROPERTIES_ABI abi)\n\
- *      Returns a name for the given 'abi'.\n\
- *\n\
- *   void ABI_PROPERTIES_Initialize(void)\n\
- *       Initialize for the target ABI specified by ABI_PROPERTIES_ABI_Value.\n\
- *\n\
- *   const char *ABI_PROPERTY_Reg_Name(\n\
- *     ISA_REGISTER_CLASS rc,\n\
- *     INT reg\n\
- *   )\n\
- *       Return the ABI specific name of register 'reg' in class 'rc'.\n\
- *\n\
- *   BOOL ABI_PROPERTY_Is_xxx(\n\
- *     ISA_REGISTER_CLASS rc,\n\
- *     INT reg\n\
- *   )\n\
- *       Return a boolean that indicates if register 'reg' in class\n\
- *       'rc' had the property 'xxx'.\n\
- *\n\
- * ====================================================================\n\
- * ====================================================================\n\
- */\n";
+static const char * const abi_descript[]= { 
+"/* ====================================================================",
+" * ====================================================================",
+" *",
+" * Description:",
+" *",
+" *   A description of the ABI properties. The description exports",
+" *   the following:",
+" *",
+" *   typedef (enum) ABI_PROPERTIES_ABI",
+" *",
+" *       An enumeration of the ABIs described. The names have the form:",
+" *",
+" *          ABI_PROPERTIES_ABI_xxx",
+" *",
+" *       where 'xxx' is replaced with the ABI name.",
+" *",
+" *   const ABI_PROPERTIES_ABI ABI_PROPERTIES_ABI_UNDEFINED",
+" *       Useful value guaranteed not to be a valid ABI_PROPERTIES_ABI.",
+" *",
+" *   ABI_PROPERTIES_ABI ABI_PROPERTIES_ABI_Value",
+" *       A variable containing the current ABI value.",
+" *",
+" *   const char *ABI_PROPERTIES_ABI_Name(ABI_PROPERTIES_ABI abi)",
+" *      Returns a name for the given 'abi'.",
+" *",
+" *   void ABI_PROPERTIES_Initialize(void)",
+" *       Initialize for the target ABI specified by ABI_PROPERTIES_ABI_Value.",
+" *",
+" *   const char *ABI_PROPERTY_Reg_Name(",
+" *     ISA_REGISTER_CLASS rc,",
+" *     INT reg",
+" *   )",
+" *       Return the ABI specific name of register 'reg' in class 'rc'.",
+" *",
+" *   BOOL ABI_PROPERTY_Is_xxx(",
+" *     ISA_REGISTER_CLASS rc,",
+" *     INT reg",
+" *   )",
+" *       Return a boolean that indicates if register 'reg' in class",
+" *       'rc' had the property 'xxx'.",
+" *",
+" * ====================================================================",
+" * ====================================================================",
+" */", NULL};
 
 static const char abi_common[]="\
 extern ABI_PROPERTIES_ABI ABI_PROPERTIES_ABI_Value;\n\
@@ -558,7 +558,8 @@ void Register_Generator(void *pknobs, GEN_MODE mode)
   fprintf(h_file,"  ISA_REGISTER_SUBCLASS_COUNT = ISA_REGISTER_SUBCLASS_MAX - ISA_REGISTER_SUBCLASS_MIN + 1\n");
   fprintf(h_file,"} ISA_REGISTER_SUBCLASS;\n\n");
 
-  fprintf(h_file, "%s", reg_subclass_query);
+  for (int i=0; reg_subclass_query[i] != NULL; i++)
+      fprintf(h_file, "%s\n", reg_subclass_query[i]);
 
 
   ///////////////////////////////////////////////////////////////////

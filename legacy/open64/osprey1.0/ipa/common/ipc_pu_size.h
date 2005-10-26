@@ -54,7 +54,7 @@ private:
   UINT32 _bb_count;		    // basic block count
   UINT32 _stmt_count;		    // statement count
   UINT32 _call_count;		    // (call_count == 0) implies leaf
-
+  
 public:
   // constructor
   PU_SIZE (UINT32 bb=0, UINT32 stmt=0, UINT32 call= 0) :
@@ -63,8 +63,10 @@ public:
     _call_count (call)
   {}
     
-  UINT32 Call_Count () const { return _call_count; };
-    
+  UINT32 Call_Count () const 	{ return _call_count; };
+  UINT32 Bb_count() const 		{ return _bb_count;}
+  UINT32 Stmt_count() const 	{ return _stmt_count;}
+
   void Set_PU_Size (UINT32 bb, UINT32 stmt, UINT32 call) 
   {
     _bb_count = bb;

@@ -1224,6 +1224,12 @@ WN_object_ty (const WN *wn)
 	WN_field_id(wn) != 0 &&
 	TY_kind(WN_ty(wn)) == KIND_STRUCT)
       return field_type (WN_ty(wn), WN_field_id(wn));
+    if ((WN_operator(wn) == OPR_ILOAD || WN_operator(wn) == OPR_ILDBITS)) {
+      Is_True (TY_kind(WN_load_addr_ty(wn)) == KIND_POINTER,
+	("TY of ILOAD is not KIND_POINTER."));
+      TY_IDX ty_idx = TY_pointed(WN_load_addr_ty(wn));
+      return ty_idx;
+    }
     return WN_ty(wn);
   } else if (OPCODE_is_store(WN_opcode(wn))) {
     TY_IDX ty_idx = WN_ty(wn);

@@ -76,6 +76,7 @@ BOOL    VHO_Cselect_Opt                 = FALSE;
 BOOL    VHO_Iload_Opt                   = TRUE;
 BOOL    VHO_Istore_Opt                  = TRUE;
 BOOL    VHO_Call_Opt                    = FALSE;
+BOOL    VHO_Icall_Devir			= TRUE;
 BOOL    VHO_Check_Tree                  = FALSE;
 BOOL    VHO_Single_Loop_Test            = FALSE;
 BOOL    VHO_Use_Do_While                = FALSE;
@@ -115,6 +116,8 @@ static OPTION_DESC Options_VHO[] = {
     TRUE, 0, 0,  &VHO_Istore_Opt,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "call_opt",           "call",
     TRUE, 0, 0,  &VHO_Call_Opt,      NULL },
+  { OVK_BOOL,	OV_INTERNAL,	TRUE, "icall_devir",          "icall",
+    TRUE, 0, 0,  &VHO_Icall_Devir,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "check_tree",         "check_tree",
     TRUE, 0, 0,  &VHO_Check_Tree,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "single_loop_test",   "single_loop_test",

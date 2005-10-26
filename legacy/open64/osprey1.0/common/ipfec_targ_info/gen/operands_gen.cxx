@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -40,331 +40,332 @@
 
 #include "operands_gen.h"
 
-static const char description[] =
-"/* ====================================================================\n\
- * ====================================================================\n\
- *\n\
- * Description:\n\
- *\n\
- *   A description of the ISA instruction operands. The description\n\
- *   exports the following:\n\
- *\n\
- *   typedef (struct) ISA_OPERAND_VALTYP\n\
- *       Describes a particular operand/result type, including\n\
- *       the type of value it may contain and whether or not is\n\
- *       a register, literal or enum. The contents are private.\n\
- *\n\
- *   typedef (struct) ISA_OPERAND_INFO\n\
- *       Identifies the operand types of a particular instruction.\n\
- *       The contents are private.\n\
- *\n\
- *,  typedef (enum) ISA_OPERAND_USE\n\
- *       Identifies the useage of an operand of a particular instruction.\n\
- *       The names have the form OU_xxxx.\n\
- *\n\
- *   const INT OU_UNDEFINED\n\
- *       Identifies an undefined/unknown operand use.\n\
- *\n\
- *   const INT ISA_OPERAND_max_operands\n\
- *       The maximum number of operands of any instruction.\n\
- *\n\
- *   const INT ISA_OPERAND_max_results\n\
- *       The maximum number of results of any instruction.\n\
- *\n\
- *   const ISA_OPERAND_INFO *ISA_OPERAND_Info(TOP topcode)\n\
- *       Return a pointer to the operand info for the instruction\n\
- *       specified by 'topcode'.\n\
- *\n\
- *   INT ISA_OPERAND_INFO_Operands(const ISA_OPERAND_INFO *oinfo)\n\
- *       Return the number of operands specified by the operand\n\
- *       info 'oinfo'.\n\
- *\n\
- *   const ISA_OPERAND_VALTYP *ISA_OPERAND_INFO_Operand(\n\
- *     const ISA_OPERAND_INFO *oinfo,\n\
- *     int opnd\n\
- *   )\n\
- *       Get the operand type of operand 'opnd' specified by the\n\
- *       operand info 'oinfo'.\n\
- *\n\
- *   INT ISA_OPERAND_INFO_Results(const ISA_OPERAND_INFO *oinfo)\n\
- *       Return the number of results specified by the operand\n\
- *       info 'oinfo'.\n\
- *\n\
- *   const ISA_OPERAND_VALTYP *ISA_OPERAND_INFO_Result(\n\
- *     const ISA_OPERAND_INFO *oinfo,\n\
- *     int result\n\
- *   )\n\
- *       Get the operand type for the result 'result' specified by the\n\
- *       operand info 'oinfo'.\n\
- *\n\
- *   ISA_OPERAND_USE ISA_OPERAND_INFO_Use(\n\
- *     const ISA_OPERAND_INFO *oinfo,\n\
- *     INT opnd\n\
- *   )\n\
- *       Get the operand use type of operand 'opnd' specified by the\n\
- *       operand info 'oinfo'.\n\
- *\n\
- *   BOOL ISA_OPERAND_Any_Use(ISA_OPERAND_USE ouse)\n\
- *       Returns a boolean that indicates if any instruction in the\n\
- *       architecture has an an operand with usage 'use'. Useful\n\
- *       for omitting sections of code that aren't applicable to\n\
- *       some architectures.\n\
- *\n\
- *   ISA_REGISTER_CLASS ISA_OPERAND_VALTYP_Register_Class(\n\
- *     const ISA_OPERAND_VALTYP *otype\n\
- *   )\n\
- *       Get the register class for the operand specified by 'otype'.\n\
- *\n\
- *   ISA_REGISTER_SUBCLASS ISA_OPERAND_VALTYP_Register_Subclass(\n\
- *     const ISA_OPERAND_VALTYP *otype\n\
- *   )\n\
- *       Get the register subclass for the operand specified by 'otype'.\n\
- *\n\
- *   ISA_LIT_CLASS ISA_OPERAND_VALTYP_Literal_Class(const ISA_OPERAND_VALTYP *otype)\n\
- *       Get the literal class for the operand specified by 'otype'.\n\
- *\n\
- *   ISA_ENUM_CLASS ISA_OPERAND_VALTYP_Enum_Class(\n\
- *     const ISA_OPERAND_VALTYP *otype\n\
- *   )\n\
- *       Get the enum class for the operand specified by 'otype'.\n\
- *\n\
- *   INT ISA_OPERAND_VALTYP_Size(const ISA_OPERAND_VALTYP *otype)\n\
- *       Get the size for the operand specified by 'otype'.\n\
- *\n\
- *   BOOL ISA_OPERAND_VALTYP_Is_Register(const ISA_OPERAND_VALTYP *otype)\n\
- *       Return a boolean to specify if the operand specifed\n\
- *       by 'otype' is a register.\n\
- *\n\
- *   BOOL ISA_OPERAND_VALTYP_Is_Signed(const ISA_OPERAND_VALTYP *otype)\n\
- *       Return a boolean to specify if the operand specifed\n\
- *       by 'otype' is signed.\n\
- *\n\
- *   BOOL ISA_OPERAND_VALTYP_Is_FPU_Int(const ISA_OPERAND_VALTYP *otype)\n\
- *       Return a boolean to specify if the operand specifed\n\
- *       by 'otype' is an FPU integer.\n\
- *\n\
- *   BOOL ISA_OPERAND_VALTYP_Is_PCRel(const ISA_OPERAND_VALTYP *otype)\n\
- *       Return a boolean to specify if the operand specifed\n\
- *       by 'otype' is pc-relative.\n\
- *\n\
- *   BOOL ISA_OPERAND_VALTYP_Is_Literal (const ISA_OPERAND_VALTYP *otype)\n\
- *       Return a boolean to specify if the operand specifed\n\
- *       by 'otype' is a literal.\n\
- *\n\
- *   BOOL ISA_OPERAND_VALTYP_Is_Enum (const ISA_OPERAND_VALTYP *otype)\n\
- *       Return a boolean to specify if the operand specifed\n\
- *       by 'otype' is an enum.\n\
- *\n\
- *   BOOL TOP_Can_Have_Immediate(INT64 value, TOP topcode)\n\
- *       Return a boolean to specify if the 64-bit integer value can fit\n\
- *       in the literal field of an instruction with the given topcode.\n\
- *\n\
- *   INT TOP_Immediate_Operand(TOP topcode, ISA_LIT_CLASS *lclass)\n\
- *       If 'topcode' has an immediate operand, return its operand\n\
- *       number by value and literal class by reference through 'lclass'\n\
- *       (a null pointer can be passed for 'lclass' if the literal\n\
- *       class is not needed). If there is no immediate operand, return -1.\n\
- *\n\
- *   INT TOP_Relocatable_Operand(TOP topcode, ISA_LIT_CLASS *lclass)\n\
- *       If 'topcode' has a relocatable operand, return its operand\n\
- *       number by value and literal class by reference through 'lclass'\n\
- *       (a null pointer can be passed for 'lclass' if the literal\n\
- *       class is not needed). If there is no relocatable operand, return -1.\n\
- *\n\
- *   INT TOP_Find_Operand_Use(TOP topcode, ISA_OPERAND_USE use)\n\
- *       For the instruction specified by 'topcode', give the\n\
- *       operand number with the use 'use'. If there is no such\n\
- *       operand, return -1.\n\
- *\n\
- *   void TOP_Operand_Uses(TOP topcode, ISA_OPERAND_USE *uses)\n\
- *       For the instruction specified by 'topcode', return\n\
- *       the usage of all its operands in the array pointed to\n\
- *       by 'uses'. The use of operand n corresponds to 'uses'[n].\n\
- *\n\
- * ====================================================================\n\
- * ====================================================================\n\
- */";
+static const char* const description[] = {
+"/* ====================================================================",
+" * ====================================================================",
+" *",
+" * Description:",
+" *",
+" *   A description of the ISA instruction operands. The description",
+" *   exports the following:",
+" *",
+" *   typedef (struct) ISA_OPERAND_VALTYP",
+" *       Describes a particular operand/result type, including",
+" *       the type of value it may contain and whether or not is",
+" *       a register, literal or enum. The contents are private.",
+" *",
+" *   typedef (struct) ISA_OPERAND_INFO",
+" *       Identifies the operand types of a particular instruction.",
+" *       The contents are private.",
+" *",
+" *,  typedef (enum) ISA_OPERAND_USE",
+" *       Identifies the useage of an operand of a particular instruction.",
+" *       The names have the form OU_xxxx.",
+" *",
+" *   const INT OU_UNDEFINED",
+" *       Identifies an undefined/unknown operand use.",
+" *",
+" *   const INT ISA_OPERAND_max_operands",
+" *       The maximum number of operands of any instruction.",
+" *",
+" *   const INT ISA_OPERAND_max_results",
+" *       The maximum number of results of any instruction.",
+" *",
+" *   const ISA_OPERAND_INFO *ISA_OPERAND_Info(TOP topcode)",
+" *       Return a pointer to the operand info for the instruction",
+" *       specified by 'topcode'.",
+" *",
+" *   INT ISA_OPERAND_INFO_Operands(const ISA_OPERAND_INFO *oinfo)",
+" *       Return the number of operands specified by the operand",
+" *       info 'oinfo'.",
+" *",
+" *   const ISA_OPERAND_VALTYP *ISA_OPERAND_INFO_Operand(",
+" *     const ISA_OPERAND_INFO *oinfo,",
+" *     int opnd",
+" *   )",
+" *       Get the operand type of operand 'opnd' specified by the",
+" *       operand info 'oinfo'.",
+" *",
+" *   INT ISA_OPERAND_INFO_Results(const ISA_OPERAND_INFO *oinfo)",
+" *       Return the number of results specified by the operand",
+" *       info 'oinfo'.",
+" *",
+" *   const ISA_OPERAND_VALTYP *ISA_OPERAND_INFO_Result(",
+" *     const ISA_OPERAND_INFO *oinfo,",
+" *     int result",
+" *   )",
+" *       Get the operand type for the result 'result' specified by the",
+" *       operand info 'oinfo'.",
+" *",
+" *   ISA_OPERAND_USE ISA_OPERAND_INFO_Use(",
+" *     const ISA_OPERAND_INFO *oinfo,",
+" *     INT opnd",
+" *   )",
+" *       Get the operand use type of operand 'opnd' specified by the",
+" *       operand info 'oinfo'.",
+" *",
+" *   BOOL ISA_OPERAND_Any_Use(ISA_OPERAND_USE ouse)",
+" *       Returns a boolean that indicates if any instruction in the",
+" *       architecture has an an operand with usage 'use'. Useful",
+" *       for omitting sections of code that aren't applicable to",
+" *       some architectures.",
+" *",
+" *   ISA_REGISTER_CLASS ISA_OPERAND_VALTYP_Register_Class(",
+" *     const ISA_OPERAND_VALTYP *otype",
+" *   )",
+" *       Get the register class for the operand specified by 'otype'.",
+" *",
+" *   ISA_REGISTER_SUBCLASS ISA_OPERAND_VALTYP_Register_Subclass(",
+" *     const ISA_OPERAND_VALTYP *otype",
+" *   )",
+" *       Get the register subclass for the operand specified by 'otype'.",
+" *",
+" *   ISA_LIT_CLASS ISA_OPERAND_VALTYP_Literal_Class(const ISA_OPERAND_VALTYP *otype)",
+" *       Get the literal class for the operand specified by 'otype'.",
+" *",
+" *   ISA_ENUM_CLASS ISA_OPERAND_VALTYP_Enum_Class(",
+" *     const ISA_OPERAND_VALTYP *otype",
+" *   )",
+" *       Get the enum class for the operand specified by 'otype'.",
+" *",
+" *   INT ISA_OPERAND_VALTYP_Size(const ISA_OPERAND_VALTYP *otype)",
+" *       Get the size for the operand specified by 'otype'.",
+" *",
+" *   BOOL ISA_OPERAND_VALTYP_Is_Register(const ISA_OPERAND_VALTYP *otype)",
+" *       Return a boolean to specify if the operand specifed",
+" *       by 'otype' is a register.",
+" *",
+" *   BOOL ISA_OPERAND_VALTYP_Is_Signed(const ISA_OPERAND_VALTYP *otype)",
+" *       Return a boolean to specify if the operand specifed",
+" *       by 'otype' is signed.",
+" *",
+" *   BOOL ISA_OPERAND_VALTYP_Is_FPU_Int(const ISA_OPERAND_VALTYP *otype)",
+" *       Return a boolean to specify if the operand specifed",
+" *       by 'otype' is an FPU integer.",
+" *",
+" *   BOOL ISA_OPERAND_VALTYP_Is_PCRel(const ISA_OPERAND_VALTYP *otype)",
+" *       Return a boolean to specify if the operand specifed",
+" *       by 'otype' is pc-relative.",
+" *",
+" *   BOOL ISA_OPERAND_VALTYP_Is_Literal (const ISA_OPERAND_VALTYP *otype)",
+" *       Return a boolean to specify if the operand specifed",
+" *       by 'otype' is a literal.",
+" *",
+" *   BOOL ISA_OPERAND_VALTYP_Is_Enum (const ISA_OPERAND_VALTYP *otype)",
+" *       Return a boolean to specify if the operand specifed",
+" *       by 'otype' is an enum.",
+" *",
+" *   BOOL TOP_Can_Have_Immediate(INT64 value, TOP topcode)",
+" *       Return a boolean to specify if the 64-bit integer value can fit",
+" *       in the literal field of an instruction with the given topcode.",
+" *",
+" *   INT TOP_Immediate_Operand(TOP topcode, ISA_LIT_CLASS *lclass)",
+" *       If 'topcode' has an immediate operand, return its operand",
+" *       number by value and literal class by reference through 'lclass'",
+" *       (a null pointer can be passed for 'lclass' if the literal",
+" *       class is not needed). If there is no immediate operand, return -1.",
+" *",
+" *   INT TOP_Relocatable_Operand(TOP topcode, ISA_LIT_CLASS *lclass)",
+" *       If 'topcode' has a relocatable operand, return its operand",
+" *       number by value and literal class by reference through 'lclass'",
+" *       (a null pointer can be passed for 'lclass' if the literal",
+" *       class is not needed). If there is no relocatable operand, return -1.",
+" *",
+" *   INT TOP_Find_Operand_Use(TOP topcode, ISA_OPERAND_USE use)",
+" *       For the instruction specified by 'topcode', give the",
+" *       operand number with the use 'use'. If there is no such",
+" *       operand, return -1.",
+" *",
+" *   void TOP_Operand_Uses(TOP topcode, ISA_OPERAND_USE *uses)",
+" *       For the instruction specified by 'topcode', return",
+" *       the usage of all its operands in the array pointed to",
+" *       by 'uses'. The use of operand n corresponds to 'uses'[n].",
+" *",
+" * ====================================================================",
+" * ====================================================================",
+" */", NULL};
 
-static const char opnd_query[]="\
-inline const ISA_OPERAND_INFO *ISA_OPERAND_Info(TOP topcode)\n\
-{\n\
-  extern const mUINT8 ISA_OPERAND_info_index[];\n\
-  extern const ISA_OPERAND_INFO ISA_OPERAND_info[];\n\
-  INT index = ISA_OPERAND_info_index[(INT)topcode];\n\
-  return &ISA_OPERAND_info[index];\n\
-}\n\
-\n\
-inline INT ISA_OPERAND_INFO_Operands(const ISA_OPERAND_INFO *oinfo)\n\
-{\n\
-  return oinfo->opnds;\n\
-}\n\
-\n\
-inline const ISA_OPERAND_VALTYP *ISA_OPERAND_INFO_Operand(\n\
-  const ISA_OPERAND_INFO *oinfo,\n\
-  INT opnd)\n\
-{\n\
-  extern const ISA_OPERAND_VALTYP ISA_OPERAND_operand_types[];\n\
-  INT index = oinfo->opnd[opnd];\n\
-  return &ISA_OPERAND_operand_types[index];\n\
-}\n\
-\n\
-inline INT ISA_OPERAND_INFO_Results(const ISA_OPERAND_INFO *oinfo)\n\
-{\n\
-  return oinfo->results;\n\
-}\n\
-\n\
-inline const ISA_OPERAND_VALTYP *ISA_OPERAND_INFO_Result(\n\
-  const ISA_OPERAND_INFO *oinfo,\n\
-  INT result)\n\
-{\n\
-  extern const ISA_OPERAND_VALTYP ISA_OPERAND_operand_types[];\n\
-  INT index = oinfo->result[result];\n\
-  return &ISA_OPERAND_operand_types[index];\n\
-}\n\
-\n\
-inline ISA_REGISTER_CLASS ISA_OPERAND_VALTYP_Register_Class(\n\
-  const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return (ISA_REGISTER_CLASS)otype->rclass;\n\
-}\n\
-\n\
-inline ISA_REGISTER_SUBCLASS ISA_OPERAND_VALTYP_Register_Subclass(\n\
-  const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return (ISA_REGISTER_SUBCLASS)otype->rsubclass;\n\
-}\n\
-\n\
-inline ISA_LIT_CLASS ISA_OPERAND_VALTYP_Literal_Class(const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return (ISA_LIT_CLASS)otype->lclass;\n\
-}\n\
-\n\
-inline ISA_ENUM_CLASS ISA_OPERAND_VALTYP_Enum_Class(\n\
-  const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return (ISA_ENUM_CLASS)otype->eclass;\n\
-}\n\
-\n\
-inline INT ISA_OPERAND_VALTYP_Size(const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return otype->size;\n\
-}\n\
-\n\
-inline BOOL ISA_OPERAND_VALTYP_Is_Register(const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return (otype->flags & 0x01) != 0;\n\
-}\n\
-\n\
-inline BOOL ISA_OPERAND_VALTYP_Is_Literal(const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return (otype->lclass != LC_UNDEFINED);\n\
-}\n\
-\n\
-inline BOOL ISA_OPERAND_VALTYP_Is_Enum(const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return (otype->eclass != EC_UNDEFINED);\n\
-}\n\
-\n\
-inline BOOL ISA_OPERAND_VALTYP_Is_Signed(const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return (otype->flags & 0x02) != 0;\n\
-}\n\
-\n\
-/*ARGSUSED*/\n\
-inline BOOL ISA_OPERAND_VALTYP_Is_FPU_Int(const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return FALSE;\n\
-}\n\
-\n\
-inline BOOL ISA_OPERAND_VALTYP_Is_PCRel(const ISA_OPERAND_VALTYP *otype)\n\
-{\n\
-  return (otype->flags & 0x08) != 0;\n\
-}\n\
-\n\
-inline ISA_OPERAND_USE ISA_OPERAND_INFO_Use(\n\
-  const ISA_OPERAND_INFO *oinfo,\n\
-  INT opnd)\n\
-{\n\
-  return (ISA_OPERAND_USE)oinfo->ouse[opnd];\n\
-}\n\
-\n\
-inline BOOL ISA_OPERAND_Any_Use(ISA_OPERAND_USE ouse)\n\
-{\n\
-  return (0x00000000000003fbULL & (1ULL << ouse)) != 0;\n\
-}\n\
-\n\
-extern INT TOP_Immediate_Operand(TOP topcode, ISA_LIT_CLASS *lclass);\n\
-\n\
-extern INT TOP_Relocatable_Operand(TOP topcode, ISA_LIT_CLASS *lclass);\n\
-\n\
-extern BOOL TOP_Can_Have_Immediate(INT64 value, TOP topcode);\n\
-\n\
-extern INT TOP_Find_Operand_Use(TOP topcode, ISA_OPERAND_USE use);\n\
-\n\
-extern void TOP_Operand_Uses(TOP topcode, ISA_OPERAND_USE *uses);\n";
+static const char* const opnd_query[]= {
+"inline const ISA_OPERAND_INFO *ISA_OPERAND_Info(TOP topcode)",
+"{",
+"  extern const mUINT8 ISA_OPERAND_info_index[];",
+"  extern const ISA_OPERAND_INFO ISA_OPERAND_info[];",
+"  INT index = ISA_OPERAND_info_index[(INT)topcode];",
+"  return &ISA_OPERAND_info[index];",
+"}",
+"",
+"inline INT ISA_OPERAND_INFO_Operands(const ISA_OPERAND_INFO *oinfo)",
+"{",
+"  return oinfo->opnds;",
+"}",
+"",
+"inline const ISA_OPERAND_VALTYP *ISA_OPERAND_INFO_Operand(",
+"  const ISA_OPERAND_INFO *oinfo,",
+"  INT opnd)",
+"{",
+"  extern const ISA_OPERAND_VALTYP ISA_OPERAND_operand_types[];",
+"  INT index = oinfo->opnd[opnd];",
+"  return &ISA_OPERAND_operand_types[index];",
+"}",
+"",
+"inline INT ISA_OPERAND_INFO_Results(const ISA_OPERAND_INFO *oinfo)",
+"{",
+"  return oinfo->results;",
+"}",
+"",
+"inline const ISA_OPERAND_VALTYP *ISA_OPERAND_INFO_Result(",
+"  const ISA_OPERAND_INFO *oinfo,",
+"  INT result)",
+"{",
+"  extern const ISA_OPERAND_VALTYP ISA_OPERAND_operand_types[];",
+"  INT index = oinfo->result[result];",
+"  return &ISA_OPERAND_operand_types[index];",
+"}",
+"",
+"inline ISA_REGISTER_CLASS ISA_OPERAND_VALTYP_Register_Class(",
+"  const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return (ISA_REGISTER_CLASS)otype->rclass;",
+"}",
+"",
+"inline ISA_REGISTER_SUBCLASS ISA_OPERAND_VALTYP_Register_Subclass(",
+"  const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return (ISA_REGISTER_SUBCLASS)otype->rsubclass;",
+"}",
+"",
+"inline ISA_LIT_CLASS ISA_OPERAND_VALTYP_Literal_Class(const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return (ISA_LIT_CLASS)otype->lclass;",
+"}",
+"",
+"inline ISA_ENUM_CLASS ISA_OPERAND_VALTYP_Enum_Class(",
+"  const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return (ISA_ENUM_CLASS)otype->eclass;",
+"}",
+"",
+"inline INT ISA_OPERAND_VALTYP_Size(const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return otype->size;",
+"}",
+"",
+"inline BOOL ISA_OPERAND_VALTYP_Is_Register(const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return (otype->flags & 0x01) != 0;",
+"}",
+"",
+"inline BOOL ISA_OPERAND_VALTYP_Is_Literal(const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return (otype->lclass != LC_UNDEFINED);",
+"}",
+"",
+"inline BOOL ISA_OPERAND_VALTYP_Is_Enum(const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return (otype->eclass != EC_UNDEFINED);",
+"}",
+"",
+"inline BOOL ISA_OPERAND_VALTYP_Is_Signed(const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return (otype->flags & 0x02) != 0;",
+"}",
+"",
+"/*ARGSUSED*/",
+"inline BOOL ISA_OPERAND_VALTYP_Is_FPU_Int(const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return FALSE;",
+"}",
+"",
+"inline BOOL ISA_OPERAND_VALTYP_Is_PCRel(const ISA_OPERAND_VALTYP *otype)",
+"{",
+"  return (otype->flags & 0x08) != 0;",
+"}",
+"",
+"inline ISA_OPERAND_USE ISA_OPERAND_INFO_Use(",
+"  const ISA_OPERAND_INFO *oinfo,",
+"  INT opnd)",
+"{",
+"  return (ISA_OPERAND_USE)oinfo->ouse[opnd];",
+"}",
+"",
+"inline BOOL ISA_OPERAND_Any_Use(ISA_OPERAND_USE ouse)",
+"{",
+"  return (0x00000000000003fbULL & (1ULL << ouse)) != 0;",
+"}",
+"",
+"extern INT TOP_Immediate_Operand(TOP topcode, ISA_LIT_CLASS *lclass);",
+"",
+"extern INT TOP_Relocatable_Operand(TOP topcode, ISA_LIT_CLASS *lclass);",
+"",
+"extern BOOL TOP_Can_Have_Immediate(INT64 value, TOP topcode);",
+"",
+"extern INT TOP_Find_Operand_Use(TOP topcode, ISA_OPERAND_USE use);",
+"",
+"extern void TOP_Operand_Uses(TOP topcode, ISA_OPERAND_USE *uses);\n",
+NULL};
 
 
-static const char top_opnd_query_func[]="\
-INT TOP_Immediate_Operand(TOP topcode, ISA_LIT_CLASS *lclass)\n\
-{\n\
-  INT iopnd;\n\
-  const ISA_OPERAND_INFO *opinfo = ISA_OPERAND_Info(topcode);\n\
-  INT opnds = ISA_OPERAND_INFO_Operands(opinfo);\n\
-  const INT first = 0;\n\
-\n\
-  for (iopnd = first; iopnd < opnds; ++iopnd) {\n\
-    const ISA_OPERAND_VALTYP *vtype = ISA_OPERAND_INFO_Operand(opinfo, iopnd);\n\
-    ISA_LIT_CLASS lit_class = ISA_OPERAND_VALTYP_Literal_Class(vtype);\n\
-    if (lit_class != LC_UNDEFINED) {\n\
-      if (lclass) *lclass = lit_class;\n\
-      return iopnd;\n\
-    }\n\
-  }\n\
-\n\
-  return -1;\n\
-}\n\
-\n\
-INT TOP_Relocatable_Operand(TOP topcode, ISA_LIT_CLASS *lclass)\n\
-{\n\
-  extern const mINT8 ISA_OPERAND_relocatable_opnd[];\n\
-  INT iopnd = ISA_OPERAND_relocatable_opnd[(INT)topcode];\n\
-  if (lclass && iopnd >= 0) {\n\
-    const ISA_OPERAND_INFO *opinfo = ISA_OPERAND_Info(topcode);\n\
-    const ISA_OPERAND_VALTYP *vtype = ISA_OPERAND_INFO_Operand(opinfo,iopnd);\n\
-    *lclass = (ISA_LIT_CLASS)ISA_OPERAND_VALTYP_Literal_Class(vtype);\n\
-  }\n\
-  return iopnd;\n\
-}\n\
-\n\
-BOOL TOP_Can_Have_Immediate(INT64 value, TOP topcode)\n\
-{\n\
-  ISA_LIT_CLASS lclass;\n\
-  if (TOP_Immediate_Operand(topcode, &lclass) < 0) return 0;\n\
-  return ISA_LC_Value_In_Class(value, lclass);\n\
-}\n\
-\n\
-INT TOP_Find_Operand_Use(TOP topcode, ISA_OPERAND_USE use)\n\
-{\n\
-  INT i;\n\
-  const ISA_OPERAND_INFO *oinfo = ISA_OPERAND_Info(topcode);\n\
-  INT opnds = ISA_OPERAND_INFO_Operands(oinfo);\n\
-  for (i = 0; i < opnds; ++i) {\n\
-    ISA_OPERAND_USE this_use = ISA_OPERAND_INFO_Use(oinfo, i);\n\
-    if (this_use == use) return i;\n\
-  }\n\
-  return -1;\n\
-}\n\
-\n\
-void TOP_Operand_Uses(TOP topcode, ISA_OPERAND_USE *uses)\n\
-{\n\
-  INT i;\n\
-  const ISA_OPERAND_INFO *oinfo = ISA_OPERAND_Info(topcode);\n\
-  INT opnds = ISA_OPERAND_INFO_Operands(oinfo);\n\
-  for (i = 0; i < opnds; ++i) {\n\
-    ISA_OPERAND_USE this_use = ISA_OPERAND_INFO_Use(oinfo, i);\n\
-    uses[i] = this_use;\n\
-  }\n\
-}\n";
+static const char * const top_opnd_query_func[]= {
+"INT TOP_Immediate_Operand(TOP topcode, ISA_LIT_CLASS *lclass)",
+"{",
+"  INT iopnd;",
+"  const ISA_OPERAND_INFO *opinfo = ISA_OPERAND_Info(topcode);",
+"  INT opnds = ISA_OPERAND_INFO_Operands(opinfo);",
+"  const INT first = 0;",
+"",
+"  for (iopnd = first; iopnd < opnds; ++iopnd) {",
+"    const ISA_OPERAND_VALTYP *vtype = ISA_OPERAND_INFO_Operand(opinfo, iopnd);",
+"    ISA_LIT_CLASS lit_class = ISA_OPERAND_VALTYP_Literal_Class(vtype);",
+"    if (lit_class != LC_UNDEFINED) {",
+"      if (lclass) *lclass = lit_class;",
+"      return iopnd;",
+"    }",
+"  }",
+"",
+"  return -1;",
+"}",
+"",
+"INT TOP_Relocatable_Operand(TOP topcode, ISA_LIT_CLASS *lclass)",
+"{",
+"  extern const mINT8 ISA_OPERAND_relocatable_opnd[];",
+"  INT iopnd = ISA_OPERAND_relocatable_opnd[(INT)topcode];",
+"  if (lclass && iopnd >= 0) {",
+"    const ISA_OPERAND_INFO *opinfo = ISA_OPERAND_Info(topcode);",
+"    const ISA_OPERAND_VALTYP *vtype = ISA_OPERAND_INFO_Operand(opinfo,iopnd);",
+"    *lclass = (ISA_LIT_CLASS)ISA_OPERAND_VALTYP_Literal_Class(vtype);",
+"  }",
+"  return iopnd;",
+"}",
+"",
+"BOOL TOP_Can_Have_Immediate(INT64 value, TOP topcode)",
+"{",
+"  ISA_LIT_CLASS lclass;",
+"  if (TOP_Immediate_Operand(topcode, &lclass) < 0) return 0;",
+"  return ISA_LC_Value_In_Class(value, lclass);",
+"}",
+"",
+"INT TOP_Find_Operand_Use(TOP topcode, ISA_OPERAND_USE use)",
+"{",
+"  INT i;",
+"  const ISA_OPERAND_INFO *oinfo = ISA_OPERAND_Info(topcode);",
+"  INT opnds = ISA_OPERAND_INFO_Operands(oinfo);",
+"  for (i = 0; i < opnds; ++i) {",
+"    ISA_OPERAND_USE this_use = ISA_OPERAND_INFO_Use(oinfo, i);",
+"    if (this_use == use) return i;",
+"  }",
+"  return -1;",
+"}",
+"",
+"void TOP_Operand_Uses(TOP topcode, ISA_OPERAND_USE *uses)",
+"{",
+"  INT i;",
+"  const ISA_OPERAND_INFO *oinfo = ISA_OPERAND_Info(topcode);",
+"  INT opnds = ISA_OPERAND_INFO_Operands(oinfo);",
+"  for (i = 0; i < opnds; ++i) {",
+"    ISA_OPERAND_USE this_use = ISA_OPERAND_INFO_Use(oinfo, i);",
+"    uses[i] = this_use;",
+"  }",
+"}", NULL};
 
 
 
@@ -528,8 +529,10 @@ void Operands_Generator(void *pknobs, GEN_MODE mode)
     }
     fprintf(c_file, "};\n\n");
 
-    fprintf(h_file, "%s", opnd_query);
-    fprintf(c_file, "%s", top_opnd_query_func);
+    for (int i=0; opnd_query[i] != NULL; i++)
+        fprintf(h_file, "%s\n", opnd_query[i]);
+    for (int i=0; top_opnd_query_func[i] != NULL; i++)
+        fprintf(c_file, "%s\n", top_opnd_query_func[i]);
     fprintf(export_file, "TOP_Immediate_Operand\n");
     fprintf(export_file, "TOP_Relocatable_Operand\n");
     fprintf(export_file, "TOP_Can_Have_Immediate\n");

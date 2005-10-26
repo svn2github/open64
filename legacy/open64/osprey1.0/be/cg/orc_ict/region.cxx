@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -3506,6 +3506,8 @@ REGION::Edge_Splitting(BB *from, BB *to){
     if (!CG_localize_tns) {
         GRA_LIVE_Compute_Liveness_For_BB(new_bb);
     }
+
+    Set_BB_edge_splitting (new_bb);
 
     return new_bb;
 }

@@ -1,7 +1,7 @@
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
 /*
- *  Copyright (C) 2000-2002, Intel Corporation
+ *  Copyright (C) 2000-2003, Intel Corporation
  *  All rights reserved.
  *  
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -125,24 +125,16 @@ public:
 
     INT32 Tree_Num (void)            { return _tree_num ; }
     RGN_SUM_TREE * First_Tree (void) { return _forest ;   }    
+
     REGION * Region (void)           { return _rgn ;      } 
     void Set_Region (REGION *rgn)    { _rgn = rgn  ;      }
 
-    BOOL Is_It_Legal_To_Hoist_OP_Across_Rgn (OP * op, BB * from, BB *to,  
-                                             const BB_VECTOR * cutting_set,
-                                             REGION * nested_rgn, 
-                                             RGN_CFLOW_MGR *cflow_info);
-
-    BOOL Is_It_Legal_To_Sank_Down_Across_Rgn (OP *op, BB * from, BB * to, 
-                                              const BB_VECTOR * cutting_set,
-                                              REGION * nested_rgn);
-    
     BOOL Summary_Is_Valid (void) const { return _summary_is_valid;   }
     void Set_Summary_Is_Valid (void)   { _summary_is_valid = TRUE;   }
     void Set_Summary_Is_Invalid (void) { _summary_is_valid = FALSE;  }
 
-    TN_SET *   Killed_Def (void) const { return _killed_def ;     }
-    TN_SET *   TN_Used    (void) const { return _tn_used    ;     }
+    TN_SET* Killed_Def (void) const { return _killed_def ; }
+    TN_SET* TN_Used    (void) const { return _tn_used    ; }
 
     void Clear_Def_Kill_Set (void) {  TN_SET_ClearD (_killed_def) ; }
     void Init_Def_Kill_Set (void) {

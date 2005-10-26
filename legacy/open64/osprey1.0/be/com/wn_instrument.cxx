@@ -127,6 +127,7 @@
 //
 // ====================================================================
 
+#define TNV_N 10
 
 class WN_INSTRUMENT_WALKER {
 private:
@@ -165,8 +166,11 @@ private:
   UINT32             _count_loop;
   UINT32             _count_circuit;
   UINT32             _count_call;
+  UINT32             _count_icall;
   UINT32             _count_switch;
   UINT32             _count_compgoto;
+
+  UINT32             _fb_count_icall;
 
   // _instrument_count is total number of WHIRL nodes that have been
   //   instrumented/annotated; used as a checksum
@@ -178,6 +182,8 @@ private:
 
   PREG_NUM           _pu_handle;
   PU_PROFILE_HANDLES _fb_handle;
+  //_fb_handle_merged is a handle only for merged icall feedback info for this PU.
+  PU_PROFILE_HANDLE _fb_handle_merged;
 
   // Instrumentation initialization code will be inserted just before
   // the WN_PRAGMA_PREAMBLE_END pragma that occurs after each entry's
@@ -380,6 +386,9 @@ private:
   void Instrument_Call( WN *wn, INT32 id, WN *block );
   void Initialize_Instrumenter_Call( INT32 count );
   void Annotate_Call( WN *wn, INT32 id );
+  void Instrument_Icall( WN *wn, INT32 id, WN *block );
+  void Initialize_Instrumenter_Icall( INT32 count );
+  void Annotate_Icall( WN *wn, INT32 id );
   void Instrument_Switch( WN *wn, INT32 id, WN *block );
   void Initialize_Instrumenter_Switch( INT32 count );
   void Annotate_Switch( WN *wn, INT32 id );
@@ -391,6 +400,9 @@ private:
 
   // Walk the tree and perform instrumentation or annotate feedback
   void Tree_Walk_Node( WN *wn, WN *stmt, WN *block );
+   
+protected:
+  void Merge_Icall_Feedback();
 
   // ------------------------------------------------------------------
   // Public interface to WN_Instrument and WN_Annotate
@@ -574,11 +586,13 @@ WN_INSTRUMENT_WALKER::WN_INSTRUMENT_WALKER( BOOL instrumenting,
     _count_loop( 0 ),
     _count_circuit( 0 ),
     _count_call( 0 ),
+    _count_icall( 0 ),
     _count_switch( 0 ),
     _count_compgoto( 0 ),
     _instrument_count( 0 ),
     _pu_handle( 0 ),
     _fb_handle( fb_handles ),
+    _fb_handle_merged( NULL ),
     _entry_pragma_stmt( NULL ),
     _entry_pragma_block( NULL ),
     _other_entry_pragmas( DEQUE_TYPE( ALLOC_TYPE( local_mempool ) ) ),
@@ -1046,6 +1060,20 @@ WN_INSTRUMENT_WALKER::Instrument_Call( WN *wn, INT32 id, WN *block )
 		    wn, block );
 }
 
+void
+WN_INSTRUMENT_WALKER::Instrument_Icall( WN *wn, INT32 id, WN *block )
+{
+  // Get the address of the called function.
+  WN *called_func_address;
+  called_func_address = WN_COPY_Tree(WN_kid(wn,WN_kid_count(wn)-1));
+
+  // profile_icall( handle, call_id, called_func_address )
+  Instrument_Before( Gen_Call( ICALL_INSTRUMENT_NAME,
+			       PU_Handle(),
+			       WN_Intconst( MTYPE_I4, id ),
+			       called_func_address ),
+		     wn, block );
+}
 
 void
 WN_INSTRUMENT_WALKER::Initialize_Instrumenter_Call( INT32 count )
@@ -1058,6 +1086,16 @@ WN_INSTRUMENT_WALKER::Initialize_Instrumenter_Call( INT32 count )
 			      PU_Handle(), total_calls ) );
 }
 
+void
+WN_INSTRUMENT_WALKER::Initialize_Instrumenter_Icall( INT32 count )
+{
+  if ( count == 0 ) return;
+
+  WN *total_icalls = WN_Intconst( MTYPE_I4, count );
+  // __profile_icall_init( handle, total_calls )
+  Instrument_Entry( Gen_Call( ICALL_INIT_NAME,
+			      PU_Handle(), total_icalls ) );
+}
 
 void
 WN_INSTRUMENT_WALKER::Annotate_Call( WN *wn, INT32 id )
@@ -1076,6 +1114,15 @@ WN_INSTRUMENT_WALKER::Annotate_Call( WN *wn, INT32 id )
   Cur_PU_Feedback->Annot_call( wn, info_call );
 }
 
+void
+WN_INSTRUMENT_WALKER::Annotate_Icall( WN *wn, INT32 id )
+{
+  FB_Icall_Vector icall_table =  _fb_handle_merged->Get_Icall_Table();
+  FB_Info_Icall & info_icall = icall_table[id];
+
+  // Attach profile information to node.
+  Cur_PU_Feedback->Annot_icall( wn, info_icall );
+}
 
 // ====================================================================
 
@@ -1456,7 +1503,6 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block )
 
   case OPR_PICCALL:
   case OPR_CALL:
-  case OPR_ICALL:
   case OPR_INTRINSIC_CALL:
   case OPR_IO:
     {
@@ -1469,6 +1515,24 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block )
     }
     break;
 
+  case OPR_ICALL:
+    {
+      _instrument_count++;
+	  INT32 idcall = _count_call++;
+	  INT32 idicall = _count_icall++;
+	  if (_instrumenting)
+	  {
+		Instrument_Call( wn, idcall, block);
+		Instrument_Icall( wn, idicall, block);
+	  }
+	  else
+	  {
+	    Annotate_Call( wn, idcall);
+	    Annotate_Icall( wn, idicall);
+	  }
+    }
+    break;
+ 
   case OPR_SWITCH:
     {
       _instrument_count++;
@@ -1502,6 +1566,129 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block )
   }
 }
 
+void
+WN_INSTRUMENT_WALKER::Merge_Icall_Feedback()
+{
+	if (_fb_handle_merged)
+	{
+		DevWarn("Icall feecback data already merged!\n");
+		return;
+	}
+	if (_fb_handle.size() == 0)
+	{
+		DevWarn("no Icall feedback data for current PU.\n");
+		_fb_handle_merged = NULL;
+		return; 
+	}
+
+	//Now merge the data together.
+	_fb_handle_merged = CXX_NEW(PU_Profile_Handle(NULL, 0), _mempool);
+	FB_Icall_Vector & fb_merged_value_vector = _fb_handle_merged->Get_Icall_Table();
+	INT fb_handle_num;
+	fb_handle_num = _fb_handle.size();
+	PU_PROFILE_HANDLE the_largest_fb;
+	PU_PROFILE_ITERATOR pu_prof_itr = _fb_handle.begin();
+	the_largest_fb = *pu_prof_itr;
+	_fb_count_icall = the_largest_fb->Get_Icall_Table().size();
+	for (pu_prof_itr= ( _fb_handle.begin() ); pu_prof_itr != _fb_handle.end (); ++pu_prof_itr)
+	{
+    	PU_Profile_Handle * handle=*pu_prof_itr;
+    	if ( _fb_count_icall != handle->Icall_Profile_Table.size() )
+    		DevWarn("Icall_Profile_Table.size() differ in feedback files!");
+    	if ( _fb_count_icall < handle->Icall_Profile_Table.size() )
+    	{
+    		the_largest_fb = handle;
+    		_fb_count_icall = the_largest_fb->Icall_Profile_Table.size();
+    	}
+	}
+
+	fb_merged_value_vector.resize(_fb_count_icall);
+		if (_fb_count_icall==0)
+		{
+		return;
+		}
+
+	UINT64 * values = TYPE_MEM_POOL_ALLOC_N(UINT64, _mempool, TNV_N*fb_handle_num);
+	UINT64 * counters = TYPE_MEM_POOL_ALLOC_N(UINT64, _mempool, TNV_N*fb_handle_num);
+	INT i, j, k, m, n;
+	for ( i=0; i<_fb_count_icall; i++ )
+	{
+		memset(values, 0, TNV_N*fb_handle_num*sizeof(UINT64));
+		memset(counters, 0, TNV_N*fb_handle_num*sizeof(UINT64));
+		INT32 cur_id = the_largest_fb->Icall_Profile_Table[i].tnv._id;
+		if (cur_id != i)
+		{
+			Is_True( cur_id == 0, ("cur_id should either be 0(means not executed) or i"));
+			cur_id = i;
+		}
+		UINT64 cur_exec_counter = 0;
+		INT cur_flag = the_largest_fb->Icall_Profile_Table[i].tnv._flag;
+		for (pu_prof_itr = _fb_handle.begin(); pu_prof_itr != _fb_handle.end (); ++pu_prof_itr)
+		{
+			if ( i >= (*pu_prof_itr)->Get_Icall_Table().size() )
+				continue;
+			FB_Info_Icall & fb_info_value = Get_Icall_Profile( *pu_prof_itr, i );
+			if (fb_info_value.tnv._id != cur_id)
+			{
+				//Note: if _id not consistent, the only valid case is "in some feedback file this icall is not executed at all"
+				// in such case, the values of fb_info_value.tnv should all be 0 (we should make sure we write 0 into the file)
+				Is_True( fb_info_value.tnv._id == 0 ,("_id not consitent between feedback files"));
+				continue;
+			}	
+			cur_exec_counter += fb_info_value.tnv._exec_counter;
+			Is_True(fb_info_value.tnv._flag == cur_flag,("_flag not consitent between feedback files"));
+			for ( j=0; j<TNV_N; j++ )
+			{
+				if ( fb_info_value.tnv._counters[j] == 0 )
+					break;
+				for ( m=0;m<TNV_N*fb_handle_num;m++)
+				{
+					if (counters[m] == 0)
+					{
+						values[m] = fb_info_value.tnv._values[j];
+						counters[m] += fb_info_value.tnv._counters[j];
+						break;
+					}
+					else if ( fb_info_value.tnv._values[j] == values[m] )
+					{
+						counters[m] += fb_info_value.tnv._counters[j];
+						break;
+					}
+				}
+			}
+		}
+		for ( m=0; m<TNV_N*fb_handle_num; m++ )
+			for ( n=m+1; n<TNV_N*fb_handle_num; n++)
+			{
+				if (counters[m] < counters[n])
+				{
+					INT tmp;
+					tmp = counters[m];
+					counters[m] = counters[n];
+					counters[n] = tmp;
+				}
+			}
+		fb_merged_value_vector[i].tnv._id = cur_id;
+		fb_merged_value_vector[i].tnv._exec_counter = cur_exec_counter;
+		fb_merged_value_vector[i].tnv._flag = cur_flag;
+		for ( m=0; m<TNV_N; m++ )
+		{
+			fb_merged_value_vector[i].tnv._values[m] = values[m];
+			fb_merged_value_vector[i].tnv._counters[m] = counters[m];
+		}
+	}
+}
+
+INT32 
+WN_node_count(WN * wn)
+{
+	INT32 count = 0;
+	for (WN_ITER * wni=WN_WALK_TreeIter(wn); wni; wni=WN_WALK_TreeNext(wni))
+	{
+		count++;
+	}
+	return count;
+}
 
 void
 WN_INSTRUMENT_WALKER::Tree_Walk( WN *root ) 
@@ -1531,10 +1718,21 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
   fdump_tree( TFile, root );
 #endif
 
+  if ( !_instrumenting ) //if annotation, need to merge feedback file for Icall information.
+  {
+    Is_True(_fb_handle_merged == NULL, ("Merged Feedback data for Icall should be NULL before anyone merge it!"));
+    Merge_Icall_Feedback();
+    if (_fb_handle_merged == NULL)
+    {
+	   DevWarn("There is no Icall feedback data for current PU!");
+    }
+  }
+   
   // Instrument all statements after (and including) the preamble end;
   // Do not instrument statements in the preamble
   _in_preamble = TRUE;  // will be set FALSE at WN_PRAGMA_PREAMBLE_END
   WN* body = WN_func_body( root );
+  INT32 pusize_est = WN_node_count(body);
   WN* stmt;
   for ( stmt = WN_first( body ); stmt; stmt = WN_next( stmt ) )
     Tree_Walk_Node( stmt, stmt, body );
@@ -1566,10 +1764,11 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 					 strlen( Src_File_Name ) + 1 );
       WN *pu_name = WN_LdaString ( Cur_PU_Name, 0, strlen( Cur_PU_Name ) + 1 );
       WN *pc = WN_Lda( Pointer_type, 0, WN_st( root ) );
+      WN *pusize = WN_Intconst( MTYPE_I4, pusize_est );
       WN *checksum = WN_Intconst( MTYPE_I4, _instrument_count );
-      // r2 = __profile_pu_init( src_file_name, pu_name, pc, checksum )
+      // r2 = __profile_pu_init( src_file_name, pu_name, pc, pusize, checksum )
       Instrument_Entry( Gen_Call( PU_INIT_NAME, src_file_name,
-				  pu_name, pc, checksum, Pointer_type ) );
+				  pu_name, pc, pusize, checksum, Pointer_type ) );
 	  
       // Get current handle.
       PREG_NUM rreg1, rreg2;
@@ -1601,6 +1800,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
       Initialize_Instrumenter_Loop(     _count_loop     );
       Initialize_Instrumenter_Circuit(  _count_circuit  );
       Initialize_Instrumenter_Call(     _count_call     );
+      Initialize_Instrumenter_Icall(    _count_icall     );
       Initialize_Instrumenter_Switch(   _count_switch   );
       Initialize_Instrumenter_Compgoto( _count_compgoto );
 
@@ -1676,6 +1876,26 @@ WN_Instrument( WN *wn, PROFILE_PHASE phase )
   MEM_POOL_Delete( &local_mempool );
 }
 
+void 
+WN_Clean_Mapid_for_Calls(WN * wn)
+{
+	for (WN_ITER * wni=WN_WALK_TreeIter(wn); wni; wni=WN_WALK_TreeNext(wni))
+	{
+		WN * wntmp = WN_ITER_wn(wni);
+		OPCODE opcode;
+		OPERATOR opr;
+		opcode = WN_opcode (wntmp);
+  		opr = WN_operator(wntmp);
+
+		if ( opr == OPR_CALL || opr == OPR_ICALL )
+		{
+			if (WN_map_id(wntmp) != -1)
+			{
+			  WN_map_id(wntmp) = -1;
+			}
+		}
+	}
+}
 
 void
 WN_Annotate( WN *wn, PROFILE_PHASE phase, MEM_POOL *MEM_pu_pool )
@@ -1683,6 +1903,8 @@ WN_Annotate( WN *wn, PROFILE_PHASE phase, MEM_POOL *MEM_pu_pool )
   Set_Error_Phase( "WN_Annotate" );
   if ( Instrumenter_DEBUG )
     DevWarn( "WN_Annotate, phase == %d", phase );
+  
+  WN_Clean_Mapid_for_Calls(wn);
 
   // Prepare Cur_PU_Feedback, allocating a new FEEDBACK object if
   // necessary.  Note that feedback info might not be always available

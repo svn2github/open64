@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -899,8 +899,9 @@ SWP_Bundle_Next_Cycle(SWP_OP_vector         &op_state,       // in/out
 				 num_remaining_slots);
   INT32_LIST  ops_list(opset, opset_end, INT32_LIST::allocator_type(mpool));
 
-  BOOL fillup_bundle = (num_remaining_slots > 0) &&
-       ((num_needed_slots - num_remaining_slots) > num_remaining_slots);
+  // For don't use compressed template, so fill it early to reduce
+  // overuse func-unit;
+  BOOL fillup_bundle = (num_remaining_slots > 0) ; 
 
   // if !fillup_bundle with nops,
   // Reserve resources for all ops that have no choice as to the
@@ -1069,6 +1070,7 @@ SWP_Bundle(SWP_OP_vector& op_state, bool trace)
   SWP_Verify_Samecycle_Dep_Order(op_state);
 
   MEM_POOL_Pop(&bundle_pool);
+  MEM_POOL_Delete(&bundle_pool);
 } // SWP_Bundle
 
 

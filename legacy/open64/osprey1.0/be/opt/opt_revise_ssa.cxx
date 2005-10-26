@@ -399,6 +399,16 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
     WN_set_desc(&wn, cr->Dsctyp());
     WN_set_rtype(&wn, cr->Dtyp());
     WN_store_offset(&wn) = cr->Offset() + lda->Offset();
+#if 1 // Bug fix Aug. 14: make the entered ST-Offset consistent
+    ST *lda_st;
+    INT64 ofst;
+    Expand_ST_into_base_and_ofst(_opt_stab->St(lda->Lda_aux_id()),  lda->Lda_base_st(),
+                                  _opt_stab->St_ofst(lda->Lda_aux_id()),
+                                  &lda_st, &ofst);
+    Is_True(lda_st == lda->Lda_base_st(),
+            ("Find_scalars_from_lda_iloads:: inconsistent base for LDA"));
+    WN_store_offset(&wn) -= ofst - _opt_stab->St_ofst(lda->Lda_aux_id()) ;
+#endif
     WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
     WN_set_ty(&wn, cr->Ilod_ty());
     WN_set_field_id(&wn, cr->I_field_id());
@@ -484,7 +494,17 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 	  WN_set_desc(&wn, stmt->Desc());
 	  WN_set_rtype(&wn, MTYPE_V);
 	  WN_store_offset(&wn) = lhs->Offset() + lda->Offset();
-	  WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
+#if 1 // Bug fix Aug. 13: make the entered ST-Offset pair consistent
+          ST *lda_st;
+          INT64 ofst;
+          Expand_ST_into_base_and_ofst(_opt_stab->St(lda->Lda_aux_id()), lda->Lda_base_st(),
+                                       _opt_stab->St_ofst(lda->Lda_aux_id()),
+                                       &lda_st, &ofst);
+          Is_True(lda_st == lda->Lda_base_st(),
+                  ("Find_scalars_from_lda_indirects:: inconsistent base for LDA"));
+          WN_store_offset(&wn) -= ofst - _opt_stab->St_ofst(lda->Lda_aux_id());  
+#endif
+    	  WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
 	  WN_set_ty(&wn, lhs->Ilod_ty());
 	  WN_set_field_id(&wn, lhs->I_field_id());
 	  WN_map_id(&wn) = 0;
@@ -1014,7 +1034,7 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	  stmt->Set_rhs(Create_COMPOSE_BITS(lhs->Bit_offset(), lhs->Bit_size(), v, rhs));
 	  // generate a new version of the new scalar variable
 	  stmt->Set_lhs(_htable->Add_def(lhs->Scalar_aux_id(), -1, stmt, 
-	    lhs->Dtyp(), lhs->Dsctyp(), lhs->Offset(), lhs->Lod_ty(), 0, TRUE));
+	    lhs->Dtyp(), lhs->Dsctyp(), lhs->Offset(), Void_Type, 0, TRUE));
 	  stmt->Set_opr(OPR_STID);
 	  if (v->Aux_id() < _first_new_aux_id)
 	    Delete_chi(v->Aux_id(), stmt);
@@ -1044,8 +1064,8 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 			  OPCODE_make_op(OPR_ILOAD, lhs->Dtyp(), lhs->Dsctyp()),
 			  lhs->Scalar_ivar_occ(), stmt, NULL/*mu*/,
 			  lhs->Dtyp(), lhs->Dsctyp(), lhs->Ilod_ty(), 0, 
-			  lhs->Offset(), (CODEREP *) lhs->Ilod_base_ty(), NULL, 
-			  lhs->Istr_base()));
+			  lhs->Offset(), (CODEREP *)Make_Pointer_Type(Void_Type), 
+   		      NULL, lhs->Istr_base()));
 	  stmt->Set_opr(OPR_ISTORE);
 	}
       }
@@ -1104,10 +1124,20 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
     // this indirect load can be folded
     // generate a load of the zero version of the new scalar variable
     x = _htable->Ssa()->Get_zero_version_CR(cr->Scalar_aux_id(), _opt_stab, 0);
+#if 1
+    //Bug fix Aug-26-02
+    if(x->Is_var_volatile())  return NULL;
+#endif
     x->Set_dtyp(cr->Dtyp());
     x->Set_dsctyp(cr->Dsctyp());
     x->Set_lod_ty(TY_pointed(cr->Ilod_base_ty()));
     x->Set_field_id(cr->I_field_id());
+#if 1 // bug fix sep-4-02
+    if (x->Field_id() == 0 && x->Dsctyp() != MTYPE_M &&
+        TY_size(x->Lod_ty()) != MTYPE_byte_size(x->Dsctyp()))
+      x->Set_lod_ty(MTYPE_To_TY(x->Dsctyp()));
+      // x->Set_dtyp(MTYPE_To_TY(x->Dsctyp()));
+#endif
     if (cr->Dsctyp() == MTYPE_BS) // cannot use offset from opt_stab
       x->Set_offset(cr->Offset()+cr->Ilod_base()->Offset());
     if (cr->Opr() == OPR_ILDBITS) 
@@ -1208,11 +1238,22 @@ OPT_REVISE_SSA::Fold_lda_indirects(void)
 	  // this indirect can be folded
 	  // first, generate a new version of the new scalar variable
 	  vaux = lhs->Scalar_aux_id();
+#if 1 //Bug fix Aug-26-02
+          // indirect load is not volatile, but folded-to scalar is volatile
+          if (_opt_stab->Is_volatile(vaux))
+            break;
+#endif 
 	  stmt->Set_lhs(_htable->Add_def(vaux, -1, stmt, 
 			lhs->Dtyp(), lhs->Dsctyp(), 
 			_opt_stab->St_ofst(vaux),
 			TY_pointed(lhs->Ilod_base_ty()), lhs->I_field_id(), 
 			TRUE));
+#if 1 // bug fix sep-4-02
+          if (stmt->Lhs()->Field_id() == 0 && stmt->Lhs()->Dsctyp() != MTYPE_M &&
+              TY_size(stmt->Lhs()->Lod_ty()) != MTYPE_byte_size(stmt->Lhs()->Dsctyp()))
+            stmt->Lhs()->Set_lod_ty(MTYPE_To_TY(stmt->Lhs()->Dsctyp()));
+            // stmt->Lhs()->Set_dtyp(MTYPE_To_TY(stmt->Lhs()->Dsctyp()));
+#endif
 	  if (lhs->Dsctyp() == MTYPE_BS) // cannot use offset from opt_stab
 	    stmt->Lhs()->Set_offset(lhs->Offset()+lhs->Istr_base()->Offset());
 	  if (stmt->Opr() == OPR_ISTORE)

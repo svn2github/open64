@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -41,7 +41,7 @@
 
 #include "subset_gen.h"
 
-static const char description[]= "\
+static const char * const description[]= {"\
 /* ====================================================================\n\
  * ====================================================================\n\
  *\n\
@@ -67,7 +67,7 @@ static const char description[]= "\
  *\n\
  * ====================================================================\n\
  * ====================================================================\n\
- */";
+ */", NULL};
 
 static const char func_subset_name[]= "\
 const char* ISA_SUBSET_Name( ISA_SUBSET subset ) {\n\

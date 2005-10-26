@@ -296,6 +296,11 @@ extern TY *GetArgType(TYLIST*, INT);
 extern void
 Count_tree_size (FEEDBACK& fb, WN *w, INT32 &bbs, INT32 &stmts, FB_FREQ& cycles, FB_FREQ& freq_count);
 
+//INLINING_TUNING^
+extern void
+Count_tree_size_tuning (FEEDBACK& fb, WN *wn, INT32 &bbs, INT32 &stmts, FB_FREQ& cycles, FB_FREQ &freq_count, UINT16 &WNs, FB_FREQ &cycle_tuning );
+//INLINING_TUNING$
+
 
 #ifdef __cplusplus
 extern "C" {

@@ -247,8 +247,13 @@ SWP_Loop_Init_Fini(bool is_doloop,
   // Reset CFM.rrb pr
   Build_OP(TOP_clrrrb_pr, prolog_ops);
 
+  // TODO: set the clrrrb in epilog depends on the number 
+  //       of the alloc in current PU.
+  // In current, we don't need clrrrb in epilog because of
+  // single alloc in each PU!
+
   // Reset CFM.rrb 
-  Build_OP(TOP_clrrrb, epilog_ops);
+  //Build_OP(TOP_clrrrb, epilog_ops);
 
   // Initialize the rotating predicate registers
   //   mov pr.rot = 1 << 16 for doloop

@@ -405,13 +405,14 @@ OPT_STAB::Count_syms(WN *wn)
       BOOL done = FALSE;
       while (!done) {
 	done = TRUE;
-	if (ST_is_initialized(st) &&
-	    ST_sclass(st) == SCLASS_PSTATIC) {
+	BOOL const_initialized = ST_is_const_initialized(st);
+	if (const_initialized || (ST_is_initialized(st) &&
+	    ST_sclass(st) == SCLASS_PSTATIC)) {
 	  INITV_IDX initv = ST_has_initv(st);
 	  if (initv &&
 	      INITV_kind(Initv_Table[initv]) == INITVKIND_SYMOFF) {
 	    st = &St_Table[INITV_st(Initv_Table[initv])];
-	    if (ST_class(st) == CLASS_VAR) {
+	    if (const_initialized || ST_class(st) == CLASS_VAR) {
 	      st_chain_info = st_chain_map->Lookup(ST_st_idx(st));
 	      if (st_chain_info == NULL) {
 		aux_sym_cnt++;
@@ -802,6 +803,7 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   Expand_ST_into_base_and_ofst(st, ofst, &tmpbase, &tmpofst);
   sym->Set_base(tmpbase);
   sym->Set_base_byte_ofst(tmpofst);
+  sym->Set_base_kind(BASE_IS_FIXED);
 
   if (WOPT_Set_Unique_Pt != NULL && 
       ST_name(st) != NULL &&
@@ -815,15 +817,16 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
 
   // see if it's a constant scalar variable that's been initialized
   // that we can constant propagate
-  if (ST_is_initialized(st) && 
-      ST_sclass(st) == SCLASS_PSTATIC) {
+  BOOL const_initialized = ST_is_const_initialized(st);
+  if (const_initialized || (ST_is_initialized(st) && 
+      ST_sclass(st) == SCLASS_PSTATIC)) {
     if (ST_is_const_initialized(st))
       sym->Set_const_init();
     INITV_IDX initv;
     if ((initv = ST_has_initv(st)) &&
 	INITV_kind(Initv_Table[initv]) == INITVKIND_SYMOFF) {
       ST *st = &St_Table[INITV_st(Initv_Table[initv])];
-      if (ST_class(st) == CLASS_VAR) {
+      if (const_initialized || ST_class(st) == CLASS_VAR) {
 	if (Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG)) {
 	  fprintf(TFile, "Enter initv: %s+%d\n", ST_name(st),
 		  INITV_ofst(Initv_Table[initv]));
@@ -2308,7 +2311,7 @@ OPT_STAB::Collect_ST_attr(void)
     // asm can dereference pointers
     BS *asm_alias_set = Addr_saved();
     // asm can call other procedures
-    asm_alias_set = BS_UnionD(asm_alias_set, Addr_passed(), mem_pool);
+    asm_alias_set = BS_Union(asm_alias_set, Addr_passed(), mem_pool);
     // worry only about named objects; virtuals come later
     asm_alias_set = BS_IntersectionD(asm_alias_set, Named());
     // don't worry about const objects either

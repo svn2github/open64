@@ -345,7 +345,7 @@ struct OPERATOR_info_struct OPERATOR_info[OPERATOR_LAST+1] = {
 
   {"OPR_ICALL",
    -1 /* nkids */,
-   OPERATOR_MAPCAT_CALL /* mapcat */,
+   OPERATOR_MAPCAT_ICALL /* mapcat */,
    OPERATOR_PROPERTY_stmt                 |
    OPERATOR_PROPERTY_call                 |
    OPERATOR_PROPERTY_endsbb               |
@@ -989,6 +989,17 @@ struct OPERATOR_info_struct OPERATOR_info[OPERATOR_LAST+1] = {
    2 /* nkids */,
    OPERATOR_MAPCAT_OEXP /* mapcat */,
    OPERATOR_PROPERTY_expression},
+
+  {"OPR_MPYU2",
+   2 /* nkids */,
+   OPERATOR_MAPCAT_OEXP /* mapcat */,
+   OPERATOR_PROPERTY_expression},
+
+  {"OPR_MPYI2",
+   2 /* nkids */,
+   OPERATOR_MAPCAT_OEXP /* mapcat */,
+   OPERATOR_PROPERTY_expression},
+
 };
 
 static BOOL
@@ -2000,6 +2011,8 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
       case OPR_SHL:
       case OPR_TRIPLET:
       case OPR_XMPY:
+      case OPR_MPYU2:
+      case OPR_MPYI2:
         // [RTYPE] : i [DESC] : V
         valid = Is_MTYPE_i [rtype] && desc == MTYPE_V;
         break;

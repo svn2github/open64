@@ -26,7 +26,7 @@
 
 #include <stdio.h>
 
-//#include <conio.h>
+#include <conio.h>
 
 #include <stdlib.h>
 
@@ -47,6 +47,7 @@ extern int trying123;
 extern int ttt;
 void *pKmapiInfo;
 //int trying123;
+
 
 #if 0
 void dump_instruction_fus(FILE *fp, void *pknobs)
@@ -164,6 +165,7 @@ void dump_instruction_fus(FILE *fp, void *pknobs)
 	}
 	//_getch();
 }
+
 #endif
 
 int main( int argc, char *argv[] )
@@ -174,12 +176,8 @@ int main( int argc, char *argv[] )
    FILE *Ferr=NULL;
 
    char *toolname;
-   bv_t  *bv1;
-   bv32_t bv2;
-   kapi_syl_t mpsyl[3];
-   
-   papair_t *bypasses;
-   int numpl;
+
+
 
    if (( (toolname=strrchr(argv[ 0],'\\')) ==NULL) && 
 	   ( (toolname=strrchr(argv[ 0],'/')) ==NULL) )
@@ -222,75 +220,17 @@ int main( int argc, char *argv[] )
       KDebug_DumpIntraClusterBypass( stdout, pvoid1 );
       KDebug_DumpLatencies( stdout, pvoid1 );
       KDebug_DumpTotalLatency( stdout, pvoid1 );
+
+      printf( "fuLD has %d ports\n", 
+             KAPI_cportCount4fu( pvoid1, -1, fuLD ) );
 */
-
-/*Test for function in KAPI*/
-      int iOpCount,i=0,j;	
-      char OpName[50];
-      iOpCount = KAPI_iidCount( pvoid1 ); 
-      printf("function KAPI_iidCount return %d" , iOpCount); 
-/*      for (i=1;i<=iOpCount-1;i++)
-     {
-          printf("TOP_%s \n", KAPI_iid2mnemonic(pvoid1,i,0));
-      }*/
-   /*   for (i=0; i<KAPI_count4attribute( pvoid1,"INTRACLUSTER"); i++ ) 
-      {
-          char *string;
-          string = KAPI_attribute4index( pvoid1,"INTRACLUSTER", i );
-          printf("%s\n",string);
-      }*/
       fuLD = KAPI_EnumIndex( pvoid1, "fu_t", "fuLD" );
-      printf( "function %d has %d ports\n", fuLD,
-             KAPI_cportCount4fu( pvoid1, -1, fuLD));
-      tmp = KAPI_IntraClusterBypass(pvoid1,0 ,0,0,0,0, 7,0,0,0);
-      printf("%d",KAPI_EnumCardinality( pvoid1, "bid_t"));
-      for (i=0; i<KAPI_EnumCardinality( pvoid1, "REGCLASS" ); i++)
-      {	
-      		printf( "%s is in regclass :%d\n", KAPI_EnumName(pvoid1,i,"REGCLASS"), i);
-      }
-      if (outp == NULL)  
-      {
-          printf("You cannot open the file");
-          return;
-      }
-      else      
-      {
-          char name[50]="nametype";
-     //   i = KAPI_save_as_header_instruction_all_info(outp,pvoid1,name);
+  	  tmp = KAPI_IntraClusterBypass(pvoid1,0
+									,0,0,0,0,
+									7,0,0,0);
 
-          if (i == 0) printf("\nSuccess!\n");
-      } 
-      i = KAPI_ArrayIndex( pvoid1, "cluster0CportMask", "%cportI0");
-      bv1 = KAPI_GetBvVariable( pvoid1, "cluster0CportMask", i);
-      for ( j = 0 ;j < bv1->n32Chunks; j++ )
-      {	     
-      	   printf ("\n index:%d bv is :%x \n",j,bv1->pint32Data[j]);
-      }
 
-      fuLD = KAPI_EnumIndex( pvoid1, "fu_t", "fuSEM" );
-      bv2 = KAPI_cportMask4fu( pvoid1, 0 , fuLD ) ;
-      printf ("the fuld's cport mask is %x", bv2);
-      
-      bv2 = KAPI_cportMask4ut( pvoid1, 0 , 1  ) ;
-      printf ("the fuld's cport mask is %x\n", bv2);
-       
-      printf ("%d %d\n", fuLD,KAPI_srcOppCount( pvoid1, fuLD));
-      KAPI_SylOrder_bid( pvoid1, (kapi_bid_t)1, mpsyl );
-      for (i=0; i<3; i++)
-      {
-		printf("slot is [%d]\n",mpsyl[i]);
-      }     
-
-      //test for intracluster bypass
-      bypasses = KAPI_IntraClusterBypassList( pvoid1, 0, 0, -1, -1, -1,
-	 -1, -1, -1, -1, &numpl );  
-      printf("bypass list count is %d",numpl);
-      for ( i =0 ; i<numpl; i++)
-      {
-	 printf("with %s utSrc: %s cport : %d value is %d\n",KAPI_EnumName(pvoid1,(bypasses+i)->fuDest ,"fu_t"), KAPI_EnumName(pvoid1,(bypasses+i)->utSrc,"ut_t"),(bypasses+i)->cutportSrc,(bypasses+i)->iValue);
-     
-      }
-//	    dump_instruction_fus(outp,pvoid1);
+//	  dump_instruction_fus(outp,pvoid1);
       KAPI_Finalize( pvoid1 );
    } else {
       fprintf( stderr, "KAPI_Initialize failed\n" );

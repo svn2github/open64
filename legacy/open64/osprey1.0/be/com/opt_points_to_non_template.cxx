@@ -396,6 +396,79 @@ Expand_ST_into_base_and_ofst(ST *st, INT64 st_ofst, ST **base, INT64 *ofst)
   *base = tmpbase;
 }
 
+// Input parameter: st and st_ofst
+// output parameter: base and base_ofst (that is equivalent to st)
+//
+void
+Expand_ST_into_base_and_ofst(ST *st, ST *base_st, INT64 st_ofst, ST **base, INT64 *ofst)
+{
+  // cannot follow the base_st of a PREG!
+  // or text
+  // or sclass formal (because the incomplete data layout)
+  // or mergable blocks (e.g., .lit4)
+  // or preemptible symbols
+  if (ST_sclass(st) == SCLASS_REG ||
+      ST_sclass(st) == SCLASS_TEXT ||
+      (ST_class(st) == CLASS_BLOCK && STB_merge(st)) ||
+      ((Gen_PIC_Shared || Gen_PIC_Call_Shared) && ST_is_preemptible(st)) )
+  {
+    *ofst = st_ofst;
+    *base = st;
+    return;
+  }
+
+  INT64   tmpofst = 0;
+  ST     *tmpbase = st;
+
+  while ((ST_base(tmpbase) != tmpbase) && (tmpbase != base_st)) {
+
+    // pv 345133:  not split up when base of symbol is mergable block
+    if (ST_class(tmpbase) == CLASS_BLOCK && STB_merge(tmpbase)) {
+      *ofst = st_ofst;
+      *base = st;
+      return;
+    }
+
+    // pv 458112, 380316 and 466728:
+    // not split up when base of symbol is CLASS_BLOCK and SCLASS_FORMAL,
+    // i.e., Formal_Arg_StkSeg
+    if (ST_sclass(tmpbase) == SCLASS_FORMAL &&
+        ST_class(ST_base(tmpbase)) == CLASS_BLOCK)
+      break;
+
+    // several places in wopt assumed that ST_sclass(st) == ST_sclass(ST_base(st))
+    // and it is not always true.
+    if (ST_sclass(tmpbase) == SCLASS_FORMAL &&
+        ST_sclass(tmpbase) != ST_sclass(ST_base(tmpbase)))
+      break;
+
+    // pv 559974
+    // At -O1 with regions it is possible to have some STs lowered and
+    // others not, if it is already lowered, don't modify.
+    if (ST_sclass(ST_base(tmpbase)) == SCLASS_UNKNOWN)
+      break;  
+
+    // pv 571261:
+    // do not expand a func symbol into .text+offset
+    if (ST_sclass(tmpbase) == SCLASS_TEXT)
+      break;
+
+    tmpofst += ST_ofst(tmpbase);
+    tmpbase = ST_base(tmpbase);
+  }
+
+  // pv 345133:  not split up when base of symbol is mergable block
+  // may not reach the test inside the while-loop because
+  // the ST with CLASS_BLOCK's base is itself!
+  if (ST_class(tmpbase) == CLASS_BLOCK && STB_merge(tmpbase)) {
+    *ofst = st_ofst;
+    *base = st;
+    return;
+  }
+
+  *ofst = tmpofst + st_ofst;
+  *base = tmpbase;
+}      
 
 //  Build the POINTS_TO for a scalar
 //  The POINTS_TO contains fully lowered base and ofst.

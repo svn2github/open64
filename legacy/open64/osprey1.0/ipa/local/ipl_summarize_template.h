@@ -64,6 +64,9 @@
 #ifndef ipl_linex_INCLUDED
 #include "ipl_linex.h"
 #endif
+#ifndef ipl_reorder_INCLUDED // for Ptr_to_ty_vector, local_cands
+#include "ipl_reorder.h"
+#endif
 
 #include "region_util.h"                // for WN_Fake_Call_EH_Region
 #include "wn_mp.h"                    // for WN_has_pragma_with_side_effect
@@ -855,6 +858,14 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     BOOL Has_return_already = FALSE;
     BOOL Has_pdo_pragma = FALSE;
     BOOL Has_local_pragma = FALSE;
+    BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback&& IPA_Enable_Reorder;//and other things, such as Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO]
+    UINT fld_id,i, pop_loops;
+    BOOL cur_pu_is_reorder_cand=FALSE;
+    UINT64 loop_count;
+    UINT stack_size; //just for debug
+    WN* wn_tmp;
+    UINT num_struct_access;//just for debug, ,Finish_PU_process_struct_access()
+
 
     Trace_Modref = Get_Trace ( TP_IPL, TT_IPL_MODREF );
     
@@ -899,12 +910,21 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    SUMMARY_FEEDBACK *fb = New_feedback ();
 	    proc->Set_feedback_index (Get_feedback_idx ());
 	    fb->Set_frequency_count (freq);
+//		printf("&&&&&&&&&&&&& %s -> %f\n",ST_name(WN_st(w)), fb->Get_frequency_count()._value);
 	}
 	else {
 	  // FB_PU_Has_Feedback = FALSE;
 	    DevWarn ("Unknown invoke frequency found in %s so no feedback info in this procedure will be considered", ST_name(WN_st(w)));
 	}
     }
+	else //INLINING_TUNING^
+	{
+	  if(Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO])
+	  {
+	    proc->Set_Never_Invoked ();
+	  }
+	}//INLINING_TUNING$
+			
 
     Set_lang (proc);
 
@@ -942,7 +962,8 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	IPL_Build_Access_Vectors(w);
 	WB_IPL_Set_Access_Array_Map(IPL_info_map);
     }
-
+	if(Do_reorder)
+		Start_PU_process_struct_access();
     // if we are summarizing an alternate entry point then we must
     // search for the alternate entry point node in the subroutine.
     // and keep walking until we encounter it
@@ -996,6 +1017,13 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_WHILE_DO:
 	case OPR_DO_WHILE:
 	    loopnest++;
+	    if(Do_reorder){
+	    	FB_Info_Loop fb_info=Cur_PU_Feedback->Query_loop( w2);
+		loop_count=(UINT64) fb_info.freq_iterate.Value();
+		loop_count_stack->Push(loop_count);
+		stack_size=loop_count_stack->Elements();//for debug
+       	    }
+
 	    break;
 
 	case OPR_ICALL:
@@ -1055,6 +1083,10 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_ILOAD:
 	    Direct_Mod_Ref = TRUE;
 	    Record_ref (w2);
+	    if(Do_reorder && !loop_count_stack->Is_Empty() ){
+		loop_count=loop_count_stack->Top();
+	        Record_struct_access(w2,loop_count);
+	    }
 	    break;
 	  
 	case OPR_STID:
@@ -1063,17 +1095,29 @@ SUMMARIZE<program>::Process_procedure (WN* w)
               proc->Set_has_unstructured_cflow();
             }
           }
+          
           // fall through
 
 	case OPR_ISTORE:
 	case OPR_MSTORE:
 	    Direct_Mod_Ref = TRUE;
 	    Record_mod (w2);
+            if(Do_reorder && !loop_count_stack->Is_Empty() ) {
+	        loop_count=loop_count_stack->Top();
+	         Record_struct_access(w2,loop_count);
+            }
 	    break;
 
 	case OPR_IO:
 	    Process_IO(w2);
 	    break;
+	case OPR_ILDA:
+	case OPR_MLOAD:
+	     if(Do_reorder && !loop_count_stack->Is_Empty() ) {
+		    loop_count=loop_count_stack->Top();
+		    Record_struct_access(w2,loop_count);
+               }
+		break;
 
 	    // Exceptions now come as REGIONS (not as EXC_SCOPE_BEGINS)
 	case OPR_EXC_SCOPE_BEGIN:
@@ -1216,6 +1260,10 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		    case OPC_WHILE_DO:
 		    case OPC_DO_WHILE:
 			loopnest--;
+			if(Do_reorder){
+			    loop_count_stack->Pop();
+			}
+
 		    }
 		}
 	    }
@@ -1235,7 +1283,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	}
 
     }
-
+    /*loop_count_stack may not be empty! and loopnest may not be empty!!*/
     if (proc->Get_callsite_count () > 0)
 	proc->Set_callsite_index (Get_callsite_idx () -
 				  proc->Get_callsite_count () + 1);
@@ -1248,18 +1296,26 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    INT bb_count = 0;
 	    INT stmt_count = 0;
  	    FB_FREQ cycle_count(0);
+		UINT16 WN_Count = 0; //INLINING_TUNING
+		FB_FREQ Cycle_Count2(0); //INLINING_TUNING
 	    SUMMARY_FEEDBACK *fb = Get_feedback (proc->Get_feedback_index ());
  	    FB_FREQ freq_count = fb->Get_frequency_count();
-	    Count_tree_size (*Cur_PU_Feedback, Get_entry_point (), bb_count, stmt_count, cycle_count, freq_count);
+//	    Count_tree_size (*Cur_PU_Feedback, Get_entry_point (), bb_count, stmt_count, cycle_count, freq_count);
+	    Count_tree_size_tuning (*Cur_PU_Feedback, Get_entry_point (), bb_count, stmt_count, cycle_count, freq_count, WN_Count, Cycle_Count2);
+//;;printf("!!!!! PU %s(%d), bb_count = %d, stmt_count = %d, cycle=%.1f\n",ST_name(WN_st(w)), proc->Get_feedback_index (),bb_count,stmt_count,cycle_count._value);
 	    if (!cycle_count.Known()) {
 		proc->Clear_has_PU_freq();
 		DevWarn("%s has unknown frequencies so no feedback info in this procedure will be considered", ST_name(WN_st(w)));
 		// FB_PU_Has_Feedback = FALSE;
 	    }
 	    else 
+		{
 	        fb->Set_cycle_count (cycle_count);
+			fb->Set_cycle_count_2(Cycle_Count2);
+		}
 	    fb->Set_effective_bb_count (bb_count);
 	    fb->Set_effective_stmt_count (stmt_count);
+		fb->Set_wn_count(WN_Count);
 	}
 
 	if (DoPreopt) {
@@ -1287,7 +1343,8 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    IPL_Finalize_Projected_Regions(proc); // pop mem pools 
 	    IPL_Finalize_Par_Code();
 	}
-
+	if(Do_reorder)
+		num_struct_access=Finish_PU_process_struct_access();
 	// record local addr taken attributes
 	Set_local_addr_taken_attrib ();
     } else { 
@@ -2042,6 +2099,75 @@ SUMMARIZE<program>::Trace(FILE* fp)
 
   if (Has_common_shape_entry())
     Get_common_shape(0)->Print_array(fp, Get_common_shape_idx()+1);
+  if (Has_struct_access_entry()) //reorder
+  	Get_struct_access(0)->Print_array(fp, Get_struct_access_idx()+1);
+}
+template <PROGRAM program>
+void 
+SUMMARIZE<program>:: Record_struct_access(WN *wn, mUINT64 loop_count)
+{
+    /*-------------------------------------------------------------*/
+    /*assumption1 : the init stmt of DO_LOOP will not use  Field_id*/
+    /*-------------------------------------------------------------*/
+    mUINT32 fld_id,flatten_flds,summary_idx;
+    UINT struct_index, index=WN_ty(wn)>>8;//ty_idx of loaded object
+    TY_IDX  point_idx;
+    TY_TO_FLDNUM_MAP::const_iterator iter;
+    TY_TO_ACCESS_MAP::const_iterator iter1;
+    PTR_TO_TY_VECTOR::iterator ptr_iter;
+    SUMMARY_STRUCT_ACCESS * cur_summary;
+    BOOL is_pointer=FALSE;
+    fld_id=WN_field_id(wn);//inc field access count
+    if(fld_id<=0) return;
+    if(WN_operator(wn)==OPR_ISTORE|| WN_operator(wn)==OPR_MSTORE
+        ||WN_operator(wn)==OPR_MLOAD||WN_operator(wn)==OPR_LDA
+        ||WN_operator(wn)==OPR_ILDA){//get the struct_index         
+        point_idx=TY_pointed(Ty_tab[index]);// TY_pointed; OR find it in ptr_to_ty_vector
+        struct_index=point_idx>>8;
+    }
+    else {
+        struct_index=index;
+    }
+    //step 1:
+    //if(ty_index in ty_to_idx_map)
+    //    get cur_summary;
+    //else if(not in local_cand) 
+    //    return;
+    iter1=Ty_to_access_map->find(struct_index);
+    if (iter1!=Ty_to_access_map->end ()){// found summary
+        cur_summary=iter1->second;
+    }
+    else {
+        iter=local_cands->find(struct_index);
+        if (iter==local_cands->end ())// not a candidate
+            return;
+        else
+            flatten_flds=iter->second;
+        //find struct_index in Ty_to_access_map
+        //if (not found))
+        //    New_struct_access(); fill in flatten_flds,
+        //    fill in ty_to_idx_map for struct_index and corresponding  ptr_tys
+        FmtAssert(flatten_flds!=0,
+            ("in Record_struct_access(), flatten_flds!=0!\n"));
+        FmtAssert(Ty_tab[struct_index].kind==KIND_STRUCT,
+            ("the wn's ty_idx operated must be STRUCT"));
+        iter1=Ty_to_access_map->find(struct_index);
+        if (iter1!=Ty_to_access_map->end ())
+            cur_summary=iter1->second;
+        else{//not found summary
+            cur_summary=New_struct_access(struct_index,flatten_flds);
+            Ty_to_access_map->insert(make_pair(struct_index,cur_summary));
+            for(ptr_iter=Ptr_to_ty_vector->begin();
+                ptr_iter!=Ptr_to_ty_vector->end();
+                ptr_iter++){
+                if(ptr_iter->pt_index==struct_index)
+                    Ty_to_access_map->insert(make_pair(ptr_iter->ty_index,cur_summary));
+            }// fill in all such pointer_tys
+        }
+    }
+    // process wn, Inc access_info to cur_summary
+    cur_summary->Inc_fld_count(fld_id, loop_count);
+    return;
 }
 
 #endif // ipl_summarize_template_INCLUDED
@@ -2056,4 +2182,5 @@ SUMMARIZE<program>::Process_alt_procedure(WN *w, INT formal_index, INT
     proc->Set_formal_index (formal_index);
     proc->Set_formal_count (formal_count);
 }
+
 

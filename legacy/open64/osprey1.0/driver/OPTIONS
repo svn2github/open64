@@ -524,8 +524,11 @@ I-cpp_i32	;		ALL	NONE	"-D_ABI_I32 -D_IA64_ARCH=0"
         "compile for Intel 64-bit ABI"
 -ia32   toggle(&abi,ABI_IA32);       ALL     pwrc,PFA,mpc	"-ia32" ABIIA32_DEFS "-TARG:abi=ia32 -D__ia32=1"
         "compile for Intel 32-bit ABI"
--itanium toggle(&isa,ISA_IA641);	ALL	NONE	"-i64"
-	""
+-itanium toggle(&isa,ISA_IA641);     ALL	NONE	"-i64"
+        "compile for Intel itanium"
+
+-itanium2 toggle(&isa,ISA_IA641);     ALL	NONE	"-i64" ABII64_DEFS "-TARG:processor=itanium2"
+        "compile for Intel itanium2"
 
 %%% COMBINATIONS
 % <combo>	<error>		<implies>
@@ -659,9 +662,6 @@ I-cpp_nonansi_f77	;		f77	cpp	KRDEFS NONANSI_svr4
 	"-l<arg> adds library lib<arg> to link list"
 -WB,%s			;		LINK	ld	"-WB,%s"
 	"-WB,<arg> passes <arg> to the back-end via ipacom"
-% want to pass whole -Wl,* arg to gcc link
--Wl,%s			;		LINK	ld	"-Wl,%s"
-	""
 -Wp,%s			;		ALL	cpp	"-Wp,%s"
 	""
 -W*			; 	ALL	NONE	""

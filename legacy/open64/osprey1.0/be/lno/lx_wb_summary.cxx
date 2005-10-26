@@ -914,4 +914,22 @@ void SUMMARY_FEEDBACK::WB_Print(FILE* fp,
     Get_effective_bb_count(), Get_effective_stmt_count());
   fprintf(fp, "\n");
 }
+//-----------------------------------------------------------------------
+// NAME: SUMMARY_STRUCT_ACCESS::WB_Print
+// FUNCTION: Print SUMMARY_STRUCT_ACCESS in whirl browser format 
+//-----------------------------------------------------------------------
+
+void SUMMARY_STRUCT_ACCESS::WB_Print(FILE* fp, INT struct_access_index)
+{
+	UINT i;
+  fprintf ( fp, "FLD ACCESS [%d]: name:%s  ", struct_access_index,Get_ty_name() ); 
+	for(i=0; i<max_hot_num;i++){
+		if(Get_hot_fld_id(i)==0) /*fld_id=1,2,...*/
+			break;
+      	fprintf ( fp, " field_id( %d), count(%lld)", Get_hot_fld_id(i),Get_hot_fld(i));
+      	if(i %5==0) fprintf(fp,"\n");
+	}
+
+}
+
 #endif  

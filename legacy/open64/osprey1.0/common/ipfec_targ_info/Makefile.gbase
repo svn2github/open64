@@ -82,13 +82,14 @@ TARGDEFS =
 CURRENT_DIR		= .
 COMMON_DIR		= $(BUILD_TOT)/common
 KAPI_DIR        = $(BUILD_TOT)/libkapi
-COMMON_COM_DIR		= $(COMMON_DIR)/com
+COMMON_COM_DIR		= $(COMMON_DIR)/com $(COMMON_DIR)/util
 TARGINFO_DIR		= $(BUILD_BASE)
 
 OLD_TARGINFO_DIR       = $(COMMON_DIR)/targ_info
 
 TARGINFO_ACCESS_DIR	= $(TARGINFO_DIR)/access
 TARGINFO_GENERATE_DIR 	= $(TARGINFO_DIR)/gen
+TARGINFO_MSCHED_DIR	= $(TARGINFO_DIR)/msched
 
 ifeq ($(BUILD_TARGET), MIPS)
 BUILD_TARGET_DIR = mips
@@ -115,7 +116,9 @@ SRC_DIRS = \
   $(TARGINFO_GENERATE_DIR)	\
   $(TARGINFO_DIR)         \
   $(TARG_INCLUDE_DIR)     \
-  $(OLD_PRO64_TARGINFO)
+  $(TARGINFO_MSCHED_DIR)  \
+  $(OLD_PRO64_TARGINFO)   \
+  $(COMMON_COM_DIR)	  
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
@@ -160,7 +163,8 @@ LDIRT += *.[ch] *.Exported isa_gen isa_subset_gen isa_operands_gen \
 	 isa_properties_gen isa_hazards_gen isa_pack_gen isa_print_gen \
 	 isa_decode_gen isa_pseudo_gen isa_registers_gen isa_enums_gen \
 	 isa_lits_gen abi_properties_gen proc_gen proc_properties_gen \
-	 isa_bundle_gen si_gen.so ii_files so_locations
+	 isa_bundle_gen si_gen.so ii_files so_locations *.knb  \
+         ipfec_targ_gen ptn_table_gen ptn_table_gen_mck
 
 ifeq ($(BUILD_TARGET), MIPS)
 LDIRT += r10000_si_gen r8000_si_gen r5000_si_gen r4000_si_gen 
@@ -173,7 +177,7 @@ endif
 ifeq ($(BUILD_TARGET), IA64)
 LDIRT += itanium_si_gen
 SO_TARGETS = \
-	itanium.so
+	itanium.so itanium2.so
 endif
 ifeq ($(BUILD_TARGET), IA32)
 LDIRT += pentium_si_gen
@@ -216,19 +220,29 @@ TARG_INFO_SRCS_C = \
 	targ_abi_properties.c	\
 	targ_proc.c		\
 	targ_proc_properties.c \
-	itanium.c 
 
-
-TARG_INFO_SRCS_CXX = \
-        targ_issue_port.cxx
+TARG_DSO_SRCS_C = \
+	itanium.c
+TARG_DSO_SRCS_CXX = \
+	targ_issue_port.cxx \
+	targ_bypass.cxx \
+	cggrp_ptn_table.cxx
 
 # No head file for this class file
 TARG_INFO_SRCS_ONLY = \
 	targ_bypass.cxx
 
 TARG_INFO_SRCS = $(TARG_INFO_SRCS_C) \
-                 $(TARG_INFO_SRCS_CXX) \
                  $(TARG_INFO_SRCS_ONLY)
+
+TARG_DSO_SRCS  = $(TARG_DSO_SRCS_C) \
+                 $(TARG_DSO_SRCS_CXX)
+
+TARG_DSO_MCK_SRCS_C = $(TARG_DSO_SRCS_C:.c=_mck.c)
+TARG_DSO_MCK_SRCS_CXX = $(TARG_DSO_SRCS_CXX:.cxx=_mck.cxx)
+
+TARG_DSO_MCK_SRCS = $(TARG_DSO_MCK_SRCS_CXX) \
+                    $(TARG_DSO_MCK_SRCS_C)
 
 TARG_INFO_HDRS_C = $(TARG_INFO_SRCS_C:.c=.h)
 TARG_INFO_HDRS_CXX = $(TARG_INFO_SRCS_CXX:.cxx=.h)
@@ -237,6 +251,15 @@ TARG_INFO_HDRS = $(TARG_INFO_HDRS_C) $(TARG_INFO_HDRS_CXX)
 TARG_INFO_OBJS_C = $(TARG_INFO_SRCS_C:.c=.o)
 TARG_INFO_OBJS_CXX = $(TARG_INFO_SRCS_CXX:.cxx=.o)
 TARG_INFO_OBJS = $(TARG_INFO_OBJS_C) $(TARG_INFO_OBJS_CXX)
+
+TARG_DSO_OBJS_C = $(TARG_DSO_SRCS_C:.c=.o)
+TARG_DSO_OBJS_CXX = $(TARG_DSO_SRCS_CXX:.cxx=.o)
+
+TARG_DSO_MCK_OBJS_C = $(TARG_DSO_MCK_SRCS_C:.c=.o)
+TARG_DSO_MCK_OBJS_CXX = $(TARG_DSO_MCK_SRCS_CXX:.cxx=.o)
+
+TARG_DSO_OBJS = $(TARG_DSO_OBJS_C) $(TARG_DSO_OBJS_CXX)
+TARG_DSO_MCK_OBJS = $(TARG_DSO_MCK_OBJS_C) $(TARG_DSO_MCK_OBJS_CXX)
 
 TARG_INFO_EXPORTS_C = $(TARG_INFO_SRCS_C:.c=.Exported)
 TARG_INFO_EXPORTS_CXX = $(TARG_INFO_SRCS_CXX:.cxx=.Exported)
@@ -249,6 +272,10 @@ LIBTARGINFO_OBJS = \
 TARGETS = \
     $(TARG_INFO_SRCS) \
     $(TARG_INFO_OBJS) \
+    $(TARG_DSO_SRCS)  \
+    $(TARG_DSO_OBJS)  \
+    $(TARG_DSO_MCK_SRCS) \
+    $(TARG_DSO_MCK_OBJS) \
     $(SO_TARGETS)     \
     $(TARG_INFO_LIB) 
     
@@ -637,23 +664,49 @@ r4000_si.o: r4000_si.cxx targ_isa_subset.h topcode.h si_gen.h
 
 endif
 
+
+
 ifeq ($(BUILD_TARGET), IA64)
 
  ifeq ($(BUILD_COMPILER), EDG)
-itanium.so: itanium.o $(SI_EXPORT_LIST)
+itanium.so: $(TARG_DSO_OBJS) $(SI_EXPORT_LIST)
 	$(CC) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST) \
-               itanium.o -o itanium.so
+               $(TARG_DSO_OBJS) $(TARG_INFO_LIB) -o itanium.so
+
+itanium2.so: $(TARG_DSO_MCK_OBJS) $(SI_EXPORT_LIST)
+	$(CC) $(CFLAGS) $(STD_DSO_LOADOPTS) -exports_file $(SI_EXPORT_LIST) \
+               $(TARG_DSO_MCK_OBJS) $(TARG_INFO_LIB) -o itanium2.so
  else
-itanium.so: itanium.o
-	$(CC) $(CFLAGS) $(STD_DSO_LOADOPTS) itanium.o -shared -o itanium.so
+itanium.so:  $(TARG_DSO_OBJS)
+	$(CC) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARG_DSO_OBJS) $(TARG_INFO_LIB) -shared -o itanium.so
+
+itanium2.so: $(TARG_DSO_MCK_OBJS) 
+	$(CC) $(CFLAGS) $(STD_DSO_LOADOPTS) $(TARG_DSO_MCK_OBJS) $(TARG_INFO_LIB) -o itanium2.so
  endif
+
+## DSO file: Itanium.so or Mckinley.so ###
+## targ_issue_port.o ##
 
 itanium.o: itanium.c ti_si.h
 	$(CC) $(CFLAGS) -c itanium.c
 
-itanium.c: ipfec_targ_gen 
+itanium_mck.o: itanium_mck.c ti_si.h
+	$(CC) $(CFLAGS) -c itanium_mck.c
+
+itanium.c itanium_mck.c: ipfec_targ_gen 
 	$(RUN) ./ipfec_targ_gen 
 
+cggrp_ptn_table.h cggrp_ptn_table.cxx : ptn_table_gen
+	$(RUN) ./ptn_table_gen
+
+ptn_table_gen : ptn_table_gen.o targ_issue_port.o $(TARG_INFO_LIB)
+	$(CXX) $(CXXFLAGS) ptn_table_gen.o targ_issue_port.o  $(TARG_INFO_LIB) -o ptn_table_gen
+
+cggrp_ptn_table_mck.cxx : ptn_table_gen_mck
+	$(RUN) ./ptn_table_gen_mck
+
+ptn_table_gen_mck : ptn_table_gen.o targ_issue_port_mck.o $(TARG_INFO_LIB)
+	$(CXX) $(CXXFLAGS) ptn_table_gen.o targ_issue_port_mck.o $(TARG_INFO_LIB) -o ptn_table_gen_mck
 
 endif
 
@@ -696,7 +749,6 @@ endif
 KAPI_LIBS = $(KAPI_DIR)/libkapi.a \
             $(KAPI_DIR)/libkapi_ia64.a \
             -lm -lc
-# CXXFLAGS += -g -O0
 
 KNOBS_ACCESS_SRC = \
          ekapi_util.cxx \
@@ -739,24 +791,17 @@ KNOBS_TARGS = \
          ipfec_targ_gen 
 
 
-## targ_issue_port.o ##
-targ_issue_port.o: targ_issue_port.cxx targ_issue_port.h topcode.h
-	$(CXX) $(CXXFLAGS) -c targ_issue_port.cxx
-
 ## targ_issue_port.[ch] ##
 targ_issue_port.h targ_issue_port.cxx: ipfec_targ_gen
 	$(RUN) ./ipfec_targ_gen 
     
-
-ipfec_targ_gen:  $(KNOBS_OBJ) v11-itanium-extra.knb v26-itanium-41-external.knb $(KAPI_LIBS)
+KNOBS_FILES =  v11-itanium-extra.knb v26-itanium-41-external.knb
+KNOBS_FILES +=  v12-itanium-extra.knb mckinley_knobsfile.knb 
+ipfec_targ_gen:  $(KNOBS_OBJ) $(KNOBS_FILES) $(KAPI_LIBS) 
 	$(CXX) $(CXXLDFLAGS) $(KNOBS_OBJ) -o $@ $(KAPI_LIBS)
+	ln -sf $(TARGINFO_DIR)/v12-itanium-extra.knb v12-itanium-extra.knb
+	ln -sf $(TARGINFO_DIR)/mckinley_knobsfile.knb mckinley_knobsfile.knb
 	ln -sf $(TARGINFO_DIR)/v11-itanium-extra.knb v11-itanium-extra.knb
-	ln -sf $(TARGINFO_DIR)/v26-itanium-41-external.knb v26-itanium-41-external.knb
-
-v11-itanium-extra.knb:
-	ln -sf $(TARGINFO_DIR)/v11-itanium-extra.knb v11-itanium-extra.knb
-	
-v26-itanium-41-external.knb:
 	ln -sf $(TARGINFO_DIR)/v26-itanium-41-external.knb v26-itanium-41-external.knb
 
 $(KAPI_LIBS): 

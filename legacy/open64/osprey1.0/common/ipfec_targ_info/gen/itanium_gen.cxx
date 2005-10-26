@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -50,7 +50,7 @@ void Print_Resource(FILE *c_file)
 void Print_SI(void *pknobs, FILE *c_file)
 {
     int fu_count,fu_index;   
-    
+   
     fu_count = KAPI_fuCount(pknobs);    
     for (fu_index=0; fu_index<fu_count; fu_index++)
     {
@@ -78,27 +78,55 @@ void Print_Top_Si(void *pknobs, FILE *c_file)
     SCHE_INFO::Output_OP_SI(pknobs, c_file);
 }
 
-void Itanium_Generator(void *pknobs, GEN_MODE mode)
+void Itanium_Generator(void *pknobs, GEN_MODE mode, MACHINE_TYPE type)
 {
     FILE *c_file;
     int issue_width, max_slot, bundle_width;
     int issue_res_id, sem_res_id;
     
-    Init_Module_Files(mode, "itanium",&c_file);
+    if (type == MCK_TYPE)
+        Init_Module_Files(mode, "itanium_mck",&c_file);
+    else
+        Init_Module_Files(mode, "itanium",&c_file);
     
     fprintf(c_file, "#include \"ti_si.h\"\n");
-    
+   
     bundle_width = KAPI_BundleIssueWidth(pknobs, -1);
     max_slot = EKAPI_GetMaxSlot(pknobs);
     issue_width = bundle_width * max_slot;
     
+    EKAPI_ClearResource();
     // Set up resource list in our ways;
     // The first must be issue resource;
     
-    //issue_res_id = EKAPI_CreatResource("issue", issue_width, 1);
-    //sem_res_id = EKAPI_CreatResource("sem", 1);
     EKAPI_CreatResource("issue", issue_width, 1);
     EKAPI_CreatResource("sem", 1);
+
+    if (type == MCK_TYPE) { // Mckinley 
+    EKAPI_MapResource(pknobs, "integer_or_memory", 0, 
+                      kapi_utI, 0,
+                      kapi_utI, 1,
+                      kapi_utM, 0,
+                      kapi_utM, 1,
+                      kapi_utM, 2,
+                      kapi_utM, 3, -1);
+    EKAPI_MapResource(pknobs, "memory", 0,
+                      kapi_utM, 0,
+                      kapi_utM, 1,
+                      kapi_utM, 2,
+                      kapi_utM, 3, -1);
+    EKAPI_MapResource(pknobs, "memory_ld", 0,
+                      kapi_utM, 0,
+                      kapi_utM, 1, -1);
+    EKAPI_MapResource(pknobs, "memory_st", 0,
+                      kapi_utM, 2,
+                      kapi_utM, 3, -1);
+    EKAPI_MapResource(pknobs, "memory0", 0,
+                      kapi_utM, 0, -1);
+    EKAPI_MapResource(pknobs, "memory2", 0,
+                      kapi_utM, 2, -1);
+
+    } else {/* Itanium */
     EKAPI_MapResource(pknobs, "integer_or_memory", 0, 
                       kapi_utI, 0,
                       kapi_utI, 1,
@@ -109,6 +137,7 @@ void Itanium_Generator(void *pknobs, GEN_MODE mode)
                       kapi_utM, 1, -1);
     EKAPI_MapResource(pknobs, "memory0", 0,
                       kapi_utM, 0, -1);
+    }
     EKAPI_MapResource(pknobs, "floating-point", 0,
                       kapi_utF, 0,
                       kapi_utF, 1, -1); 

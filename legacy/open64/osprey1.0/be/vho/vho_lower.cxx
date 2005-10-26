@@ -58,6 +58,7 @@
 #include "prompf.h" 
 #include "wb_f90_lower.h"
 #include "wn_lower.h"
+#include <hash_map.h>
 
 typedef enum {
   ADDRESS_USED,
@@ -237,6 +238,7 @@ INT32  VHO_Struct_Limit = 4;               /* max # of fields/statements     */
 static BOOL   VHO_Struct_Can_Be_Lowered;    /* FALSE if cannot be lowered    */
 static INT32  VHO_Struct_Nfields;           /* # of fields                   */
 static TY_IDX VHO_Struct_Fld_Table [255]; /* table containing fields         */
+static INT32 VHO_Struct_Offset_Table [255]; /* table containing fields offset */
 static INT32  VHO_Struct_Last_Field_Offset; /* offset of last field          */
 static INT32  VHO_Struct_Last_Field_Size;   /* size of last field            */
 
@@ -244,9 +246,7 @@ static INT32  VHO_Struct_Last_Field_Size;   /* size of last field            */
 #define EQUAL    0
 #define GREATER  1
 
-#define SWITCH_key(i) \
-  (VHO_Switch_Signed ? WN_const_val(VHO_SWITCH_wn(i)) \
-                     : (UINT64) WN_const_val(VHO_SWITCH_wn(i)))
+#define SWITCH_key(i)  (VHO_Switch_Signed ? WN_const_val(VHO_SWITCH_wn(i)) : (UINT64) WN_const_val(VHO_SWITCH_wn(i)))
 
 INT32
 VHO_Switch_Compare_Value ( const void *v_item1, const void *v_item2 )
@@ -474,8 +474,9 @@ VHO_Switch_Generate_Compgoto ( SRCPOS srcpos )
     if ( curr_value != case_value ) {
       wn = WN_COPY_Tree ( VHO_Switch_Default_Goto );
       if ( Cur_PU_Feedback )
-	freq_new[j] = FB_FREQ_UNKNOWN;
-
+//      freq_new[j] = FB_FREQ_UNKNOWN;
+        freq_new[j] = FB_FREQ(FB_FREQ_TYPE_GUESS);  //INLINING_TUNINING
+                             
     } else {
 
       wn = WN_CreateGoto ( (ST_IDX) NULL, WN_label_number(case_goto) );
@@ -499,7 +500,8 @@ VHO_Switch_Generate_Compgoto ( SRCPOS srcpos )
 
     FB_Info_Switch info_switch( n );
     info_switch[ FB_EDGE_SWITCH_INDEX( FB_EDGE_SWITCH_DEFAULT ) ]
-      = FB_FREQ_UNKNOWN; // not VHO_Switch_Default_Freq
+//      = FB_FREQ_UNKNOWN; // not VHO_Switch_Default_Freq
+        = FB_FREQ(VHO_Switch_Default_Freq.Value(), FALSE);//INLINING_TUNINING  
     for ( j = 0; j < n; j++ )
       info_switch[ FB_EDGE_SWITCH_INDEX( FB_EDGE_SWITCH( j ) ) ] = freq_new[j];
     Cur_PU_Feedback->Annot_switch( wn, info_switch );
@@ -1003,13 +1005,14 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
 
         if ( VHO_Struct_Nfields ) {
 
-          if ( field_offset ==   VHO_Struct_Last_Field_Offset
+          if ( field_offset >=   VHO_Struct_Last_Field_Offset
                                + VHO_Struct_Last_Field_Size ) {
 
             /* new field */
 
             VHO_Struct_Last_Field_Offset = field_offset;
             VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
+            VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset;
             VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = fty_idx;
           }
 
@@ -1025,6 +1028,7 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
               VHO_Struct_Last_Field_Offset = field_offset;
               VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
               VHO_Struct_Fld_Table [VHO_Struct_Nfields-1] = fty_idx;
+              VHO_Struct_Offset_Table [VHO_Struct_Nfields-1] = field_offset; 
             }
           }
 
@@ -1042,6 +1046,7 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
 
           VHO_Struct_Last_Field_Offset = field_offset;
           VHO_Struct_Last_Field_Size   = TY_size (Ty_Table [fty_idx]);
+          VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset; 
           VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = fty_idx;
         }
         break;
@@ -1053,6 +1058,56 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
 
         else
           VHO_Get_Field_List (offset + FLD_ofst (fld), fty_idx);
+        break;
+
+      case KIND_ARRAY:
+        INT32   array_elem_num;
+	TY_IDX  ety_idx;
+		  
+        ety_idx = Ty_Table [fty_idx].Etype();
+        Is_True (TY_size(Ty_Table [fty_idx])%TY_size(Ty_Table [ety_idx]) == 0,
+                       ("unexpected array type"));
+        array_elem_num = TY_size(Ty_Table [fty_idx])/TY_size(Ty_Table [ety_idx]);
+        // Is_True (VHO_Struct_Nfields + array_elem_num < 255,
+        //            ("number of flattened fields exceeds limit");
+        if (VHO_Struct_Nfields + array_elem_num >= 255) {
+           VHO_Struct_Can_Be_Lowered = FALSE;
+           break;
+        }  
+        field_offset = offset + FLD_ofst(fld);
+
+        if(VHO_Struct_Nfields) {
+          if ( field_offset >=   VHO_Struct_Last_Field_Offset
+                                 + VHO_Struct_Last_Field_Size ) { 
+            for(int i=0; i<array_elem_num; i++) {
+              VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]);
+              VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
+            }
+            VHO_Struct_Last_Field_Offset = field_offset;
+            VHO_Struct_Last_Field_Size   = TY_size(Ty_Table [fty_idx]); 
+          } else if ( field_offset == VHO_Struct_Last_Field_Offset ) {
+            if ( TY_size (Ty_Table [fty_idx]) > VHO_Struct_Last_Field_Size ) {
+              VHO_Struct_Nfields--;
+              for(int i=0; i<array_elem_num; i++) {
+                VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]);
+                VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
+              }
+              VHO_Struct_Last_Field_Offset = field_offset;
+              VHO_Struct_Last_Field_Size   = TY_size(Ty_Table [fty_idx]); 
+            } 
+          } else if ( field_offset + TY_size (Ty_Table [fty_idx])
+                      > VHO_Struct_Last_Field_Offset + VHO_Struct_Last_Field_Size ) {
+            VHO_Struct_Can_Be_Lowered = FALSE;
+          }           
+        }
+        else {
+          for(int i=0; i<array_elem_num; i++) {
+            VHO_Struct_Offset_Table [VHO_Struct_Nfields] = field_offset + i*TY_size(Ty_Table [ety_idx]); 
+            VHO_Struct_Fld_Table [VHO_Struct_Nfields++] = ety_idx;
+          }
+          VHO_Struct_Last_Field_Offset = field_offset;
+          VHO_Struct_Last_Field_Size   = TY_size(Ty_Table [fty_idx]);
+        }
         break;
 
       default:
@@ -1116,7 +1171,7 @@ VHO_Lower_Mstore ( WN * wn )
   WN        * size;
   INT64       bytes;
   WN        * block;
-  WN_OFFSET   field_offset;
+  // WN_OFFSET   field_offset;
   INT32       i;
   SRCPOS      srcpos;
   WN        * temp;
@@ -1185,7 +1240,9 @@ VHO_Lower_Mstore ( WN * wn )
 
           src_st      = WN_st(src_address);
           src_offset += WN_offset(src_address);
-        } else if (    WN_operator(src_address) == OPR_ARRAY 
+        } else  src_st = NULL; 
+/*
+        if (    WN_operator(src_address) == OPR_ARRAY 
              && WN_operator(WN_kid0(src_address)) == OPR_LDA )
           src_st = NULL;
 
@@ -1219,6 +1276,7 @@ VHO_Lower_Mstore ( WN * wn )
           src_st      = NULL;
           src_offset  = 0;
         }
+*/
 
         dst_offset = WN_store_offset(wn);
 
@@ -1228,7 +1286,8 @@ VHO_Lower_Mstore ( WN * wn )
           dst_offset += WN_offset(dst_address);
         }
 
-        else
+        else  dst_st = NULL; 
+/*
         if (    WN_operator(dst_address) == OPR_ARRAY
              && WN_operator(WN_kid0(dst_address)) == OPR_LDA )
           dst_st = NULL;
@@ -1266,8 +1325,8 @@ VHO_Lower_Mstore ( WN * wn )
           dst_st      = NULL;
           dst_offset  = 0;
         }
-
-        field_offset = 0;
+*/
+        // field_offset = 0;
 
         for ( i = 0; i < VHO_Struct_Nfields; i++ ) {
 
@@ -1282,7 +1341,7 @@ VHO_Lower_Mstore ( WN * wn )
             opc = OPCODE_make_op ( OPR_LDID,
                                    Promoted_Mtype [TY_mtype(fty_idx)],
                                    TY_mtype(fty_idx) );
-            src = WN_CreateLdid ( opc, src_offset + field_offset,
+            src = WN_CreateLdid ( opc, src_offset + VHO_Struct_Offset_Table[i],
                                   src_st, fty_idx );
           }
 
@@ -1291,7 +1350,7 @@ VHO_Lower_Mstore ( WN * wn )
             opc = OPCODE_make_op ( OPR_ILOAD,
                                    Promoted_Mtype [TY_mtype(fty_idx)],
                                    TY_mtype(fty_idx) );
-            src = WN_CreateIload ( opc, src_offset + field_offset, fty_idx,
+            src = WN_CreateIload ( opc, src_offset + VHO_Struct_Offset_Table[i], fty_idx,
                                    Make_Pointer_Type ( fty_idx, FALSE ),
                                    WN_COPY_Tree ( src_address ) );
           }
@@ -1299,14 +1358,14 @@ VHO_Lower_Mstore ( WN * wn )
           if ( dst_st ) {
 
             opc = OPCODE_make_op ( OPR_STID, MTYPE_V, TY_mtype(fty_idx) ); 
-            dst = WN_CreateStid ( opc, dst_offset + field_offset,
+            dst = WN_CreateStid ( opc, dst_offset + VHO_Struct_Offset_Table[i],
                                   dst_st, fty_idx, src );
           }
 
           else {
 
             opc = OPCODE_make_op ( OPR_ISTORE, MTYPE_V, TY_mtype(fty_idx) );
-            dst = WN_CreateIstore ( opc, dst_offset + field_offset,
+            dst = WN_CreateIstore ( opc, dst_offset + VHO_Struct_Offset_Table[i],
                                     Make_Pointer_Type ( fty_idx, FALSE ),
                                     src,
                                     WN_COPY_Tree ( dst_address ) );
@@ -1315,10 +1374,11 @@ VHO_Lower_Mstore ( WN * wn )
           WN_Set_Linenum(dst, srcpos);
 
           WN_INSERT_BlockAfter ( block, WN_last(block), dst );
-          field_offset += TY_size(fty_idx);
+          // field_offset += TY_size(fty_idx);
         }
 
         wn = block;
+
       }
     }
 
@@ -1367,7 +1427,7 @@ VHO_Lower_Mstid (WN * wn)
   WN        * size;
   INT64       bytes;
   WN        * block;
-  WN_OFFSET   field_offset;
+  // WN_OFFSET   field_offset;
   INT32       i;
   SRCPOS      srcpos;
   OPCODE      opc;
@@ -1423,7 +1483,7 @@ VHO_Lower_Mstid (WN * wn)
         dst_st = WN_st(wn);
         dst_offset = WN_store_offset(wn);
 
-        field_offset = 0;
+        // field_offset = 0;
       
         for (i = 0; i < VHO_Struct_Nfields; i++) {
        
@@ -1436,15 +1496,15 @@ VHO_Lower_Mstid (WN * wn)
           opc = OPCODE_make_op ( OPR_LDID,
                                  Promoted_Mtype [TY_mtype(fty_idx)],
                                  TY_mtype(fty_idx) );
-          src = WN_CreateLdid ( opc, src_offset + field_offset,
+          src = WN_CreateLdid ( opc, src_offset + VHO_Struct_Offset_Table[i],
                               src_st, fty_idx);
           opc = OPCODE_make_op ( OPR_STID, MTYPE_V, TY_mtype(fty_idx) );
-          dst = WN_CreateStid ( opc, dst_offset + field_offset, 
+          dst = WN_CreateStid ( opc, dst_offset + VHO_Struct_Offset_Table[i], 
                                 dst_st, fty_idx, src);
           WN_Set_Linenum(dst, srcpos);
         
           WN_INSERT_BlockAfter (block, WN_last(block), dst);
-          field_offset += TY_size(fty_idx);
+          // field_offset += TY_size(fty_idx);
         } 
         wn = block;
       }
@@ -1492,7 +1552,7 @@ VHO_Lower_Mistore ( WN * wn )
   WN        * size;
   INT64       bytes;
   WN        * block;
-  WN_OFFSET   field_offset;
+  // WN_OFFSET   field_offset;
   INT32       i;
   SRCPOS      srcpos;
   OPCODE      opc;
@@ -1549,7 +1609,7 @@ VHO_Lower_Mistore ( WN * wn )
 	src_st     = WN_st(src_value);
         src_offset = WN_offset(src_value);
 
-        field_offset = 0;
+        // field_offset = 0;
 
         for ( i = 0; i < VHO_Struct_Nfields; i++ ) {
 
@@ -1562,16 +1622,16 @@ VHO_Lower_Mistore ( WN * wn )
 	  opc = OPCODE_make_op ( OPR_LDID,
 				 Promoted_Mtype [TY_mtype(fty_idx)],
 				 TY_mtype(fty_idx) );
-	  src = WN_CreateLdid ( opc, src_offset + field_offset,
+	  src = WN_CreateLdid ( opc, src_offset + VHO_Struct_Offset_Table[i],
 				src_st, fty_idx );
 	  opc = OPCODE_make_op ( OPR_ISTORE, MTYPE_V, TY_mtype(fty_idx));
-	  dst = WN_CreateIstore ( opc, dst_offset + field_offset,
+	  dst = WN_CreateIstore ( opc, dst_offset + VHO_Struct_Offset_Table[i],
 				  Make_Pointer_Type( fty_idx, FALSE ),
 				  src, WN_COPY_Tree( dst_address ));
           WN_Set_Linenum(dst, srcpos);
 
           WN_INSERT_BlockAfter ( block, WN_last(block), dst );
-          field_offset += TY_size(fty_idx);
+          // field_offset += TY_size(fty_idx);
         }
         wn = block;
       }
@@ -2775,7 +2835,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
              && WN_operator(rwn) == OPR_NEG
              && WN_Simp_Compare_Trees ( lwn, WN_kid0(rwn) ) == 0 ) {
 
-          fprintf ( stderr, "%s: %s %s\n",
+          DevWarn ( "%s: %s %s\n",
                     OPCODE_name(WN_opcode(wn)),
                     MTYPE_name(WN_rtype(wn)),
                     MTYPE_name(WN_desc(wn)) );
@@ -2798,7 +2858,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
              && WN_Simp_Compare_Trees ( WN_kid0(test), lwn ) == 0
              && WN_Simp_Compare_Trees ( WN_kid1(test), rwn ) == 0 ) {
 
-          fprintf ( stderr, "%s: %s %s\n",
+          DevWarn ( "%s: %s %s\n",
                     OPCODE_name(WN_opcode(wn)),
                     MTYPE_name(WN_rtype(wn)),
                     MTYPE_name(WN_desc(wn)) );
@@ -2818,7 +2878,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
              && WN_Simp_Compare_Trees ( WN_kid0(test), lwn ) == 0
              && WN_Simp_Compare_Trees ( WN_kid1(test), rwn ) == 0 ) {
 
-          fprintf ( stderr, "%s: %s %s\n",
+          DevWarn ( "%s: %s %s\n",
                     OPCODE_name(WN_opcode(wn)),
                     MTYPE_name(WN_rtype(wn)),
                     MTYPE_name(WN_desc(wn)) );
@@ -3793,6 +3853,305 @@ vho_lower_call ( WN * wn, WN * block )
   return wn;
 } /* vho_lower_call */
 
+static char * extract_pu_name(char * src_pu_name )
+{
+	if (src_pu_name == NULL)
+		return NULL;
+	char * pu_name = strchr(src_pu_name,'/');
+	if (pu_name == NULL)
+		return NULL;
+	else
+	{
+		pu_name ++;
+		return pu_name;
+	}
+}
+
+BOOL 
+Is_Return_Store_Stmt( WN *wn )
+{
+  if ( wn && WN_operator( wn ) == OPR_STID ) {
+    WN *val = WN_kid( wn, 0 );
+    if ( WN_operator( val ) == OPR_LDID ) {
+      ST *st = WN_st( val );
+      if ( ST_sym_class( st ) == CLASS_PREG
+	   && ( Is_Return_Preg( WN_offset( val ) )
+		|| st == Return_Val_Preg ) )
+	return TRUE;
+    }
+  }
+  
+  return FALSE;
+}
+
+int
+GetPUSizeFromEnv(char * puname)
+{
+  if (puname == NULL)
+	  return -1;
+
+  char *p = getenv (puname);
+  int num;
+  if (p)
+	  num = atoi(p);
+  else num = 1;
+  return num;
+}
+
+static WN *
+vho_lower_if ( WN * wn, WN *block );
+
+static WN *
+vho_lower_icall ( WN * wn, WN * block )
+{
+	if ( ! VHO_Icall_Devir )
+		return vho_lower_call(wn, block);
+			
+ //NOTE: Do NOT call this routine twice. Because devirtualization more than one time will absulutely degrade the performance.
+  //First do devirtualization transform for indirect call. Then it will call vho_lower_xxx() for 
+  //each of the new statements introduced by this transform. 
+  //
+  //The devirtualization transforms as below:
+  //
+  //The codes:
+  // BLODK
+  //     ... ...
+  //       prepare_arguments
+  //       U8ILOAD fun_ptr
+  //     I4ICALL 
+  //     ... ...
+  // END_BLODK
+  //Will be translated into:
+  // BLOCK
+  //   ... ...
+  //   IF
+  //       U8ILOAD fun_ptr
+  //       U8LDA foo_1's address
+  //     U8U8EQ
+  //   THEN
+  //     BLODK
+  //         prepare_arguments
+  //       I4CALL foo_1
+  //     END_BLODK
+  //   ELSE
+  //     BLOCK
+  //       IF
+  //           U8ILOAD fun_ptr
+  //           U8LDA foo_2's address
+  //         U8U8EQ
+  //       THEN
+  //         BLOCK
+  //             prepare_arguments
+  //           I4CALL foo_2
+  //         END_BLOCK
+  //       ELSE
+  //         BLOCK
+  //             prepare_arguments
+  //             I4ILOAD fun_ptr
+  //           I4ICALL
+  //         END_BLOCK
+  //       ENDIF
+  //     END_BLOCK
+  //   ENDIF
+  //   ... ...  // END_BLOCK
+
+  // We get the name of funtion <foo1> from profile feedback,
+  // Then we lookup symbol table for its <TY_IDX> and <ST*>.
+
+  if (Cur_PU_Feedback == NULL)
+  {
+	  return vho_lower_call(wn,block);
+  }
+
+  const FB_Info_Icall & info_icall = Cur_PU_Feedback->Query_icall(wn);
+  const FB_Info_Call & info_call = Cur_PU_Feedback->Query_call(wn);
+  if ( info_icall.Is_uninit() )
+  {
+        return vho_lower_call(wn,block);
+  }
+ 
+  if ( info_icall.tnv._exec_counter == 0 )
+  {
+	  Is_True(info_icall.tnv._counters[0]==0,("_counters[0] must be 0 if _exec_counter is 0"));
+	  return vho_lower_call(wn,block);
+  }
+  else
+	  Is_True(info_icall.tnv._values[0] >0, ("function address must be positive!"));
+  
+  char * nameoffootmp = PU_Addr_Name_Map[info_icall.tnv._values[0]]; 
+  int sizeoffoo = PU_Addr_Pusize_Map[info_icall.tnv._values[0]];
+  if ( nameoffootmp == NULL)
+  {
+	  return vho_lower_call(wn,block);
+  }
+
+  char * nameoffoo1 = extract_pu_name(nameoffootmp);
+  Is_True(nameoffoo1!=NULL,("Devirtualize: did not extract right pu_name in PU_Addr_Name_Map for address <%llu>",info_icall.tnv._values[0]));
+
+  
+  ST * st_foo1;
+  TY_IDX ty_foo1;
+  
+  ST_TAB * parray = Scope_tab[GLOBAL_SYMTAB].st_tab;
+  UINT32 last = (*parray).Size();
+  UINT32 first = 1;
+
+  INT num_pu_found = 0;
+  while (first < last){
+	  ST * block  = &(*parray)[first];
+	  UINT32 size = (*parray).Get_block_size(first);
+	  for (UINT32 i = 0; i < size; ++i, ++block){
+		if (ST_sym_class(block) != CLASS_FUNC)
+			continue;
+	    STR_IDX str_idx = ST_name_idx(block);
+		if (strcmp(nameoffoo1,&Str_Table[str_idx]) == 0)
+		{
+			if (num_pu_found > 0)
+			{
+			}
+			st_foo1 = block;
+			ty_foo1 = ST_pu_type(block);
+			num_pu_found ++;
+			//TODO: add break to save tranverse time.
+			// break;
+		}
+	  }
+	  first += size;
+  }
+
+  extern char * Src_File_Name; 
+
+  char strii[20];
+  char tmpfilename[50];
+
+  char *p = getenv ("VHO_IGNORE_FILE_NUM");
+  int ii, num_files;
+  if (p)
+	  num_files = atoi(p);
+  else num_files = 0;
+  for ( ii=1; ii<=num_files; ii++)
+  {
+	  sprintf(strii,"%d",ii);
+	  strcpy(tmpfilename,"VHO_IGNORE_FILE_NAME");
+      strcat(tmpfilename,strii);
+      p =  getenv (tmpfilename);
+	  if ( !p )
+		  continue;
+      if ( strcmp(Src_File_Name, p) == 0)
+      {
+	return vho_lower_call(wn,block);
+      }
+  }
+  
+  if ( (float)info_icall.tnv._exec_counter != info_call.freq_entry._value )
+  {
+	  return vho_lower_call(wn,block);
+  }
+
+  float ratio = info_icall.tnv._counters[0] * 1.0  / info_icall.tnv._exec_counter;
+  if (ratio < 0.98 )
+  {
+	  return vho_lower_call(wn,block);
+  }
+  else if ( info_icall.tnv._exec_counter < 50 )
+  {
+	  return vho_lower_call(wn,block);
+  }
+  else if (sizeoffoo < 20 &&  info_icall.tnv._exec_counter / sizeoffoo < 80 )
+  {
+	  return vho_lower_call(wn,block);
+  }
+  else if (sizeoffoo < 100 && info_icall.tnv._exec_counter / sizeoffoo < 160 )
+  {
+	  return  vho_lower_call(wn,block);
+  }
+  else if (sizeoffoo < 200 && info_icall.tnv._exec_counter / sizeoffoo < 320 )
+  {
+	  return  vho_lower_call(wn,block);
+  }
+  else if (sizeoffoo < 1000 && info_icall.tnv._exec_counter / sizeoffoo < 640 )
+  {
+	  return  vho_lower_call(wn,block);
+  }
+  else if (sizeoffoo > 1000 && info_icall.tnv._exec_counter / sizeoffoo < 1280 )
+  {
+	  return  vho_lower_call(wn,block);
+  }
+  else
+  {
+	if ( num_pu_found > 0 )
+	  DevWarn("Devirtualize:<last decision : willuse>Found <%d> PUs in symbol tables match profiled names <%s>",num_pu_found,nameoffoo1);
+  }
+
+
+  if (num_pu_found == 0)
+  {
+	  return vho_lower_call(wn,block);
+  }
+	  
+  
+  WN * wn_if, * test, * if_then, * if_else, *if_then_block, *if_else_block, *wn_ret_value;
+  WN * tmpkid0, * tmpkid1;
+  WN * stmt;
+  tmpkid0 = WN_CreateLda(OPC_U8LDA,0, Make_Pointer_Type (ty_foo1),st_foo1);
+  tmpkid1 = WN_COPY_Tree(WN_kid(wn,WN_kid_count(wn)-1));
+  
+  test = WN_Create(OPC_U8U8EQ,2);  
+  WN_kid0(test) = tmpkid0;
+  WN_kid1(test) = tmpkid1;
+
+  if_then = WN_Create(WN_opcode(wn),WN_kid_count(wn)-1);
+  WN_set_operator(if_then,OPR_CALL);
+  for (int i=0;i<WN_kid_count(if_then);i++)
+  {
+    WN_kid(if_then,i) = WN_COPY_Tree(WN_kid(wn,i));
+  }
+  WN_st_idx(if_then) = ST_st_idx(st_foo1);
+
+  if_then_block = WN_CreateBlock();
+  WN_INSERT_BlockLast(if_then_block,if_then);
+  stmt = WN_next(wn);
+  while ( stmt && Is_Return_Store_Stmt( stmt ) ) {
+    wn_ret_value = WN_COPY_Tree(stmt);
+    WN_INSERT_BlockLast(if_then_block,wn_ret_value);
+    stmt = WN_next(stmt);
+  }
+  
+  if_else = WN_COPY_Tree(wn);
+  if_else_block = WN_CreateBlock();
+  WN_INSERT_BlockLast(if_else_block,if_else);
+  stmt = WN_next(wn);
+  while ( stmt && Is_Return_Store_Stmt( stmt ) ) {
+    wn_ret_value = WN_COPY_Tree(stmt);
+    WN_INSERT_BlockLast(if_else_block,wn_ret_value);
+    stmt = WN_next(stmt);
+  }
+
+  //empty the stmt
+  stmt = WN_next(wn);
+  while ( stmt && Is_Return_Store_Stmt( stmt ) ) {
+    wn_ret_value = stmt;
+    stmt = WN_next(stmt);
+    WN_set_kid_count(wn_ret_value,0);
+	WN_set_operator(wn_ret_value,OPR_COMMENT);
+	WN_set_rtype(wn_ret_value,MTYPE_V);
+	WN_set_desc(wn_ret_value,MTYPE_V);
+  }
+
+  wn_if = WN_CreateIf(test, if_then_block, if_else_block);
+
+  if (Cur_PU_Feedback)
+	  Cur_PU_Feedback->FB_lower_icall( wn, if_else, if_then, wn_if );
+
+  //Delete the map info. We delete it from <Cur_PU_Feedback>
+  Cur_PU_Feedback->Delete(wn);
+
+ // wn_if = vho_lower_if_ignore_else_for_devirtualize(wn_if,block);
+  wn_if = vho_lower_if(wn_if,block);
+  
+  return wn_if;
+} /* vho_lower_icall */
+
 
 static WN *
 vho_lower_intrinsic_call ( WN * wn, WN * block )
@@ -4061,7 +4420,7 @@ vho_lower_stmt ( WN * wn, WN * block )
 
     case OPR_ICALL:
 
-      wn = vho_lower_call ( wn, block );
+      wn = vho_lower_icall ( wn, block );
       break;
 
     case OPR_PICCALL:
@@ -5053,7 +5412,97 @@ vho_lower_rename_labels_defined ( WN * wn )
 } /* vho_lower_rename_labels_defined */
 
 
-// ============================================================================
+//LLC LLC (A)
+/*-----------------------------------------------------
+This routine replaces all the LDIDs from a temp defined 
+in stid by the "org" LDID from the original variable.
+It also sets "replaced" TRUE if any is replaced
+----------------------------------------------------*/
+static WN *
+Substitute_LDID(WN *wn, WN *stid, WN *org, BOOL &replaced)
+{
+    if (WN_operator(wn) == OPR_LDID && 
+        WN_st(wn) == WN_st(stid) && WN_offset(wn) == WN_offset(stid)) {
+          replaced = TRUE;
+          return WN_COPY_Tree(org);
+    }
+    else if(OPCODE_is_leaf(WN_opcode(wn))) 
+        return wn;
+    else { //Recursively Substitute_LDID the kids
+        for (int i=0; i< WN_kid_count(wn); i++)
+            WN_kid(wn,i) = Substitute_LDID(WN_kid(wn,i), stid, org, replaced);
+        return wn;
+    }
+}
+
+/*---------------------------------------------------------------------------------
+ This routine tries to eliminate the introduced temp in the while loop, say 264, 
+ in the example below so that the while loop can be transformed to DO_LOOP later.
+
+ BLOCK
+  I4I4LDID 0 <2,2,len> T<4,.predef_I4,4>   --> org_var
+ I4STID 264 <1,2,.preg_I4> T<4,.predef_I4,4> # <preg> --> st_tmp
+   I4I4LDID 264 <1,2,.preg_I4> T<4,.predef_I4,4> # <preg>
+   I4INTCONST constant_number
+  I4ADD
+ I4STID 0 <2,2,len> T<4,.predef_I4,4>
+ END_BLOCK
+  I4I4LDID 264 <1,2,.preg_I4> T<4,.predef_I4,4> # <preg>
+  I4INTCONST 0 (0x0)
+ I4I4GT   -->cmp_wn
+I4COMMA // only this kind of pattern will be processed
+------------------------------------------------------------------------------------*/
+
+static void
+Eliminate_Temp_In_While(WN *test_wn)
+{
+  WN *stmt, *inc_const;
+  WN *preg_ldid;
+  BOOL replaced = FALSE;
+
+  if (WN_operator(test_wn)== OPR_COMMA && WN_operator(WN_kid0(test_wn)) == OPR_BLOCK) {
+      WN *cmp_wn = WN_kid1(test_wn);   //comparison 
+      WN *block_wn = WN_kid0(test_wn); //BLOCK
+      WN *st_tmp = WN_first(block_wn); //1st statement in BLOCK
+      WN *org_var = WN_kid0(st_tmp);
+
+      if (WN_operator_is(st_tmp, OPR_STID) && ST_class(WN_st(st_tmp)) == CLASS_PREG &&
+          OPERATOR_is_compare(WN_operator(cmp_wn)) && WN_operator_is(WN_kid0(cmp_wn), OPR_LDID) &&
+          WN_operator_is(WN_kid1(cmp_wn), OPR_INTCONST) ) {
+
+          INT count = 0; //count the number of other statments in BLOCK
+          for (stmt = WN_next(st_tmp); stmt; stmt = WN_next(stmt)) 
+               count++;
+
+          stmt = WN_next(st_tmp);
+          preg_ldid = WN_kid0(WN_kid0(stmt));
+
+          // Find the pattern that "original varialbe" is "post-incremented" by constant
+          // by loading the value from the tmp register
+          if (count == 1 &&  WN_operator(stmt) == OPR_STID && 
+              WN_st(stmt)== WN_st(org_var) && WN_offset(stmt)== WN_offset(org_var) &&  
+              WN_operator_is(WN_kid0(stmt),OPR_ADD) &&
+              WN_operator_is(WN_kid1(WN_kid0(stmt)), OPR_INTCONST) &&
+              WN_st(preg_ldid) == WN_st(st_tmp) && WN_offset(preg_ldid) == WN_offset(st_tmp)) {
+
+             replaced=FALSE;
+             stmt = Substitute_LDID(stmt, st_tmp, org_var, replaced);
+
+             if (replaced) {
+                 inc_const = WN_kid1(WN_kid0(stmt));
+
+                 //Deal with the test condition -- need to subtract the post-increment
+                 OPCODE mpyopcode = OPCODE_make_op(OPR_SUB, WN_rtype(org_var),MTYPE_V);
+                 WN *sub_wn = WN_CreateExp2(mpyopcode, WN_COPY_Tree(org_var), WN_COPY_Tree(inc_const));
+                 replaced = FALSE;
+                 cmp_wn = Substitute_LDID(cmp_wn, st_tmp, sub_wn, replaced);
+                 Is_True(replaced, ("there should be one to be replaced"));
+              } //if replaced
+          }
+     }  
+  } //COMMA & BLOCk
+} //Eliminate_Temp_In_While
+// LLC (A) 
 
 
 static WN *
@@ -5091,6 +5540,11 @@ vho_lower_while_do ( WN * wn, WN *block )
     test_original = WN_while_test(wn);
     rcomma_block = NULL;
   }
+
+  // LLC (B)
+  // Call to eliminate unncessary introduced temp register by frontend
+  Eliminate_Temp_In_While(test_original);
+  //LLC
 
   // Clone the loop test
   WN *copy = WN_COPY_Tree( test_original );

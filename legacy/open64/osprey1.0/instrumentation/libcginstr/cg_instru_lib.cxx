@@ -25,33 +25,6 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/*
-  Copyright (c) 2001, Intel Corporation
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without modification,
-  are permitted provided that the following conditions are met:
-
-  Redistributions of source code must retain the above copyright notice, this list
-  of conditions and the following disclaimer.
-
-  Redistributions in binary form must reproduce the above copyright notice, this list
-  of conditions and the following disclaimer in the documentation and/or other materials
-  provided with the distribution.
-
-  Neither the name of the owner nor the names of its contributors may be used to endorse or
-  promote products derived from this software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
-  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR
-  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 //-*-c++-*-
 //*********************************************************************
 //
@@ -66,6 +39,7 @@
 // See instru_lib.h for the description.
 //
 //*********************************************************************
+#include <stack.h>
 
 #include <vector.h>
 #include <pair.h>
@@ -86,8 +60,14 @@
 
 typedef PU_PROFILE_INFO * PU_PROFILE;
 typedef hash_map<char* ,PU_PROFILE,hash<char*> > HASH_MAP;
+typedef stack<PU_PROFILE> STACK_PROFILE;
+typedef stack<char *> STACK_NAME;
+
 
 static HASH_MAP PU_PROFILE_INFO_TABLE;
+
+static STACK_PROFILE PU_PROFILE_STACK;
+static STACK_NAME PU_NAME;
 
 static const INT32   Pu_Hdr_size = sizeof( Pu_Hdr );
 static const INT32   Fb_Hdr_size = sizeof( Fb_Hdr );
@@ -142,6 +122,7 @@ static void _write_pu_data(void);
 static void _write_edge_profile(PU_PROFILE_INFO* pu_info);
 
 static void _write_TNV_items_profile( PU_PROFILE_INFO* pu_info );
+static void _write_srd_TNV_items_profile( PU_PROFILE_INFO* pu_info );
 
 // __profile_finalize will be invoked in crt, it write feedback data into
 // output file
@@ -186,7 +167,7 @@ void __profile_init( char* output_file,
   }
 }
 
-void __profile_pu_init(char* srcfile_pu_name,INT check_sum )
+PU_PROFILE_INFO * __profile_pu_init(char* srcfile_pu_name,INT check_sum )
 {
   if(!have_finish)
   {
@@ -208,20 +189,16 @@ void __profile_pu_init(char* srcfile_pu_name,INT check_sum )
     }
     cur_pu_profile = current_pu_profile;
   }
+  return cur_pu_profile;
 }
 
-void __profile_edge(char* srcfile_pu_name,UINT32 id)
+void __profile_edge(PU_PROFILE_INFO * pu_profile,UINT32 id)
 {
   if(!have_finish)
   { 
-    if(current_srcfile_pu_name != srcfile_pu_name)
-    {
-      cur_pu_profile = PU_PROFILE_INFO_TABLE[srcfile_pu_name];
-      current_srcfile_pu_name = srcfile_pu_name;
-    }
-    
-    if ( id < cur_pu_profile -> _edge_sum)
-      cur_pu_profile->_counter[id]._value++;
+      cur_pu_profile = pu_profile;
+      if ( id < cur_pu_profile -> _edge_sum)
+          cur_pu_profile->_counter[id]._value++;
   } 
 }
 
@@ -252,6 +229,7 @@ static void __profile_finalize( )
     
     output_file_size += pu_info->_edge_sum * FB_FREQ_size;
     output_file_size += pu_info->_instr_count * TNV_item_size;
+    output_file_size += pu_info->_ld_count * TNV_item_size;
     INT size = strlen((*i).first)+ strlen(" ");
     output_file_size += size;
     str_table_size += size;
@@ -291,7 +269,7 @@ static void  _write_File_Header(  )
   current_offset = 0;
   
   file_header.fb_ident = fb_ident;
-  file_header.fb_version = 1;
+  file_header.fb_version = INSTR_CURRENT;
   file_header.fb_profile_offset = 0;      //current_Pu_file_offset;
   file_header.fb_pu_hdr_offset = current_PU_header_offset;
   file_header.fb_pu_hdr_ent_size = Pu_Hdr_size;
@@ -329,11 +307,13 @@ static void  _write_Pu_Header(  )
       pu_header.pu_edge_offset = current_Pu_file_offset;
       pu_header.pu_value_offset = current_Pu_file_offset + 
                                     info->_edge_sum * FB_FREQ_size;
+      pu_header.pu_stride_offset = pu_header.pu_value_offset +info->_instr_count * TNV_item_size;
       pu_header.pu_checksum = info->_edge_sum;
       pu_header.pu_name_index = current_pu_name_index;
       
       pu_header.pu_instr_count = info->_instr_count;
       pu_header.pu_instr_exec_count = info->_sum_count;
+      pu_header.pu_ld_count = info->_ld_count;
       
       current_pu_name_index +=strlen((*i).first)+ strlen(" ");
       pu_header.pu_file_offset = 0;
@@ -357,6 +337,7 @@ static void  _write_Pu_Header(  )
       current_offset += Pu_Hdr_size; 
       current_Pu_file_offset += info->_edge_sum * FB_FREQ_size;
       current_Pu_file_offset += info->_instr_count * TNV_item_size;
+      current_Pu_file_offset += info->_ld_count * TNV_item_size;
     }
   }
 }
@@ -371,6 +352,7 @@ static void  _write_pu_data(  )
     PU_PROFILE_INFO* info = (*i).second;
     _write_edge_profile( info );
     _write_TNV_items_profile( info );
+    _write_srd_TNV_items_profile( info );
   }
 }
 
@@ -404,7 +386,7 @@ void instru_lib_error( const char *fmt, char* msg="" )
 ////////////////////////////////////////////////////////////////
 //// value profile part
 ////////////////////////////////////////////////////////////////
-void __value_profile_pu_init(char * outputfile, 
+PU_PROFILE_INFO * __value_profile_pu_init(char * outputfile, 
         char* srcfile_pu_name, PROFILE_PHASE phase, UINT32 instr_count)
 {
 #ifdef VALUE_PROFILE_VERIFY
@@ -427,20 +409,13 @@ void __value_profile_pu_init(char * outputfile,
         {
         	if ( !( (pPU_PROFILE_INFO->_has_alloc) & VALUE_PROFILE_ALLOC ) )
         	{
-        		if (! ((pPU_PROFILE_INFO->_has_alloc) & EDGE_PROFILE_ALLOC ) )
-        		{
-        			instru_lib_error("__value_profile_pu_init Error: Neither edge nor value profile has allocated memory!\n");
-        		}
-        		if (pPU_PROFILE_INFO->_instr_count !=0 || pPU_PROFILE_INFO->_sum_count != 0)
-        		{
-        			instru_lib_error("__value_profile_pu_init Error: _instr_count and _sum_count should all be 0 !!\n");
-        		}
         		pPU_PROFILE_INFO->_val_prof_tnv_table = (FB_TNV *)calloc(instr_count, TNV_item_size);
         		if ( !(pPU_PROFILE_INFO->_val_prof_tnv_table) )
         		{
         			instru_lib_error("__value_profile_pu_init : Not enough memory.\n");
         		}
 		        pPU_PROFILE_INFO->_instr_count = instr_count;
+		        pPU_PROFILE_INFO->_has_alloc |= VALUE_PROFILE_ALLOC;
         	}
         }
         else 
@@ -450,24 +425,21 @@ void __value_profile_pu_init(char * outputfile,
        		{
        			instru_lib_error("__value_profile_pu_init : Not enough memory.\n");
        		}
-       		pPU_PROFILE_INFO = new PU_PROFILE_INFO(instr_count, 0, tnv_table);
+       		pPU_PROFILE_INFO = new PU_PROFILE_INFO(instr_count, 0, 0, tnv_table, NULL);
+       		pPU_PROFILE_INFO->_has_alloc |= VALUE_PROFILE_ALLOC;
        		PU_PROFILE_INFO_TABLE[srcfile_pu_name] = pPU_PROFILE_INFO;
         }
+        return pPU_PROFILE_INFO;
 }
 
-void __value_profile_invoke( char * srcfile_pu_name, UINT32 instr_id, UINT64 value)
+void __value_profile_invoke( PU_PROFILE_INFO * pu_hdr, UINT32 instr_id, UINT64 value)
 {
 #ifdef VALUE_PROFILE_VERIFY
 	fprintf( fout, "[%s%c :%u,%llu]",srcfile_pu_name,'\0',instr_id,value );
 	return;
 #endif
     PU_PROFILE_INFO * pPU_PROFILE_INFO;
-    pPU_PROFILE_INFO = (PU_PROFILE_INFO *)PU_PROFILE_INFO_TABLE[srcfile_pu_name];
-        
-	if (!pPU_PROFILE_INFO)
-	{
-		instru_lib_error("did not find pu_profile_info!\n");
-	}
+    pPU_PROFILE_INFO = pu_hdr;
         pPU_PROFILE_INFO->_sum_count++;
         pPU_PROFILE_INFO->_val_prof_tnv_table[instr_id]._id = instr_id; //actually this is no use.
         pPU_PROFILE_INFO->_val_prof_tnv_table[instr_id]._exec_counter++; //execution counter.
@@ -496,14 +468,14 @@ void __value_profile_invoke( char * srcfile_pu_name, UINT32 instr_id, UINT64 val
         	i = 0;
         	while ( a < 6 && b < 10 )
         	{
-	        	while ( a < 6 && tmpvalues[a] >= tmpvalues[b] )
+	        	while ( a < 6 && tmpcounters[a] >= tmpcounters[b] )
     	    	{
         			ptnv->_values[i] = tmpvalues[a];
         			ptnv->_counters[i] = tmpcounters[a];
         			i++; 
 	        		a++;
     	    	}
-        		while ( b < 10 && tmpvalues[b] >= tmpvalues[a] )
+        		while ( b < 10 && tmpcounters[b] >= tmpcounters[a] )
         		{
 	        		ptnv->_values[i] = tmpvalues[b];
     	    		ptnv->_counters[i] = tmpcounters[b];
@@ -607,9 +579,219 @@ static void  _write_TNV_items_profile( PU_PROFILE_INFO* pu_info )
   }
 }
 
-
 ////////////////////////////////////////////////////////////////
 //// end of value profile part
 ////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////
+//// stride profile part
+////////////////////////////////////////////////////////////////
+
+PU_PROFILE_INFO * __stride_profile_pu_init(char * outputfile, 
+        char* srcfile_pu_name, PROFILE_PHASE phase, UINT32 instr_count)
+{
+#ifdef VALUE_PROFILE_VERIFY
+         //new code here: this is for offline test, write all data into one txt file. 
+         if (!have_open_output_file)
+         {
+    	if  ( (fout = fopen( outputfile, "wb"))==NULL  )
+        	instru_lib_error( "Unable to open file: %s", outputfile );
+		have_open_output_file = TRUE;
+         void __profile_finalize();
+    	atexit( __profile_finalize );
+         }
+         return;
+#endif
+         __profile_init(outputfile, phase);
+		
+        PU_PROFILE_INFO * pPU_PROFILE_INFO;
+        pPU_PROFILE_INFO = PU_PROFILE_INFO_TABLE[srcfile_pu_name];
+        current_srcfile_pu_name = srcfile_pu_name;
+        if (pPU_PROFILE_INFO != NULL)
+        {
+        	if ( !( (pPU_PROFILE_INFO->_has_alloc) & STRIDE_PROFILE_ALLOC ) )
+        	{
+        		pPU_PROFILE_INFO->_srd_prof_tnv_table = (FB_TNV *)calloc(instr_count, TNV_item_size);
+        		if ( !(pPU_PROFILE_INFO->_srd_prof_tnv_table) )
+        		{
+        			instru_lib_error("__stride_profile_pu_init : Not enough memory.\n");
+        		}
+		        pPU_PROFILE_INFO->_ld_count = instr_count;
+		        pPU_PROFILE_INFO->_has_alloc |= STRIDE_PROFILE_ALLOC;
+        	}
+        }
+        else 
+        {   
+        FB_TNV * tnv_table = (FB_TNV*) calloc(instr_count, TNV_item_size);
+       		if (!tnv_table)
+       		{
+       			instru_lib_error("__value_profile_pu_init : Not enough memory.\n");
+       		}
+       		pPU_PROFILE_INFO = new PU_PROFILE_INFO(0,instr_count, 0, NULL, tnv_table);
+       		pPU_PROFILE_INFO->_has_alloc |= STRIDE_PROFILE_ALLOC;
+       		PU_PROFILE_INFO_TABLE[srcfile_pu_name] = pPU_PROFILE_INFO;
+       	}
+        return pPU_PROFILE_INFO;
+}
+
+ void __stride_profile_invoke( PU_PROFILE_INFO * pu_hdr, UINT32 instr_id, UINT64 value)
+{
+#ifdef VALUE_PROFILE_VERIFY
+         fprintf( fout, "[%s%c :%u,%llu]",srcfile_pu_name,'\0',instr_id,value );
+         return;
+#endif
+ 
+    PU_PROFILE_INFO * pPU_PROFILE_INFO;
+    pPU_PROFILE_INFO = pu_hdr;
+        instr_id--;
+        pPU_PROFILE_INFO->_srd_prof_tnv_table[instr_id]._id = instr_id; //actually this is no use.
+        pPU_PROFILE_INFO->_srd_prof_tnv_table[instr_id]._flag = 0;
+        pPU_PROFILE_INFO->_srd_prof_tnv_table[instr_id]._exec_counter++; 
+        pPU_PROFILE_INFO->_srd_prof_tnv_table[instr_id]._clear_counter++;//execution counter.
+
+       //now the tnv table info update.
+       //We use the first 6 items as "steady part", the last 4 items as "clear part".
+       // clear_interval is the sum of _exec_counter of the middle two in the steady part.
+        FB_TNV * ptnv = &(pPU_PROFILE_INFO->_srd_prof_tnv_table[instr_id]);
+        INT i, j;
+        UINT64 clear_interval = ptnv->_counters[3] + ptnv->_counters[4]; 
+        if (ptnv->_clear_counter >= clear_interval)
+        {
+        	ptnv->_clear_counter = 0;
+        	//resort tnv
+        	UINT64 tmpvalues[10], tmpcounters[10];
+        	for (i=0; i<10; i++)
+        	{
+        		tmpvalues[i] = ptnv->_values[i];
+        		tmpcounters[i] = ptnv->_counters[i];
+        	}
+        	INT a, b;
+        	a = 0; 
+        	b = 6;
+        	i =  0;
+        	while ( a < 6 && b < 10 )
+        	{
+             while ( a < 6 && tmpcounters[a] >= tmpcounters[b] )
+             {
+                 ptnv->_values[i] = tmpvalues[a];
+                 ptnv->_counters[i] = tmpcounters[a];
+        			i++; 
+        		         a++;
+             }
+             while ( b < 10 && tmpcounters[b] >= tmpcounters[a] )
+             {
+              ptnv->_values[i] = tmpvalues[b];
+              ptnv->_counters[i] = tmpcounters[b];
+              i++; 
+              b++;
+              }
+        	}
+        	while ( a < 6 )
+         {
+       			ptnv->_values[i] = tmpvalues[a];
+       			ptnv->_counters[i] = tmpcounters[a];
+       			i++; 
+        		a++;
+         }
+       		while ( b < 10 )
+       		{
+        		ptnv->_values[i] = tmpvalues[b];
+   	    		ptnv->_counters[i] = tmpcounters[b];
+       			i++; 
+       			b++;
+        	}
+       		//clear the clear_part
+           	for (i=6; i< 10; i++)
+        	{
+        		ptnv->_values[i] = 0;
+        		ptnv->_counters[i] = 0;
+        	}
+        }
+         UINT64 temp_address = value;
+         value = value - ptnv->_address;
+         if(value == ptnv->_stride_steps)
+         {
+             ptnv->_zero_std_counter++;
+         }
+         ptnv->_stride_steps =value;
+         ptnv->_address = temp_address;
+        //see if the value can be put into first 6 values (steady part)
+        for (i=0;i<6;i++)
+        {
+                if (value == ptnv->_values[i] && ptnv->_counters[i]>0)
+                {
+                        ptnv->_counters[i]++;
+                        j = i;
+                        while (j>0 && ptnv->_counters[j-1]<ptnv->_counters[j])
+                        {
+                                UINT64 tmp;
+                                tmp = ptnv->_values[j-1];
+                                ptnv->_values[j-1] = ptnv->_values[j];
+                                ptnv->_values[j] = tmp;
+
+                                tmp = ptnv->_counters[j-1];
+                                ptnv->_counters[j-1] = ptnv->_counters[j];
+                                ptnv->_counters[j] = tmp;
+                        }
+                        break;
+                }
+                else if (ptnv->_counters[i]==0)
+                {
+                        ptnv->_values[i] = value;
+                        ptnv->_counters[i] = 1;
+                        break;
+                }
+        }
+        
+
+        //if the value can be put in first 6 values (steady part)
+        //then it is ok. 
+        if (i < 6)
+        	return;
+        
+        //put the value into last 4 values (clear part)
+        for (i=6;i<10;i++)
+        {
+               if (value == ptnv->_values[i] && ptnv->_counters[i]>0)
+                {
+                        ptnv->_counters[i]++;
+                        j = i;
+                        while (j>6 && ptnv->_counters[j-1]<ptnv->_counters[j])
+                        {
+                                UINT64 tmp;
+                                tmp = ptnv->_values[j-1];
+                                ptnv->_values[j-1] = ptnv->_values[j];
+                                ptnv->_values[j] = tmp;
+
+                                tmp = ptnv->_counters[j-1];
+                                ptnv->_counters[j-1] = ptnv->_counters[j];
+                                ptnv->_counters[j] = tmp;
+                        }
+                        break;
+                }
+                else if (ptnv->_counters[i]==0)
+                {
+                        ptnv->_values[i] = value;
+                        ptnv->_counters[i] = 1;
+                        break;
+                }
+        }
+
+}
+
+
+static void  _write_srd_TNV_items_profile( PU_PROFILE_INFO* pu_info )
+{
+  INT pu_num_TNV_items = pu_info->_ld_count;
+  FB_TNV tnv_item;
+  for( INT j = 0;j<pu_num_TNV_items;j++ )
+  {
+    tnv_item = pu_info->_srd_prof_tnv_table[j];
+    memcpy( map_addr+current_offset,&tnv_item,TNV_item_size );
+    current_offset += TNV_item_size;
+  }
+}
+
+
 
 

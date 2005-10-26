@@ -25,33 +25,6 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/*
-  Copyright (c) 2001, Intel Corporation
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without modification,
-  are permitted provided that the following conditions are met:
-
-  Redistributions of source code must retain the above copyright notice, this list
-  of conditions and the following disclaimer.
-
-  Redistributions in binary form must reproduce the above copyright notice, this list
-  of conditions and the following disclaimer in the documentation and/or other materials
-  provided with the distribution.
-
-  Neither the name of the owner nor the names of its contributors may be used to endorse or
-  promote products derived from this software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
-  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR
-  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 //-*-c++-*-
 //*********************************************************************
 //
@@ -118,6 +91,7 @@ struct FB_TNV{
 */
 #define EDGE_PROFILE_ALLOC   0x0001
 #define VALUE_PROFILE_ALLOC  0x0002
+#define STRIDE_PROFILE_ALLOC  0x0004
 
 struct _FREQ {
     FB_FREQ_TYPE  _type;
@@ -137,14 +111,18 @@ struct PU_PROFILE_INFO{
                      //qual to the item number in <_val_prof_tnv_table>
    UINT64 _sum_count;   //the sum of each profiled instruction executes. Used as
                      //Checksum.
+   UINT32 _ld_count;  //for prefetch how many ld struction has been profile in this pu
    FB_TNV* _val_prof_tnv_table;
+   FB_TNV* _srd_prof_tnv_table;
    
    PU_PROFILE_INFO():_has_alloc(0),
      _edge_sum(0),
      _counter(NULL),
      _sum_count(0),
      _instr_count(0),
-     _val_prof_tnv_table(NULL){}
+     _ld_count(0),
+     _val_prof_tnv_table(NULL),
+     _srd_prof_tnv_table(NULL){}
      
    PU_PROFILE_INFO(INT32 sum, _FREQ* counter)
    {
@@ -153,17 +131,21 @@ struct PU_PROFILE_INFO{
      _counter = counter;
      _sum_count= 0;
      _instr_count = 0;
+     _ld_count =0;
      _val_prof_tnv_table = NULL;
+     _srd_prof_tnv_table = NULL;
    }
    
-   PU_PROFILE_INFO(UINT32 instr_count, UINT32 sum_count, FB_TNV* tnv_table)
+   PU_PROFILE_INFO(UINT32 instr_count, UINT32 ld_count,UINT32 sum_count, FB_TNV* tnv_table, FB_TNV* srd_tnv_table)
    {
      _edge_sum = 0;
-     _has_alloc = VALUE_PROFILE_ALLOC;
+     _has_alloc = 0;
      _counter = NULL;
      _sum_count= sum_count;
      _instr_count = instr_count;
+     _ld_count =ld_count;
      _val_prof_tnv_table = tnv_table;
+     _srd_prof_tnv_table = srd_tnv_table;
    }
 };
 
@@ -174,12 +156,16 @@ extern "C"{
 
 void __profile_init( char* output_file, 
                     PROFILE_PHASE phasenum);
-void __profile_pu_init(char* _srcfile_pu_name, INT32 checksum);
-void __profile_edge(char* srcfile_pu_name,UINT32 id);
+PU_PROFILE_INFO * __profile_pu_init(char* _srcfile_pu_name, INT32 checksum);
+void __profile_edge(PU_PROFILE_INFO * pu_profile,UINT32 id);
 
-void __value_profile_pu_init(char * outputfile, 
+PU_PROFILE_INFO *  __value_profile_pu_init(char * outputfile, 
            char* srcfile_pu_name,  PROFILE_PHASE phase, UINT32 instr_count);
-void __value_profile_invoke( char* srcfile_pu_name, 
+void __value_profile_invoke( PU_PROFILE_INFO * pu_hdr, 
+                             UINT32 instr_id, UINT64 value);
+PU_PROFILE_INFO *  __stride_profile_pu_init(char * outputfile, 
+           char* srcfile_pu_name,  PROFILE_PHASE phase, UINT32 instr_count);
+void __stride_profile_invoke( PU_PROFILE_INFO * pu_hdr, 
                              UINT32 instr_id, UINT64 value);
 }
 

@@ -113,10 +113,12 @@ void __profile_init(char *fname, int phase_num, BOOL unique_name)
 
 void *
 __profile_pu_init(char *file_name, char* pu_name, long current_pc,
-		  INT32 checksum)
+		  INT32 pusize, INT32 checksum)
 {
   PU_PROFILE_HANDLE pu_handle
-    = Get_PU_Handle(file_name, pu_name, current_pc, checksum);
+    = Get_PU_Handle(file_name, pu_name, current_pc, pusize, checksum);
+  pu_handle->pu_size = pusize;
+  pu_handle->runtime_fun_address = current_pc;
   return (void *) pu_handle;
 }
 
@@ -265,6 +267,14 @@ __profile_call_init(void *pu_handle, int num_calls)
   Profile_Call_Init((PU_PROFILE_HANDLE) pu_handle, num_calls);
 }
 
+// For a PU, initialize the data structures that maintain
+// icall profiles.
+
+void 
+__profile_icall_init(void *pu_handle, int num_icalls)
+{
+  Profile_Icall_Init((PU_PROFILE_HANDLE) pu_handle, num_icalls);
+}
 
 // Gather the entry count for this call id
 
@@ -283,6 +293,11 @@ __profile_call_exit(void *pu_handle, int call_id)
   Profile_Call_Exit((PU_PROFILE_HANDLE) pu_handle, call_id);
 }
 
+void
+__profile_icall(void * pu_handle, int icall_id, void * called_fun_address)
+{
+  Profile_Icall((PU_PROFILE_HANDLE) pu_handle, icall_id, called_fun_address);
+}
 
 // At exit processing to destroy data structures and dump profile
 // information.

@@ -45,6 +45,7 @@
 #include <hash_map>                     // for STL hash_map container
 #include <libgen.h>                     // for basename()
 #include <time.h>                       // for time()
+#include <sys/param.h>                  // for MAXPATHLEN
 
 #include "linker.h"                     // std. linker's headers
 #include "process.h"                    // for tmpdir, etc.
@@ -66,6 +67,8 @@
 #include "ipc_file.h"                   // for IP_FILE_HDR
 #include "ipa_option.h"                 // ipa option flags
 #include "ipc_link.h"                   // for ipa_link_link_argv
+
+#include "lib_phase_dir.h"              // for BINDIR etc
 
 #pragma weak tos_string
 #pragma weak outfilename
@@ -266,10 +269,10 @@ ipa_compile_init ()
 
 #ifdef TARG_IA64
 
-  static char* smake_base = "/usr/bin/make";
+  static char* smake_base = ALTBINPATH "/make";
   static char* tmp_cc_name_base = "/usr/ia64-sgi-linux/bin/sgicc";
-  static char* cc_name_base = "/usr/orccbin/orcc";
-  static char* cord_name_base= "/usr/bin/gen_cord";
+  static char* cc_name_base = BINPATH "/orcc";
+  static char* cord_name_base= BINPATH "/gen_cord";
 
   if (file_exists(tmp_cc_name_base))
       cc_name_base = tmp_cc_name_base;
@@ -322,8 +325,8 @@ ipa_compile_init ()
 
 //#ifdef TODO
   if (IPA_Enable_Cord) {
-    cord_output_file_name = create_unique_file ("cord_script", 0);
-    call_graph_file_name = create_unique_file ("ipa_cg", 0);
+    cord_output_file_name = create_tmp_file ("cord_script");
+    call_graph_file_name = create_tmp_file ("ipa_cg");
     add_to_tmp_file_list (call_graph_file_name);
     Call_graph_file = FOPEN (call_graph_file_name, "w");
     if (Call_graph_file == 0)
@@ -383,22 +386,25 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
         if (!buf)
           ErrMsg (EC_No_Mem, "get_command_line");
         strcpy(buf, toolroot);
-#ifdef TARG_IA64
-        strcat(buf, "/usr/ia64-sgi-linux/bin/");
+
+        strcat(buf, LIBPATH "/");
         strcat(buf, command);
+
         if (!file_exists(buf)) {
-	    bzero(buf, strlen(buf));
-	    strcpy(buf, toolroot);
-            strcat(buf, "/usr/orccbin/");
-            strcat(buf, command);
+	   bzero(buf, strlen(buf));
+	   strcpy(buf, toolroot);
+	   strcat(buf, BINPATH "/");
+           strcat(buf, command);
 	}
+
+        if (!file_exists(buf)) {
+	   bzero(buf, strlen(buf));
+	   strcpy(buf, toolroot);
+           strcat(buf, ALTBINPATH "/");
+	}
+
         (*command_map)[command] = buf;
 
-#else
-        strcat(buf, "/usr/bin/");
-        strcat(buf, command);
-        (*command_map)[command] = buf;
-#endif
       }
     }
 
@@ -677,6 +683,22 @@ void print_all_outfiles(const char* dirname)
 
 } // Close unnamed namespace
 
+static 
+const char*
+Get_Annotation_Filename_With_Path (void) {
+    static char buf[MAXPATHLEN];
+
+    if (!Annotation_Filename) { buf[0] = '\0'; }
+    else if (*Annotation_Filename == '/') {
+        strcpy (buf, Annotation_Filename);
+    }else {
+        strcpy (buf, "../");
+        strcat (buf, Annotation_Filename);
+    }
+     
+    return &buf[0];
+}
+
 extern "C"
 void ipacom_doit (const char* ipaa_filename)
 {
@@ -756,16 +778,16 @@ void ipacom_doit (const char* ipaa_filename)
 						elf_symtab_name);
     Is_True(link_line->size() > 1, ("Invalid link line ARGV vector"));
 
-    if (IPA_Enable_Cord) {
-      fputs("-T", cmdfile);
-      fprintf(cmdfile, " %s\n", cord_output_file_name);
-    }
-
     // Print all but link_line[0] into cmdfile.
     ARGV::const_iterator i = link_line->begin();
     for (++i; i != link_line->end(); ++i) {
       fputs(*i, cmdfile);
       fputs(" \n", cmdfile);
+    }
+
+    if (IPA_Enable_Cord) {
+      fputs("-T", cmdfile);
+      fprintf(cmdfile, " %s\n", cord_output_file_name);
     }
 
     fputs("\n", cmdfile);
@@ -863,7 +885,7 @@ void ipacom_doit (const char* ipaa_filename)
 #ifdef TARG_IA64
 
     if (IPA_Enable_Cord) {
-    	char * obj_listfile_name = create_unique_file("obj_file_list", 0);
+    	char * obj_listfile_name = create_tmp_file("obj_file_list");
     	FILE* listfile = fopen(obj_listfile_name, "w");
 	print_obj_listfiles(tmpdir, listfile);
         fclose(listfile);
@@ -878,16 +900,19 @@ void ipacom_doit (const char* ipaa_filename)
             tmpdir_macro, "dummy");
 
     if (Feedback_Filename) {
-            fprintf(makefile, "\tcd %s; %s -fb_create %s %s -Wb,-CG:enable_feedback=off\n\n",
+            fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n\n",
                 tmpdir_macro, symtab_command_line, Feedback_Filename, symtab_extra_args);
     } else if (Annotation_Filename) {
-            fprintf(makefile, "\tcd %s; %s -fb_opt %s %s -Wb,-CG:enable_feedback=off \n\n",
-                tmpdir_macro, symtab_command_line, Annotation_Filename, symtab_extra_args);
+
+            fprintf (makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=off \n\n",
+                    tmpdir_macro, symtab_command_line, 
+                    Get_Annotation_Filename_With_Path (),
+                    symtab_extra_args);
+
     } else {
-            fprintf(makefile, "\tcd %s; %s %s -Wb,-CG:enable_feedback=off\n\n",
+            fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off\n\n",
                 tmpdir_macro, symtab_command_line, symtab_extra_args);
     }                                                                                                                    
-      
     fprintf(makefile, "%s/%s" TARGET_DELIMITER "%s/%s %s/%s\n\n",
             tmpdir_macro, elf_symtab_name,
             tmpdir_macro, input_symtab_name,
@@ -925,24 +950,26 @@ void ipacom_doit (const char* ipaa_filename)
             tmpdir_macro, (*infiles)[i]);
 #ifdef TARG_IA64
     if (Feedback_Filename) {
-        fprintf(makefile, "\tcd %s; %s -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
+        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
                 tmpdir_macro, (*commands)[i], Feedback_Filename, extra_args);
     } else if (Annotation_Filename) {
-        fprintf(makefile, "\tcd %s; %s -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
-                tmpdir_macro, (*commands)[i], Annotation_Filename, extra_args);
+        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
+                tmpdir_macro, (*commands)[i], 
+                Get_Annotation_Filename_With_Path () , extra_args);
     } else {
-        fprintf(makefile, "\tcd %s; %s %s -Wb,-CG:enable_feedback=off\n",
+        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off\n",
                 tmpdir_macro, (*commands)[i], extra_args);
     }                                                                                                                    
 #else
     if (Feedback_Filename) {
-        fprintf(makefile, "\tcd %s; %s -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
+        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
                 tmpdir_macro, (*commands)[i], Feedback_Filename, extra_args);
     } else if (Annotation_Filename) {
-        fprintf(makefile, "\tcd %s; %s -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
-                tmpdir_macro, (*commands)[i], Annotation_Filename, extra_args);
+        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
+                tmpdir_macro, (*commands)[i], 
+                Get_Annotation_Filename_With_Path (),extra_args);
     } else {
-        fprintf(makefile, "\tcd -P %s; %s %s -Wb,-CG:enable_feedback=off\n",
+        fprintf(makefile, "\tcd -P %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off\n",
                 tmpdir_macro, (*commands)[i], extra_args);
     }                                                                                                                    
 #endif

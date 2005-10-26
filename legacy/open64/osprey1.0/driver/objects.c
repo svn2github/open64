@@ -66,57 +66,6 @@ init_objects (void)
 	library_dirs = init_string_list();
 }
 
-static void
-init_given_crt_path (string crt_name, string prog_name, string tmp_name)
-{
-	FILE *path_file;
-	char path[512];
-	char *p;
-	char **argv = (char **) alloca(3*sizeof(char*));
-	buffer_t buf;
-	argv[0] = prog_name;
-	sprintf(buf, "-print-file-name=%s", crt_name);
-	argv[1] = buf;
-	argv[2] = NULL;
-	run_simple_program (argv[0], argv, tmp_name);
-
-	/* now read the path */
-	path_file = fopen(tmp_name, "r");
-	if (path_file == NULL) {
-		internal_error("couldn't open %s tmp file", crt_name);
-		return;
-	}
-	if (fgets (path, 512, path_file) == NULL) {
-		internal_error("couldn't read %s tmp file", crt_name);
-	}
-	fclose(path_file);
-	if (path[0] != '/') {
-		internal_error("%s path not found", crt_name);
-	}
-	else {
-		/* drop file name and add path to library list */
-		p = drop_path (path);
-		*p = '\0';
-		if (debug) fprintf(stderr, "%s found in %s\n", crt_name, path);
-		add_library_dir (path);
-	}
-}
-
-/* only need to init crt paths if doing ipa link */
-extern void
-init_crt_paths (void)
-{
-	/*
-	 * Have to find out where crt files are stored.
-	 * Invoke gcc -print-file-name=crt* to find the path.
-	 * Assume are two paths, one for crt{1,i,n} and one for crt{begin,end}.
-	 */
-	string tmp_name = create_temp_file_name("gc");
-	string gcc_name = get_full_phase_name(P_ld);
-	init_given_crt_path ("crtbegin.o", gcc_name, tmp_name);
-	init_given_crt_path ("crt1.o", gcc_name, tmp_name);
-}
-
 /* whether option is an object or not */
 extern boolean
 is_object_option (int flag)
@@ -264,32 +213,13 @@ append_ar_objects_to_list(string_list_t *list)
 }
 
 extern void
-append_libraries_to_list (string_list_t *list)
+append_implicit_lib_path_to_lst (string_list_t *list)
 {
-        string_item_t *p;
-        for (p = library_dirs->head; p != NULL; p = p->next) {
-		add_string(list, concat_strings("-L", p->name));
-        }
-        /*
-         * get_phase_dir(P_library) is not in library_dirs because
-         * library_dirs is also used as the search path for the crt file
-         */
-        if (!option_was_seen(O_L)) {
-                string toolroot=getenv("TOOLROOT");
-                string libpath=NULL;
-                if (toolroot != NULL) {
-                    libpath=concat_strings(toolroot, get_phase_dir(P_library));
-                } else {
-                    libpath=get_phase_dir(P_library);
-                }
-                add_string(list,
-                           concat_strings("-L", libpath));
-                if (toolroot != NULL) {
-                   libpath=concat_strings(toolroot, get_phase_dir(P_alt_library));
-                   add_string(list,
-                              concat_strings("-L", libpath));
-                }
-        }
+    string libpath = get_phase_dir(P_library);
+    add_string (list, concat_strings("-L", libpath));
+
+    libpath = get_phase_dir(P_alt_library);
+    add_string (list, concat_strings("-L", libpath));
 }
 
 extern void
@@ -363,22 +293,33 @@ find_crt_path (string crtname)
 {
         string_item_t *p;
 	buffer_t buf;
+
         for (p = library_dirs->head; p != NULL; p = p->next) {
 		sprintf(buf, "%s/%s", p->name, crtname);
 		if (file_exists(buf)) {
 			return string_copy(buf);
 		}
         }
-	/* not found */
-	if (option_was_seen(O_nostdlib) || option_was_seen(O_L)) {
+	
+        sprintf (buf, "%s/%s", get_phase_dir(P_be), crtname);
+        if (file_exists(buf)) { return string_copy(buf); }
+
+        sprintf (buf, "%s/%s", get_phase_dir(P_library), crtname);
+        if (file_exists(buf)) { return string_copy(buf); }
+
+        sprintf (buf, "%s/%s", get_phase_dir(P_alt_library), crtname);
+        if (file_exists(buf)) { return string_copy(buf); }
+
+        if (option_was_seen(O_L)) {
 		error("crt files not found in any -L directories:");
         	for (p = library_dirs->head; p != NULL; p = p->next) {
 			fprintf(stderr, "\t%s/%s\n", p->name, crtname);
 		}
+		
 		return crtname;
-	} else {
-		/* use default */
-		sprintf(buf, "%s/%s", get_phase_dir(P_startup), crtname);
-		return string_copy(buf);
 	}
+
+	/* use default */
+	sprintf(buf, "%s/%s", get_phase_dir(P_startup), crtname);
+	return string_copy(buf);
 }

@@ -55,8 +55,11 @@ extern BOOL PU_References_GP;
 extern BOOL GRA_optimize_restore_pr;
 extern BOOL GRA_optimize_restore_b0_ar_pfs;
 extern BOOL GRA_optimize_restore_ar_lc;
+extern BOOL EBO_data_spec;
 
 extern BOOL CG_PU_Has_Feedback;
+
+extern BOOL edge_done;
 
 /* WOPT alias manager */
 extern struct ALIAS_MANAGER *Alias_Manager;
@@ -77,6 +80,9 @@ extern WN *CG_Generate_Code (
 
 extern void CG_PU_Initialize( WN *wn );
 extern void CG_PU_Finalize( void );
+
+// Control assemly output on file number
+extern INT Asm_File_Visited(INT file_number);
 
 extern void CG_Change_Elf_Symbol_To_Undefined (ST* st);
 

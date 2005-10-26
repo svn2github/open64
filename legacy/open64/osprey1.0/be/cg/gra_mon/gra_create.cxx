@@ -407,6 +407,11 @@ Scan_Region_BB_For_Referenced_TNs( GRA_BB* gbb )
       ded_tns[TN_register_class(tn)][TN_register(tn)] = tn;
       Region_TN_Reference(tn,region);
     }
+    for (i = 0; i < ROTATING_KERNEL_INFO_localdef(info).size(); i++) {
+      TN *tn = ROTATING_KERNEL_INFO_localdef(info)[i];
+      ded_tns[TN_register_class(tn)][TN_register(tn)] = tn;
+      Region_TN_Reference(tn,region);
+    }
     
     OP *op;
     FOR_ALL_BB_OPs(bb, op) {
@@ -1514,6 +1519,9 @@ Add_To_Live_Set( LRANGE_SET** live_lrange_sets, GRA_REGION* region,
 //
 /////////////////////////////////////
 {
+if ( lrange==NULL ){
+  return;
+}
   LRANGE* lrange1;
   ISA_REGISTER_CLASS  rc  = lrange->Rc();
   LRANGE_SUBUNIVERSE* sub = region->Subuniverse(rc);
@@ -1544,6 +1552,9 @@ Remove_From_Live_Set( LRANGE_SET** live_lrange_sets, GRA_REGION* region,
 //
 /////////////////////////////////////
 {
+  if ( lrange==NULL ){
+    return;
+  }
   ISA_REGISTER_CLASS  rc  = lrange->Rc();
   LRANGE_SUBUNIVERSE* sub = region->Subuniverse(rc);
   LRANGE_SET*         set = live_lrange_sets[rc];
@@ -1839,7 +1850,7 @@ Compute_GRA_Fat_Point(void) {
        }
    }    
    
-   if ((gra_self_recursive)&&(fatest_point > 115)) {
+   if ((gra_self_recursive)&&(fatest_point > 100)) {
        fat_self_recursive = TRUE;
        DevWarn("The fatest point %d is greater than 80 and also self recursive!\n",fatest_point);
    }    

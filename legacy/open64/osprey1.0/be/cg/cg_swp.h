@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -263,6 +263,7 @@ enum SWP_RETURN_CODE {
   MOD_SCHED_FAILED,                  // swp failed: failure to schedule
   REG_ALLOC_SUCCEEDED,               // reg alloc succeeded
   MOD_SCHED_SUCCEEDED,               // mod sched succeeded
+  SWP_LOW_TRIP_COUNT,		     // disable swp due to low trip count
 };
 
 enum SCHED_DIRECTION {

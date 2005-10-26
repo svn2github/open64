@@ -1,7 +1,7 @@
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
 /*
- *  Copyright (C) 2000-2002, Intel Corporation
+ *  Copyright (C) 2000-2003, Intel Corporation
  *  All rights reserved.
  *  
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -470,11 +470,21 @@ private:
             }
 public:
 
-    EXEC_PATH_SET (mINT32 size,MEM_POOL *mp);
+    EXEC_PATH_SET (MEM_POOL *mp, mINT32 size=128);
     EXEC_PATH_SET& operator = (const EXEC_PATH_SET& eps);
     EXEC_PATH_SET (EXEC_PATH_SET& ps, MEM_POOL *mp) {
                     _mp = mp ; *this = ps ;
                   }
+    void Clear (void) { for (mINT32 i = _bv_words_num - 1; i >= 0 ;i--) {
+                            _bv[i] = 0; 
+                        }
+                      }
+
+    BOOL Is_Empty (void) const { for (mINT32 i=_bv_words_num - 1; i >= 0; i--) {
+                                    if (_bv[i]) return FALSE;
+                                 }
+                                 return TRUE;
+                               }
 
         /* Size () :   query this set can handle how many path.
          * Resize () : change the capacity of this set, and return
@@ -482,6 +492,7 @@ public:
          */
     INT32 Size (void) const         { return _size ; }
     INT32 Resize (INT32 new_size) ;  /* change the size */ 
+
 
         /* check to see whether <path> is a member of this set
          */
@@ -492,26 +503,48 @@ public:
     void Add_Path_Id (const EXEC_PATH_ID id) ;
     void Del_Path_Id (const EXEC_PATH_ID id) ;
 
-        /* union operation */
+        /* union operation 
+         */
     EXEC_PATH_SET& operator + (const EXEC_PATH_SET& eps) {
                               return (*this) | eps ;
                            }
 
     void operator += (const EXEC_PATH_SET& eps) { (*this) |= eps ; }
     void Union_Range_Inclusively (EXEC_PATH_ID from, EXEC_PATH_ID to);
+    void Union_Partioned_Path_Set 
+            (EXEC_PATH_SET& eps, INT32 pred_path_num, 
+             INT32 succ_path_num,INT32 base);
 
         /* diff operation 
          */
     EXEC_PATH_SET& operator -  (const EXEC_PATH_SET& eps) ;
     void           operator -= (const EXEC_PATH_SET& eps) ;
     
+
+        /* universe set 
+         */
     EXEC_PATH_SET& Universe  (void);
     void  Set_To_Be_Universe (void);
 
-        /* return the intersection of <this> and [from - to]
+
+        /* Intersection operation
+         */
+    BOOL Intersection_Is_Empty (EXEC_PATH_SET* eps);
+
+        /* Subset operation
+         */
+
+        /* return the intersection of <this> and exec path whose id 
+         * ranges from <from> thru <to> inclusively.
          */
     EXEC_PATH_SET& Subset (EXEC_PATH_ID from, EXEC_PATH_ID to);
-    
+
+        /* ret true iff eps is subset of <*this> */
+    BOOL Is_Subset_Of (EXEC_PATH_SET* eps);
+
+
+
+
         /* looping over each EXEC_PATH_ID. if <check_membershit>
          * is turned on, {Next|Prev}_Path_Id will trigger assertion 
          * when it encounts an non-member <path>.
@@ -523,9 +556,6 @@ public:
     EXEC_PATH_ID  Prev_Path_Id 
                     (EXEC_PATH_ID path, BOOL check_membership=TRUE) ;
 
-    void Union_Partioned_Path_Set 
-        (EXEC_PATH_SET& eps, INT32 pred_path_num, 
-         INT32 succ_path_num,INT32 base);
 
         /* tracing & dumping 
          */ 
@@ -566,7 +596,7 @@ private:
         EXEC_PATH_SET eps;         /* all exec-paths */
 
         tagEP_NODE_INFO (REGIONAL_CFG_NODE *node,MEM_POOL* memp) :
-            mp(memp), eps(64,memp), n(node) {
+            mp(memp), eps(memp), n(node) {
             subgraph_path_num = 0;
             path_num = 0;
         }
@@ -576,6 +606,10 @@ private:
     } EP_NODE_INFO;
 
     CFG_NODE_MAP    _ep_node_info ; /* f : node -> EP_NODE_INFO */
+    BOOL   _path_info_invalid ;
+    mINT32 _total_paths;
+
+    enum { MAX_PATH_NUM = 128, };
 
         /* Calc_Subgraph_Path_Num 
          * 
@@ -589,6 +623,8 @@ public:
     EXEC_PATH_MGR   (MEM_POOL * mp);
     ~EXEC_PATH_MGR  (void) { /* do nothing */ } 
 
+    BOOL Path_Info_Is_Invalid (void) const {return _path_info_invalid;}
+    
         /* copy a "manager" are not allowed. this routine actually
          * resort to Fail_FmtAssertion to abort execution.
          */
@@ -600,11 +636,19 @@ public:
                 }
     REGION * Scope (void) { return _region ; }
 
-    INT32  Path_In_Total (void) const { return _pathv.size() ; }
+    INT32  Path_In_Total (void) const { return _total_paths; } 
 
         /* acquire execution path information. return exec-path in total 
          */
     INT32  Acquire_Path_Info (REGION *r) ;
+
+    EXEC_PATH_SET* Get_Path_Flow_Thru (BB* bb);
+    EXEC_PATH_SET* Get_Path_Flow_Thru (REGION* r);
+    EXEC_PATH_SET* Get_Path_Flow_Thru (REGIONAL_CFG_NODE* r) {
+                        return r->Is_Region () ? 
+                               Get_Path_Flow_Thru (r->Region_Node ()) :
+                               Get_Path_Flow_Thru (r->BB_Node ());
+                   }
 
         /* tracing & dumping 
          */
@@ -613,6 +657,7 @@ public:
     #ifdef Is_True_On 
     void  gdb_dump (void);
     #endif 
+
 }; /* end of class EXEC_PATH_MGR */
 
     /* ===========================================================

@@ -162,6 +162,7 @@ COMMON_LIB_DIR 		= $(COMMON_DIR)/lib
 COMMON_TARG_INFO_DIR	= $(COMMON_DIR)/targ_info
 COMMON_TARG_INFO_ACCESS_DIR = $(COMMON_TARG_INFO_DIR)/access
 COMMON_TARG_INFO_GENERATE_DIR = $(COMMON_TARG_INFO_DIR)/generate
+COMMON_MSCHED_TABLE     = $(COMMON_DIR)/ipfec_targ_info/msched
 COMMON_UTIL_DIR 	= $(COMMON_DIR)/util
 COMMON_UTIL_TARG_DIR 	= $(COMMON_UTIL_DIR)/$(BUILD_TARGET_DIR)
 INCLUDE_DIR 		= $(ROOT)/usr/include
@@ -185,6 +186,7 @@ HEADER_DIRS = \
   $(COMMON_COM_TARG_DIR)\
   $(COMMON_TARG_INFO_ACCESS_DIR)\
   $(COMMON_TARG_INFO_GENERATE_DIR)\
+  $(COMMON_MSCHED_TABLE)   \
   $(TARGDIR)/targ_info	\
   $(TARGDIR)/include	\
   $(COMMON_UTIL_DIR)	\
@@ -204,7 +206,6 @@ HEADER_DIRS = \
 #----------------------------------------------------------------------
 
 DERIVED_ORC_SRCS = \
-	cggrp_ptn_table.cxx                                                                                   
 
 DERIVED_SRCS = \
 	$(DERIVED_ORC_SRCS)
@@ -223,10 +224,12 @@ BE_ORC_SRCS = 		\
   sched_heur.cxx    \
   sched_util.cxx    \
   sched_cand.cxx    \
+  sched_seq.cxx     \
   scheduler.cxx     \
   sched_rgn_info.cxx \
   speculation.cxx		\
   cggrp_microsched.cxx		\
+  msched_util.cxx		\
   recovery.cxx			\
   prdb.cxx			\
   prdb_util.cxx			\
@@ -235,12 +238,9 @@ BE_ORC_SRCS = 		\
   $(DERIVED_SRCS)
 
 
-#ifneq "$(ORC_TARG)" "KAPI"
-#  BE_ORC_SRCS += targ_issue_port.cxx
-#else
-#  BE_ORC_SRCS += targ_bypass.cxx
-#  CXXFLAGS += -DIPFEC_Enable_New_Targ
-#endif
+ifeq "$(ORC_TARG)" "KAPI"
+  CXXFLAGS += -DIPFEC_Enable_New_Targ
+endif
 
 ifeq ($(BUILD_PCH), USE_PCH)
 ORC_PCH_OBJS = $(BE_ORC_CXX_SRCS:.cxx=.o)
@@ -549,18 +549,6 @@ gtn_set.h : gtn_set.td
 gtn_set.td : $(SETGEN) $(BE_CG_DIR)/gen_gtn_set
 	csh -f $(BE_CG_DIR)/gen_gtn_set $(COMMON_UTIL_DIR) $(GEN_X_SET_OPTS)
 
-cggrp_ptn_table.cxx : ptn_table_gen
-	$(RUN) ./ptn_table_gen                                                                               
-
-ifneq "$(ORC_TARG)" "KAPI"
-ptn_table_gen : ptn_table_gen.o targ_issue_port.o $(LLDLIBS)
-	$(CXX) $(CXXFLAGS) ptn_table_gen.o targ_issue_port.o $(LLDLIBS) -o ptn_table_gen
-else
-ptn_table_gen : ptn_table_gen.o $(LLDLIBS)
-	$(CXX) $(CXXFLAGS) ptn_table_gen.o  $(LLDLIBS) -o ptn_table_gen
-endif
-ptn_table_gen.o : $(BE_ORC_INTEL_DIR)/ptn_table_gen.cxx
-	$(CXX) $(CXXFLAGS) -c $(BE_ORC_INTEL_DIR)/ptn_table_gen.cxx -o ptn_table_gen.o                         
 
 ifneq "$(ORC_TARG)" "KAPI"
  

@@ -1235,6 +1235,7 @@ find_duplicate_mem_op (BB *bb,
       }
 
       if (intervening_opinfo != NULL) {
+        if(!EBO_in_peep && !EBO_data_spec) break;
         op_replaced = delete_reload_across_dependency (op, opnd_tninfo, opinfo, intervening_opinfo);
       } else if (op_is_subset) {
         op_replaced = delete_subset_mem_op (op, opnd_tninfo, opinfo, offset_pred, offset_succ);
@@ -1273,12 +1274,6 @@ find_duplicate_mem_op (BB *bb,
         if (OP_store(op)) opinfo->op_must_not_be_moved = TRUE;
         if (op_is_subset || (hash_value == EBO_DEFAULT_MEM_HASH)) {
           if (OP_store(pred_op)) opinfo->op_must_not_be_removed = TRUE;
-
-	  /*
-	   *  Fix the gap ebo bug. Refer to #550484.
-	   */
-          if (OP_store(op) && OP_load(pred_op))  goto do_next;
-	  
           break;
         }
         if (OP_store(pred_op) || OP_store(op)) {
@@ -1711,7 +1706,8 @@ Find_BB_TNs (BB *bb)
            ((tninfo->replacement_tninfo != NULL) &&
             (tninfo->replacement_tninfo->in_bb == bb)) ||
            ((has_assigned_reg(tn) == has_assigned_reg(tn_replace)) &&
-            (EBO_in_peep || (!BB_reg_alloc(bb) && !TN_is_dedicated(tn_replace))))) ) {
+            (EBO_in_peep || (!BB_reg_alloc(bb) && !TN_is_dedicated(tn_replace)))))
+	    && !OP_ld_st_unat(op)) {
        /* The original TN can be "logically" replaced with another TN. */
 
         if (EBO_Trace_Data_Flow) {
@@ -1751,7 +1747,8 @@ Find_BB_TNs (BB *bb)
             (TN_is_fpu_int(old_tn) == TN_is_fpu_int(tn_replace)) &&
             ((OP_results(op) == 0) ||
              !OP_uniq_res(op) ||
-             !tn_registers_identical(tn, OP_result(op,0))) ) {
+             !tn_registers_identical(tn, OP_result(op,0))) && 
+	     !OP_ld_st_unat(op)) {
          /* The original TN can be "physically" replaced with another TN. */
          /* Put the new TN in the expression,           */
          /* decrement the use count of the previous TN, */

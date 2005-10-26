@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -209,6 +209,8 @@ private:
   PU_PROFILE_HANDLES _fb_handles;
 
   char * _srcfile_pu_name;
+  TN * _pu_hdr_return_tn; //store the value of pu init call 
+  
 public:    
   EDGE_PROFILE( CGRIN* rin, BOOL instru, PROFILE_PHASE phase, 
     PU_PROFILE_HANDLES fb_handles ) {
@@ -222,9 +224,10 @@ public:
     _instrument_count = 0;
     _srcfile_pu_name = CXX_NEW_ARRAY(char, strlen(Src_File_Name) + strlen("/") + strlen(Cur_PU_Name)
 		    + 1, &_m);
-	  strcpy(_srcfile_pu_name,Src_File_Name);
+	strcpy(_srcfile_pu_name,Src_File_Name);
     strcat(_srcfile_pu_name,"/");
-    strcat(_srcfile_pu_name,Cur_PU_Name);    
+    strcat(_srcfile_pu_name,Cur_PU_Name);  
+    _pu_hdr_return_tn = Gen_Register_TN( ISA_REGISTER_CLASS_integer, 8 );
 	}
    
   ~EDGE_PROFILE() {}
@@ -298,12 +301,15 @@ public:
   void Instrument_Entry(void);
   void Change_Tgt_Label( op* branch_op,LABEL_IDX old_label,
                           LABEL_IDX new_label );
+  void Prepare_Call_Init_Return_BB(BB * bb);
   void Gen_Instr_Init_Call_BB(char* function_name,char* outputfile_name,
                                                    int phase);
   BB* Gen_PU_Init_Call_BB(char* function_name,char* file_pu_name,
                           INT64 _instrument_count);
   BB* Gen_Instru_Call_BB(char* function_name, char* file_pu_name,INT64 id); 
   BB* Gen_Call_BB(char* function_name, char* str_arg, INT64 int_arg,
+                     int restore_type, int restore_sum = 0 );
+  BB* Gen_Call_BB(char* function_name, TN * PU_Handle, INT64 int_arg,
                      int restore_type, int restore_sum = 0 );
   
   // Find out the TN in the op;op is in NO i bb and op's code is opc , 

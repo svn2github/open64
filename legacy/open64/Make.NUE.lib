@@ -41,15 +41,16 @@ LIB_BUILD_DIR = osprey1.0/targia64
 
 # All LIB compiler components:
 LIB_COMPONENTS = \
+		$(LIB_BUILD_DIR)/libfortran/libfortran.a \
                 $(LIB_BUILD_DIR)/libu/libffio.a \
                 $(LIB_BUILD_DIR)/libmsgi/libmsgi.a \
                 $(LIB_BUILD_DIR)/libmv/libmv.a \
-                $(LIB_BUILD_DIR)/libstdc++/libstdc++.a \
                 $(LIB_BUILD_DIR)/libinstr/libinstr.a \
                 $(LIB_BUILD_DIR)/libcginstr/libcginstr.a \
-                $(LIB_BUILD_DIR)/cg_fb_tools/dump_cg_fb \
                 $(LIB_BUILD_DIR)/init/ftz.o
 
+.PHONY: all
+all:build
 
 $(LIB_BUILD_DIR)/libfortran/libfortran.a:
 		cd $(LIB_BUILD_DIR)/include ; gmake ; cd ../../..
@@ -82,6 +83,7 @@ $(LIB_BUILD_DIR)/cg_fb_tools/dump_cg_fb:
 
 $(LIB_BUILD_DIR)/init/ftz.o:
 		cd $(LIB_BUILD_DIR)/init ; gmake ; cd ../../..
+
 
 
 

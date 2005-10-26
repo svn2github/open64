@@ -1,7 +1,7 @@
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
 /*
- *  Copyright (C) 2000-2002, Intel Corporation
+ *  Copyright (C) 2000-2003, Intel Corporation
  *  All rights reserved.
  *  
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -53,6 +53,7 @@
 
 #include "op.h"
 #include "bb.h"
+#include "be_util.h"
 
 #include "gra_live.h"
 
@@ -147,6 +148,89 @@ FAVOR_DELAY_HEUR :: Reset_BB_OPs_etime (BB *bb) {
     }
 }
 
+
+void
+FAVOR_DELAY_HEUR :: Find_Significant_Pred_For_Target_Blk (void) {
+
+    if (!Is_In_Global_Scope ()) {
+       _significant_pred  = NULL;
+       return ;
+    }
+
+        /* find out the immediate pred which affect the schedule 
+         * of <_target_block> greatly.
+         */
+    float v=0.0f;
+    REGIONAL_CFG_NODE* node = Regional_Cfg_Node(_target_block);
+    _significant_pred = NULL;
+
+    for (REGIONAL_CFG_EDGE* e = node->First_Pred () ;
+         e; 
+         e = e->Next_Pred ()) {
+
+        REGIONAL_CFG_NODE* pred = e->Src ();
+
+            /* assume the nested region and call hide *ANY* latency
+             */
+        if (pred->Is_Region ()) continue ;
+
+        BB* b = pred->BB_Node ();
+        if (BB_call(b)) continue ; 
+
+        float t = BB_freq(b) * e->Prob ();
+
+        if (t > v) { _significant_pred = b; }
+    }
+}
+
+void
+FAVOR_DELAY_HEUR :: Estimate_Cand_Etime (OP* op) {
+
+    if (!_significant_pred) {
+        Set_OP_etime (op, 0);
+        return ;
+    }
+
+    for (ARC_LIST* list = OP_preds(op);
+         list ; 
+         list = ARC_LIST_rest(list)) {
+
+         ARC* arc  = ARC_LIST_first (list) ;
+         OP * pred = ARC_pred (arc);
+
+         mINT16 latency = ARC_latency (arc); 
+         if (IPFEC_Adjust_Variable_Latency) {
+
+            latency += CGTARG_adjust_latency (
+                            arc, ip_invalid,
+                            ip_invalid);
+         }
+
+         if (latency <= 1) { continue ;}
+
+         if (OP_bb(pred) != _significant_pred) {
+            continue;
+         }
+
+         INT32 start_cyc = OP_scycle(pred) + latency - 
+                            BB_cycle(_significant_pred);
+
+         if (start_cyc > 0) {
+            Set_OP_etime (op, start_cyc);
+         }
+
+    } /* end of for(ARC_LIST*...) */
+}
+
+void
+FAVOR_DELAY_HEUR :: Adjust_Etime_For_Target_Block (void) {
+    
+    OP* op;
+    FOR_ALL_BB_OPs(_target_block, op) {
+        Estimate_Cand_Etime (op);
+    }
+}
+
 void
 FAVOR_DELAY_HEUR :: Reset_BB_OPs_etime (const BB_VECTOR *bbs) {
 
@@ -229,6 +313,7 @@ FAVOR_DELAY_HEUR :: Compute_Delay (
         switch (ARC_kind(arc)) {
         case CG_DEP_POSTBR :
         case CG_DEP_PREBR :
+        case CG_DEP_CTLSPEC :
              continue ;
 
         case CG_DEP_PRECHK :
@@ -354,7 +439,7 @@ FAVOR_DELAY_HEUR :: Compute_Delay (BB * bb) {
             REGIONAL_CFG_NODE * succ_node = edge->Dest() ;
             
             if (succ_node->Is_Region()) continue ;
-            BB * succ_bb = succ_node->BB_Node();
+            BB* succ_bb = succ_node->BB_Node();
 
             psucc_info[bb_succ_num].succ = succ_bb ;
             psucc_info[bb_succ_num].flow_shift_latency = 
@@ -593,6 +678,12 @@ FAVOR_DELAY_HEUR :: Adjust_Heur_Stuff_When_BB_Changed
     } else {
         Compute_Delay (_bb_scope);
     }
+
+    Find_Significant_Pred_For_Target_Blk ();
+
+    if (Is_In_Global_Scope ()) {
+        Adjust_Etime_For_Target_Block ();
+    }
 }
 
 void 
@@ -679,11 +770,11 @@ FAVOR_DELAY_HEUR :: Compute_Heur_Data_For_Prepended_OP (OP *op) {
 
 CYCLE
 FAVOR_DELAY_HEUR::Exclude_Unqualifed_Cand_Under_Etime_Constraint
-    (CAND_LIST& cand_lst, E_Time_Constraint * constraint) {
+    (CAND_LIST& cand_lst, E_Time_Constraint* constraint) {
 
     CYCLE e_time = CYCLE_MAX ;
 
-    OP_HEUR_INFO * op_sched_info = NULL;
+    OP_HEUR_INFO* op_sched_info = NULL;
 
     if (_trace_cand_sel) {
 
@@ -736,7 +827,7 @@ FAVOR_DELAY_HEUR::Exclude_Unqualifed_Cand_Under_Etime_Constraint
     for (CAND_LIST_ITER cand_iter(&cand_lst); 
          !cand_iter.done (); cand_iter.step ()) {
 
-        CANDIDATE * cand = cand_iter.cur ();
+        CANDIDATE* cand = cand_iter.cur ();
 
         if (cand_lst.Cand_Has_Been_Tried (cand)) {
             continue ;
@@ -747,7 +838,9 @@ FAVOR_DELAY_HEUR::Exclude_Unqualifed_Cand_Under_Etime_Constraint
     }
     
     if (e_time == CYCLE_MAX) return CYCLE_MAX ;
-    e_time = max(e_time, constraint->threshold);
+    if (constraint->threshold != CYCLE_MAX) {
+        e_time = max(e_time, constraint->threshold);
+    }
 
     E_Time_Constraint tmp ;
     tmp.threshold  = e_time ;
@@ -900,8 +993,8 @@ FAVOR_DELAY_HEUR :: Choose_Better_Of_Tie
 CANDIDATE*
 FAVOR_DELAY_HEUR :: Select_Best_Candidate (
         CAND_LIST& cand_lst, 
-        BB  *      target,
-        E_Time_Constraint * etime_constraint) {
+        BB*        target,
+        E_Time_Constraint* etime_constraint) {
 
     CYCLE e_time = Exclude_Unqualifed_Cand_Under_Etime_Constraint 
                     (cand_lst,etime_constraint);
@@ -933,40 +1026,43 @@ FAVOR_DELAY_HEUR :: Select_Best_Candidate (
 #endif 
 
 
-    CANDIDATE * best_cand_of_other_bb = NULL, 
-              * best_cand_of_target_bb = NULL ;
+    CANDIDATE* best_cand_of_other_bb = NULL, 
+             * best_cand_of_target_bb = NULL ;
 
-    OP_HEUR_INFO * targ_bb_cand_heur = NULL,
-                 * other_bb_cand_heur = NULL ;
+    float weigh_delay_of_best_cand_of_other_bb = -100.0f;
+    float delay_of_best_cand_of_target_bb = -1.0f;
 
-    float reach_prob_weigh_delay = -100.0f;
+    OP_HEUR_INFO* targ_bb_cand_heur = NULL,
+                * other_bb_cand_heur = NULL ;
 
-    /* loop over candidate list for the "best" candidate 
-     */
+    
+        /* loop over candidate list for the "best" candidate 
+         */
     for (CAND_LIST_ITER cand_iter(&cand_lst); 
         !cand_iter.done (); cand_iter.step ()) {
 
-        CANDIDATE * cand = cand_iter.cur ();
+        CANDIDATE* cand = cand_iter.cur ();
 
-        /* ignore some candidates that have already been tried
-         */
+            /* ignore some candidates that have already been tried
+             */
         if (cand_lst.Cand_Has_Been_Tried (cand)) { continue ; }
 
-        BB * home_bb  = OP_bb (cand->Op ());
+        BB* home_bb  = OP_bb (cand->Op ());
         OP_HEUR_INFO * op_sched_info = Get_OP_Heur_Info (cand->Op ()) ;
 
         #define DELAY_DEVIATION (0.05f)
 
         BOOL choose_current = FALSE ;
 
-        /* We distinguish candidate comes from target-bb and 
-         * other-than-target-bb.
-         */
+            /* We distinguish candidate comes from target-bb and 
+             * other-than-target-bb.
+             */
         if (home_bb == target) {
 
-            /* select the better between <cand> and <targ_bb_best_cand>. 
-             * delay of cadidate is out major concern. 
-             */
+                /* select the better between <cand> and 
+                 * <targ_bb_best_cand>. delay of cadidate 
+                 * is out major concern. 
+                 */
             switch (Fuzzy_Cmp (op_sched_info->_delay, 
                                targ_bb_cand_heur ? 
                                     targ_bb_cand_heur->_delay : -1.0f,
@@ -1001,6 +1097,7 @@ FAVOR_DELAY_HEUR :: Select_Best_Candidate (
 
             if (choose_current) {
                 best_cand_of_target_bb = cand; 
+                delay_of_best_cand_of_target_bb = op_sched_info->_delay;
                 targ_bb_cand_heur = op_sched_info ;
             }
 
@@ -1011,8 +1108,8 @@ FAVOR_DELAY_HEUR :: Select_Best_Candidate (
 
             float delay = op_sched_info->_delay * reach_prob;
             switch (Fuzzy_Cmp (delay, 
-                               reach_prob_weigh_delay, 
-                               DELAY_DEVIATION)) {
+                               weigh_delay_of_best_cand_of_other_bb, 
+                               DELAY_DEVIATION * REACH_PROB_SCALE)) {
             case SIGNIFICANT_LESS:
                 break ;
 
@@ -1045,16 +1142,26 @@ FAVOR_DELAY_HEUR :: Select_Best_Candidate (
 
             if (choose_current) {
                best_cand_of_other_bb = cand ;
-               other_bb_cand_heur    = op_sched_info ;
+               weigh_delay_of_best_cand_of_other_bb = delay;
+               other_bb_cand_heur = op_sched_info ;
             }
 
         } /* end of else clause */
 
     } /* end of for loop */
 
-    CANDIDATE * best = best_cand_of_target_bb ? 
-                           best_cand_of_target_bb : 
-                           best_cand_of_other_bb; 
+    CANDIDATE * best;
+    
+    if (best_cand_of_other_bb &&
+        weigh_delay_of_best_cand_of_other_bb > 
+            delay_of_best_cand_of_target_bb*REACH_PROB_SCALE &&
+        !best_cand_of_other_bb->Is_Spec()) {
+        best = best_cand_of_other_bb;
+    } else {
+        best = best_cand_of_target_bb ? 
+                   best_cand_of_target_bb:
+                   best_cand_of_other_bb;                           
+    }
 
     if (_trace_cand_sel) {
         fprintf (_trace_file,
@@ -1083,11 +1190,13 @@ CANDIDATE*
 FAVOR_DELAY_HEUR :: Select_Best_Candidate (
     CAND_LIST& m_ready_cand_lst,
     CAND_LIST& p_ready_cand_lst, 
-    BB  *      target,
-    E_Time_Constraint * etime_constraint) {
+    BB*        target,
+    E_Time_Constraint* etime_constraint) {
+
+    E_Time_Constraint Metc_tmp = *etime_constraint;
 
     if (IPFEC_Stress_Spec) {
-       return Select_Best_Candidate_For_Stress_Spec_Purpose  ( 
+       return Select_Best_Candidate_For_Stress_Spec_Purpose ( 
                             m_ready_cand_lst,
                             p_ready_cand_lst,
                             target,
@@ -1097,10 +1206,10 @@ FAVOR_DELAY_HEUR :: Select_Best_Candidate (
         /* 1st : quest for a best M-ready candidate 
          *       under the e-time constraint.
          */
-    CANDIDATE * m_cand = Select_Best_Candidate (
+    CANDIDATE* m_cand = Select_Best_Candidate (
                             m_ready_cand_lst, 
                             target,
-                            etime_constraint);
+                            &Metc_tmp);
 
     if (m_cand) {
 
@@ -1118,36 +1227,59 @@ FAVOR_DELAY_HEUR :: Select_Best_Candidate (
 
         /* 2nd ; select a best P-ready candidate (if any)
          */
-    if (p_ready_cand_lst.All_Cands_Have_Been_Tried ()) {
-        return m_cand;
-    }
-    
-    CANDIDATE * p_cand = NULL;
-    E_Time_Constraint  constraint_tmp = *etime_constraint;
+    CANDIDATE* p_cand = NULL;
+    E_Time_Constraint Petc_tmp = *etime_constraint;
 
-    p_cand = Select_Best_Candidate (
-                 p_ready_cand_lst, target, &constraint_tmp);
+    if (p_ready_cand_lst.All_Cands_Have_Been_Tried () || 
+        !(p_cand = Select_Best_Candidate 
+            (p_ready_cand_lst, target, &Petc_tmp))) {
 
-    if (!p_cand) {
-
-        Is_True (m_ready_cand_lst.All_Cands_Have_Been_Tried (),
-                 ("There are at least one P-ready candidate "
-                  "for BB:%d\n", BB_id (target)));
-        return m_cand ;
+        *etime_constraint = Metc_tmp ;
+        return m_cand;      
     }
 
         /* 3rd : make comparison between "best" M-ready candidate 
-         *       and P-ready candidate
+         *       and "best" P-ready candidate
          */
-    if (!m_cand ||
-        constraint_tmp.threshold < etime_constraint->threshold) {
+    BOOL choose_m_cand = TRUE;
 
-        *etime_constraint = constraint_tmp ;
-        return p_cand ;
+    if (!m_cand) {
+        choose_m_cand = FALSE;
+    } else {
+            /* we have M-ready cand P-ready candidates.
+             */
+        switch (etime_constraint->constraint) {
+        case AS_EARLY_AS_POSSIBLE:
+            {
+            CYCLE immediate_prev_cyc = etime_constraint->threshold;
+            if (Metc_tmp.threshold > immediate_prev_cyc + 1 &&
+                Metc_tmp.threshold > Petc_tmp.threshold) {
+                choose_m_cand = FALSE;
+            }
+            }
+            break;
+
+        case NO_LATER:
+                /* both M-ready cand and P-ready candidates can 
+                 * be issued at cycle <etime_constraint.threshold.
+                 * We favor M-ready candidate over P-ready one.
+                 */
+            break;
+
+        default:
+            FmtAssert (FALSE, ("Unknown constraint!"));
+        }
     }
-        
-    return m_cand ;
+
+    if (choose_m_cand) {
+        *etime_constraint = Metc_tmp;
+        return m_cand;
+    }
+
+    *etime_constraint = Petc_tmp;
+    return p_cand; 
 }
+
 
 CYCLE
 FAVOR_DELAY_HEUR :: Get_Cand_Issue_Cyc (CANDIDATE *cand) {
@@ -1187,11 +1319,14 @@ FAVOR_DELAY_HEUR :: Adjust_Heur_After_Cand_Sched
     }
 }
 
-/* ===========================================================
- *
- *  Adjust_Heur_After_Sched_One_Cyc 
- *
- */
+    /* ===========================================================
+     *
+     *  Adjust_Heur_After_Sched_One_Cyc 
+     *
+     *  ref the header file for details.
+     *
+     *===========================================================
+     */
 void
 FAVOR_DELAY_HEUR:: Adjust_Heur_After_Sched_One_Cyc 
     (OP_Vector& op_vect, CYCLE issue_cyc) {
@@ -1204,11 +1339,40 @@ FAVOR_DELAY_HEUR:: Adjust_Heur_After_Sched_One_Cyc
             arcs != NULL; 
             arcs = ARC_LIST_rest(arcs)) {
 
-            ARC * arc       = ARC_LIST_first(arcs);
-            OP  * succ      = ARC_succ(arc);
+            ARC* arc  = ARC_LIST_first(arcs);
+            OP*  succ = ARC_succ(arc);
+
+            extern BOOL Is_MMX_Dependency (OP*, OP*,CG_DEP_KIND) ;
+            extern INT32 MMX_Dep_Latency (void);
+
+            if (Is_MMX_Dependency (ARC_pred(arc), ARC_succ(arc),
+                                   ARC_kind(arc))) {
+                INT32 l = MMX_Dep_Latency ();
+                if (l > ARC_latency(arc)) {
+                    arc->latency = l;
+                }
+            }
+
             mUINT16 latency = ARC_latency (arc);
 
-            OP_HEUR_INFO * op_info = Get_OP_Heur_Info (succ) ;
+            if (IPFEC_Adjust_Variable_Latency) {
+
+                /* IPFEC_Adjust_Variable_Latency are used to 
+                 * investigate how the variable-latency affect
+                 * the performance. 
+                 *
+                 * By default, it is turned on. Option (at 
+                 * command line) "-Wb,-IPFEC:adjust_variable_latency=off
+                 * can turn this flag off. 
+                 */
+
+                latency += CGTARG_adjust_latency (
+                                arc, 
+                                ip_invalid,
+                                ip_invalid);
+            }
+
+            OP_HEUR_INFO* op_info = Get_OP_Heur_Info (succ) ;
 
             Is_True (op_info,
                      ("OP[%d] of BB:%d has no heuristic data!",
@@ -1230,62 +1394,69 @@ FAVOR_DELAY_HEUR:: Adjust_Heur_After_Sched_One_Cyc
     } /* outer for */
 }
 
-    /* =============================================================
+    /* =====================================================
      *
-     *   Cntl_Spec_Ld_In_Normal_Form_Is_Profitable 
+     *  Upward_Global_Sched_Is_Profitable 
      *
-     *  return TRUE iff we control speculate <op> without change its 
-     *  form is profitable.
+     *  return TRUE iff sched <cand> is really profitable.
      *
-     *  NOTE: this routine does not check wether <op> is safe to be 
-     *        not transformed (call <Ld_Need_Not_Transform> can answer
-     *        this question.
-     *
-     * ==============================================================
+     * ====================================================
      */
-inline BOOL
-FAVOR_DELAY_HEUR :: Cntl_Spec_Ld_In_Normal_Form_Is_Profitable (OP *op) {
+BOOL
+FAVOR_DELAY_HEUR :: Upward_Global_Sched_Is_Profitable 
+    (CANDIDATE* cand, SRC_BB_INFO* bb_info, 
+     RGN_CFLOW_MGR* cflow_info) {
+    
+    if (cand->Is_Spec ()) {
+        return Upward_Spec_Global_Sched_Is_Profitable 
+                    (cand, bb_info, cflow_info);
+    }
 
-    return _cflow_mgr->Reachable_Prob (_target_block,OP_bb(op)) > 
-                        SPEC_SAFE_LOAD_WITHOUT_TRANSFORM_REACH_PROB ;
+    return Upward_Useful_Sched_Is_Profitable 
+              (cand, bb_info, cflow_info);
 }
 
 
- /* =============================================================
-  *
-  *  Upward_Code_Motion_Inc_Live_Range_Greatly 
-  * 
-  *  Estimate increased register pressure caused by code motion. 
-  *  return TRUE iff the code motion of <op> from <from> to 
-  *  <cutting_set> end up by adding "significant" register 
-  *  pressure, FALSE otherwise.
-  * 
-  * =============================================================
-  */
-#define BB_SIZE_REG_PRESSURE_THRESHOLD (100)
-
+    /* =============================================================
+     *
+     *  Upward_Code_Motion_Inc_Live_Range_Greatly 
+     * 
+     *  Estimate increased register pressure caused by code motion. 
+     *  return TRUE iff the code motion of <op> from <from> to 
+     *  <cutting_set> end up by adding "significant" register 
+     *  pressure, FALSE otherwise.
+     * 
+     * =============================================================
+     */
 
 BOOL
 FAVOR_DELAY_HEUR :: Upward_Code_Motion_Inc_Live_Range_Greatly 
-            (OP * op,         /* OP that we want to hoist it */ 
-             BB * from,       /* BB where <op> originally resides */
-             const BB_VECTOR * cs,  /* cutting set */
-                       /* bbs between cutting-set and <from> */
-             const BB_VECTOR * between_cs_and_src,
-             const REGION_VECTOR * across_rgns) {
+    (CANDIDATE* cand, SRC_BB_INFO* bb_info,
+     RGN_CFLOW_MGR* cflow_info) {
 
-    if (across_rgns->size () > 0) {
+    REGION_VECTOR* rv = cand->Move_Across_Rgns ();
+    OP* op = cand->Op ();
 
-        for (RGN_VECTOR_CONST_ITER iter = across_rgns->begin () ;
-             iter != across_rgns->end () ; ++ iter) {
+    if (rv->size () > 0) {
+    
+        BOOKEEPING_LST* bkl = cand->Bookeeping_Lst ();
+        BOOKEEPING* bk;
+        
+        for (REGION_VECTOR_ITER iter = rv->begin () ; 
+             iter != rv->end (); 
+             ++ iter) {
             
-            REGION * r = *iter ;
+            REGION* r = *iter ;
+            if (!Is_Large_Region (r)) {
+                continue;
+            }
 
-            for (BB_VECTOR_CONST_ITER bi = cs->begin () ; 
-                 bi != cs->end () ; bi ++) {
+            for (bk = bkl->First_Item (); 
+                 bk != NULL;
+                 bk = bkl->Next_Item (bk)) {
 
                 INT inc_live_out = 0 ;
-                BB * cs_elem = *bi ;
+                BB* cs_elem = bk->Get_Placement ();
 
                 for (INT i = OP_results (op) - 1 ; i >= 0 ; i--) {
 
@@ -1328,7 +1499,6 @@ FAVOR_DELAY_HEUR :: Upward_Code_Motion_Inc_Live_Range_Greatly
             } /* end of for (BB_VECTOR ...) */
 
         } /* for (RGN_VECTOR_CONST_ITER ...) */
-        
     }
 
     return FALSE ;
@@ -1337,7 +1507,7 @@ FAVOR_DELAY_HEUR :: Upward_Code_Motion_Inc_Live_Range_Greatly
 
     /* ===============================================================
      *
-     *  Spec_Code_Motion_Is_Profitable 
+     *  Spec_Global_Sched_Is_Profitable 
      *  
      *  return TRUE iff speculation from <from> to <to> is "profitable"
      *  FALSE otherwise.
@@ -1349,17 +1519,17 @@ FAVOR_DELAY_HEUR :: Upward_Code_Motion_Inc_Live_Range_Greatly
      * =================================================================
      */
 BOOL
-FAVOR_DELAY_HEUR::Spec_Code_Motion_Is_Profitable 
-    (OP *op, BB * from, BB* to, 
-     UNRESOLVED_DEP_LIST* dep_lst,
-     const BB_VECTOR * cs,                  /* cutting set */
-     const BB_VECTOR * between_cs_and_src,  /* moving across BBs */
-     const REGION_VECTOR *across_rgns) {    /* moving across nested rgns */
+FAVOR_DELAY_HEUR::Upward_Spec_Global_Sched_Is_Profitable 
+    (CANDIDATE* cand, SRC_BB_INFO* bb_info,
+     RGN_CFLOW_MGR* cflow_info) {
 
+    OP* op = cand->Op ();
+    BB* home = OP_bb(op); 
+    PROBABILITY useful_exec_prob = cand->Useful_Exec_Prob ();
 
-    REACH_PROB reach_prob = 
-        /* NOTE: Don't transpose <to> & <from> */
-        _cflow_mgr->Reachable_Prob (to, from); 
+    Is_True (cand->Spec_Type () != SPEC_NONE,
+             ("candidate's code motion type is expected to be speculation"));
+
 
     INT32 across_chk_num = 0;
     INT32 data_spec_num = 0 ;
@@ -1367,12 +1537,15 @@ FAVOR_DELAY_HEUR::Spec_Code_Motion_Is_Profitable
 
     if (OP_load (op)) {
         
-        if (reach_prob <= UNSAFE_CNTL_SPEC_PROB) return FALSE ;
 
         INT32 spec_count = 0 ;
 
-        UNRESOLVED_DEP * dep ;  
-        FOR_ALL_UNRESOLVED_DEPs(dep_lst, dep) {
+        UNRESOLVED_DEP* dep ;  
+        UNRESOLVED_DEP_LST* dep_lst = cand->Unresolved_Dep_List(); 
+
+        for (dep = dep_lst->First_Item (); 
+             dep != NULL; 
+             dep = dep_lst->Next_Item(dep)) {
 
             SPEC_TYPE spec_type = dep->Spec_Type ();
 
@@ -1393,10 +1566,10 @@ FAVOR_DELAY_HEUR::Spec_Code_Motion_Is_Profitable
                 break ;
 
             default:
-                    Fail_FmtAssertion("Unknown SPEC_TYPE(%d) \n", spec_type);
+                Fail_FmtAssertion("Unknown SPEC_TYPE(%d) \n", spec_type);
             } /* end of switch */
 
-        } /* end of FOR */
+        } /* end of for (dep...) */
 
 
         if (across_chk_num > LD_VIOLATE_CHK_DEP_MAX     ||
@@ -1408,26 +1581,28 @@ FAVOR_DELAY_HEUR::Spec_Code_Motion_Is_Profitable
 
         if (Ld_Need_Not_Transform (op)) {
 
-            /* TODO: Assetion on such condition :
-             *    when a load is "need not transform, it should
-             *    not alias with any other OPs
-             */
-            if (across_chk_num || data_spec_num) return FALSE ;
+                /* TODO: Assetion on such condition :
+                 *    when a load is "need not transform, it 
+                 *    should not alias with any other OPs.
+                 */
+            if (across_chk_num || 
+                data_spec_num  ||
+                useful_exec_prob <
+                  SPEC_SAFE_LOAD_WITHOUT_TRANSFORM_REACH_PROB) {
 
-            return Cntl_Spec_Ld_In_Normal_Form_Is_Profitable (op);
+                return FALSE;
+
+            }
+        } else if (useful_exec_prob < UNSAFE_CNTL_SPEC_PROB) {
+            return FALSE; 
         }
 
-        return TRUE ;
-    }
-
-    if (reach_prob < SAFE_CNTL_SPEC_PROB ||
-        Upward_Code_Motion_Inc_Live_Range_Greatly 
-                (op, from, cs, between_cs_and_src, across_rgns)) {
-        return FALSE;
+    } else if (SAFE_CNTL_SPEC_PROB > useful_exec_prob) { 
+            return FALSE; 
     }
 
     return !Upward_Code_Motion_Inc_Live_Range_Greatly 
-                (op, from, cs, between_cs_and_src, across_rgns);
+              (cand, bb_info, cflow_info);
 }
 
 
@@ -1435,7 +1610,7 @@ FAVOR_DELAY_HEUR::Spec_Code_Motion_Is_Profitable
 
     /* ================================================================
      *
-     *  Upward_Useful_Code_Motion_Is_Profitable 
+     *  Upward_Useful_Global_Sched_Is_Profitable 
      *
      *  return TRUE iff upward useful code motion is profitable 
      *  (from <from> to <_target_bb> and duplicated to any BB in 
@@ -1446,18 +1621,64 @@ FAVOR_DELAY_HEUR::Spec_Code_Motion_Is_Profitable
      * ================================================================
      */
 BOOL
-FAVOR_DELAY_HEUR::Upward_Useful_Code_Motion_Is_Profitable 
-                    (OP *op, BB * from, 
-                     const BB_VECTOR* cutting_set,
-                     const BB_VECTOR* between_cs_and_src,
-                     const REGION_VECTOR *across_rgns) {
+FAVOR_DELAY_HEUR::Upward_Useful_Sched_Is_Profitable 
+        (CANDIDATE* cand, SRC_BB_INFO* bb_info, 
+         RGN_CFLOW_MGR* cflow_info) {
 
     return !Upward_Code_Motion_Inc_Live_Range_Greatly 
-                (op, from, 
-                 cutting_set, 
-                 between_cs_and_src,
-                 across_rgns);
+                (cand, bb_info, cflow_info);
 }
+
+    /* =================================================================
+     * 
+     *  Renaming_Is_Profitable
+     *  
+     *  Renaming <cand> is profitable?
+     *  
+     * =================================================================
+     */
+BOOL 
+FAVOR_DELAY_HEUR::Renaming_Is_Profitable (CANDIDATE *cand)
+{
+   OP* op = cand->Op();
+   BB* home_bb = OP_bb(op);
+        /* Prune cases unfit for renaming
+         */
+   if ( 
+            /* Don't do renaming for multi-assignment OPs
+             */
+        OP_results(op) != 1
+        
+            /* Don't do renaming again 
+             */
+        || OP_renamed(op)           
+        
+            /*S1:  (p) x = 
+              S2:  (q)  = x
+              It's dangerous to rename x because S2 may not definitely use def of S1
+            */   
+        || OP_cond_def(op)  
+        
+            /* To avoid the complexity of renaming chks.
+             */ 
+        || OP_speculative(op) && OP_load(op)
+    ) return FALSE;
+   
+        /* TODO: Add more acurate renaming heuristic here.
+         */
+   for (ARC_LIST* arcs = OP_succs(op); arcs; ) {
+        ARC *arc = ARC_LIST_first(arcs);
+        arcs = ARC_LIST_rest(arcs);
+        OP* succ = ARC_succ (arc);   
+        if (ARC_kind(arc) == CG_DEP_REGIN &&
+            !(OP_speculative(succ) && OP_load(succ)) && // Don't feed into a speculative load
+            ARC_latency(arc) > 1)
+            return TRUE;
+   }
+   
+   return FALSE;
+}
+
 
     /* ================================================================
      *
@@ -1487,7 +1708,7 @@ FAVOR_DELAY_HEUR :: Select_Best_Candidate_For_Stress_Spec_Purpose
     return NULL ;
 }
                 
-CANDIDATE *
+CANDIDATE*
 FAVOR_DELAY_HEUR :: Select_Best_Candidate_For_Stress_Spec_Purpose 
     (CAND_LIST& cand_lst, BB *  targ,
      E_Time_Constraint * etime_constraint) {

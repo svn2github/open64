@@ -195,11 +195,13 @@ Multiply_Limit( BOOL is_64bit, INT64 val)
   if (is_64bit)	{ /* 64-bit multiply */
     switch( Target ) {
     case TARGET_ITANIUM:	limit = 14; break;
+    case TARGET_ITANIUM2:	limit = 14; break;
     default:		limit = 14; break;
     }
   } else { /* 32-bit multiply */
     switch( Target ) {
     case TARGET_ITANIUM:	limit = 14; break;
+    case TARGET_ITANIUM2:	limit = 14; break;
     default:		limit = 14; break;
     }
   }
@@ -213,11 +215,13 @@ Divide_Limit ( BOOL is_64bit)
   if (is_64bit)	{ /* 64-bit divide */
     switch( Target ) {
     case TARGET_ITANIUM:	limit = 50; break;
+    case TARGET_ITANIUM2:	limit = 50; break;
     default:		limit = 50; break;
     }
   } else { /* 32-bit divide */
     switch( Target ) {
     case TARGET_ITANIUM:	limit = 50; break;
+    case TARGET_ITANIUM2:	limit = 50; break;
     default:		limit = 50; break;
     }
   }
@@ -304,6 +308,7 @@ INT Copy_Quantum_Ratio(void)
   // I don't think it still needs work
   switch(Target) {
   case TARGET_ITANIUM:	ratio=	4; break;
+  case TARGET_ITANIUM2:	ratio=	4; break;
   default:		ratio=	4; break;
   }
 

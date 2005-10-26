@@ -1294,6 +1294,7 @@ Print_Flow_Graph ( char *banner, BOOL verbose )
 OP *
 BB_branch_op( BB *bb )
 {
+  
   OP *op = BB_last_op(bb);
 
   /* Test the last two OPs looking for the terminating branch (it may not 
@@ -1311,7 +1312,39 @@ BB_branch_op( BB *bb )
   return NULL;
 }
 
+/* ====================================================================
+ *
+ * Last_Non_Nop_op
+ *
+ * Return the last non nop OP in a given BB   
+ *
+ * ====================================================================
+ */
 
+OP *
+Last_Non_Nop_op( BB *bb )
+{
+  OP *op;
+  for (op =BB_last_op(bb); op; op = OP_prev(op)) {
+      if (!(OP_noop(op))) return op;
+  }
+  return NULL;
+ 
+}
+
+OP *
+BB_Last_chk_op( BB *bb )
+{
+  
+  OP *op = Last_Non_Nop_op(bb);
+
+  if (!op || !OP_chk(op)){
+      return NULL;
+  } else {
+      return op;
+  }
+  return NULL;
+}
 /* ====================================================================
  *
  * BB_xfer_op

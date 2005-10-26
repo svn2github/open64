@@ -1,7 +1,7 @@
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
 /*
- *  Copyright (C) 2000-2002, Intel Corporation
+ *  Copyright (C) 2000-2003, Intel Corporation
  *  All rights reserved.
  *  
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -380,9 +380,9 @@ private :
     _NODE_CFLOW_INFO& _node_cflow_info (REGION *rgn) ;
     _NODE_CFLOW_INFO& _node_cflow_info (REGIONAL_CFG_NODE *node);
 
-    BS * _reach_info_vect (BB *bb) ;
-    BS * _reach_info_vect (REGION *rgn);
-    BS * _reach_info_vect (REGIONAL_CFG_NODE *node);
+    BS* _reach_info_vect (BB *bb) ;
+    BS* _reach_info_vect (REGION *rgn);
+    BS* _reach_info_vect (REGIONAL_CFG_NODE *node);
 
     REACH_PROB_VECT * _reach_prob_vect (BB *bb);
     REACH_PROB_VECT * _reach_prob_vect (REGION *rgn);
@@ -469,12 +469,14 @@ public :
     ~RGN_CFLOW_MGR (void) {}
     
         /* acquire control flow info */
-    void    Init (REGION * rgn);
-    void    Init (BB * bb) ;
+    void Init (REGION * rgn);
+    void Init (BB * bb) ;
 
         /* check to see whether this class has been initialized properly */
-    BOOL    Valid (void) const { return  _cflow_info_valid; } ;
-
+    BOOL Path_Info_Is_Valid (void) const 
+            { return !_exec_path_mgr.Path_Info_Is_Invalid (); }
+    BOOL Valid (void) const { return  _cflow_info_valid; }
+    REGION* Scope (void) const { return _scope; }
         /* has many cfg node in this CFG fragment with which 
          * this class deals */
 
@@ -498,50 +500,72 @@ public :
                 return _max_rgn_id ;
             }
 
-        /* query the min/max level of cfg node */
-    INT32    Max_Level (REGIONAL_CFG_NODE * node) ;
-    INT32    Max_Level (BB * bb);
+        /* query the min/max level of cfg node 
+         */
+    INT32 Max_Level (REGIONAL_CFG_NODE * node) ;
+    INT32 Max_Level (BB * bb);
 
-    INT32    Min_Level (REGIONAL_CFG_NODE * node) ;
-    INT32    Min_Level (BB * bb);
+    INT32 Min_Level (REGIONAL_CFG_NODE * node) ;
+    INT32 Min_Level (BB * bb);
 
 
         /* reachable info 
          */
-    BOOL     BB1_Reachable_From_BB2 (BB * bb1, BB* bb2) ;
-    BOOL     BB_Reachable_From_RGN  (BB * bb, REGION * rgn) ;
-    BOOL     BB_Is_Reachable (BB * bb, BB_VECTOR * bb_vect) {
-                for (BB_VECTOR_ITER iter = bb_vect->begin () ; 
-                     iter != bb_vect->end() ; iter++) {
-                    if (BB1_Reachable_From_BB2 (bb, *iter)) return TRUE;
-                }
-                return FALSE;
-             }
+    BOOL BB1_Reachable_From_BB2 (BB* bb1, BB* bb2) ;
+    BOOL BB_Reachable_From_RGN  (BB* bb, REGION* rgn) ;
+    BOOL BB_Reachable_From_Node (BB* bb, REGIONAL_CFG_NODE* n) {
+            return n->Is_Region () ? 
+                   BB_Reachable_From_RGN  (bb, n->Region_Node()) :
+                   BB1_Reachable_From_BB2 (bb, n->BB_Node ());
+         }
 
-    REACH_PROB     Reachable_Prob (BB * from, BB * to) {
-                if (from != to) {
-                    Is_True (Valid (), (_invalid_prompt_msg));
-                    return _bb_reach_prob (from, to);                 
-                } 
 
-                return (REACH_PROB)(1.0f * REACH_PROB_SCALE);
-             }
+    BOOL BB_Is_Reachable (BB * bb, BB_VECTOR * bb_vect) {
+            for (BB_VECTOR_ITER iter = bb_vect->begin () ; 
+                 iter != bb_vect->end() ; iter++) {
+                if (BB1_Reachable_From_BB2 (bb, *iter)) return TRUE;
+            }
+            return FALSE;
+         }
+
+    REACH_PROB Reachable_Prob (BB* from, BB* to) {
+
+            if (from != to) {
+                Is_True (Valid (), (_invalid_prompt_msg));
+                return _bb_reach_prob (from, to);                 
+            } 
+
+            return (REACH_PROB)(1.0f * REACH_PROB_SCALE);
+        }
 
 
         /* critical-edge stuff 
          */
-    static   BOOL Critical_Edge_Present (REGION *rgn);
+    static BOOL Critical_Edge_Present (REGION *rgn);
 
-    void     Add_Ficticious_BB_to_Remove_Critical_Edge (void) ;
-    void     Remove_Ficticious_Empty_BB (void);
+    void Add_Ficticious_BB_to_Remove_Critical_Edge (void) ;
+    void Remove_Ficticious_Empty_BB (void);
 
-    /* misc */
-    BOOL     Has_Scheduled_Preds (BB* bb) ;
-    INT32    Across_Node_Num (BB * from , BB * to) ;
+        /* execution path info */
+    EXEC_PATH_MGR* Get_Exec_Path_Mgr (void) { return &_exec_path_mgr; }
+    EXEC_PATH_SET* Get_Path_Flow_Thru (BB* b) {
+                        return _exec_path_mgr.Get_Path_Flow_Thru (b);
+                   }
+    EXEC_PATH_SET* Get_Path_Flow_Thru (REGION* r) {
+                        return _exec_path_mgr.Get_Path_Flow_Thru (r);
+                   }
+    EXEC_PATH_SET* Get_Path_Flow_Thru (REGIONAL_CFG_NODE* n) {
+                        return _exec_path_mgr.Get_Path_Flow_Thru (n);
+                   }
+
+        /* misc */
+    BOOL  Has_Scheduled_Preds (BB* bb) ;
+    INT32 Across_Node_Num (BB* from , BB* to) ;
    
-    void    Dump (FILE *f=stderr,BOOL verbose=TRUE) ;
+    void Dump (FILE *f=stderr,BOOL verbose=TRUE) ;
+
     #ifdef Is_True_On
-    void    gdb_dump (void) ;
+    void gdb_dump (void) ;
     #endif 
 };
 
@@ -558,9 +582,7 @@ public :
    */
 
 void   Calculate_Dominator_Info (REGION_TREE *rgn_tree);
-inline BOOL BB1_Postdominate_BB2 (BB * bb1, BB* bb2) {
-       return BB_SET_MemberP (BB_pdom_set(bb2), bb1);
-     }
+BOOL BB1_Postdominate_BB2 (BB * bb1, BB* bb2) ;
 
 inline BOOL BB1_Dominate_BB2 (BB* bb1, BB * bb2) {
         return BB_SET_MemberP (BB_dom_set(bb2), bb1);
@@ -603,7 +625,10 @@ void Merge_All_Splitted_Entry_and_Exit_BB (void);
      * <cutting_set>
      */
 typedef enum { IN_SISS, ABOVE_SISS, BELOW_SISS, OTHER } BB_POS ;
-BB_POS BB_Pos_Analysis (BB * src, BB_VECTOR * cutting_set, 
-                            RGN_CFLOW_MGR * _cflow_info);
+BB_POS BB_Pos_Analysis (BB* block, BB_VECTOR* cutting_set, 
+                            RGN_CFLOW_MGR* _cflow_info);
     
+BB_POS BB_Pos_Analysis (BB* block, BB_VECTOR* cutting_set, 
+                            RGN_CFLOW_MGR* _cflow_info);
+
 #endif /*sched_cflow_INCLUDED */

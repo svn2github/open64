@@ -24,7 +24,7 @@
 
 #include "ipa_ld.h"
 
-#define DEFAULT_TOOLROOT "/usr/orccbin/orcc"
+#define DEFAULT_TOOLROOT "/usr/bin/"
 
 extern boolean is_ipa;
 
@@ -474,6 +474,32 @@ create_unique_file (const string path, char suffix)
 
 } /* create_unique_file */
 
+string
+create_tmp_file (string filename)
+{
+    static string tmppath = "/tmp/";
+    static string tmpsuffix = "XXXXXX";
+    string tmp_file_name;
+    string ret_file_name;
+    FILE *file;
+
+    tmp_file_name = (string)MALLOC(strlen(tmppath) + strlen(filename) + strlen(tmpsuffix) + 1);
+    strcpy(tmp_file_name, tmppath);
+    strcat(tmp_file_name, filename);
+    strcat(tmp_file_name, tmpsuffix);
+
+    tmp_file_name = mktemp(tmp_file_name);
+    if ((file = fopen(tmp_file_name, "w+")) == NULL) {
+      perror(tmp_file_name);
+      exit(1);
+    }
+    fclose(file);
+
+    ret_file_name = ipa_copy_of(tmp_file_name);
+    FREE(tmp_file_name);
+
+    return ret_file_name;
+}
 
 	/*******************************************************
 		Function: get_command_line

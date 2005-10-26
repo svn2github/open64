@@ -202,7 +202,7 @@ ir_b2a (char *global_file, char *input_file, char *output_file, BOOL stflag,
     }
 
     IR_reader_init();
-    IR_Dwarf_Gen_File_Table(TRUE);
+    IR_Dwarf_Gen_File_Table(FALSE); 
 
     ir_b2a_process_PUs(pu_tree, stflag, fbflag);
 

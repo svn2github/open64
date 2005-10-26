@@ -123,7 +123,10 @@ UINT               PUinfo_local_decls_indent = 0;/*Indentation for local decls*/
 typedef enum Preg_Usage_Kind
 {
    PREG_AS_UNKNOWN,
-   PREG_AS_INT8,   /* FIRST_PREG_USAGE_KIND, SMALLEST_iPREG_USAGE_KIND */
+   /*PREG_AS_BOOL is added by zdu. 
+    * It seems that BOOL var may be stored in preg too*/
+   PREG_AS_BOOL,   /* FIRST_PREG_USAGE_KIND, SMALLEST_iPREG_USAGE_KIND */
+   PREG_AS_INT8, 
    PREG_AS_UINT8,
    PREG_AS_INT16,
    PREG_AS_UINT16,
@@ -139,7 +142,7 @@ typedef enum Preg_Usage_Kind
    PREG_AS_CQ       /* LAST_PREG_USAGE_KIND */
 } PREG_USAGE_KIND;
 
-#define FIRST_PREG_USAGE_KIND     PREG_AS_INT8
+#define FIRST_PREG_USAGE_KIND     PREG_AS_BOOL
 #define SMALLEST_iPREG_USAGE_KIND FIRST_PREG_USAGE_KIND
 #define LARGEST_iPREG_USAGE_KIND  PREG_AS_UINT64
 #define LAST_PREG_USAGE_KIND      PREG_AS_CQ
@@ -147,6 +150,7 @@ typedef enum Preg_Usage_Kind
 static const MTYPE Ukind_to_Mtype[LAST_PREG_USAGE_KIND+1] =
 {
    MTYPE_UNKNOWN, /* PREG_AS_UNKNOWN */
+   MTYPE_B,  /* PREG_AS_BOOL */
    MTYPE_I1, /* PREG_AS_INT8 */
    MTYPE_U1, /* PREG_AS_UINT8 */
    MTYPE_I2, /* PREG_AS_INT16 */
@@ -217,6 +221,10 @@ Mtype_to_Ukind(MTYPE mtype)
    
    switch (mtype)
    {
+   /*MTYPE_B is added to support PREG_AS_BOOL*/
+   case MTYPE_B:
+      ukind = PREG_AS_BOOL;
+      break;
    case MTYPE_I1: 
       ukind = PREG_AS_INT8;
       break;

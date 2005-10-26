@@ -2649,16 +2649,16 @@ Is_Schedule_Worse(BB *bb, BB *cand_bb, BBSCH *new_bbsch,
     FOR_ALL_ISA_REGISTER_CLASS(i) {
 
       old_from_regcost[i] =  BBSCH_global_regcost(old_bbsch) + 
-	                     (old_from_local_regcost) ? old_from_local_regcost[i] : 0;
+	                     ((old_from_local_regcost) ? old_from_local_regcost[i] : 0);
 
       old_to_regcost[i] =    BBSCH_global_regcost(old_cand_bbsch) + 
-	                     (old_to_local_regcost) ? old_to_local_regcost[i] : 0;
+	                     ((old_to_local_regcost) ? old_to_local_regcost[i] : 0);
 
       new_from_regcost[i] =  BBSCH_global_regcost(new_bbsch) + 
-	                     (new_from_local_regcost) ? new_from_local_regcost[i] : 0;
+	                     ((new_from_local_regcost) ? new_from_local_regcost[i] : 0);
       
       new_to_regcost[i] =    BBSCH_global_regcost(new_cand_bbsch) + 
-	                     (new_to_local_regcost) ? new_to_local_regcost[i] : 0;
+	                     ((new_to_local_regcost) ? new_to_local_regcost[i] : 0);
 
       if (Trace_GCM && Trace_GCM_Reg_Usage && GCM_Internal_Flag) {
         #pragma mips_frequency_hint NEVER

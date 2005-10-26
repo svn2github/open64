@@ -35,11 +35,16 @@
 
 /* this is used by both table and the driver */
 #include <stdio.h>
+#include <stdlib.h> /* for getenv */
 #include <string.h>
 #include "lang_defs.h"
 #include "string_utils.h"
 #include "errors.h"
+#include "lib_phase_dir.h"
+
 string ldpath_for_pixie = NULL;
+string dynamic_linker = "/lib/ld-linux-ia64.so.2";
+
 /*
  * If you change any of these keys, be sure to also change the keys
  * in the OPTIONS table.
@@ -56,44 +61,14 @@ static lang_info_t language_info[] = {
 	{'N',	0x00000000,	{""}},		/* NONE */
 	{'A',	0x0fffffff,	{""}},		/* ALL */
 	{'p',	0x00000001,	{"cpp"}},		/* cpp */
-	{'c',	0x00000002,	{"cc","orcc","sgicc","ia64-sgi-linux-sgicc","gcc","c89"}},	/* cc */
-	{'C',	0x00000004,	{"CC","orCC","orc++","sgiCC","sgi++","g++"}},	/* c++ */
-	{'f',	0x00000008,	{"f77","orf77","sgif77","gf77","fort77"}}, /* f77 */
-	{'F',	0x00000010,	{"f90","orf90","sgif90"}},		/* f90 */
+	{'c',	0x00000002,	{"cc","orcc","opencc","ia64-sgi-linux-sgicc","gcc","c89"}},	/* cc */
+	{'C',	0x00000004,	{"CC","orCC","orc++","openCC","sgi++","g++"}},	/* c++ */
+	{'f',	0x00000008,	{"f77","orf77","openf77","gf77","fort77"}}, /* f77 */
+	{'F',	0x00000010,	{"f90","orf90","openf90"}},		/* f90 */
 	{'a',	0x00000020,	{"as","sgias","gas"}},		/* as */
 	{'l',	0x00000040,	{"ld","sgild"}},		/* ld */
 	{'I',	0x80000000,	{"int"}},		/* Internal option */
 };
-
-#if defined(linux) && defined(TARG_IA64)
-#if defined(HOST_IA32) && !defined(NUE)
-#define NAMEPREFIX	"ia64-sgi-linux-"
-#define BINPATH		"/usr/ia64-sgi-linux/bin"
-#define LIBPATH		"/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0"
-#define ALTLIBPATH	"/usr/ia64-sgi-linux/ia64-sgi-linux/lib"
-#else
-#define NAMEPREFIX	""
-#define BINPATH		"/usr/bin"
-#define LIBPATH		"/usr/lib/gcc-lib/ia64-open64-linux/open64-0.15"
-#define ALTLIBPATH	"/usr/lib"
-#endif
-#define PHASEPATH	LIBPATH
-#define GNUPHASEPATH	LIBPATH
-#elif defined(linux) && defined(TARG_IA32)
-#define NAMEPREFIX	""
-#define BINPATH		"/usr/bin"
-#define LIBPATH		"/usr/lib"
-#define ALTLIBPATH	LIBPATH
-#define PHASEPATH	"/usr/ia32-sgi-linux/bin"
-#define GNUPHASEPATH	"/lib"
-#else
-#define NAMEPREFIX	""
-#define BINPATH		"/usr/bin"
-#define LIBPATH		"/usr/lib"
-#define ALTLIBPATH	LIBPATH
-#define PHASEPATH	"/usr/lib32/cmplrs"
-#define GNUPHASEPATH	PHASEPATH
-#endif
 
 typedef struct phase_struct {
 	char key;
@@ -103,6 +78,7 @@ typedef struct phase_struct {
 	boolean set_ld_library_path; /* true if need to set LD_LIBRARY_PATH
 					to "dir" */
 } phase_info_t;
+
 /* phases_t is index into phase_info array */
 static phase_info_t phase_info[] = {
    {'N',  0x0000000000000000LL,	"", 	"",		FALSE},	/* NONE */
@@ -116,8 +92,8 @@ static phase_info_t phase_info[] = {
    /* invoke gcc driver directly rather than cpp
     * because cpp can have different paths, reads spec file,
     * and may eventually be merged with cc1. */
-   {'p',  0x0000000000000020LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* gcpp */
-   {'p',  0x0000000000000040LL,	NAMEPREFIX "g++", BINPATH, FALSE}, /* gcpp_plus */
+   {'p',  0x0000000000000020LL,	NAMEPREFIX "gcc", ALTBINPATH, FALSE}, /* gcpp */
+   {'p',  0x0000000000000040LL,	NAMEPREFIX "g++", ALTBINPATH, FALSE}, /* gcpp_plus */
 #else
    {'p',  0x0000000000000020LL,	"gcpp",	GNUPHASEPATH,	FALSE},	/* gcpp */
    {'p',  0x0000000000000040LL,	"gcpp",	GNUPHASEPATH,	FALSE},	/* gcpp_plus */
@@ -173,12 +149,14 @@ static phase_info_t phase_info[] = {
    /* We use 'B' for options to be passed to be via ipacom. */
 
    {'a',  0x0000001000000000LL,	"asm",	PHASEPATH,	FALSE},	/* as */
-   {'a',  0x0000002000000000LL,	"as",	ALTLIBPATH "/../bin",	FALSE},	/* gas */
+   {'a',  0x0000002000000000LL,	"as",	BINPATH,	FALSE},	/* gas */
    {'a',  0x0000003000000000LL,	"",	"",		FALSE},	/* any_as */
 
    {'d',  0x0000008000000000LL, "dsm_prelink", PHASEPATH,FALSE},/* dsm_prelink*/
    {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH,TRUE},	/* ipa_link */
-   {'l',  0x0000020000000000LL,	"collect2", GNUPHASEPATH,TRUE},	/* collect */
+     /* replace collect2 with ld just for the time being */
+   /*{'l',  0x0000020000000000LL,	"collect2", GNUPHASEPATH,TRUE},*//* collect */
+   {'l',  0x0000020000000000LL,	"ld", BINPATH,TRUE},/* collect */
    {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* ld */
    {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE}, /* ldplus */
    {'l',  0x00000f0000000000LL,	"",	"",		TRUE},	/* any_ld */
@@ -187,12 +165,13 @@ static phase_info_t phase_info[] = {
    {'x',  0x0000400000000000LL, "prof",  BINPATH,   FALSE}, /* prof */
 
    {'R',  0x0001000000000000LL, "ar",  BINPATH,      FALSE}, /* ar */
+   {'L',  0x0002000000000000LL,	"lib", LIBPATH,	FALSE},	/* library */
 
    {'S',  0x0010000000000000LL,	"crt",	LIBPATH,	FALSE},	/* startup */
    {'I',  0x0020000000000000LL,	"inc",	"/usr/include",	FALSE},	/* include */
-   {'L',  0x0040000000000000LL,	"lib",	LIBPATH,	FALSE},	/* library */
    {'L',  0x0080000000000000LL,	"alib",	ALTLIBPATH,	FALSE},	/* alt_library */
 };
+
 mask_t PHASE_MASK=
           0x000fffffffffffffLL;
 mask_t LIB_MASK =
@@ -232,6 +211,7 @@ phases_t current_phase = P_NONE;
 source_kind_t source_kind = S_NONE;
 source_kind_t default_source_kind = S_NONE;
 boolean ignore_suffix = FALSE;
+
 
 /* return earliest phase */
 /* (this routine assumes that phases in enumeration are ordered) */

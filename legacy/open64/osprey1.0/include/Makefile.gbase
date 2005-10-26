@@ -319,7 +319,8 @@ default:
 	    fi; \
 	done
 	@for h in $(LINUX_SYS_HFILES); do \
-	    if ! test -a $$h; then \
+        [ ! -d sys ] && mkdir sys ; \
+	    if ! test -a sys/$$h; then \
 	      ln -sf $(BUILD_TOT)/../linux/include/sys/$$h sys/$$h; \
 	    fi; \
 	done
@@ -354,6 +355,7 @@ default:
 	    fi; \
 	done
 	@for h in $(LIBELF_HFILES); do \
+        [ ! -d libelf ] && mkdir libelf; \
 	    if ! test -a libelf/$$h; then \
 	      ln -sf $(BUILD_TOT)/../gnu_common/libelf/lib/$$h libelf/$$h; \
 	    fi; \

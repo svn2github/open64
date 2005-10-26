@@ -338,7 +338,7 @@ KAPI_attribute4index( void *pConfig, char *pchAttribute, int idx )
 
    if (idx == 511)
     {
-/*    printf ("Here!\n");*/
+/*   printf ("Here!\n");*/
     }
     
     if ((pstn->u.afih.u.dmppch[ idx ])[0] == 0)

@@ -272,7 +272,7 @@ Need_UNAT_Entry_Exit(void) {
 }
 
 ////////////////////////////////////
-static void
+void
 UNAT_Spill_OPS(TN *lrange_tn, ST *lrange_st, OPS *ops, CGSPILL_CLIENT client, BB *bb)
 ///////////////////////////////////
 //
@@ -308,7 +308,7 @@ UNAT_Spill_OPS(TN *lrange_tn, ST *lrange_st, OPS *ops, CGSPILL_CLIENT client, BB
   CGSPILL_Store_To_Memory(spill_tn, st, ops, CGSPILL_GRA, bb);
 }
 ////////////////////////////////////
-static void
+void
 UNAT_Restore_OPS(TN *lrange_tn, ST *lrange_st, OPS *ops, CGSPILL_CLIENT client, BB *bb)
 ///////////////////////////////////
 //

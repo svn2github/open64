@@ -229,7 +229,7 @@ extern BOOL     IPA_Enable_Inline_Char_Array;   /* Enable inlining of PU with ch
 extern BOOL     IPA_Enable_Inline_Optional_Arg;   /* Enable inlining of PU with optional arguments */
 extern BOOL     IPA_Enable_Inline_Struct_Array_Actual;   /* Enable inlining of PU with F90 structures with actuals being array type */
 extern BOOL     IPA_Enable_Inline_Var_Dim_Array;   /* Enable inlining of PU with param that is variable-dimensioned array */
-
+extern BOOL  IPA_Enable_Reorder;   /*Enable structure field reordering */
 
 /* Maximum number of clones for a call graph node */
 extern UINT32 IPA_Max_Node_Clones;
@@ -285,6 +285,8 @@ extern BOOL    INLINE_Get_Time_Info;          /* Generate timing info for differ
 
 extern char    *INLINE_Script_Name;
 extern BOOL   INLINE_Enable_Script;
+
+extern UINT32  IPA_Max_Density;
 
 #ifdef __cplusplus
 }

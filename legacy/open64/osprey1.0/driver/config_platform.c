@@ -79,7 +79,7 @@ static PLATFORM_OPTIONS PF_Opts[] =
   /* This is the default -- it must be first.  Nickname is used for
    * default warning messages:
    */
-  { IP0, "ip??", "itanium", PROC_ITANIUM, "Itanium" },
+  { IP0, "it1", "itanium", PROC_ITANIUM, "Itanium" },
 
   { IP19,    "ip19",	"r4k",	PROC_R4K,  "Challenge" },
   { IP20,    "ip20",	"r4k",	PROC_R4K,  "R4000 Indigo" },

@@ -84,11 +84,15 @@ HOSTDEFS += -Dlonglong
 HOSTDEFS += -D_LONGLONG -D_SVR4_SOURCE
 HOSTDEFS += -D_USE_PROFILE_ERROR_ROUTINES
 
-ifeq ($(BUILD_OPTIMIZE), DEBUG)
-HOSTDEFS += -DIs_True_On
-HOSTDEFS += -DInsist_On 
-endif
+# Do not -DIs_True_On -DInsist_On, otherwise we will get complains at link time:
+#   "Unresloved symbol Fail_FmtAssertion"
+#ifeq ($(BUILD_OPTIMIZE), DEBUG)
+#HOSTDEFS += -DIs_True_On
+#HOSTDEFS += -DInsist_On 
+#endif
 
+HOSTDEFS += -UIs_True_On
+HOSTDEFS += -UInsist_On 
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest

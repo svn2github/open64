@@ -556,6 +556,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BBM_PROFILE_ADDED       0x08000000 /* BB is new bb added by profile*/
 #define BBM_CHK_SPLIT_HEAD      0x10000000 /* BB splitted from another because of chk insertion */
 #define BBM_PARTIAL_BUNDLE      0x20000000 /* BB partial bundle for across boundary*/
+#define BBM_EDGE_SPLITTING      0X40000000 /* BB is used to split critical edge */
 
 #define	BB_entry(x)		(BB_flag(x) & BBM_ENTRY)
 #define BB_handler(bb)		(BB_flag(bb) & BBM_HANDLER)
@@ -588,6 +589,8 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define BB_profile_changed(x)    (BB_flag(x) & BBM_PROFILE_CHANGED)
 #define BB_profile_added(x)    (BB_flag(x) & BBM_PROFILE_ADDED)
 #define BB_partial_bundle(x)	(BB_flag(x) & BBM_PARTIAL_BUNDLE)
+#define BB_edge_splitting(x)    (BB_flag(x) & BBM_EDGE_SPLITTING)      
+
 /* #endif */
 
 
@@ -622,6 +625,7 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Set_BB_profile_changed(x)    (BB_flag(x) |= BBM_PROFILE_CHANGED)
 #define Set_BB_profile_added(x)    (BB_flag(x) |= BBM_PROFILE_ADDED)
 #define Set_BB_partial_bundle(x)    (BB_flag(x) |= BBM_PARTIAL_BUNDLE)
+#define Set_BB_edge_splitting(x)    (BB_flag(x) |= BBM_EDGE_SPLITTING)
 /* #endif */
 
 
@@ -656,6 +660,8 @@ inline void Set_BB_loop_head_bb(BB *bb, BB *head) {
 #define Reset_BB_profile_changed(x)    (BB_flag(x) &= ~BBM_PROFILE_CHANGED)
 #define Resset_BB_profile_added(x)    (BB_flag(x) &= ~BBM_PROFILE_ADDED)
 #define Reset_BB_partial_bundle(x)    (BB_flag(x) &= ~BBM_PARTIAL_BUNDLE)
+#define Reset_BB_edge_splitting(x)    (BB_flag(x) &= ~BBM_EDGE_SPLITTING)
+
 /* #endif */
 
 #define BB_tail_call(bb)	(   (BB_flag(bb) & (BBM_CALL | BBM_EXIT)) \
@@ -1063,6 +1069,9 @@ extern void BB_REGION_Initialize(void);
 
 /* Return the op for the terminating branch of a given BB */
 extern struct op *BB_branch_op (BB *);
+/* Return the last non nop op of a branch bb */
+extern OP* Last_Non_Nop_op (BB *); 
+extern OP* BB_Last_chk_op(BB *); 
 
 /* Return the terminating xfer OP in a given BB */
 extern struct op* BB_xfer_op( BB *bb );

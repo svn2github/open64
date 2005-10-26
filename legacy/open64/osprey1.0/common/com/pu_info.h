@@ -98,6 +98,7 @@
 					whether to repeat alias
 					classification within preopt
 					for LNO */
+#define PU_OUTLINED              0x20 // OUTLINING^$, extra flag for PU_Info
 
 /* reserve the top 4 bits for internal use within IPA */
 #define PU_INTERNAL_MASK 0xf0000000

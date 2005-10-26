@@ -114,6 +114,7 @@
 #include "bb_verifier.h"
 #include "config_opt.h"
 #include "be_util.h"
+#include "stride_prefetch.h"
 
 #define _value_profile_before_region_formation
 #define can_invoke_profile_with_current_cg_opt_level (CG_opt_level>1)
@@ -131,12 +132,32 @@ BOOL PU_References_GP;
 BOOL GRA_optimize_restore_pr;
 BOOL GRA_optimize_restore_b0_ar_pfs;
 BOOL GRA_optimize_restore_ar_lc;
+BOOL EBO_data_spec;
+// Control assemly output on file number
+typedef mempool_allocator<INT> INT_ALLOC;
+typedef vector<INT, INT_ALLOC>  INT_CONTAINER;
+
+static INT_CONTAINER asm_file_visited;
+INT Asm_File_Visited(INT file_number)
+{   
+    INT i = 1;
+    INT_CONTAINER::iterator iter;
+    for(iter = asm_file_visited.begin();iter != asm_file_visited.end();iter++)
+    {
+        if (*iter == file_number) return i;
+        i++;
+    }
+    asm_file_visited.push_back(file_number);
+    return i;
+}
 
 BOOL CG_PU_Has_Feedback;
 
 BOOL RGN_Formed = FALSE;
 
 BOOL gra_pre_create = TRUE; 
+
+BOOL edge_done = FALSE;
 
 RID *Current_Rid;
 
@@ -165,6 +186,7 @@ CG_PU_Initialize (WN *wn_pu)
   GRA_optimize_restore_pr = TRUE;
   GRA_optimize_restore_b0_ar_pfs = TRUE;
   GRA_optimize_restore_ar_lc = TRUE;
+  EBO_data_spec=FALSE;
 
   Regcopies_Translated = FALSE;
 
@@ -341,9 +363,19 @@ CG_Region_Finalize (WN *result_before, WN *result_after,
 }
 
 static void Config_Ipfec_Flags() {
-  IPFEC_Enable_Edge_Profile = IPFEC_Enable_Edge_Profile || ( (Instrumentation_Enabled || Instrumentation_Enabled_Before) && (Phase_Num==4 && Profile_Type & CG_EDGE_PROFILE) );
-  IPFEC_Enable_Value_Profile= IPFEC_Enable_Value_Profile || ( (Instrumentation_Enabled || Instrumentation_Enabled_Before) && (Phase_Num ==4 && Profile_Type & CG_VALUE_PROFILE) ); 
+ 
+  /* copy ORC_... Flags to Ipfec_... Flags */
+  Copy_Ipfec_Flags();
+
+  /*start Config_Ipfec_Flags*/
+  IPFEC_Enable_Edge_Profile = IPFEC_Enable_Edge_Profile || ( (Instrumentation_Enabled || Instrumentation_Enabled_Before)
+  && (Phase_Num==4 && Profile_Type & CG_EDGE_PROFILE) );
+  IPFEC_Enable_Value_Profile= IPFEC_Enable_Value_Profile || ( (Instrumentation_Enabled || Instrumentation_Enabled_Before) 
+  && (Phase_Num ==4 && Profile_Type & CG_VALUE_PROFILE) ); 
+  IPFEC_Enable_Stride_Profile= IPFEC_Enable_Stride_Profile || ( (Instrumentation_Enabled || Instrumentation_Enabled_Before) 
+  && (Phase_Num ==4 && Profile_Type & CG_STRIDE_PROFILE) ); 
   IPFEC_Enable_Value_Profile_Annot = IPFEC_Enable_Value_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
+  IPFEC_Enable_Stride_Profile_Annot = IPFEC_Enable_Stride_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
   IPFEC_Enable_Edge_Profile_Annot = IPFEC_Enable_Edge_Profile_Annot || Feedback_Enabled[PROFILE_PHASE_BEFORE_REGION];
   IPFEC_Enable_Opt_after_schedule=IPFEC_Enable_Opt_after_schedule && CG_Enable_Ipfec_Phases && CG_opt_level > 1;
   IPFEC_Enable_Region_Formation = IPFEC_Enable_Region_Formation && CG_Enable_Ipfec_Phases && CG_opt_level > 1;
@@ -369,6 +401,11 @@ static void Config_Ipfec_Flags() {
   IPFEC_Chk_Compact = IPFEC_Chk_Compact && IPFEC_Enable_Speculation;
   IPFEC_Enable_Safety_Load = IPFEC_Enable_Safety_Load && IPFEC_Enable_Speculation;
   IPFEC_Profitability = IPFEC_Profitability && CG_Enable_Ipfec_Phases;
+
+  IPFEC_Enable_Multi_Branch = IPFEC_Enable_Multi_Branch && CG_Enable_Ipfec_Phases; 
+  IPFEC_Enable_Pre_Multi_Branch = IPFEC_Enable_Pre_Multi_Branch && CG_Enable_Ipfec_Phases;
+  IPFEC_Enable_Post_Multi_Branch = IPFEC_Enable_Post_Multi_Branch && CG_Enable_Ipfec_Phases;
+
 
   if (IPFEC_Chk_Compact && locs_skip_bb) {
     DevWarn("Although chk_compact is turned on, it should be turned off since some BBs are forced to be skipped in local scheduling phase!");
@@ -473,10 +510,11 @@ CG_Generate_Code(
     Set_Error_Phase ( "edge profile annotation" );
     CG_Edge_Profile_Annotation(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
     Check_for_Dump(TP_A_PROF, NULL);
+   
   }
 
 #ifdef _value_profile_before_region_formation
-  if (IPFEC_Enable_Value_Profile && can_invoke_profile_with_current_cg_opt_level )
+  if ((IPFEC_Enable_Value_Profile||IPFEC_Enable_Stride_Profile) && can_invoke_profile_with_current_cg_opt_level )
   {
     Set_Error_Phase ( "value profile instrument" );
     if (EBO_Opt_Level != 0) 
@@ -500,16 +538,16 @@ CG_Generate_Code(
     Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
     if (current_PU_handle >= Min_Instr_Pu_Id
                 && current_PU_handle <= Max_Instr_Pu_Id 
-                && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask ))                )
+                && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask )) )
 
     {
       Start_Timer ( T_Ipfec_Profiling_CU );
-      CG_VALUE_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
+      CG_VALUE_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION,IPFEC_Enable_Stride_Profile, IPFEC_Enable_Value_Profile);
       value_profile_need_gra = TRUE;
       Stop_Timer( T_Ipfec_Profiling_CU );
     }
     Check_for_Dump(TP_A_PROF, NULL);
-  } else if (IPFEC_Enable_Value_Profile_Annot && can_invoke_profile_with_current_cg_opt_level ) {
+  } else if ((IPFEC_Enable_Value_Profile_Annot||IPFEC_Enable_Stride_Profile_Annot)&& can_invoke_profile_with_current_cg_opt_level ) {
     //We take all load instructions for example to show how to specify the 
     //OP's type and how it should be value profiled.
     inst2prof_list.clear();
@@ -627,10 +665,19 @@ CG_Generate_Code(
       Verify_Region_Tree(region_tree, REGION_First_BB);
 #endif
     }
-    
+
+    // Perform stride prefetch 
+    if (IPFEC_Enable_Stride_Prefetch && IPFEC_Enable_Stride_Profile_Annot){
+        Set_Error_Phase( "Stride prefetch \n");
+        Stride_Region(region_tree, IPFEC_Enable_Stride_Prefetch);
+ 	}
+
     // Perform hyperblock formation (if-conversion).  Only works for
     // IA-64 at the moment. 
     //
+        
+
+    
     if (CGTARG_Can_Predicate()) {
       if (IPFEC_Enable_If_Conversion) {
         Set_Error_Phase( "Ipfec if conversion"); 
@@ -659,7 +706,7 @@ CG_Generate_Code(
       if (frequency_verify)
         FREQ_Verify("Hyberblock Formation");
     }
-    
+
     if (!CG_localize_tns || value_profile_need_gra ) {
       /* Initialize liveness info for new parts of the REGION */
       /* also compute global liveness for the REGION */
@@ -721,6 +768,8 @@ CG_Generate_Code(
     }
   }
 
+
+
   BOOL locs_bundle_value = LOCS_Enable_Bundle_Formation;
   BOOL emit_bundle_value = EMIT_explicit_bundles;
   LOCS_Enable_Bundle_Formation = IPFEC_Enable_Pre_Bundling;
@@ -773,6 +822,9 @@ CG_Generate_Code(
     Start_Timer( T_GLRA_CU );
     GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
     Stop_Timer ( T_GLRA_CU );
+
+    if(Enable_CG_Peephole)
+      EBO_Pre_Process_Region (region ? REGION_get_rid(rwn) : NULL);
     Check_Self_Recursive();
     Global_Insn_Sched(region_tree, TRUE);
   } else if (IPFEC_Enable_Prepass_LOCS) {
@@ -781,8 +833,12 @@ CG_Generate_Code(
     IGLS_Schedule_Region (TRUE /* before register allocation */);
   }
 
+  if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
   if (IPFEC_Enable_Opt_after_schedule) {
+    BOOL tmp = CG_localize_tns ;
+    CG_localize_tns = TRUE;
     CFLOW_Optimize(CFLOW_BRANCH|CFLOW_UNREACHABLE|CFLOW_MERGE|CFLOW_REORDER, "CFLOW (third pass)");
+    CG_localize_tns = tmp ;
   }
   
   if (IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
@@ -795,8 +851,6 @@ CG_Generate_Code(
     BB_Verify_Flags();
   }
 #endif
-
-  if(PRDB_Valid()) Delete_PRDB();
 
 
   LOCS_Enable_Bundle_Formation = locs_bundle_value;
@@ -827,7 +881,7 @@ CG_Generate_Code(
                 && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask ))                )
         {
         Start_Timer ( T_Ipfec_Profiling_CU );
-            CG_VALUE_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST);
+            CG_VALUE_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST,FALSE,FALSE);
             value_profile_need_gra = TRUE;
         Stop_Timer( T_Ipfec_Profiling_CU );
 #if 0
@@ -870,7 +924,7 @@ CG_Generate_Code(
                 && current_PU_handle <= Max_Instr_Pu_Id
                 && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask ))                )
         {
-            CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST);
+            CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_LAST,FALSE,FALSE);
         }
   }
   DevWarn("Now we are testing instrumentation after RegionFormation!");
@@ -954,6 +1008,7 @@ CG_Generate_Code(
   }
 #endif
 
+  if(PRDB_Valid()) Delete_PRDB();
   if (IPFEC_Force_CHK_Fail)
     Force_Chk_Fail();
 
@@ -963,6 +1018,15 @@ CG_Generate_Code(
   Reuse_Temp_TNs = orig_reuse_temp_tns;     /* restore */
   
   if (PRDB_Valid()) Delete_PRDB();
+  if (IPFEC_Enable_Region_Formation) {
+    /* Empty BB eliminating has no relation with region, 
+     * so it can turn off IPFEC_Enable_Region_Formation temporarily,
+     * Or it will cause many errors which deal with region
+     */
+     IPFEC_Enable_Region_Formation = FALSE;
+     CFLOW_Delete_Empty_BB();  
+     IPFEC_Enable_Region_Formation = TRUE;
+  }
   if (region) {
     /*--------------------------------------------------------------------*/
     /* old region: rwn, rid_orig                      */

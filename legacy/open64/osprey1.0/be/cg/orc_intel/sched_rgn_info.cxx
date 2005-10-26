@@ -1,7 +1,7 @@
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
 /*
- *  Copyright (C) 2000-2002, Intel Corporation
+ *  Copyright (C) 2000-2003, Intel Corporation
  *  All rights reserved.
  *  
  *  Redistribution and use in source and binary forms, with or without modification,
@@ -293,83 +293,6 @@ RGN_SUMMARY :: RGN_SUMMARY (REGION *rgn,MEM_POOL *mp) {
 
 RGN_SUMMARY :: ~RGN_SUMMARY (void) {} 
 
-    /* ==========================================================
-     *
-     * ::Is_It_Legal_To_Hoist_OP_Across_Rgn 
-     * 
-     *  check to see whether we can be upward moved <op> across 
-     *  <nested_rgn>.
-     * 
-     * ===========================================================
-     */ 
-BOOL
-RGN_SUMMARY :: Is_It_Legal_To_Hoist_OP_Across_Rgn 
-    (OP * op, BB * from, BB *to, 
-     const BB_VECTOR * cutting_set,
-     REGION * nested_rgn, 
-     RGN_CFLOW_MGR *cflow_info) {
-
-    if (Has_Call ()) { return FALSE ; }
-
-        /* check output dependence and anti-dep 
-         */
-    for (INT i = OP_results(op) - 1 ; i >= 0 ; i--) {
-        TN * result = OP_result(op,i);
-
-        if (!TN_is_register(result) || TN_is_const_reg(result)) {
-
-            continue ;
-        }
-
-        if (TN_SET_MemberP(Killed_Def(), result) ||
-            TN_SET_MemberP(TN_Used(), result)) {
-            return FALSE ;
-        }
-
-    }
-
-        /* check flow dependence 
-         */
-    for (INT i = OP_opnds(op) - 1 ; i >= 0 ; i --) {
-        TN * opnd = OP_opnd(op,i) ;
-
-        if (!TN_is_register(opnd) || TN_is_const_reg(opnd)) {
-              continue ; 
-        }
-
-        if (TN_SET_MemberP (Killed_Def(), opnd)) {
-            return FALSE ;
-        }
-    }
-
-    if (!Has_Mem_OP ()) { return TRUE ; } 
-
-    if (OP_load (op) && Has_Store() || OP_like_store(op)) {
-        return FALSE ;
-    }
-    
-    return TRUE;
-}
-
-    /* ==========================================================
-     *
-     * ::Is_It_Legal_To_Hoist_OP_Across_Rgn 
-     * 
-     *  check to see whether we can be downward moved <op> across 
-     *  <nested_rgn>.
-     * 
-     * ===========================================================
-     */ 
-BOOL
-RGN_SUMMARY :: Is_It_Legal_To_Sank_Down_Across_Rgn 
-    (OP *op, BB * from, BB * to, 
-     const BB_VECTOR * cutting_set,
-     REGION * nested_rgn) {
-    
-    FmtAssert (FALSE, ("Downward code motion has yet implemented!"));
-    return FALSE ; /* to make compiler happy */
-}
-
 
     /* ==================================================================
      * ==================================================================
@@ -510,6 +433,7 @@ REGION_INFO_MGR :: Acquire_Rgn_Info (void) {
 
         if (IPFEC_Query_Skiplist(glos_skip_rgn, rgn->Id(), Current_PU_Count())) {
             skip_reason = SKIP_RGN_DEBUG ;
+            fprintf (stdout, "skip rgn %d\n", rgn->Id ());
         } else if (rgn->Region_Type() == IMPROPER) {
             skip_reason = SKIP_RGN_IMPROPER;
         } else if (rgn->Is_No_Further_Opt()) {
@@ -697,7 +621,7 @@ RGN_SUMMARY :: Adjust_Liveness_After_OP_Being_Moved_Across_Rgn (OP * op) {
      *
      * ==============================================================
      */
-#define LARGE_REGION_MUST_HOST_THIS_MANY_BB  (6)
+#define LARGE_REGION_MUST_HOST_THIS_MANY_BB  (3)
 
 BOOL
 No_OP_Can_be_Moved_Across_Region (REGION *rgn) {
@@ -707,8 +631,7 @@ No_OP_Can_be_Moved_Across_Region (REGION *rgn) {
     Is_True (sum, ("fail to get region's summary for REGION%d", rgn->Id()));
     if (!sum->Summary_Is_Valid ()          ||  
         sum->Has_Cannot_Move_Across_RGN () ||
-        sum->Has_Call ()                   ||
-        sum->Has_Rotating_Kernel ()) {
+        sum->Has_Call ()) {
         return TRUE;
     }
     

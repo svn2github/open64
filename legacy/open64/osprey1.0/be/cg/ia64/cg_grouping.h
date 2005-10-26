@@ -89,6 +89,9 @@ private:
   SI_RESOURCE_ID         _mi_unit_id; // integer_or_memory (ALU insts)
   SI_RESOURCE_ID         _m_unit_id;  // memory
   SI_RESOURCE_ID         _m0_unit_id; // memory0
+  SI_RESOURCE_ID         _m2_unit_id; // memory2
+  SI_RESOURCE_ID         _m_ld_unit_id; // memory for ld M0 M1 in McKiney
+  SI_RESOURCE_ID         _m_st_unit_id; // memory for st M2 M3 in McKiney
   SI_RESOURCE_ID         _i_unit_id;  // integer
   SI_RESOURCE_ID         _i0_unit_id; // integer0
   SI_RESOURCE_ID         _f_unit_id;  // floating-point
@@ -157,6 +160,12 @@ private:
 	_m0_unit_id = res_id;
       else if (strcmp("memory", name) == 0)
 	_m_unit_id = res_id;
+      else if (strcmp("memory_ld", name) == 0)
+        _m_ld_unit_id = res_id; 
+      else if (strcmp("memory_st", name) == 0)
+        _m_st_unit_id = res_id;
+      else if (strcmp("memory2", name) == 0)
+        _m2_unit_id = res_id;
       else
 	unknown_resource = TRUE;
       break;

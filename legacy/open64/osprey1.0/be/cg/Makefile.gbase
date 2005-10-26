@@ -164,8 +164,9 @@ SRC_DIRS = \
   $(BE_CG_GRA_DIR)	\
   $(BE_CG_TARG_DIR)	\
   $(COMMON_COM_DIR)	\
-  $(COMMON_COM_TARG_DIR)\
-  $(COMMON_UTIL_DIR)
+  $(COMMON_COM_TARG_DIR) \
+  $(COMMON_UTIL_DIR)    \
+  $(COMMON_TARG_INFO_ACCESS_DIR) 
 
 ifndef TARG_BE
 TARG_BE = $(TARGDIR)/be
@@ -234,6 +235,9 @@ COMMON_COM_TARG_CXX_SRCS =	\
 
 COMMON_UTIL_SRCS =	\
   bitset.c	\
+  ti_res.c              \
+  ti_res_count.c        \
+  ti_res_res.c
 
 CG_C_SRCS = \
   $(COMMON_UTIL_SRCS)
@@ -330,8 +334,8 @@ CG_CXX_SRCS = 		\
   cgdriver.cxx		\
   cgdwarf.cxx		\
   cgemit.cxx		\
-  cgexp.cxx		\
   ebo.cxx		\
+  cgexp.cxx		\
   cgprep.cxx		\
   cio_rwtran.cxx        \
   comment.cxx		\
@@ -370,6 +374,10 @@ CG_CXX_SRCS += $(CG_CXX_PCH_SRCS)
 CG_CXX_SRCS += $(CG_GRA_PCH_CXX_SRCS)
 endif
 
+# add New target macro define by llx 2002-7-18
+ifeq ($(ORC_TARG), KAPI)
+HOSTDEFS +=-DIPFEC_Enable_New_Targ
+endif
 # We will change this later to build different DSOs.
 
 CG_C_OBJS = $(CG_C_SRCS:.c=.o)
@@ -546,7 +554,7 @@ cg.so:  $(CG_CXX_OBJS) $(CG_C_OBJS) $(CG_PCH_OBJS) $(CG_GRA_PCH_OBJS)\
 else
  ifeq ($(BUILD_OS), LINUX)
 # dso's must be in same directory
-LINK_DSOS = be.so $(TARGET_SO)
+LINK_DSOS = be.so 
 ifeq ($(BUILD_HOST), IA64)
 ifeq ($(BUILD_COMPILER), SGI)
 STD_DSO_LOADOPTS += -Wl,-relax

@@ -76,6 +76,7 @@
 
 #endif // MONGOOSE_BE
 
+#define FB_TNV_FLAG_UNINIT  -1
 
 // data structures shared by both the instrumentation runtime and the back
 // end. 
@@ -335,6 +336,21 @@ struct FB_Info_Call {
 
 };
 
+struct FB_Info_Icall{
+      FB_TNV tnv;
+	  FB_Info_Icall()
+	  {
+		  tnv._flag = FB_TNV_FLAG_UNINIT;
+	  }
+	  BOOL Is_uninit() const
+	  {
+		  return (tnv._flag == FB_TNV_FLAG_UNINIT);
+	  }
+      void Print( FILE *fp) const {
+      	fprintf(fp, "FB--->Icall = ");
+      	tnv.Print( fp );
+      }
+};
 
 struct FB_Info_Switch {
 
@@ -395,7 +411,6 @@ struct FB_Info_Switch {
   }
 };
 
-//added by dxq
 struct FB_Info_Edge {
 
   FB_FREQ freq_edge;    // number of times edge
@@ -416,6 +431,14 @@ struct FB_Info_Value{
       FB_TNV tnv;
       void Print( FILE *fp) const {
       	fprintf(fp, "FB--->Value = ");
+      	tnv.Print( fp );
+      }
+};
+
+struct FB_Info_Stride{
+      FB_TNV tnv;
+      void Print( FILE *fp) const {
+      	fprintf(fp, "FB--->Stride = ");
       	tnv.Print( fp );
       }
 };
@@ -451,9 +474,10 @@ typedef vector<FB_Info_Circuit, mempool_allocator<FB_Info_Circuit> >
 					FB_Circuit_Vector;
 typedef vector<FB_Info_Call, mempool_allocator<FB_Info_Call> >
 					FB_Call_Vector;
+typedef vector<FB_Info_Icall, mempool_allocator<FB_Info_Icall> >
+					FB_Icall_Vector;
 typedef vector<FB_Info_Switch, mempool_allocator<FB_Info_Switch> >
 					FB_Switch_Vector;
-// added by dxq					
 typedef vector<FB_Info_Edge, mempool_allocator<FB_Info_Edge> >
 					FB_Edge_Vector;
 typedef vector<FB_Info_Value, mempool_allocator<FB_Info_Value> >

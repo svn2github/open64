@@ -70,6 +70,7 @@ extern BOOL  VHO_Cselect_Opt;
 extern BOOL  VHO_Iload_Opt;
 extern BOOL  VHO_Istore_Opt;
 extern BOOL  VHO_Call_Opt;
+extern BOOL  VHO_Icall_Devir;
 extern BOOL  VHO_Check_Tree;
 extern BOOL  VHO_Single_Loop_Test;
 extern BOOL  VHO_Use_Do_While;

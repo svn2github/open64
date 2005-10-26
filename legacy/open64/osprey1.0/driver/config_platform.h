@@ -104,7 +104,7 @@ typedef enum {
   PROC_R8K	= 8,
   PROC_R10K	= 10,
   PROC_R12K	= 12,
-  PROC_ITANIUM	= 20
+  PROC_ITANIUM	= 20,
 } PROCESSOR;
 
 extern PLATFORM Platform;	/* Target platform */

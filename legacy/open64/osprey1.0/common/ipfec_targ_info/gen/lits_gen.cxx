@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -40,7 +40,7 @@
 
 #include "lits_gen.h"
 
-static const char description[] = "\
+static const char* const description[] = {"\
 /* ====================================================================\n\
  * ====================================================================\n\
  *\n\
@@ -48,8 +48,8 @@ static const char description[] = "\
  *\n\
  *   A list of all the lit classes used in an ISA.\n\
  *   It exports the following:\n\
- *\n\
- *   typedef (enum) ISA_LIT_CLASS\n\
+ *",
+" *   typedef (enum) ISA_LIT_CLASS\n\
  *       An enumeration of the lit classes.\n\
  *\n\
  *   typedef (struct) ISA_LIT_CLASS_INFO\n\
@@ -59,35 +59,38 @@ static const char description[] = "\
  *   typedef (struct) ISA_LIT_CLASS_VALUE_INFO\n\
  *       Contains info about name and min/max of the LC.\n\
  *       The contents are private.\n\
- *\n\
- *   const char * ISA_LC_Name (ISA_LIT_CLASS lc)\n\
+ *",
+" *   const char * ISA_LC_Name (ISA_LIT_CLASS lc)\n\
  *       Returns name of <lc>.\n\
  *\n\
  *   INT64 ISA_LC_Min (ISA_LIT_CLASS lc)\n\
  *       Returns the minimum value for the specified <lc>. For classes\n\
  *       that have multiple sub-ranges, ISA_LC_Min returns the smallest\n\
  *       minimum of all the sub-ranges.\n\
- *\n\
- *   INT64 ISA_LC_Max (ISA_LIT_CLASS lc)\n\
+ *",
+" *   INT64 ISA_LC_Max (ISA_LIT_CLASS lc)\n\
  *       Returns the maximum value for the specified <lc>. For classes\n\
  *       that have multiple sub-ranges, ISA_LC_Max returns the largest\n\
  *       maximum of all the sub-ranges.\n\
  *\n\
  *   BOOL ISA_LC_Is_Signed (ISA_LIT_CLASS lc)\n\
  *       Returns whether the lit-class <lc> is signed.\n\
- *\n\
- *   BOOL ISA_LC_Value_In_Class (INT64 val, ISA_LIT_CLASS lc)\n\
+ *",
+" *   BOOL ISA_LC_Value_In_Class (INT64 val, ISA_LIT_CLASS lc)\n\
  *       Returns whether <val> is a value that belongs to <lc>.\n\
  *\n\
  * ====================================================================\n\
  * ====================================================================\n\
- */\n";
+ */", NULL};
  
 void Lits_Generator(void *pknobs, GEN_MODE mode)
 {
     FILE *c_file, *h_file, *export_file;
     int index, lc_count, r_index;
-    
+    char suffix_INT64[6] = "LL";
+    #ifdef TARG_WIN
+        strcpy(suffix_INT64, "mI64");
+    #endif
     
     Init_Module_Files(mode, "targ_isa_lits", &c_file, &h_file, &export_file);    
     Emit_Header(h_file, "targ_isa_lits", description); 
@@ -111,8 +114,8 @@ void Lits_Generator(void *pknobs, GEN_MODE mode)
     //  Print ISA_LIT_CLASS_info to c_file
     fprintf(c_file, "const ISA_LIT_CLASS_INFO ISA_LIT_CLASS_info[] = {\n");
     fprintf(c_file, 
-            "  { { { 0x0000000000000000LL, 0x0000000000000000LL } }, 0, 0, \"LC_UNDEFINED\" },\n"
-            );
+            "  { { { 0x0000000000000000%s, 0x0000000000000000%s } }, 0, 0, \"LC_UNDEFINED\" },\n"
+            , suffix_INT64, suffix_INT64);
     for(index=0; index<lc_count; index++)
     {
         EKAPI_RANGE ranges[20];
@@ -121,16 +124,20 @@ void Lits_Generator(void *pknobs, GEN_MODE mode)
         BOOL sign = EKAPI_LitIsSigned(pknobs, index);
         
         // print minimun and maximum of this ranges[]
-        fprintf(c_file, "  { { { 0x%016llxLL, 0x%016llxLL }",
+        fprintf(c_file, "  { { { 0x%016llx%s, 0x%016llx%s }",
                 ranges[0].min,
-                ranges[range_num-1].max        
+                suffix_INT64,
+                ranges[range_num-1].max,  
+                suffix_INT64     
                );
         // Print each range
         for(r_index=0; r_index<range_num; r_index++)
         {
-            fprintf(c_file, ",\n      { 0x%016llxLL, 0x%016llxLL }", 
+            fprintf(c_file, ",\n      { 0x%016llx%s, 0x%016llx%s }", 
                     ranges[r_index].min,
-                    ranges[r_index].max
+                    suffix_INT64,
+                    ranges[r_index].max,
+                    suffix_INT64
                    );
         }
         // Print num, sign ,name

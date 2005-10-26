@@ -86,6 +86,20 @@ get_global_file_array (const IP_FILE_HDR& hdr, INT32& size)
   } 
   return NULL;
 }
+/*--------------------------------------------------------------*/
+/*IPA_get_struct_access_array() is only called before IPA_CALL_GRAPH construction*/
+/*--------------------------------------------------------------*/
+
+SUMMARY_STRUCT_ACCESS*
+IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size)
+{
+  const SUMMARY_FILE_HEADER *summary_header = IP_FILE_HDR_file_header (hdr);
+  if (size = summary_header->Get_struct_access_size()) {
+    return (SUMMARY_STRUCT_ACCESS *)
+      (IP_FILE_HDR_summary (hdr) + summary_header->Get_struct_access_offset ());
+  } 
+  return NULL;
+}
 
 static SUMMARY_GLOBAL*
 get_global_array (const IPA_NODE* node)
@@ -257,7 +271,6 @@ get_feedback_array (const IPA_NODE* node)
   }
   return NULL;
 }
-
 #if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
 
 // --------------------------------------------------------------
@@ -838,5 +851,4 @@ IPA_get_feedback_array (const IPA_NODE* node)
 {
   return get_feedback_array(node); 
 }
-
 #endif  // _STANDALONE_INLINER

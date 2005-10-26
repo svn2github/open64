@@ -81,7 +81,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2c/st2
 #include "st2c.h"
 #include "ty2c.h"
 #include "init2c.h"
-
+#include <map>
 
 /*--------- General purpose macros to get ST attributes ---------------*/
 /*---------------------------------------------------------------------*/
@@ -109,7 +109,8 @@ static void ST2C_use_error(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
 static void ST2C_use_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
 static void ST2C_use_func(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
 static void ST2C_use_const(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
-
+static void ST2C_decl_block(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
+static void ST2C_use_block(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
 
 /* The following maps every ST class to a function that can translate
  * it to C.
@@ -123,7 +124,7 @@ static const ST2C_HANDLER_FUNC ST2C_Decl_Handle[CLASS_COUNT] =
   &ST2C_decl_func,   /* CLASS_FUNC == 0x02 */
   &ST2C_decl_const,  /* CLASS_CONST == 0x03 */
   &ST2C_decl_error,  /* CLASS_PREG == 0x04 */
-  &ST2C_decl_error,  /* CLASS_BLOCK == 0x05 */
+  &ST2C_decl_block,  /* CLASS_BLOCK == 0x05 */
   &ST2C_decl_error   /* CLASS_NAME == 0x06 */
 }; /* ST2C_Decl_Handle */
 
@@ -134,10 +135,11 @@ static const ST2C_HANDLER_FUNC ST2C_Use_Handle[CLASS_COUNT] =
   &ST2C_use_func,      /* CLASS_FUNC == 0x02 */
   &ST2C_use_const,     /* CLASS_CONST == 0x03 */
   &ST2C_use_error,     /* CLASS_PREG == 0x04 */
-  &ST2C_decl_error,    /* CLASS_BLOCK == 0x05 */
+  /*different variables may be merged into one block
+   * so we should add ST2C_decl_block and ST2C_use_block*/
+  &ST2C_use_block,    /* CLASS_BLOCK == 0x05 */
   &ST2C_decl_error     /* CLASS_NAME == 0x06 */
 }; /* ST2C_Use_Handle */
-
 
 /*----- Utilities for combining Fortran common blocks into unions -----
  *
@@ -189,6 +191,10 @@ struct Common_Block
 #define COMMON_BLOCK_HASH_TABLE_SIZE 373
 static COMMON_BLOCK *Common_Block_Hash_Tbl[COMMON_BLOCK_HASH_TABLE_SIZE];
 
+//The params_sts are used to save parameter lists of the current PU
+//So that when preg32,..., are found, 
+//we could translate them back into parameter
+static ST *params_sts[10];
 
 #define TY2C_LIST_BLOCK_SIZE 16
 typedef struct Ty2c_List_Block TY2C_LIST_BLOCK;
@@ -485,11 +491,22 @@ static void
 ST2C_basic_decl(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 {
    TOKEN_BUFFER decl_tokens = New_Token_Buffer();
+
+   //Extern variable only need to be incompletely declared.
+   //Such as:
+   //extern char ar[];
+   //where the size of ar is unknown.
+   //We must set the type to be incomplete.
+   if(ST_sclass(st) == SCLASS_EXTERN)
+   {
+       CONTEXT_set_incomplete_ty2c(context); 
+   }
    
    Append_Token_String(decl_tokens, 
 		       W2CF_Symtab_Nameof_St(st));    /* name */
    TY2C_translate(decl_tokens,
-                  ST_sym_class(st) == CLASS_FUNC ? ST_pu_type(st) : ST_type(st),
+                  ST_sym_class(st) == CLASS_FUNC ? ST_pu_type(st) : 
+                     ST_type(st) ,
                   context); /* type */
 
    if (!Stab_No_Linkage(st))
@@ -505,7 +522,11 @@ ST2C_basic_decl(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 	       ST_sclass(st) == SCLASS_CPLINIT        ||
 	       ST_sclass(st) == SCLASS_EH_REGION      ||
 	       ST_sclass(st) == SCLASS_EH_REGION_SUPP ||
-	       ST_sclass(st) == SCLASS_DISTR_ARRAY)
+	       ST_sclass(st) == SCLASS_DISTR_ARRAY ||
+	       //static function declared as local
+               ST_sym_class(st) == CLASS_BLOCK ||
+               ST_sym_class(st) == CLASS_FUNC &&
+               ST_export(st) == EXPORT_LOCAL )
       {
 	 Prepend_Token_String(decl_tokens, "static");
       }
@@ -513,6 +534,10 @@ ST2C_basic_decl(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 	       ST_sclass(st) == SCLASS_TEXT)
       {
 	 Prepend_Token_String(decl_tokens, "extern");
+      }
+      else if (ST_sclass(st) == SCLASS_COMMON )
+      {
+	 Prepend_Token_String(decl_tokens, "COMMON");
       }
    }
 
@@ -557,6 +582,59 @@ ST2C_decl_error(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 	   ("ST2C cannot declare this ST_sym_class (%d)", ST_sym_class(st)));
 } /* ST2C_decl_error */
 
+/*function used for declare & use a block
+ * There maybe may symbols merged into one symbol (a BLOCK),
+ * Since the compiler may still use the old symbol name or
+ * use the name of BLOCK and an offset in the BLOCK. 
+ * All access to those symbols will be translated into access of the BLOCK with
+ * an offset. 
+ * And block will be defined as a buffer with type BYTE[size of BLOCK]
+ * We will use the name of the first symbol in the BLOCK 
+ * as the name of the BLOCK. 
+ * */
+
+/*This function is used to find the first symbol in a BLOCK, 
+ * and calculate the size of the BLOCK*/
+static const ST *Find_first_st_and_size_for_block(const ST *st,INT& size)
+{
+   Is_True(ST_sym_class(st) == CLASS_BLOCK, ("expected CLASS_BLOCK ST"));
+   SYMTAB_IDX level=ST_level(st);
+   ST *result_st=NULL;
+   ST *first_st;
+   INT i;
+   size=0;
+   FOREACH_SYMBOL(level,first_st,i)
+   {
+      if(ST_sym_class(first_st) != CLASS_BLOCK &&
+         ST_base_idx(first_st) == ST_st_idx(st) )
+      {
+         if(result_st==NULL)
+             result_st=first_st;
+         if(size<ST_ofst(first_st)+TY_size(ST_type(first_st))){
+            size = ST_ofst(first_st)+TY_size(ST_type(first_st));
+         }
+      }
+   }
+   Is_True(result_st!=NULL, ("Cannot find statement use the block as baseaddress"));
+   return result_st;
+}
+
+static void
+ST2C_decl_block(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+{
+   char buffer[10];
+   INT size;
+   const ST *result_st=Find_first_st_and_size_for_block(&St_Table[ST_base_idx(st)],size);
+   if(ST_st_idx(result_st)!=ST_st_idx(st))
+       return;
+   Append_Token_String(tokens, "char ");
+   Append_Token_String(tokens, W2CF_Symtab_Nameof_St(result_st));
+   Append_Token_Special(tokens, '[');
+   if(size<=0)size=1;
+   sprintf(buffer,"%d",size);
+   Append_Token_String(tokens,buffer);
+   Append_Token_Special(tokens,']');
+}
 
 static void 
 ST2C_decl_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
@@ -564,15 +642,23 @@ ST2C_decl_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
    INITO_IDX inito;
    Is_True(ST_sym_class(st)==CLASS_VAR, ("expected CLASS_VAR ST"));
 
-   if (ST_is_initialized(st) && !Stab_No_Linkage(st)) /* initialize */
+   if( ST_sclass(st)!= SCLASS_FORMAL&&ST_sclass(st)!=SCLASS_FORMAL_REF&&
+        ST_base_idx(st)!=0 && ST_base_idx(st)!=ST_st_idx(st)&&
+        ST_level(st)>GLOBAL_SYMTAB)
+   {//Find local symbol that to be part of a BLOCK. 
+    //Declare the bock instead of the symbol.
+       ST2C_decl_block(tokens, st, context);
+   }
+   else if (ST_is_initialized(st) && !Stab_No_Linkage(st)) /* initialize */
    {
       ST2C_basic_decl(tokens, st, context); /*type, name, storage class*/
       inito = Find_INITO_For_Symbol(st);
-      if (inito != 0)
+      if (inito != 0 && ST_sclass(st)!=SCLASS_EXTERN &&ST_sclass(st)!=SCLASS_TEXT)
       {
 	 Append_Token_Special(tokens, '=');
 	 INITO2C_translate(tokens, inito);
       }
+      
    }
    else if (ST_sclass(st) == SCLASS_FORMAL_REF)
    {
@@ -626,18 +712,53 @@ ST2C_use_error(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 	   ("ST2C cannot use an ST_sym_class (%d)", ST_sym_class(st)));
 } /* ST2C_use_error */
 
+static const ST *Find_first_st_for_block(const ST *st)
+{
+   Is_True(ST_sym_class(st) == CLASS_BLOCK, ("expected CLASS_BLOCK ST"));
+   SYMTAB_IDX level=ST_level(st);
+   ST *first_st;
+   INT i;
+   FOREACH_SYMBOL(level,first_st,i)
+   {
+      if(ST_sym_class(first_st) != CLASS_BLOCK &&
+         ST_base_idx(first_st) == ST_st_idx(st) )
+      return first_st;
+   }
+   Is_True(FALSE, ("Cannot find statement use the block as baseaddress"));
+   return NULL;
+}
+
+static void
+ST2C_use_block(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+{
+  const ST *first_st;
+  Is_True(ST_sym_class(st) == CLASS_BLOCK, ("expected CLASS_BLOCK ST"));
+  first_st = Find_first_st_for_block(st);
+  Append_Token_String(tokens, W2CF_Symtab_Nameof_St(first_st));
+
+  if (!Stab_External_Def_Linkage(first_st))
+      Set_BE_ST_w2fc_referenced(first_st);
+}
 
 static void 
 ST2C_use_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 {
    Is_True(ST_sym_class(st)==CLASS_VAR, ("expected CLASS_VAR ST"));
-
+#if 0
    if (Stab_Is_Common_Block(st))
    {
       /* Do not mark the variable as referenced, since we do not
        * want to declare it in the local scope.
        */
       Append_Token_String(tokens, ST2C_Get_Common_Block_Name(st));
+   }
+   else
+#endif
+   if( ST_sclass(st)!= SCLASS_FORMAL&&ST_sclass(st)!=SCLASS_FORMAL_REF&&
+         ST_base_idx(st)!=0 && ST_base_idx(st)!=ST_st_idx(st)&&
+         ST_level(st)>GLOBAL_SYMTAB)
+   {
+       ST2C_use_block(tokens, &St_Table[ST_base_idx(st)], context);
    }
    else
    {
@@ -769,7 +890,7 @@ ST2C_func_header(TOKEN_BUFFER  tokens,
    INT          param, first_param;
    TY_IDX       funtype = ST_pu_type(st);
    BOOL         has_prototype = TY_has_prototype(funtype);
-   
+
    Is_True((ST_sclass(st) == SCLASS_TEXT  
      || ST_sclass(st) == SCLASS_EXTERN) && TY_Is_Function(funtype),
      ("Illegal ST_sclass for function"));
@@ -787,6 +908,17 @@ ST2C_func_header(TOKEN_BUFFER  tokens,
 
    /* Append the parameter list */
    Append_Token_Special(header_tokens, '(');
+
+  //saved parameter list for translating preg32, ... into parameters.
+  for(param= first_param; params[param] != NULL; param++)
+  {
+      if(param-first_param<8){
+          params_sts[param-first_param]=params[param];
+      }
+  }
+  for(;param-first_param<=8;param++){
+       params_sts[param-first_param]=NULL;
+  }
 
    /* Emit non_prototype parameter names, if necessary */
    if (!has_prototype)
@@ -857,6 +989,11 @@ ST2C_func_header(TOKEN_BUFFER  tokens,
    Append_And_Reclaim_Token_List(tokens, &header_tokens);
 } /* ST2C_func_header */
 
+extern void
+WN2C_prepend_cast(TOKEN_BUFFER tokens,          /* Expression to be cast */
+                  TY_IDX       cast_to,         /* Cast expr to this ty */
+                  BOOL         pointer_to_type) /* TYs are pointed to */
+;
 
 void
 ST2C_Use_Preg(TOKEN_BUFFER tokens,
@@ -868,18 +1005,99 @@ ST2C_Use_Preg(TOKEN_BUFFER tokens,
     * preg in the current PU context unless it is already declared.
     */
    const char *preg_name;
+   BOOL bParamReg;
+   TOKEN_BUFFER preg_tokens;
+   preg_tokens = New_Token_Buffer();
 
    preg_ty = PUinfo_Preg_Type(preg_ty, preg_idx);
    preg_name = W2CF_Symtab_Nameof_Preg(preg_ty, preg_idx);
 
+   //The symbol could be a parameter register if its pred_idx is
+   //more than 32 and less than Last_Dedicated_Preg_Offset
+   bParamReg=(preg_idx>=32&&preg_idx<Last_Dedicated_Preg_Offset);
+
    /* Declare the preg, if it has not already been declared */
-   if (!PUinfo_Is_Preg_Declared(preg_ty, preg_idx))
+   if (!bParamReg&&!PUinfo_Is_Preg_Declared(preg_ty, preg_idx))
    {
-      ST2C_Define_Preg(preg_name, preg_ty, context);
-      PUinfo_Set_Preg_Declared(preg_ty, preg_idx);
+	ST2C_Define_Preg(preg_name, preg_ty, context);
+	PUinfo_Set_Preg_Declared(preg_ty, preg_idx);
+   }
+   if(bParamReg){
+        ST *param = NULL;
+	INT offset=0;
+        //If it is an integer parameter.
+        if(preg_idx>=32&&preg_idx<40){
+	//There's at most 8 integer parameter in register
+	//Find the parameter and offset inside the parameter.
+	//A parameter may be saved into more than 1 register 
+	//when the size of it is more than 8 bytes.
+	//The code may be machine dependent.
+	     INT i,ic=0,prec;
+	     for(i=0;i<8;++i){
+		     if(params_sts[i]==0)
+			     break;
+		     prec=ic;
+		     TY_IDX ty=ST_type(params_sts[i]);
+		     INT ty_size= TY_size(ty);
+		     ic=prec+(ty_size+7)/8;
+		     if(ic>preg_idx-32)
+			     break;
+	     }
+             if(params_sts[i]!=0)
+	     {
+		//find the parameter and offset inside the param by word.
+                param = params_sts[i];
+		offset = (preg_idx-32) - prec;
+	     }
+//                preg_name = W2CF_Symtab_Nameof_St(params_sts[preg_idx-32]);
+        }
+        //Else if it is an floating pointer parameter
+        else if(preg_idx>=136&&preg_idx<144){
+             INT i,fc;
+	     for(i=0,fc=0;i<8;++i){
+                if(params_sts[i]==0)
+                   break;
+                TY_IDX ty=ST_type(params_sts[i]);
+		if(TY_Is_Scalar(ty)&&
+                     (TY_mtype(ty)==MTYPE_F4||TY_mtype(ty)==MTYPE_F8||
+                       TY_mtype(ty)==MTYPE_F10))
+                {
+                   fc++;
+                   if(fc==preg_idx-135){
+                       param = params_sts[i];
+//                       preg_name = W2CF_Symtab_Nameof_St(params_sts[i]);
+                       break;
+                   }
+                }
+             }
+        }
+        if(param){
+	   //Use parameter if its a parameter register
+	   if(!TY_Is_Structured(ST_type(param)))
+	   {
+           	Append_Token_String(preg_tokens,W2CF_Symtab_Nameof_St(param));
+	   }
+	   else
+	   {
+		//if part of a parameter, translate into 
+		   // (*((_UINT64 *)&param+offset))
+		   // where offset is counted by word.
+		char buf[20];
+		Append_Token_String(preg_tokens,W2CF_Symtab_Nameof_St(param));
+		Prepend_Token_String(preg_tokens,"(*((_UINT64 *)&");
+		sprintf(buf,"+%d))",offset);
+		Append_Token_String(preg_tokens,buf);
+	   }
+           WN2C_prepend_cast(preg_tokens,preg_ty,FALSE);
+        }else{
+           Append_Token_String(preg_tokens,preg_name);
+        }
+   }else{
+        Append_Token_String(preg_tokens,preg_name);
    }
 
-   Append_Token_String(tokens, preg_name);
+   Append_And_Reclaim_Token_List(tokens,&preg_tokens);
+//   Append_Token_String(tokens, preg_name);
 } /* ST2C_Use_Preg */
 
 

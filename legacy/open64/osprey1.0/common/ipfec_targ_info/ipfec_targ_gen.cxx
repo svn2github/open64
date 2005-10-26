@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -60,58 +60,74 @@
 #include "proc_gen_new.h"
 #include "proc_properties_gen_new.h"
 
+void Generate_MM(char *knobf, char *eknobf, MACHINE_TYPE type)
+{
+    FILE *fp1, *fp2;
+    void *pknobs;
+
+    fp1  = fopen( knobf, "r" );
+    fp2  = fopen( eknobf, "r" );
+    if ((fp1 == NULL)||(fp2 == NULL))
+    {
+        printf("ERROR: can't open files %s and %s\n", knobf, eknobf);
+        exit(-1);
+    } 
+
+    // Initialize
+    pknobs = KAPI_Initialize(fp2,fp1,NULL);
+    pknobs = KAPI_ia64_Initialize(pknobs);
+    if (fp2 != NULL) fclose(fp2);
+    if (fp1 != NULL) fclose(fp1);
+
+    if (type == MCK_TYPE) {
+        Issue_Port_Generator(pknobs, GEN_MODE_FILE, type);
+        Itanium_Generator(pknobs, GEN_MODE_FILE, type);
+        Bypass_Generator(pknobs, GEN_MODE_FILE, type);
+    } else {
+
+        // Generate Tables
+        Opcode_Generator(pknobs, GEN_MODE_FILE);
+        Issue_Port_Generator(pknobs, GEN_MODE_FILE);
+        Subset_Generator(pknobs, GEN_MODE_FILE);
+        Properties_Generator(pknobs, GEN_MODE_FILE);
+        Enums_Generator(pknobs, GEN_MODE_FILE);
+        Lits_Generator(pknobs, GEN_MODE_FILE);
+        Bundle_Generator(pknobs, GEN_MODE_FILE);
+        Register_Generator(pknobs, GEN_MODE_FILE);
+        Operands_Generator(pknobs, GEN_MODE_FILE);
+        Itanium_Generator(pknobs, GEN_MODE_FILE);
+        Bypass_Generator(pknobs, GEN_MODE_FILE);
+        Proc_Generator(pknobs, GEN_MODE_FILE);
+        Proc_Properties_Generator(pknobs, GEN_MODE_FILE);
+
+    }
+    //  release memory
+    KAPI_Finalize(pknobs);
+}
+
 int main( int argc, char *argv[] )
 {
     char src1[200],src2[200];
     int i;
-    FILE *fp1, *fp2;
-    void *pknobs;
-    char *str_knob, *str_pro64, *str;
-    char *errmsg;
  
     
     // Read arguments from command line 
     if ( argc < 2 ) {
         strcpy( src1,"v26-itanium-41-external.knb" );
         strcpy( src2,"v11-itanium-extra.knb");
-        
     }
     else {
     	strcpy( src1, argv[1] );
     	strcpy( src2, argv[2] );
     }
-    
-    fp1  = fopen( src1, "r" );
-    fp2  = fopen( src2, "r" );
-    if ((fp1 == NULL)||(fp2 == NULL))
-    {
-        printf("ERROR: can't open files %s and %s\n", src1, src2);
-        return -1;
-    } 
-    
-    // Initialize
-    pknobs = KAPI_Initialize(fp2,fp1,NULL);
-    pknobs = KAPI_ia64_Initialize(pknobs);
-    if (fp2 != NULL) fclose(fp2);
-    if (fp1 != NULL) fclose(fp1);
-    
-   // Generate Tables
-    Opcode_Generator(pknobs, GEN_MODE_FILE);
-    Issue_Port_Generator(pknobs, GEN_MODE_FILE);
-    Subset_Generator(pknobs, GEN_MODE_FILE);
-    Properties_Generator(pknobs, GEN_MODE_FILE);
-    Enums_Generator(pknobs, GEN_MODE_FILE);
-    Lits_Generator(pknobs, GEN_MODE_FILE);
-    Bundle_Generator(pknobs, GEN_MODE_FILE);
-    Register_Generator(pknobs, GEN_MODE_FILE);
-    Operands_Generator(pknobs, GEN_MODE_FILE);
-    Itanium_Generator(pknobs, GEN_MODE_FILE);
-    Bypass_Generator(pknobs, GEN_MODE_FILE);
-    Proc_Generator(pknobs, GEN_MODE_FILE);
-    Proc_Properties_Generator(pknobs, GEN_MODE_FILE);
+    Generate_MM(src1, src2, ITM_TYPE);
+ 
+    printf("Use Mckinley knobsfile to generate machine model!\n");
+    strcpy( src1,"mckinley_knobsfile.knb" );
+    strcpy( src2,"v12-itanium-extra.knb");
+    Generate_MM(src1, src2, MCK_TYPE);
 
-    //  release memory
-    KAPI_Finalize(pknobs);
+
     printf("Leaving creat machine model\n"); 
 }
 

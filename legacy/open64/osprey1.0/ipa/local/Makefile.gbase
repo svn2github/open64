@@ -35,7 +35,7 @@
 #
 #  Makefile.base for ipl
 #
-OPTIMIZER = -O0
+
 #----------------------------------------------------------------------
 #  Set environment variables
 #
@@ -157,7 +157,8 @@ IPA_LOCAL_CXX_SRCS = \
 	ipl_tlog.cxx \
 	ipl_outline.cxx \
 	init.cxx \
-	ipl_elfsym.cxx
+	ipl_elfsym.cxx  \
+	ipl_reorder.cxx
 
 IPA_ANALYZE_SRCS = \
 

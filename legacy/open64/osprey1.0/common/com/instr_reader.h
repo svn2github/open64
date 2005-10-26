@@ -95,6 +95,7 @@ typedef vector<FB_Info_Branch>	FB_Branch_Vector;
 typedef vector<FB_Info_Loop>	FB_Loop_Vector;
 typedef vector<FB_Info_Circuit> FB_Circuit_Vector;
 typedef vector<FB_Info_Call>	FB_Call_Vector;
+typedef vector<FB_Info_Icall>	FB_Icall_Vector;
 typedef vector<FB_Info_Switch>	FB_Switch_Vector;
 typedef vector<FB_Info_Edge>    FB_Edge_Vector;
 typedef vector<FB_Info_Value>   FB_Value_Vector;
@@ -109,13 +110,16 @@ struct PU_Profile_Handle
     FB_Loop_Vector	Loop_Profile_Table;
     FB_Circuit_Vector	Short_Circuit_Profile_Table;
     FB_Call_Vector	Call_Profile_Table;
-    //added by dxq
+    FB_Icall_Vector	Icall_Profile_Table;
     FB_Edge_Vector  Edge_Profile_Table;
-    FB_Value_Vector Value_Profile_Table; 
+    FB_Value_Vector Value_Profile_Table;
+    FB_Value_Vector Stride_Profile_Table; 
   
     INT32 checksum;
     
     char *pu_name;
+    INT32 pu_size;
+    UINT64 runtime_fun_address;
 
 #ifdef _BUILD_INSTR
 
@@ -193,11 +197,18 @@ struct PU_Profile_Handle
 	return Call_Profile_Table;
     }
   
+    FB_Icall_Vector& Get_Icall_Table () {
+	return Icall_Profile_Table;
+    }
+  
     FB_Edge_Vector& Get_Edge_Table() {
   return Edge_Profile_Table;
     }
     FB_Value_Vector& Get_Value_Table() {
        return Value_Profile_Table;
+    }
+    FB_Value_Vector& Get_Stride_Table() {
+       return Stride_Profile_Table;
     }
 
 };
@@ -240,11 +251,17 @@ extern void read_call_profile(    PU_PROFILE_HANDLE pu_handle,
 				  Pu_Hdr& pu_hdr_entry,
 				  long pu_ofst, FILE *fp, char *fname);
 
+extern void read_icall_profile(    PU_PROFILE_HANDLE pu_handle, 
+				  Pu_Hdr& pu_hdr_entry,
+				  long pu_ofst, FILE *fp, char *fname);
+
 extern void read_edge_profile(      PU_PROFILE_HANDLE pu_handle, 
           Pu_Hdr& pu_hdr_entry,
           long pu_ofst, FILE *fp, char *fname);
 
 extern void read_value_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
+                    long pu_ofst, FILE *fp, char *fname);
+extern void read_stride_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
                     long pu_ofst, FILE *fp, char *fname);
           
 #ifndef _BUILD_INSTR
@@ -339,10 +356,14 @@ extern size_t Get_Call_Table_Size(PU_PROFILE_HANDLE pu_handle);
 
 extern FB_Info_Call& Get_Call_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id);
 
+extern FB_Info_Icall& Get_Icall_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id);
+
 extern size_t Get_Edge_Table_Size(PU_PROFILE_HANDLE pu_handle);
 
 extern FB_Info_Edge& Get_Edge_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id);
 extern FB_Info_Value& Get_Value_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id);
+extern FB_Info_Value& Get_Stride_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id);
+
 
 #endif // _BUILD_INSTR
 

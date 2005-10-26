@@ -94,6 +94,7 @@
 #ifdef __PROCESS_H__
 #pragma weak create_tmpdir
 #pragma weak create_unique_file
+#pragma weak create_tmp_file
 #pragma weak add_to_tmp_file_list
 #pragma weak tmpdir
 #pragma weak get_command_line

@@ -646,6 +646,16 @@ public:
   };
 
 
+  UINT16 Get_wn_count () {
+    SUMMARY_FEEDBACK* fb = Get_feedback();
+    return (fb? fb->Get_wn_count(): 0);
+  };
+
+  FB_FREQ Get_cycle_count_2 () {
+    SUMMARY_FEEDBACK* fb = Get_feedback();
+    return (fb? fb->Get_cycle_count_2(): FB_FREQ_UNKNOWN);
+  };
+
   FB_FREQ Get_cycle_count () {
     SUMMARY_FEEDBACK* fb = Get_feedback();
     return (fb? fb->Get_cycle_count (): FB_FREQ_UNKNOWN);
@@ -685,6 +695,7 @@ private:
   mUINT32 _flags;			// various attributes of edge
   mUINT32 _readonly_actuals;		// bitmap for readonly actual param.
   mUINT32 _pass_not_saved_actuals;	// bitmap for addr_passed_but_not_saved
+  UINT32 _reason_ID; float _reason_data; 	//IPA_TRACE_TUNING
 
 public:
   // constructor
@@ -698,10 +709,16 @@ public:
     _cprop_annot(0),
     _flags(0),
     _readonly_actuals(0),
-    _pass_not_saved_actuals(0)
+    _pass_not_saved_actuals(0),
+	_reason_ID(0),
+	_reason_data(0.0)
   {}
 
     
+  UINT32 reason_id() {return _reason_ID;}
+  float reason_data() {return _reason_data;}
+  void Set_reason_id(UINT32 i) { _reason_ID = i;}
+  void Set_reason_data(float i) { _reason_data = i;}
   // access functions
   void Set_Edge_Index (EDGE_INDEX i)	{ _edge_index = i; }
   EDGE_INDEX Edge_Index () const	{ return _edge_index; }
@@ -938,6 +955,11 @@ public:
   // Print all node indices in the specified order
   void Print (FILE*, TRAVERSAL_ORDER);
 
+
+  void Print_vobose (FILE*);
+  void Print_vobose (FILE*, TRAVERSAL_ORDER);
+
+  
   // map callsites in the caller to WN nodes
   void Map_Callsites(IPA_NODE* caller);
 
@@ -994,6 +1016,12 @@ extern BOOL IPA_Call_Graph_Built;
 extern void IPA_Process_File (IP_FILE_HDR& hdr);
 extern void Build_Call_Graph ();
 
+//INLINING_TUNING^
+extern UINT32 Orig_Prog_WN_Count;
+extern UINT32 Prog_WN_Count;
+extern UINT32 Total_Dead_Function_WN_Count;
+extern FB_FREQ Total_cycle_count_2;
+//INLINING_TUNING$
 
 // ====================================================================
 //

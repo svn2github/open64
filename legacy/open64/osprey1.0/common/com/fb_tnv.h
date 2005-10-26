@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (C) 2000-2003, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -29,24 +29,27 @@
 #define fb_tnv_INCLUDED
 
 #include "defs.h"
-#ifndef ERRORS_INCLUDED
-#include "errors.h"
-#endif
 
 struct FB_TNV{
 	UINT32 _id; // instruction id.
 	INT32 _flag; //0 for integer type, 1 for float type.
 	//Note: for "float" type, we just put it here as an "integer". Because they have same size.
+	UINT64 _address; //record previous address
 	UINT64 _exec_counter; // how many times does this instruction executed.
 	UINT64 _clear_counter;
+	UINT64 _sample_counter; //do stride profile sample 
+	UINT64 _stride_steps;
+	UINT64 _zero_std_counter;
 	UINT64 _values[10]; //top 10 values. 
 	UINT64 _counters[10]; //counters for top 10 values.
 
+    FB_TNV():_address(0),_sample_counter(0),_zero_std_counter(0),_stride_steps(0){}
+    
 	void Print( FILE *fp ) const {
-		fprintf(fp, "id(%u), exec_counter(%llu), flag(%d), 
-		(values(counters)=( %llu(%llu), %llu(%llu), %llu(%llu), %llu(%llu), %llu(%llu), 
-		%llu(%llu), %llu(%llu), %llu(%llu), %llu(%llu), %llu(%llu) ) )\n", 
-		_id, _exec_counter, _flag, _values[0], _counters[0] , _values[1], _counters[1], 
+		fprintf(fp, "id(%u), exec_counter(%llu), flag(%d), zero_std_counter(%llu), 
+		(values(counters)=( %lld(%llu), %lld(%llu), %lld(%llu), %lld(%llu), %lld(%llu), 
+		%lld(%llu), %lld(%llu), %lld(%llu), %lld(%llu), %lld(%llu) ) )\n", 
+		_id, _exec_counter, _flag, _zero_std_counter, _values[0], _counters[0] , _values[1], _counters[1], 
 		_values[2], _counters[2], _values[3], _counters[3], _values[4], _counters[4], 
 		_values[5], _counters[5], _values[6], _counters[6], _values[7], _counters[7], 
 		_values[8], _counters[8], _values[9], _counters[9]  

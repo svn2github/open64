@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Intel Corporation
+  Copyright (C) 2000-2003, Intel Corporation
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -48,14 +48,14 @@
 #include "ekapi_ia64.h" //our access layer of MD and KAPI headfile
 #include "assert.h"
 
-static const char description[] = "\
+static const char * const description[] = {"\
 /* ====================================================================\n\
  * ====================================================================\n\
  *\n\
  * Description:\n\
- */";
+ */", NULL};
 
-void Issue_Port_Generator(void *pknobs, GEN_MODE mode)
+void Issue_Port_Generator(void *pknobs, GEN_MODE mode, MACHINE_TYPE type)
 {
     FILE *fpc, *fph, *fp_export;
     char fname[512] = "targ_issue_port";
@@ -65,17 +65,38 @@ void Issue_Port_Generator(void *pknobs, GEN_MODE mode)
     int ipcount;
     int value=0;
     kapi_fu_t fu; //kapi type
-    
-    Init_Module_Files(mode, "targ_issue_port", &fpc, &fph, &fp_export, 1);
+   
+    if (type == MCK_TYPE) 
+        Init_Module_Files(mode, "targ_issue_port_mck", &fpc, &fph, &fp_export, 1);
+    else
+        Init_Module_Files(mode, "targ_issue_port", &fpc, &fph, &fp_export, 1);
     Emit_Header(fph, "targ_issue_port", description, 1);
 
     fprintf(fph, "#include \"topcode.h\" \n");
     fprintf(fph, "#define ISA_MAX_ISSUE_BUNDLES (%d) "
                  "// Machine width in bunldes\n",
                   KAPI_BundleIssueWidth(pknobs,0));
+    fprintf(fpc, "#include \"stdio.h\" \n");
     fprintf(fpc, "#include \"%s.h\" \n", fname);
 
-    fprintf(fph, "enum ISSUE_PORT{\n");
+    fprintf(fph, "typedef INT ISSUE_PORT;\n");
+    fprintf(fph, "extern ISSUE_PORT ");
+    // dump enum to c file
+    for (i=0 ; i< KAPI_EnumCardinality(pknobs, "ut_t"); i++)
+    {
+        buf  = KAPI_EnumName(pknobs, i, "ut_t");
+        buf += strlen("ut") ; //Skip prefix "ut"
+        for (j=0; j< KAPI_cportCount4ut( pknobs, 0, (kapi_ut_t)i ); j++)
+        {
+             
+             fprintf(fpc, "ISSUE_PORT  ip_%s%d = %d;\n", buf, j, value);
+             fprintf(fph, "ip_%s%d, ", buf, j);
+             value++;
+        }
+    }
+    fprintf(fpc, "ISSUE_PORT  ip_invalid = %d; \n ISSUE_PORT ip_number = %d;\n", value, value);
+    fprintf(fph, "ip_invalid, ip_number;\n");
+ 
     fprintf(fpc, "char *issue_port_name[] = {\n");
     for (i=0 ; i< KAPI_EnumCardinality(pknobs, "ut_t"); i++)
     {
@@ -83,14 +104,11 @@ void Issue_Port_Generator(void *pknobs, GEN_MODE mode)
         buf += strlen("ut") ; //Skip prefix "ut"
         for (j=0; j< KAPI_cportCount4ut( pknobs, 0, (kapi_ut_t)i ); j++)
         {
-             fprintf(fph, "  ip_%s%d = %d,\n", buf, j, value);
              fprintf(fpc, "  \"%s%d\",\n", buf, j);
              value++;
         }
     }
-    fprintf(fph, "  ip_invalid = %d, \n  ip_number = %d\n", value, value);
     fprintf(fpc, "  \"invalid\" \n};\n\n");
-    fprintf(fph, "};\n\n");
 
     fprintf(fph, "extern char *issue_port_name[];\n");
     fprintf(fph, "inline char *Issue_Port_Name( const ISSUE_PORT ip)\n"
@@ -113,27 +131,61 @@ void Issue_Port_Generator(void *pknobs, GEN_MODE mode)
     }
     fprintf(fpc, "  ip_invalid\n};\n");
 
-    fprintf(fph, "struct PORT_SET{\n"
+    fprintf(fph, "class PORT_SET{\n"
               "   INT body;\n\n"
+	      "public:\n"
               "   PORT_SET() : body(0) {}\n"
               "   PORT_SET(INT b): body(b) {}\n"
               "   PORT_SET(const PORT_SET& p): body(p.body) {}\n\n"
               "   PORT_SET& operator=(PORT_SET p){ body=p.body; return *this; }\n\n"
               "   PORT_SET operator+(PORT_SET p) const\n"
               "       { return PORT_SET(body|p.body); }\n"
+              "   PORT_SET operator&(PORT_SET p) const\n"
+              "       { return PORT_SET(body&p.body); }\n"
               "   PORT_SET operator+(ISSUE_PORT p) const\n"
               "       { return PORT_SET(body|(1<<p)); }\n\n"
               "   PORT_SET operator-(PORT_SET p) const\n"
               "       { return PORT_SET(body&~(p.body)); }\n"
               "   PORT_SET operator-(ISSUE_PORT p) const\n"
               "       { return PORT_SET(body&~(1<<p));}\n\n"
-              "   operator INT() const{ return body; }\n"
+              "   operator INT() const{return body; }"
+              "   INT Body() const{ return body; }\n"
               "   BOOL In(ISSUE_PORT p) const { return ((1<<p)&body)!=0;}\n"
               "   BOOL Is_Subset_Of(PORT_SET p) const { return (~body)|(p.body);}\n"
+              "   void Print(FILE *fp, char *str);\n"
+              "   ISSUE_PORT First_IP();\n"
+              "   ISSUE_PORT Last_IP();\n"
+              "   INT Count();\n"
               "};\n\n" );
 
 	// Print M, I, F, B PORT SET
     fprintf(fph, "extern PORT_SET ");
+    fprintf(fpc, 
+              "void PORT_SET::Print(FILE *fp, char *str) {\n"
+              "    BOOL first=true;\n"
+              "    for (INT i=0; i<ip_invalid; i++)\n"
+              "        if (body & 1<<i) {\n"
+              "            if (!first) fprintf(fp, str); /* print string to seperate*/\n"
+              "            fprintf(fp, Issue_Port_Name((ISSUE_PORT)i));\n"
+              "            first = false;\n"
+              "        }\n"
+              "}\n"
+              "ISSUE_PORT PORT_SET::First_IP() {\n"
+              "    for (INT i=0; i<ip_invalid; i++)\n"
+              "        if (body & 1<<i) return (ISSUE_PORT)i;\n"
+              "    return ip_invalid;\n"
+              "}\n"
+              "ISSUE_PORT PORT_SET::Last_IP() {\n"
+              "    for (INT i=ip_invalid; i>=0; i--)\n"
+              "        if (body & 1<<i) return (ISSUE_PORT)i;\n"
+              "    return ip_invalid;\n"
+              "}\n"
+              "INT PORT_SET::Count() {\n"
+              "    INT count = 0;\n"
+              "    for (INT i=ip_invalid; i>=0; i--)\n"
+              "        if (body & 1<<i) count++;\n"
+              "    return count;\n"
+              "}\n");
     j = 0; /*keeps shift number*/
     for (i=0 ; i< KAPI_EnumCardinality(pknobs, "ut_t"); i++)
     {
@@ -227,7 +279,13 @@ void Issue_Port_Generator(void *pknobs, GEN_MODE mode)
         }
     }
 
-    fprintf(fpc, "\n};");
+    fprintf(fpc, "\n};\n");
+    // dump processor version which used by ptn_table
+    if (type == MCK_TYPE)
+        fprintf(fpc, "INT PROCESSOR_Version=2;\n");
+    else
+        fprintf(fpc, "INT PROCESSOR_Version=1;\n");
+    fprintf(fph, "extern INT PROCESSOR_Version;\n");
     Emit_Tailer(fph, 1);
     Close_Module_Files(mode, &fpc, &fph, &fp_export);
 }//end of Issue_Port_Generator

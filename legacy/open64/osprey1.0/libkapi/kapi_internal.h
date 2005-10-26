@@ -99,7 +99,7 @@ names
 #include "kapi.h"
 #include "kapi_ia64.h"
 #include "kapi_bv.h"
-#include <malloc.h>
+
 
 #ifdef _WIN32
  #define strdup _strdup

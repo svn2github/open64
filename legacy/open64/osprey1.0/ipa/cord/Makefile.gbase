@@ -35,7 +35,7 @@
 #
 #  Makefile.base for inline
 #
-OPTIMIZER = -O0
+
 #----------------------------------------------------------------------
 #  Set environment variables
 #
@@ -117,6 +117,7 @@ SRC_DIRS = \
 
 HEADER_DIRS = \
   $(IPA_CORD_DIR)   \
+  .
 
 IPA_CORD_CXX_SRCS = \
 	ipa_cord.cxx \
@@ -161,8 +162,11 @@ else
 LLDLIBS = 
 endif
 
-default: $(TARGETS) 
-
+default: first $(TARGETS) 
+first: 
+	-@rm -f ./lib_phase_dir.h; ln -s $(BUILD_TOT)/common/com/lib_phase_dir.h . 
+	-@rm -f ./cord_prologue; ln -s ../../ipa/cord/cord_prologue . 
+	-@rm -f ./cord_epilogue; ln -s ../../ipa/cord/cord_epilogue .
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is
@@ -183,8 +187,6 @@ else
 endif
 
 gen_cord: $(IPA_CXX_OBJS)
-	cp ../../ipa/cord/previous .
-	cp ../../ipa/cord/bottom .
 	$(C++F) -o $@ $(IPA_CXX_OBJS)  $(LDFLAGS)
 
 

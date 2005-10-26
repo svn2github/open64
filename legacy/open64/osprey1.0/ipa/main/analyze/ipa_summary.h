@@ -74,6 +74,7 @@ class LOOPINFO;
 class TERM;
 class IVAR;
 class SCALAR_INFO;
+class SUMMARY_STRUCT_ACCESS;
 
 class IPL_SUMMARY_PTRS
 {
@@ -124,6 +125,9 @@ SUMMARY_SYMBOL*
 IPA_get_symbol_file_array (const IP_FILE_HDR& hdr, INT32& size);
 SUMMARY_GLOBAL* 
 IPA_get_global_file_array (const IP_FILE_HDR& hdr, INT32& size);
+SUMMARY_STRUCT_ACCESS*
+IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size);
+
 
 // ---------------------------------------------------------------
 // Access to the SUMMARY arrays in the inliner always goes through
@@ -167,6 +171,8 @@ SUMMARY_FORMAL*
 IPA_get_formal_file_array (const IP_FILE_HDR& hdr, INT32& size);
 SUMMARY_ACTUAL* 
 IPA_get_actual_file_array (const IP_FILE_HDR& hdr, INT32& size);
+SUMMARY_STRUCT_ACCESS*
+IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size);
 
 // ----------------------------------------------------------------
 // Access to the following SUMMARY arrays will go through the file

@@ -89,6 +89,13 @@
 #include "ipl_summary.h"                // summary info data structures
 #endif // ipl_summary_INCLUDED
 
+#ifndef CXX_MEMORY_INCLUDED
+#include "cxx_memory.h" //CXX_DELETE()  for reorder
+#endif
+
+#ifndef ipl_reorder_INCLUDED // for reorder_ipl_pool
+#include "ipl_reorder.h"
+#endif
 
 //---------------------------------------------------------------
 // alternate entry point array
@@ -305,6 +312,7 @@ private:
     DYN_ARRAY<TCON *> _tcon;
     DYN_ARRAY<ALT_ENTRY>  _alt_entry;
     DYN_ARRAY<INLINE_ATTR> _inline_attr;
+    DYN_ARRAY<SUMMARY_STRUCT_ACCESS> _struct_access;//reordering
     
     BOOL Trace_Modref;			// trace mod/ref analysis
 
@@ -316,6 +324,13 @@ private:
        if so, the index corresponds to that entry into the SUMMARY_GLOBAL
        array */ 
     GLOBAL_HASH_TABLE *Global_hash_table;
+    //for reordering
+    typedef hash_map<mUINT32,SUMMARY_STRUCT_ACCESS*> TY_TO_ACCESS_MAP;
+    TY_TO_ACCESS_MAP *Ty_to_access_map;// mapping ty_index to SUMMARY_STRUCT_ACCESS
+    typedef STACK<UINT64> LOOP_COUNT_STACK;
+	LOOP_COUNT_STACK *loop_count_stack;
+    INT first_struct_access_of_PU, last_struct_access_of_PU;
+    #define max_hot_loops 5 //just consider partial loops, how to find it?
 
     BOOL File_Pragmas;			// has file based pragmas
 
@@ -447,6 +462,12 @@ private:
 	INT new_idx = _inline_attr.Newidx ();
 	return &(_inline_attr[new_idx]);
     }
+    SUMMARY_STRUCT_ACCESS* New_struct_access(mUINT32 ty_index, mUINT32 flatten_flds){
+	INT new_idx = _struct_access.Newidx ();
+	_struct_access[new_idx].Init (ty_index,flatten_flds,&reorder_ipl_pool);
+	return &(_struct_access[new_idx]);
+
+    }
 
     void Process_alt_procedure (WN *w, INT formal_index, INT formal_count);
     void Process_callsite (WN *w, INT id, INT loopnest);
@@ -496,7 +517,17 @@ private:
     void Process_pragma_node (WN* w);
     void Process_pragmas (WN *w);
     void Update_call_pragmas (SUMMARY_CALLSITE *callsite);
+    void Start_PU_process_struct_access(){//del later::debug
+    	first_struct_access_of_PU=Get_struct_access_idx()+1;
+    }
 
+    void Record_struct_access(WN *w, mUINT64 loop_count);//reorder
+    UINT Finish_PU_process_struct_access(){// del later ::debug
+    	last_struct_access_of_PU=Get_struct_access_idx()+1;
+    	INT num_ele;
+    	num_ele=last_struct_access_of_PU-first_struct_access_of_PU;
+    	return num_ele;
+    };
     // Functions needed for execution cost analysis
     INT IPL_GEN_Value(WN* wn_value, DYN_ARRAY<SUMMARY_VALUE>* sv,
       DYN_ARRAY<SUMMARY_EXPR>* sx);
@@ -566,7 +597,7 @@ public:
     TCON **Get_tcon (INT idx) const		{ return &(_tcon[idx]); }
     ALT_ENTRY *Get_alt_entry (INT idx) const	{ return &(_alt_entry[idx]); }
     INLINE_ATTR *Get_inline_attr (INT idx) const { return &(_inline_attr[idx]); }
-
+	SUMMARY_STRUCT_ACCESS * Get_struct_access(INT idx)const{return &(_struct_access[idx]);}
     
     BOOL Has_procedure_entry () const	{ return _procedure.Lastidx () != -1; }
     BOOL Has_proc_info_entry () const	{ return _proc_info.Lastidx () != -1; }
@@ -589,6 +620,7 @@ public:
     BOOL Has_inline_attr () const	{ return _inline_attr.Lastidx
 					    () != -1; }
     BOOL Has_global_stid_entry () const	{ return _global_stid.Lastidx () != -1; }
+	BOOL Has_struct_access_entry()const{return _struct_access.Lastidx()!=-1;}
 
     INT Get_procedure_idx () const	{ return _procedure.Lastidx (); }
     INT Get_proc_info_idx () const	{ return _proc_info.Lastidx (); }
@@ -610,6 +642,7 @@ public:
     INT Get_alt_entry_idx () const	{ return _alt_entry.Lastidx (); }
     INT Get_inline_attr_idx () const	{ return _inline_attr.Lastidx (); }
     INT Get_global_stid_idx () const	{ return _global_stid.Lastidx (); }
+    INT Get_struct_access_idx() const	{return _struct_access.Lastidx();}
 
     // constructor
 
@@ -637,6 +670,7 @@ public:
 	_alt_entry.Set_Mem_Pool (m);
 	_inline_attr.Set_Mem_Pool (m);
 	_global_stid.Set_Mem_Pool(m);
+	_struct_access.Set_Mem_Pool(m);
 	Trace_Modref = FALSE;
 	entry_point = NULL;
 	File_Pragmas = FALSE;
@@ -648,6 +682,10 @@ public:
 	Global_index->Bzero_array ();
 
 	Global_hash_table = 0;
+	//reorder added:
+    Ty_to_access_map=CXX_NEW(TY_TO_ACCESS_MAP(20),mem);
+	loop_count_stack=CXX_NEW(LOOP_COUNT_STACK(mem),mem);;
+
 
 	Init_Aux_Symbol_Info (GLOBAL_SYMTAB);
 
@@ -677,6 +715,17 @@ public:
     INT Get_symbol_crefcount_index (INT32 i); // only for inliner
     INT Find_symbol_crefcount_index (INT32 i); // only for inliner
     INT Find_proc_info_index(INT32 i); // only for inliner
+    void Finish_collect_struct_access(void){ //only for reorder
+		INT num_summary_access=Get_struct_access_idx()+1;
+	    if (num_summary_access) {
+	      // fill in hot_fld[] according to flds[],
+	      Get_struct_access(0)->Set_hot_fld_array(num_summary_access);
+	    } 
+		MEM_POOL_Pop (&reorder_ipl_pool);
+		/*free Ptr_to_ty_vector, local_cands, flds[] of each summary_struct_access*/
+
+	};
+
 
     void Trace(FILE* fp);
   
