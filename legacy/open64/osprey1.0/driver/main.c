@@ -236,7 +236,11 @@ main (int argc, char *argv[])
         if (show_version) {
             /* Echo information about the compiler version */
 #ifdef linux
-            fprintf(stderr, "ORC Compilers: Version %s\n", compiler_version);
+            fprintf(stderr, "ORC Compilers: Version %s"
+#ifdef SPECMT_LT
+                "[For Speculative Multithreading]"
+#endif
+            "\n", compiler_version);
 #else
             fprintf(stderr, "MIPSpro Compilers: Version %s\n", compiler_version);
 #endif

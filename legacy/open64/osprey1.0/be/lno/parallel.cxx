@@ -40,6 +40,7 @@
 
 #include <math.h>
 #include <sys/types.h>
+#include <float.h>
 #include <limits.h>
 #include "pu_info.h"
 #include "lnoutils.h"

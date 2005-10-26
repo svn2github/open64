@@ -763,6 +763,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &EMIT_count_cycles, NULL,
     "Add stop bit to divide oversubscripted op groups. [Default off]"
   },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "enable_feedback", "",
+    0, 0, 0,	&CG_enable_feedback, NULL },
   { OVK_COUNT },
 
   // Misc:
@@ -783,8 +785,6 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,    &CG_SCHED_EST_use_locs, NULL },
   { OVK_INT32,   OV_INTERNAL, TRUE, "sched_est_call_cost", "",
     0, 0, INT32_MAX, &CG_SCHED_EST_call_cost, NULL },
-  { OVK_BOOL,	OV_INTERNAL, TRUE, "enable_feedback", "",
-    0, 0, 0,	&CG_enable_feedback, NULL },
   { OVK_INT32, OV_INTERNAL, TRUE, "mispredict_branch", "mispredict",
     0, 0, INT32_MAX, &CG_branch_mispredict_penalty, NULL },
   { OVK_INT32, OV_INTERNAL, TRUE, "mispredict_factor", "",
@@ -825,7 +825,13 @@ static OPTION_DESC Options_IPFEC[] = {
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "rgn_deco", "",
     0, 0, 0,    &IPFEC_Enable_Region_Decomposition, NULL,
     "Use Aurora region decomposition"},
-  { OVK_INT32,   OV_VISIBLE,     TRUE, "rgn_dup", "",
+ { OVK_INT32,   OV_VISIBLE,     TRUE, "cut_num", "",
+    0, 0, 92,    &IPFEC_Stacked_Cut_Num, NULL,
+    "Use cut the number of available stacked registers"},
+ { OVK_INT32,   OV_VISIBLE,     TRUE, "spill_num", "",
+    0, 0, 30,    &IPFEC_Stacked_Spill_Num, NULL,
+    "Use tune stacked register usage"},
+ { OVK_INT32,   OV_VISIBLE,     TRUE, "rgn_dup", "",
     0, 0, 0,    &IPFEC_Enable_Tail_Duplication, NULL,
     "Use Aurora region tail duplication"},
   { OVK_INT32,   OV_VISIBLE,     TRUE, "rgn_exit", "",
@@ -882,6 +888,30 @@ static OPTION_DESC Options_IPFEC[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "cmpsd_tmplt", "", 
     0, 0, 0,	&IPFEC_Enable_Compressed_Template, NULL, 
     "Turn on using of Compressed Template" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "stress_spec", "", 
+    0, 0, 0,	&IPFEC_Stress_Spec, NULL, 
+    "Stress speculation, for debugging purpose" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "glos_reg_pressure_aware", "", 
+    1, 0, 0,	&IPFEC_Glos_Reg_Pressure_Aware, NULL, 
+    "Global code motion reg pressure awareness" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "glos_split_entry_bb", "", 
+    1, 0, 0,	&IPFEC_Glos_Split_Entry_BB, NULL, 
+    "global code motion split entry block for larger schedule scope" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "glos_split_exit_bb", "", 
+    1, 0, 0,	&IPFEC_Glos_Split_Exit_BB, NULL, 
+    "global code motion split exit block for larger schedule scope" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "glos_enable_p_ready_code_motion", "", 
+    1, 0, 0,	&IPFEC_Glos_Enable_P_Ready_Code_Motion, NULL, 
+    "Enable P-ready code motion" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "glos_code_motion_across_nested_rgn", "", 
+    1, 0, 0,	&IPFEC_Glos_Code_Motion_Across_Nested_Rgn, NULL, 
+    "Enable code motion across nested region" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "adjust_variable_latency", "", 
+    1, 0, 0,	&IPFEC_Adjust_Variable_Latency, NULL, 
+    "Adjust Variable Latency During Code motion" },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "glos_motion_across_calls", "", 
+    0, 0, 0,	&IPFEC_Glos_Motion_Across_Calls, NULL, 
+    "Enable global code motion across calls" },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "pre_bundling", "", 
     0, 0, 0,	&IPFEC_Enable_Pre_Bundling, NULL, 
     "Turn on bundling on pre-global scheduling" },
@@ -922,6 +952,15 @@ static OPTION_DESC Options_IPFEC[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "load_safety", "", 
     0, 0, 0,	&IPFEC_Enable_Safety_Load, NULL, 
     "Identify safety load" },   
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "multi_branch", "", 
+    0, 0, 0,	&IPFEC_Enable_Multi_Branch, NULL, 
+    "Enable Multiple branch" },   
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "pre_multi_branch", "", 
+    0, 0, 0,	&IPFEC_Enable_Pre_Multi_Branch, NULL, 
+    "Enable Previous Multiple branch" },   
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "post_multi_branch", "", 
+    0, 0, 0,	&IPFEC_Enable_Post_Multi_Branch, NULL, 
+    "Enable Post Multiple branch" },   
 /*
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "insert_unat", "", 
     0, 0, 0,	&IPFEC_Enable_Insert_UNAT, NULL, 
@@ -1109,7 +1148,15 @@ static OPTION_DESC Options_SKIP[] = {
   { OVK_LIST, OV_SHY, FALSE, "spec_skip_op_equal", "spec_skip_op_e",
     0, 0, 4096,	&raw_spec_skip_op, NULL,
     "" },
-
+  { OVK_LIST, OV_SHY, FALSE, "mlbr_skip_bb_before", "mlbr_skip_bb_b", 
+    0, 0, 4096,      &raw_mlbr_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "mlbr_skip_bb_after", "mlbr_skip_bb_a",
+    0, 0, 4096,	&raw_mlbr_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "mlbr_skip_bb_equal", "mlbr_skip_bb_e",
+    0, 0, 4096,	&raw_mlbr_skip_bb, NULL,
+    "" },
   { OVK_COUNT }		/* List terminator -- must be last */
 };
 
@@ -1752,6 +1799,7 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
 
    /* Getting the relative skip_list about if_conv, locs etc.*/ 
     locs_skip_bb = IPFEC_Build_Skiplist(raw_locs_skip_bb);
+    mlbr_skip_bb = IPFEC_Build_Skiplist(raw_mlbr_skip_bb);
 
     if_conv_skip_rgn = IPFEC_Build_Skiplist(raw_if_conv_skip_rgn);
     if_conv_skip_area = IPFEC_Build_Skiplist(raw_if_conv_skip_area);

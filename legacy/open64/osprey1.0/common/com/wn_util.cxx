@@ -63,7 +63,6 @@
 #ifdef BACK_END
 #include "region_util.h"
 #endif
-
 /*-------------------------------------------------------------*/
 /* initialize the stack, it contains tree nodes                */
 /*-------------------------------------------------------------*/
@@ -1197,13 +1196,12 @@ extern WN *WN_LOOP_TripCount(const WN *loop)
 
 
 static TY_IDX
-field_type (const WN* wn)
+field_type (const TY_IDX ty_idx, UINT field_id)
 {
   UINT cur_field_id = 0;
-  FLD_HANDLE fld = FLD_get_to_field (WN_ty(wn), WN_field_id(wn),
-				     cur_field_id);
+  FLD_HANDLE fld = FLD_get_to_field (ty_idx, field_id, cur_field_id);
   Is_True (! fld.Is_Null(), ("Invalid field id %d for type 0x%x",
-			     WN_field_id(wn), WN_ty(wn)));
+			     field_id, ty_idx));
   return FLD_type (fld);
 }
 
@@ -1215,26 +1213,29 @@ field_type (const WN* wn)
  *   in WN_ty().
  *   See the WHIRL document.
  */
+#include "tracing.h"
 TY_IDX
 WN_object_ty (const WN *wn)
 {
   if (OPCODE_is_load(WN_opcode(wn))) {
-    if ((WN_operator(wn) == OPR_LDID || WN_operator(wn) == OPR_LDBITS) && 
+    if ((WN_operator(wn) == OPR_LDID || 
+	 WN_operator(wn) == OPR_ILOAD ||
+	 WN_operator(wn) == OPR_LDBITS) && 
 	WN_field_id(wn) != 0 &&
 	TY_kind(WN_ty(wn)) == KIND_STRUCT)
-      return field_type (wn);
+      return field_type (WN_ty(wn), WN_field_id(wn));
     return WN_ty(wn);
   } else if (OPCODE_is_store(WN_opcode(wn))) {
-    if (WN_operator(wn) == OPR_STID || WN_operator(wn) == OPR_STBITS) {
-      if (WN_field_id(wn) != 0 && TY_kind(WN_ty(wn)) == KIND_STRUCT)
-	return field_type (wn);
-      return WN_ty(wn);
-    } else {
-      const TY& ty = Ty_Table[WN_ty (wn)];
-      Is_True(TY_kind(ty) == KIND_POINTER,
+    TY_IDX ty_idx = WN_ty(wn);
+    if (!(WN_operator(wn) == OPR_STID || WN_operator(wn) == OPR_STBITS)) {
+      Is_True(TY_kind(WN_ty(wn)) == KIND_POINTER,
 	      ("TY of ISTORE is not KIND_POINTER."));
-      return TY_pointed(ty);
+      ty_idx = TY_pointed(WN_ty(wn));
     }
+    if (WN_field_id(wn) != 0 && TY_kind(ty_idx) == KIND_STRUCT) {
+      return field_type(ty_idx, WN_field_id(wn));
+    }
+    return ty_idx;
   } else {
     return (TY_IDX) 0;
   }
@@ -1472,4 +1473,3 @@ extern void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
     Is_True (FALSE, ("Add_Pragma: trying to add unsupported pragma"));
   }
 }
-

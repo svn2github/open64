@@ -3162,71 +3162,6 @@ CGTARG_Dependence_Required(OP *pred_op, OP *succ_op)
 #ifndef IPFEC_Enable_New_Targ
 // ??? NOTE: The following and most if not all of Adjust_Latency
 // will be moved into to the targinfo scheduling specification.
-typedef enum {
-  SIC_BR,
-  SIC_BR_B2,
-  SIC_BRP,
-  SIC_CHK_ALAT,
-  SIC_CHK_I,
-  SIC_CHK_M,
-  SIC_CLD,
-  SIC_FCLD,
-  SIC_FCMP,
-  SIC_FCVTFX,
-  SIC_FLD,
-  SIC_FLDP,
-  SIC_FMAC,
-  SIC_FMISC,
-  SIC_FOTHER,
-  SIC_FRAR_I,
-  SIC_FRAR_M,
-  SIC_FRBR,
-  SIC_FRCR,
-  SIC_FRFR,
-  SIC_FRIP,
-  SIC_FRPR,
-  SIC_IALU,
-  SIC_ICMP,
-  SIC_ILOG,
-  SIC_ISHF,
-  SIC_LD,
-  SIC_LFETCH,
-  SIC_LONG_I,
-  SIC_MMALU_A,
-  SIC_MMALU_I,
-  SIC_MMMUL,
-  SIC_MMSHF,
-  SIC_NOP_B,
-  SIC_NOP_I,
-  SIC_NOP_M,
-  SIC_NOP_F,
-  SIC_NOP_X,
-  SIC_PNT,
-  SIC_RSE_B,
-  SIC_RSE_M,
-  SIC_SEM,
-  SIC_SFCVTFX,
-  SIC_SFMAC,
-  SIC_SFMERGESE,
-  SIC_SFMISC,
-  SIC_STF,
-  SIC_ST,
-  SIC_SYST_B2,
-  SIC_SYST_B,
-  SIC_SYST_M0,
-  SIC_SYST_M,
-  SIC_TBIT,
-  SIC_TOAR_I,
-  SIC_TOAR_M,
-  SIC_TOBR,
-  SIC_TOCR,
-  SIC_TOFR,
-  SIC_TOPR,
-  SIC_XMA,
-  SIC_XTD,
-  SIC_UNKNOWN,
-  SIC_DUMMY
-} SCHED_INFO_CLASS;
 
 static SCHED_INFO_CLASS Sched_Info_Class(OP *op)
 {
@@ -4651,17 +4586,26 @@ CGTARG_Generate_Branch_Cloop(OP *br_op,
 	    prolog_ops);
   } 
 
-  // workaround a Exp_COPY bug?
   if (TN_is_constant(unrolled_trip_count_minus_1)) {
-    TN *tmp_tn = Gen_Register_TN (ISA_REGISTER_CLASS_integer,
-				  trip_size);
-    Exp_COPY(tmp_tn, unrolled_trip_count_minus_1, prolog_ops);
-    unrolled_trip_count_minus_1 = tmp_tn;
+	  INT64 imm=TN_value(unrolled_trip_count_minus_1);
+	  const ISA_OPERAND_INFO *oinfo;
+	  oinfo = ISA_OPERAND_Info(TOP_mov_t_ar_i_i);
+	  const ISA_OPERAND_VALTYP *vtype = ISA_OPERAND_INFO_Operand(oinfo, 1);
+	  ISA_LIT_CLASS lc = ISA_OPERAND_VALTYP_Literal_Class(vtype);
+	  if (ISA_LC_Value_In_Class(imm, lc)){
+		  Build_OP (TOP_mov_t_ar_i_i, LC_TN, True_TN, unrolled_trip_count_minus_1, prolog_ops);
+	  }
+	  else{
+		  TN *tmp_tn = Gen_Register_TN (ISA_REGISTER_CLASS_integer,
+					  trip_size);
+		  Exp_COPY(tmp_tn, unrolled_trip_count_minus_1, prolog_ops);
+		  Exp_COPY(LC_TN, tmp_tn, prolog_ops);
+	  }
   }
-
-  Exp_COPY(LC_TN, unrolled_trip_count_minus_1, prolog_ops);
+  else{
+	  Exp_COPY(LC_TN, unrolled_trip_count_minus_1, prolog_ops);
+  }
 }
-
 
 static TN* asm_constraint_tn[10];
 static ISA_REGISTER_SUBCLASS asm_constraint_sc[10];
@@ -5562,5 +5506,201 @@ CGTARG_Check_OP_For_HB_Suitability(OP *op)
   if (OP_code(op) == TOP_alloc) return TRUE;
 
   return FALSE;  // default case
+}
+
+/* ====================================================================
+ * Pad_Cycles_Before
+ *
+ * Pad cycles before OP in BB with Noop bundles.
+ * ====================================================================
+*/
+static void
+Pad_Cycles_Before(BB *bb, OP *op, UINT cycles)
+{
+  UINT slot_mask, stop_mask, ibundle, one_stop_bundles, two_stop_bundles;
+  INT slot;
+  OP *new_op;
+  OPS new_ops = OPS_EMPTY;  
+  ISA_EXEC_UNIT_PROPERTY unit;
+
+  if (!cycles) return;
+  if (!OP_end_group(OP_prev(op))) {
+      Set_OP_end_group(OP_prev(op));
+      cycles--;
+      if (!cycles) return;
+  }
+  one_stop_bundles = cycles % 2;
+  two_stop_bundles = cycles / 2;
+  
+  /* Choose the first bundle with one stop bit. We add another
+     stop bit at the end of bundle.
+  */ 
+  for (ibundle = 0; ibundle < ISA_MAX_BUNDLES; ++ibundle) {
+      stop_mask = ISA_EXEC_Stop_Mask(ibundle);
+      slot_mask = ISA_EXEC_Slot_Mask(ibundle);
+      if (stop_mask == 2) break;
+  }
+  stop_mask |= 0x1;
+
+  /* Padding with two-stop bundles */
+  while (two_stop_bundles) { 
+    slot = 0; 
+    do {
+      unit =  (ISA_EXEC_UNIT_PROPERTY)(
+                (slot_mask >> (ISA_TAG_SHIFT * slot)) 
+                    & ((1 << ISA_TAG_SHIFT) - 1));
+      new_op = Mk_OP (CGTARG_Noop_Top(unit), True_TN, Gen_Literal_TN(0, 4));
+      /* Set the stop bit*/
+      if((stop_mask >> slot) & 0x1) Set_OP_end_group(new_op);
+      BB_Insert_Op_Before (bb, op, new_op);
+      op = new_op;
+      slot++;
+    } while (slot < ISA_MAX_SLOTS);
+    Set_OP_start_bundle(op);
+    two_stop_bundles--;
+  }
+  
+  /* Choose the first bundle without stop bits. We add a stop
+     bit at the end of bundle.
+  */ 
+  for (ibundle = 0; ibundle < ISA_MAX_BUNDLES; ++ibundle) {
+    stop_mask = ISA_EXEC_Stop_Mask(ibundle);
+    slot_mask = ISA_EXEC_Slot_Mask(ibundle);
+    if (stop_mask == 0) break;
+  }
+  stop_mask |= 0x1;
+
+  /* Padding with one-stop bundles */
+  if (one_stop_bundles) {
+    slot = 0;
+    do {
+      unit =  (ISA_EXEC_UNIT_PROPERTY)(
+                (slot_mask >> (ISA_TAG_SHIFT * slot)) 
+                    & ((1 << ISA_TAG_SHIFT) - 1));
+        new_op = Mk_OP (CGTARG_Noop_Top(unit), True_TN, Gen_Literal_TN(0, 4));
+        /* Set the stop bit*/
+        if((stop_mask >> slot) & 0x1) Set_OP_end_group(new_op);
+        BB_Insert_Op_Before (bb, op, new_op);
+        op = new_op;
+        slot++;
+    } while (slot < ISA_MAX_SLOTS);
+    Set_OP_start_bundle(op);
+  }
+}
+
+/* ====================================================================
+ * OP_Replace_With_Noop 
+ *
+ * Replace OP with Noop. Reserve its ISA_EXEC_Unit_Prop and flags.
+ * ====================================================================
+*/
+static
+OP *OP_Replace_With_Noop(BB *bb, OP *op)
+{
+    OP *new_op;
+    ISA_EXEC_UNIT_PROPERTY unit;
+
+    if ( EXEC_PROPERTY_is_M_Unit(OP_code(op)) && EXEC_PROPERTY_is_I_Unit(OP_code(op)) )
+        unit = OP_m_unit(op)? ISA_EXEC_PROPERTY_M_Unit : ISA_EXEC_PROPERTY_I_Unit;
+    else  unit =  ISA_EXEC_Unit_Prop(OP_code(op));
+    new_op = Mk_OP (CGTARG_Noop_Top(unit), True_TN, Gen_Literal_TN(0, 4));
+    OP_flags(new_op) = OP_flags(op);
+    BB_Insert_Op_Before(bb, op, new_op);
+    BB_Remove_Op(bb, op);
+    return new_op; 
+}
+    
+/* ====================================================================
+ * Fix_MM_Latency
+ *
+ * Fix pipeline latency problem due to special cycles apart requirement.
+ * On Itanium, it occurs between MMxxx -> IALU, ISHF, ILOG, LD, ST.
+ * 
+ * ====================================================================
+*/
+void
+Fix_MM_Latency ( BB *bb, TOP_SET *src_op_class, TOP_SET *tgt_op_class, UINT8 cycles_apart)
+{
+  UINT i, j, cycles = 0;
+  OP *op, *src_op, *tgt_op;
+  ISA_EXEC_UNIT_PROPERTY unit;
+  
+  FOR_ALL_BB_OPs(bb,op) {
+    if (OP_dummy(op) || OP_simulated(op)) continue;
+    if (find((*src_op_class).begin (),
+       (*src_op_class).end (),
+       Sched_Info_Class(op)) != (*src_op_class).end()) {
+      src_op = op;
+      if (OP_end_group(op)) cycles++;
+      tgt_op = OP_next(op);
+      for (; tgt_op; tgt_op = OP_next(tgt_op)) {
+        if (OP_dummy(op) || OP_simulated(op)) continue;
+        if (cycles >= cycles_apart) {
+          break;
+        } else if (find((*tgt_op_class).begin(), (*tgt_op_class).end(), 
+                        Sched_Info_Class(tgt_op)) != (*tgt_op_class).end()) {
+          for (i = 0; i < OP_results(src_op); i++) {
+            for (j = 0; j < OP_opnds(tgt_op); j++) { 
+              if (OP_result(src_op, i) == OP_opnd(tgt_op, j)) {
+                for (op = OP_next(src_op); op != tgt_op; op = OP_next(op)) if (OP_start_bundle(op)) break;
+                /* If src_op and tgt_op are in the same bundle, split it into two bundles */
+                if (op == tgt_op && !OP_start_bundle(tgt_op)) {
+                  OPS new_ops = OPS_EMPTY;
+                  OP *new_op;
+
+                  /* Go backward to the first op in this bundle */
+                  op = src_op;
+                  while (!OP_start_bundle(op)) op = OP_prev(op);
+
+                  /* Duplicate this bundle */
+                  do { 
+                    new_op = Dup_OP(op);
+                    /* we must count the new cycles incurred because of split */
+                    if (OP_end_group(op)) cycles++;
+                    /* For we'll change tgt_op in the old bundle to nop, so we must store 
+                       the tgt_op position in the new bundle
+                    */
+                    if (op == tgt_op) tgt_op = new_op;
+                    OPS_Append_Op(&new_ops, new_op);
+                    op = OP_next(op);
+                  } while (op && !OP_start_bundle(op));
+
+                  if (!op) op = BB_last_op(bb); else op = OP_prev(op);
+                  BB_Insert_Ops_After(bb, op, &new_ops);
+                    
+                  /* Replace Ops after src_op in the old bundle to Noops */
+                  for (op = OP_next(src_op); !OP_start_bundle(op); op = OP_next(op)) {
+                    if (OP_dummy(op) || OP_simulated(op)) continue;
+                    op = OP_Replace_With_Noop(bb, op);
+                  }
+                                   
+                  /* Replace Ops before tgt_op in the new bundle to Noops */
+                  for ( ; op != tgt_op; op = OP_next(op)) {
+                    if (OP_dummy(op) || OP_simulated(op)) continue;
+                    op = OP_Replace_With_Noop(bb, op);
+                  }
+                  
+                  /* Pad cycles before the new bundle */
+                  while (!OP_start_bundle(op)) op = OP_prev(op);
+                  Pad_Cycles_Before(bb, op, cycles_apart - cycles);
+
+                } else { /* In the separate bundles */
+                  for (op = tgt_op; !OP_start_bundle(op); op = OP_prev(op));
+                  Pad_Cycles_Before(bb, op, cycles_apart - cycles);
+                }
+                break;
+              }
+            }
+            if (j < OP_opnds(tgt_op)) break;
+          }
+          if (j < OP_opnds(tgt_op)) break;
+        }
+      if (OP_end_group(tgt_op)) cycles++;
+      }
+    /* Restore the original op and continue the search */
+    op = src_op;
+    cycles = 0;
+    }
+  } /* ?FOR_ALL_BB_OPs? */ 
 }
 

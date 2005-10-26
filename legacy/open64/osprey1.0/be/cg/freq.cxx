@@ -1200,7 +1200,7 @@ Return_Heuristic(
 
 /* ====================================================================
  *
- * Trip_Loop_Exit_Prob
+ * Trip_Loop_Exit_orob
  * 
  * For loops with loopinfo and a trip count (constant or estimated), use it
  * to predict how often the branch is taken.
@@ -2478,29 +2478,25 @@ FREQ_Print_BB_Note(
   INT bb_id = BB_id(bb);
 
   if (!FREQ_freqs_computed && !CG_PU_Has_Feedback) return;
-
-  fprintf(file, "%s<freq>\n", prefix);
-
-  fprintf(file, "%s<freq> BB:%d frequency = %#.5f (%s)\n",
-	  prefix, bb_id, BB_freq(bb),
-	  (BB_freq_fb_based(bb) ? "feedback" : "heuristic"));
+  
+  fprintf(file, "// Freq  %f (%s)",
+	  BB_freq(bb),
+	  (BB_freq_fb_based(bb) ? "feedback" : "heur"));
 
   /* Don't bother printing only one successor edge frequency; it's obvious
    * what it is and we don't need more clutter.
    */
   if (BBlist_Len(bb_succs) > 1) {
     BBLIST *succ;
-
-    FOR_ALL_BBLIST_ITEMS(bb_succs, succ) {
-      fprintf(file, "%s<freq> BB:%d => BB:%d probability = %#.5f\n",
-	      prefix,
-	      bb_id,
-	      BB_id(BBLIST_item(succ)),
-	      BBLIST_prob(succ));
+    
+    fprintf(file,"  Prob ");
+    FOR_ALL_BBLIST_ITEMS(bb_succs,succ) {
+        fprintf(file,"%#.5f  ",BBLIST_prob(succ));
     }
-  }
-
-  fprintf(file, "%s<freq>\n", prefix);
+  } else {
+    fprintf(file,"  Prob 1.0");
+    }
+  fprintf(file,"\n");
 }
 
 

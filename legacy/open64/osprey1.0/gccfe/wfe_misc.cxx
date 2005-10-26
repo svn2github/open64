@@ -403,6 +403,7 @@ WFE_File_Init (INT argc, char **argv)
 {
   /* Process each source file: */
   Prepare_Source();
+  Configure_Olegacy(TRUE); //mainly to reset call_shared if TRUE;
   MEM_POOL_Push (&MEM_src_pool);
 
   Restore_Cmd_Line_Ctrls();

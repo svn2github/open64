@@ -456,9 +456,10 @@ Set_Error_Phase ( const char *phase )
 	else if (strcmp(phase, "Ipfec Local Scheduler") == 0){
 	    DevWarn(("TP_IPFEC will be deleted in a week!!!!!!"));
 	    Set_Current_Phase_Number(TP_IPFEC);
-	}
-	else if (strcmp(phase, "Ipfec scheduler") == 0)
-	    Set_Current_Phase_Number(TP_A_SCHED);
+	} else if (strcmp(phase, "ORC:Global code motion")) 
+	    Set_Current_Phase_Number(TP_A_GSCHED);
+    else if (strcmp(phase, "ORC:Local code motion")) 
+	    Set_Current_Phase_Number(TP_A_LSCHED);
 	else if (strcmp(phase, "Ipfec profiling") == 0)
 	    Set_Current_Phase_Number(TP_A_PROF);
 	else if (strcmp(phase, "Ipfec region formation") == 0)

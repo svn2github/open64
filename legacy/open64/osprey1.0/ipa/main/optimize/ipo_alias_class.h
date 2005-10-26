@@ -581,6 +581,7 @@ private:
 
   void                Handle_function_definition(WN *);
   WN                 *Handle_assignment(WN *);
+  WN                 *Handle_return_val(WN *);              
   WN                 *Handle_call(WN *);
 
   BOOL                Callee_saves_no_parms(const WN *);

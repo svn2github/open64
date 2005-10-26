@@ -52,6 +52,9 @@ struct bb;
 
 extern BOOL PU_Has_Calls;
 extern BOOL PU_References_GP;
+extern BOOL GRA_optimize_restore_pr;
+extern BOOL GRA_optimize_restore_b0_ar_pfs;
+extern BOOL GRA_optimize_restore_ar_lc;
 
 extern BOOL CG_PU_Has_Feedback;
 
@@ -89,7 +92,8 @@ extern void Init_gen_quad_preg(void);
 extern void Trace_IR (
   INT phase,		/* Phase after which to print */
   const char *pname,	/* Print name of phase */
-  struct bb *bb		/* BB to print, or NULL */
+  struct bb *bb,		/* BB to print, or NULL */
+  BOOL after = TRUE
 );
 
 /* Print IR, ST, TNs for a program unit after a phase, if enabled: */

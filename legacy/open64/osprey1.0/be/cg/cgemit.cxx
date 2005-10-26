@@ -1109,7 +1109,7 @@ static void r_assemble_list (
 	} else {
 	  buf = vstr_concat(buf, rname);
 	}
-      }
+      } 
     }
     // need end-of-string between each operand
     buf = vstr_append(buf, '\0');
@@ -1166,17 +1166,20 @@ static void r_assemble_list (
 	put_TN_comment (OP_opnd(op,i), add_name, &comment);
   }
 
-  fprintf (Asm_File, "\t%s", ASM_CMNT);
+  fprintf (Asm_File, "\t\t%s", ASM_CMNT);
+  fprintf (Asm_File, " [");
   if (OP_scycle(op) >= 0)
     if (BB_rotating_kernel(bb)) {
       ANNOTATION *annot = ANNOT_Get(BB_annotations(bb), ANNOT_ROTATING_KERNEL);
       ROTATING_KERNEL_INFO *info = ANNOT_rotating_kernel(annot);
       INT ii = info->ii;
-      fprintf (Asm_File, " [%d*II+%d]", OP_scycle(op) / ii, OP_scycle(op) % ii);
+      fprintf (Asm_File, "%d*II+%d", OP_scycle(op) / ii, OP_scycle(op) % ii);
     } else if (BB_scheduled(bb)) {
-	if(!OP_noop(op))
-      		fprintf (Asm_File, " [%d]", OP_scycle(op));
+    if(!OP_noop(op))
+      fprintf (Asm_File, "%d", OP_scycle(op));
+      fprintf (Asm_File, ":%d", Srcpos_To_Line(OP_srcpos(op)));
     }
+  fprintf (Asm_File, "]");
   if (vstr_len(comment) == 0) {
     WN *wn = Get_WN_From_Memory_OP (op);
     if (wn && Alias_Manager) {
@@ -1204,13 +1207,56 @@ static void r_assemble_list (
    /*Add value profile comment "val_prof[id, exec_count]"*/
   if (OP_flags_val_prof(op) == VAL_PROF_FLAG)
   {
-    char tbuf[100];
+    char tbuf[1024];
     tbuf[0] = '\0';
-    sprintf(tbuf, "\tval_prof[%u, %llu]", OP_val_prof_id(op), OP_exec_count(op));
+    FB_TNV * fb_tnv = NULL;
+    if (op_tnv_map)
+    {
+      fb_tnv = (FB_TNV *)OP_MAP_Get(op_tnv_map, op);
+      if (fb_tnv == NULL)
+      	DevWarn("can not find tnv-info in op_tnv_map! val_prof_id = %d.", OP_val_prof_id(op));
+    }
+    if (fb_tnv != NULL)
+    {
+      fb_tnv->Print(stderr);
+      sprintf(tbuf, " val_prof[%u, %llu] (%llu => %llu, %llu => %llu, %llu => %llu, %llu => %llu, %llu => %llu)", 
+    			OP_val_prof_id(op), OP_exec_count(op), 
+    			fb_tnv->_values[0], fb_tnv->_counters[0],
+    			fb_tnv->_values[1], fb_tnv->_counters[1],
+    			fb_tnv->_values[2], fb_tnv->_counters[2],
+    			fb_tnv->_values[3], fb_tnv->_counters[3],
+    			fb_tnv->_values[4], fb_tnv->_counters[4]
+    			);
+    }
+    else
+    {
+      sprintf(tbuf, " val_prof[%u, %llu]", 
+    			OP_val_prof_id(op), OP_exec_count(op) );
+    }
+    comment = vstr_concat(comment, tbuf);
+  }
+ 
+  char * spec_str = NULL ;
+  if (OP_cntl_spec(op)) {
+    spec_str = "cspec " ;
+  } else if (OP_data_spec(op)) {
+    spec_str = "dspec ";
+  }
+
+  if (OP_cntl_spec(op) && OP_data_spec(op)) {
+    spec_str = "cdspec" ;
+  }
+
+  if (spec_str) {
+    char tbuf[20];  
+  
+    sprintf (tbuf, "\t[%s BB:%u]",
+             spec_str ? spec_str : "",
+             OP_orig_bb_id(op));
     comment = vstr_concat(comment, tbuf);
   }
 
-  fprintf (Asm_File, "  %s\n", vstr_str(comment));
+  fprintf (Asm_File, " %s\n", vstr_str(comment));
   vstr_end(comment);
 }
 
@@ -2040,9 +2086,9 @@ Assemble_Bundles(BB *bb)
   }
   bb_cycle_count = BB_length(bb) ? BB_cycle(bb) : 0;
   if (Assembly) {
-    fprintf(Asm_File, "\n");
+    fprintf(Asm_File, "\n\n");
     // output cycle count of the BB cbq
-    fprintf(Asm_File, "// The BB%d cycle counting is %d\n", BB_id(bb),bb_cycle_count);
+    // fprintf(Asm_File, "// BB:%d cycle count: %d\n\n", BB_id(bb),bb_cycle_count);
   }
   return bb_cycle_count;
 }
@@ -2084,14 +2130,14 @@ Assemble_Ops(BB *bb)
 
 /* ====================================================================
  *
- * Emit_Loop_Note
+ * Emit_Loop_Unrolling_Note
  *
- * Emit a loop note to the .s file, anl file, etc.
+ * Emit a loop unrolling note to the .s file, anl file, etc.
  *
  * ====================================================================
  */
 static void
-Emit_Loop_Note(BB *bb, FILE *file)
+Emit_Loop_Unrolling_Note(BB *bb, FILE *file)
 {
   BOOL anl_note = file == anl_file;
   BB *head = BB_loop_head_bb(bb);
@@ -2114,52 +2160,6 @@ Emit_Loop_Note(BB *bb, FILE *file)
     }
   }
 
-  if (bb == head) {
-    SRCPOS srcpos = BB_Loop_Srcpos(bb);
-    INT32 lineno = SRCPOS_linenum(srcpos);
-
-    if (anl_note) {
-      INT32 fileno = SRCPOS_filenum(srcpos);
-      INT32 colno = SRCPOS_column(srcpos);
-      fprintf (anl_file,
-	       "\nmsg loop lines [%d %d %d]",
-	       fileno,
-	       lineno,
-	       colno);
-    } else {
-      fprintf (file, "%s<loop> Loop body line %d", ASM_CMNT_LINE, lineno);
-    }
-
-    if (info) {
-      WN *wn = LOOPINFO_wn(info);
-      TN *trip_tn = LOOPINFO_trip_count_tn(info);
-      BOOL constant_trip = trip_tn && TN_is_constant(trip_tn);
-      INT depth = WN_loop_depth(wn);
-      const char *estimated = constant_trip ? "" : "estimated ";
-      INT64 trip_count = constant_trip ? TN_value(trip_tn) :
-					 (INT64)WN_loop_trip_est(wn);
-      const char * const fmt =   anl_note
-			? " \"nesting depth: %d, %siterations: %lld\""
-			: ", nesting depth: %d, %siterations: %lld";
-
-      fprintf (file, fmt, depth, estimated, trip_count);
-    }
-
-    fprintf (file, "\n");
-  } else if (anl_note) {
-
-    /* Only interested in loop head messages for anl file
-     */
-    return;
-  } else {
-    ANNOTATION *lbl_ant = ANNOT_Get(BB_annotations(head), ANNOT_LABEL);
-    DevAssert(lbl_ant, ("loop head BB:%d has no label", BB_id(head)));
-    fprintf(file,
-	    "%s<loop> Part of loop body line %d"
-	    ", head labeled %s\n",
-	    ASM_CMNT_LINE, BB_Loop_Lineno(head), LABEL_name(ANNOT_label(lbl_ant)));
-  }
-
   if (unrollings > 1) {
     if (anl_note) {
       fprintf(anl_file, "\"unrolled %d times%s%s\"\n", unrollings,
@@ -2174,7 +2174,69 @@ Emit_Loop_Note(BB *bb, FILE *file)
     }
   }
 }
-
+
+/* ====================================================================
+ *
+ * Emit_Loop_Note
+ *
+ * Emit a loop note to the .s file, anl file, etc.
+ *
+ * ====================================================================
+ */
+static void
+Emit_Loop_Note(BB *bb, FILE *file)
+{
+  BOOL anl_note = file == anl_file;
+  BB *head = BB_loop_head_bb(bb);
+  ANNOTATION *info_ant = ANNOT_Get(BB_annotations(head), ANNOT_LOOPINFO);
+  LOOPINFO *info = info_ant ? ANNOT_loopinfo(info_ant) : NULL;
+
+  if (bb == head) {
+    SRCPOS srcpos = BB_Loop_Srcpos(bb);
+    INT32 lineno = SRCPOS_linenum(srcpos);
+
+    if (anl_note) {
+      INT32 fileno = SRCPOS_filenum(srcpos);
+      INT32 colno = SRCPOS_column(srcpos);
+      fprintf (anl_file,
+	       "\nmsg loop lines [%d %d %d]",
+	       fileno,
+	       lineno,
+	       colno);
+    } else {
+      fprintf (file, "// <lentry>\n");
+    }
+
+    /* if (info) {
+      WN *wn = LOOPINFO_wn(info);
+      TN *trip_tn = LOOPINFO_trip_count_tn(info);
+      BOOL constant_trip = trip_tn && TN_is_constant(trip_tn);
+      INT depth = WN_loop_depth(wn);
+      const char *estimated = constant_trip ? "" : "estimated ";
+      INT64 trip_count = constant_trip ? TN_value(trip_tn) :
+					 (INT64)WN_loop_trip_est(wn);
+      const char * const fmt =   anl_note
+			? " \"nesting depth: %d, %siterations: %lld\""
+			: ", nesting depth: %d, %siterations: %lld";
+
+      fprintf (file, fmt, depth, estimated, trip_count);
+    } */
+
+    //fprintf (file, "\n");
+  } else if (anl_note) {
+
+    /* Only interested in loop head messages for anl file
+     */
+    return;
+  } else {
+    ANNOTATION *lbl_ant = ANNOT_Get(BB_annotations(head), ANNOT_LABEL);
+    DevAssert(lbl_ant, ("loop head BB:%d has no label", BB_id(head)));
+    fprintf(file,
+	    "%s<loop> Part of loop body line %d"
+	    ", head labeled %s\n",
+	    ASM_CMNT_LINE, BB_Loop_Lineno(head), LABEL_name(ANNOT_label(lbl_ant)));
+  }
+}
 
 static void Emit_Preds_And_Succs(BB*bb, FILE *file)
 {
@@ -2222,16 +2284,68 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   ANNOTATION *ant;
   RID *rid = BB_rid(bb);
   INT bb_cycle_count = 0;
+  ROTATING_KERNEL_INFO *info ;
 
-  if (Assembly) {
-  	Emit_Preds_And_Succs(bb, Asm_File);
-  }
-  
   if (Trace_Inst) {
 	#pragma mips_frequency_hint NEVER
 	fprintf(TFile, "assemble BB %d\n", BB_id(bb));
   }
+  /* if swp , count the cycle of this BB */
+  if (Assembly) {
+     if (BB_annotations(bb) && ((ant= ANNOT_Get(BB_annotations(bb),ANNOT_ROTATING_KERNEL))!=NULL)){
+         info = ANNOT_rotating_kernel(ant);
+         BB_cycle(bb) = ROTATING_KERNEL_INFO_ii(info);
+     }  
+  }
+  if (Assembly && List_Notes) {
+     if (Assembly) {
 
+         NOTE_BB_Act (bb, NOTE_PRINT_TO_FILE, Asm_File);
+     }
+
+     if (Assembly) {
+         Emit_Preds_And_Succs(bb,Asm_File);
+         FREQ_Print_BB_Note(bb, Asm_File);
+     }
+
+     if (Assembly) {
+        if (BB_loop_head_bb(bb))  Emit_Loop_Note(bb,Asm_File);
+     }
+     
+     if (Assembly) {
+        //output cycle count of the BB cbq
+        fprintf(Asm_File,"// BB:%d cycle count: %d\n",BB_id(bb),BB_cycle(bb));
+     }
+  }   
+  
+  /* List labels attached to BB: */
+  for (ant = ANNOT_First (BB_annotations(bb), ANNOT_LABEL);
+       ant != NULL;
+       ant = ANNOT_Next (ant, ANNOT_LABEL))
+  {
+    LABEL_IDX lab = ANNOT_label(ant);
+
+    if ( Assembly ) {
+      fprintf ( Asm_File, "%s:\t%s 0x%llx\n", 
+			  LABEL_name(lab), ASM_CMNT, Get_Label_Offset(lab) );
+    }
+#ifndef TARG_IA64
+    if (Get_Label_Offset(lab) != PC) {
+	DevWarn ("label %s offset %lld doesn't match PC %d", 
+		LABEL_name(lab), Get_Label_Offset(lab), PC);
+    }
+#endif
+  }
+
+  // hack to keep track of last label and offset for assembly dwarf (suneel)
+  if (Last_Label == LABEL_IDX_ZERO) {
+    Last_Label = Gen_Label_For_BB (bb);
+    Offset_From_Last_Label = 0;
+    if (Initial_Pu_Label == LABEL_IDX_ZERO) {
+      Initial_Pu_Label = Last_Label;
+    }
+  }
+  
   if (Assembly) {
     if (rid != NULL && RID_cginfo(rid) != NULL) {
 	if (current_rid == RID_id(rid)) {
@@ -2309,38 +2423,11 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
     }
   }
 
-  /* List labels attached to BB: */
-  for (ant = ANNOT_First (BB_annotations(bb), ANNOT_LABEL);
-       ant != NULL;
-       ant = ANNOT_Next (ant, ANNOT_LABEL))
-  {
-    LABEL_IDX lab = ANNOT_label(ant);
-
-    if ( Assembly ) {
-      fprintf ( Asm_File, "%s:\t%s 0x%llx\n", 
-			  LABEL_name(lab), ASM_CMNT, Get_Label_Offset(lab) );
-    }
-#ifndef TARG_IA64
-    if (Get_Label_Offset(lab) != PC) {
-	DevWarn ("label %s offset %lld doesn't match PC %d", 
-		LABEL_name(lab), Get_Label_Offset(lab), PC);
-    }
-#endif
-  }
-
-  // hack to keep track of last label and offset for assembly dwarf (suneel)
-  if (Last_Label == LABEL_IDX_ZERO) {
-    Last_Label = Gen_Label_For_BB (bb);
-    Offset_From_Last_Label = 0;
-    if (Initial_Pu_Label == LABEL_IDX_ZERO) {
-      Initial_Pu_Label = Last_Label;
-    }
-  }
 
   st = BB_st(bb);
   if (st) {
     if ( Assembly ) {
-      fprintf ( Asm_File, "%s:\t%s 0x%llx\n", ST_name(st), ASM_CMNT, ST_ofst(st));
+      // fprintf ( Asm_File, "%s:\t%s 0x%llx\n", ST_name(st), ASM_CMNT, ST_ofst(st));
     }
     Is_True (ST_ofst(st) == PC, ("st %s offset %lld doesn't match PC %d", 
 	ST_name(st), ST_ofst(st), PC));
@@ -2355,18 +2442,13 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   /* write out all the notes for this BB */
   if (Assembly && List_Notes) {
     if (BB_loop_head_bb(bb)) {
-      Emit_Loop_Note(bb, Asm_File);
+      Emit_Loop_Unrolling_Note(bb, Asm_File);
     }
     if (BB_annotations(bb) && 
 	ANNOT_Get(BB_annotations(bb), ANNOT_ROTATING_KERNEL))
       Emit_SWP_Note(bb, Asm_File);
-
-    if (BB_has_note(bb)) {
-      NOTE_BB_Act (bb, NOTE_PRINT_TO_FILE, Asm_File);
-    }
-
-    FREQ_Print_BB_Note(bb, Asm_File);
   }
+
   if (Run_prompf) {
     if (BB_loop_head_bb(bb)) {
       Emit_Loop_Note(bb, anl_file);
@@ -3232,6 +3314,24 @@ Branch_Skips_First_Op (BB *pred, BB *succ)
   return FALSE;
 }
 
+static INT
+Num_of_OPs_in_First_Group(BB* bb)
+{
+  INT Num_of_OPs = 0;
+  OP* op;
+
+  for ( op = BB_first_op(bb); op; op = OP_next(op) ) {
+    // ignore dummy op.
+    if (OP_dummy(op)) continue;
+
+    Num_of_OPs++;
+
+    if (OP_end_group(op)) break;
+  }
+
+  return Num_of_OPs;
+}
+
 /* 
  * Check if bb should be aligned, 
  * and return number of instructions it should be aligned with.
@@ -3245,7 +3345,7 @@ Check_If_Should_Align_BB (BB *bb, INT32 curpc)
 	float noskip_freq = 0.01;
 	INT targ_alignment;
 	INT num_of_ops = 0; 		/* zero to begin with */
-#define FREQUENT_BB_DIFF 5.0
+#define FREQUENT_BB_DIFF 10.0
 
 	/*
 	 * Align loops for best processor efficiency.
@@ -3259,9 +3359,15 @@ Check_If_Should_Align_BB (BB *bb, INT32 curpc)
 		return 0;	/* not frequent enough, so don't align */
 	if (BB_prev(bb) == NULL) 
 		return 0;	/* nowhere to put nops */
+
+	/* No padding if the first group in current bb contains only one bundle. */
+        if (Num_of_OPs_in_First_Group(bb) <= ISA_MAX_SLOTS)
+		return 0;
+
 	/* don't want to add nops to previous bb 
-	 * unless current bb is significantly more frequent. */
-	if (BB_freq(bb) / BB_freq(BB_prev(bb)) < FREQUENT_BB_DIFF)
+	 * unless current bb is loop head, or significantly more frequent. */
+	if (!BB_loophead(bb) &&
+            (BB_freq(BB_prev(bb)) ? BB_freq(bb) / BB_freq(BB_prev(bb)) < FREQUENT_BB_DIFF : TRUE))
 		return 0;
 
 	/* first check whether target is always label+4 */
@@ -3324,7 +3430,7 @@ Check_If_Should_Align_BB (BB *bb, INT32 curpc)
 }
 
 // When we have bundles, 'num' is the number of bundles, not
-// insructions.
+// instructions.
 static void Pad_BB_With_Noops(BB *bb, INT num)
 {
   OP *new_op;
@@ -4605,7 +4711,34 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
       }
     }
   }
-
+  /* Fix MMxx => IALU etc. latency requirement just before assemble BB */
+  if (LOCS_Enable_Bundle_Formation) {
+    TOP_SET src_op_class, tgt_op_class;
+    UINT8   cycles_apart = 4;
+    UINT slot;
+    OP *op;
+    UINT count = 0;
+    /* set start bundle */
+    for (bb = REGION_First_BB; bb; bb = BB_next(bb)) {
+        FOR_ALL_BB_OPs(bb,op) {
+            if (OP_dummy(op) || OP_simulated(op)) continue;
+            if (!(count % ISA_MAX_SLOTS)) Set_OP_start_bundle(op);
+            count += ISA_PACK_Inst_Words(OP_code(op)); 
+        }
+    }
+	src_op_class.push_back(SIC_MMALU_A);
+	src_op_class.push_back(SIC_MMALU_I);
+	src_op_class.push_back(SIC_MMMUL);
+	src_op_class.push_back(SIC_MMSHF);
+	tgt_op_class.push_back(SIC_IALU);
+	tgt_op_class.push_back(SIC_ISHF);
+	tgt_op_class.push_back(SIC_ILOG);
+	tgt_op_class.push_back(SIC_LD);
+	tgt_op_class.push_back(SIC_ST);
+	for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) 
+    		Fix_MM_Latency(bb, &src_op_class, &tgt_op_class, cycles_apart);
+  }	
+	
   /* Assemble each basic block in the PU */
   for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) {
     int bb_cycle_count;

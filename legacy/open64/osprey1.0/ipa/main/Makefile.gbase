@@ -193,7 +193,7 @@ IPA_ANALYZE_CXX_SRCS = \
 	ipa_summary.cxx \
 	ipa_nested_pu.cxx \
         ipa_cost.cxx \
-
+        inline_script_parser.cxx \
 
 IPA_OPTIMIZE_SRCS = \
 #	ipo_parent.c \
@@ -261,7 +261,7 @@ VPATH    =  $(SRC_DIRS)
 
 LCOPTS = $(STD_COMPILE_OPTS)
 
-HOSTDEFS += -D_NEW_SYMTAB -D_MERGE_SUMMARY_ST_IDX_=1 -DBACK_END
+HOSTDEFS += -D_NEW_SYMTAB -D_MERGE_SUMMARY_ST_IDX_=1 -DBACK_END -fpic
 
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 LCDEFS += $(HOSTDEFS)
@@ -279,7 +279,7 @@ LC++INCS = $(LCINCS)
 ifeq ($(BUILD_OS), IRIX)
 LLDLIBS += -lgen -lm
 endif
-
+OPTIMIZER = -O0
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 LCDEFS += 
 #-DIPA_CPROP_TEST
@@ -292,6 +292,11 @@ else
  ifeq ($(BUILD_OS), IRIX)
 OPTIMIZER += -Wl,-Bsymbolic
  endif
+endif
+
+# add define HOST_IA64 to choose suitable headfile
+ifeq (${BUILD_ARCH}, IA64)
+HOSTDEFS +=-DHOST_IA64
 endif
 
 GLDOPTS = $(STD_LOAD_OPTS)

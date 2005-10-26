@@ -94,6 +94,11 @@ struct FB_Info_Invoke {
     fprintf( fp, "FB---> invoke = " );
     freq_invoke.Print( fp );
   }
+
+  void Print_simple (FILE *fp) const {
+    fprintf( fp, "FB---> invoke = " );
+    freq_invoke.Print_simple( fp );
+  	}
 };
 
 struct FB_Info_Branch {
@@ -129,6 +134,12 @@ struct FB_Info_Branch {
     freq_not_taken.Print( fp );
   }
 
+  void Print_simple( FILE *fp ) const {
+    fprintf( fp, "FB---> taken = " );
+    freq_taken.Print_simple( fp );
+    fprintf( fp, ", not_taken = " );
+    freq_not_taken.Print_simple( fp );
+  }
   FB_FREQ Total() const {
     return ( freq_taken + freq_not_taken );
   }
@@ -212,6 +223,21 @@ struct FB_Info_Loop {
     freq_iterate.Print( fp );
   }
 
+  void Print_simple( FILE *fp ) const {
+    fprintf( fp, "FB---> zero = " );
+    freq_zero.Print_simple( fp );
+    fprintf( fp, ", positive = " );
+    freq_positive.Print_simple( fp );
+    fprintf( fp, ", out = " );
+    freq_out.Print( fp );
+    fprintf( fp, ", back = " );
+    freq_back.Print_simple( fp );
+    fprintf( fp, "\n       exit = " );
+    freq_exit.Print_simple( fp );
+    fprintf( fp, ", iterate = " );
+    freq_iterate.Print_simple( fp );
+  }
+
   FB_FREQ Total() const {
     return ( freq_exit + freq_iterate );
   }
@@ -248,6 +274,15 @@ struct FB_Info_Circuit {
     freq_right.Print( fp );
     fprintf( fp, ", neither = " );
     freq_neither.Print( fp );
+  }
+
+  void Print_simple( FILE *fp ) const {
+    fprintf( fp, "FB---> left = " );
+    freq_left.Print_simple( fp );
+    fprintf( fp, ", right = " );
+    freq_right.Print_simple( fp );
+    fprintf( fp, ", neither = " );
+    freq_neither.Print_simple( fp );
   }
 
   FB_FREQ Total() const {
@@ -289,6 +324,15 @@ struct FB_Info_Call {
     freq_exit.Print( fp );
     fprintf( fp, ", in_out_same = %c", in_out_same ? 'Y' : 'N' );
   }
+
+  void Print_simple( FILE *fp ) const {
+    fprintf( fp, "FB---> entry = " );
+    freq_entry.Print_simple( fp );
+    fprintf( fp, ", exit = " );
+    freq_exit.Print_simple( fp );
+    fprintf( fp, ", in_out_same = %c", in_out_same ? 'Y' : 'N' );
+  }
+
 };
 
 
@@ -330,6 +374,14 @@ struct FB_Info_Switch {
     for ( INT t = 0; t < freq_targets.size(); t++ ) {
       fprintf( fp, ", %d: ", t );
       freq_targets[t].Print( fp );
+    }
+  }
+
+  void Print_simple( FILE *fp ) const {
+    fprintf( fp, "FB---> targets = %d", (INT) freq_targets.size() );
+    for ( INT t = 0; t < freq_targets.size(); t++ ) {
+      fprintf( fp, ", %d: ", t );
+      freq_targets[t].Print_simple( fp );
     }
   }
 

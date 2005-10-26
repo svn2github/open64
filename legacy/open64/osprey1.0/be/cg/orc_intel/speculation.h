@@ -106,6 +106,8 @@ extern OP* Local_Insert_CHK(OP *spec_ld, OP *point, TN *pr_tn = True_TN);
 extern OP* Insert_CHK(OP* primary_ld, vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn);
 extern BOOL OP_baneful(OP* op);
 extern OP *Change_ld_Form(OP *load_op, ISA_ENUM_CLASS_VALUE target_form);
+extern BOOL Is_Control_Speculation_Gratuitous(OP*, BB*, OP*);
+extern BOOL Delete_Recovery_Info_For_BB(BB *bb);
 
 //  ===== (<%pr%p6>) <r7>=<ldtype>,<ldhint>,[<%bs%r7>] ===== 
 //  Instruction_Group("O_108", TOP_ld1, TOP_ld2, TOP_ld4, TOP_ld8, TOP_UNDEFINED);

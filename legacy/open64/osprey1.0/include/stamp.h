@@ -45,7 +45,7 @@ extern "C" {
 #ifdef __linux
 #define	MS_STAMP 0
 #define	LS_STAMP 9
-#define INCLUDE_STAMP "1.0.0"
+#define INCLUDE_STAMP "1.1.0"
 #else
 #define	MS_STAMP 7
 #define	LS_STAMP 40

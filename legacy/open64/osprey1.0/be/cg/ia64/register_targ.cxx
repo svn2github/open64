@@ -49,6 +49,7 @@
 #include "targ_sim.h"
 #include "op.h"
 #include "cg_flags.h"
+#include "ipfec_options.h"
 
 #include "targ_isa_registers.h"
 #include "targ_abi_properties.h"
@@ -59,7 +60,6 @@
 // REGISTER values are biased by REGISTER_MIN, so apply
 // it to get REGISTER value given a machine reg number
 #define FIRST_INPUT_REG (32+REGISTER_MIN)
-//INT FIRST_INPUT_REG = 32 + REGISTER_MIN;
 #define FIRST_OUTPUT_REG (127+REGISTER_MIN)
 #define LAST_STACKED_REG (127+REGISTER_MIN)
 #define FIRST_ROTATING_INTEGER_REG (32+REGISTER_MIN)
@@ -79,8 +79,17 @@ static REGISTER_SET stacked_callee_used;
 REGISTER_SET stacked_caller_used;
 static INT stacked_minimum_output;
 
-//INT32 cut_num = 48;
 extern BOOL fat_self_recursive;
+extern BOOL can_use_stacked_reg;
+
+//Inserted by ORC
+extern INT abi_property;
+extern ISA_REGISTER_CLASS reg_class;
+extern BOOL need_buffer;
+extern INT32 current_lrange;
+//End of Insertion
+
+
 /////////////////////////////////////
 void
 REGISTER_Init_Stacked(ISA_REGISTER_CLASS rclass)
@@ -98,9 +107,6 @@ REGISTER_Init_Stacked(ISA_REGISTER_CLASS rclass)
     // stacked_callee_next points at the last register allocated.
     // stacked_caller_next points at the next register to allocate.
     //
-    /*if (fat_self_recursive) {
-       #define FIRST_INPUT_REG (80 + REGISTER_MIN)
-    }*/
     stacked_callee_next = FIRST_INPUT_REG - 1;
     stacked_caller_next = FIRST_OUTPUT_REG;
     stacked_callee_used = REGISTER_SET_EMPTY_SET;
@@ -167,12 +173,19 @@ REGISTER REGISTER_Request_Stacked_Register(INT has_abi_property,
 //
 /////////////////////////////////////
 {
+  need_buffer = FALSE;
   if (!REGISTER_Has_Stacked_Registers(rclass)) return REGISTER_UNDEFINED;
 
   if (stacked_callee_next >= stacked_caller_next) return REGISTER_UNDEFINED;
-  INT32 cut_num = 48;
+  INT32 cut_num = IPFEC_Stacked_Cut_Num;
   if (fat_self_recursive) {
-    //if ((stacked_callee_next + cut_num) >= stacked_caller_next)
+    if (!can_use_stacked_reg) {
+        abi_property = has_abi_property;
+        reg_class    = rclass;
+        need_buffer  = TRUE;
+        return REGISTER_UNDEFINED;
+    }
+    if ((stacked_callee_next + cut_num) >= stacked_caller_next)
        return REGISTER_UNDEFINED;
   }
   // callee saved are allocated from the front, caller from the
@@ -196,6 +209,9 @@ REGISTER REGISTER_Request_Stacked_Register(INT has_abi_property,
     stacked_caller_used =
       REGISTER_SET_Union1(stacked_caller_used, result_reg);
     num_caller++;
+  }
+  if (fat_self_recursive) { 
+      DevWarn(" STACKED REGISTER %d ALLOCATED TO TN %d\n",result_reg,current_lrange);
   }
   return result_reg;
 }

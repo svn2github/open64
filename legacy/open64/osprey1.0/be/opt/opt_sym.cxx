@@ -580,8 +580,10 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   UINT8 bit_ofst = 0;
   UINT8 bit_size = 0;
   INT32 mclass = 0;
+  MTYPE mtype = MTYPE_UNKNOWN;
   BOOL is_virtual = FALSE;
   BOOL is_scalar = FALSE;
+  BOOL no_register = FALSE;
   BOOL dmod = FALSE;
   UINT field_id = 0;
 
@@ -608,14 +610,18 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
       byte_size = TY_size(wn_object_ty);
       field_id = WN_field_id(wn);
     }
-    else if (WN_desc(wn) == MTYPE_M)
+    else if (WN_desc(wn) == MTYPE_M) {
       byte_size = Desc_type_byte_size(wn);
-    else {
+      if (opr != OPR_LDBITS) {
+        no_register = TRUE;
+      }
+    } else {
       byte_size = MTYPE_size_min(WN_desc(wn)) >> 3;
       if (ST_sclass(st) == SCLASS_REG)
         byte_size = TY_size(ST_type(st));
     }
-    mclass = Get_mtype_class(WN_rtype(wn));
+    mtype = WN_rtype(wn);
+    mclass = Get_mtype_class(mtype);
     is_scalar = TRUE;
     stype = VT_NO_LDA_SCALAR;
     break;
@@ -637,14 +643,18 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
       field_id = WN_field_id(wn);
     }
     else {
-      if (WN_desc(wn) == MTYPE_M)
-	byte_size = Desc_type_byte_size(wn);
-      else
+      if (WN_desc(wn) == MTYPE_M) {
+        byte_size = Desc_type_byte_size(wn); 
+        if (opr != OPR_STBITS) {
+          no_register = TRUE;
+        }
+      } else
 	byte_size = MTYPE_size_min(WN_desc(wn)) >> 3;
       if (ST_sclass(st) == SCLASS_REG)
         byte_size = TY_size(ST_type(st));
     }
-    mclass = Get_mtype_class(WN_desc(wn));
+    mtype = WN_desc(wn);
+    mclass = Get_mtype_class(mtype);
     dmod = TRUE;
     is_scalar = TRUE;
     stype = VT_NO_LDA_SCALAR;
@@ -706,10 +716,15 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
       if (is_scalar) {
 	if (!aux_stab[idx].Is_real_var())
 	  aux_stab[idx].Set_stype(VT_LDA_SCALAR);
-	aux_stab[idx].Set_mclass(mclass);
+	  aux_stab[idx].Set_mclass(mclass);
+	  aux_stab[idx].Set_mtype(mtype);
       }
       if (is_virtual && !aux_stab[idx].Is_virtual())
 	aux_stab[idx].Set_stype(VT_LDA_SCALAR);
+
+      if (no_register) {
+        aux_stab[idx].Set_no_register();
+      }
 
       if (dmod) aux_stab[idx].Set_dmod();
       return idx;    
@@ -751,15 +766,25 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   sym->Set_home_sym((AUX_ID) 0);
   sym->Set_zero_cr(NULL);
   sym->Set_field_id(field_id);
+  sym->Set_mclass(0);
+  sym->Set_mtype(MTYPE_UNKNOWN);
+
 
   if (is_scalar) {
     sym->Set_stype(VT_NO_LDA_SCALAR);
     sym->Set_mclass(mclass);
+    sym->Set_mtype(mtype);
   }
   if (is_virtual) {
     sym->Set_stype(VT_LDA_VSYM);
     sym->Set_mclass(0);
+    sym->Set_mtype(MTYPE_UNKNOWN);
   }
+
+  if (no_register) {
+    sym->Set_no_register();
+  }
+
   if (dmod) sym->Set_dmod();
   if ( is_volatile )   sym->Set_volatile();
 
@@ -861,6 +886,7 @@ OPT_STAB::Enter_ded_preg(ST *st, INT64 ofst, TY_IDX ty, INT32 mclass)
 
   sym->Set_stype(VT_NO_LDA_SCALAR);
   sym->Set_mclass(mclass);
+  sym->Set_mtype(MTYPE_UNKNOWN);
   sym->Clear_flags();
   sym->Set_st(st);
   sym->Set_st_ofst(ofst);
@@ -896,6 +922,8 @@ OPT_STAB::Create_vsym(EXPR_KIND k)
   AUX_STAB_ENTRY *vsym = Aux_stab_entry(retv);
   vsym->Set_stype(VT_SPECIAL_VSYM);
   vsym->Clear_flags();
+  vsym->Set_mclass(0);
+  vsym->Set_mtype(MTYPE_UNKNOWN);
   vsym->Set_st(NULL);
   vsym->Set_st_ofst(0);
   vsym->Set_nonzerophis(NULL);
@@ -930,6 +958,7 @@ OPT_STAB::Create_preg(MTYPE preg_ty, char *name, WN *home_wn)
   sym->Set_stype(VT_NO_LDA_SCALAR);
   sym->Clear_flags();
   sym->Set_mclass(Get_mtype_class(preg_ty));
+  sym->Set_mtype(preg_ty);
   sym->Set_st(st);
   sym->Set_st_ofst(Alloc_preg(preg_ty,name,home_wn));
   sym->Set_nonzerophis(NULL);

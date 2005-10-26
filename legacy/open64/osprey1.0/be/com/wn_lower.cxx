@@ -619,10 +619,10 @@ static LABEL_IDX NewLabel(void)
   LABEL_IDX label;
   LABEL& lab = New_LABEL(CURRENT_SYMTAB, label);
   // create label name
-  char *name = (char *) alloca (strlen(".L..") + 8 + 8 + 1);
-  sprintf(name, ".L%s%d%s%d", Label_Name_Separator, Current_PU_Count(), 
-	Label_Name_Separator, label);
-  LABEL_Init (lab, Save_Str(name), LKIND_DEFAULT);
+  //char *name = (char *) alloca (strlen(".L..") + 8 + 8 + 1);
+  //sprintf(name, ".L%s%d%s%d", Label_Name_Separator, Current_PU_Count(), 
+  //	Label_Name_Separator, label);
+  //LABEL_Init (lab, Save_Str(name), LKIND_DEFAULT);
   return label;
 }
 
@@ -3938,6 +3938,8 @@ static WN *lower_mldid(WN *block, WN *tree, LOWER_ACTIONS actions)
 		     pty_idx, WN_st(tree));
   wn  = WN_CreateMload(0, pty_idx, awn, swn);
   WN_set_field_id(wn, WN_field_id(tree));
+
+  lower_copy_maps(tree, wn, actions);
   wn  = lower_expr(block, wn, actions);
 
   WN_Delete(tree);
@@ -3971,6 +3973,7 @@ static WN *lower_miload(WN *block, WN *tree, LOWER_ACTIONS actions)
   WN_set_field_id(wn, WN_field_id(tree));
   wn  = lower_expr (block, wn, actions);
 
+  lower_copy_maps(tree, wn, actions);
   WN_Delete (tree);
   return wn;
 }
@@ -4544,7 +4547,8 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     break;
 
   case OPR_LDID:
-    if (Action(LOWER_RETURN_VAL) && WN_st(tree) == Return_Val_Preg)
+    if (Action(LOWER_RETURN_VAL) && WN_st(tree) == Return_Val_Preg && 
+    	WN_opcode(tree) != OPC_MMLDID)
       return lower_return_ldid(block, tree, actions);
 
     if (Action(LOWER_MLDID_MSTID) && WN_opcode(tree) == OPC_MMLDID)
@@ -5274,13 +5278,14 @@ static BOOL WN_StoreIsUnused(WN *tree)
 
 /* ====================================================================
  *
- * WN *add_fake_parm(WN *o_call, WN *fake_actual)
+ * WN *add_fake_parm(WN *o_call, WN *fake_actual, LOWER_ACTIONS actions)
  *
  * Add the fake actual parameter as the first parameter to the original call.
  * All original parameters are shifted down by 1.
  *
  * ==================================================================== */
-static WN *add_fake_parm(WN *o_call, WN *fake_actual, TY_IDX ty_idx)
+static WN *add_fake_parm(WN *o_call, WN *fake_actual, TY_IDX ty_idx,
+                            LOWER_ACTIONS actions)
 {
   WN *n_call;
   if (WN_operator(o_call) == OPR_ICALL)
@@ -5296,7 +5301,7 @@ static WN *add_fake_parm(WN *o_call, WN *fake_actual, TY_IDX ty_idx)
   WN_kid0(n_call) = WN_CreateParm(Pointer_Mtype, fake_actual, ty_idx,
 			      WN_PARM_BY_REFERENCE | WN_PARM_PASSED_NOT_SAVED);
   for (INT32 i = 0; i < WN_kid_count(o_call); i++)
-    WN_kid(n_call, i+1) = WN_COPY_Tree(WN_kid(o_call, i));
+    WN_kid(n_call, i+1) = lower_copy_tree(WN_kid(o_call, i), actions);
   return n_call;
 }
 
@@ -5328,7 +5333,7 @@ static WN *lower_return_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
 			   WN_store_offset(tree), 
 			   Make_Pointer_Type(WN_ty(tree)), WN_st_idx(tree));
     awn = lower_expr(block, awn, actions);
-    WN *n_call = add_fake_parm(call, awn, WN_ty(awn));
+    WN *n_call = add_fake_parm(call, awn, WN_ty(awn), actions);
     WN_DELETE_FromBlock(block, call);
     WN_INSERT_BlockLast(block, n_call); 
 
@@ -5389,7 +5394,7 @@ static WN *lower_return_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
       awn = WN_CreateExp2(OPR_ADD, Pointer_Mtype, Pointer_Mtype, awn, iwn);
     }
     awn = lower_expr(block, awn, actions);
-    WN *n_call = add_fake_parm(call, awn, WN_ty(tree));
+    WN *n_call = add_fake_parm(call, awn, WN_ty(tree), actions);
     WN_DELETE_FromBlock(block, call);
     WN_INSERT_BlockLast(block, n_call); 
 
@@ -5446,8 +5451,8 @@ static WN *lower_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
   WN *rhs = WN_kid0(tree);
   if (WN_opcode(rhs) == OPC_MMLDID && WN_st(rhs) == Return_Val_Preg) {
     // handle lowering of MLDID of Return_Val_Preg followed by MSTID
-    Is_True(Action(LOWER_RETURN_VAL),
-	    ("LOWER_RETURN_VAL action must be specified"));
+    //Is_True(Action(LOWER_RETURN_VAL),
+	//    ("LOWER_RETURN_VAL action must be specified"));
     return lower_return_mstid(block, tree, actions);
   }
 
@@ -5501,9 +5506,12 @@ static WN *lower_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
 
   swn = WN_CreateIntconst(OPC_U4INTCONST, size);
   wn  = WN_CreateMstore(WN_offset(tree), pty_idx, 
-			WN_COPY_Tree(WN_kid0(tree)),
-                        WN_COPY_Tree(WN_kid1(tree)), swn);
+			lower_copy_tree(WN_kid0(tree), actions),
+            lower_copy_tree(WN_kid1(tree), actions), swn);
+  
   WN_set_field_id(wn, WN_field_id(tree));
+
+  lower_copy_maps(tree, wn, actions);
   wn  = lower_store(block, wn, actions);
 
   WN_DELETE_Tree (tree);
@@ -5573,6 +5581,13 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 
     if (Action(LOWER_MLDID_MSTID) && WN_desc(tree) == MTYPE_M)
       return lower_mistore(block, tree, actions);
+
+    if (Action(LOWER_RETURN_VAL) && WN_desc(tree) == MTYPE_M &&
+       WN_opcode(WN_kid0(tree)) == OPC_MMLDID && 
+       WN_st(WN_kid0(tree)) == Return_Val_Preg) {
+       return lower_return_mistore(block, tree, actions);
+    }
+
 
     if (Action(LOWER_BIT_FIELD_ID) && WN_desc(tree) == MTYPE_BS) {
       lower_bit_field_id(tree);
@@ -5818,6 +5833,13 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     if (Action(LOWER_MLDID_MSTID) && WN_desc(tree) == MTYPE_M)
       return lower_mstid(block, tree, actions);
 
+    if (Action(LOWER_RETURN_VAL) && WN_desc(tree) == MTYPE_M &&
+       WN_opcode(WN_kid0(tree)) == OPC_MMLDID && 
+       WN_st(WN_kid0(tree)) == Return_Val_Preg) {
+       return lower_return_mstid(block, tree, actions);
+    }
+
+
     if (Action(LOWER_BIT_FIELD_ID) && WN_desc(tree) == MTYPE_BS) {
       lower_bit_field_id(tree);
       if (Action(LOWER_BITS_OP) && WN_operator (tree) == OPR_STBITS)
@@ -6057,6 +6079,10 @@ static WN *lower_eval(WN *block, WN *tree, LOWER_ACTIONS actions)
   Is_True(WN_opcode(tree) == OPC_EVAL,
 	  ("expected EVAL node, not %s", OPCODE_name(WN_opcode(tree))));
 
+ if (Action(LOWER_MLDID_MSTID) && WN_opcode(child) == OPC_MMLDID) {
+     child = lower_mldid(block, child, actions);
+ }
+
   if (Action(LOWER_COMPLEX) && MTYPE_is_complex(WN_rtype(child)))
   {
     WN	*realexp, *imagexp, *eval;
@@ -6084,7 +6110,7 @@ static WN *lower_eval(WN *block, WN *tree, LOWER_ACTIONS actions)
   else if (Action(LOWER_MSTORE) && WN_operator_is(child, OPR_MLOAD))
   {
     TY_IDX mloadTY = TY_pointed(Ty_Table[WN_ty(child)]);
-
+    
     if (TY_is_volatile(mloadTY))
     {
       DevWarn("eval of volatile (mload) seen. I hoped to never see this");
@@ -6492,7 +6518,7 @@ copy_aggregate_loop_const(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
     doLoop = WN_CreateDO(WN_CreateIdname(n, intPreg),
 			 start, test, incr, body, NULL);
     WN_INSERT_BlockLast(block, doLoop);
-    if ( Cur_PU_Feedback )
+    if ( Cur_PU_Feedback && (origStore != NULL))
       Cur_PU_Feedback->FB_lower_mstore_to_loop( origStore, doLoop, nMoves );
   }
 
@@ -8371,7 +8397,7 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
                              Make_Pointer_Type(TY_ret_type(prototype)), 
 			     return_st);
       awn = lower_expr(block, awn, actions);
-      WN *n_call = add_fake_parm(tree, awn, WN_ty(awn));
+      WN *n_call = add_fake_parm(tree, awn, WN_ty(awn), actions);
       WN_Delete(tree);
       tree = n_call;
     }
@@ -11239,6 +11265,7 @@ static LOWER_ACTIONS lower_actions(WN *pu, LOWER_ACTIONS actions)
 				    LOWER_UPLEVEL		|
 				    LOWER_SPLIT_SYM_ADDRS	|
 				    LOWER_CALL			|
+                                    LOWER_MLDID_MSTID           |
 				    LOWER_RETURN_VAL);
 
    /*

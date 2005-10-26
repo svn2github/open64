@@ -1108,6 +1108,11 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 
     // Get the desc type
     MTYPE dsctyp = WN_desc(stmt);
+    if (dsctyp == MTYPE_M) {
+      // don't generate select for MTYPE_M because there is no register for
+      // MTYPE_M
+      goto end_label;
+    }
 
     WN *load = NULL;
     WN *store = WN_CopyNode(stmt);
@@ -1164,6 +1169,8 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
       return;
     }
   }
+
+end_label:
 
   // we need a merge block, but don't connect it yet
   BB_NODE *merge_bb = Create_labelled_bb();

@@ -96,6 +96,10 @@
 #include "cg.h"
 #include "region_bb_util.h"
 #include "region.h"
+
+#include "vector.h"
+#include "if_conv.h"
+
 /* Allocate basic blocks for the duration of the PU. */
 #define BB_Alloc()  TYPE_PU_ALLOC(BB)
 #define BB_Alloc_N(n) TYPE_PU_ALLOC_N(BB, n)
@@ -771,10 +775,6 @@ BB_kind(BB *bb)
    */
   if (BB_call(bb)) return BBKIND_CALL;
 
-  OP *op = BB_last_op(bb);
-  if (op) {
-      if (OP_chk(op)) return BBKIND_LOGIF;
-  }
   /* Get the branch OP and the number of successors.
    */
   br = BB_branch_op(bb);
@@ -1043,27 +1043,6 @@ Print_BB_Header ( BB *bp, BOOL flow_info_only, BOOL print_tn_info )
 	    (BB_prev(bp) ? BB_id(BB_prev(bp)) : -1),
 	    (BB_next(bp) ? BB_id(BB_next(bp)) : -1) );
 
-  fprintf ( TFile, "Predecessors:\t" );
-  i = 0;
-  FOR_ALL_BB_PREDS (bp, bl) {
-    fprintf ( TFile, "%sBB:%2d ",
-	      ( (i == 0) ? "" : (i%5 == 0) ? ",\n\t\t" : ", " ),
-	      BB_id(BBLIST_item(bl)));
-    ++i;
-  }
-  if ( i == 0 ) fprintf ( TFile, "none" );
-  fprintf ( TFile, "\nSuccessors%s:\t", freqs ? " (w/probs)" : "" );
-  i = 0;
-  FOR_ALL_BB_SUCCS (bp, bl) {
-    fprintf ( TFile, "%sBB:%2d",
-	      ( (i == 0) ? "" : (i%5 == 0) ? ",\n\t\t" : ", " ),
-	      BB_id(BBLIST_item(bl)));
-    if (freqs) fprintf(TFile, " (%g)", BBLIST_prob(bl));
-    ++i;
-  }
-  if ( i == 0 ) fprintf ( TFile, "none" );
-  fprintf ( TFile, "\n" );
-
   if (BB_has_label(bp)) {
     ANNOTATION *ant;
     fprintf(TFile, "Labeled with ");
@@ -1179,13 +1158,33 @@ void Trace_BB ( BB *bp, char *msg )
 
 void Print_BB ( BB *bp )
 {
-  fprintf ( TFile, "%sBB:%d \n%s", SBar, BB_id(bp), SBar );
+  
+  BBLIST *bl;
+  if ( BB_entry(bp) ) {
+    ANNOTATION *ant = ANNOT_Get (BB_annotations(bp), ANNOT_ENTRYINFO);
+    ENTRYINFO *ent = ANNOT_entryinfo (ant);
+    fprintf ( TFile, "\n\t.proc  %s#\n", ST_name(ENTRYINFO_name(ent)) );
+  }
+  fprintf ( TFile, "%s", SBar);
+  fprintf ( TFile, "// Block: %d", BB_id(bp) );
+  fprintf ( TFile, " Pred:" );
+  FOR_ALL_BB_PREDS (bp, bl) {
+    fprintf ( TFile, " %d", BB_id(BBLIST_item(bl)));
+  }
+  fprintf ( TFile, " Succ:" );
+  FOR_ALL_BB_SUCCS (bp, bl) {
+    fprintf ( TFile, " %d", BB_id(BBLIST_item(bl)));
+  }
+  fprintf ( TFile, "\n" );
+  fprintf ( TFile, "%s", SBar );
+  
   Print_BB_Header ( bp, FALSE, TRUE );
   Print_BB_Pragmas ( bp );
   fprintf ( TFile, "\n" );
   NOTE_BB_Act(bp, NOTE_PRINT_TO_FILE, TFile);
   FREQ_Print_BB_Note(bp, TFile);
   if (BB_first_op(bp))	Print_OPs (BB_first_op(bp));
+  if (BB_exit(bp) && !BB_call(bp)) { fprintf ( TFile, "\n\t.endp\n" ); }
 } 
 
 /* ================================================================= */
@@ -1336,6 +1335,36 @@ BB_xfer_op( BB *bb )
     if (PROC_has_branch_delay_slot()) {
       op = OP_prev(op);
       if (op && OP_xfer(op)) return op;
+    }
+  }
+
+  return NULL;
+}
+
+/* ====================================================================
+ *
+ * BB_call_op
+ *
+ * Return the call OP in a given BB
+ *
+ * ====================================================================
+ */
+
+OP*
+BB_call_op( BB *bb )
+{
+  if(!BB_call(bb)) return NULL;
+  OP *op = BB_last_op(bb);
+
+  /* Test the last two OPs looking for the terminating xfer OP (it may not
+   * be the last OP if we have put something in the delay slot).
+   */
+  if (op) {
+    if (OP_call(op)) return op;
+
+    if (PROC_has_branch_delay_slot()) {
+      op = OP_prev(op);
+      if (op && OP_call(op)) return op;
     }
   }
 
@@ -2310,6 +2339,8 @@ void Change_Succ(BB *pred, BB *old_succ, BB *new_succ)
   BBLIST_item(succs) = new_succ;
   if (FREQ_Frequencies_Computed()) {
     adjust = BB_freq(pred) * BBLIST_prob(succs);
+    if ((BB_freq(pred) == 0) && (BBLIST_prob(succs) >= 0) && !(adjust == adjust)) /* the result of NaN compare will always be false */
+	adjust = 0;
   } else if (BB_freq_fb_based(pred)) {
     /* Guess that P(succ) is same for all succs */
     adjust = BB_freq(pred) / BBlist_Len(BB_succs(pred));
@@ -2695,6 +2726,36 @@ Split_BBs(void)
   }
 }
 
+/*=========================================================================
+* Find_BB_Parents
+*
+* Return all bb's parents bb including itself.
+*==========================================================================
+*/
+BB_SET*
+Find_BB_Parents(BB* bb)
+{
+  BB_SET* result = BB_SET_Create_Empty(PU_BB_Count+2, &BB_MEM_pool);
+  BB_CONTAINER_ALLOC bb_mem(&BB_MEM_pool);
+  BB_CONTAINER bb_vector(bb_mem);
+  BB_CONTAINER::iterator iter;
+  bb_vector.push_back(bb);
+  BOOL bb_visited[PU_BB_Count+2];
+  for(INT i = 0; i < PU_BB_Count+2; i++) bb_visited[i] = FALSE;
+  bb_visited[bb->id] = TRUE;
+  while(!bb_vector.empty()) {
+    BBLIST* pre_bbs = NULL;
+    iter = bb_vector.begin();
+  	result = BB_SET_Union1D(result, *iter, &BB_MEM_pool);
+    for(pre_bbs = BB_preds(*iter),iter = bb_vector.erase(iter); pre_bbs != NULL; pre_bbs = BBLIST_next(pre_bbs))
+    {
+      if(!BBLIST_item(pre_bbs) || bb_visited[BBLIST_item(pre_bbs)->id]) continue;
+      bb_vector.push_back(BBLIST_item(pre_bbs));
+      bb_visited[BBLIST_item(pre_bbs)->id] = TRUE;
+    }
+  }
+  return result;
+}
 
 // A temp BB_SET variable reserved for the BB_REGION routines because
 // creating and destroying BB_SET is an expensive operation.

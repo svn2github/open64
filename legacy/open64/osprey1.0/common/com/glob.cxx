@@ -107,6 +107,7 @@ int pu_number = 0;
 int bb_number = 0;
 char *Output_h_File_Name = "cycle_output.h";        /* Cycle_Counting Output.h file */
 FILE *Output_h_File = NULL;           /* Cycle counting output.h file */
+FILE *Call_graph_file = NULL; 	      /* Call graph file */
 char * pu_string[1000]; 
 char * bb_string[1000]; 
 
@@ -124,6 +125,9 @@ char *Asm_File_Name = NULL;	/* Assembly file */
 char *Obj_File_Name = NULL;	/* Relocatable object file */
 char *Instrumentation_File_Name = NULL; /* instrumentation file */
 char *Feedback_File_Name = NULL; /* Feedback file */
+char *call_graph_file_name = NULL; /* Function call graph file */
+char *cord_output_file_name = NULL; /* Output file name after function layout */
+char *cord_obj_file_name = NULL;  /* Object file name which will be reorder function layout */
 #ifndef MONGOOSE_BE
 char *Lib_File_Name = NULL;	/* Program library file	*/
 #endif 
@@ -144,3 +148,9 @@ FILE *Asm_File = NULL;		/* Assembly file */
 FILE *Obj_File = NULL;		/* Relocatable object file */
 FILE *Lib_File = NULL;		/* Program library file	*/
 FILE *Tim_File = NULL;		/* Timer report	file, usually TFile */
+
+#ifdef SPECMT_LT
+FILE *ExchangeFile = NULL;              /* exchange file for pseudo-specmt partition */
+FILE *LoopMappingFile = NULL;           /* loop mapping file for two pass compilation */
+#endif
+

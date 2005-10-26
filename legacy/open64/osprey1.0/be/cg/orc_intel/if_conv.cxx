@@ -54,6 +54,7 @@
 #include "if_conv.h"
 #include "timing.h"
 #include "tracing.h"
+#include "cg.h"
 #include "profile_util.h"
 #include "region_bb_util.h"
 #include "ti_res_count.h"
@@ -4125,6 +4126,10 @@ IF_CONVERTOR::IF_CONVERTOR(REGION_TREE *region_tree)
 
     Start_Timer(T_Ipfec_If_Conv_CU);
 
+    //trace before IF_CONV
+    if (Get_Trace(TKIND_IR, TP_A_IFCONV, REGION_First_BB))
+      Trace_IR(TP_A_IFCONV, "IF_CONV", NULL, FALSE);
+
     if (!frequency_of_predicates)
     {
         frequency_of_predicates = hTN_MAPf_Create(&(info_mem._m));
@@ -4220,6 +4225,10 @@ IF_CONVERTOR::IF_CONVERTOR(REGION_TREE *region_tree)
         draw_global_cfg();
     }
     
+    //trace after IF_CONV
+    if (Get_Trace(TKIND_IR, TP_A_IFCONV, REGION_First_BB))
+      Trace_IR(TP_A_IFCONV, "IF_CONV", NULL);
+
     Stop_Timer(T_Ipfec_If_Conv_CU);
 }
 IF_CONVERTOR::IF_CONVERTOR()

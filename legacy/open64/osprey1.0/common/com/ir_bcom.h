@@ -53,7 +53,7 @@ inline off_t
 ir_b_align (off_t offset, UINT32 addralign, UINT32 padding)
 {
      if (addralign-- > 1)
-	return ((offset + padding + addralign) & ~addralign) - padding;
+	return ((offset + padding + addralign) & ~(off_t)addralign) - padding;
     else
 	return offset;
 }

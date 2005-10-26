@@ -413,7 +413,7 @@ WFE_Expand_End_Case (tree orig_index)
   WN    *wn;
   TYPE_ID index_mtype = switch_info_stack [switch_info_i].index_mtype;
 
-  n = case_info_i - switch_info_stack [switch_info_i].start_case_index;
+  n = case_info_i - switch_info_stack [switch_info_i].start_case_index + 1;
   if (switch_info_stack [switch_info_i].exit_label_idx == 0) {
     New_LABEL (CURRENT_SYMTAB, switch_info_stack [switch_info_i].exit_label_idx);
   }

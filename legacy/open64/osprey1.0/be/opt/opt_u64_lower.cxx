@@ -222,6 +222,10 @@ U64_LOWER_form_node(CODEREP *cr, CODEREP *old_cr) {
         changed = TRUE;
     break;
   case CK_OP:
+    if ((cr->Dtyp() != old_cr->Dtyp()) || (cr->Dsctyp() != old_cr->Dsctyp())) {
+        changed = TRUE;
+	break;
+    }
     for (INT i = 0; i < old_cr->Kid_count(); i++)
       if (cr->Opnd(i) != old_cr->Opnd(i)) {
         changed = TRUE;
@@ -232,11 +236,6 @@ U64_LOWER_form_node(CODEREP *cr, CODEREP *old_cr) {
   if (changed) {
     old_cr->DecUsecnt();
     return htable->Rehash(cr); 
-  }
-  if (old_cr->Kind() == CK_OP) {
-    // update fields other than the kid pointers from cr back to old_cr
-    old_cr->Set_dtyp(cr->Dtyp());
-    old_cr->Set_dsctyp(cr->Dsctyp());
   }
   return old_cr;
 }

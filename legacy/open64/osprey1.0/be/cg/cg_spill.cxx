@@ -153,8 +153,8 @@ static LOCAL_SPILLS swp_float_spills, swp_int_spills;
 #define Can_Rematerialize_TN(tn, cl) \
 (TN_is_rematerializable(tn) || (TN_is_gra_homeable(tn) && cl == CGSPILL_GRA))
 
-static void
-ld_2_ld_fill (OPS *ops) {
+void
+ld_2_ld_fill (OPS *ops, BOOL force=FALSE) {
 
   BOOL ld_is_last_op = TRUE ;
 
@@ -174,7 +174,7 @@ ld_2_ld_fill (OPS *ops) {
   case TOP_ld2:
   case TOP_ld4:
   case TOP_ld8:
-      if (!TN_is_take_nat(OP_result(op,0))) break; 
+      if (!TN_is_take_nat(OP_result(op,0)) && !force) break; 
       OPS_Remove_Op (ops,op);
       op = Mk_OP(TOP_ld8_fill, OP_result(op,0), 
                  OP_opnd(op,OP_find_opnd_use(op,OU_predicate)),
@@ -189,8 +189,8 @@ ld_2_ld_fill (OPS *ops) {
   }
 }
 
-static void 
-st_2_st_spill (OPS * ops) {
+void 
+st_2_st_spill (OPS * ops, BOOL force=FALSE) {
  
   OP * op = OPS_last(ops) ;
   TN *tn = OP_opnd(op,OP_find_opnd_use(op,OU_storeval));
@@ -199,7 +199,7 @@ st_2_st_spill (OPS * ops) {
   case TOP_st2:
   case TOP_st4:
   case TOP_st8:
-      if (!TN_is_take_nat(tn)) break; 
+      if (!TN_is_take_nat(tn) && !force) break; 
       OPS_Remove_Op (ops,op); 
       op = Mk_OP(TOP_st8_spill, /* op code */
                  OP_opnd(op,OP_find_opnd_use(op,OU_predicate)), /* guarded predicate */

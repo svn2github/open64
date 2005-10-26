@@ -2100,6 +2100,22 @@ Adjust_Alloca_Code (void)
 }
 
 
+/*
+ * ====================================================================
+	Instrument code at the pu head to call mcount so that the target binary can
+	generate data for gprof.
+ * ====================================================================
+ */
+void
+Instru_Call_Mcount(void)
+{
+  BB_LIST *elist;
+
+  for (elist = Entry_BB_Head; elist; elist = BB_LIST_rest(elist)) {
+    EETARG_Call_Mcount(BB_LIST_first(elist));
+  }
+}
+
 /* ====================================================================
  *
  * Adjust_Entry_Exit_Code

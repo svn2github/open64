@@ -79,7 +79,6 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-
 short _init_hw_clock_called;
 long long *_rtc_clockaddr;		/* ptr to 64 bit clock, if any */
 int *_rtc_clockaddr32;			/* ptr to 32 bit clock, if any */
@@ -223,9 +222,9 @@ long long
 _sysclock_nowrap(void)
 {
         static struct timeval  firstcall;
-        static struct timezone  firstcallz;
+        static void *firstcallz;
         struct timeval  buf;
-        struct timezone buf2;
+        void *buf2;
         long long cval, highbits;
 
 	if (_init_hw_clock_called == 0)
@@ -237,9 +236,9 @@ _sysclock_nowrap(void)
 #endif
 
 	if (firstcall.tv_usec == 0) 
-        	(void) gettimeofday (&firstcall, &firstcallz);
+        	(void) gettimeofday (&firstcall, firstcallz);
 
-        (void) gettimeofday (&buf, &buf2);
+        (void) gettimeofday (&buf, buf2);
         cval = (long long)(buf.tv_sec - firstcall.tv_sec) * 1000000LL
 		+ (long long)(buf.tv_usec - firstcall.tv_usec);
 

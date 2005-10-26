@@ -308,6 +308,10 @@ TYPE_ID  Mtype_comparison(TYPE_ID type)
   case MTYPE_U1:
   case MTYPE_U2:
     return MTYPE_U4;
+  case MTYPE_BS:
+    return MTYPE_I4;
+  case MTYPE_B:
+    return MTYPE_U4;                                                                                
   default:
     return type;
   }

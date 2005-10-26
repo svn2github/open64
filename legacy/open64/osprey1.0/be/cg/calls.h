@@ -133,6 +133,9 @@ extern BOOL LC_Used_In_PU;	/* flag whether LC_TN was used */
 /* Cycle Count Call */
 extern void Cycle_Count_Initialize ( ST *pu, BOOL is_region );  
 
+/* Instrument code to call _mcount */
+extern void Instru_Call_Mcount(void );
+
 /* Tail calls: */
 extern void Optimize_Tail_Calls( ST* pu );
 

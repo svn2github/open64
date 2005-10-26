@@ -156,7 +156,14 @@ typedef enum {
 	T_Ipfec_LOCS_Comp,
 	T_Ipfec_Speculation_CU,	/* Ipfec Speculation */
 	T_Ipfec_Speculation_Comp,
-	
+	T_Ipfec_Multi_Branch_CU,	/* Ipfec Multiple branch */
+	T_Ipfec_Multi_Branch_Comp,
+
+#ifdef SPECMT_LT
+        T_SPECMT_BG,
+        T_SPECMT_PA,
+#endif
+		
 	T_LAST			/* Last index defined */
 } TIMER_ID;
 

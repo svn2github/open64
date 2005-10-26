@@ -91,6 +91,7 @@ inline void CGGRP_End_BB(void)
 
 extern void CGGRP_Bundle(void);
 extern void Calculate_BB_Cycle(BB* bb, BOOL dag_exist);
+extern BOOL CGGRP_Bundle_OPS(OPS *ops,OP *op, INT stop_idx);
 
 extern BOOL CGGRP_Check_Split_BB(BB* split_bb, BB** end_bbp);
 
@@ -124,10 +125,15 @@ inline OP *OP_far_next(OP *prev_op)
 
     BB* prev_bb = OP_bb(prev_op);
     BB* next_bb = BB_next(prev_bb);
-
+    
     if (next_bb == NULL || !BB_chk_split(prev_bb) || !BB_chk_split(next_bb))
+        if (next_bb == NULL || !BB_partial_bundle(next_bb) || !BB_partial_bundle(prev_bb))
         return NULL;
-
+    
+    while(BB_length(next_bb)==0 && BB_partial_bundle(next_bb)){
+        next_bb = BB_next(next_bb);
+        if (next_bb == NULL) {return NULL;} 
+    }
     next_op = BB_first_op(next_bb);
     if (!next_op || OP_start_bundle(next_op))
         return NULL;

@@ -62,5 +62,8 @@ extern void Global_Insn_Merge_Splitted_BBs () ;
 // Driver of recovery code generation.
 extern int Generate_Recovery_Code();
 
+// Multi-Branch Post process 
+extern void Post_Multi_Branch();
+extern void Check_Cross_Boundary();
 #endif
 

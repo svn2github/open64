@@ -100,7 +100,8 @@ EXP_WORKLST * SSU::SPRE_candidate(CODEREP *cr)
   if (wk)
     return wk;
   if (aux->No_spre()) return NULL; // this flag added to speed up checking
-  if (!aux->Is_real_var() || 
+  if (!aux->Is_real_var() ||
+      aux->No_register() || // Screen out MSTID
       !aux->Has_store_in_PU() || 
       aux->Is_volatile() ||
       ST_class(aux->St()) == CLASS_PREG ||

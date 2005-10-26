@@ -1086,6 +1086,12 @@ WN_CreateIstore (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
   Is_True(opr == OPR_ISTORE || opr == OPR_ISTBITS,
           ("Bad opcode in WN_CreateIstore"));
 
+#ifdef FRONT_END
+ if (desc == MTYPE_M) { 
+   Set_PU_has_very_high_whirl (Get_Current_PU ());
+ }
+#endif /* FRONT_END */
+
 #if (defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) && !defined(FRONT_END_MFEF77)
 
   addr = fe_combine_address_offset ( &offset, addr );
@@ -1254,6 +1260,12 @@ WN_CreateStid (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 				st == Float32_Preg ||
 				st == Float64_Preg)),
 	    ("Preg offset 0 in WN_CreateStid"));
+#endif /* FRONT_END */
+
+#ifdef FRONT_END
+   if (desc == MTYPE_M) {
+   	 Set_PU_has_very_high_whirl (Get_Current_PU ());
+   }
 #endif /* FRONT_END */
 
 #if (defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) && !defined(FRONT_END_MFEF77)

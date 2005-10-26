@@ -619,6 +619,10 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 			 start_idx, 
 			 (_orig_scope_tab[_orig_level].label_tab)->Size());
 
+  (void)Delete_array_item(*_orig_scope_tab[_orig_level].label_tab,
+                         *_cloned_scope_tab[_cloned_level].label_tab,
+                         start_idx,
+                         (_orig_scope_tab[_orig_level].label_tab)->Size());                                  
   
   if ((_is_new_clone == FALSE) && (label_only == FALSE)) {
       // The tables are appended to the end of the cloned table, so 
@@ -633,7 +637,7 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 
   For_all_entries(*_cloned_scope_tab[_cloned_level].inito_tab, 
       fix_table_entry<INITO> (this), _cloned_inito_last_idx+1);
-  
+
 }
 
 
@@ -704,6 +708,9 @@ inline void
 IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
 {
     ST *copy_st;
+    ST_IDX  old_st_idx = ST_st_idx(old_st);
+    INITO_TAB *it_tab = Scope_tab[ST_IDX_level(old_st_idx)].inito_tab;
+    int it_tab_size = it_tab->Size();
 
     switch (ST_sclass(old_st)) {
     case SCLASS_PSTATIC:
@@ -711,6 +718,28 @@ IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
 	copy_st = _sym->IPO_Copy_ST(old_st, GLOBAL_SYMTAB);
 	Set_ST_sclass(copy_st, SCLASS_FSTATIC);
 	Set_ST_is_not_used(old_st);
+        // Walk through the INITV entries that was pointed to by each INITO of current PU
+        // if the INITV¡¯s type is INITVKIND_SYMOFF and the symbol is being promoted
+        // to global symtab, update it with the new st in global symtab
+	for(INITO_IDX it_idx = 1; it_idx<(INITO_IDX)it_tab_size; it_idx++) {
+	  INITV_IDX iv_idx = (*it_tab)[it_idx].val;
+	  INITV &iv = Initv_Table[iv_idx];
+          switch (INITV_kind(iv)) {
+          case INITVKIND_SYMOFF:
+	      {
+	        ST* initv_st = &St_Table[INITV_st(iv)];
+                if(initv_st == old_st)
+                  Set_INITV_st(iv_idx, ST_st_idx(copy_st));
+              }
+              break;
+          case INITVKIND_SYMDIFF:
+          case INITVKIND_SYMDIFF16:
+          case INITVKIND_LABEL:
+          case INITVKIND_BLOCK:
+    	  default:
+              break;
+          }
+	}	
 	break;
     default:
 	break;

@@ -66,6 +66,8 @@ extern BOOL Tracing_Enabled;	/* Any trace options set? */
  */
 
 /* ===== Feature enable flags: ===== */
+extern char * Feedback_Filename;        /* propagate feedback file name */
+extern char * Annotation_Filename;      /* propagate annotation file name */
 extern BOOL IPA_Enable_DFE;		/* Dead Function Elimination */
 extern BOOL IPA_Enable_DFE_Set;		/* ... explicitly set? */
 extern BOOL IPA_Enable_Inline;		/* Inlining */
@@ -281,6 +283,8 @@ extern BOOL    INLINE_Inlined_Pu_Call_Graph;   /* lightweight inliner impl 2 -- 
 extern BOOL    INLINE_Inlined_Pu_Call_Graph2;  /* lightweight inliner impl 3 -- build only a call graph with PU tagged inline and its callers */
 extern BOOL    INLINE_Get_Time_Info;          /* Generate timing info for different phases of the inliner */
 
+extern char    *INLINE_Script_Name;
+extern BOOL   INLINE_Enable_Script;
 
 #ifdef __cplusplus
 }

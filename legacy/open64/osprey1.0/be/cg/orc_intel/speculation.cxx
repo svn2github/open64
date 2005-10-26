@@ -466,7 +466,7 @@ Handle_Succs:
             for (ARC_LIST *arcs = OP_succs(op); arcs; arcs = ARC_LIST_rest(arcs)){
                 ARC *arc = ARC_LIST_first(arcs);
                 OP  *succ = ARC_succ(arc);
-                if(!ARC_is_spec(arc))
+                if(!OP_br(op) && !ARC_is_spec(arc))
                     _dependent_set.insert(succ);
             }
         }
@@ -618,6 +618,8 @@ Insert_CHK(OP* primary_ld, vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn)
         }
     }
 
+    OP_srcpos(chk) = OP_srcpos(primary_ld);
+    
     if(pos != NULL){
        Is_True(OP_bb(pos) == home_bb,("Position error!"));
        BB_Insert_Op_After(home_bb, pos, chk);
@@ -635,4 +637,66 @@ Insert_CHK(OP* primary_ld, vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn)
 
     return chk;    
 }
+
+/*
+ *
+ *  We suppose the load will be converted to a ld.s and will
+ *  be inserted in the position that indicated by target_bb
+ *  and pos.
+ *
+ */ 
  
+BOOL
+Is_Control_Speculation_Gratuitous(OP* load, BB* target_bb, OP* pos)
+{
+    TN* base_tn;
+    TN* ofst_tn;
+    OP_Base_Offset_TNs(load,&base_tn,&ofst_tn);
+    BB* cur_bb = target_bb;
+    for(OP* op = pos ? pos : BB_last_op(cur_bb);;){
+      if(op == NULL){
+        if(BB* pred = BB_Unique_Predecessor(cur_bb)){
+          //if(BB_call(pred)) return FALSE;
+          cur_bb = pred;
+          op = BB_last_op(cur_bb);
+          continue;
+        }else{
+          return FALSE;
+        }
+      }else{
+        if(OP_Defs_TN(op,base_tn)){
+          return FALSE;
+        }else{
+          if((OP_load(op) || OP_store(op)) && !CGTARG_Is_OP_Speculative_Load(op)){
+            TN* base;
+            TN* ofst;
+            OP_Base_Offset_TNs(op,&base,&ofst);
+            if((base_tn == base) && (OP_opnd(op,TOP_Find_Operand_Use(OP_code(op),OU_predicate)) == True_TN)){
+              return TRUE;
+            }
+          }
+          op = OP_prev(op);
+          continue;
+        }
+      }
+    }
+}
+
+ //======================================================================
+ //
+ //  Delete_Recovery_Info_For_BB
+ //
+ //  Delete the chk op from recovery info if this BB is deleted in
+ //  cflow optimization.
+ //
+ //======================================================================
+ BOOL
+ Delete_Recovery_Info_For_BB(BB *bb) {
+     for (OP *op= BB_first_op(bb);op != NULL;op = OP_next(op)) {
+         Is_True(op != NULL,("OP Can not be NULL!"));
+         if (OP_chk(op)) {
+             Recovery_Info.erase(op);
+         }
+     }
+ }
+

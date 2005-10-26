@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -45,6 +45,9 @@ extern void EETARG_Init_Entry_Exit_Code (WN *pu_wn, BOOL need_frame_pointer);
 // save and restore any extra callee-tns that need special processing
 extern void EETARG_Save_Extra_Callee_Tns (OPS *ops);
 extern void EETARG_Restore_Extra_Callee_Tns (OPS *ops);
+
+// Instrument code to call _mcount function in libc.a for -pg option
+extern void EETARG_Call_Mcount(BB *bb);
 
 // target-specific adjustments to entry ops
 extern void EETARG_Fixup_Entry_Code (BB *bb);

@@ -1,19 +1,19 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (c) 2001, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
-  
+
   Redistribution and use in source and binary forms, with or without modification,
   are permitted provided that the following conditions are met:
-  
+
   Redistributions of source code must retain the above copyright notice, this list
-  of conditions and the following disclaimer. 
+  of conditions and the following disclaimer.
 
   Redistributions in binary form must reproduce the above copyright notice, this list
   of conditions and the following disclaimer in the documentation and/or other materials
-  provided with the distribution. 
+  provided with the distribution.
 
   Neither the name of the owner nor the names of its contributors may be used to endorse or
-  promote products derived from this software without specific prior written permission. 
+  promote products derived from this software without specific prior written permission.
 
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
   IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
@@ -24,7 +24,34 @@
   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
- 
+
+/*
+  Copyright (c) 2001, Intel Corporation
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without modification,
+  are permitted provided that the following conditions are met:
+
+  Redistributions of source code must retain the above copyright notice, this list
+  of conditions and the following disclaimer.
+
+  Redistributions in binary form must reproduce the above copyright notice, this list
+  of conditions and the following disclaimer in the documentation and/or other materials
+  provided with the distribution.
+
+  Neither the name of the owner nor the names of its contributors may be used to endorse or
+  promote products derived from this software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR
+  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 //-*-c++-*-
 //*********************************************************************
 //
@@ -54,47 +81,79 @@
 #include <time.h>
 #include "cg_instru_lib.h"
 
+//just for verification
+//#define VALUE_PROFILE_VERIFY
+
 typedef PU_PROFILE_INFO * PU_PROFILE;
 typedef hash_map<char* ,PU_PROFILE,hash<char*> > HASH_MAP;
-HASH_MAP PU_PROFILE_INFO_TABLE;
 
-const INT32   Pu_Hdr_size = sizeof( Pu_Hdr );
-const INT32   Fb_Hdr_size = sizeof( Fb_Hdr );
-const INT32   FB_FREQ_size = sizeof( FB_FREQ );
-const INT32   _FREQ_size = sizeof( _FREQ );
-const INT32   PU_PROFILE_INFO_size = sizeof( PU_PROFILE_INFO );
-const INT32   TNV_item_size = sizeof( FB_TNV );
+static HASH_MAP PU_PROFILE_INFO_TABLE;
 
-INT32   fd = -1;                     // output file 
-INT32   pu_num = 0;                  // the program's PU sum
-INT32   pu_counter = 0;
-INT32   profile_offset = 0;          // the feedback file header's offset
-INT32   file_header_offset = 0; 
+static const INT32   Pu_Hdr_size = sizeof( Pu_Hdr );
+static const INT32   Fb_Hdr_size = sizeof( Fb_Hdr );
+static const INT32   FB_FREQ_size = sizeof( FB_FREQ );
+static const INT32   _FREQ_size = sizeof( _FREQ );
+static const INT32   PU_PROFILE_INFO_size = sizeof( PU_PROFILE_INFO );
+static const INT32   TNV_item_size = sizeof( FB_TNV );
+
+static INT32   fd = -1;                     // output file 
+static INT32   pu_num = 0;                  // the program's PU sum
+static INT32   pu_counter = 0;
+static INT32   profile_offset = 0;          // the feedback file header's offset
+static INT32   file_header_offset = 0; 
 
 static PU_PROFILE_INFO* edge_counter = NULL;
-PROFILE_PHASE prof_phase;
+static PROFILE_PHASE prof_phase;
                             
-INT32   PU_header_offset = 0;        // the Pus' header offset. 
-INT32   str_table_offset = 0;        // the string table offset. 
-INT32   Pu_file_offset = 0;          // the Pu data offset. 
-INT32   str_table_size = 0;          // the string table size
-INT32   current_PU_header_offset = 0; 
-INT32   current_str_table_offset = 0; 
-INT32   current_Pu_file_offset = 0;  
-INT32   current_offset = 0 ;
-INT32   output_file_size = 0;
-char*   output_file_name = NULL;
-char*   map_addr = NULL;
-char*   src_fname = NULL;
-char*   current_pu_name = NULL;
-BOOL    have_open_output_file = FALSE;
-BOOL    have_finish = FALSE;
+static INT32   PU_header_offset = 0;        // the Pus' header offset. 
+static INT32   str_table_offset = 0;        // the string table offset. 
+static INT32   Pu_file_offset = 0;          // the Pu data offset. 
+static INT32   str_table_size = 0;          // the string table size
+static INT32   current_PU_header_offset = 0; 
+static INT32   current_str_table_offset = 0; 
+static INT32   current_Pu_file_offset = 0;  
+static INT32   current_offset = 0 ;
+static INT32   output_file_size = 0;
+static char*   output_file_name = NULL;
+static char*   map_addr = NULL;
+static char*   src_fname = NULL;
+static char*   current_pu_name = NULL;
+static BOOL    have_open_output_file = FALSE;
+static BOOL    have_finish = FALSE;
 
-char* current_srcfile_pu_name = NULL;
-char* prev_srcfile_pu_name = NULL;
-PU_PROFILE_INFO * current_pu_profile_info = NULL ;
-PU_PROFILE_INFO * prev_pu_profile_info = NULL;
-PU_PROFILE cur_pu_profile;
+static char* current_srcfile_pu_name = NULL;
+static char* prev_srcfile_pu_name = NULL;
+static PU_PROFILE_INFO * current_pu_profile_info = NULL ;
+static PU_PROFILE_INFO * prev_pu_profile_info = NULL;
+static PU_PROFILE cur_pu_profile;
+
+#ifdef VALUE_PROFILE_VERIFY
+static FILE * fout;
+#endif
+
+// ------------------------------------------------------------------
+// List of functions that is used to write feedback data into output 
+// file in instrumentation lib 
+// ------------------------------------------------------------------
+static void _write_File_Header(void);
+static void _write_Pu_Header(void);
+static void _write_Str_Header(void);
+static void _write_pu_data(void);
+static void _write_edge_profile(PU_PROFILE_INFO* pu_info);
+
+static void _write_TNV_items_profile( PU_PROFILE_INFO* pu_info );
+
+// __profile_finalize will be invoked in crt, it write feedback data into
+// output file
+static void __profile_finalize(void);
+
+// Free_Space free the allocated memory space
+static void Free_Space(void);
+
+// ------------------------------------------------------------------    
+// function in instrumentation lib when errors occur 
+// ------------------------------------------------------------------
+static void instru_lib_error(const char *fmt, char* msg="");
 
 // -----------------------------------------------------------------------
 // See "cg_instru_lib.h" for interface.
@@ -166,8 +225,13 @@ void __profile_edge(char* srcfile_pu_name,UINT32 id)
   } 
 }
 
-void __profile_finalize( )
+static void __profile_finalize( )
 {
+#ifdef VALUE_PROFILE_VERIFY
+  fclose( fout );
+  have_finish=TRUE; 
+  return;
+#endif
   hash_map<char* ,PU_PROFILE_INFO*,hash<char*> >::iterator i;
   PU_PROFILE_INFO* current_PU_profile_info;
   profile_offset = 0;
@@ -220,7 +284,7 @@ void __profile_finalize( )
   have_finish=TRUE; 
 }
 
-void  _write_File_Header(  )
+static void  _write_File_Header(  )
 {
   Fb_Hdr file_header; 
   char fb_ident[16] = "0123456789abcde";
@@ -239,7 +303,7 @@ void  _write_File_Header(  )
   current_offset += Fb_Hdr_size;
 }
 
-void  _write_Str_Header()
+static void  _write_Str_Header()
 {
   hash_map<char* ,PU_PROFILE_INFO*,hash<char*> >::iterator i;  
   for(i = PU_PROFILE_INFO_TABLE.begin();
@@ -250,7 +314,7 @@ void  _write_Str_Header()
   }
 }
 
-void  _write_Pu_Header(  )
+static void  _write_Pu_Header(  )
 {
   
   Pu_Hdr pu_header;
@@ -297,7 +361,7 @@ void  _write_Pu_Header(  )
   }
 }
 
-void  _write_pu_data(  )
+static void  _write_pu_data(  )
 {
   //TODO:change i to iter
    hash_map<char* ,PU_PROFILE_INFO*,hash<char*> >::iterator i; 
@@ -310,7 +374,7 @@ void  _write_pu_data(  )
   }
 }
 
-void  _write_edge_profile( PU_PROFILE_INFO* pu_info )
+static void  _write_edge_profile( PU_PROFILE_INFO* pu_info )
 {
   INT pu_num_edge_entries = pu_info->_edge_sum;
   FB_FREQ fb_freq;
@@ -318,7 +382,7 @@ void  _write_edge_profile( PU_PROFILE_INFO* pu_info )
   {
     fb_freq._value = (float) pu_info->_counter[j]._value;
     fb_freq._type = FB_FREQ_TYPE_EXACT;
-    memcpy( map_addr+current_offset,&fb_freq,FB_FREQ_size );
+    memcpy( map_addr+current_offset,&fb_freq, FB_FREQ_size );
     current_offset += FB_FREQ_size; 
   }
 }
@@ -343,6 +407,18 @@ void instru_lib_error( const char *fmt, char* msg="" )
 void __value_profile_pu_init(char * outputfile, 
         char* srcfile_pu_name, PROFILE_PHASE phase, UINT32 instr_count)
 {
+#ifdef VALUE_PROFILE_VERIFY
+	//new code here: this is for offline test, write all data into one txt file. 
+	if (!have_open_output_file)
+	{
+    	if  ( (fout = fopen( outputfile, "wb"))==NULL  )
+        	instru_lib_error( "Unable to open file: %s", outputfile );
+		have_open_output_file = TRUE;
+	    void __profile_finalize();
+    	atexit( __profile_finalize );
+	}
+	return;
+#endif
 	__profile_init(outputfile, phase);
 		
         PU_PROFILE_INFO * pPU_PROFILE_INFO;
@@ -381,8 +457,12 @@ void __value_profile_pu_init(char * outputfile,
 
 void __value_profile_invoke( char * srcfile_pu_name, UINT32 instr_id, UINT64 value)
 {
-        PU_PROFILE_INFO * pPU_PROFILE_INFO;
-        pPU_PROFILE_INFO = (PU_PROFILE_INFO *)PU_PROFILE_INFO_TABLE[srcfile_pu_name];
+#ifdef VALUE_PROFILE_VERIFY
+	fprintf( fout, "[%s%c :%u,%llu]",srcfile_pu_name,'\0',instr_id,value );
+	return;
+#endif
+    PU_PROFILE_INFO * pPU_PROFILE_INFO;
+    pPU_PROFILE_INFO = (PU_PROFILE_INFO *)PU_PROFILE_INFO_TABLE[srcfile_pu_name];
         
 	if (!pPU_PROFILE_INFO)
 	{
@@ -515,7 +595,7 @@ void __value_profile_invoke( char * srcfile_pu_name, UINT32 instr_id, UINT64 val
         }
 }
 
-void  _write_TNV_items_profile( PU_PROFILE_INFO* pu_info )
+static void  _write_TNV_items_profile( PU_PROFILE_INFO* pu_info )
 {
   INT pu_num_TNV_items = pu_info->_instr_count;
   FB_TNV tnv_item;

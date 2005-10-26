@@ -160,7 +160,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	    ((PU_src_lang(pu) == PU_CXX_LANG))) {
 	    if (PU_is_inline_function (pu)) {
 		// for 7.2 don't inline functions marked weak inline
-		if (ST_is_weak_symbol(st)) {
+		if (ST_is_weak_symbol(st) && ST_export(st) != EXPORT_PROTECTED) {
 		    DevWarn("Inliner encountered a function marked weak inline; NOT inlining it");
 		    proc->Set_no_inline();
 		} else

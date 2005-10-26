@@ -620,7 +620,7 @@ Check_Region(BB**                 orig_dom,
       if (!BB_SET_MemberP(BB_dom_set(pdom), dom)) {
 	for (dom = Find_Immediate_Dominator(dom);
 	     dom && !BB_SET_MemberP(BB_dom_set(pdom), dom);
-	     dom = Find_Immediate_Dominator(pdom));
+	     dom = Find_Immediate_Dominator(dom));
       }
       if (dom && !BB_SET_MemberP(BB_pdom_set(dom), pdom)) {
 	for (pdom = Find_Immediate_Postdominator(pdom);

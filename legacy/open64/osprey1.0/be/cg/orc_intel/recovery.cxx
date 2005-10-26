@@ -59,6 +59,7 @@
 #include "scheduler.h"
 #include "cgtarget.h"
 #include "ipfec_options.h"
+#include "whirl2ops.h"
 #include <unistd.h>
 
 vector<OP*>  chk_vector;
@@ -167,7 +168,8 @@ Collect_Results(set<TN*, compare_tn>& result_set, OP* op)
 //          |__________|             |         |
 //                                   |         |
 //                                   |_________|
-//
+//  
+//    - Note: there is no control flow edge between bb1 and bb2. 
 //=============================================================================
 BB* Divide_BB(BB *bb, OP *point)
 {
@@ -443,6 +445,7 @@ Do_Build_Recovery_Block(list<OP*>& Exec_Path)
         Set_OP_cond_def_kind(check_ld, OP_ALWAYS_COND_DEF); 
         BB_Insert_Op_Before(OP_bb(chk), chk, check_ld);
         BB_Remove_Op(OP_bb(chk), chk);
+        Copy_WN_For_Memory_OP(check_ld,spec_ld);
         Reset_BB_scheduled(OP_bb(check_ld));
         return NULL;
     }
@@ -527,7 +530,6 @@ Build_Recovery_Block()
         OP *load_op = iter->second;
 
         Is_True(OP_chk(chk_op),("not a chk op!"));
-        Is_True(Get_Recovery_BB(chk_op) == OP_bb(chk_op),("chk in a wrong BB:%d OP:%d !", BB_id(OP_bb(chk_op)), OP_map_idx(chk_op)));                
         Is_True(CGTARG_Is_OP_Speculative(load_op),("not a speculative load!")); 
 
         list<OP *> OP_exec_path = Find_Execution_Path(load_op, chk_op); 
@@ -571,8 +573,6 @@ Update_CFG()
         BOOL home_intact = BB_scheduled(home_bb);
         BOOL home_chk_split = BB_chk_split(home_bb);
         BOOL home_split_head = BB_chk_split_head(home_bb);
-        Is_True(!BB_entry(home_bb),("home_bb can not be entry BB!"));
-        Is_True(!BB_exit(home_bb),("home_bb can not be exit BB!"));
 
         // Devide the basic block with the chk as the boundary.
 
@@ -731,7 +731,9 @@ Adjust_Recovery_Block()
                 jump_back_bb = Divide_BB(OP_bb(prev_op), prev_op);        
                 Is_True(jump_back_bb,("jump_back can not be NULL!"));
                 Is_True(OP_start_bundle(BB_first_op(jump_back_bb)),("jump_back's first op must start a bundle!"));
+                BB_freq(jump_back_bb) = BB_freq(OP_bb(prev_op));
                 Set_BB_chk_split(jump_back_bb);
+                Set_BB_scheduled(jump_back_bb);
                 Link_Pred_Succ_with_Prob(OP_bb(prev_op), jump_back_bb, btm_prob);
             }
             Add_Goto(recovery_bb, jump_back_bb);
@@ -917,6 +919,51 @@ void BB_Take_Over_All_Succs(BB* to_bb, BB* from_bb)
 }
 
 //=============================================================================
+//Function: BB_Copy_All_Preds
+//Input:
+//    - to_bb and from_bb
+//Output:
+//    - No
+//Description:
+//    - Link to_bb with all predecessors of from_bb. 
+//=============================================================================
+
+void BB_Copy_All_Preds(BB* to_bb, BB* from_bb)
+{
+    BBLIST* next;
+    BBLIST* pred;
+    for(pred = BB_preds(from_bb); pred; pred = next){
+        BB* pred_bb = BBLIST_item(pred);
+        next = BBLIST_next(pred);
+        Link_Pred_Succ_with_Prob(pred_bb, to_bb, BBLIST_prob(pred));
+    }
+}
+
+
+//=============================================================================
+//Function: BB_Copy_All_Succs
+//Input:
+//    - to_bb and from_bb
+//Output:
+//    - No
+//Description:
+//    - Link to_bb with all successors of from_bb. 
+//=============================================================================
+
+void BB_Copy_All_Succs(BB* to_bb, BB* from_bb)
+{
+    BBLIST* next;
+    BBLIST* succ;
+    for(succ = BB_succs(from_bb); succ; succ = next){
+        BB* succ_bb = BBLIST_item(succ);
+        next = BBLIST_next(succ);
+        Link_Pred_Succ_with_Prob(to_bb, succ_bb, BBLIST_prob(succ));
+    }
+}
+
+
+
+//=============================================================================
 //Function:  Handle_Chk_Split_Bunch       
 //Input:
 //    - The first bb of a chk split bunch.
@@ -959,6 +1006,7 @@ Handle_Chk_Split_Bunch(BB* head_bb)
                 Is_True(BB_recovery(rec_bb),("not a recovery block!"));
                 BB_Disconnect_All_Preds(rec_bb);
                 BB_Disconnect_All_Succs(rec_bb);
+                Is_True(OP_xfer(BB_last_op(rec_bb)),("rec_bb's last op should be an branch!"));
                 BB_Remove_Op(rec_bb, BB_last_op(rec_bb));
             }
         }
@@ -975,7 +1023,7 @@ Handle_Chk_Split_Bunch(BB* head_bb)
         bb = head_bb;
     }
 
-    // If the bunches are intact, do not do local scheduling.
+    // If the bunches are not disarrayed, do not do local scheduling.
     
     if(!intact || !BB_Check_Bundle_Integrity(head_bb)){
         SCHEDULER local_scheduler(head_bb, FALSE);
@@ -986,31 +1034,88 @@ Handle_Chk_Split_Bunch(BB* head_bb)
     BB* end_bb = head_bb;
 
     // Redevide it.
-    
-    for(OP* op = BB_first_op(head_bb); op;){
-        if(!OP_chk(op)){ 
-            op = OP_next(op);
-            continue;
+
+    OP* last_op = BB_last_op(head_bb);    
+    for(OP* cur_op = BB_first_op(head_bb);;){
+        if(OP_chk(cur_op)){
+            OP* chk = cur_op;
+            BB* home_bb = OP_bb(chk);
+            BB* rec_bb  = Get_Recovery_BB(chk);
+            BB* back_bb = NULL;
+            BB* btm_bb  = NULL;
+            if(chk == BB_last_op(home_bb)){
+                back_bb = BB_Fall_Thru_Successor(OP_bb(chk));        
+                Is_True(back_bb != NULL,("A dangling chk!"));		
+                Link_Pred_Succ_with_Prob(home_bb,rec_bb,rec_prob);
+                Add_Goto(rec_bb,back_bb);
+            }else if(OP_start_bundle(OP_next(chk))){
+                back_bb = Divide_BB(home_bb,chk);
+                Link_Pred_Succ_with_Prob(home_bb,back_bb,btm_prob);
+                BB_freq(back_bb) = BB_freq(home_bb);
+                Set_BB_chk_split(back_bb);
+                Set_BB_scheduled(back_bb);
+                Link_Pred_Succ_with_Prob(home_bb,rec_bb,rec_prob);
+                Add_Goto(rec_bb,back_bb);
+            }else{
+                BOOL has_chk = FALSE;
+                BOOL has_br  = FALSE;
+                OP* bar = NULL;
+                for(OP* op = OP_next(chk); (op != NULL && !OP_start_bundle(op)); op = OP_next(op)){
+                    bar = op;
+                    OP* dup_op = Dup_OP(op);
+                    BB_Append_Op(rec_bb,dup_op);
+                    if(OP_chk(op))  has_chk = TRUE;
+                    if(TOP_is_xfer(OP_code(op)) || OP_call(op))  has_br = TRUE;
+                }
+                back_bb = Divide_BB(home_bb,bar);
+                float fall_thru_prob = 0;	
+                if(back_bb == NULL){
+                    back_bb = BB_Fall_Thru_Successor(home_bb);
+                    if(back_bb != NULL){
+                        BBLIST *succ = BB_Find_Succ(home_bb,back_bb);
+                        fall_thru_prob = BBLIST_prob(succ);
+                    }
+                }else{
+                    Is_True(has_br == FALSE,("Branch op should be in the last bundle of its' home BB!"));
+                    Link_Pred_Succ_with_Prob(home_bb,back_bb,btm_prob);
+                    BB_freq(back_bb) = BB_freq(home_bb);
+                    Set_BB_chk_split(back_bb);
+                    Set_BB_scheduled(back_bb);
+                }
+                if(back_bb != NULL){		
+                    Add_Goto(rec_bb,back_bb);
+                }
+                if(has_chk || has_br){
+                    btm_bb = Divide_BB(home_bb,chk);
+                    Link_Pred_Succ_with_Prob(home_bb,btm_bb,btm_prob);
+                    BB_freq(btm_bb) = BB_freq(home_bb);
+                    Set_BB_chk_split(btm_bb);
+                    Set_BB_scheduled(btm_bb);
+                }
+                Link_Pred_Succ_with_Prob(home_bb,rec_bb,rec_prob);
+                if(has_br && back_bb != NULL){
+		    BB* frag_bb = Divide_BB(rec_bb,OP_prev(BB_last_op(rec_bb)));
+                    BB_Copy_All_Succs(rec_bb,btm_bb);
+                    Change_Succ(rec_bb,back_bb,frag_bb);
+                    BB_freq(frag_bb) = BB_freq(rec_bb) * fall_thru_prob;
+                    Reset_BB_scheduled(rec_bb);
+                    Reset_BB_scheduled(frag_bb);
+                    Set_BB_recovery(frag_bb);
+                }
+            }
         }
-        OP* chk = op;
-        BB* home_bb = OP_bb(chk);
-        BB* rec_bb  = Get_Recovery_BB(chk);
-        BB* bottom_bb = Divide_BB(home_bb,chk);
-        if(!bottom_bb){
-            BB* next_bb = BB_next(home_bb);
-            Is_True(next_bb,("next_bb should not be NULL!"));
-            Is_True(BB_in_succs(home_bb,next_bb),("next_bb should be home_bb's successor!"));
-            bottom_bb = next_bb;
-            op = NULL;
+        if(cur_op == last_op){
+            break;
+        }else if(OP_next(cur_op)){
+            cur_op = OP_next(cur_op);
         }else{
-            Set_BB_chk_split(bottom_bb);
-            Link_Pred_Succ_with_Prob(home_bb,bottom_bb,btm_prob);
-            op = BB_first_op(bottom_bb);
-            end_bb = bottom_bb;
+            Is_True(BB_next(OP_bb(cur_op)),("cur_op's next bb should not be NULL!"));
+            Is_True(BB_chk_split(BB_next(OP_bb(cur_op))),("cur_op's next bb should be chk_split bb!"));
+            cur_op = BB_first_op(BB_next(OP_bb(cur_op)));
+            end_bb = OP_bb(cur_op);
         }
-        Link_Pred_Succ_with_Prob(home_bb,rec_bb,rec_prob);
-        Add_Goto(rec_bb,bottom_bb);
     }
+
     Is_True(end_bb,("end_bb should not be NULL!"));
     return end_bb;
 }

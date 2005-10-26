@@ -95,8 +95,6 @@
 /* Allocate OPs for the duration of the PU. */
 #define OP_Alloc(size)  ((OP *)Pu_Alloc(size))
 
-/* Locally reuse of OP_flag1 in Ipfec scheduling */
-#define OP_Scheduled          OP_flag1
 
 /* OP mutators that are NOT to be made public */
 #define Set_OP_code(o,opc)	((o)->opr = (mTOP)(opc))
@@ -123,6 +121,45 @@ OP_xfer(OP* op)
   return FALSE;
 }
 
+
+/* -----------------------------------------------------------------------
+ * check if an operation that restores b0 register
+ * -----------------------------------------------------------------------
+ */
+BOOL
+OP_restore_b0(OP *op)
+{
+  if(OP_results(op) != 1 || OP_call(op)) return FALSE;
+  TN* res_tn = OP_result(op, 0);
+  if(TN_is_constant(res_tn)) return FALSE;
+  return (TN_register_class(res_tn) == ISA_REGISTER_CLASS_branch && TN_register(res_tn) == REGISTER_MIN+0);
+}
+
+/* -----------------------------------------------------------------------
+ * check if an operation that restores ar.pfs register
+ * -----------------------------------------------------------------------
+ */
+BOOL
+OP_restore_ar_pfs(OP *op)
+{
+  if(OP_results(op) != 1) return FALSE;
+  TN* res_tn = OP_result(op, 0);
+  if(TN_is_constant(res_tn)) return FALSE;
+  return TN_is_pfs_reg(res_tn);
+}
+
+/* -----------------------------------------------------------------------
+ * check if an operation that restores ar.lc register
+ * -----------------------------------------------------------------------
+ */
+BOOL
+OP_def_ar_lc(OP *op)
+{
+  if(OP_results(op) != 1) return FALSE;
+  TN* res_tn = OP_result(op, 0);
+  if(TN_is_constant(res_tn)) return FALSE;
+  return TN_is_lc_reg(res_tn);
+}
 
 
 // ----------------------------------------
@@ -1190,7 +1227,7 @@ BOOL OP_has_implicit_interactions(OP *op)
  */
 void OP_Base_Offset_TNs(OP *memop, TN **base_tn, TN **offset_tn)
 {
-  Is_True(OP_load(memop) || OP_store(memop), ("not a load or store"));
+  Is_True(OP_memory(memop) , ("not a memory op"));
 
   INT offset_num = OP_find_opnd_use (memop, OU_offset);
   INT base_num   = OP_find_opnd_use (memop, OU_base);

@@ -69,6 +69,8 @@ static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.1.1.1 $";
 #include "opt_alias_class.h"
 #include "opt_alias_rule.h"
 
+#define ALIAS_TRACE_FLAG  0x1000000 /* trace alias analysis for CG          */
+#define ALIAS_DUMP_FLAG      0x0800 /* trace alias analysis		    */
 
 // ***********************************************************
 //
@@ -317,6 +319,7 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
 {
   const TY& ty = Ty_Table[ty_idx];
   INT32 ret_type = 0;
+
   switch (TY_kind(ty)) {
   case KIND_SCALAR:
     //  Get the de-qualified and unsigned basic type for KIND_SCALAR.
@@ -382,7 +385,6 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
       ret_type & (1 << MTYPE_U1) ||	// unsigned char type 
       TY_no_ansi_alias(ty))		// varargs TY:  See PV 329475.
     ret_type = ALL_TYPE;
-
   return ret_type;
 }
   
@@ -397,12 +399,23 @@ BOOL ALIAS_RULE::Aliased_ANSI_Type_Rule(const POINTS_TO *mem1,
 					const POINTS_TO *mem2, 
 					TY_IDX ty1, TY_IDX ty2) const
 {
+#if 0
+  if (Get_Trace( TP_GLOBOPT, ALIAS_TRACE_FLAG)) {
+    fprintf(TFile, "\nAq::ANSI_Type_Rule tyidx1 %d tyidx2 %d\n",ty1, ty2);
+  }
+#endif
+
   if (ty1 == (TY_IDX)NULL || ty2 == (TY_IDX)NULL)  // One of type is unknown. Assume aliased.
     return TRUE;
 
   if (ty1 == ty2)  // aliased if same type.
     return TRUE;
-
+#if 0
+  if (Get_Trace( TP_GLOBOPT, ALIAS_TRACE_FLAG)) {
+    fprintf(TFile, "  Aq:: bk1 %d bk2 %d\n", 
+	    mem1->Base_is_fixed(), mem2->Base_is_fixed());
+  }
+#endif
   // If both are scalar, do not use ANSI rule.
   // The base and ofst rules are sufficient.
   if (mem1->Base_is_fixed() && mem2->Base_is_fixed())
@@ -415,9 +428,23 @@ BOOL ALIAS_RULE::Aliased_ANSI_Type_Rule(const POINTS_TO *mem1,
   if (mem1->Same_base(mem2))
     return TRUE;
 
+  INT32 mty1 = Get_stripped_mtype(ty1);
+  INT32 mty2 = Get_stripped_mtype(ty2);
+
+#if 1
+    if (TY_kind(ty1) == KIND_POINTER && TY_kind(ty2) == KIND_POINTER) {
+      do {
+	ty1 = TY_pointed(ty1);
+	ty2 = TY_pointed(ty2);
+      } while (TY_kind(ty1) == KIND_POINTER && TY_kind(ty2) == KIND_POINTER);
+    }
+	
+#endif
+
   //  Handle SCALAR, POINTER, STRUCT, CLASS, and ARRAY
-  if ((Get_stripped_mtype(ty1) & Get_stripped_mtype(ty2)) == 0)
+  if ((mty1 & mty2) == 0) {
     return FALSE;
+  }
 
   return TRUE;
 }

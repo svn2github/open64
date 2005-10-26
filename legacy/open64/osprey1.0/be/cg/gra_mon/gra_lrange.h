@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -328,6 +328,17 @@ public:
   void Recompute_Preference(void);
   char* Format( char* buff );
 };
+
+//Inserted by ORC for Experiments.
+struct BUFFERED_LRANGE {
+    LRANGE *lrange;
+    INT abi_property;
+    ISA_REGISTER_CLASS reg_class;
+    INT lunits_number;
+    float density;
+    BUFFERED_LRANGE *next,*prev;
+};
+//End of Insertion.
 
 // manages the allocation and usage of all LRANGE nodes
 class LRANGE_MGR {

@@ -367,11 +367,7 @@ Expand_Shift (TN *result, TN *src1, TN *src2, TYPE_ID mtype, SHIFT_DIRECTION kin
 	if (val >= 1 && val <= 4) {
 	  Build_OP (TOP_shladd,result,True_TN,src1,Gen_Literal_TN (val, 4),Zero_TN,ops);
 	} else if (val > 4 && val <= 8 && !OPT_Space) {
-	  // Two shladds are better than one shift, because they can go in more
-	  // schedule slots
-	  TN *tmp = DUP_TN(src1);
-	  Build_OP (TOP_shladd,tmp,True_TN,src1,Gen_Literal_TN (val-4, 4),Zero_TN,ops);
-	  Build_OP (TOP_shladd,result,True_TN,tmp,Gen_Literal_TN (4, 4),Zero_TN,ops);
+	  Build_OP(TOP_shl_i,result,True_TN,src1,src2,ops);
 	} else {
 	  // We can use a dep.z for this case
 	  Build_OP (TOP_shl_i, result, True_TN, src1, src2, ops);
@@ -449,6 +445,11 @@ Expand_F_To_G (TN *gtn, TN *ftn, OPS *ops)
 static void shladd(TN *r, TN *x1, INT s, TN *x2, OPS *ops)
 {
   Build_OP (TOP_shladd,r,True_TN,x1,Gen_Literal_TN (s, 4),x2,ops);
+}
+
+static void shl(TN *r, TN *x1, INT s, OPS *ops)
+{
+  Build_OP (TOP_shl_i,r,True_TN,x1,Gen_Literal_TN (s, 4),ops);
 }
 
 
@@ -624,9 +625,7 @@ Expand_Small_Multiply(TN *r,  // result
      shladd(r,r1,1,r2,ops);
      break;
    case  32 :
-     ONE_TEMP;
-     Expand_Small_Multiply(r1,x,16,ops);
-     Expand_Small_Multiply(r,r1,2,ops);
+	 shl(r,x,5,ops);
      break;
    case  33 :
      ONE_TEMP;

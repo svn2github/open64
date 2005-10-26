@@ -1010,6 +1010,7 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
   if (Htable()->Phase() == MAINOPT_PHASE &&
       MTYPE_is_float(x->Dtyp()) &&
       ST_class(Opt_stab()->St(x->Aux_id())) == CLASS_PREG &&
+      expr->Is_flag_set((CR_FLAG) CF_DONT_PROP) &&
       (expr->Non_leaf() || expr->Kind() == CK_VAR))
     return NULL;
 #endif
@@ -1215,9 +1216,22 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
     {
       inside_cse = inside_cse || x->Usecnt() > 1;
       CODEREP *id_cr = Prop_identity_assignment(x);
-      if (id_cr)
-	return id_cr;
-      return Prop_var(x, curbb, FALSE, inside_cse, in_array);
+     if (id_cr) {
+      if (id_cr->Dsctyp() == MTYPE_UNKNOWN ||
+         id_cr->Is_flag_set(CF_MADEUP_TYPE)) {
+         id_cr->Set_dtyp(x->Dtyp());
+         id_cr->Set_dsctyp(x->Dsctyp());
+         id_cr->Set_lod_ty(x->Lod_ty());
+         id_cr->Set_field_id(x->Field_id());
+         if (x->Bit_field_valid()) {
+           id_cr->Set_bit_field_valid();
+         }
+         id_cr->Set_sign_extension_flag();
+         id_cr->Reset_flag(CF_MADEUP_TYPE);
+      }
+      return id_cr;
+     }
+     return Prop_var(x, curbb, FALSE, inside_cse, in_array);
     }
   case CK_IVAR: {
     MU_NODE *mnode = x->Ivar_mu_node();

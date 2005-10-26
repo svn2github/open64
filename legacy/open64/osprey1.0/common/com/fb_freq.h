@@ -136,7 +136,7 @@ enum FB_FREQ_TYPE {
 const float FB_FREQ_EPSILON = 0.0001;
 
 class FB_FREQ {
-private:
+public:
 
   FB_FREQ_TYPE  _type;
   float         _value;
@@ -389,6 +389,10 @@ public:
       break;
     }
   }
+
+  void Print_simple (FILE * fp) const {
+  	fprintf(fp, "_type = %d   |  _value = %f \n", _type, _value);
+  	}
 
   INT Sprintf( char *buffer ) const {
     INT length = 0;

@@ -125,6 +125,18 @@ struct Fb_Hdr {
     fb_str_table_size = x.fb_str_table_size;
     phase_num = x.phase_num;
   }
+  void Print( FILE *fp ) const {
+  	fprintf(fp, "\n**********      FILE HEADER     **************\n");
+  	fprintf(fp, "fb_ident = %s\n", fb_ident);
+  	fprintf(fp, "fb_version = %u\n",fb_version);
+  	fprintf(fp, "fb_profile_offset = %u\n",fb_profile_offset);
+  	fprintf(fp, "fb_pu_hdr_offset = %u\n",fb_pu_hdr_offset);
+  	fprintf(fp, "fb_pu_hdr_ent_size = %u\n",fb_pu_hdr_ent_size);
+  	fprintf(fp, "fb_pu_hdr_num = %u\n",fb_pu_hdr_num);
+  	fprintf(fp, "fb_str_table_offset = %u\n",fb_str_table_offset);
+  	fprintf(fp, "fb_str_table_size = %u\n",fb_str_table_size);
+  	fprintf(fp, "phase_num = %u\n",phase_num);
+  };
 
 }; 
 
@@ -155,5 +167,33 @@ struct Pu_Hdr {
   ULONG pu_instr_exec_count;
   ULONG pu_value_offset;
   Pu_Hdr() {}
+  void Print( FILE * fp, int id=-1) const {
+  	fprintf(fp, "\n**********   PU Header No %d   **************\n", id);
+  	fprintf(fp, "pu_checksum = %d\n", pu_checksum);
+  	fprintf(fp, "pu_name_index = %u\n", pu_name_index);
+  	fprintf(fp, "pu_file_offset = %u\n", pu_file_offset);
+  	fprintf(fp, "pu_inv_offset = %u\n", pu_inv_offset);
+  	fprintf(fp, "pu_num_inv_entries = %u\n", pu_num_inv_entries);
+  	fprintf(fp, "pu_br_offset = %u\n", pu_br_offset);
+  	fprintf(fp, "pu_num_br_entries = %u\n", pu_num_br_entries);
+  	fprintf(fp, "pu_switch_offset = %u\n", pu_switch_offset);
+  	fprintf(fp, "pu_switch_target_offset = %u\n", pu_switch_target_offset);
+  	fprintf(fp, "pu_num_switch_entries = %u\n", pu_switch_target_offset);
+  	fprintf(fp, "pu_cgoto_offset = %u\n", pu_cgoto_offset);
+  	fprintf(fp, "pu_cgoto_target_offset = %u\n", pu_cgoto_target_offset);
+  	fprintf(fp, "pu_num_cgoto_entries = %u\n", pu_num_cgoto_entries);
+  	fprintf(fp, "pu_loop_offset = %u\n", pu_loop_offset);
+  	fprintf(fp, "pu_num_loop_entries = %u\n", pu_num_loop_entries);
+  	fprintf(fp, "pu_scircuit_offset = %u\n", pu_scircuit_offset);
+  	fprintf(fp, "pu_num_scircuit_entries = %u\n", pu_num_scircuit_entries);
+  	fprintf(fp, "pu_call_offset = %u\n", pu_call_offset);
+  	fprintf(fp, "pu_num_call_entries = %u\n", pu_num_call_entries);
+  	fprintf(fp, "pu_handle = %u\n", pu_handle);
+  	fprintf(fp, "pu_edge_offset = %u\n", pu_edge_offset);
+  	fprintf(fp, "pu_num_edge_entries = %u\n", pu_num_edge_entries);
+  	fprintf(fp, "pu_instr_count = %u\n", pu_instr_count);
+  	fprintf(fp, "pu_instr_exec_count = %u\n", pu_instr_exec_count);
+  	fprintf(fp, "pu_value_offset = %u\n", pu_value_offset);
+  };
 };
 #endif /* profile_com_INCLUDED */

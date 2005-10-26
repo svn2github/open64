@@ -989,7 +989,7 @@ Print_OP (OP *op, char *buf)
         char buffer[500];
         buffer[0] = '\0';
         if (Alias_Manager) Print_alias_info (buffer, Alias_Manager, wn);
-        buf += sprintf(buf, " WN=0x%lx %s", wn, buffer);
+        buf += sprintf(buf, " WN=%p %s", wn, buffer);
     }
     if (OP_unrolling(op)) {
         UINT16 unr = OP_unrolling(op);

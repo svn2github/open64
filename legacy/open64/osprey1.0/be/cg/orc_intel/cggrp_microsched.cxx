@@ -57,6 +57,7 @@
 #include "cggrp_ptn_table.h"
 #include "scheduler.h"
 #include "dag.h"
+#include "multi_branch.h"
 
 typedef mINT16 OP_IDX;
 
@@ -80,13 +81,14 @@ enum { invalid_op_idx = -1, invalid_ptn_idx = -1 };
 //
 // ==================================================================
 
-enum {fill_nop_after=1, fill_nop_before=2 };
+enum {fill_nop_after=0, fill_nop_before=1, strict_order=2, issue_branch_op=3 };
 class CYCLE_STATE{
 protected:
     BOOL  _valid;
     BOOL  _fRequire; //there's an op require to be the first in group
     BOOL  _lRequire; //there's an op require to be the last in group
     BOOL  _dependency_exist; // Inner cycle dependency exist
+    BOOL  _branch_exist; //branch exist in this cycle
 
     mINT16  _flags; //Some flag of state; bit order from left to right:
                     //The first bit means should insert nop after the last 
@@ -152,12 +154,14 @@ public:
     BOOL Require_First(void) const { return _fRequire; }
     BOOL Require_Last(void) const { return _lRequire; }
     BOOL Is_Dependency(void) const { return _dependency_exist; }    
-    BOOL Fill_After(void) const { return _flags & (1<<(fill_nop_after-1)); }
-    BOOL Fill_Before(void) const { return _flags & (1<<(fill_nop_before-1)); }
-    BOOL Set_Flags(INT order) {return _flags |= (1<<(order-1)); }
+    BOOL Fill_After(void) const { return _flags & (1<<fill_nop_after); }
+    BOOL Fill_Before(void) const { return _flags & (1<<fill_nop_before); }
+    BOOL Strict_Order(void) const { return _flags & (1<<strict_order); }
+    BOOL Has_Branch_OP(void) const { return _flags & (1<<issue_branch_op); }
+    BOOL Set_Flags(INT order) {return _flags |= (1<<order); }
 
     BOOL Legality_Chk_Needed(void) const
-    { return _dependency_exist|| _fRequire|| _lRequire||(_extra_slots>0);}
+    { return _branch_exist||_dependency_exist|| _fRequire|| _lRequire||(_extra_slots>0);}
     BOOL Legality_Chk(const PATTERN_TYPE ptn);
 
     PORT_SET  Reserve(void) const { return _reserve; }
@@ -218,6 +222,7 @@ void CYCLE_STATE::Clear(void)
     _fRequire = FALSE;
     _lRequire = FALSE;
     _dependency_exist = FALSE;
+    _branch_exist = FALSE;
     _flags = 0;
 
     _num_ops = 0;
@@ -260,12 +265,12 @@ CYCLE_STATE& CYCLE_STATE::operator=(const CYCLE_STATE cs)
     for (INT j=0; j<ip_invalid; j++){
         _fu_owner[j]= cs._fu_owner[j];
     }
+    return *this; 
 }
 
 void CYCLE_STATE::Dump(FILE *f=stderr) const
 {
     extern void dump_op(const OP *op);
-
     fprintf(f, "\nValid:%d ",_valid);
     fprintf(f, "dependence:%d ",_dependency_exist);
     fprintf(f, "Occupied:");
@@ -348,7 +353,7 @@ OP_IDX CYCLE_STATE::Add_OP( OP * inst,
             }
         }
 
-        if (OP_l_group(inst)){
+        if (OP_l_group(inst)) { 
             if (Require_Last()){
                 //Already there has one op required to be the last in a group
                 return invalid_op_idx;
@@ -358,31 +363,55 @@ OP_IDX CYCLE_STATE::Add_OP( OP * inst,
             }
         }
 
+        if (OP_xfer(inst)) {
+            if (Has_Branch_OP()) {
+                // TODO: do some special check for multi_branch in global scheduler 
+                // DevWarn("multiple issue op in BB %d", BB_id(OP_bb(inst)));
+            } else {
+                Set_Flags(issue_branch_op);
+            }
+        }
         if (!Empty()) { //This is NOT the first op
             //Check the hazard and dependency between new ops and existing ones.
             //Set the flags accordingly
-            for (ARC_LIST *al = OP_preds(inst); al; al=ARC_LIST_rest(al)){
-                // For all the predcessors of this inst
-                ARC *arc = ARC_LIST_first(al);
-                OP  *pred = ARC_pred(arc);
-            
+            if (Strict_Order()) {
                 for (OP_IDX op_idx=0; op_idx< Sum_OP(); op_idx++){
-                    OP *exist_op = (*this)[op_idx];
-                    if (pred == exist_op){
-                        if (!Is_There_OP_Dependence(inst, exist_op)
-                             || ARC_latency(arc)==0){
-                            // Dependency Tolerated in a Cycle
-                            _dependency_exist = true;
-                            preds_vector.push_back(op_idx);
-                        }
-                        else{
-                            return invalid_op_idx;
+                     OP *exist_op = (*this)[op_idx];
+                     if (Is_There_OP_Dependence(inst,exist_op) && 
+                         issue_port == ip_invalid)
+                         return invalid_op_idx;
+                }
+                _dependency_exist =true;
+                preds_vector.push_back(Sum_OP()-1);
+            } else {
+                for (ARC_LIST *al = OP_preds(inst); al; al=ARC_LIST_rest(al)){
+                    // For all the predcessors of this inst
+                    ARC *arc = ARC_LIST_first(al);
+                    OP  *pred = ARC_pred(arc);
+                    if (ARC_kind (arc) == CG_DEP_POSTBR &&
+                        !(OP_xfer(pred) && OP_xfer(inst))) {
+                        continue ;
+                    }
+                    for (OP_IDX op_idx=0; op_idx< Sum_OP(); op_idx++){
+                        OP *exist_op = (*this)[op_idx];
+                        if (pred == exist_op){
+                            if (!Is_There_OP_Dependence(inst, exist_op)
+                                || ARC_latency(arc)==0){
+                                // Dependency Tolerated in a Cycle
+                                _dependency_exist = true;
+                                preds_vector.push_back(op_idx);
+                            }
+                            else{
+                                return invalid_op_idx;
+                            }
                         }
                     }
                 }
             }
         }
     }
+
+    if (OP_xfer(inst))  _branch_exist=TRUE; 
     // After checking passed, start insertion
     _ops[_num_ops].op = inst;
     _ops[_num_ops].op_fu = issue_port;
@@ -426,6 +455,9 @@ BOOL CYCLE_STATE::Legality_Chk(const PATTERN_TYPE ptn)
     BOOL first_stop_hit = false;
     BOOL last_stop_hit = false;
     BOOL is_first_pos = true;
+    BOOL has_issue_br_op = false;
+    INT  need_chk_template_index;
+    INT  need_chk_slot;
     OP_IDX  op_index;
     enum ISSUE_PORT issue_port;
     const DISPERSAL_TARG  *ports_vector = dispersal_table.Query(&ptn);
@@ -465,7 +497,9 @@ BOOL CYCLE_STATE::Legality_Chk(const PATTERN_TYPE ptn)
                     // An NOP should be issued here
                     is_first_pos = FALSE;
                     last_stop_hit = ISA_EXEC_Stop(template_index, slot);
-                    if (last_stop_hit){
+                    if (last_stop_hit) {
+                        need_chk_template_index = template_index;
+                        need_chk_slot = slot;
                         break;
                     }
                     continue;
@@ -511,7 +545,7 @@ BOOL CYCLE_STATE::Legality_Chk(const PATTERN_TYPE ptn)
                         return false;
                     }
                 }
-                issued[op_index] = true;
+                issued[op_index] = TRUE;
 
                 if (slot_prop == ISA_EXEC_PROPERTY_L_Unit){
                     // Processing an LX op, occupis TWO slots!
@@ -529,19 +563,46 @@ BOOL CYCLE_STATE::Legality_Chk(const PATTERN_TYPE ptn)
                         // some one has occupied the X slot, so Fail!
                         return false;
                     }
-                    issued[op_index] = true;
+                    issued[op_index] = TRUE;
                 }
 
+                // once meet branch op, after that we should issue other
+                // except branch op or nop;
+                if (Has_Branch_OP()) {
+                    if (OP_xfer((*this)[op_index]) && 
+                        !OP_chk((*this)[op_index])) {
+                        has_issue_br_op = TRUE;
+                    } else {
+                        if (has_issue_br_op && !OP_noop((*this)[op_index]) )
+                            return false;
+                    }
+                }
                 last_stop_hit = ISA_EXEC_Stop(template_index, slot);
                 if (last_stop_hit){
+                    need_chk_template_index = template_index;
+                    need_chk_slot = slot;
                     break;
                 }
+               
             }
         }
+        if (! last_stop_hit) {
+            need_chk_template_index = template_index;
+            need_chk_slot = ISA_MAX_SLOTS-1;
+        }
     }
+
+    ISA_EXEC_UNIT_PROPERTY slot_prop = 
+        ISA_EXEC_Slot_Prop(need_chk_template_index,need_chk_slot);
+    if (_branch_exist && 
+            slot_prop != ISA_EXEC_PROPERTY_B_Unit &&
+            slot_prop != ISA_EXEC_PROPERTY_B2_Unit) {
+            return FALSE;
+    }
+
     // now "op_index" must contain the last issued op
     if (_lRequire &&
-        ((op_index==invalid_op_idx)||!OP_l_group((*this)[op_index])) ){
+        ((op_index==invalid_op_idx)||!OP_l_group((*this)[op_index]))) {
         //the last issued should be the one that is required to be issued last
         return false;
     }
@@ -620,7 +681,7 @@ void CYCLE_STATE::Do_Bundling(void)
     enum ISSUE_PORT issue_port;
     const DISPERSAL_TARG  *ports_vector = dispersal_table.Query(&ptn);
     
-    // Here we got an assumption:
+    // Here we got an assumption: 
     // ALL the OPs in this cycle should be in the SAME BB when
     // they got bundled. And all the OPs in this cycle should
     // be together.
@@ -721,8 +782,18 @@ void CYCLE_STATE::Do_Bundling(void)
                 Set_OP_bundled(op);
 
                 Reset_OP_end_group(op);
-                BB_Remove_Op(bb, op);
+
+                // multi branch , save branch op orginal bb
+                BB *origin_bb = OP_bb(op);
+                if (origin_bb != bb && 
+                    origin_bb != NULL) {
+                    BB_Remove_Op(origin_bb,op);
+                } else {
+                    BB_Remove_Op(bb, op);
+                }
                 OPS_Append_Op(&op_list, op);
+                OP_bb(op) = origin_bb;
+
                 issued[op_index] = true;
 
                 if (ISA_PACK_Inst_Words(OP_code(op)) > 1){
@@ -760,7 +831,26 @@ void CYCLE_STATE::Do_Bundling(void)
          op = next){
         next = OP_next(op);
         mUINT16 old_map_idx = OP_map_idx(op);
+
+        // When multi branch, insert the origin BB;
+        if (OP_bb(op)!=NULL && OP_bb(op) != bb && OP_xfer(op)){
+            Set_BB_partial_bundle(bb);
+
+            if (Get_Trace(TP_A_MLBR, 0x1)) {
+                fprintf(TFile, "Set BB %d as partial bundle\n", BB_id(bb));
+            }
+
+            bb = OP_bb(op); 
+            Set_BB_partial_bundle(bb);
+
+            if (Get_Trace(TP_A_MLBR, 0x1)) {
+                fprintf(TFile, "Set BB %d as partial bundle\n", BB_id(bb));
+            }
+            position = NULL;
+        }
+
         if (position){
+            Is_True(OP_bb(position)==bb, ("non-valid position in BB %d", BB_id(bb)));
             BB_Insert_Op_After(bb, position, op);
         }
         else{
@@ -770,8 +860,8 @@ void CYCLE_STATE::Do_Bundling(void)
             op->map_idx = old_map_idx;
         }
         position = op;
-    }
 
+    }
 #ifdef Is_True_On
     // Debug checking integrity: whether all the ops have been issued
     for (INT I=0; I<Sum_OP(); I++){
@@ -1556,4 +1646,262 @@ BOOL CGGRP_Check_Split_BB(BB* split_bb, BB** end_bbp)
 
 }
 
+inline BOOL bundle_ops_fail(void){
+    prev_state.Clear();
+    temp_state.Valid(FALSE);
+    return FALSE;
+}
+/////////////////////////////////////////////////////////////////
+//
+//  Find_Pattern_OPS
+//    find pattern for complete group in OPS: one bundle or two.
+//    stop_idx indicate where is the stop bit.
+//    
+//    return a valid PATTERN_TYPE else invalid pattern.
+//
+static PATTERN_TYPE 
+Find_Pattern_OPS(OPS *ops, INT stop_idx=0)
+{
+    OP *cur_op;
+    INT idx=0;
+    UINT64 slot_mask=0;
+    UINT64 stop_mask=0;
+    PATTERN_TYPE origin_ptn;
 
+    // Init origin pattern;
+    for(INT bundle=0; bundle < ISA_MAX_ISSUE_BUNDLES; bundle++)
+    {
+        origin_ptn.bundle[bundle] = ISA_MAX_BUNDLES;
+        origin_ptn.start_in_bundle = 0;
+        origin_ptn.end_in_bundle = 0;
+    } 
+
+    FOR_ALL_OPS_OPs(ops, cur_op) {
+        INT words = ISA_PACK_Inst_Words(OP_code(cur_op));
+        for (INT w = 0; w < words; ++w) {
+             idx++;
+             slot_mask = slot_mask << ISA_TAG_SHIFT;
+             if ( EXEC_PROPERTY_is_M_Unit(OP_code(cur_op)) && EXEC_PROPERTY_is_I_Unit(OP_code(cur_op)) ){
+                // A type instruction, identify its property
+                slot_mask |= OP_m_unit(cur_op)? ISA_EXEC_PROPERTY_M_Unit : ISA_EXEC_PROPERTY_I_Unit;
+             } else { slot_mask |= ISA_EXEC_Unit_Prop(OP_code(cur_op)); }
+        }
+        // IPFEC hacker on brp special case
+        // brp can issue in B0 and B2 while pro64 only model in B2
+        PORT_SET b0b2;
+        b0b2 = b0b2 + ip_B0;
+        b0b2 = b0b2 + ip_B2;
+        if (TSI_Issue_Ports(OP_code(cur_op))== b0b2){
+            slot_mask = slot_mask | ISA_EXEC_PROPERTY_B_Unit;
+        }
+
+        // determine template
+        if (idx % ISA_MAX_SLOTS == 0 && idx != 0) {
+            if (stop_idx == 0) stop_mask = 0;
+            else if (idx>stop_idx && ((idx-stop_idx)<ISA_MAX_SLOTS)) {
+                 stop_mask = 1 << (ISA_MAX_SLOTS - stop_idx); 
+            }
+            INT ibundle;
+            for (ibundle = 0; ibundle < ISA_MAX_BUNDLES; ++ibundle) {
+                 UINT64 this_slot_mask = ISA_EXEC_Slot_Mask(ibundle);
+                 UINT32 this_stop_mask = ISA_EXEC_Stop_Mask(ibundle);
+                 if (   (slot_mask & this_slot_mask) == this_slot_mask
+                 && stop_mask == this_stop_mask) break;
+            }
+            FmtAssert(ibundle != ISA_MAX_BUNDLES,
+                ("couldn't find bundle for slot mask=0x%llx, stop mask=0x%x in OPS\n",
+                     slot_mask, stop_mask));
+            origin_ptn.bundle[(idx/ISA_MAX_SLOTS)-1] = ibundle;
+            if (stop_idx>0) origin_ptn.start_in_bundle = 1; 
+            slot_mask = 0;
+            stop_mask = 0;
+        } 
+    } 
+    return origin_ptn;
+}
+////////////////////////////////////////////////////////////
+// CGGRP_Bundle_OPS
+//   Assumption: ops is one group for a cycle, When there are
+//     stop bit between bundle, the ops must hold the complete
+//     op sequence, that is include some op in last cycle.
+// 
+//   Given a list of bundled ops, and one new op, Firstly find 
+//   the orignal pattern for the ops, Then find new pattern 
+//   after insert new op. Last Do bundling for ops+op, save to
+//   ops.
+//   return TRUE when bundle new op in the same cycle with ops
+//   else return FALSE
+//
+BOOL CGGRP_Bundle_OPS(OPS *ops,OP *op,INT stop_idx=0)
+{
+
+    Is_True(OPS_length(ops) <= ISA_MAX_SLOTS*ISA_MAX_ISSUE_BUNDLES, 
+            ("OPS must be put suitable bundle group."));
+    Is_True(stop_idx < ISA_MAX_SLOTS, 
+            ("stop bit only can occur in first bundle."));
+
+    BOOL dump_details = FALSE;
+
+    if (Get_Trace(TP_A_MLBR, 0x01)) {
+         dump_details = TRUE;
+    }
+
+    temp_state.Clear();
+    prev_state.Clear();
+    temp_state.Set_Flags((INT)strict_order);
+
+    // care_bundle value
+    OP *cur_op;
+    INT idx=0;
+    INT keep_template;
+    OP *insert_point=NULL; 
+    PATTERN_TYPE origin_ptn;
+    PTN_TABLE_LINE ptns;
+
+    origin_ptn = Find_Pattern_OPS(ops, stop_idx);
+
+    // set temp_state
+    if (dump_details) {
+        fprintf(TFile, "Find last cylce template group:\n");
+        origin_ptn.Dump(TFile);
+    }
+    Is_True(origin_ptn[0]!=ISA_MAX_BUNDLES, ("ops can't bundle in one cycle!"));
+    const DISPERSAL_TARG  *ports_vector = dispersal_table.Query(&origin_ptn);
+    idx = 0;
+    FOR_ALL_OPS_OPs(ops, cur_op) {
+        idx++;
+        if (idx <= stop_idx) {
+            if (idx == stop_idx) {
+                prev_state.Add_OP(cur_op);
+                insert_point=cur_op;
+            } 
+        } else {
+            if (!OP_noop(cur_op)) {
+                INT bundle = (idx-1)/ISA_MAX_SLOTS;
+                INT slot = (idx-1) % ISA_MAX_SLOTS;
+                enum ISSUE_PORT issue_port = ports_vector->Port(bundle,slot);
+                OP_IDX op_idx=temp_state.Add_OP(cur_op,issue_port);
+                Is_True(op_idx!=invalid_op_idx, ("Add_op failed. ops must be bundling well op list!"));
+            }
+        }
+    } 
+
+    if (temp_state.Full()) return bundle_ops_fail();
+
+    temp_state.Valid(TRUE);
+    // keep template for first bundle
+    if (stop_idx > 0) { keep_template = origin_ptn[0]; } 
+
+    Is_True(temp_state.Valid(),("cannot find bunlding for ops %d", OPS_length(ops)));
+    
+    // add new op to current cycle
+
+    temp_state.Current_Pattern(invalid_ptn_idx); 
+    OP_IDX new_op_idx = temp_state.Add_OP(op);
+    if (new_op_idx == invalid_op_idx) 
+        return bundle_ops_fail();
+    if (!Bundle_Helper(new_op_idx)) 
+        return bundle_ops_fail();
+
+    ptns = temp_state.Patterns();
+    temp_state.Valid(FALSE); 
+    for (INT ptn_idx=temp_state.Current_Pattern(); ptn_idx<ptns.size; ptn_idx++)
+    {
+        const PATTERN_TYPE ptn = ptns[ptn_idx];
+        if (stop_idx == 0) {
+            if (ptn.start_in_bundle || ptn.end_in_bundle) continue; 
+        } else {
+            if (ptn[0] != keep_template) continue;
+        }
+        if (temp_state.Legality_Chk_Needed()){
+            if (!temp_state.Legality_Chk(ptn)) continue;
+        }
+        // pass all check
+        temp_state.Current_Pattern(ptn_idx); 
+        temp_state.Valid(TRUE); 
+        break;
+    }
+
+    if (!temp_state.Valid()) return bundle_ops_fail(); 
+    temp_state.Polish_Tail();
+    
+    //  temp_state.Do_Bundling() to insert nop to OPS;
+ 
+    // delete OPS nop instruction
+    idx = 0;
+    OP *remove_op=NULL;
+    INT cur_cycle = 0;
+    FOR_ALL_OPS_OPs(ops, cur_op) {
+        idx++;
+        if (remove_op) {OPS_Remove_Op(ops, remove_op);}
+        if (idx <= stop_idx) continue;
+        if (OP_noop(cur_op)) {
+            remove_op = cur_op;
+        } else {
+            remove_op = NULL;
+            cur_cycle = OP_scycle(cur_op);
+        }
+    } 
+    if (remove_op) {OPS_Remove_Op(ops, remove_op);}
+    
+    OP_scycle(op) = cur_cycle;
+    OPS_Append_Op(ops, op);
+   
+    ptns = temp_state.Patterns();
+    PATTERN_TYPE ptn  = ptns[temp_state.Current_Pattern()];
+    ports_vector = dispersal_table.Query(&ptn);
+    for (INT bundle=0; bundle < ISA_MAX_ISSUE_BUNDLES; bundle++){
+        INT template_index = ptn[bundle];
+        BOOL meet_bundle_start=TRUE;
+        if (template_index == ISA_MAX_BUNDLES){
+            break;  // It's an invalid one
+        }
+        if (ptn.start_in_bundle && bundle==0) 
+            meet_bundle_start = FALSE;
+        for (INT slot=0; slot < ISA_MAX_SLOTS; slot++) {
+            if (ptn.start_in_bundle && 
+                ISA_EXEC_Stop(template_index,slot)) {
+                    meet_bundle_start=TRUE;
+                    continue;
+            }
+            if (!meet_bundle_start) continue;
+            enum ISSUE_PORT issue_port = ports_vector->Port(bundle, slot);
+            OP_IDX op_idx = temp_state.OP_In_Port(issue_port);
+            // should insert noop to ops
+            if (op_idx==invalid_op_idx) {
+                ISA_EXEC_UNIT_PROPERTY slot_prop =
+                    ISA_EXEC_Slot_Prop(template_index, slot);
+                // An NOOP should be issued here
+                TOP top = (TOP)CGTARG_Noop_Top(slot_prop);
+                Is_True(top!=TOP_nop, ("Failed in find proper nop!"));
+                OP *new_op = Mk_OP(top, True_TN, Gen_Literal_TN(0,4));
+                Set_OP_Scheduled(new_op);
+                Set_OP_bundled(new_op);
+
+                if (insert_point != NULL) {
+                    OPS_Insert_Op_After(ops, insert_point,new_op);
+                }else {
+                    OPS_Prepend_Op(ops, new_op);
+                }  
+                insert_point = new_op;
+            } else {
+                insert_point = temp_state[op_idx];
+                Reset_OP_end_group(insert_point);
+                Reset_OP_start_bundle(insert_point);
+            }
+            if (slot == 0) Set_OP_start_bundle(insert_point);
+        }
+    }
+    Set_OP_end_group(insert_point); 
+    
+    if (dump_details) {
+        fprintf(TFile, "\n-----------------------------\n");
+        fprintf(TFile, "\nWe can get new bundle group: \n");
+        ptn = temp_state.Current_Pattern_Type();
+        ptn.Dump(TFile); 
+        fprintf(TFile, "\n-----------------------------\n");
+    }
+    temp_state.Clear();
+    prev_state.Clear();
+    return TRUE;
+}

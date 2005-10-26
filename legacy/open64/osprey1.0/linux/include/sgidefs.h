@@ -204,8 +204,8 @@ typedef unsigned long __uint64_t;
  */
 #if defined(_LONGLONG)
 	/*  Its alright to use long long in definitions  */
-typedef long long __int64_t;
-typedef unsigned long long  __uint64_t;
+// typedef long long __int64_t;
+// typedef unsigned long long  __uint64_t;
 
 #else
 #if (defined(__cplusplus) && !defined(__EDG)) || defined(m68000)

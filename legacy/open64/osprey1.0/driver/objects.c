@@ -34,6 +34,7 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <alloca.h>
 #include "basic.h"
 #include "string_utils.h"
@@ -274,8 +275,20 @@ append_libraries_to_list (string_list_t *list)
          * library_dirs is also used as the search path for the crt file
          */
         if (!option_was_seen(O_L)) {
+                string toolroot=getenv("TOOLROOT");
+                string libpath=NULL;
+                if (toolroot != NULL) {
+                    libpath=concat_strings(toolroot, get_phase_dir(P_library));
+                } else {
+                    libpath=get_phase_dir(P_library);
+                }
                 add_string(list,
-                           concat_strings("-L", get_phase_dir(P_library)));
+                           concat_strings("-L", libpath));
+                if (toolroot != NULL) {
+                   libpath=concat_strings(toolroot, get_phase_dir(P_alt_library));
+                   add_string(list,
+                              concat_strings("-L", libpath));
+                }
         }
 }
 

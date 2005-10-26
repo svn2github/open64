@@ -49,8 +49,13 @@
 #include <string.h>
 #include <sys/inst.h>
 #include <elf.h>
-#include <sys/elf.h>
 #include <sys/elf_whirl.h>
+
+#ifdef HOST_IA64
+#include <asm/elf.h>
+#else
+#include <sys/elf.h>
+#endif
 
 #include "ld_elf.h"
 

@@ -35,7 +35,7 @@
 #
 #  Makefile.base for ipl
 #
-
+OPTIMIZER = -O0
 #----------------------------------------------------------------------
 #  Set environment variables
 #

@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -60,6 +60,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #else
 #include <limits.h>
 #endif
+#include <float.h>
 #include "defs.h"
 #include "errors.h"
 #include "cgir.h"
@@ -566,9 +567,20 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
 
   if (   Type() != LRANGE_TYPE_LOCAL && TN_is_save_reg(Tn())
   ) {
-    REGISTER sv_reg = TN_save_reg(Tn());
-    REGISTER_SET singleton = REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET,sv_reg);
-    allowed = REGISTER_SET_Intersection(allowed,singleton);
+    // we copied the reg. class (creg) of this copy TN in
+    // Init_Callee_Saved_Regs_for_REGION, this confuses TN_save_reg to
+    // return a dedicated TN (of lc), then in turn tries to allocate that
+    // which is not allowed, eventually, it cause GRA to allocate from RSE
+    // We can go ahead allocate registers
+    if (TN_save_rclass(Tn()) == REGISTER_CLASS_lc) {
+        allowed = REGISTER_SET_Difference(allowed,
+                                    REGISTER_CLASS_callee_saves(rc));
+    }else {
+        REGISTER sv_reg = TN_save_reg(Tn());
+        REGISTER_SET singleton = REGISTER_SET_Union1(REGISTER_SET_EMPTY_SET,sv_reg);
+        allowed = REGISTER_SET_Intersection(allowed,singleton);
+    }
+
   }
 
   switch (Type()) {

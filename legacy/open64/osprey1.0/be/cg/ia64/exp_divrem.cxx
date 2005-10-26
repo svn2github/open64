@@ -1,6 +1,6 @@
 /*
 
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -511,6 +511,49 @@ Expand_Intel_Max_Thr_F4_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
   // END SINGLE PRECISION THROUGHPUT-OPTIMIZED DIVIDE ALGORITHM
 
   Exp_COPY(result, f8, ops);
+}
+
+static void
+Expand_I4_I4_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
+{
+  TN * const f0 = FZero_TN;
+  TN * const f1 = FOne_TN;
+  TN *f6, *f7, *f10, *f11, *f8, *f9;
+  TN *f13 = src1;	// load a, the first argument, in f13
+  TN * const f12 = src2;	// load b, the second argument, in f12
+  TN * const p0 = True_TN;
+  TN *p6;
+  TN *t0;
+
+  t0 = Build_TN_Of_Mtype(MTYPE_I8);
+  f6 = Build_TN_Of_Mtype(MTYPE_F10);
+  Build_OP(TOP_addl,t0,True_TN,Gen_Literal_TN(65501,4),Zero_TN,ops);
+  Build_OP(TOP_setf_exp, f6, True_TN, t0, ops);
+  
+
+  f7 = Build_TN_Of_Mtype(MTYPE_F10);
+  p6 = Build_RCLASS_TN(ISA_REGISTER_CLASS_predicate);
+  Build_OP(TOP_frcpa, f7, p6, p0, Gen_Enum_TN(ECV_sf_s1), f13, f12, ops);
+  
+  f10 = Build_TN_Of_Mtype(MTYPE_F10);
+  Build_OP(TOP_fnma, f10, p6, Gen_Enum_TN(ECV_sf_s1), f12, f7, f1, ops);
+  RESET_COND_DEF_LAST(ops);
+ 
+ f11 = Build_TN_Of_Mtype(MTYPE_F10);
+  Build_OP(TOP_fma, f11, p6, Gen_Enum_TN(ECV_sf_s1), f13, f7, f0, ops);
+  RESET_COND_DEF_LAST(ops);
+  
+  f8 = Build_TN_Of_Mtype(MTYPE_F10);
+  Build_OP(TOP_fma, f8, p6, Gen_Enum_TN(ECV_sf_s1), f10, f10, f6, ops);
+  RESET_COND_DEF_LAST(ops);
+  
+  f9 = Build_TN_Of_Mtype(MTYPE_F10);
+  Build_OP(TOP_fma, f9, p6, Gen_Enum_TN(ECV_sf_s1), f10, f11, f11, ops);
+  RESET_COND_DEF_LAST(ops);
+  
+  Build_OP(TOP_fma, f7, p6, Gen_Enum_TN(ECV_sf_s1), f8, f9, f9, ops);
+
+  Exp_COPY(result, f7, ops);
 }
 
 
@@ -1924,7 +1967,14 @@ Expand_NonConst_DivRem (TN *quot, TN *rem, TN *x, TN *y, TYPE_ID mtype, OPS *ops
     if (is_double) {
       Expand_SGI_F10_Divide(f2, f12, f13, ops);
     } else {
-      Expand_SGI_F8_Divide(f2, f12, f13, ops);
+	  if (mtype==MTYPE_I1 ||mtype==MTYPE_I2 || mtype==MTYPE_I4 || mtype==MTYPE_U1 ||mtype==MTYPE_U2||mtype==MTYPE_U4)
+	  {
+		Expand_I4_I4_Divide(f2,f12,f13,ops);
+	  }
+	  else
+	  {
+      		Expand_SGI_F8_Divide(f2, f12, f13, ops);
+	  }
     }
   }
 

@@ -61,16 +61,17 @@ CROSS_COMPONENTS = \
                 $(CROSS_BUILD_DIR)/whirl2f/whirl2f.so \
                 $(CROSS_BUILD_DIR)/whirl2f/whirl2f \
                 $(CROSS_BUILD_DIR)/ir_tools/ir_b2a \
+                $(CROSS_BUILD_DIR)/cord/gen_cord \
                 $(CROSS_BUILD_DIR_LD)/ld/ld-new
 
 
 $(CROSS_BUILD_DIR)/driver.nue/driver: force
 		cd $(CROSS_BUILD_DIR)/driver.nue; gmake ; cd ../../..
 
-$(CROSS_BUILD_DIR)/gccfe/gfec:
+$(CROSS_BUILD_DIR)/gccfe/gfec: force
 		cd $(CROSS_BUILD_DIR)/gccfe ; gmake ; cd ../../..
 
-$(CROSS_BUILD_DIR)/g++fe/gfecc:
+$(CROSS_BUILD_DIR)/g++fe/gfecc: force
 		cd $(CROSS_BUILD_DIR)/g++fe ; gmake ; cd ../../..
 
 $(CROSS_BUILD_DIR)/be/be: force
@@ -123,6 +124,9 @@ $(CROSS_BUILD_DIR)/targ_info/itanium.so: force
 
 $(CROSS_BUILD_DIR)/ir_tools/ir_b2a: force
 		cd $(CROSS_BUILD_DIR)/ir_tools ; gmake ; cd ../../..
+
+$(CROSS_BUILD_DIR)/cord/gen_cord: force
+		cd $(CROSS_BUILD_DIR)/cord ; gmake ; cd ../../..
 
 $(CROSS_BUILD_DIR)/crayf90/sgi/mfef90: force
 		cd $(CROSS_BUILD_DIR)/crayf90/sgi ; gmake ; cd ../../..

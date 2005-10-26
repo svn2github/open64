@@ -102,8 +102,9 @@
 #include "ir_bread.h"			// For second-pass WHIRL file
 #include "ir_bwrite.h"			// I/O for alias class
 #include "be_symtab.h" 
+#include "inline_script_parser.h"
 
-#include "ipc_option.h" 
+#include "ipc_option.h"
 
 extern "C" void add_to_tmp_file_list (char*);
 #pragma weak add_to_tmp_file_list
@@ -238,7 +239,7 @@ Build_Transformation_Order (IPA_NODE_VECTOR& vect, IPA_GRAPH* cg,
 } // Build_Transformation_Order
 
 
-
+
 /* rename the callsite to point to the cloned procedure */
 void
 Rename_Call_To_Cloned_PU (IPA_NODE *caller, 
@@ -308,8 +309,53 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 	} else {
 	    fprintf ( stderr, "\n" );
 	}
-    }
 
+	// Generate an inlining action log for verifying purpose
+	// The file open/close operation could be placed in higher level to reduce time cost	
+#ifdef Enable_ISP_Verify
+	FILE *inline_action = fopen(inline_action_log, "a+");
+	char *caller_key, *callee_key;
+    	
+	// Retrieve call site source line number		
+	WN* call_wn = edge->Whirl_Node();
+	USRCPOS callsite_srcpos;
+	USRCPOS_srcpos(callsite_srcpos) = WN_Get_Linenum (call_wn);
+	char callsite_linestr[1024];
+	sprintf(callsite_linestr, "%d", USRCPOS_linenum(callsite_srcpos));
+	
+	// Retrieve caller/callee function names and the definition file names
+	char *caller_file = (char *) alloca(strlen(caller->File_Header().file_name)+1);
+	strcpy(caller_file, caller->File_Header().file_name);
+	char *callee_file = (char *) alloca(strlen(callee->File_Header().file_name)+1);
+	strcpy(callee_file, callee->File_Header().file_name);
+	char *caller_func = (char *) alloca(strlen(DEMANGLE (caller->Name()))+1);
+	strcpy(caller_func, DEMANGLE (caller->Name()));
+	char *callee_func = (char *) alloca(strlen(DEMANGLE (callee->Name()))+1);
+	strcpy(callee_func, DEMANGLE (callee->Name()));	
+	
+	// Filter out surffix in file/function names	
+	ISP_Fix_Filename(caller_file);
+	ISP_Fix_Filename(callee_file);
+	ISP_Fix_Filename(caller_func);
+	ISP_Fix_Filename(callee_func);
+	
+	// Assemble the caller key for inquiry into inlining record
+	caller_key = (char *) alloca(strlen(caller_file)+strlen(caller_func)+2);
+	strcpy(caller_key, "");
+ 	strcat(caller_key, caller_file);
+  	strcat(caller_key, caller_func);	
+  	
+  	// Assemble the callee key for inquiry into inlining record
+  	callee_key = (char *) alloca(strlen(callsite_linestr)+strlen(callee_file)+strlen(callee_func)+3);
+   	strcpy(callee_key, "");
+   	strcat(callee_key, callsite_linestr);
+   	strcat(callee_key, callee_file);
+	strcat(callee_key, callee_func);	
+	
+	fprintf(inline_action, "[%s] inlined into [%s]\n", callee_key, caller_key);
+	fclose(inline_action);
+#endif
+    }
 
     return TRUE;
 
@@ -448,13 +494,15 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 	   inlining is done. */
 	callee->Set_Undeletable();
 
-#ifdef TODO
+//#ifdef TODO
 	if (IPA_Enable_Cord) {
-	    fprintf (Call_graph_file, "%s\t%s\t%d\n", caller->Name (),
+	    fprintf (Call_graph_file, "%s\t%s\t%f\t%f\t%f\n", caller->Name (),
 		     callee->Name (), edge->Has_frequency () ?
-		     edge->Get_frequency () : 0);
+		     (edge->Get_frequency())._value : 0,
+		     (caller->Get_frequency())._value,
+		     (callee->Get_frequency())._value);
 	}
-#endif
+//#endif
     }
     
 

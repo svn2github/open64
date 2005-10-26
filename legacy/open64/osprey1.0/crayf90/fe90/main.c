@@ -40,6 +40,7 @@ static char USMID[] = "\n@(#)5.0_pl/sources/main.c	5.15	10/14/99 15:25:09\n";
 
 # if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))	/* Needed for timing information. */
 # include <sys/time.h>
+# include <time.h>
 # include <sys/resource.h>
 # else
 # include <time.h>

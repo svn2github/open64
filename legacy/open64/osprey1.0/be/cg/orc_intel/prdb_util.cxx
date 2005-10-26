@@ -76,8 +76,8 @@ Test_PRDB(REGION* region, PARTITION_GRAPH* graph)
 
     TN_OP_PAIR tn_op1, tn_op2;
     for(iter = bbs.begin(); iter != bbs.end(); ++iter) {
-    	bb = *iter;
-    	if(BB_last_op(bb))
+        bb = *iter;
+        if(BB_last_op(bb))
             tn_op1.second = OP_prev(BB_last_op(bb));
         if(!tn_op1.second) continue;
         tn_op1.first = OP_results(tn_op1.second)>0?
@@ -87,8 +87,8 @@ Test_PRDB(REGION* region, PARTITION_GRAPH* graph)
             TN_register_class(tn_op1.first) != ISA_REGISTER_CLASS_predicate)
             continue;
         for(iter1 = bbs.begin(); iter1 != bbs.end(); ++iter1) {
-        	bb2 = *iter1;
-        	if(BB_last_op(bb2))
+            bb2 = *iter1;
+            if(BB_last_op(bb2))
               tn_op2.second = OP_prev(BB_last_op(bb2));
             if(!tn_op2.second) continue;
             tn_op2.first = OP_results(tn_op2.second)>0?
@@ -106,7 +106,7 @@ Test_PRDB(REGION* region, PARTITION_GRAPH* graph)
             fprintf(TFile, "/");
             fPrint_TN ( TFile, "tn2-:%s", tn_op2.first);
             fprintf(TFile, " probability is %f\n", graph->Get_Probability(tn_op1.first,tn_op2.first));
-	    }
+        }
         }
         TP_ALLOCATOR tp_allocator;
         TP_CONTAINER tp_result(tp_allocator);
@@ -117,7 +117,7 @@ Test_PRDB(REGION* region, PARTITION_GRAPH* graph)
             fprintf(TFile, " cpty w.s.t BB-%d includes: ", BB_id(bb));
             for(tp_iter=tp_result.begin();tp_iter!=tp_result.end();tp_iter++)
             {
-                fPrint_TN(TFile," %s ", (*tp_iter).first);
+                fPrint_TN(TFile," %s ", (*tp_iter)->first);
             }
         }
     }
@@ -126,9 +126,9 @@ Test_PRDB(REGION* region, PARTITION_GRAPH* graph)
 void 
 Verify_PRDB(REGION* region, PRDB_GEN* prdb)
 {
-  	if(region->Region_Type() == IMPROPER ||
-   		region->Is_No_Further_Opt())
-   		return;
+    if(region->Region_Type() == IMPROPER ||
+        region->Is_No_Further_Opt())
+        return;
     PARTITION_GRAPH* graph = prdb->Partition_Graph(region);
     for (TOPOLOGICAL_REGIONAL_CFG_ITER iter( region -> Regional_Cfg()); 
     iter!=0; 
@@ -141,8 +141,8 @@ Verify_PRDB(REGION* region, PRDB_GEN* prdb)
         BB* bb = node -> BB_Node();
         OP* op;
         FOR_ALL_BB_OPs(bb, op){
-        	PG_CONTAINER* node_set = (PG_CONTAINER*)OP_MAP_Get(graph->Tn_Node_Map(), op);
-        	Is_True(node_set, ("No partition node set mapped to op!"));
+            PG_CONTAINER* node_set = (PG_CONTAINER*)OP_MAP_Get(graph->Tn_Node_Map(), op);
+            Is_True(node_set, ("No partition node set mapped to op!"));
         }
     }
 }

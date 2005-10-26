@@ -96,6 +96,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #endif // USE_PCH
 #pragma hdrstop
 
+#include <float.h>
 #include <math.h>
 #include <limits.h>
 

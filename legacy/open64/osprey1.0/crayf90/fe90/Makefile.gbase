@@ -270,7 +270,7 @@ fold.o:fold.f
 endif
 ifeq ($(BUILD_ARCH), IA64)
 fold.o:fold.f
-	NLSPATH=/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/%N.cat \
-	/usr/ia64-sgi-linux/bin/f90 -c -MD $(CRAYF90_DIR)/fe90/fold.f
+#	set NLSPATH=/usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/%N.cat  
+	orf90 -c -MD $(CRAYF90_DIR)/fe90/fold.f
 endif
 

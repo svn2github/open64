@@ -231,11 +231,19 @@ SWP_Loop_Init_Fini(bool is_doloop,
   
   TN *epilog_count = Gen_Literal_TN(stage_count, tn_size);
   
-  // workaround a Exp_COPY bug?
-  TN *tmp_tn = Gen_Register_TN (ISA_REGISTER_CLASS_integer, tn_size);
-  Exp_COPY(tmp_tn, epilog_count, prolog_ops);
-  Exp_COPY(ar_ec, tmp_tn, prolog_ops);
-
+  const ISA_OPERAND_INFO *oinfo;
+  oinfo = ISA_OPERAND_Info(TOP_mov_t_ar_i_i);
+  const ISA_OPERAND_VALTYP *vtype = ISA_OPERAND_INFO_Operand(oinfo, 1);
+  ISA_LIT_CLASS lc = ISA_OPERAND_VALTYP_Literal_Class(vtype);
+  if (ISA_LC_Value_In_Class(stage_count, lc)){
+	  Build_OP (TOP_mov_t_ar_i_i, ar_ec, True_TN, epilog_count, prolog_ops);
+  }
+  else{
+	  TN *tmp_tn = Gen_Register_TN (ISA_REGISTER_CLASS_integer, tn_size);
+	  Exp_COPY(tmp_tn, epilog_count, prolog_ops);
+	  Exp_COPY(ar_ec, tmp_tn, prolog_ops);
+  }
+  
   // Reset CFM.rrb pr
   Build_OP(TOP_clrrrb_pr, prolog_ops);
 

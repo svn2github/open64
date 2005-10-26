@@ -1480,7 +1480,7 @@ WFE_Expand_End_Case (void)
   WN    *wn;
   LABEL_IDX exit_label_idx;
 
-  n = case_info_i - switch_info_stack [switch_info_i].start_case_index;
+  n = case_info_i - switch_info_stack [switch_info_i].start_case_index + 1;
   if (break_continue_info_stack [break_continue_info_i].break_label_idx)
     exit_label_idx = break_continue_info_stack [break_continue_info_i].break_label_idx;
   else

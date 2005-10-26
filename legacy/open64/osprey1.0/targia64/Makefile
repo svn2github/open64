@@ -56,6 +56,7 @@ LIBRARY_SUBDIRS = \
 	libmv \
 	libstdc++ \
 	libinstr \
+	libcginstr \
 	libu
 
 
@@ -65,7 +66,8 @@ LIBRARY_SUBDIRS = \
 #  Note that be_driver must come last since it depends on other components
 #  being built first.
 #
-TOOL_SUBDIRS =
+TOOL_SUBDIRS = \
+	cg_fb_tools
 
 SUBDIRS=$(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
 

@@ -111,6 +111,9 @@ typedef struct {
 
 static AVAIL_REGS avail_regs[ISA_REGISTER_CLASS_MAX+1];
 
+/* Give register has nat bit or not for integer class? */
+static AVAIL_REGS has_nat_reg;
+
 /* Set of available registers in each register class. */
 static REGISTER_SET avail_set[ISA_REGISTER_CLASS_MAX+1];
 
@@ -1010,8 +1013,45 @@ Delete_Avail_Reg (ISA_REGISTER_CLASS regclass, REGISTER reg, INT cur_op)
   }
   avail_regs[regclass].reg[reg] = FALSE;
 }
+ 
+/* ======================================================================
+ * Init_Nat_Regs
+ *  Set array if <regclass,reg> is possible to carry nat bit for each bb.
+ * ======================================================================*/
+static BOOL
+Init_Nat_Regs(BB *bb)
+{
+    TN *tn;
+    REGISTER reg;
+    ISA_REGISTER_CLASS cl;
 
+    FOR_ALL_REGISTER_SET_members (avail_set[ISA_REGISTER_CLASS_integer], reg) {
+            has_nat_reg.reg[reg] = FALSE;
+    }
+    if (BB_bbregs(bb) != NULL) {
 
+        FOR_ALL_GTN_SET_members(BB_defreach_in(bb), tn) {
+            if (!TN_is_global_reg(tn)) continue;
+            cl = TN_register_class(tn);
+            reg = LRA_TN_register(tn);
+            if ( cl == ISA_REGISTER_CLASS_integer &&
+                TN_is_take_nat(tn)  &&
+                reg != REGISTER_UNDEFINED) {
+                has_nat_reg.reg[reg] = TRUE; 
+            }
+        }
+    }
+}
+/* ======================================================================
+ * Is_Reg_Has_nat
+ *  Return TRUE if <regclass,reg> is possible to carry nat bit.
+ * ======================================================================*/
+static BOOL
+Is_Reg_Has_nat(ISA_REGISTER_CLASS cl, REGISTER reg)
+{
+    if (cl != ISA_REGISTER_CLASS_integer) return FALSE;
+    return has_nat_reg.reg[reg];
+}
 /* ======================================================================
  * Is_Reg_Available
  *
@@ -1953,7 +1993,12 @@ Spill_Global_Register (BB *bb, SPILL_CANDIDATE *best)
   TN *new_tn;
   REGISTER reg = best->u1.s1.global_spill_reg;
   ISA_REGISTER_CLASS cl = (ISA_REGISTER_CLASS)best->u1.s1.spill_cl;
-
+  BOOL nat_bit_tn = Is_Reg_Has_nat(cl,reg);
+  if (nat_bit_tn) {
+    DevWarn ("Register %s has nat bit,change format in BB %d!",
+              REGISTER_name(cl,reg),
+              BB_id(bb));
+  }
   if (Do_LRA_Trace(Trace_LRA_Spill)) {
     fprintf (TFile, "LRA_SPILL>> Spilled Global Register : %s\n", 
                     REGISTER_name (cl, reg));
@@ -1983,11 +2028,17 @@ Spill_Global_Register (BB *bb, SPILL_CANDIDATE *best)
 
   CGSPILL_Store_To_Memory (spill_tn, spill_loc, OPS_Init(&spill_ops),
 			   CGSPILL_LRA, bb);
+  if (nat_bit_tn)
+    st_2_st_spill (&spill_ops, true);
+
   CGSPILL_Prepend_Ops (bb, &spill_ops);
   new_tn = Build_TN_Like (spill_tn);
   Set_TN_spill(new_tn, spill_loc);
   CGSPILL_Load_From_Memory (new_tn, spill_loc, OPS_Init(&spill_ops),
 			    CGSPILL_LRA, bb);
+  if (nat_bit_tn)
+    ld_2_ld_fill (&spill_ops, true);
+
   CGSPILL_Append_Ops (bb, &spill_ops);
   Set_TN_is_global_reg (new_tn);
   LRA_TN_Allocate_Register (new_tn, reg);
@@ -3587,6 +3638,7 @@ void Alloc_Regs_For_BB (BB *bb, HB_Schedule *Sched)
   MEM_POOL_Initialize (&lra_pool, "LRA_pool", FALSE);
   CGSPILL_Reset_Local_Spills ();
   Init_Avail_Set (bb);
+  Init_Nat_Regs(bb);
   local_spills = 0;
   livethrough_computed = FALSE;
   Trip_Count = 0;

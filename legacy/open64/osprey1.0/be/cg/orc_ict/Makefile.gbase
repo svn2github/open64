@@ -232,6 +232,7 @@ BE_ORC_SRCS = 		\
 	vt_dag.cxx		\
 	vt_partition.cxx	\
 	vt_region.cxx		\
+	init.cxx		\
 
 ifneq "$(ORC_TARG)" "KAPI"
   BE_ORC_SRCS += targ_issue_port.cxx

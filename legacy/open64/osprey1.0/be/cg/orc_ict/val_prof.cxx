@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2000-2002, Institute of Computing Technology, Chinese Academy of Sciences
+  Copyright (c) 2001, Institute of Computing Technology, Chinese Academy of Sciences
   All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification,
@@ -25,6 +25,33 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
  
+/*
+  Copyright (c) 2001, Intel Corporation
+  All rights reserved.
+  
+  Redistribution and use in source and binary forms, with or without modification,
+  are permitted provided that the following conditions are met:
+  
+  Redistributions of source code must retain the above copyright notice, this list
+  of conditions and the following disclaimer. 
+  
+  Redistributions in binary form must reproduce the above copyright notice, this list
+  of conditions and the following disclaimer in the documentation and/or other materials
+  provided with the distribution. 
+
+  Neither the name of the owner nor the names of its contributors may be used to endorse or
+  promote products derived from this software without specific prior written permission. 
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR
+  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 //-*-c++-*-
 
 #include <stdlib.h>
@@ -59,10 +86,14 @@
 
 #define GEN_NEWBB_FOR_RESTORE___Should_disable_ebo
 //#define VALUE_PROFILE_INTERNAL_DEBUG		
+//#define _maybe_wrong_test
+//#define _delete_but_not_fully_tested_yet
 #define	VALUE_PROFILE_DETAIL
 
-#define My_OP_to_split_entry TOP_mov_f_pr
-#define My_OP_to_split_entry1 TOP_mov_t_pr
+#define My_OP_to_split_entry1 TOP_mov_f_pr
+#define My_OP_to_split_entry2 TOP_mov_f_ar
+#define My_OP_to_split_entry3 TOP_mov_f_br
+#define My_OP_to_split_entry4 TOP_spadjust
 #define TNV_N 10
 
 INST2PROFLIST inst2prof_list;
@@ -143,6 +174,7 @@ protected:
 	BB * CG_Gen_Call(char * func_name, char * str_arg, INT int_arg1, INT int_arg2);
 	BB * CG_Gen_Call(char * func_name, char * str_arg1, char * str_arg2, INT int_arg1, INT int_arg2);
 	BB * CG_Gen_Call(char * func_name, char * str_arg, INT int_arg);
+	OP * Find_OP_to_split_entry_exit(BB *bb);
 	void Prepare_Insert_BBs_for_call(BB* bb);
 	void Prepare_Insert_BBs_for_call_init(BB* bb);	
 	void Insert_BBs_for_call(BB* bb, OPS * save_ops, BB * call_bb, OPS * restore_ops);
@@ -221,6 +253,13 @@ BB * CG_VALUE_INSTRUMENT_WALKER::Val_Prof_Divide_BB(BB *bb, OP *point)
 
         	Set_BB_profile_splitted(bb);
         	Set_BB_profile_splitted(newbb);
+        	if ( BB_chk_split(bb) || BB_chk_split_head(bb) )
+        		Set_BB_chk_split(newbb);
+			//Maybe this should not be like this, should check with Gange.
+			//But in scheduler.cxx:4598, it use BB_chk_split_head(bb) to guard the Handle_Chk_Split_Bunch(bb)
+			// if it can also use BB_chk_split(bb) to trigger Handle_Chk_Split_Bunch, the next statement is not needed.
+        	if ( BB_chk_split_head(bb) )
+        		Set_BB_chk_split_head(newbb);
         	newbb->id_before_profile = BB_id_before_profile(bb);
 		}
 		return newbb;
@@ -253,6 +292,7 @@ void CG_VALUE_INSTRUMENT_WALKER::Val_Prof_Insert_BB(BB *bb, BB* after)
 		regional_cfg = Home_Region(after)->Regional_Cfg();
 		regional_cfg->Add_Node(bb);
 	}
+	Update_CFG_around_BB(after, bb);
 }
 
 //This function only deals such case: after <new_inserted_bb> is inserted after <bb>, it update the CFG to reflect this.
@@ -495,9 +535,17 @@ inline void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_Dedicated_Reg_append_op
 	}
 	
 	save_tn = Gen_Register_TN( rclass, size );
+#ifndef _maybe_wrong_test
 	Set_TN_is_global_reg( save_tn );
+#endif
 
 	reg_tn = Build_Dedicated_TN( rclass, reg , size );
+#ifdef  _maybe_wrong_test
+	Reset_TN_is_global_reg(reg_tn);
+	if (TN_is_global_reg(reg_tn))
+		fprintf(stderr, "Tn is global!\n");
+	else fprintf(stderr, "Tn is local!\n"); 
+#endif
 
 	save_op = Mk_OP(the_mov_opr, save_tn, True_TN, reg_tn);
 	Try_to_set_op_copy(save_op, save_tn, reg_tn);
@@ -509,7 +557,9 @@ inline void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_Dedicated_Reg_append_op
 	Try_to_set_op_copy(restore_op, reg_tn, save_tn);
 	if (no_move)
 		Set_OP_no_move_before_gra(restore_op);
+#ifndef _maybe_wrong_test
 	OPS_Prepend_Op( restore_ops, restore_op );
+#endif
 }
 
 inline void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_Return_Value_Reg_append_ops(OPS * save_ops, OPS * restore_ops)
@@ -563,7 +613,9 @@ inline void CG_VALUE_INSTRUMENT_WALKER::Gen_Save_Restore_GP_Reg_append_ops(OPS *
 	TN * save_tn, * reg_tn;
 	OP * save_op, * restore_op;
 	save_tn = Gen_Register_TN( ISA_REGISTER_CLASS_integer, 8 );
+#ifndef _maybe_wrong_test
 	Set_TN_is_global_reg( save_tn );
+#endif
 
 	reg_tn = GP_TN;
 
@@ -782,6 +834,28 @@ BB * CG_VALUE_INSTRUMENT_WALKER::CG_Gen_Call(char * func_name, char * str_arg, I
   return bb;
 }
 	
+OP * CG_VALUE_INSTRUMENT_WALKER::Find_OP_to_split_entry_exit( BB *bb )
+{
+	OP * op;
+	op = Find_OP(My_OP_to_split_entry1,bb);
+	if ( op == NULL )
+	{
+		DevWarn("Did not find predicate register save at entry!");
+		op = Find_OP(My_OP_to_split_entry2,bb);
+	}
+	if ( op == NULL )
+	{
+		DevWarn("Did not find ar.lc register save at entry!");
+		op = Find_OP(My_OP_to_split_entry3,bb);
+	}
+	if ( op == NULL )
+	{
+		DevWarn("Did not find branch register save at entry!");
+		op = Find_OP(My_OP_to_split_entry4,bb);
+	}
+	FmtAssert( op != NULL, ("Failed to find expected OP in entry_exit BB for splitting the BB!") );
+	return op;
+}
 
 void CG_VALUE_INSTRUMENT_WALKER::Prepare_Insert_BBs_for_call(BB* bb)
 {
@@ -790,9 +864,10 @@ void CG_VALUE_INSTRUMENT_WALKER::Prepare_Insert_BBs_for_call(BB* bb)
 
 	if ( BB_exit(bb) && BB_entry(bb) )
 	{
-		OP * mov_f_pr_op = Find_OP(My_OP_to_split_entry,bb);
-		Is_True(mov_f_pr_op !=NULL, ("Prepare_Insert_BBs_for_call:Now I do not process the case if \"mov_f_pr_op\" is removed!"));
-	   	Val_Prof_Divide_BB(bb, mov_f_pr_op);
+		OP * op;
+		op = Find_OP_to_split_entry_exit(bb);
+		Is_True(op !=NULL, ("Prepare_Insert_BBs_for_call:Do not know where to split the BB!"));
+	   	Val_Prof_Divide_BB(bb, op);
 	}
 }
 
@@ -803,7 +878,7 @@ void CG_VALUE_INSTRUMENT_WALKER::Insert_BBs_for_call(BB* bb, OPS * save_ops, BB 
 	BB_Prepend_Ops(call_bb, save_ops);
 
 	Val_Prof_Insert_BB(call_bb, bb);
-	Update_CFG_around_BB(bb, call_bb);
+//	Update_CFG_around_BB(bb, call_bb);
 
 #ifdef GEN_NEWBB_FOR_RESTORE___Should_disable_ebo
    	BB * tmpbb;
@@ -811,7 +886,7 @@ void CG_VALUE_INSTRUMENT_WALKER::Insert_BBs_for_call(BB* bb, OPS * save_ops, BB 
 	Set_BB_profile_added(tmpbb);
 	BB_Append_Ops(tmpbb, restore_ops);
 	Val_Prof_Insert_BB(tmpbb, call_bb);
-	Update_CFG_around_BB(call_bb, tmpbb);
+//	Update_CFG_around_BB(call_bb, tmpbb);
 #else //now it seems this is right.
 	FmtAssert(FALSE, ("Please define GEN_NEWBB_FOR_RESTORE___Should_disable_ebo")); 
 	Is_True(BB_next(call_bb)!=NULL,("NULL????? should not"));
@@ -829,9 +904,10 @@ void CG_VALUE_INSTRUMENT_WALKER::Prepare_Insert_BBs_for_call_init(BB* bb)
 	
 	if ( (BB_exit(bb)) || (BB_branch_op(bb)!=NULL)  || (BB_call(bb)) )
 	{
-		OP * mov_f_pr_op = Find_OP(My_OP_to_split_entry,bb);
-		Is_True(mov_f_pr_op !=NULL, ("Prepare_Insert_BBs_for_call_init:Now I do not process the case if \"mov_f_pr_op\" is removed!"));
-	   	Val_Prof_Divide_BB(bb, mov_f_pr_op);
+		OP * op;
+		op = Find_OP_to_split_entry_exit(bb);
+		Is_True(op !=NULL, ("Prepare_Insert_BBs_for_call_init: do not know where to split the BB"));
+	   	Val_Prof_Divide_BB(bb, op);
 	}
 }
 
@@ -842,7 +918,7 @@ void CG_VALUE_INSTRUMENT_WALKER::Insert_BBs_for_call_init(BB* bb, OPS * save_ops
 	BB_Prepend_Ops(call_bb, save_ops);
 	
 	Val_Prof_Insert_BB(call_bb, bb);
-	Update_CFG_around_BB(bb, call_bb);
+//	Update_CFG_around_BB(bb, call_bb);
 
 #ifdef GEN_NEWBB_FOR_RESTORE___Should_disable_ebo
    	BB * tmpbb;
@@ -850,7 +926,7 @@ void CG_VALUE_INSTRUMENT_WALKER::Insert_BBs_for_call_init(BB* bb, OPS * save_ops
 	Set_BB_profile_added(tmpbb);
 	BB_Append_Ops(tmpbb, restore_ops);
 	Val_Prof_Insert_BB(tmpbb, call_bb);
-	Update_CFG_around_BB(call_bb, tmpbb);
+//	Update_CFG_around_BB(call_bb, tmpbb);
 #else //now it seems this is right.
 	FmtAssert(FALSE, ("Please define GEN_NEWBB_FOR_RESTORE___Should_disable_ebo")); 
 	Is_True(BB_next(call_bb)!=NULL,("NULL????? should not"));
@@ -873,6 +949,14 @@ void CG_VALUE_INSTRUMENT_WALKER::Do_instrument(INST_TO_PROFILE *p, BB *bb, OP * 
 		return;
 	}
 	_qulified_count++;
+	if ( _qulified_count > 100)
+	{
+		if (_qulified_count % 50 == 0)
+		{
+			DevWarn("Too many OP(%d) qulified to instrument! exceed limit(500), so ignore!", _qulified_count);
+		}
+		return;
+	}
 	
    	Is_True (op!=NULL,("NULL op?? Can not believe!"));
    	
@@ -953,20 +1037,21 @@ void CG_VALUE_INSTRUMENT_WALKER::Do_instrument(INST_TO_PROFILE *p, BB *bb, OP * 
 void CG_VALUE_INSTRUMENT_WALKER::BB_Walk(BB *bb) 
 {
     INST2PROFLIST::iterator i;
-    for (i = inst2prof_list.begin(); i != inst2prof_list.end(); i++) 
-    {
-    	OP *op, *tmp_op;
-	    struct INST_TO_PROFILE *p;
-	    p = *i;
- 		for (op = BB_first_op(bb); op != NULL; op = tmp_op) 
- 		{
-    		tmp_op = OP_next(op);
-	    	//check if the same instruction to instru
+   	OP *op, *tmp_op;
+    struct INST_TO_PROFILE *p;
+	for (op = BB_first_op(bb); op != NULL; op = tmp_op) 
+	{
+   		tmp_op = OP_next(op);
+    	//check if the same instruction to instru
+	    for (i = inst2prof_list.begin(); i != inst2prof_list.end(); i++) 
+    	{
+	    	p = *i;
 	    	if ( OP_code(op) == p->Opcode() )
 	    	{
 	 			//because BB will be splitted during instrumentation, so 
 	 			//we can not assume <op> belongs to <bb> anymore
 	    		Do_instrument(p,OP_bb(op),op,p->Is_instr_before());
+	 			break;
 	    	}
     	}
     }
@@ -1010,6 +1095,11 @@ void CG_VALUE_INSTRUMENT_WALKER::CFG_Walk(CGRIN *rin)
 		if (BB_scheduled_hbs(bb))
 		{
 			DevWarn("BB is scheduled by hbs already, ignored!");
+			continue;
+		}
+		if (BB_recovery(bb))
+		{
+			DevWarn("BB is scheduled by speculation, ignored to walk around bugs in speculation!");
 			continue;
 		}
     	BB_Walk(bb); 
@@ -1062,7 +1152,9 @@ void CG_VALUE_INSTRUMENT_WALKER::CFG_Walk(CGRIN *rin)
     Adjust_Save_Restore_ARPFS();
    	PU_Has_Calls = TRUE;
     //Now the modification work of CGIR finished, it is the time to update the liveness information 
+#ifndef _delete_but_not_fully_tested_yet
     GRA_LIVE_Recalc_Liveness(NULL);
+#endif
 }
 
 void CG_VALUE_INSTRUMENT_WALKER::Request_Output_Registers()
@@ -1108,7 +1200,8 @@ void CG_VALUE_Instrument(CGRIN *rin, PROFILE_PHASE phase)
 
 //annotation part start here
 
-OP_TNV_MAP op_tnv_map;
+//OP_TNV_MAP op_tnv_map;
+OP_MAP op_tnv_map; 
 
 class CG_VALUE_ANNOTATE_WALKER {
 private:
@@ -1119,11 +1212,13 @@ private:
     UINT32 _instrument_count; //how many OP really instrumented
     UINT32 _annotation_count;  //how many OP really annotated
     UINT32 _qulified_count;  //how many OP is qualified to annotation
-
+    UINT32 _pu_inconsistent_count;  //how many OP whose execution count != BB_freq
+//    static UINT32 _file_inconsistent_count; // how many OP whose execution count != BB_freq in the whole file
+   
 public:
 	CG_VALUE_ANNOTATE_WALKER(MEM_POOL *m, PROFILE_PHASE phase, PU_PROFILE_HANDLES fb_handles)
 		:_mempool(m),_phase(phase),_fb_handles(fb_handles),_fb_handle_merged(NULL),
-		_instrument_count(0), _annotation_count(0), _qulified_count(0)
+		_instrument_count(0), _annotation_count(0), _qulified_count(0), _pu_inconsistent_count(0)
 	{
 	}
 	~CG_VALUE_ANNOTATE_WALKER(){}
@@ -1283,7 +1378,8 @@ void CG_VALUE_ANNOTATE_WALKER::CFG_Walk(CGRIN *rin)
     	fprintf(TFile,"--------------------------------------------------------------\n");
     	for ( INT i=0; i<_instrument_count; i++)
     	{
-    		op_tnv_map[i]->Print(TFile);
+			FB_Value_Vector& value_table = _fb_handle_merged->Get_Value_Table();
+			value_table[i].tnv.Print(TFile);
     	}
     	fprintf(TFile,"\n================================================\n");
     }
@@ -1294,18 +1390,21 @@ void CG_VALUE_ANNOTATE_WALKER::CFG_Walk(CGRIN *rin)
 void CG_VALUE_ANNOTATE_WALKER::BB_Walk(BB *bb) 
 {
     INST2PROFLIST::iterator i;
-    for (i = inst2prof_list.begin(); i != inst2prof_list.end(); i++) 
-    {
-    	OP *op, *tmp_op;
-	    struct INST_TO_PROFILE *p;
-	    p = *i;
- 		for (op = BB_first_op(bb); op != NULL; op = tmp_op) 
- 		{
-    		tmp_op = OP_next(op);
-	    	//check if the same instruction to instru
+   	OP *op, *tmp_op;
+    struct INST_TO_PROFILE *p;
+	for (op = BB_first_op(bb); op != NULL; op = tmp_op) 
+	{
+   		tmp_op = OP_next(op);
+    	//check if the same instruction to instru
+	    for (i = inst2prof_list.begin(); i != inst2prof_list.end(); i++) 
+    	{
+	    	p = *i;
 	    	if ( OP_code(op) == p->Opcode() )
 	    	{
+	 			//because BB will be splitted during instrumentation, so 
+	 			//we can not assume <op> belongs to <bb> anymore
 	    		Do_annotation(OP_bb(op),op);
+	 			break;
 	    	}
     	}
     }
@@ -1319,10 +1418,23 @@ void CG_VALUE_ANNOTATE_WALKER::Do_annotation(BB* bb, OP * op)
 	if (_qulified_count > _instrument_count)
 		return;
 
-	op_tnv_map[_annotation_count] = &value_table[_annotation_count];
 	OP_flags_val_prof(op) = VAL_PROF_FLAG;
 	OP_val_prof_id(op) = _annotation_count;
-	OP_exec_count(op) = op_tnv_map[_annotation_count]->tnv._exec_counter;
+	OP_exec_count(op) = value_table[_annotation_count].tnv._exec_counter;
+	OP_MAP_Set( op_tnv_map, op, &(value_table[_annotation_count].tnv));
+	if ( 1 )
+	{
+		float op_exec_count = (float)OP_exec_count(op);
+		fprintf(TFile, "BBid=%d, OP_exec_count(op)=%llu(%f), bb->freq=%f (%s) \n", 
+					BB_id(bb), OP_exec_count(op), op_exec_count, bb->freq, (BB_freq_fb_based(bb)?"feedback":"heuristic") );
+		if (op_exec_count != bb->freq)
+		{
+			_pu_inconsistent_count++;
+			DevWarn("ERROR: BB frequency != op exec count(%f). Total unmatched = %u", 
+				op_exec_count, _pu_inconsistent_count);
+//			Is_True(0,("ERROR: BB frequency != op exec count. Total unmatched = %u", _pu_inconsistent_count));
+		}
+	}
 	this->_annotation_count++;
 }
 
@@ -1330,6 +1442,7 @@ void CG_VALUE_Annotate(CGRIN * rin, PROFILE_PHASE phase)
 {
   // Create and initialize local memory pool
   MEM_POOL local_mempool;
+  op_tnv_map = OP_MAP_Create();
   MEM_POOL_Initialize( &local_mempool, "CG_VALUE_INSTRUMENT_WALKER_Pool", FALSE );
   MEM_POOL_Push( &local_mempool );
   {

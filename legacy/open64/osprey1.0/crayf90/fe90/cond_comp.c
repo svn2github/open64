@@ -36,6 +36,7 @@
 
 static char USMID[] = "\n@(#)5.0_pl/sources/cond_comp.c	5.8	09/21/99 00:21:13\n";
 
+# include <time.h>
 # include <sys/time.h>
 
 # include "defines.h"           /* Machine dependent ifdefs */
