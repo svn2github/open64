@@ -1,0 +1,123 @@
+#!/bin/sh
+# Create shell scripts necessary to build gcc using the Intel tools.
+
+echo "Creating shell scripts to use the Intel tools during build."
+if [ ! -d gcc ] ; then
+  echo "You must run this command from the toplevel build directory."
+  exit 1
+fi
+
+# Create ar, nm, and ranlib in binutils directory.
+if [ ! -d binutils ] ; then
+  mkdir binutils
+fi
+cd binutils
+
+rm -f ar
+cat <<'__EOF__' > ar
+#!/bin/sh
+if [ $1 = "x" ] ; then
+  exec iar $*
+fi
+if [ $# -gt 3 ] ; then
+  exec iar $*
+fi
+mkdir tmp$$
+cd tmp$$
+iar x ../$2
+# We might be replacing a file, so copy new .o over old one.
+cp ../$3 .
+iar $1 ../$2 *.o
+cd ..
+rm -rf tmp$$
+__EOF__
+chmod +x ar
+
+rm -f nm-new
+cat <<'__EOF__' > nm-new
+#!/bin/sh
+exec inm $*
+__EOF__
+chmod +x nm-new
+
+rm -f ranlib
+cat <<'__EOF__' > ranlib
+#!/bin/sh
+exit 0
+__EOF__
+chmod +x ranlib
+
+# Create as in gas directory.
+cd ..
+if [ ! -d gas ] ; then
+  mkdir gas
+fi
+cd gas
+
+rm -f as-new
+cat <<'__EOF__' > as-new
+#!/bin/sh
+exec ias $*
+__EOF__
+chmod +x as-new
+
+# Create ld in ld directory.
+cd ..
+if [ ! -d ld ] ; then
+  mkdir ld
+fi
+cd ld
+
+rm -f ld-new
+cat <<'__EOF__' > ld-new
+#!/bin/sh
+exec ild $*
+__EOF__
+chmod +x ld-new
+
+# Create dummy simulator in sim directory.
+cd ..
+if [ ! -d sim ] ; then
+  mkdir sim
+fi
+cd sim
+if [ ! -d ia64 ] ; then
+  mkdir ia64
+fi
+cd ia64
+
+rm -f run
+cat <<'__EOF__' > run
+#!/bin/sh
+exit 1
+__EOF__
+chmod +x run
+
+rm -f run-tests
+cat <<'__EOF__' > run-tests
+#!/bin/bash
+for i in *.x*; do
+  gambit -no_signon $i
+  if [ $? -ne 0 ] ; then
+    echo FAIL: $i
+  else
+    echo PASS: $i
+  fi
+done
+__EOF__
+chmod +x run-tests
+
+cd ..
+cd ..
+
+# Finally, create a few links in the gcc directory.
+cd gcc
+
+rm -f as
+ln -s ../gas/as-new as
+
+rm -f collect-ld
+ln -s ../ld/ld-new collect-ld
+
+cd ..
+exit 0
