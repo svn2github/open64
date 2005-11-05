@@ -289,17 +289,16 @@ CMPLR_HFILES = \
 	rcodes.h \
 	xlate.h
 
-CMPLR_DIRS = cmplrs 
-
 SYS_HFILES = \
 	elf_whirl.h \
 	inst.h \
 	unwind.h \
 	unwindP.h
 
+INCLUDE_SUBDIRS= cmplrs libelf sys
+
 ifeq ($(BUILD_TARGET), IA64)
-SYS_DIRS = \
-	ia64
+SYS_DIRS = ia64
 else
 SYS_DIRS =
 endif
@@ -310,16 +309,15 @@ LIBELF_HFILES = \
 	nlist.h \
 	sys_elf.h
 
-LIBELF_DIRS = libelf
 
 default:
+	mkdir -p $(INCLUDE_SUBDIRS)
 	@for h in $(LINUX_HFILES); do \
 	    if ! test -e $$h; then \
 	      ln -sf $(BUILD_TOT)/linux/include/$$h $$h; \
 	    fi; \
 	done
 	@for h in $(LINUX_SYS_HFILES); do \
-        [ ! -d sys ] && mkdir sys ; \
 	    if ! test -e sys/$$h; then \
 	      ln -sf $(BUILD_TOT)/../linux/include/sys/$$h sys/$$h; \
 	    fi; \
@@ -327,11 +325,6 @@ default:
 	@for h in $(INCLUDE_HFILES); do \
 	    if ! test -e $$h; then \
 	      ln -sf $(BUILD_TOT)/include/$$h $$h; \
-	    fi; \
-	done
-	@for h in $(CMPLR_DIRS); do \
-	    if ! test -e $$h; then \
-	      mkdir $$h; \
 	    fi; \
 	done
 	@for h in $(CMPLR_HFILES); do \
@@ -349,23 +342,16 @@ default:
 	      ln -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
 	    fi; \
 	done
-	@for h in $(LIBELF_DIRS); do \
-	    if ! test -e $$h; then \
-		mkdir $$h; \
-	    fi; \
-	done
 	@for h in $(LIBELF_HFILES); do \
-        [ ! -d libelf ] && mkdir libelf; \
 	    if ! test -e libelf/$$h; then \
 	      ln -sf $(BUILD_TOT)/../gnu_common/libelf/lib/$$h libelf/$$h; \
 	    fi; \
 	done
 
 
-clean:
+clean: clobber
 
 clobber:
-	@rm -rf *.h *.sg $(CMPLR_DIRS) $(LIBELF_DIRS) ia64 stl
-	@cd sys; rm -rf *.h $(SYS_DIRS)
+	@rm -rf *.h *.sg $(INCLUDE_SUBDIRS)
 
 endif

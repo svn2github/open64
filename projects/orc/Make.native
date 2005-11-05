@@ -149,6 +149,7 @@ install:; @./INSTALL.native
 
 clean:clobber
 clobber:
+		gmake clobber -C $(NATIVE_BUILD_DIR)/include
 		gmake clobber -C $(NATIVE_BUILD_DIR)/driver
 		gmake clobber -C $(NATIVE_BUILD_DIR)/gccfe
 		gmake clobber -C $(NATIVE_BUILD_DIR)/g++fe
