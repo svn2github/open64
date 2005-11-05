@@ -42,7 +42,7 @@
 #include <alloca.h>
 #include <strings.h>
 
-#include <hash_map>			// stl hash table
+#include <ext/hash_map>			// stl hash table
 
 #include "defs.h"
 #include "errors.h"
@@ -239,7 +239,7 @@ struct STR_TAB
     };
 
     
-    typedef std::hashtable<STR_INDEX, hash_key, hash, extract_key, equal> HASHTABLE;
+    typedef __gnu_cxx::hashtable<STR_INDEX, hash_key, hash, extract_key, equal> HASHTABLE;
 
     HASHTABLE hash_table;
 

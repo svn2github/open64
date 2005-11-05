@@ -57,10 +57,10 @@
 #ifndef opt_cfg_trans_INCLUDED
 #define opt_cfg_trans_INCLUDED "opt_cfg_trans.h"
 
-#include <iterator.h>
-#include <set.h>
-#include <map.h>
-#include <function.h>
+#include <iterator>
+#include <map>
+#include <set>
+#include <ext/functional>
 
 #define USE_STANDARD_TYPE
 #include "opt_defs.h"   // use Is_True
@@ -76,12 +76,12 @@ template <class Cluster_iterator, class Fast_iterator>
 class composite_iterator {
 public:
   typedef composite_iterator<Cluster_iterator, Fast_iterator> self;
-  typedef forward_iterator_tag iterator_category;
-  typedef typename iterator_traits<Fast_iterator>::value_type      value_type;
-  typedef typename iterator_traits<Fast_iterator>::difference_type 
+  typedef std::forward_iterator_tag iterator_category;
+  typedef typename std::iterator_traits<Fast_iterator>::value_type      value_type;
+  typedef typename std::iterator_traits<Fast_iterator>::difference_type 
           difference_type;
-  typedef typename iterator_traits<Fast_iterator>::pointer         pointer;
-  typedef typename iterator_traits<Fast_iterator>::reference       reference;
+  typedef typename std::iterator_traits<Fast_iterator>::pointer         pointer;
+  typedef typename std::iterator_traits<Fast_iterator>::reference       reference;
 
   Cluster_iterator ci;
   Fast_iterator fi;
@@ -191,11 +191,11 @@ public:
   typedef T value_type;
   typedef IndexFunction index_function;
   typedef cluster_vector<T, IndexFunction> self;
-  typedef vector<value_type> cluster_type;
-  typedef cluster_type::iterator      fast_iterator;
-  typedef cluster_type::size_type     size_type;
-  typedef vector<cluster_type>        cluster_container;
-  typedef cluster_container::iterator cluster_iterator;
+  typedef std::vector<value_type> cluster_type;
+  typedef typename cluster_type::iterator      fast_iterator;
+  typedef typename cluster_type::size_type     size_type;
+  typedef std::vector<cluster_type>        cluster_container;
+  typedef typename cluster_container::iterator cluster_iterator;
   typedef composite_iterator<cluster_iterator, fast_iterator> iterator;
 
 private:
@@ -356,8 +356,8 @@ template <class Graph, class Vertex_id, class Container>
 void generate_post_order(Graph& g, Vertex_id root, Container& c)
 {
   c.erase(c.begin(), c.end());
-  insert_iterator<Container> ii(c, c.begin());
-  set<Vertex_id> visited;
+  std::insert_iterator<Container> ii(c, c.begin());
+  std::set<Vertex_id> visited;
   generate_post_order(g, root, ii, visited);
 
   {
@@ -378,7 +378,7 @@ void generate_post_order(Graph& g, Vertex_id root, Container& c)
 
 
 template <class Graph, class Vertex_id>
-void find_reachable_vertex_set(Graph& g, Vertex_id v, vector<bool>& reachable)
+void find_reachable_vertex_set(Graph& g, Vertex_id v, std::vector<bool>& reachable)
 {
   if (reachable[v]) return;
   reachable[v] = true;
@@ -391,7 +391,7 @@ void find_reachable_vertex_set(Graph& g, Vertex_id v, vector<bool>& reachable)
 
 
 template <class Graph_in, class Graph_out>
-void subgraph(Graph_in& in, Graph_out& out, vector<bool>& vertex_set)
+void subgraph(Graph_in& in, Graph_out& out, std::vector<bool>& vertex_set)
 {
   for (typename Graph_in::iterator e = in.begin(); e != in.end(); ++e)
     if (vertex_set[first(*e)] && vertex_set[second(*e)])
@@ -431,7 +431,7 @@ template <class Graph, class Vertex_id, class Container>
 inline void topological_sort(Graph& in, Vertex_id root, Container& out)
 {
   typedef typename Graph::value_type edge;
-  typedef cluster_vector<edge, select1st<edge> > succ_graph;
+  typedef cluster_vector<edge, __gnu_cxx::select1st<edge> > succ_graph;
   succ_graph g;
   copy(in, g);
   if (root < g.size())
@@ -500,7 +500,7 @@ struct edge {
 #ifdef FUNCTION_PARTIAL_SPECIALIZATION_SUPPORT
 
 template <class Edge>
-Edge& add_edge(vector<Edge>& g, const Edge& e)
+Edge& add_edge(std::vector<Edge>& g, const Edge& e)
 {
   g.push_back(e);
   return *(g.end()-1);
@@ -509,7 +509,7 @@ Edge& add_edge(vector<Edge>& g, const Edge& e)
 #else    
 // workaround partial specialization problems with non-template functions.
 
-inline edge& add_edge(vector<edge>& g, const edge& e)
+inline edge& add_edge(std::vector<edge>& g, const edge& e)
 {
   g.push_back(e);
   return *(g.end()-1);
@@ -521,12 +521,12 @@ inline edge& add_edge(vector<edge>& g, const edge& e)
 inline vertex_id first(edge e)  { return e.first; }
 inline vertex_id second(edge e) { return e.second; }
 
-typedef cluster_vector<edge, select1st<edge> > successor_graph;
-typedef cluster_vector<edge, select2nd<edge> > predecessor_graph;
+typedef cluster_vector<edge, __gnu_cxx::select1st<edge> > successor_graph;
+typedef cluster_vector<edge, __gnu_cxx::select2nd<edge> > predecessor_graph;
 
 
 template <class T>
-struct fp_print : public unary_function<T, int> {
+struct fp_print : public std::unary_function<T, int> {
   FILE *fp;
   fp_print(FILE *f):fp(f) {}
   int operator()(const T& x) const { return x.print(fp); } 
@@ -571,9 +571,9 @@ struct fp_print : public unary_function<T, int> {
 //************************************************************************
 
 
-static int unique_bb_count(vector<edge>& clone, vector<edge>& exit)
+static int unique_bb_count(std::vector<edge>& clone, std::vector<edge>& exit)
 {
-  set<vertex_id> visited;
+  std::set<vertex_id> visited;
   int count = 0;
   int i;
   for (i = 0; i < clone.size(); ++i) {
@@ -595,7 +595,7 @@ static int unique_bb_count(vector<edge>& clone, vector<edge>& exit)
 
 
 struct zone {
-  typedef   vector<edge>  edge_container;
+  typedef   std::vector<edge>  edge_container;
   typedef   edge_container::iterator iterator;
   int id;
   int merged_into;
@@ -630,16 +630,15 @@ struct zone {
 };
 
 
-typedef vector<zone>  zone_container;
+typedef std::vector<zone>  zone_container;
 typedef zone_container::iterator zone_iterator;
-
 
 
 // "path" is a data structure to represent a path in the graph
 //  -- used in loop butterfly and feedback update procedures
 //
 struct path_type {
-  vector<int> bbs;
+  std::vector<int> bbs;
   double      wt;
   vertex_id first_bb() const { return *(bbs.begin()); }
   vertex_id last_bb() const { return *(bbs.end()-1); }
@@ -650,16 +649,17 @@ struct path_type {
   path_type(path_type& path):bbs(path.bbs),wt(path.wt) {}
 };
 
-
-struct less<path_type*> {
-  bool operator()(path_type *p1, path_type *p2) {
-    return (*p1).wt < (*p2).wt;
-  }
-};
-
+namespace std {
+  template<>
+  struct less<path_type*> {
+    bool operator()(path_type *p1, path_type *p2) {
+      return (*p1).wt < (*p2).wt;
+    }
+  };
+}
 
 extern void print_path_type(path_type *, FILE *);
-extern void print_vertex_set(set<vertex_id> *, FILE *);
+extern void print_vertex_set(std::set<vertex_id> *, FILE *);
 
 
 class COMP_UNIT;  // forward declaration

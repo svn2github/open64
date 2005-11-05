@@ -43,8 +43,7 @@
 
 #include <algorithm>
 
-#include <hash_map>
-
+#include <ext/hash_map>
 
 #include "defs.h"
 #include "config.h"
@@ -305,7 +304,7 @@ struct hash_pointee_key
     }
 };
 
-typedef std::hash_map<TY_POINTEE_KEY, TY_IDX, hash_pointee_key>
+typedef __gnu_cxx::hash_map<TY_POINTEE_KEY, TY_IDX, hash_pointee_key>
     TY_IDX_POINTER_MAP;
 
 static TY_IDX_POINTER_MAP pointer_map;
@@ -572,7 +571,7 @@ ST *
 INTRINSIC_LIST_lookup(TY_IDX  ty,
 		      char   *function_name)
 {
-  ST **result = std::find_if(intrinsic_list.begin(),
+  std::vector<ST *>::iterator result = std::find_if(intrinsic_list.begin(),
                              intrinsic_list.end(),
                              matches_pu_ty_and_name(ty, function_name));
   if (result == intrinsic_list.end()) {
@@ -769,7 +768,7 @@ struct TY_EQUIV
 
 // The type definition of the hash table that we will use
 
-typedef std::hash_map<TY_IDX, TY_IDX, TY_hash, TY_EQUIV> HASH_TY_TABLE;
+typedef __gnu_cxx::hash_map<TY_IDX, TY_IDX, TY_hash, TY_EQUIV> HASH_TY_TABLE;
 
 // The global Hash Table data structures
 // Depending on the TY_KIND we pick one of the five tables below.

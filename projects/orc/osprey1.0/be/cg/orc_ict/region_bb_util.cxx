@@ -36,9 +36,9 @@
 //
 //=============================================================================
 #include "bb.h"
-#include "stack.h"
-#include "vector.h"
-#include "list.h"
+#include <stack>
+#include <vector>
+#include <list>
 #include "defs.h"
 #include "cxx_memory.h"
 #include "gtn_universe.h"
@@ -194,7 +194,7 @@ BB *RGN_Gen_And_Insert_BB(BB *pred_bb, BB *succ_bb,
 //  See interface description in region_bb_util.h.
 //
 //=============================================================================
-BB *RGN_Gen_And_Insert_BB_After(BB *point, REGIONAL_CFG *regional_cfg=NULL){
+BB *RGN_Gen_And_Insert_BB_After(BB *point, REGIONAL_CFG *regional_cfg){
     if (Get_Trace(TP_A_REGION, TT_RGN_SUMMERY))
         fprintf(TFile, "*** beginning of RGN_Gen_And_Insert_BB_After(bb_id:%d *** \n",
                 BB_id(point));
@@ -678,8 +678,8 @@ void RGN_Del_Regional_Cfg_Edge(BB *pred,
             if (Get_Trace(TP_A_REGION, TT_RGN_DETAILED))
                 pred_node->Print(TFile);
             Is_True(pred_node->Is_Exit(),
-                ("RGN_Del_Regional_Cfg_Edge(pred_bb_id:%d, succ_bb_id:%d)::
-                  pred_node Id:%d should be a exit node of region %d", 
+                ("RGN_Del_Regional_Cfg_Edge(pred_bb_id:%d, succ_bb_id:%d)::"
+                  "pred_node Id:%d should be a exit node of region %d", 
                   BB_id(pred), BB_id(succ), pred_node->Id(), pred_rgn->Id()));
 
             BB_VECTOR exits(&(regional_cfg->_m));
@@ -760,7 +760,7 @@ void RGN_Del_Regional_Cfg_Edge(BB *pred,
 //  See interface description in region_bb_util.h.
 //
 //=============================================================================
-void RGN_Unlink_Pred_Succ(BB *pred, BB *succ, REGIONAL_CFG *regional_cfg=NULL){
+void RGN_Unlink_Pred_Succ(BB *pred, BB *succ, REGIONAL_CFG *regional_cfg){
     if (Get_Trace(TP_A_REGION, TT_RGN_UTIL_DEBUG))
         fprintf(TFile, "*** beginning of RGN_Unlink_Pred_Succ(pred_bb_id:%d, succ_bb_id:%d) *** \n",
                 BB_id(pred), BB_id(succ));

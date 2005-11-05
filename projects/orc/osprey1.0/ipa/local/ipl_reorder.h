@@ -30,8 +30,9 @@
 #include "defs.h" 	//for mUINT32
 #include "symtab.h"
 #include "symtab_defs.h"  //for all tables,such as Ty_tab[]and Ty_Table etc.
-#include <hash_map.h>
-#include <vector.h>
+#include <ext/hash_map>
+#include <vector>
+
 extern
 MEM_POOL  reorder_ipl_pool;
 #define cache_block 32	//bytes TODO: get from cache-model 
@@ -41,10 +42,10 @@ struct PTR_TO_TY
 	mUINT32 ty_index;
 	mUINT32 pt_index;
 };
-typedef vector<struct PTR_TO_TY> PTR_TO_TY_VECTOR;
+typedef std::vector<struct PTR_TO_TY> PTR_TO_TY_VECTOR;
 extern 
  PTR_TO_TY_VECTOR *Ptr_to_ty_vector; //mapping pointer_ty to tys
- typedef hash_map<mUINT32,mUINT32> TY_TO_FLDNUM_MAP;
+ typedef __gnu_cxx::hash_map<mUINT32,mUINT32> TY_TO_FLDNUM_MAP;
  extern
  TY_TO_FLDNUM_MAP *local_cands; //<ty_index,flatten_lds>
 extern

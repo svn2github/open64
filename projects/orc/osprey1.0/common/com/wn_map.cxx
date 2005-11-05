@@ -493,7 +493,7 @@ WN_MAP_Add_Free_List(WN_MAP_TAB *maptab, WN *wn)
         TYPE_MEM_POOL_ALLOC_N(WN_MAP_ID, maptab->_free_list_pool, elements);
       maptab->_free_list_size[category] = elements;
     } else {
-      INT32 elements = max(2 * size, size + 50);
+      INT32 elements = MAX(2 * size, size + 50);
       maptab->_free_list[category] =
         TYPE_MEM_POOL_REALLOC_N(WN_MAP_ID, maptab->_free_list_pool,
 			      maptab->_free_list[category], size, elements);

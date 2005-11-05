@@ -71,7 +71,6 @@
 #include "com_whirlview.h"
 
 #include "cxx_graph.h"
-#include <pair.h>         // STL pair.
 
 #include "DaVinci.h"      // for DaVinci viewer (for FB CFG).
 #include "wb_util.h"      // more: move this to another file (gwe).
@@ -116,8 +115,8 @@ FB_CFG::Adjust_edge( FB_NODEX nodex)
 		for ( s = pred.succs.size() - 1; s >= 0; --s ){
 			FB_NODEX nx_succs = pred.succs[s];
 			if (nx_succs == nodex) {
-				FB_NODEX *del_one;
-				del_one = &(pred.succs[s]);
+				std::vector<FB_NODEX>::iterator del_one;
+				del_one = pred.succs.begin() + s;
 
 				pred.succs.erase(del_one);
     				_nodes[nx_pred].undelayed_succs -= 1;
@@ -1444,7 +1443,7 @@ FB_CFG::Guess_unknowns( WN *wn_root, const char *caller )
   if ( _trace )
     fprintf( TFile, "FB_CFG::Guess_unknowns:\n" );
 
-  vector<FB_NODEX> unfinished_nodes;
+  std::vector<FB_NODEX> unfinished_nodes;
 
   // Identify all unfinished nodes
   for ( FB_NODEX nx = 0; nx < _nodes.size(); ++nx ) {
@@ -1916,9 +1915,9 @@ FB_CFG::Node_label( FB_NODEX nx ) const
 
 static BOOL
 Node_Unbalanced (const FB_NODE& node,
-		 const vector<FB_NODE, mempool_allocator<FB_NODE> >& _nodes)
+		 const std::vector<FB_NODE, mempool_allocator<FB_NODE> >& _nodes)
 {
-  typedef vector<FB_NODEX>::const_iterator NODEX_ITER;
+  typedef std::vector<FB_NODEX>::const_iterator NODEX_ITER;
   
   // Compare freq_total_in with total of predecessor frequencies
   if ( node.one_edge_preds && node.unknown_in == 0 ) {

@@ -73,7 +73,8 @@ void Initialize_Targ_Info(void)
     break;
   case TARGET_ITANIUM2:
     proc = PROCESSOR_itanium;
-    version = "2";
+    version[0] = '2';
+    version[1] = '\0';
     break;
   default:
     FmtAssert(FALSE, ("targinfo doesn't handle target: %s\n", Targ_Name(Target)));

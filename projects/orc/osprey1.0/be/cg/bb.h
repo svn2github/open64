@@ -430,7 +430,7 @@
 #ifndef	bb_INCLUDED
 #define	bb_INCLUDED
 
-#include <vector.h>             /* to get STL vector */
+#include <vector>		/* to get STL vector */
 #include "mempool_allocator.h"  /* to get mempool allocator */
 
 #include "region_util.h" 	/* to get the definition of RID. */

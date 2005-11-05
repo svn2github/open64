@@ -37,9 +37,9 @@
 #define PQS_DEFS_included
 
 #include <stdio.h>
-#include <vector.h>
-#include <set.h>
-#include <algo.h>
+#include <vector>
+#include <set>
+#include <algorithm>
 
 // Forward references
 class PQS_MANAGER;
@@ -134,7 +134,7 @@ public:
    typedef alloc set_allocator_type;
 #endif
    typedef set<T,C,set_allocator_type> set_type;
-   typedef set_type::iterator set_iterator_type;
+   typedef typename set_type::iterator set_iterator_type;
    set_type _set;
 
    PQS_SET<T,C>() 

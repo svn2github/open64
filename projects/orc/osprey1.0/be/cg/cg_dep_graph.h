@@ -390,7 +390,7 @@
 static char *cg_dep_graph_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cg_dep_graph.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-#include <list.h>
+#include <list>
 #include "op.h"
 #include "op_map.h"
 #include "op_list.h"

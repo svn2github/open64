@@ -279,7 +279,7 @@ extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 #ifndef __GNUC__
 #pragma weak Prompf_Emit_Whirl_to_Source__GP7pu_infoP2WN
 #else
-#pragma weak Prompf_Emit_Whirl_to_Source__FP7pu_infoP2WN
+#pragma weak _Z27Prompf_Emit_Whirl_to_SourceP7pu_infoP2WN
 #endif
 
 extern void Prompf_Emit_Whirl_to_Source(PU_Info* current_pu, WN* func_nd);

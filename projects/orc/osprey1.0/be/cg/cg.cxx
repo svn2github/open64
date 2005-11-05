@@ -1156,7 +1156,7 @@ Trace_IR(
   INT phase,        /* Phase after which we're printing */
   const char *pname,    /* Print name for phase */
   BB *cur_bb,       /* BB to limit traces to */
-  BOOL after = TRUE)
+  BOOL after)
 {
   INT cur_bb_id = cur_bb ? BB_id(cur_bb) : 0;
   if (   Get_Trace(TKIND_IR, phase)

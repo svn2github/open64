@@ -46,7 +46,7 @@
 
 #include <alloca.h>
 #include <stdio.h>
-#include <iterator.h>
+#include <iterator>
 #include "defs.h"
 #include "bb.h"
 #include "op.h"
@@ -136,7 +136,7 @@ void dp::dump_tn_stl_set(set<TN*>& TNs)
     fflush(stderr); 
 }
 
-void dp::dump_rotate_info(struct ROTATING_KERNEL_INFO *info, int type = 0)
+void dp::dump_rotate_info(struct ROTATING_KERNEL_INFO *info, int type)
 {
 
     static char *reg_class[] = { "u","r","f","p","b","a","c"};

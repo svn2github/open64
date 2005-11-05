@@ -57,7 +57,7 @@
 #pragma hdrstop
 #include <cmplrs/rcodes.h>
 #include <sys/resource.h>
-#include <slist.h>
+#include <ext/slist>
 #include "defs.h"
 #include "erglob.h"
 #include "erbe.h"
@@ -2479,8 +2479,8 @@ Allocate_File_Statics (void)
 
   // gnu assembler complains about multiple commons with same name in a file.
   // So search for commons with same name and merge them together.
-  slist<ST*> common_list;
-  slist<ST*>::iterator cit;
+  __gnu_cxx::slist<ST*> common_list;
+  __gnu_cxx::slist<ST*>::iterator cit;
   FOREACH_SYMBOL (GLOBAL_SYMTAB,st,i) {
 	if (ST_sclass(st) != SCLASS_COMMON) continue;
 	if (Has_Base_Block(st)) continue;	// only merge root commons

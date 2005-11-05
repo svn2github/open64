@@ -172,7 +172,7 @@
 #ifndef HB_H_INCLUDED
 #define HB_H_INCLUDED
 
-#include <list.h>
+#include <list>
 #include "bb.h"
 #include "findloops.h"
 

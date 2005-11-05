@@ -566,7 +566,7 @@ public:
     if (action != RECUR_NONE && action != RECUR_BACK_SUB_VARIANT) {
       INT latency = CG_DEP_Latency(op, op, CG_DEP_REGIN, reg_opnd_num);
       INT illegal_omega_value = 20;
-      for (new_omega = max(1, CG_LOOP_recurrence_min_omega); new_omega < illegal_omega_value; new_omega++) {
+      for (new_omega = MAX(1, CG_LOOP_recurrence_min_omega); new_omega < illegal_omega_value; new_omega++) {
 	// estimate_ResMII is a double
 	if (latency <= new_omega * estimate_ResMII)
 	  break;
@@ -898,12 +898,12 @@ Critical_Recurrence::Critical_Recurrence(const SWP_OP_vector& v,
 	  continue;
 	OP  *succ = ARC_succ(arc);
 	mindist[i][SWP_index(succ)] =
-	  max(mindist[i][SWP_index(succ)], ARC_latency(arc) - ARC_omega(arc) * ii);
+	  MAX(mindist[i][SWP_index(succ)], ARC_latency(arc) - ARC_omega(arc) * ii);
 	Is_True(succ == v[SWP_index(succ)].op, ("MinDIST: wrong SWP_index."));
       }
       mindist[start][i] = 0;
       mindist[i][stop] = 0;
-      mindist[i][branch] = max(mindist[i][branch], 0);
+      mindist[i][branch] = MAX(mindist[i][branch], 0);
     }
   }
 
@@ -912,7 +912,7 @@ Critical_Recurrence::Critical_Recurrence(const SWP_OP_vector& v,
   for (INT k = 0; k < n_ops; k++) 
     for (INT i = 0; i < n_ops; i++) 
       for (INT j = 0; j < n_ops; j++) 
-	mindist[i][j] = max(mindist[i][j], mindist[i][k] + mindist[k][j]);
+	mindist[i][j] = MAX(mindist[i][j], mindist[i][k] + mindist[k][j]);
 }
 
 

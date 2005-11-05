@@ -501,7 +501,7 @@ WN_Create (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count)
     OPCODE opcode = OPCODE_make_op (opr, rtype, desc);
     INT16 next_prev_ptrs = (OPCODE_has_next_prev(opcode) ? 1 : 0);
     INT16 size = (sizeof(WN) +
-		  (sizeof(WN *) * (max(0,kid_count-2))) +
+		  (sizeof(WN *) * (MAX(0,kid_count-2))) +
 		  next_prev_ptrs * (sizeof(mUINT64) + (2 * sizeof(WN *))));
     WN_FREE_LIST *free_list;
     WN *wn;
@@ -2027,10 +2027,10 @@ WN_Size_and_StartAddress (WN *wn, void **StartAddress)
     if (OPCODE_has_next_prev(WN_opcode(wn))) {
 	*StartAddress = (void *)&(WN_prev(wn));
 	return sizeof(WN) + sizeof(mUINT64) +
-		(max (2, WN_kid_count(wn)) * sizeof(WN*));
+		(MAX(2, WN_kid_count(wn)) * sizeof(WN*));
     } else {
 	*StartAddress = (void *) wn;
-	return sizeof(WN) + max(0, WN_kid_count(wn) - 2) * sizeof(WN*);
+	return sizeof(WN) + MAX(0, WN_kid_count(wn) - 2) * sizeof(WN*);
     }
 	
 }

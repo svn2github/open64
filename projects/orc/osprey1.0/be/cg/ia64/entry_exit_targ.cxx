@@ -51,7 +51,6 @@
 #include "stblock.h"
 #include "cgtarget.h"
 #include "whirl2ops.h"
-#include "scheduler.h"
 
 void
 EETARG_Save_Pfs (TN *saved_pfs, OPS *ops)
@@ -143,7 +142,7 @@ EETARG_Fixup_Entry_Code (BB *bb)
 			ISA_REGISTER_CLASS_integer);
 		num_rotating = REGISTER_Number_Stacked_Rotating(
 			ISA_REGISTER_CLASS_integer);
-		num_output = max(num_output, num_rotating - num_local);
+		num_output = MAX(num_output, num_rotating - num_local);
 		if (num_local + num_output + num_rotating == 0) {
 			BB_Remove_Op (bb, op);
 		}

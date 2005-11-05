@@ -145,7 +145,7 @@
 
 #else
 
-#include <new.h>
+#include <new>
   extern MEM_POOL* Delete_Mem_Pool;
 
 extern MEM_POOL* _dummy_new_mempool;

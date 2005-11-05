@@ -7154,8 +7154,8 @@ CFLOW_Delete_Empty_BB(void)
 
          tgt_label = Gen_Label_For_BB(tgt_succ);
          if (CFLOW_Trace_Empty_BB_Elim) {
-            fprintf(TFile, "The label %s of empty BB: %d will be copied 
-                            to BB labeled with %s\n", LABEL_name(old_label),
+            fprintf(TFile, "The label %s of empty BB: %d will be copied "
+			    "to BB labeled with %s\n", LABEL_name(old_label),
                             BB_id(bp), LABEL_name(tgt_label));
          }
          /* fetch all the previous bb of bp */

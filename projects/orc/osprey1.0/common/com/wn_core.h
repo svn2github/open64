@@ -912,9 +912,15 @@ public:
 #endif /* WN_NO_ACCESSOR_FUNCTIONS */
 };
 
-#define WN_OFFSET_IN_STMT_WN (offsetof(STMT_WN,wn))
+inline UINTPS WN_offset_in_STMT_WN(const WN *x)
+{
+	return (UINTPS) &(((STMT_WN*) x)->wn) - (UINTPS) x;
+}
 
-#define WN_CAST_WN_TO_STMT_WN(x) ((STMT_WN *)((UINTPS)x - WN_OFFSET_IN_STMT_WN))
+inline STMT_WN* WN_CAST_WN_TO_STMT_WN(const WN *x)
+{
+	return (STMT_WN *) ((UINTPS) x - WN_offset_in_STMT_WN(x));
+}
 
 #ifndef WN_NO_ACCESSOR_FUNCTIONS
 inline WN* WN_prev (const WN* wn) { return (WN_CAST_WN_TO_STMT_WN(wn)->prev); }
@@ -1023,14 +1029,6 @@ inline char * WN_asm_input_constraint(const WN *wn) { return ST_name(WN_st(wn));
 #define WN_switch_test(x)	WN_kid((x),0)
 #define WN_switch_table(x)	WN_kid((x),1)
 #define WN_switch_default(x)	WN_kid((x),2)
-
-#if defined(_LP64) && !defined(_SGI_COMPILER_VERSION)
-/* workaround for g++ bug */
-#else
-#define max(a,b)  ((a > b) ? a : b)
-#endif
-
-
 
 /* ====================================================================
  *
@@ -1224,7 +1222,7 @@ inline void *WN_StartAddress(WN *wn)
 /*REFERENCED*/
 inline INT32 WN_Size(WN *wn)
 {
-  INT16 extra_kids = max(0,WN_kid_count(wn)-2);
+  INT16 extra_kids = MAX(0,WN_kid_count(wn)-2);
   if (OPCODE_has_next_prev(WN_opcode(wn))) {
     return(sizeof(WN) + (2+extra_kids)*sizeof(WN*) + sizeof(mUINT64));
   } else {

@@ -97,6 +97,8 @@
 #include "ipl_reorder.h"
 #endif
 
+extern void Init_Aux_Symbol_Info (SYMTAB_IDX level);
+
 //---------------------------------------------------------------
 // alternate entry point array
 // contain all the alternate entry points encountered in the
@@ -325,7 +327,7 @@ private:
        array */ 
     GLOBAL_HASH_TABLE *Global_hash_table;
     //for reordering
-    typedef hash_map<mUINT32,SUMMARY_STRUCT_ACCESS*> TY_TO_ACCESS_MAP;
+    typedef __gnu_cxx::hash_map<mUINT32,SUMMARY_STRUCT_ACCESS*> TY_TO_ACCESS_MAP;
     TY_TO_ACCESS_MAP *Ty_to_access_map;// mapping ty_index to SUMMARY_STRUCT_ACCESS
     typedef STACK<UINT64> LOOP_COUNT_STACK;
 	LOOP_COUNT_STACK *loop_count_stack;

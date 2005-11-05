@@ -393,7 +393,7 @@ DaVinci::Parse_Node_Ids(const char *epfx, INT *n_nodes, NODE_ID **node_ids)
 	return false;
       }
     }
-    if ( sscanf( cp, "\"%lx\"", &id ) != 1 ) {
+    if ( sscanf( cp, "\"%lx\"", (long*)&id ) != 1 ) {
       fprintf(stderr, "BAD NODE_ID (id): .. %s\n", cp);
       return false;
     }
@@ -419,8 +419,8 @@ bool
 Parse_Edge_Id( const char *epfx, EVENT_T *event ) // ("node_id:node_id")
 {
   if ( sscanf(epfx, "(\"%lx:%lx\")",
-	      &event->u.sel_edge.edge_src,
-	      &event->u.sel_edge.edge_dst) != 2 ) {
+	      (long *)&event->u.sel_edge.edge_src,
+	      (long *)&event->u.sel_edge.edge_dst) != 2 ) {
     fprintf(stderr, "Malformed EDGE_ID %s\n", epfx);
     return false;
   }
@@ -734,7 +734,7 @@ DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
       // append time to avoid overwriting previous log file,
       // which would happen if daVinci is started more than
       // once in a session.
-      sprintf(fname, "%s.%d", logfile, time(NULL));
+      sprintf(fname, "%s.%ld", logfile, (long)time(NULL));
       execlp ("daVinci", "daVinci", "-pipe", "-log", fname, 0);
     } else {
       execlp ("daVinci", "daVinci", "-pipe", 0);
@@ -996,7 +996,7 @@ DA_ACK
 DaVinci::Graph_End()
 {
   if ( _usage_check ) {
-    for (set<NODE_ID>::iterator it_ref = _node_ref_set.begin();
+    for (std::set<NODE_ID>::iterator it_ref = _node_ref_set.begin();
 	 it_ref != _node_ref_set.end(); ++it_ref) {
       NODE_ID ref_id = *it_ref;
 

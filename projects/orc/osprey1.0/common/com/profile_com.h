@@ -55,7 +55,7 @@
 #define profile_com_INCLUDED
 
 #include <string.h>
-#include <vector.h>
+#include <vector>
 #include "defs.h"
 
 #if defined(defs_INCLUDED) && ! defined(USE_STANDARD_TYPES)

@@ -32,9 +32,9 @@
 
 #include "bb.h"
 #include "hb_tail_duplication.h"
-#include "stack.h"
-#include "vector.h"
-#include "list.h"
+#include <stack>
+#include <vector>
+#include <list>
 #include "defs.h"
 #include "cxx_memory.h"
 #include "timing.h"

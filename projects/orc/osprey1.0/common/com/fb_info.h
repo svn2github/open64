@@ -62,7 +62,7 @@
 
 #include "fb_freq.h"
 #include "fb_tnv.h"
-#include <vector.h>             // STL vector.
+#include <vector>             // STL vector.
 
 #ifdef MONGOOSE_BE
 
@@ -354,14 +354,14 @@ struct FB_Info_Icall{
 
 struct FB_Info_Switch {
 
-  vector<FB_FREQ> freq_targets;
+  std::vector<FB_FREQ> freq_targets;
 
   FB_Info_Switch() {}
 
-  FB_Info_Switch( const vector<FB_FREQ>::size_type n )
-    : freq_targets( vector<FB_FREQ>( n, FB_FREQ_UNINIT ) ) {}
+  FB_Info_Switch( const std::vector<FB_FREQ>::size_type n )
+    : freq_targets( std::vector<FB_FREQ>( n, FB_FREQ_UNINIT ) ) {}
 
-  FB_FREQ& operator[] ( const vector<FB_FREQ>::size_type n ) {
+  FB_FREQ& operator[] ( const std::vector<FB_FREQ>::size_type n ) {
     if ( n >= freq_targets.size() ) {
       freq_targets.insert( freq_targets.end(), n - freq_targets.size() + 1,
 			   FB_FREQ_UNINIT );
@@ -369,15 +369,15 @@ struct FB_Info_Switch {
     return freq_targets[n];
   }
 
-  const FB_FREQ& operator[] ( const vector<FB_FREQ>::size_type n ) const {
+  const FB_FREQ& operator[] ( const std::vector<FB_FREQ>::size_type n ) const {
     return ( n >= freq_targets.size() ? FB_FREQ_UNINIT : freq_targets[n] );
   }
     
-  vector<FB_FREQ>::size_type size() const {
+  std::vector<FB_FREQ>::size_type size() const {
     return freq_targets.size();
   }
 
-  vector<FB_FREQ>::const_reference back() const {
+  std::vector<FB_FREQ>::const_reference back() const {
     return freq_targets.back();
   }
 
@@ -402,7 +402,7 @@ struct FB_Info_Switch {
   }
 
   FB_FREQ Total() const {
-    vector<FB_FREQ>::const_iterator iter;
+    std::vector<FB_FREQ>::const_iterator iter;
     FB_FREQ freq = FB_FREQ_ZERO;
     for ( iter = freq_targets.begin(); iter != freq_targets.end(); iter++ ) {
       freq += *iter;
@@ -464,23 +464,23 @@ FB_Info_Print (const T& info, const char* name, FILE *fp)
 // instrumentation runtime
 #ifdef MONGOOSE_BE
 
-typedef vector<FB_Info_Invoke, mempool_allocator<FB_Info_Invoke> >
+typedef std::vector<FB_Info_Invoke, mempool_allocator<FB_Info_Invoke> >
 					FB_Invoke_Vector;
-typedef vector<FB_Info_Branch, mempool_allocator<FB_Info_Branch> >
+typedef std::vector<FB_Info_Branch, mempool_allocator<FB_Info_Branch> >
 					FB_Branch_Vector;
-typedef vector<FB_Info_Loop, mempool_allocator<FB_Info_Loop> >
+typedef std::vector<FB_Info_Loop, mempool_allocator<FB_Info_Loop> >
 					FB_Loop_Vector;
-typedef vector<FB_Info_Circuit, mempool_allocator<FB_Info_Circuit> >
+typedef std::vector<FB_Info_Circuit, mempool_allocator<FB_Info_Circuit> >
 					FB_Circuit_Vector;
-typedef vector<FB_Info_Call, mempool_allocator<FB_Info_Call> >
+typedef std::vector<FB_Info_Call, mempool_allocator<FB_Info_Call> >
 					FB_Call_Vector;
-typedef vector<FB_Info_Icall, mempool_allocator<FB_Info_Icall> >
+typedef std::vector<FB_Info_Icall, mempool_allocator<FB_Info_Icall> >
 					FB_Icall_Vector;
-typedef vector<FB_Info_Switch, mempool_allocator<FB_Info_Switch> >
+typedef std::vector<FB_Info_Switch, mempool_allocator<FB_Info_Switch> >
 					FB_Switch_Vector;
-typedef vector<FB_Info_Edge, mempool_allocator<FB_Info_Edge> >
+typedef std::vector<FB_Info_Edge, mempool_allocator<FB_Info_Edge> >
 					FB_Edge_Vector;
-typedef vector<FB_Info_Value, mempool_allocator<FB_Info_Value> >
+typedef std::vector<FB_Info_Value, mempool_allocator<FB_Info_Value> >
                                        FB_Value_Vector;
 
 // ====================================================================

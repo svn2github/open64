@@ -140,7 +140,7 @@ struct OPT_FB_NODE {
   //   to produce a node with freq_total_in != freq_total_out.  This
   //   indicates that the frequencies need to be rebalanced.)
 
-  typedef vector<IDTYPE, mempool_allocator<IDTYPE> > EDGES;
+  typedef std::vector<IDTYPE, mempool_allocator<IDTYPE> > EDGES;
   typedef EDGES::const_iterator EDGES_ITER;
 
   EDGES incoming_edges;
@@ -201,8 +201,8 @@ private:
   bool       _trace_draw;
   bool       _trace_before;
   bool       _trace_prop;
-  vector<OPT_FB_NODE, mempool_allocator<OPT_FB_NODE> >  _fb_opt_nodes;
-  vector<OPT_FB_EDGE, mempool_allocator<OPT_FB_EDGE> >  _fb_opt_edges;
+  std::vector<OPT_FB_NODE, mempool_allocator<OPT_FB_NODE> >  _fb_opt_nodes;
+  std::vector<OPT_FB_EDGE, mempool_allocator<OPT_FB_EDGE> >  _fb_opt_edges;
 
   bool    Edge_has_freq( IDTYPE nx_src, IDTYPE nx_dst ) const;
   IDTYPE  Find_edge_by_type( IDTYPE nx, FB_EDGE_TYPE edge_type ) const;
@@ -253,7 +253,7 @@ public:
 
   void Clone_edge( IDTYPE nx_src_old, IDTYPE nx_dst_old,
 		   IDTYPE nx_src_new, IDTYPE nx_dst_new, float scale );
-  void Clone_zone( zone& z, map<vertex_id, vertex_id>& nx_old_to_new );
+  void Clone_zone( zone& z, std::map<vertex_id, vertex_id>& nx_old_to_new );
 
   void Print( FILE *fp = stderr ) const;
   FB_VERIFY_STATUS Verify( CFG *cfg, const char *const phase );

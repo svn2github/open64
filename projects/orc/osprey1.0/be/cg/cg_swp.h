@@ -52,8 +52,8 @@
 
 #include <stdio.h>
 #include "defs.h"
-#include <vector.h>
-#include <map.h>
+#include <vector>
+#include <map>
 #include "mempool.h"
 #include "tn.h"
 #include "tn_set.h"

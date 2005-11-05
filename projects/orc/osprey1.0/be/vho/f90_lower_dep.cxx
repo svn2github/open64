@@ -43,7 +43,7 @@
 #include "ipa_lno_util.h"
 
 // Needed to make MAT package work
-
+template<>
 MEM_POOL* MAT<mINT32>::_default_pool = NULL; 
 
 

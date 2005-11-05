@@ -507,7 +507,7 @@ check_elf_header (char* baseaddr, Elf64_Word size, const ELF& tag)
     if (ehdr->e_ident[EI_VERSION] != EV_CURRENT ||
 	ehdr->e_version != EV_CURRENT)
 	return ERROR_RETURN;
-    if (ehdr->e_type != ET_IR || ehdr->e_shentsize != sizeof(ELF::Elf_Shdr))
+    if (ehdr->e_type != ET_IR || ehdr->e_shentsize != sizeof(typename ELF::Elf_Shdr))
 	return ERROR_RETURN;
     if (Target_ABI != ABI_UNDEF && 
 	// only check if expecting a certain target
@@ -521,7 +521,7 @@ check_elf_header (char* baseaddr, Elf64_Word size, const ELF& tag)
     if (ehdr->e_shstrndx >= ehdr->e_shnum)
 	return ERROR_RETURN;
     if (ehdr->e_shoff >= size ||
-	ehdr->e_shoff + ehdr->e_shnum * sizeof(ELF::Elf_Shdr) > size)
+	ehdr->e_shoff + ehdr->e_shnum * sizeof(typename ELF::Elf_Shdr) > size)
 	return ERROR_RETURN;
     typename ELF::Elf_Shdr* shdr =
 	(typename ELF::Elf_Shdr *) (baseaddr + ehdr->e_shoff);
@@ -529,7 +529,7 @@ check_elf_header (char* baseaddr, Elf64_Word size, const ELF& tag)
 #ifndef __GNUC__
 		       __builtin_alignof(ELF::Elf_Shdr)
 #else
-		       __alignof__(ELF::Elf_Shdr)
+		       __alignof__(typename ELF::Elf_Shdr)
 #endif
 		       - 1))
 	return ERROR_RETURN;

@@ -59,8 +59,9 @@
 #include "symtab.h"
 #include "wn.h"
 #include "config_targ.h"
-#include <hash_map>
 #include <math.h>
+
+#include <ext/hash_map>
 
 namespace {
     // unnamed namespace for function objects used for removing duplicated
@@ -118,7 +119,7 @@ namespace {
 } // unnamed namespace
 		
 
-typedef std::hash_map<TCON_IDX, ST *, tcon_hash, eq_tcon> TCON_MERGE;
+typedef __gnu_cxx::hash_map<TCON_IDX, ST *, tcon_hash, eq_tcon> TCON_MERGE;
 
 ST *
 New_Const_Sym (TCON_IDX tcon, TY_IDX ty)

@@ -59,7 +59,7 @@
 #include <elf.h>
 #include <elfaccess.h>
 #include <libelf.h>
-#include <vector.h>
+#include <vector>
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"

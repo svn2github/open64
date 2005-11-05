@@ -41,7 +41,7 @@
 #include "mempool.h"
 #include "profile_util.h"
 #include "calls.h"
-#include "hash_map.h"
+#include <hash_map>
 #include "bb_map.h"
 #include "cggrp_microsched.h"
 

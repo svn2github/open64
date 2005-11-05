@@ -58,6 +58,8 @@
 static char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/util/tracing.c,v $ $Revision: 1.1.1.1 $";
 
+#include <errno.h>
+
 #include "defs.h"
 #include "tracing.h"
 #include "erglob.h"

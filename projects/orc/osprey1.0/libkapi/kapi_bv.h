@@ -28,6 +28,7 @@
 #ifndef _KAPI_BV_H_
 #define _KAPI_BV_H_
 
+#include <inttypes.h>
 #include <stdio.h>
 
 #ifdef __cplusplus
@@ -45,10 +46,6 @@ extern "C" {
 /* = = = = = = = = = = = = = = = = == = = = = = = = = = = = = */
 /* ------------------- 32 bit stuff ------------------------- */
 /* = = = = = = = = = = = = = = = = == = = = = = = = = = = = = */
-
-#ifndef HPUX
-typedef unsigned long uint32_t;   /* 32-bit unsigned integers */
-#endif
 
 typedef uint32_t bv32_t;         /* 32-bit long bit vector */
 

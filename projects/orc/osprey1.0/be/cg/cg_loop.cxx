@@ -118,7 +118,7 @@
 
 #include <math.h>
 #include <stdarg.h>
-#include <set.h>
+#include <set>
 
 #include "defs.h"
 #include "config.h"
@@ -4908,7 +4908,7 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
 
     old_computed = unroll_times;
     if (CG_LOOP_res_min_ii >= 3 )
-       unroll_times = min(unroll_times, unroll_times2);
+       unroll_times = MIN(unroll_times, unroll_times2);
   }
 
 
@@ -4956,7 +4956,7 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
      computed = old_unroll_times / 2;
 
   if (CG_LOOP_res_min_ii >= 10)
-     unroll_times = min( unroll_times, max(computed, 1));
+     unroll_times = MIN( unroll_times, MAX/(computed, 1));
   }
 
   LOOP_DESCR *loop = Loop();
@@ -4977,7 +4977,7 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
 
   if (contain_b && CG_LOOP_rec_min_ii >= CG_LOOP_res_min_ii &&
      2 * loop_size < loop_size_limit && CG_LOOP_res_min_ii < 20)
-     unroll_times = min(old_unroll_times, max(unroll_times, 2));
+     unroll_times = MIN(old_unroll_times, MAX(unroll_times, 2));
 
 
   if (swp_trace) 
@@ -5686,7 +5686,7 @@ void CG_LOOP_Statistics(LOOP_DESCR *loop)
 // Perform loop optimizations for all inner loops
 // in the PU.
 //
-void Perform_Loop_Optimizations(void *rgn_loop_update=NULL)
+void Perform_Loop_Optimizations(void *rgn_loop_update)
 {
   MEM_POOL loop_descr_pool;
   MEM_POOL_Initialize(&loop_descr_pool, "loop_descriptors", TRUE);

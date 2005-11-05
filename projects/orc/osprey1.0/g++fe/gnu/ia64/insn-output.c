@@ -7727,21 +7727,21 @@ const struct insn_data insn_data[] =
   },
   {
     "set_bsp",
-    "flushrs\n\t			
-   mov r19=ar.rsc\n\t		
-   ;;\n\t				
-   and r19=0x1c,r19\n\t		
-   ;;\n\t				
-   mov ar.rsc=r19\n\t		
-   ;;\n\t				
-   mov ar.bspstore=%0\n\t		
-   ;;\n\t				
-   or r19=0x3,r19\n\t		
-   ;;\n\t				
-   loadrs\n\t			
-   invala\n\t			
-   ;;\n\t				
-   mov ar.rsc=r19\n\t",
+    "flushrs\n\t"			
+   "mov r19=ar.rsc\n\t"		
+   ";;\n\t"				
+   "and r19=0x1c,r19\n\t"		
+   ";;\n\t"				
+   "mov ar.rsc=r19\n\t"		
+   ";;\n\t"				
+   "mov ar.bspstore=%0\n\t"		
+   ";;\n\t"				
+   "or r19=0x3,r19\n\t"		
+   ";;\n\t"				
+   "loadrs\n\t"			
+   "invala\n\t"			
+   ";;\n\t"				
+   "mov ar.rsc=r19\n\t",
     (insn_gen_fn) gen_set_bsp,
     &operand_data[54],
     1,

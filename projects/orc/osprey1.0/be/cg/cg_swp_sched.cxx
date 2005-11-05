@@ -52,7 +52,7 @@
 #define USE_STANDARD_TYPES
 #include "defs.h"
 #include <vector>
-#include <pair.h>
+#include <utility>
 #include <math.h>
 #include "cg_swp.h"
 #include "cg_swp_options.h"
@@ -64,11 +64,6 @@
 #include "ti_res_res.h"
 #include "cg_loop_mii.h"
 #include "cache_analysis.h"
-
-#if defined(_LP64) && defined(_SGI_COMPILER_VERSION)
-/* workaround for a bug in g++ */
-#define min(a,b)  ((a < b) ? a : b)
-#endif 
 
 void MinDist::Print(FILE *fp) const
 {
@@ -115,7 +110,7 @@ MinDist::MinDist(const SWP_OP_vector& v, INT start, INT stop, INT branch, INT ii
       found_ii = ii_lower;
       return;
     }
-    step = max(1, step / 2);
+    step = MAX(1, step / 2);
   }
 }
 
@@ -142,12 +137,12 @@ INT MinDist::Compute(const SWP_OP_vector& v, INT start, INT stop, INT branch, IN
 	  continue;
 	OP  *succ = ARC_succ(arc);
 	mindist[i][SWP_index(succ)] =
-	  max(mindist[i][SWP_index(succ)], ARC_latency(arc) - ARC_omega(arc) * ii);
+	  MAX(mindist[i][SWP_index(succ)], ARC_latency(arc) - ARC_omega(arc) * ii);
 	Is_True(succ == v[SWP_index(succ)].op, ("MinDIST: wrong SWP_index."));
       }
       mindist[start][i] = 0;
       mindist[i][stop] = 0;
-      mindist[i][branch] = max(mindist[i][branch], 0);
+      mindist[i][branch] = MAX(mindist[i][branch], 0);
     }
   }
 
@@ -160,7 +155,7 @@ INT MinDist::Compute(const SWP_OP_vector& v, INT start, INT stop, INT branch, IN
 	// clearer if mindist values stay at neg_inf
 	if (mindist[i][k] != NEG_INF && mindist[k][j] != NEG_INF)
 #endif
-	  mindist[i][j] = max(mindist[i][j], mindist[i][k] + mindist[k][j]);
+	  mindist[i][j] = MAX(mindist[i][j], mindist[i][k] + mindist[k][j]);
       }
 
   for (i = 0; i < n_ops; i++) {
@@ -212,7 +207,7 @@ MinLT::MinLT(const SWP_OP_vector& v, INT ii, const MinDist& mindist)
 	  INT succ_idx = SWP_index(succ);
 	  if (OP_opnd(succ,ARC_opnd(arc)) == OP_result(op,0)) {
 	    INT live_range = ARC_omega(arc) * ii + mindist(i,succ_idx);
-	    minlt[i] = max(minlt[i], live_range);
+	    minlt[i] = MAX(minlt[i], live_range);
 	  }
 	}
       }
@@ -383,8 +378,8 @@ void Slack::Relax_Precedence(const SWP_OP_vector& v, const vector<INT>& unplaced
     for (INT j = 0; j < v.size(); j++) {
       if (v[j].placed) {
 	INT cycle = v[j].cycle;
-	estart[i] = max(estart[i], cycle + mindist(j, i));
-	lstart[i] = min(lstart[i], cycle - mindist(i, j));
+	estart[i] = MAX(estart[i], cycle + mindist(j, i));
+	lstart[i] = MIN(lstart[i], cycle - mindist(i, j));
       }
     }
   }
@@ -404,8 +399,8 @@ void Slack::Update_Slack_From_Placed_Op(INT candidate,
   }
   for (INT i = 0; i < v.size(); i++) {
     if (!v[i].placed) {
-      estart[i] = max(estart[i], cycle + mindist(candidate, i));
-      lstart[i] = min(lstart[i], cycle - mindist(i, candidate));
+      estart[i] = MAX(estart[i], cycle + mindist(candidate, i));
+      lstart[i] = MIN(lstart[i], cycle - mindist(i, candidate));
     }
   }
   if (trace) {
@@ -427,8 +422,8 @@ void Slack::Update_Slack_From_Placed_Ops(const SWP_OP_vector& v, const MinDist& 
       for (INT j = 0; j < v.size(); j++) {
 	if (v[j].placed) {
 	  INT cycle = v[j].cycle;
-	  estart[i] = max(estart[i], cycle + mindist(j, i));
-	  lstart[i] = min(lstart[i], cycle - mindist(i, j));
+	  estart[i] = MAX(estart[i], cycle + mindist(j, i));
+	  lstart[i] = MIN(lstart[i], cycle - mindist(i, j));
 	}
       }
     }
@@ -447,7 +442,7 @@ Slack::Slack(const SWP_OP_vector& v, INT start_idx, INT stop_idx, INT ii, const 
   // so each operation on the critical path has three cycles to schedule on.
   INT len = (INT) ceil(((double) mindist(start, stop) + 1) / ii) * ii;
   if (mindist(start, stop) > 8) {
-    len = max(mindist(start,stop) + 1 + 2 /* slack==2 */, len);
+    len = MAX(mindist(start,stop) + 1 + 2 /* slack==2 */, len);
     len = (INT) ceil(((double) len) / ii) * ii;
   }
   Set_last_cycle(v, len-1, mindist);
@@ -797,7 +792,7 @@ public:
     v[candidate].trials++;
     v[candidate].placed = true;
     INT earliest = slack.Estart(candidate);
-    INT latest   = min(earliest + ii - 1, slack.Lstart(candidate));
+    INT latest   = MIN(earliest + ii - 1, slack.Lstart(candidate));
     bool top_down = Sched_Top_Down(candidate, v, slack);
 
     Is_True(earliest < 128 * ii, ("SWP Choose_Issue_Cycle: earliest=%d\n", earliest));
@@ -806,8 +801,8 @@ public:
     // If the candidate has previous trial and there is resource for the next slot
     // try to use the next slot instead retry from beginning!
     if (min_retry && v[candidate].trials > 1) {
-      INT e = top_down ? max(earliest, v[candidate].cycle+1) : earliest;
-      INT l = top_down ? latest : min(latest, v[candidate].cycle-1);
+      INT e = top_down ? MAX(earliest, v[candidate].cycle+1) : earliest;
+      INT l = top_down ? latest : MIN(latest, v[candidate].cycle-1);
       if (e <= l) {
 	INT cycle = mrt.Find_Resources_In_Range(candidate, v, e, l, top_down);
 	if (e <= cycle && cycle <= l) {
@@ -947,8 +942,8 @@ public:
     
     if (!v[start].placed || !v[stop].placed) {
 #pragma mips_frequency_hint NEVER
-      INT adjustment = max(slack.Estart(start) - slack.Lstart(start), 0);
-      INT sched_len = max(slack.Estart(stop), slack.Lstart(stop) + adjustment);
+      INT adjustment = MAX(slack.Estart(start) - slack.Lstart(start), 0);
+      INT sched_len = MAX(slack.Estart(stop), slack.Lstart(stop) + adjustment);
       if (sched_len > max_sched_length)
 	return false;
       if (trace) 
@@ -1066,8 +1061,8 @@ void Modulo_Schedule_Succeeded(SWP_OP_vector &v,
       //  computation and can be moved.
       //
       if (v[i].op && (i != v.branch || !v.is_doloop)) {
-	min_cycle = min(min_cycle, v[i].cycle);
-	max_cycle = max(max_cycle, v[i].cycle);
+	min_cycle = MIN(min_cycle, v[i].cycle);
+	max_cycle = MAX(max_cycle, v[i].cycle);
       }
       if (v[i].op && OP_dummy(v[i].op))
 	v[i].op = NULL;  // remove dummy ops 
@@ -1077,7 +1072,7 @@ void Modulo_Schedule_Succeeded(SWP_OP_vector &v,
 
   v.sc = max_cycle / ii + 1;
   // Include branch for the sched length
-  max_cycle = max(max_cycle, v[v.branch].cycle);
+  max_cycle = MAX(max_cycle, v[v.branch].cycle);
   v.sl = max_cycle - min_cycle + 1;
 
   Is_True(min_cycle < ii, ("first operation is not at stage 0."));
@@ -1120,7 +1115,7 @@ Modulo_Schedule(SWP_OP_vector &swp_op_vector, INT min_ii, INT max_ii,
 
   for (INT ii = min_ii; 
        ii <= max_ii;
-       ii = max(ii+1, (INT)((ii + incr_alpha) * incr_beta - incr_alpha))) {
+       ii = MAX(ii+1, (INT)((ii + incr_alpha) * incr_beta - incr_alpha))) {
 
     if (trace) 
       fprintf(TFile, "============================\nSWP SCHED with ii %d\n", ii);

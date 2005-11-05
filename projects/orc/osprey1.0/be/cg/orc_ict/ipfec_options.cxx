@@ -574,7 +574,7 @@ IPFEC_Build_Skiplist ( OPTION_LIST *olist )
  */
 
 BOOL
-IPFEC_Query_Skiplist ( SKIPLIST *skip, INT32 elmt, INT32 field = -1 )
+IPFEC_Query_Skiplist ( SKIPLIST *skip, INT32 elmt, INT32 field )
 {
   INT32 i;
   BOOL ok;

@@ -57,12 +57,15 @@
 #include "instr_reader.h"
 #include "instr_memory.h"
 
-__STL_TEMPLATE_NULL  struct hash<UINT64> {
-	 size_t operator()(const UINT64 x)const{return (size_t)x;}
- };
+namespace __gnu_cxx {
+  template<>
+  struct hash<UINT64> {
+    size_t operator()(const UINT64 x)const{return (size_t)x;}
+  };
+}
 
-typedef hash_map<UINT64, char*, hash<UINT64> > ADDRESS_NAME_MAP;
-typedef hash_map<UINT64, INT32, hash<UINT64> > ADDRESS_PUSIZE_MAP;
+typedef __gnu_cxx::hash_map<UINT64, char*, __gnu_cxx::hash<UINT64> > ADDRESS_NAME_MAP;
+typedef __gnu_cxx::hash_map<UINT64, INT32, __gnu_cxx::hash<UINT64> > ADDRESS_PUSIZE_MAP;
 extern ADDRESS_NAME_MAP PU_Addr_Name_Map;
 extern ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
 
@@ -596,7 +599,7 @@ void
 read_switch_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
                     long pu_ofst, FILE *fp, char *fname)
 {
-  vector<INT32> targets_vector (pu_hdr_entry.pu_num_switch_entries);
+  std::vector<INT32> targets_vector (pu_hdr_entry.pu_num_switch_entries);
   
   FSEEK(fp, pu_ofst + pu_hdr_entry.pu_switch_target_offset, SEEK_SET,
 	ERR_POS, fname);
@@ -612,7 +615,7 @@ read_switch_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 
   FSEEK(fp, pu_ofst + pu_hdr_entry.pu_switch_offset, SEEK_SET, ERR_POS, fname);
  
-  vector<INT32>::const_iterator target (targets_vector.begin ());
+  std::vector<INT32>::const_iterator target (targets_vector.begin ());
   for (FB_Switch_Vector::iterator first (Switch_Table.begin ());
        first != Switch_Table.end (); ++first) {
 
@@ -632,7 +635,7 @@ void
 read_cgoto_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
                     long pu_ofst, FILE *fp, char *fname)
 {
-  vector<INT32> target_vectors (pu_hdr_entry.pu_num_cgoto_entries);
+  std::vector<INT32> target_vectors (pu_hdr_entry.pu_num_cgoto_entries);
 
   FSEEK(fp, pu_ofst + pu_hdr_entry.pu_cgoto_target_offset, SEEK_SET,
 	ERR_POS, fname);
@@ -648,7 +651,7 @@ read_cgoto_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 
   FSEEK(fp, pu_ofst + pu_hdr_entry.pu_cgoto_offset, SEEK_SET, ERR_POS, fname);
  
-  vector<INT32>::const_iterator target (target_vectors.begin ());
+  std::vector<INT32>::const_iterator target (target_vectors.begin ());
   for (FB_Switch_Vector::iterator first (Cgoto_Table.begin ());
        first != Cgoto_Table.end (); ++first) {
 

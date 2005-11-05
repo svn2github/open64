@@ -40,8 +40,8 @@
 //*********************************************************************
 
 #include "bypass_gen.h"
-#include "map.h"
-#include "list.h"
+#include <map>
+#include <list>
 
 //
 typedef struct SUC_FU_BYPASS {    
@@ -65,9 +65,9 @@ static BOOL first_in_suc_case = true;
 static BOOL last_in_suc_case = false;
 
 static SUC_FU_BYPASS cur_state;
-static map <int, char*> oddfunc_pair;
-static list < BYPASS_CARE_FU > care_fu_bypasslist;
-static list < BYPASS_CARE_FU >::iterator cf_iter;
+static std::map <int, char*> oddfunc_pair;
+static std::list < BYPASS_CARE_FU > care_fu_bypasslist;
+static std::list < BYPASS_CARE_FU >::iterator cf_iter;
 
 // Function:
 void Print_OddLatency(void *pknobs, FILE *c_file);
@@ -451,7 +451,7 @@ void Print_All_Bypass(void *pknobs, FILE *h_file, FILE *c_file)
     fprintf(c_file, "}/* End of Adjust Latency*/\n\n");
 
     // clean memory
-    map <int, char*>::iterator iter;
+    std::map <int, char*>::iterator iter;
     for (iter = oddfunc_pair.begin(); iter!=oddfunc_pair.end(); iter++) {
         oddfunc_pair.erase(iter);
     }
@@ -591,16 +591,16 @@ void Bypass_Generator(void *pknobs, GEN_MODE mode, MACHINE_TYPE type)
 {
     FILE *c_file, *h_file, *export_file;
     int index;
-    char * description[]= {"\
-/***************************************************************************\n\
-* Description:\n\
-*	void TARG_Adjust_Latency(TOP pred_code, TOP succ_code,\n\
-*                                 INT src_reg, INT dst_reg, INT *latency,
-                                  BOOL pred_is_chk, BOOL succ_is_chk)\n\
-*	  Makes any target-specific latency adjustments that may be\n\
-*	  required between <pred_code> and <succ_code>.\n\
-*/\n", NULL};
-    
+    char * description[]= {
+"/***************************************************************************\n"
+"* Description:\n"
+"*	void TARG_Adjust_Latency(TOP pred_code, TOP succ_code,\n"
+"*                               INT src_reg, INT dst_reg, INT *latency,\n"
+"*                               BOOL pred_is_chk, BOOL succ_is_chk)\n"
+"*	  Makes any target-specific latency adjustments that may be\n"
+"*	  required between <pred_code> and <succ_code>.\n"
+"*/\n", NULL};
+ 
     first_in_pre_case = true;
     first_in_suc_case = true;
     last_in_suc_case = false;

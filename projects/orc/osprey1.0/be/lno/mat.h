@@ -525,7 +525,7 @@ MAT<T> MAT<T>::operator +(const MAT<T>& a) const
 
   MAT<T> m(Rows(), Cols(), Default_Pool());
 
-  for (INT r = 0; r < Rows(); rr++) {
+  for (INT r = 0; r < Rows(); r++) {
     T* pm = &m._data[r*m._cx];
     T* p = &_data[r*_cx];
     T* pa = &a._data[r*a._cx];
@@ -636,7 +636,7 @@ MAT<T>& MAT<T>::operator *=(const MAT<T>& a)
 template<class T>
 MAT<T>& MAT<T>::D_Submul(const MAT<T>& mat, INT m, INT n)
 {
-  MAT<T> mm(m, n, &LNO_local_pool);
+  MAT<T> mm(m, n, Default_Pool());
   INT i;
   for (i = 0; i < m; i++) {
     for (INT j = 0; j < n; j++) {

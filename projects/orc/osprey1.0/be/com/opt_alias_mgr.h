@@ -106,7 +106,7 @@ private:
   ALIAS_MANAGER& operator = (const ALIAS_MANAGER&);
 
   DYN_ARRAY<POINTS_TO*> *Vec(void) const { return _vec; }
-  vector<IDTYPE, mempool_allocator<IDTYPE> > *_invalid_ip_alias_classes;
+  std::vector<IDTYPE, mempool_allocator<IDTYPE> > *_invalid_ip_alias_classes;
 
 public:
   ALIAS_MANAGER(void);

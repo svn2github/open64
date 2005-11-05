@@ -42,8 +42,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-#include <algo.h>
-#include <vector.h>
+#include <algorithm>
+#include <vector>
 #include "defs.h"
 #include "errors.h"
 #include "tracing.h"
@@ -161,6 +161,7 @@ public:
   RID_POST_ITER& operator++();
   RID_POST_ITER  operator++(int);
   friend bool operator==(const RID_POST_ITER&, const RID_POST_ITER&);
+  friend bool operator!=(const RID_POST_ITER&, const RID_POST_ITER&);
 };
 
 RID_POST_ITER::RID_POST_ITER(RID * p): start(p), own(p) {
@@ -199,6 +200,12 @@ inline bool operator==(const RID_POST_ITER& x, const RID_POST_ITER & y)
   return x.own == y.own;
 }
 
+inline bool operator!=(const RID_POST_ITER& x, const RID_POST_ITER & y)
+{
+  return x.own != y.own;
+}
+
+
 class RID_PARENT_ITER {
 private:
   RID * p;
@@ -217,12 +224,17 @@ public:
     return tmp;
   }
   friend bool operator==(const RID_PARENT_ITER&, const RID_PARENT_ITER &);
-
+  friend bool operator!=(const RID_PARENT_ITER&, const RID_PARENT_ITER &);
 };
 
 bool operator==(const RID_PARENT_ITER& x, const RID_PARENT_ITER& y) {
   return x.p == y.p;
 }
+
+bool operator!=(const RID_PARENT_ITER& x, const RID_PARENT_ITER& y) {
+  return x.p != y.p;
+}
+
 
 struct IS_EH_RID
 {
@@ -341,12 +353,20 @@ public:
   }
   friend bool operator==(const EH_RANGE_LIST_PARENT_ITER&,
 			 const EH_RANGE_LIST_PARENT_ITER&);
+  friend bool operator!=(const EH_RANGE_LIST_PARENT_ITER&,
+			 const EH_RANGE_LIST_PARENT_ITER&);
 };
 
 inline bool operator==(const EH_RANGE_LIST_PARENT_ITER & x,
 		       const EH_RANGE_LIST_PARENT_ITER &y) {
   return x.iter == y.iter;
 }
+
+inline bool operator!=(const EH_RANGE_LIST_PARENT_ITER & x,
+		       const EH_RANGE_LIST_PARENT_ITER &y) {
+  return x.iter != y.iter;
+}
+
 
 /* There is always just one EH_RANGE_LIST which belongs to
  * eh_region.cxx and which is cleared at the beginning of

@@ -42,11 +42,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/driver/main.c,
 #include <cmplrs/rcodes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifdef linux
-#define st_mtim st_mtime
-#define st_atim st_atime
-#define st_ctim st_ctime
-#endif
 #include <errno.h>
 #include "string_utils.h"
 #include "options.h"
@@ -355,19 +350,11 @@ main (int argc, char *argv[])
 	      warning ("-fb_cdir cannot be used with -fbuse; -fb_cdir ignored");
 	   save_name(&fb_file, concat_strings(drop_path(prof_file), ".x.cfb"));
 	   if (!(stat(fb_file, &stat_buf) != 0 && errno == ENOENT))
-#ifdef linux
 		fb_file_mod_time = stat_buf.st_mtime;
-#else
-		fb_file_mod_time = stat_buf.st_mtim.tv_sec;
-#endif
            else
 		fb_file_exists = FALSE;
            if (!(stat(count_files->head->name, &stat_buf) != 0 && errno == ENOENT))
-#ifdef linux
 		count_file_mod_time = stat_buf.st_mtime;
-#else
-		count_file_mod_time = stat_buf.st_mtim.tv_sec;
-#endif
            else {
 		internal_error("%s doesn't exist", count_files->head->name);
 		perror(program_name);

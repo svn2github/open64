@@ -64,7 +64,7 @@ typedef struct mem_pool MEM_POOL;
 #include "defs.h"
 #include "opt_defs.h"
 #include "opt_sys.h"
-
+#include "erglob.h"
 
 //----------------------------------------------------------------------------
 // fixed size array template

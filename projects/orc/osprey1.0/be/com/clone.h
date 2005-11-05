@@ -64,11 +64,11 @@
 
 
 #ifndef __SGI_STL_ALGO_H
-#include <algo.h>
+#include <algorithm>
 #endif // __SGI_STL_ALGO_H
 
 #ifndef __SGI_STL_HASH_MAP_H
-#include <hash_map.h>
+#include <ext/hash_map>
 #endif /* __SGI_STL_HASHTABLE_H */
 
 #ifndef CXX_MEMORY_INCLUDED
