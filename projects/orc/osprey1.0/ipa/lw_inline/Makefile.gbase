@@ -262,7 +262,7 @@ else
 endif
 
 lw_inline: $(IPA_OBJS) $(IPA_CXX_OBJS)
-	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 	$(C++F) -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) be.so  $(LDFLAGS)
 
 #ifeq ($(BUILD_OS), LINUX)

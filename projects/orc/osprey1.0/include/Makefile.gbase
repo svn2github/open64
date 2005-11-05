@@ -314,49 +314,49 @@ LIBELF_DIRS = libelf
 
 default:
 	@for h in $(LINUX_HFILES); do \
-	    if ! test -a $$h; then \
+	    if ! test -e $$h; then \
 	      ln -sf $(BUILD_TOT)/linux/include/$$h $$h; \
 	    fi; \
 	done
 	@for h in $(LINUX_SYS_HFILES); do \
         [ ! -d sys ] && mkdir sys ; \
-	    if ! test -a sys/$$h; then \
+	    if ! test -e sys/$$h; then \
 	      ln -sf $(BUILD_TOT)/../linux/include/sys/$$h sys/$$h; \
 	    fi; \
 	done
 	@for h in $(INCLUDE_HFILES); do \
-	    if ! test -a $$h; then \
+	    if ! test -e $$h; then \
 	      ln -sf $(BUILD_TOT)/include/$$h $$h; \
 	    fi; \
 	done
 	@for h in $(CMPLR_DIRS); do \
-	    if ! test -a $$h; then \
+	    if ! test -e $$h; then \
 	      mkdir $$h; \
 	    fi; \
 	done
 	@for h in $(CMPLR_HFILES); do \
-	    if ! test -a cmplrs/$$h; then \
+	    if ! test -e cmplrs/$$h; then \
 	      ln -sf $(BUILD_TOT)/../include/cmplrs/$$h cmplrs/$$h; \
 	    fi; \
 	done
 	@for h in $(SYS_HFILES); do \
-	    if ! test -a sys/$$h; then \
+	    if ! test -e sys/$$h; then \
 	      ln -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
 	    fi; \
 	done
 	@for h in $(SYS_DIRS); do \
-	    if ! test -a sys/$$h; then \
+	    if ! test -e sys/$$h; then \
 	      ln -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
 	    fi; \
 	done
 	@for h in $(LIBELF_DIRS); do \
-	    if ! test -a $$h; then \
+	    if ! test -e $$h; then \
 		mkdir $$h; \
 	    fi; \
 	done
 	@for h in $(LIBELF_HFILES); do \
         [ ! -d libelf ] && mkdir libelf; \
-	    if ! test -a libelf/$$h; then \
+	    if ! test -e libelf/$$h; then \
 	      ln -sf $(BUILD_TOT)/../gnu_common/libelf/lib/$$h libelf/$$h; \
 	    fi; \
 	done
