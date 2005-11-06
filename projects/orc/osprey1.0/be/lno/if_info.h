@@ -75,6 +75,13 @@
 #include "access_vector.h"
 #endif
 
+#ifndef __GNUC__
+#define ATTR_WEAK
+#pragma weak Print__7IF_INFOGP8__file_s
+#else
+#define ATTR_WEAK __attribute__((weak));
+#endif
+
 class ARA_LOOP_INFO; 
 
 class  IF_INFO
@@ -114,7 +121,7 @@ public:
   mBOOL Condition_On_Then;
   float Freq_True;
   float Freq_False;
-  void Print(FILE *fp);
+  void Print(FILE *fp) ATTR_WEAK;
   ARA_LOOP_INFO *_ara_then;
   ARA_LOOP_INFO *_ara_else;
   ARA_LOOP_INFO *_ara_common;
