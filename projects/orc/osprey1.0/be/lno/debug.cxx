@@ -4132,7 +4132,7 @@ static void Initialize_Keymap() {
 //   in the compiler where you want to see the loops.   
 //-----------------------------------------------------------------------
 
-extern void s_lno_debug(char init_buffer[]) 
+void s_lno_debug(char init_buffer[]) 
 {
   char ch;
   VOID_FUNC_PTR fp;
