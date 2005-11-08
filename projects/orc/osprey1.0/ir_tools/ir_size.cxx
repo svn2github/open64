@@ -38,7 +38,6 @@
 #include <sys/stat.h>
 #include <sys/elf_whirl.h>
 #include <libgen.h>		    /* for basename() */
-#include <algo.h>
 
 #include "defs.h"
 #include "pu_info.h"
