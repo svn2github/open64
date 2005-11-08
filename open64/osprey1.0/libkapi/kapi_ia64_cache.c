@@ -47,7 +47,7 @@ kapi_cache_t *KAPI_CacheHierarcy(void *pConfig, int level, kapi_cache_types_e ca
 {
 	int iPort;
 	knobs_t *pknobs=(knobs_t *)pConfig;
-	kapi_cache_t *pcacheTmp=(kapi_cache_t *)malloc(sizeof(kapi_cache_t *));
+	kapi_cache_t *pcacheTmp=(kapi_cache_t *)malloc(sizeof(kapi_cache_t));
 	cache_t *pcache;
 	/* find out which type we are talking about, and if data exists for it */
 	assert((pknobs->nCacheLevels!=NULL) && "Cache content not present!\n");

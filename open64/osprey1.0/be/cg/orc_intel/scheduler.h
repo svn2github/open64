@@ -118,6 +118,7 @@ public:
 class SCHEDULER : public SCHED_MEM {
 
 friend void Global_Insn_Sched (REGION_TREE* rgn_tree, BOOL prepass) ;
+friend class SCHED_SPEC_HANDSHAKE;
 
 private:
 
@@ -206,8 +207,6 @@ private:
     OP*   Gen_Compensation_Code 
                 (CANDIDATE& model_cand, BB* org_home, 
                  BOOKEEPING* bk, BOOL append=TRUE);
-
-    BOOL Transform_Load_to_be_Spec (CANDIDATE* cand, INT32 cs_size) ;
 
     void Cycle_Advance   (void);
     BOOL Commit_Schedule (CANDIDATE& cand);

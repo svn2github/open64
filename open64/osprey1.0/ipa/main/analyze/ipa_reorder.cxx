@@ -433,27 +433,25 @@ void check_reorder_legality_of_type(INDEX ty_index)//
     FmtAssert(ty->kind==KIND_STRUCT,("the checked type must be STRUCT"));
     if (ty->flags &TY_IS_UNION)
         invalidate=TRUE;
-    else{
-        //check of all its top-level-field, find if it legal to reorder, if not, propagate it!
-        for(UINT cur_fld_idx=ty->u1.fld;;cur_fld_idx++){
-            FLD & cur_fld=Fld_Table[cur_fld_idx];
-            TY* cur_fld_ty=&Ty_Table[cur_fld.type];
-            mUINT16 flags=cur_fld.flags;
-            if((flags & FLD_IS_BIT_FIELD)||(flags&FLD_BEGIN_UNION)){ // consider bit_size offset
-                   //consider bit fields, in fact, perhaps just need keep oringal relative ordering
-                   invalidate=TRUE;
-                   break;
-                }
-            if(cur_fld_ty->kind==KIND_STRUCT){
-                //not to put twice!
-                INDEX sub_index=cur_fld.type>>8;
-                low_level_tys.remove(sub_index);
-                low_level_tys.push_back(sub_index);
-            } //else if STRUCT
-            if(cur_fld.flags & FLD_LAST_FIELD) //last field
-                break;
-        } //end for all fields
-    }
+    //check in all top-level-field, find if it is legal to reorder, if not, propagate it!
+    for(UINT cur_fld_idx=ty->u1.fld;;cur_fld_idx++){
+        FLD & cur_fld=Fld_Table[cur_fld_idx];
+        TY* cur_fld_ty=&Ty_Table[cur_fld.type];
+        mUINT16 flags=cur_fld.flags;
+        if((flags & FLD_IS_BIT_FIELD)||(flags&FLD_BEGIN_UNION)){ // consider bit_size offset
+               //consider bit fields, in fact, perhaps just need keep oringal relative ordering
+               invalidate=TRUE;
+               break;
+            }
+        if(cur_fld_ty->kind==KIND_STRUCT){
+            //not to put twice!
+            INDEX sub_index=cur_fld.type>>8;
+            low_level_tys.remove(sub_index);
+            low_level_tys.push_back(sub_index);
+        } //else if STRUCT
+        if(cur_fld.flags & FLD_LAST_FIELD) //last field
+            break;
+    } //end for all fields
     //now we get invalidate flag!, Then we'll handle all low-level structs!
     if(invalidate){
         invalid_reorder_types.push_back(ty_index);

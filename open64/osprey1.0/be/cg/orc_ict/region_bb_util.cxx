@@ -91,11 +91,11 @@ REGIONAL_CFG_NODE *Regional_Cfg_Node(REGIONAL_CFG_NODE *node, REGION *rgn){
 //
 //=============================================================================
 REGION *Home_Region(BB *bb){
+    if(!bb_node_map) return NULL;
     REGIONAL_CFG_NODE *node = (REGIONAL_CFG_NODE *)BB_MAP_Get(bb_node_map,bb);
     if(node)
         return node->Home_Region();
     else 
-        Is_True(false, ("BB_id:%d has no corresponding regional_cfg_node",BB_id(bb)));
         return NULL;
 }
 
@@ -390,7 +390,9 @@ void RGN_Add_Regional_Cfg_Edge(BB *pred,
         }
         REGIONAL_CFG_NODE *pred_node = Regional_Cfg_Node(pred);
         REGION *pred_rgn = pred_node->Home_Region();
-        Add_Regional_Cfg_Edge(pred_node, succ_node, pred_rgn);
+        if (!succ_node->Is_Entry()) { 
+           Add_Regional_Cfg_Edge(pred_node, succ_node, pred_rgn);
+        }
     }       
     else{
         REGION *com_par = pred_rgn->Find_Common_Parent(succ_rgn);
@@ -454,8 +456,9 @@ void RGN_Add_Regional_Cfg_Edge(BB *pred,
             succ_node = succ_rgn->Regional_Cfg_Node();
             succ_rgn = succ_node->Home_Region();
         };
-
-        Add_Regional_Cfg_Edge(pred_node, succ_node, com_par);
+        if (!succ_node->Is_Entry()) {   
+            Add_Regional_Cfg_Edge(pred_node, succ_node, com_par);
+        }
     }
 }
 
@@ -834,7 +837,6 @@ BB *RGN_Divide_BB(BB *bb, OP *point)
     }
     
     RGN_Link_Pred_Succ_With_Prob(bb, bottom_bb, 1.0);
-
     return bottom_bb;
 }
 

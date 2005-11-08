@@ -63,6 +63,7 @@
 #include "cg_dep_graph.h"
 #include "ti_res_res.h"
 #include "cg_loop_mii.h"
+#include "cache_analysis.h"
 
 #if defined(_LP64) && defined(_SGI_COMPILER_VERSION)
 /* workaround for a bug in g++ */
@@ -503,6 +504,20 @@ public:
   void Verify2(const SWP_OP_vector& v);
   MRT(const SWP_OP_vector& v, INT _ii, MEM_POOL *pool);
 };
+BOOL Violate_forbid_latency(INT candidate, const SWP_OP_vector& v, INT cycle, INT loop_cycle)
+{
+    // cache conflict! load/load MEMREAD
+    if (OP_load(v[candidate].op)) {
+      for (INT i=0; i<v.size();i++){
+       if (!v[i].op || !v[i].placed) continue;
+       if (v[i].cycle != cycle) continue;
+       if (!OP_load(v[i].op) && i!=candidate) continue;
+       if (Cache_Has_Conflict(v[candidate].op,v[i].op, CG_DEP_MEMREAD))
+          return TRUE;
+      }
+    }
+    return FALSE;
+}
 
 INT MRT::Find_Resources_In_Range(INT candidate, const SWP_OP_vector& v, 
 				INT earliest, INT latest, bool top_down) const {
@@ -512,6 +527,7 @@ INT MRT::Find_Resources_In_Range(INT candidate, const SWP_OP_vector& v,
   INT cycle;
   Is_True (earliest <= latest, ("swp sched:  earliest %d > latest %d", earliest, latest));
   for (cycle = begin; cycle != finish; cycle += incr) {
+    if (Violate_forbid_latency(candidate, v, cycle, ii)) continue; 
     if (Resources_Available(v[candidate], cycle))
       return cycle;
   }
@@ -723,6 +739,8 @@ public:
 	  }
 	}
       }
+      break;
+	
     case 1:
       {
 	// operation with smallest Lstart are scheduled first
@@ -742,6 +760,8 @@ public:
 	  }
 	}
       }
+      break;
+
     case 2:
       {
 	// operation with largest Estart are scheduled first
@@ -997,6 +1017,7 @@ void Modulo_Schedule_Verify(SWP_OP_vector &v, INT ii, MRT& mrt)
 	ARC *arc = ARC_LIST_first(al);
 	OP *pred = ARC_pred(arc);
 	INT pred_idx = SWP_index(pred);
+
 	FmtAssert(sched_cycle - v[pred_idx].cycle >= ARC_latency(arc) - ARC_omega(arc) * ii,
 		  ("OP %d at cycle %d and OP %d at cycle %d violated precedence constraints of %d cycles.",
 		   pred_idx, v[pred_idx].cycle, i, v[i].cycle, ARC_latency(arc)));

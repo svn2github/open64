@@ -524,7 +524,7 @@ I-cpp_i32	;		ALL	NONE	"-D_ABI_I32 -D_IA64_ARCH=0"
         "compile for Intel 64-bit ABI"
 -ia32   toggle(&abi,ABI_IA32);       ALL     pwrc,PFA,mpc	"-ia32" ABIIA32_DEFS "-TARG:abi=ia32 -D__ia32=1"
         "compile for Intel 32-bit ABI"
--itanium toggle(&isa,ISA_IA641);     ALL	NONE	"-i64"
+-itanium toggle(&isa,ISA_IA641);     ALL	NONE	"-i64" ABII64_DEFS "-TARG:processor=itanium"
         "compile for Intel itanium"
 
 -itanium2 toggle(&isa,ISA_IA641);     ALL	NONE	"-i64" ABII64_DEFS "-TARG:processor=itanium2"

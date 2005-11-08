@@ -435,6 +435,12 @@ extern void EKAPI_ClearResource(void);
 // Place number of list into listnum;
 extern ODD_LATENCY *EKAPI_OddLatencyList(void *pknobs, kapi_fu_t fuid, int *listnum);
 
+/*************  bypass functions  **********************/
+// Return Cache name count.
+extern int EKAPI_CacheNameCount(void *pknobs);
+// Return Cache name
+extern char *EKAPI_CacheName(void *pknobs, int index);
+
 #ifdef __cplusplus
 }
 #endif

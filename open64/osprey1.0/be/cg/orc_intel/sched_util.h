@@ -68,11 +68,6 @@
     #define max(a,b) (((a)>(b))?(a):(b))
 #endif
 
-/* ????????? put this typedef to region.h ?????????? 
- */
-typedef BB_VECTOR::const_iterator BB_VECTOR_CONST_ITER;
-typedef REGION_VECTOR::iterator   REGION_VECTOR_ITER;
-typedef REGION_VECTOR::const_iterator RGN_VECTOR_CONST_ITER;
 
     /* ==============================================================
      * ==============================================================
@@ -98,11 +93,10 @@ typedef enum {
     LOAD_FORM_LAST   = 4, 
 } LOAD_FORM ;
 
-extern const char * spec_text[] ;
-extern const char * arc_text[] ;
+extern const char* spec_text[] ;
+extern const char* arc_text[] ;
 
-extern BOOL Ld_Need_Not_Transform (OP* op) ;
-extern SPEC_TYPE Derive_Spec_Type_If_Violate (ARC* arc);
+extern SPEC_TYPE Derive_Spec_Type_If_Violate_Dep (ARC* arc);
 
 
 class RGN_CFLOW_MGR ;
@@ -549,7 +543,6 @@ Delete_BB_From_Isolated_BB_Lst (BB* bb) {
 }
 
 extern BOOL
-//OP1_Defs_Are_Used_By_OP2(OP* op1, OP* op2, UINT8 &mask);
 OP1_Defs_Are_Used_By_OP2(OP* op1, OP* op2);
 
 extern BOOL
@@ -568,6 +561,7 @@ OP1_Defs_Are_Killed_By_OP2(OP* op1, OP* op2);
      * ======================================================
      * ======================================================
      */
+BOOL Load_Has_Valid_Vaddr(OP* ld); 
 
 typedef mempool_allocator<OP*> OP_ALLOC;
 typedef vector<OP*,OP_ALLOC>   OP_Vector;

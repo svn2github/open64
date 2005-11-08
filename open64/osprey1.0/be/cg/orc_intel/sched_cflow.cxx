@@ -135,47 +135,6 @@ EXEC_PATH :: Append_Path_Segment
     Add_Hash (n, _path_node_seq.size() - 1);
 }
 
-    /* =======================================================
-     *
-     * Extract_Path_Segment 
-     *
-     * This path is constructed to be a part of <ep>.
-     *
-     * =======================================================
-     */
-BOOL
-EXEC_PATH :: Extract_Path_Segment 
-    (EXEC_PATH& ep, 
-     REGIONAL_CFG_NODE * from,
-     REGIONAL_CFG_NODE * to = NULL) {
-    
-    BOOL find_to_node   = FALSE ;
-    BOOL find_from_node = FALSE;
-    float reach_prob = 1.0f ;
-
-    PATH_NODE_INFO_VECT& n_seq = ep._path_node_seq; 
-    to = (to != NULL) ? (to) : n_seq.back ().Node();
-
-    for (PATH_NODE_INFO_VECT_ITER iter = n_seq.begin () ;
-         iter != n_seq.end () ; iter ++) {
-        
-        PATH_NODE_INFO& ni = *iter;
-        REGIONAL_CFG_NODE * n = ni.Node();
-
-        if (!find_from_node && n == from) find_from_node = TRUE ;
-        if (!find_from_node) continue;
-
-        if (n == from) {
-            Append_Path_Segment (NULL, n); 
-        } else {
-            reach_prob *= ni.Incoming_Edge_prob ();
-            Append_Path_Segment (ni.Incoming_Edge (), 
-                                 ni.Node());
-        }
-
-        if (n == to) { find_to_node = TRUE ; break ; }
-    } /* end of for */
-}
 
     /* =====================================================
      * =====================================================
@@ -211,9 +170,9 @@ EXEC_PATH_SET :: EXEC_PATH_SET (MEM_POOL *mp, mINT32 size=128) {
                       0/* 0 0-bits */);
 }
 
-    /* change set's capacity and return the old size 
+    /* change set's capacity 
      */
-INT32
+void
 EXEC_PATH_SET :: Resize (INT32 new_size) {
     
     Is_True (new_size >= 0, ("negative size(%d)", new_size));
@@ -2335,9 +2294,9 @@ Sink_Return_Val_OP (BB * split, BB * exit) {
 
     CG_DEP_Delete_Graph (split);
 
-    #undef OP_Should_Sink(o)
-    #undef Set_OP_Should_Sink(o)
-    #undef Reset_OP_Should_Sink(o)
+    #undef OP_Should_Sink
+    #undef Set_OP_Should_Sink
+    #undef Reset_OP_Should_Sink
 
 }
 

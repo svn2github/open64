@@ -66,6 +66,7 @@ extern INT32 VHO_Switch_Density;
 extern INT32 VHO_Switch_If_Else_Limit;
 extern INT32 VHO_Switch_Compgoto_Limit;
 extern BOOL  VHO_Switch_Opt;
+extern INT32 VHO_Switch_Opt_Threshold;
 extern BOOL  VHO_Cselect_Opt;
 extern BOOL  VHO_Iload_Opt;
 extern BOOL  VHO_Istore_Opt;

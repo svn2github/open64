@@ -91,6 +91,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 
 #include "tracing.h"
 
+#define FREE(ptr) MEM_POOL_FREE(Malloc_Mem_Pool,ptr)
 INT GRA_non_preference_tn_id = -1;
 static BOOL gbb_needs_rename;   // Some local renaming required for a GBB
                                 // due to a cgprep failure.  DevWarn and
@@ -99,6 +100,163 @@ BOOL fat_self_recursive = FALSE;
 //BOOL gra_self_recursive = FALSE; 
 extern BOOL gra_self_recursive;
 extern char *Cur_PU_Name;
+BOOL OP_maybe_unc_cmp(OP* op)
+{
+                  TOP op_code = OP_code(op);
+                  switch (op_code) {
+                  case  TOP_cmp_ne:
+                  case  TOP_cmp_ge:
+                  case  TOP_cmp_le:
+                  case  TOP_cmp_lt:
+                  case  TOP_cmp_ltu:
+                  case  TOP_cmp_leu:
+                  case  TOP_cmp_gt:
+                  case  TOP_cmp_gtu:
+                  case  TOP_cmp_geu:
+                  case  TOP_cmp_i_ne:
+                  case  TOP_cmp_i_ge:
+                  case  TOP_cmp_i_le:
+                  case  TOP_cmp_i_lt:
+                  case  TOP_cmp_i_ltu:
+                  case  TOP_cmp_i_leu:
+                  case  TOP_cmp_i_gt:
+                  case  TOP_cmp_i_gtu:
+                  case  TOP_cmp_i_geu:
+                  case  TOP_cmp4_ne:
+                  case  TOP_cmp4_ge:
+                  case  TOP_cmp4_le:
+                  case  TOP_cmp4_lt:
+                  case  TOP_cmp4_ltu:
+                  case  TOP_cmp4_leu:
+                  case  TOP_cmp4_gt:
+                  case  TOP_cmp4_gtu:
+                  case  TOP_cmp4_geu:
+                  case  TOP_cmp4_i_ne:
+                  case  TOP_cmp4_i_ge:
+                  case  TOP_cmp4_i_le:
+                  case  TOP_cmp4_i_gt:
+                  case  TOP_cmp4_i_lt:
+                  case  TOP_cmp4_i_ltu:
+                  case  TOP_cmp4_i_leu:
+                  case  TOP_cmp4_i_gtu:
+                  case  TOP_cmp4_i_geu:
+
+                        {  return TRUE;
+                        }
+                  default: return FALSE;
+                  }
+
+}
+OP* Search_Pair_OP(OP *op,OP* def_op1,TN* res_tn,TN* predicated_tn)
+{
+    for (OP* find_op=BB_first_op(OP_bb(op));find_op;find_op=OP_next(find_op)){
+        if (OP_cond_def(find_op)) {
+           TN *pn = OP_opnd(find_op, OP_PREDICATE_OPND);
+           DEF_KIND kind ;
+           OP *def_op2 = TN_Reaching_Value_At_Op(pn,find_op,&kind,TRUE);
+           if ((pn!=predicated_tn)&&(def_op2==def_op1)&&(OP_results(find_op)==1)&&(OP_result(find_op,0)==res_tn)) {
+               return find_op;
+           }
+         }
+    }
+    return NULL;
+}
+OP* Check_Disjoint_Predicate_Guarded_Def (OP* xop)
+{
+   if (OP_cond_def(xop)||(OP_results(xop)==1)) {
+       TOP opcode=OP_code(xop);
+       TN *pn = OP_opnd(xop, OP_PREDICATE_OPND);
+       if (pn==True_TN) return FALSE;
+       DEF_KIND kind ;
+       OP *def_op = TN_Reaching_Value_At_Op(pn,xop,&kind,TRUE);
+       BOOL Yes=FALSE;
+       if ((def_op)&&(OP_bb(def_op)==OP_bb(xop))) {
+          if((OP_cmp_unc(def_op))||(OP_maybe_unc_cmp(def_op))) {
+             OP* find_op=Search_Pair_OP(xop,def_op,OP_result(xop,0),pn);
+             if (find_op) {
+                 return find_op;
+              }
+           }
+       }
+    }
+   return NULL;
+}
+class OP_OF_ONLY_DEF
+{
+   typedef struct OP_IDX {
+       INT idx;
+       OP_IDX *next;
+   }OP_IDX_TYPE;
+   OP_IDX_TYPE *op_idx_array;
+   MEM_POOL *own_mem;
+   public:
+        INT *op_idx ;
+        OP_OF_ONLY_DEF(MEM_POOL *pool) {
+              own_mem=pool;
+              op_idx_array = NULL;
+        }
+        OP_IDX_TYPE* Create_Array_Member (void) {
+              OP_IDX_TYPE *new_op_idx_array ; 
+              new_op_idx_array = TYPE_MEM_POOL_ALLOC(OP_IDX_TYPE,own_mem);
+              new_op_idx_array->idx=0 ;
+              new_op_idx_array->next =NULL;
+              return new_op_idx_array;
+         }
+         void Add (OP* op) {
+             OP_IDX_TYPE *head= op_idx_array;
+             if (head == NULL) {
+                 OP_IDX_TYPE *s_op_idx_array=Create_Array_Member();
+                 s_op_idx_array->idx = OP_map_idx(op);
+                 head=s_op_idx_array;
+                 op_idx_array=s_op_idx_array;
+             }else {
+                while (head->next!=NULL) {
+                   if (head->idx == OP_map_idx(op))
+                      return;
+                   head = head->next;
+                }
+                if (head->idx == OP_map_idx(op))
+                   return;
+                OP_IDX_TYPE *s_op_idx_array=Create_Array_Member();
+                s_op_idx_array->idx = OP_map_idx(op);
+                head->next = s_op_idx_array;
+             }
+         }
+         BOOL FIND_OP(OP* find_op) {
+              OP* op;
+              OP_IDX_TYPE *head= op_idx_array;
+              head= op_idx_array;
+              while (head !=NULL) {
+                 if (OP_map_idx(find_op)==head->idx){
+                    return TRUE;
+                 }else 
+                    head = head->next;
+              }
+              return FALSE;
+         }
+         
+         ~OP_OF_ONLY_DEF(void){
+         }
+         void Set_OPS_OF_ONLY_DEF(GRA_BB* gbb)
+         {
+            GRA_BB_OP_FORWARD_ITER iter;
+            INT op_count;
+            for (iter.Init(gbb),op_count=1;!iter.Done();iter.Step(),op_count++) 
+            {
+
+                OP* xop = iter.Current();
+                if(OP_cond_def(xop)){
+                   OP* another_op =Check_Disjoint_Predicate_Guarded_Def(xop);
+                   if (another_op) {
+                      Add(xop);
+                      Add(another_op);
+                   }
+                } 
+            }
+            return;
+         }
+
+};
 
 static void
 Identify_Region_Boundries(void)
@@ -1088,6 +1246,9 @@ Load_From_Home(OP* op, TN* op_tn)
   return FALSE;
 }
 
+extern INIT_USE_ONLY_GTN *GTN_USE_ONLY;
+extern void Build_GTN_In_List (TN *tn,BB *bb);
+
 /////////////////////////////////////
 static void
 Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
@@ -1112,6 +1273,8 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
 
   lrange_mgr.Clear_One_Set();
   Initialize_Wired_LRANGEs();
+  OP_OF_ONLY_DEF Op_Of_Only_Def(&MEM_local_nz_pool);
+  Op_Of_Only_Def.Set_OPS_OF_ONLY_DEF(gbb);
   for (iter.Init(gbb), op_count=1; ! iter.Done(); iter.Step(), op_count++ ) {
     OP*  xop = iter.Current();
      /*if (OP_call(xop)) {
@@ -1151,6 +1314,8 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
       } else if (!gpl->Num_Defs()) {
 	gpl->Exposed_Use_Set(TRUE);
       }
+      Build_GTN_In_List(op_tn,gbb->Bb());
+
     }
 
     for ( i = OP_results(xop) - 1; i >= 0; --i ) {
@@ -1164,15 +1329,17 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
       }
 
       if (OP_cond_def(xop)) { // there is a hidden use
-        if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
-          lunit->Has_Use_Set();
-          if (!lunit->Has_Def()) {
-	    lunit->Has_Exposed_Use_Set();
-	    gpl->Exposed_Use_Set(TRUE);
-	  }
-        } else if (!gpl->Num_Defs()) {
+         if (!Op_Of_Only_Def.FIND_OP(xop)) {  
+           if (Complement_TN_Reference(xop, res_tn, gbb, &lunit, wired_locals)) {
+               lunit->Has_Use_Set();
+               if (!lunit->Has_Def()) {
+                  lunit->Has_Exposed_Use_Set();
+	          gpl->Exposed_Use_Set(TRUE);
+	       }
+           } else if (!gpl->Num_Defs()) {
 	  gpl->Exposed_Use_Set(TRUE);
-        }
+          }
+       } 
       }
 
       gpl->Num_Defs_Set(gpl->Num_Defs() + 1);

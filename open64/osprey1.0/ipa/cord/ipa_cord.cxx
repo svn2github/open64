@@ -89,7 +89,7 @@ struct less<PROC> {
       int cmp = strcmp(name1, name2);
       if (cmp < 0)
 	return true;
-      else if (cmp > 0)
+      else if (cmp >= 0)
 	return false;
     }
     return p1->offset < p2->offset;

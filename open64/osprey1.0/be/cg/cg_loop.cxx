@@ -177,6 +177,7 @@
 #include "if_conv.h"
 #include "region_bb_util.h"
 
+#include "targ_issue_port.h" // To get PROCESSOR_Version
 /* Error tolerance for feedback-based frequency info */
 #define FB_TOL 0.05
 
@@ -408,6 +409,7 @@ static void insert_fall_thru(BB *pred, BB *new_ftbb)
  */
 {
   BOOL freqs = FREQ_Frequencies_Computed();
+  Remove_Explicit_Branch(pred);
   BB *old_ftbb = BB_Fall_Thru_Successor(pred);
   float other_succ_probs = 0.0;
   OP *new_br_op = BB_branch_op(new_ftbb);
@@ -2560,9 +2562,9 @@ static BB *Unroll_Replicate_Body(LOOP_DESCR *loop, INT32 ntimes, BOOL unroll_ful
     Set_OP_opnd(op,
 		Branch_Target_Operand(op),
 		Gen_Label_TN(Gen_Label_For_BB(unrolled_body), 0));
+    INT loop_count = WN_loop_trip_est(wn) ? WN_loop_trip_est(wn) : 100;
     Link_Pred_Succ_with_Prob(unrolled_body, unrolled_body,
-			     (WN_loop_trip_est(wn) - 1.0) /
-			     WN_loop_trip_est(wn));
+			     (loop_count - 1.0) / loop_count);
   }
 
   float new_body_freq = BB_freq(body) / ntimes;
@@ -2572,8 +2574,9 @@ static BB *Unroll_Replicate_Body(LOOP_DESCR *loop, INT32 ntimes, BOOL unroll_ful
   Chain_BBs(unrolled_body, BB_next(body));
   LOOP_DESCR_Retarget_Loop_Entrances(loop, unrolled_body);
   Unlink_Pred_Succ(body, BB_next(body));
+  INT loop_count = WN_loop_trip_est(wn) ? WN_loop_trip_est(wn) : 100;
   Link_Pred_Succ_with_Prob(unrolled_body, BB_next(body),
-			   1.0 / WN_loop_trip_est(wn));
+			   1.0 / loop_count);
   BB_next(body) = BB_prev(body) = NULL;
 
   if (FREQ_Frequencies_Computed() || BB_freq_fb_based(body)) {
@@ -3363,6 +3366,7 @@ static BOOL unroll_multi_make_remainder_loop(LOOP_DESCR *loop, UINT8 ntimes,
    * BB_freqs by multiplying their pre-unrolling values by <freq_factor>,
    * which compensates for the zero-trip guard and new trip count.
    */
+  Remove_Explicit_Branch(CG_LOOP_prolog);
   fts = BB_Fall_Thru_Successor(CG_LOOP_prolog);
   Is_True(fts, ("CG_LOOP_prolog has no fall-thru successor"));
   fts_freq = BB_freq(fts);
@@ -3370,6 +3374,7 @@ static BOOL unroll_multi_make_remainder_loop(LOOP_DESCR *loop, UINT8 ntimes,
   Change_Succ(CG_LOOP_prolog, fts, head);
   BB_freq(fts) = fts_freq;
   BB_freq(head) = head_freq;
+  Remove_Explicit_Branch(tail);
   fts = BB_Fall_Thru_Successor(tail);
   FmtAssert(fts,
 	    /* This indicates that the loop isn't really trip-countable. */
@@ -3382,6 +3387,7 @@ static BOOL unroll_multi_make_remainder_loop(LOOP_DESCR *loop, UINT8 ntimes,
     BB *prev = BB_prev(loop_bb);
     BB *next = BB_next(loop_bb);
     RID *rid = BB_rid(loop_bb);
+    Remove_Explicit_Branch(loop_bb);
     BB *fall_thru = BB_Fall_Thru_Successor(loop_bb);
     Is_True(BB_SET_MemberP(LOOP_DESCR_bbset(loop), loop_bb),
 	      ("topo_vec[%d] = BB:%d not in LOOP_DESCR_bbset",
@@ -4698,6 +4704,86 @@ void Induction_Variables_Removal(CG_LOOP& cl,
   }
 }
 
+//Compute CG_LOOP_{Rec,Res}_Min_II
+void Compute_Rec_Res_Min_II(CG_LOOP &cl)
+{
+  BB *body = cl.Loop_header();
+  LOOP_DESCR *loop = cl.Loop();
+  OP *op;
+
+  CXX_MEM_POOL limit_local_pool("kick pool", FALSE);
+
+  TN_SET *tn_Invariants = TN_SET_Create_Empty(Last_TN + 1, limit_local_pool());
+  TN_SET *tn_non_rotating = TN_SET_Create_Empty(Last_TN + 1, limit_local_pool());
+  TN_SET *tn_Defs = TN_SET_Create_Empty(Last_TN + 1, limit_local_pool());
+  TN_SET *tn_Uses = TN_SET_Create_Empty(Last_TN + 1, limit_local_pool());
+  FOR_ALL_BB_OPs(body, op) {
+     for (INT i = 0; i < OP_results(op); i++) {
+         TN *tn = OP_result(op, i);
+         if (TN_is_register(tn) && !TN_is_dedicated(tn))
+            tn_Defs = TN_SET_Union1D(tn_Defs, tn, limit_local_pool());
+         if (TN_is_dedicated(tn))
+            tn_non_rotating = TN_SET_Union1D(tn_non_rotating, tn, limit_local_pool());
+     }
+     for (INT j = 0; j < OP_opnds(op); j++) {
+         TN *tn = OP_opnd(op, j);
+         if (TN_is_register(tn) && !TN_is_dedicated(tn))
+            tn_Uses = TN_SET_Union1D(tn_Uses, tn, limit_local_pool());
+         if (TN_is_dedicated(tn))
+            tn_non_rotating = TN_SET_Union1D(tn_non_rotating, tn, limit_local_pool());
+     }
+  }
+  tn_Invariants = TN_SET_Difference(tn_Uses, tn_Defs, limit_local_pool());
+  tn_non_rotating = TN_SET_UnionD(tn_non_rotating, tn_Invariants, limit_local_pool());
+
+  //extern static void Prune_Regout_Deps(BB *body, TN_SET *non_rotating);
+  CYCLIC_DEP_GRAPH cyclic_graph(body, limit_local_pool());
+  {
+    vector<ARC*> arcs_to_delete;
+    FOR_ALL_BB_OPs(body, op) {
+       if (_CG_DEP_op_info(op)) {
+          for (ARC_LIST *arcs = OP_succs(op); arcs; arcs = ARC_LIST_rest(arcs)) {
+          ARC *arc = ARC_LIST_first(arcs);
+          // look for loop-carried REGOUT dependences
+          if (ARC_kind(arc) == CG_DEP_REGOUT && ARC_omega(arc) > 0) {
+            // check that none of the OP results is in the non-rotating set
+             bool redundant = true;
+             for (INT i = 0; i < OP_results(op); i++) {
+                 TN *tn = OP_result(op,i);
+                 if (!TN_is_register(tn) ||
+                    TN_is_dedicated(tn) ||
+                    TN_SET_MemberP(tn_non_rotating, tn)) {
+                    redundant = false;
+                    break;
+                 }
+             }
+             if (redundant) {
+                 arcs_to_delete.push_back(arc);
+             }
+          }
+          }
+       }
+    }
+    for (size_t i = 0; i < arcs_to_delete.size(); i++) {
+      CG_DEP_Detach_Arc(arcs_to_delete[i]);
+    }
+  }
+  //Prune_Regout_Deps(body, tn_non_rotating);
+
+  {
+      CG_LOOP_rec_min_ii = CG_LOOP_res_min_ii = CG_LOOP_min_ii = 0;
+      // Compute CG_LOOP_min_ii.
+      MEM_POOL_Push(&MEM_local_pool);
+      BOOL ignore_non_def_mem_deps = FALSE;
+      CG_LOOP_Make_Strongly_Connected_Components(body, &MEM_local_pool, ignore_non_def_mem_deps);
+      CG_LOOP_Calculate_Min_Resource_II(body, NULL, TRUE /*include pref*/, TRUE /*ignore pref stride*/);
+      CG_LOOP_Calculate_Min_Recurrence_II(body, ignore_non_def_mem_deps);
+
+      CG_LOOP_Clear_SCCs(loop);
+      MEM_POOL_Pop(&MEM_local_pool);
+  }
+}
+
 
 void CG_LOOP::Determine_SWP_Unroll_Factor()
 {
@@ -4738,6 +4824,8 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
 				  SWP_Options.Implicit_Prefetch ? 
 				  TOP_adds : TOP_lfetch);
 #endif
+
+  CG_LOOP_res_min_ii = CG_SCHED_EST_Resource_Cycles(loop_se);
 
   CG_SCHED_EST *additional_se = CG_SCHED_EST_Create(head, &MEM_local_nz_pool, 
 						    SCHED_EST_FOR_UNROLL |
@@ -4789,6 +4877,41 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
     }
   }
 
+ INT old_computed;
+ 
+ {
+     CG_SCHED_EST *loop_se2 = CG_SCHED_EST_Create(head, &MEM_local_nz_pool,
+                                                SCHED_EST_FOR_UNROLL |
+                                                SCHED_EST_IGNORE_LOH_OPS |
+                                                SCHED_EST_IGNORE_PREFETCH);
+
+    for (INT i = 0; i < num_prefetches; i++)
+      CG_SCHED_EST_Add_Op_Resources(loop_se2, TOP_lfetch);
+
+    for (INT i = 0; i < num_prefetches; i++)
+      CG_SCHED_EST_Subtract_Op_Resources(loop_se2, TOP_adds);
+
+    vector<double> swp_cycles(SWP_Options.Max_Unroll_Times+1, 0.0);
+    INT i;
+    for (i = min_unr; i <= max_unr; i++) {
+      swp_cycles[i] = CG_SCHED_EST_Resource_Cycles(loop_se2) * (1.0 / i);
+      CG_SCHED_EST_Append_Scheds(loop_se2, additional_se);
+    }
+
+    INT unroll_times2 = SWP_Options.Min_Unroll_Times;
+    for (i = min_unr; i <= max_unr; i++) {
+      if (i * loop_size < loop_size_limit) {
+   if (swp_cycles[i] < (swp_cycles[unroll_times2] * (1.0 - (i - unroll_times2) * 0.01)))
+        unroll_times2 = i;
+      }
+    }
+
+    old_computed = unroll_times;
+    if (CG_LOOP_res_min_ii >= 3 )
+       unroll_times = min(unroll_times, unroll_times2);
+  }
+
+
   TN *trip_count_tn = CG_LOOP_Trip_Count(loop);
   if (TN_is_constant(trip_count_tn)) {
   	if (swp_trace) 
@@ -4814,9 +4937,55 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
 	  }
   }
 
+  INT old_unroll_times = unroll_times;
+  if (swp_trace ) {
+     fprintf(TFile, "<swp unroll factor> : RecMII(%d) ResMII(%d)\n", CG_LOOP_rec_min_ii, CG_LOOP_res_min_ii);
+  }
+
+  if (CG_LOOP_rec_min_ii >= CG_LOOP_res_min_ii && CG_LOOP_rec_min_ii >= 3) {
+        unroll_times = 1;
+  }
+
+  {
+  
+  INT computed = old_unroll_times;
+  
+  if (CG_LOOP_res_min_ii >= 15)
+     computed = old_unroll_times / 4;
+  else if (CG_LOOP_res_min_ii >= 10)
+     computed = old_unroll_times / 2;
+
+  if (CG_LOOP_res_min_ii >= 10)
+     unroll_times = min( unroll_times, max(computed, 1));
+  }
+
+  LOOP_DESCR *loop = Loop();
+  BB *body = LOOP_DESCR_loophead(loop);
+  BOOL contain_b = FALSE;
+
+  OP *last_op = BB_last_op(body);
+  TN *ref_tn = True_TN; //is_doloop ? True_TN : OP_opnd(last_op, OP_PREDICATE_OPND);
+
+  FOR_ALL_BB_OPs(body, op) {
+     TN *pred_tn = OP_opnd(op, OP_PREDICATE_OPND);
+     if ( pred_tn != ref_tn) {
+        if (op == last_op)
+           break;
+        contain_b = TRUE;
+     }
+  }
+
+  if (contain_b && CG_LOOP_rec_min_ii >= CG_LOOP_res_min_ii &&
+     2 * loop_size < loop_size_limit && CG_LOOP_res_min_ii < 20)
+     unroll_times = min(old_unroll_times, max(unroll_times, 2));
+
+
   if (swp_trace) 
     fprintf(TFile, "<swp unroll factor>  swp_cycles[%d] = %g\n", unroll_times, swp_cycles[unroll_times]);
   
+  //Ensure more unroll when one cycle loop on itanium2
+  if(PROCESSOR_Version == 2 && swp_cycles[unroll_times]*unroll_times < 1.2) 
+    unroll_times *= 2;
   Set_unroll_factor(unroll_times);
 
   MEM_POOL_Pop(&MEM_local_nz_pool);
@@ -5249,6 +5418,7 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
 	  CG_LOOP_Trace_Loop(loop, "*** after ebo 1 and prune predicate / before unrolling ***");
       }
 
+      Compute_Rec_Res_Min_II(cg_loop);
       cg_loop.Determine_SWP_Unroll_Factor();
 
       if (cg_loop.Unroll_factor() > 1) {
@@ -5516,11 +5686,7 @@ void CG_LOOP_Statistics(LOOP_DESCR *loop)
 // Perform loop optimizations for all inner loops
 // in the PU.
 //
-//#ifdef IPFEC
 void Perform_Loop_Optimizations(void *rgn_loop_update=NULL)
-//#else
-//void Perform_Loop_Optimizations()
-//#endif
 {
   MEM_POOL loop_descr_pool;
   MEM_POOL_Initialize(&loop_descr_pool, "loop_descriptors", TRUE);
@@ -5557,19 +5723,14 @@ void Perform_Loop_Optimizations(void *rgn_loop_update=NULL)
     if (trace_general)
       CG_LOOP_Statistics(loop);
 
-//#ifdef IPFEC
     if(IPFEC_Enable_Region_Formation){
-extern void Rebuild_Loop_Region(void *, void *, BOOL);
+        extern void Rebuild_Loop_Region(void *, void *, BOOL);
         void *par_rgn=NULL;
         int succ = CG_LOOP_Optimize(loop, fixup, &par_rgn,rgn_loop_update);
         if(par_rgn != NULL)
             Rebuild_Loop_Region(rgn_loop_update, par_rgn, succ);
     }else
         CG_LOOP_Optimize(loop, fixup);
-//#else
-    // CG_LOOP_Optimize adds fixup requirement to 'fixup'.
-//    CG_LOOP_Optimize(loop, fixup);
-//#endif
   }
 
   // Compute correct wrap around values for SWP loops

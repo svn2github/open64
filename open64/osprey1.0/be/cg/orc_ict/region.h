@@ -121,11 +121,16 @@ typedef mempool_allocator<INT>                 INT_ALLOC;
 typedef vector<INT,INT_ALLOC>                  INT_VECTOR;
 typedef mempool_allocator<REGIONAL_CFG_NODE*>  NODE_ALLOC;
 typedef vector<REGIONAL_CFG_NODE*,NODE_ALLOC>  NODE_VECTOR;
+
 typedef mempool_allocator<REGION*>             REGION_ALLOC;
 typedef vector<REGION*,REGION_ALLOC>           REGION_VECTOR;
+typedef REGION_VECTOR::iterator                REGION_VECTOR_ITER;
+typedef REGION_VECTOR::const_iterator          RGN_VECTOR_CONST_ITER;
+
 typedef mempool_allocator<BB*>                 BB_ALLOC;
 typedef vector<BB*,BB_ALLOC>                   BB_VECTOR;
 typedef BB_VECTOR::iterator                    BB_VECTOR_ITER;
+typedef BB_VECTOR::const_iterator              BB_VECTOR_CONST_ITER;
 typedef mempool_allocator<REGIONAL_CFG_EDGE*>  EDGE_ALLOC;  
 typedef vector<REGIONAL_CFG_EDGE*,EDGE_ALLOC>  EDGE_VECTOR;
 typedef EDGE_VECTOR::iterator                  EDGE_VECTOR_ITER;
@@ -1681,8 +1686,6 @@ friend class REGIONAL_CFG;
 friend void Verify_Region_Tree(REGION_TREE *tree,BB *first_bb);
 friend void RGN_Remove_BB_And_Edges(BB *bb, REGIONAL_CFG *regional_cfg);
 typedef mempool_allocator<REGION*>       REGION_ALLOC;
-typedef vector<REGION*,REGION_ALLOC>     REGION_VECTOR;
-typedef REGION_VECTOR::iterator          REGION_VECTOR_ITER;
 
 private:
     REGION                 *_root;

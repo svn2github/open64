@@ -102,6 +102,15 @@ ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
 
 
 // ====================================================================
+void
+FEEDBACK::FB_hoist_case( WN *wn_switch, vector<FB_FREQ>::size_type wcase)
+{
+   FB_Info_Switch info_switch = Query_switch( wn_switch );
+   FB_FREQ freq_taken = info_switch[wcase];
+   info_switch[wcase] = FB_FREQ_ZERO;
+   Annot_switch( wn_switch, info_switch );
+}
+
 
 FEEDBACK *Cur_PU_Feedback = NULL;
 

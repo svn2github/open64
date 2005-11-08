@@ -64,7 +64,7 @@
 #include <signal.h>
 #include <alloca.h>
 #include <cmplrs/rcodes.h>		// for RC_SYSTEM_ERROR
-
+#include <float.h>
 #include <hash_set.h>			// temp. header for hash_set
 
 #include "defs.h"
@@ -106,7 +106,6 @@
 
 #include "ipc_option.h"
 #include "ipa_reorder.h" //IPO_Modify_WN_for_field_reorder ()
-
 extern "C" void add_to_tmp_file_list (char*);
 #pragma weak add_to_tmp_file_list
 
@@ -115,9 +114,66 @@ extern WN_MAP Parent_Map;
 
 extern char * preopt_path;       // declared in ld/option.c
 extern int preopt_opened;        // declared in ld/option.c
+static BOOL have_open_input_file = FALSE;
+static FILE *fin;
+struct reg_feedback {
+    char _func_name[120];
+    INT32 _stacked_callee_used;
+    INT32 _stacked_caller_used;
+    float _cost[96];
+    reg_feedback() : _stacked_callee_used(0),
+             _stacked_caller_used(0)
+    {
+        for (INT32 i = 0; i < 96; i++) {
+            _cost[i] = 0;
+        }
+    }
+};
+
+typedef reg_feedback* REG_FB_POINTER;
+ 
+namespace {
+  struct eqs {
+    bool operator()(char* s1, char* s2) const
+      { return strcmp(s1, s2) == 0; }
+  };
+  typedef hash_map<char*, REG_FB_POINTER, hash<char*>, eqs> REG_FB_MAP;
+};
+
+static REG_FB_MAP REG_FB_INFO_TABLE;
+
+struct reg_budget {
+    INT32 _budget;
+    IPA_NODE *_node;
+    float _self_recursive_freq;
+    reg_budget() : _budget(0),_node(NULL),
+    _self_recursive_freq(0) {}
+};
+
+typedef struct reg_budget* REG_BUDGET_POINTER;
+namespace {
+  struct eq {
+    bool operator()(char* s1, char* s2) const
+      { return strcmp(s1, s2) == 0; }
+  };
+  typedef hash_map<char*, REG_BUDGET_POINTER, hash<char*>, eq> REG_BUDGET_MAP;
+};
+
+static REG_BUDGET_MAP REG_BUDGET_TABLE;
+ 
+struct reg_list {
+    IPA_NODE *_node;
+    float     _spill_cost;
+    struct reg_list *_next;
+    struct reg_list *_prev;
+    reg_list() : _node(NULL),_spill_cost(0),
+                 _next(NULL),_prev(NULL) {
+    }
+};
 
 INT IPO_Total_Inlined = 0;
-
+static float REC_OVERFLOW_COST = 20;
+static float OVERFLOW_COST = 20;
 BOOL one_got;
 
 static MEM_POOL Recycle_mem_pool;
@@ -131,7 +187,7 @@ typedef AUX_IPA_NODE<UINT32> NUM_CALLS_PROCESSED;
 static NUM_CALLS_PROCESSED* Num_In_Calls_Processed;
 static NUM_CALLS_PROCESSED* Num_Out_Calls_Processed;
 
-// FILE *inlining_result ;
+//FILE *inlining_result ;
 
 static inline BOOL
 All_Calls_Processed (const IPA_NODE* node, const IPA_CALL_GRAPH* cg)
@@ -295,15 +351,14 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     }
 #endif
 
-/* pengzhao
-    if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
+/*pengzhao
+if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
 	{
 			
 		fprintf ( inlining_result,"%s inlined into ", DEMANGLE(callee->Name()));
 		fprintf ( inlining_result, "%s (edge# %d)\n", DEMANGLE (caller->Name()), edge->Edge_Index () );
 
-	}
-*/
+	} */
 
     if ( Trace_IPA || Trace_Perf ) {
 	fprintf ( TFile, "%s inlined into ", DEMANGLE (callee->Name()) );
@@ -399,12 +454,12 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
   if (IPA_Enable_Common_Const && node->Has_Propagated_Const()) {
     IPO_propagate_globals(node);
   }
-
+  
   if(IPA_Enable_Reorder && reorder_candidate.size)
     IPO_Modify_WN_for_field_reorder(node) ;
   else //just for debug  feld reorder
     Compare_whirl_tree(node);
-
+  
   if (IPA_Enable_Cloning && node->Is_Clone_Candidate()) {
 
     IPA_NODE *cloned_node = cg->Create_Clone(node);
@@ -816,6 +871,433 @@ Perform_Alias_Class_Annotation(void)
   }
 }
 
+static void 
+Evaluate_RSE_Cost(MEM_POOL *pool) {
+    if (! have_open_input_file) {
+        fin = fopen("struc_feedback","r");
+        have_open_input_file = TRUE;
+        while (!feof(fin)) {
+            REG_FB_POINTER reg_fb = CXX_NEW(struct reg_feedback,pool);
+            fread(reg_fb,1,sizeof(struct reg_feedback),fin);
+            REG_FB_INFO_TABLE[reg_fb->_func_name] = reg_fb;
+        }
+        fclose(fin);
+    }
+}
+
+static void
+Construct_Budget_Table(IPA_CALL_GRAPH *cg,MEM_POOL *pool) {
+    IPA_NODE_ITER cg_iter(cg,PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE* node = cg_iter.Current();
+        if (node) { 
+            if (! node->Is_Deletable()) {
+                REG_BUDGET_POINTER reg_budget_ptr = CXX_NEW(struct reg_budget,pool);
+                reg_budget_ptr->_node = node; 
+                REG_BUDGET_TABLE[IPA_Node_Name(node)] = reg_budget_ptr;
+            }
+        }
+    }
+}
+
+static IPA_EDGE *
+Get_Most_Frequent_Succ(IPA_NODE *seed,IPA_CALL_GRAPH *cg) {
+    IPA_SUCC_ITER succ_iter (seed);
+    IPA_EDGE *result = NULL;
+    float max_weight = -100;
+    for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) { 
+        IPA_EDGE *edge = succ_iter.Current_Edge ();
+        if ((!edge) || (edge->Is_Deletable())) continue;
+        IPA_NODE *node = cg->Callee(edge);
+        if (node == seed) {
+            FB_FREQ edge_freq = edge->Get_frequency();
+            REG_BUDGET_POINTER reg_budget_ptr = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+            reg_budget_ptr->_self_recursive_freq += edge_freq.Value();
+            continue;
+        }
+  
+        if ((! node->Is_Deletable()) && (node->Get_Partition_Num() == 0)) {
+            FB_FREQ edge_freq = edge->Get_frequency();
+            FB_FREQ node_freq = node->Get_frequency();
+            if (edge_freq > node_freq) {
+                DevWarn("STANGE! %s HAS HIGHER EDGE FREQ!",IPA_Node_Name(node));
+            }
+            REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+            if (! reg_fb) {
+                DevWarn("Function %s has no reg_fb!",IPA_Node_Name(node));
+                continue;
+            }
+            INT32 stack_regs_used = reg_fb->_stacked_callee_used +
+                                    reg_fb->_stacked_caller_used;
+            float weight = (edge_freq.Value())*stack_regs_used;
+            if ((edge_freq.Value()/node_freq.Value()) > 0.3) {
+                if (weight > max_weight) {
+                    max_weight = weight;
+                    result = edge;
+                }
+            }
+        }
+    }
+    
+    return result;
+}
+static void 
+Print_Partition(IPA_NODE_VECTOR par) {
+    for (IPA_NODE_VECTOR::iterator first = par.begin ();
+         first != par.end ();++first) {
+        IPA_NODE *node = *first;
+        REG_BUDGET_POINTER reg_budget_ptr = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+        DevWarn("PARTITION %d HAS FUNCTION %s SELFRECURSIVE %f",node->Get_Partition_Num(),IPA_Node_Name(node),reg_budget_ptr->_self_recursive_freq);
+    }
+}
+
+static void 
+Print_List(reg_list *head) {
+    INT32 count = 0;
+    for (reg_list *begin = head;begin != NULL;begin = begin->_next) {
+        count++; 
+        if (begin->_node) {
+        DevWarn("THE %d REG'S SPILL COST IS %f FUNCTION %s",count,begin->_spill_cost,IPA_Node_Name(begin->_node)); 
+       }
+    }
+}      
+   
+
+static IPA_EDGE *
+Get_Most_Frequent_Pred(IPA_NODE *seed,IPA_CALL_GRAPH *cg) {
+    IPA_PRED_ITER pred_iter (seed);
+    IPA_EDGE *result = NULL;
+    float max_weight = -100;
+    for (pred_iter.First(); !pred_iter.Is_Empty(); pred_iter.Next()) { 
+        IPA_EDGE *edge = pred_iter.Current_Edge ();
+        if ((!edge) || (edge->Is_Deletable())) continue; 
+        IPA_NODE *node = cg->Caller(edge);
+        if (node == seed) {
+            /*FB_FREQ edge_freq = edge->Get_frequency();
+            REG_BUDGET_POINTER reg_budget_ptr = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+            reg_budget_ptr->_self_recursive_freq = edge_freq.Value();*/
+         
+            continue;
+        }
+ 
+        if ((! node->Is_Deletable()) && (node->Get_Partition_Num() == 0)) { 
+            FB_FREQ edge_freq = edge->Get_frequency();
+            FB_FREQ node_freq = node->Get_frequency();
+            REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+            if (! reg_fb) { 
+                DevWarn("Function %s has no reg_fb!",IPA_Node_Name(node));
+                continue;
+            }
+            INT32 stack_regs_used = reg_fb->_stacked_callee_used +
+                                    reg_fb->_stacked_caller_used;
+            float weight = edge_freq.Value()*stack_regs_used;   
+            if ((edge_freq/node_freq) > 0.3) {
+                if (weight > max_weight) {
+                    max_weight = weight;
+                    result = edge;
+                }
+            }
+        }
+    }
+    
+    return result;
+}
+
+static BOOL
+Pred_Thre(IPA_NODE *seed,IPA_EDGE *pred,IPA_CALL_GRAPH *cg) {
+    if (pred == NULL) return FALSE;
+    IPA_NODE *caller = cg->Caller(pred);
+    reg_feedback *reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(caller)];
+    if ((caller->Get_frequency()/seed->Get_frequency()) > 0.1) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static BOOL 
+Succ_Thre(IPA_NODE *seed,IPA_EDGE *succ,IPA_CALL_GRAPH *cg) {
+    if (succ == NULL) return FALSE;
+    IPA_NODE *callee = cg->Callee(succ);
+    reg_feedback *reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(callee)];
+    if ((callee->Get_frequency()/seed->Get_frequency()) > 0.1) {
+        return TRUE;
+    } 
+
+    return FALSE;
+}
+
+static void
+Get_Next_Partition (IPA_CALL_GRAPH *cg,IPA_NODE_VECTOR& partition,
+                    INT32 partition_num,IPA_NODE *entry) {
+    //Do this after a transformation pass.
+    float max_weight = -100;
+    IPA_NODE *seed = NULL;
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph,PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE* node = cg_iter.Current();
+        if (node) {
+            if (! node->Is_Deletable()) {
+                REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+                if (!reg_fb) {
+                    DevWarn("Function %s has no reg_fb!",IPA_Node_Name(node)); 
+                    continue;
+                }
+ 
+	        INT32 stack_regs_used = reg_fb->_stacked_caller_used +
+                                        reg_fb->_stacked_callee_used;
+                if ((stack_regs_used > 20) && 
+                    (reg_fb->_stacked_callee_used > 15)) {
+                    FB_FREQ freq = node->Get_frequency();
+                    float weight = freq.Value() * stack_regs_used; 
+	            if ((weight > max_weight)&&(node->Get_Partition_Num()==0)) {
+	                 max_weight = weight;
+	                 seed = node;
+	            }
+                }
+            }
+        } 
+    }
+    if (seed == NULL) return;
+    seed->Set_Partition_Num(partition_num);
+    partition.push_back(seed);
+    
+    IPA_EDGE *edge = Get_Most_Frequent_Succ(seed,cg);
+    while (Succ_Thre(seed,edge,cg)) {
+        IPA_NODE *callee = cg->Callee(edge);
+        callee->Set_Partition_Num(partition_num);
+        partition.push_back(callee);
+        IPA_NODE *caller = callee;
+        edge = Get_Most_Frequent_Succ(caller,cg);
+    }
+    
+    edge = Get_Most_Frequent_Pred(seed,cg);
+    while (Pred_Thre(seed,edge,cg)) {
+        IPA_NODE *caller = cg->Caller(edge);
+        entry = caller; 
+        caller->Set_Partition_Num(partition_num);
+        partition.push_back(caller);
+        IPA_NODE *callee = caller;
+        edge = Get_Most_Frequent_Pred(callee,cg);
+    }
+            
+    //Extend the partition to a region
+    /*callee = Find_Most_Frequent_Succ_In_Partition(partition,cg);
+    while (Succ_Thre(callee) && callee->Get_Partition_Num()==0) {
+        callee->Set_Partition_Num(partition_num);
+        partition.push_back(callee);
+        callee = Find_Most_Frequent_Succ_In_Partition(&partition,cg);
+        partition.push_back(callee);
+    }*/             
+}
+
+static BOOL 
+Compare_Cost(reg_list *list,IPA_CALL_GRAPH *cg,INT32 partition_num) {
+    float spill_cost = list->_spill_cost;
+    float freq = 0;
+    IPA_NODE *node = list->_node;
+    IPA_SUCC_ITER succ_iter(node);
+    for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) {
+        IPA_EDGE* edge = succ_iter.Current_Edge();
+        if ((!edge) || (edge->Is_Deletable())) continue;
+        IPA_NODE* callee = cg->Callee(edge);
+        if (callee->Get_Partition_Num() == partition_num) {
+            if (callee == node) {
+                reg_budget *budget = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+                freq = freq + (edge->Get_frequency()).Value()*REC_OVERFLOW_COST;
+            } else {
+                freq = freq + (edge->Get_frequency()).Value()*OVERFLOW_COST;
+            }
+        }
+    }
+    
+    //SHOULD US ALSO USE THE PRED CALLED FREQUENCY?
+    if (spill_cost > freq) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+}
+
+static BOOL 
+Compare_Self_Recursive_Cost(reg_list *list) {
+    float spill_cost = list->_spill_cost;
+    IPA_NODE *node = list->_node;
+    if (!node->Is_Deletable()) {
+        reg_budget *budget = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+        if (spill_cost > (budget->_self_recursive_freq*REC_OVERFLOW_COST)) {
+            return TRUE;
+        } else {
+            return FALSE;
+        }
+    }
+} 
+
+static reg_list* 
+Construct_List(IPA_NODE_VECTOR par) {
+struct reg_list* head = (reg_list *) malloc(sizeof(reg_list));
+    struct reg_list* tail = (reg_list *) malloc(sizeof(reg_list));
+    head->_node = NULL;
+    tail->_node = NULL;
+    head->_spill_cost = FLT_MAX;
+    tail->_spill_cost = -FLT_MAX;
+    tail->_next = NULL;
+    tail->_prev = head;
+    head->_prev = NULL;
+    head->_next = tail;
+    for (IPA_NODE_VECTOR::iterator first = par.begin ();
+        first != par.end ();++first) {
+        IPA_NODE *node = *first;
+        if (! node->Is_Deletable()) {
+            //Here all nodes in partition should not be deletable;
+            REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+            if (reg_fb == NULL) {
+                DevWarn("Function %s has no reg_fb!",IPA_Node_Name(node));
+                continue;
+            }
+
+            for (INT32 i = 0;i < 96;i++) {
+                if (reg_fb->_cost[i] > 0) {
+                    struct reg_list* list = (reg_list*) malloc(sizeof(reg_list))
+;
+                    list->_spill_cost = reg_fb->_cost[i];
+                    list->_node       = node;
+                    for (reg_list *begin = head;begin != NULL;
+                        begin = begin->_next) {
+                        if (list->_spill_cost > begin->_spill_cost) {
+                            list->_prev = begin->_prev;
+                            list->_next = begin;
+                            begin->_prev->_next = list;
+                            begin->_prev = list;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }//End of list construction;
+    
+    return head;
+}
+
+static void
+Delete_List(reg_list* head) {
+}
+
+static void
+Print_Budget(IPA_NODE_VECTOR par) {
+    for (IPA_NODE_VECTOR::iterator first = par.begin ();
+        first != par.end ();++first) {
+        IPA_NODE *node = *first;
+        REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+        REG_BUDGET_POINTER reg_budget_ptr = 
+                                 REG_BUDGET_TABLE[IPA_Node_Name(node)];
+        INT32 ori = reg_fb->_stacked_callee_used+reg_fb->_stacked_caller_used;
+        INT32 now = reg_budget_ptr->_budget;
+        DevWarn("ORIGINAL %d NOW %d FOR FUNCTION %s",ori,now,IPA_Node_Name(node));
+    }    
+}
+
+static void 
+Distribute_Partition(IPA_NODE_VECTOR par,IPA_CALL_GRAPH *cg,INT32 partition_num){
+    struct reg_list* head = Construct_List(par);   
+    Print_List(head); 
+    INT32 count = 0;
+    for (reg_list *begin = head; begin != NULL; begin = begin->_next) {
+        IPA_NODE *node = begin->_node;
+        if (node) {
+            REG_BUDGET_POINTER reg_budget_ptr =
+                                       REG_BUDGET_TABLE[IPA_Node_Name(node)];
+            if (count > 100) {
+                BOOL use = Compare_Cost(begin,cg,partition_num);
+                if (use) {
+                    reg_budget_ptr->_budget++;
+                    count++;
+                }
+            } else {
+                if (reg_budget_ptr->_self_recursive_freq > 0) {
+                    if (Compare_Self_Recursive_Cost(begin)) {
+                        count++; 
+                        reg_budget_ptr->_budget++;
+                    }
+                } else {
+                    reg_budget_ptr->_budget++;
+                    count++;
+                }
+            }       
+        }
+    }
+    Print_Budget(par);  
+    //TODO::Should delete the list.    
+}
+
+static void Initialize_Partition_Num(IPA_CALL_GRAPH *cg) {
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph,PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE* node = cg_iter.Current();
+        if (node) {
+            node->Set_Partition_Num(0);
+        } 
+    }     
+   
+}
+
+static INT32 
+Count_Total_Regs(IPA_NODE_VECTOR partition) {
+    INT32 count = 0;
+    for (IPA_NODE_VECTOR::iterator iter = partition.begin ();
+        iter != partition.end ();++iter) {
+        IPA_NODE *node = *iter;
+        REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+        count = count + reg_fb->_stacked_callee_used
+                + reg_fb->_stacked_caller_used;
+    }
+ 
+   return count;
+} 
+
+static void
+Stacked_Regs_Distribution(IPA_CALL_GRAPH *cg) {
+    BOOL finished = FALSE;
+    Initialize_Partition_Num(cg);
+      
+    INT32 partition_num = 1;
+    IPA_NODE *entry;
+    
+    while (!finished) {
+       IPA_NODE_VECTOR partition;
+       Get_Next_Partition(cg,partition,partition_num,entry);
+       if (!partition.empty()) {
+           Print_Partition(partition);
+           INT32 total = Count_Total_Regs(partition);
+           BOOL no_self_recursive_node = TRUE;
+           for (IPA_NODE_VECTOR::iterator iter = partition.begin();
+               iter != partition.end();++iter) {
+               IPA_NODE *n = *iter;
+               REG_BUDGET_POINTER p = REG_BUDGET_TABLE[IPA_Node_Name(n)];
+               if (p->_self_recursive_freq > 0) {
+                   no_self_recursive_node = FALSE;
+                   break;
+               }
+           }
+ 
+           if ((total < 96) && (no_self_recursive_node)) {
+               DevWarn("REGISTER USAGE OF THIS PARTITION LESS THAN 96!");
+               for (IPA_NODE_VECTOR::iterator iter = partition.begin();
+                   iter != partition.end();++iter) {
+                   (*iter)->Set_Partition_Num(-1);
+               } 
+               continue;
+           } else {
+               Distribute_Partition(partition,cg,partition_num);
+           }
+       } else {
+           finished = TRUE;
+       } 
+       partition_num++; 
+       if (partition_num == 10) finished = TRUE;
+    } 
+}
+
 static void
 IPO_main (IPA_CALL_GRAPH* cg)
 {
@@ -827,7 +1309,7 @@ IPO_main (IPA_CALL_GRAPH* cg)
     
     Set_Error_Phase ("IPA Transformation");
 
-    // inlining_result = fopen("inlining.log", "w");
+//	inlining_result = fopen("inlining.log", "w");
 
     if (IPA_Enable_Array_Sections) {
 	IPA_LNO_Summary = CXX_NEW(IPA_LNO_WRITE_SUMMARY(array_pool.Pool ()),
@@ -839,19 +1321,16 @@ IPO_main (IPA_CALL_GRAPH* cg)
 
     if (IPA_Enable_Split_Common)
 	IPO_Split_Common ();
-
-    // reorder :(the follwoing two lines)
+    //reorder :(the follwoing two lines)
     if(IPA_Enable_Reorder && reorder_candidate.size){
        IPO_get_new_ordering();
-       IPO_reorder_Fld_Tab(); 
+       IPO_reorder_Fld_Tab();
     }
-
     Init_Num_Calls_Processed (cg, ipo_pool.Pool ());
-
+    
     IPA_NODE_VECTOR walk_order;
-
+     
     Build_Transformation_Order (walk_order, cg->Graph(), cg->Root());
-
     for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
 	 first != walk_order.end ();
 	 ++first) {
@@ -860,16 +1339,43 @@ IPO_main (IPA_CALL_GRAPH* cg)
       // a call-graph descendant of Perform_Transformation. When the
       // following call returns, alias class analysis has been done
       // for the current PU.
-
+      //ST *func_st = (*first)->Func_ST();
+      //Set_PU_rse_budget(Pu_Table[ST_pu(func_st)],30);   
       Perform_Transformation (*first, cg);
 
     }
-
     if(IPA_Enable_Reorder)
        IPO_Finish_reorder(); //MEM_POOL_Pop (&reorder_local_pool);pop reorder_candidate
+	 
+    //These code used to print function name is inserted by Liu Yang
+    //to do RSE experiments.
+    //if (IPA_Enable_RSE_Distribution) {
+    if (FALSE) {
+    Evaluate_RSE_Cost(&Ipo_mem_pool);
+    Construct_Budget_Table(cg,&Ipo_mem_pool);
+    Stacked_Regs_Distribution(cg);
+    //Find_A_Path();
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph,PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
 
+        IPA_NODE* node = cg_iter.Current();
+        if (node) {
+            INT32 bud = 0;
+            if ((node->Get_Partition_Num() == 0) ||
+                (node->Get_Partition_Num() == -1)) {
+                bud = 96;
+            } else {
+                REG_BUDGET_POINTER ptr = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+                if (ptr) bud = ptr->_budget;
+            } 
+            ST *func_st = node->Func_ST();
+            Set_PU_gp_group(Pu_Table[ST_pu(func_st)],bud);
+        }
+    } 
+    } 
+       
     IP_flush_output ();			// Finish writing the PUs
-
+    
     if (IPA_Enable_Array_Sections)
 	IPA_LNO_Write_Summary (IPA_LNO_Summary);
 
@@ -882,8 +1388,7 @@ IPO_main (IPA_CALL_GRAPH* cg)
     if ( INLINE_List_Actions ) {
         fprintf ( stderr, "Total number of edges = %d\n", IPA_Call_Graph->Edge_Size() );
     }
-
-    // fclose (inlining_result);
+//	fclose (inlining_result);
 
 } // IPO_main
 
@@ -1047,8 +1552,7 @@ if(Get_Trace(TP_IPA, IPA_TRACE_TUNING))
       BOOL seen_callee = FALSE;
 
       IPA_SUCC_ITER succ_iter(node);
-      for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) 
-	  {
+      for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) {
 		IPA_EDGE* tmp_edge = succ_iter.Current_Edge();
 		if(tmp_edge)
 		{

@@ -245,13 +245,14 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 #define TP_CYCLE_COUNT  69      /* "TCC", */
 #define TP_CYCLE_PU     70      /* "TCP", */  
 #define TP_A_MLBR       71      /* "AMB",  "Ipfec post multiple branch"*/
-#define TP_OUTLINING	72		/* OUTLINING^$ tracing */
+#define TP_OUTLINING	72	/* OUTLINING^$ tracing */
+#define TP_A_CANA	73	/* ACA "Ipfec cache analysis and opt" */
 
 /* WARNING: TP_LAST must be at least as large as the largest phase
  * number above, and TP_COUNT must be at least one larger.
  */
-#define TP_LAST		72  /* Largest valid phase number */ //OUTLINING^$ modify
-#define TP_COUNT	73	/* Number of valid phase numbers */ //OUTLINING^$ modify
+#define TP_LAST		73  /* Largest valid phase number */ //cache  modify
+#define TP_COUNT	74	/* Number of valid phase numbers */ // cache modify
 
 /* Extract the phase number from a trace option: */
 extern INT32 Get_Trace_Phase_Number ( char **cp, char *arg );

@@ -63,20 +63,6 @@
 #include "map.h"
 #include "region.h"
 
-struct compare_op
-{
-    bool operator()(const OP* op1, const OP* op2) const
-    {
-        mBB_NUM id1 = BB_id(OP_bb(op1));
-        mBB_NUM id2 = BB_id(OP_bb(op2));
-    
-        mUINT16 order1 = op1->order;
-        mUINT16 order2 = op2->order;
-
-        return ( id1 == id2 ? order1 < order2 : id1 < id2 );
-    }
-};
-
   
 struct compare_bb
 {
@@ -101,14 +87,15 @@ struct compare_tn
     }
 };
 
-extern map<OP *, OP *, compare_op>  Recovery_Info;
+extern vector< pair<OP*,OP*> >  load_chk_pairs;
 extern OP* Local_Insert_CHK(OP *spec_ld, OP *point, TN *pr_tn = True_TN);
 extern OP* Insert_CHK(OP* primary_ld, vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn);
 extern BOOL OP_baneful(OP* op);
 extern OP *Change_ld_Form(OP *load_op, ISA_ENUM_CLASS_VALUE target_form);
 extern BOOL Is_Control_Speculation_Gratuitous(OP*, BB*, OP*);
-extern BOOL Delete_Recovery_Info_For_BB(BB *bb);
+extern void Delete_Recovery_Info_For_BB(BB *bb);
 extern void Set_Speculative_Chain_Begin_Point(OP*, OP*);
+extern BOOL BB_Hold_Disjoint_Speculative_Code(BB*);
 
 //  ===== (<%pr%p6>) <r7>=<ldtype>,<ldhint>,[<%bs%r7>] ===== 
 //  Instruction_Group("O_108", TOP_ld1, TOP_ld2, TOP_ld4, TOP_ld8, TOP_UNDEFINED);

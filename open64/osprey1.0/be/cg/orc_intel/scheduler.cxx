@@ -63,6 +63,7 @@
 #include "scheduler.h"
 #include "cggrp_microsched.h"
 #include "speculation.h"
+#include "sched_spec_itf.h"
 
 #include "sched_util.h"
 #include "sched_cflow.h"
@@ -70,6 +71,7 @@
 #include "sched_cand.h"
 #include "sched_rgn_info.h"
 #include "sched_seq.h"
+#include "sched_spec_itf.h"
 
 //for prdb_util
 #include "prdb_util.h"
@@ -329,7 +331,7 @@ SCHEDULER::Collect_And_Analyse_Unresolved_Dep
             cand->Set_If_Converted(TRUE);
         }
         
-        SPEC_TYPE spec_tmp = Derive_Spec_Type_If_Violate (arc);
+        SPEC_TYPE spec_tmp = Derive_Spec_Type_If_Violate_Dep (arc);
         if (spec_tmp == SPEC_NONE) {
                 /* case 1: dependency we simply ignore
                  */
@@ -459,8 +461,9 @@ SCHEDULER::Collect_And_Analyse_Unresolved_Dep
     cand->Calc_Useful_Exec_Prob (_target_bb,&_cflow_mgr);
 
         /* step 4 : Futher determine whether code motion is control 
-         *          speculation or not. (We could not figure candidate's
-         *          code motion type just from unresolved dependency.)
+         *          speculation or not. (We could not figure out 
+         *          candidate's code motion type just from unresolved
+         *          dependency.)
          */
     if (cand->Is_P_Ready ()) {
             /* Partial-ready candidate is cntl-speculated anyway
@@ -587,19 +590,17 @@ SCHEDULER::Collect_And_Analyse_Other_Than_Dep_Constraints
         return FALSE;
     }
 
-    /* ld.s --X--> ld.sa  
-     */
-    if ((spec_type & SPEC_DATA) && 
-         OP_load(op) && 
-         CGTARG_Is_OP_Speculative_Load(op) && !CGTARG_Is_OP_Advanced_Load(op)) {
-         return FALSE;	
-	}
-
     if (cand->Is_If_Converted()) {
         if (!IPFEC_Glos_Enable_Cntl_Spec_If_Converted_Code ||
             !Can_Cntl_Spec_If_Converted_Code(cand)) {
             return FALSE;
         }
+    }
+
+    if (SCHED_SPEC_HANDSHAKE::OP_Can_not_be_Candidate (op, spec_type)) {
+            /* speculation package does not feel happy 
+             */
+        return FALSE;
     }
     
     if (OP_bb(op) == _target_bb) {
@@ -948,8 +949,6 @@ SCHEDULER::Get_OP_Prohibited_Spec_Type (OP *op) {
         }
     }
 
-    /* 3. for the sake of debugging purpose 
-     */
     SPEC_TYPE spec_type = IPFEC_Enable_Speculation ? SPEC_NONE : SPEC_COMB ;
 
     if (!IPFEC_Enable_Data_Speculation) {
@@ -1447,50 +1446,6 @@ SCHEDULER::Gen_Compensation_Code
     return op ;
 }
 
-/* ====================================================================
- *
- *  Transform_Load_to_be_Spec 
- *
- *  Change load to be speculative form IF NECESSARY. return TRUE
- *  iff we should insert check where load initially resides.
- * 
- * ====================================================================
- */
-BOOL
-SCHEDULER::Transform_Load_to_be_Spec (CANDIDATE * cand, 
-                                      INT32 cutting_set_size) {
-    OP * op = cand->Op ();
-
-    if (!OP_load(op)                        || 
-        !cand->Is_Spec ()                   || 
-        CGTARG_Is_OP_Speculative_Load(op)   ||
-        CGTARG_Is_OP_Check_Load(op)         || 
-        Ld_Need_Not_Transform (op)) {
-    
-        return FALSE ; /* Means : Ld (if it is) is not transformed, 
-                        *         and hence need not inserting a check.
-                        */ 
-    }
-
-    if ((cutting_set_size > 1 && IPFEC_Enable_Data_Speculation) || 
-        cand->Spec_Type () == SPEC_COMB) {
-        Change_ld_Form(op, ECV_ldtype_sa);
-    } else if (cand->Spec_Type () == SPEC_DATA) {
-        Change_ld_Form(op, ECV_ldtype_a);
-    } else {
-
-        if (Is_Control_Speculation_Gratuitous(op, _target_bb, _frontier_op)) {
-
-            if (cutting_set_size == 1 && cand->Is_M_Ready ()) { 
-                return FALSE;
-            }
-        }
-
-        Change_ld_Form(op, ECV_ldtype_s);
-    }
-
-    return TRUE ;
-}
 
     /* ==============================================================
      *
@@ -1691,53 +1646,88 @@ SCHEDULER::Maintain_Dep_Arcs_After_Sched (CANDIDATE* cand) {
      *
      *  Commit_Schedule 
      *
-     *  Commit scheduling of <cand>
+     *  Perform "actual" schedule of the best candidate - <cand>. 
+     *  Following actions are involved:
+     *
+     *    - Move candidate right after <_frontier_op>. For a scheduler
+     *      in top-down flavor, the scheduled and unscheduled OPs 
+     *      are separated. Namely, there exist a point that carve
+     *      OPs into two parts, all OPs in the upper part(inc this point)
+     *      are scheduled, and all OPs in the lower part are unscheduled. 
+     *      We use <_fontier_op> to indicate this point.
+     *
+     *    - Transform <cand> if 
+     *          - it is a load, and 
+     *          - speculation is involved in this code motion, and
+     *          - if necessary (safe load can not trigger exception   
+     *            even if it is control-speculated.).
+     *      
+     *    - Insert chk instruction is necessary.  
+     *
+     *    - perform compensation or book-keeping at the same time.  
+     *
+     *    - Maintain the data and control dependence among this 
+     *      candidate, compensation code and other instructions.  
      * 
+     *    - update liveness if instruction is moved beyond basic 
+     *      block's boundary. 
+     * 
+     *    - inform micro-scheduler to change its internal status.
+     *      
      * ===========================================================
      */
 BOOL
 SCHEDULER::Commit_Schedule (CANDIDATE& cand) {
 
-    OP* op              = cand.Op ();
-    BB* home_bb         = OP_bb(op);
-    OP* cmp_op          = NULL;
-    TN* op_qp_bak       = NULL;
+    OP* op        = cand.Op (); 
+    BB* home_bb   = OP_bb(op);
+    OP* cmp_op = NULL; /* comp OP that define <op>'s guarding predicate */ 
+    TN* op_qp_bak = NULL;
 
     BOOL insert_chk = FALSE ;
     BOOL cntl_spec_if_converted_code = FALSE;
     SRC_BB_INFO * src_info = _src_bb_mgr.Get_Src_Info (OP_bb(cand.Op()));
     
+
+        /* ref the comment rigth before Get_Up_to_Date_Spec_Type ()
+         * to see why we need to get "-*CURRENT*- spec type. 
+         */
     if ((OP_load(op) || cand.Is_If_Converted()) && cand.Is_Spec ()) {
         cand.Get_Up_to_Date_Spec_Type ();
     }
 
     if (cand.Is_Spec() && cand.Is_If_Converted()) {
+
+            /* We try to move predicated OP, say OPx beyond the OP
+             * which define the guarding predicate of OPx. 
+             * Here, We are doing some preparation for this kind 
+             * of code motion.
+             */ 
         cmp_op = cand.Get_Cmp_OP_Of_If_Converted_Code();
         if (!OP_Scheduled(cmp_op)) cntl_spec_if_converted_code = TRUE;
-        
-        /* backup cand's qp for later PRDB inquiry
-         */
-        op_qp_bak = Dup_TN(OP_opnd(op, OP_PREDICATE_OPND)); 
+
+            /* backup cand's qp for later PRDB inquiry
+             */
+        if (OP_opnd(op, OP_PREDICATE_OPND) == True_TN) {
+            op_qp_bak = True_TN;
+        } else {
+            op_qp_bak = Dup_TN(OP_opnd(op, OP_PREDICATE_OPND)); 
+        }
     }
 
+        /* Hint: <_frontier_op> marks the boundary of scheduled code 
+         *   and unscheduled code. <_frontier_op> itself is the latest 
+         *   scheduled instruction. 
+         */
     if (op != _frontier_op) {
-
+          
         OP* pos = OP_prev(op);
         OP* chk_op = NULL;
 
         BB_VECTOR* cutting_set = src_info->Get_Cutting_Set ();
+        SCHED_SPEC_HANDSHAKE::Change_Load_Spec_Form 
+            (&cand, cutting_set->size(),&insert_chk, this); 
 
-        if (OP_load(op) && cand.Is_Spec ()) {
-            if (!CGTARG_Is_OP_Speculative(op)) {
-                insert_chk =  Transform_Load_to_be_Spec (&cand, cutting_set->size());
-            }else if (CGTARG_Is_OP_Advanced_Load(op)){
-                Transform_Load_to_be_Spec (&cand, cutting_set->size());
-                insert_chk = FALSE;        
-            }else{
-                insert_chk = FALSE;        
-            }
-        }
-        
         BB_Move_Op_Before (_target_bb, _frontier_op, OP_bb(op), op) ;
         if (insert_chk) { chk_op = Insert_Check (op, home_bb, pos); }
 
@@ -1757,7 +1747,7 @@ SCHEDULER::Commit_Schedule (CANDIDATE& cand) {
     	     if (insert_chk && bk->Is_P_Ready_Bookeeping ()) {
         		Set_Speculative_Chain_Begin_Point (chk_op,bookeeping_op);
     	     }
-        }        
+        }
     } else {
 
         _frontier_op = OP_next(_frontier_op);
@@ -2729,7 +2719,7 @@ SCHEDULER::Renaming (CANDIDATE* cand)
     OP* copy_op = NULL;
     TN *orig_tn = OP_result(op, 0);
     TN* new_tn = Dup_TN(orig_tn); 
-
+        
     FmtAssert(OP_results(op) == 1, 
         ("We don't do renaming for a multi-assignment OP: [OP:%3d][BB:%3d]\n",
             OP_map_idx(op), BB_id(OP_bb(op)))); 
@@ -2752,12 +2742,7 @@ SCHEDULER::Renaming (CANDIDATE* cand)
     if (_dflow_mgr.Are_Defs_Live_Out(op, home_bb)) {
         copy_op = Mk_OP(CGTARG_Copy_Op(TN_size(orig_tn), TN_is_float(orig_tn)),
                          orig_tn, OP_opnd(op, OP_PREDICATE_OPND), new_tn); 
-        OP* xfer_op = BB_xfer_op(home_bb);
-        if (xfer_op) {
-            BB_Insert_Op_Before(home_bb, xfer_op, copy_op);
-        } else {
-            BB_Append_Op(home_bb,   copy_op);
-        }
+        BB_Insert_Op_After(home_bb, op, copy_op); 
     }
 
     /* maintain dependence arcs
@@ -2824,6 +2809,23 @@ SCHEDULER::Maintain_Dep_Arcs_After_Renaming (OP* renamed_op, OP* copy_op)
                 if (copy_op) {
                     new_arc_with_latency(ARC_kind(arc), copy_op, succ, ARC_latency(arc), 
                         ARC_omega(arc), ARC_opnd(arc), ARC_is_definite(arc));
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    for (ARC_LIST* arcs = OP_preds(renamed_op); arcs; ) {
+        ARC *arc = ARC_LIST_first(arcs);
+        arcs = ARC_LIST_rest(arcs);
+        OP* pred = ARC_pred (arc);
+        switch (ARC_kind(arc)) {
+            case CG_DEP_REGOUT:
+                if (copy_op) {
+                    new_arc_with_latency(ARC_kind(arc), pred, copy_op, ARC_latency(arc), 
+                        ARC_omega(arc), ARC_opnd(arc), ARC_is_definite(arc));
+                    CG_DEP_Detach_Arc(arc);
                 }
                 break;
             default:

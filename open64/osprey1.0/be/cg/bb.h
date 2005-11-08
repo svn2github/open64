@@ -261,6 +261,9 @@
  *     If <bb> has a unique successor/predecessor/source, and it IS NOT <bb>,
  *     return it.  Otherwise return NULL.
  *
+ *   void Remove_Explicit_Branch (BB *bb);
+ *     Remove useless explicit branch to BB_next(bb).
+ *
  *   BB *BB_Fall_Thru_Successor( BB *bb );
  *   BB *BB_Fall_Thru_Predecessor( BB *bb );
  *     Return the fall through control flow successor/predecessor of <bb>, 
@@ -1038,6 +1041,7 @@ extern BB *BB_Unique_Successor_Not_In_Set( BB *bb, BB_MAP map );
 extern BB *BB_Unique_Successor( BB *bb );
 extern BB *BB_Unique_Predecessor( BB *bb );
 extern BB *BB_Unique_Source( BB *bb );
+extern void Remove_Explicit_Branch (BB *bb);
 extern BB *BB_Fall_Thru_Successor( BB *bb );
 extern BB *BB_Fall_Thru_Predecessor( BB *bb );
 extern BOOL BB_Retarget_Branch(BB *bb, BB *from, BB *to);

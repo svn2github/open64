@@ -115,6 +115,8 @@
 #include "config_opt.h"
 #include "be_util.h"
 #include "stride_prefetch.h"
+#include "cache_analysis.h"
+#include "multi_branch.h"
 
 #define _value_profile_before_region_formation
 #define can_invoke_profile_with_current_cg_opt_level (CG_opt_level>1)
@@ -126,6 +128,7 @@ MEM_POOL MEM_local_region_nz_pool;
 BOOL Trace_REGION_Interface = FALSE;
 
 INT32 current_PU_handle = 0;
+INT32 rse_budget;
 
 BOOL PU_Has_Calls;
 BOOL PU_References_GP;
@@ -396,6 +399,7 @@ static void Config_Ipfec_Flags() {
   IPFEC_Enable_Compressed_Template = IPFEC_Enable_Compressed_Template && CG_Enable_Ipfec_Phases;
   IPFEC_Enable_Pre_Bundling = IPFEC_Enable_Pre_Bundling && CG_Enable_Ipfec_Phases;
   IPFEC_Force_CHK_Fail = IPFEC_Force_CHK_Fail && IPFEC_Enable_Speculation;
+  IPFEC_Glos_Enable_Cntl_Spec_If_Converted_Code = IPFEC_Glos_Enable_Cntl_Spec_If_Converted_Code && IPFEC_Enable_Cntl_Speculation;
   IPFEC_Enable_Cascade = IPFEC_Enable_Cascade && IPFEC_Enable_Speculation;
   IPFEC_Hold_Uses = IPFEC_Hold_Uses && IPFEC_Enable_Speculation;
   IPFEC_Chk_Compact = IPFEC_Chk_Compact && IPFEC_Enable_Speculation;
@@ -406,6 +410,7 @@ static void Config_Ipfec_Flags() {
   IPFEC_Enable_Pre_Multi_Branch = IPFEC_Enable_Pre_Multi_Branch && CG_Enable_Ipfec_Phases;
   IPFEC_Enable_Post_Multi_Branch = IPFEC_Enable_Post_Multi_Branch && CG_Enable_Ipfec_Phases;
 
+  ORC_Enable_Cache_Analysis = ORC_Enable_Cache_Analysis && CG_Enable_Ipfec_Phases; 
 
   if (IPFEC_Chk_Compact && locs_skip_bb) {
     DevWarn("Although chk_compact is turned on, it should be turned off since some BBs are forced to be skipped in local scheduling phase!");
@@ -444,6 +449,13 @@ CG_Generate_Code(
   CG_PU_Has_Feedback = ((Cur_PU_Feedback != NULL) && CG_enable_feedback);
   BOOL frequency_verify = Get_Trace( TP_FEEDBACK, TP_CG_FEEDBACK );
 
+  if (FALSE) {
+     ST *func_st = Get_Current_PU_ST();
+     rse_budget = PU_gp_group(Pu_Table [ST_pu (func_st)]);
+     if (rse_budget == 0) DevWarn("FAINT THE RSE BUDGET IS ZERO!");
+  }
+
+        
   CG_Region_Initialize ( rwn, alias_mgr );
 
   Set_Error_Phase ( "Code_Expansion" );
@@ -532,20 +544,13 @@ CG_Generate_Code(
     inst2prof_list.push_back( CXX_NEW(INST_TO_PROFILE(TOP_ld8,0,FALSE),&MEM_pu_pool) );
     
     UINT32 Min_Instr_Pu_Id, Max_Instr_Pu_Id;
-    UINT64 tmpmask=1;
-    tmpmask = tmpmask << current_PU_handle;
     Min_Instr_Pu_Id = Value_Instr_Pu_Id >> 16;
     Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
-    if (current_PU_handle >= Min_Instr_Pu_Id
-                && current_PU_handle <= Max_Instr_Pu_Id 
-                && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask )) )
-
-    {
-      Start_Timer ( T_Ipfec_Profiling_CU );
-      CG_VALUE_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION,IPFEC_Enable_Stride_Profile, IPFEC_Enable_Value_Profile);
-      value_profile_need_gra = TRUE;
-      Stop_Timer( T_Ipfec_Profiling_CU );
-    }
+    Is_True((current_PU_handle<=Max_Instr_Pu_Id)&&(current_PU_handle>=Min_Instr_Pu_Id),("The number of PU exceed the boundery !"));
+    Start_Timer ( T_Ipfec_Profiling_CU );
+    CG_VALUE_Instrument(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION,IPFEC_Enable_Stride_Profile, IPFEC_Enable_Value_Profile);
+    value_profile_need_gra = TRUE;
+    Stop_Timer( T_Ipfec_Profiling_CU );
     Check_for_Dump(TP_A_PROF, NULL);
   } else if ((IPFEC_Enable_Value_Profile_Annot||IPFEC_Enable_Stride_Profile_Annot)&& can_invoke_profile_with_current_cg_opt_level ) {
     //We take all load instructions for example to show how to specify the 
@@ -558,16 +563,10 @@ CG_Generate_Code(
 
     Set_Error_Phase ( "value profile annotation" );
     UINT32 Min_Instr_Pu_Id, Max_Instr_Pu_Id;
-    UINT64 tmpmask=1;
-    tmpmask = tmpmask << current_PU_handle;
     Min_Instr_Pu_Id = Value_Instr_Pu_Id >> 16;
     Max_Instr_Pu_Id = Value_Instr_Pu_Id & 0xffff;
-    if (current_PU_handle >= Min_Instr_Pu_Id
-         && current_PU_handle <= Max_Instr_Pu_Id
-         && ((unsigned long long)( tmpmask &~ Value_Instr_Pu_Id_Mask ))                )
-    {
-      CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
-    }
+    Is_True((current_PU_handle<=Max_Instr_Pu_Id)&&(current_PU_handle>=Min_Instr_Pu_Id),("The number of PU exceed the boundery !"));
+    CG_VALUE_Annotate(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
   }
 #endif
 
@@ -607,6 +606,11 @@ CG_Generate_Code(
       FREQ_Verify("CFLOW (first pass)");
   }
 
+  extern void Perform_Loop_Invariant_Code_Motion (void);
+  if (IPFEC_Enable_LICM && CG_opt_level > 1) {
+    Perform_Loop_Invariant_Code_Motion ();
+  }
+
   if (CG_Enable_Ipfec_Phases && CG_opt_level > 1 &&
       (IPFEC_Enable_If_Conversion || IPFEC_Enable_PRDB ||
        IPFEC_Enable_Prepass_GLOS  || IPFEC_Enable_Postpass_GLOS))
@@ -624,10 +628,6 @@ CG_Generate_Code(
  
   // Invoke global optimizations before register allocation at -O2 and above.
   if (CG_opt_level > 1) {
-    // Build Ipfec region tree if Ipfec phases enabled.
-    // if (CG_Enable_Ipfec_Phases) {
-    //   REGION_TREE region_tree(REGION_First_BB);
-    // }
 
     // Compute frequencies using heuristics when not using feedback.
     // It is important to do this after the code has been given a
@@ -641,6 +641,7 @@ CG_Generate_Code(
       if (frequency_verify)
          FREQ_Verify("Heuristic Frequency Computation");
     }
+
 
     if (IPFEC_Enable_Region_Formation) {
       // Build Ipfec region tree.
@@ -716,6 +717,9 @@ CG_Generate_Code(
       Stop_Timer ( T_GLRA_CU );
       Check_for_Dump ( TP_FIND_GLOB, NULL );
     }
+
+    // Add analysis for Cache information
+    if (ORC_Enable_Cache_Analysis) Cache_Location_Analysis(); 
 
     if (CG_enable_loop_optimizations) {
       Set_Error_Phase("CGLOOP");
@@ -833,6 +837,7 @@ CG_Generate_Code(
     IGLS_Schedule_Region (TRUE /* before register allocation */);
   }
 
+  
   if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
   if (IPFEC_Enable_Opt_after_schedule) {
     BOOL tmp = CG_localize_tns ;
@@ -841,6 +846,11 @@ CG_Generate_Code(
     CG_localize_tns = tmp ;
   }
   
+  if (CG_opt_level > 1 && IPFEC_Enable_Post_Multi_Branch) {
+    GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+    Post_Multi_Branch_Collect();
+  }
+
   if (IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
      BOOL need_recalc_liveness = (Generate_Recovery_Code() > 0);
      if (need_recalc_liveness) 
@@ -944,6 +954,7 @@ CG_Generate_Code(
       Stop_Timer ( T_GLRA_CU );
       Check_for_Dump (TP_FIND_GLOB, NULL);
     } else if (!(IPFEC_Enable_Prepass_GLOS && (CG_opt_level > 1 || value_profile_need_gra))) {
+      GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
       GRA_LIVE_Rename_TNs ();
     }
 
@@ -987,9 +998,6 @@ CG_Generate_Code(
     Check_for_Dump ( TP_EBO, NULL );
   }
 
-  if (CG_opt_level > 1 && IPFEC_Enable_Pre_Multi_Branch) {
-    Check_Cross_Boundary();
-  }
   if (IPFEC_Enable_Postpass_LOCS) {
     if (IPFEC_sched_care_machine!=Sched_care_bundle) {
       Local_Insn_Sched(FALSE);
@@ -1116,6 +1124,8 @@ CG_Generate_Code(
     EMT_Emit_PU (Get_Current_PU_ST(), pu_dst, rwn);
     Check_for_Dump (TP_EMIT, NULL);
     Stop_Timer ( T_Emit_CU );
+
+    if (ORC_Enable_Cache_Analysis) Cache_Analysis_End();
 
     Set_Error_Phase("Region Finalize");
     Start_Timer(T_Region_Finalize_CU);

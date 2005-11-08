@@ -73,7 +73,7 @@ BOOL IPFEC_Enable_Postpass_GLOS = FALSE;
 BOOL IPFEC_Enable_Prepass_LOCS = FALSE;
 BOOL IPFEC_Enable_Postpass_LOCS = TRUE;
 BOOL IPFEC_Enable_Speculation = TRUE;
-BOOL IPFEC_Enable_Data_Speculation = FALSE;
+BOOL IPFEC_Enable_Data_Speculation = TRUE;
 BOOL IPFEC_Enable_Cntl_Speculation = TRUE;
 BOOL IPFEC_Enable_Compressed_Template = TRUE;
 BOOL IPFEC_Glos_Reg_Pressure_Aware = TRUE;
@@ -111,16 +111,17 @@ BOOL IPFEC_Enable_Cascade = TRUE;
 BOOL IPFEC_Hold_Uses = FALSE;
 BOOL IPFEC_Enable_Safety_Load = TRUE;
 BOOL IPFEC_Enable_Multi_Branch = TRUE;
-BOOL IPFEC_Enable_Pre_Multi_Branch = FALSE;
+BOOL IPFEC_Enable_Pre_Multi_Branch = TRUE;
 BOOL IPFEC_Enable_Post_Multi_Branch = TRUE;
 BOOL IPFEC_Profitability = FALSE;   // to set all flags considering profitability
+BOOL IPFEC_Enable_LICM   = TRUE; 
 INT32 IPFEC_sched_care_machine = Sched_care_bundle;
 BOOL IPFEC_Enable_Insert_UNAT = TRUE; // insert unat spill and restore code when need
 
 BOOL IPFEC_Enable_Split_bb = FALSE;
 
-char * IPFEC_safe_cntl_spec_prob ;
-char * IPFEC_unsafe_cntl_spec_prob ;
+char * IPFEC_safe_cntl_spec_prob = NULL;
+char * IPFEC_unsafe_cntl_spec_prob = NULL;
 
 
 //the following are backup IPFEC_... flags: 
@@ -146,7 +147,7 @@ BOOL ORC_Enable_Postpass_GLOS = FALSE;
 BOOL ORC_Enable_Prepass_LOCS = FALSE;
 BOOL ORC_Enable_Postpass_LOCS = TRUE;
 BOOL ORC_Enable_Speculation = TRUE;
-BOOL ORC_Enable_Data_Speculation = FALSE;
+BOOL ORC_Enable_Data_Speculation = TRUE;
 BOOL ORC_Enable_Cntl_Speculation = TRUE;
 BOOL ORC_Enable_Compressed_Template = TRUE;
 
@@ -161,8 +162,9 @@ BOOL ORC_Glos_Enable_Cntl_Spec_If_Converted_Code = TRUE;
 BOOL ORC_Glos_Enable_Renaming = TRUE;
 BOOL ORC_Adjust_Variable_Latency  = TRUE ;
 BOOL ORC_Enable_Multi_Branch = TRUE;
-BOOL ORC_Enable_Pre_Multi_Branch = FALSE;
+BOOL ORC_Enable_Pre_Multi_Branch = TRUE;
 BOOL ORC_Enable_Post_Multi_Branch = TRUE;
+BOOL ORC_Enable_Cache_Analysis = TRUE;
 
 
 BOOL ORC_Enable_Edge_Profile = FALSE;
@@ -174,7 +176,7 @@ BOOL ORC_Enable_Edge_Profile_Annot = FALSE;
 BOOL ORC_Enable_Value_Profile_Annot = FALSE;
 BOOL ORC_Enable_Stride_Profile_Annot = FALSE;
 
-INT32 ORC_Enable_Stride_Prefetch = FALSE;
+INT32 ORC_Enable_Stride_Prefetch = 3;// default turn on strong single and phase prefetch
 
 BOOL ORC_Enable_Pre_Bundling = TRUE;
 BOOL ORC_Force_CHK_Fail = FALSE;
@@ -187,9 +189,10 @@ INT32 ORC_sched_care_machine = Sched_care_bundle;
 BOOL ORC_Enable_Insert_UNAT = TRUE; // insert unat spill and restore code when need
 
 BOOL ORC_Enable_Split_bb = FALSE;
+BOOL ORC_Enable_LICM     = TRUE;
 
-char * ORC_safe_cntl_spec_prob ;
-char * ORC_unsafe_cntl_spec_prob ;
+char * ORC_safe_cntl_spec_prob = NULL;
+char * ORC_unsafe_cntl_spec_prob = NULL;
 //end of backup IPFEC_... flags
 
 // VT (Visualization Tool) flag
@@ -250,6 +253,10 @@ SKIPLIST *glos_rename_skip_bb;
 OPTION_LIST *raw_glos_rename_skip_op;
 SKIPLIST *glos_rename_skip_op;
 
+// testing for ld latency 
+OPTION_LIST *raw_latency2;
+SKIPLIST *latency2;
+
 /* ===============================================
  *
  * Copy_Ipfec_Flags
@@ -285,6 +292,8 @@ Copy_Ipfec_Flags (void) {
   IPFEC_Enable_Data_Speculation = ORC_Enable_Data_Speculation;
   IPFEC_Enable_Cntl_Speculation = ORC_Enable_Cntl_Speculation;
   IPFEC_Enable_Compressed_Template = ORC_Enable_Compressed_Template;
+  IPFEC_safe_cntl_spec_prob = ORC_safe_cntl_spec_prob;
+  IPFEC_unsafe_cntl_spec_prob = ORC_unsafe_cntl_spec_prob;
 
   IPFEC_Glos_Reg_Pressure_Aware = ORC_Glos_Reg_Pressure_Aware;
   IPFEC_Stress_Spec             = ORC_Stress_Spec;
@@ -320,6 +329,7 @@ Copy_Ipfec_Flags (void) {
   IPFEC_Enable_Stride_Prefetch =ORC_Enable_Stride_Prefetch;
 
   IPFEC_Enable_Split_bb = ORC_Enable_Split_bb;
+  IPFEC_Enable_LICM     = ORC_Enable_LICM;
 }
 
 /* ====================================================================

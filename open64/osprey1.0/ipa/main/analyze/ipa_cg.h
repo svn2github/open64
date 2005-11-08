@@ -223,8 +223,8 @@ private:
   UINT16 _total_succ;		        // total number of successors
   mUINT32 _max_region_id;		// max region id 
 
-  mUINT32            _flags;		// various Boolean attribute flags
-
+  mUINT32          _flags;		// various Boolean attribute flags
+  INT32            _partition_num;
 #ifdef _LIGHTWEIGHT_INLINER
   INLINED_BODY_LIST  _inlined_list;     // Hold pts to all inlined callees
                                         // for this node
@@ -260,7 +260,8 @@ public:
 #ifdef _LIGHTWEIGHT_INLINER
     _inlined_list (),
 #endif // _LIGHTWEIGHT_INLINER
-    _flags (0)
+    _flags (0),
+    _partition_num(0)
   {
     SUMMARY_PROCEDURE* summary_proc = this->Summary_Proc();
     _pu_size.Set_PU_Size (summary_proc->Get_bb_count (), 
@@ -280,7 +281,8 @@ public:
 
   void Set_File_Index ( INT32 i )	{ _file_index = i; }
   INT32 File_Index () const		{ return _file_index; }
-
+  void Set_Partition_Num(INT32 num)     { _partition_num = num; }
+  INT32 Get_Partition_Num(void)         { return _partition_num; } 
   void Set_Proc_Info_Index ( INT32 i )  { _proc_info_index = i; }
   INT32 Proc_Info_Index () const
   { 

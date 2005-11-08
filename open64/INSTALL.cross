@@ -33,8 +33,8 @@
 #
 #
 
-VER_MAJOR="0"
-VER_MINOR="16"
+VER_MAJOR="1"
+VER_MINOR="0"
 #PATCH_LEVEL=""
 VERSION="${VER_MAJOR}.${VER_MINOR}"
 
@@ -163,6 +163,9 @@ INSTALL_WHIRL_STUFF () {
     INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f    ${PHASEPATH}/whirl2f
     INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c.so ${PHASEPATH}/whirl2c.so
     INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f.so ${PHASEPATH}/whirl2f.so
+
+    (cd ${PHASEPATH}; ln -sf ${PHASEPATH}/be whirl2c_be) 
+    (cd ${PHASEPATH}; ln -sf ${PHASEPATH}/be whirl2f_be) 
 
     INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
 
@@ -339,13 +342,13 @@ INSTALL_WHIRL_STUFF
 
 cat << _EOF_
  ------------------------------------------------------------------------
- NOTE: Following archives may not present. (these archives are built by 
-   by 'make build -f Make.NUE.lib', but do not worry, prebuild verion of
-   them are provided.
-     
+ NOTE: Following archives may not present. these archives are built on 
+   Native or NUE platform (by 'make build -f Make.NUE.lib'), but do not
+   worry, prebuild verion of them are provided.
+  
    osprey1.0/targia64/{libcginstr.a libinstr.a ftz.o libfortran.a libffio.a
                        libmsgi.a libmv.a}
-       
+  
    Normally, you need not to build these archives.
  ------------------------------------------------------------------------
 _EOF_

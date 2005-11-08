@@ -86,7 +86,7 @@ BOOL SCHED_TF_DRAW_RGNL_DAG  = FALSE ;
 BOOL SCHED_TF_TEST_SPEC    = FALSE ;
 
 /*  threshold */
-INT32 SAFE_CNTL_SPEC_PROB   = ((REACH_PROB)(REACH_PROB_SCALE * 0.15f)) ;
+INT32 SAFE_CNTL_SPEC_PROB   = ((REACH_PROB)(REACH_PROB_SCALE * 0.20f)) ;
 INT32 UNSAFE_CNTL_SPEC_PROB = ((REACH_PROB)(REACH_PROB_SCALE * 0.40f)) ;
 INT32 SPEC_SAFE_LOAD_WITHOUT_TRANSFORM_REACH_PROB = 
                               ((REACH_PROB)(REACH_PROB_SCALE * 0.65f)) ;
@@ -130,18 +130,19 @@ get_spec_prob (void) {
 
     float f_safe_cntl_spec_prob , f_unsafe_cntl_spec_prob ;
 
-    if (!IPFEC_safe_cntl_spec_prob) IPFEC_safe_cntl_spec_prob = "0.2" ;
-    if (!IPFEC_unsafe_cntl_spec_prob) IPFEC_unsafe_cntl_spec_prob = "0.4" ;
+    if (IPFEC_safe_cntl_spec_prob) {
+        sscanf (IPFEC_safe_cntl_spec_prob,"%f", &f_safe_cntl_spec_prob) ;      
+        if (f_safe_cntl_spec_prob >= 0.0 && f_safe_cntl_spec_prob <= 1.0) {
+	        SAFE_CNTL_SPEC_PROB = INT32(f_safe_cntl_spec_prob * REACH_PROB_SCALE);
+        }
+    }
 
-    sscanf (IPFEC_safe_cntl_spec_prob,"%f", &f_safe_cntl_spec_prob) ;
-    sscanf (IPFEC_unsafe_cntl_spec_prob,"%f", &f_unsafe_cntl_spec_prob) ;
-
-    if (f_safe_cntl_spec_prob > 1.0) f_safe_cntl_spec_prob = 0.2 ;
-    if (f_unsafe_cntl_spec_prob > 1.0) f_unsafe_cntl_spec_prob = 0.4 ;
-  
-    SAFE_CNTL_SPEC_PROB = INT32(f_safe_cntl_spec_prob * REACH_PROB_SCALE);
-    UNSAFE_CNTL_SPEC_PROB = INT32(f_unsafe_cntl_spec_prob * REACH_PROB_SCALE);
-                            
+    if (IPFEC_unsafe_cntl_spec_prob) {
+        sscanf (IPFEC_unsafe_cntl_spec_prob,"%f", &f_unsafe_cntl_spec_prob) ;      
+        if (f_unsafe_cntl_spec_prob >= 0.0 && f_unsafe_cntl_spec_prob <= 1.0) {
+	        UNSAFE_CNTL_SPEC_PROB = INT32(f_unsafe_cntl_spec_prob * REACH_PROB_SCALE);
+        }
+    }
 }
 
 void
@@ -514,8 +515,50 @@ const char *arc_text[] = {
     "PRECHK", "POSTCHK", "MISC",
 };
 
+    /* ==============================================================
+     * 
+     * Load_Has_Valid_Vaddr 
+     * 
+     * return TRUE if <op> is guaranteed to have valid virutal address. 
+     * This is a ugly patch to many phase which does not mark safe load
+     * as OP_safe_load ().
+     * 
+     * ==============================================================
+     */ 
+BOOL
+Load_Has_Valid_Vaddr (OP* ld) {
 
-    /* note : this func is just for the time-being
+        /* 1. If the content (of <ld>) is rematerializable, <ld> 
+         *    obviously has valid virutal address.
+         */
+    BOOL safe_ld = TRUE;
+
+    for (INT16 i = 0 ; i < OP_results (ld) ; i ++) {
+        TN * result = OP_result (ld,i);
+
+        WN* home; 
+        if (!TN_is_rematerializable(result) ||
+            !(home = TN_home(result)) || WN_operator(home) != OPR_LDA) {
+            safe_ld = FALSE;  break; 
+        }
+    }
+
+        /* 2. if it is OP_safe_load ()
+         */
+    return safe_ld || OP_safe_load(ld);
+}
+
+    /* =============================================================
+     *
+     * CGTARG_adjust_latency:
+     *
+     *    On Itanium processor, some latency may vary depending on 
+     *    which issue ports are used by pred and/or succ. 
+     *    The latency is first assigned to be its possible 
+     *    max value. Scheduler should adjust these latencies in 
+     *    the course of scheduling. 
+     *
+     * =============================================================
      */
 INT32 
 CGTARG_adjust_latency (ARC* arc, ISSUE_PORT pred_port, ISSUE_PORT succ_port) {
@@ -523,6 +566,15 @@ CGTARG_adjust_latency (ARC* arc, ISSUE_PORT pred_port, ISSUE_PORT succ_port) {
     OP* pred = ARC_pred(arc);
     OP* succ = ARC_succ(arc);
 
+        /* rule 1: 
+         *   when pred can be 
+         *      - issued both on I and M-unit and 
+         *      - it is *ACTUALLY* issued on M-unit. 
+         *     the successor is 
+         *      - either load 
+         *      - or store, 
+         *   we minus latency by 1.
+         */
     if (ARC_kind(arc) != CG_DEP_REGIN) {
         return 0;
     }
@@ -544,8 +596,23 @@ CGTARG_adjust_latency (ARC* arc, ISSUE_PORT pred_port, ISSUE_PORT succ_port) {
     return 0;
 }
 
+    /* =============================================================
+     *
+     * Derive_Spec_Type_If_Violate_Dep 
+     * 
+     *  Derive speculation type(data and/or control spec) if we 
+     *  violate the given dependence.
+     *
+     *  return values include:
+     *      - SPEC_DISABLED: we could violate this dependence. 
+     *      - SPEC_DATA:     data speculation
+     *      - SPEC_CNTL:     control speculation.
+     *      - SPEC_NONE:     it is fake dependence 
+     *
+     * =============================================================
+     */
 SPEC_TYPE
-Derive_Spec_Type_If_Violate (ARC* Arc) {
+Derive_Spec_Type_If_Violate_Dep (ARC* Arc) {
 
     if (!ARC_is_dotted(Arc)) { return SPEC_DISABLED; }
 
@@ -576,33 +643,7 @@ Derive_Spec_Type_If_Violate (ARC* Arc) {
 }
 
 BOOL
-Ld_Need_Not_Transform (OP* op) {
-
-  Is_True (OP_load (op), 
-           ("OP:%d (of BB:%d) is not load", 
-            OP_map_idx(op), BB_id(OP_bb(op))));
-
-  /* 1. if TN is rematerializable, need not trasforming
-   */
-  for (INT16 i = 0 ; i < OP_results (op) ; i ++) {
-        TN * result = OP_result (op,i); 
-        if (!TN_is_rematerializable(result)) continue ;
-
-        WN * home = TN_home(result); if (!home) continue ;
-
-        if (WN_operator(home) == OPR_LDA) return TRUE;
-  }
-  
-  /* 2. those OPs which claims no-alias need not transforming, and
-   * 3. so does for "safe-load".
-   */
-  
-  return OP_no_alias(op) || OP_safe_load(op);
-
-}
-
-BOOL
-OP1_Defs_Are_Used_By_OP2(OP* op1, OP* op2) {
+OP1_Defs_Are_Used_By_OP2 (OP* op1, OP* op2) {
 
     for (INT16 i = 0; i < OP_results(op1); i++) {
 		for (INT16 j = 0; j < OP_opnds(op2); j++) {
@@ -613,7 +654,7 @@ OP1_Defs_Are_Used_By_OP2(OP* op1, OP* op2) {
 }
 
 BOOL
-OP1_Defs_Are_Killed_By_OP2(OP* op1, OP* op2) {
+OP1_Defs_Are_Killed_By_OP2 (OP* op1, OP* op2) {
 
     BOOL killed;
 	for (INT16 i = 0; i < OP_results(op1); i++) {

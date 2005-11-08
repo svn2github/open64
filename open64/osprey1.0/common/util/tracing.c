@@ -220,6 +220,7 @@ static PDESC Phases[] = {
   { TP_A_PRDB,           "APR",  "Ipfec predicate relatioin database" },
   { TP_A_RBG,           "ABG",  "Ipfec recovery block generation" },
   { TP_A_MLBR,          "AMB",  "Ipfec post multi branch" },
+  { TP_A_CANA,          "ACA",  "Ipfec cache analysis and opt" },
 
   /* Cycle Counting related phases  cbq*/
   { TP_CYCLE_COUNT,     "TCC",  "Cycle Counting related Phases" },

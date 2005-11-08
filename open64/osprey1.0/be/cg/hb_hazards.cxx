@@ -501,8 +501,9 @@ Is_There_OP_Dependence(OP *op, OP *prev_op)
         // (p6) cmp P7,P8 = r3, r4
         // (p7) br.cond _Lt.1.8
         // always can be put into one bundle
-        if (read_dependence && OP_has_predicate(prev_op) 
-            && !cmp_op) continue;
+        if (read_dependence && OP_cond_def(prev_op) && !cmp_op) continue;
+	
+	if (read_dependence) continue; //cmp-branch always can be same bundle
       }
 
       // (2) Ignore all dependences originating from p0 predicate.
@@ -519,6 +520,8 @@ Is_There_OP_Dependence(OP *op, OP *prev_op)
       // target of the check load may exist in the same instruction group.
       if (read_dependence && CGTARG_Is_OP_Check_Load(prev_op)) continue;
 
+      // (6) mov TOBR, br B0
+      if (read_dependence && OP_code(prev_op)==TOP_mov_t_br && OP_xfer(op)) continue;
       return TRUE;
     }
   }

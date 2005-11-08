@@ -228,6 +228,7 @@ static INT32     VHO_Switch_Ncases;        /* # of cases in switch           */
 static INT32     VHO_Switch_Nclusters;     /* # of clusters in switch        */
 static WN      * VHO_Switch_Index;         /* load of switch index           */
 static WN      * VHO_Switch_Default_Goto;  /* goto switch default label      */
+static WN      * VHO_Switch_Stmt;          /* switch statement               */
 static FB_FREQ   VHO_Switch_Default_Freq;  /* goto switch default freq       */
 
 /* Variables related to struct lowering */
@@ -416,6 +417,100 @@ VHO_Switch_Generate_If_Else ( SRCPOS srcpos )
 
   return ( block );
 } /* VHO_Switch_Generate_If_Else */
+/* ============================================================================
+ *
+ * static WN *
+ * VHO_Switch_Opt_Case_Hoist ( SRCPOS srcpos )
+ *
+ * Generate if-else sequence for the highly biased cases.
+ * ============================================================================
+ */
+static WN *
+VHO_Switch_Opt_Case_Hoist( SRCPOS srcpos )
+{
+  WN     * block;
+  WN     * value;
+  WN     * test;
+  WN     * case_goto;
+  WN     * wn;
+  INT32    i;
+  FB_FREQ  freq_total, freq_rest, freq_top;
+  FB_FREQ  freq_tops; // record only top 30 cases of frequencies
+  INT32    num_hoist=0;
+
+  if (!Cur_PU_Feedback ) return NULL;  // no switch optimization if no feedback
+
+  freq_tops = freq_total = 0;
+
+  block = WN_CreateBlock();
+  WN_Set_Linenum ( block, srcpos );
+
+  if ( Cur_PU_Feedback ) {
+    qsort ( VHO_Switch_Case_Table, VHO_Switch_Ncases,
+            sizeof(VHO_SWITCH_ITEM), VHO_Switch_Compare_Frequency );
+
+    freq_total = VHO_Switch_Default_Freq;
+    for ( i = 0; i < VHO_Switch_Ncases; i++ ) {
+      freq_total += VHO_SWITCH_freq(i);
+
+      if (i < VHO_Switch_Ncases * 0.3) // top 30 % of cases
+          freq_tops += VHO_SWITCH_freq(i);
+    }
+  }
+  /* If lower than 70%, don't do switch optimization */
+  if (freq_total.Value()<=0 || freq_tops.Value()/freq_total.Value() < 0.70)
+      return NULL;
+
+
+  freq_rest = freq_total;
+
+  for ( i = 0; i < VHO_Switch_Ncases; i++ ) {
+
+    if ( Cur_PU_Feedback &&  VHO_SWITCH_freq(i).Value()/freq_total.Value()
+                              < (float) VHO_Switch_Opt_Threshold/100)
+                break;
+#ifdef VHO_DEBUG
+    if ( VHO_Switch_Debug )
+      fprintf ( TFile, "SWITCH_OPT_CASE_HOIST: %d (case %d of freq %f)\n", (INT32) srcpos, i, VHO_SWITCH_freq(i).Value() );
+#endif /* VHO_DEBUG */
+
+//    printf("WARNING: SWITCH_OPT_CASE_HOIST: %d (case %d of freq %f total:%f)\n",(INT32) srcpos, i, VHO_SWITCH_freq(i).Value(), freq_total.Value());
+
+    num_hoist++;
+    case_goto = VHO_SWITCH_wn(i);
+    value     = WN_CreateIntconst ( VHO_Switch_Int_Opcode,
+                                    WN_const_val(case_goto) );
+    test      = WN_CreateExp2 ( VHO_Switch_EQ_Opcode,
+                                WN_COPY_Tree ( VHO_Switch_Index ), value );
+    wn = WN_CreateTruebr ( WN_label_number(case_goto), test );
+
+    WN_Set_Linenum ( wn, srcpos );
+
+
+    if ( Cur_PU_Feedback ) {
+      freq_rest -= VHO_SWITCH_freq(i);
+      Cur_PU_Feedback->Annot_branch( wn, FB_Info_Branch( VHO_SWITCH_freq(i),
+                        freq_rest, WN_operator( wn ) ) );
+      Cur_PU_Feedback->FB_hoist_case(VHO_Switch_Stmt, i);
+      VHO_SWITCH_freq(i) = 0;
+     }
+
+    WN_INSERT_BlockAfter ( block, WN_last(block), wn );
+  }
+
+  /* Remove all the cases that are hoisted */
+  for ( i = 0; i < VHO_Switch_Ncases; i++ ) {
+        VHO_SWITCH_wn(i) = VHO_SWITCH_wn(i + num_hoist);
+        VHO_SWITCH_freq(i) = VHO_SWITCH_freq(i + num_hoist);
+        VHO_SWITCH_count(i) = VHO_SWITCH_count(i+num_hoist);
+
+  }
+  VHO_Switch_Ncases = VHO_Switch_Ncases - num_hoist;
+  VHO_SWITCH_wn(VHO_Switch_Ncases) = VHO_SWITCH_wn(VHO_Switch_Ncases - 1);
+
+  return ( block );
+
+} /* VHO_Switch_Opt_Case_Hoist */
 
 
 /* ============================================================================
@@ -759,12 +854,14 @@ VHO_Lower_Switch ( WN * wn )
   INT32      j;
   SRCPOS     srcpos;
   INT32      count;
+  WN       * conv_wn = NULL;
 
   LABEL_IDX  last_label;
 
   srcpos = WN_Get_Linenum(wn);
   block  = WN_kid1(wn);
 
+  VHO_Switch_Stmt         = wn;
   VHO_Switch_Index        = WN_kid0(wn);
   VHO_Switch_Default_Goto = ( WN_kid_count(wn) == 3 ) ? WN_kid2(wn) : NULL;
   VHO_Switch_Last_Label   = WN_last_label(wn);
@@ -900,7 +997,14 @@ VHO_Lower_Switch ( WN * wn )
   }
 
   else {
+   if (VHO_Switch_Opt) 
+       conv_wn = VHO_Switch_Opt_Case_Hoist ( srcpos );
 
+#ifdef VHO_DEBUG
+   if ( VHO_Switch_Debug )
+       fprintf ( TFile, "SWITCH_OPT %d\n", (INT32) srcpos );
+#endif /* VHO_DEBUG */
+	    
     VHO_Switch_Find_Clusters ();
 
     if ( VHO_Switch_Nclusters == 1 ) {
@@ -935,6 +1039,12 @@ VHO_Lower_Switch ( WN * wn )
 
   MEM_POOL_FREE ( MEM_local_pool_ptr, VHO_Switch_Case_Table );
   MEM_POOL_FREE ( MEM_local_pool_ptr, VHO_Switch_Cluster_Table );
+  if (conv_wn == NULL)
+        return wn;
+  else {
+     WN_INSERT_BlockAfter (conv_wn, WN_last(conv_wn),  wn);
+     return conv_wn;
+  }
 
   return wn;
 } /* VHO_Lower_Switch */
@@ -3901,6 +4011,63 @@ GetPUSizeFromEnv(char * puname)
 static WN *
 vho_lower_if ( WN * wn, WN *block );
 
+
+int Get_len_and_goaheadlen(char ** str)
+{
+	int len = atoi(*str);
+	if (len>0 && len < strlen(*str) )
+	{
+		int ll = 0;
+		if (len < 10)
+			ll = 1;
+		else if (len<100)
+			ll = 2;
+		else if (len<1000)
+			ll = 3;
+		else 
+		{
+			//I never see a class name longer than 999
+			return 0;
+		}
+		*str  += ll;
+		if (len < strlen(*str))
+			*str += len;
+			
+	}
+	return len;
+}
+
+//// NOTE: here similar means a manggled PU name in C++, 
+//// the only difference between <name1> and <name2> is the class name. 
+//// For example, "C13mrYZRectangle" and "C9mrPolygon" are class names:
+////    boundingBox__C13mrYZRectangleddR6ggBox3  and boundingBox__C9mrPolygonddR6ggBox3
+int Is_similar_cppname(char * name1, char * name2)
+{
+	char * class_name_start1, * class_name_start2;
+	class_name_start1 = strstr(name1,"__C");
+	class_name_start2 = strstr(name2,"__C");
+	if (class_name_start1 == NULL || class_name_start2 == NULL)
+		return 0;
+	class_name_start1 += strlen("__C");
+	class_name_start2 += strlen("__C");
+	int pu_name_len1 = class_name_start1 - name1;
+	int pu_name_len2 = class_name_start2 - name2;
+
+	if (pu_name_len1 != pu_name_len2 || strncmp(name1,name2,pu_name_len1) != 0 )
+		return 0;
+
+	int class_name_len1, class_name_len2;
+	class_name_len1 = 0;
+	class_name_len2 = 0;
+	class_name_len1 = Get_len_and_goaheadlen(&class_name_start1);
+	class_name_len2 = Get_len_and_goaheadlen(&class_name_start2);
+	if (class_name_len1 == 0 || class_name_len2 == 0)
+		return 0;
+	if (strcmp(class_name_start1,class_name_start2) != 0)
+		return 0;
+	return 1;
+}
+
 static WN *
 vho_lower_icall ( WN * wn, WN * block )
 {
@@ -3989,7 +4156,7 @@ vho_lower_icall ( WN * wn, WN * block )
   Is_True(nameoffoo1!=NULL,("Devirtualize: did not extract right pu_name in PU_Addr_Name_Map for address <%llu>",info_icall.tnv._values[0]));
 
   
-  ST * st_foo1;
+  ST * st_foo1 = NULL;
   TY_IDX ty_foo1;
   
   ST_TAB * parray = Scope_tab[GLOBAL_SYMTAB].st_tab;
@@ -4019,6 +4186,48 @@ vho_lower_icall ( WN * wn, WN * block )
 	  first += size;
   }
 
+  if (num_pu_found == 0)
+  {
+  	  parray = Scope_tab[GLOBAL_SYMTAB].st_tab;
+	  last = (*parray).Size();
+	  first = 1;
+	  while (first < last){
+		  ST * block  = &(*parray)[first];
+		  UINT32 size = (*parray).Get_block_size(first);
+		  for (UINT32 i = 0; i < size; ++i, ++block){
+			if (ST_sym_class(block) != CLASS_FUNC)
+				continue;
+		    STR_IDX str_idx = ST_name_idx(block);
+			if (strcmp(nameoffoo1,&Str_Table[str_idx]) == 0)
+			{
+				st_foo1 = block;
+				ty_foo1 = ST_pu_type(block);
+				num_pu_found ++;
+			}
+			else if(Is_similar_cppname(nameoffoo1,&Str_Table[str_idx]))
+			{
+				if (num_pu_found == 0)
+				{
+					ST * newst = Copy_ST(block);
+					STR_IDX newidx = Save_Str(nameoffoo1);
+					Set_ST_name(newst,newidx);
+					Set_ST_sclass(newst,SCLASS_EXTERN);
+					st_foo1	= newst;
+					ty_foo1 = ST_pu_type(newst);
+				//	DevWarn("Found similar PU(%s) for foo1(%s)\n",&Str_Table[str_idx],nameoffoo1);
+				}
+				else 
+				{
+				//	DevWarn("Found(multiple so ignore) similar PU(%s) for foo1(%s)\n",&Str_Table[str_idx],nameoffoo1);
+				}
+				num_pu_found ++;
+			}
+		  }
+		  first += size;
+	  }
+  }
+
+  
   extern char * Src_File_Name; 
 
   char strii[20];
@@ -4031,12 +4240,12 @@ vho_lower_icall ( WN * wn, WN * block )
   else num_files = 0;
   for ( ii=1; ii<=num_files; ii++)
   {
-	  sprintf(strii,"%d",ii);
-	  strcpy(tmpfilename,"VHO_IGNORE_FILE_NAME");
+      sprintf(strii,"%d",ii);
+      strcpy(tmpfilename,"VHO_IGNORE_FILE_NAME");
       strcat(tmpfilename,strii);
       p =  getenv (tmpfilename);
-	  if ( !p )
-		  continue;
+      if ( !p )
+	  continue;
       if ( strcmp(Src_File_Name, p) == 0)
       {
 	return vho_lower_call(wn,block);
@@ -4045,42 +4254,44 @@ vho_lower_icall ( WN * wn, WN * block )
   
   if ( (float)info_icall.tnv._exec_counter != info_call.freq_entry._value )
   {
-	  return vho_lower_call(wn,block);
+      return vho_lower_call(wn,block);
   }
 
   float ratio = info_icall.tnv._counters[0] * 1.0  / info_icall.tnv._exec_counter;
   if (ratio < 0.98 )
   {
-	  return vho_lower_call(wn,block);
+      return vho_lower_call(wn,block);
   }
   else if ( info_icall.tnv._exec_counter < 50 )
   {
-	  return vho_lower_call(wn,block);
+      return vho_lower_call(wn,block);
   }
   else if (sizeoffoo < 20 &&  info_icall.tnv._exec_counter / sizeoffoo < 80 )
   {
-	  return vho_lower_call(wn,block);
+      return vho_lower_call(wn,block);
   }
   else if (sizeoffoo < 100 && info_icall.tnv._exec_counter / sizeoffoo < 160 )
   {
-	  return  vho_lower_call(wn,block);
+      return  vho_lower_call(wn,block);
   }
   else if (sizeoffoo < 200 && info_icall.tnv._exec_counter / sizeoffoo < 320 )
   {
-	  return  vho_lower_call(wn,block);
+      return  vho_lower_call(wn,block);
   }
   else if (sizeoffoo < 1000 && info_icall.tnv._exec_counter / sizeoffoo < 640 )
   {
-	  return  vho_lower_call(wn,block);
+      return  vho_lower_call(wn,block);
   }
   else if (sizeoffoo > 1000 && info_icall.tnv._exec_counter / sizeoffoo < 1280 )
   {
-	  return  vho_lower_call(wn,block);
+      return  vho_lower_call(wn,block);
   }
   else
   {
-	if ( num_pu_found > 0 )
-	  DevWarn("Devirtualize:<last decision : willuse>Found <%d> PUs in symbol tables match profiled names <%s>",num_pu_found,nameoffoo1);
+     if ( num_pu_found > 0 )
+     {
+         DevWarn("Devirtualize:<last decision : willuse>Found <%d> PUs in symbol tables match profiled names <%s>",num_pu_found,nameoffoo1);
+     }
   }
 
 
