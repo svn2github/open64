@@ -395,12 +395,7 @@ Find_INITO_For_Symbol (const ST *st)
 
 template <class OP>
 void
-#ifdef __GNU_BUG_WORKAROUND
-// Work around an obnoxious compiler bug
-For_all_initv (INITV_IDX idx, const OP op)
-#else
 For_all_initv (INITV_IDX idx, const OP& op)
-#endif
 {
     while (idx) {
 	const INITV& initv = Initv_Table[idx];
