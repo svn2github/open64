@@ -303,7 +303,7 @@ IPO_CLONE::Copy_Node (const WN *src_wn)
     INT16 next_prev_ptrs
 	= (OPERATOR_has_next_prev(WN_operator(src_wn)) ? 1 : 0);
     INT16 size = (sizeof(WN) +
-		  (sizeof(WN *) * (max(0,WN_kid_count(src_wn)-2))) +
+		  (sizeof(WN *) * (MAX(0,WN_kid_count(src_wn)-2))) +
 		  next_prev_ptrs * (sizeof(mUINT64) + (2 * sizeof(WN *))));
 
     size = (size + 7) & (~7);	    // 8 byte aligned

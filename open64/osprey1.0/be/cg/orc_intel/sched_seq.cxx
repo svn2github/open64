@@ -209,7 +209,7 @@ DEEPDOWN_SCHED_SEQ :: Next (void) {
         #define FREQ_DEVATION (0.1f)
         float u = node_freq * (1 + FREQ_DEVATION);
         float l = node_freq * (1 - FREQ_DEVATION);
-        #undef FREQ_DEVATION (0.1f)
+        #undef FREQ_DEVATION
 
         if (u < most_freq) { continue; } 
         if (l > most_freq || 

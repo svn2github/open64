@@ -217,9 +217,9 @@ struct ROTATING_KERNEL_INFO {
   struct ti_res_count *res_counts;
   REGISTER_SET live_in[ISA_REGISTER_CLASS_MAX+1];
   REGISTER_SET kill[ISA_REGISTER_CLASS_MAX+1];
-  vector<struct tn *> copyin;
-  vector<struct tn *> copyout;
-  vector<struct tn *> localdef;
+  std::vector<struct tn *> copyin;
+  std::vector<struct tn *> copyout;
+  std::vector<struct tn *> localdef;
 };
 
 #define ROTATING_KERNEL_INFO_succeeded(x)     ((x)->succeeded)

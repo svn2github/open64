@@ -56,6 +56,16 @@
 #include "ipl_summarize.h"
 #endif
 
+#ifdef ATTR_WEAK
+#undef ATTR_WEAK
+#endif
+
+#ifndef __GNUC__
+#define ATTR_WEAK
+#pragma weak Summary__10WB_BROWSERGP8__file_s
+#else
+#define ATTR_WEAK __attribute__((weak))
+#endif
 
 class ARRAY_SUMMARY; 
 const INT WB_MAX_STRING_LENGTH = 1000;
@@ -228,7 +238,7 @@ protected:
   BOOL Summary_Array_Command(char ch);
   INT Summary_Size(char ch);
   void Summary_Single(FILE* fp, char ch, INT index, BOOL is_list);
-  void Summary(FILE* fp);
+  void Summary(FILE* fp) ATTR_WEAK;
   void Summary_Locate(FILE* fp);  
   void Help(); 
   void Invoke_Command(char ch); 

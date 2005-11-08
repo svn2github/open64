@@ -46,7 +46,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <vector.h>    // STL vector.
+#include <vector>
 
 #include "defs.h"
 #include "errors.h"
@@ -127,7 +127,7 @@ draw_stmt(WN *wn, BOOL show_expr)
   NODE_TYPE nt;
   EDGE_TYPE et;
 
-  vector<WN*> kids;
+  std::vector<WN*> kids;
 
   switch (WN_opcode(wn)) {
   case OPC_BLOCK: {
@@ -198,7 +198,7 @@ draw_stmt(WN *wn, BOOL show_expr)
 
   DV->Node_Begin( NODE_ID(wn), id_str(wn), nt );
 
-  vector<WN*>::iterator wn_iter;
+  std::vector<WN*>::iterator wn_iter;
 
   for (wn_iter = kids.begin(); wn_iter != kids.end(); ++wn_iter) {
     WN *wn2 = *wn_iter;

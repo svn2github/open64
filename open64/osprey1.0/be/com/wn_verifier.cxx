@@ -88,10 +88,10 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 #define USE_STANDARD_TYPES
-#include <algo.h>  // STL
+#include <algorithm>
 #include <stdlib.h>
-#include <vector.h>
-#include <stack.h>
+#include <vector>
+#include <stack>
 
 #include "defs.h"
 #include "stab.h"
@@ -185,7 +185,7 @@ class WN_Verifier{
     WN_MAP   _map;
     BOOL     _is_tree_OK;
     WN      *_func;
-    stack< pragma_stack_type > _pragma_stack; 
+    std::stack< pragma_stack_type > _pragma_stack; 
    
     /*--------------------------------------------------------
      * Private function section

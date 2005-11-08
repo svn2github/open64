@@ -57,7 +57,7 @@
 
 #include <alloca.h>
 #include <stdio.h>
-#include <iterator.h>
+#include <iterator>
 #include "defs.h"
 #include "symtab.h"
 #include "config.h"
@@ -97,7 +97,7 @@
 #include "region_bb_util.h"
 #include "region.h"
 
-#include "vector.h"
+#include <vector>
 #include "if_conv.h"
 
 /* Allocate basic blocks for the duration of the PU. */
@@ -2885,7 +2885,7 @@ static BB_REGION_SET region_temp;
  *
  *========================================================================
  */
-void BB_REGION_to_Vector(vector<BB*>& bv, const BB_REGION& r)
+void BB_REGION_to_Vector(std::vector<BB*>& bv, const BB_REGION& r)
 {
   BB_REGION_SET region_temp;
 
@@ -2898,7 +2898,7 @@ void BB_REGION_to_Vector(vector<BB*>& bv, const BB_REGION& r)
   // Recursively put bbs reachable from the entries blocks without 
   // passing through an exit block into the bitset.  Process each BB
   // at most once.
-  vector<BB*> stack(r.entries.begin(), r.entries.end());
+  std::vector<BB*> stack(r.entries.begin(), r.entries.end());
   while (!stack.empty()) {
     BB *bb = stack.back();
     stack.pop_back();
@@ -2940,7 +2940,7 @@ BB_SET *BB_REGION_to_BB_SET(BB_SET *bbs, const BB_REGION& r, MEM_POOL *pool)
   // Recursively put bbs reachable from the entries blocks without 
   // passing through an exit block into the bitset.  Process each BB
   // at most once.
-  vector<BB*> stack(r.entries.begin(), r.entries.end());
+  std::vector<BB*> stack(r.entries.begin(), r.entries.end());
   while (!stack.empty()) {
     BB *bb = stack.back();
     stack.pop_back();
@@ -3046,7 +3046,7 @@ void BB_REGION::Verify() const
   // Verify that all OPs has CG_LOOP_INFO
   if (Has_omega()) {
     
-    vector<BB*> stack(entries.begin(), entries.end());
+    std::vector<BB*> stack(entries.begin(), entries.end());
     while (!stack.empty()) {
       BB *bb = stack.back();
       stack.pop_back();

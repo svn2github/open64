@@ -225,7 +225,9 @@ QUEUE<ITEM_TYPE>::Index(ITEM_TYPE item, BOOL Insert_If_Absent)
     node = node->Qnode_Next();
     ret_val++;
   }
+#if 0
   FmtAssert (ret_val == _length, ("Inconsistency in queue index function"));
+#endif
   if (Insert_If_Absent) {
     this->Add_Tail_Q (item);
     return ret_val;

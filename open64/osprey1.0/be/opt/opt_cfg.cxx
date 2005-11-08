@@ -4054,7 +4054,7 @@ Compute_loop_depth_rec(BB_LOOP *loop, INT depth)
     BB_LOOP *child;
     FOR_ALL_NODE(child, loop_iter, Init()) {
       INT child_depth = Compute_loop_depth_rec(child, depth+1);
-      max_depth = max(max_depth, child_depth);
+      max_depth = MAX(max_depth, child_depth);
     }
   }
   loop->Set_depth(depth);

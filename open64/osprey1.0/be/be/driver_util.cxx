@@ -53,6 +53,7 @@
  */
 
 #include <ctype.h>
+#include <errno.h>
 #include <cmplrs/rcodes.h>
 #include "defs.h"
 #include "glob.h"		    /* for Src_File_Name, etc. */

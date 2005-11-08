@@ -59,7 +59,7 @@
 #include <elf.h>
 #include <elfaccess.h>
 #include <libelf.h>
-#include <vector.h>
+#include <vector>
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
@@ -134,7 +134,7 @@ struct CGD_SYMTAB_ENTRY {
       { }
 };
 
-vector <CGD_SYMTAB_ENTRY, mempool_allocator<CGD_SYMTAB_ENTRY> > CGD_Symtab;
+std::vector <CGD_SYMTAB_ENTRY, mempool_allocator<CGD_SYMTAB_ENTRY> > CGD_Symtab;
 
 Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
 				     Dwarf_Unsigned         index,
@@ -146,7 +146,7 @@ Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
   if (type == CGD_LABIDX && pu == (PU_IDX) 0) {
     pu = ST_pu(Get_Current_PU_ST());
   }
-  vector <CGD_SYMTAB_ENTRY,
+  std::vector <CGD_SYMTAB_ENTRY,
 	  mempool_allocator<CGD_SYMTAB_ENTRY> >::iterator p;
   for (p = CGD_Symtab.begin(); p != CGD_Symtab.end(); ++p) {
     if (p->type == type &&

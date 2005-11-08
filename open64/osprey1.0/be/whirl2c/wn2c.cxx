@@ -2201,7 +2201,7 @@ WN2C_append_label_name(TOKEN_BUFFER tokens, const WN *wn)
 } /* WN2C_append_label_name */
 
 static BOOL
-Field_declared(TY_IDX ty,vector<bool>& declared_list)
+Field_declared(TY_IDX ty,std::vector<bool>& declared_list)
 {
      TY_IDX ty_idx=make_TY_IDX(ty);
      FLD_HANDLE fld=TY_fld(ty_idx);
@@ -2258,10 +2258,10 @@ WN2C_Append_Symtab_Types(TOKEN_BUFFER tokens, UINT lines_between_decls)
       }
    }
 
-   vector<TY_IDX> order_list;
-   vector<TY_IDX> candidate_list;
-   vector<bool> selected_list(TY_Table_Size(),false);
-   vector<TY_IDX>::iterator it;
+   std::vector<TY_IDX> order_list;
+   std::vector<TY_IDX> candidate_list;
+   std::vector<bool> selected_list(TY_Table_Size(),false);
+   std::vector<TY_IDX>::iterator it;
    BOOL changed;
 
    for (ty = 1; ty< TY_Table_Size(); ty++)
@@ -2389,7 +2389,7 @@ WN2C_Append_Symtab_Consts(TOKEN_BUFFER tokens,
 
 static BOOL Usage_declared(ST_IDX st_idx,
                            INITV_IDX initv,
-                           vector<bool>& used_list)
+                           std::vector<bool>& used_list)
 {
     while(initv){
         if(INITV_kind(initv)==INITVKIND_SYMOFF)
@@ -2413,7 +2413,7 @@ static BOOL Usage_declared(ST_IDX st_idx,
 }
 
 static BOOL Usage_declared(ST_IDX st_idx,
-                           vector<bool>& used_list)
+                           std::vector<bool>& used_list)
 {
     INITO_IDX inito;
     const ST *st;
@@ -2445,10 +2445,10 @@ WN2C_Append_Symtab_Vars(TOKEN_BUFFER tokens,
     *of another should go before the other.
     */
 
-   vector<ST_IDX> order_list;
-   vector<ST_IDX> candidate_list;
-   vector<bool> selected_list(ST_Table_Size(CURRENT_SYMTAB),false);
-   vector<ST_IDX>::iterator it;
+   std::vector<ST_IDX> order_list;
+   std::vector<ST_IDX> candidate_list;
+   std::vector<bool> selected_list(ST_Table_Size(CURRENT_SYMTAB),false);
+   std::vector<ST_IDX>::iterator it;
    BOOL modified;
 
    FOREACH_SYMBOL(CURRENT_SYMTAB, st, st_idx)
@@ -2506,7 +2506,7 @@ WN2C_Append_Symtab_Vars(TOKEN_BUFFER tokens,
         ST_sclass(st)!=SCLASS_FORMAL && ST_sclass(st)!=SCLASS_FORMAL_REF&&
          ST_sym_class(st)==CLASS_VAR&& 
          ST_base_idx(st)!=0&&ST_base_idx(st)!=st_idx){
-          vector<ST_IDX>::iterator cmpit;
+	  std::vector<ST_IDX>::iterator cmpit;
           for(cmpit = order_list.begin(); cmpit!=it; ++cmpit){
              ST* cmp_st = &St_Table(CURRENT_SYMTAB,*cmpit);
              if(ST_base_idx(cmp_st)==0||ST_base_idx(cmp_st)!=ST_base_idx(st)||

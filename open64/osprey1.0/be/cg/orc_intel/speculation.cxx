@@ -41,6 +41,8 @@
 //
 //=============================================================================
 
+#include <map>
+
 #include "cgtarget.h"
 #include "op_list.h"
 #include "cg_dep_graph.h"
@@ -50,7 +52,6 @@
 #include "recovery.h"
 #include "scheduler.h"
 #include "dag.h"
-#include "map.h"
 #include "vt_region.h"
 #include "tracing.h"
 #include "ipfec_defs.h"
@@ -61,8 +62,7 @@
 #include "ipfec_options.h"
 
 
-
-vector< pair<OP*, OP*> >  load_chk_pairs;
+std::vector< std::pair<OP*, OP*> >  load_chk_pairs;
 
 
 OP*
@@ -254,8 +254,8 @@ OP_baneful(OP *op)
 //=============================================================================
 static void
 Compute_Topological_Order(REGIONAL_CFG_NODE* root, 
-                          list<REGIONAL_CFG_NODE*>& node_list, 
-                          set<REGIONAL_CFG_NODE*>& visited)
+                          std::list<REGIONAL_CFG_NODE*>& node_list, 
+                          std::set<REGIONAL_CFG_NODE*>& visited)
 {
     if( root == NULL ) return;
     for (CFG_SUCC_NODE_ITER succ_iter(root); succ_iter != 0; ++succ_iter) {
@@ -296,10 +296,10 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
     }
 
     typedef mempool_allocator<TN*> TN_ALLOC;
-    typedef set<TN*, compare_tn, TN_ALLOC> TNs;
+    typedef std::set<TN*, compare_tn, TN_ALLOC> TNs;
 
-    typedef mempool_allocator< pair<BB*, TNs> > BB_TNs_ALLOC;
-    typedef map<BB*, TNs, compare_bb, BB_TNs_ALLOC>  BB_TNs_MAP;
+    typedef mempool_allocator< std::pair<BB*, TNs> > BB_TNs_ALLOC;
+    typedef std::map<BB*, TNs, compare_bb, BB_TNs_ALLOC>  BB_TNs_MAP;
     typedef BB_TNs_MAP::iterator   BB_TNs_MAP_ITER;
 
     BB_TNs_MAP spec_chain_live;  // Record all live in TNs of the speculative chain.
@@ -310,8 +310,8 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
     REGIONAL_CFG_NODE* root = Regional_Cfg_Node(home_bb);
  
     //typedef mempool_allocator<REGIONAL_CFG_NODE*> REGIONAL_CFG_NODE_ALLOC;
-    list<REGIONAL_CFG_NODE* /*REGIONAL_CFG_NODE_ALLOC*/>  node_list;
-    set<REGIONAL_CFG_NODE* /*REGIONAL_CFG_NODE_ALLOC*/>  visited;
+    std::list<REGIONAL_CFG_NODE* /*REGIONAL_CFG_NODE_ALLOC*/>  node_list;
+    std::set<REGIONAL_CFG_NODE* /*REGIONAL_CFG_NODE_ALLOC*/>  visited;
     
     Compute_Topological_Order(root, node_list, visited);   
     visited.clear();
@@ -337,13 +337,15 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
     }
 
     typedef mempool_allocator<OP*> OP_ALLOC;
-    vector<OP*, OP_ALLOC> dependent_ops;
+    std::vector<OP*, OP_ALLOC> dependent_ops;
  
     TN* chk_ptn = OP_opnd(chk,0);
     TN* spec_ld_ptn = OP_opnd(chk,0); 
     // Iterate all successors, in topological order.
     
-    for(list<REGIONAL_CFG_NODE*>::iterator iter = node_list.begin(); iter != node_list.end(); iter++){
+    for(std::list<REGIONAL_CFG_NODE*>::iterator iter = node_list.begin();
+	iter != node_list.end();
+	iter++) {
         if( (*iter)->Is_Region() || BB_exit((*iter)->BB_Node()) )  
             continue; 
         BB* bb = (*iter)->BB_Node();
@@ -373,7 +375,7 @@ Build_Outgoing_Edges(OP *spec_ld, OP *chk)
     
             // If current op is already dependent on the chk,
             // go directly to handle its' successors.
-            for(vector<OP*, OP_ALLOC>::iterator iter = dependent_ops.begin(); 
+            for(std::vector<OP*, OP_ALLOC>::iterator iter = dependent_ops.begin(); 
 			                        iter != dependent_ops.end(); 
                                                 iter++)
             {
@@ -522,10 +524,10 @@ handle_succs:
 //Description:
 //      -
 //=============================================================================
-static void Connect_Clones_with_CHK(vector<OP *>& clones, OP *chk)
+static void Connect_Clones_with_CHK(std::vector<OP *>& clones, OP *chk)
 {
 
-    vector<OP *>::iterator iter;
+    std::vector<OP *>::iterator iter;
     for(iter = clones.begin() ; iter != clones.end(); ++iter) {
 
         OP *op = *iter;         
@@ -596,7 +598,7 @@ Local_Insert_CHK(OP *spec_ld, OP *point, TN *pr_tn)
     Build_Outgoing_Edges(spec_ld, chk);     
     Build_Incoming_Edges(spec_ld, chk);
 
-    load_chk_pairs.push_back(pair<OP*,OP*>(spec_ld,chk));
+    load_chk_pairs.push_back(std::pair<OP*,OP*>(spec_ld,chk));
 
     return chk;    
 }
@@ -618,7 +620,7 @@ Local_Insert_CHK(OP *spec_ld, OP *point, TN *pr_tn)
 //    - Insert chk for the speculative load and update DAG.
 //=============================================================================
 OP*
-Insert_CHK(OP* primary_ld, vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn)
+Insert_CHK(OP* primary_ld, std::vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn)
 {
 
     Is_True(CGTARG_Is_OP_Speculative(primary_ld),("not a speculative load OP!"));
@@ -672,14 +674,14 @@ Insert_CHK(OP* primary_ld, vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn)
         Connect_Clones_with_CHK(copys,chk);  
 
 
-    load_chk_pairs.push_back(pair<OP*,OP*>(primary_ld,chk));
+    load_chk_pairs.push_back(std::pair<OP*,OP*>(primary_ld,chk));
     return chk;    
 }
 
 void
 Set_Speculative_Chain_Begin_Point(OP* chk_op, OP* load_op)
 {
-    vector< pair<OP*,OP*> >::iterator  iter;
+    std::vector< std::pair<OP*,OP*> >::iterator  iter;
     for(iter = load_chk_pairs.begin(); iter != load_chk_pairs.end(); ++iter){
         OP* second = iter->second;
         if(chk_op == second){
@@ -749,7 +751,7 @@ Delete_Recovery_Info_For_BB(BB *bb)
 {
     for (OP *op = BB_first_op(bb); op != NULL; op = OP_next(op)) {
         if (OP_chk(op)) {
-            vector< pair<OP*,OP*> >::iterator iter;
+	    std::vector< std::pair<OP*,OP*> >::iterator iter;
             for(iter = load_chk_pairs.begin(); 
                 iter != load_chk_pairs.end(); ++iter)
             {
@@ -773,7 +775,7 @@ Delete_Recovery_Info_For_BB(BB *bb)
 BOOL
 BB_Hold_Disjoint_Speculative_Code(BB* bb)
 {
-    for(vector< pair<OP*, OP*> >::iterator iter = load_chk_pairs.begin();
+    for(std::vector< std::pair<OP*, OP*> >::iterator iter = load_chk_pairs.begin();
         iter != load_chk_pairs.end(); ++iter)
     {
         OP* first = iter->first;

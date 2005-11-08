@@ -59,20 +59,6 @@
 #include "wb_browser.h"
 #include "whirl2src.h"
 
-#ifndef __GNUC__ 
-#pragma weak Id__13ALIAS_MANAGERCGPC2WN
-#pragma weak Print__12ACCESS_ARRAYCGP8__file_si
-#pragma weak Print__17DO_LOOP_INFO_BASEGP8__file_si
-#pragma weak Print__7IF_INFOGP8__file_s
-#pragma weak Summary__10WB_BROWSERGP8__file_s
-#else
-#pragma weak Print__17DO_LOOP_INFO_BASEP8_IO_FILEi
-#pragma weak Print__7IF_INFOP8_IO_FILE
-#pragma weak Print__C12ACCESS_ARRAYP8_IO_FILEi
-#pragma weak Print__C13ACCESS_VECTORP8_IO_FILEii
-#pragma weak Summary__10WB_BROWSERP8_IO_FILE
-#endif
-
 static char *operator_table[OPERATOR_LAST + 1] =
 {
   "UNKNOWN",

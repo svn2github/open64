@@ -33,7 +33,8 @@
 */
 
 
-#include <hash_set.h>
+#include <ext/functional>
+#include <ext/hash_set>
 
 #include "defs.h"
 #include "symtab.h"
@@ -105,8 +106,8 @@ namespace
     };
 }
 
-typedef hashtable<TY_IDX, TY, TY_HASH, TY_EXTRACT_KEY, equal_to<TY>,
-    mempool_allocator<TY_IDX> > TY_HASH_TABLE;
+typedef __gnu_cxx::hashtable<TY_IDX, TY, TY_HASH, TY_EXTRACT_KEY,
+	std::equal_to<TY>, mempool_allocator<TY_IDX> > TY_HASH_TABLE;
 
 
 
@@ -213,7 +214,7 @@ namespace
     }; // FLD_IS_EQUIVALENT
 } // namespace
 	
-typedef hashtable<FLD_IDX, FLD_IDX, FLD_HASH, identity<FLD_IDX>,
+typedef __gnu_cxx::hashtable<FLD_IDX, FLD_IDX, FLD_HASH, __gnu_cxx::identity<FLD_IDX>,
     FLD_IS_EQUIVALENT, mempool_allocator<FLD_IDX> > FLD_HASH_TABLE;
 
 
@@ -300,7 +301,7 @@ namespace
     }; // ARB_IS_EQUIVALENT
 } // namespace
 	
-typedef hashtable<ARB_IDX, ARB_IDX, ARB_HASH, identity<ARB_IDX>,
+typedef __gnu_cxx::hashtable<ARB_IDX, ARB_IDX, ARB_HASH, __gnu_cxx::identity<ARB_IDX>,
     ARB_IS_EQUIVALENT, mempool_allocator<ARB_IDX> > ARB_HASH_TABLE;
 
 
@@ -370,7 +371,7 @@ namespace
     }; // TYLIST_IS_EQUIVALENT
 } // namespace
 	
-typedef hashtable<TYLIST_IDX, TYLIST_IDX, TYLIST_HASH, identity<TYLIST_IDX>,
+typedef __gnu_cxx::hashtable<TYLIST_IDX, TYLIST_IDX, TYLIST_HASH, __gnu_cxx::identity<TYLIST_IDX>,
     TYLIST_IS_EQUIVALENT, mempool_allocator<TYLIST_IDX> > TYLIST_HASH_TABLE;
 
 
@@ -584,7 +585,7 @@ namespace
     }; // ty_index_compare
 } // namespace
 
-typedef hash_multiset<TY_INDEX, partial_ty_hash, ty_index_compare,
+typedef __gnu_cxx::hash_multiset<TY_INDEX, partial_ty_hash, ty_index_compare,
     mempool_allocator<TY_INDEX> > RECURSIVE_TY_HASH_TABLE;
 
 // ======================================================================
@@ -597,7 +598,7 @@ static TYLIST_HASH_TABLE* tylist_hash_table;
 
 static RECURSIVE_TY_HASH_TABLE* recursive_table;
 
-typedef vector<TY_IDX, mempool_allocator<TY_IDX> > RECURSIVE_TYPE;
+typedef std::vector<TY_IDX, mempool_allocator<TY_IDX> > RECURSIVE_TYPE;
 static RECURSIVE_TYPE *recursive_type;	// temp. record all TY_IDX of a
 					// newly inserted recursive type
 static UINT collecting_recursive_ty = 0;
@@ -625,20 +626,20 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
 	     ("Invalid size/alignment assumption"));
 #endif
 
-    ty_hash_table = CXX_NEW (TY_HASH_TABLE (1000, TY_HASH (), equal_to<TY>(), 
+    ty_hash_table = CXX_NEW (TY_HASH_TABLE (1000, TY_HASH (), std::equal_to<TY>(), 
 					    TY_EXTRACT_KEY (), pool),
 			     pool);
     fld_hash_table = CXX_NEW (FLD_HASH_TABLE (100, FLD_HASH (),
 					      FLD_IS_EQUIVALENT(),
-					      identity<FLD_IDX>(), pool),
+					      __gnu_cxx::identity<FLD_IDX>(), pool),
 			      pool);
     arb_hash_table = CXX_NEW (ARB_HASH_TABLE (100, ARB_HASH (),
 					      ARB_IS_EQUIVALENT(),
-					      identity<ARB_IDX>(), pool),
+					      __gnu_cxx::identity<ARB_IDX>(), pool),
 			      pool);
     tylist_hash_table = CXX_NEW (TYLIST_HASH_TABLE (100, TYLIST_HASH (),
 						    TYLIST_IS_EQUIVALENT(), 
-						    identity<TYLIST_IDX>(),
+						    __gnu_cxx::identity<TYLIST_IDX>(),
 						    pool),
 				 pool);
 
@@ -827,7 +828,7 @@ Find_Matching_Ty (const TY& ty, TY_IDX_VEC& matched_list)
 
     typedef RECURSIVE_TY_HASH_TABLE::iterator ITER;
 
-    pair<ITER, ITER> found = recursive_table->equal_range (File_Idx (idx));
+    std::pair<ITER, ITER> found = recursive_table->equal_range (File_Idx (idx));
     for (ITER first = found.first; first != found.second; ++first)
 	matched_list.push_back (make_TY_IDX (*first));
 }

@@ -714,7 +714,7 @@ static inline UINT
 Gp_Area_Size ()
 {
     UINT32 max_gpa_size = IP_get_max_gpa_size ();
-    return min (max_gpa_size, IPA_Gspace);
+    return MIN(max_gpa_size, IPA_Gspace);
 }
 
 static void 

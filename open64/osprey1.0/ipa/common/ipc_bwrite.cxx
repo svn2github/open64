@@ -34,6 +34,7 @@
 
 
 #include <elf.h>
+#include <errno.h>
 #include <sys/types.h> 
 
 #include "defs.h"
@@ -71,7 +72,7 @@ extern "C" char* create_tmp_file (char*);
 
 // list of dummy PU's holding global pragmas.  They need to be written out
 // to the symtab.I file instead.
-typedef vector<PU_Info*> DUMMY_GLOBAL_PRAGMA_PU;
+typedef std::vector<PU_Info*> DUMMY_GLOBAL_PRAGMA_PU;
 DUMMY_GLOBAL_PRAGMA_PU dummy_pu_list;
 
 static PU_Info *

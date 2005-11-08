@@ -71,6 +71,8 @@
 #include "ir_bwrite.h"		    // for IPA_write_summary ()
 #include "cxx_memory.h"		    // for CXX_NEW
 
+#include "ipl_main.h"
+
 #include "ipl_summary.h"	    // for summary info data structures
 #include "ipl_summarize.h"	    // for summarization info
 #include "ipl_bread_write.h"	    // for IPA_irb_write_summary()

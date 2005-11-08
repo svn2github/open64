@@ -338,7 +338,7 @@ SUMMARIZE<program>::Process_phi_jump_function (WN *orig_wn, PHI_NODE *phi)
 
 	if (ctrl_dep_idx == -1) {
 	    Restore_from_check_point (&chk_pt);
-	    Phi_To_Idx_Map->insert (make_pair (phi, -1));
+	    Phi_To_Idx_Map->insert (std::make_pair (phi, -1));
 	    return -1;
         }
 
@@ -384,11 +384,11 @@ SUMMARIZE<program>::Process_phi_jump_function (WN *orig_wn, PHI_NODE *phi)
 	    phi_node->Get_node_index (1) == -1) {
 	    Restore_from_check_point (&chk_pt);
 	    
-            Phi_To_Idx_Map->insert (make_pair (phi, -1));
+            Phi_To_Idx_Map->insert (std::make_pair (phi, -1));
 	    return -1;
 	} else {
             phi->Reset_visited ();
-            Phi_To_Idx_Map->insert (make_pair (phi, phi_idx));
+            Phi_To_Idx_Map->insert (std::make_pair (phi, phi_idx));
             Hashed_Phis->push_back (phi);
             return phi_idx;
 	}
@@ -448,7 +448,7 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
     chi_node->Set_call_index (WN_MAP32_Get (Summary_Map, call) - 1);
     if (chi_node->Get_call_index () < 0) {
 	Restore_from_check_point (&chk_pt);
-	Chi_To_Idx_Map->insert (make_pair (desc.Get_chi_cr(), -1));
+	Chi_To_Idx_Map->insert (std::make_pair (desc.Get_chi_cr(), -1));
 	return -1;
     }
 
@@ -460,7 +460,7 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
 
     if (idx == -1) {
 	Restore_from_check_point (&chk_pt);
-	Chi_To_Idx_Map->insert (make_pair (desc.Get_chi_cr(), -1));
+	Chi_To_Idx_Map->insert (std::make_pair (desc.Get_chi_cr(), -1));
 	return -1;
     }
 
@@ -500,7 +500,7 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
     case VALUE_NOT_CONST:
     default:
 	Restore_from_check_point (&chk_pt);
-	Chi_To_Idx_Map->insert (make_pair (desc.Get_chi_cr(), -1));
+	Chi_To_Idx_Map->insert (std::make_pair (desc.Get_chi_cr(), -1));
 	return -1;
     }
 
@@ -508,7 +508,7 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
     // Since 0 means NOT FOUND, always add 2 to the index
     // before Enter, and subtract 2 from the result of Find
     // That way index -1 is entered as 1 (!= NOT FOUND).
-    Chi_To_Idx_Map->insert (make_pair (desc.Get_chi_cr(), chi_idx));
+    Chi_To_Idx_Map->insert (std::make_pair (desc.Get_chi_cr(), chi_idx));
     Hashed_Chis->push_back (desc.Get_chi_cr());
 
     return chi_idx;
@@ -673,7 +673,7 @@ SUMMARIZE<program>::Mismatched_load_store (CODEREP *cr, BOOL is_ptr_var,
 	return TRUE;
 
     // cache for previosuly seen LOAD_STORE_ENTRY's
-    static vector<LOAD_STORE_ENTRY> depot;
+    static std::vector<LOAD_STORE_ENTRY> depot;
     static INT proc_idx = -1;
     if (proc_idx != Get_procedure_idx()) {
         depot.clear();
@@ -1736,6 +1736,8 @@ SUMMARIZE<program>:: Check_kid_ref (WN* w)
     }
 } // SUMMARIZE::Check_kid_ref
 
+
+static void Record_unknown_memory_op (WN*);
 
 //-----------------------------------------------------------
 // record global variables that have been referenced

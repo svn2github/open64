@@ -38,7 +38,7 @@
 #include <dwarf.h>
 #include <vector>
 #include <algorithm>
-#include <hash_map>
+#include <ext/hash_map>
 #include "mempool.h"
 #include "mempool_allocator.h"
 #define USE_STANDARD_TYPES
@@ -97,7 +97,7 @@ struct DST_TYPE_hash {
     return reinterpret_cast<size_t>(p);
   }
 };
-typedef std::hash_map<DST_TYPE, idx_pair_vector,
+typedef __gnu_cxx::hash_map<DST_TYPE, idx_pair_vector,
                       DST_TYPE_hash, std::equal_to<DST_TYPE>,
                       dst_hash_allocator>
         dst_hash_map;

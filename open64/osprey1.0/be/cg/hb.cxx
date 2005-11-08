@@ -33,8 +33,7 @@
 */
 
 
-#include <list.h>
-#include <stack.h>
+#include <list>
 #include "defs.h"
 #include "config.h"
 #include "tracing.h"
@@ -64,7 +63,7 @@
 
 MEM_POOL MEM_HB_pool;
 static MEM_POOL MEM_HB_loop_pool;
-list<HB *> HB_list;
+std::list<HB *> HB_list;
 BB_MAP HB_bb_map;
 float HB_minimum_priority;
 
@@ -170,7 +169,7 @@ HB_Map_BBs(HB *hb)
 extern void
 Setup_HB_bb_map(void)
 {
-  list<HB*>::iterator hbi;
+  std::list<HB*>::iterator hbi;
   BB *bb;
 
   for (bb = REGION_First_BB; bb; bb = BB_next(bb)) {
@@ -229,8 +228,8 @@ HB_Form_HB_List(void)
 
   // Now for each HB, initialize its block list in the list form
   //
-  list<HB *>::iterator hbi;
-  list<BB *> *bl;
+  std::list<HB *>::iterator hbi;
+  std::list<BB *> *bl;
   for (hbi = HB_list.begin(); hbi != HB_list.end(); hbi++) {
     bl = HB_Blocks_List(*hbi);
     bl->clear();
@@ -244,13 +243,13 @@ HB_Form_HB_List(void)
 /////////////////////////////////////
 //  Get the blocks list from the hyperblock adta structure. Do a sanity check as well.
 /////////////////////////////////////
-void Get_HB_Blocks_List(list<BB *> &blocks, HB* hb)
+void Get_HB_Blocks_List(std::list<BB *> &blocks, HB* hb)
 {
   blocks = hb->block_list;
 #ifdef Is_True_On
   // Sanity check for repeated blocks
   // This is a really stupid, but and easy, way to check this
-  list<BB *>::iterator i,j;
+  std::list<BB *>::iterator i,j;
   for (i = blocks.begin(); i != blocks.end(); i++) {
     j = i;
     j++;
@@ -301,7 +300,7 @@ HB_Remove_Deleted_Blocks(void)
   }
   
   // Remove any blocks which aren't live from the hyperblocks lists
-  list<HB*>::iterator hbi;
+  std::list<HB*>::iterator hbi;
   for (hbi = HB_list.begin(); hbi != HB_list.end(); ) {
     HB_Blocks_Set(*hbi, BB_SET_IntersectionD(HB_Blocks(*hbi), live_bbs ));
     // Remove the hyperblock if it's empty
@@ -376,9 +375,9 @@ Finalize_Memory()
 
 ////////////////////////////////////////////////////////////////
 static void
-Clear_Visited_Bits(list<HB_CAND_TREE*>& candidate_regions)
+Clear_Visited_Bits(std::list<HB_CAND_TREE*>& candidate_regions)
 {
-  list<HB_CAND_TREE*>::iterator cands;
+  std::list<HB_CAND_TREE*>::iterator cands;
   for (cands = candidate_regions.begin(); cands != candidate_regions.end();
        cands++) {
     HB_CAND_TREE_Reset_Flag(*cands, HCT_VISITED);
@@ -396,8 +395,8 @@ Update_Tree(HB_CAND_TREE* cand)
 //
 /////////////////////////////////////
 {
-  list<HB_CAND_TREE*>::iterator kids;
-  list<HB_CAND_TREE*>::iterator current_kid;
+  std::list<HB_CAND_TREE*>::iterator kids;
+  std::list<HB_CAND_TREE*>::iterator current_kid;
 
   HB_CAND_TREE_Set_Flag(cand, HCT_FULLY_CONVERTED);
 
@@ -418,7 +417,7 @@ Update_Tree(HB_CAND_TREE* cand)
 /////////////////////////////////////
 static void
 Convert_Tree_Leaves(HB_CAND_TREE* cand, BOOL* leaves_converted,
-		    list<HB_CAND_TREE*>& candidate_regions)
+		    std::list<HB_CAND_TREE*>& candidate_regions)
 /////////////////////////////////////
 //
 //  If <cand> is a leaf on a tree, try to fully if-convert it.
@@ -429,7 +428,7 @@ Convert_Tree_Leaves(HB_CAND_TREE* cand, BOOL* leaves_converted,
 //
 /////////////////////////////////////
 {
-  list<HB_CAND_TREE*>::iterator kids;
+  std::list<HB_CAND_TREE*>::iterator kids;
 
   if (HB_CAND_TREE_Check_Flag(cand, HCT_VISITED)) return;
 
@@ -481,7 +480,7 @@ Convert_Tree_Leaves(HB_CAND_TREE* cand, BOOL* leaves_converted,
       
 /////////////////////////////////////
 void
-Convert_Candidate_Leaves(list<HB_CAND_TREE*>& candidate_regions,
+Convert_Candidate_Leaves(std::list<HB_CAND_TREE*>& candidate_regions,
 			 BOOL*                leaves_converted)
 /////////////////////////////////////
 //  
@@ -491,7 +490,7 @@ Convert_Candidate_Leaves(list<HB_CAND_TREE*>& candidate_regions,
 //
 /////////////////////////////////////
 {
-  list<HB_CAND_TREE*>::iterator hbct;
+  std::list<HB_CAND_TREE*>::iterator hbct;
 
   for (hbct = candidate_regions.begin(); hbct != candidate_regions.end();
        hbct++) {
@@ -504,7 +503,7 @@ void
 Form_Hyperblocks(HB_CAND_TREE*        cand, 
 		 BB_MAP               duplicate,
 		 BOOL                 post_tail_duplication,
-		 list<HB_CAND_TREE*>& candidate_regions,
+		 std::list<HB_CAND_TREE*>& candidate_regions,
 		 BB_SET *orig_blocks)
 /////////////////////////////////////
 //
@@ -556,7 +555,7 @@ Form_Hyperblocks(HB_CAND_TREE*        cand,
   //
   // See if we left some of it's kids out.
   //
-  list<HB_CAND_TREE*>::iterator kids;
+  std::list<HB_CAND_TREE*>::iterator kids;
 
   for (kids = HB_CAND_TREE_Kids(cand).begin();
        kids != HB_CAND_TREE_Kids(cand).end();
@@ -573,7 +572,7 @@ HB_Form_Hyperblocks(RID *rid, const BB_REGION& bb_region)
 //  See interface description.
 /////////////////////////////////////
 {
-  list<HB_CAND_TREE*> candidate_regions; // List of all the candidates
+  std::list<HB_CAND_TREE*> candidate_regions; // List of all the candidates
   BB_SET *orig_blocks; // Working bitset temp
 
   if (!HB_formation || !(HB_simple_ifc || HB_complex_non_loop)) {
@@ -656,7 +655,7 @@ HB_Form_Hyperblocks(RID *rid, const BB_REGION& bb_region)
     //
     //  Form hyperblocks from the candidate regions.
     //
-    list<HB_CAND_TREE*>::iterator cands;
+    std::list<HB_CAND_TREE*>::iterator cands;
     
     Clear_Visited_Bits(candidate_regions);
     orig_blocks = BB_SET_Create_Empty(PU_BB_Count+2,&MEM_local_pool);

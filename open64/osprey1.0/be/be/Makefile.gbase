@@ -615,7 +615,7 @@ endif
 first:
 ifeq ($(BUILD_OS), LINUX)
 	cd $(BUILD_AREA)/include && $(MAKE)
-	if ! test -a $(TARGET_SO); then ln -sf $(TARG_TARG_INFO_DIR)/$(TARGET_SO) .; fi
+	if ! test -e $(TARGET_SO); then ln -sf $(TARG_TARG_INFO_DIR)/$(TARGET_SO) .; fi
 endif
 ## verify that the targ info stuff is up to date.
 	cd $(TARG_TARG_INFO_DIR) && $(MAKE)
@@ -722,18 +722,18 @@ be:  be.so $(BE_DRIVER_OBJS) $(LINK_DSO) $(EXPORT_FILE_BE)
  endif
 else
 be:  $(BE_DRIVER_OBJS) $(LINK_DSO)
-	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
-	if ! test -a cg.so; then ln -sf $(TARG_CG_DIR)/cg.so .; fi
-	if ! test -a wopt.so; then ln -sf $(TARG_WOPT_DIR)/wopt.so .; fi
-	if ! test -a lno.so; then ln -sf ../lno/lno.so .; fi
-	if ! test -a ipl.so; then ln -sf ../ipl/ipl.so .; fi
-	if ! test -a whirl2c.so; then ln -sf ../whirl2c/whirl2c.so .; fi
-	if ! test -a whirl2f.so; then ln -sf ../whirl2f/whirl2f.so .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
+	if ! test -e cg.so; then ln -sf $(TARG_CG_DIR)/cg.so .; fi
+	if ! test -e wopt.so; then ln -sf $(TARG_WOPT_DIR)/wopt.so .; fi
+	if ! test -e lno.so; then ln -sf ../lno/lno.so .; fi
+	if ! test -e ipl.so; then ln -sf ../ipl/ipl.so .; fi
+	if ! test -e whirl2c.so; then ln -sf ../whirl2c/whirl2c.so .; fi
+	if ! test -e whirl2f.so; then ln -sf ../whirl2f/whirl2f.so .; fi
  ifeq ($(BUILD_TARGET), IA64)
-	if ! test -a itanium.so; then ln -sf $(TARG_TARG_INFO_DIR)/itanium.so .; fi
+	if ! test -e itanium.so; then ln -sf $(TARG_TARG_INFO_DIR)/itanium.so .; fi
  endif
  ifeq ($(BUILD_TARGET), IA32)
-	if ! test -a pentium.so; then ln -sf $(TARG_TARG_INFO_DIR)/pentium.so .; fi
+	if ! test -e pentium.so; then ln -sf $(TARG_TARG_INFO_DIR)/pentium.so .; fi
  endif
 	$(C++F) -o be $(BE_DRIVER_OBJS)	\
 		$(LDFLAGS) be.so $(LINK_DSO_OPTS) $(LINK_DSO) -ldl

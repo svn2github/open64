@@ -84,7 +84,7 @@ Gen_Call_Shell( char *name, TYPE_ID rtype, INT32 argc )
 }  
 
 WN *
-Gen_Call( char *name, WN *arg1, WN *arg2, TYPE_ID rtype = MTYPE_V )
+Gen_Call( char *name, WN *arg1, WN *arg2, TYPE_ID rtype )
 {
   WN *call = Gen_Call_Shell( name, rtype, 2 );
   WN_actual( call, 0 ) = Gen_Param( arg1, WN_PARM_BY_VALUE );
@@ -93,7 +93,7 @@ Gen_Call( char *name, WN *arg1, WN *arg2, TYPE_ID rtype = MTYPE_V )
 }
 
 WN *
-Gen_Call( char *name, WN *arg1,  TYPE_ID rtype = MTYPE_V )
+Gen_Call( char *name, WN *arg1,  TYPE_ID rtype )
 {
   WN *call = Gen_Call_Shell( name, rtype, 1 );
   WN_actual( call, 0 ) = Gen_Param( arg1, WN_PARM_BY_VALUE );
@@ -1408,7 +1408,7 @@ void EDGE_PROFILE::Prepare_Call_Init_Return_BB(BB * bb)
 }
 
 BB* EDGE_PROFILE::Gen_Call_BB( char* function_name, char* str_arg, 
-                    INT64 int_arg,int restore_type,int restore_sum = 0 )
+                    INT64 int_arg,int restore_type,int restore_sum )
 {
   BB *bb=Gen_BB( );
   SRCPOS srcpos = REGION_First_BB->ops.last->srcpos;
@@ -1543,7 +1543,7 @@ BB* EDGE_PROFILE::Gen_Call_BB( char* function_name, char* str_arg,
 }
 
 BB* EDGE_PROFILE::Gen_Call_BB( char* function_name, TN * PU_Handle, 
-                    INT64 int_arg,int restore_type,int restore_sum = 0 )
+                    INT64 int_arg,int restore_type,int restore_sum )
 {
   BB *bb=Gen_BB( );
   SRCPOS srcpos = REGION_First_BB->ops.last->srcpos;
@@ -1779,7 +1779,7 @@ void EDGE_PROFILE::Prepare_Instrument( )
     {
       BB* entry_bb= BB_LIST_first( elist );
       save_gp_op = Mk_OP(TOP_mov,save_gp_TN,True_TN,GP_TN);
-      OP_bb(save_gp_op) = entry_bb;
+      save_gp_op->bb = entry_bb;
       BB_Insert_Op(entry_bb,entry_bb->ops.first->next,
                                                save_gp_op,false);  
     }

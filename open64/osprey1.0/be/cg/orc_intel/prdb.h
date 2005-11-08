@@ -31,10 +31,9 @@
 #ifndef prdb_INCLUDED
 #define prdb_INCLUDED
 
+#include <vector>
+#include <utility>
 #include "bb.h"
-#include <bvector.h>
-#include "pair.h"
-#include "vector.h"
 #include "defs.h"
 #include "tn.h"
 #include "mempool.h"
@@ -146,22 +145,22 @@ public:
 //*****************************************************************************
 
 typedef mempool_allocator<PARTITION_GRAPH_NODE *> PG_ALLOC;
-typedef vector<PARTITION_GRAPH_NODE *, PG_ALLOC>  PG_CONTAINER;
+typedef std::vector<PARTITION_GRAPH_NODE *, PG_ALLOC>  PG_CONTAINER;
 
 typedef mempool_allocator<PARTITION*> PT_ALLOC;
-typedef vector<PARTITION*, PT_ALLOC>  PT_CONTAINER;
+typedef std::vector<PARTITION*, PT_ALLOC>  PT_CONTAINER;
 
 typedef mempool_allocator<OP*> OP_ALLOC;
-typedef vector<OP*, OP_ALLOC> OP_CONTAINER;
+typedef std::vector<OP*, OP_ALLOC> OP_CONTAINER;
 
 typedef mempool_allocator<BOOL> BIT_ALLOC;
-typedef vector<BOOL, BIT_ALLOC> BV_VECTOR;
+typedef std::vector<BOOL, BIT_ALLOC> BV_VECTOR;
 typedef mempool_allocator<BV_VECTOR> BV_ALLOC;
-typedef vector<BV_VECTOR, BV_ALLOC>  BV_CONTAINER;
+typedef std::vector<BV_VECTOR, BV_ALLOC>  BV_CONTAINER;
 
-typedef pair<TN*, OP*> TN_OP_PAIR;
+typedef std::pair<TN*, OP*> TN_OP_PAIR;
 typedef mempool_allocator<TN_OP_PAIR*> TP_ALLOCATOR;
-typedef vector<TN_OP_PAIR*, TP_ALLOCATOR>  TP_CONTAINER;
+typedef std::vector<TN_OP_PAIR*, TP_ALLOCATOR>  TP_CONTAINER;
 
 class PARTITION_GRAPH_NODE
 {
@@ -337,8 +336,8 @@ private:
     BB_MAP _bb_node_map;
 
     BV_CONTAINER _disjoint_relation;
-    BV_CONTAINER _subset_relation;//the former is subset of the latter
-    bit_vector     _visited;//indicate whether the node is visited
+    BV_CONTAINER _subset_relation; //the former is subset of the latter
+    std::vector<bool, std::allocator<bool> >  _visited; //indicate whether the node is visited
     PG_CONTAINER _nodes;
     
     //mark node level(the level of root is 1)

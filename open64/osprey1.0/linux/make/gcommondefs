@@ -125,9 +125,9 @@ C++	= $(C++NAME) -D_SGI_SOURCE -D_LANGUAGE_C_PLUS_PLUS
 CC	= $(CCNAME) -D_SGI_SOURCE -D_LANGUAGE_C
 
 ifeq ($(BUILD_OS), LINUX)
-AS	+= -funsigned-char -D__GNU_BUG_WORKAROUND
-CC	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND
-C++	+= -Wformat -funsigned-char -D__GNU_BUG_WORKAROUND -D_NOTHREADS
+AS	+= -funsigned-char
+CC	+= -Wformat -funsigned-char
+C++	+= -Wformat -funsigned-char -D_NOTHREADS
 endif
 
 C++C	= $(C++)
@@ -157,8 +157,8 @@ M4	= m4
 # The native C compiler, which must be used when building programs that are
 # run on the build host from a makefile.
 #
-HOST_CC  = gcc -funsigned-char -D_SGI_SOURCE -D__GNU_BUG_WORKAROUND -D_LONGLONG -D_MIPS_SZPTR=32 -D_MIPS_SZINT=32 -D_MIPS_SZLONG=32 -D_LANGUAGE_C
-HOST_C++ = g++ -funsigned-char -D_SGI_SOURCE -D__GNU_BUG_WORKAROUND -D_NOTHREADS -D_LONGLONG -D_MIPS_SZPTR=32 -D_MIPS_SZINT=32 -D_MIPS_SZLONG=32 -D_LANGUAGE_C_PLUS_PLUS
+HOST_CC  = gcc -funsigned-char -D_SGI_SOURCE -D_LONGLONG -D_MIPS_SZPTR=32 -D_MIPS_SZINT=32 -D_MIPS_SZLONG=32 -D_LANGUAGE_C
+HOST_C++ = g++ -funsigned-char -D_SGI_SOURCE -D_NOTHREADS -D_LONGLONG -D_MIPS_SZPTR=32 -D_MIPS_SZINT=32 -D_MIPS_SZLONG=32 -D_LANGUAGE_C_PLUS_PLUS
 HOST_CXX = $(HOST_C++)
 
 ifeq ($(BUILD_COMPILER), EDG)
@@ -332,7 +332,11 @@ LD_NO_UNRESOLVED=-no_unresolved
 
 # Note: To turn off -quickstart_info for specific Makefile add:
 #               LD_QUICKSTART_INFO=
+ifeq ($(BUILD_COMPILER), EDG)
 LD_QUICKSTART_INFO=-quickstart_info
+else
+LD_QUICKSTART_INFO=
+endif
 
 ifeq ($(BUILD_OS), IRIX)
 DSONAMEOPT  = -soname $@

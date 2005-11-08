@@ -640,6 +640,13 @@ static char *access_vector_rcs_id = access_vector_INCLUDED "$Revision: 1.1.1.1 $
 
 #include "symtab_compatible.h"
 
+#ifndef __GNUC__
+#define ATTR_WEAK
+#pragma weak Print__12ACCESS_ARRAYCGP8__file_si
+#else
+#define ATTR_WEAK __attribute__((weak))
+#endif
+
 #define MAX_TLOG_CHARS 3000
 
 class SYSTEM_OF_EQUATIONS;
@@ -1060,7 +1067,7 @@ public:
 
   ACCESS_ARRAY(UINT16 num_vec,UINT16 nest_depth,MEM_POOL *mem_pool); 
   ACCESS_ARRAY(UINT16 num_vec,ACCESS_VECTOR* dim[],MEM_POOL *mem_pool); 
-  void Print(FILE *fp, BOOL is_bound=FALSE) const;
+  void Print(FILE *fp, BOOL is_bound=FALSE) const ATTR_WEAK;
   ACCESS_ARRAY() { Too_Messy = TRUE; _dim = NULL; _num_vec=0;}
   ACCESS_ARRAY(const ACCESS_ARRAY *a, MEM_POOL *pool); 
   mUINT16 Non_Const_Loops() const;

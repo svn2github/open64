@@ -29,7 +29,7 @@
 #include <iostream>
 #include <fstream>
 #include <string.h>
-#include <hash_map>
+#include <ext/hash_map>
 #include <stdlib.h>
 
 #include "inline_script_parser.h"
@@ -62,7 +62,7 @@ static void Parse_inline_script(const char *script_name, MEM_POOL *parser_pool)
 {
   // Assumption: the maximum line length should not exceed 1024 bytes
   char line_buffer[1024], *line_iterator;
-  ifstream infile; 
+  std::ifstream infile; 
   char *callsite_ln, *callee_file, *callee_func;
   char cur_caller_key[1024], callee_key[1024], *key_temp;
   char *cur_caller_file, *cur_caller_func; 
@@ -73,7 +73,7 @@ static void Parse_inline_script(const char *script_name, MEM_POOL *parser_pool)
   strcpy(cur_caller_key, "");
   strcpy(callee_key, "");
 
-  infile.open(script_name, ifstream::in);
+  infile.open(script_name, std::ifstream::in);
   FmtAssert((infile.good()), ("Inline script parsing error: can't open the inlining description file"));
 
 #ifdef Enable_ISP_Verify

@@ -33,7 +33,8 @@
 */
 
 
-#include <stack.h>
+#include <stack>
+#include <queue>
 #include "defs.h"
 #include "config.h"
 #include "mempool.h"
@@ -72,7 +73,7 @@ verify_cand_tree(HB_CAND_TREE* c,FILE *f)
 /////////////////////////////////////
 {
   if (!HB_CAND_TREE_Kids(c).empty()) {
-    list<HB_CAND_TREE*>::iterator k;
+    std::list<HB_CAND_TREE*>::iterator k;
     for (k = HB_CAND_TREE_Kids(c).begin(); k != HB_CAND_TREE_Kids(c).end();
 	 k++) {
       if (!BB_SET_ContainsP(HB_Blocks(HB_CAND_TREE_Candidate(c)),
@@ -89,9 +90,9 @@ verify_cand_tree(HB_CAND_TREE* c,FILE *f)
   }
 }
 
-static void verify_ctree(list<HB_CAND_TREE*> cands)
+static void verify_ctree(std::list<HB_CAND_TREE*> cands)
 {
-  list<HB_CAND_TREE*>::iterator c;
+  std::list<HB_CAND_TREE*>::iterator c;
   FILE *f=stderr;
 
   fprintf(f,"Verifying HB candidates...");
@@ -426,7 +427,7 @@ HB_Identify_Candidates_Init()
 
 /////////////////////////////////////
 HB_CAND_TREE*
-Make_New_Region(list<HB_CAND_TREE*>&       candidates, 
+Make_New_Region(std::list<HB_CAND_TREE*>&       candidates, 
 		BB*                        entry, 
 		BB*                        exit,
 		BB*                        fall_thru_exit, 
@@ -476,7 +477,7 @@ Make_New_Region(list<HB_CAND_TREE*>&       candidates,
 
 /////////////////////////////////////
 void
-Find_Interior_Blocks(list<HB_CAND_TREE*>& candidates)
+Find_Interior_Blocks(std::list<HB_CAND_TREE*>& candidates)
 /////////////////////////////////////
 //
 //  Find blocks that appear to be good starting places for finding
@@ -517,7 +518,7 @@ Check_Region_Recur(BB*                    dom,
 		   BB*                    current, 
 		   BB*                    pdom, 
 		   BB_SET*                blocks,
-		   list<HB_CAND_TREE*>&   kids,
+		   std::list<HB_CAND_TREE*>&   kids,
 		   HB_CAND_TREE*          hct_parent, 
 		   BB_MAP                 hct_entry_map,
 		   BOOL*                  bad_region)
@@ -582,7 +583,7 @@ BOOL
 Check_Region(BB**                 orig_dom, 
 	     BB**                 orig_pdom, 
 	     BB_SET*              blocks,
-	     list<HB_CAND_TREE*>& kids, 
+	     std::list<HB_CAND_TREE*>& kids, 
 	     HB_CAND_TREE*        hct_parent,
 	     BB_MAP               hct_entry_map)
 /////////////////////////////////////
@@ -685,7 +686,7 @@ static BOOL is_subtree_of(HB_CAND_TREE* parent, HB_CAND_TREE* child)
 void
 Insert_Parent(HB_CAND_TREE*        new_parent, 
 	      HB_CAND_TREE*        child,
-	      list<HB_CAND_TREE*>& candidates,
+	      std::list<HB_CAND_TREE*>& candidates,
 	      BB_MAP               hct_entry_map)
 /////////////////////////////////////
 //
@@ -719,8 +720,8 @@ Insert_Parent(HB_CAND_TREE*        new_parent,
     //      return;
     //    }
 
-    list<HB_CAND_TREE*>::iterator k;
-    list<HB_CAND_TREE*>::iterator current;
+    std::list<HB_CAND_TREE*>::iterator k;
+    std::list<HB_CAND_TREE*>::iterator current;
     for (k = HB_CAND_TREE_Kids(old_parent).begin();
 	 k != HB_CAND_TREE_Kids(old_parent).end();) {
       current = k++;
@@ -750,8 +751,8 @@ Insert_Parent(HB_CAND_TREE*        new_parent,
     // Previously, was root of tree.  Need to remove it from the candidate
     // list.
     //
-    list<HB_CAND_TREE*>::iterator c;
-    list<HB_CAND_TREE*>::iterator cur;
+    std::list<HB_CAND_TREE*>::iterator c;
+    std::list<HB_CAND_TREE*>::iterator cur;
     for (c = candidates.begin(); c != candidates.end();) {
       cur = c++;
       if (*cur == child) {
@@ -768,7 +769,7 @@ Insert_Parent(HB_CAND_TREE*        new_parent,
 BOOL
 Attempt_Merge(HB_CAND_TREE*        new_region, 
 	      BB_MAP               hct_entry_map,
-	      list<HB_CAND_TREE*>& candidates)
+	      std::list<HB_CAND_TREE*>& candidates)
 /////////////////////////////////////
 //
 //  Try to merge this region with a neighboring one.
@@ -909,8 +910,8 @@ Attempt_Merge(HB_CAND_TREE*        new_region,
 /////////////////////////////////////
 static void
 Add_Children(HB_CAND_TREE*            new_region, 
-	     list<HB_CAND_TREE*>&     kids,
-	     list<HB_CAND_TREE*>&     candidates, 
+	     std::list<HB_CAND_TREE*>&     kids,
+	     std::list<HB_CAND_TREE*>&     candidates, 
 	     BB_MAP                   hct_entry_map)
 /////////////////////////////////////
 //
@@ -918,17 +919,17 @@ Add_Children(HB_CAND_TREE*            new_region,
 //
 /////////////////////////////////////
 {
-  list<HB_CAND_TREE*>::iterator k;
+  std::list<HB_CAND_TREE*>::iterator k;
 
   for (k = kids.begin(); k != kids.end(); k++) {
     Insert_Parent(new_region, *k, candidates, hct_entry_map);
   }
 }
 
-static void Clean_Up_Candidates(list<HB_CAND_TREE*>&   candidates) 
+static void Clean_Up_Candidates(std::list<HB_CAND_TREE*>&   candidates) 
 {
-  list<HB_CAND_TREE*>::iterator cands;
-  list<HB_CAND_TREE*>::iterator current;
+  std::list<HB_CAND_TREE*>::iterator cands;
+  std::list<HB_CAND_TREE*>::iterator current;
   for (cands = candidates.begin(); cands != candidates.end();) {
     current = cands++;
     if (HB_CAND_TREE_Check_Flag(*current, HCT_ERASE)) {
@@ -942,7 +943,7 @@ static void Clean_Up_Candidates(list<HB_CAND_TREE*>&   candidates)
 void
 Check_Parent(HB_CAND_TREE*          hct_parent, 
 	     HB_CAND_TREE*          hct,
-	     list<HB_CAND_TREE*>&   candidates, 
+	     std::list<HB_CAND_TREE*>&   candidates, 
 	     BB_MAP                 hct_entry_map)
 /////////////////////////////////////
 //
@@ -963,7 +964,7 @@ Check_Parent(HB_CAND_TREE*          hct_parent,
 
 /////////////////////////////////////
 void
-HB_Identify_Hammock_Candidates(list<HB_CAND_TREE*>& candidates,
+HB_Identify_Hammock_Candidates(std::list<HB_CAND_TREE*>& candidates,
 			       BB_MAP               hct_entry_map)
 /////////////////////////////////////
 //
@@ -971,7 +972,7 @@ HB_Identify_Hammock_Candidates(list<HB_CAND_TREE*>& candidates,
 //
 /////////////////////////////////////
 {
-  list<HB_CAND_TREE*>::iterator cands;
+  std::list<HB_CAND_TREE*>::iterator cands;
 
   MEM_POOL_Push(&MEM_local_pool);
 
@@ -1054,7 +1055,7 @@ HB_Identify_Hammock_Candidates(list<HB_CAND_TREE*>& candidates,
       }
       
       BB_SET* blocks = BB_SET_Create_Empty(PU_BB_Count+2, &MEM_local_pool);
-      list <HB_CAND_TREE*> kids;
+      std::list <HB_CAND_TREE*> kids;
       if (!Check_Region(&dom, &pdom, blocks, kids,
 			HB_CAND_TREE_Parent(hct), hct_entry_map)) {
 	continue;
@@ -1146,7 +1147,7 @@ HB_Identify_Hammock_Candidates(list<HB_CAND_TREE*>& candidates,
 
 /////////////////////////////////////
 void
-Find_General_Region_Entry_Candidates(list<BB*>&  entry_candidates,
+Find_General_Region_Entry_Candidates(std::list<BB*>&  entry_candidates,
 				     BB_MAP      hct_entry_map)
 /////////////////////////////////////
 //
@@ -1192,9 +1193,9 @@ Find_General_Region_Entry_Candidates(list<BB*>&  entry_candidates,
 
 /////////////////////////////////////
 static BB*
-Process_Successors(BB*                                              bb,
-		   priority_queue<BB*,vector<BB*>,BB_Freq_Compare>& bb_best,
-		   list<BB*>&                                       bb_kids)
+Process_Successors(BB* bb,
+	std::priority_queue<BB*,std::vector<BB*>,BB_Freq_Compare>& bb_best,
+	std::list<BB*>& bb_kids)
 /////////////////////////////////////
 //
 //  Look at bb's successors.  Return the one with the highest probability.
@@ -1248,7 +1249,7 @@ Form_General_Region(BB*                     bb,
 		    BB*                     bb_entry, 
 		    BB_MAP                  hct_entry_map, 
 		    BB_SET*                 blocks,
-		    list<HB_CAND_TREE*>&    kids, 
+		    std::list<HB_CAND_TREE*>&    kids, 
 		    BOOL                    allow_nesting)
 /////////////////////////////////////
 //
@@ -1259,9 +1260,8 @@ Form_General_Region(BB*                     bb,
 //
 /////////////////////////////////////
 {
-  priority_queue<BB*,vector<BB*>,BB_Freq_Compare> bb_best;
-
-  list<BB*> bb_kids;
+  std::priority_queue<BB*,std::vector<BB*>,BB_Freq_Compare> bb_best;
+  std::list<BB*> bb_kids;
   
   //
   // On second pass, we'll see hyperblocks.  Don't include them.
@@ -1396,9 +1396,9 @@ Form_General_Region(BB*                     bb,
 static void
 Add_General_Region_To_Tree(BB*                    bb_entry, 
 			   BB_SET*                blocks,
-			   list<HB_CAND_TREE*>&   kids,
+			   std::list<HB_CAND_TREE*>&   kids,
 			   BB_MAP                 hct_entry_map,
-			   list<HB_CAND_TREE*>&   candidates)
+			   std::list<HB_CAND_TREE*>&   candidates)
 /////////////////////////////////////
 //
 //  Create a new region for the set of blocks supplied, and add it to
@@ -1422,7 +1422,7 @@ Add_General_Region_To_Tree(BB*                    bb_entry,
 
 /////////////////////////////////////
 void
-HB_Identify_General_Candidates(list<HB_CAND_TREE*>&  candidates,
+HB_Identify_General_Candidates(std::list<HB_CAND_TREE*>&  candidates,
 			       BB_MAP                hct_entry_map,
 			       INT                   pass)
 /////////////////////////////////////
@@ -1431,8 +1431,8 @@ HB_Identify_General_Candidates(list<HB_CAND_TREE*>&  candidates,
 //
 /////////////////////////////////////
 {
-  list<BB*> entry_candidates;
-  list<BB*>::iterator bbi;
+  std::list<BB*> entry_candidates;
+  std::list<BB*>::iterator bbi;
 
   MEM_POOL_Push (&MEM_local_pool);
 
@@ -1449,7 +1449,7 @@ HB_Identify_General_Candidates(list<HB_CAND_TREE*>&  candidates,
 
   Find_General_Region_Entry_Candidates(entry_candidates, hct_entry_map);
   for (bbi = entry_candidates.begin(); bbi != entry_candidates.end(); bbi++) {
-    list<HB_CAND_TREE*> kids;
+    std::list<HB_CAND_TREE*> kids;
     BB_SET_ClearD(blocks);
     Form_General_Region(*bbi, *bbi, hct_entry_map, blocks, kids,
 			allow_nesting);

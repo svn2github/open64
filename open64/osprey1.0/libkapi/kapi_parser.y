@@ -27,6 +27,7 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "kapi_internal.h"
 #include "kapi_util.h"

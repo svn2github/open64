@@ -879,7 +879,7 @@ class SRC_BB_MGR {
 private :
 
     typedef mempool_allocator<SRC_BB_INFO * > SRC_BB_INFO_ALLOC;
-    typedef vector<SRC_BB_INFO *, SRC_BB_INFO_ALLOC>  SRC_BB_INFO_VECT; 
+    typedef std::vector<SRC_BB_INFO *, SRC_BB_INFO_ALLOC>  SRC_BB_INFO_VECT; 
     typedef SRC_BB_INFO_VECT::iterator       SRC_BB_INFO_ITER;
 
     MEM_POOL*  _mp;           /* underlying MEM_POOL */

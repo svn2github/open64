@@ -46,7 +46,10 @@
 
 #include <alloca.h>
 #include <stdio.h>
-#include <iterator.h>
+#include <list>
+#include <set>
+#include <vector>
+#include <iterator>
 #include "defs.h"
 #include "bb.h"
 #include "op.h"
@@ -78,7 +81,7 @@ public:
   static void global_cfg();
   static void dump_bb_vector(BB_VECTOR& bbsg);
   static void dump_node_vector(NODE_VECTOR& nodesg);
-  static void dump_node_list(list<REGIONAL_CFG_NODE *>& nodes);
+  static void dump_node_list(std::list<REGIONAL_CFG_NODE *>& nodes);
   static BB * get_bb (mBB_NUM bb_idg);
   static OP * get_op (mBB_NUM bb_id, mUINT16 map_idxg);
   static void dump_succs(mBB_NUM bb_id, mUINT16 map_idxg);
@@ -89,7 +92,7 @@ public:
   static void dump_tn_set (BS *setg);
   static void dump_bb_set(BB_SET* setg);
   static void dump_reg_set(REGISTER_SET regset);
-  static void dump_tn_stl_set(set<TN*>& TNsg);
+  static void dump_tn_stl_set(std::set<TN*>& TNsg);
   static void dump_rotate_info(struct ROTATING_KERNEL_INFO *info, int type = 0);
   static void tn_num(TN* tng);
   static void dump_wn_stmt(WN* wn);
@@ -122,9 +125,9 @@ void dp::dump_wn_stmt(WN* wn)
     dump_tree(wn);
 }
 
-void dp::dump_tn_stl_set(set<TN*>& TNs)
+void dp::dump_tn_stl_set(std::set<TN*>& TNs)
 {
-    for(set<TN*>::iterator iter = TNs.begin(); iter != TNs.end(); iter++){
+    for(std::set<TN*>::iterator iter = TNs.begin(); iter != TNs.end(); iter++){
       TN* tn = *iter;
       if(TN_is_global_reg(tn)){
         fprintf(stderr,"GTN%d", TN_number(tn));
@@ -136,17 +139,17 @@ void dp::dump_tn_stl_set(set<TN*>& TNs)
     fflush(stderr); 
 }
 
-void dp::dump_rotate_info(struct ROTATING_KERNEL_INFO *info, int type = 0)
+void dp::dump_rotate_info(struct ROTATING_KERNEL_INFO *info, int type)
 {
 
     static char *reg_class[] = { "u","r","f","p","b","a","c"};
-    vector<struct tn *> copyin = ROTATING_KERNEL_INFO_copyin(info);  
-    vector<struct tn *> copyout = ROTATING_KERNEL_INFO_copyout(info);  
-    vector<struct tn *> localdef = ROTATING_KERNEL_INFO_localdef(info);  
+    std::vector<struct tn *> copyin = ROTATING_KERNEL_INFO_copyin(info);  
+    std::vector<struct tn *> copyout = ROTATING_KERNEL_INFO_copyout(info);  
+    std::vector<struct tn *> localdef = ROTATING_KERNEL_INFO_localdef(info);  
  
     if(type == 0 || type == 1){ 
       fprintf(stderr,"Copyin: "); 
-      for(vector<struct tn *>::iterator iter = copyin.begin(); iter != copyin.end(); iter++){
+      for(std::vector<struct tn *>::iterator iter = copyin.begin(); iter != copyin.end(); iter++){
         TN *tn = *iter;
         int reg = TN_register(tn) - 1;
         int regc = TN_register_class(tn);
@@ -158,7 +161,7 @@ void dp::dump_rotate_info(struct ROTATING_KERNEL_INFO *info, int type = 0)
     }
     if(type == 0 || type == 2){ 
       fprintf(stderr,"Copyout: "); 
-      for(vector<struct tn *>::iterator iter = copyout.begin(); iter != copyout.end(); iter++){
+      for(std::vector<struct tn *>::iterator iter = copyout.begin(); iter != copyout.end(); iter++){
         TN *tn = *iter;
         int reg = TN_register(tn) - 1;
         int regc = TN_register_class(tn);
@@ -170,7 +173,7 @@ void dp::dump_rotate_info(struct ROTATING_KERNEL_INFO *info, int type = 0)
     }
     if(type == 0 || type == 3){ 
       fprintf(stderr,"Zombie: "); 
-      for(vector<struct tn *>::iterator iter = localdef.begin(); iter != localdef.end(); iter++){
+      for(std::vector<struct tn *>::iterator iter = localdef.begin(); iter != localdef.end(); iter++){
         TN *tn = *iter;
         int reg = TN_register(tn) - 1;
         int regc = TN_register_class(tn);
@@ -201,9 +204,9 @@ void dp::dump_bb_vector(BB_VECTOR& bbs) {
     }
 }
 
-void dump_node_list(list<REGIONAL_CFG_NODE *>& nodes)
+void dump_node_list(std::list<REGIONAL_CFG_NODE *>& nodes)
 {
-    for(list<REGIONAL_CFG_NODE *>::iterator iter = nodes.begin(); iter != nodes.end(); iter++){
+    for(std::list<REGIONAL_CFG_NODE *>::iterator iter = nodes.begin(); iter != nodes.end(); iter++){
 	      REGIONAL_CFG_NODE *node = *iter;
 
         if (!node->Is_Region()) {

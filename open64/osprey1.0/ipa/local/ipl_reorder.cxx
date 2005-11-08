@@ -25,7 +25,7 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-
+#include <utility>
 #include "ipl_reorder.h"    // for Ptr_to_ty_vector, local_cands
 #include "mempool.h"
 #include "cxx_memory.h"
@@ -88,7 +88,7 @@ void Preprocess_struct_access(void)
             Comput_flatten_flds(struct_index,flatten_flds);
             if(flatten_flds>=min_fld_num_reorder &&
                     iter->size>cache_block){
-                local_cands->insert(make_pair(struct_index,flatten_flds));
+                local_cands->insert(std::make_pair(struct_index,flatten_flds));
             }
             else continue;
         } //just handle struct type
@@ -101,7 +101,7 @@ void Preprocess_struct_access(void)
             iter_cand=local_cands->find(point_to_ty);
             if (iter_cand==local_cands->end ()) // point_to_ty not a candidate
                 continue;
-            local_cands->insert(make_pair(ty_index,0)); // a pointer_ty has a flatten_flds of 0;
+            local_cands->insert(std::make_pair(ty_index,0)); // a pointer_ty has a flatten_flds of 0;
             item.ty_index=ty_index;
             item.pt_index=point_to_ty;
             Ptr_to_ty_vector->push_back(item);

@@ -307,7 +307,7 @@ IPA_Do_Linearization (IPA_NODE* callee_node, WN* call, SCOPE* caller_scope)
   WN* callee_wn = callee_node->Whirl_Tree();
   INT num_formals = WN_num_formals(callee_wn);
 
-  vector<ST*> formals;
+  std::vector<ST*> formals;
   formals.reserve (num_formals);
 
   // callee scope
@@ -856,7 +856,7 @@ Update_Caller_MP_Pragmas(ST* s, WN *wn)
 
 // create a statement to copy an expression to a temp variable.
 // return both the statement and the temp.
-static pair<WN*, ST*>
+static std::pair<WN*, ST*>
 Create_Copy_Expr_For_Ptr (WN* expr, WN* call, BOOL is_mp)
 {
     ST* copy_st = Gen_Temp_Symbol(MTYPE_To_TY(Pointer_type), "");
@@ -865,12 +865,12 @@ Create_Copy_Expr_For_Ptr (WN* expr, WN* call, BOOL is_mp)
     if (is_mp)
          Update_Caller_MP_Pragmas(copy_st, call);
 
-    return make_pair (copy_stmt, copy_st);
+    return std::make_pair (copy_stmt, copy_st);
 }
 
 // create a statement to copy an expression to a temp variable.
 // return both the statement and the temp.
-static pair<WN*, ST*>
+static std::pair<WN*, ST*>
 Create_Copy_Expr (WN* expr, WN* call, BOOL is_mp)
 {
     TYPE_ID desc = WN_rtype (expr);
@@ -880,7 +880,7 @@ Create_Copy_Expr (WN* expr, WN* call, BOOL is_mp)
     if (is_mp)
 	 Update_Caller_MP_Pragmas(copy_st, call);
 
-    return make_pair (copy_stmt, copy_st);
+    return std::make_pair (copy_stmt, copy_st);
 }
 
 
@@ -924,7 +924,7 @@ Process_Actual (WN* actual, WN* copy_in_block, IPO_INLINE& inliner)
 	// not a simple constant expression, so generate an assignment
 	// statement 
 
-	pair<WN*, ST*> copy_stmt = Create_Copy_Expr (wn, inliner.Call_Wn(),
+	std::pair<WN*, ST*> copy_stmt = Create_Copy_Expr (wn, inliner.Call_Wn(),
 		inliner.Caller_node()->Summary_Proc ()->Has_parallel_pragma () ||
 		inliner.Caller_node()->Summary_Proc ()->Has_parallel_region_pragma());
 
@@ -1684,7 +1684,7 @@ IPO_INLINE::Process_OPR_REGION(WN* wn, IPA_NODE* caller_node)
 
 	if (init_idx) {
 		
-	    pair<ST*, WN_OFFSET> sym = Create_Copy_In_Symbol (INITO_st(init_idx)); 
+	    std::pair<ST*, WN_OFFSET> sym = Create_Copy_In_Symbol (INITO_st(init_idx)); 
 	    ST* copy_st = sym.first;
             Clear_ST_is_temp_var (copy_st);
             Set_ST_is_not_used (INITO_st(init_idx));
@@ -1704,7 +1704,7 @@ IPO_INLINE::Process_OPR_REGION(WN* wn, IPA_NODE* caller_node)
     Set_PU_has_region(caller_pu);
 } // Process_OPR_REGION
 
-static vector<TY_IDX, mempool_allocator<TY_IDX> > processed_types (Malloc_Mem_Pool);
+static std::vector<TY_IDX, mempool_allocator<TY_IDX> > processed_types (Malloc_Mem_Pool);
 
 static BOOL
 ty_processed(TY_IDX ty)
@@ -2104,7 +2104,7 @@ Disambiguate_Aliased_Actuals (PARM_ATTR_VEC& parm_attr, PU& pu)
 
 namespace {
     // function object used by Generate_Barriers
-    typedef pair<ST*, BOOL> BARRIER_ST;
+    typedef std::pair<ST*, BOOL> BARRIER_ST;
 
     struct barrier_st_cmp {
 	BOOL operator() (BARRIER_ST st1, BARRIER_ST st2) const {
@@ -2127,7 +2127,7 @@ Generate_Barriers (WN* parent, WN* call, IPO_INLINE_AUX& aux)
 {
     PARM_ATTR_VEC& parm_attr = aux.parm_attr;
 
-    vector<BARRIER_ST, mempool_allocator<BARRIER_ST> >
+    std::vector<BARRIER_ST, mempool_allocator<BARRIER_ST> >
 	actual_list (&Ipo_mem_pool);
     actual_list.reserve (parm_attr.size ());
 
@@ -2641,7 +2641,7 @@ Simplify_Tree(WN *block)
 }
 
 
-pair<ST*, WN_OFFSET>
+std::pair<ST*, WN_OFFSET>
 IPO_INLINE::Create_Copy_In_Symbol (ST* formal_st)
 {
     ST* copy_st = NULL;
@@ -2666,7 +2666,7 @@ IPO_INLINE::Create_Copy_In_Symbol (ST* formal_st)
 	Update_Caller_MP_Pragmas(copy_st, Call_Wn());
     } 
 
-    return make_pair (copy_st, wn_offset);
+    return std::make_pair (copy_st, wn_offset);
 } 
 
 // create a copy statement
@@ -2707,7 +2707,7 @@ IPO_INLINE::Process_Copy_In (PARM_ITER parm, WN* copy_in_block)
 	ST* copy_st;
 	WN_OFFSET wn_offset;
 	
-	pair<ST*, WN_OFFSET> sym = Create_Copy_In_Symbol (formal_st); 
+	std::pair<ST*, WN_OFFSET> sym = Create_Copy_In_Symbol (formal_st); 
 	copy_st = sym.first;
 	wn_offset = sym.second;
     
@@ -2739,7 +2739,7 @@ IPO_INLINE::Process_Copy_In (PARM_ITER parm, WN* copy_in_block)
 	
         WN* actual = parm->Actual_Wn ();
         ST* formal_st = parm->Formal_St ();
-        pair<WN*, ST*> copy_stmt;
+	std::pair<WN*, ST*> copy_stmt;
 
         if (! ST_is_value_parm (formal_st) &&
                 (WN_operator(actual) == OPR_INTCONST && ST_is_optional_argument
@@ -2819,7 +2819,7 @@ IPO_INLINE::Process_Copy_In_Copy_Out (PARM_ITER p, IPO_INLINE_AUX& aux)
     Is_True (p->Fixup_Method () != FM_LOWER_FORMAL_REF,
 	     ("Invalid fixup method for copy in/copy out parameters"));
     
-    pair<ST*, WN_OFFSET> sym = Create_Copy_In_Symbol (formal_st); 
+    std::pair<ST*, WN_OFFSET> sym = Create_Copy_In_Symbol (formal_st); 
     ST* copy_st = sym.first;
     WN_OFFSET wn_offset = sym.second;
     
@@ -2949,7 +2949,7 @@ Copy_Non_Constant_Parm (WN* parm, WN* copy_in_block, PARAMETER_ATTRIBUTES& p, IP
     // not a simple constant expression, so generate an assignment
     // statement 
     
-    pair<WN*, ST*> copy_stmt = Create_Copy_Expr (parm, inliner.Call_Wn(),
+    std::pair<WN*, ST*> copy_stmt = Create_Copy_Expr (parm, inliner.Call_Wn(),
 		inliner.Caller_node()->Summary_Proc ()->Has_parallel_pragma () ||
 		inliner.Caller_node()->Summary_Proc ()->Has_parallel_region_pragma());
 

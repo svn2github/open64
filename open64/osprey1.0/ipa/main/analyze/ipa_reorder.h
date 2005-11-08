@@ -34,7 +34,7 @@
 #include "cxx_template.h" 	// for STACK
 #include "wn_core.h" 	//for WN_field_id(wn)
 #include "ipa_cg.h"	//for IPA_NODE, IPA_NODE_ITER
-#include <hash_map.h>
+#include <ext/hash_map>
 #ifndef CXX_MEMORY_INCLUDED
 #include "cxx_memory.h"
 #endif
@@ -45,7 +45,7 @@ typedef mUINT64 COUNT;
 typedef mUINT64 FLD_OFST;
 typedef FLD_OFST TY_SIZE;
 
-typedef list<INDEX> TYPE_LIST;	//just contains struct_type, pointer_ty put to another list
+typedef std::list<INDEX> TYPE_LIST;	//just contains struct_type, pointer_ty put to another list
 
 struct FLD_ACCESS{
    COUNT count; //first as count, then ty_idx
@@ -82,7 +82,7 @@ struct MERGED_ACCESS{
    FIELD_ID flatten_fields;
    COUNT *count;
 };
-typedef vector< struct MERGED_ACCESS*> MERGED_ACCESS_VECTOR;
+typedef std::vector< struct MERGED_ACCESS*> MERGED_ACCESS_VECTOR;
 
 extern MERGED_ACCESS_VECTOR *merged_access;
 extern MEM_POOL reorder_local_pool;

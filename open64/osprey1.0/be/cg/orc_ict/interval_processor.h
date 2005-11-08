@@ -39,8 +39,8 @@
 #include "region.h"
 #include "region_verify.h"
 
-typedef list<REGIONAL_CFG_EDGE *,EDGE_ALLOC>   EDGE_LIST;
-typedef queue<REGIONAL_CFG_EDGE *,EDGE_LIST>   EDGE_QUEUE;  
+typedef std::list<REGIONAL_CFG_EDGE *,EDGE_ALLOC>   EDGE_LIST;
+typedef std::queue<REGIONAL_CFG_EDGE *,EDGE_LIST>   EDGE_QUEUE;  
 
 
 class INTERVAL_PROCESSOR_MEM {
@@ -74,12 +74,12 @@ protected:
 
 class INTERVAL_PROCESSOR : public INTERVAL_PROCESSOR_MEM {
 typedef mempool_allocator<BS*>                 BS_ALLOC;
-typedef vector<BS*,BS_ALLOC>                   BS_VECTOR;
+typedef std::vector<BS*,BS_ALLOC>                   BS_VECTOR;
 typedef mempool_allocator<REGION*>             REGION_ALLOC;
-typedef vector<REGION*,REGION_ALLOC>           REGION_VECTOR;
+typedef std::vector<REGION*,REGION_ALLOC>           REGION_VECTOR;
 typedef REGION_VECTOR::iterator                REGION_VECTOR_ITER;
 typedef mempool_allocator<NODE_VECTOR>         NODE_VECTOR_ALLOC;
-typedef vector<NODE_VECTOR,NODE_VECTOR_ALLOC>  SCC_VECTOR;
+typedef std::vector<NODE_VECTOR,NODE_VECTOR_ALLOC>  SCC_VECTOR;
 typedef SCC_VECTOR::iterator                   SCC_VECTOR_ITER;
 
 friend void Verify_SEME_Region(REGION *r);

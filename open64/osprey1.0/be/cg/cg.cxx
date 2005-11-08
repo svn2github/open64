@@ -138,7 +138,7 @@ BOOL GRA_optimize_restore_ar_lc;
 BOOL EBO_data_spec;
 // Control assemly output on file number
 typedef mempool_allocator<INT> INT_ALLOC;
-typedef vector<INT, INT_ALLOC>  INT_CONTAINER;
+typedef std::vector<INT, INT_ALLOC>  INT_CONTAINER;
 
 static INT_CONTAINER asm_file_visited;
 INT Asm_File_Visited(INT file_number)
@@ -1156,7 +1156,7 @@ Trace_IR(
   INT phase,        /* Phase after which we're printing */
   const char *pname,    /* Print name for phase */
   BB *cur_bb,       /* BB to limit traces to */
-  BOOL after = TRUE)
+  BOOL after)
 {
   INT cur_bb_id = cur_bb ? BB_id(cur_bb) : 0;
   if (   Get_Trace(TKIND_IR, phase)

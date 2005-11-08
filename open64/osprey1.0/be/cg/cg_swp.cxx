@@ -35,7 +35,7 @@
 
 
 #define USE_STANDARD_TYPES
-#include <vector.h>
+#include <vector>
 #include "defs.h"
 #include "cg.h"
 #include "cg_swp.h"
@@ -76,8 +76,8 @@ void SWP_OPTIONS::PU_Configure()
   if (!Max_Unroll_Times_Set)
     Max_Unroll_Times = (CG_opt_level > 2) ? 8 : 4;  
 
-  Min_Unroll_Times = max(1, Min_Unroll_Times);
-  Max_Unroll_Times = max(1, Max_Unroll_Times);
+  Min_Unroll_Times = MAX(1, Min_Unroll_Times);
+  Max_Unroll_Times = MAX(1, Max_Unroll_Times);
 
   if (Min_Unroll_Times_Set)
     Max_Unroll_Times = Max(Max_Unroll_Times, Min_Unroll_Times);
@@ -133,7 +133,7 @@ SWP_OP_vector::SWP_OP_vector(BB *body, BOOL doloop, MEM_POOL *pool)
   OP *op;
   INT max_idx = 0;
   FOR_ALL_BB_OPs(body, op) {
-    max_idx = max(max_idx, OP_map_idx(op));
+    max_idx = MAX(max_idx, OP_map_idx(op));
   }
   swp_map_tbl_max = max_idx + 1;
   swp_map_tbl = TYPE_MEM_POOL_ALLOC_N(INT, pool, swp_map_tbl_max);
@@ -354,7 +354,7 @@ SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace)
 static void
 Prune_Regout_Deps(BB *body, TN_SET *non_rotating)
 {
-  vector<ARC*> arcs_to_delete;
+  std::vector<ARC*> arcs_to_delete;
   OP *op;
   FOR_ALL_BB_OPs(body, op) {
     if (_CG_DEP_op_info(op)) {
@@ -436,8 +436,8 @@ BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop)
   double max_ii_alpha = SWP_Options.Max_II_Alpha;
   double max_ii_beta  =  SWP_Options.Max_II_Beta;
   double ii_incr_alpha =  SWP_Options.II_Incr_Alpha;
-  double ii_incr_beta =  1.0 + (SWP_Options.II_Incr_Beta - 1.0) / max(1,SWP_Options.Opt_Level);
-  INT sched_budget = SWP_Options.Budget * max(1,SWP_Options.Opt_Level);
+  double ii_incr_beta =  1.0 + (SWP_Options.II_Incr_Beta - 1.0) / MAX(1,SWP_Options.Opt_Level);
+  INT sched_budget = SWP_Options.Budget * MAX(1,SWP_Options.Opt_Level);
 
   {
     Start_Timer(T_SWpipe_CU);
@@ -485,7 +485,7 @@ BOOL Perform_SWP(CG_LOOP& cl, SWP_FIXUP_VECTOR& fixup, bool is_doloop)
     double time1 = Get_User_Time(T_SWpipe_CU);
 
     // Modulo Scheduling
-    CG_LOOP_min_ii = max(CG_LOOP_min_ii, SWP_Options.Starting_II);
+    CG_LOOP_min_ii = MAX(CG_LOOP_min_ii, SWP_Options.Starting_II);
     INT max_ii = (INT)linear_func(CG_LOOP_min_ii, max_ii_alpha, max_ii_beta);
 
     // update CG_LOOP_min_ii using MinDist

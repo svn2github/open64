@@ -53,8 +53,8 @@ extern "C" {
 }
 #endif
 
-#include <list.h>
-#include <map.h>
+#include <list>
+#include <map>
 #include <stdarg.h>
 
 /////////////////////////////////////
@@ -139,7 +139,7 @@ private:
     static int total;  // Total number of different RESs (not the the
                        //   total of their counts, 1 for each RES)
     
-    static map <int,RESOURCE*> resources;
+    static std::map <int,RESOURCE*> resources;
                        // Map of all resources, ordered by their Id's
     
     bv32_t mask;       // cport mask;
@@ -177,13 +177,13 @@ private:
     
     int res_req_cycle; // always is require resource in first cycle, but SEM instrucion
                        // nust need require resource sem in all its cycle;
-    map <int, INT64> rrw;       // Required resource word arranged by each resource occupy 
+    std::map <int, INT64> rrw;       // Required resource word arranged by each resource occupy 
                      // specified width according shift_count;
                      
-    map <int, INT64> rrw_id;    // Required resource flag ranged by id order;
+    std::map <int, INT64> rrw_id;    // Required resource flag ranged by id order;
                      // each resource occupy one bit;
                    
-    map <int, int> res_req_id; // Holds the required resource id;
+    std::map <int, int> res_req_id; // Holds the required resource id;
        
     BOOL issue;       // Need issue or not
     
@@ -198,7 +198,7 @@ private:
                           
     VARNAME si_name;     // Name of SI struct;     
     
-    static map <int,SCHE_INFO*> fusi_list; // mapping of function class id and si 
+    static std::map <int,SCHE_INFO*> fusi_list; // mapping of function class id and si 
     
     void Caculate_Field(bv32_t cport_mask);
       

@@ -93,7 +93,7 @@ private:
   THR_TYPE     _thr_type;
   BOOL         _thr_before_regalloc;
   BB_MAP       _thr_map;
-  list<ARC*>   _candidate_list;
+  std::list<ARC*>   _candidate_list;
   BOOL         _chk_instr_inserted;
 
 public:

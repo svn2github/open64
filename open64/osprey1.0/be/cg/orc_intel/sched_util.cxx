@@ -30,9 +30,9 @@
 
 /* STL stuff 
  */
-#include <list.h>
-#include <vector.h> 
-#include <map.h>
+#include <list>
+#include <vector> 
+#include <map>
 
 /* memory management 
  */

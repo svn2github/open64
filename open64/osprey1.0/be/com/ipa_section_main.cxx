@@ -72,8 +72,7 @@ mINT32
 SYSTEM_OF_EQUATIONS::_work_rows_eq;
 mINT32
 SYSTEM_OF_EQUATIONS::_work_rows;
-MEM_POOL*
-MAT<int>::_default_pool;
+template<> MEM_POOL* MAT<int>::_default_pool;
 #endif
 
 //=========================================================================

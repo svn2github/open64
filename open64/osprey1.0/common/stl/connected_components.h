@@ -38,7 +38,6 @@
 #define SGI_connected_components_h_INCLUDED
 
 #include "misc_extension.h"
-#include "stl_algobase.h"
 
 namespace SGI {
 
@@ -105,7 +104,7 @@ void construct_connected_components(Iterator f,
 				    Iterator l,
 				    NodeContainer& component)
 {
-  vector<unsigned char> rank;
+  std::vector<unsigned char> rank;
   for (Iterator e = f; e != l; ++e) {
     extend_components_and_ranks(component, rank, max(first(*e), second(*e)));
     connect_components(component.begin(), rank, first(*e), second(*e));
@@ -123,7 +122,7 @@ void construct_connected_components(Iterator f,
 				    NodeContainer& component,
 				    NodeIndex max_node_index)
 {
-  vector<unsigned char> rank;
+  std::vector<unsigned char> rank;
   extend_components_and_ranks(component, rank, max_node_index+1);
   for (Iterator e = f; e != l; ++e) 
     connect_components(component.begin(), rank, first(*e), second(*e));

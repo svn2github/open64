@@ -226,7 +226,7 @@ catch_signal (INT sig, INT error_num)
 	    /* special case for I/O error on mmapped object: report as an
 	       ordinary fatal error */ 
 	    Fatal_Error ("I/O error in mmapped object: %s",
-			 sys_errlist[error_num]);
+			 strerror(error_num));
     }
     
     printf ( "Signal: %s", sys_siglist[sig] );
@@ -681,12 +681,6 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
   vstring emsg;
   INTPS mparm[MAX_ERR_PARMS];
 
-  /* Interface to Unix system error messages: */
-  extern INT sys_nerr;
-#ifndef linux
-  extern char *sys_errlist[];
-#endif
-
   /* Formatting buffer: */
 # define BUFLEN 512
   INT loc;
@@ -790,16 +784,10 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
 			break;
 
       case ET_SYSERR:	parm = (INTPS) va_arg(vp,int);
-      			if (parm < 0) {
+      			if (parm < 0)
 			  mparm[pnum] = (INTPS) host_errlist[-parm];
-			} else if ( parm <= sys_nerr ) {
-			  mparm[pnum] = (INTPS) sys_errlist[parm];
-			} else {
-			  result = &buf[++loc];
-			  loc += sprintf ( &buf[loc],
-					   "Unix error %ld", parm );
-			  mparm[pnum] = (INTPS) result;
-			}
+			else
+			  mparm[pnum] = (INTPS) strerror(parm);
 			break;
 
       /* The default case takes care of all host program-specific
@@ -856,12 +844,6 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
   char hmsg[512];
   vstring emsg;
   INTPS mparm[MAX_ERR_PARMS];
-
-  /* Interface to Unix system error messages: */
-  extern INT sys_nerr;
-#ifndef linux
-  extern char *sys_errlist[];
-#endif
 
   /* Formatting buffer: */
 # define BUFLEN 512
@@ -956,16 +938,10 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
 			break;
 
       case ET_SYSERR:	parm = (INTPS) va_arg(vp,int);
-      			if (parm < 0) {
+      			if (parm < 0)
 			  mparm[pnum] = (INTPS) host_errlist[-parm];
-			} else if ( parm <= sys_nerr ) {
-			  mparm[pnum] = (INTPS) sys_errlist[parm];
-			} else {
-			  result = &buf[++loc];
-			  loc += sprintf ( &buf[loc],
-					   "Unix error %ld", parm );
-			  mparm[pnum] = (INTPS) result;
-			}
+			else
+			  mparm[pnum] = (INTPS) strerror(parm);
 			break;
 
       /* The default case takes care of all host program-specific

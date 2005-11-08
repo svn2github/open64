@@ -362,7 +362,7 @@ Recompute_Addr_Taken (const WN *proc_entry, SUMMARIZE<program>* sum)
     if (program == IPL) {
 	for (SYMTAB_IDX i = GLOBAL_SYMTAB; i <= CURRENT_SYMTAB; ++i) {
 	    if (ST_Table_Size (i) > Aux_Symbol_Info[i].size ()) {
-		vector<IPL_ST_INFO>& aux_st = Aux_Symbol_Info[i];
+		std::vector<IPL_ST_INFO>& aux_st = Aux_Symbol_Info[i];
 		aux_st.insert (aux_st.end(),
 			       ST_Table_Size (i) - aux_st.size (),
 			       IPL_ST_INFO ());
@@ -414,11 +414,11 @@ SUMMARIZE<program>::Summarize (WN *w)
     // initialize hash tables for translating CODEREP and PHI
     Chi_To_Idx_Map =
 	CXX_NEW (CHI_CR_TO_INT_MAP (113, ptr_hash<CODEREP> (),
-				    equal_to<CODEREP*> (), &Temp_pool),
+				    std::equal_to<CODEREP*> (), &Temp_pool),
 		 &Temp_pool);
     Phi_To_Idx_Map =
 	CXX_NEW (PHI_NODE_TO_INT_MAP (113, ptr_hash<PHI_NODE> (),
-				      equal_to<PHI_NODE*> (), &Temp_pool),
+				      std::equal_to<PHI_NODE*> (), &Temp_pool),
 		 &Temp_pool);
     Hashed_Chis = CXX_NEW(CHI_CR_ARRAY(&Temp_pool), &Temp_pool);
     Hashed_Phis = CXX_NEW(PHI_NODE_ARRAY(&Temp_pool), &Temp_pool); 
@@ -490,7 +490,7 @@ template <PROGRAM program>
 struct process_compile_time_addr_saved
 {
     SUMMARIZE<program>* const sum;
-    vector<IPL_ST_INFO>& aux_st_info; 
+    std::vector<IPL_ST_INFO>& aux_st_info; 
 
     process_compile_time_addr_saved (SUMMARIZE<program>* const s) :
 	sum (s), aux_st_info (Aux_Symbol_Info[GLOBAL_SYMTAB]) {}
@@ -519,7 +519,7 @@ struct set_global_addr_taken_attrib
     BOOL trace;
 #endif
     SUMMARIZE<program>* const sum;
-    const vector<IPL_ST_INFO>& aux_st_info;
+    const std::vector<IPL_ST_INFO>& aux_st_info;
 
     set_global_addr_taken_attrib (SUMMARIZE<program>* const s) :
 	sum (s),
@@ -695,7 +695,7 @@ template <PROGRAM program>
 inline void
 SUMMARIZE<program>::Set_local_addr_taken_attrib ()
 {
-    typedef vector<IPL_ST_INFO> AUX_INFO;
+    typedef std::vector<IPL_ST_INFO> AUX_INFO;
     const AUX_INFO& aux_info = Aux_Symbol_Info[CURRENT_SYMTAB];
 
     for (AUX_INFO::const_iterator first = aux_info.begin ();
@@ -835,6 +835,8 @@ Last_Node (WN_TREE_ITER<PRE_ORDER, WN*> i)
     i.Skip ();
     return i.Wn () == NULL;
 }
+
+static BOOL is_variable_dim_array(TY_IDX);
 
 //-----------------------------------------------------------
 // summary procedure node
@@ -2156,12 +2158,12 @@ SUMMARIZE<program>:: Record_struct_access(WN *wn, mUINT64 loop_count)
             cur_summary=iter1->second;
         else{//not found summary
             cur_summary=New_struct_access(struct_index,flatten_flds);
-            Ty_to_access_map->insert(make_pair(struct_index,cur_summary));
+            Ty_to_access_map->insert(std::make_pair(struct_index,cur_summary));
             for(ptr_iter=Ptr_to_ty_vector->begin();
                 ptr_iter!=Ptr_to_ty_vector->end();
                 ptr_iter++){
                 if(ptr_iter->pt_index==struct_index)
-                    Ty_to_access_map->insert(make_pair(ptr_iter->ty_index,cur_summary));
+                    Ty_to_access_map->insert(std::make_pair(ptr_iter->ty_index,cur_summary));
             }// fill in all such pointer_tys
         }
     }

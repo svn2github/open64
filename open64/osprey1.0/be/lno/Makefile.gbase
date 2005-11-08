@@ -474,13 +474,13 @@ lno.so:	$(LNOPT_OBJS) $(LNOPT_CXX_OBJS) $(BE_LNOPT_DIR)/Exported \
 	$(LNOPT_OBJS) $(LNOPT_CXX_OBJS) $(LNOPT_DSOS) $(LLDLIBS)
 
 wopt.so:	
-	if ! test -a wopt.so; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi
+	if ! test -e wopt.so; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi
 
 be.so:	
-	if ! test -a be.so; then ln -sf $(TARG_BE)/be.so .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE)/be.so .; fi
 
 ipl.so:	
-	if ! test -a ipl.so; then ln -sf $(TARG_IPL_DIR)/ipl.so .; fi
+	if ! test -e ipl.so; then ln -sf $(TARG_IPL_DIR)/ipl.so .; fi
 
 
 endif

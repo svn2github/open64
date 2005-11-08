@@ -58,7 +58,7 @@
 #include "anl_driver.h" 
 #include "wb_f90_lower.h"
 
-#include "stack.h" // For MP_region_stack
+#include <stack>
 
 #include "intrn_info.h"
 

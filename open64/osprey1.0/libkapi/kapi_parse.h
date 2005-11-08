@@ -196,7 +196,9 @@ typedef union _TOKVAL {
    valhdr_t *pvalhdr;
    valn_t   *pvaln;
    limp_t   *plimp;
-} tokval_t, YYSTYPE;
+} tokval_t;
+
+#define YYSTYPE tokval_t
 
 /* ----------------------------------------- */
 

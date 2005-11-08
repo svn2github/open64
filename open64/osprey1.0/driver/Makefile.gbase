@@ -98,7 +98,9 @@ GEN_HFILES = \
 	option_names.h \
 	init_options.i \
 	get_option.i \
-	opt_action.i
+	opt_action.i \
+	lib_phase_dir.h \
+	profile_type.h
 
 SHARED_HFILES = \
 	basic.h \

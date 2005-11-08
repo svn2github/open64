@@ -86,6 +86,10 @@
 
 
 #define USE_STANDARD_TYPE
+#include <map>
+#include <set>
+#include <utility>
+#include <vector>
 #include "opt_defs.h"
 #include "opt_bb.h"
 #include "bb_node_set.h"
@@ -203,8 +207,8 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
 
   // No basic block can be the fall-through of two source block!
   {
-    vector<bool> was_fall_thru_target(g.size(), false);
-    vector<pair<edge,edge> > out_buffer;
+    std::vector<bool> was_fall_thru_target(g.size(), false);
+    std::vector<std::pair<edge,edge> > out_buffer;
     successor_graph::cluster_id next_cluster_id = g.size();
     for (successor_graph::iterator ep = g.begin(); 
 	 ep != g.end(); 
@@ -212,7 +216,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
       if ((*ep).must_fall_thru) {
 	if (was_fall_thru_target[second(*ep)]) {
 	  successor_graph::cluster_id v = next_cluster_id++;
-	  out_buffer.push_back(pair<edge,edge>(*ep,edge(v, second(*ep))));
+	  out_buffer.push_back(std::pair<edge,edge>(*ep,edge(v, second(*ep))));
 	  (*ep).second = v; 
 	  if (trace)
 	    fprintf(TFile, "CFG trans: added fall-thru basic block %d\n", v);
@@ -228,7 +232,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
       }
     }
 
-    for (vector<pair<edge,edge> >::iterator p = out_buffer.begin();
+    for (std::vector<std::pair<edge,edge> >::iterator p = out_buffer.begin();
 	 p != out_buffer.end();
 	 ++p) {
       add_edge(g, (*p).second);
@@ -243,9 +247,9 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
   }
 
   // Produce layout, i.e. setup bb->Next().
-  vector<int> layout_order;
+  std::vector<int> layout_order;
   {
-    vector<int> rpo;
+	  std::vector<int> rpo;
     generate_reverse_post_order(g, cfg->First_bb()->Id(), rpo);
 
     if (trace) {
@@ -261,7 +265,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
       fprintf(TFile,"\n");
     }
 
-    vector<bool> visited(g.size(), false);
+    std::vector<bool> visited(g.size(), false);
 
     // mark BB that must come from fall-thru visited
     int i;
@@ -277,7 +281,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
       }
     }
 
-    insert_iterator<vector<int> > ii(layout_order,layout_order.begin());
+    std::insert_iterator<std::vector<int> > ii(layout_order,layout_order.begin());
 
     for (i = 0; i < rpo.size(); ++i) {
       int cur_bb_id = rpo[i];
@@ -324,7 +328,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
     // Remove unreachable bbs from the cfg
     {
       // Identify all bbs unreachable from the root of the rebuilt graph
-      vector<bool> reachable( g.size(), false );
+      std::vector<bool> reachable( g.size(), false );
       for (int i = layout_order.size() - 1; i >= 0; --i) {
 	int bb_id = layout_order[i];
 	reachable[bb_id] = true;
@@ -384,7 +388,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
 
   // Add/Remove goto/labels
   {
-    vector<bool> need_label(g.size(), false);
+    std::vector<bool> need_label(g.size(), false);
 
     // update gotos
     int i;
@@ -571,7 +575,7 @@ struct comp_zones {
 
 void print_zone(FILE *fp, zone_container& zones)
 {
-  vector<int> sorted;
+  std::vector<int> sorted;
   int i;
   for (i = 0; i < zones.size(); ++i)
     sorted.push_back(i);
@@ -589,8 +593,8 @@ static bool no_bad_interference(zone& z1, zone& z2)
 {
   if (z1.loop_butterfly || z2.loop_butterfly) return false;
 
-  vector<edge> t;
-  insert_iterator<vector<edge> > ins_t(t, t.begin());
+  std::vector<edge> t;
+  std::insert_iterator<std::vector<edge> > ins_t(t, t.begin());
   
   set_intersection(z1.entry.begin(), z1.entry.end(),
 		   z2.clone.begin(), z2.clone.end(), ins_t);
@@ -622,8 +626,8 @@ static bool can_be_merged(zone& z1, zone& z2)
 {
   if (z1.loop_butterfly || z2.loop_butterfly) return false;
 
-  vector<edge> t;
-  insert_iterator<vector<edge> > ins_t(t, t.begin());
+  std::vector<edge> t;
+  std::insert_iterator<std::vector<edge> > ins_t(t, t.begin());
 
   set_intersection(z1.side_entry.begin(), z1.side_entry.end(),
 		   z2.clone.begin(), z2.clone.end(), ins_t);
@@ -648,11 +652,11 @@ static bool can_be_merged(zone& z1, zone& z2)
 //  Merge z2 into z1
 static void merge_zone(zone& z1, zone& z2)
 {
-  vector<edge> entry, clone, exit, side_entry;
-  insert_iterator<vector<edge> > ins_entry(entry, entry.begin());
-  insert_iterator<vector<edge> > ins_clone(clone, clone.begin());
-  insert_iterator<vector<edge> > ins_exit(exit, exit.begin());
-  insert_iterator<vector<edge> > ins_side_entry(side_entry,
+  std::vector<edge> entry, clone, exit, side_entry;
+  std::insert_iterator<std::vector<edge> > ins_entry(entry, entry.begin());
+  std::insert_iterator<std::vector<edge> > ins_clone(clone, clone.begin());
+  std::insert_iterator<std::vector<edge> > ins_exit(exit, exit.begin());
+  std::insert_iterator<std::vector<edge> > ins_side_entry(side_entry,
 						side_entry.begin());
 
   set_union(z1.entry.begin(), z1.entry.end(),
@@ -671,9 +675,9 @@ static void merge_zone(zone& z1, zone& z2)
 
   z1.clone.insert(z1.clone.begin(), clone.begin(), clone.end());
 
-  insert_iterator<zone::edge_container> ins_z1_entry(z1.entry,
+  std::insert_iterator<zone::edge_container> ins_z1_entry(z1.entry,
 						     z1.entry.begin());
-  insert_iterator<zone::edge_container> ins_z1_exit(z1.exit, z1.exit.begin());
+  std::insert_iterator<zone::edge_container> ins_z1_exit(z1.exit, z1.exit.begin());
   
   set_difference(entry.begin(), entry.end(),
 		 clone.begin(), clone.end(), ins_z1_entry);
@@ -690,12 +694,12 @@ static void merge_zone(zone& z1, zone& z2)
 // the cur_zone interfere with, i.e., Compile-time enhancement.
 //
 class interference_cache {
-  vector<int> zones;
-  map<vertex_id, set<int> > belongs_to;
+  std::vector<int> zones;
+  std::map<vertex_id, std::set<int> > belongs_to;
 
-  void find_interference_from_edge(edge e, set<int>& interfered_zones) {
-    map<vertex_id, set<int> >::iterator t1 = belongs_to.find(first(e));
-    map<vertex_id, set<int> >::iterator t2 = belongs_to.find(second(e));
+  void find_interference_from_edge(edge e, std::set<int>& interfered_zones) {
+    std::map<vertex_id, std::set<int> >::iterator t1 = belongs_to.find(first(e));
+    std::map<vertex_id, std::set<int> >::iterator t2 = belongs_to.find(second(e));
     if (t1 != belongs_to.end()) 
       interfered_zones.insert((*t1).second.begin(), (*t1).second.end());
     if (t2 != belongs_to.end()) 
@@ -704,15 +708,15 @@ class interference_cache {
 
   void add_edge(edge e, int cur_zone_id) {
     if (belongs_to.find(first(e)) == belongs_to.end())
-      belongs_to[first(e)] = set<int>();
+      belongs_to[first(e)] = std::set<int>();
     if (belongs_to.find(second(e)) == belongs_to.end())
-      belongs_to[second(e)] = set<int>();
+      belongs_to[second(e)] = std::set<int>();
     belongs_to[first(e)].insert(cur_zone_id);
     belongs_to[second(e)].insert(cur_zone_id);
   }
   
 public:
-  void find_interference_zones(zone& cur_zone, set<int>& interfered_zones) {
+  void find_interference_zones(zone& cur_zone, std::set<int>& interfered_zones) {
     int j;
     for (j = 0; j < cur_zone.clone.size(); ++j) 
       find_interference_from_edge(cur_zone.clone[j], interfered_zones);
@@ -775,7 +779,7 @@ void sort_merge_and_delete_zones(zone_container& zones, CFG *cfg, bool trace)
 
     Set_volatile_map(cfg, vol);
 
-    vector<int> sorted;
+    std::vector<int> sorted;
     int i;
     for (i = 0; i < zones.size(); ++i) {
       sorted.push_back(i);
@@ -799,13 +803,13 @@ void sort_merge_and_delete_zones(zone_container& zones, CFG *cfg, bool trace)
 	continue;
       }
     
-      set<int> interfered_zones;  // set of zone id
+      std::set<int> interfered_zones;  // set of zone id
       zones_will_be_cloned.find_interference_zones(*cur_zone, 
 						   interfered_zones);
 
       bool skip = false;
-      vector<int> need_merge;  // set of zone id
-      for (set<int>::iterator k = interfered_zones.begin(); 
+      std::vector<int> need_merge;  // set of zone id
+      for (std::set<int>::iterator k = interfered_zones.begin(); 
 	   k != interfered_zones.end();
 	   ++k) {
 	int zone_id = *k;
@@ -836,7 +840,7 @@ void sort_merge_and_delete_zones(zone_container& zones, CFG *cfg, bool trace)
 	  skip = true;
 	}
       if (!skip) {
-	for (vector<int>::iterator k = need_merge.begin(); 
+	for (std::vector<int>::iterator k = need_merge.begin(); 
 	     k != need_merge.end();
 	     ++k) {
 	  int zone_id = *k;
@@ -929,8 +933,8 @@ static void connect_butterfly_zone(successor_graph& g, zone& z,
 				   vertex_id new_preheader,
 				   OPT_FEEDBACK *feedback)
 {
-  vector<edge> edge_incident_to_header;
-  insert_iterator<vector<edge> > ins(edge_incident_to_header,
+  std::vector<edge> edge_incident_to_header;
+  std::insert_iterator<std::vector<edge> > ins(edge_incident_to_header,
 				     edge_incident_to_header.begin());
   zone::iterator e;
   for (e = z.entry.begin(); e != z.entry.end(); ++e) {
@@ -951,7 +955,7 @@ static void connect_butterfly_zone(successor_graph& g, zone& z,
   }
 
   {
-    for (vector<edge>::iterator e =  edge_incident_to_header.begin();
+    for (std::vector<edge>::iterator e =  edge_incident_to_header.begin();
 	 e !=  edge_incident_to_header.end();
 	 ++e) {
       vertex_id from = (*e).first;
@@ -972,7 +976,7 @@ static void connect_butterfly_zone(successor_graph& g, zone& z,
 // Connect original graph to a cloned acyclic zone.
 //
 static void connect_acyclic_zone(successor_graph& g, zone& z, 
-				 map<vertex_id,vertex_id>& old_to_new,
+				 std::map<vertex_id,vertex_id>& old_to_new,
 				 OPT_FEEDBACK *feedback) 
 {
   for (zone::iterator e = z.entry.begin();
@@ -1000,12 +1004,12 @@ static void connect_acyclic_zone(successor_graph& g, zone& z,
 // translate the head of exit edges using old to new mapping
 //
 static void
-clone_zones(successor_graph& g, vector<vertex_id>& entry, 
+clone_zones(successor_graph& g, std::vector<vertex_id>& entry, 
 	    zone_iterator first, zone_iterator last, CFG *cfg,
 	    bool trace, bool display)
 {
   vertex_id new_id = cfg->Total_bb_count();
-  map<vertex_id, vertex_id> new_to_old;
+  std::map<vertex_id, vertex_id> new_to_old;
 
   if (trace) {
     fprintf(TFile, "before clone_zone:\n");
@@ -1018,7 +1022,7 @@ clone_zones(successor_graph& g, vector<vertex_id>& entry,
     if ((*ri).skip) continue;
     if ((*ri).id != (*ri).merged_into) continue;
     
-    map<vertex_id, vertex_id> old_to_new; 
+    std::map<vertex_id, vertex_id> old_to_new; 
 
     zone::iterator e;
     for (e = (*ri).clone.begin(); e != (*ri).clone.end(); ++e) {
@@ -1059,7 +1063,7 @@ clone_zones(successor_graph& g, vector<vertex_id>& entry,
     } else 
       connect_acyclic_zone(g, *ri, old_to_new, cfg->Feedback());
 
-    for (map<vertex_id,vertex_id>::iterator mi = old_to_new.begin();
+    for (std::map<vertex_id,vertex_id>::iterator mi = old_to_new.begin();
 	 mi != old_to_new.end();
 	 ++mi) {
       vertex_id o = (*mi).first;
@@ -1068,13 +1072,13 @@ clone_zones(successor_graph& g, vector<vertex_id>& entry,
     }
   }
 
-  vector<bool> reachable(g.size(), false);
-  for (vector<vertex_id>::iterator p = entry.begin();
+  std::vector<bool> reachable(g.size(), false);
+  for (std::vector<vertex_id>::iterator p = entry.begin();
        p != entry.end();
        ++p) 
     find_reachable_vertex_set(g, *p, reachable);
 
-  vector<edge> g_tmp;
+  std::vector<edge> g_tmp;
   subgraph(g, g_tmp, reachable);
   erase(g);
   copy(g_tmp, g);
@@ -1122,9 +1126,9 @@ CFG_transformation(COMP_UNIT *cu, bool do_butterfly, bool trace, bool display)
   cfg->Analyze_loops();
 
   successor_graph g;
-  vector<vertex_id> entry;
+  std::vector<vertex_id> entry;
   bool ok = build_successor_graph(cfg, g, 
-				  insert_iterator<vector<vertex_id> >
+				  std::insert_iterator<std::vector<vertex_id> >
 				  (entry, entry.begin()));
   if (!ok) {
     if (trace)
@@ -1141,7 +1145,7 @@ CFG_transformation(COMP_UNIT *cu, bool do_butterfly, bool trace, bool display)
     fprintf(TFile,"\n");
   }
 
-  vector<zone> zones;
+  std::vector<zone> zones;
   generate_zones(cu, g, zones, do_butterfly, trace, display);
   clone_zones(g, entry, zones.begin(), zones.end(), cfg, trace, display);
 
@@ -1172,10 +1176,10 @@ void print_path_type(path_type *p, FILE *fp)
   fprintf(fp, "\n");
 }
 
-void print_vertex_set(set<vertex_id> *s, FILE *fp) 
+void print_vertex_set(std::set<vertex_id> *s, FILE *fp) 
 {
   fprintf(fp, "vertex set: ");
-  for (set<vertex_id>::iterator si = (*s).begin();
+  for (std::set<vertex_id>::iterator si = (*s).begin();
        si != (*s).end();
        ++si) {
     fprintf(fp, "%d ", *si);

@@ -162,10 +162,10 @@ ir_bwrite_signal_handler (int sig, int err_num)
 {
     void (*old_handler) (int) = 0;
 
-    if (Doing_mmapped_io && err_num > 0 && err_num < sys_nerr)
+    if (Doing_mmapped_io && err_num > 0)
 	Fatal_Error ("I/O error in %s: %s", Current_Output ?
 		     Current_Output->file_name : "mmapped object",
-		     sys_errlist[err_num]);
+		     strerror(err_num));
     switch (sig) {
     case SIGBUS:
 	old_handler = old_sigbus;
@@ -297,8 +297,8 @@ write_output (UINT64 e_shoff, const typename ELF::Elf_Shdr& strtab_sec,
     ehdr->e_shoff = e_shoff;
     ehdr->e_flags = Config_ELF_From_Target (! Use_32_Bit_Pointers, FALSE,
 					    (INT) Target_ISA);  
-    ehdr->e_ehsize = sizeof(ELF::Elf_Ehdr);
-    ehdr->e_shentsize = sizeof(ELF::Elf_Shdr);
+    ehdr->e_ehsize = sizeof(typename ELF::Elf_Ehdr);
+    ehdr->e_shentsize = sizeof(typename ELF::Elf_Shdr);
     ehdr->e_shnum = fl->num_of_section + 2;
     ehdr->e_shstrndx = fl->num_of_section + 1;
 
@@ -320,11 +320,12 @@ write_output (UINT64 e_shoff, const typename ELF::Elf_Shdr& strtab_sec,
     /* Finally, the section header table */
     typename ELF::Elf_Shdr* shdr =
 	(typename ELF::Elf_Shdr *) (base_addr + e_shoff);
-    memset (shdr, 0, sizeof(ELF::Elf_Shdr)); /* First null entry */
+    memset (shdr, 0, sizeof(typename ELF::Elf_Shdr)); /* First null entry */
     shdr++;
     if (tag.Elf_class() == ELFCLASS64) {
 	for (i = 0; i < fl->num_of_section; i++, shdr++)
-	    memcpy (shdr, &(fl->section_list[i].shdr), sizeof(ELF::Elf_Shdr));
+	    memcpy (shdr, &(fl->section_list[i].shdr),
+		    sizeof(typename ELF::Elf_Shdr));
     } else {
 	// convert Elf64_Shdr to Elf32_Shdr
 	for (i = 0; i < fl->num_of_section; i++, shdr++) {
@@ -340,7 +341,7 @@ write_output (UINT64 e_shoff, const typename ELF::Elf_Shdr& strtab_sec,
 	    shdr->sh_entsize = fl->section_list[i].shdr.sh_entsize;
 	}
     }
-    memcpy (shdr, &strtab_sec, sizeof(ELF::Elf_Shdr));
+    memcpy (shdr, &strtab_sec, sizeof(typename ELF::Elf_Shdr));
 } /* write_output */
 
 
@@ -748,11 +749,11 @@ namespace
 		   mUINT32& offset) {
 	offset =
 	    ir_b_save_buf (&(data.front()),
-			   data.size () * sizeof(T::value_type),
+			   data.size () * sizeof(typename T::value_type),
 #ifndef __GNUC__
 			   __builtin_alignof(T::value_type),
 #else
-			   __alignof__(T::value_type),
+			   __alignof__(typename T::value_type),
 #endif
 			   0, fl) - base;
 	num = data.size ();
@@ -769,7 +770,7 @@ namespace
 
 	typename T::iterator first (data.begin ());
 	while (first != data.end ()) {
-	    const vector<FB_FREQ>& freq = first->freq_targets;
+	    const std::vector<FB_FREQ>& freq = first->freq_targets;
 	    ir_b_save_buf (&(freq.front ()), freq.size () * sizeof(FB_FREQ),
 #ifndef __GNUC__
 			   __builtin_alignof(FB_FREQ),

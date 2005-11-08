@@ -172,14 +172,14 @@
 #ifndef HB_H_INCLUDED
 #define HB_H_INCLUDED
 
-#include <list.h>
+#include <list>
 #include "bb.h"
 #include "findloops.h"
 
 //
 // Some typedefs to make using STL lists easier
 //
-typedef list<BB*> HB_bb_list;
+typedef std::list<BB*> HB_bb_list;
 
 /////////////////////////////////////
 //
@@ -424,7 +424,7 @@ HB_Contains_Block(HB* hb, BB* bb)
 }
 
 
-void Get_HB_Blocks_List(list<BB *> &blocks, HB* hb);
+void Get_HB_Blocks_List(std::list<BB *> &blocks, HB* hb);
 
 /////////////////////////////////////
 inline void
@@ -451,7 +451,7 @@ extern void HB_Form_Hyperblocks(RID* rid, const BB_REGION& bb_region);
 //
 // Some typedefs to make using STL lists easier
 //
-typedef list<BB*> HB_bb_list;
+typedef std::list<BB*> HB_bb_list;
 
 extern void HB_Predecessor_Count(HB* hb, BB_MAP& predecessor_count);
 
@@ -460,7 +460,7 @@ extern void HB_Copy_BBs_And_Map(HB* hb, BB_SET* bbset);
 
 extern MEM_POOL MEM_HB_pool;
 
-extern list<HB *> HB_list;
+extern std::list<HB *> HB_list;
 
 extern float HB_minimum_priority;
 

@@ -53,6 +53,7 @@
  */
 
 #include <elf.h>		    /* for wn.h */
+#include <errno.h>
 #ifndef _SYS_TYPES_H
 #include <sys/types.h>              /* for off_t */
 #endif /* _SYS_TYPES_H */

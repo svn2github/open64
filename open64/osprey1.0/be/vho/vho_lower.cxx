@@ -58,7 +58,6 @@
 #include "prompf.h" 
 #include "wb_f90_lower.h"
 #include "wn_lower.h"
-#include <hash_map.h>
 
 typedef enum {
   ADDRESS_USED,

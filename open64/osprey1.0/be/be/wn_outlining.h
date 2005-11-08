@@ -105,7 +105,7 @@ extern void	count_wn(WN *wn, int *count);
 }
 #endif
 
-typedef hash_map<INTPTR, float> BLOCK_FREQ_MAP;//OUTLINING^$
+typedef __gnu_cxx::hash_map<INTPTR, float> BLOCK_FREQ_MAP;
 
 typedef enum 	
 {

@@ -1310,7 +1310,7 @@ struct INVOCATION_COST_COMP
 // For each node, create a list of call sites and sort them based on the
 // cost function defined in Estimated_Invocation_Cost so that more
 // desirable callees are inlined first.   
-typedef vector<IPA_EDGE_INDEX> EDGE_INDEX_VECTOR;
+typedef std::vector<IPA_EDGE_INDEX> EDGE_INDEX_VECTOR;
 
 void
 Get_Sorted_Callsite_List (IPA_NODE *n, IPA_CALL_GRAPH *cg,

@@ -840,7 +840,7 @@ Create_ST_For_Tree (tree decl_node)
 
 #ifndef EXTRA_WORD_IN_TREE_NODES
 
-#include <hash_map>
+#include <ext/hash_map>
 
 namespace {
 
@@ -848,22 +848,22 @@ namespace {
     size_t operator()(void* p) const { return reinterpret_cast<size_t>(p); }
   };
 
-  std::hash_map<tree, TY_IDX,     ptrhash>     ty_idx_map;
-  std::hash_map<tree, ST*,        ptrhash>     st_map;
-  std::hash_map<tree, SYMTAB_IDX, ptrhash>     symtab_idx_map;
-  std::hash_map<tree, LABEL_IDX,  ptrhash>     label_idx_map;
-  std::hash_map<tree, ST*,        ptrhash>     string_st_map;
-  std::hash_map<tree, BOOL,       ptrhash>     bool_map;
-  std::hash_map<tree, INT32,      ptrhash>     field_id_map;
-  std::hash_map<tree, INT32,	  ptrhash>     type_field_ids_used_map;
-  std::hash_map<tree, INT32,      ptrhash>     scope_number_map;
-  std::hash_map<tree, tree,       ptrhash>     label_scope_map;
-  std::hash_map<tree, DST_INFO_IDX,ptrhash>    decl_idx_map; 
-  std::hash_map<tree, DST_INFO_IDX,ptrhash>    decl_field_idx_map; 
-  std::hash_map<tree, DST_INFO_IDX,ptrhash>    decl_specification_idx_map; 
-  std::hash_map<tree, DST_INFO_IDX,ptrhash>    type_idx_map;
-  std::hash_map<tree, LABEL_IDX,  ptrhash>     handler_label_map;
-  std::hash_map<tree, DST_INFO_IDX,ptrhash>    abstract_root_map;
+  __gnu_cxx::hash_map<tree, TY_IDX,     ptrhash>     ty_idx_map;
+  __gnu_cxx::hash_map<tree, ST*,        ptrhash>     st_map;
+  __gnu_cxx::hash_map<tree, SYMTAB_IDX, ptrhash>     symtab_idx_map;
+  __gnu_cxx::hash_map<tree, LABEL_IDX,  ptrhash>     label_idx_map;
+  __gnu_cxx::hash_map<tree, ST*,        ptrhash>     string_st_map;
+  __gnu_cxx::hash_map<tree, BOOL,       ptrhash>     bool_map;
+  __gnu_cxx::hash_map<tree, INT32,      ptrhash>     field_id_map;
+  __gnu_cxx::hash_map<tree, INT32,	  ptrhash>     type_field_ids_used_map;
+  __gnu_cxx::hash_map<tree, INT32,      ptrhash>     scope_number_map;
+  __gnu_cxx::hash_map<tree, tree,       ptrhash>     label_scope_map;
+  __gnu_cxx::hash_map<tree, DST_INFO_IDX,ptrhash>    decl_idx_map; 
+  __gnu_cxx::hash_map<tree, DST_INFO_IDX,ptrhash>    decl_field_idx_map; 
+  __gnu_cxx::hash_map<tree, DST_INFO_IDX,ptrhash>    decl_specification_idx_map; 
+  __gnu_cxx::hash_map<tree, DST_INFO_IDX,ptrhash>    type_idx_map;
+  __gnu_cxx::hash_map<tree, LABEL_IDX,  ptrhash>     handler_label_map;
+  __gnu_cxx::hash_map<tree, DST_INFO_IDX,ptrhash>    abstract_root_map;
 }
 
 TY_IDX& TYPE_TY_IDX(tree t)         { return ty_idx_map[t]; }
@@ -892,7 +892,7 @@ tree & LABEL_SCOPE(tree t)	    { return label_scope_map[t]; }
 
 DST_INFO_IDX & DECL_DST_IDX(tree t) 
 { 
-	std::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
+	__gnu_cxx::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
 		decl_idx_map.find(t);
 	if(it == decl_idx_map.end()) {
 		// substitute for lack of default constructor
@@ -910,7 +910,7 @@ DST_INFO_IDX & DECL_DST_IDX(tree t)
 // So check and ensure a real entry exists.
 DST_INFO_IDX & DECL_DST_SPECIFICATION_IDX(tree t) 
 { 
-	std::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
+	__gnu_cxx::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
 		decl_specification_idx_map.find(t);
 	if(it == decl_specification_idx_map.end()) {
 		// substitute for lack of default constructor
@@ -929,7 +929,7 @@ DST_INFO_IDX & DECL_DST_SPECIFICATION_IDX(tree t)
 // So check and ensure a real entry exists.
 DST_INFO_IDX & DECL_DST_FIELD_IDX(tree t) 
 { 
-	std::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
+	__gnu_cxx::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
 		decl_field_idx_map.find(t);
 	if(it == decl_idx_map.end()) {
 		// substitute for lack of default constructor
@@ -943,7 +943,7 @@ DST_INFO_IDX & DECL_DST_FIELD_IDX(tree t)
 // So check and ensure a real entry exists.
 DST_INFO_IDX & TYPE_DST_IDX(tree t) 
 {
-	std::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
+	__gnu_cxx::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
 		type_idx_map.find(t);
 	if(it == type_idx_map.end()) {
 		// substitute for lack of default constructor
@@ -957,7 +957,7 @@ DST_INFO_IDX & TYPE_DST_IDX(tree t)
 // So check and ensure a real entry exists.
 DST_INFO_IDX & DECL_DST_ABSTRACT_ROOT_IDX(tree t) 
 {
-	std::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
+	__gnu_cxx::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
 		abstract_root_map.find(t);
 	if(it == abstract_root_map.end()) {
 		// substitute for lack of default constructor

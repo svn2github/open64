@@ -28,11 +28,11 @@
 //-*-c++-*-
 
 #include <stdlib.h>
-#include <algo.h>  // STL
-#include <vector.h>
-#include <stack.h>
-#include <list.h>
-#include <set.h>
+#include <algorithm>
+#include <vector>
+#include <stack>
+#include <list>
+#include <set>
 
 #include "bb.h"
 #include "defs.h"

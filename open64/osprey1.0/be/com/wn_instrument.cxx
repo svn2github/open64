@@ -78,11 +78,11 @@
 #define USE_STANDARD_TYPES
 
 #include <stdlib.h>
-#include <algo.h>  // STL
-#include <vector.h>
-#include <stack.h>
-#include <list.h>
-#include <set.h>
+#include <algorithm>
+#include <vector>
+#include <stack>
+#include <list>
+#include <set>
 
 // #include "stab.h"
 #include "mempool.h"
@@ -198,8 +198,8 @@ private:
   // methods provided further below.
 
   typedef mempool_allocator<WN *>  ALLOC_TYPE;
-  typedef deque<WN *, ALLOC_TYPE > DEQUE_TYPE;
-  typedef stack<WN *, DEQUE_TYPE > STACK_TYPE;
+  typedef std::deque<WN *, ALLOC_TYPE > DEQUE_TYPE;
+  typedef std::stack<WN *, DEQUE_TYPE > STACK_TYPE;
 
   WN *               _entry_pragma_stmt;
   WN *               _entry_pragma_block;
@@ -212,13 +212,13 @@ private:
   // This vector should only be accessed through the private methods
   //   provided further below.
 
-  vector<WN *, mempool_allocator<WN *> >   _instrumentation_nodes;
+  std::vector<WN *, mempool_allocator<WN *> >   _instrumentation_nodes;
 
   // SWITCH and COMPGOTO case information
 
-  vector<INT32, mempool_allocator<INT32> > _switch_num_targets;
-  vector<INT64, mempool_allocator<INT64> > _switch_case_values;
-  vector<INT32, mempool_allocator<INT32> > _compgoto_num_targets;
+  std::vector<INT32, mempool_allocator<INT32> > _switch_num_targets;
+  std::vector<INT64, mempool_allocator<INT64> > _switch_case_values;
+  std::vector<INT32, mempool_allocator<INT32> > _compgoto_num_targets;
 
   // ------------------------------------------------------------------
   // Undefined default methods made private to detect errors
@@ -1237,7 +1237,7 @@ Handle_Switch_Profile( PU_PROFILE_HANDLES& handles, WN* wn, INT32 id,
 		 info.freq_targets.end(),
 		 info_switch.freq_targets.begin(),
 		 info_switch.freq_targets.begin(),
-		 plus<FB_FREQ>() );
+		 std::plus<FB_FREQ>() );
     }
     Cur_PU_Feedback->Annot_switch( wn, info_switch );
   }

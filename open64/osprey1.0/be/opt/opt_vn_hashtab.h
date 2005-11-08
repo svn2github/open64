@@ -162,13 +162,9 @@
 #ifndef opt_vn_hashtab_INCLUDED
 #define opt_vn_hashtab_INCLUDED "opt_vn_hashtab.h"
 
-#include <hash_map>
+#include <ext/hash_map>
 #include "mempool_allocator.h"
 #include "opt_vn_expr.h"
-
-#ifdef __STL_USE_NAMESPACES
-using std::hash_map;
-#endif
 
 // Function object for determining equality between hash table keys.
 //
@@ -196,9 +192,9 @@ class VN_HASHTAB
 {
 private:
    
-   typedef pair<const VN_EXPR::PTR, VN_VALNUM>  HTABLE_VALUE_TYPE;
+   typedef std::pair<const VN_EXPR::PTR, VN_VALNUM>  HTABLE_VALUE_TYPE;
    typedef mempool_allocator<HTABLE_VALUE_TYPE> HTABLE_ALLOCATOR;
-   typedef hash_map <VN_EXPR::PTR, 
+   typedef __gnu_cxx::hash_map <VN_EXPR::PTR, 
       VN_VALNUM, VN_KEY_HASHVAL, VN_KEY_EQ, HTABLE_ALLOCATOR> HTABLE;
    
    HTABLE _tab;

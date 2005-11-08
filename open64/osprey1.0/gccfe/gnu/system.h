@@ -432,7 +432,7 @@ extern PTR realloc PARAMS ((PTR, size_t));
    libiberty but no declaration is supplied. */
 #if defined (HAVE_DECL_STRSIGNAL) && !HAVE_DECL_STRSIGNAL
 # ifndef strsignal
-extern const char *strsignal PARAMS ((int));
+// extern const char *strsignal PARAMS ((int));
 # endif
 #endif
 

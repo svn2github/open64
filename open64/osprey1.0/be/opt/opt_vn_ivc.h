@@ -102,12 +102,9 @@
 #define opt_vn_ivc_INCLUDED "opt_vn_ivc.h"
 
 #include <vector>
+#include <iterator>
 #include "opt_vn_expr.h"    // For VN_VALNUM, VN_EXPR, and VN_EXPR_MAP
 #include "opt_vn.h"         // For VN
-
-#ifdef __STL_USE_NAMESPACES
-using std::vector;
-#endif
 
 // ----- Interpretation of the -WOPT:vn_ivc=n option -----
 // -------------------------------------------------------
@@ -257,11 +254,16 @@ struct NEXT_EQCLASS_MEMBER
 // --------------------------------------------------------------------------
 
 template <class Container, class Next>
-class forward_to_next_iterator : 
-   public forward_iterator<
-     typename iterator_traits<typename Container::iterator>::value_type,
-     typename iterator_traits<typename Container::iterator>::difference_type>
-{
+class forward_to_next_iterator {
+  typedef typename std::iterator_traits<typename Container::iterator>::value_type _Tp;
+  typedef typename std::iterator_traits<typename Container::iterator>::difference_type _Distance;
+
+  typedef std::forward_iterator_tag iterator_category;
+  typedef _Tp       value_type;
+  typedef _Distance difference_type;
+  typedef _Tp*      pointer;
+  typedef _Tp&      reference;
+
 public:
 
    typedef typename Container::iterator iterator_type;
@@ -321,6 +323,14 @@ bool operator== (const forward_to_next_iterator<Container,Next> &it1,
 	   it1.current_idx() == it2.current_idx());
 }
 
+template <class Container, class Next>
+bool operator!= (const forward_to_next_iterator<Container,Next> &it1,
+		 const forward_to_next_iterator<Container,Next> &it2)
+{
+   return !(it1 == it2);
+}
+
+
 // ----------------- The exported interface -------------
 // ------------------------------------------------------
 
@@ -336,9 +346,9 @@ private:
    typedef mempool_allocator<EQCLASS>        EQCLASS_ALLOCATOR;
    typedef mempool_allocator<EQCLASS_MEMBER> EQCLASS_MEMBER_ALLOCATOR;
 
-   typedef vector<STEP_EQCLASS, STEP_ALLOCATOR>             IVC_STEP;
-   typedef vector<EQCLASS, EQCLASS_ALLOCATOR>               IVC_EQCLASS;
-   typedef vector<EQCLASS_MEMBER, EQCLASS_MEMBER_ALLOCATOR> IVC_EQCLASS_MEMB;
+   typedef std::vector<STEP_EQCLASS, STEP_ALLOCATOR>             IVC_STEP;
+   typedef std::vector<EQCLASS, EQCLASS_ALLOCATOR>               IVC_EQCLASS;
+   typedef std::vector<EQCLASS_MEMBER, EQCLASS_MEMBER_ALLOCATOR> IVC_EQCLASS_MEMB;
    
    MEM_POOL        *_lpool;
    VN              *_vn;
@@ -349,7 +359,7 @@ private:
 
    static BOOL Is_induction_step(VN_EXPR::PTR step, VN_VALNUM join_result);
 
-   pair<BOOL,INT64> _get_literal_diff(VN_VALNUM v1, VN_VALNUM v2, MTYPE rty);
+   std::pair<BOOL,INT64> _get_literal_diff(VN_VALNUM v1, VN_VALNUM v2, MTYPE rty);
 
    ENTRY_IDX _find_or_insert_step(VN_VALNUM step_valnum, OPCODE step_opc);
 
@@ -544,14 +554,14 @@ VN_IVC::Is_induction_step(VN_EXPR::PTR step, VN_VALNUM join_result)
 } // VN_IVC::Is_induction_step
 
 
-pair<BOOL,INT64> 
+std::pair<BOOL,INT64> 
 VN_IVC::_get_literal_diff(VN_VALNUM v1, VN_VALNUM v2, MTYPE rty)
 {
    // Return the difference between two value numbers as a
    // VN_EXPR::LITERAL, if possible; otherwise, return 
    // VN_VALNUM::Bottom().  This diff is "v1 - v2".
    //
-   pair<BOOL, INT64> retval(FALSE, 0);
+   std::pair<BOOL, INT64> retval(FALSE, 0);
    OPCODE       opc = OPCODE_make_op(OPR_SUB, rty, MTYPE_V);
    VN_EXPR::PTR offset_expr = VN_EXPR::Create_Binary(opc, v1, v2);
    VN_EXPR::PTR offset_val = offset_expr->simplify(_vn);
@@ -559,7 +569,7 @@ VN_IVC::_get_literal_diff(VN_VALNUM v1, VN_VALNUM v2, MTYPE rty)
    Is_True(MTYPE_is_integral(rty), ("Illegal rty in _get_literal_diff()"));
    
    if (offset_val->get_kind() == VN_EXPR::LITERAL)
-      retval = pair<BOOL,INT64>(TRUE, Targ_To_Host(offset_val->get_tcon()));
+      retval = std::pair<BOOL,INT64>(TRUE, Targ_To_Host(offset_val->get_tcon()));
    else
    {
       // Try (v2 - v1), since our simplification algorithm may not
@@ -569,7 +579,7 @@ VN_IVC::_get_literal_diff(VN_VALNUM v1, VN_VALNUM v2, MTYPE rty)
       VN_EXPR::PTR offset_val2 = offset_expr2->simplify(_vn);
       
       if (offset_val2->get_kind() == VN_EXPR::LITERAL)
-	 retval = pair<BOOL,INT64>(TRUE, 
+	 retval = std::pair<BOOL,INT64>(TRUE, 
 				   -Targ_To_Host(offset_val2->get_tcon()));
 
       offset_val2->free();
@@ -643,7 +653,7 @@ VN_IVC::_find_or_insert_eqclass(ENTRY_IDX stepi,
 	    eqclassi = i;
 	 else
 	 {
-	    pair<BOOL,INT64> ofst = 
+	    std::pair<BOOL,INT64> ofst = 
 	       _get_literal_diff(init_valnum, next_init_valnum, rty);
 	    
 	    if (ofst.first)
@@ -899,7 +909,7 @@ VN_IVC::finalize_for_coalescing(const EQCLASS_MEMBER    &base,
       else // Not base member, and member has enough hits to be coalesced!
       {
 	 const MTYPE      rty = OPCODE_rtype(step_opc(*memb));
-	 pair<BOOL,INT64> literal_diff =
+	 std::pair<BOOL,INT64> literal_diff =
 	    _get_literal_diff(init_valnum, base_init_valnum, rty);
 	 
 	 if (literal_diff.first)

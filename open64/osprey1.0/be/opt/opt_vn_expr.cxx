@@ -77,11 +77,7 @@
 #include "opt_vn_expr_taxonomy.h"
 #include "opt_vn.h"
 
-#ifdef __STL_USE_NAMESPACES
-using std::pair;
-#endif
-
-typedef pair<VN_VALNUM,VN_VALNUM> VN_VALNUM_PAIR;
+typedef std::pair<VN_VALNUM,VN_VALNUM> VN_VALNUM_PAIR;
 
 
 void 

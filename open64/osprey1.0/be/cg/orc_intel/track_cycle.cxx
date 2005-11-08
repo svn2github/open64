@@ -47,6 +47,8 @@
  * ====================================================================
  */
 
+#include <vector>
+
 #include "defs.h"
 #include "errors.h"
 #include "tn.h"
@@ -54,7 +56,6 @@
 #include "op_map.h"
 #include "cg_dep_graph.h"
 #include "cgtarget.h"
-#include "vector.h"
 
 #include "ipfec_options.h"
 #include "cggrp_ptn.h"
@@ -82,7 +83,7 @@
 class TRACK_CYCLE {
     INT             _cur_bundle;
     PATTERN_TYPE    _ptn;
-    vector <mBOOL>  _occupied;
+    std::vector <mBOOL>  _occupied;
     INT             _split;
     const DISPERSAL_TARG  *_ports;
 

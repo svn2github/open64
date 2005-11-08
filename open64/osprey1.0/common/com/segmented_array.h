@@ -156,7 +156,7 @@ class SEGMENTED_ARRAY
 {
 private:
     
-    std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> > map;
+    std::vector<std::pair<T *, BOOL>, mempool_allocator<std::pair<T *, BOOL> > > map;
     MEM_POOL *pool;
     UINT size_;				// total number of elements inserted
     UINT max_size_;			// total # of elements allocated
@@ -234,7 +234,7 @@ public:
   ~SEGMENTED_ARRAY() {
     // Free memory from blocks. Map memory gets freed when the map
     // vector is destructed.
-    for (std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> >::iterator
+    for (typename std::vector<std::pair<T *, BOOL>, mempool_allocator<std::pair<T *, BOOL> > >::iterator
 	   entry = map.begin();
 	 entry != map.end();
 	 ++entry) {

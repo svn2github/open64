@@ -430,7 +430,7 @@
 #ifndef	bb_INCLUDED
 #define	bb_INCLUDED
 
-#include <vector.h>             /* to get STL vector */
+#include <vector>		/* to get STL vector */
 #include "mempool_allocator.h"  /* to get mempool allocator */
 
 #include "region_util.h" 	/* to get the definition of RID. */
@@ -875,7 +875,7 @@ extern BB **BB_Vec;		/* mapping from bb idx to BB in each PU */
 
 struct BB_REGION {
   typedef mempool_allocator<BB*> allocator_type;
-  typedef vector<BB*, allocator_type> bb_vector;
+  typedef std::vector<BB*, allocator_type> bb_vector;
   allocator_type data_allocator;
   bb_vector entries;   
   bb_vector exits;  
@@ -904,7 +904,7 @@ struct BB_REGION {
 
 extern BB_SET *BB_REGION_to_BB_SET(BB_SET *bbs, const BB_REGION& r,
 				   MEM_POOL *pool);
-extern void BB_REGION_to_Vector (vector<BB*>& c, const BB_REGION& r);
+extern void BB_REGION_to_Vector (std::vector<BB*>& c, const BB_REGION& r);
 
 /* =======================================================================
  *

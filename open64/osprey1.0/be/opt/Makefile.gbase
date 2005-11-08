@@ -339,7 +339,7 @@ first:
 ## verify that be.so is up to date
 	cd $(TARG_BE_DIR) && $(MAKE)
 ifeq ($(BUILD_OS), LINUX)
-	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 endif
 ifeq ($(BUILD_PCH), USE_PCH)
 ## build pch files first so that we can use precompiled headers

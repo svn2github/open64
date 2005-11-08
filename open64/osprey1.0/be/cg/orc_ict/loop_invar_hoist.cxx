@@ -75,15 +75,14 @@
   * =========================================================================
   * =========================================================================
   */
-#include <vector.h>  /* for STL vector and list */
-#include <list.h>
+#include <vector>  /* for STL vector and list */
+#include <list>
 
 #include "tracing.h"
 #include "error.h"
 
 #include "mempool_allocator.h" /* for class mempool_allocator */
 #include "cxx_memory.h"        /* for CXX_NEW() */
-
 
 #include "op.h"
 #include "bb.h"
@@ -101,12 +100,12 @@
 
     /* STL OP vector */
 typedef mempool_allocator<OP*> OP_ALLOC;
-typedef vector<OP*,OP_ALLOC>   OP_Vector;
+typedef std::vector<OP*,OP_ALLOC>   OP_Vector;
 typedef OP_Vector::iterator    OP_Vector_Iter;
 
     /* STL BB list */
 typedef mempool_allocator<BB*> BB_ALLOC;
-typedef list<BB*,OP_ALLOC>     BB_Lst;
+typedef std::list<BB*,OP_ALLOC>     BB_Lst;
 typedef BB_Lst::iterator       BB_Lst_Iter;
 
      /* class LI_TN_INFO :
@@ -287,7 +286,7 @@ LI_OP_INFO_MGR :: Init_OP_Level (void) {
                 OP* last = BB_last_op (pred);
                 if (last) {
                     INT32 l = Get(last)->Level ();
-                    start_level = max(start_level, l);
+                    start_level = MAX(start_level, l);
                 }
             }
         }

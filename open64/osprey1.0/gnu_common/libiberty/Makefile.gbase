@@ -35,7 +35,8 @@
 # Makefile for libiberty library
 
 # What we're building, and where to find it.
-TARGET      = libiberty.a
+LIBRARY     = libiberty.a
+TARGETS     = $(LIBRARY)
 SRC_DIRS    = $(BUILD_BASE)
 
 # Makefile setup
@@ -87,10 +88,10 @@ OBJS =	alloca.o	\
 
 default: all
 
-all: $(TARGET)
+all: $(TARGETS)
 
-$(TARGET): $(OBJS)
-	rm -f $(TARGET)
-	$(AR) $(AR_FLAGS) $(TARGET) $(OBJS)
+$(LIBRARY): $(OBJS)
+	rm -f $(LIBRARY)
+	$(AR) $(AR_FLAGS) $(LIBRARY) $(OBJS)
 
 include $(COMMONRULES)

@@ -4139,16 +4139,16 @@ Print_ST_List(vector<ST*>& st_list, const char* header)
 static void
 Process_Initos_And_Literals (SYMTAB_IDX stab)
 {
-  static vector<bool> st_processed;
+  static std::vector<bool> st_processed;
   if (st_processed.size() != ST_Table_Size(GLOBAL_SYMTAB)) {
     st_processed.resize(ST_Table_Size(GLOBAL_SYMTAB), false);
   }
 
-  vector<ST*> st_list;
-  vector<ST*>::iterator st_iter;
+  std::vector<ST*> st_list;
+  std::vector<ST*>::iterator st_iter;
 
   typedef 
-  hash_map < ST_IDX, INITO*, hash<ST_IDX>, equal_to<ST_IDX> > ST_INITO_MAP;
+  __gnu_cxx::hash_map < ST_IDX, INITO*, __gnu_cxx::hash<ST_IDX>, __gnu_cxx::equal_to<ST_IDX> > ST_INITO_MAP;
   ST_INITO_MAP st_inito_map;
 
   UINT i;
@@ -4277,8 +4277,8 @@ Process_Bss_Data (SYMTAB_IDX stab)
   // To guarantee in increasing order,
   // create vector of st*, then stable_sort on section,
   // then stable_sort on offset. 
-  vector< ST* > bss_list;
-  vector< ST* >::iterator bssp;
+  std::vector< ST* > bss_list;
+  std::vector< ST* >::iterator bssp;
 
   // This routine can be called multiple times for the global symtab;
   // we do this so that objects are emitted in order.

@@ -124,9 +124,9 @@ Print_BB_For_HB (BB *bb, BB_MAP value_map)
 }
 
 void
-Print_BB_For_HB (list<BB*> bblist, BB_MAP value_map)
+Print_BB_For_HB (std::list<BB*> bblist, BB_MAP value_map)
 {
-  list<BB*>::iterator bbiter;
+  std::list<BB*>::iterator bbiter;
 
   fprintf (TFile, "\n********** HyperBlock (HB) ******************\n");
   fprintf (TFile, "******* Contains :");
@@ -169,10 +169,9 @@ Reschedule_BB(BB *bb)
 // Check to see if the given HB can be scheduled, i.e prior not SWP'd.
 // ======================================================================
 BOOL
-Can_Schedule_HB(list<BB*> hb_blocks)
+Can_Schedule_HB(std::list<BB*> hb_blocks)
 {
-
-  list<BB*>::iterator bb_iter;
+  std::list<BB*>::iterator bb_iter;
   FOR_ALL_BB_STLLIST_ITEMS_FWD (hb_blocks, bb_iter) {
     // if <reschedule> flag is already set, then return FALSE.
     if (BB_scheduled(*bb_iter) && !BB_scheduled_hbs(*bb_iter)) return FALSE;
@@ -701,10 +700,10 @@ Priority_Selector::Build_Ready_Vector (BB* bb, BOOL is_fwd)
 // Sort the ready vector in decreasing order or 'estart'.
 // ======================================================================
 void
-Priority_Selector::Build_Ready_Vector (list<BB*> bblist, BOOL is_fwd)
+Priority_Selector::Build_Ready_Vector (std::list<BB*> bblist, BOOL is_fwd)
 {
 
-  list<BB*>::iterator bb_iter;
+  std::list<BB*>::iterator bb_iter;
   FOR_ALL_BB_STLLIST_ITEMS_FWD (bblist, bb_iter) {
     Build_Ready_Vector (*bb_iter, is_fwd);
   }
@@ -830,9 +829,9 @@ Compute_OPSCH (BB *bb, BB_MAP value_map, MEM_POOL *pool)
 // structure for it.
 // ======================================================================
 void
-Compute_OPSCHs (list<BB*> bblist, BB_MAP value_map, MEM_POOL *pool)
+Compute_OPSCHs (std::list<BB*> bblist, BB_MAP value_map, MEM_POOL *pool)
 {
-  list<BB*>::iterator bb_iter;
+  std::list<BB*>::iterator bb_iter;
 
   // Initialize all data structures.
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bb_iter) {
@@ -846,7 +845,7 @@ Compute_OPSCHs (list<BB*> bblist, BB_MAP value_map, MEM_POOL *pool)
   }
 
   // Do a backward pass.
-  list<BB*>::reverse_iterator bb_riter;
+  std::list<BB*>::reverse_iterator bb_riter;
   FOR_ALL_BB_STLLIST_ITEMS_BKWD(bblist, bb_riter) {
     Compute_Bkwd_OPSCH (*bb_riter, value_map, max_lstart);
   }
@@ -1176,7 +1175,7 @@ HB_Schedule::Put_Sched_Vector_Into_BB (BB *bb, BBSCH *bbsch, BOOL is_fwd)
 // instructions back into the basic block.
 // ======================================================================
 void
-HB_Schedule::Put_Sched_Vector_Into_HB (list<BB*>& bblist)
+HB_Schedule::Put_Sched_Vector_Into_HB (std::list<BB*>& bblist)
 {
   INT i;
 
@@ -1189,7 +1188,7 @@ HB_Schedule::Put_Sched_Vector_Into_HB (list<BB*>& bblist)
     OP_scycle(op) = OPSCH_scycle(opsch);
   }
 
-  list<BB*>::iterator bb_iter;
+  std::list<BB*>::iterator bb_iter;
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bb_iter) {
     BB_Remove_All(*bb_iter);
   }
@@ -1209,14 +1208,14 @@ HB_Schedule::Put_Sched_Vector_Into_HB (list<BB*>& bblist)
 // Allocate a RFlag_Table with <cycles> entries. Initialize the entries.
 // ======================================================================
 void
-HB_Schedule::Init_RFlag_Table (list<BB*>& bblist, BOOL is_fwd)
+HB_Schedule::Init_RFlag_Table (std::list<BB*>& bblist, BOOL is_fwd)
 {
   INT rtable_size = 0;
   INT max_resource_cycles = 0;
 
   _rr_tab = TI_RES_RES_Alloc(FALSE, &_hb_pool);
 
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bbi) {
     OP *op;
     FOR_ALL_BB_OPs_FWD (*bbi, op) {
@@ -1262,7 +1261,7 @@ List_Based_Bkwd::List_Based_Bkwd (BB *bb, HB_Schedule *sched, HBS_TYPE type,
 
 }
 
-List_Based_Bkwd::List_Based_Bkwd (list<BB*> bblist, HB_Schedule *sched, 
+List_Based_Bkwd::List_Based_Bkwd (std::list<BB*> bblist, HB_Schedule *sched, 
 				  HBS_TYPE type, MEM_POOL *pool) : 
   Priority_Selector(bblist, sched, type, pool)
 {
@@ -1385,7 +1384,7 @@ List_Based_Fwd::List_Based_Fwd (BB *bb, HB_Schedule *sched, HBS_TYPE type,
 
 }
 
-List_Based_Fwd::List_Based_Fwd (list<BB*> bblist, HB_Schedule *sched, 
+List_Based_Fwd::List_Based_Fwd (std::list<BB*> bblist, HB_Schedule *sched, 
 				HBS_TYPE type, MEM_POOL *pool) : 
   Priority_Selector(bblist, sched, type, pool)
 {
@@ -1561,11 +1560,11 @@ HB_Schedule::Invoke_Pre_HBS_Phase(BB* bb)
 // to be done only for the entry/exit blocks in the hyperblock.
 // ===================================================================
 void
-HB_Schedule::Invoke_Pre_HBB_Phase(list<BB*> bblist)
+HB_Schedule::Invoke_Pre_HBB_Phase(std::list<BB*> bblist)
 {
 
-  list<BB*>::iterator bb_iter;
-  list<BB*>::reverse_iterator bb_riter;
+  std::list<BB*>::iterator bb_iter;
+  std::list<BB*>::reverse_iterator bb_riter;
 
   bb_iter = bblist.begin();
   bb_riter = bblist.rbegin();
@@ -1627,11 +1626,11 @@ HB_Schedule::Invoke_Post_HBS_Phase(BB* bb)
 }
 
 void
-HB_Schedule::Invoke_Post_HBB_Phase(list<BB*> bblist)
+HB_Schedule::Invoke_Post_HBB_Phase(std::list<BB*> bblist)
 {
 
-  list<BB*>::iterator bb_iter;
-  list<BB*>::reverse_iterator bb_riter;
+  std::list<BB*>::iterator bb_iter;
+  std::list<BB*>::reverse_iterator bb_riter;
 
   bb_iter = bblist.begin();
   bb_riter = bblist.rbegin();
@@ -1679,7 +1678,7 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
 {
   _sched_vector = VECTOR_Init (BB_length(bb), &_hb_pool);
 
-  list<BB*> blocks;
+  std::list<BB*> blocks;
   blocks.push_back(bb);
 
 #ifdef TARG_IA64
@@ -1757,9 +1756,9 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
 }
 
 void
-HB_Schedule::Schedule_Blocks (list<BB*>& bblist)
+HB_Schedule::Schedule_Blocks (std::list<BB*>& bblist)
 {
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
   UINT32 length = 0;
 
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bbi) {
@@ -1858,7 +1857,7 @@ HB_Schedule::Init(BB *bb, HBS_TYPE hbs_type, INT32 max_sched,
 }
 
 void
-HB_Schedule::Init(list<BB*> bblist, HBS_TYPE hbs_type, mINT8 *regs_avail)
+HB_Schedule::Init(std::list<BB*> bblist, HBS_TYPE hbs_type, mINT8 *regs_avail)
 {
   _hbs_type = hbs_type;
   if (regs_avail) {
@@ -1867,7 +1866,7 @@ HB_Schedule::Init(list<BB*> bblist, HBS_TYPE hbs_type, mINT8 *regs_avail)
   }
 
   UINT32 length = 0;
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
 
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bbi) {
     BB_OP_MAP omap = BB_OP_MAP_Create(*bbi, &_hb_map_pool);
@@ -1884,7 +1883,7 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
 
   Invoke_Pre_HBS_Phase(bb);
 
-  list<BB*> bblist;
+  std::list<BB*> bblist;
   bblist.push_back(bb);
 
   if (CG_DEP_Prune_Dependence &&  // if the flag is turned ON.
@@ -1954,7 +1953,7 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
 }
 
 void
-HB_Schedule::Schedule_HB (list<BB*> bblist)
+HB_Schedule::Schedule_HB (std::list<BB*> bblist)
 {
 
   Invoke_Pre_HBB_Phase(bblist);
@@ -1976,7 +1975,7 @@ HB_Schedule::Schedule_HB (list<BB*> bblist)
   CG_DEP_Delete_Graph (&bblist);
 
   Invoke_Post_HBB_Phase(bblist);
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bbi) {
     Set_BB_scheduled (*bbi);
     Set_BB_scheduled_hbs (*bbi);  // scheduled from hbs

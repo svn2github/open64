@@ -143,9 +143,9 @@ struct CONSTRAINT_PRAGMA_INFO {
 };
 
 struct ASM_PRAGMA_INFO {
-  vector<CLOBBER_PRAGMA_INFO,
+  std::vector<CLOBBER_PRAGMA_INFO,
          mempool_allocator<CLOBBER_PRAGMA_INFO> > clobber_info;
-  vector<CONSTRAINT_PRAGMA_INFO,
+  std::vector<CONSTRAINT_PRAGMA_INFO,
          mempool_allocator<CONSTRAINT_PRAGMA_INFO> > constraint_info;
 
   ASM_PRAGMA_INFO(MEM_POOL *pool) :

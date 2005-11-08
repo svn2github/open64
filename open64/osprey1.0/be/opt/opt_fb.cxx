@@ -52,8 +52,9 @@
 
 
 #include <math.h>
+#include <stack>
+#include <vector>
 #include "opt_fb.h"
-#include "stack.h"
 #include "opt_htable.h" // for STMTREP
 #include "DaVinci.h"    // for DaVinci viewer
 
@@ -258,7 +259,7 @@ OPT_FEEDBACK::Add_edge( IDTYPE nx_src, IDTYPE nx_dst,
 // quickly removes ex from vector ex_list; order of ex_list not maintained,
 //   but iterating backwards through ex_list while removing edges is safe
 inline void
-remove_ex( vector<IDTYPE, mempool_allocator<IDTYPE> >& ex_list, IDTYPE ex )
+remove_ex( std::vector<IDTYPE, mempool_allocator<IDTYPE> >& ex_list, IDTYPE ex )
 {
   INT last = ex_list.size() - 1;
   for ( INT t = last; t >= 0; t-- ) {
@@ -274,7 +275,7 @@ remove_ex( vector<IDTYPE, mempool_allocator<IDTYPE> >& ex_list, IDTYPE ex )
 
 // quickly replaces ex_old by ex_new within vector ex_list
 inline void
-replace_ex( vector<IDTYPE, mempool_allocator<IDTYPE> >& ex_list,
+replace_ex( std::vector<IDTYPE, mempool_allocator<IDTYPE> >& ex_list,
 	    IDTYPE ex_old, IDTYPE ex_new )
 {
   for ( INT t = ex_list.size() - 1; t >= 0; t-- ) {
@@ -1434,7 +1435,7 @@ OPT_FEEDBACK::Clone_edge( IDTYPE nx_src_old, IDTYPE nx_dst_old,
 //  its position in the topological sorted list.
 //    
 struct compare_edge_topological_order {
-  map<vertex_id, int> topo_pos;  // positions of vertices in topological ordered vector
+  std::map<vertex_id, int> topo_pos;  // positions of vertices in topological ordered vector
   bool operator()(const edge& x, const edge& y) {
     if ( topo_pos[x.first] < topo_pos[y.first] ) return true;
     if ( topo_pos[x.first] == topo_pos[y.first] &&
@@ -1469,14 +1470,14 @@ struct compare_edge_topological_order {
 //       Replicated zone: zone might contain arbritary cycles, but the cloned
 //       zone completely duplicates that in the original CFG.
 void
-OPT_FEEDBACK::Clone_zone( zone&                      z,
-			  map<vertex_id, vertex_id>& nx_old_to_new )
+OPT_FEEDBACK::Clone_zone( zone& z,
+			  std::map<vertex_id, vertex_id>& nx_old_to_new )
 {
   if ( _trace )
     fprintf( TFile, "OPT_FEEDBACK::Clone_zone\n" );
 
   // Sort the clone verticies in topological order
-  vector<vertex_id> topo_order;
+  std::vector<vertex_id> topo_order;
   edge e = *( z.entry.begin() );
   topological_sort( z.clone, e.second, topo_order );
 
@@ -1489,11 +1490,11 @@ OPT_FEEDBACK::Clone_zone( zone&                      z,
 
   // topo-sort the edges
   compare_edge_topological_order cmp( topo_order );
-  vector<edge> edge_in_topo_order = z.clone;
+  std::vector<edge> edge_in_topo_order = z.clone;
   sort( edge_in_topo_order.begin(), edge_in_topo_order.end(), cmp );
 
   // Find all edges to be cloned, sorted in topological order
-  vector<IDTYPE> edges_clone;
+  std::vector<IDTYPE> edges_clone;
   INT i;
   for ( i = 0; i < edge_in_topo_order.size(); ++i ) {
 
@@ -1509,7 +1510,7 @@ OPT_FEEDBACK::Clone_zone( zone&                      z,
   }
 
   // Find all exit edges
-  vector<IDTYPE> edges_exit;
+  std::vector<IDTYPE> edges_exit;
   for ( zone::iterator ie = z.exit.begin(); ie != z.exit.end(); ++ie ) {
 
     // Find all edges (*ie).first ===> (*ie).second
@@ -1532,8 +1533,8 @@ OPT_FEEDBACK::Clone_zone( zone&                      z,
   // freq_transfer_edge[ex] is the frequency to be transfered from the
   //   edge ex to its clone.
 
-  map<IDTYPE, FB_FREQ> freq_transfer_node;
-  map<IDTYPE, FB_FREQ> freq_transfer_edge;
+  std::map<IDTYPE, FB_FREQ> freq_transfer_node;
+  std::map<IDTYPE, FB_FREQ> freq_transfer_edge;
 
   // Initialize freq_transfer_node[] to zero
   for ( i = 0; i < edges_clone.size(); ++i ) {
@@ -1595,13 +1596,13 @@ OPT_FEEDBACK::Clone_zone( zone&                      z,
   // Display transfer frequencies for nodes and edges
   if ( _trace ) {
     fprintf( TFile, "  freq_transfer_node:");
-    for ( map<IDTYPE, FB_FREQ>::iterator iv = freq_transfer_node.begin();
+    for ( std::map<IDTYPE, FB_FREQ>::iterator iv = freq_transfer_node.begin();
 	  iv != freq_transfer_node.end(); ++iv ) {
       fprintf( TFile, " %d_", (*iv).first );
       (*iv).second.Print( TFile );
     }
     fprintf( TFile, "\n  freq_transfer_edge:" );
-    for ( map<IDTYPE, FB_FREQ>::iterator ie = freq_transfer_edge.begin();
+    for ( std::map<IDTYPE, FB_FREQ>::iterator ie = freq_transfer_edge.begin();
 	  ie != freq_transfer_edge.end(); ++ie ) {
       IDTYPE ex = (*ie).first;
       const OPT_FB_EDGE& edge = _fb_opt_edges[ex];
@@ -1611,7 +1612,7 @@ OPT_FEEDBACK::Clone_zone( zone&                      z,
     fprintf( TFile, "\n" );
   }
 
-  map<vertex_id, vertex_id>::const_iterator map_iter;
+  std::map<vertex_id, vertex_id>::const_iterator map_iter;
 
   // determine the largest of the new node ids (perhaps the last?)
   IDTYPE nx_largest = 0;
@@ -2310,7 +2311,7 @@ OPT_FEEDBACK::Display( WN *wn_tree, const char *caller ) const
 // {
 //   if (available()) {
 //     {
-//       vector<edge> buffer;
+//       std::vector<edge> buffer;
 //       for (edge_freq_type::cluster_iterator ci = edge_freq.cluster_begin();
 // 	   ci != edge_freq.cluster_end();
 // 	   ++ci) {
@@ -2330,7 +2331,7 @@ OPT_FEEDBACK::Display( WN *wn_tree, const char *caller ) const
 // 	erase_edge(edge_freq, buffer[i].first, buffer[i].second);
 //     }
 //     {
-//       vector<IDTYPE> buffer;
+//       std::vector<IDTYPE> buffer;
 //       for (node_freq_type::iterator vi = node_freq.begin();
 // 	   vi != node_freq.end();
 // 	   ++vi) {

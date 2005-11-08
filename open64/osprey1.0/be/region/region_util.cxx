@@ -269,7 +269,7 @@ void REGION_fix_up_exits(RID *rid, WN *rwn)
     INT32 i, limit;
     PREG_LIST **new_pregs_out = TYPE_MEM_POOL_ALLOC_N(PREG_LIST *,
 					      &REGION_mem_pool, new_exits);
-    limit = max(new_exits, RID_num_exits(rid));
+    limit = MAX(new_exits, RID_num_exits(rid));
     for (i=0; i<limit; i++) {
       if (i < RID_num_exits(rid))	/* copy old exit list pointers */
 	new_pregs_out[i] = RID_pregs_out_i(rid, i);

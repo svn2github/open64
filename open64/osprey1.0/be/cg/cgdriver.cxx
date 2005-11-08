@@ -49,6 +49,7 @@
  */
 
 #include <elf.h>
+#include <errno.h>
 #include <sys/elf_whirl.h>	    /* for WHIRL_REVISION */
 #include <ctype.h>
 #include "defs.h"

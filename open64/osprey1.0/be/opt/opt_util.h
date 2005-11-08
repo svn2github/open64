@@ -158,7 +158,7 @@ using std::vector;
 #endif
 
 typedef mempool_allocator<bool>         BVECTOR_ALLOCATOR;
-typedef vector<bool, BVECTOR_ALLOCATOR> BVECTOR; // TODO add range checks
+typedef std::vector<bool, BVECTOR_ALLOCATOR> BVECTOR; // TODO add range checks
 
 // For each coderep (i), determines whether it contains a reference
 // to a volatile memory location or a volatile OPC, and if this is 

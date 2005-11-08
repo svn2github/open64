@@ -1145,8 +1145,8 @@ SPLITTER::Outlining()
 		(*(_current_cwt_elmt->Local_label_list()))[j].wn )) >= 0)
 
       Is_True((k>=0), 
-	  ("Error in the splitter, discrepancy between the 
-	   -local-label-list and -global-label-list(2)"));
+	  ("Error in the splitter, discrepancy between the "
+	   "-local-label-list and -global-label-list(2)"));
 
       // if there are more gotos to this label in 
 	  // _global_label_list than the local gotos, 

@@ -1130,7 +1130,7 @@ SCHEDULER::Insert_Check (OP * ld, BB * home_bb, OP* pos) {
     Is_True (!OP_Is_Float_Mem(ld), 
              ("floating-point load shouldn't be spec now"));
 
-    vector<OP*> dup_ops;
+    std::vector<OP*> dup_ops;
     OP *chk_op = ::Insert_CHK (ld, dup_ops, home_bb, pos, 
                                OP_opnd(ld, OP_PREDICATE_OPND));
       
@@ -1350,7 +1350,7 @@ SCHEDULER :: Gen_Bookeeping_OP_DAG
 OP* 
 SCHEDULER::Gen_Compensation_Code 
     (CANDIDATE& model_cand, BB* org_home, 
-     BOOKEEPING* bk, BOOL append=TRUE) {
+     BOOKEEPING* bk, BOOL append) {
 
     BB* place = bk->Get_Placement ();
     Is_True (!BB_Is_Isolated_From_Sched (place),

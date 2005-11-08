@@ -1179,7 +1179,7 @@ IVR::Choose_primary_IV(const BB_LOOP *loop)
 {
   WN           *index = loop->Index();
   
-  vector<IV_CAND*>::iterator iv_cand_iter;
+  std::vector<IV_CAND*>::iterator iv_cand_iter;
 
   if (Phase() != MAINOPT_PHASE) {
 
@@ -2202,7 +2202,7 @@ IVR::Determine_trip_IV_and_exit_count(BB_LOOP *loopinfo,
     based_iv = ivx.Based_iv();
     new_step = ivx.Step();
     IDTYPE trip_aux_id = based_iv->Aux_id();
-    vector<IV_CAND*>::iterator iv_cand_iter;
+    std::vector<IV_CAND*>::iterator iv_cand_iter;
     for (iv_cand_iter = iv_cand_container.begin(); 
 	 iv_cand_iter != iv_cand_container.end();
 	 iv_cand_iter++) {
@@ -2643,7 +2643,7 @@ IVR::Convert_all_ivs(BB_LOOP *loop)
 
   Ident_all_iv_cands(loop, loop->Header());
 
-  vector<IV_CAND*>::iterator iv_cand_iter;
+  std::vector<IV_CAND*>::iterator iv_cand_iter;
   for (iv_cand_iter = iv_cand_container.begin(); 
        iv_cand_iter != iv_cand_container.end();
        iv_cand_iter++) {
@@ -2948,7 +2948,7 @@ IVR::Update_mp_pragma_list(BB_LOOP *loop, BB_NODE *bb, STMTREP *stmt)
     BOOL          second_iv_in_reduction = FALSE;
     BOOL          second_iv_in_firstprivate = FALSE;
 
-    vector<IV_CAND*>::iterator iv_cand_iter;
+    std::vector<IV_CAND*>::iterator iv_cand_iter;
     for (iv_cand_iter = iv_cand_container.begin(); 
 	 iv_cand_iter != iv_cand_container.end();
 	 iv_cand_iter++) {
@@ -3208,7 +3208,7 @@ IV_CAND::Print(FILE *fp) const
 void
 IVR::Print_all_iv_cand(FILE *fp)
 {
-  vector<IV_CAND*>::iterator iv_cand_iter;
+  std::vector<IV_CAND*>::iterator iv_cand_iter;
   for (iv_cand_iter = iv_cand_container.begin(); 
        iv_cand_iter != iv_cand_container.end();
        iv_cand_iter++) {

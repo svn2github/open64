@@ -58,8 +58,10 @@
 // ====================================================================
 
 
-#include <set.h>
-#include <map.h>
+#include <map>
+#include <set>
+#include <utility>
+#include <vector>
 
 #define USE_STANDARD_TYPE
 #include "opt_defs.h"
@@ -68,7 +70,7 @@
 #include "opt_dce.h"
 #include "opt_main.h"
 
-typedef set<int> Paths;
+typedef std::set<int> Paths;
 
 struct cond_const_path {
   CODEREP *cr;     // value of conditional const
@@ -81,7 +83,7 @@ struct cond_const_path {
     cr(c), entry(e) {}
 };
 
-typedef vector<cond_const_path> Set_of_paths;
+typedef std::vector<cond_const_path> Set_of_paths;
 
 
 static void print_paths(FILE *fp, Paths &paths)
@@ -125,7 +127,7 @@ static void trace_paths(BB_NODE *bb, BB_NODE *def_bb, Paths &paths)
 {
   Is_True(def_bb->Dominates(bb), ("trace_paths: Definition must dominate use."));
 
-  pair<Paths::iterator, bool> res = paths.insert(bb->Id());
+  std::pair<Paths::iterator, bool> res = paths.insert(bb->Id());
   if (!res.second) // not inserted because the bb is already in the path
     return;
   if (bb == def_bb)  // stop when reached def_bb
@@ -142,7 +144,7 @@ static void trace_paths(BB_NODE *bb, BB_NODE *def_bb, Paths &paths)
 //
 static bool find_conditional_const(BB_NODE *bb, CODEREP *cr, 
 				   Set_of_paths &set_of_paths,
-				   vector<bool>& visited, 
+				   std::vector<bool>& visited, 
 				   BB_LOOP *loop,
 				   bool trace)
 {
@@ -307,7 +309,7 @@ struct CONDITIONAL_CONST : public NULL_TRANSFORM {
 
     if (cr->Kind() == CK_VAR && !is_mu) {
       Set_of_paths set_of_paths;
-      vector<bool> visited(cu->Cfg()->Total_bb_count(), false);  //  TODO: use shared cache
+      std::vector<bool> visited(cu->Cfg()->Total_bb_count(), false);  //  TODO: use shared cache
       bool found = find_conditional_const(bb, cr, set_of_paths, visited, bb->Innermost(), trace);
       if (found && trace) {
 	fprintf(TFile, "CONDITIONAL CONST found for cr%d in BB%d\n", cr->Coderep_id(), bb->Id());
@@ -343,7 +345,7 @@ struct CONDITIONAL_CONST : public NULL_TRANSFORM {
 };
 
 
-void generate_conditional_const_zones(COMP_UNIT *cu, successor_graph &g, vector<zone>& zones, bool trace)
+void generate_conditional_const_zones(COMP_UNIT *cu, successor_graph &g, std::vector<zone>& zones, bool trace)
 {
   CONDITIONAL_CONST conditional_const(cu, &zones, trace);
   UPDATE<CONDITIONAL_CONST, PER_BB_CACHE>

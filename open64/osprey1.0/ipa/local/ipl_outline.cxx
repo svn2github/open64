@@ -80,7 +80,7 @@ namespace {
 // a split point is a pair of WN* for the splitting node and the size of the 
 // block to be outlined.  Only one part of the pair contains valid
 // information.  The size of the block is used only if the "IF" node is NULL.
-typedef pair<const WN*, UINT32> SPLIT_POINT;
+typedef std::pair<const WN*, UINT32> SPLIT_POINT;
 
 // Given a loop, we return the size of all statements within the loop
 static void
@@ -209,7 +209,7 @@ Find_Split_Point (CONST_TREE_ITER& iter, const WN* last,
 	    ++iter;
     }
 
-    return make_pair ((const WN*) NULL,
+    return std::make_pair ((const WN*) NULL,
 		      size_under_OPR_IF + PU_Weight (bb_cnt, stmt_cnt,
 						     call_cnt));  
 } // Find_Split_Point

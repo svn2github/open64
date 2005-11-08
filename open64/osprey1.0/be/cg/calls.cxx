@@ -94,7 +94,6 @@
 #include "entry_exit_targ.h"
 #include "targ_abi_properties.h"
 #include "targ_isa_registers.h"
-#include "scheduler.h"
 
 INT64 Frame_Len;
 extern BOOL IPFEC_Enable_Edge_Profile;

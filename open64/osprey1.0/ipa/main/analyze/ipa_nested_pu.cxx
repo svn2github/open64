@@ -54,7 +54,7 @@
 #include <elf.h>
 #include <sys/elf_whirl.h>
 #include <alloca.h>
-#include <hash_map.h>
+#include <ext/hash_map>
 #include <sys/types.h> 
 
 #include "defs.h"
@@ -70,7 +70,7 @@
 #include "ipa_cg.h"
 #include "ipa_nested_pu.h"
 
-typedef hash_map<PU_IDX, PU_IDX> IPA_NESTED_PU_PARENT_MAP;
+typedef __gnu_cxx::hash_map<PU_IDX, PU_IDX> IPA_NESTED_PU_PARENT_MAP;
 
 static IPA_NESTED_PU_PARENT_MAP* nested_pu_parent_map;
 

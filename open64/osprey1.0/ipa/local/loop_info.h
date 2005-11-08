@@ -95,6 +95,17 @@
 #include "reduction.h"
 #endif
 
+#ifdef ATTR_WEAK
+#undef ATTR_WEAK
+#endif
+
+#ifndef __GNUC__
+#define ATTR_WEAK
+#pragma weak Print__17DO_LOOP_INFO_BASEGP8__file_si
+#else
+#define ATTR_WEAK __attribute__((weak))
+#endif
+
 extern WN_MAP IPL_info_map;
 extern WN_MAP IPL_reduc_map;
 
@@ -157,7 +168,7 @@ public:
   void Set_step(ACCESS_VECTOR *step) { _step = step;};
   ACCESS_VECTOR* Get_step() const { return _step;};
 
-  void Print(FILE *fp, INT = 0);
+  void Print(FILE *fp, INT = 0) ATTR_WEAK;
 
   ~DO_LOOP_INFO_BASE() {
     CXX_DELETE(_lb,_pool);

@@ -91,9 +91,7 @@ Linker_mark_not_gp_rel (ST_IDX st_idx);
 
 #ifndef _LD_IPA_INTERFACE
 
-#ifndef __SGI_STL_VECTOR_H
-#include <vector.h>
-#endif
+#include <vector>
 
 #ifndef mempool_allocator_INCLUDED
 #include "mempool_allocator.h"
@@ -109,7 +107,7 @@ Linker_mark_not_gp_rel (ST_IDX st_idx);
 
 const UINT32 UNINITIALIZED_INDEX = 0;  // The value of an uninitialized index mapd
 
-typedef vector<mUINT32, mempool_allocator<mUINT32> > IPC_IDX_VECTOR;
+typedef std::vector<mUINT32, mempool_allocator<mUINT32> > IPC_IDX_VECTOR;
 
 // A structure to hold all the information we need about a global
 // symbol table to merge it into the current merged global symbol
@@ -287,7 +285,7 @@ struct IPC_GLOBAL_IDX_MAP
 
     IPC_GLOBAL_IDX_MAP (UINT32 st_size, UINT32 ty_size, UINT32 tcon_size,
 			UINT32 initv_size, MEM_POOL *pool) :
-	sym_str (0, hash<STR_IDX>(), equal_to<STR_IDX> (),
+	sym_str (0, __gnu_cxx::hash<STR_IDX>(), std::equal_to<STR_IDX> (),
 		 SYMSTR_IDX_MAP::allocator_type (pool)),
 	st (st_size, ST_IDX_MAP::allocator_type (pool)),
 	ty (ty_size, TY_IDX_MAP::allocator_type (pool)),
@@ -296,7 +294,7 @@ struct IPC_GLOBAL_IDX_MAP
 	
 }; // IPC_GLOBAL_IDX_MAP
 
-typedef hash_map<ST_IDX, INITO_IDX> ST_TO_INITO_MAP;
+typedef __gnu_cxx::hash_map<ST_IDX, INITO_IDX> ST_TO_INITO_MAP;
 extern ST_TO_INITO_MAP ST_To_INITO_Map;
 
 // ----------------------------------------------------------------------
@@ -304,7 +302,7 @@ extern ST_TO_INITO_MAP ST_To_INITO_Map;
 // ----------------------------------------------------------------------
 
 // the key for sorting the common block elements: type (size) and offset
-typedef pair<const TY*, mUINT64> BLOCK_ELEMENT_DESC;
+typedef std::pair<const TY*, mUINT64> BLOCK_ELEMENT_DESC;
 
 struct block_element_compare
 {
@@ -320,7 +318,7 @@ struct block_element_compare
 
 typedef std::map<const BLOCK_ELEMENT_DESC, ST_IDX, block_element_compare,
     mempool_allocator<ST_IDX> > BLOCK_ELEMENTS;
-typedef hash_map<ST_IDX, BLOCK_ELEMENTS*, hash<ST_IDX>, equal_to<ST_IDX>,
+typedef __gnu_cxx::hash_map<ST_IDX, BLOCK_ELEMENTS*, __gnu_cxx::hash<ST_IDX>, std::equal_to<ST_IDX>,
     mempool_allocator<BLOCK_ELEMENTS*> > COMMON_BLOCK_ELEMENTS_MAP;
 
 extern COMMON_BLOCK_ELEMENTS_MAP *Common_Block_Elements_Map;

@@ -126,19 +126,19 @@ static inline void dummy(...)
 // EXP_WORKLST is defined in sopt_etable.h.
 //
 typedef mempool_allocator<EXP_WORKLST*>         WORKLST_ALLOCATOR;
-typedef vector<EXP_WORKLST*, WORKLST_ALLOCATOR> VALNUM_TO_WORKLST;
+typedef std::vector<EXP_WORKLST*, WORKLST_ALLOCATOR> VALNUM_TO_WORKLST;
 
 // Typedef to represent a stack of value occurrences in terms of
 // a vector of such occurrences.
 //
 typedef mempool_allocator<EXP_OCCURS *>       OCCURS_ALLOCATOR;
-typedef vector<EXP_OCCURS*, OCCURS_ALLOCATOR> OCCURS_VECTOR;
-typedef stack<EXP_OCCURS *, OCCURS_VECTOR>    OCCURS_STACK;
+typedef std::vector<EXP_OCCURS*, OCCURS_ALLOCATOR> OCCURS_VECTOR;
+typedef std::stack<EXP_OCCURS *, OCCURS_VECTOR>    OCCURS_STACK;
 
 // Typedef to represent a vector of INT8s.
 //
 typedef mempool_allocator<INT8>      INT8_ALLOCATOR;
-typedef vector<INT8, INT8_ALLOCATOR> INT8_VECTOR;
+typedef std::vector<INT8, INT8_ALLOCATOR> INT8_VECTOR;
 
 
 // ---------------------------------------------------------------------------
@@ -171,7 +171,7 @@ public:
 };
 
 template <class Match_test>
-pair<INT32,CODEREP*> Count_occurs(CODEREP          *cr, 
+std::pair<INT32,CODEREP*> Count_occurs(CODEREP          *cr, 
 				  const Match_test &matches,
 				  BOOL              is_store_lhs)
 {
@@ -184,7 +184,7 @@ pair<INT32,CODEREP*> Count_occurs(CODEREP          *cr,
    //
    INT32                counter = 0;
    CODEREP             *occurs_cr = NULL;
-   pair<INT32,CODEREP*> counted_occurs;
+   std::pair<INT32,CODEREP*> counted_occurs;
    
    // Set counter to 1 if we have a match; 
    // otherwise visit nested subexpressions
@@ -264,7 +264,7 @@ pair<INT32,CODEREP*> Count_occurs(CODEREP          *cr,
       Is_True(FALSE, ("Count_occurs: bad coderep kind"));
       break;
    }
-   return pair<INT32,CODEREP*>(counter,occurs_cr);
+   return std::pair<INT32,CODEREP*>(counter,occurs_cr);
 } // Count_occurs
 
 
@@ -520,7 +520,7 @@ private:
 
    // Coalescing of induction vars.
    //
-   pair<CODEREP*,STMTREP*> _save_to_temp(BB_NODE *in_bb,
+   std::pair<CODEREP*,STMTREP*> _save_to_temp(BB_NODE *in_bb,
 					 STMTREP *after_stmt,
 					 BOOL     when_not_after_append,
 					 CODEREP *rhs);
@@ -941,7 +941,7 @@ VALNUM_FRE::reset_valnum(const CODEREP *cr, VN_VALNUM to_valnum)
 	 FOR_ALL_NODE(occ, occ_iter, Init(from_worklist->Real_occurs().Head()))
 	 {
 	    EXP_OCCURS *tail_occ = to_worklist->Real_occurs().Tail();
-	    pair<INT32,CODEREP*> counted_occurs = 
+	    std::pair<INT32,CODEREP*> counted_occurs = 
 	       Count_occurs(_get_occur_cr(occ), Match_Cr(cr), FALSE/*lhs*/);
 
 	    if (counted_occurs.first > 0)
@@ -1202,7 +1202,7 @@ VALNUM_FRE::_remove_nested_occurs(const CODEREP  *enclosing_cr,
 // ---------------------------------------------------------------------------
 
 template <class ETYPE, class ALLOCATOR>
-void VALNUM_FRE_grow_vector(vector<ETYPE,ALLOCATOR> &vec, 
+void VALNUM_FRE_grow_vector(std::vector<ETYPE,ALLOCATOR> &vec, 
 			    ETYPE                    init_val, 
 			    UINT32                   to_size)
 {
@@ -1457,7 +1457,7 @@ VALNUM_FRE::_select_and_sort_valnums(VN::VALNUM_VECTOR &valnum_list)
 // --------- The algorithm for coalescing loop induction variables  ----------
 // ---------------------------------------------------------------------------
 
-pair<CODEREP*,STMTREP*>
+std::pair<CODEREP*,STMTREP*>
 VALNUM_FRE::_save_to_temp(BB_NODE *in_bb,
 			  STMTREP *after_stmt,
 			  BOOL     when_not_after_append,
@@ -1503,7 +1503,7 @@ VALNUM_FRE::_save_to_temp(BB_NODE *in_bb,
    Is_Trace_cmd(_tracing, savestmt->Print(TFile));
    Is_Trace(_tracing, (TFile, "----------------------- \n"));
 
-   return pair<CODEREP*,STMTREP*>(lhs,savestmt);
+   return std::pair<CODEREP*,STMTREP*>(lhs,savestmt);
 } // VALNUM_FRE::_save_to_temp
 
 
@@ -1523,7 +1523,7 @@ VALNUM_FRE::_ivc_insert_initval_diff(BB_NODE *init_bb,
    // Create a temporary register and save the rhs into this register,
    // appending it to the "init_bb" before any branch stmt.
    //
-   pair<CODEREP*,STMTREP*> saved = 
+   std::pair<CODEREP*,STMTREP*> saved = 
       _save_to_temp(init_bb, NULL, TRUE/*append*/, rhs);
 
    // Return the lhs of the inserted assignment.
@@ -1677,7 +1677,7 @@ VALNUM_FRE::_ivc_substitute(BB_NODE        *loop_header,
 	       // Assign the expression to a temporary at the head of the
 	       // loop, thus maximizing the live ranges of the temporaries.
 	       //
-	       const pair<CODEREP*,STMTREP*> save_info = 
+	       const std::pair<CODEREP*,STMTREP*> save_info = 
 		  _save_to_temp(loop_header,
 				base_stmt,
 				FALSE/*append*/,
@@ -1887,7 +1887,7 @@ VALNUM_FRE::_ivc_coalesce(BB_NODE *loop_header, VN_IVC &vn_ivc)
 	    // Create and insert an assignment to a temporary representing
 	    // the base member (+ update value numbering for the new coderep).
 	    //
-	    const pair<CODEREP*,STMTREP*> temp_info = 
+	    const std::pair<CODEREP*,STMTREP*> temp_info = 
 	       _save_to_temp(loop_header,
 			     NULL,             // insert at beginning of bb)
 			     FALSE/*append*/,  // prepend
@@ -2478,7 +2478,7 @@ VALNUM_FRE::_verify_and_remove_occurs(EXP_WORKLST *worklist,
       // Count the occurrences. NOTE: _get_occur_cr() never returns a lhs,
       // although it may return a kid of the lhs.
       //
-      pair<INT32,CODEREP*> counted_occurs = 
+      std::pair<INT32,CODEREP*> counted_occurs = 
 	 Count_occurs(_get_occur_cr(occ), Match_Vn(_vn, valnum), FALSE/*lhs*/);
 
       // Progress to next occurrence before we remove this occurrence.

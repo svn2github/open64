@@ -49,9 +49,7 @@
 #ifndef ipl_summarize_util_INCLUDED
 #define ipl_summarize_util_INCLUDED
 
-#ifndef __SGI_STL_VECTOR_H
-#include <vector.h>
-#endif
+#include <vector>
 
 #ifndef FB_WHIRL_INCLUDED
 #include "fb_whirl.h"
@@ -91,7 +89,7 @@ struct IPL_ST_INFO
 	addr_saved_reset (FALSE) {}
 };    
 
-typedef vector<vector<IPL_ST_INFO> > AUX_SYMBOL_INFO;
+typedef std::vector<std::vector<IPL_ST_INFO> > AUX_SYMBOL_INFO;
 extern AUX_SYMBOL_INFO Aux_Symbol_Info;
 
 struct AUX_SYMBOL_ACCESS
@@ -328,17 +326,17 @@ namespace {
     };
 }
 
-typedef hash_map<CODEREP*, INT, ptr_hash<CODEREP>, equal_to<CODEREP*>,
+typedef __gnu_cxx::hash_map<CODEREP*, INT, ptr_hash<CODEREP>, std::equal_to<CODEREP*>,
     mempool_allocator<CODEREP*> > CHI_CR_TO_INT_MAP;
 extern CHI_CR_TO_INT_MAP* Chi_To_Idx_Map;
-typedef vector<CODEREP*, mempool_allocator<CODEREP*> > CHI_CR_ARRAY;
+typedef std::vector<CODEREP*, mempool_allocator<CODEREP*> > CHI_CR_ARRAY;
 extern CHI_CR_ARRAY* Hashed_Chis;
 extern INT Num_Chis_On_PU_Start;
 
-typedef hash_map<PHI_NODE*, INT, ptr_hash<PHI_NODE>, equal_to<PHI_NODE*>,
+typedef __gnu_cxx::hash_map<PHI_NODE*, INT, ptr_hash<PHI_NODE>, std::equal_to<PHI_NODE*>,
     mempool_allocator<PHI_NODE*> > PHI_NODE_TO_INT_MAP;
 extern PHI_NODE_TO_INT_MAP* Phi_To_Idx_Map;
-typedef vector<PHI_NODE*, mempool_allocator<PHI_NODE*> > PHI_NODE_ARRAY;
+typedef std::vector<PHI_NODE*, mempool_allocator<PHI_NODE*> > PHI_NODE_ARRAY;
 extern PHI_NODE_ARRAY* Hashed_Phis;
 extern INT Num_Phis_On_PU_Start;
 

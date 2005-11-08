@@ -30,8 +30,8 @@
 
 #include "defs.h"
 
-#include <list.h>
-#include <vector.h> 
+#include <list>
+#include <vector> 
 #include <queue>
 
 /* memory management */
@@ -184,7 +184,7 @@ private:
     } NODE_ID_VAL_PAIR ;
 
     typedef mempool_allocator<NODE_ID_VAL_PAIR >    _PAIR_ALLOC ;
-    typedef vector<NODE_ID_VAL_PAIR , _PAIR_ALLOC>  _PAIR_VECT ; 
+    typedef std::vector<NODE_ID_VAL_PAIR , _PAIR_ALLOC>  _PAIR_VECT ; 
     typedef _PAIR_VECT::iterator      	            _PAIR_VECT_ITER ;
 
     _PAIR_VECT _bb_map_vect, _rgn_map_vect ;
@@ -564,7 +564,7 @@ OP1_Defs_Are_Killed_By_OP2(OP* op1, OP* op2);
 BOOL Load_Has_Valid_Vaddr(OP* ld); 
 
 typedef mempool_allocator<OP*> OP_ALLOC;
-typedef vector<OP*,OP_ALLOC>   OP_Vector;
+typedef std::vector<OP*,OP_ALLOC>   OP_Vector;
 typedef OP_Vector::iterator    OP_Vector_Iter;
 typedef OP_Vector::reverse_iterator OP_Vector_Riter ;
 

@@ -65,9 +65,9 @@ typedef struct callee_info
   callee_info()  {attrib = INVALID; process_flag = 0; nested_inline = NULL;}
 } CALLEE_INFO;
 
-typedef hash_map<const char*, CALLEE_INFO, hash<const char*>, eqstr> CALLEE_HTABLE;
+typedef __gnu_cxx::hash_map<const char*, CALLEE_INFO, __gnu_cxx::hash<const char*>, eqstr> CALLEE_HTABLE;
 
-typedef hash_map<const char*, CALLEE_HTABLE, hash<const char*>, eqstr> CALLER_HTABLE;
+typedef __gnu_cxx::hash_map<const char*, CALLEE_HTABLE, __gnu_cxx::hash<const char*>, eqstr> CALLER_HTABLE;
 
 extern void ISP_Fix_Filename(char *);
 

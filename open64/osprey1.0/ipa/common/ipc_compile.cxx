@@ -42,7 +42,7 @@
 #include <string.h>
 #include <errno.h>                      // for sys_errlist
 #include <vector>                       // for STL vector container
-#include <hash_map>                     // for STL hash_map container
+#include <ext/hash_map>                     // for STL hash_map container
 #include <libgen.h>                     // for basename()
 #include <time.h>                       // for time()
 #include <sys/param.h>                  // for MAXPATHLEN
@@ -74,7 +74,8 @@
 #pragma weak outfilename
 
 using std::vector;
-using std::hash_map;
+using __gnu_cxx::hash;
+using __gnu_cxx::hash_map;
 
 #ifdef __linux__
 #define _USE_GNU_MAKE_
@@ -600,9 +601,9 @@ size_t ipacom_process_file (char* input_file,
   }
 
   commands->push_back(cmdline);
-    
+
   // Add an empty vector for this file's comments.
-  comments->push_back();
+  commands->push_back(static_cast<const char *>(""));
 
   Is_True (infiles->size() > 0 &&
            infiles->size() == outfiles->size() &&

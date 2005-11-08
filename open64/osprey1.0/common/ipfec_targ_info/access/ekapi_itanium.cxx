@@ -41,8 +41,8 @@
 //=============================================================================
 
 
-#include <list.h>
-#include <map.h>
+#include <list>
+#include <map>
 #include <stdarg.h>
 #include "ekapi_ia64.h"
 #include "ekapi_util.h"
@@ -79,7 +79,7 @@ char* VARNAME::Vname() {
 
 int  RESOURCE::total = 0;
 int  RESOURCE::shift_count_total =0;
-map <int,RESOURCE*> RESOURCE::resources;
+std::map <int,RESOURCE*> RESOURCE::resources;
 
 // Initial function
 RESOURCE::RESOURCE(char *name)
@@ -194,7 +194,7 @@ void RESOURCE::Output_All( FILE* fd )
 ///////////////////////////////////////////////////////////////////////////
 
 int  SCHE_INFO::total = 0;
-map <int,SCHE_INFO*> SCHE_INFO::fusi_list; // map fuid to schedule infor name;
+std::map <int,SCHE_INFO*> SCHE_INFO::fusi_list; // map fuid to schedule infor name;
 
 SCHE_INFO::SCHE_INFO(void *pknobs, int fuid):
 si_name("varname"), res_req_name("res_req"), total_res_name("varname"),id_set_name("varname"), 

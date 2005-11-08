@@ -57,9 +57,9 @@
 #define fb_cfg_INCLUDED
 
 #include "mempool_allocator.h"
-#include <vector.h>
-#include <deque.h>
-#include <hash_map.h>
+#include <vector>
+#include <deque>
+#include <ext/hash_map>
 #include "fb_whirl.h"
 
 // ====================================================================
@@ -79,8 +79,8 @@ typedef INT32 FB_NODEX;
 
 struct FB_NODE {
 
-  vector<FB_NODEX> preds; // Predecessors
-  vector<FB_NODEX> succs; // Successors
+	std::vector<FB_NODEX> preds; // Predecessors
+	std::vector<FB_NODEX> succs; // Successors
 
   bool one_edge_preds;    // true iff every pred has no other succs
   bool one_edge_succs;    // true iff every succ has no other preds
@@ -192,7 +192,7 @@ private:
   bool _trace_prop;   // Get_Trace(TP_FEEDBACK, TP_FEEDBACK_CFG_PROP)
 
   // vectors containing all nodes, indexed by FB_NODEX
-  vector< FB_NODE, mempool_allocator<FB_NODE> > _nodes;
+  std::vector< FB_NODE, mempool_allocator<FB_NODE> > _nodes;
 
   // The following data elements are needed only during the construction of
   // the feedback control flow graph, to maintain state as the WHIRL code is
@@ -204,10 +204,11 @@ private:
   //   _curr_nx       is the node currently being visited; if no node is
   //                  current, then nx == FB_NODEX_UNINIT
 
-  hash_map< LABEL_IDX, FB_NODEX, hash<LABEL_IDX>, equal_to<LABEL_IDX>,
-    mempool_allocator< pair<LABEL_IDX,FB_NODEX> > > _lblx_to_nx;
+  __gnu_cxx::hash_map< LABEL_IDX, FB_NODEX, __gnu_cxx::hash<LABEL_IDX>,
+	  __gnu_cxx::equal_to<LABEL_IDX>,
+    mempool_allocator< std::pair<LABEL_IDX,FB_NODEX> > > _lblx_to_nx;
 
-  deque< FB_EDGE_DELAYED, mempool_allocator<FB_EDGE_DELAYED> > _delayed_edges;
+  std::deque< FB_EDGE_DELAYED, mempool_allocator<FB_EDGE_DELAYED> > _delayed_edges;
 
   FB_NODEX     _curr_nx;
 
@@ -254,8 +255,9 @@ public:
     _trace_before( Get_Trace( TP_FEEDBACK, TP_FEEDBACK_CFG_BEFORE ) ),
     _trace_prop(   Get_Trace( TP_FEEDBACK, TP_FEEDBACK_CFG_PROP ) ),
     _nodes( mempool_allocator<FB_NODE>(&_m) ),
-    _lblx_to_nx( 100, hash<LABEL_IDX>(), equal_to<LABEL_IDX>(),
-		 mempool_allocator< pair<LABEL_IDX,FB_NODEX> >(&_m) ),
+    _lblx_to_nx( 100, __gnu_cxx::hash<LABEL_IDX>(),
+		 __gnu_cxx::equal_to<LABEL_IDX>(),
+		 mempool_allocator< std::pair<LABEL_IDX,FB_NODEX> >(&_m) ),
     _delayed_edges( mempool_allocator<FB_EDGE_DELAYED>(&_m) ),
     _curr_nx( FB_NODEX_UNINIT ) {}
 

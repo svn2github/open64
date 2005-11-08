@@ -69,7 +69,7 @@
 #ifndef wn_INCLUDED
 #include "wn.h"
 #endif
-#include <vector.h>             // STL vector.
+#include <vector>             // STL vector.
 
 #ifndef instr_reader_INCLUDED
 #include "instr_reader.h"
@@ -96,14 +96,19 @@
 
 // ==================================================================
 // Map to record <pu_runtime_address, pu_name> pair.
-// 
- __STL_TEMPLATE_NULL  struct hash<UINT64> {
-	 size_t operator()(const UINT64 x)const{return (size_t)x;}
- };
+//
 
-typedef hash_map<UINT64, char*, hash<UINT64> > ADDRESS_NAME_MAP;
-typedef hash_map<UINT64, INT32, hash<UINT64> > ADDRESS_PUSIZE_MAP;
+#include <ext/hash_map>
 
+namespace __gnu_cxx {
+  template<>
+  struct hash<UINT64> {
+    size_t operator()(const UINT64 x)const{return (size_t)x;}
+  };
+}
+
+typedef __gnu_cxx::hash_map<UINT64, char*, __gnu_cxx::hash<UINT64> > ADDRESS_NAME_MAP;
+typedef __gnu_cxx::hash_map<UINT64, INT32, __gnu_cxx::hash<UINT64> > ADDRESS_PUSIZE_MAP;
 
 // ====================================================================
 
@@ -132,13 +137,13 @@ private:
   // For Whirl nodes, the map WN_MAP_FEEDBACK holds an index into
   // one of the following vectors:
 
-  vector< FB_Info_Invoke,  mempool_allocator<FB_Info_Invoke>  >  _invokes;
-  vector< FB_Info_Branch,  mempool_allocator<FB_Info_Branch>  >  _branches;
-  vector< FB_Info_Loop,    mempool_allocator<FB_Info_Loop>    >  _loops;
-  vector< FB_Info_Circuit, mempool_allocator<FB_Info_Circuit> >  _circuits;
-  vector< FB_Info_Call,    mempool_allocator<FB_Info_Call>    >  _calls;
-  vector< FB_Info_Icall,   mempool_allocator<FB_Info_Icall>   >  _icalls;
-  vector< FB_Info_Switch,  mempool_allocator<FB_Info_Switch>  >  _switches;
+  std::vector< FB_Info_Invoke,  mempool_allocator<FB_Info_Invoke>  >  _invokes;
+  std::vector< FB_Info_Branch,  mempool_allocator<FB_Info_Branch>  >  _branches;
+  std::vector< FB_Info_Loop,    mempool_allocator<FB_Info_Loop>    >  _loops;
+  std::vector< FB_Info_Circuit, mempool_allocator<FB_Info_Circuit> >  _circuits;
+  std::vector< FB_Info_Call,    mempool_allocator<FB_Info_Call>    >  _calls;
+  std::vector< FB_Info_Icall,   mempool_allocator<FB_Info_Icall>   >  _icalls;
+  std::vector< FB_Info_Switch,  mempool_allocator<FB_Info_Switch>  >  _switches;
 
   INT32 Get_index_invoke  ( const WN *wn ) const;
   INT32 Get_index_branch  ( const WN *wn ) const;
@@ -231,7 +236,7 @@ public:
   void FB_lower_return_val ( WN *wn_return_val, WN *wn_return );
 
   void FB_lower_mstore_to_loop ( WN *wn_mstore, WN *wn_loop, INT64 nMoves );
-  void FB_hoist_case( WN *wn_switch, vector<FB_FREQ>::size_type wcase);
+  void FB_hoist_case( WN *wn_switch, std::vector<FB_FREQ>::size_type wcase);
 
   // Goto conversion
 

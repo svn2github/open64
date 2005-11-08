@@ -4634,7 +4634,7 @@ void Fix_Cache_Conflict_latency(BB *bb){
     INT op_order = 0;
     BOOL trace = Get_Trace(TP_A_CANA, 0x1);
     OP *op;
-    vector <OP *> mem_ops;
+    std::vector <OP *> mem_ops;
     OP_MAP reverse_order = OP_MAP32_Create();
     FOR_ALL_BB_OPs_REV(bb,op) {	
         // backward can give cycle, and give the distance of

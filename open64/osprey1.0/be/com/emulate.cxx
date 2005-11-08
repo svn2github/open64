@@ -62,23 +62,6 @@
 #include "intrn_info.h"
 
 
-#if defined(__GNUC__)
-//
-// Provide trunc(), which doesn't exist in the GNU library. This is a
-// quick and dirty hack, and should be handled elsehow.
-//
-static inline double trunc(double d)
-{
-  if (d < 0.0) {
-    return 1.0 + floor(d);
-  }
-  else {
-    return floor(d);
-  }
-}
-#endif
-
-
 /*
 **	For lack of a better word, these emulations are run time
 **	routines that supply functionality to whirl expression nodes

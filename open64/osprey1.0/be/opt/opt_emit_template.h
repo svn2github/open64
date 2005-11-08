@@ -649,7 +649,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 
       WN *clobber_block = WN_CreateBlock();
 
-      vector<CLOBBER_PRAGMA_INFO,
+      std::vector<CLOBBER_PRAGMA_INFO,
              mempool_allocator<CLOBBER_PRAGMA_INFO> >::const_iterator p;
       for (p = srep->Asm_pragma()->clobber_info.begin();
 	   p != srep->Asm_pragma()->clobber_info.end();
@@ -677,7 +677,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 
       WN *output_constraint_block = WN_CreateBlock();
 
-      vector<CONSTRAINT_PRAGMA_INFO,
+      std::vector<CONSTRAINT_PRAGMA_INFO,
              mempool_allocator<CONSTRAINT_PRAGMA_INFO> >::const_iterator q;
       for (q = srep->Asm_pragma()->constraint_info.begin();
 	   q != srep->Asm_pragma()->constraint_info.end();

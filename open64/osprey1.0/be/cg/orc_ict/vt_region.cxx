@@ -78,7 +78,7 @@ typedef struct cfg_label_info {
  *
  * ====================================================================
  */
-void draw_bb_op (BB *bb,const char *mes = NULL)
+void draw_bb_op (BB *bb,const char *mes)
 {
     if (! DaVinci::enabled(TRUE)) return;
 
@@ -229,7 +229,7 @@ Regional_CFG_Callback::Edge_Select(const EDGE_ID& edge_id)
  *
  * ====================================================================
  */
-void draw_regional_cfg (REGION *r,const char *mes = NULL)
+void draw_regional_cfg (REGION *r,const char *mes)
 {
     if (! DaVinci::enabled (TRUE)) return;
 
@@ -253,7 +253,7 @@ void draw_regional_cfg (REGION *r,const char *mes = NULL)
     char                    nlabel[64];         // temp space for node label
     INT32                   pseudo_node_id=0;   // be used as label's id
     CFG_LABEL_INFO          label_info_item;
-    vector<CFG_LABEL_INFO>  label_info_vector;
+    std::vector<CFG_LABEL_INFO>  label_info_vector;
     BOOL                    show_edge_label;    // to dump edge label or not
     NODE_TYPE               nt,nt_bb,nt_region,nt_pseudo; // node type
     EDGE_TYPE               et_source,et_destination;
@@ -407,7 +407,7 @@ Region_Tree_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
  *
  * ====================================================================
  */
-void draw_region_tree (REGION *r,const char *mes = NULL)
+void draw_region_tree (REGION *r,const char *mes)
 {
     if (! DaVinci::enabled(TRUE)) return;
 
@@ -431,7 +431,7 @@ void draw_region_tree (REGION *r,const char *mes = NULL)
     char            nlabel[16];     // temp space for node label
     NODE_TYPE       nt, nt_plain;   // to store the current OP type
     EDGE_TYPE       et;             // to store the current edge type
-    deque<REGION*>  r_deque;        // for traversing region tree
+    std::deque<REGION*>  r_deque;        // for traversing region tree
     REGION          *being_drawn_region, *kid_r;
 
     r_deque.push_back (r);
@@ -555,7 +555,7 @@ Global_CFG_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
  * ====================================================================
  */
 void
-draw_global_cfg(const char *mes = NULL)
+draw_global_cfg(const char *mes)
 {
     if (! DaVinci::enabled (TRUE)) return;
 
@@ -577,7 +577,7 @@ draw_global_cfg(const char *mes = NULL)
     char                    nlabel[64];         // temp space for node label
     INT32                   pseudo_node_id=0;   // be used as label's id
     CFG_LABEL_INFO          label_info_item;
-    vector<CFG_LABEL_INFO>  label_info_vector;
+    std::vector<CFG_LABEL_INFO>  label_info_vector;
     BOOL                    show_edge_label;    // to dump edge label or not
     NODE_TYPE               nt, nt_plain, nt_entry, nt_exit, nt_multi, 
                             nt_call, nt_pseudo;

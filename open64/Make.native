@@ -149,6 +149,7 @@ install:; @./INSTALL.native
 
 clean:clobber
 clobber:
+		gmake clobber -C $(NATIVE_BUILD_DIR)/include
 		gmake clobber -C $(NATIVE_BUILD_DIR)/driver
 		gmake clobber -C $(NATIVE_BUILD_DIR)/gccfe
 		gmake clobber -C $(NATIVE_BUILD_DIR)/g++fe
@@ -166,6 +167,7 @@ clobber:
 		gmake clobber -C $(NATIVE_BUILD_DIR)/targ_info
 		gmake clean -C $(NATIVE_BUILD_DIR)/../libkapi
 		gmake clobber -C $(NATIVE_BUILD_DIR)/ir_tools
+		gmake clobber -C $(NATIVE_BUILD_DIR)/cord
 		gmake clobber -C $(NATIVE_BUILD_DIR)/crayf90/sgi
 		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/include
 		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/libfortran

@@ -42,8 +42,10 @@
 //=============================================================================
 //=============================================================================
 
+#include <map>
+#include <vector>
+
 #include "errors.h"
-#include "vector.h"
 #include "op_map.h"
 #include "timing.h"
 #include "tracing.h"
@@ -116,12 +118,12 @@ protected:
         OP   *op;
         ISSUE_PORT op_fu; // issue port assigned to this op
         PORT_SET set_op_fu;
-        vector<OP_IDX> preds;  // predecessors within this cycle
+	std::vector<OP_IDX> preds;  // predecessors within this cycle
     }     _ops[CYCLE_MAX_LENGTH];
 
     // function unit's owner op; _fu_owner[ip_M1] = 1 means that
     // ops[1].op has been issued to M1 
-    vector <OP_IDX>   _fu_owner;
+    std::vector <OP_IDX>   _fu_owner;
                                 
 
     PORT_SET _reserve; // The bit vector used by current resource
@@ -235,7 +237,7 @@ public:
 
     OP * operator [](OP_IDX op_idx) const
     { return (_const_OP_State(op_idx)).op; }
-    const vector<OP_IDX> OP_Preds(OP_IDX i) const
+    const std::vector<OP_IDX> OP_Preds(OP_IDX i) const
     { return (_const_OP_State(i)).preds; }
 
     OP_IDX Add_OP(OP * inst, ISSUE_PORT issue_port = ip_invalid);
@@ -471,10 +473,10 @@ BOOL CYCLE_STATE::Best_Issue_Order(INT *issue_op_list, PATTERN_TYPE ptn)
 
 
 OP_IDX CYCLE_STATE::Add_OP( OP * inst,
-                        ISSUE_PORT issue_port = ip_invalid)
+                        ISSUE_PORT issue_port)
 {
     // Record all this inst's predecessors in cur cycle
-    vector<OP_IDX> preds_vector;
+    std::vector<OP_IDX> preds_vector;
 
     Is_True(_num_ops < CYCLE_MAX_LENGTH,
         ("Adding too many operations in a cycle!"));
@@ -1043,9 +1045,9 @@ static PORT_SET port_mark = 0;
 static BOOL Bundle_Helper(OP_IDX new_op);
 
 
-BOOL CGGRP_Issue_OP(OP * inst, BOOL commit = FALSE)
+BOOL CGGRP_Issue_OP(OP * inst, BOOL commit)
 {
-    vector<OP_IDX> deps;
+    std::vector<OP_IDX> deps;
     OP_IDX op_index;
     
     if (IPFEC_sched_care_machine == Sched_care_nothing)
@@ -1438,7 +1440,7 @@ static void Negotiate_Bundle(void)
 {
     // Patterns which has been checked to be invalid in the current cycle,
     // used to avoid repeatingly checking.
-    vector <BOOL> dep_chk_fail;
+    std::vector <BOOL> dep_chk_fail;
     
     for (INT i=0; i< MAX_PTN_TABLE_LINE_SIZE; i++) {
         dep_chk_fail.push_back(false);
@@ -1875,9 +1877,9 @@ Best_Issue_Port(OPS *ops, INT stop_idx, const PATTERN_TYPE ptn, ISSUE_PORT *ip_l
     INT idx = 0; 
     OP *cur_op;
     const DISPERSAL_TARG *ports_vector = dispersal_table.Query(&ptn);
-    vector<OP*> _op_orders;
-    vector<OP*>::iterator iter;
-    map<OP*, PORT_SET> _op_avail; 
+    std::vector<OP*> _op_orders;
+    std::vector<OP*>::iterator iter;
+    std::map<OP*, PORT_SET> _op_avail; 
 
     _op_orders.empty();
 
@@ -2204,7 +2206,7 @@ BOOL CGGRP_Bundle_OPS(OPS *ops,OPS *new_ops,INT stop_idx=0, BOOL cyclic)
 }
 
 void
-PTN_TABLE_LINE::Dump (FILE *f = stderr) {
+PTN_TABLE_LINE::Dump (FILE *f) {
     for (INT i = 0; i < size; i++) {
         fprintf(f,"%d ",i);
         ptns[i].Dump(f);
@@ -2229,7 +2231,7 @@ BOOL CGGRP_Bundle_OPS(OPS *ops,OP *op,INT stop_idx=0, BOOL cyclic)
     }
     
 }
-void CYCLE_STATE::Dump (FILE *f=stderr) 
+void CYCLE_STATE::Dump (FILE *f)
 {
     extern void dump_op(const OP *op);
     fprintf(f, "\nValid:%d ",_valid);

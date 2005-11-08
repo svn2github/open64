@@ -195,11 +195,11 @@ ir_b_grow_map (Elf64_Word min_size, Output_File *fl)
 				  MAP_SHARED, fl->output_fd, 0); 
 
     if (ftruncate(fl->output_fd, fl->mapped_size))
-	ErrMsg (EC_IR_Write, fl->file_name, sys_errlist[errno]);
+	ErrMsg (EC_IR_Write, fl->file_name, strerror(errno));
 #endif
 
     if (fl->map_addr == (char *) (-1))
-	ErrMsg (EC_IR_Write, fl->file_name, sys_errlist[errno]);
+	ErrMsg (EC_IR_Write, fl->file_name, strerror(errno));
 
     return fl->map_addr;
 } /* ir_b_grow_map */
@@ -400,9 +400,10 @@ static Elf64_Word
 write_table (TABLE& fld, off_t base_offset,
 	     Output_File *fl)
 {
-    off_t cur_offset = ir_b_align (fl->file_size, __ALIGNOF(TABLE::base_type),
-				   0);
-    fl->file_size = ir_b_align (fl->file_size, __ALIGNOF(TABLE::base_type), 0);
+    off_t cur_offset = ir_b_align (fl->file_size,
+				   __ALIGNOF(typename TABLE::base_type), 0);
+    fl->file_size = ir_b_align (fl->file_size,
+		    		__ALIGNOF(typename TABLE::base_type), 0);
 
 #ifndef __GNUC__
     const WRITE_TABLE_OP<TABLE::base_type> write_table_op(fl);

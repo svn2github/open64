@@ -52,17 +52,6 @@
 #include <algorithm>
 #endif
 
-using std::find;
-using std::transform;
-using std::sort;
-using std::stable_sort;
-using std::rotate;
-using std::reverse;
-using std::set_union;
-using std::set_intersection;
-using std::set_difference;
-using std::min;
-
 #endif // __SGI_STL_ALGO_H
 
 #ifndef __SGI_STL_VECTOR_H
@@ -79,8 +68,6 @@ using std::min;
 #include <vector>
 #endif
 
-using std::vector;
-
 #endif // __SGI_STL_VECTOR_H
 
 #ifndef __SGI_STL_SLIST_H
@@ -93,12 +80,12 @@ using std::vector;
 
 #ifndef __GNUC__
 #include <CC/slist>
-#else
-#include <slist>
-
 using std::slist;
-
+#else
+#include <ext/slist>
+using __gnu_cxx::slist;
 #endif
+
 #endif // __SGI_STL_LIST_H
 
 
@@ -184,7 +171,7 @@ protected:
   UINT                  size;	// total number of elements present
 
 private:
-  typedef std::slist<growing_table *> kids_type;
+  typedef slist<growing_table *> kids_type;
 
   kids_type kids;	
   
@@ -271,7 +258,7 @@ template <class T, UINT block_size = 128>
 class RELATED_SEGMENTED_ARRAY : public growing_table {
 private:
     
-    std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> > map;
+    std::vector<std::pair<T *, BOOL>, mempool_allocator<std::pair<T *, BOOL> > > map;
     MEM_POOL *pool;
     UINT max_size;			// total # of elements allocated
     INT block_base;			// idx of the beginning of
@@ -371,7 +358,7 @@ public:
   ~RELATED_SEGMENTED_ARRAY() {
     // Free memory from blocks. Map memory gets freed when the map
     // vector is destructed.
-    for (std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> >::iterator
+    for (typename std::vector<std::pair<T *, BOOL>, mempool_allocator<std::pair<T *, BOOL> > >::iterator
 	   entry = map.begin();
 	 entry != map.end();
 	 ++entry) {
@@ -447,7 +434,7 @@ public:
     // return the number of element till the end of the block
     UINT Get_block_size (UINT idx) const {
       UINT block_idx = idx / block_size;
-      return min(next_block_idx(block_idx) * block_size, size) - idx;
+      return std::min(next_block_idx(block_idx) * block_size, size) - idx;
     }
 
     UINT Block_index (UINT idx) const { return idx / block_size; }

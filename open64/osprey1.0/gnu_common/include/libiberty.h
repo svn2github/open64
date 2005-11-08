@@ -189,6 +189,7 @@ extern int pexecute PARAMS ((const char *, char * const *, const char *,
 
 extern int pwait PARAMS ((int, int *, int));
 
+#if 0
 /* Like sprintf but provides a pointer to malloc'd storage, which must
    be freed by the caller.  */
 
@@ -199,6 +200,7 @@ extern int asprintf PARAMS ((char **, const char *, ...)) ATTRIBUTE_PRINTF_2;
 
 extern int vasprintf PARAMS ((char **, const char *, va_list))
   ATTRIBUTE_PRINTF(2,0);
+#endif
 
 #ifdef __cplusplus
 }

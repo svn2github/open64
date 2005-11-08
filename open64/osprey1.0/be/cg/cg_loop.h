@@ -610,7 +610,7 @@ struct SWP_FIXUP {
     prolog(bb1),body(bb2),epilog(bb3), control_loc(cntrl_loc) {}
 };
 
-typedef vector<SWP_FIXUP> SWP_FIXUP_VECTOR;
+typedef std::vector<SWP_FIXUP> SWP_FIXUP_VECTOR;
 
 
 #include "tn_map.h"
@@ -632,8 +632,8 @@ struct CG_LOOP_DEF {
 //
 struct OP_VECTOR {
   typedef int index_type;
-  typedef vector<OP *>::iterator iterator;
-  vector<OP *> op_vec;
+  typedef std::vector<OP *>::iterator iterator;
+  std::vector<OP *> op_vec;
   
   iterator begin() { return op_vec.begin(); }
 

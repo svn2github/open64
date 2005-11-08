@@ -50,8 +50,8 @@
 #include "tn_set.h"
 #include "ti_res_count.h"
 
-typedef pair<TN*, OP*> tn_def_op;
-typedef vector<tn_def_op> op_vec_type;
+typedef std::pair<TN*, OP*> tn_def_op;
+typedef std::vector<tn_def_op> op_vec_type;
 
 // For use with stable_sort later
 bool operator<(tn_def_op& t1, tn_def_op& t2)
@@ -70,7 +70,7 @@ class REPLACE_TN_LIST {
       old_tn(o), new_tn(n), begin(b), end(e) {}
   };
 
-  vector<REPLACE_TN> v;
+  std::vector<REPLACE_TN> v;
 
 public:
   // Add a change to be processed
@@ -566,7 +566,7 @@ public:
     if (action != RECUR_NONE && action != RECUR_BACK_SUB_VARIANT) {
       INT latency = CG_DEP_Latency(op, op, CG_DEP_REGIN, reg_opnd_num);
       INT illegal_omega_value = 20;
-      for (new_omega = max(1, CG_LOOP_recurrence_min_omega); new_omega < illegal_omega_value; new_omega++) {
+      for (new_omega = MAX(1, CG_LOOP_recurrence_min_omega); new_omega < illegal_omega_value; new_omega++) {
 	// estimate_ResMII is a double
 	if (latency <= new_omega * estimate_ResMII)
 	  break;
@@ -814,7 +814,7 @@ void Apply_Interleave(OP *op, INT new_omega,
   if (!non_body_tn) {
     DevWarn("Interleave_Associative_Op: can't find non-body tn");
   } else {
-    vector<TN*> backpatch_tns;
+    std::vector<TN*> backpatch_tns;
     backpatch_tns.push_back(non_body_tn);
     INT i;
     for (i = 1; i < new_omega; i++) {
@@ -845,7 +845,7 @@ void Apply_Interleave(OP *op, INT new_omega,
 
 class Critical_Recurrence {
   static const INT NEG_INF = -999;
-  vector< vector<INT> >  mindist;
+  std::vector< std::vector<INT> >  mindist;
   INT size() const { mindist.size(); }
 public:
   INT operator()(INT i) const { return mindist[i][i] > 0; }
@@ -880,7 +880,7 @@ void Critical_Recurrence::Print(FILE *fp) const
 Critical_Recurrence::Critical_Recurrence(const SWP_OP_vector& v, 
 					 INT start, INT stop,
 					 INT branch, INT ii)
-  :mindist(v.size(), vector<INT>(v.size(), NEG_INF))
+  :mindist(v.size(), std::vector<INT>(v.size(), NEG_INF))
 {
   int n_ops = v.size();
 
@@ -898,12 +898,12 @@ Critical_Recurrence::Critical_Recurrence(const SWP_OP_vector& v,
 	  continue;
 	OP  *succ = ARC_succ(arc);
 	mindist[i][SWP_index(succ)] =
-	  max(mindist[i][SWP_index(succ)], ARC_latency(arc) - ARC_omega(arc) * ii);
+	  MAX(mindist[i][SWP_index(succ)], ARC_latency(arc) - ARC_omega(arc) * ii);
 	Is_True(succ == v[SWP_index(succ)].op, ("MinDIST: wrong SWP_index."));
       }
       mindist[start][i] = 0;
       mindist[i][stop] = 0;
-      mindist[i][branch] = max(mindist[i][branch], 0);
+      mindist[i][branch] = MAX(mindist[i][branch], 0);
     }
   }
 
@@ -912,7 +912,7 @@ Critical_Recurrence::Critical_Recurrence(const SWP_OP_vector& v,
   for (INT k = 0; k < n_ops; k++) 
     for (INT i = 0; i < n_ops; i++) 
       for (INT j = 0; j < n_ops; j++) 
-	mindist[i][j] = max(mindist[i][j], mindist[i][k] + mindist[k][j]);
+	mindist[i][j] = MAX(mindist[i][j], mindist[i][k] + mindist[k][j]);
 }
 
 
@@ -1374,7 +1374,7 @@ void Fix_Recurrences_Before_Unrolling(CG_LOOP& cl)
     estimate_ResMII = CG_SCHED_EST_Resources_Min_Cycles(loop_se);
   }
 
-  vector<RECUR_OP_DESC> delay_processing;
+  std::vector<RECUR_OP_DESC> delay_processing;
 
   FOR_ALL_BB_OPs(body, op) {
 

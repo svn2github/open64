@@ -224,7 +224,7 @@ enter_st (const IPC_GLOBAL_TABS &gtabs, const ST &st, Sym &esym)
 
 
 template <class Sym>
-static pair<Sym *, UINT>
+static std::pair<Sym *, UINT>
 walk_st_list (const IPC_GLOBAL_TABS& gtabs, const Sym*)
 {
     UINT max_ext_num = DEFAULT_MAX_EXT_NUM;
@@ -248,7 +248,7 @@ walk_st_list (const IPC_GLOBAL_TABS& gtabs, const Sym*)
 	    enter_st(gtabs, st, ext_symtab[size++]);
 	}
     }
-    return pair<Sym *, UINT> (ext_symtab, size);
+    return std::pair<Sym *, UINT> (ext_symtab, size);
 } /* walk_st_list */
 
 
@@ -379,7 +379,7 @@ process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
     gtabs.symstr_tab = (char*) ld_get_section_base (p_obj, strtab_idx);
     get_global_symtab (gtabs, IP_FILE_HDR_file_info (file_header), p_obj,
 		       gsymtab); 
-    pair<Sym *, UINT> ext_symtab = walk_st_list (gtabs, elf_symtab);
+    std::pair<Sym *, UINT> ext_symtab = walk_st_list (gtabs, elf_symtab);
 
 #ifndef TARG_IA64    // Merge the new ELF symbol table entries with the existing ones.
     //

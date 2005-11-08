@@ -262,7 +262,7 @@ first:
 	cd $(TARGDIR)/be && $(MAKE)
 ifeq ($(BUILD_OS), LINUX)
 	cd $(BUILD_AREA)/include && $(MAKE)
-	if ! test -a $(TARGET_SO); then ln -sf $(TARG_TARG_INFO_DIR)/$(TARGET_SO) .; fi
+	if ! test -e $(TARGET_SO); then ln -sf $(TARG_TARG_INFO_DIR)/$(TARGET_SO) .; fi
 endif
 
 #----------------------------------------------------------------------
@@ -309,16 +309,16 @@ whirl2c_be: whirl2c.so
 			LINK_DSO='$(LINK_DSO)' \
 			LINK_DSO_OPTS='$(LINK_DSO_OPTS) -L.' \
 			be)
-		if ! test -a whirl2c_be; then ln -sf $(TARGDIR)/be/be whirl2c_be ; fi
+		if ! test -e whirl2c_be; then ln -sf $(TARGDIR)/be/be whirl2c_be ; fi
 
 whirl2c: whirl2c.so whirl2c_be $(WHIRL2C_MAIN_OBJS)
 		$(CCF) -o whirl2c $(WHIRL2C_MAIN_OBJS) $(LDFLAGS)
 
 be.so:
-		if ! test -a be.so; then ln -sf $(TARGDIR)/be/be.so .; fi
+		if ! test -e be.so; then ln -sf $(TARGDIR)/be/be.so .; fi
 
 be:
-		if ! test -a be; then ln -sf $(TARGDIR)/be/be .; fi  
+		if ! test -e be; then ln -sf $(TARGDIR)/be/be .; fi  
 
 
 # For debugging, set LD_LIBRARY_PATH manually and invoke whirl2c_dbg

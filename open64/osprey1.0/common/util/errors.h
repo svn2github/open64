@@ -558,10 +558,6 @@ extern BOOL Count_Limit_DevWarn( const char *const src_fname,
 /* Include definitions specific to the host program: */
 #include "err_host.h"
 
-/* The following contains Unix error code after system call errors: */
-#ifndef _ERRNO_H       // for conflict with errno.h 
- extern INT errno;    // native build 
-#endif
 /* Control reporting by severity level: */
 extern INT Min_Error_Severity;
 extern INT Conformance_Level;

@@ -101,10 +101,12 @@ struct OFFSET_SIZE
   UINT32 size;
 };
 
-template<> struct hash<OFFSET_SIZE> 
-{
-  size_t operator()(OFFSET_SIZE x) const { return x.offset + x.size; }
-};
+namespace __gnu_cxx {
+  template<> struct hash<OFFSET_SIZE>
+  {
+    size_t operator()(OFFSET_SIZE x) const { return x.offset + x.size; }
+  };
+}
 
 struct OFFSET_SIZE_EQ
 {
@@ -114,7 +116,7 @@ struct OFFSET_SIZE_EQ
   }
 };
 
-typedef hash_map<OFFSET_SIZE, ST_IDX, hash<OFFSET_SIZE>, OFFSET_SIZE_EQ> 
+typedef __gnu_cxx::hash_map<OFFSET_SIZE, ST_IDX, __gnu_cxx::hash<OFFSET_SIZE>, OFFSET_SIZE_EQ> 
 OFFSET_SIZE_TO_ST_IDX_MAP;
 
 

@@ -41,7 +41,6 @@
 #include "mempool.h"
 #include "profile_util.h"
 #include "calls.h"
-#include "hash_map.h"
 #include "bb_map.h"
 
 struct INST_TO_PROFILE {
@@ -66,7 +65,7 @@ public:
 
 
 typedef mempool_allocator<struct INST_TO_PROFILE *> INST2PROF_ALLOC_TYPE;
-typedef vector<INST_TO_PROFILE *, INST2PROF_ALLOC_TYPE> INST2PROFLIST;
+typedef std::vector<INST_TO_PROFILE *, INST2PROF_ALLOC_TYPE> INST2PROFLIST;
 //typedef hash_map<INT32, FB_Info_Value *, hash<INT32> > OP_TNV_MAP;
 
 

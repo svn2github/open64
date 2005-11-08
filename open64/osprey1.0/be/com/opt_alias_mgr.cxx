@@ -102,7 +102,7 @@ class RESTRICTED_MAP {
   ALIAS_MANAGER      *_am;
   WN_MAP              _map;
   MEM_POOL           *_pu_pool;
-  vector<const ST *,
+  std::vector<const ST *,
     mempool_allocator<const ST *> > _invalid_based_syms;
 
 public:
@@ -368,7 +368,7 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
 
 #if 0
   _invalid_ip_alias_classes =
-    CXX_NEW(vector<IDTYPE, mempool_allocator<IDTYPE> > (&_mem_pool),
+    CXX_NEW(std::vector<IDTYPE, mempool_allocator<IDTYPE> > (&_mem_pool),
 	    &mem_pool);
 #else
   // Note: C++ is broken in that it uses the same preprocessor as C,
@@ -377,7 +377,7 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
   // properly to construct instances of template classes, so I've had
   // to introduce a stupid typedef. Yucky.
 
-  typedef vector<IDTYPE, mempool_allocator<IDTYPE> > STUPID_COMPILER;
+  typedef std::vector<IDTYPE, mempool_allocator<IDTYPE> > STUPID_COMPILER;
   _invalid_ip_alias_classes =
     CXX_NEW(STUPID_COMPILER(&_mem_pool), &_mem_pool);
 #endif

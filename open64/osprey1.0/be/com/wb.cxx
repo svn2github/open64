@@ -52,21 +52,21 @@
 #include "wb_browser.h" 
 #include "wb.h"
 
-#if defined(__GNUC__)
-#pragma weak s_lno_debug__FPc
-#pragma weak cg_sdebug__FPc
-#else
+#ifndef __GNUC__
+#define	ATTR_WEAK
 #pragma weak s_lno_debug__GPc
 #pragma weak cg_sdebug__GPc
+#else
+#define ATTR_WEAK __attribute__((weak))
 #endif
 
 extern void s_f90_lower_debug(char init_buffer[]); 
 extern void s_omp_debug(char init_buffer[]); 
-extern void s_lno_debug(char init_buffer[]); 
+extern void s_lno_debug(char init_buffer[]) ATTR_WEAK;
 extern void s_lwr_debug(char init_buffer[]); 
 extern void s_anl_debug(char init_buffer[]); 
 extern void s_ipl_debug(char init_buffer[]);
-extern void cg_sdebug(char init_buffer[]);
+extern void cg_sdebug(char init_buffer[]) ATTR_WEAK;
 
 static WB_PHASE WB_Current_Phase = WBP_NONE; 
 

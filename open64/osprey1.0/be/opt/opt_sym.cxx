@@ -3434,7 +3434,7 @@ Overlap(INT64 offset1, INT64 size1,
 
 #undef max // defined in wn_core.h
 
-#include <algo.h>
+#include <algorithm>
 
 // Find_symtab_of should probably be in opt_util.cxx, but it's here
 // because right now this is the only client.
@@ -3461,13 +3461,13 @@ struct NEST_REF_CAND {
 struct transfer_attributes_as_needed {
   BOOL                             tracing;
   OPT_STAB                        *opt_stab;
-  vector<vector<NEST_REF_CAND> >  &nest_ref_cands;
-  vector<const ST *>              &nested_ref_bases;
+  std::vector<std::vector<NEST_REF_CAND> >  &nest_ref_cands;
+  std::vector<const ST *>              &nested_ref_bases;
 
   transfer_attributes_as_needed(BOOL                            trace,
 				OPT_STAB                       *stab,
-				vector<vector<NEST_REF_CAND> > &cands,
-				vector<const ST *>             &bases) :
+				std::vector<std::vector<NEST_REF_CAND> > &cands,
+				std::vector<const ST *>             &bases) :
     tracing(trace),
     opt_stab(stab),
     nest_ref_cands(cands),
@@ -3482,19 +3482,19 @@ struct transfer_attributes_as_needed {
 	Expand_ST_into_base_and_ofst(st, 0, &base, &offset);
 	if (base != st) {
 	  // See if anyone local to our PU cares about this base...
-	  const ST **var_base_pos = find(nested_ref_bases.begin(),
+	  const ST **var_base_pos = &(*find(nested_ref_bases.begin(),
 					 nested_ref_bases.end(), 
-					 base);
-	  if (var_base_pos != nested_ref_bases.end()) {
+					 base));
+	  if (var_base_pos != &(*nested_ref_bases.end())) {
 	    // Someone in the PU referred to this base and might need a
 	    // status update. See if any of the references to this base
 	    // from the PU overlap with the current symbol.
 	    INT var_base_index = (var_base_pos -
-				  nested_ref_bases.begin());
+				  &(*nested_ref_bases.begin()));
 	    const NEST_REF_CAND *first_nrc =
-	      nest_ref_cands[var_base_index].begin();
+	      &(*nest_ref_cands[var_base_index].begin());
 	    const NEST_REF_CAND *last_nrc =
-	      nest_ref_cands[var_base_index].end();
+	      &(*nest_ref_cands[var_base_index].end());
 	    while (first_nrc != last_nrc) {
 	      if (Overlap(offset, TY_size(ST_type(st)),
 			  first_nrc->offset, first_nrc->size)) {
@@ -3526,12 +3526,12 @@ OPT_STAB::Collect_nested_ref_info(void)
   AUX_ID var;
   AUX_STAB_ITER aux_stab_iter(this);
 
-  vector <ST_TAB *>                     symtabs;
+  std::vector <ST_TAB *>                     symtabs;
 
-  vector<const ST *>              nested_ref_bases;
+  std::vector<const ST *>              nested_ref_bases;
 
   // Indexed by the index of the base ST in nested_ref_bases:
-  vector<vector<NEST_REF_CAND> >  nest_ref_cands;
+  std::vector<std::vector<NEST_REF_CAND> >  nest_ref_cands;
 
   // First we go through the aux stab looking for things whose
   // nested_ref status might not be set appropriately. Such items are
@@ -3559,14 +3559,14 @@ OPT_STAB::Collect_nested_ref_info(void)
 
       /* Not const */ ST_TAB *my_symtab = Find_symtab_of(var_base);
 
-      const ST **var_base_pos = find(nested_ref_bases.begin(),
+      const ST **var_base_pos = &(*find(nested_ref_bases.begin(),
 				     nested_ref_bases.end(),
-				     var_base);
-      INT var_base_index = var_base_pos - nested_ref_bases.begin();
+				     var_base));
+      INT var_base_index = var_base_pos - &(*nested_ref_bases.begin());
 
       if (var_base_pos ==
-	  nested_ref_bases.end()) {
-	Is_True(nested_ref_bases.end() - nested_ref_bases.begin() ==
+	  &(*nested_ref_bases.end())) {
+	Is_True(&(*nested_ref_bases.end()) - &(*nested_ref_bases.begin()) ==
 		var_base_index,
 		("Robert misunderstood STL vector: %d vs. %d",
 		 nested_ref_bases.end() - nested_ref_bases.begin(),
@@ -3574,7 +3574,7 @@ OPT_STAB::Collect_nested_ref_info(void)
 	nested_ref_bases.push_back(var_base);
 	// Make sure we construct the new entry in the parallel
 	// vector...
-	nest_ref_cands.push_back(vector<NEST_REF_CAND>());
+	nest_ref_cands.push_back(std::vector<NEST_REF_CAND>());
 
 	// Put this symtab in the list of places to check if it won't
 	// be a duplicate.
@@ -3596,7 +3596,7 @@ OPT_STAB::Collect_nested_ref_info(void)
     }
   }
 
-  /* Not const */ ST_TAB **symtab;
+  std::vector<ST_TAB *>::iterator symtab;
 
   for (symtab = symtabs.begin();
        symtab != symtabs.end();

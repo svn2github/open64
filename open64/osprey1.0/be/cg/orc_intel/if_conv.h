@@ -30,9 +30,9 @@
 #ifndef if_conv_INCLUDED
 #define if_conv_INCLUDED
 
-#include <vector.h>
+#include <vector>
+#include <set>
 #include "bb.h"
-#include "set.h"
 #include "defs.h"
 #include "mempool.h"
 #include "error.h"
@@ -56,13 +56,13 @@ class IF_CONV_AREA;
 class BB_PREDICATE_INFO;
 
 typedef mempool_allocator<IF_CONV_AREA *>      IF_CONV_ALLOC;
-typedef vector<IF_CONV_AREA *, IF_CONV_ALLOC>  AREA_CONTAINER;
+typedef std::vector<IF_CONV_AREA *, IF_CONV_ALLOC>  AREA_CONTAINER;
 
 typedef mempool_allocator<TN*>    TN_CONTAINER_ALLOC;
-typedef vector<TN*, TN_CONTAINER_ALLOC>  TN_CONTAINER;
+typedef std::vector<TN*, TN_CONTAINER_ALLOC>  TN_CONTAINER;
 
 typedef mempool_allocator<BB *>   BB_CONTAINER_ALLOC;
-typedef vector<BB *, BB_CONTAINER_ALLOC>  BB_CONTAINER;
+typedef std::vector<BB *, BB_CONTAINER_ALLOC>  BB_CONTAINER;
 
 class TN_INFO_MEM 
 {
@@ -430,7 +430,7 @@ public:
 };
 
 typedef mempool_allocator<EXIT_TARGET_INFO*>    EXIT_CONTAINER_ALLOC;
-typedef vector<EXIT_TARGET_INFO*, EXIT_CONTAINER_ALLOC>  EXIT_CONTAINER;
+typedef std::vector<EXIT_TARGET_INFO*, EXIT_CONTAINER_ALLOC>  EXIT_CONTAINER;
 
 //*****************************************************************************
 //   Class Name: IF_CONV_AREA

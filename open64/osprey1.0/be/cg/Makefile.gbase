@@ -490,8 +490,8 @@ endif
 ## verify that be.so is up to date
 	cd $(TARG_BE) && $(MAKE)
 ifeq ($(BUILD_OS), LINUX)
-	if ! test -a be.so; then ln -sf $(TARG_BE)/be.so .; fi
-	if ! test -a $(TARGET_SO); then ln -sf $(TARG_TARG_INFO)/$(TARGET_SO) .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE)/be.so .; fi
+	if ! test -e $(TARGET_SO); then ln -sf $(TARG_TARG_INFO)/$(TARGET_SO) .; fi
 endif
 ifeq ($(BUILD_PCH), USE_PCH)
 ## build pch files first so that we can use precompiled headers

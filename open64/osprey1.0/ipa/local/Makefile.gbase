@@ -255,7 +255,7 @@ default: first $(TARGETS) last
 #----------------------------------------------------------------------
 first:
 ifeq ($(BUILD_OS), LINUX)
-	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 endif
 ## verify that wopt.so is up to date
 	cd $(TARG_OPT_DIR) && $(MAKE)
@@ -297,9 +297,9 @@ ipl.so: $(IPA_OBJS) $(IPA_CXX_OBJS) $(LINK_DSOS) \
 	$(C++F) -o $@  $(STD_DSO_LOADOPTS) $(EXPORT_LIST)	\
 		$(IPA_OBJS) $(IPA_CXX_OBJS)			\
 		$(LINK_DSOS) $(LLDLIBS)
-	if ! test -a wopt.so; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi
-	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
-	if ! test -a ipl ; then ln -sf ../be_driver/be ipl; fi
+	if ! test -e wopt.so; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
+	if ! test -e ipl ; then ln -sf ../be_driver/be ipl; fi
 
 #----------------------------------------------------------------------
 #  Include the usual commonrules

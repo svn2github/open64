@@ -61,6 +61,7 @@
 
 #include <sys/elf_whirl.h>	    /* for WHIRL_REVISION */
 #include <sys/types.h>	 
+#include <errno.h>	 
 #include "pu_info.h" 
 #include "defs.h"
 #include "config.h"
