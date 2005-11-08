@@ -219,7 +219,7 @@ Print_Dominators(void)
  * ====================================================================
  */
 void 
-Vector_Print_Dominators(const vector<BB*>& region_bbs)
+Vector_Print_Dominators(const std::vector<BB*>& region_bbs)
 {
   INT i;
   fprintf(TFile, "Dominator dump for BB_region\n");
@@ -559,7 +559,7 @@ BB_REGION_Calculate_Dominators(const BB_REGION& region)
 {
   MEM_POOL_Push(&MEM_local_pool);
   BB_SET* bs_tmp = BB_SET_Universe(PU_BB_Count+2, &MEM_local_pool);
-  vector<BB*> region_bbs;
+  std::vector<BB*> region_bbs;
   //  BB_MAP preds = BB_MAP_Create();
   BOOL changed;
 
@@ -681,7 +681,7 @@ BB_SET_Calculate_Dominators(BB_SET *bbset, BOOL compute_dom, BOOL compute_pdom)
 {
   MEM_POOL_Push(&MEM_local_pool);
   BB_SET* bs_tmp = BB_SET_Universe(PU_BB_Count+2, &MEM_local_pool);
-  vector<BB*> set_bbs;
+  std::vector<BB*> set_bbs;
   BOOL changed;
 
   //

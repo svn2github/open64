@@ -132,7 +132,7 @@ Verify_HB(
 
 /////////////////////////////////////
 static BOOL
-Enumerate_Paths(HB* hb, BB* bb, float probability, list<HB_PATH*>& ret_list,
+Enumerate_Paths(HB* hb, BB* bb, float probability, std::list<HB_PATH*>& ret_list,
 		BB *stopping_point, BB_SET *visited,
 		MEM_POOL* pool)
   /////////////////////////////////////
@@ -176,7 +176,7 @@ Enumerate_Paths(HB* hb, BB* bb, float probability, list<HB_PATH*>& ret_list,
       // the fall thru exit on all paths.
       //
       if (succ != HB_Entry(hb) && HB_Contains_Block(hb, succ)) {
-	list<HB_PATH*> kids_paths;
+	std::list<HB_PATH*> kids_paths;
 	if (Enumerate_Paths(hb, succ, BBLIST_prob(bl), kids_paths, stopping_point, visited, pool)) {
 	  ret_list.splice(ret_list.end(), kids_paths);
 	  // Keep things from getting to complicated
@@ -210,7 +210,7 @@ Enumerate_Paths(HB* hb, BB* bb, float probability, list<HB_PATH*>& ret_list,
   // from its children and for a path that terminates here, then return
   // that list to its parent.
   //
-  for(list<HB_PATH*>::iterator paths = ret_list.begin();
+  for(std::list<HB_PATH*>::iterator paths = ret_list.begin();
       paths != ret_list.end();
       paths++) {
     HB_PATH_Add_Block(*paths, bb, &MEM_local_pool);
@@ -316,7 +316,7 @@ Calculate_Path_Data(HB *hb, HB_PATH* path, BB_MAP bb_sched_est,
 
 /////////////////////////////////////
 static void
-Calculate_Path_Priorities(list<HB_PATH*>& hb_paths, INT max_sched_height,
+Calculate_Path_Priorities(std::list<HB_PATH*>& hb_paths, INT max_sched_height,
 			  INT* max_num_ops, BOOL profitable_ifc)
 /////////////////////////////////////
 //
@@ -324,7 +324,7 @@ Calculate_Path_Priorities(list<HB_PATH*>& hb_paths, INT max_sched_height,
 //
 /////////////////////////////////////
 {
-  list<HB_PATH*>::iterator hbp;
+  std::list<HB_PATH*>::iterator hbp;
   float max_priority = 0.0;
   INT max_priority_sched_height = 0;
   double branch_cost, factor;
@@ -442,7 +442,7 @@ Path_Resources_Available(HB* hb, HB_PATH* path, HB_PATH* max_path,
 
 /////////////////////////////////////
 static BB_SET *
-Select_Blocks(HB* hb, list<HB_PATH*>& hb_paths, BOOL profitable_ifc)
+Select_Blocks(HB* hb, std::list<HB_PATH*>& hb_paths, BOOL profitable_ifc)
 /////////////////////////////////////
 //
 //  Select paths for inclusing in the hyperblock via the 
@@ -451,7 +451,7 @@ Select_Blocks(HB* hb, list<HB_PATH*>& hb_paths, BOOL profitable_ifc)
 //
 /////////////////////////////////////
 {
-  list<HB_PATH*>::iterator path;
+  std::list<HB_PATH*>::iterator path;
   float last_priority;
   BB_MAP bb_sched_est = BB_MAP_Create();
   BB_MAP bb_mem_hazard = BB_MAP32_Create();
@@ -620,14 +620,14 @@ HB_Block_Select(HB* candidate, BOOL profitable_ifc)
 /////////////////////////////////////
 {
   BOOL retval;
-  vector<BB *> join_list;
+  std::vector<BB *> join_list;
   INT i;
   BB *bb_j;
   BB_SET *current_blocks;
   BB_SET *visited_blocks;
   BB_SET *selected_blocks;
   BBLIST *succs;
-  list<HB_PATH*> hb_paths;
+  std::list<HB_PATH*> hb_paths;
   BB_SET *hb_blocks = HB_Blocks(candidate);
 
   // Conditionally skip the selection under a HB triage option.

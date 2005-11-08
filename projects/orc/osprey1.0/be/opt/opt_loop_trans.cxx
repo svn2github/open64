@@ -81,6 +81,8 @@
 
 
 #define USE_STANDARD_TYPE
+#include <queue>
+
 #include "opt_defs.h"
 #include "opt_bb.h"
 #include "bb_node_set.h"
@@ -90,8 +92,6 @@
 #include "opt_cfg_trans.h"
 #include "opt_transform.h"
 #include "opt_main.h"
-
-#include <stack.h>
 
 static bool check_hazardous_op(BB_NODE *bb)
 {
@@ -106,17 +106,17 @@ static bool check_hazardous_op(BB_NODE *bb)
   return false;
 }
 
-inline bool member_of(int elem, set<int>& set)
+inline bool member_of(int elem, std::set<int>& set)
 {
   return (set.find(elem) != set.end());
 }
 
 // Return percentage path coverage
-static double path_exit_counts(successor_graph& g, set<vertex_id>& ends,
+static double path_exit_counts(successor_graph& g, std::set<vertex_id>& ends,
 			       OPT_FEEDBACK *feedback, bool trace)
 {
   FB_FREQ coverage = FB_FREQ_ZERO;
-  for (set<vertex_id>::iterator si = ends.begin();
+  for (std::set<vertex_id>::iterator si = ends.begin();
        si != ends.end();
        ++si) {
     vertex_id bb = *si;
@@ -148,15 +148,15 @@ static double path_exit_counts(successor_graph& g, set<vertex_id>& ends,
 //
 static double
 butterfly_loop_with_profile(successor_graph& g,
-			    set<vertex_id> orig_loop,
+			    std::set<vertex_id> orig_loop,
 			    predecessor_graph& loop, 
-			    set<vertex_id>& starts, 
-			    set<vertex_id>& ends,
+			    std::set<vertex_id>& starts, 
+			    std::set<vertex_id>& ends,
 			    OPT_FEEDBACK *feedback,
 			    int min_coverage,
 			    bool trace) 
 {
-  priority_queue<path_type*> primary_heap, secondary_heap;
+  std::priority_queue<path_type*> primary_heap, secondary_heap;
   double orig_counts = path_exit_counts(g, orig_loop, feedback, trace);
   double total_counts =
     path_exit_counts(g, ends, feedback, trace) - orig_counts;
@@ -170,7 +170,7 @@ butterfly_loop_with_profile(successor_graph& g,
 	    "<<<begin loop butterfly with initial counts %g\n", total_counts);
   double coverage = 0.0;
   double exit_counts = 0.0;
-  for (set<int>::iterator si = starts.begin();
+  for (std::set<int>::iterator si = starts.begin();
        si != starts.end();
        ++si) {
     path_type *p =
@@ -178,7 +178,7 @@ butterfly_loop_with_profile(successor_graph& g,
 	       &MEM_local_pool );
     primary_heap.push(p);
   }
-  set<int> processed;
+  std::set<int> processed;
   while (!primary_heap.empty()) {
     path_type *p = primary_heap.top();
     primary_heap.pop();
@@ -240,7 +240,7 @@ butterfly_exit:
 
 // convert a set of bb into a zone representation
 void add_loop_to_zone(CFG *cfg, BB_NODE *header, 
-		      set<vertex_id>& new_loop, zone_container& zones) 
+		      std::set<vertex_id>& new_loop, zone_container& zones) 
 {
   zones.push_back(zone(zones.size()));
   zone_container::iterator z = zones.end()-1;
@@ -254,7 +254,7 @@ void add_loop_to_zone(CFG *cfg, BB_NODE *header,
     int pred_id = pred->Id();
     (*z).entry.push_back(edge(pred_id, header->Id()));
   }
-  for (set<vertex_id>::iterator p = new_loop.begin();
+  for (std::set<vertex_id>::iterator p = new_loop.begin();
        p != new_loop.end(); ++p) {
     int bb_id = *p;
     BB_NODE *bb = cfg->Get_bb(bb_id);
@@ -268,7 +268,7 @@ void add_loop_to_zone(CFG *cfg, BB_NODE *header,
   }
   // use set_differene to exclude the back-edge from loop butterfly entry
   zone::edge_container tmp;
-  insert_iterator<zone::edge_container> ins_tmp(tmp, tmp.begin());
+  std::insert_iterator<zone::edge_container> ins_tmp(tmp, tmp.begin());
   (*z).canonicalize(); // prerequisite to run set_difference
   set_difference((*z).entry.begin(), (*z).entry.end(),
 		 (*z).clone.begin(), (*z).clone.end(), ins_tmp);
@@ -308,7 +308,7 @@ static bool loop_should_be_butterflied(BB_LOOP *loop)
 //
 void generate_loop_butterfly_zones(COMP_UNIT *cu,
 				   successor_graph &g, 
-				   vector<zone>& zones,
+				   std::vector<zone>& zones,
 				   int min_coverage,
 				   bool trace) 
 {
@@ -324,8 +324,8 @@ void generate_loop_butterfly_zones(COMP_UNIT *cu,
 	loop_should_be_butterflied(loop)) {
       BB_NODE *bb;
       BB_NODE_SET_ITER bb_iter;
-      set<vertex_id> new_loop;
-      set<vertex_id> orig_loop;
+      std::set<vertex_id> new_loop;
+      std::set<vertex_id> orig_loop;
 
       // skip hazardous basic blocks
       int inserted_count = 0;
@@ -351,7 +351,7 @@ void generate_loop_butterfly_zones(COMP_UNIT *cu,
 	    }
 	  }
 	}
-	set<int> starts, ends;
+	std::set<int> starts, ends;
 	starts.insert(loop->Loopback()->Id());
 	ends.insert(loop->Header()->Id());
 	loop_pred_graph.extend(loop->Loopback()->Id());

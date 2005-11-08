@@ -50,8 +50,8 @@
 #ifndef sched_path_INCLUDED
 #define sched_path_INCLUDED
 
-#include <list.h> 
-#include <vector.h> 
+#include <list> 
+#include <vector> 
 
 #include "ipfec_defs.h"
 
@@ -141,7 +141,7 @@ public:
 }; /* end of tagPATH_NODE_INFO */
 
 typedef mempool_allocator<PATH_NODE_INFO>      PATH_NODE_ALLOC; 
-typedef vector<PATH_NODE_INFO,PATH_NODE_ALLOC> PATH_NODE_INFO_VECT;
+typedef std::vector<PATH_NODE_INFO,PATH_NODE_ALLOC> PATH_NODE_INFO_VECT;
 typedef PATH_NODE_INFO_VECT::iterator          PATH_NODE_INFO_VECT_ITER;
 typedef PATH_NODE_INFO_VECT::const_iterator   
         PATH_NODE_INFO_VECT_CONST_ITER;
@@ -296,7 +296,7 @@ public:
     /* EXEC_PATH vector as well as its iterator 
      */
 typedef mempool_allocator<EXEC_PATH*>       EXEC_PATH_ALLOC;
-typedef vector<EXEC_PATH*,EXEC_PATH_ALLOC>  EXEC_PATH_VECTOR;
+typedef std::vector<EXEC_PATH*,EXEC_PATH_ALLOC>  EXEC_PATH_VECTOR;
 typedef EXEC_PATH_VECTOR::iterator          EXEC_PATH_VECT_ITER;
 typedef EXEC_PATH_VECTOR::const_iterator    EXEC_PATH_VECT_CONST_ITER;
 

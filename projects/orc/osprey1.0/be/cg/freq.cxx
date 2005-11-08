@@ -52,7 +52,7 @@
 
 #include <math.h>
 #include <alloca.h>
-#include <map.h>
+#include <map>
 
 #include "defs.h"
 #include "config.h"

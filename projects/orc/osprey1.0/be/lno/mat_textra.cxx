@@ -55,9 +55,9 @@ static char *rcs_id =   mat_textra_CXX "$Revision: 1.1.1.1 $";
 
 // ********************* Required for instantiation **********************
 
-MEM_POOL* MAT<mINT32>::_default_pool = NULL;
-MEM_POOL* MAT<FRAC>::_default_pool = NULL;
-MEM_POOL* MAT<double>::_default_pool = NULL;
+template<> MEM_POOL* MAT<mINT32>::_default_pool = NULL;
+template<> MEM_POOL* MAT<FRAC>::_default_pool = NULL;
+template<> MEM_POOL* MAT<double>::_default_pool = NULL;
 
 // Integer matrix inversion can be performed by making the equivalent fraction
 // matrix and inverting that.

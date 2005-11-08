@@ -83,7 +83,7 @@ SCC_FINDER::Strong_Components(REGIONAL_CFG_NODE *node,INT_VECTOR& dfn,
     next_dfn+=1;
     dfn[id]      = next_dfn;
     low_link[id] = dfn[id];
-    if (!Find_In_Vector(node,_in_stack)) {
+    if (Find_In_Vector(node,_in_stack) == _in_stack.end()) {
         _stack.push(node);
         _in_stack.push_back(node);
     }

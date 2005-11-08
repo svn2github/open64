@@ -37,7 +37,7 @@
 #ifndef SGI_misc_extension_h_INCLUDED
 #define SGI_misc_extension_h_INCLUDED
 
-#include <iterator.h>
+#include <iterator>
 
 namespace SGI {
 
@@ -116,7 +116,7 @@ protected:
   Integer base;
 public:
   typedef int_iterator<Integer> self;
-  typedef random_access_iterator_tag iterator_category;
+  typedef std::random_access_iterator_tag iterator_category;
   typedef Integer value_type;
   typedef Integer difference_type;
   typedef Integer* pointer;
@@ -142,6 +142,11 @@ public:
 template <class Integer>
 inline bool operator==(int_iterator<Integer> x, int_iterator<Integer> y) {
   return *x == *y; 
+}
+
+template <class Integer>
+inline bool operator!=(int_iterator<Integer> x, int_iterator<Integer> y) {
+  return *x != *y;
 }
 
 template <class Integer>
@@ -183,6 +188,14 @@ operator>=(const int_iterator<Integer>& x, const int_iterator<Integer>& y) {
 
 #endif /* __STL_FUNCTION_TMPL_PARTIAL_ORDER */
 
+struct output_iterator {
+  typedef std::output_iterator_tag iterator_category;
+  typedef void                value_type;
+  typedef void                difference_type;
+  typedef void                pointer;
+  typedef void                reference;
+};
+
 template <class Container>
 class push_iterator : public output_iterator {
 protected:
@@ -220,7 +233,7 @@ public:
 
 
 template <class From, class To>
-struct converter : public unary_function<From, To> {
+struct converter : public std::unary_function<From, To> {
   To operator()(const From& x) { return To(x); }
 };
 

@@ -175,12 +175,12 @@ Write_Elf_Symtab (Output_File* fl, const ELF& tag)
 #ifndef __GNUC__
     UINT align = __builtin_alignof(ELF::Elf_Sym);
 #else
-    UINT align = __alignof(ELF::Elf_Sym);
+    UINT align = __alignof(typename ELF::Elf_Sym);
 #endif
     
 
-    WN_write_elf_symtab (symtab.table, symtab.size * sizeof(ELF::Elf_Sym),
-			 sizeof(ELF::Elf_Sym), align, fl);
+    WN_write_elf_symtab (symtab.table, symtab.size * sizeof(typename ELF::Elf_Sym),
+			 sizeof(typename ELF::Elf_Sym), align, fl);
 }
 
 #ifdef __linux__

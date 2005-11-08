@@ -59,9 +59,9 @@
 
 #define USE_STANDARD_TYPES
 #include <sys/types.h>
-#include <list.h>
-#include <vector.h>
-#include <map.h>
+#include <list>
+#include <vector>
+#include <map>
 #include "defs.h"
 #include "mempool.h"
 #include "errors.h"
@@ -114,13 +114,12 @@
 #include "data_layout.h"
 
 /* for ORC's dag constructor */
-#include <set.h>
-#include <hash_map.h>
+#include <set>
+#include <ext/hash_map>
 #include "ipfec_defs.h"
 #include "region_bb_util.h"
 #include "dag.h"
 #include "prdb.h"
-#include "pair.h"
 #include "op_targ.h"
 #include "dag.h"
 
@@ -243,7 +242,7 @@ INT32 CG_DEP_Mem_Arc_Pruning = PRUNE_NONE;	/* exported */
 BB * _cg_dep_bb; // exported to cg_dep_graph_update.h so it can 
 		 // be used in an inline function there.
 
-static list<BB*> _cg_dep_bbs;
+static std::list<BB*> _cg_dep_bbs;
 MEM_POOL dep_map_nz_pool;
 MEM_POOL dep_nz_pool;
 BOOL include_assigned_registers;
@@ -1080,9 +1079,9 @@ static void delete_gtn_use_arc(OP *op, UINT8 opnd)
   }
 }
 
-#undef ARC_LIST_prev ARC_rest_succs
-#undef Set_ARC_LIST_prev Set_ARC_rest_succs
-#undef Set_ARC_LIST_rest Set_ARC_rest_preds
+#undef ARC_LIST_prev
+#undef Set_ARC_LIST_prev
+#undef Set_ARC_LIST_rest
 
 
 /* =====================================================================
@@ -1385,7 +1384,7 @@ CG_DEP_Trace_Graph(BB *bb)
 }
 
 void 
-CG_DEP_Trace_HB_Graph(list<BB*> bblist)
+CG_DEP_Trace_HB_Graph(std::list<BB*> bblist)
 {
 
   if (bblist.empty()) {
@@ -1393,7 +1392,7 @@ CG_DEP_Trace_HB_Graph(list<BB*> bblist)
     return;
   }
 
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bbi) {
     CG_DEP_Trace_Graph(*bbi);
   }
@@ -2805,9 +2804,9 @@ inline ARC_LIST *first_definite_mem_arc(ARC_LIST *arcs)
   return NULL;
 }
 
-inline INT16 get_bb_idx(BB *bb, list<BB*> bb_list)
+inline INT16 get_bb_idx(BB *bb, std::list<BB*> bb_list)
 {
-  list<BB*>::iterator bb_iter;
+  std::list<BB*>::iterator bb_iter;
   INT idx = -1;
   
   // Assumes <bb> is present in <bb_list>.
@@ -2826,7 +2825,7 @@ inline INT16 get_bb_idx(BB *bb, list<BB*> bb_list)
 // -----------------------------------------------------------------------
 //
 void 
-Add_BRANCH_Arcs(BB* bb, list<BB*> bb_list, BOOL include_latency)
+Add_BRANCH_Arcs(BB* bb, std::list<BB*> bb_list, BOOL include_latency)
 {
 
   INT16 pred_idx;
@@ -3715,8 +3714,8 @@ Add_Bkwd_REG_Arcs(BB *bb, TN_SET *need_anti_out_dep)
 //  - used by Build_Cyclic_Arcs
 //
 struct TN_2_DEFS_VECTOR_MAP {
-  typedef vector<int> DEFS_VECTOR_TYPE;
-  typedef map<TN*, DEFS_VECTOR_TYPE> TN_2_DEFS_VECTOR_MAP_TYPE;
+  typedef std::vector<int> DEFS_VECTOR_TYPE;
+  typedef std::map<TN*, DEFS_VECTOR_TYPE> TN_2_DEFS_VECTOR_MAP_TYPE;
   typedef TN_2_DEFS_VECTOR_MAP_TYPE::iterator iterator;
 
 private:
@@ -4040,7 +4039,7 @@ Compute_BB_Graph(BB *bb, TN_SET *need_anti_out_dep)
   // Build memory arcs
   Add_MEM_Arcs(bb);
 
-  list<BB*> bb_list;
+  std::list<BB*> bb_list;
   bb_list.push_back(bb);
   // Build control arcs
   if (include_control_arcs) {
@@ -4084,10 +4083,10 @@ CYCLIC_DEP_GRAPH::~CYCLIC_DEP_GRAPH()
  * -----------------------------------------------------------------------
  */
 static void
-Compute_Region_Graph(list<BB*> bb_list)
+Compute_Region_Graph(std::list<BB*> bb_list)
 {
 
-  list<BB*>::iterator bb_iter;
+  std::list<BB*>::iterator bb_iter;
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bb_list, bb_iter) {
     BB_OP_MAP omap = BB_OP_MAP_Create(*bb_iter, &dep_map_nz_pool);
     BB_MAP_Set(_cg_dep_op_info, *bb_iter, omap);
@@ -4111,7 +4110,7 @@ Compute_Region_Graph(list<BB*> bb_list)
   defop_finish();
 
   defop_init();
-  list<BB*>::reverse_iterator bb_riter;
+  std::list<BB*>::reverse_iterator bb_riter;
   FOR_ALL_BB_STLLIST_ITEMS_BKWD(bb_list, bb_riter) {
 
     // Build other arcs in a backwards pass:
@@ -4547,11 +4546,11 @@ Update_Entry_For_TN(
 // -----------------------------------------------------------------------
 //
 void 
-CG_DEP_Prune_Dependence_Arcs(list<BB*>    bblist,
+CG_DEP_Prune_Dependence_Arcs(std::list<BB*>    bblist,
 			     BOOL         prune_predicate_arcs,
 			     BOOL         trace)
 {
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
   TN_MAP tn_usage_map = TN_MAP_Create();
   void *reg_ops[ISA_REGISTER_CLASS_MAX+1][REGISTER_MAX+1];
   OP_MAP omap = OP_MAP_Create();
@@ -4744,7 +4743,7 @@ CG_DEP_Compute_Graph(BB      *bb,
 // -----------------------------------------------------------------------
 //
 void 
-CG_DEP_Compute_Region_Graph(list<BB*>    bb_region, 
+CG_DEP_Compute_Region_Graph(std::list<BB*>    bb_region, 
 			    BOOL         assigned_regs,
 			    BOOL         memread_arcs,
 			    BOOL         control_arcs)

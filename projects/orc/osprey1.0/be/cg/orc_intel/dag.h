@@ -43,7 +43,7 @@
 #ifndef dag_INCLUDED
 #define dag_INCLUDED
 
-#include <set.h>
+#include <set>
 #include "tn_map.h"
 #include "region.h"
 #include "recovery.h"
@@ -163,7 +163,7 @@ class DAG_BUILDER : public DAG_MEM {
 friend class SCHEDULER;
 
 private:
-    typedef set<OP*> OPs;
+    typedef std::set<OP*> OPs;
 
     template <class _Ptr_Tp>
     struct ptr_hash {
@@ -172,38 +172,38 @@ private:
 
     /* Mapping: TN -> OPs
      */
-    typedef mempool_allocator< pair<TN*,OPs> >          TN_OPs_ALLOC;
-    typedef hash_map<TN*, OPs,
-                   ptr_hash<TN*>, equal_to<TN*>,
+    typedef mempool_allocator< std::pair<TN*,OPs> >          TN_OPs_ALLOC;
+    typedef __gnu_cxx::hash_map<TN*, OPs,
+                   ptr_hash<TN*>, std::equal_to<TN*>,
                    TN_OPs_ALLOC>                        TN_OPs_MAP;
     typedef TN_OPs_MAP::iterator                        TN_OPs_MAP_ITER;
   
     /* Mapping: BB -> OPs
      */
-    typedef mempool_allocator< pair<BB*,OPs> >          BB_OPs_ALLOC;
-    typedef hash_map<BB*, OPs,
-                   ptr_hash<BB*>, equal_to<BB*>,
+    typedef mempool_allocator< std::pair<BB*,OPs> >          BB_OPs_ALLOC;
+    typedef __gnu_cxx::hash_map<BB*, OPs,
+                   ptr_hash<BB*>, std::equal_to<BB*>,
                    BB_OPs_ALLOC>                        BB_OPs_MAP;
     typedef BB_OPs_MAP::iterator                        BB_OPs_MAP_ITER;
   
     /* Mapping: BB -> (TN -> OPs)
      */
-    typedef mempool_allocator< pair<BB*,TN_OPs_MAP> >   BB_DEF_USE_ALLOC;
-    typedef hash_map<BB*, TN_OPs_MAP,
-                   ptr_hash<BB*>, equal_to<BB*>,
+    typedef mempool_allocator< std::pair<BB*,TN_OPs_MAP> >   BB_DEF_USE_ALLOC;
+    typedef __gnu_cxx::hash_map<BB*, TN_OPs_MAP,
+                   ptr_hash<BB*>, std::equal_to<BB*>,
                    BB_DEF_USE_ALLOC>                    BB_DEF_USE_MAP;
     typedef BB_DEF_USE_MAP::iterator                    BB_DEF_USE_MAP_ITER;
 
     /* Define the OP vector
      */ 
     typedef mempool_allocator<OP*>                 OP_TABLE_ALLOC;
-    typedef vector<OP*,OP_TABLE_ALLOC>                   OP_TABLE;
+    typedef std::vector<OP*,OP_TABLE_ALLOC>                   OP_TABLE;
     typedef OP_TABLE::iterator                            OP_TABLE_ITER;
 
     /* Define the Define OPs 
      */ 
     typedef mempool_allocator<OP*>                 DEFINE_OPS_ALLOC;
-    typedef vector<OP*,DEFINE_OPS_ALLOC>                   DEFINE_OPS;
+    typedef std::vector<OP*,DEFINE_OPS_ALLOC>                   DEFINE_OPS;
     typedef DEFINE_OPS::iterator                            DEFINE_OPS_ITER;
 
 
@@ -218,10 +218,10 @@ private:
     }TN_BITSET_TABLE_ENTRY;
       
     typedef mempool_allocator<TN_BITSET_TABLE_ENTRY>   TN_BITSET_TABLE_ALLOC;
-    typedef vector<TN_BITSET_TABLE_ENTRY,TN_BITSET_TABLE_ALLOC>  TN_BITSET_TABLE;
+    typedef std::vector<TN_BITSET_TABLE_ENTRY,TN_BITSET_TABLE_ALLOC>  TN_BITSET_TABLE;
 
     typedef mempool_allocator<mTN_INDEX>    TN_BITSET_TABLE_INDEX_ALLOC;
-    typedef vector<mTN_INDEX,TN_BITSET_TABLE_INDEX_ALLOC> TN_BITSET_TABLE_INDEX;
+    typedef std::vector<mTN_INDEX,TN_BITSET_TABLE_INDEX_ALLOC> TN_BITSET_TABLE_INDEX;
 
 
     /* Define the BB vector
@@ -240,9 +240,9 @@ private:
     }BB_BITSET_TABLE_ENTRY;
 
     typedef mempool_allocator<BB_BITSET_TABLE_ENTRY>  BB_BITSET_TABLE_ALLOC;
-    typedef vector<BB_BITSET_TABLE_ENTRY,BB_BITSET_TABLE_ALLOC>  BB_BITSET_TABLE;
+    typedef std::vector<BB_BITSET_TABLE_ENTRY,BB_BITSET_TABLE_ALLOC>  BB_BITSET_TABLE;
     typedef mempool_allocator<mBB_INDEX>  BB_BITSET_TABLE_INDEX_ALLOC;
-    typedef vector<mBB_INDEX,BB_BITSET_TABLE_INDEX_ALLOC>  BB_BITSET_TABLE_INDEX;
+    typedef std::vector<mBB_INDEX,BB_BITSET_TABLE_INDEX_ALLOC>  BB_BITSET_TABLE_INDEX;
 
     
 

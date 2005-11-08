@@ -27,11 +27,11 @@
  
 
 #include <stdlib.h>
-#include <algo.h>  // STL
-#include <vector.h>
-#include <stack.h>
-#include <list.h>
-#include <set.h>
+#include <algorithm>
+#include <vector>
+#include <stack>
+#include <list>
+#include <set>
 
 #include "bb.h"
 #include "defs.h"
@@ -131,7 +131,7 @@ struct pref_dis_map{
   OP *op;
   mINT64 dis;
 };
-static vector<struct pref_dis_map> prefetch_list;
+static std::vector<struct pref_dis_map> prefetch_list;
 
 
 // do initial work

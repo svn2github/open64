@@ -1779,7 +1779,7 @@ void EDGE_PROFILE::Prepare_Instrument( )
     {
       BB* entry_bb= BB_LIST_first( elist );
       save_gp_op = Mk_OP(TOP_mov,save_gp_TN,True_TN,GP_TN);
-      OP_bb(save_gp_op) = entry_bb;
+      save_gp_op->bb = entry_bb;
       BB_Insert_Op(entry_bb,entry_bb->ops.first->next,
                                                save_gp_op,false);  
     }

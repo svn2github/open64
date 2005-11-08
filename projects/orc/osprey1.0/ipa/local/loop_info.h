@@ -95,6 +95,10 @@
 #include "reduction.h"
 #endif
 
+#ifdef ATTR_WEAK
+#undef ATTR_WEAK
+#endif
+
 #ifndef __GNUC__
 #define ATTR_WEAK
 #pragma weak Print__17DO_LOOP_INFO_BASEGP8__file_si

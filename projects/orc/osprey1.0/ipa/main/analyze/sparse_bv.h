@@ -37,9 +37,7 @@
 #ifndef cxx_sparse_bv_INCLUDED
 #define cxx_sparse_bv_INCLUDED
 
-#ifndef __SGI_STL_VECTOR_H
-#include <vector.h>
-#endif 
+#include <vector>
 
 #define mUINT64_BIT	64		// number of bits in an mUINT64
 
@@ -50,10 +48,10 @@ private:
     // small buffers defined as array of mUINT64.
     // The number of bits in each small buffer is specified by buffer_size, 
     // which must be a multiple of 64 (number of bits in mUINT64).
-    typedef vector<UINT32> SPARSE_BV_BUFFER;
+    typedef std::vector<UINT32> SPARSE_BV_BUFFER;
     typedef SPARSE_BV_BUFFER::iterator BUFFER_ITER;
 
-    typedef vector<mUINT64> SPARSE_BV_DATA;
+    typedef std::vector<mUINT64> SPARSE_BV_DATA;
 
 private:
     SPARSE_BV_BUFFER* buffer;		// the bit vector map

@@ -63,9 +63,7 @@
 #include "wn_tree_util.h"
 #endif
 
-#ifndef set_INCLUDED
-#include "set.h"
-#endif
+#include <set>
 
 #define IPO_PARAM_TYPE 0x001
 
@@ -195,12 +193,12 @@ public:
 }; // PARAMETER_ATTIBUTES
 
 
-typedef vector<PARAMETER_ATTRIBUTES, mempool_allocator<PARAMETER_ATTRIBUTES> >
+typedef std::vector<PARAMETER_ATTRIBUTES, mempool_allocator<PARAMETER_ATTRIBUTES> >
 	PARM_ATTR_VEC;
 
 typedef PARM_ATTR_VEC::iterator PARM_ITER;
 
-typedef set<ST_IDX, less<ST_IDX>, mempool_allocator<ST_IDX> > PROCESSED_SET;
+typedef std::set<ST_IDX, std::less<ST_IDX>, mempool_allocator<ST_IDX> > PROCESSED_SET;
 
 #include "clone.h"
 
@@ -224,7 +222,7 @@ struct IPO_INLINE_AUX
     
     IPO_INLINE_AUX (INT num_formals, MEM_POOL* pool) : 
 	parm_attr (pool),
-	processed_local_syms (less<ST_IDX>(), pool),
+	processed_local_syms (std::less<ST_IDX>(), pool),
 	rp (),
 	return_label (0),
 	entry_label (0),
@@ -346,7 +344,7 @@ public:
     // Process Formal parameters		    
     // ======================================================================
 
-    pair<ST*, WN_OFFSET> Create_Copy_In_Symbol (ST* formal_st);
+    std::pair<ST*, WN_OFFSET> Create_Copy_In_Symbol (ST* formal_st);
 
     void Process_Copy_In (PARM_ITER parm, WN* copy_in_block);
 

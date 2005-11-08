@@ -87,7 +87,7 @@ protected:
 class REGION_LOOP_UPDATE :public REGION_LOOP_UPDATE_MEM {
 
     typedef mempool_allocator<BB *>     BB_ALLOC;
-    typedef vector<BB *, BB_ALLOC>      BB_CONTAINER;
+    typedef std::vector<BB *, BB_ALLOC>      BB_CONTAINER;
     typedef BB_CONTAINER::iterator      BB_ITER;
 
 private:

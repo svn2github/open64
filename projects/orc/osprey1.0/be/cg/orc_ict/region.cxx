@@ -105,7 +105,7 @@ Find_In_Vector(REGIONAL_CFG_NODE *node,NODE_VECTOR& nodes) {
         if (n == node) return iter;
     }
     
-    return NULL;
+    return nodes.end();
 }    
 
 BB_VECTOR_ITER
@@ -118,7 +118,7 @@ Find_In_BB_Vector(BB *bb,BB_VECTOR& bbs) {
         if (b == bb) return iter;
     }
     
-    return NULL;
+    return bbs.end();
 } 
 
 //=============================================================================
@@ -861,20 +861,22 @@ REGIONAL_CFG::Do_Selective_Add(NODE_VECTOR& nodes,NODE_VECTOR duplicate,
     for (NODE_VECTOR_ITER iter = nodes.begin();iter != nodes.end();iter++) {
         REGIONAL_CFG_NODE *node = *iter;
         Is_True(node != NULL,("Node is NULL in Do Selective Add when iterate all nodes."));
-        if ((node != main_exit)&&!Find_In_Vector(node,duplicate)) { //Do not add main exit's succ.
+        if ((node != main_exit)&&
+		Find_In_Vector(node,duplicate) == duplicate.end()) {
+	    //Do not add main exit's succ.
         
             for (CFG_SUCC_NODE_ITER succ_iter(node);
                 succ_iter != 0;++succ_iter) {
                 REGIONAL_CFG_NODE *succ = *succ_iter;
                             
-                if (!Find_In_Vector(succ,nodes)) {
+                if (Find_In_Vector(succ,nodes) == nodes.end()) {
                     BOOL not_side_entry = TRUE;
 
                     for (CFG_PRED_NODE_ITER pred_iter(succ);
                         pred_iter != 0;++pred_iter) {
                         REGIONAL_CFG_NODE *pred = *pred_iter;
 
-                        if (!Find_In_Vector(pred,nodes)) {
+                        if (Find_In_Vector(pred,nodes) == nodes.end()) {
                             not_side_entry = FALSE;
                         }
                     }
@@ -894,7 +896,7 @@ REGIONAL_CFG::Do_Selective_Add(NODE_VECTOR& nodes,NODE_VECTOR duplicate,
                             nsucc_iter != 0;++nsucc_iter) {
                             REGIONAL_CFG_NODE *end = *nsucc_iter;
                         
-                            if (!Find_In_Vector(end,nodes)) {
+                            if (Find_In_Vector(end,nodes) == nodes.end()) {
                                 if ((succ->Unique_Succ() == end)
                                    &&(end->Unique_Pred() == succ)) {
                                  //---------------------------------------------
@@ -920,7 +922,7 @@ REGIONAL_CFG::Do_Selective_Add(NODE_VECTOR& nodes,NODE_VECTOR duplicate,
                                        end = end->Unique_Succ();
                                         
                                        if (end) {
-                                            if (Find_In_Vector(end,nodes)) {
+                                            if (Find_In_Vector(end,nodes) != nodes.end()) {
                                                 
                                                 break;
                                             } else {
@@ -945,7 +947,8 @@ REGIONAL_CFG::Do_Selective_Add(NODE_VECTOR& nodes,NODE_VECTOR duplicate,
                             // the completion prob is changed.
                             //-------------------------------------------------
                             if (!exit_prob == 0) {
-                                 if ((end != main_exit)&&Find_In_Vector(end,exits)) {
+                                 if ((end != main_exit)&&
+					 Find_In_Vector(end,exits) != exits.end()) {
                                  //---------------------------------------------
                                  // Update the completion prob of main exit 
                                  // now very time recompute the completion
@@ -981,7 +984,7 @@ REGIONAL_CFG::Do_Selective_Add(NODE_VECTOR& nodes,NODE_VECTOR duplicate,
                                         REGIONAL_CFG_NODE *pred_node = *pred_node_iter;
                                         NODE_VECTOR_ITER leaf = Find_In_Vector(pred_node,leaf_nodes);
                                         
-                                        if (leaf != NULL ) {
+                                        if (leaf != leaf_nodes.end()) {
                                             leaf_nodes.erase(leaf);
                                         }
                                     }
@@ -1030,8 +1033,8 @@ REGIONAL_CFG::Do_Selective_Add(NODE_VECTOR& nodes,NODE_VECTOR duplicate,
 BOOL 
 REGIONAL_CFG::Do_Selective_Cut(NODE_VECTOR& nodes,REGIONAL_CFG_NODE *main_entry,
                                REGIONAL_CFG_NODE *main_exit,RGN_FORM_PAR par) {
-    typedef list<REGIONAL_CFG_NODE *,NODE_ALLOC>   NODE_LIST;
-    typedef queue<REGIONAL_CFG_NODE *,NODE_LIST>   NODE_QUEUE;
+    typedef std::list<REGIONAL_CFG_NODE *,NODE_ALLOC>   NODE_LIST;
+    typedef std::queue<REGIONAL_CFG_NODE *,NODE_LIST>   NODE_QUEUE;
     NODE_ALLOC  temp_alloc(&_m);
     NODE_VECTOR dup(temp_alloc);
 
@@ -1072,7 +1075,7 @@ REGIONAL_CFG::Do_Selective_Cut(NODE_VECTOR& nodes,REGIONAL_CFG_NODE *main_entry,
             
             for (CFG_SUCC_NODE_ITER succ_iter(node);
                 succ_iter != 0;++succ_iter) {
-                if (Find_In_Vector((*succ_iter),nodes) != NULL) {
+                if (Find_In_Vector((*succ_iter),nodes) != nodes.end()) {
                     is_leaf = FALSE;
                 }
             }
@@ -1158,12 +1161,12 @@ REGIONAL_CFG::Do_Selective_Cut(NODE_VECTOR& nodes,REGIONAL_CFG_NODE *main_entry,
                     // use pred because we believe there are no cycles in the
                     // reginal cfg.
                     //---------------------------------------------------------
-                    if (Find_In_Vector(pred,temp_dup)) {
+                    if (Find_In_Vector(pred,temp_dup) != temp_dup.end()) {
                         BOOL is_leaf = TRUE; 
 
                         for (CFG_SUCC_NODE_ITER succ_iter(pred);
                              succ_iter != 0;++succ_iter) {
-                            if (Find_In_Vector((*succ_iter),nodes)) {
+                            if (Find_In_Vector((*succ_iter),nodes) != nodes.end()) {
                                 is_leaf = FALSE;
                     
                                 break;
@@ -1219,7 +1222,7 @@ REGIONAL_CFG::Compute_Side_Entries(NODE_VECTOR& side_entries,NODE_VECTOR nodes,
             for (CFG_PRED_NODE_ITER pred_iter(node);
                  pred_iter != 0;++pred_iter) {
                 
-                if (!Find_In_Vector((*pred_iter),nodes)) {
+                if (Find_In_Vector((*pred_iter),nodes) == nodes.end()) {
                     side_entries.push_back(node);
                     break;
                 }
@@ -1244,7 +1247,7 @@ REGIONAL_CFG::Compute_Exits(NODE_VECTOR nodes,NODE_VECTOR& exits) {
                 succ_iter != 0;++succ_iter) {
                 REGIONAL_CFG_NODE *succ = *succ_iter;
 
-                if (!Find_In_Vector(succ,nodes)) {
+                if (Find_In_Vector(succ,nodes) == nodes.end()) {
                     exits.push_back(node);
                     break;
                 }
@@ -1318,13 +1321,14 @@ REGIONAL_CFG::Compute_Completion_Prob(NODE_VECTOR nodes,REGIONAL_CFG_NODE *exit,
         
         if (node->First_Succ() != NULL) {
 
-            if (Find_In_Vector(node,dup)) {
+            if (Find_In_Vector(node,dup) != dup.end()) {
 
                 for (NODE_PROF_VECTOR_ITER prof_iter = node_profs.begin();
                     prof_iter != node_profs.end();prof_iter++) {
                     NODE_PROF p = *prof_iter;        
             
-                    if ((p.src == node) && (!Find_In_Vector(p.dest,nodes))) {
+                    if ((p.src == node) &&
+			    Find_In_Vector(p.dest,nodes) == nodes.end()) {
                         exit_freq += p.freq;
                     }
                 }
@@ -1333,14 +1337,14 @@ REGIONAL_CFG::Compute_Completion_Prob(NODE_VECTOR nodes,REGIONAL_CFG_NODE *exit,
                     succ_iter != 0;++succ_iter) {
                     REGIONAL_CFG_NODE *succ = (*succ_iter)->Dest();
             
-                    if (!Find_In_Vector(succ,nodes)) {
+                    if (Find_In_Vector(succ,nodes) == nodes.end()) {
                         exit_freq += (*succ_iter)->Freq();
                     }
                 }
             } 
         } else if (node->First_Pred() != NULL){
 
-            if (Find_In_Vector(node,dup)) {
+            if (Find_In_Vector(node,dup) != dup.end()) {
 
                 for (NODE_PROF_VECTOR_ITER prof_iter = node_profs.begin();
                     prof_iter != node_profs.end();prof_iter++) {
@@ -1361,7 +1365,7 @@ REGIONAL_CFG::Compute_Completion_Prob(NODE_VECTOR nodes,REGIONAL_CFG_NODE *exit,
                     pred_iter != 0;++pred_iter) {
                     REGIONAL_CFG_NODE *pred = (*pred_iter)->Src();
                 
-                    if (Find_In_Vector(pred,nodes)) {
+                    if (Find_In_Vector(pred,nodes) != nodes.end()) {
                         exit_freq += (*pred_iter)->Freq();
                     }
                 }
@@ -1376,13 +1380,13 @@ REGIONAL_CFG::Compute_Completion_Prob(NODE_VECTOR nodes,REGIONAL_CFG_NODE *exit,
     // Compute the main exit's exit probability.
     //-------------------------------------------
     if (exit->First_Succ() != NULL) {
-        if (Find_In_Vector(exit,dup)) {
+        if (Find_In_Vector(exit,dup) != dup.end()) {
 
             for (NODE_PROF_VECTOR_ITER prof_iter = node_profs.begin();
                 prof_iter != node_profs.end();prof_iter++) {
                 NODE_PROF p = *prof_iter;       
 
-                if ((p.src == exit) && (!Find_In_Vector(p.dest,nodes))) {
+                if ((p.src == exit) && (Find_In_Vector(p.dest,nodes) == nodes.end())) {
                     main_exit_freq += p.freq;
                 }
             }
@@ -1394,7 +1398,7 @@ REGIONAL_CFG::Compute_Completion_Prob(NODE_VECTOR nodes,REGIONAL_CFG_NODE *exit,
             }
         }
     } else if (exit->First_Pred() != NULL) {
-        if (Find_In_Vector(exit,dup)) {
+        if (Find_In_Vector(exit,dup) != dup.end()) {
             
             for (NODE_PROF_VECTOR_ITER prof_iter = node_profs.begin();
                 prof_iter != node_profs.end();prof_iter++) {
@@ -1409,7 +1413,7 @@ REGIONAL_CFG::Compute_Completion_Prob(NODE_VECTOR nodes,REGIONAL_CFG_NODE *exit,
                 pred_iter != 0;++pred_iter) {
                 REGIONAL_CFG_NODE *pred = (*pred_iter)->Src();
 
-                if (Find_In_Vector(pred,nodes)) {
+                if (Find_In_Vector(pred,nodes) != nodes.end()) {
                     main_exit_freq += (*pred_iter)->Freq();
                 }
             }
@@ -1444,8 +1448,8 @@ REGIONAL_CFG::Compute_Completion_Prob(NODE_VECTOR nodes,REGIONAL_CFG_NODE *exit,
 void
 REGIONAL_CFG::Compute_Scope_Based_On_Main_Exit(NODE_VECTOR& scope,
               NODE_VECTOR nodes,REGIONAL_CFG_NODE *exit) {
-    typedef list<REGIONAL_CFG_NODE *,NODE_ALLOC>   NODE_LIST;
-    typedef queue<REGIONAL_CFG_NODE *,NODE_LIST>   NODE_QUEUE;
+    typedef std::list<REGIONAL_CFG_NODE *,NODE_ALLOC>   NODE_LIST;
+    typedef std::queue<REGIONAL_CFG_NODE *,NODE_LIST>   NODE_QUEUE;
     
     NODE_ALLOC temp_alloc(&_m);
     NODE_LIST  temp_list(temp_alloc);
@@ -1475,7 +1479,8 @@ REGIONAL_CFG::Compute_Scope_Based_On_Main_Exit(NODE_VECTOR& scope,
         for (CFG_SUCC_NODE_ITER succ_iter(node);succ_iter != 0;++succ_iter) { 
             REGIONAL_CFG_NODE *succ  = *succ_iter;
             Is_True(succ != NULL,("The succ of node is NULL."));   
-            if ((!BS_MemberP(visited,succ->Id()))&&(Find_In_Vector(succ,nodes))) {
+            if ((!BS_MemberP(visited,succ->Id()))&&
+		    Find_In_Vector(succ,nodes) != nodes.end()) {
                 BS_Union1D(visited,node->Id(),&_m);
                 BOOL is_cutted = TRUE;
 
@@ -1486,7 +1491,8 @@ REGIONAL_CFG::Compute_Scope_Based_On_Main_Exit(NODE_VECTOR& scope,
                    // If its pred is a node in nodes and not been cutted,then 
                    // it will not be cutted.
                    //----------------------------------------------------------
-                   if (!BS_MemberP(cutted,(*pred_iter)->Id())&&Find_In_Vector((*pred_iter),nodes)) {
+                   if (!BS_MemberP(cutted,(*pred_iter)->Id())&&
+			    Find_In_Vector((*pred_iter),nodes) != nodes.end()) {
                        is_cutted = FALSE;
                        break;
                    }
@@ -1597,8 +1603,8 @@ REGIONAL_CFG::Compute_Duplicate_Ratio(NODE_VECTOR nodes,
 void
 REGIONAL_CFG::Compute_Nodes_To_Be_Duplicated(NODE_VECTOR& dup_nodes,
               NODE_VECTOR nodes,REGIONAL_CFG_NODE *main_entry) {
-    typedef list<REGIONAL_CFG_NODE *,NODE_ALLOC>   NODE_LIST;
-    typedef queue<REGIONAL_CFG_NODE *,NODE_LIST>   NODE_QUEUE;  
+    typedef std::list<REGIONAL_CFG_NODE *,NODE_ALLOC>   NODE_LIST;
+    typedef std::queue<REGIONAL_CFG_NODE *,NODE_LIST>   NODE_QUEUE;  
     
     NODE_ALLOC temp_alloc(&_m);
     NODE_LIST  temp_list(temp_alloc);  
@@ -1626,26 +1632,27 @@ REGIONAL_CFG::Compute_Nodes_To_Be_Duplicated(NODE_VECTOR& dup_nodes,
             for (CFG_PRED_NODE_ITER iter(succ);iter != 0;++iter) {
             
                 if (!BS_MemberP(visited,(*iter)->Id())
-                   &&Find_In_Vector((*iter),nodes)) {
+                   && Find_In_Vector((*iter),nodes) != nodes.end()) {
                     all_pred_visited = FALSE;
                 }
             }
             //--------------------------------------------------------    
             // If the node not visited yet and in the selected nodes.
             //--------------------------------------------------------
-            if ((!BS_MemberP(visited,succ->Id()))
-               &&Find_In_Vector(succ,nodes)&&(all_pred_visited)) {
+            if ((!BS_MemberP(visited,succ->Id())) &&
+		    Find_In_Vector(succ,nodes) != nodes.end() &&
+		    all_pred_visited) {
                 BS_Union1D(visited,succ->Id(),&_m);
                 queue.push(succ);
             
                 for (CFG_PRED_NODE_ITER pred_iter(succ);
                     pred_iter != 0;++pred_iter) {
  
-                    if (!Find_In_Vector((*pred_iter),nodes)) {
+                    if (Find_In_Vector((*pred_iter),nodes) == nodes.end()) {
                         dup_nodes.push_back(succ); 
                         break;
-                    } else if (Find_In_Vector((*pred_iter),dup_nodes)) {
-                        if (!Find_In_Vector(succ,dup_nodes)) {
+                    } else if (Find_In_Vector((*pred_iter),dup_nodes) != dup_nodes.end()) {
+                        if (Find_In_Vector(succ,dup_nodes) == dup_nodes.end()) {
                             dup_nodes.push_back(succ);
                         }
                       
@@ -1740,8 +1747,9 @@ REGIONAL_CFG::Find_Seed(NODE_VECTOR bad_nodes) {
             }
         } 
 
-        if ((freq > max_freq)&&(!is_improper)&&(!Find_In_Vector(node,bad_nodes))
-		     &&(!node->Is_Loop_Tail())&&(!node->Is_Region())){
+        if ((freq > max_freq)&&(!is_improper) &&
+		Find_In_Vector(node,bad_nodes) == bad_nodes.end() &&
+		!node->Is_Loop_Tail() && !node->Is_Region()) {
             // Not include loop head and tail in SEME region
             // because of exit prob computation 
             seed = node;
@@ -1770,7 +1778,7 @@ REGIONAL_CFG::Select_Freq_Succ(REGIONAL_CFG_NODE *node,NODE_VECTOR nodes) {
          REGIONAL_CFG_EDGE *succ = *iter;
          REGIONAL_CFG_NODE *succ_node = succ->Dest();
          
-         if (!Find_In_Vector(succ_node,nodes)) {
+         if (Find_In_Vector(succ_node,nodes) == nodes.end()) {
 
              freq = Edge_Freq(succ);
           
@@ -1818,7 +1826,7 @@ REGIONAL_CFG::Select_Freq_Pred(REGIONAL_CFG_NODE *node,NODE_VECTOR nodes,NODE_VE
          REGIONAL_CFG_NODE *pred_node = pred->Src();
          Is_True(pred_node != NULL,("The src node of pred edge is NULL in select freq pred."));
 
-         if (!Find_In_Vector(pred_node,nodes)) {
+         if (Find_In_Vector(pred_node,nodes) == nodes.end()) {
              freq = Edge_Freq(pred);
              
              BOOL is_improper = FALSE;
@@ -1833,7 +1841,7 @@ REGIONAL_CFG::Select_Freq_Pred(REGIONAL_CFG_NODE *node,NODE_VECTOR nodes,NODE_VE
              } 
 
              if ((freq > max_freq)&&(!is_improper)
-                &&(!Find_In_Vector(pred_node,bad_nodes))
+                &&(Find_In_Vector(pred_node,bad_nodes) == bad_nodes.end())
 		&&(!pred_node->Is_Loop_Tail())) {
                  // Not include loop head and tail in SEME region 
                  // because of exit prob computation
@@ -1878,7 +1886,7 @@ REGIONAL_CFG::Select_Freq_Connected_Node(NODE_VECTOR nodes,REGIONAL_CFG_NODE *la
             float freq = -1;
             
             REGIONAL_CFG_NODE *cand = *succ_iter;
-            if (!Find_In_Vector(cand,nodes)) {
+            if (Find_In_Vector(cand,nodes) == nodes.end()) {
 			     pred_freq = 0.0;
                  succ_freq = 0.0;
                  freq = 0.0;
@@ -1887,7 +1895,7 @@ REGIONAL_CFG::Select_Freq_Connected_Node(NODE_VECTOR nodes,REGIONAL_CFG_NODE *la
                     pred_edge_iter != 0;++pred_edge_iter) {
                     REGIONAL_CFG_NODE *pred = (*pred_edge_iter)->Src();
 
-                    if (Find_In_Vector(pred,nodes)) {
+                    if (Find_In_Vector(pred,nodes) != nodes.end()) {
                         pred_freq += Edge_Freq((*pred_edge_iter));
                     }
                 }
@@ -1896,7 +1904,7 @@ REGIONAL_CFG::Select_Freq_Connected_Node(NODE_VECTOR nodes,REGIONAL_CFG_NODE *la
                     succ_edge_iter != 0;++succ_edge_iter) {
                     REGIONAL_CFG_NODE *succ = (*succ_edge_iter)->Dest();
 
-                    if (Find_In_Vector(succ,nodes)) {
+                    if (Find_In_Vector(succ,nodes) != nodes.end()) {
                         succ_freq += Edge_Freq((*succ_edge_iter));
                     }
                 }
@@ -2032,8 +2040,8 @@ REGIONAL_CFG::Pred_Suit(REGIONAL_CFG_EDGE *edge,float seed_freq,
 //========================================================================       
 void 
 REGIONAL_CFG::Compute_Edges_Freq(void) {
-    typedef list<REGIONAL_CFG_NODE *,NODE_ALLOC>               NODE_LIST;
-    typedef queue<REGIONAL_CFG_NODE *,NODE_LIST>               NODE_QUEUE;  
+    typedef std::list<REGIONAL_CFG_NODE *,NODE_ALLOC>               NODE_LIST;
+    typedef std::queue<REGIONAL_CFG_NODE *,NODE_LIST>               NODE_QUEUE;  
     
     NODE_ALLOC temp_alloc(&_m);
     NODE_LIST  temp_list(temp_alloc);
@@ -2320,8 +2328,8 @@ REGIONAL_CFG::Compute_BBs_In_Region_Node(BB_VECTOR& bbs,REGIONAL_CFG_NODE *node)
 void 
 REGIONAL_CFG::Tail_Duplicate(NODE_VECTOR& nodes,REGIONAL_CFG_NODE *main_entry,
                              INT32& dup_bb_num,INT32& dup_op_num,BOOL re_shrink) {
-    typedef list<BB *,BB_ALLOC> BB_LIST;
-    typedef queue<BB *,BB_LIST> BB_QUEUE; 
+    typedef std::list<BB *,BB_ALLOC> BB_LIST;
+    typedef std::queue<BB *,BB_LIST> BB_QUEUE; 
     
     NODE_ALLOC  temp_alloc(&_m);
     NODE_VECTOR dup_nodes(temp_alloc);
@@ -2397,7 +2405,7 @@ REGIONAL_CFG::Tail_Duplicate(NODE_VECTOR& nodes,REGIONAL_CFG_NODE *main_entry,
     }
     
     BB *bb;
-    for (bb = entry; bb && Find_In_BB_Vector(bb,bbs);
+    for (bb = entry; bb && Find_In_BB_Vector(bb,bbs) != bbs.end();
         last_duplicated = bb,bb = BB_next(bb));
     
     if (bb) {
@@ -2542,7 +2550,7 @@ REGIONAL_CFG::Tail_Duplicate(NODE_VECTOR& nodes,REGIONAL_CFG_NODE *main_entry,
          
         for(CFG_PRED_EDGE_ITER pred_iter(node);pred_iter != 0;++pred_iter)  {
             REGIONAL_CFG_EDGE *pred = *pred_iter;
-            if (!Find_In_Vector(pred->Src(),nodes)) {
+            if (Find_In_Vector(pred->Src(),nodes) == nodes.end()) {
                 Del_Edge(pred);
             }
         }
@@ -2664,7 +2672,7 @@ REGIONAL_CFG::Duplicate(BB_VECTOR bbs, BB* side_entrance,BB *entry,
             
             if (fall_dup) {
                 *last = fall_dup;
-            } else if (!Find_In_BB_Vector(pred,bbs)) {
+            } else if (Find_In_BB_Vector(pred,bbs) == bbs.end()) {
                 *last = pred;
             }
             
@@ -2773,7 +2781,7 @@ REGIONAL_CFG::Fixup_Arcs(BB_VECTOR& bbs,BB *old_bb,BB *new_bb,BB *entry,
                 BB_Remove_Branch(dup);
                 Add_Goto(dup, new_bb);
             }
-        } else if (Find_In_BB_Vector(pred,bbs)) {
+        } else if (Find_In_BB_Vector(pred,bbs) != bbs.end()) {
             continue;
         } else {
             new_freq += BB_freq(pred) * BBLIST_prob(blsucc);
@@ -2793,7 +2801,7 @@ REGIONAL_CFG::Fixup_Arcs(BB_VECTOR& bbs,BB *old_bb,BB *new_bb,BB *entry,
     //------------------------------------------------------------------
     FOR_ALL_BB_SUCCS(old_bb, bl) {
         BB* succ = BBLIST_item(bl);
-        if (!Find_In_BB_Vector(succ,bbs) || succ == entry) {
+        if (Find_In_BB_Vector(succ,bbs) == bbs.end() || succ == entry) {
            
             if (BB_Fall_Thru_Successor(old_bb) == succ) {
                 //-----------------------------------------------------------
@@ -2852,8 +2860,8 @@ REGIONAL_CFG::Fixup_Arcs(BB_VECTOR& bbs,BB *old_bb,BB *new_bb,BB *entry,
 void 
 REGIONAL_CFG::Update_BB_Prof_Info(BB_VECTOR bbs,BB_VECTOR dup,BB_MAP duplicate,
                                   BB_MAP rev_duplicate,BB_VECTOR br_bbs,BB *main_entry) {
-    typedef list<BB *,NODE_ALLOC>  BB_LIST;
-    typedef queue<BB *,BB_LIST>    BB_QUEUE;
+    typedef std::list<BB *,BB_ALLOC>  BB_LIST;
+    typedef std::queue<BB *,BB_LIST>    BB_QUEUE;
         
     BB_ALLOC temp_alloc(&_m);
     BB_LIST  temp_list(temp_alloc);
@@ -2878,7 +2886,7 @@ REGIONAL_CFG::Update_BB_Prof_Info(BB_VECTOR bbs,BB_VECTOR dup,BB_MAP duplicate,
         FOR_ALL_BB_SUCCS(entry,lists) {
             BB* bb = BBLIST_item(lists);
             
-            if (Find_In_BB_Vector(bb,bbs)) {
+            if (Find_In_BB_Vector(bb,bbs) != bbs.end()) {
                
                 if (!BS_MemberP(visited,BB_id(bb))) {
                     BOOL all_pred_visited = TRUE;
@@ -2914,7 +2922,7 @@ REGIONAL_CFG::Update_BB_Prof_Info(BB_VECTOR bbs,BB_VECTOR dup,BB_MAP duplicate,
                         BS_Union1D(visited,BB_id(bb),&_m); 
                         queue.push(bb);
                    
-                        if (Find_In_BB_Vector(bb,dup)) {
+                        if (Find_In_BB_Vector(bb,dup) != dup.end()) {
                             float total_freq = 0.0;
                             BB *new_bb = (BB *)BB_MAP_Get(duplicate,bb);
                             //-------------------------------------------------
@@ -2934,7 +2942,8 @@ REGIONAL_CFG::Update_BB_Prof_Info(BB_VECTOR bbs,BB_VECTOR dup,BB_MAP duplicate,
                                 }
                                 BB *old_bb = (BB *)BB_MAP_Get(rev_duplicate,pred);
                         
-                                if ((old_bb == NULL)&&(!Find_In_BB_Vector(pred,br_bbs))) {
+                                if (old_bb == NULL &&
+					Find_In_BB_Vector(pred,br_bbs) == br_bbs.end()) {
                                     Set_Freq(pred,bb,freq);
                                 }
 
@@ -2980,7 +2989,7 @@ REGIONAL_CFG::Update_BB_Prof_Info(BB_VECTOR bbs,BB_VECTOR dup,BB_MAP duplicate,
                                         DevWarn("IN UPDATE BB PROFILE:Freq zero BB%d to BB%d.\n",BB_id(new_pred),BB_id(new_bb));
     				    }
                                  new_bb_freq += Freq(new_pred,new_bb);
-                                } else if (!Find_In_BB_Vector(new_pred,br_bbs)) { 
+                                } else if (Find_In_BB_Vector(new_pred,br_bbs) == br_bbs.end()) { 
                                     //-----------------------------------------
                                     // The br bbs do not have corresponding
                                     // old pred too,but it is not a old bb
@@ -3009,7 +3018,7 @@ REGIONAL_CFG::Update_BB_Prof_Info(BB_VECTOR bbs,BB_VECTOR dup,BB_MAP duplicate,
                                 // If the succ is the newly added br bb,set
                                 // the br bb's succ edge's freq and prob too.
                                 //------------------------------------------- 
-                                if (Find_In_BB_Vector(new_succ,br_bbs)) {
+                                if (Find_In_BB_Vector(new_succ,br_bbs) != br_bbs.end()) {
                                     is_br_bb = TRUE;
                                     //-----------------------------------------
                                     // Find last BB which is also the only
@@ -3074,8 +3083,8 @@ void
 REGIONAL_CFG::Compute_Node_Prof_Info(NODE_VECTOR nodes,NODE_VECTOR dup,
                                      REGIONAL_CFG_NODE *main_entry,
                                      NODE_PROF_VECTOR& node_profs) {
-    typedef list<REGIONAL_CFG_NODE *,NODE_ALLOC>   NODE_LIST;
-    typedef queue<REGIONAL_CFG_NODE *,NODE_LIST>   NODE_QUEUE;
+    typedef std::list<REGIONAL_CFG_NODE *,NODE_ALLOC>   NODE_LIST;
+    typedef std::queue<REGIONAL_CFG_NODE *,NODE_LIST>   NODE_QUEUE;
         
     NODE_ALLOC temp_alloc(&_m);
     NODE_LIST  temp_list(temp_alloc);
@@ -3101,9 +3110,9 @@ REGIONAL_CFG::Compute_Node_Prof_Info(NODE_VECTOR nodes,NODE_VECTOR dup,
         queue.pop();
 
         for (CFG_SUCC_NODE_ITER iter(node);iter != 0;++iter) {
-            if (Find_In_Vector(*iter,nodes)) {
+            if (Find_In_Vector(*iter,nodes) != nodes.end()) {
             
-                if (Find_In_Vector(*iter,dup)) {
+                if (Find_In_Vector(*iter,dup) != dup.end()) {
                     REGIONAL_CFG_NODE *succ = *iter;
                     float total_freq = 0.0;
                     
@@ -3569,7 +3578,7 @@ REGION::Edge_Splitting(){
 INT32
 REGION_TREE::Build_Regional_Cfg(BB *first_bb){
     typedef mempool_allocator<REGIONAL_CFG_NODE *>   NODE_ALLOC;
-    typedef vector<REGIONAL_CFG_NODE *, NODE_ALLOC>  NODE_VECTOR;
+    typedef std::vector<REGIONAL_CFG_NODE *, NODE_ALLOC>  NODE_VECTOR;
     
     extern BB_NUM   PU_BB_Count;     
     NODE_VECTOR     node_container(PU_BB_Count+2, (REGIONAL_CFG_NODE *)NULL, 
@@ -3862,7 +3871,7 @@ REGION_TREE::Shrink (REGION *parent,REGION *kid,NODE_VECTOR nodes) {
             REGIONAL_CFG_EDGE *e    = *pred_iter;      
             REGIONAL_CFG_NODE *pred = e->Src();
             
-            if (!Find_In_Vector(pred,nodes)) {
+            if (Find_In_Vector(pred,nodes) == nodes.end()) {
                 is_entry = TRUE;
                 cfg->Del_Edge(e);
                 cfg->Add_Edge(pred,kid_node);
@@ -3873,7 +3882,7 @@ REGION_TREE::Shrink (REGION *parent,REGION *kid,NODE_VECTOR nodes) {
             REGIONAL_CFG_EDGE *e    = *succ_iter;          
             REGIONAL_CFG_NODE *succ = e->Dest();
             
-            if (!Find_In_Vector(succ,nodes)) {
+            if (Find_In_Vector(succ,nodes) == nodes.end()) {
                 is_exit = TRUE;
                 cfg->Del_Edge(e);
                 cfg->Add_Edge(kid_node,succ);

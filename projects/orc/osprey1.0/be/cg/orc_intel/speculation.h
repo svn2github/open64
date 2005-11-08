@@ -55,12 +55,10 @@
 #ifndef speculation_INCLUDED
 #define speculation_INCLUDED
 
-#include "set.h"
-#include "list.h"
-#include "vector.h"
+#include <vector>
+#include <utility>
 #include "op_list.h"
 #include "cg_dep_graph.h"
-#include "map.h"
 #include "region.h"
 
   
@@ -87,9 +85,9 @@ struct compare_tn
     }
 };
 
-extern vector< pair<OP*,OP*> >  load_chk_pairs;
+extern std::vector< std::pair<OP*,OP*> >  load_chk_pairs;
 extern OP* Local_Insert_CHK(OP *spec_ld, OP *point, TN *pr_tn = True_TN);
-extern OP* Insert_CHK(OP* primary_ld, vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn);
+extern OP* Insert_CHK(OP* primary_ld, std::vector<OP *>& copys, BB* home_bb, OP* pos, TN* pr_tn);
 extern BOOL OP_baneful(OP* op);
 extern OP *Change_ld_Form(OP *load_op, ISA_ENUM_CLASS_VALUE target_form);
 extern BOOL Is_Control_Speculation_Gratuitous(OP*, BB*, OP*);

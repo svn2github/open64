@@ -76,7 +76,7 @@ extern "C" {
 }
 
 IP_ALIAS_CLASSIFICATION *Ip_alias_class;
-vector<char *>           Ip_alias_class_files;
+std::vector<char *>           Ip_alias_class_files;
 
 // The following is initialized in the IP_ALIAS_CLASSIFICATION
 // constructor because we want to support repeating alias
@@ -797,6 +797,8 @@ IP_ALIAS_CLASS_REP::Join(      IP_ALIAS_CLASS_REP &that,
   }
 }
 
+typedef mempool_allocator<IP_ALIAS_CLASS_MEMBER *> IP_ALIAS_CLASS_MEMBER_ALLOC;
+
 void
 IP_AC_LAMBDA_TYPE_REP::Union_func_args(      IP_AC_LAMBDA_TYPE_REP &that,
 				             MEM_POOL              *pool,
@@ -809,8 +811,8 @@ IP_AC_LAMBDA_TYPE_REP::Union_func_args(      IP_AC_LAMBDA_TYPE_REP &that,
 
   // For each argument and each return value, join the appropriate
   // classes.
-  vector<IP_ALIAS_CLASS_MEMBER *>::iterator arg;
-  vector<IP_ALIAS_CLASS_MEMBER *>::iterator that_arg;
+  std::vector<IP_ALIAS_CLASS_MEMBER *, IP_ALIAS_CLASS_MEMBER_ALLOC>::iterator arg;
+  std::vector<IP_ALIAS_CLASS_MEMBER *, IP_ALIAS_CLASS_MEMBER_ALLOC>::iterator that_arg;
   for (arg = fixed_args.begin(),
        that_arg = that.fixed_args.begin();
        (arg != fixed_args.end() &&
@@ -831,7 +833,7 @@ IP_AC_LAMBDA_TYPE_REP::Union_func_args(      IP_AC_LAMBDA_TYPE_REP &that,
 
   // Clean up the tails of the lists in case the argument counts
   // didn't match.
-  vector<IP_ALIAS_CLASS_MEMBER *>::iterator start, stop;
+  std::vector<IP_ALIAS_CLASS_MEMBER *, IP_ALIAS_CLASS_MEMBER_ALLOC>::iterator start, stop;
   IP_ALIAS_CLASS_MEMBER *vararg_data_representative,
                         *vararg_code_representative;
   if (arg != fixed_args.end()) {
@@ -937,7 +939,7 @@ IP_ALIAS_CLASS_REP::Print(FILE               *fp,
       fprintf(fp, " (&%lu<0x%lx>) <-- lambda(",
 	      Signature().Return_class()->Id(),
 	      Signature().Returns());
-      for (vector<IP_ALIAS_CLASS_MEMBER *>::const_iterator arg =
+      for (std::vector<IP_ALIAS_CLASS_MEMBER *, IP_ALIAS_CLASS_MEMBER_ALLOC>::const_iterator arg =
 	     Signature().fixed_args.begin();
 	   arg != Signature().fixed_args.end();
 	   ++arg) {

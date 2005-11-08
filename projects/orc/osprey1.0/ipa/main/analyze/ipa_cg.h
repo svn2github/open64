@@ -37,9 +37,7 @@
 #ifndef cxx_ipa_cg_INCLUDED
 #define cxx_ipa_cg_INCLUDED
 
-#ifndef __SGI_STL_LIST_H
-#include <vector.h>
-#endif
+#include <vector>
 
 #ifndef mempool_allocator_INCLUDED
 #include <mempool_allocator.h>
@@ -154,10 +152,10 @@ public:
 //
 // ====================================================================
 
-typedef vector<IPA_ICALL_NODE*> IPA_ICALL_LIST;
+typedef std::vector<IPA_ICALL_NODE*> IPA_ICALL_LIST;
 
 #ifdef _LIGHTWEIGHT_INLINER
-typedef vector<char*> INLINED_BODY_LIST;
+typedef std::vector<char*> INLINED_BODY_LIST;
 #endif // _LIGHTWEIGHT_INLINER
 
 typedef UINT32 IPA_NODE_INDEX;		// index to the IPA_NODE_ARRAY in

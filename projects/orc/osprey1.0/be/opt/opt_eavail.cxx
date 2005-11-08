@@ -225,8 +225,8 @@ public:
   char *Search_name(void) const;
 };
 
-BOOL      DEFEAT_INSERT_SEARCH<FORWARD_PRE>::_tracing = FALSE;
-BOOL      DEFEAT_INSERT_SEARCH<BACKWARD_PRE>::_tracing = FALSE;
+template<> BOOL DEFEAT_INSERT_SEARCH<FORWARD_PRE>::_tracing = FALSE;
+template<> BOOL DEFEAT_INSERT_SEARCH<BACKWARD_PRE>::_tracing = FALSE;
 
 char *
 DEFEAT_INSERT_SEARCH<FORWARD_PRE>::Search_name(void) const
@@ -377,8 +377,8 @@ public:
   char *Search_name(void) const;
 };
 
-BOOL         CANT_BE_AVAIL_SEARCH<FORWARD_PRE>::_tracing = FALSE;
-EXP_WORKLST *CANT_BE_AVAIL_SEARCH<FORWARD_PRE>::_worklst = NULL;
+template<> BOOL         CANT_BE_AVAIL_SEARCH<FORWARD_PRE>::_tracing = FALSE;
+template<> EXP_WORKLST *CANT_BE_AVAIL_SEARCH<FORWARD_PRE>::_worklst = NULL;
 
 // For EPRE/LPRE:
 char *
@@ -426,8 +426,8 @@ Continue_from_to(const node_type     *const def_phi,
   return FALSE;
 }
 
-BOOL         CANT_BE_AVAIL_SEARCH<BACKWARD_PRE>::_tracing = FALSE;
-EXP_WORKLST *CANT_BE_AVAIL_SEARCH<BACKWARD_PRE>::_worklst = NULL;
+template<> BOOL         CANT_BE_AVAIL_SEARCH<BACKWARD_PRE>::_tracing = FALSE;
+template<> EXP_WORKLST *CANT_BE_AVAIL_SEARCH<BACKWARD_PRE>::_worklst = NULL;
 
 // For SPRE:
 char *

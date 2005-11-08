@@ -151,7 +151,7 @@ private:
   RID * start;
   RID * own;
 public:
-  typedef forward_iterator_tag iterator_category;
+  typedef std::forward_iterator_tag iterator_category;
   typedef RID * 	       value_type;
   typedef ptrdiff_t            difference_type;
   typedef value_type *         pointer;
@@ -210,7 +210,7 @@ class RID_PARENT_ITER {
 private:
   RID * p;
 public:
-  typedef forward_iterator_tag iterator_category;
+  typedef std::forward_iterator_tag iterator_category;
   typedef RID * 	       value_type;
   typedef ptrdiff_t	       difference_type;
   typedef value_type *         pointer;
@@ -313,7 +313,7 @@ struct EH_RANGE {
 
 class EH_RANGE_LIST {
 private:
-  vector<EH_RANGE> v;
+  std::vector<EH_RANGE> v;
 public:
   EH_RANGE_LIST(): v() {}
   void add_range(EH_RANGE range) {
@@ -322,8 +322,8 @@ public:
   void clear() {v.clear();}
   size_t size() {return v.size();}
   EH_RANGE& operator[](size_t i) {return v[i];}
-  typedef vector<EH_RANGE>::iterator 	     iterator;
-  typedef vector<EH_RANGE>::reverse_iterator reverse_iterator;
+  typedef std::vector<EH_RANGE>::iterator 	     iterator;
+  typedef std::vector<EH_RANGE>::reverse_iterator reverse_iterator;
   iterator begin() {return v.begin();}
   iterator end()   {return v.end();}
   reverse_iterator rbegin() {return v.rbegin();}
@@ -336,7 +336,7 @@ class EH_RANGE_LIST_PARENT_ITER {
 private:
   EH_RANGE_LIST::iterator iter;
 public:
-  typedef forward_iterator_tag iterator_category;
+  typedef std::forward_iterator_tag iterator_category;
   typedef EH_RANGE             value_type;
   typedef ptrdiff_t            difference_type;
   typedef value_type *         pointer;
@@ -345,7 +345,9 @@ public:
   EH_RANGE_LIST_PARENT_ITER(EH_RANGE_LIST::iterator x): iter(x) {}
   EH_RANGE& operator*() {return *iter;}
   EH_RANGE_LIST_PARENT_ITER& operator++() {
-    iter = iter->parent; return *this;}
+    iter = EH_RANGE_LIST::iterator(iter->parent);
+    return *this;
+  }
   EH_RANGE_LIST_PARENT_ITER operator++(int) {
     EH_RANGE_LIST_PARENT_ITER tmp = *this;
     ++*this;
@@ -396,7 +398,7 @@ struct SET_PARENT {
   void operator()(EH_RANGE& r) {
     RID_PARENT_ITER first(r.rid);
     RID_PARENT_ITER last(NULL);
-    first = find_if(++first, last, IS_EH_RID());
+    first = std::find_if(++first, last, IS_EH_RID());
     if (first == last)
       r.parent = NULL;
     else
@@ -418,15 +420,15 @@ EH_Generate_Range_List(WN * pu)
   RID_POST_ITER rid_first(rid);
   RID_POST_ITER rid_last(NULL);
 
-  for_each(rid_first, rid_last, ADD_EH_RANGE());
+  std::for_each(rid_first, rid_last, ADD_EH_RANGE());
 
   EH_RANGE_LIST::iterator list_first(range_list.begin());
   EH_RANGE_LIST::iterator list_last (range_list.end());
 
   for (EH_RANGE_LIST::iterator p = list_first; p!=list_last; p++)
-    RID_eh_range_ptr(p->rid) = p;
+    RID_eh_range_ptr(p->rid) = &(*p);
 
-  for_each(list_first, list_last, SET_PARENT());
+  std::for_each(list_first, list_last, SET_PARENT());
 }
 
 
@@ -469,10 +471,12 @@ EH_Set_Start_Label(EH_RANGE* p)
 {
   LABEL_IDX label;
   if (p->kind == ehk_guard) {
-    EH_RANGE_LIST::reverse_iterator rfirst(p);
+    EH_RANGE_LIST::reverse_iterator rfirst = range_list.rbegin();
+    while (&(*rfirst) != p)
+	rfirst++;
     EH_RANGE_LIST::reverse_iterator rlast  = range_list.rend();
     EH_RANGE_LIST::reverse_iterator riter =
-      find_if(rfirst, rlast, IS_SIB_RANGE(p));
+      std::find_if(rfirst, rlast, IS_SIB_RANGE(p));
     if (riter == rlast) {
       if (p->parent != NULL) {
 	label = Duplicate_LABEL(p->parent->start_label);
@@ -523,9 +527,11 @@ void EH_Set_Has_Call(EH_RANGE* p)
   p->has_call = TRUE;
   if (p->kind == ehk_mask) {
     // set has_call for associated guard region also
-    EH_RANGE_LIST::reverse_iterator rfirst(p);
+    EH_RANGE_LIST::reverse_iterator rfirst = range_list.rbegin();
+    while (&(*rfirst) != p)
+	rfirst++;
     EH_RANGE_LIST::reverse_iterator rlast  = range_list.rend();
-    rfirst = find_if(rfirst, rlast, IS_SIB_RANGE(p));
+    rfirst = std::find_if(rfirst, rlast, IS_SIB_RANGE(p));
     Is_True(rfirst != rlast && rfirst->kind == ehk_guard,
 		      ("mask region must have guard"));
     rfirst->has_call = TRUE;
@@ -609,14 +615,14 @@ EH_Prune_Range_List(void)
     return;
   }
 
-  for_each  (first, last, SET_ADJUSTMENT());
-  for_each  (first, last, CLEAR_USED());
-  for_each  (first, last, SET_ADJUSTMENT_TO_PARENT_ADJUSTMENT());
+  std::for_each  (first, last, SET_ADJUSTMENT());
+  std::for_each  (first, last, CLEAR_USED());
+  std::for_each  (first, last, SET_ADJUSTMENT_TO_PARENT_ADJUSTMENT());
   range_list.erase(
     remove_if (first, last, 
                HAS_NO_CALL_OR_HAS_NULL_OR_UNREACHABLE_LABEL()), 
     last);
-  for_each  (range_list.begin(), range_list.end(), ADJUST_PARENT());
+  std::for_each  (range_list.begin(), range_list.end(), ADJUST_PARENT());
 } 
 
 struct COMPARE_RANGES {
@@ -651,7 +657,7 @@ reorder_range_list()
 
   // reset parent pointers using inverse vector
 
-  vector<int> inv(range_list.size());
+  std::vector<int> inv(range_list.size());
   for (i = 0; i < range_list.size(); ++i)
     inv[range_list[i].id - &range_list[0]] = i;
 
@@ -668,9 +674,9 @@ struct IS_CLEANUP_RANGE {
 struct FIX_MASK_PARENT {
   void operator()(EH_RANGE& r) {
     if (r.kind == ehk_mask) {
-      EH_RANGE_LIST_PARENT_ITER first(r.parent);
-      EH_RANGE_LIST_PARENT_ITER last (NULL);
-      first = find_if(first, last, IS_CLEANUP_RANGE());
+      EH_RANGE_LIST_PARENT_ITER first(EH_RANGE_LIST::iterator(r.parent));
+      EH_RANGE_LIST_PARENT_ITER last(EH_RANGE_LIST::iterator(NULL));
+      first = std::find_if(first, last, IS_CLEANUP_RANGE());
       Is_True(first != last, ("mask region must have cleanup ancestor"));
       r.parent = (*first).parent;
     }
@@ -699,8 +705,8 @@ fix_mask_ranges(void)
   EH_RANGE_LIST::reverse_iterator rfirst(range_list.rbegin());
   EH_RANGE_LIST::reverse_iterator rlast (range_list.rend());
 
-  for_each(rfirst, rlast, FIX_MASK_PARENT());
-  for_each(range_list.begin(), range_list.end(),
+  std::for_each(rfirst, rlast, FIX_MASK_PARENT());
+  std::for_each(range_list.begin(), range_list.end(),
 	   CHANGE_MASK_OR_GUARD_TO_CLEANUP());
 }
 

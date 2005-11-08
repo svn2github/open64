@@ -65,7 +65,7 @@
 #include <alloca.h>
 #include <cmplrs/rcodes.h>		// for RC_SYSTEM_ERROR
 #include <float.h>
-#include <hash_set.h>			// temp. header for hash_set
+#include <ext/hash_set>			// temp. header for hash_set
 
 #include "defs.h"
 #include "erglob.h"
@@ -137,7 +137,7 @@ namespace {
     bool operator()(char* s1, char* s2) const
       { return strcmp(s1, s2) == 0; }
   };
-  typedef hash_map<char*, REG_FB_POINTER, hash<char*>, eqs> REG_FB_MAP;
+  typedef __gnu_cxx::hash_map<char*, REG_FB_POINTER, __gnu_cxx::hash<char*>, eqs> REG_FB_MAP;
 };
 
 static REG_FB_MAP REG_FB_INFO_TABLE;
@@ -156,7 +156,7 @@ namespace {
     bool operator()(char* s1, char* s2) const
       { return strcmp(s1, s2) == 0; }
   };
-  typedef hash_map<char*, REG_BUDGET_POINTER, hash<char*>, eq> REG_BUDGET_MAP;
+  typedef __gnu_cxx::hash_map<char*, REG_BUDGET_POINTER, __gnu_cxx::hash<char*>, eq> REG_BUDGET_MAP;
 };
 
 static REG_BUDGET_MAP REG_BUDGET_TABLE;
@@ -237,7 +237,7 @@ PU_Deleted (const IPA_GRAPH* cg, NODE_INDEX idx, const IP_FILE_HDR* fhdr)
 // exception that any nested procedure is always processed before its
 // parent, even when the parent does not directly call it (and thus not
 // represented in the call graph).
-typedef vector<IPA_NODE*> IPA_NODE_VECTOR;
+typedef std::vector<IPA_NODE*> IPA_NODE_VECTOR;
 
 static void
 Trans_Order_Walk (IPA_NODE_VECTOR& vect, mBOOL* visited, IPA_GRAPH* cg,
@@ -786,7 +786,7 @@ Perform_Alias_Class_Annotation(void)
   Write_AC_INTERNAL_Map = FALSE;
 
   // For each file we wrote previously,
-  for (vector<char *>::iterator name = Ip_alias_class_files.begin();
+  for (std::vector<char *>::iterator name = Ip_alias_class_files.begin();
        name != Ip_alias_class_files.end();
        ++name) {
     // open the file
@@ -804,7 +804,7 @@ Perform_Alias_Class_Annotation(void)
     // somewhere. We apparently have to write it after the PU's are
     // written.
     if (WN_get_dst(input_file) == -1) {
-      ErrMsg(EC_IR_Scn_Read, "dst", name);
+      ErrMsg(EC_IR_Scn_Read, "dst", *name);
     }
 
     // Note that no Read_Global_Info is needed because the global
@@ -846,7 +846,7 @@ Perform_Alias_Class_Annotation(void)
     free(output_file_name);
   }
   if (IPA_Debug_AC_Temp_Files) {
-    for (vector<char *>::iterator name = Ip_alias_class_files.begin();
+    for (std::vector<char *>::iterator name = Ip_alias_class_files.begin();
 	 name != Ip_alias_class_files.end();
 	 ++name) {
       if (keep) {

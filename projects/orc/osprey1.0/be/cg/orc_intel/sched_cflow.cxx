@@ -144,7 +144,7 @@ EXEC_PATH :: Append_Path_Segment
      * =====================================================
      * =====================================================
      */
-EXEC_PATH_SET :: EXEC_PATH_SET (MEM_POOL *mp, mINT32 size=128) {
+EXEC_PATH_SET :: EXEC_PATH_SET (MEM_POOL *mp, mINT32 size) {
     _mp       = mp ;
     
     Is_True (size >= 0, ("size should greater than zero!"));
@@ -606,7 +606,7 @@ EXEC_PATH_SET :: First_Path_Id (void) {
      */
 EXEC_PATH_ID
 EXEC_PATH_SET :: Next_Path_Id 
-    (EXEC_PATH_ID path, BOOL check_membership=TRUE) {
+    (EXEC_PATH_ID path, BOOL check_membership) {
     
     if (!Path_Id_Is_Valid (path, check_membership)) {
         return INVALID_EXEC_PATH_ID;
@@ -684,7 +684,7 @@ EXEC_PATH_SET :: Last_Path_Id (void) {
      */
 EXEC_PATH_ID
 EXEC_PATH_SET :: Prev_Path_Id 
-    (EXEC_PATH_ID path, BOOL check_membership=TRUE) {
+    (EXEC_PATH_ID path, BOOL check_membership) {
 
     FmtAssert (FALSE,("Sorry, this routines has yet been implemented"));
 
@@ -2667,7 +2667,7 @@ Calculate_Dominator_Info (REGION_TREE *rgn_tree) {
 
     extern BOOL Is_Abnormal_Loop (REGION* region) ;
 
-    typedef queue<REGION * >  _RGN_QUEUE;
+    typedef std::queue<REGION * >  _RGN_QUEUE;
     _RGN_QUEUE  rgn_queue ;
 
     #define SET_RGN_IN_ABNORMAL_LOOP(x) { x = (REGION*)((INTPTR)(x) | 1); }

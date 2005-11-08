@@ -106,8 +106,8 @@ struct eval_hasher
     }
 };
 
-typedef hash_map<const void *, UINT32, eval_hasher, equal_to<const void *>,
-    mempool_allocator<pair<const void *, UINT32> > > EVAL_HASH;
+typedef __gnu_cxx::hash_map<const void *, UINT32, eval_hasher, std::equal_to<const void *>,
+    mempool_allocator<std::pair<const void *, UINT32> > > EVAL_HASH;
 static EVAL_HASH *eval_hash;
 
 static void
@@ -1711,7 +1711,7 @@ Intra_PU_Formal_Cprop (IPA_NODE *node)
 
     eval_value = CXX_NEW (VALUE_VECTOR (&Ipa_cprop_pool), &Ipa_cprop_pool);
     eval_hash = CXX_NEW (EVAL_HASH (100, eval_hasher(),
-				    equal_to<const void *> (),
+				    std::equal_to<const void *> (),
 				    &Ipa_cprop_pool),
 			 &Ipa_cprop_pool);
 

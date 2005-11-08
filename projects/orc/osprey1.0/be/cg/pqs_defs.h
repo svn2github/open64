@@ -125,15 +125,15 @@ struct PQS_TN_MAP_TYPE {
 // Set class template. Based on the STL set with some additional syntactic to make it 
 // A little easier to use. 
 //
-template <class T, class C = less<T> >
+template <class T, class C = std::less<T> >
 class PQS_SET {
 public:
 #ifdef PQS_USE_MEMPOOLS
    typedef mempool_allocator<T> set_allocator_type;
 #else
-   typedef alloc set_allocator_type;
+   typedef std::allocator<T> set_allocator_type;
 #endif
-   typedef set<T,C,set_allocator_type> set_type;
+   typedef std::set<T,C,set_allocator_type> set_type;
    typedef typename set_type::iterator set_iterator_type;
    set_type _set;
 

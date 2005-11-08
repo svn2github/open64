@@ -34,6 +34,7 @@
 
 
 #include <elf.h>
+#include <errno.h>
 #include <sys/elf_whirl.h>
 #include <cmplrs/host.h>        // for ipc_bwrite.h
 #include <assert.h>

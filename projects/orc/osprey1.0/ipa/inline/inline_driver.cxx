@@ -45,6 +45,7 @@
  * ====================================================================
  */
 
+#include <errno.h>
 #include <unistd.h>
 #include <elf.h>
 #include <cmplrs/rcodes.h>	    /* for exit return status */

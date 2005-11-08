@@ -46,10 +46,10 @@
 
 #define USE_STANDARD_TYPES
 
+#include <algorithm>
 #include "defs.h"
 #include "config_wopt.h"
 #include "opt_etable.h"
-#include "algo.h"
 #include "connected_components.h"
 
 using SGI::find_representative_and_compress_path;
@@ -91,7 +91,7 @@ EXP_WORKLST::Estimate_cost(ETABLE *etable, PRE_KIND pre_kind)
   // All phi node are assumed to be partial anticipated.
   //
   INT32 phi_count = 0;
-  vector<EXP_OCCURS *> e_version_table;
+  std::vector<EXP_OCCURS *> e_version_table;
   e_version_table.insert(e_version_table.end(), Cur_e_version(), (EXP_OCCURS*)NULL);
   FOR_ALL_NODE(occur, phi_occ_iter, Init()) {
     occur->Exp_phi()->id = phi_count++;
@@ -101,9 +101,9 @@ EXP_WORKLST::Estimate_cost(ETABLE *etable, PRE_KIND pre_kind)
 
   // Put connected phi's into the same component.
   // component is indexed by phi-id
-  vector<int> component;
+  std::vector<int> component;
   {
-    vector<unsigned char> rank;
+    std::vector<unsigned char> rank;
     extend_components_and_ranks(component, rank, phi_count - 1);
     FOR_ALL_NODE(occur, phi_occ_iter, Init()) {
       EXP_PHI *phi = occur->Exp_phi();
@@ -128,7 +128,7 @@ EXP_WORKLST::Estimate_cost(ETABLE *etable, PRE_KIND pre_kind)
 #ifdef Is_True_On
   // Verify that every non-empty component has at least one real occ.
   {
-    vector<bool> component_has_real_occ;
+    std::vector<bool> component_has_real_occ;
     component_has_real_occ.insert(component_has_real_occ.end(), component.size(), 0);
     
     FOR_ALL_NODE(occur, real_occ_iter, Init()) {
@@ -151,7 +151,7 @@ EXP_WORKLST::Estimate_cost(ETABLE *etable, PRE_KIND pre_kind)
 
   // Count the number of real occurrence for each connect components
   // Note: real occurrence not defined by any phi are ignored.
-  vector<int> original_count;
+  std::vector<int> original_count;
   original_count.insert(original_count.end(), component.size(), 0);
 
   FOR_ALL_NODE(occur, real_occ_iter, Init()) {
@@ -167,7 +167,7 @@ EXP_WORKLST::Estimate_cost(ETABLE *etable, PRE_KIND pre_kind)
   //  the number of real occurrence not deleted +
   //  the number of inserted occurrence
   // Note: real occurrence not connect with any phi are ignored.
-  vector<int> PRE_count;
+  std::vector<int> PRE_count;
   PRE_count.insert(PRE_count.end(), component.size(), 0);
 
   FOR_ALL_NODE(occur, real_occ_iter, Init()) {
@@ -199,7 +199,7 @@ EXP_WORKLST::Estimate_cost(ETABLE *etable, PRE_KIND pre_kind)
   //  the number of real occurrence not deleted by spec-PRE,
   //  the number of inserted occurrence by spec-PRE
   // Note: real occurrence not connect with any phi are ignored.
-  vector<int> FB_PRE_count;
+  std::vector<int> FB_PRE_count;
   FB_PRE_count.insert(FB_PRE_count.end(), component.size(), 0);
 
   FOR_ALL_NODE(occur, phi_occ_iter, Init()) {

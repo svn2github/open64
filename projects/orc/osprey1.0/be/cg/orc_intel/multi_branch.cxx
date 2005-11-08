@@ -536,7 +536,7 @@ void Post_Multi_Branch(void)
                      cur_op = OP_prev(cur_op);
                      BB_Remove_Op(prev_bb,add_op);
                      OPS_Prepend_Op(&ops, add_op); 
-                     OP_bb(add_op) = prev_bb; 
+                     add_op->bb = prev_bb; 
                      if (prev_bb != BB_prev(bb) && 
                         !BB_Is_Unique_Predecessor(BB_next(prev_bb),prev_bb)) {
                          valid_ops = FALSE;
@@ -569,13 +569,13 @@ void Post_Multi_Branch(void)
 		     op == BB_last_op(next_bb)) {// &&  
 //                     !BB_chk_split_head(BB_next(next_bb))) {
                      BB_Remove_Op(next_bb,op);
-                     OP_bb(op) =  next_bb;
+                     op->bb =  next_bb;
 	             next_bb = BB_next(next_bb);
 		     next_op = BB_first_op(next_bb);
 		 } else {
 	             next_op = OP_next(op);
                      BB_Remove_Op(next_bb,op);
-                     OP_bb(op) =  next_bb;
+                     op->bb =  next_bb;
 		 }
 		 
                  OPS_Append_Op(&new_ops,op);

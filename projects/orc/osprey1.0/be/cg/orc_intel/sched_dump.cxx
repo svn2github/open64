@@ -76,7 +76,7 @@ enum { LINE_MAX_WIDTH = 75, };
  */
 void
 CANDIDATE :: Dump (FILE *f, BOOL verbose,
-                      FAVOR_DELAY_HEUR * heur=NULL) {
+                      FAVOR_DELAY_HEUR * heur) {
 
     if (!Op()) {
         fprintf (f,"CANDIDATE(%p)'s corresponding OP is NULL", this);
@@ -110,7 +110,7 @@ CANDIDATE :: Dump (FILE *f, BOOL verbose,
      * =============================================================
      */
 void
-RGN_INFO :: Dump (FILE * f=stderr) {
+RGN_INFO :: Dump (FILE * f) {
 
     if (!rgn) {
         fprintf (f,"REGION:(NULL)\n");
@@ -169,8 +169,7 @@ RGN_INFO :: Dump (FILE * f=stderr) {
  * =========================================================
  */
 void
-CAND_LIST :: Dump (FILE * f=stderr, BOOL verbose=FALSE,
-                 FAVOR_DELAY_HEUR * heur=NULL) {
+CAND_LIST :: Dump (FILE * f, BOOL verbose, FAVOR_DELAY_HEUR * heur) {
 
     if (verbose) {
         fprintf (f, "%sCANDIDATE LIST %d IN TOTAL "
@@ -207,7 +206,7 @@ CAND_LIST :: gdb_dump (FAVOR_DELAY_HEUR * heur) {
 
 
 void
-SRC_BB_MGR::Dump (FILE *f=stderr) {
+SRC_BB_MGR::Dump (FILE *f) {
 
     if (!_targ) return ;
         
@@ -329,7 +328,7 @@ SCHED_OP_ANNOT::Dump(FILE* f) {
      * ===================================================
      */
 void
-CFG_NODE_MAP :: Dump (FILE *f=stderr) {
+CFG_NODE_MAP :: Dump (FILE *f) {
 
     char buf[LINE_MAX_WIDTH * 2], *next;
     
@@ -419,7 +418,7 @@ FAVOR_DELAY_HEUR::tagOP_HEUR_INFO::Dump (FILE *f,BOOL verbose) {
     */
 void
 FAVOR_DELAY_HEUR :: Dump_OP_Heur_Info 
-    (OP * op, FILE *f=stderr, BOOL verbose=FALSE) {
+    (OP * op, FILE *f, BOOL verbose) {
    
     OP_HEUR_INFO * info = Get_OP_Heur_Info (op);
     if (info) {
@@ -439,7 +438,7 @@ FAVOR_DELAY_HEUR :: Dump_OP_Heur_Info
      */
 void
 FAVOR_DELAY_HEUR :: Dump_OP_Heur_Info 
-    (BB * bb, FILE *f=stderr,BOOL verbose) {
+    (BB * bb, FILE *f,BOOL verbose) {
 
     if (verbose) {
         fprintf (f,"%sHeuritics Infor OPs Reside in BB:%d%s\n", 
@@ -469,7 +468,7 @@ FAVOR_DELAY_HEUR :: Dump_OP_Heur_Info
   * ==============================================================
   */
 void
-FAVOR_DELAY_HEUR::Dump (FILE * f=stderr,BOOL verbose=TRUE) {
+FAVOR_DELAY_HEUR::Dump (FILE * f,BOOL verbose) {
 
     if (verbose) {
         fprintf (f,"%s FAVOR_DELAY_HEUR status %s\n",
@@ -649,7 +648,7 @@ SCHEDULER::Dump_OP_Verbose_Info (OP* op, FILE * f) {
  * ===================================================================
  */
 void
-SCHEDULER :: Dump_IR (FILE *f=stderr) {
+SCHEDULER :: Dump_IR (FILE *f) {
 
     FmtAssert (FALSE,
         ("Please Use 'SCHED_Dump_IR' to dump IR instead!"));
@@ -664,7 +663,7 @@ SCHEDULER :: Dump_IR (FILE *f=stderr) {
  * ==================================================================
  */
 void
-SCHEDULER :: Dump_DAG (FILE *f=stderr) {
+SCHEDULER :: Dump_DAG (FILE *f) {
 
     if (_global) {
 
@@ -697,7 +696,7 @@ SCHEDULER :: Dump_DAG (FILE *f=stderr) {
  * ===================================================================
  */
 void
-SCHEDULER::Dump (FILE *f=stderr) {
+SCHEDULER::Dump (FILE *f) {
     
     FmtAssert (FALSE,
         ("SCHEDULER::Dump () has yet implemented!"));
@@ -761,7 +760,7 @@ SCHED_Dump_IR (BOOL prepass, BOOL bef_sched, BOOL gcm,FILE *f=stderr) {
      */
 
 void
-RGN_SUMMARY::Dump (FILE * f=stderr, BOOL verbose=TRUE) {
+RGN_SUMMARY::Dump (FILE * f, BOOL verbose) {
 
     if (verbose) {
         fprintf (f, "REGION %d", _rgn->Id());
@@ -778,7 +777,7 @@ RGN_SUMMARY::Dump (FILE * f=stderr, BOOL verbose=TRUE) {
 }
 
 void
-REGION_INFO_MGR :: Dump (FILE *f=stderr,BOOL verbose) {
+REGION_INFO_MGR :: Dump (FILE *f,BOOL verbose) {
 
     for (INNERMOST_REGION_FIRST_ITER iter(_rgn_tree);
          iter != 0 ; ++iter) {
@@ -812,7 +811,7 @@ RGN_SUMMARY::gdb_dump (void) {
     /* dump the content of EXEC_PATH 
      */
 void
-EXEC_PATH :: Dump (FILE *f=stderr) {
+EXEC_PATH :: Dump (FILE *f) {
     
         /* format e.g :
          *  path:5 {
@@ -880,7 +879,7 @@ dump_path_id_range
 }
 
 void
-EXEC_PATH_SET :: Dump (FILE *f=stderr) {
+EXEC_PATH_SET :: Dump (FILE *f) {
    
     BOOL first_range = TRUE;
     fprintf (f,"{ ");
@@ -913,7 +912,7 @@ EXEC_PATH_SET :: Dump (FILE *f=stderr) {
     /* dump the content of EXEC_PATH_MGR 
      */
 void
-EXEC_PATH_MGR :: Dump (FILE *f=stderr) {
+EXEC_PATH_MGR :: Dump (FILE *f) {
     
     if (!_region) {  return ; };
 

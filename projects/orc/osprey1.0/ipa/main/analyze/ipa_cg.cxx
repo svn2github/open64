@@ -53,7 +53,7 @@
 #include <elf.h>
 #include <sys/elf_whirl.h>
 #include <alloca.h>
-#include <hash_map.h>
+#include <ext/hash_map>
 #include <sys/types.h>
 
 #include "defs.h"
@@ -92,7 +92,7 @@
 IPA_CALL_GRAPH* IPA_Call_Graph;     // "The" call graph of IPA
 BOOL IPA_Call_Graph_Built = FALSE;
 
-typedef hash_map<NODE_INDEX, NODE_INDEX> ALT_ENTRY_MAP;
+typedef __gnu_cxx::hash_map<NODE_INDEX, NODE_INDEX> ALT_ENTRY_MAP;
 ALT_ENTRY_MAP *alt_entry_map;		// map from alt entry to base entry
 
 UINT32 Total_Dead_Function_Weight = 0;
@@ -1948,7 +1948,7 @@ IPA_CALL_GRAPH::Print_vobose (FILE* fp, TRAVERSAL_ORDER order)
   float hotness=-1.0;
   float hotness2=-1.0;
   float density = -1.0;
-  vector<IPA_EDGE_INDEX> callsite_list;
+  std::vector<IPA_EDGE_INDEX> callsite_list;
   IPA_NODE_ITER cg_iter(IPA_Call_Graph, order);
   AUX_IPA_EDGE<INT32> cost_vector (IPA_Call_Graph, _pool);
 
@@ -2012,8 +2012,8 @@ fprintf(fp, SBar);
           BOOL seen_callee = FALSE;
           callsite_list.clear ();
           Get_Sorted_Callsite_List(node, IPA_Call_Graph, cost_vector, callsite_list);
-          vector<IPA_EDGE_INDEX>::const_iterator last = callsite_list.end ();
-	  for(vector<IPA_EDGE_INDEX>::iterator first = callsite_list.begin (); first != last; ++first) {
+	  std::vector<IPA_EDGE_INDEX>::const_iterator last = callsite_list.end ();
+	  for(std::vector<IPA_EDGE_INDEX>::iterator first = callsite_list.begin (); first != last; ++first) {
               IPA_EDGE* tmp_edge = IPA_Call_Graph->Edge (*first) ; 
               IPA_EDGE_INDEX idx = tmp_edge->Array_Index ();
               INT32 callsite_linenum;

@@ -80,6 +80,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
+#include <utility>
+#include <vector>
 
 #include "defs.h"			// INT32, INT64
 
@@ -2843,10 +2845,8 @@ void OPT_STAB::Compute_FFA(RID *const rid)
   AUX_STAB_REVERSE_ITER aux_stab_reverse_iter(this);
   AUX_ID                chain_head;
 
-  // NOTE: Should probably include pair.h and vector.h.
-
-  typedef pair<AUX_ID , AUX_STAB_ENTRY *> CHAIN_HEAD_VIRTUAL_PAIR;
-  typedef vector<CHAIN_HEAD_VIRTUAL_PAIR,
+  typedef std::pair<AUX_ID , AUX_STAB_ENTRY *> CHAIN_HEAD_VIRTUAL_PAIR;
+  typedef std::vector<CHAIN_HEAD_VIRTUAL_PAIR,
                  mempool_allocator<CHAIN_HEAD_VIRTUAL_PAIR> > IP_ALIAS_CLASS_VIRTUALS;
   IP_ALIAS_CLASS_VIRTUALS ip_alias_class_virtuals;
 

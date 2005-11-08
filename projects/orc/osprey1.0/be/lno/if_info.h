@@ -75,6 +75,10 @@
 #include "access_vector.h"
 #endif
 
+#ifdef ATTR_WEAK
+#undef ATTR_WEAK
+#endif
+
 #ifndef __GNUC__
 #define ATTR_WEAK
 #pragma weak Print__7IF_INFOGP8__file_s

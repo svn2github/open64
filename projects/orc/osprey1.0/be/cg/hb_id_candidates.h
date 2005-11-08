@@ -99,13 +99,13 @@
 #ifndef HB_ID_CANDIDATES_H_INCLUDED
 #define HB_ID_CANDIDATES_H_INCLUDED
 
-#include <list.h>
+#include <list>
 #include "cxx_memory.h"
 
 struct HB_CAND_TREE {
   HB* candidate;
   HB_CAND_TREE* parent;
-  list<HB_CAND_TREE*> kids;
+  std::list<HB_CAND_TREE*> kids;
   INT flags;
 };
 
@@ -166,7 +166,7 @@ HB_CAND_TREE_Parent_Set(HB_CAND_TREE* hct, HB_CAND_TREE* parent)
 }
 
 /////////////////////////////////////
-inline list<HB_CAND_TREE*>&
+inline std::list<HB_CAND_TREE*>&
 HB_CAND_TREE_Kids(HB_CAND_TREE* hct)
 /////////////////////////////////////
 //  See interface description.
@@ -232,9 +232,9 @@ inline HB_CAND_TREE* HB_CAND_TREE_Alloc(MEM_POOL* pool)
   return hct;
 }
 
-extern void HB_Identify_Hammock_Candidates(list<HB_CAND_TREE*>& candidates,
+extern void HB_Identify_Hammock_Candidates(std::list<HB_CAND_TREE*>& candidates,
 					   BB_MAP hct_entry_map);
-extern void HB_Identify_General_Candidates(list<HB_CAND_TREE*>& candidates,
+extern void HB_Identify_General_Candidates(std::list<HB_CAND_TREE*>& candidates,
 					   BB_MAP hct_entry_map,
 					   INT pass);
 extern void HB_Identify_Candidates_Init();

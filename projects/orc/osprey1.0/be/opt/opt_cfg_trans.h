@@ -163,6 +163,7 @@ public:
     }
     return true;
   }
+
   friend bool operator==(const self& x, const self& y) {
     if (x.ci == y.ci)
       return x.fi == y.fi;
@@ -171,6 +172,10 @@ public:
     if (x.fi == (*x.ci).begin())
       return y.fi == (*y.ci).end() && adjacent(y.ci,x.ci);
     return false;
+  }
+
+  friend bool operator!=(const self& x, const self& y) {
+    return !(x == y);
   }
 
   Cluster_iterator cluster_iterator() const { return ci; }

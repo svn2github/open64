@@ -138,7 +138,7 @@ BOOL GRA_optimize_restore_ar_lc;
 BOOL EBO_data_spec;
 // Control assemly output on file number
 typedef mempool_allocator<INT> INT_ALLOC;
-typedef vector<INT, INT_ALLOC>  INT_CONTAINER;
+typedef std::vector<INT, INT_ALLOC>  INT_CONTAINER;
 
 static INT_CONTAINER asm_file_visited;
 INT Asm_File_Visited(INT file_number)

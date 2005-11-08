@@ -43,9 +43,9 @@
 //
 //*********************************************************************
 
+#include <vector>
 #include "defs.h"
 #include "errors.h"
-#include <vector.h>
 #include "mempool.h"
 #include "if_conv.h"
 #include "op.h"
@@ -781,9 +781,8 @@ PARTITION_GRAPH::Collect_Info(REGION* region)
                         (PARTITION_GRAPH_NODE*)BB_MAP_Get(_bb_node_map, ec);
                     if (Get_Trace(TP_A_PRDB, TT_PRDB_VERBOSE)){
                         fprintf(TFile, 
-                            "      it can share the partition graph node 
-                            with BB_%d.\n", 
-                            BB_id(ec));    
+                            "      it can share the partition graph node "
+                            "with BB_%d.\n", BB_id(ec));    
                     }
                     break;
                 }
@@ -2992,7 +2991,7 @@ BOOL PRDB_Valid()
 }
 
 void 
-PARTITION::Print(FILE* file = stderr)
+PARTITION::Print(FILE* file)
 {
     fprintf(file, "  === partition ===\n");
     fprintf(file, "   = its parent is : %d \n", _parent -> Index());
@@ -3005,7 +3004,7 @@ PARTITION::Print(FILE* file = stderr)
     fprintf(file, "\n");
 }
 void
-PARTITION_GRAPH_NODE::Print(FILE* file = stderr)
+PARTITION_GRAPH_NODE::Print(FILE* file)
 {
     fprintf(file, " PARTITION GRAPH NODE : %d \n", _index);
     fprintf(file, "  = its level is %d \n", _level);
@@ -3057,7 +3056,7 @@ PARTITION_GRAPH_NODE::Print(FILE* file = stderr)
 
 
 void
-PARTITION_GRAPH::Print(FILE* file = stderr)
+PARTITION_GRAPH::Print(FILE* file)
 {
     fprintf(file, "======== included nodes of the graph\n");
     PG_CONTAINER::iterator iter;

@@ -59,7 +59,7 @@
 
 #define USE_STANDARD_TYPES
 #include <sys/types.h>
-#include <map.h>
+#include <map>
 #include "defs.h"
 #include "mempool.h"
 #include "errors.h"

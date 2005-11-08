@@ -139,7 +139,7 @@ Initialize_New_Recursive_Type (TY_IDX ty_idx);
 void
 Finalize_New_Recursive_Type ();
 
-typedef vector<TY_IDX> TY_IDX_VEC;
+typedef std::vector<TY_IDX> TY_IDX_VEC;
 
 extern void
 Find_Matching_Ty (const TY& ty, TY_IDX_VEC& matched_list);

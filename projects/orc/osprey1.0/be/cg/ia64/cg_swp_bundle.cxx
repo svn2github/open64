@@ -278,7 +278,7 @@ SWP_Min_Slot_Count(SWP_OP_vector         &op_state,
 } // SWP_Min_Slot_Count
 
 
-static pair<bool, ISA_EXEC_UNIT_PROPERTY>
+static std::pair<bool, ISA_EXEC_UNIT_PROPERTY>
 SWP_Noop_Property(CG_GROUPING &grouping, 
 		  TI_BUNDLE   *bundle,
 		  INT32        slot_pos,
@@ -324,7 +324,7 @@ SWP_Noop_Property(CG_GROUPING &grouping,
     found_prop = TI_BUNDLE_Slot_Available(bundle, prop, slot_pos);
   }
 
-  return pair<bool, ISA_EXEC_UNIT_PROPERTY>(found_prop, prop);
+  return std::pair<bool, ISA_EXEC_UNIT_PROPERTY>(found_prop, prop);
 } // SWP_Noop_Property
 
 
@@ -384,7 +384,7 @@ SWP_Append_Noop(SWP_OP_vector &op_state,
     // a next operation (next_op_idx), so now we try to choose one based on
     // resource usage.
     //
-    const pair<bool, ISA_EXEC_UNIT_PROPERTY> prop = 
+    const std::pair<bool, ISA_EXEC_UNIT_PROPERTY> prop = 
       SWP_Noop_Property(grouping, bundle, slot_pos,
 			next_op_idx == SWP_INVALID_OP_IDX && slot_pos > 0);
 
@@ -776,7 +776,7 @@ struct OP_PARTIAL_BACKUP{
 };
 
 void SWP_Delete_Noop(SWP_OP_vector &op_state, 
-                 vector<INT>    &exist_noops)
+                 std::vector<INT>    &exist_noops)
 {
 
   for (INT i=0; i<exist_noops.size(); i++){
@@ -841,7 +841,7 @@ BOOL SWP_Slot_Helper(SWP_OP_vector &op_state,
 // nothing has ever happened.
 {
 
-  vector<INT> bundled_ops, exist_noops;
+  std::vector<INT> bundled_ops, exist_noops;
   INT slot_yardstick = op_state[prev_op_idx].slot;
   INT32_LIST backup_ops_list = ops_list;
 
@@ -851,7 +851,7 @@ BOOL SWP_Slot_Helper(SWP_OP_vector &op_state,
   // Initialize OP_Partial_Backup which is used to back up the <prev> and <next> 
   // of SPLIT op's 
 
-  vector<OP_PARTIAL_BACKUP>  OP_Partial_Backup(op_state.size());
+  std::vector<OP_PARTIAL_BACKUP>  OP_Partial_Backup(op_state.size());
   for (INT i=0; i<OP_Partial_Backup.size(); i++) {
       OP_Partial_Backup[i].prev=OP_Partial_Backup[i].next=NULL;
       OP_Partial_Backup[i].valid=FALSE;
@@ -947,7 +947,9 @@ BOOL SWP_Slot_Helper(SWP_OP_vector &op_state,
         
         // reset op'bb because it will insert some noop instructions;
         OP *tmp; 
-        if (OP_bb(op))  FOR_ALL_OPS_OPs(&ops, tmp) {OP_bb(tmp) = OP_bb(op);}
+        if (OP_bb(op))
+	  FOR_ALL_OPS_OPs(&ops, tmp)
+	    tmp->bb = OP_bb(op);
       }
   }
 
@@ -961,8 +963,8 @@ BOOL SWP_Slot_Helper(SWP_OP_vector &op_state,
     // Restore the <prev> & <next> of each op
     for (INT i = 0; i < OP_Partial_Backup.size(); i++) { 
         if (OP_Partial_Backup[i].valid) {
-          OP_prev(op_state[i].op) = OP_Partial_Backup[i].prev;
-          OP_next(op_state[i].op) = OP_Partial_Backup[i].next;
+          op_state[i].op->prev = OP_Partial_Backup[i].prev;
+          op_state[i].op->next = OP_Partial_Backup[i].next;
         }
     }
 
@@ -980,8 +982,8 @@ BOOL SWP_Slot_Helper(SWP_OP_vector &op_state,
     for (INT i = 0; i < OP_Partial_Backup.size(); i++) { 
         if (OP_Partial_Backup[i].valid) {
 
-          OP_prev(op_state[i].op) = OP_Partial_Backup[i].prev;
-          OP_next(op_state[i].op) = OP_Partial_Backup[i].next;
+          op_state[i].op->prev = OP_Partial_Backup[i].prev;
+          op_state[i].op->next = OP_Partial_Backup[i].next;
         }
     }
 

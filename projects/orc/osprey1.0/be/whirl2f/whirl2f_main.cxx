@@ -43,7 +43,7 @@
 #include <unistd.h>		    /* for execv() */
 #include <string.h>		    /* for strcpy(),etc. */
 #include <limits.h>		    /* for PATH_MAX */
-#include <errno.h>		    /* for errno, sys_errlist[] */
+#include <errno.h>
 #include <cmplrs/rcodes.h>
 #include "defs.h"
 
@@ -148,8 +148,8 @@ Usage (char *progname)
 } /* Usage */
 
 
-void
-main (INT argc,       /* Number of command line arguments */
+int
+main (int argc,       /* Number of command line arguments */
       char *argv[],   /* Array of command line arguments */
       char *envp[])   /* Array of environment poINTers */
 {
@@ -260,6 +260,6 @@ main (INT argc,       /* Number of command line arguments */
     strcat (path, "/whirl2f_be");
     execv (path, new_argv);
     fprintf (stderr, "%s: fail to execute %s: %s.\n", argv[0], path,
-	     sys_errlist[errno]);
-    exit(RC_SYSTEM_ERROR);
+	     strerror(errno));
+    return RC_SYSTEM_ERROR;
 } /* main */

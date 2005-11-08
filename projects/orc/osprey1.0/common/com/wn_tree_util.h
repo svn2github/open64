@@ -160,6 +160,9 @@ enum TRAV_ORDER {
 // ======================================================================
 
 template <class WHIRL>
+bool operator==(WHIRL, WHIRL);
+
+template <class WHIRL>
 class WN_TREE_ITER_base
 {
 

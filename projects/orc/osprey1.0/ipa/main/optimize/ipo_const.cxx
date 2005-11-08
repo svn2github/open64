@@ -1129,7 +1129,7 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 static UINT32
 Compute_param_count (INT kid, const VALUE_DYN_ARRAY& cprop_annot)
 {
-    INT last = min (kid, cprop_annot.Lastidx () + 1);
+    INT last = MIN(kid, cprop_annot.Lastidx () + 1);
 
     for (INT i = 0; i < last; ++i) {
 	if (cprop_annot[i].Is_remove_param())

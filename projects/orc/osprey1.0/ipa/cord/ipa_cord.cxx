@@ -41,11 +41,11 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <vector.h>
-#include <algo.h>
-#include <stack.h>
-#include <map.h>
-#include <tree.h>
+#include <vector>
+#include <queue>
+#include <algorithm>
+#include <stack>
+#include <map>
 #include "obj_info.h"
 #include "lib_phase_dir.h"
 
@@ -81,7 +81,8 @@ struct PROC {
 
 
 // ordering for procedure layout
-struct less<PROC> {
+namespace std {
+template<> struct less<PROC> {
   bool operator()(const PROC *p1, const PROC *p2) {
     char *name1 = p1->base == NULL ? p1->name : p1->base->name;
     char *name2 = p2->base == NULL ? p2->name : p2->base->name;
@@ -95,7 +96,7 @@ struct less<PROC> {
     return p1->offset < p2->offset;
   }
 };
-
+}
 
 // ordering for source order layout
 template <class PROC>
@@ -116,16 +117,17 @@ struct CALL {
 
 
 // order the call-graph edge with frequency
-struct less<CALL> {
+namespace std {
+template<> struct less<CALL> {
   bool operator()(const CALL &c1, const CALL &c2) {
     return (c1.freq < c2.freq);
   }
 };
+}
 
-
-typedef pair<PROC *, PROC *> map_key;
-typedef map< map_key, int> CG;
-typedef map<const char *, PROC *, ltstr> PROCTAB;
+typedef std::pair<PROC *, PROC *> map_key;
+typedef std::map< map_key, int> CG;
+typedef std::map<const char *, PROC *, ltstr> PROCTAB;
 
 // Returns true if path refers to an ordinary file.
 bool file_exists(const char* path)
@@ -138,7 +140,7 @@ bool file_exists(const char* path)
 }                                                             
 // compress the relative layout into absolute layout
 // to the base.
-struct compress_path : public unary_function<PROC *, void>
+struct compress_path : public std::unary_function<PROC *, void>
 {
   void operator() (PROC *x) { 
     PROC *base = x;  
@@ -179,15 +181,15 @@ void read_call_graph(const char *cgraph,
     
     PROC *p1 = new PROC(caller);
     PROC *p2 = new PROC(callee);
-    procedures.insert(pair<const char *, PROC *>(p1->name, p1));
-    procedures.insert(pair<const char *, PROC *>(p2->name, p2));
+    procedures.insert(std::pair<const char *, PROC *>(p1->name, p1));
+    procedures.insert(std::pair<const char *, PROC *>(p2->name, p2));
 
     map_key key(procedures[caller], procedures[callee]);
     CG::iterator it = cg.find(key);
     if (it != cg.end()) {
       (*it).second += freq;
     } else 
-      cg.insert(pair<map_key,int>(key, freq));
+      cg.insert(std::pair<map_key,int>(key, freq));
   }
   fclose(in1);
 }
@@ -203,7 +205,7 @@ void process_object_file (File_Info &fi, Shdr *tag, PROCTAB &procedures)
 {
   Proc_Iter<Shdr> it(fi.begin(tag));
 
-  for (it = fi.begin(tag); it != fi.end(tag); ++it) {
+  for (it = fi.begin(tag); !(it == fi.end(tag)); ++it) {
     char *p = (*it).first;
     int  size = (*it).second;
     bool updated = false;
@@ -330,7 +332,7 @@ bool layout(PROC *p1, PROC *p2, int freq, int retry_count)
 
 // emit lkcord file readable by ld -orderspec
 //
-void emit_lkcord(const char *outfile, vector<PROC*> &proc_layout, vector<PROC*> &src_order_layout)
+void emit_lkcord(const char *outfile, std::vector<PROC*> &proc_layout, std::vector<PROC*> &src_order_layout)
 {
   FILE *out;
   FILE *previous;
@@ -381,7 +383,7 @@ void emit_lkcord(const char *outfile, vector<PROC*> &proc_layout, vector<PROC*> 
   while (fgets(buffer, LEN, previous)) 
 	fputs(buffer, out);
 
-  vector<PROC *>::iterator q;
+  std::vector<PROC *>::iterator q;
   for (q = proc_layout.begin(); q != proc_layout.end(); q++) {
     PROC *proc = *q;
     if (debug)
@@ -433,7 +435,7 @@ main(int argc, char *argv[])
 
   CG cg;
   PROCTAB procedures;
-  priority_queue<CALL> Q;
+  std::priority_queue<CALL> Q;
 
   read_call_graph(cgraph, procedures, cg);
 
@@ -473,7 +475,7 @@ main(int argc, char *argv[])
 
   // generate lkcord order vector by sorting the offsets relative to
   // the base procedure
-  vector<PROC *> proc_layout, src_order_layout;
+  std::vector<PROC *> proc_layout, src_order_layout;
   PROCTAB::iterator p;
   for (p = procedures.begin(); p != procedures.end(); p++) {
     PROC *proc = (*p).second;
@@ -484,7 +486,7 @@ main(int argc, char *argv[])
       src_order_layout.push_back(proc);
     }
   }
-  sort(proc_layout.begin(), proc_layout.end(),  less<PROC>());
+  sort(proc_layout.begin(), proc_layout.end(), std::less<PROC>());
   sort(src_order_layout.begin(), src_order_layout.end(),  less_src_order<PROC>());
 
   // emit lkcord file readable by ld -orderspec 

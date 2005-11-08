@@ -43,6 +43,13 @@
 //=============================================================================
 //=============================================================================
 
+#include <list>
+#include <map>
+#include <set>
+#include <utility>
+#include <vector>
+#include <unistd.h>
+
 #include "region.h"
 #include "region_bb_util.h"
 #include "speculation.h"
@@ -50,7 +57,6 @@
 #include "label_util.h"
 #include "gra_live.h"
 #include "op.h"
-#include "map.h"
 #include "vt_region.h"
 #include "defs.h"
 #include "cg_flags.h"
@@ -60,11 +66,10 @@
 #include "cgtarget.h"
 #include "ipfec_options.h"
 #include "whirl2ops.h"
-#include <unistd.h>
 
 typedef mempool_allocator<TN*> TN_ALLOC; 
 typedef mempool_allocator<OP*> OP_ALLOC;    
-vector<OP*, OP_ALLOC>  chk_vector;
+std::vector<OP*, OP_ALLOC>  chk_vector;
 
 //=============================================================================
 //Function:  Match_Chk_Ld
@@ -139,7 +144,7 @@ Get_Recovery_BB(OP* chk)
 //                    Predicate register   
 //============================================================================= 
 inline void
-Collect_Results(set<TN*, compare_tn, TN_ALLOC>& result_set, OP* op)
+Collect_Results(std::set<TN*, compare_tn, TN_ALLOC>& result_set, OP* op)
 {
     for(INT i = 0; i < OP_results(op); i++){
         TN* result = OP_result(op, i);
@@ -227,14 +232,14 @@ BB* Divide_BB(BB *bb, OP *point)
 static BOOL
 Find_Path_in_Region(REGIONAL_CFG_NODE* from, 
                     REGIONAL_CFG_NODE* to, 
-                    vector<REGIONAL_CFG_NODE *>& path, 
-                    vector<REGIONAL_CFG_NODE *>& visited)
+                    std::vector<REGIONAL_CFG_NODE *>& path, 
+                    std::vector<REGIONAL_CFG_NODE *>& visited)
 {
     Is_True(to != NULL,("to node is NULL."));
 
     if(from == NULL)  
         return FALSE;
-    for(vector<REGIONAL_CFG_NODE *>::iterator iter = visited.begin(); iter != visited.end(); iter++){
+    for(std::vector<REGIONAL_CFG_NODE *>::iterator iter = visited.begin(); iter != visited.end(); iter++){
         if(from == *iter) 
             return FALSE;
     }
@@ -269,7 +274,7 @@ Find_Path_in_Region(REGIONAL_CFG_NODE* from,
 //    - Push all ops on the bb path into a op list. 
 //============================================================================= 
  
-static list<OP *>
+static std::list<OP *>
 Find_Execution_Path(OP *from, OP *to)
 {
     Is_True(CGTARG_Is_OP_Speculative(from), ("op is not a speculative ld!"));
@@ -278,8 +283,8 @@ Find_Execution_Path(OP *from, OP *to)
         
     REGIONAL_CFG_NODE* from_node = Regional_Cfg_Node(OP_bb(from));
     REGIONAL_CFG_NODE* to_node   = Regional_Cfg_Node(OP_bb(to));
-    vector<REGIONAL_CFG_NODE *>  regional_cfg_path;
-    vector<REGIONAL_CFG_NODE *>  visited_node;
+    std::vector<REGIONAL_CFG_NODE *>  regional_cfg_path;
+    std::vector<REGIONAL_CFG_NODE *>  visited_node;
 
     if( from_node == to_node ){
         regional_cfg_path.push_back(from_node);
@@ -288,8 +293,8 @@ Find_Execution_Path(OP *from, OP *to)
             FmtAssert(FALSE,("Can not find a regional cfg path!"));
     }
     
-    list<OP *>  OP_path;
-    for(vector<REGIONAL_CFG_NODE *>::reverse_iterator iter = regional_cfg_path.rbegin(); iter != regional_cfg_path.rend(); iter++){
+    std::list<OP *>  OP_path;
+    for(std::vector<REGIONAL_CFG_NODE *>::reverse_iterator iter = regional_cfg_path.rbegin(); iter != regional_cfg_path.rend(); iter++){
         if ((*iter)->Is_Region()) continue;
         BB* bb = (*iter)->BB_Node();
         if(BB_length(bb) == 0)   continue;
@@ -308,9 +313,9 @@ Find_Execution_Path(OP *from, OP *to)
 
 
 static inline BOOL
-In_OP_Vector(vector<OP*, OP_ALLOC>& opv, OP* op)
+In_OP_Vector(std::vector<OP*, OP_ALLOC>& opv, OP* op)
 {
-    for(vector<OP*, OP_ALLOC>::iterator iter = opv.begin(); iter != opv.end(); iter++){
+    for(std::vector<OP*, OP_ALLOC>::iterator iter = opv.begin(); iter != opv.end(); iter++){
         if(op == *iter){
             return TRUE;
         }
@@ -335,7 +340,7 @@ In_OP_Vector(vector<OP*, OP_ALLOC>& opv, OP* op)
 //============================================================================= 
 
 static BB *
-Do_Build_Recovery_Block(list<OP*>& Exec_Path)
+Do_Build_Recovery_Block(std::list<OP*>& Exec_Path)
 {
          
     OP* spec_ld = Exec_Path.front();
@@ -351,18 +356,18 @@ Do_Build_Recovery_Block(list<OP*>& Exec_Path)
     Exec_Path.pop_front();
     Exec_Path.pop_back();
 
-    vector<OP*, OP_ALLOC>  candidate_ops;
-    vector<OP*, OP_ALLOC>  cascaded_ops;
-    vector<OP*, OP_ALLOC>  cascaded_loads;
+    std::vector<OP*, OP_ALLOC>  candidate_ops;
+    std::vector<OP*, OP_ALLOC>  cascaded_ops;
+    std::vector<OP*, OP_ALLOC>  cascaded_loads;
   
-    set<TN*, compare_tn, TN_ALLOC> speculative_chain_def;
-    set<TN*, compare_tn, TN_ALLOC> cascaded_chain_def;
+    std::set<TN*, compare_tn, TN_ALLOC> speculative_chain_def;
+    std::set<TN*, compare_tn, TN_ALLOC> cascaded_chain_def;
 
     Collect_Results(speculative_chain_def, spec_ld);
     
     //==== Identify Flow Dependence Instructions On Speculative Chain ====//
     
-    for(list<OP*, OP_ALLOC>::iterator iter = Exec_Path.begin(); iter != Exec_Path.end(); iter++){
+    for(std::list<OP*, OP_ALLOC>::iterator iter = Exec_Path.begin(); iter != Exec_Path.end(); iter++){
         OP* op = *iter;
         BOOL on_cascaded_chain = FALSE;
         BOOL on_speculative_chain = FALSE;
@@ -433,7 +438,7 @@ Do_Build_Recovery_Block(list<OP*>& Exec_Path)
     }
 
     if(CGTARG_Is_OP_Speculative_Load(spec_ld)){
-        for(set<TN*>::iterator iter = speculative_chain_def.begin(); iter != speculative_chain_def.end(); iter++){
+        for(std::set<TN*>::iterator iter = speculative_chain_def.begin(); iter != speculative_chain_def.end(); iter++){
             TN* tn = *iter;
             Set_TN_is_take_nat(tn);
         }
@@ -441,7 +446,7 @@ Do_Build_Recovery_Block(list<OP*>& Exec_Path)
    
     //==== Identify Output Dependence Instructions On Speculative Chain ====//
 
-    for(list<OP*, OP_ALLOC>::iterator iter = Exec_Path.begin(); iter != Exec_Path.end(); iter++){
+    for(std::list<OP*, OP_ALLOC>::iterator iter = Exec_Path.begin(); iter != Exec_Path.end(); iter++){
         OP* op = *iter;
         BOOL is_candidate = FALSE;
         if(In_OP_Vector(candidate_ops,op)){
@@ -488,9 +493,9 @@ Do_Build_Recovery_Block(list<OP*>& Exec_Path)
     Reset_OP_speculative (recovery_op);
     BB_Append_Op (recovery_bb, recovery_op);
  
-    for(list<OP*>::iterator exec_path_iter = Exec_Path.begin(); exec_path_iter != Exec_Path.end(); exec_path_iter++){
+    for(std::list<OP*>::iterator exec_path_iter = Exec_Path.begin(); exec_path_iter != Exec_Path.end(); exec_path_iter++){
         OP* op = *exec_path_iter;
-        for(vector<OP*>::iterator cand_iter = candidate_ops.begin(); cand_iter != candidate_ops.end(); cand_iter++){
+        for(std::vector<OP*, OP_ALLOC>::iterator cand_iter = candidate_ops.begin(); cand_iter != candidate_ops.end(); cand_iter++){
             if(op == *cand_iter){
                 for(INT i=0; i < OP_results(op); i++){
                     TN *result_tn = OP_result(op,i);
@@ -515,7 +520,7 @@ Do_Build_Recovery_Block(list<OP*>& Exec_Path)
         return  recovery_bb;
 
     // spec_ld == ld.a or ld.sa
-    for(vector<OP *>::iterator iter = cascaded_loads.begin(); iter != cascaded_loads.end(); iter++){        
+    for(std::vector<OP *, OP_ALLOC>::iterator iter = cascaded_loads.begin(); iter != cascaded_loads.end(); iter++){        
         OP *op = *iter;               
         if( CGTARG_Is_OP_Speculative_Load(op) &&  CGTARG_Is_OP_Advanced_Load(op) ){  // ld.sa
             TN *reg_tn = OP_result(op, 0);
@@ -552,14 +557,14 @@ static void
 Build_Recovery_Block()
 {
 
-    vector< pair<OP*,OP*> >::iterator iter;
+    std::vector< std::pair<OP*,OP*> >::iterator iter;
     for(iter = load_chk_pairs.begin(); iter != load_chk_pairs.end(); ++iter){
 
         OP* load_op = iter->first;
         OP* chk_op  = iter->second;
         Is_True(Match_Chk_Ld(chk_op,load_op),("chk and spec_ld do not match!"));
 
-        list<OP *> OP_exec_path = Find_Execution_Path(load_op, chk_op); 
+	std::list<OP *> OP_exec_path = Find_Execution_Path(load_op, chk_op); 
         BB *recovery_bb = Do_Build_Recovery_Block(OP_exec_path);
         if( recovery_bb ){
             Set_BB_recovery(recovery_bb);
@@ -585,7 +590,7 @@ Update_CFG()
 {
     INT16 count = 0;
 
-    vector<OP*>::iterator iter;
+    std::vector<OP*, OP_ALLOC>::iterator iter;
     for(iter = chk_vector.begin(); iter != chk_vector.end(); iter++){
         
         OP *chk_op = *iter;

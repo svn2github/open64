@@ -52,7 +52,7 @@
 #include "targ_issue_port.h" /* for TSI_Issue_Ports */
 
 /* STL template */
-#include <vector.h> 
+#include <vector> 
 
 #include "tracing.h"
 #include "bb.h"

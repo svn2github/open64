@@ -99,7 +99,7 @@ static char * Dependence_Color (CG_DEP_KIND kind)
 
 
 typedef mempool_allocator<void *>   VOID_ALLOC;
-typedef vector<void *, VOID_ALLOC>  VOID_CONTAINER;
+typedef std::vector<void *, VOID_ALLOC>  VOID_CONTAINER;
 
 /* ====================================================================
  *
@@ -164,7 +164,7 @@ typedef struct dag_op_info {
 }DAG_OP_INFO;
 
 typedef mempool_allocator<DAG_OP_INFO>          DAG_OP_INFO_ALLOC;
-typedef vector<DAG_OP_INFO,DAG_OP_INFO_ALLOC>   DAG_OP_INFO_VECTOR;
+typedef std::vector<DAG_OP_INFO,DAG_OP_INFO_ALLOC>   DAG_OP_INFO_VECTOR;
 
 
 /* ====================================================================
@@ -188,7 +188,7 @@ typedef struct dag_dep_info {
 }DAG_DEP_INFO;
 
 typedef mempool_allocator<DAG_DEP_INFO>             DAG_DEP_INFO_ALLOC;
-typedef vector<DAG_DEP_INFO,DAG_DEP_INFO_ALLOC>     DAG_DEP_INFO_VECTOR;
+typedef std::vector<DAG_DEP_INFO,DAG_DEP_INFO_ALLOC>     DAG_DEP_INFO_VECTOR;
 
 
 /* ====================================================================
@@ -585,7 +585,7 @@ Regioanl_DAG_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
  *
  * ====================================================================
  */
-void draw_bb_dependence_graph(BB *bb,const char *mes = NULL)
+void draw_bb_dependence_graph(BB *bb,const char *mes)
 {
     if (! DaVinci::enabled(TRUE)) return;
 
@@ -728,7 +728,7 @@ void draw_bb_dependence_graph(BB *bb,const char *mes = NULL)
  *
  * ====================================================================
  */
-void draw_regional_dependence_graph(REGION *r,const char *mes = NULL)
+void draw_regional_dependence_graph(REGION *r,const char *mes)
 {
     if (! DaVinci::enabled(TRUE)) return;
 

@@ -44,8 +44,9 @@
 //
 //*********************************************************************
 
-#include <set.h>
-#include <hash_map.h>
+#include <set>
+#include <utility>
+#include <ext/hash_map>
 #include "defs.h"
 #include "tracing.h"
 #include "cgtarget.h"
@@ -57,7 +58,6 @@
 #include "dag.h"
 #include "prdb.h"
 #include "region_bb_util.h"
-#include "pair.h"
 #include "op_targ.h"
 
 
@@ -744,7 +744,7 @@ DAG_BUILDER::Find_Ancestor_BB (BB * bb, BB_VECTOR *bbv) {
     bbv->clear ();
 
     typedef mempool_allocator<REGIONAL_CFG_NODE *>  Node_ALLOC;
-    typedef list<REGIONAL_CFG_NODE*,Node_ALLOC>    NODE_LIST;
+    typedef std::list<REGIONAL_CFG_NODE*,Node_ALLOC>    NODE_LIST;
     typedef NODE_LIST::iterator                    NODE_LIST_ITER;
 
     NODE_LIST nodes (&_mem_pool) ;
@@ -814,7 +814,7 @@ DAG_BUILDER::Find_Successor_BB (BB * bb, BB_VECTOR *bbv) {
     bbv->clear ();
 
     typedef mempool_allocator<REGIONAL_CFG_NODE *>  Node_ALLOC;
-    typedef list<REGIONAL_CFG_NODE*,Node_ALLOC>    NODE_LIST;
+    typedef std::list<REGIONAL_CFG_NODE*,Node_ALLOC>    NODE_LIST;
     typedef NODE_LIST::iterator                    NODE_LIST_ITER;
 
     NODE_LIST nodes (&_mem_pool) ;
@@ -1024,11 +1024,11 @@ DAG_BUILDER::DAG_BUILDER(REGION* region,
       _num_cntl_spec_arcs( 0 ),
       _bb ( NULL ),
       _region( region ),
-      _bb_ops_map(100, ptr_hash<BB*>(), equal_to<BB*>(),
+      _bb_ops_map(100, ptr_hash<BB*>(), std::equal_to<BB*>(),
                        BB_OPs_ALLOC(&_mem_pool)),
-      _bb_def_info_map(100, ptr_hash<BB*>(), equal_to<BB*>(),
+      _bb_def_info_map(100, ptr_hash<BB*>(), std::equal_to<BB*>(),
                        BB_DEF_USE_ALLOC(&_mem_pool)),
-      _bb_use_info_map(100, ptr_hash<BB*>(), equal_to<BB*>(),
+      _bb_use_info_map(100, ptr_hash<BB*>(), std::equal_to<BB*>(),
                        BB_DEF_USE_ALLOC(&_mem_pool))
 {
   Invoke_Init_Routines();

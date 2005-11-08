@@ -354,7 +354,7 @@ SWP_RETURN_CODE Detect_SWP_Constraints(CG_LOOP &cl, bool trace)
 static void
 Prune_Regout_Deps(BB *body, TN_SET *non_rotating)
 {
-  vector<ARC*> arcs_to_delete;
+  std::vector<ARC*> arcs_to_delete;
   OP *op;
   FOR_ALL_BB_OPs(body, op) {
     if (_CG_DEP_op_info(op)) {

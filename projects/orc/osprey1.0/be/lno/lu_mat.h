@@ -263,6 +263,7 @@ class LU_MAT {
   INT			Cfactor(T*, INT) const;	// factor column, given pivot
   BOOL			Cfactor_And_Insert(T*, BOOL);	// overwrites first p.
   LU_MAT<T>&		operator =(const LU_MAT<T>&);
+  MEM_POOL *		pool() const { return _pool; };
 
  private:
 
@@ -344,8 +345,8 @@ LU_MAT<T>::LU_MAT(const LU_MAT<T>& a, MEM_POOL* pool) :
 
 template<class T>
 LU_MAT<T>::LU_MAT(const LU_MAT<T>& a) :
-        _pool(a.pool),
-        _lu(0,0,pool),
+        _pool(a.pool()),
+        _lu(0,0,_pool),
         _interch(NULL),
         _cpvt(NULL),
         _interch_sz(0),

@@ -46,10 +46,10 @@
 
     /* Using STL template 
      */
-#include <slist.h> 
-#include <list.h>
-#include <vector.h> 
-#include <map.h>
+#include <ext/slist> 
+#include <list>
+#include <vector> 
+#include <map>
 
     /* memory management 
      */

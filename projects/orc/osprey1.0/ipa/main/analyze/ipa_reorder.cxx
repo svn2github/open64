@@ -58,16 +58,15 @@
 #include "mempool.h"    // for Malloc_Mem_Pool 's definition
 #include "ipa_cg.h"     //for IPA_NODE, IPA_NODE_ITER
 #include "ipa_reorder.h"
-#include "algo.h"       //for sorting a list
 #include "ir_reader.h"  //fdump_tree() for IPO_Modify_WN_for_field_reorder()
 
-typedef hash_map<mUINT32,CAND_ITEM*> TY_TO_CAND_MAP;
+typedef __gnu_cxx::hash_map<mUINT32,CAND_ITEM*> TY_TO_CAND_MAP;
 struct PTR_AND_TY
 {
     mUINT32 ty_index;
     mUINT32 pt_index;
 };
-typedef vector<struct PTR_AND_TY> PTR_AND_TY_VECTOR;
+typedef std::vector<struct PTR_AND_TY> PTR_AND_TY_VECTOR;
 extern TY_TO_CAND_MAP Ty_to_cand_map; //used by WN's modification
 
 REORDER_CAND reorder_candidate; //identical in size with can_be_reorder_types
@@ -81,7 +80,7 @@ PTR_AND_TY_VECTOR *Ptr_and_ty_vector;
 
 MERGED_ACCESS_VECTOR *merged_access;
 MEM_POOL  reorder_local_pool;
-typedef hash_map<mUINT32,MERGED_ACCESS*> TY_TO_ACCESS_MAP;
+typedef __gnu_cxx::hash_map<mUINT32,MERGED_ACCESS*> TY_TO_ACCESS_MAP;
 TY_TO_ACCESS_MAP *ty_to_access_map; //for Record_struct_access in template.h
 BOOL* visited;
 inline TY_IDX
@@ -106,7 +105,7 @@ void Init_merge_access()
 {
   MEM_POOL_Initialize(&reorder_local_pool,"reorder_pool",TRUE);
   MEM_POOL_Push (&reorder_local_pool);
-  merged_access=CXX_NEW(vector< MERGED_ACCESS*>,&reorder_local_pool);
+  merged_access=CXX_NEW(std::vector< MERGED_ACCESS*>,&reorder_local_pool);
   ty_to_access_map=CXX_NEW(TY_TO_ACCESS_MAP(),&reorder_local_pool);
   Ptr_and_ty_vector=CXX_NEW(PTR_AND_TY_VECTOR(),&reorder_local_pool);
   reorder_candidate.size=0; /*initialize it*/
@@ -164,7 +163,7 @@ void Merge_struct_access(SUMMARY_STRUCT_ACCESS *cur_summary, mUINT32 index)
             sizeof(mUINT64)*flatten_flds,TRUE,NULL);
 
         merged_access->push_back(cur_access);
-        ty_to_access_map->insert(make_pair(index,cur_access));
+        ty_to_access_map->insert(std::make_pair(index,cur_access));
 
     }
        FmtAssert(index==cur_access->ty_index,
@@ -211,7 +210,7 @@ struct TOP_FIELD_INFO{
     TY_SIZE size; //size of this field
 }; //just for top field , used for creating new ordering 
 
-typedef list<TOP_FIELD_INFO> TOP_FLD_LIST; //top field to field_id
+typedef std::list<TOP_FIELD_INFO> TOP_FLD_LIST; //top field to field_id
 struct TOP_FLD_DESC{
     TY_SIZE size;
     TOP_FLD_LIST list;
@@ -642,7 +641,7 @@ private:
     FIELD_ID _field_id;
     INDEX _ty_index;
     FLD_ACCESS* _this_map;
-    typedef list<FLD_ACCESS> MAP_LIST;
+    typedef std::list<FLD_ACCESS> MAP_LIST;
     MAP_LIST _map_list;
     MEM_POOL *_m;
     //assist function
@@ -965,13 +964,13 @@ void IPO_get_new_ordering()
         } //check if changed, new ordering!
         if( p_cand->flag.changed){
             cur_struct=p_cand->ty_index;
-            Ty_to_cand_map.insert(make_pair(cur_struct,p_cand));
+            Ty_to_cand_map.insert(std::make_pair(cur_struct,p_cand));
             //insert all pointer_types
             for(ptr_iter=Ptr_and_ty_vector->begin();
                 ptr_iter!=Ptr_and_ty_vector->end();
                 ptr_iter++){
                 if(ptr_iter->pt_index==cur_struct){
-                    Ty_to_cand_map.insert(make_pair(ptr_iter->ty_index,p_cand));
+                    Ty_to_cand_map.insert(std::make_pair(ptr_iter->ty_index,p_cand));
                     if(Trace_it)
                        fprintf(TFile,"ADD TO Ptr_and_ty_vector:<%d,%d>\n",
                              (*ptr_iter).ty_index,(*ptr_iter).pt_index);

@@ -119,6 +119,7 @@
 #include <math.h>
 #include <stdarg.h>
 #include <set>
+#include <utility>
 
 #include "defs.h"
 #include "config.h"
@@ -4739,7 +4740,7 @@ void Compute_Rec_Res_Min_II(CG_LOOP &cl)
   //extern static void Prune_Regout_Deps(BB *body, TN_SET *non_rotating);
   CYCLIC_DEP_GRAPH cyclic_graph(body, limit_local_pool());
   {
-    vector<ARC*> arcs_to_delete;
+    std::vector<ARC*> arcs_to_delete;
     FOR_ALL_BB_OPs(body, op) {
        if (_CG_DEP_op_info(op)) {
           for (ARC_LIST *arcs = OP_succs(op); arcs; arcs = ARC_LIST_rest(arcs)) {
@@ -4839,7 +4840,7 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
     4 : 0;
 
   const bool swp_trace = Get_Trace(TP_SWPIPE, 2);
-  vector<double> swp_cycles(SWP_Options.Max_Unroll_Times+1, 0.0);
+  std::vector<double> swp_cycles(SWP_Options.Max_Unroll_Times+1, 0.0);
   INT i;
   for (i = min_unr; i <= max_unr; i++) {
     swp_cycles[i] = CG_SCHED_EST_Resource_Cycles(loop_se) * (1.0 / i);
@@ -4891,7 +4892,7 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
     for (INT i = 0; i < num_prefetches; i++)
       CG_SCHED_EST_Subtract_Op_Resources(loop_se2, TOP_adds);
 
-    vector<double> swp_cycles(SWP_Options.Max_Unroll_Times+1, 0.0);
+    std::vector<double> swp_cycles(SWP_Options.Max_Unroll_Times+1, 0.0);
     INT i;
     for (i = min_unr; i <= max_unr; i++) {
       swp_cycles[i] = CG_SCHED_EST_Resource_Cycles(loop_se2) * (1.0 / i);
@@ -4956,7 +4957,7 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
      computed = old_unroll_times / 2;
 
   if (CG_LOOP_res_min_ii >= 10)
-     unroll_times = MIN( unroll_times, MAX/(computed, 1));
+     unroll_times = MIN( unroll_times, MAX(computed, 1));
   }
 
   LOOP_DESCR *loop = Loop();
@@ -5235,8 +5236,8 @@ void Gen_Counted_Loop_Branch(CG_LOOP& cl)
 //
 void Fix_Backpatches(CG_LOOP& cl, bool trace)
 {
-  vector<pair<BB*, CG_LOOP_BACKPATCH *> > dead_bp;
-  set<TN*> epilog_tns;
+  std::vector<std::pair<BB*, CG_LOOP_BACKPATCH *> > dead_bp;
+  std::set<TN*> epilog_tns;
   BB *body = cl.Loop_header();
   BB *prolog = CG_LOOP_prolog;
   BB *epilog = CG_LOOP_epilog;
@@ -5244,7 +5245,7 @@ void Fix_Backpatches(CG_LOOP& cl, bool trace)
   for (bp = CG_LOOP_Backpatch_First(epilog, NULL); bp; bp = CG_LOOP_Backpatch_Next(bp)) {
     TN *body_tn = CG_LOOP_BACKPATCH_body_tn(bp);
     if (!GTN_SET_MemberP(BB_defreach_out(body), body_tn))
-      dead_bp.push_back(make_pair(epilog,bp));
+      dead_bp.push_back(std::make_pair(epilog,bp));
     else
       epilog_tns.insert(body_tn);
   }
@@ -5253,7 +5254,7 @@ void Fix_Backpatches(CG_LOOP& cl, bool trace)
     if (!GTN_SET_MemberP(BB_live_in(body), body_tn) &&
 	!(GTN_SET_MemberP(BB_defreach_out(body), body_tn) &&
 	  epilog_tns.find(body_tn) != epilog_tns.end()))
-      dead_bp.push_back(make_pair(prolog,bp));
+      dead_bp.push_back(std::make_pair(prolog,bp));
   }
   while (!dead_bp.empty()) {
     BB *bb = (*(dead_bp.end()-1)).first;
@@ -5271,7 +5272,7 @@ void Fix_Backpatches(CG_LOOP& cl, bool trace)
 
 // Perform loop optimizations for one loop
 //
-BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup,
+BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, std::vector<SWP_FIXUP>& fixup,
                       void **par_rgn=NULL,
                       void *rgn_loop_update=NULL)
 {
@@ -5411,7 +5412,7 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
       cg_loop.EBO_Before_Unrolling();  
 
       if (SWP_Options.Predicate_Promotion) {
-	list<BB*> bbl;
+        std::list<BB*> bbl;
 	bbl.push_front(cg_loop.Loop_header());
 	CG_DEP_Prune_Dependence_Arcs(bbl, TRUE, trace_loop_opt);
 	if (trace_loop_opt) 
@@ -5540,7 +5541,7 @@ extern void *Record_And_Del_Loop_Region(LOOP_DESCR *loop, void *tmp);
 
 #if 0
 	if (SWP_Options.Predicate_Promotion) {
-	  list<BB*> bbl;
+	  std::list<BB*> bbl;
 	  bbl.push_front(cg_loop.Loop_header());
 	  CG_DEP_Prune_Dependence_Arcs(bbl, TRUE, trace_loop_opt);
 	}

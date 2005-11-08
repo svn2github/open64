@@ -55,7 +55,8 @@
 
 #define INCLUDING_IN_REGISTER
 
-#include <vector.h>
+#include <vector>
+#include <utility>
 #include "defs.h"
 #include "errors.h"
 #include "tracing.h"
@@ -132,8 +133,8 @@ enum {
 static mUINT8 reg_alloc_status[ISA_REGISTER_CLASS_MAX + 1][REGISTER_MAX + 1];
 
 // list of registers that should not be allocated, both globally and locally.
-static vector< pair< ISA_REGISTER_CLASS, REGISTER> > dont_allocate_these_registers;
-static vector< pair< ISA_REGISTER_CLASS, REGISTER> > dont_allocate_these_registers_in_pu;
+static std::vector< std::pair< ISA_REGISTER_CLASS, REGISTER> > dont_allocate_these_registers;
+static std::vector< std::pair< ISA_REGISTER_CLASS, REGISTER> > dont_allocate_these_registers_in_pu;
 
 
 /* ====================================================================
@@ -521,7 +522,7 @@ REGISTER_Pu_Begin(void)
   }
 
   // now check for any registers that user doesn't want allocated
-  vector< pair< ISA_REGISTER_CLASS, REGISTER > >::iterator r;
+  std::vector< std::pair< ISA_REGISTER_CLASS, REGISTER > >::iterator r;
   for (r = dont_allocate_these_registers.begin(); 
 	r != dont_allocate_these_registers.end(); 
 	++r)
@@ -1100,7 +1101,7 @@ Set_Register_Never_Allocatable (char *regname)
 	reg = REGISTER_MIN + atoi(regname+1);
 	FmtAssert(reg <= REGISTER_CLASS_last_register(rclass),
 		("%s is not a valid register", regname));
-	dont_allocate_these_registers.push_back( make_pair( rclass, reg ));
+	dont_allocate_these_registers.push_back( std::make_pair( rclass, reg ));
 }
 
 // user wants given register to not be allocatable in file.
@@ -1110,6 +1111,6 @@ Set_Register_Never_Allocatable (PREG_NUM preg)
 	ISA_REGISTER_CLASS rclass;
 	REGISTER reg;
 	CGTARG_Preg_Register_And_Class(preg, &rclass, &reg);
-	dont_allocate_these_registers.push_back( make_pair( rclass, reg ));
+	dont_allocate_these_registers.push_back( std::make_pair( rclass, reg ));
 }
 

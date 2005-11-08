@@ -34,6 +34,7 @@
 #include "hb_tail_duplication.h"
 #include <stack>
 #include <vector>
+#include <queue>
 #include <list>
 #include "defs.h"
 #include "cxx_memory.h"
@@ -105,38 +106,38 @@ struct EDGE_PROF {
 //=============================================================================
 typedef EDGE_PROF<REGIONAL_CFG_NODE *>        NODE_PROF;
 typedef mempool_allocator<NODE_PROF>          PROF_ALLOC;
-typedef vector<NODE_PROF,PROF_ALLOC>          NODE_PROF_VECTOR;
+typedef std::vector<NODE_PROF,PROF_ALLOC>          NODE_PROF_VECTOR;
 typedef NODE_PROF_VECTOR::iterator            NODE_PROF_VECTOR_ITER;
 
 //=============================================================================
 //  Typedef to facilitate the global cycles iteration.
 //=============================================================================
 typedef mempool_allocator<GLOBAL_CYCLE>          GLOBAL_CYCLE_ALLOC;
-typedef vector<GLOBAL_CYCLE,GLOBAL_CYCLE_ALLOC>  GLOBAL_CYCLE_VECTOR;
+typedef std::vector<GLOBAL_CYCLE,GLOBAL_CYCLE_ALLOC>  GLOBAL_CYCLE_VECTOR;
 typedef GLOBAL_CYCLE_VECTOR::iterator            GLOBAL_CYCLE_VECTOR_ITER;
 
 extern GLOBAL_CYCLE_VECTOR global_cycles;
 
 typedef mempool_allocator<INT>                 INT_ALLOC;
-typedef vector<INT,INT_ALLOC>                  INT_VECTOR;
+typedef std::vector<INT,INT_ALLOC>                  INT_VECTOR;
 typedef mempool_allocator<REGIONAL_CFG_NODE*>  NODE_ALLOC;
-typedef vector<REGIONAL_CFG_NODE*,NODE_ALLOC>  NODE_VECTOR;
+typedef std::vector<REGIONAL_CFG_NODE*,NODE_ALLOC>  NODE_VECTOR;
 
 typedef mempool_allocator<REGION*>             REGION_ALLOC;
-typedef vector<REGION*,REGION_ALLOC>           REGION_VECTOR;
+typedef std::vector<REGION*,REGION_ALLOC>           REGION_VECTOR;
 typedef REGION_VECTOR::iterator                REGION_VECTOR_ITER;
 typedef REGION_VECTOR::const_iterator          RGN_VECTOR_CONST_ITER;
 
 typedef mempool_allocator<BB*>                 BB_ALLOC;
-typedef vector<BB*,BB_ALLOC>                   BB_VECTOR;
+typedef std::vector<BB*,BB_ALLOC>                   BB_VECTOR;
 typedef BB_VECTOR::iterator                    BB_VECTOR_ITER;
 typedef BB_VECTOR::const_iterator              BB_VECTOR_CONST_ITER;
 typedef mempool_allocator<REGIONAL_CFG_EDGE*>  EDGE_ALLOC;  
-typedef vector<REGIONAL_CFG_EDGE*,EDGE_ALLOC>  EDGE_VECTOR;
+typedef std::vector<REGIONAL_CFG_EDGE*,EDGE_ALLOC>  EDGE_VECTOR;
 typedef EDGE_VECTOR::iterator                  EDGE_VECTOR_ITER;
 typedef NODE_VECTOR::iterator                  NODE_VECTOR_ITER;
-typedef stack<REGIONAL_CFG_NODE*,NODE_VECTOR>  NODE_STACK;
-typedef stack<REGIONAL_CFG_EDGE*,EDGE_VECTOR>  EDGE_STACK;
+typedef std::stack<REGIONAL_CFG_NODE*,NODE_VECTOR>  NODE_STACK;
+typedef std::stack<REGIONAL_CFG_EDGE*,EDGE_VECTOR>  EDGE_STACK;
 
 //=============================================================================
 //  Region Types
@@ -1111,8 +1112,8 @@ protected:
 
 class  TOPOLOGICAL_REGIONAL_CFG_ITER : public TOPOLOGICAL_REGIONAL_CFG_ITER_MEM {
 
-typedef list<REGIONAL_CFG_NODE *,NODE_ALLOC>              NODE_LIST;
-typedef queue<REGIONAL_CFG_NODE *,NODE_LIST>              NODE_QUEUE;
+typedef std::list<REGIONAL_CFG_NODE *,NODE_ALLOC>              NODE_LIST;
+typedef std::queue<REGIONAL_CFG_NODE *,NODE_LIST>              NODE_QUEUE;
 
 private:    
     BS*                 _visited_s;
@@ -1169,8 +1170,8 @@ public:
 //============================================================================   
 class  REVERSE_TOPO_REGIONAL_CFG_ITER {
 
-typedef list<REGIONAL_CFG_NODE *,NODE_ALLOC>              NODE_LIST;
-typedef queue<REGIONAL_CFG_NODE *,NODE_LIST>              NODE_QUEUE;
+typedef std::list<REGIONAL_CFG_NODE *,NODE_ALLOC>              NODE_LIST;
+typedef std::queue<REGIONAL_CFG_NODE *,NODE_LIST>              NODE_QUEUE;
 
 private:    
     NODE_VECTOR         _visited_s;
@@ -1227,8 +1228,8 @@ public:
 //============================================================================   
 class  PREORDER_REGIONAL_CFG_ITER {
 
-typedef list<REGIONAL_CFG_NODE *,NODE_ALLOC>              NODE_LIST;
-typedef queue<REGIONAL_CFG_NODE *,NODE_LIST>              NODE_QUEUE;
+typedef std::list<REGIONAL_CFG_NODE *,NODE_ALLOC>              NODE_LIST;
+typedef std::queue<REGIONAL_CFG_NODE *,NODE_LIST>              NODE_QUEUE;
 
 private:    
     NODE_VECTOR         _visited_s;

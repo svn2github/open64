@@ -92,7 +92,7 @@ static IP_FILE_HDR* current_file_hdr;
 // --------------------------------------------------------------
 //
 typedef STR_IDX_MAP    TCONSTR_IDX_MAP;
-typedef hash_map<UINT32,UINT32> ST_TO_INITO_MAP;
+typedef __gnu_cxx::hash_map<UINT32,UINT32> ST_TO_INITO_MAP;
 
 // --------------------------------------------------------------
 // Define the hash table for merging TCONS and CLASS_CONST STs
@@ -142,7 +142,7 @@ struct tcon_hash
     }
 };
 
-typedef hash_map<const TCON*, TCON_IDX, tcon_hash, eq_tcon,
+typedef __gnu_cxx::hash_map<const TCON*, TCON_IDX, tcon_hash, eq_tcon,
     mempool_allocator<TCON_IDX> > TCON_MERGE_MAP;
 
 struct eq_const_st
@@ -161,7 +161,7 @@ struct const_st_hash
     }
 };
 
-typedef hash_map<const ST*, ST_IDX, const_st_hash, eq_const_st,
+typedef __gnu_cxx::hash_map<const ST*, ST_IDX, const_st_hash, eq_const_st,
     mempool_allocator<ST_IDX> > ST_MERGE_MAP;
 
 static TCON_MERGE_MAP* tcon_merge_map;
@@ -241,8 +241,8 @@ Initialize_Auxiliary_Tables ()
 
     MEM_POOL_Initialize (&Common_map_pool, "common map pool", FALSE);
     Common_Block_Elements_Map = 
-      CXX_NEW (COMMON_BLOCK_ELEMENTS_MAP (100, hash<ST_IDX> (),
-                                          equal_to<ST_IDX> (),
+      CXX_NEW (COMMON_BLOCK_ELEMENTS_MAP (100, __gnu_cxx::hash<ST_IDX> (),
+                                          std::equal_to<ST_IDX> (),
                                           &Common_map_pool), 
                &Common_map_pool);
 
@@ -1164,7 +1164,7 @@ Synch_TY_IDX (TY_IDX merged_ty_idx, TY_IDX original_ty_idx)
     if (TY_is_volatile (merged_ty_idx) || TY_is_volatile (original_ty_idx))
 	Set_TY_is_volatile (result);
 
-    Set_TY_align_exp (result, max (TY_align_exp (merged_ty_idx),
+    Set_TY_align_exp (result, MAX(TY_align_exp (merged_ty_idx),
 				   TY_align_exp (original_ty_idx)));
     return result;
 } // Synch_TY_IDX

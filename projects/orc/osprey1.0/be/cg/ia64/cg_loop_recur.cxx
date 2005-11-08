@@ -50,8 +50,8 @@
 #include "tn_set.h"
 #include "ti_res_count.h"
 
-typedef pair<TN*, OP*> tn_def_op;
-typedef vector<tn_def_op> op_vec_type;
+typedef std::pair<TN*, OP*> tn_def_op;
+typedef std::vector<tn_def_op> op_vec_type;
 
 // For use with stable_sort later
 bool operator<(tn_def_op& t1, tn_def_op& t2)
@@ -70,7 +70,7 @@ class REPLACE_TN_LIST {
       old_tn(o), new_tn(n), begin(b), end(e) {}
   };
 
-  vector<REPLACE_TN> v;
+  std::vector<REPLACE_TN> v;
 
 public:
   // Add a change to be processed
@@ -814,7 +814,7 @@ void Apply_Interleave(OP *op, INT new_omega,
   if (!non_body_tn) {
     DevWarn("Interleave_Associative_Op: can't find non-body tn");
   } else {
-    vector<TN*> backpatch_tns;
+    std::vector<TN*> backpatch_tns;
     backpatch_tns.push_back(non_body_tn);
     INT i;
     for (i = 1; i < new_omega; i++) {
@@ -845,7 +845,7 @@ void Apply_Interleave(OP *op, INT new_omega,
 
 class Critical_Recurrence {
   static const INT NEG_INF = -999;
-  vector< vector<INT> >  mindist;
+  std::vector< std::vector<INT> >  mindist;
   INT size() const { mindist.size(); }
 public:
   INT operator()(INT i) const { return mindist[i][i] > 0; }
@@ -880,7 +880,7 @@ void Critical_Recurrence::Print(FILE *fp) const
 Critical_Recurrence::Critical_Recurrence(const SWP_OP_vector& v, 
 					 INT start, INT stop,
 					 INT branch, INT ii)
-  :mindist(v.size(), vector<INT>(v.size(), NEG_INF))
+  :mindist(v.size(), std::vector<INT>(v.size(), NEG_INF))
 {
   int n_ops = v.size();
 
@@ -1374,7 +1374,7 @@ void Fix_Recurrences_Before_Unrolling(CG_LOOP& cl)
     estimate_ResMII = CG_SCHED_EST_Resources_Min_Cycles(loop_se);
   }
 
-  vector<RECUR_OP_DESC> delay_processing;
+  std::vector<RECUR_OP_DESC> delay_processing;
 
   FOR_ALL_BB_OPs(body, op) {
 

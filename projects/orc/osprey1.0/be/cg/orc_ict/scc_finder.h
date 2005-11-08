@@ -63,7 +63,7 @@ protected:
 //============================================================================ 
 class SCC_FINDER : public SCC_FINDER_MEM {
 typedef mempool_allocator<NODE_VECTOR>         NODE_VECTOR_ALLOC;
-typedef vector<NODE_VECTOR,NODE_VECTOR_ALLOC>  SCC_VECTOR;
+typedef std::vector<NODE_VECTOR,NODE_VECTOR_ALLOC>  SCC_VECTOR;
 
 private:
     NODE_VECTOR  _in_stack;

@@ -206,7 +206,7 @@ private:
   CODEREP   *_guarded_trip_count;
   CODEREP   *_entry_test;  // a predicate that is TRUE inside the loop
   CODEREP   *_trip_count_primary_IV;
-  vector<IV_CAND*> iv_cand_container;
+  std::vector<IV_CAND*> iv_cand_container;
   BOOL       ivr_generated_primary;
 
   BB_LOOP   *Loop() const       { return _loop; }

@@ -112,11 +112,7 @@
 #include "opt_vn_expr.h"
 #include "wutil.h"
 
-#ifdef __STL_USE_NAMESPACES
-using std::pair;
-#endif
-
-typedef pair<VN_VALNUM,VN_VALNUM> VN_VALNUM_PAIR;
+typedef std::pair<VN_VALNUM,VN_VALNUM> VN_VALNUM_PAIR;
 
 
 // The classes defined in this file.

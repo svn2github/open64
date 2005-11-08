@@ -203,14 +203,14 @@ IGLS_Schedule_Region (BOOL before_regalloc)
     if (IGLS_Enable_HB_Scheduling && IGLS_Enable_PRE_HB_Scheduling &&
 	should_we_global_schedule) {
       HB_Remove_Deleted_Blocks();
-      list<HB*>::iterator hbi;
+      std::list<HB*>::iterator hbi;
       FOR_ALL_BB_STLLIST_ITEMS_FWD(HB_list, hbi) {
 	if (!Sched) {
 	  Sched = CXX_NEW(HB_Schedule(), &MEM_local_pool);
 	}
 
 	// Check to see if not SWP'd.
-	list<BB*> hb_blocks;
+	std::list<BB*> hb_blocks;
 	Get_HB_Blocks_List(hb_blocks,*hbi);
 	if (Can_Schedule_HB(hb_blocks)) {
 	  Sched->Init(hb_blocks, hbs_type, NULL);
@@ -299,13 +299,13 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 	should_we_schedule && should_we_global_schedule) {
 
       HB_Remove_Deleted_Blocks();
-      list<HB*>::iterator hbi;
+      std::list<HB*>::iterator hbi;
       FOR_ALL_BB_STLLIST_ITEMS_FWD(HB_list, hbi) {
 	if (!Sched) {
 	  Sched = CXX_NEW(HB_Schedule(), &MEM_local_pool);
 	}
 	// Check to see if not SWP'd.
-	list<BB*> hb_blocks;
+	std::list<BB*> hb_blocks;
 	Get_HB_Blocks_List(hb_blocks,*hbi);
 	if (Can_Schedule_HB(hb_blocks)) {
 	  Sched->Init(hb_blocks, hbs_type, NULL);

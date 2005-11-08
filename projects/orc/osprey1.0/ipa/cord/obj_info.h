@@ -35,13 +35,7 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#ifndef pair_H
-#include <pair.h>
-#endif
-
-#ifndef FUNCTION_H
-#include <function.h>
-#endif
+#include <utility>
 
 typedef Elf32_Shdr * Shdr32_tag;
 typedef Elf64_Shdr * Shdr64_tag;
@@ -65,8 +59,8 @@ struct Proc_Iter
 	return this;
     }
     
-    pair<char *,long> operator * () {
-	return make_pair (strtab + current->sh_name, current->sh_size);
+    std::pair<char *,long> operator * () {
+	return std::make_pair (strtab + current->sh_name, current->sh_size);
     }
 
 }; // Proc_Iter

@@ -255,7 +255,7 @@ public:
   // Alias classification info for arguments is given in the same
   // order as the argument lists for the function(s) described by this
   // descriptor.
-  vector<IP_ALIAS_CLASS_MEMBER *,
+  std::vector<IP_ALIAS_CLASS_MEMBER *,
          mempool_allocator<IP_ALIAS_CLASS_MEMBER *> > fixed_args;
   IP_ALIAS_CLASS_MEMBER *remaining_args;
 
@@ -522,10 +522,20 @@ static bool operator==(AC_ST_IDENTIFIER x, AC_ST_IDENTIFIER y)
 	  x.base_st_idx == y.base_st_idx);
 }
 
+static bool operator!=(AC_ST_IDENTIFIER x, AC_ST_IDENTIFIER y)
+{
+  return !(x == y);
+}
+
 static bool operator==(AC_PREG_IDENTIFIER x, AC_PREG_IDENTIFIER y)
 {
   return (x.pu_st_idx == y.pu_st_idx &&
 	  x.preg_num  == y.preg_num);
+}
+
+static bool operator!=(AC_PREG_IDENTIFIER x, AC_PREG_IDENTIFIER y)
+{
+  return !(x == y);
 }
 
 class IP_BASE_ID_MAP_ENTRY;	// defined in ipo_alias_class.cxx.
@@ -745,5 +755,5 @@ IP_AC_LAMBDA_TYPE_REP::Memory_allocator_return_class_member(IP_ALIAS_CLASSIFICAT
 }
 
 extern IP_ALIAS_CLASSIFICATION *Ip_alias_class;
-extern vector<char *> Ip_alias_class_files;
+extern std::vector<char *> Ip_alias_class_files;
 #endif

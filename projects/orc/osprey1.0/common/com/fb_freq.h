@@ -365,6 +365,10 @@ public:
     return ( freq1._value < freq2._value );
   }
 
+  friend bool operator<= ( const FB_FREQ freq1, const FB_FREQ freq2 ) {
+    return ( freq1._value <= freq2._value );
+  }
+
   // Printing methods
 
   void Print( FILE *fp ) const {

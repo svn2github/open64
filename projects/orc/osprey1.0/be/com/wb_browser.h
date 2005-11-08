@@ -56,6 +56,10 @@
 #include "ipl_summarize.h"
 #endif
 
+#ifdef ATTR_WEAK
+#undef ATTR_WEAK
+#endif
+
 #ifndef __GNUC__
 #define ATTR_WEAK
 #pragma weak Summary__10WB_BROWSERGP8__file_s

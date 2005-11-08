@@ -72,7 +72,7 @@ Setup_Inliner_File_Header (char *input_name, void *mmap_addr)
 // its elements.  The first elemetn is always the ST_IDX of the common
 // block symbol
     
-typedef vector<ST*, mempool_allocator<void> > COMMON_BLOCK;
+typedef std::vector<ST*, mempool_allocator<ST*> > COMMON_BLOCK;
 
 // comparison function for sorting common blocks
 struct compare_block

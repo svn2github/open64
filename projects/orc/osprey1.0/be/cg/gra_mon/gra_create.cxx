@@ -64,7 +64,9 @@
 #ifdef _KEEP_RCS_ID
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_create.cxx,v $ $Revision: 1.1.1.1 $";
 #endif
-#include <list.h>
+
+#include <list>
+#include <vector>
 
 #include "defs.h"
 #include "mempool.h"
@@ -946,7 +948,7 @@ Complement_TN_Reference( OP* op, TN* tn, GRA_BB* gbb, LUNIT** lunitp,
 
 /////////////////////////////////////
 static void
-Complement_Copy( OP* op, GRA_BB *gbb, list<GRA_PREF_CAND*>& pref_list )
+Complement_Copy( OP* op, GRA_BB *gbb, std::list<GRA_PREF_CAND*>& pref_list )
 /////////////////////////////////////
 //
 //  <op> is a copy OP in the complement.  It implies a preference if it
@@ -1264,7 +1266,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   LUNIT* lunit;
   LRANGE_LIST *wired_locals[ISA_REGISTER_CLASS_MAX+1];
   hTN_MAP live_data;
-  list<GRA_PREF_CAND*> pref_list;
+  std::list<GRA_PREF_CAND*> pref_list;
   bzero(&wired_locals, (ISA_REGISTER_CLASS_MAX+1) * sizeof(LRANGE_LIST*));
 
   MEM_POOL_Push(&MEM_local_nz_pool);
@@ -1382,7 +1384,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   // find preferenced globals, and check if there is a conflict between
   // the two tn's in the block.
   //
-  list<GRA_PREF_CAND*>::iterator gpci;
+  std::list<GRA_PREF_CAND*>::iterator gpci;
   for (gpci = pref_list.begin(); gpci != pref_list.end(); gpci++) {
     GRA_PREF_CAND* gpc = *gpci;
     TN* tn_dest = gpc->Dest();
@@ -1991,7 +1993,7 @@ Compute_GRA_Fat_Point(void) {
   MEM_POOL_Push(&MEM_local_nz_pool);
   //interferences = GTN_SET_Create(GTN_UNIVERSE_size,&MEM_local_nz_pool);
   typedef mempool_allocator<INT>                 INT_ALLOC;
-  typedef vector<INT,INT_ALLOC>                  INT_VECTOR;
+  typedef std::vector<INT,INT_ALLOC>                  INT_VECTOR;
   INT_VECTOR fats(PU_BB_Count+2, (INT32)0,INT_ALLOC(&MEM_local_nz_pool));
   FOR_ALL_ISA_REGISTER_CLASS( rc ) { //Perhaps only int register is needed to be computed.
 

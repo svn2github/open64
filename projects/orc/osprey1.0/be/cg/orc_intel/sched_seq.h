@@ -97,16 +97,16 @@ class TOPDOWN_SCHED_SEQ : public SCHED_SEQ {
 private:
 
     class NODE_INFO { public: INT32 _n_pred; NODE_INFO() {_n_pred = 0;} };
-    typedef mempool_allocator<pair<REGIONAL_CFG_NODE*,NODE_INFO> > 
+    typedef mempool_allocator<std::pair<REGIONAL_CFG_NODE*,NODE_INFO> > 
   		    NODE_INFO_ALLOC;
     template <class _Ptr_Tp>
     struct ptr_hash {
         size_t operator()(_Ptr_Tp __x) const { return UINT(__x); }
     };
 
-    typedef hash_map<REGIONAL_CFG_NODE*, NODE_INFO,
+    typedef __gnu_cxx::hash_map<REGIONAL_CFG_NODE*, NODE_INFO,
                  ptr_hash<REGIONAL_CFG_NODE*>,
-                 equal_to<REGIONAL_CFG_NODE*>, NODE_INFO_ALLOC>  
+                 std::equal_to<REGIONAL_CFG_NODE*>, NODE_INFO_ALLOC>  
 				 NODE_INFO_MAP;
 
     REGIONAL_CFG_NODE * next_node (void) ;

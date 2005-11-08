@@ -65,6 +65,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2c/w2c
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/elf_whirl.h>  /* for WHIRL_REVISION */
+#include <errno.h>
 #include <time.h>
 #include "whirl2c_common.h" /* For defs.h, config.h, erglob.h, etc. */
 #include "config_clist.h"   /* For CLIST command line parameters */

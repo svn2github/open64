@@ -43,7 +43,7 @@
 
 static void Delete_HB_From_List(HB *hb)
 {
-  list<HB *>::iterator hbi;
+  std::list<HB *>::iterator hbi;
   for (hbi = HB_list.begin(); hbi != HB_list.end(); ++hbi) {
     if (*hbi == hb) {
       HB_list.erase(hbi);
