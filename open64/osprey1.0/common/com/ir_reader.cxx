@@ -1713,7 +1713,11 @@ static void WN_TREE_put_expr(WN * wn, INT indent) {
 
     WN_TREE_ITER<PRE_ORDER> tree_iter(wn);
 
+#if defined(__GNUC__) && __GNUC__ < 4
+    while (tree_iter != WN_TREE_ITER<PRE_ORDER, WN*>()) {
+#else
     while (tree_iter != LAST_PRE_ORDER_ITER) {
+#endif
       wn2 = tree_iter.Wn();
 
       if (OPCODE_is_expression(WN_opcode(wn2)) ||
@@ -1795,7 +1799,11 @@ static void WN_TREE_put_stmt(WN * wn, INT indent)
     case OPC_BLOCK:
       if (WN_first(wn)) {
           ++tree_iter; // get to the first kid of the block
+#if defined(__GNUC__) && __GNUC__ < 4
+	while (tree_iter != WN_TREE_ITER<PRE_ORDER, WN*>()) {
+#else
         while (tree_iter != LAST_PRE_ORDER_ITER) {
+#endif
           wn2 = tree_iter.Wn();
           WN_TREE_put_stmt(wn2, indent);// traverse the tree under wn2
           tree_iter.Unwind(); // have already traversed the tree under wn2

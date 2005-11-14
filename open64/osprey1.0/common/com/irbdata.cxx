@@ -395,7 +395,11 @@ Find_INITO_For_Symbol (const ST *st)
 
 template <class OP>
 void
+#if defined(__GNUC__) && __GNUC__ < 4
+For_all_initv (INITV_IDX idx, const OP op)
+#else
 For_all_initv (INITV_IDX idx, const OP& op)
+#endif
 {
     while (idx) {
 	const INITV& initv = Initv_Table[idx];
