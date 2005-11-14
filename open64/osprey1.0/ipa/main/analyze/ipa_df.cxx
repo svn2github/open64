@@ -32,7 +32,7 @@
 
 */
 
-
+#include <assert.h>
 #include <elf.h>
 #include "defs.h"
 #include "mempool.h"

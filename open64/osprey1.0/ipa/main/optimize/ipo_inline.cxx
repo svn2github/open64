@@ -36,6 +36,7 @@
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
 #include <alloca.h>
+#include <assert.h>
 
 #include "defs.h"
 #include "config_ipa.h"			// options and flags
