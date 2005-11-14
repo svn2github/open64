@@ -66,12 +66,12 @@ static void elf_link_adjust_relocs
 #endif
 
 #ifdef IPA_LINK
+#pragma weak ld_set_ndx
 int
 ld_set_ndx (bfd *abfd)
 {
     return 0;
 }
-#pragma weak ld_set_ndx
 #endif
 
 /* Given an ELF BFD, add symbols to the global hash table as
