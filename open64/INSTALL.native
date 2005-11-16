@@ -39,7 +39,7 @@ VER_MINOR="0"
 VERSION="${VER_MAJOR}.${VER_MINOR}"
 
 PREBUILT_LIB="./lib"
-PREBUILD_BIN="./bin"
+PREBUILT_BIN="./bin"
 
     # set the build host
 BUILD_HOST="ia64" ; 
@@ -342,29 +342,30 @@ INSTALL_WHIRL_STUFF
 
 cat << _EOF_
  ------------------------------------------------------------------------
- NOTE: Following archives may not present. (these archives are built by 
-   by 'make build -f Make.NUE.lib', but do not worry, prebuild verion of
-   them are provided.
-     
+ NOTE: Following archives may not present. These archives are built by 
+   by 'make build -f Make.NUE.lib', but do not worry, prebuild versions
+   of them are provided.
+
    osprey1.0/targia64/{libcginstr.a libinstr.a ftz.o libfortran.a libffio.a
                        libmsgi.a libmv.a}
-       
+
    Normally, you need not to build these archives.
  ------------------------------------------------------------------------
 _EOF_
 
     # Install archieves 
 INSTALL_PHASE_SPECIFIC_ARCHIVES 
-[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_PREBUILD_GLIBC_NATIVE_LIB 
-[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_NATIVE_HEADER 
 INSTALL_PREBUILD_OPEN64_NATIVE_LIB 
 INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES
 INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP 
 
-[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_CROSS_UTIL
 INSTALL_PREBUILD_PHASE 
 
 INSTALL_MISC
+
+[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_PREBUILD_GLIBC_NATIVE_LIB 
+[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_NATIVE_HEADER 
+[ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_CROSS_UTIL
 
 exit 0
 
