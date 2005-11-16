@@ -170,16 +170,20 @@ struct TABLE_INDEXED_BY_LEVEL8_AND_INDEX24 {
 
   ENTRY_TYPE &operator()(LEVEL_INDEX_TYPE level, UINT32 index)
     {
+#if defined(__GNUC__) && (__GNUC__ >= 4)
       Is_True(LEVEL_MEMBER_ACCESSOR()(level_container_ptr, level) != NULL,
 	      ("Uninitialized ST_IDX-indexed table"));
+#endif
       return LEVEL_MEMBER_ACCESSOR()(level_container_ptr, level)->Entry(index);
     }
 
   ENTRY_TYPE &operator()(LEVEL_CONTAINER_TYPE *lev_container_ptr,
 			 LEVEL_INDEX_TYPE level, UINT32 index)
     {	// explicit version
+#if defined(__GNUC__) && (__GNUC__ >= 4)
       Is_True(LEVEL_MEMBER_ACCESSOR()(lev_container_ptr, level) != NULL,
 	      ("Uninitialized ST_IDX-indexed table"));
+#endif
       return LEVEL_MEMBER_ACCESSOR()(lev_container_ptr, level)->Entry(index);
     }
 };

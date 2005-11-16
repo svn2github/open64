@@ -39,10 +39,10 @@ VER_MINOR="0"
 VERSION="${VER_MAJOR}.${VER_MINOR}"
 
 PREBUILT_LIB="./lib"
-PREBUILD_BIN="./bin"
+PREBUILT_BIN="./bin"
 
     # set the build host
-BUILD_HOST="ia64" ; 
+BUILD_HOST="ia32" ; 
 #[ `uname -m | grep -i 'i[0-9]86' | wc -l` -eq 1 ] && BUILD_HOST="ia32"
 
     # set the target host, it must be "ia64"
@@ -58,13 +58,13 @@ BUILD_OS="linux"
     # everything we will install is under $ROOT
 ROOT=${TOOLROOT}/
 
-INTERPOSE=#${TARG_HOST}-open64-${TARG_OS}
+INTERPOSE=${TARG_HOST}-open64-${TARG_OS}
 [ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
 
 AREA="osprey1.0/targ${BUILD_HOST}_${TARG_HOST}_nodebug"
 
 PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/${TARG_HOST}-open64-linux/${VERSION}/
-NATIVE_LIB_DIR=${PHASEPATH}
+NATIVE_LIB_DIR=${COMP_TARGET_ROOT}/usr/${INTERPOSE}/lib
 BIN_DIR=${ROOT}/usr/${INTERPOSE}/bin
 ALT_BIN_DIR=${ROOT}/usr/${INTERPOSE}/altbin
 
@@ -73,7 +73,7 @@ INSTALL_DATA="/usr/bin/install -D -m 644"
 
 INSTALL_EXEC_SUB () {
 
-    [ $# -ne 2 ] && echo "Usage: INSTALL_EXEC_SUB SRC_file DEST_file" && return 1
+    [ $# -ne 2 ] && echo "Syntax error INSTALL_EXEC_SUB $*" && return 1
     
     [ ! -e "$1" ] && echo "$1 does not exist" && return 1
 
@@ -279,7 +279,7 @@ INSTALL_CROSS_UTIL () {
 
     for i in ${PREBUILT_BIN}/${BUILD_HOST}-${BUILD_OS}/util/* ; do 
 	[ "`basename $i`" = "CVS" ] && continue
-        INSTALL_EXEC_SUB $i ${BIN_DIR}/`basename $i`
+    	INSTALL_EXEC_SUB $i ${BIN_DIR}/`basename $i`
     done
 
     return 0

@@ -70,9 +70,6 @@ Boston, MA 02111-1307, USA.  */
 #if defined HAVE_FPUTS_UNLOCKED && (defined (HAVE_DECL_PUTC_UNLOCKED) && HAVE_DECL_PUTC_UNLOCKED)
 # undef fputs
 # define fputs(String, Stream) fputs_unlocked (String, Stream)
-# if defined (HAVE_DECL_FPUTS_UNLOCKED) && !HAVE_DECL_FPUTS_UNLOCKED
-extern int fputs_unlocked PARAMS ((const char *, FILE *));
-# endif
 #endif
 
 #include <ctype.h>

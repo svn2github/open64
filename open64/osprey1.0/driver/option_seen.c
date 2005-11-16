@@ -32,7 +32,7 @@
 
 */
 
-
+#include <stdio.h>
 #include <malloc.h>
 #include "option_seen.h"
 #include "options.h"
@@ -262,7 +262,7 @@ extern void
 dump_option_seen (void)
 {
 	int_list *p;
-	printf("order_options_seen:\n");
+	fprintf(stdout, "order_options_seen:\n");
 	for (p = order_options_seen.head; p != NULL; p = p->next) {
 		printf("flag %d\n", p->value);
 	}

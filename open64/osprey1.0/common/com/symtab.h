@@ -41,7 +41,7 @@
 // This file should contain only inlined functions for accessing various
 // fields in the symbol table classes.
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && __GNUC__ >= 3
 #include <ext/slist>
 using __gnu_cxx::slist;
 #else

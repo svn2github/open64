@@ -205,7 +205,7 @@ static FILE *fp = stdout;
 
 static void show_graph_core(successor_graph& g)
 {
-  vector<bool> visited(g.size(), false);
+  std::vector<bool> visited(g.size(), false);
   int i;
 
   fprintf(fp,"[");

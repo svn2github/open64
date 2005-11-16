@@ -38,56 +38,21 @@
 #ifndef cmplr_segmented_array_INCLUDED
 #define cmplr_segmented_array_INCLUDED
 
-#ifndef __SGI_STL_ALGO_H
-
 #if defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
 #undef short				// get around bogus type defs.
 #undef int
 #undef long
 #endif // defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
 
-#ifndef __GNUC__
-#include <CC/algorithm>
-#else
 #include <algorithm>
-#endif
-
-#endif // __SGI_STL_ALGO_H
-
-#ifndef __SGI_STL_VECTOR_H
-
-#if defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
-#undef short				// get around bogus type defs.
-#undef int
-#undef long
-#endif // defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
-
-#ifndef __GNUC__
-#include <CC/vector>
-#else
 #include <vector>
-#endif
 
-#endif // __SGI_STL_VECTOR_H
-
-#ifndef __SGI_STL_SLIST_H
-
-#if defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
-#undef short				// get around bogus type defs.
-#undef int
-#undef long
-#endif // defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
-
-#ifndef __GNUC__
-#include <CC/slist>
-using std::slist;
-#else
+#if defined(__GNUC__) && __GNUC__ >= 3
 #include <ext/slist>
 using __gnu_cxx::slist;
+#else
+#include <slist>
 #endif
-
-#endif // __SGI_STL_LIST_H
-
 
 #ifndef ERRORS_INCLUDED
 #include "errors.h"

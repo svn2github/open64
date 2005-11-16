@@ -144,6 +144,7 @@
 #ifndef id_map_INCLUDED
 #define id_map_INCLUDED "id_map.h"
 
+#include <math.h>  /* for floor() & ceil() */
 #include "defs.h"
 #include "cxx_template.h"
 #include "tracing.h"

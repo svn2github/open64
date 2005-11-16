@@ -1988,7 +1988,7 @@ Cg_Dwarf_Begin (BOOL is_64bit)
 		    cu_die);
 
   // Invalid entry up front to keep from using the zero index.
-  CGD_Symtab.push_back(CGD_SYMTAB_ENTRY(CGD_ELFSYM, -1));
+  CGD_Symtab.push_back(CGD_SYMTAB_ENTRY(CGD_ELFSYM, Dwarf_Unsigned(-1)));
 }
 
 

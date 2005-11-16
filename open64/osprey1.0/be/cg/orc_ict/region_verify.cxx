@@ -217,7 +217,8 @@ void Verify_Cfg(REGIONAL_CFG *cfg){
     for(TOPOLOGICAL_REGIONAL_CFG_ITER iter(cfg); iter!=0; ++iter){
         REGIONAL_CFG_NODE *node = *iter;
         for(CFG_PRED_NODE_ITER pred_iter(node); pred_iter!=0; ++pred_iter)
-            Is_True(Find_In_Vector(*pred_iter, nodes),("verify topological_cfg_iter"));
+             Is_True(Find_In_Vector(*pred_iter, nodes) != (NODE_VECTOR_ITER)0,
+                     ("verify topological_cfg_iter"));
         nodes.push_back(node);
     }
 
@@ -227,7 +228,8 @@ void Verify_Cfg(REGIONAL_CFG *cfg){
     for(REVERSE_TOPO_REGIONAL_CFG_ITER iter(cfg); iter!=0; ++iter){
         REGIONAL_CFG_NODE *node = *iter;
         for(CFG_SUCC_NODE_ITER succ_iter(node); succ_iter!=0; ++succ_iter)
-            Is_True(Find_In_Vector(*succ_iter, nodes),("verify topological_cfg_iter"));
+            Is_True (Find_In_Vector(*succ_iter, nodes) != (NODE_VECTOR_ITER)0,
+                ("verify topological_cfg_iter"));
         nodes.push_back(node);
     }
 }

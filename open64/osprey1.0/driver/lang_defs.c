@@ -50,7 +50,7 @@ string dynamic_linker = "/lib/ld-linux-ia64.so.2";
  * in the OPTIONS table.
  */
 
-#define MAX_LANG_NAMES 5
+#define MAX_LANG_NAMES 6
 typedef struct lang_struct {
 	char key;
 	mask_t mask;

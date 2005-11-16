@@ -4113,14 +4113,14 @@ inline bool size_lt (ST *s1, ST* s2)
 
 #ifdef Is_True_On
 static void
-Print_ST_List(vector<ST*>& st_list, const char* header)
+Print_ST_List(std::vector<ST*>& st_list, const char* header)
 {
-  printf("%s\n", header);
+  fprintf(stdout, "%s\n", header);
 
-  vector<ST*>::iterator st_iter;
+  std::vector<ST*>::iterator st_iter;
   for (st_iter = st_list.begin(); st_iter != st_list.end(); ++st_iter) {
     ST* st = *st_iter;
-    printf("%-25s%-15s%10llu%10lld\n",
+    fprintf(stdout, "%-25s%-15s%10llu%10lld\n",
            (ST_class(st) == CLASS_CONST ? "<constant>" : ST_name(st)), 
            (ST_class(Base_Symbol(st)) == CLASS_CONST ? "<constant>" :
             ST_name(Base_Symbol(st))),
