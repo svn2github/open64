@@ -41,7 +41,7 @@ static char USMID[] = "@(#) libf/auxarr/c1/auxinit.c	92.0	10/08/98 14:30:10";
 #include <stdio.h>
 #include <malloc.h>
 #include <errno.h>
-#include "aux.h"
+#include "auxarr.h"
 extern int sys_nerr;
 extern char *sys_errlist[];
 

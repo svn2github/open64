@@ -60,5 +60,5 @@ LIB_DIRS_INFO += \
 		1:auxarr/c1
 
 RMUSRC += \
-		auxarr/c1/aux.h
+		auxarr/c1/auxarr.h
 
