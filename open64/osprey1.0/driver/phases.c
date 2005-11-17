@@ -1287,14 +1287,9 @@ check_existence_of_phases (void)
 		give_warning = TRUE;
 
 	    if (give_warning)
-#ifndef linux
-		warning ("%s does not contain all of the MIPSPro compiler"
+		warning ("%s does not contain all of the Open64 compiler"
 			 " phases; perhaps you need a different toolroot?",
 			 get_phase_dir(phase_order[i])); 
-#else
-		warning ("%s does not contain all of the ORC compiler"
-			 " phases.", get_phase_dir(phase_order[i])); 
-#endif
 	    break;
 	}
     }
