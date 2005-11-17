@@ -73,7 +73,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lno_spl
 #include "model.h"
 #include "lnoutils.h"
 #include "lwn_util.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "config_targ.h"
 #include "config_opt.h"
 #include "opt_du.h"

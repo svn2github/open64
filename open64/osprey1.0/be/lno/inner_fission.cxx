@@ -69,7 +69,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/inner_f
 #include <sys/types.h>
 #include <stdlib.h>
 #include "defs.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "wn.h"
 #include "wn_map.h"
 #include "model.h"

@@ -96,7 +96,7 @@ static INT32 Ignore_Int;
 /* The following contains the phase-specific option groups and their
  * associated variable definitions:
  */
-#include "config_TARG.cxx"
+#include "config_targ_opt.cxx"
 #include "config_debug.cxx"
 #include "config_ipa.cxx"
 #include "config_list.cxx"

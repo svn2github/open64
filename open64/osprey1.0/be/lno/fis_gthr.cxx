@@ -89,7 +89,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/fis_gth
 #include "inner_fission.h"
 
 #include "targ_sim.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "config_targ.h"
 #include "cxx_template.h"
 #include "cxx_hash.h"

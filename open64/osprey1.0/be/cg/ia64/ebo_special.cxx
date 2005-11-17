@@ -66,7 +66,7 @@ static const char source_file[] = __FILE__;
 
 #include <stdarg.h>
 #include "defs.h"
-#include "config_TARG.h"
+#include "config_targ_opt.h"
 #include "errors.h"
 #include "mempool.h"
 #include "tracing.h"

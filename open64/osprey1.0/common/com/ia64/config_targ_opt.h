@@ -36,7 +36,7 @@
 /* ====================================================================
  * ====================================================================
  *
- * Module: config_TARG.h
+ * Module: config_targ_opt.h
  * $Revision: 1.2 $
  * $Date: 2003/12/02 09:54:04 $
  * $Author: xlp $
@@ -65,13 +65,8 @@
  * ====================================================================
  */
 
-#ifndef config_TARG_INCLUDED
-#define config_TARG_INCLUDED
-
-#ifdef _KEEP_RCS_ID
-/*REFERENCED*/
-static char *config_TARG_h_rcs_id = "$Source: /proj/osprey/marcel/CVSROOT/orc/src/osprey1.0/common/com/ia64/config_TARG.h,v $ $Revision: 1.2 $";
-#endif /* _KEEP_RCS_ID */
+#ifndef config_targ_opt_INCLUDED
+#define config_targ_opt_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
@@ -121,4 +116,4 @@ extern BOOL Itanium_a0_step;	/* a0 version of itanium chip */
 }
 #endif /* __cplusplus */
     
-#endif /* config_TARG_INCLUDED */
+#endif /* config_targ_opt_INCLUDED */
