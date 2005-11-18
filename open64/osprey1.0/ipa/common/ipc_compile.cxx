@@ -603,7 +603,8 @@ size_t ipacom_process_file (char* input_file,
   commands->push_back(cmdline);
 
   // Add an empty vector for this file's comments.
-  commands->push_back(static_cast<const char *>(""));
+  vector<const char *> empty_vector;
+  comments->push_back(empty_vector);
 
   Is_True (infiles->size() > 0 &&
            infiles->size() == outfiles->size() &&
