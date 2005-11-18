@@ -327,7 +327,7 @@ whirl2f_be: whirl2f.so
 		if ! test -e whirl2f_be; then ln -sf $(TARGDIR)/be/be whirl2f_be ; fi
 
 whirl2f: whirl2f.so whirl2f_be $(WHIRL2F_MAIN_OBJS)
-		$(CCF) -o whirl2f $(WHIRL2F_MAIN_OBJS) $(LDFLAGS)
+		$(CXXF) -o whirl2f $(WHIRL2F_MAIN_OBJS) $(LDFLAGS)
 be.so:
 		if ! test -e be.so; then ln -sf $(TARGDIR)/be/be.so .; fi
 
