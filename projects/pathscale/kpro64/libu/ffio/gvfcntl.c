@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -135,7 +139,7 @@ _gen_vfcntl(
 			break;
 		case FC_AUTOBAD:
 			/* This layer can only skip bad data. */
-			if (((int) arg) == AUTO_SKIP) 
+			if ((uintps_t) arg == AUTO_SKIP) 
 			   {
 			   switch(fio->rtype)
 				{

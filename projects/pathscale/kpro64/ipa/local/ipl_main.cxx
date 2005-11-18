@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,6 +59,8 @@
  * This phase reads in the IR files and collects summary 
  * information
  *----------------------------------------------------------*/
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <elf.h>
 #include <sys/elf_whirl.h>	    // for WHIRL revision number
 #include <sys/types.h>		    // for ir_bwrite.h
@@ -261,8 +267,8 @@ Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 
     DoPreopt = Run_preopt;
     if (Run_preopt && Cur_PU_Feedback) {
-	BOOL pass = Cur_PU_Feedback->Verify ("IPL");
-	if (! pass)
+	BOOL not_pass = Cur_PU_Feedback->Verify ("IPL");
+	if (not_pass) //FB_VERIFY_CONSISTENT = 0 
 	    DevWarn ("Feedback verify fails after preopt");
     }
     
@@ -288,6 +294,10 @@ Ipl_Fini (void)
 void
 Ipl_Extra_Output (Output_File *ir_output)
 {
+#ifndef KEY
+	if(IPA_Enable_Reorder)/*&&Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO] )*/
+#endif // !KEY
+		Summary->Finish_collect_struct_access();// reorder, free pointers, set hot_flds
     IPA_write_summary(IPA_irb_write_summary, ir_output);
 
     if ( Get_Trace ( TKIND_IR, TP_IPL ) )

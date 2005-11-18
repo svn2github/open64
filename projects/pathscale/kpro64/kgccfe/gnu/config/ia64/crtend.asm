@@ -1,4 +1,4 @@
-/* Copyright (C) 2000 Free Software Foundation, Inc.
+/* Copyright (C) 2000, 2001 Free Software Foundation, Inc.
    Contributed by Jes Sorensen, <Jes.Sorensen@cern.ch>
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -26,8 +26,10 @@ __CTOR_END__:
 __DTOR_END__:
 	data8	0
 
-.section .IA_64.unwind
-__EH_FRAME_END__:
+.section .jcr,"aw","progbits"
+	.align 8
+__JCR_END__:
+	data8	0
 
 /*
  * Fragment of the ELF _init routine that invokes our dtor cleanup.
@@ -44,16 +46,16 @@ __EH_FRAME_END__:
  */
 .section .init,"ax","progbits"
 	{ .mlx
-	  movl r2 = @gprel(__do_global_ctors_aux#)
-	  ;;
+	  movl r2 = @pcrel(__do_global_ctors_aux# - 16)
 	}
 	{ .mii
-	  nop.m 0
-	  add r2 = r2, gp
+	  mov r3 = ip
 	  ;;
-	  mov b6 = r2
+	  add r2 = r2, r3
+	  ;;
 	}
-	{ .bbb
+	{ .mib
+	  mov b6 = r2
 	  br.call.sptk.many b0 = b6
 	  ;;
 	}
@@ -66,15 +68,18 @@ __do_global_ctors_aux:
 		for (loc0 = __CTOR_END__-1; *p != -1; --p)
 		  (*p) ();
 	*/
-	{ .mii
+	{ .mlx
 	  alloc loc4 = ar.pfs, 0, 5, 0, 0
-	  addl loc0 = @ltoff(__CTOR_END__# - 8), gp
-	  mov loc1 = b0
+	  movl loc0 = @gprel(__CTOR_END__# - 8)
 	  ;;
 	}
 	{ .mmi
-	  ld8 loc0 = [loc0]
+	  add loc0 = loc0, gp
+	  mov loc1 = b0
 	  ;;
+	}
+	{
+	  .mmi
 	  ld8 loc3 = [loc0], -8
 	  mov loc2 = gp
 	  ;;
@@ -110,25 +115,3 @@ __do_global_ctors_aux:
 	  ;;
 	}
 	.endp __do_global_ctors_aux#
-
-.section .init,"ax","progbits"
-	{ .mlx
-	  // __do_frame_setup_aux is in crtbegin.asm
-	  movl r2 = @gprel(__do_frame_setup_aux#)
-	  ;;
-	}
-	{ .mii
-	  nop.m 0
-	  add r2 = r2, gp
-	  ;;
-	  mov b6 = r2
-	}
-	{ .mib
-	  // __do_frame_setup_aux needs the address of __EH_FRAME_END__,
-	  // so we pass it in r16.  This is rather evil, but we have no
-	  // output registers.
-          addl r16 = @ltoff(__EH_FRAME_END__#), gp
-	  br.call.sptk.many b0 = b6
-	  ;;
-        }
-

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -435,12 +439,12 @@ cswap8$_(_f_int8 *datum)
 
 		word	= (word << 32) | (word >> 32);	/* Swap longwords */
 
-		word	= ((word & 0x0000FFFF0000FFFF) << 16) |
-			  ((word & 0xFFFF0000FFFF0000) >> 16);	/* Swap words */
+		word	= ((word & 0x0000FFFF0000FFFFLL) << 16) |
+			  ((word & 0xFFFF0000FFFF0000LL) >> 16);	/* Swap words */
 
 		if (swap == 1) /* If DEC-style, also swap bytes */
-			word	= ((word & 0x00FF00FF00FF00FF) << 8) |
-				  ((word & 0xFF00FF00FF00FF00) >> 8);
+			word	= ((word & 0x00FF00FF00FF00FFLL) << 8) |
+				  ((word & 0xFF00FF00FF00FF00LL) >> 8);
 
 	}
 

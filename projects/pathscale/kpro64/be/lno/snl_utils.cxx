@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,6 +39,8 @@
 
 // -*-C++-*-
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -689,6 +695,10 @@ static SANITY_CHECK_RVAL SNL_Sanity_Check_If(WN* wn, INT depth)
 // return number of bad memrefs
 WN* SNL_Sanity_Check_Exp(WN* wn)
 {
+#ifdef KEY
+  if (WN_operator(wn) == OPR_ASM_STMT)
+    return NULL;
+#endif /* KEY */
   FmtAssert(wn, ("Null wn in SNL_Sanity_Check_Exp"));
 
   WN*           rval = NULL;

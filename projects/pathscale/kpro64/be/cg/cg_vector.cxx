@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -84,7 +88,11 @@ BOOL
 VECTOR_Member_Element (VECTOR vector, void *element)
 {
   INT i, count = VECTOR_count(vector);
+#ifdef KEY
+  FmtAssert (count <= VECTOR_size(vector), ("VECTOR overflow"));
+#else
   FmtAssert (count < VECTOR_size(vector), ("VECTOR overflow"));
+#endif // KEY
   
   for (i = 0; i < count; i++) {
     if (VECTOR_element(vector,i) == element) {

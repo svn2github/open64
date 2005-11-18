@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,7 +42,7 @@
 #define SGI_connected_components_h_INCLUDED
 
 #include "misc_extension.h"
-#include "stl_algobase.h"
+#include <algorithm>
 
 namespace SGI {
 

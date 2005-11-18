@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -202,6 +206,9 @@ extern MEM_POOL *FE_Mempool;
 #endif
 #ifdef TARG_IA64 
 #define RESULT_SIZE 64
+#endif
+#ifdef TARG_X8664
+#define RESULT_SIZE 16
 #endif
 
 #define STRUCT_BY_VALUE(ty) ((TY_kind(ty) == KIND_STRUCT)      \

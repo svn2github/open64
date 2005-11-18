@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -97,6 +101,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #pragma hdrstop
 
 #include <math.h>
+#if 1 // workaround at PathScale for build problem
+#include <float.h>      // FLT_MAX
+#endif
 #include <limits.h>
 
 #include "defs.h"
@@ -132,6 +139,9 @@ extern REGISTER_SET stacked_caller_used;// from register_targ.cxx
 
 BOOL GRA_split_lranges = TRUE;
 INT GRA_non_split_tn_id = -1;
+#ifdef KEY
+BOOL GRA_pu_has_handler = FALSE;
+#endif
 
 static LRANGE*  split_lrange;           // The LRANGE to split
 static LRANGE*  alloc_lrange;           // The part to allocate
@@ -1494,6 +1504,10 @@ Fix_Call_Info( LRANGE* lrange )
 
       if (gbb->Setjmp())
         lrange->Spans_A_Setjmp_Set();
+#ifdef TARG_X8664
+      if (gbb->Savexmms())
+        lrange->Spans_Savexmms_Set();
+#endif
       return;
     }
   }
@@ -1763,6 +1777,11 @@ LRANGE_Do_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
 
   if (lrange->Spans_A_Setjmp()) // TODO: do not give up splitting
     return FALSE;
+
+#ifdef KEY // don't split the saved-TNs if PU has any handler entry point
+  if (lrange->Tn_Is_Save_Reg() && GRA_pu_has_handler)
+    return FALSE;
+#endif
 
   GRA_Trace_Color_LRANGE("Splitting",lrange);
 

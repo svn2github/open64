@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -70,7 +74,6 @@
 
 #include "fio.h"
 
-extern int fgetc_(_f_int *u, char *c, int clen);
 extern int __fgetc_f90(_f_int *u, char *c, int clen);
 extern _f_int fgetcf90_(_f_int *u, char *c, int clen);
 extern _f_int8 fgetcf90_8_(_f_int8 *u, char *c, int clen);
@@ -184,7 +187,7 @@ int
 getc_(char *c, int clen)
 {
 	int stdin_unit	= 5;
-	return fgetc_(&stdin_unit, c, clen);
+	return fgetcf90_(&stdin_unit, c, clen);
 }
 
 _f_int4

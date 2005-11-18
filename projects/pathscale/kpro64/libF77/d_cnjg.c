@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,6 +41,7 @@
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/d_cnjg.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
 
 #include "cmplx.h"
+#include "defalias.h"
 
 dcomplex __dconjg(double zdreal, double zdimag)
 {
@@ -47,7 +52,9 @@ dcomplex __dconjg(double zdreal, double zdimag)
   return r;
 }
 
-void d_cnjg(dcomplex *r, dcomplex *z)
+dcomplex d_cnjg_(dcomplex *z)
 {
-  *r = __dconjg(z->dreal, z->dimag);
+  return __dconjg(z->dreal, z->dimag);
 }
+
+defalias(d_cnjg_, d_cnjg);

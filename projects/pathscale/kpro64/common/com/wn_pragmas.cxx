@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -250,6 +254,10 @@ WN_PRAGMA_DESC WN_pragmas[] = {
 
   { PUSER_CG, WN_PRAGMA_SCOPE_WN,       "ASM_CONSTRAINT"},
   { PUSER_CG, WN_PRAGMA_SCOPE_WN,       "ASM_CLOBBER"},
+
+#ifdef KEY
+  { PUSER_LNO, WN_PRAGMA_SCOPE_SPECIAL,	"FORALL" },
+#endif
 
   { PUSER_NULL,	WN_PRAGMA_SCOPE_UNKNOWN, NULL }	/* MAX_WN_PRAGMA */
 };

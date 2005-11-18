@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -98,7 +102,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/libm/mips/j0.c
 
 #include "libm.h"
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern double j0(double);
 extern double y0(double);
 

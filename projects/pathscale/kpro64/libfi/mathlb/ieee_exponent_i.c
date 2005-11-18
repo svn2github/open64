@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -275,9 +279,15 @@ _IEEE_EXPONENT_I8_H(_f_real4 x)
 		_f_real4	dword;
 		_f_int4		lword;
 		struct {
+#if  __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa	: IEEE_32_MANT_BITS;
+			unsigned int exponent	: IEEE_32_EXPO_BITS;
+			unsigned int sign	: 1;
+#else
 			unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_32_EXPO_BITS;
 			unsigned int mantissa	: IEEE_32_MANT_BITS;
+#endif
 		} parts;
 	};
 	_f_int8	iresult	= 0;
@@ -335,10 +345,17 @@ _IEEE_EXPONENT_I8_R(_f_real8 x)
 		_f_int8			lword;
 		unsigned long long	ull;
 		struct {
+#if  __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa2	: IEEE_64_MANT_BTS2;
+			unsigned int mantissa1	: IEEE_64_MANT_BTS1;
+			unsigned int exponent	: IEEE_64_EXPO_BITS;
+			unsigned int sign	: 1;
+#else
 			unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_64_EXPO_BITS;
 			unsigned int mantissa1	: IEEE_64_MANT_BTS1;
 			unsigned int mantissa2	: IEEE_64_MANT_BTS2;
+#endif
 		} parts;
 	};
 	_f_int8	iresult	= 0;
@@ -396,15 +413,29 @@ _IEEE_EXPONENT_I8_D(_f_real16 x)
 		_f_real16	ldword;
 		_f_real8	dbword[2];
 	};
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+        const int dbword_hi = 1;
+        const int dbword_lo = 0;
+#else
+        const int dbword_hi = 0;
+        const int dbword_lo = 1;
+#endif
 	union _ieee_double {
 		_f_real8		dword;
 		_f_int8			lword;
 		unsigned long long	ull;
 		struct {
+#if  __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa2	: IEEE_64_MANT_BTS2;
+			unsigned int mantissa1	: IEEE_64_MANT_BTS1;
+			unsigned int exponent	: IEEE_64_EXPO_BITS;
+			unsigned int sign	: 1;
+#else
 			unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_64_EXPO_BITS;
 			unsigned int mantissa1	: IEEE_64_MANT_BTS1;
 			unsigned int mantissa2	: IEEE_64_MANT_BTS2;
+#endif
 		} parts;
 	};
 	_f_int8	iresult	= 0;
@@ -430,12 +461,12 @@ _IEEE_EXPONENT_I8_D(_f_real16 x)
 			/* return exponent from first 64-bit double. */
 			union _ieee_ldouble x_val;
 			x_val.ldword	= x;
-			switch(fp_class_d(x_val.dbword[0])) {
+			switch(fp_class_d(x_val.dbword[dbword_hi])) {
 				case FP_POS_NORM:
 				case FP_NEG_NORM:
 					{
 					union _ieee_double db_x;
-					db_x.dword	= x_val.dbword[0];
+					db_x.dword	= x_val.dbword[dbword_hi];
 					return((_f_int8)(db_x.parts.exponent -
 					  IEEE_64_EXPO_BIAS));
 					}
@@ -443,7 +474,7 @@ _IEEE_EXPONENT_I8_D(_f_real16 x)
 				case FP_NEG_DENORM:
 					{
 					union _ieee_double db_x;
-					db_x.dword	= x_val.dbword[0];
+					db_x.dword	= x_val.dbword[dbword_hi];
 					db_x.ull	=
 					  IEEE_64_MANTISSA & db_x.ull;
 					return((_f_int8)(-IEEE_64_EXPO_BIAS -

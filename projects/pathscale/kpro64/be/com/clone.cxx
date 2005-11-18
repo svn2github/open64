@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -303,7 +307,7 @@ IPO_CLONE::Copy_Node (const WN *src_wn)
     INT16 next_prev_ptrs
 	= (OPERATOR_has_next_prev(WN_operator(src_wn)) ? 1 : 0);
     INT16 size = (sizeof(WN) +
-		  (sizeof(WN *) * (max(0,WN_kid_count(src_wn)-2))) +
+		  (sizeof(WN *) * (MAX(0,WN_kid_count(src_wn)-2))) +
 		  next_prev_ptrs * (sizeof(mUINT64) + (2 * sizeof(WN *))));
 
     size = (size + 7) & (~7);	    // 8 byte aligned
@@ -532,6 +536,13 @@ IPO_SYMTAB::fix_table_entry<ST>::operator () (UINT idx, ST* st) const
 					 _sym->Get_cloned_level ()));
     if (ST_base_idx(st) == ST_st_idx(st))
         Set_ST_ofst(st, 0);
+#ifdef KEY
+// Certain exception handling information should have 1 instance per pu
+    if (ST_one_per_pu(st)) {
+    	Set_ST_is_not_used(st);
+	return;
+    }
+#endif
     switch (ST_sclass(st)) {
     case SCLASS_FORMAL:
     case SCLASS_FORMAL_REF:
@@ -602,23 +613,42 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 			 start_idx, 
 			 (_orig_scope_tab[_orig_level].st_attr_tab)->Size());
 
+      (void)Copy_array_range(*_orig_scope_tab[_orig_level].inito_tab, 
+			 *_cloned_scope_tab[_cloned_level].inito_tab, 
+			 start_idx, 
+			 (_orig_scope_tab[_orig_level].inito_tab)->Size());
+
   }
   else {
 	// Need to reset _cloned_label_last_idx to reflect the current cloned SYMTAB
 	Set_cloned_label_last_idx((_cloned_scope_tab[_cloned_level].label_tab)->Size()-1);
 	Set_cloned_inito_last_idx((_cloned_scope_tab[_cloned_level].inito_tab)->Size()-1);
+#ifdef KEY
+	if (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)
+	{
+	// For lang other than C++, the copy below won't be done anyway 
+	// since it depends on sclass. But then prevent the unnecessary loop
+	// for other languages.
+	  for (int i=start_idx; 
+	     i<(_orig_scope_tab[_orig_level].inito_tab)->Size(); ++i)
+	  {
+	    INITO copy = (*_orig_scope_tab[_orig_level].inito_tab)[i];
+	    if (ST_sclass(INITO_st(copy)) == SCLASS_EH_REGION_SUPP)
+	    	(*_cloned_scope_tab[_cloned_level].inito_tab).Insert (copy);
+	  }
+	}
+#endif
   }
-
-  (void)Copy_array_range(*_orig_scope_tab[_orig_level].inito_tab, 
-			 *_cloned_scope_tab[_cloned_level].inito_tab, 
-			 start_idx, 
-			 (_orig_scope_tab[_orig_level].inito_tab)->Size());
 
   (void)Copy_array_range(*_orig_scope_tab[_orig_level].label_tab, 
 			 *_cloned_scope_tab[_cloned_level].label_tab, 
 			 start_idx, 
 			 (_orig_scope_tab[_orig_level].label_tab)->Size());
 
+  (void)Delete_array_item(*_orig_scope_tab[_orig_level].label_tab,
+                         *_cloned_scope_tab[_cloned_level].label_tab,
+                         start_idx,
+                         (_orig_scope_tab[_orig_level].label_tab)->Size());                                  
   
   if ((_is_new_clone == FALSE) && (label_only == FALSE)) {
       // The tables are appended to the end of the cloned table, so 
@@ -633,7 +663,7 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 
   For_all_entries(*_cloned_scope_tab[_cloned_level].inito_tab, 
       fix_table_entry<INITO> (this), _cloned_inito_last_idx+1);
-  
+
 }
 
 
@@ -704,6 +734,9 @@ inline void
 IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
 {
     ST *copy_st;
+    ST_IDX  old_st_idx = ST_st_idx(old_st);
+    INITO_TAB *it_tab = Scope_tab[ST_IDX_level(old_st_idx)].inito_tab;
+    int it_tab_size = it_tab->Size();
 
     switch (ST_sclass(old_st)) {
     case SCLASS_PSTATIC:
@@ -711,6 +744,49 @@ IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
 	copy_st = _sym->IPO_Copy_ST(old_st, GLOBAL_SYMTAB);
 	Set_ST_sclass(copy_st, SCLASS_FSTATIC);
 	Set_ST_is_not_used(old_st);
+#ifdef TARG_X8664
+	// Bug 1881 - when IPA clones or inlines a function, there may be 
+	// several copies of PSTATIC variables and these variables are promoted
+	// to the global symbol table to maintain consistent values across
+	// many copies. We should align any variables here because the 
+	// vectorizer expects IPA will align them. We have already done the 
+	// work in IPA symbol table merge. This should take care of PSTATIC 
+	// copies. Avoid Fortran equivalenced arrays (bug 1988).
+	if ( ST_sym_class(copy_st) == CLASS_VAR &&
+	     !ST_is_equivalenced(copy_st) ) {
+	  TY_IDX ty = ST_type(copy_st);
+	  if (TY_kind(ST_type(copy_st)) == KIND_POINTER) {
+	    ty = TY_pointed(ST_type(copy_st));
+	  }
+	  if (TY_kind(ty) != KIND_FUNCTION) {
+	    TY_IDX st_ty_idx = ST_type(copy_st);
+	    Set_TY_align_exp(st_ty_idx, 4);
+	    Set_ST_type(copy_st, st_ty_idx);
+	  }
+	}
+#endif
+        // Walk through the INITV entries that was pointed to by each INITO of current PU
+        // if the INITV¡¯s type is INITVKIND_SYMOFF and the symbol is being promoted
+        // to global symtab, update it with the new st in global symtab
+	for(INITO_IDX it_idx = 1; it_idx<(INITO_IDX)it_tab_size; it_idx++) {
+	  INITV_IDX iv_idx = (*it_tab)[it_idx].val;
+	  INITV &iv = Initv_Table[iv_idx];
+          switch (INITV_kind(iv)) {
+          case INITVKIND_SYMOFF:
+	      {
+	        ST* initv_st = &St_Table[INITV_st(iv)];
+                if(initv_st == old_st)
+                  Set_INITV_st(iv_idx, ST_st_idx(copy_st));
+              }
+              break;
+          case INITVKIND_SYMDIFF:
+          case INITVKIND_SYMDIFF16:
+          case INITVKIND_LABEL:
+          case INITVKIND_BLOCK:
+    	  default:
+              break;
+          }
+	}	
 	break;
     default:
 	break;

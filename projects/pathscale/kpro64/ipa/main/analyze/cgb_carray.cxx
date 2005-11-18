@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <sys/types.h>
 #include <elf.h>
 #include <ctype.h>
@@ -113,6 +119,6 @@ INT CGB_CARRAY::Find_This_Pair(IPA_NODE* ipan,
 void CGB_CARRAY::List_All_Pairs(FILE* fp)
 {
   for (INT i = 0; i < _next_index; i++)
-    fprintf(fp, "[%d] 0x%x V#%d\n", i, _nodes[i], _vertices[i]);
+    fprintf(fp, "[%d] %p V#%d\n", i, _nodes[i], _vertices[i]);
 } 
 

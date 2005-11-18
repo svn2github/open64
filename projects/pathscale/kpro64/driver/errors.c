@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,15 +45,15 @@
 status_codes error_status = RC_OKAY;
 #define set_error_status(e)	if (error_status == RC_OKAY) error_status = e;
 
-string program_name;
+char *program_name;
 boolean print_warnings = TRUE;
 boolean fullwarn = FALSE;
 
 static int errors = 0;
 static int previous_errors = 0;
 
-extern void
-error(string format, ...)
+void
+error(char *format, ...)
 {
 	va_list args;
 	va_start (args, format);
@@ -61,8 +65,8 @@ error(string format, ...)
 	errors++;
 }
 
-extern void
-parse_error (string name, string msg)
+void
+parse_error (char *name, char *msg)
 {
 	fprintf(stderr, "%s ERROR parsing %s:  %s\n", 
 		program_name, name, msg);
@@ -70,8 +74,8 @@ parse_error (string name, string msg)
 	errors++;
 }
 
-extern void
-warning (string format, ...)
+void
+warning (char *format, ...)
 {
 	va_list args;
 	if (!print_warnings) return;
@@ -82,38 +86,38 @@ warning (string format, ...)
 	va_end (args);
 }
 
-extern void
-warn_ignored (string name)
+void
+warn_ignored (char *name)
 {
 	warning("%s is ignored", name);
 }
 
-extern void
-warn_nyi (string name)
+void
+warn_nyi (char *name)
 {
 	warning("%s is not yet implemented", name);
 }
 
-extern void
-warn_no_longer_needed (string name)
+void
+warn_no_longer_needed (char *name)
 {
 	warning("%s is no longer needed", name);
 }
 
-extern void
-warn_no_longer_supported (string name)
+void
+warn_no_longer_supported (char *name)
 {
 	warning("%s is no longer supported", name);
 }
 
-extern void
-warn_no_longer_supported2 (string name, string newname)
+void
+warn_no_longer_supported2 (char *name, char *newname)
 {
 	warning("%s is no longer supported, use %s instead", name, newname);
 }
 
-extern void
-internal_error (string format, ...)
+void
+internal_error (char *format, ...)
 {
 	va_list args;
 	va_start (args, format);
@@ -126,26 +130,26 @@ internal_error (string format, ...)
 }
 
 /* to signal that an error occured but trust previous error messages */
-extern void
-nomsg_error (void)
+void
+nomsg_error (int status)
 {
-	set_error_status(RC_USER_ERROR);
+	set_error_status(status);
 	errors++;
 }
 
-extern boolean
+boolean
 has_errors(void)
 {
 	return (errors > 0 || previous_errors > 0);
 }
 
-extern boolean
+boolean
 has_current_errors(void)
 {
 	return (errors > 0);
 }
 
-extern void 
+void 
 clear_current_errors(void)
 {
 	previous_errors = errors;

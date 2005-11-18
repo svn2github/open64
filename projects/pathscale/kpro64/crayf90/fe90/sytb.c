@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -8455,7 +8459,7 @@ void	make_external_name(int	attr_idx,
    token_type	 ext_token;
    int		 i;
    char		*name_ptr;
-
+   int		underscores = 0;
 
    TRACE (Func_Entry, "make_external_name", NULL);
 
@@ -8465,11 +8469,18 @@ void	make_external_name(int	attr_idx,
       if (!on_off_flags.upper_case_names) {
          for (i = 0;  i < name_len;  i++) {
             TOKEN_STR(ext_token)[i] = tolower(name_ptr[i]);
+	    if (name_ptr[i] == '_') {
+	      underscores++;
+	    }
          }
 
-         if (!on_off_flags.remove_trailing_uscore) {
-            TOKEN_STR(ext_token)[i++] = '_';
-            name_len++;
+         if (on_off_flags.underscoring) {
+	    TOKEN_STR(ext_token)[i++] = '_';
+	    name_len++;
+            if (on_off_flags.second_underscore && (underscores > 0)) {
+	       TOKEN_STR(ext_token)[i++] = '_';
+	       name_len++;
+            }
          }
 
          TOKEN_STR(ext_token)[i] = '\0';

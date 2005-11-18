@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -116,9 +120,11 @@
    
 */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <math.h>
 #include <stdarg.h>
-#include <set.h>
+#include <set>
 
 #include "defs.h"
 #include "config.h"
@@ -201,6 +207,9 @@ BOOL CG_LOOP_ooo_unroll_heuristics = FALSE;
 BOOL CG_LOOP_ooo_unroll_heuristics_set = FALSE;
 UINT32 CG_LOOP_reorder_buffer_size = 16;
 UINT32 CG_LOOP_cache_miss_threshold = 33;
+#ifdef KEY
+INT32 CG_Enable_Loop_Opt_Limit=-1;
+#endif
 
 BOOL CG_LOOP_unroll_multi_bb = TRUE;
 BOOL CG_LOOP_unroll_non_trip_countable = TRUE;
@@ -971,6 +980,10 @@ CG_LOOP_DEF::CG_LOOP_DEF(BB *body)
 {
   tn_map = TN_MAP_Create();
   OP *op;
+#ifdef TARG_X8664
+  static TN* rflags = Rflags_TN();
+#endif
+
   FOR_ALL_BB_OPs(body, op) {
 
     for (INT i = 0; i < OP_results(op); i++) {
@@ -979,6 +992,12 @@ CG_LOOP_DEF::CG_LOOP_DEF(BB *body)
 	  !TN_is_const_reg(res) &&
 	  !Get(res))
 	TN_MAP_Set(tn_map, res, op);
+#ifdef TARG_X8664
+      if( TOP_is_change_rflags( OP_code(op) ) &&
+	  !Get( rflags ) ){
+	TN_MAP_Set( tn_map, rflags, op );
+      }
+#endif
     }
   }
 }
@@ -1865,10 +1884,9 @@ void Remove_Notations_With_Copies(BB *body, BB *head, BB *tail,
 }
 
 
-void CG_LOOP_Remove_Notations(CG_LOOP& cl, BB *head, BB *tail)
+void CG_LOOP_Remove_Notations(LOOP_DESCR* loop, BB *head, BB *tail)
 {
-  LOOP_DESCR *loop = cl.Loop();
-  BB *body = cl.Loop_header();
+  BB *body = LOOP_DESCR_loophead(loop);
 
   if (Get_Trace(TP_CGLOOP, 0x4)) {
     #pragma mips_frequency_hint NEVER
@@ -2073,7 +2091,26 @@ static void unroll_names_init_tn(TN *result, UINT16 ntimes, MEM_POOL *pool)
     else
       entry[unrolling] = Dup_TN(result);
 }
-  
+
+// Bug 1064 & Bug 1221
+#ifdef KEY
+static BOOL TN_is_cond_def_of_another_op(BB *bb, TN *tn, OP *cand_op)
+{
+  OP *op;
+  FOR_ALL_BB_OPs(bb, op) {
+    if (cand_op == op)
+      break;
+    if (!OP_cond_def(op))
+      continue;
+    for (INT i = 0; i < OP_results(op); ++i) {
+      TN *result_tn = OP_result(op,i);
+      if (result_tn == tn)
+        return TRUE;
+    }
+  }
+  return FALSE;
+}
+#endif
 
 static void unroll_names_init(LOOP_DESCR *loop, UINT16 ntimes, MEM_POOL *pool)
 /* -----------------------------------------------------------------------
@@ -2101,8 +2138,11 @@ static void unroll_names_init(LOOP_DESCR *loop, UINT16 ntimes, MEM_POOL *pool)
 	
 	if (OP_base_update_kind(op) == NO_BASE_UPDATE || 
 	    (OP_load(op) && i == 0))  // prevent renaming of base-update incr
-
-	  if (!TN_MAP_Get(unroll_names, result_tn)) 
+#ifdef KEY
+          if (!TN_MAP_Get(unroll_names, result_tn) && !TN_is_cond_def_of_another_op(bb, result_tn, op))
+#else
+          if (!TN_MAP_Get(unroll_names, result_tn))
+#endif
 	    unroll_names_init_tn(result_tn, ntimes, pool);
       }
     }
@@ -2557,9 +2597,9 @@ static BB *Unroll_Replicate_Body(LOOP_DESCR *loop, INT32 ntimes, BOOL unroll_ful
     Set_OP_opnd(op,
 		Branch_Target_Operand(op),
 		Gen_Label_TN(Gen_Label_For_BB(unrolled_body), 0));
+    INT loop_count = WN_loop_trip_est(wn) ? WN_loop_trip_est(wn) : 100;
     Link_Pred_Succ_with_Prob(unrolled_body, unrolled_body,
-			     (WN_loop_trip_est(wn) - 1.0) /
-			     WN_loop_trip_est(wn));
+			     (loop_count - 1.0) / loop_count);
   }
 
   float new_body_freq = BB_freq(body) / ntimes;
@@ -2569,8 +2609,9 @@ static BB *Unroll_Replicate_Body(LOOP_DESCR *loop, INT32 ntimes, BOOL unroll_ful
   Chain_BBs(unrolled_body, BB_next(body));
   LOOP_DESCR_Retarget_Loop_Entrances(loop, unrolled_body);
   Unlink_Pred_Succ(body, BB_next(body));
+  INT loop_count = WN_loop_trip_est(wn) ? WN_loop_trip_est(wn) : 100;
   Link_Pred_Succ_with_Prob(unrolled_body, BB_next(body),
-			   1.0 / WN_loop_trip_est(wn));
+			   1.0 / loop_count);
   BB_next(body) = BB_prev(body) = NULL;
 
   if (FREQ_Frequencies_Computed() || BB_freq_fb_based(body)) {
@@ -2906,6 +2947,15 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
 	      &prolog_ops);
     
     continuation_label = Gen_Label_For_BB(remainder_tail);
+#ifdef TARG_X8664
+    Exp_OP3v(OPC_FALSEBR,
+	     NULL,
+	     Gen_Label_TN(continuation_label,0),
+	     new_trip_count,
+	     Gen_Literal_TN(0,4),
+	     trip_size == 4 ? V_BR_I4EQ : V_BR_I8EQ,
+	     &zero_trip_guard_ops);
+#else
     Exp_OP3v(OPC_FALSEBR,
 	     NULL,
 	     Gen_Label_TN(continuation_label,0),
@@ -2913,6 +2963,7 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
 	     Zero_TN,
 	     V_BR_I8EQ,
 	     &zero_trip_guard_ops);
+#endif
 
     Link_Pred_Succ_with_Prob(CG_LOOP_prolog, remainder_tail, ztrip_prob);
     if (freqs || BB_freq_fb_based(CG_LOOP_prolog))
@@ -2965,6 +3016,15 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
 		new_trip_count,
 		Gen_Literal_TN(-1, trip_size),
 		&body_ops);
+#ifdef TARG_X8664
+	Exp_OP3v(OPC_TRUEBR,
+		 NULL,
+		 Gen_Label_TN(continuation_label,0),
+		 new_trip_count,
+		 Gen_Literal_TN(0,4),
+		 trip_size == 4 ? V_BR_I4EQ : V_BR_I8EQ,
+		 &body_ops);
+#else
 	Exp_OP3v(OPC_TRUEBR,
 		 NULL,
 		 Gen_Label_TN(continuation_label,0),
@@ -2972,6 +3032,7 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
 		 Zero_TN,
 		 V_BR_I8EQ,
 		 &body_ops);
+#endif
       }
       else {
         Set_BB_unrollings(unrolled_body, unroll_times);
@@ -2989,6 +3050,7 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
             Set_OP_orig_idx(new_op, OP_map_idx(op));
             Set_OP_unroll_bb(new_op, unrolled_body);
           }
+	  CG_LOOP_Init_Op(new_op);
 	  Copy_WN_For_Memory_OP(new_op, op);
 	  BB_Append_Op(unrolled_body, new_op);
 	}
@@ -3035,20 +3097,59 @@ void Unroll_Make_Remainder_Loop(CG_LOOP& cl, INT32 ntimes)
       }
 
       OPS body_ops = OPS_EMPTY;
+#ifndef KEY
       CGTARG_Generate_Remainder_Branch(new_trip_count, label_tn,
 				       &prolog_ops, &body_ops);
+#else
+      OP* op = NULL;
+      BB* new_body = Gen_BB_Like( body );
+      TN* var_trip_count = new_trip_count;
+
+      if( const_trip ){
+	var_trip_count = Build_TN_Like( trip_count );
+	Exp_COPY( var_trip_count, new_trip_count, &prolog_ops );
+      }
+
+      FOR_ALL_BB_OPs( body, op ){
+	OP* new_op = Dup_OP(op);
+	CG_LOOP_Init_Op( new_op );
+	Copy_WN_For_Memory_OP( new_op, op );
+	OPS_Append_Op( &body_ops, new_op );
+      }
+
+      const INT32 trip_size = TN_size(var_trip_count);
+      Exp_OP2( trip_size == 4 ? OPC_I4ADD : OPC_I8ADD,
+	       var_trip_count,
+	       var_trip_count,
+	       Gen_Literal_TN(-1, trip_size),
+	       &body_ops );
+
+      Exp_OP3v( OPC_TRUEBR,
+		NULL,
+		Gen_Label_TN( Gen_Label_For_BB(new_body),0 ),
+		var_trip_count,
+		Zero_TN,
+		V_BR_I8NE,
+		&body_ops );
+
+      float exit_prob = 1.0 / ntimes;
+      Link_Pred_Succ_with_Prob( new_body, new_body, 1.0 - exit_prob );
+      //Link_Pred_Succ_with_Prob( new_body, remainder_tail, exit_prob );
+      //Chain_BBs( new_body, body );
+      body = new_body;
+#endif
 
       BB_Append_Ops(CG_LOOP_prolog, &prolog_ops);
       BB_Append_Ops(CG_LOOP_prolog, &zero_trip_guard_ops);
       BB_Append_Ops(body, &body_ops);
-
+#ifndef KEY
       if (freqs || BB_freq_fb_based(body)) {
 	/* BB_freq(body) doesn't yet include edge from prolog. */
 	body_freq = BB_freq(CG_LOOP_prolog) * (trip_est - 1);
 	if (freqs && trip_est > 0)
 	  BBLIST_prob(BB_succs(body)) = (trip_est - 1.0) / trip_est;
       }
-
+#endif
       if (Get_Trace(TP_CGLOOP, 0x4)) {
 	#pragma mips_frequency_hint NEVER
 	CG_LOOP_Trace_Loop( loop, "Remainder Loop Structure" );
@@ -3142,6 +3243,13 @@ void unroll_remove_notations(BB *fully_unrolled_body)
 	TN *old_tn = OP_opnd(op,i);
 	TN *new_tn = CG_LOOP_Backpatch_Find_Non_Body_TN(CG_LOOP_prolog,
 							old_tn, omega);
+#ifdef TARG_X8664
+	if( new_tn == NULL &&
+	    old_tn == X87_cw_TN() ){
+	  // The initial x87 control-word is defined before main happens.
+	  new_tn = old_tn;
+	}
+#endif
 	Is_True(new_tn, ("missing prolog backpatch for TN%d[%d]",
 			 TN_number(old_tn), omega));
 	Set_OP_opnd(op, i, new_tn);
@@ -4033,9 +4141,12 @@ void trace_loop(LOOP_DESCR *loop)
 }
 
 
-static void Unroll_Do_Loop_guard(LOOP_DESCR *loop,
-				 LOOPINFO *unrolled_info,
-				 TN *unrolled_trip_count)
+#ifndef KEY
+static
+#endif
+void Unroll_Do_Loop_guard(LOOP_DESCR *loop,
+			  LOOPINFO *unrolled_info,
+			  TN *unrolled_trip_count)
 {
   INT64 trip_est = WN_loop_trip_est(LOOPINFO_wn(unrolled_info));
   float ztrip_prob = 1.0 / MAX(trip_est, 1);
@@ -4050,6 +4161,15 @@ static void Unroll_Do_Loop_guard(LOOP_DESCR *loop,
   continuation_bb = CG_LOOP_epilog;
   continuation_lbl = Gen_Label_For_BB(continuation_bb);
 
+#ifdef TARG_X8664
+  Exp_OP3v(OPC_FALSEBR,
+	   NULL,
+	   Gen_Label_TN(continuation_lbl,0),
+	   unrolled_trip_count,
+	   Gen_Literal_TN(0,4),
+	   TN_size(unrolled_trip_count) == 4 ? V_BR_I4EQ : V_BR_I8EQ,
+	   &ops);
+#else
   Exp_OP3v(OPC_FALSEBR,
 	   NULL,
 	   Gen_Label_TN(continuation_lbl,0),
@@ -4057,6 +4177,7 @@ static void Unroll_Do_Loop_guard(LOOP_DESCR *loop,
 	   Zero_TN,
 	   V_BR_I8EQ,
 	   &ops);
+#endif
   BB_Append_Ops(CG_LOOP_prolog, &ops);
   Link_Pred_Succ_with_Prob(CG_LOOP_prolog, continuation_bb, ztrip_prob);
   Change_Succ_Prob(CG_LOOP_prolog, BB_next(CG_LOOP_prolog), 1.0 - ztrip_prob);
@@ -4124,6 +4245,7 @@ void Unroll_Do_Loop(CG_LOOP& cl, UINT32 ntimes)
 	      &ops);
   }
 
+#ifdef TARG_IA64 // only IA64 has a counted loop (cloop) instruction
   // Replace the loop-back branch with the counted loop branch
   // instruction.  It is a nop for the MIPS architecture.
   {
@@ -4140,6 +4262,7 @@ void Unroll_Do_Loop(CG_LOOP& cl, UINT32 ntimes)
       CG_LOOP_Init_Op(BB_branch_op(head));
     }
   }
+#endif
 
   /* Initialize the TN renamer */
   unroll_names_init(loop, ntimes, &MEM_phase_nz_pool);
@@ -4517,7 +4640,13 @@ void CG_LOOP::Determine_Unroll_Factor()
 	 *   (b1) unrolled size <= OPT:unroll_size, or
 	 *   (b2) OPT:unroll_size=0 and OPT:unroll_times_max >= trip count
 	 */
-	(body_len * const_trip_count <= CG_LOOP_unrolled_size_max ||
+	(
+#ifdef KEY
+	 // For bug#109
+	 body_len * (UINT64)const_trip_count <= CG_LOOP_unrolled_size_max ||
+#else
+	 body_len * const_trip_count <= CG_LOOP_unrolled_size_max ||
+#endif
 	 CG_LOOP_unrolled_size_max == 0 &&
 	 CG_LOOP_unroll_times_max >= const_trip_count)) {
 
@@ -4543,6 +4672,20 @@ void CG_LOOP::Determine_Unroll_Factor()
       Set_unroll_factor(ntimes);
     }
   }
+//Bug 1520
+#ifdef KEY
+  ANNOTATION *info_ant = ANNOT_Get(BB_annotations(head), ANNOT_LOOPINFO);
+  info = info_ant ? ANNOT_loopinfo(info_ant) : NULL;
+  BOOL unroll_pragma = FALSE;
+  ANNOTATION *unroll_ant = ANNOT_Get(BB_annotations(head), ANNOT_PRAGMA);
+  while (unroll_ant && WN_pragma(ANNOT_pragma(unroll_ant)) != WN_PRAGMA_UNROLL)
+    unroll_ant = ANNOT_Get(ANNOT_next(unroll_ant), ANNOT_PRAGMA);
+  if (unroll_ant) {
+    WN *wn = ANNOT_pragma(unroll_ant);
+    if (WN_pragma_arg1(wn) > 1) 
+      Set_unroll_factor(WN_pragma_arg1(wn));
+  }
+#endif
 }
 
 
@@ -4550,6 +4693,11 @@ void CG_LOOP::Determine_Unroll_Factor()
 //   
 inline bool CG_LOOP_OP_is_live(OP *op, TN_SET *live_set, bool keep_prefetch)
 {
+#ifdef KEY
+  if( OP_br(op) ){
+    return true;
+  }
+#endif
   if (OP_store(op))
     return true;
   if (OP_has_implicit_interactions(op))
@@ -4755,7 +4903,7 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
 
   if (swp_trace) 
     fprintf(TFile, "<swp unroll factor>  swp_cycles[%d] = %g\n", unroll_times, swp_cycles[unroll_times]);
-  
+
   Set_unroll_factor(unroll_times);
 
   MEM_POOL_Pop(&MEM_local_nz_pool);
@@ -4764,6 +4912,11 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
 
 void CG_LOOP::EBO_Before_Unrolling()
 {
+#ifdef KEY
+  if( !Enable_CG_Peephole )
+    return;
+#endif
+
   MEM_POOL_Push(&MEM_local_pool);
 
   {
@@ -4784,6 +4937,11 @@ void CG_LOOP::EBO_Before_Unrolling()
 
 void CG_LOOP::EBO_After_Unrolling()
 {
+#ifdef KEY
+  if( !Enable_CG_Peephole )
+    return;
+#endif
+
   MEM_POOL_Push(&MEM_local_pool);
   {
     BB_REGION bb_region(&MEM_local_pool);
@@ -4882,6 +5040,11 @@ static BOOL Skip_Loop_For_Reason(LOOP_DESCR *loop)
     {
       reason = "loop never exits";
     }
+#ifdef TARG_X8664
+    else if( BB_freq_fb_based(head) && BB_freq(head) < 0.01 ){
+      reason = "loop is barely executed";
+    }
+#endif
   }
 	
   if (reason)
@@ -4907,6 +5070,12 @@ static BOOL Loop_Amenable_For_SWP(LOOP_DESCR *loop, BOOL trace)
   BB *bb;
   UINT32 bb_ctnt = 0;
   UINT32 insts_ctnt = 0;
+
+#ifdef KEY
+  if( !Enable_SWP ){
+    return FALSE;
+  }
+#endif
   
   FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), bb) {
     bb_ctnt++;
@@ -4988,6 +5157,7 @@ void Gen_Counted_Loop_Branch(CG_LOOP& cl)
   // Already converted into counted loop!
   if (CGTARG_OP_is_counted_loop(br_op)) return;
 
+#ifdef TARG_IA64 // only IA64 has a counted loop (cloop) instruction
   TN *label_tn = OP_opnd(br_op, Branch_Target_Operand(br_op));
   CGTARG_Generate_Branch_Cloop(br_op, trip_count_tn, trip_count_tn, 1,
 			       label_tn, &ops, &body_ops);
@@ -4997,16 +5167,33 @@ void Gen_Counted_Loop_Branch(CG_LOOP& cl)
     // Insert loop counter initialization to prolog
     BB_Append_Ops(prolog, &ops);
   }
+#endif
+#ifdef TARG_X8664
+  LOOP_DESCR *loop = cl.Loop();
+  CGTARG_Generate_Countdown_Loop(trip_count_tn, tail, 
+				 &ops, &body_ops, head == tail, loop);
+  if (OPS_length(&body_ops) > 0) {
+    BB_Append_Ops(tail, &body_ops);
+    // Insert loop counter initialization to prolog
+    BB_Append_Ops(prolog, &ops);
+  }
+#endif
 }
 
 
 //  Fix backpatches.  Some backpatches are obsoleted because
 //  EBO and other optimizations has deleted the def and uses
 //
+static inline pair<BB*, CG_LOOP_BACKPATCH *>
+make_pair(BB* a, CG_LOOP_BACKPATCH* b)
+{
+  return pair<BB*, CG_LOOP_BACKPATCH *>(a, b);
+}
+
 void Fix_Backpatches(CG_LOOP& cl, bool trace)
 {
   vector<pair<BB*, CG_LOOP_BACKPATCH *> > dead_bp;
-  set<TN*> epilog_tns;
+  std::set<TN*> epilog_tns;
   BB *body = cl.Loop_header();
   BB *prolog = CG_LOOP_prolog;
   BB *epilog = CG_LOOP_epilog;
@@ -5063,7 +5250,7 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup)
  
   // Determine how to optimize the loop
   //
-  LOOP_OPT_ACTION action;
+  LOOP_OPT_ACTION action = NO_LOOP_OPT;
   BOOL has_trip_count = CG_LOOP_Trip_Count(loop) != NULL;
   BOOL single_bb = (BB_SET_Size(LOOP_DESCR_bbset(loop)) == 1);
 
@@ -5162,7 +5349,7 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup)
       cg_loop.EBO_Before_Unrolling();  
 
       if (SWP_Options.Predicate_Promotion) {
-	list<BB*> bbl;
+	std::list<BB*> bbl;
 	bbl.push_front(cg_loop.Loop_header());
 	CG_DEP_Prune_Dependence_Arcs(bbl, TRUE, trace_loop_opt);
 	if (trace_loop_opt) 
@@ -5208,7 +5395,7 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup)
 
       if (!Perform_SWP(cg_loop, fixup, true /*doloop*/)) {
 	Undo_SWP_Branch(cg_loop, true /*is_doloop*/);
-	CG_LOOP_Remove_Notations(cg_loop, CG_LOOP_prolog, CG_LOOP_epilog);
+	CG_LOOP_Remove_Notations(loop, CG_LOOP_prolog, CG_LOOP_epilog);
 	cg_loop.Recompute_Liveness();
       }
       break;
@@ -5251,9 +5438,13 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup)
 	  Unroll_Do_Loop(cg_loop, cg_loop.Unroll_factor());
 	}
 	cg_loop.Recompute_Liveness();
-	CG_LOOP_Remove_Notations(cg_loop, CG_LOOP_prolog, CG_LOOP_epilog);
+	CG_LOOP_Remove_Notations(loop, CG_LOOP_prolog, CG_LOOP_epilog);
       }
 
+#ifdef TARG_X8664
+      // Should it be moved to the end of this function ???
+      CGTARG_LOOP_Optimize( loop );
+#endif
       cg_loop.Recompute_Liveness();
       cg_loop.EBO_After_Unrolling();
       break;
@@ -5306,7 +5497,7 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup)
 	  
 	  //  Undo SWP preparations, if SWP failed
 	  Undo_SWP_Branch(cg_loop, false/*is_doloop*/);
-	  CG_LOOP_Remove_Notations(cg_loop, CG_LOOP_prolog, CG_LOOP_epilog);
+	  CG_LOOP_Remove_Notations(loop, CG_LOOP_prolog, CG_LOOP_epilog);
 	  cg_loop.Recompute_Liveness();
 	}
       }
@@ -5448,6 +5639,11 @@ void Perform_Loop_Optimizations()
   Calculate_Dominators();		/* needed for loop recognition */
 
   SWP_FIXUP_VECTOR fixup;
+#ifdef KEY 
+#ifdef Is_True_On
+  INT32 cur_loop_idx = 0;
+#endif
+#endif
 
   for (LOOP_DESCR *loop = LOOP_DESCR_Detect_Loops(&loop_descr_pool);
        loop;
@@ -5474,6 +5670,14 @@ void Perform_Loop_Optimizations()
       CG_LOOP_Statistics(loop);
 
     // CG_LOOP_Optimize adds fixup requirement to 'fixup'.
+#ifdef KEY 
+#ifdef Is_True_On
+    cur_loop_idx ++;
+    if (CG_Enable_Loop_Opt_Limit != -1 &&
+        cur_loop_idx > CG_Enable_Loop_Opt_Limit)
+      break;
+#endif
+#endif
     CG_LOOP_Optimize(loop, fixup);
   }
 

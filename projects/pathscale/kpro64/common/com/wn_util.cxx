@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1219,14 +1223,22 @@ TY_IDX
 WN_object_ty (const WN *wn)
 {
   if (OPCODE_is_load(WN_opcode(wn))) {
-    if ((WN_operator(wn) == OPR_LDID || WN_operator(wn) == OPR_LDBITS) && 
+    if ((WN_operator(wn) == OPR_LDID 
+#ifndef KEY
+	 || WN_operator(wn) == OPR_LDBITS
+#endif
+	 ) && 
 	WN_field_id(wn) != 0 &&
 	TY_kind(WN_ty(wn)) == KIND_STRUCT)
       return field_type (wn);
     return WN_ty(wn);
   } else if (OPCODE_is_store(WN_opcode(wn))) {
     if (WN_operator(wn) == OPR_STID || WN_operator(wn) == OPR_STBITS) {
-      if (WN_field_id(wn) != 0 && TY_kind(WN_ty(wn)) == KIND_STRUCT)
+      if (WN_field_id(wn) != 0 && TY_kind(WN_ty(wn)) == KIND_STRUCT
+#ifdef KEY
+	  && WN_operator(wn) == OPR_STID
+#endif
+	 )
 	return field_type (wn);
       return WN_ty(wn);
     } else {

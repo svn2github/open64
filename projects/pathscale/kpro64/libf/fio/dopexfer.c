@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -171,7 +175,7 @@ _xfer_iolist(
 				"Begin iolist for unit %lld   func=%s\n",
 				cup->uid, fnm);
 
-			DD; fprintf(_df,"iolist->icount   = %ld\n",iolist->icount);
+			DD; fprintf(_df,"iolist->icount   = %d\n",iolist->icount);
 		}
 	}
 
@@ -223,13 +227,13 @@ _xfer_iolist(
 						_fcdlen(se->iovar_address.fcd));
 				}
 
-				DD; fprintf(_df,"dpflag        = %ld\n",
+				DD; fprintf(_df,"dpflag        = %d\n",
 						se->tinfo.dpflag);
 				DD; fprintf(_df,"kind_or_star  = %d\n",
 						se->tinfo.kind_or_star);
-				DD; fprintf(_df,"int_len       = %ld\n",
+				DD; fprintf(_df,"int_len       = %d\n",
 						se->tinfo.int_len);
-				DD; fprintf(_df,"dec_len       = %ld\n",
+				DD; fprintf(_df,"dec_len       = %d\n",
 						se->tinfo.dec_len);
 			}
 
@@ -337,7 +341,7 @@ _xfer_iolist(
 				if (DEBUG_90IO) {
 				  DD;fprintf(_df,"elsize=%ld sm=%ld SMSCALE=%d\n",
 					tip.elsize, sm, SMSCALE(dv));
-				  DD;fprintf(_df,"int_len=%ld kind_or_star=%d ext_len=%ld\n",
+				  DD;fprintf(_df,"int_len=%d kind_or_star=%d ext_len=%d\n",
 					dv->type_lens.int_len,
 					dv->type_lens.kind_or_star,
 					dv->type_lens.dec_len);
@@ -564,21 +568,21 @@ _stride_dv(
 		}
 		DD; fprintf(_df,"dv->base_addr.a.el_len = %ld\n",
 			dv->base_addr.a.el_len);
-		DD; fprintf(_df,"dv->assoc              = %ld\n",dv->assoc);
-		DD; fprintf(_df,"dv->ptr_alloc          = %ld\n",dv->ptr_alloc);
+		DD; fprintf(_df,"dv->assoc              = %d\n",dv->assoc);
+		DD; fprintf(_df,"dv->ptr_alloc          = %d\n",dv->ptr_alloc);
 		DD; fprintf(_df,"dv->p_or_a             = %d\n",dv->p_or_a);
-		DD; fprintf(_df,"dv->n_dim              = %ld\n",dv->n_dim);
+		DD; fprintf(_df,"dv->n_dim              = %d\n",dv->n_dim);
 
-		DD; fprintf(_df,"dv->type_lens.dpflag        = %ld\n",
+		DD; fprintf(_df,"dv->type_lens.dpflag        = %d\n",
 				 dv->type_lens.dpflag);
 		DD; fprintf(_df,"dv->type_lens.kind_or_star  = %d\n",
 				 dv->type_lens.kind_or_star);
-		DD; fprintf(_df,"dv->type_lens.int_len       = %ld\n",
+		DD; fprintf(_df,"dv->type_lens.int_len       = %d\n",
 				 dv->type_lens.int_len);
-		DD; fprintf(_df,"dv->type_lens.dec_len       = %ld\n",
+		DD; fprintf(_df,"dv->type_lens.dec_len       = %d\n",
 				 dv->type_lens.dec_len);
 
-		DD; fprintf(_df,"dv->orig_base     = 0%lo\n",dv->orig_base);
+		DD; fprintf(_df,"dv->orig_base     = %p\n",dv->orig_base);
 		DD; fprintf(_df,"dv->orig_size     = %ld\n",dv->orig_size);
 
 		for (itmp = 0; itmp < dv->n_dim; itmp++) {

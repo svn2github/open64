@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,7 +54,9 @@
 #ifndef	MAXPATHLEN
 #define MAXPATHLEN	128
 #endif
+#ifndef KEY
 #include <sgidefs.h>
+#endif
 #include "externals.h"
 
 extern __int32_t

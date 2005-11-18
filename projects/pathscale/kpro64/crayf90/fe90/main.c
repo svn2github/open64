@@ -1,5 +1,7 @@
 /*
 
+  Copyright 2004 PathScale, Inc.  All Rights Reserved.
+
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -41,9 +43,9 @@ static char USMID[] = "\n@(#)5.0_pl/sources/main.c	5.15	10/14/99 15:25:09\n";
 # if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))	/* Needed for timing information. */
 # include <sys/time.h>
 # include <sys/resource.h>
-# else
-# include <time.h>
 # endif
+
+# include <time.h>
 
 # include "host.m"		/* Host machine dependent macros.*/
 # include "host.h"		/* Host machine dependent header.*/
@@ -65,6 +67,8 @@ static char USMID[] = "\n@(#)5.0_pl/sources/main.c	5.15	10/14/99 15:25:09\n";
 # include "main.h"
 # include "type.h"
 # include "intrin.h"
+
+#include "pathscale_defs.h"
 
 extern	const	char	*fe_vers_ID(void);
 extern	const	char	*fe_vers_number(void);
@@ -451,7 +455,7 @@ PREPROCESS_ONLY_SKIP:
       msg_name	= "cf90";
 
 # elif defined(_HOST_OS_LINUX)
-      msg_name	= "sgif90";
+      msg_name	= PSC_NAME_PREFIX "f90";
 
 # elif (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
 

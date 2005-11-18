@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,7 +42,6 @@ extern "C" {
 # endif
 
 /* USMID:  "\n@(#)5.0_pl/headers/i_cvrt.h	5.24	10/21/99 15:46:35\n" */
-
 
 typedef long long int          INT64;
 typedef int                    INT32;
@@ -767,9 +770,16 @@ extern void  fei_smt_original_to_qualified( INT32 qualified_st_idx,
                                             char  *original_name );
 extern void  fei_null_expr                ( void );
 extern void  fei_member_ref               ( INT32 mem_idx );
+#ifdef KEY
 extern void  fei_object_ref               ( INTPTR sym_idx,    
                                             INT32 whole_subscript,
-                                            INT32 whole_substring );
+                                            INT32 whole_substring,
+                                            unsigned int data_init);
+#else
+extern void  fei_object_ref               ( INTPTR sym_idx,    
+                                            INT32 whole_subscript,
+                                            INT32 whole_substring);
+#endif
 extern void  fei_function_ref             ( INTPTR fnc_idx );
 extern INTPTR fei_constant                 ( TYPE  type,
                                             INT32 Class,
@@ -967,6 +977,9 @@ extern void  fei_fuse                     ( INT32 level );
 extern void  fei_flush                    ( INT32 list_count );
 extern void  fei_assert                   ( INT32 assertion, INT32 list_count );
 extern void  fei_fission                  ( void );
+#ifdef KEY
+extern void  fei_forall                   ( void );
+#endif
 extern void  fei_unroll                   ( void );
 extern void  fei_section_gp               ( INT32 list_count );
 extern void  fei_section_nongp            ( INT32 list_count );
@@ -1599,8 +1612,10 @@ extern void PDGCS_mpp_init                ( char        *src_fname,
 
 
 typedef struct		type_descriptor	pdg_type_tbl_type;
-
-
+#ifdef KEY
+extern int Check_FF2C_Script           ( char *callee_key,
+                                         int  mangled ); 
+#endif
 # ifdef __cplusplus
 }
 # endif 

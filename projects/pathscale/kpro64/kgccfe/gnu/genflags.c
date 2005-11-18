@@ -1,25 +1,31 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
 /* Generate from machine description:
    - some flags HAVE_... saying which simple standard instructions are
    available for this machine.
    Copyright (C) 1987, 1991, 1995, 1998,
    1999, 2000 Free Software Foundation, Inc.
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
 
 #include "hconfig.h"
@@ -28,10 +34,6 @@ Boston, MA 02111-1307, USA.  */
 #include "obstack.h"
 #include "errors.h"
 #include "gensupport.h"
-
-
-#define obstack_chunk_alloc xmalloc
-#define obstack_chunk_free free
 
 /* Obstack to remember insns with.  */
 static struct obstack obstack;
@@ -54,10 +56,10 @@ static void
 max_operand_1 (x)
      rtx x;
 {
-  register RTX_CODE code;
-  register int i;
-  register int len;
-  register const char *fmt;
+  RTX_CODE code;
+  int i;
+  int len;
+  const char *fmt;
 
   if (x == 0)
     return;
@@ -87,8 +89,8 @@ static int
 num_operands (insn)
      rtx insn;
 {
-  register int len = XVECLEN (insn, 1);
-  register int i;
+  int len = XVECLEN (insn, 1);
+  int i;
 
   max_opno = -1;
 
@@ -128,14 +130,18 @@ gen_macro (name, real, expect)
   printf ("(%c))\n", i + 'A');
 }
 
-/* Print out prototype information for a function.  */
+/* Print out prototype information for a generator function.  If the
+   insn pattern has been elided, print out a dummy generator that
+   does nothing.  */
 
 static void
 gen_proto (insn)
      rtx insn;
 {
   int num = num_operands (insn);
+  int i;
   const char *name = XSTR (insn, 0);
+  int truth = maybe_eval_c_test (XSTR (insn, 2));
 
   /* Many md files don't refer to the last two operands passed to the
      call patterns.  This means their generator functions will be two
@@ -156,19 +162,41 @@ gen_proto (insn)
 	gen_macro (name, num, 5);
     }
 
-  printf ("extern rtx gen_%-*s PARAMS ((", max_id_len, name);
+  if (truth != 0)
+    printf ("extern rtx        gen_%-*s PARAMS ((", max_id_len, name);
+  else
+    printf ("static inline rtx gen_%-*s PARAMS ((", max_id_len, name);
 
   if (num == 0)
-    printf ("void");
+    fputs ("void", stdout);
   else
     {
-      while (num-- > 1)
-	printf ("rtx, ");
-
-      printf ("rtx");
+      for (i = 1; i < num; i++)
+	fputs ("rtx, ", stdout);
+      
+      fputs ("rtx", stdout);
     }
 
-  printf ("));\n");
+  puts ("));");
+
+  /* Some back ends want to take the address of generator functions,
+     so we cannot simply use #define for these dummy definitions.  */
+  if (truth == 0)
+    {
+      printf ("static inline rtx\ngen_%s", name);
+      if (num > 0)
+	{
+	  putchar ('(');
+	  for (i = 0; i < num-1; i++)
+	    printf ("%c, ", 'a' + i);
+	  printf ("%c)\n", 'a' + i);
+	  for (i = 0; i < num; i++)
+	    printf ("     rtx %c ATTRIBUTE_UNUSED;\n", 'a' + i);
+	}
+      else
+	puts ("()");
+      puts ("{\n  return 0;\n}");
+    }
 
 }
 
@@ -179,6 +207,7 @@ gen_insn (insn)
   const char *name = XSTR (insn, 0);
   const char *p;
   int len;
+  int truth = maybe_eval_c_test (XSTR (insn, 2));
 
   /* Don't mention instructions whose names are the null string
      or begin with '*'.  They are in the machine description just
@@ -191,22 +220,27 @@ gen_insn (insn)
   if (len > max_id_len)
     max_id_len = len;
 
-  printf ("#define HAVE_%s ", name);
-  if (strlen (XSTR (insn, 2)) == 0)
-    printf ("1\n");
+  if (truth == 0)
+    /* emit nothing */;
+  else if (truth == 1)
+    printf ("#define HAVE_%s 1\n", name);
   else
     {
       /* Write the macro definition, putting \'s at the end of each line,
 	 if more than one.  */
-      printf ("(");
+      printf ("#define HAVE_%s (", name);
       for (p = XSTR (insn, 2); *p; p++)
 	{
+#ifndef SGI_MONGOOSE
+	  if (IS_VSPACE (*p))
+#else
 	  if (*p == '\n')
-	    printf (" \\\n");
+#endif /* SGI_MONGOOSE */
+	    fputs (" \\\n", stdout);
 	  else
-	    printf ("%c", *p);
+	    putchar (*p);
 	}
-      printf (")\n");
+      fputs (")\n", stdout);
     }
 
   obstack_grow (&obstack, &insn, sizeof (rtx));
@@ -227,14 +261,20 @@ main (argc, argv)
   progname = "genflags";
   obstack_init (&obstack);
 
-  if (argc <= 1)
-    fatal ("No input file name.");
+  /* We need to see all the possibilities.  Elided insns may have
+     direct calls to their generators in C code.  */
+  insn_elision = 0;
 
-  if (init_md_reader (argv[1]) != SUCCESS_EXIT_CODE)
+  if (argc <= 1)
+    fatal ("no input file name");
+
+  if (init_md_reader_args (argc, argv) != SUCCESS_EXIT_CODE)
     return (FATAL_EXIT_CODE);
   
-  printf ("/* Generated automatically by the program `genflags'\n\
-from the machine description file `md'.  */\n\n");
+  puts ("/* Generated automatically by the program `genflags'");
+  puts ("   from the machine description file `md'.  */\n");
+  puts ("#ifndef GCC_INSN_FLAGS_H");
+  puts ("#define GCC_INSN_FLAGS_H\n");
 
   /* Read the machine description.  */
 
@@ -257,8 +297,12 @@ from the machine description file `md'.  */\n\n");
   for (insn_ptr = insns; *insn_ptr; insn_ptr++)
     gen_proto (*insn_ptr);
 
-  fflush (stdout);
-  return (ferror (stdout) != 0 ? FATAL_EXIT_CODE : SUCCESS_EXIT_CODE);
+  puts("\n#endif /* GCC_INSN_FLAGS_H */");
+
+  if (ferror (stdout) || fflush (stdout) || fclose (stdout))
+    return FATAL_EXIT_CODE;
+
+  return SUCCESS_EXIT_CODE;
 }
 
 /* Define this so we can link with print-rtl.o to get debug_rtx function.  */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -73,20 +77,43 @@ extern void Expand_Float_Greater_Equal (TN *dest, TN *src1, TN *src2, VARIANT va
 extern void Expand_Float_Equal (TN *dest, TN *src1, TN *src2, VARIANT variant, TYPE_ID mtype, OPS *ops);
 extern void Expand_Float_Not_Equal (TN *dest, TN *src1, TN *src2, VARIANT variant, TYPE_ID mtype, OPS *ops);
 extern void Expand_Convert_Length (TN *dest, TN *src, TN *length, TYPE_ID mtype, BOOL signed_extension, OPS *ops);
+#ifdef TARG_X8664
+extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
+#else
 extern void Expand_Float_To_Float (TN *dest, TN *src, TYPE_ID mtype, OPS *ops);
+#endif
 extern void Expand_Int_To_Float (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops);
 extern void Expand_Float_To_Int_Cvt (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops);
 extern void Expand_Float_To_Int_Round (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops);
 extern void Expand_Float_To_Int_Trunc (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops);
 extern void Expand_Float_To_Int_Ceil (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops);
 extern void Expand_Float_To_Int_Floor (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops);
+#ifdef KEY
+extern void Expand_Float_To_Float_Floor (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
+extern void Expand_Float_To_Float_Floorf (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
+extern void Expand_Float_To_Float_Floorl (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
+#endif
 extern void Expand_Bool_To_Int (TN *dest, TN *src, TYPE_ID rtype, OPS *ops);
 extern void Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_MinMax (TN *dest, TN *dest2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops);
 extern void Expand_Select (TN *dest_tn, TN *cond_tn, TN *true_tn, TN *false_tn, TYPE_ID mtype, BOOL float_cond, OPS *ops);
 extern void Expand_Flop (OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *ops);
+
+#ifdef TARG_X8664
+#define OP_NEED_PAIR(t)  \
+   (Is_Target_32bit() && ((t)==MTYPE_I8 || (t)==MTYPE_U8))
+extern void Expand_Replicate (OPCODE opcode, TN *result, TN *src1, OPS *ops);
+TN* Get_TN_Pair( TN* );
+TN* Create_TN_Pair( TN*, TYPE_ID );
+void Create_TN_Pair( TN*, TN* );
+#endif /* TARG_X8664 */
+
+#ifndef KEY
 extern TN* Expand_Immediate_Into_Register (TN *src, OPS *ops);
+#else
+extern TN* Expand_Immediate_Into_Register (TN *src, BOOL is_64bit, OPS *ops);
+#endif
 extern BOOL Expand_Special_And_Immed(TN *dest, TN *src1, INT64 imm, OPS *ops);
 
 /* enumerate the different kinds of shifts */
@@ -95,8 +122,13 @@ extern void Expand_Shift (TN *result, TN *src1, TN *src2, TYPE_ID mtype, SHIFT_D
 
 /* in exp_loadstore: */
 extern void Expand_Lda (TN *dest, TN *src, OPS *ops);
+#if defined(TARG_MIPS) || defined(TARG_X8664)
+extern void Expand_Load (OPCODE opcode, TN *result, TN *src1, TN *src2, OPS *ops);
+extern void Expand_Store (TYPE_ID mtype, TN *src1, TN *src2, TN *src3, OPS *ops);
+#else
 extern void Expand_Load (OPCODE opcode, TN *result, TN *src1, TN *src2, VARIANT variant, OPS *ops);
 extern void Expand_Store (TYPE_ID mtype, TN *src1, TN *src2, TN *src3, VARIANT variant, OPS *ops);
+#endif
 extern void Expand_Misaligned_Load (OPCODE op, TN *result, TN *base, TN *disp, VARIANT variant, OPS *ops);
 extern void Expand_Misaligned_Store (TYPE_ID mtype, TN *obj_tn, TN *base_tn, TN *disp_tn, VARIANT variant, OPS *ops);
 extern void Expand_Lda_Label (TN *dest, TN *lab, OPS *ops);

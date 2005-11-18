@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,7 +59,6 @@
 
 #define INCLUDING_IN_REGISTER
 
-#include <vector.h>
 #include "defs.h"
 #include "errors.h"
 #include "tracing.h"
@@ -228,6 +231,9 @@ Initialize_Register_Class(
   REGISTER_SET       shrink_wrap    = REGISTER_SET_EMPTY_SET;
   REGISTER_SET	     stacked        = REGISTER_SET_EMPTY_SET;
   REGISTER_SET	     rotating       = REGISTER_SET_EMPTY_SET;
+#ifdef TARG_X8664
+  REGISTER_SET	     eight_bit_regs = REGISTER_SET_EMPTY_SET;
+#endif
 
   /* Verify we have a valid rclass and that the type used to implement 
    * a register set is large enough.
@@ -268,8 +274,11 @@ Initialize_Register_Class(
 
     if ( is_allocatable ) {
       allocatable = REGISTER_SET_Union1(allocatable,reg);
-
+#ifdef TARG_X8664
+      if( FALSE ){
+#else
       if ( ABI_PROPERTY_Is_global_ptr(rclass, isa_reg) ) {
+#endif
         if ( GP_Is_Preserved ) {
           /* neither caller nor callee saved (always preserved). */
         } else if ( Is_Caller_Save_GP ) {
@@ -291,13 +300,28 @@ Initialize_Register_Class(
           func_argument = REGISTER_SET_Union1(func_argument, reg);
         if ( ABI_PROPERTY_Is_func_val(rclass, isa_reg) )
           func_value = REGISTER_SET_Union1(func_value, reg);
+#ifdef TARG_MIPS
         if ( ABI_PROPERTY_Is_ret_addr(rclass, isa_reg) )
           shrink_wrap = REGISTER_SET_Union1(shrink_wrap, reg);
+#endif
+#if !defined(TARG_MIPS) && !defined(TARG_X8664)
         if ( ABI_PROPERTY_Is_stacked(rclass, isa_reg) )
           stacked = REGISTER_SET_Union1(stacked, reg);
+#endif
+#ifdef TARG_X8664
+	if( ABI_PROPERTY_Is_eight_bit_reg(rclass, isa_reg) ){
+	  eight_bit_regs = REGISTER_SET_Union1( eight_bit_regs, reg );
+	}
+#endif
       }
     }
 
+#ifdef TARG_X8664
+    // Any better way to get rid of this itch?
+    if( bit_size == 64 && Is_Target_32bit() ){
+      bit_size = 32;
+    }
+#endif
     REGISTER_bit_size(rclass, reg) = bit_size;
     REGISTER_machine_id(rclass, reg) = isa_reg;
     REGISTER_allocatable(rclass, reg) = is_allocatable;
@@ -311,6 +335,7 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_static_link, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_static_link, rclass);
     }
+#ifdef TARG_MIPS
     else if ( ABI_PROPERTY_Is_global_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_gp, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_gp, rclass);
@@ -319,10 +344,12 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_ra, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_ra, rclass);
     }
+#endif
     else if ( ABI_PROPERTY_Is_stack_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_sp, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_sp, rclass);
     }
+#ifdef TARG_MIPS
     else if ( ABI_PROPERTY_Is_entry_ptr(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_ep, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_ep, rclass);
@@ -331,6 +358,8 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_zero, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_zero, rclass);
     }
+#endif
+#ifdef TARG_IA64
     else if ( ABI_PROPERTY_Is_prev_funcstate(rclass, isa_reg) ) {
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_pfs, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_pfs, rclass);
@@ -355,6 +384,7 @@ Initialize_Register_Class(
       Set_CLASS_REG_PAIR_reg(CLASS_REG_PAIR_fone, reg);
       Set_CLASS_REG_PAIR_rclass(CLASS_REG_PAIR_fone, rclass);
     }
+#endif
   }
 
   REGISTER_CLASS_universe(rclass)          =
@@ -372,6 +402,9 @@ Initialize_Register_Class(
 	= ISA_REGISTER_CLASS_INFO_Can_Store(icinfo);
   REGISTER_CLASS_multiple_save(rclass)
 	= ISA_REGISTER_CLASS_INFO_Multiple_Save(icinfo);
+#ifdef TARG_X8664
+  REGISTER_CLASS_eight_bit_regs(rclass)    = eight_bit_regs;
+#endif
 
   /* There are multiple integer return regs -- v0 is the lowest
    * of the set.
@@ -525,7 +558,12 @@ extern void
 REGISTER_Reset_FP (void)
 {
   ISA_REGISTER_CLASS rclass;
-  if (FRAME_POINTER_REQUIRED_FOR_PU && FP_TN != NULL) {
+#ifndef TARG_X8664
+  if (FRAME_POINTER_REQUIRED_FOR_PU && FP_TN != NULL) 
+#else
+  if (Current_PU_Stack_Model != SMODEL_SMALL || Opt_Level == 0)
+#endif
+  {
 	rclass = TN_register_class(FP_TN);
 	reg_alloc_status[rclass][TN_register(FP_TN)] = AS_not_allocatable;
 	Initialize_Register_Class(rclass);
@@ -1083,7 +1121,7 @@ Set_Register_Never_Allocatable (char *regname)
 	reg = REGISTER_MIN + atoi(regname+1);
 	FmtAssert(reg <= REGISTER_CLASS_last_register(rclass),
 		("%s is not a valid register", regname));
-	dont_allocate_these_registers.push_back( make_pair( rclass, reg ));
+	dont_allocate_these_registers.push_back( pair< ISA_REGISTER_CLASS, REGISTER>( rclass, reg ));
 }
 
 // user wants given register to not be allocatable in file.
@@ -1093,6 +1131,6 @@ Set_Register_Never_Allocatable (PREG_NUM preg)
 	ISA_REGISTER_CLASS rclass;
 	REGISTER reg;
 	CGTARG_Preg_Register_And_Class(preg, &rclass, &reg);
-	dont_allocate_these_registers.push_back( make_pair( rclass, reg ));
+	dont_allocate_these_registers.push_back( pair< ISA_REGISTER_CLASS, REGISTER>( rclass, reg ));
 }
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -75,8 +79,11 @@
 #include <unistd.h>
 #include <cmplrs/rcodes.h>
 
+#ifndef USE_STANDARD_TYPES
 #define USE_STANDARD_TYPES // to allow wn_tree_op.h to include ... vector.h
                            // which uses standard types.
+#endif
+
 #include "wn_tree_util.h"
 #include "defs.h"
 #include "errors.h"
@@ -1045,6 +1052,12 @@ static void ir_put_wn(WN * wn, INT indent)
 	    		fprintf(ir_ofile, " # $f%d", 
 				WN_offset(wn) - Float_Preg_Min_Offset);
 		}
+#ifdef TARG_X8664
+		else if (Preg_Offset_Is_X87(WN_offset(wn))) {
+	    		fprintf(ir_ofile, " # $st%d", 
+				WN_offset(wn) - X87_Preg_Min_Offset);
+		}
+#endif
 	    }
 	    else { 
 	    	/* reference to a non-dedicated preg */

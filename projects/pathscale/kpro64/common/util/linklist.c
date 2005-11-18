@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -376,7 +380,7 @@ Validate_List ( LNK_LST *lst )
     count = 10*LST_Len(lst);
     for ( p=LST_first(lst); p!=NULL; p=LST_next(p) ) {
 	if ( --count < 0 ) break;
-	DevWarn("  0x%08x: %d", p, LST_val(p) );
+	DevWarn("  %p: %d", p, LST_val(p) );
     }
     FmtAssert ( FALSE,
 		( "Validate_List: invalid count %d", LST_Len(lst) ) );

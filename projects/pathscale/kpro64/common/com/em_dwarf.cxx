@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -51,6 +55,9 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #include "em_dwarf.h"
 #include "config_elf_targ.h"
 #include "targ_em_dwarf.h"
+#ifdef KEY
+#include "config_targ.h"  // For Is_Target_64bit() 
+#endif
 
 
 INT data_alignment_factor;
@@ -244,6 +251,11 @@ Em_Dwarf_Add_File (
   file_table[file_idx].incl_idx = incl_idx;
 }
 
+#ifdef KEY
+#include "strtab.h"
+#include "symtab.h"
+#include "irbdata.h"
+#endif // KEY
 
 Dwarf_P_Debug 
 Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
@@ -251,8 +263,15 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 {
   Dwarf_Unsigned flags;
   char *augmenter;
+#ifdef KEY
+  Dwarf_Unsigned personality=0;
+#endif // KEY
+
 #define EXT_OP(v)  (DW_CFA_extended | v)
   static unsigned char init_bytes[] = TARG_INIT_BYTES;
+#ifdef TARG_X8664
+  static unsigned char init_x86_bytes[] = TARG_INIT_X86_BYTES;
+#endif
 
   if (record_symidx == NULL) {
     record_symidx = another_identity_function;
@@ -271,14 +290,63 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
   dw_dbg = dwarf_producer_init_b (flags, setup_new_section_for_dwarf, 
 		      0, 0, &dw_error);
 
+#ifdef KEY
+  if (is_cplus)	/* may have eh info */
+  {
+    	if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
+	    augmenter = PIC_DW_CIE_AUGMENTER_STRING_V0;
+	else
+	    augmenter = DW_CIE_AUGMENTER_STRING_V0;
+	personality = Save_Str ("__gxx_personality_v0");
+        if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
+        {
+            ST * pic_personality_st = New_ST (GLOBAL_SYMTAB);
+            STR_IDX name = Save_Str ("DW.ref.__gxx_personality_v0");
+            ST_Init(pic_personality_st, name, CLASS_VAR, SCLASS_DGLOBAL, EXPORT_HIDDEN, MTYPE_TO_TY_array[MTYPE_U8]);
+            Set_ST_is_weak_symbol (pic_personality_st);
+	    Set_ST_is_initialized (pic_personality_st);
+            ST_ATTR_IDX st_attr_idx;
+            ST_ATTR&    st_attr = New_ST_ATTR (GLOBAL_SYMTAB, st_attr_idx);
+            ST_ATTR_Init (st_attr, ST_st_idx (pic_personality_st), ST_ATTR_SECTION_NAME, Save_Str (".gnu.linkonce.d.DW.ref.__gxx_personality_v0"));
+
+	    ST * personality_st = New_ST (GLOBAL_SYMTAB);
+	    ST_Init (personality_st, Save_Str("__gxx_personality_v0"), CLASS_VAR, SCLASS_EXTERN, EXPORT_PREEMPTIBLE, MTYPE_TO_TY_array[MTYPE_U8]);
+	    INITV_IDX iv = New_INITV();
+	    INITV_Init_Symoff (iv, personality_st, 0, 1);
+	    New_INITO (ST_st_idx (pic_personality_st), iv);
+	}
+  }
+  else
+	augmenter = "";
+#else
   if (is_cplus)	/* may have eh info */
 	augmenter = DW_CIE_AUGMENTER_STRING_V0;
   else
 	augmenter = "";
+#endif
+
   cie_index = dwarf_add_frame_cie (dw_dbg, augmenter,
+#ifdef TARG_X8664
+		    1, data_alignment_factor,
+		    // In common/com/em_dwarf.cxx, we have 
+		    // target description only for x86_64. So, we need to 
+		    // specify what is the right column for x86.
+		    Is_Target_64bit() ? DW_FRAME_RA_COL: 0x8,
+#else
 		    4, data_alignment_factor,
-		    DW_FRAME_RA_COL, 
+		    DW_FRAME_RA_COL,
+#endif // TARG_X8664
+#ifdef KEY
+		    personality,
+		    (Gen_PIC_Call_Shared || Gen_PIC_Shared),
+		    is_64bit,
+		    Is_Target_64bit() ? init_bytes :  init_x86_bytes, 
+		    Is_Target_64bit() ? sizeof(init_bytes) : sizeof(init_x86_bytes), 
+		    &dw_error);
+#else
 		    init_bytes, sizeof(init_bytes), &dw_error);
+#endif // KEY
+
 
   return dw_dbg;
 }

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -48,7 +52,9 @@
 #include <sys/elf_whirl.h>	    /* for WHIRL sections' sh_info */
 #include <cmplrs/rcodes.h>
 
+#ifndef USE_STANDARD_TYPES
 #define USE_STANDARD_TYPES	    /* override unwanted defines in "defs.h" */
+#endif
 
 #include "defs.h"		    /* for wn_core.h */
 #ifdef OWN_ERROR_PACKAGE
@@ -162,10 +168,13 @@ ir_bwrite_signal_handler (int sig, int err_num)
 {
     void (*old_handler) (int) = 0;
 
-    if (Doing_mmapped_io && err_num > 0 && err_num < sys_nerr)
+    errno = 0;
+    char *err_str = strerror(err_num);
+    
+    if (Doing_mmapped_io && errno == 0)
 	Fatal_Error ("I/O error in %s: %s", Current_Output ?
 		     Current_Output->file_name : "mmapped object",
-		     sys_errlist[err_num]);
+		     err_str);
     switch (sig) {
     case SIGBUS:
 	old_handler = old_sigbus;
@@ -555,7 +564,11 @@ WN_write_tree (PU_Info *pu, WN_MAP off_map, Output_File *fl)
 				padding);
     tree_base = fl->file_size;
 
+#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+    this_tree = ir_b_write_tree (tree, tree_base, fl, off_map, pu);
+#else
     this_tree = ir_b_write_tree (tree, tree_base, fl, off_map);
+#endif
 
     /* save the offset to the first node */
     *(Elf64_Word *)(fl->map_addr + tree_base) = this_tree;
@@ -846,6 +859,10 @@ WN_write_feedback (PU_Info* pu, Output_File* fl)
     pu_hdr.pu_checksum = Convert_Feedback_Info (Cur_PU_Feedback,
 						PU_Info_tree_ptr (pu),
 						pu_handle);
+#ifdef KEY
+    pu_hdr.pu_size = 0;
+    pu_hdr.runtime_fun_address = Cur_PU_Feedback->Get_Runtime_Func_Addr();
+#endif
     
     pu_hdr.pu_name_index = 0;
     pu_hdr.pu_file_offset = 0;
@@ -875,6 +892,16 @@ WN_write_feedback (PU_Info* pu, Output_File* fl)
     write_profile (feedback_base, pu_handle.Get_Call_Table (), fl,
 		   pu_hdr.pu_num_call_entries,
 		   pu_hdr.pu_call_offset);
+
+#ifdef KEY
+    write_profile (feedback_base, pu_handle.Get_Icall_Table (), fl,
+		   pu_hdr.pu_num_icall_entries,
+		   pu_hdr.pu_icall_offset);
+
+    write_profile (feedback_base, pu_handle.Get_Value_Table (), fl,
+		   pu_hdr.pu_num_value_entries,
+		   pu_hdr.pu_value_offset);   
+#endif
 
     bcopy (&pu_hdr, fl->map_addr + feedback_base, sizeof(pu_hdr));
     
@@ -1022,7 +1049,7 @@ WN_write_prefetch (PU_Info *pu, WN_MAP off_map, Output_File *fl)
     free(pf_ldsts);
 
     /* write out a -1 to mark the end */
-    node_offset = -1;
+    node_offset = (Elf64_Word) -1;
     ir_b_save_buf(&node_offset, sizeof(Elf64_Word), sizeof(Elf64_Word), 0, fl);
 
     Set_PU_Info_state(pu, WT_PREFETCH, Subsect_Written);

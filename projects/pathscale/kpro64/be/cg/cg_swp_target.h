@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -169,12 +173,20 @@ SWP_Loop_Init_Fini(bool is_doloop,
 
 inline BOOL Prepare_Loop_For_SWP_1(CG_LOOP& cl, bool trace)
 {
+#ifdef KEY
+  return CG_sas;
+#else
   return FALSE;
+#endif
 }
 
 inline BOOL Prepare_Loop_For_SWP_2(CG_LOOP& cl, bool trace)
 {
+#ifdef KEY
+  return CG_sas;
+#else
   return FALSE;
+#endif
 }
 
 inline void Convert_While_Loop_to_Fully_Predicated_Form(CG_LOOP& cl)
@@ -204,7 +216,7 @@ inline void Undo_SWP_Branch(CG_LOOP &cl, bool is_doloop) { }
 
 inline void Gen_Implicit_Prefetches(CG_LOOP &cl, bool trace) { }
 
-inline TN* Base_update_tn(OP *op) { }
+inline TN* Base_update_tn(OP *op) { return NULL; }
 
 #endif
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,14 +47,6 @@
 #include <cray/nassert.h>
 #include <cray/dopevec.h>
 #include "fio.h"
-
-extern int _cntig_chk(DopeVectorType *dv,
-           void **newar,
-           int *nocontig,
-           long *extent,
-           long *nbytes);
-
-extern int _unpack_arry(void *dvc, DopeVectorType *dvnc);
 
 /*
  *      _cntig_chk - called by unit and format library code to:

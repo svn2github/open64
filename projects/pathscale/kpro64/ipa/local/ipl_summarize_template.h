@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -63,6 +67,10 @@
 
 #ifndef ipl_linex_INCLUDED
 #include "ipl_linex.h"
+#endif
+
+#ifndef ipl_reorder_INCLUDED // for Ptr_to_ty_vector, local_cands
+#include "ipl_reorder.h"
 #endif
 
 #include "region_util.h"                // for WN_Fake_Call_EH_Region
@@ -411,11 +419,11 @@ SUMMARIZE<program>::Summarize (WN *w)
     // initialize hash tables for translating CODEREP and PHI
     Chi_To_Idx_Map =
 	CXX_NEW (CHI_CR_TO_INT_MAP (113, ptr_hash<CODEREP> (),
-				    equal_to<CODEREP*> (), &Temp_pool),
+				    std::equal_to<CODEREP*> (), &Temp_pool),
 		 &Temp_pool);
     Phi_To_Idx_Map =
 	CXX_NEW (PHI_NODE_TO_INT_MAP (113, ptr_hash<PHI_NODE> (),
-				      equal_to<PHI_NODE*> (), &Temp_pool),
+				      std::equal_to<PHI_NODE*> (), &Temp_pool),
 		 &Temp_pool);
     Hashed_Chis = CXX_NEW(CHI_CR_ARRAY(&Temp_pool), &Temp_pool);
     Hashed_Phis = CXX_NEW(PHI_NODE_ARRAY(&Temp_pool), &Temp_pool); 
@@ -508,7 +516,42 @@ struct process_compile_time_addr_saved
     }
 }; // process_compile_time_addr_saved
 
-    
+#ifdef KEY
+//bug# 555
+template <PROGRAM program>
+struct set_local_static_to_global
+{
+    SUMMARIZE<program>* const sum;
+    const vector<IPL_ST_INFO>& aux_st_info;
+                                                                                                                                                             
+    set_local_static_to_global (SUMMARIZE<program>* const s) :
+        sum (s),
+        aux_st_info (Aux_Symbol_Info[GLOBAL_SYMTAB]) {}
+                                                                                                                                                             
+    void operator() (UINT32 idx, ST* st) const {
+                                                                                                                                                             
+        if (ST_class (st) != CLASS_VAR ||
+            ST_sclass (st) != SCLASS_FSTATIC ||
+            !ST_initv_in_other_st(st))
+          return;
+                                                                                                                                                             
+        if (!ST_is_initialized (st))
+          Set_ST_sclass(st, SCLASS_COMMON);
+        else if (ST_init_value_zero(st))
+          Set_ST_sclass(st, SCLASS_UGLOBAL);
+        else
+          Set_ST_sclass(st, SCLASS_DGLOBAL);
+                                                                                                                                                             
+        Set_ST_export(st, EXPORT_PREEMPTIBLE);
+                                                                                                                                                             
+        char idname[10];
+        sprintf(idname, "%s%d", "_", ST_index(st));
+        int newname = Save_Str2(ST_name(st), idname);
+        Set_ST_name (st, newname);
+    }
+};
+#endif
+
 template <PROGRAM program>
 struct set_global_addr_taken_attrib
 {
@@ -598,6 +641,10 @@ SUMMARIZE<program>::Set_global_addr_taken_attrib (void)
     // well as the ST attributes.
     For_all (St_Table, GLOBAL_SYMTAB,
 	     set_global_addr_taken_attrib<program> (this));
+#ifdef KEY
+    if (program == IPL)
+      For_all (St_Table, GLOBAL_SYMTAB, set_local_static_to_global<program> (this));
+#endif
 } // Set_global_addr_taken_attrib
 
 
@@ -833,6 +880,107 @@ Last_Node (WN_TREE_ITER<PRE_ORDER, WN*> i)
     return i.Wn () == NULL;
 }
 
+#ifdef KEY
+template <PROGRAM program>
+void
+SUMMARIZE<program>::Process_eh_globals (void)
+{
+    if (!(PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) || 
+    	!Get_Current_PU().unused)
+    	return;
+
+    INITV_IDX i = INITV_next (INITV_next (INITO_val (Get_Current_PU().unused)));
+    INITO_IDX idx = TCON_uval (INITV_tc_val(i));
+    if (idx)	// typeinfo
+    {
+      INITO* ino = &Inito_Table[idx];
+      INITV_IDX blk = INITO_val (*ino);
+      do
+      {
+        INITV_IDX st_entry = INITV_blk (blk);
+	ST_IDX st_idx = 0;
+	if (INITV_kind (st_entry) != INITVKIND_ZERO)
+	{
+	  st_idx = TCON_uval (INITV_tc_val (st_entry));
+	  FmtAssert (st_idx != 0, ("Invalid st idx"));
+	}
+	if (st_idx <= 0)
+	{
+	  blk = INITV_next (blk);
+	  continue;
+	}
+	INT32 index = Get_symbol_index (&St_Table [st_idx]);
+	INITV_IDX filter = INITV_next (st_entry); // for backup
+	FmtAssert (index >= 0, ("Unexpected summary id for eh symbol"));
+	INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
+	               Host_To_Targ (MTYPE_U4, index)), 1);
+        Set_INITV_next (st_entry, filter);
+	blk = INITV_next (blk);
+      } while (blk);
+    }
+
+    i = INITV_next (i);
+    idx = TCON_uval (INITV_tc_val (i));
+    if (idx)	// eh-spec
+    {
+      INITO* ino = &Inito_Table[idx];
+      INITV_IDX st_entry = INITV_blk (INITO_val (*ino));
+      do
+      {
+	ST_IDX st_idx = 0;
+	if (INITV_kind (st_entry) != INITVKIND_ZERO)
+	{
+          st_idx = TCON_uval (INITV_tc_val (st_entry));
+	  FmtAssert (st_idx > 0, ("Invalid eh-spec entry"));
+	}
+	if (st_idx == 0)
+	{
+	  st_entry = INITV_next (st_entry);
+	  continue;
+	}
+	INT32 index = Get_symbol_index (&St_Table[st_idx]);
+	INITV_IDX next = INITV_next (st_entry); // for backup
+	FmtAssert (index >= 0, ("Unexpected summary id for eh symbol"));
+	INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
+	               Host_To_Targ (MTYPE_U4, index)), 1);
+	Set_INITV_next (st_entry, next);
+        st_entry = INITV_next (st_entry);
+      } while (st_entry);
+    }
+}
+
+template <PROGRAM program>
+void
+SUMMARIZE<program>::Process_eh_region (WN * wn)
+{
+    // !empty => try-region without any symbol worth summarizing.
+    if (!WN_ereg_supp (wn) || !WN_block_empty (WN_region_pragmas (wn)))
+    	return;
+    FmtAssert (INITO_val (WN_ereg_supp (wn)) && 
+    	       INITV_blk (INITO_val (WN_ereg_supp (wn))) &&
+	       INITV_next (INITV_blk (INITO_val (WN_ereg_supp (wn)))),
+	       ("No exception info attached to EH region"));
+    INITV_IDX types = INITV_next (INITV_blk (INITO_val (WN_ereg_supp (wn))));
+    for (; types; types = INITV_next (types))
+    {
+      int sym = 0;
+      if (INITV_kind (types) != INITVKIND_ZERO)
+        sym = TCON_uval (INITV_tc_val (types));
+      if (sym > 0)
+      {
+      	INT32 index = Get_symbol_index (&St_Table[sym]);
+	INITV_IDX next = INITV_next (types);	// for backup
+	// We don't expect index==0 since at least Process_eh_globals is 
+	// called before this.
+	FmtAssert (index > 0, ("Unexpected summary id for eh symbol"));
+	INITV_Set_VAL (Initv_Table[types], Enter_tcon (
+		       Host_To_Targ (MTYPE_U4, index)), 1);
+	Set_INITV_next (types, next);
+      }
+    }
+}
+#endif
+
 //-----------------------------------------------------------
 // summary procedure node
 // create call site entries
@@ -855,6 +1003,20 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     BOOL Has_return_already = FALSE;
     BOOL Has_pdo_pragma = FALSE;
     BOOL Has_local_pragma = FALSE;
+#ifdef KEY
+    BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback;
+    INT icall_cnt = 0;
+#else
+    BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback&& IPA_Enable_Reorder;//and other things, such as Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO]
+#endif // KEY
+
+    UINT fld_id,i, pop_loops;
+    BOOL cur_pu_is_reorder_cand=FALSE;
+    UINT64 loop_count;
+    UINT stack_size; //just for debug
+    WN* wn_tmp;
+    UINT num_struct_access;//just for debug, ,Finish_PU_process_struct_access()
+
 
     Trace_Modref = Get_Trace ( TP_IPL, TT_IPL_MODREF );
     
@@ -899,12 +1061,21 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    SUMMARY_FEEDBACK *fb = New_feedback ();
 	    proc->Set_feedback_index (Get_feedback_idx ());
 	    fb->Set_frequency_count (freq);
+//		printf("&&&&&&&&&&&&& %s -> %f\n",ST_name(WN_st(w)), fb->Get_frequency_count()._value);
 	}
 	else {
 	  // FB_PU_Has_Feedback = FALSE;
 	    DevWarn ("Unknown invoke frequency found in %s so no feedback info in this procedure will be considered", ST_name(WN_st(w)));
 	}
     }
+	else //INLINING_TUNING^
+	{
+	  if(Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO])
+	  {
+	    proc->Set_Never_Invoked ();
+	  }
+	}//INLINING_TUNING$
+			
 
     Set_lang (proc);
 
@@ -942,7 +1113,8 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	IPL_Build_Access_Vectors(w);
 	WB_IPL_Set_Access_Array_Map(IPL_info_map);
     }
-
+	if(Do_reorder)
+		Start_PU_process_struct_access();
     // if we are summarizing an alternate entry point then we must
     // search for the alternate entry point node in the subroutine.
     // and keep walking until we encounter it
@@ -956,6 +1128,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     if (DoPreopt)
 	phi_index = Get_phi_idx ();	// record initial phi node index
     
+#ifdef KEY
+    Process_eh_globals ();
+#endif
 
     BOOL found = FALSE;
 
@@ -996,6 +1171,13 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_WHILE_DO:
 	case OPR_DO_WHILE:
 	    loopnest++;
+	    if(Do_reorder){
+	    	FB_Info_Loop fb_info=Cur_PU_Feedback->Query_loop( w2);
+		loop_count=(UINT64) fb_info.freq_iterate.Value();
+		loop_count_stack->Push(loop_count);
+		stack_size=loop_count_stack->Elements();//for debug
+       	    }
+
 	    break;
 
 	case OPR_ICALL:
@@ -1009,7 +1191,16 @@ SUMMARIZE<program>::Process_procedure (WN* w)
             Process_callsite (w2, proc->Get_callsite_count (), loopnest);
             proc->Incr_callsite_count ();
             Direct_Mod_Ref = TRUE;
-	      
+
+#ifdef KEY
+	    if( Cur_PU_Feedback != NULL &&
+		IPA_Enable_Icall_Opt    &&
+		WN_operator(w2) == OPR_ICALL ){
+	      FB_FREQ freq = Cur_PU_Feedback->Query(w2, FB_EDGE_CALL_INCOMING);
+	      if( freq.Known() )
+		icall_cnt++;
+	    }
+#endif	      
             // update actual parameter count
             if (Do_common_const && 
                 !Process_control_dependence (w2, Get_callsite_idx())) {
@@ -1055,6 +1246,10 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_ILOAD:
 	    Direct_Mod_Ref = TRUE;
 	    Record_ref (w2);
+	    if(Do_reorder && !loop_count_stack->Is_Empty() ){
+		loop_count=loop_count_stack->Top();
+	        Record_struct_access(w2,loop_count);
+	    }
 	    break;
 	  
 	case OPR_STID:
@@ -1063,17 +1258,34 @@ SUMMARIZE<program>::Process_procedure (WN* w)
               proc->Set_has_unstructured_cflow();
             }
           }
+          
           // fall through
 
 	case OPR_ISTORE:
 	case OPR_MSTORE:
 	    Direct_Mod_Ref = TRUE;
 	    Record_mod (w2);
+            if(Do_reorder && !loop_count_stack->Is_Empty() ) {
+	        loop_count=loop_count_stack->Top();
+	         Record_struct_access(w2,loop_count);
+            }
 	    break;
 
 	case OPR_IO:
+#ifdef KEY
+// Set mod_ref for fortran io statements like 'write', otherwise a routine
+// just containing a 'write' can get deleted by ipa-dce
+	    Direct_Mod_Ref = TRUE;
+#endif
 	    Process_IO(w2);
 	    break;
+	case OPR_ILDA:
+	case OPR_MLOAD:
+	     if(Do_reorder && !loop_count_stack->Is_Empty() ) {
+		    loop_count=loop_count_stack->Top();
+		    Record_struct_access(w2,loop_count);
+               }
+		break;
 
 	    // Exceptions now come as REGIONS (not as EXC_SCOPE_BEGINS)
 	case OPR_EXC_SCOPE_BEGIN:
@@ -1083,7 +1295,12 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
 	case OPR_REGION:
 	    if (WN_region_is_EH(w2))
+	    {
+#ifdef KEY
+		Process_eh_region (w2);
+#endif
 		proc->Set_exc_inline();
+	    }
 	    if (WN_region_kind(w2)== REGION_KIND_TRY)
 		proc->Set_exc_try();
 	    break;
@@ -1216,6 +1433,10 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		    case OPC_WHILE_DO:
 		    case OPC_DO_WHILE:
 			loopnest--;
+			if(Do_reorder){
+			    loop_count_stack->Pop();
+			}
+
 		    }
 		}
 	    }
@@ -1236,6 +1457,19 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
     }
 
+#ifdef KEY
+    /* Append a list of free slots to the currnet callsite_array for
+       the future use by IPA_Convert_Icalls.
+    */
+    for( int i = 0; i < icall_cnt; i++ ){
+      SUMMARY_CALLSITE* callsite = New_callsite ();
+      callsite->Set_callsite_id( proc->Get_callsite_count()  );
+      callsite->Set_icall_slot();
+      proc->Incr_callsite_count ();
+    }
+#endif // KEY    
+
+    /*loop_count_stack may not be empty! and loopnest may not be empty!!*/
     if (proc->Get_callsite_count () > 0)
 	proc->Set_callsite_index (Get_callsite_idx () -
 				  proc->Get_callsite_count () + 1);
@@ -1247,19 +1481,35 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	if (Cur_PU_Feedback) { // was FB_PU_Has_Feedback
 	    INT bb_count = 0;
 	    INT stmt_count = 0;
+#ifdef KEY
+ 	    FB_FREQ cycle_count(0.0);
+#else
  	    FB_FREQ cycle_count(0);
+#endif
+	    UINT16 WN_Count = 0; //INLINING_TUNING
+#ifdef KEY
+	    FB_FREQ Cycle_Count2(0.0); //INLINING_TUNING
+#else
+	    FB_FREQ Cycle_Count2(0); //INLINING_TUNING
+#endif
 	    SUMMARY_FEEDBACK *fb = Get_feedback (proc->Get_feedback_index ());
  	    FB_FREQ freq_count = fb->Get_frequency_count();
-	    Count_tree_size (*Cur_PU_Feedback, Get_entry_point (), bb_count, stmt_count, cycle_count, freq_count);
+//	    Count_tree_size (*Cur_PU_Feedback, Get_entry_point (), bb_count, stmt_count, cycle_count, freq_count);
+	    Count_tree_size_tuning (*Cur_PU_Feedback, Get_entry_point (), bb_count, stmt_count, cycle_count, freq_count, WN_Count, Cycle_Count2);
+//;;printf("!!!!! PU %s(%d), bb_count = %d, stmt_count = %d, cycle=%.1f\n",ST_name(WN_st(w)), proc->Get_feedback_index (),bb_count,stmt_count,cycle_count._value);
 	    if (!cycle_count.Known()) {
 		proc->Clear_has_PU_freq();
 		DevWarn("%s has unknown frequencies so no feedback info in this procedure will be considered", ST_name(WN_st(w)));
 		// FB_PU_Has_Feedback = FALSE;
 	    }
 	    else 
+		{
 	        fb->Set_cycle_count (cycle_count);
+			fb->Set_cycle_count_2(Cycle_Count2);
+		}
 	    fb->Set_effective_bb_count (bb_count);
 	    fb->Set_effective_stmt_count (stmt_count);
+		fb->Set_wn_count(WN_Count);
 	}
 
 	if (DoPreopt) {
@@ -1287,7 +1537,8 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    IPL_Finalize_Projected_Regions(proc); // pop mem pools 
 	    IPL_Finalize_Par_Code();
 	}
-
+	if(Do_reorder)
+		num_struct_access=Finish_PU_process_struct_access();
 	// record local addr taken attributes
 	Set_local_addr_taken_attrib ();
     } else { 
@@ -2042,6 +2293,84 @@ SUMMARIZE<program>::Trace(FILE* fp)
 
   if (Has_common_shape_entry())
     Get_common_shape(0)->Print_array(fp, Get_common_shape_idx()+1);
+  if (Has_struct_access_entry()) //reorder
+  	Get_struct_access(0)->Print_array(fp, Get_struct_access_idx()+1);
+}
+
+template <PROGRAM program>
+void 
+SUMMARIZE<program>:: Record_struct_access(WN *wn, mUINT64 loop_count)
+{
+    /*-------------------------------------------------------------*/
+    /*assumption1 : the init stmt of DO_LOOP will not use  Field_id*/
+    /*-------------------------------------------------------------*/
+    mUINT32 fld_id,flatten_flds,summary_idx;
+    UINT struct_index, index=WN_ty(wn)>>8;//ty_idx of loaded object
+    TY_IDX  point_idx;
+    TY_TO_FLDNUM_MAP::const_iterator iter;
+    TY_TO_ACCESS_MAP::const_iterator iter1;
+    PTR_TO_TY_VECTOR::iterator ptr_iter;
+    SUMMARY_STRUCT_ACCESS * cur_summary;
+    BOOL is_pointer=FALSE;
+    fld_id=WN_field_id(wn);//inc field access count
+    if(fld_id<=0) return;
+    if(WN_operator(wn)==OPR_ISTORE|| WN_operator(wn)==OPR_MSTORE
+        ||WN_operator(wn)==OPR_MLOAD||WN_operator(wn)==OPR_LDA
+        ||WN_operator(wn)==OPR_ILDA){//get the struct_index         
+        point_idx=TY_pointed(Ty_tab[index]);// TY_pointed; OR find it in ptr_to_ty_vector
+        struct_index=point_idx>>8;
+    }
+    else {
+        struct_index=index;
+    }
+    //step 1:
+    //if(ty_index in ty_to_idx_map)
+    //    get cur_summary;
+    //else if(not in local_cand) 
+    //    return;
+    iter1=Ty_to_access_map->find(struct_index);
+    if (iter1!=Ty_to_access_map->end ()){// found summary
+        cur_summary=iter1->second;
+    }
+    else {
+        iter=local_cands->find(struct_index);
+        if (iter==local_cands->end ())// not a candidate
+            return;
+        else
+            flatten_flds=iter->second;
+        //find struct_index in Ty_to_access_map
+        //if (not found))
+        //    New_struct_access(); fill in flatten_flds,
+        //    fill in ty_to_idx_map for struct_index and corresponding  ptr_tys
+        FmtAssert(flatten_flds!=0,
+            ("in Record_struct_access(), flatten_flds!=0!\n"));
+        FmtAssert(Ty_tab[struct_index].kind==KIND_STRUCT,
+            ("the wn's ty_idx operated must be STRUCT"));
+        iter1=Ty_to_access_map->find(struct_index);
+        if (iter1!=Ty_to_access_map->end ())
+            cur_summary=iter1->second;
+        else{//not found summary
+            cur_summary=New_struct_access(struct_index,flatten_flds);
+#ifdef KEY
+            Ty_to_access_map->insert(std::make_pair(struct_index,cur_summary));
+#else
+            Ty_to_access_map->insert(make_pair(struct_index,cur_summary));
+#endif // KEY
+            for(ptr_iter=Ptr_to_ty_vector->begin();
+                ptr_iter!=Ptr_to_ty_vector->end();
+                ptr_iter++){
+                if(ptr_iter->pt_index==struct_index)
+#ifdef KEY
+                    Ty_to_access_map->insert(std::make_pair(ptr_iter->ty_index,cur_summary));
+#else
+                    Ty_to_access_map->insert(make_pair(ptr_iter->ty_index,cur_summary));
+#endif // KEY
+            }// fill in all such pointer_tys
+        }
+    }
+    // process wn, Inc access_info to cur_summary
+    cur_summary->Inc_fld_count(fld_id, loop_count);
+    return;
 }
 
 #endif // ipl_summarize_template_INCLUDED
@@ -2056,4 +2385,5 @@ SUMMARIZE<program>::Process_alt_procedure(WN *w, INT formal_index, INT
     proc->Set_formal_index (formal_index);
     proc->Set_formal_count (formal_count);
 }
+
 

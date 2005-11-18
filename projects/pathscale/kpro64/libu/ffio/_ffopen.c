@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -544,6 +548,7 @@ _ff_top_lock(_ffopen_t fd, struct fdinfo **nfioptr, struct ffsw *stat)
 {
 	struct fdinfo *fio;
 	struct fdinfo *nfio;
+	struct ffsw dummy;
 	int reglock = 0;
 	char *lock;
 
@@ -596,7 +601,7 @@ _ff_top_lock(_ffopen_t fd, struct fdinfo **nfioptr, struct ffsw *stat)
 	return(0);
 err:
 	_SETERROR(stat, errno, 0);
-	__ffclose(fd);
+	__ffclose(fio, &dummy);
 	return(-1);
 }
 

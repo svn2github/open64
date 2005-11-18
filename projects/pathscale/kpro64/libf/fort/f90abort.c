@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,6 +44,8 @@
 #include <fortran.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include "defalias.h"
 
 static int __abortflag = 0;	/* abort flag set if ABORT has been called */
 
@@ -76,7 +82,7 @@ abort_(char *msg, _f_int len)
 
 #else
 void
-abort_msg_(char *msg, _f_int len)
+abort_msg__(char *msg, _f_int len)
 {
 	if(__abortflag !=0)
 		abort();		/* prevent infinite recursion */
@@ -87,6 +93,8 @@ abort_msg_(char *msg, _f_int len)
 	}
 	abort();
 }
+
+defalias(abort_msg__, abort_msg_);
 
 void
 abort_(void)

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -279,8 +283,11 @@ static INTRINSIC get_vec_intrinsic(INTRINSIC intr_id) {
     case INTRN_F8COS: return INTRN_F8VCOS ;
     case INTRN_F4EXP: return INTRN_F4VEXP ;
     case INTRN_F8EXP: return INTRN_F8VEXP ;
+#ifndef TARG_X8664
     case INTRN_F4LOG: return INTRN_F4VLOG ;
+    // vlog implementation has a bug that shows up with NAS/EP -O3
     case INTRN_F8LOG: return INTRN_F8VLOG ;
+#endif
     case INTRN_F4LOG10: return INTRN_F4VLOG10;
     case INTRN_F8LOG10: return INTRN_F8VLOG10;
     case INTRN_F4SIN: return INTRN_F4VSIN ;

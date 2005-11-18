@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -108,7 +112,7 @@
 
 #include "libm.h"
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	double	j1(double);
 extern	double	y1(double);
 

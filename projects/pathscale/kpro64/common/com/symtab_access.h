@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -516,6 +520,35 @@ Set_ST_has_named_section (ST* s)	{ s->flags |= ST_HAS_NAMED_SECTION; }
 inline void
 Clear_ST_has_named_section (ST* s)	{ s->flags &= ~ST_HAS_NAMED_SECTION; }
 
+#ifdef KEY
+inline BOOL
+ST_one_per_pu (const ST* s)	{ return s->flags_ext & ST_ONE_PER_PU; }
+inline void
+Set_ST_one_per_pu (ST* s)	{ s->flags_ext |= ST_ONE_PER_PU; }
+inline void
+Clear_ST_one_per_pu (ST* s)	{ s->flags_ext &= ~ST_ONE_PER_PU; }
+
+inline BOOL
+ST_copy_constructor_st(const ST* s)	{ return s->flags_ext & ST_COPY_CONSTRUCTOR_ST; }
+inline void
+Set_ST_copy_constructor_st(ST* s)	{ s->flags_ext |= ST_COPY_CONSTRUCTOR_ST; }
+inline void
+Clear_ST_copy_constructor_st(ST* s)	{ s->flags_ext &= ~ST_COPY_CONSTRUCTOR_ST; }
+
+inline BOOL
+ST_initv_in_other_st (const ST* s)     { return s->flags_ext & ST_INITV_IN_OTHER_ST; }
+inline void
+Set_ST_initv_in_other_st (ST* s)       { s->flags_ext |= ST_INITV_IN_OTHER_ST; }
+inline void
+Clear_ST_initv_in_other_st (ST* s)     { s->flags_ext &= ~ST_INITV_IN_OTHER_ST; }
+
+inline BOOL
+ST_is_inintialized_in_f90 (const ST* s)     { return s->flags_ext & ST_IS_INITIALIZED_IN_F90; }
+inline void
+Set_ST_is_inintialized_in_f90 (ST *s)       { s->flags_ext |= ST_IS_INITIALIZED_IN_F90; }
+inline void
+Clear_ST_is_inintialized_in_f90 (ST *s)     { s->flags_ext &= ~ST_IS_INITIALIZED_IN_F90; }
+#endif
 
 //----------------------------------------------------------------------
 // access functions for PU
@@ -796,6 +829,23 @@ Set_PU_is_thunk (PU& pu)		{ pu.flags |= PU_IS_THUNK; }
 inline void
 Clear_PU_is_thunk (PU& pu)		{ pu.flags &= ~PU_IS_THUNK; }
 
+#ifdef KEY
+inline BOOL
+PU_needs_manual_unwinding (const PU& pu) { return (pu.flags & PU_NEEDS_MANUAL_UNWINDING) != 0;}
+inline void
+Set_PU_needs_manual_unwinding (PU& pu) { pu.flags |= PU_NEEDS_MANUAL_UNWINDING;}
+inline void
+Clear_PU_needs_manual_unwinding (PU& pu) { pu.flags &= ~PU_NEEDS_MANUAL_UNWINDING;}
+#endif
+#ifdef TARG_X8664
+inline BOOL
+PU_ff2c_abi (const PU& pu)		{ return (pu.flags & PU_FF2C_ABI) != 0;}
+inline void
+Set_PU_ff2c_abi (PU& pu)		{ pu.flags |= PU_FF2C_ABI; }
+inline void
+Clear_PU_ff2c_abi (PU& pu)		{ pu.flags &= ~PU_FF2C_ABI; }
+#endif
+
 inline UINT64
 PU_src_lang (const PU& pu)		{ return pu.src_lang; }
 
@@ -939,6 +989,17 @@ inline TY_IDX
 TY_pointed (const TY_IDX tyi)		{ return Ty_Table[tyi].Pointed (); }
 inline void
 Set_TY_pointed (TY_IDX tyi, TY_IDX idx) { Set_TY_pointed(Ty_Table[tyi],idx); }
+
+#ifdef KEY
+inline ST_IDX
+TY_copy_constructor (const TY& ty)	{ return ty.Copy_constructor (); }
+inline void
+Set_TY_copy_constructor (TY& ty, ST_IDX idx)	{ ty.Set_copy_constructor (idx); }
+inline ST_IDX
+TY_copy_constructor (const TY_IDX tyi)	{ return Ty_Table[tyi].Copy_constructor (); }
+inline void
+Set_TY_copy_constructor (TY_IDX tyi, ST_IDX idx) { Set_TY_copy_constructor(Ty_Table[tyi],idx); }
+#endif
 
 
 //----------------------------------------------------------------------
@@ -1087,6 +1148,21 @@ inline void
 Set_TY_is_non_pod (TY_IDX tyi)    { Set_TY_is_non_pod(Ty_Table[tyi]); }
 inline void
 Clear_TY_is_non_pod (TY_IDX tyi)  { Clear_TY_is_non_pod(Ty_Table[tyi]); }
+
+#ifdef KEY
+inline BOOL
+TY_return_in_mem (const TY& ty)		{ return ty.flags & TY_RETURN_IN_MEM; }
+inline void
+Set_TY_return_in_mem (TY& ty)		{ ty.flags |= TY_RETURN_IN_MEM; }
+inline void
+Clear_TY_return_in_mem (TY& ty)	{ ty.flags &= ~TY_RETURN_IN_MEM; }
+inline BOOL
+TY_return_in_mem (const TY_IDX tyi)    { return TY_return_in_mem(Ty_Table[tyi]); }
+inline void
+Set_TY_return_in_mem (TY_IDX tyi)      { Set_TY_return_in_mem(Ty_Table[tyi]); }
+inline void
+Clear_TY_return_in_mem (TY_IDX tyi)    { Clear_TY_return_in_mem(Ty_Table[tyi]); }
+#endif
 
 // TY pu_flags
 

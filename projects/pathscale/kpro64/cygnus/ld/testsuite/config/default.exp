@@ -1,5 +1,6 @@
 # Basic expect script for LD Regression Tests
-#   Copyright (C) 1993, 94, 95, 97, 98, 1999 Free Software Foundation
+#   Copyright 1993, 1994, 1995, 1997, 1998, 1999
+#   Free Software Foundation, Inc.
 #
 # This file is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,6 +59,17 @@ if {![file isdirectory tmpdir/gas]} then {
     catch "exec ln -s ../../../gas/as-new tmpdir/gas/as" status
 }
 set gcc_gas_flag "-B[pwd]/tmpdir/gas/"
+
+# The mips64-*-linux-gnu compiler defaults to the N32 ABI after
+# installed, but to the O32 ABI in the build tree, because of some
+# specs-file hacks.  Make sure we use an ABI that is compatible with
+# the one we expect.
+if {[istarget mips64*-*-linux*] &&
+    (![board_info [target_info name] exists multilib_flags] ||
+     ![string match "*-mabi" [board_info [target_info name] multilib_flags]])
+   } {
+    append gcc_gas_flag " -mabi=n32"
+}
 
 # load the utility procedures
 load_lib ld-lib.exp
@@ -157,8 +169,8 @@ proc ld_assemble { as source object } {
 # ld_nm
 #	run nm on a file
 #
-proc ld_nm { nm object } {
-	default_ld_nm $nm $object
+proc ld_nm { nm nmflags object } {
+	default_ld_nm $nm $nmflags $object
 }
 
 #
@@ -169,3 +181,55 @@ proc ld_exec { target output } {
 	default_ld_exec $target $output
 }
 
+# From gas-defs.exp, to support run_dump_test.
+if ![info exists AS] then {
+    set AS $as
+}
+
+if ![info exists GASP] then {
+    set GASP [findfile $base_dir/../gas/gasp-new $base_dir/../gas/gasp-new [transform gasp]]
+}
+
+if ![info exists ASFLAGS] then {
+    set ASFLAGS ""
+}
+
+if ![info exists OBJDUMP] then {
+    set OBJDUMP $objdump
+}
+
+if ![info exists OBJDUMPFLAGS] then {
+    set OBJDUMPFLAGS {}
+}
+
+if ![info exists NM] then {
+    set NM $nm
+}
+
+if ![info exists NMFLAGS] then {
+    set NMFLAGS {}
+}
+
+if ![info exists OBJCOPY] then {
+    set OBJCOPY $objcopy
+}
+
+if ![info exists OBJCOPYFLAGS] then {
+    set OBJCOPYFLAGS {}
+}
+
+if ![info exists READELF] then {
+    set READELF [findfile $base_dir/../binutils/readelf]
+}
+
+if ![info exists READELFFLAGS] then {
+    set READELFFLAGS {}
+}
+
+if ![info exists LD] then {
+    set LD [findfile $base_dir/ld-new ./ld-new [transform ld]]
+}
+
+if ![info exists LDFLAGS] then {
+    set LDFLAGS {}
+}

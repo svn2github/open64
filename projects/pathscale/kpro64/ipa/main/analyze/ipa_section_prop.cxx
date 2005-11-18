@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,6 +56,8 @@
 // ====================================================================
 // ====================================================================
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <alloca.h>
 
 #include "be_symtab.h"          // ST_is_const_initialized_scalar

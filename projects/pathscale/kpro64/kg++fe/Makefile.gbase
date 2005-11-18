@@ -1,4 +1,10 @@
+# -*- Makefile -*-
 #
+#  Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+#  File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+#  front-ends to GNU 3.2.2 release.
+#
+
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -33,7 +39,7 @@
 #
 
 #
-#  Makefile.base for gccfe
+#  Makefile.base for kg++fe
 #
 
 #----------------------------------------------------------------------
@@ -53,7 +59,7 @@ include $(COMMONDEFS)
 #----------------------------------------------------------------------
 #  Set environment variables
 #----------------------------------------------------------------------
-ifeq ($(BUILD_COMPILER), EDG)
+ifeq ($(BUILD_COMPILER), SGI)
 CVERSION = -xansi
 else
 CVERSION =
@@ -70,22 +76,23 @@ HOSTDEFS += -DIN_GCC -DHAVE_CONFIG_H
 
 ifeq ($(BUILD_TARGET), IA64)
 HOSTDEFS += -DTARGET_NAME=\"ia64-linux\"
-HOSTDEFS += -DPREFIX=\"/usr/ia64-sgi-linux\"
-HOSTDEFS += -DGCC_INCLUDE_DIR=\"/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/include/\"
-HOSTDEFS += -DGPLUSPLUS_INCLUDE_DIR=\"/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/include/\"
 endif
 ifeq ($(BUILD_TARGET), IA32)
 HOSTDEFS += -DTARGET_NAME=\"i686-pc-linux-gnu\"
-HOSTDEFS += -DPREFIX=\"/usr/ia32-sgi-linux\"
-HOSTDEFS += -DGCC_INCLUDE_DIR=\"/usr/ia32-sgi-linux/lib/gcc-lib/ia32-sgi-linux/sgicc-1.0/include/\"
-HOSTDEFS += -DGPLUSPLUS_INCLUDE_DIR=\"/usr/ia32-sgi-linux/lib/gcc-lib/ia32-sgi-linux/sgicc-1.0/include/\"
+endif
+ifeq ($(BUILD_TARGET), MIPS)
+HOSTDEFS += -DTARGET_NAME=\"mips-sgi-irix6\"
+endif
+ifeq ($(BUILD_TARGET), X8664)
+HOSTDEFS += -DTARGET_NAME=\"i686-pc-linux-gnu\"
 endif
 
 HOSTDEFS += -DLONGLONG
 HOSTDEFS += -DFRONT_END
 HOSTDEFS += -DUSE_DECL_SRCPOS
-HOSTDEFS += -D_NEW_SYMTAB
-
+##########################################################
+# The following line is from original g++fe/Makefile.gbase
+HOSTDEFS += -DNEW_SYMTAB
 HOSTDEFS += -DFRONT_END_C
 HOSTDEFS += -DCFE -DCIL
 HOSTDEFS += -DDO_IL_LOWERING=0
@@ -97,7 +104,8 @@ HOSTDEFS += -DMONGOOSE_CIF
 
 HOSTDEFS += -DSGI_RAG_BACKEND
 HOSTDEFS += -DSGI_MONGOOSE
-ifeq ($(BUILD_COMPILER), GNU)
+HOSTDEFS += -DHANDLE_PRAGMA_WEAK
+ifneq ($(BUILD_COMPILER), SGI)
 HOSTDEFS += -DMIPSEL
 endif
 
@@ -110,6 +118,8 @@ else
 HOSTDEFS += -DDEBUG=0 
 HOSTDEFS += -DCHECKING=0 
 endif
+##########################################################
+# The following line is from original g++fe/Makefile.gbase
 HOSTDEFS += -DGPLUSPLUS_FE
 
 ifeq ($(BUILD_OS), LINUX)
@@ -135,7 +145,7 @@ endif
 
 GNU_DIR			= $(BUILD_BASE)/gnu
 GNU_CONFIG_DIR		= $(BUILD_BASE)/gnu/config
-GNU_COMMON_DIR		= $(BUILD_TOT)/gnu_common
+GNU_COMMON_DIR          = $(BUILD_TOT)/kgnu_common
 
 GNU_TARG_DIR = $(GNU_DIR)/$(BUILD_TARGET_DIR)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/$(BUILD_TARGET_DIR)
@@ -145,13 +155,20 @@ endif
 ifeq ($(BUILD_TARGET), MIPS)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/mips
 endif
-GNU_CP_DIR		= $(BUILD_BASE)/gnu/cp
+ifeq ($(BUILD_TARGET), X8664)
+GNU_TARG_DIR = $(GNU_DIR)/i386
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
+endif
 
-TARG_GNU_DIR            = $(TARGDIR)/g++fe/gnu
-TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
+############################################################
+# These were from original g++fe/Makefile.gbase in pro64
+GNU_CP_DIR		= $(BUILD_BASE)/gnu/cp
 # TARG_LIBM_DIR		= $(TARGDIR)/libm
+############################################################
+TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
 TARG_CMPLRS_DIR		= $(TARGDIR)/libcmplrs
 TARG_LIBIBERTY_DIR      = $(TARGDIR)/libiberty
+TARG_GNU_DIR		= $(TARGDIR)/g++fe/gnu
 
 # These are the directories in which to look for source files.
 
@@ -234,8 +251,8 @@ COMMON_COM_TARG_CXX_SRCS = \
   targ_const.cxx	\
   targ_sim.cxx
 
-
 FRONT_END_C_SRCS =		\
+  $(COMMON_UTIL_SRCS)		\
   $(COMMON_COM_SRCS)		\
   $(COMMON_COM_TARG_SRCS)	\
   $(FE_C_SRCS)	
@@ -245,9 +262,9 @@ FRONT_END_CXX_SRCS =		\
   $(COMMON_COM_TARG_CXX_SRCS)	\
   $(FE_CXX_SRCS)	
 
-FRONT_END_C_OBJS = $(FRONT_END_C_SRCS:.c=.o)
+FRONT_END_C_OBJS = $(FRONT_END_C_SRCS:T:.c=.o)
 
-FRONT_END_CXX_OBJS = $(FRONT_END_CXX_SRCS:.cxx=.o)
+FRONT_END_CXX_OBJS = $(FRONT_END_CXX_SRCS:T:.cxx=.o)
 
 FRONT_END_OBJS = $(FRONT_END_C_OBJS) $(FRONT_END_CXX_OBJS)
 
@@ -256,7 +273,7 @@ CXXFILES = $(FRONT_END_CXX_SRCS)
 
 VPATH    =  $(SRC_DIRS)
 
-LCOPTS = $(STD_COMPILE_OPTS)
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(INC_DIRS))
 
@@ -264,15 +281,21 @@ LC++OPTS = $(STD_COMPILE_OPTS)
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(LCINCS)
 
-ifneq ($(BUILD_COMPILER), EDG)
-LCOPTS += -fwritable-strings -w
-LC++OPTS += -fwritable-strings -w
+ifeq ($(BUILD_COMPILER), GNU)
+LCOPTS += -fwritable-strings
+LC++OPTS += -fwritable-strings
 endif
 
 # setup stuff to build shared or non-shared
 GLDOPTS = $(STD_LOAD_OPTS)
 
 LDIRT =
+
+#+----------------------------------------------------------------------
+#  Extra Rules
+#----------------------------------------------------------------------
+.c.E:
+	$(CCF) -MDupdate /dev/null -E ${<} | sed -e '/^ *$$/d'  >${*F}.E
 
 #------------------------------------------------------------
 #  Define target
@@ -283,7 +306,10 @@ TARGETS = gfecc
 #  Variables describing additional sources, objects, and libraries
 #----------------------------------------------------------------------
 COMUTIL_OBJS = $(TARG_COMUTIL_DIR)/libcomutil.a
-# LIBM_OBJS    = $(TARG_LIBM_DIR)/libm.a
+###################################################################
+# This was present in the original g++fe/Makefile.gbase
+# LIBM_OBJS 	= $(TARG_LIBM_DIR)/libm.a
+###################################################################
 CMPLRS_OBJS  = $(TARG_CMPLRS_DIR)/libcmplrs.a
 LIBIBERTY_OBJS = $(TARG_LIBIBERTY_DIR)/libiberty.a
 LIBGNU_OBJS = $(TARG_GNU_DIR)/libgfecc.a
@@ -307,18 +333,16 @@ default: first $(TARGETS) last
 #  built.
 #----------------------------------------------------------------------
 first:
-	cd $(TARG_GNU_DIR) && $(MAKE)
-	cd $(TARG_COMUTIL_DIR) && $(MAKE)
-ifeq ($(BUILD_OS), LINUX)
-	cd $(TARG_CMPLRS_DIR) && $(MAKE)
-endif
-
+	$(call submake,$(TARG_GNU_DIR))
+	$(call submake,$(TARG_CMPLRS_DIR))
+	$(call submake,$(TARG_COMUTIL_DIR))
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is 
 #  built.
 #----------------------------------------------------------------------
-last : make_deps
+last: make_deps
+
 
 install: default
 ifeq ($(BUILD_OS), LINUX)
@@ -328,8 +352,7 @@ else
 endif
 
 gfecc : $(OBJECTS) $(LIBGNU_OBJS)
-	$(CXXF) -o $@ $(OBJECTS) $(LDFLAGS)
-
+	$(link.cxxf) -o gfecc $(OBJECTS) $(LDFLAGS)
 
 #----------------------------------------------------------------------
 #  Include the usual commonrules
@@ -337,3 +360,10 @@ gfecc : $(OBJECTS) $(LIBGNU_OBJS)
 BUILD_SUBDIRS = gnu
 include $(COMMONRULES)
 
+# CCNAME is now gcc -m32
+ifeq (gcc,$(firstword $(CCNAME)))
+ ifneq ($(BUILD_OPTIMIZE), DEBUG)
+# work around gcc bug optimizing this file on ia32
+   wfe_stmt.o: OPTIMIZER = -O -fno-inline
+ endif
+endif

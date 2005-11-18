@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,7 +54,7 @@
 
 typedef struct option_list_rec {
 	int info_index;		/* index into option_info */
-	string name;
+	char *name;
 	struct option_list_rec *next;
 } option_list_t;
 
@@ -64,8 +68,8 @@ typedef struct option_info_rec {
 	mask_t valid_phases;
 	index_list_t *combo_list;
 	option_list_t *implies;
-	string name;
-	string help_msg;
+	char *name;
+	char *help_msg;
 } option_info_t;
 
 /* the options array will be indexed by the option flag values */
@@ -79,7 +83,7 @@ int max_options = LAST_PREDEFINED_OPTION+100;
 static int last_option = LAST_PREDEFINED_OPTION;
 
 /* return name */
-extern string 
+char *
 get_option_name (int flag)
 {
 	/* derived options may only have implied name */
@@ -91,7 +95,7 @@ get_option_name (int flag)
 }
 
 /* return help msg */
-extern string 
+char *
 get_option_help (int flag)
 {
 	return options[flag].help_msg;
@@ -99,7 +103,7 @@ get_option_help (int flag)
 
 
 /* whether option should have a blank space in it, e.g. -o foo */
-extern boolean 
+boolean 
 option_has_blank (int flag)
 {
 	return (options[flag].implies != NULL
@@ -107,55 +111,55 @@ option_has_blank (int flag)
 }
 
 /* set / add language for option */
-extern void
+void
 set_language_for_option (int flag, languages_t l)
 {
   options[flag].valid_langs = get_language_mask(l);
 }
 
-extern void
+void
 add_language_for_option (int flag, languages_t l)
 {
   options[flag].valid_langs |= get_language_mask(l);
 }
 
 /* whether the option is valid for the language */
-extern boolean 
+boolean 
 option_matches_language (int flag, languages_t l)
 {
   return (is_matching_language (options[flag].valid_langs, l));
 }
 
 /* Is the option internal? */
-extern boolean 
+boolean 
 is_internal_option (int flag)
 {
   return (is_matching_language (options[flag].valid_langs, L_internal));
 }
 
 /* Set the option internal */
-extern void 
+void 
 set_internal_option (int flag)
 {
   add_language_for_option ( flag, L_internal );
 }
 
 /* whether the option is valid for the phase */
-extern boolean 
+boolean 
 option_matches_phase (int flag, phases_t p)
 {
 	return (is_matching_phase (options[flag].valid_phases, p));
 }
 
 /* add phase to list of valid phases for option */
-extern void
+void
 add_phase_for_option(int flag, phases_t p)
 {
                 options[flag].valid_phases |= get_phase_mask(p);
 }
 
 /* remove phase to list of valid phases for option */
-extern void
+void
 remove_phase_for_option(int flag, phases_t p)
 {
                 options[flag].valid_phases &= ~(get_phase_mask(p));
@@ -171,8 +175,8 @@ double_max_options (void)
 }
 
 /* add new user-defined option */
-extern int 
-add_new_option (string arg)
+int 
+add_new_option (char *arg)
 {
 	option_list_t *p;
 	if (last_option >= max_options) {
@@ -197,8 +201,8 @@ add_new_option (string arg)
  * Now we want to create a new derived entry for the exact option string,
  * which will point back to the prefix entry.  
  */
-extern int 
-add_derived_option (int parent, string arg)
+int 
+add_derived_option (int parent, char *arg)
 {
 	option_list_t *pi;
 	option_list_t *ni;
@@ -231,14 +235,14 @@ add_derived_option (int parent, string arg)
 }
 
 /* is option derived? */
-extern boolean 
+boolean 
 is_derived_option (int flag)
 {
 	return (options[flag].name == NULL);
 }
 
 /* return base parent */
-extern int 
+int 
 get_derived_parent (int flag)
 {
 	return options[flag].implies->info_index;
@@ -255,21 +259,21 @@ get_derived_parent (int flag)
  */
 static int current_option;
 
-extern int 
+int 
 first_option (void)
 {
 	current_option = last_option-1;
 	return current_option;
 }
 
-extern int 
+int 
 next_option (void)
 {
 	current_option--;
 	return current_option;
 }
 
-extern boolean 
+boolean 
 no_more_options (void)
 {
 	return (current_option == 0);
@@ -282,7 +286,7 @@ no_more_options (void)
  */
 static index_list_t *current_combo;
 
-extern int 
+int 
 first_combo_item (int combo_flag)
 {
 	current_combo = options[combo_flag].combo_list;
@@ -292,7 +296,7 @@ first_combo_item (int combo_flag)
 		return current_combo->info_index;
 }
 
-extern int 
+int 
 next_combo_item (int combo_flag)
 {
 	current_combo = current_combo->next;
@@ -302,7 +306,7 @@ next_combo_item (int combo_flag)
 		return current_combo->info_index;
 }
 
-extern boolean 
+boolean 
 no_more_combo_items (int combo_flag)
 {
 	return (current_combo == NULL);
@@ -315,7 +319,7 @@ no_more_combo_items (int combo_flag)
  */	
 static option_list_t *current_implied;
 
-extern int 
+int 
 first_implied_option (int flag)
 {
 	current_implied = options[flag].implies;
@@ -325,7 +329,7 @@ first_implied_option (int flag)
 		return current_implied->info_index;
 }
 
-extern int 
+int 
 next_implied_option (int flag)
 {
 	current_implied = current_implied->next;
@@ -335,7 +339,7 @@ next_implied_option (int flag)
 		return current_implied->info_index;
 }
 
-extern boolean 
+boolean 
 no_more_implied_options (int flag)
 {
 	return (current_implied == NULL);
@@ -343,13 +347,13 @@ no_more_implied_options (int flag)
 
 /* return name of current implied string;
  * MUST BE INSIDE IMPLIED ITERATOR when calling this routine! */
-extern string
+char *
 get_current_implied_name (void)
 {
 	return (current_implied->name);
 }
 
-extern void
+void
 dump_option (int flag)
 {
 	option_list_t *pi = options[flag].implies;

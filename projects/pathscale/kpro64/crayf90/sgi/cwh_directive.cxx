@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -322,7 +326,7 @@ cwh_region(REGION_KIND kind)
 			     pragmas,
 			     exits,
 			     -1, 
-			     NULL);
+			     0);
   cwh_block_append(region);
 
   /* push the region on the block stack and   */
@@ -1371,7 +1375,20 @@ void  fei_fission               ( void )
   cwh_stmt_add_pragma(WN_PRAGMA_FISSION,FALSE,(ST_IDX) NULL,WN_const_val(wn),0);
 
 } /* fei_fission */
+#ifdef KEY
+/*===============================================
+ *
+ * fei_forall
+ *
+ *===============================================
+*/
+void  fei_forall               ( void )
+{
+  WN *wn;
+  cwh_stmt_add_pragma(WN_PRAGMA_FORALL,FALSE,(ST_IDX) NULL,0,0);
 
+} /* fei_forall */
+#endif
 /*===============================================
  *
  * fei_flush
@@ -2591,7 +2608,7 @@ cwh_directive_load_value_pragma(INT32 item, WN_PRAGMA_ID pragma, BOOL is_omp)
     p = cast_to_STB(item);
     DevAssert((p->form == is_ST),("Odd item"));
 
-    wn1 = cwh_addr_load_ST((ST *)p->item, 0, NULL);
+    wn1 = cwh_addr_load_ST((ST *)p->item, 0, 0);
     cwh_stmt_add_xpragma(pragma,is_omp,wn1);
   }
 }
@@ -2624,7 +2641,7 @@ fei_copyin_bound(INTPTR sym_idx)
       !ST_auxst_xpragma_copyin(st)) {
 
     wn = WN_CreateXpragma ( WN_PRAGMA_COPYIN_BOUND, (ST_IDX) NULL, 1 );
-    WN_kid0(wn) = cwh_addr_load_ST(st,0,NULL);
+    WN_kid0(wn) = cwh_addr_load_ST(st,0,0);
     cwh_block_append(wn);
     Set_ST_auxst_xpragma_copyin(st,TRUE);
   }

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -51,8 +55,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
-#include <list.h>
-#include <vector.h>
+#include <list>
+#include <vector>
 #include "topcode.h"
 #include "targ_isa_properties.h"
 #include "gen_util.h"
@@ -93,10 +97,10 @@ typedef struct isa_adj_type {
 struct isa_pack_type {
   const char* name; 	// to represent the pack type
   struct {
-    list <ISA_ARGS_TYPE> operands;
-    list <ISA_ARGS_TYPE> results;
+    std::list<ISA_ARGS_TYPE> operands;
+    std::list<ISA_ARGS_TYPE> results;
   } word[MAX_WORDS];
-  list <ISA_ADJ_TYPE> oadj;
+  std::list<ISA_ADJ_TYPE> oadj;
   int max_word;
   int index;		
   int adj_index;
@@ -115,11 +119,11 @@ struct opnd_adj_type {
   int code;
 };
 
-static list <ISA_PACK_TYPE> all_packs;  // all the different print formats
-static list <OPND_ADJ_TYPE> all_oadj;	// all the different opnd adjustments
+static std::list<ISA_PACK_TYPE> all_packs;  // all the different print formats
+static std::list<OPND_ADJ_TYPE> all_oadj;	// all the different opnd adjustments
 static ISA_PACK_TYPE current_pack_desc;
 static op_assembly *op_packs[TOP_count+1];
-static list<op_assembly*> op_packs_list;
+static std::list<op_assembly*> op_packs_list;
 static bool top_specified[TOP_count];
 static int inst_bits;
 static int inst_words;
@@ -435,10 +439,10 @@ void ISA_Pack_End(void)
 /////////////////////////////////////
 {
   enum { isa_pack_adj_end = 0 };
-  list<ISA_PACK_TYPE>::iterator isi;
-  list<ISA_ARGS_TYPE>::iterator iai;
-  list<ISA_ADJ_TYPE>::iterator ioi;
-  list<OPND_ADJ_TYPE>::iterator ioai;
+  std::list<ISA_PACK_TYPE>::iterator isi;
+  std::list<ISA_ARGS_TYPE>::iterator iai;
+  std::list<ISA_ADJ_TYPE>::iterator ioi;
+  std::list<OPND_ADJ_TYPE>::iterator ioai;
 #define FNAME "targ_isa_pack"
   char buf[1000];
   sprintf (buf, "%s.h", FNAME);

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,6 +41,7 @@
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/c_div.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
 #include <stdlib.h>
 #include "cmplx.h"
+#include "defalias.h"
 
 complex __cdiv(float areal, float aimag, float breal, float bimag)
 {
@@ -62,7 +67,9 @@ complex __cdiv(float areal, float aimag, float breal, float bimag)
   return c;
 }
 
-void c_div(complex *c, complex *a, complex *b)
+complex c_div_(complex *a, complex *b)
 {
-  *c = __cdiv(a->real, a->imag, b->real, b->imag);
+  return __cdiv(a->real, a->imag, b->real, b->imag);
 }
+
+defalias(c_div_, c_div);

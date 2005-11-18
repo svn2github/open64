@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,6 +42,7 @@
 #include <math.h>
 #include "moremath.h"
 #include "cmplx.h"
+#include "defalias.h"
 
 complex __ccos(float zreal, float zimag)
 {
@@ -48,7 +53,9 @@ complex __ccos(float zreal, float zimag)
   return r;
 }
 
-void c_cos(complex *r, complex *z)
+complex c_cos_(complex *z)
 {
-  *r = __ccos(z->real, z->imag);
+  return __ccos(z->real, z->imag);
 }
+
+defalias(c_cos_, c_cos);

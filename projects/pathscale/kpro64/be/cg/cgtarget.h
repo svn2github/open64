@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -625,7 +629,11 @@ typedef enum {
 } PEAK_RATE_CLASS;
 
 typedef struct {
+#ifdef KEY
+  mUINT16 refs[PRC_LAST];
+#else
   mINT16 refs[PRC_LAST];
+#endif
 } PRC_INFO;
 
 extern void CGTARG_Peak_Rate( PEAK_RATE_CLASS prc, PRC_INFO *info, INT ratio[2] );
@@ -773,6 +781,12 @@ extern BOOL CGTARG_OP_is_counted_loop(OP *op);
 
 extern void CGTARG_Generate_Branch_Cloop(OP *op, TN *unrolled_trip_count, TN *trip_count,
 					 INT32 ntimes, TN *label_tn, OPS *prolog_ops, OPS *body_ops);
+#ifdef TARG_X8664
+extern void CGTARG_Generate_Countdown_Loop(TN *trip_count_tn, BB *tail, 
+					   OPS *prolog_ops, OPS *body_ops, 
+					   BOOL single_bb, LOOP_DESCR *loop);
+extern void CGTARG_LOOP_Optimize( LOOP_DESCR* loop );
+#endif
 
 /* call init routine once per asm stmt */
 extern void CGTARG_Init_Asm_Constraints (void);
@@ -780,10 +794,18 @@ extern void CGTARG_Init_Asm_Constraints (void);
 /* Given a constraint for an ASM parameter, and the load of the matching
  * argument passed to ASM (possibly NULL), choose an appropriate TN for it
  */
+#ifndef KEY
 extern TN* CGTARG_TN_For_Asm_Operand(const char* constraint, 
                                      const WN* load,
                                      TN* pref_tn,
                                      ISA_REGISTER_SUBCLASS* subclass);
+#else
+extern TN* CGTARG_TN_For_Asm_Operand(const char* constraint, 
+                                     const WN* load,
+                                     TN* pref_tn,
+                                     ISA_REGISTER_SUBCLASS* subclass, 
+				     TYPE_ID type);
+#endif
 
 /* given asm constraint and mtype, 
  * pick appropriate dedicated tn and string name */
@@ -822,5 +844,7 @@ inline BOOL CGTARG_Use_Load_Latency(OP *pred_op, TN *tn)
 
 /* Returns TRUE if OP is a suitable candidate for HBF. */
 extern BOOL CGTARG_Check_OP_For_HB_Suitability(OP *op);
+
+extern TN* CGTARG_Gen_Dedicated_Subclass_TN( OP* op, int idx, BOOL is_result );
 
 #endif /* CGTARGET_INCLUDED */

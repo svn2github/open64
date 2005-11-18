@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -62,7 +66,7 @@
 #include "intrn_info.h"
 
 
-#if defined(__GNUC__)
+#if (__GNUC__ == 2)
 //
 // Provide trunc(), which doesn't exist in the GNU library. This is a
 // quick and dirty hack, and should be handled elsehow.
@@ -1769,6 +1773,20 @@ static WN *em_readstackpointer(TYPE_ID rtype)
   return WN_LdidPreg(rtype, Stack_Pointer_Preg_Offset);
 }
 
+#ifdef KEY
+/* ====================================================================
+ *
+ *  WN *em_readframepointer(WN *block, TYPE_ID rtype)
+ *
+ *       return  sp
+ *
+ * ==================================================================== */
+static WN *em_readframepointer(TYPE_ID rtype)
+{
+  return WN_LdidPreg(rtype, Frame_Pointer_Preg_Offset);
+}
+#endif
+
 /* ====================================================================
  *
  *  WN *em_setstackpointer(WN *block, TYPE_ID rtype, WN *value)
@@ -3360,6 +3378,93 @@ static WN *em_memmove(WN *block, WN *tree, WN *dst, WN *src, WN *size)
   return NULL;
 }
 
+#ifdef TARG_X8664
+extern  /* defined in data_layout.cxx */
+ST *Get_Vararg_Save_Area_Info(int &fixed_int_parms, int &fixed_float_parms,
+			      ST *&upformal);
+
+/* va_start under the X86-64 ABI */
+static WN *em_x8664_va_start(WN *block, WN *ap)
+{
+  TY_IDX ty_idx;
+  TY_IDX va_list_struct_ty;
+  INT fixed_int_parms, fixed_float_parms;
+  BOOL direct;
+  if (WN_operator(ap) == OPR_LDA) {
+    ty_idx = WN_ty(ap);
+    Is_True(TY_kind(ty_idx) == KIND_POINTER,
+	    ("em_x8664_va_start: argument not of pointer type"));
+    ty_idx = TY_pointed(ty_idx);
+    Is_True(TY_kind(ty_idx) == KIND_ARRAY && TY_size(ty_idx) == 24,
+	("em_x8664_va_start: argument pointer does not point to type va_list"));
+    direct = TRUE;
+    va_list_struct_ty = TY_etype(ty_idx);
+  }
+  else if (WN_operator(ap) == OPR_LDID) {
+    ty_idx = WN_ty(ap);
+    Is_True(TY_kind(ty_idx) == KIND_POINTER,
+	    ("em_x8664_va_start: argument not of pointer type"));
+    ty_idx = TY_pointed(ty_idx);
+    Is_True(TY_size(ty_idx) == 24,
+	("em_x8664_va_start: argument pointer does not point to type va_list"));
+    direct = FALSE;
+    va_list_struct_ty = ty_idx;
+  }
+  else Fail_FmtAssertion("em_x8664_va_start: unexpected argument node");
+
+  ST *upformal;
+  ST *reg_save_area = Get_Vararg_Save_Area_Info(fixed_int_parms, fixed_float_parms, upformal);
+  WN *wn;
+  WN *addr;
+
+  wn = WN_Intconst(MTYPE_I4, fixed_int_parms * 8);
+  if (direct)
+    wn = WN_Stid(MTYPE_I4, 0, WN_st(ap), MTYPE_To_TY(MTYPE_I4), wn);
+  else {
+    addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+    wn = WN_Istore(MTYPE_I4, 0, Make_Pointer_Type(MTYPE_To_TY(MTYPE_I4)),
+    		   addr, wn);
+  }
+  WN_INSERT_BlockLast(block, wn);
+
+  wn = WN_Intconst(MTYPE_I4, fixed_float_parms * 16 + 48);
+  if (direct)
+    wn = WN_Stid(MTYPE_I4, 4, WN_st(ap), MTYPE_To_TY(MTYPE_I4), wn);
+  else {
+    addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+    wn = WN_Istore(MTYPE_I4, 4, Make_Pointer_Type(MTYPE_To_TY(MTYPE_I4)),
+    		   addr, wn);
+  }
+  WN_INSERT_BlockLast(block, wn);
+
+  wn = WN_Lda(Pointer_Mtype, STB_size(upformal), upformal);
+  if (direct)
+    wn = WN_Stid(Pointer_Mtype, 8, WN_st(ap), MTYPE_To_TY(Pointer_Mtype), wn);
+  else {
+    addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+    wn = WN_Istore(Pointer_Mtype, 8, 
+    		   Make_Pointer_Type(MTYPE_To_TY(Pointer_Mtype)), addr, wn);
+  }
+
+  if (ST_sclass(upformal) == SCLASS_UNKNOWN)
+    Set_ST_sclass (upformal, SCLASS_FORMAL);
+
+  if (reg_save_area) {
+    WN_INSERT_BlockLast(block, wn);
+    if (TY_size(ST_type(reg_save_area)) == 8)
+      wn = WN_Lda(Pointer_Mtype, -(fixed_int_parms * 8), reg_save_area);
+    else wn = WN_Lda(Pointer_Mtype, -(fixed_float_parms*16)-48, reg_save_area);
+    if (direct)
+      wn = WN_Stid(Pointer_Mtype, 16, WN_st(ap), MTYPE_To_TY(Pointer_Mtype),wn);
+    else {
+      addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+      wn = WN_Istore(Pointer_Mtype, 16, 
+    		     Make_Pointer_Type(MTYPE_To_TY(Pointer_Mtype)), addr, wn);
+    }
+  }
+  return wn;
+}
+#endif
 
 /* ====================================================================
  *
@@ -3836,6 +3941,13 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
 
     switch(rtype)
     {
+#ifdef TARG_X8664
+    case MTYPE_C4:
+    case MTYPE_C8:
+      if (Is_Target_64bit())
+	break;
+      // fall thru
+#endif
     case MTYPE_CQ:
       {
 	ST  *retST = Gen_Temp_Symbol(MTYPE_To_TY(rtype), "return_temp");
@@ -3916,6 +4028,15 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
   {
     TYPE_ID	rtype =  WN_rtype(tree);
     TY_IDX ty = Make_Function_Type( MTYPE_To_TY(rtype));
+#ifdef TARG_X8664
+    // The return type is set up correctly in Make_Function_Type (above).
+    // (-m32 expects that the return type be setup correctly).
+    // Currently, there is no need for setting up the parameter list 
+    // for the intrinsics before setting TY_has_prototype. 
+    // lower_call for x86/x8664 expects every function to have a prototype 
+    // and assumes a vararg function if there is no prorotype.
+    Set_TY_has_prototype(ty);
+#endif
     ST	*st = Gen_Intrinsic_Function(ty, function);
     WN	*call;
 
@@ -3925,6 +4046,13 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     Set_intrinsic_flags (st, tree);
     Annotate_Weak_Runtime ( st, function );
 
+#ifdef TARG_X8664
+    if (! Is_Target_64bit()) { // leave any complex type as is
+      call = WN_Create(OPR_CALL, rtype, MTYPE_V, argC);
+      WN_st_idx(call) = ST_st_idx(st);
+    }
+    else
+#endif
     call = WN_Call(rtype, MTYPE_V, argC, st);
     WN_call_flag(call) = WN_call_flag(tree);
 
@@ -4067,6 +4195,11 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
   case INTRN_U8READSTACKPOINTER:
     return em_readstackpointer(Pointer_type);
 
+#ifdef KEY
+  case INTRN_U4READFRAMEPOINTER:
+  case INTRN_U8READFRAMEPOINTER:
+    return em_readframepointer(Pointer_type);
+#endif
 
   case INTRN_U4I4SETSTACKPOINTER:
   case INTRN_U8I8SETSTACKPOINTER:
@@ -4414,6 +4547,12 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
       return em_memmove(block, tree, WN_arg(tree, 0), WN_arg(tree, 1), WN_arg(tree, 2));
     }
     break;
+
+#ifdef TARG_X8664
+  case INTRN_VA_START:
+    return em_x8664_va_start(block, WN_arg(tree, 0));
+    break;
+#endif
 
   default:
     break;

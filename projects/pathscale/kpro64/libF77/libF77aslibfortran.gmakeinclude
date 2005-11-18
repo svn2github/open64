@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -54,6 +54,28 @@ LCDEFS += -DI90
 LCDEFS += -DFTN90_IO
 
 ifeq ($(BUILD_OS), LINUX)
+CFILES_FOOBAR = \
+	pow_ci.c \
+	pow_di.c \
+	pow_ii.c \
+	pow_ri.c \
+	_powzi.c \
+	pow_zi.c
+
+CFILES_NON_FOOBAR = \
+	_powci.c \
+	_powcl.c \
+	_powdi.c \
+	_powdl.c \
+	_powii.c \
+	_powll.c \
+	_powzl.c \
+	abort_.c \
+	i_abs.c \
+	l_abs.c \
+	s_cmp.c \
+	s_copy.c
+
 CFILES += \
 	and_b.c \
 	and_h.c \
@@ -140,7 +162,6 @@ CFILES += \
 	hl_gt.c \
 	hl_le.c \
 	hl_lt.c \
-	i_abs.c \
 	i_dim.c \
 	i_dnnt.c \
 	i_indx.c \
@@ -151,7 +172,6 @@ CFILES += \
 	i_sign.c \
 	idint.c \
 	irint.c \
-	l_abs.c \
 	l_dim.c \
 	l_dnnt.c \
 	l_ge.c \
@@ -178,13 +198,8 @@ CFILES += \
 	or_ll.c \
 	outstr_.c \
 	pow_cc.c \
-	pow_ci.c \
 	pow_dd.c \
-	pow_di.c \
 	pow_hh.c \
-	pow_ii.c \
-	pow_ri.c \
-	pow_zi.c \
 	pow_zz.c \
 	r_abs.c \
 	r_acos.c \
@@ -218,9 +233,6 @@ CFILES += \
 	ran_.c \
 	rand_.c \
 	s_abort.c \
-	s_cat_kai.c \
-	s_cmp.c \
-	s_copy.c \
 	s_paus.c \
 	s_rnge.c \
 	s_srng.c \
@@ -233,9 +245,7 @@ CFILES += \
 	shiftc_h.c \
 	shiftc_l.c \
 	shiftc_ll.c \
-	sinh.c \
 	subout.c \
-	tanh.c \
 	xor_b.c \
 	xor_h.c \
 	xor_l.c \
@@ -246,11 +256,11 @@ CFILES += \
 	z_exp.c \
 	z_log.c \
 	z_sin.c \
-	z_sqrt.c
+	z_sqrt.c \
+	$(CFILES_FOOBAR)
 
 # other files common to f77 and f90
 CFILES += \
-	abort_.c \
 	access_.c \
 	alarm_.c \
 	charutil.c \
@@ -355,7 +365,6 @@ CFILES	+= \
 	h_mod.c \
 	h_nint.c \
 	h_sign.c \
-	i_abs.c \
 	i_dim.c \
 	i_dnnt.c \
 	i_indx.c \
@@ -590,17 +599,16 @@ CFILES += \
 	util.c \
 	wrtfmt.c \
 	wsfe.c \
-	bcompat.c \
-	s_cat_kai.c
+	bcompat.c
 
 endif 
 
-ifeq ($(BUILD_ABI), 64BIT)
-
-CFILES += \
-	func64_.c
-
-endif
+#ifeq ($(BUILD_ABI), 64BIT)
+#
+#CFILES += \
+#	func64_.c
+#
+#endif
 
 CAPFFILES += \
 	c_cosf.F \

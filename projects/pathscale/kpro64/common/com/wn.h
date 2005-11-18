@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -655,6 +659,10 @@ extern BOOL Types_Are_Compatible(TYPE_ID ltype, WN *wn);
 extern BOOL IPO_Types_Are_Compatible(TYPE_ID ltype, TYPE_ID rtype);
 extern BOOL Is_Const_Parm (WN *, INT );     /* for a call call_wn, 
 					     is arg j a const parm */
+
+#ifdef KEY
+extern "C" INT32 New_Region_Id (void);
+#endif // KEY
 
 extern void Dont_Use_WN_Free_List (void);
 extern MEM_POOL *WN_mem_pool_ptr;

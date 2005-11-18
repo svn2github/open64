@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -36,9 +40,10 @@
 
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/z_cos.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
 
+#include <math.h>
 #include "cmplx.h"
 #include "cmplrs/host.h"
-#include <math.h>
+#include "defalias.h"
 #include "moremath.h"
 
 dcomplex __zcos(double_t zdreal, double_t zdimag)
@@ -50,7 +55,9 @@ dcomplex __zcos(double_t zdreal, double_t zdimag)
   return r;
 }
 
-void z_cos(dcomplex *r, dcomplex *z)
+dcomplex z_cos_(dcomplex *z)
 {
-  *r = __zcos(z->dreal, z->dimag);
+  return __zcos(z->dreal, z->dimag);
 }
+
+defalias(z_cos_, z_cos);

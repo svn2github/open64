@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 //
 // Module: opt_lftr2.cxx
@@ -920,7 +925,8 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
   // the occurrences cannot be compound (SSA PRE rule)
   Is_True(tos->Occurrence()->Kind() == CK_OP &&
 	  tos->Occurrence()->Opnd(0)->Kind() != CK_OP &&
-	  tos->Occurrence()->Opnd(1)->Kind() != CK_OP,
+	  (tos->Occurrence()->Kid_count() == 1 ||
+	   tos->Occurrence()->Opnd(1)->Kind() != CK_OP),
 	  ("LFTR::Replace_comparison, tos->Occurrence is compound"));
 
   // no floating point or quad comparisons
@@ -975,7 +981,12 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
 	Is_Trace(Trace(),(TFile,"LFTR return 6 - temp not found\n"));
 	return; // 1, 2
       }
+//Bug# 1164
+#ifdef KEY
+      if (iv_defstmt->Iv_update() && iv_defstmt->Repaired() && tempcr->Aux_id() == cr->Aux_id()) {
+#else
       if (iv_defstmt->Iv_update() && tempcr->Aux_id() == cr->Aux_id()) {
+#endif
 	// 3
 	Is_True(tempcr != cr, ("LFTR::Replace_comparison, tempcr is same"));
 	tempcr = cr;
@@ -1167,6 +1178,10 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
 			      comp->Occurrence()->Opnd(1));
     OPERATOR opr = new_cr->Opr();
 
+#ifdef TARG_X8664
+    if (opr != OPR_CVT)
+#endif
+    {
     // check possible overflow situations
     CODEREP  *kid0 = new_cr->Opnd(0);
     CODEREP  *kid1 = new_cr->Opnd(1);
@@ -1194,6 +1209,7 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
           !n3.Representable_in_nbits(new_cr->Offset_nbits()))
         return;
     }
+    }
 
     if (comp->Occurrence()->Opnd(1)->Kind() != CK_OP)
       fold_cr = ftmp.Fold_Expr(new_cr);
@@ -1218,6 +1234,12 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
 
     // adjust operator of new comparison
     OPERATOR new_compare_opr = comparison_cr->Opr();
+#ifdef TARG_X8664
+    MTYPE new_compare_type = tempcr->Dtyp();
+    // do not change signedness of comparison since that could change semantics
+    new_compare_type = Mtype_TransferSign(comparison_cr->Dsctyp(), 
+					  new_compare_type);
+#else
     MTYPE new_compare_type = comparison_cr->Dsctyp();
     if (addressable == ADDRESSABILITY_IS_ADDRESS &&
 	MTYPE_is_signed(new_compare_type)) {
@@ -1225,6 +1247,7 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
       new_compare_type = Mtype_from_mtype_class_and_size(MTYPE_CLASS_UNSIGNED,
 				MTYPE_size_min(new_compare_type)/8);
     }
+#endif
     if (factor.Value() < 0 && ! eq_neq) {
       switch (new_compare_opr) {
       case OPR_LT:

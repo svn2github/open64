@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,103 +37,30 @@
 
 */
 
-
+#include <math.h>
 #include "cmplrs/host.h"
 #include "cmplx.h"
-#include "c_div.h"
+#include "defalias.h"
 
-complex __powci(float areal, float aimag, int32 n)   /* __powci = a**n  */
+extern complex __powci(float areal, float aimag, int32 n);
+extern complex __powcl(float areal, float aimag, int64 n);
+
+void pow_ci__(complex *p, complex *a, int32 *b)   /* p = a**b  */
 {
-  float_t t;
-  complex x, p;
-
-  p.real = 1;
-  p.imag = 0;
-
-  if(n == 0)
-    return p;
-
-  if(n < 0) {
-    n = -n;
-    x = __cdiv(p.real, p.imag, areal, aimag);
-  } else {
-    x.real = areal;
-    x.imag = aimag;
-  }
-
-  for( ; ; ) {
-    if(n & 01) {
-      t = p.real * x.real - p.imag * x.imag;
-      p.imag = p.real * x.imag + p.imag * x.real;
-      p.real = t;
-    }
-    if(n >>= 1) {
-      t = x.real * x.real - x.imag * x.imag;
-      x.imag = 2 * x.real * x.imag;
-      x.real = t;
-    } else {
-      break;
-    }
-  }
-
-  return p;
+	*p = __powci(a->real, a->imag, *b);
 }
 
-void pow_ci(complex *p, complex *a, int32 *b)   /* p = a**b  */
-{
-  *p = __powci(a->real, a->imag, *b);
-}
+defalias(pow_ci__, pow_ci_);
+defalias(pow_ci__, pow_ci);
+
+defalias(pow_ci__, pow_cif_);
 
 void
-pow_ci_(complex *p, complex *a, int32 *b)
-{
-        *p = __powci(a->real, a->imag, *b);
-}
-
-complex __powcl(float areal, float aimag, int64 n)   /* __powcl = a**n  */
-{
-  float_t t;
-  complex x, p;
-
-  p.real = 1;
-  p.imag = 0;
-
-  if(n == 0)
-    return p;
-
-  if(n < 0) {
-    n = -n;
-    x = __cdiv(p.real, p.imag, areal, aimag);
-  } else {
-    x.real = areal;
-    x.imag = aimag;
-  }
-
-  for( ; ; ) {
-    if(n & 01) {
-      t = p.real * x.real - p.imag * x.imag;
-      p.imag = p.real * x.imag + p.imag * x.real;
-      p.real = t;
-    }
-    if(n >>= 1) {
-      t = x.real * x.real - x.imag * x.imag;
-      x.imag = 2 * x.real * x.imag;
-      x.real = t;
-    } else {
-      break;
-    }
-  }
-
-  return p;
-}
-
-void pow_cl(complex *p, complex *a, int64 *b)   /* p = a**b  */
-{
-  *p = __powcl(a->real, a->imag, *b);
-}
-
-void
-pow_cl_(complex *p, complex *a, int64 *b)
+pow_cl__(complex *p, complex *a, int64 *b)
 {
         *p = __powcl(a->real, a->imag, *b);
 }
+
+defalias(pow_cl__, pow_cl_);
+defalias(pow_cl__, pow_cl);
+defalias(pow_cl__, pow_clf_);

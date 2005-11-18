@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -79,6 +79,8 @@ endif
 HOSTDEFS += -Dlonglong
 # need to define _LONGLONG and _SVR4_SOURCE to allow compilation with -ansi.
 HOSTDEFS += -D_LONGLONG -D_SVR4_SOURCE -D_WORD32 -D_ADDR32 -D__=__P
+# following added at PathScale
+HOSTDEFS += -D_LP64 -DKEY -D_GNU_SOURCE
 
 ifeq ($(BUILD_ARCH), MIPS3)
 TARGDEFS  = -DTARG_MIPS
@@ -228,7 +230,7 @@ LCDEFS += -D_BIG_ENDIAN
 #   $(BUILD_TOT)/include needed for any #include <nl_types.h>
 LCINCS += -I$(BUILD_TOT)/include
 LF77OPTS = $(STD_COMPILE_OPTS)
-LCOPTS += $(STD_COMPILE_OPTS)
+LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 
 else
 
@@ -288,6 +290,5 @@ include $(COMMONRULES)
 #  Special case rules for files that want to be individualistic
 #----------------------------------------------------------------------
 
-.PRECIOUS : $(LIBRARY)
-$(LIBRARY): $(LIBRARY)($(OBJECTS))
-
+$(LIBRARY): $(OBJECTS)
+	$(ar) cru $@ $^

@@ -107,72 +107,43 @@ ALT_FFILES = \
 endif
 
 CFILES += \
-	matmul_cd@.c \
 	matmul_cj@.c \
-	matmul_cz@.c \
-	matmul_dc@.c \
-	matmul_dd@.c \
-	matmul_dj@.c \
-	matmul_ds@.c \
-	matmul_dz@.c \
 	matmul_jc@.c \
-	matmul_jd@.c \
 	matmul_jj@.c \
 	matmul_js@.c \
-	matmul_jz@.c \
 	matmul_ll@.c \
-	matmul_sd@.c \
 	matmul_sj@.c \
-	matmul_sz@.c \
-	matmul_zc@.c \
-	matmul_zd@.c \
-	matmul_zj@.c \
-	matmul_zs@.c \
-	matmul_zz@.c \
-	matmul_c4d.c \
 	matmul_c4i1.c \
 	matmul_c4i2.c \
 	matmul_c4i4.c \
 	matmul_c4j.c \
-	matmul_c4z.c \
 	matmul_ci1.c \
 	matmul_ci2.c \
 	matmul_ci4.c \
-	matmul_dc4.c \
-	matmul_di1.c \
-	matmul_di2.c \
-	matmul_di4.c \
-	matmul_ds4.c \
 	matmul_i1c.c \
 	matmul_i1c4.c \
-	matmul_i1d.c \
 	matmul_i1i1.c \
 	matmul_i1i2.c \
 	matmul_i1i4.c \
 	matmul_i1j.c \
 	matmul_i1s.c \
 	matmul_i1s4.c \
-	matmul_i1z.c \
 	matmul_i2c.c \
 	matmul_i2c4.c \
-	matmul_i2d.c \
 	matmul_i2i1.c \
 	matmul_i2i2.c \
 	matmul_i2i4.c \
 	matmul_i2j.c \
 	matmul_i2s.c \
 	matmul_i2s4.c \
-	matmul_i2z.c \
 	matmul_i4c.c \
 	matmul_i4c4.c \
-	matmul_i4d.c \
 	matmul_i4i1.c \
 	matmul_i4i2.c \
 	matmul_i4i4.c \
 	matmul_i4j.c \
 	matmul_i4s.c \
 	matmul_i4s4.c \
-	matmul_i4z.c \
 	matmul_jc4.c \
 	matmul_ji1.c \
 	matmul_ji2.c \
@@ -193,21 +164,52 @@ CFILES += \
 	matmul_ll1.c \
 	matmul_ll2.c \
 	matmul_ll4.c \
-	matmul_s4d.c \
 	matmul_s4i1.c \
 	matmul_s4i2.c \
 	matmul_s4i4.c \
 	matmul_s4j.c \
-	matmul_s4z.c \
 	matmul_si1.c \
 	matmul_si2.c \
 	matmul_si4.c \
-	matmul_zc4.c \
-	matmul_zi1.c \
-	matmul_zi2.c \
-	matmul_zi4.c \
-	matmul_zs4.c \
 	$(ALT_CFILES)
+
+# these files excluded because they cause undefines when the .so is linked in
+# 	matmul_cd@.c 
+# 	matmul_cz@.c 
+# 	matmul_dc@.c 
+# 	matmul_dd@.c 
+# 	matmul_dj@.c 
+# 	matmul_ds@.c 
+# 	matmul_dz@.c 
+# 	matmul_jd@.c 
+# 	matmul_jz@.c 
+# 	matmul_sd@.c 
+# 	matmul_sz@.c 
+# 	matmul_zc@.c 
+# 	matmul_zd@.c 
+# 	matmul_zj@.c 
+# 	matmul_zs@.c 
+# 	matmul_zz@.c 
+# 	matmul_c4d.c 
+# 	matmul_c4z.c 
+# 	matmul_dc4.c 
+# 	matmul_di1.c 
+# 	matmul_di2.c 
+# 	matmul_di4.c 
+# 	matmul_ds4.c 
+# 	matmul_i1d.c 
+# 	matmul_i1z.c 
+# 	matmul_i2d.c 
+# 	matmul_i2z.c 
+# 	matmul_i4d.c 
+# 	matmul_i4z.c 
+# 	matmul_s4d.c 
+# 	matmul_s4z.c 
+# 	matmul_zc4.c 
+# 	matmul_zi1.c 
+# 	matmul_zi2.c 
+# 	matmul_zi4.c 
+# 	matmul_zs4.c 
 
 ## on linux - no real16 for now.. get rid of *dgemm..
 ifeq ($(BUILD_OS), LINUX)

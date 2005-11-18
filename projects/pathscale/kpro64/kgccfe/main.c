@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -44,7 +50,10 @@
 // gnu_init returns file to compile, like t.i (not t.c!)
 extern char * gnu_init (INT argc, char **argv, char **envp);
 
-void
+extern void compile_file (const char *);
+extern void check_gnu_errors (INT *, INT *);
+
+int
 main ( 
   INT argc,	/* Number of command line arguments */
   char **argv,	/* Array of command line arguments */
@@ -56,6 +65,10 @@ main (
 	Orig_Src_File_Name = gnu_init (argc, argv, envp);
 	WFE_Init (argc, argv, envp);	/* sgi initialization */
 	WFE_File_Init (argc, argv);	/* inits per source file */
+
+	if (Orig_Src_File_Name == NULL) {
+		exit (RC_OKAY);
+	}
 
 	compile_file (Orig_Src_File_Name);
 

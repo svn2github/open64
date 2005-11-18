@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,6 +59,8 @@
 #endif 
 #include <cray/assign.h>
 #include "fio.h"
+#include "util/utildefs.h"
+#include "ffio/spec_parse.h"
 
 #define TRACK	(42*BLKSIZE)	/* Most common track size */
 #define FPARMAX		3	/* Number of numeric layer parameters */
@@ -1137,9 +1143,25 @@ int		catcherr)
 void
 _ffconvert_stat(struct ffc_stat_s *src, struct stat *dest)
 {
+#ifndef KEY
 	assert ( sizeof(*src) == sizeof(*dest) );
 
 	*dest	= *(struct stat *)src;
+#else
+	dest->st_dev = src->st_dev;
+	dest->st_ino = src->st_ino;
+	dest->st_mode = src->st_mode;
+	dest->st_nlink = src->st_nlink;
+	dest->st_uid = src->st_uid;
+	dest->st_gid = src->st_gid;
+	dest->st_rdev = src->st_rdev;
+	dest->st_size = src->st_size;
+	dest->st_atime = src->st_atim;
+	dest->st_mtime = src->st_mtim;
+	dest->st_ctime = src->st_ctim;
+	dest->st_blksize = src->st_blksize;
+	dest->st_blocks = src->st_blocks;
+#endif
 
 	return;
 }

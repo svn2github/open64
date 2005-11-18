@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -99,6 +104,8 @@
 #include "opt_ssa.h"
 
 #include <vector>
+
+using idmap::ID_MAP;
 
 // forward declarations
 class BB_NODE;
@@ -219,14 +226,21 @@ enum ISOP_FLAG {
   			     // MAIN_EMITTER::Check_expr_resolves_to_const
   ISOP_IVE_LIVE  = 0x1000, // has been visited during IVE
   ISOP_SSAPRE_OMITTED = 0x1000, // an occurrence omitted from SSAPRE worklst
-  ISOP_IVE_VISITED = 0x2000 // has been visited during IVE for coderep
+  ISOP_IVE_VISITED = 0x2000, // has been visited during IVE for coderep
 				// in the Source() bit vector
-  // at most 14 bits for this enumeration, due to size of isop_flags field
+  ISOP_XLOWER_VISITED = 0x4000,// has been visited during Lower_to_extract_compose
+  ISOP_LDAFOLD_VISITED = 0x8000,// has been visited during Fold_lda_iload_istore
+  // at most 22 bits for this enumeration, due to size of isop_flags field
 };
 
 enum ISVAR_FLAG {
   ISVAR_SAFE_TO_RENUMBER_PREG = 0x01,
-  ISVAR_BIT_FIELD_VALID       = 0X02	// Bit_size() and Bit_offset() valid
+  ISVAR_BIT_FIELD_VALID       = 0X02,	// Bit_size() and Bit_offset() valid
+#ifdef KEY
+  ISVAR_PROMOTE_TO_REG_SIZE   = 0x04,   // promotable byte- and half-sized vars
+  					// to register size (4- or 8-bytes) via
+  					// extract/compose
+#endif
 };
 
 // return value of Propagatable to tell whether an expression can be
@@ -343,11 +357,16 @@ private:
       INT64     const_val;           // constant value, ISCONST
     } isconst;
     struct {                         // for code kind ISOP
-      OPERATOR  _opr:8;	             // 
+      OPERATOR  _opr:8;	             //
+#ifdef KEY
+      MTYPE     _asm_input_dtyp:5;                  // data type
+      MTYPE     _asm_input_dsctyp:5;                // descriptor type for various opcode
+#else
       mINT32    _unused:10;	     // unused
+#endif
       mINT32    kid_count:14;        // number of kids
       PROPAGATABILITY propagatability:2; // used during copy propagation
-      ISOP_FLAG isop_flags:14;	     
+      ISOP_FLAG isop_flags:22;	     
       mUINT8    max_depth;           // used in estimating rehash cost (SSAPRE)
       IDTYPE    _temp_id:24;         // processing this CR in new PRE step1
       CODEREP  *kids[3];             // array of kid pointers
@@ -442,8 +461,15 @@ public:
   void Init_const(MTYPE wt, INT64 v)
     {
       Init(CK_CONST); 
+#ifndef TARG_X8664
       if (wt == MTYPE_U4 || wt == MTYPE_I4) 
 	Set_dtyp_const_val(wt, (v << 32) >> 32);
+#else
+      if (wt == MTYPE_I4) 
+	Set_dtyp_const_val(wt, (v << 32) >> 32);
+      else if (wt == MTYPE_U4) 
+	Set_dtyp_const_val(wt, (UINT64) ((UINT64) v << 32) >> 32);
+#endif
       else Set_dtyp_const_val(wt, v);
     }
 
@@ -553,12 +579,27 @@ public:
   void      Set_dtyp(MTYPE dt)        { Is_True(Kind() != CK_CONST,
 					  ("CODEREP::Set_dtyp, illegal kind"));
 					_dtyp = dt; }
+#ifdef KEY
+  MTYPE     Asm_input_rtype(void)  const    { return u2.isop._asm_input_dtyp; }
+  void      Set_asm_input_rtype(MTYPE dt)   { u2.isop._asm_input_dtyp = dt; }
+  MTYPE     Asm_input_dsctype(void) const   { return u2.isop._asm_input_dsctyp; }
+  MTYPE     Set_asm_input_dsctype(MTYPE dt) {  u2.isop._asm_input_dsctyp = dt; }
+#endif  
+#ifndef TARG_X8664
   void	    Set_dtyp_const_val(MTYPE dt, INT64 v) { Is_True(Kind() == CK_CONST,
 					    ("CODEREP::Set_dtyp_const_val, illegal kind"));
 					if (v == (v << 32) >> 32)
 					  _dtyp = MTYPE_I4;
 					else _dtyp = MTYPE_I8;
 					u2.isconst.const_val = v; }
+#else
+  void	    Set_dtyp_const_val(MTYPE dt, UINT64 v) { Is_True(Kind() == CK_CONST,
+					    ("CODEREP::Set_dtyp_const_val, illegal kind"));
+					if (v == (v << 32) >> 32)
+					  _dtyp = MTYPE_U4;
+					else _dtyp = MTYPE_I8;
+					u2.isconst.const_val = v; }
+#endif
   void      Set_dtyp_strictly(MTYPE dt) { _dtyp = dt; }
   MTYPE     Dsctyp(void) const        { return 0x1f&dsctyp; }
   void      Set_dsctyp(const MTYPE t) { dsctyp = t; }
@@ -705,6 +746,20 @@ public:
   BOOL Bit_field_valid() const {
     return u2.isvar._isvar_flags & ISVAR_BIT_FIELD_VALID;
   }
+
+#ifdef KEY
+  void Set_promote_to_reg_size() {
+    u2.isvar._isvar_flags |= ISVAR_PROMOTE_TO_REG_SIZE;
+  }
+
+  void Reset_promote_to_reg_size() {
+    u2.isvar._isvar_flags &= ~ISVAR_PROMOTE_TO_REG_SIZE;
+  }
+
+  BOOL Promote_to_reg_size() const {
+    return u2.isvar._isvar_flags & ISVAR_PROMOTE_TO_REG_SIZE;
+  }
+#endif
 
   void Reset_field_id(void) 	     { u2.isvar.fieldid = 0; }
 
@@ -990,8 +1045,9 @@ public:
   // functions used by SSA PRE
   BOOL      Ivar_has_e_num(void) const { Is_True(Kind() == CK_IVAR,
 						 ("CODEREP::Ivar_has_e_num: illegal kind."));
-                                         return (OPERATOR_is_scalar_iload(Opr()) ||
-						 OPERATOR_is_scalar_istore(Opr()));
+                                         return (Dtyp() != MTYPE_M &&
+                                         	(OPERATOR_is_scalar_iload(Opr()) ||
+						 OPERATOR_is_scalar_istore(Opr())) );
                                        }
   BOOL      Exp_has_e_num(void) const; 
   BOOL      Is_integral_load_store(void) const 
@@ -1646,7 +1702,9 @@ private:
 
   union {
     UINT32     _label_flags;  // the label flags
+#ifndef KEY
     UINT32     _asm_stmt_flags;  // the ASM_STMT flags
+#endif
     MU_LIST   *_mu_list;      // list of possibly ref'd values
 //    MTYPE      _rhs_type;     // rhs type for assignment statements
   } _u4;
@@ -1659,14 +1717,23 @@ private:
   UINT        _proj_op_uses : 2; // number of uses of the unique
 				 // projectible operation on the RHS
 				 // of STID.
+#ifdef KEY
+  UINT32      _asm_stmt_flags:3;  // the ASM_STMT flags
+  UINT        _unused : 9;      // allocate new flag bits from here.
+#else
   UINT        _unused : 12;      // allocate new flag bits from here.
+#endif
 
   // initializer to be called by all constructors
   void Init(void)		{ _lhs = _rhs = NULL;
 				  _opr = OPERATOR_UNKNOWN;
 				  _rtype = _desc = MTYPE_UNKNOWN;
 				  bb = NULL;
+#ifndef KEY
 				  _flags = SRF_NONE;
+#else // need this if all optimization phases are disabled
+				  _flags = SRF_LIVE_STMT;
+#endif
 				  _linenum = (SRCPOS)0;
 				  _u4._mu_list = NULL;
 				  _chi_list = NULL;
@@ -1933,8 +2000,13 @@ public:
   void       Set_label_flags(UINT32 f)  { _u4._label_flags = f; }
 
   // for the ASM_STMT flags
+#ifdef KEY
+  UINT32     Asm_stmt_flags(void) const    { return _asm_stmt_flags; }
+  void       Set_asm_stmt_flags(UINT32 f)  { _asm_stmt_flags = f; }
+#else
   UINT32     Asm_stmt_flags(void) const    { return _u4._asm_stmt_flags; }
   void       Set_asm_stmt_flags(UINT32 f)  { _u4._asm_stmt_flags = f; }
+#endif
 
   IDX_32    Bitpos(void) const          { return _u5._bitpos; }
   void      Set_Bitpos(IDX_32 bp)     	{ _u5._bitpos = bp; }

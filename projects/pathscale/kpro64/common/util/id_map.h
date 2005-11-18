@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -149,6 +153,8 @@
 #include "tracing.h"
 #include "opt_defs.h"
 #include "erglob.h"      // For EC_xxx error codes
+
+namespace idmap {
 
 // Bring in declaration of floor and ceil from /usr/include/math.h
 // Can't include math.h directly because of defs.h!
@@ -886,7 +892,7 @@ ID_MAP<NODE_TYPE, KEY_TYPE>::Entry_lookup(const KEY_TYPE key) const
 
   while (idx != -1 &&
 	 _table[idx]._node != _not_found_value &&
-	 _table[idx]._key != key) {
+	 !(_table[idx]._key == key)) {
     idx = _table[idx]._next;
 
 #if Is_True_On
@@ -908,6 +914,8 @@ ID_MAP<NODE_TYPE, KEY_TYPE>::Entry_lookup(const KEY_TYPE key) const
   else {
     return idx;
   }
+}
+
 }
 
 #endif

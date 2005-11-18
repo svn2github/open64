@@ -1,5 +1,4 @@
-# USMID @(#) libu/ffio/ffio.makeinclude	92.4	10/28/99 09:55:06
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -43,10 +42,10 @@
 
 ifeq ($(BUILD_OS), LINUX)
 FFIONLE = \
+    evntlistio.c
 
 else
 FFIONLE = \
-    evntlistio.c \
     globopen.c \
     globall.c \
     globfcntl.c \
@@ -188,16 +187,18 @@ CFILES += \
     syslseek.c \
     sysopen.c \
     sysread.c \
-    sysreada.c \
     systrunc.c \
     syswrite.c \
-    syswritea.c \
     txtbksp.c \
     txtfcntl.c \
     txtopen.c \
     txtread.c \
     txtwrite.c \
     $(FFIONLE)
+
+CFILES_NOT_LINUX = \
+    sysreada.c \
+    syswritea.c
 
 SRC_DIRS += \
    $(BUILD_TOT)/libu/ffio

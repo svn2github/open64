@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,6 +41,7 @@
 #include <math.h>
 #include "moremath.h"
 #include "cmplx.h"
+#include "defalias.h"
 
 complex __csqrt(float zreal, float zimag)
 {
@@ -57,7 +62,9 @@ complex __csqrt(float zreal, float zimag)
   return result;
 }
 
-void c_sqrt(complex *r, complex *z)
+complex c_sqrt_(complex *z)
 {
-  *r = __csqrt(z->real, z->imag);
+  return __csqrt(z->real, z->imag);
 }
+
+defalias(c_sqrt_, c_sqrt);

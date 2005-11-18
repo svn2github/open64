@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -68,7 +72,6 @@
 
 #include "fio.h"
 
-extern int fputc_(int *u, char *c, int clen);
 extern int __fputc_f90(int *u, char *c, int clen);
 extern _f_int fputcf90_(_f_int *u, char *c, int clen);
 extern _f_int8 fputcf90_8_(_f_int8 *u, char *c, int clen);
@@ -179,7 +182,7 @@ int
 putc_(char *c, int clen)
 {
 	int stdout_unit = 6;
-	return fputc_(&stdout_unit, c, clen);
+	return fputcf90_(&stdout_unit, c, clen);
 }
 
 _f_int4

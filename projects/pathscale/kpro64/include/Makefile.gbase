@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -123,6 +123,11 @@ ifeq ($(BUILD_TARGET), IA64)
 PUBLIC_STDARG=ia64/stdarg.h
 PUBLIC_VARARGS=ia64/varargs.h
 STD_LOC=/ia64/usr/include
+endif
+ifeq ($(BUILD_TARGET), X8664)
+PUBLIC_STDARG=stdarg.h
+PUBLIC_VARARGS=varargs.h
+STD_LOC=/usr/include
 endif
 
 ifdef BUILD_BASE
@@ -252,7 +257,6 @@ LINUX_HFILES = \
 	limits.h \
 	sgidefs.h \
 	stddef.h \
-	stdio.h \
 	standards.h
 
 LINUX_SYS_HFILES = \
@@ -300,8 +304,14 @@ SYS_HFILES = \
 ifeq ($(BUILD_TARGET), IA64)
 SYS_DIRS = \
 	ia64
-else
-SYS_DIRS =
+endif
+ifeq ($(BUILD_TARGET), MIPS)
+SYS_DIRS = \
+	ia64
+endif
+ifeq ($(BUILD_TARGET), X8664)
+SYS_DIRS = \
+	ia64
 endif
 
 LIBELF_HFILES = \
@@ -312,7 +322,13 @@ LIBELF_HFILES = \
 
 LIBELF_DIRS = libelf
 
-default:
+default: pathscale_defs.h
+	@: Make directories in case they do not exist.
+	@for d in sys cmplrs libelf; do \
+	    if [ ! -d $$d ]; then \
+		mkdir $$d && echo Making $$d; \
+	    fi; \
+	done	
 	@for h in $(LINUX_HFILES); do \
 	    if ! test -a $$h; then \
 	      ln -sf $(BUILD_TOT)/linux/include/$$h $$h; \
@@ -320,7 +336,7 @@ default:
 	done
 	@for h in $(LINUX_SYS_HFILES); do \
 	    if ! test -a $$h; then \
-	      ln -sf $(BUILD_TOT)/../linux/include/sys/$$h sys/$$h; \
+	      ln -sf $(BUILD_TOT)/linux/include/sys/$$h sys/$$h; \
 	    fi; \
 	done
 	@for h in $(INCLUDE_HFILES); do \
@@ -355,10 +371,12 @@ default:
 	done
 	@for h in $(LIBELF_HFILES); do \
 	    if ! test -a libelf/$$h; then \
-	      ln -sf $(BUILD_TOT)/../gnu_common/libelf/lib/$$h libelf/$$h; \
+	      ln -sf $(BUILD_TOT)/../kgnu_common/libelf/lib/$$h libelf/$$h; \
 	    fi; \
 	done
 
+pathscale_defs.h: $(BUILD_TOT)/pathscale/defs.mk $(BUILD_TOT)/pathscale/process-defs
+	$(BUILD_TOT)/pathscale/process-defs cpp > $@
 
 clean:
 

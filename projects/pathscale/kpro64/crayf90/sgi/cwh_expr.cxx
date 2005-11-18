@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -855,13 +859,13 @@ cwh_expr_operand(WN **arrexp)
 
   case DEREF_item:
     wn = cwh_stk_pop_DEREF();
-    wn = cwh_addr_load_WN(wn,0,NULL);
+    wn = cwh_addr_load_WN(wn,0,0);
     break ;
 
   case ST_item:
   case ST_item_whole_array:
     st  = cwh_stk_pop_ST();
-    wn  = cwh_addr_load_ST(st,0,NULL);
+    wn  = cwh_addr_load_ST(st,0,0);
     break ;
 
   case FLD_item:
@@ -1064,12 +1068,12 @@ fei_islg(TYPE type)
    arg2 = cwh_expr_operand(NULL);
    cwh_stk_push(WN_COPY_Tree(arg2),WN_item);
    cwh_stk_push(WN_COPY_Tree(arg1),WN_item);
-   cwh_expr_compare(OPR_LT,NULL);
+   cwh_expr_compare(OPR_LT,0);
 
    r1 = cwh_expr_operand(NULL);
    cwh_stk_push(arg2,WN_item);
    cwh_stk_push(arg1,WN_item);
-   cwh_expr_compare(OPR_GT,NULL);
+   cwh_expr_compare(OPR_GT,0);
 
    r2 = cwh_expr_operand(NULL);
    cwh_stk_push(r1,WN_item);

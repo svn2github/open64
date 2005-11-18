@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -62,7 +66,7 @@
  * ====================================================================
  */
 
-#include <list.h>
+#include <list>
 #include "defs.h"
 #include "tracing.h"
 #include "errors.h"
@@ -499,7 +503,7 @@ Build_Ori_Blocks (WN *tree, INT32 olimit)
 	ORI_BLOCK *b = NULL;
 	ORI_BLOCK *save_block = NULL;
 	// make switch_block be list stack variable in case are nested switches
-	list<ORI_BLOCK*> switch_list;
+	std::list<ORI_BLOCK*> switch_list;
 
 	switch (opcode) {
 	case OPC_FUNC_ENTRY:
@@ -513,7 +517,7 @@ Build_Ori_Blocks (WN *tree, INT32 olimit)
 		while (wn) {
 			if (!switch_list.empty() && WN_opcode(wn) == OPC_LABEL)
 			{ 
-			    list<ORI_BLOCK*>::iterator switch_it;
+			    std::list<ORI_BLOCK*>::iterator switch_it;
 			    for (switch_it = switch_list.begin();
 				switch_it != switch_list.end();
 				++switch_it)

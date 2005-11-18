@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -66,10 +70,12 @@ extern INT32 VHO_Switch_Density;
 extern INT32 VHO_Switch_If_Else_Limit;
 extern INT32 VHO_Switch_Compgoto_Limit;
 extern BOOL  VHO_Switch_Opt;
+extern INT32 VHO_Switch_Opt_Threshold;
 extern BOOL  VHO_Cselect_Opt;
 extern BOOL  VHO_Iload_Opt;
 extern BOOL  VHO_Istore_Opt;
 extern BOOL  VHO_Call_Opt;
+extern BOOL  VHO_Icall_Devir;
 extern BOOL  VHO_Check_Tree;
 extern BOOL  VHO_Single_Loop_Test;
 extern BOOL  VHO_Use_Do_While;

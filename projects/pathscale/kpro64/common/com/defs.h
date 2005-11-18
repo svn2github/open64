@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -247,21 +251,6 @@ typedef unsigned long	UINTSC;	/* Scaled integer */
 /* Define pointer-sized integers for the host machine: */
 typedef signed long	INTPS;	/* Pointer-sized integer */
 typedef unsigned long	UINTPS;	/* Pointer-sized integer */
-
-/* Provide some limits that match the above types */
-#define	INT8_MAX	127		/* Max 8-bit int */
-#define	INT8_MIN	(-127)		/* Min 8-bit int */
-#define	UINT8_MAX	255u		/* Max 8-bit unsigned int */
-#define	INT16_MAX	32767		/* Max 16-bit int */
-#define	INT16_MIN	(-32768)	/* Min 16-bit int */
-#define	UINT16_MAX	65535u		/* Max 16-bit unsigned int */
-#define	INT32_MAX	2147483647	/* Max 32-bit int */
-#define	INT32_MIN	(-2147483647-1)	/* Min 32-bit int */
-#define	UINT32_MAX	4294967295u	/* Max 32-bit unsigned int */
-
-#define	INT64_MAX	0x7fffffffffffffffll	/* Max 64-bit int */
-#define	INT64_MIN	0x8000000000000000ll	/* Min 64-bit int */
-#define	UINT64_MAX	0xffffffffffffffffull	/* Max 64-bit unsigned int */
 
 #define	INTSC_MAX	INT32_MAX	/* Max scaled int */
 #define	INTSC_MIN	INT32_MIN	/* Min scaled int */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -56,7 +60,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/libm/vtanf.c,v
 
 #include "libm.h"
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	void	vftan(float *, float *, long, long, long);
 extern	void	vtanf(float *, float *, long, long, long);
 

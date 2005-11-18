@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -67,36 +71,23 @@
 #include "opt_mu_chi.h"			// for MU_NODE class
 #endif // opt_mu_chi_INCLUDED
 
-#ifdef __GNUC__
 extern "C" {
- void CD_is_br_taken__10DU_MANAGERUi(void) __attribute__ ((weak));
- void CD_is_fall_thru__10DU_MANAGERUi(void) __attribute__((weak));
- void Def_at_entry__C7CODEREP(void) __attribute__((weak));
- void Defbb__C7CODEREP(void) __attribute__((weak));
- void Dominate__10DU_MANAGERUiUi(void) __attribute__((weak));
- void Get_cd__10DU_MANAGERUi(void) __attribute__((weak));
- void Get_last_stmt__10DU_MANAGERUi(void) __attribute__((weak));
- void Print_kind__7CODEREPCGv(void) __attribute__((weak));
+ void _ZN10DU_MANAGER14CD_is_br_takenEj(void) __attribute__ ((weak));
+ void _ZN10DU_MANAGER15CD_is_fall_thruEj(void) __attribute__((weak));
+ void _ZNK7CODEREP12Def_at_entryEv(void) __attribute__((weak));
+ void _ZNK7CODEREP5DefbbEv(void) __attribute__((weak));
+ void _ZN10DU_MANAGER8DominateEjj(void) __attribute__((weak));
+ void _ZN10DU_MANAGER6Get_cdEj(void) __attribute__((weak));
+ void _ZN10DU_MANAGER13Get_last_stmtEj(void) __attribute__((weak));
 
- void CD_is_br_taken__10DU_MANAGERUi(void) {}
- void CD_is_fall_thru__10DU_MANAGERUi(void) {}
- void Def_at_entry__C7CODEREP(void) {}
- void Defbb__C7CODEREP(void) {}
- void Dominate__10DU_MANAGERUiUi(void) {}
- void Get_cd__10DU_MANAGERUi(void) {}
- void Get_last_stmt__10DU_MANAGERUi(void) {}
- void Print_kind__7CODEREPCGv(void) {}
+ void _ZN10DU_MANAGER14CD_is_br_takenEj(void) {}
+ void _ZN10DU_MANAGER15CD_is_fall_thruEj(void) {}
+ void _ZNK7CODEREP12Def_at_entryEv(void) {}
+ void _ZNK7CODEREP5DefbbEv(void) {}
+ void _ZN10DU_MANAGER8DominateEjj(void) {}
+ void _ZN10DU_MANAGER6Get_cdEj(void) {}
+ void _ZN10DU_MANAGER13Get_last_stmtEj(void) {}
 }
-#else
-#pragma weak CD_is_br_taken__10DU_MANAGERGUi
-#pragma weak CD_is_fall_thru__10DU_MANAGERGUi
-#pragma weak Def_at_entry__7CODEREPCGv
-#pragma weak Defbb__7CODEREPCGv
-#pragma weak Dominate__10DU_MANAGERGUiT1
-#pragma weak Get_cd__10DU_MANAGERGUi
-#pragma weak Get_last_stmt__10DU_MANAGERGUi
-#pragma weak Print_kind__7CODEREPCGv
-#endif
 
 extern BOOL CXX_Alias_Const;
 
@@ -338,7 +329,7 @@ SUMMARIZE<program>::Process_phi_jump_function (WN *orig_wn, PHI_NODE *phi)
 
 	if (ctrl_dep_idx == -1) {
 	    Restore_from_check_point (&chk_pt);
-	    Phi_To_Idx_Map->insert (make_pair (phi, -1));
+	    Phi_To_Idx_Map->insert (std::make_pair (phi, -1));
 	    return -1;
         }
 
@@ -383,12 +374,11 @@ SUMMARIZE<program>::Process_phi_jump_function (WN *orig_wn, PHI_NODE *phi)
 	if (phi_node->Get_node_index (0) == -1 &&
 	    phi_node->Get_node_index (1) == -1) {
 	    Restore_from_check_point (&chk_pt);
-	    
-            Phi_To_Idx_Map->insert (make_pair (phi, -1));
+            Phi_To_Idx_Map->insert (std::make_pair (phi, -1));
 	    return -1;
 	} else {
             phi->Reset_visited ();
-            Phi_To_Idx_Map->insert (make_pair (phi, phi_idx));
+            Phi_To_Idx_Map->insert (std::make_pair (phi, phi_idx));
             Hashed_Phis->push_back (phi);
             return phi_idx;
 	}
@@ -448,7 +438,7 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
     chi_node->Set_call_index (WN_MAP32_Get (Summary_Map, call) - 1);
     if (chi_node->Get_call_index () < 0) {
 	Restore_from_check_point (&chk_pt);
-	Chi_To_Idx_Map->insert (make_pair (desc.Get_chi_cr(), -1));
+	Chi_To_Idx_Map->insert (std::make_pair (desc.Get_chi_cr(), -1));
 	return -1;
     }
 
@@ -460,7 +450,7 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
 
     if (idx == -1) {
 	Restore_from_check_point (&chk_pt);
-	Chi_To_Idx_Map->insert (make_pair (desc.Get_chi_cr(), -1));
+	Chi_To_Idx_Map->insert (std::make_pair (desc.Get_chi_cr(), -1));
 	return -1;
     }
 
@@ -500,7 +490,7 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
     case VALUE_NOT_CONST:
     default:
 	Restore_from_check_point (&chk_pt);
-	Chi_To_Idx_Map->insert (make_pair (desc.Get_chi_cr(), -1));
+	Chi_To_Idx_Map->insert (std::make_pair (desc.Get_chi_cr(), -1));
 	return -1;
     }
 
@@ -508,7 +498,7 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
     // Since 0 means NOT FOUND, always add 2 to the index
     // before Enter, and subtract 2 from the result of Find
     // That way index -1 is entered as 1 (!= NOT FOUND).
-    Chi_To_Idx_Map->insert (make_pair (desc.Get_chi_cr(), chi_idx));
+    Chi_To_Idx_Map->insert (std::make_pair (desc.Get_chi_cr(), chi_idx));
     Hashed_Chis->push_back (desc.Get_chi_cr());
 
     return chi_idx;
@@ -1564,7 +1554,10 @@ SUMMARIZE<program>:: Record_ref_formal ( WN* w )
     }
 
     if ( Trace_Modref ) {
-	fprintf ( TFile, " formal %s referenced", ST_name(WN_st(w2)) );
+	if (WN_operator(w) == OPR_ILOAD)
+	  	fprintf ( TFile, " formal %s referenced", ST_name(WN_st(w2)) );
+	else
+	  	fprintf ( TFile, " formal %s referenced", ST_name(WN_st(w)) );
     }
 
 } // SUMMARIZE::Record_ref_formal

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -235,6 +239,7 @@ static INT Format_Operand(
     const char *rname;
     const char *fmt = (use == OU_predicate) ? ISA_PRINT_PREDICATE : "%s";
     ISA_REGISTER_CLASS rc = ISA_OPERAND_VALTYP_Register_Class(vtype);
+#ifdef TARG_IA64
     if (   !(flags & TI_ASM_DISASM_TRUE_PRED)
 	&& (use == OU_predicate)
 	&& ABI_PROPERTY_Is_true_predicate(rc, val))
@@ -242,6 +247,9 @@ static INT Format_Operand(
       rname = "";
       fmt = "%s";
     } else if (flags & TI_ASM_DISASM_ABI_REGS) {
+#else
+    if (flags & TI_ASM_DISASM_ABI_REGS) {
+#endif
       rname = ABI_PROPERTY_Reg_Name(rc, val);
     } else {
       const ISA_REGISTER_CLASS_INFO *rcinfo = ISA_REGISTER_CLASS_Info(rc);

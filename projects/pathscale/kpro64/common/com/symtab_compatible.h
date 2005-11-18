@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -95,6 +99,9 @@ ST_type (const ST* s) {
     switch (s->sym_class) {
     default:
 	Fail_FmtAssertion ("Invalid argument for ST_type ()");
+#ifdef TARG_X8664
+    case CLASS_BLOCK: // this is for UpFormal_Arg_StkSeg used in va_start
+#endif
     case CLASS_VAR:
     case CLASS_CONST:
     case CLASS_PREG:

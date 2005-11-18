@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -99,7 +104,9 @@ private:
   CODEREP  *Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du, STMTREP *stmt);
   CODEREP  *Revive_phi_chi_opnd(VER_ID du);
   void	    Make_live_phi_chi_opnd(VER_ID du);
-
+#ifdef KEY
+  void      Print_ssa_ver_for_wn(WN* wn);
+#endif
 public:
             SSA(MEM_POOL *gpool,
 		MEM_POOL *lpool){mem_pool=gpool; loc_pool=lpool; }
@@ -221,6 +228,7 @@ public:
   void     Set_aux_id(AUX_ID v)          { _aux_id = v; }
   void     Set_invalid(void)             { vec[0].cr = NULL; }
   void     Reset_OPND(INT32 i)           { vec[i+1].cr = NULL; }
+  PHI_ELEM *Vec()                        { return vec; }
 
   // Remove the i'th operand from the phi-node (0 is first opnd)
   void     Remove_opnd(INT32 i);
@@ -294,6 +302,7 @@ public:
     }
 
   PHI_LIST *Dup_phi_node(MEM_POOL *pool, BB_NODE *bb, INT pos);
+  PHI_LIST *Dup_phi_node(MEM_POOL *pool, BB_NODE *bb);
   // Remove the i'th operand from the phi-nodes (0 is first opnd)
   void     Remove_opnd(INT32 i);
 	

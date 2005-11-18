@@ -1,5 +1,5 @@
 /* BFD back-end for PowerPC PE IMAGE COFF files.
-   Copyright 1995 Free Software Foundation, Inc.
+   Copyright 1995, 1996, 1999 Free Software Foundation, Inc.
 
 This file is part of BFD, the Binary File Descriptor library.
 
@@ -43,6 +43,3 @@ Boston, MA 02111-1307, USA.  */
    coff-ppc.c and peigen.c.  */
 
 #include "coff-ppc.c"
-
-
-

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -741,7 +745,7 @@ DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
     // use message syntax that DaVinci::Parse_Event() recognizes.
     //   more? detected if errno out of range for sys_errlist.
     printf("communication_error(\"execlp of daVinci: %s %s\")\n",
-	   sys_errlist[errno], "(define $DAVINCIHOME; need daVinci on $PATH)");
+	   strerror(errno), "(define $DAVINCIHOME; need daVinci on $PATH)");
     exit (1);
 
   default:	                // parent
@@ -994,7 +998,7 @@ DA_ACK
 DaVinci::Graph_End()
 {
   if ( _usage_check ) {
-    for (set<NODE_ID>::iterator it_ref = _node_ref_set.begin();
+    for (std::set<NODE_ID>::iterator it_ref = _node_ref_set.begin();
 	 it_ref != _node_ref_set.end(); ++it_ref) {
       NODE_ID ref_id = *it_ref;
 

@@ -2,25 +2,33 @@
    for getting g++ file-scope static objects constructed.  This file
    will get included either by libgcc2.c (for systems that don't support
    a .init section) or by crtstuff.c (for those that do).
-   Copyright (C) 1991, 1995, 1996, 1998, 1999 Free Software Foundation, Inc.
+   Copyright (C) 1991, 1995, 1996, 1998, 1999, 2000
+   Free Software Foundation, Inc.
    Contributed by Ron Guilmette (rfg@segfault.us.com)
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
+
+/* As a special exception, if you link this library with other files,
+   some of which are compiled with GCC, to produce an executable,
+   this library does not by itself cause the resulting executable
+   to be covered by the GNU General Public License.
+   This exception does not however invalidate any other reasons why
+   the executable file might be covered by the GNU General Public License.  */
 
 /*	This file contains definitions and declarations of things
 	relating to the normal start-up-time invocation of C++
@@ -44,7 +52,11 @@ typedef void (*func_ptr) (void);
 extern func_ptr __CTOR_LIST__[];
 extern func_ptr __DTOR_LIST__[];
 
-/* Declare the routine which need to get invoked at program exit time.  */
+/* Declare the routine which needs to get invoked at program start time.  */
+
+extern void __do_global_ctors (void);
+
+/* Declare the routine which needs to get invoked at program exit time.  */
 
 extern void __do_global_dtors (void);
 
@@ -73,6 +85,6 @@ do {									\
     for (nptrs = 0; __CTOR_LIST__[nptrs + 1] != 0; nptrs++);		\
   for (i = nptrs; i >= 1; i--)						\
     __CTOR_LIST__[i] ();						\
-} while (0) 
+} while (0)
 #endif
 

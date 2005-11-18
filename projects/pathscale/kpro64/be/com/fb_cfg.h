@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -57,9 +61,9 @@
 #define fb_cfg_INCLUDED
 
 #include "mempool_allocator.h"
-#include <vector.h>
-#include <deque.h>
-#include <hash_map.h>
+#include <vector>
+#include <deque>
+#include <ext/hash_map>
 #include "fb_whirl.h"
 
 // ====================================================================
@@ -204,10 +208,10 @@ private:
   //   _curr_nx       is the node currently being visited; if no node is
   //                  current, then nx == FB_NODEX_UNINIT
 
-  hash_map< LABEL_IDX, FB_NODEX, hash<LABEL_IDX>, equal_to<LABEL_IDX>,
+  hash_map< LABEL_IDX, FB_NODEX, __gnu_cxx::hash<LABEL_IDX>, std::equal_to<LABEL_IDX>,
     mempool_allocator< pair<LABEL_IDX,FB_NODEX> > > _lblx_to_nx;
 
-  deque< FB_EDGE_DELAYED, mempool_allocator<FB_EDGE_DELAYED> > _delayed_edges;
+  std::deque< FB_EDGE_DELAYED, mempool_allocator<FB_EDGE_DELAYED> > _delayed_edges;
 
   FB_NODEX     _curr_nx;
 
@@ -226,6 +230,7 @@ private:
   void Add_label( LABEL_IDX labelx, FB_NODEX nx ) { _lblx_to_nx[labelx] = nx; }
 
   void Add_edge(FB_NODEX nx_src, FB_NODEX nx_dst, bool delayed = false );
+  void Adjust_edge( FB_NODEX nodex);
   void Add_delayed_edge( FB_NODEX nx_src, WN *wn );
   void Complete_delayed_edges();
 
@@ -253,7 +258,7 @@ public:
     _trace_before( Get_Trace( TP_FEEDBACK, TP_FEEDBACK_CFG_BEFORE ) ),
     _trace_prop(   Get_Trace( TP_FEEDBACK, TP_FEEDBACK_CFG_PROP ) ),
     _nodes( mempool_allocator<FB_NODE>(&_m) ),
-    _lblx_to_nx( 100, hash<LABEL_IDX>(), equal_to<LABEL_IDX>(),
+    _lblx_to_nx( 100, __gnu_cxx::hash<LABEL_IDX>(), std::equal_to<LABEL_IDX>(),
 		 mempool_allocator< pair<LABEL_IDX,FB_NODEX> >(&_m) ),
     _delayed_edges( mempool_allocator<FB_EDGE_DELAYED>(&_m) ),
     _curr_nx( FB_NODEX_UNINIT ) {}

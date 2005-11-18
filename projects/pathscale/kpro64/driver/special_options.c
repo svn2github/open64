@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,7 +42,7 @@
  * are done by hand in these routines.
  */
 
-#include <strings.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stamp.h>
 #include "string_utils.h"
@@ -54,21 +58,21 @@
 
 static char compiler_version[] = INCLUDE_STAMP;
 
-extern void
+void
 set_defaults (void)
 {
 	int flag;
-	/* handle SGI_CC environment variable */
-	string sgi_cc = getenv("SGI_CC");
-	if (sgi_cc != NULL && !is_toggled(ansi)) {
+	/* handle PSC_CC environment variable */
+	char *psc_cc = getenv("PSC_CC");
+	if (psc_cc != NULL && !is_toggled(ansi)) {
 		/* value not set yet */
-		if (same_string(sgi_cc, "-cckr")) {
+		if (strcmp(psc_cc, "-cckr") == 0) {
 			toggle(&ansi,KR_ANSI);
 			prepend_option_seen (O_cckr);
-		} else if (same_string(sgi_cc, "-xansi")) {
+		} else if (strcmp(psc_cc, "-xansi") == 0) {
 			toggle(&ansi,EXTENDED_ANSI);
 			prepend_option_seen (O_xansi);
-		} else if (same_string(sgi_cc, "-ansi")) {
+		} else if (strcmp(psc_cc, "-ansi") == 0) {
 			toggle(&ansi,STRICT_ANSI);
 			prepend_option_seen (O_ansi);
 		}
@@ -80,9 +84,9 @@ set_defaults (void)
 	}
 	{
 	  /* QA wants way to turn off this check via environment var */
-	  string ir_version_check = getenv("COMPILER_IR_VERSION_CHECK");
+	  char *ir_version_check = getenv("COMPILER_IR_VERSION_CHECK");
 	  if (ir_version_check != NULL) {
-		if (same_string(ir_version_check, "off")) {
+		if (strcmp(ir_version_check, "off") == 0) {
 			flag = add_string_option(O_DEBUG_, "ir_version_check=off");
 			/* prepend so comes before user option */
 			prepend_option_seen(flag);
@@ -100,12 +104,19 @@ set_defaults (void)
 	prepend_option_seen(flag);
 #endif
 	if (endian == UNDEFINED) {
+#ifdef TARG_MIPS
+		/* Default to little-endian -JMB */
+		toggle(&endian, ENDIAN_LITTLE);
+		prepend_option_seen(O_EL);
+		prepend_option_seen(O_mlittle_endian);
+#else
 #ifdef LITTLE_ENDIAN_HOST
 		toggle(&endian, ENDIAN_LITTLE);
 		prepend_option_seen(O_EL);
 #else
 		toggle(&endian, ENDIAN_BIG);
 		prepend_option_seen(O_EB);
+#endif
 #endif
 	}
 
@@ -114,7 +125,9 @@ set_defaults (void)
 
 	if (ansi == UNDEFINED) {
 		toggle(&ansi,EXTENDED_ANSI);
+#ifndef KEY	// don't need because we are using gcc to do preprocessing
 		prepend_option_seen(O_xansi);
+#endif
 	}
 #ifndef linux
 	prepend_option_seen (O_cpp_irix);
@@ -127,6 +140,7 @@ set_defaults (void)
 		prepend_option_seen (O_cpp_krdefs);
 	}
 #endif
+#ifndef KEY
 #ifdef HOST_IA32
 	flag = add_string_option(O_D, "__host_ia32");
 	prepend_option_seen (flag);
@@ -147,8 +161,12 @@ set_defaults (void)
 #ifdef MIPS
 	prepend_option_seen(O_cpp_mips);
 #endif
+#endif
 	prepend_option_seen(O_m1);
+
+#ifndef KEY	// don't need because we are using gcc to do preprocessing
 	prepend_option_seen(O_cpp_version);
+#endif
 #ifndef linux
 	/* old compiler-version define */
 	flag = add_string_option(O_D, "_COMPILER_VERSION=740");
@@ -164,7 +182,9 @@ set_defaults (void)
 	prepend_option_seen(O_cpp_cplus);
 #endif
 	prepend_option_seen(O_cpp_assembly);
+#ifndef KEY	// don't need because we are using gcc to do preprocessing
 	prepend_option_seen(O_D_LANGUAGE_C);
+#endif
 	prepend_option_seen(O_ptnone);
 	prepend_option_seen(O_prelink);
 	prepend_option_seen(O_demangle);
@@ -174,8 +194,10 @@ set_defaults (void)
 			prepend_option_seen(O_non_shared);
 		}
 		else {
+#ifndef KEY
 			toggle(&shared,CALL_SHARED);
 			prepend_option_seen(O_call_shared);
+#endif
 		}
 	}
 #ifndef linux
@@ -216,8 +238,8 @@ get_olevel_flag (int olevel)
 }
 
 /* replace -O* with O0 */
-static void
-turn_down_opt_level (int new_olevel, string msg)
+void
+turn_down_opt_level (int new_olevel, char *msg)
 {
 	int flag;
 	int new_flag;
@@ -234,7 +256,7 @@ turn_down_opt_level (int new_olevel, string msg)
 }
 
 static void
-turn_off_ipa (string msg)
+turn_off_ipa (char *msg)
 {
 	int flag;
 	warning (msg);
@@ -251,12 +273,15 @@ turn_off_ipa (string msg)
 	}
 }
 
-extern void
+void
 add_special_options (void)
 {
 	int flag;
 	buffer_t buf;
-	string s;
+	char *s;
+#ifdef KEY
+	boolean undefined_olevel_flag = FALSE; 
+#endif
 
 	/* Hack for F90 -MDupdate. We need to pass the MDupdate to mfef90, because we don't
 	 * have an integrated pre-processor. I can't figure out a better way to do this, given
@@ -301,12 +326,14 @@ add_special_options (void)
 		add_phase_for_option(O_traditional, P_cplus_gfe);
 	}
 
+#ifndef linux /* jul-2-02 */
 	if (abi == ABI_N32 || abi == ABI_64) {
 		if (endian == ENDIAN_LITTLE)
 			prepend_option_seen(O_mel);
 		else
 			prepend_option_seen(O_meb);
 	}
+#endif
 
 #if defined(TARG_IA32)
 	flag = add_string_option(O_D, "__NO_MATH_INLINES");
@@ -348,7 +375,12 @@ add_special_options (void)
 		}
 		flag = get_olevel_flag(olevel);
 		prepend_option_seen (flag);
+#ifdef KEY
+// fix for bug 447
+		undefined_olevel_flag = TRUE;
+#endif
 	}
+#ifndef KEY	// don't need because we are using gcc to do preprocessing
 	if (abi == ABI_N32 || abi == ABI_64) {
 		/* mips-based */
 		/* can't define _{BIG,LITTLE}_ENDIAN until 6.5.3 */
@@ -376,6 +408,7 @@ add_special_options (void)
 			prepend_option_seen (flag);
 		}
 	}
+#endif
 	if (!nostdinc) {
                 /* mips only: add -I path for MIPS abi include directory */
                 if (abi != ABI_I64 && abi != ABI_I32 && abi != ABI_IA32) {
@@ -416,7 +449,7 @@ add_special_options (void)
 	/* fix COMPILER_VERSION: */
 	FOREACH_IMPLIED_OPTION(flag, O_cpp_version) {
 		s = get_current_implied_name();
-		if (contains_substring (s, "XXX")) {
+		if (strstr(s, "XXX") != NULL) {
 		   /* This handles the case of 6.1 vs. 6.02, etc.
 		    * better. Richard Shapiro, 8/23/95
 		    */
@@ -428,6 +461,15 @@ add_special_options (void)
 		}
 	}
 	/* some checks are easier to do by hand */
+#ifdef KEY
+	if (undefined_olevel_flag == TRUE && glevel >= 0) {
+		if ( ipa != TRUE )
+			turn_down_opt_level(0, "-O2 conflicts with -g; changing to -O0; if you want -O, use -g3");
+		 /* KEY: bug 1917: disable lw-inliner if -g and (!-inline) */
+		if (glevel == 2 && inline_t != TRUE)
+			inline_t = FALSE;
+	}	
+#endif
 	if (olevel >= 2 && glevel == 2) {
 #ifdef linux
 		glevel = 3;
@@ -443,6 +485,7 @@ add_special_options (void)
 	if (option_was_seen(O_S) && ipa == TRUE) {
 		turn_off_ipa ("-IPA -S combination not allowed, replaced with -S");
 	}
+#ifdef IPA_PROFILING_O3_NOT_COEXIST
 	if (instrumentation_invoked == TRUE) {
 	    if (ipa == TRUE) {
 		inline_t = FALSE;
@@ -451,16 +494,23 @@ add_special_options (void)
 	    if (olevel > 2)
 		turn_down_opt_level (2, "-fb_create conflicts with -Ofast/-O3; changing to -O2");
 	}
+#endif
 	if (Gen_feedback && olevel > 0) {
 		turn_down_opt_level(0, "-fbgen conflicts with -O; changing to -O0");
 	}
 	if (Gen_feedback && ipa == TRUE) {
 		turn_off_ipa ("-IPA -fbgen combination not allowed, replaced with -fbgen");
 	}
+#ifdef KEY
+/* Fix for BUG 451 */
+	if (glevel >= 1 && ipa == TRUE) {
+		turn_off_ipa ("-IPA -g combination not allowed, replaced with -g");
+	}
+#else
 	if (glevel == 2 && ipa == TRUE) {
 		turn_off_ipa ("-IPA -g combination not allowed, replaced with -g");
 	}
-
+#endif
 	if (ipa == TRUE) {
 	    if (olevel <= 1)
 		flag = add_string_option (O_PHASE_, "i");
@@ -496,11 +546,13 @@ add_special_options (void)
 	}
 	
 	if (skip_as == UNDEFINED) {
+#ifndef KEY
 		/* for mips we generate object directly;
 		 * for other targets we go thru as. */
 		if (abi == ABI_N32 || abi == ABI_64)
 			skip_as = TRUE;
 		else
+#endif
 			skip_as = FALSE;
 	}
 	if (skip_as == FALSE && ! keep_flag && last_phase != P_be) {

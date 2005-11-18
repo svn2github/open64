@@ -1,3 +1,7 @@
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* USMID @(#)include/fp.h	100.0	07/11/97 00:26:19 */
 
 /*
@@ -355,11 +359,17 @@ __END_DECLS
 /* Union defined to work with IEEE 64 bit floating point. */
 union _ieee_double {
    double dword;
-   long   lword;
+   long long   lword;
    struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+     unsigned int mantissa : IEEE_64_MANT_BITS;
+     unsigned int exponent : IEEE_64_EXPO_BITS;
+     unsigned int sign : 1;
+#else
      unsigned int sign : 1;
      unsigned int exponent : IEEE_64_EXPO_BITS;
      unsigned int mantissa : IEEE_64_MANT_BITS;
+#endif
    } parts;
 };
 
@@ -650,12 +660,19 @@ static double nextafter(double x, double y)
 /* Union defined to work with IEEE 128 bit floating point. */
 union _ieee_ldouble {
    long double	dword;
-   long   	lword[2];
+   long long   	lword[2];
    struct {
-     unsigned int sign         : 1;
-     unsigned int exponent     : IEEE_128_EXPO_BITS;
-     unsigned int mantissa_up  : IEEE_128_MANT_BITS_UP;
-     unsigned int mantissa_low : IEEE_128_MANT_BITS_LOW;
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+     unsigned long long mantissa_low : IEEE_128_MANT_BITS_LOW;
+     unsigned long long mantissa_up  : IEEE_128_MANT_BITS_UP;
+     unsigned long long exponent     : IEEE_128_EXPO_BITS;
+     unsigned long long sign         : 1;
+#else
+     unsigned long long sign         : 1;
+     unsigned long long exponent     : IEEE_128_EXPO_BITS;
+     unsigned long long mantissa_up  : IEEE_128_MANT_BITS_UP;
+     unsigned long long mantissa_low : IEEE_128_MANT_BITS_LOW;
+#endif
    } parts;
 };
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -171,7 +175,7 @@ static const INT32 twoexp[80] = {
 
 #define HIBITULL (1ULL << 63)
 
-extern	c_qwmultu(UINT64 *z, UINT64 *x, const UINT64 *y);
+extern void c_qwmultu(UINT64 *z, UINT64 *x, const UINT64 *y);
 static void qnorm_and_round(UINT64 *, INT32 *, UINT64 *);
 
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -56,7 +60,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/libm/vlog10.c,
 
 #include "libm.h"
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	void	vlog10(double *, double *, long, long, long);
 
 #pragma weak vlog10 = __vlog10

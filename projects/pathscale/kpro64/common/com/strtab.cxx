@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,7 +46,7 @@
 #include <alloca.h>
 #include <strings.h>
 
-#include <hash_map>			// stl hash table
+#include <ext/hash_map>			// stl hash table
 
 #include "defs.h"
 #include "errors.h"
@@ -239,7 +243,7 @@ struct STR_TAB
     };
 
     
-    typedef std::hashtable<STR_INDEX, hash_key, hash, extract_key, equal> HASHTABLE;
+    typedef __gnu_cxx::hashtable<STR_INDEX, hash_key, hash, extract_key, equal> HASHTABLE;
 
     HASHTABLE hash_table;
 
@@ -305,8 +309,17 @@ void
 STR_TAB<STR>::copy_str (const char *str, UINT32 size)
 {
     UINT32 buffer_size = STR::get_buffer_length (size);
+#ifdef KEY // str may be pointing to buffer, which could be freed in reserve (bug 625)
+    char *new_str = (char *) alloca(size+1);
+    memcpy (new_str, str, size);
+    new_str[size] = 0;
+#endif
     reserve (buffer_size);
+#ifdef KEY
+    STR::copy (new_str, size, buffer + last_idx);
+#else
     STR::copy (str, size, buffer + last_idx);
+#endif
     last_idx += buffer_size;
 } // STR_TAB::copy_str
 

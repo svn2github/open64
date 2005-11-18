@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -460,6 +464,10 @@ extern BOOL CG_LOOP_optimize_lno_winddown_reg;
 extern BOOL CG_LOOP_optimize_non_innermost;
 extern BOOL CG_LOOP_optimize_multi_targ;
 extern BOOL CG_LOOP_optimize_non_trip_countable;
+
+#ifdef KEY
+extern INT32 CG_Enable_Loop_Opt_Limit;
+#endif
 
 /* Exported functions.
  */

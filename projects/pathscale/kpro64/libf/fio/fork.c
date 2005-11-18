@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -146,12 +150,11 @@ _flushall(void)
 
 	while (uptr != NULL) {     /* while more open units */
 		unum_t	unum;
-		_f_int  istat;
 		
 		unum	= uptr->uid;
 		
 		if (OPEN_UPTR(uptr) && uptr->ufs != FS_AUX) {
-		        flush_( &unum, &istat);
+		        flush_( &unum );
 		}
 		uptr	= _get_next_unit(uptr, 0, 0);
 	}

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -122,7 +126,7 @@ ftellf90_8_4_( _f_int 	*unump)
 
 	case  FS_TEXT:
 	case  STD:
-		pos	= ftell64(cup->ufp.std);
+		pos	= ftell(cup->ufp.std);
 		break;
 
 	case FS_FDC:
@@ -177,7 +181,7 @@ ftellf90_8_( _f_int8 *unump)
 
 	case  FS_TEXT:
 	case  STD:
-		pos	= ftell64(cup->ufp.std);
+		pos	= ftell(cup->ufp.std);
 		break;
 
 	case FS_FDC:

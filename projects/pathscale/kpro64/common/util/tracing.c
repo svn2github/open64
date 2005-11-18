@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -58,6 +62,7 @@
 static char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/util/tracing.c,v $ $Revision: 1.1.1.1 $";
 
+#include <string.h>
 #include "defs.h"
 #include "tracing.h"
 #include "erglob.h"
@@ -115,6 +120,8 @@ static UINT REGION_NCnt = 0;		/* Next REGION number traced */
 static char *Current_PU_Name = NULL;
 static INT Current_PU_Number = 0;
 static INT Current_Region_Number = 0;  /* for debugging regions */
+
+extern int trace_stack(int, int);
 
 
 /* ====================================================================

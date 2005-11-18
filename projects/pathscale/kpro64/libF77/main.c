@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -62,44 +66,41 @@ static void sigdie(register char *, int32 );
 static void sigfdie(void), sigidie(void), sigqdie(void), sigindie(void),
     sigtdie(void);	/* DAG */
 
-main(argc, argv, arge)
-int argc;
-char **argv;
-char **arge;
+main(int argc, char **argv, char **arge)
 {
 
-f77argc = argc;
-f77argv = argv;
+	f77argc = argc;
+	f77argv = argv;
 #ifdef sgi
 /* do not override signal handling for trap handler,
    set by crt1text: readenv_sigfpe */
 
-if (! __trap_fpe_override )
-	signal(SIGFPE, sigfdie);	/* ignore underflow, enable overflow */
+	if (! __trap_fpe_override )
+		signal(SIGFPE, sigfdie);	/* ignore underflow, enable overflow */
 #else
-signal(SIGFPE, sigfdie);	/* ignore underflow, enable overflow */
+	signal(SIGFPE, sigfdie);	/* ignore underflow, enable overflow */
 #endif
-signal(SIGIOT, sigidie);
-if( signal(SIGQUIT,sigqdie) == SIG_IGN ) signal(SIGQUIT, SIG_IGN);	/* DAG */
-if( signal(SIGINT, sigindie) == SIG_IGN ) signal(SIGINT, SIG_IGN);
-signal(SIGTERM,sigtdie);
+	signal(SIGIOT, sigidie);
+	if( signal(SIGQUIT,sigqdie) == SIG_IGN ) signal(SIGQUIT, SIG_IGN);	/* DAG */
+	if( signal(SIGINT, sigindie) == SIG_IGN ) signal(SIGINT, SIG_IGN);
+	signal(SIGTERM,sigtdie);
 
 /* Unresolved weak symbols are given the value zero */
-if (__mp_ptr != 0) (*__mp_ptr)();
+	if (__mp_ptr != 0) (*__mp_ptr)();
 
-MAIN__();
+	MAIN__();
 #ifndef FTN90_IO
-f_exit();
+	f_exit();
 #endif
-exit(0);
-return (0); /* make compiler shut up */
+	exit(0);
+	return (0); /* make compiler shut up */
 }
 
 
 static void	/* DAG */
 sigfdie(void)
 {
-sigdie("Floating Exception", 1);
+	sigdie("Floating Exception", 1);
 }
 
 
@@ -107,14 +108,14 @@ sigdie("Floating Exception", 1);
 static void	/* DAG */
 sigidie(void)
 {
-sigdie("IOT Trap", 1);
+	sigdie("IOT Trap", 1);
 }
 
 
 static void	/* DAG */
 sigqdie(void)
 {
-sigdie("Quit signal", 1);
+	sigdie("Quit signal", 1);
 }
 
 
@@ -122,7 +123,7 @@ sigdie("Quit signal", 1);
 static void	/* DAG */
 sigindie(void)
 {
-sigdie("Interrupt", 0);
+	sigdie("Interrupt", 0);
 }
 
 
@@ -130,7 +131,7 @@ sigdie("Interrupt", 0);
 static void	/* DAG */
 sigtdie(void)
 {
-sigdie("Killed", 0);
+	sigdie("Killed", 0);
 }
 
 
@@ -139,25 +140,25 @@ void
 sigdie(register char *s, int32 coredump)
 {
 /* print error message, then clear buffers */
-fprintf(stderr, "%s\n", s);
-fflush(stderr);
+	fprintf(stderr, "%s\n", s);
+	fflush(stderr);
 
-if(coredump)
+	if(coredump)
 	{
-	/* now get a core */
-	signal(SIGIOT, SIG_DFL);	/* DAG */
-	abort();
+		/* now get a core */
+		signal(SIGIOT, SIG_DFL);	/* DAG */
+		abort();
 	}
-else
+	else
 	{
-	    int gid;
-	    gid = getpgrp();
-	    signal(SIGINT, SIG_IGN );
-	    gid = kill( -gid, SIGINT );
+		int gid;
+		gid = getpgrp();
+		signal(SIGINT, SIG_IGN );
+		gid = kill( -gid, SIGINT );
 #ifndef FTN90_IO
-	    f_exit();
+		f_exit();
 #endif
-	    exit(1);
+		exit(1);
 	}
 }
 
@@ -170,6 +171,6 @@ f_abort(void)
 
 void ___MAIN__(void)
 {
-   fprintf(stderr, "No Fortran MAIN program to execute.\n");
-   exit(1);
+	fprintf(stderr, "No Fortran MAIN program to execute.\n");
+	exit(1);
 }

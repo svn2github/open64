@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -61,5 +65,9 @@ Report_Limit_Reason (const IPA_NODE *callee, const IPA_NODE *caller,
 
 extern void
 Perform_Inline_Analysis (IPA_CALL_GRAPH *cg, MEM_POOL* pool);
-
+//INLINING_TUNING static->exportable^
+extern void 
+Get_Sorted_Callsite_List (IPA_NODE *n, IPA_CALL_GRAPH *cg, AUX_IPA_EDGE<INT32>& cost_vector, vector<IPA_EDGE_INDEX>& callsite_list); //pengzhao
+extern float compute_hotness(IPA_EDGE *edge, IPA_NODE *callee, INT callee_size);
+//INLINING_TUNING static->exportable$
 #endif // cxx_ipa_inline_INCLUDED

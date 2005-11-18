@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -70,11 +74,9 @@ ipa_compose_comma_list (const char* name);
 
 /* These are NOT exported to ld */
 
-#ifndef __SGI_STL_VECTOR_H
-#include <vector.h>
-#endif
+#include <vector>
 
-typedef vector<const char*> ARGV;
+typedef std::vector<const char*> ARGV;
 
 extern void
 ipa_insert_whirl_obj_marker ();

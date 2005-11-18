@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -53,7 +57,7 @@ struct LAYER_NUMERICS _cch_numerics[]  = {
    1, 0, 'b', 1 , 0xfffff,  0 ,  "page_size", /*  number of blocks for buffer */   
    1, 0, 'n', 1 , 0xfffff,  0 ,  "num_pages", /*  number of blocks for buffer */
    /* number of blocks at which we bypass buffering */
-   1, 1, 'b', 1 , 0xffffffffffff,  0 ,  "bypass_size"
+   1, 1, 'b', 1 , 0xffffffffffffLL,  0 ,  "bypass_size"
 } ;
 
 #define NUM_CACHE_OPTS     (sizeof(_cch_opts)/sizeof(struct LAYER_OPTS))

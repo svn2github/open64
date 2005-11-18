@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -64,21 +68,41 @@
 
 typedef  union {
 	struct {
-		unsigned  sign	:1;
-		unsigned  exp	:11;
-		unsigned  hi	:20;
-		unsigned  lo	:32;
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+		unsigned int  lo	:32;
+		unsigned int  hi	:20;
+		unsigned int  exp	:11;
+		unsigned int  sign	:1;
+#else
+		unsigned int  sign	:1;
+		unsigned int  exp	:11;
+		unsigned int  hi	:20;
+		unsigned int  lo	:32;
+#endif
 	} fparts;
 	struct {
-		unsigned  sign	:1;
-		unsigned  exp	:11;
-		unsigned  qnan_bit	:1;
-		unsigned  hi	:19;
-		unsigned  lo	:32;
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+		unsigned int  lo	:32;
+		unsigned int  hi	:19;
+		unsigned int  qnan_bit	:1;
+		unsigned int  exp	:11;
+		unsigned int  sign	:1;
+#else
+		unsigned int  sign	:1;
+		unsigned int  exp	:11;
+		unsigned int  qnan_bit	:1;
+		unsigned int  hi	:19;
+		unsigned int  lo	:32;
+#endif
 	} nparts;
 	struct {
-		unsigned hi;
-		unsigned lo;
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+		unsigned int lo;
+		unsigned int hi;
+#else
+		unsigned int hi;
+		unsigned int lo;
+#endif
 	} fwords;
 	double	d;
 } _dval;

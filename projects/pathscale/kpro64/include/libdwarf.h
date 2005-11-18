@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -91,6 +95,10 @@ typedef struct {
         Dwarf_Ptr       bl_data;        /* uninterpreted data */
 } Dwarf_Block;
 
+#ifdef KEY
+extern Dwarf_Bool	generate_fpic_dwarf;
+extern Dwarf_Bool	generate_m64_dwarf;
+#endif
 
 /* location record
 */
@@ -124,7 +132,12 @@ typedef struct {
 /* DW_REG_TABLE_SIZE must reflect the number of registers 
  *(DW_FRAME_LAST_REG_NUM) as defined in dwarf.h
  */
+#if defined (KEY) && defined (TARG_X8664)
+#define DW_REG_TABLE_SIZE  17
+#else
 #define DW_REG_TABLE_SIZE  66
+#endif // KEY && TARG_X8664
+
 typedef struct {
     struct {
 	Dwarf_Small         dw_offset_relevant;
@@ -144,6 +157,11 @@ enum Dwarf_Rel_Type {
 		dwarf_drt_none, /* should not get to caller */
                 dwarf_drt_data_reloc, /* simple normal relocation */
                 dwarf_drt_segment_rel, /* special reloc, exceptions*/
+#ifdef KEY
+		dwarf_drt_data_reloc_by_str_id, /* drd_symbol_index==str_idx */
+		dwarf_drt_first_of_length_pair_create_second,
+	/* similar to the next, but first create/put the 2nd symbol here */
+#endif // KEY
                 dwarf_drt_first_of_length_pair,/* this and drt_second 
 				for .word end - begin
 			 	case */
@@ -224,7 +242,12 @@ typedef void  (*Dwarf_Handler)(Dwarf_Error /*error*/, Dwarf_Ptr /*errarg*/);
 #define DW_DLA_ADDR		0x1c	 /* Dwarf_Addr sized entries */
 
 /* The augmenter string for CIE */
+#ifdef KEY
+#define DW_CIE_AUGMENTER_STRING_V0              "zPL"
+#define PIC_DW_CIE_AUGMENTER_STRING_V0		"zPLR"
+#else
 #define DW_CIE_AUGMENTER_STRING_V0              "z"
+#endif // KEY
 
 /* dwarf_init() access arguments
 */
@@ -1249,6 +1272,15 @@ Dwarf_P_Attribute dwarf_add_AT_unsigned_const(Dwarf_P_Debug /*dbg*/,
     Dwarf_Half 		/*attr*/, 
     Dwarf_Unsigned 	/*value*/, 
     Dwarf_Error* 	/*error*/);
+#ifdef KEY
+// Bug 1188
+Dwarf_P_Attribute dwarf_add_AT_unsigned_const_ext(Dwarf_P_Debug /*dbg*/, 
+    Dwarf_P_Die 	/*ownerdie*/, 
+    Dwarf_Half 		/*attr*/, 
+    Dwarf_Unsigned 	/*value*/, 
+    Dwarf_Error* 	/*error*/,
+    Dwarf_Unsigned 	/*size*/);
+#endif
 
 Dwarf_P_Attribute dwarf_add_AT_signed_const(Dwarf_P_Debug /*dbg*/, 
     Dwarf_P_Die 	/*ownerdie*/, 
@@ -1341,6 +1373,11 @@ Dwarf_Unsigned dwarf_add_frame_cie(Dwarf_P_Debug /*dbg*/,
     Dwarf_Small 	/*code_alignent_factor*/, 
     Dwarf_Small 	/*data_alignment_factor*/, 
     Dwarf_Small 	/*return_address_reg*/, 
+#ifdef KEY
+    Dwarf_Unsigned	/* personality routine */,
+    Dwarf_Bool		/* generate fpic ? */,
+    Dwarf_Bool		/* for -m64 or -m32 ? */,
+#endif // KEY
     Dwarf_Ptr 		/*initialization_bytes*/, 
     Dwarf_Unsigned 	/*init_byte_len*/, 
     Dwarf_Error* 	/*error*/);

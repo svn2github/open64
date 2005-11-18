@@ -1,23 +1,23 @@
 /* Output routines for graphical representation.
-   Copyright (C) 1998, 1999, 2000 Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001 Free Software Foundation, Inc.
    Contributed by Ulrich Drepper <drepper@cygnus.com>, 1998.
 
-   This file is part of GNU CC.
+This file is part of GCC.
 
-   GNU CC is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-   GNU CC is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with GNU CC; see the file COPYING.  If not, write to
-   the Free Software Foundation, 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+You should have received a copy of the GNU General Public License
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
 #include <config.h>
 #include "system.h"
@@ -31,7 +31,7 @@
 #include "toplev.h"
 #include "graph.h"
 
-static const char *graph_ext[] =
+static const char *const graph_ext[] =
 {
   /* no_graph */ "",
   /* vcg */      ".vcg",
@@ -80,7 +80,7 @@ label: \"basic block %d",
     }
 
 #if 0
-  /* FIXME Should this be printed?  It makes the graph significantly larger. */
+  /* FIXME Should this be printed?  It makes the graph significantly larger.  */
 
   /* Print the live-at-start register list.  */
   fputc ('\n', fp);
@@ -152,7 +152,7 @@ darkgrey\n  shape: ellipse" : "white",
 	name =  GET_NOTE_INSN_NAME (NOTE_LINE_NUMBER (tmp_rtx));
       fprintf (fp, " %s", name);
     }
-  else if (GET_RTX_CLASS (GET_CODE (tmp_rtx)) == 'i')
+  else if (INSN_P (tmp_rtx))
     print_rtl_single (fp, PATTERN (tmp_rtx));
   else
     print_rtl_single (fp, tmp_rtx);
@@ -236,7 +236,7 @@ print_rtl_graph_with_bb (base, suffix, rtx_first)
      const char *suffix;
      rtx rtx_first;
 {
-  register rtx tmp_rtx;
+  rtx tmp_rtx;
   size_t namelen = strlen (base);
   size_t suffixlen = strlen (suffix);
   size_t extlen = strlen (graph_ext[graph_dump_format]) + 1;
@@ -258,7 +258,6 @@ print_rtl_graph_with_bb (base, suffix, rtx_first)
     fprintf (fp, "(nil)\n");
   else
     {
-      int i;
       enum bb_state { NOT_IN_BB, IN_ONE_BB, IN_MULTIPLE_BB };
       int max_uid = get_max_uid ();
       int *start = (int *) xmalloc (max_uid * sizeof (int));
@@ -266,6 +265,7 @@ print_rtl_graph_with_bb (base, suffix, rtx_first)
       enum bb_state *in_bb_p = (enum bb_state *)
 	xmalloc (max_uid * sizeof (enum bb_state));
       basic_block bb;
+      int i;
 
       for (i = 0; i < max_uid; ++i)
 	{
@@ -273,12 +273,11 @@ print_rtl_graph_with_bb (base, suffix, rtx_first)
 	  in_bb_p[i] = NOT_IN_BB;
 	}
 
-      for (i = n_basic_blocks - 1; i >= 0; --i)
+      FOR_EACH_BB_REVERSE (bb)
 	{
 	  rtx x;
-	  bb = BASIC_BLOCK (i);
-	  start[INSN_UID (bb->head)] = i;
-	  end[INSN_UID (bb->end)] = i;
+	  start[INSN_UID (bb->head)] = bb->index;
+	  end[INSN_UID (bb->end)] = bb->index;
 	  for (x = bb->head; x != NULL_RTX; x = NEXT_INSN (x))
 	    {
 	      in_bb_p[INSN_UID (x)]
@@ -399,6 +398,7 @@ print_rtl_graph_with_bb (base, suffix, rtx_first)
 
 
 /* Similar as clean_dump_file, but this time for graph output files.  */
+
 void
 clean_graph_dump_file (base, suffix)
      const char *base;
@@ -417,7 +417,7 @@ clean_graph_dump_file (base, suffix)
   fp = fopen (buf, "w");
 
   if (fp == NULL)
-    pfatal_with_name (buf);
+    fatal_io_error ("can't open %s", buf);
 
   switch (graph_dump_format)
     {

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -104,7 +108,7 @@ static INT32 top = STK_EMPTY ;
 extern void
 cwh_stk_push( void * item, enum item_class Class)
 {
-  cwh_stk_push_typed(item,Class,NULL) ;
+  cwh_stk_push_typed(item,Class,0) ;
 
   return ;
 }
@@ -125,7 +129,7 @@ cwh_stk_push( void * item, enum item_class Class)
 extern void
 cwh_stk_push_typed( void * item, enum item_class Class, TY_IDX ty)
 {
-  if (ty != NULL) {
+  if (ty != 0) {
     DevAssert(((Class == ADDR_item) || 
 	       (Class == WN_item)   || 
 	       (Class == WN_item_whole_array) ||
@@ -579,7 +583,7 @@ cwh_stk_dump(void)
 
     }
 
-    if (stk[i].it_ty == NULL)
+    if (stk[i].it_ty == 0)
       printf("%s\n",str_name[j]);
     else 
       printf("%s    TY = 0x%x \n",str_name[j],stk[i].it_ty) ;

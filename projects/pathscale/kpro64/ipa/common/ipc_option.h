@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -61,9 +65,7 @@
 #include "strtab.h"             // STRTAB_TYPE
 #endif
 
-#ifndef __SGI_STL_HASH_MAP_H
-#include <hash_map.h>
-#endif
+#include <ext/hash_map>
 
 #ifndef mempool_allocator_INCLUDED
 #include "mempool_allocator.h"
@@ -85,8 +87,8 @@ struct eqint
   }
 };
 
-typedef  hash_map<const char*, UINT, hash<const char*>, eqstr > INLINE_PU_MAP;
-typedef  hash_map<const INT, UINT, hash<INT> > INLINE_EDGE_MAP;
+typedef  __gnu_cxx::hash_map<const char*, UINT, __gnu_cxx::hash<const char*>, eqstr > INLINE_PU_MAP;
+typedef  __gnu_cxx::hash_map<const INT, UINT, __gnu_cxx::hash<INT> > INLINE_EDGE_MAP;
 
 extern UINT User_Specified_Name_Info(char *);
 extern UINT User_Specified_Edge_Info(INT);

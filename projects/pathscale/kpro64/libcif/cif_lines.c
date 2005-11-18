@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -152,14 +156,6 @@
 
 #include "cif_int.h"			/* CIF field name arrays */
 #include "unitrecord.h"			/* table indicating if record in unit or not */
-
-/* --- external references --- */
-extern int getopt ();
-extern int optind;
-extern char *optarg;
-extern char *getenv (const char *);
-
-extern char *strdup(const char *s);
 
 #define CIF_NOT 	0
 #define CIF_ASCII 	1
@@ -999,7 +995,7 @@ static void save_record
 /* --------------------------------------------------------------------------
  * qsort comparsion routine for comparing symbol ids
  * -------------------------------------------------------------------------- */
-static comp_id (
+static int comp_id (
 	struct Cif_generic **r1,
 	struct Cif_generic **r2)
 {

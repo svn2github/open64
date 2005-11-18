@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -99,7 +103,7 @@ static struct cvt_rule {
   { nop, nop, nop, nop, nop, nop, nop, nop, nop, nop},//to B
   { nop, nop, nop, nop,I1I4,I1I8, nop, nop,I1I4,I1I8},//to I1
   { nop, nop, nop, nop,I2I4,I2I8, nop, nop,I2I4,I1I8},//to I2
-  { nop, I4B,I4I1,I4I2, nop,I4I8, nop, nop, nop,I4U8},//to I4
+  { nop, I4B,I4I1,I4I2, nop,I4I8, nop, nop, nop,U4U8},//to I4
 #ifdef TARG_MIPS
   { nop, nop,I8I1,I8I2, nop, nop, nop, nop,I8U4, nop},//to I8
 #elif defined(TARG_IA32)
@@ -115,7 +119,7 @@ static struct cvt_rule {
 #elif defined(TARG_IA32)
   { nop, nop, nop, nop,U8I4, nop,U8U1,U8U2,U8U4, nop} //to U8
 #else
-  { nop, U8B, nop, nop,U8I4, nop,U8U1,U8U2, nop, nop} //to U8
+  { nop, U8B, nop, nop,U8U4, nop,U8U1,U8U2, nop, nop} //to U8
 #endif
 };
 
@@ -197,7 +201,11 @@ INT Need_load_type_conversion(BOOL source_sign_extd, BOOL target_sign_extd,
     if (source_sign_extd) {            // !targ_sign_extd
       *opc = (OPCODE) OPC_U8U4CVT;
     } else {                           // targ_sign_extd && !source_sign_extd
+#ifndef KEY
       *opc = (OPCODE) OPC_U4U8CVT;
+#else
+      *opc = (OPCODE) OPC_I8I4CVT;
+#endif
     }
     return NEED_CVT;
   }

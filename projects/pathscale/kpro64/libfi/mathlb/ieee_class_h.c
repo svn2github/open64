@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -53,10 +57,17 @@ _f_int4 _IEEE_CLASS_I4_H( _f_real4 x)
 	union _ieee_sngle {
 		_f_real4	flword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa : IEEE_32_MANT_BITS-1;
+			unsigned int q_bit  : 1;
+			unsigned int exponent : IEEE_32_EXPO_BITS;
+			unsigned int sign     : 1;
+#else
 			unsigned int sign     : 1;
 			unsigned int exponent : IEEE_32_EXPO_BITS;
 			unsigned int q_bit  : 1;
 			unsigned int mantissa : IEEE_32_MANT_BITS-1;
+#endif
 		} parts;
 	};
 	union	_ieee_sngle x_val;
@@ -106,10 +117,17 @@ _f_int8 _IEEE_CLASS_I8_H( _f_real4 x)
 	union _ieee_sngle {
 		_f_real4	flword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa : IEEE_32_MANT_BITS-1;
+			unsigned int q_bit  : 1;
+			unsigned int exponent : IEEE_32_EXPO_BITS;
+			unsigned int sign     : 1;
+#else
 			unsigned int sign     : 1;
 			unsigned int exponent : IEEE_32_EXPO_BITS;
 			unsigned int q_bit  : 1;
 			unsigned int mantissa : IEEE_32_MANT_BITS-1;
+#endif
 		} parts;
 	};
 	union	_ieee_sngle x_val;

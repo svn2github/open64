@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -225,6 +229,9 @@ DST_mk_subprogram(USRCPOS      decl,
 		  DST_vtable_elem_location vtable_elem_location,
 		  BOOL         is_declaration,
 		  BOOL         is_prototyped,
+#ifdef KEY      
+                  BOOL         is_artificial,
+#endif
 		  BOOL         is_external);
 
 /* Adds a pubname pseudo-attribute to the given subprogram.  Called for C++
@@ -255,6 +262,15 @@ DST_add_specification_to_subprogram (DST_INFO_IDX subprogram_def,
 extern void
 DST_add_specification_to_variable  (DST_INFO_IDX variable_def,
 				    DST_INFO_IDX field_decl);
+
+#ifdef KEY
+/* Adds a linkage_name (i.e. a mangled name) attribute to the given 
+ * subprogram.  Called for C++ functions.
+*/
+extern void
+DST_add_linkage_name_to_variable(DST_INFO_IDX variable_def,
+				   char        *linkage_name);
+#endif
 
 /* Creates a DW_TAG_entry_point and returns its idx
  * (Fortran specific)

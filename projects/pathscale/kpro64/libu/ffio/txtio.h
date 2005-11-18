@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -57,6 +61,7 @@
 #endif
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
+#define TEXT_MAGIC_MARKER 0x7e650aUL
 /*
  * These are used to shift the eor_char and eof_mark to make
  * them left or right justified in a word.

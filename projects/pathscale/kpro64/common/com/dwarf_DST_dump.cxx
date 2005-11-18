@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -230,6 +234,24 @@ DST_put_UINT32_attribute(const char *at_name, UINT32 num)
    DST_put_string(&tmp_buffer[0]);
 }
 
+#ifdef KEY
+static void
+DST_put_C4_attribute(const char *at_name, UINT32 real, UINT32 imag)
+{
+  DST_put_string(at_name);
+  sprintf(&tmp_buffer[0], "(%u, %u)", real, imag);
+  DST_put_string(&tmp_buffer[0]);
+}
+
+static void
+DST_put_C8_attribute(const char *at_name, UINT64 real, UINT64 imag)
+{
+  DST_put_string(at_name);
+  sprintf(&tmp_buffer[0], "(%llu, %llu)", real, imag);
+  DST_put_string(&tmp_buffer[0]);
+}
+#endif // KEY
+
 static void
 DST_put_INT64_attribute(const char *at_name, INT64 num)
 {
@@ -367,7 +389,7 @@ DST_put_assoc(const char *at_name, DST_flag flag, DST_ASSOC_INFO assoc)
    DST_put_string(at_name);
    DST_nput_char(1, '(');
    if (DST_IS_assoc_fe(flag))
-      DST_put_hex64_attribute("FE", (UINT64)DST_ASSOC_INFO_fe_ptr(assoc));
+      DST_put_hex64_attribute("FE", assoc.st_u.fe_uint);
    else {
       DST_put_string("ST");
       DST_put_st_id (DST_ASSOC_INFO_st_level(assoc), DST_ASSOC_INFO_st_index(assoc));
@@ -404,6 +426,19 @@ DST_put_const_attribute(const char *at_name, DST_CONST_VALUE cval)
       DST_put_UINT64_attribute(at_name, 
 			      (UINT64)DST_CONST_VALUE_form_data8(cval));
       break;
+#ifdef KEY
+   case DST_FORM_DATAC4:
+      DST_put_C4_attribute(at_name, 
+			      (UINT32)DST_CONST_VALUE_form_crdata4(cval),
+			      (UINT32)DST_CONST_VALUE_form_cidata4(cval));
+      break;
+
+   case DST_FORM_DATAC8:
+      DST_put_C8_attribute(at_name, 
+			      (UINT64)DST_CONST_VALUE_form_crdata8(cval),
+			      (UINT64)DST_CONST_VALUE_form_cidata8(cval));
+      break;
+#endif // KEY
    }
 }
 
@@ -584,6 +619,10 @@ DST_put_variable(DST_flag flag, DST_VARIABLE *attr)
       if (DST_IS_automatic(flag))
 	 DST_put_string(" <auto>");
       DST_put_idx_attribute(" type", DST_VARIABLE_decl_type(attr), TRUE);
+#ifdef KEY
+      DST_put_string_attribute(" linkage_name", 
+			       DST_VARIABLE_decl_linkage_name(attr));
+#endif
    }
    else /* definition */
    {
@@ -612,6 +651,10 @@ DST_put_variable(DST_flag flag, DST_VARIABLE *attr)
       DST_put_idx_attribute(" abstract_origin",
 	DST_VARIABLE_def_abstract_origin(attr), FALSE); 
       DST_put_idx_attribute(" dopetype", DST_VARIABLE_def_dopetype(attr), TRUE);
+#ifdef KEY
+      DST_put_string_attribute(" linkage_name", 
+			       DST_VARIABLE_def_linkage_name(attr));
+#endif
    }
 }
 

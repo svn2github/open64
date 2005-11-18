@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -63,13 +67,9 @@
 
 
 
-#ifndef __SGI_STL_ALGO_H
-#include <algo.h>
-#endif // __SGI_STL_ALGO_H
+#include <algorithm>
 
-#ifndef __SGI_STL_HASH_MAP_H
-#include <hash_map.h>
-#endif /* __SGI_STL_HASHTABLE_H */
+#include <ext/hash_map>
 
 #ifndef CXX_MEMORY_INCLUDED
 #include "cxx_memory.h"                 // For CXX_NEW

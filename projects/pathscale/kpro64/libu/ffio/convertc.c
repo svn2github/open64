@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -83,7 +87,7 @@ DSASC(long *_Src, const long *_Offset, long *_Dest, const long *_Count);
  *	Returns:  0 = OK
  *		 -1 = error (errno set)
  */
-_fdc_unpackc(
+int _fdc_unpackc(
 	void	*pbuf,		/* ptr to packed buffer (really a bitptr)*/
 	long	*ubuf,		/* ptr to unpacked target area */
 	long	count,		/* count of characters */

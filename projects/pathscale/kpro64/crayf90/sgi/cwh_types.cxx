@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -276,7 +280,7 @@ fei_array_dimen(INT32  flag_bits,
 
   if (test_flag(flag_bits,FEI_ARRAY_DIMEN_VARY_LB)) {
 
-    b = cast_to_STB(low_bound) ;
+    b = cast_to_STB((UINTPS) low_bound) ;
     Is_True((b->form == is_ST),("Odd lbound"));
 
     st = cast_to_ST(b->item);
@@ -294,7 +298,7 @@ fei_array_dimen(INT32  flag_bits,
   
   if (test_flag(flag_bits,FEI_ARRAY_DIMEN_VARY_UB)) {
 
-    b = cast_to_STB(upper_bound) ;
+    b = cast_to_STB((UINTPS) upper_bound) ;
     if (b != NULL) {
       Is_True((b->form == is_ST),("Odd extent"));
       
@@ -322,7 +326,7 @@ fei_array_dimen(INT32  flag_bits,
 
   if (test_flag(flag_bits,FEI_ARRAY_DIMEN_VARY_EXT)) {
 
-    b = cast_to_STB(extent) ;
+    b = cast_to_STB((UINTPS) extent) ;
     if (b != NULL) {
       Is_True((b->form == is_ST),("Odd extent"));
       
@@ -412,7 +416,7 @@ fei_array_dimen(INT32  flag_bits,
     decl_distributed_pragma_id=test_flag(flag_bits,FEI_ARRAY_DIMEN_DIST_RESHAPE)?WN_PRAGMA_DISTRIBUTE_RESHAPE:WN_PRAGMA_DISTRIBUTE;
   }
 
-  return(cast_to_int(&p));
+  return 0;
 }
 
 /*===================================================

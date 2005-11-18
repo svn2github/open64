@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,7 +56,6 @@
 
 #include <math.h>
 #include <alloca.h>
-#include <map.h>
 
 #include "defs.h"
 #include "config.h"

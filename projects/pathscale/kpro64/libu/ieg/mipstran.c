@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -45,7 +49,7 @@
 
 #define	NANMAN	0x3C4E614E3E	/* Nan Mantissa */
 
-#ifdef	__mips
+#if _MIPS_SZINT == 32
 #define	int64	long long
 #define	uint64	unsigned long long
 #define	int32	int

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -852,6 +856,11 @@ Handle_All_Hazards (BB *bb)
 
     // Check for bundle hazards.
     if (PROC_has_bundles() && LOCS_Enable_Bundle_Formation) {
+#ifdef TARG_MIPS
+      // We do not have bundle; and, we use the bundle flag as a temporary in
+      // GCM module (look for visited/moved flags).
+      FmtAssert(FALSE, ("No support for bundle at KEY\n"));
+#endif	    
 
       // Avoid processing dummy and already bundled OPs.
       if (!OP_dummy(op) && !OP_bundled(op)) 

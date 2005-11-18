@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,6 +41,7 @@
 
 #pragma ident "@(#) libf/fio/scatgath.c	92.1	06/18/99 18:41:02"
 
+#include <stdint.h>
 #if	defined(__mips)
 #include <sgidefs.h>
 #endif
@@ -47,10 +52,10 @@
 #ifdef _CRAY1
 #define GET_PTR(ptr)	( (long) _dshiftl((long) ptr, (long) ptr, 3) )
 #else
-#define GET_PTR(ptr)	( (long long) ptr )
+#define GET_PTR(ptr)	( (unsigned long) ptr )
 #endif
 
-#define PTR_ALIGNED(ptr,type)	( ( GET_PTR(ptr) & (sizeof(type) - 1) ) == 0)
+#define PTR_ALIGNED(ptr,type)	( ( GET_PTR(ptr) & (sizeof(type) - 1) ) == 0UL)
 
 #define SIZE_ALIGNED(len,type)	( ( len & (sizeof(type) - 1) ) == 0)
 
@@ -78,21 +83,9 @@
  *	Note that the CRAY architectures do not support all sizes.
  */
 
-#if	defined(_SOLARIS) || ( defined(__mips) && (_MIPS_SZLONG == 32) ) || \
-	defined(_LITTLE_ENDIAN)
-#define	LARGE	long long
-#else
-#define	LARGE	long
-#endif
-
-#ifndef	_CRAY
-#define	MEDIUM	int
-#define	SMALL	short
-#elif	defined(_CRAYMPP)
-#define	MEDIUM	short
-#elif	defined(__sv2)
-#define	MEDIUM	int
-#endif
+typedef int64_t LARGE;
+typedef int32_t MEDIUM;
+typedef int16_t SHORT;
 
 /*
  *	_gather_data(buf, items, inc, len, ptr)

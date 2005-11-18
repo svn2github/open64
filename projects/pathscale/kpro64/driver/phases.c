@@ -1,3 +1,7 @@
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -33,11 +37,17 @@
 
 */
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
 #include <unistd.h>
 #include <errno.h>
+#ifdef KEY
+#include <sys/param.h>
+#include <sys/utsname.h>
+#include "pathscale_defs.h"
+#endif
 
 #include "phases.h"
 #include "options.h"
@@ -51,15 +61,21 @@
 #include "run.h"
 #include "objects.h"
 #include "opt_actions.h"
+#include "profile_type.h"    /* for PROFILE_TYPE */
 
-string outfile = NULL;		/* from -o <outfile> */
-string prof_file = NULL;	/* executable file for prof to work upon */
-string fb_file = NULL;		/* from -fb <feedback-file> */
-string fb_xdir = NULL;		/* dir where pixie emits dso's */
-string fb_cdir = NULL; 		/* dir where pixie emits count files */
-string command_line = NULL;	/* original command line */
+#include "license.h"
 
-string source_file = NULL;
+char *outfile = NULL;		/* from -o <outfile> */
+char *prof_file = NULL;	/* executable file for prof to work upon */
+char *fb_file = NULL;		/* from -fb_create <feedback-file> */
+char *internal_fb_file = NULL;	/* from -fb <feedback-file> */
+char *opt_file = NULL;		/* from -fb_opt <feedback-file> */
+char *fb_xdir = NULL;		/* dir where pixie emits dso's */
+char *fb_cdir = NULL; 		/* dir where pixie emits count files */
+char *command_line = NULL;	/* original command line */
+char *fb_phase = NULL;         /* from -fb_phase=<phase> */
+char *fb_type = NULL;          /* from -fb_type=<type> */
+char *source_file = NULL;
 boolean multiple_source_files = FALSE;
 
 boolean keep_mp = FALSE;
@@ -78,12 +94,19 @@ int     fortran_line_length = 72; /* Fortran line length */
 char roundoff=0;
 boolean nocpp_flag = FALSE;
 
-string ld_library_path = NULL;
-string ld_libraryn32_path = NULL;
-string orig_program_name = NULL;
+char *ld_library_path = NULL;
+char *ld_libraryn32_path = NULL;
+char *orig_program_name = NULL;
+#ifdef KEY
+char *old_ld_library_path = NULL;
+#endif
+
+extern void turn_down_opt_level (int new_olevel, char *msg);
 
 static string_list_t *ipl_cmds = 0; /* record the user options that needed
 				       to be passed to ipl */
+static boolean string_md = FALSE;
+static boolean string_mmd = FALSE;
 extern string_list_t *feedback_files;
 
 extern boolean is_replacement_combo (int);
@@ -102,16 +125,85 @@ static void set_f90_source_form(string_list_t *args,boolean set_line_length) ;
 static phases_t
 post_fe_phase (void);
 
+#ifdef KEY
+static boolean
+previous_mf_exists (string_list_t *list)
+{
+	string_item_t * p;
+	
+	for (p = list->head; p != NULL; p = p->next) {
+		if (strcmp (p->name, "-MF") == 0) {
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+static void
+remove_previous_mf (string_list_t *list)
+{
+	string_item_t * p;
+	
+	for (p = list->head; p != NULL; p = p->next) {
+		if (strcmp (p->name, "-MF") == 0) {
+			replace_string (list, p->name, "");
+			replace_string (list, p->next->name, "");
+		}
+	}
+}
+#endif
+
 static void
 add_implied_string (string_list_t *list, int iflag)
 {
 	/* assume inside a FOREACH_IMPLIED_OPTION iteration */
-	string iname = get_current_implied_name();
+	char *iname = get_current_implied_name();
+
+#ifdef KEY
+	if (strncmp (iname, "-MF", 3) == 0) {
+		remove_previous_mf (list);
+	}
+#endif
+
 	if (option_has_blank(iflag))
 		/* add a string for each blank-separated sub-string. */
 		add_multi_strings(list, iname);
-	else
-		add_string(list, iname);
+	else {
+#ifdef KEY
+/* Fix for BUG 249 */
+		if ( strcmp(iname, "-MD") ==0 ) {
+			if ( string_md == FALSE ) {
+				add_string(list, "-M");
+				if (!previous_mf_exists (list)) {
+					add_string(list, "-MF");
+					add_string(list, change_suffix(drop_path(source_file), "d"));
+				}
+				string_md = TRUE;
+			}
+			else {
+				string_md = FALSE;
+				add_string(list, iname);
+			}
+		}
+		/* Fix for bug 433 and friends */
+		else if ( strcmp(iname, "-MMD") ==0 ) {
+			if ( string_mmd == FALSE ) {
+				add_string(list, "-MM");
+				if (!previous_mf_exists (list)) {
+					add_string(list, "-MF");
+					add_string(list, change_suffix(drop_path(source_file), "d"));
+				}
+				string_mmd = TRUE;
+			}
+			else {
+				string_mmd = FALSE;
+				add_string(list, iname);
+			}
+		}
+		else
+#endif
+			add_string(list, iname);
+	}
 }
 
 static void
@@ -230,16 +322,104 @@ char *dirname(char *const s)
 }
 
 
-static string input_source ;	/* src to next phase */
+static char *input_source ;	/* src to next phase */
+
+static void add_arg(string_list_t *args, const char *format, ...)
+	__attribute__((format (printf, 2, 3)));
+
+static void
+add_arg(string_list_t *args, const char *format, ...)
+{
+	char *arg;
+	va_list ap;
+
+	va_start(ap, format);
+	
+	vasprintf(&arg, format, ap);
+	add_string(args, arg);
+	free(arg);
+	
+	va_end(ap);
+}
+
+/* Keep this in sync with print_file_path over in opt_actions.c. */
+
+static void
+set_library_paths(string_list_t *args, boolean native)
+{
+	char *root_prefix = directory_path(get_executable_dir(NULL));
+	char *gcc_v_path, *gcc_path;
+	char *our_path;
+	char *lib_path;
+	
+	if (abi == ABI_N32) {
+		asprintf(&gcc_v_path,
+			 "%s/lib/gcc-lib/" PSC_TARGET "/"
+			 PSC_GCC_VERSION "/32",
+			 root_prefix);
+		asprintf(&gcc_path, "%s/lib/gcc-lib/" PSC_TARGET "/lib",
+			 root_prefix);
+		asprintf(&lib_path, "%s/" PSC_TARGET "/lib", root_prefix);
+		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION "/32",
+			 root_prefix);
+	} else {
+		asprintf(&gcc_v_path,
+			 "%s/lib/gcc-lib/" PSC_TARGET "/" PSC_GCC_VERSION,
+			 root_prefix);
+		asprintf(&gcc_path, "%s/lib/gcc-lib/" PSC_TARGET "/lib64",
+			 root_prefix);
+		asprintf(&lib_path, "%s/" PSC_TARGET "/lib64", root_prefix);
+		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION, root_prefix);
+	}
+	
+	add_string(args, concat_strings("-L", our_path));
+	add_string(args, concat_strings("-L", gcc_v_path));
+	add_string(args, concat_strings("-L", gcc_path));
+
+	if (!option_was_seen(O_nostdlib)) {
+		add_string(args, concat_strings("-Wl,-rpath-link,",
+						gcc_v_path));
+		add_string(args, concat_strings("-Wl,-rpath-link,",
+						gcc_path));
+		add_string(args, concat_strings("-Wl,-rpath-link,",
+						lib_path));
+		add_string(args, concat_strings("-Wl,-rpath,", gcc_v_path));
+		add_string(args, concat_strings("-Wl,-rpath,", gcc_path));
+	}
+	
+	if (native) {
+		add_string(args, concat_strings("-L", lib_path));
+		if (abi == ABI_N32) {
+			add_string(args, "-L/lib");
+			add_string(args, "-L/usr/lib");
+		} else {
+			add_string(args, "-L/lib64");
+			add_string(args, "-L/usr/lib64");
+		}
+	}
+
+	free(gcc_v_path);
+	free(gcc_path);
+	free(lib_path);
+	free(our_path);
+}
 
 static void
 add_file_args (string_list_t *args, phases_t index)
 {
 	buffer_t buf;
-	string temp;
+	char *temp;
 	string_item_t *p;
-	string count_file_name;
-	/* boolean dsm_crt_init_needed = FALSE; */
+	char *count_file_name;
+	struct utsname u;
+	boolean native = FALSE;
+
+	uname(&u);
+	if (strcmp(u.machine, "x86_64") == 0)
+		native = abi != ABI_N32;
+	else if (strlen(u.machine) == 4 && u.machine[0] == 'i' &&
+		 u.machine[2] == '8' && u.machine[3] == '6')
+		native = abi == ABI_N32;
 
 	/* current_phase is used to say which file might be the last output 
 	 * file and thus might need a local name rather than a tmp name */
@@ -293,6 +473,19 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 	case P_gcpp:
 	case P_gcpp_plus:
+		if (show_but_not_run)
+			add_string(args, "-###");
+#ifdef KEY
+		add_string(args, "-D__PATHSCALE__=\"" PSC_FULL_VERSION "\"");
+		add_string(args, "-D__PATHCC__=" PSC_MAJOR_VERSION);
+		add_string(args, "-D__PATHCC_MINOR__=" PSC_MINOR_VERSION);
+		add_string(args, "-D__PATHCC_PATCHLEVEL__=" PSC_PATCH_LEVEL);
+
+		if( abi == ABI_N32 ){
+		  add_string(args, "-m32");
+		}
+#endif
+		
 		if (source_lang == L_f90) {
 			/* -traditional -E same as -traditional-cpp */
 			add_string(args, "-traditional");
@@ -303,6 +496,40 @@ add_file_args (string_list_t *args, phases_t index)
 			/* tell gcc to preprocess the file */
 			add_string(args, "-xassembler-with-cpp");
 		}
+#ifndef KEY
+#ifndef TARG_IA64
+		add_string(args,
+			   concat_strings("-I", get_phase_dir (P_include)));
+#endif
+#endif
+
+#ifdef KEY
+		if (native && !option_was_seen(O_nostdinc)) {
+			add_string(args, "-isystem");
+			add_string(args,
+				   PSC_INSTALL_PREFIX
+				   "/lib/gcc-lib/"
+				   PSC_TARGET
+				   "/"
+				   PSC_GCC_VERSION
+				   "/include");
+			add_string(args, "-isystem");
+			add_string(args, "/usr/include");
+		}
+		
+		// Call gcc preprocessor using "gcc -E ...".
+		add_string(args, "-E");
+		// Cause our gcc to read in keyspec.  Among other things, this
+		// will define __GNUC_MAJOR__ to 2 and __GNUC_MINOR__ to 96.
+
+#ifndef X8664	// The Opteron gcc currently doesn't understand -keycc.
+		add_string(args, "-keycc");
+#endif
+#ifdef TARG_MIPS
+		// Give -mips64.
+		add_string(args, "-mips64");
+#endif
+#endif
 		add_string(args, input_source);
 		if (read_stdin && option_was_seen(O_E)) 
 			break;
@@ -312,12 +539,24 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 		else if (last_phase != P_any_cpp) {
 			current_phase = P_any_cpp;
+#ifdef TARG_IA64
 			add_string(args, "-E");
                 	add_string(args, ">");
+#endif
 			if (source_lang == L_CC)
 			    input_source = construct_name(input_source,"ii");
+#ifdef KEY
+			else if (source_lang == L_as) {
+			    input_source = construct_name(input_source,"s");
+			    if (!keep_flag)
+			      input_source = concat_strings(input_source, ".s");
+			}
+#endif
 			else
 			    input_source = construct_name(input_source,"i");
+#ifdef KEY
+			add_string(args, "-o");		// gcc -o ...
+#endif
 			add_string(args, input_source);
 		}
 		break;
@@ -330,8 +569,8 @@ add_file_args (string_list_t *args, phases_t index)
 		if (index == P_pfa)
 		    add_string(args, "-include=/usr/include");
 		{
-		  string list_suffix, cmp_suffix;
-		  extern string optargs;
+		  char *list_suffix, *cmp_suffix;
+		  extern char *optargs;
 
 		  if (roundoff) {
 		    /* if roundoff has been specified, pass it to pfa/pca */
@@ -401,6 +640,9 @@ add_file_args (string_list_t *args, phases_t index)
 		  add_string ( args, "-FE:full_split=off" );
 		}
 
+		replace_string( args, "-fpic", "" );
+		replace_string( args, "-fPIC", "" );
+
                 /* create .rii file */
                 if (option_was_seen(O_dsm)) {
                     if (outfile != NULL && !multiple_source_files
@@ -448,9 +690,9 @@ add_file_args (string_list_t *args, phases_t index)
 
         case P_lister:
 		if (keep_listing) {
-		   string listing_file;
-		   string cif_file;
-		   string has_path;
+		   char *listing_file;
+		   char *cif_file;
+		   char *has_path;
 		   input_source = string_copy(source_file);
 		   listing_file = construct_given_name(input_source,"L", TRUE);
 		   cif_file = construct_given_name(drop_path(source_file), "T", keep_flag || keep_cif);
@@ -477,6 +719,9 @@ add_file_args (string_list_t *args, phases_t index)
                       add_string(args, "-ftpp");
                    }
                 }
+
+		replace_string ( args, "-fpic", "" );
+		replace_string ( args, "-fPIC", "" );
 
 		if ( ipa == TRUE || inline_t == TRUE ) {
 		  add_string ( args, "-FE:full_split=off" );
@@ -530,8 +775,10 @@ add_file_args (string_list_t *args, phases_t index)
 
 	case P_c_gfe:
 	case P_cplus_gfe:
+		if (show_but_not_run)
+			add_string(args, "-###");
 		add_string(args, "-dx");
-#if !(defined(TARG_IA64) || defined(TARG_IA32))
+#ifndef linux
 		if (abi == ABI_64) add_string(args, "-mabi=64");
 		else if (abi == ABI_I64) add_string(args, "-mabi=i64");
 		else if (abi == ABI_N32) add_string(args, "-mabi=n32");
@@ -544,6 +791,21 @@ add_file_args (string_list_t *args, phases_t index)
 #ifdef linux
 		if (quiet_flag) 
 			add_string(args, "-quiet");
+#endif
+#ifdef KEY
+		if( abi == ABI_N32 )
+		  add_string(args, "-m32");
+
+		if( fbuiltin != 0 )
+		  add_string(args, "-fbuiltin" );
+		else
+		  add_string(args, "-fno-builtin" );
+
+		if( fmath_errno == 0 )
+		  add_string(args, "-fno-math-errno");
+
+		if (index == P_cplus_gfe)
+		  add_string(args, "-fno-common");
 #endif
 		add_string(args, "-dumpbase");
 		add_string(args, drop_path(source_file));
@@ -575,17 +837,17 @@ add_file_args (string_list_t *args, phases_t index)
 
 		if (instrumentation_invoked == TRUE) {
 		  if (fb_file != NULL)
-			sprintf(buf, "-fi,%s.instr", fb_file);
+		    sprintf(buf, "-fi,%s.instr", fb_file);
 		  else if (outfile != NULL)
-		       sprintf (buf, "-fi,%s.instr", outfile);
+		    sprintf (buf, "-fi,%s.instr", outfile);
                   else
-		       sprintf (buf, "-fi,a.out.instr");
+		    sprintf (buf, "-fi,a.out.instr");
 		  add_string(args,buf);
                 }
-		else if (fb_file != NULL) {
-			/* pass feedback file */
-			sprintf(buf, "-ff,%s.instr", fb_file);
-			add_string(args, buf);
+		else if (opt_file != NULL) {
+		  /* pass feedback file */
+		  sprintf(buf, "-ff,%s.instr", opt_file);
+		  add_string(args, buf);
 		}
 		current_phase = P_any_as;
 		if (outfile != NULL && last_phase == current_phase
@@ -652,18 +914,25 @@ add_file_args (string_list_t *args, phases_t index)
 
 		if (instrumentation_invoked == TRUE) {
 		  if (fb_file != NULL)
-			sprintf(buf, "-fi,%s.instr", fb_file);
+		    sprintf(buf, "-fi,%s.instr", fb_file);
 		  else if (outfile != NULL)
-		       sprintf (buf, "-fi,%s.instr", outfile);
+		    sprintf (buf, "-fi,%s.instr", outfile);
                   else
-		       sprintf (buf, "-fi,a.out.instr");
+		    sprintf (buf, "-fi,a.out.instr");
 		  add_string(args,buf);
                 }
-		else if (fb_file != NULL) {
-			/* pass feedback file */
-			sprintf(buf, "-ff,%s.instr", fb_file);
-			add_string(args, buf);
+		else if (opt_file != NULL) {
+		  /* pass feedback file */
+		  sprintf(buf, "-ff,%s.instr", opt_file);
+		  add_string(args, buf);
 		}
+
+		if (internal_fb_file != NULL) {
+		  /* pass feedback file */
+		  sprintf(buf, "-ff,%s.instr", internal_fb_file);
+		  add_string(args, buf);
+		}
+
 		if (skip_as != TRUE || last_phase == P_be || keep_flag) {
 			/* create .s file */
 			add_string(args, "-s");
@@ -672,7 +941,17 @@ add_file_args (string_list_t *args, phases_t index)
 				input_source = outfile;
 			else
 				input_source = construct_name(source_file,"s");
+#ifdef KEY
+			if (last_phase == P_be || keep_flag) {
+			  sprintf(buf, "-fs,%s", input_source);
+			} else {
+			  char *s = concat_strings(input_source, ".s");
+			  mark_for_cleanup(s);
+			  sprintf(buf, "-fs,%s.s", input_source);
+			}
+#else
 			sprintf(buf, "-fs,%s", input_source);
+#endif
 			add_string(args, buf);
 		}
 		if (skip_as == TRUE && last_phase != P_be) {
@@ -701,8 +980,34 @@ add_file_args (string_list_t *args, phases_t index)
 	case P_gas:
 		if (dashdash_flag)
 		  add_string(args,"--");
+#ifdef KEY
+		if (show_but_not_run)
+			add_string(args, "-###");
+		{
+		  if( abi == ABI_N32 )
+		    add_string(args, "-m32");
+
+		  // Add input source to args.  Append .s to input source if
+		  // it doesn't already end in .s.
+		  int len = strlen(input_source);
+		  if (input_source[len - 1] != 's' ||
+		      input_source[len - 2] != '.') {
+		    sprintf(buf, "%s.s", input_source);
+		    add_string(args, buf);
+		  } else {
+		    add_string(args, input_source);
+		  }
+		}
+#else
 		add_string(args, input_source);
+#endif
 		current_phase = P_any_as;
+#ifdef KEY
+		add_string(args, "-c");		// gcc -c
+#ifdef TARG_MIPS
+		add_string(args, "-mips64");
+#endif
+#endif
 		add_string(args, "-o");
 		/* cc -c -o <file> puts output from as in <file>,
 		 * unless there are multiple source files. */
@@ -720,12 +1025,20 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 	case P_ld:
 	case P_ldplus:
-		/* gcc invokes collect2 which invokes ld.
+		/* For C/C++:
+		 * gcc invokes collect2 which invokes ld.
 		 * Because the path to collect2 varies, 
 		 * just invoke gcc to do the link. */
 
 		/* add lib paths for standard libraries like libgcc.a */
 		append_libraries_to_list (args);
+#ifdef KEY
+		if (show_but_not_run)
+			add_string(args, "-###");
+		if( abi == ABI_N32 )
+		  add_string(args, "-m32");
+		set_library_paths(args, native);
+#endif
 		if (outfile != NULL) {
 			add_string(args, "-o");
 			add_string(args, outfile);
@@ -736,11 +1049,21 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 	case P_collect:
 	case P_ipa_link:
+#ifndef KEY
 		if (show_version) {
 			add_string(args, "-V");
 		}
+#else
+		if( abi == ABI_N32 ){		  
+		  add_string(args, "-m32");
+		  add_string(args, "-m");
+		  add_string(args,"elf_i386");
+		}
+#endif
 		/* add lib paths for standard libraries */
 		append_libraries_to_list (args);
+
+		set_library_paths(args, native);
 
 		/* -shared only adds user objects, no predefined stuff */
 		if ((shared != DSO_SHARED) && (shared != RELOCATABLE)
@@ -757,6 +1080,22 @@ add_file_args (string_list_t *args, phases_t index)
 			add_string(args, "-o");
 			add_string(args, outfile);
 		}
+
+		if (instrumentation_invoked == TRUE && index != P_collect) {
+		  if (fb_file != NULL) 
+		    sprintf(buf, "-IPA:propagate_feedback_file=%s", fb_file);
+		  else if (outfile != NULL)
+		    sprintf (buf, "-IPA:propagate_feedback_file=%s", outfile);
+		  else
+		    sprintf (buf, "-IPA:propagate_feedback_file=a.out");
+		  add_string(args,buf);
+		}
+
+		if (opt_file != NULL && index != P_collect){
+		  sprintf(buf, "-IPA:propagate_annotation_file=%s", opt_file);
+		  add_string(args,buf);
+		}
+
 		/* object file should be in list of options */
 		break;
 	case P_cord:
@@ -851,11 +1190,17 @@ add_final_ld_args (string_list_t *args)
 {
 	/* add -l libs and ending crt files */
 	if ((!option_was_seen(O_nodefaultlibs)) && (shared != RELOCATABLE)) {
+	    add_string(args, "-lpscrt");
 	    if (invoked_lang == L_f90) {
-		add_string(args, "-lfortran");
-		add_string(args, "-lffio");
-		add_string(args, "-lmsgi");
+		if (!option_was_seen(O_shared)) {
+			add_string(args, "-l" PSC_NAME_PREFIX "fstart");
+		}
+		add_string(args, "-l" PSC_NAME_PREFIX "fortran");
+		if (!option_was_seen(O_shared)) {
+			add_string(args, "-l" PSC_NAME_PREFIX "fstart");
+		}
 		add_string(args, "-lmv");
+		add_string(args, "-lm" PSC_NAME_PREFIX);
 		add_string(args, "-lm");
 	    }
 	    if (option_was_seen(O_mp)) {
@@ -866,18 +1211,47 @@ add_final_ld_args (string_list_t *args)
 	if (ipa == TRUE) {
 	    	if (invoked_lang == L_CC) {
 			add_string(args, "-lstdc++");
+#ifndef KEY
 			add_string(args, "-lm");
+#endif
 	    	}
+#ifdef KEY
+		if (invoked_lang == L_CC && !option_was_seen(O_static))
+			add_string (args, "-lgcc_s");
+#endif
 		add_string(args, "-lgcc");
 		add_string(args, "-lc");
+#ifdef KEY
+		if (invoked_lang == L_CC && !option_was_seen(O_static))
+			add_string (args, "-lgcc_s");
+#endif
 		add_string(args, "-lgcc");
+#ifndef KEY
 		if ((shared != DSO_SHARED) && (shared != RELOCATABLE)
 			&& ! option_was_seen(O_nostartfiles)) 
 		{
 			add_string(args, find_crt_path("crtend.o"));
 			add_string(args, find_crt_path("crtn.o"));
 		}
+#endif
 	}
+#ifdef KEY
+	if ((!option_was_seen(O_nodefaultlibs)) && (shared != RELOCATABLE)) {
+	  if ( fbuiltin != 0 ) {
+	    /* Once -fbuiltin is used, some functions, i.e., __sincos, are only
+	       provided by libmblah.a lib.
+	    */
+	    add_string(args, "-lm" PSC_NAME_PREFIX);
+	  }
+	}
+	if (ipa == TRUE) {
+	  if ((shared != DSO_SHARED) && (shared != RELOCATABLE)
+	       && ! option_was_seen(O_nostartfiles)) {
+	    add_string(args, find_crt_path("crtend.o"));
+	    add_string(args, find_crt_path("crtn.o"));
+	  }
+	}
+#endif
 }
 
 #define MAX_PHASE_ORDER 10
@@ -1220,29 +1594,77 @@ check_existence_of_phases (void)
 		give_warning = TRUE;
 
 	    if (give_warning)
-#ifndef linux
-		warning ("%s does not contain all of the MIPSPro compiler"
-			 " phases; perhaps you need a different toolroot?",
-			 get_phase_dir(phase_order[i])); 
-#else
-		warning ("%s does not contain all of the SGIcc compiler"
+		warning ("%s does not contain all of the PathScale compiler"
 			 " phases.", get_phase_dir(phase_order[i])); 
-#endif
 	    break;
 	}
     }
 }
 
-extern void
+static void
+add_instr_archieve (string_list_t* args)
+{
+  extern int profile_type;
+
+  /* Add instrumentation archieves */
+  if (instrumentation_invoked != UNDEFINED && instrumentation_invoked) {
+
+    unsigned long f = WHIRL_PROFILE | CG_EDGE_PROFILE | CG_VALUE_PROFILE |
+      CG_STRIDE_PROFILE ;
+    if (!(profile_type & ~f)) {
+      if (profile_type & (CG_EDGE_PROFILE |
+			  CG_VALUE_PROFILE | CG_STRIDE_PROFILE)) {
+	add_string (args,"-lcginstr");
+      }
+
+#ifdef KEY
+      add_string (args, "-linstr");
+      add_string (args, "-lstdc++");
+      if (!option_was_seen(O_static))
+	add_string (args, "-lgcc_s");
+#endif
+
+#ifndef KEY
+      if (profile_type & WHIRL_PROFILE) {
+	add_string (args, "-linstr");
+      }
+      add_string (args, "-lstdc++");
+#endif
+
+    } else {
+      fprintf (stderr, "Unknown profile types %#lx\n", profile_type & ~f);
+    }
+  }
+}
+
+
+extern char *get_binutils_lib_path(void);
+
+void
 init_phase_info (void)
 {
-	string toolroot;
-	string comp_target_root;
+	char *toolroot;
+	char *comp_target_root;
 
 	if (getenv("_XPG") != NULL) 
 	   xpg_flag = TRUE;
 	ld_library_path = getenv("LD_LIBRARY_PATH");
 	ld_libraryn32_path = getenv("LD_LIBRARYN32_PATH");
+#ifdef KEY
+	old_ld_library_path = string_copy(ld_library_path);
+	// Replace ":" with ";" because ":" has special meaning to -INTERNAL.
+	if (old_ld_library_path) {
+	  int i;
+	  for (i=0; i<strlen(old_ld_library_path); i++) {
+	    if (old_ld_library_path[i] == ':')
+	      old_ld_library_path[i] = ';';
+	  }
+	  asprintf(&old_ld_library_path, "%s;%s", old_ld_library_path,
+		   get_binutils_lib_path());
+	} else {
+	  old_ld_library_path = get_binutils_lib_path();
+	}
+#endif
 
 	toolroot = getenv("TOOLROOT");
 	if (toolroot != NULL) {
@@ -1255,6 +1677,7 @@ init_phase_info (void)
                 prefix_all_phase_dirs(LIB_MASK, comp_target_root);
 	}
 
+#ifndef KEY /* problematic because this is before the -Yl option is processed */
 	/* check whether gcc exists */
 	if (!file_exists (get_full_phase_name(P_ld))) {
 		if (file_exists("/usr/local/bin/gcc")) {
@@ -1267,9 +1690,72 @@ init_phase_info (void)
 			warning ("can't find %s/%s", get_phase_dir(P_ld), get_phase_name(P_ld));
 		}
 	}
+#endif
 }
 
-extern void
+#ifdef KEY
+// Add prefix to the gcc name according to how keycc is invoked.  If keycc is
+// invoked as mips64el-key-linux-keycc, then gcc is mips64el-key-linux-gcc.
+void
+init_phase_names ()
+{
+  char *prefix, *cmd, *x;
+  char path[MAXPATHLEN];
+  int i, j, len, rval;
+
+  /* Look in this special place for a link to the executable. This
+     only works on Linux, but it should work since keycc runs only on Linux. */
+  rval = readlink ("/proc/self/exe", path, sizeof(path));
+  if (rval <= 0)
+    error ("cannot read /proc/self/exe");
+
+  // Extract command from command path.  If command path is
+  // /foo/mips64el-key-linux-keycc, then command is mips64el-key-linux-keycc.
+  for (i = strlen(path)-1; i >= 0; i--) {
+    if (path[i] == '/')
+      break;
+  }
+  if (i < 0) {
+    // '/' not found.  path is the command itself.
+    cmd = path;
+  } else {
+    // Found '/'.  Command begins at the first char after '/'.
+    cmd = path + i + 1;
+  }
+
+  // Get the prefix of the command.  Examples:
+  //   command:  mips64el-key-linux-keycc
+  //   prefix:   mips64el-key-linux-
+  //
+  //   command:  mips64el-key-linux-keycc-
+  //   prefix:   mips64el-key-linux-
+  prefix = strdup(cmd);
+  if ((x = strstr(prefix, "-" PSC_FULL_VERSION))) {
+    *x = '\0';
+  }
+  // Skip all trailing '-', if any.
+  for (i = strlen(prefix)-1; i >= 0 && prefix[i] == '-'; i--);
+  // Skip the last group of non-'-' chars.
+  for (j = i; j >= 0; j--) {
+    if (prefix[j] == '-') {
+      prefix[j+1] = '\0';
+      break;
+    }
+  }
+  if (j < 0)
+    prefix[0] = '\0';	// no prefix
+
+  for (i = P_LAST-1; i >= (int) P_NONE; i--) {
+    char *phase_name = get_phase_name(i);
+    if (strcmp(phase_name, "gcc") == 0 ||
+        strcmp(phase_name, "g++") == 0) {
+      set_phase_name (i, concat_strings(prefix, phase_name));
+    }
+  }
+}
+#endif	// KEY
+
+void
 run_dsm_prelink(void)
 {
 	string_list_t *args = init_string_list();
@@ -1279,11 +1765,11 @@ run_dsm_prelink(void)
 }
 
 
-extern void
+void
 run_ld (void)
 {
 	phases_t ldphase;
-	string ldpath;
+	char *ldpath;
 	string_list_t *args = init_string_list();
 
 	if (ipa == TRUE) {
@@ -1303,7 +1789,23 @@ run_ld (void)
 		error ("ipa.so is not installed on %s", get_phase_dir (ldphase));
 		return;
 	    }
+#ifdef KEY
+	    // Tell ipa_link about the LD_LIBRARY_PATH that was in effect
+	    // before the compiler was run.
+	    char *str = "-INTERNAL:old_ld_lib_path=";
+	    if (old_ld_library_path)
+	      str = concat_strings (str, old_ld_library_path);
+	    add_string(args, str);
+
+#endif
+
 	    init_crt_paths ();
+#ifdef KEY
+	    if (invoked_lang == L_CC ||
+		instrumentation_invoked == TRUE ) {
+	      init_stdc_plus_plus_path();
+	    }
+#endif
 	}
 	ldpath = get_full_phase_name(ldphase);
 
@@ -1326,15 +1828,22 @@ run_ld (void)
   	else
 	    append_objects_to_list (args);
 
+#if defined(KEY) && defined(TARG_MIPS)
+	add_string(args, "-mips64");	// call gcc with -mips64
+#endif
+
+	add_instr_archieve (args);
+
 	add_final_ld_args (args);
+
 	run_phase (ldphase, ldpath, args);
 }
 
-extern void
+void
 run_ar(void)
 {
      string_list_t *args = init_string_list();
-     string arpath;
+     char *arpath;
      arpath = get_full_phase_name(P_ar);
 
      add_string (args, "-rc");
@@ -1346,13 +1855,13 @@ run_ar(void)
 
 
 
-extern void
+void
 run_pixie (void)
 {
  int link_status;
  string_list_t *args = init_string_list();
- string pixie_file;
- string temp;
+ char *pixie_file;
+ char *temp;
 
  copy_phase_options (args, P_pixie);
  add_file_args (args, P_pixie);
@@ -1378,12 +1887,12 @@ run_pixie (void)
  }
 }
 
-extern void
+void
 run_prof (void)
 {
  int link_status;
  string_list_t *args = init_string_list();
- string bin_dot_pixie, bin_plain;
+ char *bin_dot_pixie, *bin_plain;
  boolean delete_link = TRUE;
 
  if (prof_file != NULL) {
@@ -1421,8 +1930,8 @@ run_prof (void)
 				
 }
 
-extern void
-run_compiler (void)
+void
+run_compiler (int argc, char *argv[])
 {
 	int i;
 	string_list_t *args;
@@ -1438,6 +1947,11 @@ run_compiler (void)
 		check_existence_of_phases();
 	}
 	input_source = source_file;
+
+#ifdef PSCSUB
+        obtain_license (get_phase_dir (P_be), argc, argv) ;
+#endif
+
 	for (i = 0; phase_order[i] != P_NONE; i++) {
 
 	        /* special case where the frontend decided that
@@ -1468,6 +1982,36 @@ run_compiler (void)
 			add_file_args (args, phase_order[i]);
 			run_phase (phase_order[i],
 				   get_full_phase_name(phase_order[i]), args);
+#ifdef KEY
+			if ( i == 0 && (string_md == TRUE || string_mmd == TRUE)){
+			        /* Bug# 581, bug #932, bug# 1049, bug #433 */
+				/* We've run the dependency phase, so
+				 * let's clean all those switches out. */
+				string_item_t * p;
+				for (p = args->head; p != NULL; p = p->next) {
+					if (strcmp (p->name, "-MF") == 0) {
+						replace_string (args, p->name, "");
+						replace_string (args, p->next->name, "");
+					}
+					if (strcmp (p->name, "-MT") == 0) {
+						replace_string (args, p->name, "");
+						replace_string (args, p->next->name, "");
+					}
+					if (strcmp (p->name, "-MQ") == 0) {
+						replace_string (args, p->name, "");
+						replace_string (args, p->next->name, "");
+					}
+				}
+				replace_string (args, "-M", "");
+				replace_string (args, "-MM", "");
+				replace_string (args, "-MG", "");
+				replace_string (args, "-MP", "");
+			 	run_phase (phase_order[i],
+					   get_full_phase_name(phase_order[i]), args);
+				string_md = FALSE;
+				string_mmd = FALSE;
+			}
+#endif			
 			if (!inst_info_updated &&
 			    phase_order[i] > P_any_optfe &&
 			    phase_order[i] < P_any_fe) {
@@ -1646,6 +2190,18 @@ void save_command_line(int argc, char **argv)
 	    saved_argv[i] = NULL;
     }
     saved_argv[saved_argc] = NULL;
+}
+
+int check_for_saved_option(char *opt)
+{
+    int i;
+
+    for (i = 1; i < saved_argc; i++) {
+	if (strcmp(opt, saved_argv[i]) == 0)
+	    return 1;
+    }
+
+    return 0;
 }
 
 void set_current_arg_pos(int n)
@@ -1921,7 +2477,7 @@ add_ipl_cmd_string (int iflag)
 {
   if (option_matches_phase (iflag, P_be)) {
     /* Assume inside a FOREACH_IMPLIED_OPTION iteration */
-    string name = get_current_implied_name();
+    char *name = get_current_implied_name();
     
     /* For the first one, build the string list initialized with
      * the command name and -non_shared if necessary:

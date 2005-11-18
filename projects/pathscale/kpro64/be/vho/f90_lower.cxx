@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "defs.h"
 #include "errors.h"
 #include "tracing.h"
@@ -57,8 +63,6 @@
 #include "prompf.h"
 #include "anl_driver.h" 
 #include "wb_f90_lower.h"
-
-#include "stack.h" // For MP_region_stack
 
 #include "intrn_info.h"
 
@@ -108,6 +112,9 @@ typedef struct f90lower_aux_data_s {
 } F90_LOWER_AUX_DATA;
 
 
+/* Memory management */
+static MEM_POOL f90_lower_pool_s;  /* Place to put auxilliary data structures */
+static MEM_POOL *f90_lower_pool=NULL;
 
 typedef struct f90_dep_info_s {
    INT ndim;
@@ -375,7 +382,431 @@ static BOOL do_prewalk(WN * tree, WN * block, BOOL prewalk(WN * node, WN *block1
    }      
    return (keep_going);
 }
+
+#ifdef KEY
+#include "cxx_base.h"
+class FF_STMT_NODE: public SLIST_NODE {
+  DECLARE_SLIST_NODE_CLASS( FF_STMT_NODE);
+private:
+  WN *_stmt;
+public:
+  FF_STMT_NODE() { _stmt = NULL; };
+  FF_STMT_NODE(WN *stmt) { _stmt = stmt; };
+  ~FF_STMT_NODE() {};
+  void Set_Stmt(WN *stmt) { _stmt = stmt; }
+  WN *Get_Stmt() const { return _stmt; }
+};
+                                                                                                                                                             
+class FF_STMT_LIST: public SLIST {
+  DECLARE_SLIST_CLASS( FF_STMT_LIST, FF_STMT_NODE )
+public:
+  ~FF_STMT_LIST(void){};
+  void Append(WN *stmt, MEM_POOL *mpool) {
+    Append(CXX_NEW(FF_STMT_NODE(stmt), mpool));
+  }
+  void Prepend(WN *stmt, MEM_POOL *mpool) {
+    Prepend(CXX_NEW(FF_STMT_NODE(stmt), mpool));
+  }
+};
+                                                                                                                                                             
+class FF_STMT_ITER: public SLIST_ITER {
+  DECLARE_SLIST_ITER_CLASS( FF_STMT_ITER, FF_STMT_NODE, FF_STMT_LIST )
+public:
+  ~FF_STMT_ITER() {};
+};
+
+struct F90_LOOP_INFO{
+INT start, end, step;
+};
+
+static BOOL Find_Preceeding_Pragma(WN* wn, WN_PRAGMA_ID pragma_id)
+{
+  WN* prev_pragma=WN_prev(wn);
+  while (prev_pragma &&
+        (WN_opcode(prev_pragma)==OPC_PRAGMA ||
+         WN_opcode(prev_pragma)==OPC_XPRAGMA)) {
+    if (WN_pragma(prev_pragma)==pragma_id)
+      return TRUE;
+    prev_pragma=WN_prev(prev_pragma);
+  }
+  return FALSE;
+}
+static void 
+F90_Separate(WN* in_loop, WN* block, WN* in_stmt, UINT8 level, WN** new_loop, BOOL create_empty_loop = FALSE)
+{
+
+  WN* loop_body1;
+  WN* loop_body2;
+  WN* wn1;
+  WN* wn2;
+
+  FmtAssert(WN_opcode(in_loop)==OPC_DO_LOOP, 
+    ("non-loop input node in Separate()\n") );
+
+  if (!in_stmt && !create_empty_loop) {
+    Is_True(0, ("Null stmt passed into LNO:Separate()\n"));
+    return;
+  }
+  
+
+  if (in_stmt && !create_empty_loop && (WN_next(in_stmt) == NULL)) {
+    // loop with single statement
+    *new_loop=NULL;
+    return;
+  }
+
+  // Create DO loop node for loop2, TODO should use wn_pool
+  *new_loop =WN_CreateDO (
+	WN_COPY_Tree(WN_index(in_loop)),	// index
+	WN_COPY_Tree(WN_start(in_loop)),	// start
+	WN_COPY_Tree(WN_end(in_loop)),	// end
+	WN_COPY_Tree(WN_step(in_loop)),	// step
+  	WN_CreateBlock(),			// body
+	NULL);
+
+  WN_Set_Linenum(WN_do_body(*new_loop),WN_Get_Linenum(WN_do_body(in_loop)));
+  // Assumption: start, end, and step expressions are all loop-invariant
+
+  loop_body1=WN_do_body(in_loop);
+  loop_body2=WN_do_body(*new_loop);
+
+  // cut the loop body of loop1 at in_stmt
+  if (in_stmt){
+    if (WN_next(in_stmt)!=NULL){
+      WN_first(loop_body2)=WN_next(in_stmt);
+      WN_last(loop_body2)=WN_last(loop_body1);
+      WN_last(loop_body1)=in_stmt;
+      WN_prev(WN_first(loop_body2))=NULL;
+      WN_next(WN_last(loop_body2))=NULL;
+      WN_next(WN_last(loop_body1))=NULL;
+    }
+  } else {
+    WN_first(loop_body2)=WN_first(loop_body1);
+    WN_last(loop_body2)=WN_last(loop_body1);
+    WN_first(loop_body1)=NULL;
+    WN_last(loop_body1)=NULL;
+  }
+
+  wn1 = in_loop;
+  wn2 = *new_loop;
+
+  WN_Set_Linenum(wn2, WN_Get_Linenum(wn1));
+  WN_INSERT_BlockAfter(block,	                                        // block
+	               wn1,						// wn
+	               wn2						// in
+	               );						// pool
+
+}
+static void F90_Separate_And_Update(WN* in_loop, WN* block, DYN_ARRAY<FF_STMT_LIST>& loop, UINT fission_level)
+{
+  UINT total_loops=loop.Lastidx()+1;
+  WN*** wn_starts=CXX_NEW_ARRAY(WN**, fission_level, f90_lower_pool);
+  WN*** wn_ends=CXX_NEW_ARRAY(WN**, fission_level, f90_lower_pool);
+  WN*** wn_steps=CXX_NEW_ARRAY(WN**, fission_level, f90_lower_pool);
+  INT i;
+
+  for (i=0; i<fission_level; i++) {
+    wn_starts[i]=CXX_NEW_ARRAY(WN*, total_loops, f90_lower_pool);
+    wn_ends[i]=CXX_NEW_ARRAY(WN*, total_loops, f90_lower_pool);
+    wn_steps[i]=CXX_NEW_ARRAY(WN*, total_loops, f90_lower_pool);
+  }
+
+  WN*** new_loop=CXX_NEW_ARRAY(WN**, fission_level, f90_lower_pool);
+  WN* wn = in_loop;
+  WN* outer_most_loop;
+
+  for (i=fission_level-1; i>=0; i--) {
+    new_loop[i]=CXX_NEW_ARRAY(WN*,total_loops,f90_lower_pool);
+    new_loop[i][0]=wn;
+    wn_starts[i][0]=WN_kid0(WN_start(wn));
+    wn_ends[i][0]=WN_end(wn);
+    wn_steps[i][0]=WN_kid0(WN_step(wn));
+    if (i==0)
+      outer_most_loop=wn;
+  }
+
+  for (i=total_loops-1; i>0; i--) {
+    WN* loop_body = WN_do_body(in_loop);
+    WN* first_stmt = loop[i].Head()->Get_Stmt();
+    FF_STMT_NODE* stmt_node_p;
+    F90_Separate(in_loop, block, WN_prev(first_stmt), fission_level, &wn);
+  }
+}
+
+static BOOL Arraysection_in_Subtree(WN *tree)
+{
+   WN_ITER *tree_iter;
+   WN *node;
+   OPERATOR opr;
+
+   tree_iter = WN_WALK_TreeIter(tree);
+   while (tree_iter) {
+      node = WN_ITER_wn(tree_iter);
+      opr = WN_operator(node);
+      if (opr == OPR_ARRSECTION) {
+	 WN_WALK_Abort(tree_iter);
+	 return (TRUE);
+      }
+      tree_iter = WN_WALK_TreeNext(tree_iter);
+   }
+   return (FALSE);
+}
+
+static BOOL F90_Processed_ST(ST *st, STACK<ST*> *processed)
+{
+      for (INT i=0; i<processed->Elements(); ++i)
+        if (processed->Bottom_nth(i)==st)
+          return TRUE;
+      return FALSE;
+
+}
+static inline INT64
+Num_Elements(ARB_HANDLE arb)
+{
+  return abs(ARB_ubnd_val(arb) - ARB_lbnd_val(arb) + 1);
+}
+static INT64
+Get_New_Size_Padding(TY_IDX new_array_ty_idx, TY_IDX old_array_ty_idx,
+                     INT32 start_dim)
+{
+ TY&  new_array_ty = Ty_Table[new_array_ty_idx];
+ TY& old_array_ty = Ty_Table[old_array_ty_idx];
+                                                                                                                                                             
+  INT64 old_size = 1;
+  INT64 new_size = 1;
+  INT old_num_dims = TY_AR_ndims(old_array_ty);
+  INT new_num_dims = TY_AR_ndims(new_array_ty);
+  ARB_HANDLE old_arb_base = TY_arb(old_array_ty);
+  ARB_HANDLE new_arb_base = TY_arb(new_array_ty);
+                                                                                                                                                             
+ Is_True((start_dim < old_num_dims), ("start dim = %d , num_dims = %d  in Get_New_Size_Padding \n", start_dim, old_num_dims));
+                                                                                                                                                             
+  for (INT i=start_dim; i<old_num_dims; ++i)
+  {
+      ARB_HANDLE old_arb = old_arb_base[i];
+      ARB_HANDLE new_arb = new_arb_base[i];
+      old_size = old_size*Num_Elements(old_arb);
+      new_size = new_size*Num_Elements(new_arb);
+  }
+  for (INT i=old_num_dims;i<new_num_dims; ++i){
+      ARB_HANDLE new_arb = new_arb_base[i];
+      new_size = new_size*Num_Elements(new_arb);
+  }
    
+  new_size = new_size - old_size;
+  return new_size;
+}
+
+static void F90_Expand_Array(ST *st, F90_LOOP_INFO *loop_info, WN *parent_loop, WN **new_subscript, STACK<ST*> *processed)
+{
+  WN *index = WN_index(parent_loop);
+  if (!F90_Processed_ST(st, processed)){
+    TY_IDX old_array_ty_idx = ST_type(st);
+    INT num_dims = TY_AR_ndims(old_array_ty_idx);
+    TY_IDX etype_idx = TY_etype(old_array_ty_idx);
+    const TY& etype = Ty_Table[etype_idx];
+    TY_IDX new_array_ty_idx = Make_Array_Type(TY_mtype(etype), num_dims+1, 1);
+    Set_TY_etype(new_array_ty_idx, etype_idx);
+    Set_TY_name_idx(Ty_Table[new_array_ty_idx], TY_name_idx(Ty_Table[old_array_ty_idx]));
+    Set_TY_size(Ty_Table[new_array_ty_idx],TY_size(Ty_Table[old_array_ty_idx]));
+    num_dims = TY_AR_ndims(new_array_ty_idx);
+    ARB_HANDLE arb_base = TY_arb(new_array_ty_idx);
+    ARB_HANDLE old_arb_base = TY_arb(old_array_ty_idx);
+    ARB_HANDLE  arb, old_arb;
+    UINT i;
+    for (i = 0; i < num_dims-1 ; ++i)
+    {
+      arb = arb_base[i];
+      old_arb = old_arb_base[i];
+      ARB_Init(arb, ARB_lbnd_val(old_arb),
+               ARB_ubnd_val(old_arb),
+               ARB_stride_val(old_arb)*(loop_info->end-loop_info->start+1)/loop_info->step);
+      Set_ARB_dimension(arb, num_dims-i);
+      if (i==0)
+        Set_ARB_first_dimen(arb_base[0]);
+    }
+    arb = arb_base[i];
+    ARB_Init(arb, 1, 1+abs((loop_info->end-loop_info->start)/loop_info->step), abs((loop_info->end-loop_info->start)/loop_info->step));
+    Set_ARB_dimension(arb, num_dims-i);
+    Set_ARB_last_dimen(arb_base[i]);
+
+    TY& new_array_ty = Ty_Table[new_array_ty_idx];
+    TY& old_array_ty = Ty_Table[old_array_ty_idx];
+    etype_idx = TY_etype(old_array_ty);
+    INT64 add_size  = Get_New_Size_Padding(new_array_ty_idx,
+                                         old_array_ty_idx,0);
+    add_size = add_size*TY_size(etype_idx);
+    Set_TY_size(new_array_ty, TY_size(old_array_ty) + add_size);
+    Set_ST_type(*st, new_array_ty_idx);
+    processed->Push(st);
+  }
+
+  TYPE_ID index_type = WN_desc(WN_start(parent_loop));
+  ST *loop_index =  WN_st(index);
+  *new_subscript = WN_Div(index_type, 
+                   WN_Sub(index_type, 
+                          WN_Ldid(index_type, WN_idname_offset(index), loop_index, MTYPE_To_TY(index_type)),
+                          WN_Intconst(index_type, loop_info->start)), 
+                   WN_Intconst(index_type,loop_info->step));
+  *new_subscript = WN_Simplify_Tree(*new_subscript);
+
+}
+
+static WN *Find_Arrsection_and_Pos(WN *tree, WN **parent, INT* pos,  STACK<WN*> *processed_wn)
+{
+   WN *r;
+   INT num_kids,i;
+   switch (WN_operator(tree)) {
+    case OPR_ARRSECTION:
+      for ( i=0; i<processed_wn->Elements(); ++i)
+        if (processed_wn->Bottom_nth(i)==tree)
+          return NULL;
+       processed_wn->Push(tree);
+      return (tree);
+    case OPR_ARRAY:
+    case OPR_ARRAYEXP:
+      *pos = 0;
+      *parent = tree;
+      return (Find_Arrsection_and_Pos(WN_kid0(tree), parent, pos, processed_wn));
+    default:
+      num_kids = WN_kid_count(tree);
+      r = NULL;
+      for (i=0; i < num_kids; i++) {
+         *pos = i;
+         *parent = tree;
+         r = Find_Arrsection_and_Pos(WN_kid(tree,i), parent, pos, processed_wn);
+         if (r) break;
+      }
+      return (r);
+   }
+}
+static void F90_Modify_Array_Section(ST *st, WN *old_wn, WN *parent, INT pos, WN *new_wn, STACK<WN*> *processed_wn)
+{
+  TY_IDX array_ty_idx = ST_type(st);
+  INT ndim = TY_AR_ndims(array_ty_idx);
+
+   /* Create the ARRSECTION node referring to the temp */
+   WN *arrsection = WN_Create(OPCarrsection,2*ndim+1);
+   TY_IDX temp_ty = TY_etype(array_ty_idx);
+   TY_IDX ptr_ty = Make_Pointer_Type(temp_ty);
+   WN_kid0(arrsection) = WN_Lda(Pointer_type, (WN_OFFSET) 0, st);
+   INT element_size = TY_size(temp_ty);
+   WN_element_size(arrsection) = element_size;
+
+   ARB_HANDLE arb_base = TY_arb(array_ty_idx);
+   WN_kid(arrsection, 1) = WN_Intconst(MTYPE_I8, ARB_ubnd_val(arb_base[ndim-1]));
+   WN_kid(arrsection, ndim+1) = WN_COPY_Tree(new_wn);
+   
+   for (INT i=1; i < ndim; i++) {
+      /* Kids 1 to ndim are the array sizes */
+      WN_kid(arrsection,i+1) = WN_COPY_Tree(WN_kid(old_wn,i));
+      /* Kids ndim+1 to 2*ndim are the index expressions */
+      WN_kid(arrsection,i+1+ndim) = WN_COPY_Tree(WN_kid(old_wn,i+ndim-1));
+   }
+   WN_kid(parent, pos) = arrsection;
+   processed_wn->Push(arrsection);
+}
+
+static void F90_Array_Expansion(F90_LOOP_INFO *loop_info, WN *parent_loop, WN *stmt, STACK<ST*> *processed)
+{
+   OPCODE op;
+   OPERATOR opr;
+   BOOL is_arrayexp;
+   WN *arrayexp = NULL;
+   INT i,num_kids;
+   WN *arraysection = NULL;
+   WN *new_subscript = NULL;
+
+   op = WN_opcode(stmt);
+   opr = OPCODE_operator(op);
+   
+   if (opr == OPR_WHERE) 
+      arrayexp = WN_first(WN_kid0(stmt)); 
+   else if (opr == OPR_MSTORE || opr == OPR_ISTORE) {
+     if (WN_operator(WN_kid1(stmt)) == OPR_ARRAYEXP) 
+       arrayexp = WN_kid1(stmt);
+   } 
+   WN *parent; 
+   INT pos;
+   if (arrayexp) {
+     STACK<WN*> *processed_wn = CXX_NEW(STACK<WN*>(f90_lower_pool), f90_lower_pool);
+     arraysection = Find_Arrsection_and_Pos(arrayexp, &parent, &pos, processed_wn);
+     while (arraysection){
+       WN *addr = WN_kid0(arraysection);
+       if (WN_operator(addr) == OPR_LDA && ST_is_temp_var(WN_st(addr))){
+         F90_Expand_Array(WN_st(addr), loop_info, parent_loop, &new_subscript, processed);
+         F90_Modify_Array_Section(WN_st(addr), arraysection, parent, pos, new_subscript, processed_wn); 
+       }
+       arraysection = Find_Arrsection_and_Pos(arrayexp, &parent, &pos, processed_wn);
+     }
+   }
+}
+
+static BOOL F90_Get_Loop_Info(WN *parent_loop, F90_LOOP_INFO *loop_info){
+  WN *start = WN_kid0(WN_start(parent_loop));
+  WN *end = WN_kid1(WN_end(parent_loop));
+  WN *step = WN_kid1(WN_kid0(WN_step(parent_loop)));
+  if (WN_operator(start)!=OPR_INTCONST || WN_operator(end)!=OPR_INTCONST || WN_operator(step)!=OPR_INTCONST)
+    return FALSE;
+  loop_info->start = WN_const_val(start);
+  loop_info->end = WN_const_val(end);
+  loop_info->step = WN_const_val(step);
+  return TRUE;
+}
+
+static void F90_Fission_Loop(WN* wn, WN *block)
+{
+  INT level = 1;
+  WN* parent_loop = wn;
+  DYN_ARRAY<FF_STMT_LIST> loops(f90_lower_pool);
+  F90_LOOP_INFO loop_info;
+
+  STACK<ST*> *processed = CXX_NEW(STACK<ST*>(f90_lower_pool), f90_lower_pool);
+  WN* stmt=WN_first(WN_do_body(parent_loop));
+  if (!F90_Get_Loop_Info(parent_loop, &loop_info))
+    return;
+  INT total_loops = 0;
+  while (stmt){
+/* So far we can not handle the case of FORALL Loop nest with where statement. The extension is to implemented later */
+    if (WN_operator(stmt) == OPR_DO_LOOP)
+      return;
+
+    loops.Newidx();
+    if (Arraysection_in_Subtree(stmt))
+      F90_Array_Expansion(&loop_info, parent_loop, stmt, processed);
+    loops[total_loops++].Append(stmt, f90_lower_pool);
+    stmt=WN_next(stmt);
+  }
+  F90_Separate_And_Update(parent_loop, block, loops, level);
+}
+static void F90_Walk_Stmts_return_where (WN *tree, BOOL *where_flag)
+{
+  OPCODE op;
+  WN *node;
+
+  if (*where_flag == TRUE)
+    return;
+
+  op = WN_opcode(tree);
+  if (op == OPC_BLOCK) {
+    node = WN_first(tree);
+    while (node) {
+      F90_Walk_Stmts_return_where(node, where_flag);
+      node = WN_next(node);
+    }
+  } else if (OPCODE_is_scf(op) && op != OPC_WHERE) { 
+    for (INT i=0; i < WN_kid_count(tree); i++) {
+      F90_Walk_Stmts_return_where(WN_kid(tree,i), where_flag);
+    }
+  } else if (OPCODE_is_stmt(op) || op == OPC_WHERE) {
+    if (op == OPC_WHERE)
+      *where_flag = TRUE;
+    return; 
+  }
+  return;
+}
+
+#endif   
 
 static BOOL F90_Walk_Statements_Helper(WN * tree, WN * block,
 				       BOOL prewalk(WN * node, WN *block),
@@ -408,6 +839,15 @@ static BOOL F90_Walk_Statements_Helper(WN * tree, WN * block,
 	 keep_going = do_prewalk(tree,block,prewalk);
 	 if (!keep_going) goto done;
       }
+#ifdef KEY
+      if (WN_operator(tree) == OPR_DO_LOOP) {
+        BOOL forall_flag =  Find_Preceeding_Pragma(tree,WN_PRAGMA_FORALL);
+        BOOL where_flag = FALSE;
+        F90_Walk_Stmts_return_where(tree, &where_flag);
+        if (forall_flag == TRUE && where_flag == TRUE)
+          F90_Fission_Loop(tree, block);
+      }
+#endif
       numkids = WN_kid_count(tree);
       for (i=0; i < numkids; i++) {
 	 keep_going = F90_Walk_Statements_Helper(WN_kid(tree,i), block, prewalk, walk_scf);
@@ -447,9 +887,6 @@ static void F90_Walk_All_Statements(WN * tree, BOOL prewalk(WN * node, WN *block
 **************************************************************
 **************************************************************/
 
-/* Memory management */
-static MEM_POOL f90_lower_pool_s;  /* Place to put auxilliary data structures */
-static MEM_POOL *f90_lower_pool=NULL;
 
 /*
    Auxilliary stuff needed to maintain correspondence between PREG used for allocation
@@ -3574,6 +4011,10 @@ static WN * create_doloop(PREG_NUM *index, char *index_name, WN *count, DIR_FLAG
 
    index_type = doloop_ty;
    intconst_op = OPCODE_make_op(OPR_INTCONST,index_type,MTYPE_V);
+#ifdef KEY
+   if (MTYPE_size_min(index_type) != MTYPE_size_min(WN_rtype(count)))
+     count = WN_Cvt(WN_rtype(count), index_type, count);
+#endif
    
    /* Create an index */
    *index = Create_Preg(index_type,Index_To_Str(Save_Str(index_name)));
@@ -3916,7 +4357,12 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
       /* Lower the mask and array argument */
       accum_expr = F90_Lower_Walk(kids[0],new_indices,rank,stlist,NULL);
       accum_store = WN_StidPreg(expr_ty,cur_val,accum_expr);
+// Bug #411
+#ifdef KEY
+      WN_INSERT_BlockLast(stlist,accum_store);
+#else
       WN_INSERT_BlockFirst(stlist,accum_store);
+#endif
       
       comp_expr = WN_CreateExp2(reduction_op,WN_LdidPreg(expr_ty,cur_val),
 				WN_LdidPreg(expr_ty,accum));
@@ -4280,6 +4726,12 @@ static WN *lower_eoshift(WN *kids[],PREG_NUM indices[],INT ndim,WN *block, WN *i
     * General case; we create a brand-new set of loops, and delete the current loopnest
     */
 
+#ifdef KEY
+// Bug# 267
+   if (MTYPE_bit_size(Pointer_type) == 64 && WN_rtype(shift) != MTYPE_I8)
+     kids[1] = WN_Type_Conversion(kids[1], MTYPE_I8);
+#endif
+
    temp_store = F90_Current_Stmt;
    WN_EXTRACT_FromBlock(block,temp_store);
    original_loopnest = F90_Current_Loopnest;
@@ -4505,6 +4957,11 @@ static WN *lower_cshift(WN *kids[],PREG_NUM indices[],INT ndim,WN *block, WN *in
 	 extent = sizes[i];
       }
    }
+#ifdef KEY
+// Bug# 274
+   if (MTYPE_bit_size(Pointer_type) == 64 && WN_rtype(shift) != MTYPE_I8)
+     shift = WN_Type_Conversion(shift, MTYPE_I8);
+#endif
    shift = WN_CreateExp2(OPCmod,shift,WN_COPY_Tree(extent));
 
    /* Check for 0 shift */

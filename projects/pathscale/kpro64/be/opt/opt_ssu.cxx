@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 //
 // Module: opt_ssu.cxx
@@ -87,6 +92,23 @@
 #include "opt_alias_rule.h"
 #include "opt_etable.h"
 
+#ifdef KEY
+static void
+// =====================================================================
+// x's dtyp and dsctyp fields are not initialized; initialize them with
+// values gotten by searching for other nodes of the same symbol
+// =====================================================================
+Fix_var_mtypes(CODEREP *x, AUX_STAB_ENTRY *aux) {
+  CODEREP_ITER cr_iter;
+  CODEREP *cr;
+  FOR_ALL_NODE(cr, cr_iter, Init(aux->Cr_list()))
+    if (cr->Dtyp() != MTYPE_V && cr->Dtyp() != MTYPE_UNKNOWN) {
+      x->Set_dtyp(cr->Dtyp());
+      x->Set_dsctyp(cr->Dsctyp());
+    }
+}
+#endif
+
 // =====================================================================
 // cr must be a CK_VAR node; determine if it is a candidate for SPRE, and
 // create the SPRE worklist node if it is, and return it
@@ -101,6 +123,7 @@ EXP_WORKLST * SSU::SPRE_candidate(CODEREP *cr)
     return wk;
   if (aux->No_spre()) return NULL; // this flag added to speed up checking
   if (!aux->Is_real_var() || 
+      aux->No_register() || // Screen out MSTID
       !aux->Has_store_in_PU() || 
       aux->Is_volatile() ||
       ST_class(aux->St()) == CLASS_PREG ||
@@ -115,8 +138,13 @@ EXP_WORKLST * SSU::SPRE_candidate(CODEREP *cr)
   // if LPRE has not been run or there is no load, home_sym will be 0;
   // create a new preg and set home_sym
   if (aux->Home_sym() == 0) {
-    Is_True(cr->Dtyp() != MTYPE_V,
-	    ("SSU::SPRE_candidate: dtyp is void"));
+#ifndef KEY
+    Is_True(cr->Dtyp() != MTYPE_V && cr->Dtyp() != MTYPE_UNKNOWN,
+	    ("SSU::SPRE_candidate: dtyp is void or unknown"));
+#else
+    if (cr->Dtyp() == MTYPE_V || cr->Dtyp() == MTYPE_UNKNOWN)
+      Fix_var_mtypes(cr, aux);
+#endif
     WN *home_wn = cr->Rvi_home_wn(Opt_stab());
     AUX_ID home_auxid = Opt_stab()->Create_preg(cr->Dtyp(),aux->St_name(),home_wn);
     // call to Create_preg may cause aux_stab to be re-allocated

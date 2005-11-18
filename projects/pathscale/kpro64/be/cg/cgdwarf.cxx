@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -59,7 +63,6 @@
 #include <elf.h>
 #include <elfaccess.h>
 #include <libelf.h>
-#include <vector.h>
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
@@ -445,6 +448,7 @@ put_const_attribute (DST_CONST_VALUE cval, Dwarf_Half ref_attr, Dwarf_P_Die die)
     case DST_FORM_STRING:
       put_string (DST_CONST_VALUE_form_string(cval), ref_attr, die);
       break;
+#ifndef KEY
     case DST_FORM_DATA1:
       dwarf_add_AT_unsigned_const (dw_dbg, die, ref_attr,
 	      DST_CONST_VALUE_form_data1(cval), &dw_error);
@@ -461,6 +465,37 @@ put_const_attribute (DST_CONST_VALUE cval, Dwarf_Half ref_attr, Dwarf_P_Die die)
       dwarf_add_AT_unsigned_const (dw_dbg, die, ref_attr,
 	      DST_CONST_VALUE_form_data8(cval), &dw_error);
       break;
+#else
+    // Bug 1188
+    case DST_FORM_DATA1:
+      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+	      DST_CONST_VALUE_form_data1(cval), &dw_error, 1);
+      break;
+    case DST_FORM_DATA2:
+      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+	      DST_CONST_VALUE_form_data2(cval), &dw_error, 2);
+      break;
+    case DST_FORM_DATA4:
+      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+	      DST_CONST_VALUE_form_data4(cval), &dw_error, 4);
+      break;
+    case DST_FORM_DATA8:
+      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+	      DST_CONST_VALUE_form_data8(cval), &dw_error, 8);
+      break;
+    case DST_FORM_DATAC4:
+      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+	      DST_CONST_VALUE_form_crdata4(cval), &dw_error, 4);
+      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+	      DST_CONST_VALUE_form_cidata4(cval), &dw_error, 4);
+      break;
+    case DST_FORM_DATAC8:
+      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+	      DST_CONST_VALUE_form_crdata8(cval), &dw_error, 8);
+      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+	      DST_CONST_VALUE_form_cidata8(cval), &dw_error, 8);
+      break;
+#endif // KEY
   }
 }
 
@@ -725,14 +760,24 @@ put_location (
   switch (ST_sclass(st)) {
     case SCLASS_FORMAL:
 	if (base_st != SP_Sym && base_st != FP_Sym) {
+                //printf ("[1] base_offset: %lld, ofst: %lld, offs: %d\n", base_ofst, ST_ofst(st), offs) ;
 		dwarf_add_expr_addr_b (expr,
+#ifdef KEY
+			           base_ofst + offs,               // need to add base offset because if the symbols has
+                                                                    // a base, the offset is not necessarily set
+#else
 				       ST_ofst(st) + offs,
+#endif
 				       Cg_Dwarf_Symtab_Entry(CGD_ELFSYM,
 							     EMT_Put_Elf_Symbol(base_st)),
 				       &dw_error);
 		if (Trace_Dwarf) {
 	  		fprintf (TFile,"LocExpr: symbol = %s, offset = %lld\n", 
-			      ST_name(base_st), ST_ofst(st) + offs); 
+#ifdef KEY
+			      ST_name(base_st), base_ofst + ST_ofst(st) + offs);
+#else
+			      ST_name(base_st), ST_ofst(st) + offs);
+#endif
 		}
 		break;
 	}
@@ -767,14 +812,24 @@ put_location (
     case SCLASS_FSTATIC:
     case SCLASS_PSTATIC:
       if (base_st != NULL) {
+         //printf ("[2] %s (%s): real base_ofst: %llx, calc base_offset: %lld, ofst: %lld, offs: %d, base_st: %p, st: %p\n", ST_name(st), ST_name(base_st), ST_ofst(base_st), base_ofst, ST_ofst(st), offs, base_st, st) ;
 	dwarf_add_expr_addr_b (expr,
+#ifdef KEY      
+			           base_ofst + offs,               // need to add base offset because if the symbols has
+                                                                    // a base, the offset is not necessarily set
+#else
 			       ST_ofst(st) + offs, 
+#endif
 			       Cg_Dwarf_Symtab_Entry(CGD_ELFSYM,
 						     EMT_Put_Elf_Symbol(base_st)),
 			       &dw_error);
 	if (Trace_Dwarf) {
 	  fprintf (TFile,"LocExpr: symbol = %s, offset = %lld\n", 
+#ifdef KEY
+			      ST_name(base_st), base_ofst + ST_ofst(st) + offs); 
+#else
 			      ST_name(base_st), ST_ofst(st) + offs); 
+#endif
 	}
       }
       else {
@@ -800,6 +855,26 @@ put_location (
       }
       break;
     default:
+#ifdef KEY
+      // Treat unknown sclass variables as SCLASS_AUTO if 
+      // the base points to the stack. Fix bug #380 
+      if (base_st == FP_Sym && ST_sclass(st) == SCLASS_UNKNOWN) {
+        if (DST_IS_base_deref(flag)) { /* f90 formal dope  */
+	  
+	  dwarf_add_expr_gen (expr, DW_OP_fbreg, Offset_from_FP(st), 
+			      0, &dw_error);
+	  
+	  dwarf_add_expr_gen (expr, DW_OP_deref, 0,0, &dw_error);
+	  dwarf_add_expr_gen (expr, DW_OP_plus_uconst, offs, 0, &dw_error);
+	  
+	} else {
+
+	  dwarf_add_expr_gen (expr, DW_OP_fbreg, Offset_from_FP(st) + offs, 
+			      0, &dw_error);
+	}
+	break;
+      }
+#endif
       ErrMsg (EC_Unimplemented, "put_location: sclass");
       return;
   }
@@ -949,6 +1024,11 @@ put_variable(DST_flag flag, DST_VARIABLE *attr, Dwarf_P_Die die)
     put_reference (DST_VARIABLE_decl_type(attr), DW_AT_type, die);
     put_flag (DW_AT_declaration, die);
     if (DST_IS_external(flag)) put_flag (DW_AT_external, die);
+#ifdef KEY
+    if (!DST_IS_NULL (DST_VARIABLE_decl_linkage_name(attr))) {
+        put_string (DST_VARIABLE_decl_linkage_name(attr), DW_AT_MIPS_linkage_name, die) ;
+    }
+#endif
   }
   else if (DST_IS_comm(flag)) { /* definition of a common block variable. */
     put_decl(DST_VARIABLE_comm_decl(attr), die);
@@ -991,6 +1071,11 @@ put_variable(DST_flag flag, DST_VARIABLE *attr, Dwarf_P_Die die)
 		die);
     }
     /* else if is cross-file inlined, will use name for matching */
+#ifdef KEY
+    if (!DST_IS_NULL (DST_VARIABLE_decl_linkage_name(attr))) {
+        put_string (DST_VARIABLE_def_linkage_name(attr), DW_AT_MIPS_linkage_name, die) ;
+    }
+#endif
   }
 }
 
@@ -1013,6 +1098,7 @@ put_formal_parameter(DST_flag flag, DST_FORMAL_PARAMETER *attr, Dwarf_P_Die die)
    put_reference (DST_FORMAL_PARAMETER_default_val(attr),
 		  DW_AT_default_value, 
 	          die);
+   put_reference (DST_FORMAL_PARAMETER_type(attr), DW_AT_type, die);            // bug 1735: need the type for the formal paras
    put_flag (DW_AT_declaration, die);
   } else {
 
@@ -1276,8 +1362,17 @@ put_member(DST_flag flag, DST_MEMBER *attr, Dwarf_P_Die die)
 	 * so use decl flag. */
   	/* For now, assume that the member location is always a constant. */
   	expr = dwarf_new_expr (dw_dbg, &dw_error);
+#ifdef KEY
+        // the dwarf spec says that the location expression for a structure member
+        // assumes that the location of the struct itself is on the stack.  This
+        // implies that we need to add a constant, not just push one
+        // (DWARF2 page 41)
+  	dwarf_add_expr_gen (expr, DW_OP_plus_uconst, DST_MEMBER_memb_loc(attr), 0, 
+		&dw_error);
+#else
   	dwarf_add_expr_gen (expr, DW_OP_consts, DST_MEMBER_memb_loc(attr), 0, 
 		&dw_error);
+#endif
 #if pv292951
 	/* according to the spec, we should do this, but dbx doesn't like it */
 	dwarf_add_expr_gen (expr, DW_OP_plus, 0, 0, &dw_error);
@@ -1830,6 +1925,12 @@ void
 Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 		     LABEL_IDX  begin_label,
 		     LABEL_IDX  end_label,
+#ifdef TARG_X8664
+		     LABEL_IDX eh_pushbp_label,
+		     LABEL_IDX eh_movespbp_label,
+		     LABEL_IDX eh_adjustsp_label,
+		     LABEL_IDX* eh_callee_saved_reg,
+#endif // TARG_X8664
 		     INT32      end_offset,
 		     ST        *PU_st,
 		     DST_IDX    pu_dst,
@@ -1902,6 +2003,7 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 
   /* setup the frame_base attribute. */
   expr = dwarf_new_expr (dw_dbg, &dw_error);
+#ifndef TARG_X8664
   if (Current_PU_Stack_Model != SMODEL_SMALL)
     dwarf_add_expr_gen (expr, DW_OP_bregx,
 	REGISTER_machine_id (TN_register_class(FP_TN), TN_register(FP_TN)),
@@ -1910,6 +2012,27 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
     dwarf_add_expr_gen (expr, DW_OP_bregx,
 	REGISTER_machine_id (TN_register_class(SP_TN), TN_register(SP_TN)),
 	Frame_Len, &dw_error);
+#else
+#ifdef KEY              // seems that gdb 5.x doesn't like bregx for AT_frame_base.
+  if (Current_PU_Stack_Model != SMODEL_SMALL)
+    dwarf_add_expr_gen (expr, DW_OP_reg6, 0, 0, &dw_error) ;
+  else
+    dwarf_add_expr_gen (expr, DW_OP_breg7, Frame_Len, 0, &dw_error) ;           // XXX: will this work?
+#else
+  /* isa_registers.cxx order of registers is different from that of gdb 
+   * Try "info registers".  
+   * If we change the order in isa_registers now, it is total chaos.
+   */
+  if (Current_PU_Stack_Model != SMODEL_SMALL)
+    dwarf_add_expr_gen (expr, DW_OP_bregx,
+	6 /* REGISTER_machine_id (TN_register_class(FP_TN), TN_register(FP_TN)) */,
+	0, &dw_error);
+  else
+    dwarf_add_expr_gen (expr, DW_OP_bregx,
+	7 /* REGISTER_machine_id (TN_register_class(SP_TN), TN_register(SP_TN)) */,
+	Frame_Len, &dw_error);
+#endif /* KEY */
+#endif /* TARG_X8664 */
 
   dwarf_add_AT_location_expr(dw_dbg, PU_die, DW_AT_frame_base, expr, &dw_error);
   if (PU_is_mainpu(ST_pu(PU_st))) {
@@ -1924,11 +2047,43 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 						     end_label,
 						     scn_index);
 
+#ifndef TARG_X8664
   fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
 			    begin_entry,
 			    end_entry,
 			    end_offset,
 			    low_pc, high_pc);
+#else
+  Dwarf_Unsigned pushbp_entry = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+						      eh_pushbp_label,
+						      scn_index);
+  Dwarf_Unsigned movespbp_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+							  eh_movespbp_label,
+							  scn_index);
+  Dwarf_Unsigned adjustsp_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+							  eh_adjustsp_label,
+							  scn_index);
+  Dwarf_Unsigned *callee_saved_reg;
+  INT num_callee_saved_regs;
+  if (num_callee_saved_regs = Cgdwarf_Num_Callee_Saved_Regs()) {
+    callee_saved_reg = (Dwarf_Unsigned*)malloc(sizeof(Dwarf_Unsigned) *
+    						num_callee_saved_regs);
+    for (INT i = 0; i < num_callee_saved_regs; i ++)
+      callee_saved_reg[i] = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+      						  eh_callee_saved_reg[i],
+						  scn_index);      
+  } else
+    callee_saved_reg = NULL;
+  fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
+			    begin_entry,
+			    end_entry,
+			    pushbp_entry,
+			    movespbp_entry,
+			    adjustsp_entry,
+			    callee_saved_reg,
+			    end_offset,
+			    low_pc, high_pc);  
+#endif // TARG_X8664
 
   Dwarf_Unsigned eh_handle;
 
@@ -1973,6 +2128,13 @@ Cg_Dwarf_Begin (BOOL is_64bit)
   cu_info = DST_INFO_IDX_TO_PTR (cu_idx);
   Dwarf_Language = Get_Dwarf_Language (cu_info);
 
+#ifdef TARG_X8664
+  if (!CG_emit_unwind_info)
+  dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf, 
+			  0,
+			  Cg_Dwarf_Enter_Elfsym);
+  else
+#endif
   dw_dbg = Em_Dwarf_Begin(is_64bit, Trace_Dwarf, 
 			  (Dwarf_Language == DW_LANG_C_plus_plus),
 			  Cg_Dwarf_Enter_Elfsym);
@@ -1986,7 +2148,7 @@ Cg_Dwarf_Begin (BOOL is_64bit)
 		    cu_die);
 
   // Invalid entry up front to keep from using the zero index.
-  CGD_Symtab.push_back(CGD_SYMTAB_ENTRY(CGD_ELFSYM, -1));
+  CGD_Symtab.push_back(CGD_SYMTAB_ENTRY(CGD_ELFSYM, (Dwarf_Unsigned) -1));
 }
 
 
@@ -2098,6 +2260,26 @@ void Cg_Dwarf_Gen_Asm_File_Table (void)
 
 }
 
+#ifdef KEY
+void
+Print_Directives_For_All_Files(void) {
+  DST_IDX idx;
+  DST_FILE_NAME *file;
+  INT count = 1;
+  for (idx = DST_get_file_names(); 
+       !DST_IS_NULL(idx);
+       idx = DST_FILE_NAME_next(file)) {
+    file = DST_FILE_IDX_TO_PTR(idx);
+    fprintf(Asm_File, "\t%s\t%d\t\"%s/%s\"\n", AS_FILE, count, 
+	    incl_table[file_table[count].incl_index].path_name, 
+	    file_table[count].filename);
+    count++;
+  }
+  fprintf(Asm_File, "\n");
+}
+#endif
+
+
 static void
 print_source (SRCPOS srcpos)
 {
@@ -2154,6 +2336,9 @@ print_source (SRCPOS srcpos)
   }
 }
 
+#ifdef TARG_X8664
+BOOL Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
+#endif
 // THis adds line info and, as a side effect,
 // builds tables in dwarf2 for the file numbers
 
@@ -2176,8 +2361,15 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 
   if (srcpos == 0 && last_srcpos == 0)
 	DevWarn("no valid srcpos at PC %d\n", code_address);
+#ifndef TARG_X8664
   if (srcpos == 0 || srcpos == last_srcpos) return;
+#else
+  if (srcpos == 0 || 
+      (!Cg_Dwarf_First_Op_After_Preamble_End && srcpos == last_srcpos))
+    return;
+#endif
 
+#ifdef TARG_IA64
   // TODO:  figure out what to do about line changes in middle of bundle ???
   // For assembly, can put .loc in middle of bundle.
   // But can't generate object code with that,
@@ -2186,6 +2378,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
   if ((code_address % INST_BYTES) != 0) {
   	if (Object_Code) return;
   }
+#endif
 
   USRCPOS_srcpos(usrcpos) = srcpos;
 
@@ -2227,6 +2420,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 #endif
 	}
 #ifdef linux
+#ifndef KEY	// skip here because already generated at beginning
 	// For linux, emit .file whenever file changes,
 	// as it applies to all following  line directives,
 	// whatever the spelling.
@@ -2236,6 +2430,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 			incl_table[include_idx].path_name,
 			file_table[file_idx].filename);
 	}
+#endif
 #endif
   }
 
@@ -2591,6 +2786,12 @@ Cg_Dwarf_Output_Asm_Bytes_Elf_Relocs (FILE          *asm_file,
       char *current_reloc_sym_name = Em_Get_Symbol_Name(current_reloc_sym_index);
       Dwarf_Unsigned ofst;
 
+#ifdef TARG_MIPS
+      if (CG_emit_non_gas_syntax)
+	fprintf(asm_file, "\t%s\t%s", Use_32_Bit_Pointers ? ".word" : ".dword",
+	        current_reloc_sym_name);
+      else
+#endif
       fprintf(asm_file, "\t%s\t%s", AS_ADDRESS,
 	      current_reloc_sym_name);
 
@@ -2740,22 +2941,66 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
       //
       // If pointer-length reloc, use data8.ua, else dwarf offset
       // size to be relocated, use data4.ua
-      char *reloc_name = (reloc_buffer[k].drd_length == 8)?
+      char *reloc_name = 
+#ifdef TARG_MIPS
+	   CG_emit_non_gas_syntax ? (Use_32_Bit_Pointers ? ".word" : ".dword") :
+#endif
+	  	(reloc_buffer[k].drd_length == 8)?
 			AS_ADDRESS_UNALIGNED: AS_WORD_UNALIGNED;
 
+#ifdef KEY
+      // don't want to affect other sections, although they may also need
+      // to be updated under fPIC
+      bool gen_pic = ((Gen_PIC_Call_Shared || Gen_PIC_Shared) &&
+      		       !strcmp (section_name, ".eh_frame"));
+#endif
       switch (reloc_buffer[k].drd_type) {
       case dwarf_drt_none:
 	break;
       case dwarf_drt_data_reloc:
 	fprintf(asm_file, "\t%s\t%s", reloc_name,
 		Cg_Dwarf_Name_From_Handle(reloc_buffer[k].drd_symbol_index));
+#ifdef KEY
+	if (gen_pic)
+	    fprintf(asm_file, "-.");
+#endif
 	break;
 
       case dwarf_drt_segment_rel:
 	// need unaligned AS_ADDRESS for dwarf, so add .ua
 	fprintf(asm_file, "\t%s\t%s", reloc_name,
 		Cg_Dwarf_Name_From_Handle(reloc_buffer[k].drd_symbol_index));
+#ifdef KEY
+	if (gen_pic)
+	    fprintf(asm_file, "-.");
+#endif
 	break;
+#ifdef KEY
+      case dwarf_drt_data_reloc_by_str_id:
+	// it should be __gxx_personality_v0
+        if ((Gen_PIC_Call_Shared || Gen_PIC_Shared) && 
+	     !strcmp (&Str_Table[reloc_buffer[k].drd_symbol_index], 
+	     "__gxx_personality_v0"))
+	    fprintf (asm_file, "\t%s\tDW.ref.__gxx_personality_v0-.", reloc_name);
+ 	else
+	fprintf(asm_file, "\t%s\t%s", reloc_name,
+		&Str_Table[reloc_buffer[k].drd_symbol_index]);
+	break;
+      case dwarf_drt_first_of_length_pair_create_second:
+	{
+	static int count=1;
+	Is_True(k + 1 < reloc_count, ("unpaired first_of_length_pair"));
+	Is_True((reloc_buffer[k + 1].drd_type ==
+		 dwarf_drt_second_of_length_pair),
+		("unpaired first_of_length_pair"));
+	int this_count=count++;
+	fprintf(asm_file,".FDE%d:\n",this_count);
+	fprintf(asm_file, "\t%s\t.FDE%d - %s", reloc_name, this_count,
+		Cg_Dwarf_Name_From_Handle(reloc_buffer[k].drd_symbol_index));
+	++k;
+	}
+	break;
+#endif	// KEY
       case dwarf_drt_first_of_length_pair:
 	Is_True(k + 1 < reloc_count, ("unpaired first_of_length_pair"));
 	Is_True((reloc_buffer[k + 1].drd_type ==
@@ -2789,6 +3034,11 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 		(long)current_reloc_size);
       }
       if (ofst != 0) {
+#ifdef KEY
+	if (reloc_buffer[k].drd_type == dwarf_drt_none)
+	    fprintf(asm_file, "\t%s 0x%llx", reloc_name, (unsigned long long)ofst);
+	else
+#endif // KEY
 	fprintf(asm_file, " + 0x%llx", (unsigned long long)ofst);
       }
       fprintf(asm_file, "\n");

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -181,13 +185,16 @@ char            sync_mode)	/* do we need to wait for the buffer requested*/
       reads_to_start = 2;
    }
 
+   const FILE_PAGE marker = { { 0xff, 0xffffffffffffffLL } };
+   
    if ( reads_to_start ) {
       current_cubuf->eligible = FALSE;
       direction = current_cubuf->direction;
       adv_page  = current_cubuf->should_call;
       for(i=0;i<reads_to_start;i++) {
          adv_page.parts.page_number += direction*i;  /* works only if i=0 or 1*/
-         if ( adv_page.parts.page_number  == 0x00ffffffffffffff ) break;
+         if ( adv_page.parts.page_number  == marker.parts.page_number )
+	   break;
    
          CCA_FINDBLK(cca_info, adv_page, cubuf, err_stat, ret);
          if (ret == ERR) {

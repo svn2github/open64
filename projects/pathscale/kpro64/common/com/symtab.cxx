@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,10 +45,8 @@
 #include <stdio.h>
 #include <alloca.h>
 
-#include <algorithm>
-
-#include <hash_map>
-
+#include <ext/hash_map>			// stl hash table
+#include <ext/algorithm>
 
 #include "defs.h"
 #include "config.h"
@@ -305,7 +307,7 @@ struct hash_pointee_key
     }
 };
 
-typedef std::hash_map<TY_POINTEE_KEY, TY_IDX, hash_pointee_key>
+typedef __gnu_cxx::hash_map<TY_POINTEE_KEY, TY_IDX, hash_pointee_key>
     TY_IDX_POINTER_MAP;
 
 static TY_IDX_POINTER_MAP pointer_map;
@@ -572,7 +574,8 @@ ST *
 INTRINSIC_LIST_lookup(TY_IDX  ty,
 		      char   *function_name)
 {
-  ST **result = std::find_if(intrinsic_list.begin(),
+  vector<ST *>::iterator result =
+                std::find_if(intrinsic_list.begin(),
                              intrinsic_list.end(),
                              matches_pu_ty_and_name(ty, function_name));
   if (result == intrinsic_list.end()) {
@@ -769,7 +772,7 @@ struct TY_EQUIV
 
 // The type definition of the hash table that we will use
 
-typedef std::hash_map<TY_IDX, TY_IDX, TY_hash, TY_EQUIV> HASH_TY_TABLE;
+typedef __gnu_cxx::hash_map<TY_IDX, TY_IDX, TY_hash, TY_EQUIV> HASH_TY_TABLE;
 
 // The global Hash Table data structures
 // Depending on the TY_KIND we pick one of the five tables below.
@@ -1098,6 +1101,9 @@ TY_are_equivalent (TY_IDX ty_id1, TY_IDX ty_id2, UINT32 flags)
 
 	// FLD equivalence check 
 	are_equiv = Struct_are_equivalent(TY_fld(ty1), TY_fld(ty2), flags);
+#ifdef KEY
+	are_equiv &= (TY_copy_constructor(ty1) == TY_copy_constructor(ty2));
+#endif
 	break;
 
       case KIND_POINTER:
@@ -1255,7 +1261,9 @@ Preg_Increment (TYPE_ID mtype)
 
     case MTYPE_C4:
     case MTYPE_C8:
+#ifndef TARG_X8664
     case MTYPE_FQ:
+#endif
 	return 2;
 
     case MTYPE_CQ:
@@ -1646,6 +1654,12 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (flags & PU_HAS_USER_ALLOCA)	fprintf (f, " user_alloca");
 	    if (flags & PU_HAS_UNKNOWN_CONTROL_FLOW)	fprintf (f, " unknown_control_flow");
 	    if (flags & PU_IS_THUNK)		fprintf (f, " thunk");
+#ifdef KEY
+	    if (flags & PU_NEEDS_MANUAL_UNWINDING) fprintf (f, " needs_manual_unwinding");
+#endif
+#ifdef TARG_X8664
+	    if (flags & PU_FF2C_ABI) fprintf (f, " ff2c_abi");
+#endif
 	    if (TY_return_to_param(ty_idx))	fprintf (f, " return_to_param");
 	    if (TY_is_varargs(ty_idx))		fprintf (f, " varargs");
 	    if (TY_has_prototype(ty_idx))	fprintf (f, " prototype");
@@ -1705,6 +1719,18 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (flags & ST_ASSIGNED_TO_DEDICATED_PREG)
 		fprintf (f, " assigned_to_dedicated_preg");
 	}
+
+#ifdef KEY
+	if (flags_ext) {
+	    fprintf (f, "\t\tFlags_ext:\t0x%08x", flags_ext);
+	    if (flags_ext & ST_ONE_PER_PU)
+		fprintf (f, " one_per_pu");
+	    if (flags_ext & ST_COPY_CONSTRUCTOR_ST)
+		fprintf (f, " copy_constructor_st");
+            if (flags_ext & ST_INITV_IN_OTHER_ST)
+                fprintf (f, " st_used_as_initialization");
+	}
+#endif
 
 	switch (export_class) {
 
@@ -1809,6 +1835,9 @@ TY::Print (FILE *f) const
 	if (flags & TY_NOT_IN_UNION)	fprintf (f, " not_in_union");
 	if (flags & TY_NO_ANSI_ALIAS)	fprintf (f, " no_ansi_alias");
 	if (flags & TY_IS_NON_POD)	fprintf (f, " non_pod");
+#ifdef KEY
+	if (flags & TY_RETURN_IN_MEM)	fprintf (f, " return_in_mem");
+#endif
     }
     fprintf (f, ")");
 
@@ -1896,9 +1925,16 @@ void
 PU::Print (FILE *f) const
 {
     Print_TY_IDX_verbose (f, prototype);
+#ifdef KEY
+    fprintf (f, ", flags 0x%016llx,\n"
+	     "\tlexical level %d, LANG 0x%02x, TARGET_INFO %d,\n"
+	     "\tEH Info (unused) %d\n",
+	     flags, lexical_level, src_lang, target_idx, (INT32)unused); 
+#else
     fprintf (f, ", flags 0x%016llx,\n"
 	     "\tlexical level %d, LANG 0x%02x, TARGET_INFO %d\n",
 	     flags, lexical_level, src_lang, target_idx); 
+#endif
 } // PU::Print
 
 void
@@ -2131,7 +2167,10 @@ dump_st_attr (ST_ATTR_IDX idx)
     St_Attr_Table[idx].Print(stdout);
 }
 
-static ST *
+#ifndef KEY
+static
+#endif // !KEY
+ST *
 Gen_Temp_Named_Symbol (TY_IDX ty, const char *rootname,
 		       ST_CLASS sym_class, ST_SCLASS storage_class)
 {
@@ -2201,11 +2240,18 @@ Promoted_Parm_Type(const ST *formal_parm)
 ST *MTYPE_TO_PREG_array[MTYPE_LAST+1];
 
 ST *Int_Preg, *Float_Preg, *Return_Val_Preg;
+#ifdef TARG_X8664
+ST* X87_Preg = NULL;
+#endif
 
 TY_IDX MTYPE_TO_TY_array[MTYPE_LAST+1];
 
 TY_IDX Quad_Type, Void_Type, FE_int_Type, FE_double_Type;
 TY_IDX Spill_Int_Type, Spill_Float_Type;
+#ifdef KEY
+TY_IDX Spill_Int32_Type;
+TY_IDX Spill_Float32_Type;
+#endif
 
 #if defined(FRONT_END) && !defined(FRONT_END_MFEF77)
 extern "C" TYPE_ID FE_int_To_Mtype (void);
@@ -2291,6 +2337,10 @@ Setup_Preg_Pointers ()
 	Float_Preg = Float32_Preg;
     else
 	Float_Preg = Float64_Preg;
+
+#ifdef TARG_X8664
+    X87_Preg = MTYPE_To_PREG( MTYPE_FQ );
+#endif
 } // Setup_Preg_Pointers
 
 
@@ -2303,8 +2353,15 @@ Create_All_Preg_Symbols ()
 	if (MTYPE_To_PREG (i) != NULL)
 	    continue;
 	if (MTYPE_byte_size(i) < 4) {
+#ifdef TARG_X8664 
+            // Bugs 482, 505, 626
+	    // we will allow all forms of preg_ for the integer type.
+	    // This is done to accommodate the inline asm syntaxes in x86/x86-64
+	    if ( i != MTYPE_B && !MTYPE_is_integral(i) ) continue;
+#else
 	    // special case:  allow mtype_B
 	    if (i != MTYPE_B) continue;
+#endif
 	}
 
 	ST *st = New_ST (GLOBAL_SYMTAB);
@@ -2514,8 +2571,20 @@ Initialize_Special_Global_Symbols ()
 	    
     Spill_Int_Type = MTYPE_To_TY (Spill_Int_Mtype);
     Spill_Float_Type = MTYPE_To_TY (Spill_Float_Mtype);
+#ifdef KEY
+    /* Bug#246
+       MTYPE_FQ is reserved for 'long double' type.
+     */
+    Quad_Type = MTYPE_To_TY (MTYPE_F16);
+#else
     Quad_Type = MTYPE_To_TY (MTYPE_FQ);
+#endif // KEY
     Void_Type = MTYPE_To_TY (MTYPE_V);
+
+#ifdef TARG_X8664 
+    Spill_Int32_Type   = MTYPE_To_TY (Spill_Int32_Mtype);
+    Spill_Float32_Type = MTYPE_To_TY (Spill_Float32_Mtype);
+#endif
 
     Set_up_all_preg_symbols ();
 

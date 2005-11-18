@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -53,7 +57,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
-#include <list.h>
+#include <list>
 #include "gen_util.h"
 #include "targ_isa_registers.h"
 #include "abi_properties_gen.h"
@@ -73,19 +77,19 @@ struct abi_property {
 //
 typedef struct abi {
   const char *name;		// Name
-  list<ABI_PROPERTY> flags;	// Non-register flag properties
-  list<ABI_PROPERTY> values;	// Non-register value properties
-  list<ABI_PROPERTY> reg_flags[ISA_REGISTER_CLASS_MAX+1][ISA_REGISTER_MAX+1];
+  std::list<ABI_PROPERTY> flags;	// Non-register flag properties
+  std::list<ABI_PROPERTY> values;	// Non-register value properties
+  std::list<ABI_PROPERTY> reg_flags[ISA_REGISTER_CLASS_MAX+1][ISA_REGISTER_MAX+1];
 				// Register flag properties
-  list<ABI_PROPERTY> reg_values[ISA_REGISTER_CLASS_MAX+1][ISA_REGISTER_MAX+1];
+  std::list<ABI_PROPERTY> reg_values[ISA_REGISTER_CLASS_MAX+1][ISA_REGISTER_MAX+1];
 				// Register value properties
   const char *reg_names[ISA_REGISTER_CLASS_MAX+1][ISA_REGISTER_MAX+1];
 				// Register names
 } *ABI;
 
 
-static list<ABI_PROPERTY> props; // All the properties
-static list<ABI> abis;		// All the ABIs
+static std::list<ABI_PROPERTY> props; // All the properties
+static std::list<ABI> abis;		// All the ABIs
 static ABI current_abi;		// The current ABI being described
 static int prop_count[2 /* is_flag */][2 /* is_reg */] = {0};
 				// Counts of the various kinds of props
@@ -288,8 +292,8 @@ void ABI_Properties_End(void)
 //  See interface description.
 /////////////////////////////////////
 {
-  list<ABI_PROPERTY>::iterator prop_iter;
-  list<ABI>::iterator abi_iter;
+  std::list<ABI_PROPERTY>::iterator prop_iter;
+  std::list<ABI>::iterator abi_iter;
 
   char filename[1000];
   sprintf (filename, "targ_abi_properties.h");
@@ -380,7 +384,7 @@ void ABI_Properties_End(void)
 	int cursor = fprintf(cfile, "      {");
 	for (reg = 0; reg <= ISA_REGISTER_MAX; ++reg) {
 	  unsigned long long mask = 0;
-	  list<ABI_PROPERTY> props = abi->reg_flags[rc][reg];
+	  std::list<ABI_PROPERTY> props = abi->reg_flags[rc][reg];
 	  for (prop_iter = props.begin(); prop_iter != props.end(); ++prop_iter) {
 	    ABI_PROPERTY prop = *prop_iter;
 	    mask |= prop->v;

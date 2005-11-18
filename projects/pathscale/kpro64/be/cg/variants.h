@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -204,6 +208,12 @@ extern const char *BR_Variant_Name(VARIANT variant);
 #define Set_V_select_fcc_only(v)	((v) |= V_SELECT_FCC)
 #define Reset_V_select_fcc_only(v)	((v) &= ~V_SELECT_FCC)
 
+/* 
+ * Variants for spadjust
+ */
+#define V_ADJUST_PLUS	0x0001
+#define V_ADJUST_MINUS	0x0002
+
 
 /* ====================================================================
  *
@@ -249,7 +259,7 @@ extern const char *BR_Variant_Name(VARIANT variant);
 /* Prefetch flags: The prefetch flags, if any, for a memory OP are
  * stored in the V_PF_FLAGS field.
  */
-#define V_PF_FLAGS		0xffffffff00000000 /* Prefetch flags */
+#define V_PF_FLAGS		0xffffffff00000000ULL /* Prefetch flags */
 
 #define V_pf_flags(v)			((UINT32)(((v) & V_PF_FLAGS) >> 32))
 #define Set_V_pf_flags(v,f)		((v) = ((v) & ~V_PF_FLAGS) | ((VARIANT)(f) << 32))

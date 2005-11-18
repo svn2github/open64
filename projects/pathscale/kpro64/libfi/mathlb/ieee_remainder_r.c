@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -81,16 +85,31 @@ _IEEE_REMAINDER_R_R(_f_real8 argx, _f_real8 argy)
 {
 	/* Union defined to work with IEEE 64-bit floating point. */
 	union _ieee_double {
-		struct { unsigned int sign	: 1;
-			 unsigned int exponent	: IEEE_64_EXPO_BITS;
-			 unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
-			 unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+                    unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+                    unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
+                    unsigned int exponent    : IEEE_64_EXPO_BITS;
+                    unsigned int sign        : 1;
+#else
+                    unsigned int sign        : 1;
+                    unsigned int exponent    : IEEE_64_EXPO_BITS;
+                    unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
+                    unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+#endif
 		} parts1;
 		_f_real8		dword;
 		unsigned int		lword[2];
 		unsigned long long	llword;
 		long long		int64;
 	};
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+        const int lword_hi = 1;
+        const int lword_lo = 0;
+#else
+        const int lword_hi = 0;
+        const int lword_lo = 1;
+#endif
 
 	_f_real8	scalet, scaley;
 	unsigned int	sign_x = 0X80000000;
@@ -99,10 +118,10 @@ _IEEE_REMAINDER_R_R(_f_real8 argx, _f_real8 argy)
 	union _ieee_double nearint, y_up, y_lo, tdiv_up, tdiv_lo, res;
 	x_val.dword	= argx;
 	y_val.dword	= argy;
-	two_52.lword[0] = 0x43300000;	/* 2**52	*/
-	two_52.lword[1] = 0x00000000;
-	div_52.lword[0] = 0x3CB00000;	/* 2**-52	*/
-	div_52.lword[1] = 0x00000000;
+	two_52.lword[lword_hi] = 0x43300000;	/* 2**52	*/
+	two_52.lword[lword_lo] = 0x00000000;
+	div_52.lword[lword_hi] = 0x3CB00000;	/* 2**-52	*/
+	div_52.lword[lword_lo] = 0x00000000;
 
 	/* check input values: x for infinity and y for zero. */
 	if (((x_val.llword & ~IEEE_64_SIGN_BIT) == IEEE_64_INFINITY) ||
@@ -120,7 +139,7 @@ _IEEE_REMAINDER_R_R(_f_real8 argx, _f_real8 argy)
 	tdiv.dword	= argx / argy;
 
 	/* check for 2**52 or greater = already integer */
-	if ((int) (tdiv.lword[0] & (~sign_x)) < (int) two_52.lword[0]) {
+	if ((int) (tdiv.lword[lword_hi] & (~sign_x)) < (int) two_52.lword[lword_hi]) {
 
 		/* calculate fraction */
 		evenchk.dword =
@@ -129,12 +148,12 @@ _IEEE_REMAINDER_R_R(_f_real8 argx, _f_real8 argy)
 		if (tdiv.dword < 0.0) {
 			nearint.int64 = (_f_int8) (tdiv.dword - 0.5);
 			if ((evenchk.dword == -0.5) &&
-			    ((nearint.lword[1] & even_x) != 0))
+			    ((nearint.lword[lword_lo] & even_x) != 0))
 				nearint.int64 += 1;
 		} else {
 			nearint.int64 = (_f_int8) (tdiv.dword + 0.5);
 			if ((evenchk.dword == 0.5) &&
-			   ((nearint.lword[1] & even_x) != 0))
+			   ((nearint.lword[lword_lo] & even_x) != 0))
 				nearint.int64 -= 1;
 		}
 		tdiv.dword = (_f_real8) nearint.int64;
@@ -179,16 +198,31 @@ _IEEE_REMAINDER_R_H(_f_real8 argx, _f_real4 argy)
 {
 	/* Union defined to work with IEEE 64-bit floating point. */
 	union _ieee_double {
-		struct { unsigned int sign	: 1;
-			 unsigned int exponent	: IEEE_64_EXPO_BITS;
-			 unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
-			 unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+                    unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+                    unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
+                    unsigned int exponent    : IEEE_64_EXPO_BITS;
+                    unsigned int sign        : 1;
+#else
+                    unsigned int sign        : 1;
+                    unsigned int exponent    : IEEE_64_EXPO_BITS;
+                    unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
+                    unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+#endif
 		} parts1;
 		_f_real8		dword;
 		unsigned int		lword[2];
 		unsigned long long	llword;
 		long long		int64;
 	};
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+        const int lword_hi = 1;
+        const int lword_lo = 0;
+#else
+        const int lword_hi = 0;
+        const int lword_lo = 1;
+#endif
 
 	/* Union defined to work with IEEE 32-bit floating point. */
 	union _ieee_fdouble {
@@ -205,10 +239,10 @@ _IEEE_REMAINDER_R_H(_f_real8 argx, _f_real4 argy)
 	union _ieee_fdouble y4_val;
 	x_val.dword	= argx;
 	y4_val.fpword	= argy;
-	two_52.lword[0] = 0x43300000;	/* 2**52	*/
-	two_52.lword[1] = 0x00000000;
-	div_52.lword[0] = 0x3CB00000;	/* 2**-52	*/
-	div_52.lword[1] = 0x00000000;
+	two_52.lword[lword_hi] = 0x43300000;	/* 2**52	*/
+	two_52.lword[lword_lo] = 0x00000000;
+	div_52.lword[lword_hi] = 0x3CB00000;	/* 2**-52	*/
+	div_52.lword[lword_lo] = 0x00000000;
 
 	/* check input values: x for infinity and y for zero. */
 	if (((x_val.llword & ~IEEE_64_SIGN_BIT) == IEEE_64_INFINITY) ||
@@ -227,7 +261,7 @@ _IEEE_REMAINDER_R_H(_f_real8 argx, _f_real4 argy)
 	tdiv.dword	= argx / y_val.dword;
 
 	/* check for 2**52 or greater = already integer */
-	if ((tdiv.lword[0] & (~sign_x)) < two_52.lword[0]) {
+	if ((tdiv.lword[lword_hi] & (~sign_x)) < two_52.lword[lword_hi]) {
 
 		/* calculate fraction */
 		evenchk.dword =
@@ -236,12 +270,12 @@ _IEEE_REMAINDER_R_H(_f_real8 argx, _f_real4 argy)
 		if (tdiv.dword < 0.0) {
 			nearint.int64 = (_f_int8) (tdiv.dword - 0.5);
 			if ((evenchk.dword == -0.5) &&
-			    ((nearint.lword[1] & even_x) != 0))
+			    ((nearint.lword[lword_lo] & even_x) != 0))
 				nearint.int64 += 1;
 		} else {
 			nearint.int64 = (_f_int8) (tdiv.dword + 0.5);
 			if ((evenchk.dword == 0.5) &&
-			   ((nearint.lword[1] & even_x) != 0))
+			   ((nearint.lword[lword_lo] & even_x) != 0))
 				nearint.int64 -= 1;
 		}
 		tdiv.dword = (_f_real8) nearint.int64;
@@ -286,16 +320,31 @@ _IEEE_REMAINDER_H_R(_f_real4 argx, _f_real8 argy)
 {
 	/* Union defined to work with IEEE 64-bit floating point. */
 	union _ieee_double {
-		struct { unsigned int sign	: 1;
-			 unsigned int exponent	: IEEE_64_EXPO_BITS;
-			 unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
-			 unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+                    unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+                    unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
+                    unsigned int exponent    : IEEE_64_EXPO_BITS;
+                    unsigned int sign        : 1;
+#else
+                    unsigned int sign        : 1;
+                    unsigned int exponent    : IEEE_64_EXPO_BITS;
+                    unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
+                    unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+#endif
 		} parts1;
 		_f_real8		dword;
 		unsigned int		lword[2];
 		unsigned long long	llword;
 		long long		int64;
 	};
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+        const int lword_hi = 1;
+        const int lword_lo = 0;
+#else
+        const int lword_hi = 0;
+        const int lword_lo = 1;
+#endif
 
 	/* Union defined to work with IEEE 32-bit floating point. */
 	union _ieee_fdouble {
@@ -312,10 +361,10 @@ _IEEE_REMAINDER_H_R(_f_real4 argx, _f_real8 argy)
 	union _ieee_fdouble x4_val;
 	x4_val.fpword	= argx;
 	y_val.dword	= argy;
-	two_52.lword[0] = 0x43300000;	/* 2**52	*/
-	two_52.lword[1] = 0x00000000;
-	div_52.lword[0] = 0x3CB00000;	/* 2**-52	*/
-	div_52.lword[1] = 0x00000000;
+	two_52.lword[lword_hi] = 0x43300000;	/* 2**52	*/
+	two_52.lword[lword_lo] = 0x00000000;
+	div_52.lword[lword_hi] = 0x3CB00000;	/* 2**-52	*/
+	div_52.lword[lword_lo] = 0x00000000;
 
 	/* check input values: x for infinity and y for zero. */
 	if (((x4_val.l4word & ~IEEE_32_SIGN_BIT) == IEEE_32_INFINITY) ||
@@ -334,7 +383,7 @@ _IEEE_REMAINDER_H_R(_f_real4 argx, _f_real8 argy)
 	tdiv.dword	= x_val.dword / argy;
 
 	/* check for 2**52 or greater = already integer */
-	if ((tdiv.lword[0] & (~sign_x)) < two_52.lword[0]) {
+	if ((tdiv.lword[lword_hi] & (~sign_x)) < two_52.lword[lword_hi]) {
 
 		/* calculate fraction */
 		evenchk.dword =
@@ -343,12 +392,12 @@ _IEEE_REMAINDER_H_R(_f_real4 argx, _f_real8 argy)
 		if (tdiv.dword < 0.0) {
 			nearint.int64 = (_f_int8) (tdiv.dword - 0.5);
 			if ((evenchk.dword == -0.5) &&
-			    ((nearint.lword[1] & even_x) != 0))
+			    ((nearint.lword[lword_lo] & even_x) != 0))
 				nearint.int64 += 1;
 		} else {
 			nearint.int64 = (_f_int8) (tdiv.dword + 0.5);
 			if ((evenchk.dword == 0.5) &&
-			   ((nearint.lword[1] & even_x) != 0))
+			   ((nearint.lword[lword_lo] & even_x) != 0))
 				nearint.int64 -= 1;
 		}
 		tdiv.dword = (_f_real8) nearint.int64;

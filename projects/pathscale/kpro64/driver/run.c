@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -36,6 +40,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -48,6 +53,7 @@
 #include <sys/times.h>
 #include <sys/procfs.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <alloca.h>
 #include <cmplrs/rcodes.h>
 #include "run.h"
@@ -57,9 +63,11 @@
 #include "phases.h"
 #include "opt_actions.h"
 #include "file_utils.h"
+#include "pathscale_defs.h"
 
 
 boolean show_flag = FALSE;
+boolean show_but_not_run = FALSE;
 boolean execute_flag = TRUE;
 boolean time_flag = FALSE;
 boolean prelink_flag = TRUE;
@@ -68,14 +76,14 @@ int memory_flag = 0;
 boolean run_m4 = FALSE;
 static boolean ran_twice = FALSE;
 static int f90_fe_status = RC_OKAY;
-static string f90_fe_name = NULL; 
+static char *f90_fe_name = NULL; 
 
 static void init_time (void);
-static void print_time (string phase);
+static void print_time (char *phase);
 static void my_psema(void);
 static void my_vsema(void);
 static int stop_on_exit( int pid );
-static void print_mem(string phase, int num_maps);
+static void print_mem(char *phase, int num_maps);
 
 static int Pipe[2]; /* for implementing semaphore */
 #ifndef linux
@@ -91,179 +99,35 @@ static prmap_sgi_arg_t mapbuf_desc = { (char *) mapbuf, sizeof (mapbuf)} ;
 #define LOGFILE "/usr/adm/SYSLOG"
 #endif
 
-#ifdef COMPILER_LICENSING
-
-#include <lmsgi.h>
-
-/*
-#include "lmclient.h"
-#include "lm_attr.h"
-#include "lm_code.h"
-*/
-
-#include <invent.h>
-#include <sys/sysmp.h>
-
-
-LM_CODE(code, ENCRYPTION_CODE_1, ENCRYPTION_CODE_2, VENDOR_KEY1,
-                     VENDOR_KEY2, VENDOR_KEY3, VENDOR_KEY4, VENDOR_KEY5);
-
-#define LINGER_PERIOD  10
-#define ALL (-1)
-#define ALL_8BIT (ALL & 0xFF)
-
-/* extern  char* license_errstr(); */
-
-boolean licensed_component = FALSE;
-char feature_name[10];
-string compiler_licensing;
-
-
-void get_license( string feature_name, boolean soft, boolean tiers )
-
+static void my_execv(const char *name, char *const argv[])
 {
+    int len = strlen(name);
+    int passthru = len > 4 && name[len - 4] == '/' &&
+	(strcmp(name + len - 3, "gcc") == 0 ||
+	 strcmp(name + len - 3, "g++") == 0);
+    
+    if (show_but_not_run) {
+	int i;
 
- boolean err = FALSE;
- string hard_licensing;
- string tier_licensing;
- int numCPU;
- int archCPU;
- char *p;
- inventory_t *inv;
- int systemNumCPU = 0;
- int systemArchCPU;
-
- hard_licensing = getenv("HARD_LICENSING"); 
- if (hard_licensing != NULL) {
-     soft = FALSE;
- }
-
- tier_licensing = getenv("TIER_LICENSING"); 
- if (tier_licensing != NULL) {
-     tiers = FALSE;
- }
-
- if (license_init(&code,"sgifd",B_TRUE) < 0) {
-    err = TRUE;
- }
-
- /* Set Up Soft Licensing */
- license_set_attr(LMSGI_NO_SUCH_FEATURE, NULL);
-
- /* Set the linger period to 10 seconds */
- license_set_attr(LM_A_LINGER, (LM_A_VAL_TYPE) LINGER_PERIOD);
-
-
- /*
-    Attempt to check out a license
-    leave the first argument as is.  you only need to fill in
-    the feature name (program name) and version number.
- */
-
- if (license_chk_out(&code,     /* leave as is */
-     feature_name,              /* replace with your feature name */
-     "7.000"                    /* replace with your version number */
- )) {
-      err = TRUE;
-      fprintf(stderr,"%s\n", license_errstr());
-      fprintf(stderr,"\n");
- }
-
- if ((tiers) && (err == FALSE)) {
-     CONFIG *conf = lc_auth_data(get_job(), feature_name);
-     if (conf == NULL) {
-         err = TRUE;
-         fprintf(stderr,"%s\n", license_errstr());
-         fprintf(stderr,"\n");
-     } else {
-         if ((conf->users == 0) && (conf->lc_vendor_def != NULL) &&
-             (strcmp(conf->lc_vendor_def, "") != 0)) {
-
-           /* Nodelocked license with non empty vendor string */
-           /* sscanf(conf->lc_vendor_def, "%d:%d", &numCPU, &archCPU); */
-
-           p = conf->lc_vendor_def;
-           while ( ((*p) != '\0')  && (((*p) < '0') || ((*p) > '9')) )
-              p++;
-           numCPU = atoi(p);
-
-           while ((inv = getinvent()) != NULL) {
-               if ((inv->inv_class == INV_PROCESSOR) &&
-                   (inv->inv_type == INV_CPUBOARD)) {
-                   if ((inv->inv_unit & ALL_8BIT) == ALL_8BIT) {
-                       systemNumCPU = sysmp(MP_NPROCS);
-                       systemArchCPU = inv->inv_state;
-                   } else {
-                       systemNumCPU = inv->inv_unit;
-                       systemArchCPU = inv->inv_state;
-                   }
-               }
-           }
-
-           if ((numCPU >= systemNumCPU)) {
-               err = FALSE;
-           } else if ( numCPU == 0 ) {  /* A zero in the vendor string implies         */
-               err = FALSE;             /* the largest system configuration tier       */
-           } else {                     /* In other words, it will work on any system. */
-               err = TRUE;
-               fprintf(stderr, " This product's license is for %d CPU's; Your system has %d CPU's\n", numCPU, systemNumCPU ); 
-               fprintf(stderr,"\n");
-           }
-        }
-     }
- }
-
- if (err) {
-   fprintf(stderr," This product (%s) requires a license password. \n", feature_name);
-   fprintf(stderr," For license installation and trouble shooting \n");
-   fprintf(stderr," information visit the web page: \n");
-   fprintf(stderr,"\n");
-   fprintf(stderr,"         http://www.sgi.com/Support/Licensing/install_docs.html \n");
-   fprintf(stderr,"\n");
-   fprintf(stderr," To obtain a Permanent license (proof of purchase\n");
-   fprintf(stderr," required) or an Evaluation license please\n");
-   fprintf(stderr," visit our license request web page: \n");
-   fprintf(stderr,"\n");
-#if 0
-   fprintf(stderr,"    Internal SGI Users refer to:\n"); 
-   fprintf(stderr,"         http://wwclass.csd.sgi.com/swl-internal/beta_lice.html\n");
-   fprintf(stderr,"    Otherwise:\n");
-#endif
-   fprintf(stderr,"         http://www.sgi.com/Products/license.html \n");
-   fprintf(stderr,"\n");
-   fprintf(stderr,"         or send a blank email message to: \n");
-   fprintf(stderr,"\n");
-   fprintf(stderr,"         license@sgi.com \n");
-   fprintf(stderr,"\n");
-   fprintf(stderr," In North America, Silicon Graphics' customers may request \n");
-   fprintf(stderr," Permanent licenses by sending a facsimile to: \n");
-   fprintf(stderr,"\n");
-   fprintf(stderr,"         (650) 390-0537 \n");
-   fprintf(stderr,"\n");
-   fprintf(stderr,"         or by calling our technical support hotline \n");
-   fprintf(stderr,"\n");
-   fprintf(stderr,"         1-800-800-4SGI \n");
-   fprintf(stderr,"\n");
-   fprintf(stderr," If you are Outside of North America or you are not a Silicon \n");
-   fprintf(stderr," Graphics support customer then contact your local support provider. \n");
-   fprintf(stderr,"\n");
-#if 0
-   fprintf(stderr," Note: Permanent Licenses require verification of entitlement \n");
-   fprintf(stderr," (i.e., Proof-of-Purchase). \n");
-   fprintf(stderr,"  \n");
-#endif
-   
-   if (!soft)
-      exit(-1);
- }
+	fprintf(stderr, "\"%s\" ", name);
+	for (i = 1; argv[i] != NULL; i++)
+	    fprintf(stderr, "\"%s\" ", argv[i]);
+	fputc('\n', stderr);
+	if (!passthru)
+	    do_exit (0);
+    }
+			
+    execv(name, argv);
+    error("cannot exec %s", name);
+    cleanup ();
+    do_exit (RC_SYSTEM_ERROR);
+    /* NOTREACHED */
 }
-
-#endif
 
 /* exec another program, putting result in output.
  * This is simple version of full run_phase. */
-extern void
-run_simple_program (string name, char **argv, string output)
+void
+run_simple_program (char *name, char **argv, char *output)
 {
 	int forkpid;
 	int fdout;
@@ -276,7 +140,7 @@ run_simple_program (string name, char **argv, string output)
 	if (forkpid == -1) {
 		error("no more processes");
 		cleanup ();
-		exit (RC_SYSTEM_ERROR);
+		do_exit (RC_SYSTEM_ERROR);
 		/* NOTREACHED */
 	}
 
@@ -285,16 +149,12 @@ run_simple_program (string name, char **argv, string output)
 		if ((fdout = creat (output, 0666)) == -1) {
 			error ("cannot create output file %s", output);
 			cleanup ();
-			exit (RC_SYSTEM_ERROR);
+			do_exit (RC_SYSTEM_ERROR);
 			/* NOTREACHED */
 		}
 	    	dup2 (fdout, fileno(stdout));
 
-		execv(name, argv);
-		error("cannot exec %s", name);
-		cleanup ();
-		exit (RC_SYSTEM_ERROR);
-		/* NOTREACHED */
+		my_execv(name, argv);
 	} else {
 		/* parent */
 		int procid;	/* id of the /proc file */
@@ -302,7 +162,7 @@ run_simple_program (string name, char **argv, string output)
 			if (waitpid == -1) {
 				error("bad return from wait");
 				cleanup();
-				exit(RC_SYSTEM_ERROR);
+				do_exit(RC_SYSTEM_ERROR);
 				/* NOTREACHED */
 			}
 		}
@@ -310,7 +170,7 @@ run_simple_program (string name, char **argv, string output)
 			termsig = WSTOPSIG(waitstatus);
 			error("STOPPED signal received from %s", name);
 			cleanup();
-			exit(RC_SYSTEM_ERROR);
+			do_exit(RC_SYSTEM_ERROR);
 			/* NOTREACHED */
 		} else if (WIFEXITED(waitstatus)) {
 		        int status = WEXITSTATUS(waitstatus);
@@ -331,7 +191,7 @@ run_simple_program (string name, char **argv, string output)
 				error("Probably caused by running out of swap space -- check %s", LOGFILE);
 			}
 			cleanup();
-			exit(RC_SYSTEM_ERROR);
+			do_exit(RC_SYSTEM_ERROR);
 		} else {
 			/* cannot happen, I think! */
 			internal_error("driver exec'ing is confused");
@@ -340,14 +200,57 @@ run_simple_program (string name, char **argv, string output)
 	}
 }
 
-extern void
-run_phase (phases_t phase, string name, string_list_t *args)
+static void my_putenv(const char *name, const char *fmt, ...)
+    __attribute__((format (printf, 2, 3)));
+    
+static void my_putenv(const char *name, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    char *rhs, *env;
+    int len;
+
+    if (vasprintf(&rhs, fmt, ap) == -1) {
+	internal_error("cannot allocate memory");
+	do_exit(RC_SYSTEM_ERROR);
+    }
+	
+    if (show_but_not_run)
+	fprintf(stderr, "%s=\"%s\" ", name, rhs);
+
+    // This looks like a memory leak, but it's not interesting, because
+    // we're either going to call exec() or do_exit() soon after we're done.
+
+    if (asprintf(&env, "%s=%s", name, rhs) == -1) {
+	internal_error("cannot allocate memory");
+	do_exit(RC_SYSTEM_ERROR);
+    }
+
+    putenv(env);
+	
+    va_end(ap);
+}
+
+char *
+get_binutils_lib_path(void)
+{
+	static const char *binutils_library_path = "../i686-pc-linux-gnu/" PSC_TARGET "/lib";
+	char *my_path;
+	
+	asprintf(&my_path, "%s/%s", get_executable_dir(NULL),
+		 binutils_library_path);
+	return my_path;
+}
+
+
+void
+run_phase (phases_t phase, char *name, string_list_t *args)
 {
 	char **argv;
 	int argc;
 	string_item_t *p;
-	string output = NULL;
-	string input = NULL;
+	char *output = NULL;
+	char *input = NULL;
 	boolean save_stderr = FALSE;
 	int fdin, fdout;
 	int forkpid;
@@ -359,7 +262,7 @@ run_phase (phases_t phase, string name, string_list_t *args)
 	SIG_PF sigint;
 #endif
 	int	num_maps;
-	string rld_path;
+	char *rld_path;
 	struct stat stat_buf;
 	const boolean uses_message_system = 
 			(phase == P_f90_fe || phase == P_f90_cpp ||
@@ -377,21 +280,33 @@ run_phase (phases_t phase, string name, string_list_t *args)
 	/* copy arg_list to argv format that exec wants */
 	argc = 1;
 	for (p = args->head; p != NULL; p=p->next) {
+#ifdef KEY
+//bug# 581, bug #932, bug #1049
+		if (p->name == NULL) 
+                  continue;
+#endif
 		argc++;
 	}
 	argv = (char **) malloc((argc+1)*sizeof(char*));
 	argv[0] = name;
 	for (argc = 1, p = args->head; p != NULL; argc++, p=p->next) {
+#ifdef KEY
+//bug# 581, bug #932
+		if (p->name[0] == '\0') {
+		  argc--;
+                  continue;
+		}
+#endif
 		/* don't put redirection in arg list */
-		if (same_string(p->name, "<")) {
+		if (strcmp(p->name, "<") == 0) {
 			/* has input file */
 			input = p->next->name;
 			break;
-		} else if (same_string(p->name, ">")) {
+		} else if (strcmp(p->name, ">") == 0) {
 			/* has output file */
 			output = p->next->name;
 			break;
-		} else if (same_string(p->name, ">&")) {
+		} else if (strcmp(p->name, ">&") == 0) {
 			/* has error output file */
 			output = p->next->name;
 			save_stderr = TRUE;
@@ -401,50 +316,6 @@ run_phase (phases_t phase, string name, string_list_t *args)
 	}
 	argv[argc] = NULL;
 
-
-#ifdef COMPILER_LICENSING
-/***********************/
-/* PUT Licensing Here  */
-/***********************/
-        compiler_licensing = getenv("COMPILER_LICENSING"); 
-        if (compiler_licensing == NULL) {
-           if  (strstr(name, "fecc")) {
-                licensed_component = TRUE;
-                /* printf("COMPILER LICENSING ON\n"); */
-                feature_name[0] = 'c';
-                feature_name[1] = 'p';
-                feature_name[2] = 'p';
-                feature_name[3] = '\0';
-          
-           } else if (strstr(name, "fec")) {
-                licensed_component = TRUE;
-                /* printf("COMPILER LICENSING ON\n"); */
-                feature_name[0] = 'c';
-                feature_name[1] = 'c';
-                feature_name[2] = '\0';
-      
-           } else if (strstr(name, "mfef77")) {
-                licensed_component = TRUE;
-                feature_name[0] = 'f';
-                feature_name[1] = '7';
-                feature_name[2] = '7';
-                feature_name[3] = '\0';
-
-           } else if (strstr(name, "mfef90")) {
-                licensed_component = TRUE;
-                feature_name[0] = 'f';
-                feature_name[1] = '9';
-                feature_name[2] = '0';
-                feature_name[3] = '\0';
-
-           } else
-                licensed_component = FALSE;
-       
-           if (licensed_component) {
-               get_license(feature_name, TRUE, TRUE); /* soft licensing == TRUE; tier licensing == TRUE */
-           }
-         }
-#endif
 	/* if we want memory stats, we need to open a pipe as a semaphore */
 	if (memory_flag)
 		{
@@ -452,7 +323,7 @@ run_phase (phases_t phase, string name, string_list_t *args)
 			{
 			error("pipe failed for -showm");
 			cleanup ();
-			exit (RC_SYSTEM_ERROR);
+			do_exit (RC_SYSTEM_ERROR);
 			/* NOTREACHED */
 			}
 		}
@@ -462,11 +333,13 @@ run_phase (phases_t phase, string name, string_list_t *args)
 	if (forkpid == -1) {
 		error("no more processes");
 		cleanup ();
-		exit (RC_SYSTEM_ERROR);
+		do_exit (RC_SYSTEM_ERROR);
 		/* NOTREACHED */
 	}
 
 	if (forkpid == 0) {
+		char *my_path, *l_path, *l32_path;
+		
 		/* child */
 		/* if we want memory stats, we have to wait for
 		   parent to connect to our /proc */
@@ -476,7 +349,7 @@ run_phase (phases_t phase, string name, string_list_t *args)
 			if ((fdin = open (input, O_RDONLY)) == -1) {
 				error ("cannot open input file %s", input);
 				cleanup ();
-				exit (RC_SYSTEM_ERROR);
+				do_exit (RC_SYSTEM_ERROR);
 				/* NOTREACHED */
 			}
 	    		dup2 (fdin, fileno(stdin));
@@ -485,7 +358,7 @@ run_phase (phases_t phase, string name, string_list_t *args)
 			if ((fdout = creat (output, 0666)) == -1) {
 				error ("cannot create output file %s", output);
 				cleanup ();
-				exit (RC_SYSTEM_ERROR);
+				do_exit (RC_SYSTEM_ERROR);
 				/* NOTREACHED */
 			}
 			if (save_stderr) {
@@ -495,93 +368,55 @@ run_phase (phases_t phase, string name, string_list_t *args)
 			}
 		} 
 
+		my_path = get_binutils_lib_path();
 		rld_path = get_phase_ld_library_path (phase);
 		
-		if (rld_path != 0) {
-		    string env_name = "LD_LIBRARYN32_PATH";
-		    int len;
-		    string new_env;
-    
-		    len = strlen (env_name) + strlen(rld_path) + 2;
-		    
-		    if (ld_libraryn32_path) {
-			len += strlen (ld_libraryn32_path) + 1;
-			new_env = alloca (len);
-			sprintf (new_env, "%s=%s:%s", env_name, rld_path,
-				 ld_libraryn32_path); 
-		    } else {
-			new_env = alloca (len);
-			sprintf (new_env, "%s=%s", env_name, rld_path);
-		    }
+		if (rld_path != 0)
+			asprintf(&my_path, "%s:%s", my_path, rld_path);
+		
+		l_path = l32_path = my_path;
+		
+		if (ld_library_path)
+			asprintf(&l_path, "%s:%s", my_path, ld_library_path);
 
-		    putenv (new_env);
+		if (ld_libraryn32_path)
+			asprintf(&l32_path, "%s:%s", my_path,
+				 ld_libraryn32_path);
 
-		    /* repeat the same thing in case the component is built
-		       O32 */
-
-		    env_name = "LD_LIBRARY_PATH";
-		    len = strlen (env_name) + strlen(rld_path) + 2;
-		    
-		    if (ld_library_path) {
-			len += strlen (ld_library_path) + 1;
-			new_env = alloca (len);
-			sprintf (new_env, "%s=%s:%s", env_name, rld_path,
-				 ld_library_path); 
-		    } else {
-			new_env = alloca (len);
-			sprintf (new_env, "%s=%s", env_name, rld_path);
-		    }
-
-		    putenv (new_env);
-
-		}
+		my_putenv("LD_LIBRARY_PATH", l_path);
+		my_putenv("LD_LIBRARYN32_PATH", l32_path);
 		
 		if (uses_message_system) {
-		   string toolroot;
-		   string nlspath;
+		   char *toolroot;
+		   char *nlspath;
 		   toolroot = getenv("TOOLROOT");
 		   nlspath = getenv("NLSPATH");
 		   if (nlspath==NULL) {
-		   	int len;
-		   	string new_env;
-		   	string env_name = "NLSPATH=";
-			string env_file = "/%N.cat";
+			char *env_file = "/%N.cat";
 #ifdef linux
-			string env_path = get_phase_dir(P_f90_fe);
+			char *env_path = get_phase_dir(P_f90_fe);
 			/* The phase_dir already has the prepended toolroot */
-			toolroot = "\0";
+			toolroot = "";
 #else
-			string env_path = "/usr/lib/locale/C/LC_MESSAGES";
+			char *env_path = "/usr/lib/locale/C/LC_MESSAGES";
 		      	if (toolroot == NULL) {
-				toolroot = "\0";
+				toolroot = "";
 		      	}
 #endif
-		      	/* add toolroot as prefix to phase dirs */
-		      	len = strlen(env_name) + strlen(toolroot) + strlen(env_path) + 
-			  strlen(env_file) + 1;
-		      	new_env = alloca(len);
-		      	sprintf(new_env,"%s%s%s%s",env_name,toolroot,env_path,env_file);
-		      	putenv(new_env);
+			my_putenv("NLSPATH", "%s%s%s", toolroot, env_path, env_file);
 		   }
 		}
 
-		if (uses_message_system && getenv("ORIG_CMD_NAME") == NULL) {
-		   const string env_name = "ORIG_CMD_NAME=";
-		   const int len = strlen(env_name) + strlen(program_name) + 1;
-		   const string new_env = alloca(len);
-
-		   strcpy(new_env, env_name);
-		   strcat(new_env, program_name);
-		   putenv(new_env);
-		}
+		if (uses_message_system && getenv("ORIG_CMD_NAME") == NULL)
+		   my_putenv("ORIG_CMD_NAME", "%s", program_name);
 
 		if (phase == P_f90_fe) {
-		   string root;
-		   string modulepath;
+		   char *root;
+		   char *modulepath;
 		   int len;
-		   string new_env;
-		   string env_name = "FORTRAN_SYSTEM_MODULES=";
-		   string env_val = "/usr/lib/f90modules";
+		   char *new_env;
+		   char *env_name = "FORTRAN_SYSTEM_MODULES=";
+		   char *env_val = "/usr/lib/f90modules";
 		   root = getenv("TOOLROOT");
 		   if (root != NULL) {
 		      len = strlen(env_val) + strlen(root) +3 + strlen(env_val);
@@ -606,30 +441,19 @@ run_phase (phases_t phase, string name, string_list_t *args)
 		      env_val = new_env;
 		   }
 		   
-		   /* add root as prefix to phase dirs */
-		   len = strlen(env_name) + strlen(env_val) + 1;
-		   new_env = alloca(len);
-		   sprintf(new_env,"%s%s",env_name,env_val);
-		   putenv(new_env);
+		   my_putenv ("FORTRAN_SYSTEM_MODULES", "%s", env_val);
 		}
 #ifdef linux
-		{
-		    /* need to setenv COMPILER_PATH for collect to find ld */
-		    string env_name = "COMPILER_PATH";
-		    string collect_path = get_phase_dir(P_collect);
-		    int len = strlen (env_name) + strlen(collect_path) + 2;
-		    string new_env = alloca (len);
+		/* need to setenv COMPILER_PATH for collect to find ld */
+		my_putenv ("COMPILER_PATH", "%s", get_phase_dir(P_collect));
 
-		    sprintf (new_env, "%s=%s", env_name, collect_path); 
-		    putenv (new_env);
-		}
+		/* Tell IPA where to find the driver. */
+		my_putenv ("COMPILER_BIN", "%s/" PSC_NAME_PREFIX "cc-"
+			   PSC_FULL_VERSION,
+			   get_executable_dir(NULL));
 #endif
 
-		execv(name, argv);
-		error("cannot exec %s", name);
-		cleanup ();
-		exit (RC_SYSTEM_ERROR);
-		/* NOTREACHED */
+		my_execv(name, argv);
 	} else {
 		/* parent */
 		int procid;	/* id of the /proc file */
@@ -677,7 +501,7 @@ run_phase (phases_t phase, string name, string_list_t *args)
 			if (waitpid == -1) {
 				error("bad return from wait");
 				cleanup();
-				exit(RC_SYSTEM_ERROR);
+				do_exit(RC_SYSTEM_ERROR);
 				/* NOTREACHED */
 			}
 		}
@@ -692,7 +516,7 @@ run_phase (phases_t phase, string name, string_list_t *args)
 			termsig = WSTOPSIG(waitstatus);
 			error("STOPPED signal received from %s", name);
 			cleanup();
-			exit(RC_SYSTEM_ERROR);
+			do_exit(RC_SYSTEM_ERROR);
 			/* NOTREACHED */
 		} else if (WIFEXITED(waitstatus)) {
 		        int status = WEXITSTATUS(waitstatus);
@@ -713,7 +537,7 @@ run_phase (phases_t phase, string name, string_list_t *args)
                         }
 
 			if (phase == P_f90_fe && keep_listing) {
-			    string cif_file;
+			    char *cif_file;
 			    cif_file = construct_given_name(
 					  drop_path(source_file), "T", TRUE);
                             if (!(stat(cif_file, &stat_buf) != 0 && errno == ENOENT))
@@ -789,25 +613,28 @@ run_phase (phases_t phase, string name, string_list_t *args)
 				internal_err = TRUE;
 				break;
 			case RC_INTERNAL_ERROR:
-				if (phase == P_ld || phase == P_ldplus) {
-					/* gcc/ld returns 1 for undefined */
-					user_err = TRUE;
-				}
-				else
-					internal_err = TRUE;
+				internal_err = TRUE;
 				break;
 			default:
 				internal_err = TRUE;
 				break;
 			} 
 			if (internal_err) {
-				internal_error("%s returned non-zero status %d",
-					name, status);
+				if (phase == P_ld || phase == P_ldplus ||
+				    phase == P_gcpp || phase == P_gcpp_plus) {
+					nomsg_error(status);
+				} else {
+					internal_error("%s returned non-zero status %d",
+						       name, status);
+				}
 			}
 			else if (user_err) {
 				/* assume phase will print diagnostics */
-				if (!show_flag || save_stderr) {
-					nomsg_error();
+				if (phase == P_c_gfe || phase == P_cplus_gfe) {
+					nomsg_error(RC_INTERNAL_ERROR);
+				}
+				else if (!show_flag || save_stderr) {
+					nomsg_error(RC_USER_ERROR);
 				} else {
 					error("%s returned non-zero status %d",
 						name, status);
@@ -825,7 +652,7 @@ run_phase (phases_t phase, string name, string_list_t *args)
 				error("Probably caused by running out of swap space -- check %s", LOGFILE);
 			}
 			cleanup();
-			exit(RC_SYSTEM_ERROR);
+			do_exit(RC_SYSTEM_ERROR);
 		} else {
 			/* cannot happen, I think! */
 			internal_error("driver exec'ing is confused");
@@ -837,16 +664,16 @@ run_phase (phases_t phase, string name, string_list_t *args)
 /*
  * Handler () is used for catching signals.
  */
-extern void
+void
 handler (int sig)
 {
-	error("signal %s caught, stop processing", _sys_siglist[sig]);
+	error("signal %s caught, stop processing", strsignal(sig));
 	cleanup ();
-	exit (RC_SYSTEM_ERROR);
+	do_exit (RC_SYSTEM_ERROR);
 }
 
 /* set signal handler */
-extern void
+void
 catch_signals (void)
 {
     /* modelled after Handle_Signals in common/util/errors.c */
@@ -892,7 +719,7 @@ init_time (void)
 
 
 static void
-print_time (string phase)
+print_time (char *phase)
 {
     clock_t time1, wtime;
     double utime, stime;
@@ -990,7 +817,7 @@ my_psema(void)
   close ( Pipe[1] );
   if ( read(Pipe[0], &c, 1) != 1 ) {
     error ( "read on pipe failed" );
-    exit ( RC_SYSTEM_ERROR );
+    do_exit ( RC_SYSTEM_ERROR );
   }
   close ( Pipe[0] );
 }
@@ -1004,13 +831,13 @@ my_vsema(void)
         if (write(Pipe[1], &c, 1) != 1)
 		{
                 error("write on pipe failed");
-		exit(RC_SYSTEM_ERROR);
+		do_exit(RC_SYSTEM_ERROR);
 		}
 	close(Pipe[1]);
 }
 
 static void
-print_mem(string phase, int num_maps)
+print_mem(char *phase, int num_maps)
 {
 #ifndef linux
 	int i,identified;

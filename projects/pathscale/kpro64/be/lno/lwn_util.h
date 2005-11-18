@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -493,11 +497,20 @@ extern WN *LWN_CreateCompgoto(INT32 num_entries,
 			     WN *block,
 			     WN *deflt);
 
+#ifndef KEY
 extern WN *LWN_CreateIstore(OPCODE opc,
 			  WN_OFFSET offset, 
 			  TY_IDX ty,
 			  WN *value, 
 			  WN *addr);
+#else
+extern WN *LWN_CreateIstore(OPCODE opc,
+			  WN_OFFSET offset, 
+			  TY_IDX ty,
+			  WN *value, 
+			  WN *addr, 
+			  UINT field_id = 0);
+#endif /* KEY */
 
 extern WN *LWN_CreateMstore(WN_OFFSET offset,
 			   TY_IDX ty,
@@ -520,11 +533,20 @@ extern WN *LWN_CreateExp2(OPCODE opc,
 			 WN *kid0,
 			 WN *kid1);
 
+#ifndef KEY
 extern WN *LWN_CreateIload(OPCODE opc,
 			 WN_OFFSET offset, 
 			 TY_IDX ty1,
 			 TY_IDX ty2,
 			 WN *addr);
+#else
+extern WN *LWN_CreateIload(OPCODE opc,
+			 WN_OFFSET offset, 
+			 TY_IDX ty1,
+			 TY_IDX ty2,
+			 WN *addr, 
+			 UINT field_id = 0);
+#endif /* KEY */
 
 extern WN *LWN_CreateMload(WN_OFFSET offset, 
 			  TY_IDX ty,

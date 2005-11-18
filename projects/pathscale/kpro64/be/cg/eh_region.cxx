@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,8 +46,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
-#include <algo.h>
-#include <vector.h>
+#include <algorithm>
+#include <vector>
 #include "defs.h"
 #include "errors.h"
 #include "tracing.h"
@@ -161,6 +165,9 @@ public:
   RID_POST_ITER& operator++();
   RID_POST_ITER  operator++(int);
   friend bool operator==(const RID_POST_ITER&, const RID_POST_ITER&);
+#ifdef KEY
+  friend bool operator!=(const RID_POST_ITER&, const RID_POST_ITER&);
+#endif
 };
 
 RID_POST_ITER::RID_POST_ITER(RID * p): start(p), own(p) {
@@ -199,6 +206,13 @@ inline bool operator==(const RID_POST_ITER& x, const RID_POST_ITER & y)
   return x.own == y.own;
 }
 
+#ifdef KEY
+inline bool operator!=(const RID_POST_ITER& x, const RID_POST_ITER & y)
+{
+  return x.own != y.own;
+}
+#endif
+
 class RID_PARENT_ITER {
 private:
   RID * p;
@@ -217,12 +231,20 @@ public:
     return tmp;
   }
   friend bool operator==(const RID_PARENT_ITER&, const RID_PARENT_ITER &);
-
+#ifdef KEY
+  friend bool operator!=(const RID_PARENT_ITER&, const RID_PARENT_ITER &);
+#endif
 };
 
 bool operator==(const RID_PARENT_ITER& x, const RID_PARENT_ITER& y) {
   return x.p == y.p;
 }
+
+#ifdef KEY
+bool operator!=(const RID_PARENT_ITER& x, const RID_PARENT_ITER& y) {
+  return x.p != y.p;
+}
+#endif
 
 struct IS_EH_RID
 {
@@ -333,7 +355,11 @@ public:
   EH_RANGE_LIST_PARENT_ITER(EH_RANGE_LIST::iterator x): iter(x) {}
   EH_RANGE& operator*() {return *iter;}
   EH_RANGE_LIST_PARENT_ITER& operator++() {
+#ifdef KEY // workaround g++ 3.2 problem
+    iter = EH_RANGE_LIST::iterator(iter->parent); return *this;}
+#else
     iter = iter->parent; return *this;}
+#endif
   EH_RANGE_LIST_PARENT_ITER operator++(int) {
     EH_RANGE_LIST_PARENT_ITER tmp = *this;
     ++*this;
@@ -341,12 +367,23 @@ public:
   }
   friend bool operator==(const EH_RANGE_LIST_PARENT_ITER&,
 			 const EH_RANGE_LIST_PARENT_ITER&);
+#ifdef KEY 
+  friend bool operator!=(const EH_RANGE_LIST_PARENT_ITER&,
+			 const EH_RANGE_LIST_PARENT_ITER&);
+#endif
 };
 
 inline bool operator==(const EH_RANGE_LIST_PARENT_ITER & x,
 		       const EH_RANGE_LIST_PARENT_ITER &y) {
   return x.iter == y.iter;
 }
+
+#ifdef KEY 
+inline bool operator!=(const EH_RANGE_LIST_PARENT_ITER & x,
+		       const EH_RANGE_LIST_PARENT_ITER &y) {
+  return x.iter != y.iter;
+}
+#endif
 
 /* There is always just one EH_RANGE_LIST which belongs to
  * eh_region.cxx and which is cleared at the beginning of
@@ -360,6 +397,19 @@ static EH_RANGE_LIST range_list;
  * This will add a range for every EH region.
  */
 
+#ifdef KEY
+// workaround for g++ 3.2 bug, the function object below does not
+// get called properly
+void ADD_EH_RANGE (RID * rid)
+{
+    if (RID_TYPE_eh(rid)) {
+    	if (WN_block_empty(WN_region_pragmas(RID_rwn(rid))))
+      	    range_list.add_range(rid);
+	else
+	    Set_ST_is_not_used (INITO_st(WN_ereg_supp(RID_rwn(rid))));
+    }
+}
+#else
 struct ADD_EH_RANGE {
   void operator()(RID * rid) {
     if (RID_TYPE_eh(rid)) {
@@ -367,6 +417,7 @@ struct ADD_EH_RANGE {
     }
   }
 };
+#endif // KEY
 
 /* The function object SET_PARENT finds the nearest ancestor 
  * EH region and sets the parent accordingly.
@@ -376,7 +427,7 @@ struct SET_PARENT {
   void operator()(EH_RANGE& r) {
     RID_PARENT_ITER first(r.rid);
     RID_PARENT_ITER last(NULL);
-    first = find_if(++first, last, IS_EH_RID());
+    first = find_if(++first, last, IS_EH_RID(), std::__iterator_category(first));
     if (first == last)
       r.parent = NULL;
     else
@@ -398,13 +449,25 @@ EH_Generate_Range_List(WN * pu)
   RID_POST_ITER rid_first(rid);
   RID_POST_ITER rid_last(NULL);
 
+#ifdef KEY // workaround problem with g++ 3.2
+  while (rid_first != rid_last)
+  {
+    ADD_EH_RANGE(*rid_first);
+    ++rid_first;
+  }
+#else
   for_each(rid_first, rid_last, ADD_EH_RANGE());
+#endif
 
   EH_RANGE_LIST::iterator list_first(range_list.begin());
   EH_RANGE_LIST::iterator list_last (range_list.end());
 
   for (EH_RANGE_LIST::iterator p = list_first; p!=list_last; p++)
+#ifdef KEY	// workaround g++ 3.2 problem
+    RID_eh_range_ptr(p->rid) = &(*p);
+#else
     RID_eh_range_ptr(p->rid) = p;
+#endif
 
   for_each(list_first, list_last, SET_PARENT());
 }
@@ -449,7 +512,13 @@ EH_Set_Start_Label(EH_RANGE* p)
 {
   LABEL_IDX label;
   if (p->kind == ehk_guard) {
+#ifdef KEY
+    EH_RANGE_LIST::reverse_iterator rfirst = range_list.rbegin();
+    while (&(*rfirst) != p)
+      rfirst++;
+#else
     EH_RANGE_LIST::reverse_iterator rfirst(p);
+#endif
     EH_RANGE_LIST::reverse_iterator rlast  = range_list.rend();
     EH_RANGE_LIST::reverse_iterator riter =
       find_if(rfirst, rlast, IS_SIB_RANGE(p));
@@ -503,7 +572,13 @@ void EH_Set_Has_Call(EH_RANGE* p)
   p->has_call = TRUE;
   if (p->kind == ehk_mask) {
     // set has_call for associated guard region also
+#ifdef KEY // workaround constructor call bug in g++ 3.2
+    EH_RANGE_LIST::reverse_iterator rfirst = range_list.rbegin();
+    while (&(*rfirst) != p)
+      rfirst++;
+#else
     EH_RANGE_LIST::reverse_iterator rfirst(p);
+#endif
     EH_RANGE_LIST::reverse_iterator rlast  = range_list.rend();
     rfirst = find_if(rfirst, rlast, IS_SIB_RANGE(p));
     Is_True(rfirst != rlast && rfirst->kind == ehk_guard,
@@ -648,9 +723,14 @@ struct IS_CLEANUP_RANGE {
 struct FIX_MASK_PARENT {
   void operator()(EH_RANGE& r) {
     if (r.kind == ehk_mask) {
+#ifdef KEY
+      EH_RANGE_LIST_PARENT_ITER first(EH_RANGE_LIST::iterator(r.parent));
+      EH_RANGE_LIST_PARENT_ITER last(EH_RANGE_LIST::iterator(NULL));
+#else
       EH_RANGE_LIST_PARENT_ITER first(r.parent);
       EH_RANGE_LIST_PARENT_ITER last (NULL);
-      first = find_if(first, last, IS_CLEANUP_RANGE());
+#endif
+      first = find_if(first, last, IS_CLEANUP_RANGE(), std::__iterator_category(first));
       Is_True(first != last, ("mask region must have cleanup ancestor"));
       r.parent = (*first).parent;
     }
@@ -720,6 +800,12 @@ ST_For_Range_Table(WN * wn)
 		      2 * offset_size;
   UINT32 size = header_size + number_of_ranges * range_size;
 
+#ifdef KEY
+// This is a temporary solution. The above 'size' is not properly
+// calculated. TODO: Fix the size above.
+  size = 0;	// don't output the size
+#endif // KEY
+
   TY_IDX tyi;
   TY& ty = New_TY(tyi);
   TY_Init(ty, size, KIND_STRUCT, MTYPE_M,
@@ -746,6 +832,335 @@ inline INT16 parent_offset(INT32 i)
 }
 
 
+#ifdef KEY
+
+#include <map>
+using namespace std;
+
+struct cmpst
+{
+  bool operator() (const ST_IDX i1, const ST_IDX i2) const
+  {
+  	return (i1 < i2);
+  }
+};
+
+// Seems I need some features of 'map' and some features of 'vector'. I want
+// a map from an st entry to a filter. This map would be sorted based on st.
+// I need an ordering based on filter (which is not the key in the map).
+map<ST_IDX, int, cmpst> type_filter_map;
+
+struct type_filter_entry {
+	ST_IDX st;
+	int filter;
+};
+
+struct sort_on_filter : public binary_function<type_filter_entry, 
+					type_filter_entry, bool>
+{
+  bool operator() (const type_filter_entry t1, 
+			const type_filter_entry t2) const
+  {
+	return t1.filter > t2.filter;
+  }
+};
+
+static INITO*
+Create_Type_Filter_Map (void)
+{
+  INITV_IDX i = INITV_next (INITV_next (INITO_val (Get_Current_PU().unused)));
+  INITO* ino;
+  INITO_IDX idx = TCON_uval (INITV_tc_val(i));
+  if (idx)	// idx for typeinfo_table
+  {
+    ino = &Inito_Table[idx];
+    ST* st = INITO_st(ino);
+
+    FmtAssert (!strcmp(ST_name (*st), "__TYPEINFO_TABLE__") && 
+    	      (ST_sclass(st) == SCLASS_EH_REGION_SUPP), 
+	      ("Unexpected ST in PU"));
+    INITV_IDX blk = INITO_val(*ino);
+
+    do 
+    {
+	INITV_IDX st_entry = INITV_blk(blk);
+	// st_idx, filter
+	ST_IDX st_idx = 0;
+	if (INITV_kind (st_entry) != INITVKIND_ZERO)
+	    st_idx = TCON_uval(INITV_tc_val (st_entry));
+	int filter = TCON_ival (INITV_tc_val (INITV_next (st_entry)));
+	type_filter_map [st_idx] = filter;
+    } while (INITV_next(blk) && (blk=INITV_next(blk)));
+  }
+
+  i = INITV_next (i);
+  ino = 0;
+  idx = TCON_uval (INITV_tc_val(i));
+  if (idx)	// idx for eh-spec
+  {
+    ino = &Inito_Table[idx];
+    ST* st = INITO_st(ino);
+
+    FmtAssert (!strcmp(ST_name (*st), "__EH_SPEC_TABLE__") && 
+    	      (ST_sclass(st) == SCLASS_EH_REGION_SUPP), 
+	      ("Unexpected ST in PU"));
+  }
+  return ino;
+}
+
+#include <libelf.h>
+#include <libdwarf.h>
+extern "C" {
+#include <pro_encode_nm.h>
+}
+// This function returns the size of an LEB128 encoding of value. We do
+// not use the encoding however. We emit the unencoded value with the LEB128
+// directive.
+static int
+sizeof_signed_leb128 (int value)
+{
+  char buff[ENCODE_SPACE_NEEDED];
+  int size;
+  int res = _dwarf_pro_encode_signed_leb128_nm (value, &size, buff, sizeof(buff));
+  FmtAssert (res == DW_DLV_OK, ("Encoding for exception table failed"));
+  return size;
+}
+
+static void
+Create_INITO_For_Range_Table(ST * st, ST * pu)
+{
+  INITV_IDX blk=0, start, action_table_start, prev_action_start;
+// This gives the offset into the action table, which is output as the
+// 4th field in a call-site record.
+  int running_ofst=1;
+  int bytes_for_filter;
+
+  INITO* eh_spec = Create_Type_Filter_Map ();
+
+  vector<INITV_IDX> action_chains;
+
+  // process the exception range list
+  for (INT32 i=0; i<range_list.size(); ++i)
+  {
+    // region start
+    INITV_IDX begin = New_INITV();
+    INITV_Init_Symdiff (begin, range_list[i].start_label,
+			   pu, !Use_Long_EH_Range_Offsets());
+
+// We ideally need a INITV_Init_Symdiff which could store the difference
+// between 2 labels. Without that, we emit the 2 labels and then check
+// for the pattern in cgemit
+    INITV_IDX high_pc = New_INITV();
+    INITV_Init_Label (high_pc, range_list[i].end_label, 1);
+    Set_INITV_next (begin, high_pc);
+
+    INITV_IDX low_pc = New_INITV();
+    INITV_Init_Label (low_pc, range_list[i].start_label, 1);
+    Set_INITV_next (high_pc, low_pc);
+
+    // landing pad
+    INITO_IDX ereg = range_list[i].ereg_supp;
+    INITV_IDX first_initv = INITV_blk (INITO_val (ereg));
+    Set_ST_is_not_used (*(INITO_st (ereg)));
+
+    LABEL_IDX pad_label=0;
+    if (INITV_kind(first_initv) != INITVKIND_ZERO)
+    	pad_label = INITV_lab (first_initv);
+
+    INITV_IDX pad = New_INITV();
+    if (pad_label)
+    	INITV_Init_Symdiff (pad, pad_label, pu, !Use_Long_EH_Range_Offsets());
+    else
+	INITV_Set_ZERO (Initv_Table[pad], MTYPE_U4, 1);
+    Set_INITV_next (low_pc, pad);
+
+    // first action index
+    // build chain of actions
+    FmtAssert (INITV_next (first_initv) != 0, ("No handler information available"));
+    INITV_IDX action_ofst = 0;
+    INITV_IDX first_action = New_INITV();
+    for (INITV_IDX next_initv=INITV_next (first_initv);
+    		next_initv; next_initv=INITV_next (next_initv))
+    {
+    	INITV_IDX action = New_INITV();
+	int sym=0;
+	if (INITV_kind(next_initv) != INITVKIND_ZERO)
+	    sym = TCON_uval(INITV_tc_val (next_initv));
+
+	bool catch_all = false;	// catch-all clause
+	if (!sym)
+	    catch_all = (type_filter_map.find(sym) != type_filter_map.end());
+	// if a region has eh specifications, we at least need:
+	// 0 /* zero means zero */
+	// 1 /* offset */
+	// -filter /* eh spec typeinfo offset */
+	// 0
+	// But catch-all typeinfo is also zero. How to distinguish between
+	// the first zero and a catch-all zero? The following hack is used:
+	// if the next typeinfo is negative, then "zero means zero".
+	if (catch_all && INITV_next (next_initv))
+	{
+	    int next_sym = 0;
+	    INITV_IDX tmp_idx = INITV_next (next_initv);
+	    if (INITV_kind (tmp_idx) != INITVKIND_ZERO)
+	    	next_sym = TCON_ival (INITV_tc_val (tmp_idx));
+	    if (next_sym < 0)
+	    	catch_all = false;
+	}
+	// action field
+	if (sym < 0) // eh spec offset
+	{
+    	    INITV_Set_VAL (Initv_Table[action],
+		Enter_tcon (Host_To_Targ (MTYPE_I4,sym)), 1);
+	    bytes_for_filter = sizeof_signed_leb128 (sym);
+	}
+	else if (sym || catch_all)
+	{
+    	    INITV_Set_VAL (Initv_Table[action],
+		Enter_tcon (Host_To_Targ (MTYPE_I4,type_filter_map[sym])), 1);
+	    bytes_for_filter = sizeof_signed_leb128 (type_filter_map[sym]);
+	}
+	else 
+	{
+	    INITV_Set_ZERO (Initv_Table[action], MTYPE_I4, 1);
+	    bytes_for_filter = 1;
+	}
+
+    	if (!action_ofst)
+	{
+	    // store the head of each action chain
+	    action_chains.push_back (action);
+
+	    // action start marker for call-site record
+	    INITV_Set_VAL (Initv_Table[first_action],
+		Enter_tcon (Host_To_Targ (MTYPE_I4, running_ofst)), 1);
+	    // store offset into first action **Note: not the filter, but offset to it
+	    Set_INITV_next (pad, first_action);
+	}
+
+	if (action_ofst)    Set_INITV_next (action_ofst, action);
+
+// offset to next action. currently it is either 1 or 0, 0 indicates this
+// is the last action.
+    	action_ofst = New_INITV();
+	if (INITV_next (next_initv))
+	    INITV_Set_ONE (Initv_Table[action_ofst], MTYPE_I4, 1);
+	else
+	    INITV_Set_ZERO (Initv_Table[action_ofst], MTYPE_I4, 1);
+	Set_INITV_next (action, action_ofst);
+	running_ofst += (1 + bytes_for_filter);
+    }
+
+    if (i == 0)
+    {
+    	blk = start = New_INITV();
+	INITV_Init_Block (blk, begin);
+    }
+    else
+    {// the entire call site table is taken as a single array of mixed types
+    // instead of being an array of structures. Thus, the array elements are
+    // r0 start, r0 end, l0, a0, r1 start, r1 end, l1, a1, ...
+	Set_INITV_next (prev_action_start, begin);
+	/*
+    	INITV_IDX next_blk = New_INITV();
+	INITV_Init_Block (next_blk, begin);
+	Set_INITV_next (blk, next_blk);
+	blk = next_blk;
+	*/
+    }
+    if (i == (range_list.size()-1))
+    {
+  	INITO_IDX inito = New_INITO (ST_st_idx(st), start);
+    }
+    prev_action_start = first_action;
+  }
+
+  INITV_IDX action_blk=0, prev_action_blk=0;
+  if (action_chains.size())
+  {
+  	action_blk = New_INITV();
+	INITV_Init_Block (action_blk, action_chains[0], 1, INITVFLAGS_ACTION_REC);
+	Set_INITV_next (blk, action_blk);
+	prev_action_blk = action_blk;
+  }
+
+  for (INT32 i=1; i<action_chains.size(); ++i)
+  {
+  	action_blk = New_INITV();
+	INITV_Init_Block (action_blk, action_chains[i], 1, INITVFLAGS_ACTION_REC);
+	Set_INITV_next (prev_action_blk, action_blk);
+	prev_action_blk = action_blk;
+  }
+
+  vector<type_filter_entry> ti;
+  for (map<ST_IDX, int, cmpst>::iterator i=type_filter_map.begin();
+  		i != type_filter_map.end(); ++i)
+  {
+	type_filter_entry f;
+	f.st = (*i).first;
+	f.filter = (*i).second;
+	ti.push_back (f);
+  }
+  if (!ti.empty()) sort (ti.begin(), ti.end(), sort_on_filter());
+
+  // Search for any other EH information the front-end has sent
+  INITV_IDX prev=0;
+  for (vector<type_filter_entry>::iterator i = ti.begin();
+		i != ti.end(); ++i)
+  {	// Process EH information from FE (currently only typeinfo)
+	INITV_IDX type = New_INITV();
+	if ((*i).st)
+	    INITV_Init_Symoff (type, &St_Table [(*i).st] , 0);
+	else
+	    INITV_Set_ZERO (Initv_Table[type], 
+	    		    (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4), 1);
+	if (prev)	Set_INITV_next (prev, type);
+	else		start = type;	// mark the first one
+	prev = type;
+  }
+  INITV_IDX type_blk=0;
+  if (prev)
+  {
+	type_blk = New_INITV();
+	INITV_Init_Block (type_blk, start, 1, INITVFLAGS_TYPEINFO);
+	if (action_blk)
+	    Set_INITV_next (action_blk, type_blk);
+	else if (blk)
+	    Set_INITV_next (blk, type_blk);
+  }
+  if (eh_spec)
+  {
+  	prev=0;
+	INITV_IDX first_eh_spec = INITV_blk (INITO_val (*eh_spec));
+	FmtAssert (first_eh_spec, ("Empty EH specification"));
+	for (; first_eh_spec; first_eh_spec = INITV_next (first_eh_spec))
+	{
+	    ST_IDX sym = 0;
+	    if (INITV_kind (first_eh_spec) != INITVKIND_ZERO)
+	    	sym = TCON_uval(INITV_tc_val (first_eh_spec));
+	    INITV_IDX spec = New_INITV();
+	    if (sym)
+    	      INITV_Set_VAL (Initv_Table[spec],
+		 Enter_tcon (Host_To_Targ (MTYPE_I4,type_filter_map[sym])), 1);
+	    else INITV_Set_ZERO (Initv_Table[spec], MTYPE_I4, 1);
+	    if (prev)	Set_INITV_next (prev, spec);
+	    else	start = spec;
+	    prev = spec;
+	}
+	INITV_IDX spec_blk = New_INITV();
+	INITV_Init_Block (spec_blk, start, 1, INITVFLAGS_EH_SPEC);
+	if (type_blk)
+	    Set_INITV_next (type_blk, spec_blk);
+	else if (action_blk)
+	    Set_INITV_next (action_blk, spec_blk);
+	else if (blk)
+	    Set_INITV_next (blk, spec_blk);
+  }
+  // Done with this PU
+  type_filter_map.clear();
+}
+
+#else
 static void
 Create_INITO_For_Range_Table(ST * st, ST * pu)
 {
@@ -799,6 +1214,7 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
   }
 }
+#endif // KEY
 
 void 
 EH_Write_Range_Table(WN * wn)

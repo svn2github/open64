@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -64,7 +68,6 @@
 #ifdef _KEEP_RCS_ID
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/gra_create.cxx,v $ $Revision: 1.1.1.1 $";
 #endif
-#include <list.h>
 
 #include "defs.h"
 #include "mempool.h"
@@ -626,6 +629,11 @@ Create_Live_BB_Sets(void)
 	else if (BB_mod_pred_rotating_registers(gbb->Bb()) &&
 		 Is_Predicate_REGISTER_CLASS(lrange->Rc()))
 	  lrange->Spans_Rot_Reg_Clob_Set();
+
+#ifdef TARG_X8664
+	if (gbb->Savexmms() && lrange->Rc() == ISA_REGISTER_CLASS_float)
+	  lrange->Spans_Savexmms_Set();
+#endif
       }
     }
   }
@@ -779,7 +787,7 @@ Complement_TN_Reference( OP* op, TN* tn, GRA_BB* gbb, LUNIT** lunitp,
 
 /////////////////////////////////////
 static void
-Complement_Copy( OP* op, GRA_BB *gbb, list<GRA_PREF_CAND*>& pref_list )
+Complement_Copy( OP* op, GRA_BB *gbb, std::list<GRA_PREF_CAND*>& pref_list )
 /////////////////////////////////////
 //
 //  <op> is a copy OP in the complement.  It implies a preference if it
@@ -863,6 +871,9 @@ Avoid_RA_In_Call_Argument( OP* op )
 /////////////////////////////////////
 {
   INT i;
+
+  if( RA_TN == NULL )
+    return;
 
   for ( i = OP_opnds(op) - 1; i >= 0; --i ) {
     LRANGE *lrange = lrange_mgr.Get(OP_opnd(op,i));
@@ -1094,7 +1105,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   LUNIT* lunit;
   LRANGE_LIST *wired_locals[ISA_REGISTER_CLASS_MAX+1];
   hTN_MAP live_data;
-  list<GRA_PREF_CAND*> pref_list;
+  std::list<GRA_PREF_CAND*> pref_list;
   bzero(&wired_locals, (ISA_REGISTER_CLASS_MAX+1) * sizeof(LRANGE_LIST*));
 
   MEM_POOL_Push(&MEM_local_nz_pool);
@@ -1189,7 +1200,7 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   // find preferenced globals, and check if there is a conflict between
   // the two tn's in the block.
   //
-  list<GRA_PREF_CAND*>::iterator gpci;
+  std::list<GRA_PREF_CAND*>::iterator gpci;
   for (gpci = pref_list.begin(); gpci != pref_list.end(); gpci++) {
     GRA_PREF_CAND* gpc = *gpci;
     TN* tn_dest = gpc->Dest();

@@ -17,9 +17,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
+#include "ansidecl.h"
 #include "floatformat.h"
 #include <math.h>		/* ldexp */
-#ifdef __STDC__
+#ifdef ANSI_PROTOTYPES
 #include <stddef.h>
 extern void *memcpy (void *s1, const void *s2, size_t n);
 extern void *memset (void *s, int c, size_t n);
@@ -66,7 +67,7 @@ const struct floatformat floatformat_ieee_double_littlebyte_bigword =
 {
   floatformat_littlebyte_bigword, 64, 0, 1, 11, 1023, 2047, 12, 52,
   floatformat_intbit_no,
-  "floatformat_ieee_double_little"
+  "floatformat_ieee_double_littlebyte_bigword"
 };
 
 const struct floatformat floatformat_i387_ext =
@@ -91,24 +92,55 @@ const struct floatformat floatformat_i960_ext =
 };
 const struct floatformat floatformat_m88110_ext =
 {
-#ifdef HARRIS_FLOAT_FORMAT
+  floatformat_big, 80, 0, 1, 15, 0x3fff, 0x7fff, 16, 64,
+  floatformat_intbit_yes,
+  "floatformat_m88110_ext"
+};
+const struct floatformat floatformat_m88110_harris_ext =
+{
   /* Harris uses raw format 128 bytes long, but the number is just an ieee
      double, and the last 64 bits are wasted. */
   floatformat_big,128, 0, 1, 11,  0x3ff,  0x7ff, 12, 52,
   floatformat_intbit_no,
-  "floatformat_m88110_ext(harris)"
-#else
-  floatformat_big, 80, 0, 1, 15, 0x3fff, 0x7fff, 16, 64,
-  floatformat_intbit_yes,
-  "floatformat_m88110_ext"
-#endif /* HARRIS_FLOAT_FORMAT */
+  "floatformat_m88110_ext_harris"
 };
-const struct floatformat floatformat_arm_ext =
+const struct floatformat floatformat_arm_ext_big =
 {
   /* Bits 1 to 16 are unused.  */
   floatformat_big, 96, 0, 17, 15, 0x3fff, 0x7fff, 32, 64,
   floatformat_intbit_yes,
-  "floatformat_arm_ext"
+  "floatformat_arm_ext_big"
+};
+const struct floatformat floatformat_arm_ext_littlebyte_bigword =
+{
+  /* Bits 1 to 16 are unused.  */
+  floatformat_littlebyte_bigword, 96, 0, 17, 15, 0x3fff, 0x7fff, 32, 64,
+  floatformat_intbit_yes,
+  "floatformat_arm_ext_littlebyte_bigword"
+};
+const struct floatformat floatformat_ia64_spill_big =
+{
+  floatformat_big, 128, 0, 1, 17, 65535, 0x1ffff, 18, 64,
+  floatformat_intbit_yes,
+  "floatformat_ia64_spill_big"
+};
+const struct floatformat floatformat_ia64_spill_little =
+{
+  floatformat_little, 128, 0, 1, 17, 65535, 0x1ffff, 18, 64,
+  floatformat_intbit_yes,
+  "floatformat_ia64_spill_little"
+};
+const struct floatformat floatformat_ia64_quad_big =
+{
+  floatformat_big, 128, 0, 1, 15, 16383, 0x7fff, 16, 112,
+  floatformat_intbit_no,
+  "floatformat_ia64_quad_big"
+};
+const struct floatformat floatformat_ia64_quad_little =
+{
+  floatformat_little, 128, 0, 1, 15, 16383, 0x7fff, 16, 112,
+  floatformat_intbit_no,
+  "floatformat_ia64_quad_little"
 };
 
 static unsigned long get_field PARAMS ((unsigned char *,

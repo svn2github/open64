@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1063,7 +1067,37 @@ typedef enum {
   INTRN_SINCOS    = 761,
   INTRN_SINCOSL   = 762,
 
+#ifdef KEY
+  /* gcc stuff */
+  INTRN_U4READFRAMEPOINTER = 763,
+  INTRN_U8READFRAMEPOINTER = 764,
+  INTRN_APPLY_ARGS = 765,
+  INTRN_APPLY      = 766,
+  INTRN_RETURN     = 767,
+
+  /* x86-64 vararg support */
+  INTRN_VA_START   = 768,
+  INTRN_SAVE_XMMS  = 769,
+
+  /* EH stuff */
+  INTRN_LANDING_PAD_ENTRY = 770,
+
+  /* C99 builtins */
+  INTRN_ISGREATER       = 771,
+  INTRN_ISGREATEREQUAL  = 772,
+  INTRN_ISLESS          = 773,
+  INTRN_ISLESSEQUAL     = 774,
+  INTRN_ISLESSGREATER   = 775,
+  INTRN_ISUNORDERED     = 776,
+
+  /* Saturation arithmetic */
+  INTRN_SUBSU2          = 777,
+  INTRN_SUBSV16I2       = 778,
+
+  INTRINSIC_LAST  = 778
+#else
   INTRINSIC_LAST  = 762
+#endif
 
 } INTRINSIC;
 

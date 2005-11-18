@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -65,6 +69,11 @@
 int
 _evnt_listio(int cmd, struct fflistreq *list, int nreq, struct ffsw *iostat)
 {
+#if 1
+	fprintf(stderr, "*** Notice: the Cray event layer is not currently supported.\n");
+	fprintf(stderr, "*** Please contact PathScale if you need this functionality.\n");
+	abort();
+#else
 	struct fdinfo *llfio;
 	struct evnt_f *evnt_info;
 	int     status;
@@ -260,4 +269,5 @@ _evnt_listio(int cmd, struct fflistreq *list, int nreq, struct ffsw *iostat)
 	}
 
 	return (ret);
+#endif
 }

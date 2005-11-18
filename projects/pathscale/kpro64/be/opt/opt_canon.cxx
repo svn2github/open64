@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 //
 // Module: opt_canon.cxx
@@ -93,13 +98,13 @@ CANON_CR::Convert2cr(WN *wn, CODEMAP *htable, BOOL foldit) const
   if (Tree() && Scale() != 0) {
     return htable->Add_bin_node_and_fold
       (OPCODE_make_op(OPR_ADD, typ, MTYPE_V),
-       Tree(), htable->Add_const(typ, Scale()));
+       Tree(), htable->Add_const(MTYPE_I8, Scale()));
   }
   if (Tree()) 
     return Tree();
 
   // return a CK_CONST node
-  CODEREP *cr =  htable->Add_const(typ, Scale());
+  CODEREP *cr =  htable->Add_const(MTYPE_I8, Scale());
   return cr;
 }
 

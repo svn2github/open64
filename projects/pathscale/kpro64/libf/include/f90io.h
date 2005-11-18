@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -51,9 +55,11 @@
  *
  ******************************************************************************/
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <cray/dopevec.h>
+#include "util/utildefs.h"
 
 /*******************************************************************************
  *
@@ -89,6 +95,12 @@ typedef union {
 	struct DopeVector *dv;		/* pointer to dope vector */
 } gfptr_t;
 
+
+extern int _cntig_chk(DopeVectorType *dv,
+           void **newar,
+           int *nocontig,
+           long *extent,
+           long *nbytes);
 
 /*******************************************************************************
  *
@@ -630,6 +642,9 @@ extern int _CLOSE(struct close_spec_list *csl);
 extern int _INQUIRE(struct inquire_spec_list *isl);
 extern void _BUFFERIN(struct bio_spec_list *bisl);
 extern void _BUFFEROUT(struct bio_spec_list *bosl);
+
+extern int _xfer_iolist(FIOSPTR css, unit *cup, iolist_header *iolist,
+			xfer_func *func);
 
 /******************************************************************************
  *

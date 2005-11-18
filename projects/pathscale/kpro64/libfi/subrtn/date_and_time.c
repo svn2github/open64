@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,6 +46,8 @@
  *			in ISO 8601:1988.
  */
 
+#include <string.h>
+#include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
 #include <cray/dopevec.h>
@@ -95,7 +101,7 @@ _DATE_AND_TIME (dat, tim, zon, values)
 	    tlen = _fcdlen (tim);
 	    res = strftime (tmp, 10, "%H %M %S", timer);
 	    tmp[8] = '\0';
-	    sprintf (tmp, "%s.%3.3d", tmp, tv.tv_usec/1000);
+	    sprintf (tmp, "%s.%3.3ld", tmp, tv.tv_usec/1000);
 /*
  *	This seemingly useless loop is necessary because SCM expands the
  *	format string into something which is not desired.  The only way
@@ -130,12 +136,14 @@ _DATE_AND_TIME (dat, tim, zon, values)
                 if (timer->tm_isdst) {
  	            hr--;
                 } else {
+#ifndef KEY
  	            hr++;
+#endif
                 }
 	    } else {
 		sign = '+';
 	    }
-	    sprintf (tmp, "%c%02d%02d", sign, abs(hr), min);
+	    sprintf (tmp, "%c%02d%02d", sign, hr > 0 ? hr : -hr, min);
 	    strncpy (zptr, tmp, 5);
 	    if (zlen > 5)
 		for (i = 5; i < zlen; i++)

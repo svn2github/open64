@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -59,12 +63,12 @@ ipxfargc_()
 	return((_f_int) (__Argc - 1) );
 }
 #elif defined(__linux)
-extern  int     _f90argc;            /* Number of argv fields */
+extern  int     f__xargc;            /* Number of argv fields */
 
 _f_int
 ipxfargc_()
 {
-	return((_f_int) (_f90argc - 1) );
+	return((_f_int) (f__xargc - 1) );
 }
 
 #else

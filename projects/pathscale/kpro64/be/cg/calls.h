@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -71,6 +75,9 @@
 /* for ST */
 #include "symtab.h"
 #include "wn.h"
+#ifdef TARG_X8664
+#include "bb.h"
+#endif
 
 /* ================================================================= */
 
@@ -133,4 +140,21 @@ extern BOOL LC_Used_In_PU;	/* flag whether LC_TN was used */
 /* Tail calls: */
 extern void Optimize_Tail_Calls( ST* pu );
 
+#ifdef KEY
+// The following are interfaces into calls.cxx Callee saved registers stack
+typedef struct save_reg_loc {
+  struct tn 	*ded_tn; /* the dedicated TN for the callee-saved register */
+  ST 		*temp;   /* the save location */
+  BOOL		user_allocated; /* true if allocated by user via asm */
+} SAVE_REG_LOC;
+
+// Number of callee saved registers
+extern INT Cgdwarf_Num_Callee_Saved_Regs (void);
+// Nth callee saved register dedicated TN
+extern struct tn* Cgdwarf_Nth_Callee_Saved_Reg (INT n);
+// The location on the stack that corresponds to the nth TN on the stack.
+extern ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n);
+// Sort the saved register stack based on the order in entry BB.
+extern void Sort_Saved_Register_Stack (BB* bb);
+#endif
 #endif /* calls_INCLUDED */

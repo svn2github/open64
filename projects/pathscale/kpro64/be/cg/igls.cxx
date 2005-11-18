@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,6 +56,8 @@
 // =======================================================================
 // =======================================================================
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <alloca.h>
 #include <math.h>
 #include "defs.h"
@@ -200,14 +206,14 @@ IGLS_Schedule_Region (BOOL before_regalloc)
     if (IGLS_Enable_HB_Scheduling && IGLS_Enable_PRE_HB_Scheduling &&
 	should_we_global_schedule) {
       HB_Remove_Deleted_Blocks();
-      list<HB*>::iterator hbi;
+      std::list<HB*>::iterator hbi;
       FOR_ALL_BB_STLLIST_ITEMS_FWD(HB_list, hbi) {
 	if (!Sched) {
 	  Sched = CXX_NEW(HB_Schedule(), &MEM_local_pool);
 	}
 
 	// Check to see if not SWP'd.
-	list<BB*> hb_blocks;
+	std::list<BB*> hb_blocks;
 	Get_HB_Blocks_List(hb_blocks,*hbi);
 	if (Can_Schedule_HB(hb_blocks)) {
 	  Sched->Init(hb_blocks, hbs_type, NULL);
@@ -296,13 +302,13 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 	should_we_schedule && should_we_global_schedule) {
 
       HB_Remove_Deleted_Blocks();
-      list<HB*>::iterator hbi;
+      std::list<HB*>::iterator hbi;
       FOR_ALL_BB_STLLIST_ITEMS_FWD(HB_list, hbi) {
 	if (!Sched) {
 	  Sched = CXX_NEW(HB_Schedule(), &MEM_local_pool);
 	}
 	// Check to see if not SWP'd.
-	list<BB*> hb_blocks;
+	std::list<BB*> hb_blocks;
 	Get_HB_Blocks_List(hb_blocks,*hbi);
 	if (Can_Schedule_HB(hb_blocks)) {
 	  Sched->Init(hb_blocks, hbs_type, NULL);
@@ -333,7 +339,14 @@ IGLS_Schedule_Region (BOOL before_regalloc)
 
       if (should_we_do_thr && !skip_bb) Remove_Unnecessary_Check_Instrs(bb);
 
-      BOOL resched = !skip_bb && Reschedule_BB(bb); /* FALSE; */
+#ifdef KEY_1873
+      /* The original code with Reschedule_BB is meanlingless. I think the original
+	 author meant BB_scheduled(bb), not Reschedule_BB(bb).
+      */
+      const BOOL resched = FALSE;
+#else
+      BOOL resched = !skip_bb && Reschedule_BB(bb); /* FALSE; */      
+#endif // KEY
       if (should_we_schedule && should_we_local_schedule &&
 	  (!skip_bb || resched)) {
 
@@ -349,6 +362,13 @@ IGLS_Schedule_Region (BOOL before_regalloc)
       }
       Handle_All_Hazards (bb);
     } /* for (bb= REGION_First_BB).. */
+
+#ifdef TARG_X8664
+    {
+      extern void CG_Sched( MEM_POOL*, BOOL );
+      CG_Sched( &MEM_local_pool, Get_Trace( TP_SCHED, 1 ) );
+    }
+#endif
 
     // Do branch optimizations here.
     if (should_we_schedule && should_we_local_schedule) {

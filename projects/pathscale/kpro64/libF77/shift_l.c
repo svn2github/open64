@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,6 +45,7 @@
 /*	actual or intended publication of such source code.	*/
 
 #include "bit.h"
+#include "f77defs.h"
 
 /* Logically shift m k-places. If k > NBI, m = undefined.
  * k > 0 => left shift.

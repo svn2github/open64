@@ -1,5 +1,5 @@
 /* Disassemble AVR instructions.
-   Copyright (C) 1999, 2000 Free Software Foundation, Inc.
+   Copyright 1999, 2000 Free Software Foundation, Inc.
 
    Contributed by Denis Chertykov <denisc@overta.ru>
 
@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #include "sysdep.h"
 #include "dis-asm.h"
 #include "opintl.h"
-
+#include "libiberty.h"
 
 struct avr_opcodes_s
 {
@@ -31,24 +31,21 @@ struct avr_opcodes_s
   int insn_size;		/* in words */
   int isa;
   unsigned int bin_opcode;
-  unsigned int bin_mask;
 };
 
 #define AVR_INSN(NAME, CONSTR, OPCODE, SIZE, ISA, BIN) \
-{#NAME, CONSTR, OPCODE, SIZE, ISA, BIN, 0},
+{#NAME, CONSTR, OPCODE, SIZE, ISA, BIN},
 
-struct avr_opcodes_s avr_opcodes[] =
+const struct avr_opcodes_s avr_opcodes[] =
 {
   #include "opcode/avr.h"
-  {NULL, NULL, NULL, 0, 0, 0, 0}
+  {NULL, NULL, NULL, 0, 0, 0}
 };
 
+static int avr_operand PARAMS ((unsigned int, unsigned int,
+				unsigned int, int, char *, char *, int));
 
-static void avr_operand (unsigned int insn, unsigned int insn2,
-			 unsigned int pc, int constraint, char *buf,
-			 char *comment, int regs);
-
-static void
+static int
 avr_operand (insn, insn2, pc, constraint, buf, comment, regs)
      unsigned int insn;
      unsigned int insn2;
@@ -58,6 +55,8 @@ avr_operand (insn, insn2, pc, constraint, buf, comment, regs)
      char *comment;
      int regs;
 {
+  int ok = 1;
+
   switch (constraint)
     {
       /* Any register operand.  */
@@ -96,18 +95,27 @@ avr_operand (insn, insn2, pc, constraint, buf, comment, regs)
       break;
 
     case 'e':
-      if (insn & 0x2)
-	*buf++ = '-';
-      switch ((insn >> 2) & 0x3)
-	{
-	case 0: *buf++ = 'Z'; break;
-	case 2: *buf++ = 'Y'; break;
-	case 3: *buf++ = 'X'; break;
-	default: buf += sprintf (buf, _(" unknown register ")); break;
-	}
-      if (insn & 0x1)
-	*buf++ = '+';
-      *buf = '\0';
+      {
+	char *xyz;
+
+	switch (insn & 0x100f)
+	  {
+	    case 0x0000: xyz = "Z";  break;
+	    case 0x1001: xyz = "Z+"; break;
+	    case 0x1002: xyz = "-Z"; break;
+	    case 0x0008: xyz = "Y";  break;
+	    case 0x1009: xyz = "Y+"; break;
+	    case 0x100a: xyz = "-Y"; break;
+	    case 0x100c: xyz = "X";  break;
+	    case 0x100d: xyz = "X+"; break;
+	    case 0x100e: xyz = "-X"; break;
+	    default: xyz = "??"; ok = 0;
+	  }
+	sprintf (buf, xyz);
+
+	if (AVR_UNDEF_P (insn))
+	  sprintf (comment, _("undefined"));
+      }
       break;
 
     case 'z':
@@ -115,11 +123,13 @@ avr_operand (insn, insn2, pc, constraint, buf, comment, regs)
       if (insn & 0x1)
 	*buf++ = '+';
       *buf = '\0';
+      if (AVR_UNDEF_P (insn))
+	sprintf (comment, _("undefined"));
       break;
 
     case 'b':
       {
-	unsigned int x = insn;
+	unsigned int x;
 	
 	x = (insn & 7);
 	x |= (insn >> 7) & (3 << 3);
@@ -165,11 +175,19 @@ avr_operand (insn, insn2, pc, constraint, buf, comment, regs)
       break;
 
     case 'n':
-      sprintf (buf, _("Internal disassembler error"));
+      sprintf (buf, "??");
+      fprintf (stderr, _("Internal disassembler error"));
+      ok = 0;
       break;
       
     case 'K':
-      sprintf (buf, "%d", (insn & 0xf) | ((insn >> 2) & 0x30));
+      {
+	unsigned int x;
+
+	x = (insn & 0xf) | ((insn >> 2) & 0x30);
+	sprintf (buf, "0x%02x", x);
+	sprintf (comment, "%d", x);
+      }
       break;
       
     case 's':
@@ -205,8 +223,12 @@ avr_operand (insn, insn2, pc, constraint, buf, comment, regs)
       break;
       
     default:
-      sprintf (buf, _("unknown constraint `%c'"), constraint);
+      sprintf (buf, "??");
+      fprintf (stderr, _("unknown constraint `%c'"), constraint);
+      ok = 0;
     }
+
+    return ok;
 }
 
 static unsigned short avrdis_opcode PARAMS ((bfd_vma, disassemble_info *));
@@ -234,17 +256,28 @@ print_insn_avr(addr, info)
      disassemble_info *info;
 {
   unsigned int insn, insn2;
-  struct avr_opcodes_s *opcode;
+  const struct avr_opcodes_s *opcode;
+  static unsigned int *maskptr;
   void *stream = info->stream;
   fprintf_ftype prin = info->fprintf_func;
+  static unsigned int *avr_bin_masks;
   static int initialized;
   int cmd_len = 2;
+  int ok = 0;
+  char op1[20], op2[20], comment1[40], comment2[40];
 
   if (!initialized)
     {
-      initialized = 1;
+      unsigned int nopcodes;
+
+      nopcodes = sizeof (avr_opcodes) / sizeof (struct avr_opcodes_s);
       
-      for (opcode = avr_opcodes; opcode->name; opcode++)
+      avr_bin_masks = (unsigned int *)
+	xmalloc (nopcodes * sizeof (unsigned int));
+
+      for (opcode = avr_opcodes, maskptr = avr_bin_masks;
+	   opcode->name;
+	   opcode++, maskptr++)
 	{
 	  char * s;
 	  unsigned int bin = 0;
@@ -259,28 +292,39 @@ print_insn_avr(addr, info)
 	    }
 	  assert (s - opcode->opcode == 16);
 	  assert (opcode->bin_opcode == bin);
-	  opcode->bin_mask = mask;
+	  *maskptr = mask;
 	}
+
+      initialized = 1;
     }
 
   insn = avrdis_opcode (addr, info);
   
-  for (opcode = avr_opcodes; opcode->name; opcode++)
+  for (opcode = avr_opcodes, maskptr = avr_bin_masks;
+       opcode->name;
+       opcode++, maskptr++)
     {
-      if ((insn & opcode->bin_mask) == opcode->bin_opcode)
+      if ((insn & *maskptr) == opcode->bin_opcode)
 	break;
     }
   
+  /* Special case: disassemble `ldd r,b+0' as `ld r,b', and
+     `std b+0,r' as `st b,r' (next entry in the table).  */
+
+  if (AVR_DISP0_P (insn))
+    opcode++;
+
+  op1[0] = 0;
+  op2[0] = 0;
+  comment1[0] = 0;
+  comment2[0] = 0;
+
   if (opcode->name)
     {
-      char op1[20], op2[20], comment1[40], comment2[40];
       char *op = opcode->constraints;
 
-      op1[0] = 0;
-      op2[0] = 0;
-      comment1[0] = 0;
-      comment2[0] = 0;
       insn2 = 0;
+      ok = 1;
 
       if (opcode->insn_size > 1)
 	{
@@ -292,29 +336,36 @@ print_insn_avr(addr, info)
 	{
 	  int regs = REGISTER_P (*op);
 
-	  avr_operand (insn, insn2, addr, *op, op1, comment1, 0);
+	  ok = avr_operand (insn, insn2, addr, *op, op1, comment1, 0);
 
-	  if (*(++op) == ',')
-	    avr_operand (insn, insn2, addr, *(++op), op2,
-			 *comment1 ? comment2 : comment1, regs);
+	  if (ok && *(++op) == ',')
+	    ok = avr_operand (insn, insn2, addr, *(++op), op2,
+			      *comment1 ? comment2 : comment1, regs);
 	}
-
-      (*prin) (stream, "    %-8s", opcode->name);
-
-      if (*op1)
-	(*prin) (stream, "%s", op1);
-
-      if (*op2)
-	(*prin) (stream, ", %s", op2);
-
-      if (*comment1)
-	(*prin) (stream, "\t; %s", comment1);
-
-      if (*comment2)
-	(*prin) (stream, " %s", comment2);
     }
-  else
-   (*prin) (stream, ".word 0x%04x\t; ????", insn);
-  
+
+  if (!ok)
+    {
+      /* Unknown opcode, or invalid combination of operands.  */
+      sprintf (op1, "0x%04x", insn);
+      op2[0] = 0;
+      sprintf (comment1, "????");
+      comment2[0] = 0;
+    }
+
+  (*prin) (stream, "%s", ok ? opcode->name : ".word");
+
+  if (*op1)
+    (*prin) (stream, "\t%s", op1);
+
+  if (*op2)
+    (*prin) (stream, ", %s", op2);
+
+  if (*comment1)
+    (*prin) (stream, "\t; %s", comment1);
+
+  if (*comment2)
+    (*prin) (stream, " %s", comment2);
+
   return cmd_len;
 }

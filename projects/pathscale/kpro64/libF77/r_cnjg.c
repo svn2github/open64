@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,6 +41,7 @@
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/r_cnjg.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
 
 #include "cmplx.h"
+#include "defalias.h"
 
 complex __rconjg(float zreal, float zimag)
 {
@@ -47,7 +52,9 @@ complex __rconjg(float zreal, float zimag)
   return r;
 }
 
-void r_cnjg(complex *r, complex *z)
+complex r_cnjg_(complex *z)
 {
-  *r = __rconjg(z->real, z->imag);
+  return __rconjg(z->real, z->imag);
 }
+
+defalias(r_cnjg_, r_cnjg);

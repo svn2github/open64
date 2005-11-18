@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,6 +44,8 @@
 #endif
 
 extern boolean show_version;	/* show the compiler version */
+extern boolean show_copyright;	/* show the compiler copyright */
+extern boolean dump_version;	/* dump the compiler version */
 extern boolean show_flag;	/* show what driver does */
 extern boolean execute_flag;	/* execute phases */
 extern boolean time_flag;	/* give time info */
@@ -49,11 +55,11 @@ extern boolean prelink_flag;	/* C++ only:  run the prelinker before ld */
 extern boolean quiet_flag;	/* g++: suppress timing information */
 
 /* run a phase of the compiler */
-extern void run_phase (phases_t, string, string_list_t *); 
+extern void run_phase (phases_t, char *, string_list_t *); 
 
 /* exec another program, putting result in output.
  * This is simple version of full run_phase. */
-extern void run_simple_program (string name, char **argv, string output);
+extern void run_simple_program (char *name, char **argv, char *output);
 
 /* Handler () is used for catching signals.  */
 extern void handler (int sig);
@@ -61,3 +67,6 @@ extern void handler (int sig);
 /* set signal handler */ 
 extern void catch_signals (void);
 
+/* exit from driver */
+extern void do_exit (int code)
+     __attribute__ ((noreturn));

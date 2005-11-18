@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -53,9 +57,9 @@ typedef struct operand_value_type *OPERAND_VALUE_TYPE;
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
-#include <list.h>
-#include <vector.h>
-#include <algo.h>
+#include <list>
+#include <vector>
+#include <algorithm>
 #include "topcode.h"
 #include "gen_util.h"
 #include "isa_operands_gen.h"
@@ -79,11 +83,11 @@ typedef struct operands_group {
   const char* name;         // Name given for documentation and debugging
   int opnd_count;
   int result_count;
-  vector <OPERAND_VALUE_TYPE> operands;
+  std::vector<OPERAND_VALUE_TYPE> operands;
   int relocatable_opnd;
-  vector <OPERAND_VALUE_TYPE> results;
-  vector <OPERAND_USE_TYPE> opnd_use;
-  vector <OPERAND_USE_TYPE> res_use;
+  std::vector<OPERAND_VALUE_TYPE> results;
+  std::vector<OPERAND_USE_TYPE> opnd_use;
+  std::vector<OPERAND_USE_TYPE> res_use;
   int index;
 } *OPERANDS_GROUP;
 
@@ -92,11 +96,11 @@ struct operand_use_type {
   int index;
 };
 
-static vector <OPERANDS_GROUP> op_groups;
+static std::vector<OPERANDS_GROUP> op_groups;
 static OPERANDS_GROUP cur_oper_group;
-static list <OPERAND_VALUE_TYPE> all_operand_types;
-static list <OPERAND_USE_TYPE> all_use_types;
-static list <OPERANDS_GROUP> all_groups; // All the instruction groups
+static std::list<OPERAND_VALUE_TYPE> all_operand_types;
+static std::list<OPERAND_USE_TYPE> all_use_types;
+static std::list<OPERANDS_GROUP> all_groups; // All the instruction groups
 
 static int max_operands = 0;
 static int max_results = 0;
@@ -260,7 +264,7 @@ void ISA_Operands_Begin( const char* /* name */ )
 //  See interface description.
 /////////////////////////////////////
 {
-  op_groups = vector <OPERANDS_GROUP> (TOP_count, (OPERANDS_GROUP) false);
+  op_groups = std::vector<OPERANDS_GROUP> (TOP_count, (OPERANDS_GROUP) false);
 }
 
 
@@ -404,12 +408,12 @@ void Instruction_Group( const char *name, ... )
   cur_oper_group = oper_group;
   oper_group->name = name;
   oper_group->opnd_count = 0;
-  oper_group->operands = vector<OPERAND_VALUE_TYPE>();
+  oper_group->operands = std::vector<OPERAND_VALUE_TYPE>();
   oper_group->relocatable_opnd = -1;
   oper_group->result_count = 0;
-  oper_group->results = vector<OPERAND_VALUE_TYPE>();
-  oper_group->opnd_use = vector<OPERAND_USE_TYPE>();
-  oper_group->res_use = vector<OPERAND_USE_TYPE>();
+  oper_group->results = std::vector<OPERAND_VALUE_TYPE>();
+  oper_group->opnd_use = std::vector<OPERAND_USE_TYPE>();
+  oper_group->res_use = std::vector<OPERAND_USE_TYPE>();
   oper_group->index = max_groups++;
 
   va_start(ap, name);
@@ -500,9 +504,9 @@ void ISA_Operands_End(void)
 //  See interface description.
 /////////////////////////////////////
 {
-  list<OPERAND_VALUE_TYPE>::iterator ivti;
-  list<OPERANDS_GROUP>::iterator ogi;
-  list<OPERAND_USE_TYPE>::iterator iuti;
+  std::list<OPERAND_VALUE_TYPE>::iterator ivti;
+  std::list<OPERANDS_GROUP>::iterator ogi;
+  std::list<OPERAND_USE_TYPE>::iterator iuti;
   int code;
   bool err;
   const char *info_index_type;
@@ -627,8 +631,8 @@ void ISA_Operands_End(void)
   for (ogi = all_groups.begin(); ogi != all_groups.end(); ++ogi) {
     int i;
     int pos;
-    vector<OPERAND_VALUE_TYPE>::iterator oper_iter;
-    vector<OPERAND_USE_TYPE>::iterator use_iter;
+    std::vector<OPERAND_VALUE_TYPE>::iterator oper_iter;
+    std::vector<OPERAND_USE_TYPE>::iterator use_iter;
     OPERANDS_GROUP oper_group = *ogi;
 
     pos = fprintf(cfile, "  { %d, {", oper_group->opnd_count);

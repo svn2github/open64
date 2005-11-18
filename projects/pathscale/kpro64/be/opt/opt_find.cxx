@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -753,7 +758,7 @@ CODEMAP::Fix_zero_version(PHI_NODE *phi, INT opnd_idx, bool allow_real_or_no_def
 	!def_stmt.Is_chi_node() &&
 	!def_stmt.Is_stmt_node()) {
       Is_Trace(Tracing(),
-	       (TFile, "CODEMAP::Fix_zero_version: can't fix aux-id %d, bb %d, opnd %d\n",
+	       (TFile, "CODEMAP::Fix_zero_version: cannot fix aux-id %d, bb %d, opnd %d\n",
 		phi->Aux_id(), phi->Bb()->Id(), opnd_idx));
       return;
     }
@@ -783,6 +788,11 @@ CODEMAP::Fix_zero_version(PHI_NODE *phi, INT opnd_idx, bool allow_real_or_no_def
 
     if (phi_res->Is_flag_set(CF_MADEUP_TYPE))
       retval->Set_flag(CF_MADEUP_TYPE);
+
+      // Fix 815093: Set volatile flag
+     if ( Opt_stab()->Is_volatile( phi_res->Aux_id() ) ) {
+       retval->Set_is_volatile();
+     }
     
     // TODO: Probably need to set a bunch of *retval's fields
     // here. See opt_ivr.cxx for examples.
@@ -848,6 +858,11 @@ CODEMAP::Fix_zero_version(CHI_NODE *chi, STMTREP *stmt)
 		     chi_opnd->Lod_ty(),
 		     chi_opnd->Field_id(),
 		     TRUE);
+
+     // Fix 815093: Set volatile flag
+     if ( Opt_stab()->Is_volatile( chi_opnd->Aux_id() ) ) {
+       retval->Set_is_volatile();
+     }
 
     // TODO: Probably need to set a bunch of *retval's fields
     // here. See opt_ivr.cxx for examples.

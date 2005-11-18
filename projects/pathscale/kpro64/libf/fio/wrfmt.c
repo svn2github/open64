@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,7 +59,11 @@
 #include "f90io.h"
 #include "lio.h"
 
-extern	const oc_func	*_oconvtab[LAST_DATA_ED + 1];
+extern	
+#ifndef KEY /* this can cause wrong func being called when compiled by gcc */
+const 
+#endif
+oc_func	*_oconvtab[LAST_DATA_ED + 1];
 extern	const short	_odedtab[DVTYPE_NTYPES];
 extern	short		_o_sup_flg_tab[DVTYPE_NTYPES];
 extern	long		_o_sup_val_tab[DVTYPE_NTYPES];
@@ -111,7 +119,10 @@ _wrfmt(
 	long		shrd[MAXSH];	/* Buffer for shared data */
 #endif
 
-	const oc_func	*ngcf;		/* Generic NOCV-type conversion func */
+#ifndef KEY /* this causes wrong function being called when compiled by gcc */
+	const 
+#endif
+	    oc_func	*ngcf;		/* Generic NOCV-type conversion func */
 
 	/* If these assertions are not all true, then we're in deep doo-doo */
 
@@ -131,6 +142,9 @@ _wrfmt(
 	stride	= tip->stride * length;
 	cinc[1]	= stride;
 	supflg	= _o_sup_flg_tab[type] && (length == sizeof(long));
+#ifdef KEY
+        register short width_zero_flag = FALSE;
+#endif
 
 	/* If COMPLEX data type, adjust data length and increments */
 
@@ -281,6 +295,9 @@ _wrfmt(
 					case I_ED:
 					case O_ED:
 					case Z_ED:
+#ifdef KEY
+                                                width_zero_flag = TRUE;
+#endif
 						width	= _rw_mxdgt[fmtop-1][length-1];
 						/* Fix limitation in table */
 
@@ -325,6 +342,7 @@ _wrfmt(
 								break;
 #endif
 
+/* KEY: this should probably be #if _F_INT2 */
 #if	defined(__mips) || defined(_SOLARIS) || defined(_LITTLE_ENDIAN)
 							case 2:
 								datum	= *(short *) cptr;
@@ -336,9 +354,15 @@ _wrfmt(
 #endif
 
 							} /* switch */
-
+#ifdef KEY
+							if (datum == 0) {
+								width	= 1;
+								width_zero_flag = FALSE;
+							}
+#else
 							if (datum == 0)
 								width	= 1;
+#endif /* KEY */
 						}
 						break;
 
@@ -359,6 +383,9 @@ _wrfmt(
 					case ES_ED:
 					case F_ED:
 					case G_ED:
+#ifdef KEY
+                                                width_zero_flag = TRUE;
+#endif
 						if (pfmt.default_digits)
 							digits	= _rw_mxdgt[fmtop-1][length-1];
 
@@ -505,10 +532,32 @@ _wrfmt(
 					for (j = 0; j < width; j++)
 						cup->ulineptr[j]	= BLANK;
 				}
-				else
+				else{
 					(void) ngcf(cptr, cup->ulineptr, &mode,
 						&width, &digits, &exp,
 						&css->u.fmt.u.fe.scale);
+#ifdef KEY
+// Fix bug 573 (zero width problem)
+                                        if (width_zero_flag){
+                                          long *p = cup->ulineptr;
+                                          register short counter = 0;
+                                          register short k;
+                                          long linebuf[100];
+                                          for ( k = 0; k < width; k++, p++) {
+                                            if (*p == BLANK)
+                                              continue;
+                                            linebuf[counter++] = *p;
+                                          }
+                                          if (width > counter)
+                                            width = counter;
+                                          p = cup->ulineptr;
+                                          for (k = 0; counter; counter--,p++,k++)
+                                            *p = linebuf[k];
+                                          for (; *p ; p++)
+                                            *p = 0;
+                                        }
+#endif
+                                 }
 
 				/* Advance data addresses */
 

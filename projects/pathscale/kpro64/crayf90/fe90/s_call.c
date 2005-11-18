@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -608,7 +612,19 @@ boolean call_list_semantics(opnd_type     *result_opnd,
       arg_info_list[i].line           = opnd_line;
       arg_info_list[i].col            = opnd_column;
 
-      COPY_OPND(IL_OPND(list_idx), opnd);
+#ifdef KEY
+//Bug 242
+      if (OPND_FLD(IL_OPND(list_idx)) == IR_Tbl_Idx && OPND_FLD(opnd) == AT_Tbl_Idx && 
+          (IR_OPR(IL_IDX(list_idx)) == Mult_Opr || 
+           IR_OPR(IL_IDX(list_idx)) == Div_Opr  ||
+           IR_OPR(IL_IDX(list_idx)) == Uplus_Opr ||
+           IR_OPR(IL_IDX(list_idx)) == Uminus_Opr ||
+           IR_OPR(IL_IDX(list_idx)) == Plus_Opr ||
+           IR_OPR(IL_IDX(list_idx)) == Minus_Opr ))
+        ;
+      else
+#endif
+        COPY_OPND(IL_OPND(list_idx), opnd);
 
       xref_state = save_xref_state;
       
@@ -734,6 +750,86 @@ boolean call_list_semantics(opnd_type     *result_opnd,
    if (reset_expr_mode) {
       expr_mode = save_expr_mode;
    }
+
+#ifdef KEY
+
+   if (IR_OPR(ir_idx) == Call_Opr &&
+       strcmp(AT_OBJ_NAME_PTR(IR_OPND_L(ir_idx).idx),"FLUSH")==0 ){
+     int list_idx = IR_IDX_R(ir_idx);
+     if (IL_FLD(list_idx) == CN_Tbl_Idx){
+       int op_idx = IL_IDX(list_idx);
+       if ( TYP_LINEAR(CN_TYPE_IDX(op_idx)) == Integer_4 )
+         IL_IDX(list_idx) = C_INT_TO_CN(double_linear_type[0], CN_CONST(op_idx));
+     }
+   }
+   if (IR_OPR(ir_idx) == Call_Opr &&
+       (strcmp(AT_OBJ_NAME_PTR(IR_OPND_L(ir_idx).idx),"MAX")==0 ||
+        strcmp(AT_OBJ_NAME_PTR(IR_OPND_L(ir_idx).idx),"MIN")==0 )){
+
+     int list_idx = IR_IDX_R(ir_idx);
+     int info_idx = IL_ARG_DESC_IDX(list_idx);
+     int type_idx = arg_info_list[info_idx].ed.type;
+     boolean conversion = FALSE;
+     list_idx = IL_NEXT_LIST_IDX(list_idx);
+     while (list_idx != NULL_IDX) {
+       if (arg_info_list[IL_ARG_DESC_IDX(list_idx)].ed.type != type_idx){
+         conversion = TRUE;
+         break;
+       }
+       list_idx = IL_NEXT_LIST_IDX(list_idx);
+     }
+
+     list_idx = IR_IDX_R(ir_idx);
+     int old_idx = NULL_IDX;
+     while (conversion == TRUE && list_idx != NULL_IDX) {
+       int tmp_idx = IL_NEXT_LIST_IDX(list_idx);
+       info_idx = IL_ARG_DESC_IDX(list_idx);
+       if (arg_info_list[info_idx].ed.type == Integer){
+         int list1_idx;
+         NTR_IR_LIST_TBL(list1_idx);
+         IL_FLD(list1_idx) = IR_Tbl_Idx;
+         IL_ARG_DESC_VARIANT(list1_idx) = TRUE;
+         IL_LINE_NUM(list1_idx) = IL_LINE_NUM(list_idx);
+         IL_COL_NUM(list1_idx)  = IL_COL_NUM(list1_idx);
+         if (IR_IDX_R(ir_idx) == list_idx)
+           IR_IDX_R(ir_idx) = list1_idx;
+         IL_NEXT_LIST_IDX(list1_idx) = IL_NEXT_LIST_IDX(list_idx);
+         if (old_idx != NULL_IDX)
+           IL_NEXT_LIST_IDX(old_idx) = list1_idx;
+         int idx;
+         NTR_IR_TBL(idx);
+         IR_TYPE_IDX(idx) = REAL_DEFAULT_TYPE;
+         IR_RANK(idx) = IR_RANK(ir_idx);
+         IR_LINE_NUM(idx) = IR_LINE_NUM(ir_idx);
+         IR_COL_NUM(idx)  = IR_COL_NUM(ir_idx);
+         IR_OPR(idx) = Real_Opr;
+         IR_FLD_L(idx) = IL_Tbl_Idx;
+         IR_IDX_L(idx) = list_idx;
+         IR_OPND_R(idx) = null_opnd;
+         IR_LIST_CNT_L(idx) = 1;
+         IL_NEXT_LIST_IDX(list_idx) = NULL_IDX;
+         IL_ARG_DESC_IDX(list1_idx) = info_idx;
+
+         expr_arg_type exp_desc;
+         opnd_type     opnd;
+         COPY_OPND(opnd, IL_OPND(list1_idx));
+         exp_desc.rank = 0;
+         expr_semantics(&opnd, &exp_desc);
+         COPY_OPND(IL_OPND(list1_idx), opnd);
+         int type_idx = REAL_DEFAULT_TYPE;
+         exp_desc.type = TYP_TYPE(type_idx);
+         exp_desc.linear_type = TYP_LINEAR(type_idx);
+         exp_desc.type_idx = type_idx;
+         arg_info_list[info_idx].ed = exp_desc;
+         IL_IDX(list1_idx) = idx;
+         old_idx = list1_idx;
+       }
+       else
+         old_idx = list_idx;
+       list_idx = tmp_idx;
+     }
+   }
+#endif
 
    /* the io_item_must_flatten flag should not be passed back for*/
    /* actual arguments. Restore the flag to it's previous value. */

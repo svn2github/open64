@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -52,7 +57,10 @@
 
 
 #include <stdio.h>
-#include <algo.h>
+#include <algorithm>
+#include <vector>
+
+using std::vector;
 
 #include "profile.h"
 #include "profile_errors.h"
@@ -181,6 +189,22 @@ namespace {
 	}
     }
 
+#ifdef KEY
+    static void Convert_Value_Profile( vector<FB_Info_Value>& dest,
+				       const Value_Profile_Vector& src )
+    {
+      dest.reserve (src.size ());
+	
+      for( Value_Profile_Vector::const_iterator first(src.begin ());
+	   first != src.end (); ++first ){
+	FB_Info_Value info( first->num_values,
+			    first->exe_counter,
+			    first->value,
+			    first->freq );
+	dest.push_back( info );
+      }
+    }
+#endif
 
     template <class T>
     static void
@@ -211,8 +235,8 @@ namespace {
 	    zero_trips++;
 	  }
 
-	  int tmp = first->invocation_count - zero_trips;
-	  int tmp1 = first->total_trip_count - first->invocation_count + zero_trips;
+	  const INT64 positive = first->invocation_count - zero_trips;
+	  const INT64 back = first->total_trip_count - first->invocation_count + zero_trips;
 #if 0
 	  FB_Info_Loop loop (FB_FREQ (zero_trips),
 			     FB_FREQ ( tmp),
@@ -222,9 +246,9 @@ namespace {
 	   dest.push_back(loop);
 #endif
 	dest.push_back(FB_Info_Loop(FB_FREQ (zero_trips),
-				    FB_FREQ ( tmp),
+				    FB_FREQ (positive),
 				    FB_FREQ (FB_FREQ_TYPE_UNKNOWN),
-				    FB_FREQ (tmp1)));
+				    FB_FREQ (back)));
       }
     }
 
@@ -342,6 +366,8 @@ Dump_PU_Profile(FILE *fp, PU_PROFILE_HANDLE pu_handle, char * fname,
   Pu_Hdr pu_hdr;
 
   pu_hdr.pu_checksum = pu_handle->checksum;
+  pu_hdr.pu_size = pu_handle->pu_size;
+  pu_hdr.runtime_fun_address = pu_handle->runtime_fun_address;
   pu_hdr.pu_name_index = Str_Offset;
   pu_hdr.pu_file_offset = PU_Offset;
 
@@ -398,6 +424,22 @@ Dump_PU_Profile(FILE *fp, PU_PROFILE_HANDLE pu_handle, char * fname,
       pos = Dump_PU_Profile (fp, offset, fb_info, fname);
       pu_hdr.pu_call_offset = pos.offset;
       pu_hdr.pu_num_call_entries = pos.num_entries;
+  }
+
+#ifdef KEY
+  {
+    vector<FB_Info_Value> fb_info;
+    Convert_Value_Profile( fb_info, pu_handle->Get_Value_Table() );
+    pos = Dump_PU_Profile( fp, offset, fb_info, fname );
+    pu_hdr.pu_value_offset = pos.offset;
+    pu_hdr.pu_num_value_entries = pos.num_entries;
+  }
+#endif
+
+  {
+      pos = Dump_PU_Profile (fp, offset, pu_handle->Get_Icall_Table (), fname);
+      pu_hdr.pu_icall_offset = pos.offset;
+      pu_hdr.pu_num_icall_entries = pos.num_entries;
   }
 
   // Enter the PU header

@@ -1,5 +1,5 @@
 # Expect script for ld-empic tests
-#   Copyright (C) 1994,1995, 1996, 1997 Free Software Foundation
+#   Copyright 1994, 1995, 1996 Free Software Foundation, Inc.
 #
 # This file is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ if ![ld_simple_link $ld tmpdir/relax "--relax -T $srcdir/$subdir/relax.t tmpdir/
     # computes the start of the function.
 
     # Get the symbol table.
-    if ![ld_nm $nm tmpdir/relax] {
+    if ![ld_nm $nm "" tmpdir/relax] {
 	unresolved $testname
 	return
     }

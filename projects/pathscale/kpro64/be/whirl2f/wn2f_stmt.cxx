@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1771,7 +1775,7 @@ WN2F_do_loop(TOKEN_BUFFER tokens, WN *wn, WN2F_CONTEXT context)
       WHIRL2F_Append_Comment(
          tokens, 
 	 Concat2_Strings("LOOPINFO #",
-			 WHIRL2F_number_as_name((UINT64)loop_info)),
+			 WHIRL2F_number_as_name((UINTPS)loop_info)),
 	 1,
 	 1);
 

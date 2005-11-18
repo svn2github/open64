@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -34,6 +38,8 @@
 
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "be_com_pch.h"
 #endif /* USE_PCH */
@@ -2217,7 +2223,13 @@ static WN *create_pointer_to_node(WN *block, WN *tree, TY_IDX ty, BOOL deref)
 
   case OPR_ADD:
 
+#ifdef KEY
+    // Under -IPA, different PUs may have different src_lang, but the driver
+    // always passes -LANG:=ansi_c
+    if (!PU_f90_lang(Get_Current_PU())) {
+#else
     if (Language != LANG_F90) {
+#endif // KEY
        /* If address expression, return the tree */
   
        if (WN_opcode(tree) == OPC_U4ADD || WN_opcode(tree) == OPC_U8ADD)
@@ -2253,7 +2265,13 @@ Type_is_logical(TY_IDX  ty)
 {
   TY_IDX  ts ;
 
+#ifdef KEY
+  // Under -IPA, different PUs may have different src_lang, but the driver
+  // always passes -LANG:=ansi_c
+  if (!PU_f90_lang(Get_Current_PU())) {
+#else
   if (Language != LANG_F90) {
+#endif // KEY
     ts = Find_array_TY(ty);
     ts = Find_scalar_TY(ts);
     return (TY_is_logical(Ty_Table[ts]));
@@ -2520,6 +2538,9 @@ Init_fioruntime_ty ()
     TY& ty = New_TY (fioruntime_ty);
     TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, Save_Str (".ioruntime"));
     Set_TY_align (fioruntime_ty, 1);
+#ifdef KEY
+    ty.Set_pu_flag(TY_HAS_PROTOTYPE);
+#endif
 
     TYLIST_IDX tylist_idx;
     TYLIST& tylist = New_TYLIST (tylist_idx);
@@ -4489,7 +4510,13 @@ static void process_iostat ( WN **block1, WN **block2, BOOL flag, WN *iostat,
 
   /*  If no error handling is specified, then return NULL blocks. */
 
+#ifdef KEY
+  // Under -IPA, different PUs may have different src_lang, but the driver
+  // always passes -LANG:=ansi_c
+  if (PU_f90_lang(Get_Current_PU())) {
+#else
   if (Language == LANG_F90) {
+#endif // KEY
     if (iostat == NULL &&
 	end == (LABEL_IDX) 0 &&
 	err == (LABEL_IDX) 0 &&
@@ -4519,7 +4546,13 @@ static void process_iostat ( WN **block1, WN **block2, BOOL flag, WN *iostat,
   *block2 = WN_CreateBlock();
 
 
+#ifdef KEY
+  // Under -IPA, different PUs may have different src_lang, but the driver
+  // always passes -LANG:=ansi_c
+  if ((PU_f90_lang(Get_Current_PU())) && only_copyout_needed) {
+#else
   if ((Language == LANG_F90) && only_copyout_needed) {
+#endif // KEY
     if (flag)
        WN_INSERT_BlockLast ( *block1, WN_COPY_Tree(copyout_block) );
     WN_INSERT_BlockLast ( *block2, copyout_block );
@@ -4560,7 +4593,13 @@ static void process_iostat ( WN **block1, WN **block2, BOOL flag, WN *iostat,
     WN_INSERT_BlockLast ( *block1, WN_COPY_Tree(wn) );
   WN_INSERT_BlockLast ( *block2, wn );
 
+#ifdef KEY
+  // Under -IPA, different PUs may have different src_lang, but the driver
+  // always passes -LANG:=ansi_c
+  if ((PU_f90_lang(Get_Current_PU())) && copyout_block) {
+#else
   if ((Language == LANG_F90) && copyout_block) {
+#endif // KEY
     if (flag)
        WN_INSERT_BlockLast ( *block1, WN_COPY_Tree(copyout_block) );
     WN_INSERT_BlockLast ( *block2, copyout_block );
@@ -8660,7 +8699,11 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	 break;
 
     case IOF_NAMELIST_DIRECTED:
+#ifndef KEY
         if (Language == LANG_F90) {
+#else
+        if (PU_f90_lang(Get_Current_PU())) {
+#endif
 	  INT32 i;
 	  fmt_flag = 5;
 	  for(i=0; i<WN_kid_count(kid1); i++)
@@ -8765,7 +8808,13 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	  if (current_io_library == IOLIB_MIPS) 
 	     iostat = extract_calls ( block, WN_kid0(wn_tmp) );
           else {
+#ifdef KEY
+	     // Under -IPA, different PUs may have different src_lang, but the 
+	     // driver always passes -LANG:=ansi_c
+	     if (PU_f90_lang(Get_Current_PU()))
+#else
 	     if (Language == LANG_F90)
+#endif // KEY
                iostat = get_32bit_cilist_item(WN_kid0(wn_tmp), WN_ty(wn_tmp));
              else
 	       iostat = WN_kid0(wn_tmp);
@@ -8780,7 +8829,13 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 					      (TY_IDX) 0, TRUE);
           break;
       case IOC_SIZE:
+#ifdef KEY
+	  // Under -IPA, different PUs may have different src_lang, but the 
+	  // driver always passes -LANG:=ansi_c
+	  if (PU_f90_lang(Get_Current_PU())) {
+#else
 	  if (Language == LANG_F90) {
+#endif // KEY
             size_wn = get_32bit_cilist_item(WN_kid0(wn_tmp), WN_ty(wn_tmp));
           } else {
 	    size_wn = create_pointer_to_node(block, WN_kid0(wn_tmp),
@@ -8915,7 +8970,13 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	     if (WN_kid_count(wn_tmp) == 2)
 	        itemsx[ioitem_tmp] = extract_calls ( block, WN_kid1(wn_tmp) );
           } else {
+#ifdef KEY
+	     // Under -IPA, different PUs may have different src_lang, but the 
+	     // driver always passes -LANG:=ansi_c
+	     if (PU_f90_lang(Get_Current_PU())) {
+#else
 	     if (Language == LANG_F90) {
+#endif // KEY
 	       items[ioitem_tmp] = get_32bit_cilist_item(WN_kid0(wn_tmp), WN_ty(wn_tmp));
              } else {
 	       items[ioitem_tmp] = create_pointer_to_node(block, WN_kid0(wn_tmp), (TY_IDX) 0, TRUE);
@@ -9034,7 +9095,13 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	process_iostat ( &iostat1, &iostat2, FALSE, iostat, err, end, eor,
 			 zero_escape_freq );
 
+#ifdef KEY
+	// Under -IPA, different PUs may have different src_lang, but the driver
+	// always passes -LANG:=ansi_c
+	if (PU_f90_lang(Get_Current_PU()))
+#else
 	if (Language == LANG_F90)
+#endif // KEY
 	   unit_wn = pure_unit_wn;
         if (unit_wn != NULL) {
           arg1 = unit_wn;
@@ -9081,7 +9148,13 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 			 zero_escape_freq );
         st = Get_IoStruct_ST ( block, FID_CRAY_CLOSELIST, TRUE);
 
-        if (Language == LANG_F90)
+#ifdef KEY
+	// Under -IPA, different PUs may have different src_lang, but the driver
+	// always passes -LANG:=ansi_c
+	if (PU_f90_lang(Get_Current_PU()))
+#else
+	if (Language == LANG_F90)
+#endif // KEY
            unit_wn = pure_unit_wn;
 
 	if (unit_wn != NULL)
@@ -9133,7 +9206,13 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	process_iostat ( &iostat1, &iostat2, FALSE, iostat, err, end, eor,
 			 zero_escape_freq );
 
-        if (Language == LANG_F90)
+#ifdef KEY
+	// Under -IPA, different PUs may have different src_lang, but the driver
+	// always passes -LANG:=ansi_c
+	if (PU_f90_lang(Get_Current_PU()))
+#else
+	if (Language == LANG_F90)
+#endif // KEY
            unit_wn = pure_unit_wn;
 
         if (unit_wn != NULL) {
@@ -9284,7 +9363,13 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 			 zero_escape_freq );
         st = Get_IoStruct_ST ( block, FID_CRAY_INQLIST, TRUE);
 
-        if (Language == LANG_F90)
+#ifdef KEY
+	// Under -IPA, different PUs may have different src_lang, but the driver
+	// always passes -LANG:=ansi_c
+	if (PU_f90_lang(Get_Current_PU()))
+#else
+	if (Language == LANG_F90)
+#endif // KEY
            unit_wn = pure_unit_wn;
 
 	if (unit_wn != NULL)
@@ -9421,7 +9506,13 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 			 zero_escape_freq );
         st = Get_IoStruct_ST ( block, FID_CRAY_OPENLIST, TRUE);
 
-        if (Language == LANG_F90)
+#ifdef KEY
+	// Under -IPA, different PUs may have different src_lang, but the driver
+	// always passes -LANG:=ansi_c
+	if (PU_f90_lang(Get_Current_PU()))
+#else
+	if (Language == LANG_F90)
+#endif // KEY
            unit_wn = pure_unit_wn;
 
 	if (unit_wn != NULL)
@@ -9477,7 +9568,13 @@ fprintf(stderr, "Processing I/O at line number %d\n", lineno);
 	process_iostat ( &iostat1, &iostat2, FALSE, iostat, err, end, eor,
 			 zero_escape_freq );
 
-        if (Language == LANG_F90)
+#ifdef KEY
+	// Under -IPA, different PUs may have different src_lang, but the driver
+	// always passes -LANG:=ansi_c
+	if (PU_f90_lang(Get_Current_PU()))
+#else
+	if (Language == LANG_F90)
+#endif // KEY
            unit_wn = pure_unit_wn;
 
 	if (unit_wn != NULL) {

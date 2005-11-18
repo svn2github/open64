@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -137,7 +141,7 @@ typedef struct subprogram_interface {
 
 // gcc and edg have different restrictions on how to do a forward decl
 // of an initialized object.
-#if defined(linux) && !defined(_LP64)
+#if (__GNUC__ == 2)
 static SIM SIM_Info[];
 #else
 extern SIM SIM_Info[];

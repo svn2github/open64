@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -130,6 +134,8 @@
  * Prefetches are generated for each level of the cache.
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -359,6 +365,32 @@ static BOOL Store_Is_Useless (const WN* istore_wn) {
   return FALSE;
 }
 
+#ifdef KEY
+// Return 1 if there is an 'if' stmt immediately inside the loop
+static BOOL Is_Multi_BB (const WN* loop)
+{
+  FmtAssert (LNO_Run_Prefetch == SOME_PREFETCH, ("Should not have reached here"));
+  OPCODE opcode = WN_opcode(loop);
+
+  if (opcode == OPC_BLOCK) {
+    WN *kid = WN_first (loop);
+    while (kid) {
+      if (WN_opcode(kid) == OPC_IF)
+	return TRUE;
+      kid = WN_next(kid);
+    }
+    return FALSE;
+  }
+
+  for (INT kidno=0; kidno<WN_kid_count(loop); kidno++) {
+    WN *kid = WN_kid(loop,kidno);
+    if (WN_opcode(kid) == OPC_IF)
+      return TRUE;
+  }
+  return FALSE;
+}
+#endif
+
 /***********************************************************************
  *
  * Walk the whirl code looking for array references.
@@ -373,6 +405,14 @@ void PF_LOOPNODE::Process_Refs (const WN* wn) {
   if (!wn) return;
 
   OPCODE opcode = WN_opcode(wn);
+
+#ifdef KEY
+  if (LNO_Run_Prefetch == SOME_PREFETCH && OPCODE_operator(opcode) == OPR_IF) {
+  // Don't prefetch references within an 'if' stmt
+    Process_Refs (WN_if_test (wn));
+    return;
+  }
+#endif
 
   if (OPCODE_operator(opcode) == OPR_PREFETCH) {
     // don't do auto-prefetch analysis on references within a manual
@@ -412,12 +452,19 @@ void PF_LOOPNODE::Process_Refs (const WN* wn) {
       _num_bad++;
     }
   } else if (OPCODE_operator(opcode) == OPR_ISTORE) {
+#ifdef KEY
+    if (LNO_Prefetch_Stores)
+    {
+#endif
     if (WN_operator(WN_kid1(wn)) == OPR_ARRAY &&
         !Store_Is_Useless(wn)) {
       Add_Ref (WN_kid1(wn));
     } else {
       _num_bad++;
     }
+#ifdef KEY
+    } else _num_bad++;	// Don't prefetch store array accesses
+#endif
   }
 
   for (INT kidno=0; kidno<WN_kid_count(wn); kidno++) {
@@ -448,7 +495,12 @@ void PF_LOOPNODE::Process_Loop () {
   // which will only walk the references immediately 
   // within this loop, and will (as a by-product) put all the
   // immediately nested loops in _child
-  Process_Refs (WN_do_body(_code));
+  const WN * w = WN_do_body(_code);
+#ifdef KEY
+  if (LNO_Run_Prefetch > SOME_PREFETCH || 
+      (LNO_Run_Prefetch == SOME_PREFETCH && !Is_Multi_BB (w)))
+#endif
+    Process_Refs (w);
 
   // now process nested inner loops
   for (INT i=0; i<_child.Elements(); i++) {

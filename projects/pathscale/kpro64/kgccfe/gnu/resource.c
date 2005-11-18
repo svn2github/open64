@@ -1,22 +1,22 @@
 /* Definitions for computing resource usage of specific insns.
-   Copyright (C) 1999, 2000 Free Software Foundation, Inc.
+   Copyright (C) 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
 #include "config.h"
 #include "system.h"
@@ -32,6 +32,7 @@ Boston, MA 02111-1307, USA.  */
 #include "resource.h"
 #include "except.h"
 #include "insn-attr.h"
+#include "params.h"
 
 /* This structure is used to record liveness information at the targets or
    fallthrough insns of branches.  We will most likely need the information
@@ -66,7 +67,7 @@ static struct target_info **target_hash_table = NULL;
 static int *bb_ticks;
 
 /* Marks registers possibly live at the current place being scanned by
-   mark_target_live_regs.  Used only by next two function.    */
+   mark_target_live_regs.  Also used by update_live_status.  */
 
 static HARD_REG_SET current_live_regs;
 
@@ -76,7 +77,7 @@ static HARD_REG_SET current_live_regs;
 static HARD_REG_SET pending_dead_regs;
 
 static void update_live_status		PARAMS ((rtx, rtx, void *));
-static int find_basic_block		PARAMS ((rtx));
+static int find_basic_block		PARAMS ((rtx, int));
 static rtx next_insn_no_annul		PARAMS ((rtx));
 static rtx find_dead_or_set_registers	PARAMS ((rtx, struct resources*,
 						rtx*, int, struct resources,
@@ -99,7 +100,7 @@ update_live_status (dest, x, data)
     return;
 
   if (GET_CODE (dest) == SUBREG)
-    first_regno = REGNO (SUBREG_REG (dest)) + SUBREG_WORD (dest);
+    first_regno = subreg_regno (dest);
   else
     first_regno = REGNO (dest);
 
@@ -115,26 +116,39 @@ update_live_status (dest, x, data)
 	CLEAR_HARD_REG_BIT (pending_dead_regs, i);
       }
 }
-/* Find the number of the basic block that starts closest to INSN.  Return -1
-   if we couldn't find such a basic block.  */
+
+/* Find the number of the basic block with correct live register
+   information that starts closest to INSN.  Return -1 if we couldn't
+   find such a basic block or the beginning is more than
+   SEARCH_LIMIT instructions before INSN.  Use SEARCH_LIMIT = -1 for
+   an unlimited search.
+
+   The delay slot filling code destroys the control-flow graph so,
+   instead of finding the basic block containing INSN, we search
+   backwards toward a BARRIER where the live register information is
+   correct.  */
 
 static int
-find_basic_block (insn)
+find_basic_block (insn, search_limit)
      rtx insn;
+     int search_limit;
 {
-  int i;
+  basic_block bb;
 
   /* Scan backwards to the previous BARRIER.  Then see if we can find a
      label that starts a basic block.  Return the basic block number.  */
-
   for (insn = prev_nonnote_insn (insn);
-       insn && GET_CODE (insn) != BARRIER;
-       insn = prev_nonnote_insn (insn))
+       insn && GET_CODE (insn) != BARRIER && search_limit != 0;
+       insn = prev_nonnote_insn (insn), --search_limit)
     ;
 
-  /* The start of the function is basic block zero.  */
-  if (insn == 0)
-    return 0;
+  /* The closest BARRIER is too far away.  */
+  if (search_limit == 0)
+    return -1;
+
+  /* The start of the function.  */
+  else if (insn == 0)
+    return ENTRY_BLOCK_PTR->next_bb->index;
 
   /* See if any of the upcoming CODE_LABELs start a basic block.  If we reach
      anything other than a CODE_LABEL or note, we can't find this code.  */
@@ -142,9 +156,9 @@ find_basic_block (insn)
        insn && GET_CODE (insn) == CODE_LABEL;
        insn = next_nonnote_insn (insn))
     {
-      for (i = 0; i < n_basic_blocks; i++)
-	if (insn == BLOCK_HEAD (i))
-	  return i;
+      FOR_EACH_BB (bb)
+	if (insn == bb->head)
+	  return bb->index;
     }
 
   return -1;
@@ -161,10 +175,23 @@ next_insn_no_annul (insn)
     {
       /* If INSN is an annulled branch, skip any insns from the target
 	 of the branch.  */
-      if (INSN_ANNULLED_BRANCH_P (insn)
+      if ((GET_CODE (insn) == JUMP_INSN
+	   || GET_CODE (insn) == CALL_INSN
+	   || GET_CODE (insn) == INSN)
+	  && INSN_ANNULLED_BRANCH_P (insn)
 	  && NEXT_INSN (PREV_INSN (insn)) != insn)
-	while (INSN_FROM_TARGET_P (NEXT_INSN (insn)))
-	  insn = NEXT_INSN (insn);
+	{
+	  rtx next = NEXT_INSN (insn);
+	  enum rtx_code code = GET_CODE (next);
+
+	  while ((code == INSN || code == JUMP_INSN || code == CALL_INSN)
+		 && INSN_FROM_TARGET_P (next))
+	    {
+	      insn = next;
+	      next = NEXT_INSN (insn);
+	      code = GET_CODE (next);
+	    }
+	}
 
       insn = NEXT_INSN (insn);
       if (insn && GET_CODE (insn) == INSN
@@ -176,20 +203,20 @@ next_insn_no_annul (insn)
 }
 
 /* Given X, some rtl, and RES, a pointer to a `struct resource', mark
-   which resources are references by the insn.  If INCLUDE_DELAYED_EFFECTS
+   which resources are referenced by the insn.  If INCLUDE_DELAYED_EFFECTS
    is TRUE, resources used by the called routine will be included for
    CALL_INSNs.  */
 
 void
 mark_referenced_resources (x, res, include_delayed_effects)
-     register rtx x;
-     register struct resources *res;
-     register int include_delayed_effects;
+     rtx x;
+     struct resources *res;
+     int include_delayed_effects;
 {
   enum rtx_code code = GET_CODE (x);
   int i, j;
   unsigned int r;
-  register const char *format_ptr;
+  const char *format_ptr;
 
   /* Handle leaf items for which we set resource flags.  Also, special-case
      CALL, SET and CLOBBER operators.  */
@@ -198,6 +225,7 @@ mark_referenced_resources (x, res, include_delayed_effects)
     case CONST:
     case CONST_INT:
     case CONST_DOUBLE:
+    case CONST_VECTOR:
     case PC:
     case SYMBOL_REF:
     case LABEL_REF:
@@ -208,18 +236,28 @@ mark_referenced_resources (x, res, include_delayed_effects)
 	mark_referenced_resources (SUBREG_REG (x), res, 0);
       else
 	{
-	  unsigned int regno = REGNO (SUBREG_REG (x)) + SUBREG_WORD (x);
+	  unsigned int regno = subreg_regno (x);
 	  unsigned int last_regno
 	    = regno + HARD_REGNO_NREGS (regno, GET_MODE (x));
 
+	  if (last_regno > FIRST_PSEUDO_REGISTER)
+	    abort ();
 	  for (r = regno; r < last_regno; r++)
 	    SET_HARD_REG_BIT (res->regs, r);
 	}
       return;
 
     case REG:
-      for (r = 0; r < HARD_REGNO_NREGS (REGNO (x), GET_MODE (x)); r++)
-	SET_HARD_REG_BIT (res->regs, REGNO (x) + r);
+	{
+	  unsigned int regno = REGNO (x);
+	  unsigned int last_regno
+	    = regno + HARD_REGNO_NREGS (regno, GET_MODE (x));
+
+	  if (last_regno > FIRST_PSEUDO_REGISTER)
+	    abort ();
+	  for (r = regno; r < last_regno; r++)
+	    SET_HARD_REG_BIT (res->regs, r);
+	}
       return;
 
     case MEM:
@@ -256,7 +294,7 @@ mark_referenced_resources (x, res, include_delayed_effects)
 	 We can not just fall through here since then we would be confused
 	 by the ASM_INPUT rtx inside ASM_OPERANDS, which do not indicate
 	 traditional asms unlike their normal usage.  */
-      
+
       for (i = 0; i < ASM_OPERANDS_INPUT_LENGTH (x); i++)
 	mark_referenced_resources (ASM_OPERANDS_INPUT (x, i), res, 0);
       return;
@@ -302,13 +340,11 @@ mark_referenced_resources (x, res, include_delayed_effects)
 	  rtx insn = PREV_INSN (x);
 	  rtx sequence = 0;
 	  int seq_size = 0;
-	  rtx next = NEXT_INSN (x);
 	  int i;
 
 	  /* If we are part of a delay slot sequence, point at the SEQUENCE.  */
 	  if (NEXT_INSN (insn) != x)
 	    {
-	      next = NEXT_INSN (NEXT_INSN (insn));
 	      sequence = PATTERN (NEXT_INSN (insn));
 	      seq_size = XVECLEN (sequence, 0);
 	      if (GET_CODE (sequence) != SEQUENCE)
@@ -329,16 +365,15 @@ mark_referenced_resources (x, res, include_delayed_effects)
 	    if (global_regs[i])
 	      SET_HARD_REG_BIT (res->regs, i);
 
-	  /* Check for a NOTE_INSN_SETJMP.  If it exists, then we must
+	  /* Check for a REG_SETJMP.  If it exists, then we must
 	     assume that this call can need any register.
 
 	     This is done to be more conservative about how we handle setjmp.
 	     We assume that they both use and set all registers.  Using all
 	     registers ensures that a register will not be considered dead
 	     just because it crosses a setjmp call.  A register should be
-	     considered dead only if the setjmp call returns non-zero.  */
-	  if (next && GET_CODE (next) == NOTE
-	      && NOTE_LINE_NUMBER (next) == NOTE_INSN_SETJMP)
+	     considered dead only if the setjmp call returns nonzero.  */
+	  if (find_reg_note (x, REG_SETJMP, NULL))
 	    SET_HARD_REG_SET (res->regs);
 
 	  {
@@ -401,7 +436,7 @@ mark_referenced_resources (x, res, include_delayed_effects)
 }
 
 /* A subroutine of mark_target_live_regs.  Search forward from TARGET
-   looking for registers that are set before they are used.  These are dead. 
+   looking for registers that are set before they are used.  These are dead.
    Stop after passing a few conditional jumps, and/or a small
    number of unconditional branches.  */
 
@@ -428,7 +463,7 @@ find_dead_or_set_registers (target, res, jump_target, jump_count, set, needed)
 	 know where we might end up next.  That means that we have to
 	 assume that whatever we have already marked as live really is
 	 live.  */
-      if (can_throw (insn))
+      if (can_throw_internal (insn))
 	break;
 
       switch (GET_CODE (insn))
@@ -452,7 +487,7 @@ find_dead_or_set_registers (target, res, jump_target, jump_count, set, needed)
 	      /* If INSN is a USE made by update_block, we care about the
 		 underlying insn.  Any registers set by the underlying insn
 		 are live since the insn is being done somewhere else.  */
-	      if (GET_RTX_CLASS (GET_CODE (XEXP (PATTERN (insn), 0))) == 'i')
+	      if (INSN_P (XEXP (PATTERN (insn), 0)))
 		mark_set_resources (XEXP (PATTERN (insn), 0), res, 0,
 				    MARK_SRC_DEST_CALL);
 
@@ -598,12 +633,12 @@ find_dead_or_set_registers (target, res, jump_target, jump_count, set, needed)
    SETs CC0 even though this is not totally correct.  The reason for this is
    that we require a SET of CC0 to immediately precede the reference to CC0.
    So if some other insn sets CC0 as a side-effect, we know it cannot affect
-   our computation and thus may be placed in a delay slot.   */
+   our computation and thus may be placed in a delay slot.  */
 
 void
 mark_set_resources (x, res, in_dest, mark_type)
-     register rtx x;
-     register struct resources *res;
+     rtx x;
+     struct resources *res;
      int in_dest;
      enum mark_resource_type mark_type;
 {
@@ -624,6 +659,7 @@ mark_set_resources (x, res, in_dest, mark_type)
     case USE:
     case CONST_INT:
     case CONST_DOUBLE:
+    case CONST_VECTOR:
     case LABEL_REF:
     case SYMBOL_REF:
     case CONST:
@@ -643,8 +679,6 @@ mark_set_resources (x, res, in_dest, mark_type)
 
       if (mark_type == MARK_SRC_DEST_CALL)
 	{
-	  rtx next = NEXT_INSN (x);
-	  rtx prev = PREV_INSN (x);
 	  rtx link;
 
 	  res->cc = res->memory = 1;
@@ -652,21 +686,15 @@ mark_set_resources (x, res, in_dest, mark_type)
 	    if (call_used_regs[r] || global_regs[r])
 	      SET_HARD_REG_BIT (res->regs, r);
 
-	  /* If X is part of a delay slot sequence, then NEXT should be
-	     the first insn after the sequence.  */
-	  if (NEXT_INSN (prev) != x)
-	    next = NEXT_INSN (NEXT_INSN (prev));
-
 	  for (link = CALL_INSN_FUNCTION_USAGE (x);
 	       link; link = XEXP (link, 1))
 	    if (GET_CODE (XEXP (link, 0)) == CLOBBER)
 	      mark_set_resources (SET_DEST (XEXP (link, 0)), res, 1,
 				  MARK_SRC_DEST);
 
-	  /* Check for a NOTE_INSN_SETJMP.  If it exists, then we must
+	  /* Check for a REG_SETJMP.  If it exists, then we must
 	     assume that this call can clobber any register.  */
-	  if (next && GET_CODE (next) == NOTE
-	      && NOTE_LINE_NUMBER (next) == NOTE_INSN_SETJMP)
+	  if (find_reg_note (x, REG_SETJMP, NULL))
 	    SET_HARD_REG_SET (res->regs);
 	}
 
@@ -706,7 +734,7 @@ mark_set_resources (x, res, in_dest, mark_type)
     case CLOBBER:
       mark_set_resources (XEXP (x, 0), res, 1, MARK_SRC_DEST);
       return;
-      
+
     case SEQUENCE:
       for (i = 0; i < XVECLEN (x, 0); i++)
 	if (! (INSN_ANNULLED_BRANCH_P (XVECEXP (x, 0, 0))
@@ -719,6 +747,13 @@ mark_set_resources (x, res, in_dest, mark_type)
     case POST_DEC:
     case PRE_DEC:
       mark_set_resources (XEXP (x, 0), res, 1, MARK_SRC_DEST);
+      return;
+
+    case PRE_MODIFY:
+    case POST_MODIFY:
+      mark_set_resources (XEXP (x, 0), res, 1, MARK_SRC_DEST);
+      mark_set_resources (XEXP (XEXP (x, 1), 0), res, 0, MARK_SRC_DEST);
+      mark_set_resources (XEXP (XEXP (x, 1), 1), res, 0, MARK_SRC_DEST);
       return;
 
     case SIGN_EXTRACT:
@@ -749,10 +784,12 @@ mark_set_resources (x, res, in_dest, mark_type)
 	    mark_set_resources (SUBREG_REG (x), res, in_dest, mark_type);
 	  else
 	    {
-	      unsigned int regno = REGNO (SUBREG_REG (x)) + SUBREG_WORD (x);
+	      unsigned int regno = subreg_regno (x);
 	      unsigned int last_regno
 		= regno + HARD_REGNO_NREGS (regno, GET_MODE (x));
 
+	      if (last_regno > FIRST_PSEUDO_REGISTER)
+		abort ();
 	      for (r = regno; r < last_regno; r++)
 		SET_HARD_REG_BIT (res->regs, r);
 	    }
@@ -761,8 +798,16 @@ mark_set_resources (x, res, in_dest, mark_type)
 
     case REG:
       if (in_dest)
-        for (r = 0; r < HARD_REGNO_NREGS (REGNO (x), GET_MODE (x)); r++)
-	  SET_HARD_REG_BIT (res->regs, REGNO (x) + r);
+	{
+	  unsigned int regno = REGNO (x);
+	  unsigned int last_regno
+	    = regno + HARD_REGNO_NREGS (regno, GET_MODE (x));
+
+	  if (last_regno > FIRST_PSEUDO_REGISTER)
+	    abort ();
+	  for (r = regno; r < last_regno; r++)
+	    SET_HARD_REG_BIT (res->regs, r);
+	}
       return;
 
     case STRICT_LOW_PART:
@@ -789,7 +834,7 @@ mark_set_resources (x, res, in_dest, mark_type)
 	 We can not just fall through here since then we would be confused
 	 by the ASM_INPUT rtx inside ASM_OPERANDS, which do not indicate
 	 traditional asms unlike their normal usage.  */
-      
+
       for (i = 0; i < ASM_OPERANDS_INPUT_LENGTH (x); i++)
 	mark_set_resources (ASM_OPERANDS_INPUT (x, i), res, in_dest,
 			    MARK_SRC_DEST);
@@ -861,7 +906,7 @@ mark_target_live_regs (insns, target, res)
      struct resources *res;
 {
   int b = -1;
-  int i;
+  unsigned int i;
   struct target_info *tinfo = NULL;
   rtx insn;
   rtx jump_insn = 0;
@@ -898,7 +943,7 @@ mark_target_live_regs (insns, target, res)
     }
 
   if (b == -1)
-    b = find_basic_block (target);
+    b = find_basic_block (target, MAX_DELAY_SLOT_LIVE_SEARCH);
 
   if (target_hash_table != NULL)
     {
@@ -914,12 +959,13 @@ mark_target_live_regs (insns, target, res)
 	}
       else
 	{
-	  /* Allocate a place to put our results and chain it into the 
+	  /* Allocate a place to put our results and chain it into the
 	     hash table.  */
-	  tinfo = (struct target_info *) oballoc (sizeof (struct target_info));
+	  tinfo = (struct target_info *) xmalloc (sizeof (struct target_info));
 	  tinfo->uid = INSN_UID (target);
 	  tinfo->block = b;
-	  tinfo->next = target_hash_table[INSN_UID (target) % TARGET_HASH_PRIME];
+	  tinfo->next
+	    = target_hash_table[INSN_UID (target) % TARGET_HASH_PRIME];
 	  target_hash_table[INSN_UID (target) % TARGET_HASH_PRIME] = tinfo;
 	}
     }
@@ -974,17 +1020,19 @@ mark_target_live_regs (insns, target, res)
 	{
 	  rtx link;
 	  rtx real_insn = insn;
+	  enum rtx_code code = GET_CODE (insn);
 
 	  /* If this insn is from the target of a branch, it isn't going to
 	     be used in the sequel.  If it is used in both cases, this
 	     test will not be true.  */
-	  if (INSN_FROM_TARGET_P (insn))
+	  if ((code == INSN || code == JUMP_INSN || code == CALL_INSN)
+	      && INSN_FROM_TARGET_P (insn))
 	    continue;
 
 	  /* If this insn is a USE made by update_block, we care about the
 	     underlying insn.  */
-	  if (GET_CODE (insn) == INSN && GET_CODE (PATTERN (insn)) == USE
-	      && GET_RTX_CLASS (GET_CODE (XEXP (PATTERN (insn), 0))) == 'i')
+	  if (code == INSN && GET_CODE (PATTERN (insn)) == USE
+	      && INSN_P (XEXP (PATTERN (insn), 0)))
 	      real_insn = XEXP (PATTERN (insn), 0);
 
 	  if (GET_CODE (real_insn) == CALL_INSN)
@@ -992,21 +1040,8 @@ mark_target_live_regs (insns, target, res)
 	      /* CALL clobbers all call-used regs that aren't fixed except
 		 sp, ap, and fp.  Do this before setting the result of the
 		 call live.  */
-	      for (i = 0; i < FIRST_PSEUDO_REGISTER; i++)
-		if (call_used_regs[i]
-		    && i != STACK_POINTER_REGNUM && i != FRAME_POINTER_REGNUM
-		    && i != ARG_POINTER_REGNUM
-#if HARD_FRAME_POINTER_REGNUM != FRAME_POINTER_REGNUM
-		    && i != HARD_FRAME_POINTER_REGNUM
-#endif
-#if ARG_POINTER_REGNUM != FRAME_POINTER_REGNUM
-		    && ! (i == ARG_POINTER_REGNUM && fixed_regs[i])
-#endif
-#if defined (PIC_OFFSET_TABLE_REGNUM) && !defined (PIC_OFFSET_TABLE_REG_CALL_CLOBBERED)
-		    && ! (i == PIC_OFFSET_TABLE_REGNUM && flag_pic)
-#endif
-		    )
-		  CLEAR_HARD_REG_BIT (current_live_regs, i);
+	      AND_COMPL_HARD_REG_SET (current_live_regs,
+				      regs_invalidated_by_call);
 
 	      /* A CALL_INSN sets any global register live, since it may
 		 have been modified by the call.  */
@@ -1031,12 +1066,12 @@ mark_target_live_regs (insns, target, res)
 		    && GET_CODE (XEXP (link, 0)) == REG
 		    && REGNO (XEXP (link, 0)) < FIRST_PSEUDO_REGISTER)
 		  {
-		    int first_regno = REGNO (XEXP (link, 0));
-		    int last_regno
+		    unsigned int first_regno = REGNO (XEXP (link, 0));
+		    unsigned int last_regno
 		      = (first_regno
 			 + HARD_REGNO_NREGS (first_regno,
 					     GET_MODE (XEXP (link, 0))));
-			 
+
 		    for (i = first_regno; i < last_regno; i++)
 		      SET_HARD_REG_BIT (pending_dead_regs, i);
 		  }
@@ -1050,12 +1085,12 @@ mark_target_live_regs (insns, target, res)
 		    && GET_CODE (XEXP (link, 0)) == REG
 		    && REGNO (XEXP (link, 0)) < FIRST_PSEUDO_REGISTER)
 		  {
-		    int first_regno = REGNO (XEXP (link, 0));
-		    int last_regno
+		    unsigned int first_regno = REGNO (XEXP (link, 0));
+		    unsigned int last_regno
 		      = (first_regno
 			 + HARD_REGNO_NREGS (first_regno,
 					     GET_MODE (XEXP (link, 0))));
-			 
+
 		    for (i = first_regno; i < last_regno; i++)
 		      CLEAR_HARD_REG_BIT (current_live_regs, i);
 		  }
@@ -1073,7 +1108,7 @@ mark_target_live_regs (insns, target, res)
 	     RTL chain when there are no epilogue insns.  Certain resources
 	     are implicitly required at that point.  */
 	  else if (GET_CODE (real_insn) == NOTE
- 		   && NOTE_LINE_NUMBER (real_insn) == NOTE_INSN_EPILOGUE_BEG)
+		   && NOTE_LINE_NUMBER (real_insn) == NOTE_INSN_EPILOGUE_BEG)
 	    IOR_HARD_REG_SET (current_live_regs, start_of_epilogue_needs.regs);
 	}
 
@@ -1098,7 +1133,7 @@ mark_target_live_regs (insns, target, res)
   /* If we hit an unconditional branch, we have another way of finding out
      what is live: we can see what is live at the branch target and include
      anything used but not set before the branch.  We add the live
-     resources found using the test below to those found until now. */
+     resources found using the test below to those found until now.  */
 
   if (jump_insn)
     {
@@ -1143,7 +1178,7 @@ init_resource_info (epilogue_insn)
   /* Indicate what resources are required to be valid at the end of the current
      function.  The condition code never is and memory always is.  If the
      frame pointer is needed, it is and so is the stack pointer unless
-     EXIT_IGNORE_STACK is non-zero.  If the frame pointer is not needed, the
+     EXIT_IGNORE_STACK is nonzero.  If the frame pointer is not needed, the
      stack pointer is.  Registers used to return the function value are
      needed.  Registers holding global variables are needed.  */
 
@@ -1205,7 +1240,7 @@ init_resource_info (epilogue_insn)
   /* Allocate and initialize the tables used by mark_target_live_regs.  */
   target_hash_table = (struct target_info **)
     xcalloc (TARGET_HASH_PRIME, sizeof (struct target_info *));
-  bb_ticks = (int *) xcalloc (n_basic_blocks, sizeof (int));
+  bb_ticks = (int *) xcalloc (last_basic_block, sizeof (int));
 }
 
 /* Free up the resources allcated to mark_target_live_regs ().  This
@@ -1216,6 +1251,20 @@ free_resource_info ()
 {
   if (target_hash_table != NULL)
     {
+      int i;
+
+      for (i = 0; i < TARGET_HASH_PRIME; ++i)
+	{
+	  struct target_info *ti = target_hash_table[i];
+
+	  while (ti)
+	    {
+	      struct target_info *next = ti->next;
+	      free (ti);
+	      ti = next;
+	    }
+	}
+
       free (target_hash_table);
       target_hash_table = NULL;
     }
@@ -1234,7 +1283,7 @@ clear_hashed_info_for_insn (insn)
      rtx insn;
 {
   struct target_info *tinfo;
-      
+
   if (target_hash_table != NULL)
     {
       for (tinfo = target_hash_table[INSN_UID (insn) % TARGET_HASH_PRIME];
@@ -1253,14 +1302,14 @@ void
 incr_ticks_for_insn (insn)
      rtx insn;
 {
-  int b = find_basic_block (insn);
+  int b = find_basic_block (insn, MAX_DELAY_SLOT_LIVE_SEARCH);
 
   if (b != -1)
     bb_ticks[b]++;
 }
 
 /* Add TRIAL to the set of resources used at the end of the current
-   function. */
+   function.  */
 void
 mark_end_of_function_resources (trial, include_delayed_effects)
      rtx trial;

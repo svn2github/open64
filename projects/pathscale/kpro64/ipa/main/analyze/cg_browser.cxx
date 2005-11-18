@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <elf.h>
 #include <cmplrs/host.h>
 #include "assert.h"
@@ -277,7 +283,7 @@ void CG_BROWSER::This_Node(FILE* fp,
     fprintf(fp, "<NULL>");
     return;
   }
-  fprintf(fp, "0x%x ", ipan);
+  fprintf(fp, "%p ", ipan);
   fprintf(fp, "V#%d ", vdx);
   fprintf(fp, "%s", IPA_Node_Name(ipan));
 } 
@@ -747,7 +753,7 @@ void CG_BROWSER::Graph(FILE* fp)
     fprintf(fp, "WARNING!!\n");
     fprintf(fp, "These nodes were missed on a preorder traversal\n");
     for (i = 0; i < bad_node_count; i++) { 
-      fprintf(fp, "0x%x V#%d %s\n", bad_node[i], bad_vertex[i], 
+      fprintf(fp, "%p V#%d %s\n", bad_node[i], bad_vertex[i], 
 	bad_pred[i] ? "PRED" : "SUCC"); 
     } 
   } 

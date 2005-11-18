@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -292,6 +297,8 @@
 
 #define opt_main_CXX	"opt_main.cxx"
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #define USE_STANDARD_TYPES
 #include <alloca.h>
 #include "pu_info.h"		/* for PU_Info_state and related things */
@@ -1154,6 +1161,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	LOWER_IO_STATEMENT |
 	LOWER_ENTRY_EXIT |
 	LOWER_SHORTCIRCUIT |
+#ifdef KEY
+	LOWER_UPLEVEL |
+#endif
 	lower_region_exits_flag;	// this is a variable
     
     if (WOPT_Enable_Bits_Load_Store)
@@ -1162,6 +1172,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	actions |= LOWER_BITS_OP;
     
     wn_tree = WN_Lower(wn_orig, actions, alias_mgr, "Pre_Opt");
+
+#ifdef KEY
+    if (Is_Target_64bit() && WOPT_Enable_Retype_Expr)
+      WN_retype_expr(wn_tree);
+#endif
 
     if (Cur_PU_Feedback)
       Cur_PU_Feedback->Reset_Root_WN(wn_tree);
@@ -1421,11 +1436,6 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
     comp_unit->Do_copy_propagate();
   }
 
-  if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
-    SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
-    comp_unit->Fold_lda_iload_istore();
-  }
-
   if (WOPT_Enable_Bool_Simp) {
     SET_OPT_PHASE("Boolean simplification");
     Simplify_bool_expr(comp_unit); 
@@ -1447,6 +1457,14 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	 comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
 					       "after Dead Code Elimination" );
   }
+
+#ifdef KEY // moved here because renaming causes bad code when there is
+    	   // overlapped live ranges, which can be created by copy propagation
+  if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
+    SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
+    comp_unit->Fold_lda_iload_istore();
+  }
+#endif
 
   for (INT i = 0; i < WOPT_Enable_Extra_Rename_Pass; ++i) {
 
@@ -1484,11 +1502,6 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       comp_unit->Do_copy_propagate();
     }
 
-    if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
-      SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
-      comp_unit->Fold_lda_iload_istore();
-    }
-
     if (WOPT_Enable_DCE) {
       SET_OPT_PHASE("Dead Code Elimination");
       BOOL paths_removed;
@@ -1504,6 +1517,14 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 
       if (!paths_removed) break;
     }
+
+#ifdef KEY // moved here because renaming causes bad code when there is
+    	   // overlapped live ranges, which can be created by copy propagation
+    if ( WOPT_Enable_Fold_Lda_Iload_Istore ) {
+      SET_OPT_PHASE("LDA-ILOAD/ISTORE folding in coderep");
+      comp_unit->Fold_lda_iload_istore();
+    }
+#endif
 
     // synchronize CFG and feedback info
     // comp_unit->Cfg()->Feedback().make_coherent();
@@ -1581,6 +1602,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
         comp_unit->Do_new_pre();
 
         if (Get_Trace(TP_GLOBOPT, CR_DUMP_FLAG)) {
+          fprintf(TFile, "%sAfter Do_new_pre\n%s", DBar, DBar);
           comp_unit->Htable()->Print(TFile);
         }
 
@@ -1624,7 +1646,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	comp_unit->Do_local_rvi();
 
         if (Get_Trace(TP_GLOBOPT, CR_DUMP_FLAG)) {
-	  fprintf(TFile,"After Do_local_rvi\n");
+	  fprintf(TFile,"%sAfter Do_local_rvi\n%s", DBar, DBar);
           comp_unit->Htable()->Print(TFile);
 	  comp_unit->Cfg()->Print(TFile);
         }
@@ -1650,6 +1672,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 			       !WOPT_Enable_Lpre_Before_Ivr /*do_loads*/);
 
         if (Get_Trace(TP_GLOBOPT, CR_DUMP_FLAG)) {
+          fprintf(TFile, "%sAfter Load PRE\n%s", DBar, DBar);
           comp_unit->Htable()->Print(TFile);
         }
 
@@ -1675,6 +1698,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
         comp_unit->Do_store_pre();
 
         if (Get_Trace(TP_GLOBOPT, CR_DUMP_FLAG)) {
+          fprintf(TFile, "%sAfter Store PRE\n%s", DBar, DBar);
           comp_unit->Htable()->Print(TFile);
         }
 
@@ -1746,6 +1770,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       Is_True(REGION_consistency_check(opt_wn),(""));
       Is_True(Verify_alias(alias_mgr,opt_wn),(""));
 
+#if !defined(TARG_IA32) && !defined(TARG_X8664)
       if ( WOPT_Enable_RVI ) {
         SET_OPT_PHASE("RVI");
         opt_wn = rvi.Perform_RVI( opt_wn, alias_mgr );
@@ -1754,6 +1779,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
         Is_True(REGION_consistency_check(opt_wn),(""));
         Is_True(Verify_alias(alias_mgr,opt_wn),(""));
       }
+#endif
 
       // free up optimizer's pools
       // NOTE that the rvi phase uses its own

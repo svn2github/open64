@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,7 +42,7 @@
 #define SGI_container_with_membership_h_INCLUDED
 
 #include <function.h>
-#include <vector.h>
+#include <vector>
 #include <iterator.h>
 #include "misc_extension.h"
 

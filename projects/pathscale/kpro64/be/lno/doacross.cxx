@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -56,6 +60,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -70,6 +76,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/doacros
 #include <stdlib.h>
 #include <limits.h>
 #include <math.h>
+#ifdef KEY // to get DBL_MAX
+#include <float.h>
+#endif
 #include "pu_info.h"
 #include "defs.h"
 #include "glob.h"

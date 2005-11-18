@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,6 +43,9 @@ extern void init_objects (void);
 
 /* need to init crt paths if doing ipa link */
 extern void init_crt_paths (void);
+#ifdef KEY
+extern void init_stdc_plus_plus_path( void );
+#endif
 
 /*
  * Whether option is an object or not.
@@ -48,12 +55,12 @@ extern void init_crt_paths (void);
 extern boolean is_object_option (int flag);
 
 /* add object to list of objects */
-extern void add_object (int flag, string arg);
+extern void add_object (int flag, char *arg);
 /* add object to list of objects to pass to archive phase. */
-extern void add_ar_objects (string arg);
+extern void add_ar_objects (char *arg);
 
 /* add library to list */
-extern void add_library_dir (string path);
+extern void add_library_dir (char *path);
 
 /* append objects to end of list */
 extern void append_objects_to_list (string_list_t *list);
@@ -67,5 +74,5 @@ extern void dump_objects (void);	/* for debugging */
 extern void add_library_options (void);
 
 /* search library_dirs for the crt file */
-extern string find_crt_path (string crtname);
+extern char *find_crt_path (char *crtname);
 

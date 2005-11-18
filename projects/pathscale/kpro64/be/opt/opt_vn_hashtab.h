@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -162,7 +167,7 @@
 #ifndef opt_vn_hashtab_INCLUDED
 #define opt_vn_hashtab_INCLUDED "opt_vn_hashtab.h"
 
-#include <hash_map>
+#include <ext/hash_map>
 #include "mempool_allocator.h"
 #include "opt_vn_expr.h"
 

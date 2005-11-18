@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -232,6 +237,7 @@ void
 OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
 {
   INT i;
+  AUX_ID idx;
   switch (cr->Kind()) {
   case CK_CONST:
   case CK_RCONST:
@@ -252,7 +258,7 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
       if (_tracing)
         fdump_wn(TFile, &wn);
 
-      AUX_ID idx = _opt_stab->Enter_symbol(WN_operator(&wn), WN_st(&wn), 
+      idx = _opt_stab->Enter_symbol(WN_operator(&wn), WN_st(&wn), 
 				       WN_offset(&wn), WN_ty(&wn), FALSE, &wn);
       Is_True(idx != 0, ("Find_scalars_from_lowering_bitfld_cr:: index from Enter_symbol is 0"));
       _symbols_to_revise->Union1D(idx);
@@ -265,6 +271,17 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
       if (_tracing && idx >= _first_new_aux_id)
         _opt_stab->Print_aux_entry(idx, TFile);
     }
+#ifdef KEY
+    else if (cr->Dtyp() != MTYPE_M && MTYPE_byte_size(cr->Dsctyp()) < 4 &&
+	     (idx = _opt_stab->Part_of_reg_size_symbol(cr->Aux_id())) != 0) {
+      cr->Set_promote_to_reg_size(); // flag this cr for processing in step 2
+      _symbols_to_revise->Union1D(idx);
+      cr->Set_scalar_aux_id(idx);
+      _has_bitfield = TRUE;
+      if (_tracing) 
+	fprintf(TFile, "replace %d by extract of %d\n", cr->Aux_id(), idx); 
+    }
+#endif
     return;
   case CK_IVAR:
     Find_scalars_from_lowering_bitfld_cr(cr->Ilod_base());
@@ -276,6 +293,11 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
     }
     return;
   case CK_OP:
+#ifdef KEY
+    if (cr->Is_isop_flag_set(ISOP_XLOWER_VISITED))
+      return;
+    cr->Set_isop_flag(ISOP_XLOWER_VISITED);
+#endif
     for (i = 0; i < cr->Kid_count(); i++) 
       Find_scalars_from_lowering_bitfld_cr(cr->Opnd(i));
     return;
@@ -393,12 +415,27 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
 	cr->Is_ivar_volatile() ||
 	cr->Opr() == OPR_PARM)
       return;
+#ifdef KEY // to limit compilation time explosion (bug 2081)
+    if (_opt_stab->Lastidx() > WOPT_Enable_Folded_Scalar_Limit) {
+      cr->Set_scalar_aux_id(0);
+      return;
+    }
+#endif
     // this indirect can be folded
     CODEREP *lda = cr->Ilod_base();
     WN_set_operator(&wn, cr->Opr() == OPR_ILOAD ? OPR_LDID : OPR_LDBITS);
     WN_set_desc(&wn, cr->Dsctyp());
     WN_set_rtype(&wn, cr->Dtyp());
     WN_store_offset(&wn) = cr->Offset() + lda->Offset();
+#if 1 // bug fix aug-14-02
+    ST *lda_st;
+    INT64 ofst;
+    Expand_ST_into_base_and_ofst(_opt_stab->St(lda->Lda_aux_id()),
+	    			 _opt_stab->St_ofst(lda->Lda_aux_id()),
+				 &lda_st, &ofst);
+    if (lda_st == lda->Lda_base_st()) // may be different in preopt on f90
+      WN_store_offset(&wn) -= ofst - _opt_stab->St_ofst(lda->Lda_aux_id());
+#endif
     WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
     WN_set_ty(&wn, cr->Ilod_ty());
     WN_set_field_id(&wn, cr->I_field_id());
@@ -421,6 +458,11 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
     return;
     }
   case CK_OP:
+#ifdef KEY
+    if (cr->Is_isop_flag_set(ISOP_LDAFOLD_VISITED))
+      return;
+    cr->Set_isop_flag(ISOP_LDAFOLD_VISITED);
+#endif
     for (i = 0; i < cr->Kid_count(); i++) 
       Find_scalars_from_lda_iloads(cr->Opnd(i));
     return;
@@ -477,6 +519,12 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 	  }
 	  if (lhs->Is_ivar_volatile())
 	    break;
+#ifdef KEY // to limit compilation time explosion (bug 2081)
+	  if (_opt_stab->Lastidx() > WOPT_Enable_Folded_Scalar_Limit) {
+	    lhs->Set_scalar_aux_id(0);
+	    break;
+	  }
+#endif
 	  // this indirect can be folded
 	  CODEREP *lda = lhs->Istr_base();
           bzero(&wn, sizeof(WN));
@@ -484,6 +532,15 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 	  WN_set_desc(&wn, stmt->Desc());
 	  WN_set_rtype(&wn, MTYPE_V);
 	  WN_store_offset(&wn) = lhs->Offset() + lda->Offset();
+#if 1 // bug fix aug-14-02
+	  ST *lda_st;
+	  INT64 ofst;
+	  Expand_ST_into_base_and_ofst(_opt_stab->St(lda->Lda_aux_id()),
+				       _opt_stab->St_ofst(lda->Lda_aux_id()),
+				       &lda_st, &ofst);
+	  if (lda_st == lda->Lda_base_st())// may be different for preopt on f90
+	    WN_store_offset(&wn) -= ofst - _opt_stab->St_ofst(lda->Lda_aux_id());
+#endif
 	  WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
 	  WN_set_ty(&wn, lhs->Ilod_ty());
 	  WN_set_field_id(&wn, lhs->I_field_id());
@@ -540,11 +597,26 @@ OPT_REVISE_SSA::Update_phis(BB_NODE *bb)
       phi->Reset_dse_dead();
       phi->Reset_dce_dead();
       AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(i);
-      MTYPE rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+      MTYPE rtype;
+      TY_IDX ty = TY_IDX_ZERO;
+      ST *st = _opt_stab->St(i);
+      if (st != NULL) ty = ST_type(st);
+      if (sym->Mtype()==MTYPE_M)
+         rtype = sym->Mtype();
+      else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
 						    sym->Byte_size());
       MTYPE desc = rtype;
+#ifdef KEY // promote to register type size
+      if (i != _opt_stab->Default_vsym() && 
+	  desc != MTYPE_UNKNOWN && desc != MTYPE_M)
+        rtype = OPCODE_rtype(Ldid_from_mtype(desc));
+#endif
+      if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
+        ty = MTYPE_To_TY(rtype);
+      }      
       phi_res = _htable->Add_def(i, -1, NULL, rtype, desc, 
-			 _opt_stab->St_ofst(i), MTYPE_To_TY(rtype), 0, TRUE);
+			 _opt_stab->St_ofst(i), ty, 0, TRUE);
       phi_res->Set_flag(CF_DEF_BY_PHI);
       phi_res->Set_defphi(phi);
       phi->Set_result(phi_res);
@@ -579,11 +651,28 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 	BOOL originally_dead = ! cnode->Live();
 	cnode->Set_live(TRUE);
 	cnode->Set_dse_dead(FALSE);
-        sym = _opt_stab->Aux_stab_entry(i);
-	rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),sym->Byte_size());
+    sym = _opt_stab->Aux_stab_entry(i); 
+    TY_IDX ty = TY_IDX_ZERO;
+    ST *st = _opt_stab->St(i);
+    if (st != NULL) ty = ST_type(st);
+    if (sym->Mtype()==MTYPE_M)
+        rtype = sym->Mtype();
+    else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+						    sym->Byte_size()); 
 	MTYPE desc = rtype;
+#ifdef KEY // promote to register type size
+	if (i != _opt_stab->Default_vsym() && 
+	    desc != MTYPE_UNKNOWN && desc != MTYPE_M)
+	  rtype = OPCODE_rtype(Ldid_from_mtype(desc));
+#endif
+
+	if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
+	  ty = MTYPE_To_TY(rtype);
+	}
+	
 	chi_res = _htable->Add_def(i, -1, stmt, rtype, desc, 
-			   _opt_stab->St_ofst(i), MTYPE_To_TY(rtype), 0, TRUE);
+			   _opt_stab->St_ofst(i), ty, 0, TRUE);
 	chi_res->Set_flag(CF_DEF_BY_CHI);
 	chi_res->Set_defchi(cnode);
 	cnode->Set_RESULT(chi_res);
@@ -593,11 +682,25 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
       }
       else if (cnode->RESULT()->Dtyp() == MTYPE_UNKNOWN) { // fix the types
 	chi_res = cnode->RESULT();
-        sym = _opt_stab->Aux_stab_entry(i);
-	rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),sym->Byte_size());
+
+    TY_IDX ty = TY_IDX_ZERO;
+    ST *st = _opt_stab->St(i);
+    if (st != NULL) ty = ST_type(st);
+
+	
+    sym = _opt_stab->Aux_stab_entry(i);
+    if (sym->Mtype()==MTYPE_M)
+        rtype = sym->Mtype();
+    else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+						    sym->Byte_size()); 
+    if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
+      ty = MTYPE_To_TY(rtype);
+    }
+	
 	chi_res->Set_dtyp(rtype);
 	chi_res->Set_dsctyp(rtype);
-	chi_res->Set_lod_ty(MTYPE_To_TY(rtype));
+	chi_res->Set_lod_ty(ty);
       }
       return;
     }
@@ -688,11 +791,30 @@ OPT_REVISE_SSA::Insert_mu_and_chi_list_for_new_var(STMTREP *stmt, AUX_ID i)
     newchi->Set_live(TRUE);
     newchi->Set_dse_dead(FALSE);
     AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(i);
-    MTYPE rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
-						  sym->Byte_size());
+
+    TY_IDX ty = TY_IDX_ZERO;
+    ST *st = _opt_stab->St(i);
+    if (st != NULL) ty = ST_type(st);
+    
+    MTYPE rtype;
+    if (sym->Mtype()==MTYPE_M)
+        rtype = sym->Mtype();
+    else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+						    sym->Byte_size());  
     MTYPE desc = rtype;
+#ifdef KEY // promote to register type size
+    if (i != _opt_stab->Default_vsym() && 
+	desc != MTYPE_UNKNOWN && desc != MTYPE_M)
+      rtype = OPCODE_rtype(Ldid_from_mtype(desc));
+#endif
+
+	if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
+	  ty = MTYPE_To_TY(rtype);
+	}    
+    
     chi_res = _htable->Add_def(i, -1, stmt, rtype, desc, 
-			 _opt_stab->St_ofst(i), MTYPE_To_TY(rtype), 0, TRUE);
+			 _opt_stab->St_ofst(i), ty, 0, TRUE);
     chi_res->Set_flag(CF_DEF_BY_CHI);
     chi_res->Set_defchi(newchi);
     newchi->Set_RESULT(chi_res);
@@ -752,6 +874,17 @@ OPT_REVISE_SSA::Create_COMPOSE_BITS(INT bit_offset, INT bit_size,
 				    CODEREP *v, CODEREP *rhs)
 {
   CODEREP stack_cr; 
+#if 0
+  if (MTYPE_bit_size(v->Dtyp()) != MTYPE_bit_size(rhs->Dtyp())) {
+    CODEREP cvt_cr;
+    FOLD ftmp;
+    OPCODE opc = OPCODE_make_op(OPR_CVT, v->Dtyp(), rhs->Dtyp());
+    cvt_cr.Init_expr(opc, rhs);
+    rhs = ftmp.Fold_Expr(&cvt_cr);
+    if (!rhs)
+      rhs = _htable->Rehash(&cvt_cr);
+  }
+#endif
   stack_cr.Init_expr(OPCODE_make_op(OPR_COMPOSE_BITS, v->Dtyp(), MTYPE_V), v);
   stack_cr.Set_kid_count(2);
   stack_cr.Set_opnd(1, rhs);
@@ -803,10 +936,52 @@ OPT_REVISE_SSA::Form_extract(CODEREP *cr)
       // generate a zero version of the new scalar variable
       x = _htable->Ssa()->Get_zero_version_CR(cr->Scalar_aux_id(), _opt_stab,0);
       AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(cr->Scalar_aux_id());
+#ifdef KEY
+      if (sym->Is_volatile())
+	x->Set_var_volatile();
+#endif
       x->Set_dtyp(cr->Dtyp());
       x->Set_dsctyp(Mtype_from_mtype_class_and_size(MTYPE_type_class(cr->Dtyp()), sym->Byte_size()));
+#ifdef KEY
+      x->Set_sign_extension_flag();
+#endif
+#ifndef KEY
       return Create_EXTRACT_BITS(cr->Bit_offset(), cr->Bit_size(), x, cr->Dtyp());
+#else
+      INT32 adjust = 0;
+      if (Target_Byte_Sex == BIG_ENDIAN)
+        adjust = MTYPE_bit_size(cr->Dtyp()) - MTYPE_bit_size(x->Dsctyp());
+      return Create_EXTRACT_BITS(cr->Bit_offset()+adjust, cr->Bit_size(), x, 
+	      			 cr->Dtyp());
+#endif
     }
+#ifdef KEY
+    else if (cr->Promote_to_reg_size()) {
+      // generate a zero version of the new scalar variable
+      x = _htable->Ssa()->Get_zero_version_CR(cr->Scalar_aux_id(), _opt_stab,0);
+      AUX_STAB_ENTRY *osym = _opt_stab->Aux_stab_entry(cr->Aux_id());
+      AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(cr->Scalar_aux_id());
+      MTYPE mtyp = Mtype_from_mtype_class_and_size(MTYPE_CLASS_UNSIGNED_INTEGER,
+	      					   sym->Byte_size());
+      if (cr->Dtyp() != MTYPE_M)
+        x->Set_dtyp(Mtype_TransferSize(mtyp, cr->Dtyp()));
+      else x->Set_dtyp(mtyp);
+      x->Set_dsctyp(x->Dtyp());
+      x->Set_sign_extension_flag();
+      INT32 bofst = (osym->Base_byte_ofst() - sym->Base_byte_ofst()) * 8;
+      Is_True(bofst >= 0 && (bofst<32 || sym->Byte_size() == 8 && bofst<64),
+	      ("Form_extract:: illegal bit offset in extract"));
+      x = Create_EXTRACT_BITS(bofst, MTYPE_bit_size(cr->Dsctyp()), x, 
+			      x->Dtyp());
+      if (MTYPE_byte_size(x->Dtyp()) != MTYPE_byte_size(cr->Dtyp()) &&
+	  cr->Dtyp() != MTYPE_M) {
+        CODEREP stack_cr; 
+        stack_cr.Init_expr(OPCODE_make_op(OPR_CVT, cr->Dtyp(), x->Dtyp()), x);
+        x = _htable->Rehash(&stack_cr);
+      }
+      return x;
+    }
+#endif
     return NULL;
   case CK_IVAR:
     x = Form_extract(cr->Ilod_base());
@@ -849,8 +1024,18 @@ OPT_REVISE_SSA::Form_extract(CODEREP *cr)
     new_cr->Ivar_mu_node()->Set_OPND(_htable->Ssa()->Get_zero_version_CR(new_cr->Ivar_occ()->Aux_id(), _opt_stab, 0));
     cr->DecUsecnt();
     x = _htable->Rehash(new_cr);
+#ifndef KEY
     return Create_EXTRACT_BITS(cr->I_bit_offset(), cr->I_bit_size(), x, 
 			       cr->Dtyp());
+#else
+    {
+      INT32 adjust = 0;
+      if (Target_Byte_Sex == BIG_ENDIAN)
+        adjust = MTYPE_bit_size(cr->Dtyp()) - MTYPE_bit_size(x->Dsctyp());
+      return Create_EXTRACT_BITS(cr->I_bit_offset()+adjust, cr->I_bit_size(), x,
+			         cr->Dtyp());
+    }
+#endif
   case CK_OP:
     need_rehash = FALSE;
     new_cr->Copy(*cr);
@@ -958,12 +1143,26 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	  v = _htable->Ssa()->Get_zero_version_CR(lhs->Scalar_aux_id(),
 						  _opt_stab, 0);
 	  AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(lhs->Scalar_aux_id());
-	  v->Set_dtyp(lhs->Dtyp());
+#ifdef KEY
+	  if (sym->Is_volatile())
+	    x->Set_var_volatile();
+#endif
 	  v->Set_dsctyp(Mtype_from_mtype_class_and_size(MTYPE_type_class(lhs->Dtyp()), sym->Byte_size()));
+	  v->Set_dtyp(OPCODE_rtype(Ldid_from_mtype(v->Dsctyp())));
+#ifdef KEY
+	  v->Set_sign_extension_flag();
+#endif
+#ifndef KEY
 	  stmt->Set_rhs(Create_COMPOSE_BITS(lhs->Bit_offset(), lhs->Bit_size(), v, rhs));
+#else
+	  INT32 adjust = 0;
+	  if (Target_Byte_Sex == BIG_ENDIAN)
+	    adjust = MTYPE_bit_size(v->Dtyp()) - MTYPE_bit_size(v->Dsctyp());
+	  stmt->Set_rhs(Create_COMPOSE_BITS(lhs->Bit_offset()+adjust, lhs->Bit_size(), v, rhs));
+#endif
 	  // generate a new version of the new scalar variable
 	  stmt->Set_lhs(_htable->Add_def(lhs->Scalar_aux_id(), -1, stmt, 
-	    lhs->Dtyp(), lhs->Dsctyp(), lhs->Offset(), lhs->Lod_ty(), 0, TRUE));
+	    lhs->Dtyp(), lhs->Dsctyp(), lhs->Offset(), Void_Type, 0, TRUE));
 	  stmt->Set_opr(OPR_STID);
 	  if (v->Aux_id() < _first_new_aux_id)
 	    Delete_chi(v->Aux_id(), stmt);
@@ -986,15 +1185,22 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	  mu->Set_OPND(_htable->Ssa()->Get_zero_version_CR(new_cr->Ivar_occ()->Aux_id(), _opt_stab, 0));
 	  new_cr->Set_ivar_mu_node(mu);
 	  v = _htable->Rehash(new_cr);
+#ifndef KEY
 	  stmt->Set_rhs(Create_COMPOSE_BITS(lhs->I_bit_offset(), lhs->I_bit_size(), v, rhs));
+#else
+	  INT32 adjust = 0;
+	  if (Target_Byte_Sex == BIG_ENDIAN)
+	    adjust = MTYPE_bit_size(v->Dtyp()) - MTYPE_bit_size(v->Dsctyp());
+	  stmt->Set_rhs(Create_COMPOSE_BITS(lhs->I_bit_offset()+adjust, lhs->I_bit_size(), v, rhs));
+#endif
 
 	  // generate a new version of the new ivar node 
 	  stmt->Set_lhs(_htable->Add_idef(
 			  OPCODE_make_op(OPR_ILOAD, lhs->Dtyp(), lhs->Dsctyp()),
 			  lhs->Scalar_ivar_occ(), stmt, NULL/*mu*/,
 			  lhs->Dtyp(), lhs->Dsctyp(), lhs->Ilod_ty(), 0, 
-			  lhs->Offset(), (CODEREP *) lhs->Ilod_base_ty(), NULL, 
-			  lhs->Istr_base()));
+			  lhs->Offset(), (CODEREP *)Make_Pointer_Type(Void_Type), 
+   		      NULL, lhs->Istr_base()));
 	  stmt->Set_opr(OPR_ISTORE);
 	}
       }
@@ -1050,13 +1256,26 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
 	cr->Opr() == OPR_PARM || 
 	cr->Opr() == OPR_MLOAD)
       return NULL;
+#ifdef KEY
+    if (cr->Scalar_aux_id() == 0) // not folding because folded_scalar_limit reached 
+      return NULL;
+#endif
     // this indirect load can be folded
     // generate a load of the zero version of the new scalar variable
     x = _htable->Ssa()->Get_zero_version_CR(cr->Scalar_aux_id(), _opt_stab, 0);
+#if 1 // bug fix aug-26-02
+    // indirect load is not volatile, but folded-to scalar is volatile
+    if (x->Is_var_volatile()) return NULL;
+#endif
     x->Set_dtyp(cr->Dtyp());
     x->Set_dsctyp(cr->Dsctyp());
     x->Set_lod_ty(TY_pointed(cr->Ilod_base_ty()));
     x->Set_field_id(cr->I_field_id());
+#if 1 // bug fix sep-4-02
+    if (x->Field_id() == 0 && x->Dsctyp() != MTYPE_M && 
+	TY_size(x->Lod_ty()) != MTYPE_byte_size(x->Dsctyp()))
+      x->Set_lod_ty(MTYPE_To_TY(x->Dsctyp()));
+#endif
     if (cr->Dsctyp() == MTYPE_BS) // cannot use offset from opt_stab
       x->Set_offset(cr->Offset()+cr->Ilod_base()->Offset());
     if (cr->Opr() == OPR_ILDBITS) 
@@ -1154,14 +1373,28 @@ OPT_REVISE_SSA::Fold_lda_indirects(void)
 	  }
 	  if (lhs->Is_ivar_volatile())
 	    break;
+	  vaux = lhs->Scalar_aux_id();
+#ifdef KEY
+	  if (vaux == 0) // not folding because folded_scalar_limit reached 
+	    break;
+#endif
+#if 1 // bug fix aug-26-02
+      	  // indirect load is not volatile, but folded-to scalar is volatile
+	  if (_opt_stab->Is_volatile(vaux)) 
+	    break;
+#endif
 	  // this indirect can be folded
 	  // first, generate a new version of the new scalar variable
-	  vaux = lhs->Scalar_aux_id();
 	  stmt->Set_lhs(_htable->Add_def(vaux, -1, stmt, 
 			lhs->Dtyp(), lhs->Dsctyp(), 
 			_opt_stab->St_ofst(vaux),
 			TY_pointed(lhs->Ilod_base_ty()), lhs->I_field_id(), 
 			TRUE));
+#if 1 // bug fix sep-4-02
+	  if (stmt->Lhs()->Field_id() == 0 && stmt->Lhs()->Dsctyp() != MTYPE_M && 
+	      TY_size(stmt->Lhs()->Lod_ty()) != MTYPE_byte_size(stmt->Lhs()->Dsctyp()))
+	    stmt->Lhs()->Set_lod_ty(MTYPE_To_TY(stmt->Lhs()->Dsctyp()));
+#endif
 	  if (lhs->Dsctyp() == MTYPE_BS) // cannot use offset from opt_stab
 	    stmt->Lhs()->Set_offset(lhs->Offset()+lhs->Istr_base()->Offset());
 	  if (stmt->Opr() == OPR_ISTORE)

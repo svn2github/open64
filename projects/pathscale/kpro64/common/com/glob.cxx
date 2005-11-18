@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -76,6 +80,7 @@ PU_KIND	Cur_PU_Kind = PU_UNKNOWN;
 
 BOOL Symbol_Table_Out = FALSE;	/* Symbol table output (list or trace) */
 BOOL Show_Progress = FALSE;     /* Report progress to stdout */
+BOOL Create_Cycle_Output = FALSE;  
 
 /* ====================================================================
  *
@@ -101,6 +106,14 @@ char *Fe_Version = NULL;
  *
  * ====================================================================
  */
+/*add by cbq */
+int pu_number = 0;
+int bb_number = 0;
+char *Output_h_File_Name = "cycle_output.h";        /* Cycle_Counting Output.h file */
+FILE *Output_h_File = NULL;           /* Cycle counting output.h file */
+FILE *Call_graph_file = NULL; 	      /* Call graph file */
+char * pu_string[1000]; 
+char * bb_string[1000]; 
 
 /* Current file	names: */
 char *Src_File_Name = NULL;	/* Source file */
@@ -114,13 +127,19 @@ char *IR_File_Name  = NULL;	/* SGIR	file */
 char *Irb_File_Name = NULL;	/* ACIR	intermediate file */
 char *Asm_File_Name = NULL;	/* Assembly file */
 char *Obj_File_Name = NULL;	/* Relocatable object file */
+char *Instrumentation_File_Name = NULL; /* instrumentation file */
 char *Feedback_File_Name = NULL; /* Feedback file */
+char *call_graph_file_name = NULL; /* Function call graph file */
+char *cord_output_file_name = NULL; /* Output file name after function layout */
+char *cord_obj_file_name = NULL;  /* Object file name which will be reorder function layout */
 #ifndef MONGOOSE_BE
 char *Lib_File_Name = NULL;	/* Program library file	*/
 #endif 
 char *Lib_Lock_Name = NULL;	/* Program library lock	file */
 char *DSTdump_File_Name = NULL; /* Dwarf (i.e. DST) dump file */
 char *Global_File_Name = NULL;	/* Global symbol table file */
+
+char *License_File_Name = NULL ;	/* license file */
 
 /* Current file	handles	if open, NULL otherwise: */
 FILE *Src_File = NULL;		/* Source file */
@@ -135,3 +154,9 @@ FILE *Asm_File = NULL;		/* Assembly file */
 FILE *Obj_File = NULL;		/* Relocatable object file */
 FILE *Lib_File = NULL;		/* Program library file	*/
 FILE *Tim_File = NULL;		/* Timer report	file, usually TFile */
+
+#ifdef SPECMT_LT
+FILE *ExchangeFile = NULL;              /* exchange file for pseudo-specmt partition */
+FILE *LoopMappingFile = NULL;           /* loop mapping file for two pass compilation */
+#endif
+

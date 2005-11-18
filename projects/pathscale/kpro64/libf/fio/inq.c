@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -65,7 +69,7 @@ _f_log	*named,
 ...
 )
 #else
-_INQ(
+int _INQ(
 _f_int	*unitn,
 _f_int	*iostat,
 int	errf,

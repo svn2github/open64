@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -90,7 +94,7 @@ int mode;			/* memory management mode selector */
 
 		/* If memarea table not present, get it. */
 
-		if (_Cif_memasize == NULL) {
+		if (_Cif_memasize == 0) {
 			if ((me =_Cif_memtbl()) != 0)
 				return (me);
 		}

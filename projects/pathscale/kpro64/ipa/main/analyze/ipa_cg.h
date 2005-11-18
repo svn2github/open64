@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,9 +41,7 @@
 #ifndef cxx_ipa_cg_INCLUDED
 #define cxx_ipa_cg_INCLUDED
 
-#ifndef __SGI_STL_LIST_H
-#include <vector.h>
-#endif
+#include <vector>
 
 #ifndef mempool_allocator_INCLUDED
 #include <mempool_allocator.h>
@@ -189,6 +191,11 @@ private:
   static const mUINT32 _quasi_clone =        0x20000;   
   static const mUINT32 _preoptimized =       0x40000;   
   static const mUINT32 _has_aliased_formal = 0x80000;
+#ifdef KEY
+  static const mUINT32 _builtin =           0x100000;	// IPA builtin
+  static const mUINT32 _pu_write_complete = 0x200000;	// all EH info processed
+  static const mUINT32 _recursive =	    0x400000;	// recursive
+#endif
 
   // map to the file I/O info
   mINT32 _file_index;			// index into the file header structure
@@ -205,6 +212,11 @@ private:
   CALLEE_STATE      *_callee_state;	// callee state
 
   PU_SIZE            _pu_size;		// estimated size of this PU
+
+#ifdef KEY
+  struct pu_info    *_builtin_pu_info;
+  mUINT32	    _sizeof_eh_spec;	// # of types in eh-specification
+#endif
 
   IPAA_NODE_INFO*        _mod_ref_info; // mod/ref information
   VALUE_DYN_ARRAY*       _cprop_annot;  // annotation for parameter constants
@@ -223,8 +235,8 @@ private:
   UINT16 _total_succ;		        // total number of successors
   mUINT32 _max_region_id;		// max region id 
 
-  mUINT32            _flags;		// various Boolean attribute flags
-
+  mUINT32          _flags;		// various Boolean attribute flags
+  INT32            _partition_num;
 #ifdef _LIGHTWEIGHT_INLINER
   INLINED_BODY_LIST  _inlined_list;     // Hold pts to all inlined callees
                                         // for this node
@@ -260,8 +272,25 @@ public:
 #ifdef _LIGHTWEIGHT_INLINER
     _inlined_list (),
 #endif // _LIGHTWEIGHT_INLINER
-    _flags (0)
+    _flags (0),
+    _partition_num(0)
+#ifdef KEY
+    ,_builtin_pu_info (NULL)
+    ,_sizeof_eh_spec (0)
+#endif
   {
+#ifdef KEY
+    // If we are constructing for a builtin, then skip the info that a builtin
+    // doesn't have.
+    if (_file_index == -1) {
+      _total_succ = 0;
+      Is_True ((_flags & _mempool_init) == 0,
+               ("Uninitialized IPA NODE mempool"));
+      Is_True(st != 0, ("IPA NODE must have valid st"));
+      return;
+    }
+#endif
+
     SUMMARY_PROCEDURE* summary_proc = this->Summary_Proc();
     _pu_size.Set_PU_Size (summary_proc->Get_bb_count (), 
                           summary_proc->Get_stmt_count (),
@@ -280,7 +309,8 @@ public:
 
   void Set_File_Index ( INT32 i )	{ _file_index = i; }
   INT32 File_Index () const		{ return _file_index; }
-
+  void Set_Partition_Num(INT32 num)     { _partition_num = num; }
+  INT32 Get_Partition_Num(void)         { return _partition_num; } 
   void Set_Proc_Info_Index ( INT32 i )  { _proc_info_index = i; }
   INT32 Proc_Info_Index () const
   { 
@@ -459,6 +489,24 @@ public:
   void Set_Preoptimized ()      { _flags |= _preoptimized; }
   BOOL Is_Preoptimized () const { return _flags & _preoptimized; }
 
+#ifdef KEY
+  // node is for a IPA builtin
+  void Set_Builtin ()           { _flags |= _builtin; }
+  BOOL Is_Builtin () const      { return _flags & _builtin; }
+  // PU has been written out, i.e. all EH info have been fixed, don't try
+  // to fix again.
+  void Set_PU_Write_Complete () { _flags |= _pu_write_complete; }
+  BOOL Is_PU_Write_Complete () const { return _flags & _pu_write_complete; }
+
+  // number of typeinfos in exception specification for this PU
+  void Set_EH_spec_size (mUINT32 s) { _sizeof_eh_spec = s; }
+  mUINT32 EH_spec_size () const	    { return _sizeof_eh_spec; }
+
+  // is node recursive?
+  void Set_Recursive () { _flags |= _recursive; }
+  BOOL Is_Recursive () { return _flags & _recursive; }
+#endif
+
   // node contains SCLASS_FORMAL variables that are based on another formal.
   // When we convert a formal parameter to a local variable, we need to know
   // if there are other STs that based on this variable, and convert their
@@ -572,8 +620,20 @@ public:
             ("IPA_NODE: file/proc indices [%d:%d] inconsistent with st",
              _file_index, _proc_info_index));
 #endif
+
+#ifdef KEY
+    if (this->Is_Builtin())
+      return _builtin_pu_info;
+#endif
+
     return IP_FILE_HDR_proc_info (File_Header())[Proc_Info_Index()].info;
   }
+
+#ifdef KEY
+  void Set_Builtin_PU_Info (struct pu_info *p) { _builtin_pu_info = p; }
+
+  struct pu_info *Builtin_PU_Info() { return _builtin_pu_info; }
+#endif
 
   WN_MAP_TAB* Map_Table() const
   {
@@ -636,6 +696,15 @@ public:
 #if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
     return NULL;
 #else 
+#ifdef KEY
+    /* If a proc is never invoked, then Summary_Proc()->Get_feedback_index()
+       will always return 0 by default, which will give ipa some other function's
+       feedback info.
+    */
+    if( Summary_Proc()->Is_Never_Invoked() ){
+      return NULL;
+    }
+#endif
     return IPA_get_feedback_array (this) + Summary_Proc()->Get_feedback_index ();
 #endif 
   }
@@ -645,6 +714,16 @@ public:
     return (fb? fb->Get_frequency_count (): FB_FREQ_UNKNOWN);
   };
 
+
+  UINT16 Get_wn_count () {
+    SUMMARY_FEEDBACK* fb = Get_feedback();
+    return (fb? fb->Get_wn_count(): 0);
+  };
+
+  FB_FREQ Get_cycle_count_2 () {
+    SUMMARY_FEEDBACK* fb = Get_feedback();
+    return (fb? fb->Get_cycle_count_2(): FB_FREQ_UNKNOWN);
+  };
 
   FB_FREQ Get_cycle_count () {
     SUMMARY_FEEDBACK* fb = Get_feedback();
@@ -679,12 +758,17 @@ private:
   IPA_EDGE_INDEX _array_index;		// index into the IPA_EDGE_ARRAY
   SUMMARY_CALLSITE *_c;                 // summary information
   WN *_w;				// WHIRL node of the callsite
+#ifdef KEY
+  WN *_eh_wn;				// enclosing eh-region wn
+  LABEL_IDX try_label;			// try label from enclosing try-region if any
+#endif
 
   VALUE_DYN_ARRAY       *_cprop_annot;  // constant propagation annotation
 
   mUINT32 _flags;			// various attributes of edge
   mUINT32 _readonly_actuals;		// bitmap for readonly actual param.
   mUINT32 _pass_not_saved_actuals;	// bitmap for addr_passed_but_not_saved
+  UINT32 _reason_ID; float _reason_data; 	//IPA_TRACE_TUNING
 
 public:
   // constructor
@@ -695,13 +779,23 @@ public:
     _array_index (array_index),
     _c(c),
     _w(0),
+#ifdef KEY
+    _eh_wn(0),
+    try_label(0),
+#endif
     _cprop_annot(0),
     _flags(0),
     _readonly_actuals(0),
-    _pass_not_saved_actuals(0)
+    _pass_not_saved_actuals(0),
+	_reason_ID(0),
+	_reason_data(0.0)
   {}
 
     
+  UINT32 reason_id() {return _reason_ID;}
+  float reason_data() {return _reason_data;}
+  void Set_reason_id(UINT32 i) { _reason_ID = i;}
+  void Set_reason_data(float i) { _reason_data = i;}
   // access functions
   void Set_Edge_Index (EDGE_INDEX i)	{ _edge_index = i; }
   EDGE_INDEX Edge_Index () const	{ return _edge_index; }
@@ -712,6 +806,15 @@ public:
 
   void Set_Whirl_Node (WN* w)   { _w = w; }
   WN* Whirl_Node () const       { return _w; }
+
+#ifdef KEY
+  void Set_EH_Whirl_Node (WN* w) { _eh_wn = w; }
+  WN* EH_Whirl_Node () const	 { return _eh_wn; }
+
+  // try_label is not being used currently
+  void Set_Try_Label (LABEL_IDX l) { try_label = l; }
+  LABEL_IDX Try_Label () const	   { return try_label; }
+#endif
 
   void Set_Cprop_Annot (VALUE_DYN_ARRAY* annot)	{ _cprop_annot = annot; }
   VALUE_DYN_ARRAY* Cprop_Annot () const	        { return _cprop_annot; }
@@ -938,6 +1041,11 @@ public:
   // Print all node indices in the specified order
   void Print (FILE*, TRAVERSAL_ORDER);
 
+
+  void Print_vobose (FILE*);
+  void Print_vobose (FILE*, TRAVERSAL_ORDER);
+
+  
   // map callsites in the caller to WN nodes
   void Map_Callsites(IPA_NODE* caller);
 
@@ -993,7 +1101,17 @@ extern BOOL IPA_Call_Graph_Built;
 
 extern void IPA_Process_File (IP_FILE_HDR& hdr);
 extern void Build_Call_Graph ();
+#ifdef KEY
+extern void IPA_update_ehinfo_in_pu (IPA_NODE *);
+extern void IPA_Convert_Icalls( IPA_CALL_GRAPH* );
+#endif
 
+//INLINING_TUNING^
+extern UINT32 Orig_Prog_WN_Count;
+extern UINT32 Prog_WN_Count;
+extern UINT32 Total_Dead_Function_WN_Count;
+extern FB_FREQ Total_cycle_count_2;
+//INLINING_TUNING$
 
 // ====================================================================
 //

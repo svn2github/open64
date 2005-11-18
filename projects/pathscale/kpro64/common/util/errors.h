@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -559,7 +563,11 @@ extern BOOL Count_Limit_DevWarn( const char *const src_fname,
 #include "err_host.h"
 
 /* The following contains Unix error code after system call errors: */
+#ifndef KEY
 extern INT errno;
+#else
+#include <errno.h>
+#endif
 
 /* Control reporting by severity level: */
 extern INT Min_Error_Severity;

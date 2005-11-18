@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,6 +39,8 @@
 
 //* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <alloca.h>
 
 #include "defs.h"
@@ -777,10 +783,20 @@ Replace_Formal_By_LDA (WN* func_body, ST_IDX formal, ST* actual)
 	    if (WN_operator (WN_kid0 (wn)) == OPR_LDID &&
 		WN_st_idx (WN_kid0 (wn)) == formal) {
 		if (WN_field_id (wn)) {
+#ifdef KEY
+	            // Bug 942
+	            // Should pass down appropriate rtypes for bit-fields.
+		    // replace indirect load by direct load
+		    iter.Replace (WN_CreateLdid (OPR_LDID, WN_rtype(wn), 
+		    				 WN_desc (wn), WN_offset (wn),
+						 actual, WN_ty (wn),
+						 WN_field_id (wn)));
+#else
 		    // replace indirect load by direct load
 		    iter.Replace (WN_Ldid (WN_desc (wn), WN_offset (wn),
 					   actual, WN_ty (wn),
 					   WN_field_id (wn)));
+#endif
 		} else if (WN_offset (WN_kid0 (wn)) == 0) {
 		    // replace indirect load by direct load
 		    iter.Replace (WN_Ldid (WN_desc (wn), WN_offset (wn),
@@ -897,7 +913,31 @@ Check_If_Global_Has_Const_Value (IPA_NODE* node,
   }
 }
 
+#ifdef KEY
+BOOL
+Store_To_Formal ( ST* formal, WN* w )
+{
+  OPCODE opc = WN_opcode(w);
 
+  if (opc == OPC_BLOCK) {
+    for (WN* stmt = WN_first(w); stmt; stmt = WN_next(stmt)) {
+      if (WN_operator(stmt) == OPR_STID &&
+	  WN_st(stmt) == formal)
+	return TRUE;
+      for (UINT kidno = 0; kidno < WN_kid_count(stmt); kidno++) {
+	if (Store_To_Formal (formal, WN_kid(stmt, kidno)))
+	  return TRUE;
+      }
+    }
+  } else {
+    for (UINT kidno = 0; kidno < WN_kid_count(w); kidno++) {
+      if (Store_To_Formal (formal, WN_kid(w, kidno)))
+	return TRUE;
+    }
+  }
+  return FALSE;
+}
+#endif
 //-------------------------------------------------------------------
 // propagate the constant value to the formal parameter by either
 // generating an assignment statement or a global replacement
@@ -923,11 +963,33 @@ Propagate_Constants (IPA_NODE* node, WN* w, VALUE_DYN_ARRAY* cprop_annot)
 	ST* formal = WN_st(WN_formal(w,i));
 	ST* const_st = NULL;
 
+#ifdef KEY
+        // complex formal passed by value
+        if (ST_sclass (formal) != SCLASS_FORMAL_REF &&
+            MTYPE_is_complex(TY_mtype(ST_type(formal))))
+            continue;
+#endif
 	// check if constant can be propagated into array bounds
 	if (IPA_constant_in_array_bounds(annot_node, w, formal)) {
           need_to_update_array_bounds = TRUE;
         }
 
+#ifdef KEY
+	// Source program can intentionally change the value of 
+	// formal parameters. In C, actual parameters are not modified 
+	// (unless passed by reference) and in Fortran, actual parameters are
+	// modified. This module looks at incoming parameters to decide 
+	// whether a reference to the parameter can be replaced by the constant
+	// value, if the incoming parameter value is always a constant.
+	// It does not check whether the parameter is modified inside the 
+	// current_pu.
+	// Skip the optimization if there is a store to the incoming parameter,
+	// even though it may be a constant.
+	// Bug exposed by -O3 -IPA NAS/CG
+	if (Store_To_Formal (formal /* the formal parameter */, 
+			     w      /* current_pu */ ))
+	  continue;				  
+#endif
 	if (ST_sclass (formal) != SCLASS_FORMAL_REF) {
 	    // passed by value
 
@@ -1129,7 +1191,11 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 static UINT32
 Compute_param_count (INT kid, const VALUE_DYN_ARRAY& cprop_annot)
 {
+#ifdef KEY
+    INT last = MIN (kid, cprop_annot.Lastidx () + 1);
+#else
     INT last = min (kid, cprop_annot.Lastidx () + 1);
+#endif
 
     for (INT i = 0; i < last; ++i) {
 	if (cprop_annot[i].Is_remove_param())

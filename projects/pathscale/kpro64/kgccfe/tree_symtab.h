@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -81,6 +87,14 @@ Get_ST (tree decl_tree)
 		    !DECL_EXTERNAL(decl_tree)        &&
 		    !DECL_INITIAL(decl_tree))
 			Set_ST_sclass (st, SCLASS_UGLOBAL);
+#ifdef KEY // the earlier definition may not have the complete type
+		if (TREE_CODE(decl_tree) == VAR_DECL) {
+		  TY_IDX ty_idx = Get_TY(TREE_TYPE(decl_tree));
+		  if (ty_idx && 
+		      TY_IDX_index(ty_idx) != TY_IDX_index(st->u2.type))
+		    st->u2.type = ty_idx;
+		}
+#endif
         }
 	else
 		st = Create_ST_For_Tree (decl_tree);

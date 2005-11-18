@@ -45,7 +45,7 @@ else
 CVERSION = -ansi -fwritable-strings
 endif
 
-LCOPTS = $(STD_COMPILE_OPTS)
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS =
 LCINCS += -I$(BUILD_BASE)
 
@@ -81,7 +81,7 @@ default: first $(TARGETS) last
 
 first:
 ifeq ($(BUILD_OS), LINUX)
-	cd $(BUILD_AREA)/include && $(MAKE)
+	$(call submake,$(BUILD_AREA)/include)
 endif
 
 last: make_deps
@@ -94,6 +94,5 @@ include $(COMMONRULES)
 
 VPATH =    $(BUILD_BASE)
 
-.PRECIOUS : $(LIBRARY)
-$(LIBRARY): $(LIBRARY)($(OBJECTS))
-
+$(LIBRARY): $(OBJECTS)
+	$(ar) cru $@ $^

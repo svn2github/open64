@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,67 +39,11 @@
 
 
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/pow_ri.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+#include <math.h>
 #include "cmplrs/host.h"
 
-float_t __powri(float_t x, int32 n)
-{
-double_t pow;
-
-pow = 1;
-
-if(n != 0)
-	{
-	if(n < 0)
-		{
-		if(x == 0)
-			{
-			return(pow);
-			}
-		n = -n;
-		x = 1/x;
-		}
-	for( ; ; )
-		{
-		if(n & 01)
-			pow *= x;
-		if(n >>= 1)
-			x *= x;
-		else
-			break;
-		}
-	}
-return(pow);
-}
-
-float_t __powrl(float_t x, int64 n)
-{
-double_t pow;
-
-pow = 1;
-
-if(n != 0)
-	{
-	if(n < 0)
-		{
-		if(x == 0)
-			{
-			return(pow);
-			}
-		n = -n;
-		x = 1/x;
-		}
-	for( ; ; )
-		{
-		if(n & 01)
-			pow *= x;
-		if(n >>= 1)
-			x *= x;
-		else
-			break;
-		}
-	}
-return(pow);
-}
+extern float_t __powri(float_t x, int32 n);
+extern float_t __powrl(float_t x, int64 n);
 
 /* By-reference versions for backward compatibility. */
 

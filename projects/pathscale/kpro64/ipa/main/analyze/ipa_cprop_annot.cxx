@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <elf.h>
 #include <alloca.h>
 
@@ -106,7 +112,7 @@ struct eval_hasher
     }
 };
 
-typedef hash_map<const void *, UINT32, eval_hasher, equal_to<const void *>,
+typedef __gnu_cxx::hash_map<const void *, UINT32, eval_hasher, std::equal_to<const void *>,
     mempool_allocator<pair<const void *, UINT32> > > EVAL_HASH;
 static EVAL_HASH *eval_hash;
 
@@ -1704,6 +1710,22 @@ Intra_PU_Formal_Cprop (IPA_NODE *node)
       formal_value = 0;
     }
 
+#ifdef KEY
+    {
+        // Also if there is a recursive in-edge, we cannot propagate the
+        // formal parameter value down. Because the const-ness of the
+        // parameters may not have been determined yet. So, don't consider
+        // the formal parameter values in flow analysis below
+        IPA_PRED_ITER edge_iter (node);
+        for (edge_iter.First (); !edge_iter.Is_Empty(); edge_iter.Next()) {
+            IPA_EDGE *e = edge_iter.Current_Edge();
+            if (e && e->Is_Recursive()) {
+                formal_value = 0;
+                break;
+            }
+        }
+    }
+#endif
     // set up summary info arrays
     Set_summary_info (node);
 
@@ -1711,7 +1733,7 @@ Intra_PU_Formal_Cprop (IPA_NODE *node)
 
     eval_value = CXX_NEW (VALUE_VECTOR (&Ipa_cprop_pool), &Ipa_cprop_pool);
     eval_hash = CXX_NEW (EVAL_HASH (100, eval_hasher(),
-				    equal_to<const void *> (),
+				    std::equal_to<const void *> (),
 				    &Ipa_cprop_pool),
 			 &Ipa_cprop_pool);
 

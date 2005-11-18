@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -46,6 +50,8 @@
 //  Copied from ld/process.c
 // ====================================================================
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <map>				// STL map
 #include <cxx_memory.h>
 #include "inline_utils.h"

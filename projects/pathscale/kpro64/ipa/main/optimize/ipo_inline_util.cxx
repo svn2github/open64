@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 // This file contains utilities used during inlining.
 // These utilities should not be member functions of IPO_INLINE
 #include "wn_tree_util.h"	     // for Tree_iterators
@@ -41,6 +47,9 @@
 #include "config_targ.h"             // for Pointer_type, Pointer_Size
 #include "region_util.h"             // for REGION_is_mp 
 #include "lwn_util.h"                // for LWN_Get_Parent(), etc
+#ifdef KEY
+#include "ipo_parent.h"		     // for WN_Get_Parent
+#endif
 
 // ======================================================================
 // Processing related to Regions
@@ -250,3 +259,49 @@ Fix_Return_Pregs (WN *Call, const RETURN_PREG& rp)
 	}
     }
 } // Fix_Return_Pregs
+
+#ifdef KEY
+// Get enclosing region information around callsite 'e' in caller 'n'
+//
+// An alternate way the search for an appropriate region can be handled is
+// by using RID_map. First get the enclosing region for the call_wn using
+// Parent_map as below, and then use RID_map to get any other enclosing region.
+// Issues: RID_map is not accessible in ipa/inliner. It could be made
+// available, but using 2 maps would require more complex logic than below.
+// Moreover there should not be much difference in (compile-time) efficiency.
+void
+Get_enclosing_region (IPA_NODE * n, IPA_EDGE * e)
+{
+    PU caller = Pu_Table[ST_pu(n->Func_ST())];
+    if (!(PU_src_lang (caller) & PU_CXX_LANG) || !PU_has_region (caller))
+        return;
+    // get caller scope
+    SCOPE * old_scope = Scope_tab;
+    Scope_tab = n->Scope();
+                                                                                
+    WN * call_wn = e->Whirl_Node();
+    WN_MAP Caller_Parent_Map = n->Parent_Map();
+    WN_MAP_TAB * Caller_Map_Tab = PU_Info_maptab(n->PU_Info());
+                                                                                
+    WN * parent = WN_Get_Parent (call_wn, Caller_Parent_Map, Caller_Map_Tab);
+                                                                                
+    for (; parent; parent=WN_Get_Parent (parent, Caller_Parent_Map, Caller_Map_Tab))
+    {
+        // the following covers REGION_KIND_EH and REGION_KIND_TRY
+        if (WN_operator(parent) != OPR_REGION || !WN_region_is_EH(parent))
+          continue;
+        FmtAssert (WN_ereg_supp(parent), ("No EH information in EH region"));
+        if (WN_block_empty (WN_region_pragmas (parent)))
+            e->Set_EH_Whirl_Node (parent);  // enclosing EH region
+        else
+        {  // enclosing try block
+            INITV_IDX initv = INITO_val (WN_ereg_supp (parent));
+            e->Set_Try_Label (INITV_lab (initv));
+        }
+        if (e->EH_Whirl_Node() && e->Try_Label())
+            break;
+    }
+    // restore old scope
+    Scope_tab = old_scope;
+}
+#endif

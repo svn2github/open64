@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -667,6 +671,19 @@ GRA_Trace_LRANGE_Allocate(LRANGE* lrange )
     GRA_Trace(0,"Allocated: %s", lrange->Format(buff0));
   }
 }
+
+#ifdef KEY
+/////////////////////////////////////
+void
+GRA_Trace_LRANGE_Choose(LRANGE* lrange, REGISTER_SET allowed)
+{
+  if ( trace_color && lrange->Type() != LRANGE_TYPE_LOCAL) {
+    fprintf(TFile, "<gra> choose from allowed ");
+    REGISTER_SET_Print(allowed, TFile);
+    fprintf(TFile, " for GTN%d\n", TN_number(lrange->Tn()));
+  }
+}
+#endif
 
 /////////////////////////////////////
 void

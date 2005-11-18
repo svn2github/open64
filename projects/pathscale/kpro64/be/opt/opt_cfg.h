@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -312,6 +317,7 @@ private:
   void         Lower_do_loop(WN *wn, END_BLOCK *ends_bb );
   void         Lower_do_while(WN *wn, END_BLOCK *ends_bb );
   void         Lower_while_do(WN *wn, END_BLOCK *ends_bb );
+  INT	       Is_simple_expr(WN *wn);
   void         Lower_if_stmt(WN *wn, END_BLOCK *ends_bb );
   // add various high-level construct statements to CFG so they can
   // later be raised back up (mostly preopt phase)
@@ -402,6 +408,10 @@ public:
   // Only use AFTER SSA is done
   void         Delete_bb(BB_NODE *bb,
                          MOD_PHI_BB_CONTAINER *);
+#ifdef KEY
+  void         Delete_bbs(BB_LIST *bbs,
+                         MOD_PHI_BB_CONTAINER *);
+#endif
   BB_NODE     *Entry_bb(void)       const{ return _entry_bb; }
   BB_NODE     *Exit_bb(void)        const{ return _exit_bb; }
   BB_NODE     *Fake_entry_bb(void)  const{ return _fake_entry_bb; }
@@ -843,7 +853,8 @@ public:
 
   void      Add_entry(BB_NODE  *bb,        // add entry to this container
                       PHI_LIST *old_lst,
-                      PHI_LIST *new_lst);
+                      PHI_LIST *new_lst, 
+                      MEM_POOL *pool);
 };
 
 class MOD_PHI_BB_ITER : public SLIST_ITER {

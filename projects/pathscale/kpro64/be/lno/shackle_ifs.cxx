@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -3189,8 +3193,29 @@ Maybe_Handle_Sink_Promotion_Case (WN *if_stmt,
       fake_unroll[1] = main_cond2;
       Unrolled_DU_Update (fake_unroll, 2, loop_depth);
     }
+#ifdef KEY
+    // Bug 1183
+    // It is okay to have a U4INTCONST in Fortran as long as the constant is 
+    // within the range. Should not assert here incase there is a compare 
+    // between I4 and U4 (when the U4 constant is within the range).
+    // We will assume the U4INTCONST are within the I4INTCONST range and 
+    // let them have their normal course of life and death thru the compilation
+    // process.
+    assert ((WN_rtype(main_cond1) == WN_rtype(main_cond2)) ||
+	    (MTYPE_is_integral(WN_rtype(main_cond1)) && 
+	     MTYPE_is_integral(WN_rtype(main_cond2)) &&
+	     MTYPE_size_reg(WN_rtype(main_cond1)) == 
+			    MTYPE_size_reg(WN_rtype(main_cond2)) &&
+	     ((WN_operator(main_cond1) == OPR_INTCONST &&
+	       !MTYPE_is_signed(WN_rtype(main_cond1)) && 
+	       MTYPE_is_signed(WN_rtype(main_cond2))) ||
+	      (WN_operator(main_cond2) == OPR_INTCONST &&
+	       !MTYPE_is_signed(WN_rtype(main_cond2)) && 
+	       MTYPE_is_signed(WN_rtype(main_cond1))))));
+#else
     assert (WN_rtype (main_cond1) == 
 	    WN_rtype (main_cond2));
+#endif
     TYPE_ID index_type = WN_rtype (main_cond1);
     TYPE_ID rtype = WN_rtype (WN_if_test (if_stmt));
     WN *main_cond_to_insert;
@@ -3281,8 +3306,29 @@ Maybe_Handle_Sink_Promotion_Case (WN *if_stmt,
       fake_unroll[1] = up_cond2;
       Unrolled_DU_Update (fake_unroll, 2, loop_depth);
     }
+#ifdef KEY
+    // Bug 1183
+    // It is okay to have a U4INTCONST in Fortran as long as the constant is 
+    // within the range. Should not assert here incase there is a compare 
+    // between I4 and U4 (when the U4 constant is within the range).
+    // We will assume the U4INTCONST are within the I4INTCONST range and 
+    // let them have their normal course of life and death thru the compilation
+    // process.
+    assert ((WN_rtype(up_cond1) == WN_rtype(up_cond2)) ||
+	    (MTYPE_is_integral(WN_rtype(up_cond1)) && 
+	     MTYPE_is_integral(WN_rtype(up_cond2)) &&
+	     MTYPE_size_reg(WN_rtype(up_cond1)) == 
+			    MTYPE_size_reg(WN_rtype(up_cond2)) &&
+	     ((WN_operator(up_cond1) == OPR_INTCONST &&
+	       !MTYPE_is_signed(WN_rtype(up_cond1)) && 
+	       MTYPE_is_signed(WN_rtype(up_cond2))) ||
+	      (WN_operator(up_cond2) == OPR_INTCONST &&
+	       !MTYPE_is_signed(WN_rtype(up_cond2)) && 
+	       MTYPE_is_signed(WN_rtype(up_cond1))))));
+#else
     assert (WN_rtype (up_cond1) == 
 	    WN_rtype (up_cond2));
+#endif
     TYPE_ID index_type = WN_rtype (up_cond1);
     WN *cond_to_insert;
     if (cond->Loop_Coeff (loop_depth) > 0) {
@@ -3342,8 +3388,29 @@ Maybe_Handle_Sink_Promotion_Case (WN *if_stmt,
       fake_unroll[1] = up_cond2;
       Unrolled_DU_Update (fake_unroll, 2, loop_depth);
     }
+#ifdef KEY
+    // Bug 1183
+    // It is okay to have a U4INTCONST in Fortran as long as the constant is 
+    // within the range. Should not assert here incase there is a compare 
+    // between I4 and U4 (when the U4 constant is within the range).
+    // We will assume the U4INTCONST are within the I4INTCONST range and 
+    // let them have their normal course of life and death thru the compilation
+    // process.
+    assert ((WN_rtype(up_cond1) == WN_rtype(up_cond2)) ||
+	    (MTYPE_is_integral(WN_rtype(up_cond1)) && 
+	     MTYPE_is_integral(WN_rtype(up_cond2)) &&
+	     MTYPE_size_reg(WN_rtype(up_cond1)) == 
+			    MTYPE_size_reg(WN_rtype(up_cond2)) &&
+	     ((WN_operator(up_cond1) == OPR_INTCONST &&
+	       !MTYPE_is_signed(WN_rtype(up_cond1)) && 
+	       MTYPE_is_signed(WN_rtype(up_cond2))) ||
+	      (WN_operator(up_cond2) == OPR_INTCONST &&
+	       !MTYPE_is_signed(WN_rtype(up_cond2)) && 
+	       MTYPE_is_signed(WN_rtype(up_cond1))))));
+#else
     assert (WN_rtype (up_cond1) == 
 	    WN_rtype (up_cond2));
+#endif
     TYPE_ID index_type = WN_rtype (up_cond1);
     WN *cond_to_insert;
     if (cond->Loop_Coeff (loop_depth) > 0) 

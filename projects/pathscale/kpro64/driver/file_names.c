@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,14 +59,14 @@ boolean keep_flag = FALSE;
 
 string_list_t *count_files = NULL;
 static string_list_t *temp_files = NULL;
-static string tmpdir;
-static string saved_object = NULL;
+static char *tmpdir;
+static char *saved_object = NULL;
 
 #define DEFAULT_TMPDIR	"/tmp"
 
 /* get object file corresponding to src file */
-extern string
-get_object_file (string src)
+char *
+get_object_file (char *src)
 {
 	return change_suffix(drop_path(src), "o");
 }
@@ -76,13 +80,13 @@ get_object_file (string src)
  * Use tempnam to generate unique file name;
  * tempnam verifies that file is writable.
  */
-string
-create_temp_file_name (string suffix)
+char *
+create_temp_file_name (char *suffix)
 {
 	buffer_t buf;
 	buffer_t pathbuf;
 	size_t pathbuf_len;
-	string s;
+	char *s;
 	string_item_t *p;
 	/* use same prefix as gcc compilers;
 	 * tempnam limits us to 5 chars, and may have 2-letter suffix. */
@@ -100,7 +104,7 @@ create_temp_file_name (string suffix)
 		 * directory divider is the position we want because we chose
 		 * its contents above.
 		 */
-		string file_name = strrchr(p->name, '/');
+		char *file_name = strrchr(p->name, '/');
 		if (file_name == NULL)
 			file_name = p->name;
 		s = strchr(file_name, '.');
@@ -120,11 +124,11 @@ create_temp_file_name (string suffix)
 	return s;
 }
 
-extern string
-construct_name (string src, string suffix)
+char *
+construct_name (char *src, char *suffix)
 {
 	if (keep_flag || current_phase == remember_last_phase) {
-		string srcname;
+		char *srcname;
 		/* 
 		 * if -c -o <name>, then use name.suffix
 		 * (this helps when use same source to create different .o's)
@@ -141,10 +145,10 @@ construct_name (string src, string suffix)
 }
 
 /* use given src name, but check if treated as a temp file or not */
-extern string
-construct_given_name (string src, string suffix, boolean keep)
+char *
+construct_given_name (char *src, char *suffix, boolean keep)
 {
-	string s;
+	char *s;
 	s = change_suffix(drop_path(src), suffix);
 	if (keep || current_phase == remember_last_phase) {
 		return s;
@@ -155,7 +159,7 @@ construct_given_name (string src, string suffix, boolean keep)
 	}
 }
 
-extern void
+void
 mark_saved_object_for_cleanup ( void )
 {
 	if (saved_object != NULL)
@@ -163,13 +167,13 @@ mark_saved_object_for_cleanup ( void )
 }
 
 /* Create filename with the given extension; eg. foo.anl from foo.f */
-extern string
-construct_file_with_extension (string src, string ext)
+char *
+construct_file_with_extension (char *src, char *ext)
 {
 	return change_suffix(drop_path(src),ext);
 }
 
-extern void
+void
 init_temp_files (void)
 {
         tmpdir = getenv("TMPDIR");
@@ -189,13 +193,13 @@ init_temp_files (void)
 	temp_files = init_string_list();
 }
 
-extern void
+void
 init_count_files (void)
 {
         count_files = init_string_list();
 }
 
-extern void
+void
 cleanup (void)
 {
 	/* cleanup temp-files */
@@ -215,3 +219,10 @@ cleanup (void)
 	temp_files->head = temp_files->tail = NULL; 
 }
 
+#ifdef KEY
+void
+mark_for_cleanup (char *s)
+{
+	add_string_if_new (temp_files, s);
+}
+#endif

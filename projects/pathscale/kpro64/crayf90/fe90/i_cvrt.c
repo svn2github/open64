@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1733,9 +1737,17 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
             PDG_DBG_PRINT_END    
 
 # ifdef _ENABLE_FEI
-            fei_object_ref(PDG_AT_IDX(ir_idx), 
-                           whole_subscript,  
-                           whole_substring); 
+/* Bug 431 */
+#ifdef KEY
+            fei_object_ref(PDG_AT_IDX(ir_idx),
+                           whole_subscript,
+                           whole_substring,
+                           ATD_DATA_INIT(ir_idx));
+#else
+            fei_object_ref(PDG_AT_IDX(ir_idx),
+                           whole_subscript,
+                           whole_substring);
+#endif
 # endif
          }
       }
@@ -1761,9 +1773,16 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
          PDG_DBG_PRINT_END    
 
 # ifdef _ENABLE_FEI
+#ifdef KEY
          fei_object_ref(PDG_AT_IDX(ir_idx),
-                        whole_subscript,  
-                        whole_substring); 
+                        whole_subscript,
+                        whole_substring,
+                        ATD_DATA_INIT(ir_idx));
+#else
+         fei_object_ref(PDG_AT_IDX(ir_idx),
+                        whole_subscript,
+                        whole_substring);
+#endif
 # endif
       }
       else if (AT_OBJ_CLASS(ir_idx) == Pgm_Unit) {
@@ -7838,6 +7857,19 @@ CONTINUE:
         break;
 
 
+#ifdef KEY
+   case Forall_Opr:
+        PDG_DBG_PRINT_START
+        PDG_DBG_PRINT_C("fei_forall");
+        PDG_DBG_PRINT_END
+                                                                                                                                                             
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# ifdef _ENABLE_FEI
+        fei_forall();
+# endif
+# endif
+        break;
+#endif
 
 
    case Flush_Star_Opr:
@@ -7925,6 +7957,10 @@ CONTINUE:
 
 
    case Unroll_Star_Opr:
+// Bug 1520
+#ifdef KEY
+   case Unroll_Cdir_Opr:
+#endif
         cvrt_exp_to_pdg(IR_IDX_L(ir_idx),
                         IR_FLD_L(ir_idx));
 
@@ -11199,16 +11235,26 @@ static void send_stor_blk(int	 sb_idx,
       if (! SB_BLANK_COMMON(sb_idx) &&
           ! SB_NAME_IN_STONE(sb_idx)) {
 
+	 int underscores = 0;
+
          /* Need all common block names lower case with a trailing _,  */
          /* except blank common.                                       */
 
          for (i = 0; i < SB_NAME_LEN(sb_idx); i++) {
             new_name[i]	= tolower(name_ptr[i]);
+	    if (name_ptr[i] == '_') {
+	      underscores++;
+	    }
          }
 
-         new_name[i] = '_';
+         if (on_off_flags.underscoring) {
+            new_name[i++] = '_';
+	    if (on_off_flags.second_underscore && (underscores > 0)) {
+	       new_name[i++] = '_';
+	    }
+	 }
 
-         for (i = SB_NAME_LEN(sb_idx) + 1; i < 256; i++) {
+         for ( ; i < 256; i++) {
             new_name[i]	= '\0';
          }
          name_ptr = &new_name[0];

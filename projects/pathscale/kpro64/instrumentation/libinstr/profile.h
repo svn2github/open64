@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -68,8 +73,7 @@
 
 
 extern PU_PROFILE_HANDLE Get_PU_Handle(char *file_name, char* pu_name,
-				       long current_pc, INT32 checksum);
-
+				       long current_pc, INT32 pu_size, INT32 checksum);
 
 extern void Profile_Invoke_Init(PU_PROFILE_HANDLE pu_handle,
 				INT32 num_invokes);
@@ -101,6 +105,12 @@ extern void Profile_Compgoto_Init(PU_PROFILE_HANDLE pu_handle,
 extern void Profile_Compgoto(PU_PROFILE_HANDLE pu_handle, INT32 compgoto_id,
 			     INT32 target, INT32 num_targets);
 
+#ifdef KEY
+extern void Profile_Value_Init( PU_PROFILE_HANDLE pu_handle, INT32 num_values );
+
+extern void Profile_Value( PU_PROFILE_HANDLE pu_handle,
+			   INT32 inst_id, INT64 value );
+#endif
 
 extern void Profile_Loop_Init(PU_PROFILE_HANDLE pu_handle, INT32 num_loops);
 
@@ -125,6 +135,9 @@ extern void Profile_Call_Entry(PU_PROFILE_HANDLE pu_handle, INT32 call_id);
 
 extern void Profile_Call_Exit(PU_PROFILE_HANDLE pu_handle, INT32 call_id);
 
+extern void Profile_Icall_Init(PU_PROFILE_HANDLE pu_handle, INT32 num_icalls);
+
+extern void Profile_Icall(PU_PROFILE_HANDLE pu_handle, INT32 icall_id, void * called_fun_address);
 
 extern void Set_Instrumentation_Phase_Num(PROFILE_PHASE phase_num);
 

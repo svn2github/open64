@@ -1,3 +1,15 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
+
+/* 
+   Copyright (C) 2002 Tensilica, Inc.  All Rights Reserved.
+   Revised to support Tensilica processors and to improve overall performance
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -39,6 +51,9 @@
 #include "defs.h"
 #include "errors.h"
 #include "gnu_config.h"
+#ifdef KEY	// get HW_WIDE_INT for flags.h
+#include "gnu/hwint.h"
+#endif	/* KEY */
 #include "gnu/flags.h"
 extern "C" {
 #include "gnu/system.h"
@@ -55,11 +70,78 @@ extern "C" {
 #include "wfe_dst.h"
 #include "ir_reader.h"
 #include "tree_symtab.h"
+#ifdef KEY
+#include "wfe_stmt.h"
+#include <map>
+#endif
+#include "tree_cmp.h"
 
-/* extern */ INT pstatic_as_global = 1;
+extern INT pstatic_as_global;
+
 extern FILE *tree_dump_file; /* for debugging */
 extern void Push_Deferred_Function(tree);
 
+#ifdef KEY
+// Map duplicate gcc nodes that refer to the same function.
+std::multimap<tree, tree> duplicate_of;
+void
+add_duplicates (tree newdecl, tree olddecl)
+{
+	duplicate_of.insert (pair<tree, tree>(newdecl, olddecl));
+	duplicate_of.insert (pair<tree, tree>(olddecl, newdecl));
+}
+
+// Remove all references to DECL from the map.
+void
+erase_duplicates (tree decl)
+{
+  int i, j;
+  int count = duplicate_of.count (decl);
+
+  for (i=0; i<count; i++) {
+    std::multimap<tree, tree>::iterator iter = duplicate_of.find(decl);
+    tree t = (*iter).second;
+
+    // Erase entries with DECL as the data, i.e., <..., DECL>.
+    int count2 = duplicate_of.count(t); 
+    for (j=0; j<count2; j++) {
+      std::multimap<tree, tree>::iterator iter2 = duplicate_of.find(t);
+      tree t2 = (*iter2).second;
+      if (t2 == decl) {
+	duplicate_of.erase (iter2);
+      }
+    }
+
+    // Erase entry with DECL as the key, i.e., <DECL, ...>.
+    duplicate_of.erase (iter);
+  }
+}
+
+static ST*
+get_duplicate_st (tree decl)
+{
+  int count = duplicate_of.count (decl);
+
+  for (int i=0; i<count; ++i) {
+    std::multimap<tree, tree>::iterator iter = duplicate_of.find(decl);
+    tree t = (*iter).second;
+    // The node t could have been garbage-collected by gcc.  This is a crude
+    // test to see if t is still valid.
+    if (TREE_CODE(t) == FUNCTION_DECL &&
+	DECL_NAME(t) == DECL_NAME(decl) &&
+	DECL_ASSEMBLER_NAME_SET_P(t) == DECL_ASSEMBLER_NAME_SET_P(decl) &&
+	(!DECL_ASSEMBLER_NAME_SET_P(t) ||
+	 DECL_ASSEMBLER_NAME(t) == DECL_ASSEMBLER_NAME(decl))) {
+      // Return the ST previously allocated, if any.
+      ST *st = DECL_ST(t);
+      if (st != NULL)
+        return st;
+    }
+    duplicate_of.erase (iter);
+  }
+  return NULL;
+}
+#endif
 
 static char*
 Get_Name (tree node)
@@ -94,13 +176,37 @@ tree
 next_real_or_virtual_field (tree type_tree, tree field)
 {
   static bool real_field = true;
+#ifdef KEY
+  static tree prev_field = NULL_TREE;
+
+  // If FIELD is not the same as the previously returned field, then we are
+  // being called to traverse a new list or to traverse the same list over
+  // again.  In either case, begin with the real fields.
+  if (field != prev_field)
+    real_field = true;
+
+  if (field == TYPE_VFIELD(type_tree))
+    real_field = false;
+
+  if (TREE_CHAIN(field))
+    return (prev_field = TREE_CHAIN(field));
+
+  if (real_field && TYPE_VFIELD(type_tree)) {
+    real_field = false;
+    return (prev_field = TYPE_VFIELD(type_tree));
+  }
+
+  real_field = true;
+  return (prev_field = NULL_TREE);
+
+#else
 
   if (field == TYPE_VFIELD(type_tree))
     real_field = false;
 
   if (TREE_CHAIN(field))
     return TREE_CHAIN(field);
-  
+
   if (real_field && TYPE_VFIELD(type_tree)) {
     real_field = false;
     return TYPE_VFIELD(type_tree);
@@ -108,6 +214,7 @@ next_real_or_virtual_field (tree type_tree, tree field)
 
   real_field = true;
   return NULL_TREE;
+#endif	// KEY
 }
 
 static void
@@ -198,7 +305,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 	}
 
 	TYPE_ID mtype;
-	INT tsize;
+	INT64 tsize;
 	BOOL variable_size = FALSE;
 	tree type_size = TYPE_SIZE(type_tree);
 	UINT align = TYPE_ALIGN(type_tree) / BITSPERBYTE;
@@ -239,7 +346,17 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 2:  mtype = MTYPE_I2;  break;
 		case 4:  mtype = MTYPE_I4;  break;
 		case 8:  mtype = MTYPE_I8;  break;
-                case 16: mtype = MTYPE_I16; break;
+#ifndef TARG_X8664 
+#ifdef _LP64
+		case 16:  mtype = MTYPE_I8; break;
+#endif /* _LP64 */
+#else 
+	        // needed for compiling variable length array
+		// as in gcc.c-torture/execute/920929-1.c
+		// we need to fix the rest of the compiler 
+		// with _LP64 but seems to work fine without.	
+		case 16:  mtype = MTYPE_I8; break;
+#endif /* KEY */
 		default:  FmtAssert(FALSE,
                                     ("Get_TY unexpected size %d", tsize));
 		}
@@ -255,12 +372,24 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		break;
 	case ENUMERAL_TYPE:
 		mtype = (TREE_UNSIGNED(type_tree) ? MTYPE_U4 : MTYPE_I4);
+#ifdef KEY
+		/* bug#500 */
+		if( tsize == 8 ){
+		  mtype = (TREE_UNSIGNED(type_tree) ? MTYPE_U8 : MTYPE_I8);
+		}
+#endif
 		idx = MTYPE_To_TY (mtype);	// use predefined type
 		break;
 	case REAL_TYPE:
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
+#ifdef TARG_X8664
+		case 12: mtype = MTYPE_FQ; break;
+#endif
+#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+		case 16: mtype = MTYPE_FQ; break;
+#endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
@@ -269,6 +398,12 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case  8:  mtype = MTYPE_C4; break;
 		case 16:  mtype = MTYPE_C8; break;
+#ifdef TARG_X8664
+		case 24:  mtype = MTYPE_CQ; break;
+#endif
+#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+		case 32: mtype = MTYPE_CQ; break;
+#endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
@@ -314,6 +449,23 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			    WN_opcode (swn) == OPC_U8I8CVT) {
 				swn = WN_kid0 (swn);
 			}
+#ifdef KEY
+			// In the event that swn operator is not 
+			// OPR_LDID, save expr node swn 
+			// and use LDID of that stored address as swn.
+			// Copied from Wfe_Save_Expr in wfe_expr.cxx
+			if (WN_operator (swn) != OPR_LDID) {
+			  TY_IDX    ty_idx  = 
+			    Get_TY (TREE_TYPE (type_size));
+			  TYPE_ID   mtype   = TY_mtype (ty_idx);
+			  ST       *st;
+			  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+			  WFE_Set_ST_Addr_Saved (swn);
+			  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
+			  WFE_Stmt_Append (swn, Get_Srcpos());
+			  swn = WN_Ldid (mtype, 0, st, ty_idx);
+			}
+#endif /* KEY */
 			FmtAssert (WN_operator (swn) == OPR_LDID,
 				("stride operator for VLA not LDID"));
 			ST *st = WN_st (swn);
@@ -328,6 +480,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		Set_ARB_const_lbnd (arb);
 		Set_ARB_lbnd_val (arb, 0);
 		if (type_size) {
+#ifdef KEY
+		    // For Zero-length arrays, TYPE_MAX_VALUE tree is NULL
+		    if (!TYPE_MAX_VALUE (TYPE_DOMAIN (type_tree))) {
+			Set_ARB_const_ubnd (arb);
+			Set_ARB_ubnd_val (arb, 0xffffffff);
+		    } else
+#endif /* KEY */
 		    if (TREE_CODE(TYPE_MAX_VALUE (TYPE_DOMAIN (type_tree))) ==
 			INTEGER_CST) {
 			Set_ARB_const_ubnd (arb);
@@ -372,6 +531,23 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				    WN_opcode (swn) == OPC_U8I8CVT) {
 					swn = WN_kid0 (swn);
 				}
+#ifdef KEY
+				// In the event that swn operator is not 
+				// OPR_LDID, save expr node swn 
+				// and use LDID of that stored address as swn.
+				// Copied from Wfe_Save_Expr in wfe_expr.cxx
+				if (WN_operator (swn) != OPR_LDID) {
+				  TY_IDX    ty_idx  = 
+				    Get_TY (TREE_TYPE (type_size));
+				  TYPE_ID   mtype   = TY_mtype (ty_idx);
+				  ST       *st;
+				  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+				  WFE_Set_ST_Addr_Saved (swn);
+				  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
+				  WFE_Stmt_Append (swn, Get_Srcpos());
+				  swn = WN_Ldid (mtype, 0, st, ty_idx);
+				}
+#endif /* KEY */
 				FmtAssert (WN_operator (swn) == OPR_LDID,
 					("size operator for VLA not LDID"));
 				ST *st = WN_st (swn);
@@ -389,11 +565,28 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		{	// new scope for local vars
 
 		TY &ty = (idx == TY_IDX_ZERO) ? New_TY(idx) : Ty_Table[idx];
+#ifdef KEY	// GCC 3.2 pads empty structures with a fake 1-byte field.
+		// These structures should have tsize = 0.
+		if (tsize != 0 &&
+		    // is_empty_class assumes non-null CLASSTYPE_SIZE
+		    // check if it has lang-specific data
+		    TYPE_LANG_SPECIFIC(type_tree) &&
+		    // check if it has its base version set
+		    CLASSTYPE_AS_BASE(type_tree) &&
+		    CLASSTYPE_SIZE(type_tree) &&
+		    is_empty_class(type_tree))
+			tsize = 0;
+#endif	// KEY
 		TY_Init (ty, tsize, KIND_STRUCT, MTYPE_M, 
 			Save_Str(Get_Name(TYPE_NAME(type_tree))) );
 		if (TREE_CODE(type_tree) == UNION_TYPE) {
 			Set_TY_is_union(idx);
 		}
+#ifdef KEY
+		if (aggregate_value_p(type_tree)) {
+			Set_TY_return_in_mem(idx);
+		}
+#endif
 		if (align == 0) align = 1;	// in case incomplete type
 		Set_TY_align (idx, align);
 		// set idx now in case recurse thru fields
@@ -447,8 +640,20 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		      next_field_id += TYPE_FIELD_IDS_USED(basetype);
 		      fld = New_FLD();
 		      FLD_Init (fld, Save_Str(Get_Name(0)), 
-				Get_TY(basetype) , offset);
+				Get_TY(basetype), offset);
 		      offset += Type_Size_Without_Vbases (basetype);
+#ifdef KEY
+// temporary hack for a bug in gcc
+// Details: From layout_class_type(), it turns out that for this
+// type, gcc is apparently sending wrong type info, they have 2 fields
+// each 8 bytes in a 'record', with the type size == 8 bytes also!
+// So we take care of it here...
+		      if (offset > tsize)
+			{
+			    tsize = offset;
+			    Set_TY_size (ty, tsize);
+			}
+#endif // KEY
 		    }
 		  }
 		}
@@ -493,10 +698,16 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		fld = TY_fld(ty);
 		while (anonymous_fields--)
 		  fld = FLD_next(fld);
+
 		for (field = TYPE_FIELDS(type_tree);
-			field;
+		     /* ugly hack follows; traversing the fields isn't
+                        the same from run-to-run. fwa? */
+			field && fld.Entry();
 			field = next_real_or_virtual_field(type_tree, field))
 		{
+#ifdef KEY
+			const  int FLD_BIT_FIELD_SIZE   = 64;
+#endif
 			if (TREE_CODE(field) == TYPE_DECL)
 				continue;
 			if (TREE_CODE(field) == CONST_DECL)
@@ -506,21 +717,34 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			if (TREE_CODE(field) == TEMPLATE_DECL)
 				continue;
 			TY_IDX fty_idx = Get_TY(TREE_TYPE(field));
+
 			if ((TY_align (fty_idx) > align) || (TY_is_packed (fty_idx)))
 				Set_TY_is_packed (ty);
 			Set_FLD_type(fld, fty_idx);
+
 			if ( ! DECL_BIT_FIELD(field)
 				&& Get_Integer_Value(DECL_SIZE(field)) > 0
+#ifdef KEY
+// We don't handle bit-fields > 64 bits. For an INT field of 128 bits, we
+// make it 64 bits. But then don't set it as FLD_IS_BIT_FIELD.
+				&& Get_Integer_Value(DECL_SIZE(field)) <= 
+				   FLD_BIT_FIELD_SIZE
+#endif
 				&& Get_Integer_Value(DECL_SIZE(field))
 				  != (TY_size(Get_TY(TREE_TYPE(field))) 
 					* BITSPERBYTE) )
 			{
+#ifdef KEY
+			        FmtAssert( Get_Integer_Value(DECL_SIZE(field)) <=
+					   FLD_BIT_FIELD_SIZE,
+					   ("field size too big") );
+#endif
 				// for some reason gnu doesn't set bit field
 				// when have bit-field of standard size
 				// (e.g. int f: 16;).  But we need it set
 				// so we know how to pack it, because 
 				// otherwise the field type is wrong.
-				DevWarn("field size %d doesn't match type size %d", 
+				DevWarn("field size %lld doesn't match type size %lld", 
 					Get_Integer_Value(DECL_SIZE(field)),
 					TY_size(Get_TY(TREE_TYPE(field)))
 						* BITSPERBYTE );
@@ -538,15 +762,36 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			}
 			fld = FLD_next(fld);
 		}
+
+#ifndef KEY	// Don't expand methods by going through TYPE_METHODS,
+		// because:
+		//   1) It is incorrect to translate all methods in
+		//      TYPE_METHODS to WHIRL because some of the methods are
+		//      never used, and generating the assembly code for them
+		//      might lead to undefined symbol references.  Instead,
+		//      consult the gxx_emitted_decls list, which has all the
+		//      functions (including methods) that g++ has ever emitted
+		//      to assembly.
+		//   2) Expanding the methods here will cause error when the
+		//      methods are for a class B that appears as a field in an
+		//      enclosing class A.  When Get_TY is run for A, it will
+		//      call Get_TY for B in order to calculate A's field ID's.
+		//      (Need Get_TY to find B's TYPE_FIELD_IDS_USED.)  If
+		//      Get_TY uses the code below to expand B's methods, it
+		//      will lead to error because the expansion requires the
+		//      field ID's of the enclosing record (A), and these field
+		//      ID's are not yet defined.
+
 		// process methods
 		if (!Enable_WFE_DFE) {
-		if (CP_TYPE_QUALS(type_tree) == TYPE_UNQUALIFIED) {
+		if (cp_type_quals(type_tree) == TYPE_UNQUALIFIED) {
 			while (method != NULL_TREE) {
 				WFE_Expand_Decl (method);
 				method = TREE_CHAIN(method);
 			}
 		}
 		}
+#endif	// KEY
 		} //end record scope
 		break;
 	case METHOD_TYPE:
@@ -556,7 +801,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		tree arg;
 		INT32 num_args;
 		TY &ty = New_TY (idx);
-		TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, NULL); 
+		TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, 0); 
 		Set_TY_align (idx, 1);
 		TY_IDX ret_ty_idx;
 		TY_IDX arg_ty_idx;
@@ -582,6 +827,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			ret_ty_idx = Be_Type_Tbl (MTYPE_V);
 		}
 
+#ifdef KEY
+		// If the front-end adds the fake first param, then convert the
+		// function to return void.
+		if (TY_return_in_mem(ret_ty_idx)) {
+		  ret_ty_idx = Be_Type_Tbl (MTYPE_V);
+		}
+#endif
 		Set_TYLIST_type (New_TYLIST (tylist_idx), ret_ty_idx);
 		Set_TY_tylist (ty, tylist_idx);
 		for (num_args = 0, arg = TYPE_ARG_TYPES(type_tree);
@@ -647,13 +899,44 @@ Create_ST_For_Tree (tree decl_node)
   if(TREE_CODE(decl_node) == ERROR_MARK) {
         Fail_FmtAssertion ("Unable to handle ERROR_MARK. internal error");
   }
-  if (DECL_ASSEMBLER_NAME (decl_node))
+
+#ifdef KEY
+  // If the decl is a function decl, and there are duplicate decls for the
+  // function, then use a ST already allocated for the function, if such ST
+  // exists.
+  if (TREE_CODE (decl_node) == FUNCTION_DECL) {
+    st = get_duplicate_st (decl_node);
+    if (st) {
+      set_DECL_ST(decl_node, st);
+      return st;
+    }
+  }
+#endif
+
+#ifdef KEY
+  // For variables with asm register assignments, don't use the assembler
+  // names because they are of the form "%rbx".
+  if (TREE_CODE(decl_node) == VAR_DECL &&
+      DECL_ASMREG(decl_node) != 0) {
+    FmtAssert (DECL_NAME (decl_node),
+	       ("Create_ST_For_Tree: DECL_NAME null"));
+    name = (char *) IDENTIFIER_POINTER (DECL_NAME (decl_node));
+  } else
+#endif
+  if (DECL_NAME (decl_node) && DECL_ASSEMBLER_NAME (decl_node))
     name = (char *) IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl_node));
   else {
     sprintf(tempname, "anon%d", ++anon_count);
     name = tempname;
   }
 
+#ifdef KEY
+  BOOL guard_var = FALSE;
+  // See if variable is a guard variable.
+  if (strncmp("_ZGV", name, 4) == 0) {
+    guard_var = TRUE;
+  }
+#endif
 
   switch (TREE_CODE(decl_node)) {
 
@@ -716,7 +999,14 @@ Create_ST_For_Tree (tree decl_node)
 	      TREE_CODE (DECL_CONTEXT (decl_node)) == NAMESPACE_DECL ||
  	      TREE_CODE (DECL_CONTEXT (decl_node)) == RECORD_TYPE ) {
             if (TREE_PUBLIC (decl_node)) {
+#ifdef KEY
+	      // GCC 3.2
+	      if (DECL_EXTERNAL(decl_node) ||
+		  (DECL_LANG_SPECIFIC(decl_node) &&
+		   DECL_REALLY_EXTERN(decl_node)))
+#else
 	      if (DECL_EXTERNAL(decl_node))
+#endif /* KEY */
 		sclass = SCLASS_EXTERN;
 	      else
 	      if (DECL_INITIAL(decl_node))
@@ -760,8 +1050,31 @@ Create_ST_For_Tree (tree decl_node)
             }
           }
         }
+#ifdef KEY
+	// Make g++ guard variables global in order to make them weak.  Ideally
+	// guard variables should be "common", but for some reason the back-end
+	// currently can't handle C++ commons.  As a work around, make the
+	// guard variables weak.  Since symtab_verify.cxx don't like weak
+	// locals, make the guard variables global.
+	if (guard_var) {
+	  level = GLOBAL_SYMTAB;
+	  sclass = SCLASS_UGLOBAL;
+	  eclass = EXPORT_PREEMPTIBLE;
+	}
+
+	// The tree under TREE_TYPE(decl_node) could reference also decl_node.
+	// If that's the case, the Get_TY would create the ST for decl_node.
+	// As a result, call GET_TY first, then check if the ST is already
+	// created, and create ST only if it isn't created.
+        ty_idx = Get_TY (TREE_TYPE(decl_node));
+	st = DECL_ST(decl_node);
+	if (st)
+	  return st;
+        st = New_ST (level);
+#else
         st = New_ST (level);
         ty_idx = Get_TY (TREE_TYPE(decl_node));
+#endif
         if (TY_kind (ty_idx) == KIND_ARRAY &&
             TREE_STATIC (decl_node) &&
             DECL_INITIAL (decl_node) == FALSE &&
@@ -791,7 +1104,52 @@ Create_ST_For_Tree (tree decl_node)
       break;
   }
 
+#ifdef KEY
+  set_DECL_ST(decl_node, st);
+#else
   DECL_ST(decl_node) = st;
+#endif
+
+#ifdef KEY
+// For an anonymous union, all the members must be expanded together (cf.
+// expand_anon_union_decl() in GNU), the members will actually just point 
+// to the ST for the union itself, so that whenever we access a member, 
+// we access the same variable.
+//
+// We may need to do the following for anonymous aggregates also
+// (ANON_AGGR_TYPE_P), for the time being let us support anon unions.
+  if (TREE_CODE (decl_node) == VAR_DECL &&
+      TYPE_LANG_SPECIFIC (TREE_TYPE (decl_node)) &&
+      ANON_UNION_TYPE_P (TREE_TYPE (decl_node)))
+  {
+      tree members = DECL_ANON_UNION_ELEMS (decl_node);
+      for (tree t = members; t; t = TREE_CHAIN (t))
+      {
+      	tree var = TREE_VALUE (t);
+	FmtAssert (TREE_CODE (var) == VAR_DECL, 
+		   ("Unexpected member type in anonymous union"));
+	set_DECL_ST (var, st);
+      }
+  }
+
+  // If VAR_DECL has a non-zero DECL_ASMREG, then DECL_ASMREG-1 is the register
+  // number assigned by an "asm".
+  if (TREE_CODE(decl_node) == VAR_DECL &&
+      DECL_ASMREG(decl_node) != 0) {
+    extern PREG_NUM Map_Reg_To_Preg []; // defined in common/com/arch/config_targ.cxx
+    int reg = DECL_ASMREG(decl_node) - 1;
+    PREG_NUM preg = Map_Reg_To_Preg [reg];
+    FmtAssert (preg >= 0,
+               ("mapping register %d to preg failed\n", reg));
+    TY_IDX ty_idx = ST_type (st);
+    Set_TY_is_volatile (ty_idx);
+    Set_ST_type (st, ty_idx);
+    Set_ST_assigned_to_dedicated_preg (st);
+    ST_ATTR_IDX st_attr_idx;
+    ST_ATTR&    st_attr = New_ST_ATTR (CURRENT_SYMTAB, st_attr_idx);
+    ST_ATTR_Init (st_attr, ST_st_idx (st), ST_ATTR_DEDICATED_REGISTER, preg);
+  }
+#endif
 
   if (TREE_CODE(decl_node) == VAR_DECL &&
       DECL_CONTEXT(decl_node)	       &&
@@ -812,6 +1170,35 @@ Create_ST_For_Tree (tree decl_node)
     Set_ST_is_weak_symbol (st);
   }
 
+#ifdef KEY
+  // Make all symbols referenced in cleanup code and try handler code weak.
+  // This is to work around an implementation issue where kg++fe always emit
+  // the code in a cleanup or try handler, regardless of whether such code is
+  // emitted by g++.  If the code calls a function foo that isn't emitted by
+  // g++ into the RTL, then foo won't be tagged as needed, and the WHIRL for
+  // foo won't be genterated.  This leads to undefined symbol at link-time.
+  //
+  // The correct solution is to mimick g++ and generate the cleanup/handler
+  // code only if the region can generate an exception.  g++ does this in
+  // except.c by checking for "(flag_non_call_exceptions ||
+  // region->may_contain_throw)".  This checking isn't done in kg++fe because
+  // the equivalent of "region->may_contain_throw" isn't (yet) implemented.
+  // For now, work around the problem by making all symbols refereced in
+  // cleanups and try handlers as weak.
+  if (make_symbols_weak) {
+    if (eclass != EXPORT_LOCAL &&
+	eclass != EXPORT_LOCAL_INTERNAL) {
+      Set_ST_is_weak_symbol (st);
+    }
+  }
+  // See comment above about guard variables.
+  else if (guard_var) {
+    Set_ST_is_weak_symbol (st);
+    Set_ST_init_value_zero (st);
+    Set_ST_is_initialized (st);
+  }
+#endif
+
   if (DECL_SECTION_NAME (decl_node)) {
     DevWarn ("section %s specified for %s",
              TREE_STRING_POINTER (DECL_SECTION_NAME (decl_node)),
@@ -829,50 +1216,203 @@ Create_ST_For_Tree (tree decl_node)
   }
 */
   if(Debug_Level >= 2) {
+#ifdef KEY
+    // Bug 559
+    if (ST_sclass(st) != SCLASS_EXTERN) {
+      DST_INFO_IDX dst = Create_DST_decl_For_Tree(decl_node,st);
+      DECL_DST_IDX(decl_node) = dst;
+    }
+#else
     DST_INFO_IDX dst = Create_DST_decl_For_Tree(decl_node,st);
     DECL_DST_IDX(decl_node) = dst;
+#endif
   }
   return st;
 }
 
 #ifndef EXTRA_WORD_IN_TREE_NODES
 
-#include <hash_map>
+#include <ext/hash_map>
 
 namespace {
+
+  using __gnu_cxx::hash_map;
 
   struct ptrhash {
     size_t operator()(void* p) const { return reinterpret_cast<size_t>(p); }
   };
 
-  std::hash_map<tree, TY_IDX,     ptrhash>     ty_idx_map;
-  std::hash_map<tree, ST*,        ptrhash>     st_map;
-  std::hash_map<tree, SYMTAB_IDX, ptrhash>     symtab_idx_map;
-  std::hash_map<tree, LABEL_IDX,  ptrhash>     label_idx_map;
-  std::hash_map<tree, ST*,        ptrhash>     string_st_map;
-  std::hash_map<tree, BOOL,       ptrhash>     bool_map;
-  std::hash_map<tree, INT32,      ptrhash>     field_id_map;
-  std::hash_map<tree, INT32,	  ptrhash>     type_field_ids_used_map;
-  std::hash_map<tree, INT32,      ptrhash>     scope_number_map;
-  std::hash_map<tree, tree,       ptrhash>     label_scope_map;
-  std::hash_map<tree, DST_INFO_IDX,ptrhash>    decl_idx_map; 
-  std::hash_map<tree, DST_INFO_IDX,ptrhash>    decl_field_idx_map; 
-  std::hash_map<tree, DST_INFO_IDX,ptrhash>    decl_specification_idx_map; 
-  std::hash_map<tree, DST_INFO_IDX,ptrhash>    type_idx_map;
-  std::hash_map<tree, LABEL_IDX,  ptrhash>     handler_label_map;
-  std::hash_map<tree, DST_INFO_IDX,ptrhash>    abstract_root_map;
+  hash_map<tree, TY_IDX,     ptrhash>     ty_idx_map;
+  hash_map<tree, ST*,        ptrhash>     st_map;
+  hash_map<tree, SYMTAB_IDX, ptrhash>     symtab_idx_map;
+  hash_map<tree, LABEL_IDX,  ptrhash>     label_idx_map;
+  hash_map<tree, ST*,        ptrhash>     string_st_map;
+  hash_map<tree, BOOL,       ptrhash>     bool_map;
+  hash_map<tree, INT32,      ptrhash>     field_id_map;
+  hash_map<tree, INT32,	  ptrhash>     type_field_ids_used_map;
+  hash_map<tree, INT32,      ptrhash>     scope_number_map;
+  hash_map<tree, tree,       ptrhash>     label_scope_map;
+  hash_map<tree, DST_INFO_IDX,ptrhash>    decl_idx_map; 
+  hash_map<tree, DST_INFO_IDX,ptrhash>    decl_field_idx_map; 
+  hash_map<tree, DST_INFO_IDX,ptrhash>    decl_specification_idx_map; 
+  hash_map<tree, DST_INFO_IDX,ptrhash>    type_idx_map;
+  hash_map<tree, LABEL_IDX,  ptrhash>     handler_label_map;
+  hash_map<tree, DST_INFO_IDX,ptrhash>    abstract_root_map;
+#ifdef KEY
+  // Map PU to the PU-specific st_map.
+  hash_map<PU*, hash_map<tree, ST*, ptrhash>*, ptrhash>     pu_map;
+  // TRUE if ST is a decl that is being/already been expanded.
+  hash_map<tree, BOOL,        ptrhash>     expanded_decl_map;
+  // TRUE if TREE is a DECL_FUNCTION whose PU should have PU_uplevel set.
+  hash_map<tree, BOOL,        ptrhash>     func_PU_uplevel_map;
+  hash_map<tree, tree,	      ptrhash>	   parent_scope_map;
+#endif
 }
 
 TY_IDX& TYPE_TY_IDX(tree t)         { return ty_idx_map[t]; }
+
+#ifdef KEY
+BOOL& expanded_decl(tree t) {
+  FmtAssert (DECL_CHECK(t), ("func_expanded: not a decl"));
+  return expanded_decl_map[t];
+}
+
+// Put ST in a map based on the tree node T and the current PU.
+void
+set_DECL_ST(tree t, ST* st) {
+
+  // Find the tree node to use as index into st_map.
+  tree t_index;
+  if (TREE_CODE(t) == VAR_DECL 			     &&
+      (DECL_CONTEXT(t) == 0 || 
+       TREE_CODE(DECL_CONTEXT(t)) == NAMESPACE_DECL) &&
+     DECL_NAME (t) && DECL_ASSEMBLER_NAME(t))
+    t_index = DECL_ASSEMBLER_NAME(t);
+  else
+    t_index = t;
+
+  // If ST is 1, then the caller only wants to pretend that there is a symbol
+  // for T.  Later on, the caller will reset the ST to NULL and assign a real
+  // symbol to T.
+  if (st == (ST *) 1) {
+    st_map[t_index] = st;
+    return;
+  }
+
+  // If ST is a symbol that should be shared across functions, then put ST in
+  // the st_map, which maps T directly to ST.  Otherwise, put ST in the
+  // PU-specific st_map.
+  //
+  // It is observed that g++ uses the same tree for different functions, such
+  // as inline functions.  As a result, we cannot attach PU-specific ST's 
+  // directly to the tree nodes.
+  //
+  // If Current_scope is 0, then the symbol table has not been initialized, and
+  // we are being called by WFE_Add_Weak to handle a weak symbol.  In that
+  // case, use the non-PU-specific st_map.
+  if (Current_scope != 0 &&
+      (TREE_CODE(t) == PARM_DECL ||
+       (TREE_CODE(t) == VAR_DECL &&
+        (ST_sclass(st) == SCLASS_AUTO ||
+         (! pstatic_as_global &&
+	  ST_sclass(st) == SCLASS_PSTATIC))))) {
+    // ST is PU-specific.  Use pu_map[pu] to get the PU-specific st_map, then
+    // use st_map[t] to get the ST for the tree node t.
+    //
+    // We can access pu_map[pu] only if Scope_tab[Current_scope].st is valid
+    // because we need to get the current PU, but Get_Current_PU requires a
+    // valid Scope_tab[Current_scope].st.  If Scope_tab[Current_scope].st is
+    // not set, then this means the caller is trying to create the ST for the
+    // function symbol.
+    if (Scope_tab[Current_scope].st != NULL) {
+      // ok to call Get_Current_PU.
+      PU *pu = &Get_Current_PU();
+      hash_map<PU*, hash_map<tree, ST*, ptrhash>*, ptrhash>::iterator it =
+	pu_map.find(pu);
+      if (it == pu_map.end()) {
+	// Create new PU-specific map.
+	pu_map[pu] = new hash_map<tree, ST*, ptrhash>;
+      }
+      // Put the ST in the PU-specific st_map.
+      (*(pu_map[pu]))[t_index] = st;
+    }
+  } else {
+#ifdef Is_True_On
+    if (st_map[t_index]) {
+      // The st_map is already set.  This is ok only for weak ST.
+      FmtAssert (ST_is_weak_symbol(st_map[t_index]),
+		 ("set_DECL_ST: st_map already set"));
+    }
+#endif
+    // Put the ST in the non-PU-specific st_map.
+    st_map[t_index] = st;
+  }
+}
+
+// Get ST associated with the tree node T.
+ST*&
+get_DECL_ST(tree t) {
+  static ST *null_ST = (ST *) NULL;
+
+  // Find the tree node to use as index into st_map.
+  tree t_index;
+  if (TREE_CODE(t) == VAR_DECL 			     &&
+      (DECL_CONTEXT(t) == 0 || 
+       TREE_CODE(DECL_CONTEXT(t)) == NAMESPACE_DECL) &&
+     DECL_NAME (t) && DECL_ASSEMBLER_NAME(t))
+    t_index = DECL_ASSEMBLER_NAME(t);
+  else
+    t_index = t;
+
+  // If Current_scope is 0, then the symbol table has not been initialized, and
+  // we are being called by WFE_Add_Weak to handle a weak symbol.  Use the
+  // non-PU-specific st_map.
+  if (Current_scope == 0)
+    return st_map[t_index];
+
+  // See if the ST is in the non-PU-specific st_map.
+  if (st_map[t_index]) {
+    return st_map[t_index];
+  }
+
+  // The ST is not in the non-PU-specific map.  Look in the PU-specific map.
+
+  // If Scope_tab[Current_scope].st is NULL, then the function ST has not
+  // been set yet, and there is no PU-specific map.
+  if (Scope_tab[Current_scope].st == NULL)
+    return null_ST;
+
+  // See if there is a PU-specific map.
+  PU *pu = &Get_Current_PU();	// needs Scope_tab[Current_scope].st
+  hash_map<PU*, hash_map<tree, ST*, ptrhash>*, ptrhash>::iterator pu_map_it =
+    pu_map.find(pu);
+  if (pu_map_it == pu_map.end())
+    return null_ST;
+
+  // There is a PU-specific map.  Get the ST from the map.
+  hash_map<tree, ST*, ptrhash> *st_map = pu_map[pu];
+  return (*st_map)[t_index];
+}
+
+BOOL&
+func_PU_uplevel(tree t) {
+  FmtAssert (TREE_CODE(t) == FUNCTION_DECL,
+	     ("func_PU_uplevel: not a FUNCTION_DECL tree node"));
+  return func_PU_uplevel_map[t];
+}
+#else
+
 ST*& DECL_ST(tree t) {
   if (TREE_CODE(t) == VAR_DECL 			     &&
       (DECL_CONTEXT(t) == 0 || 
        TREE_CODE(DECL_CONTEXT(t)) == NAMESPACE_DECL) &&
-     DECL_ASSEMBLER_NAME(t))
+     DECL_NAME (t) && DECL_ASSEMBLER_NAME(t))
     return st_map[DECL_ASSEMBLER_NAME(t)];
   else
     return st_map[t];
   }
+#endif
+
 SYMTAB_IDX& DECL_SYMTAB_IDX(tree t) { return symtab_idx_map[t]; }
 LABEL_IDX& DECL_LABEL_IDX(tree t)   { return label_idx_map[t]; }
 ST*& TREE_STRING_ST(tree t)         { return string_st_map[t]; }
@@ -880,6 +1420,9 @@ BOOL& DECL_LABEL_DEFINED(tree t)    { return bool_map[t]; }
 INT32& DECL_FIELD_ID(tree t)        { return field_id_map[t]; }
 INT32 & TYPE_FIELD_IDS_USED(tree t) { return type_field_ids_used_map[t]; }
 INT32 & SCOPE_NUMBER(tree t)        { return scope_number_map[t]; }
+#ifdef KEY
+tree & PARENT_SCOPE(tree t)	    { return parent_scope_map[t]; }
+#endif
 tree & LABEL_SCOPE(tree t)	    { return label_scope_map[t]; }
 
 // This is for normal declarations.
@@ -889,7 +1432,7 @@ tree & LABEL_SCOPE(tree t)	    { return label_scope_map[t]; }
 
 DST_INFO_IDX & DECL_DST_IDX(tree t) 
 { 
-	std::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
+	hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
 		decl_idx_map.find(t);
 	if(it == decl_idx_map.end()) {
 		// substitute for lack of default constructor
@@ -907,7 +1450,7 @@ DST_INFO_IDX & DECL_DST_IDX(tree t)
 // So check and ensure a real entry exists.
 DST_INFO_IDX & DECL_DST_SPECIFICATION_IDX(tree t) 
 { 
-	std::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
+	hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
 		decl_specification_idx_map.find(t);
 	if(it == decl_specification_idx_map.end()) {
 		// substitute for lack of default constructor
@@ -926,7 +1469,7 @@ DST_INFO_IDX & DECL_DST_SPECIFICATION_IDX(tree t)
 // So check and ensure a real entry exists.
 DST_INFO_IDX & DECL_DST_FIELD_IDX(tree t) 
 { 
-	std::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
+	hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
 		decl_field_idx_map.find(t);
 	if(it == decl_idx_map.end()) {
 		// substitute for lack of default constructor
@@ -940,7 +1483,7 @@ DST_INFO_IDX & DECL_DST_FIELD_IDX(tree t)
 // So check and ensure a real entry exists.
 DST_INFO_IDX & TYPE_DST_IDX(tree t) 
 {
-	std::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
+	hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
 		type_idx_map.find(t);
 	if(it == type_idx_map.end()) {
 		// substitute for lack of default constructor
@@ -954,7 +1497,7 @@ DST_INFO_IDX & TYPE_DST_IDX(tree t)
 // So check and ensure a real entry exists.
 DST_INFO_IDX & DECL_DST_ABSTRACT_ROOT_IDX(tree t) 
 {
-	std::hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
+	hash_map<tree, DST_INFO_IDX,ptrhash>::iterator it =
 		abstract_root_map.find(t);
 	if(it == abstract_root_map.end()) {
 		// substitute for lack of default constructor

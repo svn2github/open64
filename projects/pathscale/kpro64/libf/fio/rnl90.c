@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -2011,14 +2015,15 @@ _nexdata(
 				case 4:
 					*(_f_log4 *)slval	= _btol(1);
 					break;
-#if	defined(_F_INT2) && (defined(__mips) || defined(__sv2))
+/* KEY: This used to have __mips */
+#ifdef _F_INT2
 				case 2:
 					*(_f_log2 *)slval	= _btol(1);
 					break;
 				case 1:
 					*(_f_log1 *)slval	= _btol(1);
 					break;
-#endif	/* _F_INT2 and (mips or sv2) */
+#endif	/* _F_INT2 */
 #endif	/* _F_INT4 */
 				case 8:
 					*(_f_log8 *)slval	= _btol(1);
@@ -2034,14 +2039,15 @@ _nexdata(
 				case 4:
 					*(_f_log4 *)slval	= _btol(0);
 					break;
-#if	defined(_F_INT2) && (defined(__mips) || defined(__sv2))
+/* KEY: This used to have __mips */
+#ifdef _F_INT2
 				case 2:
 					*(_f_log2 *)slval	= _btol(0);
 					break;
 				case 1:
 					*(_f_log1 *)slval	= _btol(0);
 					break;
-#endif	/* _F_INT2 and (mips or sv2) */
+#endif	/* _F_INT2 */
 #endif	/* _F_INT4 */
 				case 8:
 					*(_f_log8 *)slval	= _btol(0);
@@ -2106,14 +2112,15 @@ _nexdata(
 				case 4:
 					*(_f_log4 *)slval	= _btol(1);
 					break;
-#if	defined(_F_INT2) && (defined(__mips) || defined(__sv2))
+/* KEY: This used to have __mips */
+#ifdef _F_INT2
 				case 2:
 					*(_f_log2 *)slval	= _btol(1);
 					break;
 				case 1:
 					*(_f_log1 *)slval	= _btol(1);
 					break;
-#endif	/* _F_INT2 and (mips or sv2) */
+#endif	/* _F_INT2 */
 #endif
 				case 8:
 					*(_f_log8 *)slval	= _btol(1);
@@ -2128,14 +2135,15 @@ _nexdata(
 				case 4:
 					*(_f_log4 *)slval	= _btol(0);
 					break;
-#if	defined(_F_INT2) && (defined(__mips) || defined(__sv2))
+/* KEY: This used to have __mips */
+#ifdef _F_INT2
 				case 2:
 					*(_f_log2 *)slval	= _btol(0);
 					break;
 				case 1:
 					*(_f_log1 *)slval	= _btol(0);
 					break;
-#endif	/* _F_INT2 and (mips or sv2) */
+#endif	/* _F_INT2 */
 #endif
 				case 8:
 					*(_f_log8 *)slval	= _btol(0);
@@ -2390,14 +2398,15 @@ _g_number(
 		case 4:
 			mode	= MODEHP;
 			break;
-#if	defined(_F_INT2) && (defined(__mips) || defined(__sv2))
+/* KEY: This used to have __mips */
+#if	defined(_F_INT2)
 		case 2:
 			mode	= MODEWP;
 			break;
 		case 1:
 			mode	= MODEBP;
 			break;
-#endif	/* _F_INT2 and (mips or sv2) */
+#endif	/* _F_INT2 */
 #endif	/* _F_INT4 */
 		case 8:
 			break;

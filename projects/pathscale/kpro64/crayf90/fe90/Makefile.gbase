@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -121,11 +121,7 @@ endif
 #  List of source files.  Please keep them in alphabetical order.
 #----------------------------------------------------------------------
 
-ifeq ($(BUILD_TARGET), MIPS)
-FOLD = utils.c
-else
 FOLD = utils.c fold.o
-endif
 
 FE90_SRCS = \
 	cifcmnrecs.c \
@@ -183,14 +179,14 @@ LDIRT =
 VPATH    =  $(FE90_DIR)
 
 ifneq ($(BUILD_COMPILER), EDG)
-LCDEFS = -ansi -funsigned-char
+LCDEFS = -funsigned-char
 endif
 ifeq ($(BUILD_OS), LINUX)
 LCDEFS += -D_LINUX_LINUX
 else
 LCDEFS += $(HOSTDEFS) $(TARGDEFS) -D_SGI_SGI
 endif
-LCOPTS += $(STD_COMPILE_OPTS)
+LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 
 ifeq ($(BUILD_VARIANT), DEBUG)
@@ -228,9 +224,8 @@ default: first $(TARGETS) last
 #  built.
 #----------------------------------------------------------------------
 first:
-	cd $(ARITH_TARG_DIR) && $(MAKE)
-	cd $(F90SGI_TARG_DIR) && $(MAKE)
-	cd $(LIBCIF_TARG_DIR) && $(MAKE)
+	$(call submake,$(ARITH_TARG_DIR))
+	$(call submake,$(LIBCIF_TARG_DIR))
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is
@@ -260,17 +255,12 @@ include $(COMMONRULES)
 #  Special case rules for files that want to be individualistic
 #----------------------------------------------------------------------
 
-.PRECIOUS : $(LIBRARY)
-$(LIBRARY): $(LIBRARY)($(OBJECTS))
+$(LIBRARY): $(OBJECTS)
+	$(ar) cru $@ $^
 
+fold.o:fold.f
 ifeq ($(BUILD_ARCH), IA32)
-fold.o:fold.f
-	NLSPATH=/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/%N.cat \
-	/usr/ia32-sgi-linux/bin/f90 -c -MD $(CRAYF90_DIR)/fe90/fold.f
+	$(F90) -m32 $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f
+else
+	$(F90) -m32 $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f
 endif
-ifeq ($(BUILD_ARCH), IA64)
-fold.o:fold.f
-	NLSPATH=/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/%N.cat \
-	/usr/ia64-sgi-linux/bin/f90 -c -MD $(CRAYF90_DIR)/fe90/fold.f
-endif
-

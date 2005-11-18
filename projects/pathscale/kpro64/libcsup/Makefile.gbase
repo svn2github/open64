@@ -1,3 +1,5 @@
+# -*- Makefile -*-
+#
 # USMID @(#)92/Makefile.base	92.2	06/04/99 15:38:43
 
 #
@@ -49,7 +51,7 @@ CVERSION =
 endif
 
 LCINCS   = -I$(BUILD_BASE)/include
-LCOPTS   = $(STD_COMPILE_OPTS)
+LCOPTS   = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS   = -D_SYSV -DSYSV -D_LIBU
 WOFF     =
 
@@ -68,7 +70,7 @@ CFILES= \
 default: first $(TARGETS) last
 
 first:
-	cd $(BUILD_AREA)/include && $(MAKE)
+	$(call submake,$(BUILD_AREA)/include)
 
 last: make_libdeps
 
@@ -82,5 +84,5 @@ include $(COMMONRULES)
 
 VPATH = $(BUILD_BASE)/msgnew
 
-.PRECIOUS: $(LIBRARY)
-$(LIBRARY): $(LIBRARY)($(OBJECTS))
+$(LIBRARY): $(OBJECTS)
+	$(ar) cru $@ $^

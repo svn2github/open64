@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -34,11 +38,11 @@
 */
 
 
-#include "cmplrs/host.h"
 #include <math.h>
-#include "moremath.h"
-
+#include "cmplrs/host.h"
 #include "cmplx.h"
+#include "defalias.h"
+#include "moremath.h"
 
 dcomplex __zsqrt(double_t zdreal, double_t zdimag)
 {
@@ -59,7 +63,9 @@ dcomplex __zsqrt(double_t zdreal, double_t zdimag)
   return result;
 }
 
-void z_sqrt(dcomplex *r, dcomplex *z)
+dcomplex z_sqrt_(dcomplex *z)
 {
-  *r = __zsqrt(z->dreal, z->dimag);
+  return __zsqrt(z->dreal, z->dimag);
 }
+
+defalias(z_sqrt_, z_sqrt);

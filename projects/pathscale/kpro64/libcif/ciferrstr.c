@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -45,6 +49,7 @@ static char USMID[] = "@(#) libcif/ciferrstr.c	30.2	07/26/96 07:19:13";
 
 #define CIF_VERSION 3
 
+#include <string.h>
 #ifdef _ABSOFT
 #include "cif.h"
 #else
@@ -52,9 +57,6 @@ static char USMID[] = "@(#) libcif/ciferrstr.c	30.2	07/26/96 07:19:13";
 #endif
 
 #include <errno.h>
-
-extern int sys_nerr;
-extern char *sys_errlist[];
 
 static char *strings[] = {
 	"",
@@ -82,12 +84,20 @@ char *Cif_Errstring
 int status;			/* cif error status code */
 #endif
 {
-
 	if (status >= 0 || status < CIF_MAXERROR)
 		return (unknown);
 	else if (status == CIF_SYSERR) {
-		if (errno >= 0 && errno <= sys_nerr)
-			return (sys_errlist[errno]);
+		int err_num = errno;
+		int ok;
+		char *err_str;
+		
+		errno = 0;
+		err_str = strerror(err_num);
+		ok = errno == 0;
+		errno = err_num;
+	
+		if (ok)
+			return (err_str);
 		else
 			return (unknown);
 	}

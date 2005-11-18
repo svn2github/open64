@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -69,6 +73,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <string.h>
 #include <ctype.h>
 
 #ifndef linux
@@ -78,6 +83,10 @@ extern "C" {
 }
 #undef _LANGUAGE_C
 #include <sys/syssgi.h>
+#endif
+
+#ifdef KEY
+#include <execinfo.h>
 #endif
 
 #include <errno.h>
@@ -131,7 +140,7 @@ static char *Source_File_Name = &source_file_name[0];
 static INT   Source_Line = ERROR_LINE_UNKNOWN;	/* Line number */
 
 /* Current compiler/tool phase: */
-static const char *Current_Phase = NULL;
+static const char *Current_Phase = "<unknown phase>";
 
 /* Error counts: */
 static INT   Error_Counts[ES_MAX+1];
@@ -185,6 +194,8 @@ static ERROR_DESC_TABLE *Phases = NULL;
 static const char **host_errlist = NULL;
 #endif /* MONGOOSE_BE */
 
+static bool do_traceback = false;
+
 /* The access functions: */
 #define Phase_Num(n)	(Phases[n].phase)
 #define Phase_List(n)	(Phases[n].descriptors)
@@ -202,6 +213,27 @@ static char dont_print[RAG_EN_LAST-RAG_EN_FIRST+1];
 	(Dont_Print_Warning(rag_errnum) && (severity < ES_ERRBENIGN) )
 
 extern void Rag_Handle_Woff_Args(char	*wstring);
+
+static void dump_backtrace(FILE *fp = stderr, size_t start_frame = 1)
+{
+#ifdef KEY
+    const int nframes = 32;
+    void *buf[nframes];
+    char **strings;
+    size_t size;
+
+    size = backtrace(buf, nframes);
+    strings = backtrace_symbols(buf, size);
+
+    fprintf(fp, "*** Internal stack backtrace:\n");
+
+    for (size_t i = start_frame; i < size; i++) {
+	fprintf(fp, "    %s\n", strings[i]);
+    }
+    fflush(fp);
+#endif
+}
+
 
 /* ====================================================================
  *
@@ -226,12 +258,15 @@ catch_signal (INT sig, INT error_num)
 	    /* special case for I/O error on mmapped object: report as an
 	       ordinary fatal error */ 
 	    Fatal_Error ("I/O error in mmapped object: %s",
-			 sys_errlist[error_num]);
+			 strerror(error_num));
     }
     
-    printf ( "Signal: %s", sys_siglist[sig] );
-    fflush ( stdout );
-    printf ( " in %s phase.\n", Current_Phase );
+    fprintf (stderr,  "Signal: %s", strsignal(sig) );
+    fflush ( stderr );
+    fprintf ( stderr, " in %s phase.\n",
+	      Current_Phase ? Current_Phase : "startup" );
+    
+    do_traceback = true;
     
     Signal_Cleanup ( sig );	    /* Must be provided in err_host */
     if ( sig == SIGHUP ||  sig == SIGINT || sig == SIGTERM ) {
@@ -242,7 +277,7 @@ catch_signal (INT sig, INT error_num)
     signal ( SIGILL, SIG_DFL );
     signal ( SIGBUS, SIG_DFL );
     ErrMsgLine ( EC_Signal, ERROR_LINE_UNKNOWN,
-		sys_siglist[sig], Current_Phase );
+		strsignal(sig), Current_Phase );
     /*NOTREACHED*/
     exit(RC_INTERNAL_ERROR);
 }
@@ -561,7 +596,7 @@ Init_Error_Handler ( INT Max_Errors_Allowed )
   /* Initialize current position: */
   Source_File_Name = NULL;
   Source_Line = ERROR_LINE_UNKNOWN;
-  Current_Phase = NULL;
+  Current_Phase = "<unknown phase>";
 }
 
 /* ====================================================================
@@ -627,13 +662,21 @@ Emit_Message (
   fputs ( hmsg, stderr );
   fputs ( emsg, stderr );
   fflush ( stderr );
-
+  if ( do_traceback ) {
+      dump_backtrace ( stderr );
+      do_traceback = false;
+  }
+  
   /* Then write to error file if enabled: */
   if ( Init_Error_File() ) {
     if ( report_location )  fputs ( msg, Error_File );
     fputs ( hmsg, Error_File );
     fputs ( emsg, Error_File );
     fflush ( Error_File );
+    if ( do_traceback ) {
+	dump_backtrace ( Error_File );
+	do_traceback = false;
+    }
   }
 
   /* Finally write to trace file: */
@@ -642,6 +685,10 @@ Emit_Message (
     fputs ( hmsg, Trace_File );
     fputs ( emsg, Trace_File );
     fflush ( Trace_File );
+    if ( do_traceback ) {
+	dump_backtrace ( Trace_File );
+	do_traceback = false;
+    }
   }
 }
 
@@ -663,12 +710,6 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
   char hmsg[512];
   vstring emsg;
   INTPS mparm[MAX_ERR_PARMS];
-
-  /* Interface to Unix system error messages: */
-  extern INT sys_nerr;
-#ifndef linux
-  extern char *sys_errlist[];
-#endif
 
   /* Formatting buffer: */
 # define BUFLEN 512
@@ -775,13 +816,18 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
       case ET_SYSERR:	parm = (INTPS) va_arg(vp,int);
       			if (parm < 0) {
 			  mparm[pnum] = (INTPS) host_errlist[-parm];
-			} else if ( parm <= sys_nerr ) {
-			  mparm[pnum] = (INTPS) sys_errlist[parm];
 			} else {
-			  result = &buf[++loc];
-			  loc += sprintf ( &buf[loc],
-					   "Unix error %ld", parm );
-			  mparm[pnum] = (INTPS) result;
+			  errno = 0;
+			  char *err_str = strerror(parm);
+			  
+			  if ( errno == 0 ) {
+			    mparm[pnum] = (INTPS) err_str;
+			  } else {
+			    result = &buf[++loc];
+			    loc += sprintf ( &buf[loc],
+					     "Unix error %ld", parm );
+			    mparm[pnum] = (INTPS) result;
+			  }
 			}
 			break;
 
@@ -839,12 +885,6 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
   char hmsg[512];
   vstring emsg;
   INTPS mparm[MAX_ERR_PARMS];
-
-  /* Interface to Unix system error messages: */
-  extern INT sys_nerr;
-#ifndef linux
-  extern char *sys_errlist[];
-#endif
 
   /* Formatting buffer: */
 # define BUFLEN 512
@@ -941,13 +981,18 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
       case ET_SYSERR:	parm = (INTPS) va_arg(vp,int);
       			if (parm < 0) {
 			  mparm[pnum] = (INTPS) host_errlist[-parm];
-			} else if ( parm <= sys_nerr ) {
-			  mparm[pnum] = (INTPS) sys_errlist[parm];
 			} else {
-			  result = &buf[++loc];
-			  loc += sprintf ( &buf[loc],
-					   "Unix error %ld", parm );
-			  mparm[pnum] = (INTPS) result;
+			  errno = 0;
+			  char *err_str = strerror(parm);
+			  
+			  if ( errno == 0 ) {
+			    mparm[pnum] = (INTPS) err_str;
+			  } else {
+			    result = &buf[++loc];
+			    loc += sprintf ( &buf[loc],
+					     "Unix error %ld", parm );
+			    mparm[pnum] = (INTPS) result;
+			  }
 			}
 			break;
 
@@ -1110,6 +1155,7 @@ Fail_Assertion ( INT ecode, ... )
   va_list vp;
   
   va_start ( vp, ecode);
+  do_traceback = true;
   ErrMsg_Report ( ecode, Source_Line, Source_File_Name, vp );
   va_end ( vp );
 }

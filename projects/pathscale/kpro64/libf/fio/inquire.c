@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -60,7 +64,7 @@
  *		This routine aborts on error conditions if no ERR=
  *		or IOSTAT= are specified.
  */
-_f_inqu(
+int _f_inqu(
 FIOSPTR	css,		/* statement state			*/
 unit	*cup,		/* locked unit pointer if INQUIRE by   
 			 * unit and unit is connected.		*/

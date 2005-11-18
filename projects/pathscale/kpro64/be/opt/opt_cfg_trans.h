@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -57,10 +62,10 @@
 #ifndef opt_cfg_trans_INCLUDED
 #define opt_cfg_trans_INCLUDED "opt_cfg_trans.h"
 
-#include <iterator.h>
-#include <set.h>
-#include <map.h>
-#include <function.h>
+#include <iterator>
+#include <set>
+#include <map>
+#include <functional>
 
 #define USE_STANDARD_TYPE
 #include "opt_defs.h"   // use Is_True
@@ -77,11 +82,11 @@ class composite_iterator {
 public:
   typedef composite_iterator<Cluster_iterator, Fast_iterator> self;
   typedef forward_iterator_tag iterator_category;
-  typedef typename iterator_traits<Fast_iterator>::value_type      value_type;
-  typedef typename iterator_traits<Fast_iterator>::difference_type 
+  typedef typename std::iterator_traits<Fast_iterator>::value_type      value_type;
+  typedef typename std::iterator_traits<Fast_iterator>::difference_type 
           difference_type;
-  typedef typename iterator_traits<Fast_iterator>::pointer         pointer;
-  typedef typename iterator_traits<Fast_iterator>::reference       reference;
+  typedef typename std::iterator_traits<Fast_iterator>::pointer         pointer;
+  typedef typename std::iterator_traits<Fast_iterator>::reference       reference;
 
   Cluster_iterator ci;
   Fast_iterator fi;
@@ -192,10 +197,10 @@ public:
   typedef IndexFunction index_function;
   typedef cluster_vector<T, IndexFunction> self;
   typedef vector<value_type> cluster_type;
-  typedef cluster_type::iterator      fast_iterator;
-  typedef cluster_type::size_type     size_type;
-  typedef vector<cluster_type>        cluster_container;
-  typedef cluster_container::iterator cluster_iterator;
+  typedef typename cluster_type::iterator fast_iterator;
+  typedef typename cluster_type::size_type size_type;
+  typedef vector<cluster_type> cluster_container;
+  typedef typename cluster_container::iterator cluster_iterator;
   typedef composite_iterator<cluster_iterator, fast_iterator> iterator;
 
 private:
@@ -233,6 +238,11 @@ public:
 
   cluster_vector()   { cluster.push_back( cluster_type()); }
 };
+
+#ifdef KEY // fix g++ 3.2 problems
+template <class C>
+  bool operator!=(C x, C y) { return !(x == y); }
+#endif
 
 
 struct one_dimensional_container_tag {};
@@ -356,8 +366,8 @@ template <class Graph, class Vertex_id, class Container>
 void generate_post_order(Graph& g, Vertex_id root, Container& c)
 {
   c.erase(c.begin(), c.end());
-  insert_iterator<Container> ii(c, c.begin());
-  set<Vertex_id> visited;
+  std::insert_iterator<Container> ii(c, c.begin());
+  std::set<Vertex_id> visited;
   generate_post_order(g, root, ii, visited);
 
   {
@@ -431,7 +441,7 @@ template <class Graph, class Vertex_id, class Container>
 inline void topological_sort(Graph& in, Vertex_id root, Container& out)
 {
   typedef typename Graph::value_type edge;
-  typedef cluster_vector<edge, select1st<edge> > succ_graph;
+  typedef cluster_vector<edge, std::_Select1st<edge> > succ_graph;
   succ_graph g;
   copy(in, g);
   if (root < g.size())
@@ -521,12 +531,12 @@ inline edge& add_edge(vector<edge>& g, const edge& e)
 inline vertex_id first(edge e)  { return e.first; }
 inline vertex_id second(edge e) { return e.second; }
 
-typedef cluster_vector<edge, select1st<edge> > successor_graph;
-typedef cluster_vector<edge, select2nd<edge> > predecessor_graph;
+typedef cluster_vector<edge, std::_Select1st<edge> > successor_graph;
+typedef cluster_vector<edge, std::_Select2nd<edge> > predecessor_graph;
 
 
 template <class T>
-struct fp_print : public unary_function<T, int> {
+struct fp_print : public std::unary_function<T, int> {
   FILE *fp;
   fp_print(FILE *f):fp(f) {}
   int operator()(const T& x) const { return x.print(fp); } 
@@ -573,7 +583,7 @@ struct fp_print : public unary_function<T, int> {
 
 static int unique_bb_count(vector<edge>& clone, vector<edge>& exit)
 {
-  set<vertex_id> visited;
+  std::set<vertex_id> visited;
   int count = 0;
   int i;
   for (i = 0; i < clone.size(); ++i) {
@@ -650,16 +660,16 @@ struct path_type {
   path_type(path_type& path):bbs(path.bbs),wt(path.wt) {}
 };
 
-
+#ifndef KEY // workaround g++ 3.2 problem
 struct less<path_type*> {
   bool operator()(path_type *p1, path_type *p2) {
     return (*p1).wt < (*p2).wt;
   }
 };
-
+#endif
 
 extern void print_path_type(path_type *, FILE *);
-extern void print_vertex_set(set<vertex_id> *, FILE *);
+extern void print_vertex_set(std::set<vertex_id> *, FILE *);
 
 
 class COMP_UNIT;  // forward declaration

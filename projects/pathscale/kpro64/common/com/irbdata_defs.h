@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -70,6 +74,15 @@ enum INITVKIND {
     INITVKIND_LABEL	= 9 
 };
 
+#ifdef KEY
+enum INITVFLAGS {	// currently only for EH
+    INITVFLAGS_UNDEFINED	= 0,
+    INITVFLAGS_ACTION_REC,
+    INITVFLAGS_TYPEINFO,
+    INITVFLAGS_EH_SPEC
+};
+#endif // KEY
+
 struct INITV
 {
     INITV_IDX next;			// next value for non-scalar member
@@ -104,7 +117,11 @@ struct INITV
 
 	struct {
 	    INITV_IDX blk;		// useful for aggregate values
+#ifdef KEY
+	    mINT32 flags;		// flags
+#else
 	    mINT32 unused;		// filler, must be zero
+#endif // KEY
 	} blk;
 	
 	struct {

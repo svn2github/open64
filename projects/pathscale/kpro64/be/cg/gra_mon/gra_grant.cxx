@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -65,6 +69,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "register.h"
 #include "gra_bb.h"
 #include "gra_trace.h"
+
 
 
 MEM_POOL grant_pool;    // Just for grants
@@ -211,13 +216,16 @@ GRA_GRANT_Local_Register( GRA_BB* gbb, ISA_REGISTER_CLASS rc, REGISTER reg )
      In the long run, it may not even be safe if changes are made to
      how Build_Dedicated_TN works. But it works for now!
   */
+#ifndef TARG_X8664
   if (!REGISTER_SET_MemberP(REGISTER_CLASS_function_value(rc), reg) ||
       !BB_call(gbb->Bb()) &&
       !GTN_SET_MemberP(BB_live_in (gbb->Bb()),Build_Dedicated_TN(rc, reg, 8)) ||
-      !GTN_SET_MemberP(BB_live_out(gbb->Bb()),Build_Dedicated_TN(rc, reg, 8))) {
-    GRA_Trace_Grant(gbb,rc,reg);
-    GRANT_Union1D(gr,rc,reg);
-  }
+      !GTN_SET_MemberP(BB_live_out(gbb->Bb()),Build_Dedicated_TN(rc, reg, 8)))
+#endif
+    {
+      GRA_Trace_Grant(gbb,rc,reg);
+      GRANT_Union1D(gr,rc,reg);
+    }
 }
 
 /////////////////////////////////////

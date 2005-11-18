@@ -1,3 +1,26 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it would be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * Further, this software is distributed without any warranty that it is
+ * free of the rightful claim of any third person regarding infringement 
+ * or the like.  Any license provided herein, whether implied or 
+ * otherwise, applies only to this software file.  Patent licenses, if 
+ * any, provided herein do not apply to combinations of this program with 
+ * other software, or any other product whatsoever.  
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write the Free Software Foundation, Inc., 59
+ * Temple Place - Suite 330, Boston MA 02111-1307, USA.
+ */
+
 #if defined(__GNUC__)
 #include <stdio.h>		/* for sys_errlist */
 #endif
@@ -23,6 +46,10 @@
 
 #include "ipa_ld.h"
 #include "ipa_cmdline.h"
+
+#ifdef KEY
+char *psclp_arg = NULL;	// PathScale subscription
+#endif
 
 int arg_count;			    /* argument count */
 char **arg_vector;		    /* argument vector */
@@ -224,7 +251,7 @@ add_Y_opt (char **argv)
 
 	 *******************************************************/
 #define ET_SGI_IR   (ET_LOPROC + 0)
-static boolean
+static bfd_boolean
 check_for_whirl(char *name)
 {
     int fd = -1;
@@ -306,8 +333,8 @@ check_for_whirl(char *name)
 		arguments change or are augmented.
 
 	 *******************************************************/
-static boolean
-needs_argument(char *string, boolean is_double_dash)
+static bfd_boolean
+needs_argument(char *string, bfd_boolean is_double_dash)
 {
 
     int len = strlen(string);
@@ -470,7 +497,7 @@ blank_arg(char **argv, int ndx)
 		errors.
 
 	 *******************************************************/
-boolean
+bfd_boolean
 ipa_search_command_line(int argc,
 			char **argv,
 			char **envp
@@ -600,6 +627,16 @@ ipa_search_command_line(int argc,
 		blank_arg(argv,i);
 	    	continue;
 	    }
+#ifdef KEY
+	    // PathScale subscription
+	    if ((strcmp (string, "-psclp") == 0)) {
+	    	psclp_arg = malloc(10 + strlen(argv[i+1]));
+		sprintf (psclp_arg, "-psclp %s", argv[i+1]);
+		blank_arg(argv,i);
+		blank_arg(argv,i+1);
+	    	continue;
+	    }
+#endif
 	    else if ((strcmp(string,"-keep")) == 0) {
     	    	ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag = TRUE;
 
@@ -624,7 +661,11 @@ ipa_search_command_line(int argc,
 	    else if ((strcmp(string,"-o")) == 0) {
     	    	outfilename = MALLOC(strlen(argv[i+1])+3);
     	    	MALLOC_ASSERT(outfilename);
+#ifdef KEY
+		strcpy(outfilename,"");
+#else
 		strcpy(outfilename,"./");
+#endif
 		strcat(outfilename,argv[i+1]);
 	    	(*p_ipa_add_link_flag) (argv[i++]);
 		(*p_ipa_add_link_flag) (argv[i]);

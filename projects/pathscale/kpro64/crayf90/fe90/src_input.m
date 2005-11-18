@@ -83,8 +83,8 @@
 
 # define MAX_ANSI_FIXED_LINES	20
 # define MAX_ANSI_FREE_LINES	40
-# define MAX_FIXED_LINES        100
-# define MAX_FREE_LINES         100
+# define MAX_FIXED_LINES        500
+# define MAX_FREE_LINES         500
 
 
 /******************************\

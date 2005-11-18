@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,7 +56,7 @@ getfilename (char *ptr)
 
 
 if (ptr != NULL) {
-	while ((++i < LINESIZE) && (ptr[i] != NULL));
+	while ((++i < LINESIZE) && (ptr[i] != '\0'));
 
 	/*
 	 * skip back over ( 
@@ -87,7 +91,7 @@ if (ptr != NULL) {
 	get[j++] = '.';
 	get[j++] = 'f';
 	get[j++] = 'c';
-	get[j++] = NULL;
+	get[j++] = '\0';
 
 	fnamesize = j ;
 	if (onsize != fnamesize) {
@@ -154,7 +158,7 @@ flushout (struct table *p)
   i = 0;
   for (lptr = p->decls; lptr != NULL; lptr= lptr->nextl){
 	printed = FALSE;
-	for (j=0; lptr->entry[j] != NULL; j++){
+	for (j=0; lptr->entry[j] != '\0'; j++){
 		if (lptr->entry[j] == '[') {
 			printed = TRUE;
 			newvar1 = (char *) calloc(1,40);
@@ -180,7 +184,7 @@ flushout (struct table *p)
   for (i=0; i< p->declnum; i++){
         fprintf(outfile," x%d",i);
 	if (i !=  p->declnum-1)
-		fprintf(outfile,"\,");
+		fprintf(outfile,",");
   }
   fprintf(outfile,"));\n}\n");
 

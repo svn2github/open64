@@ -1,3 +1,15 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
+
+/* 
+   Copyright (C) 2002 Tensilica, Inc.  All Rights Reserved.
+   Revised to support Tensilica processors and to improve overall performance
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -39,12 +51,24 @@
 #include "config.h"
 #include "wn.h"
 #include "wn_util.h"
+#include "targ_sim.h"
 #include "const.h"
+#include "c_int_model.h"
 
 #include "gnu_config.h"
 #include "gnu/system.h"
 
+#ifdef KEY
+#include "gnu/flags.h"
+extern "C" {
+// needs "C" linkage
+#endif // KEY
+
 #include "gnu/machmode.h"
+
+#ifdef KEY
+}
+#endif // KEY
 
 extern "C" {
 #include "gnu/system.h"
@@ -53,6 +77,9 @@ extern void warning (char*,...);	// from gnu
 #ifdef GPLUSPLUS_FE
 #include "gnu/cp/cp-tree.h"
 #endif /* GPLUSPLUS_FE */
+#ifdef KEY
+#include "real.h"
+#endif // KEY
 }
 
 #include "ir_reader.h"
@@ -62,6 +89,7 @@ extern void warning (char*,...);	// from gnu
 #include "wfe_decl.h"
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
+#include "tree_cmp.h"
 
 // #define WFE_DEBUG
 
@@ -84,6 +112,7 @@ struct operator_from_tree_t {
   INTEGER_TYPE,            "integer_type",            't', 0,  OPERATOR_UNKNOWN,
   REAL_TYPE,               "real_type",               't', 0,  OPERATOR_UNKNOWN,
   COMPLEX_TYPE,            "complex_type",            't', 0,  OPERATOR_UNKNOWN,
+  VECTOR_TYPE,             "vector_type",             't', 0,  OPERATOR_UNKNOWN,
   ENUMERAL_TYPE,           "enumeral_type",           't', 0,  OPERATOR_UNKNOWN,
   BOOLEAN_TYPE,            "boolean_type",            't', 0,  OPERATOR_UNKNOWN,
   CHAR_TYPE,               "char_type",               't', 0,  OPERATOR_UNKNOWN,
@@ -102,6 +131,7 @@ struct operator_from_tree_t {
   INTEGER_CST,             "integer_cst",             'c', 2,  OPERATOR_UNKNOWN,
   REAL_CST,                "real_cst",                'c', 3,  OPERATOR_UNKNOWN,
   COMPLEX_CST,             "complex_cst",             'c', 3,  OPERATOR_UNKNOWN,
+  VECTOR_CST,              "vector_cst",              'c', 3,  OPERATOR_UNKNOWN,
   STRING_CST,              "string_cst",              'c', 3,  OPERATOR_UNKNOWN,
   FUNCTION_DECL,           "function_decl",           'd', 0,  OPERATOR_UNKNOWN,
   LABEL_DECL,              "label_decl",              'd', 0,  OPERATOR_UNKNOWN,
@@ -117,6 +147,8 @@ struct operator_from_tree_t {
   INDIRECT_REF,            "indirect_ref",            'r', 1,  OPERATOR_UNKNOWN,
   BUFFER_REF,              "buffer_ref",              'r', 1,  OPERATOR_UNKNOWN,
   ARRAY_REF,               "array_ref",               'r', 2,  OPERATOR_UNKNOWN,
+  ARRAY_RANGE_REF,         "array_range_ref",         'r', 2,  OPERATOR_UNKNOWN,
+  VTABLE_REF,              "vtable_ref",              'r', 3,  OPERATOR_UNKNOWN,
   CONSTRUCTOR,             "constructor",             'e', 2,  OPERATOR_UNKNOWN,
   COMPOUND_EXPR,           "compound_expr",           'e', 2,  OPERATOR_UNKNOWN,
   MODIFY_EXPR,             "modify_expr",             'e', 2,  OPERATOR_UNKNOWN,
@@ -189,12 +221,14 @@ struct operator_from_tree_t {
   CONVERT_EXPR,            "convert_expr",            '1', 1,  OPERATOR_UNKNOWN,
   NOP_EXPR,                "nop_expr",                '1', 1,  OPERATOR_UNKNOWN,
   NON_LVALUE_EXPR,         "non_lvalue_expr",         '1', 1,  OPERATOR_UNKNOWN,
+  VIEW_CONVERT_EXPR,       "view_convert_expr",       '1', 1,  OPERATOR_UNKNOWN,
   SAVE_EXPR,               "save_expr",               'e', 3,  OPERATOR_UNKNOWN,
   UNSAVE_EXPR,             "unsave_expr",             'e', 1,  OPERATOR_UNKNOWN,
   RTL_EXPR,                "rtl_expr",                'e', 2,  OPERATOR_UNKNOWN,
   ADDR_EXPR,               "addr_expr",               'e', 1,  OPERATOR_UNKNOWN,
   REFERENCE_EXPR,          "reference_expr",          'e', 1,  OPERATOR_UNKNOWN,
   ENTRY_VALUE_EXPR,        "entry_value_expr",        'e', 1,  OPERATOR_UNKNOWN,
+  FDESC_EXPR,              "fdesc_expr",              'e', 2,  OPERATOR_UNKNOWN,
   COMPLEX_EXPR,            "complex_expr",            '2', 2,  OPR_PAIR,
   CONJ_EXPR,               "conj_expr",               '1', 1,  OPERATOR_UNKNOWN,
   REALPART_EXPR,           "realpart_expr",           '1', 1,  OPR_FIRSTPART,
@@ -218,47 +252,13 @@ struct operator_from_tree_t {
   EXIT_BLOCK_EXPR,         "exit_block_expr",         'e', 2,  OPERATOR_UNKNOWN,
   EXPR_WITH_FILE_LOCATION, "expr_with_file_location", 'e', 3,  OPERATOR_UNKNOWN,
   SWITCH_EXPR,             "switch_expr",             'e', 2,  OPERATOR_UNKNOWN,
+  EXC_PTR_EXPR,            "exc_ptr_expr",            'e', 0,  OPERATOR_UNKNOWN,
   LAST_AND_UNUSED_TREE_CODE,"last_and_unused_tree_code",0, 0,  OPERATOR_UNKNOWN,
-#ifdef GPLUSPLUS_FE
-  OFFSET_REF,              "offset_ref",              'r', 2,  OPERATOR_UNKNOWN,
-  PTRMEM_CST,              "ptrmem_cst",              'c', 2,  OPERATOR_UNKNOWN,
-  NEW_EXPR,                "nw_expr",                 'e', 3,  OPERATOR_UNKNOWN,
-  VEC_NEW_EXPR,            "vec_nw_expr",             'e', 3,  OPERATOR_UNKNOWN,
-  DELETE_EXPR,             "dl_expr",                 'e', 2,  OPERATOR_UNKNOWN,
-  VEC_DELETE_EXPR,         "vec_dl_expr",             'e', 2,  OPERATOR_UNKNOWN,
-  SCOPE_REF,               "scope_ref",               'r', 2,  OPERATOR_UNKNOWN,
-  MEMBER_REF,              "member_ref",              'r', 2,  OPERATOR_UNKNOWN,
-  TYPE_EXPR,               "type_expr",               'e', 1,  OPERATOR_UNKNOWN,
-  AGGR_INIT_EXPR,          "aggr_init_expr",          'e', 3,  OPERATOR_UNKNOWN,
-  THROW_EXPR,              "throw_expr",              'e', 1,  OPERATOR_UNKNOWN,
-  EMPTY_CLASS_EXPR,        "empty_class_expr",        'e', 0,  OPERATOR_UNKNOWN,
-  TEMPLATE_DECL,           "template_decl",           'd', 0,  OPERATOR_UNKNOWN,
-  TEMPLATE_PARM_INDEX,     "template_parm_index",     'x', 0,  OPERATOR_UNKNOWN,
-  TEMPLATE_TYPE_PARM,      "template_type_parm",      't', 0,  OPERATOR_UNKNOWN,
-  TEMPLATE_TEMPLATE_PARM,  "template_template_parm",  't', 0,  OPERATOR_UNKNOWN,
-  TYPENAME_TYPE,           "typename_type",           't', 0,  OPERATOR_UNKNOWN,
-  TYPEOF_TYPE,             "typeof_type",             't', 0,  OPERATOR_UNKNOWN,
-  USING_DECL,              "using_decl",              'd', 0,  OPERATOR_UNKNOWN,
-  DEFAULT_ARG,             "default_arg",             'c', 2,  OPERATOR_UNKNOWN,
-  TEMPLATE_ID_EXPR,        "template_id_expr",        'e', 2,  OPERATOR_UNKNOWN,
-  CPLUS_BINDING,           "binding",                 'x', 2,  OPERATOR_UNKNOWN,
-  OVERLOAD,                "overload",                'x', 1,  OPERATOR_UNKNOWN,
-  WRAPPER,                 "wrapper",                 'x', 1,  OPERATOR_UNKNOWN,
+
   SRCLOC,                  "srcloc",                  'x', 2,  OPERATOR_UNKNOWN,
-  LOOKUP_EXPR,             "lookup_expr",             'e', 1,  OPERATOR_UNKNOWN,
-  FUNCTION_NAME,           "function_name",           'e', 0,  OPERATOR_UNKNOWN,
-  MODOP_EXPR,              "modop_expr",              'e', 3,  OPERATOR_UNKNOWN,
-  CAST_EXPR,               "cast_expr",               '1', 1,  OPERATOR_UNKNOWN,
-  REINTERPRET_CAST_EXPR,   "reinterpret_cast_expr",   '1', 1,  OPERATOR_UNKNOWN,
-  CONST_CAST_EXPR,         "const_cast_expr",         '1', 1,  OPERATOR_UNKNOWN,
-  STATIC_CAST_EXPR,        "static_cast_expr",        '1', 1,  OPERATOR_UNKNOWN,
-  DYNAMIC_CAST_EXPR,       "dynamic_cast_expr",       '1', 1,  OPERATOR_UNKNOWN,
   SIZEOF_EXPR,             "sizeof_expr",             '1', 1,  OPERATOR_UNKNOWN,
-  ALIGNOF_EXPR,            "alignof_expr",            '1', 1,  OPERATOR_UNKNOWN,
   ARROW_EXPR,              "arrow_expr",              'e', 1,  OPERATOR_UNKNOWN,
-  DOTSTAR_EXPR,            "dotstar_expr",            'e', 2,  OPERATOR_UNKNOWN,
-  TYPEID_EXPR,             "typeid_expr",             'e', 1,  OPERATOR_UNKNOWN,
-  PSEUDO_DTOR_EXPR,        "pseudo_dtor_expr",        'e', 3,  OPERATOR_UNKNOWN,
+  ALIGNOF_EXPR,            "alignof_expr",            '1', 1,  OPERATOR_UNKNOWN,
   EXPR_STMT,               "expr_stmt",               'e', 1,  OPERATOR_UNKNOWN,
   COMPOUND_STMT,           "compound_stmt",           'e', 1,  OPERATOR_UNKNOWN,
   DECL_STMT,               "decl_stmt",               'e', 1,  OPERATOR_UNKNOWN,
@@ -273,17 +273,73 @@ struct operator_from_tree_t {
   GOTO_STMT,               "goto_stmt",               'e', 1,  OPERATOR_UNKNOWN,
   LABEL_STMT,              "label_stmt",              'e', 1,  OPERATOR_UNKNOWN,
   ASM_STMT,                "asm_stmt",                'e', 5,  OPERATOR_UNKNOWN,
+  SCOPE_STMT,              "scope_stmt",              'e', 1,  OPERATOR_UNKNOWN,
+  FILE_STMT,               "file_stmt",               'e', 1,  OPERATOR_UNKNOWN,
+  CASE_LABEL,              "case_label",              'e', 2,  OPERATOR_UNKNOWN,
+  STMT_EXPR,               "stmt_expr",               'e', 1,  OPERATOR_UNKNOWN,
+  COMPOUND_LITERAL_EXPR,   "compound_literal_expr",   'e', 1,  OPERATOR_UNKNOWN,
+  CLEANUP_STMT,            "cleanup_stmt",            'e', 2,  OPERATOR_UNKNOWN,
+  LAST_C_TREE_CODE,        "last_c_tree_code",          0, 0,  OPERATOR_UNKNOWN,
+
+#ifdef GPLUSPLUS_FE
+  OFFSET_REF,              "offset_ref",              'r', 2,  OPERATOR_UNKNOWN,
+  PTRMEM_CST,              "ptrmem_cst",              'c', 2,  OPERATOR_UNKNOWN,
+  NEW_EXPR,                "nw_expr",                 'e', 3,  OPERATOR_UNKNOWN,
+  VEC_NEW_EXPR,            "vec_nw_expr",             'e', 3,  OPERATOR_UNKNOWN,
+  DELETE_EXPR,             "dl_expr",                 'e', 2,  OPERATOR_UNKNOWN,
+  VEC_DELETE_EXPR,         "vec_dl_expr",             'e', 2,  OPERATOR_UNKNOWN,
+  SCOPE_REF,               "scope_ref",               'r', 2,  OPERATOR_UNKNOWN,
+  MEMBER_REF,              "member_ref",              'r', 2,  OPERATOR_UNKNOWN,
+  TYPE_EXPR,               "type_expr",               'e', 1,  OPERATOR_UNKNOWN,
+  AGGR_INIT_EXPR,          "aggr_init_expr",          'e', 3,  OPERATOR_UNKNOWN,
+  THROW_EXPR,              "throw_expr",              'e', 1,  OPERATOR_UNKNOWN,
+  EMPTY_CLASS_EXPR,        "empty_class_expr",        'e', 0,  OPERATOR_UNKNOWN,
+#ifdef KEY
+  BASELINK,		   "baselink",		      'e', 3,  OPERATOR_UNKNOWN,
+#endif // KEY
+  TEMPLATE_DECL,           "template_decl",           'd', 0,  OPERATOR_UNKNOWN,
+  TEMPLATE_PARM_INDEX,     "template_parm_index",     'x', 0,  OPERATOR_UNKNOWN,
+  TEMPLATE_TYPE_PARM,      "template_type_parm",      't', 0,  OPERATOR_UNKNOWN,
+  TEMPLATE_TEMPLATE_PARM,  "template_template_parm",  't', 0,  OPERATOR_UNKNOWN,
+  BOUND_TEMPLATE_TEMPLATE_PARM, "bound_template_template_parm", 't', 0, OPERATOR_UNKNOWN,
+  TYPENAME_TYPE,           "typename_type",           't', 0,  OPERATOR_UNKNOWN,
+  UNBOUND_CLASS_TEMPLATE,  "unbound_class_template",  't', 0,  OPERATOR_UNKNOWN,
+  TYPEOF_TYPE,             "typeof_type",             't', 0,  OPERATOR_UNKNOWN,
+  USING_DECL,              "using_decl",              'd', 0,  OPERATOR_UNKNOWN,
+  USING_STMT,              "using_directive",         'e', 1,  OPERATOR_UNKNOWN,
+#ifdef KEY
+  DEFAULT_ARG,             "default_arg",             'x', 2,  OPERATOR_UNKNOWN,
+#else
+  DEFAULT_ARG,             "default_arg",             'c', 2,  OPERATOR_UNKNOWN,
+#endif // KEY
+  TEMPLATE_ID_EXPR,        "template_id_expr",        'e', 2,  OPERATOR_UNKNOWN,
+#ifndef KEY	// CPLUS_BINDING does not exist
+  CPLUS_BINDING,           "binding",                 'x', 2,  OPERATOR_UNKNOWN,
+#endif // !KEY
+  OVERLOAD,                "overload",                'x', 1,  OPERATOR_UNKNOWN,
+  WRAPPER,                 "wrapper",                 'x', 1,  OPERATOR_UNKNOWN,
+  LOOKUP_EXPR,             "lookup_expr",             'e', 1,  OPERATOR_UNKNOWN,
+  MODOP_EXPR,              "modop_expr",              'e', 3,  OPERATOR_UNKNOWN,
+  CAST_EXPR,               "cast_expr",               '1', 1,  OPERATOR_UNKNOWN,
+  REINTERPRET_CAST_EXPR,   "reinterpret_cast_expr",   '1', 1,  OPERATOR_UNKNOWN,
+  CONST_CAST_EXPR,         "const_cast_expr",         '1', 1,  OPERATOR_UNKNOWN,
+  STATIC_CAST_EXPR,        "static_cast_expr",        '1', 1,  OPERATOR_UNKNOWN,
+  DYNAMIC_CAST_EXPR,       "dynamic_cast_expr",       '1', 1,  OPERATOR_UNKNOWN,
+  DOTSTAR_EXPR,            "dotstar_expr",            'e', 2,  OPERATOR_UNKNOWN,
+  TYPEID_EXPR,             "typeid_expr",             'e', 1,  OPERATOR_UNKNOWN,
+  PSEUDO_DTOR_EXPR,        "pseudo_dtor_expr",        'e', 3,  OPERATOR_UNKNOWN,
+#ifndef KEY	// SUBOBJECT, CTOR_STMT removed
   SUBOBJECT,               "subobject",               'e', 1,  OPERATOR_UNKNOWN,
   CTOR_STMT,               "ctor_stmt",               'e', 0,  OPERATOR_UNKNOWN,
-  CLEANUP_STMT,            "cleanup_stmt",            'e', 2,  OPERATOR_UNKNOWN,
-  START_CATCH_STMT,        "start_catch_stmt",        'e', 0,  OPERATOR_UNKNOWN,
-  SCOPE_STMT,              "scope_stmt",              'e', 1,  OPERATOR_UNKNOWN,
   CTOR_INITIALIZER,        "ctor_initializer",        'e', 2,  OPERATOR_UNKNOWN,
-  CASE_LABEL,              "case_label",              'e', 2,  OPERATOR_UNKNOWN,
+#else
+  CTOR_INITIALIZER,        "ctor_initializer",        'e', 1,  OPERATOR_UNKNOWN,
+#endif // !KEY
   RETURN_INIT,             "return_init",             'e', 2,  OPERATOR_UNKNOWN,
   TRY_BLOCK,               "try_block",               'e', 2,  OPERATOR_UNKNOWN,
+  EH_SPEC_BLOCK,           "eh_spec_block",           'e', 2,  OPERATOR_UNKNOWN,
   HANDLER,                 "handler",                 'e', 2,  OPERATOR_UNKNOWN,
-  STMT_EXPR,               "stmt_expr",               'e', 1,  OPERATOR_UNKNOWN,
+  MUST_NOT_THROW_EXPR,     "must_not_throw_expr",     'e', 1,  OPERATOR_UNKNOWN,
   TAG_DEFN,                "tag_defn",                'e', 0,  OPERATOR_UNKNOWN,
   IDENTITY_CONV,           "identity_conv",           'e', 1,  OPERATOR_UNKNOWN,
   LVALUE_CONV,             "lvalue_conv",             'e', 1,  OPERATOR_UNKNOWN,
@@ -299,6 +355,63 @@ struct operator_from_tree_t {
   LAST_CPLUS_TREE_CODE,    "last_cplus_tree_code",     0,  0,  OPERATOR_UNKNOWN
 #endif /* GPLUSPLUSFE */
 };
+
+#ifdef KEY
+// The words in 'buf' are in target order. Convert them to host order
+// in place. 'buf' is a two word array.
+void
+WFE_Convert_To_Host_Order (long *buf)
+{
+  if (!Same_Byte_Sex)
+    {
+      int t = buf[0];
+      buf[0] = buf[1];
+      buf[1] = t;
+    }
+}
+
+// Add guard variable GUARD_VAR to a conditional expression that may or may
+// not be evaluated, such as x and y in "foo ? x : y", or y in "if (x && y)".
+// Transform the code to:
+//   guard_var=0
+//   foo ? (guard_var=1, x) : y		// assuming VALUE_WN is x
+// and:
+//   guard_var=0
+//   if (x && (guard_var=1, y))
+static void
+WFE_add_guard_var (tree guard_var, WN *value_wn)
+{
+  WN *stid, *comma;
+
+  // Set the guard variable to 0 before the condition is evaluated.
+  WN *zero_wn = WN_Intconst(MTYPE_I4, 0);
+  stid = WN_Stid(MTYPE_I4, 0, Get_ST(guard_var), MTYPE_To_TY(MTYPE_I4),
+		 zero_wn, 0);
+  WFE_Stmt_Append(stid, Get_Srcpos());
+
+  // Set the guard variable to 1 while evaluating the value of the conditional
+  // expression.
+  WN *one_wn = WN_Intconst(MTYPE_I4, 1);
+  stid = WN_Stid(MTYPE_I4, 0, Get_ST(guard_var), MTYPE_To_TY(MTYPE_I4),
+		 one_wn, 0);
+  if (WN_operator(value_wn) == OPR_COMMA) {
+    comma = value_wn;
+  } else if (WN_operator(WN_kid0(value_wn)) == OPR_COMMA) {
+    comma = WN_kid0(value_wn);
+  } else {
+    // Create a comma.
+    WN *wn0 = WN_CreateBlock();
+    WN *wn1 = WN_kid0(value_wn);
+    WN_Set_Linenum (wn0, Get_Srcpos());
+    comma = WN_CreateComma (OPR_COMMA, WN_rtype(wn1), MTYPE_V, wn0, wn1);
+    WN_kid0(value_wn) = comma;
+  }
+  WN *wn = WN_kid0(comma);
+  FmtAssert(WN_operator(wn) == OPR_BLOCK,
+    ("WFE_add_guard_var: unexpected WN operator"));
+  WN_INSERT_BlockFirst(wn, stid);
+}
+#endif
 
 // check whether the WHIRL operator has subsumed cvtl in its semantics
 // (intended only for integer operations)
@@ -522,11 +635,19 @@ WFE_Expand_End_Stmt_Expr (tree t)
 typedef struct wfe_save_expr_t {
   tree  exp;
   ST   *st;
+#ifdef KEY
+  INT32  level;	// to identify which cleanup the save expr belongs to
+#endif
 } WFE_SAVE_EXPR;
 
 WFE_SAVE_EXPR *wfe_save_expr_stack      = NULL;
 INT32          wfe_save_expr_stack_last = -1;
 INT32          wfe_save_expr_stack_max  = 0;
+
+#ifdef KEY
+INT32 wfe_save_expr_level;	// identify the current cleanup
+INT32 wfe_last_save_expr_level;	// the last cleanup level used
+#endif
 
 static WN*
 WFE_Save_Expr (tree save_exp,
@@ -545,7 +666,12 @@ WFE_Save_Expr (tree save_exp,
   bool     found = false;  
 
   for (i = wfe_save_expr_stack_last; i >= 0; i--) {
+#ifndef KEY
     if (wfe_save_expr_stack [i].exp == exp) {
+#else
+    if (wfe_save_expr_stack [i].exp == save_exp &&
+    	wfe_save_expr_stack [i].level == wfe_save_expr_level) {
+#endif
       st = wfe_save_expr_stack [i].st;
       FmtAssert (st != 0,
                  ("WFE_Save_Expr: st not yet assigned"));
@@ -572,7 +698,12 @@ WFE_Save_Expr (tree save_exp,
                                      sizeof (WFE_SAVE_EXPR));
       }
     }
+#ifndef KEY
     wfe_save_expr_stack [i].exp = exp;
+#else
+    wfe_save_expr_stack [i].exp = save_exp;
+    wfe_save_expr_stack [i].level = wfe_save_expr_level;
+#endif
     wfe_save_expr_stack [i].st  = 0;
     wn = WFE_Expand_Expr (exp);
     st = Gen_Temp_Symbol (ty_idx, "__save_expr");
@@ -724,6 +855,15 @@ WFE_Array_Expr(tree exp,
     else *ty_idx = component_ty_idx;
     return wn;
   }
+#ifdef KEY
+  else if (code == COMPOUND_LITERAL_EXPR) {
+    tree arg0 = DECL_INITIAL (TREE_OPERAND (TREE_OPERAND (exp, 0), 0));
+    ST *st = WFE_Generate_Temp_For_Initialized_Aggregate (arg0, "");
+    wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
+    *ty_idx = component_ty_idx == 0 ? ST_type(st) : component_ty_idx;
+    return wn;
+  }
+#endif /* KEY */
   else {
     Is_True(FALSE,
 	    ("WFE_Array_Expr: unsupported node for base of ARRAY_REF"));
@@ -790,6 +930,10 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
 			    Get_Integer_Value(DECL_FIELD_BIT_OFFSET(arg1)))
 			  / BITSPERBYTE;
     else ofst = 0;
+#ifdef KEY
+    FmtAssert (DECL_FIELD_ID(arg1) != 0,
+               ("WFE_Lhs_Of_Modify_Expr: DECL_FIELD_ID used but not set"));
+#endif
     wn = WFE_Lhs_Of_Modify_Expr(assign_code, arg0, need_result, ty_idx0, 
 				ofst+component_offset,
 			        field_id + DECL_FIELD_ID(arg1), is_bit_field, 
@@ -846,10 +990,25 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
       // TODO: How to support a bit-field output of non-integral
       // number of bytes?
       if (rtype == MTYPE_M && desc == MTYPE_M) {
+#ifndef KEY
         FmtAssert(TY_size(desc_ty_idx) == MTYPE_byte_size(Def_Int_Mtype),
                   ("Size of ASM struct opnd must be equal to register size"));
         desc = rtype = Def_Int_Mtype;
         desc_ty_idx = hi_ty_idx = MTYPE_To_TY(Def_Int_Mtype);
+#else
+	// Handle asm like:
+	//        asm("cfc1 %0,$31":"=r"(*s));
+	// where, s is a pointer to a structure.
+	if (rtype == MTYPE_M && desc == MTYPE_M) {
+	  if (TY_size(desc_ty_idx) == MTYPE_byte_size(Def_Int_Mtype)) {
+	    desc = rtype = Def_Int_Mtype;
+	    desc_ty_idx = hi_ty_idx = MTYPE_To_TY(Def_Int_Mtype);
+	  } else {
+	    desc = rtype = MTYPE_I4;
+	    desc_ty_idx = hi_ty_idx = MTYPE_To_TY(MTYPE_I4);
+	  }
+	}
+#endif
       }
       ST *rhs_st = MTYPE_To_PREG(desc);
       rhs_wn = WN_CreateLdid (OPR_LDID, rtype,
@@ -1601,6 +1760,22 @@ WFE_Address_Of(tree arg0)
     {
       st = Get_ST (arg0);
       ty_idx = ST_type (st);
+#ifdef KEY
+      // Arg0 is the virtual function table (vtable) for a class.  Initialize
+      // the table.
+      if (code0 == VAR_DECL) {
+	if (DECL_INITIAL(arg0) &&
+	    DECL_VIRTUAL_P(arg0) &&
+	    !DECL_EXTERNAL(arg0)) {
+	  tree init = DECL_INITIAL(arg0);
+	  if (TREE_CODE(init) != ERROR_MARK) {
+	    FmtAssert (TREE_CODE(init) == CONSTRUCTOR,
+		       ("Unexpected initializer for virtual table"));
+	    WFE_Initialize_Decl(arg0);
+	  }
+	}
+      }
+#endif
       // for VLAs, use the base_st instead of st
       if (code0 == VAR_DECL &&
           st != ST_base(st)) {
@@ -1730,6 +1905,16 @@ WFE_Address_Of(tree arg0)
     }
     break;
 
+#ifdef KEY
+	  case COMPOUND_LITERAL_EXPR:
+	    {
+	        arg0 = DECL_INITIAL (TREE_OPERAND (TREE_OPERAND (arg0, 0), 0));
+		st = WFE_Generate_Temp_For_Initialized_Aggregate (arg0, "");
+	        wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
+	    }
+	    break;
+#endif
+
   default:
     {
       Fail_FmtAssertion ("WFE_Address_Of: Unexpected operand %s",
@@ -1743,6 +1928,305 @@ WFE_Address_Of(tree arg0)
   return wn;
 }
 
+#ifdef TARG_X8664
+/* expand a VA_ARG_EXPR node for scalar type according to X86-64 ABI and 
+ * return the WHIRL node that represents the address to be dereferenced;
+ * 'twice' is true is loading two consecutive parameters of the same type
+ * because they belong to a struct; currently, twice is TRUE only if isfloat
+ * is FALSE */
+static WN *WFE_x8664_va_arg(WN *ap_wn, BOOL isfloat, TY_IDX ty_idx, BOOL twice)
+{
+  /* compare gp_offset with 48 or fp_offset with 176 */
+  WN *wn0 = WN_Iload(MTYPE_I4, !isfloat ? 0 : 4, MTYPE_To_TY(MTYPE_I4), 
+      		     WN_CopyNode(ap_wn));
+  WN *wn1 = WN_Intconst(MTYPE_I4, (!isfloat ? 48 : 176) - (twice ? 8 : 0));
+  WN *wn = WN_Relational(OPR_GE, MTYPE_I4, wn0, wn1);
+  LABEL_IDX lab1;
+  New_LABEL (CURRENT_SYMTAB, lab1);
+  WN *lab1_wn = WN_CreateLabel ((ST_IDX) 0, lab1, 0, NULL);
+  wn = WN_CreateTruebr(lab1, wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  ST *arg_temp_st = Gen_Temp_Symbol(Make_Pointer_Type(ty_idx), ".va_arg");
+  /* compute reg_save_area+gp_offset/fp_offset and store to arg_temp_st */
+  wn0 = WN_Iload(MTYPE_I4, !isfloat ? 0 : 4, MTYPE_To_TY(MTYPE_I4), 
+      		 WN_CopyNode(ap_wn));
+  wn1 = WN_Iload(Pointer_Mtype, 16, MTYPE_To_TY(Pointer_Mtype), 
+		 WN_CopyNode(ap_wn));
+  wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+  wn = WN_Stid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* increment gp_offset by 8 or fp_offset by 16 */
+  wn0 = WN_Iload(MTYPE_I4, !isfloat ? 0 : 4, MTYPE_To_TY(MTYPE_I4), 
+      		 WN_CopyNode(ap_wn));
+  wn1 = WN_Intconst(MTYPE_I4, (!isfloat ? 8 : 16) * ((INT)twice+1));
+  wn = WN_Binary(OPR_ADD, MTYPE_I4, wn0, wn1);
+  wn = WN_Istore(MTYPE_I4, !isfloat ? 0 : 4, 
+		 Make_Pointer_Type(MTYPE_To_TY(MTYPE_I4)), 
+		 WN_CopyNode(ap_wn), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* branch around next part */
+  LABEL_IDX lab2;
+  New_LABEL (CURRENT_SYMTAB, lab2);
+  WN *lab2_wn = WN_CreateLabel ((ST_IDX) 0, lab2, 0, NULL);
+  wn = WN_CreateGoto(lab2);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  WFE_Stmt_Append (lab1_wn, Get_Srcpos ());
+
+  /* store overflow_arg_area pointer to arg_temp_st */
+  wn0 = WN_Iload(Pointer_Mtype, 8, Make_Pointer_Type(ty_idx), 
+		 WN_CopyNode(ap_wn));
+  wn = WN_Stid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx), wn0);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* increment overflow_arg_area pointer by 8 */
+  wn0 = WN_Iload(Pointer_Mtype, 8, MTYPE_To_TY(Pointer_Mtype), 
+		 WN_CopyNode(ap_wn));
+  wn1 = WN_Intconst(MTYPE_U8, twice ? 16 : 8);
+  wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+  wn = WN_Istore(Pointer_Mtype, 8,Make_Pointer_Type(MTYPE_To_TY(Pointer_Mtype)),
+		 WN_CopyNode(ap_wn), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  WFE_Stmt_Append (lab2_wn, Get_Srcpos ());
+
+  return WN_Ldid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx));
+}
+
+/* expand a VA_ARG_EXPR node for struct type being passed in 2 different classes
+ * of registers, according to X86-64 ABI and return the WHIRL node that 
+ * represents the address to be dereferenced; this requires allocating a
+ * temporary for assembling the struct if passed in registers; isfloat0 is 
+ * for the first 8-byte and isfloat1 is for the second 8-byte  */
+static WN *WFE_x8664_va_arg_2_mixed(WN *ap_wn, BOOL isfloat0, BOOL isfloat1, 
+				    TY_IDX ty_idx)
+{
+  /* compare gp_offset with 48 */
+  WN *wn0 = WN_Iload(MTYPE_I4, 0, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
+  WN *wn1 = WN_Intconst(MTYPE_I4, 48);
+  WN *wn = WN_Relational(OPR_GE, MTYPE_I4, wn0, wn1);
+  LABEL_IDX lab1;
+  New_LABEL (CURRENT_SYMTAB, lab1);
+  WN *lab1_wn = WN_CreateLabel ((ST_IDX) 0, lab1, 0, NULL);
+  wn = WN_CreateTruebr(lab1, wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+  /* compare fp_offset with 176 */
+  wn0 = WN_Iload(MTYPE_I4, 4, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
+  wn1 = WN_Intconst(MTYPE_I4, 176);
+  wn = WN_Relational(OPR_GE, MTYPE_I4, wn0, wn1);
+  wn = WN_CreateTruebr(lab1, wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* allocate a temporary location to assemble the structure value */
+  ST *struct_temp_st = Gen_Temp_Symbol(ty_idx, ".va_arg_struct");
+
+  /* compute reg_save_area+gp_offset and store dereferenced value to 
+   * struct_temp_st */
+  wn0 = WN_Iload(MTYPE_I4, 0, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
+  wn1 = WN_Iload(Pointer_Mtype, 16, MTYPE_To_TY(Pointer_Mtype), 
+		 WN_CopyNode(ap_wn));
+  wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+  wn = WN_Iload(MTYPE_I8, 0, MTYPE_To_TY(MTYPE_I8), wn);
+  wn = WN_Stid(MTYPE_I8, isfloat0 ? 8 : 0, struct_temp_st, 
+	       MTYPE_To_TY(MTYPE_I8), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+  /* compute reg_save_area+fp_offset and store dereferenced value to 
+   * struct_temp_st */
+  wn0 = WN_Iload(MTYPE_I4, 4, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
+  wn1 = WN_Iload(Pointer_Mtype, 16, MTYPE_To_TY(Pointer_Mtype), 
+		 WN_CopyNode(ap_wn));
+  wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+  wn = WN_Iload(MTYPE_F8, 0, MTYPE_To_TY(MTYPE_F8), wn);
+  wn = WN_Stid(MTYPE_F8, isfloat0 ? 0 : 8, struct_temp_st, 
+	       MTYPE_To_TY(MTYPE_F8), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* increment gp_offset by 8 */
+  wn0 = WN_Iload(MTYPE_I4, 0, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
+  wn1 = WN_Intconst(MTYPE_I4, 8);
+  wn = WN_Binary(OPR_ADD, MTYPE_I4, wn0, wn1);
+  wn = WN_Istore(MTYPE_I4, 0, Make_Pointer_Type(MTYPE_To_TY(MTYPE_I4)), 
+		 WN_CopyNode(ap_wn), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+  /* increment fp_offset by 16 */
+  wn0 = WN_Iload(MTYPE_I4, 4, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
+  wn1 = WN_Intconst(MTYPE_I4, 16);
+  wn = WN_Binary(OPR_ADD, MTYPE_I4, wn0, wn1);
+  wn = WN_Istore(MTYPE_I4, 4, Make_Pointer_Type(MTYPE_To_TY(MTYPE_I4)), 
+		 WN_CopyNode(ap_wn), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* put the address of struct_temp_st in arg_temp_st */
+  ST *arg_temp_st = Gen_Temp_Symbol(Make_Pointer_Type(ty_idx), ".va_arg");
+  wn = WN_Lda(Pointer_Mtype, 0, struct_temp_st, 0);
+  Set_ST_addr_saved(struct_temp_st);
+  wn = WN_Stid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* branch around next part */
+  LABEL_IDX lab2;
+  New_LABEL (CURRENT_SYMTAB, lab2);
+  WN *lab2_wn = WN_CreateLabel ((ST_IDX) 0, lab2, 0, NULL);
+  wn = WN_CreateGoto(lab2);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  WFE_Stmt_Append (lab1_wn, Get_Srcpos ());
+
+  /* store overflow_arg_area pointer to arg_temp_st */
+  wn0 = WN_Iload(Pointer_Mtype, 8, Make_Pointer_Type(ty_idx), 
+		 WN_CopyNode(ap_wn));
+  wn = WN_Stid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx), wn0);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* increment overflow_arg_area pointer by 16 */
+  wn0 = WN_Iload(Pointer_Mtype, 8, MTYPE_To_TY(Pointer_Mtype), 
+		 WN_CopyNode(ap_wn));
+  wn1 = WN_Intconst(MTYPE_U8, 16);
+  wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+  wn = WN_Istore(Pointer_Mtype, 8,Make_Pointer_Type(MTYPE_To_TY(Pointer_Mtype)),
+		 WN_CopyNode(ap_wn), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  WFE_Stmt_Append (lab2_wn, Get_Srcpos ());
+
+  return WN_Ldid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx));
+}
+
+/* expand a VA_ARG_EXPR node for struct type being passed in 2 float
+ * registers, according to X86-64 ABI and return the WHIRL node that 
+ * represents the address to be dereferenced; this requires allocating a
+ * temporary for assembling the struct if passed in registers, because each
+ * float register is saved into 128 bit locations */
+static WN *WFE_x8664_va_arg_2_float(WN *ap_wn, TY_IDX ty_idx)
+{
+  LABEL_IDX lab1;
+  New_LABEL (CURRENT_SYMTAB, lab1);
+  WN *lab1_wn = WN_CreateLabel ((ST_IDX) 0, lab1, 0, NULL);
+  /* compare fp_offset with 160 (176 - 16) */
+  WN *wn0 = WN_Iload(MTYPE_I4, 4, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
+  WN *wn1 = WN_Intconst(MTYPE_I4, 160);
+  WN *wn = WN_Relational(OPR_GE, MTYPE_I4, wn0, wn1);
+  wn = WN_CreateTruebr(lab1, wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* allocate a temporary location to assemble the structure value */
+  ST *struct_temp_st = Gen_Temp_Symbol(ty_idx, ".va_arg_struct");
+
+  /* compute reg_save_area+fp_offset and store 1st dereferenced value to 
+   * struct_temp_st */
+  wn0 = WN_Iload(MTYPE_I4, 4, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
+  wn1 = WN_Iload(Pointer_Mtype, 16, MTYPE_To_TY(Pointer_Mtype), 
+		 WN_CopyNode(ap_wn));
+  wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+  wn = WN_Iload(MTYPE_F8, 0, MTYPE_To_TY(MTYPE_F8), wn);
+  wn = WN_Stid(MTYPE_F8, 0, struct_temp_st, MTYPE_To_TY(MTYPE_F8), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+  /* compute reg_save_area+fp_offset and store 2nd dereferenced value to 
+   * struct_temp_st */
+  wn0 = WN_Iload(MTYPE_I4, 4, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
+  wn1 = WN_Iload(Pointer_Mtype, 16, MTYPE_To_TY(Pointer_Mtype), 
+		 WN_CopyNode(ap_wn));
+  wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+  wn = WN_Iload(MTYPE_F8, 16, MTYPE_To_TY(MTYPE_F8), wn);
+  wn = WN_Stid(MTYPE_F8, 8, struct_temp_st, MTYPE_To_TY(MTYPE_F8), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* increment fp_offset by 32 */
+  wn0 = WN_Iload(MTYPE_I4, 4, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
+  wn1 = WN_Intconst(MTYPE_I4, 32);
+  wn = WN_Binary(OPR_ADD, MTYPE_I4, wn0, wn1);
+  wn = WN_Istore(MTYPE_I4, 4, Make_Pointer_Type(MTYPE_To_TY(MTYPE_I4)), 
+		 WN_CopyNode(ap_wn), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* put the address of struct_temp_st in arg_temp_st */
+  ST *arg_temp_st = Gen_Temp_Symbol(Make_Pointer_Type(ty_idx), ".va_arg");
+  wn = WN_Lda(Pointer_Mtype, 0, struct_temp_st, 0);
+  Set_ST_addr_saved(struct_temp_st);
+  wn = WN_Stid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* branch around next part */
+  LABEL_IDX lab2;
+  New_LABEL (CURRENT_SYMTAB, lab2);
+  WN *lab2_wn = WN_CreateLabel ((ST_IDX) 0, lab2, 0, NULL);
+  wn = WN_CreateGoto(lab2);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  WFE_Stmt_Append (lab1_wn, Get_Srcpos ());
+
+  /* store overflow_arg_area pointer to arg_temp_st */
+  wn0 = WN_Iload(Pointer_Mtype, 8, Make_Pointer_Type(ty_idx), 
+		 WN_CopyNode(ap_wn));
+  wn = WN_Stid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx), wn0);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  /* increment overflow_arg_area pointer by 16 */
+  wn0 = WN_Iload(Pointer_Mtype, 8, MTYPE_To_TY(Pointer_Mtype), 
+		 WN_CopyNode(ap_wn));
+  wn1 = WN_Intconst(MTYPE_U8, 16);
+  wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+  wn = WN_Istore(Pointer_Mtype, 8,Make_Pointer_Type(MTYPE_To_TY(Pointer_Mtype)),
+		 WN_CopyNode(ap_wn), wn);
+  WFE_Stmt_Append (wn, Get_Srcpos ());
+
+  WFE_Stmt_Append (lab2_wn, Get_Srcpos ());
+
+  return WN_Ldid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx));
+}
+#endif
+
+#ifdef KEY
+static bool inside_eh_region = false;
+// Setup an EH region, typically across a function call.
+void
+Setup_EH_Region (bool for_unwinding)
+{
+    WN * region_body;
+
+    if (for_unwinding)
+	region_body = WFE_Stmt_Pop (wfe_stmk_region_body);
+    else
+    	{
+	    region_body = WFE_Stmt_Pop (wfe_stmk_call_region_body);
+	    inside_eh_region = false;
+	}
+    INITV_IDX iv;
+    LABEL_IDX pad = 0;
+
+    if (!for_unwinding) pad = lookup_cleanups (iv);
+    else
+    {
+	iv = New_INITV();
+        INITV_Set_ZERO (Initv_Table[iv], MTYPE_U4, 1);
+    }
+
+    INITV_IDX initv_label = New_INITV();
+    if (pad)
+    	INITV_Init_Label (initv_label, pad, 1);
+    else
+	INITV_Set_ZERO (Initv_Table[initv_label], MTYPE_U4, 1);
+    INITV_IDX blk = New_INITV();
+    INITV_Init_Block (blk, initv_label);
+
+    Set_INITV_next (initv_label, iv);
+
+    TY_IDX ty = MTYPE_TO_TY_array[MTYPE_U4];
+    ST * ereg = Gen_Temp_Named_Symbol (ty, "dummy1", CLASS_VAR,
+				SCLASS_EH_REGION_SUPP);
+    Set_ST_is_initialized (*ereg);
+    Set_ST_is_not_used (*ereg);
+    INITO_IDX ereg_supp = New_INITO (ST_st_idx(ereg), blk);
+
+    WFE_Stmt_Append (WN_CreateRegion (REGION_KIND_EH, region_body,
+      WN_CreateBlock(), WN_CreateBlock(), New_Region_Id(), ereg_supp), Get_Srcpos());
+    Set_PU_has_region (Get_Current_PU());
+    Set_PU_has_exc_scopes (Get_Current_PU());
+}
+#endif // KEY
 
 /* expand gnu expr tree into symtab & whirl */
 WN *
@@ -1753,7 +2237,11 @@ WFE_Expand_Expr (tree exp,
 		 INT64 component_offset,
 		 UINT16 field_id,
 		 bool is_bit_field,
-		 bool is_aggr_init_via_ctor)
+		 bool is_aggr_init_via_ctor
+#ifdef KEY
+		 , WN *target_wn
+#endif
+		 )
 {
   FmtAssert(exp != NULL_TREE, ("WFE_Expand_Expr: null argument"));
   enum tree_code code = TREE_CODE (exp);
@@ -1861,9 +2349,20 @@ WFE_Expand_Expr (tree exp,
 
     case TARGET_EXPR:
       {
-	st            = Get_ST (TREE_OPERAND(exp, 0));
-	TY_IDX ty     = ST_type(st);
-	TYPE_ID mtype = TY_mtype (ty);
+#ifdef KEY
+	tree opnd0 = TREE_OPERAND(exp, 0);
+	st = NULL;
+	TY_IDX ty;
+	TYPE_ID mtype;
+	// We might have changed the VAR_DECL to an INDIRECT_REF, in which case
+	// use the referenced symbol instead of creating a new one.
+	if (TREE_CODE(opnd0) != INDIRECT_REF)
+#endif
+	{
+	st    = Get_ST (TREE_OPERAND(exp, 0));
+	ty    = ST_type(st);
+	mtype = TY_mtype (ty);
+	}
 	/*
 	 * Usually operand 1 of the target_expr will be an aggr_init_expr
 	 * for which AGGR_INIT_VIA_CTOR_P holds.  Such a node has the
@@ -1887,6 +2386,13 @@ WFE_Expand_Expr (tree exp,
 	 * cleanup in this case.
 	 */
 	tree t = TREE_OPERAND(exp, 1);
+#ifdef KEY
+	if (t == NULL_TREE) {
+	  t = TREE_OPERAND(exp, 3);
+	  FmtAssert(t != NULL_TREE,
+		    ("WFE_Expand_Expr: no initializer found for TARGET_EXPR"));
+	}
+#endif
  	if (TREE_CODE(t) == TARGET_EXPR)
 	  TREE_OPERAND(t, 2) = 0;
 	if (TREE_CODE(t) == AGGR_INIT_EXPR && AGGR_INIT_VIA_CTOR_P(t)) {
@@ -1895,15 +2401,78 @@ WFE_Expand_Expr (tree exp,
 	  WFE_Expand_Expr (t, false, 0, 0, 0, 0, false, true);
 	}
 	else {
+#ifdef KEY
+	  // If opnd 0 of the TARGET_EXPR is an INDIRECT_REF, then tell
+	  // WFE_Expand_Expr to put the result in the area addressed by the
+	  // INDIRECT_REF.
+	  if (TREE_CODE(opnd0) == INDIRECT_REF) {
+	    ST *st = Get_ST(TREE_OPERAND(opnd0, 0));
+	    WN *ldid_wn = WN_Ldid (Pointer_Mtype, 0, st, ST_type(st));
+	    WN *result_wn = WFE_Expand_Expr (t, TRUE, 0, 0, 0, 0, FALSE, FALSE,
+					     ldid_wn);
+	    // If the result of expanding t is not an indirect reference to the
+	    // result area we want, then it means t has not copied the value
+	    // into the result area.  Do the copy.
+	    if (result_wn &&
+		!(WN_operator(result_wn) == OPR_ILOAD &&
+		  WN_operator(WN_kid0(result_wn)) == OPR_LDID &&
+		  WN_st(WN_kid0(result_wn)) == st)) {
+	      WFE_Stmt_Append(WN_Istore(WN_rtype(result_wn), 0, ST_type(st),
+					WN_CopyNode(ldid_wn), result_wn),
+			      Get_Srcpos());
+	    }
+	  }
+	  // If the initializer is a call expr and the type has a copy
+	  // constructor, then tell the call expr to put the result directly
+	  // into ST.  It is wrong to put the call result into a temp and then
+	  // use a MLDID-MSTID pair to copy from the temp to ST.
+	  else if (TY_return_in_mem(Get_TY(TREE_TYPE(t))) &&
+		   TREE_CODE(t) == CALL_EXPR) {
+	    WN *target = WN_Lda (Pointer_Mtype, 0, st, 0);
+	    WFE_Expand_Expr (t, TRUE, 0, 0, 0, 0, FALSE, FALSE, target);
+	  } else
+#endif
 	  WFE_Stmt_Append(WN_Stid (mtype, ST_ofst(st), st, ty,
 		        	   WFE_Expand_Expr (t)),
 			  Get_Srcpos());
 	}
-        if (TREE_OPERAND(exp, 2))
+        if (TREE_OPERAND(exp, 2) 
+#ifdef KEY
+// We should not be emitting all cleanups
+	&& TREE_LANG_FLAG_7 (exp)
+#endif
+	)
+#ifdef KEY
+          Push_Temp_Cleanup(TREE_OPERAND(exp, 2), true, CLEANUP_EH_ONLY (exp));
+#else
           Push_Temp_Cleanup(TREE_OPERAND(exp, 2), true);
+#endif
+
+#ifdef KEY
+	// If the target area was supplied by the caller, then return an ILOAD
+	// of the target pointer.
+	if (TREE_CODE(opnd0) == INDIRECT_REF) {
+	  ST *st = Get_ST(TREE_OPERAND(opnd0, 0));
+	  TY_IDX ty_idx = Get_TY (TREE_TYPE(exp));
+	  WN *ldid_wn = WN_Ldid (Pointer_Mtype, 0, st, ST_type(st));
+	  wn = WN_Iload(TY_mtype(ty_idx), 0, ty_idx, ldid_wn);
+	  break;
+	}
+#endif
       }
 
     case CONSTRUCTOR:
+#ifdef KEY
+      // In general, if the result is not needed and EXP has no side effects,
+      // then there is no need to expand EXP, regardless of what EXP is.  This
+      // is what gcc's expand_expr does.  However, doing so breaks the WHIRL
+      // front-end, so limit this to CONSTRUCTOR for now.
+      if (!need_result &&
+	  !TREE_SIDE_EFFECTS(exp)) {
+	return NULL;
+      }
+#endif
+
     case PARM_DECL: // for formal parms
     case VAR_DECL:
       {
@@ -1993,6 +2562,131 @@ WFE_Expand_Expr (tree exp,
       }
       break;
 
+#ifdef KEY	// Use the code from kgccfe, which is newer and can handle
+		// i386.
+    case REAL_CST:
+      {
+	TCON tcon;
+	ty_idx = Get_TY (TREE_TYPE(exp));
+#if (defined(TARG_IA32) || defined(TARG_X8664)) && !defined(REAL_ARITHMETIC)
+	tcon = Host_To_Targ_Float (TY_mtype (ty_idx), TREE_REAL_CST(exp));
+#else
+	REAL_VALUE_TYPE real = TREE_REAL_CST(exp);
+	int rval;
+
+	long rbuf [4];
+#ifdef KEY
+	INT32 rbuf_w[4]; // this is needed when long is 64-bit
+	INT32 i;
+#endif
+
+	switch (TY_mtype (ty_idx)) {
+	  case MTYPE_F4:
+	    REAL_VALUE_TO_TARGET_SINGLE (real, rval);
+	    tcon = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &rval);
+	    break;
+	  case MTYPE_F8:
+	    REAL_VALUE_TO_TARGET_DOUBLE (real, rbuf);
+#ifdef KEY
+	    WFE_Convert_To_Host_Order(rbuf);
+	    for (i = 0; i < 4; i++)
+	      rbuf_w[i] = rbuf[i];
+	    tcon = Host_To_Targ_Float (MTYPE_F8, *(double *) &rbuf_w);
+#else
+	    tcon = Host_To_Targ_Float (MTYPE_F8, *(double *) &rbuf);
+#endif
+	    break;
+#if defined(TARG_IA32) || defined(TARG_X8664) 
+	  case MTYPE_FQ:
+	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, rbuf);
+	    for (i = 0; i < 4; i++)
+	      rbuf_w[i] = rbuf[i];
+	    tcon = Host_To_Targ_Quad (*(long double *) &rbuf_w);
+	    break;	    
+#endif /* TARG_IA32 */
+	  default:
+	    FmtAssert(FALSE, ("WFE_Expand_Expr unexpected float size"));
+	    break;
+	}
+#endif
+	st = New_Const_Sym (Enter_tcon (tcon), ty_idx);
+	wn = WN_CreateConst (OPR_CONST, TY_mtype (ty_idx), MTYPE_V, st);
+      }
+      break;
+
+    case COMPLEX_CST:
+      {
+	TCON tcon;
+	ty_idx = Get_TY (TREE_TYPE(exp));
+#if (defined(TARG_IA32) || defined(TARG_X8664)) && !defined(REAL_ARITHMETIC)
+        tcon = Host_To_Targ_Complex (TY_mtype (ty_idx),
+				     TREE_REAL_CST(TREE_REALPART(exp)),
+				     TREE_REAL_CST(TREE_IMAGPART(exp)));
+#else
+	REAL_VALUE_TYPE real = TREE_REAL_CST(TREE_REALPART(exp));
+	REAL_VALUE_TYPE imag = TREE_REAL_CST(TREE_IMAGPART(exp));
+        int rval;
+	int ival;
+	long rbuf [4];
+	long ibuf [4];
+#ifdef KEY
+	INT32 rbuf_w [4]; // this is needed when long is 64-bit
+	INT32 ibuf_w [4]; // this is needed when long is 64-bit
+	INT32 i;
+#endif 
+	switch (TY_mtype (ty_idx)) {
+	  case MTYPE_C4:
+	    REAL_VALUE_TO_TARGET_SINGLE (real, rval);
+	    REAL_VALUE_TO_TARGET_SINGLE (imag, ival);
+	    tcon = Host_To_Targ_Complex_4 (MTYPE_C4,
+					   *(float *) &rval,
+					   *(float *) &ival);
+	    break;
+	  case MTYPE_C8:
+	    REAL_VALUE_TO_TARGET_DOUBLE (real, rbuf);
+	    REAL_VALUE_TO_TARGET_DOUBLE (imag, ibuf);
+#ifdef KEY
+	    WFE_Convert_To_Host_Order(rbuf);
+	    WFE_Convert_To_Host_Order(ibuf);
+	    for (i = 0; i < 4; i++) {
+	      rbuf_w[i] = rbuf[i];
+	      ibuf_w[i] = ibuf[i];
+	    }
+	    tcon = Host_To_Targ_Complex (MTYPE_C8,
+					 *(double *) &rbuf_w,
+					 *(double *) &ibuf_w);
+#else
+	    tcon = Host_To_Targ_Complex (MTYPE_C8,
+					 *(double *) &rbuf,
+					 *(double *) &ibuf);
+#endif
+	    break;
+#ifdef KEY
+	case MTYPE_CQ:
+	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, rbuf);
+	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (imag, ibuf);
+	    WFE_Convert_To_Host_Order(rbuf);
+	    WFE_Convert_To_Host_Order(ibuf);
+	    for (i = 0; i < 4; i++) {
+	      rbuf_w[i] = rbuf[i];
+	      ibuf_w[i] = ibuf[i];
+	    }
+	    tcon = Host_To_Targ_Complex_Quad( *(long double *) &rbuf_w,
+					      *(long double *) &ibuf_w );
+	  break;
+#endif
+	  default:
+	    FmtAssert(FALSE, ("WFE_Expand_Expr unexpected float size"));
+	    break;
+	}
+#endif
+	st = New_Const_Sym (Enter_tcon (tcon), ty_idx);
+	wn = WN_CreateConst (OPR_CONST, TY_mtype (ty_idx), MTYPE_V, st);
+      }
+      break;
+
+#else	// KEY
+
     case REAL_CST:
       {
 	TCON tcon;
@@ -2014,6 +2708,7 @@ WFE_Expand_Expr (tree exp,
 	wn = WN_CreateConst (OPR_CONST, TY_mtype (ty_idx), MTYPE_V, st);
       }
       break;
+#endif	// KEY
 
     // this should occur only if string is a statement expression
     case STRING_CST:
@@ -2063,10 +2758,18 @@ WFE_Expand_Expr (tree exp,
 	  WFE_Stmt_Append (wn0, Get_Srcpos());
 	  wn0 = WN_Ldid (complex_mtype, preg, preg_st, ty_idx);
 	}
+#ifdef KEY
+	// Fix bug 603
+        wn = WN_Binary (OPR_COMPLEX, complex_mtype,
+			WN_Unary (OPR_REALPART, float_mtype, wn0),
+			WN_Unary (OPR_NEG, float_mtype,
+				  WN_Unary (OPR_IMAGPART, float_mtype, wn0)));
+#else
         wn = WN_Binary (OPR_COMPLEX, complex_mtype,
 			WN_Unary (OPR_REALPART, float_mtype, wn0),
 			WN_Unary (OPR_NEG, float_mtype,
 				  WN_Unary (OPR_REALPART, float_mtype, wn0)));
+#endif
       }
       break;
 
@@ -2084,6 +2787,14 @@ WFE_Expand_Expr (tree exp,
 	if (mtyp == MTYPE_M) 
 	  break;
 	if (MTYPE_is_integral(mtyp) && MTYPE_is_integral(WN_rtype(wn))) {
+	  // For 32-bit to 64-bit conversion, make the result have the same
+	  // sign as the source.  Fix bug 480.
+	  if (MTYPE_size_min(mtyp) == 64 &&
+	      MTYPE_size_min(WN_rtype(wn)) == 32 &&
+	      MTYPE_is_signed(mtyp) != MTYPE_is_signed(WN_rtype(wn))) {
+	    mtyp = MTYPE_complement(mtyp);
+	  }
+
 	  if (MTYPE_size_min(mtyp) < MTYPE_size_min(WN_rtype(wn))) {
 	    if (MTYPE_size_min(mtyp) != 32)
 	      wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V,
@@ -2150,6 +2861,10 @@ WFE_Expand_Expr (tree exp,
 			        Get_Integer_Value(DECL_FIELD_BIT_OFFSET(arg1)))
 			      / BITSPERBYTE;
 	else ofst = 0;
+#ifdef KEY
+	FmtAssert (DECL_FIELD_ID(arg1) != 0,
+                   ("WFE_Expand_Expr: DECL_FIELD_ID used but not set"));
+#endif
         wn = WFE_Expand_Expr (arg0, TRUE, nop_ty_idx, ty_idx, ofst+component_offset,
 			      field_id + DECL_FIELD_ID(arg1), is_bit_field);
       }
@@ -2270,6 +2985,19 @@ WFE_Expand_Expr (tree exp,
 	  if (mtyp == WN_rtype(wn0) || mtyp == MTYPE_V)
 	    wn = wn0;
 	  else {
+#ifdef KEY // prevent zero extension when converting to 64-bit address type
+	    if (TREE_CODE(TREE_TYPE(exp)) == POINTER_TYPE &&
+		MTYPE_byte_size(FE_Pointer_Type_To_Mtype()) == 8) {
+	      if (WN_operator(wn0) == OPR_CVT && WN_desc(wn0) == MTYPE_U4) {
+		WN_set_desc(wn0, MTYPE_I4);
+		wn = WN_Cvt(WN_rtype(wn0), mtyp, wn0);
+	      }
+	      else if (MTYPE_byte_size(WN_rtype(wn0) == 4))
+		wn = WN_Cvt(MTYPE_I4, mtyp, wn0);
+	      else wn = WN_Cvt(WN_rtype(wn0), mtyp, wn0);
+	    }
+	    else
+#endif
 	    wn = WN_Cvt(WN_rtype(wn0), mtyp, wn0);
 	    // The following opcodes are not valid for MIPS
 	    if (WN_opcode(wn) == OPC_I4U4CVT ||
@@ -2305,8 +3033,10 @@ WFE_Expand_Expr (tree exp,
       }
       break;
 
+#ifndef KEY
     case SUBOBJECT:
       break;
+#endif // !KEY
 
     case CLEANUP_POINT_EXPR: 
       {
@@ -2442,8 +3172,20 @@ WFE_Expand_Expr (tree exp,
       {
         wn0 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 0),
 						   Boolean_type);
+#ifdef KEY
+	// Evaluate the second condition.  Add guard variable to the cleanup if
+	// there is cleanup.
+        WFE_Guard_Var_Push();
         wn1 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 1),
 						   Boolean_type);
+        tree guard_var = WFE_Guard_Var_Pop();
+	if (guard_var != NULL_TREE) {
+	  WFE_add_guard_var(guard_var, wn1);
+	}
+#else
+        wn1 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 1),
+						   Boolean_type);
+#endif
         wn  = WN_Binary (Operator_From_Tree [code].opr,
                          Boolean_type, wn0, wn1);
         if (Boolean_type != MTYPE_B &&
@@ -2515,10 +3257,35 @@ WFE_Expand_Expr (tree exp,
 	  WFE_Stmt_Pop (wfe_stmk_if_else);
         }
 	else {
+#ifdef KEY
+	  // Prepare a guard variable for each part of the conditional, in case
+	  // the conditional has a cleanup that is executed after the whole
+	  // conditional expression is evaluated.  The guard variable ensures
+	  // that a cleanup is executed only if its part of the conditional is
+	  // executed.
+	  WFE_Guard_Var_Push();
+	  wn1 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 1),
+						     TY_mtype (ty_idx));
+	  tree guard_var1 = WFE_Guard_Var_Pop();
+
+	  WFE_Guard_Var_Push();
+	  wn2 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 2),
+						     TY_mtype (ty_idx));
+	  tree guard_var2 = WFE_Guard_Var_Pop();
+
+	  // Add guard variables if they are needed.
+	  if (guard_var1 != NULL_TREE) {
+	    WFE_add_guard_var(guard_var1, wn1);
+	  }
+	  if (guard_var2 != NULL_TREE) {
+	    WFE_add_guard_var(guard_var2, wn2);
+	  }
+#else
 	  wn1 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 1),
 						     TY_mtype (ty_idx));
 	  wn2 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 2),
 						     TY_mtype (ty_idx));
+#endif
 	  wn  = WN_CreateExp3 (OPR_CSELECT, Mtype_comparison (TY_mtype (ty_idx)),
 			   MTYPE_V, wn0, wn1, wn2);
 	  Set_PU_has_very_high_whirl (Get_Current_PU ());
@@ -2593,14 +3360,39 @@ WFE_Expand_Expr (tree exp,
 	  else WN_set_desc(wn, Mtype_AlignmentClass(bsiz >> 3, MTYPE_CLASS_UNSIGNED_INTEGER));
 	  WN_load_offset(wn) = WN_load_offset(wn) + (bofst >> 3);
 	} else {
+#ifdef KEY
+          // bofst is ofst in bits from the base of the object.
+          // Convert it to ofst from the beginning of the field, and update
+          // the load offset using the proper alignment
+          // The change is needed when we come here with bofst > base_type_size
+          mUINT16 base_type_size = MTYPE_bit_size (desc);
+          WN_load_offset(wn) += (bofst / base_type_size) * MTYPE_byte_size (desc);
+          bofst = bofst % base_type_size;
+#endif
 	  if (WN_operator(wn) == OPR_LDID)
 	    WN_set_operator(wn, OPR_LDBITS);
 	  else WN_set_operator(wn, OPR_ILDBITS);
 	  WN_set_bit_offset_size(wn, bofst, bsiz);
+#ifdef KEY
+	  WN_set_ty (wn, MTYPE_To_TY (WN_desc(wn)));
+	  break;
+#endif
 	}
 	if (MTYPE_byte_size (WN_desc(wn)) != TY_size(WN_ty(wn)))
 	  // the container is smaller than the entire struct
+#ifdef KEY
+	{
+	  TY_IDX ty = MTYPE_To_TY (WN_desc(wn));
+	  if ((TY_kind(Ty_Table[WN_ty(wn)]) == KIND_STRUCT)
+              && (TY_kind(Ty_Table[ty]) != KIND_STRUCT))
+	// if struct is being changed to a non-struct, the field-id
+	// does not hold any more.
+		WN_set_field_id (wn, 0);
+	  WN_set_ty (wn, ty);
+	}
+#else
 	  WN_set_ty (wn, MTYPE_To_TY (WN_desc(wn)));
+#endif
       }
       break;
 
@@ -2676,6 +3468,11 @@ WFE_Expand_Expr (tree exp,
 	tree list;
 	arg0 = TREE_OPERAND (exp, 0);
 	enum tree_code code0 = TREE_CODE (arg0);
+	// KEY:  true if type must be returned in mem
+	BOOL return_in_mem = FALSE;
+#ifdef KEY
+	ST *ret_st = NULL;		// return symbol
+#endif
 	for (list = TREE_OPERAND (exp, 1); list; list = TREE_CHAIN (list)) {
           arg_ty_idx = Get_TY(TREE_TYPE(TREE_VALUE(list)));
           if (!WFE_Keep_Zero_Length_Structs    &&
@@ -2696,6 +3493,15 @@ WFE_Expand_Expr (tree exp,
           }
           else
             ret_mtype = TY_mtype (ty_idx);
+#ifdef KEY
+	  // If the type must be returned in memory, create a symbol and pass
+	  // its address as the first param.
+          if (TY_return_in_mem (ty_idx)) {
+	    ret_mtype = MTYPE_V;
+	    return_in_mem = TRUE;
+            num_args++;		// first param is address of return symbol
+	  }
+#endif
         }
         else
           ret_mtype = MTYPE_V;
@@ -2715,7 +3521,16 @@ WFE_Expand_Expr (tree exp,
 		break;
 
 	      case BUILT_IN_STDARG_START:
+#ifdef KEY
+	      case BUILT_IN_VA_START:
+#endif
 	      {
+#ifdef TARG_X8664
+		if( TARGET_64BIT ){
+		  iopc = INTRN_VA_START;
+		  break;
+		}
+#endif
 		arg1 = TREE_VALUE (arglist);
 		arg2 = TREE_VALUE (TREE_CHAIN (arglist));
 		WN *arg_wn = WFE_Expand_Expr (arg1);
@@ -2726,14 +3541,43 @@ WFE_Expand_Expr (tree exp,
 		       || TREE_CODE (arg2) == INDIRECT_REF)
 		  arg2 = TREE_OPERAND (arg2, 0);
 		ST *st2 = Get_ST (arg2);
+#ifdef TARG_X8664
+		const int align = PARM_BOUNDARY / BITS_PER_UNIT;
+		wn = WN_Lda (Pointer_Mtype, 
+                             ((TY_size (ST_type (st2)) + align-1) & (-align)),
+                             st2);
+#else
 		wn = WN_Lda (Pointer_Mtype, 
                              ((TY_size (ST_type (st2)) + 7) & (-8)),
                              st2);
+#endif
 		wn = WN_Stid (Pointer_Mtype, 0, st1, ST_type (st1), wn);
 		WFE_Stmt_Append (wn, Get_Srcpos());
 		whirl_generated = TRUE;
 		wn = NULL;
 		break;
+	      }
+
+	      case BUILT_IN_VA_COPY:
+	      {
+		arg1 = TREE_VALUE (arglist);
+		arg2 = TREE_VALUE (TREE_CHAIN (arglist));
+                TY_IDX arg_ty_idx = Get_TY (TREE_TYPE (arg1));
+		WN *dst  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg1),
+					  arg_ty_idx, WN_PARM_BY_VALUE);
+		WN *src  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg2),
+					  arg_ty_idx, WN_PARM_BY_VALUE);
+		WN *size = WN_CreateParm (MTYPE_I4,
+					  WN_Intconst(MTYPE_I4,TY_size(TY_pointed(arg_ty_idx))),
+					  Be_Type_Tbl(MTYPE_I4), WN_PARM_BY_VALUE);
+		wn = WN_Create (OPR_INTRINSIC_CALL, ret_mtype, MTYPE_V, 3);
+		WN_intrinsic (wn) = INTRN_MEMCPY;
+		WN_kid0 (wn) = dst;
+		WN_kid1 (wn) = src;
+		WN_kid2 (wn) = size;
+		WFE_Stmt_Append (wn, Get_Srcpos());
+		whirl_generated = TRUE;
+		wn = NULL;
 	      }
 
 	      case BUILT_IN_VA_END:
@@ -2777,7 +3621,9 @@ WFE_Expand_Expr (tree exp,
                 break;
 
               case BUILT_IN_MEMSET:
+#ifndef KEY	// Use the memset in the PathScale library.
 		iopc = INTRN_MEMSET;
+#endif
                 break;
 
               case BUILT_IN_STRCPY:
@@ -2840,7 +3686,28 @@ WFE_Expand_Expr (tree exp,
 #endif /* GPLUSPLUS_FE */
                 break;
 
+#ifdef KEY
+	    case BUILT_IN_FLOOR:
+	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
+	      whirl_generated = TRUE;
+	      break;
+
+	    case BUILT_IN_FLOORF:
+	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
+	      whirl_generated = TRUE;
+	      break;
+#endif
+
+#ifdef KEY
+	      case BUILT_IN_SQRT:
+		if( flag_errno_math ){
+		  break;
+		}
+#else
               case BUILT_IN_FSQRT:
+#endif
                 arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
                 wn = WN_CreateExp1 (OPR_SQRT, ret_mtype, MTYPE_V, arg_wn);
                 whirl_generated = TRUE;
@@ -2897,6 +3764,7 @@ WFE_Expand_Expr (tree exp,
                 emit_builtin_synchronize (exp, num_args);
                 whirl_generated = TRUE;
                 break;
+#endif
 
               case BUILT_IN_RETURN_ADDRESS:
                 i = Get_Integer_Value (TREE_VALUE (TREE_OPERAND (exp, 1)));
@@ -2913,6 +3781,154 @@ WFE_Expand_Expr (tree exp,
 		}
                 whirl_generated = TRUE;
 		break;
+
+#ifdef KEY
+              case BUILT_IN_EXTRACT_RETURN_ADDR:
+		list = TREE_OPERAND (exp, 1);
+		wn   = WFE_Expand_Expr (TREE_VALUE (list));
+                wn = WN_Binary (OPR_BAND, Pointer_Mtype, wn, 
+				WN_Intconst(Pointer_Mtype, -2));
+                whirl_generated = TRUE;
+		break;
+
+              case BUILT_IN_FRAME_ADDRESS:
+		Set_PU_has_alloca(Get_Current_PU());
+		iopc = MTYPE_byte_size(Pointer_Mtype) == 4 ?
+		   	 INTRN_U4READFRAMEPOINTER : INTRN_U4READFRAMEPOINTER;
+		intrinsic_op = TRUE;
+		break;
+	      case BUILT_IN_APPLY_ARGS:
+		Set_PU_has_alloca(Get_Current_PU());
+		iopc = INTRN_APPLY_ARGS;
+		break;	
+	      case BUILT_IN_APPLY:
+		{
+		  WN *load_wn, *sp_addr;
+
+		  Set_PU_has_alloca(Get_Current_PU());
+
+		  iopc = INTRN_APPLY;
+		  call_wn = WN_Create (OPR_INTRINSIC_CALL, ret_mtype, MTYPE_V, 
+				       num_args);
+		  WN_intrinsic (call_wn) = iopc;
+		  WN_Set_Linenum (call_wn, Get_Srcpos());
+		  WN_Set_Call_Default_Flags (call_wn);
+		  i = 0;
+		  BOOL generate_mload = FALSE;
+		  WN *kid1 = NULL;
+		  WN *kid2 = NULL;
+		  for (list = TREE_OPERAND (exp, 1);
+		       list;
+		       list = TREE_CHAIN (list)) {
+		    arg_wn     = WFE_Expand_Expr (TREE_VALUE (list));
+		    if (i == 1)
+		      kid1 = arg_wn;
+		    if (i == 2 && 
+			WN_operator(arg_wn) != OPR_INTCONST) {
+		      generate_mload = TRUE;
+		      kid2 = arg_wn;
+		    } else if (i == 2)
+		      kid2 = arg_wn;
+		    arg_ty_idx = Get_TY(TREE_TYPE(TREE_VALUE(list)));
+		    arg_mtype  = TY_mtype(arg_ty_idx);
+		    arg_wn = WN_CreateParm (Mtype_comparison (arg_mtype), 
+					    arg_wn,
+					    arg_ty_idx, WN_PARM_BY_VALUE);
+		    WN_kid (call_wn, i++) = arg_wn;
+		  }
+
+		  // Store SP & Alloca
+		  TY_IDX ty_idx = 
+		    Make_Pointer_Type (Be_Type_Tbl (MTYPE_V), FALSE);
+		  ST* alloca_st_0 = 
+		    Gen_Temp_Symbol (ty_idx, 
+				     "__builtin_apply_alloca0");
+		  WN *alloca_0 = 
+		    WN_CreateAlloca (WN_CreateIntconst (OPC_I4INTCONST, 0));
+		  WN *alloca_kid0 = alloca_0;
+		  alloca_kid0 = 
+		    WN_Stid (Pointer_Mtype, 
+			     0, alloca_st_0, ty_idx, alloca_kid0);
+		  WFE_Stmt_Append (alloca_kid0, Get_Srcpos());
+		  ST *alloca_st_1 = 
+		    Gen_Temp_Symbol (ty_idx, 
+				     "__builtin_apply_alloca1");
+		  WN *alloca_1 = WN_CreateAlloca (kid2);
+		  WN *alloca_kid1 = alloca_1;
+		  alloca_kid1 = WN_Stid (Pointer_Mtype, 
+					 0, alloca_st_1, ty_idx, alloca_kid1);
+		  WFE_Stmt_Append (alloca_kid1, Get_Srcpos());
+
+		  // The src is actually in 0(kid1)
+		  kid1 = 
+		    WN_CreateIload (OPR_ILOAD, MTYPE_I4, MTYPE_I4, 0,
+				    MTYPE_To_TY(MTYPE_I4), 
+				    Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
+				    kid1, 0);
+		  load_wn = 
+		    WN_CreateMload (0, 
+				    Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
+				    kid1, kid2);
+		  sp_addr = WN_LdidPreg(MTYPE_U4, 29); // $sp
+		  WFE_Stmt_Append(WN_CreateMstore (0, 
+			      Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
+						   load_wn,
+						   sp_addr,
+						   kid2),
+				  Get_Srcpos());
+
+		  WFE_Stmt_Append (call_wn, Get_Srcpos());
+
+		  call_wn = WN_Create (OPR_ICALL, ret_mtype, MTYPE_V, 1);
+		  WN_kid(call_wn, 0) = 
+		    WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+		  WN_set_ty (call_wn, TY_pointed(Get_TY(
+			    TREE_TYPE (TREE_VALUE(TREE_OPERAND (exp, 1))))));
+		  WFE_Stmt_Append (call_wn, Get_Srcpos());		
+
+		  TY_IDX tyi;
+		  TY& ty = New_TY(tyi);
+		  TY_Init(ty, 16, KIND_STRUCT, MTYPE_M,
+			  Save_Str("__apply"));
+		  Set_TY_align(tyi, 8);
+		  ST *tmpst = New_ST(CURRENT_SYMTAB);
+		  ST_Init(tmpst, TY_name_idx(ty),
+			  CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL, tyi);
+		  Set_ST_is_temp_var(tmpst);
+		  WN *load, *store;
+		  load = WN_LdidPreg(MTYPE_I8, 2); // $v0
+		  store = WN_Stid(MTYPE_I8, 
+				  (WN_OFFSET)0, tmpst, Spill_Int_Type, load);
+		  WFE_Stmt_Append (store, Get_Srcpos());		
+		  load = WN_LdidPreg(MTYPE_F8, 32); //$f0
+		  store = WN_Stid(MTYPE_F8, 
+				  (WN_OFFSET)8, tmpst, Spill_Int_Type, load);
+		  WFE_Stmt_Append (store, Get_Srcpos());		
+		  wn = WN_Lda (Pointer_Mtype, 0, tmpst, 
+			       Make_Pointer_Type (ST_type(tmpst), FALSE));
+
+		  // Dealloca/Restore SP
+		  WN *dealloca_wn = WN_CreateDealloca (2);
+		  WN_kid0 (dealloca_wn) = 
+		    WN_Ldid (Pointer_Mtype, 
+			     0, alloca_st_0, ST_type (alloca_st_0));
+		  WN_kid1 (dealloca_wn) = 
+		    WN_Ldid (Pointer_Mtype, 
+			     0, alloca_st_1, ST_type (alloca_st_1));
+		  WFE_Stmt_Append (dealloca_wn, Get_Srcpos());		
+		  
+		  whirl_generated = TRUE;
+		  break;
+		}
+	      case BUILT_IN_RETURN:
+		Set_PU_has_alloca(Get_Current_PU());
+		iopc = INTRN_RETURN;
+		break;	
+
+	      case BUILT_IN_EXPECT:
+	        wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+	        whirl_generated = TRUE;
+	        break;
 #endif
 
 	      default:
@@ -2977,6 +3993,26 @@ WFE_Expand_Expr (tree exp,
         }
 
         i = 0;
+#ifdef KEY
+	// If the object must be returned through memory, create the fake first
+	// param to pass the address of the return area.  Here we decide if an
+	// object must be returned via memory based on high-level language
+	// requirements, such as if the return type has a copy constructor.
+	// Later on, the back-end will make the same decision but based on the
+	// ABI.
+	if (return_in_mem) {
+	  FmtAssert (target_wn != NULL,
+		     ("WFE_Expand_Expr: write target is NULL"));
+          WN *arg_wn = WN_CreateParm (Pointer_Mtype, target_wn,
+				      Make_Pointer_Type(ty_idx, FALSE),
+				      WN_PARM_BY_VALUE);
+          WN_kid (call_wn, i++) = arg_wn;
+	  if (WN_operator(target_wn) == OPR_LDA) {
+	    ST *st = WN_st(target_wn);
+	    Set_ST_addr_passed(*st);
+	  }
+	}
+#endif
 	for (list = TREE_OPERAND (exp, 1);
 	     list;
 	     list = TREE_CHAIN (list)) {
@@ -2987,8 +4023,23 @@ WFE_Expand_Expr (tree exp,
 			   build_pointer_type(TREE_TYPE(TREE_VALUE(list))));
 	  }
 	  else {
+#ifdef KEY
+	    if (TREE_CODE (TREE_VALUE (list)) == ADDR_EXPR &&
+	    	TREE_CODE (TREE_OPERAND (TREE_VALUE (list), 0)) == TARGET_EXPR)
+	    {
+		tree targ = TREE_OPERAND (TREE_VALUE (list), 0);
+            	WN *targ_wn = WFE_Expand_Expr(targ);
+            	arg_wn     = WN_Lda(Pointer_Mtype, 0, WN_st(targ_wn), 0);
+	    	arg_ty_idx = Make_Pointer_Type(Get_TY(TREE_TYPE(targ)));
+	    }
+	    else
+	    {
+#endif // KEY
             arg_wn     = WFE_Expand_Expr (TREE_VALUE (list));
 	    arg_ty_idx = Get_TY(TREE_TYPE(TREE_VALUE(list)));
+#ifdef KEY
+	    }
+#endif // KEY
 	  }
 
 	  arg_mtype  = TY_mtype(arg_ty_idx);
@@ -3009,7 +4060,33 @@ WFE_Expand_Expr (tree exp,
 	  Add_Handler_Info (call_wn, i, num_handlers);
 #endif
 
-        if (ret_mtype == MTYPE_V) {
+#ifdef KEY
+	if (key_exceptions && !TREE_NOTHROW(exp) && 
+// Call terminate() "when the destruction of an object during stack 
+// unwinding (except.ctor) exits using an exception" [except.terminate]
+// So we don't want to form a region in such cases.
+//
+// NOTE: It need not be a destructor call, e.g. if we inline the destructor,
+// all functions inside cannot throw. We assume that it is cleanup code means
+// it has to be a destructor, be its call or its body.
+	    !(in_cleanup))
+	{
+	    if (!inside_eh_region)
+	    { // check that we are not already in a region
+            	WN * region_body = WN_CreateBlock();
+		inside_eh_region = true;
+            	WFE_Stmt_Push (region_body, wfe_stmk_call_region_body, Get_Srcpos());
+	    }
+	}
+#endif // KEY
+
+        if (ret_mtype == MTYPE_V
+#ifdef KEY
+	   // If the result is already put into the preferred symbol, then emit
+	   // the call and we're done.
+	   || return_in_mem
+#endif
+	   ) {
 	  WFE_Stmt_Append (call_wn, Get_Srcpos());
         }
 
@@ -3020,6 +4097,7 @@ WFE_Expand_Expr (tree exp,
 	  wn1 = WN_Ldid (ret_mtype, -1, Return_Val_Preg, ty_idx);
 
 	  if (ret_mtype == MTYPE_M) { // copy the -1 preg to a temp area
+
 	    TY_IDX ret_ty_idx = ty_idx;
 	    if (Aggregate_Alignment > 0 &&
 		Aggregate_Alignment > TY_align (ret_ty_idx))
@@ -3030,8 +4108,11 @@ WFE_Expand_Expr (tree exp,
 		  st ? Index_To_Str(Save_Str2(".Mreturn.",
 					      ST_name(ST_st_idx(st))))
 		     : ".Mreturn.");
-	    wn1 = WN_Stid (ret_mtype, 0, ret_st, ty_idx, wn1);
-            WN_INSERT_BlockLast (wn0, wn1);
+
+	    if (!return_in_mem) {
+	      wn1 = WN_Stid (ret_mtype, 0, ret_st, ty_idx, wn1);
+	      WN_INSERT_BlockLast (wn0, wn1);
+	    }
 
 	    // ritual for determining the right mtypes to be used in the LDID
             UINT xtra_BE_ofst = 0;  // only needed for big-endian target
@@ -3072,7 +4153,7 @@ WFE_Expand_Expr (tree exp,
 
             Is_True(! is_bit_field || field_id <= MAX_FIELD_ID,
                     ("WFE_Expand_Expr: field id for bit-field exceeds limit"));
-  
+ 
 	    wn1 = WN_CreateLdid(OPR_LDID, rtype,
 			        is_bit_field ? MTYPE_BS : desc,
 			        ST_ofst(ret_st)+component_offset+xtra_BE_ofst, 
@@ -3152,6 +4233,83 @@ WFE_Expand_Expr (tree exp,
 
     case VA_ARG_EXPR:
       {
+#ifdef TARG_X8664
+	if( TARGET_64BIT ){
+	  tree kid0 = TREE_OPERAND(exp, 0);
+	  WN *ap_wn;
+	  ap_wn = WFE_Expand_Expr(kid0);
+	  if (WN_rtype(ap_wn) == MTYPE_M) {
+	    if (OPCODE_is_leaf(WN_opcode(ap_wn)))
+	      ap_wn = WN_Lda(Pointer_Mtype, 0, WN_st(ap_wn), 0);
+	    else {
+	      Is_True(OPCODE_is_load(WN_opcode(ap_wn)),
+		      ("WFE_Expand_Expr: unexpected VA_ARG_EXPR argument"));
+	      ap_wn = WN_kid0(ap_wn);
+	    }
+	  }
+	  TY_IDX ty_idx = Get_TY (TREE_TYPE(exp));
+	  TYPE_ID mtype = Fix_TY_mtype(ty_idx);
+
+	  if (mtype != MTYPE_FQ && mtype != MTYPE_M && !MTYPE_is_complex(mtype)) {
+	    wn = WFE_x8664_va_arg(ap_wn, MTYPE_float(mtype), ty_idx, FALSE);
+	    wn = WN_CreateIload(OPR_ILOAD, Widen_Mtype (mtype), mtype, 0,
+				ty_idx, Make_Pointer_Type(ty_idx), wn);
+	  }
+	  else if (mtype == MTYPE_C4) {
+	    wn = WFE_x8664_va_arg(ap_wn, MTYPE_float(mtype), ty_idx, FALSE);
+	    wn = WN_CreateIload(OPR_ILOAD, MTYPE_M, MTYPE_M, 0, ty_idx,
+				Make_Pointer_Type(ty_idx), wn);
+	  }
+	  else {
+	    enum X86_64_PARM_CLASS classes[MAX_CLASSES];
+	    INT n = Classify_Aggregate(ty_idx, classes);
+	    if (n == 0) { /* can only pass in memory */
+	      /* increment overflow_arg_area pointer by 8 */
+	      INT delta = ((TY_size(ty_idx) + 7) / 8) * 8;
+	      wn0 = WN_Iload(Pointer_Mtype, 8, MTYPE_To_TY(Pointer_Mtype), 
+			     WN_CopyNode(ap_wn));
+	      wn1 = WN_Intconst(MTYPE_U8, delta);
+	      wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+	      wn = WN_Istore(Pointer_Mtype, 8,
+			     Make_Pointer_Type(MTYPE_To_TY(Pointer_Mtype)),
+			     WN_CopyNode(ap_wn), wn);
+	      WFE_Stmt_Append (wn, Get_Srcpos ());
+	      /* load pointer to overflow_arg_area */
+	      wn = WN_Iload(Pointer_Mtype, 8, MTYPE_To_TY(Pointer_Mtype),
+			    WN_CopyNode(ap_wn));
+	      /* adjust with the amount just incremented */
+	      wn1 = WN_Intconst(MTYPE_I8, -delta);
+	      wn = WN_Binary(OPR_ADD, Pointer_Mtype, wn0, wn1);
+	    }
+	    else if (n == 1) {
+	      wn = WFE_x8664_va_arg(ap_wn, classes[0] == X86_64_SSE_CLASS,
+				    ty_idx, FALSE);
+	    }
+	    else if (n > 1) { /* must be == 2 */
+	      if (classes[0] == classes[1]) {
+		if (classes[0] == X86_64_INTEGER_CLASS)
+		  wn = WFE_x8664_va_arg(ap_wn, classes[0] == X86_64_SSE_CLASS, 
+					ty_idx, TRUE/*twice*/);
+		else wn = WFE_x8664_va_arg_2_float(ap_wn, ty_idx);
+	      }
+	      else {
+		wn = WFE_x8664_va_arg_2_mixed(ap_wn, 
+					      classes[0] == X86_64_SSE_CLASS,
+					      classes[1] == X86_64_SSE_CLASS, ty_idx);
+	      }
+	    }
+	    
+	    if( mtype == MTYPE_FQ )
+	      wn = WN_CreateIload(OPR_ILOAD, Widen_Mtype (mtype), mtype, 0,
+				  ty_idx, Make_Pointer_Type(ty_idx), wn);
+	    else
+	      wn = WN_CreateIload(OPR_ILOAD, MTYPE_M, MTYPE_M, 0, ty_idx, 
+				  Make_Pointer_Type(ty_idx), wn);
+	  }
+
+	  break;
+	} // end of TARGET_64BIT
+#endif
         // code swiped from builtins.c (std_expand_builtin_va_arg)
 	INT64 align;
 	INT64 rounded_size;
@@ -3165,8 +4323,13 @@ WFE_Expand_Expr (tree exp,
 
 	/* Get AP.  */
 	WN *ap = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
+#ifdef KEY
+	WN        *ap_load   = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
+        TY_IDX     ap_ty_idx = Get_TY (TREE_TYPE (TREE_OPERAND (exp, 0)));
+#endif
 	st = WN_st (ap);
 
+#ifndef KEY
 	if (Target_Byte_Sex == BIG_ENDIAN) {
 	  Fail_FmtAssertion ("VA_ARG_EXPR not implemented for BIG_ENDIAN");
 	  INT64 adj;
@@ -3179,15 +4342,85 @@ WFE_Expand_Expr (tree exp,
 	}
 
 	/* Compute new value for AP.  */
-	wn = WN_Binary (OPR_ADD, Pointer_Mtype, ap,
+	wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
 			WN_Intconst (Pointer_Mtype, rounded_size));
+#else
+	if (Target_Byte_Sex == BIG_ENDIAN) {
+	  INT64 adj;
+	  adj = TREE_INT_CST_LOW (TYPE_SIZE (type)) / BITS_PER_UNIT;
+	  if (rounded_size > align)
+	    adj = rounded_size;
+	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+			  WN_Intconst (Pointer_Mtype, 3));
+	  wn = WN_Binary (OPR_BAND, Pointer_Mtype, wn,
+			  WN_Intconst (Pointer_Mtype, -8));
+	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+			  WN_Intconst (Pointer_Mtype, rounded_size));
+	} else
+
+	/* Compute new value for AP.  */
+	wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+			WN_Intconst (Pointer_Mtype, rounded_size));
+#endif
 	wn = WN_Stid (Pointer_Mtype, 0, st, ST_type (st), wn);
         WFE_Stmt_Append (wn, Get_Srcpos ());
         wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -rounded_size,
 			     ty_idx, Make_Pointer_Type (ty_idx, FALSE),
 			     WN_Ldid (Pointer_Mtype, 0, st, ST_type (st)));
+#ifdef KEY
+	if (Target_Byte_Sex != Host_Byte_Sex)
+          wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, 
+			  ((MTYPE_size_min(mtype)==32)?4:0)-rounded_size, 
+			  ap_ty_idx, 
+			  Make_Pointer_Type (ap_ty_idx, FALSE),
+			  ap_load);
+#endif
       }
       break;
+
+#ifdef KEY
+    case EXPR_WITH_FILE_LOCATION:
+      wn = WFE_Expand_Expr (EXPR_WFL_NODE (exp));
+      break;
+
+    case EXC_PTR_EXPR:
+    {
+      DevWarn ("Check implementation of EXC_PTR_EXPR: at line %d\n", lineno);
+      if (key_exceptions)
+      {
+	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().unused)));
+      	wn = WN_Ldid (Pointer_Mtype, 0, exc_ptr_st, Get_TY(TREE_TYPE(exp)));
+      }
+      else
+      {
+      	ST * preg_st = MTYPE_To_PREG(Pointer_Mtype);
+      	wn = WN_Ldid (Pointer_Mtype, 0, preg_st, Get_TY(TREE_TYPE(exp)));
+      }
+    }
+      break;
+
+    case CLEANUP_STMT:
+      DevWarn ("CLEANUP_STMT not implemented: at line %d\n", lineno);
+      // TODO:  Return a dummy constant 0 for now.
+      wn = WN_Intconst(MTYPE_I4, 0);
+      break;
+
+    case MUST_NOT_THROW_EXPR:
+      // Call terminate if this expr throws
+      wn = WFE_Expand_Expr (TREE_OPERAND (exp,0));
+      LABEL_IDX terminate_label, around_label;
+
+      New_LABEL (CURRENT_SYMTAB, terminate_label);
+      New_LABEL (CURRENT_SYMTAB, around_label);
+      WFE_Stmt_Append (WN_CreateGoto (around_label), Get_Srcpos());
+
+      WFE_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, terminate_label, 0, NULL),
+      			Get_Srcpos());
+      Call_Terminate ();
+      WFE_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, around_label, 0, NULL),
+      			Get_Srcpos());
+      break;
+#endif /* KEY */
 
     default:
       {
@@ -3209,13 +4442,15 @@ WFE_Expand_Expr (tree exp,
     FmtAssert (wn != 0 || code == CALL_EXPR || code == BIND_EXPR ||
                code == COMPOUND_STMT ||
                code == STMT_EXPR     ||
- 	       code == SUBOBJECT     ||
+               code == EXPR_STMT     ||	// KEY
                code == COMPOUND_EXPR ||
                code == INDIRECT_REF  ||
                code == COMPONENT_REF ||
                code == LOOP_EXPR     ||
                code == NOP_EXPR      ||
                code == THROW_EXPR    ||
+	       code == MUST_NOT_THROW_EXPR ||
+	       code == EXPR_WITH_FILE_LOCATION	||	// KEY
                ((code == COND_EXPR) && (TY_mtype (ty_idx) == MTYPE_V)),
 	       ("WFE_Expand_Expr: NULL WHIRL tree for %s",
 		Operator_From_Tree [code].name));
@@ -3223,10 +4458,36 @@ WFE_Expand_Expr (tree exp,
   return wn;
 }
 
+
+#ifdef KEY
+// Like WFE_One_Stmt but don't reuse label indexes already allocated so far.
+// This is necessary because the cleanup represented by the EXP tree can be
+// expanded multiple times, and each expansion needs its own set of labels.
+void
+WFE_One_Stmt_Cleanup (tree exp)
+{
+  LABEL_IDX idx = WFE_unusable_label_idx;
+  INT32 save_expr_level = wfe_save_expr_level;
+
+  // Don't reuse label indexes that are allocated up to this point.
+  WFE_unusable_label_idx = WFE_last_label_idx;
+
+  // Make the saved expr's, if any, unique to this cleanup.
+  wfe_save_expr_level = ++wfe_last_save_expr_level;
+  
+  WFE_One_Stmt(exp);
+  WFE_unusable_label_idx = idx;
+  wfe_save_expr_level = save_expr_level;
+}
+#endif
+
+
 void WFE_One_Stmt (tree exp)
 {
   WN *wn;
+#ifndef KEY
   wfe_save_expr_stack_last = -1; // to minimize searches
+#endif
   wn = WFE_Expand_Expr_With_Sequence_Point (exp, MTYPE_V);
   if (wn) {
     for (;;) {
@@ -3274,9 +4535,15 @@ Get_Integer_Value (tree exp)
 #else
 	UINT64 h = TREE_INT_CST_HIGH (exp);
 	UINT64 l = TREE_INT_CST_LOW (exp);
+#ifndef KEY
 	l = l << 32 >> 32;	// zero-out high 32 bits
 	h = h << 32;
 	return (h | l);
+#else
+	// In the new gcc-3.2.2 both TREE_INT_CST_HIGH and
+	// TREE_INT_CST_LOW are 64-bits wide.
+	return (l);
+#endif /* KEY */
 #endif /* _LP64 */
 }
 

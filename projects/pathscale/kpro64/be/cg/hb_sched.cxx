@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -88,6 +92,10 @@
 #include "ti_bundle.h"
 #include "whirl2ops.h"
 
+#if defined(KEY) && defined(TARG_MIPS)
+#include "cg_sas.h"
+#endif
+
 // ======================================================================
 // Declarations (macros, variables)
 // ======================================================================
@@ -124,9 +132,9 @@ Print_BB_For_HB (BB *bb, BB_MAP value_map)
 }
 
 void
-Print_BB_For_HB (list<BB*> bblist, BB_MAP value_map)
+Print_BB_For_HB (std::list<BB*> bblist, BB_MAP value_map)
 {
-  list<BB*>::iterator bbiter;
+  std::list<BB*>::iterator bbiter;
 
   fprintf (TFile, "\n********** HyperBlock (HB) ******************\n");
   fprintf (TFile, "******* Contains :");
@@ -169,10 +177,10 @@ Reschedule_BB(BB *bb)
 // Check to see if the given HB can be scheduled, i.e prior not SWP'd.
 // ======================================================================
 BOOL
-Can_Schedule_HB(list<BB*> hb_blocks)
+Can_Schedule_HB(std::list<BB*> hb_blocks)
 {
 
-  list<BB*>::iterator bb_iter;
+  std::list<BB*>::iterator bb_iter;
   FOR_ALL_BB_STLLIST_ITEMS_FWD (hb_blocks, bb_iter) {
     // if <reschedule> flag is already set, then return FALSE.
     if (BB_scheduled(*bb_iter) && !BB_scheduled_hbs(*bb_iter)) return FALSE;
@@ -184,6 +192,9 @@ Can_Schedule_HB(list<BB*> hb_blocks)
 INT
 Memory_OP_Base_Opndnum (OP *op)
 {
+#ifdef TARG_X8664
+  return TOP_Find_Operand_Use( OP_code(op), OU_base );
+#else
   INT opnd_num;
   if (OP_store(op) || OP_prefetch(op)) {
     opnd_num = 1;
@@ -193,12 +204,16 @@ Memory_OP_Base_Opndnum (OP *op)
     opnd_num = 0;
   }
   return opnd_num;
+#endif
 }
 
 
 INT
 Memory_OP_Offset_Opndnum (OP *op)
 {
+#ifdef TARG_X8664
+  return TOP_Find_Operand_Use( OP_code(op), OU_offset );
+#else
   INT opnd_num;
 
   if (OP_store(op) || OP_prefetch(op)) {
@@ -209,6 +224,7 @@ Memory_OP_Offset_Opndnum (OP *op)
     opnd_num = 1;
   }
   return opnd_num;
+#endif
 }
 
 // ======================================================================
@@ -376,6 +392,11 @@ Is_Ldst_Addiu_Pair (OPSCH *opsch1, OPSCH *opsch2, OP *op1,OP *op2)
   // Also check that if the memory OP is a store, the source is not the same
   // as the result of the addiu.
   INT base_opndnum = Memory_OP_Base_Opndnum(ldst_op);
+#ifdef TARG_X8664
+  if( base_opndnum < 0 ){
+    return FALSE;
+  }
+#endif
   if (OP_result(addiu_op,0 /*???*/) != OP_opnd(ldst_op,base_opndnum) ||
       (OP_store(ldst_op) &&
        OP_result(addiu_op,0 /*???*/) == OP_opnd(ldst_op,0)))
@@ -403,7 +424,6 @@ Fixup_Ldst_Offset (OP *ldst_op, INT64 addiu_const, INT64 multiplier,
   INT index;
 
   index = Memory_OP_Offset_Opndnum (ldst_op);
-
   old_ofst_tn = OP_opnd(ldst_op, index);
 
   if (Trace_HB) {
@@ -437,6 +457,11 @@ HB_Schedule::Adjust_Ldst_Offsets (void)
     ARC_LIST *arcs;
     for (arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
       ARC *arc = ARC_LIST_first(arcs);
+#ifdef KEY
+      if( ARC_kind(arc) != CG_DEP_REGIN ){
+	continue;
+      }
+#endif
       OP *succ_op = ARC_succ(arc);
       OPSCH *succ_opsch = OP_opsch (succ_op, _hb_map);
       if (OPSCH_ldst (succ_opsch) && OPSCH_visited (succ_opsch)) {
@@ -446,6 +471,15 @@ HB_Schedule::Adjust_Ldst_Offsets (void)
     for (arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
       ARC *arc = ARC_LIST_first(arcs);
       OP *pred_op = ARC_pred(arc);
+#ifdef KEY
+      if (ARC_kind(arc) != CG_DEP_REGANTI){
+	// We only care about any REGANTI really.
+	// And there may be multiple arcs between two nodes.
+	// In that case, the following will update the offset many times.
+	// To avoid such cases, we will skip arcs of kind CG_DEP_MISC.
+	continue;
+      }
+#endif /* KEY */
       OPSCH *pred_opsch = OP_opsch (pred_op, _hb_map);
       if (OPSCH_ldst (pred_opsch) && !OPSCH_visited (pred_opsch)) {
 	Fixup_Ldst_Offset (pred_op, addiu_const, -1, type());
@@ -453,6 +487,56 @@ HB_Schedule::Adjust_Ldst_Offsets (void)
     }
   }
 }
+
+#ifdef KEY
+
+void HB_Schedule::Adjust_Ldst_Offsets( BOOL is_fwd )
+{
+  for( INT i = is_fwd ? 0 : VECTOR_count(_sched_vector) - 1; 
+       is_fwd ? i < VECTOR_count(_sched_vector) : i >= 0; 
+       is_fwd ? i++ : i-- ){
+
+    OP *op = OP_VECTOR_element(_sched_vector, i);
+    OPSCH *opsch = OP_opsch(op, _hb_map);
+    Set_OPSCH_visited (opsch);
+    if (!OPSCH_addiu (opsch)) continue;
+    INT64 addiu_const = TN_value (OP_opnd(op,1));
+    ARC_LIST *arcs;
+
+    for (arcs = OP_succs(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+      ARC *arc = ARC_LIST_first(arcs);
+      if( ARC_kind(arc) != CG_DEP_REGIN ){
+	continue;
+      }
+
+      OP *succ_op = ARC_succ(arc);
+      OPSCH *succ_opsch = OP_opsch (succ_op, _hb_map);
+      if (OPSCH_ldst (succ_opsch) && OPSCH_visited (succ_opsch)) {
+	Fixup_Ldst_Offset (succ_op, addiu_const, +1, type());
+      }
+    }
+
+    for (arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+      ARC *arc = ARC_LIST_first(arcs);
+      OP *pred_op = ARC_pred(arc);
+
+      if (ARC_kind(arc) != CG_DEP_REGANTI){
+	// We only care about any REGANTI really.
+	// And there may be multiple arcs between two nodes.
+	// In that case, the following will update the offset many times.
+	// To avoid such cases, we will skip arcs of kind CG_DEP_MISC.
+	continue;
+      }
+
+      OPSCH *pred_opsch = OP_opsch (pred_op, _hb_map);
+      if (OPSCH_ldst (pred_opsch) && !OPSCH_visited (pred_opsch)) {
+	Fixup_Ldst_Offset (pred_op, addiu_const, -1, type());
+      }
+    }
+  }
+}
+
+#endif
 
 // ======================================================================
 // Set_Resource_Usage
@@ -555,7 +639,6 @@ Init_OPSCH_For_BB (BB *bb, BB_MAP value_map, MEM_POOL *pool)
 	Set_OPSCH_ldst (opsch);
       }
     }
-
 #ifdef TARG_MIPS
     if (Is_Target_T5() && OP_xfer(op) && Get_Trace (TP_SCHED, 0x1000)) {
       for (arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
@@ -701,10 +784,10 @@ Priority_Selector::Build_Ready_Vector (BB* bb, BOOL is_fwd)
 // Sort the ready vector in decreasing order or 'estart'.
 // ======================================================================
 void
-Priority_Selector::Build_Ready_Vector (list<BB*> bblist, BOOL is_fwd)
+Priority_Selector::Build_Ready_Vector (std::list<BB*> bblist, BOOL is_fwd)
 {
 
-  list<BB*>::iterator bb_iter;
+  std::list<BB*>::iterator bb_iter;
   FOR_ALL_BB_STLLIST_ITEMS_FWD (bblist, bb_iter) {
     Build_Ready_Vector (*bb_iter, is_fwd);
   }
@@ -830,9 +913,9 @@ Compute_OPSCH (BB *bb, BB_MAP value_map, MEM_POOL *pool)
 // structure for it.
 // ======================================================================
 void
-Compute_OPSCHs (list<BB*> bblist, BB_MAP value_map, MEM_POOL *pool)
+Compute_OPSCHs (std::list<BB*> bblist, BB_MAP value_map, MEM_POOL *pool)
 {
-  list<BB*>::iterator bb_iter;
+  std::list<BB*>::iterator bb_iter;
 
   // Initialize all data structures.
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bb_iter) {
@@ -846,7 +929,7 @@ Compute_OPSCHs (list<BB*> bblist, BB_MAP value_map, MEM_POOL *pool)
   }
 
   // Do a backward pass.
-  list<BB*>::reverse_iterator bb_riter;
+  std::list<BB*>::reverse_iterator bb_riter;
   FOR_ALL_BB_STLLIST_ITEMS_BKWD(bblist, bb_riter) {
     Compute_Bkwd_OPSCH (*bb_riter, value_map, max_lstart);
   }
@@ -881,7 +964,7 @@ HB_Schedule::Compute_BBSCH (BB *bb, BBSCH *bbsch)
   // the idea is that this would give a rough feel of the amount of 
   // parallelism present in this bb when compared to CGTARG_Peak_Rate
   BBSCH_block_parallelism (bbsch) =  (VECTOR_count(_sched_vector) != 0) ?
-	ceil(VECTOR_count(_sched_vector) / (critical_length + 1.)) : -1;
+    (mINT16)ceil(VECTOR_count(_sched_vector) / (critical_length + 1.)) : -1;
 
  if (Cur_Gcm_Type & GCM_MINIMIZE_REGS) {
 
@@ -945,12 +1028,81 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
 	INT scycle = Clock + ARC_latency(arc);
 	// update the OPSCH_scycle field for the predecessor OP.
 	OPSCH_scycle(succ_opsch) = MAX (scycle, OPSCH_scycle(succ_opsch));
+
+#ifndef KEY
 	OPSCH_num_preds(succ_opsch)--;
 	if (OPSCH_num_preds(succ_opsch) == 0) {
 	  VECTOR_Add_Element (_ready_vector, succ_op);
 	}
+#else // !KEY
+	
+	if( !Is_Ldst_Addiu_Pair( opsch, succ_opsch, op, succ_op ) ){
+	  FmtAssert( OPSCH_num_preds(succ_opsch) > 0, 
+		     ("HBS: invalid count of succs"));
+	  
+	  OPSCH_num_preds(succ_opsch)--;
+	  if( OPSCH_num_preds(succ_opsch) == 0 ){
+	    VECTOR_Add_Element (_ready_vector, succ_op);
+	  }
+	}
+	
+	if (PROC_has_branch_delay_slot() && OP_br(succ_op)) {
+	  // After register allocation, we may end up with a deadlock 
+	  // like the one below
+	  // [   3] 0x80a6768 :- beq TN110($2) GTN1($0) (lab:.LBB2_main) ;
+	  // [   0] 0x80911e8 GTN136($2) :- sltiu TN110($2) (0x1) ;
+	  // Here the delay slot instruction and the branch instructions 
+	  // are inter-dependent (REG ATI-DEP, PREBR).
+	  // To break this deadlock, let go the branch op.
+	  if (OPSCH_num_preds(succ_opsch) == 1) {
+	    ARC_LIST *arcs_tmp;
+	    for (arcs_tmp = OP_succs(succ_op); 
+		 arcs_tmp != NULL; 
+		 arcs_tmp = ARC_LIST_rest(arcs_tmp)) {
+	      ARC *arc_tmp = ARC_LIST_first(arcs_tmp);
+	      OP *succ_succ_op = ARC_succ(arc_tmp);
+	      if (succ_succ_op && 
+		  (OP_bb(succ_op) == OP_bb(succ_succ_op))) {
+		if (OP_results(succ_succ_op)) {
+		  if (TN_is_register(OP_result(succ_succ_op, 0)) && 
+		      TN_is_register(OP_result(succ_succ_op, 0))) {
+		    if (TN_register(OP_result(succ_succ_op, 0)) == 
+			TN_register(OP_result(succ_succ_op, 0))) {
+		      OPSCH_num_preds(succ_opsch)--;
+		      VECTOR_Add_Element (_ready_vector, succ_op);
+		      break;
+		    }
+		  }
+		}
+	      }
+	    }	      
+	  }
+	}
+#endif
+      }  // if (!OPSCH_scheduled(succ_opsch)) {
+    }  // for (arcs = OP_succs(op; ...
+
+#ifdef KEY
+    // If current OP is a load/store, check if it has been scheduled before 
+    // an addiu. If yes, we need to account for the latency between the 
+    // addiu and the current OP.
+    if (OPSCH_ldst(opsch)) {
+      for (arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+	ARC *arc = ARC_LIST_first(arcs);
+	OP *pred_op = ARC_pred(arc);
+	OPSCH *pred_opsch = OP_opsch (pred_op, _hb_map);
+	if (!OPSCH_scheduled(pred_opsch)) {
+	  INT opndnum = Memory_OP_Base_Opndnum (op);
+	  if( opndnum < 0 ){
+	    continue;
+	  }
+	  INT scycle = Clock + CG_DEP_Latency (pred_op, op, CG_DEP_REGIN, opndnum);
+	  OPSCH_scycle(pred_opsch) = MAX (scycle, OPSCH_scycle(pred_opsch));
+	}
       }
     }
+#endif
+
   } else {
     // Add any OPs that are now ready to be scheduled to the Ready_Vector.
     for (arcs = OP_preds(op); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
@@ -986,6 +1138,11 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
 	OPSCH *succ_opsch = OP_opsch (succ_op, _hb_map);
 	if (!OPSCH_scheduled(succ_opsch)) {
 	  INT opndnum = Memory_OP_Base_Opndnum (op);
+#ifdef TARG_X8664
+	  if( opndnum < 0 ){
+	    continue;
+	  }
+#endif
 	  INT scycle = Clock - CG_DEP_Latency (succ_op, op, CG_DEP_REGIN, opndnum);
 	  OPSCH_scycle(succ_opsch) = MIN (scycle, OPSCH_scycle(succ_opsch));
 	}
@@ -1014,7 +1171,8 @@ Priority_Selector::Is_OP_Better (OP *cur_op, OP *best_op)
   INT best_scycle = OPSCH_scycle(best_opsch);
 
   if (_hbs_type & HBS_MINIMIZE_REGS) {
-    INT cur_op_better = (cur_scycle - best_scycle);
+    INT cur_op_better = 0;
+    cur_op_better = (cur_scycle - best_scycle);
     if (cur_op_better == 0) {
       cur_op_better = (OPSCH_dfsnum(cur_opsch) < OPSCH_dfsnum(best_opsch));
     }
@@ -1044,6 +1202,43 @@ Priority_Selector::Is_OP_Better (OP *cur_op, OP *best_op)
   if (OPSCH_def_xfer_opnd(cur_opsch) ^ OPSCH_def_xfer_opnd(best_opsch)) {
     return OPSCH_def_xfer_opnd(best_opsch);
   }
+
+#ifdef TARG_X8664
+  /* For two load/store operations that access the same array,
+     schedule the one load/store the lower address first.
+
+     TODO in beta-5: remove the first checking. Don't have to be vector_op!!!
+   */
+  if( TOP_is_vector_op( OP_code(cur_op ) ) &&
+      TOP_is_vector_op( OP_code(best_op ) ) ){
+    if( ( OP_load( cur_op ) && OP_load( best_op ) ) ||
+	( OP_store( cur_op ) && OP_store( best_op ) ) ){
+      TN* cur_base = NULL;
+      TN* cur_ofst = NULL;
+      TN* best_base = NULL;
+      TN* best_ofst = NULL;
+
+      OP_Base_Offset_TNs( cur_op,  &cur_base,  &cur_ofst );
+      OP_Base_Offset_TNs( best_op, &best_base, &best_ofst );
+
+      if( cur_base == best_base &&
+	  ( cur_ofst != NULL && best_ofst != NULL ) ){
+	if( TN_has_value( cur_ofst )  &&
+	    TN_has_value( best_ofst ) ){
+	  const bool cur_is_better = TN_value(cur_ofst) < TN_value(best_ofst );
+	  return Is_Fwd_Schedule() ?  cur_is_better : !cur_is_better;
+	}
+
+	if( TN_is_symbol( cur_ofst )  &&
+	    TN_is_symbol( best_ofst ) &&
+	    TN_var(cur_ofst) == TN_var(best_ofst) ){
+	  const bool cur_is_better = TN_offset( cur_ofst) < TN_offset( best_ofst );
+	  return Is_Fwd_Schedule() ? cur_is_better : !cur_is_better;
+	}
+      }
+    }
+  }
+#endif
 
   if (_hbs_type & HBS_DEPTH_FIRST) {
     return (OPSCH_dfsnum(cur_opsch) < OPSCH_dfsnum(best_opsch));
@@ -1152,7 +1347,11 @@ HB_Schedule::Put_Sched_Vector_Into_BB (BB *bb, BBSCH *bbsch, BOOL is_fwd)
   // the Sched_Vector buffer. Otherwise, preserve the previous one.
 
   if (cur_cycle < _max_sched) {
+#ifdef KEY
+    Adjust_Ldst_Offsets( is_fwd );
+#else
     Adjust_Ldst_Offsets ();
+#endif
 
     if (bbsch != NULL) {
       Compute_BBSCH (bb, bbsch);
@@ -1176,7 +1375,7 @@ HB_Schedule::Put_Sched_Vector_Into_BB (BB *bb, BBSCH *bbsch, BOOL is_fwd)
 // instructions back into the basic block.
 // ======================================================================
 void
-HB_Schedule::Put_Sched_Vector_Into_HB (list<BB*>& bblist)
+HB_Schedule::Put_Sched_Vector_Into_HB (std::list<BB*>& bblist)
 {
   INT i;
 
@@ -1189,7 +1388,7 @@ HB_Schedule::Put_Sched_Vector_Into_HB (list<BB*>& bblist)
     OP_scycle(op) = OPSCH_scycle(opsch);
   }
 
-  list<BB*>::iterator bb_iter;
+  std::list<BB*>::iterator bb_iter;
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bb_iter) {
     BB_Remove_All(*bb_iter);
   }
@@ -1209,14 +1408,14 @@ HB_Schedule::Put_Sched_Vector_Into_HB (list<BB*>& bblist)
 // Allocate a RFlag_Table with <cycles> entries. Initialize the entries.
 // ======================================================================
 void
-HB_Schedule::Init_RFlag_Table (list<BB*>& bblist, BOOL is_fwd)
+HB_Schedule::Init_RFlag_Table (std::list<BB*>& bblist, BOOL is_fwd)
 {
   INT rtable_size = 0;
   INT max_resource_cycles = 0;
 
   _rr_tab = TI_RES_RES_Alloc(FALSE, &_hb_pool);
 
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bbi) {
     OP *op;
     FOR_ALL_BB_OPs_FWD (*bbi, op) {
@@ -1262,7 +1461,7 @@ List_Based_Bkwd::List_Based_Bkwd (BB *bb, HB_Schedule *sched, HBS_TYPE type,
 
 }
 
-List_Based_Bkwd::List_Based_Bkwd (list<BB*> bblist, HB_Schedule *sched, 
+List_Based_Bkwd::List_Based_Bkwd (std::list<BB*> bblist, HB_Schedule *sched, 
 				  HBS_TYPE type, MEM_POOL *pool) : 
   Priority_Selector(bblist, sched, type, pool)
 {
@@ -1308,6 +1507,29 @@ Priority_Selector::Get_Next_Element(HB_Schedule *Cur_Sched)
       Print_OPSCH (cur_op, Cur_Sched->hb_map());
     }
 
+#ifdef TARG_X8664_TODO
+    /* Try to schedule movlpd and movhpd back-to-back.
+     */
+    const bool is_fwd = Is_Fwd_Schedule();
+
+    if( ( is_fwd  && TOP_is_vector_high_loadstore( OP_code(cur_op) ) ) ||
+	( !is_fwd && TOP_is_vector_lo_loadstore( OP_code(cur_op) ) ) ){
+      for( ARC_LIST* arcs = is_fwd ? OP_preds(cur_op) : OP_succs(cur_op);
+	   arcs != NULL;
+	   arcs = ARC_LIST_rest(arcs) ){
+	const ARC* arc = ARC_LIST_first(arcs);
+	OP* couple = is_fwd ? ARC_pred(arc) : ARC_succ(arc);
+
+	if( ( couple == _last_sched_op ) &&
+	    ( ARC_kind(arc) == CG_DEP_MEMOUT ||
+	      ARC_kind(arc) == CG_DEP_REGOUT ) ){
+	  _last_sched_op = _best_op = cur_op;
+	  return (void*)_best_op;
+	}
+      }
+    }
+#endif
+
     // Replace the best_op by the cur_op if any of the following is true:
     //   1. best_op is NULL, i.e. cur_op is the first one we have seen.
     //   2. The cur_op is better based on some heuristics.
@@ -1315,6 +1537,10 @@ Priority_Selector::Get_Next_Element(HB_Schedule *Cur_Sched)
       _best_op = cur_op;
     }
   }
+
+#ifdef KEY
+  _last_sched_op = _best_op;
+#endif // KEY
 
   return (void *) _best_op;
 }
@@ -1385,7 +1611,7 @@ List_Based_Fwd::List_Based_Fwd (BB *bb, HB_Schedule *sched, HBS_TYPE type,
 
 }
 
-List_Based_Fwd::List_Based_Fwd (list<BB*> bblist, HB_Schedule *sched, 
+List_Based_Fwd::List_Based_Fwd (std::list<BB*> bblist, HB_Schedule *sched, 
 				HBS_TYPE type, MEM_POOL *pool) : 
   Priority_Selector(bblist, sched, type, pool)
 {
@@ -1439,6 +1665,10 @@ List_Based_Fwd::Get_Next_Element(HB_Schedule *Cur_Sched)
     }
   }
 
+#ifdef KEY
+  _last_sched_op = _best_op;
+#endif // KEY
+
   return (void *) _best_op;
 }
 
@@ -1454,6 +1684,24 @@ HB_Schedule::Invoke_Pre_HBS_Phase(BB* bb)
 
   OP *op, *prev_op;
   OP *next_op;
+
+#ifdef TARG_X8664
+  op = BB_last_op( bb );
+  if( op != NULL && OP_cond(op) ){
+    /* If a previous test op has been removed, then don't execute this
+       function which will set aside the cond jmp op to <_epilog_bb>;
+       otherwise, scheduler will give the wrong order so that the
+       rflags will not be set up correctly.
+    */
+    for( op = OP_prev(op); op != NULL; op = OP_prev(op) ){
+      if( TOP_is_change_rflags( OP_code(op) ) ){
+	if( !OP_icmp( op ) )
+	  return;
+	break;
+      }
+    }
+  }
+#endif
 
   // When we are scheduling before register allocation, we don't want 
   // to schedule SP adjustment OPs in the entry/exit blocks and OPs
@@ -1561,11 +1809,11 @@ HB_Schedule::Invoke_Pre_HBS_Phase(BB* bb)
 // to be done only for the entry/exit blocks in the hyperblock.
 // ===================================================================
 void
-HB_Schedule::Invoke_Pre_HBB_Phase(list<BB*> bblist)
+HB_Schedule::Invoke_Pre_HBB_Phase(std::list<BB*> bblist)
 {
 
-  list<BB*>::iterator bb_iter;
-  list<BB*>::reverse_iterator bb_riter;
+  std::list<BB*>::iterator bb_iter;
+  std::list<BB*>::reverse_iterator bb_riter;
 
   bb_iter = bblist.begin();
   bb_riter = bblist.rbegin();
@@ -1627,11 +1875,11 @@ HB_Schedule::Invoke_Post_HBS_Phase(BB* bb)
 }
 
 void
-HB_Schedule::Invoke_Post_HBB_Phase(list<BB*> bblist)
+HB_Schedule::Invoke_Post_HBB_Phase(std::list<BB*> bblist)
 {
 
-  list<BB*>::iterator bb_iter;
-  list<BB*>::reverse_iterator bb_riter;
+  std::list<BB*>::iterator bb_iter;
+  std::list<BB*>::reverse_iterator bb_riter;
 
   bb_iter = bblist.begin();
   bb_riter = bblist.rbegin();
@@ -1674,19 +1922,29 @@ HB_Schedule::Can_Schedule_Op (OP *cur_op, INT cur_time)
   return FALSE;
 }
 
+
 void
 HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
 {
   _sched_vector = VECTOR_Init (BB_length(bb), &_hb_pool);
 
-  list<BB*> blocks;
+  std::list<BB*> blocks;
   blocks.push_back(bb);
 
+#ifdef TARG_X8664
+  const BOOL org_LOCS_Fwd_Scheduling = LOCS_Fwd_Scheduling;
+  if( _hbs_type & HBS_MINIMIZE_REGS ){
+    LOCS_Fwd_Scheduling = FALSE;
+  }
+  Init_RFlag_Table( blocks, LOCS_Fwd_Scheduling );
+#else // TARG_X8664
 #ifdef TARG_IA64
   Init_RFlag_Table (blocks, TRUE);
 #else
   Init_RFlag_Table (blocks, FALSE);
 #endif
+#endif
+
 
   Compute_OPSCH (bb, _hb_map, &_hb_pool);
 
@@ -1697,19 +1955,32 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
   Priority_Selector *priority_fn;
   Cycle_Selector *cycle_fn;
 
+#ifdef TARG_X8664
+  if( LOCS_Fwd_Scheduling ){
+    priority_fn = CXX_NEW( List_Based_Fwd(bb, this, _hbs_type, &_hb_pool),
+			   &_hb_pool );
+    cycle_fn = CXX_NEW( Fwd_Cycle_Sel(), &_hb_pool );
+
+  } else {
+    priority_fn = CXX_NEW( List_Based_Bkwd(bb, this, _hbs_type, &_hb_pool),
+			   &_hb_pool );
+    cycle_fn = CXX_NEW( Bkwd_Cycle_Sel(), &_hb_pool );
+  }
+#else // TARG_X8664
 #ifdef TARG_IA64
-    // Do forward scheduling and cycle selector.
-    priority_fn = 
-      CXX_NEW(List_Based_Fwd(bb, this, _hbs_type, &_hb_pool), &_hb_pool);
-    cycle_fn = CXX_NEW(Fwd_Cycle_Sel(), &_hb_pool);
-
-#else 
-    // Do backward scheduling and cycle selector.
-    priority_fn = 
-      CXX_NEW(List_Based_Bkwd(bb, this, _hbs_type, &_hb_pool), &_hb_pool);
-    cycle_fn = CXX_NEW(Bkwd_Cycle_Sel(), &_hb_pool);
-
+  // Do forward scheduling and cycle selector.
+  priority_fn = 
+    CXX_NEW(List_Based_Fwd(bb, this, _hbs_type, &_hb_pool), &_hb_pool);
+  cycle_fn = CXX_NEW(Fwd_Cycle_Sel(), &_hb_pool);
+#else
+  // Do backward scheduling and cycle selector.
+  priority_fn = 
+    CXX_NEW(List_Based_Bkwd(bb, this, _hbs_type, &_hb_pool), &_hb_pool);
+  cycle_fn = CXX_NEW(Bkwd_Cycle_Sel(), &_hb_pool);
 #endif
+#endif
+
+
 
   OP *cur_op;
   OP *xfer_op = BB_xfer_op(bb);
@@ -1751,15 +2022,36 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
     Add_OP_To_Sched_Vector(cur_op, priority_fn->Is_Fwd_Schedule());
   }
     
-  // Insert the scheduled list of instructions into the bb.
-  Put_Sched_Vector_Into_BB (bb, bbsch, priority_fn->Is_Fwd_Schedule());
+#if defined(KEY) && defined(TARG_MIPS)
+  bool done = false;
+  if( !HBS_Before_LRA() && !HBS_From_GCM() && CG_sas ){
+    /* If we know bb has been scheduled optimally, then no need to call
+       Key_Schedule_Block. However, if hb_schedule does not model the hw resource
+       correctly, then the schedule might not be accurate. */
+    KEY_SCH key( bb, &_hb_pool );
+    done = key.success;
+  }
 
+  if( !done ){
+    Put_Sched_Vector_Into_BB (bb, bbsch, priority_fn->Is_Fwd_Schedule() );
+  }
+#else
+  if( BB_length(bb) != VECTOR_count(_sched_vector) ){
+    if( Trace_HB )
+      Print_BB_For_HB( bb, hb_map() );
+    FmtAssert( false, ("Some ops are not scheduled yet") );
+  }
+
+  // Insert the scheduled list of instructions into the bb.
+  Put_Sched_Vector_Into_BB (bb, bbsch, priority_fn->Is_Fwd_Schedule() );
+  LOCS_Fwd_Scheduling = org_LOCS_Fwd_Scheduling;
+#endif
 }
 
 void
-HB_Schedule::Schedule_Blocks (list<BB*>& bblist)
+HB_Schedule::Schedule_Blocks (std::list<BB*>& bblist)
 {
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
   UINT32 length = 0;
 
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bbi) {
@@ -1858,7 +2150,7 @@ HB_Schedule::Init(BB *bb, HBS_TYPE hbs_type, INT32 max_sched,
 }
 
 void
-HB_Schedule::Init(list<BB*> bblist, HBS_TYPE hbs_type, mINT8 *regs_avail)
+HB_Schedule::Init(std::list<BB*> bblist, HBS_TYPE hbs_type, mINT8 *regs_avail)
 {
   _hbs_type = hbs_type;
   if (regs_avail) {
@@ -1867,7 +2159,7 @@ HB_Schedule::Init(list<BB*> bblist, HBS_TYPE hbs_type, mINT8 *regs_avail)
   }
 
   UINT32 length = 0;
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
 
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bbi) {
     BB_OP_MAP omap = BB_OP_MAP_Create(*bbi, &_hb_map_pool);
@@ -1884,7 +2176,7 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
 
   Invoke_Pre_HBS_Phase(bb);
 
-  list<BB*> bblist;
+  std::list<BB*> bblist;
   bblist.push_back(bb);
 
   if (CG_DEP_Prune_Dependence &&  // if the flag is turned ON.
@@ -1918,7 +2210,14 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
 	  NON_CYCLIC,
 	  INCLUDE_MEMREAD_ARCS,
 	  INCLUDE_MEMIN_ARCS,
-	  (Is_Target_Itanium()) ? INCLUDE_CONTROL_ARCS : NO_CONTROL_ARCS,
+#ifndef KEY
+	  (Is_Target_Itanium()) ? 
+#endif
+	  INCLUDE_CONTROL_ARCS
+#ifndef KEY
+	  : NO_CONTROL_ARCS
+#endif
+	  ,
 	  NULL);
 
       if (Trace_HB) CG_DEP_Trace_Graph (bb);
@@ -1954,7 +2253,7 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch)
 }
 
 void
-HB_Schedule::Schedule_HB (list<BB*> bblist)
+HB_Schedule::Schedule_HB (std::list<BB*> bblist)
 {
 
   Invoke_Pre_HBB_Phase(bblist);
@@ -1976,7 +2275,7 @@ HB_Schedule::Schedule_HB (list<BB*> bblist)
   CG_DEP_Delete_Graph (&bblist);
 
   Invoke_Post_HBB_Phase(bblist);
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
   FOR_ALL_BB_STLLIST_ITEMS_FWD(bblist, bbi) {
     Set_BB_scheduled (*bbi);
     Set_BB_scheduled_hbs (*bbi);  // scheduled from hbs

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -340,7 +344,11 @@ fei_proc_def(char         *name_string,
 
   Set_PU_prototype (pu, ty);
   Set_PU_f90_lang (pu);
-  
+
+#ifdef KEY
+  if (Check_FF2C_Script(name_string, 1))
+    Set_PU_ff2c_abi(pu);
+#endif  
 
   if (is_inline_func)
      Set_PU_is_inline_function(pu);
@@ -1086,7 +1094,7 @@ fei_object(char * name_string,
       cwh_auxst_cri_pointee(base_st, st);
 
     } else {
-      b = cast_to_STB(offset);
+      b = cast_to_STB((UINTPS) offset);
       base_st = cast_to_ST(b->item);
     }
 
@@ -2287,7 +2295,7 @@ cwh_stab_dump_FIELDS(FIELDS fp_table, INT32 from, INT32 to)
 	    FIELDS_last_offset(i),
 	    FIELDS_prev_array_index(i));
     if (st)
-      printf (" ST: %x (%s)\n",st,ST_name(st));
+      printf (" ST: %p (%s)\n",st,ST_name(st));
     else
       printf (" ST: <none>\n");
 
@@ -3027,6 +3035,13 @@ cwh_stab_mk_fn_0args(char *name, ST_EXPORT eclass,SYMTAB_IDX level,TY_IDX rty)
 	   (TY_IDX)pu);
 
   Set_ST_ofst(st, 0);
+
+#ifdef KEY
+  PU_IDX pu_idx = ST_pu(st);
+  PU& pu_rec = Pu_Table[pu_idx];
+  if (Check_FF2C_Script(name, 1))
+    Set_PU_ff2c_abi(pu_rec);
+#endif  
   return(st);
 }
 

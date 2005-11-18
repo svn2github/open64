@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -136,7 +140,7 @@ void
 CG_THR::Check_THR_Profitability ()
 {
   OP *op;
-  list<ARC*> arc_list;
+  std::list<ARC*> arc_list;
   ARC *arc;
 
   _candidate_list.clear();  // empty the list
@@ -165,7 +169,7 @@ CG_THR::Check_THR_Profitability ()
   // if THR profitable, update the _candidate_list, otherwise reset the
   // ARC_is_dotted flag.
 
-  list<ARC*>::iterator arc_iter;
+  std::list<ARC*>::iterator arc_iter;
   for (arc_iter = arc_list.begin(); arc_iter != arc_list.end(); arc_iter++) {
     if (_thr_type & THR_DATA_SPECULATION_NO_RB) {
       OP *pred_op = ARC_pred(*arc_iter);
@@ -201,7 +205,7 @@ void
 CG_THR::Perform_THR_Code_Generation ()
 {
   if (_thr_type & THR_DATA_SPECULATION_NO_RB) {
-    list<ARC*>::iterator arc_iter;
+    std::list<ARC*>::iterator arc_iter;
     for (arc_iter = _candidate_list.begin(); 
 	 arc_iter != _candidate_list.end(); arc_iter++) {
 
@@ -234,10 +238,12 @@ CG_THR::OP_Has_Restrictions(OP *pred_op, OP *succ_op, BOOL before_regalloc)
       if (TNs_Are_Equivalent(succ_result_tn, succ_base_tn)) return TRUE;
     }
 
+#if !defined(TARG_MIPS) && !defined(TARG_X8664)
     //TODO: Need to add support for post-increment loads as well.
     if (OP_load(succ_op) && 
 	TOP_Find_Operand_Use(OP_code(succ_op), OU_postincr) >= 0)
       return TRUE;
+#endif
   }
 
   return FALSE;
@@ -292,9 +298,13 @@ CG_THR::Perform_THR()
 			   INCLUDE_ASSIGNED_REG_DEPS,
 			   NON_CYCLIC,
 			   NO_MEMREAD_ARCS,
+#ifndef TARG_MIPS
 			   (Is_Target_Itanium()) ? NO_MEMIN_ARCS :
+#endif
 			                           INCLUDE_MEMIN_ARCS,
+#ifndef TARG_MIPS
 			   (Is_Target_Itanium()) ? INCLUDE_CONTROL_ARCS :
+#endif
 			                           NO_CONTROL_ARCS,
 			   NULL);
 

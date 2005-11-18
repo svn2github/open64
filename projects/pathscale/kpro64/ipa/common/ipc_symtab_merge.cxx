@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -59,6 +63,8 @@
 // ====================================================================
 //
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "linker.h"
 
 #include "defs.h"
@@ -241,8 +247,8 @@ Initialize_Auxiliary_Tables ()
 
     MEM_POOL_Initialize (&Common_map_pool, "common map pool", FALSE);
     Common_Block_Elements_Map = 
-      CXX_NEW (COMMON_BLOCK_ELEMENTS_MAP (100, hash<ST_IDX> (),
-                                          equal_to<ST_IDX> (),
+      CXX_NEW (COMMON_BLOCK_ELEMENTS_MAP (100, __gnu_cxx::hash<ST_IDX> (),
+					  std::equal_to<ST_IDX> (),
                                           &Common_map_pool), 
                &Common_map_pool);
 
@@ -1147,6 +1153,10 @@ Synch_Pu_With_Pu (PU& merged_pu, const PU& original_pu)
     merged_pu.flags = merged_flags;
 
     merged_pu.src_lang |= original_pu.src_lang;
+#ifdef KEY
+    if (!merged_pu.unused)
+    	merged_pu.unused = original_pu.unused; // EH information
+#endif
 } // Synch_Pu_With_Pu
 
 
@@ -1164,8 +1174,13 @@ Synch_TY_IDX (TY_IDX merged_ty_idx, TY_IDX original_ty_idx)
     if (TY_is_volatile (merged_ty_idx) || TY_is_volatile (original_ty_idx))
 	Set_TY_is_volatile (result);
 
+#ifdef KEY
+    Set_TY_align_exp (result, MAX (TY_align_exp (merged_ty_idx),
+				   TY_align_exp (original_ty_idx)));
+#else
     Set_TY_align_exp (result, max (TY_align_exp (merged_ty_idx),
 				   TY_align_exp (original_ty_idx)));
+#endif
     return result;
 } // Synch_TY_IDX
 
@@ -1309,6 +1324,22 @@ Enter_Original_St(const IPC_GLOBAL_TABS& original_tabs,
 	Merge_Global_St (ST_IDX_index (ST_raw_base_idx(original_st)),
 			 original_tabs);
     Set_ST_raw_base_idx(new_st, base_idx);
+#ifdef TARG_X8664
+    if ( ST_sclass(new_st) != SCLASS_COMMON &&
+	 // Avoid Fortran Equivalenced arrays (to complete fix for bug 1988)
+	 !ST_is_equivalenced(new_st) &&
+         ST_sym_class(new_st) == CLASS_VAR ) {
+      TY_IDX ty = ST_type(new_st);
+      if (TY_kind(ST_type(new_st)) == KIND_POINTER) {
+        ty = TY_pointed(ST_type(new_st));
+      }
+      if (TY_kind(ty) != KIND_FUNCTION) {
+        TY_IDX st_ty_idx = ST_type(new_st);
+        Set_TY_align_exp(st_ty_idx, 4);
+        Set_ST_type(new_st, st_ty_idx);
+      }
+    }
+#endif
 
     return new_st_idx;
 } // Enter_Original_St
@@ -1478,6 +1509,22 @@ Merge_St_With_St(const IPC_GLOBAL_TABS &original_tabs,
     Synch_St_With_St (original_tabs, merged_st, original_st);
 
     (*New_St_Idx).set_map (ST_st_idx(original_st), ST_st_idx(merged_st));
+#ifdef TARG_X8664
+    if ( ST_sclass(merged_st) != SCLASS_COMMON &&
+	 // Avoid Fortran Equivalenced arrays (to complete fix for bug 1988)
+	 !ST_is_equivalenced(merged_st) &&
+         ST_sym_class(merged_st) == CLASS_VAR ) {
+      TY_IDX ty = ST_type(merged_st);
+      if (TY_kind(ST_type(merged_st)) == KIND_POINTER) {
+        ty = TY_pointed(ST_type(merged_st));
+      }
+      if (TY_kind(ty) != KIND_FUNCTION) {
+        TY_IDX st_ty_idx = ST_type(merged_st);
+        Set_TY_align_exp(st_ty_idx, 4);
+        Set_ST_type(merged_st, st_ty_idx);
+      }
+    }
+#endif
     return ST_st_idx (merged_st);
 } // Merge_St_With_St
 
@@ -1651,7 +1698,7 @@ Merge_Global_St(UINT                   idx,
     //
     char *st_name = &original_tabs.symstr_tab[ST_name_idx (original_st)];
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
     void *pext = ld_slookup_mext(st_name,
     	    	    	    	(ST_storage_class (original_st) == SCLASS_EXTERN));
 #else
@@ -1748,6 +1795,11 @@ Merge_Global_Initv(UINT                  initv_idx,
 	break;
 	 
     case INITVKIND_BLOCK:
+#ifdef KEY // fixes bug 1010
+        if (INITV_block_first(original_initv) == INITV_IDX_ZERO)
+	  nested_initv_idx = INITV_IDX_ZERO;
+	else
+#endif
 	nested_initv_idx = 
 	    Merge_Global_Initv(INITV_block_first(original_initv), 
 			       original_tabs, initv_map);
@@ -1871,6 +1923,7 @@ Merge_File_Info (const FILE_INFO& info)
 {
     File_info.flags |= info.flags;
 } // Merge_File_Info
+
 
 // --------------------------------------------------------------
 // Routines for entering WHIRL symbols into the ELF symbol table

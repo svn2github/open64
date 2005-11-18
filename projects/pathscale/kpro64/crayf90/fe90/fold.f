@@ -246,7 +246,6 @@ C
      &             integer_default_result,
      &             result_opnd)
 
-
       result_opnd(1) = 0
       result_opnd(2) = 0
       result_opnd(3) = 0

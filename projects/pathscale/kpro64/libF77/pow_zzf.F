@@ -35,7 +35,7 @@ C
 
 C $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/pow_zzf.F,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ 
 
-	double complex function pow_zz(a,b)
+	double complex function pow_zzf(a,b)
 	double precision r(2), a(2), b(2)
 
 	double precision logr, logi, x, y
@@ -49,7 +49,7 @@ C $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/pow_zzf.F,v 1.1.1.1 2005/10/
 
 	r(1) = x * cos(y)
 	r(2) = x * sin(y)
-	pow_zz = dcmplx(r(1), r(2))
+	pow_zzf = dcmplx(r(1), r(2))
 	return
 	end
 

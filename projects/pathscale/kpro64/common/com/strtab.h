@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -128,9 +132,8 @@ Index_to_char_array (UINT32 idx);
 
 #ifdef MONGOOSE_BE
 
-#ifndef __SGI_STL_HASH_MAP_H
-#include <hash_map.h>
-#endif
+#include <ext/hash_map>
+using __gnu_cxx::hash_map;
 
 #ifndef mempool_allocator_INCLUDED
 #include "mempool_allocator.h"
@@ -142,13 +145,8 @@ Index_to_char_array (UINT32 idx);
 
 class STR_IDX_MAP {
 private:
-#ifndef __GNUC__
-  typedef hash_map<STR_IDX, STR_IDX, hash<STR_IDX>, equal_to<STR_IDX>,
-      mempool_allocator<STR_IDX> > rep_type;
-#else
-  typedef hash_map<STR_IDX, STR_IDX, hash<STR_IDX>, equal_to<STR_IDX>,
-      mempool_allocator<pair<const STR_IDX, STR_IDX> > > rep_type;
-#endif
+  typedef hash_map<STR_IDX, STR_IDX, __gnu_cxx::hash<STR_IDX>, std::equal_to<STR_IDX>,
+      mempool_allocator<std::pair<const STR_IDX, STR_IDX> > > rep_type;
   rep_type rep;  
 
 public:

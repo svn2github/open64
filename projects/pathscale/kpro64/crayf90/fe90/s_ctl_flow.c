@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -9621,7 +9625,15 @@ void gen_forall_tmp(expr_arg_type	*exp_desc,
 
       ATD_AUTO_BASE_IDX(tmp_idx)        = base_tmp_idx;
 
+#ifdef KEY
+      /* bug#488
+	 <exp_desc->type_idx> gives the type that a pointer points to;
+	 we need to find the type that holds these pointers.
+       */
+      determine_tmp_size(&size_opnd, ATD_TYPE_IDX(tmp_idx) );
+#else
       determine_tmp_size(&size_opnd, exp_desc->type_idx);
+#endif
 
       NTR_IR_TBL(max_idx);
       IR_OPR(max_idx) = Max_Opr;

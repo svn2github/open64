@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -57,13 +61,20 @@ __remainder_r(double argx, double argy)
 {
 	union _ieee_double {
 		double		dword;
-		long		lword;
-		unsigned long	llword;
+		long long	lword;
+		unsigned long long llword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+			unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
+			unsigned int exponent	: IEEE_64_EXPO_BITS;
+			unsigned int sign	: 1;
+#else
 			unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_64_EXPO_BITS;
 			unsigned int mantissa_up : IEEE_64_MANT_BITS_H1;
 			unsigned int mantissa_lo : IEEE_64_MANT_BITS_H2;
+#endif
 		} parts1;
 	};
 	union _ieee_double x_val, y_val, tdiv, two_52, evenchk, div_52;

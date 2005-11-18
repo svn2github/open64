@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -112,6 +116,9 @@ extern BOOL Enable_Cfold_Intrinsics;	/* Intrinsic constant folding? */
 extern BOOL Cfold_Intrinsics_Set;	/* ... option seen? */
 extern BOOL CIS_Allowed;	/* sin(x) and cos(x) => cis(x) ? */
 extern BOOL Div_Split_Allowed;	/* Change a/b --> a*1/b ? */
+#ifdef KEY
+extern UINT32 Div_Exe_Counter;	/* Change a/b --> a/N if b==N ? */
+#endif
 extern BOOL Fast_Exp_Allowed;	/* Avoid exp() calls? */
 extern BOOL Fast_IO_Allowed;	/* Fast printf/scanf/printw */
 extern BOOL Fast_Sqrt_Allowed;	/* Change sqrt(x) --> x * rsqrt(x) ? */
@@ -143,11 +150,16 @@ extern BOOL OPT_shared_memory;	// assume use of shared memory
 
 /***** Instrumentation related options *****/
 extern INT32 Instrumentation_Phase_Num;
+extern INT32 Instrumentation_Type_Num;
 extern BOOL Instrumentation_Enabled;
 extern UINT32 Instrumentation_Actions;
 extern BOOL Instrumentation_Unique_Output;
 extern INT32 Feedback_Phase_Num;
 extern OPTION_LIST* Feedback_Option;
+#ifdef KEY
+extern BOOL profile_arcs;
+extern BOOL Asm_Memory;
+#endif
 #ifdef __cplusplus
 }
 #endif

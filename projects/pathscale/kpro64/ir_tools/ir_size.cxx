@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,7 +42,7 @@
 #include <sys/stat.h>
 #include <sys/elf_whirl.h>
 #include <libgen.h>		    /* for basename() */
-#include <algo.h>
+#include <algorithm>
 
 #include "defs.h"
 #include "pu_info.h"

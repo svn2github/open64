@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -107,6 +111,15 @@ typedef enum {
 } PU_KIND;
 extern PU_KIND Cur_PU_Kind;
 
+/* the var used to create output.h */
+extern int pu_number;
+extern int bb_number;
+extern char *Output_h_File_Name;      /* Cycle_Counting Output.h file */
+extern FILE *Output_h_File;           /* Cycle counting output.h file */
+extern FILE *Call_graph_file;	      /* Call graph file */
+extern char * pu_string[1000]; 
+extern char * bb_string[1000]; 
+
 /* Current file names: */
 extern char *Src_File_Name;	/* Source file */
 extern char *Orig_Src_File_Name; /* Original source file passed to driver */
@@ -120,6 +133,10 @@ extern char *IR_File_Name;	/* SGIR intermediate file */
 extern char *Ipa_File_Name;	/* IPA file */
 extern char *Asm_File_Name;	/* Assembly file */
 extern char *Obj_File_Name;	/* Relocatable object file */
+extern char *call_graph_file_name; /* Function call graph file */
+extern char *cord_output_file_name; /* Output file name after function layout */
+extern char *cord_obj_file_name;  /* Object file name which will be reorder function layout */
+extern char *Instrumentation_File_Name; /* instrumentation file */
 extern char *Feedback_File_Name;/* feedback file produced from prof */
 #ifndef MONGOOSE_BE
 extern char *Lib_File_Name;	/* Program library file */
@@ -127,6 +144,8 @@ extern char *Lib_File_Name;	/* Program library file */
 extern char *Lib_Lock_Name;	/* Program library lock file */
 extern char *DSTdump_File_Name; /* Dwarf intermediate (i.e. DST) dump file */
 extern char *Global_File_Name;	/* Global symbol table file */
+
+extern char *License_File_Name ; /* name of license file */
 
 /* Current file handles if open, NULL otherwise: */
 extern FILE *Src_File;		/* Source file */
@@ -142,6 +161,15 @@ extern FILE *Asm_File;		/* Assembly file */
 extern FILE *Obj_File;		/* Relocatable object file */
 extern FILE *Lib_File;		/* Program library file */
 extern FILE *Tim_File;		/* Timing info file (usually trace) */
+
+
+#ifdef SPECMT_LT
+  extern FILE *ExchangeFile;              /* exchange file for pseudo-specmt partition */
+  extern FILE *LoopMappingFile;           /* loop mapping file for two pass compilation */
+  #define SPECMT_FIRST_PASS   1
+  #define SPECMT_SECOND_PASS  2
+#endif
+
 #ifdef MONGOOSE_BE
 #define MMAPPED_FILE (1)	/* some components use mmap instead of
 				   stream i/o, in those cases the *_File
@@ -155,6 +183,7 @@ extern INT32 Num_Source_Files;
 extern BOOL Assembly;		/* Assembly code */
 extern BOOL Object_Code;	/* Object code */
 extern BOOL Symbol_Table_Out;	/* Symbol table output (list or trace) */
+extern BOOL Create_Cycle_Output; /* added by cbq */
 extern BOOL Show_Progress;	/* Report progress to stdout */
 
 /* Clean up files after failure: */

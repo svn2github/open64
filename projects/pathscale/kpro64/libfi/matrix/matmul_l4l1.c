@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -45,7 +49,7 @@
 /*
  * Name of routine called do computation (if any)
  */
-#define SUBNAME _L1L4GEMMX
+#define SUBNAME _l1l4gemmx__
 /*
  * Type of constants alpha and beta
  */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -86,7 +90,11 @@ typedef struct SCALAR_C_NAME
  */
 const char TY2C_Aligned_Block_Name[] = "__block";
 
+#ifndef TARG_X8664
 #define MTYPE_PREDEF MTYPE_F16
+#else
+#define MTYPE_PREDEF MTYPE_V16F8
+#endif /* TARG_X8664 */
 
 static char Name_Unknown_Type[] = "__UNKNOWN_TYPE";
 static const SCALAR_C_NAME Scalar_C_Names[MTYPE_PREDEF+1] =
@@ -103,7 +111,29 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_PREDEF+1] =
     {"float",              "_IEEE32"},          /* MTYPE_F4 = 10 */
     {"double",             "_IEEE64"},          /* MTYPE_F8 = 11 */
     {Name_Unknown_Type,    "_IEEE80"},          /* MTYPE_F10 = 12 */
+#ifndef TARG_X8664
     {Name_Unknown_Type,    "_IEEE128"}  /* MTYPE_F16 = 13 = MTYPE_PREDEF */
+#else
+    {Name_Unknown_Type,        "_IEEE128"},     /* MTYPE_F16 = 13 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_STRING = 14 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_FQ = 15 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_M = 16 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_C4 = 17 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_C8 = 18 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_CQ = 19 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_V = 20 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_BS = 21 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_A4 = 22 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_A8 = 23 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_C10 = 24 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_C16 = 25 */
+    {"signed char[16]",        "_INT8[16]"},    /* MTYPE_V16I1 = 26 */
+    {"signed short[8]",        "_INT16[8]"},    /* MTYPE_V16I2 = 27 */
+    {"signed int[4]",          "_INT32[4]"},    /* MTYPE_V16I4 = 28 */
+    {"signed long long int[2]","_INT64[2]"},    /* MTYPE_V16I8 = 29 */
+    {"float[4]",               "_IEEE32[4]"},   /* MTYPE_V16F4 = 30 */
+    {"double[2]",              "_IEEE64[2]"}    /* MTYPE_V16F8 = 31 */
+#endif /* TARG_X8664 */
    }; /* Scalar_C_Names */
 
 

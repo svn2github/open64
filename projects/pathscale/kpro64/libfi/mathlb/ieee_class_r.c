@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -53,11 +57,19 @@ _f_int4 _IEEE_CLASS_I4( _f_real8 x)
 	union _ieee_doble {
 		_f_real8	dword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa_lo : IEEE_64_MANT_BTS2;
+			unsigned int mantissa_up : IEEE_64_MANT_BTS1-1;
+			unsigned int q_bit  : 1;
+			unsigned int exponent : IEEE_64_EXPO_BITS;
+			unsigned int sign     : 1;
+#else
 			unsigned int sign     : 1;
 			unsigned int exponent : IEEE_64_EXPO_BITS;
 			unsigned int q_bit  : 1;
 			unsigned int mantissa_up : IEEE_64_MANT_BTS1-1;
 			unsigned int mantissa_lo : IEEE_64_MANT_BTS2;
+#endif
 		} parts;
 	};
 	union	_ieee_doble x_val;
@@ -109,11 +121,19 @@ _f_int8 _IEEE_CLASS_I8( _f_real8 x)
 	union _ieee_doble {
 		_f_real8	dword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa_lo : IEEE_64_MANT_BTS2;
+			unsigned int mantissa_up : IEEE_64_MANT_BTS1-1;
+			unsigned int q_bit  : 1;
+			unsigned int exponent : IEEE_64_EXPO_BITS;
+			unsigned int sign     : 1;
+#else
 			unsigned int sign     : 1;
 			unsigned int exponent : IEEE_64_EXPO_BITS;
 			unsigned int q_bit  : 1;
 			unsigned int mantissa_up : IEEE_64_MANT_BTS1-1;
 			unsigned int mantissa_lo : IEEE_64_MANT_BTS2;
+#endif
 		} parts;
 	};
 	union	_ieee_doble x_val;

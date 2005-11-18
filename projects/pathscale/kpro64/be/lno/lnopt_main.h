@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1068,6 +1072,10 @@ inline REGION_INFO* Get_Region_Info(const WN* wn)
 #define TT_GRAPH_CAPACITY		0x08000000
 
 #define TT_LNO_DEBUG_CSE		0x10000000
+#ifdef KEY
+#define TT_LNO_DEBUG_SIMD               0x20000000
+#define TT_LNO_DEBUG_HOISTIF            0x40000000
+#endif /* KEY */
 
 // TP_LNOPT = 32 options
 

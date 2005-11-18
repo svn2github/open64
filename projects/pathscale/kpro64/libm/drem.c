@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -61,7 +65,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/libm/drem.c,v 
 
 #include "libm.h"
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 
 #include <ieeefp.h>
 
@@ -75,7 +79,7 @@ extern	fp_rnd	swapRM(fp_rnd);
 extern	int	swapRM(int);
 #endif
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	double	drem(double, double);
 extern	double	remainder(double, double);
 extern	double	__remainder(double, double);
@@ -144,7 +148,7 @@ long long m;
 
 #endif
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 fp_rnd	rm;
 #endif
 
@@ -242,7 +246,7 @@ struct exception	exstruct;
 
 	/* set rounding mode to round to zero */
 	
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 	rm = swapRM( FP_RZ );
 #endif
 

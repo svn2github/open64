@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -57,6 +61,10 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_lunit.h"
 #include "gra_lrange.h"
 
+#ifdef TARG_X8664
+#include "targ_sim.h"   // For RAX, RCX and RDX
+#endif
+
 
 /////////////////////////////////////
 // Create and return a new LUNIT associated with <lrange> and
@@ -91,6 +99,16 @@ LUNIT::Preference_Copy(LRANGE *lr)
 {
   pref_priority += gbb->Freq();
   if (lr->Type() == LRANGE_TYPE_LOCAL && lr->Has_Wired_Register()) {
+#ifdef TARG_X8664
+    /* Relax me!!!
+       The following condition is necessary when the curent lrange does not
+       across an operation which uses RAX, RCX or RDX implicitly.
+    */
+    if( lr->Reg() == RAX ||
+	lr->Reg() == RCX ||
+	lr->Reg() == RDX )
+      return;
+#endif
     allowed_preferences = REGISTER_SET_Union1(allowed_preferences,lr->Reg());
   }
 }

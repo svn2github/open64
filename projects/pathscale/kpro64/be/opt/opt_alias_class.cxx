@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -78,7 +83,10 @@
 
 // For the interface to clients, see opt_alias_class.h
 
-#include <set.h>
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
+#include <set>
+#include <math.h>
 
 #ifdef USE_PCH
 #include "opt_pch.h"
@@ -96,7 +104,9 @@
 extern "C" {
 #include "bitset.h"
 }
-
+#ifdef KEY
+extern BOOL ST_Has_Dope_Vector(ST *st);
+#endif
 
 IDTYPE ALIAS_CLASS_REP::_last_id_used;
 BOOL   ALIAS_CLASS_REP::_structure_not_frozen;
@@ -695,7 +705,20 @@ ALIAS_CLASS_REP::Process_pending(ALIAS_CLASSIFICATION &ac)
   }
 }
 
-
+#ifdef KEY
+BOOL
+ALIAS_CLASS_REP::Pending_rep_match(ALIAS_CLASS_REP *rep)
+{
+  PENDING_LIST lst = _pending;
+  while (lst != NULL) {
+    ALIAS_CLASS_REP *item = lst->Node()->Alias_class();
+    if (item == rep) 
+      return TRUE;
+    lst = lst->Next();
+  }
+  return FALSE;
+}
+#endif
 void
 ALIAS_CLASS_REP::Merge_pending(ALIAS_CLASS_REP &that)
 {
@@ -923,7 +946,7 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
       //
       // See the related comments in OPT_STAB::Count_syms(WN *) in
       // opt_sym.cxx.
-      set<AUX_ID> processed_ids;
+      std::set<AUX_ID> processed_ids;
 
       AUX_ID lhs_aux_id = WN_aux(expr);
       ST *lhs_st = Opt_stab()->Aux_stab_entry(lhs_aux_id)->St();
@@ -1045,6 +1068,20 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
 	if (expr_must_point && !ref->Is_pointer_class()) {
 	  ALIAS_CLASS_MEMBER *obj_dummy = New_alias_class_member();
 	  ref->Set_class_pointed_to(New_alias_class(obj_dummy));
+#ifdef KEY
+// Fix for Bug 328
+/*
+          AUX_ID lhs_aux_id = WN_aux(expr);
+          ST *lhs_st = Opt_stab()->Aux_stab_entry(lhs_aux_id)->St();
+	  if (WOPT_Enable_Unique_Pt_Vsym && ST_Has_Dope_Vector(lhs_st)){
+	    for (INT i = 1; i <= _base_id_map.Lastidx(); i++) {
+	      ALIAS_CLASS_REP* class_rep = _base_id_map[i]->Lda_class().Class_pointed_to();
+	      if (class_rep != NULL && class_rep->Pending_rep_match(ref))
+		ref->Add_pending(class_rep, *this);		
+	    }
+	  }
+*/
+#endif
 	  ref->Process_pending(*this);
 	}
 	if (WOPT_Enable_Verbose && Tracing()) {
@@ -1197,6 +1234,18 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
       ALIAS_CLASS_REP    *obj_acr   = New_alias_class(dummy_acm);
       t.Set_obj_class(obj_acr);
       t.Ref_class()->Set_class_pointed_to(obj_acr);
+#ifdef KEY
+// Fix for Bug 328
+/*
+      if (WOPT_Enable_Unique_Pt_Vsym){
+        for (INT i = 0; i < WN_kid_count(expr); i++) {
+          AC_PTR_OBJ_PAIR u = Classify_deref_of_expr(WN_kid(expr, i), FALSE);
+          if (!u.Obj_class())
+            u.Ref_class()->Set_class_pointed_to(obj_acr);
+        }
+      }
+*/
+#endif
       t.Ref_class()->Process_pending(*this);
     }
     if (WOPT_Enable_Verbose && Tracing()) {
@@ -1395,9 +1444,11 @@ ALIAS_CLASSIFICATION::WN_is_alloca_intrinsic(const WN *const call_wn)
 BOOL
 ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
 {
-#if 1
+#ifndef KEY
   return WN_Call_Does_Mem_Alloc(call_wn);
 #else
+  if (WN_Call_Does_Mem_Alloc(call_wn))
+    return TRUE;
   if (WN_operator(call_wn) == OPR_CALL) {
     const ST *const st = WN_st(call_wn);
 

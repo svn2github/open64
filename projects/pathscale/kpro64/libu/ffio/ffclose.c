@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -54,7 +58,6 @@
  */
 
 void _zerocnvrttbl(int fd);
-int __ffclose(struct fdinfo *fio, struct ffsw *pstat);
 
 #if	defined(__mips) || defined(_LITTLE_ENDIAN)
 ffclose(int fd)

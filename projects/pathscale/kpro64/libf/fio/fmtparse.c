@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -82,8 +86,8 @@ process_paren_group (	parse_block	*pfmt,
 /* Table of nonrepeatable characters */
 
 static int64 non_repeatable[2] = {
-	0x00000000297EFFE0,	/* " $ ' ) * + , - . 0-9 : */
-	0x0000180800001800	/* S T \ s t */
+	0x00000000297EFFE0LL,	/* " $ ' ) * + , - . 0-9 : */
+	0x0000180800001800LL	/* S T \ s t */
 };
 
 /*

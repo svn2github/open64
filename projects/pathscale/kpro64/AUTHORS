@@ -1,26 +1,24 @@
-The following members of the SGI High Performance Programming
-Environment team and others have contributed to this release:
+Copyright 2004 PathScale, Inc.  All Rights Reserved.
 
-David Anderson
-Toni Anderson
-Matt Austern
-Jack Carter
-Kai Chang
-Adrian Daley
-Jim Dehnert
-Dick Lee
-Ken Lesniak
-Lilian Leung
-Srinivas Mantripragada
-Michael Murphy
-Chandrasekhar Murthy
-Nenad Nedeljkovic
-Carla Oexmann
-George Pirocanac
-Jalal Rajabali
-Ken Sarno
-David Stephenson
-Ross Towle
-David Whitney
-John Wilkinson
-Jean Wilson
+The following members of the PathScale(TM) Compiler Suite team and others
+have contributed to this release:
+
+David Allison
+Jeremy Brown
+Gautam Chakrabarti
+Fred Chow
+Tom Elken
+John Gregor
+Dimitar Haralanov
+Tim Kong
+Dee Lee
+Jin Lin
+Greg Lindahl
+Jack Liu
+Jane McKean
+Kannan Narayanan
+Bryan O'Sullivan
+Duncan Poole
+Robert Walsh
+Yan Xie
+Betsy Zeller

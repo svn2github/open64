@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -72,15 +76,17 @@ typedef enum {
   ISA_MIPS5     = 5,
   ISA_MIPS6     = 6,
   ISA_MIPSX     = 9,
+  ISA_MIPS64    = 10,
   ISA_IA641     = 11,
-  ISA_IA32      = 12
+  ISA_IA32      = 12,
+  ISA_X8664     = 13,
 } ISA;
 
 extern boolean debug;		/* debugging turned on */
 
 extern boolean nostdinc;	/* no standard include directory */
 
-extern string help_pattern;	/* pattern string for help file */
+extern char *help_pattern;	/* pattern string for help file */
 
 extern int inline_t;            /* toggle for inline options */
 
@@ -117,7 +123,7 @@ extern void dash_F_option(void);
 extern void untoggle (int *obj, int value);
 
 /* save value in string */
-extern void save_name (string *obj, string value);
+extern void save_name (char **obj, char *value);
 
 /* do action associated with flag */
 extern void opt_action (int optflag);
@@ -135,5 +141,10 @@ extern void set_dsm_options (void);
 extern void Process_Mp (void);
 extern void Process_Cray_Mp (void);
 
-extern void print_file_path (string);	/* print path to named file */
+extern void print_file_path (char *);	/* print path to named file */
+
+#ifdef KEY
+extern int subverbose ;
+
+#endif
 

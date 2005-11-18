@@ -97,6 +97,12 @@ endif
 ifeq ($(BUILD_TARGET), IA32)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), MIPS)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
+ifeq ($(BUILD_TARGET), X8664)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
@@ -124,10 +130,12 @@ COMMON_UTIL_TARG_DIR    = $(COMMON_UTIL_DIR)/$(BUILD_TARGET_DIR)
 INCLUDE_DIR             = $(ROOT)/usr/include
 
 # These are the directories in which to look for source files.
+# Order of IPA_LOCAL_DIR and IPA_COMMON_DIR is important, init.cxx is present
+# both in local and common. For ipl.so we want local/init.cxx
 
 SRC_DIRS = \
-  $(IPA_COMMON_DIR)   \
   $(IPA_LOCAL_DIR)    \
+  $(IPA_COMMON_DIR)   \
   $(IPA_ANALYZE_DIR)  \
   $(BE_COM_DIR)   \
   $(BE_LNOPT_DIR) \
@@ -157,7 +165,8 @@ IPA_LOCAL_CXX_SRCS = \
 	ipl_tlog.cxx \
 	ipl_outline.cxx \
 	init.cxx \
-	ipl_elfsym.cxx
+	ipl_elfsym.cxx \
+	ipl_reorder.cxx
 
 IPA_ANALYZE_SRCS = \
 
@@ -194,7 +203,7 @@ IPA_CXX_OBJS = $(IPA_CXX_SRCS:.cxx=.o)
 
 VPATH    =  $(SRC_DIRS)
 
-LCOPTS = $(STD_COMPILE_OPTS)
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 
@@ -257,7 +266,7 @@ ifeq ($(BUILD_OS), LINUX)
 	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 endif
 ## verify that wopt.so is up to date
-	cd $(TARG_OPT_DIR) && $(MAKE)
+	$(call submake,$(TARG_OPT_DIR))
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is
@@ -280,7 +289,7 @@ else
 endif
 
 ipl: $(IPA_OBJS) $(IPA_CXX_OBJS) $(IPA_DSOS)
-	$(C++F) -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) $(IPA_DSOS) $(LDFLAGS)
+	$(link.c++f) -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) $(IPA_DSOS) $(LDFLAGS)
 	if [ ! -l wopt.so ]; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi
 	if [ ! -l be.so ]; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 
@@ -293,7 +302,7 @@ endif
 
 ipl.so: $(IPA_OBJS) $(IPA_CXX_OBJS) $(LINK_DSOS) \
 		$(BE_BE_DIR)/so_locations $(IPA_LOCAL_DIR)/Exported
-	$(C++F) -o $@  $(STD_DSO_LOADOPTS) $(EXPORT_LIST)	\
+	$(link.c++f) -o $@  $(STD_DSO_LOADOPTS) $(EXPORT_LIST)	\
 		$(IPA_OBJS) $(IPA_CXX_OBJS)			\
 		$(LINK_DSOS) $(LLDLIBS)
 	if ! test -a wopt.so; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi

@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -63,7 +63,7 @@
 #     BUILD_PCH      = specifies whether to use pre-compiled headers for build
 #     BUILD_VARIANT  = specifies special variant to be built
 #     BUILD_INSTALL  = specifies where to install components/libraries
-#     BUILD_TARGET   = specifies target machine for run (MIPS/IA64/IA32)
+#     BUILD_TARGET   = specifies target machine for run (MIPS/IA64/IA32/X8664)
 #     BUILD_COMPILER = specifies which compiler to use for build (SGI/GNU/EDG)
 #     BUILD_CPU      = specifies cpu (R4000/R5000/R8000/R10000)
 #     BUILD_OS	     = specifies OS (IRIX/LINUX)
@@ -93,6 +93,8 @@
 #			 Makefile.base
 #     STD_C++_OPTS     = a set of compile options specific to C++ compiles
 #                        Should be assigned to LC++OPTS in Makefile.base
+#     STD_C_OPTS       = a set of compile options specific to C compiles
+#                        Should be assigned to LCOPTS in Makefile.base
 #     STD_LOAD_OPTS    = a set of load options which reflect BUILD_ABI,
 #                        BUILD_ARCH & BUILD_TYPE.  Typically this would be
 #                        assigned to GLDOPTS in Makefile.base
@@ -190,9 +192,13 @@ endif
 ifdef BUILD_ARCH
  ifneq ($(BUILD_ARCH), MIPS3)
  ifneq ($(BUILD_ARCH), MIPS4)
+ ifneq ($(BUILD_ARCH), MIPS64)
  ifneq ($(BUILD_ARCH), IA32)
  ifneq ($(BUILD_ARCH), IA64)
+ ifneq ($(BUILD_ARCH), X8664)
    ABORT_BUILD = BUILD_ARCH has bad value - $(BUILD_ARCH)!
+ endif
+ endif
  endif
  endif
  endif
@@ -256,7 +262,9 @@ ifdef BUILD_TARGET
  ifneq ($(BUILD_TARGET), MIPS)
  ifneq ($(BUILD_TARGET), IA32)
  ifneq ($(BUILD_TARGET), IA64)
+ ifneq ($(BUILD_TARGET), X8664)
    ABORT_BUILD = BUILD_TARGET has bad value - $(BUILD_TARGET)!
+ endif
  endif
  endif
  endif
@@ -272,6 +280,9 @@ BUILD_TARGET_DIR = ia32
 endif
 ifeq ($(BUILD_TARGET), IA64)
 BUILD_TARGET_DIR = ia64
+endif
+ifeq ($(BUILD_TARGET), X8664)
+BUILD_TARGET_DIR = x8664
 endif
 
 #
@@ -365,7 +376,9 @@ endif
 ifneq ($(BUILD_HOST), MIPS)
 ifneq ($(BUILD_HOST), IA32)
 ifneq ($(BUILD_HOST), IA64)
+ifneq ($(BUILD_HOST), X8664)
    ABORT_BUILD = BUILD_HOST has bad value - $(BUILD_HOST)!
+endif
 endif
 endif
 endif
@@ -380,11 +393,14 @@ COMMONDEFS = $(BUILD_TOT)/linux/make/gcommondefs
 #  is valid.
 #
 
+ifeq ($(BUILD_TARGET), MIPS)
 ifndef ABORT_BUILD
  ifeq ($(BUILD_ABI), N32BIT)
  ifneq ($(BUILD_ARCH), MIPS3)
  ifneq ($(BUILD_ARCH), MIPS4)
-   ABORT_BUILD = N32BIT requires MIPS3 or MIPS4!
+ ifneq ($(BUILD_ARCH), MIPS64)
+   ABORT_BUILD = N32BIT requires MIPS3 or MIPS4 or MIPS64!
+ endif
  endif
  endif
  endif
@@ -406,6 +422,7 @@ ifndef ABORT_BUILD
  endif
  endif
 endif
+endif
 
 #
 #  Reset WOFF if using mongoose as toolroot.
@@ -422,18 +439,12 @@ endif
 #  BUILD_COMPILER, BUILD_TYPE, BUILD_ARCH, BUILD_ABI.
 #
 
-ifeq ($(BUILD_COMPILER), EDG)
- ifeq ($(BUILD_TYPE), SHARED)
-   STD_COMPILE_OPTS = -KPIC
- else
-   STD_COMPILE_OPTS = -non_shared
+ifeq ($(BUILD_TYPE), SHARED)
+ ifeq ($(BUILD_BOTH),)
+  STD_COMPILE_OPTS = -fPIC
  endif
 else
- ifeq ($(BUILD_TYPE), SHARED)
-   STD_COMPILE_OPTS = -fPIC
- else
-   STD_COMPILE_OPTS = 
- endif
+  STD_COMPILE_OPTS = 
 endif
 
 ifeq ($(BUILD_ARCH), MIPS1)
@@ -447,6 +458,9 @@ STD_COMPILE_OPTS += -mips3
 endif
 ifeq ($(BUILD_ARCH), MIPS4)
 STD_COMPILE_OPTS += -mips4
+endif
+ifeq ($(BUILD_ARCH), MIPS64)
+STD_COMPILE_OPTS += -mips64
 endif
 
 ifneq ($(BUILD_COMPILER), GNU)
@@ -469,6 +483,17 @@ STD_COMPILE_OPTS += -DTARG_$(BUILD_TARGET)
 ifeq ($(BUILD_TARGET), IA32)
 STD_COMPILE_OPTS += -DEMULATE_LONGLONG
 endif
+
+BK_ROOT := $(shell bk root)
+export BK_ROOT
+bm ?= $(BK_ROOT)/../buildmeister
+export bm
+include $(BK_ROOT)/pathscale/defs.mk
+
+STD_C_OPTS = -std=gnu99 -D_GNU_SOURCE
+ERROR_ON_WARNINGS = -Werror
+STD_COMPILE_OPTS += -DKEY $(LOCAL_CFLAGS) $(ERROR_ON_WARNINGS)
+
 
 #
 #  Assign STD_C++_OPTS here
@@ -494,32 +519,32 @@ ifeq ($(BUILD_COMPILER), SGI)
 endif
 
 ifeq ($(BUILD_ABI), 64BIT)
- ifeq ($(BUILD_ARCH), MIPS4)
-  ifeq ($(BUILD_TYPE), SHARED)
-    STD_LOAD_OPTS += -L$(ROOT)/usr/lib64/mips4 -L$(ROOT)/usr/lib64
-  else
-    STD_LOAD_OPTS += -L$(ROOT)/usr/lib64/mips4/nonshared -L$(ROOT)/usr/lib64/nonshared
-  endif
- else # MIPS3
+ ifeq ($(BUILD_ARCH), MIPS3)
   ifeq ($(BUILD_TYPE), SHARED)
     STD_LOAD_OPTS += -L$(ROOT)/usr/lib64/mips3 -L$(ROOT)/usr/lib64
   else
     STD_LOAD_OPTS += -L$(ROOT)/usr/lib64/mips3/nonshared -L$(ROOT)/usr/lib64/nonshared
   endif
+ else # MIPS4
+  ifeq ($(BUILD_TYPE), SHARED)
+    STD_LOAD_OPTS += -L$(ROOT)/usr/lib64/mips4 -L$(ROOT)/usr/lib64
+  else
+    STD_LOAD_OPTS += -L$(ROOT)/usr/lib64/mips4/nonshared -L$(ROOT)/usr/lib64/nonshared
+  endif
  endif
 endif
 ifeq ($(BUILD_ABI), N32BIT)
- ifeq ($(BUILD_ARCH), MIPS4)
-  ifeq ($(BUILD_TYPE), SHARED)
-    STD_LOAD_OPTS += -n32 -L$(ROOT)/usr/lib32/mips4 -L$(ROOT)/usr/lib32
-  else
-    STD_LOAD_OPTS += -n32 -L$(ROOT)/usr/lib32/mips4/nonshared -L$(ROOT)/usr/lib32/nonshared
-  endif
- else # MIPS3
+ ifeq ($(BUILD_ARCH), MIPS3)
   ifeq ($(BUILD_TYPE), SHARED)
     STD_LOAD_OPTS += -n32 -L$(ROOT)/usr/lib32/mips3 -L$(ROOT)/usr/lib32
   else
     STD_LOAD_OPTS += -n32 -L$(ROOT)/usr/lib32/mips3/nonshared -L$(ROOT)/usr/lib32/nonshared
+  endif
+ else # MIPS4
+  ifeq ($(BUILD_TYPE), SHARED)
+    STD_LOAD_OPTS += -n32 -L$(ROOT)/usr/lib32/mips4 -L$(ROOT)/usr/lib32
+  else
+    STD_LOAD_OPTS += -n32 -L$(ROOT)/usr/lib32/mips4/nonshared -L$(ROOT)/usr/lib32/nonshared
   endif
  endif
 endif
@@ -546,18 +571,21 @@ endif
 #  BUILD_ABI.
 #
 
+ifeq ($(BUILD_OS), LINUX)
+   STD_DSO_LOADOPTS = $(LDOPTS_I32) $(LDDSOOPTS_I32)
+else
 ifeq ($(BUILD_ABI), 64BIT)
- ifeq ($(BUILD_ARCH), MIPS4)
-   STD_DSO_LOADOPTS = $(LDOPTS_64_M4) $(LDDSOOPTS_64)
- else
+ ifeq ($(BUILD_ARCH), MIPS3)
    STD_DSO_LOADOPTS = $(LDOPTS_64_M3) $(LDDSOOPTS_64)
+ else
+   STD_DSO_LOADOPTS = $(LDOPTS_64_M4) $(LDDSOOPTS_64)
  endif
 endif
 ifeq ($(BUILD_ABI), N32BIT)
- ifeq ($(BUILD_ARCH), MIPS4)
-   STD_DSO_LOADOPTS = $(LDOPTS_N32_M4) $(LDDSOOPTS_N32)
- else
+ ifeq ($(BUILD_ARCH), MIPS3)
    STD_DSO_LOADOPTS = $(LDOPTS_N32_M3) $(LDDSOOPTS_N32)
+ else
+   STD_DSO_LOADOPTS = $(LDOPTS_N32_M4) $(LDDSOOPTS_N32)
  endif
 endif
 ifeq ($(BUILD_ABI), I32BIT)
@@ -565,6 +593,7 @@ ifeq ($(BUILD_ABI), I32BIT)
 endif
 ifeq ($(BUILD_ABI), I64BIT)
    STD_DSO_LOADOPTS = $(LDOPTS_I64) $(LDDSOOPTS_I64)
+endif
 endif
 
 #
@@ -578,7 +607,7 @@ STD_DSO_LOC = /usr/lib64
 endif
 
 ifdef BUILD_CPU
- ifeq ($(BUILD_ARCH), MIPS4)
+ ifneq ($(BUILD_ARCH), MIPS3)
   ifeq ($(BUILD_CPU), R5000)
     LINK = mips4/r5000/$(DSO)
     IDBTAG = -idb "mach(CPUARCH=R5000)"
@@ -594,7 +623,7 @@ ifdef BUILD_CPU
  else
  endif
 else
- ifeq ($(BUILD_ARCH), MIPS4)
+ ifneq ($(BUILD_ARCH), MIPS3)
   ifeq ($(BUILD_ABI), 64BIT)
     LINK = mips4/$(DSO)
     IDBTAG = -idb "mach(CPUARCH=R8000 CPUARCH=R10000)"
@@ -602,7 +631,7 @@ else
     LINK = mips4/$(DSO)
     IDBTAG = -idb "mach(CPUARCH=R8000 CPUARCH=R10000 CPUARCH=R5000)"
   endif
- else # MIPS3
+ else # MIPS4
    LINK = mips3/$(DSO)
    IDBTAG = -idb "mach(CPUARCH=R4000)"
  endif
@@ -617,7 +646,7 @@ LBOOT64=-idb "mach(MODE=64bit)"
 #
 
 ifeq ($(BUILD_ABI), 64BIT)
- ifeq ($(BUILD_ARCH), MIPS4)
+ ifneq ($(BUILD_ARCH), MIPS3)
    DEF_LIBRARY_LOC := /usr/lib64
    ifdef BUILD_CPU
     ifeq ($(BUILD_CPU), R5000)
@@ -638,7 +667,7 @@ ifeq ($(BUILD_ABI), 64BIT)
  endif
 endif
 ifeq ($(BUILD_ABI), N32BIT)
- ifeq ($(BUILD_ARCH), MIPS4)
+ ifneq ($(BUILD_ARCH), MIPS3)
    DEF_LIBRARY_LOC := /usr/lib32
    ifdef BUILD_CPU
     ifeq ($(BUILD_CPU), R5000)

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -44,6 +48,8 @@
 #include "cxx_memory.h"			// for CXX_NEW
 #include "ipc_link.h"
 
+#include "lib_phase_dir.h"              // for BINDIR etc
+
 // We break up the linker command line into two parts. with the list of
 // WHIRL object created by IPA inserted in between.  Sine we no longer
 // maintain a 1-1 relationship between the WHIRL .o's and .I's, we don't
@@ -58,12 +64,21 @@ ARGV *current_ld_flags;
 ARGV *comma_list;
 UINT32 comma_list_byte_count = 0;
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
 
-#define LINKER_NAME "collect2"
-#define LINKER_NAME_WITH_SLASH "/collect2"
+#ifdef KEY
+#ifdef TARG_X8664
+#define LINKER_NAME "gcc"
+#define LINKER_NAME_WITH_SLASH "/gcc"
+#else
+#error /* unknown cross compiler target */
+#endif
 
+#else
+#define LINKER_NAME "ld"
+#define LINKER_NAME_WITH_SLASH "/ld"
 #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
+#endif /* KEY */
 
 static char* concat_names(char* a , char* b)
 {
@@ -88,17 +103,46 @@ static bool file_exists(const char* path)
 
 static char* get_linker_name(int argc, char** argv)
 {
-    for (int i = 1; i < argc; i++) {
-	char *string = argv[i];
-	if (*string == '-' && string[1] == 'L') { // See if collect2 is here
-	    char *linker_name = (char *)concat_names(&string[2], LINKER_NAME_WITH_SLASH);
-     	    if (file_exists(linker_name)) {
-                return (linker_name);
-	    }
-            else
-                free(linker_name);
+    char * toolroot = getenv("TOOLROOT");
+    if (!toolroot) { toolroot = "" ; }
+
+    char* linker_name;
+    char *where_am_i = getenv("COMPILER_BIN");
+
+    if (where_am_i) {
+	char *slash = strrchr (where_am_i, '/');
+	asprintf (&linker_name, "%.*s/../" PSC_TARGET "/bin/" LINKER_NAME,
+		  slash - where_am_i, where_am_i);
+	if (file_exists (linker_name)) {
+	    return linker_name;
 	}
+	free (linker_name);
     }
+
+    linker_name = concat_names (toolroot, PHASEPATH LINKER_NAME_WITH_SLASH);
+    if (file_exists (linker_name)) {
+        return linker_name;
+    }
+    free (linker_name);
+
+    linker_name = concat_names (toolroot, GNUPHASEPATH LINKER_NAME_WITH_SLASH);
+    if (file_exists (linker_name)) {
+        return linker_name;
+    }
+    free (linker_name);
+
+    linker_name = concat_names (toolroot, BINPATH LINKER_NAME_WITH_SLASH);
+    if (file_exists (linker_name)) {
+        return linker_name;
+    }
+    free (linker_name);
+        
+    linker_name = concat_names (toolroot, ALTBINPATH LINKER_NAME_WITH_SLASH);
+    if (file_exists (linker_name)) {
+        return linker_name;
+    }
+    free (linker_name);
+
     return (LINKER_NAME);
 }
 
@@ -112,7 +156,7 @@ ipa_init_link_line (int argc, char** argv)
     comma_list = CXX_NEW (ARGV, Malloc_Mem_Pool);
 
     // Push the path and name of the final link tool
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
 
 #if 0
     char *t_path = arg_vector[0];
@@ -136,7 +180,9 @@ ipa_init_link_line (int argc, char** argv)
     free(buf);
 #endif
     ld_flags_part1->push_back (get_linker_name(arg_count, arg_vector));
+#ifdef TARG_IA64
     ld_flags_part1->push_back (DYNAMIC_LINKER);
+#endif
 
 #else
     ld_flags_part1->push_back (arg_vector[0]);

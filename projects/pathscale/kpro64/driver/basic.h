@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,7 +44,6 @@
 typedef int boolean;
 #define FALSE 0
 #define TRUE 1
-typedef char * string;
 typedef char buffer_t[512];
 #define NIL '\0'
 

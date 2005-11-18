@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -136,6 +140,8 @@ static char *source_file = __FILE__;
 
 #include "cwh_stmt.i"
 
+#include <libgen.h>	/* for dirname */
+
 
 /*===============================================
  *
@@ -199,9 +205,16 @@ fei_user_code_start(void)
  */ 
 /*ARGSUSED*/
 extern void
+#ifdef KEY
+fei_object_ref (INTPTR  sym_idx,
+		INT32	whole_array,
+		INT32	whole_substring,
+                unsigned int    data_init )
+#else
 fei_object_ref (INTPTR  sym_idx,
 		INT32	whole_array,
 		INT32	whole_substring )
+#endif
 {
   STB_pkt *p ;
 
@@ -210,6 +223,11 @@ fei_object_ref (INTPTR  sym_idx,
 
   ST * st = cast_to_ST(p->item);
   DevAssert((st),("null st"));
+// Bug 431
+#ifdef KEY
+  if (data_init == TRUE && (ST_sclass(st) == SCLASS_PSTATIC || ST_sclass(st) == SCLASS_FSTATIC))
+    Set_ST_is_inintialized_in_f90(st);
+#endif
 
   if (whole_array) {
     cwh_stk_push(st,ST_item_whole_array) ;
@@ -253,7 +271,11 @@ fei_seg_ref (INT32   sym_idx )
 void
 fei_namelist_ref (INTPTR   sym_idx )
 {
+#ifdef KEY
+  fei_object_ref(sym_idx, 0, 0, FALSE);
+#else
   fei_object_ref(sym_idx, 0, 0);
+#endif
 }
 
 /*===============================================
@@ -503,7 +525,11 @@ fei_store ( TYPE result_type )
 	  cwh_stk_get_class() == ST_item_whole_array) {
 
 	st  = cwh_stk_pop_ST();
-	cwh_addr_store_ST(st,det.off,det.type,rhs);
+#ifdef KEY
+// Bug# 1289
+        if ( !ST_is_inintialized_in_f90(st) )
+#endif
+	  cwh_addr_store_ST(st,det.off,det.type,rhs);
 
       } else {
 
@@ -3823,6 +3849,42 @@ cwh_stmt_init_pu(ST * st, INT32 lineno)
   WN_Set_Linenum (cwh_block_current(), USRCPOS_srcpos(current_srcpos));
 
   cwh_stmt_add_parallel_pragmas();
+#ifdef KEY
+  char *compiler_bin = getenv("COMPILER_BIN");
+  if (strcmp(ST_name(st), "MAIN__") == 0 &&
+      compiler_bin != NULL) {
+    size_t str_len = strlen(compiler_bin) + 1;
+    char *psc_str = (char *) alloca(str_len);
+    strcpy(psc_str, compiler_bin);
+    // create an array of chars initialized to psc_str
+    TY_IDX str_ty_idx;
+    TY &str_ty = New_TY(str_ty_idx);
+    TY_Init(str_ty, str_len, KIND_ARRAY, MTYPE_M, 0);
+    Set_TY_etype(str_ty, MTYPE_To_TY(MTYPE_I1));
+    Set_TY_align(str_ty_idx, TY_align(TY_etype(str_ty)));
+    ARB_HANDLE arb = New_ARB ();
+    ARB_Init (arb, 0, 0, 0);
+    Set_TY_arb (str_ty, arb);
+    Set_ARB_first_dimen (arb);
+    Set_ARB_last_dimen (arb);
+    Set_ARB_dimension (arb, 1);
+    Set_ARB_const_stride(arb);
+    Set_ARB_stride_val(arb, 1);
+    Set_ARB_const_lbnd (arb);
+    Set_ARB_lbnd_val (arb, 0);
+    Set_ARB_const_ubnd (arb);
+    Set_ARB_ubnd_val (arb, str_len);
+    ST *str_st = New_ST(GLOBAL_SYMTAB);
+    cwh_auxst_clear(st);
+    ST_Init(str_st, Save_Str("__pathscale_compiler"), CLASS_VAR, SCLASS_DGLOBAL,
+    	    EXPORT_PREEMPTIBLE, str_ty_idx);
+    Set_ST_is_initialized(str_st);
+    INITO_IDX inito = New_INITO(str_st);
+    INITV_IDX inv = New_INITV();
+    INITV_Init_String(inv, psc_str, str_len);
+    Set_INITO_val(inito, inv);
+  }
+#endif
 }
 
 /*===============================================

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,9 +59,9 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdarg.h>
-#include <list.h>
-#include <map.h>
-#include <vector.h>
+#include <list>
+#include <map>
+#include <vector>
 
 #include "topcode.h"
 #include "targ_isa_properties.h"
@@ -224,7 +228,7 @@ private:
   long long overuse_mask;               // Bits to check
                                         //   for overuse after adding new
                                         //   resources
-  static list<RES_WORD*> res_words;     // Of all res_words in order
+  static std::list<RES_WORD*> res_words;     // Of all res_words in order
   static int count;                     // Of all resource words
   static bool has_long_long_word;       // Will we need to use long longs for
                                         //   resource words?
@@ -240,7 +244,7 @@ private:
   bool Allocate_Field(int width, int count, int &word, int &bit);
 };
 
-list<RES_WORD*> RES_WORD::res_words;
+std::list<RES_WORD*> RES_WORD::res_words;
 int RES_WORD::count = 0;
 bool RES_WORD::has_long_long_word = false;
 
@@ -274,7 +278,7 @@ bool RES_WORD::Allocate_Field(int width, int count, int &word, int &bit)
 void RES_WORD::Find_Word_Allocate_Field(int width, int count,
                                         int &word, int &bit)
 {
-  list<RES_WORD*>::iterator rwi;
+  std::list<RES_WORD*>::iterator rwi;
   for ( rwi = res_words.begin(); rwi != res_words.end(); ++rwi ) {
     if ( (*rwi)->Allocate_Field(width,count,word,bit) )
       return;
@@ -358,7 +362,7 @@ private:
   const int id;             // Unique numerical identifier
   static int total;         // Total number of different RESs (not the the
                             //   total of their counts, 1 for each RES)
-  static map <int,RES*> resources;
+  static std::map<int,RES*> resources;
                             // Map of all resources, ordered by their Id's
   void Calculate_Field_Width();
   void Calculate_Field_Pos();
@@ -372,7 +376,7 @@ private:
 };
 
 int  RES::total = 0;
-map <int,RES*> RES::resources;
+std::map<int,RES*> RES::resources;
 
 RES::RES(char *name, int count)
 // constructor maintains list of all resources.
@@ -559,7 +563,7 @@ private:
     const short res_id;
   };
 
-  typedef map < CYCLE_RES,int,less <CYCLE_RES> > CYCLE_RES_COUNT_MAP;
+  typedef std::map< CYCLE_RES,int,std::less <CYCLE_RES> > CYCLE_RES_COUNT_MAP;
   // For keeping track of the number of resources of a given type in a given
   // cycle.  <cycle,res> => count
 
@@ -645,7 +649,7 @@ bool RES_REQ::Compute_Maybe_Output_II_RES_REQ(int ii, FILE* fd,
 void RES_REQ::Compute_Output_Resource_Count_Vec(FILE* fd)
 {
   CYCLE_RES_COUNT_MAP::iterator mi;
-  map<int,int,less<int> > res_inx_count;  // res_id => count
+  std::map<int,int,std::less<int> > res_inx_count;  // res_id => count
 
   // Sum up the number of each required
   for (mi = cycle_res_count.begin(); mi != cycle_res_count.end(); ++mi) {
@@ -667,7 +671,7 @@ void RES_REQ::Compute_Output_Resource_Count_Vec(FILE* fd)
              res_count_vec_gname.Gname());
 
   bool is_first = true;
-  map<int,int,less<int> >::iterator mj;
+  std::map<int,int,std::less<int> >::iterator mj;
   for (mj = res_inx_count.begin(); mj != res_inx_count.end(); ++mj) {
     RES* res = RES::Get((*mj).first);  // You'd think STL would allow
     int count = (*mj).second;          // something less ugly!  But no.
@@ -683,8 +687,8 @@ void RES_REQ::Output(FILE* fd)
 {
   int i;
   CYCLE_RES_COUNT_MAP::iterator mi;
-  vector<unsigned long long> res_vec((size_t) max_res_cycle + 1,0);
-  vector<unsigned long long> res_used_set((size_t) max_res_cycle + 1,0);
+  std::vector<unsigned long long> res_vec((size_t) max_res_cycle + 1,0);
+  std::vector<unsigned long long> res_used_set((size_t) max_res_cycle + 1,0);
 
   for (mi = cycle_res_count.begin(); mi != cycle_res_count.end(); ++mi) {
     int cycle = (*mi).first.Cycle();  // You'd think this could be abstracted,
@@ -751,11 +755,11 @@ private:
   const int skew;               // Latency skew
   const int avail_count;        // How many instructions can happen in it
   GNAME gname;                  // Symbolic name in generated
-  static list <ISLOT*> islots;  // All the created islot
+  static std::list<ISLOT*> islots;  // All the created islot
   static int count;             // How many issue slots total?
 };
 
-list<ISLOT*> ISLOT::islots;
+std::list<ISLOT*> ISLOT::islots;
 int ISLOT::count = 0;
 
 ISLOT::ISLOT(char* name, int skew, int avail_count)
@@ -769,7 +773,7 @@ ISLOT::ISLOT(char* name, int skew, int avail_count)
 
 void ISLOT::Output_All(FILE* fd)
 {
-  list<ISLOT*>::iterator isi;
+  std::list<ISLOT*>::iterator isi;
 
   fprintf(fd,"const int SI_issue_slot_count = %d;\n",count);
 
@@ -830,8 +834,8 @@ private:
   const int max_elements;       // Maximum number of operands or results
   bool any_time_defined;        // Overriding time defined
   int any_time;                 // And here it is
-  vector<bool> times_defined;   // Times for each operands defined?
-  vector<int> times;            // And here they are
+  std::vector<bool> times_defined;   // Times for each operands defined?
+  std::vector<int> times;            // And here they are
 };
 
 LATENCY_INFO::LATENCY_INFO(int max_elements)
@@ -885,7 +889,7 @@ void LATENCY_INFO::Output(FILE* fd)
   fprintf(fd,"static const mUINT8 %s[] = {",gname.Gname());
 
     bool is_first = true;
-    vector<int>::iterator i;
+    std::vector<int>::iterator i;
     for ( i = times.begin(); i < times.end(); ++i ) {
       Maybe_Print_Comma(fd,is_first);
       fprintf(fd,"%d",any_time_defined ? any_time : *i);
@@ -930,7 +934,7 @@ private:
   char* const name;                     // User supplied name for documentation
   RES_REQ res_requirement;              // Required to issue
 
-  list<ISLOT*> valid_islots;            // If there are any issue slots at all
+  std::list<ISLOT*> valid_islots;            // If there are any issue slots at all
   GNAME islot_vec_gname;                // Variable name of above in generated
 
   LATENCY_INFO operand_latency_info;    // When operands latch
@@ -956,7 +960,7 @@ private:
   // could be a more flexible data structure.  As it is, it is limited to 128
   // bad IIs, but I think this will be enough.
 
-  static list<INSTRUCTION_GROUP*> instruction_groups;
+  static std::list<INSTRUCTION_GROUP*> instruction_groups;
   // All the defined instruction groups.
 
   static int count;
@@ -972,7 +976,7 @@ private:
 };
 
 
-list<INSTRUCTION_GROUP*> INSTRUCTION_GROUP::instruction_groups;
+std::list<INSTRUCTION_GROUP*> INSTRUCTION_GROUP::instruction_groups;
 int INSTRUCTION_GROUP::count = 0;
 
 INSTRUCTION_GROUP::INSTRUCTION_GROUP(char* name)
@@ -1062,9 +1066,9 @@ void INSTRUCTION_GROUP::Output_II_Info(FILE* fd)
     return;
   }
 
-  vector<GNAME*> ii_res_req_gname_vector(ii_vec_size);
-  vector<GNAME*> ii_resources_used_gname_vector(ii_vec_size);
-  vector<bool> ii_can_do_vector(ii_vec_size);
+  std::vector<GNAME*> ii_res_req_gname_vector(ii_vec_size);
+  std::vector<GNAME*> ii_resources_used_gname_vector(ii_vec_size);
+  std::vector<bool> ii_can_do_vector(ii_vec_size);
 
   int greatest_bad_ii = 0;
 
@@ -1156,7 +1160,7 @@ void INSTRUCTION_GROUP::Output_Issue_Slot_Info(FILE* fd)
   fprintf(fd,"static SI_ISSUE_SLOT * const %s[] = {",islot_vec_gname.Gname());
 
   bool is_first = true;
-  list<ISLOT*>::iterator i;
+  std::list<ISLOT*>::iterator i;
   for (i = valid_islots.begin(); i != valid_islots.end(); ++i) {
     ISLOT* islot = *i;
 
@@ -1223,7 +1227,7 @@ void INSTRUCTION_GROUP::Output(FILE* fd)
 
 void INSTRUCTION_GROUP::Output_All(FILE* fd)
 {
-  list<INSTRUCTION_GROUP*>::iterator iig;
+  std::list<INSTRUCTION_GROUP*>::iterator iig;
 
   for (iig = instruction_groups.begin();
        iig != instruction_groups.end();
@@ -1272,12 +1276,12 @@ public:
   // Create schedling info for the "dummy" instructions.
 
 private:
-  static vector<char*> top_sched_info_ptr_map;  // The map itself.
-  static vector<bool> top_sched_info_defined;   // Which elements defined
+  static std::vector<char*> top_sched_info_ptr_map;  // The map itself.
+  static std::vector<bool> top_sched_info_defined;   // Which elements defined
 };
 
-vector<char*> TOP_SCHED_INFO_MAP::top_sched_info_ptr_map(TOP_count,"0");
-vector<bool> TOP_SCHED_INFO_MAP::top_sched_info_defined(TOP_count,false);
+std::vector<char*> TOP_SCHED_INFO_MAP::top_sched_info_ptr_map(TOP_count,"0");
+std::vector<bool> TOP_SCHED_INFO_MAP::top_sched_info_defined(TOP_count,false);
 
 void TOP_SCHED_INFO_MAP::Create_Dummies( void )
 {

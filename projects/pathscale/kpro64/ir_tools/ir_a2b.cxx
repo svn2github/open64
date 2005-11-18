@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -81,7 +85,7 @@ FB_Print (const T* info, INT size, const char* name)
     if (size != 0)
 	printf ("%s Profile:\n", name);
     for (INT i = 0; i < size; ++i) {
-	printf("\t%s id = %ld\t", name, i);
+	printf("\t%s id = %d\t", name, i);
 	info[i].Print (stdout);
 	fputc ('\n', stdout);
     }

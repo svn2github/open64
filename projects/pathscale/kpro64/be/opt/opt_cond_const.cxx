@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -58,8 +63,8 @@
 // ====================================================================
 
 
-#include <set.h>
-#include <map.h>
+#include <set>
+#include <map>
 
 #define USE_STANDARD_TYPE
 #include "opt_defs.h"
@@ -67,6 +72,8 @@
 #include "opt_transform.h"
 #include "opt_dce.h"
 #include "opt_main.h"
+
+using std::set;
 
 typedef set<int> Paths;
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,11 +39,11 @@
 
 
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/z_log.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
-#include "cmplrs/host.h"
 #include <math.h>
-#include "moremath.h"
-
+#include "cmplrs/host.h"
 #include "cmplx.h"
+#include "defalias.h"
+#include "moremath.h"
 
 dcomplex __zlog(double_t zdreal, double_t zdimag)
 {
@@ -50,7 +54,9 @@ dcomplex __zlog(double_t zdreal, double_t zdimag)
   return r;
 }
 
-void z_log(dcomplex *r, dcomplex *z)
+dcomplex z_log_(dcomplex *z)
 {
-  *r = __zlog(z->dreal, z->dimag);
+  return __zlog(z->dreal, z->dimag);
 }
+
+defalias(z_log_, z_log);

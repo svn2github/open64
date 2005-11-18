@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -267,7 +271,7 @@ ar_ifmul128(AR_IEEE_128 *x,
 {
    AR_TYPE ty = AR_Float_IEEE_NR_128;
    *(long double *)x = *(long double *)a * *(long double *)b;
-   return AR_status(x, &ty);
+   return AR_status((const AR_DATA *) x, &ty);
 }
 
 #else

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -64,6 +68,7 @@ typedef enum INTRN_RETKIND {
   IRETURN_SZT,               /* size_t */
   IRETURN_PC,                /* pointer to char */
   IRETURN_F10,               /* MTYPE_F10 */
+  IRETURN_V16I2,	     /* MTYPE_V16I2 */
 } INTRN_RETKIND;
 #define INTRN_RETKIND_LAST IRETURN_F10
 

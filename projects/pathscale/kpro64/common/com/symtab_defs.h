@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -149,6 +153,15 @@ enum ST_FLAGS
     // new flags must go into flags_ext field.
 }; // ST_FLAGS
     
+#ifdef KEY
+enum ST_FLAGS_EXT
+{
+    ST_ONE_PER_PU = 0x01,		// Only 1 instance per pu
+    ST_COPY_CONSTRUCTOR_ST =   0x02,	// ST is copy constructor function
+    ST_INITV_IN_OTHER_ST   =   0x04,    // ST is being used as an initianliation offset by other symbol
+    ST_IS_INITIALIZED_IN_F90 = 0x8
+}; // ST_FLAGS_EXT
+#endif
 
 // symbol table element
 class ST
@@ -314,7 +327,11 @@ struct ARB
 	
     // operations
 
+#ifdef really_call_bzero	// don't call bzero if it is poisoned
+    ARB () { really_call_bzero (this, sizeof(ARB)); }
+#else
     ARB () { bzero (this, sizeof(ARB)); }
+#endif
 
     void Verify (mUINT16 dim) const;
     
@@ -441,7 +458,11 @@ enum TY_FLAGS
     TY_IS_F90_POINTER	= 0x0080,	/* If the type is an F90 pointer */
     TY_NOT_IN_UNION	= 0x0100,	/* If the type cannot be part of a union */
     TY_NO_ANSI_ALIAS	= 0x0200,	// ANSI alias rules don't applied
-    TY_IS_NON_POD	= 0x0400	// type is non pod (for C++ classes)
+    TY_IS_NON_POD	= 0x0400,	// type is non pod (for C++ classes)
+#ifdef KEY
+    TY_RETURN_IN_MEM	= 0x0800,	// Functions must return objects of this
+					// type in memory.
+#endif
 };
 
 
@@ -474,6 +495,9 @@ public:
 	TY_IDX etype;			// type of array element (array only)
 	TY_IDX pointed;			// pointed-to type (pointers only)
 	mUINT32 pu_flags;		// attributes for KIND_FUNCTION
+#ifdef KEY
+	ST_IDX copy_constructor;	// copy constructor X(X&) (record only)
+#endif
     } u2;
 
     // access function for unions
@@ -502,7 +526,17 @@ public:
 	return u2.pointed;
       }
     void Set_pointed (TY_IDX idx)	{ u2.pointed = idx; }
-    
+
+#ifdef KEY
+    ST_IDX Copy_constructor () const
+      {
+	Is_True(kind == KIND_STRUCT,
+		("non-KIND_STRUCT type has no copy constructor"));
+	return u2.copy_constructor;
+      }
+    void Set_copy_constructor (ST_IDX idx)	{ u2.copy_constructor = idx; }
+#endif	// KEY
+
     PU_IDX Pu_flags () const		{ return u2.pu_flags; }
     void Set_pu_flag (TY_PU_FLAGS f)	{ u2.pu_flags |= f; }
     void Clear_pu_flag (TY_PU_FLAGS f)	{ u2.pu_flags &= ~f; }
@@ -564,6 +598,13 @@ public:
 						// optimization
 #define PU_IS_THUNK		0x0000000400000000LL // pu is a C++ thunk
 
+#ifdef KEY
+#define PU_NEEDS_MANUAL_UNWINDING	0x0000000800000000LL // PU has cleanups in outermost scope and hence needs to call _Unwind_Resume itself
+#endif
+#ifdef TARG_X8664
+#define PU_FF2C_ABI		0x0000001000000000LL // PU use g77 linkage convention for returns of complex and float
+#endif
+
 enum PU_SRC_LANG_FLAGS
 {
     PU_UNKNOWN_LANG	= 0x00,	// UNKNOWN 
@@ -618,7 +659,11 @@ public:
 
 	BLK () : size (0), section_idx(0), scninfo_idx(0), flags (0) {}
 
+#ifdef really_call_bzero	// don't call bzero if it is poisoned
+	void Init (void)	{ really_call_bzero (this, sizeof(BLK)); }
+#else
 	void Init (void)	{ bzero (this, sizeof(BLK)); }
+#endif
 
 public:
 
@@ -894,7 +939,11 @@ struct SYMTAB_HEADER_TABLE
     SYMTAB_HEADER_TABLE () {
 	size = sizeof(self);
 	entries = table_size;
+#ifdef really_call_bzero	// don't call bzero if it is poisoned
+	really_call_bzero (header, sizeof(header));
+#else
 	bzero (header, sizeof(header));
+#endif
     }
 
 }; // SYMTAB_HEADER_TABLE

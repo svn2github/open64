@@ -1,29 +1,41 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
 /* Prints out tree in human readable form - GNU C-compiler
-   Copyright (C) 1990, 1991, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000
-   Free Software Foundation, Inc.
+   Copyright (C) 1990, 1991, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
+   2001, 2002 Free Software Foundation, Inc.
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
 
 #include "config.h"
 #include "system.h"
+#ifdef SGI_MONGOOSE
+// To get typdef tree
+#include "rtl.h"
+#endif /* SGI_MONGOOSE */
 #include "tree.h"
+#include "real.h"
 #include "ggc.h"
+#include "langhooks.h"
 
 /* Define the hash table of nodes already seen.
    Such nodes are not repeated; brief cross-references are used.  */
@@ -43,13 +55,19 @@ static struct bucket **table;
 void
 print_tree (FILE *file, tree node)
 {
-  char *object = (char *) oballoc (0);
-
-  table = (struct bucket **) oballoc (HASH_SIZE * sizeof (struct bucket *));
+#if (GCC_VERSION >= 3000)
+  char *object = (char *) really_call_malloc (0);
+  table = (struct bucket **) really_call_malloc (HASH_SIZE * sizeof (struct bucket *));
+  really_call_bzero ((char *) table, HASH_SIZE * sizeof (struct bucket *));
+#else
+  char *object = (char *) malloc (0);
+  table = (struct bucket **) malloc (HASH_SIZE * sizeof (struct bucket *));
   bzero ((char *) table, HASH_SIZE * sizeof (struct bucket *));
+#endif
+
   print_node (file, "", node, 0);
   table = 0;
-  obfree (object);
+  free (object);
   fprintf (file, "\n");
 }
 #endif /* SGI_MONGOOSE */
@@ -62,13 +80,9 @@ void
 debug_tree (node)
      tree node;
 {
-  char *object = (char *) oballoc (0);
-
-  table = (struct bucket **) oballoc (HASH_SIZE * sizeof (struct bucket *));
-  bzero ((char *) table, HASH_SIZE * sizeof (struct bucket *));
+  table = (struct bucket **) xcalloc (HASH_SIZE, sizeof (struct bucket *));
   print_node (stderr, "", node, 0);
   table = 0;
-  obfree (object);
   fprintf (stderr, "\n");
 }
 
@@ -114,7 +128,8 @@ print_node_brief (file, prefix, node, indent)
     }
   if (TREE_CODE (node) == IDENTIFIER_NODE)
     fprintf (file, " %s", IDENTIFIER_POINTER (node));
-  /* We might as well always print the value of an integer.  */
+
+  /* We might as well always print the value of an integer or real.  */
   if (TREE_CODE (node) == INTEGER_CST)
     {
       if (TREE_CONSTANT_OVERFLOW (node))
@@ -141,7 +156,6 @@ print_node_brief (file, prefix, node, indent)
       if (TREE_OVERFLOW (node))
 	fprintf (file, " overflow");
 
-#if !defined(REAL_IS_NOT_DOUBLE) || defined(REAL_ARITHMETIC)
       d = TREE_REAL_CST (node);
       if (REAL_VALUE_ISINF (d))
 	fprintf (file, " Inf");
@@ -149,21 +163,10 @@ print_node_brief (file, prefix, node, indent)
 	fprintf (file, " Nan");
       else
 	{
-	  char string[100];
-
-	  REAL_VALUE_TO_DECIMAL (d, "%e", string);
+	  char string[60];
+	  real_to_decimal (string, &d, sizeof (string), 0, 1);
 	  fprintf (file, " %s", string);
 	}
-#else
-      {
-	int i;
-	unsigned char *p = (unsigned char *) &TREE_REAL_CST (node);
-	fprintf (file, " 0x");
-	for (i = 0; i < sizeof TREE_REAL_CST (node); i++)
-	  fprintf (file, "%02x", *p++);
-	fprintf (file, "");
-      }
-#endif
     }
 
   fprintf (file, ">");
@@ -240,7 +243,7 @@ print_node (file, prefix, node, indent)
       }
 
   /* Add this node to the table.  */
-  b = (struct bucket *) oballoc (sizeof (struct bucket));
+  b = (struct bucket *) xmalloc (sizeof (struct bucket));
   b->node = node;
   b->next = table[hash];
   table[hash] = b;
@@ -283,22 +286,6 @@ print_node (file, prefix, node, indent)
       print_node (file, "type", TREE_TYPE (node), indent + 4);
       if (TREE_TYPE (node))
 	indent_to (file, indent + 3);
-
-      if (!ggc_p)
-	{
-	  print_obstack_name ((char *) node, file, "");
-	  indent_to (file, indent + 3);
-	}
-    }
-
-  /* If a permanent object is in the wrong obstack, or the reverse, warn.  */
-  if (!ggc_p && object_permanent_p (node) != TREE_PERMANENT (node))
-    {
-      if (TREE_PERMANENT (node))
-	fputs (" !!permanent object in non-permanent obstack!!", file);
-      else
-	fputs (" !!non-permanent object in permanent obstack!!", file);
-      indent_to (file, indent + 3);
     }
 
   if (TREE_SIDE_EFFECTS (node))
@@ -319,8 +306,6 @@ print_node (file, prefix, node, indent)
     fputs (" used", file);
   if (TREE_NOTHROW (node))
     fputs (" nothrow", file);
-  if (!ggc_p && TREE_PERMANENT (node))
-    fputs (" permanent", file);
   if (TREE_PUBLIC (node))
     fputs (" public", file);
   if (TREE_PRIVATE (node))
@@ -329,6 +314,8 @@ print_node (file, prefix, node, indent)
     fputs (" protected", file);
   if (TREE_STATIC (node))
     fputs (" static", file);
+  if (TREE_DEPRECATED (node))
+    fputs (" deprecated", file);
   if (TREE_LANG_FLAG_0 (node))
     fputs (" tree_0", file);
   if (TREE_LANG_FLAG_1 (node))
@@ -361,7 +348,11 @@ print_node (file, prefix, node, indent)
 	fputs (" common", file);
       if (DECL_EXTERNAL (node))
 	fputs (" external", file);
-      if (DECL_REGISTER (node))
+      if (DECL_WEAK (node))
+	fputs (" weak", file);
+      if (DECL_REGISTER (node) && TREE_CODE (node) != FIELD_DECL
+	  && TREE_CODE (node) != FUNCTION_DECL
+	  && TREE_CODE (node) != LABEL_DECL)
 	fputs (" regdecl", file);
       if (DECL_NONLOCAL (node))
 	fputs (" nonlocal", file);
@@ -369,23 +360,33 @@ print_node (file, prefix, node, indent)
       if (TREE_CODE (node) == TYPE_DECL && TYPE_DECL_SUPPRESS_DEBUG (node))
 	fputs (" suppress-debug", file);
 
-      if (TREE_CODE (node) == FUNCTION_DECL && DECL_INLINE (node))
+      if (TREE_CODE (node) == FUNCTION_DECL && DID_INLINE_FUNC (node))
+	fputs (" autoinline", file);
+      else if (TREE_CODE (node) == FUNCTION_DECL && DECL_INLINE (node))
 	fputs (" inline", file);
       if (TREE_CODE (node) == FUNCTION_DECL && DECL_BUILT_IN (node))
 	fputs (" built-in", file);
       if (TREE_CODE (node) == FUNCTION_DECL && DECL_BUILT_IN_NONANSI (node))
 	fputs (" built-in-nonansi", file);
+      if (TREE_CODE (node) == FUNCTION_DECL && DECL_NO_STATIC_CHAIN (node))
+	fputs (" no-static-chain", file);
 
       if (TREE_CODE (node) == FIELD_DECL && DECL_PACKED (node))
 	fputs (" packed", file);
       if (TREE_CODE (node) == FIELD_DECL && DECL_BIT_FIELD (node))
 	fputs (" bit-field", file);
+      if (TREE_CODE (node) == FIELD_DECL && DECL_NONADDRESSABLE_P (node))
+	fputs (" nonaddressable", file);
 
       if (TREE_CODE (node) == LABEL_DECL && DECL_TOO_LATE (node))
 	fputs (" too-late", file);
+      if (TREE_CODE (node) == LABEL_DECL && DECL_ERROR_ISSUED (node))
+	fputs (" error-issued", file);
 
       if (TREE_CODE (node) == VAR_DECL && DECL_IN_TEXT_SECTION (node))
 	fputs (" in-text-section", file);
+      if (TREE_CODE (node) == VAR_DECL && DECL_THREAD_LOCAL (node))
+	fputs (" thread-local", file);
 
       if (TREE_CODE (node) == PARM_DECL && DECL_TRANSPARENT_UNION (node))
 	fputs (" transparent-union", file);
@@ -412,36 +413,46 @@ print_node (file, prefix, node, indent)
       if (DECL_LANG_FLAG_7 (node))
 	fputs (" decl_7", file);
 
-      fprintf (file, " %s", GET_MODE_NAME(mode));
-
+      fprintf (file, " %s", GET_MODE_NAME (mode));
       fprintf (file, " file %s line %d",
 	       DECL_SOURCE_FILE (node), DECL_SOURCE_LINE (node));
 
       print_node (file, "size", DECL_SIZE (node), indent + 4);
       print_node (file, "unit size", DECL_SIZE_UNIT (node), indent + 4);
-      
+
       if (TREE_CODE (node) != FUNCTION_DECL
 	  || DECL_INLINE (node) || DECL_BUILT_IN (node))
 	indent_to (file, indent + 3);
 
       if (TREE_CODE (node) != FUNCTION_DECL)
 	{
+	  if (DECL_USER_ALIGN (node))
+	    fprintf (file, " user");
+
 	  fprintf (file, " align %d", DECL_ALIGN (node));
 	  if (TREE_CODE (node) == FIELD_DECL)
-	    fprintf (file, " offset_align %d", DECL_OFFSET_ALIGN (node));
-	}
-      else if (DECL_INLINE (node))
-	{
-	  fprintf (file, " frame_size ");
-	  fprintf (file, HOST_WIDE_INT_PRINT_DEC, DECL_FRAME_SIZE (node));
+	    {
+	      fprintf (file, " offset_align ");
+	      fprintf (file, HOST_WIDE_INT_PRINT_UNSIGNED,
+		       DECL_OFFSET_ALIGN (node));
+	    }
 	}
       else if (DECL_BUILT_IN (node))
-	fprintf (file, " built-in %s:%s",
-		 built_in_class_names[(int) DECL_BUILT_IN_CLASS (node)],
-		 built_in_names[(int) DECL_FUNCTION_CODE (node)]);
+	{
+	  if (DECL_BUILT_IN_CLASS (node) == BUILT_IN_MD)
+	    fprintf (file, " built-in BUILT_IN_MD %d", DECL_FUNCTION_CODE (node));
+	  else
+	    fprintf (file, " built-in %s:%s",
+		     built_in_class_names[(int) DECL_BUILT_IN_CLASS (node)],
+		     built_in_names[(int) DECL_FUNCTION_CODE (node)]);
+	}
 
       if (DECL_POINTER_ALIAS_SET_KNOWN_P (node))
-	fprintf (file, " alias set %d", DECL_POINTER_ALIAS_SET (node));
+	{
+	  fprintf (file, " alias set ");
+	  fprintf (file, HOST_WIDE_INT_PRINT_DEC,
+		   DECL_POINTER_ALIAS_SET (node));
+	}
 
       if (TREE_CODE (node) == FIELD_DECL)
 	{
@@ -451,8 +462,8 @@ print_node (file, prefix, node, indent)
 	}
 
       print_node_brief (file, "context", DECL_CONTEXT (node), indent + 4);
-      print_node_brief (file, "machine_attributes",
-			DECL_MACHINE_ATTRIBUTES (node), indent + 4);
+      print_node_brief (file, "attributes",
+			DECL_ATTRIBUTES (node), indent + 4);
       print_node_brief (file, "abstract_origin",
 			DECL_ABSTRACT_ORIGIN (node), indent + 4);
 
@@ -466,19 +477,26 @@ print_node (file, prefix, node, indent)
       }
 #endif /* SGI_MONGOOSE */
 
-      print_lang_decl (file, node, indent);
+      (*lang_hooks.print_decl) (file, node, indent);
 
-      if (DECL_RTL (node) != 0)
+      if (DECL_RTL_SET_P (node))
 	{
 	  indent_to (file, indent + 4);
 	  print_rtl (file, DECL_RTL (node));
 	}
 
-      if (TREE_CODE (node) == PARM_DECL && DECL_INCOMING_RTL (node) != 0)
+      if (TREE_CODE (node) == PARM_DECL)
 	{
-	  indent_to (file, indent + 4);
-	  fprintf (file, "incoming-rtl ");
-	  print_rtl (file, DECL_INCOMING_RTL (node));
+	  print_node (file, "arg-type", DECL_ARG_TYPE (node), indent + 4);
+	  print_node (file, "arg-type-as-written",
+		      DECL_ARG_TYPE_AS_WRITTEN (node), indent + 4);
+
+	  if (DECL_INCOMING_RTL (node) != 0)
+	    {
+	      indent_to (file, indent + 4);
+	      fprintf (file, "incoming-rtl ");
+	      print_rtl (file, DECL_INCOMING_RTL (node));
+	    }
 	}
       else if (TREE_CODE (node) == FUNCTION_DECL
 	       && DECL_SAVED_INSNS (node) != 0)
@@ -496,16 +514,41 @@ print_node (file, prefix, node, indent)
       break;
 
     case 't':
-      if (TYPE_NO_FORCE_BLK (node))
+      /* The no-force-blk flag is used for different things in
+	 different types.  */
+      if ((TREE_CODE (node) == RECORD_TYPE
+	   || TREE_CODE (node) == UNION_TYPE
+	   || TREE_CODE (node) == QUAL_UNION_TYPE)
+	  && TYPE_NO_FORCE_BLK (node))
 	fputs (" no-force-blk", file);
+      else if (TREE_CODE (node) == INTEGER_TYPE
+	       && TYPE_IS_SIZETYPE (node))
+	fputs (" sizetype", file);
+      else if (TREE_CODE (node) == FUNCTION_TYPE
+	       && TYPE_RETURNS_STACK_DEPRESSED (node))
+	fputs (" returns-stack-depressed", file);
+
       if (TYPE_STRING_FLAG (node))
 	fputs (" string-flag", file);
       if (TYPE_NEEDS_CONSTRUCTING (node))
 	fputs (" needs-constructing", file);
-      if (TYPE_TRANSPARENT_UNION (node))
+
+      /* The transparent-union flag is used for different things in
+	 different nodes.  */
+      if (TREE_CODE (node) == UNION_TYPE && TYPE_TRANSPARENT_UNION (node))
 	fputs (" transparent-union", file);
+      else if (TREE_CODE (node) == ARRAY_TYPE
+	       && TYPE_NONALIASED_COMPONENT (node))
+	fputs (" nonaliased-component", file);
+      else if (TREE_CODE (node) == FUNCTION_TYPE
+	       && TYPE_AMBIENT_BOUNDEDNESS (node))
+	fputs (" ambient-boundedness", file);
+
       if (TYPE_PACKED (node))
 	fputs (" packed", file);
+
+      if (TYPE_RESTRICT (node))
+	fputs (" restrict", file);
 
       if (TYPE_LANG_FLAG_0 (node))
 	fputs (" type_0", file);
@@ -523,50 +566,49 @@ print_node (file, prefix, node, indent)
 	fputs (" type_6", file);
 
       mode = TYPE_MODE (node);
-      fprintf (file, " %s", GET_MODE_NAME(mode));
+      fprintf (file, " %s", GET_MODE_NAME (mode));
 
       print_node (file, "size", TYPE_SIZE (node), indent + 4);
       print_node (file, "unit size", TYPE_SIZE_UNIT (node), indent + 4);
       indent_to (file, indent + 3);
 
+      if (TYPE_USER_ALIGN (node))
+	fprintf (file, " user");
+
       fprintf (file, " align %d", TYPE_ALIGN (node));
       fprintf (file, " symtab %d", TYPE_SYMTAB_ADDRESS (node));
-      fprintf (file, " alias set %d", TYPE_ALIAS_SET (node));
+      fprintf (file, " alias set ");
+      fprintf (file, HOST_WIDE_INT_PRINT_DEC, TYPE_ALIAS_SET (node));
 
       print_node (file, "attributes", TYPE_ATTRIBUTES (node), indent + 4);
 
-      if (TREE_CODE (node) == ARRAY_TYPE || TREE_CODE (node) == SET_TYPE)
+      if (INTEGRAL_TYPE_P (node) || TREE_CODE (node) == REAL_TYPE)
+	{
+	  fprintf (file, " precision %d", TYPE_PRECISION (node));
+	  print_node_brief (file, "min", TYPE_MIN_VALUE (node), indent + 4);
+	  print_node_brief (file, "max", TYPE_MAX_VALUE (node), indent + 4);
+	}
+
+      if (TREE_CODE (node) == ENUMERAL_TYPE)
+	print_node (file, "values", TYPE_VALUES (node), indent + 4);
+      else if (TREE_CODE (node) == ARRAY_TYPE || TREE_CODE (node) == SET_TYPE)
 	print_node (file, "domain", TYPE_DOMAIN (node), indent + 4);
-      else if (TREE_CODE (node) == INTEGER_TYPE
-	       || TREE_CODE (node) == BOOLEAN_TYPE
-	       || TREE_CODE (node) == CHAR_TYPE)
-	{
-	  fprintf (file, " precision %d", TYPE_PRECISION (node));
-	  print_node (file, "min", TYPE_MIN_VALUE (node), indent + 4);
-	  print_node (file, "max", TYPE_MAX_VALUE (node), indent + 4);
-	}
-      else if (TREE_CODE (node) == ENUMERAL_TYPE)
-	{
-	  fprintf (file, " precision %d", TYPE_PRECISION (node));
-	  print_node (file, "min", TYPE_MIN_VALUE (node), indent + 4);
-	  print_node (file, "max", TYPE_MAX_VALUE (node), indent + 4);
-	  print_node (file, "values", TYPE_VALUES (node), indent + 4);
-	}
-      else if (TREE_CODE (node) == REAL_TYPE)
-	fprintf (file, " precision %d", TYPE_PRECISION (node));
       else if (TREE_CODE (node) == RECORD_TYPE
 	       || TREE_CODE (node) == UNION_TYPE
 	       || TREE_CODE (node) == QUAL_UNION_TYPE)
 	print_node (file, "fields", TYPE_FIELDS (node), indent + 4);
-      else if (TREE_CODE (node) == FUNCTION_TYPE || TREE_CODE (node) == METHOD_TYPE)
+      else if (TREE_CODE (node) == FUNCTION_TYPE
+	       || TREE_CODE (node) == METHOD_TYPE)
 	{
 	  if (TYPE_METHOD_BASETYPE (node))
-	    print_node_brief (file, "method basetype", TYPE_METHOD_BASETYPE (node), indent + 4);
+	    print_node_brief (file, "method basetype",
+			      TYPE_METHOD_BASETYPE (node), indent + 4);
 	  print_node (file, "arg-types", TYPE_ARG_TYPES (node), indent + 4);
 	}
       else if (TREE_CODE (node) == OFFSET_TYPE)
 	print_node_brief (file, "basetype", TYPE_OFFSET_BASETYPE (node),
 			  indent + 4);
+
       if (TYPE_CONTEXT (node))
 	print_node_brief (file, "context", TYPE_CONTEXT (node), indent + 4);
 #ifdef SGI_MONGOOSE
@@ -579,12 +621,15 @@ print_node (file, prefix, node, indent)
       }
 #endif /* SGI_MONGOOSE */
 
-      print_lang_type (file, node, indent);
+      (*lang_hooks.print_type) (file, node, indent);
 
       if (TYPE_POINTER_TO (node) || TREE_CHAIN (node))
 	indent_to (file, indent + 3);
-      print_node_brief (file, "pointer_to_this", TYPE_POINTER_TO (node), indent + 4);
-      print_node_brief (file, "reference_to_this", TYPE_REFERENCE_TO (node), indent + 4);
+
+      print_node_brief (file, "pointer_to_this", TYPE_POINTER_TO (node),
+			indent + 4);
+      print_node_brief (file, "reference_to_this", TYPE_REFERENCE_TO (node),
+			indent + 4);
       print_node_brief (file, "chain", TREE_CHAIN (node), indent + 4);
       break;
 
@@ -641,12 +686,12 @@ print_node (file, prefix, node, indent)
       if (TREE_CODE (node) == EXPR_WITH_FILE_LOCATION)
 	{
 	  indent_to (file, indent+4);
-          fprintf (file, "%s:%d:%d", 
+	  fprintf (file, "%s:%d:%d",
 		   (EXPR_WFL_FILENAME_NODE (node ) ?
 		    EXPR_WFL_FILENAME (node) : "(no file info)"),
 		   EXPR_WFL_LINENO (node), EXPR_WFL_COLNO (node));
 	}
-      print_node (file, "chain", BLOCK_CHAIN (node), indent + 4);
+      print_node (file, "chain", TREE_CHAIN (node), indent + 4);
       break;
 
     case 'c':
@@ -680,7 +725,6 @@ print_node (file, prefix, node, indent)
 	    if (TREE_OVERFLOW (node))
 	      fprintf (file, " overflow");
 
-#if !defined(REAL_IS_NOT_DOUBLE) || defined(REAL_ARITHMETIC)
 	    d = TREE_REAL_CST (node);
 	    if (REAL_VALUE_ISINF (d))
 	      fprintf (file, " Inf");
@@ -688,21 +732,26 @@ print_node (file, prefix, node, indent)
 	      fprintf (file, " Nan");
 	    else
 	      {
-		char string[100];
-
-		REAL_VALUE_TO_DECIMAL (d, "%e", string);
+		char string[64];
+		real_to_decimal (string, &d, sizeof (string), 0, 1);
 		fprintf (file, " %s", string);
 	      }
-#else
-	    {
-	      int i;
-	      unsigned char *p = (unsigned char *) &TREE_REAL_CST (node);
-	      fprintf (file, " 0x");
-	      for (i = 0; i < sizeof TREE_REAL_CST (node); i++)
-		fprintf (file, "%02x", *p++);
-	      fprintf (file, "");
-	    }
-#endif
+	  }
+	  break;
+
+	case VECTOR_CST:
+	  {
+	    tree vals = TREE_VECTOR_CST_ELTS (node);
+	    char buf[10];
+	    tree link;
+	    int i;
+
+	    i = 0;
+	    for (link = vals; link; link = TREE_CHAIN (link), ++i)
+	      {
+		sprintf (buf, "elt%d: ", i);
+		print_node (file, buf, TREE_VALUE (link), indent + 4);
+	      }
 	  }
 	  break;
 
@@ -712,7 +761,20 @@ print_node (file, prefix, node, indent)
 	  break;
 
 	case STRING_CST:
-	  fprintf (file, " \"%s\"", TREE_STRING_POINTER (node));
+	  {
+	    const char *p = TREE_STRING_POINTER (node);
+	    int i = TREE_STRING_LENGTH (node);
+	    fputs (" \"", file);
+	    while (--i >= 0)
+	      {
+		char ch = *p++;
+		if (ch >= ' ' && ch < 127)
+		  putc (ch, file);
+		else
+		  fprintf(file, "\\%03o", ch & 0xFF);
+	      }
+	    fputc ('\"', file);
+	  }
 	  /* Print the chain at second level.  */
 	  if (indent == 4)
 	    print_node (file, "chain", TREE_CHAIN (node), indent + 4);
@@ -721,7 +783,7 @@ print_node (file, prefix, node, indent)
 	  break;
 
 	case IDENTIFIER_NODE:
-	  print_lang_identifier (file, node, indent);
+	  (*lang_hooks.print_identifier) (file, node, indent);
 	  break;
 
 	case TREE_LIST:
@@ -742,14 +804,9 @@ print_node (file, prefix, node, indent)
 	      }
 	  break;
 
-	case OP_IDENTIFIER:
-	  print_node (file, "op1", TREE_PURPOSE (node), indent + 4);
-	  print_node (file, "op2", TREE_VALUE (node), indent + 4);
-	  break;
-
 	default:
 	  if (TREE_CODE_CLASS (TREE_CODE (node)) == 'x')
-	    lang_print_xnode (file, node, indent);
+	    (*lang_hooks.print_xnode) (file, node, indent);
 	  break;
 	}
 

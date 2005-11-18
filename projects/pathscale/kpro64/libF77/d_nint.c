@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,7 +54,7 @@ double_t __dnint(double_t x)
      4503599627370496.0 (will return 4503599627370497.0 without this
      additional check). */
 
-  if (abs(x) >= TWO_EXP_52)
+  if (fabs(x) >= TWO_EXP_52)
     return (x);
   else
     return (x >= 0.0 ? floor(x + .5) : -floor(.5 - x));

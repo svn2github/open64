@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -127,7 +131,7 @@ HB_Trace_HB_List()
 //
 /////////////////////////////////////
 {
-  list<HB*>::iterator hbi;
+  std::list<HB*>::iterator hbi;
 
   fprintf(HB_TFile, "\n<HB> Current hyperblocks: \n");
   for (hbi = HB_list.begin(); hbi != HB_list.end(); hbi++) {
@@ -188,7 +192,7 @@ HB_Trace_Print_Cand_Tree(HB_CAND_TREE* c, INT indent)
   }
   hb->Print();
   if (!HB_CAND_TREE_Kids(c).empty()) {
-    list<HB_CAND_TREE*>::iterator k;
+    std::list<HB_CAND_TREE*>::iterator k;
     for (k = HB_CAND_TREE_Kids(c).begin(); k != HB_CAND_TREE_Kids(c).end();
 	 k++) {
       if (BB_SET_ContainsP(HB_Blocks(HB_CAND_TREE_Candidate(c)),
@@ -207,14 +211,14 @@ HB_Trace_Print_Cand_Tree(HB_CAND_TREE* c, INT indent)
 
 /////////////////////////////////////
 void
-HB_Trace_Candidates(char* tstring, list<HB_CAND_TREE*>& cands)
+HB_Trace_Candidates(char* tstring, std::list<HB_CAND_TREE*>& cands)
 /////////////////////////////////////
 //
 //  See interface description.
 //
 /////////////////////////////////////
 {
-  list<HB_CAND_TREE*>::iterator c;
+  std::list<HB_CAND_TREE*>::iterator c;
 
   fprintf(HB_TFile, "\n<HB> Candidates after %s: \n", tstring);
   for (c = cands.begin(); c != cands.end(); c++) {
@@ -233,9 +237,9 @@ void dump_cand_tree(HB_CAND_TREE* c)
   HB_TFile = f;
 }
   
-void dump_cand_trees(list<HB_CAND_TREE*> &cands)
+void dump_cand_trees(std::list<HB_CAND_TREE*> &cands)
 {
-  list<HB_CAND_TREE*>::iterator c;
+  std::list<HB_CAND_TREE*>::iterator c;
   printf("-----------------------\n");
   for (c = cands.begin(); c != cands.end(); c++) {
     dump_cand_tree(*c);
@@ -250,7 +254,7 @@ void dump_hb(HB *hb)
   HB_TFile = stdout;
   hb->Print();
   printf("block list { ");
-  list<BB*>::iterator bbi;
+  std::list<BB*>::iterator bbi;
   FOR_ALL_BB_STLLIST_ITEMS_FWD(hb->block_list, bbi) {
     printf("%d ",BB_id(*bbi));
   }

@@ -1,5 +1,11 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
 /* intl.h - internationalization
-   Copyright 1998 Free Software Foundation, Inc.
+   Copyright 1998, 2001 Free Software Foundation, Inc.
 
    GCC is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -14,7 +20,10 @@
    You should have received a copy of the GNU General Public License
    along with GCC; see the file COPYING.  If not, write to the Free
    Software Foundation, 59 Temple Place - Suite 330, Boston, MA
-   02111-1307, USA. */
+   02111-1307, USA.  */
+
+#ifndef GCC_INTL_H
+#define GCC_INTL_H
 
 #ifdef HAVE_LOCALE_H
 # include <locale.h>
@@ -24,23 +33,33 @@
 # define setlocale(category, locale) (locale)
 #endif
 
-#ifdef ENABLE_NLS
-# include <libintl.h>
-  extern const char localedir[];
+#ifdef USE_INCLUDED_LIBINTL
+# include <intl/libgnuintl.h>
 #else
-/* Stubs that do something close enough.  */
-# ifdef textdomain
-#  undef textdomain
+# ifdef HAVE_LIBINTL_H
+#  include <libintl.h>
+# else
+#  undef ENABLE_NLS
 # endif
+#endif
+
+#ifdef ENABLE_NLS
+#ifdef KEY
+#ifdef SGI_MONGOOSE 
+# define gcc_init_libintl()	/* nothing */
+#else
+extern void gcc_init_libintl PARAMS ((void));
+#endif /* SGI_MONGOOSE */
+#endif /* KEY */
+#else
+/* Stubs.  */
+# undef textdomain
 # define textdomain(domain) (domain)
-# ifdef bindtextdomain
-#  undef bindtextdomain
-# endif
+# undef bindtextdomain
 # define bindtextdomain(domain, directory) (domain)
-# ifdef gettext
-#  undef gettext
-# endif
+# undef gettext
 # define gettext(msgid) (msgid)
+# define gcc_init_libintl()	/* nothing */
 #endif
 
 #ifndef _
@@ -50,3 +69,5 @@
 #ifndef N_
 # define N_(msgid) (msgid)
 #endif
+
+#endif /* intl.h */

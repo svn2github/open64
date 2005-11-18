@@ -1,23 +1,23 @@
 /* Communication between reload.c and reload1.c.
    Copyright (C) 1987, 1991, 1992, 1993, 1994, 1995, 1997, 1998,
-   1999, 2000 Free Software Foundation, Inc.
+   1999, 2000, 2001 Free Software Foundation, Inc.
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
 
 /* If secondary reloads are the same for inputs and outputs, define those
@@ -82,7 +82,7 @@ enum reload_type
   RELOAD_OTHER, RELOAD_FOR_OTHER_ADDRESS
 };
 
-#ifdef MAX_INSN_CODE
+#ifdef GCC_INSN_CODES_H
 /* Each reload is recorded with a structure like this.  */
 struct reload
 {
@@ -183,7 +183,7 @@ extern int reload_first_uid;
 
 /* Nonzero if indirect addressing is supported when the innermost MEM is
    of the form (MEM (SYMBOL_REF sym)).  It is assumed that the level to
-   which these are valid is the same as spill_indirect_levels, above.   */
+   which these are valid is the same as spill_indirect_levels, above.  */
 
 extern char indirect_symref_ok;
 
@@ -191,14 +191,6 @@ extern char indirect_symref_ok;
 extern char double_reg_address_ok;
 
 extern int num_not_at_initial_offset;
-
-#ifdef MAX_INSN_CODE
-/* These arrays record the insn_code of insns that may be needed to
-   perform input and output reloads of special objects.  They provide a
-   place to pass a scratch register.  */
-extern enum insn_code reload_in_optab[];
-extern enum insn_code reload_out_optab[];
-#endif
 
 struct needs
 {
@@ -213,7 +205,7 @@ struct needs
    must be examined for register elimination.  */
 struct insn_chain 
 {
-  /* Links to the neighbour instructions.  */
+  /* Links to the neighbor instructions.  */
   struct insn_chain *next, *prev;
 
   /* Link through a chains set up by calculate_needs_all_insns, containing
@@ -278,7 +270,7 @@ extern void transfer_replacements PARAMS ((int, int));
 /* IN_RTX is the value loaded by a reload that we now decided to inherit,
    or a subpart of it.  If we have any replacements registered for IN_RTX,
    chancel the reloads that were supposed to load them.
-   Return non-zero if we chanceled any reloads.  */
+   Return nonzero if we chanceled any reloads.  */
 extern int remove_address_replacements PARAMS ((rtx in_rtx));
 
 /* Like rtx_equal_p except that it allows a REG and a SUBREG to match
@@ -286,7 +278,7 @@ extern int remove_address_replacements PARAMS ((rtx in_rtx));
    autoincrement and autodecrement.  */
 extern int operands_match_p PARAMS ((rtx, rtx));
 
-/* Return 1 if altering OP will not modify the value of CLOBBER. */
+/* Return 1 if altering OP will not modify the value of CLOBBER.  */
 extern int safe_from_earlyclobber PARAMS ((rtx, rtx));
 
 /* Search the body of INSN for values that need reloading and record them
@@ -302,7 +294,7 @@ extern rtx form_sum PARAMS ((rtx, rtx));
 
 /* Substitute into the current INSN the registers into which we have reloaded
    the things that need reloading.  */
-extern void subst_reloads PARAMS ((void));
+extern void subst_reloads PARAMS ((rtx));
 
 /* Make a copy of any replacements being done into X and move those copies
    to locations in Y, a copy of X.  We only look at the highest level of
@@ -335,22 +327,27 @@ extern rtx find_equiv_reg PARAMS ((rtx, rtx, enum reg_class, int, short *,
 				 int, enum machine_mode));
 
 /* Return 1 if register REGNO is the subject of a clobber in insn INSN.  */
-extern int regno_clobbered_p PARAMS ((unsigned int, rtx));
+extern int regno_clobbered_p PARAMS ((unsigned int, rtx, enum machine_mode,
+				      int));
 
 /* Return 1 if X is an operand of an insn that is being earlyclobbered.  */
-int earlyclobber_operand_p PARAMS ((rtx));
+extern int earlyclobber_operand_p PARAMS ((rtx));
+
+/* Record one reload that needs to be performed.  */
+extern int push_reload PARAMS ((rtx, rtx, rtx *, rtx *, enum reg_class,
+				enum machine_mode, enum machine_mode,
+				int, int, int, enum reload_type));
 
 /* Functions in reload1.c:  */
 
+extern void reload_cse_regs		PARAMS ((rtx));
 extern int reloads_conflict		PARAMS ((int, int));
-
-int count_occurrences            PARAMS ((rtx, rtx));
 
 /* Initialize the reload pass once per compilation.  */
 extern void init_reload PARAMS ((void));
 
 /* The reload pass itself.  */
-extern int reload PARAMS ((rtx, int, FILE *));
+extern int reload PARAMS ((rtx, int));
 
 /* Mark the slots in regs_ever_live for the hard regs
    used by pseudo-reg number REGNO.  */
@@ -384,3 +381,7 @@ extern void save_call_clobbered_regs PARAMS ((void));
 
 /* Replace (subreg (reg)) with the appropriate (reg) for any operands.  */
 extern void cleanup_subreg_operands PARAMS ((rtx));
+
+/* Debugging support.  */
+extern void debug_reload_to_stream PARAMS ((FILE *));
+extern void debug_reload PARAMS ((void));

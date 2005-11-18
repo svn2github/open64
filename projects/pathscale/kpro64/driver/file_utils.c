@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,16 +45,17 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <errno.h>
+#include "errors.h"
 #include "string_utils.h"
 #include "file_utils.h"
 
 extern int errno;
 
 /* drops path prefix in string */
-extern string
-drop_path (string s)
+char *
+drop_path (char *s)
 {
-        string tail;
+        char *tail;
         tail = strrchr (s, '/');
 	if (tail == NULL) {
 		return s;	/* no path prefix */
@@ -60,8 +65,43 @@ drop_path (string s)
 	}
 }
 
-extern boolean
-file_exists (string path)
+/* drops the last component of the path, leaving only the directory */
+char *
+directory_path (char *s)
+{
+        char *t, *tail = NULL;
+	char path[MAXPATHLEN];
+	for (t = s; *t; t++) {
+		if (*t == '/')
+			tail = t;
+	}
+	if (tail == NULL) {
+		return NULL;
+	} else {
+		return substring_copy (s, 0, tail-s);
+	}
+}
+
+char *
+concat_path (char *d, char *f)
+{
+	if ((d == NULL) || (strlen (d) == 0) || strcmp(d, "/") == 0) {
+		/* Directory is root, don't return //f */
+		return concat_strings ("/", f);
+	} else if ((f == NULL) || (strlen (f) == 0)) {
+		/* file is null, return directory portion only */
+		return d;
+	} else {
+		char *path = (char *) malloc(strlen(d) + strlen(f) + 2);
+		strcpy (path, d);
+		strcat (path, "/");
+		strcat (path, f);
+		return path;
+	}
+}
+
+boolean
+file_exists (char *path)
 {
 	int st;
 	struct stat sbuf;
@@ -72,8 +112,8 @@ file_exists (string path)
 		return TRUE;
 }
 
-extern boolean
-is_directory (string path)
+boolean
+is_directory (char *path)
 {
         /* check if . file exists */
         buffer_t buf;
@@ -87,14 +127,17 @@ is_directory (string path)
 }
 
 /* check if directory is writable */
-extern boolean
-directory_is_writable (string path)
+boolean
+directory_is_writable (char *path)
 {
 	FILE *f;
-	string s;
+	char *s;
+	int fd;
 	s = concat_strings(path, "/ctm.XXXXXX");
-	s = mktemp(s);
-	f = fopen(s, "w");
+	fd = mkstemp(s);
+	if (fd == -1)
+		return FALSE;
+	f = fdopen(fd, "w");
 	if (f == NULL) {
 		return FALSE;
 	} else {
@@ -104,10 +147,10 @@ directory_is_writable (string path)
 	}
 }
 
-extern string
+char *
 get_cwd (void)
 {
-	string cwd = getcwd((char *) NULL, MAXPATHLEN);
+	char *cwd = getcwd((char *) NULL, MAXPATHLEN);
 	if (cwd == NULL) {
 		cwd = getenv("PWD");
 		if (cwd == NULL) {
@@ -117,3 +160,61 @@ get_cwd (void)
 	}
 	return cwd;
 }
+
+char *
+get_executable_dir (char *argv0)
+{
+	char path[MAXPATHLEN];
+	int rval;
+	int i;
+
+	/* Look in this special place for a link to the executable. This
+	   only works on Linux, but it is benign if we try it elsewhere. */
+	rval = readlink ("/proc/self/exe", path, sizeof(path));
+	if (rval > 0) {
+		for (i=rval-1; i >= 0; i--) {
+			if (path[i] == '/') break;
+		}
+		if (i > 0) {
+			/* Overwrite the trailing slash, giving the directory
+			   portion of the path. */
+			path[i] = '\0';      
+		} else if (i == 0) {
+			/* Directory is the root */
+		        strcpy (path, "/");
+		}
+		if (is_directory (path)) {
+			/* Verify that it is a directory */
+			return string_copy (path);
+		}
+	}
+
+	/* TBD: try to extract the name from argv0 */
+
+	/* Can't get anything reasonable. */
+	return NULL;
+}
+
+#ifdef KEY
+void
+dump_file_to_stdout(char *filename)
+{
+  const int buf_size = 1024;
+  char buf[buf_size];
+  FILE *f;
+  int n;
+
+  if (filename == NULL || !file_exists(filename))
+    internal_error("file does not exist");
+  
+  f = fopen(filename, "r");
+  if (f == NULL)
+    internal_error("cannot open file for read");
+
+  // Copy the content of file to stdout.
+  while ((n = fread(buf, 1, buf_size, f)) > 0) {
+    write(1, buf, n);
+  }
+  fclose(f);
+}
+#endif

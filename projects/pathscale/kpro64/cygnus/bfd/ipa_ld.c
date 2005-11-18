@@ -1,3 +1,37 @@
+/*
+
+  Copyright 2004 PathScale, Inc.  All Rights Reserved.
+
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of version 2 of the GNU General Public License as
+  published by the Free Software Foundation.
+
+  This program is distributed in the hope that it would be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+
+  Further, this software is distributed without any warranty that it is
+  free of the rightful claim of any third person regarding infringement 
+  or the like.  Any license provided herein, whether implied or 
+  otherwise, applies only to this software file.  Patent licenses, if 
+  any, provided herein do not apply to combinations of this program with 
+  other software, or any other product whatsoever.  
+
+  You should have received a copy of the GNU General Public License along
+  with this program; if not, write the Free Software Foundation, Inc., 59
+  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+
+  Contact information:  PathScale, Inc., 477 N. Mathilda Avenue,
+  Sunnvale, CA 94085, USA, or:
+
+  http://www.pathscale.com
+
+  For further information regarding this notice, see:
+
+  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+
+ */
+
 #if defined(__GNUC__)
 #include <stdio.h>		/* for sys_errlist */
 #endif
@@ -26,25 +60,30 @@
 
 #define DEFAULT_TOOLROOT "/usr/bin/sgicc"
 
-extern boolean is_ipa;
+extern bfd_boolean is_ipa;
 
 extern struct bfd_link_info link_info; /* defined in ld/ldmain.c */
 extern char **environ_vars;	    /* list of environment variables */
 
-extern void process_whirl64(void *, off_t, void *, int, const char *);
-#pragma weak process_whirl64
+#if defined(KEY) && !defined(EF_IRIX_ABI64)
+#define EF_IRIX_ABI64   0x00000010
+#endif
 
-extern void *ipa_open_input(char *, off_t *);
-#pragma weak ipa_open_input
+extern void process_whirl64(void *, off_t, void *, int, const char *) __attribute__((weak));
+extern void process_whirl32(void *, off_t, void *, int, const char *) __attribute__((weak));
+extern void *ipa_open_input(char *, off_t *) __attribute__((weak));
 
 void *(*p_ipa_open_input)(char *, off_t *) = NULL;
 void (*p_ipa_init_link_line)(int, char **) = NULL;
 void (*p_ipa_add_link_flag)(const char*) = NULL;
 void (*p_ipa_driver)(int, char **) = NULL;
 void (*p_process_whirl64)(void *, off_t, void *, int, const char *) = NULL;
+#ifdef KEY
+void (*p_process_whirl32)(void *, off_t, void *, int, const char *) = NULL;
+#endif
 int  (*p_Count_elf_external_gots)(void) = NULL;
 void (*p_ipa_insert_whirl_marker)(void) = NULL;
-void (*p_Sync_symbol_attributes)(unsigned int, unsigned int, boolean, unsigned int) = NULL;
+void (*p_Sync_symbol_attributes)(unsigned int, unsigned int, bfd_boolean, unsigned int) = NULL;
 
 string toolroot = 0;		    /* set to environment variable TOOLROOT */
 
@@ -722,7 +761,7 @@ ld_compile (bfd *abfd)
 		Return pointer to ?? struct.
 	 *******************************************************/
 void *
-ld_slookup_mext(char *name, boolean is_extern)
+ld_slookup_mext(char *name, bfd_boolean is_extern)
 {
     bfd *abfd = p_current_bfd;
     struct elf_link_hash_entry *p_hash = NULL;
@@ -730,17 +769,17 @@ ld_slookup_mext(char *name, boolean is_extern)
     if (!is_extern)
     	p_hash = elf_link_hash_lookup (  elf_hash_table (&link_info), 
     	    	    	    	    name, 
-				    false, 
-				    false, 
-				    false);
+				    bfd_false, 
+				    bfd_false, 
+				    bfd_false);
     else
     	p_hash = ((struct elf_link_hash_entry *)
     	    bfd_wrapped_link_hash_lookup(   abfd, 
     	    	    	    	    	    &link_info, 
 					    name, 
-					    false, 
-					    false, 
-					    false));
+					    bfd_false, 
+					    bfd_false, 
+					    bfd_false));
 
     return p_hash;
 
@@ -808,7 +847,7 @@ ipa_set_def_bfd(bfd *abfd, struct bfd_link_hash_entry *p_bfd_hash)
 
 		
 	 *******************************************************/
-boolean
+bfd_boolean
 ld_resolved_to_obj (void *pext, void *pobj)
 {
     struct elf_link_hash_entry *p_hash;
@@ -1005,7 +1044,7 @@ ld_get_cur_obj(void)
 	 *******************************************************/
 #define ET_SGI_IR   (ET_LOPROC + 0)
 
-boolean
+bfd_boolean
 ipa_is_whirl(bfd *abfd)
 {
     Elf_Internal_Ehdr *i_ehdrp;	/* Elf file header, internal form */
@@ -1041,12 +1080,25 @@ ipa_process_whirl ( bfd *abfd)
 
     off_t mapped_size;
     abfd->usrdata = (PTR)(*p_ipa_open_input)((char *)abfd->filename, &mapped_size);
-    (*p_process_whirl64) ( 
-    	    	(void *)abfd, 
-    	    	elf_elfheader (abfd)->e_shnum, 
-		abfd->usrdata+elf_elfheader(abfd)->e_shoff,
-	        0, /* check_whirl_revision */
-		abfd->filename);
+
+#if defined(KEY) && !defined(__ALWAYS_USE_64BIT_ELF__)
+    /* Should be sync. with Config_Target_From_ELF() defined in be.so
+     */
+    if( ( elf_elfheader (abfd)->e_flags & EF_IRIX_ABI64 ) == 0 )
+      (*p_process_whirl32) ( 
+			    (void *)abfd, 
+			    elf_elfheader (abfd)->e_shnum, 
+			    abfd->usrdata+elf_elfheader(abfd)->e_shoff,
+			    0, /* check_whirl_revision */
+			    abfd->filename);
+    else
+#endif    
+      (*p_process_whirl64) ( 
+			    (void *)abfd, 
+			    elf_elfheader (abfd)->e_shnum, 
+			    abfd->usrdata+elf_elfheader(abfd)->e_shoff,
+			    0, /* check_whirl_revision */
+			    abfd->filename);
 }
 
 
@@ -1101,6 +1153,14 @@ ipa_set_syms(void)
     	exit(1);
     }
 
+#ifdef KEY
+    p_process_whirl32 = dlsym(p_handle,"process_whirl32");
+    if ((p_error = dlerror()) != NULL)  {
+    	fputs(p_error, stderr);
+    	exit(1);
+    }
+#endif
+
     p_ipa_insert_whirl_marker = dlsym(p_handle,"ipa_insert_whirl_marker");
     if ((p_error = dlerror()) != NULL)  {
     	fputs(p_error, stderr);
@@ -1121,14 +1181,14 @@ ipa_set_syms(void)
 		
 
 	 *******************************************************/
-static boolean
+static bfd_boolean
 ipa_symbol_sync(struct bfd_link_hash_entry *p_bfd_link_hash, PTR info)
 {
     const char *name;
-    boolean is_undef = FALSE;
+    bfd_boolean is_undef = FALSE;
     struct elf_link_hash_entry *p_elf_link_hash ;
     unsigned int result = 0;
-    boolean is_weak = FALSE;
+    bfd_boolean is_weak = FALSE;
 
     name = p_bfd_link_hash->root.string;
 

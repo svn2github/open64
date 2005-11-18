@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -104,6 +108,10 @@
 extern "C" {
 #include "bitset.h"
 }
+
+#ifdef KEY
+using idmap::ID_MAP;
+#endif
 
 class IP_ALIAS_CLASS_REP;
 
@@ -581,6 +589,7 @@ private:
 
   void                Handle_function_definition(WN *);
   WN                 *Handle_assignment(WN *);
+  WN                 *Handle_return_val(WN *);              
   WN                 *Handle_call(WN *);
 
   BOOL                Callee_saves_no_parms(const WN *);

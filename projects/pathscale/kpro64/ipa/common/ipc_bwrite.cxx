@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,8 +37,14 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <elf.h>
 #include <sys/types.h> 
+
+#ifdef KEY
+#include <linux/limits.h>
+#endif
 
 #include "defs.h"
 #include "symtab.h"			// symbol table
@@ -58,12 +68,19 @@
 #include "ipo_alias_class.h"
 #include "ipo_defs.h"			// IPA_NODE_CONTEXT
 
+#ifdef KEY
+#include "ipa_builtins.h"
+#endif
+
+
 extern "C" void add_to_tmp_file_list (char*);
 #pragma weak add_to_tmp_file_list
 
 extern "C" char* create_unique_file (char*, char);
 #pragma weak create_unique_file
 
+extern "C" char* create_tmp_file (char*);
+#pragma weak create_tmp_file
 
 /************************************************************************/
 
@@ -329,6 +346,16 @@ void free_pu_cg_resources(PU_Info* pu, Vector& file_hdr_list)
   for ( ; pu ; pu = PU_Info_next(pu)) {
     IPA_NODE* node = Get_Node_From_PU(pu);
 
+#ifdef KEY
+    // Builtins don't have file headers and their mem pool is not initialized.
+    if (node->Is_Builtin()) {
+      if (node->Mod_Ref_Info ())
+	  node->Mod_Ref_Info ()->Free_Ref_Sets ();
+      node->Set_Processed();
+      continue;
+    }
+#endif
+
     // Save a pointer to the header.
     IP_FILE_HDR& hdr = node->File_Header();
     Is_True(IP_PROC_INFO_state(
@@ -528,6 +555,44 @@ void output_queue::push(PU_Info* pu) {
     PU_Info_next(tail) = new_pu;
     tail = new_pu;
   }
+
+#ifdef KEY
+  // Write out any builtin function created by IPA.  Don't put the builtin at
+  // the head of the pu infos list because output_queue::flush passes the head
+  // pu to ipacom_process_file, which passes it to get_command_line, which then
+  // accesses the file header with the pu.  Since the builtins don't have file
+  // headers, this breaks the compiler.
+  static int builtins_written = 0;
+  if (!builtins_written) {
+    builtins_written = 1;
+
+    std::vector<IPA_BUILTIN*>::iterator it;
+    for (it = IPA_builtins_list.begin(); it != IPA_builtins_list.end(); it++) {
+      IPA_BUILTIN *ipa_builtin = *it;
+      PU_Info *pu_info = ipa_builtin->Get_PU_Info();
+
+      /* Set up the current context */
+      IPA_NODE_CONTEXT context (Get_Node_From_PU(pu_info));
+
+      WN_write_symtab (pu_info, out_file);
+
+      WN_MAP off_map = WN_MAP_UNDEFINED;
+      MEM_POOL_Push(MEM_local_nz_pool_ptr);
+      off_map = WN_MAP32_Create(MEM_local_nz_pool_ptr);
+
+      WN_write_tree (pu_info, off_map, out_file);
+
+      WN_MAP_Delete(off_map);
+      MEM_POOL_Pop(MEM_local_nz_pool_ptr);
+
+      // Add a copy of this pu to the list of pu infos.
+      Is_True(head, ("output_queue::push() head is 0"));
+      PU_Info* new_pu = copy_pu_tree(pu_info, &pool);
+      PU_Info_next(tail) = new_pu;
+      tail = new_pu;
+    }
+  }
+#endif
 
   Is_True(!this->empty(), ("output_queue::push() failed"));
           

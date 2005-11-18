@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -145,7 +149,7 @@
 
 #else
 
-#include <new.h>
+#include <new>
   extern MEM_POOL* Delete_Mem_Pool;
 
 extern MEM_POOL* _dummy_new_mempool;

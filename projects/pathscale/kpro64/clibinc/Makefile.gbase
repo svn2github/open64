@@ -59,7 +59,7 @@ BUILD_SUBDIRS=cray
 default: first
 
 first:
-	cd $(BUILD_AREA)/clibinc/cray && $(MAKE)
+	$(call submake,$(BUILD_AREA)/clibinc/cray)
 
 include $(COMMONRULES)
 

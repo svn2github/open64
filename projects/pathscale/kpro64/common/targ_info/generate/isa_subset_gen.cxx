@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -51,8 +55,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
-#include <list.h>
-#include <vector.h>
+#include <list>
+#include <vector>
 #include "topcode.h"
 #include "gen_util.h"
 #include "isa_subset_gen.h"
@@ -62,15 +66,15 @@ struct isa_subset {
   const char* name;         // Name given for documentation and debugging
   int index;                // value in enum
   ISA_SUBSET superset;      // Parent in subset tree, NULL for roots
-  vector<unsigned char> members;
+  std::vector<unsigned char> members;
                             // Bitset of opcodes that are members of the subset
 };
 
 static int isa_subset_count = 0;    // How many subsets?
-static list<ISA_SUBSET> subsets;    // All the subsets
+static std::list<ISA_SUBSET> subsets;    // All the subsets
 static size_t bit_vector_sizeof;    // How many bytes in a bit set of all
                                     //  opcodes
-static vector<ISA_SUBSET> opcode_subset;
+static std::vector<ISA_SUBSET> opcode_subset;
                                     // Which subset introduces the opcode?
 
 
@@ -112,7 +116,7 @@ void ISA_Subset_Begin( const char* /* name */ )
 /////////////////////////////////////
 {
   bit_vector_sizeof =   (TOP_count + 7) / 8;
-  opcode_subset = vector<ISA_SUBSET>(TOP_count,(ISA_SUBSET)0);
+  opcode_subset = std::vector<ISA_SUBSET>(TOP_count,(ISA_SUBSET)0);
   for ( int code =  0; code < TOP_count; ++code )
     opcode_subset[code] = NULL;
 }
@@ -128,7 +132,7 @@ ISA_SUBSET ISA_Subset_Create( ISA_SUBSET parent, const char* name )
   result->name = name;
   result->index = isa_subset_count++;
   result->superset = parent;
-  result->members = vector<unsigned char>(bit_vector_sizeof,0);
+  result->members = std::vector<unsigned char>(bit_vector_sizeof,0);
 
   subsets.push_front(result);
 
@@ -172,7 +176,7 @@ void ISA_Subset_End(void)
 //  See interface description.
 /////////////////////////////////////
 {
-  list<ISA_SUBSET>::iterator isi;
+  std::list<ISA_SUBSET>::iterator isi;
   bool err;
   int code;
 

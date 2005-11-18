@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -72,7 +76,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/libm/mips/pow.
 	ACM Transactions on Mathematical Software, Vol. 16, No. 4, Dec. 1990
 */
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	double	pow(double, double);
 
 #pragma weak pow = __pow

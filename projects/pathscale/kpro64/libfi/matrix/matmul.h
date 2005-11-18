@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -323,8 +327,7 @@ _premult (DopeVectorType * RESULT,
 			MATDIM->n = MATDIM->n2b;
 		} else {
 #ifdef DEBUG
-			printf("n1a=%d, n2a=%d, n1b=%d, n2b=%d, n1c=%d,
-			   n2c=%d\n", MATDIM->n1a, MATDIM->n2a, MATDIM->n1b,
+			printf("n1a=%d, n2a=%d, n1b=%d, n2b=%d, n1c=%d, n2c=%d\n", MATDIM->n1a, MATDIM->n2a, MATDIM->n1b,
 			   MATDIM->n2b, MATDIM->n1c, MATDIM->n2c);
 #endif
 			ERROR(FESCICNF);

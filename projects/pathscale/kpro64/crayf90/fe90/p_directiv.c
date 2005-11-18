@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -539,6 +543,10 @@ int	gen_directive_ir(operator_type	operator)
 
 {
    int		ir_idx;
+//Bug# 1204
+#ifdef KEY
+   int          tmp_ir_idx;
+#endif
 
 
    TRACE (Func_Entry, "gen_directive_ir", NULL);
@@ -546,10 +554,17 @@ int	gen_directive_ir(operator_type	operator)
    need_new_sh = TRUE;
 
    if (SH_IR_IDX(curr_stmt_sh_idx)) {
+#ifdef KEY
+      tmp_ir_idx = SH_NEXT_IDX(curr_stmt_sh_idx);
+#endif
       SH_NEXT_IDX(curr_stmt_sh_idx)		= ntr_sh_tbl();
       SH_PREV_IDX(SH_NEXT_IDX(curr_stmt_sh_idx))= curr_stmt_sh_idx;
       curr_stmt_sh_idx				= SH_NEXT_IDX(curr_stmt_sh_idx);
       SH_STMT_TYPE(curr_stmt_sh_idx)		= Directive_Stmt;
+#ifdef KEY
+      SH_NEXT_IDX(curr_stmt_sh_idx) = tmp_ir_idx;
+      SH_PREV_IDX(tmp_ir_idx) = curr_stmt_sh_idx;
+#endif
    }
 
    SH_GLB_LINE(curr_stmt_sh_idx)= TOKEN_LINE(token);

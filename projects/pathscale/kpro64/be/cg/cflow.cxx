@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -95,6 +99,10 @@
 
 #include "cflow.h"
 
+#ifdef KEY
+#include <float.h> // needed to pick up FLT_MAX at PathScale
+#endif
+
 
 #define DEBUG_CFLOW Is_True_On
 
@@ -108,6 +116,9 @@ static BOOL have_eh_regions;
  */
 static float br_taken_cost;
 static float br_fall_cost;
+#ifdef KEY
+static float br_static_cost;
+#endif
 
 /* Option control:
  */
@@ -1610,9 +1621,9 @@ Initialize_BB_Info(void)
 	/* Determine the branch condition and operands of the compare.
 	 */
 	{
-	  TN *tn1;
-	  TN *tn2;
-	  OP *cmp;
+	  TN *tn1 = NULL;
+	  TN *tn2 = NULL;
+	  OP *cmp = NULL;
 	  VARIANT variant = CGTARG_Analyze_Compare(br, &tn1, &tn2, &cmp);
 
 	  /* If the compare op has a predicate that isn't always true,
@@ -1668,8 +1679,22 @@ Initialize_BB_Info(void)
 	  bbinfo->succs[nsuccs].prob = BBLIST_prob(succ);
 	}
 	bbinfo->nsuccs = nsuccs;
-	FmtAssert(nsuccs, ("%s BB:%d has no successors", 
-			   BBKIND_Name(bbkind), BB_id(bb)));
+
+#ifdef KEY
+	/* bug#1047
+	   An indirect goto could have no successor in the
+	   current pu, like
+	      int jump () { goto * (int (*) ()) 0xbabebec0; }
+	 */
+	if( nsuccs == 0 &&
+	    bbkind == BBKIND_INDGOTO ){
+	  DevWarn( "%s BB:%d has no successors", 
+		   BBKIND_Name(bbkind), BB_id(bb) );
+	} else
+#endif
+
+	  FmtAssert(nsuccs, ("%s BB:%d has no successors", 
+			     BBKIND_Name(bbkind), BB_id(bb)));
 	continue;
       }
     }
@@ -1940,6 +1965,24 @@ Redundant_Logif(BB *pred, BB *succ, BOOL *pnegated)
       && (pred_cmp != BB_branch_op(pred) || succ_cmp != BB_branch_op(succ))
   ) return FALSE;
 
+#ifdef KEY
+  /* A BBINFO_condval could be re-defined by an op which is scheduled
+     at the delay slot. */
+  if( PROC_has_branch_delay_slot() ){
+    OP* last_op = BB_last_op( pred );
+    if( !OP_br( last_op ) ){
+      for( int i = 0; i < OP_results( last_op ); i++ ){
+	TN* result = OP_result( last_op, i );
+	if( result == BBINFO_condval1(succ) ||
+	    result == BBINFO_condval2(succ) ){
+	  Is_True( false, ("TN is re-defined more than once.\n") );
+	  return FALSE;
+	}
+      }
+    }
+  }
+#endif
+
   /* They're redundant!
    */
   *pnegated = negated;
@@ -2173,8 +2216,9 @@ Convert_If_To_Goto ( BB *bp )
 {
   INT64 v1,v2;
   BOOL result;
-  TN *tn1,*tn2;
-  OP *compare_op;
+  TN* tn1 = NULL;
+  TN* tn2 = NULL;
+  OP *compare_op = NULL;
   VARIANT br_variant = V_br_condition(BBINFO_variant(bp));
   BOOL false_br = V_false_br(BBINFO_variant(bp)) != 0;
 
@@ -2283,6 +2327,13 @@ convert_it:
     /* Must remove the old conditional branch inst; no need to replace
      * it with an unconditional one, Finalize_BB will handle it.
      */
+#ifdef TARG_X8664
+    if( compare_op != NULL ){
+      FmtAssert( OP_bb( compare_op ) == bp,
+		 ("compare op and branch op are located at different bbs") );
+      BB_Remove_Op( bp, compare_op );
+    }
+#endif
     BB_Remove_Op(bp, br);
 
     /* Update succs/preds lists and verify we're in sync.
@@ -2344,6 +2395,9 @@ try_identities:
       if (Force_IEEE_Comparisons) break;
       /*FALLTHROUGH*/
     case V_BR_I4LT: 
+#ifdef KEY
+    case V_BR_I4GT:
+#endif
     case V_BR_U4GT: 
     case V_BR_U4LT: 
     case V_BR_I4NE: 
@@ -2365,6 +2419,9 @@ try_identities:
       #pragma mips_frequency_hint NEVER
       DevWarn("Unhandled branch VARIANT (%lld) for BB:%d at line %d of %s",
 	      (INT64)br_variant, BB_id(bp), __LINE__, __FILE__);
+#ifdef TARG_X8664
+      FmtAssert( false, ("NYI") );
+#endif
     }
   }
   return FALSE;
@@ -3404,6 +3461,11 @@ Can_Append_Succ(
     return FALSE;
   }
 
+#ifdef TARG_X8664
+  if (BB_last_op(b) && OP_code(BB_last_op(b)) == TOP_savexmms)
+    return FALSE;	// merging would delete the label needed by this instr
+#endif
+
   /* Reject if suc is an entry point.
    */
   if (BB_entry(suc)) {
@@ -3944,6 +4006,11 @@ Merge_Blocks ( BOOL in_cgprep )
        * we might be able to merge with it.
        */
       if (BB_Unique_Predecessor(suc)) {
+
+#ifdef TARG_X8664
+	if (BB_last_op(b) && OP_code(BB_last_op(b)) == TOP_savexmms)
+	  break;	// merging would delete the label needed by this instr
+#endif
 
 	/* We have a candidate to merge with its successor.
 	 * Merge them if we can and know how.
@@ -5399,7 +5466,7 @@ Optimize_Cyclic_Chain(BBCHAIN *chain, BB_MAP chain_map)
 
   /* If we have found a better tail, rotate the chain.
    */
-  if (best_tail != chain->tail) {	
+  if (best_tail != chain->tail) {
     BB *best_head = BB_next(best_tail);
     BB *orig_head = chain->head;
     BB *orig_tail = chain->tail;
@@ -5430,6 +5497,9 @@ static BBCHAIN *
 Grow_Chains(BBCHAIN *chains, EDGE *edges, INT n_edges, BB_MAP chain_map)
 {
   INT i;
+#ifdef KEY
+  INT j;
+#endif
 
   /* Visit the succ edges from heaviest weight to lightest.
    */
@@ -5439,6 +5509,21 @@ Grow_Chains(BBCHAIN *chains, EDGE *edges, INT n_edges, BB_MAP chain_map)
     BB *succ = e->succ;
     BBCHAIN *pchain = BB_Chain(chain_map, pred);
     BBCHAIN *schain = BB_Chain(chain_map, succ);
+
+#ifdef KEY
+    if (CFLOW_Enable_Freq_Order_On_Heuristics){
+      if (e->freq == 0) 
+        continue;
+      if  (BB_id(pred) > BB_id(succ)) {
+        for (j = i+1; j < n_edges; j++) {
+          if (edges[j].pred == pred && edges[j].succ != succ && edges[j].freq > 0)
+            break;
+        }
+        if (j != n_edges)
+          continue;
+      }
+    }
+#endif
 
     /* If this edge connects the tail of one chain to the head of
      * another, then combine the chains.
@@ -6628,6 +6713,28 @@ CFLOW_Initialize(void)
   CGTARG_Compute_Branch_Parameters(&idummy, &fixed, &taken, &ddummy);
   br_taken_cost = fixed + taken;
   br_fall_cost = fixed;
+
+#ifdef TARG_MIPS
+  /* If we are optimizing for space, or if we are using estimated
+     profiles, then we make the static cost for branches high so that
+     we avoid adding unconditional branches. When optimizing for
+     space, we also set the 'heuristic_tolerance' so that frequency
+     information is ignored during layout (since this results in fewer
+     unconditional jumps). */
+
+  if (OPT_Space || !CG_PU_Has_Feedback)
+  {
+    br_static_cost = 1e+07;
+    if (OPT_Space)
+      heuristic_tolerance = 1.0;
+  }
+  else
+  {
+    br_static_cost = 100;
+  }
+#else
+  br_static_cost = 0;
+#endif
 
   if (Get_Trace(TP_FLOWOPT, 0xffffffff)) {
     #pragma mips_frequency_hint NEVER

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -93,8 +97,7 @@ typedef longlong_t int64;
 typedef ulonglong_t uint64;
 
 typedef void *pointer;          /* a generic pointer type */
-typedef double double_t;
-typedef float float_t;
+
 typedef int32 fsize_t; /* Size of a "hidden length" when passing Fortran CHARACTER arguments */
 /* Another reasonable choice:  (requires <string.h>)
 **    typedef size_t fsize_t;

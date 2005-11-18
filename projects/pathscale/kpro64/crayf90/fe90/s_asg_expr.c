@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -8092,6 +8096,26 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
    exp_desc_r.rank = exp_desc_l.rank;
 
    insert_subs_ok  = FALSE;
+//Bug 370
+#ifdef KEY
+  if ( IR_OPR(ir_idx) == Struct_Opr &&
+       IR_FLD_L(ir_idx) == AT_Tbl_Idx &&
+       AT_OBJ_CLASS(IR_OPND_L(ir_idx).idx) == Data_Obj ){
+    int attr_idx = TYP_IDX(ATD_TYPE_IDX(IR_OPND_L(ir_idx).idx));
+    if (AT_OBJ_CLASS(attr_idx) == Derived_Type) {
+      int first_idx = ATT_FIRST_CPNT_IDX(attr_idx);
+      if (first_idx != NULL_IDX) {
+        for (int i = first_idx;  i != NULL_IDX;  i = SN_SIBLING_LINK(i)) {
+          if (AT_OBJ_CLASS(SN_ATTR_IDX(i)) == Data_Obj &&
+              ATD_CLASS(SN_ATTR_IDX(i)) == Struct_Component &&
+              SN_ATTR_IDX(i) != IR_OPND_R(ir_idx).idx &&
+              strcmp(AT_OBJ_NAME_PTR(IR_OPND_R(ir_idx).idx),&name_pool[SN_NAME_IDX(i)].name_char)==0)
+              IR_OPND_R(ir_idx).idx = SN_ATTR_IDX(i);
+        }
+      }
+    }
+  }
+#endif
 
    COPY_OPND(opnd, IR_OPND_R(ir_idx));
    ok &= expr_sem(&opnd, &exp_desc_r);

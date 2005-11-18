@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,13 +41,14 @@
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/s_paus.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>		    /* DAG */
 #include <string.h>
 #include "cmplrs/host.h"
 
 extern void f_exit (void);
-static void waitpause(void);	    /* DAG */
+static void waitpause(int);	    /* DAG */
 
 void
 s_paus(string s, fsize_t n)
@@ -77,7 +82,7 @@ s_paus(string s, fsize_t n)
 
 
 static void			    /* DAG */
-waitpause(void)
+waitpause(int x)
 {
     return;
 }

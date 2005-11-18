@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -47,13 +51,15 @@
 #include "string_utils.h"
 #include "get_options.h"
 #include "objects.h"
+#include "pathscale_defs.h"
 #include "phases.h"
 #include "run.h"
-
+#include "profile_type.h" /* for enum PROFILE_TYPE */
+
 /* keep list of previous toggled option names, to give better messages */
 typedef struct toggle_name_struct {
 	int *address;
-	string name;
+	char *name;
 } toggle_name;
 #define MAX_TOGGLES	50
 static toggle_name toggled_names[MAX_TOGGLES];
@@ -63,10 +69,15 @@ int inline_t = UNDEFINED;
 boolean dashdash_flag = FALSE;
 boolean read_stdin = FALSE;
 boolean xpg_flag = FALSE;
+#ifndef KEY
 int default_olevel = UNDEFINED;
+#else
+int default_olevel = 2;
+#endif
 static int default_isa = UNDEFINED;
 static int default_proc = UNDEFINED;
 int instrumentation_invoked = UNDEFINED;
+int profile_type = 0;
 boolean ftz_crt = FALSE;
 
 /* ====================================================================
@@ -90,7 +101,7 @@ static struct {
   int	opt;
 } P_to_I_Map[] =
 {
-#ifdef TARG_MIPS
+#if 0
   { PROC_R4K,	ISA_MIPS3,  O_mips3 },
   { PROC_R5K,	ISA_MIPS4,  O_mips4 },
   { PROC_R8K,	ISA_MIPS4,  O_mips4 },
@@ -101,7 +112,7 @@ static struct {
 };
 
 static struct {
-  string pname;
+  char *pname;
   PROCESSOR pid;
 } Proc_Map[] =
 {
@@ -128,7 +139,7 @@ char *Ofast_Name = NULL;/* -Ofast= name */
 
 
 static void
-add_toggle_name (int *obj, string name)
+add_toggle_name (int *obj, char *name)
 {
 	int i;
 	for (i = 0; i < last_toggle_index; i++) {
@@ -147,7 +158,7 @@ add_toggle_name (int *obj, string name)
 	toggled_names[i].name = string_copy(option_name);
 }
 
-static string
+static char *
 get_toggle_name (int *obj)
 {
 	int i;
@@ -161,14 +172,14 @@ get_toggle_name (int *obj)
 }
 
 /* return whether has been toggled yet */
-extern boolean
+boolean
 is_toggled (int obj)
 {
 	return (obj != UNDEFINED);
 }
 
 /* set obj to value; allow many toggles; last toggle is final value */
-extern void
+void
 toggle (int *obj, int value)
 {
 	if (*obj != UNDEFINED && *obj != value) {
@@ -282,6 +293,12 @@ Process_Ofast ( char *ipname )
      ftz_crt = TRUE;	// flush to zero
 #endif
 
+#ifdef KEY
+     /* -fno-math-errno */
+     toggle ( &fmath_errno, 0);
+     add_option_seen (O_fno_math_errno);
+#endif
+
      /* -IPA: */
      toggle ( &ipa, TRUE );
      add_option_seen ( O_IPA );
@@ -316,7 +333,7 @@ Process_Ofast ( char *ipname )
  */
 
 void
-Process_Opt_Group ( string opt_args )
+Process_Opt_Group ( char *opt_args )
 {
   char *optval = NULL;
 
@@ -340,9 +357,9 @@ Process_Opt_Group ( string opt_args )
 }
 
 void
-Process_Default_Group (string default_args)
+Process_Default_Group (char *default_args)
 {
-  string s;
+  char *s;
   int i;
 
   if ( debug ) {
@@ -358,7 +375,7 @@ Process_Default_Group (string default_args)
   s = Get_Group_Option_Value ( default_args, "proc", "proc");
   if (s != NULL) {
 	for (i = 0; Proc_Map[i].pname != NULL; i++) {
-		if (same_string(s, Proc_Map[i].pname)) {
+		if (strcmp(s, Proc_Map[i].pname) == 0) {
 			default_proc = Proc_Map[i].pid;
 		}
 	}
@@ -400,11 +417,11 @@ Process_Default_Group (string default_args)
  */
 
 void
-Process_Targ_Group ( string targ_args )
+Process_Targ_Group ( char *targ_args )
 {
   char *cp = targ_args;	/* Skip -TARG: */
   char *cpeq;
-  string ftz;
+  char *ftz;
 
   if ( debug ) {
     fprintf ( stderr, "Process_Targ_Group: %s\n", targ_args );
@@ -432,6 +449,7 @@ Process_Targ_Group ( string targ_args )
 	}
 	break;
 
+#if 0	  /* temporary hack by gbl -- O_WlC no longer exists due to a change in OPTIONS */
       case 'e':
 	if ( strncasecmp ( cp, "exc_enable", 10 ) == 0 && *(cp+10) == '=' ) {
   	  int flag;
@@ -456,6 +474,7 @@ Process_Targ_Group ( string targ_args )
 	  add_option_seen (flag);
 	}
 	break;
+#endif
 
       case 'i':
 	/* We support both isa=mipsn and plain mipsn in group.
@@ -504,7 +523,7 @@ Process_Targ_Group ( string targ_args )
 	  int i;
 	  cp = cpeq+1;
 	  for (i = 0; Proc_Map[i].pname != NULL; i++) {
-		if (same_string(cp, Proc_Map[i].pname)) {
+		if (strcmp(cp, Proc_Map[i].pname) == 0) {
 			toggle (&proc, Proc_Map[i].pid);
 		}
 	  }
@@ -539,9 +558,9 @@ Ofast_Target ( void )
 
   /* Driverwrap should always insert an ABI, but just in case: */
   if ( abi == UNDEFINED ) {
-    add_option_seen ( O_i64 );
+    add_option_seen ( O_64 );
     option_name = get_option_name ( O_Ofast );
-    toggle ( &abi, ABI_I64 );
+    toggle ( &abi, ABI_64 );
   }
 
   /* Now fetch the IP descriptor by name: */
@@ -608,12 +627,18 @@ Check_Target ( void )
   }
 
   if (abi == UNDEFINED) {
-#ifdef IA64
+#ifdef TARG_IA64
 	toggle(&abi, ABI_I64);
     	add_option_seen ( O_i64 );
-#elif IA32
+#elif TARG_IA32
 	toggle(&abi, ABI_IA32);
     	add_option_seen ( O_ia32 );
+#elif TARG_MIPS
+	toggle(&abi, ABI_N32);
+    	add_option_seen ( O_n32 );
+#elif TARG_X8664
+	toggle(&abi, ABI_64);
+    	add_option_seen ( O_64 );
 #else
 	warning("abi should have been specified by driverwrap");
   	/* If nothing is defined, default to -n32 */
@@ -679,17 +704,25 @@ Check_Target ( void )
 	  opt_val = ISA_MIPS4;
 	  opt_id = O_mips4;
 	}
+#ifndef KEY
 	else if (abi == ABI_64 && proc != PROC_R4K) {
 	  opt_val = ISA_MIPS4;
 	  opt_id = O_mips4;
 	}
+#endif
 	else {
-	  opt_val = ISA_MIPS3;
-	  opt_id = O_mips3;
+	  opt_val = ISA_MIPS64;
+	  opt_id = O_mips64;
 	}
 	toggle ( &isa, opt_val );
 	add_option_seen ( opt_id );
 	option_name = get_option_name ( opt_id );
+	break;
+#elif TARG_X8664
+      case ABI_N32:
+      case ABI_64:
+	  opt_val = ISA_X8664;
+	  toggle ( &isa, opt_val );
 	break;
 #endif
       case ABI_I32:
@@ -845,7 +878,21 @@ toggle_inline_off(void)
   }
   inline_t = FALSE;
 }
+#ifdef KEY
+void
+Process_Profile_Arcs( void )
+{
+  if (strncmp (option_name, "-fprofile-arcs", 14) == 0)
+    add_string_option (O_OPT_, "profile_arcs=true");
+}
 
+void
+Process_Test_Coverage( void )
+{
+  if (strncmp (option_name, "-ftest-coverage", 15) == 0)
+    add_string_option (O_CG_, "test_coverage=true");
+}
+#endif
 /* process -INLINE option */
 void
 Process_Inline ( void )
@@ -892,7 +939,7 @@ void dash_F_option(void)
 }
 
 /* untoggle the object, so it can be re-toggled later */
-extern void
+void
 untoggle (int *obj, int value)
 /*ARGSUSED*/
 {
@@ -901,10 +948,10 @@ untoggle (int *obj, int value)
 
 /* change path for particular phase(s), e.g. -Yb,/usr */
 static void
-change_phase_path (string arg)
+change_phase_path (char *arg)
 {
-	string dir;
-	string s;
+	char *dir;
+	char *s;
 	for (s = arg; s != NULL && *s != NIL && *s != ','; s++)
 		;
 	if (s == NULL || *s == NIL) {
@@ -932,7 +979,7 @@ change_phase_path (string arg)
 /* halt after a particular phase, e.g. -Hb */
 /* but also process -H and warn its ignored */
 static void
-change_last_phase (string s)
+change_last_phase (char *s)
 {
 	phases_t phase;
 	if (s == NULL || *s == NIL) {
@@ -946,14 +993,14 @@ change_last_phase (string s)
 	}
 }
 
-extern void
-save_name (string *obj, string value)
+void
+save_name (char **obj, char *value)
 {
 	*obj = string_copy(value);
 }
 
 static void
-check_output_name (string name)
+check_output_name (char *name)
 {
 	if (name == NULL) return;
 	if (get_source_kind(name) != S_o && file_exists(name)) {
@@ -970,10 +1017,10 @@ check_dashdash (void)
 	   error("%s not allowed in non XPG4 environment", option_name);
 }
 
-static string
-Get_Binary_Name ( string name)
+static char *
+Get_Binary_Name ( char *name)
 {
-  string new;
+  char *new;
   int len, i;
   new = string_copy(name);
   len = strlen(new);
@@ -989,13 +1036,28 @@ Get_Binary_Name ( string name)
 void
 Process_fbuse ( char *fname )
 {
-static boolean is_first_count_file = TRUE;
-Use_feedback = TRUE;
-add_string (count_files, fname);
-if (is_first_count_file && (prof_file == NULL))
-  prof_file = Get_Binary_Name(drop_path(fname));
-is_first_count_file = FALSE;
+  static boolean is_first_count_file = TRUE;
+  Use_feedback = TRUE;
+  add_string (count_files, fname);
+  if (is_first_count_file && (prof_file == NULL))
+    prof_file = Get_Binary_Name(drop_path(fname));
+  is_first_count_file = FALSE;
 }
+
+void
+Process_fb_type ( char*  typename )
+{
+  char str[10];
+  int flag, tmp;
+  fb_type = string_copy(typename);
+  sprintf(str,"fb_type=%s",fb_type);
+  flag = add_string_option (O_OPT_, str);
+  add_option_seen(flag);
+
+  sscanf (typename, "%d", &tmp);
+  profile_type |= tmp; 
+}
+
 
 void
 Process_fb_create ( char *fname )
@@ -1004,22 +1066,36 @@ Process_fb_create ( char *fname )
    fb_file = string_copy(fname);
 
    if (instrumentation_invoked == TRUE) {
-	/* instrumentation already specified */
-   	flag = add_string_option (O_OPT_, "instr_unique_output=on");
+     /* instrumentation already specified */
+     flag = add_string_option (O_OPT_, "instr_unique_output=on");
    }
    else {
-   	toggle ( &instrumentation_invoked, TRUE );
-   	flag = add_string_option (O_OPT_, "instr=0:instr_unique_output=on");
+     toggle ( &instrumentation_invoked, TRUE );
+     flag = add_string_option (O_OPT_, "instr=on:instr_unique_output=on");
    }
    add_option_seen (flag);
 }
 
+
+void 
+Process_fb_phase(char *phase)
+{
+  char str[10];
+  int flag;
+  fb_phase = string_copy(phase);
+  sprintf(str,"fb_phase=%s",fb_phase);
+  flag = add_string_option (O_OPT_, str);
+  add_option_seen(flag);
+}
+
+
 void
 Process_fb_opt ( char *fname )
 {
-   fb_file = string_copy(fname);
-   toggle ( &instrumentation_invoked, FALSE);
+  opt_file = string_copy(fname);
+  toggle ( &instrumentation_invoked, FALSE);
 }
+
 
 void
 Process_fbexe ( char *fname )
@@ -1103,7 +1179,7 @@ set_dsm_options (void)
  */
 
 void
-Process_Mp_Group ( string mp_args )
+Process_Mp_Group ( char *mp_args )
 {
   char *cp = mp_args;	/* Skip -MP: */
 
@@ -1240,41 +1316,108 @@ Process_Promp ( void )
   }
 }
 
+static int
+print_magic_path(const char *base, const char *fname)
+{
+  int m32 = check_for_saved_option("-m32");
+  char *slash;
+  char *path;
+
+  if (m32) {
+    char *sfx;
+
+    asprintf(&path, "%s/32/%s", base, fname);
+
+    if (file_exists(path))
+      goto good;
+    
+    if (ends_with(base, "/lib64")) {
+      asprintf(&path, "%.*s/%s", strlen(base) - 2, base, fname);
+
+      if (file_exists(path))
+	goto good;
+    }
+
+    sfx = get_suffix(fname);
+
+    if (strcmp(sfx, "a") == 0 || strcmp(sfx, "o") == 0 || strcmp(sfx, "so") == 0)
+      goto bad;
+
+    if ((slash = strrchr(path, '/')) && strstr(slash, ".so."))
+      goto bad;
+  }
+
+  asprintf(&path, "%s/%s", base, fname);
+
+  if (file_exists(path))
+    goto good;
+  
+ bad:
+  return 0;
+
+ good:
+  puts(path);
+  return 1;
+}
+
+static int
+print_phase_path(phases_t phase, const char *fname)
+{
+  return print_magic_path(get_phase_dir(phase), fname);
+}
+
+static int print_relative_path(const char *s, const char *fname)
+{
+  char *root_prefix = directory_path(get_executable_dir(NULL));
+  char *base;
+
+  asprintf(&base, "%s/%s", root_prefix, s);
+  return print_magic_path(base, fname);
+}
+
+/* Keep this in sync with print_file_path over in opt_actions.c. */
+
 void
-print_file_path (string fname)
+print_file_path (char *fname)
 {
   /* Search for fname in usual places, and print path when found. */
   /* gcc does separate searches for libraries and programs,
    * but that seems redundant as the paths are nearly identical,
    * so try combining into one search. */
-  string path;
-  path = concat_strings( concat_strings(get_phase_dir(P_be), "/"), fname);
-  if (file_exists(path)) {
-	printf("%s\n", path);
-	return;
-  }
-  path = concat_strings( concat_strings(get_phase_dir(P_library), "/"), fname);
-  if (file_exists(path)) {
-	printf("%s\n", path);
-	return;
-  }
-#ifdef linux
-  path = concat_strings( concat_strings(get_phase_dir(P_gcpp), "/"), fname);
-  if (file_exists(path)) {
-	printf("%s\n", path);
-	return;
-  }
-  path = concat_strings( concat_strings(get_phase_dir(P_gas), "/"), fname);
-  if (file_exists(path)) {
-	printf("%s\n", path);
-	return;
-  }
-  path = concat_strings( concat_strings(get_phase_dir(P_alt_library), "/"), fname);
-  if (file_exists(path)) {
-	printf("%s\n", path);
-	return;
-  }
-#endif
+
+  if (print_relative_path("lib/gcc-lib/" PSC_TARGET "/" PSC_GCC_VERSION, fname))
+    return;
+
+  if (print_relative_path("lib/gcc-lib/" PSC_TARGET "/lib64", fname))
+    return;
+
+  if (print_relative_path(PSC_TARGET "/lib64", fname))
+    return;
+
+  if (print_relative_path("lib/" PSC_FULL_VERSION, fname))
+    return;
+
+  if (print_magic_path("/usr/lib64", fname))
+    return;
+
+  if (print_magic_path("/lib64", fname))
+    return;
+
+  if (print_phase_path(P_be, fname))
+    return;
+
+  if (print_phase_path(P_library, fname))
+    return;
+
+  if (print_phase_path(P_gcpp, fname))
+    return;
+
+  if (print_phase_path(P_gas, fname))
+    return;
+
+  if (print_phase_path(P_alt_library, fname))
+    return;
+
   /* not found, so just print fname */
   printf("%s\n", fname);
 }

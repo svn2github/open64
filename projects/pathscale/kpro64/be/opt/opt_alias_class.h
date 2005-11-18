@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -120,6 +125,8 @@
 extern "C" {
 #include "bitset.h"
 }
+
+using idmap::ID_MAP;
 
 
 // ====================================================================
@@ -349,7 +356,9 @@ public:
   void              Merge_pending(ALIAS_CLASS_REP &);
   void              Process_pending(ALIAS_CLASSIFICATION &);
   PENDING_LIST     &Pending(void) { return _pending; }
-
+#ifdef KEY
+  BOOL              Pending_rep_match(ALIAS_CLASS_REP *);
+#endif
   void              Join_object_class(ALIAS_CLASS_REP &,
 				      ALIAS_CLASSIFICATION &);
 

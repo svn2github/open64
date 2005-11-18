@@ -217,7 +217,7 @@ else
 WOFF =
 endif
 
-LCOPTS = $(STD_COMPILE_OPTS)
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS) $(WOFF)
@@ -245,7 +245,7 @@ default: first $(TARGETS) last
 #----------------------------------------------------------------------
 first :
 ## verify that be.so is up to date
-	cd $(TARG_BE_DIR) && $(MAKE)
+	$(call submake,$(TARG_BE_DIR))
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is
@@ -264,7 +264,7 @@ endif
 endif
 
 inline: $(IPA_OBJS) $(IPA_CXX_OBJS)
-	$(C++F) -show -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) $(TARG_BE_DIR)/be.so  $(LDFLAGS)
+	$(C++F) -show -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) $(TARG_BE_DIR)/be.so $(LDFLAGS)
 	if [ ! -l be.so ]; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 
 #----------------------------------------------------------------------

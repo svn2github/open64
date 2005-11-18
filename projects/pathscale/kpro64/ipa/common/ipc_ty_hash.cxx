@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -32,8 +36,14 @@
 
 */
 
-
-#include <hash_set.h>
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
+#include <ext/hash_set>
+#include <ext/functional>
+using __gnu_cxx::identity;
+using __gnu_cxx::hashtable;
+using __gnu_cxx::hash_multiset;
+using std::equal_to;
 
 #include "defs.h"
 #include "symtab.h"
@@ -106,8 +116,7 @@ namespace
 }
 
 typedef hashtable<TY_IDX, TY, TY_HASH, TY_EXTRACT_KEY, equal_to<TY>,
-    mempool_allocator<TY_IDX> > TY_HASH_TABLE;
-
+		  mempool_allocator<TY_IDX> > TY_HASH_TABLE;
 
 
 // We steal a bit from the XXX_IDX to distinguish between real IDX and the
@@ -212,9 +221,9 @@ namespace
 	}
     }; // FLD_IS_EQUIVALENT
 } // namespace
-	
+
 typedef hashtable<FLD_IDX, FLD_IDX, FLD_HASH, identity<FLD_IDX>,
-    FLD_IS_EQUIVALENT, mempool_allocator<FLD_IDX> > FLD_HASH_TABLE;
+		  FLD_IS_EQUIVALENT, mempool_allocator<FLD_IDX> > FLD_HASH_TABLE;
 
 
 // ======================================================================
@@ -299,10 +308,10 @@ namespace
 	}
     }; // ARB_IS_EQUIVALENT
 } // namespace
-	
-typedef hashtable<ARB_IDX, ARB_IDX, ARB_HASH, identity<ARB_IDX>,
-    ARB_IS_EQUIVALENT, mempool_allocator<ARB_IDX> > ARB_HASH_TABLE;
 
+
+typedef hashtable<ARB_IDX, ARB_IDX, ARB_HASH, identity<ARB_IDX>,
+		  ARB_IS_EQUIVALENT, mempool_allocator<ARB_IDX> > ARB_HASH_TABLE;
 
 
 // ======================================================================
@@ -369,7 +378,8 @@ namespace
 	}
     }; // TYLIST_IS_EQUIVALENT
 } // namespace
-	
+
+
 typedef hashtable<TYLIST_IDX, TYLIST_IDX, TYLIST_HASH, identity<TYLIST_IDX>,
     TYLIST_IS_EQUIVALENT, mempool_allocator<TYLIST_IDX> > TYLIST_HASH_TABLE;
 
@@ -584,8 +594,9 @@ namespace
     }; // ty_index_compare
 } // namespace
 
+
 typedef hash_multiset<TY_INDEX, partial_ty_hash, ty_index_compare,
-    mempool_allocator<TY_INDEX> > RECURSIVE_TY_HASH_TABLE;
+		      mempool_allocator<TY_INDEX> > RECURSIVE_TY_HASH_TABLE;
 
 // ======================================================================
 

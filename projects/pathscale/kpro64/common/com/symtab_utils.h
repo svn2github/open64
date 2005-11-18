@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -68,6 +72,10 @@ extern BOOL
 ST_is_private_local(const ST *);
 
 // Create symbols for temp var or symbol.
+#ifdef KEY
+extern ST *
+Gen_Temp_Named_Symbol(TY_IDX, const char *, ST_CLASS, ST_SCLASS);
+#endif // KEY
 extern ST *
 Gen_Temp_Symbol(TY_IDX ty, const char *rootname);
 
@@ -106,6 +114,14 @@ extern TY_IDX MTYPE_TO_TY_array[MTYPE_LAST+1];
 // Well known predefined types
 extern TY_IDX Void_Type, FE_int_Type, FE_double_Type;
 extern TY_IDX Spill_Int_Type, Spill_Float_Type;
+#ifdef TARG_X8664
+extern TY_IDX Quad_Type;
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+extern TY_IDX Spill_Int32_Type;
+extern TY_IDX Spill_Float32_Type;
+#endif // KEY
 
 TY_IDX
 Copy_TY (TY_IDX ty);			// make a copy of a ty 
@@ -194,6 +210,9 @@ extern ST* MTYPE_TO_PREG_array[MTYPE_LAST+1];
 /* preferred preg symbols for physical registers 
  * (point to one of above pregs, depending on ABI). */
 extern ST	*Int_Preg, *Float_Preg, *Return_Val_Preg;	/* for pseudo-registers */
+#ifdef TARG_X8664
+extern ST* X87_Preg;
+#endif
 
 const char *
 Preg_Name (PREG_NUM i);

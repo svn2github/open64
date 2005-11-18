@@ -1,4 +1,9 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
+
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +38,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <limits.h>                     // for PATH_MAX
 #include <unistd.h>                     // for read(2)/write(2)
 #include <fcntl.h>                      // for open(2)
@@ -41,9 +48,12 @@
 #include <string.h>
 #include <errno.h>                      // for sys_errlist
 #include <vector>                       // for STL vector container
-#include <hash_map>                     // for STL hash_map container
+
+#include <ext/hash_map>                 // for STL hash_map container
+
 #include <libgen.h>                     // for basename()
 #include <time.h>                       // for time()
+#include <sys/param.h>                  // for MAXPATHLEN
 
 #include "linker.h"                     // std. linker's headers
 #include "process.h"                    // for tmpdir, etc.
@@ -66,11 +76,17 @@
 #include "ipa_option.h"                 // ipa option flags
 #include "ipc_link.h"                   // for ipa_link_link_argv
 
+#include "lib_phase_dir.h"              // for BINDIR etc
+
+#ifdef KEY
+#include "ipc_defs.h"                   // for IPA_Target_Type
+#endif
+
 #pragma weak tos_string
 #pragma weak outfilename
 
 using std::vector;
-using std::hash_map;
+using __gnu_cxx::hash_map;
 
 #ifdef __linux__
 #define _USE_GNU_MAKE_
@@ -80,6 +96,10 @@ using std::hash_map;
 #define TARGET_DELIMITER " : "
 #else
 #define TARGET_DELIMITER " ! "
+#endif
+
+#ifdef KEY
+extern char *psclp_arg;
 #endif
 
 // To create an executable, we have to 
@@ -145,7 +165,7 @@ namespace {
     bool operator()(const char* s1, const char* s2) const
       { return strcmp(s1, s2) == 0; }
   };
-  typedef hash_map<const char*, const char*, hash<const char*>, eqstr>
+  typedef __gnu_cxx::hash_map<const char*, const char*, __gnu_cxx::hash<const char*>, eqstr>
           COMMAND_MAP_TYPE;
 }
 
@@ -207,6 +227,10 @@ static const char* abi()
     return "-i32";
 #endif
 
+#ifdef TARG_X8664
+    return IPA_Target_Type == IP_64_bit_ABI ? "-64" : "-m32";
+#endif
+
   return "-n32";                // This line is never reached.
 }
 
@@ -223,6 +247,17 @@ bool file_exists(const char* path)
 }
 
 } // Close unnamed namespace
+
+#ifdef KEY
+static inline bool
+looks_like(const char *path, const char *base)
+{
+    int p = strlen(path), b = strlen(base);
+
+    return (strcmp(path + p - b, base) == 0 &&
+	    (path[p - b - 1] == '-' || path[p - b - 1] == '/'));
+}
+#endif
 
 extern "C" void
 ipa_compile_init ()
@@ -254,7 +289,7 @@ ipa_compile_init ()
 
   makefile = fopen(makefile_name, "w");
   if (makefile == 0)
-    ErrMsg (EC_Ipa_Open, makefile_name, sys_errlist[errno]);
+    ErrMsg (EC_Ipa_Open, makefile_name, strerror(errno));
   chmod(makefile_name, 0644);
 
   command_map = CXX_NEW(COMMAND_MAP_TYPE, Malloc_Mem_Pool);
@@ -265,12 +300,56 @@ ipa_compile_init ()
 
 #ifdef TARG_IA64
 
-  static char* smake_base = "/usr/bin/make";
+  static char* smake_base = ALTBINPATH "/make";
   static char* tmp_cc_name_base = "/usr/ia64-sgi-linux/bin/sgicc";
-  static char* cc_name_base = "/usr/bin/sgicc";
+  static char* cc_name_base = BINPATH "/orcc";
+  static char* cord_name_base= BINPATH "/gen_cord";
 
   if (file_exists(tmp_cc_name_base))
       cc_name_base = tmp_cc_name_base;
+
+#define MAKE_STRING "make"
+
+#elif defined(TARG_X8664)
+
+#include "pathscale_defs.h"
+
+  static char* smake_base = ALTBINPATH "/usr/bin/make";
+  static char* tmp_cc_name_base = PSC_INSTALL_PREFIX "/bin/" PSC_NAME_PREFIX "cc";
+  static char* cc_name_base = tmp_cc_name_base;
+  static char* cord_name_base= "/usr/bin/gen_cord";
+  static char my_cc[MAXPATHLEN];
+  char *where_am_i = getenv("COMPILER_BIN");
+
+  if (where_am_i) {
+    tmp_cc_name_base = where_am_i;
+    cc_name_base = where_am_i;
+  }
+  
+  if (my_cc[0] == '\0' &&
+      readlink ("/proc/self/exe", my_cc, sizeof(my_cc)) >= 0) {
+
+      if (looks_like (my_cc, PSC_NAME_PREFIX "cc") ||
+	  looks_like (my_cc, PSC_NAME_PREFIX "CC") ||
+	  looks_like (my_cc, PSC_NAME_PREFIX "f90")) {
+	  tmp_cc_name_base = my_cc;
+	  cc_name_base = my_cc;
+      } else if (looks_like (my_cc, "ipa_link")) {
+	  char *s = strrchr(my_cc, '/');
+	  if (s) {
+	      *s = '\0';
+	      s = strrchr(my_cc, '/');
+	      if (s) {
+		  strcpy(++s, "bin/" PSC_NAME_PREFIX "cc");
+		  if (file_exists (my_cc)) {
+		      tmp_cc_name_base = my_cc;
+		      cc_name_base = my_cc;
+		  }
+	      }
+	  }
+      }
+  }
+  
 
 #define MAKE_STRING "make"
 
@@ -279,9 +358,12 @@ ipa_compile_init ()
   static char* smake_base = "/usr/sbin/smake";
   static char* tmp_cc_name_base = "/usr/bin/cc";
   static char* cc_name_base = "/usr/bin/cc";
+  static char* cord_name_base= "/usr/bin/gen_cord";
 #define MAKE_STRING "smake"
 
 #endif
+
+  (*command_map)["cord"] = cord_name_base;
 
   if (toolroot) {
       static char* new_cc_name_base = concat_names(toolroot, tmp_cc_name_base);
@@ -317,7 +399,8 @@ ipa_compile_init ()
 
 #ifdef TODO
   if (IPA_Enable_Cord) {
-    call_graph_file_name = create_unique_file ("ipa_cg", 0);
+    cord_output_file_name = create_tmp_file ("cord_script");
+    call_graph_file_name = create_tmp_file ("ipa_cg");
     add_to_tmp_file_list (call_graph_file_name);
     Call_graph_file = FOPEN (call_graph_file_name, "w");
     if (Call_graph_file == 0)
@@ -328,7 +411,7 @@ ipa_compile_init ()
       }
 #else
       msg (ER_FATAL, ERN_IO_FATAL, call_graph_file_name,
-           sys_errlist[errno]); 
+           strerror(errno)); 
 #endif
   }
 #else
@@ -363,6 +446,9 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
           ("Full pathname for cc not set up"));
 
   if (argc > 0) {
+#ifdef TARG_X8664
+    argv.push_back((*command_map)["cc"]);
+#else
     char* command = base_addr + args[0];
 
     // Look up the command name in the map; we may need to turn into into
@@ -377,22 +463,25 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
         if (!buf)
           ErrMsg (EC_No_Mem, "get_command_line");
         strcpy(buf, toolroot);
-#ifdef TARG_IA64
-        strcat(buf, "/usr/ia64-sgi-linux/bin/");
+
+        strcat(buf, LIBPATH "/");
         strcat(buf, command);
+
         if (!file_exists(buf)) {
-	    bzero(buf, strlen(buf));
-	    strcpy(buf, toolroot);
-            strcat(buf, "/usr/bin/");
-            strcat(buf, command);
+	   bzero(buf, strlen(buf));
+	   strcpy(buf, toolroot);
+	   strcat(buf, BINPATH "/");
+           strcat(buf, command);
 	}
+
+        if (!file_exists(buf)) {
+	   bzero(buf, strlen(buf));
+	   strcpy(buf, toolroot);
+           strcat(buf, ALTBINPATH "/");
+	}
+
         (*command_map)[command] = buf;
 
-#else
-        strcat(buf, "/usr/bin/");
-        strcat(buf, command);
-        (*command_map)[command] = buf;
-#endif
       }
     }
 
@@ -401,6 +490,7 @@ get_command_line (const IP_FILE_HDR& hdr, ARGV& argv, const char* inpath,
             && strlen((*command_map)[command]) != 0,
             ("Full pathname for %s not found in command map", command));
     argv.push_back((*command_map)[command]);
+#endif
 
     for (INT i = 1; i < argc; ++i) {
       argv.push_back (base_addr + args[i]);
@@ -470,7 +560,10 @@ ipacom_process_symtab (char* symtab_file)
             && strlen((*command_map)["cc"]) != 0,
           ("Full pathname for cc not set up"));
 
-  sprintf(buf, "%s -c %s %s -o %s -TENV:emit_global_data=%s %s",
+  char* toolroot = getenv("TOOLROOT");
+
+  sprintf(buf, "%s%s -c %s %s -o %s -TENV:emit_global_data=%s %s",
+	    (toolroot != 0) ? toolroot : "",
             (*command_map)["cc"],
             abi(),
             input_symtab_name,
@@ -532,13 +625,21 @@ size_t ipacom_process_file (char* input_file,
   get_command_line (get_ip_file_hdr (pu), argv, input_base, output_base);
 
   char* str = (char*) malloc(2 * PATH_MAX + 64);
-  sprintf(str, "-TENV:ipa_ident=%d -TENV:read_global_data=%s %s",
+  sprintf(str, "-TENV:ipa_ident=%ld -TENV:read_global_data=%s %s",
           time(0),
           whirl_symtab_name,
           IPA_Enable_AutoGnum?"-Gspace 0":"");
 
 
   argv.push_back(str);
+
+#ifdef KEY
+  // Add "-psclp filename".
+  if (psclp_arg != NULL) {
+    char* str = static_cast<char*>(strdup(psclp_arg));
+    argv.push_back(str);
+  }
+#endif
 
   if (ProMP_Listing) {
     char* str = static_cast<char*>(malloc(64));
@@ -587,7 +688,13 @@ size_t ipacom_process_file (char* input_file,
   commands->push_back(cmdline);
     
   // Add an empty vector for this file's comments.
+#ifdef KEY // porting to GNU 3.*
+  vector<const char*>* emptyvector = CXX_NEW(vector<const char*>, 
+					     Malloc_Mem_Pool);
+  comments->push_back(*emptyvector);
+#else
   comments->push_back();
+#endif
 
   Is_True (infiles->size() > 0 &&
            infiles->size() == outfiles->size() &&
@@ -642,8 +749,21 @@ char* ipc_copy_of (char *str)
   return p;
 } /* ipc_copy_of */
 
+void print_obj_listfiles(const char* dirname, FILE* listfile)
+{
+ 
+  for (vector<const char*>::iterator i = outfiles->begin();
+       i != outfiles->end();
+       ++i)
+    fprintf(listfile, "%s/%s \n", dirname, *i);
+  
+  if (strlen(elf_symtab_name) != 0)
+    fprintf(listfile, "%s/%s \n", dirname, elf_symtab_name);
+}
+
 void print_all_outfiles(const char* dirname)
 {
+ 
   for (vector<const char*>::iterator i = outfiles->begin();
        i != outfiles->end();
        ++i)
@@ -654,6 +774,22 @@ void print_all_outfiles(const char* dirname)
 }
 
 } // Close unnamed namespace
+
+static 
+const char*
+Get_Annotation_Filename_With_Path (void) {
+    static char buf[MAXPATHLEN];
+
+    if (!Annotation_Filename) { buf[0] = '\0'; }
+    else if (*Annotation_Filename == '/') {
+        strcpy (buf, Annotation_Filename);
+    }else {
+        strcpy (buf, "../");
+        strcat (buf, Annotation_Filename);
+    }
+     
+    return &buf[0];
+}
 
 extern "C"
 void ipacom_doit (const char* ipaa_filename)
@@ -707,6 +843,11 @@ void ipacom_doit (const char* ipaa_filename)
     fprintf(makefile, ".IGNORE: %s\n\n", executable_macro);
     fprintf(makefile, "%s%s\\\n", executable_macro, TARGET_DELIMITER);
 
+#ifdef TODO
+    if (IPA_Enable_Cord) 
+    	fprintf(makefile, "%s%s \\\n", "   ",  cord_output_file_name);
+#endif
+
     print_all_outfiles(tmpdir_macro);
 
 #if 0
@@ -722,7 +863,7 @@ void ipacom_doit (const char* ipaa_filename)
     link_cmdfile_name = create_unique_file(cmdfile_buf, 0);
     FILE* cmdfile = fopen(link_cmdfile_name, "w");
     if (cmdfile == 0)
-      ErrMsg (EC_Ipa_Open, link_cmdfile_name, sys_errlist[errno]);
+      ErrMsg (EC_Ipa_Open, link_cmdfile_name, strerror(errno));
     chmod(link_cmdfile_name, 0644);
     
     // Get the link command line.
@@ -734,9 +875,35 @@ void ipacom_doit (const char* ipaa_filename)
     // Print all but link_line[0] into cmdfile.
     ARGV::const_iterator i = link_line->begin();
     for (++i; i != link_line->end(); ++i) {
+#ifdef TARG_X8664
+      // Since we are using GCC to link, don't print out the run-time support
+      // files.
+      char *p;
+      if (((p = strstr(*i, "/crt1.o")) && p[7] == '\0') ||
+	  ((p = strstr(*i, "/crti.o")) && p[7] == '\0') ||
+	  ((p = strstr(*i, "/crtbegin.o")) && p[11] == '\0') ||
+	  ((p = strstr(*i, "/crtend.o")) && p[9] == '\0') ||
+	  ((p = strstr(*i, "/crtn.o")) && p[7] == '\0')) {
+	continue;
+      }
+#endif
+      // Since we're using gcc to link, we must mangle linker
+      // directives that we know about so they are acceptable to it,
+      // and passed properly to its linker.
+      if (strcmp(*i, "-rpath") == 0) {
+	fputs("-Wl,-rpath,", cmdfile);
+	++i;
+      }
       fputs(*i, cmdfile);
       fputs(" \n", cmdfile);
     }
+
+#ifdef TODO
+    if (IPA_Enable_Cord) {
+      fputs("-T", cmdfile);
+      fprintf(cmdfile, " %s\n", cord_output_file_name);
+    }
+#endif
 
     fputs("\n", cmdfile);
     fclose(cmdfile);
@@ -751,7 +918,7 @@ void ipacom_doit (const char* ipaa_filename)
     }
 
     // Print the final link command into the makefile.
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
     fprintf(makefile, "\t%s `cat %s `\n",
             link_line->front(),
             link_cmdfile_name);
@@ -821,6 +988,7 @@ void ipacom_doit (const char* ipaa_filename)
 
   // This generates both the .o symtab and the .G symtab.
   if (strlen(elf_symtab_name) != 0) {
+    char* toolroot = getenv("TOOLROOT");
     Is_True(strlen(input_symtab_name) != 0 &&
             strlen(whirl_symtab_name) != 0 &&
             symtab_command_line != 0 && strlen(symtab_command_line) != 0,
@@ -829,14 +997,44 @@ void ipacom_doit (const char* ipaa_filename)
     if (!symtab_extra_args)
       symtab_extra_args = get_extra_args(0);
 
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+
+    if (IPA_Enable_Cord) {
+    	char * obj_listfile_name = create_tmp_file("obj_file_list");
+    	FILE* listfile = fopen(obj_listfile_name, "w");
+	print_obj_listfiles(tmpdir, listfile);
+        fclose(listfile);
+	
+    	fprintf(makefile, "%s%s \\\n", cord_output_file_name, TARGET_DELIMITER);
+    	print_all_outfiles(tmpdir_macro);
+    	fprintf(makefile, "\t%s%s -o %s %s %s\n",(toolroot != 0) ? toolroot : "",(*command_map)["cord"], cord_output_file_name, call_graph_file_name, obj_listfile_name);//gen_cord
+    }
+	    
 
     fprintf(makefile, "%s/%s" TARGET_DELIMITER "\n",
             tmpdir_macro, "dummy");
 
-    fprintf(makefile, "\tcd %s; %s %s\n\n",
-            tmpdir_macro, symtab_command_line, symtab_extra_args);
-      
+    if (Feedback_Filename) {
+            fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n\n",
+                tmpdir_macro, symtab_command_line, Feedback_Filename, symtab_extra_args);
+    } else if (Annotation_Filename) {
+#ifdef KEY
+      /* Enable feedback for cg. */
+      fprintf (makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=on \n\n",
+	       tmpdir_macro, symtab_command_line, 
+	       Get_Annotation_Filename_With_Path (),
+	       symtab_extra_args);
+#else
+            fprintf (makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=off \n\n",
+                    tmpdir_macro, symtab_command_line, 
+                    Get_Annotation_Filename_With_Path (),
+                    symtab_extra_args);
+#endif
+
+    } else {
+            fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off\n\n",
+                tmpdir_macro, symtab_command_line, symtab_extra_args);
+    }                                                                                                                    
     fprintf(makefile, "%s/%s" TARGET_DELIMITER "%s/%s %s/%s\n\n",
             tmpdir_macro, elf_symtab_name,
             tmpdir_macro, input_symtab_name,
@@ -872,12 +1070,37 @@ void ipacom_doit (const char* ipaa_filename)
             tmpdir_macro, elf_symtab_name,
             tmpdir_macro, whirl_symtab_name,
             tmpdir_macro, (*infiles)[i]);
-#ifdef TARG_IA64
-    fprintf(makefile, "\tcd %s; %s %s\n",
-            tmpdir_macro, (*commands)[i], extra_args);
+#if defined(TARG_IA64) || defined(TARG_X8664)
+    if (Feedback_Filename) {
+        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
+                tmpdir_macro, (*commands)[i], Feedback_Filename, extra_args);
+    } else if (Annotation_Filename) {
+#ifdef KEY
+      /* Enable feedback for cg. */
+      fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=on \n",
+	      tmpdir_macro, (*commands)[i], 
+	      Get_Annotation_Filename_With_Path () , extra_args);
 #else
-    fprintf(makefile, "\tcd -P %s; %s %s\n",
-            tmpdir_macro, (*commands)[i], extra_args);
+        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
+                tmpdir_macro, (*commands)[i], 
+                Get_Annotation_Filename_With_Path () , extra_args);
+#endif
+    } else {
+        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off\n",
+                tmpdir_macro, (*commands)[i], extra_args);
+    }                                                                                                                    
+#else
+    if (Feedback_Filename) {
+        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off\n",
+                tmpdir_macro, (*commands)[i], Feedback_Filename, extra_args);
+    } else if (Annotation_Filename) {
+        fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_opt %s %s -Wb,-CG:enable_feedback=off \n",
+                tmpdir_macro, (*commands)[i], 
+                Get_Annotation_Filename_With_Path (),extra_args);
+    } else {
+        fprintf(makefile, "\tcd -P %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off\n",
+                tmpdir_macro, (*commands)[i], extra_args);
+    }                                                                                                                    
 #endif
 
     const vector<const char*>& com = (*comments)[i];
@@ -901,7 +1124,7 @@ void ipacom_doit (const char* ipaa_filename)
 
   FILE* sh_cmdfile = fopen(sh_cmdfile_name, "w");
   if (sh_cmdfile == 0)
-    ErrMsg (EC_Ipa_Open, sh_cmdfile_name, sys_errlist[errno]);
+    ErrMsg (EC_Ipa_Open, sh_cmdfile_name, strerror(errno));
   chmod(sh_cmdfile_name, 0644);  
 
   // Define a shell function for the cleanup.
@@ -937,9 +1160,10 @@ void ipacom_doit (const char* ipaa_filename)
 
     fprintf(sh_cmdfile,
             "'rm' %s > /dev/null 2>&1 ; true\n", makefile_name);
+#ifndef KEY
     fprintf(sh_cmdfile,
             "'rm' %s > /dev/null 2>&1 ; true\n", sh_cmdfile_name);
-
+#endif
     // Move any files that we don't know about to cwd.  We use a 
     // complicated shell command because, if no such files exist, we
     // don't want the user to see any diagnostics.
@@ -947,13 +1171,18 @@ void ipacom_doit (const char* ipaa_filename)
 
     // Remove the directory.
     fprintf(sh_cmdfile, "'rm' -rf %s > /dev/null 2>&1 ; true\n", tmpdir);
+#ifdef KEY
+    // fix for bug 254
+    fprintf(sh_cmdfile,
+            "'rm' %s > /dev/null 2>&1 ; true\n", sh_cmdfile_buf);
+#endif
     fprintf(sh_cmdfile, "}\n\n");   // End of cleanup function.
 
     // Establish a signal handler so that cleanup always gets called.
     // SEGV should be here too; we're leaving it out because 6.2 sh doesn't
     // like it.
     fprintf(sh_cmdfile, "trap 'cleanup; exit 2' ");
-#ifndef TARG_IA64
+#if !defined(TARG_IA64) && !defined(TARG_X8664)
     fprintf(sh_cmdfile, "ABRT EMT SYS POLL ");
 #endif
     fprintf(sh_cmdfile, "HUP INT QUIT ILL TRAP FPE ");
@@ -1002,6 +1231,24 @@ void ipacom_doit (const char* ipaa_filename)
   fprintf(sh_cmdfile, "exit $retval\n");
 
   fclose(sh_cmdfile);
+
+#ifdef KEY
+  // Restore the LD_LIBRARY_PATH that was in effect before the compiler was run.
+  if (IPA_old_ld_library_path != NULL) {
+    int i;
+    int path_len = strlen(IPA_old_ld_library_path);
+
+    // Change ";" back to ":".
+    for (i=0; i<path_len; i++)
+      if (IPA_old_ld_library_path[i] == ';')
+	IPA_old_ld_library_path[i] = ':';
+
+    char *env = (char *) alloca (path_len + strlen("LD_LIBRARY_PATH=") + 5);
+    sprintf (env, "LD_LIBRARY_PATH=%s", IPA_old_ld_library_path);
+    putenv (env);
+  }
+#endif
+
   exec_smake(sh_cmdfile_name);
 } // ipacom_doit
 
@@ -1052,14 +1299,6 @@ static const char* get_extra_args(const char* ipaa_filename)
   if (ld_ipa_opt[LD_IPA_SHOW].flag)
     args.push_back("-show");
 
-#ifdef TODO
-  if (IPA_Enable_Cord) {
-    args.push_back("-cord");
-    args.push_back(cord_output_file_name);
-    args.push_back(call_graph_file_name);
-    args.push_back(cord_obj_file_name);
-  }
-#endif
 
   /* If there's an IPAA intermediate file, let WOPT know: */
   if (ipaa_filename) {

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -92,6 +96,10 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cw
 #include "cwh_auxst.h"
 #include "cwh_types.h"
 #include "sgi_cmd_line.h"
+#ifdef TARG_X8664 
+// for tolower
+#include <ctype.h>
+#endif /* TARG_X8664 */
 
 char *FE_command_line = NULL;
 
@@ -265,6 +273,23 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
            DST_mk_string (Index_to_char_array (TCON_str_idx (ST_tcon_val(st))));
       }
       break; 
+#ifdef KEY
+      // The Dwarf producer document does not provide any guidelines as to how 
+      // to represent complex number value. Given the type declaration of 
+      // cval.value it is impossible to represent the real and imaginary parts
+      // unless we extend it. 
+   case MTYPE_C4:
+      DST_CONST_VALUE_form(cval) = DST_FORM_DATAC4;
+      DST_CONST_VALUE_form_crdata4(cval) = TCON_ival(Tcon_Table[ST_tcon(st)]);
+      DST_CONST_VALUE_form_cidata4(cval) = TCON_cival(Tcon_Table[ST_tcon(st)]);
+      break;
+
+   case MTYPE_C8:
+      DST_CONST_VALUE_form(cval) = DST_FORM_DATAC8;
+      DST_CONST_VALUE_form_crdata8(cval) = TCON_i0(Tcon_Table[ST_tcon(st)]);
+      DST_CONST_VALUE_form_cidata8(cval) = TCON_ci0(Tcon_Table[ST_tcon(st)]);
+      break;
+#endif // KEY
    }
 
    if (exit == 1) return;  /* Type is not implemented. */
@@ -274,6 +299,11 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
       
    ptr = strtok(name, " ");
 
+#ifdef TARG_X8664
+   INT j;
+   for (j = 0; ptr && j < strlen(ptr); j ++)
+     ptr[ j ] = tolower(ptr[ j ]);
+#endif /* TARG_X8664 */
    while (ptr != NULL) {
       i = DST_mk_constant_def(s,
                               ptr,
@@ -431,6 +461,9 @@ cwh_dst_mk_func(ST * st)
 			  0,	       
 			  FALSE, 
 			  FALSE, 
+#ifdef KEY
+                          FALSE,
+#endif
 			  TRUE); 
 
     if (p != NULL && !PU_is_mainpu(pu)) 
@@ -480,6 +513,9 @@ cwh_dst_mk_MAIN(ST *mn, DST_INFO_IDX en_idx)
 			   0,	       
 			   TRUE,
 			   FALSE, 
+#ifdef KEY
+                           FALSE,
+#endif
 			   TRUE); 
 
     DST_append_child(comp_unit_idx,i);
@@ -596,6 +632,26 @@ cwh_dst_mk_variable(ST * st)
   } else 
     t = cwh_dst_mk_type(d);
 
+#ifdef TARG_X8664
+  INT len = ST_name(st)?strlen(ST_name(st)):0;
+  INT j;
+  char name[len];
+  if (len) {
+    strcpy(name, ST_name(st));
+    for (j=0; j < len; j ++)
+      name[j] = tolower(name[j]);
+  }
+  i = DST_mk_variable(s,
+		      name,
+		      t,
+		      0,
+		      (void *) ST_st_idx(st),
+		      DST_INVALID_IDX,
+		      FALSE,
+		      ST_sclass(st) == SCLASS_AUTO,
+		      FALSE, 
+		      ST_auxst_is_tmp(st));
+#else
   i = DST_mk_variable(s,
 		      ST_name(st),
 		      t,
@@ -606,7 +662,7 @@ cwh_dst_mk_variable(ST * st)
 		      ST_sclass(st) == SCLASS_AUTO,
 		      FALSE, 
 		      ST_auxst_is_tmp(st));
-
+#endif /* TARG_X8664 */
   if (ST_auxst_is_assumed_size(st)) {
      DST_SET_assumed_size(DST_INFO_flag(DST_INFO_IDX_TO_PTR(i)));
   }
@@ -701,6 +757,26 @@ cwh_dst_mk_formal(ST * st)
   } else 
     t = cwh_dst_mk_type(ta);
 
+#ifdef TARG_X8664
+  INT j;
+  INT len = ST_name(st) ? strlen(ST_name(st)):0;
+  char name[len];
+  if (len) {
+    strcpy(name, ST_name(st));
+    for (j = 0; j < len; j ++)
+      name[ j ] = tolower(name[ j ]);
+  }
+  i = DST_mk_formal_parameter(s,
+			      name,
+			      t,
+			      (void *) ba,
+			      DST_INVALID_IDX,
+			      DST_INVALID_IDX,
+			      FALSE, /* FIX optional */
+			      FALSE,
+			      generated,
+			      FALSE);          /* is_declaration_only */
+#else
   i = DST_mk_formal_parameter(s,
 			      ST_name(st),
 			      t,
@@ -711,8 +787,7 @@ cwh_dst_mk_formal(ST * st)
 			      FALSE,
 			      generated,
 			      FALSE);          /* is_declaration_only */
-
-
+#endif /* TARG_X8664 */
 
   if (IS_DOPE_TY(ta)) {
      def_info     = DST_INFO_IDX_TO_PTR(i);
@@ -799,7 +874,19 @@ cwh_dst_mk_common(ST * st)
 
   DevAssert((TY_kind(ty) == KIND_STRUCT),("DST complains about common"));
 
+#ifdef TARG_X8664
+  INT j;
+  INT len = ST_name(st) ? strlen(ST_name(st)):0;
+  char name[len];
+  if (len) {
+    strcpy(name, ST_name(st));
+    for (j = 0; j < len; j ++)
+      name[ j ] = tolower(name[ j ]);
+  }
+  i = DST_mk_common_block(name,(void*) ST_st_idx(st)); 
+#else
   i = DST_mk_common_block(ST_name(st),(void*) ST_st_idx(st)); 
+#endif /* TARG_X8664 */
    
   e = NULL ;
 
@@ -824,11 +911,27 @@ cwh_dst_mk_common(ST * st)
     } else
       t = cwh_dst_mk_type(te);
 
+#ifdef TARG_X8664
+    INT j;
+    INT len = ST_name(el) ? strlen(ST_name(el)):0;
+    char name[len];
+    if (len) {
+      strcpy(name, ST_name(el));
+      for (j = 0; j < len; j ++)
+	name[ j ] = tolower(name[ j ]);
+    }
+    m = DST_mk_variable_comm(s,
+			     name,
+			     t,
+			     (void *) ST_st_idx(st),
+			     ST_ofst(el)) ;
+#else
     m = DST_mk_variable_comm(s,
 			     ST_name(el),
 			     t,
 			     (void *) ST_st_idx(st),
 			     ST_ofst(el)) ;
+#endif /* TARG_X8664 */
 
     if (dr) {
        def_info     = DST_INFO_IDX_TO_PTR(m);
@@ -888,7 +991,7 @@ cwh_dst_mk_type(TY_IDX  ty)
     break ;
 
   case KIND_STRUCT:
-      i = cwh_dst_struct_type(ty);
+    i = cwh_dst_struct_type(ty);
     break;
 
   case KIND_POINTER:
@@ -1073,11 +1176,27 @@ cwh_dst_struct_type(TY_IDX ty)
   
   if (DST_IS_NULL(i) || Top_ST_has_dope) {
 
+#ifdef TARG_X8664
+    INT len = TY_name(ty)?strlen(TY_name(ty)):0;
+    INT j;
+    char name[len];
+    if (len) {
+      strcpy(name, TY_name(ty));
+      for (j=0; j < len; j ++)
+	name[j] = tolower(name[j]);
+    }
+    i = DST_mk_structure_type(s,
+			      name,
+			      TY_size(ty),
+			      DST_INVALID_IDX, 
+			      FALSE);
+#else
     i = DST_mk_structure_type(s,
 			      TY_name(ty),
 			      TY_size(ty),
 			      DST_INVALID_IDX, 
 			      FALSE);
+#endif
 
     Top_ST_has_dope = FALSE;
     cwh_dst_struct_set_DST(ty,i) ;
@@ -1425,6 +1544,27 @@ cwh_dst_member(FLD_HANDLE fld, DST_INFO_IDX parent)
    else
     t = cwh_dst_mk_type(ty);
 
+#ifdef TARG_X8664
+  INT len = FLD_name(fld)?strlen(FLD_name(fld)):0;
+  INT j;
+  char name[len];
+  if (len) {
+    strcpy(name, FLD_name(fld));
+    for (j=0; j < len; j ++)
+      name[j] = tolower(name[j]);
+  }
+  i = DST_mk_member(s,
+		    name,
+		    t,
+		    FLD_ofst(fld),
+		    0, 
+		    FLD_bofst(fld),
+		    FLD_bsize(fld),
+		    FLD_is_bit_field(fld),
+		    FALSE, 
+		    FALSE,
+		    FALSE);
+#else
   i = DST_mk_member(s,
 		    FLD_name(fld),
 		    t,
@@ -1436,6 +1576,7 @@ cwh_dst_member(FLD_HANDLE fld, DST_INFO_IDX parent)
 		    FALSE, 
 		    FALSE,
 		    FALSE);
+#endif
 
   if (dope) {
      def_info     = DST_INFO_IDX_TO_PTR(i);
@@ -2268,7 +2409,7 @@ Get_ST_Id (ST_IDX st_idx, INT *level, INT *index)
     *index = 0;
   }
 
-  return NULL;
+  return 0;
 }
 
 /*================================================================

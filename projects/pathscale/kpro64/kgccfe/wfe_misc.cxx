@@ -1,3 +1,15 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
+
+/* 
+   Copyright (C) 2001 Tensilica, Inc.  All Rights Reserved.
+   Revised to support Tensilica processors and to improve overall performance
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -66,6 +78,9 @@ extern "C" {
 #include "pu_info.h"
 #include "ir_reader.h"
 #include "ir_bwrite.h"
+#ifdef KEY // get REAL_VALUE_TYPE
+#include "real.h"
+#endif // KEY
 #include "wfe_decl.h"
 #include "wfe_expr.h"
 #include "wfe_dst.h"
@@ -73,7 +88,11 @@ extern "C" {
 #include "wfe_stmt.h"
 #include "c_int_model.h"
 
+#ifndef KEY
 int WFE_Keep_Zero_Length_Structs = FALSE;
+#else
+int WFE_Keep_Zero_Length_Structs = TRUE;
+#endif
 
 extern int optimize;
 
@@ -361,6 +380,9 @@ void
 WFE_Init (INT argc, char **argv, char **envp )
 {
   Set_Error_Tables ( Phases, host_errlist );
+#ifdef KEY
+  Initialize_C_Int_Model();
+#endif
   MEM_Initialize();
   Handle_Signals();
 
@@ -369,13 +391,13 @@ WFE_Init (INT argc, char **argv, char **envp )
   Set_Error_Phase ( "Front End Driver" );
   Preconfigure ();
 #ifdef TARG_MIPS
-  ABI_Name = (char *) mips_abi_string;
+  ABI_Name = "n64";
 #endif
 #ifdef TARG_IA64
   ABI_Name = "i64";
 #endif
-#ifdef TARG_IA32
-  ABI_Name = "ia32";
+#if defined(TARG_IA32) || defined(TARG_X8664)
+  ABI_Name = TARGET_64BIT ? "n64" : "n32";
 #endif
   Init_Controls_Tbl();
   Argc = argc;
@@ -601,3 +623,33 @@ void process_diag_override_option(an_option_kind kind,
 {
 }
 */
+
+#ifdef KEY
+// To assist in WFE_Lhs_Of_Modify_Expr
+// This was included as a special case for the torture test
+// 990130-1.c where the call to the function bar() has to happen
+// before the asm is executed. But, the front-end would
+// append the call after the asm using WFE_Stmt_Append (without
+// this function).
+void
+WFE_Stmt_Prepend_Last (WN* wn, SRCPOS srcpos)
+{
+  WN * body;
+  WN * last;
+
+  if (srcpos) {
+    WN_Set_Linenum ( wn, srcpos );
+    if (WN_operator(wn) == OPR_BLOCK && WN_first(wn) != NULL)
+    	WN_Set_Linenum ( WN_first(wn), srcpos );
+  }
+
+  body = WFE_Stmt_Top ();
+
+  if (body) {
+
+    last = WN_last(body);
+    WN_INSERT_BlockBefore (body, last, wn);
+  }
+} /* WFE_Stmt_Prepend_Last */
+#endif /* KEY */
+

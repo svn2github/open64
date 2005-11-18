@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -61,7 +65,7 @@ struct __fcabs_s { float r, i; };
 
 extern	float	__hypotf(float, float);
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	float	fcabs(struct __fcabs_s);
 extern	float	cabsf(struct __fcabs_s);
 

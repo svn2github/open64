@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -48,7 +52,7 @@
 #include "phases.h"
 #include "opt_actions.h"
 
-string option_name;
+char *option_name;
 
 /*
  * In following code, we are using "arg" to refer to the
@@ -57,7 +61,7 @@ string option_name;
  * e.g. for "-Dfoo" foo is the argument to -D.
  */
 
-string optargs = NULL;		/* argument to option, visible externally */
+char *optargs = NULL;		/* argument to option, visible externally */
 int optargd = 0;		/* argument to option, visible externally */
 static int optindex = 1;	/* current index into option */
 
@@ -69,6 +73,8 @@ static int optindex = 1;	/* current index into option */
 
 /* are we at beginning of user arg? */
 #define is_new_arg	(optindex == 1)
+
+extern int getsubopt(char **, char *const *, char **);
 
 /* get next character in arg; 
  * for handling single-letter options that combine into one arg */
@@ -93,7 +99,7 @@ end_option (char **argv, int *argi, int length)
 #define current_string(argv,argi)	&argv[*argi][optindex]
 
 /* get argument that follows option */
-static string
+static char *
 get_optarg (char **argv, int *argi)
 {
 	if (is_last_char(argv,argi)) {
@@ -105,10 +111,10 @@ get_optarg (char **argv, int *argi)
 	return current_string(argv,argi);
 }
 
-static string null_string = "";
+static char *null_string = "";
 
 /* get next string in option */
-static string
+static char *
 next_string (char **argv, int *argi)
 {
 	if (is_last_char(argv,argi)) {
@@ -122,8 +128,8 @@ next_string (char **argv, int *argi)
 }
 
 /* get next string in option after prefix */
-static string
-next_string_after (string prefix, char **argv, int *argi)
+static char *
+next_string_after (char *prefix, char **argv, int *argi)
 {
 	/* use new_optindex to temporarily move to end of prefix */
 	size_t new_optindex = strlen(prefix);
@@ -138,20 +144,20 @@ next_string_after (string prefix, char **argv, int *argi)
 }
 
 static boolean
-is_decimal (string s)
+is_decimal (char *s)
 {
 	if (isdigit(*s)) return TRUE;
 	else return FALSE;
 }
 
 /* add arg to prefix for indirect option */
-extern int 
-add_string_option (int flag, string arg)
+int 
+add_string_option (int flag, char *arg)
 {
 	/* check that there is an argument after the option,
 	 * which should not begin with a dash 
 	 * unless option ends in a comma (e.g. -pfa,%s ) */
-	string s = get_option_name(flag);
+	char *s = get_option_name(flag);
 	if (arg == NULL || (*arg == '-' && s[strlen(s)-1] != ',')) {
 		parse_error(get_option_name(flag), "no argument given for option");
 		return flag;
@@ -159,18 +165,38 @@ add_string_option (int flag, string arg)
 	return add_derived_option(flag, arg);
 }
 
+#ifdef KEY
+/* Same as add_string_option but add '-' if arg consists of only '-'. */
+int 
+add_string_option_or_dash (int flag, char *arg)
+{
+	/* check that there is an argument after the option,
+	 * which should not begin with a dash unless the argument is just '-',
+	 * and unless option ends in a comma (e.g. -pfa,%s ) */
+	char *s = get_option_name(flag);
+	if (arg == NULL ||
+	    (*arg == '-' &&
+	     arg[1] != '\0' &&
+	     s[strlen(s)-1] != ',')) {
+		parse_error(get_option_name(flag), "no argument given for option");
+		return flag;
+	}
+	return add_derived_option(flag, arg);
+}
+#endif
+
 /* do initial pass through args to check for options that affect driver */
-extern void
+void
 check_for_driver_controls (int argc, char *argv[])
 {
         int i;
-	string s;
+	char *s;
 	for (i = 1; i < argc; i++) {
                 if (strncmp(argv[i], "-woff", 5) == 0) {
 			s = next_string_after("-woff",argv,&i);
-			if (same_string(s, "options")) {
+			if (strcmp(s, "options") == 0) {
                                 print_warnings = FALSE;
-			} else if (same_string(s, "all")) {
+			} else if (strcmp(s, "all") == 0) {
                                 print_warnings = FALSE;
                         }
 		} 
@@ -306,7 +332,7 @@ static boolean middle_of_multi_option = FALSE;
 
 /* common routine to end -W by adjusting to correct place */
 static void
-end_multi_option (char **argv, int *argi, string p)
+end_multi_option (char **argv, int *argi, char *p)
 {
 	if (*p == NIL) {
 		middle_of_multi_option = FALSE;
@@ -322,7 +348,7 @@ static int
 parse_multi_option (char **argv, int *argi)
 {
 	int flag;
-	string p, q;
+	char *p, *q;
 	buffer_t buf;
 	if (! middle_of_multi_option) {
         	optargs = next_string(argv,argi);
@@ -369,8 +395,8 @@ parse_W_option (char **argv, int *argi)
 {
 	int flag;
 	phases_t phase;
-	string start = next_string(argv,argi);
-	if ( ! contains_substring(start, ",") || *start == '-') {
+	char *start = next_string(argv,argi);
+	if ( strchr(start, ',') == NULL || *start == '-') {
 		get_next_char(argv,argi);
 		return O_W;
 	}
@@ -398,7 +424,7 @@ parse_W_option (char **argv, int *argi)
 }
 
 /* for -K option: */
-static string optargp = NULL;	/* keep track of current -K arg */
+static char *optargp = NULL;	/* keep track of current -K arg */
 static char *Kopts[] = {
 #define K_PIC 0
 	"PIC",
@@ -418,7 +444,7 @@ static int
 parse_K_option (char **argv, int *argi)
 {
 	int flag;
-	string value;
+	char *value;
 	if (optargp == NULL) {
 		optargp = string_copy(next_string(argv,argi));
 	}

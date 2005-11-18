@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -111,31 +115,34 @@ static const	du	twopm916 =
 static const	du	infinity =
 {0x7ff00000,	0x00000000};
 
-extern	INT	c_q_le(QUAD x, QUAD y, INT *p_err );
-extern	INT	c_q_ge(QUAD x, QUAD y, INT *p_err );
-extern	INT32	c_ji_qint(QUAD x, INT *p_err );
-extern	INT32	c_fp_class_q(QUAD x);
-extern	UINT32	c_ji_quint(QUAD x, INT *p_err );
-extern	INT64	c_ki_qint(QUAD x, INT *p_err );
-extern	UINT64	c_ki_quint(QUAD x, INT *p_err );
-extern	float	c_sngl_q(QUAD x, INT *p_err );
-extern	double	c_dble_q(QUAD x, INT *p_err );
-extern	QUAD	c_q_flotj(INT32 n, INT *p_err );
-extern	QUAD	c_q_flotju(UINT32 n, INT *p_err );
-extern	QUAD	c_q_flotk(INT64 n, INT *p_err );
-extern	QUAD	c_q_flotku(UINT64 n, INT *p_err );
-extern	QUAD	c_q_ext( float x, INT *p_err );
-extern	QUAD	c_q_extd(double x, INT *p_err );
-extern	QUAD	c_q_trunc(QUAD x, INT *p_err );
+#define STRINGIFY(str) #str
+
+#define DECLARE(ret_type, fn_name, arg_types...) \
+  ret_type __ ## fn_name(arg_types); \
+  ret_type fn_name(arg_types) __attribute__((weak, alias("__" #fn_name)))
+
+extern	INT	c_q_le(QUAD x, QUAD y, INT *p_err);
+extern	INT	c_q_ge(QUAD x, QUAD y, INT *p_err);
+DECLARE(INT32,	c_ji_qint, QUAD x, INT *p_err );
+DECLARE(INT32,	c_fp_class_q, QUAD x);
+DECLARE(UINT32,	c_ji_quint, QUAD x, INT *p_err );
+DECLARE(INT64,	c_ki_qint, QUAD x, INT *p_err );
+DECLARE(UINT64,	c_ki_quint, QUAD x, INT *p_err );
+DECLARE(float,	c_sngl_q, QUAD x, INT *p_err );
+DECLARE(double,	c_dble_q, QUAD x, INT *p_err );
+DECLARE(QUAD,	c_q_flotj, INT32 n, INT *p_err );
+DECLARE(QUAD,	c_q_flotju, UINT32 n, INT *p_err );
+DECLARE(QUAD,	c_q_flotk, INT64 n, INT *p_err );
+DECLARE(QUAD,	c_q_flotku, UINT64 n, INT *p_err );
+DECLARE(QUAD,	c_q_ext,  float x, INT *p_err );
+DECLARE(QUAD,	c_q_extd, double x, INT *p_err );
+DECLARE(QUAD,	c_q_trunc, QUAD x, INT *p_err );
 extern	double	trunc(double x);
 
 /* quad to INT32 */
 
-#pragma weak c_ji_qint = __c_ji_qint
-#define	c_ji_qint __c_ji_qint
-
 INT32
-c_ji_qint(QUAD x, INT *p_err )
+__c_ji_qint(QUAD x, INT *p_err )
 {
 QUAD	xi;
 INT32	result;
@@ -156,7 +163,7 @@ INT32	result;
 		return ( (INT32)x.hi );
 	}
 
-	xi = c_q_trunc(x, p_err);
+	xi = __c_q_trunc(x, p_err);
 
 	if ( xi.hi > twop31m1.d )
 		*p_err = 1;
@@ -171,11 +178,9 @@ INT32	result;
 
 /* quad to UINT32 */
 
-#pragma weak c_ji_quint = __c_ji_quint
-#define	c_ji_quint __c_ji_quint
 
 UINT32
-c_ji_quint(QUAD x, INT *p_err )
+__c_ji_quint(QUAD x, INT *p_err )
 {
 QUAD	xi;
 INT64	n;
@@ -197,7 +202,7 @@ UINT32	result;
 		return ( (UINT32)x.hi );
 	}
 
-	xi = c_q_trunc(x, p_err);
+	xi = __c_q_trunc(x, p_err);
 
 	if ( xi.hi > twop32m1.d )
 	{
@@ -213,7 +218,7 @@ UINT32	result;
 		return ( (UINT32)x.hi );
 	}
 
-	n = c_ki_qint(xi, p_err);
+	n = __c_ki_qint(xi, p_err);
 
 	result = n & 0xffffffff;
 
@@ -222,11 +227,8 @@ UINT32	result;
 
 /* quad to INT64 */
 
-#pragma weak c_ki_qint = __c_ki_qint
-#define	c_ki_qint __c_ki_qint
-
 INT64
-c_ki_qint(QUAD x, INT *p_err )
+__c_ki_qint(QUAD x, INT *p_err )
 {
 QUAD	xi;
 INT64	t;
@@ -247,7 +249,7 @@ INT64	t;
 		return ( (INT64)x.hi );
 	}
 
-	xi = c_q_trunc(x, p_err);
+	xi = __c_q_trunc(x, p_err);
 
 	if ( (xi.hi > twop63.d) ||
 	     ((xi.hi == twop63.d) && (xi.lo >= 0.0))
@@ -291,11 +293,8 @@ INT64	t;
 
 /* quad to UINT64 */
 
-#pragma weak c_ki_quint = __c_ki_quint
-#define	c_ki_quint __c_ki_quint
-
 UINT64
-c_ki_quint(QUAD x, INT *p_err )
+__c_ki_quint(QUAD x, INT *p_err )
 {
 QUAD	xi;
 double	z;
@@ -317,7 +316,7 @@ UINT64	t;
 		return ( (UINT64)x.hi );
 	}
 
-	xi = c_q_trunc(x, p_err);
+	xi = __c_q_trunc(x, p_err);
 
 	if ( (xi.hi > twop64.d) ||
 	     ((xi.hi == twop64.d) && (xi.lo > -1.0))
@@ -364,11 +363,8 @@ UINT64	t;
 
 /* quad to float */
 
-#pragma weak c_sngl_q = __c_sngl_q
-#define	c_sngl_q __c_sngl_q
-
 float
-c_sngl_q(QUAD x, INT *p_err )
+__c_sngl_q(QUAD x, INT *p_err )
 {
 	*p_err = 0;
 
@@ -377,11 +373,8 @@ c_sngl_q(QUAD x, INT *p_err )
 
 /* quad to double */
 
-#pragma weak c_dble_q = __c_dble_q
-#define	c_dble_q __c_dble_q
-
 double
-c_dble_q(QUAD x, INT *p_err )
+__c_dble_q(QUAD x, INT *p_err )
 {
 	*p_err = 0;
 
@@ -390,11 +383,8 @@ c_dble_q(QUAD x, INT *p_err )
 
 /* INT32 to quad */
 
-#pragma weak c_q_flotj = __c_q_flotj
-#define	c_q_flotj __c_q_flotj
-
 QUAD
-c_q_flotj(INT32 n, INT *p_err )
+__c_q_flotj(INT32 n, INT *p_err )
 {
 QUAD	result;
 
@@ -407,11 +397,8 @@ QUAD	result;
 
 /* UINT32 to quad */
 
-#pragma weak c_q_flotju = __c_q_flotju
-#define	c_q_flotju __c_q_flotju
-
 QUAD
-c_q_flotju(UINT32 n, INT *p_err )
+__c_q_flotju(UINT32 n, INT *p_err )
 {
 QUAD	result;
 
@@ -424,11 +411,8 @@ QUAD	result;
 
 /* INT64 to quad */
 
-#pragma weak c_q_flotk = __c_q_flotk
-#define	c_q_flotk __c_q_flotk
-
 QUAD
-c_q_flotk(INT64 n, INT *p_err )
+__c_q_flotk(INT64 n, INT *p_err )
 {
 INT64 m;
 double  w, ww;
@@ -453,11 +437,8 @@ QUAD  result;
 
 /* UINT64 to QUAD */
 
-#pragma weak c_q_flotku = __c_q_flotku
-#define	c_q_flotku __c_q_flotku
-
 QUAD
-c_q_flotku(UINT64 n, INT *p_err )
+__c_q_flotku(UINT64 n, INT *p_err )
 {
 UINT64 m;
 double  w, ww;
@@ -482,11 +463,8 @@ QUAD  result;
 
 /* float to quad */
 
-#pragma weak c_q_ext = __c_q_ext
-#define	c_q_ext __c_q_ext
-
 QUAD
-c_q_ext( float x, INT *p_err )
+__c_q_ext( float x, INT *p_err )
 {
 QUAD	result;
 
@@ -499,11 +477,8 @@ QUAD	result;
 
 /* double to quad */
 
-#pragma weak c_q_extd = __c_q_extd
-#define	c_q_extd __c_q_extd
-
 QUAD
-c_q_extd(double x, INT *p_err )
+__c_q_extd(double x, INT *p_err )
 {
 QUAD	result;
 
@@ -518,11 +493,8 @@ QUAD	result;
    a long double
 */
 
-#pragma weak c_q_trunc = __c_q_trunc
-#define	c_q_trunc __c_q_trunc
-
 QUAD
-c_q_trunc(QUAD x, INT *p_err )
+__c_q_trunc(QUAD x, INT *p_err )
 {
 double	uhi, ulo;
 QUAD	result;
@@ -652,9 +624,6 @@ QUAD	result;
  */
 
 
-#pragma weak c_fp_class_q = __c_fp_class_q
-#define	c_fp_class_q __c_fp_class_q
-
 INT
 fp_class_d( double x )
 {
@@ -687,7 +656,7 @@ fp_class_d( double x )
 }
 
 INT32
-c_fp_class_q(QUAD x)
+__c_fp_class_q(QUAD x)
 {	
 QUAD	y;
 INT	err;

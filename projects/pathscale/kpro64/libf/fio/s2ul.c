@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -79,7 +83,8 @@ const long	*scale
 	if ((*mode & MODEHP) != 0)
 		ch	= _lvtob( *(_f_log4 *)value) ? 'T' : 'F';
 	else
-#if	defined(_F_LOG2) && defined(__mips)
+/* KEY: This used to have __mips */
+#if	defined(_F_LOG2)
 		if ((*mode & MODEWP) != 0) {
 			ch	= _lvtob( *(_f_log2 *)value) ? 'T' : 'F';
 	} else if ((*mode & MODEBP) != 0) {

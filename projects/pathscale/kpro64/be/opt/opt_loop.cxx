@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -77,8 +82,8 @@ static char *rcs_id = 	opt_loop_CXX"$Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #define USE_STANDARD_TYPES
-#include <set.h>
-#include <algo.h>
+#include <set>
+#include <algorithm>
 
 #include "defs.h"
 #include "config.h"
@@ -101,6 +106,7 @@ static char *rcs_id = 	opt_loop_CXX"$Revision: 1.1.1.1 $";
 #include "opt_mu_chi.h"
 #include "opt_alias_rule.h"
 
+using std::set;
 
 // ====================================================================
 //
@@ -1033,7 +1039,11 @@ BOOL ref_iter(STMTREP *stmt, BOOL_FUNC f)
   if (stmt->Rhs())   // OPT_CHI has no RHS!
     if (expr_iter(stmt->Rhs(), f))
       return TRUE;
-  if (OPERATOR_is_scalar_istore (stmt->Opr())) {
+  if (OPERATOR_is_scalar_istore (stmt->Opr())
+#ifdef KEY
+      || stmt->Opr() == OPR_MSTORE
+#endif
+	  ) {
     if (expr_iter(stmt->Lhs(), f)) return TRUE;
   }
   return FALSE;

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -252,5 +256,8 @@ void GRA_Trace_Preference_Conflict(LRANGE* lrange0,
 				   LRANGE* lrange1,
 				   GRA_BB* gbb );
 void GRA_Trace_LRANGE_Allocate(LRANGE* lrange);
+#ifdef KEY
+void GRA_Trace_LRANGE_Choose(LRANGE* lrange, REGISTER_SET allowed);
+#endif
 
 #endif

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -224,7 +228,7 @@ void MHD_LEVEL::Compute_Effective_Size()
     break;
   }
 
-  Effective_Size = pct*Size;
+  Effective_Size = (INT64) (pct*Size);
 }
 
 void MHD_LEVEL::Print(FILE* f) const

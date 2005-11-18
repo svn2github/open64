@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -66,6 +70,8 @@ extern BOOL Tracing_Enabled;	/* Any trace options set? */
  */
 
 /* ===== Feature enable flags: ===== */
+extern char * Feedback_Filename;        /* propagate feedback file name */
+extern char * Annotation_Filename;      /* propagate annotation file name */
 extern BOOL IPA_Enable_DFE;		/* Dead Function Elimination */
 extern BOOL IPA_Enable_DFE_Set;		/* ... explicitly set? */
 extern BOOL IPA_Enable_Inline;		/* Inlining */
@@ -117,6 +123,10 @@ extern BOOL IPA_Enable_Reshape;         /* reshape analysis for arrays  */
 
 extern BOOL IPA_Enable_Preopt;		/* call preopt during IPA */
 extern BOOL IPA_Enable_Preopt_Set;
+
+#ifdef KEY
+extern BOOL IPA_Enable_Icall_Opt;
+#endif
 
 /* ===== Inlining heuristics: ===== */
 
@@ -227,7 +237,11 @@ extern BOOL     IPA_Enable_Inline_Char_Array;   /* Enable inlining of PU with ch
 extern BOOL     IPA_Enable_Inline_Optional_Arg;   /* Enable inlining of PU with optional arguments */
 extern BOOL     IPA_Enable_Inline_Struct_Array_Actual;   /* Enable inlining of PU with F90 structures with actuals being array type */
 extern BOOL     IPA_Enable_Inline_Var_Dim_Array;   /* Enable inlining of PU with param that is variable-dimensioned array */
-
+extern BOOL  IPA_Enable_Reorder;   /*Enable structure field reordering */
+#ifdef TARG_X8664 
+extern BOOL IPA_Enable_PU_Reorder; /* Procedure reordering */
+extern BOOL IPA_Enable_Ctype;	   /* Insert array for ctype.h. */
+#endif // TARG_X8664 
 
 /* Maximum number of clones for a call graph node */
 extern UINT32 IPA_Max_Node_Clones;
@@ -268,6 +282,9 @@ extern BOOL	INLINE_Aggressive;	/* inline even non-leaf, out-of-loop
 extern BOOL     INLINE_Enable_DFE;     /* dead function elimination */
 extern BOOL     INLINE_Enable_Auto_Inlining;    /* automatic inline analysis */
 extern BOOL	INLINE_Enable_Restrict_Pointers; /* allow restrict pointers */
+#ifdef KEY
+extern BOOL	INLINE_Recursive;	//  do recursive inlining
+#endif
 
 extern struct option_list *INLINE_List_Names;	/* Must/never/file/library 
 						   options */
@@ -281,6 +298,10 @@ extern BOOL    INLINE_Inlined_Pu_Call_Graph;   /* lightweight inliner impl 2 -- 
 extern BOOL    INLINE_Inlined_Pu_Call_Graph2;  /* lightweight inliner impl 3 -- build only a call graph with PU tagged inline and its callers */
 extern BOOL    INLINE_Get_Time_Info;          /* Generate timing info for different phases of the inliner */
 
+extern char    *INLINE_Script_Name;
+extern BOOL   INLINE_Enable_Script;
+
+extern UINT32  IPA_Max_Density;
 
 #ifdef __cplusplus
 }

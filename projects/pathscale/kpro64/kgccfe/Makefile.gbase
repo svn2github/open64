@@ -1,4 +1,10 @@
+# -*- Makefile -*-
 #
+#  Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+#  File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+#  front-ends to GNU 3.2.2 release.
+#
+
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -33,7 +39,7 @@
 #
 
 #
-#  Makefile.base for gccfe
+#  Makefile.base for kgccfe
 #
 
 #----------------------------------------------------------------------
@@ -74,6 +80,9 @@ endif
 ifeq ($(BUILD_TARGET), IA32)
 HOSTDEFS += -DTARGET_NAME=\"i686-pc-linux-gnu\"
 endif
+ifeq ($(BUILD_TARGET), X8664)
+HOSTDEFS += -DTARGET_NAME=\"i686-pc-linux-gnu\"
+endif
 ifeq ($(BUILD_TARGET), MIPS)
 HOSTDEFS += -DTARGET_NAME=\"mips-sgi-irix6\"
 endif
@@ -89,6 +98,7 @@ HOSTDEFS += -DAUTOMATIC_TEMPLATE_INSTANTIATION=0
 HOSTDEFS += -DINSTANTIATION_BY_IMPLICIT_INCLUSION=0
 HOSTDEFS += -DBACK_END_IS_C_GEN_BE=0
 HOSTDEFS += -DMONGOOSE_CIF
+HOSTDEFS += -DHAVE__BOOL
 
 HOSTDEFS += -DSGI_RAG_BACKEND
 HOSTDEFS += -DSGI_MONGOOSE
@@ -130,11 +140,18 @@ endif
 
 GNU_DIR			= $(BUILD_BASE)/gnu
 GNU_CONFIG_DIR		= $(BUILD_BASE)/gnu/config
-GNU_COMMON_DIR          = $(BUILD_TOT)/gnu_common
+GNU_COMMON_DIR          = $(BUILD_TOT)/kgnu_common
 
 GNU_TARG_DIR = $(GNU_DIR)/$(BUILD_TARGET_DIR)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/$(BUILD_TARGET_DIR)
 ifeq ($(BUILD_TARGET), IA32)
+GNU_TARG_DIR = $(GNU_DIR)/i386
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
+COMMON_COM_TARG_DIR	= $(BUILD_TOT)/common/com/x8664
+COMMON_UTIL_TARG_DIR	= $(BUILD_TOT)/common/util/x8664
+endif
+ifeq ($(BUILD_TARGET), X8664)
+GNU_TARG_DIR = $(GNU_DIR)/i386
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
 endif
 ifeq ($(BUILD_TARGET), MIPS)
@@ -167,7 +184,8 @@ INC_DIRS =		\
   $(GNU_TARG_DIR)	\
   $(GNU_CONFIG_DIR)	\
   $(GNU_CONFIG_TARG_DIR) \
-  $(GNU_COMMON_DIR)/include
+  $(GNU_COMMON_DIR)/include \
+  $(TARG_GNU_DIR) # For finding insn-config.h in wfe_stmt.cxx
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
@@ -227,6 +245,7 @@ COMMON_COM_TARG_CXX_SRCS = \
   targ_sim.cxx
 
 FRONT_END_C_SRCS =		\
+  $(COMMON_UTIL_SRCS)		\
   $(COMMON_COM_SRCS)		\
   $(COMMON_COM_TARG_SRCS)	\
   $(FE_C_SRCS)	
@@ -247,7 +266,7 @@ CXXFILES = $(FRONT_END_CXX_SRCS)
 
 VPATH    =  $(SRC_DIRS)
 
-LCOPTS = $(STD_COMPILE_OPTS)
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(INC_DIRS))
 
@@ -303,9 +322,9 @@ default: first $(TARGETS) last
 #  built.
 #----------------------------------------------------------------------
 first:
-	cd $(TARG_GNU_DIR) && $(MAKE)
-	cd $(TARG_CMPLRS_DIR) && $(MAKE)
-	cd $(TARG_COMUTIL_DIR) && $(MAKE)
+	$(call submake,$(TARG_GNU_DIR))
+	$(call submake,$(TARG_CMPLRS_DIR))
+	$(call submake,$(TARG_COMUTIL_DIR))
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is 
@@ -322,7 +341,7 @@ else
 endif
 
 gfec :  $(OBJECTS) $(GNU_OBJS)
-	$(CXXF) -o gfec $(OBJECTS) $(LDFLAGS)
+	$(link.cxxf) -o gfec $(OBJECTS) $(LDFLAGS)
 
 #----------------------------------------------------------------------
 #  Include the usual commonrules

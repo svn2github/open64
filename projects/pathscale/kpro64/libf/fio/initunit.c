@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -94,6 +98,8 @@ _init_unit(unit *cup)
  *		Is called by the first call to _get_int_cup() to set up the 
  *		unit structure used by internal file I/O.
  */
+extern void _initialize_i_fortran_io(void);
+
 unit *
 _init_internal_unit(void)
 {

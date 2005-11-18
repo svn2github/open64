@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -71,8 +75,13 @@ ir_b_grow_map (Elf64_Word min_size, Output_File *fl);
 extern char *
 ir_b_create_map (Output_File *fl);
 
+#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+extern Elf64_Word
+ir_b_write_tree (WN *, off_t, Output_File *, WN_MAP, PU_Info *);
+#else
 extern Elf64_Word
 ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map);
+#endif
 
 extern Elf64_Word
 ir_b_write_dst (DST_TYPE dst, off_t base_offset, Output_File *fl);

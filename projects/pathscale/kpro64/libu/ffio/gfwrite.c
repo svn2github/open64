@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,6 +42,10 @@
 
 #include <ffio.h>
 #include "gfio.h"
+
+#ifdef KEY
+static put_block( struct fdinfo *, struct ffsw * );
+#endif
 
 /*
  * Write a generic F or FB format file.

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -34,10 +38,10 @@
 */
 
 
-
-#include "cmplx.h"
-#include "cmplrs/host.h"
 #include <math.h>
+#include "cmplrs/host.h"
+#include "cmplx.h"
+#include "defalias.h"
 #include "moremath.h"
 
 extern	void	sincos(double, double *, double *);
@@ -63,12 +67,10 @@ dcomplex __powzz(double_t adreal, double_t adimag, double_t bdreal, double_t bdi
 
 }
 
-void pow_zz(dcomplex *r, dcomplex *a, dcomplex *b)
-{
-  *r = __powzz(a->dreal, a->dimag, b->dreal, b->dimag);
-}
-
 void pow_zz_(dcomplex *r, dcomplex *a, dcomplex *b)
 {
   *r = __powzz(a->dreal, a->dimag, b->dreal, b->dimag);
 }
+
+defalias(pow_zz_, pow_zz);
+defalias(pow_zz_, pow_zz__);

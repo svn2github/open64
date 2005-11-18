@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,14 +45,15 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <vector.h>
-#include <algo.h>
-#include <stack.h>
-#include <map.h>
+#include <vector>
+#include <algorithm>
+#include <stack>
+#include <map>
 #include <tree.h>
 #include "obj_info.h"
+#include "lib_phase_dir.h"
 
-
+#define PAGESIZE 65536
 int debug = 0;
 const int LEN = 1000;  // max line size
 const int MIN_FREQ = 15; 
@@ -88,7 +93,7 @@ struct less<PROC> {
       int cmp = strcmp(name1, name2);
       if (cmp < 0)
 	return true;
-      else if (cmp > 0)
+      else if (cmp >= 0)
 	return false;
     }
     return p1->offset < p2->offset;
@@ -126,7 +131,15 @@ typedef pair<PROC *, PROC *> map_key;
 typedef map< map_key, int> CG;
 typedef map<const char *, PROC *, ltstr> PROCTAB;
 
-
+// Returns true if path refers to an ordinary file.
+bool file_exists(const char* path)
+{
+  if (!path || strlen(path) == 0)
+    return false;
+ 
+  struct stat buf;
+  return stat(path, &buf) == 0 && S_ISREG(buf.st_mode);
+}                                                             
 // compress the relative layout into absolute layout
 // to the base.
 struct compress_path : public unary_function<PROC *, void>
@@ -198,8 +211,8 @@ void process_object_file (File_Info &fi, Shdr *tag, PROCTAB &procedures)
     char *p = (*it).first;
     int  size = (*it).second;
     bool updated = false;
-    if (strncmp(p, ".text", 5) == 0) {
-      char *procname = p+5;
+    if (strncmp(p, ".text.", 6) == 0) {
+      char *procname = p+6;
       PROCTAB::iterator ip = procedures.find(procname);
       if (ip != procedures.end()) {
 	if (size % 16 != 0)
@@ -212,7 +225,7 @@ void process_object_file (File_Info &fi, Shdr *tag, PROCTAB &procedures)
 	(*ip).second->src_order = src_order++;
       }
     }
-    if (!updated && strcmp(p,".text") != 0)
+    if (!updated && strcmp(p,".text.") != 0)
       if (debug)
 	printf("cannot find %s in call-graph\n", p);
   }
@@ -262,19 +275,19 @@ bool layout(PROC *p1, PROC *p2, int freq, int retry_count)
   PROC *base1 = p1->base ? p1->base : p1;
   PROC *base2 = p2->base ? p2->base : p2;
 
-  int loc1 = p1->offset % 32768;
-  int loc2 = (p2->offset + base1->size_cluster) % 32768;
+  int loc1 = p1->offset % PAGESIZE;
+  int loc2 = (p2->offset + base1->size_cluster) % PAGESIZE;
   if (base1 == base2)
-    loc2 = p2->offset % 32768;
+    loc2 = p2->offset % PAGESIZE;
 
-  if (loc2 < loc1) loc2 += 32768;
+  if (loc2 < loc1) loc2 += PAGESIZE;
   int overlap;
   if (loc2 >= loc1+p1->size)
     overlap = 0;
   else
     overlap = loc1 + p1->size - loc2;
   if (overlap == 0) {
-    if (loc1 <= loc2) loc1 += 32768;
+    if (loc1 <= loc2) loc1 += PAGESIZE;
     if (loc1 >= loc2 + p2->size)
       overlap = 0;
     else
@@ -324,6 +337,28 @@ bool layout(PROC *p1, PROC *p2, int freq, int retry_count)
 void emit_lkcord(const char *outfile, vector<PROC*> &proc_layout, vector<PROC*> &src_order_layout)
 {
   FILE *out;
+  FILE *previous;
+  FILE *bottom;
+  char buffer[LEN];
+  char* toolroot = getenv("TOOLROOT"); 
+  char* previous_script= BINPATH "/" "cord_prologue";
+  char* bottom_script=  BINPATH "/cord_epilogue";
+  char* previous_file;
+  char* bottom_file;
+  int len;
+
+
+  if (toolroot) {
+	len = strlen(toolroot) + strlen(previous_script);
+	previous_file = (char *)malloc(len + 1);
+	len = strlen(toolroot) + strlen(bottom_script);
+	bottom_file = (char *)malloc(len + 1);
+	sprintf(previous_file,"%s%s", toolroot, previous_script); 
+	sprintf(bottom_file,"%s%s", toolroot, bottom_script); 
+  } else {
+	previous_file = previous_script;
+	bottom_file = bottom_script;
+  }
   if (outfile != NULL) {
     out = fopen(outfile, "w");
     if (out == NULL) {
@@ -333,6 +368,23 @@ void emit_lkcord(const char *outfile, vector<PROC*> &proc_layout, vector<PROC*> 
   } else 
     out = stdout;
 
+  previous = fopen(previous_file, "r");
+  if (previous == NULL ) {
+      printf("Can't open cord-prologue script file\n");
+      perror("previous");
+      exit(1);
+  }
+
+  bottom = fopen(bottom_file, "r");
+  if (bottom == NULL ) {
+      printf("Can't open cord-epilogue script file\n");
+      perror("bottom");
+      exit(1);
+  }
+
+  while (fgets(buffer, LEN, previous)) 
+	fputs(buffer, out);
+
   vector<PROC *>::iterator q;
   for (q = proc_layout.begin(); q != proc_layout.end(); q++) {
     PROC *proc = *q;
@@ -341,15 +393,21 @@ void emit_lkcord(const char *outfile, vector<PROC*> &proc_layout, vector<PROC*> 
 	     proc->name,
 	     proc->base ? proc->base->name : "null" , 
 	     proc->offset);
-    fprintf(out, ".text%s\n", proc->name);
+    fprintf(out, "    *(.text.%s)\n", proc->name);
   }
 
   for (q = src_order_layout.begin(); q != src_order_layout.end(); q++) {
     PROC *proc = *q;
     if (debug)
       printf("src_order:  %s\n", proc->name);
-    fprintf(out, ".text%s\n", proc->name);
+    fprintf(out, "    *(.text.%s)\n", proc->name);
   }
+
+  while (fgets(buffer, LEN, bottom)) 
+	fputs(buffer, out);
+
+  fclose(previous);
+  fclose(bottom);
 }
 
 

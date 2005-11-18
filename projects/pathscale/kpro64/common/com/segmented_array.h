@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -64,6 +68,12 @@
 
 #ifndef mempool_allocator_INCLUDED
 #include "mempool_allocator.h"
+#endif
+
+#ifdef KEY // needed for building with g++ 3.2
+using std::pair;	
+using std::vector;	
+using std::forward_iterator_tag;	
 #endif
 
 // ARRAY_Ptr is pointer to SEG_ARRAY,
@@ -209,7 +219,7 @@ private:
     
     // copy n elements to current buffer, assume no overflow
     void Copy (const T* x, UINT n) {
-        std::copy(x, x + n, block + (size_ - block_base));
+	std::copy(x, x + n, block + (size_ - block_base));
 	size_ += n;
     }
 
@@ -234,7 +244,7 @@ public:
   ~SEGMENTED_ARRAY() {
     // Free memory from blocks. Map memory gets freed when the map
     // vector is destructed.
-    for (std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> >::iterator
+    for (typename std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> >::iterator
 	   entry = map.begin();
 	 entry != map.end();
 	 ++entry) {

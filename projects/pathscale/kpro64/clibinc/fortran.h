@@ -1,3 +1,7 @@
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* USMID @(#) clibinc/fortran.h	92.5	10/06/99 12:10:46 */
 
 
@@ -252,7 +256,7 @@ typedef	_f_comp4	_f_comp;	/* complex of default kind */
 typedef signed char	_f_int1;	 /* integer kind=1 */
 typedef	short		_f_int2;	/* integer kind=2 */
 typedef	int		_f_int4;	/* integer kind=4 */
-typedef	long 		_f_int8;	/* integer kind=8 */
+typedef	long long	_f_int8;	/* integer kind=8 */
 typedef	_f_int4		_f_int;		/* integer of default kind */
 
 #define	_F_LOG1		1
@@ -263,7 +267,7 @@ typedef	_f_int4		_f_int;		/* integer of default kind */
 typedef	signed char	_f_log1;	/* logical kind=1 */
 typedef	short		_f_log2;	/* logical kind=2 */
 typedef	int		_f_log4;	/* logical kind=4 */
-typedef	long		_f_log8;	/* logical kind=8 */
+typedef long long	_f_log8;	/* logical kind=8 */
 typedef	_f_log4		_f_log;		/* logical of default kind */
 
 #define	_F_REAL4	1

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -49,7 +53,7 @@
 #include <string.h>
 #include <sys/inst.h>
 #include <elf.h>
-#include <sys/elf.h>
+#include <sys/procfs.h>
 #include <sys/elf_whirl.h>
 
 #include "ld_elf.h"

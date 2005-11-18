@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -77,9 +83,15 @@ extern void WFE_Expand_Computed_Goto (tree exp);
 extern void WFE_Declare_Nonlocal_Label (tree label);
 
 extern void Wfe_Expand_Asm_Operands (tree, tree, tree, tree,
-				     int, char *, int);
+				     int, const char *, int);
 
 extern LABEL_IDX WFE_Get_LABEL (tree label, int def);
+#ifdef KEY
+
+// Bug 1023
+extern int WFE_Emit_Side_Effects_Pending (tree* node);
+extern int WFE_Null_ST_References (tree* node);
+#endif
 
 #ifdef __cplusplus
 }

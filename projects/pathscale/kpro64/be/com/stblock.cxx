@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -145,10 +149,12 @@ Adjusted_Alignment(ST *sym)
       */
       break;
     }
-#ifdef TARG_IA32
+#if defined(TARG_IA32) || defined(TARG_X8664)
     // Stack-based objects should not have alignment greater than the
     // stack alignment. This is a temporary kludge for that, to keep
     // ia32 development going. The real fix may require FE changes.
+
+    // We might need to fix Machine_Types[] defined in mtype.cxx
     if (ST_sclass(sym) == SCLASS_AUTO || ST_sclass(sym) == SCLASS_FORMAL) {
       INT16 stack_align = Stack_Alignment();
       if (align > stack_align) {

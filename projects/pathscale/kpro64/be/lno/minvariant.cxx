@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -994,6 +998,20 @@ static void MIR_Replace(WN*                      loop,
 
       WN_kid(p_oldiload, ikid) = newldid;
       LWN_Set_Parent(newldid, p_oldiload);
+#ifdef KEY
+      // Bug 1277 - pregs have no implicit conversions so generate a CVT here.
+      if ( MTYPE_bit_size( WN_rtype(newldid ) ) == 32 &&
+	   MTYPE_bit_size( WN_rtype(p_oldiload ) ) == 64 &&
+	   !MTYPE_is_float( WN_rtype( newldid ) ) &&
+	   !MTYPE_is_float( WN_rtype( p_oldiload ) ) &&
+	   WN_st( newldid ) && ST_class( WN_st( newldid ) ) == CLASS_PREG ) {
+	OPCODE cvt_o = OPCODE_make_op(OPR_CVT,WN_rtype(p_oldiload),
+				    WN_rtype(newldid));
+        WN *cvt = LWN_CreateExp1(cvt_o, newldid);
+        LWN_Set_Parent(cvt,p_oldiload);
+	WN_kid(p_oldiload, ikid) = cvt;
+      }
+#endif
       LWN_Delete_Tree(oldiload);
       Unique_AddElement(&new_uses, newldid, FALSE);
     }
@@ -1149,6 +1167,19 @@ static BOOL MIR_Hoistable_Ref(WN* loop,
   INT i;
   for (i = 0; i < p->Wnlist.Elements(); i++) {
     WN* wn_ref = p->Wnlist[i];
+#ifdef TARG_X8664
+    if (WN_operator(wn_ref) == OPR_ARRAY) {
+      WN *parent = LWN_Get_Parent(wn_ref);
+      if (WN_operator(parent) == OPR_ILOAD &&
+	  (WN_desc(parent) == MTYPE_V16F4 ||
+	   WN_desc(parent) == MTYPE_V16F8 ||
+	   WN_desc(parent) == MTYPE_V16I1 ||
+	   WN_desc(parent) == MTYPE_V16I2 ||
+	   WN_desc(parent) == MTYPE_V16I4 ||
+	   WN_desc(parent) == MTYPE_V16I8))
+	return FALSE;	    
+    }
+#endif /* TARG_X8664 */
     for (WN* wn = wn_ref; wn != NULL; wn = LWN_Get_Parent(wn)) {
       if (WN_opcode(wn) == OPC_DO_LOOP) {
         for (INT j = 0; j < WN_num_dim(wn_ref); j++)

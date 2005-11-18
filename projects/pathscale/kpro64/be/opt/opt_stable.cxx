@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 //
 // Module: opt_stable.cxx
@@ -220,9 +225,16 @@ SPRE_insert_load_to_preg(CODEREP *v, IDTYPE preg, BOOL sign_extd, BB_NODE *bb, E
 	    v->Set_dtyp(MTYPE_U8);
 	    v->Set_dsctyp(MTYPE_U4);
 	    v->Set_sign_extension_flag();
+#ifndef KEY
           } else if (opc == OPC_U4U8CVT) {
             v->Set_dtyp(MTYPE_U4);
             v->Set_sign_extension_flag();
+#else
+          } else if (opc == OPC_I8I4CVT) {
+            v->Set_dtyp(MTYPE_I8);
+	    v->Set_dsctyp(MTYPE_I4);
+            v->Set_sign_extension_flag();
+#endif
 	  } else Is_True(FALSE, ("SPRE_isnert_load_to_preg: wrong type conversion"));
 	}
 	else {

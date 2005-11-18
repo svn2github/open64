@@ -1,730 +1,647 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Register renaming for the GNU compiler.
-   Copyright (C) 2000 Free Software Foundation, Inc.
+   Copyright (C) 2000, 2001, 2002 Free Software Foundation, Inc.
 
-   This file is part of GNU CC.
+   This file is part of GCC.
 
-   GNU CC is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
+   GCC is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2, or (at your option)
    any later version.
 
-   GNU CC is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GCC is distributed in the hope that it will be useful, but WITHOUT
+   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+   License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with GNU CC; see the file COPYING.  If not, write to
-   the Free Software Foundation, 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   along with GCC; see the file COPYING.  If not, write to the Free
+   Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+   02111-1307, USA.  */
+
+#define REG_OK_STRICT
 
 #include "config.h"
 #include "system.h"
-#include "tree.h"
 #include "rtl.h"
-#include "hard-reg-set.h"
-#include "basic-block.h"
+#include "tm_p.h"
 #include "insn-config.h"
 #include "regs.h"
-#include "flags.h"
+#include "hard-reg-set.h"
+#include "basic-block.h"
+#include "reload.h"
 #include "output.h"
 #include "function.h"
 #include "recog.h"
-#include "resource.h"
+#include "flags.h"
+#include "toplev.h"
+#include "obstack.h"
+#ifdef SGI_MONGOOSE
+// To get definition of MODE_BASE_REG_CLASS
+#include "defaults.h"
+#endif /* SGI_MONGOOSE */
+
+#ifndef REG_MODE_OK_FOR_BASE_P
+#define REG_MODE_OK_FOR_BASE_P(REGNO, MODE) REG_OK_FOR_BASE_P (REGNO)
+#endif
 
 static const char *const reg_class_names[] = REG_CLASS_NAMES;
 
-/* ??? Consider a more sparse data structure? */
-typedef struct def_uses
-  {
-    /* high bound of defs and uses */
-    int high_bound;
+struct du_chain
+{
+  struct du_chain *next_chain;
+  struct du_chain *next_use;
 
-    /* 1 if insn y defines a reg whose use crosses a call 
-       y is the ordinal position of the insn within the block */
-    sbitmap require_call_save_reg;
+  rtx insn;
+  rtx *loc;
+  enum reg_class class;
+  unsigned int need_caller_save_reg:1;
+  unsigned int earlyclobber:1;
+};
 
-    /* REGNO x INSN y  1 if insn y sets reg x */
-    sbitmap *defs;
+enum scan_actions
+{
+  terminate_all_read,
+  terminate_overlapping_read,
+  terminate_write,
+  terminate_dead,
+  mark_read,
+  mark_write
+};
 
-    /* REGNO x INSN y  The register class for this def */
-    enum reg_class *def_class;
+static const char * const scan_actions_name[] =
+{
+  "terminate_all_read",
+  "terminate_overlapping_read",
+  "terminate_write",
+  "terminate_dead",
+  "mark_read",
+  "mark_write"
+};
 
-    /* REGNO x INSN y  1 if insn y uses reg x */
-    sbitmap *uses;
+static struct obstack rename_obstack;
 
-    /* REGNO x INSN y  The register class for this use */
-    enum reg_class *use_class;
-  }
-def_uses;
+static void do_replace PARAMS ((struct du_chain *, int));
+static void scan_rtx_reg PARAMS ((rtx, rtx *, enum reg_class,
+				  enum scan_actions, enum op_type, int));
+static void scan_rtx_address PARAMS ((rtx, rtx *, enum reg_class,
+				      enum scan_actions, enum machine_mode));
+static void scan_rtx PARAMS ((rtx, rtx *, enum reg_class,
+			      enum scan_actions, enum op_type, int));
+static struct du_chain *build_def_use PARAMS ((basic_block));
+static void dump_def_use_chain PARAMS ((struct du_chain *));
+static void note_sets PARAMS ((rtx, rtx, void *));
+static void clear_dead_regs PARAMS ((HARD_REG_SET *, enum machine_mode, rtx));
+static void merge_overlapping_regs PARAMS ((basic_block, HARD_REG_SET *,
+					    struct du_chain *));
 
-#define DU_REG_CLASS(rc,r,high_bound,i) (rc[r * high_bound + i])
+/* Called through note_stores from update_life.  Find sets of registers, and
+   record them in *DATA (which is actually a HARD_REG_SET *).  */
 
-typedef struct ext_basic_blocks
-  {
-    /* n_basic_blocks x n_basic_blocks y  1 if bb y is in extended bb
-       having entry x */
-    sbitmap *basic_block;
+static void
+note_sets (x, set, data)
+     rtx x;
+     rtx set ATTRIBUTE_UNUSED;
+     void *data;
+{
+  HARD_REG_SET *pset = (HARD_REG_SET *) data;
+  unsigned int regno;
+  int nregs;
+  if (GET_CODE (x) != REG)
+    return;
+  regno = REGNO (x);
+  nregs = HARD_REGNO_NREGS (regno, GET_MODE (x));
 
-    /* n_basic_blocks x n_basic_blocks y  1 if bb y is an exit block */
-    sbitmap *exit;
-  }
-ext_basic_blocks;
+  /* There must not be pseudos at this point.  */
+  if (regno + nregs > FIRST_PSEUDO_REGISTER)
+    abort ();
 
-#define UID_RUID_HIGH_BOUND 64
-#define DESTINATION 1
-#define SOURCE 2
+  while (nregs-- > 0)
+    SET_HARD_REG_BIT (*pset, regno + nregs);
+}
 
-static void build_def_use		PARAMS ((int, ext_basic_blocks *,
-						 HARD_REG_SET *, def_uses *,
-						 sbitmap *));
-static int replace_reg_in_block		PARAMS ((def_uses *, varray_type *,
-						 int, rtx, unsigned int));
-static int consider_def			PARAMS ((rtx, int, def_uses *, int));
-static int consider_available		PARAMS ((rtx, int, HARD_REG_SET *,
-						 int, def_uses *, int));
-static rtx rr_replace_reg		PARAMS ((rtx, rtx, rtx, int, rtx,
-						 int *));
-static int consider_use			PARAMS ((rtx, int, int, int));
-static int condmove_p			PARAMS ((rtx));
-static void dump_def_use_chain		PARAMS ((HARD_REG_SET *, def_uses *,
-						 varray_type *));
-static void dump_ext_bb_info		PARAMS ((int, ext_basic_blocks *));
-static void find_ext_basic_blocks	PARAMS ((ext_basic_blocks *));
-static void find_one_ext_basic_block	PARAMS ((int, basic_block, sbitmap *,
-						 ext_basic_blocks *));
-static enum reg_class get_reg_class	PARAMS ((rtx, rtx, int,
-						 enum reg_class));
-static rtx regno_first_use_in		PARAMS ((unsigned int, rtx));
-
+/* Clear all registers from *PSET for which a note of kind KIND can be found
+   in the list NOTES.  */
+
+static void
+clear_dead_regs (pset, kind, notes)
+     HARD_REG_SET *pset;
+     enum machine_mode kind;
+     rtx notes;
+{
+  rtx note;
+  for (note = notes; note; note = XEXP (note, 1))
+    if (REG_NOTE_KIND (note) == kind && REG_P (XEXP (note, 0)))
+      {
+	rtx reg = XEXP (note, 0);
+	unsigned int regno = REGNO (reg);
+	int nregs = HARD_REGNO_NREGS (regno, GET_MODE (reg));
+
+	/* There must not be pseudos at this point.  */
+	if (regno + nregs > FIRST_PSEUDO_REGISTER)
+	  abort ();
+
+	while (nregs-- > 0)
+	  CLEAR_HARD_REG_BIT (*pset, regno + nregs);
+      }
+}
+
+/* For a def-use chain CHAIN in basic block B, find which registers overlap
+   its lifetime and set the corresponding bits in *PSET.  */
+
+static void
+merge_overlapping_regs (b, pset, chain)
+     basic_block b;
+     HARD_REG_SET *pset;
+     struct du_chain *chain;
+{
+  struct du_chain *t = chain;
+  rtx insn;
+  HARD_REG_SET live;
+
+  REG_SET_TO_HARD_REG_SET (live, b->global_live_at_start);
+  insn = b->head;
+  while (t)
+    {
+      /* Search forward until the next reference to the register to be
+	 renamed.  */
+      while (insn != t->insn)
+	{
+	  if (INSN_P (insn))
+	    {
+	      clear_dead_regs (&live, REG_DEAD, REG_NOTES (insn));
+	      note_stores (PATTERN (insn), note_sets, (void *) &live);
+	      /* Only record currently live regs if we are inside the
+		 reg's live range.  */
+	      if (t != chain)
+		IOR_HARD_REG_SET (*pset, live);
+	      clear_dead_regs (&live, REG_UNUSED, REG_NOTES (insn));
+	    }
+	  insn = NEXT_INSN (insn);
+	}
+
+      IOR_HARD_REG_SET (*pset, live);
+
+      /* For the last reference, also merge in all registers set in the
+	 same insn.
+	 @@@ We only have take earlyclobbered sets into account.  */
+      if (! t->next_use)
+	note_stores (PATTERN (insn), note_sets, (void *) pset);
+
+      t = t->next_use;
+    }
+}
+
+/* Perform register renaming on the current function.  */
+
 void
 regrename_optimize ()
 {
-  int b, eb, i, inum, r, rc, replace_ok;
-  rtx insn;
-  def_uses du;
-  ext_basic_blocks ebb;
+  int tick[FIRST_PSEUDO_REGISTER];
+  int this_tick = 0;
+  basic_block bb;
+  char *first_obj;
 
-  /* Registers used in a given class */
-  HARD_REG_SET class_regs;
+  memset (tick, 0, sizeof tick);
 
-  /* Registers available for use as renaming registers */
-  HARD_REG_SET avail_regs;
+  gcc_obstack_init (&rename_obstack);
+  first_obj = (char *) obstack_alloc (&rename_obstack, 0);
 
-  /* Registers used in the block */
-  HARD_REG_SET regs_used;
+  FOR_EACH_BB (bb)
+    {
+      struct du_chain *all_chains = 0;
+      HARD_REG_SET unavailable;
+      HARD_REG_SET regs_seen;
 
-  /* Registers which have been used as renaming registers */
-  HARD_REG_SET renamed_regs;
+      CLEAR_HARD_REG_SET (unavailable);
 
-  HARD_REG_SET global_live_at_end, global_live_at_start;
+      if (rtl_dump_file)
+	fprintf (rtl_dump_file, "\nBasic block %d:\n", bb->index);
 
-  HARD_REG_SET null_bitmap, tmp_bitmap;
+      all_chains = build_def_use (bb);
 
-  /* 1 if insn y sets a register which is live at the end of the block */
-  sbitmap defs_live_exit;
+      if (rtl_dump_file)
+	dump_def_use_chain (all_chains);
 
-  /* Mapping from insn y (ordinal position in block) to INSN_UID */
-  varray_type uid_ruid;
+      CLEAR_HARD_REG_SET (unavailable);
+      /* Don't clobber traceback for noreturn functions.  */
+      if (frame_pointer_needed)
+	{
+	  int i;
 
-  /* Mapping from insn y (ordinal position in block) to block id */
-  varray_type uid_rbid;
+	  for (i = HARD_REGNO_NREGS (FRAME_POINTER_REGNUM, Pmode); i--;)
+	    SET_HARD_REG_BIT (unavailable, FRAME_POINTER_REGNUM + i);
 
-  /* Ordinal position in block of defining insn */
-  int *def_idx;
-
-  VARRAY_RTX_INIT (uid_ruid, UID_RUID_HIGH_BOUND + 1, "uid_ruid");
-  VARRAY_LONG_INIT (uid_rbid, UID_RUID_HIGH_BOUND + 1, "uid_rbid");
-
-  ebb.basic_block
-    = sbitmap_vector_alloc (n_basic_blocks, n_basic_blocks);
-  sbitmap_vector_zero (ebb.basic_block, n_basic_blocks);
-  ebb.exit
-    = sbitmap_vector_alloc (n_basic_blocks, n_basic_blocks);
-  sbitmap_vector_zero (ebb.exit, n_basic_blocks);
-
-  find_ext_basic_blocks (&ebb);
-
-  du.def_class = du.use_class = 0;
-
-  /* Build uid_ruid and uid_rbid for this extended basic block */
-  for (b = 0; b < n_basic_blocks; b++)
-    if (TEST_BIT (ebb.basic_block[b], b))
-      {
-	for (eb = du.high_bound = 0; eb < n_basic_blocks; eb++)
-	  if (TEST_BIT (ebb.basic_block[b], eb))
-	    {
-	      basic_block bb = BASIC_BLOCK (eb);
-
-	      /* Calculate high bound for uid_ruid and allocate if necessary */
-	      for (insn = bb->head;
-		   insn != NEXT_INSN (bb->end);
-		   du.high_bound++, insn = NEXT_INSN (insn))
-		{
-		  int uid_ruid_high_bound = VARRAY_SIZE (uid_ruid);
-
-		  if (du.high_bound + 4 >= uid_ruid_high_bound)
-		    {
-		      VARRAY_GROW (uid_ruid, uid_ruid_high_bound * 2);
-		      VARRAY_GROW (uid_rbid, uid_ruid_high_bound * 2);
-		    }
-
-		  VARRAY_RTX (uid_ruid, du.high_bound) = insn;
-		  VARRAY_LONG (uid_rbid, du.high_bound) = eb;
-		}
-	    }
-
-	CLEAR_HARD_REG_SET (null_bitmap);
-	CLEAR_HARD_REG_SET (class_regs);
-	CLEAR_HARD_REG_SET (regs_used);
-	CLEAR_HARD_REG_SET (avail_regs);
-	CLEAR_HARD_REG_SET (tmp_bitmap);
-	CLEAR_HARD_REG_SET (renamed_regs);
-
-	du.defs
-	  = sbitmap_vector_alloc (FIRST_PSEUDO_REGISTER, du.high_bound + 1);
-	sbitmap_vector_zero (du.defs, FIRST_PSEUDO_REGISTER);
-	du.uses
-	  = sbitmap_vector_alloc (FIRST_PSEUDO_REGISTER, du.high_bound + 1);
-	sbitmap_vector_zero (du.uses, FIRST_PSEUDO_REGISTER);
-	du.require_call_save_reg = sbitmap_alloc (du.high_bound + 1);
-	sbitmap_zero (du.require_call_save_reg);
-	defs_live_exit = sbitmap_alloc (du.high_bound + 1);
-	sbitmap_zero (defs_live_exit);
-
-	du.def_class
-	  = xrealloc (du.def_class,
-		      (sizeof (enum reg_class) * FIRST_PSEUDO_REGISTER
-		       * du.high_bound));
-
-	du.use_class
-	  = xrealloc (du.use_class,
-		      (sizeof (enum reg_class) * FIRST_PSEUDO_REGISTER
-		       * du.high_bound));
-
-	build_def_use (b, &ebb, &regs_used, &du, &defs_live_exit);
-
-	if (rtl_dump_file)
-	  {
-	    dump_ext_bb_info (b, &ebb);
-	    dump_def_use_chain (&global_live_at_end, &du, &uid_ruid);
-	  }
-
-	/* Available registers are not: used in the block, live at the start,
-	   live at the end, a register we've renamed to. */
-	/* ??? The current algorithm is pessimistic for extended basic blocks
-	   as it just treats them as a big basic block. */
-
-	COPY_HARD_REG_SET (tmp_bitmap, regs_used);
-	REG_SET_TO_HARD_REG_SET (global_live_at_start,
-				 BASIC_BLOCK (b)->global_live_at_start);
-	IOR_HARD_REG_SET (tmp_bitmap, global_live_at_start);
-	for (eb = 0; eb < n_basic_blocks; eb++)
-	  if (TEST_BIT (ebb.basic_block[b], eb))
-	    {
-	      basic_block bb = BASIC_BLOCK (eb);
-
-	      REG_SET_TO_HARD_REG_SET (global_live_at_end,
-				       bb->global_live_at_end);
-	      IOR_HARD_REG_SET (tmp_bitmap, global_live_at_end);
-	    }
-
-	def_idx = xcalloc (du.high_bound, sizeof (int));
-
-	/* Only consider registers in this extended block and in this class
-	   that are defined more than once.  Replace them if permissible. */
-	for (r = 0; r < FIRST_PSEUDO_REGISTER; r++)
-	  {
-	    int avail_reg, ar_idx, def, def_cnt = 0, use_idx, call_idx;
-
-	    if (!TEST_HARD_REG_BIT (regs_used, r)
-		|| fixed_regs[r]
-		|| r == FRAME_POINTER_REGNUM)
-	      continue;
-
-	    /* Find def_idx[N] where hbound of N is the number of 
-	       definitions of this register in this block. and def_idx
-	       is the ordinal position of this insn in the block. */
-	    for (i = 0, def_idx[def_cnt] = 0; i < du.high_bound; i++)
-	      if (TEST_BIT (du.defs[r], i)
-		  && consider_def (VARRAY_RTX (uid_ruid, i), r, &du, i))
-		{
-		  int first_use = 1;
-		  def_idx[def_cnt] = i;
-
-		  /* Only consider definitions that have a use. */
-		  for (use_idx = i + 1; use_idx < du.high_bound; use_idx++)
-		    {
-		      if (TEST_BIT (du.uses[r], use_idx))
-			{
-			  if (consider_use (VARRAY_RTX (uid_ruid, use_idx), r,
-					    VARRAY_LONG (uid_rbid, i),
-					    VARRAY_LONG (uid_rbid, use_idx)))
-			    {
-			      if (first_use)
-				{
-				  first_use = 0;
-				  def_cnt++;
-				}
-			    }
-			  else
-			    {
-			      /* Don't consider def if we don't want this
-				 use.  */
-			      if (!first_use)
-				def_cnt--;
-
-			      break;
-			    }
-			}
-
-		      if (TEST_BIT (du.defs[r], use_idx))
-			break;
-		    }
-
-		  /* Scan until the next def to avoid renaming
-		     parameter registers. */
-		  /* ??? consider using CALL_INSN_FUNCTION_USAGE */
-		  for (call_idx = i; call_idx <= use_idx; call_idx++)
-		    if (VARRAY_RTX (uid_ruid, call_idx)
-			&& (GET_CODE (VARRAY_RTX (uid_ruid, call_idx))
-			    == CALL_INSN))
-		      SET_BIT (du.require_call_save_reg, i);
-		}
-
-	    if (def_cnt < 2)
-	      continue;
-
-	    /* We have more than one def so rename until we exhaust
-	       renaming registers. */
-	    /* ??? Should we continue renaming round robin when we exhaust
-	       renaming registers? */
-	    for (def = 0; def < def_cnt - 1; def++)
-	      {
-		if (!TEST_BIT (defs_live_exit, def_idx[def])
-		    && (GET_RTX_CLASS
-			(GET_CODE (VARRAY_RTX (uid_ruid,
-					       def_idx[def]))) == 'i'))
-		  {
-		    rtx reg_use
-		      = regno_first_use_in
-			(r, PATTERN (VARRAY_RTX (uid_ruid, def_idx[def])));
-
-		    if (!reg_use)
-		      break;
-#ifdef STACK_REGS
-		    /* Don't bother with stacked float registers */
-		    if (GET_MODE_CLASS (GET_MODE (reg_use)) == MODE_FLOAT)
-		      break;
+#if FRAME_POINTER_REGNUM != HARD_FRAME_POINTER_REGNUM
+	  for (i = HARD_REGNO_NREGS (HARD_FRAME_POINTER_REGNUM, Pmode); i--;)
+	    SET_HARD_REG_BIT (unavailable, HARD_FRAME_POINTER_REGNUM + i);
 #endif
-		    rc = (int) DU_REG_CLASS (du.def_class,
-					     r, du.high_bound, def_idx[def]);
-		    COPY_HARD_REG_SET (avail_regs,
-				   reg_class_contents[(enum reg_class) rc]);
-		    AND_COMPL_HARD_REG_SET (avail_regs, tmp_bitmap);
-		    AND_COMPL_HARD_REG_SET (avail_regs, renamed_regs);
+	}
 
-		    /* No available registers in this class */
-		    GO_IF_HARD_REG_EQUAL (avail_regs, null_bitmap,
-					  no_available_regs);
+      CLEAR_HARD_REG_SET (regs_seen);
+      while (all_chains)
+	{
+	  int new_reg, best_new_reg = -1;
+	  int n_uses;
+	  struct du_chain *this = all_chains;
+	  struct du_chain *tmp, *last;
+	  HARD_REG_SET this_unavailable;
+	  int reg = REGNO (*this->loc);
+	  int i;
 
-		    for (ar_idx = 0; ar_idx < FIRST_PSEUDO_REGISTER
-			 && TEST_HARD_REG_BIT (avail_regs, ar_idx); ar_idx++)
-		      ;
+	  all_chains = this->next_chain;
 
-		    if (ar_idx == FIRST_PSEUDO_REGISTER)
-		      goto no_available_regs;
+#if 0 /* This just disables optimization opportunities.  */
+	  /* Only rename once we've seen the reg more than once.  */
+	  if (! TEST_HARD_REG_BIT (regs_seen, reg))
+	    {
+	      SET_HARD_REG_BIT (regs_seen, reg);
+	      continue;
+	    }
+#endif
 
-		    /* Only try register renaming if there is an available
-		       register in this class. */
-		    for (ar_idx = 0; ar_idx < FIRST_PSEUDO_REGISTER; ar_idx++)
-		      {
-#ifdef REG_ALLOC_ORDER
-			avail_reg = reg_alloc_order[ar_idx];
+	  if (fixed_regs[reg] || global_regs[reg]
+#if FRAME_POINTER_REGNUM != HARD_FRAME_POINTER_REGNUM
+	      || (frame_pointer_needed && reg == HARD_FRAME_POINTER_REGNUM)
 #else
-			avail_reg = ar_idx;
+	      || (frame_pointer_needed && reg == FRAME_POINTER_REGNUM)
 #endif
-			if (consider_available (reg_use, avail_reg,
-						&avail_regs, rc, &du,
-						def_idx[def]))
-			  break;
-		      }
-
-		    if (ar_idx == FIRST_PSEUDO_REGISTER)
-		      {
-			if (rtl_dump_file)
-			  {
-			    fprintf (rtl_dump_file,
-				     "Register %s in class %s",
-				     reg_names[r], reg_class_names[rc]);
-			    fprintf (rtl_dump_file,
-				     " in insn %d",
-				     INSN_UID (VARRAY_RTX (uid_ruid,
-							   def_idx[def])));
-
-			    if (TEST_BIT (du.require_call_save_reg,
-					  def_idx[def]))
-			      fprintf (rtl_dump_file, " crosses a call");
-
-			    fprintf (rtl_dump_file,
-				     ". No available registers\n");
-			  }
-
-			goto try_next_def;
-		      }
-
-		    SET_HARD_REG_BIT (renamed_regs, avail_reg);
-		    CLEAR_HARD_REG_BIT (avail_regs, avail_reg);
-
-		    /* Replace in destination.  Replace in source for
-		       remainder of block until new register is defined
-		       again */
-		    replace_ok
-		      = replace_reg_in_block (&du, &uid_ruid, def_idx[def],
-					      reg_use, avail_reg);
-
-		    /* Replace failed, so restore previous register */
-		    if (!replace_ok)
-		      {
-			replace_reg_in_block (&du, &uid_ruid, def_idx[def],
-					      gen_rtx_REG (GET_MODE (reg_use),
-							   avail_reg),
-					      REGNO (reg_use));
-
-			if (rtl_dump_file)
-			  {
-			    fprintf (rtl_dump_file,
-				     "Register %s in class %s Renaming as %s ",
-				     reg_names[r], reg_class_names[rc],
-				     reg_names[avail_reg]);
-			    fprintf (rtl_dump_file,
-				     "would not satisfy constraints\n");
-			  }
-		      }
-
-		    else if (rtl_dump_file)
-		      {
-			fprintf (rtl_dump_file,
-				 "Register %s in class %s Renamed as %s ",
-				 reg_names[r], reg_class_names[rc],
-				 reg_names[avail_reg]);
-			fprintf (rtl_dump_file, "at insn %d\n",
-				 INSN_UID (VARRAY_RTX (uid_ruid,
-						       def_idx[def])));
-		      }
-		  }
-
-	      try_next_def:
-		continue;
-	      }
-
-	    sbitmap_zero (du.defs[r]);
-
-	  no_available_regs:
+	      )
 	    continue;
-	  }
 
-	free (def_idx);
-	sbitmap_vector_free (du.defs);
-	sbitmap_vector_free (du.uses);
-	sbitmap_free (du.require_call_save_reg);
-	sbitmap_free (defs_live_exit);
-	CLEAR_HARD_REG_SET (regs_used);
-	CLEAR_HARD_REG_SET (renamed_regs);
+	  COPY_HARD_REG_SET (this_unavailable, unavailable);
 
-	for (inum = 0; inum < (int) VARRAY_SIZE (uid_ruid); inum++)
-	  VARRAY_RTX (uid_ruid, inum) = (rtx) 0;
-      }
+	  /* Find last entry on chain (which has the need_caller_save bit),
+	     count number of uses, and narrow the set of registers we can
+	     use for renaming.  */
+	  n_uses = 0;
+	  for (last = this; last->next_use; last = last->next_use)
+	    {
+	      n_uses++;
+	      IOR_COMPL_HARD_REG_SET (this_unavailable,
+				      reg_class_contents[last->class]);
+	    }
+	  if (n_uses < 1)
+	    continue;
 
-  sbitmap_vector_free (ebb.basic_block);
-  sbitmap_vector_free (ebb.exit);
+	  IOR_COMPL_HARD_REG_SET (this_unavailable,
+				  reg_class_contents[last->class]);
+
+	  if (this->need_caller_save_reg)
+	    IOR_HARD_REG_SET (this_unavailable, call_used_reg_set);
+
+	  merge_overlapping_regs (bb, &this_unavailable, this);
+
+	  /* Now potential_regs is a reasonable approximation, let's
+	     have a closer look at each register still in there.  */
+	  for (new_reg = 0; new_reg < FIRST_PSEUDO_REGISTER; new_reg++)
+	    {
+	      int nregs = HARD_REGNO_NREGS (new_reg, GET_MODE (*this->loc));
+
+	      for (i = nregs - 1; i >= 0; --i)
+	        if (TEST_HARD_REG_BIT (this_unavailable, new_reg + i)
+		    || fixed_regs[new_reg + i]
+		    || global_regs[new_reg + i]
+		    /* Can't use regs which aren't saved by the prologue.  */
+		    || (! regs_ever_live[new_reg + i]
+			&& ! call_used_regs[new_reg + i])
+#ifdef LEAF_REGISTERS
+		    /* We can't use a non-leaf register if we're in a
+		       leaf function.  */
+		    || (current_function_is_leaf
+			&& !LEAF_REGISTERS[new_reg + i])
+#endif
+#ifdef HARD_REGNO_RENAME_OK
+		    || ! HARD_REGNO_RENAME_OK (reg + i, new_reg + i)
+#endif
+		    )
+		  break;
+	      if (i >= 0)
+		continue;
+
+	      /* See whether it accepts all modes that occur in
+		 definition and uses.  */
+	      for (tmp = this; tmp; tmp = tmp->next_use)
+		if (! HARD_REGNO_MODE_OK (new_reg, GET_MODE (*tmp->loc))
+		    || (tmp->need_caller_save_reg
+			&& ! (HARD_REGNO_CALL_PART_CLOBBERED
+			      (reg, GET_MODE (*tmp->loc)))
+			&& (HARD_REGNO_CALL_PART_CLOBBERED
+			    (new_reg, GET_MODE (*tmp->loc)))))
+		  break;
+	      if (! tmp)
+		{
+		  if (best_new_reg == -1
+		      || tick[best_new_reg] > tick[new_reg])
+		    best_new_reg = new_reg;
+		}
+	    }
+
+	  if (rtl_dump_file)
+	    {
+	      fprintf (rtl_dump_file, "Register %s in insn %d",
+		       reg_names[reg], INSN_UID (last->insn));
+	      if (last->need_caller_save_reg)
+		fprintf (rtl_dump_file, " crosses a call");
+	    }
+
+	  if (best_new_reg == -1)
+	    {
+	      if (rtl_dump_file)
+		fprintf (rtl_dump_file, "; no available registers\n");
+	      continue;
+	    }
+
+	  do_replace (this, best_new_reg);
+	  tick[best_new_reg] = this_tick++;
+
+	  if (rtl_dump_file)
+	    fprintf (rtl_dump_file, ", renamed as %s\n", reg_names[best_new_reg]);
+	}
+
+      obstack_free (&rename_obstack, first_obj);
+    }
+
+  obstack_free (&rename_obstack, NULL);
+
+  if (rtl_dump_file)
+    fputc ('\n', rtl_dump_file);
+
+  count_or_remove_death_notes (NULL, 1);
+  update_life_info (NULL, UPDATE_LIFE_LOCAL,
+		    PROP_REG_INFO | PROP_DEATH_NOTES);
 }
-
-/* Build def/use chain DU for extended basic block EBB having root B.
-   Also determine which regs are used, REGS_USED, and which insns define
-   a live at exit def, DEFS_LIVE_EXIT */
 
 static void
-build_def_use (b, ebb, regs_used, du, defs_live_exit)
-     int b;
-     ext_basic_blocks *ebb;
-     HARD_REG_SET *regs_used;
-     def_uses *du;
-     sbitmap *defs_live_exit;
+do_replace (chain, reg)
+     struct du_chain *chain;
+     int reg;
 {
-  rtx insn;
-  int eb, inum;
-  unsigned int r;
-
-  inum = 0;
-  for (eb = 0; eb < n_basic_blocks; eb++)
+  while (chain)
     {
-      basic_block bb = BASIC_BLOCK (eb);
-
-      if (!TEST_BIT (ebb->basic_block[b], eb))
-	continue;
-
-      for (insn = bb->head;
-	   insn != NEXT_INSN (bb->end);
-	   inum++, insn = NEXT_INSN (insn))
-	{
-	  struct resources insn_res;
-	  struct resources insn_sets;
-
-	  if (GET_RTX_CLASS (GET_CODE (insn)) != 'i')
-	    continue;
-
-	  CLEAR_RESOURCE (&insn_sets);
-	  mark_set_resources (insn, &insn_sets, 0, MARK_DEST);
-
-	  for (r = 0; r < FIRST_PSEUDO_REGISTER; r++)
-	    {
-	      if (!TEST_HARD_REG_BIT (insn_sets.regs, r))
-		continue;
-
-	      SET_HARD_REG_BIT (*regs_used, r);
-	      if (REGNO_REG_SET_P (bb->global_live_at_end, r))
-		SET_BIT (*defs_live_exit, inum);
-
-	      if (!insn_sets.memory)
-		SET_BIT (du->defs[r], inum);
-
-	      DU_REG_CLASS (du->def_class, r, du->high_bound, inum)
-		= get_reg_class (insn, regno_first_use_in (r, PATTERN (insn)),
-				 DESTINATION, NO_REGS);
-	    }
-
-	  CLEAR_RESOURCE (&insn_res);
-	  mark_referenced_resources (insn, &insn_res, 0);
-
-	  for (r = 0; r < FIRST_PSEUDO_REGISTER; r++)
-	    {
-	      if (!TEST_HARD_REG_BIT (insn_res.regs, r))
-		continue;
-
-	      SET_HARD_REG_BIT (*regs_used, r);
-	      SET_BIT (du->uses[r], inum);
-	      DU_REG_CLASS (du->use_class, r, du->high_bound, inum)
-		= get_reg_class (insn, regno_use_in (r, PATTERN (insn)),
-				 SOURCE, NO_REGS);
-	    }
-	}
+      unsigned int regno = ORIGINAL_REGNO (*chain->loc);
+      *chain->loc = gen_raw_REG (GET_MODE (*chain->loc), reg);
+      if (regno >= FIRST_PSEUDO_REGISTER)
+	ORIGINAL_REGNO (*chain->loc) = regno;
+      chain = chain->next_use;
     }
-
-  free_resource_info ();
 }
 
-/* Return nonzero if regno AVAIL_REG can replace REG_DEF for insns in UID_RUID
-   starting at insn DEF in def/use chain DU. */
 
-static int
-replace_reg_in_block (du, uid_ruid, def, reg_def, avail_reg)
-     def_uses *du;
-     varray_type *uid_ruid;
-     int def;
-     rtx reg_def;
-     unsigned int avail_reg;
-{
-  int du_idx, status = 1;
-  int last_replaced_insn;
-  unsigned int r = REGNO (reg_def);
-  rtx death_note;
-  rtx reg_notes;
-  rtx reg_use;
-  rtx new_reg = gen_rtx_REG (GET_MODE (reg_def), avail_reg);
+static struct du_chain *open_chains;
+static struct du_chain *closed_chains;
 
-  rr_replace_reg (PATTERN (VARRAY_RTX (*uid_ruid, def)), reg_def, new_reg,
-		  DESTINATION, VARRAY_RTX (*uid_ruid, def), &status);
-
-  if (!status)
-    return status;
-
-  death_note = 0;
-  /* This typically happens if a constraint check failed and the register
-     changes are being reversed. */
-  for (reg_notes = REG_NOTES (VARRAY_RTX (*uid_ruid, def));
-       reg_notes; reg_notes = XEXP (reg_notes, 1))
-    {
-      if (REG_NOTE_KIND (reg_notes) == REG_DEAD
-	  && REGNO (XEXP (reg_notes, 0)) == avail_reg)
-	death_note = reg_notes;
-    }
-
-  if (death_note)
-    remove_note (VARRAY_RTX (*uid_ruid, def), death_note);
-  
-  /* The old destination is now dead if it is also a source. */
-  if (regno_use_in (r, PATTERN (VARRAY_RTX (*uid_ruid, def))))
-    REG_NOTES (VARRAY_RTX (*uid_ruid, def))
-      = gen_rtx_EXPR_LIST (REG_DEAD, reg_def,
-			   REG_NOTES (VARRAY_RTX (*uid_ruid,
-						  def)));
-
-  last_replaced_insn = 0;
-
-  /* Now replace in the uses. */
-  for (du_idx = def + 1; du_idx < du->high_bound; du_idx++)
-    {
-      if (GET_RTX_CLASS (GET_CODE (VARRAY_RTX (*uid_ruid, du_idx))) != 'i')
-	continue;
-
-      reg_use = regno_use_in (r, PATTERN (VARRAY_RTX (*uid_ruid, du_idx)));
-
-      if (reg_use && TEST_BIT (du->uses[r], du_idx))
-	{
-	  new_reg = gen_rtx_REG (GET_MODE (reg_use), avail_reg);
-	  
-	  rr_replace_reg (PATTERN (VARRAY_RTX (*uid_ruid, du_idx)), reg_use,
-			  new_reg, SOURCE, VARRAY_RTX (*uid_ruid, du_idx),
-			  &status);
-	  death_note = find_reg_note (VARRAY_RTX (*uid_ruid, du_idx),
-				      REG_DEAD, reg_use);
-	  if (death_note)
-	    {
-	      REG_NOTES (VARRAY_RTX (*uid_ruid, du_idx))
-		= gen_rtx_EXPR_LIST (REG_DEAD, new_reg,
-				     REG_NOTES (VARRAY_RTX (*uid_ruid,
-							    du_idx)));
-	      remove_note (VARRAY_RTX (*uid_ruid, du_idx),
-			   find_reg_note (VARRAY_RTX (*uid_ruid, du_idx),
-					  REG_DEAD, reg_use));
-	    }
-	}
-
-      /* This insn may contain shared rtl replaced in the previous iteration.
-	 Treat this equivalent to the rr_replace_reg case. */
-      if (TEST_BIT (du->uses[r], du_idx))
-	{
-	  last_replaced_insn = du_idx;
-	  
-	  SET_BIT (du->uses[avail_reg], du_idx);
-	  RESET_BIT (du->uses[r], du_idx);
-	  if (!status)
-	    return status;
-	}
-
-      if (TEST_BIT (du->defs[r], du_idx))
-	break;
-    }
-
-  /* Add REG_DEAD note for replaced register at last use. */
-
-  if (last_replaced_insn)
-    {
-      new_reg = regno_use_in (avail_reg,
-			      PATTERN (VARRAY_RTX (*uid_ruid,
-						   last_replaced_insn)));
-      if (new_reg
-	  && ! find_reg_note (VARRAY_RTX (*uid_ruid, last_replaced_insn),
-				      REG_DEAD, new_reg))
-	{
-	  REG_NOTES (VARRAY_RTX (*uid_ruid, last_replaced_insn))
-	    = gen_rtx_EXPR_LIST (REG_DEAD, new_reg,
-				 REG_NOTES (VARRAY_RTX (*uid_ruid,
-							last_replaced_insn)));
-	  remove_note (VARRAY_RTX (*uid_ruid, last_replaced_insn),
-		       find_reg_note (VARRAY_RTX (*uid_ruid, last_replaced_insn),
-					    REG_DEAD, reg_use));
-	}
-    }
-
-  return status;
-}
-
-/* Try to replace REG_USE in X with REG_SUB if INSN has a REPLACE_TYPE.
-   STATUS is zero if the resulting pattern is not valid. */
-
-static rtx
-rr_replace_reg (x, reg_use, reg_sub, replace_type, insn, status)
-     rtx x;
-     rtx reg_use;
-     rtx reg_sub;
-     int replace_type;
+static void
+scan_rtx_reg (insn, loc, class, action, type, earlyclobber)
      rtx insn;
-     int *status;
+     rtx *loc;
+     enum reg_class class;
+     enum scan_actions action;
+     enum op_type type;
+     int earlyclobber;
 {
-  enum rtx_code code;
-  int i;
+  struct du_chain **p;
+  rtx x = *loc;
+  enum machine_mode mode = GET_MODE (x);
+  int this_regno = REGNO (x);
+  int this_nregs = HARD_REGNO_NREGS (this_regno, mode);
+
+  if (action == mark_write)
+    {
+      if (type == OP_OUT)
+	{
+	  struct du_chain *this = (struct du_chain *)
+	    obstack_alloc (&rename_obstack, sizeof (struct du_chain));
+	  this->next_use = 0;
+	  this->next_chain = open_chains;
+	  this->loc = loc;
+	  this->insn = insn;
+	  this->class = class;
+	  this->need_caller_save_reg = 0;
+	  this->earlyclobber = earlyclobber;
+	  open_chains = this;
+	}
+      return;
+    }
+
+  if ((type == OP_OUT && action != terminate_write)
+      || (type != OP_OUT && action == terminate_write))
+    return;
+
+  for (p = &open_chains; *p;)
+    {
+      struct du_chain *this = *p;
+
+      /* Check if the chain has been terminated if it has then skip to
+	 the next chain.
+
+	 This can happen when we've already appended the location to
+	 the chain in Step 3, but are trying to hide in-out operands
+	 from terminate_write in Step 5.  */
+
+      if (*this->loc == cc0_rtx)
+	p = &this->next_chain;
+      else
+	{
+	  int regno = REGNO (*this->loc);
+	  int nregs = HARD_REGNO_NREGS (regno, GET_MODE (*this->loc));
+	  int exact_match = (regno == this_regno && nregs == this_nregs);
+
+	  if (regno + nregs <= this_regno
+	      || this_regno + this_nregs <= regno)
+	    {
+	      p = &this->next_chain;
+	      continue;
+	    }
+
+	  if (action == mark_read)
+	    {
+	      if (! exact_match)
+		abort ();
+
+	      /* ??? Class NO_REGS can happen if the md file makes use of
+		 EXTRA_CONSTRAINTS to match registers.  Which is arguably
+		 wrong, but there we are.  Since we know not what this may
+		 be replaced with, terminate the chain.  */
+	      if (class != NO_REGS)
+		{
+		  this = (struct du_chain *)
+		    obstack_alloc (&rename_obstack, sizeof (struct du_chain));
+		  this->next_use = 0;
+		  this->next_chain = (*p)->next_chain;
+		  this->loc = loc;
+		  this->insn = insn;
+		  this->class = class;
+		  this->need_caller_save_reg = 0;
+		  while (*p)
+		    p = &(*p)->next_use;
+		  *p = this;
+		  return;
+		}
+	    }
+
+	  if (action != terminate_overlapping_read || ! exact_match)
+	    {
+	      struct du_chain *next = this->next_chain;
+
+	      /* Whether the terminated chain can be used for renaming
+	         depends on the action and this being an exact match.
+	         In either case, we remove this element from open_chains.  */
+
+	      if ((action == terminate_dead || action == terminate_write)
+		  && exact_match)
+		{
+		  this->next_chain = closed_chains;
+		  closed_chains = this;
+		  if (rtl_dump_file)
+		    fprintf (rtl_dump_file,
+			     "Closing chain %s at insn %d (%s)\n",
+			     reg_names[REGNO (*this->loc)], INSN_UID (insn),
+			     scan_actions_name[(int) action]);
+		}
+	      else
+		{
+		  if (rtl_dump_file)
+		    fprintf (rtl_dump_file,
+			     "Discarding chain %s at insn %d (%s)\n",
+			     reg_names[REGNO (*this->loc)], INSN_UID (insn),
+			     scan_actions_name[(int) action]);
+		}
+	      *p = next;
+	    }
+	  else
+	    p = &this->next_chain;
+	}
+    }
+}
+
+/* Adapted from find_reloads_address_1.  CLASS is INDEX_REG_CLASS or
+   BASE_REG_CLASS depending on how the register is being considered.  */
+
+static void
+scan_rtx_address (insn, loc, class, action, mode)
+     rtx insn;
+     rtx *loc;
+     enum reg_class class;
+     enum scan_actions action;
+     enum machine_mode mode;
+{
+  rtx x = *loc;
+  RTX_CODE code = GET_CODE (x);
   const char *fmt;
-  int n;
+  int i, j;
 
-  if (x == 0)
-    return x;
+  if (action == mark_write)
+    return;
 
-  code = GET_CODE (x);
   switch (code)
     {
+    case PLUS:
+      {
+	rtx orig_op0 = XEXP (x, 0);
+	rtx orig_op1 = XEXP (x, 1);
+	RTX_CODE code0 = GET_CODE (orig_op0);
+	RTX_CODE code1 = GET_CODE (orig_op1);
+	rtx op0 = orig_op0;
+	rtx op1 = orig_op1;
+	rtx *locI = NULL;
+	rtx *locB = NULL;
+
+	if (GET_CODE (op0) == SUBREG)
+	  {
+	    op0 = SUBREG_REG (op0);
+	    code0 = GET_CODE (op0);
+	  }
+
+	if (GET_CODE (op1) == SUBREG)
+	  {
+	    op1 = SUBREG_REG (op1);
+	    code1 = GET_CODE (op1);
+	  }
+
+	if (code0 == MULT || code0 == SIGN_EXTEND || code0 == TRUNCATE
+	    || code0 == ZERO_EXTEND || code1 == MEM)
+	  {
+	    locI = &XEXP (x, 0);
+	    locB = &XEXP (x, 1);
+	  }
+	else if (code1 == MULT || code1 == SIGN_EXTEND || code1 == TRUNCATE
+		 || code1 == ZERO_EXTEND || code0 == MEM)
+	  {
+	    locI = &XEXP (x, 1);
+	    locB = &XEXP (x, 0);
+	  }
+	else if (code0 == CONST_INT || code0 == CONST
+		 || code0 == SYMBOL_REF || code0 == LABEL_REF)
+	  locB = &XEXP (x, 1);
+	else if (code1 == CONST_INT || code1 == CONST
+		 || code1 == SYMBOL_REF || code1 == LABEL_REF)
+	  locB = &XEXP (x, 0);
+	else if (code0 == REG && code1 == REG)
+	  {
+	    int index_op;
+
+	    if (REG_OK_FOR_INDEX_P (op0)
+		&& REG_MODE_OK_FOR_BASE_P (op1, mode))
+	      index_op = 0;
+	    else if (REG_OK_FOR_INDEX_P (op1)
+		     && REG_MODE_OK_FOR_BASE_P (op0, mode))
+	      index_op = 1;
+	    else if (REG_MODE_OK_FOR_BASE_P (op1, mode))
+	      index_op = 0;
+	    else if (REG_MODE_OK_FOR_BASE_P (op0, mode))
+	      index_op = 1;
+	    else if (REG_OK_FOR_INDEX_P (op1))
+	      index_op = 1;
+	    else
+	      index_op = 0;
+
+	    locI = &XEXP (x, index_op);
+	    locB = &XEXP (x, !index_op);
+	  }
+	else if (code0 == REG)
+	  {
+	    locI = &XEXP (x, 0);
+	    locB = &XEXP (x, 1);
+	  }
+	else if (code1 == REG)
+	  {
+	    locI = &XEXP (x, 1);
+	    locB = &XEXP (x, 0);
+	  }
+
+	if (locI)
+	  scan_rtx_address (insn, locI, INDEX_REG_CLASS, action, mode);
+	if (locB)
+	  scan_rtx_address (insn, locB, MODE_BASE_REG_CLASS (mode), action, mode);
+	return;
+      }
+
+    case POST_INC:
+    case POST_DEC:
+    case POST_MODIFY:
+    case PRE_INC:
+    case PRE_DEC:
+    case PRE_MODIFY:
+#ifndef AUTO_INC_DEC
+      /* If the target doesn't claim to handle autoinc, this must be
+	 something special, like a stack push.  Kill this chain.  */
+      action = terminate_all_read;
+#endif
+      break;
+
+    case MEM:
+      scan_rtx_address (insn, &XEXP (x, 0),
+			MODE_BASE_REG_CLASS (GET_MODE (x)), action,
+			GET_MODE (x));
+      return;
+
     case REG:
-      if (REGNO (x) == REGNO (reg_use))
-	{
-	  if (GET_MODE (x) == GET_MODE (reg_use))
-	    return reg_sub;
-	  else
-	    return gen_rtx_REG (GET_MODE (x), REGNO (reg_sub));
-	}
-
-      return x;
-
-    case SET:
-      if (replace_type == DESTINATION)
-	SET_DEST (x) = rr_replace_reg (SET_DEST (x), reg_use, reg_sub,
-				       replace_type, insn, status);
-      else if (replace_type == SOURCE)
-	{
-	  unsigned int dest_subregno;
-	  int had_subreg = GET_CODE (SET_DEST (x)) == SUBREG;
-
-	  if (had_subreg)
-	    dest_subregno = REGNO (XEXP (SET_DEST (x), 0));
-
-	  SET_SRC (x) = rr_replace_reg (SET_SRC (x), reg_use, reg_sub,
-					replace_type, insn, status);
-
-	  /* If the replacement register is not part of the source
-	     then it may be part of a source mem operand. */
-	  if (GET_CODE (SET_DEST (x)) == MEM
-	      || GET_CODE (SET_DEST (x)) == ZERO_EXTRACT
-	      || GET_CODE (SET_DEST (x)) == SIGN_EXTRACT
-	      || GET_CODE (SET_DEST (x)) == STRICT_LOW_PART)
-	    SET_DEST (x) = rr_replace_reg (SET_DEST (x), reg_use, reg_sub,
-					   replace_type, insn, status);
-	  /* Shared rtl sanity check. */
-	  if (had_subreg && dest_subregno != REGNO (XEXP (SET_DEST (x), 0)))
-	    {
-	      *status = 0;
-	      return x;
-	    }
-	}
-
-      n = recog_memoized (insn);
-      if (n >= 0)
-	{
-	  int id;
-
-	  extract_insn (insn);
-
-	  /* Any MATCH_DUP's which are REGs must still match */
-	  for (id = insn_data[n].n_dups - 1; id >= 0; id--)
-	    {
-	      int opno = recog_data.dup_num[id];
-
-	      if (GET_CODE (*recog_data.dup_loc[id]) == REG
-		  && GET_CODE (*recog_data.operand_loc[opno]) == REG
-		  && (REGNO (*recog_data.dup_loc[id])
-		      != REGNO (*recog_data.operand_loc[opno])))
-		*status = 0;
-	    }
-
-	  if (!constrain_operands (1))
-	    {
-	      *status = 0;
-	      validate_replace_rtx (reg_sub, reg_use, insn);
-	    }
-	}
-      else
-	*status = 0;
-
-      return x;
+      scan_rtx_reg (insn, loc, class, action, OP_IN, 0);
+      return;
 
     default:
       break;
@@ -734,394 +651,1288 @@ rr_replace_reg (x, reg_use, reg_sub, replace_type, insn, status)
   for (i = GET_RTX_LENGTH (code) - 1; i >= 0; i--)
     {
       if (fmt[i] == 'e')
-	XEXP (x, i) = rr_replace_reg (XEXP (x, i), reg_use, reg_sub,
-				      replace_type, insn, status);
-      if (fmt[i] == 'E')
-	{
-	  register int xv;
-
-	  for (xv = 0; xv < XVECLEN (x, i); xv++)
-	    {
-	      XVECEXP (x, i, xv) = rr_replace_reg (XVECEXP (x, i, xv), reg_use,
-						reg_sub, replace_type, insn,
-						   status);
-	      n = recog_memoized (insn);
-	      if (n >= 0)
-		{
-		  extract_insn (insn);
-		  if (!constrain_operands (1))
-		    {
-		      *status = 0;
-		      validate_replace_rtx (reg_sub, reg_use, insn);
-		    }
-		}
-	      else
-		*status = 0;
-	    }
-	}
-    }
-
-  return x;
-}
-
-/* Can REGNO in INSN be considered for renaming, given def INUM in d/u
-   chain DU? */
-
-static int
-consider_def (insn, regno, du, inum)
-     rtx insn;
-     int regno;
-     def_uses *du ATTRIBUTE_UNUSED;
-     int inum ATTRIBUTE_UNUSED;
-{
-  /* Don't rename windowed registers across a call */
-#ifdef INCOMING_REGNO
-  if (TEST_BIT (du->require_call_save_reg, inum)
-      && INCOMING_REGNO (regno) != regno)
-    return 0;
-#endif
-
-  /* Don't consider conditional moves.  Predicate architectures may
-     use two complementary conditional moves and the regno shouldn't change */
-  if (condmove_p (insn))
-    return 0;
-
-  /* Don't rename call used registers across a call */
-  if (!(GET_CODE (insn) == CALL_INSN
-	&& TEST_HARD_REG_BIT (call_used_reg_set, regno)))
-    return 1;
-  else
-    return 0;
-}
-
-/* Can the use of REGNO in INSN of block USE_BLOCK be considered for renaming
-   for a def in def_block? */
-
-static int
-consider_use (insn, regno, def_block, use_block)
-     rtx insn;
-     int regno;
-     int def_block;
-     int use_block;
-{
-  rtx reg_use;
-  edge e;
-  basic_block ub = BASIC_BLOCK (use_block);
-
-  if (GET_RTX_CLASS (GET_CODE (insn)) != 'i')
-    return 0;
-
-  /* If a use's basic block is different than the def's basic block, 
-     then insure another predecessor does not also define this register */
-  if (def_block != use_block)
-    for (e = ub->pred; e; e = e->pred_next)
-      if (e->src->index != def_block
-	  && e->src->index != -1
-	  && REGNO_REG_SET_P (BASIC_BLOCK (e->src->index)->global_live_at_end,
-			      regno))
-	return 0;
-
-  /* Don't consider conditional moves.  Predicate architectures may
-     use two complementary conditional moves and the regno shouldn't change */
-
-  if (condmove_p (insn))
-    return 0;
-
-  reg_use = regno_first_use_in (regno, PATTERN (insn));
-  if (reg_use)
-    {
-      /* Don't consider multi-reg values. */
-      if (HARD_REGNO_NREGS (regno, GET_MODE (reg_use)) != 1
-	  && GET_MODE (reg_use) != CCmode)
-	return 0;
-
-      /* Don't consider register if the only use is in a USE */
-      return ! reg_mentioned_p (gen_rtx_USE (VOIDmode, reg_use),
-				PATTERN (insn));
-    }
-  else
-    return 0;
-}
-
-/* Can REG_USE be replaced by regno AVAIL_REG if it is in AVAIL_REGS
-   and it is in regclass RC, given insn INUM of def/use chain DU? */
-
-static int
-consider_available (reg_use, avail_reg, avail_regs, rc, du, inum)
-     rtx reg_use;
-     int avail_reg;
-     HARD_REG_SET *avail_regs;
-     int rc;
-     def_uses *du;
-     int inum;
-{
-  if (!TEST_HARD_REG_BIT (*avail_regs, avail_reg))
-    return 0;
-
-  if (fixed_regs[avail_reg])
-    return 0;
-
-#ifdef HARD_REGNO_RENAME_OK
-  if (!HARD_REGNO_RENAME_OK (REGNO (reg_use), avail_reg))
-    return 0;
-#endif
-
-  /* Don't consider windowed leaf registers which will be renamed by
-     leaf_renumber_regs */
-#ifdef LEAF_REG_REMAP
-  if (current_function_uses_only_leaf_regs)
-    if (LEAF_REG_REMAP (avail_reg) < 0)
-      return 0;
-#endif
-
-  /* A register is considered available if it is available at the beginning of
-     the basic block.  We may want to refine this to when a register becomes
-     available within the block.  We don't consider multi-reg values. */
-  /* ??? Consider a representation that would allow multi-reg support? */
-  if (!TEST_HARD_REG_BIT (reg_class_contents[(enum reg_class) rc], avail_reg)
-      || !HARD_REGNO_MODE_OK (avail_reg, GET_MODE (reg_use))
-      || (HARD_REGNO_NREGS (avail_reg, GET_MODE (reg_use)) != 1
-	  && GET_MODE (reg_use) != CCmode)
-      || (call_fixed_regs[avail_reg]
-#ifdef HARD_REGNO_RENAME_OK
-	  && !HARD_REGNO_RENAME_OK (REGNO (reg_use), avail_reg)
-#endif
-      )
-      || (TEST_BIT (du->require_call_save_reg, inum)
-	  && (call_used_regs[avail_reg] || call_used_regs[REGNO (reg_use)])))
-    return 0;
-
-  /* If register is a callee-saved register it must be saved in the frame. 
-     call saved registers can not be added to regs_ever_live after reload,
-     as it would invalidate most elimination offsets */
-  return regs_ever_live[avail_reg] || call_used_regs[avail_reg];
-}
-
-/* Return 1 if INSN is a conditional move */
-
-static int
-condmove_p (insn)
-     rtx insn;
-{
-  return (GET_CODE (insn) == INSN
-	  && GET_CODE (PATTERN (insn)) == SET
-	  && GET_CODE (SET_SRC (PATTERN (insn))) == IF_THEN_ELSE);
-}
-
-/* Searches X for the first reference to REGNO, returning the rtx of the
-   reference found if any.  Otherwise, returns NULL_RTX.  */
-
-static rtx
-regno_first_use_in (regno, x)
-     unsigned int regno;
-     rtx x;
-{
-  register const char *fmt;
-  int i, j;
-  rtx tem;
-
-  if (GET_CODE (x) == REG && REGNO (x) == regno)
-    return x;
-
-  fmt = GET_RTX_FORMAT (GET_CODE (x));
-  for (i = 0; i <= GET_RTX_LENGTH (GET_CODE (x)) - 1; i++)
-    {
-      if (fmt[i] == 'e')
-	{
-	  if ((tem = regno_first_use_in (regno, XEXP (x, i))))
-	    return tem;
-	}
-
+	scan_rtx_address (insn, &XEXP (x, i), class, action, mode);
       else if (fmt[i] == 'E')
 	for (j = XVECLEN (x, i) - 1; j >= 0; j--)
-	  if ((tem = regno_first_use_in (regno, XVECEXP (x, i, j))))
-	    return tem;
+	  scan_rtx_address (insn, &XVECEXP (x, i, j), class, action, mode);
+    }
+}
+
+static void
+scan_rtx (insn, loc, class, action, type, earlyclobber)
+     rtx insn;
+     rtx *loc;
+     enum reg_class class;
+     enum scan_actions action;
+     enum op_type type;
+     int earlyclobber;
+{
+  const char *fmt;
+  rtx x = *loc;
+  enum rtx_code code = GET_CODE (x);
+  int i, j;
+
+  code = GET_CODE (x);
+  switch (code)
+    {
+    case CONST:
+    case CONST_INT:
+    case CONST_DOUBLE:
+    case CONST_VECTOR:
+    case SYMBOL_REF:
+    case LABEL_REF:
+    case CC0:
+    case PC:
+      return;
+
+    case REG:
+      scan_rtx_reg (insn, loc, class, action, type, earlyclobber);
+      return;
+
+    case MEM:
+      scan_rtx_address (insn, &XEXP (x, 0),
+			MODE_BASE_REG_CLASS (GET_MODE (x)), action,
+			GET_MODE (x));
+      return;
+
+    case SET:
+      scan_rtx (insn, &SET_SRC (x), class, action, OP_IN, 0);
+      scan_rtx (insn, &SET_DEST (x), class, action, OP_OUT, 0);
+      return;
+
+    case STRICT_LOW_PART:
+      scan_rtx (insn, &XEXP (x, 0), class, action, OP_INOUT, earlyclobber);
+      return;
+
+    case ZERO_EXTRACT:
+    case SIGN_EXTRACT:
+      scan_rtx (insn, &XEXP (x, 0), class, action,
+		type == OP_IN ? OP_IN : OP_INOUT, earlyclobber);
+      scan_rtx (insn, &XEXP (x, 1), class, action, OP_IN, 0);
+      scan_rtx (insn, &XEXP (x, 2), class, action, OP_IN, 0);
+      return;
+
+    case POST_INC:
+    case PRE_INC:
+    case POST_DEC:
+    case PRE_DEC:
+    case POST_MODIFY:
+    case PRE_MODIFY:
+      /* Should only happen inside MEM.  */
+      abort ();
+
+    case CLOBBER:
+      scan_rtx (insn, &SET_DEST (x), class, action, OP_OUT, 1);
+      return;
+
+    case EXPR_LIST:
+      scan_rtx (insn, &XEXP (x, 0), class, action, type, 0);
+      if (XEXP (x, 1))
+	scan_rtx (insn, &XEXP (x, 1), class, action, type, 0);
+      return;
+
+    default:
+      break;
+    }
+
+  fmt = GET_RTX_FORMAT (code);
+  for (i = GET_RTX_LENGTH (code) - 1; i >= 0; i--)
+    {
+      if (fmt[i] == 'e')
+	scan_rtx (insn, &XEXP (x, i), class, action, type, 0);
+      else if (fmt[i] == 'E')
+	for (j = XVECLEN (x, i) - 1; j >= 0; j--)
+	  scan_rtx (insn, &XVECEXP (x, i, j), class, action, type, 0);
+    }
+}
+
+/* Build def/use chain.  */
+
+static struct du_chain *
+build_def_use (bb)
+     basic_block bb;
+{
+  rtx insn;
+
+  open_chains = closed_chains = NULL;
+
+  for (insn = bb->head; ; insn = NEXT_INSN (insn))
+    {
+      if (INSN_P (insn))
+	{
+	  int n_ops;
+	  rtx note;
+	  rtx old_operands[MAX_RECOG_OPERANDS];
+	  rtx old_dups[MAX_DUP_OPERANDS];
+	  int i, icode;
+	  int alt;
+	  int predicated;
+
+	  /* Process the insn, determining its effect on the def-use
+	     chains.  We perform the following steps with the register
+	     references in the insn:
+	     (1) Any read that overlaps an open chain, but doesn't exactly
+	         match, causes that chain to be closed.  We can't deal
+	         with overlaps yet.
+	     (2) Any read outside an operand causes any chain it overlaps
+	         with to be closed, since we can't replace it.
+	     (3) Any read inside an operand is added if there's already
+	         an open chain for it.
+	     (4) For any REG_DEAD note we find, close open chains that
+	         overlap it.
+	     (5) For any write we find, close open chains that overlap it.
+	     (6) For any write we find in an operand, make a new chain.
+	     (7) For any REG_UNUSED, close any chains we just opened.  */
+
+	  icode = recog_memoized (insn);
+	  extract_insn (insn);
+	  if (! constrain_operands (1))
+	    fatal_insn_not_found (insn);
+	  preprocess_constraints ();
+	  alt = which_alternative;
+	  n_ops = recog_data.n_operands;
+
+	  /* Simplify the code below by rewriting things to reflect
+	     matching constraints.  Also promote OP_OUT to OP_INOUT
+	     in predicated instructions.  */
+
+	  predicated = GET_CODE (PATTERN (insn)) == COND_EXEC;
+	  for (i = 0; i < n_ops; ++i)
+	    {
+	      int matches = recog_op_alt[i][alt].matches;
+	      if (matches >= 0)
+		recog_op_alt[i][alt].class = recog_op_alt[matches][alt].class;
+	      if (matches >= 0 || recog_op_alt[i][alt].matched >= 0
+	          || (predicated && recog_data.operand_type[i] == OP_OUT))
+		recog_data.operand_type[i] = OP_INOUT;
+	    }
+
+	  /* Step 1: Close chains for which we have overlapping reads.  */
+	  for (i = 0; i < n_ops; i++)
+	    scan_rtx (insn, recog_data.operand_loc[i],
+		      NO_REGS, terminate_overlapping_read,
+		      recog_data.operand_type[i], 0);
+
+	  /* Step 2: Close chains for which we have reads outside operands.
+	     We do this by munging all operands into CC0, and closing
+	     everything remaining.  */
+
+	  for (i = 0; i < n_ops; i++)
+	    {
+	      old_operands[i] = recog_data.operand[i];
+	      /* Don't squash match_operator or match_parallel here, since
+		 we don't know that all of the contained registers are
+		 reachable by proper operands.  */
+	      if (recog_data.constraints[i][0] == '\0')
+		continue;
+	      *recog_data.operand_loc[i] = cc0_rtx;
+	    }
+	  for (i = 0; i < recog_data.n_dups; i++)
+	    {
+	      int dup_num = recog_data.dup_num[i];
+
+	      old_dups[i] = *recog_data.dup_loc[i];
+	      *recog_data.dup_loc[i] = cc0_rtx;
+
+	      /* For match_dup of match_operator or match_parallel, share
+		 them, so that we don't miss changes in the dup.  */
+	      if (icode >= 0
+		  && insn_data[icode].operand[dup_num].eliminable == 0)
+		old_dups[i] = recog_data.operand[dup_num];
+	    }
+
+	  scan_rtx (insn, &PATTERN (insn), NO_REGS, terminate_all_read,
+		    OP_IN, 0);
+
+	  for (i = 0; i < recog_data.n_dups; i++)
+	    *recog_data.dup_loc[i] = old_dups[i];
+	  for (i = 0; i < n_ops; i++)
+	    *recog_data.operand_loc[i] = old_operands[i];
+
+	  /* Step 2B: Can't rename function call argument registers.  */
+	  if (GET_CODE (insn) == CALL_INSN && CALL_INSN_FUNCTION_USAGE (insn))
+	    scan_rtx (insn, &CALL_INSN_FUNCTION_USAGE (insn),
+		      NO_REGS, terminate_all_read, OP_IN, 0);
+
+	  /* Step 2C: Can't rename asm operands that were originally
+	     hard registers.  */
+	  if (asm_noperands (PATTERN (insn)) > 0)
+	    for (i = 0; i < n_ops; i++)
+	      {
+		rtx *loc = recog_data.operand_loc[i];
+		rtx op = *loc;
+
+		if (GET_CODE (op) == REG
+		    && REGNO (op) == ORIGINAL_REGNO (op)
+		    && (recog_data.operand_type[i] == OP_IN
+			|| recog_data.operand_type[i] == OP_INOUT))
+		  scan_rtx (insn, loc, NO_REGS, terminate_all_read, OP_IN, 0);
+	      }
+
+	  /* Step 3: Append to chains for reads inside operands.  */
+	  for (i = 0; i < n_ops + recog_data.n_dups; i++)
+	    {
+	      int opn = i < n_ops ? i : recog_data.dup_num[i - n_ops];
+	      rtx *loc = (i < n_ops
+			  ? recog_data.operand_loc[opn]
+			  : recog_data.dup_loc[i - n_ops]);
+	      enum reg_class class = recog_op_alt[opn][alt].class;
+	      enum op_type type = recog_data.operand_type[opn];
+
+	      /* Don't scan match_operand here, since we've no reg class
+		 information to pass down.  Any operands that we could
+		 substitute in will be represented elsewhere.  */
+	      if (recog_data.constraints[opn][0] == '\0')
+		continue;
+
+	      if (recog_op_alt[opn][alt].is_address)
+		scan_rtx_address (insn, loc, class, mark_read, VOIDmode);
+	      else
+		scan_rtx (insn, loc, class, mark_read, type, 0);
+	    }
+
+	  /* Step 4: Close chains for registers that die here.
+	     Also record updates for REG_INC notes.  */
+	  for (note = REG_NOTES (insn); note; note = XEXP (note, 1))
+	    {
+	      if (REG_NOTE_KIND (note) == REG_DEAD)
+		scan_rtx (insn, &XEXP (note, 0), NO_REGS, terminate_dead,
+			  OP_IN, 0);
+	      else if (REG_NOTE_KIND (note) == REG_INC)
+		scan_rtx (insn, &XEXP (note, 0), ALL_REGS, mark_read,
+			  OP_INOUT, 0);
+	    }
+
+	  /* Step 4B: If this is a call, any chain live at this point
+	     requires a caller-saved reg.  */
+	  if (GET_CODE (insn) == CALL_INSN)
+	    {
+	      struct du_chain *p;
+	      for (p = open_chains; p; p = p->next_chain)
+		p->need_caller_save_reg = 1;
+	    }
+
+	  /* Step 5: Close open chains that overlap writes.  Similar to
+	     step 2, we hide in-out operands, since we do not want to
+	     close these chains.  */
+
+	  for (i = 0; i < n_ops; i++)
+	    {
+	      old_operands[i] = recog_data.operand[i];
+	      if (recog_data.operand_type[i] == OP_INOUT)
+		*recog_data.operand_loc[i] = cc0_rtx;
+	    }
+	  for (i = 0; i < recog_data.n_dups; i++)
+	    {
+	      int opn = recog_data.dup_num[i];
+	      old_dups[i] = *recog_data.dup_loc[i];
+	      if (recog_data.operand_type[opn] == OP_INOUT)
+		*recog_data.dup_loc[i] = cc0_rtx;
+	    }
+
+	  scan_rtx (insn, &PATTERN (insn), NO_REGS, terminate_write, OP_IN, 0);
+
+	  for (i = 0; i < recog_data.n_dups; i++)
+	    *recog_data.dup_loc[i] = old_dups[i];
+	  for (i = 0; i < n_ops; i++)
+	    *recog_data.operand_loc[i] = old_operands[i];
+
+	  /* Step 6: Begin new chains for writes inside operands.  */
+	  /* ??? Many targets have output constraints on the SET_DEST
+	     of a call insn, which is stupid, since these are certainly
+	     ABI defined hard registers.  Don't change calls at all.
+	     Similarly take special care for asm statement that originally
+	     referenced hard registers.  */
+	  if (asm_noperands (PATTERN (insn)) > 0)
+	    {
+	      for (i = 0; i < n_ops; i++)
+		if (recog_data.operand_type[i] == OP_OUT)
+		  {
+		    rtx *loc = recog_data.operand_loc[i];
+		    rtx op = *loc;
+		    enum reg_class class = recog_op_alt[i][alt].class;
+
+		    if (GET_CODE (op) == REG
+			&& REGNO (op) == ORIGINAL_REGNO (op))
+		      continue;
+
+		    scan_rtx (insn, loc, class, mark_write, OP_OUT,
+			      recog_op_alt[i][alt].earlyclobber);
+		  }
+	    }
+	  else if (GET_CODE (insn) != CALL_INSN)
+	    for (i = 0; i < n_ops + recog_data.n_dups; i++)
+	      {
+		int opn = i < n_ops ? i : recog_data.dup_num[i - n_ops];
+		rtx *loc = (i < n_ops
+			    ? recog_data.operand_loc[opn]
+			    : recog_data.dup_loc[i - n_ops]);
+		enum reg_class class = recog_op_alt[opn][alt].class;
+
+		if (recog_data.operand_type[opn] == OP_OUT)
+		  scan_rtx (insn, loc, class, mark_write, OP_OUT,
+			    recog_op_alt[opn][alt].earlyclobber);
+	      }
+
+	  /* Step 7: Close chains for registers that were never
+	     really used here.  */
+	  for (note = REG_NOTES (insn); note; note = XEXP (note, 1))
+	    if (REG_NOTE_KIND (note) == REG_UNUSED)
+	      scan_rtx (insn, &XEXP (note, 0), NO_REGS, terminate_dead,
+			OP_IN, 0);
+	}
+      if (insn == bb->end)
+	break;
+    }
+
+  /* Since we close every chain when we find a REG_DEAD note, anything that
+     is still open lives past the basic block, so it can't be renamed.  */
+  return closed_chains;
+}
+
+/* Dump all def/use chains in CHAINS to RTL_DUMP_FILE.  They are
+   printed in reverse order as that's how we build them.  */
+
+static void
+dump_def_use_chain (chains)
+     struct du_chain *chains;
+{
+  while (chains)
+    {
+      struct du_chain *this = chains;
+      int r = REGNO (*this->loc);
+      int nregs = HARD_REGNO_NREGS (r, GET_MODE (*this->loc));
+      fprintf (rtl_dump_file, "Register %s (%d):", reg_names[r], nregs);
+      while (this)
+	{
+	  fprintf (rtl_dump_file, " %d [%s]", INSN_UID (this->insn),
+		   reg_class_names[this->class]);
+	  this = this->next_use;
+	}
+      fprintf (rtl_dump_file, "\n");
+      chains = chains->next_chain;
+    }
+}
+
+/* The following code does forward propagation of hard register copies.
+   The object is to eliminate as many dependencies as possible, so that
+   we have the most scheduling freedom.  As a side effect, we also clean
+   up some silly register allocation decisions made by reload.  This
+   code may be obsoleted by a new register allocator.  */
+
+/* For each register, we have a list of registers that contain the same
+   value.  The OLDEST_REGNO field points to the head of the list, and
+   the NEXT_REGNO field runs through the list.  The MODE field indicates
+   what mode the data is known to be in; this field is VOIDmode when the
+   register is not known to contain valid data.  */
+
+struct value_data_entry
+{
+  enum machine_mode mode;
+  unsigned int oldest_regno;
+  unsigned int next_regno;
+};
+
+struct value_data
+{
+  struct value_data_entry e[FIRST_PSEUDO_REGISTER];
+  unsigned int max_value_regs;
+};
+
+static void kill_value_regno PARAMS ((unsigned, struct value_data *));
+static void kill_value PARAMS ((rtx, struct value_data *));
+static void set_value_regno PARAMS ((unsigned, enum machine_mode,
+				     struct value_data *));
+static void init_value_data PARAMS ((struct value_data *));
+static void kill_clobbered_value PARAMS ((rtx, rtx, void *));
+static void kill_set_value PARAMS ((rtx, rtx, void *));
+static int kill_autoinc_value PARAMS ((rtx *, void *));
+static void copy_value PARAMS ((rtx, rtx, struct value_data *));
+static bool mode_change_ok PARAMS ((enum machine_mode, enum machine_mode,
+				    unsigned int));
+static rtx maybe_mode_change PARAMS ((enum machine_mode, enum machine_mode,
+				      enum machine_mode, unsigned int,
+				      unsigned int));
+static rtx find_oldest_value_reg PARAMS ((enum reg_class, rtx,
+					  struct value_data *));
+static bool replace_oldest_value_reg PARAMS ((rtx *, enum reg_class, rtx,
+					      struct value_data *));
+static bool replace_oldest_value_addr PARAMS ((rtx *, enum reg_class,
+					       enum machine_mode, rtx,
+					       struct value_data *));
+static bool replace_oldest_value_mem PARAMS ((rtx, rtx, struct value_data *));
+static bool copyprop_hardreg_forward_1 PARAMS ((basic_block,
+						struct value_data *));
+extern void debug_value_data PARAMS ((struct value_data *));
+#ifdef ENABLE_CHECKING
+static void validate_value_data PARAMS ((struct value_data *));
+#endif
+
+/* Kill register REGNO.  This involves removing it from any value lists,
+   and resetting the value mode to VOIDmode.  */
+
+static void
+kill_value_regno (regno, vd)
+     unsigned int regno;
+     struct value_data *vd;
+{
+  unsigned int i, next;
+
+  if (vd->e[regno].oldest_regno != regno)
+    {
+      for (i = vd->e[regno].oldest_regno;
+	   vd->e[i].next_regno != regno;
+	   i = vd->e[i].next_regno)
+	continue;
+      vd->e[i].next_regno = vd->e[regno].next_regno;
+    }
+  else if ((next = vd->e[regno].next_regno) != INVALID_REGNUM)
+    {
+      for (i = next; i != INVALID_REGNUM; i = vd->e[i].next_regno)
+	vd->e[i].oldest_regno = next;
+    }
+
+  vd->e[regno].mode = VOIDmode;
+  vd->e[regno].oldest_regno = regno;
+  vd->e[regno].next_regno = INVALID_REGNUM;
+
+#ifdef ENABLE_CHECKING
+  validate_value_data (vd);
+#endif
+}
+
+/* Kill X.  This is a convenience function for kill_value_regno
+   so that we mind the mode the register is in.  */
+
+static void
+kill_value (x, vd)
+     rtx x;
+     struct value_data *vd;
+{
+  /* SUBREGS are supposed to have been eliminated by now.  But some
+     ports, e.g. i386 sse, use them to smuggle vector type information
+     through to instruction selection.  Each such SUBREG should simplify,
+     so if we get a NULL  we've done something wrong elsewhere.  */
+
+  if (GET_CODE (x) == SUBREG)
+    x = simplify_subreg (GET_MODE (x), SUBREG_REG (x),
+			 GET_MODE (SUBREG_REG (x)), SUBREG_BYTE (x));
+  if (REG_P (x))
+    {
+      unsigned int regno = REGNO (x);
+      unsigned int n = HARD_REGNO_NREGS (regno, GET_MODE (x));
+      unsigned int i, j;
+
+      /* Kill the value we're told to kill.  */
+      for (i = 0; i < n; ++i)
+	kill_value_regno (regno + i, vd);
+
+      /* Kill everything that overlapped what we're told to kill.  */
+      if (regno < vd->max_value_regs)
+	j = 0;
+      else
+	j = regno - vd->max_value_regs;
+      for (; j < regno; ++j)
+	{
+	  if (vd->e[j].mode == VOIDmode)
+	    continue;
+	  n = HARD_REGNO_NREGS (j, vd->e[j].mode);
+	  if (j + n > regno)
+	    for (i = 0; i < n; ++i)
+	      kill_value_regno (j + i, vd);
+	}
+    }
+}
+
+/* Remember that REGNO is valid in MODE.  */
+
+static void
+set_value_regno (regno, mode, vd)
+     unsigned int regno;
+     enum machine_mode mode;
+     struct value_data *vd;
+{
+  unsigned int nregs;
+
+  vd->e[regno].mode = mode;
+
+  nregs = HARD_REGNO_NREGS (regno, mode);
+  if (nregs > vd->max_value_regs)
+    vd->max_value_regs = nregs;
+}
+
+/* Initialize VD such that there are no known relationships between regs.  */
+
+static void
+init_value_data (vd)
+     struct value_data *vd;
+{
+  int i;
+  for (i = 0; i < FIRST_PSEUDO_REGISTER; ++i)
+    {
+      vd->e[i].mode = VOIDmode;
+      vd->e[i].oldest_regno = i;
+      vd->e[i].next_regno = INVALID_REGNUM;
+    }
+  vd->max_value_regs = 0;
+}
+
+/* Called through note_stores.  If X is clobbered, kill its value.  */
+
+static void
+kill_clobbered_value (x, set, data)
+     rtx x;
+     rtx set;
+     void *data;
+{
+  struct value_data *vd = data;
+  if (GET_CODE (set) == CLOBBER)
+    kill_value (x, vd);
+}
+
+/* Called through note_stores.  If X is set, not clobbered, kill its
+   current value and install it as the root of its own value list.  */
+
+static void
+kill_set_value (x, set, data)
+     rtx x;
+     rtx set;
+     void *data;
+{
+  struct value_data *vd = data;
+  if (GET_CODE (set) != CLOBBER)
+    {
+      kill_value (x, vd);
+      if (REG_P (x))
+	set_value_regno (REGNO (x), GET_MODE (x), vd);
+    }
+}
+
+/* Called through for_each_rtx.  Kill any register used as the base of an
+   auto-increment expression, and install that register as the root of its
+   own value list.  */
+
+static int
+kill_autoinc_value (px, data)
+     rtx *px;
+     void *data;
+{
+  rtx x = *px;
+  struct value_data *vd = data;
+
+  if (GET_RTX_CLASS (GET_CODE (x)) == 'a')
+    {
+      x = XEXP (x, 0);
+      kill_value (x, vd);
+      set_value_regno (REGNO (x), Pmode, vd);
+      return -1;
     }
 
   return 0;
 }
 
-/* Dump def/use chain DU to RTL_DUMP_FILE, given insns in UID_RUID and
-   which regs are live at end, GLOBAL_LIVE_AT_END */
+/* Assert that SRC has been copied to DEST.  Adjust the data structures
+   to reflect that SRC contains an older copy of the shared value.  */
 
 static void
-dump_def_use_chain (global_live_at_end, du, uid_ruid)
-     HARD_REG_SET *global_live_at_end;
-     def_uses *du;
-     varray_type *uid_ruid;
+copy_value (dest, src, vd)
+     rtx dest;
+     rtx src;
+     struct value_data *vd;
 {
-  unsigned int r;
-  int inum;
-  
-  for (r = 0; r < FIRST_PSEUDO_REGISTER; r++)
-    {
-      int set = 0;
+  unsigned int dr = REGNO (dest);
+  unsigned int sr = REGNO (src);
+  unsigned int dn, sn;
+  unsigned int i;
 
-      for (inum = 0; inum <= du->high_bound; inum++)
-	{
-	  rtx insn = VARRAY_RTX (*uid_ruid, inum);
-#if 0
-	  if (!insn
-	      || GET_RTX_CLASS (GET_CODE
-				(insn)) != 'i')
-	    continue;
+  /* ??? At present, it's possible to see noop sets.  It'd be nice if
+     this were cleaned up beforehand...  */
+  if (sr == dr)
+    return;
 
-	  reg_use = regno_first_use_in (r, PATTERN (insn));
-	  if (!reg_use)
-	    continue;
+  /* Do not propagate copies to the stack pointer, as that can leave
+     memory accesses with no scheduling dependency on the stack update.  */
+  if (dr == STACK_POINTER_REGNUM)
+    return;
+
+  /* Likewise with the frame pointer, if we're using one.  */
+  if (frame_pointer_needed && dr == HARD_FRAME_POINTER_REGNUM)
+    return;
+
+  /* If SRC and DEST overlap, don't record anything.  */
+  dn = HARD_REGNO_NREGS (dr, GET_MODE (dest));
+  sn = HARD_REGNO_NREGS (sr, GET_MODE (dest));
+  if ((dr > sr && dr < sr + sn)
+      || (sr > dr && sr < dr + dn))
+    return;
+
+  /* If SRC had no assigned mode (i.e. we didn't know it was live)
+     assign it now and assume the value came from an input argument
+     or somesuch.  */
+  if (vd->e[sr].mode == VOIDmode)
+    set_value_regno (sr, vd->e[dr].mode, vd);
+
+  /* If we are narrowing the input to a smaller number of hard regs,
+     and it is in big endian, we are really extracting a high part.
+     Since we generally associate a low part of a value with the value itself,
+     we must not do the same for the high part.
+     Note we can still get low parts for the same mode combination through
+     a two-step copy involving differently sized hard regs.
+     Assume hard regs fr* are 32 bits bits each, while r* are 64 bits each:
+     (set (reg:DI r0) (reg:DI fr0))
+     (set (reg:SI fr2) (reg:SI r0))
+     loads the low part of (reg:DI fr0) - i.e. fr1 - into fr2, while:
+     (set (reg:SI fr2) (reg:SI fr0))
+     loads the high part of (reg:DI fr0) into fr2.
+
+     We can't properly represent the latter case in our tables, so don't
+     record anything then.  */
+  else if (sn < (unsigned int) HARD_REGNO_NREGS (sr, vd->e[sr].mode)
+	   && (GET_MODE_SIZE (vd->e[sr].mode) > UNITS_PER_WORD
+	       ? WORDS_BIG_ENDIAN : BYTES_BIG_ENDIAN))
+    return;
+
+  /* If SRC had been assigned a mode narrower than the copy, we can't
+     link DEST into the chain, because not all of the pieces of the
+     copy came from oldest_regno.  */
+  else if (sn > (unsigned int) HARD_REGNO_NREGS (sr, vd->e[sr].mode))
+    return;
+
+  /* Link DR at the end of the value chain used by SR.  */
+
+  vd->e[dr].oldest_regno = vd->e[sr].oldest_regno;
+
+  for (i = sr; vd->e[i].next_regno != INVALID_REGNUM; i = vd->e[i].next_regno)
+    continue;
+  vd->e[i].next_regno = dr;
+
+#ifdef ENABLE_CHECKING
+  validate_value_data (vd);
 #endif
-	  if (!set && (TEST_BIT (du->defs[r], inum)
-		       || TEST_BIT (du->uses[r], inum)))
-	    {
-	      fprintf (rtl_dump_file, "Register %s: ", reg_names[r]);
-	      if (fixed_regs[r])
-		fprintf (rtl_dump_file, "Fixed ");
-	      else if (call_fixed_regs[r])
-		fprintf (rtl_dump_file, "Call Fixed ");
-	      if (TEST_HARD_REG_BIT (*global_live_at_end, r))
-		fprintf (rtl_dump_file, "Live at Exit ");
-	      set = 1;
-	    }
-
-	  if (TEST_BIT (du->defs[r], inum))
-	    fprintf (rtl_dump_file, "=%d ", INSN_UID (insn));
-	  if (TEST_BIT (du->uses[r], inum))
-	    fprintf (rtl_dump_file, "%d ", INSN_UID (insn));
-	}
-
-      if (set)
-	fprintf (rtl_dump_file, "\n");
-    }
 }
 
-/* Dump info for extended basic block EBB having root EB */
+/* Return true if a mode change from ORIG to NEW is allowed for REGNO.  */
 
-static void
-dump_ext_bb_info (eb, ebb)
-     int eb;
-     ext_basic_blocks *ebb;
+static bool
+mode_change_ok (orig_mode, new_mode, regno)
+     enum machine_mode orig_mode, new_mode;
+     unsigned int regno ATTRIBUTE_UNUSED;
 {
-  int b;
-  int have_ebb = 0;
+  if (GET_MODE_SIZE (orig_mode) < GET_MODE_SIZE (new_mode))
+    return false;
 
-  for (b = 0; b < n_basic_blocks; b++)
-    {
-      if (TEST_BIT (ebb->basic_block[eb], b))
-	{
-	  if (!have_ebb)
-	    {
-#ifndef RENAME_EXTENDED_BLOCKS
-	      fprintf (rtl_dump_file, "\nBasic block %d: ", b);
-#else
-	      fprintf (rtl_dump_file, "\nExtended basic block %d: ", b);
+#ifdef CANNOT_CHANGE_MODE_CLASS
+  return !REG_CANNOT_CHANGE_MODE_P (regno, orig_mode, new_mode);
 #endif
-	      have_ebb = 1;
-	    }
-	  fprintf (rtl_dump_file, "%d ", b);
-	}
 
-      if (TEST_BIT (ebb->exit[eb], b))
-	fprintf (rtl_dump_file, "(exit) ");
-    }
-
-  if (have_ebb)
-    fprintf (rtl_dump_file, "\n");
+  return true;
 }
 
-/* Initialize EBB with extended basic block info if RENAME_EXTENDED_BLOCKS is
-   defined.  Otherwise just use basic blocks */
+/* Register REGNO was originally set in ORIG_MODE.  It - or a copy of it -
+   was copied in COPY_MODE to COPY_REGNO, and then COPY_REGNO was accessed
+   in NEW_MODE.
+   Return a NEW_MODE rtx for REGNO if that's OK, otherwise return NULL_RTX.  */
 
-static void
-find_ext_basic_blocks (ebb)
-     ext_basic_blocks *ebb;
+static rtx
+maybe_mode_change (orig_mode, copy_mode, new_mode, regno, copy_regno)
+     enum machine_mode orig_mode, copy_mode, new_mode;
+     unsigned int regno, copy_regno;
 {
-  sbitmap bb_processed;
-  int b;
-
-  bb_processed = sbitmap_alloc (n_basic_blocks);
-  sbitmap_zero (bb_processed);
-
-#ifndef RENAME_EXTENDED_BLOCKS
-  for (b = 0; b < n_basic_blocks; b++)
+  if (orig_mode == new_mode)
+    return gen_rtx_raw_REG (new_mode, regno);
+  else if (mode_change_ok (orig_mode, new_mode, regno))
     {
-      basic_block bb = BASIC_BLOCK (b);
-      SET_BIT (ebb->basic_block[bb->index], bb->index);
-    }
-#else
-  for (b = 0; b < n_basic_blocks; b++)
-    {
+      int copy_nregs = HARD_REGNO_NREGS (copy_regno, copy_mode);
+      int use_nregs = HARD_REGNO_NREGS (copy_regno, new_mode);
+      int copy_offset
+	= GET_MODE_SIZE (copy_mode) / copy_nregs * (copy_nregs - use_nregs);
+      int offset
+	= GET_MODE_SIZE (orig_mode) - GET_MODE_SIZE (new_mode) - copy_offset;
+      int byteoffset = offset % UNITS_PER_WORD;
+      int wordoffset = offset - byteoffset;
 
-      basic_block bb = BASIC_BLOCK (b);
-      if (!TEST_BIT (bb_processed, b))
-	{
-	  find_one_ext_basic_block (bb->index, bb, &bb_processed, ebb);
-	}
+      offset = ((WORDS_BIG_ENDIAN ? wordoffset : 0)
+		+ (BYTES_BIG_ENDIAN ? byteoffset : 0));
+      return gen_rtx_raw_REG (new_mode,
+			      regno + subreg_regno_offset (regno, orig_mode,
+							   offset,
+							   new_mode));
     }
-#endif
-  sbitmap_free (bb_processed);
+  return NULL_RTX;
 }
 
-/* Find one extended basic block EBB having root ENTRY containing block
-   BB */
+/* Find the oldest copy of the value contained in REGNO that is in
+   register class CLASS and has mode MODE.  If found, return an rtx
+   of that oldest register, otherwise return NULL.  */
 
-static void
-find_one_ext_basic_block (entry, bb, bb_processed, ebb)
-     int entry;
-     basic_block bb;
-     sbitmap *bb_processed;
-     ext_basic_blocks *ebb;
+static rtx
+find_oldest_value_reg (class, reg, vd)
+     enum reg_class class;
+     rtx reg;
+     struct value_data *vd;
 {
-  edge e;
+  unsigned int regno = REGNO (reg);
+  enum machine_mode mode = GET_MODE (reg);
+  unsigned int i;
 
-  if (!TEST_BIT (*bb_processed, bb->index))
+  /* If we are accessing REG in some mode other that what we set it in,
+     make sure that the replacement is valid.  In particular, consider
+	(set (reg:DI r11) (...))
+	(set (reg:SI r9) (reg:SI r11))
+	(set (reg:SI r10) (...))
+	(set (...) (reg:DI r9))
+     Replacing r9 with r11 is invalid.  */
+  if (mode != vd->e[regno].mode)
     {
-      SET_BIT (ebb->basic_block[entry], bb->index);
-      SET_BIT (*bb_processed, bb->index);
+      if (HARD_REGNO_NREGS (regno, mode)
+	  > HARD_REGNO_NREGS (regno, vd->e[regno].mode))
+	return NULL_RTX;
     }
 
-  for (e = bb->succ; e; e = e->succ_next)
-    if (!TEST_BIT (*bb_processed, e->dest->index))
+  for (i = vd->e[regno].oldest_regno; i != regno; i = vd->e[i].next_regno)
+    {
+      enum machine_mode oldmode = vd->e[i].mode;
+      rtx new;
+
+    if (TEST_HARD_REG_BIT (reg_class_contents[class], i)
+	&& (new = maybe_mode_change (oldmode, vd->e[regno].mode, mode, i,
+				     regno)))
       {
-	if (!e->dest->pred->pred_next
-	    && (!TEST_BIT (*bb_processed, e->dest->index)))
-	  find_one_ext_basic_block (entry, e->dest, bb_processed, ebb);
-	else
-	  SET_BIT (ebb->exit[entry], bb->index);
+	ORIGINAL_REGNO (new) = ORIGINAL_REGNO (reg);
+	return new;
       }
-}
-
-/* Find the register class for register REG_USE having TYPE (DESTINATION or
-   SOURCE) in INSN.  Use DEFAULT_CLASS if we cannot determine a class. */
-
-static enum reg_class
-get_reg_class (insn, reg_use, type, default_class)
-     rtx insn;
-     rtx reg_use;
-     int type;
-     enum reg_class default_class;
-{
-  int alt, id = 0;
-
-  extract_insn (insn);
-  constrain_operands (1);
-  alt = which_alternative;
-
-  preprocess_constraints ();
-
-  if (type == DESTINATION)
-    {
-      for (id = 0; id < recog_data.n_operands; id++)
-	if (rtx_equal_p (recog_data.operand[id], reg_use))
-	  break;
     }
 
-  else if (type == SOURCE)
-    for (id = recog_data.n_operands - 1; id >= 0; id--)
-      if (rtx_equal_p (recog_data.operand[id], reg_use))
-	break;
-
-  if (id == -1 || id == recog_data.n_operands)
-    return default_class;
-
-  return recog_op_alt[id][alt].class;
+  return NULL_RTX;
 }
+
+/* If possible, replace the register at *LOC with the oldest register
+   in register class CLASS.  Return true if successfully replaced.  */
+
+static bool
+replace_oldest_value_reg (loc, class, insn, vd)
+     rtx *loc;
+     enum reg_class class;
+     rtx insn;
+     struct value_data *vd;
+{
+  rtx new = find_oldest_value_reg (class, *loc, vd);
+  if (new)
+    {
+      if (rtl_dump_file)
+	fprintf (rtl_dump_file, "insn %u: replaced reg %u with %u\n",
+		 INSN_UID (insn), REGNO (*loc), REGNO (new));
+
+      *loc = new;
+      return true;
+    }
+  return false;
+}
+
+/* Similar to replace_oldest_value_reg, but *LOC contains an address.
+   Adapted from find_reloads_address_1.  CLASS is INDEX_REG_CLASS or
+   BASE_REG_CLASS depending on how the register is being considered.  */
+
+static bool
+replace_oldest_value_addr (loc, class, mode, insn, vd)
+     rtx *loc;
+     enum reg_class class;
+     enum machine_mode mode;
+     rtx insn;
+     struct value_data *vd;
+{
+  rtx x = *loc;
+  RTX_CODE code = GET_CODE (x);
+  const char *fmt;
+  int i, j;
+  bool changed = false;
+
+  switch (code)
+    {
+    case PLUS:
+      {
+	rtx orig_op0 = XEXP (x, 0);
+	rtx orig_op1 = XEXP (x, 1);
+	RTX_CODE code0 = GET_CODE (orig_op0);
+	RTX_CODE code1 = GET_CODE (orig_op1);
+	rtx op0 = orig_op0;
+	rtx op1 = orig_op1;
+	rtx *locI = NULL;
+	rtx *locB = NULL;
+
+	if (GET_CODE (op0) == SUBREG)
+	  {
+	    op0 = SUBREG_REG (op0);
+	    code0 = GET_CODE (op0);
+	  }
+
+	if (GET_CODE (op1) == SUBREG)
+	  {
+	    op1 = SUBREG_REG (op1);
+	    code1 = GET_CODE (op1);
+	  }
+
+	if (code0 == MULT || code0 == SIGN_EXTEND || code0 == TRUNCATE
+	    || code0 == ZERO_EXTEND || code1 == MEM)
+	  {
+	    locI = &XEXP (x, 0);
+	    locB = &XEXP (x, 1);
+	  }
+	else if (code1 == MULT || code1 == SIGN_EXTEND || code1 == TRUNCATE
+		 || code1 == ZERO_EXTEND || code0 == MEM)
+	  {
+	    locI = &XEXP (x, 1);
+	    locB = &XEXP (x, 0);
+	  }
+	else if (code0 == CONST_INT || code0 == CONST
+		 || code0 == SYMBOL_REF || code0 == LABEL_REF)
+	  locB = &XEXP (x, 1);
+	else if (code1 == CONST_INT || code1 == CONST
+		 || code1 == SYMBOL_REF || code1 == LABEL_REF)
+	  locB = &XEXP (x, 0);
+	else if (code0 == REG && code1 == REG)
+	  {
+	    int index_op;
+
+	    if (REG_OK_FOR_INDEX_P (op0)
+		&& REG_MODE_OK_FOR_BASE_P (op1, mode))
+	      index_op = 0;
+	    else if (REG_OK_FOR_INDEX_P (op1)
+		     && REG_MODE_OK_FOR_BASE_P (op0, mode))
+	      index_op = 1;
+	    else if (REG_MODE_OK_FOR_BASE_P (op1, mode))
+	      index_op = 0;
+	    else if (REG_MODE_OK_FOR_BASE_P (op0, mode))
+	      index_op = 1;
+	    else if (REG_OK_FOR_INDEX_P (op1))
+	      index_op = 1;
+	    else
+	      index_op = 0;
+
+	    locI = &XEXP (x, index_op);
+	    locB = &XEXP (x, !index_op);
+	  }
+	else if (code0 == REG)
+	  {
+	    locI = &XEXP (x, 0);
+	    locB = &XEXP (x, 1);
+	  }
+	else if (code1 == REG)
+	  {
+	    locI = &XEXP (x, 1);
+	    locB = &XEXP (x, 0);
+	  }
+
+	if (locI)
+	  changed |= replace_oldest_value_addr (locI, INDEX_REG_CLASS, mode,
+						insn, vd);
+	if (locB)
+	  changed |= replace_oldest_value_addr (locB,
+						MODE_BASE_REG_CLASS (mode),
+						mode, insn, vd);
+	return changed;
+      }
+
+    case POST_INC:
+    case POST_DEC:
+    case POST_MODIFY:
+    case PRE_INC:
+    case PRE_DEC:
+    case PRE_MODIFY:
+      return false;
+
+    case MEM:
+      return replace_oldest_value_mem (x, insn, vd);
+
+    case REG:
+      return replace_oldest_value_reg (loc, class, insn, vd);
+
+    default:
+      break;
+    }
+
+  fmt = GET_RTX_FORMAT (code);
+  for (i = GET_RTX_LENGTH (code) - 1; i >= 0; i--)
+    {
+      if (fmt[i] == 'e')
+	changed |= replace_oldest_value_addr (&XEXP (x, i), class, mode,
+					      insn, vd);
+      else if (fmt[i] == 'E')
+	for (j = XVECLEN (x, i) - 1; j >= 0; j--)
+	  changed |= replace_oldest_value_addr (&XVECEXP (x, i, j), class,
+						mode, insn, vd);
+    }
+
+  return changed;
+}
+
+/* Similar to replace_oldest_value_reg, but X contains a memory.  */
+
+static bool
+replace_oldest_value_mem (x, insn, vd)
+     rtx x;
+     rtx insn;
+     struct value_data *vd;
+{
+  return replace_oldest_value_addr (&XEXP (x, 0),
+				    MODE_BASE_REG_CLASS (GET_MODE (x)),
+				    GET_MODE (x), insn, vd);
+}
+
+/* Perform the forward copy propagation on basic block BB.  */
+
+static bool
+copyprop_hardreg_forward_1 (bb, vd)
+     basic_block bb;
+     struct value_data *vd;
+{
+  bool changed = false;
+  rtx insn;
+
+  for (insn = bb->head; ; insn = NEXT_INSN (insn))
+    {
+      int n_ops, i, alt, predicated;
+      bool is_asm;
+      rtx set;
+
+      if (! INSN_P (insn))
+	{
+	  if (insn == bb->end)
+	    break;
+	  else
+	    continue;
+	}
+
+      set = single_set (insn);
+      extract_insn (insn);
+      if (! constrain_operands (1))
+	fatal_insn_not_found (insn);
+      preprocess_constraints ();
+      alt = which_alternative;
+      n_ops = recog_data.n_operands;
+      is_asm = asm_noperands (PATTERN (insn)) >= 0;
+
+      /* Simplify the code below by rewriting things to reflect
+	 matching constraints.  Also promote OP_OUT to OP_INOUT
+	 in predicated instructions.  */
+
+      predicated = GET_CODE (PATTERN (insn)) == COND_EXEC;
+      for (i = 0; i < n_ops; ++i)
+	{
+	  int matches = recog_op_alt[i][alt].matches;
+	  if (matches >= 0)
+	    recog_op_alt[i][alt].class = recog_op_alt[matches][alt].class;
+	  if (matches >= 0 || recog_op_alt[i][alt].matched >= 0
+	      || (predicated && recog_data.operand_type[i] == OP_OUT))
+	    recog_data.operand_type[i] = OP_INOUT;
+	}
+
+      /* For each earlyclobber operand, zap the value data.  */
+      for (i = 0; i < n_ops; i++)
+	if (recog_op_alt[i][alt].earlyclobber)
+	  kill_value (recog_data.operand[i], vd);
+
+      /* Within asms, a clobber cannot overlap inputs or outputs.
+	 I wouldn't think this were true for regular insns, but
+	 scan_rtx treats them like that...  */
+      note_stores (PATTERN (insn), kill_clobbered_value, vd);
+
+      /* Kill all auto-incremented values.  */
+      /* ??? REG_INC is useless, since stack pushes aren't done that way.  */
+      for_each_rtx (&PATTERN (insn), kill_autoinc_value, vd);
+
+      /* Kill all early-clobbered operands.  */
+      for (i = 0; i < n_ops; i++)
+	if (recog_op_alt[i][alt].earlyclobber)
+	  kill_value (recog_data.operand[i], vd);
+
+      /* Special-case plain move instructions, since we may well
+	 be able to do the move from a different register class.  */
+      if (set && REG_P (SET_SRC (set)))
+	{
+	  rtx src = SET_SRC (set);
+	  unsigned int regno = REGNO (src);
+	  enum machine_mode mode = GET_MODE (src);
+	  unsigned int i;
+	  rtx new;
+
+	  /* If we are accessing SRC in some mode other that what we
+	     set it in, make sure that the replacement is valid.  */
+	  if (mode != vd->e[regno].mode)
+	    {
+	      if (HARD_REGNO_NREGS (regno, mode)
+		  > HARD_REGNO_NREGS (regno, vd->e[regno].mode))
+		goto no_move_special_case;
+	    }
+
+	  /* If the destination is also a register, try to find a source
+	     register in the same class.  */
+	  if (REG_P (SET_DEST (set)))
+	    {
+	      new = find_oldest_value_reg (REGNO_REG_CLASS (regno), src, vd);
+	      if (new && validate_change (insn, &SET_SRC (set), new, 0))
+		{
+		  if (rtl_dump_file)
+		    fprintf (rtl_dump_file,
+			     "insn %u: replaced reg %u with %u\n",
+			     INSN_UID (insn), regno, REGNO (new));
+		  changed = true;
+		  goto did_replacement;
+		}
+	    }
+
+	  /* Otherwise, try all valid registers and see if its valid.  */
+	  for (i = vd->e[regno].oldest_regno; i != regno;
+	       i = vd->e[i].next_regno)
+	    {
+	      new = maybe_mode_change (vd->e[i].mode, vd->e[regno].mode,
+				       mode, i, regno);
+	      if (new != NULL_RTX)
+		{
+		  if (validate_change (insn, &SET_SRC (set), new, 0))
+		    {
+		      ORIGINAL_REGNO (new) = ORIGINAL_REGNO (src);
+		      if (rtl_dump_file)
+			fprintf (rtl_dump_file,
+				 "insn %u: replaced reg %u with %u\n",
+				 INSN_UID (insn), regno, REGNO (new));
+		      changed = true;
+		      goto did_replacement;
+		    }
+		}
+	    }
+	}
+      no_move_special_case:
+
+      /* For each input operand, replace a hard register with the
+	 eldest live copy that's in an appropriate register class.  */
+      for (i = 0; i < n_ops; i++)
+	{
+	  bool replaced = false;
+
+	  /* Don't scan match_operand here, since we've no reg class
+	     information to pass down.  Any operands that we could
+	     substitute in will be represented elsewhere.  */
+	  if (recog_data.constraints[i][0] == '\0')
+	    continue;
+
+	  /* Don't replace in asms intentionally referencing hard regs.  */
+	  if (is_asm && GET_CODE (recog_data.operand[i]) == REG
+	      && (REGNO (recog_data.operand[i])
+		  == ORIGINAL_REGNO (recog_data.operand[i])))
+	    continue;
+
+	  if (recog_data.operand_type[i] == OP_IN)
+	    {
+	      if (recog_op_alt[i][alt].is_address)
+		replaced
+		  = replace_oldest_value_addr (recog_data.operand_loc[i],
+					       recog_op_alt[i][alt].class,
+					       VOIDmode, insn, vd);
+	      else if (REG_P (recog_data.operand[i]))
+		replaced
+		  = replace_oldest_value_reg (recog_data.operand_loc[i],
+					      recog_op_alt[i][alt].class,
+					      insn, vd);
+	      else if (GET_CODE (recog_data.operand[i]) == MEM)
+		replaced = replace_oldest_value_mem (recog_data.operand[i],
+						     insn, vd);
+	    }
+	  else if (GET_CODE (recog_data.operand[i]) == MEM)
+	    replaced = replace_oldest_value_mem (recog_data.operand[i],
+						 insn, vd);
+
+	  /* If we performed any replacement, update match_dups.  */
+	  if (replaced)
+	    {
+	      int j;
+	      rtx new;
+
+	      changed = true;
+
+	      new = *recog_data.operand_loc[i];
+	      recog_data.operand[i] = new;
+	      for (j = 0; j < recog_data.n_dups; j++)
+		if (recog_data.dup_num[j] == i)
+		  *recog_data.dup_loc[j] = new;
+	    }
+	}
+
+    did_replacement:
+      /* Clobber call-clobbered registers.  */
+      if (GET_CODE (insn) == CALL_INSN)
+	for (i = 0; i < FIRST_PSEUDO_REGISTER; i++)
+	  if (TEST_HARD_REG_BIT (regs_invalidated_by_call, i))
+	    kill_value_regno (i, vd);
+
+      /* Notice stores.  */
+      note_stores (PATTERN (insn), kill_set_value, vd);
+
+      /* Notice copies.  */
+      if (set && REG_P (SET_DEST (set)) && REG_P (SET_SRC (set)))
+	copy_value (SET_DEST (set), SET_SRC (set), vd);
+
+      if (insn == bb->end)
+	break;
+    }
+
+  return changed;
+}
+
+/* Main entry point for the forward copy propagation optimization.  */
+
+void
+copyprop_hardreg_forward ()
+{
+  struct value_data *all_vd;
+  bool need_refresh;
+  basic_block bb, bbp = 0;
+
+  need_refresh = false;
+
+  all_vd = xmalloc (sizeof (struct value_data) * last_basic_block);
+
+  FOR_EACH_BB (bb)
+    {
+      /* If a block has a single predecessor, that we've already
+	 processed, begin with the value data that was live at
+	 the end of the predecessor block.  */
+      /* ??? Ought to use more intelligent queueing of blocks.  */
+      if (bb->pred)
+	for (bbp = bb; bbp && bbp != bb->pred->src; bbp = bbp->prev_bb);
+      if (bb->pred
+	  && ! bb->pred->pred_next
+	  && ! (bb->pred->flags & (EDGE_ABNORMAL_CALL | EDGE_EH))
+	  && bb->pred->src != ENTRY_BLOCK_PTR
+	  && bbp)
+	all_vd[bb->index] = all_vd[bb->pred->src->index];
+      else
+	init_value_data (all_vd + bb->index);
+
+      if (copyprop_hardreg_forward_1 (bb, all_vd + bb->index))
+	need_refresh = true;
+    }
+
+  if (need_refresh)
+    {
+      if (rtl_dump_file)
+	fputs ("\n\n", rtl_dump_file);
+
+      /* ??? Irritatingly, delete_noop_moves does not take a set of blocks
+	 to scan, so we have to do a life update with no initial set of
+	 blocks Just In Case.  */
+      delete_noop_moves (get_insns ());
+      update_life_info (NULL, UPDATE_LIFE_GLOBAL_RM_NOTES,
+			PROP_DEATH_NOTES
+			| PROP_SCAN_DEAD_CODE
+			| PROP_KILL_DEAD_CODE);
+    }
+
+  free (all_vd);
+}
+
+/* Dump the value chain data to stderr.  */
+
+void
+debug_value_data (vd)
+     struct value_data *vd;
+{
+  HARD_REG_SET set;
+  unsigned int i, j;
+
+  CLEAR_HARD_REG_SET (set);
+
+  for (i = 0; i < FIRST_PSEUDO_REGISTER; ++i)
+    if (vd->e[i].oldest_regno == i)
+      {
+	if (vd->e[i].mode == VOIDmode)
+	  {
+	    if (vd->e[i].next_regno != INVALID_REGNUM)
+	      fprintf (stderr, "[%u] Bad next_regno for empty chain (%u)\n",
+		       i, vd->e[i].next_regno);
+	    continue;
+	  }
+
+	SET_HARD_REG_BIT (set, i);
+	fprintf (stderr, "[%u %s] ", i, GET_MODE_NAME (vd->e[i].mode));
+
+	for (j = vd->e[i].next_regno;
+	     j != INVALID_REGNUM;
+	     j = vd->e[j].next_regno)
+	  {
+	    if (TEST_HARD_REG_BIT (set, j))
+	      {
+		fprintf (stderr, "[%u] Loop in regno chain\n", j);
+		return;
+	      }
+
+	    if (vd->e[j].oldest_regno != i)
+	      {
+		fprintf (stderr, "[%u] Bad oldest_regno (%u)\n",
+			 j, vd->e[j].oldest_regno);
+		return;
+	      }
+	    SET_HARD_REG_BIT (set, j);
+	    fprintf (stderr, "[%u %s] ", j, GET_MODE_NAME (vd->e[j].mode));
+	  }
+	fputc ('\n', stderr);
+      }
+
+  for (i = 0; i < FIRST_PSEUDO_REGISTER; ++i)
+    if (! TEST_HARD_REG_BIT (set, i)
+	&& (vd->e[i].mode != VOIDmode
+	    || vd->e[i].oldest_regno != i
+	    || vd->e[i].next_regno != INVALID_REGNUM))
+      fprintf (stderr, "[%u] Non-empty reg in chain (%s %u %i)\n",
+	       i, GET_MODE_NAME (vd->e[i].mode), vd->e[i].oldest_regno,
+	       vd->e[i].next_regno);
+}
+
+#ifdef ENABLE_CHECKING
+static void
+validate_value_data (vd)
+     struct value_data *vd;
+{
+  HARD_REG_SET set;
+  unsigned int i, j;
+
+  CLEAR_HARD_REG_SET (set);
+
+  for (i = 0; i < FIRST_PSEUDO_REGISTER; ++i)
+    if (vd->e[i].oldest_regno == i)
+      {
+	if (vd->e[i].mode == VOIDmode)
+	  {
+	    if (vd->e[i].next_regno != INVALID_REGNUM)
+	      internal_error ("validate_value_data: [%u] Bad next_regno for empty chain (%u)",
+			      i, vd->e[i].next_regno);
+	    continue;
+	  }
+
+	SET_HARD_REG_BIT (set, i);
+
+	for (j = vd->e[i].next_regno;
+	     j != INVALID_REGNUM;
+	     j = vd->e[j].next_regno)
+	  {
+	    if (TEST_HARD_REG_BIT (set, j))
+	      internal_error ("validate_value_data: Loop in regno chain (%u)",
+			      j);
+	    if (vd->e[j].oldest_regno != i)
+	      internal_error ("validate_value_data: [%u] Bad oldest_regno (%u)",
+			      j, vd->e[j].oldest_regno);
+
+	    SET_HARD_REG_BIT (set, j);
+	  }
+      }
+
+  for (i = 0; i < FIRST_PSEUDO_REGISTER; ++i)
+    if (! TEST_HARD_REG_BIT (set, i)
+	&& (vd->e[i].mode != VOIDmode
+	    || vd->e[i].oldest_regno != i
+	    || vd->e[i].next_regno != INVALID_REGNUM))
+      internal_error ("validate_value_data: [%u] Non-empty reg in chain (%s %u %i)",
+		      i, GET_MODE_NAME (vd->e[i].mode), vd->e[i].oldest_regno,
+		      vd->e[i].next_regno);
+}
+#endif

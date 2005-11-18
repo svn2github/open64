@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -58,7 +62,12 @@ static char *rcs_id = 	ipo_tlog_util_INCLUDE"$Revision: 1.1.1.1 $";
 #ifndef srcpos_INCLUDED
 #include "srcpos.h"
 #endif /* srcpos_INCLUDED */
+#ifndef KEY
 enum PHASE_NAME {PHASE_INLINER, PHASE_IPA};
+#else
+enum PHASE_NAME {PHASE_INLINER, PHASE_IPA, INVALID};
+extern "C" PHASE_NAME Get_tlog_phase(void);
+#endif // !KEY
 extern "C" void Set_tlog_phase(const INT32 phase); 
 
 // TLOG interface for reporting optimizations

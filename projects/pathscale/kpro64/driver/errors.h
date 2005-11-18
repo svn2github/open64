@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,29 +43,32 @@
 typedef int status_codes;
 extern status_codes error_status;	/* for return/exit */
 
-extern string program_name;		/* name of invoked program */
+extern char *program_name;		/* name of invoked program */
 
 extern boolean print_warnings;		/* whether to print warning msgs */
 extern boolean fullwarn;		/* whether to print all warnings */
 
-extern void error (string format, ...);
+extern void error (char *format, ...)
+     __attribute__((format (printf, 1, 2)));
 
-extern void parse_error (string name, string msg);
+extern void parse_error (char *name, char *msg);
 
-extern void warning (string format, ...);
+extern void warning (char *format, ...)
+     __attribute__((format (printf, 1, 2)));
 
-extern void warn_ignored (string name);
+extern void warn_ignored (char *name);
 
-extern void warn_nyi (string name);
+extern void warn_nyi (char *name);
 
-extern void warn_no_longer_needed (string name);
-extern void warn_no_longer_supported (string name);
-extern void warn_no_longer_supported2 (string name, string newname);
+extern void warn_no_longer_needed (char *name);
+extern void warn_no_longer_supported (char *name);
+extern void warn_no_longer_supported2 (char *name, char *newname);
 
-extern void internal_error (string format, ...);
+extern void internal_error (char *format, ...)
+     __attribute__((format (printf, 1, 2)));
 
 /* to signal that an error occured but trust previous error messages */
-extern void nomsg_error (void);
+extern void nomsg_error (int);
 
 /* has_errors returns true if were any errors anywhere */
 extern boolean has_errors (void);

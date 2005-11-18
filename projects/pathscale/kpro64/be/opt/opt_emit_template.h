@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -329,6 +334,30 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	for (INT i = 0; i < exp->Kid_count(); ++i) {
 	  CODEREP *opnd = exp->Get_opnd(i);
 	  WN_kid(wn, i) = Gen_exp_wn(opnd, emitter);
+#ifdef KEY
+          if (opnd->Kind() == CK_OP){
+            if (opnd->Opr() == OPR_CVT){
+              TYPE_ID ty = exp->Asm_input_dsctype();
+// Fix bug 1766
+              if (ty == MTYPE_I1 || ty == MTYPE_I2 || ty == MTYPE_U1 || ty == MTYPE_U2)
+                WN_kid(wn, i) = WN_Int_Type_Conversion( WN_kid(WN_kid(wn, i),0), ty );
+              else{
+                WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
+                WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
+              }
+            }
+            else{
+              WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
+              if (opnd->Opr()!=OPR_CVTL)
+                WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
+            }
+          } 
+          else{
+            WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
+            if (opnd->Kind() == CK_VAR || opnd->Kind() == CK_IVAR)
+              WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
+          }
+#endif
 	}
       }
       break;
@@ -378,6 +407,12 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	} else if (exp->Kid_count() == 2) {
           WN *opnd0 = Gen_exp_wn(exp->Get_opnd(0), emitter);
           WN *opnd1 = Gen_exp_wn(exp->Get_opnd(1), emitter);
+#ifdef KEY // make the desc type of the comparison smaller if possible
+	  if (MTYPE_byte_size(WN_rtype(opnd0))==MTYPE_byte_size(WN_rtype(opnd1))
+	     && MTYPE_byte_size(WN_rtype(opnd0))< MTYPE_byte_size(exp->Dsctyp())
+	     && OPERATOR_is_compare(exp->Opr()))
+	    exp->Set_dsctyp(WN_rtype(opnd0));
+#endif
 	  wn = WN_CreateExp2(exp->Op(), opnd0, opnd1);
 	} else if (exp->Kid_count() == 3) {
           WN *opnd0 = Gen_exp_wn(exp->Get_opnd(0), emitter);
@@ -473,7 +508,10 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       // when loading from a preg, the size of the preg might be larger
       // than the size of the high-level type, so fix it.
       if (ST_class (st) == CLASS_PREG &&
+          exp->Dsctyp() != MTYPE_M &&  // added to fix bug #567932
 	  TY_size (ty_idx) != MTYPE_byte_size (exp->Dsctyp())) {
+	DevWarn("PREG (%s) has mismatching MTYPE-size and TY-size; refer to bug #567932", 
+		ST_name(st));
 	Set_TY_IDX_index (ty_idx,
 			  TY_IDX_index(MTYPE_To_TY (exp->Dsctyp())));
 	field_id = 0;
@@ -794,6 +832,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	// when saving to a preg, the size of the preg may be larger than
 	// the size of the high-level type, need to reflect this.
 	if (ST_class (st) == CLASS_PREG &&
+            lhs->Dsctyp() != MTYPE_M &&   // added to fix bug #567932
 	    TY_size(ty_idx) != MTYPE_byte_size (lhs->Dsctyp())) {
 	  Set_TY_IDX_index (ty_idx,
 			    TY_IDX_index(MTYPE_To_TY (lhs->Dsctyp())));
@@ -985,6 +1024,11 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
     break;
 
   case OPR_XPRAGMA:
+#ifdef KEY
+    if (emitter->Htable()->Phase() == MAINOPT_PHASE && 
+	WN_pragma(srep->Orig_wn()) == WN_PRAGMA_COPYIN_BOUND)
+      return NULL; // delete here instead of in opt_ssa.cxx
+#endif
     rwn = WN_COPY_Tree_With_Map(srep->Orig_wn());
     if (OPCODE_has_aux(srep->Op()))
       WN_st_idx(rwn) = ST_st_idx(emitter->Opt_stab()->St(WN_aux(rwn)));
@@ -1032,7 +1076,10 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
     rwn = WN_COPY_Tree_With_Map(srep->Black_box_wn());
     emitter->Alias_Mgr()->Gen_black_box_alias(rwn);
     break;
-
+#ifdef KEY
+  case OPR_COMMENT:
+    return NULL;
+#endif
   default:
     FmtAssert(FALSE, ("Gen_stmt_wn: opcode %s is not implemented yet",
 		      OPCODE_name(srep->Op())));

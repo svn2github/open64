@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,6 +56,9 @@ struct bb;
 
 extern BOOL PU_Has_Calls;
 extern BOOL PU_References_GP;
+#ifdef KEY
+extern BOOL PU_Has_Exc_Handler;
+#endif
 
 extern BOOL CG_PU_Has_Feedback;
 

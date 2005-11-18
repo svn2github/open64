@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -46,7 +46,7 @@ CLIB_INCLUDE = $(BUILD_TOT)/clibroot
 ifeq ($(BUILD_OS), IRIX)
 CVERSION = -xansi
 LUCCMPWOFFS = -woff 1174,1552
-LCOPTS  = $(STD_COMPILE_OPTS) -dollar -common $(LUCCMPWOFFS)
+LCOPTS  = $(STD_COMPILE_OPTS) -dollar -common $(LUCCMPWOFFS) $(STD_C_OPTS)
 LCDEFS += -D_FAMILY=_PCC -D_FLEXNAMES -D_SYSV -DSYSV
 LCDEFS += -D__=__P -D_LIB_INTERNAL -D_SGI_MP_SOURCE
 else
@@ -56,13 +56,11 @@ LCDEFS += -D_LIB_INTERNAL
 LCDEFS += -D_XOPEN_SOURCE -D_XOPEN_SOURCE_EXTENDED
 LCDEFS += -U__mips
 LCDEFS += -D_LITTLE_ENDIAN
- ifeq ($(BUILD_ARCH), IA64)
-LCDEFS += -D__STL_USE_STD_ALLOCATORS
-LCDEFS += -D_LANGUAGE_C -DLANGUAGE_C
- endif
 LCINCS += -I$(BUILD_TOT)/clibinc
 LCINCS += -I$(BUILD_TOT)/clibinc/cray
 endif
+
+LCDEFS += -DKEY $(ERROR_ON_WARNINGS)
 
 LCINCS += -I$(CLIB_INCLUDE)
 #   $(BUILD_TOT)/include needed for any #include <nl_types.h> in libu source
@@ -70,7 +68,7 @@ LCINCS += -I$(CLIB_INCLUDE)
 #  needed for libcsup/msgnew files
 LCDEFS += -D_LIBU
 ifeq ($(BUILD_ABI), N32BIT)
-LCDEFS += -D_WORD32
+LCDEFS += -D_WORD32 -Wa,-mips4 
 endif
 ifeq ($(BUILD_ABI), I32BIT)
 LCDEFS += -D_WORD32
@@ -88,6 +86,10 @@ endif
 
 LF77OPTS = $(STD_COMPILE_OPTS)
 PREPFFOPTS =
+
+ifeq ($(BUILD_TARGET), IA32)
+LCDEFS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 LCDEFS += -DLIBDEBUG -D_ASSERT_ON -DDEBUG_MTIO
@@ -139,7 +141,7 @@ EXPFILE = lib.exp
 ifeq ($(BUILD_TYPE), NONSHARED)
 LIB_TARGETS = $(LIBRARY)
 else
-LIB_TARGETS = $(DSO)
+LIB_TARGETS = $(DSO) $(LIBRARY)
 LDIRT += $(LIBRARY)
 endif
 
@@ -170,6 +172,9 @@ include $(BUILD_BASE)/waio/waio.makeinclude
 
 ifeq ($(BUILD_ARCH), MIPS3)
 FC = TOOLROOT=$(TOOLROOT_F90) LD_LIBRARYN32_PATH=$(TOOLROOT_F90)/usr/lib32/mips3:$(TOOLROOT_F90)/usr/lib32 $(TOOLROOT_F90)/usr/bin/f90
+endif
+ifeq ($(BUILD_ABI), N32BIT)
+FC += -Wa,-mips4 
 endif
 ifeq ($(BUILD_ARCH), IA32)
 ## Do not build the f90 routines yet.
@@ -217,7 +222,7 @@ default: first $(TARGETS) last
 
 first:
 ifeq ($(BUILD_OS), LINUX)
-	cd $(BUILD_AREA)/include && $(MAKE)
+	$(call submake,$(BUILD_AREA)/include)
 endif
 
 last : make_libdeps
@@ -267,17 +272,17 @@ LF77INCS = $(LCINCS)
 .F.o:
 	$(FC) $(PREPFFOPTS) $(FFLAGS) -c $<
 
-.PRECIOUS : $(LIBRARY)
-$(LIBRARY):	$(LIBRARY)($(OBJECTS))
+$(LIBRARY): $(OBJECTS)
+	$(ar) cru $@ $^
+	$(ranlib) $(LIBRARY)
+
+ifeq ($(BUILD_ABI),I32BIT)
+ld += -m32
+endif
 
 ### Until hpc is built for linux or until library uses its own ###
-ifeq ($(BUILD_OS), LINUX)
-$(DSO): $(LIBRARY)
-	$(LD) $(STD_DSO_LOADOPTS) $(LIBRARY) -o $@
-else
-$(DSO): $(LIBRARY)
-	$(LD) $(STD_DSO_LOADOPTS) $(LIBRARY) -o $@ -lm -lhpc -lc
-endif
+$(DSO): $(OBJECTS:%.o=%.pic.o)
+	$(ld) $(STD_DSO_LOADOPTS) -o $@ $^
 
 ifeq ($(BUILD_OS), LINUX)
 lib.i: $(BUILD_BASE)/errmsg/lib.msg numbers.h
@@ -290,7 +295,7 @@ endif
 ifeq ($(BUILD_OS), LINUX)
 lib.cat: lib.i
 	rm -f lib.cat
-	caterr -Yc,/usr/bin/gencat -Ym,$(BUILD_TOT)/linux/include/tmac.sg -c lib.cat lib.i
+	../../linux/tools/caterr -c lib.cat lib.i
 
 lib.exp: lib.i
 	rm -f lib.exp

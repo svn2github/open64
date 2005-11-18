@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,8 +59,6 @@ static char USMID[] = "@(#) libcif/cifdup.c	30.5	07/26/96 07:19:13";
 #include <string.h>
 
 #include "cif_int.h"
-
-extern char *strdup(const char *s);
 
 struct Cif_generic *Cif_Duplicate
 #ifdef __STDC__

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,7 @@
 
 */
 
+#include <stdlib.h>
 
 
 #pragma ident "@(#) libf/fio/main.c	92.1	11/16/99 15:43:33"
@@ -44,16 +49,19 @@
 #if     defined(__linux)
 extern void MAIN__(void);
 
-int _f90argc;
-char **_f90argv;
+extern void __f90_set_args(int argc, char **argv);
 
-main(int argc, char **argv, char **arge)
+int __f90_main(int argc, char **argv, char **arge)
 {
-	_f90argc = argc;
-	_f90argv = argv;
-
+	__f90_set_args(argc, argv);
+	
         MAIN__();
         exit(0);
         return (0);
 }
+
+#if 0
+typeof(__f90_main) main __attribute__((weak, alias("__f90_main")));
+#endif
+
 #endif

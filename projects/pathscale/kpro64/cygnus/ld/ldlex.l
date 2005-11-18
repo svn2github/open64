@@ -1,7 +1,7 @@
 %{
 
-/* Copyright (C) 1991, 92, 93, 94, 95, 96, 97, 98, 1999
-   Free Software Foundation, Inc.
+/* Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
+   2000, 2001, 2002  Free Software Foundation, Inc.
 
 This file is part of GLD, the Gnu Linker.
 
@@ -26,9 +26,8 @@ This was written by steve chamberlain
 */
 
 
-#include <ansidecl.h>
+#include "ansidecl.h"
 #include <stdio.h>
-#include <ctype.h>
 
 #ifdef MPW
 /* Prevent enum redefinition problems. */
@@ -37,14 +36,17 @@ This was written by steve chamberlain
 
 #include "bfd.h"
 #include "sysdep.h"
+#include "safe-ctype.h"
+#include "bfdlink.h"
 #include "ld.h"
-#include "ldgram.h"
 #include "ldmisc.h"
 #include "ldexp.h"
 #include "ldlang.h"
+#include <ldgram.h>
 #include "ldfile.h"
 #include "ldlex.h"
 #include "ldmain.h"
+#include "libiberty.h"
 
 /* The type of top-level parser input.
    yylex and yyparse (indirectly) both check this.  */
@@ -115,7 +117,7 @@ WHITE		[ \t\n\r]+
 NOCFILENAMECHAR	[_a-zA-Z0-9\/\.\-\_\+\$\:\[\]\\\~]
 
 V_TAG [.$_a-zA-Z][._a-zA-Z0-9]*
-V_IDENTIFIER [*?.$_a-zA-Z][*?.$_a-zA-Z0-9]*
+V_IDENTIFIER [*?.$_a-zA-Z\[\]\-\!\^]([*?.$_a-zA-Z0-9\[\]\-\!\^]|::)*
 
 %s SCRIPT
 %s EXPRESSION
@@ -142,16 +144,17 @@ V_IDENTIFIER [*?.$_a-zA-Z][*?.$_a-zA-Z0-9]*
 	}
     }
 
-<BOTH,SCRIPT,EXPRESSION>"/*"	{ comment(); }
+<BOTH,SCRIPT,EXPRESSION,VERS_START,VERS_NODE,VERS_SCRIPT>"/*"	{ comment(); }
 
 
 <DEFSYMEXP>"-"                  { RTOKEN('-');}
 <DEFSYMEXP>"+"                  { RTOKEN('+');}
-<DEFSYMEXP>{FILENAMECHAR1}{SYMBOLCHARN}*   { yylval.name = buystring(yytext); return NAME; }
+<DEFSYMEXP>{FILENAMECHAR1}{SYMBOLCHARN}*   { yylval.name = xstrdup(yytext); return NAME; }
 <DEFSYMEXP>"="                  { RTOKEN('='); }
 
 <MRI,EXPRESSION>"$"([0-9A-Fa-f])+ {
   				yylval.integer = bfd_scan_vma (yytext+1, 0,16);
+				yylval.bigint.str = (char *) 0;
 				return INT;
 			}
 
@@ -177,20 +180,36 @@ V_IDENTIFIER [*?.$_a-zA-Z][*?.$_a-zA-Z0-9]*
 				   }
 				   yylval.integer = bfd_scan_vma (yytext, 0,
 								  ibase);
+				   yylval.bigint.str = (char *) 0;
 				   return INT;
 				 }
-<SCRIPT,DEFSYMEXP,MRI,BOTH,EXPRESSION>((("$"|"0x")([0-9A-Fa-f])+)|(([0-9])+))(M|K|m|k)? {
+<SCRIPT,DEFSYMEXP,MRI,BOTH,EXPRESSION>((("$"|0[xX])([0-9A-Fa-f])+)|(([0-9])+))(M|K|m|k)? {
 				  char *s = yytext;
+				  int ibase = 0;
 
 				  if (*s == '$')
-				    ++s;
-				  yylval.integer = bfd_scan_vma (s, 0, 0);
+				    {
+				      ++s;
+				      ibase = 16;
+				    }
+				  yylval.integer = bfd_scan_vma (s, 0, ibase);
+				  yylval.bigint.str = (char *) 0;
 				  if (yytext[yyleng-1] == 'M'
 				      || yytext[yyleng-1] == 'm')
-				    yylval.integer *= 1024 * 1024;
-				  if (yytext[yyleng-1] == 'K' 
+				    {
+				      yylval.integer *= 1024 * 1024;
+				    }
+				  else if (yytext[yyleng-1] == 'K' 
 				      || yytext[yyleng-1]=='k')
-				    yylval.integer *= 1024;
+				    {
+				      yylval.integer *= 1024;
+				    }
+				  else if (yytext[0] == '0'
+					   && (yytext[1] == 'x'
+					       || yytext[1] == 'X'))
+				    {
+				      yylval.bigint.str = xstrdup (yytext + 2);
+				    }
 				  return INT;
 				}
 <BOTH,SCRIPT,EXPRESSION,MRI>"]"		{ RTOKEN(']');}
@@ -238,6 +257,8 @@ V_IDENTIFIER [*?.$_a-zA-Z][*?.$_a-zA-Z0-9]*
 <EXPRESSION,BOTH,SCRIPT>"BIND"		{ RTOKEN(BIND);}
 <BOTH,SCRIPT>"LENGTH"		{ RTOKEN(LENGTH);}
 <EXPRESSION,BOTH,SCRIPT>"ALIGN"			{ RTOKEN(ALIGN_K);}
+<EXPRESSION,BOTH,SCRIPT>"DATA_SEGMENT_ALIGN"	{ RTOKEN(DATA_SEGMENT_ALIGN);}
+<EXPRESSION,BOTH,SCRIPT>"DATA_SEGMENT_END"	{ RTOKEN(DATA_SEGMENT_END);}
 <EXPRESSION,BOTH,SCRIPT>"ADDR"			{ RTOKEN(ADDR);}
 <EXPRESSION,BOTH,SCRIPT>"LOADADDR"		{ RTOKEN(LOADADDR);}
 <EXPRESSION,BOTH>"MAX"			{ RTOKEN(MAX_K); }
@@ -259,6 +280,7 @@ V_IDENTIFIER [*?.$_a-zA-Z][*?.$_a-zA-Z0-9]*
 <BOTH,SCRIPT>"CREATE_OBJECT_SYMBOLS"	{ RTOKEN(CREATE_OBJECT_SYMBOLS);}
 <BOTH,SCRIPT>"CONSTRUCTORS"		{ RTOKEN( CONSTRUCTORS);}
 <BOTH,SCRIPT>"FORCE_COMMON_ALLOCATION" { RTOKEN(FORCE_COMMON_ALLOCATION);}
+<BOTH,SCRIPT>"INHIBIT_COMMON_ALLOCATION" { RTOKEN(INHIBIT_COMMON_ALLOCATION);}
 <BOTH,SCRIPT>"SECTIONS"		{ RTOKEN(SECTIONS);}
 <BOTH,SCRIPT>"FILL"			{ RTOKEN(FILL);}
 <BOTH,SCRIPT>"STARTUP"		{ RTOKEN(STARTUP);}
@@ -333,17 +355,17 @@ V_IDENTIFIER [*?.$_a-zA-Z][*?.$_a-zA-Z0-9]*
 
 <MRI>{FILENAMECHAR1}{NOCFILENAMECHAR}*	{
 /* Filename without commas, needed to parse mri stuff */
-				 yylval.name = buystring(yytext); 
+				 yylval.name = xstrdup(yytext); 
 				  return NAME;
 				}
 
 
 <BOTH,EXPRESSION>{FILENAMECHAR1}{FILENAMECHAR}*	{
-				 yylval.name = buystring(yytext); 
+				 yylval.name = xstrdup(yytext); 
 				  return NAME;
 				}
 <BOTH,EXPRESSION>"-l"{FILENAMECHAR}+ {
-				  yylval.name = buystring (yytext + 2);
+				  yylval.name = xstrdup (yytext + 2);
 				  return LNAME;
 				}
 <SCRIPT>{WILDCHAR}* {
@@ -358,7 +380,7 @@ V_IDENTIFIER [*?.$_a-zA-Z][*?.$_a-zA-Z0-9]*
 		  }
 		else
 		  {
-		    yylval.name = buystring(yytext);
+		    yylval.name = xstrdup(yytext);
 		    return NAME;
 		  }
 	}
@@ -366,7 +388,7 @@ V_IDENTIFIER [*?.$_a-zA-Z][*?.$_a-zA-Z0-9]*
 <EXPRESSION,BOTH,SCRIPT,VERS_NODE>"\""[^\"]*"\"" {
 					/* No matter the state, quotes
 					   give what's inside */
-					yylval.name = buystring(yytext+1);
+					yylval.name = xstrdup(yytext+1);
 					yylval.name[yyleng-2] = 0;
 					return NAME;
 				}
@@ -381,10 +403,10 @@ V_IDENTIFIER [*?.$_a-zA-Z][*?.$_a-zA-Z0-9]*
 
 <VERS_NODE>extern		{ RTOKEN(EXTERN); }
 
-<VERS_NODE>{V_IDENTIFIER}	{ yylval.name = buystring (yytext);
+<VERS_NODE>{V_IDENTIFIER}	{ yylval.name = xstrdup (yytext);
 				  return VERS_IDENTIFIER; }
 
-<VERS_SCRIPT>{V_TAG}		{ yylval.name = buystring (yytext);
+<VERS_SCRIPT>{V_TAG}		{ yylval.name = xstrdup (yytext);
 				  return VERS_TAG; }
 
 <VERS_START>"{"			{ BEGIN(VERS_SCRIPT); return *yytext; }
@@ -416,11 +438,10 @@ V_IDENTIFIER [*?.$_a-zA-Z][*?.$_a-zA-Z0-9]*
   else 
   {
     yy_switch_to_buffer(include_stack[include_stack_ptr]);
-
   }
-  BEGIN(SCRIPT);
+
   ldfile_input_filename = file_name_stack[include_stack_ptr - 1];
-  lineno = lineno_stack[include_stack_ptr - 1];
+  lineno = lineno_stack[include_stack_ptr];
 
   return END;
 }
@@ -444,13 +465,13 @@ lex_push_file (file, name)
       einfo("%F:includes nested too deeply\n");
     }
   file_name_stack[include_stack_ptr] = name;
-  lineno_stack[include_stack_ptr] = 1;
+  lineno_stack[include_stack_ptr] = lineno;
   include_stack[include_stack_ptr] = YY_CURRENT_BUFFER;
 
   include_stack_ptr++;
+  lineno = 1;
   yyin = file;
   yy_switch_to_buffer(yy_create_buffer(yyin, YY_BUF_SIZE));
-  BEGIN (SCRIPT);
 }
 
 /* Return a newly created flex input buffer containing STRING,
@@ -458,7 +479,7 @@ lex_push_file (file, name)
 
 static YY_BUFFER_STATE 
 yy_create_string_buffer (string, size)
-     CONST char *string;
+     const char *string;
      size_t size;
 {
   YY_BUFFER_STATE b;
@@ -479,6 +500,11 @@ yy_create_string_buffer (string, size)
   b->yy_n_chars = size+1;
   b->yy_buf_pos = &b->yy_ch_buf[1];
 
+  b->yy_is_our_buffer = 1;
+  b->yy_is_interactive = 0;
+  b->yy_at_bol = 1;
+  b->yy_fill_buffer = 0;
+
   /* flex 2.4.7 changed the interface.  FIXME: We should not be using
      a flex internal interface in the first place!  */
 #ifdef YY_BUFFER_NEW
@@ -495,7 +521,7 @@ yy_create_string_buffer (string, size)
 
 void
 lex_redirect (string)
-     CONST char *string;
+     const char *string;
 {
   YY_BUFFER_STATE tmp;
 
@@ -505,12 +531,12 @@ lex_redirect (string)
       einfo("%F: macros nested too deeply\n");
     }
   file_name_stack[include_stack_ptr] = "redirect";
-  lineno_stack[include_stack_ptr] = 0;
+  lineno_stack[include_stack_ptr] = lineno;
   include_stack[include_stack_ptr] = YY_CURRENT_BUFFER;
   include_stack_ptr++;
+  lineno = 1;
   tmp = yy_create_string_buffer (string, strlen (string));
   yy_switch_to_buffer (tmp);
-  BEGIN (SCRIPT);
 }
 
 /* Functions to switch to a different flex start condition,
@@ -585,12 +611,12 @@ yy_input (buf, result, max_size)
      int max_size;
 {
   *result = 0; 
-  if (yy_current_buffer->yy_input_file)
+  if (YY_CURRENT_BUFFER->yy_input_file)
     {
       if (yyin)
 	{
-	  *result = read (fileno (yyin), (char *) buf, max_size);
-	  if (*result < 0) 
+	  *result = fread ((char *) buf, 1, max_size, yyin);
+	  if (*result < max_size && ferror (yyin)) 
 	    einfo ("%F%P: read in flex scanner failed\n");
 	}
     }
@@ -652,7 +678,7 @@ lex_warn_invalid (where, what)
       einfo ("%F%s: file not recognized: %E\n", ldfile_input_filename);
     }
 
-  if (! isprint ((unsigned char) *what))
+  if (! ISPRINT (*what))
     {
       sprintf (buf, "\\%03o", (unsigned int) *what);
       what = buf;

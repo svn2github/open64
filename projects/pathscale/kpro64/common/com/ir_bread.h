@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -94,7 +98,7 @@ extern PU_Info *WN_get_PU_Infos (void *handle, INT32 *p_num_PUs);
  */
 
 extern WN *WN_get_tree (void *handle, PU_Info *pu);
-extern UINT WN_get_symtab (void *handle, PU_Info *pu);
+extern INT WN_get_symtab (void *handle, PU_Info *pu);
 extern void *WN_get_depgraph (void *handle, PU_Info *pu);
 extern INT WN_get_prefetch (void *handle, PU_Info *pu);
 
@@ -111,7 +115,7 @@ extern ST *WN_get_proc_sym (PU_Info *pu);
 
 
 extern INT WN_get_global_symtab (void *handle);
-extern UINT WN_get_strtab (void *handle);
+extern INT WN_get_strtab (void *handle);
 
 
 extern INT WN_get_dst (void *handle);

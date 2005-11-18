@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -124,7 +128,7 @@ cwh_preg_temp_save(char * name, WN  * expr )
   
   bt = WNRTY(expr);
   pr = Create_Preg(bt,Index_To_Str(Save_Str(name)));
-  cwh_addr_store_ST(MTYPE_To_PREG(bt), pr, NULL, expr);
+  cwh_addr_store_ST(MTYPE_To_PREG(bt), pr, 0, expr);
 
   wn = WN_LdidPreg(bt,pr);
   return wn;

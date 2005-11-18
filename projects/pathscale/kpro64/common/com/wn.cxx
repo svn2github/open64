@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -46,6 +50,8 @@
  * ====================================================================
  * ====================================================================
  */
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "common_com_pch.h"
 #endif /* USE_PCH */
@@ -501,7 +507,7 @@ WN_Create (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count)
     OPCODE opcode = OPCODE_make_op (opr, rtype, desc);
     INT16 next_prev_ptrs = (OPCODE_has_next_prev(opcode) ? 1 : 0);
     INT16 size = (sizeof(WN) +
-		  (sizeof(WN *) * (max(0,kid_count-2))) +
+		  (sizeof(WN *) * (MAX(0,kid_count-2))) +
 		  next_prev_ptrs * (sizeof(mUINT64) + (2 * sizeof(WN *))));
     WN_FREE_LIST *free_list;
     WN *wn;
@@ -1086,6 +1092,12 @@ WN_CreateIstore (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
   Is_True(opr == OPR_ISTORE || opr == OPR_ISTBITS,
           ("Bad opcode in WN_CreateIstore"));
 
+#ifdef FRONT_END
+ if (desc == MTYPE_M) { 
+   Set_PU_has_very_high_whirl (Get_Current_PU ());
+ }
+#endif /* FRONT_END */
+
 #if (defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) && !defined(FRONT_END_MFEF77)
 
   addr = fe_combine_address_offset ( &offset, addr );
@@ -1244,8 +1256,11 @@ WN_CreateStid (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 
     Is_True(OPCODE_is_expression(WN_opcode(value)),
 	    ("Bad value in WN_CreateStid"));
+#ifndef KEY	// g++ can create cases where the actual parameter to a
+		// function is a ptr, but the formal parameter is a struct.
     Is_True(Types_Are_Compatible(OPCODE_desc(opc),value),
 	    ("Bad return type in WN_CreateStid"));
+#endif
     Is_True(opr == OPR_STID || opr == OPR_STBITS,
 	    ("Bad opcode in WN_CreateStid"));
 #ifdef FRONT_END
@@ -1254,6 +1269,12 @@ WN_CreateStid (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 				st == Float32_Preg ||
 				st == Float64_Preg)),
 	    ("Preg offset 0 in WN_CreateStid"));
+#endif /* FRONT_END */
+
+#ifdef FRONT_END
+   if (desc == MTYPE_M) {
+   	 Set_PU_has_very_high_whirl (Get_Current_PU ());
+   }
 #endif /* FRONT_END */
 
 #if (defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) && !defined(FRONT_END_MFEF77)
@@ -1768,14 +1789,18 @@ WN *WN_CreateIntconst(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, INT64 const_val
   Is_True(OPCODE_operator(opc) == OPR_INTCONST, 
 	 ("Bad opcode in WN_CreateIntconst")); 
   wn = WN_Create(opr,rtype,desc,0); 
+#ifndef TARG_X8664
   if (opc == OPC_U4INTCONST) {
 	/* make sure that 32-bit value is sign-extended */
 	UINT32 uval = const_val;
 	INT32 sval = uval;
   	WN_const_val(wn) = (INT64) sval;
   } else {
+#endif
   	WN_const_val(wn) = const_val;
+#ifndef TARG_X8664
   }
+#endif
 
   return(wn);
 }
@@ -2015,10 +2040,10 @@ WN_Size_and_StartAddress (WN *wn, void **StartAddress)
     if (OPCODE_has_next_prev(WN_opcode(wn))) {
 	*StartAddress = (void *)&(WN_prev(wn));
 	return sizeof(WN) + sizeof(mUINT64) +
-		(max (2, WN_kid_count(wn)) * sizeof(WN*));
+		(MAX (2, WN_kid_count(wn)) * sizeof(WN*));
     } else {
 	*StartAddress = (void *) wn;
-	return sizeof(WN) + max(0, WN_kid_count(wn) - 2) * sizeof(WN*);
+	return sizeof(WN) + MAX(0, WN_kid_count(wn) - 2) * sizeof(WN*);
     }
 	
 }
@@ -2339,6 +2364,16 @@ WN *WN_Floatconst( TYPE_ID type, double value)
   case MTYPE_C8:
   case MTYPE_CQ:
     return Make_Const (Host_To_Targ_Float (type, value));
+#ifdef TARG_X8664
+  case MTYPE_V16F4:
+    return Make_Const (Create_Simd_Const (type, 
+					  Host_To_Targ_Float (MTYPE_F4, 
+							      value )));
+  case MTYPE_V16F8:
+    return Make_Const (Create_Simd_Const (type, 
+					  Host_To_Targ_Float (MTYPE_F8, 
+								value )));
+#endif
   }
   Is_True(FALSE, ("expected floating const type"));
   return NULL;
@@ -2971,6 +3006,19 @@ WN_set_st_addr_saved (WN* wn)
       WN_set_st_addr_saved (WN_kid0(wn));
       break;
 
+#ifdef KEY
+    case OPR_COMPOSE_BITS:
+
+      WN_set_st_addr_saved (WN_kid0(wn));
+      WN_set_st_addr_saved (WN_kid1(wn));
+      break;
+
+    case OPR_EXTRACT_BITS:
+
+      WN_set_st_addr_saved (WN_kid0(wn));
+      break;
+
+#endif /* KEY */
     default:
 
       Fail_FmtAssertion ("WN_set_st_addr_saved not implemented for %s",

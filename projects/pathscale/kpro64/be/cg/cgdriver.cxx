@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -48,6 +52,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <elf.h>
 #include <sys/elf_whirl.h>	    /* for WHIRL_REVISION */
 #include <ctype.h>
@@ -95,6 +101,10 @@
 #include "cgdriver.h"
 #include "register.h"
 #include "pqs_cg.h"
+#ifdef KEY
+#include "cg_gcov.h"
+#include "flags.h"
+#endif
 
 extern void Set_File_In_Printsrc(char *);	/* defined in printsrc.c */
 
@@ -303,6 +313,16 @@ static OPTION_DESC Options_GRA[] = {
     0, 0, 0,	&GRA_spill_count_factor_string,
     "Factor by which count of spills affects the priority of a split.  Only valid under OPT:space [Default 0.5]"
   },    
+#ifdef KEY
+  { OVK_NAME,   OV_INTERNAL, TRUE,"exclude_saved_regs", "",
+    0, 0, 0,	&GRA_exclude_callee_saved_regs,
+    "If true, callee-saved registers are never used to allocate to variables by GRA"
+  },    
+  { OVK_NAME,   OV_INTERNAL, TRUE,"eh_exclude_saved_regs", "",
+    0, 0, 0,	&GRA_eh_exclude_callee_saved_regs,
+    "If true, callee-saved registers are never used to allocate to variables in functions with exception handlers"
+  },    
+#endif
   
   { OVK_COUNT }		/* List terminator -- must be last */
 };
@@ -344,6 +364,26 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&Enable_CG_Peephole, &Enable_CG_Peephole_overridden },
   { OVK_BOOL, 	OV_INTERNAL, TRUE, "create_madds", "create_madd",
     0, 0, 0,  &CG_create_madds, NULL },
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "sb1_work_around", "sb1_work_around",
+    0, 0, 0,	&CG_enable_sb1_bug_work_around, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "sas", "sas",
+    0, 0, 0,	&CG_sas, NULL },
+  { OVK_BOOL, OV_INTERNAL, TRUE,  "test_coverage", "",
+    0, 0, 0,    &flag_test_coverage, NULL},
+  { OVK_LIST, OV_INTERNAL, FALSE, "profile_proc", "",
+    0, 0, 0,    &Arc_Profile_Region, NULL},
+  { OVK_LIST, OV_INTERNAL, FALSE, "profile_id1",  "",
+    0, 0, 0,    &Arc_Profile_Region, NULL},
+  { OVK_LIST, OV_INTERNAL, FALSE, "profile_id2", "",
+    0, 0, 0,    &Arc_Profile_Region, NULL},
+#endif
+#ifdef TARG_X8664
+  { OVK_INT32,	OV_INTERNAL, TRUE, "load_execute", "load_exe",
+    0, 0, INT32_MAX,	&CG_load_execute, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "loadbw_execute", "loadbw_exe",
+    0, 0, 0,	&CG_loadbw_execute, NULL },
+#endif
 
   // CG Dependence Graph related options.
 
@@ -435,7 +475,10 @@ static OPTION_DESC Options_CG[] = {
 		&CG_LOOP_reassociate_specified },
   { OVK_INT32, OV_INTERNAL, TRUE, "recurrence_min_omega", "",
     0, 0, INT32_MAX, &CG_LOOP_recurrence_min_omega, NULL },
-
+#ifdef KEY
+  { OVK_INT32, OV_INTERNAL, TRUE, "loop_limit", "",
+    INT32_MAX, 0, INT32_MAX, &CG_Enable_Loop_Opt_Limit, NULL },
+#endif
   // CG Unrolling options - see also OPT:unroll_times_max:unroll_size.
 
   { OVK_BOOL,	OV_INTERNAL, TRUE,"unroll_non_trip_countable", "unroll_non_trip",
@@ -486,6 +529,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CFLOW_Enable_Clone, &CFLOW_Enable_Clone_overridden },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order", "",
     0, 0, 0, &CFLOW_Enable_Freq_Order, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order_on_heu", "",
+    0, 0, 0, &CFLOW_Enable_Freq_Order_On_Heuristics, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_opt_all_br_to_bcond", "",
     0, 0, 0, &CFLOW_opt_all_br_to_bcond, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"cflow_heuristic_tolerance", "",
@@ -563,6 +608,16 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CGSPILL_Enable_Force_Rematerialization, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"lra_reorder", "",
     0, 0, 0, &LRA_do_reorder, NULL },
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "min_spill_loc_size", "",
+    0,0,0,      &CG_min_spill_loc_size, NULL,
+    "Turn on/off minimize spill location size [Default FALSE]"
+  },    
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "min_stack_size", "",
+    0,0,0,      &CG_min_stack_size, NULL,
+    "Turn on/off minimize stack size [Default FALSE]"
+  }, 
+#endif
 
   // Global Code Motion (GCM) options.
 
@@ -606,6 +661,11 @@ static OPTION_DESC Options_CG[] = {
     0, 0, INT32_MAX, &GCM_To_BB, NULL },
   { OVK_INT32,	OV_INTERNAL, TRUE,"gcm_result_tn", "",
     0, 0, INT32_MAX, &GCM_Result_TN, NULL },
+#ifdef KEY
+  // Consider no more than this number of candidate target bb's.
+  { OVK_INT32,	OV_INTERNAL, TRUE,"gcm_bb_limit", "",
+    0, 0, INT32_MAX, &GCM_BB_Limit, NULL },
+#endif
 
   // Local Scheduling (LOCS) and HyperBlock Scheduling (HBS) options.
 
@@ -630,17 +690,27 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &IGLS_Enable_POST_HB_Scheduling, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"hb_scheduler", "hb_sched",
     0, 0, 0, &IGLS_Enable_HB_Scheduling, NULL },
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"local_fwd_scheduler", "local_fwd_sched",
+    0, 0, 0, &LOCS_Fwd_Scheduling, NULL },
+#endif
 
   // Turns of all scheduling (LOCS, HBS, GCM) for triaging.
   { OVK_BOOL,	OV_INTERNAL, TRUE,"all_scheduler", "all_sched",
     0, 0, 0, &IGLS_Enable_All_Scheduling, NULL },
-  
+
   // Hyperblock formation (HB) options.
 
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "hb_formation", "",
     0,0,0,      &HB_formation, NULL,
     "Turn on/off hyperblock formation [Default ON]"
   },    
+#ifdef KEY
+  { OVK_INT32,	OV_INTERNAL, TRUE,  "ifc_cutoff", "",
+    4,0,100,      &HB_if_conversion_cut_off, NULL,
+    "What is the cut-off for doing If-conversion"
+  },    
+#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "hb_static_freq_heuristics", "",
     0,0,0,      &HB_static_freq_heuristics, NULL,
     "Turn on/off hyperblock formation's use of different heuristics in the presence of static frequency analysis [Default ON]"
@@ -732,7 +802,11 @@ static OPTION_DESC Options_CG[] = {
     "Turn on/off emission of unwind directives into .s file [Default OFF]"
   },
   { OVK_BOOL,   OV_INTERNAL, TRUE,  "emit_unwind_info", "",
+#ifdef TARG_X8664
+    0,0,0,      &CG_emit_unwind_info, &CG_emit_unwind_info_Set,
+#else
     0,0,0,      &CG_emit_unwind_info, NULL,
+#endif
     "Turn on/off emission of unwind into .s/.o file [Default OFF]"
   },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"volatile_asm_stop", "",
@@ -741,6 +815,43 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &EMIT_stop_bits_for_asm, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"emit_explicit_bundles", "",
     0, 0, 0, &EMIT_explicit_bundles, NULL },
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "enable_feedback", "",
+    0, 0, 0,	&CG_enable_feedback, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"non_gas_syntax", "non_gas",
+    0, 0, 0, &CG_emit_non_gas_syntax, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"inhibit_size_directive", "inhibit_size",
+    0, 0, 0, &CG_inhibit_size_directive, NULL },
+#endif
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"use_movlpd", "",
+    0, 0, 0, &CG_use_movlpd, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"short_form", "",
+    0, 0, 0, &CG_use_short_form, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "p2align", "p2align",
+    0, 0, 0,	&CG_p2align, NULL },
+  { OVK_UINT64,	OV_INTERNAL, TRUE, "p2align_freq", "",
+    0, 0, UINT64_MAX>>1, &CG_p2align_freq, "freq threshold for .p2align" },
+  { OVK_UINT32,	OV_INTERNAL, TRUE,"p2align_max_skip_bytes", "",
+    3, 0, 64, &CG_p2align_max_skip_bytes, "max skip bytes for .p2align" },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "use_xortozero", "",
+    0, 0, 0,	&CG_use_xortozero, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "fold_constimul", "",
+    0, 0, 0,	&CG_fold_constimul, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "use_incdec", "",
+    0, 0, 0,	&CG_use_incdec, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "fold_shiftadd", "", 
+    0, 0, 0,	&CG_fold_shiftadd, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "use_prefetchnta", "", 
+    0, 0, 0,	&CG_use_prefetchnta, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "idivbyconst_opt", "", 
+    0, 0, 0,	&CG_idivbyconst_opt, NULL },
+  { OVK_UINT32,	OV_INTERNAL, TRUE, "movnti", "",
+    120, 0, UINT32_MAX>>1, &CG_movnti, NULL,
+    "Use x86-64's movnti instead of mov when writing memory blocks of this size or larger (in KB)" },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "cloop", "",
+    0, 0, 0,	&CG_cloop, NULL },
+#endif
   { OVK_COUNT },
 
   // Misc:
@@ -761,8 +872,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,    &CG_SCHED_EST_use_locs, NULL },
   { OVK_INT32,   OV_INTERNAL, TRUE, "sched_est_call_cost", "",
     0, 0, INT32_MAX, &CG_SCHED_EST_call_cost, NULL },
+#ifndef KEY
   { OVK_BOOL,	OV_INTERNAL, TRUE, "enable_feedback", "",
     0, 0, 0,	&CG_enable_feedback, NULL },
+#endif
   { OVK_INT32, OV_INTERNAL, TRUE, "mispredict_branch", "mispredict",
     0, 0, INT32_MAX, &CG_branch_mispredict_penalty, NULL },
   { OVK_INT32, OV_INTERNAL, TRUE, "mispredict_factor", "",
@@ -919,8 +1032,13 @@ disable_prefetch:
 
   if (Enable_Prefetch_For_Target()) {
     if ( ! CG_L1_ld_latency_overridden ) CG_L1_ld_latency = 8;
+#ifdef KEY
+    if ( ! CG_enable_pf_L1_ld_overridden ) CG_enable_pf_L1_ld = TRUE;
+    if ( ! CG_enable_pf_L1_st_overridden ) CG_enable_pf_L1_st = TRUE;
+#else
     if ( ! CG_enable_pf_L1_ld_overridden ) CG_enable_pf_L1_ld = FALSE;
     if ( ! CG_enable_pf_L1_st_overridden ) CG_enable_pf_L1_st = FALSE;
+#endif
     if ( ! CG_enable_pf_L2_ld_overridden ) CG_enable_pf_L2_ld = TRUE;
     if ( ! CG_enable_pf_L2_st_overridden ) CG_enable_pf_L2_st = TRUE;
   } else {
@@ -985,11 +1103,19 @@ Configure_CG_Options(void)
     CGEXP_expandconstant = 2;
   }
 
-  if (!Integer_Divide_By_Constant_overridden) {
+  if (!Integer_Divide_By_Constant_overridden
+#ifdef KEY
+      && CGEXP_cvrt_int_div_to_mult
+#endif
+	  ) {
     CGEXP_cvrt_int_div_to_mult = (!OPT_Space) && (CG_opt_level > 0);
   } 
 
-  if (!Integer_Divide_Use_Float_overridden) {
+  if (!Integer_Divide_Use_Float_overridden
+#ifdef KEY
+      && CGEXP_cvrt_int_div_to_fdiv
+#endif
+	  ) {
     CGEXP_cvrt_int_div_to_fdiv =    !Kernel_Code
 				 && Enable_Idiv_In_FPU_For_Target()
 				 && !OPT_Space
@@ -1245,6 +1371,15 @@ Prepare_Source (void)
     if ( Obj_File_Name == NULL ) {
 	/* Replace source file extension to get	object file: */
 	Obj_File_Name =	New_Extension (fname, OBJ_FILE_EXTENSION);
+#ifdef KEY
+	/* bug#605
+	   Do not over-write an object file that already exists.
+	 */
+	if( !Object_Code && Is_File( Obj_File_Name ) ){
+	  char* tmp_fname = tempnam( NULL, fname );
+	  Obj_File_Name = New_Extension( tmp_fname, OBJ_FILE_EXTENSION );
+	}
+#endif
     }
 
 #if 0
@@ -1402,14 +1537,27 @@ CG_Init (void)
     /* this has to be done after LNO has been loaded to grep
      * prefetch_ahead fromn LNO */
     Configure_prefetch_ahead();
+#ifdef KEY
+    if (flag_test_coverage || profile_arcs)
+        CG_Init_Gcov();
+#endif
+
 
 } /* CG_Init */
-
-
+#ifdef KEY
+extern void CG_End_Final();
+#endif
 /* Terimination routines for cg */
 void
 CG_Fini (void)
 {
+#ifdef KEY
+    extern BOOL profile_arcs;
+    if (profile_arcs)
+        CG_End_Final();
+    if (flag_test_coverage || profile_arcs)
+    	CG_End_Gcov();
+#endif
     /* List global symbols if desired: */
     if ( List_Symbols ) {
 	Print_global_symtab (Lst_File);

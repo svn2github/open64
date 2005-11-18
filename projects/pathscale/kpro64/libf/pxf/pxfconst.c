@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -36,6 +40,7 @@
 
 #pragma ident "@(#) libf/pxf/pxfconst.c	92.5	10/04/99 12:48:35"
 #include <fortran.h>
+#include <string.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/stat.h>

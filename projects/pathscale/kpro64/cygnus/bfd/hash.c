@@ -1,5 +1,10 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* hash.c -- hash table routines for BFD
-   Copyright (C) 1993, 94, 95, 97, 1999 Free Software Foundation, Inc.
+   Copyright 1993, 1994, 1995, 1997, 1999, 2001, 2002
+   Free Software Foundation, Inc.
    Written by Steve Chamberlain <sac@cygnus.com>
 
 This file is part of BFD, the Binary File Descriptor library.
@@ -66,7 +71,7 @@ SUBSECTION
 	<<bfd_hash_table_init>> (if you know approximately how many
 	entries you will need, the function <<bfd_hash_table_init_n>>,
 	which takes a @var{size} argument, may be used).
-	<<bfd_hash_table_init>> returns <<false>> if some sort of
+	<<bfd_hash_table_init>> returns <<FALSE>> if some sort of
 	error occurs.
 
 @findex bfd_hash_newfunc
@@ -95,24 +100,24 @@ SUBSECTION
 	The function <<bfd_hash_lookup>> is used both to look up a
 	string in the hash table and to create a new entry.
 
-	If the @var{create} argument is <<false>>, <<bfd_hash_lookup>>
+	If the @var{create} argument is <<FALSE>>, <<bfd_hash_lookup>>
 	will look up a string.  If the string is found, it will
 	returns a pointer to a <<struct bfd_hash_entry>>.  If the
 	string is not found in the table <<bfd_hash_lookup>> will
 	return <<NULL>>.  You should not modify any of the fields in
 	the returns <<struct bfd_hash_entry>>.
 
-	If the @var{create} argument is <<true>>, the string will be
+	If the @var{create} argument is <<TRUE>>, the string will be
 	entered into the hash table if it is not already there.
 	Either way a pointer to a <<struct bfd_hash_entry>> will be
 	returned, either to the existing structure or to a newly
 	created one.  In this case, a <<NULL>> return means that an
 	error occurred.
 
-	If the @var{create} argument is <<true>>, and a new entry is
+	If the @var{create} argument is <<TRUE>>, and a new entry is
 	created, the @var{copy} argument is used to decide whether to
 	copy the string onto the hash table objalloc or not.  If
-	@var{copy} is passed as <<false>>, you must be careful not to
+	@var{copy} is passed as <<FALSE>>, you must be careful not to
 	deallocate or modify the string as long as the hash table
 	exists.
 
@@ -132,7 +137,7 @@ SUBSECTION
 	generic pointer passed to <<bfd_hash_traverse>>.  The function
 	must return a <<boolean>> value, which indicates whether to
 	continue traversing the hash table.  If the function returns
-	<<false>>, <<bfd_hash_traverse>> will stop the traversal and
+	<<FALSE>>, <<bfd_hash_traverse>> will stop the traversal and
 	return immediately.
 
 INODE
@@ -268,7 +273,7 @@ SUBSUBSECTION
 	Write other derived routines
 
 	You will want to write other routines for your new hash table,
-	as well.  
+	as well.
 
 	You will want an initialization routine which calls the
 	initialization routine of the hash table you are deriving from
@@ -298,7 +303,7 @@ SUBSUBSECTION
 
 /* Create a new hash table, given a number of entries.  */
 
-boolean
+bfd_boolean
 bfd_hash_table_init_n (table, newfunc, size)
      struct bfd_hash_table *table;
      struct bfd_hash_entry *(*newfunc) PARAMS ((struct bfd_hash_entry *,
@@ -314,24 +319,24 @@ bfd_hash_table_init_n (table, newfunc, size)
   if (table->memory == NULL)
     {
       bfd_set_error (bfd_error_no_memory);
-      return false;
+      return FALSE;
     }
   table->table = ((struct bfd_hash_entry **)
 		  objalloc_alloc ((struct objalloc *) table->memory, alloc));
   if (table->table == NULL)
     {
       bfd_set_error (bfd_error_no_memory);
-      return false;
+      return FALSE;
     }
   memset ((PTR) table->table, 0, alloc);
   table->size = size;
   table->newfunc = newfunc;
-  return true;
+  return TRUE;
 }
 
 /* Create a new hash table with the default number of entries.  */
 
-boolean
+bfd_boolean
 bfd_hash_table_init (table, newfunc)
      struct bfd_hash_table *table;
      struct bfd_hash_entry *(*newfunc) PARAMS ((struct bfd_hash_entry *,
@@ -357,8 +362,8 @@ struct bfd_hash_entry *
 bfd_hash_lookup (table, string, create, copy)
      struct bfd_hash_table *table;
      const char *string;
-     boolean create;
-     boolean copy;
+     bfd_boolean create;
+     bfd_boolean copy;
 {
   register const unsigned char *s;
   register unsigned long hash;
@@ -366,7 +371,7 @@ bfd_hash_lookup (table, string, create, copy)
   struct bfd_hash_entry *hashp;
   unsigned int len;
   unsigned int index;
-  
+
   hash = 0;
   len = 0;
   s = (const unsigned char *) string;
@@ -374,8 +379,8 @@ bfd_hash_lookup (table, string, create, copy)
     {
       hash += c + (c << 17);
       hash ^= hash >> 2;
-      ++len;
     }
+  len = (s - (const unsigned char *) string) - 1;
   hash += len + (len << 17);
   hash ^= hash >> 2;
 
@@ -406,7 +411,7 @@ bfd_hash_lookup (table, string, create, copy)
 	  bfd_set_error (bfd_error_no_memory);
 	  return (struct bfd_hash_entry *) NULL;
 	}
-      strcpy (new, string);
+      memcpy (new, string, len + 1);
       string = new;
     }
   hashp->string = string;
@@ -470,6 +475,9 @@ bfd_hash_allocate (table, size)
   ret = objalloc_alloc ((struct objalloc *) table->memory, size);
   if (ret == NULL && size != 0)
     bfd_set_error (bfd_error_no_memory);
+#ifdef IPA_LINK			// Added by KEY.
+  memset (ret, 0, size);	// For invalid_section_owner.
+#endif
   return ret;
 }
 
@@ -478,7 +486,7 @@ bfd_hash_allocate (table, size)
 void
 bfd_hash_traverse (table, func, info)
      struct bfd_hash_table *table;
-     boolean (*func) PARAMS ((struct bfd_hash_entry *, PTR));
+     bfd_boolean (*func) PARAMS ((struct bfd_hash_entry *, PTR));
      PTR info;
 {
   unsigned int i;
@@ -531,7 +539,7 @@ struct bfd_strtab_hash
   struct strtab_hash_entry *last;
   /* Whether to precede strings with a two byte length, as in the
      XCOFF .debug section.  */
-  boolean xcoff;
+  bfd_boolean xcoff;
 };
 
 static struct bfd_hash_entry *strtab_hash_newfunc
@@ -581,9 +589,9 @@ struct bfd_strtab_hash *
 _bfd_stringtab_init ()
 {
   struct bfd_strtab_hash *table;
+  bfd_size_type amt = sizeof (struct bfd_strtab_hash);
 
-  table = ((struct bfd_strtab_hash *)
-	   bfd_malloc (sizeof (struct bfd_strtab_hash)));
+  table = (struct bfd_strtab_hash *) bfd_malloc (amt);
   if (table == NULL)
     return NULL;
 
@@ -596,7 +604,7 @@ _bfd_stringtab_init ()
   table->size = 0;
   table->first = NULL;
   table->last = NULL;
-  table->xcoff = false;
+  table->xcoff = FALSE;
 
   return table;
 }
@@ -612,7 +620,7 @@ _bfd_xcoff_stringtab_init ()
 
   ret = _bfd_stringtab_init ();
   if (ret != NULL)
-    ret->xcoff = true;
+    ret->xcoff = TRUE;
   return ret;
 }
 
@@ -627,21 +635,21 @@ _bfd_stringtab_free (table)
 }
 
 /* Get the index of a string in a strtab, adding it if it is not
-   already present.  If HASH is false, we don't really use the hash
+   already present.  If HASH is FALSE, we don't really use the hash
    table, and we don't eliminate duplicate strings.  */
 
 bfd_size_type
 _bfd_stringtab_add (tab, str, hash, copy)
      struct bfd_strtab_hash *tab;
      const char *str;
-     boolean hash;
-     boolean copy;
+     bfd_boolean hash;
+     bfd_boolean copy;
 {
   register struct strtab_hash_entry *entry;
 
   if (hash)
     {
-      entry = strtab_hash_lookup (tab, str, true, copy);
+      entry = strtab_hash_lookup (tab, str, TRUE, copy);
       if (entry == NULL)
 	return (bfd_size_type) -1;
     }
@@ -698,20 +706,20 @@ _bfd_stringtab_size (tab)
 /* Write out a strtab.  ABFD must already be at the right location in
    the file.  */
 
-boolean
+bfd_boolean
 _bfd_stringtab_emit (abfd, tab)
      register bfd *abfd;
      struct bfd_strtab_hash *tab;
 {
-  register boolean xcoff;
+  register bfd_boolean xcoff;
   register struct strtab_hash_entry *entry;
 
   xcoff = tab->xcoff;
 
   for (entry = tab->first; entry != NULL; entry = entry->next)
     {
-      register const char *str;
-      register size_t len;
+      const char *str;
+      size_t len;
 
       str = entry->root.string;
       len = strlen (str) + 1;
@@ -721,14 +729,14 @@ _bfd_stringtab_emit (abfd, tab)
 	  bfd_byte buf[2];
 
 	  /* The output length includes the null byte.  */
-	  bfd_put_16 (abfd, len, buf);
-	  if (bfd_write ((PTR) buf, 1, 2, abfd) != 2)
-	    return false;
+	  bfd_put_16 (abfd, (bfd_vma) len, buf);
+	  if (bfd_bwrite ((PTR) buf, (bfd_size_type) 2, abfd) != 2)
+	    return FALSE;
 	}
 
-      if (bfd_write ((PTR) str, 1, len, abfd) != len)
-	return false;
+      if (bfd_bwrite ((PTR) str, (bfd_size_type) len, abfd) != len)
+	return FALSE;
     }
 
-  return true;
+  return TRUE;
 }

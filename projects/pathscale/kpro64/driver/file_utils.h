@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -36,17 +40,27 @@
 #include "basic.h"
 
 /* drops path prefix in string; result points inside old string */
-extern string drop_path (string s);
+extern char *drop_path (char *s);
+
+/* drops the last component of the path, leaving only the directory */
+extern char *directory_path (char *s);
 
 /* check whether file exists */
-extern boolean file_exists (string path);
+extern boolean file_exists (char *path);
 
 /* check whether is a directory */
-extern boolean is_directory (string path);
+extern boolean is_directory (char *path);
 
 /* check whether directory is writable */
-extern boolean directory_is_writable (string path);
+extern boolean directory_is_writable (char *path);
 
 /* get current working directory */
-extern string get_cwd (void);
+extern char *get_cwd (void);
 
+/* get the directory containing the executable */
+extern char *get_executable_dir (char *argv0);
+
+#ifdef KEY
+/* Copy content of file to stdout. */
+extern void dump_file_to_stdout (char *filename);
+#endif

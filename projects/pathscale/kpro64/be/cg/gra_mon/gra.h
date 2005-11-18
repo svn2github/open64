@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -97,6 +101,9 @@ extern float GRA_spill_count_factor;
 extern INT GRA_local_forced_max;
 extern BOOL GRA_avoid_glue_references_for_locals;
 extern BOOL GRA_split_entry_exit_blocks;
+#ifdef KEY
+extern BOOL GRA_pu_has_handler;
+#endif
 
 // interface with cgdriver
 extern BOOL GRA_split_lranges; 		// controlled by -CG:split_lranges=

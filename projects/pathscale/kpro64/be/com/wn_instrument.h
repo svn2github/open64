@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -139,12 +144,18 @@ extern void Set_Instrumentation_File_Name( char *fname );
 #define SHORT_CIRCUIT_INIT_NAME   "__profile_short_circuit_init"
 #define SHORT_CIRCUIT_INST_NAME   "__profile_short_circuit"
 #define CALL_INIT_NAME            "__profile_call_init"
+#define ICALL_INIT_NAME           "__profile_icall_init"
+#define ICALL_INSTRUMENT_NAME     "__profile_icall"
 #define CALL_INST_ENTRY_NAME      "__profile_call_entry"
 #define CALL_INST_EXIT_NAME       "__profile_call_exit"
 #define SWITCH_INIT_NAME          "__profile_switch_init"
 #define SWITCH_INSTRUMENT_NAME    "__profile_switch"
 #define COMPGOTO_INIT_NAME        "__profile_compgoto_init"
 #define COMPGOTO_INSTRUMENT_NAME  "__profile_compgoto"
+#ifdef KEY
+#define VALUE_INIT_NAME          "__profile_value_init"
+#define VALUE_INSTRUMENT_NAME    "__profile_value"
+#endif
 
 
 // ====================================================================

@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -81,6 +86,8 @@
 #pragma hdrstop
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "defs.h"			// INT32, INT64
 
 #include "opt_defs.h"
@@ -2085,19 +2092,51 @@ OPT_STAB::Generate_asm_mu_chi(WN *wn, MU_LIST *mu, CHI_LIST *chi)
 	!Aux_stab_entry(idx)->Is_virtual()) {
       continue;
     }
-    
+
+    READ_WRITE how;
+
     // PREG are not allowed to be in mu/chi list
     // (they cannot be modified by asm statements).
     if (Aux_stab_entry(idx)->Is_preg()) {
       if (!Aux_stab_entry(idx)->Is_dedicated_preg())
 	continue;
     } else {
-      if (!asm_clobbers_mem)    // non-volatile asm cannot modify memory
-	continue;
+//Bug 607 && Bug 1524
+#ifdef KEY
+      if (idx == Return_vsym()){
+        how = READ_AND_WRITE;
+        goto label_how;
+      }
+      for (INT kid = 2; kid < WN_kid_count(wn); ++kid) {
+        WN* asm_input = WN_kid(wn, kid);
+        const char* constraint = WN_asm_input_constraint(asm_input);
+        WN* load = WN_kid0(asm_input);
+        OPERATOR opr = WN_operator(load);
+        if (opr == OPR_LDA || opr == OPR_LDID || opr == OPR_LDBITS){
+          if (WN_aux(load) == idx){
+// Fix Bug 1672
+            if (opr == OPR_LDA && strncmp(constraint, "=m",2)==0)
+              how = READ_AND_WRITE;
+            else
+              how = READ;
+            goto label_how;
+          }
+        }
+      }
+      if (!Asm_Memory && !asm_clobbers_mem) 
+          continue;
+      if (!Addr_saved(idx) && !Addr_passed(idx) && !Addr_used_locally(idx) &&
+          idx != Default_vsym() && idx != Return_vsym())
+        continue;
+#else
+      if (!asm_clobbers_mem)   // non-volatile asm cannot modify memory
+        continue;
+#endif
     }
     
-    READ_WRITE how = Rule()->Aliased_with_Asm(wn, aux_stab[idx].Points_to());
+    how = Rule()->Aliased_with_Asm(wn, aux_stab[idx].Points_to());
 
+label_how:
     if (how & READ) {
       mu->New_mu_node(idx, Occ_pool());
     }
@@ -2938,6 +2977,14 @@ void OPT_STAB::Compute_FFA(RID *const rid)
     fprintf(TFile, "%sPOINTS_TO after flow free alias analysis\n%s",
 	    DBar,DBar);
     Print_alias_info(TFile);
+    fprintf( TFile, "%sOcc table after flow free alias analysis\n%s", DBar, DBar );
+#ifdef KEY
+    FOR_ALL_ELEM (bb, cfg_iter, Init(_cfg)) {
+      FOR_ALL_ELEM (wn, stmt_iter, Init(bb->Firststmt(), bb->Laststmt())) {
+         Print_occ_tab(TFile,wn);
+      }
+    }
+#endif
   }
 }
 

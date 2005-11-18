@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,8 +42,17 @@
 #include <math.h>
 #include "moremath.h"
 #include "cmplx.h"
+#include "defalias.h"
 
 float __c8abs(float zreal, float zimag)
 {
   return(hypotf(zreal, zimag));
 }
+
+float c_abs__(float z[2])
+{
+  return(hypotf(z[0], z[1]));
+}
+
+defalias(c_abs__, c_abs_);
+defalias(c_abs__, c_abs);

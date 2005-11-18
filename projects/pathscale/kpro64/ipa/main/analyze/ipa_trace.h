@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -56,5 +60,7 @@
 #define IPA_TRACE_RESHAPE            32768
 #define IPA_TRACE_EXCOST             65536
 #define IPA_TRACE_SIMPLIFY          131072
+#define IPA_TRACE_TUNING           0x40000
+#define IPA_TRACE_TUNING_NEW       0x80000
 
 #endif /* ipa_trace_INCLUDED */

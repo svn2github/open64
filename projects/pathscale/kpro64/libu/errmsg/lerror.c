@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,9 +47,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
   
-extern	int	abort();
-
 #ifdef	_CRAY2
 #pragma soft errfile
 extern FILE *errfile;

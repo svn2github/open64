@@ -188,6 +188,7 @@ DRA_Processing
 DST_INVALID_IDX
 DST_Init
 DST_add_linkage_name_to_subprogram
+DST_add_linkage_name_to_variable
 DST_add_pubname_to_subprogram
 DST_add_specification_to_subprogram
 DST_add_specification_to_variable

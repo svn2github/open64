@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,12 +46,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/driver/main.c,
 #include <cmplrs/rcodes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifdef linux
-#define st_mtim st_mtime
-#define st_atim st_atime
-#define st_ctim st_ctime
-#endif
 #include <errno.h>
+#include <time.h>
+#include "pathscale_defs.h"
 #include "string_utils.h"
 #include "options.h"
 #include "option_seen.h"
@@ -61,11 +62,16 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/driver/main.c,
 #include "file_names.h"
 #include "run.h"
 #include "objects.h"
+#include "version.h"
 
-string help_pattern = NULL;
+char *help_pattern = NULL;
 boolean debug = FALSE;
-boolean nostdinc = FALSE;
+boolean nostdinc = TRUE;
 boolean show_version = FALSE;
+boolean show_copyright = FALSE;
+#ifdef KEY
+boolean dump_version = FALSE;
+#endif
 
 extern void check_for_combos(void);
 extern boolean is_replacement_combo(int);
@@ -73,10 +79,10 @@ extern void toggle_implicits(void);
 extern void set_defaults(void);
 extern void add_special_options (void);
 
-static void check_old_CC_options (string name);
+static void check_old_CC_options (char *name);
 static void check_makedepend_flags (void);
 static void mark_used (void);
-static void dump_args (string msg);
+static void dump_args (char *msg);
 static void print_help_msg (void);
 
 static string_list_t *files;
@@ -84,8 +90,17 @@ static string_list_t *file_suffixes;
 string_list_t *feedback_files;
 
 static char compiler_version[] = INCLUDE_STAMP;
+static void set_executable_dir (char *argv0);
 
-extern int 
+static void no_args(void)
+{
+	fprintf(stderr, "%s: no input files\n", program_name);
+	fprintf(stderr, "For general help: %s --help\n", program_name);
+	fprintf(stderr, "To search help: %s -help:<string>\n", program_name);
+	do_exit(RC_USER_ERROR);
+}
+
+int 
 main (int argc, char *argv[])
 {
 	int i;		/* index to argv */
@@ -109,20 +124,26 @@ main (int argc, char *argv[])
 	invoked_lang = get_named_language(program_name);
 	check_for_driver_controls (argc, argv);
 
-	if (abi == ABI_I64 || abi == ABI_I32) {
-                /* prepend i64 compiler and include path */
-#ifndef linux
-                prefix_all_phase_dirs(PHASE_MASK, "/m2i");
-		prefix_all_phase_dirs(LIB_MASK, "/ia64");
+        if (0 && time(NULL) > 1080719999) {
+            fprintf(stderr, "This software has expired.\n"
+		    "Please contact PathScale, Inc. at "
+		    "http://www.pathscale.com for infomation on\n"
+		    "upgrade options.\n");
+            do_exit(1);
+        }
+
+	/* Try to find where the compiler is located and set the phase
+	   and library directories appropriately. */
+	set_executable_dir(argv[0]);
+
+#ifdef KEY
+	// "-o -" will set this to TRUE.
+	dump_outfile_to_stdout = FALSE;
+
+	// Change the phase names based on run-time info.
+	init_phase_names();
 #endif
-	}
-#if 0
-	if (abi == ABI_IA32) {
-                /* prepend i32 compiler and include path */
-                prefix_all_phase_dirs(PHASE_MASK, "/m2i");
-		prefix_all_phase_dirs(LIB_MASK, "/ia32");
-	}
-#endif
+
 	init_phase_info();	/* can't add toolroot until other prefixes */
 
         /* Hack for F90 ftpp; For pre processing F90 calls ftpp;
@@ -233,30 +254,65 @@ main (int argc, char *argv[])
 	/* Check target specifications for consistency: */
 	Check_Target ();
 
+#ifdef KEY
+	if (dump_version) {
+		puts(PSC_FULL_VERSION);
+	}
+#endif
+
         if (show_version) {
             /* Echo information about the compiler version */
 #ifdef linux
-            fprintf(stderr, "SGIcc Compilers: Version %s\n", compiler_version);
+            fprintf(stderr, "PathScale Compiler Suite(TM): Version %s\n", compiler_version);
+            fprintf(stderr, "ChangeSet: %s (%s)\n", cset_rev, cset_key);
+            fprintf(stderr, "Built by: %s@%s in %s\n", build_user, build_host, build_root);
+            fprintf(stderr, "Built on: %s\n", build_date);
+            fprintf(stderr, "gcc version " PSC_GCC_VERSION
+                    " (PathScale " PSC_FULL_VERSION " driver)\n");
 #else
             fprintf(stderr, "MIPSpro Compilers: Version %s\n", compiler_version);
 #endif
         }
+	if (show_copyright) {
+	    if (show_version)
+		fputc('\n', stderr);
+	    char *exe_dir = get_executable_dir(NULL);
+
+	    fprintf(stderr, "Copyright 2000, 2001 Silicon Graphics, Inc.  "
+		    "All Rights Reserved.\n");
+	    fprintf(stderr, "Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.\n");
+
+	    fprintf(stderr, "See complete copyright, patent and legal notices in the ");
+	    fprintf(stderr, "%.*s/share/doc/pathscale-compilers-" 
+	    	    PSC_FULL_VERSION "/LEGAL.pdf file.\n",
+		    strlen(exe_dir) - 4, exe_dir);
+	}
 	if (option_was_seen(O_show_defaults)) {
 		/* TODO: print default values */
-		exit(RC_OKAY);
+		do_exit(RC_OKAY);
 	}
 
-	if (argc == 1 || option_was_seen(O_help) || option_was_seen(O__help) 
-		|| help_pattern != NULL) 
+	if (argc == 1)
+	{
+		no_args();
+	}
+	
+	if (option_was_seen(O_help) || option_was_seen(O__help) ||
+	    help_pattern != NULL)
 	{
 		print_help_msg();
 	}
 	if ( ! execute_flag && ! show_flag) {
-		exit(RC_OKAY);	/* just exit */
+		do_exit(RC_OKAY);	/* just exit */
 	}
+#ifdef KEY
+	if (dump_version) {
+		do_exit(RC_OKAY);
+	}
+#endif
 	if (source_kind == S_NONE) {
 		if (show_version) {	/* just exit */
-			exit(RC_OKAY);
+			do_exit(RC_OKAY);
 		}
 		if (read_stdin) {
 			source_file = "-";
@@ -269,7 +325,7 @@ main (int argc, char *argv[])
 			}
 		}
 		else {
-			error("no source or object file given");
+			no_args();
 		}
 	}
 	/* if toggle flags have superceded previous flags,
@@ -292,6 +348,14 @@ main (int argc, char *argv[])
 	}
 	if (ipa == TRUE)
 	    save_ipl_commands ();
+
+#ifdef KEY
+	if (outfile != NULL && (strcmp(outfile, "-") == 0)) {
+	  // Use suffix "x" just because it's not used.
+	  outfile = create_temp_file_name("x");
+	  dump_outfile_to_stdout = TRUE;
+	}
+#endif
 
 	/* if user has specified feedback files, turn on cord */
 	if (feedback_files->head) cordflag=TRUE;
@@ -377,7 +441,7 @@ main (int argc, char *argv[])
 		if ( option_was_seen(O_E) 
 			|| (source_lang != L_NONE && source_kind != S_o)) 
 		{
-			run_compiler();
+			run_compiler(argc, argv);
 		}
 		else {
 			error("-E or specified language required when input is from standard input");
@@ -404,7 +468,7 @@ main (int argc, char *argv[])
 		{
 			warning("compiler not invoked with language of source file; will compile with %s but link with %s", get_lang_name(source_lang), get_lang_name(invoked_lang));
 		}
-		run_compiler();
+		run_compiler(argc, argv);
 		if (multiple_source_files) cleanup();
 	}
 	if (has_errors()) {
@@ -435,32 +499,83 @@ main (int argc, char *argv[])
 		if (Gen_feedback)
 		  run_pixie();
 	}
+#ifdef KEY
+	if (dump_outfile_to_stdout == TRUE)
+	  dump_file_to_stdout(outfile);
+#endif
 	cleanup();
 	return error_status;
 }
 
+static void set_executable_dir (char *argv0) {
+#ifdef KEY
+  char *dir;
+  size_t dirlen;
+  char *ldir;
+
+  /* Try to find where the compiler is located in the
+     filesystem, and relocate the phase and library
+     directories based on where the executable is found. */
+  dir = get_executable_dir (argv0);
+  if (dir == NULL) return;	
+
+  /* If installed in a bin directory; get phases and stuff from
+     a peer directory. */
+  ldir = drop_path (dir);
+  if (strcmp (ldir, "bin") == 0) {
+    char *basedir = directory_path (dir);
+    substitute_phase_dirs ("/usr/bin", basedir, "/" PSC_TARGET "/bin");
+    substitute_phase_dirs ("/usr/lib", basedir, "/lib/" PSC_FULL_VERSION);
+    substitute_phase_dirs ("/usr/lib/" PSC_NAME_PREFIX "cc-lib",
+			   basedir, "/lib/" PSC_FULL_VERSION);
+    substitute_phase_dirs ("/usr/include", basedir, "/include");
+    return;
+  }
+
+  /* If installed in x/lib/gcc-lib/ */
+  ldir = strstr (dir, "/lib/gcc-lib");
+  if (ldir != 0) {
+    if (ldir[12] == '/') {
+      /* In target/version subdirectory. */
+      ldir = substring_copy (dir, 0, ldir+4-dir);
+      substitute_phase_dirs ("/usr/bin", dir, "");
+      substitute_phase_dirs ("/usr/lib", ldir, "");
+      substitute_phase_dirs ("/usr/lib/" PSC_NAME_PREFIX "cc-lib", dir, "");
+      substitute_phase_dirs ("/usr/include", dir, "/include");
+    } else if (ldir[12] == '\0') {
+      /* directly in gcc-lib */
+      ldir = substring_copy (dir, 0, ldir+4-dir);
+      substitute_phase_dirs ("/usr/bin", dir, "");
+      substitute_phase_dirs ("/usr/lib", ldir, "");
+      substitute_phase_dirs ("/usr/lib/" PSC_NAME_PREFIX "cc-lib", dir, "");
+      substitute_phase_dirs ("/usr/include", dir, "/include");
+    }
+    return;
+  }
+#endif
+}
 
 static void
-check_old_CC_options (string name)
+check_old_CC_options (char *name)
 {
-	if (same_string(name, "+I")) {
+	if (strcmp(name, "+I") == 0) {
 		warn_no_longer_supported2(name, "-keep");
-	} else if (same_string(name, "+L")) {
+	} else if (strcmp(name, "+L") == 0) {
 		warn_no_longer_supported(name);
-	} else if (same_string(name, "+d")) {
+	} else if (strcmp(name, "+d") == 0) {
 		warn_no_longer_supported2(name, "-INLINE:none");
-	} else if (same_string(name, "+p")  ||
-	           same_string(name, "+pc") ||
-	           same_string(name, "+pa")) {
+	} else if (strcmp(name, "+p") == 0  ||
+	           strcmp(name, "+pc") == 0 ||
+	           strcmp(name, "+pa") == 0) {
 		warn_ignored(name);
 		warning("the effect of +p is now the default (see -anach and -cfront)");
-	} else if (same_string(name, "+v")) {
+	} else if (strcmp(name, "+v") == 0) {
 		warn_no_longer_supported2(name, "-show");
-	} else if (same_string(name, "+w")) {
+	} else if (strcmp(name, "+w") == 0) {
 		warn_no_longer_supported2(name, "-fullwarn");
-	} else if (same_string(name, "+a0")) {
+	} else if (strcmp(name, "+a0") == 0) {
 		warn_no_longer_supported(name);
-	} else if (same_string(name, "+a1")) {
+	} else if (strcmp(name, "+a1") == 0) {
 		warn_no_longer_supported(name);
 	} else {
 		parse_error(name, "bad syntax");
@@ -491,7 +606,7 @@ check_makedepend_flags (void)
 		/* if compiling .c to a.out, 
 		 * don't put .o in Makedepend list */
 		if (outfile == NULL) {
-			string s = change_suffix(files->head->name, NULL);
+			char *s = change_suffix(files->head->name, NULL);
 			s[strlen(s)-1] = NIL;	/* drop . of suffix */
 			flag = add_string_option(O_MDtarget, s);
 			add_option_seen (flag);
@@ -536,8 +651,8 @@ static void
 print_help_msg (void)
 {
 	int i;
-	string msg;
-	string name;
+	char *msg;
+	char *name;
 	fprintf(stderr, "usage:  %s <options> <files>\n", program_name);
 	if (help_pattern != NULL)
 	  fprintf(stderr, "available options that contain %s:\n", help_pattern);
@@ -551,8 +666,8 @@ print_help_msg (void)
 			name = get_option_name(i);
 			/* if pattern specified, only print if pattern found */
 			if (help_pattern != NULL
-				&& !contains_substring(name, help_pattern)
-				&& !contains_substring(msg, help_pattern) )
+			    && strstr(name, help_pattern) == NULL
+			    && strstr(msg, help_pattern) == NULL)
 			{
 				continue;	/* to next option */
 			}
@@ -561,13 +676,13 @@ print_help_msg (void)
 		}
 	}
 	if (help_pattern == NULL && invoked_lang == L_cc) {
-	  fprintf(stderr, "The environment variable SGI_CC is also checked\n");
+	  fprintf(stderr, "The environment variable PSC_CC is also checked\n");
 	}
-	exit(RC_OKAY);
+	do_exit(RC_OKAY);
 }
 
 static void
-dump_args (string msg)
+dump_args (char *msg)
 {
 	int i;
 	printf("dump args %s: ", msg);
@@ -590,3 +705,16 @@ dump_args (string msg)
 }
 
 
+/*
+ * GCC exits with status code 1 if any phase fails, unless given
+ * -pass-exit-codes.  We want to compress all of our weirdo exit codes
+ * into simple 1/0 for compatiblity.
+ */
+void do_exit(int code)
+{
+	if (code != 0) {
+		code = 1;
+	}
+
+	exit(code);
+}

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -346,6 +350,11 @@ Equivalent_Types (TY_IDX t1, TY_IDX t2, QUAL_CHECK consider_qualifiers)
                  ARB_are_equivalent(TY_arb(ty1), TY_arb(ty2)));
 
     case KIND_STRUCT:
+#ifdef KEY
+	match_q = (TY_return_in_mem (t1) == TY_return_in_mem (t2) &&
+		   TY_copy_constructor (t1) == TY_copy_constructor (t2) &&
+		   match_q);
+#endif
 	return TY_fld (ty1) == TY_fld (ty2) && match_q;
 
     default:

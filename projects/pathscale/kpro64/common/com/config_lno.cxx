@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -90,7 +94,10 @@ static char *config_lno_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/com
 #define DEFAULT_UNROLL_MAX 10
 
 BOOL Run_autopar = FALSE;
-
+#ifdef KEY
+BOOL Simd_Align = FALSE;
+BOOL Simd_Reallocate_Objects = FALSE;
+#endif
 static LNO_FLAGS Default_LNO = {
   NULL,		/* next */
   NULL,		/* _mhd */
@@ -106,6 +113,21 @@ static LNO_FLAGS Default_LNO = {
   TRUE,		/* Cache_model_edge_effects */
   TRUE,		/* Coupled_opts */
   TRUE,		/* Cse */
+#ifdef KEY
+  0,            /* Cse_Loop_Skip_Before */
+  10000,        /* Cse_Loop_Skip_After */
+  10000,        /* Cse_Loop_Skip_Equal */
+  0,            /* Simd_Skip_Before */
+  1000,         /* Simd_Skip_After */
+  1000,         /* Simd_Skip_Equal */
+  0,            /* HoistIf_Skip_Before */
+  1000,         /* HoistIf_Skip_After */
+  1000,         /* HoistIf_Skip_Equal */
+  1,		/* HoistIf_Threshold */
+  0,            /* Skip_Before */
+  1000,         /* Skip_After */
+  1000,         /* Skip_Equal */
+#endif /* KEY */
   FALSE,	/* Fancy_tile */
   FALSE,	/* Run_fiz_fuse */
   1,		/* Fission */
@@ -137,7 +159,12 @@ static LNO_FLAGS Default_LNO = {
   2,		/* ou_aggre */
   0,		/* Run_p3 */
   TRUE,		/* Pseudo_lower */
+#ifndef KEY
   0, FALSE,	/* Run_prefetch */
+#else
+  NO_PREFETCH, FALSE,	/* Run_prefetch */
+  FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
+#endif
   2,		/* Prefetch_ahead */
   2,		/* Prefetch_iters_ahead */
   2,		/* Prefetch_cache_factor */
@@ -156,6 +183,12 @@ static LNO_FLAGS Default_LNO = {
   FALSE,	/* Verbose */
   TRUE,		/* Version_mp_loops */
   TRUE,		/* Run_vintr */
+#ifdef KEY
+  1,            /* Run_simd */
+  TRUE,         /* Run_simd_set */
+  FALSE,	/* Simd_Verbose */
+  TRUE,         /* Run_hoistif */
+#endif /* KEY */
   TRUE,		/* Run_oinvar */
   1,		/* Run_doacross */
   0,		/* Preferred_doacross_tile_size */
@@ -189,6 +222,21 @@ LNO_FLAGS Initial_LNO = {
   TRUE,		/* Cache_model_edge_effects */
   TRUE,		/* Coupled_opts */
   TRUE,		/* Cse */
+#ifdef KEY
+  0,            /* Cse_Loop_Skip_Before */
+  10000,        /* Cse_Loop_Skip_After */
+  10000,        /* Cse_Loop_Skip_Equal */
+  0,            /* Simd_Skip_Before */
+  1000,         /* Simd_Skip_After */
+  1000,         /* Simd_Skip_Equal */
+  0,            /* HoistIf_Skip_Before */
+  1000,         /* HoistIf_Skip_After */
+  1000,         /* HoistIf_Skip_Equal */
+  1,		/* HoistIf_Threshold */
+  0,            /* Skip_Before */
+  1000,         /* Skip_After */
+  1000,         /* Skip_Equal */
+#endif /* KEY */
   FALSE,	/* Fancy_tile */
   FALSE,	/* Run_fiz_fuse */
   1,		/* Fission */
@@ -220,7 +268,12 @@ LNO_FLAGS Initial_LNO = {
   2,		/* ou_aggre */
   0,		/* Run_p3 */
   TRUE,		/* Pseudo_lower */
+#ifndef KEY
   0, FALSE,	/* Run_prefetch */
+#else
+  NO_PREFETCH, FALSE,	/* Run_prefetch */
+  FALSE, FALSE, /* Prefetch for store accesses - Prefetch_stores */
+#endif
   2,		/* Prefetch_ahead */
   2,		/* Prefetch_iters_ahead */
   2,		/* Prefetch_cache_factor */
@@ -239,6 +292,12 @@ LNO_FLAGS Initial_LNO = {
   FALSE,	/* Verbose */
   TRUE,		/* Version_mp_loops */
   TRUE,		/* Run_vintr */
+#ifdef KEY
+  1, 		/* Run_simd */
+  TRUE,         /* Run_simd_set */
+  FALSE,	/* Simd_Verbose */
+  TRUE,         /* Run_hoistif */
+#endif /* KEY */
   TRUE,		/* Run_oinvar */
   1,		/* Run_doacross */
   0,		/* Preferred_doacross_tile_size */
@@ -335,6 +394,34 @@ static OPTION_DESC Options_LNO[] = {
   MHOPT_I32_SET_DUP (   "cmp",		0,0,1000000000,
 					Clean_Miss_Penalty, CMP_Set ),
   LNOPT_BOOL ( "cse",			NULL,	Cse ),
+#ifdef KEY
+  LNOPT_U32  ( "cse_loop_skip_before",	"cse_loop_skip_before",	32,0,10000, 
+	       Cse_Loop_Skip_Before ),
+  LNOPT_U32  ( "cse_loop_skip_after",	"cse_loop_skip_after",	32,0,10000, 
+	       Cse_Loop_Skip_After ),
+  LNOPT_U32  ( "cse_loop_skip_equal",	"cse_loop_skip_equal",	32,0,10000, 
+	       Cse_Loop_Skip_Equal ),
+  LNOPT_U32  ( "simd_skip_before",	"simd_skip_before",	32,0,1000, 
+	       Simd_Skip_Before ),
+  LNOPT_U32  ( "simd_skip_after",	"simd_skip_after",	32,0,1000, 
+	       Simd_Skip_After ),
+  LNOPT_U32  ( "simd_skip_equal",	"simd_skip_equal",	32,0,1000, 
+	       Simd_Skip_Equal ),
+  LNOPT_U32  ( "hoistif_skip_before",	"hoistif_skip_before",	32,0,1000, 
+	       HoistIf_Skip_Before ),
+  LNOPT_U32  ( "hoistif_skip_after",	"hoistif_skip_after",	32,0,1000, 
+	       HoistIf_Skip_After ),
+  LNOPT_U32  ( "hoistif_skip_equal",	"hoistif_skip_equal",	32,0,1000, 
+	       HoistIf_Skip_Equal ),
+  LNOPT_U32  ( "hoistif_threshold",	"hoistif_thres", 32,0,1000,
+  	       HoistIf_Threshold ),
+  LNOPT_U32  ( "skip_before",	"skip_before",	32,0,1000, 
+	       Skip_Before ),
+  LNOPT_U32  ( "skip_after",	"skip_after",	32,0,1000, 
+	       Skip_After ),
+  LNOPT_U32  ( "skip_equal",	"skip_equal",	32,0,1000, 
+	       Skip_Equal ),
+#endif /* KEY */
   MHOPT_I32_SET_DUP ( "dirty_miss_penalty",	0,0,1000000000,
 					Dirty_Miss_Penalty, DMP_Set ),
   MHOPT_I32_SET_DUP (   "dmp",		0,0,1000000000,
@@ -407,8 +494,16 @@ static OPTION_DESC Options_LNO[] = {
 					Pct_Excess_Writes_Nonhidable ),
   LNOPT_BOOL (   "plower",	        NULL,	Pseudo_lower ),
   LNOPT_BOOL (   "plower_mp",           NULL,	Pseudo_lower ),
-  LNOPT_U32_SET  ( "prefetch",		"pref",	0,0,2,	Run_prefetch,
-					Run_prefetch_set ),
+#ifndef KEY
+  LNOPT_U32_SET  ( "prefetch",		"pref",	0,0,2,	Run_prefetch, 
+  					Run_prefetch_set ),
+#else
+  LNOPT_U32_SET  ( "prefetch",		"pref",	NO_PREFETCH,NO_PREFETCH,
+  					AGGRESSIVE_PREFETCH,	
+					Run_prefetch, Run_prefetch_set ),
+  LNOPT_BOOL_SET ( "prefetch_stores",	NULL, 	Prefetch_stores,
+  						Prefetch_stores_set ),
+#endif
   LNOPT_U32  ( "prefetch_ahead",	NULL,	2,0,50,	Prefetch_ahead ),
   LNOPT_U32  (   "pf_ahead",		NULL,	2,0,50,	Prefetch_ahead ),
   LNOPT_U32  ( "prefetch_iters_ahead",	NULL,	2,0,50,	Prefetch_iters_ahead ),
@@ -452,6 +547,12 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "use_parm",		NULL,	Use_parm ),
   LNOPT_BOOL ( "version_mp_loops",	NULL,	Version_mp_loops ),
   LNOPT_BOOL ( "vintr",			NULL,	Run_vintr ),
+#ifdef KEY
+  LNOPT_U32_SET ("simd",                "simd", 1, 0, 2, Run_simd,
+		                        Run_simd_set ),
+  LNOPT_BOOL ( "simd_verbose",		NULL,	Simd_Verbose ),
+  LNOPT_BOOL ( "hoistif",		NULL,	Run_hoistif ),
+#endif /* KEY */  
   LNOPT_BOOL ( "oinvar",		NULL,	Run_oinvar ),
   LNOPT_U32  ( "doacross",		NULL,	1,0,4,Run_doacross),
   LNOPT_U32  ( "preferred_doacross_tile_size",

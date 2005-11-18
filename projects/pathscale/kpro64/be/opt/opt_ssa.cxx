@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -673,7 +678,13 @@ SSA::Pointer_Alias_Analysis(void)
       _opt_stab->Print_alias_info(TFile);
       
       fprintf( TFile, "%sOcc table after flow sensitive alias analysis\n%s", DBar, DBar );
-      _opt_stab->Print_occ_tab(TFile);
+#ifdef KEY
+      FOR_ALL_ELEM (bb, cfg_iter, Init(Cfg())) {
+        FOR_ALL_ELEM (wn, stmt_iter, Init(bb->Firststmt(), bb->Laststmt()))
+         _opt_stab->Print_occ_tab(TFile,wn);
+      }
+#endif
+      //_opt_stab->Print_occ_tab(TFile);
     }
   }
 }
@@ -795,10 +806,54 @@ SSA::Find_zero_versions(void)
 
     v->Set_cr_list(NULL);    // initialize this field unioned with nonzerophis
     }
-
+#ifdef KEY
+  if ( Get_Trace(TP_GLOBOPT, SSA_DUMP_FLAG)) {
+    CFG_ITER cfg_iter;
+    BB_NODE *bb;
+    fprintf(TFile, "ZERO VERSIONING: \n");
+    FOR_ALL_ELEM (bb, cfg_iter, Init(_cfg)){
+      if (bb->Phi_list()->Len() > 0) {
+        fprintf(TFile, "BB%d: \n", bb->Id());
+        bb->Phi_list()->PRINT(TFile);
+      }
+      WN *wn;
+      STMT_ITER stmt_iter;
+      FOR_ALL_ELEM (wn, stmt_iter, Init(bb->Firststmt(), bb->Laststmt())) {
+        fdump_tree_no_st(TFile, wn);
+        Print_ssa_ver_for_wn(wn);
+        if (WN_has_mu(wn, _cfg->Rgn_level())) {
+          MU_LIST *mu_list = Opt_stab()->Get_stmt_mu_list(wn);
+          if (mu_list)
+            mu_list->Print(TFile);
+        }
+        if (WN_has_chi(wn, _cfg->Rgn_level())) {
+          CHI_LIST *chi_list = Opt_stab()->Get_generic_chi_list(wn);
+          if (chi_list)
+            chi_list->Print(TFile);
+        }
+      }
+    }
+  }
+#endif
   OPT_POOL_Pop(loc_pool, SSA_DUMP_FLAG);
 }
-
+#ifdef KEY
+void SSA::Print_ssa_ver_for_wn(WN* wn)
+{
+  OPCODE opc = WN_opcode(wn);
+  OPERATOR opr = OPCODE_operator(opc);
+  if (WN_has_mu(wn, Cfg()->Rgn_level())) {
+    OCC_TAB_ENTRY *occ = Opt_stab()->Get_occ(wn);
+    if (occ && !occ->Is_stmt()) {
+      fdump_tree_no_st(TFile,wn);
+      MU_NODE *mnode = occ -> Mem_mu_node();
+      mnode->Print(TFile);
+    }
+  }
+  for (INT32 i = 0; i < WN_kid_count(wn); i++)
+    Print_ssa_ver_for_wn(WN_kid(wn,i));
+}
+#endif
 void
 SSA::Create_CODEMAP(void)
 {
@@ -862,6 +917,29 @@ PHI_LIST::PHI_LIST(BB_NODE *bb)
   in_degree = bb->Pred()->Len();
 }
 
+PHI_LIST *
+PHI_LIST::Dup_phi_node(MEM_POOL *pool, BB_NODE *bb)
+{
+  PHI_LIST *newp;
+  PHI_NODE *phi, *p;
+  PHI_LIST_ITER phi_iter;
+ 
+  newp = (CXX_NEW(PHI_LIST(bb), pool));
+  FOR_ALL_ELEM ( phi, phi_iter, Init(bb->Phi_list()) ) {
+    p = CXX_NEW(PHI_NODE(newp->In_degree(), pool, bb), pool);
+    p->Set_aux_id(phi->Aux_id());
+    p->Set_count(phi->Count());
+    p->Set_result(phi->RESULT());
+    p->Set_flags(phi->Flags());
+    if (phi->Live())
+      phi->RESULT()->Set_defphi(p);
+    for (INT i = 0; i < newp->In_degree(); i++) {
+      p->Set_opnd(i, phi->OPND(i));
+    }
+    newp->Append(p);
+  }
+  return newp;
+}
 // duplicates phi list, if pos is non-negative, add one entry
 //
 PHI_LIST *
@@ -870,7 +948,7 @@ PHI_LIST::Dup_phi_node(MEM_POOL *pool, BB_NODE *bb, INT pos)
   PHI_LIST *newp;
   PHI_NODE *phi, *p;
   PHI_LIST_ITER phi_iter;
-  
+ 
   newp = (CXX_NEW(PHI_LIST(bb), pool));
   FOR_ALL_ELEM ( phi, phi_iter, Init(bb->Phi_list()) ) {
     p = CXX_NEW(PHI_NODE(newp->In_degree(), pool, bb), pool);
@@ -927,9 +1005,15 @@ SSA::Get_zero_version_CR(AUX_ID aux_id, OPT_STAB *opt_stab, VER_ID du)
     if (st != NULL) ty = ST_type(st);
     MTYPE dtype, rtype;
     AUX_STAB_ENTRY *sym = opt_stab->Aux_stab_entry(aux_id);
-    rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), sym->Byte_size());
+   
+    if (sym->Mtype()==MTYPE_M)
+        rtype = sym->Mtype();
+    else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+						    sym->Byte_size());
+
     dtype = rtype;
-    if (rtype != MTYPE_UNKNOWN) {
+    if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
       if (MTYPE_is_integral(rtype) &&
           sym->Byte_size() < (MTYPE_size_min(MTYPE_I4)/8))
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
@@ -974,12 +1058,17 @@ SSA::Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du,
       rtype = OPCODE_rtype(opc);
       dtype = OPCODE_desc(opc);
 
+#ifndef TARG_X8664
       // Fix 770676
       // before u64 lowering, I8I4LDID and I4I4LDID are equivalent,
       // use I4I4 to simplify IVR.
       //
       if (dtype == MTYPE_I4 && rtype == MTYPE_I8)
 	rtype = MTYPE_I4;
+#else
+      if (dtype == MTYPE_U4 && rtype == MTYPE_U8)
+	rtype = MTYPE_U4;
+#endif
 
       ty = WN_object_ty(ref_wn);
       cr = htable->Add_def(opt_stab->Du_aux_id(du),
@@ -994,17 +1083,26 @@ SSA::Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du,
 			   TRUE);
     } else {
       AUX_STAB_ENTRY *sym = opt_stab->Aux_stab_entry(vse->Aux_id());
-      rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), sym->Byte_size());
+
+      ty = TY_IDX_ZERO;
+      ST *st = opt_stab->St(vse->Aux_id());
+      if (st != NULL) ty = ST_type(st);
+      
+      if (sym->Mtype()==MTYPE_M)
+        rtype = sym->Mtype();
+      else
+        rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
+						    sym->Byte_size()); 
+
       dtype = rtype;
-      if (rtype != MTYPE_UNKNOWN) {
+
+      if (rtype != MTYPE_UNKNOWN && rtype != MTYPE_M) {
         if (MTYPE_is_integral(rtype) &&
             sym->Byte_size() < (MTYPE_size_min(MTYPE_I4)/8))
           rtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
                                                   MTYPE_size_min(MTYPE_I4)/8);
         ty = MTYPE_To_TY(rtype);
       }
-      else
-        ty = TY_IDX_ZERO;
 
       cr = htable->Add_def(opt_stab->Du_aux_id(du),
 			   opt_stab->Du_version(du),
@@ -1075,12 +1173,15 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
     if (OPERATOR_is_scalar_store (WN_operator(wn)) &&
 	! opt_stab->Du_any_use(WN_ver(wn)))
       continue; // skip the statement that DSE has recongnized dead code
+#ifndef KEY // move deletion to emit phase because htable.cxx needs to mark
+	    // with DONT_PROP flag
     else if (Htable()->Phase() == MAINOPT_PHASE && 
 	     WN_operator(wn) == OPR_XPRAGMA &&
 	     WN_pragma(wn) == WN_PRAGMA_COPYIN_BOUND)
       continue; // mainopt needs to delete such xpragmas because remaining
 		// phases do not need it and it may cause problem for mainopt
 		// (see bug 659146)
+#endif
     else if ((OPERATOR_is_scalar_istore (WN_operator(wn)) ||
 	      WN_operator(wn) == OPR_MSTORE) &&
 	     WOPT_Enable_Dse_Aggressive &&
@@ -1098,6 +1199,11 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
 	istore_live = TRUE;
       else if (TY_kind(ty) == KIND_POINTER && Ilod_TY_is_volatile(ty))
 	istore_live = TRUE;
+#ifdef KEY
+      else if ((WN_operator(WN_kid1(wn)) == OPR_LDA || WN_operator(WN_kid1(wn)) ==OPR_ILDA) &&
+               TY_kind(WN_ty(WN_kid1(wn))) == KIND_POINTER && Ilod_TY_is_volatile(WN_ty(WN_kid1(wn))))
+	istore_live = TRUE;
+#endif
       else {
 	FOR_ALL_NODE( cnode, chi_iter, Init(chi_list) ) {
 	  if (cnode->Live()) {

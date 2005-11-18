@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -142,9 +146,9 @@ struct _dsz_s	CRY_SZ = {
 #endif
 
 #if	!defined(_CRAYIEEE) && defined(_CRAY)
-struct _dsz_s	CRI_SZ;
+static struct _dsz_s	CRI_SZ;
 #else
-struct _dsz_s	CRI_SZ = {
+static struct _dsz_s	CRI_SZ = {
 	/* number of types */
 		8,
 /*	none	int	real	dble	cmplx	log	char	sint    */
@@ -662,7 +666,11 @@ struct c_funs_s __fndc_ncfunc[NCV_MAX] = {
 	{ _conv_err,	_conv_err,	0, 0, 0 },	/* NCV_IUD */
 	{ _conv_err,	_conv_err,	0, 0, 0 },	/* NCV_T3D */
 	{ _conv_err,	_conv_err,	0, 0, 0 },	/* NCV_IEL */
+#ifndef KEY
 	{ mips2ia_,	_conv_err,	1, 0, 0 },	/* NCV_MIPS */
+#else
+	{ _conv_err,	_conv_err,	1, 0, 0 },	/* NCV_MIPS */
+#endif
 
 #else						/* SPARC, et al */
 	{ _conv_err,	_conv_err,	0, 0, 0 },	/* NCV_CRAY */

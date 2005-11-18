@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -254,7 +254,7 @@ LDIRT = ii_files *.pch
 
 VPATH    =  $(WOPT_DIRS)
 
-LCOPTS += $(STD_COMPILE_OPTS)
+LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 ifneq ($(BUILD_COMPILER), EDG)
 LCOPTS += -fwritable-strings
 endif
@@ -337,7 +337,7 @@ default: first $(TARGETS) last
 #----------------------------------------------------------------------
 first:
 ## verify that be.so is up to date
-	cd $(TARG_BE_DIR) && $(MAKE)
+	$(call submake,$(TARG_BE_DIR))
 ifeq ($(BUILD_OS), LINUX)
 	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 endif
@@ -379,7 +379,7 @@ opt_pch_files: $(BACK_END_PCH_OBJS) opt_pch.pch
 
 wopt.so: $(BACK_END_OBJS) $(BACK_END_CXX_OBJS) $(BACK_END_PCH_OBJS) \
 	 $(TARG_BE_DIR)/be.so $(BE_OPT_DIR)/Exported $(BE_BE_DIR)/so_locations
-	$(C++F) -o wopt.so $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
+	$(link.c++f) -o wopt.so $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
 	 $(BACK_END_OBJS) $(BACK_END_CXX_OBJS) $(BACK_END_PCH_OBJS) \
 	 $(TARG_BE_DIR)/be.so $(LLDLIBS) -show
 	if [ ! -l be.so ]; then ln -sf $(TARG_BE_DIR)/be.so .; fi
@@ -402,7 +402,7 @@ LINK_DSOS = $(TARG_BE_DIR)/be.so
 
 wopt.so: $(BACK_END_OBJS) $(BACK_END_CXX_OBJS) $(BE_OPT_DIR)/Exported \
 	 $(TARG_BE_DIR)/be.so $(BE_BE_DIR)/so_locations
-	$(C++F) -o wopt.so $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
+	$(link.c++f) -o wopt.so $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
 	 $(BACK_END_OBJS) $(BACK_END_CXX_OBJS) \
 	 $(LINK_DSOS) $(LLDLIBS)
  ifeq ($(BUILD_OS), IRIX)
@@ -436,3 +436,7 @@ else
 DSONAMEOPT =
 endif
 
+ifeq (gcc,$(firstword $(CCNAME)))
+# work around gcc bug optimizing this file on ia32
+opt_cfg_trans.o: OPTIMIZER = -O0
+endif

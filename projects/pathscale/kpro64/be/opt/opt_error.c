@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* ====================================================================
  * ====================================================================
  *
@@ -49,7 +53,9 @@
 static char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/opt/opt_error.c,v $ $Revision: 1.1.1.1 $";
 
+#define _GNU_SOURCE
 #include <stdio.h>
+#include <string.h>
 #include <stdarg.h>
 
 #include "defs.h"
@@ -215,7 +221,7 @@ catch (int sig, int error_num)
         register string msg;
     case SIGBUS:
     case SIGSEGV:
-        msg = error_num ? sys_errlist[error_num] : _sys_siglist[sig];
+        msg = error_num ? strerror(error_num) : strsignal(sig);
         fprintf (stderr, "%s: Signal: %s.\n", myname, msg);
         fflush (stderr);
         break;

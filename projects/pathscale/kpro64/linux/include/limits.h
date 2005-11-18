@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -42,8 +46,7 @@
 #define _GCC_LIMITS_H_
 
 #ifndef _LIBC_LIMITS_H_
-/* Use "..." so that we find syslimits.h only in this same directory.  */
-#include "syslimits.h"
+#include "limits.h"
 #endif
 #ifndef _LIMITS_H___
 #ifndef _MACH_MACHLIMITS_H_

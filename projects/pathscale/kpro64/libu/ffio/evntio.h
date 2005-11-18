@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,6 +42,8 @@
 
 
 #include <stdio.h>
+
+typedef long long evint64;
 
 /*
  * Define event layer options -
@@ -123,7 +129,7 @@ struct cache_state_trace {
 #define FALSE 0
 #endif
 
-typedef int64 rtc_t;
+typedef evint64 rtc_t;
 
 #define RTC_MODE 1
 #define CPC_MODE 2
@@ -394,49 +400,49 @@ struct evnt_async_tracker {
  * structure containing read/write statistics 
  */
 struct rw_stats {
-	int64 ill_formed;		/* I/O request not on sector boundary */
+	evint64 ill_formed;		/* I/O request not on sector boundary */
 	size_t min;			/* minimum number of bytes requested */
 	size_t max;			/* maximum number of bytes requested */
-	int64 requested;		/* number of bytes requested to be
+	evint64 requested;		/* number of bytes requested to be
 					 * read or written */
-	int64 delivered;		/* number of bytes actually read
+	evint64 delivered;		/* number of bytes actually read
 					 * or written */
 	rtc_t time;			/* time to complete read/write event */
-	int64 sync;			/* number of synchronized events ?? */
+	evint64 sync;			/* number of synchronized events ?? */
 	int current;			/* number of pending async requests */
-	int64 high_water;		/* max num of pending async requests */
-	int64 all_hidden;		/* num of hidden async events ?? */
+	evint64 high_water;		/* max num of pending async requests */
+	evint64 all_hidden;		/* num of hidden async events ?? */
 };
 
 struct evnt_count {
-        int64 listio_write;		/* number of listio writes */
-        int64 listio_writea;		/* number of async listio writes */
-        int64 listio_read;		/* number of listio reads */
-        int64 listio_reada;		/* number of async listio reads */
-        int64 write;			/* number of write events */
-        int64 writea;			/* number of writea events */
-        int64 read;			/* number of read events */
-        int64 reada;			/* ... */
-        int64 open;
-        int64 readc;
-        int64 writec;
-        int64 close;
-        int64 flush;
-        int64 weof;
-        int64 weod;
-        int64 seek;
-        int64 bksp;
-        int64 pos;
-        int64 fcntl_recall;		/* number of async recalls */
-        int64 fcntl_other;		/* number of unmonitored commands ?? */
-        int64 listio;			/* number of listio requests */
-        int64 listio_seek;
-        int64 size_changes;		/* number of times file changed size */
-        int64 total;			/* number of total events */
-        int64 all_reads;		/* not used */
-        int64 all_writes;		/* not used */
-        int64 cache_page_release;	/* number of cache page releases */
-        int64 fcntl_ialloc;		/* number of ialloc requests */
+        evint64 listio_write;		/* number of listio writes */
+        evint64 listio_writea;		/* number of async listio writes */
+        evint64 listio_read;		/* number of listio reads */
+        evint64 listio_reada;		/* number of async listio reads */
+        evint64 write;			/* number of write events */
+        evint64 writea;			/* number of writea events */
+        evint64 read;			/* number of read events */
+        evint64 reada;			/* ... */
+        evint64 open;
+        evint64 readc;
+        evint64 writec;
+        evint64 close;
+        evint64 flush;
+        evint64 weof;
+        evint64 weod;
+        evint64 seek;
+        evint64 bksp;
+        evint64 pos;
+        evint64 fcntl_recall;		/* number of async recalls */
+        evint64 fcntl_other;		/* number of unmonitored commands ?? */
+        evint64 listio;			/* number of listio requests */
+        evint64 listio_seek;
+        evint64 size_changes;		/* number of times file changed size */
+        evint64 total;			/* number of total events */
+        evint64 all_reads;		/* not used */
+        evint64 all_writes;		/* not used */
+        evint64 cache_page_release;	/* number of cache page releases */
+        evint64 fcntl_ialloc;		/* number of ialloc requests */
 };
 
 struct evnt_open_info {
@@ -452,7 +458,7 @@ struct evnt_open_info {
 	int 	next_open_pos;		/* 27 */     /* unused */
 	off_t 	max_size;		/* 28 */     /* max file size */
 	rtc_t 	close_rtc;		/* 29 */     /* time file was closed */
-	int64 	event_count;		/* 30 */     /* total number of events*/
+	evint64 	event_count;		/* 30 */     /* total number of events*/
 	struct 	evnt_count logged;		     /* struct to hold event
 						      * counts */
 	rtc_t 	start_rtc;			     /* time ffopen began */
@@ -636,7 +642,7 @@ void _evnt_atexit();
 void _evnt_clfree(struct fdinfo *fio);
 void _evnt_getopts(struct evnt_f *evnt_info, union spec_u *spec);
 void _evnt_close_diags(struct fdinfo *fio, struct evnt_f *evnt_info, int final);
-int64 _evnt_units(struct evnt_f *evnt_info, int64 value);
+evint64 _evnt_units(struct evnt_f *evnt_info, evint64 value);
 int _evnt_bksp(struct fdinfo *fio, struct ffsw *stat);
 int _evnt_close(struct fdinfo *fio, struct ffsw *stat);
 int _evnt_fcntl(struct fdinfo *fio, int cmd, void *arg, struct ffsw *iostat);

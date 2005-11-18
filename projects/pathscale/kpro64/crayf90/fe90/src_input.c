@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1542,6 +1546,12 @@ static void fixed_get_stmt (void)
 
 }  /* fixed_get_stmt */
 
+
+inline int is_newline(char ch) 
+{ 
+  return (ch == newline || ch == dosnewline); 
+}
+
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -1619,7 +1629,11 @@ boolean read_line (boolean	cc_continuation_line)
    ch = getc(SRC_STK_FILE_PTR(src_stk_idx));
 
    if (on_off_flags.preprocess &&
-       ch != newline && 
+#ifdef KEY
+       !is_newline(ch) &&
+#else
+       ch != newline &&
+#endif
        ch != EOF     &&
        (ch == '#' || cc_continuation_line)) {
 
@@ -1635,9 +1649,13 @@ boolean read_line (boolean	cc_continuation_line)
       SRC_STK_FILE_LINE(src_stk_idx)++;
 
       cc_stmt_buf[++cc_stmt_buf_idx] = ch;
-
-      while ((ch = getc(SRC_STK_FILE_PTR(src_stk_idx))) != newline &&
+#ifdef KEY
+      while (!is_newline(ch = getc(SRC_STK_FILE_PTR(src_stk_idx))) && 
              ch != EOF){
+#else
+      while ((ch = getc(SRC_STK_FILE_PTR(src_stk_idx))) != newline && 
+             ch != EOF){
+#endif
 
          if (limit > 0) {
             cc_stmt_buf[++cc_stmt_buf_idx] = ch;
@@ -1665,14 +1683,21 @@ boolean read_line (boolean	cc_continuation_line)
    }
 
    nxt_line_idx = nxt_line_start_idx[nxt_line_num_lines] - 1;
-
+#ifdef KEY
+   if (!is_newline(ch) && ch != EOF) {
+#else
    if (ch != newline && ch != EOF) {
+#endif
       limit = nxt_line_idx + FREE_SRC_LINE_SIZE;
 
       nxt_line[++nxt_line_idx] = ch;
-
-      while ((ch = getc(SRC_STK_FILE_PTR(src_stk_idx))) != newline &&
+#ifdef KEY
+      while (!is_newline(ch = getc(SRC_STK_FILE_PTR(src_stk_idx))) && 
              ch != EOF){
+#else
+      while ((ch = getc(SRC_STK_FILE_PTR(src_stk_idx))) != newline && 
+             ch != EOF){
+#endif
 
          if (nxt_line_idx < limit) { 
             nxt_line[++nxt_line_idx] = ch;
@@ -5224,7 +5249,7 @@ static void update_global_line (void)
 |*									      *|
 \******************************************************************************/
 
-void print_err_line(line, column)
+void print_err_line(int line, int column)
 {
    char		buf[MAX_SRC_LINE_SIZE];
    char		buf2[MAX_SRC_LINE_SIZE];

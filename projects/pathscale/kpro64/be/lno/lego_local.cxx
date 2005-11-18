@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -105,6 +109,7 @@ typedef struct {
 typedef DYN_ARRAY<LOCAL_PRAGMA> LOCAL_PRAGMA_STACK;
 typedef DYN_ARRAY<WN*> DYNARRAY_OF_ARRAY_REFERENCES;
 
+#undef VB_PRINT
 #define VB_PRINT(x) if (Verbose_Lego) { x; }
 
 static void Lego_Fix_Local_Rec(WN *wn, BOOL in_a_parallel_region);

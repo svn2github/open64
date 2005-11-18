@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,6 +43,7 @@
  *	for the Cray format conversions.
  */
 
+#include <string.h>
 #include "arith.internal.h"
 #include "int64.h"
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -696,7 +700,75 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4FQLE, "<="},
   {OPC_I4I8LE, "<="},
   {OPC_I4U4LE, "<="},
+#ifdef TARG_X8664
+  {OPC_V16F4RECIP, "_V16F4RECIP"},
+  {OPC_F8F8FLOOR, "_F8F8FLOOR"},
+  {OPC_U8U8LT, "<"},
+  {OPC_I8I8EQ, "=="},
+  {OPC_U4U4EQ, "=="},
+  {OPC_U4I4EQ, "=="},
+  {OPC_U4U8EQ, "=="},
+  {OPC_U8I4EQ, "=="},
+  {OPC_U8I8EQ, "=="},
+  {OPC_U4U4LE, "<="},
+  {OPC_U8U8LE, "<="},
+  {OPC_I4F8LE, "<="},
+  {OPC_I4F8NE, "!="},
+  {OPC_U4F8NE, "!="},
+  {OPC_U4U4NE, "!="},
+  {OPC_U4U8NE, "!="},
+  {OPC_U8U8NE, "!="},
+  {OPC_U8I4NE, "!="},
+  {OPC_U4U4GE, ">="},
+  {OPC_V16I1ADD, "+"},
+  {OPC_V16I2ADD, "+"},
+  {OPC_V16I4ADD, "+"},
+  {OPC_V16I8ADD, "+"},
+  {OPC_V16F4ADD, "+"},
+  {OPC_V16F8ADD, "+"},
+  {OPC_V16I1SUB, "-"},
+  {OPC_V16I2SUB, "-"},
+  {OPC_V16I4SUB, "-"},
+  {OPC_V16I8SUB, "-"},
+  {OPC_V16F4SUB, "-"},
+  {OPC_V16F8SUB, "-"},
+  {OPC_V16I1BAND,"&"},
+  {OPC_V16I2BAND,"&"},
+  {OPC_V16I4BAND,"&"},
+  {OPC_V16I8BAND,"&"},
+  {OPC_V16F4BAND,"&"},
+  {OPC_V16F8BAND,"&"},
+  {OPC_V16I1BIOR,"|"},
+  {OPC_V16I2BIOR,"|"},
+  {OPC_V16I4BIOR,"|"},
+  {OPC_V16I8BIOR,"|"},
+  {OPC_V16F4BIOR,"|"},
+  {OPC_V16F8BIOR,"|"},
+  {OPC_V16I1BXOR,"^"},
+  {OPC_V16I2BXOR,"^"},
+  {OPC_V16I4BXOR,"^"},
+  {OPC_V16I8BXOR,"^"},
+  {OPC_V16F4BXOR,"^"},
+  {OPC_V16F8BXOR,"^"},
+  {OPC_V16F4MAX,"_V16F4MAX"},
+  {OPC_V16F8MAX,"_V16F8MAX"},
+  {OPC_V16F4MIN,"_V16F4MIN"},
+  {OPC_V16F8MIN,"_V16F8MIN"},
+  {OPC_V16F4DIV,"/"},
+  {OPC_V16F8DIV,"/"},
+  {OPC_V16F4MPY,"*"},
+  {OPC_V16F8MPY,"*"},
+  {OPC_V16F4SQRT, "SQRT"},
+  {OPC_V16F8SQRT, "SQRT"},
+  {OPC_V16I1NEG, "-"},
+  {OPC_V16I2NEG, "-"},
+  {OPC_V16I4NEG, "-"},
+  {OPC_V16I8NEG, "-"},
+  {OPC_V16F4NEG, "-"},
+  {OPC_V16F8NEG, "-"},
+#else
   {OPC_I4F8LE, "<="}
+#endif /* TARG_X8664 */
 // << WHIRL 0.30: Replaced OPC_T1{EQ,NE,GT,GE,LT,LE} by OP_BT1 and OPC_I4T1 variants
 }; /* WN2C_Opc2Cname_Map */
 
@@ -3534,7 +3606,7 @@ WN2C_do_loop(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
    if (W2C_Emit_Cgtag && loop_info != NULL)
    {
       Append_Token_String(tokens, "/* LOOPINFO #");
-      Append_Token_String(tokens, Number_as_String((UINT64)loop_info, "%ull"));
+      Append_Token_String(tokens, Number_as_String(UINTPS(loop_info), "%ul"));
       Append_Token_String(tokens, "*/");
       Append_Indented_Newline(tokens, 1);
    }

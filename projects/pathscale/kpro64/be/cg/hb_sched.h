@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -226,8 +230,11 @@ class HB_Schedule;
 class Priority_Selector {
 protected:
   BB* _curbb;
-  list<BB*> _curbb_list;
+  std::list<BB*> _curbb_list;
   OP *_best_op;
+#ifdef KEY
+  OP* _last_sched_op;
+#endif
   HB_Schedule *_cur_sched;
   MEM_POOL *_pool; 
   HBS_TYPE _hbs_type;
@@ -235,10 +242,18 @@ protected:
   virtual BOOL Is_OP_Better (OP *cur_op, OP *best_op);
 public:
   // Constructor/destructor:
-  Priority_Selector(list<BB*> bblist, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool) 
-   { _curbb_list = bblist; _cur_sched = sched; _hbs_type = type; _pool = pool; }
+  Priority_Selector(std::list<BB*> bblist, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool) 
+    { _curbb_list = bblist; _cur_sched = sched; _hbs_type = type; _pool = pool;
+#ifdef KEY
+    _last_sched_op = NULL;
+#endif // KEY
+    }
   Priority_Selector(BB* bb, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool) 
-   { _curbb = bb; _cur_sched = sched; _hbs_type = type; _pool = pool; }
+    { _curbb = bb; _cur_sched = sched; _hbs_type = type; _pool = pool;
+#ifdef KEY
+    _last_sched_op = NULL;
+#endif // KEY    
+    }
   ~Priority_Selector() {}
 
   // Tracing:
@@ -246,13 +261,16 @@ public:
   void Trace (const char* str) const;
 
   // Member access:
-  list<BB*>& BB_List(void) { return _curbb_list;}
+  std::list<BB*>& BB_List(void) { return _curbb_list;}
 
   // copy constructor:
   void operator=(const Priority_Selector& p) { 
     _curbb = p._curbb; 
     _curbb_list = p._curbb_list; 
     _best_op = p._best_op;
+#ifdef KEY
+    _last_sched_op = p._last_sched_op;
+#endif
   }
 
   // Iterator functions:
@@ -266,7 +284,7 @@ public:
   // Extraneous functions:
   OP* Select_OP_For_Delay_Slot(OP*);
   void Build_Ready_Vector (BB*, BOOL is_fwd);
-  void Build_Ready_Vector (list<BB*>, BOOL is_fwd);
+  void Build_Ready_Vector (std::list<BB*>, BOOL is_fwd);
   virtual inline BOOL Is_Fwd_Schedule() { return FALSE; }
 };
 
@@ -275,7 +293,7 @@ public:
 
   // Constructor/destructor:
   List_Based_Bkwd(BB* bb, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool);
-  List_Based_Bkwd(list<BB*> bblist, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool);
+  List_Based_Bkwd(std::list<BB*> bblist, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool);
   ~List_Based_Bkwd() {}
  
   // Iterator functions:
@@ -295,7 +313,7 @@ public:
 
   // Constructor/destructor:
   List_Based_Fwd(BB* bb, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool);
-  List_Based_Fwd(list<BB*> bblist, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool);
+  List_Based_Fwd(std::list<BB*> bblist, HB_Schedule *sched, HBS_TYPE type, MEM_POOL *pool);
   ~List_Based_Fwd() {}
  
   // Iterator functions:
@@ -407,11 +425,11 @@ private:
   INT32		    _max_sched;
 
   // private functions:
-  BOOL Avoid_Processing_HB(list<BB*>);
+  BOOL Avoid_Processing_HB(std::list<BB*>);
   void Invoke_Pre_HBS_Phase (BB*);
   void Invoke_Post_HBS_Phase (BB*);
-  void Invoke_Pre_HBB_Phase (list<BB*>);
-  void Invoke_Post_HBB_Phase (list<BB*>);
+  void Invoke_Pre_HBB_Phase (std::list<BB*>);
+  void Invoke_Post_HBB_Phase (std::list<BB*>);
   INT  Calculate_Etime (OP*);
   INT  Calculate_Ltime (OP*);
   void Set_Resource_Usage (OP*);
@@ -426,13 +444,16 @@ private:
   BOOL Can_Schedule_Op (OP *cur_op, INT cur_time);
   void Initialize (); 
   void Schedule_Block (BB*, BBSCH*); 
-  void Schedule_Blocks (list<BB*>&); 
+  void Schedule_Blocks (std::list<BB*>&); 
   void Put_Sched_Vector_Into_BB (BB*, BBSCH*, BOOL);
-  void Put_Sched_Vector_Into_HB (list<BB*>&);
+  void Put_Sched_Vector_Into_HB (std::list<BB*>&);
   void Add_OP_To_Sched_Vector (OP*, BOOL);
   void Adjust_Ldst_Offsets (void);
+#ifdef KEY
+  void Adjust_Ldst_Offsets (BOOL is_fwd);
+#endif
   void Init_Register_Map (BB*);
-  void Init_RFlag_Table (list<BB*>&, BOOL);
+  void Init_RFlag_Table (std::list<BB*>&, BOOL);
   void Update_Regs_For_OP (OP*);
 
 public:
@@ -481,11 +502,11 @@ public:
 
   // Exported functions:
   void Init (BB*, HBS_TYPE, INT32, BBSCH*, mINT8*);
-  void Init (list<BB*>, HBS_TYPE, mINT8*);
+  void Init (std::list<BB*>, HBS_TYPE, mINT8*);
   INT Find_Schedule_Cycle(OP*, BOOL);
   void Estimate_Reg_Cost_For_OP (OP*);
   void Schedule_BB (BB*, BBSCH*);   
-  void Schedule_HB (list<BB*>);   
+  void Schedule_HB (std::list<BB*>);   
 };
 
 
@@ -494,13 +515,13 @@ public:
 extern INT Memory_OP_Offset_Opndnum (OP *op);
 extern INT Memory_OP_Base_Opndnum (OP *op);
 extern BOOL Reschedule_BB(BB*);
-extern BOOL Can_Schedule_HB(list<BB*> hb_blocks);
+extern BOOL Can_Schedule_HB(std::list<BB*> hb_blocks);
 extern BOOL Is_Ldst_Addiu_Pair (OPSCH*, OPSCH*, OP*, OP*);
 extern void Fixup_Ldst_Offset(OP*, INT64, INT64, HBS_TYPE);
 extern void Compute_OPSCH(BB *bb, BB_MAP value_map, MEM_POOL *pool);
-extern void Compute_OPSCHs(list<BB*> bblist, BB_MAP value_map, MEM_POOL *pool);
+extern void Compute_OPSCHs(std::list<BB*> bblist, BB_MAP value_map, MEM_POOL *pool);
 
 // Trace Utility routines
-extern void Print_BB_For_HB (list<BB*> bblist);
+extern void Print_BB_For_HB (std::list<BB*> bblist);
 
 #endif /* hb_sched_INCLUDED */

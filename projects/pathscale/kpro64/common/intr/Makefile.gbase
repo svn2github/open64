@@ -163,7 +163,7 @@ default: first $(TARGETS) last
 #----------------------------------------------------------------------
 first:
 ifeq ($(BUILD_OS), LINUX)
-	cd $(BUILD_AREA)/include && $(MAKE)
+	$(call submake,$(BUILD_AREA)/include)
 endif
 
 #----------------------------------------------------------------------

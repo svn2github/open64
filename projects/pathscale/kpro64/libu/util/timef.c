@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,6 +43,13 @@
 #include <fortran.h>
 #include <unistd.h>
 #include <sys/time.h>
+#ifdef KEY /* from <sys/time.h> but ifdef'ed out; needed in order to compile */
+struct timezone
+  {
+    int tz_minuteswest;		/* Minutes west of GMT.  */
+    int tz_dsttime;		/* Nonzero if DST is ever in effect.  */
+  };
+#endif
 
 #ifndef	_WORD32
 typedef long int64;

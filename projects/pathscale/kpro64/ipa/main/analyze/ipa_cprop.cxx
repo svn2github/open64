@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -49,6 +53,8 @@
 // ====================================================================
 // ====================================================================
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <alloca.h>
 #include <elf.h>
 #include "defs.h"
@@ -612,6 +618,11 @@ Connect_indirect_call (IPA_NODE* caller)
 
 	if (!call->Is_func_ptr ())
 	    continue;
+
+#ifdef KEY
+	if( call->Is_icall_slot() )
+	  continue;
+#endif
 
 	SUMMARY_VALUE &value = (*icall_iter)->Value();
 	if (!value.Is_addr_of () || !value.Is_global ())

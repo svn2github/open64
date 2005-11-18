@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -9483,7 +9487,9 @@ void    random_seed_intrinsic(opnd_type     *result_opnd,
          }
 
 
-# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# if (defined(KEY))
+         cn_idx = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, 32);
+# elif (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
          cn_idx = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, 64);
 # else
          cn_idx = CN_INTEGER_ONE_IDX;
@@ -13581,6 +13587,18 @@ void    size_intrinsic(opnd_type     *result_opnd,
          else if (arg_info_list[info_idx1].ed.section || 
                   ((IL_FLD(list_idx1) == IR_Tbl_Idx) &&
                    (IR_OPR(IL_IDX(list_idx1)) != Whole_Subscript_Opr))) {
+#ifdef KEY
+// Bug 570
+            if (arg_info_list[info_idx1].ed.shape[dim-1].fld == CN_Tbl_Idx){
+              OPND_FLD((*result_opnd)) = CN_Tbl_Idx;
+              int const_idx = arg_info_list[info_idx1].ed.shape[dim-1].idx;
+              if (CN_CONST (const_idx) > 0) 
+                OPND_IDX((*result_opnd)) = const_idx;
+              else
+                OPND_IDX((*result_opnd)) = CN_INTEGER_ZERO_IDX;
+            }
+            else{
+#endif
             NTR_IR_LIST_TBL(idx1);
             COPY_OPND(IL_OPND(idx1),
                       arg_info_list[info_idx1].ed.shape[dim-1]);
@@ -13599,7 +13617,9 @@ void    size_intrinsic(opnd_type     *result_opnd,
             IR_FLD_L(ir_idx) = IL_Tbl_Idx;
             IR_LIST_CNT_L(ir_idx) = 2;
             IR_OPND_R(ir_idx) = null_opnd;
-
+#ifdef KEY
+            }
+#endif
             if (OPND_FLD((*result_opnd)) == CN_Tbl_Idx) {
                res_exp_desc->constant = TRUE;
                res_exp_desc->foldable = TRUE;

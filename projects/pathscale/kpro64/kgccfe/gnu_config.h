@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -39,6 +45,6 @@
 #ifdef TARG_IA64
 #include "gnu/ia64/config.h"
 #endif /* TARG_IA64 */
-#ifdef TARG_IA32
-#include "gnu/ia32/config.h"
+#if defined(TARG_IA32) || defined(TARG_X8664)
+#include "gnu/i386/config.h"
 #endif /* TARG_IA32 */

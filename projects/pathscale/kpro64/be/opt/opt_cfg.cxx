@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -75,6 +80,7 @@ static char *rcs_id = 	opt_cfg_CXX"$Revision: 1.1.1.1 $";
 #include "bb_node_set.h"
 #include "opt_ssa.h"
 #include "opt_tail.h"
+#include "w2op.h"
 
 CFG::CFG(MEM_POOL *pool, MEM_POOL *lpool)
      : _bb_vec(pool),
@@ -241,7 +247,152 @@ CFG::Remove_path(BB_NODE *pred, BB_NODE *succ)
 
   // Note: Feedback is updated in context, not here
 }
+#ifdef KEY
+void
+CFG::Delete_bbs(BB_LIST *bbs, MOD_PHI_BB_CONTAINER *mod_phis)
+{
+  BB_NODE *last_bb, *succ, *pred;
+  BB_NODE *bb;
+  BB_LIST_ITER bb_iter, bb_succ_iter, bb_pred_iter;
+ 
+  FOR_ALL_ELEM( bb, bb_iter, Init(bbs) )
+    last_bb = bb;
+//  last_bb = bbs->Node();
 
+  INT num_succs = last_bb->Succ()->Len();
+  FmtAssert( num_succs <= 1,
+    ("CFG::Delete_bb: trying to delete BB%d with %d succs",
+     last_bb->Id(), num_succs) );
+
+  mINT32 *pos_array = NULL;
+  if ( num_succs > 0 ) {
+    pos_array = TYPE_OPT_POOL_ALLOC_N( mINT32, Loc_pool(), num_succs, -1 );
+    INT isucc = 0;
+    FOR_ALL_ELEM( succ, bb_succ_iter, Init(last_bb->Succ()) ) {
+      Is_True( isucc < num_succs,
+	("CFG::Delete_bb: wrong number of successors") );
+      pos_array[isucc] = succ->Pred()->Pos(last_bb);
+      isucc++;
+    }
+  }
+  INT32 pred_num = 0;
+
+  FOR_ALL_ELEM( bb, bb_iter, Init(bbs) ){
+    FOR_ALL_ELEM( pred, bb_pred_iter, Init( bb->Pred() ) ) {
+      if (bbs->Contains(pred))
+        continue;
+      pred_num ++;
+    }
+  }
+
+  if (pred_num == 0) {
+    // no pred. This can happen such as break inside loops
+    FOR_ALL_ELEM( succ, bb_succ_iter, Init(last_bb->Succ()) ) {
+      succ->Remove_phi_reference(succ->Pred()->Pos(last_bb));
+      succ->Remove_pred(last_bb, _mem_pool);
+    }
+  }
+
+  PHI_LIST *preserved_philist = NULL;
+  BB_NODE  *unique_succ = NULL;
+  if (last_bb->Succ()->Len() == 1 &&
+      last_bb->Succ()->Node()->Pred()->Len() == 1 &&
+      last_bb->Succ()->Node()->Phi_list()->Is_Empty() &&
+      last_bb->Phi_list() != NULL) {
+    unique_succ = last_bb->Succ()->Node();
+
+    preserved_philist = last_bb->Phi_list()->Dup_phi_node(_mem_pool, last_bb);
+    PHI_NODE *phi;
+    PHI_LIST_ITER phi_iter;
+    FOR_ALL_ELEM ( phi, phi_iter, Init(preserved_philist)) {
+      phi->Set_bb(unique_succ);
+    }
+    mod_phis->Add_entry(unique_succ, unique_succ->Phi_list(),
+			preserved_philist, _mem_pool);
+    unique_succ->Set_phi_list(preserved_philist);
+  }
+
+  FOR_ALL_ELEM( bb, bb_iter, Init(bbs) ){
+    FOR_ALL_ELEM( pred, bb_pred_iter, Init( bb->Pred() ) ) {
+      if (bbs->Contains(pred))
+        continue;
+      INT succnum = 0;
+      FOR_ALL_ELEM( succ, bb_succ_iter, Init(last_bb->Succ()) ) {
+        if (succ->Pred()->Contains(pred)) {
+	  succ->Remove_phi_reference(succ->Pred()->Pos(last_bb));
+	  succ->Remove_pred(last_bb, _mem_pool);
+        }
+        else {
+          BOOL added = FALSE;
+	  BB_LIST *tmp;
+	  for (tmp = succ->Pred(); tmp != NULL; tmp = tmp->Next()) {
+	    if (tmp->Node() == last_bb) {
+	      tmp->Set_node(pred);
+	      added = TRUE;
+	      break;
+	    }
+	  }
+	  if ( !added ) {
+	    PHI_LIST *new_philist;
+	    succ->Append_pred(pred, _mem_pool); 
+	    new_philist = succ->Phi_list()->Dup_phi_node(_mem_pool, succ,
+						       pos_array[succnum]);
+            mod_phis->Add_entry(succ, succ->Phi_list(), new_philist, _mem_pool);
+	    succ->Set_phi_list(new_philist);
+	  }
+        }
+        succnum++;
+      }
+    }
+  }
+
+//  if (unique_succ) {
+//    mod_phis->Add_entry(unique_succ, unique_succ->Phi_list(),
+//			preserved_philist, _mem_pool);
+//  }
+
+  FOR_ALL_ELEM( succ, bb_succ_iter, Init(last_bb->Succ()) ) {
+    FOR_ALL_ELEM( bb, bb_iter, Init(bbs) ){
+      FOR_ALL_ELEM( pred, bb_pred_iter, Init(bb->Pred()) ) {
+        if (bbs->Contains(pred))
+          continue;
+        BB_LIST *tmp;
+        BOOL added = FALSE;
+        if (pred->Succ()->Contains(succ)) {
+	  pred->Remove_succ(bb, _mem_pool);
+        }
+        else {
+	  for (tmp = pred->Succ(); tmp != NULL; tmp = tmp->Next()) {
+	    if (tmp->Node() == bb) {
+	      tmp->Set_node(succ);
+	      added = TRUE;
+	      break;
+	    }
+	  }
+	  if (!added) 
+	    pred->Append_succ(succ, _mem_pool); 
+        }	
+      }
+    }
+  }
+  FOR_ALL_ELEM( bb, bb_iter, Init(bbs) ){
+    if ( Feedback() && bb->Succ()->Len() == 1 )
+      Feedback()->Move_incoming_edges_dest( bb->Id(), bb->Succ()->Node()->Id() );
+    Remove_bb(bb);
+  }
+/*
+  while (bbs->Len() > 1){
+    FOR_ALL_ELEM( bb, bb_iter, Init(bbs) ) 
+      last_bb = bb;
+    if ( Feedback() && last_bb->Succ()->Len() == 1 )
+      Feedback()->Move_incoming_edges_dest( last_bb->Id(), last_bb->Succ()->Node()->Id() );
+    Remove_bb(last_bb);
+    bbs->Remove(last_bb, _mem_pool);
+  }
+*/
+  CXX_DELETE(bbs, _mem_pool);
+}
+#endif
 // ====================================================================
 // Remove_block - undo the internal linkage to remove this block
 //                when phi_list is replaced, journal in mod_phis list
@@ -339,7 +490,7 @@ CFG::Delete_bb(BB_NODE *bb, MOD_PHI_BB_CONTAINER *mod_phis)
 	  succ->Append_pred(pred, _mem_pool); 
 	  new_philist = succ->Phi_list()->Dup_phi_node(_mem_pool, succ,
 						       pos_array[succnum]);
-          mod_phis->Add_entry(succ, succ->Phi_list(), new_philist);
+          mod_phis->Add_entry(succ, succ->Phi_list(), new_philist, _mem_pool);
 	  succ->Set_phi_list(new_philist);
 	}
       }
@@ -351,7 +502,7 @@ CFG::Delete_bb(BB_NODE *bb, MOD_PHI_BB_CONTAINER *mod_phis)
     Is_Trace(Trace(), (TFile,"CFG::Delete_bb: preserve dead phi from "
 		       "BB%d to BB%d\n", bb->Id(), unique_succ->Id()));
     mod_phis->Add_entry(unique_succ, unique_succ->Phi_list(),
-			preserved_philist);
+			preserved_philist, _mem_pool);
     unique_succ->Set_phi_list(preserved_philist);
   }
 
@@ -993,6 +1144,40 @@ CFG::Lower_do_while( WN *wn, END_BLOCK *ends_bb )
 }
 
 // ====================================================================
+// check if the expr in wn is a simple expression for purpose of if-conversion;
+// if true, return number of leaf nodes; otherwise, return 0 for false.
+// ====================================================================
+INT 
+CFG::Is_simple_expr(WN *wn) {
+  OPERATOR opr = WN_operator(wn);
+  if (opr == OPR_LDID && 
+     _opt_stab->Safe_to_speculate(WN_aux(wn)) &&
+     !_opt_stab->Is_volatile(WN_aux(wn))) 
+    return 1;
+  if (opr == OPR_INTCONST || opr == OPR_CONST)
+    return 1;
+#if defined(TARG_IA32) || defined(TARG_X8664)
+  if (! MTYPE_is_integral(WN_rtype(wn)))
+    return 0;
+  if (opr == OPR_NEG)
+    return Is_simple_expr(WN_kid0(wn));
+  if (opr == OPR_ADD || opr == OPR_SUB || opr == OPR_NEG ||
+      opr == OPR_SHL || opr == OPR_ASHR || opr == OPR_LSHR ||
+      opr == OPR_BAND || opr == OPR_BIOR || opr == OPR_BNOR || opr == OPR_BXOR)
+  { INT kid0ans, kid1ans;
+    kid0ans = Is_simple_expr(WN_kid0(wn));
+    if (kid0ans == 0)
+      return 0;
+    kid1ans = Is_simple_expr(WN_kid1(wn));
+    if (kid1ans == 0)
+      return 0;
+    return kid0ans + kid1ans;
+  }
+#endif
+  return 0;
+}
+
+// ====================================================================
 // fully lower IF statements
 // ====================================================================
 void
@@ -1109,6 +1294,29 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
     // Get the desc type
     MTYPE dsctyp = WN_desc(stmt);
 
+    if (dsctyp == MTYPE_M) {
+      // don't generate select for MTYPE_M because there is no register for
+      // MTYPE_M
+      goto skip_if_conversion;
+    }
+#ifdef KEY
+    if (!OPCODE_Can_Be_Speculative(OPC_I4I4ILOAD)) {
+      if (!empty_then) {
+        ST *st = _opt_stab->St(WN_aux(WN_first(then_wn)));
+        if (ST_sclass(st) == SCLASS_FORMAL_REF)
+	  goto skip_if_conversion; // may be storing into read-only data (bug 12
+      }
+      if (!empty_else) {
+        ST *st = _opt_stab->St(WN_aux(WN_first(else_wn)));
+        if (ST_sclass(st) == SCLASS_FORMAL_REF)
+	  goto skip_if_conversion; // may be storing into read-only data (bug 12
+      }
+    }
+#endif
+#ifdef TARG_X8664
+    if (MTYPE_is_float(dsctyp))
+      goto skip_if_conversion;
+#endif /* TARG_X8664 */
     WN *load = NULL;
     WN *store = WN_CopyNode(stmt);
     WN_set_aux(store, WN_aux(stmt));   // setting mapping to indicate ST_is_aux
@@ -1124,28 +1332,28 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
     }
     WN *then_expr = empty_then ? load : WN_kid0(WN_first(then_wn));
     WN *else_expr = empty_else ? load : WN_kid0(WN_first(else_wn));
-    OPERATOR then_opr = WN_operator(then_expr);
-    OPERATOR else_opr = WN_operator(else_expr);
+    INT lanswer, ranswer;
 
     // profitability check
     if ( // The STID <var> is not volatile
       !_opt_stab->Is_volatile(WN_aux(store)) &&
       
+#if !defined(TARG_IA32) && !defined(TARG_X8664)
       // The expr in the then-block can be speculated and non-volatile,
       // is a const or LDA.
-      ((then_opr == OPR_LDID && 
-	_opt_stab->Safe_to_speculate(WN_aux(then_expr)) &&
-	!_opt_stab->Is_volatile(WN_aux(then_expr))) ||
-       (then_opr == OPR_INTCONST ||
-	then_opr == OPR_CONST)) &&
+      Is_simple_expr(then_expr) &&
 
       // The expr in the else-block can be speculated and non-volatile,
       // is a const or LDA.
-      ((else_opr == OPR_LDID && 
-	_opt_stab->Safe_to_speculate(WN_aux(else_expr)) &&
-	!_opt_stab->Is_volatile(WN_aux(else_expr))) ||
-       (else_opr == OPR_INTCONST ||
-	else_opr == OPR_CONST))) {
+      Is_simple_expr(else_expr) 
+#else // allow simple expressions of up to 4 leaf nodes
+      (lanswer = Is_simple_expr(then_expr)) && 
+
+      (ranswer = Is_simple_expr(else_expr)) && 
+
+      (lanswer + ranswer) <= WOPT_Enable_If_Conv_Limit
+#endif
+       ) {
 
       // Generate a SELECT expression
       WN *sel = WN_Select( Mtype_comparison(dsctyp),
@@ -1165,6 +1373,9 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
     }
   }
 
+#ifdef TARG_X8664
+ skip_if_conversion:
+#endif /* TARG_X8664 */
   // we need a merge block, but don't connect it yet
   BB_NODE *merge_bb = Create_labelled_bb();
   BB_NODE *then_bb = NULL, *else_bb = NULL;
@@ -1862,7 +2073,16 @@ CFG::Process_entry( WN *wn, END_BLOCK *ends_bb )
 
   // make a copy of the func_entry, none of the original WHIRL can be saved
   WN *copy_wn = WN_CopyNode(wn);
+#ifdef KEY
+// This wn is a OPR_FUNC_ENTRY node. If we copy the map-id directly, we don't
+// remove the id from the free-list. OPR_REGION and OPR_FUNC_ENTRY are the 
+// only 2 operators in the same annotation category. So an OPR_REGION picks
+// up the first free-list entry which turns out to be the same as the one
+// in OPR_FUNC_ENTRY.
+  WN_COPY_All_Maps(copy_wn, wn);
+#else
   WN_map_id(copy_wn) = WN_map_id(wn);
+#endif
 
   if ( Cur_PU_Feedback )
     Cur_PU_Feedback->FB_duplicate_node( wn, copy_wn );
@@ -4047,7 +4267,7 @@ Compute_loop_depth_rec(BB_LOOP *loop, INT depth)
     BB_LOOP *child;
     FOR_ALL_NODE(child, loop_iter, Init()) {
       INT child_depth = Compute_loop_depth_rec(child, depth+1);
-      max_depth = max(max_depth, child_depth);
+      max_depth = MAX(max_depth, child_depth);
     }
   }
   loop->Set_depth(depth);
@@ -4489,7 +4709,8 @@ CFG::Find_entry_bb(void)
 void
 MOD_PHI_BB_CONTAINER::Add_entry(BB_NODE  *bb,
                                 PHI_LIST *old_lst,
-                                PHI_LIST *new_lst)
+                                PHI_LIST *new_lst,
+                                MEM_POOL *pool)
 {
   if (this == NULL) return;
   // first check if there is an entry in the list already
@@ -4500,6 +4721,15 @@ MOD_PHI_BB_CONTAINER::Add_entry(BB_NODE  *bb,
       // has to be a replacement
       Is_True (old_lst == tmp->New_lst(),
                ("MOD_PHI_BB_CONTAINER::Add_entry: Not replacement?"));
+      if (tmp->Old_lst() != old_lst){
+        PHI_NODE *phi;
+        PHI_LIST_ITER phi_iter;
+        FOR_ALL_ELEM ( phi, phi_iter, Init(old_lst) ){
+          CXX_DELETE_ARRAY(phi->Vec(), pool);
+          CXX_DELETE(phi, pool);
+        }
+        CXX_DELETE(old_lst, pool);
+      }
       tmp->Set_new_lst(new_lst);
       return;
     }

@@ -2,22 +2,22 @@
    Copyright (C) 2000 Free Software Foundation, Inc.
    Contributed by CodeSourcery, LLC
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
 /* References:
 
@@ -32,10 +32,6 @@ Boston, MA 02111-1307, USA.  */
 #include "rtl.h"
 #include "hard-reg-set.h"
 #include "basic-block.h"
-
-/* Use malloc to allocate obstack chunks.  */
-#define obstack_chunk_alloc xmalloc
-#define obstack_chunk_free free
 
 /* A register conflict graph is an undirected graph containing nodes
    for some or all of the regs used in a function.  Arcs represent
@@ -85,6 +81,7 @@ struct conflict_graph_arc_def
 };
 
 typedef struct conflict_graph_arc_def *conflict_graph_arc;
+typedef const struct conflict_graph_arc_def *const_conflict_graph_arc;
 
 
 /* A conflict graph.  */
@@ -102,7 +99,7 @@ struct conflict_graph_def
      conflicts exist involving that reg.  */
   conflict_graph_arc *neighbor_heads;
 
-  /* Arcs are allocated from here. */
+  /* Arcs are allocated from here.  */
   struct obstack arc_obstack;
 };
 
@@ -115,19 +112,19 @@ struct conflict_graph_def
    R1 and R2.  R1 is assumed to be smaller or equal to R2.  */
 #define CONFLICT_HASH_FN(R1, R2) ((R2) * ((R2) - 1) / 2 + (R1))
 
-static unsigned arc_hash	PARAMS ((const void *));
+static hashval_t arc_hash	PARAMS ((const void *));
 static int arc_eq		PARAMS ((const void *, const void *));
 static int print_conflict	PARAMS ((int, int, void *));
 static void mark_reg		PARAMS ((rtx, rtx, void *));
 
 /* Callback function to compute the hash value of an arc.  Uses
-   current_graph to locate the graph to which the arc belongs. */
+   current_graph to locate the graph to which the arc belongs.  */
 
-static unsigned
+static hashval_t
 arc_hash (arcp)
      const void *arcp;
 {
-  conflict_graph_arc arc = (conflict_graph_arc) arcp;
+  const_conflict_graph_arc arc = (const_conflict_graph_arc) arcp;
 
   return CONFLICT_HASH_FN (arc->smaller, arc->larger);
 }
@@ -140,8 +137,8 @@ arc_eq (arcp1, arcp2)
      const void *arcp1;
      const void *arcp2;
 {
-  conflict_graph_arc arc1 = (conflict_graph_arc) arcp1;
-  conflict_graph_arc arc2 = (conflict_graph_arc) arcp2;
+  const_conflict_graph_arc arc1 = (const_conflict_graph_arc) arcp1;
+  const_conflict_graph_arc arc2 = (const_conflict_graph_arc) arcp2;
 
   return arc1->smaller == arc2->smaller && arc1->larger == arc2->larger;
 }
@@ -186,7 +183,7 @@ conflict_graph_delete (graph)
 }
 
 /* Adds a conflict to GRAPH between regs REG1 and REG2, which must be
-   distinct.  Returns non-zero, unless the conflict is already present
+   distinct.  Returns nonzero, unless the conflict is already present
    in GRAPH, in which case it does nothing and returns zero.  */
 
 int
@@ -235,7 +232,7 @@ conflict_graph_add (graph, reg1, reg2)
   return 1;
 }
 
-/* Returns non-zero if a conflict exists in GRAPH between regs REG1
+/* Returns nonzero if a conflict exists in GRAPH between regs REG1
    and REG2.  */
 
 int
@@ -446,21 +443,20 @@ conflict_graph_compute (regs, p)
      regset regs;
      partition p;
 {
-  int b;
   conflict_graph graph = conflict_graph_new (max_reg_num ());
+  regset_head live_head;
+  regset live = &live_head;
+  regset_head born_head;
+  regset born = &born_head;
+  basic_block bb;
 
-  for (b = n_basic_blocks; --b >= 0; )
+  INIT_REG_SET (live);
+  INIT_REG_SET (born);
+
+  FOR_EACH_BB_REVERSE (bb)
     {
-      basic_block bb = BASIC_BLOCK (b);
-      regset_head live_head;
-      regset live = &live_head;
-      regset_head born_head;
-      regset born = &born_head;
       rtx insn;
       rtx head;
-
-      INIT_REG_SET (live);
-      INIT_REG_SET (born);
 
       /* Start with the regs that are live on exit, limited to those
 	 we're interested in.  */
@@ -481,14 +477,9 @@ conflict_graph_compute (regs, p)
 	    {
 	      /* Determine which regs are set in this insn.  Since
   	         we're in SSA form, if a reg is set here it isn't set
-  	         anywhere elso, so this insn is where the reg is born.  */
+  	         anywhere else, so this insn is where the reg is born.  */
 	      CLEAR_REG_SET (born);
-	      note_stores (PATTERN (insn), mark_reg, (void *) born);
-#ifdef AUTO_INC_DEC
-	      for (link = REG_NOTES (insn); link; link = XEXP (link, 1))
-		if (REG_NOTE_KIND (link) == REG_INC)
-		  mark_reg (XEXP (link, 0), NULL_RTX, NULL);
-#endif
+	      note_stores (PATTERN (insn), mark_reg, born);
 	      AND_REG_SET (born, regs);
 	  
 	      /* Regs born here were not live before this insn.  */
@@ -527,6 +518,9 @@ conflict_graph_compute (regs, p)
 	    }
 	}
     }
+
+  FREE_REG_SET (live);
+  FREE_REG_SET (born);
 
   return graph;
 }

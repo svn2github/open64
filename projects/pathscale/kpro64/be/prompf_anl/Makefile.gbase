@@ -188,7 +188,7 @@ LDIRT += ii_files
 
 VPATH    =  $(SRC_DIRS)
 
-LCOPTS = $(STD_COMPILE_OPTS) -fullwarn
+LCOPTS = $(STD_COMPILE_OPTS) -fullwarn $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 
@@ -242,7 +242,7 @@ LLDLIBS	= -none -lc
 #----------------------------------------------------------------------
 first :
 ## verify that be.so is up to date
-	cd $(TARGDIR)/be && $(MAKE)
+	$(call submake,$(TARGDIR)/be)
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is

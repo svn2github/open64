@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,43 +45,40 @@
 #include "basic.h"
 
 /* copy string and allocate memory for it */
-extern string string_copy (string s);
+extern char *string_copy (char *s);
+
+/* make a string starting at position i, and extending for len chars */
+extern char *substring_copy (char *s, int i, int len);
 
 /* concatenate two strings */
-extern string concat_strings (string a, string b);
+extern char *concat_strings (const char *a, const char *b);
 
 /* return suffix of string */
-extern string get_suffix (string s);
+extern char *get_suffix (const char *s);
 
 /* change suffix of string */
-extern string change_suffix (string s, string suffix);
+extern char *change_suffix (char *s, char *suffix);
 
 /* string has blank space */
-extern boolean has_blank (string s);
+extern boolean has_blank (char *s);
 
 /* Expand template with arg.
  * Basically, the arg string replaces the %* string in the template,
  * e.g. -foo%s with bar becomes -foobar.
  */
-extern string expand_template_string (string template, string arg);
+extern char *expand_template_string (char *template, char *arg);
 
 /* return true if strings are identical */
-#define same_string(x,y)	(strcmp(x,y) == 0)
 #define same_string_prefix(x,y)	(strncmp(x,y,strlen(y)) == 0)
-
-/* return true if sub string is contained in s string */
-#define contains_substring(s,sub)	(strstr(s,sub) != NULL)
 
 /* Replace old_pattern in base string with new_pattern */
 /* This modifies the base string in place */
-extern void replace_substring (string base, string old_pattern, string new_pattern);
-
-#define string_length(s)	strlen(s)
+extern void replace_substring (char *base, char *old_pattern, char *new_pattern);
 
 
 /* linked list of strings */
 typedef struct string_item_rec {
-	string name;
+	char *name;
 	struct string_item_rec *next;
 } string_item_t;
 typedef struct string_list_rec {
@@ -89,21 +90,23 @@ typedef struct string_list_rec {
 extern string_list_t * init_string_list (void);
 
 /* add string to end of list */
-extern void add_string (string_list_t *list, string s);
+extern void add_string (string_list_t *list, char *s);
 /* add each blank-separated substring to end of list */
-extern void add_multi_strings (string_list_t *list, string s);
+extern void add_multi_strings (string_list_t *list, char *s);
 
 /* add string to end of list if not already in list */
-extern void add_string_if_new (string_list_t *list, string s);
+extern void add_string_if_new (string_list_t *list, char *s);
 
 /* replace old in list with new */
-extern void replace_string (string_list_t *list, string old, string new);
+extern void replace_string (string_list_t *list, char *old, char *new);
 
 /* append string list b at end of string list a */
 extern void append_string_lists (string_list_t *a, string_list_t *b);
 
 /* print the list */
 extern void print_string_list (FILE *f, string_list_t *list);
+
+extern const char *ends_with(const char *s, const char *sfx);
 
 /* iterator */
 #define FOREACH_STRING(p,list)	\

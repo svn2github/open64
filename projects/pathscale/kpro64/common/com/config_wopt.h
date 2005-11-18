@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -85,6 +89,7 @@ extern BOOL WOPT_Enable_Aggressive_Code_Motion;
 extern INT32 WOPT_Enable_Aggressive_CM_Limit;	
 extern INT32 WOPT_Enable_Aggressive_CM_Threshold;
 extern BOOL WOPT_Enable_Aggressive_dce;
+extern BOOL WOPT_Enable_Aggressive_dce_for_bbs;
 extern BOOL WOPT_Enable_Aggressive_Doloop_Promotion;
 extern BOOL WOPT_Enable_Aggressive_IVR;
 extern BOOL WOPT_Enable_Aggressive_Lftr;
@@ -162,6 +167,10 @@ extern BOOL WOPT_Enable_Ivar_PRE;       /* enable *p as PRE candidate */
 extern BOOL WOPT_Enable_Ivincr_Cand;
 extern BOOL WOPT_Enable_IVR;		/* induction-var recognition */
 extern INT32 WOPT_Enable_IVR_Expand_Limit;  /* limit of expr expansion to search for incr */
+#ifdef KEY
+extern INT32 WOPT_Enable_Ivr_Limit;
+extern INT32 WOPT_Enable_Ivr_Cand_Limit;
+#endif
 					
 /* do ivr for outermost in ||-region */
 extern BOOL WOPT_Enable_IVR_Outermost_Loop_Parallel_Region; 
@@ -212,6 +221,8 @@ extern BOOL WOPT_Enable_Second_Alias_Class; /* repeat alias class for LNO */
 extern BOOL WOPT_Enable_Second_Order;
 extern BOOL WOPT_Enable_Simp_Iload;	/* simplifier folding iload */
 extern BOOL WOPT_Enable_Simple_If_Conv; /* enable simple if-conversion at CFG build time */
+extern INT32 WOPT_Enable_If_Conv_Limit; /* max number of leaf nodes allowed in a
+					   simple expr in simple if conv */
 extern char *WOPT_Enable_Skip;
 extern struct option_list *WOPT_Skip;	/* Skip option list */
 extern struct skiplist *WOPT_Skip_List;	/* Preprocessed skip list */
@@ -265,5 +276,13 @@ extern BOOL  WOPT_Enable_Lpre_Before_Ivr; // For running lpre early
 extern BOOL  WOPT_Enable_Spre_Before_Ivr; // For running spre early
 extern BOOL  WOPT_Enable_Bdce_Before_Ivr; // For running bdce early
 extern BOOL  WOPT_Enable_New_Phase_Ordering; // Enables some phases before ivr
+#ifdef KEY
+extern BOOL  WOPT_Enable_Preserve_Mem_Opnds; // if TRUE, suppress EPRE on 
+				// iloads that are operands of FP operations
+extern BOOL  WOPT_Enable_Retype_Expr;   // whether to call WN_retype_expr to 
+					// change 64-bit operations to 32-bit 
+extern INT32 WOPT_Enable_Folded_Scalar_Limit; // to limit number of scalars
+					// formed by Fold_Lda_Iload_Istore()
+#endif
 #endif /* config_wopt_INCLUDED */
 

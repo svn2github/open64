@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -429,7 +434,7 @@ Find_one_variant(BB_NODE *bb, CODEREP *vr, CODEREP *cr, NUMBER *factor,
       return r0;
 
     case OPR_CVT:
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_X8664)
       /* CVTL-RELATED start (performance)  */
       if (opc == OPC_U8I4CVT) {
 	r0 = Find_one_variant(bb, vr, cr->Opnd(0), factor, htable);

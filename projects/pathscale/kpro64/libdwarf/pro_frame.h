@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -68,6 +72,9 @@ struct Dwarf_P_Cie_s {
 	Dwarf_Ubyte		cie_code_align;	/* alignment of code */
 	Dwarf_Sbyte		cie_data_align;	
 	Dwarf_Ubyte		cie_ret_reg;	/* return register # */
+#ifdef KEY
+	Dwarf_Unsigned		personality;	/* personality routine */
+#endif // KEY
 	char			*cie_inst;	/* initial instruction */
 	long			cie_inst_bytes;
 						/* no of init_inst */

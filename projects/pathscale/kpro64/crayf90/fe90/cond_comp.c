@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -36,7 +40,11 @@
 
 static char USMID[] = "\n@(#)5.0_pl/sources/cond_comp.c	5.8	09/21/99 00:21:13\n";
 
+#ifndef KEY
 # include <sys/time.h>
+#else
+# include <time.h>
+#endif
 
 # include "defines.h"           /* Machine dependent ifdefs */
 

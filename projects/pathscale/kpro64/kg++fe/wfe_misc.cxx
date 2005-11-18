@@ -1,3 +1,35 @@
+/* 
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it would be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * Further, this software is distributed without any warranty that it is
+ * free of the rightful claim of any third person regarding infringement 
+ * or the like.  Any license provided herein, whether implied or 
+ * otherwise, applies only to this software file.  Patent licenses, if 
+ * any, provided herein do not apply to combinations of this program with 
+ * other software, or any other product whatsoever.  
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write the Free Software Foundation, Inc., 59
+ * Temple Place - Suite 330, Boston MA 02111-1307, USA.
+ *
+ * File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+ * front-ends to GNU 3.2.2 release.
+ */
+
+
+/* 
+   Copyright (C) 2001 Tensilica, Inc.  All Rights Reserved.
+   Revised to support Tensilica processors and to improve overall performance
+ */
+
 #include <values.h>
 #include <sys/types.h>
 #include <elf.h>
@@ -24,6 +56,9 @@ extern "C" {
 #include "gnu/system.h"
 #include "gnu/tree.h"
 }
+#ifdef KEY
+#include "gnu/flags.h"
+#endif
 #include "wn.h"
 #include "wn_util.h"
 #include "wn_simp.h"
@@ -35,11 +70,10 @@ extern "C" {
 #include "wfe_expr.h"
 #include "wfe_dst.h"
 #include "wfe_misc.h"
-#include "wfe_expr.h"
 #include "wfe_stmt.h"
 #include "c_int_model.h"
-#ifdef TARG_MIPS
-#include "mips/mips.h"
+#ifdef KEY
+#include "tree_symtab.h"
 #endif
 
 int WFE_Keep_Zero_Length_Structs = TRUE;
@@ -58,6 +92,10 @@ int trace_verbose = FALSE;
 static BOOL Prepare_Source (void);
 static void WFE_Stmt_Stack_Init (void);
 static void WFE_Stmt_Stack_Free (void);
+#ifdef KEY
+static void WFE_Guard_Var_Init();
+#endif
+#ifndef KEY
 // The following taken from gnu/flags.h
 // our #include of flags.h gets common/util/flags.h instead
 enum debug_info_level
@@ -67,6 +105,7 @@ enum debug_info_level
   DINFO_LEVEL_NORMAL,   /* Write info for all declarations (and line table). */
   DINFO_LEVEL_VERBOSE   /* Write normal info plus #define/#undef info.  */
 };
+#endif // !KEY
 
 /* Specify how much debugging info to generate.  */
 extern enum debug_info_level debug_info_level;
@@ -329,6 +368,9 @@ void
 WFE_Init (INT argc, char **argv, char **envp )
 {
   Set_Error_Tables ( Phases, host_errlist );
+#ifdef KEY
+  Initialize_C_Int_Model();
+#endif
   MEM_Initialize();
   Handle_Signals();
 
@@ -337,13 +379,16 @@ WFE_Init (INT argc, char **argv, char **envp )
   Set_Error_Phase ( "Front End Driver" );
   Preconfigure ();
 #ifdef TARG_MIPS
-  ABI_Name = mips_abi_string;
+  ABI_Name = "n64";
 #endif
 #ifdef TARG_IA64
   ABI_Name = "i64";
 #endif
 #ifdef TARG_IA32
   ABI_Name = "ia32";
+#endif
+#if defined(TARG_IA32) || defined(TARG_X8664)
+  ABI_Name = TARGET_64BIT ? "n64" : "n32";
 #endif
   Init_Controls_Tbl();
   Argc = argc;
@@ -364,6 +409,10 @@ WFE_Init (INT argc, char **argv, char **envp )
   // This is not right: we should match what gnu does
   // and this is only an approximation.
   Debug_Level = (debug_info_level >= DINFO_LEVEL_NORMAL)? 2:0;
+
+#ifdef KEY
+  WFE_Guard_Var_Init ();
+#endif
 } /* WFE_Init */
 
 void
@@ -428,6 +477,13 @@ char * WFE_Stmt_Kind_Name [wfe_stmk_last+1] = {
   "'function pragma'",
   "'function body'",
   "'region pragmas'",
+#ifdef KEY
+  "'region body'",
+  "'region exits'",
+  "'call region pragmas'",
+  "'call region body'",
+  "'call region exits'",
+#endif // KEY
   "'scope'",
   "'if condition'",
   "'if then clause'",
@@ -491,6 +547,19 @@ WFE_Stmt_Top (void)
   return (wn_stmt_sp->wn);
 } /* WFE_Stmt_Top */
 
+#ifdef KEY
+// A region has started before a call stmt, and it seems its difficult to close the region
+// cleanly. For the time being, we have this function that closes the call region.
+static void
+Check_For_Call_Region (void)
+{
+  if (key_exceptions) {
+	if (wn_stmt_sp->kind == wfe_stmk_call_region_body)
+		Setup_EH_Region();
+  }
+}
+#endif // KEY
+
 void
 WFE_Stmt_Append (WN* wn, SRCPOS srcpos)
 {
@@ -510,6 +579,11 @@ WFE_Stmt_Append (WN* wn, SRCPOS srcpos)
     last = WN_last(body);
     WN_INSERT_BlockAfter (body, last, wn);
   }
+
+#ifdef KEY
+// This should not ideally be mixed with this function code, but ...
+  Check_For_Call_Region();
+#endif // KEY
 } /* WFE_Stmt_Append */
 
 
@@ -552,6 +626,20 @@ WFE_Stmt_Pop (WFE_STMT_KIND kind)
   FmtAssert (wn_stmt_sp >= wn_stmt_stack,
              ("no more entries on stack in function WFE_Stmt_Pop"));
 
+#ifdef KEY
+// another hack.
+  WN * to_be_pushed = 0;
+  if (key_exceptions && wn_stmt_sp->kind != kind)
+  {
+  	FmtAssert (wn_stmt_sp->kind == wfe_stmk_call_region_body,
+             ("mismatch in statements: expected %s, got %s\n",
+              WFE_Stmt_Kind_Name [kind],
+              WFE_Stmt_Kind_Name [wn_stmt_sp->kind]));
+
+	to_be_pushed = WFE_Stmt_Pop (wfe_stmk_call_region_body);
+  }
+#endif // KEY
+
   FmtAssert (wn_stmt_sp->kind == kind,
              ("mismatch in statements: expected %s, got %s\n",
               WFE_Stmt_Kind_Name [kind],
@@ -559,6 +647,11 @@ WFE_Stmt_Pop (WFE_STMT_KIND kind)
 
   wn = wn_stmt_sp->wn;
   wn_stmt_sp--;
+
+#ifdef KEY
+  if (to_be_pushed) 
+  	WFE_Stmt_Push (to_be_pushed, wfe_stmk_call_region_body, Get_Srcpos()); 
+#endif
 
   return (wn);
 } /* WFE_Stmt_Pop */
@@ -569,3 +662,58 @@ void process_diag_override_option(an_option_kind kind,
 {
 }
 */
+
+#ifdef KEY
+// Stack of VAR_DECLs representing guard variables.  A NULL_TREE means the
+// guard variable is needed but not yet allocated.
+std::vector<tree> guard_vars;
+
+static void
+WFE_Guard_Var_Init()
+{
+  // Clear the stack.
+  guard_vars.clear();
+}
+
+// Indicate a new guard variable is needed.
+void
+WFE_Guard_Var_Push()
+{
+  guard_vars.push_back(NULL_TREE);
+}
+
+// Get the guard variable currently in effect.  NULL_TREE if guard variable is
+// needed but not yet allocated.
+tree
+WFE_Guard_Var_Pop()
+{
+  FmtAssert (!guard_vars.empty(), ("WFE_Guard_Var_Pop: no guard vars to pop"));
+  tree t = guard_vars.back();
+  guard_vars.pop_back();
+  return t;
+}
+
+// Return the current guard variable.  Allocate one if it doesn't exist.
+tree
+WFE_Get_Guard_Var()
+{
+  tree t;
+
+  // Empty stack means no guard variable is needed.
+  if (guard_vars.empty())
+    return NULL_TREE;
+
+  // If top of stack is not NULL_TREE, then it is a valid guard variable.
+  t = guard_vars.back();
+  if (t != NULL_TREE)
+    return t;
+
+  // Top of stack is NULL_TREE.  Replace top of stack with a real guard
+  // variable.
+  guard_vars.pop_back();	// Pop off the NULL_TREE.
+  t = build_decl(VAR_DECL, NULL_TREE, integer_type_node);
+  Get_ST(t);
+  guard_vars.push_back(t);	// Push new guard variable onto stack.
+  return t;
+}
+#endif

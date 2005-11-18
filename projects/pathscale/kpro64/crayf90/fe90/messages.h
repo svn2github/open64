@@ -1,5 +1,7 @@
 /*
 
+  Copyright 2004 PathScale, Inc.  All Rights Reserved.
+
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -58,7 +60,7 @@ static	last_msg_queue_type	last_msg_queue[LAST_MSG_QUEUE_SIZE]	= {
        char	 group_code[]	= "cf90";
 
 # if defined(_TARGET_OS_LINUX)
-       char      message_prefix[]       = "sgif90";
+       char      message_prefix[]       = PSC_NAME_PREFIX "f90";
 # elif defined(_TARGET_OS_IRIX)
        char      message_prefix[]       = "f90";
 # else

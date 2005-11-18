@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -46,7 +50,7 @@
 #define ARGC f77argc
 #endif
 #elif defined(__linux)
-#define ARGC _f90argc
+#define ARGC f__xargc
 #endif
 
 extern int

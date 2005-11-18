@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -69,7 +73,7 @@
 #ifndef wn_INCLUDED
 #include "wn.h"
 #endif
-#include <vector.h>             // STL vector.
+#include <vector>             // STL vector.
 
 #ifndef instr_reader_INCLUDED
 #include "instr_reader.h"
@@ -92,6 +96,19 @@
 #define TP_OPT_FEEDBACK_PROP   0x0800
 #define TP_CG_FEEDBACK         0x1000
 #define TP_CG_FEEDBACK_DRAW    0x2000
+
+
+// ==================================================================
+// Map to record <pu_runtime_address, pu_name> pair.
+// 
+
+template <class _Key> struct hash { };
+struct hash<UINT64> {
+  size_t operator()(const UINT64 x)const{return (size_t)x;}
+};
+
+typedef hash_map<UINT64, char*, hash<UINT64> > ADDRESS_NAME_MAP;
+typedef hash_map<UINT64, INT32, hash<UINT64> > ADDRESS_PUSIZE_MAP;
 
 
 // ====================================================================
@@ -118,6 +135,10 @@ private:
   bool        _trace;      // Get_Trace(TP_FEEDBACK, TP_FEEDBACK_WN)
   bool        _trace_draw; // Get_Trace(TP_FEEDBACK, TP_FEEDBACK_WN_DRAW)
 
+#ifdef KEY
+  UINT64     _runtime_func_addr;  // run time function address
+#endif
+
   // For Whirl nodes, the map WN_MAP_FEEDBACK holds an index into
   // one of the following vectors:
 
@@ -126,21 +147,33 @@ private:
   vector< FB_Info_Loop,    mempool_allocator<FB_Info_Loop>    >  _loops;
   vector< FB_Info_Circuit, mempool_allocator<FB_Info_Circuit> >  _circuits;
   vector< FB_Info_Call,    mempool_allocator<FB_Info_Call>    >  _calls;
+  vector< FB_Info_Icall,   mempool_allocator<FB_Info_Icall>   >  _icalls;
   vector< FB_Info_Switch,  mempool_allocator<FB_Info_Switch>  >  _switches;
+#ifdef KEY
+  vector< FB_Info_Value,   mempool_allocator<FB_Info_Value>   >  _values;
+#endif
 
   INT32 Get_index_invoke  ( const WN *wn ) const;
   INT32 Get_index_branch  ( const WN *wn ) const;
   INT32 Get_index_loop    ( const WN *wn ) const;
   INT32 Get_index_circuit ( const WN *wn ) const;
   INT32 Get_index_call    ( const WN *wn ) const;
+  INT32 Get_index_icall   ( const WN *wn ) const;
   INT32 Get_index_switch  ( const WN *wn ) const;
+#ifdef KEY
+  INT32 Get_index_value   ( const WN *wn ) const;
+#endif
 
   INT32 Add_index_invoke  ( WN *wn );
   INT32 Add_index_branch  ( WN *wn );
   INT32 Add_index_loop    ( WN *wn );
   INT32 Add_index_circuit ( WN *wn );
   INT32 Add_index_call    ( WN *wn );
+  INT32 Add_index_icall   ( WN *wn );
   INT32 Add_index_switch  ( WN *wn );
+#ifdef KEY
+  INT32 Add_index_value   ( WN *wn );
+#endif
 
 public:
 
@@ -150,10 +183,20 @@ public:
 	    INT32 loop_size = 1,
 	    INT32 circuit_size = 1,
 	    INT32 call_size = 1,
+	    INT32 icall_size = 1,
 	    INT32 switch_size = 1,
+#ifdef KEY
+	    INT32 value_size = 1,
+	    UINT64 runtime_fun_address = 0x0,
+#endif
 	    WN_MAP_TAB *maptab = Current_Map_Tab );
 
   void  Reset_Root_WN( WN *root_wn ) { _root_wn = root_wn; }
+
+#ifdef KEY
+  void Set_Runtime_Func_Addr( UINT64 addr ) { _runtime_func_addr = addr; }
+  UINT64 Get_Runtime_Func_Addr() { return _runtime_func_addr; }
+#endif
 
   bool  Same_in_out( const WN *wn );
   void  FB_set_in_out_same_node( WN *wn );
@@ -167,7 +210,11 @@ public:
   const FB_Info_Loop&    Query_loop    ( const WN *wn ) const;
   const FB_Info_Circuit& Query_circuit ( const WN *wn ) const;
   const FB_Info_Call&    Query_call    ( const WN *wn ) const;
+  const FB_Info_Icall&   Query_icall   ( const WN *wn ) const;
   const FB_Info_Switch&  Query_switch  ( const WN *wn ) const;
+#ifdef KEY
+  const FB_Info_Value&   Query_value   ( const WN *wn ) const;
+#endif
 
   FB_FREQ Query      ( const WN *wn, const FB_EDGE_TYPE type ) const;
   FB_FREQ Query_prob ( const WN *wn, const FB_EDGE_TYPE type ) const;
@@ -178,7 +225,11 @@ public:
   void Annot_loop    ( WN *wn, const FB_Info_Loop   & fb_info );
   void Annot_circuit ( WN *wn, const FB_Info_Circuit& fb_info );
   void Annot_call    ( WN *wn, const FB_Info_Call   & fb_info );
+  void Annot_icall   ( WN *wn, const FB_Info_Icall  & fb_info );
   void Annot_switch  ( WN *wn, const FB_Info_Switch & fb_info );
+#ifdef KEY
+  void Annot_value   ( WN *wn, const FB_Info_Value  & fb_info );
+#endif
 
   void Annot         ( WN *wn, const FB_EDGE_TYPE type, FB_FREQ freq );
 
@@ -210,9 +261,11 @@ public:
   void FB_lower_compgoto ( WN *wn_compgoto, WN *wn_xgoto, WN *wn_branch );
 
   void FB_lower_call ( WN *wn_call, WN *wn_new_call );
+  void FB_lower_icall( WN *wn_icall, WN *wn_new_icall, WN * wn_new_call, WN * wn_new_if );
   void FB_lower_return_val ( WN *wn_return_val, WN *wn_return );
 
   void FB_lower_mstore_to_loop ( WN *wn_mstore, WN *wn_loop, INT64 nMoves );
+  void FB_hoist_case( WN *wn_switch, vector<FB_FREQ>::size_type wcase);
 
   // Goto conversion
 
@@ -281,6 +334,9 @@ public:
 extern "C" void dump_fb ( const FEEDBACK *feedback, const WN *wn );
 
 extern FEEDBACK *Cur_PU_Feedback;
+ 
+extern ADDRESS_NAME_MAP PU_Addr_Name_Map;
+extern ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
 
 extern INT
 Convert_Feedback_Info (const FEEDBACK* fb, const WN* tree,

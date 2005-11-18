@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -31,7 +35,9 @@
 
 #include <sys/types.h>
 #include <unistd.h>
+#ifndef KEY
 #include <sgidefs.h>
+#endif
 
 /*
  *

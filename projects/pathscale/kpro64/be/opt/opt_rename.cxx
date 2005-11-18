@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -317,8 +322,19 @@ struct SSA_RENAME : public NULL_TRANSFORM {
       if (tmp->Is_flag_set((CR_FLAG)(CF_DEF_BY_CHI|CF_DEF_BY_PHI))) {
         tmp->Set_field_id(cr->Field_id());
         tmp->Set_lod_ty(cr->Lod_ty());
-        tmp->Set_dtyp(cr->Dtyp());
-        tmp->Set_dsctyp(cr->Dsctyp());
+#ifdef KEY
+	if (cr->Dtyp() != MTYPE_UNKNOWN)
+#endif
+          tmp->Set_dtyp(cr->Dtyp());
+#ifdef KEY
+	if (cr->Dsctyp() != MTYPE_UNKNOWN)
+#endif
+          tmp->Set_dsctyp(cr->Dsctyp());
+#ifdef KEY
+	tmp->Set_sign_extension_flag(); // cr could be a non-real occurence node
+	                   // being converted to real the first time, so its 
+			   // sign_extd flag has never been set before
+#endif
       }
       if (cr->Dsctyp() == MTYPE_BS) 
         tmp->Set_offset(cr->Offset());  // cannot use offset out of opt_stab

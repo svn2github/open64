@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -54,12 +58,6 @@ static DECL_MPP_LOCK(ferrlock)	/* MPP: lock for _ferr() */
  *	The funny ifdef'ing is used if _ferr is defined as a macro for
  *	debugging purposes.
  */
-#ifdef	_ferr
-#undef	_ferr
-void
-_ferr(FIOSPTR fiosp, int errn, ...) { abort(); }/* just in case */
-#define	_ferr _ferr_routine
-#endif
 void
 _ferr(FIOSPTR fiosp, int errn, ...)
 {

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -92,12 +96,13 @@
 #endif /* __OBJ_FILE_H__ */
 
 #ifdef __PROCESS_H__
-#pragma weak create_tmpdir
-#pragma weak create_unique_file
-#pragma weak add_to_tmp_file_list
-#pragma weak tmpdir
-#pragma weak get_command_line
-#pragma weak make_link
+extern int create_tmpdir (int) __attribute__((weak));
+extern string create_unique_file (string, char) __attribute__((weak));
+extern string create_tmp_file (string) __attribute__((weak));
+extern void add_to_tmp_file_list (string) __attribute__((weak));
+extern string tmpdir __attribute__((weak));
+extern string *get_command_line (an_object_file_ptr, string, string, int*) __attribute__((weak));
+extern int make_link (const string, const string) __attribute__((weak));
 #endif /* __PROCESS_H__ */
 
 #ifdef __LD_UTIL_H__
@@ -105,7 +110,7 @@
 #endif /* __LD_UTIL_H__ */
 
 #ifdef __LD_MAIN_H__
-#pragma weak arg_count
+extern int arg_count __attribute__((weak));	// TK debug
 #pragma weak arg_vector
 #pragma weak environ_vars
 #pragma weak max_gpa_size

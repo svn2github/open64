@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -79,7 +83,12 @@ _iochunk(
 	register long	dim1_sz;
 	register long	i;
 	register long	id3, id4, id5, id6, id7;
+#ifdef KEY
+	/* align lbuf on 64-bit boundary */
+	long long	lbuf[CHBUFSIZE / sizeof(long long)];
+#else
 	long		lbuf[CHBUFSIZE / sizeof(long)];
+#endif
 	char		*lptr;
 	bcont		*addr2, *addr3, *addr4, *addr5, *addr6;
 

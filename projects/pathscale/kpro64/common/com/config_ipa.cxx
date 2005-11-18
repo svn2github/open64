@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -57,6 +61,8 @@
 
 /* IPA file variables declared in glob.h: */
 char *Ipa_File_Name = NULL;	/* IPAA summary file name */
+char *Feedback_Filename = NULL;
+char *Annotation_Filename = NULL;
 FILE *Ipa_File = NULL;		/* IPAA summary file (if open) */
 
 /* Skiplist support from config.h: */
@@ -74,7 +80,7 @@ SKIPLIST *Build_Skiplist ( OPTION_LIST *olist );
 #define DEFAULT_SMALL_PU	30
 #define DEFAULT_SMALL_CALLEE	500
 #define DEFAULT_MIN_FREQ	100
-#define DEFAULT_MIN_HOTNESS	100
+#define DEFAULT_MIN_HOTNESS	10
 #define DEFAULT_RELA_FREQ	50
 #define DEFAULT_INLINE_Max_Pu_Size 5000
 #define DEFAULT_CLONE_BLOAT_FACTOR 100
@@ -87,6 +93,8 @@ SKIPLIST *Build_Skiplist ( OPTION_LIST *olist );
 						SAVE_SPACE option  
 					      */
 #define DEFAULT_OUTPUT_FILE_SIZE	10000
+
+#define DEFAULT_MAX_DENSITY		11 // INLINING_TUNINING
 
 
 /* #define DEFAULT_GSPACE	65535	-- from config.c */
@@ -168,6 +176,10 @@ BOOL	IPA_Max_Jobs_Set = FALSE;
 /* 100th% of call freq lower than which will not inlined */
 UINT32	IPA_Min_Freq = DEFAULT_MIN_FREQ;	
 
+
+/* For those infrequently invoked PU which however contains hot loops*/
+UINT32  IPA_Max_Density = DEFAULT_MAX_DENSITY;// INLINING_TUNINING
+
 /* % of time that an inlined callee is called by its caller */
 UINT32	IPA_Rela_Freq = DEFAULT_RELA_FREQ;	
 
@@ -218,7 +230,17 @@ BOOL IPA_Enable_Keeplight = TRUE;  /* allow the user to ONLY keep the .I
 				     * and .o in the .ipakeep directory
 				     */
 
-BOOL IPA_Enable_Cord = FALSE;		/* Enable procedure reordering. */
+#ifdef KEY
+BOOL IPA_Enable_Icall_Opt = FALSE;   /* allow ipa change icall to call */
+#endif
+
+#ifdef TARG_X8664
+BOOL IPA_Enable_Cord = FALSE;		/* will bring up for x86-64 */
+BOOL IPA_Enable_PU_Reorder = FALSE; /* Procedure reordering: PathScale version */
+BOOL IPA_Enable_Ctype = FALSE;		/* Insert array for use by ctype.h. */
+#else
+BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
+#endif
 BOOL IPA_Enable_Linearization = FALSE;  /* Enable linearization of array */
 BOOL IPA_Use_Intrinsic = FALSE;		/* load intrinsic libraries */
 
@@ -230,6 +252,7 @@ BOOL IPA_Enable_Inline_Char_Array = TRUE;  /* enable inlining of Character Array
 BOOL IPA_Enable_Inline_Optional_Arg = TRUE;  /* enable inlining of functions with optional arguments */
 BOOL IPA_Enable_Inline_Struct_Array_Actual = TRUE;  /* enable inlining of STRUCT for f90 when the actual is an array type */
 BOOL IPA_Enable_Inline_Var_Dim_Array = TRUE;  /* enable inlining of variable-dimensioned array */
+BOOL IPA_Enable_Reorder=FALSE; /*enable field reordering*/
 
 // call preopt during IPA
 BOOL IPA_Enable_Preopt = FALSE;          
@@ -283,8 +306,8 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL,	OV_INTERNAL,	FALSE, "barrier_aliasfarg",	"",
 	  0, 0, 0,		&IPA_Enable_BarrierFarg,	NULL,
 /*
-	  "Enable barrier generation for inlined Fortran aliased actual arg." },
-	  "Enable barrier gen. for inlined aliased Fortran actual" },
+	  "Enable barrier generation for inlined Fortran aliased actual arg." ,
+	  "Enable barrier gen. for inlined aliased Fortran actual" ,
 */
 	  "Enable barrier gen. " },
     { OVK_BOOL, OV_VISIBLE,	FALSE, "cgi",		"",
@@ -384,6 +407,8 @@ static OPTION_DESC Options_IPA[] = {
 	  DEFAULT_MIN_FREQ, 0, 10000, &IPA_Min_Freq,	NULL},
     { OVK_UINT32,OV_SHY,	FALSE, "min_hotness",	"",
 	  DEFAULT_MIN_HOTNESS, 0, UINT32_MAX, &IPA_Min_Hotness,	NULL},
+    { OVK_UINT32,OV_SHY,	FALSE, "max_density",	"",
+	  DEFAULT_MAX_DENSITY, 0, UINT32_MAX, &IPA_Max_Density,	NULL},
     { OVK_BOOL,	OV_INTERNAL,	FALSE, "reshape",	"",
 	  0, 0, 0,		&IPA_Enable_Reshape,	NULL,
 	  "Reshape analysis for IPA" },
@@ -476,6 +501,28 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "var_dim_array",             "",
           0, 0, 0,              &IPA_Enable_Inline_Var_Dim_Array,   NULL,
           "Enable inlining of PU with param that is variable-dim array " },
+    { OVK_NAME,	OV_INTERNAL,	FALSE, "propagate_feedback_file",	"",
+	  0, 0, 0,		&Feedback_Filename,		NULL,
+	  "Feedback file name which IPA will propagate to next phase" },
+    { OVK_NAME,	OV_INTERNAL,	FALSE, "propagate_annotation_file",	"",
+	  0, 0, 0,		&Annotation_Filename,		NULL,
+	  "Annotation file name which IPA will propagate to next phase" },
+    { OVK_BOOL,	OV_INTERNAL,	FALSE, "field_reorder",	"",
+	  0, 0, 0,		&IPA_Enable_Reorder,	NULL,
+	  "Enable field reordering"},
+#ifdef KEY
+    { OVK_BOOL, OV_INTERNAL,	FALSE, "icall_opt",	"",
+	  0, 0, 0,		&IPA_Enable_Icall_Opt,	NULL,
+	  "Enable conversion of icall to call"},
+#endif // KEY
+#ifdef TARG_X8664 
+    { OVK_BOOL, OV_INTERNAL,	FALSE, "pu_reorder",	"",
+	  0, 0, 0,		&IPA_Enable_PU_Reorder,	NULL,
+	  "Enable procedure reordering"},
+    { OVK_BOOL, OV_INTERNAL,	FALSE, "ctype",	"",
+	  0, 0, 0,		&IPA_Enable_Ctype,	NULL,
+	  "Enable insertion of ctype.h array"},
+#endif // TARG_X8664 
     { OVK_COUNT }	    /* List terminator -- must be last */
 };
 
@@ -505,6 +552,9 @@ BOOL    INLINE_Enable_Split_Common = TRUE;  /* Enable split common: inliner */
 BOOL    INLINE_Enable_Auto_Inlining = TRUE; /* Enable automatic inlining analysis */
 BOOL	INLINE_Enable_Restrict_Pointers = FALSE; // Allow restrict pointers
 					// as formal parameter
+#ifdef KEY
+BOOL	INLINE_Recursive = TRUE;	// Do recursive inlining
+#endif
 
 OPTION_LIST *INLINE_List_Names = NULL;	/* Must/never/file options */
 OPTION_LIST *INLINE_Spec_Files = NULL;	/* Specification files */
@@ -520,6 +570,9 @@ BOOL    INLINE_Inlined_Pu_Call_Graph = FALSE; /* impl. 2 of lightweight inliner 
 BOOL    INLINE_Inlined_Pu_Call_Graph2 = FALSE; /* impl. 3 of lightweight inliner -- build a call graph with only the PU tagged inline and its callers */
 BOOL    INLINE_Get_Time_Info = FALSE; 	       /* Generate timing info for different phases of the inliner */
 
+char    *INLINE_Script_Name = NULL;
+BOOL   INLINE_Enable_Script = FALSE;;
+	
 static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL,	OV_VISIBLE,	FALSE, "",	NULL,
 	  0, 0, 0,	&INLINE_Enable,	NULL,
@@ -590,6 +643,11 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL, OV_INTERNAL,	FALSE,	"restrict",	"",
 	  0, 0, 0,		&INLINE_Enable_Restrict_Pointers, NULL,
 	  "Allow inlining of PUs with restrict pointer as formal parameters" },
+#ifdef KEY
+    { OVK_BOOL, OV_INTERNAL,	FALSE,	"recurse",	"",
+	  0, 0, 0,		&INLINE_Recursive, NULL,
+	  "Allow recursive inlining of PUs" },
+#endif
     { OVK_LIST,	OV_VISIBLE,	FALSE, "skip",	"s",
 	  0, 0, 0,	&INLINE_List_Names,	NULL,
 	  "Skip requested CG edges to avoid doing inlining" },
@@ -641,5 +699,8 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "time",          "",
           0, 0, 0,              &INLINE_Get_Time_Info,   NULL,
           "Generate timing info for different phase of the inliner" },
+    { OVK_NAME,	OV_VISIBLE,	TRUE, "inline_script", "", 
+          0, 0, 0,	&INLINE_Script_Name, &INLINE_Enable_Script, 
+          "Enable call-site specific inlining based on inline description file" },
     { OVK_COUNT }	    /* List terminator -- must be last */
 };

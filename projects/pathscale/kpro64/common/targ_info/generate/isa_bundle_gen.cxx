@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,8 +56,8 @@
 #include <stdio.h>
 #include <assert.h>
 #include <strings.h>
-#include <list.h>
-#include <vector.h>
+#include <list>
+#include <vector>
 #include "topcode.h"
 #include "targ_isa_properties.h"
 #include "gen_util.h"
@@ -66,7 +70,7 @@
 struct isa_exec_unit_type {
   const char *name; 	// Name given for documentation and debugging
   int bit_position;	// bit position in flag word
-  vector <bool> members; // set of opcodes that have this property
+  std::vector<bool> members; // set of opcodes that have this property
   ISA_EXEC_UNIT_TYPE base_unit; // base exec unit type (or null if base)
 };
 
@@ -84,8 +88,8 @@ static int isa_exec_property_count = 0;
 static int num_bundles = 0;
 static int max_slots = 0;
 static int bundle_bits;
-static list <ISA_EXEC_UNIT_TYPE> all_exec_types; 
-static list <ISA_BUNDLE_TYPE> all_bundles; 
+static std::list<ISA_EXEC_UNIT_TYPE> all_exec_types; 
+static std::list<ISA_BUNDLE_TYPE> all_bundles; 
 static ISA_EXEC_UNIT_TYPE current_exec_type_desc;
 static ISA_BUNDLE_TYPE current_bundle_desc;
 
@@ -240,7 +244,7 @@ ISA_EXEC_UNIT_TYPE ISA_Exec_Unit_Type_Create ( const char* name,
 
   cur_type->name = name;
   cur_type->bit_position = isa_exec_property_count++;
-  cur_type->members = vector<bool> (TOP_count, false);
+  cur_type->members = std::vector<bool> (TOP_count, false);
   cur_type->base_unit = base_unit;
 
   current_exec_type_desc = cur_type;
@@ -333,8 +337,8 @@ static void Emit_Bundle_Scheduling(FILE *hfile, FILE *cfile, FILE *efile)
 //  Emit the bundle scheduling interface.
 /////////////////////////////////////
 {
-  list<ISA_EXEC_UNIT_TYPE>::iterator iei;
-  list<ISA_BUNDLE_TYPE>::iterator ibi;
+  std::list<ISA_EXEC_UNIT_TYPE>::iterator iei;
+  std::list<ISA_BUNDLE_TYPE>::iterator ibi;
   int i;
 
   const char * const isa_exec_type_format = "  %3llu,  /* %s: ";

@@ -36,6 +36,7 @@
 #
 
 IEMIPS =
+ifneq ($(BUILD_OS), LINUX)
 ifeq ($(BUILD_ARCH), MIPS3)
 IEMIPS =\
     ieee_mips.c
@@ -43,6 +44,7 @@ endif
 ifeq ($(BUILD_ARCH), MIPS4)
 IEMIPS =\
     ieee_mips.c
+endif
 endif
 
 CFILES += \
@@ -54,6 +56,7 @@ CFILES += \
     cton.c \
     dcot.c \
     dsign.c \
+    dtan.c \
     exponent.c \
     floor.c \
     fp_class_h.c \

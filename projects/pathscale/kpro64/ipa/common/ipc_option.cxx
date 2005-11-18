@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -93,11 +97,9 @@ INT number_of_partitions = 1;
  * ====================================================================
  */
 
-#ifndef __SGI_STL_VECTOR_H
-#include <vector.h>
-#endif // __SGI_STL_VECTOR_H
+#include <vector>
 
-typedef vector <char *, mempool_allocator<char *> > ARRAY_OF_STRINGS;
+typedef std::vector <char *, mempool_allocator<char *> > ARRAY_OF_STRINGS;
 
 #define USER_NOT_SPEC          0x0     // User did not specify anything regarding this symbol
 #define USER_MUST_INLINE       0x1     // User specified Must inline this pu

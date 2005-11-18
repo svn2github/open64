@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -68,7 +72,9 @@ static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.1.1.1 $";
 #include "opt_points_to.h"
 #include "opt_alias_class.h"
 #include "opt_alias_rule.h"
-
+#ifdef KEY
+#include "config_opt.h"
+#endif
 
 // ***********************************************************
 //
@@ -726,7 +732,7 @@ READ_WRITE ALIAS_RULE::Aliased_with_Asm(const WN *wn, const POINTS_TO *mem) cons
       ST_sclass(WN_st(wn)) == SCLASS_REG)
     return NO_READ_NO_WRITE;
 
-  if (!WN_Asm_Clobbers_Mem(wn))
+  if (!WN_Asm_Clobbers_Mem(wn) && !Asm_Memory)
     return NO_READ_NO_WRITE;
   
   return READ_AND_WRITE;

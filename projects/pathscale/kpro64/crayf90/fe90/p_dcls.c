@@ -55,6 +55,9 @@ static char USMID[] = "\n@(#)5.0_pl/sources/p_dcls.c	5.10	10/08/99 08:26:21\n";
 # include "p_globals.h"
 # include "p_dcls.h"
 
+#ifdef KEY
+#include "i_cvrt.h"
+#endif
 
 /*****************************************************************\
 |* function prototypes of static functions declared in this file *|
@@ -3459,6 +3462,12 @@ void parse_type_dcl_stmt (void)
          AT_DEF_LINE(AT_WORK_IDX)	= AT_DEF_LINE(attr_idx);
          AT_DEF_COLUMN(AT_WORK_IDX)	= AT_DEF_COLUMN(attr_idx);
          COPY_ATTR_NTRY(attr_idx, AT_WORK_IDX);
+#ifdef KEY
+         if (AT_OBJ_CLASS(attr_idx) == Data_Obj && !AT_IS_INTRIN(attr_idx) &&
+             TYP_LINEAR(ATD_TYPE_IDX(attr_idx)) == Real_4 &&
+             Check_FF2C_Script(AT_OBJ_NAME_PTR(attr_idx), 0) )
+             ATD_TYPE_IDX(attr_idx) = Real_8; 
+#endif
          AT_CIF_SYMBOL_ID(attr_idx)	= 0;
 
          if (type_err) {

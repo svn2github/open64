@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -71,6 +75,8 @@
 // ====================================================================
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <elf.h>
 #include <cmplrs/host.h>
 
@@ -483,12 +489,12 @@ IPAA_FORMAL_MAP::Union_2 ( const IPAA_FORMAL_MAP *map )
   // There are at least two elements in map -- look at this:
   if ( this->_count == 0 ) {
     Expand ( map->_count );
-    bcopy ( _mvec, map->_mvec, map->_count * sizeof(MAP_ELMT *) );
+    bcopy ( _mvec, map->_mvec, map->_count * sizeof(MAP_ELMT) );
     return TRUE;
   } else if ( this->_count <= 1 || this->_mvec[1] == MAP_NONE ) {
     valt = ( this->_count <= 1 ) ? this->_single : this->_mvec[0];
     Expand ( map->_count );
-    bcopy ( _mvec, map->_mvec, map->_count * sizeof(MAP_ELMT *) );
+    bcopy ( _mvec, map->_mvec, map->_count * sizeof(MAP_ELMT) );
     (void) Add_elmt ( valt );
     return TRUE;
   }
@@ -3476,8 +3482,7 @@ IPAA::Emit_Simple_IPAA ( IPA_CALL_GRAPH &cg )
   }
 
   // Build an IPAA_FILE_DESCRIPTOR, and write the summary file:
-extern char *tmpdir;
-#pragma weak tmpdir
+  extern char *tmpdir __attribute__((weak));
   char *Ipa_Path_Name = (char *) malloc
 	( strlen(tmpdir) + strlen(Ipa_File_Name) + 2 );
   (void) sprintf ( Ipa_Path_Name, "%s/%s", tmpdir, Ipa_File_Name );

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -114,6 +118,13 @@
 #include "wb_anl.h"		    /* whirl browser for prompf static anal */ 
 #include "wn_instrument.h"          /* whirl instrumenter */
 #include "mem_ctr.h"
+#ifndef ipl_reorder_INCLUDED // for Preprocess_struct_access()
+#include "ipl_reorder.h"
+#endif
+#include "config_ipa.h"    /*for IPA_Enable_Reorder*/
+#ifdef KEY
+#include "output_func_start_profiler.h"
+#endif
 
 extern void Initialize_Targ_Info(void);
 
@@ -273,12 +284,13 @@ extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 
 #ifndef __GNUC__
 #pragma weak Prompf_Emit_Whirl_to_Source__GP7pu_infoP2WN
-#else
+#elif (__GNUC__ == 2)
 #pragma weak Prompf_Emit_Whirl_to_Source__FP7pu_infoP2WN
+#else
+#pragma weak _Z27Prompf_Emit_Whirl_to_SourceP7pu_infoP2WN	// gcc 3.2
 #endif
 
 extern void Prompf_Emit_Whirl_to_Source(PU_Info* current_pu, WN* func_nd);
-
 
 static INT ecount = 0;
 static BOOL need_wopt_output = FALSE;
@@ -820,7 +832,6 @@ Post_LNO_Processing (PU_Info *current_pu, WN *pu)
 	Write_PU_Info(current_pu);
 	Verify_SYMTAB (CURRENT_SYMTAB);
     }
-
 } /* Post_LNO_Processing */
 
 static WN *
@@ -939,7 +950,8 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 
       /* Add instrumentation here for wopt. */
       if (Instrumentation_Enabled
-	  && Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_WOPT) {
+	  && (Instrumentation_Type_Num & WHIRL_PROFILE)
+	  && (Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_WOPT)) {
 	WN_Instrument(rwn, PROFILE_PHASE_BEFORE_WOPT); 
       } else if (Feedback_Enabled[PROFILE_PHASE_BEFORE_WOPT]) {
 	WN_Annotate(rwn, PROFILE_PHASE_BEFORE_WOPT, &MEM_pu_pool);
@@ -975,7 +987,8 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 
       /* Add instrumentation here for cg. */
       if (Instrumentation_Enabled
-	  && Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_CG) {
+	  && (Instrumentation_Type_Num & WHIRL_PROFILE)
+	  && (Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_CG)) {
 	rwn = WN_Lower(rwn, LOWER_SCF, NULL, 
 		       "Lower structured control flow");
 	WN_Instrument(rwn, PROFILE_PHASE_BEFORE_CG);
@@ -993,6 +1006,13 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
       if (Run_cg) { /* lower for cg */
 	Set_Error_Phase ("Lowering");
         WB_LWR_Initialize(rwn, alias_mgr);
+
+    /* lowering MLDID/MSTID before lowering to CG */
+    if (!Run_wopt) {
+      rwn = WN_Lower(rwn, LOWER_MLDID_MSTID, alias_mgr, 
+                       "Lower MLDID/MSTID when not running WOPT");
+    }
+ 
 	rwn = WN_Lower(rwn, LOWER_TO_CG, alias_mgr, "Lowering to CG");
 	if (Only_Unsigned_64_Bit_Ops && ! Run_wopt)
 	  U64_lower_wn(rwn, FALSE);
@@ -1179,7 +1199,7 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
     if (WHIRL_Return_Val_On || WHIRL_Mldid_Mstid_On) {
         Is_True(WHIRL_Return_Val_On && WHIRL_Mldid_Mstid_On,
 	        ("-INTERNAL:return_val and -INTERNAL:mldid_mstid must be on the same time"));
-	pu = WN_Lower (pu, LOWER_RETURN_VAL | LOWER_MLDID_MSTID, NULL,
+	pu = WN_Lower (pu, LOWER_RETURN_VAL, NULL,
 		       "RETURN_VAL & MLDID/MSTID lowering");
     }
 
@@ -1198,7 +1218,8 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 
     /* Add instrumentation here for lno. */
     if( Instrumentation_Enabled
-       && Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_LNO ) {
+	&& (Instrumentation_Type_Num & WHIRL_PROFILE)
+	&& (Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_LNO)) {
 	WN_Instrument(pu, PROFILE_PHASE_BEFORE_LNO); 
     } else if ( Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO] ) {
       WN_Annotate(pu, PROFILE_PHASE_BEFORE_LNO, &MEM_pu_pool);   
@@ -1206,6 +1227,10 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
     Set_Error_Phase ( "LNO Processing" );
 
     if (Run_lno || Run_Distr_Array || Run_preopt || Run_autopar) {
+#ifdef KEY // to avoid assertion in PU that represents file-scope asm statement
+	if (! (WN_operator(pu) == OPR_FUNC_ENTRY && 
+	       ST_asm_function_st(*WN_st(pu)))) 
+#endif
 	pu = LNO_Processing (current_pu, pu);/* make -O0, -O1, -O2 a bit faster*/
 	if (Run_autopar)
 	    Rewrite_Pragmas_On_Structs (NULL, WN_func_body(pu));
@@ -1283,6 +1308,7 @@ Preprocess_PU (PU_Info *current_pu)
 
   /* read from mmap area */
   Start_Timer ( T_ReadIR_CU );
+
   // The current PU could already be memory as happens when the
   // compiler creates it during back end compilation of an earlier PU. 
   if (PU_Info_state (current_pu, WT_TREE) != Subsect_InMem) {
@@ -1290,6 +1316,7 @@ Preprocess_PU (PU_Info *current_pu)
     if (PU_Info_state (current_pu, WT_FEEDBACK) == Subsect_InMem) {
 	const Pu_Hdr* pu_hdr = (const Pu_Hdr*)
 	    PU_Info_feedback_ptr (current_pu);
+#ifdef KEY
 	Cur_PU_Feedback = CXX_NEW (FEEDBACK (PU_Info_tree_ptr (current_pu),
 					     MEM_pu_nz_pool_ptr,
 					     pu_hdr->pu_num_inv_entries,
@@ -1297,13 +1324,28 @@ Preprocess_PU (PU_Info *current_pu)
 					     pu_hdr->pu_num_loop_entries,
 					     pu_hdr->pu_num_scircuit_entries,
 					     pu_hdr->pu_num_call_entries,
+					     pu_hdr->pu_num_icall_entries,
+					     pu_hdr->pu_num_switch_entries,
+					     pu_hdr->pu_num_value_entries,
+					     pu_hdr->runtime_fun_address),
+				   MEM_pu_nz_pool_ptr);
+#else
+	Cur_PU_Feedback = CXX_NEW (FEEDBACK (PU_Info_tree_ptr (current_pu),
+					     MEM_pu_nz_pool_ptr,
+					     pu_hdr->pu_num_inv_entries,
+					     pu_hdr->pu_num_br_entries,
+					     pu_hdr->pu_num_loop_entries,
+					     pu_hdr->pu_num_scircuit_entries,
+					     pu_hdr->pu_num_call_entries,
+					     pu_hdr->pu_num_icall_entries,
 					     pu_hdr->pu_num_switch_entries),
 				   MEM_pu_nz_pool_ptr);
+#endif
 	Read_Feedback_Info (Cur_PU_Feedback, PU_Info_tree_ptr (current_pu),
 			    *pu_hdr);
 	// turn off other feedback I/O
 	Instrumentation_Enabled = FALSE;
-	bzero (Feedback_Enabled, PROFILE_PHASE_LAST * sizeof(BOOL));
+	bzero (Feedback_Enabled, (PROFILE_PHASE_LAST-1) * sizeof(BOOL));
     } else
 	Cur_PU_Feedback = NULL;
   } else {			    /* retrieve transferred maps */
@@ -1323,9 +1365,14 @@ Preprocess_PU (PU_Info *current_pu)
 	  Is_True(Cur_PU_Feedback, ("invalid PU_Info for feedback"));
               // turn off other feedback I/O
 	  Instrumentation_Enabled = FALSE;
-          bzero(Feedback_Enabled, PROFILE_PHASE_LAST * sizeof(BOOL));
+          bzero(Feedback_Enabled, (PROFILE_PHASE_LAST-1) * sizeof(BOOL));
       } else
           Cur_PU_Feedback = NULL;
+#ifdef KEY
+    } else if (Is_Set_PU_Info_flags(current_pu, PU_IS_PROFILER)) {
+      Restore_Local_Symtab(current_pu);
+      Cur_PU_Feedback = NULL; 
+#endif
     } else {
       Is_True(FALSE, ("Robert doesn't understand where symtabs come from"));
     }
@@ -1407,7 +1454,8 @@ Preprocess_PU (PU_Info *current_pu)
 
   /* Add instrumentation here for vho lower. */
   if ( Instrumentation_Enabled
-       && Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_VHO ) {
+       && (Instrumentation_Type_Num & WHIRL_PROFILE)
+       && (Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_VHO)) {
     if (!is_mp_nested_pu )
       WN_Instrument(pu, PROFILE_PHASE_BEFORE_VHO); 
 #if 0
@@ -1501,6 +1549,16 @@ Preorder_Process_PUs (PU_Info *current_pu)
   BOOL orig_olimit_opt = Olimit_opt;
 
   WN *pu;
+#ifdef TARG_X8664
+  if (!Force_Frame_Pointer_Set)
+  {
+    if (PU_src_lang (ST_pu (St_Table [PU_Info_proc_sym (current_pu)])) & PU_CXX_LANG || Debug_Level > 0)
+	Force_Frame_Pointer = true;
+    else
+    	Force_Frame_Pointer = false;
+  }
+#endif
+
   Start_Timer(T_BE_PU_CU);
 
   pu = Preprocess_PU(current_pu);
@@ -1645,7 +1703,6 @@ Process_Feedback_Options (OPTION_LIST* olist)
 extern "C" {
   void be_debug(void) {}
 }
-
 INT
 main (INT argc, char **argv)
 {
@@ -1719,14 +1776,15 @@ main (INT argc, char **argv)
   // if compiling an ipa-generated file, do not instrument phases that
   // have already been done at ipl time.
   if (FILE_INFO_ipa (File_info)) {
-      if (Instrumentation_Enabled &&
-	  Instrumentation_Phase_Num <= PROFILE_PHASE_IPA_CUTOFF) {
-	  Instrumentation_Enabled = FALSE;
-	  Instrumentation_Phase_Num = PROFILE_PHASE_NONE;
+      if (Instrumentation_Enabled
+	  && (Instrumentation_Type_Num & WHIRL_PROFILE)
+	  && (Instrumentation_Phase_Num <= PROFILE_PHASE_IPA_CUTOFF)) {
+	Instrumentation_Enabled = FALSE;
+	Instrumentation_Phase_Num = PROFILE_PHASE_NONE;
       }
-  } else {
-      Process_Feedback_Options (Feedback_Option);
   }
+
+  Process_Feedback_Options (Feedback_Option);
 
   //
   // Ordinarily DRA_Initialize() would run as part of Phase_Init(),
@@ -1796,20 +1854,26 @@ main (INT argc, char **argv)
   if (Tlog_File)
     Print_Tlog_Header(argc, argv);
 
-
+  if (Run_ipl)
+    Preprocess_struct_access();// for field reorder
+#ifdef KEY
+  if (profile_arcs && pu_tree) {
+      Output_Func_Start_Profiler.Set_file_name(Src_File_Name);
+      Output_Func_Start_Profiler.Set_pu_tree(&pu_tree);
+      Output_Func_Start_Profiler.Generate_Func_Start_Profiler_PU();
+      Output_Func_Start_Profiler.Fill_In_Func_Body();
+  }
+#endif
   for (PU_Info *current_pu = pu_tree;
        current_pu != NULL;
        current_pu = PU_Info_next(current_pu)) {
     Preorder_Process_PUs(current_pu);
   }
-
-
   /* Terminate stdout line if showing PUs: */
   if (Show_Progress) {
     fprintf (stderr, "\n");
     fflush (stderr);
   }
-
   Phase_Fini ();
 
   /* free the BE symtabs. w2cf requires BE_ST in Phase_Fini */

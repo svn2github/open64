@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,8 +42,8 @@
 #define SGI_bucket_container_h_INCLUDED
 
 #include <iterator.h>
-#include <vector.h>
-#include <algo.h>
+#include <vector>
+#include <algorithm>
 
 namespace SGI {
 

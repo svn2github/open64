@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -131,7 +135,7 @@ typedef struct Dwarf_P_Per_Reloc_Sect_s *Dwarf_P_Per_Reloc_Sect;
 #define         DEBUG_INFO      0
 #define         DEBUG_LINE      1
 #define         DEBUG_ABBREV    2
-#define         DEBUG_FRAME     3
+#define         DEBUG_FRAME     3	// KEYCC: actually index into .eh_frame
 #define         DEBUG_ARANGES   4
 #define         DEBUG_PUBNAMES  5
 #define         DEBUG_STR       6

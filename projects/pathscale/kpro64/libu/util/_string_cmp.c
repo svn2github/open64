@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,6 +42,7 @@
 
 #include <string.h>
 #include <ctype.h>
+#include "utildefs.h"
 
 /*
  * Compare a C string (s1) to a Fortran string (s2), treating lower case
@@ -46,7 +51,7 @@
  * strings are equal.  Parameter n is length of Fortran string.
  */
 int
-_string_cmp(char *s1, char *s2, int n)
+_string_cmp(const char *s1, const char *s2, int n)
 {
 	int     i;
  

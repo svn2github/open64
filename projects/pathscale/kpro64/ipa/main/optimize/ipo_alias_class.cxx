@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -103,7 +107,7 @@ void print_table(void)
 	(i < num_acr_table_entries));
        ++i) {
     if (acr_table[i] != NULL) {
-      fprintf(TFile, "acr_table[%2lu]: ", i);
+      fprintf(TFile, "acr_table[%2u]: ", i);
       acr_table[i]->Print(TFile);
     }
   }
@@ -111,7 +115,7 @@ void print_table(void)
   for (i = 0;
        ((i < next_acm_idx) && (i < num_acm_table_entries));
        ++i) {
-    fprintf(TFile, "acm_table[%2lu]: ", i);
+    fprintf(TFile, "acm_table[%2u]: ", i);
     if (acm_table[i] == acm_table[i]->Alias_class()->Representative()) {
       fprintf(TFile, "self");
     }
@@ -305,6 +309,13 @@ IP_ALIAS_CLASSIFICATION::Classify_wn_and_kids(WN *const wn)
     }
     return Handle_assignment(wn);
   }
+  else if (WN_operator(wn) == OPR_RETURN_VAL) {
+    if (_verbose && Tracing()) {
+      fprintf(TFile, "cwnk: Handling return value:\n");
+      fdump_tree(TFile, wn);
+    }
+    return Handle_return_val(wn);
+  }
   else if (OPCODE_is_call(opc)) {
     if (_verbose && Tracing()) {
       fprintf(TFile, "cwnk: Handling call:\n");
@@ -397,7 +408,7 @@ IP_ALIAS_CLASSIFICATION::New_base_id(const ST_IDX pu_st_idx,
   ST     *st             = &St_Table[st_idx];
 
   if (Tracing()) {
-    fprintf(TFile, "Allocating base ID %lu\n", id);
+    fprintf(TFile, "Allocating base ID %u\n", id);
   }
 
   // Don't mess with the mapping from ST to base ID for registers;
@@ -414,7 +425,7 @@ IP_ALIAS_CLASSIFICATION::New_base_id(const ST_IDX pu_st_idx,
 			     Pool());
 
   if (Tracing()) {
-    fprintf(TFile, "Base ID %3lu is ", id);
+    fprintf(TFile, "Base ID %3d is ", id);
   }
 
   ST_SCLASS storage_class = ST_sclass(st);
@@ -666,7 +677,7 @@ IP_ALIAS_CLASS_REP::Add_pending(IP_ALIAS_CLASS_REP *item,
 	  ("IP_ALIAS_CLASSIFICATION: Cannot add <NULL> to pending list"));
 
   if (trace) {
-    fprintf(TFile, "Pending(%lu) += %lu\n", Id(), item->Id());
+    fprintf(TFile, "Pending(%d) += %d\n", Id(), item->Id());
   }
 
 #if 0
@@ -715,7 +726,7 @@ IP_ALIAS_CLASS_REP::Merge_pending(      IP_ALIAS_CLASS_REP &that,
   // Put all of that's pending items into *this's pending set.
 
   if (trace) {
-    fprintf(TFile, "Pending(%lu) += Pending(%lu)\n", Id(), that.Id());
+    fprintf(TFile, "Pending(%d) += Pending(%d)\n", Id(), that.Id());
   }
 
   Pending().splice(Pending().begin(), that.Pending());
@@ -744,7 +755,7 @@ IP_ALIAS_CLASS_REP::Join(      IP_ALIAS_CLASS_REP &that,
     IP_ALIAS_CLASS_REP *result = (IP_ALIAS_CLASS_REP *) Union(that);
     IP_ALIAS_CLASS_REP *non_result = (result == this ? &that : this);
     if (trace) {
-      fprintf(TFile, "%lu <-- Join(%lu,%lu)\n",
+      fprintf(TFile, "%d <-- Join(%d,%d)\n",
 	      result->Id(), Id(), that.Id());
     }
     if (Sort()      == IP_ACR_BOTTOM_TYPE &&
@@ -802,13 +813,14 @@ IP_AC_LAMBDA_TYPE_REP::Union_func_args(      IP_AC_LAMBDA_TYPE_REP &that,
 
   // For each argument and each return value, join the appropriate
   // classes.
-  vector<IP_ALIAS_CLASS_MEMBER *>::iterator arg;
-  vector<IP_ALIAS_CLASS_MEMBER *>::iterator that_arg;
-  for (arg = fixed_args.begin(),
-       that_arg = that.fixed_args.begin();
-       (arg != fixed_args.end() &&
-	that_arg != that.fixed_args.end());
-       ++arg, ++that_arg) {
+  IP_ALIAS_CLASS_MEMBER **arg;
+  IP_ALIAS_CLASS_MEMBER **that_arg;
+  for (arg = &(*fixed_args.begin()),
+       that_arg = &(*that.fixed_args.begin());
+       (arg != &(*fixed_args.end()) &&
+	that_arg != &(*that.fixed_args.end()));
+       ++arg, ++that_arg)
+  {
     IP_AC_VALUE_TYPE_REP &arg1 = (*     arg)->Alias_class()->Ref()._value;
     IP_AC_VALUE_TYPE_REP &arg2 = (*that_arg)->Alias_class()->Ref()._value;
 
@@ -824,12 +836,14 @@ IP_AC_LAMBDA_TYPE_REP::Union_func_args(      IP_AC_LAMBDA_TYPE_REP &that,
 
   // Clean up the tails of the lists in case the argument counts
   // didn't match.
-  vector<IP_ALIAS_CLASS_MEMBER *>::iterator start, stop;
   IP_ALIAS_CLASS_MEMBER *vararg_data_representative,
                         *vararg_code_representative;
-  if (arg != fixed_args.end()) {
+  IP_ALIAS_CLASS_MEMBER **start, **stop;
+
+  if (arg != &(*fixed_args.end()))
+  {
     start = arg;
-    stop  = fixed_args.end();
+    stop  = &(*fixed_args.end());
     IP_AC_VALUE_TYPE_REP &vararg_rep =
       that.remaining_args->Alias_class()->Ref()._value;
     vararg_data_representative = vararg_rep.Data_member();
@@ -837,7 +851,7 @@ IP_AC_LAMBDA_TYPE_REP::Union_func_args(      IP_AC_LAMBDA_TYPE_REP &that,
   }
   else {
     start = that_arg;
-    stop = that.fixed_args.end();
+    stop = &(*that.fixed_args.end());
     IP_AC_VALUE_TYPE_REP &vararg_rep =
       remaining_args->Alias_class()->Ref()._value;
     vararg_data_representative = vararg_rep.Data_member();
@@ -885,7 +899,7 @@ void
 IP_ALIAS_CLASS_REP::Print(FILE               *fp,
 			  IP_ALIAS_CLASS_REP *global_class) const
 {
-  fprintf(fp, "class %lu ", Id());
+  fprintf(fp, "class %d ", Id());
   FmtAssert(Id() != 0 || global_class == NULL || global_class == this,
 	    ("Class of nonzero ID must not be global"));
   if (global_class == this) {
@@ -910,7 +924,7 @@ IP_ALIAS_CLASS_REP::Print(FILE               *fp,
     fprintf(fp, " bot\n");
     break;
   case IP_ACR_REF_TYPE:
-    fprintf(fp, " --> (%lu<0x%lx> x %lu<0x%lx>)\n",
+    fprintf(fp, " --> (%d<%p> x %d<%p>)\n",
 	    Data_class_pointed_to()->Id(), Ref().Data_member(),
 	    Func_class_pointed_to()->Id(), Ref().Code_member());
     break;
@@ -927,17 +941,18 @@ IP_ALIAS_CLASS_REP::Print(FILE               *fp,
       fprintf(fp, " free(");
     }
     else {
-      fprintf(fp, " (&%lu<0x%lx>) <-- lambda(",
+      fprintf(fp, " (&%d<%p>) <-- lambda(",
 	      Signature().Return_class()->Id(),
 	      Signature().Returns());
-      for (vector<IP_ALIAS_CLASS_MEMBER *>::const_iterator arg =
-	     Signature().fixed_args.begin();
-	   arg != Signature().fixed_args.end();
-	   ++arg) {
-	fprintf(fp, "&%lu<0x%lx>,",
+      IP_ALIAS_CLASS_MEMBER * const *arg;
+      for (arg = &(*Signature().fixed_args.begin());
+	   arg != &(*Signature().fixed_args.end());
+	   ++arg)
+      {
+	fprintf(fp, "&%d<%p>,",
 		(*arg)->Alias_class()->Id(), *arg);
       }
-      fprintf(fp, "&%lu<0x%lx>",
+      fprintf(fp, "&%d<%p>",
 	      Signature().remaining_args->Alias_class()->Id(),
 	      Signature().remaining_args);
     }
@@ -953,7 +968,7 @@ void
 IP_ALIAS_CLASS_MEMBER::Print(FILE *fp) const
 {
   if (_kind == ACM_BASE) {
-    fprintf(fp, "base ID %lu", Base_id());
+    fprintf(fp, "base ID %d", Base_id());
   }
   else if (_kind == ACM_WN) {
     fprintf(fp, "wn");
@@ -966,7 +981,7 @@ IP_ALIAS_CLASS_MEMBER::Print(FILE *fp) const
     // fdump_wn(fp, (WN *) Wn());
   }
   else {
-    fprintf(fp, "unknown <0x%lx>", this);
+    fprintf(fp, "unknown <%p>", this);
   }
 }
 
@@ -1374,7 +1389,7 @@ IP_ALIAS_CLASSIFICATION::Classify_lhs_of_store(WN *const stmt_or_idname)
     IP_ALIAS_CLASS_MEMBER *lhs_member =
       lhs_address_member->Alias_class()->Ref().Data_member();
     if (Tracing()) {
-      fprintf(TFile, "Setting ISTORE Indir map to 0x%lx\n",
+      fprintf(TFile, "Setting ISTORE Indir map to %p\n",
 	      lhs_member->Alias_class());
     }
     WN_MAP_Set(Indir_classification_map(), stmt_or_idname, lhs_member);
@@ -1451,6 +1466,29 @@ IP_ALIAS_CLASSIFICATION::Handle_assignment(WN *const stmt)
       fprintf(TFile, "    STID placed in ");
       Class_of_base_id(WN_base_id(stmt))->Print(TFile, Global_data_class());
     }
+    Print(TFile);
+#if Is_True_On
+    print_table();
+#endif
+  }
+
+  return WN_next(stmt);
+}
+
+WN *
+IP_ALIAS_CLASSIFICATION::Handle_return_val(WN *const stmt)
+{
+  ST *pu_st = Scope_tab[CURRENT_SYMTAB].st;
+  IP_ALIAS_CLASS_REP *pu_acr =
+    _base_id_map[Base_id(pu_st, 0ll)]->Base_member().Alias_class();
+  IP_ALIAS_CLASS_MEMBER *return_ac_member = pu_acr->Signature().Returns();
+
+  Classify_deref_of_expr(return_ac_member, WN_kid0(stmt), FALSE);
+
+  if (_verbose && Tracing()) {
+    fprintf(TFile, "  after handling return value:\n");
+    fprintf(TFile, "    RETURN_VAL placed in ");
+    pu_acr->Signature().Return_class()->Print(TFile, Global_data_class());
     Print(TFile);
 #if Is_True_On
     print_table();
@@ -1915,7 +1953,11 @@ IP_ALIAS_CLASSIFICATION::Finalize_ac_map_wn(WN *wn)
     if (Tracing()) {
       fprintf(TFile, "   placed in ");
     }
-    if (opr == OPR_LDID || opr == OPR_STID || opr == OPR_LDA) {
+    if (opr == OPR_LDID || opr == OPR_STID || opr == OPR_LDA
+#ifdef KEY
+	|| opr == OPR_LDBITS
+#endif
+	) {
       // Direct memop; translation through base_id.
       IDTYPE class_id = Class_of_base_id(WN_base_id(wn))->Id();
       WN_MAP32_Set(Memop_classification_map(), wn, class_id);
@@ -1929,7 +1971,7 @@ IP_ALIAS_CLASSIFICATION::Finalize_ac_map_wn(WN *wn)
       IP_ALIAS_CLASS_MEMBER *acm =
 	(IP_ALIAS_CLASS_MEMBER *) WN_MAP_Get(Indir_classification_map(), wn);
       if (Tracing()) {
-	fprintf(TFile, "Got 0x%lx from indir map %u on\n", acm,
+	fprintf(TFile, "Got %p from indir map %u on\n", acm,
 		Indir_classification_map());
 	fdump_tree(TFile, wn);
       }
@@ -2111,7 +2153,7 @@ IP_ALIAS_CLASSIFICATION::Classify_memops(WN *entry_wn)
   // _indir_classification_map = WN_MAP_Create(Pool());
 
   if (Tracing()) {
-    fprintf(TFile, "Current_Map_Tab == 0x%lx\n", Current_Map_Tab);
+    fprintf(TFile, "Current_Map_Tab == %p\n", Current_Map_Tab);
     fprintf(TFile, "indir map is %u\n", _indir_classification_map);
   }
 
@@ -2161,7 +2203,7 @@ IP_ALIAS_CLASSIFICATION::Release_resources(void)
 		   IP_ALIAS_CLASS_REP::_last_id_used);
   }
 #else
-  DevWarn("Recycled %lu of %lu ACR's",
+  DevWarn("Recycled %u of %d ACR's",
 	  IP_ALIAS_CLASS_REP::_recycled_acr_nodes,
 	  IP_ALIAS_CLASS_REP::_last_id_used);
 #endif
@@ -2188,7 +2230,7 @@ IP_ALIAS_CLASSIFICATION::Print(FILE *fp) const
   fprintf(fp, "Global code class: ");
   Global_func_class()->Print(fp);
   for (INT i = 1; i <= _base_id_map.Lastidx(); i++) {
-    fprintf(fp, "Class containing base ID %lu is ", i);
+    fprintf(fp, "Class containing base ID %d is ", i);
     _base_id_map[i]->Base_member().Alias_class()->Print(fp,
 							Global_data_class());
   }

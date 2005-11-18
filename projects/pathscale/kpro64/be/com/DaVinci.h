@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -157,9 +161,9 @@
 #include <stdio.h>
 #include <assert.h>
 #include <sys/types.h> 
-#include <stack.h>        // STL queue.
-#include <hash_map.h>     // STL hash_map.
-#include <set.h>          // STL set.
+#include <queue>        // STL queue.
+#include <ext/hash_map>     // STL hash_map.
+#include <set>          // STL set.
 
 #include "defs.h"
 #include "errors.h"
@@ -332,8 +336,8 @@ typedef enum {
   DM_UNKNOWN    // entry from menu select (using map domain as string pool).
 } Item_status;
 
-typedef hash_map< const char *, Item_status,
-                  hash<const char *>, Equal_obj > Item_info;
+typedef __gnu_cxx::hash_map< const char *, Item_status,
+			     __gnu_cxx::hash<const char *>, Equal_obj > Item_info;
 
 class Menu_info {
 private:
@@ -381,9 +385,9 @@ private:
 
   IO              _io;
   MEM_POOL       *_m;
-  queue<EVENT_T>  _event_q;
-  set<NODE_ID>    _node_def_set;  // used iff _usage_check == true.
-  set<NODE_ID>    _node_ref_set;  // used iff _usage_check == true.
+  std::queue<EVENT_T>  _event_q;
+  std::set<NODE_ID>    _node_def_set;  // used iff _usage_check == true.
+  std::set<NODE_ID>    _node_ref_set;  // used iff _usage_check == true.
   Menu_info       _menu_state;
   bool            _basic_menu_added;
   bool            _in_event_loop;

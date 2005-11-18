@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -950,7 +954,8 @@ static void init_cmd_line (void)
    on_off_flags.shared_to_private_coer	= FALSE;		/* -dC        */
    on_off_flags.all_debug		= FALSE;		/* -dD        */
    on_off_flags.top_test_shortloops	= FALSE;		/* -dL        */
-   on_off_flags.remove_trailing_uscore	= FALSE;		/* -dN        */
+   on_off_flags.second_underscore	= TRUE;			/* -eN        */
+   on_off_flags.underscoring    	= TRUE;			/* -eU        */
    on_off_flags.allow_leading_uscore    = FALSE;                /* -dQ        */
    on_off_flags.output_pound_lines      = TRUE;                 /* -dP        */
    on_off_flags.preprocess_only         = FALSE;                /*            */
@@ -1467,7 +1472,11 @@ static void process_d_option (char *optargs)
          break;
 
       case 'N':
-         on_off_flags.remove_trailing_uscore = FALSE;
+         on_off_flags.second_underscore = FALSE;
+         break;
+
+      case 'O':
+         on_off_flags.underscoring = FALSE;
          break;
 
       case 'Q':   /* Q is undocumented */
@@ -1765,7 +1774,11 @@ static void process_e_option (char *optargs)
          break;
 
       case 'N':
-         on_off_flags.remove_trailing_uscore = TRUE;
+         on_off_flags.second_underscore = TRUE;
+         break;
+
+      case 'O':
+         on_off_flags.underscoring = TRUE;
          break;
 
       case 'Q':
@@ -3815,6 +3828,24 @@ static void process_u_option (char *optargs)
    TRACE (Func_Entry, "process_u_option", NULL);
 
    while (*optargs != EOS) {
+#ifdef KEY
+      // Bug 933
+      // If user file name has ",", then "," is a legitimate part of the file
+      // name in the -u option, e.g., "-ufile=b,b.l".  Spaces in file names are
+      // encoded as '\ '.
+      if (strncmp (optargs, "file=", 5) == IDENTICAL) {
+	char *temp = malloc (strlen (optargs) + 1);
+	char *t = temp;
+        for (; *optargs != BLANK && *optargs != EOS; ++optargs) {
+	  // Convert '\ ' to ' '.  Convert '\\' to '\'.
+	  if (*optargs == '\\')
+	    optargs++;
+	  *t++ = *optargs;
+	}
+        *t = '\0';
+	cp = temp;
+      } else
+#endif
       for (cp = optargs;
 	   *optargs != BLANK  &&  *optargs != COMMA  &&  *optargs != EOS;
 	   ++optargs);

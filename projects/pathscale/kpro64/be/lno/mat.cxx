@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -45,6 +49,8 @@
 #define mat_CXX      "mat.cxx"
 #endif
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifndef mat_INCLUDED
 #include "mat.h"
 #endif

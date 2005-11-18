@@ -1,4 +1,14 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+
+/* 
+   Copyright (C) 2002 Tensilica, Inc.  All Rights Reserved.
+   Revised to support Tensilica processors and to improve overall performance
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -62,6 +72,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -127,6 +139,10 @@ static INT64 Find_Average(ACCESS_VECTOR *av, BOOL *know_val,
 					DOLOOP_STACK *do_stack);
 static void Copy_Loads_In_Bound(WN *do_loop, WN *tmp, BOOL is_start);
 static void Promote_Pointer(WN *wn, INT kid_num, INT load_size);
+#ifdef KEY
+// Code published to Open64 by Tensilica
+static void Fold_Array(WN *wn, INT kid_num);
+#endif /* KEY */
 static void Fold_Base(WN *array);
 static void Fold_Offset(WN *wn, WN *array);
 static void Fold_Intconst(WN *ld_st, WN *intconst, BOOL negate);
@@ -542,6 +558,18 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
           Promote_Pointer(wn,1,0);
         }
       }
+#ifdef KEY
+      // Code published to Open64 by Tensilica
+      if (dlistack->Elements()) {
+        if ((oper == OPR_ILOAD) && 
+	    (WN_operator(WN_kid0(wn)) == OPR_ARRAY)) {
+          Fold_Array(wn,0);
+        } else if ((oper == OPR_ISTORE) &&
+		   (WN_operator(WN_kid1(wn)) == OPR_ARRAY)) {
+          Fold_Array(wn,1);
+        }
+      }      
+#endif /* KEY */
     } 
   } else if (opcode == OPC_LABEL) {
     label_stack->Push(wn);
@@ -1322,6 +1350,28 @@ static void Copy_Loads_In_Bound(WN *do_loop, WN *wn, BOOL is_start)
 
 
 
+#ifdef KEY
+// Code published to Open64 by Tensilica
+// find the integer constant coefficient for expressions of the form (coeff * (...)),
+// and return its WN. return NULL if no coefficient can be found.
+static WN *
+Find_Term_Coeff(WN *wn) {
+  if (WN_operator(wn) == OPR_MPY) {
+    WN *coeff = Find_Term_Coeff(WN_kid0(wn));
+    if (coeff != NULL) {
+      return coeff;
+    }
+    coeff = Find_Term_Coeff(WN_kid1(wn));
+    return coeff;
+  }
+  
+  if (WN_operator(wn) == OPR_INTCONST) {
+    return wn;
+  }
+  
+  return NULL;
+}
+#endif
 // Try to promote a pointer load/store into an array
 //
 // At the top level, wn is a load/store and kid_num is the number of
@@ -1484,6 +1534,7 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
   }
 
 
+#ifndef KEY
   WN *intconst, *index_expr;
   INT64 val;
   if (WN_operator(WN_kid0(mult)) == OPR_INTCONST) {
@@ -1505,6 +1556,62 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
     if (char_canon) WN_Simplify_Tree(wn);
     return;
   } 
+#else
+  // Code published to Open64 by Tensilica.
+  // try to find the constant coefficient in the expression.
+  // we would like to have an expression of the form coeff * index_expr
+  int reassoc_idx = 0;
+  WN *index_expr = WN_kid1(mult);
+  WN *intconst = Find_Term_Coeff(index_expr);
+  if (intconst == NULL) {
+    reassoc_idx = 1;
+    index_expr = WN_kid0(mult);
+    intconst = Find_Term_Coeff(index_expr);
+    if (intconst == NULL) {
+      if (char_canon) WN_Simplify_Tree(wn);
+      return;
+    }
+  }
+  
+  INT64 val = WN_const_val(intconst);
+  if (abs(val) >= INT32_MAX ||
+      (abs(val) % load_size) != 0) { // must be a multiple of the element size
+    if (char_canon) WN_Simplify_Tree(wn);
+    return;
+  }
+  
+  // reassociate the expression if necessary to form coeff * index_expr
+
+  WN *intconst_parent = LWN_Get_Parent(intconst);
+  Is_True(intconst_parent != NULL, ("Missing parent"));
+  
+  INT intconst_idx;
+  for (intconst_idx = 0; intconst_idx < WN_kid_count(intconst_parent); intconst_idx++) {
+    if (WN_kid(intconst_parent, intconst_idx) == intconst) {
+      break;
+    }
+  }
+  Is_True(intconst_idx < WN_kid_count(intconst_parent),
+	  ("Can't find the intconst node in its parent"));
+  
+  if (intconst_parent != mult) {
+    // the constant coefficient is not an immediate kid of 'mult' so
+    // reassociation is necessary
+    WN *reassoc_expr = WN_kid(mult, reassoc_idx);
+    WN_kid(intconst_parent, intconst_idx) = reassoc_expr;
+    LWN_Set_Parent(reassoc_expr, intconst_parent);
+    WN_kid(mult, reassoc_idx) = intconst;
+    LWN_Set_Parent(intconst, mult);
+    
+    // reset any 16-bit multiplication info on the INTCONST parent MPY node
+    Is_True(WN_operator(intconst_parent) == OPR_MPY,
+	    ("Expected MPY operator not %s", OPERATOR_name(WN_operator(intconst_parent))));
+  } else {
+    // expression is already in the desired form, so set the index_expr to
+    // the non-intconst kid
+    index_expr = WN_kid(mult, reassoc_idx);
+  } 
+#endif // KEY
 
   if (base_oper == OPR_ARRAY) {
     // base is an array
@@ -1615,9 +1722,112 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
   return;
 }
 
+#ifdef KEY
+// Code published to Open64 by Tensilica
+// wn is a load/store
+// kid_num is the address, which is an array node
+// convert accesses array[i] of array[j] to array[i][j]
+// do it recursively to the base
+static void Fold_Array (WN *wn, INT kid_num) {
+  OPCODE opcode = WN_opcode(wn);
+  WN *addr = WN_kid(wn,kid_num);
+  
+  if (WN_operator(addr) != OPR_ARRAY)
+    return;
+  
+  while (WN_operator(WN_array_base(addr))==OPR_ARRAY) {
+    // pattern matched
+
+    WN *addr_sub = WN_array_base(addr);
+    INT num_dim_sub = WN_num_dim(addr_sub);
+    INT num_dim = WN_num_dim(addr);
+
+    // check legality
+    // - all dimensions should be positive constants
+    // - the element size of the base should equal the index array size
+
+    for (INT dim_sub =0; dim_sub < num_dim_sub; dim_sub++) {
+      WN *wn_dim_sub = WN_array_dim(addr_sub,dim_sub);
+      if (WN_operator(wn_dim_sub)!=OPR_INTCONST ||
+	  WN_const_val(wn_dim_sub)<=0)
+	return;
+    }
+    
+    WN_ESIZE addr_size = WN_element_size(addr);
+    WN_ESIZE addr_sub_el_size = WN_element_size(addr_sub);
+
+    if (addr_size<=0 || addr_sub_el_size<=0)
+      return;
+    
+    for (INT dim = 0; dim < num_dim; dim++) {
+      WN *wn_dim = WN_array_dim(addr,dim);
+      if (WN_operator(wn_dim)!=OPR_INTCONST ||
+	  WN_const_val(wn_dim)<=0)
+	return;
+      addr_size*=WN_const_val(wn_dim);
+    }
+    
+    if (addr_size!=addr_sub_el_size)
+      return;
+    
+    // everything is ok -- make a new array node and set the appropriate fields
+	
+    INT num_dim_new = num_dim + num_dim_sub;
+    
+    OPCODE op_array = OPCODE_make_op(OPR_ARRAY,Pointer_type, MTYPE_V);
+    WN *addr_new = WN_Create(op_array,num_dim_new*2+1);
+    
+    LWN_Set_Parent(addr_new,wn);
+    WN_kid(wn,kid_num) = addr_new;
+    
+    WN_element_size(addr_new) = WN_element_size(addr);
+    
+    // Set the kids -- base, indexes and dimensions
+    
+    WN_array_base(addr_new) = WN_array_base(addr_sub);
+    LWN_Set_Parent(WN_array_base(addr_new),addr_new);
+    
+    INT index_new = 0;
+    for (INT index_sub = 0; index_sub < num_dim_sub; index_sub++) {
+      WN_array_index(addr_new,index_new) = WN_array_index(addr_sub,index_sub);
+      LWN_Set_Parent(WN_array_index(addr_new,index_new),addr_new);
+      index_new++;
+    }
+    for (INT index = 0; index < num_dim; index++) {
+      WN_array_index(addr_new,index_new) = WN_array_index(addr,index);
+      LWN_Set_Parent(WN_array_index(addr_new,index_new),addr_new);
+      index_new++;
+    }
+    
+    INT dim_new = 0;
+    for (INT dim_sub = 0; dim_sub < num_dim_sub; dim_sub++) {
+      WN_array_dim(addr_new,dim_new) = WN_array_dim(addr_sub,dim_sub);
+      LWN_Set_Parent(WN_array_index(addr_new,dim_new),addr_new);
+      dim_new++;
+    }
+    for (INT dim = 0; dim < num_dim; dim++) {
+      WN_array_dim(addr_new,dim_new) = WN_array_dim(addr,dim);
+      LWN_Set_Parent(WN_array_index(addr_new,dim_new),addr_new);
+      dim_new++;
+    }
+
+    // cleanup
+    WN_Delete(addr);
+    WN_Delete(addr_sub);
+
+    addr = addr_new;
+  }
+  return;
+}
+#endif /* KEY */
+
 // fold the offset into the array
 static void Fold_Offset(WN *wn, WN *array) 
 {
+#ifdef KEY
+  if (WN_element_size(array) == 0)
+    return;
+#endif
   if (WN_offset(wn) && ((abs(WN_offset(wn)) % WN_element_size(array)) == 0)) {
     TYPE_ID rtype;
 // >> WHIRL 0.30: Added MTYPE_A4
@@ -1846,7 +2056,12 @@ static void Delete_Unused_Labels (HASH_TABLE<INT32, WN*> *label_hash,
   WN *wn;
 
   while (iter.Step (&label, &wn)) {
+#ifdef KEY
+    if (!LABEL_addr_saved(label) && 
+        LABEL_kind(Label_Table[label]) != LKIND_BEGIN_HANDLER) {
+#else
     if (!LABEL_addr_saved(label)) {
+#endif
       WN* goto_wn = goto_hash->Find(label);
       if (goto_wn == NULL) {
         // no jumps to this label, so delete it

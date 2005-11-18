@@ -1,5 +1,21 @@
 # Test NOCROSSREFS in a linker script.
 # By Ian Lance Taylor, Cygnus Support.
+#   Copyright 2001
+#   Free Software Foundation, Inc.
+#
+# This file is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 set test1 "NOCROSSREFS 1"
 set test2 "NOCROSSREFS 2"
@@ -10,6 +26,13 @@ if { [which $CC] == 0 } {
     return
 }
 
+# Xtensa targets currently default to putting literal values in a separate
+# section and that requires linker script support, so put literals in text.
+global CFLAGS
+if [istarget xtensa*-*-*] {
+    set CFLAGS "$CFLAGS -mtext-section-literals"
+}
+
 if { ![ld_compile $CC "$srcdir/$subdir/cross1.c" tmpdir/cross1.o] \
      || ![ld_compile $CC "$srcdir/$subdir/cross2.c" tmpdir/cross2.o] } {
     unresolved $test1
@@ -17,7 +40,7 @@ if { ![ld_compile $CC "$srcdir/$subdir/cross1.c" tmpdir/cross1.o] \
     return
 }
 
-set flags ""
+set flags [big_or_little_endian]
 
 # The a29k compiled code calls V_SPILL and V_FILL.  Since we don't
 # need to run this code, but we don't have definitions for those
@@ -26,9 +49,9 @@ if [istarget a29k*-*-*] {
     set flags "$flags --defsym V_SPILL=0 --defsym V_FILL=0"
 }
 
-# hppa-elf needs a definition for $global$.
-if [istarget hppa*-*-*] {
-    set flags "$flags --defsym '\$global\$'=0"
+if [istarget sh64*-*-elf] {
+    # This is what gcc passes to ld by default.
+    set flags "-mshelf32"
 }
 
 verbose -log "$ld $flags -o tmpdir/cross1 -T $srcdir/$subdir/cross1.t tmpdir/cross1.o tmpdir/cross2.o"
@@ -43,7 +66,7 @@ if [string match "" $exec_output] then {
     fail $test1
 } else {
     verbose -log "$exec_output"
-    if [regexp "prohibited cross reference from .* to `foo' in" $exec_output] {
+    if [regexp "prohibited cross reference from .* to `.*foo' in" $exec_output] {
 	pass $test1
     } else {
 	fail $test1

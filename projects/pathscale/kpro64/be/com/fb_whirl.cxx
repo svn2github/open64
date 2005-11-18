@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -67,6 +71,8 @@
 #pragma hdrstop
 #define USE_STANDARD_TYPES
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <cmplrs/fb.h>
 #include <stdlib.h>
 #include "wn_util.h"
@@ -82,7 +88,6 @@
 #include "com_whirlview.h"
 
 #include "cxx_graph.h"
-#include <pair.h>         // STL pair.
 
 #include "DaVinci.h"      // for DaVinci viewer (for FB CFG).
 #include "wb_util.h"      // more: move this to another file (gwe).
@@ -97,6 +102,20 @@ FB_old_Annotate_whirl(WN *wn)
 }
 
 // ====================================================================
+ADDRESS_NAME_MAP PU_Addr_Name_Map;
+ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
+
+
+// ====================================================================
+void
+FEEDBACK::FB_hoist_case( WN *wn_switch, vector<FB_FREQ>::size_type wcase)
+{
+   FB_Info_Switch info_switch = Query_switch( wn_switch );
+   FB_FREQ freq_taken = info_switch[wcase];
+   info_switch[wcase] = FB_FREQ_ZERO;
+   Annot_switch( wn_switch, info_switch );
+}
+
 
 FEEDBACK *Cur_PU_Feedback = NULL;
 
@@ -106,7 +125,12 @@ FEEDBACK::FEEDBACK( WN *wn, MEM_POOL *m,
 		    INT32 loop_size,
 		    INT32 circuit_size,
 		    INT32 call_size,
+		    INT32 icall_size,
 		    INT32 switch_size, 
+#ifdef KEY
+		    INT32 value_size,
+		    UINT64 runtime_fun_address,
+#endif
 		    WN_MAP_TAB *maptab ) :
   _m( m ),
   _maptab( maptab ),
@@ -119,6 +143,11 @@ FEEDBACK::FEEDBACK( WN *wn, MEM_POOL *m,
   _loops   ( 1, FB_Info_Loop(),    m ),
   _circuits( 1, FB_Info_Circuit(), m ),
   _calls   ( 1, FB_Info_Call(),    m ),
+  _icalls  ( 1, FB_Info_Icall(),   m ),
+#ifdef KEY
+  _values  ( 1, FB_Info_Value(),   m ),
+  _runtime_func_addr( runtime_fun_address ),
+#endif
   _switches( 1, FB_Info_Switch(),  m )
 {
   if ( _trace )
@@ -130,7 +159,11 @@ FEEDBACK::FEEDBACK( WN *wn, MEM_POOL *m,
   _loops.reserve (loop_size);
   _circuits.reserve (circuit_size);
   _calls.reserve (call_size);
+  _icalls.reserve (icall_size);
   _switches.reserve (switch_size);
+#ifdef KEY
+  _values.reserve (value_size);
+#endif
   
   OPERATOR opr = WN_operator( wn );
 
@@ -218,9 +251,56 @@ FEEDBACK::Get_index_call( const WN *wn ) const
   Is_True( FB_valid_opr_call( wn ),
 	   ( "FEEDBACK::Get_index_call found unexpected operator" ) );
 
-  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
+  //For those WN* <wn> whose Operator is OPR_ICALL,
+  // to make IPA_WN_MAP32_Get and IPA_WN_MAP32_Set work,
+  // we choose to map OPR_ICALL twice:
+  //   first map to OPERATOR_MAPCAT_CALL, 
+  //   then map to OPERATOR_MAPCAT_ICALL
+  // To do this, we change the operator of wn to OPR_CALL in Annot_call temporarily,
+  // we will immediately restore the correct operator(OPR_ICALL) after Add_index_call.
+  
+  WN * wn_notconst = ( WN * ) wn;
+  OPERATOR old_opr = WN_operator(wn_notconst);
+  if (old_opr == OPR_ICALL)
+  {
+    WN_set_operator(wn_notconst, OPR_CALL);
+  }
+   
+  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn_notconst );
   Is_True( fb_index >= 0 && fb_index < _calls.size(),
 	   ( "FEEDBACK::Get_index_call found out of range fb_index" ) );
+ 
+  Is_True(WN_operator(wn_notconst) != OPR_ICALL,("WN operator must not be icall! icall has been changed to call."));
+  if (old_opr == OPR_ICALL)
+  {
+    WN_set_operator(wn_notconst, old_opr);
+  }
+
+  return fb_index;
+}
+
+INT32
+FEEDBACK::Get_index_icall( const WN *wn ) const
+{
+  Is_True( wn != NULL,
+	   ( "FEEDBACK::Get_index_icall expects non-NULL wn" ) );
+  Is_True( FB_valid_opr_call( wn ),
+	   ( "FEEDBACK::Get_index_icall found unexpected operator" ) );
+
+  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn ); 
+
+#ifdef KEY
+  Is_True( fb_index >= 0 && fb_index < _icalls.size(),
+	   ( "FEEDBACK::Get_index_icall found out of range fb_index" ) );
+#endif
+
+  if (fb_index >= _icalls.size())
+  {
+	DevWarn("FEEDBACK::Get_index_icall found out of range fb_index, suspect it is because call index.");
+	fb_index = 0;
+  }
+  Is_True( fb_index >= 0 && fb_index < _icalls.size(),
+	   ( "FEEDBACK::Get_index_icall found out of range fb_index" ) );
   return fb_index;
 }
 
@@ -252,7 +332,7 @@ FEEDBACK::Add_index_invoke( WN *wn )
 
   if ( fb_index == 0 ) {
     fb_index = _invokes.size();
-    _invokes.push_back();
+    _invokes.push_back(FB_Info_Invoke());
     IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
   }
   return fb_index;
@@ -267,7 +347,7 @@ FEEDBACK::Add_index_branch( WN *wn )
 
   if ( fb_index == 0 ) {
     fb_index = _branches.size();
-    _branches.push_back();
+    _branches.push_back(FB_Info_Branch());
     IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
   }
   return fb_index;
@@ -282,7 +362,7 @@ FEEDBACK::Add_index_loop( WN *wn )
 
   if ( fb_index == 0 ) {
     fb_index = _loops.size();
-    _loops.push_back();
+    _loops.push_back(FB_Info_Loop());
     IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
   }
   return fb_index;
@@ -297,7 +377,7 @@ FEEDBACK::Add_index_circuit( WN *wn )
 
   if ( fb_index == 0 ) {
     fb_index = _circuits.size();
-    _circuits.push_back();
+    _circuits.push_back(FB_Info_Circuit());
     IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
   }
   return fb_index;
@@ -306,13 +386,52 @@ FEEDBACK::Add_index_circuit( WN *wn )
 INT32
 FEEDBACK::Add_index_call( WN *wn )
 {
+  //For those WN* <wn> whose Operator is OPR_ICALL,
+  // to make IPA_WN_MAP32_Get and IPA_WN_MAP32_Set work,
+  // we choose to map OPR_ICALL twice:
+  //   first map to OPERATOR_MAPCAT_CALL, 
+  //   then map to OPERATOR_MAPCAT_ICALL
+  // To do this, we change the operator of wn to OPR_CALL in Annot_call temporarily,
+  // we will immediately restore the correct operator(OPR_ICALL) after Add_index_call.
+  
+  OPERATOR old_opr = WN_operator(wn);
+  if (old_opr == OPR_ICALL)
+  {
+    WN_set_operator(wn, OPR_CALL);
+  }
+
   INT32 fb_index = Get_index_call( wn );
   Is_True( fb_index >= 0 && fb_index < _calls.size(),
 	   ( "FEEDBACK::Add_index_call found out of range fb_index" ) );
 
   if (fb_index == 0) {
     fb_index = _calls.size();
-    _calls.push_back();
+    _calls.push_back(FB_Info_Call());
+#ifdef KEY
+    _icalls.push_back(FB_Info_Icall());
+#endif
+    IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
+  }
+
+  Is_True(WN_operator(wn) != OPR_ICALL,("WN operator must not be icall! icall has been changed to call."));
+  if (old_opr == OPR_ICALL)
+  {
+	WN_set_operator(wn, old_opr);
+  }
+   
+  return fb_index;
+}
+
+INT32
+FEEDBACK::Add_index_icall( WN *wn )
+{
+  INT32 fb_index = Get_index_icall( wn );
+  Is_True( fb_index >= 0 && fb_index < _icalls.size(),
+	   ( "FEEDBACK::Add_index_icall found out of range fb_index" ) );
+
+  if (fb_index == 0) {
+    fb_index = _icalls.size();
+    _icalls.push_back(FB_Info_Icall());
     IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
   }
   return fb_index;
@@ -327,7 +446,7 @@ FEEDBACK::Add_index_switch( WN *wn )
 
   if ( fb_index == 0 ) {
     fb_index = _switches.size();
-    _switches.push_back();
+    _switches.push_back(FB_Info_Switch());
     IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
   }
   return fb_index;
@@ -484,12 +603,28 @@ FEEDBACK::Query_call( const WN *wn ) const
   return _calls[fb_index];
 }
 
+const FB_Info_Icall&
+FEEDBACK::Query_icall( const WN *wn ) const
+{
+  INT32 fb_index = Get_index_icall( wn );
+  return _icalls[fb_index];
+}
+
 const FB_Info_Switch&
 FEEDBACK::Query_switch( const WN *wn ) const
 {
   INT32 fb_index = Get_index_switch( wn );
   return _switches[fb_index];
 }
+
+#ifdef KEY
+const FB_Info_Value&
+FEEDBACK::Query_value( const WN *wn ) const
+{
+  INT32 fb_index = Get_index_value( wn );
+  return _values[fb_index];
+}
+#endif
 
 
 FB_FREQ
@@ -858,6 +993,47 @@ FEEDBACK::Annot_branch( WN *wn, const FB_Info_Branch& fb_info )
   }
 }
 
+#ifdef KEY
+INT32 FEEDBACK::Get_index_value( const WN *wn ) const
+{
+  Is_True( wn != NULL,
+	   ( "FEEDBACK::Get_index_invoke expects non-NULL wn" ) );
+  Is_True( FB_valid_opr_value( wn ),
+	   ( "FEEDBACK::Get_index_invoke found unexpected operator" ) );
+
+  INT32 fb_index = IPA_WN_MAP32_Get( _maptab, WN_MAP_FEEDBACK, wn );
+  Is_True( fb_index >= 0 && fb_index < _values.size(),
+	   ( "FEEDBACK::Get_index_invoke found out of range fb_index" ) );
+  return fb_index;
+}
+
+INT32 FEEDBACK::Add_index_value( WN *wn )
+{
+  INT32 fb_index = Get_index_value( wn );
+  Is_True( fb_index >= 0 && fb_index < _values.size(),
+	   ( "FEEDBACK::Add_index_value found out of range fb_index" ) );
+
+  if ( fb_index == 0 ) {
+    fb_index = _values.size();
+    _values.push_back(FB_Info_Value());
+    IPA_WN_MAP32_Set( _maptab, WN_MAP_FEEDBACK, wn, fb_index );
+  }
+  return fb_index;
+}
+
+void FEEDBACK::Annot_value( WN *wn, const FB_Info_Value& fb_info )
+{
+  INT32 fb_index = Add_index_value( wn );
+  _values[fb_index] = fb_info;
+
+  if ( _trace ) {
+    fprintf( TFile, "FEEDBACK::Annot_value(0x%p):\n", wn );
+    Print_with_wn( TFile, wn );
+  }
+}
+#endif
+
+
 void
 FEEDBACK::Annot_loop( WN *wn, const FB_Info_Loop& fb_info )
 {
@@ -890,6 +1066,36 @@ FEEDBACK::Annot_call( WN *wn, const FB_Info_Call& fb_info )
 
   if ( _trace ) {
     fprintf( TFile, "FEEDBACK::Annot_call(0x%p):\n", wn );
+    Print_with_wn( TFile, wn );
+  }
+}
+
+void
+FEEDBACK::Annot_icall( WN *wn, const FB_Info_Icall& fb_info )
+{
+  INT32 fb_index = Add_index_icall( wn );
+  _icalls[fb_index] = fb_info;
+
+#if 0
+  UINT64 counter = 0;
+  int i;
+  for( i = 0; i < FB_TNV_SIZE; i++ ){
+    if( fb_info.tnv._values[i] == 0 )
+      break;
+    counter += fb_info.tnv._counters[i];
+  }
+
+  if( i < FB_TNV_SIZE ){
+    FmtAssert( fb_info.tnv._exec_counter == counter,
+	       ("icall counters don't match") );
+  } else {
+    FmtAssert( fb_info.tnv._exec_counter >= counter,
+	       ("icall counters don't match") );
+  }
+#endif // Is_True_On
+
+  if ( _trace ) {
+    fprintf( TFile, "FEEDBACK::Annot_icall(0x%p):\n", wn );
     Print_with_wn( TFile, wn );
   }
 }
@@ -1442,6 +1648,60 @@ FEEDBACK::FB_lower_call( WN *wn_call, WN *wn_new_call )
     Delete( wn_call );
 }
 
+void
+FEEDBACK::FB_lower_icall( WN *wn_icall, WN *wn_new_icall, WN * wn_new_call, WN * wn_new_if )
+{
+  if ( _trace )
+    fprintf( TFile, "FEEDBACK::FB_lower_icall(0x%p, 0x%p, 0x%p, 0x%p):\n",
+	     wn_icall, wn_new_icall, wn_new_call, wn_new_if );
+
+  Is_True( wn_icall != NULL,
+	   ( "FEEDBACK::FB_lower_icall expects non-NULL wn_icall" ) );
+
+  Is_True( FB_valid_opr_call( wn_icall ),
+	   ( "FEEDBACK::FB_lower_icall encounted unexpected operator" ) );
+  FB_Info_Call info_call = Query_call( wn_icall );
+  FB_Info_Icall info_icall = Query_icall( wn_icall );
+
+  Is_True( info_call.freq_entry._value >= (float) info_icall.tnv._counters[0], 
+		  ("entry count of icall less than counter[0]! impossible!")  );
+
+  FB_FREQ freq_taken((float)info_icall.tnv._counters[0],true);
+  FB_FREQ freq_nottaken(info_call.freq_entry._value-(float)info_icall.tnv._counters[0],true);
+
+  Is_True( FB_valid_opr_branch(wn_new_if), 
+		  ("FEEDBACK::FB_lower_icall encounted unexpected operator") );
+  Annot_branch(wn_new_if, FB_Info_Branch(freq_taken,freq_nottaken)); //...
+  Is_True( FB_valid_opr_call( wn_new_icall ),
+	   ( "FEEDBACK::FB_lower_icall encounted unexpected operator" ) );
+
+  if ( ! info_call.in_out_same )
+  {
+    Annot_call( wn_new_call, FB_Info_Call(freq_taken,FB_FREQ_UNKNOWN,false) );
+    Annot_call( wn_new_icall, FB_Info_Call(freq_nottaken,FB_FREQ_UNKNOWN,false) );
+  }
+  else
+  {
+    Annot_call( wn_new_call, FB_Info_Call(freq_taken) );
+    Annot_call( wn_new_icall, FB_Info_Call(freq_nottaken) );
+  }
+
+#ifdef KEY
+  FB_Info_Icall info_new_icall = info_icall;
+  const UINT64 taken = (UINT64)freq_taken.Value();
+
+  info_new_icall.tnv._exec_counter -= taken;
+  info_new_icall.tnv._counters[0]  -= taken;
+  // Don't convert it more than once.
+  info_new_icall.tnv._flag = FB_TNV_FLAG_UNINIT;
+
+  Annot_icall( wn_new_icall, info_new_icall );
+#endif
+
+  if ( wn_icall != wn_new_icall )
+    Delete( wn_icall );
+}
+
 
 // RETURNVAL                            <expr>
 //  <expr>                 ===>        STID <preg>
@@ -1726,6 +1986,12 @@ FEEDBACK::FB_set_zero_node( WN *wn )
     {
       FB_Info_Call fb_info( FB_FREQ_ZERO );
       Annot_call( wn, fb_info );
+#ifdef KEY
+      if( WN_operator(wn) == OPR_ICALL ){
+	FB_Info_Icall fb_icall_info;
+	Annot_icall( wn, fb_icall_info );
+      }
+#endif
     }
     break;
 
@@ -1808,6 +2074,12 @@ FEEDBACK::FB_set_unknown_node( WN *wn )
     {
       FB_Info_Call fb_info( FB_FREQ_UNKNOWN, FB_FREQ_UNKNOWN );
       Annot_call( wn, fb_info );
+#ifdef KEY
+      if( WN_operator(wn) == OPR_ICALL ){
+	FB_Info_Icall fb_icall_info;
+	Annot_icall( wn, fb_icall_info );
+      }
+#endif
     }
     break;
 
@@ -1849,9 +2121,11 @@ FEEDBACK::FB_set_unknown( WN *wn )
 void
 FEEDBACK::FB_scale_node( WN *wn, FB_FREQ freq_scale )
 {
+/*
   Is_True( freq_scale.Known() &&
 	   freq_scale.Value() >= 0.0 && freq_scale.Value() <= 1.0,
 	   ( "FEEDBACK::FB_scale: freq_scale == %f", freq_scale.Value() ) );
+*/
 
   switch( WN_operator( wn ) ) {
 
@@ -1906,6 +2180,23 @@ FEEDBACK::FB_scale_node( WN *wn, FB_FREQ freq_scale )
       fb_info.freq_entry *= freq_scale;
       fb_info.freq_exit  *= freq_scale;
       Annot_call( wn, fb_info );
+#ifdef KEY
+      if( WN_operator(wn) == OPR_ICALL ){
+	FB_Info_Icall fb_icall_info = Query_icall( wn );
+	const float scale = freq_scale.Value();
+	fb_icall_info.tnv._exec_counter =
+	  (UINT64)(fb_icall_info.tnv._exec_counter * scale);
+
+	for( int i = 0; i < FB_TNV_SIZE; i ++ ){
+	  if( fb_icall_info.tnv._values[i] == 0 )
+	    break;
+	  fb_icall_info.tnv._counters[i] =
+	    (UINT64)(fb_icall_info.tnv._counters[i] * scale);
+	}
+	
+	Annot_icall( wn, fb_icall_info );
+      }
+#endif
     }
     break;
 
@@ -1984,6 +2275,12 @@ FEEDBACK::FB_duplicate_node( WN *wn_origl, WN *wn_dupli )
     {
       const FB_Info_Call& fb_info = Query_call( wn_origl );
       Annot_call( wn_dupli, fb_info );
+#ifdef KEY
+      if( WN_operator(wn_origl) == OPR_ICALL ){
+	FB_Info_Icall fb_icall_info = Query_icall( wn_origl );
+	Annot_icall( wn_dupli, fb_icall_info );
+      }
+#endif
     }
     break;
 
@@ -2082,6 +2379,21 @@ FEEDBACK::FB_recombine_node( WN *wn_origl, WN *wn_extra )
       fb_info_origl.freq_entry += fb_info_extra.freq_entry;
       fb_info_origl.freq_exit  += fb_info_extra.freq_exit;
       Annot_call( wn_origl, fb_info_origl );
+#ifdef KEY
+      if( WN_operator(wn_origl) == OPR_ICALL ){
+	FB_Info_Icall fb_icall_info_origl = Query_icall( wn_origl );
+	const FB_Info_Icall& fb_icall_info_extra = Query_icall( wn_extra );
+	fb_icall_info_origl.tnv._exec_counter += fb_icall_info_extra.tnv._exec_counter;
+
+	for( int i = 0; i < FB_TNV_SIZE; i ++ ){
+	  if( fb_icall_info_origl.tnv._values[i] == 0 )
+	    break;
+	  fb_icall_info_origl.tnv._counters[i] += fb_icall_info_extra.tnv._counters[i];
+	}
+	
+	Annot_icall( wn_origl, fb_icall_info_origl );
+      }
+#endif
       Delete( wn_extra );
     }
     break;
@@ -2123,9 +2435,11 @@ FEEDBACK::FB_recombine( WN *wn_origl, WN *wn_extra )
 void
 FEEDBACK::FB_clone_node( WN *wn_origl, WN *wn_clone, FB_FREQ freq_scale )
 {
+/*
   Is_True( freq_scale.Known() &&
 	   freq_scale.Value() >= 0.0 && freq_scale.Value() <= 1.0,
 	   ( "FEEDBACK::FB_scale: freq_scale == %f", freq_scale.Value() ) );
+*/
 
   switch( WN_operator( wn_origl ) ) {
 
@@ -2200,6 +2514,31 @@ FEEDBACK::FB_clone_node( WN *wn_origl, WN *wn_clone, FB_FREQ freq_scale )
       fb_info_origl.freq_exit  -= fb_info_clone.freq_exit;
       Annot_call( wn_origl, fb_info_origl );
       Annot_call( wn_clone, fb_info_clone );
+#ifdef KEY
+      if( WN_operator(wn_origl) == OPR_ICALL ){
+	FB_Info_Icall fb_info_origl = Query_icall( wn_origl );
+	const float scale = freq_scale.Value();
+	FB_Info_Icall fb_info_clone = fb_info_origl;
+
+	fb_info_clone.tnv._exec_counter =
+	  (UINT64)(fb_info_origl.tnv._exec_counter * scale);
+	fb_info_origl.tnv._exec_counter -= fb_info_clone.tnv._exec_counter;
+
+	for( int i = 0; i < FB_TNV_SIZE; i ++ ){
+	  if( fb_info_origl.tnv._values[i] == 0 )
+	    break;
+	  fb_info_clone.tnv._counters[i] =
+	    (UINT64)(fb_info_origl.tnv._counters[i] * scale);
+	  if( fb_info_origl.tnv._counters[i] > fb_info_clone.tnv._counters[i] )
+	    fb_info_origl.tnv._counters[i] -= fb_info_clone.tnv._counters[i];
+	  else
+	    fb_info_origl.tnv._counters[i] = 0;
+	}
+
+	Annot_icall( wn_origl, fb_info_origl );
+	Annot_icall( wn_clone, fb_info_clone );
+      }
+#endif
     }
     break;
 
@@ -2441,10 +2780,12 @@ FB_IPA_Clone_node( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
 		   WN             *wn_origl, WN             *wn_clone,
 		   FB_FREQ freq_scale )
 {
+/*
   Is_True( freq_scale.Known() &&
 	   freq_scale.Value() >= 0.0 && freq_scale.Value() <= 1.0,
 	   ( "FEEDBACK::FB_IPA_Clone_node: freq_scale == %f",
 	     freq_scale.Value() ) );
+*/
 
   Is_True( feedback_origl != NULL,
 	   ( "FEEDBACK::FB_IPA_Clone_node: feedback_origl == NULL" ) );
@@ -2524,6 +2865,32 @@ FB_IPA_Clone_node( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
       fb_info_origl.freq_exit  -= fb_info_clone.freq_exit;
       feedback_origl->Annot_call( wn_origl, fb_info_origl );
       feedback_clone->Annot_call( wn_clone, fb_info_clone );
+
+#ifdef KEY
+      if( WN_operator(wn_origl) == OPR_ICALL ){
+	FB_Info_Icall fb_info_origl = feedback_origl->Query_icall( wn_origl );
+	const float scale = freq_scale.Value();
+	FB_Info_Icall fb_info_clone = fb_info_origl;
+
+	fb_info_clone.tnv._exec_counter =
+	  (UINT64)(fb_info_origl.tnv._exec_counter * scale);
+	fb_info_origl.tnv._exec_counter -= fb_info_clone.tnv._exec_counter;
+
+	for( int i = 0; i < FB_TNV_SIZE; i ++ ){
+	  if( fb_info_origl.tnv._values[i] == 0 )
+	    break;
+	  fb_info_clone.tnv._counters[i] =
+	    (UINT64)(fb_info_origl.tnv._counters[i] * scale);
+	  if( fb_info_origl.tnv._counters[i] > fb_info_clone.tnv._counters[i] )
+	    fb_info_origl.tnv._counters[i] -= fb_info_clone.tnv._counters[i];
+	  else
+	    fb_info_origl.tnv._counters[i] = 0;
+	}
+
+	feedback_origl->Annot_icall( wn_origl, fb_info_origl );
+	feedback_clone->Annot_icall( wn_clone, fb_info_clone );
+      }
+#endif // KEY
     }
     break;
 
@@ -2551,14 +2918,20 @@ FB_IPA_Clone( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
 	      WN             *wn_origl, WN             *wn_clone,
 	      FB_FREQ freq_scale )
 {
+/*
   Is_True( freq_scale.Known() &&
 	   freq_scale.Value() >= 0.0 && freq_scale.Value() <= 1.0,
 	   ( "FEEDBACK::FB_IPA_Clone: freq_scale == %f",
 	     freq_scale.Value() ) );
+*/
 
   if ( feedback_origl == NULL ) {
-    if ( freq_scale.Exact() && freq_scale.Zero() )
-      feedback_clone->FB_set_zero( wn_clone );
+    if ( freq_scale.Exact() && freq_scale.Zero() ){
+#ifdef KEY
+      if( feedback_clone != NULL )
+#endif
+	feedback_clone->FB_set_zero( wn_clone );
+    }
     return;
   }
 
@@ -2639,6 +3012,11 @@ FB_Transfer_node(FEEDBACK *feedback_origl, FEEDBACK *feedback_new, WN *wn)
 
   fb_opr_cases_call:
     feedback_new->Annot_call(wn, feedback_origl->Query_call(wn));
+#ifdef KEY
+    if( WN_operator(wn) == OPR_ICALL ){
+      feedback_new->Annot_icall(wn, feedback_origl->Query_icall(wn));    
+    }
+#endif
     feedback_origl->Delete(wn);
     break;
 
@@ -2791,6 +3169,21 @@ Convert_Feedback_Info (const FEEDBACK* fb, const WN* tree,
 
     fb_opr_cases_call:
       pu_handle.Get_Call_Table ().push_back (fb->Query_call (wn));
+#ifdef KEY
+      if( WN_operator(wn) == OPR_ICALL ){
+	pu_handle.Get_Icall_Table ().push_back (fb->Query_icall (wn));
+
+	/* Verify the icall counters before passing this info to next phases.
+	 */
+	const FB_Info_Icall& info_icall = Cur_PU_Feedback->Query_icall(wn);
+
+	if( !info_icall.Is_uninit() ){
+	  const FB_Info_Call& info_call = Cur_PU_Feedback->Query_call(wn);
+	  FmtAssert( info_icall.tnv._exec_counter >= info_icall.tnv._counters[0],
+		     ("icall exec counters don't match") );
+	}
+      }
+#endif // KEY
       ++count;
       break;
 
@@ -2798,6 +3191,16 @@ Convert_Feedback_Info (const FEEDBACK* fb, const WN* tree,
       pu_handle.Get_Switch_Table ().push_back (fb->Query_switch (wn));
       ++count;
       break;
+
+#ifdef KEY
+    fb_opr_cases_value:
+      if( !WN_operator_is( WN_kid1(wn), OPR_INTCONST ) &&
+	  MTYPE_is_integral( OPCODE_rtype(WN_opcode(wn) ) ) ){
+	pu_handle.Get_Value_Table ().push_back (fb->Query_value (wn));
+	++count;
+	break;
+      }
+#endif
 
     default:
       break;
@@ -2838,6 +3241,16 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
     (const FB_Info_Circuit*) (baseaddr + pu_hdr.pu_scircuit_offset);
   const FB_Info_Circuit* fb_circuit_last =
     fb_circuit + pu_hdr.pu_num_scircuit_entries;
+
+#ifdef KEY
+  const FB_Info_Icall* fb_icall =
+    (const FB_Info_Icall*) (baseaddr + pu_hdr.pu_icall_offset);
+  const FB_Info_Icall* fb_icall_last = fb_icall + pu_hdr.pu_num_icall_entries;
+
+  const FB_Info_Value* fb_value =
+    (const FB_Info_Value*) (baseaddr + pu_hdr.pu_value_offset);
+  const FB_Info_Value* fb_value_last = fb_value + pu_hdr.pu_num_value_entries;
+#endif
 
   const FB_Info_Call* fb_call =
     (const FB_Info_Call*) (baseaddr + pu_hdr.pu_call_offset);
@@ -2882,8 +3295,25 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
     fb_opr_cases_call:
       fb->Annot_call( wn, *fb_call );
       ++fb_call;
+#ifdef KEY
+      if( WN_operator(wn) == OPR_ICALL ){
+	fb->Annot_icall( wn, *fb_icall );
+	++fb_icall;
+      }
+#endif // KEY
       ++count;
       break;
+
+#ifdef KEY
+    fb_opr_cases_value:
+      if( !WN_operator_is( WN_kid1(wn), OPR_INTCONST ) &&
+	  MTYPE_is_integral( OPCODE_rtype(WN_opcode(wn) ) ) ){
+	fb->Annot_value( wn, *fb_value );
+	++fb_value;
+	++count;
+      }
+      break;
+#endif
 
     fb_opr_cases_switch:
       {
@@ -2902,12 +3332,17 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
     }
   }
 
+#ifdef KEY
+  Is_True( fb_value == fb_value_last, ("Error in reading value feedback info") );
+#endif
+
   Is_True ( count == pu_hdr.pu_checksum &&
 	    fb_invoke == fb_invoke_last &&
 	    fb_branch == fb_branch_last &&
 	    fb_switch_target == fb_switch_target_last &&
 	    fb_loop == fb_loop_last &&
 	    fb_circuit == fb_circuit_last &&
+	    fb_icall == fb_icall_last &&
 	    fb_call == fb_call_last, ( "Error in reading Feedback info" ) );
 	   
 } // Read_Feedback_Info

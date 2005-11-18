@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -558,7 +562,11 @@ extern INT32 Gopt_TN_CNT;
 extern BOOL Enable_BB_Splitting; /* Split long basic blocks? */
 extern INT32 Split_BB_Length;	/* split BBs that are > than this */
 #define DEF_BBLENGTH	 300	/* default value for Split_BB_Length */
+#if defined(TARG_IA32) || defined(TARG_X8664)
+#define MIN_BBLENGTH	 5	/* allow smaller due to fewer regs and CISC */
+#else
 #define MIN_BBLENGTH	 100	/* don't let the value get too small */
+#endif
 #define MAX_BBLENGTH	5000	/* don't let the value get too big */
 
 /***** What is the byte sex of the host and target? *****/
@@ -665,6 +673,14 @@ extern char *Schedlist_Option;
 extern BOOL Force_Long_EH_Range_Offsets;
 /* Force stack frame to use large model */
 extern BOOL Force_Large_Stack_Model;
+#ifdef TARG_X8664
+/* Force stack frame to use frame pointer */
+extern BOOL Force_Frame_Pointer;
+extern BOOL Force_Frame_Pointer_Set;
+/* Use g77 ABI (affects complex and real function return values) */
+extern BOOL F2c_Abi;
+extern BOOL F2c_Abi_Set;
+#endif
 /* put each function in its own text section */
 extern BOOL Section_For_Each_Function;
 
@@ -673,6 +689,12 @@ extern OPTION_LIST *Registers_Not_Allocatable;
 
 /* Unique ident from IPA */
 extern INT32 Ipa_Ident_Number;
+
+#ifdef KEY
+/* Tell ipa_link about the LD_LIBRARY_PATH that was in effect before the
+   compiler was run. */
+extern char *IPA_old_ld_library_path;
+#endif
 
 extern BOOL Scalar_Formal_Ref;		/* for fortran formal scalar refs */
 extern BOOL Non_Scalar_Formal_Ref;	/* for fortran formal non_scalar refs */

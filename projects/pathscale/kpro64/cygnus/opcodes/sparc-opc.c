@@ -1,5 +1,6 @@
 /* Table of opcodes for the sparc.
-   Copyright (C) 1989, 91, 92, 93, 94, 95, 96, 97, 98, 1999
+   Copyright 1989, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
+   2000
    Free Software Foundation, Inc.
 
 This file is part of the BFD library.
@@ -35,27 +36,30 @@ Boston, MA 02111-1307, USA.	*/
 #define MASK_SPARCLITE	SPARC_OPCODE_ARCH_MASK (SPARC_OPCODE_ARCH_SPARCLITE)
 #define MASK_V9		SPARC_OPCODE_ARCH_MASK (SPARC_OPCODE_ARCH_V9)
 #define MASK_V9A	SPARC_OPCODE_ARCH_MASK (SPARC_OPCODE_ARCH_V9A)
+#define MASK_V9B	SPARC_OPCODE_ARCH_MASK (SPARC_OPCODE_ARCH_V9B)
 
 /* Bit masks of architectures supporting the insn.  */
 
 #define v6		(MASK_V6 | MASK_V7 | MASK_V8 | MASK_SPARCLET \
-			 | MASK_SPARCLITE | MASK_V9 | MASK_V9A)
+			 | MASK_SPARCLITE | MASK_V9 | MASK_V9A | MASK_V9B)
 /* v6 insns not supported on the sparclet */
 #define v6notlet	(MASK_V6 | MASK_V7 | MASK_V8 \
-			 | MASK_SPARCLITE | MASK_V9 | MASK_V9A)
+			 | MASK_SPARCLITE | MASK_V9 | MASK_V9A | MASK_V9B)
 #define v7		(MASK_V7 | MASK_V8 | MASK_SPARCLET \
-			 | MASK_SPARCLITE | MASK_V9 | MASK_V9A)
+			 | MASK_SPARCLITE | MASK_V9 | MASK_V9A | MASK_V9B)
 /* Although not all insns are implemented in hardware, sparclite is defined
    to be a superset of v8.  Unimplemented insns trap and are then theoretically
    implemented in software.
    It's not clear that the same is true for sparclet, although the docs
    suggest it is.  Rather than complicating things, the sparclet assembler
    recognizes all v8 insns.  */
-#define v8		(MASK_V8 | MASK_SPARCLET | MASK_SPARCLITE | MASK_V9 | MASK_V9A)
+#define v8		(MASK_V8 | MASK_SPARCLET | MASK_SPARCLITE \
+			 | MASK_V9 | MASK_V9A | MASK_V9B)
 #define sparclet	(MASK_SPARCLET)
 #define sparclite	(MASK_SPARCLITE)
-#define v9		(MASK_V9 | MASK_V9A)
-#define v9a		(MASK_V9A)
+#define v9		(MASK_V9 | MASK_V9A | MASK_V9B)
+#define v9a		(MASK_V9A | MASK_V9B)
+#define v9b		(MASK_V9B)
 /* v6 insns not supported by v9 */
 #define v6notv9		(MASK_V6 | MASK_V7 | MASK_V8 \
 			 | MASK_SPARCLET | MASK_SPARCLITE)
@@ -76,6 +80,8 @@ const struct sparc_opcode_arch sparc_opcode_archs[] = {
   { "v9", MASK_V6 | MASK_V7 | MASK_V8 | MASK_V9 },
   /* v9 with ultrasparc additions */
   { "v9a", MASK_V6 | MASK_V7 | MASK_V8 | MASK_V9 | MASK_V9A },
+  /* v9 with cheetah additions */
+  { "v9b", MASK_V6 | MASK_V7 | MASK_V8 | MASK_V9 | MASK_V9A | MASK_V9B },
   { NULL, 0 }
 };
 
@@ -755,8 +761,8 @@ const struct sparc_opcode sparc_opcodes[] = {
 { "scan",	F3(2, 0x2c, 0), F3(~2, ~0x2c, ~0)|ASI(~0),	"1,2,d", 0, sparclet|sparclite },
 { "scan",	F3(2, 0x2c, 1), F3(~2, ~0x2c, ~1),		"1,i,d", 0, sparclet|sparclite },
 
-{ "popc",	F3(2, 0x2e, 0), F3(~2, ~0x2e, ~0)|RS2_G0|ASI(~0),"2,d", 0, v9 },
-{ "popc",	F3(2, 0x2e, 1), F3(~2, ~0x2e, ~1)|RS2_G0,	"i,d", 0, v9 },
+{ "popc",	F3(2, 0x2e, 0), F3(~2, ~0x2e, ~0)|RS1_G0|ASI(~0),"2,d", 0, v9 },
+{ "popc",	F3(2, 0x2e, 1), F3(~2, ~0x2e, ~1)|RS1_G0,	"i,d", 0, v9 },
 
 { "clr",	F3(2, 0x02, 0), F3(~2, ~0x02, ~0)|RD_G0|RS1_G0|ASI_RS2(~0),	"d", F_ALIAS, v6 }, /* or %g0,%g0,d */
 { "clr",	F3(2, 0x02, 1), F3(~2, ~0x02, ~1)|RS1_G0|SIMM13(~0),		"d", F_ALIAS, v6 }, /* or %g0,0,d	*/
@@ -843,6 +849,10 @@ const struct sparc_opcode sparc_opcodes[] = {
 { "wr", F3(2, 0x30, 1)|RD(22),	F3(~2, ~0x30, ~1)|RD(~22),		"1,i,_", 0, v9a }, /* wr r,i,%softint */
 { "wr", F3(2, 0x30, 0)|RD(23),	F3(~2, ~0x30, ~0)|RD(~23)|ASI(~0),	"1,2,_", 0, v9a }, /* wr r,r,%tick_cmpr */
 { "wr", F3(2, 0x30, 1)|RD(23),	F3(~2, ~0x30, ~1)|RD(~23),		"1,i,_", 0, v9a }, /* wr r,i,%tick_cmpr */
+{ "wr", F3(2, 0x30, 0)|RD(24),	F3(~2, ~0x30, ~0)|RD(~24)|ASI(~0),	"1,2,_", 0, v9b }, /* wr r,r,%sys_tick */
+{ "wr", F3(2, 0x30, 1)|RD(24),	F3(~2, ~0x30, ~1)|RD(~24),		"1,i,_", 0, v9b }, /* wr r,i,%sys_tick */
+{ "wr", F3(2, 0x30, 0)|RD(25),	F3(~2, ~0x30, ~0)|RD(~25)|ASI(~0),	"1,2,_", 0, v9b }, /* wr r,r,%sys_tick_cmpr */
+{ "wr", F3(2, 0x30, 1)|RD(25),	F3(~2, ~0x30, ~1)|RD(~25),		"1,i,_", 0, v9b }, /* wr r,i,%sys_tick_cmpr */
 
 { "rd",	F3(2, 0x28, 0),			F3(~2, ~0x28, ~0)|SIMM13(~0),		"M,d", 0, v8 }, /* rd %asrX,r */
 { "rd",	F3(2, 0x28, 0),			F3(~2, ~0x28, ~0)|RS1_G0|SIMM13(~0),	"y,d", 0, v6 }, /* rd %y,r */
@@ -862,6 +872,8 @@ const struct sparc_opcode sparc_opcodes[] = {
 { "rd",	F3(2, 0x28, 0)|RS1(19),		F3(~2, ~0x28, ~0)|RS1(~19)|SIMM13(~0),	"/,d", 0, v9a }, /* rd %gsr,r */
 { "rd",	F3(2, 0x28, 0)|RS1(22),		F3(~2, ~0x28, ~0)|RS1(~22)|SIMM13(~0),	"/,d", 0, v9a }, /* rd %softint,r */
 { "rd",	F3(2, 0x28, 0)|RS1(23),		F3(~2, ~0x28, ~0)|RS1(~23)|SIMM13(~0),	"/,d", 0, v9a }, /* rd %tick_cmpr,r */
+{ "rd",	F3(2, 0x28, 0)|RS1(24),		F3(~2, ~0x28, ~0)|RS1(~24)|SIMM13(~0),	"/,d", 0, v9b }, /* rd %sys_tick,r */
+{ "rd",	F3(2, 0x28, 0)|RS1(25),		F3(~2, ~0x28, ~0)|RS1(~25)|SIMM13(~0),	"/,d", 0, v9b }, /* rd %sys_tick_cmpr,r */
 
 { "rdpr",	F3(2, 0x2a, 0),		F3(~2, ~0x2a, ~0)|SIMM13(~0),	"?,d", 0, v9 },   /* rdpr %priv,r */
 { "wrpr",	F3(2, 0x32, 0),		F3(~2, ~0x32, ~0),		"1,2,!", 0, v9 }, /* wrpr r1,r2,%priv */
@@ -1428,25 +1440,25 @@ cond ("bz",	"tz",   CONDZ, F_CONDBR|F_ALIAS), /* for e */
   FBRX(fop, F2(0, 5)|COND(mask), F2(~0, ~5)|COND(~(mask)), flags), /* v9 */ \
   FBR(fop, F2(0, 6)|COND(mask), F2(~0, ~6)|COND(~(mask)), flags)
 
-CONDFC  ("fb",    "cb",    0x8, 0),
-CONDFCL ("fba",	  "cba",   0x8, F_ALIAS),
-CONDFC  ("fbe",	  "cb0",   0x9, 0),
-CONDF   ("fbz",            0x9, F_ALIAS),
-CONDFC  ("fbg",	  "cb2",   0x6, 0),
-CONDFC  ("fbge",  "cb02",  0xb, 0),
-CONDFC  ("fbl",	  "cb1",   0x4, 0),
-CONDFC  ("fble",  "cb01",  0xd, 0),
-CONDFC  ("fblg",  "cb12",  0x2, 0),
-CONDFCL ("fbn",	  "cbn",   0x0, 0),
-CONDFC  ("fbne",  "cb123", 0x1, 0),
-CONDF   ("fbnz",           0x1, F_ALIAS),
-CONDFC  ("fbo",	  "cb012", 0xf, 0),
-CONDFC  ("fbu",	  "cb3",   0x7, 0),
-CONDFC  ("fbue",  "cb03",  0xa, 0),
-CONDFC  ("fbug",  "cb23",  0x5, 0),
-CONDFC  ("fbuge", "cb023", 0xc, 0),
-CONDFC  ("fbul",  "cb13",  0x3, 0),
-CONDFC  ("fbule", "cb013", 0xe, 0),
+CONDFC  ("fb",    "cb",    0x8, F_UNBR),
+CONDFCL ("fba",	  "cba",   0x8, F_UNBR|F_ALIAS),
+CONDFC  ("fbe",	  "cb0",   0x9, F_CONDBR),
+CONDF   ("fbz",            0x9, F_CONDBR|F_ALIAS),
+CONDFC  ("fbg",	  "cb2",   0x6, F_CONDBR),
+CONDFC  ("fbge",  "cb02",  0xb, F_CONDBR),
+CONDFC  ("fbl",	  "cb1",   0x4, F_CONDBR),
+CONDFC  ("fble",  "cb01",  0xd, F_CONDBR),
+CONDFC  ("fblg",  "cb12",  0x2, F_CONDBR),
+CONDFCL ("fbn",	  "cbn",   0x0, F_UNBR),
+CONDFC  ("fbne",  "cb123", 0x1, F_CONDBR),
+CONDF   ("fbnz",           0x1, F_CONDBR|F_ALIAS),
+CONDFC  ("fbo",	  "cb012", 0xf, F_CONDBR),
+CONDFC  ("fbu",	  "cb3",   0x7, F_CONDBR),
+CONDFC  ("fbue",  "cb03",  0xa, F_CONDBR),
+CONDFC  ("fbug",  "cb23",  0x5, F_CONDBR),
+CONDFC  ("fbuge", "cb023", 0xc, F_CONDBR),
+CONDFC  ("fbul",  "cb13",  0x3, F_CONDBR),
+CONDFC  ("fbule", "cb013", 0xe, F_CONDBR),
 
 #undef CONDFC
 #undef CONDFCL
@@ -1814,6 +1826,19 @@ SLCBCC("cbnefr", 15),
 { "array16",	F3F(2, 0x36, 0x012), F3F(~2, ~0x36, ~0x012), "1,2,d", 0, v9a },
 { "array32",	F3F(2, 0x36, 0x014), F3F(~2, ~0x36, ~0x014), "1,2,d", 0, v9a },
 
+/* Cheetah instructions */
+{ "edge8n",    F3F(2, 0x36, 0x001), F3F(~2, ~0x36, ~0x001), "1,2,d", 0, v9b },
+{ "edge8ln",   F3F(2, 0x36, 0x003), F3F(~2, ~0x36, ~0x003), "1,2,d", 0, v9b },
+{ "edge16n",   F3F(2, 0x36, 0x005), F3F(~2, ~0x36, ~0x005), "1,2,d", 0, v9b },
+{ "edge16ln",  F3F(2, 0x36, 0x007), F3F(~2, ~0x36, ~0x007), "1,2,d", 0, v9b },
+{ "edge32n",   F3F(2, 0x36, 0x009), F3F(~2, ~0x36, ~0x009), "1,2,d", 0, v9b },
+{ "edge32ln",  F3F(2, 0x36, 0x00b), F3F(~2, ~0x36, ~0x00b), "1,2,d", 0, v9b },
+
+{ "bmask",     F3F(2, 0x36, 0x019), F3F(~2, ~0x36, ~0x019), "1,2,d", 0, v9b },
+{ "bshuffle",  F3F(2, 0x36, 0x04c), F3F(~2, ~0x36, ~0x04c), "v,B,H", 0, v9b },
+
+{ "siam",      F3F(2, 0x36, 0x081), F3F(~2, ~0x36, ~0x081)|RD_G0|RS1_G0|RS2(~7), "3", 0, v9b },
+
 /* More v9 specific insns, these need to come last so they do not clash
    with v9a instructions such as "edge8" which looks like impdep1. */
 
@@ -1976,6 +2001,7 @@ static arg prefetch_table[] =
   { 2, "#n_writes" },
   { 3, "#one_write" },
   { 4, "#page" },
+  { 16, "#invalidate" },
   { 0, 0 }
 };
 

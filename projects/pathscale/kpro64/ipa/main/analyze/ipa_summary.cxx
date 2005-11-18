@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -44,6 +48,8 @@
 // the call graph is built. For those, we provide dual interfaces.
 // -------------------------------------------------------------------
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "ipa_cg.h"                     // IPA_NODE, IPA_Call_Graph_Built
 #include "ipa_summary.h"        
 #include "ipl_summarize.h"              // SUMMARY
@@ -83,6 +89,20 @@ get_global_file_array (const IP_FILE_HDR& hdr, INT32& size)
   if (size = summary_header->Get_global_size()) {
     return (SUMMARY_GLOBAL *)
       (IP_FILE_HDR_summary (hdr) + summary_header->Get_global_offset ());
+  } 
+  return NULL;
+}
+/*--------------------------------------------------------------*/
+/*IPA_get_struct_access_array() is only called before IPA_CALL_GRAPH construction*/
+/*--------------------------------------------------------------*/
+
+SUMMARY_STRUCT_ACCESS*
+IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size)
+{
+  const SUMMARY_FILE_HEADER *summary_header = IP_FILE_HDR_file_header (hdr);
+  if (size = summary_header->Get_struct_access_size()) {
+    return (SUMMARY_STRUCT_ACCESS *)
+      (IP_FILE_HDR_summary (hdr) + summary_header->Get_struct_access_offset ());
   } 
   return NULL;
 }
@@ -257,7 +277,6 @@ get_feedback_array (const IPA_NODE* node)
   }
   return NULL;
 }
-
 #if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
 
 // --------------------------------------------------------------
@@ -838,5 +857,4 @@ IPA_get_feedback_array (const IPA_NODE* node)
 {
   return get_feedback_array(node); 
 }
-
 #endif  // _STANDALONE_INLINER

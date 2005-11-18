@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -224,11 +228,12 @@ extern const short _Cif_shortsize[CIF_MAXRECORD][_CIF_INT_VERSION + 1];
 extern const int _Cif_f90_to_f77_dtypes[];
 
 
-int _Cif_binary_map_version __((int rtype, struct Cif_generic *map_buffer, struct Cif_generic *cr));
-extern int _Cif_Open __((char *, char *, int *, int));
-extern int _Cif_binread __((int, int, struct Cif_generic *, FILE *));
-extern int _Cif_mementry __((unsigned int));
-extern int _Cif_memtbl __(());
+int _Cif_binary_map_version (int rtype, struct Cif_generic *map_buffer, struct Cif_generic *cr);
+extern int _Cif_Open (char *, char *, int *, int);
+extern int Cif_Open_V2 (char *filename, char *optype, int *rtypes, int version);
+extern int _Cif_binread (int, int, struct Cif_generic *, FILE *);
+extern int _Cif_mementry (unsigned int);
+extern int _Cif_memtbl ();
 extern char * (*_Cif_space[])();
 
 #endif /* __CIFINT_H_ */

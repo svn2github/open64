@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -49,9 +53,7 @@
 #ifndef ipl_summarize_util_INCLUDED
 #define ipl_summarize_util_INCLUDED
 
-#ifndef __SGI_STL_VECTOR_H
-#include <vector.h>
-#endif
+#include <vector>
 
 #ifndef FB_WHIRL_INCLUDED
 #include "fb_whirl.h"
@@ -296,6 +298,11 @@ extern TY *GetArgType(TYLIST*, INT);
 extern void
 Count_tree_size (FEEDBACK& fb, WN *w, INT32 &bbs, INT32 &stmts, FB_FREQ& cycles, FB_FREQ& freq_count);
 
+//INLINING_TUNING^
+extern void
+Count_tree_size_tuning (FEEDBACK& fb, WN *wn, INT32 &bbs, INT32 &stmts, FB_FREQ& cycles, FB_FREQ &freq_count, UINT16 &WNs, FB_FREQ &cycle_tuning );
+//INLINING_TUNING$
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -323,14 +330,15 @@ namespace {
     };
 }
 
-typedef hash_map<CODEREP*, INT, ptr_hash<CODEREP>, equal_to<CODEREP*>,
+typedef hash_map<CODEREP*, INT, ptr_hash<CODEREP>, std::equal_to<CODEREP*>,
     mempool_allocator<CODEREP*> > CHI_CR_TO_INT_MAP;
+
 extern CHI_CR_TO_INT_MAP* Chi_To_Idx_Map;
 typedef vector<CODEREP*, mempool_allocator<CODEREP*> > CHI_CR_ARRAY;
 extern CHI_CR_ARRAY* Hashed_Chis;
 extern INT Num_Chis_On_PU_Start;
 
-typedef hash_map<PHI_NODE*, INT, ptr_hash<PHI_NODE>, equal_to<PHI_NODE*>,
+typedef hash_map<PHI_NODE*, INT, ptr_hash<PHI_NODE>, std::equal_to<PHI_NODE*>,
     mempool_allocator<PHI_NODE*> > PHI_NODE_TO_INT_MAP;
 extern PHI_NODE_TO_INT_MAP* Phi_To_Idx_Map;
 typedef vector<PHI_NODE*, mempool_allocator<PHI_NODE*> > PHI_NODE_ARRAY;

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -61,7 +65,8 @@
 #define fb_info_INCLUDED
 
 #include "fb_freq.h"
-#include <vector.h>             // STL vector.
+#include "fb_tnv.h"
+#include <vector>             // STL vector.
 
 #ifdef MONGOOSE_BE
 
@@ -75,6 +80,7 @@
 
 #endif // MONGOOSE_BE
 
+#define FB_TNV_FLAG_UNINIT  -1
 
 // data structures shared by both the instrumentation runtime and the back
 // end. 
@@ -93,7 +99,43 @@ struct FB_Info_Invoke {
     fprintf( fp, "FB---> invoke = " );
     freq_invoke.Print( fp );
   }
+
+  void Print_simple (FILE *fp) const {
+    fprintf( fp, "FB---> invoke = " );
+    freq_invoke.Print_simple( fp );
+  	}
 };
+
+#ifdef KEY
+// use vector later, like FB_Info_Switch.
+#define TNV 10
+struct FB_Info_Value {
+  INT64   num_values;   // how many valid entries in the value array
+  FB_FREQ exe_counter;  // how many times this inst is executed
+  INT64   value[TNV];   // the top TNV profiled values
+  FB_FREQ freq[TNV];    // the corresponding freq for each value
+
+  FB_Info_Value() : num_values(0), exe_counter(0.0) {}
+
+  FB_Info_Value( const INT64 num, const INT64 e, const INT64* v, const INT64* f ) {
+    num_values = MIN( TNV, num );
+    exe_counter = e;
+
+    for( int i = 0; i < num_values; i++ ){
+      value[i] = v[i];
+      freq[i] = f[i];
+      Is_True( exe_counter >= freq[i], ("Execution counter overflows.") );
+    }
+  }
+
+  void Print( FILE* fp ) const {
+    fprintf( fp, "execution counter: %d\n", (int)exe_counter.Value() );
+    for( int i = 0; i < num_values; i++ ){
+      fprintf( fp, "value %lld\t freq %f\n", value[i], freq[i].Value() );
+    }
+  }
+};
+#endif
 
 struct FB_Info_Branch {
 
@@ -128,6 +170,12 @@ struct FB_Info_Branch {
     freq_not_taken.Print( fp );
   }
 
+  void Print_simple( FILE *fp ) const {
+    fprintf( fp, "FB---> taken = " );
+    freq_taken.Print_simple( fp );
+    fprintf( fp, ", not_taken = " );
+    freq_not_taken.Print_simple( fp );
+  }
   FB_FREQ Total() const {
     return ( freq_taken + freq_not_taken );
   }
@@ -211,6 +259,21 @@ struct FB_Info_Loop {
     freq_iterate.Print( fp );
   }
 
+  void Print_simple( FILE *fp ) const {
+    fprintf( fp, "FB---> zero = " );
+    freq_zero.Print_simple( fp );
+    fprintf( fp, ", positive = " );
+    freq_positive.Print_simple( fp );
+    fprintf( fp, ", out = " );
+    freq_out.Print( fp );
+    fprintf( fp, ", back = " );
+    freq_back.Print_simple( fp );
+    fprintf( fp, "\n       exit = " );
+    freq_exit.Print_simple( fp );
+    fprintf( fp, ", iterate = " );
+    freq_iterate.Print_simple( fp );
+  }
+
   FB_FREQ Total() const {
     return ( freq_exit + freq_iterate );
   }
@@ -247,6 +310,15 @@ struct FB_Info_Circuit {
     freq_right.Print( fp );
     fprintf( fp, ", neither = " );
     freq_neither.Print( fp );
+  }
+
+  void Print_simple( FILE *fp ) const {
+    fprintf( fp, "FB---> left = " );
+    freq_left.Print_simple( fp );
+    fprintf( fp, ", right = " );
+    freq_right.Print_simple( fp );
+    fprintf( fp, ", neither = " );
+    freq_neither.Print_simple( fp );
   }
 
   FB_FREQ Total() const {
@@ -288,8 +360,32 @@ struct FB_Info_Call {
     freq_exit.Print( fp );
     fprintf( fp, ", in_out_same = %c", in_out_same ? 'Y' : 'N' );
   }
+
+  void Print_simple( FILE *fp ) const {
+    fprintf( fp, "FB---> entry = " );
+    freq_entry.Print_simple( fp );
+    fprintf( fp, ", exit = " );
+    freq_exit.Print_simple( fp );
+    fprintf( fp, ", in_out_same = %c", in_out_same ? 'Y' : 'N' );
+  }
+
 };
 
+struct FB_Info_Icall{
+      FB_TNV tnv;
+	  FB_Info_Icall()
+	  {
+		  tnv._flag = FB_TNV_FLAG_UNINIT;
+	  }
+	  BOOL Is_uninit() const
+	  {
+		  return (tnv._flag == FB_TNV_FLAG_UNINIT);
+	  }
+      void Print( FILE *fp) const {
+      	fprintf(fp, "FB--->Icall = ");
+      	tnv.Print( fp );
+      }
+};
 
 struct FB_Info_Switch {
 
@@ -332,6 +428,14 @@ struct FB_Info_Switch {
     }
   }
 
+  void Print_simple( FILE *fp ) const {
+    fprintf( fp, "FB---> targets = %d", (INT) freq_targets.size() );
+    for ( INT t = 0; t < freq_targets.size(); t++ ) {
+      fprintf( fp, ", %d: ", t );
+      freq_targets[t].Print_simple( fp );
+    }
+  }
+
   FB_FREQ Total() const {
     vector<FB_FREQ>::const_iterator iter;
     FB_FREQ freq = FB_FREQ_ZERO;
@@ -342,6 +446,39 @@ struct FB_Info_Switch {
   }
 };
 
+struct FB_Info_Edge {
+
+  FB_FREQ freq_edge;    // number of times edge
+
+  FB_Info_Edge( FB_FREQ freq)
+    : freq_edge( freq ) {}
+
+  FB_Info_Edge() :
+    freq_edge( FB_FREQ_UNINIT ) {}
+
+  void Print( FILE *fp ) const {
+    fprintf( fp, "FB---> Edge = " );
+    freq_edge.Print( fp );
+  }
+};
+
+#ifndef KEY
+struct FB_Info_Value {
+      FB_TNV tnv;
+      void Print( FILE *fp) const {
+      	fprintf(fp, "FB--->Value = ");
+      	tnv.Print( fp );
+      }
+};
+#endif
+
+struct FB_Info_Stride{
+      FB_TNV tnv;
+      void Print( FILE *fp) const {
+      	fprintf(fp, "FB--->Stride = ");
+      	tnv.Print( fp );
+      }
+};
 
 // Print the entire FB_Info vector
 template <class T>
@@ -353,7 +490,7 @@ FB_Info_Print (const T& info, const char* name, FILE *fp)
     if (size != 0)
 	fprintf (fp, "%s Profile:\n", name);
     for (size_t i = 0; i < size; i++) {
-	fprintf(fp, "\t%s id = %d\t", name, i);
+	fprintf(fp, "\t%s id = %ld\t", name, i);
 	info[i].Print (fp);
 	fputc ('\n', fp);
     }
@@ -374,8 +511,14 @@ typedef vector<FB_Info_Circuit, mempool_allocator<FB_Info_Circuit> >
 					FB_Circuit_Vector;
 typedef vector<FB_Info_Call, mempool_allocator<FB_Info_Call> >
 					FB_Call_Vector;
+typedef vector<FB_Info_Icall, mempool_allocator<FB_Info_Icall> >
+					FB_Icall_Vector;
 typedef vector<FB_Info_Switch, mempool_allocator<FB_Info_Switch> >
 					FB_Switch_Vector;
+typedef vector<FB_Info_Edge, mempool_allocator<FB_Info_Edge> >
+					FB_Edge_Vector;
+typedef vector<FB_Info_Value, mempool_allocator<FB_Info_Value> >
+                                       FB_Value_Vector;
 
 // ====================================================================
 // FB_EDGE_TYPE -- Indicates the source of a node's frequency data
@@ -500,6 +643,25 @@ inline bool FB_valid_opr_loop(const WN *wn) {
     return false;
   }
 }
+
+#ifdef KEY
+// ====================================================================
+
+#define fb_opr_cases_value \
+  case OPR_DIV:            \
+  case OPR_REM:            \
+  case OPR_MOD
+
+inline bool FB_valid_opr_value(const WN *wn) {
+  OPERATOR opr = WN_operator( wn );
+  switch ( opr ) {
+  fb_opr_cases_value:
+    return true;
+  default:
+    return false;
+  }
+}
+#endif
 
 // ====================================================================
 

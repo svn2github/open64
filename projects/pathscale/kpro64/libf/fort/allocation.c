@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -46,6 +50,7 @@
 #ifdef	_LITTLE_ENDIAN
 #include <stdlib.h>
 #endif
+#include "defalias.h"
 
 extern long     _zero_entity;   /* nonzero addr for PRESENT func */
 
@@ -529,31 +534,17 @@ _REALLOC(DopeVectorType *array,
 
 #if	defined(__mips) || defined(_LITTLE_ENDIAN)
 
-extern void* _F90_ALLOCATE_B(_f_int8 big_size, int assoc, int flags,
-				int *statvar, void *oldval);
-
-void*
-_F90_ALLOCATE(	long size,
-		int assoc,
-		int flags,
-		int *statvar,
-		void *oldval)
-{
-	_f_int8	big_size;
-	big_size	= (_f_int8) size;
-	return((void*) _F90_ALLOCATE_B(big_size, assoc, flags, statvar, oldval));
-}
-
 /* _F90_ALLOCATE_B - called by compiled Fortran programs to allocate
  *		space for objects in the allocation list.  The status
  *		is returned in the optional stat_var.
  *
  *	Synopsis
  *
- *	void *_F90_ALLOCATE(long size, int assoc, int flags, int *statvar)
+ *	void *_F90_ALLOCATE_B(long size, int assoc, int flags, int *statvar)
  *
  *	Where
- *		size - 64-bit value with number of bytes to allocate
+ *		size - signed size_t-width value with number of bytes to
+ *			allocate
  *		assoc - the current association status
  *		flags - bit flags
  *			1 - is a pointer
@@ -574,7 +565,7 @@ _F90_ALLOCATE(	long size,
 #define FLAG_TRAPUV(x) ((x&4)!=0)
 
 void*
-_F90_ALLOCATE_B(_f_int8 size,
+_F90_ALLOCATE_B(long size,
 		int assoc,
 		int flags,
 		int *statvar,
@@ -584,7 +575,7 @@ _F90_ALLOCATE_B(_f_int8 size,
 	int 	errflag = 0;	/* error flag */
 	ptrdiff_t	*base;	/* ptr to result array */
 	char	*p;
-	long long	nbytes;		/* need long long for malloc */
+	size_t	nbytes;
 	long	i;
 
 	/* check for presence of statvar */
@@ -603,30 +594,12 @@ _F90_ALLOCATE_B(_f_int8 size,
 		}
 	}
 
-	/* initialize a type long long argument for malloc */
-	nbytes	= (long long) size;
+	nbytes = size > 0 ? size : 0;
 
 	/* replace the use of address 1 with globals.c entity
 	 *   base	= (void *) 1;
 	 */
 	base	= (void *) &_zero_entity;
-
-#if (defined(_SGI_SOURCE) && (_MIPS_SZPTR == 32))
-
-	/* for -n32 only, check to see that size is 32-bits or less */  
-
-	if ( nbytes > 0xffffffffu ) {
-
-		/* No memory allocated, cannot allocate the larger
-		 * size, i.e., size is greater than 32-bits.
-		 */
-		if(lstat) {
-			*statvar	= FENOMEMY;
-			return(base);
-		}
-		_lerror (_LELVL_ABORT, FENOMEMY);
-	}
-#endif
 
 	/* Allocate size in bytes if not zero.  Zero size is legal
  	 * and should not cause an error.
@@ -671,4 +644,7 @@ _F90_ALLOCATE_B(_f_int8 size,
 
 	return (base);
 }
+
+defalias(_F90_ALLOCATE_B, _F90_ALLOCATE);
+
 #endif	/* __mips */

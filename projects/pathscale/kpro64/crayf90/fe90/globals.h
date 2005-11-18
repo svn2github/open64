@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1936,7 +1940,8 @@ struct	on_off_flags_entry {
 	boolean		reserved_K		: 1;		/*	      */
 	boolean		top_test_shortloops	: 1;		/* -eL	      */
 	boolean		reserved_M		: 1;		/*	      */
-	boolean		remove_trailing_uscore	: 1;		/* -zN	      */
+	boolean		second_underscore	: 1;		/* -zN	      */
+	boolean		underscoring    	: 1;		/* -zU	      */
 	boolean		output_pound_lines	: 1;		/* -dP	      */
 	boolean		preprocess_only		: 1;		/*            */
 	boolean		preprocess     		: 1;		/*            */

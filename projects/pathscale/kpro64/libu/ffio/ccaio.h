@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -189,7 +193,7 @@ typedef union {
 	int64	all;
 } FILE_PAGE;
 
-#define NULL_FILE_PAGE   0xffffffffffffffff
+#define NULL_FILE_PAGE   0xffffffffffffffffLL
 
 #define CCA_TRACKER_FREE	0
 #define CCA_TRACKER_READA	'r'

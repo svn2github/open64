@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -228,7 +232,7 @@ protected:
   BOOL Summary_Array_Command(char ch);
   INT Summary_Size(char ch);
   void Summary_Single(FILE* fp, char ch, INT index, BOOL is_list);
-  void Summary(FILE* fp);
+  void Summary(FILE* fp) __attribute__((weak));
   void Summary_Locate(FILE* fp);  
   void Help(); 
   void Invoke_Command(char ch); 

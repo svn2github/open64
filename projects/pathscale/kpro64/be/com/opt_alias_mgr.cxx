@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1505,6 +1509,12 @@ BOOL ALIAS_MANAGER::Safe_to_speculate(const WN *wn) const
 BOOL ALIAS_MANAGER::May_refer_to_alloca_mem(const WN *wn) const
 {
   IDTYPE alias_id = Id(wn);
+#ifdef KEY
+  // no alias info, conservatively return TRUE;
+  if (alias_id == 0) {
+   return TRUE; 
+  }
+#endif
   POINTS_TO *pt = Pt(alias_id);
   if (_trace) {
     fprintf(TFile, "--- Checking for pointing to alloca memory:\n");

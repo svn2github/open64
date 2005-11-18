@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -56,8 +60,8 @@ extern  int     __Argc;         /* Number of argv fields */
 extern  char    **__Argv;       /* Pointer to pointer to arguments */
 #pragma weak    __Argv
 #elif defined(__linux)
-extern	int	_f90argc;	/* Number of argv fields */
-extern	char	**_f90argv;	/* Pointer to pointer to arguments */
+extern	int	f__xargc;	/* Number of argv fields */
+extern	char	**f__xargv;	/* Pointer to pointer to arguments */
 #else
 extern  int     __xargc;         /* Number of argv fields */
 extern  char    **__xargv;       /* Pointer to pointer to arguments */
@@ -93,7 +97,7 @@ _PXFGETARG(
 #elif defined(__mips)
 	if (argnum < 0 || argnum >= __Argc) {
 #elif defined(__linux)
-	if (argnum < 0 || argnum >= _f90argc) {
+	if (argnum < 0 || argnum >= f__xargc) {
 #else
 	if (argnum < 0 || argnum >= __xargc) {
 #endif
@@ -107,7 +111,7 @@ _PXFGETARG(
 #elif defined(__mips)
 		argstr	= __Argv[argnum];
 #elif defined(__linux)
-		argstr	= _f90argv[argnum];
+		argstr	= f__xargv[argnum];
 #else
 		argstr	= __xargv[argnum];
 #endif

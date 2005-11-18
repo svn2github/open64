@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -51,10 +55,14 @@
 // ====================================================================
 // ====================================================================
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <elf.h>
 #include <sys/elf_whirl.h>
 #include <alloca.h>
-#include <hash_map.h>
+
+#include <ext/hash_map>
+
 #include <sys/types.h> 
 
 #include "defs.h"
@@ -75,22 +83,31 @@ typedef hash_map<PU_IDX, PU_IDX> IPA_NESTED_PU_PARENT_MAP;
 static IPA_NESTED_PU_PARENT_MAP* nested_pu_parent_map;
 
 static void
+Build_Parent_Child_Relations_For_One_Parent(PU_Info *parent)
+{
+  PU_Info* child = PU_Info_child(parent);
+  while (child) {
+    (*nested_pu_parent_map)[ST_pu(St_Table[PU_Info_proc_sym(child)])] = 
+      ST_pu(St_Table[PU_Info_proc_sym(parent)]);   
+    PU_Info *grandchild = PU_Info_child(child);
+    if (grandchild)
+      Build_Parent_Child_Relations_For_One_Parent(child);
+
+    child = PU_Info_next(child);
+  }
+}
+
+static void
 Build_Parent_Child_Relations(IP_FILE_HDR& hdr)
 {
     PU_Info* parent = IP_FILE_HDR_pu_list(hdr);
 
     while (parent) {
-	PU_Info* child = PU_Info_child(parent);
-	while (child) {
-	    (*nested_pu_parent_map)[ST_pu(St_Table[PU_Info_proc_sym(child)])] = 
-			ST_pu(St_Table[PU_Info_proc_sym(parent)]);   
-	    child = PU_Info_next(child);
-        }
-        parent = PU_Info_next(parent);
+      Build_Parent_Child_Relations_For_One_Parent(parent);
+      parent = PU_Info_next(parent);
     }
 }
 
-    
 IPA_NODE* 
 Get_Parent_Of_Nested_PU(IPA_NODE* child) 
 {

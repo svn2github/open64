@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -102,12 +107,11 @@
 #define opt_vn_ivc_INCLUDED "opt_vn_ivc.h"
 
 #include <vector>
+#include <iterator>
 #include "opt_vn_expr.h"    // For VN_VALNUM, VN_EXPR, and VN_EXPR_MAP
 #include "opt_vn.h"         // For VN
 
-#ifdef __STL_USE_NAMESPACES
 using std::vector;
-#endif
 
 // ----- Interpretation of the -WOPT:vn_ivc=n option -----
 // -------------------------------------------------------
@@ -256,16 +260,26 @@ struct NEXT_EQCLASS_MEMBER
 // -- Forward iterator adaptor for containers of elements with next field ---
 // --------------------------------------------------------------------------
 
+template<typename _Tp, typename _Distance>
+struct forward_iterator {
+  typedef forward_iterator_tag iterator_category;
+  typedef _Tp value_type;
+  typedef _Distance difference_type;
+  typedef _Tp* pointer;
+  typedef _Tp& reference;
+};
+
 template <class Container, class Next>
 class forward_to_next_iterator : 
    public forward_iterator<
-     typename iterator_traits<typename Container::iterator>::value_type,
-     typename iterator_traits<typename Container::iterator>::difference_type>
+     typename std::iterator_traits<typename Container::iterator>::value_type,
+     typename std::iterator_traits<typename Container::iterator>::difference_type>
 {
 public:
 
    typedef typename Container::iterator iterator_type;
    typedef forward_to_next_iterator<Container, Next> Self;
+   typedef typename Self::reference reference;
 
 protected:
 

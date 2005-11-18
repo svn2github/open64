@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -78,6 +84,10 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/gccfe/wfe_dst.
 #include "srcpos.h"
 #include "symtab.h"
 #include "gnu_config.h"
+#ifdef KEY
+// To get HW_WIDE_INT ifor flags.h */
+#include "gnu/hwint.h"
+#endif /* KEY */
 #include "gnu/flags.h"
 extern "C" {
 #include "gnu/system.h"
@@ -98,6 +108,7 @@ extern "C" {
 #include <vector>
 #include <map>
 
+extern const char *dump_base_name ;             // in toplev.c
 
 extern FILE *tree_dump_file; //for debugging only
 
@@ -114,7 +125,7 @@ static char *current_host_dir = &cwd_buffer[0];
 
 static DST_INFO_IDX comp_unit_idx = DST_INVALID_INIT;	// Compilation unit
 
-static void DST_enter_file (char *, UINT);
+static void DST_enter_file (const char *, UINT);
 
 static UINT last_dir_num = 0;
 static UINT current_dir = 1;
@@ -136,7 +147,12 @@ static DST_Type_Map basetypes;
 // These two functions avoid ugly memcpys and
 // they know the internal form of the two structs.
 // (arguably ugly 'hidden' knowledge).
+#ifndef KEY
 static inline void
+#else
+// need this in wfe_decl.cxx
+void
+#endif // !KEY
 cp_to_tree_from_dst(
         struct mongoose_gcc_DST_IDX * dest,
 	DST_INFO_IDX *src)
@@ -144,7 +160,13 @@ cp_to_tree_from_dst(
 	dest->block  = src->block_idx;
 	dest->offset = src->byte_idx;
 }
+
+#ifndef KEY
 static inline void
+#else
+// need this in wfe_decl.cxx
+void
+#endif // !KEY
 cp_to_dst_from_tree(
 	DST_INFO_IDX *dest,
         struct mongoose_gcc_DST_IDX * src)
@@ -181,19 +203,44 @@ DST_get_context(tree intree)
     tree ltree = intree;
     struct mongoose_gcc_DST_IDX l_tree_idx;
     DST_INFO_IDX l_dst_idx;
-
+#ifdef KEY
+    BOOL continue_looping = TRUE;
+    
+    while(ltree && continue_looping) {
+      continue_looping = FALSE;
+#else
     while(ltree) {
+#endif /* KEY */
 	switch(TREE_CODE(ltree)) {
 	case BLOCK:
 	    // unclear when this will happen, as yet
 	    // FIX
             DevWarn("Unhandled BLOCK scope of decl/var");
 
+#ifdef KEY
+	    ltree = NULL;
+#endif /* KEY */
 	    break;
 	case FUNCTION_DECL: {
 		// This is a normal case!
 		l_tree_idx = DECL_DST_IDX(ltree);
 		cp_to_dst_from_tree(&l_dst_idx,&l_tree_idx);
+#ifdef KEY
+		// Bug 1825 - it may happen that we have not yet produced the
+		// DST info for this function yet, in which case we would be 
+		// returning an INVALID_IDX at this time. 
+		// With reference to bug 1825, the type "rule" gets this
+		// function as context because we did not see this type
+		// outside of the current function. Gcc seems to just create 
+		// an incomplete type for such cases. If ever "rule" were to
+		// be redefined outside this function, the current parameter
+		// ("rulep" in this case) will continue to be associated with 
+		// this incomplete type and the new type will have a new entry
+		// in the DST table. To mimic whatever Gcc does, we are 
+		// required to pass a valid DST index here.
+		if (l_dst_idx == DST_INVALID_IDX)
+		  l_dst_idx.byte_idx = l_dst_idx.block_idx = 0;
+#endif
 		return l_dst_idx;
 
         }
@@ -217,9 +264,11 @@ DST_get_context(tree intree)
 	   // *is any of this right?
            if(TREE_CODE_CLASS(TREE_CODE(ltree)) == 'd') {
 		ltree =  DECL_CONTEXT(ltree);
+                continue_looping = TRUE;
 		continue;
 	   } else if (TREE_CODE_CLASS(TREE_CODE(ltree)) == 't') {
 		ltree =  TYPE_CONTEXT(ltree);
+                continue_looping = TRUE;
 		continue;
            } else {
 		// ??
@@ -249,19 +298,26 @@ Get_Dir_Dst_Info (char *name)
 		}
 	}
 	// not found, so append path to dst list
+#ifdef KEY
+	// We have to create a new home for name because memory
+	// will be freed once the caller exits. 
+	char *new_name = (char *)malloc((strlen(name)+1)*sizeof(char));
+	strcpy(new_name, name);
+	name = new_name;
+#endif
 	dir_dst_list.push_back (std::make_pair (name, ++last_dir_num));
 	DST_mk_include_dir (name);
 	return last_dir_num;
 }
 
-static std::vector< std::pair< char *, UINT > > file_dst_list;
+static std::vector< std::pair< const char *, UINT > > file_dst_list;
 
 // get the file dst info.
 // if already exists, return existing info, else append to list.
 static UINT
-Get_File_Dst_Info (char *name, UINT dir)
+Get_File_Dst_Info (const char *name, UINT dir)
 {
-        std::vector< std::pair < char*, UINT > >::iterator found;
+        std::vector< std::pair < const char*, UINT > >::iterator found;
 	// assume linear search is okay cause list will be small?
         for (found = file_dst_list.begin(); 
 		found != file_dst_list.end(); 
@@ -272,6 +328,13 @@ Get_File_Dst_Info (char *name, UINT dir)
 		}
 	}
 	// not found, so append file to dst list
+#ifdef KEY
+	// We have to create a new home for name because memory
+	// will be freed once the caller exits. 
+	char *new_name = (char *)malloc((strlen(name)+1)*sizeof(char));
+	strcpy(new_name, name);
+	name = new_name;
+#endif
 	file_dst_list.push_back (std::make_pair (name, ++last_file_num));
 	DST_enter_file (name, dir);
 	return last_file_num;
@@ -279,10 +342,10 @@ Get_File_Dst_Info (char *name, UINT dir)
 
 
 /* drops path prefix in string */
-static char *
-drop_path (char *s)
+static const char *
+drop_path (const char *s)
 {
-        char *tail;
+        const char *tail;
         tail = strrchr (s, '/');
         if (tail == NULL) {
                 return s;       /* no path prefix */
@@ -293,7 +356,7 @@ drop_path (char *s)
 }
 
 static void
-DST_enter_file (char *file_name, UINT dir)
+DST_enter_file (const char *file_name, UINT dir)
 {
         UINT64 file_size = 0;
         UINT64 fmod_time = 0;
@@ -304,7 +367,7 @@ DST_enter_file (char *file_name, UINT dir)
                 fmod_time = (UINT64)fstat.st_mtime;
         }
         DST_mk_file_name(
-                file_name,
+                (char *) file_name,
                 dir,
                 file_size,
                 fmod_time);
@@ -437,6 +500,10 @@ DST_enter_struct_union_members(tree parent_tree,
    // }
 
     tree field = TREE_PURPOSE(parent_tree);
+
+    int currentoffset = 0 ;
+    int currentcontainer = -1 ;
+
     for( ; field ; field = TREE_CHAIN(field) )
     { 
 	if(TREE_CODE(field) != FIELD_DECL) {
@@ -445,6 +512,9 @@ DST_enter_struct_union_members(tree parent_tree,
 	
 	char isbit = 0; 
         if ( ! DECL_BIT_FIELD(field)
+#ifdef KEY
+	   && DECL_SIZE(field)  
+#endif /* KEY */
            && Get_Integer_Value(DECL_SIZE(field)) > 0
            && Get_Integer_Value(DECL_SIZE(field))
            != (TY_size(Get_TY(TREE_TYPE(field)))
@@ -488,14 +558,22 @@ DST_enter_struct_union_members(tree parent_tree,
 	cp_to_dst_from_tree(&fidx,&g_idx);
 
         INT bitoff = Get_Integer_Value(DECL_FIELD_BIT_OFFSET(field));
+#ifndef KEY
 	INT fld_offset_bytes = // Get_Integer_Value(DECL_FIELD_OFFSET(field)) +
 			       (bitoff / BITSPERBYTE);
+#else
+	// Bug 1271
+	INT fld_offset_bytes = Get_Integer_Value(DECL_FIELD_OFFSET(field)) +
+	  (bitoff / BITSPERBYTE);	
+#endif
  	tree type_size = TYPE_SIZE(ftype);
 	UINT align = TYPE_ALIGN(ftype)/BITSPERBYTE;
         INT tsize;
         if (type_size == NULL) {
           // incomplete structs have 0 size
+#ifndef KEY
           Fail_FmtAssertion("DST_enter_struct_union_members: type_size NULL ");
+#endif /* KEY */
           tsize = 0;
         }
         else {
@@ -512,6 +590,7 @@ DST_enter_struct_union_members(tree parent_tree,
         }
 
 	if(isbit == 0) {
+          currentcontainer = -1 ;                    // invalidate bitfield calculation
 	  field_idx = DST_mk_member(
 		src,
 		field_name,
@@ -533,11 +612,28 @@ DST_enter_struct_union_members(tree parent_tree,
 	  UINT container_off = fld_offset_bytes - (fld_offset_bytes%align);
 	  UINT into_cont_off = bitoff - (container_off*BITSPERBYTE);
 
+#ifdef KEY
+          if (!BYTES_BIG_ENDIAN) {
+// XXX: 32?  Is there a macro for it?
+              if (container_off != currentcontainer) {           // changed container from last time?
+                  currentcontainer = container_off ;               // save current container
+                  currentoffset = 32 - into_cont_off;                      // reset current offset
+              }
+              int fullfieldsize = Get_Integer_Value (DECL_SIZE(field)) ;    // field size in bits
+              into_cont_off = currentoffset - fullfieldsize ;       // start at MSB
+              currentoffset -= fullfieldsize ;                      // move to before the field
+          }
+#endif
+
 	  field_idx = DST_mk_member(
 			src,
 			field_name,
 			fidx	,      // field type	
+#ifdef KEY
+			container_off,    // container offset in bytes
+#else
 			fld_offset_bytes,    // container offset in bytes
+#endif
 			tsize,         // container size, bytes
                         into_cont_off, // offset into 
 					// container, bits
@@ -709,12 +805,172 @@ DST_enter_enum(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
       }
 
 
+#ifdef KEY
+      // Bug 1334 
+      // set dst_idx (was NULL) => the reason we do all that we do
+      dst_idx = t_dst_idx;
+#endif
     }
     return dst_idx;
 }
 
 
 
+#ifdef KEY
+typedef struct type_trans {
+	DST_size_t size;
+	char *name;
+	DST_ATE_encoding encoding;
+} type_trans;
+
+static DST_INFO_IDX base_types[MTYPE_LAST+5] =  
+{
+DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,	
+DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,	
+DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,	
+DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,
+DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,
+DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,
+DST_INVALID_INIT
+} ;
+	
+static type_trans ate_types[] = {
+ 4, "BAD",       0,		
+ 4, "UNK",       0,                     /* bit */
+ 1, "INTEGER_1", DW_ATE_signed,		/* MTYPE_I1  */
+ 2, "INTEGER_2", DW_ATE_signed,		/* MTYPE_I2  */
+ 4, "INTEGER_4", DW_ATE_signed,		/* MTYPE_I4  */
+ 8, "INTEGER_8", DW_ATE_signed,		/* MTYPE_I8  */
+ 1, "INTEGER*1", DW_ATE_unsigned,	/* MTYPE_U1  */
+ 2, "INTEGER*2", DW_ATE_unsigned,	/* MTYPE_U2  */
+ 4, "INTEGER*4", DW_ATE_unsigned,	/* MTYPE_U4  */
+ 8, "INTEGER*8", DW_ATE_unsigned,	/* MTYPE_U8  */
+ 4, "REAL_4",    DW_ATE_float,		/* MTYPE_F4  */
+ 8, "REAL_8",    DW_ATE_float,		/* MTYPE_F8  */
+ 10,"UNK",       DW_ATE_float,		/* MTYPE_F10 */
+ 16,"REAL_16",   DW_ATE_float,		/* MTYPE_F16 */
+ 1 ,"CHAR" ,     DW_ATE_signed_char,    /* MTYPE_STR */
+ 16,"REAL_16",   DW_ATE_float,		/* MTYPE_FQ  */
+ 1, "UNK",       DW_ATE_unsigned_char,	/* MTYPE_M   */		
+ 8, "COMPLEX_4", DW_ATE_complex_float,	/* MTYPE_C4  */
+ 16,"COMPLEX_8", DW_ATE_complex_float,	/* MTYPE_C8  */
+ 32,"COMPLEX_16",DW_ATE_complex_float,	/* MTYPE_CQ  */
+ 1, "VOID",      0,                     /* MTYPE_V   */
+ 1, "LOGICAL_1", DW_ATE_boolean,	
+ 2, "LOGICAL_2", DW_ATE_boolean,	
+ 4, "LOGICAL_4", DW_ATE_boolean,	
+ 8, "LOGICAL_8", DW_ATE_boolean,	
+
+} ;
+
+/*===================================================
+ *
+ * DST_create_basetype
+ *
+ * Given a SCALAR ty, returns the corresponding DST
+ * basetype for its typeid. Appends it to compilation 
+ * unit to avoid duplication.
+ *
+ *===================================================
+*/
+static DST_INFO_IDX
+DST_create_basetype (TY_IDX ty)
+{
+  TYPE_ID bt ;
+  DST_INFO_IDX i ;
+
+  bt = TY_mtype(ty);
+
+  if (bt == MTYPE_V) return(DST_INVALID_IDX);
+
+  if (TY_is_logical(Ty_Table[ty]))
+    bt = bt -MTYPE_I1 + MTYPE_V + 1 ;
+
+  if (!DST_IS_NULL(base_types[bt]))
+    return base_types[bt];
+
+  i = DST_mk_basetype(ate_types[bt].name,
+		      ate_types[bt].encoding, 
+		      ate_types[bt].size);
+
+  base_types[bt] = i;
+  DST_append_child(comp_unit_idx,i);
+  return i;
+}
+
+// We have a subrange
+// enter it.
+static DST_INFO_IDX 
+DST_enter_subrange_type (ARB_HANDLE ar) 
+{
+  DST_INFO_IDX i ;
+  DST_cval_ref lb,ub;
+  DST_flag     const_lb,const_ub ;
+  BOOL         extent = FALSE ;
+  USRCPOS src;
+  USRCPOS_clear(src);
+  DST_INFO_IDX type;
+
+  const_lb = ARB_const_lbnd(ar) ;
+  const_ub = ARB_const_ubnd(ar) ;
+
+  
+  if (const_lb)
+    lb.cval = ARB_lbnd_val(ar) ;
+  else {
+    ST* var_st = &St_Table[ARB_lbnd_var(ar)];
+    type = DST_create_basetype(ST_type(var_st));
+    lb.ref = DST_mk_variable(
+			     src,                    // srcpos
+			     ST_name(var_st),
+			     type,    
+			     0,  
+			     (void*) ST_st_idx(var_st), 
+			     DST_INVALID_IDX,        
+			     FALSE,                  // is_declaration
+			     ST_sclass(var_st) == SCLASS_AUTO,
+			     FALSE,  // is_external
+			     FALSE  ); // is_artificial
+    DST_append_child(comp_unit_idx,lb.ref);
+  } 
+
+  if (const_ub) {
+    ub.cval = ARB_ubnd_val(ar) ;
+    // bug 1529.  If we have int array[0], then the upper bound comes out as 0xffffffff.
+    // for proper dwarf output, we should omit the upper bound attribute
+    if (ub.cval == 0xffffffff) {
+        const_ub = 0 ;
+    }
+  // For C, we may have declarations like "extern int a[]"
+  } else if (ARB_ubnd_var(ar)) {
+    ST* var_st = &St_Table[ARB_ubnd_var(ar)];
+    type = DST_create_basetype(ST_type(var_st));
+    ub.ref = DST_mk_variable(
+			     src,                    // srcpos
+			     ST_name(var_st),
+			     type,    
+			     0,  
+			     (void*) ST_st_idx(var_st), 
+			     DST_INVALID_IDX,        
+			     FALSE,                  // is_declaration
+			     ST_sclass(var_st) == SCLASS_AUTO,
+			     FALSE,  // is_external
+			     FALSE  ); // is_artificial
+    DST_append_child(comp_unit_idx,ub.ref);
+  }
+
+  i = DST_mk_subrange_type(const_lb,
+			   lb, 
+			   const_ub,
+			   ub);
+
+  if (extent) 
+    DST_SET_count(DST_INFO_flag(DST_INFO_IDX_TO_PTR(i))) ;
+
+  return i;  
+}
+
+#endif /* KEY */
 // We have an array
 // enter it.
 static DST_INFO_IDX
@@ -754,6 +1010,7 @@ DST_enter_array_type(tree type_tree, TY_IDX ttidx  , TY_IDX idx,INT tsize)
       DST_INFO_IDX inner_dst;
       cp_to_dst_from_tree(&inner_dst,&inner);
 
+#ifndef KEY
       dst_idx = DST_mk_array_type( src,
                             0, // name ?. Nope array types not named: no tag
 				// in  C/C++
@@ -761,6 +1018,40 @@ DST_enter_array_type(tree type_tree, TY_IDX ttidx  , TY_IDX idx,INT tsize)
                            tsize, // type size
                            DST_INVALID_IDX, // not inlined
                            (tsize == 0)); // pass non-zero if incomplete.
+#else
+      // We follow the Fortran-style DW_TAG_array_type declaration whereby
+      // we would have a DW_TAG_subrange_type declaration for each dimension.
+      // Without this, the type information seems to be clobbered for arrays.
+      dst_idx = DST_mk_array_type( src,
+                            0, // name ?. Nope array types not named: no tag
+				// in  C/C++
+                           inner_dst, // element type DST_INFO_IDX
+                           0, 
+                           DST_INVALID_IDX, // not inlined
+                           TRUE); 
+      TY& tt = Ty_Table[ttidx];
+      ARB_HANDLE arb = TY_arb(ttidx);
+      DST_INFO_IDX d;
+      if ( TY_kind (tt) != KIND_INVALID ) {
+	for (INT index = TY_AR_ndims(ttidx) - 1; index >= 0; index--) {
+          // Fix bug 383
+          if (!ARB_const_ubnd(arb[index])) {
+            // fix for bug 1515.  An array with size 1 has a const upper bound but an ubnd_val of 0
+            // an array declared as [] will have a variable upper bound with ubnd_var of NULL
+            // For C, we may have declarations like "extern int a[]"
+            // Fix bug 322
+            if (!ARB_ubnd_var(arb[index]))
+              break;
+            ST* var_st = &St_Table[ARB_ubnd_var(arb[index])];
+            if (ST_sclass(var_st) == SCLASS_AUTO)
+              break;
+          } 
+
+	  d = DST_enter_subrange_type(arb[index]);
+	  DST_append_child(dst_idx,d);
+	}
+      }
+#endif
       DST_append_child(comp_unit_idx,dst_idx);
 
       struct mongoose_gcc_DST_IDX mdst;
@@ -787,7 +1078,7 @@ DST_enter_array_type(tree type_tree, TY_IDX ttidx  , TY_IDX idx,INT tsize)
 // for type_tree
 
 extern struct mongoose_gcc_DST_IDX
-Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx)
+Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignoreconst, bool ignorevolatile)
 {
     
     struct mongoose_gcc_DST_IDX actual_retval;
@@ -815,6 +1106,12 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx)
 	    TYPE_MAIN_VARIANT(type_tree) != type_tree) {
 		idx = Get_TY (TYPE_MAIN_VARIANT(type_tree));
 
+#ifndef KEY
+		// The following code always a return an invalid DST_IDX. This 
+		// causes the back-end to skip DW_AT_type for any variable 
+		// declared to be of a user-defined type (which is a typedef 
+		// of a base type).
+    
 		//if (TYPE_READONLY(type_tree))
 		//	Set_TY_is_const (idx);
 		//if (TYPE_VOLATILE(type_tree))
@@ -827,6 +1124,7 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx)
 
 		cp_to_tree_from_dst(&actual_retval,&dst_idx);
 		return actual_retval;
+#endif
        } else {
 //
        }
@@ -862,6 +1160,48 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx)
 		}
 		else
 			tsize = Get_Integer_Value(type_size) / BITSPERBYTE;
+   }
+   if (!ignoreconst && TYPE_READONLY (type_tree)) {
+       struct mongoose_gcc_DST_IDX tdst = TYPE_DST_IDX(type_tree);
+       cp_to_dst_from_tree(&dst_idx,&tdst);
+       if(DST_IS_NULL(dst_idx)) {
+            TY_IDX itx = TYPE_TY_IDX(type_tree);
+            struct mongoose_gcc_DST_IDX unqualtype = Create_DST_type_For_Tree (type_tree, itx, idx, true, false) ;
+            DST_INFO_IDX unqual_dst;
+
+            cp_to_dst_from_tree(&unqual_dst,&unqualtype);
+            // not created yet, so create
+            dst_idx = DST_mk_const_type (unqual_dst) ;
+                          
+            DST_append_child(current_scope_idx,dst_idx);
+
+            struct mongoose_gcc_DST_IDX qual_dst_idx;
+            cp_to_tree_from_dst(&qual_dst_idx,&dst_idx);
+            TYPE_DST_IDX(type_tree) = qual_dst_idx;
+       }
+       cp_to_tree_from_dst(&actual_retval,&dst_idx);
+       return actual_retval;
+   }
+   if (!ignorevolatile && TYPE_VOLATILE (type_tree)) {
+       struct mongoose_gcc_DST_IDX tdst = TYPE_DST_IDX(type_tree);
+       cp_to_dst_from_tree(&dst_idx,&tdst);
+       if(DST_IS_NULL(dst_idx)) {
+            TY_IDX itx = TYPE_TY_IDX(type_tree);
+            struct mongoose_gcc_DST_IDX unqualtype = Create_DST_type_For_Tree (type_tree, itx, idx, true, true) ;
+            DST_INFO_IDX unqual_dst;
+
+            cp_to_dst_from_tree(&unqual_dst,&unqualtype);
+            // not created yet, so create
+            dst_idx = DST_mk_volatile_type (unqual_dst) ;
+                          
+            DST_append_child(current_scope_idx,dst_idx);
+
+            struct mongoose_gcc_DST_IDX qual_dst_idx;
+            cp_to_tree_from_dst(&qual_dst_idx,&dst_idx);
+            TYPE_DST_IDX(type_tree) = qual_dst_idx;
+       }
+       cp_to_tree_from_dst(&actual_retval,&dst_idx);
+       return actual_retval;
    }
    int encoding = 0;
    switch (TREE_CODE(type_tree)) {
@@ -1103,6 +1443,20 @@ same_dst_idx(struct mongoose_gcc_DST_IDX s1, struct mongoose_gcc_DST_IDX s2)
         return 0;
 }
 
+#ifdef KEY
+// basically the same as what we do initially in Create_DST_decl_For_Tree
+extern bool
+have_dst_idx (tree decl)
+{
+    struct mongoose_gcc_DST_IDX var_idx;
+    DST_INFO_IDX dst_idx = DST_INVALID_INIT;
+    
+    cp_to_tree_from_dst(&var_idx,&dst_idx);
+
+    return (!same_dst_idx (DECL_DST_IDX(decl), var_idx));
+}
+#endif // KEY
+
 extern struct mongoose_gcc_DST_IDX 
 Create_DST_decl_For_Tree(
         tree decl, ST* var_st)
@@ -1144,12 +1498,18 @@ Create_DST_decl_For_Tree(
 		 DECL_EXTERNAL(decl) && !DECL_COMMON(decl)) {
       return var_idx;
   }
+#ifndef KEY
+  // It is not clear what the author means by: "till we get more working"
+  // Basically, this inhibits the front-end from generating DST entry for
+  // local variables.
+  
   // For now ignore plain declarations?
   // till we get more working
   if (TREE_CODE(decl) == VAR_DECL && (!TREE_STATIC(decl)
 		 && !DECL_COMMON(decl))) {
 	return var_idx ;
   }
+#endif
 
   // is something that we want to put in DST
   // (a var defined in this file, or a type).
@@ -1176,6 +1536,12 @@ Create_DST_decl_For_Tree(
       dst_idx = DST_Create_Parmvar(var_st,decl);
       }
       break;
+#ifdef KEY
+  case FUNCTION_DECL: {
+      dst_idx = DST_Create_Subprogram(var_st,decl);
+      }
+      break;
+#endif // KEY
   default: {
       }
       break;
@@ -1314,7 +1680,12 @@ DST_Create_var(ST *var_st, tree decl)
         (void*) ST_st_idx(var_st), // underlying type here, not typedef.
         DST_INVALID_IDX,        // abstract origin
         FALSE,                  // is_declaration
+#ifndef KEY
         FALSE,                  // is_automatic
+#else
+	// We call DST_Create_var for locals now. Don't make any assumptions.
+	ST_sclass(var_st) == SCLASS_AUTO,
+#endif
         is_external,  // is_external
 	FALSE  ); // is_artificial
     // producer routines thinks we will set pc to fe ptr initially
@@ -1415,11 +1786,19 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
     
     if(Debug_Level >= 2 && fndecl) {
 
+#ifndef KEY
 	tree resdecl = DECL_RESULT(fndecl);
 	tree restype = 0;
 	if( resdecl) {
 	   restype = TREE_TYPE(resdecl);
 	}
+#else
+	// Bug 1510 - get the result type from the function type declaration
+	// rather than the result declaration type.
+	tree restype = 0;
+	if (TREE_TYPE(fndecl))
+	  restype = TREE_TYPE(TREE_TYPE(fndecl));
+#endif
 	if(restype) {
          struct mongoose_gcc_DST_IDX ret_g_idx;
 	 TY_IDX itx = Get_TY(restype);
@@ -1452,6 +1831,9 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
         0,                      // vtable_elem_location
         FALSE,                  // is_declaration
         isprototyped,           // 
+#ifdef KEY
+        FALSE,                  // is_artificial
+#endif
         ! ST_is_export_local(func_st) );  // is_external
     // producer routines thinks we will set pc to fe ptr initially
     DST_RESET_assoc_fe (DST_INFO_flag(DST_INFO_IDX_TO_PTR(dst)));
@@ -1468,7 +1850,14 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
     // Now we create the argument info itself, relying
     // on the isprototyped flag above to let us know if
     // we really should do this.
+#ifndef KEY
     if(isprototyped) {
+#else
+    // For function declarations like 
+    //   foo (i) int i; { ... }
+    // isprotyped will be false but, we still want to generate DST info. 
+    if (fndecl) {
+#endif /* KEY */
        tree parms = DECL_ARGUMENTS(fndecl);
        if(!parms) {
           DevWarn("impossible arg decls -- is empty?");
@@ -1545,6 +1934,10 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
       current_working_dir = &cwd_buffer[0];
    }
    strcpy(current_working_dir, Get_Current_Working_Directory());
+#ifdef KEY
+   // Bug 1336
+   current_host_dir = current_working_dir;
+#endif
    if (current_working_dir == NULL) {
       perror("getcwd");
       exit(2);
@@ -1554,7 +1947,7 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
    comp_info = DST_get_command_line_options(num_copts, copts);
 
    {
-      comp_unit_idx = DST_mk_compile_unit(src_path,
+      comp_unit_idx = DST_mk_compile_unit((char*)dump_base_name,
 					  current_host_dir,
 					  comp_info, 
 					  DW_LANG_C89,
@@ -1563,17 +1956,22 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
 
    free(comp_info);
 
+#ifndef KEY
+   // We do not want to output the .i file as the original src name 
+   // although we pass the pre-processed file to the front end. 
+   // The file names are output in c-lex.c
    WFE_Set_Line_And_File (0, Orig_Src_File_Name);
+#endif /* KEY */
 }
 
 void
-WFE_Set_Line_And_File (UINT line, char *file)
+WFE_Set_Line_And_File (UINT line, const char *file)
 {
 	if (!dst_initialized) return;
 
 	// split file into directory path and file name
 	char *dir;
-	char *file_name = drop_path(file);;
+	const char *file_name = drop_path(file);;
 	char buf[256];
 	if (file_name == file) {
 		// no path
@@ -1586,7 +1984,7 @@ WFE_Set_Line_And_File (UINT line, char *file)
 	else {
 		// copy specified path
 		strcpy (buf, file);
-		dir = drop_path(buf);	// points inside string, after slash
+		dir = (char *) drop_path(buf);	// points inside string, after slash
 		--dir;			// points before slash
 		*dir = '\0';		// terminate path string
 		dir = buf;

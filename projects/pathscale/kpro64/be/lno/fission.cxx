@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -726,8 +730,13 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
   for (stmt = WN_first(WN_do_body(in_loop));
     stmt; stmt = WN_next(stmt)) {
     // map the stmts to vertices in dep_g
-    VINDEX16 v=dep_g_p->Add_Vertex();
-    if (v==0) {
+    union {
+      VINDEX16 v;
+      void *p;
+    } v;
+    v.p = NULL;
+    v.v = dep_g_p->Add_Vertex();
+    if (v.v==0) {
       DevWarn("Statement scc graph too big");
       INT m=loop.Newidx();
       loop[m].Clear();
@@ -738,7 +747,7 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
       CXX_DELETE(dep_g_p, pool);
       return;
     }
-    WN_MAP_Set(dep_graph_map, stmt, (void *)v);
+    WN_MAP_Set(dep_graph_map, stmt, v.p);
     // TODO: really want to use 16 bits in the map
   }
 

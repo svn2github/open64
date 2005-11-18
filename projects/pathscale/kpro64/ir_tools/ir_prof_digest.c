@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -141,19 +145,24 @@ FILE *stream;
 
 void sysfatal(char * const s, ...)
 {
-va_list ap;
-FILE *stream;
+    va_list ap;
+    FILE *stream;
 
     stream = stderr;
 
-    if (errno == EEOF) {
+    int err_num = errno;
+    errno = 0;
+
+    char *err_str = strerror(err_num);
+    
+    if (err_num == EEOF) {
 	fprintf(stream, "%s: %s, ", tool_name, "unexpected end of file");
     }
-    else if (errno < sys_nerr) {
-	fprintf(stream, "%s: %s, ", tool_name, sys_errlist[errno]);
+    else if (errno == 0) {
+	fprintf(stream, "%s: %s, ", tool_name, strerror(errno));
     }
     else {
-	fprintf(stream, "%s: error code %d, ", tool_name, errno);
+	fprintf(stream, "%s: error code %d, ", tool_name, err_num);
     }
 
     va_start(ap, s);

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,6 +43,12 @@
 #include <ffio.h>
 #include "gfio.h"
 
+static int
+check_pad_8( bitptr, int, char);
+
+static
+setend(struct fdinfo *fio, struct ffsw *stat);
+
 /*
  * Read a generic F or FB format file.
  *	This routine takes advantage of the similarities between
@@ -69,7 +79,6 @@ bitptr bufptr;
 struct ffsw *stat;
 	{
 	int nbits, ret;
-	extern int check_pad_8();
 
 	nbits = nbytes << 3;
 	if (*ubc != 0)
@@ -226,9 +235,7 @@ char pchar;
  *	Common code to handle EOF and EOD return
  */
 static
-setend(fio, stat)
-struct fdinfo *fio;
-struct ffsw *stat;
+setend(struct fdinfo *fio, struct ffsw *stat)
 	{
 	fio->segbits = 0;
 	fio->last_recbits = fio->recbits;

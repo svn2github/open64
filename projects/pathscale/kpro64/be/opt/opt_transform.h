@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -534,7 +539,11 @@ UPDATE<TRANSFORM, CACHE, VERSION>::Process_CR_no_repeat(CODEREP *cr, bool is_mu,
 	CODEREP *ret = Htable()->Add_expr_and_fold(newcr);
 	// Fix 620842:  copy prop expects all C_P_PROCESSED must be cleared
 	ret->Reset_flag(CF_C_P_PROCESSED);
-	ret->Reset_flag(CF_C_P_REHASHED);
+// Fix bug 1614
+#ifdef KEY
+        if (ret->Kind() == CK_OP)
+#endif
+	  ret->Reset_flag(CF_C_P_REHASHED);
 	return ret;
       }
       break;

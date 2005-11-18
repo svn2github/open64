@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -129,7 +133,7 @@ BOOL Fast_Sqrt_Allowed = FALSE;		/* sqrt(x) --> x * rsqrt(x) ? */
 static BOOL Fast_Sqrt_Set = FALSE;	/* ... option seen? */
 BOOL Rsqrt_Allowed = FALSE;		/* generate RSQRT instruction? */
 static BOOL Rsqrt_Set = FALSE;		/* ... option seen? */
-BOOL Recip_Allowed;		        /* generate RECIP instruction? */
+BOOL Recip_Allowed = FALSE;	        /* generate RECIP instruction? */
 static BOOL Recip_Set = FALSE;		/* ... option seen? */
 BOOL Simp_Fold_Unsigned_Relops = FALSE; /* Constant fold unsigned relops */
 static BOOL Simp_Fold_Unsigned_Relops_Set = FALSE;
@@ -149,8 +153,8 @@ BOOL GCM_Speculative_Ptr_Deref= TRUE;  /* allow load speculation of a memory
 BOOL GCM_Speculative_Ptr_Deref_Set=FALSE;   /* ... option seen? */
 
 /***** Limits on optimization *****/
-#define DEFAULT_OLIMIT		3000
-#define DEFAULT_O3_OLIMIT	4000	/* allow more time for -O3 compiles */
+#define DEFAULT_OLIMIT		6000
+#define DEFAULT_O3_OLIMIT	9000	/* allow more time for -O3 compiles */
 #define MAX_OLIMIT		INT32_MAX
 INT32 Olimit = DEFAULT_OLIMIT;
 static BOOL Olimit_Set = FALSE;
@@ -200,11 +204,19 @@ BOOL Enable_WFE_DFE = FALSE;
 
 
 /***** Instrummentation Related Options *****/
-INT32 Instrumentation_Phase_Num = 0;
+#include "profile_type.h"
+INT32 Instrumentation_Phase_Num = PROFILE_PHASE_BEFORE_VHO;  /* 0 */
+INT32 Instrumentation_Type_Num  = WHIRL_PROFILE;             /* 1 */
 BOOL Instrumentation_Enabled = FALSE;
 UINT32 Instrumentation_Actions = 0;
 BOOL Instrumentation_Unique_Output = FALSE; // always create unique output
 OPTION_LIST *Feedback_Option = NULL;
+
+#ifdef KEY
+BOOL   Asm_Memory = FALSE;
+UINT32 Div_Exe_Counter = 40000;  /* A number that can avoid regression on facerec. */
+BOOL   profile_arcs = FALSE;
+#endif
 
 /***** Obsolete options *****/
 static BOOL Fprop_Limit_Set = FALSE;
@@ -221,6 +233,12 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL, OV_VISIBLE,	TRUE,	"warning",		"warn",
     0, 0, 0,  &Show_OPT_Warnings,     NULL,
     "Control interpretation of possible variable aliasing" },
+
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "asm_memory", "",
+    0, 0, 0,	&Asm_Memory,    NULL,
+    "Assumes each asm has memory flag specified even if it is not there"},
+#endif
 
   { OVK_LIST,	OV_VISIBLE,	TRUE, 	"alias",		"alia",
     0, 0, 0,	&Alias_Option,	NULL,
@@ -261,6 +279,12 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "div_split",		"div_split",
     0, 0, 0,	&Div_Split_Allowed, &Div_Split_Set ,
     "Allow splitting of a/b into a*recip(b)" },
+
+#ifdef KEY
+  { OVK_UINT32,	OV_VISIBLE,	TRUE, "div_exe_counter",	"",
+    0, 0, UINT32_MAX,	&Div_Exe_Counter, NULL ,
+    "Restrict div/rem/mod optimization via value profiling" },
+#endif
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "early_mp",		"early_mp",
     0, 0, 0,	&Early_MP_Processing, NULL,
@@ -373,6 +397,12 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "pad_common",		"pad",
     0, 0, 0,	&OPT_Pad_Common, NULL,
     "Force padding of COMMON blocks to improve cache behavior" },
+
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "profile_arcs", "",
+    0, 0, 0,	&profile_arcs, NULL,
+    "arc profiling used by GCC"},
+#endif
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "ptr_opt",		"ptr_o",
     0, 0, 0,	&Ptr_Opt_Allowed, NULL,
@@ -510,12 +540,20 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,	&OPT_recompute_addr_flags, NULL,
     "Recompute address flags in the backend (for debugging)"},
 
-  { OVK_INT32,  OV_VISIBLE,	TRUE, "instrument",		"instr",
-    0, 0, 3,	&Instrumentation_Phase_Num, &Instrumentation_Enabled,
-    "Phases in the compiler where instrumentation needs to be done" },
+  { OVK_BOOL,  OV_VISIBLE,	TRUE, "instrumentation",	"instr",
+    0, 0, 0, &Instrumentation_Enabled, NULL,
+    "Allow adding instrumentation instructions for feedback profiling" },
+
+  { OVK_INT32,  OV_VISIBLE,     TRUE, "fb_phase",       "",
+    0, 0, 5,    &Instrumentation_Phase_Num, NULL,
+    "Phases in the compiler where instrumentation or feedback  needs to be done" },
+
+  { OVK_INT32,  OV_VISIBLE,     TRUE, "fb_type",       "",
+    0, 0, 14,    &Instrumentation_Type_Num, NULL,
+    "Types in the compiler where instrumentation needs to be done" },
 
   { OVK_UINT32,  OV_INTERNAL,	TRUE, "instrument_action",		"",
-    0, 0, UINT32_MAX,	&Instrumentation_Actions, &Instrumentation_Enabled,
+    0, 0, UINT32_MAX,	&Instrumentation_Actions, NULL,
     "Phases in the compiler where instrumentation needs to be done" },
 
   { OVK_BOOL,	OV_INTERNAL,	FALSE,	"instr_unique_output",	"",

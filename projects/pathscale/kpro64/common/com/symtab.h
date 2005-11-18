@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,10 +45,7 @@
 // This file should contain only inlined functions for accessing various
 // fields in the symbol table classes.
 
-#ifndef __SGI_STL_SLIST_H
-#include <slist>
-using std::slist;
-#endif // __SGI_STL_SLIST_H
+#include <ext/slist>
 
 #ifndef segmented_array_INCLUDED
 #include "segmented_array.h"

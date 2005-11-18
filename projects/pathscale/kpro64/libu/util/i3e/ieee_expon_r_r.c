@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -53,11 +57,17 @@ _IEEE_EXPONENT_R_R(double x)
 {
 	union _ieee_double {
 		double	dword;
-		long	lword;
+		long long lword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa	: IEEE_64_MANT_BITS;
+			unsigned int exponent	: IEEE_64_EXPO_BITS;
+			unsigned int sign	: 1;
+#else
 			unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_64_EXPO_BITS;
 			unsigned int mantissa	: IEEE_64_MANT_BITS;
+#endif
 		} parts;
 	};
 	switch (_fpclassify(x)) {

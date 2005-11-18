@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -308,6 +312,11 @@ static char *erglob_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #define EC_P_Heur_No_BT	EC_Undef_Code+326	/* str */
 #define EC_P_Heur_No_MU	EC_Undef_Code+327	/* str */
 #define EC_P_Heur_No_RA	EC_Undef_Code+328	/* str */
+
+#ifdef KEY
+/* ASM operands: */
+#define EC_Inv_Asm_Opnd EC_Undef_Code+340       /* none */
+#endif
 
 
 /* ====================================================================

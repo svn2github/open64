@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -61,13 +65,19 @@ float
 _IEEE_NEXT_AFTER_H_H(float x, float y)
 {
 	/* Union defined to work with IEEE 32-bit floating point. */
-	union _ieee_double {
+	union _ieee_float {
 		float dword;
 		short	lword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa : IEEE_32_MANT_BITS;
+			unsigned int exponent : IEEE_32_EXPO_BITS;
+			unsigned int sign     : 1;
+#else
 			unsigned int sign     : 1;
 			unsigned int exponent : IEEE_32_EXPO_BITS;
 			unsigned int mantissa : IEEE_32_MANT_BITS;
+#endif
 		} parts;
 	};
 
@@ -82,14 +92,14 @@ _IEEE_NEXT_AFTER_H_H(float x, float y)
 	} else if (x==y || xfpclas == FP_INFINITE) {
 		return x;
 	} else if (xfpclas == FP_ZERO) {
-		union _ieee_double x_val;
+		union _ieee_float x_val;
 		x_val.dword = FLT_MIN;
 		x_val.parts.sign	 = x > y;
 
 		/* return smallest normal number */
 		return(x_val.dword);
 	} else {  /* first argument is normal or denormal */
-		union _ieee_double x_val;
+		union _ieee_float x_val;
 		int j;
 		int resfpclas;
 

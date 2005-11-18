@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -254,7 +259,7 @@
 #ifndef opt_vn_INCLUDED
 #define opt_vn_INCLUDED "opt_vn.h"
 
-#include <slist>
+#include <ext/slist>
 #include <vector>
 #include "segmented_array.h"
 #include "opt_vn_expr.h"    // For VN_VALNUM, VN_EXPR, and VN_EXPR_MAP

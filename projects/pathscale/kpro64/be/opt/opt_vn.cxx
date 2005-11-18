@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -111,6 +116,8 @@
 #pragma hdrstop
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "defs.h"
 #include "erglob.h"
 #include "opcode.h"
@@ -149,7 +156,11 @@ inline BOOL Vn_Tracing(VN::EXPRID id)
 
 inline INT Need_Integral_Conversion(MTYPE from_ty, MTYPE to_ty, OPCODE *opc)
 {
-   if (MTYPE_is_integral(from_ty) && MTYPE_is_integral(to_ty))
+   if (MTYPE_is_integral(from_ty) && MTYPE_is_integral(to_ty)
+#ifdef KEY
+       && !MTYPE_is_vector(from_ty)
+#endif
+	)
       return Need_type_conversion(from_ty, to_ty, opc);
    else
       return NOT_AT_ALL;

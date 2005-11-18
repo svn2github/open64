@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -51,11 +56,12 @@
 // ====================================================================
 
 
-#include <math.h>
 #include "opt_fb.h"
-#include "stack.h"
+#include <stack>
 #include "opt_htable.h" // for STMTREP
 #include "DaVinci.h"    // for DaVinci viewer
+
+using std::map;
 
 // ====================================================================
 
@@ -760,7 +766,6 @@ OPT_FEEDBACK::OPT_FEEDBACK( CFG *cfg, MEM_POOL *pool )
     Is_True( bb->Id() < _fb_opt_nodes.size(),
 	     ( "OPT_FEEDBACK::OPT_FEEDBACK: Last_bb_id is not largest id" ) );
     OPT_FB_NODE& node = _fb_opt_nodes[bb->Id()];
-
     // Determine if in_out_same should be false.
     if ( bb->Kind() == BB_ENTRY || bb->Kind() == BB_EXIT )
       node.in_out_same = false;
@@ -792,7 +797,34 @@ OPT_FEEDBACK::OPT_FEEDBACK( CFG *cfg, MEM_POOL *pool )
 	Add_edge( bb->Id(), bb->Nth_succ(0)->Id(), FB_EDGE_OUTGOING,
 		  FB_FREQ_UNINIT ); 
     } else {
+
       OPERATOR opr = WN_operator( wn_last );
+
+#ifdef KEY
+      node.orig_wn = NULL;
+
+      if( opr == OPR_ICALL ){
+	node.orig_wn = wn_last;
+
+      } else if( !cfg->Calls_break() ){
+	STMT_ITER stmt_iter;
+	WN* wn = NULL;
+	int num_icalls = 0;
+	FOR_ALL_ELEM ( wn, stmt_iter, Init( bb->Firststmt(), bb->Laststmt() ) ) {
+	  if( WN_operator( wn ) == OPR_ICALL ){
+	    node.orig_wn = wn;
+	    num_icalls++;
+	  }
+	}
+
+	if( num_icalls > 1 ){
+	  //FmtAssert( false, ("more than one icall") );
+	  DevWarn( "OPT_FEEDBACK::OPT_FEEDBACK(ICALL) more than one icall in a bb" );
+	  node.orig_wn = NULL;
+	}
+      }
+#endif
+
       switch ( opr ) {
 
       case OPR_PRAGMA:
@@ -1155,6 +1187,29 @@ OPT_FEEDBACK::Emit_feedback( WN *wn, BB_NODE *bb ) const
     // Cur_PU_Feedback->Annot(wn, FB_EDGE_CALL_OUTGOING, node.freq_total_in );
     // Cur_PU_Feedback->Annot(wn, FB_EDGE_CALL_INCOMING, node.freq_total_out);
     }
+#ifdef KEY
+    if( opr == OPR_ICALL &&
+	node.orig_wn != NULL ){
+      FB_Info_Icall fb_info_icall = Cur_PU_Feedback->Query_icall(node.orig_wn);
+      Cur_PU_Feedback->Annot_icall( wn, fb_info_icall );
+
+      if( !fb_info_icall.Is_uninit() ){
+	FmtAssert( fb_info_icall.tnv._exec_counter >= fb_info_icall.tnv._counters[0],
+		   ("icall execution counter is invalid") );
+
+	/* We cannot do the following checking, because the representation of
+	   _exec_counter is UINT64, and node.freq_total_in is float.
+	   TODO:
+	   Modify FB_TNV by using FB_FREQ!!! And perform this same checking
+	   at Convert_Feedback_Info().
+
+	   const UINT64 exec_counter = (UINT64)ceilf( node.freq_total_in.Value() );
+	   FmtAssert( fb_info_icall.tnv._exec_counter == exec_counter,
+	   ("icall counter is not updated") );
+	*/
+      }
+    }
+#endif // KEY
     break;
 
   case OPR_IO:

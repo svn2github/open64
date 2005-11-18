@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -128,7 +133,6 @@ class DSE {
 		{ return WN_MAP32_Get( _live_wns, wn ); }
     void Set_live_wn( WN *wn ) const
 		{ WN_MAP32_Set( _live_wns, wn, 1 ); }
-
   public:
 
     DSE( CFG *cfg, OPT_STAB *opt_stab, MEM_POOL *pool, EXC *exc, BOOL tracing )
@@ -183,6 +187,16 @@ DSE::Required_istore(const WN *wn) const
       occ->Points_to()->Restricted())
     return TRUE;
 
+#ifdef KEY // deleting fetch of MTYPE_M return value can cause lowerer to omit
+  	   // inserting the fake parm
+  if (Opt_stab()->Phase() == PREOPT_IPA0_PHASE && WN_desc(wn) == MTYPE_M &&
+      WN_opcode(WN_kid0(wn)) == OPC_MMLDID) {
+    ST *s = Opt_stab()->St(Opt_stab()->Du_aux_id(WN_ver(WN_kid0(wn))));
+    if (ST_class(s) == CLASS_PREG && Preg_Is_Dedicated(WN_offset(wn)))
+      return TRUE;
+  }
+#endif
+
   return FALSE;
 }
 
@@ -213,6 +227,16 @@ DSE::Required_stid( const WN *wn ) const
 
   if (ST_sclass(s) == SCLASS_FORMAL)  // leave the details to DCE
     return TRUE;   
+
+#ifdef KEY // deleting fetch of MTYPE_M return value can cause lowerer to omit
+  	   // inserting the fake parm
+  if (Opt_stab()->Phase() == PREOPT_IPA0_PHASE && WN_desc(wn) == MTYPE_M &&
+      WN_opcode(WN_kid0(wn)) == OPC_MMLDID) {
+    s = Opt_stab()->St(Opt_stab()->Du_aux_id(WN_ver(WN_kid0(wn))));
+    if (ST_class(s) == CLASS_PREG && Preg_Is_Dedicated(WN_offset(wn)))
+      return TRUE;
+  }
+#endif
   
   return FALSE;
 }
@@ -473,7 +497,6 @@ DSE::Set_Required_CHI( CHI_NODE *chi ) const
   VER_STAB_ENTRY *opnd_ver = Opt_stab()->Ver_stab_entry(chi->Opnd());
   Set_Required_VSE( opnd_ver, real_use, NULL );
 }
-
 // ====================================================================
 // Recursively set the flags that say the variables it references
 // (but not those it defines) are necessary.  If it is an STID node,

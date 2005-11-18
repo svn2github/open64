@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -150,6 +154,7 @@ _FWF(ControlListType *cilist, iolist_header *iolist, void *stck)
 	if (cilist->internal) {		/* If internal I/O */
 		STMT_BEGIN(-1, 1, iost, NULL, css, cup);
 		cup->uft90	= 1;	/* set F90 mode for internal file */
+/* KEY: I'm not sure if this is correct. */
 #if	!defined(__mips)
 		cup->ufcompat	= 2;	/* set cf90 on internal file */
 		cup->ufunilist	= 0;

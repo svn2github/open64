@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -34,6 +38,8 @@
 
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "be_com_pch.h"
 #endif /* USE_PCH */
@@ -1009,6 +1015,9 @@ static void Create_Func_DST ( char * st_name )
 			0,
 			FALSE,			/* declaration */
 			FALSE,			/* prototype */
+#ifdef KEY
+                        FALSE,                  // is_artificial
+#endif
 			FALSE			/* external */
 			);
   (void)DST_append_child( dst, nested_dst );
@@ -1282,11 +1291,19 @@ is inheriting pu_recursive OK?
   Is_True(PU_Info_state(parallel_pu, WT_FEEDBACK) == Subsect_Missing,
           ("there should be no feedback for parallel_pu"));
   if (Cur_PU_Feedback) {
+#ifdef KEY
     parallel_pu_fb = CXX_NEW(FEEDBACK(func_entry,
                                       MEM_pu_nz_pool_ptr,
-				      1, 1, 1, 1, 1, 1,
+				      1, 1, 1, 1, 1, 1, 1, 1, 0,
 				      cmaptab),
 		             MEM_pu_nz_pool_ptr);
+#else
+    parallel_pu_fb = CXX_NEW(FEEDBACK(func_entry,
+                                      MEM_pu_nz_pool_ptr,
+				      1, 1, 1, 1, 1, 1, 1,
+				      cmaptab),
+		             MEM_pu_nz_pool_ptr);
+#endif
     Set_PU_Info_state(parallel_pu, WT_FEEDBACK, Subsect_InMem);
     Set_PU_Info_feedback_ptr(parallel_pu, parallel_pu_fb);
         // Note that unlike every other kind of map, the FEEDBACK map for

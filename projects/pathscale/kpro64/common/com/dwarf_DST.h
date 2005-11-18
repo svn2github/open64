@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -229,19 +233,23 @@ typedef union DST_assoc_info
 {
    ST_IDX  st_idx;	/* idx to symbol table */
    ST     *st_ptr;	/* A temporary ptr used by fe */
-   void   *fe_ptr;	/* Another temporary ptr used by front-end */
+   union 
+   {
+     void *fe_ptr;
+     UINTPS fe_uint;
+   } st_u;
 } DST_ASSOC_INFO;
 #define DST_ASSOC_INFO_st_idx(p) ((p).st_idx)
 #define DST_ASSOC_INFO_st_level(p) (ST_IDX_level((p).st_idx))
 #define DST_ASSOC_INFO_st_index(p) (ST_IDX_index((p).st_idx))
 #define DST_ASSOC_INFO_st_ptr(p) ((p).st_ptr)
-#define DST_ASSOC_INFO_fe_ptr(p) ((p).fe_ptr)
+#define DST_ASSOC_INFO_fe_ptr(p) ((p).st_u.fe_ptr)
 
 #define pDST_ASSOC_INFO_st_idx(p) ((p)->st_idx)
 #define pDST_ASSOC_INFO_st_level(p) (ST_IDX_level((p)->st_idx))
 #define pDST_ASSOC_INFO_st_index(p) (ST_IDX_index((p)->st_idx))
 #define pDST_ASSOC_INFO_st_ptr(p) ((p)->st_ptr)
-#define pDST_ASSOC_INFO_fe_ptr(p) ((p)->fe_ptr)
+#define pDST_ASSOC_INFO_fe_ptr(p) ((p)->st_u.fe_ptr)
 
 
                   /*--------------------*
@@ -257,7 +265,13 @@ typedef enum DST_const_form
    DST_FORM_DATA1, 
    DST_FORM_DATA2, 
    DST_FORM_DATA4, 
+#ifndef KEY
    DST_FORM_DATA8
+#else
+   DST_FORM_DATA8, 
+   DST_FORM_DATAC4,
+   DST_FORM_DATAC8
+#endif // KEY
 } DST_CONST_FORM;
 
 typedef struct DST_const_value
@@ -270,6 +284,16 @@ typedef struct DST_const_value
       UINT16  form_data2;
       UINT32  form_data4;
       UINT64  form_data8;
+#ifdef KEY
+      struct {
+	UINT32 form_crdata4;
+	UINT32 form_cidata4;
+      } cdata4;
+      struct {
+	UINT64 form_crdata8;
+	UINT64 form_cidata8;
+      } cdata8;
+#endif // KEY
    } value;
 } DST_CONST_VALUE;
 
@@ -279,6 +303,12 @@ typedef struct DST_const_value
 #define DST_CONST_VALUE_form_data2(c) ((c).value.form_data2)
 #define DST_CONST_VALUE_form_data4(c) ((c).value.form_data4)
 #define DST_CONST_VALUE_form_data8(c) ((c).value.form_data8)
+#ifdef KEY
+#define DST_CONST_VALUE_form_crdata4(c) ((c).value.cdata4.form_crdata4)
+#define DST_CONST_VALUE_form_cidata4(c) ((c).value.cdata4.form_cidata4)
+#define DST_CONST_VALUE_form_crdata8(c) ((c).value.cdata8.form_crdata8)
+#define DST_CONST_VALUE_form_cidata8(c) ((c).value.cdata8.form_cidata8)
+#endif // KEY
 
 
 
@@ -581,6 +611,9 @@ typedef struct DST_var_decl
    USRCPOS      decl;  /* Source location */
    DST_STR_IDX  name;  /* Name of variable */
    DST_INFO_IDX type;  /* Type of variable */
+#ifdef KEY
+   DST_STR_IDX    linkage_name;  /* Mangled name of variable */
+#endif
 } DST_VAR_DECL;
 
 typedef struct DST_var_def
@@ -594,6 +627,9 @@ typedef struct DST_var_def
 				  * field decl */
    DST_INFO_IDX abstract_origin;
    DST_INFO_IDX dopetype;   /* Type of dope vector */
+#ifdef KEY
+   DST_STR_IDX    linkage_name;  /* Mangled name of variable */
+#endif
 }  DST_VAR_DEF;
 
 typedef struct DST_var_const
@@ -637,6 +673,9 @@ typedef union DST_variable
 #define DST_VARIABLE_decl_decl(attr) ((attr)->decl.decl)
 #define DST_VARIABLE_decl_name(attr) ((attr)->decl.name)
 #define DST_VARIABLE_decl_type(attr) ((attr)->decl.type)
+#ifdef KEY
+#define DST_VARIABLE_decl_linkage_name(attr) ((attr)->decl.linkage_name)
+#endif
 
 #define DST_VARIABLE_def_decl(attr) ((attr)->def.decl)
 #define DST_VARIABLE_def_name(attr) ((attr)->def.name)
@@ -644,6 +683,9 @@ typedef union DST_variable
 #define DST_VARIABLE_def_st(attr) ((attr)->def.st)
 #define DST_VARIABLE_def_offs(attr) ((attr)->def.offs)
 #define DST_VARIABLE_def_specification(attr) ((attr)->def.specification)
+#ifdef KEY
+#define DST_VARIABLE_def_linkage_name(attr) ((attr)->def.linkage_name)
+#endif
 #define DST_VARIABLE_def_abstract_origin(attr) ((attr)->def.abstract_origin)
 #define DST_VARIABLE_def_dopetype(attr) ((attr)->def.dopetype)
 

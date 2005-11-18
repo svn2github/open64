@@ -37,7 +37,7 @@
 #ifndef __Z_DIV_H__
 #define __Z_DIV_H__
 
-extern void z_div(dcomplex *, dcomplex *, dcomplex *);
+extern dcomplex z_div(dcomplex *, dcomplex *);
 extern dcomplex __zdiv(double_t, double_t, double_t, double_t);
 
 #endif /* __Z_DIV_H__ */

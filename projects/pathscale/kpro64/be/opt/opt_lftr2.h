@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -161,6 +166,9 @@ private:
 		case OPR_ADD: // PPP add more cases later
 		case OPR_SUB:
 		case OPR_MPY:
+#ifdef TARG_X8664
+		case OPR_CVT:
+#endif
       			return TRUE;
     	  }
 	}

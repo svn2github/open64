@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -275,9 +279,9 @@ _defgu2sd(	const long	*fca,
 	scale_factor = *p;
 
 	if(DEBUGSW)
-		printf("_def:posn=%llx fw=%x flag=%x lcap1=%llx *lcap1=%llx d=%x p=%x\n",
-		(long long)*fca, (int)*fw , (int)*mode, (long long)lcap1,
-		(long long)*lcap1, (int)*d, (int)*p );
+		printf("_def:posn=%llx fw=%x flag=%x lcap1=%p *lcap1=%p d=%x p=%x\n",
+		       (long long)*fca, (int)*fw , (int)*mode, lcap1,
+		       *lcap1, (int)*d, (int)*p );
 
 	decimal_point_indicator = DP_NOT_FOUND;	/* no decimal point found */
 	decimal_exponent = 0;

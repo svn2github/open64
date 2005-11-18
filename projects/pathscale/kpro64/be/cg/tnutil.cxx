@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -51,6 +55,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "cg_pch.h"
 #endif // USE_PCH
@@ -94,17 +100,17 @@
  */
 
 /* Various dedicated TNs: */
-TN *RA_TN;
-TN *SP_TN;
-TN *FP_TN;
-TN *Ep_TN;
-TN *GP_TN;
-TN *Zero_TN;
-TN *Pfs_TN;
-TN *True_TN;
-TN *FZero_TN;
-TN *FOne_TN;
-TN *LC_TN;
+TN *RA_TN = NULL;
+TN *SP_TN = NULL;
+TN *FP_TN = NULL;
+TN *Ep_TN = NULL;
+TN *GP_TN = NULL;
+TN *Zero_TN = NULL;
+TN *Pfs_TN = NULL;
+TN *True_TN = NULL;
+TN *FZero_TN = NULL;
+TN *FOne_TN = NULL;
+TN *LC_TN = NULL;
 
 /* The register TNs are in a table named TNvec, indexed by their TN
  * numbers in the range 1..Last_TN.  The first part of the table, the
@@ -332,6 +338,11 @@ Dup_TN_Even_If_Dedicated(
  */
 static TN *ded_tns[ISA_REGISTER_CLASS_MAX + 1][REGISTER_MAX + 1];
 static TN *f4_ded_tns[REGISTER_MAX + 1];
+#ifdef KEY
+static TN *i1_ded_tns[REGISTER_MAX + 1];
+static TN *i2_ded_tns[REGISTER_MAX + 1];
+static TN *i4_ded_tns[REGISTER_MAX + 1];
+#endif // KEY
 
 /* ====================================================================
  *
@@ -346,6 +357,10 @@ Create_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg)
 {
   INT size = REGISTER_bit_size(rclass, reg) / 8;
   BOOL is_float = rclass == ISA_REGISTER_CLASS_float;
+
+#ifdef TARG_X8664
+  is_float |= ( rclass == ISA_REGISTER_CLASS_x87 );
+#endif
 
   /* Allocate the dedicated TN at file level, because we reuse them 
    * for all PUs.
@@ -401,10 +416,13 @@ Init_Dedicated_TNs (void)
   FOne_TN = ded_tns[REGISTER_CLASS_fone][REGISTER_fone];
   LC_TN = ded_tns[REGISTER_CLASS_lc][REGISTER_lc];
   
+#if defined(KEY) && !defined(TARG_X8664)
   /* allocate gp tn.  this may use a caller saved register, so
    * we don't use the one allocated for $gp above.
    */
   GP_TN = Create_Dedicated_TN (REGISTER_CLASS_gp, REGISTER_gp);
+  tnum++;
+#endif
 
 
     for (reg = REGISTER_MIN; 
@@ -415,6 +433,22 @@ Init_Dedicated_TNs (void)
         f4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
   	Set_TN_size(f4_ded_tns[reg], 4);
     }
+#ifdef KEY
+    for (reg = REGISTER_MIN; 
+	 reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_integer);
+	 reg++
+    ) {
+	++tnum;
+        i1_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
+  	Set_TN_size(i1_ded_tns[reg], 1);
+	++tnum;
+        i2_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
+  	Set_TN_size(i2_ded_tns[reg], 2);
+	++tnum;
+        i4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_integer, reg);
+  	Set_TN_size(i4_ded_tns[reg], 4);
+    }
+#endif // KEY
     Last_Dedicated_TN = tnum;
 }
 
@@ -436,6 +470,18 @@ Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
   {
 	return f4_ded_tns[reg];
   }
+#ifdef KEY
+  // check for I4 tns
+  if (rclass == ISA_REGISTER_CLASS_integer
+	&& size != DEFAULT_RCLASS_SIZE(rclass) )
+  {
+        switch(size) {
+	  case 1: return i1_ded_tns[reg];
+	  case 2: return i2_ded_tns[reg];
+	  case 4: return i4_ded_tns[reg];
+	}
+  }
+#endif // KEY
   return ded_tns[rclass][reg];
 }
  
@@ -460,10 +506,49 @@ Gen_Register_TN (ISA_REGISTER_CLASS rclass, INT size)
   	if ( size > 16 ) ErrMsg ( EC_TN_Size, size );
   	Set_TN_size(tn, size);
   	if ( rclass == ISA_REGISTER_CLASS_float)  Set_TN_is_float(tn);
+#ifdef TARG_X8664
+  	if ( rclass == ISA_REGISTER_CLASS_x87)  Set_TN_is_float(tn);
+#endif
     	Set_TN_register_class(tn, rclass);
   	return tn;
   }
 }
+
+#ifdef KEY
+TN *
+Gen_Typed_Register_TN (TYPE_ID mtype, INT size)
+{
+  ISA_REGISTER_CLASS rclass = Register_Class_For_Mtype (mtype);
+  TN* tn;
+
+  Is_True(rclass != ISA_REGISTER_CLASS_UNDEFINED,
+	  ("Gen_Typed_Register_TN encountered undefined reg class"));
+
+  /* If there is only one registers in a class, and it is not
+     allocatable, then just return the dedicated TN representing that
+     register. I'm not sure why this behavior is needed... */
+  if ( REGISTER_SET_EmptyP(REGISTER_CLASS_allocatable(rclass)) &&
+       (REGISTER_CLASS_register_count(rclass) == 1))
+  {
+    tn = Build_Dedicated_TN(rclass, REGISTER_MIN, size);
+  }
+  else {
+	tn = Gen_TN();
+  	Check_TN_Vec_Size ();
+  	Set_TN_number(tn,++Last_TN);
+  	TNvec(Last_TN) = tn;
+  	//if ( size > 16 ) ErrMsg ( EC_TN_Size, size );
+  	Set_TN_size(tn, size);
+
+  	if ( rclass == ISA_REGISTER_CLASS_float ||
+	     rclass == ISA_REGISTER_CLASS_x87 )
+	  Set_TN_is_float(tn);
+    	Set_TN_register_class(tn, rclass);
+  }
+
+  return tn;
+} 
+#endif
 
 // gen unique literal tn
 TN *
@@ -882,11 +967,13 @@ Init_TNs_For_PU (void)
   Last_TN = Last_Dedicated_TN;
   First_Regular_TN = Last_Dedicated_TN + 1;
 
-  /* reset GP_TN to point to $gp during code expansion, in case it was
-   * changed by the last PU.  otherwise, Convert_WHIRL_To_OPs et. al.,
-   * get confused.
-   */
-  Set_TN_register(GP_TN, REGISTER_gp);
+  if( GP_TN != NULL ){
+    /* reset GP_TN to point to $gp during code expansion, in case it was
+     * changed by the last PU.  otherwise, Convert_WHIRL_To_OPs et. al.,
+     * get confused.
+     */
+    Set_TN_register(GP_TN, REGISTER_gp);
+  }
 }
 
 /* ====================================================================

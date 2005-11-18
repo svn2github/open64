@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -86,6 +90,14 @@ dwarf_add_expr_gen (
 		to concatenate 2 leb's below */
     char encode_buffer2[ENCODE_SPACE_NEEDED];
     int  res;
+    union {
+	Dwarf_Unsigned u;
+	void * p;
+    } val1_u;
+    
+    val1_u.p = NULL;
+    val1_u.u = val1;
+    
     Dwarf_P_Debug dbg = expr->ex_dbg;
 	/* 
 	    Give the buffer where the operands are first
@@ -340,8 +352,7 @@ dwarf_add_expr_gen (
 
 	case DW_OP_pick :
 	    operand = (Dwarf_Small *)&operand_buffer[0];
-	    WRITE_UNALIGNED(dbg,operand,(const void *)val1,
-			sizeof(val1),1);
+	    WRITE_UNALIGNED(dbg,operand, val1_u.p, sizeof(val1), 1);
 	    operand_size = 1;
 	    break;
 
@@ -355,8 +366,7 @@ dwarf_add_expr_gen (
 	case DW_OP_deref_size :
 	case DW_OP_xderef_size :
 	    operand = (Dwarf_Small *)&operand_buffer[0];
-	    WRITE_UNALIGNED(dbg,operand,(const void *)val1,
-			sizeof(val1),1);
+	    WRITE_UNALIGNED(dbg,operand, val1_u.p, sizeof(val1), 1);
 	    operand_size = 1;
 	    break;
 
@@ -527,6 +537,13 @@ dwarf_expr_into_block (
     Dwarf_Error		*error
 )
 {
+    union {
+	Dwarf_Addr a;
+	void *p;
+    } ap;
+    
+    ap.a = 0;
+    
     if (expr == NULL) {
 	_dwarf_p_error(NULL, error, DW_DLE_EXPR_NULL);
 	return(DW_DLV_BADADDR);
@@ -538,5 +555,6 @@ dwarf_expr_into_block (
     }
 
     if (length != NULL) *length = expr->ex_next_byte_offset;
-    return((Dwarf_Addr)&(expr->ex_byte_stream[0]));
+    ap.p = &(expr->ex_byte_stream[0]);
+    return ap.a;
 }

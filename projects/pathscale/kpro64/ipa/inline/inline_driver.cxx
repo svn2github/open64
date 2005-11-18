@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -45,6 +49,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <unistd.h>
 #include <elf.h>
 #include <cmplrs/rcodes.h>	    /* for exit return status */
@@ -81,6 +87,8 @@ BOOL Verbose = FALSE;
  * to be defined.
  */
 SKIPLIST *IPA_Skip_List = NULL;		/* List of skip options */
+
+
 
 /* ====================================================================
  *

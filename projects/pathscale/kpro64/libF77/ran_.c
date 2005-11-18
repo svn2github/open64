@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,6 +45,7 @@ Linear congruential generator, suitable for 32 bit machines;
 multiplication is mod 2**31
 */
 
+#include <math.h>
 #include "cmplrs/host.h"
 
 float_t ran_(int32 *i)

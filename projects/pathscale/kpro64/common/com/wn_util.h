@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -446,7 +450,7 @@ inline BOOL WN_is_black_box(const WN *wn)
 #include "mempool_allocator.h"
 
 typedef mempool_allocator<WN*> VEC_POOL_ALLOCATOR;
-typedef std::vector<WN*, VEC_POOL_ALLOCATOR> WN_VECTOR;
+typedef vector<WN*, VEC_POOL_ALLOCATOR> WN_VECTOR;
 
 extern "C" void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv, 
                                           WN_PRAGMA_ID pragma_id,

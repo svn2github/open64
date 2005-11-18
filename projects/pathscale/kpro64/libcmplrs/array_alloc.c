@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -275,7 +279,7 @@ aa_discard(aa_handle lclaa)
 static void error (aa_handle lclaa, int i)
 {
 	if(lclaa == 0) {
-		(void)fprintf(stderr,"%s. aa_handle %#x. error %d\n",
+		(void)fprintf(stderr,"%s. aa_handle %p. error %d\n",
 			aa_error[i],lclaa,i);
 		abort();
 	}
@@ -283,7 +287,7 @@ static void error (aa_handle lclaa, int i)
 		(*(lclaa->aa_error_func))(lclaa->aa_user_num,
 			lclaa->aa_user_string,i,aa_error[i]);
 	} else {
-		(void)fprintf(stderr,"%s. aa_handle %#x. error %d. Handle_info: %d %s\n",
+		(void)fprintf(stderr,"%s. aa_handle %p. error %d. Handle_info: %d %s\n",
 			aa_error[i],
 			lclaa,
 			i,

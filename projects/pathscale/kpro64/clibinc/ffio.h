@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* USMID @(#) clibinc/ffio.h	92.11	11/09/99 17:20:39 */
 
 
@@ -474,6 +478,9 @@ struct	ffc_stat_s {
 	unsigned long	unused3[1];
 	unsigned long	unused4[1];
 	unsigned long	unused5[1];
+#ifdef KEY
+	int unused6[14]; /* needed to make same size as struct stat from /usr/include/bits/stat.h */
+#endif
 	};
 #endif /* _LP64 */
 
@@ -2021,5 +2028,10 @@ extern ssize_t ffreadf (int _Fd, void *_Buf, size_t _Nb, struct ffsw *_stat, int
 
 extern ssize_t ffwritef (int _Fd, const void *_Buf, size_t _Nb, struct ffsw *_stat, int _Fulp, int *_Ubc);
 __END_DECLS
+
+extern int __ffflush(struct fdinfo *, struct ffsw *);
+extern int _fdc_unpackc(void *, long *, long, int, int);
+extern int _fdc_packc(char *pbuf, long *ubuf, long count, int ctype);
+extern int __ffclose(struct fdinfo *fio, struct ffsw *pstat);
 
 #endif /* !_FFIO_H */

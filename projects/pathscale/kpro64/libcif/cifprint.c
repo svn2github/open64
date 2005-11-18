@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -68,7 +72,7 @@ FILE *fd;			/* file descriptor where output should go */
 
 	for (fi = 0; fi < CIF_FT_SIZE; fi++) {
 		if (_Cif_filetbl[fi].form == NOT_A_CIF) continue;
-		(void) fprintf (fd, "CIF file entry %2d:  form= %1d  ifull= %1d  seek= %1d  mode= %1d  fme= %3d  lme= %3d\n    rmask= %lo  fd= %d  ip= %d  optype= %c\n",
+		(void) fprintf (fd, "CIF file entry %2d:  form= %1d  ifull= %1d  seek= %1d  mode= %1d  fme= %3d  lme= %3d\n    rmask= %o  fd= %p  ip= %p  optype= %c\n",
 			fi,
 			_Cif_filetbl[fi].form,
 			_Cif_filetbl[fi].ifull,
@@ -76,7 +80,7 @@ FILE *fd;			/* file descriptor where output should go */
 			_Cif_filetbl[fi].mode,
 			_Cif_filetbl[fi].lme,
 			_Cif_filetbl[fi].fme,
-			_Cif_filetbl[fi].rmask,
+			_Cif_filetbl[fi].rmask[0],
 			_Cif_filetbl[fi].fd,
 			_Cif_filetbl[fi].ip,
 			_Cif_filetbl[fi].optype);
@@ -84,7 +88,7 @@ FILE *fd;			/* file descriptor where output should go */
 
 	for (me = 0; me < _Cif_memasize; me++) {
 		if (_Cif_memarea[me].used == 0 && _Cif_memarea[me].mbp == 0 && _Cif_memarea[me].msize == 0) continue;
-		(void) fprintf (fd, "CIF memory entry %3d:  used=%d  nme=%3d  mused= %4d  msize= %4d  mbp= %d\n",
+		(void) fprintf (fd, "CIF memory entry %3d:  used=%d  nme=%3d  mused= %4d  msize= %4d  mbp= %p\n",
 			me,
 			_Cif_memarea[me].used,
 			_Cif_memarea[me].nme,

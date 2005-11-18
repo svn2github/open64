@@ -1,5 +1,7 @@
 /*
 
+  Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -35,7 +37,7 @@
 
 #define COMPGOTO_IF_ELSE 6
 #define PREG2_OFFSET(p1,p2) \
-        max(TY_size(ST_type(pr1)), (UINT64) TY_align(ST_type(pr2)))
+        Max(TY_size(ST_type(pr1)), (UINT64) TY_align(ST_type(pr2)))
 
 
 USRCPOS current_srcpos ;       /* line of current statement         */

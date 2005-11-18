@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -81,6 +86,7 @@
 #include "opt_lftr2.h"
 #include "config_targ.h"      // needed for Pointer_type
 
+
 // ===================================================================
 // Bottom-up traversal of CODEREP nodes in a statement to create
 // occurrence list for LPRE
@@ -151,6 +157,8 @@ ETABLE::LPRE_bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 
     if ( LPRE_do_loads() && 
 	 !cr->Is_var_volatile() && 
+         // screen out MLDID
+         !Opt_stab()->Aux_stab_entry(cr->Aux_id())->No_register() &&
 	 ST_class( Opt_stab()->St(cr->Aux_id()) ) != CLASS_PREG )
       Insert_real_occurrence(cr, stmt, stmt_kid_num, depth, is_store, TRUE);
     break;
@@ -554,6 +562,11 @@ CODEREP::Is_rvi_const_candidate(const CODEREP *parent, INT whichkid, const OPT_S
   const CODEKIND par_ck   = parent->Kind();
   const OPERATOR par_opr  = (par_ck == CK_VAR) ? OPR_STID : parent->Opr();
 
+#ifdef TARG_MIPS
+  if (con_val == 0)
+    return FALSE;
+#endif
+
   // following check is applicable only to coderep due to the fact that,
   // in coderep, a constant cannot have MTYPE_B; we don't want to put MTYPE_B
   // constants in preg
@@ -585,6 +598,9 @@ CODEREP::Is_rvi_const_candidate(const CODEREP *parent, INT whichkid, const OPT_S
 BOOL
 CODEREP::Is_rvi_lda_candidate( const CODEREP *parent, INT whichkid, const OPT_STAB *opt_stab ) const
 {
+#if defined(TARG_X8664) || defined(TARG_IA32)
+    return FALSE;
+#else
   if (parent == NULL) return FALSE;
 
   Is_True( Kind() == CK_LDA,
@@ -665,4 +681,5 @@ CODEREP::Is_rvi_lda_candidate( const CODEREP *parent, INT whichkid, const OPT_ST
   default:
     return TRUE;
   }
+#endif
 }

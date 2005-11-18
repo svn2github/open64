@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -423,7 +427,7 @@
 #ifndef	bb_INCLUDED
 #define	bb_INCLUDED
 
-#include <vector.h>             /* to get STL vector */
+#include <vector>
 #include "mempool_allocator.h"  /* to get mempool allocator */
 
 #include "region_util.h" 	/* to get the definition of RID. */
@@ -468,6 +472,9 @@ typedef	struct bb {
   WN           *branch_wn;	/* terminating branch whirl node  */
   struct bbregs *bbregs;	/* auxiliary register info (bbregs.h) */
   struct annotation *annotations; /* annotations attached to bb   */
+#ifdef KEY
+  struct bb     *aux;
+#endif 
 } BB;
 
 #ifndef	CAN_USE_BB
@@ -503,7 +510,9 @@ typedef	struct bb {
 #define BB_unrollings(b) (CAN_USE_BB(b)->unrollings+0)
 #define BB_loop_head_bb(b) (CAN_USE_BB(b)->loop_head_bb+0)
 #define BB_loophead(bb) (BB_loop_head_bb(bb) == (bb))
-
+#ifdef KEY
+#define BB_aux(b)       (CAN_USE_BB(b)->aux)
+#endif
 /* mutators */
 inline void Set_BB_unrollings(BB *bb, UINT16 u) {
   bb->unrollings = u;
@@ -671,9 +680,19 @@ typedef	struct bblist {
 
 #define BLM_PROB_FB     0x0001 /* bblist::prob based on Feedback. */
 
+#ifdef KEY
+#define BLM_ON_TREE     0x0002 /* bblist::edge on the spanning tree */
+#endif
+
 #define BBLIST_prob_fb_based(b)       (BBLIST_flags(b) & BLM_PROB_FB)
 #define Set_BBLIST_prob_fb_based(b)   (BBLIST_flags(b) |= BLM_PROB_FB)
 #define Reset_BBLIST_prob_fb_based(b) (BBLIST_flags(b) &= ~BLM_PROB_FB)
+
+#ifdef KEY
+#define BBLIST_on_tree(b)       (BBLIST_flags(b) & BLM_ON_TREE)
+#define Set_BBLIST_on_tree(b)   (BBLIST_flags(b) |= BLM_ON_TREE)
+#define Reset_BBLIST_on_tree(b) (BBLIST_flags(b) &= ~BLM_ON_TREE)
+#endif
 
 /* Macros for stepping through BBlists. */
 #define FOR_ALL_BBLIST_ITEMS(list,item) \

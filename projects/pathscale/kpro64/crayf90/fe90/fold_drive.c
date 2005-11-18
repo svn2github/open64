@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -256,6 +260,18 @@ static void f90_character_compare(char		*ch_ptr1,
 |*	NOTHING								      *|
 |*									      *|
 \******************************************************************************/
+#define FOLD_OP fold_operation__
+
+extern void FOLD_OP(int *,
+		    void *,
+		    linear_type_type *,
+		    void *,
+		    linear_type_type *,
+		    void *,
+		    linear_type_type *,
+		    void *,
+		    linear_type_type *);
+
 boolean folder_driver(char		*l_value_ptr,
 		      int		 l_type_idx,
 		      char		*r_value_ptr,
@@ -596,7 +612,12 @@ CONTINUE:
 
          length = CP_CONSTANT(CN_POOL_IDX(TYP_IDX(l_type_idx)) +
                num_host_wds[TYP_LINEAR(CN_TYPE_IDX(TYP_IDX(l_type_idx)))] - 1);
- 
+
+# if defined(_HOST_LITTLE_ENDIAN) && defined(_TARGET_LITTLE_ENDIAN)
+         if (r_linear_type == Integer_8)
+           count = *(long long *)(&r_value.v[0]);
+         else
+#endif 
          count = r_value.v[num_host_wds[r_linear_type] - 1];
 
          length = length * count;
@@ -637,7 +658,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
                tmp_opr = Cvrt_Opr;
-               fold_operation_(
+               FOLD_OP(
                               &tmp_opr, 
                               &loc_result.v,
                               &res_linear_type,
@@ -667,7 +688,7 @@ CONTINUE:
             SHIFT_ARITH_ARG(l_value.v, res_linear_type);
 
 # if defined(_USE_FOLD_DOT_f)
-            fold_operation_(
+            FOLD_OP(
                               &opr, 
                               &loc_result.v,
                               &res_linear_type,
@@ -697,7 +718,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
                tmp_opr = Cvrt_Opr;
-               fold_operation_(
+               FOLD_OP(
                               &tmp_opr, 
                               &loc_result.v,
                               &res_linear_type,
@@ -727,7 +748,7 @@ CONTINUE:
             SHIFT_ARITH_ARG(r_value.v, res_linear_type);
 
 # if defined(_USE_FOLD_DOT_f)
-            fold_operation_(
+            FOLD_OP(
                               &opr, 
                               &loc_result.v,
                               &res_linear_type,
@@ -757,7 +778,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
                tmp_opr = Cvrt_Opr;
-               fold_operation_(
+               FOLD_OP(
                               &tmp_opr,  
                               &loc_result.v,
                               &res_linear_type,
@@ -793,7 +814,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
                tmp_opr = Cvrt_Opr;
-               fold_operation_(
+               FOLD_OP(
                               &tmp_opr, 
                               &loc_result.v,
                               &res_linear_type,
@@ -821,7 +842,7 @@ CONTINUE:
             SHIFT_ARITH_ARG(r_value.v, res_linear_type);
 
 # if defined(_USE_FOLD_DOT_f)
-            fold_operation_(
+            FOLD_OP(
                               &opr, 
                               &loc_result.v,
                               &res_linear_type,
@@ -883,7 +904,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)            
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                            &tmp_opr,  
                            &loc_result.v,
                            &res_linear_type,
@@ -911,7 +932,7 @@ CONTINUE:
          SHIFT_ARITH_ARG(l_value.v, res_linear_type);
 
 # if defined(_USE_FOLD_DOT_f)
-         fold_operation_(
+         FOLD_OP(
                         &opr,   
                         &loc_result.v,
                         &res_linear_type,
@@ -1017,7 +1038,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
          tmp_opr = Cvrt_Opr;
-         fold_operation_(
+         FOLD_OP(
                         &tmp_opr,  
                         &loc_result.v,
                         &res_linear_type,
@@ -1104,7 +1125,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
          tmp_opr = Cvrt_Opr;
-         fold_operation_(
+         FOLD_OP(
                         &tmp_opr,   
                         &loc_result.v,
                         &res_linear_type,
@@ -1138,7 +1159,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                            &tmp_opr, 
                            &loc_result.v,
                            &res_linear_type,
@@ -1170,7 +1191,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                            &tmp_opr,   
                            &loc_result.v,
                            &res_linear_type,
@@ -1204,7 +1225,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                            &tmp_opr,  
                            &loc_result.v,
                            &res_linear_type,
@@ -1235,7 +1256,7 @@ CONTINUE:
          SHIFT_ARITH_ARG(r_value.v, r_linear_type);
 
 # if defined(_USE_FOLD_DOT_f)
-         fold_operation_(
+         FOLD_OP(
                         &opr,   
                         &loc_result.v,
                         &res_linear_type,
@@ -1277,7 +1298,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)            
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                    	   &tmp_opr,  
                            &loc_result.v,
              	           &res_linear_type,
@@ -1309,7 +1330,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)            
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                    	   &tmp_opr,  
                            &loc_result.v,
                		   &res_linear_type,
@@ -1338,7 +1359,7 @@ CONTINUE:
          SHIFT_ARITH_ARG(r_value.v, res_linear_type);
 
 # if defined(_USE_FOLD_DOT_f)            
-         fold_operation_(
+         FOLD_OP(
                    	&opr,  
                         &loc_result.v,
                		&res_linear_type,
@@ -1463,7 +1484,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
                tmp_opr = Cvrt_Opr;
-               fold_operation_(
+               FOLD_OP(
                               &tmp_opr,  
                               &loc_result.v,
                               &res_linear_type,
@@ -1495,7 +1516,7 @@ CONTINUE:
    
 # if defined(_USE_FOLD_DOT_f)
                tmp_opr = Cvrt_Opr;
-               fold_operation_(
+               FOLD_OP(
                               &tmp_opr,  
                               &loc_result.v,
                               &res_linear_type,
@@ -1521,7 +1542,7 @@ CONTINUE:
             }
 
 # if defined(_USE_FOLD_DOT_f)
-            fold_operation_(
+            FOLD_OP(
                            &opr,  
                            &loc_result.v,
                            &res_linear_type,
@@ -1720,7 +1741,7 @@ CONTINUE:
       case Sqrt_Opr :
          SHIFT_ARITH_ARG(l_value.v, res_linear_type);
 
-         fold_operation_(
+         FOLD_OP(
                         &opr, 
                         &loc_result.v,
                         &res_linear_type,
@@ -1745,7 +1766,7 @@ CONTINUE:
          SHIFT_ARITH_ARG(l_value.v, res_linear_type);
 
 # if defined(_USE_FOLD_DOT_f)
-         fold_operation_(
+         FOLD_OP(
                         &opr, 
                         &loc_result.v,
                         &res_linear_type,
@@ -1773,7 +1794,7 @@ CONTINUE:
 
       case Nint_Opr :
 # if defined(_USE_FOLD_DOT_f)
-         fold_operation_(
+         FOLD_OP(
                         &opr, 
                         &loc_result.v,
                         &res_linear_type,
@@ -1854,7 +1875,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
          tmp_opr = Abs_Opr;
-         fold_operation_(
+         FOLD_OP(
                         &tmp_opr,   
                         &a3_value.v,
                         &res_linear_type,
@@ -1893,7 +1914,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
             tmp_opr = Uminus_Opr;
-            fold_operation_(
+            FOLD_OP(
                            &tmp_opr,  
                            &loc_result.v,
                            &res_linear_type,
@@ -1932,7 +1953,7 @@ CONTINUE:
          /* mod(r_value.v, TARGET_BITS_PER_WORD) to use as shift count */
 
 # if defined(_USE_FOLD_DOT_f)
-         fold_operation_(
+         FOLD_OP(
                         &opr,  
                         &loc_result.v,
                         &res_linear_type,
@@ -2055,7 +2076,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                            &tmp_opr,  
                            &loc_result.v,
                            &res_linear_type,
@@ -2087,7 +2108,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                            &tmp_opr,  
                            &loc_result.v,
                            &res_linear_type,
@@ -2119,7 +2140,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                            &tmp_opr,  
                            &loc_result.v,
                            &res_linear_type,
@@ -2149,7 +2170,7 @@ CONTINUE:
          SHIFT_ARITH_ARG(a3_value.v, res_linear_type);
 
 # if defined(_USE_FOLD_DOT_f)
-         fold_operation_(
+         FOLD_OP(
                           &opr,  
                           &loc_result.v,
                           &res_linear_type,
@@ -2206,7 +2227,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                            &tmp_opr,  
                            &loc_result.v,
                            &res_linear_type,
@@ -2238,7 +2259,7 @@ CONTINUE:
 
 # if defined(_USE_FOLD_DOT_f)
             tmp_opr = Cvrt_Opr;
-            fold_operation_(
+            FOLD_OP(
                            &tmp_opr,  
                            &loc_result.v,
                            &res_linear_type,
@@ -2278,7 +2299,7 @@ CONTINUE:
          }
 
 # if defined(_USE_FOLD_DOT_f)
-         fold_operation_(
+         FOLD_OP(
                         &opr,  
                         &loc_result.v,
                         &res_linear_type,
@@ -2376,8 +2397,13 @@ CONTINUE:
 
 # ifdef _TARGET32
          if (res_linear_type == Integer_8) {
+# if defined(_TARGET_LITTLE_ENDIAN)
+//Bug 1581
+            result[1] = 0;
+# else
             result[1] = result[0];
             result[0] = 0;
+#endif
          }
 # endif
          break;
@@ -2397,6 +2423,7 @@ CONTINUE:
             l_value.v[0] = l_value.v[1];
          }
 # endif
+
          result[0] = l_value.v[0] << (TARGET_BITS_PER_WORD - CHAR_BIT);
 # endif
          break;
@@ -2425,8 +2452,10 @@ CONTINUE:
 # ifdef _TARGET32
          if (num_host_wds[str1_linear_type] != num_host_wds[res_linear_type]) {
             if (res_linear_type == Integer_8) {
+#ifndef _TARGET_LITTLE_ENDIAN
                str_len1.v[1] = str_len1.v[0];
                str_len1.v[0] = 0;
+#endif
             }
             else {
                str_len1.v[0] = str_len1.v[1];
@@ -2435,8 +2464,10 @@ CONTINUE:
 
          if (num_host_wds[str2_linear_type] != num_host_wds[res_linear_type]) {
             if (res_linear_type == Integer_8) {
+#ifndef _TARGET_LITTLE_ENDIAN
                str_len2.v[1] = str_len2.v[0];
                str_len2.v[0] = 0;
+#endif
             }
             else {
                str_len2.v[0] = str_len2.v[1];
@@ -2492,8 +2523,10 @@ CONTINUE:
 # ifdef _TARGET32
          if (num_host_wds[str1_linear_type] != num_host_wds[res_linear_type]) {
             if (res_linear_type == Integer_8) {
+#ifndef _TARGET_LITTLE_ENDIAN
                str_len1.v[1] = str_len1.v[0];
                str_len1.v[0] = 0;
+#endif
             }
             else {
                str_len1.v[0] = str_len1.v[1];
@@ -2502,8 +2535,10 @@ CONTINUE:
 
          if (num_host_wds[str2_linear_type] != num_host_wds[res_linear_type]) {
             if (res_linear_type == Integer_8) {
+#ifndef _TARGET_LITTLE_ENDIAN
                str_len2.v[1] = str_len2.v[0];
                str_len2.v[0] = 0;
+#endif
             }
             else {
                str_len2.v[0] = str_len2.v[1];
@@ -2559,8 +2594,10 @@ CONTINUE:
 # ifdef _TARGET32
          if (num_host_wds[str1_linear_type] != num_host_wds[res_linear_type]) {
             if (res_linear_type == Integer_8) {
+#ifndef _TARGET_LITTLE_ENDIAN
                str_len1.v[1] = str_len1.v[0];
                str_len1.v[0] = 0;
+#endif
             }
             else {
                str_len1.v[0] = str_len1.v[1];
@@ -2569,8 +2606,10 @@ CONTINUE:
 
          if (num_host_wds[str2_linear_type] != num_host_wds[res_linear_type]) {
             if (res_linear_type == Integer_8) {
+#ifndef _TARGET_LITTLE_ENDIAN
                str_len2.v[1] = str_len2.v[0];
                str_len2.v[0] = 0;
+#endif
             }
             else {
                str_len2.v[0] = str_len2.v[1];

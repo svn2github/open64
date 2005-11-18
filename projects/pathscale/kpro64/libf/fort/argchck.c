@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -202,13 +206,14 @@ static long	*_d_suppress_msg_list;
 #pragma _CRI duplicate _ARGCHCK as $ARGCHCK
 #endif
 
-_ARGCHCK(long **argdes, long **dargdes)
+static void	issue_msg();
+
+int _ARGCHCK(long **argdes, long **dargdes)
 {
 	int	i, k, traced;
 	char	name[MAX_ENT_LEN];
 	char	callee[MAX_ENT_LEN];
 	long 	lineno;
-	static void	issue_msg();
 	arg_desc_header_type	*a_header;
 	arg_desc_header_type	*d_header;
 	arg_desc_node_type	*a_node;

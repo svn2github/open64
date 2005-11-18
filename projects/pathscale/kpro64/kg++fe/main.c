@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -49,9 +55,12 @@ static char **envp_save;
 extern INT32 Opt_Level;
 extern BOOL  Enable_WFE_DFE;
 
-static WFE_Compile_File_Invoked = 0;
+static int WFE_Compile_File_Invoked = 0;
 
 struct tree;
+
+extern void WFE_Expand_Top_Level_Decl (struct tree *);
+extern void weak_finish ();
 
 void WFE_Compile_File (struct tree *decl)
 {
@@ -66,7 +75,10 @@ void WFE_Compile_File (struct tree *decl)
 
 void (*back_end_hook) (struct tree *) = &WFE_Compile_File;
 
-void
+extern void compile_file (const char *);
+extern void check_gnu_errors (INT *, INT *);
+
+int
 main ( 
   INT argc,	/* Number of command line arguments */
   char **argv,	/* Array of command line arguments */
@@ -80,6 +92,10 @@ main (
 	envp_save = envp;
 
 	Orig_Src_File_Name = gnu_init (argc, argv, envp);
+
+	if (Orig_Src_File_Name == NULL) {
+		exit (RC_OKAY);
+	}
 
 	compile_file (Orig_Src_File_Name);
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,9 +45,11 @@
 #include <fp.h>
 #include <liberrno.h>
 #include "inline.h"
-#ifdef	__mips
-#include <ieeefp.h>
 #include <math.h>
+#include <fenv.h>
+
+#ifdef __mips
+_f_int8 _d_to_int(_f_real16 argx, _f_int8  huge);
 #endif
 
 extern _f_real16 _IEEE_INT_D_D(_f_real16 x);
@@ -90,24 +96,7 @@ extern _f_int1 _IEEE_INT_D_I1(_f_real16 x);
 #define TWO_52 4503599627370496.
 #define TWO_24 16777216.
 #define TWO_23 8388608.
-#define	FP_RMN	0
-#define	FP_RMZ	1
-#define FP_RMP	2
-#define	FP_RMM	3
 
-#ifndef	__mips
-extern int fpgetround(void);
-#else
-extern fp_rnd fpgetround(void);
-
-/* The result is cast to the proper result type and the
- * argument huge contains the proper HUGE value for the
- * integer data type.
- */
- _f_int8 _d_to_int(_f_real16 argx, _f_int8  huge);
-
-#endif
- 
 static _f_real8 _raisinvld(_f_real8 x, _f_real8 y);
 
 static _f_real8 _raisinvld(_f_real8 x, _f_real8 y)
@@ -145,7 +134,8 @@ _IEEE_INT_D_I4(_f_real16 argx)
 {
 	/* Union defined to work with IEEE 128-bit floating point. */
 	union _ieee_ldouble {
-		struct { unsigned int sign	: 1;
+		struct {
+                        unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_128_EXPO_BITS;
 			unsigned int mantissa_up1 : IEEE_128_MANT_BTS_UP1;
 			unsigned int mantissa_up2 : IEEE_128_MANT_BTS_UP2;
@@ -209,16 +199,16 @@ _IEEE_INT_D_I4(_f_real16 argx)
 		return(result);
 	}
 
-	rounding	= (int) fpgetround();
-	if (rounding == FP_RMN) {
+	rounding	= fegetround();
+	if (rounding == FE_TONEAREST) {
 		/* round toward nearest */
 		CALC_DNINT();
 		result = (_f_int4) nearint.lsword[1];
 	} else {
 		/*
 		 * RP_RMZ = round toward zero=truncate.
-		 * FP_RMP = round toward plus infinity=round up.
-		 * FP_RMM = round toward minus infinity=round down.
+		 * FE_UPWARD = round toward plus infinity=round up.
+		 * FE_DOWNWARD = round toward minus infinity=round down.
 		 */
 		CALC_DINT();
 		result = (_f_int4) tmp.ldword;
@@ -237,7 +227,8 @@ _IEEE_INT_D_I8(_f_real16 argx)
 {
 	/* Union defined to work with IEEE 128-bit floating point. */
 	union _ieee_ldouble {
-		struct { unsigned int sign	: 1;
+		struct {
+                        unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_128_EXPO_BITS;
 			unsigned int mantissa_up1 : IEEE_128_MANT_BTS_UP1;
 			unsigned int mantissa_up2 : IEEE_128_MANT_BTS_UP2;
@@ -306,16 +297,16 @@ _IEEE_INT_D_I8(_f_real16 argx)
 		return(result);
 	}
 
-	rounding	= (int) fpgetround();
-	if (rounding == FP_RMN) {
+	rounding	= fegetround();
+	if (rounding == FE_TONEAREST) {
 		/* round toward nearest */
 		CALC_DNINT();
 		result = (_f_int8) nearint.lsword[1];
 	} else {
 		/*
 		 * RP_RMZ = round toward zero=truncate.
-		 * FP_RMP = round toward plus infinity=round up.
-		 * FP_RMM = round toward minus infinity=round down.
+		 * FE_UPWARD = round toward plus infinity=round up.
+		 * FE_DOWNWARD = round toward minus infinity=round down.
 		 */
 		CALC_DINT();
 		result = (_f_int8) tmp.ldword;
@@ -348,7 +339,8 @@ _IEEE_INT_D_D(_f_real16 argx)
 {
 	/* Union defined to work with IEEE 128-bit floating point. */
 	union _ieee_ldouble {
-		struct { unsigned int sign	: 1;
+		struct {
+                        unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_128_EXPO_BITS;
 			unsigned int mantissa_up1 : IEEE_128_MANT_BTS_UP1;
 			unsigned int mantissa_up2 : IEEE_128_MANT_BTS_UP2;
@@ -396,16 +388,16 @@ _IEEE_INT_D_D(_f_real16 argx)
 		return(x_val.ldword);
 	}
 
-	rounding	= (int) fpgetround();
-	if (rounding == FP_RMN) {
+	rounding	= fegetround();
+	if (rounding == FE_TONEAREST) {
 		/* round toward nearest */
 		CALC_DNINT();
 		result.ldword = (_f_real16) nearint.lsword[1];
 	} else {
 		/*
 		 * RP_RMZ = round toward zero=truncate
-		 * FP_RMP = round toward plus infinity=round up
-		 * FP_RMM = round toward minus infinity=round down
+		 * FE_UPWARD = round toward plus infinity=round up
+		 * FE_DOWNWARD = round toward minus infinity=round down
 		 */
 		CALC_DINT();
 		result.ldword = tmp.ldword;
@@ -433,7 +425,7 @@ _IEEE_INT_D_D(_f_real16 argx)
 	abs.lword[0] &= ~sign_x;
 
 	/* get rounding mode. */
-	rounding	= fpgetround();
+	rounding	= fegetround();
 
 	/* check x for infinity, NaN, zero, and denormal. */
 	if (!isnormal128(x_val.ldword)) {
@@ -453,18 +445,18 @@ _IEEE_INT_D_D(_f_real16 argx)
 			/* x is denormal.
 			 *
 			 * On MIPS, if either word denormal
-			 *   if round down mode FP_RMM
+			 *   if round down mode FE_DOWNWARD
 			 *     if first word negative,
 			 *        return -1.0d0.
-			 *   else if round up mode FP_RMP
+			 *   else if round up mode FE_UPWARD
 			 *     if first word negative,
 			 *        return -1.0d0.
 			 *   else Return -0.0
 			 */
-			if (rounding == FP_RMM) {
+			if (rounding == FE_TONEAREST) {
 				if (sign_x & x_val.lword[0] != 0)
 					return -1.0L;
-			} else if (rounding == FP_RMP) {
+			} else if (rounding == FE_UPWARD) {
 				if (sign_x & x_val.lword[0] != 0)
 					return -1.0L;
 			}
@@ -481,11 +473,11 @@ _IEEE_INT_D_D(_f_real16 argx)
 	 * Assume round to nearest works when set.
 	 * RP_RMN = round toward nearest
 	 * RP_RMZ = round toward zero=truncate
-	 * FP_RMP = round toward plus infinity=round up
-	 * FP_RMM = round toward minus infinity=round down
+	 * FE_UPWARD = round toward plus infinity=round up
+	 * FE_DOWNWARD = round toward minus infinity=round down
 	 * Note: abs(value) >0.0, due to prior test
 	 */
-	if (rounding == FP_RMN) {
+	if (rounding == FE_TONEAREST) {
 		/* round abs(x) toward nearest, then sign it.
 		 * MIPS 128-bit is accurate to 107 bits.
 		 *
@@ -503,16 +495,16 @@ _IEEE_INT_D_D(_f_real16 argx)
 		if( x_val.ldword < 0.0 )
 			da = -da;
 		return da;
-	} else if (rounding == FP_RMZ) {
+	} else if (rounding == FE_TOWARDZERO) {
 		return truncl(x_val.ldword);
 	} else if( truncl(abs.ldword) == abs.ldword ) {
 		return x_val.ldword;
-	} else if (rounding == FP_RMM) {
+	} else if (rounding == FE_DOWNWARD) {
 		if( x_val.ldword > 0.0 )
 			return truncl(x_val.ldword);
 		if( x_val.ldword < 0.0 )
 			return truncl(x_val.ldword)-1.0L;
-	} else {		/* if (rounding == FP_RMP) */
+	} else {		/* if (rounding == FE_UPWARD) */
 		if( x_val.ldword < 0.0 )
 			return truncl(x_val.ldword);
 		if( x_val.ldword > 0.0 )
@@ -528,7 +520,8 @@ _IEEE_INT_D_H(_f_real16 argx)
 {
 	/* Union defined to work with IEEE 128-bit floating point. */
 	union _ieee_ldouble {
-		struct { unsigned int sign	: 1;
+		struct {
+                        unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_128_EXPO_BITS;
 			unsigned int mantissa_up1 : IEEE_128_MANT_BTS_UP1;
 			unsigned int mantissa_up2 : IEEE_128_MANT_BTS_UP2;
@@ -581,16 +574,16 @@ _IEEE_INT_D_H(_f_real16 argx)
 		return(result.fpword);
 	}
 
-	rounding	= (int) fpgetround();
-	if (rounding == FP_RMN) {
+	rounding	= fegetround();
+	if (rounding == FE_TONEAREST) {
 		/* round toward nearest */
 		CALC_DNINT();
 		result.fpword = (_f_real4) nearint.lsword[1];
 	} else {
 		/*
 		 * RP_RMZ = round toward zero=truncate.
-		 * FP_RMP = round toward plus infinity=round up.
-		 * FP_RMM = round toward minus infinity=round down.
+		 * FE_UPWARD = round toward plus infinity=round up.
+		 * FE_DOWNWARD = round toward minus infinity=round down.
 		 */
 		CALC_DINT();
 		result.fpword = (_f_real4) tmp.ldword;
@@ -638,17 +631,17 @@ _IEEE_INT_D_H(_f_real16 argx)
 	}
 
 	/* get rounding mode. */
-	rounding	= fpgetround();
+	rounding	= fegetround();
 
 	/* MIPS HW/SW 128 bit may not respond to mode.
 	 * Assume round to nearest works when set.
 	 * RP_RMN = round toward nearest
 	 * RP_RMZ = round toward zero=truncate
-	 * FP_RMP = round toward plus infinity=round up
-	 * FP_RMM = round toward minus infinity=round down
+	 * FE_UPWARD = round toward plus infinity=round up
+	 * FE_DOWNWARD = round toward minus infinity=round down
 	 * Note: abs(value) >0.0, due to prior test
 	 */
-	if (rounding == FP_RMN) {
+	if (rounding == FE_TONEAREST) {
 		/* round abs(x) toward nearest where x .ne. 0.0.
 		 * if x.ge.2**23 upper 24 bits contain no fraction,
 		 *	cast x to real*4;
@@ -702,24 +695,24 @@ _IEEE_INT_D_H(_f_real16 argx)
 			result.fpword= (-1.0) * result.fpword;
 	}
  
-	if (rounding == FP_RMZ || x_val.ldword == result.fpword)
+	if (rounding == FE_TOWARDZERO || x_val.ldword == result.fpword)
 		return result.fpword;
-		/* if (rounding == FP_RMZ) -0.1 becomes -0.0 */
-		/* if (rounding == FP_RMP) -0.1 doesn't get here */
+		/* if (rounding == FE_TOWARDZERO) -0.1 becomes -0.0 */
+		/* if (rounding == FE_UPWARD) -0.1 doesn't get here */
  
 	/* result .ne. argument and round mode is up or down.
 	 * Note: we rely on 32-bit floating arithmetic to round
 	 *      (result.fpword +/- 1.0) correctly when x .ge. 2**24.
 	 */
-	if (rounding == FP_RMM) {
+	if (rounding == FE_DOWNWARD) {
 		if (x_val.ldword < 0.0)
 			result.fpword = result.fpword - 1.0;
-		/* if (rounding == FP_RMM) -0.1 becomes -1.0 */
+		/* if (rounding == FE_DOWNWARD) -0.1 becomes -1.0 */
 	}
-	else {		/* if (rounding == FP_RMP) */
+	else {		/* if (rounding == FE_UPWARD) */
 		if (x_val.ldword > 0.0)
 			result.fpword = result.fpword + 1.0;
-		/* if (rounding == FP_RMP) -0.1 becomes -0.0 */
+		/* if (rounding == FE_UPWARD) -0.1 becomes -0.0 */
 	}
 	return result.fpword;
 }
@@ -731,7 +724,8 @@ _IEEE_INT_D_R(_f_real16 argx)
 {
 	/* Union defined to work with IEEE 128-bit floating point. */
 	union _ieee_ldouble {
-		struct { unsigned int sign	: 1;
+		struct {
+                        unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_128_EXPO_BITS;
 			unsigned int mantissa_up1 : IEEE_128_MANT_BTS_UP1;
 			unsigned int mantissa_up2 : IEEE_128_MANT_BTS_UP2;
@@ -786,16 +780,16 @@ _IEEE_INT_D_R(_f_real16 argx)
 		return(result.dword);
 	}
 
-	rounding	= (int) fpgetround();
-	if (rounding == FP_RMN) {
+	rounding	= fegetround();
+	if (rounding == FE_TONEAREST) {
 		/* round toward nearest */
 		CALC_DNINT();
 		result.dword = (_f_real8) nearint.lsword[1];
 	} else {
 		/*
 		 * RP_RMZ = round toward zero=truncate.
-		 * FP_RMP = round toward plus infinity=round up.
-		 * FP_RMM = round toward minus infinity=round down.
+		 * FE_UPWARD = round toward plus infinity=round up.
+		 * FE_DOWNWARD = round toward minus infinity=round down.
 		 */
 		CALC_DINT();
 		result.dword = (_f_real8) tmp.ldword;
@@ -845,17 +839,17 @@ _IEEE_INT_D_R(_f_real16 argx)
 	}
 
 	/* get rounding mode. */
-	rounding	= fpgetround();
+	rounding	= fegetround();
 
 	/* MIPS HW/SW 128 bit may not respond to mode.
 	 * Assume round to nearest works when set.
 	 * RP_RMN = round toward nearest
 	 * RP_RMZ = round toward zero=truncate
-	 * FP_RMP = round toward plus infinity=round up
-	 * FP_RMM = round toward minus infinity=round down
+	 * FE_UPWARD = round toward plus infinity=round up
+	 * FE_DOWNWARD = round toward minus infinity=round down
 	 * Note: abs(value) >0.0, due to prior test
 	 */
-	if (rounding == FP_RMN) {
+	if (rounding == FE_TONEAREST) {
 		/* round abs(x) toward nearest where x .ne. 0.0.
 		 * if x.ge.2**52 upper 53 bits contain no fraction,
 		 *	cast x to real*8;
@@ -907,24 +901,24 @@ _IEEE_INT_D_R(_f_real16 argx)
 		if (x_val.ldword < 0.0L)
 			result.dpword= (-1.0) * result.dpword;
 	}
-	if (rounding == FP_RMZ || x_val.ldword == result.dpword)
+	if (rounding == FE_TOWARDZERO || x_val.ldword == result.dpword)
 		return result.dpword;
-		/* if (rounding == FP_RMZ) -0.1 becomes -0.0 */
-		/* if (rounding == FP_RMP) -0.1 doesn't get here */
+		/* if (rounding == FE_TOWARDZERO) -0.1 becomes -0.0 */
+		/* if (rounding == FE_UPWARD) -0.1 doesn't get here */
  
 	/* result .ne. argument and round mode is up or down.
 	 * Note: we rely on 64-bit floating arithmetic to round
 	 *      (result.dpword +/- 1.0) correctly when x .ge. 2**53.
 	 */
-	if (rounding == FP_RMM) {
+	if (rounding == FE_DOWNWARD) {
 		if (x_val.ldword < 0.0)
 			result.dpword = result.dpword - 1.0;
-		/* if (rounding == FP_RMM) -0.1 becomes -1.0 */
+		/* if (rounding == FE_DOWNWARD) -0.1 becomes -1.0 */
 	}
-	else {		/* if (rounding == FP_RMP) */
+	else {		/* if (rounding == FE_UPWARD) */
 		if (x_val.ldword > 0.0)
 			result.dpword = result.dpword + 1.0;
-		/* if (rounding == FP_RMP) -0.1 becomes -0.0 */
+		/* if (rounding == FE_UPWARD) -0.1 becomes -0.0 */
 	}
 	return result.dpword;
 }
@@ -936,7 +930,8 @@ _IEEE_INT_H_D(_f_real4 argx)
 {
 	/* Union defined to work with IEEE 128-bit floating point. */
 	union _ieee_ldouble {
-		struct { unsigned int sign	: 1;
+		struct {
+                        unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_128_EXPO_BITS;
 			unsigned int mantissa_up1 : IEEE_128_MANT_BTS_UP1;
 			unsigned int mantissa_up2 : IEEE_128_MANT_BTS_UP2;
@@ -992,16 +987,16 @@ _IEEE_INT_H_D(_f_real4 argx)
 	}
 
 	x_val.ldword	= (_f_real16) x4_val.fpword;
-	rounding	= (int) fpgetround();
-	if (rounding == FP_RMN) {
+	rounding	= fegetround();
+	if (rounding == FE_TONEAREST) {
 		/* round toward nearest */
 		CALC_DNINT();
 		result.ldword = (_f_real16) nearint.lsword[1];
 	} else {
 		/*
 		 * RP_RMZ = round toward zero=truncate.
-		 * FP_RMP = round toward plus infinity=round up.
-		 * FP_RMM = round toward minus infinity=round down.
+		 * FE_UPWARD = round toward plus infinity=round up.
+		 * FE_DOWNWARD = round toward minus infinity=round down.
 		 */
 		CALC_DINT();
 		result.ldword = tmp.ldword;
@@ -1042,16 +1037,16 @@ _IEEE_INT_H_D(_f_real4 argx)
 	x_val.ldword	= (_f_real16) x4_val.fpword;
 
 	/* get rounding mode. */
-	rounding	= fpgetround();
+	rounding	= fegetround();
 	/* MIPS HW/SW 128 bit may not respond to mode.
 	 * Assume round to nearest works when set.
 	 * RP_RMN = round toward nearest
 	 * RP_RMZ = round toward zero=truncate
-	 * FP_RMP = round toward plus infinity=round up
-	 * FP_RMM = round toward minus infinity=round down
+	 * FE_UPWARD = round toward plus infinity=round up
+	 * FE_DOWNWARD = round toward minus infinity=round down
 	 * Note: abs(value) >0.0, due to prior test
 	 */
-	if (rounding == FP_RMN) {
+	if (rounding == FE_TONEAREST) {
 		/* round abs(x) toward nearest, then sign it.
 		 * MIPS 128-bit is accurate to 107 bits.
 		 *
@@ -1069,16 +1064,16 @@ _IEEE_INT_H_D(_f_real4 argx)
 		if( x_val.ldword < 0.0 )
 			da = -da;
 		return da;
-	} else if (rounding == FP_RMZ) {
+	} else if (rounding == FE_TOWARDZERO) {
 		return truncl(x_val.ldword);
 	} else if( truncl(abs4.fpword) == abs4.fpword ) {
 		return x_val.ldword;
-	} else if (rounding == FP_RMM) {
+	} else if (rounding == FE_DOWNWARD) {
 		if( x_val.ldword > 0.0 )
 			return truncl(x_val.ldword);
 		if( x_val.ldword < 0.0 )
 			return truncl(x_val.ldword)-1.0L;
-	} else {		/* if (rounding == FP_RMP) */
+	} else {		/* if (rounding == FE_UPWARD) */
 		if( x_val.ldword < 0.0 )
 			return truncl(x_val.ldword);
 		if( x_val.ldword > 0.0 )
@@ -1094,7 +1089,8 @@ _IEEE_INT_R_D(_f_real8 argx)
 {
 	/* Union defined to work with IEEE 128-bit floating point. */
 	union _ieee_ldouble {
-		struct { unsigned int sign	: 1;
+		struct {
+                        unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_128_EXPO_BITS;
 			unsigned int mantissa_up1 : IEEE_128_MANT_BTS_UP1;
 			unsigned int mantissa_up2 : IEEE_128_MANT_BTS_UP2;
@@ -1108,10 +1104,18 @@ _IEEE_INT_R_D(_f_real8 argx)
 	};
 	/* Union defined to work with IEEE 64-bit floating point. */
 	union _ieee_double {
-                struct { unsigned int sign8     : 1;
+                struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+                         unsigned int mantissa_lo : IEEE_64_MANT_BTS2;
+                         unsigned int mantissa_up : IEEE_64_MANT_BTS1;
+                         unsigned int exponent8 : IEEE_64_EXPO_BITS;
+                         unsigned int sign8     : 1;
+#else
+                         unsigned int sign8     : 1;
                          unsigned int exponent8 : IEEE_64_EXPO_BITS;
                          unsigned int mantissa_up : IEEE_64_MANT_BTS1;
                          unsigned int mantissa_lo : IEEE_64_MANT_BTS2;
+#endif
                 } parts81;
 		_f_real8		dword;
 		unsigned long long	int8word;
@@ -1155,16 +1159,16 @@ _IEEE_INT_R_D(_f_real8 argx)
 	}
 
 	x_val.ldword	= (_f_real16) x8_val.dword;
-	rounding	= (int) fpgetround();
-	if (rounding == FP_RMN) {
+	rounding	= fegetround();
+	if (rounding == FE_TONEAREST) {
 		/* round toward nearest */
 		CALC_DNINT();
 		result.ldword = (_f_real16) nearint.lsword[1];
 	} else {
 		/*
 		 * RP_RMZ = round toward zero=truncate.
-		 * FP_RMP = round toward plus infinity=round up.
-		 * FP_RMM = round toward minus infinity=round down.
+		 * FE_UPWARD = round toward plus infinity=round up.
+		 * FE_DOWNWARD = round toward minus infinity=round down.
 		 */
 		CALC_DINT();
 		result.ldword = tmp.ldword;
@@ -1221,16 +1225,12 @@ _IEEE_INT_R_D(_f_real8 argx)
 	x_val.ldword	= (_f_real16) x8_val.dpword;
 
 	/* get rounding mode. */
-	rounding	= fpgetround();
+	rounding	= fegetround();
 	/* MIPS HW/SW 128 bit may not respond to mode.
 	 * Assume round to nearest works when set.
-	 * RP_RMN = round toward nearest
-	 * RP_RMZ = round toward zero=truncate
-	 * FP_RMP = round toward plus infinity=round up
-	 * FP_RMM = round toward minus infinity=round down
 	 * Note: abs(value) >0.0, due to prior test
 	 */
-	if (rounding == FP_RMN) {
+	if (rounding == FE_TONEAREST) {
 		/* round abs(x) toward nearest, then sign it.
 		 * MIPS 128-bit is accurate to 107 bits.
 		 *
@@ -1248,16 +1248,16 @@ _IEEE_INT_R_D(_f_real8 argx)
 		if( x_val.ldword < 0.0 )
 			da = -da;
 		return da;
-	} else if (rounding == FP_RMZ) {
+	} else if (rounding == FE_TOWARDZERO) {
 		return truncl(x_val.ldword);
 	} else if( truncl(abs8.dpword) == abs8.dpword ) {
 		return x_val.ldword;
-	} else if (rounding == FP_RMM) {
+	} else if (rounding == FE_DOWNWARD) {
 		if( x_val.ldword > 0.0 )
 			return truncl(x_val.ldword);
 		if( x_val.ldword < 0.0 )
 			return truncl(x_val.ldword)-1.0L;
-	} else {		/* if (rounding == FP_RMP) */
+	} else {		/* if (rounding == FE_UPWARD) */
 		if( x_val.ldword < 0.0 )
 			return truncl(x_val.ldword);
 		if( x_val.ldword > 0.0 )
@@ -1337,16 +1337,16 @@ _d_to_int(_f_real16 argx, _f_int8  ihuge)
 	}
 
 	/* get rounding mode. */
-	rounding	= fpgetround();
+	rounding	= fegetround();
 
 	/* MIPS HW/SW 128 bit may not respond to mode.
 	 * Assume round to nearest works when set.
 	 * RP_RMN = round toward nearest
 	 * RP_RMZ = round toward zero=truncate
-	 * FP_RMP = round toward plus infinity=round up
-	 * FP_RMM = round toward minus infinity=round down
+	 * FE_UPWARD = round toward plus infinity=round up
+	 * FE_DOWNWARD = round toward minus infinity=round down
 	 */
-	if (rounding == FP_RMN) {
+	if (rounding == FE_TONEAREST) {
 		/*
 		 * In quad precision, round at the decimal.
 		 * Note that up to 106 fraction bits can afffect rounding.
@@ -1372,16 +1372,16 @@ _d_to_int(_f_real16 argx, _f_int8  ihuge)
  
 	da =	truncl(x_val.ldword);	/* truncate */
 
-	if (rounding == FP_RMZ || x_val.ldword == da) {
+	if (rounding == FE_TOWARDZERO || x_val.ldword == da) {
 		if (da < -ihuge)
 			da = -1 - ihuge;
 		return (_f_int8) da;
 	}
  
 	/* trunc(x) != x and round mode is up or down. */
-	if (rounding == FP_RMM && x_val.ldword < 0.0)
+	if (rounding == FE_DOWNWARD && x_val.ldword < 0.0)
 		da = da - 1.0;
-	if (rounding == FP_RMP && x_val.ldword > 0.0)
+	if (rounding == FE_UPWARD && x_val.ldword > 0.0)
 		da = da + 1.0;
 	if (da < -ihuge)
 		da = -1 - ihuge;

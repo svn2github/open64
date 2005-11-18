@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,34 +54,46 @@ float
 _IEEE_EXPONENT_H_R(double x)
 {
 	/* Union defined to work with IEEE 32 bit floating point. */
-	union _ieee_fdouble {
+	union _ieee_float {
 		float	dword;
-		short	lword;
+		int	lword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa	: IEEE_32_MANT_BITS;
+			unsigned int exponent	: IEEE_32_EXPO_BITS;
+			unsigned int sign	: 1;
+#else
 			unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_32_EXPO_BITS;
 			unsigned int mantissa	: IEEE_32_MANT_BITS;
+#endif
 		} fparts;
 	};
 	union _ieee_double {
 		double	dwrd;
-		int	lwrd;
+		long long lwrd;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa	: IEEE_64_MANT_BITS;
+			unsigned int expon	: IEEE_64_EXPO_BITS;
+			unsigned int sgn	: 1;
+#else
 			unsigned int sgn	: 1;
 			unsigned int expon	: IEEE_64_EXPO_BITS;
 			unsigned int mantissa	: IEEE_64_MANT_BITS;
+#endif
 		} parts;
 	};
 	switch (_fpclassify(x)) {
 		case FP_NAN:
 			{
-			union _ieee_fdouble x_val;
+			union _ieee_float x_val;
 			x_val.lword	= _HALF_NaN;
 			return(x_val.dword);
 			}
 		case FP_INFINITE:
 			{
-			union _ieee_fdouble x_val;
+			union _ieee_float x_val;
 			x_val.lword	= IEEE_32_INFINITY;
 			return(x_val.dword);
 			}
@@ -106,7 +122,7 @@ _IEEE_EXPONENT_H_R(double x)
 		case FP_ZERO:
 			{
 			int j;
-			union _ieee_fdouble x_val;
+			union _ieee_float x_val;
 			/* raise divide-by-zero exception */
 			j		= FE_DIVBYZERO;
 			feraiseexcept(j);

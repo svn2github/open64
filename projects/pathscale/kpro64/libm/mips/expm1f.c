@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -68,7 +72,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/libm/mips/expm
 	Mathematical Software, Vol. 18, No. 2, June 1992
  */
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	float	fexpm1(float);
 extern	float	expm1f(float);
 

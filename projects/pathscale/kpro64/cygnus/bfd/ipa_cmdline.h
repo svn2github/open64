@@ -9,10 +9,10 @@ extern char **environ_vars;		    /* list of environment variables */
 extern int ipa_argc;
 extern char **ipa_argv;
 extern unsigned int max_gpa_size;
-extern boolean is_ipa;
+extern bfd_boolean is_ipa;
 extern unsigned int used_gp_area;
 
-extern boolean
+extern bfd_boolean
 ipa_search_command_line(int, char **, char **);
 
 

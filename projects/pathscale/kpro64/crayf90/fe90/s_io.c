@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -3530,6 +3534,10 @@ static boolean io_ctl_list_semantics(opnd_type     *list_opnd,
            (ATP_PURE(SCP_ATTR_IDX(curr_scp_idx)) ||
             ATP_ELEMENTAL(SCP_ATTR_IDX(curr_scp_idx))) &&
           (io_type == Read || io_type == Write)) {
+#ifdef KEY
+         find_opnd_line_and_column((opnd_type *) &IL_OPND(list_array[FMT_IDX]),
+                                   &line, &col);
+#endif /* KEY */
          PRINTMSG(line, 1263, Error, col, 
                   io_type == Read ? "READ" : "WRITE",
                   ATP_ELEMENTAL(SCP_ATTR_IDX(curr_scp_idx))?"elemental":"pure",

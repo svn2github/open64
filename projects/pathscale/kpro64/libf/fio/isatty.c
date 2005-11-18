@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -71,6 +75,7 @@
 #include <liberrno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "fio.h"
 
 extern _f_int __isatty_f90 (_f_int *u);

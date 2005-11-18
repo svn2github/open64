@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -211,7 +215,7 @@ static INT_LIST *free_int_lists;    /* Free list of INT_LISTs.
  */
 
 struct mem_stat {
-  char *file;                   /* File called from
+  const char *file;                   /* File called from
                                  */
   INT32 line;                   /* Line called from
                                  */
@@ -445,10 +449,10 @@ static MEM_STAT *call_site_hash_tab[N_BUCKETS];
 static UINT32
 Hash(
   INT32 line,
-  char *file
+  const char *file
 )
 {
-  char *p;
+  const char *p;
   UINT32 result = line;
 
   /* Somebody once told me this was a good idea.  It probably spreads
@@ -479,7 +483,7 @@ Hash_Get(
   UINT32 hn,
   MEM_POOL *pool,
   INT32  line,
-  char  *file
+  const char  *file
 )
 {
   MEM_STAT *as;
@@ -1171,6 +1175,11 @@ MEM_POOL_Realloc_P
 
 #ifdef JUST_USE_MALLOC
   result = realloc(old_block,new_size);
+#ifdef KEY
+  if (purify_pools_trace)
+    if (result != old_block)
+      printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), old_block);
+#endif
   if ( old_size < new_size )
     bzero((char*)result + old_size,new_size - old_size);
   return result;
@@ -1223,6 +1232,11 @@ MEM_POOL_Realloc_P
 	ret_val = (MEM_PTR)
 	    realloc((MEM_PTR) (old_block ? (size_t) old_block-8 : 0),
 			       new_size+8);
+#ifdef KEY
+	if (purify_pools_trace)
+	  if (ret_val != old_block && old_block != 0)
+	    printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), old_block);
+#endif
     }
     if (new_size > 0) {
       FmtAssert (ret_val, ("oops - realloc returned NULL, pool %s\n",
@@ -1293,6 +1307,11 @@ MEM_POOL_Realloc_P
 
 	large_block = 
 	   MEM_LARGE_BLOCK_realloc(p, new_size + MEM_LARGE_BLOCK_OVERHEAD);
+#ifdef KEY
+	if (purify_pools_trace)
+	  if (p != large_block && p != 0)
+	    printf ("pool %s, freed block 0x%p\n", MEM_POOL_name(pool), p);
+#endif
 
 	if (large_block == NULL)
 	  ErrMsg (EC_No_Mem, "MEM_POOL_Realloc");
@@ -1952,6 +1971,11 @@ MEM_PTR
 Realloc_Clear ( MEM_PTR ptr, INT32 new_size, INT32 old_size )
 {
   MEM_PTR result = (MEM_PTR) realloc ( ptr, new_size );
+#ifdef KEY
+  if (purify_pools_trace)
+    if (result != ptr && ptr != 0)
+      printf ("pool UNKNOWN, freed 0x%p (size %d)\n", ptr, old_size);
+#endif
 
   if ( result == NULL )
     ErrMsg ( EC_No_Mem, "Realloc_Clear" );

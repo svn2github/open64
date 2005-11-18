@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -582,7 +586,8 @@ Compute_Force_TNs(void)
       Force_Live_Add(CALLEE_tn(i));
   }
 
-  if (Find_Special_Return_Address_Symbol() == NULL) {
+  if (Find_Special_Return_Address_Symbol() == NULL &&
+      RA_TN != NULL) {
 
     /* No horrible return address builtin was used, hence we have to force
      * the return address save TN to be live */
@@ -1160,8 +1165,10 @@ Live_Init(
   if (BB_call(bb)) {
     GTN_UNIVERSE_Add_TN(SP_TN);
     GTN_SET_Union1D (BB_live_out(bb), SP_TN, &liveness_pool);
-    GTN_UNIVERSE_Add_TN(GP_TN);
-    GTN_SET_Union1D (BB_live_out(bb), GP_TN, &liveness_pool);
+    if( GP_TN != NULL ){
+      GTN_UNIVERSE_Add_TN(GP_TN);
+      GTN_SET_Union1D (BB_live_out(bb), GP_TN, &liveness_pool);
+    }
   }
 
   BB_defreach_in(bb)  = GTN_SET_ClearD(BB_defreach_in(bb));
@@ -2315,11 +2322,24 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set)
 
 	  // ONLY need to check for defreach_in and defreach_out sets. 
           defreach_tn = tn;
+#ifndef KEY
+	  // Purify_pools (trace) on exposes the MEM_POOL bug. The bug is that
+	  // the following code should be using MEM_local_pool - look at caller
+	  // - instead of gra_live_pool which is already popped out. Bug #24
+	  // can expose this problem.
           BB_VISITED_COUNTER counter_data(&gra_live_pool);
+#else
+          BB_VISITED_COUNTER counter_data(&MEM_local_pool);
+#endif
           BB_VISITED_COUNTER *counter = &counter_data;
           counter->Init();
           BB_REGION_Forward_Depth_First_Visit_BB (bb, counter, Clear_Defreach, Do_Nothing);
+#ifndef KEY
+	  // see comments above. Actually, this could be a real bug because
+	  // gra_live_pool is already popped out before the caller calls this 
+	  // function. The bug was not exposed.
           MEM_POOL_Pop(&gra_live_pool);
+#endif
 	  Reset_TN_is_global_reg (tn);
 
 	}

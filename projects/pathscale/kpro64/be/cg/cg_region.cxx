@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,8 +39,8 @@
 
 /* Utilities for creating, deleting, modifying CG info for REGIONs */
 
-#include <slist.h>	// STL slist
-#include <algo.h>	// STL find
+#include <ext/slist>
+#include <algorithm>
 #include "defs.h"
 #include "errors.h"
 #include "tracing.h"

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -125,6 +129,16 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	    IPA_Enable_DFE_Set = TRUE;
     }
 
+#if defined (KEY) && defined (_LIGHTWEIGHT_INLINER)
+// If we don't set formal_count here, the lw_inliner gets it as zero.
+    if (WN_num_formals(w)) {
+	 if (WN_operator(w) == OPR_FUNC_ENTRY)
+	     Process_formal (w, WN_num_formals(w), proc);
+	 else
+	     proc->Set_formal_count(WN_num_formals(w));
+    }
+#endif	// KEY && _LIGHTWEIGHT_INLINER
+
 #ifndef _LIGHTWEIGHT_INLINER
 
     // set the formal count
@@ -160,7 +174,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 	    ((PU_src_lang(pu) == PU_CXX_LANG))) {
 	    if (PU_is_inline_function (pu)) {
 		// for 7.2 don't inline functions marked weak inline
-		if (ST_is_weak_symbol(st)) {
+		if (ST_is_weak_symbol(st) && ST_export(st) != EXPORT_PROTECTED) {
 		    DevWarn("Inliner encountered a function marked weak inline; NOT inlining it");
 		    proc->Set_no_inline();
 		} else

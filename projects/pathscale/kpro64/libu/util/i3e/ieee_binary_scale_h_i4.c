@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -54,21 +58,27 @@ float
 _IEEE_BINARY_SCALE_H_I4(float x, short n)
 {  
 	/* Union defined to work with IEEE 64-bit floating point. */
-	union _ieee_double {
+	union _ieee_float {
 		float	dword;
-		short    lword;
-		unsigned short  ulword;
+		int    lword;
+		unsigned int  ulword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa : IEEE_32_MANT_BITS;
+			unsigned int exponent : IEEE_32_EXPO_BITS;
+			unsigned int sign     : 1;
+#else
 			unsigned int sign     : 1;
 			unsigned int exponent : IEEE_32_EXPO_BITS;
 			unsigned int mantissa : IEEE_32_MANT_BITS;
+#endif
 		} parts;
 	};
 
 	int fp_class	= _fpclassifyf(x);
 
 	if (fp_class==FP_NORMAL) {
-		union _ieee_double x_val;
+		union _ieee_float x_val;
 		long exponent;
 		x_val.dword = x;
 
@@ -108,7 +118,7 @@ _IEEE_BINARY_SCALE_H_I4(float x, short n)
 		return(x_val.dword);
 
 	} else if (fp_class==FP_SUBNORMAL) {
-		union _ieee_double x_val;
+		union _ieee_float x_val;
 		x_val.dword = x;
 
 		if (n <= 0) {

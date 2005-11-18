@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,17 +39,21 @@
 
 #include "basic.h"
 
-extern string source_file;
+extern char *source_file;
 extern boolean multiple_source_files;
 
-extern string outfile;		/* outfile for -o */
-extern string prof_file;        /*  executable file for prof to work upon */
-extern string fb_file;		/* feedback file for -fb */
-extern string fb_xdir;		/* dir where pixie emits dso's */
-extern string fb_cdir;		/* dir where pixie emits count files */
+extern char *outfile;		/* outfile for -o */
+extern char *prof_file;        /*  executable file for prof to work upon */
+extern char *fb_file;		/* feedback file for -fb_create */
+extern char *internal_fb_file;	/* feedback file for -fb */
+extern char *opt_file;		/* feedback file for -fb_opt */
+extern char *fb_xdir;		/* dir where pixie emits dso's */
+extern char *fb_cdir;		/* dir where pixie emits count files */
+extern char *fb_phase;         /* phase for -fb_phase */
+extern char *fb_type;          /* type for -fb_type */
 
-extern string ldpath_for_pixie;  /* Tell pixie where to find ld */
-extern string command_line;	/* original command line */
+extern char *ldpath_for_pixie;  /* Tell pixie where to find ld */
+extern char *command_line;	/* original command line */
 
 extern boolean keep_mp;		/* keep pfa/pca file */
 extern boolean keep_list;	/* keep pfa/pca listing */
@@ -63,10 +71,15 @@ extern boolean use_cpp;		/* Use cpp instead of ftpp for F90 */
 extern boolean expand_ftpp_macros; /* fully macro-expand in ftpp */
 extern int     fortran_line_length;	/* Line length for fixed form fortran */
 
-extern string ld_library_path;	/* env. variable LD_LIBRARY_PATH */
-extern string ld_libraryn32_path;   /* env. variable LD_LIBRARYN32_PATH */
+extern char *ld_library_path;	/* env. variable LD_LIBRARY_PATH */
+extern char *ld_libraryn32_path;   /* env. variable LD_LIBRARYN32_PATH */
 
-extern string orig_program_name; /* actual name passed in to argv[0] */
+extern char *orig_program_name; /* actual name passed in to argv[0] */
+
+#ifdef KEY
+boolean dump_outfile_to_stdout;	// for "-o -"
+#endif
+
 
 /* call once before running compiler */
 extern void init_phase_info (void);
@@ -81,17 +94,23 @@ extern void run_pixie (void);
 extern void run_prof (void);
 
 /* run whole compiler */
-extern void run_compiler (void);
+extern void run_compiler (int argc, char *argv[]);
 
 /* save original command line */
 extern void save_command_line(int, char **);
 extern void set_current_arg_pos(int n);
+extern int check_for_saved_option(char *s);
 extern void cancel_saved_arg(int count);
 extern void add_minus_c_option(void);
 
 /* save user options for ipl */
 extern void save_ipl_commands (void);
 extern char *dirname(char *const s);
+
+#ifdef KEY
+// Change the phase names based on run-time info.
+extern void init_phase_names ();
+#endif
 
 #define PASS1 0
 #define PASS2 1

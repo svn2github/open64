@@ -39,7 +39,7 @@
 include	$(COMMONDEFS)
 
 CVERSION =
-LCOPTS += $(STD_COMPILE_OPTS)
+LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 ifeq ($(BUILD_COMPILER), EDG)
 WOFF += -fullwarn
 else
@@ -55,6 +55,12 @@ TARGDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
 ifeq ($(BUILD_TARGET), IA32)
 TARGDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
+ifeq ($(BUILD_TARGET), MIPS)
+TARGDEFS +=-D__MIPS_AND_IA64_ELF_H
+endif
+ifeq ($(BUILD_TARGET), X8664)
+TARGDEFS +=-D__MIPS_AND_IA64_ELF_H
 endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
@@ -88,7 +94,7 @@ ifeq ($(BUILD_OS), LINUX)
 LCINCS += -I$(BUILD_AREA)/include/libelf
 endif
 
-LCXXOPTS = $(LCOPTS)
+LCXXOPTS = $(LCOPTS:-std%=)
 LCXXDEFS = $(LCDEFS)
 LCXXINCS = $(LCINCS)
 
@@ -142,9 +148,9 @@ default: first $(TARGETS) last
 
 first:
 ifeq ($(BUILD_OS), LINUX)
-	cd $(BUILD_AREA)/include && $(MAKE)
+	$(call submake,$(BUILD_AREA)/include)
 endif
-	cd $(BUILD_AREA)/libcomutil && $(MAKE)
+	$(call submake,$(BUILD_AREA)/libcomutil)
 
 last: make_deps
 
@@ -159,7 +165,7 @@ include $(COMMONRULES)
 VPATH = $(BUILD_BASE) $(COMMON_COM_DIR) $(COMMON_COM_TARG_DIR)
 
 ir_b2a: $(OBJECTS) ir_a2b.o
-	$(C++F) -o ir_b2a ir_a2b.o $(OBJECTS) $(LDFLAGS)
+	$(link.c++f) -o ir_b2a ir_a2b.o $(OBJECTS) $(LDFLAGS)
 
 ir_a2b: ir_b2a
 	ln -sf ir_b2a ir_a2b
@@ -168,8 +174,8 @@ ir_sel: ir_b2a
 	ln -sf ir_b2a ir_sel
 
 ir_size: $(OBJECTS) ir_size.o ir_b2a
-	$(C++F) -o ir_size ir_size.o $(OBJECTS) $(LDFLAGS)
+	$(link.c++f) -o ir_size ir_size.o $(OBJECTS) $(LDFLAGS)
 
 ir_walker: $(OBJECTS) ir_walker.o
-	$(C++F) -o ir_walker ir_walker.o $(OBJECTS) $(LDFLAGS)
+	$(link.c++f) -o ir_walker ir_walker.o $(OBJECTS) $(LDFLAGS)
 

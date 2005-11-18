@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -59,7 +63,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/libm/vlog10f.c
 extern	const du        __log_ru[];
 extern	const du        _logtab[];
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	void	vflog10(float *, float *, long, long, long);
 extern	void	vlog10f(float *, float *, long, long, long);
 

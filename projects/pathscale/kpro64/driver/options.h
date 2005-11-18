@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,8 +47,8 @@
 
 extern void init_options (void);	/* init the options list */
 
-extern string get_option_name (int flag);	/* return name */
-extern string get_option_help (int flag);	/* return help msg */
+extern char *get_option_name (int flag);	/* return name */
+extern char *get_option_help (int flag);	/* return help msg */
 
 /* whether option should have a blank space in it, e.g. -o foo */
 extern boolean option_has_blank (int flag);
@@ -65,7 +69,7 @@ extern void remove_phase_for_option(int flag, phases_t p);
 extern void set_language_for_option (int flag, languages_t l);
 
 /* add new user-defined option */
-extern int add_new_option (string arg);
+extern int add_new_option (char *arg);
 
 /*
  * For options with arbitrary argument, we have the option prefix in 
@@ -73,7 +77,7 @@ extern int add_new_option (string arg);
  * Now we want to create a new derived entry for the exact option string,
  * which will point back to the prefix entry.  
  */
-extern int add_derived_option (int parent, string arg);
+extern int add_derived_option (int parent, char *arg);
 extern boolean is_derived_option (int flag);	/* is option derived? */
 extern int get_derived_parent (int flag);	/* return base parent */
 
@@ -104,5 +108,5 @@ extern boolean no_more_implied_options (int flag);
 
 /* return name of current implied string;
  * MUST BE INSIDE IMPLIED ITERATOR when calling this routine! */
-extern string get_current_implied_name (void);
+extern char *get_current_implied_name (void);
 

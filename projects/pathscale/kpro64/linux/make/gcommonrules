@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -96,22 +96,74 @@ MAKELIB: .USE .PRECIOUS
 	$(AR) c$(ARFLAGS) $@ $?
 	rm -f $?
 
+_empty :=
+_space :=	$(_empty) $(_empty)
+
+ar =		$(if $V,,@echo 'AR     $(CWD)/$@';) $(AR)
+as =		$(if $V,,@echo 'AS     $(CWD)/$<';) $(CC)
+c++f =		$(if $V,,@echo 'C++    $(CWD)/$<';) $(C++F)
+cc =		$(if $V,,@echo 'C      $(CWD)/$<';) $(CC)
+ccf =		$(if $V,,@echo 'C      $(CWD)/$@';) $(CCF)
+cxx =		$(if $V,,@echo 'C++    $(CWD)/$<';) $(CXX)
+f77 =		$(if $V,,@echo 'F77    $(CWD)/$<';) $(F77)
+f90 =		$(if $V,,@echo 'F90    $(CWD)/$<';) $(F90)
+fc =		$(if $V,,@echo 'F90    $(CWD)/$<';) $(FC)
+ld =		$(if $V,,@echo 'LD     $(CWD)/$@';) $(LD)
+ln =		$(if $V,,@echo 'LN     $(CWD)/$@';) ln
+link.c++f =	$(if $V,,@echo 'LD     $(CWD)/$@';) $(C++F)
+link.ccf =	$(if $V,,@echo 'LD     $(CWD)/$@';) $(CCF)
+link.cxxf =	$(if $V,,@echo 'LD     $(CWD)/$@';) $(CXXF)
+ranlib =	$(if $V,,@echo 'RANLIB $(CWD)/$@';) $(RANLIB)
+run =		$(if $V,,@echo 'RUN    $(CWD)/$<';)
+submake =	+$(if $V,,@echo 'MAKE   $(if $(2),$(2) in )$(CWD)/$(1)';) $(MAKE) -C $(1) $(if $V,,--no-print-directory) $(2)
+
 %.o : %.cxx
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+	$(cxx) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+
+%.o : %.c
+	$(cc) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+%.o : %.s
+	$(as) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+%.o : %.F
+	$(fc) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
+
+%.o : %.f
+	$(fc) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
+
+%.o : %.F90
+	$(fc) -c $(FFLAGS_NOLANG) $(F90FLAGS) $<
+
+pic_flag := -fpic
+
+%.pic.o : %.cxx
+	$(cxx) $(pic_flag) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+
+%.pic.o : %.c
+	$(cc) $(pic_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+%.pic.o : %.s
+	$(as) $(pic_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+%.pic.o : %.f
+	$(fc) $(pic_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
+
+%.pic.o : %.F
+	$(fc) $(pic_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
+
+%.pic.o : %.F90
+	$(fc) $(pic_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $<
 
 make_deps:
-ifneq ($(BUILD_COMPILER), EDG)
 	-@cat *.d > $(MKDEPFILE)
-endif
 
 # make dependencies be for library(foo.o) not for foo.o,
 # thus we don't need to preserve intermediate .o files.
 make_libdeps :
-ifneq ($(BUILD_COMPILER), EDG)
 	-@cat *.d > $(MKDEPFILE).tmp
 	-@sed -e "s/^.*\.o/$(LIBRARY)(&)/" $(MKDEPFILE).tmp > $(MKDEPFILE)
 	-@rm $(MKDEPFILE).tmp
-endif
 
 #
 # Include the make dependency file if it exists.

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -723,7 +727,7 @@ store_ctrl ( char *name, STR_LIST *name_list, INT flags )
 	  return ERRORS_FOUND;
 	}
 	v = (name_list) ? int_val : CI_int(a, sec_def);
-	dprintf ( "  %s: integer value %d (current %d)\n",
+	dprintf ( "  %s: integer value %d (current %ld)\n",
 		  a->name, v, a->cur_val );
 	if (v < CI_int(a, min_val) || v > CI_int(a, max_val)) {
 	  Report_Error ( EC_Ctrl_Range, v, a->name,
@@ -736,7 +740,7 @@ store_ctrl ( char *name, STR_LIST *name_list, INT flags )
 	  } else {
 	    if (flags & HCO_ONCE) push_cur_val(a);
 	    changed = TRUE;
-	    dprintf ( "  %s: %d (was %d)\n", a->name, v, a->cur_val );
+	    dprintf ( "  %s: %d (was %ld)\n", a->name, v, a->cur_val );
             Set_CI_int (a, cur_val, v);
 	  }
 	} else {
@@ -1109,7 +1113,7 @@ Print_Controls ( FILE *fp, char *tag, BOOL def )
     if ( def || !defaulted ) {
       fprintf(fp, "%s %s%s = ", tag, defaulted ? "*" : " ", a->name);
       if ( CI_is_int_type(a) )
-	fprintf ( fp, "%d\n", a->cur_val );
+	fprintf ( fp, "%ld\n", a->cur_val );
       else {
 	STR_LIST *s = CI_nlist(a, cur_val);
 	while (s) {

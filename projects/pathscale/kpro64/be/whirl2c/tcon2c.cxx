@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -296,7 +300,7 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
 
     case MTYPE_C4:
     case MTYPE_C8:
-    case MTYPE_CQ:
+   case MTYPE_CQ:
       Append_Token_Special(tokens, '{');
       TCON2C_translate(tokens, Extract_Complex_Real(tvalue));
       Append_Token_Special(tokens, ',');
@@ -304,6 +308,72 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
       Append_Token_Special(tokens, '}');
       break;
 
+#ifdef TARG_X8664
+   case MTYPE_V16I1: {
+     char *newstr;
+     str = Targ_Print("%1d", tvalue);
+     newstr = (char *)malloc(sizeof(char)*2000); //((strlen(str)+1)*16+15));
+     sprintf(newstr, 
+	   "[%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s]", 
+	     str, str, str, str, str, str, str, str, 
+	     str, str, str, str, str, str, str, str);
+     Append_Token_String(tokens, newstr);
+     break;
+   }
+   case MTYPE_V16I2: {
+     char *newstr;
+     str = Targ_Print("%1d", tvalue);
+     newstr = (char *)malloc(sizeof(char)*1000); //((strlen(str)+1)*4+15));
+     sprintf(newstr, "[%s, %s, %s, %s, %s, %s, %s, %s]", 
+	     str, str, str, str, str, str, str, str);
+     Append_Token_String(tokens, newstr);
+     break;
+   }
+   case MTYPE_V16I4: {
+     char *newstr;
+     str = Targ_Print("%1d", tvalue);
+     newstr = (char *)malloc(sizeof(char)*1000); //((strlen(str)+1)*4+15));
+     sprintf(newstr, "[%s, %s, %s, %s]", 
+	     str, str, str, str);
+     Append_Token_String(tokens, newstr);
+     break;
+   }
+   case MTYPE_V16I8: {
+     char *newstr;
+     str = Targ_Print("%1lldLL", tvalue);
+     newstr = (char *)malloc(sizeof(char)*1000); //((strlen(strbase)+1)*2+15));
+     sprintf(newstr, "[%s, %s]", str, str);
+     Append_Token_String(tokens, newstr);
+     break;
+   }
+   case MTYPE_V16F4: {
+     char *newstr;
+     str = Targ_Print("%.10e", tvalue);
+     strbase = Remove_Trailing_Zero_Fraction(str);
+     /* Undo the 'e'->'d' conversion */
+     if ((str = strchr(strbase, 'd')) != NULL)
+       *str = 'e';
+     
+     newstr = (char *)malloc(sizeof(char)*1000); //((strlen(strbase)+1)*4+15));
+     sprintf(newstr, "[%sF, %sF, %sF, %sF]", 
+	     strbase, strbase, strbase, strbase);
+     Append_Token_String(tokens, newstr);
+     break;
+   }
+   case MTYPE_V16F8: {
+     char *newstr;
+     str = Targ_Print("%.20e", tvalue);
+     strbase = Remove_Trailing_Zero_Fraction(str);
+     /* Undo the 'e'->'d' conversion */
+     if ((str = strchr(strbase, 'd')) != NULL)
+       *str = 'e';
+     newstr = (char *)malloc(sizeof(char)*1000); //((strlen(strbase)+1)*2+15));
+     sprintf(newstr, "[%s, %s]", strbase, strbase);
+     Append_Token_String(tokens, newstr);
+     break;
+   }
+
+#endif
    default:
       /* Only expression nodes should be handled here */
       ErrMsg (EC_Invalid_Case, "TCON2C_translate", __LINE__);

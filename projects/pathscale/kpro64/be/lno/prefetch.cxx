@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -271,7 +275,7 @@ static void Process_PU_Pragmas (WN* func_nd);
 static inline BOOL
 Target_ISA_Has_Prefetch()
 {
-  return (Is_Target_ISA_M4Plus() || Is_Target_ISA_I1Plus());
+  return (Is_Target_ISA_M4Plus() || Is_Target_ISA_I1Plus() || Is_Target_Opteron() );
 }
 
 // R10K (and its successors) and Itanium (TM) support prefetching
@@ -279,7 +283,16 @@ static inline UINT32
 Target_Proc_Run_Prefetch()
 {
   if (Is_Target_R10K())   return 1;
+#ifdef TARG_MIPS
+  if (Is_Target_Sb1())   return 1;
+#endif
+#ifdef TARG_IA64
   if (Is_Target_Itanium()) return 2; // more aggressive
+#endif
+#ifdef TARG_X8664
+  // previously, default was CONSERVATIVE_PREFETCH
+  if (Is_Target_Opteron()) return SOME_PREFETCH; // more aggressive
+#endif
   return 0;
 }
 
@@ -305,7 +318,11 @@ extern void Init_Prefetch_Options (WN* func_nd)
                 Isa_Name(Target_ISA));
       warned_isa_noprefetch = TRUE;
     }
+#ifdef KEY
+    LNO_Run_Prefetch = NO_PREFETCH;
+#else
     LNO_Run_Prefetch = 0;
+#endif
     LNO_Run_Prefetch_Manual = FALSE;
     return;
   }
@@ -323,11 +340,21 @@ extern void Init_Prefetch_Options (WN* func_nd)
   // Process command line options
 
   // allow override through -tt31 options
+#ifndef KEY
   if (LNO_Run_Prefetch == 0) 
+#else
+  if (LNO_Run_Prefetch == NO_PREFETCH) 
+#endif
     if (Get_Trace(TP_LNOPT,TT_LNO_PREFETCH))
       LNO_Run_Prefetch = Target_Proc_Run_Prefetch();
   Debug_Prefetch = Get_Trace(TP_LNOPT,TT_LNO_PREFETCH_DEBUG);
   Verbose_Prefetch = Get_Trace(TP_LNOPT,TT_LNO_PREFETCH_VERBOSE);
+
+#ifdef KEY
+  // prefetch stores starting from CONSERVATIVE_PREFETCH
+  if (!LNO_Prefetch_Stores_Set)
+    LNO_Prefetch_Stores = LNO_Run_Prefetch > SOME_PREFETCH;
+#endif
 
   /* These must be processed here since they determine
    * Run_Prefetch etc, used in Mhd.Initialize
@@ -338,10 +365,17 @@ extern void Init_Prefetch_Options (WN* func_nd)
   }
 
   if (Verbose_Prefetch) {
+#ifdef KEY
+    printf ("LNO:Run_Prefetch          = %s\n",
+	    ((LNO_Run_Prefetch == NO_PREFETCH) ? "false" :
+	((LNO_Run_Prefetch == SOME_PREFETCH) ? "very conservative" 			     : ((LNO_Run_Prefetch == CONSERVATIVE_PREFETCH) ?
+					  "conservative" : "aggressive"))));
+#else
     printf ("LNO:Run_Prefetch          = %s\n",
 	    ((LNO_Run_Prefetch == 0) ? "false"
 				     : ((LNO_Run_Prefetch == 1) ?
 					  "conservative" : "aggressive")));
+#endif
     printf ("LNO:Run_Prefetch_Manual   = %s\n", (LNO_Run_Prefetch_Manual
                                            ? "true" : "false"));
     printf ("Debug_Prefetch            = %s\n", (Debug_Prefetch
@@ -371,11 +405,19 @@ static void Process_PU_Pragmas (WN* func_nd) {
       if (!WN_pragma_arg1(pwn) && !WN_pragma_arg2(pwn)) {
         // no prefetching enabled for any level.
         VB_PRINT (printf ("Disable automatic prefetching\n"));
+#ifdef KEY
+        LNO_Run_Prefetch = NO_PREFETCH;
+#else
         LNO_Run_Prefetch = 0;
+#endif
       }
       else {
         // prefetching enabled for some level.
+#ifdef KEY
+        LNO_Run_Prefetch = CONSERVATIVE_PREFETCH;
+#else
         LNO_Run_Prefetch = 1;
+#endif
         if (WN_pragma_arg1(pwn)) {
           VB_PRINT (printf ("Enable auto-prefetch, level-1 cache\n"));
           LNO_FLAGS_mhd(Current_LNO)->L[0].Prefetch_Level = TRUE;

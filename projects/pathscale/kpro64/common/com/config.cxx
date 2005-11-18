@@ -1,3 +1,7 @@
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -64,6 +68,8 @@
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef FRONT_END	/* For setting fullwarn, woff in front end */
 #ifndef FRONT_F90
 #ifdef EDGSRC
@@ -154,7 +160,11 @@ BOOL Ptr_Opt_Allowed = FALSE;
 BOOL Zeroinit_in_bss = TRUE;
 
 /* don't make strings gp-relative (to save gp space) */
+#if defined(TARG_X8664) || defined(TARG_IA32)
+BOOL Strings_Not_Gprelative = TRUE;
+#else
 BOOL Strings_Not_Gprelative = FALSE;
+#endif
 
 /***** IEEE 754 options *****/
 IEEE_LEVEL IEEE_Arithmetic = IEEE_ACCURATE; /* IEEE arithmetic? */
@@ -303,12 +313,26 @@ INT32 Gspace_Available = DEFAULT_GSPACE;
 BOOL Force_Long_EH_Range_Offsets = FALSE;
 /* Force stack frame to use large model */
 BOOL Force_Large_Stack_Model = FALSE;
+#ifdef TARG_X8664
+/* Force stack frame to use frame pointer */
+// We set it to TRUE in the backend for C++ source, the user can override
+BOOL Force_Frame_Pointer = FALSE;
+BOOL Force_Frame_Pointer_Set = FALSE;
+/* Use g77 ABI (affect complex and single float return values) */
+BOOL F2c_Abi = FALSE;
+BOOL F2c_Abi_Set = FALSE;
+#endif
 BOOL Force_GP_Prolog;	/* force usage of gp prolog */
 
 OPTION_LIST *Registers_Not_Allocatable = NULL;
 
 /* Unique ident from IPA */
 INT32 Ipa_Ident_Number = 0;
+
+#ifdef KEY
+// Tell ipa_link to set LD_LIBRARY_PATH to this before running the shell cmds.
+char *IPA_old_ld_library_path = NULL;
+#endif
 
 BOOL Indexed_Loads_Allowed = FALSE;
 
@@ -345,6 +369,14 @@ static OPTION_DESC Options_TENV[] = {
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "large_stack",		NULL,
     0, 0, 0,	&Force_Large_Stack_Model, NULL,
     "Generate code assuming >32KB stack frame" },
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "frame_pointer",		NULL,
+    0, 0, 0,	&Force_Frame_Pointer, &Force_Frame_Pointer_Set,
+    "Always allocate and use frame pointer in code generation" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "f2c",			NULL,
+    0, 0, 0,	&F2c_Abi, &F2c_Abi_Set,
+    "Use g77 linkage convention" },
+#endif
   { OVK_BOOL,	OV_VISIBLE,	FALSE, "local_names",		"",
     0, 0, 0,	&PIC_Local_Names, NULL },
   { OVK_BOOL,	OV_SHY,		FALSE, "long_eh_offsets",	"long_eh", 
@@ -498,9 +530,12 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_VISIBLE,	FALSE, "bool",			"",
       0, 0, 0,	&CXX_Bool_On,		&CXX_Bool_Set,
       "C++: enable builtin type 'bool'" },
+#ifndef KEY
+// We don't support -LANG:exceptions, keep CXX_Exceptions_On ON by default
     { OVK_BOOL, OV_VISIBLE,	FALSE, "exceptions",		"",
       0, 0, 0,	&CXX_Exceptions_On,	&CXX_Exceptions_Set,
       "C++: enable exceptions" },
+#endif // !KEY
 #if 0 // remove it till we have a robust design 
     { OVK_BOOL, OV_SHY,		FALSE, "alias_const",		"",
       0, 0, 0,  &CXX_Alias_Const,       &CXX_Alias_Const_Set },
@@ -622,6 +657,10 @@ static OPTION_DESC Options_INTERNAL[] = {
       0, 0, 0,	&ARCH_mask_shift_counts, NULL },
     { OVK_BOOL,	OV_INTERNAL,	FALSE, "generate_nor",	NULL,
       0, 0, 0,	&ARCH_generate_nor, NULL },
+#ifdef KEY
+    { OVK_NAME, OV_INTERNAL,	FALSE, "old_ld_lib_path",	"",
+      0, 0, 0,	&IPA_old_ld_library_path,	NULL },
+#endif
 
     { OVK_COUNT }		    /* List terminator -- must be last */
 };
@@ -898,7 +937,11 @@ Configure_Ofast ( void )
     Olimit_Set = TRUE;
   }
   if ( ! Roundoff_Set ) {
+#ifndef KEY
     Roundoff_Level = ROUNDOFF_ANY;
+#else
+    Roundoff_Level = ROUNDOFF_ASSOC;
+#endif
     Roundoff_Set = TRUE;
   }
   if ( ! Div_Split_Set ) {
@@ -1028,6 +1071,10 @@ Configure (void)
   }
 
   if (Force_GP_Prolog) Force_Jalr = TRUE;
+#ifdef TARG_X8664
+  if ( Opt_Level > 2 )
+    Aggregate_Alignment = 16;
+#endif
 }
 
 /* ====================================================================
@@ -1206,14 +1253,20 @@ Configure_Source ( char	*filename )
      IEEE_Arithmetic = IEEE_INEXACT;
   }
 
+#ifndef KEY // this is nullifying the effect of -OPT:recip=
   Recip_Allowed = ARCH_recip_is_exact;
+#endif
   /* IEEE arithmetic options: */
   if ( IEEE_Arithmetic > IEEE_ACCURATE ) {
     /* Minor roundoff differences for inexact results: */
+#ifndef TARG_X8664 // facerec fails at -O3 if Recip_Allowed is true
     if ( ! Recip_Set )
       Recip_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
+#endif
+#ifndef TARG_X8664 // apsi fails at -O3 because Rsqrt_Allowed is true
     if ( ! Rsqrt_Set )
       Rsqrt_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
+#endif
     /* Potential non-IEEE results for exact operations: */
     if ( ! Div_Split_Set )
       Div_Split_Allowed = IEEE_Arithmetic >= IEEE_ANY;
@@ -1221,7 +1274,11 @@ Configure_Source ( char	*filename )
 
   /* Constant folding options: */
   if ( ! Roundoff_Set && Opt_Level > 2 ) {
+#ifndef KEY
     Roundoff_Level = ROUNDOFF_ASSOC;
+#else
+    Roundoff_Level = ROUNDOFF_SIMPLE;
+#endif
   }
   if ( Roundoff_Level > ROUNDOFF_NONE ) {
 
@@ -1272,8 +1329,15 @@ Configure_Source ( char	*filename )
   /* The lowerer will do a simple treeheight reduction for
    * binary commutative ops
    */
+
+#if !defined(TARG_X8664) && !defined(TARG_IA32)
+  /* For the x86 architecture, OPT_Lower_Treeheight should be set by user directly
+     with option -OPT:treeheight option;
+     otherwise, results will be inaccurate. (mgrid is an example.)
+  */
   if (!OPT_Lower_Treeheight_Set)
      OPT_Lower_Treeheight = (Opt_Level > 1);
+#endif  // !TARG_x86
 
   /* Perform host-specific and target-specific configuration: */
 
@@ -1286,9 +1350,17 @@ Configure_Source ( char	*filename )
    * call to Configure_Source_Target, since that routine sets the
    * FP exception enable masks.
    */
+#ifndef KEY
+  // keycc does not allow speculation of trap instructions unless
+  // specified by the user.
+  // see be/com/w2op.cxx: TOP_Can_Be_Speculative
+  // An example compiled file that fails execution is in
+  // spec2000/benchspec/CINT2000/254.gap/src/eval.c (when compiled at -O3
+  // the teq instructions get moved away from the divides).
   if ( ! Eager_Level_Set && Opt_Level > 2 ) {
     Eager_Level = EAGER_ARITH;
   }
+#endif
   if ( Eager_Level >= EAGER_ARITH ) {
     FP_Exception_Enable_Max &= ~(FPX_I|FPX_U|FPX_O|FPX_V);
   }
@@ -1793,8 +1865,9 @@ List_Compile_Options (
 	    pfx, bar, pfx, Src_File_Name, Irb_File_Name, pfx, bar ); 
   fprintf ( f, "\n%s%s%s Options:\n%s%s", pfx, bar, pfx, pfx, bar );
 
-  fprintf ( f, "%s  Target:%s, ISA:%s, Pointer Size:%d\n",
+  fprintf ( f, "%s  Target:%s, ISA:%s, Endian:%s, Pointer Size:%d\n",
 	    pfx, Targ_Name (Target), Isa_Name (Target_ISA),
+	    Target_Byte_Sex == BIG_ENDIAN ? "big" : "little", 
 	    (Use_32_Bit_Pointers ? 32 : 64) );
   fprintf ( f, "%s  -O%d\t(Optimization level)\n", pfx, Opt_Level );
   fprintf ( f, "%s  -g%d\t(Debug level)\n", pfx, Debug_Level );

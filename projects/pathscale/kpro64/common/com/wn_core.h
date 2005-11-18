@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -49,6 +53,10 @@
 #endif
 #ifndef wio_INCLUDED
 #include "wio.h"
+#endif
+
+#ifndef defs_INCLUDED
+#include "defs.h"
 #endif
 
 /**                     Intermediate Language Tree Nodes
@@ -912,25 +920,31 @@ public:
 #endif /* WN_NO_ACCESSOR_FUNCTIONS */
 };
 
-#define WN_OFFSET_IN_STMT_WN (offsetof(STMT_WN,wn))
+inline UINTPS WN_offset_in_STMT_WN(const WN *x)
+{
+  return (UINTPS) &(((STMT_WN*) x)->wn) - (UINTPS) x;
+}
 
-#define WN_CAST_WN_TO_STMT_WN(x) ((STMT_WN *)((UINTPS)x - WN_OFFSET_IN_STMT_WN))
+inline STMT_WN* WN_cast_WN_to_STMT_WN(const WN *x)
+{
+  return (STMT_WN *) ((UINTPS) x - WN_offset_in_STMT_WN(x));
+}
 
 #ifndef WN_NO_ACCESSOR_FUNCTIONS
-inline WN* WN_prev (const WN* wn) { return (WN_CAST_WN_TO_STMT_WN(wn)->prev); }
-inline WN*& WN_prev (WN* wn) { return (WN_CAST_WN_TO_STMT_WN(wn)->prev); }
-inline WN* WN_next (const WN* wn) { return (WN_CAST_WN_TO_STMT_WN(wn)->next); }
-inline WN*& WN_next (WN* wn) { return (WN_CAST_WN_TO_STMT_WN(wn)->next); }
-inline mUINT64 WN_linenum (const WN* wn) { return (WN_CAST_WN_TO_STMT_WN(wn)->linenum); }
-inline mUINT64& WN_linenum (WN* wn) { return (WN_CAST_WN_TO_STMT_WN(wn)->linenum); }
+inline WN* WN_prev (const WN* wn) { return (WN_cast_WN_to_STMT_WN(wn)->prev); }
+inline WN*& WN_prev (WN* wn) { return (WN_cast_WN_to_STMT_WN(wn)->prev); }
+inline WN* WN_next (const WN* wn) { return (WN_cast_WN_to_STMT_WN(wn)->next); }
+inline WN*& WN_next (WN* wn) { return (WN_cast_WN_to_STMT_WN(wn)->next); }
+inline mUINT64 WN_linenum (const WN* wn) { return (WN_cast_WN_to_STMT_WN(wn)->linenum); }
+inline mUINT64& WN_linenum (WN* wn) { return (WN_cast_WN_to_STMT_WN(wn)->linenum); }
 inline WN* WN_prev_free (const STMT_WN* stmt_wn) { return stmt_wn->prev; }
 inline WN*& WN_prev_free (STMT_WN* stmt_wn) { return stmt_wn->prev; }
 inline WN& WN_real_fields (STMT_WN* stmt_wn) { return stmt_wn->wn; }
 #else
-#define WN_next(x)          (WN_CAST_WN_TO_STMT_WN(x)->next)
-#define WN_next_func(x)     (WN_CAST_WN_TO_STMT_WN(x)->next)
-#define WN_prev(x)          (WN_CAST_WN_TO_STMT_WN(x)->prev)
-#define WN_linenum(x)       (WN_CAST_WN_TO_STMT_WN(x)->linenum)
+#define WN_next(x)          (WN_cast_WN_to_STMT_WN(x)->next)
+#define WN_next_func(x)     (WN_cast_WN_to_STMT_WN(x)->next)
+#define WN_prev(x)          (WN_cast_WN_to_STMT_WN(x)->prev)
+#define WN_linenum(x)       (WN_cast_WN_to_STMT_WN(x)->linenum)
 /* Note: the following are only used internally for creating WNs and
    maintaining free lists; they should not be used outside of wn.c */
 #define WN_real_fields(x)   ((x)->wn)
@@ -1024,10 +1038,12 @@ inline char * WN_asm_input_constraint(const WN *wn) { return ST_name(WN_st(wn));
 #define WN_switch_table(x)	WN_kid((x),1)
 #define WN_switch_default(x)	WN_kid((x),2)
 
+#ifndef KEY
 #if defined(_LP64) && !defined(_SGI_COMPILER_VERSION)
 /* workaround for g++ bug */
 #else
 #define max(a,b)  ((a > b) ? a : b)
+#endif
 #endif
 
 
@@ -1216,7 +1232,7 @@ inline void WN_set_flag(WN *wn, UINT32 flag)
 inline void *WN_StartAddress(WN *wn)
 {
   if (OPCODE_has_next_prev(WN_opcode(wn))) {
-    return((void *)WN_CAST_WN_TO_STMT_WN(wn));
+    return((void *)WN_cast_WN_to_STMT_WN(wn));
   } else return((void *) wn);
 }
 
@@ -1224,7 +1240,7 @@ inline void *WN_StartAddress(WN *wn)
 /*REFERENCED*/
 inline INT32 WN_Size(WN *wn)
 {
-  INT16 extra_kids = max(0,WN_kid_count(wn)-2);
+  INT16 extra_kids = MAX(0,WN_kid_count(wn)-2);
   if (OPCODE_has_next_prev(WN_opcode(wn))) {
     return(sizeof(WN) + (2+extra_kids)*sizeof(WN*) + sizeof(mUINT64));
   } else {

@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -92,6 +97,10 @@ Combine_div_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
   const MTYPE rtype = OPCODE_rtype(old_wn_opc);
   const MTYPE desc  = OPCODE_desc(old_wn_opc);
 
+#ifdef TARG_X8664 // Bug 1960
+  if (old_wn_opc == OPC_V16F8DIV)
+    return FALSE; // because there is no such thing as OPC_V16F8RECIP
+#endif
   if ( MTYPE_is_float(rtype) || MTYPE_is_complex(rtype) ) {
     // Transform:  DIV        MPY
     //             a b  =>   a  RECIP
@@ -319,6 +328,13 @@ Uncombine_mpy_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
   WN *kid1 = WN_kid1(old_wn);
   const OPCODE   kid1_opc = WN_opcode(kid1);
   const OPERATOR kid1_opr = OPCODE_operator(kid1_opc);
+
+#ifdef KEY
+  if (MTYPE_is_vector(OPCODE_rtype(old_wn_opc)))
+    return FALSE;
+  if (Recip_Allowed)
+    return FALSE;
+#endif
 
   if ( kid1_opr == OPR_RECIP ) {
     // Transform:  MPY       into  DIV

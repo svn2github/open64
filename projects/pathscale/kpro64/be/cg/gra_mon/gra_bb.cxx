@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -77,7 +81,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_trace.h"
 
 GBB_MGR gbb_mgr;
-
+#ifdef TARG_X8664
+OP *gra_savexmms_op;
+#endif
 
 /////////////////////////////////////
 INT 
@@ -289,6 +295,12 @@ GBB_MGR::Create(BB* bb, GRA_REGION* region)
   }
   if (BB_mod_rotating_registers(bb) || BB_mod_pred_rotating_registers(bb))
     blocks_with_rot_reg_clob = BB_SET_Union1D(blocks_with_rot_reg_clob,bb,GRA_pool);
+#ifdef TARG_X8664
+  if (BB_last_op(bb) && OP_code(BB_last_op(bb)) == TOP_savexmms) {
+    gbb->Savexmms_Set();
+    gra_savexmms_op = BB_last_op(bb);
+  }
+#endif
 
   return gbb;
 }

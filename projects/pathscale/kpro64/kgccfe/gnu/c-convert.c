@@ -1,22 +1,28 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
 /* Language-level data type conversion for GNU C.
-   Copyright (C) 1987, 1988, 1991, 1998 Free Software Foundation, Inc.
+   Copyright (C) 1987, 1988, 1991, 1998, 2002 Free Software Foundation, Inc.
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
 
 /* This file contains the functions for converting C expressions
@@ -26,9 +32,14 @@ Boston, MA 02111-1307, USA.  */
 
 #include "config.h"
 #include "system.h"
+#ifdef SGI_MONGOOSE
+// To get typdef tree
+#include "rtl.h"
+#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "flags.h"
 #include "convert.h"
+#include "c-common.h"
 #include "toplev.h"
 
 /* Change of width--truncation and extension of integers or reals--
@@ -42,7 +53,8 @@ Boston, MA 02111-1307, USA.  */
    Here is a list of all the functions that assume that widening and
    narrowing is always done with a NOP_EXPR:
      In convert.c, convert_to_integer.
-     In c-typeck.c, build_binary_op (boolean ops), and truthvalue_conversion.
+     In c-typeck.c, build_binary_op (boolean ops), and
+	c_common_truthvalue_conversion.
      In expr.c: expand_expr, for operands of a MULT_EXPR.
      In fold-const.c: fold.
      In tree.c: get_narrower and get_unwidened.  */
@@ -61,8 +73,8 @@ tree
 convert (type, expr)
      tree type, expr;
 {
-  register tree e = expr;
-  register enum tree_code code = TREE_CODE (type);
+  tree e = expr;
+  enum tree_code code = TREE_CODE (type);
 
   if (type == TREE_TYPE (expr)
       || TREE_CODE (expr) == ERROR_MARK
@@ -86,15 +98,70 @@ convert (type, expr)
   if (TREE_CODE (expr) == NOP_EXPR)
     return convert (type, TREE_OPERAND (expr, 0));
 #endif
+#ifdef KEY
+  e = convert_floor_to_floorf (e);
+#endif
   if (code == INTEGER_TYPE || code == ENUMERAL_TYPE)
     return fold (convert_to_integer (type, e));
+  if (code == BOOLEAN_TYPE)
+    {
+      tree t = c_common_truthvalue_conversion (expr);
+      /* If it returns a NOP_EXPR, we must fold it here to avoid
+	 infinite recursion between fold () and convert ().  */
+      if (TREE_CODE (t) == NOP_EXPR)
+	return fold (build1 (NOP_EXPR, type, TREE_OPERAND (t, 0)));
+      else
+	return fold (build1 (NOP_EXPR, type, t));
+    }
   if (code == POINTER_TYPE || code == REFERENCE_TYPE)
     return fold (convert_to_pointer (type, e));
   if (code == REAL_TYPE)
     return fold (convert_to_real (type, e));
   if (code == COMPLEX_TYPE)
     return fold (convert_to_complex (type, e));
+  if (code == VECTOR_TYPE)
+    return fold (convert_to_vector (type, e));
 
   error ("conversion to non-scalar type requested");
   return error_mark_node;
 }
+
+#ifdef KEY
+// If E is a call to floor(x) and x is a float, then return a call to
+// floorf(x).  Otherwise return E.  Using floorf for floats eliminates the need
+// to convert x to double.  Furthermore, floorf is generally cheaper than
+// floor.
+tree
+convert_floor_to_floorf (tree e)
+{
+  tree fn, nop_expr, from;
+
+  if (TREE_CODE (e) == CALL_EXPR &&
+      (fn = get_callee_fndecl (e)) &&
+      DECL_FUNCTION_CODE (fn) == BUILT_IN_FLOOR &&
+      // It is floor(x).  See if x is an expression that converts a float to a
+      // double.  First check if the result type of x is a double.
+      TREE_CODE (nop_expr = TREE_VALUE (TREE_OPERAND (e, 1))) == NOP_EXPR &&
+      TREE_CODE (TREE_TYPE (nop_expr)) == REAL_TYPE &&
+      TREE_CODE (TYPE_SIZE (TREE_TYPE (nop_expr))) == INTEGER_CST &&
+      TREE_INT_CST_LOW (TYPE_SIZE (TREE_TYPE (nop_expr))) == 64 &&
+      // Now check if x's source operand is a float.
+      TREE_CODE (TREE_TYPE (from =TREE_OPERAND(nop_expr,0))) == REAL_TYPE &&
+      TREE_CODE (TYPE_SIZE (TREE_TYPE (from))) == INTEGER_CST &&
+      TREE_INT_CST_LOW (TYPE_SIZE (TREE_TYPE (from))) == 32)
+    {
+      // E is a call to floor with a float operand.  Build a call to floorf.
+      tree call_expr;
+      tree floorf = built_in_decls[BUILT_IN_FLOORF];
+      tree arg_list = build_tree_list (NULL_TREE, from);
+      call_expr = build1 (ADDR_EXPR,
+			  build_pointer_type (TREE_TYPE (floorf)),
+			  floorf);
+      call_expr = build (CALL_EXPR, TREE_TYPE (TREE_TYPE (floorf)),
+			 call_expr, arg_list, NULL_TREE);
+      TREE_SIDE_EFFECTS (call_expr) = 1;
+      return call_expr;
+    }
+  return e;
+}
+#endif

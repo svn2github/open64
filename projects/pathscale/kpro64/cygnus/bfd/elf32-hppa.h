@@ -4,8 +4,8 @@
    in the Stratus FTX/Golf Object File Format (SED-1762) dated
    February 1994.
 
-   Copyright (C) 1990, 91, 92, 93, 94, 95, 96, 98, 99, 2000
-   Free Software Foundation, Inc.
+   Copyright 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000,
+   2002 Free Software Foundation, Inc.
 
    Written by:
 
@@ -36,14 +36,28 @@
 #include "libhppa.h"
 #include "elf/hppa.h"
 
-boolean elf32_hppa_size_stubs
-  PARAMS ((bfd *, bfd *, struct bfd_link_info *));
-
-boolean elf32_hppa_build_stubs
+int elf32_hppa_setup_section_lists
   PARAMS ((bfd *, struct bfd_link_info *));
 
+void elf32_hppa_next_input_section
+  PARAMS ((struct bfd_link_info *, asection *));
+
+bfd_boolean elf32_hppa_size_stubs
+  PARAMS ((bfd *, bfd *, struct bfd_link_info *, bfd_boolean, bfd_signed_vma,
+	   asection * (*) PARAMS ((const char *, asection *)),
+	   void (*) PARAMS ((void))));
+
+bfd_boolean elf32_hppa_set_gp
+  PARAMS ((bfd *, struct bfd_link_info *));
+
+bfd_boolean elf32_hppa_build_stubs
+  PARAMS ((struct bfd_link_info *));
+
+elf_hppa_reloc_type elf32_hppa_reloc_final_type
+  PARAMS ((bfd *, elf_hppa_reloc_type, int, unsigned int));
+
 extern elf_hppa_reloc_type ** _bfd_elf32_hppa_gen_reloc_type
-  PARAMS ((bfd *, elf_hppa_reloc_type, int, int, int, asymbol *));
+  PARAMS ((bfd *, elf_hppa_reloc_type, int, unsigned int, int, asymbol *));
 
 /* Define groups of basic relocations.  FIXME:  These should
    be the only basic relocations created by GAS.  The rest

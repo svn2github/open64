@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -53,9 +58,13 @@
 
 
 #include <stdio.h>
-#include <hash_map.h>
-#include <vector.h>
-#include <algo.h>
+#include <ext/hash_map>
+#include <vector>
+#include <algorithm>
+
+using std::vector;
+using std::min;
+using std::max;
 
 #include "profile.h"
 
@@ -73,13 +82,13 @@ static PROFILE_PHASE instrumentation_phase_num = PROFILE_PHASE_NONE;
 // NULL, create it.
 
 PU_PROFILE_HANDLE
-Get_PU_Handle(char *file_name, char* pu_name, long current_pc, INT32 checksum)
+Get_PU_Handle(char *file_name, char* pu_name, long current_pc, INT32 pu_size, INT32 checksum)
 {
   PU_PROFILE_HANDLE & pu_handle = PU_Profile_Handle_Table[current_pc];
 
   if (pu_handle == NULL) {
      
-     pu_handle = new PU_Profile_Handle(file_name, pu_name, checksum); 
+     pu_handle = new PU_Profile_Handle(file_name, pu_name, current_pc, pu_size, checksum); 
 
   }
 
@@ -447,6 +456,20 @@ Profile_Call_Init(PU_PROFILE_HANDLE pu_handle, INT32 num_calls)
   }
 }
 
+void 
+Profile_Icall_Init(PU_PROFILE_HANDLE pu_handle, INT32 num_icalls)
+{
+  Icall_Profile_Vector& Icall_Table = pu_handle->Get_Icall_Table();
+
+  if (Icall_Table.empty()) {
+     Icall_Table.resize(num_icalls);
+	 for (int i=0;i<num_icalls;i++)
+	 {
+		 memset(&(Icall_Table[i].fb_tnv),0,sizeof(FB_TNV));
+	 }
+  }
+}
+
 // Update entry count for a call
 
 void 
@@ -467,6 +490,141 @@ Profile_Call_Exit(PU_PROFILE_HANDLE pu_handle, INT32 call_id)
   Call_Table[call_id].exit_count++;
 }
 
+void 
+Profile_Icall(PU_PROFILE_HANDLE pu_handle, INT32 icall_id, void * called_fun_address)
+{
+  Icall_Profile_Vector& Icall_Table = pu_handle->Get_Icall_Table();
+
+  FB_TNV * ptnv = &(Icall_Table[icall_id].fb_tnv);
+  ptnv->_id = icall_id; //actually this is no use.
+  ptnv->_exec_counter++; //execution counter.
+  ptnv->_flag = 0;
+  ptnv->_clear_counter++;
+
+  UINT64 value = (UINTPS)called_fun_address;
+ 
+       //now the tnv table info update.
+       //We use the first 6 items as "steady part", the last 4 items as "clear part".
+       // clear_interval is the sum of _exec_counter of the middle two in the steady part.
+        INT i, j;
+        UINT64 clear_interval = ptnv->_counters[3] + ptnv->_counters[4]; 
+        if (ptnv->_clear_counter >= clear_interval)
+        {
+        	ptnv->_clear_counter = 0;
+        	//resort tnv
+        	UINT64 tmpvalues[10], tmpcounters[10];
+        	for (i=0; i<10; i++)
+        	{
+        		tmpvalues[i] = ptnv->_values[i];
+        		tmpcounters[i] = ptnv->_counters[i];
+        	}
+        	INT a, b;
+        	a = 0; 
+        	b = 6;
+        	i = 0;
+        	while ( a < 6 && b < 10 )
+        	{
+	        	while ( a < 6 && tmpcounters[a] >= tmpcounters[b] )
+    	    	{
+        			ptnv->_values[i] = tmpvalues[a];
+        			ptnv->_counters[i] = tmpcounters[a];
+        			i++; 
+	        		a++;
+    	    	}
+        		while ( b < 10 && tmpcounters[b] >= tmpcounters[a] )
+        		{
+	        		ptnv->_values[i] = tmpvalues[b];
+    	    		ptnv->_counters[i] = tmpcounters[b];
+        			i++; 
+        			b++;
+	        	}
+        	}
+        	while ( a < 6 )
+   	    	{
+       			ptnv->_values[i] = tmpvalues[a];
+       			ptnv->_counters[i] = tmpcounters[a];
+       			i++; 
+        		a++;
+   	    	}
+       		while ( b < 10 )
+       		{
+        		ptnv->_values[i] = tmpvalues[b];
+   	    		ptnv->_counters[i] = tmpcounters[b];
+       			i++; 
+       			b++;
+        	}
+       		//clear the clear_part
+           	for (i=6; i< 10; i++)
+        	{
+        		ptnv->_values[i] = 0;
+        		ptnv->_counters[i] = 0;
+        	}
+        }
+
+        //see if the value can be put into first 6 values (steady part)
+        for (i=0;i<6;i++)
+        {
+                if (value == ptnv->_values[i] && ptnv->_counters[i]>0)
+                {
+                        ptnv->_counters[i]++;
+                        j = i;
+                        while (j>0 && ptnv->_counters[j-1]<ptnv->_counters[j])
+                        {
+                                UINT64 tmp;
+                                tmp = ptnv->_values[j-1];
+                                ptnv->_values[j-1] = ptnv->_values[j];
+                                ptnv->_values[j] = tmp;
+
+                                tmp = ptnv->_counters[j-1];
+                                ptnv->_counters[j-1] = ptnv->_counters[j];
+                                ptnv->_counters[j] = tmp;
+                        }
+                        break;
+                }
+                else if (ptnv->_counters[i]==0)
+                {
+                        ptnv->_values[i] = value;
+                        ptnv->_counters[i] = 1;
+                        break;
+                }
+        }
+
+        //if the value can be put in first 6 values (steady part)
+        //then it is ok. 
+        if (i < 6)
+		{
+        	return;
+		}
+        
+        //put the value into last 4 values (clear part)
+        for (i=6;i<10;i++)
+        {
+               if (value == ptnv->_values[i] && ptnv->_counters[i]>0)
+                {
+                        ptnv->_counters[i]++;
+                        j = i;
+                        while (j>6 && ptnv->_counters[j-1]<ptnv->_counters[j])
+                        {
+                                UINT64 tmp;
+                                tmp = ptnv->_values[j-1];
+                                ptnv->_values[j-1] = ptnv->_values[j];
+                                ptnv->_values[j] = tmp;
+
+                                tmp = ptnv->_counters[j-1];
+                                ptnv->_counters[j-1] = ptnv->_counters[j];
+                                ptnv->_counters[j] = tmp;
+                        }
+                        break;
+                }
+                else if (ptnv->_counters[i]==0)
+                {
+                        ptnv->_values[i] = value;
+                        ptnv->_counters[i] = 1;
+                        break;
+                }
+        }
+} 
+
 void
 Set_Instrumentation_Phase_Num(PROFILE_PHASE phase_num)
 {
@@ -482,3 +640,60 @@ Instrumentation_Phase_Num()
 }
 
 // ====================================================================
+
+
+#ifdef KEY
+void Profile_Value_Init( PU_PROFILE_HANDLE pu_handle, INT32 num_values )
+{
+  Value_Profile_Vector& Value_Table = pu_handle->Get_Value_Table();
+
+  if( Value_Table.empty() ){
+    Value_Table.resize(num_values);
+  }
+}
+
+// Update appropriate profile information for a value.
+
+void Profile_Value( PU_PROFILE_HANDLE pu_handle, INT32 inst_id, INT64 value )
+{
+  Value_Profile_Vector& Value_Table = pu_handle->Get_Value_Table();
+  Value_Profile* entry = &Value_Table[inst_id];
+
+  entry->exe_counter++;
+
+  for( int i = 0; i < entry->num_values; i++ ){
+    if( entry->value[i] == value ){
+      entry->freq[i]++;
+      for( int j = i - 1; j >= 0; j-- ){
+	if( entry->freq[j] >= entry->freq[i] )
+	  break;
+
+	const INT64 tmp_value = entry->value[j];
+	const INT64 tmp_freq  = entry->freq[j];
+
+	entry->freq[j] = entry->freq[i];
+	entry->value[j] = entry->value[i];
+	entry->freq[i] = tmp_freq;
+	entry->value[i] = tmp_value;
+
+	i = j;
+      }
+
+      return;
+    }
+  }
+
+  if( entry->num_values < TNV ){
+    entry->value[entry->num_values] = value;
+    entry->freq[entry->num_values]  = 1;
+    entry->num_values++;
+
+  } else {
+    // Clean up the lower half TNV entries.
+    if( entry->exe_counter > ( 2 * entry->freq[0] ) ){
+      entry->num_values = TNV / 2;
+    }
+  }    
+}
+#endif
+

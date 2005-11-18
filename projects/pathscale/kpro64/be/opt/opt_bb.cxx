@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -370,7 +375,7 @@ void
 BB_NODE::Clear()
 {
   _id = 0;
-  Set_rpo_id(-1);
+  Set_rpo_id((unsigned) -1);
   _loopdepth = 0;
   _rid_id = 0;
   _flags     = (BB_FLAG)0;

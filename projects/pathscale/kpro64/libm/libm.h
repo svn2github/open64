@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -57,7 +61,7 @@
 
 #include <errno.h>
 
-#ifdef mips
+#if defined(mips) && !defined(__linux__)
 #include <sgidefs.h>
 #include <svr4_math.h>
 
@@ -230,7 +234,7 @@ int	round(double);
 
 #endif /* mips */
 
-#ifdef __linux__
+#if defined(__linux__) 
 
 extern	float	fabsf(float);
 

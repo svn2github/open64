@@ -1,3 +1,7 @@
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* USMID @(#) clibinc/cray/portdefs.h	92.5	10/29/99 21:41:22 */
 
 
@@ -87,8 +91,8 @@ typedef int			int32;		/* 32-bit integer */
 typedef unsigned int		uint32;		/* 32-bit unsigned integer */
 
 #if	defined(_LP64)
-typedef	long			int64;		/* 64-bit integer */
-typedef	unsigned long		uint64;		/* 64-bit unsigned integer */
+typedef	long long		int64;		/* 64-bit integer */
+typedef	unsigned long long	uint64;		/* 64-bit unsigned integer */
 #else
 typedef	long long		int64;		/* 64-bit integer */
 typedef	unsigned long long	uint64;		/* 64-bit unsigned integer */
@@ -96,8 +100,8 @@ typedef	unsigned long long	uint64;		/* 64-bit unsigned integer */
 
 #elif	_MIPS_SZLONG == 64 			/* ---- MIPS 64-bit ---- */
 
-typedef	long			int64;		/* 64-bit integer */
-typedef	unsigned long		uint64;		/* 64-bit unsigned integer */
+typedef	long long		int64;		/* 64-bit integer */
+typedef	unsigned long long	uint64;		/* 64-bit unsigned integer */
 typedef int			int32;		/* 32-bit integer */
 typedef unsigned int		uint32;		/* 32-bit unsigned integer */
 
@@ -215,14 +219,8 @@ extern long	_unpack(char *cp, long *up, long bc, int tc);
 
 /*
  * naming conventions, used in libfi/matrix routines 
- * NB: using LITTLE_ENDIAN as synonym for linux here..
- *
  */
-#if defined(_SOLARIS) || defined(__mips) || defined(_ABSOFT) || defined(_LITTLE_ENDIAN)
-#define UNIX_NAMING_CONVENTION 
-#else
 #undef UNIX_NAMING_CONVENTION 
-#endif
 
 /*
  * complex result convention, used in libfi/matrix routines 

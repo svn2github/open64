@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -75,6 +79,8 @@
 // ====================================================================
 // ====================================================================
 
+#include <memory>
+#include <vector>
 
 template <class T, class _ALLOC = std::allocator<T> >
 class MATRIX

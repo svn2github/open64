@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -80,6 +85,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <stack>
 
 #include "defs.h"
@@ -107,9 +114,7 @@
 // #define DO_VNFRE_TRACE 1
 
 
-#ifdef __STL_USE_NAMESPACES
 using std::stack;
-#endif
 
 static inline void dummy(...)
 {
@@ -1232,7 +1237,7 @@ VALNUM_FRE::_grow_exprid_maps(VN::EXPRID id)
 {
    // Grow maps indexed by EXPRID to encompass the given id number.
    //
-   VALNUM_FRE_grow_vector(_cr_removed, bool(FALSE), (UINT32)id);
+   VALNUM_FRE_grow_vector(_cr_removed, bool(FALSE), (UINT32)id+1);
 }
 
 
@@ -1243,11 +1248,11 @@ VALNUM_FRE::_grow_valnum_maps(VN_VALNUM v)
 	   ("Unexpected map in VALNUM_FRE::_grow_valnum_maps()"));
    
    VALNUM_FRE_grow_vector(_vn_to_worklst,
-			  (EXP_WORKLST*)NULL, (UINT32)v.ordinal());
+			  (EXP_WORKLST*)NULL, (UINT32)v.ordinal()+1);
    VALNUM_FRE_grow_vector(_vn_removed,
-			  bool(FALSE), (UINT32)v.ordinal());
+			  bool(FALSE), (UINT32)v.ordinal()+1);
    VALNUM_FRE_grow_vector(_do_fre,
-			  bool(FALSE), (UINT32)v.ordinal());
+			  bool(FALSE), (UINT32)v.ordinal()+1);
 }
 
 
@@ -2327,6 +2332,17 @@ VALNUM_FRE::collect_cr_occurrences(CODEREP *cr,
    //
    Is_True(cr != NULL, ("VALNUM_FRE::collect_cr_occurrences, cr == NULL"));
    Is_True(cr != NULL, ("VALNUM_FRE::collect_cr_occurrences, cr == NULL"));
+//Bug 1573
+#ifdef KEY
+   if (stmt->Opr() == OPR_ASM_STMT && (cr->Kind() == CK_VAR || cr->Kind() == CK_IVAR)){
+     CODEREP *asm_rep = stmt->Rhs();
+     for (INT32 i=0; i<asm_rep->Kid_count(); i++){
+       CODEREP *kid = asm_rep->Opnd(i);
+       if (kid->Opr() == OPR_ASM_INPUT && kid->Opnd(0) == cr)
+         return;
+     }
+   }
+#endif
 
    // This is a coderep for which we intend to carry out the complete
    // VNFRE algorithm. We first traverse subexpressions nested at deeper

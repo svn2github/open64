@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -61,7 +65,7 @@
 #include "libm.h"
 #include "complex.h"
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	complex	__rcis(float);
 
 #pragma weak __rcis = __libm_rcis

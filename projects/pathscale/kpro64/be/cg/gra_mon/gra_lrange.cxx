@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -56,7 +60,11 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #endif
 
 #if defined(__GNUC__)
-#include <math.h>	// FLT_MAX
+#if 0 // workaround at PathScale for build problem
+#include <math.h>       // FLT_MAX
+#else
+#include <float.h>	// FLT_MAX
+#endif
 #else
 #include <limits.h>
 #endif
@@ -67,6 +75,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gtn_universe.h"
 #include "gtn_set.h"
 #include "cg_spill.h"
+#include "cg_flags.h"
 
 #include "gra_bb.h"
 #include "gra_trace.h"
@@ -487,6 +496,12 @@ LRANGE::Calculate_Priority(void)
       }
     }
     priority = value;
+#ifdef KEY
+    if ((GRA_exclude_callee_saved_regs ||
+	 GRA_eh_exclude_callee_saved_regs && PU_Has_Exc_Handler)
+	&& Tn_Is_Save_Reg())
+      priority += 100.0F;
+#endif
   }
 }
 
@@ -563,6 +578,15 @@ LRANGE::Allowed_Registers( GRA_REGION* region )
   if (Spans_A_Setjmp() && ! TN_is_save_reg(Tn()))
     allowed = REGISTER_SET_Difference(allowed,
 				      REGISTER_CLASS_callee_saves(rc));
+
+#ifdef TARG_X8664
+  // if the live range spans savexmms pseudo-op, disallow FP parm registers
+  if (Spans_Savexmms() && rc == ISA_REGISTER_CLASS_float) {
+    INT num_xmms = TN_value(OP_opnd(gra_savexmms_op, 1));
+    for (INT i = 1; i <= num_xmms; i++)
+      allowed = REGISTER_SET_Difference1(allowed, REGISTER_MIN+(8-i));
+  }
+#endif
 
   if (   Type() != LRANGE_TYPE_LOCAL && TN_is_save_reg(Tn())
   ) {

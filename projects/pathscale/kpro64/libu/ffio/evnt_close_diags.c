@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -125,7 +129,7 @@ _evnt_close_diags(struct fdinfo *fio, struct evnt_f *evnt_info, int final)
 	int     status;
 	int     k, num_oflag_bits;
 	int     unused_count;
-	int64     avg;
+	evint64     avg;
 	struct ffsw log_stat;
 	int     log_ubc = 0;
 	struct evnt_async_tracker *this_tracker;
@@ -189,7 +193,7 @@ _evnt_close_diags(struct fdinfo *fio, struct evnt_f *evnt_info, int final)
 	}
 	if (evnt_info->optflags.diag) {	/* if any level of diagnostics... */
 	    rtc_t   total_rtc;	
-	    int64   delivered;
+	    evint64   delivered;
 	    double   rate;
 
 	    if (evnt_info->optflags.k)
@@ -314,7 +318,7 @@ _evnt_close_diags(struct fdinfo *fio, struct evnt_f *evnt_info, int final)
 
 	    fprintf(_GL_evnt_logptr, 
 		    "    sector size             %lld (bytes)\n", 
-		     evnt_info->sector_mask + 1);
+		    (evint64) evnt_info->sector_mask + 1LL);
 #ifdef _CRAY
 	    fprintf(_GL_evnt_logptr, 
 		    "    cblks                   %d\n",  
@@ -351,7 +355,7 @@ _evnt_close_diags(struct fdinfo *fio, struct evnt_f *evnt_info, int final)
 			 counts.seek);
 
 	    for (i = 0; i < 4; i++) {
-		int64     count;
+		evint64     count;
 
 		switch(i) {
 			case 0:
@@ -406,7 +410,7 @@ _evnt_close_diags(struct fdinfo *fio, struct evnt_f *evnt_info, int final)
 			 counts.listio_seek);
 
 		for (i = 0; i < 4; i++) {
-		    int64     count;
+		    evint64     count;
 
 		    switch(i) {
 			case 0:
@@ -567,10 +571,10 @@ diag_done:
  * Notes:
  *    	will need to alter for sparc support
  */
-int64
-_evnt_units(struct evnt_f *evnt_info, int64 value)
+evint64
+_evnt_units(struct evnt_f *evnt_info, evint64 value)
 {
-	int64     new_value;
+	evint64     new_value;
 
 	if (value == 0)
 		return (0);
@@ -620,8 +624,8 @@ _evnt_sds_diags(struct evnt_f *evnt_info, struct evnt_count counts,
 	struct rw_stats *rwinfo;
 	char   *name[3] = {"sswrite", "ssbreak", "ssread"};
 	double   wall;
-	int64   count;
-	int64   avg;
+	evint64   count;
+	evint64   avg;
 
 	if (final)
 		fprintf(_GL_evnt_logptr, "total sds usage for file: %.256s\n", 

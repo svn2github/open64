@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -34,9 +38,9 @@
 */
 
 
-
-#include "cmplx.h"
 #include <math.h>
+#include "cmplx.h"
+#include "defalias.h"
 #include "moremath.h"
 
 extern  void    sincosf(float, float *, float *);
@@ -60,12 +64,10 @@ complex __powcc(float areal, float aimag, float breal, float bimag)
   return r;
 }
 
-void pow_cc(complex *r, complex *a, complex *b)
+void pow_cc__(complex *r, complex *a, complex *b)
 {
   *r = __powcc(a->real, a->imag, b->real, b->imag);
 }
 
-void pow_cc_(complex *r, complex *a, complex *b)
-{
-  *r = __powcc(a->real, a->imag, b->real, b->imag);
-}
+defalias(pow_cc__, pow_cc_);
+defalias(pow_cc__, pow_cc);

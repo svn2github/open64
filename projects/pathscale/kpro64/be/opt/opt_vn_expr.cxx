@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -59,6 +64,8 @@
 #pragma hdrstop
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "defs.h"
 #include "erglob.h"
 #include "opcode.h"

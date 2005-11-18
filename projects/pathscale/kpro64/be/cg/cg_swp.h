@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,8 +56,8 @@
 
 #include <stdio.h>
 #include "defs.h"
-#include <vector.h>
-#include <map.h>
+#include <vector>
+#include <map>
 #include "mempool.h"
 #include "tn.h"
 #include "tn_set.h"
@@ -161,8 +165,8 @@ class SWP_OP_vector; // Defined below.
 
 
 struct SWP_REG_ASSIGNMENT {
-  typedef map<CLASS_REG_PAIR, TN*> REG2TN_MAP;
-  typedef map<TN*, CLASS_REG_PAIR> TN2REG_MAP;
+  typedef std::map<CLASS_REG_PAIR, TN*> REG2TN_MAP;
+  typedef std::map<TN*, CLASS_REG_PAIR> TN2REG_MAP;
 
  // 1st rotating registers (
   INT rotating_reg_base[ISA_REGISTER_CLASS_MAX+1];

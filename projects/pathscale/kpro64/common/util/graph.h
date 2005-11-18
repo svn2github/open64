@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -137,10 +141,10 @@
 #define __GRAPH_H
 
 #include <hash_set.h>
-#include <vector.h>
-#include <stack.h>
+#include <vector>
+#include <stack>
 #include <bvector.h>
-#include <set.h>
+#include <set>
 
 template <class NODE, class EDGE> struct digraph_node;
 template <class NODE, class EDGE> struct digraph_edge;

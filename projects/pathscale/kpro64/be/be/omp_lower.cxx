@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,6 +54,8 @@
  * OMP_Prelower() : Transform Open MP pragmas to same form as MP ones
  * ==================================================================== */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <sys/types.h>
 #include <elf.h>		    /* for wn.h */
 

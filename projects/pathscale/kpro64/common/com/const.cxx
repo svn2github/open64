@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -59,7 +63,7 @@
 #include "symtab.h"
 #include "wn.h"
 #include "config_targ.h"
-#include <hash_map>
+#include <ext/hash_map>
 #include <math.h>
 
 namespace {
@@ -118,7 +122,7 @@ namespace {
 } // unnamed namespace
 		
 
-typedef std::hash_map<TCON_IDX, ST *, tcon_hash, eq_tcon> TCON_MERGE;
+typedef __gnu_cxx::hash_map<TCON_IDX, ST *, tcon_hash, eq_tcon> TCON_MERGE;
 
 ST *
 New_Const_Sym (TCON_IDX tcon, TY_IDX ty)
@@ -214,6 +218,14 @@ Make_Const ( TCON c )
     case MTYPE_CQ:
       opc = OPC_CQCONST;
       break;
+#ifdef TARG_X8664
+    case MTYPE_V16F4:
+      opc = OPC_V16F4CONST;
+      break;
+    case MTYPE_V16F8:
+      opc = OPC_V16F8CONST;
+      break;
+#endif
     default:
       Is_True ( FALSE, ( "Make_Const can not handle %s",
 			 Mtype_Name(TCON_ty(c)) ) );

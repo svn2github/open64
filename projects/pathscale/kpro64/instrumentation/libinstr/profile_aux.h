@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -54,9 +59,9 @@
 #ifndef profile_aux_INCLUDED
 #define profile_aux_INCLUDED
 
-#include <vector.h>
-#include <hash_map.h>
-
+#include <vector>
+#include <ext/hash_map>
+#include <fb_tnv.h>
 
 // ====================================================================
 
@@ -82,6 +87,22 @@ struct Branch_Profile {
    INT64 not_taken;
    Branch_Profile() : taken(0), not_taken(0) {}
 };
+
+#ifdef KEY
+#define TNV 10
+// All the information about a rem/div node is stored in the
+// Value_Profile structure. Currently for each value of a
+// divisor we maintain information on how many times this value
+// is accessed through the lifetime of the program.
+
+struct Value_Profile {
+  INT64 num_values;
+  INT64 exe_counter;
+  INT64 value[TNV];
+  INT64 freq[TNV];
+  Value_Profile() : num_values(0), exe_counter(0) {}
+};
+#endif
 
 
 // All the information about an Compgoto node is maintained
@@ -123,6 +144,10 @@ struct Call_Profile {
    INT64 exit_count;
 
    Call_Profile() : entry_count(0), exit_count(0) {}
+};
+
+struct Icall_Profile {
+	FB_TNV fb_tnv;
 };
 
 // All the information about a DO LOOP or WHILE LOOP is stored
@@ -188,6 +213,10 @@ typedef vector<Compgoto_Profile>	Compgoto_Profile_Vector;
 typedef vector<Loop_Profile>		Loop_Profile_Vector;
 typedef vector<Short_Circuit_Profile>	Short_Circuit_Profile_Vector;
 typedef vector<Call_Profile>		Call_Profile_Vector;
+typedef vector<Icall_Profile>		Icall_Profile_Vector;
+#ifdef KEY
+typedef vector<Value_Profile>		Value_Profile_Vector;
+#endif
 
 struct PU_Profile_Handle {
     Invoke_Profile_Vector	Invoke_Profile_Table;
@@ -197,14 +226,20 @@ struct PU_Profile_Handle {
     Loop_Profile_Vector		Loop_Profile_Table;
     Short_Circuit_Profile_Vector Short_Circuit_Profile_Table;
     Call_Profile_Vector		Call_Profile_Table;
+    Icall_Profile_Vector	Icall_Profile_Table;
+#ifdef KEY
+    Value_Profile_Vector	Value_Profile_Table;
+#endif
 
     INT32 checksum;
     char *file_name;
     char *pu_name;
+    INT32 pu_size;
+    UINT64 runtime_fun_address;
 
     PU_Profile_Handle() : checksum(0) {}
     
-    PU_Profile_Handle(char *fname, char *pname, INT32 c_sum) {
+    PU_Profile_Handle(char *fname, char *pname, long current_pc, INT32 pusize, INT32 c_sum) {
 	checksum = c_sum;
 	file_name = new char[strlen(fname) + 1];
 	pu_name = new char[strlen(pname) + strlen("/") + strlen(fname) + 1];
@@ -212,6 +247,8 @@ struct PU_Profile_Handle {
 	strcpy(pu_name, fname);
 	strcat(pu_name,"/");
 	strcat(pu_name,pname);
+	pu_size = pusize;
+	runtime_fun_address = current_pc;
     }
 
     ~PU_Profile_Handle() {
@@ -247,6 +284,16 @@ struct PU_Profile_Handle {
 	return Call_Profile_Table;
     }
 
+    Icall_Profile_Vector& Get_Icall_Table () {
+	return Icall_Profile_Table;
+    }
+
+#ifdef KEY
+    Value_Profile_Vector& Get_Value_Table () {
+      return Value_Profile_Table;
+    }
+#endif
+
     void Set_file_name(char *s);
     void Set_pu_name(char *s);
 };
@@ -256,7 +303,7 @@ typedef PU_Profile_Handle * PU_PROFILE_HANDLE;
 // Define a hash table that can be accessed with a PC address of
 // a PU to get a pointer to the handle of the PU back
 
-typedef hash_map<long, PU_PROFILE_HANDLE, hash<long> > HASH_MAP;
+typedef __gnu_cxx::hash_map<long, PU_PROFILE_HANDLE, __gnu_cxx::hash<long> > HASH_MAP;
 
 extern HASH_MAP PU_Profile_Handle_Table;
 

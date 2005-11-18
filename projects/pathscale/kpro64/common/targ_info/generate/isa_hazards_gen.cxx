@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -54,7 +58,7 @@
 #include <stdio.h>
 #include <strings.h>
 #include <assert.h>
-#include <list.h>
+#include <list>
 #include "topcode.h"
 #include "gen_util.h"
 #include "targ_isa_subset.h"
@@ -79,9 +83,9 @@ struct op_haz {
   int index;
 };
 
-static list<ISA_HAZARD> hazards;    // All the hazards
+static std::list<ISA_HAZARD> hazards;    // All the hazards
 static op_haz *op_hazards[TOP_count+1];
-static list<op_haz *> op_hazards_list;
+static std::list<op_haz *> op_hazards_list;
 static haz_desc *current_haz_desc;
 static int haz_index;
 
@@ -255,8 +259,8 @@ void ISA_Hazards_End(void)
 {
   int top;
   bool first;
-  list<ISA_HAZARD>::iterator isi;
-  list<op_haz *>::iterator ophaz_iter;
+  std::list<ISA_HAZARD>::iterator isi;
+  std::list<op_haz *>::iterator ophaz_iter;
   const char * const isa_hazard_info_format = 
 	"  { ISA_HAZARD_%-9s, %d, %d, %2d, 0x%02x, %d }, /* %2d */\n";
 

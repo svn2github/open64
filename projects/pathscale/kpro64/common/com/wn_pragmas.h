@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -139,6 +143,7 @@ typedef enum {
   WN_PRAGMA_INTERCHANGE,	/* interchange the surrounding loops
 				 * based on the loop indices specified.
 				 */
+
   WN_PRAGMA_NO_INTERCHANGE,	/* do not interchange loops		*/
   WN_PRAGMA_BLOCKING_SIZE,	/* specify sizes for blocking		*/
   WN_PRAGMA_NO_BLOCKING,	/* do not block loop			*/
@@ -360,6 +365,9 @@ typedef enum {
   WN_PRAGMA_ASM_CONSTRAINT,	/* constraint string for an ASM operand */
   WN_PRAGMA_ASM_CLOBBER,        /* clobber string for an ASM statement */
 
+#ifdef KEY
+  WN_PRAGMA_FORALL,
+#endif
   MAX_WN_PRAGMA			/* last one in enum			*/
 } WN_PRAGMA_ID;
 

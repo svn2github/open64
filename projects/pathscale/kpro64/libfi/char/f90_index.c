@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -259,8 +263,44 @@ _index90(char *str1,
 	_f_int4 len2,
 	_f_int4 back)
 {
-	_f_int4 back1 = back;
-	return (_F90_INDEX(str1, str2, &back1, len1, len2));
+#ifndef KEY
+  _f_int4 back1 = back;
+  return (_F90_INDEX(str1, str2, &back1, len1, len2));
+#else
+  const int len = len1 - len2;
+  int j = 0;
+
+  if( len < 0 || len2 <= 0 ){
+    return 0;
+  }
+
+  if(back == 0) {
+    for( j = 0; j <= len; j++ ){
+      int i, p = j;
+      for( i = 0; i < len2; i++,p++ ){
+        if( str1[p] != str2[i] )
+	  break;
+      }
+
+      if( i == len2 )
+        return j+1;
+    }
+  } else {
+    int l2 = len2-1;
+    for( j = len1-1; j >= l2; j-- ){
+      int i, p = j;
+      for( i = len2-1; i >= 0; i--,p-- ){
+        if( str1[p] != str2[i] )
+	  break;
+      }
+
+      if( i == -1 )
+        return p+2;
+    }
+  }
+
+  return 0;
+#endif
 }
 
 #endif	/* __mips or _LITTLE_ENDIAN */

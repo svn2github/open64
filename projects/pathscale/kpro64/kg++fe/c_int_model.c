@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -47,9 +53,14 @@ c_int_model.c -- c data type models
 
 */
 
+#include "ansidecl.h"	// For definition of PARAMS
 #include "defs.h"
 #include "c_int_model.h"
 #include "config_targ.h"
+#ifdef TARG_MIPS 
+#include "gnu/config/MIPS/mips.h"
+#include "config.h"	/* for Target_Byte_Sex */
+#endif
 
 TARGET_INT_MODEL Target_Int_Model = TARGET_INT_ILP32;
 
@@ -125,6 +136,13 @@ struct {
 #endif /* if defined(CFE) || defined(FFE) */
 
 void Initialize_C_Int_Model( void ) {
+#ifdef TARG_MIPS 
+  if (TARGET_64BIT_ABI)
+    Target_Int_Model = TARGET_INT_LP64;  
+  if (TARGET_BIG_ENDIAN)
+    Target_Byte_Sex = BIG_ENDIAN;
+  else Target_Byte_Sex = LITTLE_ENDIAN;
+#endif
 }
    
 #if defined(CFE) || defined(FFE)

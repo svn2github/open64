@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -498,6 +502,14 @@ ST_Verify_Fields(const ST &s)
     }
 
     // Property 3.
+#ifdef TARG_MIPS
+    // (Kannan) 
+    // test = gcc.c-torture/compile/20000511-1.c
+    // If argument list is longer that spans register and memory
+    // then, this property may not be true.
+    // So, need to exclude the test for SCLASS_FORMAL.
+    if (ST_storage_class(s) != SCLASS_FORMAL)
+#endif
     if (!(ofst + ST_size (&s) <= ST_size (sb)) && (ST_class(sb) != CLASS_BLOCK || !STB_is_basereg(sb)))
       DevWarn("ofst +  size of a ST (%s) should be less than size of its base (%s)", ST_name(s), ST_name(sb));
 
@@ -576,8 +588,13 @@ void INITV::Verify(UINT) const
               (msg, "repeat1: should be 0"));
     break;
   case INITVKIND_BLOCK:
+#ifndef KEY // need blk == 0 for init of size 0 structs, as in bug 961
     Is_True ( Blk () != 0, (msg, "blk:  should not be 0"));
-    // fall through
+#endif // KEY
+#ifdef KEY
+    Is_True ( repeat1 != 0, (msg, "repeat1: should not be 0"));
+    break;	// we are using 'unused' as flags
+#endif // KEY
   case INITVKIND_LABEL:
   case INITVKIND_PAD:
     Is_True (u.lab.unused == 0,
@@ -862,8 +879,10 @@ void TY::Verify(UINT) const
 	if (Fld_index > 0)
 	    FLD_Verify_all (FLD_HANDLE (Fld_index), size);
 
+#ifndef KEY	// u2.copy_constructor
 	Is_True (u2.etype == 0, (msg, "non-zero TY::etyp for KIND_STRUCT"));
-	
+#endif
+
 	break;
 
     case KIND_FUNCTION:
@@ -972,6 +991,11 @@ void PU::Verify(UINT) const
 	   TY_IDX_index (prototype) < TY_Table_Size (),
 	   ("Invalid TY_IDX in PU::prototype"));
 
+#ifdef KEY
+// We are using 'unused' to store ST_IDXs of 2 special variables for
+// C++ exception handling.
+  if (!(src_lang & PU_CXX_LANG))
+#endif // !KEY
   Is_True (unused == 0, ("unused fields must be zero"));
 
   // Verify flags

@@ -1,10 +1,38 @@
+/* 
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it would be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * Further, this software is distributed without any warranty that it is
+ * free of the rightful claim of any third person regarding infringement 
+ * or the like.  Any license provided herein, whether implied or 
+ * otherwise, applies only to this software file.  Patent licenses, if 
+ * any, provided herein do not apply to combinations of this program with 
+ * other software, or any other product whatsoever.  
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write the Free Software Foundation, Inc., 59
+ * Temple Place - Suite 330, Boston MA 02111-1307, USA.
+ *
+ * File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++ 
+ * front-ends to GNU 3.3.1 release.
+ */
+
 #include "defs.h"
 #include "glob.h"
 #include "config.h"
 #include "wn.h"
 #include "wn_util.h"
 
+extern "C" {
 #include "gnu_config.h"
+}
 #include "gnu/system.h"
 
 #include "srcpos.h"
@@ -26,6 +54,14 @@ extern "C" {
 #include "wfe_decl.h"
 #include "tree_symtab.h"
 #include "targ_sim.h"
+#include <ctype.h>
+#include "tree_cmp.h"
+
+#ifdef KEY
+#include "wn.h"		// New_Region_Id()
+int make_symbols_weak = FALSE;	// if TRUE, emit all new symbols as weak
+bool in_cleanup = FALSE;	// TRUE if we are expanding code to be executed during stack unwinding
+#endif // KEY
 
 extern "C" void error (const char *, ...);
 
@@ -84,6 +120,10 @@ static INT32        undefined_labels_max;
 typedef struct scope_cleanup_info_t {
   tree		    stmt;
   LABEL_IDX	    label_idx;
+#ifdef KEY
+  LABEL_IDX	    cmp_idx;
+  bool		    cleanup_eh_only;
+#endif // KEY
 } SCOPE_CLEANUP_INFO;
 
 static SCOPE_CLEANUP_INFO *scope_cleanup_stack;
@@ -97,16 +137,43 @@ static INT32	    scope_max;
 typedef struct temp_cleanup_info_t {
   tree		    expr;
   LABEL_IDX	    label_idx;
+#ifdef KEY
+  bool		    cleanup_eh_only;
+#endif
 } TEMP_CLEANUP_INFO;
 
 static TEMP_CLEANUP_INFO *temp_cleanup_stack;
 static INT32	    	  temp_cleanup_i;
 static INT32	    	  temp_cleanup_max;
 
+#ifdef KEY
+#include <vector>
+#include <algorithm>
+#include <functional>
+#include <list>
+#include <stack>
+typedef struct handler_info_t {
+  tree		    handler;
+  vector<tree>	    *cleanups;
+  vector<SCOPE_CLEANUP_INFO> *scope;
+  vector<TEMP_CLEANUP_INFO> *temp_cleanup;
+  vector<BREAK_CONTINUE_INFO> *break_continue;
+  vector<ST_IDX>    *handler_list; // list of handlers outside this try-catch block
+  vector<ST_IDX>    *eh_spec; // eh_spec of the containing region to be used while inside its handler
+  LABEL_IDX	    label_idx;
+  LABEL_IDX	    cmp_idx; // label where the first cmp for this handler set should start
+  LABEL_IDX 	    goto_idx; // label where the current handler should jmp to
+  LABEL_IDX 	    cleanups_idx;
+  bool		    outermost; // handler for outermost try block in PU?
+} HANDLER_INFO;
+
+std::stack<HANDLER_INFO> handler_stack; // formed from handler_info_stack in Do_Handlers
+#else
 typedef struct handler_info_t {
   tree		    handler;
   LABEL_IDX	    label_idx;
 } HANDLER_INFO;
+#endif // KEY
 
 static HANDLER_INFO *handler_info_stack;
 static INT32	     handler_info_i;
@@ -122,6 +189,60 @@ static EH_CLEANUP_INFO *eh_cleanup_stack;
 static INT32		eh_cleanup_i;
 static INT32		eh_cleanup_max;
 
+#ifdef KEY
+
+bool processing_handler = false;
+bool try_block_seen;
+typedef struct eh_cleanup_entry {
+  tree		     tryhandler;	// just for comparison, at present
+  vector<tree>	     *cleanups;	// emit
+  LABEL_IDX	     pad;	// emit
+  LABEL_IDX	     start;	// emit after pad and before cleanups
+  LABEL_IDX	     goto_idx;  // emit a goto
+} EH_CLEANUP_ENTRY;
+
+static std::list<EH_CLEANUP_ENTRY> cleanup_list_for_eh;
+
+class TYPE_FILTER_ENTRY {
+  public:
+  ST_IDX		st;	// typeinfo
+  int			filter;	// action record filter
+  friend bool operator== (const TYPE_FILTER_ENTRY&, const TYPE_FILTER_ENTRY&);
+};
+
+inline bool operator==(const TYPE_FILTER_ENTRY& x, const TYPE_FILTER_ENTRY& y)
+{
+	return x.st == y.st;
+}
+
+static vector<TYPE_FILTER_ENTRY>	type_filter_vector;
+struct cmp_types : 
+	public std::binary_function<const TYPE_FILTER_ENTRY, 
+				const TYPE_FILTER_ENTRY, bool>
+	{
+	bool operator () (const TYPE_FILTER_ENTRY &e1, 
+			const TYPE_FILTER_ENTRY &e2)
+	{
+		return (e1.st < e2.st);
+	}
+};
+static vector<ST_IDX>		eh_spec_vector;
+// eh_spec_vector is stored into eh_spec_func_end for function-end processing
+static vector<ST_IDX>		eh_spec_func_end;
+static int current_eh_spec_ofst=1;
+static void Do_Cleanups_For_EH (void);
+static INITV_IDX lookup_handlers (vector<tree> * =0);
+static void Generate_unwind_resume (void);
+
+static void WFE_fixup_target_expr (tree retval);
+
+// If non-zero, don't use label indexes less than or equal to this.
+LABEL_IDX WFE_unusable_label_idx;
+
+// The last label index allocated.
+LABEL_IDX WFE_last_label_idx;
+#endif // KEY
+
 static INT32	    scope_number;
 
 static TY_IDX
@@ -130,10 +251,13 @@ Type_For_Function_Returning_Void (void)
   static TY_IDX result = 0;
   if (result == 0) {
     TY &ty = New_TY (result);
-    TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, NULL);
+    TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, 0);
     TYLIST_IDX tylist_idx;
     Set_TYLIST_type (New_TYLIST (tylist_idx), Void_Type);
     Set_TY_tylist (ty, tylist_idx);
+#ifdef KEY
+    Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
+#endif
   }
   
   return result;
@@ -150,9 +274,54 @@ Function_ST_For_String (const char * s)
            CLASS_FUNC, SCLASS_EXTERN, EXPORT_PREEMPTIBLE, TY_IDX(pu_idx));
   return st;
 }
+
+#ifdef KEY
+static void
+Emit_Cleanup(tree cleanup)
+{
+  int saved_make_symbols_weak;
+
+  saved_make_symbols_weak = make_symbols_weak;
+  make_symbols_weak = TRUE;
+  if (TREE_CODE(cleanup) == IF_STMT) {
+    // Mimick WFE_Expand_If but don't call it, because WFE_Expand_If calls
+    // WFE_Expand_Stmt which creates temp cleanups.  This leads to infinite
+    // loop.
+    FmtAssert(THEN_CLAUSE(cleanup) != NULL_TREE,
+	      ("Do_Temp_Cleanups: then clause should be non-null"));
+    FmtAssert(ELSE_CLAUSE(cleanup) == NULL_TREE,
+	      ("Do_Temp_Cleanups: else clause should be null"));
+    WN *test = WFE_Expand_Expr_With_Sequence_Point (IF_COND(cleanup),
+						    Boolean_type);
+    WN *then_block = WN_CreateBlock();
+    WN *else_block = WN_CreateBlock();
+    WN *if_stmt = WN_CreateIf (test, then_block, else_block);
+    WFE_Stmt_Append (if_stmt, Get_Srcpos());
+    WFE_Stmt_Push (then_block, wfe_stmk_if_then, Get_Srcpos());
+    tree then_clause = THEN_CLAUSE(cleanup);
+    if (TREE_CODE(then_clause) == EXPR_WITH_FILE_LOCATION)
+      then_clause = EXPR_WFL_NODE(then_clause);
+    else if (TREE_CODE(then_clause) == CLEANUP_STMT)
+      then_clause = CLEANUP_EXPR(then_clause);
+    WFE_One_Stmt_Cleanup(then_clause);
+    WFE_Stmt_Pop(wfe_stmk_if_then);
+  } else {
+    if (TREE_CODE(cleanup) == EXPR_WITH_FILE_LOCATION)
+      cleanup = EXPR_WFL_NODE(cleanup);
+    else if (TREE_CODE(cleanup) == CLEANUP_STMT)
+      cleanup = CLEANUP_EXPR(cleanup);
+    WFE_One_Stmt_Cleanup (cleanup);
+  }
+  make_symbols_weak = saved_make_symbols_weak;
+}
+#endif
     
 static void
+#ifdef KEY
+Push_Scope_Cleanup (tree t, bool eh_only=false)
+#else
 Push_Scope_Cleanup (tree t)
+#endif
 {
   // Don't push a cleanup without a scope
   if (scope_cleanup_i == -1 && TREE_CODE(t) == CLEANUP_STMT)
@@ -171,8 +340,46 @@ Push_Scope_Cleanup (tree t)
 	       scope_cleanup_stack [scope_cleanup_i].label_idx);
   else
     scope_cleanup_stack [scope_cleanup_i].label_idx = 0;
+#ifdef KEY
+  if (TREE_CODE(t) == TRY_BLOCK)
+    New_LABEL (CURRENT_SYMTAB, 
+	       scope_cleanup_stack [scope_cleanup_i].cmp_idx);
+  else
+    scope_cleanup_stack [scope_cleanup_i].cmp_idx = 0;
+  scope_cleanup_stack [scope_cleanup_i].cleanup_eh_only = eh_only;
+#endif // KEY
 }
 
+#ifdef KEY
+static void
+Push_Handler_Info (tree handler, vector<tree> *v, 
+	vector<SCOPE_CLEANUP_INFO> *scope, vector<TEMP_CLEANUP_INFO> *temp, 
+	vector<BREAK_CONTINUE_INFO> *break_continue,
+	vector<ST_IDX> *handler_list, vector<ST_IDX> *eh_spec,
+	LABEL_IDX label_idx, bool outermost, LABEL_IDX cmp_idx, 
+	LABEL_IDX goto_idx)
+{
+   if (++handler_info_i == handler_info_max) {
+    handler_info_max = ENLARGE (handler_info_max);
+    handler_info_stack =
+      (HANDLER_INFO *) realloc (handler_info_stack,
+                        handler_info_max * sizeof (HANDLER_INFO));
+  }
+
+  handler_info_stack [handler_info_i].handler   = handler;
+  handler_info_stack [handler_info_i].cleanups = v;
+  handler_info_stack [handler_info_i].scope = scope;
+  handler_info_stack [handler_info_i].temp_cleanup = temp;
+  handler_info_stack [handler_info_i].break_continue = break_continue;
+  handler_info_stack [handler_info_i].handler_list = handler_list;
+  handler_info_stack [handler_info_i].eh_spec = eh_spec;
+  handler_info_stack [handler_info_i].label_idx = label_idx;
+  handler_info_stack [handler_info_i].cmp_idx = cmp_idx;
+  New_LABEL (CURRENT_SYMTAB, handler_info_stack [handler_info_i].cleanups_idx);
+  handler_info_stack [handler_info_i].goto_idx = goto_idx;
+  handler_info_stack [handler_info_i].outermost = outermost;
+}
+#else
 static void
 Push_Handler_Info (tree handler, LABEL_IDX label_idx)
 {
@@ -186,6 +393,7 @@ Push_Handler_Info (tree handler, LABEL_IDX label_idx)
   handler_info_stack [handler_info_i].handler   = handler;
   handler_info_stack [handler_info_i].label_idx = label_idx;
 }
+#endif // KEY
 
 static void
 Push_EH_Cleanup (tree cleanup, LABEL_IDX label_idx, LABEL_IDX goto_idx)
@@ -202,38 +410,80 @@ Push_EH_Cleanup (tree cleanup, LABEL_IDX label_idx, LABEL_IDX goto_idx)
   eh_cleanup_stack[eh_cleanup_i].goto_idx  = goto_idx;
 }
 
-static void WFE_Expand_Handlers_Or_Cleanup (tree, LABEL_IDX);
+static void WFE_Expand_Handlers_Or_Cleanup (const HANDLER_INFO&);
 
+// Called from WFE_Finish_Function () and Do_EH_Cleanups ().
 void
 Do_Handlers (void)
 {
+#ifdef KEY
+  int saved_make_symbols_weak = make_symbols_weak;
+  make_symbols_weak = TRUE;
+
+  if (key_exceptions) processing_handler = true;
+#endif
   while (handler_info_i != -1) {
+#ifndef KEY
     LABEL_IDX start_handlers;
     New_LABEL (CURRENT_SYMTAB, start_handlers);
     Set_LABEL_addr_saved (start_handlers);
     WFE_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, start_handlers, 0, NULL),
 		     Get_Srcpos());
+#else
+    LABEL_IDX start_handlers = handler_info_stack[handler_info_i].cmp_idx;
+    // TODO: Check if we need to mark this label as LABEL_addr_saved
+    WN * cmp_wn = WN_CreateLabel ((ST_IDX) 0, start_handlers, 0, NULL);
+    // Set handler_begin if there is no other entry point for this try-block
+    if (LABEL_kind (Label_Table[start_handlers]) == LKIND_BEGIN_HANDLER)
+    	WN_Set_Label_Is_Handler_Begin (cmp_wn);
+    WFE_Stmt_Append (cmp_wn, Get_Srcpos());
+#endif // !KEY
 
-    tree handler = handler_info_stack[handler_info_i].handler;
+#ifdef KEY
+    handler_stack.push (handler_info_stack[handler_info_i]);
+#endif
     --handler_info_i;
-    WFE_Expand_Handlers_Or_Cleanup
-      (handler_info_stack [handler_info_i+1].handler,
-       handler_info_stack[handler_info_i+1].label_idx);
+    WFE_Expand_Handlers_Or_Cleanup (handler_info_stack[handler_info_i+1]);
+#ifdef KEY
+    handler_stack.pop();
+#endif
   }
+#ifdef KEY
+  processing_handler = false;
+  Do_Cleanups_For_EH();
+  if (key_exceptions) 
+    FmtAssert (cleanup_list_for_eh.empty(), ("EH Cleanup list not completely processed"));
+
+  make_symbols_weak = saved_make_symbols_weak;
+#endif
 }
 
 static void Call_Rethrow (void);
+#ifndef KEY
 static void Call_Terminate (void);
+#endif // !KEY
 
 void
 Do_EH_Cleanups (void)
 {
+#if 0
+// The following code is commented out, and will be removed if it does not
+// cause any regression. If it can be removed, it will enable removal of
+// some more code.
+//
+// The following code handles eh cleanups, but they are currently handled
+// differently.
   for (int i = 0; i <= eh_cleanup_i; ++i) {
     WFE_Stmt_Append (
      WN_CreateLabel ((ST_IDX) 0, eh_cleanup_stack [i].label_idx,
 		     0, NULL),
      Get_Srcpos());
+    tree cleanup = eh_cleanup_stack [i].cleanup;
+#ifdef KEY
+    Emit_Cleanup (cleanup);
+#else
     WFE_One_Stmt (CLEANUP_EXPR(eh_cleanup_stack [i].cleanup));
+#endif
     LABEL_IDX goto_idx = eh_cleanup_stack [i].goto_idx;
     if (goto_idx)
       WFE_Stmt_Append (
@@ -241,9 +491,197 @@ Do_EH_Cleanups (void)
     else
       Call_Rethrow();
   }
-  Call_Terminate();
+#ifdef KEY
+  Do_Cleanups_For_EH();
+  // the above code expansions may have introduced new handlers
+  if (handler_info_i >= 0)
+  	Do_Handlers();
+  if (eh_cleanup_i >= 0)
+#endif // KEY
+  	Call_Terminate();
+#endif
   eh_cleanup_i = -1;
 }
+
+#ifdef KEY
+ST *
+Get_eh_spec_ST (void)
+{
+        FmtAssert (!eh_spec_func_end.empty(),("Empty Type Filter Table"));
+
+        ARB_HANDLE arb = New_ARB();
+	int eh_spec_size = eh_spec_func_end.size();
+        ARB_Init (arb, 0, eh_spec_size-1, sizeof(ST_IDX));
+        Set_ARB_flags (arb, ARB_flags(arb) | ARB_FIRST_DIMEN | ARB_LAST_DIMEN);
+        STR_IDX str = Save_Str ("__EH_SPEC_TABLE__");
+        TY_IDX ty;
+        TY_Init (New_TY(ty), eh_spec_size*sizeof(ST_IDX), KIND_ARRAY, MTYPE_UNKNOWN, str);
+        Set_TY_arb (ty, arb);
+        Set_TY_etype (ty, MTYPE_TO_TY_array[MTYPE_U4]);
+        ST * etable = New_ST (CURRENT_SYMTAB);
+        ST_Init (etable, str, CLASS_VAR, SCLASS_EH_REGION_SUPP, EXPORT_LOCAL, ty);
+        Set_ST_is_initialized (*etable);
+	Set_ST_one_per_pu (etable);
+        return etable;
+}
+
+ST *
+Get_typeinfo_ST (void)
+{
+        FmtAssert (!type_filter_vector.empty(),("Empty Type Filter Table"));
+
+        ARB_HANDLE arb = New_ARB();
+        ARB_Init (arb, 0, type_filter_vector.size()-1, sizeof(TYPE_FILTER_ENTRY));
+        Set_ARB_flags (arb, ARB_flags(arb) | ARB_FIRST_DIMEN | ARB_LAST_DIMEN);
+        STR_IDX str = Save_Str ("__TYPEINFO_TABLE__");
+        FLD_HANDLE fld1 = New_FLD ();
+        FLD_Init (fld1, Save_Str ("st"),
+                                MTYPE_TO_TY_array[MTYPE_U4], 0);
+        FLD_HANDLE fld2 = New_FLD ();
+        FLD_Init (fld2, Save_Str ("filter"),
+                                MTYPE_TO_TY_array[MTYPE_U4], 4);
+        Set_FLD_flags (fld2, FLD_LAST_FIELD);
+
+        TY_IDX struct_ty;
+        TY_Init (New_TY(struct_ty), sizeof(TYPE_FILTER_ENTRY), KIND_STRUCT,
+                                MTYPE_M, Save_Str ("__TYPEINFO_ENTRY__"));
+        Set_TY_fld (struct_ty, fld1);
+        TY_IDX ty;
+        TY_Init (New_TY(ty), type_filter_vector.size()*sizeof(TYPE_FILTER_ENTRY), KIND_ARRAY, MTYPE_M, str);
+        Set_TY_arb (ty, arb);
+        Set_TY_etype (ty, struct_ty);
+        ST * etable = New_ST (CURRENT_SYMTAB);
+        ST_Init (etable, str, CLASS_VAR, SCLASS_EH_REGION_SUPP, EXPORT_LOCAL, ty);
+        Set_ST_is_initialized (*etable);
+	Set_ST_one_per_pu (etable);
+        return etable;
+}
+
+void
+Do_EH_Tables (void)
+{
+        INITV_IDX blk, start;
+        INITO_IDX id;
+
+        for (int i=0; i<type_filter_vector.size(); ++i)
+        {
+                INITV_IDX st = New_INITV();
+// Do not use INITV_Init_Integer(), since INITV_Init_Integer()
+// silently calls INITV_Set_ONE() if the value is 1. Then you
+// try to retrieve later using INITV_tc_val(), and you get an
+// assertion failure!
+		if (type_filter_vector[i].st)
+                    INITV_Set_VAL (Initv_Table[st],
+                        Enter_tcon (Host_To_Targ (MTYPE_U4,
+                                type_filter_vector[i].st)), 1);
+		else
+		    INITV_Set_ZERO (Initv_Table[st], MTYPE_U4, 1);
+
+                INITV_IDX filter = New_INITV();
+                INITV_Set_VAL (Initv_Table[filter],
+                        Enter_tcon (Host_To_Targ (MTYPE_U4,
+                                type_filter_vector[i].filter)), 1);
+                Set_INITV_next (st, filter);
+
+                if (i == 0)
+                {
+                        blk = start = New_INITV();
+                        INITV_Init_Block (blk, st);
+                }
+                else
+                {
+                        INITV_IDX next_blk = New_INITV();
+                        INITV_Init_Block (next_blk, st);
+                        Set_INITV_next (blk, next_blk);
+                        blk = next_blk;
+                }
+                if (i == (type_filter_vector.size()-1))
+                {
+                        ST * typeinfo = Get_typeinfo_ST ();
+                        id = New_INITO (ST_st_idx(typeinfo), start);
+			// Store the inito_idx in the PU
+			// 1. exc_ptr 2. filter : Set 3rd entry with inito_idx
+			INITV_IDX index = INITV_next (INITV_next (INITO_val (
+			               (INITO_IDX) Get_Current_PU().unused)));
+			// INITV_Set_VAL resets the next field, so back it up
+			// and set it again.
+			INITV_IDX bkup = INITV_next (index);
+			INITV_Set_VAL (Initv_Table[index], 
+				Enter_tcon (Host_To_Targ (MTYPE_U4, id)), 1);
+			Set_INITV_next (index, bkup);
+                }
+        }
+        type_filter_vector.clear();
+
+	INITV_IDX prev_st = 0;
+        for (int i=0; i<eh_spec_func_end.size(); ++i)
+        {
+                INITV_IDX st = New_INITV();
+		FmtAssert (eh_spec_func_end[i] >= 0, ("Invalid eh-spec entry in front-end"));
+		if (eh_spec_func_end[i])
+                    INITV_Set_VAL (Initv_Table[st], Enter_tcon (
+		    	Host_To_Targ (MTYPE_U4, eh_spec_func_end[i])), 1);
+		else
+		    INITV_Set_ZERO (Initv_Table[st], MTYPE_U4, 1);
+
+                if (prev_st == 0)
+                {
+                        start = New_INITV();
+                        INITV_Init_Block (start, st);
+                }
+                else
+                        Set_INITV_next (prev_st, st);
+		prev_st = st;
+        }
+	if (!eh_spec_func_end.empty())
+	{
+		ST * eh_spec = Get_eh_spec_ST ();
+		id = New_INITO (ST_st_idx(eh_spec), start);
+		INITV_IDX index = INITV_next (INITV_next (INITV_next (
+			INITO_val ((INITO_IDX) Get_Current_PU().unused))));
+		// INITV_Set_VAL resets the next field, so back it up
+		// and set it again.
+		INITV_IDX bkup = INITV_next (index);
+		INITV_Set_VAL (Initv_Table[index], 
+			Enter_tcon (Host_To_Targ (MTYPE_U4, id)), 1);
+		Set_INITV_next (index, bkup);
+	}
+	eh_spec_func_end.clear();
+	current_eh_spec_ofst = 1;
+}
+
+// This should ultimately replace Do_EH_Cleanups(), at present the latter
+// seems redundant.
+//
+// Emit all cleanups, and emit a goto after each set of cleanups to the handler.
+static void
+Do_Cleanups_For_EH (void)
+{
+  for (std::list<EH_CLEANUP_ENTRY>::iterator i = cleanup_list_for_eh.begin();
+		i != cleanup_list_for_eh.end(); ++i) {
+    EH_CLEANUP_ENTRY e = *i;
+
+    WN *pad_wn = WN_CreateLabel ((ST_IDX) 0, e.pad, 0, NULL);
+    WN_Set_Label_Is_Handler_Begin (pad_wn);
+    WFE_Stmt_Append (pad_wn, Get_Srcpos());
+
+    WFE_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, e.start, 0, NULL), 
+    		     Get_Srcpos());
+
+    for (vector<tree>::iterator j=e.cleanups->begin();
+		j!=e.cleanups->end();++j)
+    {
+    	tree cleanup = *j;
+	Emit_Cleanup(cleanup);
+    }
+    if (e.goto_idx)
+	WFE_Stmt_Append (WN_CreateGoto ((ST_IDX) 0, e.goto_idx), Get_Srcpos());
+    else
+	Generate_unwind_resume();
+  }
+  cleanup_list_for_eh.clear();
+}
+#endif // KEY
 
 static void
 Pop_Scope_And_Do_Cleanups (void)
@@ -260,9 +698,21 @@ Pop_Scope_And_Do_Cleanups (void)
     }
     Is_True(scope_cleanup_i != -1,
 	    ("Pop_Scope_And_Do_Cleanups: no scope_stmt on stack"));
+#ifdef KEY
+    if (scope_cleanup_stack[scope_cleanup_i].cleanup_eh_only)
+    {
+    	--scope_cleanup_i;
+	continue;
+    }
+#endif
     INT j = scope_cleanup_i - 1;
     LABEL_IDX goto_idx = 0;
+#ifdef KEY
+    while (j != -1 && (TREE_CODE(scope_cleanup_stack [j].stmt) != CLEANUP_STMT
+    		|| scope_cleanup_stack[j].cleanup_eh_only)) {
+#else
     while (j != -1 && TREE_CODE(scope_cleanup_stack [j].stmt) != CLEANUP_STMT) {
+#endif
       if (TREE_CODE(scope_cleanup_stack [j].stmt) == TRY_BLOCK)
 	break;
       --j;
@@ -273,7 +723,7 @@ Pop_Scope_And_Do_Cleanups (void)
 		     scope_cleanup_stack [scope_cleanup_i]  .label_idx,
 		     goto_idx);
     --scope_cleanup_i;
-    WFE_One_Stmt (CLEANUP_EXPR(scope_cleanup_stack [scope_cleanup_i+1].stmt));
+    WFE_One_Stmt_Cleanup (CLEANUP_EXPR(scope_cleanup_stack [scope_cleanup_i+1].stmt));
   }
 }       
 
@@ -291,15 +741,28 @@ Push_Scope (tree t)
 
 
 void
-Push_Temp_Cleanup (tree t, bool is_cleanup)
+Push_Temp_Cleanup (tree t, bool is_cleanup
+#ifdef KEY
+, bool cleanup_eh_only
+#endif
+)
 {
+#ifdef KEY
+  // If a guard var is required, conditionalize the cleanup.
+  tree guard_var = WFE_Get_Guard_Var();
+  if (guard_var != NULL_TREE) {
+    t = build_stmt((tree_code) IF_STMT,
+		   c_common_truthvalue_conversion(guard_var),
+		   t, NULL_TREE);
+  }
+#endif
+
   if (++temp_cleanup_i == temp_cleanup_max) {
     temp_cleanup_max = ENLARGE (temp_cleanup_max);
     temp_cleanup_stack =
       (TEMP_CLEANUP_INFO *) realloc (temp_cleanup_stack,
 				     temp_cleanup_max * 
                                        sizeof (TEMP_CLEANUP_INFO));
-			
   }
 
   temp_cleanup_stack [temp_cleanup_i].expr = t;
@@ -307,6 +770,25 @@ Push_Temp_Cleanup (tree t, bool is_cleanup)
     New_LABEL (CURRENT_SYMTAB, temp_cleanup_stack [temp_cleanup_i].label_idx);
   else
     temp_cleanup_stack [temp_cleanup_i].label_idx = 0;
+#ifdef KEY
+  temp_cleanup_stack [temp_cleanup_i].cleanup_eh_only = cleanup_eh_only;
+#endif
+}
+
+
+// Return TRUE if candidate node matches the target node.
+static bool
+cleanup_matches (tree candidate, tree target)
+{
+  if (candidate == target)
+    return TRUE;
+
+  // The node could be hidden behind a guard variable.
+  if (TREE_CODE(candidate) == IF_STMT &&
+      THEN_CLAUSE(candidate) == target)
+    return TRUE;
+
+  return FALSE;
 }
 
 
@@ -314,21 +796,66 @@ void
 Do_Temp_Cleanups (tree t)
 {
   Is_True(temp_cleanup_i != -1, ("Do_Temp_Cleanups: stack empty"));
-  while (temp_cleanup_stack[temp_cleanup_i].expr != t) {
+#ifdef KEY
+  while (!cleanup_matches(temp_cleanup_stack[temp_cleanup_i].expr, t))
+#else
+  while (temp_cleanup_stack[temp_cleanup_i].expr != t)
+#endif
+    {
+#ifdef KEY
+    if (temp_cleanup_stack[temp_cleanup_i].cleanup_eh_only) {
+// We don't want this cleanup to be emitted here -- it is to be executed only
+// if an exception is thrown.
+    	--temp_cleanup_i;
+	continue;
+    }
+#endif
     LABEL_IDX goto_idx = 0;
     INT j = temp_cleanup_i - 1;
     tree cleanup = temp_cleanup_stack [temp_cleanup_i].expr;
+#ifdef KEY
+    while (j != -1 && (temp_cleanup_stack [j].label_idx == 0 ||
+    			temp_cleanup_stack[j].cleanup_eh_only))
+#else
     while (j != -1 && temp_cleanup_stack [j].label_idx == 0)
+#endif
       --j;
     if (j != -1)
       goto_idx = temp_cleanup_stack [j].label_idx;
     Push_EH_Cleanup (cleanup,
 		     temp_cleanup_stack [temp_cleanup_i].label_idx,
 		     goto_idx);
+#ifdef KEY
+    Emit_Cleanup(cleanup);
+#else
     WFE_One_Stmt (cleanup);
+#endif
     --temp_cleanup_i;
   }
   --temp_cleanup_i;
+
+#ifdef KEY
+  if (key_exceptions && processing_handler && 
+	!cleanup_matches(temp_cleanup_stack[temp_cleanup_i+1].expr, t))
+  {
+    HANDLER_INFO hi = handler_stack.top();
+    if (hi.temp_cleanup)
+    {
+      int n = hi.temp_cleanup->size()-1;
+      while (!cleanup_matches((*hi.temp_cleanup)[n].expr, t)) {
+	LABEL_IDX goto_idx = 0;
+	INT j = n - 1;
+	tree cleanup = (*hi.temp_cleanup) [n].expr;
+	while (j != -1 && (*hi.temp_cleanup) [j].label_idx == 0) --j;
+	if (j != -1)
+      	    goto_idx = (*hi.temp_cleanup) [j].label_idx;
+    	Push_EH_Cleanup (cleanup, (*hi.temp_cleanup) [n].label_idx, goto_idx);
+	Emit_Cleanup(cleanup);
+	--n;
+      }
+    }
+  }
+#endif // KEY
 }
 
 static void
@@ -457,6 +984,10 @@ idname_from_regnum (int gcc_reg)
 		st = Int_Preg;
 	else if (Preg_Offset_Is_Float(preg))
 		st = Float_Preg;
+#ifdef TARG_X8664
+	else if (Preg_Offset_Is_X87(preg))
+		st = X87_Preg;
+#endif
 	else
 		FmtAssert (FALSE, ("unexpected preg %d", preg));
   	return WN_CreateIdname((WN_OFFSET) preg, st);
@@ -515,7 +1046,7 @@ st_of_new_temp_for_expr(const WN *expr)
 
   static char temp_name[64];
 
-  sprintf(temp_name, "asm.by.address.temp_%u\0", temp_count++);
+  sprintf(temp_name, "asm.by.address.temp_%u", temp_count++);
 
   ST *retval = New_ST(CURRENT_SYMTAB);
   
@@ -536,7 +1067,11 @@ static char *operand_constraint_array[MAX_RECOG_OPERANDS];
 static BOOL
 constraint_by_address (const char *s)
 {
+#ifndef TARG_X8664
   if (strchr (s, 'm')) {
+#else
+  if (strchr (s, 'm') || strchr (s, 'g')) {
+#endif
     return TRUE;
   }
   else if (isdigit(*s)) {
@@ -619,7 +1154,14 @@ Wfe_Expand_Asm_Operands (tree  string,
   int i = 0;
   // Store the constraint strings
   for (tail = outputs; tail; tail = TREE_CHAIN (tail)) {
+#ifdef KEY
+    // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
+    // first operand gives the string constant.
+    constraint_string = 
+      TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+#else
     constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
+#endif /* KEY */
     operand_constraint_array[i] = constraint_string;
     ++i;
   }
@@ -645,7 +1187,14 @@ Wfe_Expand_Asm_Operands (tree  string,
        tail;
        tail = TREE_CHAIN (tail))
     {
+#ifdef KEY
+      // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
+      // first operand gives the string constant.
+      constraint_string = 
+	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+#else
       constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
+#endif /* KEY */
 
       if (strchr (constraint_string, '+') ||
 	  constraint_by_address (constraint_string))
@@ -745,7 +1294,14 @@ Wfe_Expand_Asm_Operands (tree  string,
        tail;
        tail = TREE_CHAIN (tail))
     {
+#ifdef KEY
+      // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
+      // first operand gives the string constant.
+      constraint_string = 
+	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+#else
       constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
+#endif /* KEY */
 
       if (constraint_by_address(constraint_string)) {
 	// This operand is by address, and gets represented as an
@@ -773,7 +1329,14 @@ Wfe_Expand_Asm_Operands (tree  string,
 	  return;
 	}
 
+#ifdef KEY
+      // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
+      // first operand gives the string constant.
+      constraint_string = 
+	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+#else
       constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
+#endif /* KEY */
 
       if (flag_bad_asm_constraint_kills_stmt &&
 	  !constraint_supported (constraint_string)) {
@@ -830,7 +1393,14 @@ Wfe_Expand_Asm_Operands (tree  string,
        tail;
        tail = TREE_CHAIN (tail), ++opnd_num)
     {
+#ifdef KEY
+      // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
+      // first operand gives the string constant.
+      constraint_string = 
+	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+#else
       constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
+#endif /* KEY */
 
       if (!constraint_by_address(constraint_string)) {
 	// This operand is copy-in/copy-out.
@@ -911,10 +1481,20 @@ WFE_Get_LABEL (tree label, int def)
   LABEL_IDX label_idx =  DECL_LABEL_IDX(label);
   SYMTAB_IDX symtab_idx = DECL_SYMTAB_IDX(label);
 
-  if (label_idx == 0) {
+  if (label_idx == 0
+#ifdef KEY
+      // Don't use old indexes that we are not supposed to use.
+      || label_idx <= WFE_unusable_label_idx
+#endif
+     ) {
     New_LABEL (CURRENT_SYMTAB, label_idx);
     DECL_LABEL_IDX(label) = label_idx;
     DECL_SYMTAB_IDX(label) = CURRENT_SYMTAB;
+#ifdef KEY
+    WFE_last_label_idx = label_idx;
+    // Need a new label wn.
+    DECL_LABEL_DEFINED(label) = FALSE;
+#endif
     if (!def) {
       if (++undefined_labels_i == undefined_labels_max) {
         undefined_labels_max   = ENLARGE(undefined_labels_max);
@@ -1025,6 +1605,58 @@ WFE_Stmt_Init (void)
   scope_number           = 0;
 } /* WFE_Stmt_Init */
 
+#ifdef KEY
+static void
+Cleanup_To_Scope_From_Handler(tree scope)
+{
+  INT32 i = scope_cleanup_i;
+  INT32 j = -1;
+  Is_True(i != -1, ("Cleanup_To_Scope_From_Handler: scope_cleanup_stack empty"));
+  while ((i != -1) && (scope_cleanup_stack [i].stmt != scope)) {
+    if (TREE_CODE(scope_cleanup_stack [i].stmt) == SCOPE_STMT)
+      j = i;
+    --i;
+  }
+
+  bool found_target_scope = false;
+  if (i != -1)	found_target_scope = true;
+
+  if (j != -1) {
+    i = scope_cleanup_i;
+    while (i != j) {
+      if (TREE_CODE(scope_cleanup_stack [i].stmt) == CLEANUP_STMT &&
+		!scope_cleanup_stack[i].cleanup_eh_only)
+        WFE_One_Stmt_Cleanup (CLEANUP_EXPR(scope_cleanup_stack [i].stmt));
+    --i;
+    }
+  }
+  if (found_target_scope) return;
+
+  FmtAssert (processing_handler, ("Invalid scope"));
+
+  HANDLER_INFO hi = handler_stack.top();
+  FmtAssert (hi.scope, ("No scope information available"));
+  i = hi.scope->size()-1;
+  j = -1;
+  Is_True(i != 0, ("Cleanup_To_Scope_From_Handler: scope_cleanup_stack empty"));
+
+  while ((*hi.scope)[i].stmt != scope) {
+    if (TREE_CODE((*hi.scope)[i].stmt) == SCOPE_STMT)
+	j = i;
+    --i;
+  }
+  if (j != -1) {
+    i = hi.scope->size()-1;
+    while (i != j) {
+      if (TREE_CODE((*hi.scope)[i].stmt) == CLEANUP_STMT &&
+		!(*hi.scope)[i].cleanup_eh_only)
+	WFE_One_Stmt_Cleanup (CLEANUP_EXPR((*hi.scope)[i].stmt));
+      --i;
+    }
+  }
+}
+#endif // KEY
+
 static void
 Cleanup_To_Scope(tree scope)
 {
@@ -1040,13 +1672,61 @@ Cleanup_To_Scope(tree scope)
   if (j != -1) {
     i = scope_cleanup_i;
     while (i != j) {
+#ifdef KEY
+      if (TREE_CODE(scope_cleanup_stack [i].stmt) == CLEANUP_STMT &&
+		!scope_cleanup_stack[i].cleanup_eh_only)
+#else
       if (TREE_CODE(scope_cleanup_stack [i].stmt) == CLEANUP_STMT)
-        WFE_One_Stmt (CLEANUP_EXPR(scope_cleanup_stack [i].stmt));
+#endif
+        WFE_One_Stmt_Cleanup (CLEANUP_EXPR(scope_cleanup_stack [i].stmt));
     --i;
     }
   }
 }
  
+#ifdef KEY
+static void
+WFE_Expand_Break (void)
+{
+  INT32     i  	      = break_continue_info_i;
+  LABEL_IDX label_idx;
+  tree      scope;
+  WN *      wn;
+
+  HANDLER_INFO hi;
+  if (processing_handler)
+    hi = handler_stack.top();
+  if (i == -1)
+  {
+    FmtAssert (processing_handler && hi.break_continue, ("No break/continue info"));
+    label_idx = (*hi.break_continue)[hi.break_continue->size()-1].break_label_idx;
+    scope = (*hi.break_continue)[hi.break_continue->size()-1].scope;
+  }
+  else
+  {
+    label_idx = break_continue_info_stack[i].break_label_idx;
+    scope = break_continue_info_stack[i].scope;
+  }
+
+  if (label_idx == 0) {
+    FmtAssert (!processing_handler, ("Label must be set before getting into handler"));
+    New_LABEL (CURRENT_SYMTAB, label_idx);
+    break_continue_info_stack [i].break_label_idx = label_idx;
+  }
+
+  wn = WN_CreateGoto ((ST_IDX) NULL, label_idx);
+
+  if (scope)
+  {
+    if (key_exceptions && processing_handler)
+	Cleanup_To_Scope_From_Handler (scope);
+    else
+    	Cleanup_To_Scope (scope);
+  }
+   
+  WFE_Stmt_Append (wn, Get_Srcpos());
+}
+#else
 static void
 WFE_Expand_Break (void)
 {
@@ -1068,7 +1748,62 @@ WFE_Expand_Break (void)
   WFE_Stmt_Append (wn, Get_Srcpos());
 }
 /* WFE_Expand_Break */
+#endif // KEY
 
+#ifdef KEY
+static void
+WFE_Expand_Continue (void)
+{
+  INT32     i = break_continue_info_i;
+  LABEL_IDX label_idx=0;
+  tree      scope;
+
+  HANDLER_INFO hi;
+  if (processing_handler)
+    hi = handler_stack.top();
+  if (i == -1) 
+  {
+    FmtAssert (processing_handler, ("No break/continue info"));
+    scope = (*hi.break_continue)[hi.break_continue->size()-1].scope;
+  }
+  else scope = break_continue_info_stack [i].scope;
+  WN *      wn;
+  
+  /* find the enclosing loop */
+  if (i != -1) {
+   while (break_continue_info_stack [i].tree_code == SWITCH_STMT) --i;
+   if (i != -1) { 
+    label_idx = break_continue_info_stack [i].continue_label_idx;
+    if (label_idx == 0) {
+      FmtAssert (!processing_handler, ("Label must be set before getting into handler"));
+      New_LABEL (CURRENT_SYMTAB, label_idx);
+      break_continue_info_stack [i].continue_label_idx = label_idx;
+    }
+   }
+  }
+
+  if (key_exceptions && processing_handler && !label_idx)
+  { // have not yet found the enclosing loop
+	INT32 j = hi.break_continue->size()-1;
+	while ((*hi.break_continue)[j].tree_code == SWITCH_STMT) --j;
+	FmtAssert (j != -1, ("Error with 'continue' in handler"));
+	label_idx = (*hi.break_continue)[j].continue_label_idx;
+    	if (label_idx == 0)
+	    Fail_FmtAssertion ("Label must be set before getting into handler");
+  }
+
+  if (scope)
+  {
+    if (key_exceptions && processing_handler)
+	Cleanup_To_Scope_From_Handler (scope);
+    else
+    	Cleanup_To_Scope (scope);
+  }
+
+  wn = WN_CreateGoto ((ST_IDX) NULL, label_idx);
+  WFE_Stmt_Append (wn, Get_Srcpos());
+} /* WFE_Expand_Continue */
+#else
 static void
 WFE_Expand_Continue (void)
 {
@@ -1076,7 +1811,7 @@ WFE_Expand_Continue (void)
   LABEL_IDX label_idx;
   tree      scope = break_continue_info_stack [i].scope;
   WN *      wn;
-  
+
   /* find the enclosing loop */
   while (break_continue_info_stack [i].tree_code == SWITCH_STMT) --i;
   label_idx = break_continue_info_stack [i].continue_label_idx;
@@ -1091,6 +1826,7 @@ WFE_Expand_Continue (void)
   wn = WN_CreateGoto ((ST_IDX) NULL, label_idx);
   WFE_Stmt_Append (wn, Get_Srcpos());
 } /* WFE_Expand_Continue */
+#endif // KEY
 
 static void
 WFE_Expand_Loop (tree stmt)
@@ -1128,6 +1864,13 @@ WFE_Expand_Loop (tree stmt)
       break;
   }
 
+#ifdef KEY
+// handle "for (;;) ;"
+  if (!cond) {
+    loop_test = WN_Intconst (Boolean_type, 1);
+  }
+  else
+#endif // KEY
   if (TREE_CODE(cond) == TREE_LIST &&
       TREE_VALUE(cond) == NULL) {
     // handle non terminating loops
@@ -1194,7 +1937,8 @@ WFE_Expand_Loop (tree stmt)
   --break_continue_info_i;
 } /* WFE_Expand_Loop */
   
-static void
+#ifndef KEY
+void
 WFE_Expand_Goto (tree label)
 {
   WN *wn;
@@ -1219,7 +1963,7 @@ WFE_Expand_Goto (tree label)
         i = scope_cleanup_i;
 	while (i != j) {
 	  if (TREE_CODE(scope_cleanup_stack[i].stmt) == CLEANUP_STMT)
-	    WFE_One_Stmt (CLEANUP_EXPR(scope_cleanup_stack [i].stmt));
+	    WFE_One_Stmt_Cleanup (CLEANUP_EXPR(scope_cleanup_stack [i].stmt));
 	--i;
         }
       }
@@ -1230,6 +1974,86 @@ WFE_Expand_Goto (tree label)
 
   WFE_Stmt_Append (wn, Get_Srcpos());
 } /* WFE_Expand_Goto */
+#else
+void
+WFE_Expand_Goto (tree label)	// KEY VERSION
+{
+  WN *wn;
+  bool in_handler=false;
+  vector<tree>::reverse_iterator ci, li;
+  LABEL_IDX label_idx = WFE_Get_LABEL (label, FALSE);
+  if ((CURRENT_SYMTAB > GLOBAL_SYMTAB + 1) &&
+      (DECL_SYMTAB_IDX(label) < CURRENT_SYMTAB))
+    wn = WN_CreateGotoOuterBlock (label_idx, DECL_SYMTAB_IDX(label));
+  else {
+    tree scope = LABEL_SCOPE(label);
+    if (scope != NULL_TREE && scope_cleanup_i != -1) {
+      vector<tree> Label_scope_nest;
+      while (scope) {
+      	Label_scope_nest.push_back (scope);
+	scope = PARENT_SCOPE (scope);
+      }
+      INT32 i = scope_cleanup_i;
+      while (i != -1) {
+	if (TREE_CODE(scope_cleanup_stack [i].stmt) == SCOPE_STMT)
+	    break;
+	--i;
+      }
+      vector<tree> Current_scope_nest;
+      if (i != -1) {
+      	scope = scope_cleanup_stack[i].stmt;
+	while (scope) {
+		Current_scope_nest.push_back (scope);
+		scope = PARENT_SCOPE (scope);
+	}
+      }
+
+      li=Label_scope_nest.rbegin();
+      ci=Current_scope_nest.rbegin();
+      for (; li!=Label_scope_nest.rend(), ci!=Current_scope_nest.rend();
+      		++li, ++ci)
+      	if (*li != *ci) break;
+      if (ci!=Current_scope_nest.rend())
+      {
+      	i = scope_cleanup_i;
+	Is_True(i != -1, ("WFE_Expand_Goto: scope_cleanup_stack empty"));
+  	while ((i >= 0) && (scope_cleanup_stack [i].stmt != *ci))
+	{
+	      if (TREE_CODE(scope_cleanup_stack [i].stmt) == CLEANUP_STMT &&
+			!scope_cleanup_stack[i].cleanup_eh_only)
+        	WFE_One_Stmt_Cleanup (CLEANUP_EXPR(scope_cleanup_stack [i].stmt));
+    	    --i;
+  	}
+	if (i == -1)
+	      in_handler = true;
+      }
+    }
+
+  if (in_handler && (!key_exceptions || !processing_handler))
+  	DevWarn ("Goto in exception handler but exceptions not enabled?");
+// If this is a handler, we have just emitted the cleanups within it. 
+// Now find out what other cleanups need to be emitted for variables 
+// outside the handler.
+  if (in_handler && processing_handler && key_exceptions)
+  {
+    HANDLER_INFO hi = handler_stack.top();
+
+    INT32 i = hi.scope->size()-1;
+    Is_True(i != -1, ("WFE_Expand_Goto: scope_cleanup_stack empty inside handler"));
+    while ((i >= 0) && ((*hi.scope) [i].stmt != *ci)) {
+	if (TREE_CODE((*hi.scope) [i].stmt) == CLEANUP_STMT &&
+		!(*hi.scope) [i].cleanup_eh_only)
+	    WFE_One_Stmt_Cleanup (CLEANUP_EXPR((*hi.scope) [i].stmt));
+        --i;
+    }
+  }
+
+    wn = WN_CreateGoto ((ST_IDX) NULL, label_idx);
+  }
+
+  WFE_Stmt_Append (wn, Get_Srcpos());
+} /* WFE_Expand_Goto */
+#endif
 
 static void
 WFE_Expand_Computed_Goto (tree exp)
@@ -1240,7 +2064,10 @@ WFE_Expand_Computed_Goto (tree exp)
   WFE_Stmt_Append (wn, Get_Srcpos());
 } /* WFE_Expand_Computed_Goto */
 
-static void 
+#ifndef KEY
+static
+#endif
+void 
 WFE_Expand_If (tree stmt)
 {
   WN * if_stmt;
@@ -1268,11 +2095,12 @@ WFE_Expand_If (tree stmt)
   }
 } /* WFE_Expand_If */
 
-static void
+void
 WFE_Expand_Label (tree label)
 {
   LABEL_IDX label_idx = WFE_Get_LABEL (label, TRUE);
   DECL_SYMTAB_IDX(label) = CURRENT_SYMTAB;
+
   if (!DECL_LABEL_DEFINED(label)) {
     WN *wn;
     DECL_LABEL_DEFINED(label) = TRUE;
@@ -1281,7 +2109,7 @@ WFE_Expand_Label (tree label)
   }
 } /* WFE_Expand_Label */
 
-static void
+void
 WFE_Expand_Return (tree stmt, tree retval)
 {
   WN *wn;
@@ -1290,15 +2118,49 @@ WFE_Expand_Return (tree stmt, tree retval)
     Do_Temp_Cleanups (stmt);
     int i = scope_cleanup_i;
     while (i != -1) {
+#ifdef KEY
+      if (TREE_CODE(scope_cleanup_stack [i].stmt) == CLEANUP_STMT &&
+		!scope_cleanup_stack[i].cleanup_eh_only)
+#else
       if (TREE_CODE(scope_cleanup_stack [i].stmt) == CLEANUP_STMT)
-        WFE_One_Stmt (CLEANUP_EXPR(scope_cleanup_stack [i].stmt));
+#endif
+        WFE_One_Stmt_Cleanup (CLEANUP_EXPR(scope_cleanup_stack [i].stmt));
       --i;
     }
+#ifdef KEY
+    if (key_exceptions && processing_handler) {
+	HANDLER_INFO hi = handler_stack.top();
+	FmtAssert (hi.scope, ("NULL scope"));
+	int j = hi.scope->size()-1;
+	while (j != -1) {
+	    if (TREE_CODE((*hi.scope)[j].stmt) == CLEANUP_STMT &&
+			!(*hi.scope)[j].cleanup_eh_only)
+        	WFE_One_Stmt_Cleanup (CLEANUP_EXPR((*hi.scope) [j].stmt));
+	    --j;
+	}
+    }
+#endif
     wn = WN_CreateReturn ();
   }
   else {
     WN *rhs_wn;
     TY_IDX ret_ty_idx = Get_TY(TREE_TYPE(TREE_TYPE(Current_Function_Decl())));
+
+#ifdef KEY
+    bool copied_return_value = FALSE;
+
+    // If the return object must be passed through memory and the return
+    // object is created by a TARGET_EXPR, have the TARGET_EXPR write directly
+    // to the memory return area.
+    if (TY_return_in_mem(ret_ty_idx) &&
+	TREE_CODE(retval) == TARGET_EXPR) {
+      FmtAssert (TY_mtype (ret_ty_idx) == MTYPE_M,
+	         ("WFE_Expand_Return: must-be-in-mem type is not MTYPE_M"));
+      WFE_fixup_target_expr(retval);
+      copied_return_value = TRUE;
+    }
+#endif
+
     rhs_wn = WFE_Expand_Expr_With_Sequence_Point (
 		retval,
 		TY_mtype (ret_ty_idx));
@@ -1307,10 +2169,28 @@ WFE_Expand_Return (tree stmt, tree retval)
     Do_Temp_Cleanups (stmt);
     int i = scope_cleanup_i;
     while (i != -1) {
+#ifdef KEY
+      if (TREE_CODE(scope_cleanup_stack [i].stmt) == CLEANUP_STMT &&
+		!scope_cleanup_stack[i].cleanup_eh_only)
+#else
       if (TREE_CODE(scope_cleanup_stack [i].stmt) == CLEANUP_STMT)
-        WFE_One_Stmt (CLEANUP_EXPR(scope_cleanup_stack [i].stmt));
+#endif
+        WFE_One_Stmt_Cleanup (CLEANUP_EXPR(scope_cleanup_stack [i].stmt));
       --i;
     }
+#ifdef KEY
+    if (key_exceptions && processing_handler) {
+	HANDLER_INFO hi = handler_stack.top();
+	FmtAssert (hi.scope, ("NULL scope"));
+	int j = hi.scope->size()-1;
+	while (j != -1) {
+	    if (TREE_CODE((*hi.scope)[j].stmt) == CLEANUP_STMT &&
+			!(*hi.scope)[j].cleanup_eh_only)
+        	WFE_One_Stmt_Cleanup (CLEANUP_EXPR((*hi.scope) [j].stmt));
+	    --j;
+	}
+    }
+#endif
     WFE_Stmt_Pop (wfe_stmk_temp_cleanup);
 
     if (WN_first (cleanup_block)) {
@@ -1319,10 +2199,16 @@ WFE_Expand_Return (tree stmt, tree retval)
 	  TREE_CODE(retval) == COMPOUND_EXPR) {
 
 	WN * insertee = WN_kid0 (rhs_wn);
-	if ((WN_operator (rhs_wn) != OPR_COMMA) ||
-	    (WN_has_side_effects (WN_kid1 (rhs_wn)))) {
+	if (((WN_operator (rhs_wn) != OPR_COMMA) ||
+	    (WN_has_side_effects (WN_kid1 (rhs_wn)))) 
+#ifdef KEY
+// Fix bug in which COMPOUND_EXPR has kid0==OPR_COMMA, kid1==OPR_CSELECT which
+// has side-effects.
+		&& (TREE_CODE(retval) == TARGET_EXPR)
+#endif
+	) {
 //	  fdump_tree (stderr, rhs_wn);
-	  Fail_FmtAssertion ("WFE_Expand_Return: TARGET_EXPR/COMPOUND_EXPR with cleanup");
+	  Fail_FmtAssertion ("WFE_Expand_Return: TARGET_EXPR with cleanup");
 	}
 	WN_INSERT_BlockAfter (insertee, WN_last (insertee), cleanup_block);
       }
@@ -1340,9 +2226,15 @@ WFE_Expand_Return (tree stmt, tree retval)
       }
     }
     
-    if (!WFE_Keep_Zero_Length_Structs    &&
-        TY_mtype (ret_ty_idx) == MTYPE_M &&
-        TY_size (ret_ty_idx) == 0) {
+    if ((!WFE_Keep_Zero_Length_Structs    &&
+         TY_mtype (ret_ty_idx) == MTYPE_M &&
+         TY_size (ret_ty_idx) == 0)
+#ifdef KEY
+	// Just return if the return value is already copied into the return
+	// area.
+        || copied_return_value
+#endif
+	) {
       // function returning zero length struct
       if (WN_has_side_effects (rhs_wn)) {
         rhs_wn = WN_CreateEval (rhs_wn);  
@@ -1350,6 +2242,73 @@ WFE_Expand_Return (tree stmt, tree retval)
       }
       wn = WN_CreateReturn ();
     }
+#ifdef KEY
+    else if (TY_return_in_mem(ret_ty_idx)) {
+      // Copy the return value into the return area.  Based on code in
+      // lower_return_val().
+
+      FmtAssert (TY_mtype (ret_ty_idx) == MTYPE_M,
+		 ("WFE_Expand_Return: must-be-in-mem type is not MTYPE_M"));
+
+      WN *first_formal = WN_formal(Current_Entry_WN(), 0);
+      TY_IDX tidx = ST_type(WN_st(first_formal));
+      FmtAssert (MTYPE_is_pointer(TY_mtype(tidx)),
+		 ("WFE_Expand_Return: fake param is not a pointer"));
+      WN *dest_addr = WN_CreateLdid(OPR_LDID, TY_mtype(Ty_Table[tidx]),
+				    TY_mtype(Ty_Table[tidx]),
+				    WN_idname_offset(first_formal),
+				    WN_st(first_formal), tidx);
+      // If the return type has a copy constructor, then call the copy
+      // constructor to perform the copy.
+      tree copy_constructor_decl = NULL;
+      tree type = TREE_TYPE(TREE_TYPE(Current_Function_Decl()));
+      if (CLASS_TYPE_P(type))
+	copy_constructor_decl = CLASSTYPE_COPY_CONSTRUCTOR(type);
+      if (copy_constructor_decl) {
+	FmtAssert (TREE_CODE(copy_constructor_decl) == FUNCTION_DECL,
+		   ("WFE_Expand_Return: copy constructor not a func decl"));
+      	ST *copy_constructor_st = Get_ST(copy_constructor_decl);
+	ST_IDX copy_constructor_st_idx = ST_st_idx(copy_constructor_st);
+
+      	// Find the src address of the return object.
+      	WN *src_addr;
+	if (WN_operator(rhs_wn) == OPR_COMMA) {
+	  // Make the COMMA return the address of the object instead of the
+	  // object itself, i.e., replace "LDID x" with "LDA x".
+	  WN *value_wn = WN_kid1(rhs_wn);
+	  FmtAssert (WN_operator(value_wn) == OPR_LDID,
+		     ("WFE_Expand_Return: unexpected value in COMMA"));
+	  WN_kid1(rhs_wn) = address_of(value_wn);
+	  WN_set_rtype(rhs_wn, WN_rtype(WN_kid1(rhs_wn)));
+	  WFE_Set_ST_Addr_Saved(value_wn);
+	  src_addr = rhs_wn;
+	} else {
+	  FmtAssert (WN_operator(rhs_wn) == OPR_LDID ||
+		     WN_operator(rhs_wn) == OPR_ILOAD ||
+		     WN_operator(rhs_wn) == OPR_MLOAD,
+		     ("WFE_Expand_Return: unexpected return val"));
+	  src_addr = address_of(rhs_wn);
+	  WFE_Set_ST_Addr_Saved(src_addr);
+	}
+
+	// Create call to the copy constructor.
+        wn = WN_Call(MTYPE_V, MTYPE_V, 2, copy_constructor_st_idx);
+	// Create arg 0, which is the dest addr.
+	WN_actual(wn, 0) = WN_CreateParm (TY_mtype(Ty_Table[tidx]), dest_addr,
+					  tidx, WN_PARM_BY_VALUE);
+	// Create arg 1, src addr.
+	WN_actual(wn, 1) = WN_CreateParm (TY_mtype(Ty_Table[tidx]), src_addr,
+					  tidx, WN_PARM_BY_VALUE);
+      } else {
+	// Create mstore.
+	wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, MTYPE_M, 0, tidx, rhs_wn,
+			     dest_addr, 0);
+      }
+      WFE_Stmt_Append(wn, Get_Srcpos());
+      // Create return.
+      wn = WN_CreateReturn ();
+    }
+#endif
     else {
       WFE_Set_ST_Addr_Saved (rhs_wn);
       wn = WN_CreateReturn_Val(OPR_RETURN_VAL, WN_rtype(rhs_wn), MTYPE_V, rhs_wn);
@@ -1373,8 +2332,19 @@ Mark_Scopes_And_Labels (tree stmt)
     }
 
     case DO_STMT:
+#ifdef KEY
+    {
+      tree body = WHILE_BODY(stmt);
+      while (body) {
+	Mark_Scopes_And_Labels (body);
+  	body = TREE_CHAIN(body);
+      }
+      break;
+    }
+#else
       Mark_Scopes_And_Labels (DO_BODY(stmt));
       break;
+#endif
 
     case FOR_STMT: {
       tree init = FOR_INIT_STMT(stmt);
@@ -1384,7 +2354,12 @@ Mark_Scopes_And_Labels (tree stmt)
 	Mark_Scopes_And_Labels (init);
 	init = TREE_CHAIN(init);
       }
+#ifdef KEY
+// handle "for (;;) ;"
+      if (cond && (TREE_CODE(cond) == TREE_LIST))
+#else
       if (TREE_CODE(cond) == TREE_LIST)
+#endif // KEY
 	Mark_Scopes_And_Labels(cond);
       while (body) {
 	Mark_Scopes_And_Labels (body);
@@ -1408,6 +2383,12 @@ Mark_Scopes_And_Labels (tree stmt)
 
     case SCOPE_STMT:
       if (SCOPE_BEGIN_P(stmt)) {
+#ifdef KEY
+	if (scope_i != -1)
+	    PARENT_SCOPE(stmt) = scope_stack[scope_i];
+	else
+	    PARENT_SCOPE(stmt) = 0;
+#endif
 	Push_Scope(stmt);
       }
       else {
@@ -1438,9 +2419,21 @@ Mark_Scopes_And_Labels (tree stmt)
       }
 
     case WHILE_STMT:
+#ifdef KEY
+    {
+      Mark_Scopes_And_Labels (WHILE_COND(stmt));
+      tree body = WHILE_BODY(stmt);
+      while (body) {
+	Mark_Scopes_And_Labels (body);
+  	body = TREE_CHAIN(body);
+      }
+      break;
+    }
+#else
       Mark_Scopes_And_Labels (WHILE_COND(stmt));
       Mark_Scopes_And_Labels (WHILE_BODY(stmt));
       break;
+#endif
     
     default:
       break;
@@ -1450,8 +2443,19 @@ Mark_Scopes_And_Labels (tree stmt)
 static void
 WFE_Expand_Start_Case (tree selector)
 {
+#ifdef KEY
+  TYPE_ID index_mtype;
+  if (TREE_CODE (selector) == TREE_LIST)
+  	index_mtype = Mtype_comparison (
+                         TY_mtype (Get_TY (TREE_TYPE (TREE_VALUE(selector))))); 
+  else
+  	index_mtype = Mtype_comparison (
+                         TY_mtype (Get_TY (TREE_TYPE (selector)))); 
+#else
   TYPE_ID index_mtype = Mtype_comparison (
-                          TY_mtype (Get_TY (TREE_TYPE (TREE_VALUE(selector))))); 
+                         TY_mtype (Get_TY (TREE_TYPE (TREE_VALUE(selector))))); 
+#endif // KEY
+
   WN *switch_block = WN_CreateBlock ();
   WN *index;
   index = WFE_Expand_Expr_With_Sequence_Point (selector, index_mtype);
@@ -1480,7 +2484,7 @@ WFE_Expand_End_Case (void)
   WN    *wn;
   LABEL_IDX exit_label_idx;
 
-  n = case_info_i - switch_info_stack [switch_info_i].start_case_index;
+  n = case_info_i - switch_info_stack [switch_info_i].start_case_index + 1;
   if (break_continue_info_stack [break_continue_info_i].break_label_idx)
     exit_label_idx = break_continue_info_stack [break_continue_info_i].break_label_idx;
   else
@@ -1574,8 +2578,10 @@ Tid_For_Handler (tree handler)
   while (TREE_CODE(t) != COMPOUND_STMT)
     t = TREE_CHAIN(t);
   t = COMPOUND_BODY(t);
+#if 0   /* START_CATCH_STMT no longer exists */
   while (TREE_CODE(t) != START_CATCH_STMT)
     t = TREE_CHAIN(t);
+#endif
   t = TREE_TYPE(t);
   return t ? ST_st_idx(Get_ST (TREE_OPERAND(t, 0))) : 0;
 }
@@ -1614,17 +2620,503 @@ Add_Handler_Info (WN * call_wn, INT i, INT num_handlers)
 }  
 #endif /* ADD_HANDLER_INFO */
 
+#ifdef KEY
+static tree
+Get_typeinfo_var (tree t)
+{
+    tree ti_var = 0;
+    if (CLASS_TYPE_P(t))
+	ti_var = CLASSTYPE_TYPEINFO_VAR (TYPE_MAIN_VARIANT (t));
+    else // e.g. ordinary type
+	ti_var = IDENTIFIER_GLOBAL_VALUE (mangle_typeinfo_for_type(t));
+    FmtAssert (ti_var, ("Typeinfo of handler unavailable"));
+    if (DECL_ASSEMBLER_NAME_SET_P (ti_var) && 
+    	TREE_NOT_EMITTED_BY_GXX (ti_var) && 
+	!TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (ti_var)))
+    {
+	// Add it to the vector so that we emit them later
+	TREE_NOT_EMITTED_BY_GXX (ti_var) = 0;
+	TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (ti_var)) = 1;
+	gxx_emits_typeinfos (ti_var);
+    }
+    return ti_var;
+}
+
+// Get the handlers for the current try block. Move up in scope and append any
+// more handlers that may be present, to INITV.
+static INITV_IDX
+Create_handler_list (int scope_index)
+{
+  INITV_IDX type_st, prev_type_st=0, start=0;
+
+  FmtAssert (TREE_CODE(scope_cleanup_stack[scope_index].stmt) == TRY_BLOCK,
+			("EH Error"));
+  for (int i=scope_index; i>=0; i--)
+  {
+    tree t = scope_cleanup_stack[i].stmt;
+    if ((TREE_CODE(t) != TRY_BLOCK) || CLEANUP_P(t))	continue;
+
+    tree h = TRY_HANDLERS (t);
+    if (key_exceptions)
+    {
+    FmtAssert (h, ("Create_handler_list: Null handlers"));
+    FmtAssert (TREE_CODE(h) == HANDLER, ("Create_handler_list: TREE_CODE HANDLER expected"));
+    }
+    while (h)
+    {
+	type_st = New_INITV();
+        tree type = HANDLER_TYPE(h);
+
+	ST_IDX st = 0;
+	if (type) st = ST_st_idx (Get_ST (Get_typeinfo_var(type)));
+	INITV_Set_VAL (Initv_Table[type_st], Enter_tcon (Host_To_Targ (MTYPE_U4, st)), 1);
+
+	h = TREE_CHAIN(h);
+	if (prev_type_st) Set_INITV_next (prev_type_st, type_st);
+	else start = type_st;
+	prev_type_st = type_st;
+    }
+  }
+  if (processing_handler)
+  {
+	INITV_IDX next = lookup_handlers();
+	if (prev_type_st) Set_INITV_next (prev_type_st, next);
+	else start = next;
+  }
+  return start;
+}
+
+// This function is called when we are in the 'processing_handler' phase,
+// i.e. we are in a catch block. Check if this corresponding try-catch
+// block is inside a try block any number of levels up, and if any such
+// try block is in turn contained in another try block. In that case, we need
+// to try all these handlers before we can do stack unwinding.
+//
+// Also, if called from lookup_cleanups(), i.e. with non-NULL cleanups, append
+// any relevant cleanups. Scenario:
+//  try {
+//    C c1;
+//    try {
+//      throw E();
+//    } catch(...) {
+//      throw E(); // lookup_cleanups() should return C 
+//    }
+//  } catch(...) {
+//  }
+//
+static INITV_IDX
+lookup_handlers (vector<tree> *cleanups)
+{
+    HANDLER_INFO hi = handler_stack.top();
+    vector<ST_IDX> * h = hi.handler_list;
+    INITV_IDX type_st, prev_type_st=0, start=0;
+    for (vector<ST_IDX>::iterator i = h->begin(); i != h->end(); ++i)
+    {
+	type_st = New_INITV();
+	ST_IDX st = *i;
+	INITV_Set_VAL (Initv_Table[type_st], Enter_tcon (Host_To_Targ (MTYPE_U4, st)), 1);
+
+	if (prev_type_st) Set_INITV_next (prev_type_st, type_st);
+	else start = type_st;
+	prev_type_st = type_st;
+    }
+    if (!start)
+    {
+	start = New_INITV();
+	INITV_Set_ZERO (Initv_Table[start], MTYPE_U4, 1);
+    }
+    if (cleanups)
+    {
+    	vector<tree> * temp = hi.cleanups;
+	for (vector<tree>::iterator j = temp->begin(); j != temp->end(); ++j)
+	    cleanups->push_back (*j);
+    }
+    return start;
+}
+
+LABEL_IDX
+New_eh_cleanup_entry (tree t, vector<tree> *v, LABEL_IDX goto_idx)
+{
+  EH_CLEANUP_ENTRY e;
+
+  e.tryhandler = t;
+  e.cleanups = v;
+  e.goto_idx = goto_idx;
+  LABEL_IDX pad;
+  New_LABEL (CURRENT_SYMTAB, pad);
+  Label_Table[pad].kind = LKIND_BEGIN_HANDLER;
+  e.pad = pad;
+  New_LABEL (CURRENT_SYMTAB, e.start);
+  cleanup_list_for_eh.push_back (e);
+  return pad;
+}
+
+// This is trivial now, since we have ONE specification per function,
+// the offset will always be -1. Will need to calculate the offset when we
+// consider more than one spec in a function
+static void
+append_eh_filter (INITV_IDX& iv)
+{
+  INITV_IDX tmp = iv;
+  while (tmp && INITV_next (tmp))
+	tmp = INITV_next (tmp);
+
+  INITV_IDX eh_filter = New_INITV();
+  INITV_Set_VAL (Initv_Table[eh_filter], Enter_tcon (Host_To_Targ (MTYPE_I4, -current_eh_spec_ofst)), 1);
+  if (tmp) Set_INITV_next (tmp, eh_filter);
+  else iv = eh_filter;
+}
+
+static void
+append_catch_all (INITV_IDX& iv)
+{
+  INITV_IDX tmp = iv;
+  while (tmp && INITV_next (tmp))
+	tmp = INITV_next (tmp);
+
+  INITV_IDX catch_all = New_INITV();
+  INITV_Set_VAL (Initv_Table[catch_all], Enter_tcon (Host_To_Targ (MTYPE_U4, 0)), 1);
+  if (tmp) Set_INITV_next (tmp, catch_all);
+  else iv = catch_all;
+}
+
+// current: D1 D2 D3, prev: D1 D2 => emit D3 for current, goto prev
+// current: D1 D2 D3, prev: D1 D2 D4 => don't optimize now
+static bool
+optimize_cleanups (vector<tree> * current, vector<tree> * prev)
+{
+  if (prev->size() >= current->size())
+  	return false;
+  reverse (current->begin(), current->end());
+  reverse (prev->begin(), prev->end());
+  vector<tree>::iterator c = current->begin();
+  for (vector<tree>::iterator p = prev->begin(); p != prev->end(); ++p, ++c)
+  	if (*p != *c)
+	    return false;
+  // all cleanups in prev are in current, so remove them from current
+  // first reverse it back
+  reverse (current->begin(), current->end());
+  reverse (prev->begin(), prev->end());
+  for (int i=0; i<prev->size(); ++i)
+  	current->pop_back();
+  return true;
+}
+
+static bool manual_unwinding_needed (void);
+
+LABEL_IDX
+lookup_cleanups (INITV_IDX& iv)
+{
+  tree t=0;
+  iv = 0;
+  vector<tree> *cleanups = new vector<tree>();
+
+  if (scope_cleanup_i == -1) 
+  {
+	iv = New_INITV();
+	INITV_Set_ZERO (Initv_Table[iv], MTYPE_U4, 1);
+	return 0;
+  }
+  tree temp_cleanup=0;
+  for (int i=temp_cleanup_i; i>=0; --i)
+  {
+	TEMP_CLEANUP_INFO t = temp_cleanup_stack[i];
+  	if (t.label_idx && t.cleanup_eh_only)
+	{
+		// need to call the delete operator
+		temp_cleanup = temp_cleanup_stack[i].expr;
+		break;
+  	}
+  }
+  int scope_index;
+  LABEL_IDX goto_idx=0;
+  for (scope_index=scope_cleanup_i; scope_index>=0; scope_index--)
+  {
+	t = scope_cleanup_stack[scope_index].stmt;
+	if (TREE_CODE(t) == CLEANUP_STMT)
+		cleanups->push_back (t);
+	if (TREE_CODE(t) == TRY_BLOCK)
+	    if (CLEANUP_P(t)) cleanups->push_back (TRY_HANDLERS(t));
+	    else break;
+  	if (temp_cleanup && (cleanups->size() == 1))
+	{
+		cleanups->push_back (temp_cleanup);
+		temp_cleanup = 0;
+	}
+  }
+  if (temp_cleanup)
+  	cleanups->push_back (temp_cleanup);
+  tree h = 0;
+  if (TREE_CODE(t) == TRY_BLOCK)
+  {
+	h = TRY_HANDLERS (t);
+	iv = Create_handler_list (scope_index);
+	goto_idx = scope_cleanup_stack[scope_index].cmp_idx;
+  }
+  else // no enclosing try block
+  {
+	if (processing_handler)
+	{
+	    iv = lookup_handlers (cleanups);
+	    goto_idx = handler_stack.top().goto_idx;
+	}
+	else if (cleanups->empty() && eh_spec_vector.empty())
+	{
+	    iv = New_INITV();
+	    INITV_Set_ZERO (Initv_Table[iv], MTYPE_U4, 1);
+	    return 0;
+	}
+  }
+  if (!try_block_seen && manual_unwinding_needed())
+  	Set_PU_needs_manual_unwinding (Get_Current_PU());
+// the following 2 calls can change 'iv'.
+// NOTE: CG expects a zero before eh-spec filter
+  bool catch_all_appended = false;
+  if (PU_needs_manual_unwinding (Get_Current_PU()))
+  {
+	append_catch_all (iv);
+	catch_all_appended = true;
+  }
+  if (processing_handler)
+  {
+  	vector<ST_IDX> * eh_spec = handler_stack.top().eh_spec;
+	FmtAssert (eh_spec, ("Invalid eh_spec inside handler"));
+	if (!eh_spec->empty())
+	{
+	    if (!catch_all_appended)
+	    	append_catch_all (iv);
+	    append_eh_filter (iv);
+  	}
+  }
+  else if (!eh_spec_vector.empty())
+  {
+	if (!catch_all_appended)
+	    append_catch_all (iv);
+  	append_eh_filter (iv);
+  }
+  if (!iv)
+  { // not yet assigned
+	iv = New_INITV();
+	INITV_Set_ZERO (Initv_Table[iv], MTYPE_U4, 1);
+  }
+  if (cleanup_list_for_eh.empty())
+  {
+	return New_eh_cleanup_entry (h, cleanups, goto_idx);
+  }
+  else
+  {
+	EH_CLEANUP_ENTRY e = cleanup_list_for_eh.back();
+
+	// check if we are not in any try-block
+	if (h == 0 && e.tryhandler == 0 && !processing_handler &&
+	    cleanups->size() != e.cleanups->size())
+	{
+		if (optimize_cleanups (cleanups, e.cleanups))
+		    return New_eh_cleanup_entry (h, cleanups, e.start);
+	}
+
+	if ((h != e.tryhandler) || // different try block
+		(cleanups->size() != e.cleanups->size())) // # of cleanups doesn't match
+	    	return New_eh_cleanup_entry (h, cleanups, goto_idx);
+	// same tryblock, same # of cleanups
+	for (int j=0; j<cleanups->size(); ++j)
+	    if ((*cleanups)[j] != (*(e.cleanups))[j])
+	    	return New_eh_cleanup_entry (h, cleanups, goto_idx);
+	    return e.pad;
+  }
+}
+
+// Called at the end of processing a try block, to check if there are
+// any outer handlers, if present, store them in the current handler_info.
+static void
+Get_handler_list (vector<ST_IDX> *handler_list)
+{
+  FmtAssert (TREE_CODE(scope_cleanup_stack[scope_cleanup_i+1].stmt) == 
+		TRY_BLOCK, ("EH Error"));
+  for (int i=scope_cleanup_i; i>=0; i--)
+  {
+    tree t = scope_cleanup_stack[i].stmt;
+    if ((TREE_CODE(t) != TRY_BLOCK) || CLEANUP_P(t))	continue;
+
+    tree h = TRY_HANDLERS (t);
+    if (key_exceptions)
+    {
+    FmtAssert (h, ("Get_handler_list: Null handlers"));
+    FmtAssert (TREE_CODE(h) == HANDLER, ("Get_handler_list: TREE_CODE HANDLER expected"));
+    }
+    while (h)
+    {
+        tree type = HANDLER_TYPE(h);
+        ST_IDX st = 0;	// catch-all
+	if (type)
+	    st = ST_st_idx (Get_ST (Get_typeinfo_var(type)));
+	handler_list->push_back (st);
+	h = TREE_CHAIN (h);
+    }
+  }
+  if (processing_handler)
+  {
+	HANDLER_INFO hi = handler_stack.top();
+	for (vector<ST_IDX>::iterator i = hi.handler_list->begin(); 
+		i != hi.handler_list->end(); ++i)
+	    handler_list->push_back (*i);
+  }
+}
+
+static bool
+Get_Cleanup_Info (vector<tree> *cleanups, LABEL_IDX *goto_idx)
+{
+  FmtAssert (TREE_CODE(scope_cleanup_stack[scope_cleanup_i+1].stmt)==TRY_BLOCK,
+		("EH Processing Error"));
+
+  for (int i=scope_cleanup_i; i>=0; i--)
+  {
+	tree t = scope_cleanup_stack[i].stmt;
+	if (TREE_CODE(t) == CLEANUP_STMT)
+		cleanups->push_back (t);
+	if (TREE_CODE(t) == TRY_BLOCK)
+	{ // not the outermost try block
+		*goto_idx = scope_cleanup_stack[i].cmp_idx;
+		return false;
+	}
+  }
+  if (!processing_handler)
+  {
+	*goto_idx = 0;
+	return true;
+  }
+  HANDLER_INFO hi = handler_stack.top();
+  if (hi.handler_list->empty())
+  {
+	*goto_idx = 0;
+	return true;
+  }
+  else
+  {
+	*goto_idx = hi.cleanups_idx;
+	return false;
+  }
+}
+
+// Called at the start of processing a try block
+static vector<SCOPE_CLEANUP_INFO> *
+Get_Scope_Info (void)
+{
+  vector<SCOPE_CLEANUP_INFO> *scope = new vector<SCOPE_CLEANUP_INFO>();
+  if (processing_handler)
+  {
+    HANDLER_INFO hi = handler_stack.top();
+    if (hi.scope)
+      for (vector<SCOPE_CLEANUP_INFO>::iterator i = hi.scope->begin();
+		i != hi.scope->end(); ++i)
+	scope->push_back (*i);
+  }
+  FmtAssert (TREE_CODE(scope_cleanup_stack[scope_cleanup_i].stmt) 
+		== TRY_BLOCK, ("Scope Error in Get_Scope_Info"));
+  for (int i=0; i<scope_cleanup_i; ++i) // Don't include TRY_BLOCK
+	scope->push_back(scope_cleanup_stack[i]);
+  return scope;
+}
+
+static vector<TEMP_CLEANUP_INFO> *
+Get_Temp_Cleanup_Info (void)
+{
+  vector<TEMP_CLEANUP_INFO> *temp = new vector<TEMP_CLEANUP_INFO>();
+  if (processing_handler)
+  {
+    HANDLER_INFO hi = handler_stack.top();
+    if (hi.temp_cleanup)
+      for (vector<TEMP_CLEANUP_INFO>::iterator i = hi.temp_cleanup->begin();
+		i != hi.temp_cleanup->end(); ++i)
+	temp->push_back (*i);
+  }
+  FmtAssert (TREE_CODE(temp_cleanup_stack[temp_cleanup_i].expr) 
+		== TRY_BLOCK, ("Scope Error"));
+  for (int i=0; i<temp_cleanup_i; ++i)
+	temp->push_back(temp_cleanup_stack[i]);
+  return temp;
+}
+
+void check_for_loop_label (void)
+{
+  int i = break_continue_info_i;
+
+  if (i != -1) {
+   if (!break_continue_info_stack[i].break_label_idx)
+      New_LABEL (CURRENT_SYMTAB, break_continue_info_stack[i].break_label_idx);
+
+   while (break_continue_info_stack [i].tree_code == SWITCH_STMT) --i;
+      if (i != -1) {
+    	LABEL_IDX label_idx = break_continue_info_stack [i].continue_label_idx;
+    	if (label_idx == 0) {
+      	    New_LABEL (CURRENT_SYMTAB, label_idx);
+      	    break_continue_info_stack [i].continue_label_idx = label_idx;
+    	}
+      }
+  }
+}
+
+static vector<BREAK_CONTINUE_INFO> *
+Get_Break_Continue_Info (void)
+{
+  vector<BREAK_CONTINUE_INFO> *info = new vector<BREAK_CONTINUE_INFO>();
+
+  check_for_loop_label ();
+  if (processing_handler)
+  {
+    HANDLER_INFO hi = handler_stack.top();
+    if (hi.break_continue)
+      for (vector<BREAK_CONTINUE_INFO>::iterator i = hi.break_continue->begin();
+		i != hi.break_continue->end(); ++i)
+	info->push_back (*i);
+  }
+  FmtAssert (TREE_CODE(scope_cleanup_stack[scope_cleanup_i].stmt) 
+		== TRY_BLOCK, ("Scope Error in Get_Break_Continue_Info"));
+  for (int i=0; i<=break_continue_info_i; ++i)
+	info->push_back(break_continue_info_stack[i]);
+  return info;
+}
+
+static bool 
+manual_unwinding_needed (void)
+{
+  FmtAssert (!processing_handler, ("Cannot be called from inside handler"));
+
+  if (!eh_spec_vector.empty())	return true;
+  bool cleanups_seen = false;
+  for (int i=scope_cleanup_i; i>=0; i--)
+  {
+	tree t = scope_cleanup_stack[i].stmt;
+	if (TREE_CODE(t) == CLEANUP_STMT)
+ 	{
+		cleanups_seen = true;
+		break;
+	}
+	if (TREE_CODE(t) == TRY_BLOCK)
+		Fail_FmtAssertion ("manual_unwinding_needed: Cannot reach here");
+  }
+  return cleanups_seen;
+}
+
+static void
+Get_eh_spec (vector<ST_IDX> *in)
+{
+  vector<ST_IDX> * eh_spec;
+  if (processing_handler)
+      eh_spec = handler_stack.top().eh_spec;
+  else
+      eh_spec = &eh_spec_vector;
+  FmtAssert (eh_spec, ("Invalid eh_spec"));
+  for (int i=0; i<eh_spec->size(); ++i)
+      in->push_back ((*eh_spec)[i]);
+}
+#endif // KEY
+
 static void
 WFE_Expand_Try (tree stmt)
 {
   LABEL_IDX end_label_idx;
   WN *      end_label_wn;
-
-  /* The implementation of try-blocks is incomplete, since there
-   * is no provision yet for generating the tables.
-   */
-
-  DevWarn("WFE_Expand_Try: implementation of try-block is incomplete\n");
 
   /*
    * Don't generate anything if there are no statements in the
@@ -1634,10 +3126,38 @@ WFE_Expand_Try (tree stmt)
   if (TRY_STMTS(stmt) == NULL_TREE)
     return;
 
+#ifdef KEY
+  if (!try_block_seen)
+  {
+    if (manual_unwinding_needed())
+	Set_PU_needs_manual_unwinding (Get_Current_PU());
+    try_block_seen = true;
+  }
+#endif
+
   /* Set start labels for each handler. */
   Set_Handler_Labels(stmt);
 
   Push_Scope_Cleanup (stmt);
+
+#ifdef KEY
+  vector<SCOPE_CLEANUP_INFO> *scope_cleanup = Get_Scope_Info ();
+// FIXME: handle temp cleanups for return from handler.
+#if 0 
+  vector<TEMP_CLEANUP_INFO> *temp_cleanup = Get_Temp_Cleanup_Info ();
+#else
+  vector<TEMP_CLEANUP_INFO> *temp_cleanup = 0;
+#endif
+  vector<BREAK_CONTINUE_INFO> *break_continue = Get_Break_Continue_Info ();
+  int handler_count=0;
+  WN * region_body;
+  if (key_exceptions)
+  {
+    region_body = WN_CreateBlock();
+    WFE_Stmt_Push (region_body, wfe_stmk_region_body, Get_Srcpos());
+    handler_count = cleanup_list_for_eh.size();
+  }
+#endif // KEY
 
   /* Generate code for the try-block. */
 
@@ -1645,19 +3165,148 @@ WFE_Expand_Try (tree stmt)
     WFE_Expand_Stmt(s);
   --scope_cleanup_i;
 
+#ifdef KEY
+  if (key_exceptions)
+  {
+    WFE_Stmt_Pop (wfe_stmk_region_body);
+    WN * region_pragmas = WN_CreateBlock();
+    FmtAssert (cleanup_list_for_eh.size() >= handler_count, ("Cleanups cannot be removed here"));
+    LABEL_IDX cmp_idx = scope_cleanup_stack[scope_cleanup_i+1].cmp_idx;
+    if (cleanup_list_for_eh.size() > handler_count)
+    {
+	std::list<EH_CLEANUP_ENTRY>::iterator iter = cleanup_list_for_eh.begin();
+    	for (int incr=0; incr<handler_count; ++incr)
+	    ++iter;
+    	for (; iter != cleanup_list_for_eh.end(); ++iter)
+	{
+	    EH_CLEANUP_ENTRY entry = *iter;
+	    WN_INSERT_BlockLast (region_pragmas, WN_CreateGoto (entry.pad));
+	}
+    }
+    else // ==
+    {
+    	Set_LABEL_KIND (Label_Table[cmp_idx], LKIND_BEGIN_HANDLER);
+    	WN_INSERT_BlockLast (region_pragmas, WN_CreateGoto (cmp_idx));
+    }
+
+    // insert the label to go to for an inlined callee
+    // This inito is not being used right now.
+    TY_IDX ty = MTYPE_TO_TY_array[MTYPE_U4];
+    ST * ereg = Gen_Temp_Named_Symbol (ty, "try_label", CLASS_VAR,
+                                SCLASS_EH_REGION_SUPP);
+    Set_ST_is_initialized (*ereg);
+    Set_ST_is_not_used (*ereg);
+    INITV_IDX try_label = New_INITV();
+    INITV_Init_Label (try_label, cmp_idx, 1);
+    INITO_IDX ereg_supp = New_INITO (ST_st_idx(ereg), try_label);
+    WFE_Stmt_Append (WN_CreateRegion (REGION_KIND_TRY, region_body,
+    	region_pragmas, WN_CreateBlock(), New_Region_Id(), ereg_supp), 
+	Get_Srcpos());
+    Set_PU_has_region (Get_Current_PU());
+  }
+  vector<tree> *cleanups = new vector<tree>();
+  LABEL_IDX cmp_idx = scope_cleanup_stack[scope_cleanup_i+1].cmp_idx;
+  LABEL_IDX goto_idx=0;
+  bool outermost = 0;
+  if (key_exceptions) outermost = Get_Cleanup_Info (cleanups, &goto_idx);
+  vector<ST_IDX> *handler_list = new vector<ST_IDX>();
+  vector<ST_IDX> * eh_spec_list = NULL;
+  if (key_exceptions) 
+  {
+    Get_handler_list (handler_list);
+    eh_spec_list = new vector<ST_IDX>();
+    Get_eh_spec (eh_spec_list);
+  }
+#endif // KEY
+
   /* Generate a label for the handlers to branch back to. */
 
   New_LABEL (CURRENT_SYMTAB, end_label_idx);
 
   /* Handler code will be generated later, at end of function. */
 
+#ifdef KEY
+  Push_Handler_Info (TRY_HANDLERS(stmt), cleanups, scope_cleanup, temp_cleanup,
+	break_continue, handler_list, eh_spec_list, end_label_idx, outermost, 
+	cmp_idx, goto_idx);
+#else
   Push_Handler_Info (TRY_HANDLERS(stmt), end_label_idx);
+#endif // KEY
 
   /* Emit label after handlers. */
 
   end_label_wn = WN_CreateLabel ((ST_IDX) 0, end_label_idx, 0, NULL);
   WFE_Stmt_Append (end_label_wn, Get_Srcpos());
 } /* WFE_Expand_Try */
+
+#ifdef KEY
+static int
+sizeof_eh_spec (tree t)
+{
+  int i=1;
+  for (; t; t = TREE_CHAIN(t), i++) ;
+  return i;
+}
+#endif
+
+static void
+WFE_Expand_EH_Spec (tree stmt)
+{
+      // This is what g++'s genrtl_eh_spec_block routine (in cp/semantics.c)
+      // does:
+      //   expand_eh_region_start ();
+      //   expand_stmt (EH_SPEC_STMTS (t));
+      //   expand_eh_region_end_allowed (...);
+#ifdef KEY
+      int bkup = current_eh_spec_ofst;
+      int initial_size = eh_spec_vector.size();
+      if (key_exceptions)
+      {
+        // Generally, there is 1 exception specification per function.
+        // After inlining (by the GNU front-end or inliner/ipa), the caller
+        // function can have multiple specifications. Any inlining by GNU is
+        // taken care of here by updating current_eh_spec_ofst.
+        // TODO: cmp with -1 before calling unexpected needs to be changed.
+        tree eh_spec = EH_SPEC_RAISES (stmt);
+        current_eh_spec_ofst = initial_size+1;
+        if (eh_spec_vector.empty())
+          eh_spec_vector.reserve (sizeof_eh_spec (eh_spec));
+        for (; eh_spec; eh_spec = TREE_CHAIN (eh_spec))
+        {
+          ST_IDX type_st = ST_st_idx (Get_ST ( 
+			Get_typeinfo_var(TREE_VALUE(eh_spec))));
+          eh_spec_vector.push_back (type_st);
+	  eh_spec_func_end.push_back (type_st);
+
+          TYPE_FILTER_ENTRY e;
+          e.st = type_st;
+          e.filter = 0; // do not compare based on filter
+          vector<TYPE_FILTER_ENTRY>::iterator f = find(type_filter_vector.begin(), type_filter_vector.end(), e);
+          if (f == type_filter_vector.end())
+          {
+	    e.filter = type_filter_vector.size()+1;
+      	    type_filter_vector.push_back (e);
+	  }
+        }
+        eh_spec_vector.push_back (0); // terminator
+        eh_spec_func_end.push_back (0);
+      }
+#endif
+      WFE_Expand_Stmt (EH_SPEC_STMTS (stmt));
+#ifdef KEY
+      if (key_exceptions)
+      { // now clear eh_spec_vector, eh_spec_func_end stays.
+      	if (!initial_size) eh_spec_vector.clear();
+	else
+	{
+	    int current_size = eh_spec_vector.size();
+	    for (int i=initial_size; i<current_size; ++i)
+	    	eh_spec_vector.pop_back();
+      	}
+      }
+      current_eh_spec_ofst = bkup;
+#endif
+}
 
 static void
 Call_Named_Function (ST * st)
@@ -1693,6 +3342,13 @@ Call_Rethrow (void)
 
 void Call_Terminate (void)
 {
+#ifdef KEY
+  static ST * st = NULL;
+  if (st == NULL) {
+    st = Function_ST_For_String ("_ZSt9terminatev");
+  }
+  Call_Named_Function (st);
+#else
 #if 0
   static ST * st = NULL;
   if (st == NULL) {
@@ -1700,17 +3356,200 @@ void Call_Terminate (void)
   }
   Call_Named_Function (st);
 #endif
+#endif // KEY
+}
+
+#ifdef KEY
+static void Generate_filter_cmp (int filter, LABEL_IDX goto_idx);
+static WN *
+Generate_cxa_call_unexpected (void)
+{
+  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().unused)));
+  ST exc_st = St_Table[exc_ptr_param];
+  WN* parm_node = WN_Ldid (Pointer_Mtype, 0, &exc_st, ST_type (exc_st));
+
+  TY_IDX idx;
+  TY &ptr_ty = New_TY (idx);
+  TY_Init (ptr_ty, Pointer_Size, KIND_POINTER, Pointer_Mtype,
+                        Save_Str ("anon_ptr."));
+                                                                                
+  ptr_ty.Set_pointed (ST_type(exc_st));
+                                                                                
+  WN * arg0 = WN_CreateParm (Pointer_Mtype, parm_node, idx, WN_PARM_BY_VALUE);
+                                                                                
+  ST * st = Function_ST_For_String("__cxa_call_unexpected");
+  WN * call_wn = WN_Create (OPR_CALL, Pointer_Mtype, MTYPE_V, 1);
+  WN_kid0 (call_wn) = arg0;
+  WN_st_idx (call_wn) = ST_st_idx (st);
+  return call_wn;
 }
 
 static void
-WFE_Expand_Handlers_Or_Cleanup (tree t, LABEL_IDX label_idx)
+Generate_unwind_resume (void)
 {
+  ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().unused)));
+  ST exc_st = St_Table[exc_ptr_param];
+  WN* parm_node = WN_Ldid (Pointer_Mtype, 0, &exc_st, ST_type (exc_st));
+
+  TY_IDX idx;
+  TY &ptr_ty = New_TY (idx);
+  TY_Init (ptr_ty, Pointer_Size, KIND_POINTER, Pointer_Mtype,
+                        Save_Str ("anon_ptr."));
+                                                                                
+  ptr_ty.Set_pointed (ST_type(exc_st));
+                                                                                
+  WN * arg0 = WN_CreateParm (Pointer_Mtype, parm_node, idx, WN_PARM_BY_VALUE);
+                                                                                
+  ST * st = Function_ST_For_String("_Unwind_Resume");
+  WN * call_wn = WN_Create (OPR_CALL, Pointer_Mtype, MTYPE_V, 1);
+  WN_kid0 (call_wn) = arg0;
+  WN_st_idx (call_wn) = ST_st_idx (st);
+
+// Before calling _Unwind_Resume(), if we have eh-spec, compare filter with
+// -1, goto __cxa_call_unexpected call if required. Otherwise fall-through.
+  WN *call_unexpected;
+  LABEL_IDX goto_unexpected;
+  if (!eh_spec_func_end.empty())
+  {
+	// TODO: The hard-coded -1 most probably needs to be changed to
+	// properly handle GNU inlining.
+	New_LABEL (CURRENT_SYMTAB, goto_unexpected);
+	Generate_filter_cmp (-1, goto_unexpected);
+	call_unexpected = Generate_cxa_call_unexpected ();
+  }
+
+  if (key_exceptions)
+  	WFE_Stmt_Push (WN_CreateBlock(), wfe_stmk_region_body, Get_Srcpos());
+  WFE_Stmt_Append (call_wn, Get_Srcpos());
+  if (key_exceptions)
+  	Setup_EH_Region (1 /* for _Unwind_Resume */);
+// We would ideally want to put it inside the above region, but we cannot
+// jmp from outside a region into it.
+  if (!eh_spec_func_end.empty())
+  {
+  	WFE_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, goto_unexpected, 0, NULL),
+    		Get_Srcpos());
+  	if (key_exceptions)
+  	    WFE_Stmt_Push (WN_CreateBlock(), wfe_stmk_region_body, Get_Srcpos());
+  	WFE_Stmt_Append (call_unexpected, Get_Srcpos());
+  	if (key_exceptions)
+  	    Setup_EH_Region (1 /* for __cxa_call_unexpected */);
+  }
+}
+
+static void
+Generate_filter_cmp (int filter, LABEL_IDX goto_idx)
+{
+  ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().unused))));
+  const TYPE_ID mtype = TARGET_64BIT ? MTYPE_U8 : MTYPE_U4;
+  
+  WN * wn_ldid = WN_Ldid (mtype, 0, &St_Table[filter_param],
+                                                MTYPE_TO_TY_array[mtype]);
+  WN * goto_wn = WN_CreateGoto (goto_idx);
+  WN_next (goto_wn) = WN_prev (goto_wn) = NULL;
+                                                                                
+  WN * if_then = WN_CreateBlock ();
+  WN_first (if_then) = WN_last (if_then) = goto_wn;
+                                                                                
+  WN * if_else = WN_CreateBlock ();
+  WN * cmp_value = WN_Intconst (mtype, filter);
+  WN * cond = WN_Create (OPR_EQ, WN_rtype (wn_ldid), mtype, 2);
+  WN_kid0 (cond) = wn_ldid;
+  WN_kid1 (cond) = cmp_value;
+                                                                                
+  WN * if_blk = WN_CreateIf (cond, if_then, if_else);
+                                                                                
+  WFE_Stmt_Append (if_blk, Get_Srcpos());
+}
+#endif // KEY
+
+// for a catch-all clause, pass a typeinfo of ZERO. This typeinfo needs
+// to be handled specially. Moreover, we must not pass 0 for any other
+// typeinfo.
+static void
+WFE_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
+{
+  tree t = handler_info.handler;
+  vector<tree> *cleanups = handler_info.cleanups;
+  LABEL_IDX label_idx = handler_info.label_idx;
+  LABEL_IDX goto_idx = handler_info.goto_idx;
+  LABEL_IDX cleanups_idx = handler_info.cleanups_idx;
+  bool outermost = handler_info.outermost;
+#ifndef KEY
   WFE_Stmt_Append (
     WN_CreateLabel ((ST_IDX) 0, HANDLER_LABEL(t), 0, NULL),
     Get_Srcpos());
+#endif // !KEY
   
   if (TREE_CODE(t) == HANDLER) {
+
+#ifdef KEY
+    if (key_exceptions)
+    {
+      tree t_copy = t;
+      while (t_copy)
+      {
+        tree type = HANDLER_TYPE(t_copy);
+        ST_IDX  sym = 0;
+	if (type) sym = ST_st_idx (Get_ST (Get_typeinfo_var(type)));
+        TYPE_FILTER_ENTRY e;
+        e.st = sym;
+        e.filter = 0; // do not compare based on filter
+        vector<TYPE_FILTER_ENTRY>::iterator f = find(type_filter_vector.begin(), type_filter_vector.end(), e);
+        if (f == type_filter_vector.end())
+        {
+	  e.filter = type_filter_vector.size()+1;
+      	  type_filter_vector.push_back (e);
+	  if (e.st)
+	  	Generate_filter_cmp (e.filter, HANDLER_LABEL(t_copy));
+	  else // catch-all, so do not compare filter
+      		WFE_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, 
+				HANDLER_LABEL(t_copy)), Get_Srcpos());
+#if 0
+// we shouldn't need the following sort call
+// TODO: verify and remove it.
+	  sort (type_filter_vector.begin(), type_filter_vector.end(), 
+		cmp_types());
+#endif
+        }
+        else 
+	{
+	  if (e.st)
+	  	Generate_filter_cmp ((*f).filter, HANDLER_LABEL(t_copy));
+	  else // catch-all, so do not compare filter
+      		WFE_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, 
+				HANDLER_LABEL(t_copy)), Get_Srcpos());
+	}
+        t_copy = TREE_CHAIN(t_copy);
+      }
+
+  WFE_Stmt_Append (
+    WN_CreateLabel ((ST_IDX) 0, cleanups_idx, 0, NULL), Get_Srcpos());
+// Generate any cleanups that need to be executed before going to the outer
+// scope, which would be a handler in the same PU or a call to _Unwind_Resume
+      in_cleanup = TRUE;
+      for (vector<tree>::iterator j=cleanups->begin();
+		j!=cleanups->end(); ++j)
+    	  WFE_One_Stmt_Cleanup (CLEANUP_EXPR (*j));
+
+      in_cleanup = FALSE;
+// generate a call to _Unwind_Resume(struct _Unwind_Exception *)
+      if (outermost)
+      {
+	FmtAssert (goto_idx == 0, ("Goto label should be 0"));
+	Generate_unwind_resume ();
+      }
+      else
+      	WFE_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, goto_idx), Get_Srcpos());
+    } // key_exceptions
+#endif // KEY
     while (t) {
+#ifdef KEY
+// need a label in front of each handler, so that we can jump to the
+// proper label from 'cmp' above
+  WFE_Stmt_Append (
+    WN_CreateLabel ((ST_IDX) 0, HANDLER_LABEL(t), 0, NULL), Get_Srcpos());
+#endif
       tree body = HANDLER_BODY(t);
       for (; body; body = TREE_CHAIN(body))
 	WFE_Expand_Stmt (body);
@@ -1719,6 +3558,9 @@ WFE_Expand_Handlers_Or_Cleanup (tree t, LABEL_IDX label_idx)
       t = TREE_CHAIN(t);
     }
   } else {
+// We will see if control reaches here.
+// Let me comment this out, may need to do something else later.
+      //Fail_FmtAssertion ("Handle it");
       WFE_One_Stmt (t);
       Call_Rethrow();
   }    
@@ -1761,7 +3603,13 @@ WFE_Expand_Stmt(tree stmt)
       break;
 
     case CLEANUP_STMT:
+#ifdef KEY
+      if (!CLEANUP_EH_ONLY(stmt))
+    	  Push_Scope_Cleanup (stmt);
+      else Push_Scope_Cleanup (stmt, true /* cleanup_eh_only */);
+#else
       Push_Scope_Cleanup (stmt);
+#endif
       break;
 
     case COMPOUND_STMT: {
@@ -1778,6 +3626,19 @@ WFE_Expand_Stmt(tree stmt)
       break;
 
     case DECL_STMT:
+#ifdef KEY
+      // If the node is an INDIRECT_REF, then it's because we changed it from a
+      // VAR_DECL to an INDIRECT_REF for the named return value optimization.
+      // In this case, do nothing if the decl has no initializer; otherwise,
+      // expand named_ret_obj_initalizer, which is the initializer that we've
+      // save as a TARGET_EXPR.
+      if (TREE_CODE(DECL_STMT_DECL(stmt)) == INDIRECT_REF) {
+	if (named_ret_obj_initializer) {
+	  WFE_Expand_Expr(named_ret_obj_initializer);
+	}
+	break;
+      }
+#endif
       WFE_Expand_Decl (DECL_STMT_DECL (stmt));
       break;
 
@@ -1811,7 +3672,11 @@ WFE_Expand_Stmt(tree stmt)
       break;
 
     case RETURN_STMT: {
+#ifdef KEY
+      tree t = RETURN_STMT_EXPR(stmt);
+#else
       tree t = RETURN_EXPR(stmt);
+#endif // KEY
       if (t && TREE_CODE(t) == INIT_EXPR) {
   	Is_True(TREE_CODE(TREE_OPERAND(t, 0)) == RESULT_DECL,
 			  ("WFE_Expand_Stmt: expected RESULT_DECL"));
@@ -1832,12 +3697,10 @@ WFE_Expand_Stmt(tree stmt)
 	Pop_Scope_And_Do_Cleanups ();
       break;
 
-    case START_CATCH_STMT:
-      DevWarn ("WFE_Expand_Stmt: START_CATCH_STMT not yet implemented.\n");
-      break;
-
+#ifndef KEY
     case SUBOBJECT:
       break;
+#endif // !KEY
 
     case SWITCH_STMT:
       WFE_Expand_Switch (stmt);
@@ -1851,9 +3714,23 @@ WFE_Expand_Stmt(tree stmt)
       WFE_Expand_Loop (stmt);
       break;
 
+#ifndef KEY
     case CTOR_STMT:
       DevWarn("Encountered CTOR_STMT (%s).  Ignoring.",
               (CTOR_BEGIN_P(stmt) ? "begin" : "end"));
+      break;
+#endif // !KEY
+
+    case FILE_STMT:
+      /* Simple enough to handle.  */
+      input_filename = FILE_STMT_FILENAME (stmt);
+      break;
+
+    case EH_SPEC_BLOCK:
+      WFE_Expand_EH_Spec (stmt);
+      break;
+
+    case USING_STMT:
       break;
 
     default:
@@ -1872,3 +3749,52 @@ WFE_Expand_Stmt(tree stmt)
 
 } /* WFE_Expand_Stmt */
 
+#ifdef KEY
+// RETVAL is a TARGET_EXPR that generates the function return value.  The
+// return value is to be returned in the memory pointed to by the fake first
+// parm which was inserted by the WHIRL front-end.  This routine transforms the
+// GCC tree to make the TARGET_EXPR write the result directly to the memory
+// pointed to by the fake parm, instead of having TARGET_EXPR first write to a
+// temp var and then copy from the temp var to the return area.  Inserting this
+// copy can be incorrect since the copy may involve a copy constructor.  An
+// example transformation:
+//
+//    before                         after
+// ------------------------------------------------------
+//  return_stmt                   return_stmt
+//    init_expr                     init_expr
+//      result_decl                   result_decl
+//      target_expr                   target_expr
+//        var_decl x (decl)             indirect_ref (of fake first parm)
+//        compound_expr (init)          compound_expr
+//          call_expr                     call_expr
+//            addr_expr                     addr_expr
+//              var_decl x                    indirect_ref (of fake first parm)
+//          var_decl x                      indirect_ref (of fake first parm)
+//        call_expr (clnp)              call_expr
+//          addr_expr                     addr_expr
+//            var_decl x                    indirect_ref (of fake first parm)
+//
+// In the original tree, all the "var_decl x" nodes are really one single node
+// that is referenced many times.  By changing the node from var_decl to
+// indirect_ref, all references of x are changed to references of the memory
+// pointed to by the fake first parm.
+static void
+WFE_fixup_target_expr (tree retval)
+{
+  tree decl = TREE_OPERAND(retval, 0);
+  FmtAssert(TREE_CODE(decl) == VAR_DECL,
+	    ("WFE_fixup_target_expr: VAR_DECL not found in TARGET_EXPR"));
+
+  // Get the ST for the fake first parm.
+  WN *first_formal = WN_formal(Current_Entry_WN(), 0);
+
+  // Change the TARGET_EXPR's DECL to be an INDIRECT_REF of the fake first
+  // parm.
+  tree ptr_var = build_decl(VAR_DECL, NULL_TREE,
+  			    build_pointer_type(TREE_TYPE(retval)));
+  TREE_SET_CODE(decl, INDIRECT_REF);
+  TREE_OPERAND(decl, 0) = ptr_var;
+  set_DECL_ST(ptr_var, WN_st(first_formal));
+}
+#endif

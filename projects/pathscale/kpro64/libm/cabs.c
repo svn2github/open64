@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -61,7 +65,7 @@ extern	double	__hypot(double, double);
 
 struct __cabs_s { double r, i; };
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern double	cabs(struct __cabs_s);
 
 #pragma weak cabs = __cabs

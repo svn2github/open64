@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -122,6 +126,11 @@ extern void Exp_Store (
 /* Generate a copy from 'src_tn' to 'tgt_tn'. */
 extern void Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops); 
 
+#ifdef TARG_X8664
+/* Generate a copy from 'src_tn' to 'tgt_tn' with zero/sign extension. */
+extern void Exp_COPY_Ext (TOP opcode, TN *tgt_tn, TN *src_tn, OPS *ops); 
+#endif /* TARG_X8664 */
+
 /* Given a simulated <op>, expand it into the sequence of instructions
  * that must be generated. The <pc_value> is the PC location of the 
  * <op>. It is used to generate offsets for branches in the sequence 
@@ -143,8 +152,16 @@ extern TN * Exp_Intrinsic_Call (
   INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops, 
   LABEL_IDX *label, OPS *loop_ops);
 
+#ifdef TARG_X8664
+/* Expansion of INTRN_SAVEXMMS into TOP_savexmms pseudo instruction */
+extern void Exp_Savexmms_Intrinsic(WN *intrncall, TN *rax_tn, LABEL_IDX *label, 
+				   OPS *ops);
+
+extern void Exp_Landingpadentry_Intrinsic (ST *dest1, ST *dest2, OPS* ops);
+#endif
+
 /* expand intrinsic op */
-extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, OPS *ops);
+extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TYPE_ID mtype, OPS *ops);
 
 /* Expand TN(const) into a sequence of ops (used in prolog)
  */
@@ -236,6 +253,17 @@ extern void Exp_Generic_Pred_Calc(TN* result1, TN *result2, COMPARE_TYPE ctype,
  */
 extern void Exp_True_False_Preds_For_Block(BB *bb,
 					   TN* &true_tn, TN * &false_tn);
+#ifdef KEY
+/*
+ * Used to reinitilalize Predicate TNs for HB 
+ */
+extern void HB_Reinit_Pred ();
+#endif
+
+#ifdef TARG_X8664
+extern void Expand_Start();
+extern void Expand_Finish();
+#endif
 
 /* Predicate manipulation routines.
  *

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "common_com_pch.h"
 #endif /* USE_PCH */
@@ -43,7 +49,9 @@
 #include <elf.h>		    /* for all Elf stuff */
 #include <sys/elf_whirl.h>	    /* for WHIRL sections' sh_info */
 
+#ifndef USE_STANDARD_TYPES
 #define USE_STANDARD_TYPES	    /* override unwanted defines in "defs.h" */
+#endif
 
 #include "defs.h"
 #include "erglob.h"
@@ -195,11 +203,11 @@ ir_b_grow_map (Elf64_Word min_size, Output_File *fl)
 				  MAP_SHARED, fl->output_fd, 0); 
 
     if (ftruncate(fl->output_fd, fl->mapped_size))
-	ErrMsg (EC_IR_Write, fl->file_name, sys_errlist[errno]);
+	ErrMsg (EC_IR_Write, fl->file_name, strerror(errno));
 #endif
 
     if (fl->map_addr == (char *) (-1))
-	ErrMsg (EC_IR_Write, fl->file_name, sys_errlist[errno]);
+	ErrMsg (EC_IR_Write, fl->file_name, strerror(errno));
 
     return fl->map_addr;
 } /* ir_b_grow_map */
@@ -222,8 +230,26 @@ ir_b_create_map (Output_File *fl)
 
 
 /* Walk the tree and copy it to contiguous memory block in the temp. file */
+#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+
+// ******************** IPA weak symbols^
+#define IPA_get_symbol_file_array (*IPA_get_symbol_file_array_p)
+#define Get_Node_From_PU (*Get_Node_From_PU_p)
+#include <ipc_file.h>
+
+extern IP_FILE_HDR_TABLE IP_File_header;
+IP_FILE_HDR_TABLE *IP_File_header_p;
+#define IP_File_header (*IP_File_header_p)
+
+#include <ipo_tlog_utils.h>
+#include <ipa_cg.h>
+// ******************** IPA weak symbols$
+extern Elf64_Word
+ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map, PU_Info *pu)
+#else
 extern Elf64_Word
 ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
+#endif
 {
     register OPCODE opcode;
     Elf64_Word node_offset;
@@ -330,6 +356,40 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 
     }
 #endif /* BACK_END */
+#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+// ONLY for IPA.
+    if (Get_tlog_phase() == PHASE_IPA && WN_operator(node) == OPR_REGION 
+        && WN_region_is_EH (node) && WN_block_empty (WN_region_pragmas (node)))
+    {
+      FmtAssert (pu, ("Null pu info"));
+
+      IPA_NODE * cg_node = Get_Node_From_PU (pu);
+      FmtAssert (cg_node, ("Null ipa node"));
+
+      if (!cg_node->Is_PU_Write_Complete())
+      {
+	FmtAssert (PU_src_lang (cg_node->Get_PU()) & PU_CXX_LANG, 
+		   ("Exception region in non-C++ PU"));
+
+	int sym_size;
+	SUMMARY_SYMBOL * sym_array = IPA_get_symbol_file_array (cg_node->File_Header(), sym_size);
+	FmtAssert (sym_array != NULL, ("Missing SUMMARY_SYMBOL section"));
+    	INITV_IDX types = INITV_next (INITV_blk (INITO_val (WN_ereg_supp (node))));
+	for (; types; types = INITV_next (types))
+	{
+	    if (INITV_kind (types) == INITVKIND_ZERO)
+	    	continue;
+	    int index = TCON_uval (INITV_tc_val (types));
+	    if (index <= 0) continue;
+	    ST_IDX new_idx = sym_array[index].St_idx();
+	    INITV_IDX next = INITV_next (types);	// for backup
+	    INITV_Set_VAL (Initv_Table[types], Enter_tcon (
+	    		   Host_To_Targ (MTYPE_U4, new_idx)), 1);
+	    Set_INITV_next (types, next);
+    	}
+      }
+    }
+#endif
 
 
     if (opcode == OPC_BLOCK) {
@@ -340,11 +400,19 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 	    WN_last(WN_ADDR(node_offset)) = (WN *) -1;
 	} else {
 	    register WN *wn = WN_first (node);
+#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+	    prev = ir_b_write_tree(wn, base_offset, fl, off_map, pu);
+#else
 	    prev = ir_b_write_tree(wn, base_offset, fl, off_map);
+#endif
 	    WN_first(WN_ADDR(node_offset)) = (WN *) prev;
 
 	    while (wn = WN_next(wn)) {
+#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+		this_node = ir_b_write_tree(wn, base_offset, fl, off_map, pu);
+#else
 		this_node = ir_b_write_tree(wn, base_offset, fl, off_map);
+#endif
 		/* fill in the correct next/prev offsets (in place of -1) */
 		WN_next(WN_ADDR(prev + base_offset)) = (WN *) this_node;
 		WN_prev(WN_ADDR(this_node + base_offset)) = (WN *) prev;
@@ -362,8 +430,13 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 	    if (WN_kid(node, i) == 0) {
 		WN_kid(WN_ADDR(node_offset), i) = (WN *) -1;
 	    } else {
+#if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
+		kid = ir_b_write_tree (WN_kid(node, i), base_offset,
+				       fl, off_map, pu);
+#else
 		kid = ir_b_write_tree (WN_kid(node, i), base_offset,
 				       fl, off_map);
+#endif
 		WN_kid(WN_ADDR(node_offset), i) = (WN *) kid;
 	    }
 	}

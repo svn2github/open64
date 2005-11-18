@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -73,6 +77,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_grant.h"
 #include "gra_spill.h"
 #include "gra_interfere.h"
+#ifdef TARG_X8664
+#include "targ_sim.h"
+#endif
 
 INT32 GRA_local_forced_max = DEFAULT_FORCED_LOCAL_MAX;
     // How many locals to force allocate (out of the number requested by LRA)?
@@ -453,12 +460,17 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
     Update_Register_Info(lrange, lrange->Reg());
     return TRUE;
   }
+#ifdef KEY
+  GRA_Trace_LRANGE_Choose(lrange, allowed);
+#endif
+#ifdef HAS_STACKED_REGISTERS
   if (REGISTER_SET_EmptyP(allowed) ) {
     //
     // Try to get a stacked register.
     //
     return Allocate_Stacked_Register(lrange);
   }      
+#endif
   if ( Choose_Preference(lrange, allowed, region) )
     return TRUE;
   else if ( Choose_Avoiding_Neighbor_Preferences(lrange,allowed) )
@@ -492,25 +504,49 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
   //
   if (GRA_local_forced_max == DEFAULT_FORCED_LOCAL_MAX) {
     INT rc_size = (REGISTER_CLASS_last_register(rc) - REGISTER_MIN) + 1;
+#ifdef KEY
+    rc_local_forced_max = GRA_local_forced_max;
+#else
     rc_local_forced_max = Min(GRA_local_forced_max, rc_size/8);
+#endif
   } else {
     INT rc_size = REGISTER_SET_Size(REGISTER_CLASS_allocatable(rc));
+#ifdef KEY
+    if (rc_size <= 4) {
+#else
     if (rc_size <= 8) {
+#endif
      /* There are not enough registers in this class to support this option. */
       return;
     }
+#ifndef KEY
     if (rc_size < GRA_local_forced_max*2) {
      /* Don't allow a request for more than half of the available registers. */
       rc_local_forced_max = rc_size/2;
     } else {
+#endif
       rc_local_forced_max = GRA_local_forced_max;
+#ifndef KEY
     }
+#endif
   }
   
   for (iter.Init(region); ! iter.Done(); iter.Step()) {
     INT i;
     GRA_BB* gbb = iter.Current();
-    for ( i = Min(gbb->Register_Girth(rc),rc_local_forced_max);
+    INT regs_to_grant = Min(gbb->Register_Girth(rc),rc_local_forced_max);
+#ifdef TARG_X8664 // always give RAX, RCX and RDX to LRA
+    if (rc == ISA_REGISTER_CLASS_integer) {
+      gbb->Make_Register_Used(ISA_REGISTER_CLASS_integer, RAX);
+      gbb->Make_Register_Used(ISA_REGISTER_CLASS_integer, RCX);
+      gbb->Make_Register_Used(ISA_REGISTER_CLASS_integer, RDX);
+      GRA_GRANT_Local_Register(gbb, ISA_REGISTER_CLASS_integer, RAX);
+      GRA_GRANT_Local_Register(gbb, ISA_REGISTER_CLASS_integer, RCX);
+      GRA_GRANT_Local_Register(gbb, ISA_REGISTER_CLASS_integer, RDX);
+      regs_to_grant -= 3;
+    }
+#endif
+    for ( i = regs_to_grant;
           i > 0;
           --i
     ) {
@@ -524,6 +560,10 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
 #endif
       allowed = REGISTER_SET_Difference(allowed,
                                 gbb->Registers_Used(rc));
+#ifdef KEY  // this is needed to avoid insufficient regs granted to LRA
+      allowed = REGISTER_SET_Difference(allowed, 
+	      			REGISTER_CLASS_function_value(rc));
+#endif
       BOOL non_glue_found = FALSE;
 
       REGISTER_SET npr = non_prefrenced_regs[rc];
@@ -550,8 +590,10 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
         GRA_GRANT_Local_Register(gbb,rc,reg);
       }
       else {
-        DevWarn("Couldn't force allocate %d registers in rc %d for BB:%d",
-                i,rc,BB_id(gbb->Bb()));
+	if( Is_Target_64bit() ){
+	  DevWarn("Couldn't force allocate %d registers in rc %d for BB:%d",
+		  i,rc,BB_id(gbb->Bb()));
+	}
         break;
       }
     }
@@ -678,11 +720,13 @@ Simplify_Initialize( GRA_REGION* region, ISA_REGISTER_CLASS rc,
       lr->Neighbors_Left_Initialize();
       lr->Calculate_Priority();
 
+#ifndef KEY // for key, leave ready queue empty; rank purely based on priority
       if ( lr->Neighbors_Left() < lr->Candidate_Reg_Count() ) {
         LRPRQ_Insert(ready,lr);
         lrange_mgr.One_Set_Union1(lr);
       }
       else
+#endif
         LRPRQ_Insert(not_ready,lr);
     }
   }
@@ -710,6 +754,7 @@ Simplify( GRA_REGION* region, ISA_REGISTER_CLASS rc, LRANGE_CLIST* cl )
   MEM_POOL_Push(&prq_pool);
   Simplify_Initialize(region,rc,cl,&pcl,&ready,&not_ready);
 
+#ifndef KEY // for key, leave ready queue empty; rank purely based on priority
   for (;;) {
     if ( LRPRQ_Size(&ready) != 0 )
       lr = LRPRQ_Delete_Top(&ready);
@@ -747,6 +792,17 @@ Simplify( GRA_REGION* region, ISA_REGISTER_CLASS rc, LRANGE_CLIST* cl )
       }
     }
   }
+#else
+  while (LRPRQ_Size(&not_ready) != 0) { 
+    lr = LRPRQ_Delete_Top(&not_ready);
+
+    FmtAssert(! lr->Allocated(),("LRANGE already allocated"));
+
+    cl->Push(lr);
+    GRA_Trace_Color_LRANGE("Listing.",lr);
+    lr->Listed_Set();
+  }
+#endif
 
   // Any live ranges that must be allocated to particular live ranges are now
   // prepended to the front of the coloring list.  Notice how these have been

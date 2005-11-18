@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -152,6 +156,16 @@ extern "C" {
  */
 
 extern BOOL Run_autopar;
+#ifdef KEY
+extern BOOL Simd_Align;
+extern BOOL Simd_Reallocate_Objects;
+typedef enum {
+  NO_PREFETCH = 0,      /* Prefetching disabled */
+  SOME_PREFETCH = 1,    /* Little prefetching */
+  CONSERVATIVE_PREFETCH = 2,     /* More prefetching than earlier option */
+  AGGRESSIVE_PREFETCH = 3          /* Aggressive */
+} PREFETCH_LEVEL;
+#endif
 
 /* We reference a memory hierarchy descriptor from config_cache.* */
 struct MHD;
@@ -174,6 +188,21 @@ typedef struct lno_flags {
   BOOL	Cache_model_edge_effects;
   BOOL	Coupled_opts;
   BOOL	Cse;
+#ifdef KEY
+  UINT32 Cse_Loop_Skip_Before;
+  UINT32 Cse_Loop_Skip_After;
+  UINT32 Cse_Loop_Skip_Equal;
+  UINT32 Simd_Skip_Before;
+  UINT32 Simd_Skip_After;
+  UINT32 Simd_Skip_Equal;
+  UINT32 HoistIf_Skip_Before;
+  UINT32 HoistIf_Skip_After;
+  UINT32 HoistIf_Skip_Equal;
+  UINT32 HoistIf_Threshold;
+  UINT32 Skip_Before;
+  UINT32 Skip_After;
+  UINT32 Skip_Equal;
+#endif /* KEY */
   BOOL	Fancy_tile;
   BOOL	Run_fiz_fuse;
   UINT32 Fission;
@@ -208,6 +237,10 @@ typedef struct lno_flags {
   BOOL	Pseudo_lower;
   UINT32 Run_prefetch;
   BOOL	Run_prefetch_set;
+#ifdef KEY
+  BOOL   Prefetch_stores;
+  BOOL   Prefetch_stores_set;
+#endif
   UINT32 Prefetch_ahead;
   UINT32 Prefetch_iters_ahead;
   UINT32 Prefetch_cache_factor;
@@ -227,6 +260,12 @@ typedef struct lno_flags {
   BOOL	Verbose;
   BOOL	Version_mp_loops;
   BOOL	Run_vintr;
+#ifdef KEY
+  UINT32  Run_simd;
+  BOOL	  Run_simd_set;
+  BOOL 	  Simd_Verbose;
+  BOOL  Run_hoistif;
+#endif /* KEY */
   BOOL	Run_oinvar;
   UINT32 Run_doacross;
   UINT32 Preferred_doacross_tile_size;
@@ -283,6 +322,21 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Cache_Model_Edge_Effects	Current_LNO->Cache_model_edge_effects
 #define LNO_Coupled_Opts		Current_LNO->Coupled_opts
 #define LNO_Cse				Current_LNO->Cse
+#ifdef KEY
+#define LNO_Cse_Loop_Skip_Before	Current_LNO->Cse_Loop_Skip_Before
+#define LNO_Cse_Loop_Skip_After	        Current_LNO->Cse_Loop_Skip_After
+#define LNO_Cse_Loop_Skip_Equal	        Current_LNO->Cse_Loop_Skip_Equal
+#define LNO_Simd_Skip_Before	        Current_LNO->Simd_Skip_Before
+#define LNO_Simd_Skip_After	        Current_LNO->Simd_Skip_After
+#define LNO_Simd_Skip_Equal	        Current_LNO->Simd_Skip_Equal
+#define LNO_HoistIf_Skip_Before	        Current_LNO->HoistIf_Skip_Before
+#define LNO_HoistIf_Skip_After	        Current_LNO->HoistIf_Skip_After
+#define LNO_HoistIf_Skip_Equal	        Current_LNO->HoistIf_Skip_Equal
+#define LNO_HoistIf_Threshold		Current_LNO->HoistIf_Threshold
+#define LNO_Skip_Before	                Current_LNO->Skip_Before
+#define LNO_Skip_After	                Current_LNO->Skip_After
+#define LNO_Skip_Equal	                Current_LNO->Skip_Equal
+#endif /* KEY */
 #define LNO_Fancy_Tile			Current_LNO->Fancy_tile
 #define LNO_Run_Fiz_Fuse		Current_LNO->Run_fiz_fuse
 #define LNO_Fission			Current_LNO->Fission
@@ -319,6 +373,12 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Pseudo_Lower		Current_LNO->Pseudo_lower
 #define LNO_Run_Prefetch		Current_LNO->Run_prefetch
 #define LNO_Run_Prefetch_Set		Current_LNO->Run_prefetch_set
+
+#ifdef KEY
+#define LNO_Prefetch_Stores		Current_LNO->Prefetch_stores
+#define LNO_Prefetch_Stores_Set		Current_LNO->Prefetch_stores_set
+#endif
+
 #define LNO_Prefetch_Ahead		Current_LNO->Prefetch_ahead
 #define LNO_Prefetch_Iters_Ahead	Current_LNO->Prefetch_iters_ahead
 #define LNO_Prefetch_Cache_Factor	Current_LNO->Prefetch_cache_factor
@@ -338,6 +398,12 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Verbose			Current_LNO->Verbose
 #define LNO_Version_Mp_Loops		Current_LNO->Version_mp_loops
 #define LNO_Run_Vintr			Current_LNO->Run_vintr
+#ifdef KEY
+#define LNO_Run_Simd                    Current_LNO->Run_simd
+#define LNO_Run_Simd_Set		Current_LNO->Run_simd_set
+#define LNO_Simd_Verbose		Current_LNO->Simd_Verbose
+#define LNO_Run_hoistif                 Current_LNO->Run_hoistif
+#endif /* KEY */
 #define LNO_Run_Oinvar			Current_LNO->Run_oinvar
 #define LNO_Run_Doacross		Current_LNO->Run_doacross
 #define LNO_Preferred_doacross_tile_size	\

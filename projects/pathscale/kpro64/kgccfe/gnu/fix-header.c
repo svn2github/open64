@@ -1,6 +1,12 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
 /* fix-header.c - Make C header file suitable for C++.
    Copyright (C) 1993, 1994, 1995, 1996, 1997, 1998,
-   1999, 2000 Free Software Foundation, Inc.
+   1999, 2000, 2001 Free Software Foundation, Inc.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
@@ -77,7 +83,7 @@ Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #include "scan.h"
 #include "cpplib.h"
 
-static void v_fatal PARAMS ((const char *, va_list)) ATTRIBUTE_NORETURN;
+static void v_fatal PARAMS ((const char *, va_list)) ATTRIBUTE_PRINTF (1,0) ATTRIBUTE_NORETURN;
 static void fatal PARAMS ((const char *, ...)) ATTRIBUTE_PRINTF_1 ATTRIBUTE_NORETURN;
 
 sstring buf;
@@ -94,7 +100,10 @@ int warnings = 0;
 int missing_extern_C_count = 0;
 #endif
 
+#ifndef SGI_MONGOOSE
+// Can not find this header file in gcc-3.2.2 source tree */
 #include "xsys-protos.h"
+#endif /* SGI_MONGOOSE */
 
 #ifdef FIXPROTO_IGNORE_LIST
 /* This is a currently unused feature.  */
@@ -104,7 +113,7 @@ int missing_extern_C_count = 0;
    directory.  (It might be more efficient to do directory pruning
    earlier in fixproto, but this is simpler and easier to customize.) */
 
-static char *files_to_ignore[] = {
+static const char *const files_to_ignore[] = {
   "X11/",
   FIXPROTO_IGNORE_LIST
   0
@@ -114,6 +123,7 @@ static char *files_to_ignore[] = {
 char *inf_buffer;
 char *inf_limit;
 char *inf_ptr;
+static const char *cur_file;
 
 /* Certain standard files get extra treatment */
 
@@ -198,6 +208,7 @@ static int inf_skip_spaces PARAMS ((int));
 static int inf_read_upto PARAMS ((sstring *, int));
 static int inf_scan_ident PARAMS ((sstring *, int));
 static int check_protection PARAMS ((int *, int *));
+static void cb_file_change PARAMS ((cpp_reader *, const struct line_map *));
 
 static void
 add_symbols (flags, names)
@@ -213,9 +224,9 @@ add_symbols (flags, names)
 }
 
 struct std_include_entry {
-  const char *name;
-  symbol_flags flags;
-  namelist names;
+  const char *const name;
+  const symbol_flags flags;
+  const namelist names;
 };
 
 const char NONE[] = "";  /* The empty namelist.  */
@@ -223,9 +234,9 @@ const char NONE[] = "";  /* The empty namelist.  */
 /* Special name to indicate a continuation line in std_include_table.  */
 const char CONTINUED[] = "";
 
-struct std_include_entry *include_entry;
+const struct std_include_entry *include_entry;
 
-struct std_include_entry std_include_table [] = {
+const struct std_include_entry std_include_table [] = {
   { "ctype.h", ANSI_SYMBOL,
       "isalnum\0isalpha\0iscntrl\0isdigit\0isgraph\0islower\0\
 isprint\0ispunct\0isspace\0isupper\0isxdigit\0tolower\0toupper\0" },
@@ -370,8 +381,6 @@ int seen_errno = 0;
 /* The following are only used when handling stdlib.h */
 int seen_EXIT_FAILURE = 0, seen_EXIT_SUCCESS = 0;
 
-#define obstack_chunk_alloc xmalloc
-#define obstack_chunk_free free
 struct obstack scan_file_obstack;
 
 /* NOTE:  If you edit this, also edit gen-protos.c !! */
@@ -409,10 +418,10 @@ int lbrac_line, rbrac_line;
 int required_unseen_count = 0;
 int required_other = 0;
 
-static void 
+static void
 write_lbrac ()
 {
-  
+
 #if ADD_MISSING_EXTERN_C
   if (missing_extern_C_count + required_unseen_count > 0)
     fprintf (outf, "#ifdef __cplusplus\nextern \"C\" {\n#endif\n");
@@ -432,8 +441,6 @@ write_lbrac ()
 struct partial_proto
 {
   struct partial_proto *next;
-  char *fname;	/* name of function */
-  char *rtype;	/* return type */
   struct fn_decl *fn;
   int line_seen;
 };
@@ -497,15 +504,13 @@ recognized_macro (fname)
 }
 
 void
-recognized_extern (name, name_length, type, type_length)
-     const char *name;
-     const char *type ATTRIBUTE_UNUSED;
-     int name_length, type_length ATTRIBUTE_UNUSED;
+recognized_extern (name)
+     const cpp_token *name;
 {
   switch (special_file_handling)
     {
     case errno_h:
-      if (name_length == 5 && strncmp (name, "errno", 5) == 0 && !seen_errno)
+      if (cpp_ideq (name, "errno"))
 	seen_errno = 1, required_other--;
       break;
 
@@ -515,25 +520,16 @@ recognized_extern (name, name_length, type, type_length)
 }
 
 /* Called by scan_decls if it saw a function definition for a function
-   named FNAME, with return type RTYPE, and argument list ARGS,
-   in source file FILE_SEEN on line LINE_SEEN.
-   KIND is 'I' for an inline function;
-   'F' if a normal function declaration preceded by 'extern "C"'
-   (or nested inside 'extern "C"' braces); or
-   'f' for other function declarations.  */
+   named FNAME.  KIND is 'I' for an inline function; 'F' if a normal
+   function declaration preceded by 'extern "C"' (or nested inside
+   'extern "C"' braces); or 'f' for other function declarations.  */
 
 void
-recognized_function (fname, fname_length,
-		     kind, rtype, rtype_length,
-		     have_arg_list, file_seen, line_seen)
-     const char *fname;
-     int fname_length;
+recognized_function (fname, line, kind, have_arg_list)
+     const cpp_token *fname;
+     unsigned int line;
      int kind; /* One of 'f' 'F' or 'I' */
-     const char *rtype;
-     int rtype_length;
      int have_arg_list;
-     const char *file_seen;
-     int line_seen;
 {
   struct partial_proto *partial;
   int i;
@@ -543,7 +539,8 @@ recognized_function (fname, fname_length,
     missing_extern_C_count++;
 #endif
 
-  fn = lookup_std_proto (fname, fname_length);
+  fn = lookup_std_proto ((const char *) NODE_NAME (fname->val.node),
+			 NODE_LEN (fname->val.node));
 
   /* Remove the function from the list of required function.  */
   if (fn)
@@ -556,15 +553,15 @@ recognized_function (fname, fname_length,
   /* If we have a full prototype, we're done.  */
   if (have_arg_list)
     return;
-      
+
   if (kind == 'I')  /* don't edit inline function */
     return;
 
   /* If the partial prototype was included from some other file,
      we don't need to patch it up (in this run).  */
-  i = strlen (file_seen);
+  i = strlen (cur_file);
   if (i < inc_filename_length
-      || strcmp (inc_filename, file_seen + (i - inc_filename_length)) != 0)
+      || strcmp (inc_filename, cur_file + (i - inc_filename_length)) != 0)
     return;
 
   if (fn == NULL)
@@ -577,12 +574,7 @@ recognized_function (fname, fname_length,
   partial_count++;
   partial = (struct partial_proto *)
     obstack_alloc (&scan_file_obstack, sizeof (struct partial_proto));
-  partial->fname = obstack_alloc (&scan_file_obstack, fname_length + 1);
-  bcopy (fname, partial->fname, fname_length);
-  partial->fname[fname_length] = 0;
-  partial->rtype = obstack_alloc (&scan_file_obstack, rtype_length + 1);
-  sprintf (partial->rtype, "%.*s", rtype_length, rtype);
-  partial->line_seen = line_seen;
+  partial->line_seen = line;
   partial->fn = fn;
   fn->partial = partial;
   partial->next = partial_proto_list;
@@ -590,7 +582,7 @@ recognized_function (fname, fname_length,
   if (verbose)
     {
       fprintf (stderr, "(%s: %s non-prototype function declaration.)\n",
-	       inc_filename, partial->fname);
+	       inc_filename, fn->fname);
     }
 }
 
@@ -606,10 +598,19 @@ check_macro_names (pfile, names)
   while (*names)
     {
       len = strlen (names);
-      if (cpp_defined (pfile, names, len))
+      if (cpp_defined (pfile, (const unsigned char *)names, len))
 	recognized_macro (names);
       names += len + 1;
     }
+}
+
+static void
+cb_file_change (pfile, map)
+     cpp_reader *pfile ATTRIBUTE_UNUSED;
+     const struct line_map *map;
+{
+  /* Just keep track of current file name.  */
+  cur_file = map->to_file;
 }
 
 static void
@@ -618,66 +619,64 @@ read_scan_file (in_fname, argc, argv)
      int argc;
      char **argv;
 {
-  cpp_reader scan_in;
+  cpp_reader *scan_in;
+  cpp_callbacks *cb;
+  cpp_options *options;
   struct fn_decl *fn;
   int i;
-  register struct symbol_list *cur_symbols;
+  struct symbol_list *cur_symbols;
 
-  obstack_init (&scan_file_obstack); 
+  obstack_init (&scan_file_obstack);
 
-  cpp_reader_init (&scan_in);
+  scan_in = cpp_create_reader (CLK_GNUC89);
+  cb = cpp_get_callbacks (scan_in);
+  cb->file_change = cb_file_change;
+
   /* We are going to be scanning a header file out of its proper context,
      so ignore warnings and errors.  */
-  CPP_OPTION (&scan_in, inhibit_warnings) = 1;
-  CPP_OPTION (&scan_in, inhibit_errors) = 1;
-  i = cpp_handle_options (&scan_in, argc, argv);
-  if (i < argc && ! CPP_FATAL_ERRORS (&scan_in))
-    cpp_fatal (&scan_in, "Invalid option `%s'", argv[i]);
-  if (CPP_FATAL_ERRORS (&scan_in))
+  options = cpp_get_options (scan_in);
+  options->inhibit_warnings = 1;
+  options->inhibit_errors = 1;
+
+  i = cpp_handle_options (scan_in, argc, argv);
+  if (i < argc)
+    cpp_error (scan_in, DL_ERROR, "invalid option `%s'", argv[i]);
+  if (cpp_errors (scan_in))
     exit (FATAL_EXIT_CODE);
 
-  if (! cpp_start_read (&scan_in, 0, in_fname))
+  if (! cpp_read_main_file (scan_in, in_fname, NULL))
     exit (FATAL_EXIT_CODE);
+
+  cpp_finish_options (scan_in);
 
   /* We are scanning a system header, so mark it as such.  */
-  CPP_BUFFER (&scan_in)->system_header_p = 1;
+  cpp_make_system_header (scan_in, 1, 0);
 
-  scan_decls (&scan_in, argc, argv);
+  scan_decls (scan_in, argc, argv);
   for (cur_symbols = &symbol_table[0]; cur_symbols->names; cur_symbols++)
-    check_macro_names (&scan_in, cur_symbols->names);
-
-  if (verbose && (scan_in.errors + warnings) > 0)
-    fprintf (stderr, "(%s: %d errors and %d warnings from cpp)\n",
-	     inc_filename, scan_in.errors, warnings);
-  if (scan_in.errors)
-    exit (SUCCESS_EXIT_CODE);
+    check_macro_names (scan_in, cur_symbols->names);
 
   /* Traditionally, getc and putc are defined in terms of _filbuf and _flsbuf.
      If so, those functions are also required.  */
   if (special_file_handling == stdio_h
       && (fn = lookup_std_proto ("_filbuf", 7)) != NULL)
     {
-      static char getchar_call[] = "getchar();";
-      int old_written = CPP_WRITTEN (&scan_in);
+      static const unsigned char getchar_call[] = "getchar();";
       int seen_filbuf = 0;
-      cpp_buffer *buf = CPP_BUFFER (&scan_in);
-      if (cpp_push_buffer (&scan_in, getchar_call,
-			   sizeof(getchar_call) - 1) == NULL)
-	return;
 
       /* Scan the macro expansion of "getchar();".  */
+      cpp_push_buffer (scan_in, getchar_call, sizeof(getchar_call) - 1,
+		       /* from_stage3 */ true, 1);
       for (;;)
 	{
-	  enum cpp_ttype token = cpp_get_token (&scan_in);
-	  int length = CPP_WRITTEN (&scan_in) - old_written;
-	  unsigned char *id = scan_in.token_buffer + old_written;
-	  
-	  CPP_SET_WRITTEN (&scan_in, old_written);
-	  if (token == CPP_EOF && CPP_BUFFER (&scan_in) == buf)
+	  const cpp_token *t = cpp_get_token (scan_in);
+
+	  if (t->type == CPP_EOF)
 	    break;
-	  if (token == CPP_NAME && cpp_idcmp (id, length, "_filbuf") == 0)
+	  else if (cpp_ideq (t, "_filbuf"))
 	    seen_filbuf++;
 	}
+
       if (seen_filbuf)
 	{
 	  int need_filbuf = !SEEN (fn) && !REQUIRED (fn);
@@ -708,7 +707,7 @@ read_scan_file (in_fname, argc, argv)
   if (required_unseen_count + partial_count + required_other
 #if ADD_MISSING_EXTERN_C
       + missing_extern_C_count
-#endif      
+#endif
       == 0)
     {
       if (verbose)
@@ -739,7 +738,7 @@ write_rbrac ()
 {
   struct fn_decl *fn;
   const char *cptr;
-  register struct symbol_list *cur_symbols;
+  struct symbol_list *cur_symbols;
 
   if (required_unseen_count)
     {
@@ -798,6 +797,8 @@ write_rbrac ()
 	  /* In the case of memmove, protect in case the application
 	     defines it as a macro before including the header.  */
 	  if (!strcmp (fn->fname, "memmove")
+	      || !strcmp (fn->fname, "putc")
+	      || !strcmp (fn->fname, "getc")
 	      || !strcmp (fn->fname, "vprintf")
 	      || !strcmp (fn->fname, "vfprintf")
 	      || !strcmp (fn->fname, "vsprintf")
@@ -936,17 +937,17 @@ inf_read_upto (str, delim)
 
 static int
 inf_scan_ident (s, c)
-     register sstring *s;
+     sstring *s;
      int c;
 {
   s->ptr = s->base;
-  if (ISALPHA (c) || c == '_')
+  if (ISIDST (c))
     {
       for (;;)
 	{
 	  SSTRING_PUT (s, c);
 	  c = INF_GET ();
-	  if (c == EOF || !(ISALNUM (c) || c == '_'))
+	  if (c == EOF || !(ISIDNUM (c)))
 	    break;
 	}
     }
@@ -1030,8 +1031,6 @@ check_protection (ifndef_line, endif_line)
 	}
       else if (!strcmp (buf.base, "define"))
 	{
-	  if (if_nesting != 1)
-	    goto skip_to_eol;
 	  c = inf_skip_spaces (c);
 	  c = inf_scan_ident (&buf, c);
 	  if (buf.base[0] > 0 && strcmp (buf.base, protect_name) == 0)
@@ -1083,16 +1082,16 @@ main (argc, argv)
   int endif_line;
   long to_read;
   long int inf_size;
-  register struct symbol_list *cur_symbols;
+  struct symbol_list *cur_symbols;
 
   if (argv[0] && argv[0][0])
     {
-      register char *p;
+      char *p;
 
       progname = 0;
       for (p = argv[0]; *p; p++)
-        if (*p == '/')
-          progname = p;
+	if (*p == '/')
+	  progname = p;
       progname = progname ? progname+1 : argv[0];
     }
 
@@ -1109,7 +1108,7 @@ main (argc, argv)
 #ifdef FIXPROTO_IGNORE_LIST
   for (i = 0; files_to_ignore[i] != NULL; i++)
     {
-      char *ignore_name = files_to_ignore[i];
+      const char *const ignore_name = files_to_ignore[i];
       int ignore_len = strlen (ignore_name);
       if (strncmp (inc_filename, ignore_name, ignore_len) == 0)
 	{
@@ -1121,7 +1120,7 @@ main (argc, argv)
 	      exit (SUCCESS_EXIT_CODE);
 	    }
 	}
-	  
+
     }
 #endif
 
@@ -1141,7 +1140,7 @@ main (argc, argv)
 
   if (include_entry->name != NULL)
     {
-      struct std_include_entry *entry;
+      const struct std_include_entry *entry;
       cur_symbol_table_size = 0;
       for (entry = include_entry; ;)
 	{
@@ -1155,7 +1154,7 @@ main (argc, argv)
   else
     symbol_table[0].names = NULL;
 
-  /* Count and mark the prototypes required for this include file.  */ 
+  /* Count and mark the prototypes required for this include file.  */
   for (cur_symbols = &symbol_table[0]; cur_symbols->names; cur_symbols++)
     {
       int name_len;
@@ -1191,9 +1190,6 @@ main (argc, argv)
     }
   inf_size = sbuf.st_size;
   inf_buffer = (char *) xmalloc (inf_size + 2);
-  inf_buffer[inf_size] = '\n';
-  inf_buffer[inf_size + 1] = '\0';
-  inf_limit = inf_buffer + inf_size;
   inf_ptr = inf_buffer;
 
   to_read = inf_size;
@@ -1215,6 +1211,11 @@ main (argc, argv)
     }
 
   close (inf_fd);
+
+  /* Inf_size may have changed if read was short (as on VMS) */
+  inf_buffer[inf_size] = '\n';
+  inf_buffer[inf_size + 1] = '\0';
+  inf_limit = inf_buffer + inf_size;
 
   /* If file doesn't end with '\n', add one.  */
   if (inf_limit > inf_buffer && inf_limit[-1] != '\n')
@@ -1259,7 +1260,7 @@ main (argc, argv)
 	  c = INF_GET ();
 	  if (c == EOF)
 	    break;
-	  if (ISALPHA (c) || c == '_')
+	  if (ISIDST (c))
 	    {
 	      c = inf_scan_ident (&buf, c);
 	      (void) INF_UNGET (c);
@@ -1318,24 +1319,16 @@ v_fatal (str, ap)
   fprintf (stderr, "%s: %s: ", progname, inc_filename);
   vfprintf (stderr, str, ap);
   fprintf (stderr, "\n");
-  
+
   exit (FATAL_EXIT_CODE);
 }
 
 static void
 fatal VPARAMS ((const char *str, ...))
 {
-#ifndef ANSI_PROTOTYPES
-  const char *str;
-#endif
-  va_list ap;
-  
-  VA_START(ap, str);
+  VA_OPEN (ap, str);
+  VA_FIXEDARG (ap, const char *, str);
 
-#ifndef ANSI_PROTOTYPES
-  str = va_arg (ap, const char *);
-#endif
-
-  v_fatal(str, ap);
-  va_end(ap);
+  v_fatal (str, ap);
+  VA_CLOSE (ap);
 }

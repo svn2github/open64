@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -136,7 +140,7 @@ enum FB_FREQ_TYPE {
 const float FB_FREQ_EPSILON = 0.0001;
 
 class FB_FREQ {
-private:
+public:
 
   FB_FREQ_TYPE  _type;
   float         _value;
@@ -162,6 +166,18 @@ public:
     : _type( exact ? FB_FREQ_TYPE_EXACT : FB_FREQ_TYPE_GUESS ),
       _value( value )
     { Is_True( value >= 0.0, ( "FB_FREQ: negative value %f", value ) ); }
+
+#ifdef KEY
+  FB_FREQ( double value )
+    : _type( FB_FREQ_TYPE_EXACT ),
+      _value( (float) value )
+    { Is_True( value >= 0.0, ( "FB_FREQ: negative value %lld", value ) ); }
+
+  FB_FREQ( float value )
+    : _type( FB_FREQ_TYPE_EXACT ),
+      _value( value )
+    { Is_True( value >= 0.0, ( "FB_FREQ: negative value %lld", value ) ); }
+#endif
 
   FB_FREQ( INT64 value )
     : _type( FB_FREQ_TYPE_EXACT ),
@@ -365,6 +381,16 @@ public:
     return ( freq1._value < freq2._value );
   }
 
+#ifdef KEY // fix problem with g++ 3.2
+  friend bool operator>=( const FB_FREQ freq1, const FB_FREQ freq2 ) {
+    return ( freq1._value >= freq2._value );
+  }
+
+  friend bool operator<=( const FB_FREQ freq1, const FB_FREQ freq2 ) {
+    return ( freq1._value <= freq2._value );
+  }
+#endif
+
   // Printing methods
 
   void Print( FILE *fp ) const {
@@ -388,6 +414,10 @@ public:
       Is_True( FALSE, ("FB_FREQ: Unexpected type %d", _type ));
       break;
     }
+  }
+
+  void Print_simple (FILE * fp) const {
+    fprintf(fp, "_type = %d   |  _value = %f \n", _type, _value);
   }
 
   INT Sprintf( char *buffer ) const {

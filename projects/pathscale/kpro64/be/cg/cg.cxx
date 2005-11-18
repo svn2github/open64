@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -102,6 +106,9 @@
 #include "hb.h"
 #include "pqs_cg.h"
 #include "tag.h"
+#ifdef KEY
+#include "cg_gcov.h"
+#endif
 
 MEM_POOL MEM_local_region_pool;	/* allocations local to processing a region */
 MEM_POOL MEM_local_region_nz_pool;
@@ -110,12 +117,19 @@ BOOL Trace_REGION_Interface = FALSE;
 
 BOOL PU_Has_Calls;
 BOOL PU_References_GP;
+#ifdef KEY
+BOOL PU_Has_Exc_Handler;
+#endif
 
 BOOL CG_PU_Has_Feedback;
 
 RID *Current_Rid;
 
 TN_MAP TN_To_PREG_Map;
+#ifdef TARG_X8664
+BB_MAP BBs_Map = NULL;
+#endif
+
 
 /* WOPT alias manager */
 struct ALIAS_MANAGER *Alias_Manager;
@@ -135,6 +149,9 @@ CG_PU_Initialize (WN *wn_pu)
 
   PU_Has_Calls = FALSE;
   PU_References_GP = FALSE;
+#ifdef KEY
+  PU_Has_Exc_Handler = FALSE;
+#endif
 
   Regcopies_Translated = FALSE;
 
@@ -214,6 +231,13 @@ CG_PU_Finalize(void)
   TN_MAP_Delete(TN_To_PREG_Map);
   TN_To_PREG_Map = NULL;
 
+#ifdef TARG_X8664
+  BB_MAP_Delete( BBs_Map );
+  BBs_Map = NULL;
+
+  Expand_Finish();
+#endif
+
   Free_BB_Memory();		    /* Free non-BB_Alloc space. */
   MEM_POOL_Pop ( &MEM_local_pool );
   MEM_POOL_Pop ( &MEM_local_nz_pool );
@@ -248,6 +272,12 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
   if (TN_To_PREG_Map == NULL)
     TN_To_PREG_Map = TN_MAP_Create();
 
+#ifdef TARG_X8664
+  if( BBs_Map == NULL ){
+    BBs_Map = BB_MAP_Create();
+  }
+#endif
+
   TN_CORRESPOND_Free(); /* remove correspondence between tns (ex. divrem) */
 
   GTN_UNIVERSE_REGION_Begin();
@@ -255,6 +285,10 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
   Whirl2ops_Initialize(alias_mgr);
 
   Current_Rid = REGION_get_rid( rwn );
+
+#ifdef TARG_X8664
+  Expand_Start();
+#endif
 }
 
 /*
@@ -329,6 +363,12 @@ CG_Generate_Code(
   Set_Error_Phase( "Code Generation" );
   Start_Timer( T_CodeGen_CU );
 
+#ifdef TARG_X8664
+// Cannot enable emit_unwind_info if Force_Frame_Pointer is not set
+  if (!CG_emit_unwind_info_Set)
+  	CG_emit_unwind_info = Force_Frame_Pointer && ((PU_src_lang (Get_Current_PU()) & PU_CXX_LANG));
+#endif
+
   // Use of feedback information can be disabled in CG using the 
   // -CG:enable_feedback=off flag. The flag CG_PU_Has_Feedback is used
   // all over CG instead of Cur_PU_Feedback for this reason.
@@ -351,6 +391,16 @@ CG_Generate_Code(
   }
 
   Convert_WHIRL_To_OPs ( rwn );
+
+#ifdef KEY
+  extern BOOL profile_arcs;
+  if (flag_test_coverage || profile_arcs)
+//    CG_Compute_Checksum();
+//  if (flag_test_coverage)
+    CG_Gcov_Generation();
+  if (profile_arcs)
+    CG_Instrument_Arcs();
+#endif
 
   // split large bb's to minimize compile speed and register pressure
   Split_BBs();
@@ -387,6 +437,9 @@ CG_Generate_Code(
     /* turn all global TNs into local TNs */
     Set_Error_Phase ( "Localize" );
     Start_Timer ( T_Localize_CU );
+#ifdef KEY // gra_live is called even if localize is on
+    GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+#endif
     Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
     Stop_Timer ( T_Localize_CU );
     Check_for_Dump ( TP_LOCALIZE, NULL );
@@ -438,9 +491,23 @@ CG_Generate_Code(
     // Perform hyperblock formation (if-conversion).  Only works for
     // IA-64 at the moment. 
     //
+#ifdef KEY
+    // At Key, we form Hyperblocks although MIPS is not predicated architecture
+    if (1) {
+#else     
     if (CGTARG_Can_Predicate()) {
+#endif
       // Initialize the predicate query system in the hyperblock formation phase
       HB_Form_Hyperblocks(region ? REGION_get_rid(rwn) : NULL, NULL);
+#ifdef KEY
+      // We do not have a slot in the BB structure to store predicate TNs.
+      // Instead, we remember the last seen block and the associated 
+      // predicate TNs. So, we need to reinitialize the TNs and the basic block
+      // once we finish the current hyper-block.
+      HB_Reinit_Pred();	
+      // CG_LOOP does not use the same mechanism for hammocks.
+      hammock_region = FALSE;
+#endif
       if (!PQSCG_pqs_valid()) {
 	PQSCG_reinit(REGION_First_BB);
       }
@@ -449,6 +516,16 @@ CG_Generate_Code(
     }
     
     if (CG_enable_loop_optimizations) {
+#ifdef KEY
+      /* bug#1443
+	 Earlier phase, like cflow, does not maintain GTN info if -CG:localize is on,
+	 we have to call GRA_LIVE_Init again to rebuild the consistency.
+       */
+      if( CG_localize_tns ){
+	Set_Error_Phase( "Global Live Range Analysis" );
+	GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+      }
+#endif
       Set_Error_Phase("CGLOOP");
       Start_Timer(T_Loop_CU);
       // Optimize loops (mostly innermost)
@@ -456,6 +533,17 @@ CG_Generate_Code(
       // detect GTN
       GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);	
       GRA_LIVE_Rename_TNs();  // rename TNs -- required by LRA
+#ifdef KEY
+      /* bug#1442
+	 Loop optimization will introduce new GTNs. If -CG:localize is on,
+	 we should localize all the new created GTNs.
+       */
+      if( CG_localize_tns ){
+	Set_Error_Phase ( "Localize" );
+	Localize_Any_Global_TNs(region ? REGION_get_rid( rwn ) : NULL);
+	Check_for_Dump ( TP_LOCALIZE, NULL );
+      }
+#endif
       Stop_Timer(T_Loop_CU);
       Check_for_Dump(TP_CGLOOP, NULL);
       if (frequency_verify)
@@ -564,6 +652,14 @@ CG_Generate_Code(
   }
 
   IGLS_Schedule_Region (FALSE /* after register allocation */);
+
+#ifdef TARG_X8664
+  {
+    /* Convert all the x87 regs to stack-like regs. */
+    extern void Convert_x87_Regs( MEM_POOL* );
+    Convert_x87_Regs( &MEM_local_region_pool );
+  }
+#endif
 
   Reuse_Temp_TNs = orig_reuse_temp_tns;		/* restore */
 

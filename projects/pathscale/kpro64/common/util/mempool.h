@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -763,9 +767,9 @@ class CXX_MEM_POOL {
 public:
   MEM_POOL *operator()() { return &mem_pool; }
 
-  CXX_MEM_POOL(char *name, BOOL bzero) {
+  CXX_MEM_POOL(char *name, BOOL do_bzero) {
     mem_pool.magic_num = 0;		/* force it to be uninitialized */
-    MEM_POOL_Initialize(&mem_pool, name, bzero);
+    MEM_POOL_Initialize(&mem_pool, name, do_bzero);
     MEM_POOL_Push(&mem_pool);
   };
   ~CXX_MEM_POOL() {

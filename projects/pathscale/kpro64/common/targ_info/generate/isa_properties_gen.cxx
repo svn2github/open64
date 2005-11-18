@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,8 +56,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
-#include <list.h>
-#include <vector.h>
+#include <list>
+#include <vector>
 #include "topcode.h"
 #include "gen_util.h"
 #include "isa_properties_gen.h"
@@ -62,7 +66,7 @@
 struct isa_property {
   const char* name;         // Name given for documentation and debugging
   int bit_position;         // bit postion in flag word
-  vector <bool> members;    // set of opcodes that have this property
+  std::vector <bool> members;    // set of opcodes that have this property
 };
 
 // special values for bit_position above:
@@ -71,7 +75,7 @@ enum {
   BIT_POS_NONE = -2         // no members have this property
 };
 
-static list<ISA_PROPERTY> properties; // All the properties
+static std::list<ISA_PROPERTY> properties; // All the properties
 
 static const char * const interface[] = {
   "/* ====================================================================",
@@ -110,7 +114,7 @@ ISA_PROPERTY ISA_Property_Create( const char* name )
   ISA_PROPERTY result = new isa_property;
 
   result->name = name;
-  result->members = vector <bool> (TOP_count, false);
+  result->members = std::vector <bool> (TOP_count, false);
 
   properties.push_back(result);
 
@@ -139,7 +143,7 @@ void ISA_Properties_End(void)
 //  See interface description.
 /////////////////////////////////////
 {
-  list<ISA_PROPERTY>::iterator isi;
+  std::list<ISA_PROPERTY>::iterator isi;
   int isa_property_count;	// How many non-constant properties?
   int code;
 

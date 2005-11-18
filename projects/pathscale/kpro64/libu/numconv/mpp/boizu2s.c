@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -44,8 +48,8 @@
 #define	NEGATIVE	-1
 
 #if	defined(__mips) || defined(_LITTLE_ENDIAN)
-#define WP_NOT_MASK 0XFFFFFFFFFFFF0000
-#define BP_NOT_MASK 0XFFFFFFFFFFFFFF00
+#define WP_NOT_MASK 0XFFFFFFFFFFFF0000LL
+#define BP_NOT_MASK 0XFFFFFFFFFFFFFF00LL
 #endif
 
 /*

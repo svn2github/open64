@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -158,6 +162,10 @@ Dup_OP ( OP *op )
 	Set_OP_Tag (new_op, Gen_Tag());
   }
   
+#ifdef TARG_X8664
+  if ( TOP_is_vector_high_loadstore ( OP_code ( new_op ) ) )
+    Set_OP_cond_def_kind(new_op, OP_ALWAYS_COND_DEF);
+#endif
   return new_op;
 }
 
@@ -766,6 +774,24 @@ Mk_OP(TOP opr, ...)
 
   CGTARG_Init_OP_cond_def_kind(op);
 
+#ifdef TARG_X8664
+  // Make sure no 64-bit int operations for n32 will be generated.
+  if( Is_Target_32bit() &&
+      !OP_flop( op )    &&
+      !OP_dummy( op )   &&
+      !OP_simulated(op) &&
+      !OP_cond_move(op) &&
+      OP_code(op) != TOP_leave &&
+      OP_results(op) >= 1  ){
+    Is_True( OP_result_size( op, 0 ) < 64,
+	     ("i386 does not support 64-bit operation -- %s", TOP_Name(opr) ) );
+  }
+#endif
+
+#ifdef TARG_X8664
+  if ( TOP_is_vector_high_loadstore ( OP_code ( op ) ) )
+    Set_OP_cond_def_kind(op, OP_ALWAYS_COND_DEF);
+#endif
   return op;
 }
 
@@ -812,6 +838,9 @@ void Print_OP_No_SrcLine(const OP *op)
   INT16 i;
   WN *wn;
   BOOL cg_loop_op = Is_CG_LOOP_Op(op);
+#ifdef TARG_X8664
+  fprintf (TFile, "[%4d] ", OP_scycle(op) );
+#endif
   fprintf (TFile, "[%4d] ", Srcpos_To_Line(OP_srcpos(op)));
   if (OP_has_tag(op)) {
 	LABEL_IDX tag = Get_OP_Tag(op);
@@ -855,7 +884,11 @@ void Print_OP_No_SrcLine(const OP *op)
     char buf[500];
     buf[0] = '\0';
     if (Alias_Manager) Print_alias_info (buf, Alias_Manager, wn);
+#ifdef TARG_X8664
+    fprintf(TFile, " WN %s", buf);
+#else
     fprintf(TFile, " WN=0x%p %s", wn, buf);
+#endif
   }
   if (OP_unrolling(op)) {
     UINT16 unr = OP_unrolling(op);
@@ -949,6 +982,19 @@ OP_Refs_Reg(const OP *op, ISA_REGISTER_CLASS cl, REGISTER reg)
     }
   }
 
+#ifdef KEY
+  if( OP_cond_def( op ) ){
+    for ( num = 0; num < OP_results(op); num++ ) {
+      TN* result_tn = OP_result( op, num );
+      if (TN_is_register(result_tn)          &&
+	  TN_register_class(result_tn) == cl &&
+	  TN_register(result_tn) == reg ) {
+	return TRUE;
+      }      
+    }
+  }
+#endif
+
   /* if we made it here, we must not have found it */
   return FALSE;
 }
@@ -998,6 +1044,15 @@ OP_Refs_TN( const OP *op, const struct tn *opnd )
       return( TRUE );
     }
   }
+
+#ifdef KEY
+  if( OP_cond_def( op ) ){
+    for ( num = 0; num < OP_results(op); num++ ) {
+      if( OP_result( op, num ) == opnd )
+	return TRUE;
+    }
+  }
+#endif
 
   /* if we made it here, we must not have found it */
   return( FALSE );
@@ -1157,14 +1212,18 @@ BOOL OP_has_implicit_interactions(OP *op)
  */
 void OP_Base_Offset_TNs(OP *memop, TN **base_tn, TN **offset_tn)
 {
+#ifdef TARG_X8664
+  Is_True(OP_load(memop) || OP_load_exe(memop) || OP_store(memop), ("not a load or store"));
+#else
   Is_True(OP_load(memop) || OP_store(memop), ("not a load or store"));
+#endif
 
   INT offset_num = OP_find_opnd_use (memop, OU_offset);
   INT base_num   = OP_find_opnd_use (memop, OU_base);
 
   *offset_tn = NULL;
 
-  *base_tn = OP_opnd(memop, base_num);
+  *base_tn = base_num >= 0 ? OP_opnd(memop, base_num) : NULL;
 
   // <offset> TNs are not part of <memop>. Find the definining OP_iadd
   // instruction which sets the offset and matches the base_tn.

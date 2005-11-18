@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -191,6 +195,33 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_I4ADD, "+"},
   {OPC_F4ADD, "+"},
   {OPC_C4ADD, "+"},
+#ifdef KEY
+  {OPC_V16I1ADD, "+"},
+  {OPC_V16I2ADD, "+"},
+  {OPC_V16I4ADD, "+"},
+  {OPC_V16I8ADD, "+"},
+  {OPC_V16F4ADD, "+"},
+  {OPC_V16F8ADD, "+"},
+  {OPC_V16I1SUB, "-"},
+  {OPC_V16I2SUB, "-"},
+  {OPC_V16I4SUB, "-"},
+  {OPC_V16I8SUB, "-"},
+  {OPC_V16F4SUB, "-"},
+  {OPC_V16F8SUB, "-"},
+  {OPC_V16F4MPY, "*"},
+  {OPC_V16F4DIV, "/"},
+  {OPC_V16F8MPY, "*"},
+  {OPC_V16F8DIV, "/"},
+  {OPC_V16F8F8REPLICA, "REPLICA"},
+  {OPC_V16F4SQRT, "SQRT"},
+  {OPC_V16F8SQRT, "SQRT"},
+  {OPC_V16I1NEG, "-"},
+  {OPC_V16I2NEG, "-"},
+  {OPC_V16I4NEG, "-"},
+  {OPC_V16I8NEG, "-"},
+  {OPC_V16F4NEG, "-"},
+  {OPC_V16F8NEG, "-"},
+#endif /* KEY */
   {OPC_U8SUB, "-"},
   {OPC_FQSUB, "-"},
   {OPC_I8SUB, "-"},

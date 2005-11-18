@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,16 +46,17 @@
 void
 subout(char *varn, int32 offset, char *procn, int32 line)
 {
-register int32 i;
-extern void _cleanup(void);
+	register int32 i;
+	extern void _cleanup(void);
 
-fprintf(stderr, "Subscript out of range on line %d of procedure ", line);
-for(i = 0 ; i < 8 && *procn!='_' ; ++i)
-	putc(*procn++, stderr);
-fprintf(stderr, ".\nAttempt to access the %ld-th element of variable ", offset+1);
-for(i = 0 ; i < 6  && *varn!=' ' ; ++i)
-	putc(*varn++, stderr);
-fprintf(stderr, ".\n");
-_cleanup();
-abort();
+	fprintf(stderr, "Subscript out of range on line %d of procedure ", line);
+	for(i = 0 ; i < 8 && *procn!='_' ; ++i)
+		putc(*procn++, stderr);
+	fprintf(stderr, ".\nAttempt to access the %d-th element of variable ", offset+1);
+	for(i = 0 ; i < 6  && *varn!=' ' ; ++i)
+		putc(*varn++, stderr);
+	fprintf(stderr, ".\n");
+	fflush(stdout);
+	fflush(stderr);
+	abort();
 }

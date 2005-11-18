@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,6 +45,7 @@
 #include <foreign.h>
 #include <liberrno.h>
 #include <stdio.h>
+#include <string.h>
 #include "fio.h"
 #if defined(__mips) || (defined(_LITTLE_ENDIAN) && defined(__sv2))
 #define LIBFSEEK fseek64

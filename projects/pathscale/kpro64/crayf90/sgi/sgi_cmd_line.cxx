@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,6 +41,8 @@
 static char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sgi_cmd_line.cxx,v $ $Revision: 1.1.1.1 $";
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 /* SGI includes */
 #include "stamp.h"
 #include "defs.h"
@@ -59,7 +65,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sg
 #include "cwh_mkdepend.h"
 
 /* Get the compiler build data */
-extern char * mfef90_compiler_build_date;
+#include "version.h"
 
 #include <cmplrs/make_depend.h> 
 #include <stdarg.h>
@@ -87,6 +93,9 @@ BOOL Full_arrayexp_set = FALSE;
 mUINT16  FE_align=8;
 
 char *FE_gdar_filename = NULL;
+#ifdef KEY
+char *F2C_ABI_filename = NULL;
+#endif
 
 INT32 global_chunk_pragma_value;
 BOOL  global_chunk_pragma_set = FALSE;
@@ -130,7 +139,7 @@ INT8 Profile_Level = DEF_PROFILE_LEVEL;	/* -pn:	profiling level	*/
 
 static OPTION_DESC Options_FE[] = {
   { OVK_NAME,	OV_INTERNAL,  	FALSE, "cmdline",		"cmdline",
-    NULL, NULL, NULL, &FE_command_line, NULL },
+    0, 0, 0, &FE_command_line, NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, 	"iocomment",		"ioc",
     0, 0, 0, &IO_Comments  , NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "three_call",		"three_call",
@@ -140,7 +149,7 @@ static OPTION_DESC Options_FE[] = {
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "arrayexp",		"arrayexp",
     0, 0, 0,	&Full_arrayexp,		&Full_arrayexp_set },
   { OVK_NAME,   OV_INTERNAL,    FALSE, "gdar",                   "gdar",
-    NULL, NULL, NULL, &FE_gdar_filename,        NULL },
+    0, 0, 0, &FE_gdar_filename,        NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "endloop_markers",	"endloop_marker",
     0, 0, 0,	&FE_Endloop_Marker,	NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "matmul_inline",	        "matmul_inline",
@@ -421,6 +430,24 @@ void Process_Command_Line (INT argc, char ** argv)
                } else if ( strcmp(cp,"tpp") == 0 ) {
                   pass_option = FALSE;
                   add_cray_args("-eT");
+               } else if ( strcmp(cp,"no-second-underscore") == 0 ) {
+                  add_cray_args("-dN");
+                  pass_option = FALSE;
+               } else if ( strcmp(cp,"second-underscore") == 0 ) {
+                  add_cray_args("-eN");
+                  pass_option = FALSE;
+               } else if ( strcmp(cp,"no-underscoring") == 0 ) {
+                  add_cray_args("-dO");
+                  pass_option = FALSE;
+               } else if ( strcmp(cp,"underscoring") == 0 ) {
+                  add_cray_args("-eO");
+                  pass_option = FALSE;
+#ifdef KEY
+	       } else if ( strcmp(cp,"f2c-abi") == 0 ) {
+		  F2C_ABI_filename = strdup ( argv[i+1] );
+		  i++;
+	          pass_option = FALSE;
+#endif
 	       } else { /* Filename options -- ignore these except -fb: */
 		  c = *cp++;
 		  if ( (ch=*cp++) != ',' && ch != ':' ) {
@@ -450,9 +477,26 @@ void Process_Command_Line (INT argc, char ** argv)
 		      break;
 		     
 		   case 'D': /* Cray debug file */
+#ifdef KEY	      // Bug 933.
+		      // Handle spaces in file names.
+		      {
+			char *p, *t;
+			temp = (char *) malloc (strlen(cp) * 2 + 8);
+			strcpy(temp,"-ufile=");
+			t = temp + 7;
+			// Replace ' ' with '\ '.  Replace '\' with '\\'.
+			for (p = cp; *p; p++) {
+			  if (*p == ' ' || *p == '\\')
+			    *t++ = '\\';
+			  *t++ = *p;
+			}
+			*t = '\0';
+		      }
+#else
 		      temp = (char *) malloc (strlen(cp) + 8);
 		      strcpy(temp,"-ufile=");
 		      strcat(temp,cp);
+#endif
 		      add_cray_args(temp);
 		      free(temp);
 		      pass_option = FALSE;
@@ -609,8 +653,8 @@ void Process_Command_Line (INT argc, char ** argv)
 	       } else if (strcmp(cp,"ocpp")==0) {
                   add_cray_args("-dT");
 		  pass_option = FALSE;
-               } else if (strcmp(cp,"oappend")==0) {
-                  add_cray_args("-eN");
+               } else if (strcmp(cp,"og77mangle")==0) {
+                  add_cray_args("-dN");
                   pass_option = FALSE;
                }
 	       break;
@@ -692,8 +736,10 @@ void Process_Command_Line (INT argc, char ** argv)
 	       if ( strcmp(cp,"ersion") == 0) {
 		  /* -version, edg's -v */
 		  /* Print out compiler version. */
-		  fprintf(stderr, "mfef90 version %s\nBuilt:%s\n",INCLUDE_STAMP,
-			  mfef90_compiler_build_date);
+		  fprintf(stderr, "mfef90 version %s\n", INCLUDE_STAMP);
+		  fprintf(stderr, "ChangeSet: %s (%s)\n", cset_rev, cset_key);
+		  fprintf(stderr, "Built by: %s@%s in %s\n", build_user, build_host, build_root);
+		  fprintf(stderr, "Built on: %s\n", mfef90_compiler_build_date);
 		  pass_option = FALSE;
 	       }
 	       break;

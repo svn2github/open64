@@ -1,19 +1,20 @@
 /* Print SPARC instructions.
-   Copyright (C) 1989, 91-97, 1998 Free Software Foundation, Inc.
+   Copyright 1989, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
+   2000, 2002, 2003 Free Software Foundation, Inc.
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2 of the License, or
+   (at your option) any later version.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 #include <stdio.h>
 
@@ -25,7 +26,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* Bitmask of v9 architectures.  */
 #define MASK_V9 ((1 << SPARC_OPCODE_ARCH_V9) \
-		 | (1 << SPARC_OPCODE_ARCH_V9A))
+		 | (1 << SPARC_OPCODE_ARCH_V9A) \
+		 | (1 << SPARC_OPCODE_ARCH_V9B))
 /* 1 if INSN is for v9 only.  */
 #define V9_ONLY_P(insn) (! ((insn)->architecture & ~MASK_V9))
 /* 1 if INSN is for v9.  */
@@ -44,7 +46,8 @@ static const struct sparc_opcode **sorted_opcodes;
 static int opcode_bits[4] = { 0x01c00000, 0x0, 0x01f80000, 0x01f80000 };
 #define HASH_INSN(INSN) \
   ((((INSN) >> 24) & 0xc0) | (((INSN) & opcode_bits[((INSN) >> 30) & 3]) >> 19))
-struct opcode_hash {
+struct opcode_hash
+{
   struct opcode_hash *next;
   const struct sparc_opcode *opcode;
 };
@@ -95,7 +98,7 @@ static char *v9_priv_reg_names[] =
 static char *v9a_asr_reg_names[] =
 {
   "pcr", "pic", "dcr", "gsr", "set_softint", "clear_softint",
-  "softint", "tick_cmpr"
+  "softint", "tick_cmpr", "sys_tick", "sys_tick_cmpr"
 };
 
 /* Macros used to extract instruction fields.  Not all fields have
@@ -186,7 +189,7 @@ is_delayed_branch (insn)
 
   for (op = opcode_hash_table[HASH_INSN (insn)]; op; op = op->next)
     {
-      CONST struct sparc_opcode *opcode = op->opcode;
+      const struct sparc_opcode *opcode = op->opcode;
       if ((opcode->match & insn) == opcode->match
 	  && (opcode->lose & insn) == 0)
 	return (opcode->flags & F_DELAYED);
@@ -255,7 +258,7 @@ print_insn_sparc (memaddr, info)
   }
 
   /* On SPARClite variants such as DANlite (sparc86x), instructions
-     are always big-endian even when the machine is in little-endian mode. */
+     are always big-endian even when the machine is in little-endian mode.  */
   if (info->endian == BFD_ENDIAN_BIG || info->mach == bfd_mach_sparc_sparclite)
     getword = bfd_getb32;
   else
@@ -263,14 +266,14 @@ print_insn_sparc (memaddr, info)
 
   insn = getword (buffer);
 
-  info->insn_info_valid = 1;			/* We do return this info */
-  info->insn_type = dis_nonbranch;		/* Assume non branch insn */
-  info->branch_delay_insns = 0;			/* Assume no delay */
-  info->target = 0;				/* Assume no target known */
+  info->insn_info_valid = 1;			/* We do return this info.  */
+  info->insn_type = dis_nonbranch;		/* Assume non branch insn.  */
+  info->branch_delay_insns = 0;			/* Assume no delay.  */
+  info->target = 0;				/* Assume no target known.  */
 
   for (op = opcode_hash_table[HASH_INSN (insn)]; op; op = op->next)
     {
-      CONST struct sparc_opcode *opcode = op->opcode;
+      const struct sparc_opcode *opcode = op->opcode;
 
       /* If the insn isn't supported by the current architecture, skip it.  */
       if (! (opcode->architecture & current_arch_mask))
@@ -310,36 +313,38 @@ print_insn_sparc (memaddr, info)
 	  (*info->fprintf_func) (stream, opcode->name);
 
 	  {
-	    register CONST char *s;
+	    register const char *s;
 
 	    if (opcode->args[0] != ',')
 	      (*info->fprintf_func) (stream, " ");
+
 	    for (s = opcode->args; *s != '\0'; ++s)
 	      {
 		while (*s == ',')
 		  {
 		    (*info->fprintf_func) (stream, ",");
 		    ++s;
-		    switch (*s) {
-		    case 'a':
-		      (*info->fprintf_func) (stream, "a");
-		      is_annulled = 1;
-		      ++s;
-		      continue;
-		    case 'N':
-		      (*info->fprintf_func) (stream, "pn");
-		      ++s;
-		      continue;
+		    switch (*s)
+		      {
+		      case 'a':
+			(*info->fprintf_func) (stream, "a");
+			is_annulled = 1;
+			++s;
+			continue;
+		      case 'N':
+			(*info->fprintf_func) (stream, "pn");
+			++s;
+			continue;
 
-		    case 'T':
-		      (*info->fprintf_func) (stream, "pt");
-		      ++s;
-		      continue;
+		      case 'T':
+			(*info->fprintf_func) (stream, "pt");
+			++s;
+			continue;
 
-		    default:
-		      break;
-		    }		/* switch on arg */
-		  }		/* while there are comma started args */
+		      default:
+			break;
+		      }
+		  }
 
 		(*info->fprintf_func) (stream, " ");
 			
@@ -417,7 +422,7 @@ print_insn_sparc (memaddr, info)
 
 		  case 'h':
 		    (*info->fprintf_func) (stream, "%%hi(%#x)",
-					   (0xFFFFFFFF
+					   ((unsigned) 0xFFFFFFFF
 					    & ((int) X_IMM22 (insn) << 10)));
 		    break;
 
@@ -461,6 +466,10 @@ print_insn_sparc (memaddr, info)
 		      else
 			(info->fprintf_func) (stream, "%#x", (unsigned) imm);
 		    }
+		    break;
+
+		  case '3':
+		    (info->fprintf_func) (stream, "%d", X_IMM (insn, 3));
 		    break;
 
 		  case 'K':
@@ -551,7 +560,7 @@ print_insn_sparc (memaddr, info)
 		    break;
 
 		  case '/':
-		    if (X_RS1 (insn) < 16 || X_RS1 (insn) > 23)
+		    if (X_RS1 (insn) < 16 || X_RS1 (insn) > 25)
 		      (*info->fprintf_func) (stream, "%%reserved");
 		    else
 		      (*info->fprintf_func) (stream, "%%%s",
@@ -559,7 +568,7 @@ print_insn_sparc (memaddr, info)
 		    break;
 
 		  case '_':
-		    if (X_RD (insn) < 16 || X_RD (insn) > 23)
+		    if (X_RD (insn) < 16 || X_RD (insn) > 25)
 		      (*info->fprintf_func) (stream, "%%reserved");
 		    else
 		      (*info->fprintf_func) (stream, "%%%s",
@@ -676,26 +685,33 @@ print_insn_sparc (memaddr, info)
 	      unsigned long prev_insn;
 	      int errcode;
 
-	      errcode =
-		(*info->read_memory_func)
+	      if (memaddr >= 4)
+		errcode =
+		  (*info->read_memory_func)
 		  (memaddr - 4, buffer, sizeof (buffer), info);
+	      else
+		errcode = 1;
+
 	      prev_insn = getword (buffer);
 
 	      if (errcode == 0)
 		{
 		  /* If it is a delayed branch, we need to look at the
 		     instruction before the delayed branch.  This handles
-		     sequences such as
+		     sequences such as:
 
 		     sethi %o1, %hi(_foo), %o1
 		     call _printf
-		     or %o1, %lo(_foo), %o1
-		     */
+		     or %o1, %lo(_foo), %o1  */
 
 		  if (is_delayed_branch (prev_insn))
 		    {
-		      errcode = (*info->read_memory_func)
-			(memaddr - 8, buffer, sizeof (buffer), info);
+		      if (memaddr >= 8)
+			errcode = (*info->read_memory_func)
+			  (memaddr - 8, buffer, sizeof (buffer), info);
+		      else
+			errcode = 1;
+
 		      prev_insn = getword (buffer);
 		    }
 		}
@@ -710,7 +726,8 @@ print_insn_sparc (memaddr, info)
 		    {
 		      (*info->fprintf_func) (stream, "\t! ");
 		      info->target = 
-			(0xFFFFFFFF & (int) X_IMM22 (prev_insn) << 10);
+			((unsigned) 0xFFFFFFFF
+			 & ((int) X_IMM22 (prev_insn) << 10));
 		      if (imm_added_to_rs1)
 			info->target += X_SIMM (insn, 13);
 		      else
@@ -739,7 +756,7 @@ print_insn_sparc (memaddr, info)
 	}
     }
 
-  info->insn_type = dis_noninsn;	/* Mark as non-valid instruction */
+  info->insn_type = dis_noninsn;	/* Mark as non-valid instruction.  */
   (*info->fprintf_func) (stream, _("unknown"));
   return sizeof (buffer);
 }
@@ -770,6 +787,9 @@ compute_arch_mask (mach)
     case bfd_mach_sparc_v8plusa :
     case bfd_mach_sparc_v9a :
       return SPARC_OPCODE_ARCH_MASK (SPARC_OPCODE_ARCH_V9A);
+    case bfd_mach_sparc_v8plusb :
+    case bfd_mach_sparc_v9b :
+      return SPARC_OPCODE_ARCH_MASK (SPARC_OPCODE_ARCH_V9B);
     }
   abort ();
 }

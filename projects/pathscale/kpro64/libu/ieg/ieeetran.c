@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -75,25 +79,21 @@
 /* Numeric conversion constants */
 
 #define	SMASK	(1 << 31) 	/* Sign bit mask (32-bit) */
-#ifdef	__mips
-#define	LMASK	(1LL << 63) 	/* Sign bit mask (64-bit) */
-#else
-#define	LMASK	(1 << 63) 	/* Sign bit mask (64-bit) */
-#endif
+#define	LMASK	(1ULL << 63) 	/* Sign bit mask (64-bit) */
 
 #define	QIEEEMX	32767		/* IEEE quad maximum exponent  (O'77777)*/
 #define	QIEEEBS	16383		/* IEEE quad exponent bias     (O'37777)*/
 #define	QES	48		/* IEEE quad exponent shift value	*/
 #define	QME	15		/* Ln(base 2) of QIEEEMX		*/
 #define	QEMASK	077777		/* IEEE quad exponent mask		*/
-#define	QMMASK	0xFFFFFFFFFFFF	/* IEEE quad mantissa mask		*/
+#define	QMMASK	0xFFFFFFFFFFFFLL	/* IEEE quad mantissa mask		*/
 
 #define	DIEEEMX	2047		/* IEEE double maximum exponent (O'3777)*/
 #define	DIEEEBS	1023		/* IEEE double exponent bias    (O'1777)*/
 #define	DES	52		/* IEEE double exponent shift value	*/
 #define	DME	11		/* Ln(base 2) of DIEEEMX		*/
 #define	DEMASK	DIEEEMX		/* IEEE double exponent mask		*/
-#define	DMMASK	0xFFFFFFFFFFFFF	/* IEEE double mantissa mask		*/
+#define	DMMASK	0xFFFFFFFFFFFFFLL	/* IEEE double mantissa mask		*/
 
 #define	SIEEEMX	255		/* IEEE single maximum exponent  (O'377)*/
 #define	SIEEEBS	127		/* IEEE single exponent bias     (O'177)*/
@@ -203,7 +203,7 @@ extern uint64 cswap8$_();
 #pragma _CRI inline Convert_S_to_D
 #endif
 
-uint64
+static uint64
 Convert_S_to_D(const uint32 input, const short dflush)
 {
 	register int64	exp;	/* Exponent */
@@ -248,7 +248,7 @@ Convert_S_to_D(const uint32 input, const short dflush)
 #pragma _CRI inline Convert_S_to_Q
 #endif
 
-uint64	/* Note: second word always zero */
+static uint64	/* Note: second word always zero */
 Convert_S_to_Q(const uint32 input, const short dflush)
 {
 	register int64	exp;	/* Exponent */
@@ -293,7 +293,7 @@ Convert_S_to_Q(const uint32 input, const short dflush)
 #pragma _CRI inline Convert_D_to_S
 #endif
 
-uint32
+static uint32
 Convert_D_to_S(const uint64 input, const short dflush)
 {
 	register int64	exp;	/* Exponent */
@@ -371,7 +371,7 @@ Convert_D_to_S(const uint64 input, const short dflush)
 #pragma _CRI inline Convert_Q_to_S
 #endif
 
-uint32
+static uint32
 Convert_Q_to_S(const uint64 input1, const uint64 input2, const short dflush)
 {
 	register int64	exp;	/* Exponent */
@@ -1078,12 +1078,12 @@ cswapd$_(union D_box *datum)
 
 		word	= (word << 32) | (word >> 32);	/* Swap longwords */
 
-		word	= ((word & 0x0000FFFF0000FFFF) << 16) |
-			  ((word & 0xFFFF0000FFFF0000) >> 16);	/* Swap words */
+		word	= ((word & 0x0000FFFF0000FFFFLL) << 16) |
+			  ((word & 0xFFFF0000FFFF0000LL) >> 16);	/* Swap words */
 
 		if (swap == 1)	/* If DEC-style, also swap bytes */
-			word	= ((word & 0x00FF00FF00FF00FF) << 8) |
-				  ((word & 0xFF00FF00FF00FF00) >> 8);
+			word	= ((word & 0x00FF00FF00FF00FFLL) << 8) |
+				  ((word & 0xFF00FF00FF00FF00LL) >> 8);
 	}
 
 	r.dint	= word;

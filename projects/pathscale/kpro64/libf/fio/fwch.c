@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,6 +45,7 @@
 #include <liberrno.h>
 #include <stdlib.h>
 #include "fio.h"
+#include "ffio.h"
 #ifdef	_ABSOFT
 #include "ac_sysdep.h"
 #else		/* NOT _ABSOFT */

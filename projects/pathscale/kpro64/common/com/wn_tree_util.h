@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -87,7 +91,6 @@
 #include <algorithm>                   // which includes algobase which has
                                        // the function "distance"
 #include <vector>                      // represent stack as vector of pairs
-#include <iterator>                    // for forward_iterator_tag
 #include <functional>                  // for != etc
 #include "defs.h"                      // INT etc
 #include "wn.h"                        // whirl node
@@ -159,7 +162,7 @@ enum TRAV_ORDER {
 // We need this to get partial specialization work
 // ======================================================================
 
-template <class WHIRL>
+template <typename WHIRL>
 class WN_TREE_ITER_base
 {
 
@@ -341,7 +344,7 @@ class WN_TREE_ITER : public WN_TREE_ITER_base<WHIRL>
 // ======================================================================
 // preorder traversal iterator
 // ======================================================================
-template <class WHIRL>
+template <typename WHIRL>
 class WN_TREE_ITER<PRE_ORDER, WHIRL> : public WN_TREE_ITER_base<WHIRL>
 {
 public:
@@ -429,6 +432,8 @@ public:
 
   // tree related "iterators"
   
+  typedef WN_TREE_ITER<PRE_ORDER, WHIRL>  self;
+
   self &      operator++()    { WN_TREE_next(); return *this;} // pre
   self        operator++(INT) { self tmp = *this; WN_TREE_next(); return tmp;}
 
@@ -518,6 +523,8 @@ public:
 
   // tree related "iterators"
   
+  typedef WN_TREE_ITER<POST_ORDER, WHIRL>  self;
+
   self &      operator++()    { WN_TREE_next(); return *this;} // pre
   self        operator++(INT) { self tmp = *this; WN_TREE_next(); return tmp;}
 

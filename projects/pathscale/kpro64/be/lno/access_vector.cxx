@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -61,6 +65,8 @@
 #endif // USE_PCH
 #pragma hdrstop
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <sys/types.h>
 #include <alloca.h>
 #include "mat.h"

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,7 @@
 
 */
 
+#include <unistd.h>
 
 #pragma ident "@(#) libf/pxf/pxffastexit.c	92.1	06/29/99 11:36:06"
 

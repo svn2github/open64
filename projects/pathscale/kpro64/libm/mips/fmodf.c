@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -62,7 +66,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/libm/mips/fmod
 
 #include "libm.h"
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 
 #include <ieeefp.h>
 
@@ -76,7 +80,7 @@ extern	fp_rnd	swapRM(fp_rnd);
 extern	int	swapRM(int);
 #endif
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	float	fmodf(float, float);
 
 #pragma weak fmodf = __fmodf
@@ -112,7 +116,7 @@ long long ix, iy, xptx, xpty, m;
 
 #endif
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 fp_rnd	rm;
 #endif
 
@@ -207,7 +211,7 @@ struct exception	exstruct;
 
 	/* set rounding mode to round to zero */
 	
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 	rm = swapRM( FP_RZ );
 #endif
 

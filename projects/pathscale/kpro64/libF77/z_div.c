@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,11 +39,12 @@
 
 
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/z_div.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
-#include "cmplrs/host.h"
 #include <math.h>
-#include "moremath.h"
 #include <stdlib.h>
+#include "cmplrs/host.h"
 #include "cmplx.h"
+#include "defalias.h"
+#include "moremath.h"
 
 dcomplex __zdiv(double_t adreal, double_t adimag, double_t bdreal, double_t bdimag)
 {
@@ -65,7 +70,9 @@ dcomplex __zdiv(double_t adreal, double_t adimag, double_t bdreal, double_t bdim
   return c;
 }
 
-void z_div(dcomplex *c, dcomplex *a, dcomplex *b)
+dcomplex z_div_(dcomplex *a, dcomplex *b)
 {
-  *c = __zdiv(a->dreal, a->dimag, b->dreal, b->dimag);
+  return __zdiv(a->dreal, a->dimag, b->dreal, b->dimag);
 }
+
+defalias(z_div_, z_div);

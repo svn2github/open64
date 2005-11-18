@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -57,6 +61,8 @@
 // the full (old symtab) version of the file.
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <elf.h>
@@ -64,8 +70,8 @@
 #include <signal.h>
 #include <alloca.h>
 #include <cmplrs/rcodes.h>		// for RC_SYSTEM_ERROR
-
-#include <hash_set.h>			// temp. header for hash_set
+#include <float.h>
+#include <ext/hash_set>
 
 #include "defs.h"
 #include "erglob.h"
@@ -103,7 +109,16 @@
 #include "ir_bwrite.h"			// I/O for alias class
 #include "be_symtab.h" 
 
-#include "ipc_option.h" 
+#include "ipc_option.h"
+
+#ifdef KEY
+#include "ipa_builtins.h"
+#endif
+
+#ifndef KEY
+#include "inline_script_parser.h"
+#endif  /* KEY */
+#include "ipa_reorder.h" //IPO_Modify_WN_for_field_reorder ()
 
 extern "C" void add_to_tmp_file_list (char*);
 #pragma weak add_to_tmp_file_list
@@ -113,14 +128,83 @@ extern WN_MAP Parent_Map;
 
 extern char * preopt_path;       // declared in ld/option.c
 extern int preopt_opened;        // declared in ld/option.c
+static BOOL have_open_input_file = FALSE;
+static FILE *fin;
+struct reg_feedback {
+    char _func_name[120];
+    INT32 _stacked_callee_used;
+    INT32 _stacked_caller_used;
+    float _cost[96];
+    reg_feedback() : _stacked_callee_used(0),
+             _stacked_caller_used(0)
+    {
+        for (INT32 i = 0; i < 96; i++) {
+            _cost[i] = 0;
+        }
+    }
+};
+
+typedef reg_feedback* REG_FB_POINTER;
+ 
+namespace {
+  struct eqs {
+    bool operator()(char* s1, char* s2) const
+      { return strcmp(s1, s2) == 0; }
+  };
+  typedef __gnu_cxx::hash_map<char*, REG_FB_POINTER, __gnu_cxx::hash<char*>, eqs> REG_FB_MAP;
+};
+
+static REG_FB_MAP REG_FB_INFO_TABLE;
+
+struct reg_budget {
+    INT32 _budget;
+    IPA_NODE *_node;
+    float _self_recursive_freq;
+    reg_budget() : _budget(0),_node(NULL),
+    _self_recursive_freq(0) {}
+};
+
+typedef struct reg_budget* REG_BUDGET_POINTER;
+namespace {
+  struct eq {
+    bool operator()(char* s1, char* s2) const
+      { return strcmp(s1, s2) == 0; }
+  };
+  typedef __gnu_cxx::hash_map<char*, REG_BUDGET_POINTER, __gnu_cxx::hash<char*>, eq> REG_BUDGET_MAP;
+};
+
+static REG_BUDGET_MAP REG_BUDGET_TABLE;
+ 
+struct reg_list {
+    IPA_NODE *_node;
+    float     _spill_cost;
+    struct reg_list *_next;
+    struct reg_list *_prev;
+    reg_list() : _node(NULL),_spill_cost(0),
+                 _next(NULL),_prev(NULL) {
+    }
+};
 
 INT IPO_Total_Inlined = 0;
-
+static float REC_OVERFLOW_COST = 20;
+static float OVERFLOW_COST = 20;
 BOOL one_got;
 
 static MEM_POOL Recycle_mem_pool;
 MEM_POOL IPA_LNO_mem_pool; 
 static IPA_LNO_WRITE_SUMMARY* IPA_LNO_Summary = NULL; 
+
+#ifdef KEY
+// For recursive inlining, ie. when caller == callee, we process the entire
+// node before inlining the recursive edge(s). Store the node and edge in
+// a vector of this struct for inlining later.
+struct inline_info {
+    IPA_NODE *_node;
+    IPA_EDGE *_edge;
+    inline_info (IPA_NODE *n, IPA_EDGE *e) : _node(n), _edge(e) {}
+};
+vector<inline_info> inline_list;
+#endif
 
 //----------------------------------------------------------------------
 // Aux. info for keeping track of the transformation process:
@@ -128,6 +212,8 @@ static IPA_LNO_WRITE_SUMMARY* IPA_LNO_Summary = NULL;
 typedef AUX_IPA_NODE<UINT32> NUM_CALLS_PROCESSED;
 static NUM_CALLS_PROCESSED* Num_In_Calls_Processed;
 static NUM_CALLS_PROCESSED* Num_Out_Calls_Processed;
+
+//FILE *inlining_result ;
 
 static inline BOOL
 All_Calls_Processed (const IPA_NODE* node, const IPA_CALL_GRAPH* cg)
@@ -166,12 +252,31 @@ PU_Deleted (const IPA_GRAPH* cg, NODE_INDEX idx, const IP_FILE_HDR* fhdr)
     if (node == NULL)
 	return TRUE;
 
+#ifdef KEY
+    // For builtins, Proc_Info_Index returns -1.  proc_info[-1] is illegal.
+    if (node->Is_Builtin())
+      return FALSE;
+#endif
+
     const IP_PROC_INFO* proc_info = IP_FILE_HDR_proc_info (*fhdr);
 
     return IP_PROC_INFO_state (proc_info[node->Proc_Info_Index ()]) ==
 	IPA_DELETED;
 } // PU_Deleted
     
+#ifdef KEY
+static BOOL
+PU_Written (const IPA_GRAPH* cg, const IPA_NODE* node, const IP_FILE_HDR* fhdr)
+{
+    if (node == NULL)
+	return TRUE;
+
+    const IP_PROC_INFO* proc_info = IP_FILE_HDR_proc_info (*fhdr);
+
+    return IP_PROC_INFO_state (proc_info[node->Proc_Info_Index ()]) ==
+	IPA_WRITTEN;
+} // PU_Deleted
+#endif // KEY
 
 // this is basically a post-order iteration of the call graph, with the
 // exception that any nested procedure is always processed before its
@@ -197,6 +302,11 @@ Trans_Order_Walk (IPA_NODE_VECTOR& vect, mBOOL* visited, IPA_GRAPH* cg,
 
     if (node == NULL)
 	return;
+
+#ifdef KEY
+    if (node->Is_Builtin())
+      return;
+#endif
 
     if (node->Summary_Proc ()->Is_alt_entry ()) {
 	IPA_SUCC_ITER succ_iter (node);
@@ -238,7 +348,7 @@ Build_Transformation_Order (IPA_NODE_VECTOR& vect, IPA_GRAPH* cg,
 } // Build_Transformation_Order
 
 
-
+
 /* rename the callsite to point to the cloned procedure */
 void
 Rename_Call_To_Cloned_PU (IPA_NODE *caller, 
@@ -271,6 +381,9 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     if (!Can_Inline_Call (caller, callee, edge))
 	return FALSE;
 
+#ifdef KEY
+    Get_enclosing_region (caller, edge);
+#endif
 
 #if Is_True_On
     if ( Get_Trace ( TKIND_ALLOC, TP_IPA) ) {
@@ -291,6 +404,15 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     }
 #endif
 
+/*pengzhao
+if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW))
+	{
+			
+		fprintf ( inlining_result,"%s inlined into ", DEMANGLE(callee->Name()));
+		fprintf ( inlining_result, "%s (edge# %d)\n", DEMANGLE (caller->Name()), edge->Edge_Index () );
+
+	} */
+
     if ( Trace_IPA || Trace_Perf ) {
 	fprintf ( TFile, "%s inlined into ", DEMANGLE (callee->Name()) );
 	fprintf ( TFile, "%s (edge# %d)", DEMANGLE (caller->Name()), edge->Edge_Index () );
@@ -308,8 +430,53 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 	} else {
 	    fprintf ( stderr, "\n" );
 	}
-    }
 
+	// Generate an inlining action log for verifying purpose
+	// The file open/close operation could be placed in higher level to reduce time cost	
+#ifdef Enable_ISP_Verify
+	FILE *inline_action = fopen(inline_action_log, "a+");
+	char *caller_key, *callee_key;
+    	
+	// Retrieve call site source line number		
+	WN* call_wn = edge->Whirl_Node();
+	USRCPOS callsite_srcpos;
+	USRCPOS_srcpos(callsite_srcpos) = WN_Get_Linenum (call_wn);
+	char callsite_linestr[1024];
+	sprintf(callsite_linestr, "%d", USRCPOS_linenum(callsite_srcpos));
+	
+	// Retrieve caller/callee function names and the definition file names
+	char *caller_file = (char *) alloca(strlen(caller->File_Header().file_name)+1);
+	strcpy(caller_file, caller->File_Header().file_name);
+	char *callee_file = (char *) alloca(strlen(callee->File_Header().file_name)+1);
+	strcpy(callee_file, callee->File_Header().file_name);
+	char *caller_func = (char *) alloca(strlen(DEMANGLE (caller->Name()))+1);
+	strcpy(caller_func, DEMANGLE (caller->Name()));
+	char *callee_func = (char *) alloca(strlen(DEMANGLE (callee->Name()))+1);
+	strcpy(callee_func, DEMANGLE (callee->Name()));	
+	
+	// Filter out surffix in file/function names	
+	ISP_Fix_Filename(caller_file);
+	ISP_Fix_Filename(callee_file);
+	ISP_Fix_Filename(caller_func);
+	ISP_Fix_Filename(callee_func);
+	
+	// Assemble the caller key for inquiry into inlining record
+	caller_key = (char *) alloca(strlen(caller_file)+strlen(caller_func)+2);
+	strcpy(caller_key, "");
+ 	strcat(caller_key, caller_file);
+  	strcat(caller_key, caller_func);	
+  	
+  	// Assemble the callee key for inquiry into inlining record
+  	callee_key = (char *) alloca(strlen(callsite_linestr)+strlen(callee_file)+strlen(callee_func)+3);
+   	strcpy(callee_key, "");
+   	strcat(callee_key, callsite_linestr);
+   	strcat(callee_key, callee_file);
+	strcat(callee_key, callee_func);	
+	
+	fprintf(inline_action, "[%s] inlined into [%s]\n", callee_key, caller_key);
+	fclose(inline_action);
+#endif
+    }
 
     return TRUE;
 
@@ -340,6 +507,11 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
   if (IPA_Enable_Common_Const && node->Has_Propagated_Const()) {
     IPO_propagate_globals(node);
   }
+  
+  if(IPA_Enable_Reorder && reorder_candidate.size)
+    IPO_Modify_WN_for_field_reorder(node) ;
+  else //just for debug  feld reorder
+    Compare_whirl_tree(node);
 
   if (IPA_Enable_Cloning && node->Is_Clone_Candidate()) {
 
@@ -435,10 +607,22 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 	action_taken = Delete_Call (caller, callee, edge, cg);
     else if (IPA_Enable_Inline && edge->Has_Inline_Attrib () &&
 		!callee->Has_Noinline_Attrib()) {
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+      if (caller != callee) {
+#endif
 	MEM_POOL_Popper ipo_pool (&Ipo_mem_pool);
 	action_taken = Inline_Call (caller, callee, edge, cg);
 	if (action_taken) 
 	    IPO_Total_Inlined++;
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+      } else {
+	// It is a recursive call, we cannot inline it until the node and all
+	// its edges have been processed.
+      	inline_info inline_later (caller, edge);
+	inline_list.push_back (inline_later);
+	return;
+      }
+#endif
     }
     
     if (!action_taken) {
@@ -448,13 +632,22 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 	   inlining is done. */
 	callee->Set_Undeletable();
 
-#ifdef TODO
+//#ifdef TODO
 	if (IPA_Enable_Cord) {
-	    fprintf (Call_graph_file, "%s\t%s\t%d\n", caller->Name (),
+	    fprintf (Call_graph_file, "%s\t%s\t%f\t%f\t%f\n", caller->Name (),
 		     callee->Name (), edge->Has_frequency () ?
-		     edge->Get_frequency () : 0);
-	}
+#ifdef KEY
+		     (edge->Get_frequency()).Value() : 0,
+		     (caller->Get_frequency()).Value(),
+		     (callee->Get_frequency()).Value()
+#else
+		     (edge->Get_frequency())._value : 0,
+		     (caller->Get_frequency())._value,
+		     (callee->Get_frequency())._value
 #endif
+		     );
+	}
+//#endif
     }
     
 
@@ -512,6 +705,10 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	IPA_EDGE *edge = succ_iter.Current_Edge ();
 	IPA_NODE *callee = cg->Callee (edge);
 	    
+#ifdef KEY
+	if (caller->Is_Recursive())
+	    callee->Set_Undeletable();
+#endif
 
 #ifdef _DEBUG_CALL_GRAPH
         printf("%s   ---->    %s\n", caller->Name(), callee->Name());
@@ -567,14 +764,54 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	    } else {
 		if (IPA_Enable_Array_Sections)
 		    IPA_LNO_Map_Node(callee, IPA_LNO_Summary);
+#ifdef KEY
+		if (!IPA_Enable_PU_Reorder)
+		{
+#endif // KEY
+		IPA_Rename_Builtins(callee);
 		callee->Write_PU ();
 #ifdef _DEBUG_CALL_GRAPH
 	    	printf("Writing   %s \n", callee->Name());
 #endif // _DEBUG_CALL_GRAPH
+#ifdef KEY
+		}
+#endif // KEY
 	    }
 	}
 
     }
+
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    // Inline the recursive edges now.
+    for (vector<inline_info>::iterator iter = inline_list.begin(); 
+    	 iter != inline_list.end(); ++iter)
+    {
+    	inline_info i = *iter;
+	IPA_NODE *r_caller = i._node;
+	IPA_EDGE *r_edge = i._edge;
+	IPA_NODE *r_callee = cg->Callee (r_edge);
+	FmtAssert (r_caller == r_callee && IPA_Enable_Inline && 
+		   r_edge->Has_Inline_Attrib () && 
+		   !r_callee->Has_Noinline_Attrib(), 
+		   ("Unexpected attributes during recursive inlining"));
+	MEM_POOL_Popper ipo_pool (&Ipo_mem_pool);
+	BOOL action_taken = Inline_Call (r_caller, r_callee, r_edge, cg);
+	if (action_taken) 
+	{
+	    IPO_Total_Inlined++;
+	    // We should clear the cloned symtab since the caller, i.e. 
+	    // the callee symtab has changed. We need to clone it again.
+	    r_callee->Clear_Cloned_Symtab();
+	}
+    	++(*Num_In_Calls_Processed)[r_callee];
+    	++(*Num_Out_Calls_Processed)[r_caller];
+#ifdef _DEBUG_CALL_GRAPH
+    	printf("Processed %s   -->   %s\n", r_caller->Name(), r_callee->Name());
+#endif // _DEBUG_CALL_GRAPH
+    	r_edge->Set_Processed ();
+    }
+    inline_list.clear ();
+#endif
 
     // When we inline multiple times of the same callee to this caller
     // we optimized it in IPO_CLONE to same the SYMTAB info for the
@@ -594,10 +831,18 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	else {
 	    if (IPA_Enable_Array_Sections)
 		IPA_LNO_Map_Node(caller, IPA_LNO_Summary);
+#ifdef KEY
+	    if (!IPA_Enable_PU_Reorder)
+	    {
+#endif // KEY
+	    IPA_Rename_Builtins(caller);
 	    caller->Write_PU ();
 #ifdef _DEBUG_CALL_GRAPH
    	    printf("Writing   %s \n", caller->Name());
 #endif // _DEBUG_CALL_GRAPH
+#ifdef KEY
+	    }
+#endif // KEY
 
 	}
     }
@@ -683,7 +928,11 @@ Perform_Alias_Class_Annotation(void)
     // somewhere. We apparently have to write it after the PU's are
     // written.
     if (WN_get_dst(input_file) == -1) {
+#ifdef KEY
+      ErrMsg(EC_IR_Scn_Read, "dst", *name);
+#else
       ErrMsg(EC_IR_Scn_Read, "dst", name);
+#endif
     }
 
     // Note that no Read_Global_Info is needed because the global
@@ -750,6 +999,450 @@ Perform_Alias_Class_Annotation(void)
   }
 }
 
+static void 
+Evaluate_RSE_Cost(MEM_POOL *pool) {
+    if (! have_open_input_file) {
+        fin = fopen("struc_feedback","r");
+        have_open_input_file = TRUE;
+        while (!feof(fin)) {
+            REG_FB_POINTER reg_fb = CXX_NEW(struct reg_feedback,pool);
+            fread(reg_fb,1,sizeof(struct reg_feedback),fin);
+            REG_FB_INFO_TABLE[reg_fb->_func_name] = reg_fb;
+        }
+        fclose(fin);
+    }
+}
+
+static void
+Construct_Budget_Table(IPA_CALL_GRAPH *cg,MEM_POOL *pool) {
+    IPA_NODE_ITER cg_iter(cg,PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE* node = cg_iter.Current();
+        if (node) { 
+            if (! node->Is_Deletable()) {
+                REG_BUDGET_POINTER reg_budget_ptr = CXX_NEW(struct reg_budget,pool);
+                reg_budget_ptr->_node = node; 
+                REG_BUDGET_TABLE[IPA_Node_Name(node)] = reg_budget_ptr;
+            }
+        }
+    }
+}
+
+static IPA_EDGE *
+Get_Most_Frequent_Succ(IPA_NODE *seed,IPA_CALL_GRAPH *cg) {
+    IPA_SUCC_ITER succ_iter (seed);
+    IPA_EDGE *result = NULL;
+    float max_weight = -100;
+    for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) { 
+        IPA_EDGE *edge = succ_iter.Current_Edge ();
+        if ((!edge) || (edge->Is_Deletable())) continue;
+        IPA_NODE *node = cg->Callee(edge);
+        if (node == seed) {
+            FB_FREQ edge_freq = edge->Get_frequency();
+            REG_BUDGET_POINTER reg_budget_ptr = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+            reg_budget_ptr->_self_recursive_freq += edge_freq.Value();
+            continue;
+        }
+  
+        if ((! node->Is_Deletable()) && (node->Get_Partition_Num() == 0)) {
+            FB_FREQ edge_freq = edge->Get_frequency();
+            FB_FREQ node_freq = node->Get_frequency();
+            if (edge_freq > node_freq) {
+                DevWarn("STANGE! %s HAS HIGHER EDGE FREQ!",IPA_Node_Name(node));
+            }
+            REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+            if (! reg_fb) {
+                DevWarn("Function %s has no reg_fb!",IPA_Node_Name(node));
+                continue;
+            }
+            INT32 stack_regs_used = reg_fb->_stacked_callee_used +
+                                    reg_fb->_stacked_caller_used;
+            float weight = (edge_freq.Value())*stack_regs_used;
+            if ((edge_freq.Value()/node_freq.Value()) > 0.3) {
+                if (weight > max_weight) {
+                    max_weight = weight;
+                    result = edge;
+                }
+            }
+        }
+    }
+    
+    return result;
+}
+static void 
+Print_Partition(IPA_NODE_VECTOR par) {
+    for (IPA_NODE_VECTOR::iterator first = par.begin ();
+         first != par.end ();++first) {
+        IPA_NODE *node = *first;
+        REG_BUDGET_POINTER reg_budget_ptr = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+        DevWarn("PARTITION %d HAS FUNCTION %s SELFRECURSIVE %f",node->Get_Partition_Num(),IPA_Node_Name(node),reg_budget_ptr->_self_recursive_freq);
+    }
+}
+
+static void 
+Print_List(reg_list *head) {
+    INT32 count = 0;
+    for (reg_list *begin = head;begin != NULL;begin = begin->_next) {
+        count++; 
+        if (begin->_node) {
+        DevWarn("THE %d REG'S SPILL COST IS %f FUNCTION %s",count,begin->_spill_cost,IPA_Node_Name(begin->_node)); 
+       }
+    }
+}      
+   
+
+static IPA_EDGE *
+Get_Most_Frequent_Pred(IPA_NODE *seed,IPA_CALL_GRAPH *cg) {
+    IPA_PRED_ITER pred_iter (seed);
+    IPA_EDGE *result = NULL;
+    float max_weight = -100;
+    for (pred_iter.First(); !pred_iter.Is_Empty(); pred_iter.Next()) { 
+        IPA_EDGE *edge = pred_iter.Current_Edge ();
+        if ((!edge) || (edge->Is_Deletable())) continue; 
+        IPA_NODE *node = cg->Caller(edge);
+        if (node == seed) {
+            /*FB_FREQ edge_freq = edge->Get_frequency();
+            REG_BUDGET_POINTER reg_budget_ptr = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+            reg_budget_ptr->_self_recursive_freq = edge_freq.Value();*/
+         
+            continue;
+        }
+ 
+        if ((! node->Is_Deletable()) && (node->Get_Partition_Num() == 0)) { 
+            FB_FREQ edge_freq = edge->Get_frequency();
+            FB_FREQ node_freq = node->Get_frequency();
+            REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+            if (! reg_fb) { 
+                DevWarn("Function %s has no reg_fb!",IPA_Node_Name(node));
+                continue;
+            }
+            INT32 stack_regs_used = reg_fb->_stacked_callee_used +
+                                    reg_fb->_stacked_caller_used;
+            float weight = edge_freq.Value()*stack_regs_used;   
+            if ((edge_freq/node_freq) > 0.3) {
+                if (weight > max_weight) {
+                    max_weight = weight;
+                    result = edge;
+                }
+            }
+        }
+    }
+    
+    return result;
+}
+
+static BOOL
+Pred_Thre(IPA_NODE *seed,IPA_EDGE *pred,IPA_CALL_GRAPH *cg) {
+    if (pred == NULL) return FALSE;
+    IPA_NODE *caller = cg->Caller(pred);
+    reg_feedback *reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(caller)];
+    if ((caller->Get_frequency()/seed->Get_frequency()) > 0.1) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static BOOL 
+Succ_Thre(IPA_NODE *seed,IPA_EDGE *succ,IPA_CALL_GRAPH *cg) {
+    if (succ == NULL) return FALSE;
+    IPA_NODE *callee = cg->Callee(succ);
+    reg_feedback *reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(callee)];
+    if ((callee->Get_frequency()/seed->Get_frequency()) > 0.1) {
+        return TRUE;
+    } 
+
+    return FALSE;
+}
+
+static void
+Get_Next_Partition (IPA_CALL_GRAPH *cg,IPA_NODE_VECTOR& partition,
+                    INT32 partition_num,IPA_NODE *entry) {
+    //Do this after a transformation pass.
+    float max_weight = -100;
+    IPA_NODE *seed = NULL;
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph,PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE* node = cg_iter.Current();
+        if (node) {
+            if (! node->Is_Deletable()) {
+                REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+                if (!reg_fb) {
+                    DevWarn("Function %s has no reg_fb!",IPA_Node_Name(node)); 
+                    continue;
+                }
+ 
+	        INT32 stack_regs_used = reg_fb->_stacked_caller_used +
+                                        reg_fb->_stacked_callee_used;
+                if ((stack_regs_used > 20) && 
+                    (reg_fb->_stacked_callee_used > 15)) {
+                    FB_FREQ freq = node->Get_frequency();
+                    float weight = freq.Value() * stack_regs_used; 
+	            if ((weight > max_weight)&&(node->Get_Partition_Num()==0)) {
+	                 max_weight = weight;
+	                 seed = node;
+	            }
+                }
+            }
+        } 
+    }
+    if (seed == NULL) return;
+    seed->Set_Partition_Num(partition_num);
+    partition.push_back(seed);
+    
+    IPA_EDGE *edge = Get_Most_Frequent_Succ(seed,cg);
+    while (Succ_Thre(seed,edge,cg)) {
+        IPA_NODE *callee = cg->Callee(edge);
+        callee->Set_Partition_Num(partition_num);
+        partition.push_back(callee);
+        IPA_NODE *caller = callee;
+        edge = Get_Most_Frequent_Succ(caller,cg);
+    }
+    
+    edge = Get_Most_Frequent_Pred(seed,cg);
+    while (Pred_Thre(seed,edge,cg)) {
+        IPA_NODE *caller = cg->Caller(edge);
+        entry = caller; 
+        caller->Set_Partition_Num(partition_num);
+        partition.push_back(caller);
+        IPA_NODE *callee = caller;
+        edge = Get_Most_Frequent_Pred(callee,cg);
+    }
+            
+    //Extend the partition to a region
+    /*callee = Find_Most_Frequent_Succ_In_Partition(partition,cg);
+    while (Succ_Thre(callee) && callee->Get_Partition_Num()==0) {
+        callee->Set_Partition_Num(partition_num);
+        partition.push_back(callee);
+        callee = Find_Most_Frequent_Succ_In_Partition(&partition,cg);
+        partition.push_back(callee);
+    }*/             
+}
+
+static BOOL 
+Compare_Cost(reg_list *list,IPA_CALL_GRAPH *cg,INT32 partition_num) {
+    float spill_cost = list->_spill_cost;
+    float freq = 0;
+    IPA_NODE *node = list->_node;
+    IPA_SUCC_ITER succ_iter(node);
+    for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) {
+        IPA_EDGE* edge = succ_iter.Current_Edge();
+        if ((!edge) || (edge->Is_Deletable())) continue;
+        IPA_NODE* callee = cg->Callee(edge);
+        if (callee->Get_Partition_Num() == partition_num) {
+            if (callee == node) {
+                reg_budget *budget = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+                freq = freq + (edge->Get_frequency()).Value()*REC_OVERFLOW_COST;
+            } else {
+                freq = freq + (edge->Get_frequency()).Value()*OVERFLOW_COST;
+            }
+        }
+    }
+    
+    //SHOULD US ALSO USE THE PRED CALLED FREQUENCY?
+    if (spill_cost > freq) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+}
+
+static BOOL 
+Compare_Self_Recursive_Cost(reg_list *list) {
+    float spill_cost = list->_spill_cost;
+    IPA_NODE *node = list->_node;
+    if (!node->Is_Deletable()) {
+        reg_budget *budget = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+        if (spill_cost > (budget->_self_recursive_freq*REC_OVERFLOW_COST)) {
+            return TRUE;
+        } else {
+            return FALSE;
+        }
+    }
+} 
+
+static reg_list* 
+Construct_List(IPA_NODE_VECTOR par) {
+struct reg_list* head = (reg_list *) malloc(sizeof(reg_list));
+    struct reg_list* tail = (reg_list *) malloc(sizeof(reg_list));
+    head->_node = NULL;
+    tail->_node = NULL;
+    head->_spill_cost = FLT_MAX;
+    tail->_spill_cost = -FLT_MAX;
+    tail->_next = NULL;
+    tail->_prev = head;
+    head->_prev = NULL;
+    head->_next = tail;
+    for (IPA_NODE_VECTOR::iterator first = par.begin ();
+        first != par.end ();++first) {
+        IPA_NODE *node = *first;
+        if (! node->Is_Deletable()) {
+            //Here all nodes in partition should not be deletable;
+            REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+            if (reg_fb == NULL) {
+                DevWarn("Function %s has no reg_fb!",IPA_Node_Name(node));
+                continue;
+            }
+
+            for (INT32 i = 0;i < 96;i++) {
+                if (reg_fb->_cost[i] > 0) {
+                    struct reg_list* list = (reg_list*) malloc(sizeof(reg_list))
+;
+                    list->_spill_cost = reg_fb->_cost[i];
+                    list->_node       = node;
+                    for (reg_list *begin = head;begin != NULL;
+                        begin = begin->_next) {
+                        if (list->_spill_cost > begin->_spill_cost) {
+                            list->_prev = begin->_prev;
+                            list->_next = begin;
+                            begin->_prev->_next = list;
+                            begin->_prev = list;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }//End of list construction;
+    
+    return head;
+}
+
+static void
+Delete_List(reg_list* head) {
+}
+
+static void
+Print_Budget(IPA_NODE_VECTOR par) {
+    for (IPA_NODE_VECTOR::iterator first = par.begin ();
+        first != par.end ();++first) {
+        IPA_NODE *node = *first;
+        REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+        REG_BUDGET_POINTER reg_budget_ptr = 
+                                 REG_BUDGET_TABLE[IPA_Node_Name(node)];
+        INT32 ori = reg_fb->_stacked_callee_used+reg_fb->_stacked_caller_used;
+        INT32 now = reg_budget_ptr->_budget;
+        DevWarn("ORIGINAL %d NOW %d FOR FUNCTION %s",ori,now,IPA_Node_Name(node));
+    }    
+}
+
+static void 
+Distribute_Partition(IPA_NODE_VECTOR par,IPA_CALL_GRAPH *cg,INT32 partition_num){
+    struct reg_list* head = Construct_List(par);   
+    Print_List(head); 
+    INT32 count = 0;
+    for (reg_list *begin = head; begin != NULL; begin = begin->_next) {
+        IPA_NODE *node = begin->_node;
+        if (node) {
+            REG_BUDGET_POINTER reg_budget_ptr =
+                                       REG_BUDGET_TABLE[IPA_Node_Name(node)];
+            if (count > 100) {
+                BOOL use = Compare_Cost(begin,cg,partition_num);
+                if (use) {
+                    reg_budget_ptr->_budget++;
+                    count++;
+                }
+            } else {
+                if (reg_budget_ptr->_self_recursive_freq > 0) {
+                    if (Compare_Self_Recursive_Cost(begin)) {
+                        count++; 
+                        reg_budget_ptr->_budget++;
+                    }
+                } else {
+                    reg_budget_ptr->_budget++;
+                    count++;
+                }
+            }       
+        }
+    }
+    Print_Budget(par);  
+    //TODO::Should delete the list.    
+}
+
+static void Initialize_Partition_Num(IPA_CALL_GRAPH *cg) {
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph,PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+        IPA_NODE* node = cg_iter.Current();
+        if (node) {
+            node->Set_Partition_Num(0);
+        } 
+    }     
+   
+}
+
+static INT32 
+Count_Total_Regs(IPA_NODE_VECTOR partition) {
+    INT32 count = 0;
+    for (IPA_NODE_VECTOR::iterator iter = partition.begin ();
+        iter != partition.end ();++iter) {
+        IPA_NODE *node = *iter;
+        REG_FB_POINTER reg_fb = REG_FB_INFO_TABLE[IPA_Node_Name(node)];
+        count = count + reg_fb->_stacked_callee_used
+                + reg_fb->_stacked_caller_used;
+    }
+ 
+   return count;
+} 
+
+static void
+Stacked_Regs_Distribution(IPA_CALL_GRAPH *cg) {
+    BOOL finished = FALSE;
+    Initialize_Partition_Num(cg);
+      
+    INT32 partition_num = 1;
+    IPA_NODE *entry;
+    
+    while (!finished) {
+       IPA_NODE_VECTOR partition;
+       Get_Next_Partition(cg,partition,partition_num,entry);
+       if (!partition.empty()) {
+           Print_Partition(partition);
+           INT32 total = Count_Total_Regs(partition);
+           BOOL no_self_recursive_node = TRUE;
+           for (IPA_NODE_VECTOR::iterator iter = partition.begin();
+               iter != partition.end();++iter) {
+               IPA_NODE *n = *iter;
+               REG_BUDGET_POINTER p = REG_BUDGET_TABLE[IPA_Node_Name(n)];
+               if (p->_self_recursive_freq > 0) {
+                   no_self_recursive_node = FALSE;
+                   break;
+               }
+           }
+ 
+           if ((total < 96) && (no_self_recursive_node)) {
+               DevWarn("REGISTER USAGE OF THIS PARTITION LESS THAN 96!");
+               for (IPA_NODE_VECTOR::iterator iter = partition.begin();
+                   iter != partition.end();++iter) {
+                   (*iter)->Set_Partition_Num(-1);
+               } 
+               continue;
+           } else {
+               Distribute_Partition(partition,cg,partition_num);
+           }
+       } else {
+           finished = TRUE;
+       } 
+       partition_num++; 
+       if (partition_num == 10) finished = TRUE;
+    } 
+}
+
+#ifdef KEY
+#include <queue>
+struct order_node_by_freq {
+    bool operator() (IPA_NODE * first, IPA_NODE * second)
+    {
+    	return first->Get_frequency() < second->Get_frequency();
+    }
+};
+
+struct order_edge_by_freq {
+    bool operator() (IPA_EDGE * first, IPA_EDGE * second)
+    {
+    	return first->Get_frequency() < second->Get_frequency();
+    }
+};
+#endif // KEY
+
 static void
 IPO_main (IPA_CALL_GRAPH* cg)
 {
@@ -760,6 +1453,8 @@ IPO_main (IPA_CALL_GRAPH* cg)
 				     FALSE); 
     
     Set_Error_Phase ("IPA Transformation");
+
+//	inlining_result = fopen("inlining.log", "w");
 
     if (IPA_Enable_Array_Sections) {
 	IPA_LNO_Summary = CXX_NEW(IPA_LNO_WRITE_SUMMARY(array_pool.Pool ()),
@@ -772,12 +1467,21 @@ IPO_main (IPA_CALL_GRAPH* cg)
     if (IPA_Enable_Split_Common)
 	IPO_Split_Common ();
 
+    //reorder :(the follwoing two lines)
+    if(IPA_Enable_Reorder && reorder_candidate.size){
+       IPO_get_new_ordering();
+       IPO_reorder_Fld_Tab();
+    }
+
     Init_Num_Calls_Processed (cg, ipo_pool.Pool ());
 
+#ifdef KEY
+    IPA_Create_Builtins();
+#endif
+
     IPA_NODE_VECTOR walk_order;
-
+     
     Build_Transformation_Order (walk_order, cg->Graph(), cg->Root());
-
     for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
 	 first != walk_order.end ();
 	 ++first) {
@@ -786,13 +1490,123 @@ IPO_main (IPA_CALL_GRAPH* cg)
       // a call-graph descendant of Perform_Transformation. When the
       // following call returns, alias class analysis has been done
       // for the current PU.
-
+      //ST *func_st = (*first)->Func_ST();
+      //Set_PU_rse_budget(Pu_Table[ST_pu(func_st)],30);   
       Perform_Transformation (*first, cg);
 
     }
 
-    IP_flush_output ();			// Finish writing the PUs
+#ifdef KEY
+    BOOL IPA_Enable_PU_Reorder_Debug = FALSE;
+    if (IPA_Enable_PU_Reorder)
+    {	// reorder by edge frequency
+      if (IPA_Enable_PU_Reorder_Debug) // PU reorder debugging (can be enabled internally ONLY)
+      {
+    	priority_queue<IPA_EDGE*, vector<IPA_EDGE*>, order_edge_by_freq> emit_order;
+    	for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
+	 	first != walk_order.end (); ++first)
+	{// push edges in order of freq
+    	    IPA_SUCC_ITER succ_iter (*first);
+    	    for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next())
+		emit_order.push (succ_iter.Current_Edge ());
+	}
+	while (!emit_order.empty())
+	{
+	    IPA_EDGE *edge = emit_order.top();
+	    IPA_NODE *caller = cg->Caller (edge);
+	    IPA_NODE *callee = cg->Callee (edge);
+	    //printf ("Processing edge with frequency %f\n", edge->Get_frequency().Value());
+	    // caller
+      	    if (!PU_Deleted (cg->Graph(), caller->Node_Index(), // deleted
+	    		&caller->File_Header()) && 
+			!PU_Written (cg->Graph(), caller,	// written
+			&caller->File_Header()))
+	    {
+		IPA_Rename_Builtins(caller);
+		caller->Write_PU();
+	    }
+	    // callee
+      	    if (!PU_Deleted (cg->Graph(), callee->Node_Index(), // deleted
+	    		&callee->File_Header()) &&
+			!PU_Written (cg->Graph(), callee,       // written
+			&callee->File_Header()))
+	    {
+		IPA_Rename_Builtins(callee);
+		callee->Write_PU();
+	    }
+	    emit_order.pop();
+	}
+	// Do we have nodes not belonging to an edge? Write them now.
+    	for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
+	 	first != walk_order.end (); ++first)
+    	{
+      	    if (!PU_Deleted (cg->Graph(), (*first)->Node_Index(), 
+      			&(*first)->File_Header()) &&
+			!PU_Written (cg->Graph(), *first,
+			&(*first)->File_Header()))
+	    {
+		IPA_Rename_Builtins(*first);
+		(*first)->Write_PU();
+	    }
+	}
+      }
+      else	// reorder by node frequency
+      {
+    	priority_queue<IPA_NODE*, vector<IPA_NODE*>, order_node_by_freq> emit_order;
+    	for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
+	 	first != walk_order.end (); ++first)
+    	{
+      	    if (!PU_Deleted (cg->Graph(), (*first)->Node_Index(), 
+      		&(*first)->File_Header()))
+      	    {
+      	    	emit_order.push (*first);
+      	    }
+    	}
 
+    	while (!emit_order.empty())
+    	{
+      	    IPA_NODE *emit = emit_order.top();
+      	    //printf("Writing %s with frequency %f\n", emit->Name(), emit->Get_frequency().Value());
+	    IPA_Rename_Builtins(emit);
+	    emit->Write_PU();
+	    emit_order.pop();
+    	}
+      }
+    }
+#endif // KEY
+
+    if(IPA_Enable_Reorder)
+       IPO_Finish_reorder(); //MEM_POOL_Pop (&reorder_local_pool);pop reorder_candidate
+	 
+    //These code used to print function name is inserted by Liu Yang
+    //to do RSE experiments.
+    //if (IPA_Enable_RSE_Distribution) {
+    if (FALSE) {
+    Evaluate_RSE_Cost(&Ipo_mem_pool);
+    Construct_Budget_Table(cg,&Ipo_mem_pool);
+    Stacked_Regs_Distribution(cg);
+    //Find_A_Path();
+    IPA_NODE_ITER cg_iter(IPA_Call_Graph,PREORDER);
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+
+        IPA_NODE* node = cg_iter.Current();
+        if (node) {
+            INT32 bud = 0;
+            if ((node->Get_Partition_Num() == 0) ||
+                (node->Get_Partition_Num() == -1)) {
+                bud = 96;
+            } else {
+                REG_BUDGET_POINTER ptr = REG_BUDGET_TABLE[IPA_Node_Name(node)];
+                if (ptr) bud = ptr->_budget;
+            } 
+            ST *func_st = node->Func_ST();
+            Set_PU_gp_group(Pu_Table[ST_pu(func_st)],bud);
+        }
+    } 
+    } 
+       
+    IP_flush_output ();			// Finish writing the PUs
+    
     if (IPA_Enable_Array_Sections)
 	IPA_LNO_Write_Summary (IPA_LNO_Summary);
 
@@ -805,6 +1619,7 @@ IPO_main (IPA_CALL_GRAPH* cg)
     if ( INLINE_List_Actions ) {
         fprintf ( stderr, "Total number of edges = %d\n", IPA_Call_Graph->Edge_Size() );
     }
+//	fclose (inlining_result);
 
 } // IPO_main
 
@@ -931,6 +1746,97 @@ Perform_Interprocedural_Optimization (void)
     MEM_Trace ();
   }
 #endif
+
+
+//pengzhao
+// this chunk of code print the inlining decision like the ecc style
+if(Get_Trace(TP_IPA, IPA_TRACE_TUNING))
+{
+  FILE *orc_script = fopen ("orc_script.log", "w");
+		  INT32 callsite_linenum;
+		  INT32 callsite_colnum;
+		  USRCPOS callsite_srcpos;
+    	  char  *caller_filename, *callee_filename;
+    	  char  *caller_funcname, *callee_funcname;
+
+  IPA_NODE_ITER cg_iter(IPA_Call_Graph, PREORDER);
+  fprintf(orc_script, "\n#BEGIN_INLINE\n\n");
+  
+  for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) 
+  {
+
+    IPA_NODE* node = cg_iter.Current();
+	
+    if (node) 
+	{
+
+			// Important for the getting WN from edge
+	  IPA_NODE_CONTEXT context (node);
+	  IPA_Call_Graph->Map_Callsites (node);
+
+	  // get the node-caller's filename
+      IP_FILE_HDR& caller_hdr = node->File_Header ();
+	  caller_filename = (char *) alloca(strlen(caller_hdr.file_name)+1);
+	  strcpy(caller_filename, caller_hdr.file_name);
+			
+	  fprintf(orc_script, "COMPILE (\"%s\",%s,NOREG) {\n", DEMANGLE(caller_filename), DEMANGLE(IPA_Node_Name(node)));
+      BOOL seen_callee = FALSE;
+
+      IPA_SUCC_ITER succ_iter(node);
+      for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) {
+		IPA_EDGE* tmp_edge = succ_iter.Current_Edge();
+		if(tmp_edge)
+		{
+		  EDGE_INDEX   tmp_idx = tmp_edge->Edge_Index();
+		  WN* call_wn = tmp_edge->Whirl_Node();
+		  IPA_NODE* callee =IPA_Call_Graph->Callee( tmp_idx ); 
+    	  IP_FILE_HDR& callee_hdr = callee->File_Header ();
+
+    	  if (call_wn == NULL) 
+		  {
+       			fprintf (orc_script, "Warning: no source line number found for call-edge [%s --> %s]\n", node->Name(), callee->Name());
+       	  		callsite_linenum = 0;
+				callsite_colnum = -1;
+
+    	  } else 
+		  {
+      			USRCPOS_srcpos(callsite_srcpos) = WN_Get_Linenum (call_wn);
+      			callsite_linenum = USRCPOS_linenum(callsite_srcpos);
+				callsite_colnum  = USRCPOS_column(callsite_srcpos);
+		  }
+
+  		  callee_filename = (char *) alloca(strlen(callee_hdr.file_name)+1);
+		  strcpy(callee_filename, callee_hdr.file_name);
+		  
+//          if (IPA_NODE* callee =IPA_Call_Graph->Callee( tmp_idx )) 
+		  {
+			if(IPA_Enable_Inline && tmp_edge->Has_Inline_Attrib () && !callee->Has_Noinline_Attrib())
+		    {
+              fprintf(orc_script, "  INLINE (%d,%d,\"%s\",%s,NOREG) {\n  }\n",callsite_linenum,callsite_colnum, callee_filename, DEMANGLE(IPA_Node_Name(callee)) );
+              seen_callee = TRUE;
+            }else // should inline the callee
+		    {
+//              fprintf(orc_script, "  CALL (%s)\n",IPA_Node_Name(callee) );
+              fprintf(orc_script, "  CALL (%d,%d,\"%s\",%s,NOREG)\n",callsite_linenum,callsite_colnum, callee_filename, DEMANGLE(IPA_Node_Name(callee)) );
+		  
+		    }
+//          fprintf(fp, "    %s(%f)->%s (edge_freq = %f, callee_freq = %f)\n", IPA_Node_Name(node),(node->Get_frequency())._value ,IPA_Node_Name(callee), (tmp_edge->Get_frequency())._value, (callee->Get_frequency())._value);
+         }
+		}// if(tmp_edge)
+      }//for all edges
+
+      fprintf(orc_script, "}\n");
+    }// if(node)
+  }// for all node
+  fprintf(orc_script, "\n#END_INLINE\n\n");
+  fclose (orc_script);
+}
+	if(Get_Trace(TP_IPA, IPA_TRACE_TUNING_NEW)) // -tt19:0x80000
+	{
+	    fprintf(TFile, "\t+++++++++++++++++++++++++++++++++++++++\n");
+  	    IPA_Call_Graph->Print_vobose(TFile);
+	    fprintf(TFile, "\t+++++++++++++++++++++++++++++++++++++++\n");
+	}
 
   IPO_main (IPA_Call_Graph);
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -44,15 +48,15 @@
 void
 s_srng(char *varn, int32 lower, int32 upper, char *procn, int32 line)
 {
-register int32 i;
-extern void s_abort(int32);
+	register int32 i;
+	extern void s_abort(int32);
 
-fprintf(stderr, "Substring bound(s) out of range on file line %d, procedure ", line);
-for(i = 0 ; i < 8 && *procn!='_' ; ++i)
-	putc(*procn++, stderr);
-fprintf(stderr, ".\nAttempt to access the %ld-th through the %ld-th characters of variable ", lower, upper);
-for(i = 0 ; i < 6  && *varn!=' ' ; ++i)
-	putc(*varn++, stderr);
-fprintf(stderr, ".\n");
-s_abort(99);
+	fprintf(stderr, "Substring bound(s) out of range on file line %d, procedure ", line);
+	for(i = 0 ; i < 8 && *procn!='_' ; ++i)
+		putc(*procn++, stderr);
+	fprintf(stderr, ".\nAttempt to access the %d-th through the %d-th characters of variable ", lower, upper);
+	for(i = 0 ; i < 6  && *varn!=' ' ; ++i)
+		putc(*varn++, stderr);
+	fprintf(stderr, ".\n");
+	s_abort(99);
 }

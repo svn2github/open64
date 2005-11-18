@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,13 +54,19 @@ extern float _IEEE_EXPONENT_H_H(float x);
 float
 _IEEE_EXPONENT_H_H(float x)
 {
-	union _ieee_fdouble {
+	union _ieee_float {
 		float	dword;
-		short	lword;
+		int	lword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+		unsigned int mantissa	: IEEE_32_MANT_BITS;
+		unsigned int exponent	: IEEE_32_EXPO_BITS;
+		unsigned int sign	: 1;
+#else
 		unsigned int sign	: 1;
 		unsigned int exponent	: IEEE_32_EXPO_BITS;
 		unsigned int mantissa	: IEEE_32_MANT_BITS;
+#endif
 		} parts;
 	};
 	switch (_fpclassifyf(x)) {
@@ -64,19 +74,19 @@ _IEEE_EXPONENT_H_H(float x)
 			return(x);
 		case FP_INFINITE:
 			{
-			union _ieee_fdouble x_val;
+			union _ieee_float x_val;
 			x_val.lword	= IEEE_32_INFINITY;
 			return(x_val.dword);
 			}
 		case FP_NORMAL:
 			{
-			union _ieee_fdouble x_val;
+			union _ieee_float x_val;
 			x_val.dword	= x;
 			return(x_val.parts.exponent - IEEE_32_EXPO_BIAS);
 			}
 		case FP_SUBNORMAL:
 			{
-			union _ieee_fdouble x_val;
+			union _ieee_float x_val;
 			x_val.dword	= x;
 
 			/* _leadz returns number of zeros before first 1
@@ -90,7 +100,7 @@ _IEEE_EXPONENT_H_H(float x)
 			}
 		case FP_ZERO:
 			{
-			union _ieee_fdouble x_val;
+			union _ieee_float x_val;
 			int j;
 
 			/* raise divide-by-zero exception */

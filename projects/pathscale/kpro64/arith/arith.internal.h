@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -656,6 +660,68 @@ int ar_m128toi128(AR_IEEE_128 *out, long double *in);
 int ar_i128tom128(long double *out, AR_IEEE_128 *in);
  
 #endif
+
+/* Random functions in need of prototypes */
+
+extern int ar_ifcmp64 (const AR_IEEE_64 *a, const AR_IEEE_64 *b);
+
+extern void ar_clear_unused_bits (ar_data *opnd, const AR_TYPE *opndtype);
+
+/* Fortran 90 functions */
+
+extern int ar_index (ar_data *result, const AR_TYPE *resulttype,
+		     const char *str1, long len1, const char *str2,
+		     long len2, long backward);
+
+extern int ar_scan (ar_data *result, const AR_TYPE *resulttype,
+		    const char *str1, long len1, const char *str2,
+		    long len2, long backward);
+
+extern int ar_verify (ar_data *result, const AR_TYPE *resulttype,
+		      const char *str1, long len1, const char *str2,
+		      long len2, long backward);
+
+extern int ar_reshape (void *result, const void *source, const void *shape,
+		       const void *pad, const void *order);
+
+extern int ar_transfer (void *result, const void *source, const void *mold,
+			long *length);
+
+extern int ar_modulo (ar_data *result, const AR_TYPE *resulttype,
+		      const ar_data *opnd1, const AR_TYPE *opnd1type,
+		      const ar_data *opnd2, const AR_TYPE *opnd2type);
+
+extern int ar_selected_real_kind (ar_data *result, const AR_TYPE *resulttype,
+				  const ar_data *opnd1,
+				  const AR_TYPE *opnd1type,
+				  const ar_data *opnd2,
+				  const AR_TYPE *opnd2type);
+
+extern int ar_sqrt (ar_data *result, const AR_TYPE *resulttype,
+		    const ar_data *opnd, const AR_TYPE *opndtype);
+
+extern int ar_log (ar_data *result, const AR_TYPE *resulttype,
+		   const ar_data *opnd, const AR_TYPE *opndtype);
+
+extern int ar_exp (ar_data *result, const AR_TYPE *resulttype,
+		   const ar_data *opnd, const AR_TYPE *opndtype);
+
+extern int ar_cabs (ar_data *result, const AR_TYPE *resulttype,
+		    const ar_data *opnd, const AR_TYPE *opndtype);
+
+extern int ar_power(ar_data *result, const AR_TYPE *resulttype,
+		    const ar_data *base, const AR_TYPE *basetype,
+		    const ar_data *power, const AR_TYPE *powertype);
+
+extern int ar_convert_str_to_float (ar_data *result, const AR_TYPE *resulttype,
+				    const char *str);
+
+extern int ar_divide_complex (ar_data *result, const AR_TYPE *resulttype,
+			      const ar_data *opnd1, const AR_TYPE *opnd1type,
+			      const ar_data *opnd2, const AR_TYPE *opnd2type);
+
+extern int ar_cvt_str_to_float (ar_data *result, const AR_TYPE *resulttype,
+				const char *str);
 
 /* Miscellaneous support prototypes */
 

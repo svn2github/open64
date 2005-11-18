@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -2044,6 +2048,12 @@ BOOL Solve_For(WN* wn_top, const SYMBOL& sym)
         // through by -1.
         Flip_Le_And_Ge(wn_top);
         TYPE_ID  type = WN_rtype(r);
+#ifdef TARG_X8664
+	// Bug 2014 - complement the type if original type is unsigned because
+	// we are going to negate and we have to obey the sign-extension rules
+	// for Opteron Code generation.
+	if (MTYPE_is_unsigned(type)) type = MTYPE_complement(type);
+#endif
         OPCODE   negop = OPCODE_make_op(OPR_NEG, type, MTYPE_V);
         r = WN_CreateExp1(negop, r);
       }

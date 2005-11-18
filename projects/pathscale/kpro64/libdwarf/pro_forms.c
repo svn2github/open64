@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -147,6 +151,85 @@ dwarf_add_AT_targ_address_b(
 }
 
 
+#ifdef KEY
+/* Bug 1188
+   There is probably a bug in somewhere dealing with the data width 
+   optimization (data format depends on the best fit for the incoming value).
+   We will use the format based on the incoming data type (intype) rather
+   than the best fit. This atleast causes gdb and TotalView to read in the 
+   .debug_info sections correctly.
+*/
+Dwarf_P_Attribute 
+dwarf_add_AT_unsigned_const_ext (
+    Dwarf_P_Debug	dbg,
+    Dwarf_P_Die 	ownerdie,
+    Dwarf_Half		attr,
+    Dwarf_Unsigned	value,
+    Dwarf_Error 	*error,
+    Dwarf_Unsigned      intype
+)
+{
+    Dwarf_P_Attribute 	new_attr;
+    Dwarf_Half		attr_form;
+    Dwarf_Small		size;
+
+    if (dbg == NULL) {
+        _dwarf_p_error(NULL, error, DW_DLE_DBG_NULL);
+        return((Dwarf_P_Attribute)DW_DLV_BADADDR);
+    }
+
+    if (ownerdie == NULL) {
+        _dwarf_p_error(dbg, error, DW_DLE_DIE_NULL);
+        return((Dwarf_P_Attribute)DW_DLV_BADADDR);
+    }
+
+    if (attr != DW_AT_const_value || 
+	(intype != 1 && intype != 2 && intype != 4 && intype != 8)) {
+      _dwarf_p_error(dbg, error, DW_DLE_INPUT_ATTR_BAD);
+      return((Dwarf_P_Attribute)DW_DLV_BADADDR);
+    }
+
+    /* 
+       Compute the number of bytes 
+       needed to hold constant.
+    */
+    switch (intype) {
+    case 1: attr_form = DW_FORM_data1; size = 1; break;
+    case 2: attr_form = DW_FORM_data2; size = 2; break;
+    case 4: attr_form = DW_FORM_data4; size = 4; break;
+    case 8: attr_form = DW_FORM_data8; size = 8; break;
+    }
+
+    new_attr = (Dwarf_P_Attribute)
+        _dwarf_p_get_alloc(dbg, sizeof(struct Dwarf_P_Attribute_s));
+    if (new_attr == NULL) {
+        _dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL);
+        return((Dwarf_P_Attribute)DW_DLV_BADADDR);
+    }
+
+    new_attr->ar_attribute = attr;
+    new_attr->ar_attribute_form = attr_form;
+    new_attr->ar_rel_type = R_MIPS_NONE;
+    new_attr->ar_reloc_len = 0 ; /* irrelevant: unused with R_MIPS_NONE */
+    new_attr->ar_nbytes = size;
+    new_attr->ar_next  = 0;
+
+    new_attr->ar_data = (char *)
+        _dwarf_p_get_alloc(dbg, size);
+    if (new_attr->ar_data == NULL) {
+        _dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL);
+        return((Dwarf_P_Attribute)DW_DLV_BADADDR);
+    }
+    WRITE_UNALIGNED(dbg,new_attr->ar_data,
+	(const void *)&value,
+	sizeof(value),
+		size);
+
+    /* add attribute to the die */
+    _dwarf_pro_add_at_to_die(ownerdie, new_attr);
+    return new_attr;
+}
+#endif
 /*
     This function adds attributes whose value
     is an unsigned constant.  It determines the 
@@ -293,21 +376,34 @@ dwarf_add_AT_signed_const (
 	    Compute the number of bytes 
 	    needed to hold constant.
 	*/
-    if (value >= SCHAR_MIN && value <= SCHAR_MAX) 
-	{attr_form = DW_FORM_data1; size = 1;}
-    else if (value >= SHRT_MIN && value <= SHRT_MAX) 
-	{attr_form = DW_FORM_data2; size = 2;}
-    else if (value >= INT_MIN && value <= INT_MAX) 
-	{attr_form = DW_FORM_data4; size = 4;}
-    else 
-	{attr_form = DW_FORM_data8; size = 8;}
 
+#ifdef KEY
+    // gdb seems to treat all the DW_FORM_data forms as unsigned, so if we
+    // have a negative number we need to encode it as signed data
+#endif
     new_attr = (Dwarf_P_Attribute)
-        _dwarf_p_get_alloc(dbg, sizeof(struct Dwarf_P_Attribute_s));
+        _dwarf_p_get_alloc(NULL, sizeof(struct Dwarf_P_Attribute_s));
     if (new_attr == NULL) {
-        _dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL);
-        return((Dwarf_P_Attribute)DW_DLV_BADADDR);
+        _dwarf_p_error(NULL, error, DW_DLE_ALLOC_FAIL);
+	return((Dwarf_P_Attribute)DW_DLV_BADADDR);
     }
+
+#ifdef KEY
+    if (value < 0) {
+        attr_form = DW_FORM_sdata ;
+    } else {
+#endif
+        if (value >= SCHAR_MIN && value <= SCHAR_MAX) 
+            {attr_form = DW_FORM_data1; size = 1;}
+        else if (value >= SHRT_MIN && value <= SHRT_MAX) 
+            {attr_form = DW_FORM_data2; size = 2;}
+        else if (value >= INT_MIN && value <= INT_MAX) 
+            {attr_form = DW_FORM_data4; size = 4;}
+        else 
+            {attr_form = DW_FORM_data8; size = 8;}
+#ifdef KEY
+    }
+#endif
 
     new_attr->ar_attribute = attr;
     new_attr->ar_attribute_form = attr_form;
@@ -317,16 +413,42 @@ dwarf_add_AT_signed_const (
     new_attr->ar_nbytes = size;
     new_attr->ar_next = 0;
 
-    new_attr->ar_data = (char *)
-        _dwarf_p_get_alloc(dbg, size);
-    if (new_attr->ar_data == NULL) {
-        _dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL);
-        return((Dwarf_P_Attribute)DW_DLV_BADADDR);
+#ifdef KEY
+    if (attr_form == DW_FORM_sdata) {
+        int			leb_size;
+        char encode_buffer[ENCODE_SPACE_NEEDED];
+        int res;
+
+        res =       _dwarf_pro_encode_signed_leb128_nm(
+                            value, &leb_size,
+              encode_buffer,sizeof(encode_buffer));
+        if (res != DW_DLV_OK)  {
+            _dwarf_p_error(NULL, error, DW_DLE_ALLOC_FAIL);
+            return((Dwarf_P_Attribute)DW_DLV_BADADDR);
+        }
+        new_attr->ar_data =  (char *)
+            _dwarf_p_get_alloc(NULL, leb_size);
+        if (new_attr->ar_data == NULL) {
+            _dwarf_p_error(NULL, error, DW_DLE_ALLOC_FAIL);
+            return((Dwarf_P_Attribute)DW_DLV_BADADDR);
+        }
+        memcpy(new_attr->ar_data,encode_buffer,leb_size);
+        new_attr->ar_nbytes = leb_size;
+    } else {
+#endif
+        new_attr->ar_data = (char *)
+            _dwarf_p_get_alloc(dbg, size);
+        if (new_attr->ar_data == NULL) {
+            _dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL);
+            return((Dwarf_P_Attribute)DW_DLV_BADADDR);
+        }
+        WRITE_UNALIGNED(dbg,new_attr->ar_data,
+            (const void *)&value,
+                    sizeof(value),
+                    size);
+#ifdef KEY
     }
-    WRITE_UNALIGNED(dbg,new_attr->ar_data,
-	(const void *)&value,
-		sizeof(value),
-		size);
+#endif
 
     /* add attribute to the die */
     _dwarf_pro_add_at_to_die(ownerdie, new_attr);

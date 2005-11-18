@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -233,6 +238,7 @@ CODEREP::Copy(const CODEREP &cr)
     case OPR_COMPOSE_BITS:
       Set_op_bit_size(cr.Op_bit_size());
       Set_op_bit_offset(cr.Op_bit_offset());
+      break;
     case OPR_INTRINSIC_CALL:
     case OPR_INTRINSIC_OP:
       Set_intrinsic(cr.Intrinsic());
@@ -242,6 +248,10 @@ CODEREP::Copy(const CODEREP &cr)
       break;
     case OPR_ASM_INPUT:
       Set_asm_constraint(cr.Asm_constraint());
+#ifdef KEY
+      Set_asm_input_rtype(cr.Asm_input_rtype());
+      Set_asm_input_dsctype(cr.Asm_input_dsctype());
+#endif
       break;
     }
   }
@@ -1648,8 +1658,13 @@ CODEMAP::Hash_Ivar(CODEREP *cr, INT32 mu_vsym_depth)
     Is_True(is_sign_extd==exist_cr->Is_sign_extd(),("CODEMAP::Hash_Ivar: existing cr's sign extension flag is not consistent"));
 #endif
 
-    if (exist_cr->Is_sign_extd()==cr->Is_sign_extd()) // no type conversion
+    if (exist_cr->Is_sign_extd()==cr->Is_sign_extd()) { // no type conversion
+#ifdef KEY
+      return exist_cr->Fixup_type(cr->Dtyp(), this);
+#else
       return exist_cr;
+#endif
+    }
 
     need_cvt =
       Need_load_type_conversion(exist_cr->Is_sign_extd(), cr->Is_sign_extd(),
@@ -1659,7 +1674,15 @@ CODEMAP::Hash_Ivar(CODEREP *cr, INT32 mu_vsym_depth)
     cr->IncUsecnt();
     new_cr->Init_expr(opc, exist_cr);
     if (need_cvt == NEED_CVTL) {
-      new_cr->Set_offset(MTYPE_size_min(cr->Dsctyp()));
+      if (cr->Dsctyp() != MTYPE_BS)
+	new_cr->Set_offset(MTYPE_size_min(cr->Dsctyp()));
+      else {
+	UINT cur_field_id = 0;
+	UINT64 field_offset = 0;
+	FLD_HANDLE fld = FLD_And_Offset_From_Field_Id(cr->Ilod_ty(),
+			 cr->I_field_id(), cur_field_id, field_offset);
+	new_cr->Set_offset(FLD_bsize(fld));
+      }                                                                                            
     }
     return Hash_Op(new_cr);
   }
@@ -2004,11 +2027,22 @@ CODEMAP::Canon_cvt(WN       *wn,
   
   CODEREP *retv;
   CODEREP *expr;
+#ifdef TARG_X8664
+  if (ccr->Tree() != NULL && Allow_wrap_around_opt) {
+    cr->Set_opnd(0, ccr->Tree());
+    retv = Hash_Op(cr);
+    ccr->Set_tree(retv); // move the CVT to the operand
+  }
+  else {
+#endif
   expr = ccr->Convert2cr(WN_kid0(wn), this, propagated);
   cr->Set_opnd(0, expr);
   retv = Hash_Op(cr);
   ccr->Set_tree(retv);
   ccr->Set_scale(0);
+#ifdef TARG_X8664
+  }
+#endif
   return propagated;
 }
 /* CVTL-RELATED finish */
@@ -2159,7 +2193,10 @@ Indices_only_may_overlap(CODEREP *x, CODEREP *y)
 static BOOL
 Ivars_may_overlap(CODEREP *lval, CODEREP *rval)
 {
-  if (lval->Is_ivar_volatile()) return TRUE;
+ if (lval->Is_ivar_volatile()) return TRUE;
+ if (lval->Dsctyp() == MTYPE_M || rval->Dsctyp() == MTYPE_M) {
+   return TRUE;
+ }
   if (lval->Istr_base() == rval->Ilod_base()) {
     INT32 lsize = MTYPE_size_min(lval->Dsctyp()) >> 3; // in bytes
     INT32 rsize = MTYPE_size_min(rval->Dsctyp()) >> 3; // in bytes
@@ -2242,6 +2279,7 @@ CODEMAP::Add_idef(OPCODE opc, OCC_TAB_ENTRY *occ, STMTREP *stmt,
     if (WOPT_Enable_VN_Full && 
 	mnode != NULL &&
 	OPERATOR_is_scalar_iload (cr->Opr()) &&
+        cr->Dtyp() != MTYPE_M &&
 	! cr->Is_ivar_volatile()) {
       // find search distance in the use-def chain of the virtual variable in
       // terms of depth down its coderep stack 
@@ -2266,9 +2304,9 @@ CODEMAP::Add_idef(OPCODE opc, OCC_TAB_ENTRY *occ, STMTREP *stmt,
 	depth--;
     }
     OPERATOR oper = OPCODE_operator(opc);
-    if (OPERATOR_is_scalar_iload (oper) ||
+    if ((OPERATOR_is_scalar_iload (oper) ||
 	oper == OPR_ILOADX ||
-	oper == OPR_PARM) 
+	oper == OPR_PARM) && cr->Dtyp() != MTYPE_M)
       retv = Hash_Ivar(cr, depth);
     else {
       // OPR_MLOAD OPR_PREFETCH
@@ -2327,6 +2365,11 @@ CODEREP::Var_type_conversion(CODEMAP *htable, MTYPE to_dtyp,
 	    ("CODEREP::Var_type_conversion: inconsistent sign_extd flag"));
 #endif
 
+#ifdef TARG_X8664 // bug 1561
+    if (MTYPE_byte_size(to_dtyp) == 4 && MTYPE_byte_size(to_dsctyp) == 4) {
+    } 
+    else
+#endif
     if ( is_sign_extd != to_sign_extd ) {
       OPCODE opc;
       INT need_cvt =
@@ -2351,6 +2394,10 @@ CODEREP::Var_type_conversion(CODEMAP *htable, MTYPE to_dtyp,
       retval = htable->Hash_Op( new_cr );
     }
   }
+  
+#ifdef KEY
+  retval = retval->Fixup_type(to_dtyp, htable);
+#endif
 
   return retval;
 }
@@ -2569,6 +2616,9 @@ CODEMAP::Iload_folded(WN *wn, 			// the iload node
 	  0 == base_ccr->Tree()->Offset() && // TODO: not needed if canonicalize in preopt
 	  Get_mtype_class(retv->Dtyp()) == Get_mtype_class(OPCODE_rtype(op)) &&
 	  MTYPE_size_min(retv->Dsctyp()) == MTYPE_size_min(OPCODE_desc(op)) &&
+#ifdef KEY
+	  (OPCODE_rtype(op) != MTYPE_M || TY_size(WN_ty(wn)) == TY_size(retv->Lod_ty())) &&
+#endif
 	  (opr == OPR_ILOAD && ! retv->Bit_field_valid() &&
 	   (WN_desc(wn) != MTYPE_BS && retv->Dsctyp() != MTYPE_BS ||
 	    WN_desc(wn) == MTYPE_BS && WN_field_id(wn) == retv->Field_id()) ||
@@ -2714,7 +2764,9 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 				       && (retv->Opr()==OPR_CVT ||
 					   retv->Opr()==OPR_CVTL)),
 	      ("CODEMAP::Add_expr: return illegal cr from Cur_def"));
-      CODEREP * retv_var = (retv->Kind()==CK_VAR) ? retv : retv->Opnd(0);
+      CODEREP * retv_var = retv;
+      while (retv_var->Kind() != CK_VAR) 
+	retv_var = retv_var->Opnd(0);
       if (retv_var->Is_var_volatile())
 	stmt->Set_volatile_stmt();
       if (opt_stab->NULL_coderep(retv_var->Aux_id()))
@@ -3153,11 +3205,27 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     INT kcnt = WN_kid_count(wn);
     cr->Init_op(WN_opcode(wn), kcnt);
     for (INT i = 0; i < kcnt; ++i) {
+// Bug 1573
+#ifdef KEY
+      BOOL save_flag = WOPT_Enable_Input_Prop;
+      if (OPERATOR_is_scalar_load (WN_operator(WN_kid(wn, i))) || OPERATOR_is_scalar_iload (WN_operator(WN_kid(wn, i))))
+        WOPT_Enable_Input_Prop = FALSE;
+      FmtAssert(i == 0, ("Asm_Input should have only one kid")); 
+// Bug 1575
+      cr->Set_asm_input_rtype(WN_rtype(WN_kid(wn, i)));
+      cr->Set_asm_input_dsctype(WN_desc(WN_kid(wn, i)));
+      if (cr->Asm_input_dsctype() == MTYPE_V)
+	cr->Set_asm_input_dsctype(cr->Asm_input_rtype());
+#endif
       CODEREP *kid = Add_expr(WN_kid(wn, i),
 			      opt_stab,
 			      stmt,
 			      &propagated,
 			      copyprop);
+#ifdef KEY
+      if (OPERATOR_is_scalar_load (WN_operator(WN_kid(wn, i))) || OPERATOR_is_scalar_iload (WN_operator(WN_kid(wn, i))))
+        WOPT_Enable_Input_Prop = save_flag;
+#endif
       cr->Set_opnd(i, kid);
     }
     cr->Set_asm_opnd_num(WN_asm_opnd_num(wn));
@@ -3361,6 +3429,10 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
       CODEREP *cr = htable->Add_expr(WN_kid0(Wn()),
                                      opt_stab, this,  &proped, copyprop);
       Set_rhs(cr);
+#ifdef KEY // since its value may consist of MAX, prevent its copy propagation
+      if (htable->Phase() == MAINOPT_PHASE && cr->Kind() == CK_VAR)
+        cr->Set_flag(CF_DONT_PROP);
+#endif
 #if 0
       STMTREP *defstmt = cr->Defstmt();
       defstmt->Set_volatile_stmt();
@@ -3861,8 +3933,11 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 
   case OPR_ASM_STMT:
     Set_asm_string_idx(WN_st_idx(Wn()));
+#ifndef KEY
     _u4._asm_stmt_flags = _u3._wn->u1u2.uu.ua.asm_flag;
-//  Set_asm_stmt_flags(WN_asm_flag(Wn()));
+#else
+    Set_asm_stmt_flags(WN_asm_flag(Wn()));
+#endif
     return;
 
   case OPR_ASSERT:
@@ -4829,6 +4904,7 @@ CODEMAP::Print(FILE *fp) const
   fprintf(fp, "- - - Default vsym is sym%1d\n", Sym()->Default_vsym());
   fprintf(fp, "- - - Return vsym is sym%1d\n", Sym()->Return_vsym());
 
+#ifndef KEY
   // print coderep nodes in htable:
   count = 0;
   FOR_ALL_ELEM(bucket, codemap_iter, Init(this)) {
@@ -4865,6 +4941,7 @@ CODEMAP::Print(FILE *fp) const
 			(size * size)));
   fprintf(fp, "Maximum         bucket          length: %u\n\n",
 	  max_bucket_len);
+#endif
 
   CFG_ITER cfg_iter;
   STMTREP *stmt;

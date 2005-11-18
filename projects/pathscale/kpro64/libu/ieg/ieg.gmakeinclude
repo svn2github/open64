@@ -62,9 +62,15 @@ CFILES += \
     mipstran.c \
     gchrpck.c
 
+ifeq ($(BUILD_OS), LINUX)
+PREPFFILES += \
+
+else
 PREPFFILES += \
     mips2ia.F \
     ia2mips.F
+
+endif
 
 SRC_DIRS += \
    $(BUILD_TOT)/libu/ieg

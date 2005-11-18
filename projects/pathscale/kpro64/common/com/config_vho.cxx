@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -71,11 +75,25 @@ BOOL    VHO_Recycle_Pregs               = FALSE;
 INT32   VHO_Switch_Density              = 12;
 INT32   VHO_Switch_If_Else_Limit        = 6;
 INT32   VHO_Switch_Compgoto_Limit       = 3;
-BOOL    VHO_Switch_Opt                  = FALSE;
+BOOL    VHO_Switch_Opt                  = TRUE;
+INT32   VHO_Switch_Opt_Threshold        = 25;
+#ifdef KEY
+BOOL    VHO_Cselect_Opt                 = TRUE;
+#else
 BOOL    VHO_Cselect_Opt                 = FALSE;
-BOOL    VHO_Iload_Opt                   = FALSE;
-BOOL    VHO_Istore_Opt                  = FALSE;
+#endif
+BOOL    VHO_Iload_Opt                   = TRUE;
+BOOL    VHO_Istore_Opt                  = TRUE;
 BOOL    VHO_Call_Opt                    = FALSE;
+#ifdef KEY
+/* Turn icall to call conversion inside vho_lower to FALSE by default,
+   because (1) the original implementation is buggy; and (2) we can now
+   do icall to call conversion inside ipa.
+*/
+BOOL    VHO_Icall_Devir			= FALSE;
+#else
+BOOL    VHO_Icall_Devir			= TRUE;
+#endif  // KEY
 BOOL    VHO_Check_Tree                  = FALSE;
 BOOL    VHO_Single_Loop_Test            = FALSE;
 BOOL    VHO_Use_Do_While                = FALSE;
@@ -105,6 +123,8 @@ static OPTION_DESC Options_VHO[] = {
     12, 1, INT32_MAX,    &VHO_Switch_Density,   NULL },
   { OVK_INT32,	OV_INTERNAL,	FALSE, "switch_compgoto",     "switch_compgoto",
     3, 1, INT32_MAX,    &VHO_Switch_Compgoto_Limit,   NULL },
+  { OVK_INT32,  OV_INTERNAL,    FALSE, "switch_opt_threshold", "switch_opt_threshold",
+    10, 1, INT32_MAX,    &VHO_Switch_Opt_Threshold,   NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "switch_opt",         "switch",
     TRUE, 0, 0,  &VHO_Switch_Opt,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "cselect_opt",        "cselect",
@@ -115,6 +135,8 @@ static OPTION_DESC Options_VHO[] = {
     TRUE, 0, 0,  &VHO_Istore_Opt,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "call_opt",           "call",
     TRUE, 0, 0,  &VHO_Call_Opt,      NULL },
+  { OVK_BOOL,	OV_INTERNAL,	TRUE, "icall_devir",          "icall",
+    TRUE, 0, 0,  &VHO_Icall_Devir,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "check_tree",         "check_tree",
     TRUE, 0, 0,  &VHO_Check_Tree,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "single_loop_test",   "single_loop_test",

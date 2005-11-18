@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -94,6 +99,8 @@
 #pragma hdrstop
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "defs.h"
 #include "errors.h"
 #include "erglob.h"
@@ -241,9 +248,9 @@ BITWISE_DCE::Bits_in_var(CODEREP *v)
   if (aux->Is_dedicated_preg() || ! aux->Is_real_var())
     return UINT64_MAX;
   // if a preg, Value_size does not give entire register size, so use 
-  // Bits_in_type(Max_Int_Mtype)
+  // Bits_in_type(MTYPE_I8)
   if (ST_class(Opt_stab()->Aux_stab_entry(v->Aux_id())->St()) == CLASS_PREG)
-    return Bits_in_type(Max_Int_Mtype);
+    return Bits_in_type(MTYPE_I8);
   if (aux->Byte_size() != 0)
     return Bitmask_of_size(aux->Byte_size() * 8);
   return Bits_in_type(v->Dsctyp());
@@ -479,6 +486,13 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
 	new_livebits |= sign_bit_mask; // make only the most 
 						   // significant bit live
       }
+#ifdef KEY
+      if (Target_Byte_Sex == BIG_ENDIAN)
+        Mark_tree_bits_live(cr->Opnd(0), new_livebits << 
+	      (MTYPE_bit_size(dtyp) - cr->Op_bit_offset() - cr->Op_bit_size()),
+			    stmt_visit);
+      else
+#endif
       Mark_tree_bits_live(cr->Opnd(0), new_livebits << cr->Op_bit_offset(),
 			  stmt_visit);
       return;
@@ -499,6 +513,9 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
     case OPR_REALPART: case OPR_IMAGPART:
     case OPR_HIGHPART: case OPR_LOWPART:
     case OPR_TAS:
+#ifdef KEY
+    case OPR_REPLICATE:
+#endif
       if (visit_all)
 	Mark_tree_bits_live(cr->Opnd(0), Bits_in_type(dsctyp), stmt_visit);
       return;
@@ -514,7 +531,7 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
 			  stmt_visit);
       return;
 
-    case OPR_BIOR: case OPR_BNOR: case OPR_BXOR:
+    case OPR_BXOR:
       new_livebits = Livebits(cr) & Bits_in_type(dsctyp);
       if (MTYPE_size_min(dsctyp) == 32 && (Livebits(cr) >> 32) != 0)
 	new_livebits |= (1 << 31);  // make the 31st bit live
@@ -535,6 +552,20 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
       }
       return;
 
+    case OPR_BIOR: case OPR_BNOR: 
+      new_livebits = Livebits(cr) & Bits_in_type(dsctyp);
+      if (MTYPE_size_min(dsctyp) == 32 && (Livebits(cr) >> 32) != 0)
+	new_livebits |= (1 << 31);  // make the 31st bit live
+      if (cr->Opnd(0)->Kind() == CK_CONST) 
+        Mark_tree_bits_live(cr->Opnd(1), new_livebits &
+			    (~cr->Opnd(0)->Const_val()), stmt_visit);
+      else Mark_tree_bits_live(cr->Opnd(1), new_livebits, stmt_visit);
+      if (cr->Opnd(1)->Kind() == CK_CONST) 
+        Mark_tree_bits_live(cr->Opnd(0), new_livebits &
+			    (~cr->Opnd(1)->Const_val()), stmt_visit);
+      else Mark_tree_bits_live(cr->Opnd(0), new_livebits, stmt_visit);
+      return;
+
     case OPR_BAND: 
       new_livebits = Livebits(cr) & Bits_in_type(dsctyp);
       if (MTYPE_size_min(dsctyp) == 32 && (Livebits(cr) >> 32) != 0)
@@ -549,19 +580,53 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
       else Mark_tree_bits_live(cr->Opnd(0), new_livebits, stmt_visit);
       return;
 
-    case OPR_ASHR: case OPR_LSHR:
+    case OPR_LSHR:
       Mark_tree_bits_live(cr->Opnd(1), Bits_in_type(dsctyp), stmt_visit);
       if (cr->Opnd(1)->Kind() == CK_CONST) {
         INT64 shift_amt = cr->Opnd(1)->Const_val();
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_X8664)
         if (MTYPE_size_min(dtyp) < MTYPE_size_min(MTYPE_U8))
 	  shift_amt = 31 & cr->Opnd(1)->Const_val(); // use lower order 5 bits
 #elif TARG_IA64
         if ((shift_amt < 0) || (shift_amt >= MTYPE_size_min(dtyp))) shift_amt = MTYPE_size_min(dtyp) -1;
 #endif
         Mark_tree_bits_live(cr->Opnd(0),
-		      (Bits_in_type(dsctyp) << shift_amt) &
+		      ((Bits_in_type(dsctyp) & live_bits) << shift_amt) &
 		      Bits_in_type(dsctyp), stmt_visit);
+      }
+      else Mark_tree_bits_live(cr->Opnd(0), Bits_in_type(dsctyp), stmt_visit);
+      return;
+  
+    case OPR_ASHR: 
+      Mark_tree_bits_live(cr->Opnd(1), Bits_in_type(dsctyp), stmt_visit);
+      if (cr->Opnd(1)->Kind() == CK_CONST) {
+        INT64 shift_amt = cr->Opnd(1)->Const_val();
+#if defined(TARG_MIPS) || defined(TARG_X8664)
+        if (MTYPE_size_min(dtyp) < MTYPE_size_min(MTYPE_U8))
+	  shift_amt = 31 & cr->Opnd(1)->Const_val(); // use lower order 5 bits
+#elif TARG_IA64
+        if ((shift_amt < 0) || (shift_amt >= MTYPE_size_min(dtyp))) shift_amt = MTYPE_size_min(dtyp) -1;
+#endif
+#ifdef KEY // need to do extra work to determine if the sign bit is live
+        UINT64 sign_livebits;
+	if (MTYPE_size_min(dtyp) < MTYPE_size_min(MTYPE_U8)) {
+	  if (shift_amt <= 31 && (live_bits >> (31 - shift_amt)))
+	    sign_livebits = 0x10000000;
+	  else sign_livebits = 0;
+	}
+	else {
+	  if (shift_amt <= 63 && (live_bits >> (63 - shift_amt)))
+	    sign_livebits = 0x1000000000000000ULL;
+	  else sign_livebits = 0;
+	}
+#endif
+        Mark_tree_bits_live(cr->Opnd(0),
+		      ((Bits_in_type(dsctyp) & live_bits) << shift_amt) &
+		      Bits_in_type(dsctyp) 
+#ifdef KEY
+		      | sign_livebits
+#endif
+		      , stmt_visit);
       }
       else Mark_tree_bits_live(cr->Opnd(0), Bits_in_type(dsctyp), stmt_visit);
       return;
@@ -575,16 +640,29 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
         if ((shift_amt < 0) || (shift_amt > MTYPE_size_min(dtyp))) bit_mask = 0;
 #endif
 	Mark_tree_bits_live(cr->Opnd(0),
-		      (bit_mask >> shift_amt) & bit_mask,
+		      ((bit_mask & live_bits) >> shift_amt) & bit_mask,
 		      stmt_visit);
       }
       else Mark_tree_bits_live(cr->Opnd(0), Bits_in_type(dsctyp), stmt_visit);
       return;
 
     case OPR_COMPOSE_BITS:
+#ifdef KEY
+      if (Target_Byte_Sex == BIG_ENDIAN)
+        new_livebits = Livebits(cr) & 
+		~(Bitmask_of_size(cr->Op_bit_size()) << 
+	      (MTYPE_bit_size(dtyp) - cr->Op_bit_offset() - cr->Op_bit_size()));
+      else
+#endif
       new_livebits = Livebits(cr) & 
 		~(Bitmask_of_size(cr->Op_bit_size()) << cr->Op_bit_offset());
       Mark_tree_bits_live(cr->Opnd(0), new_livebits, stmt_visit);
+#ifdef KEY
+      if (Target_Byte_Sex == BIG_ENDIAN)
+        new_livebits = (Livebits(cr) >> (MTYPE_bit_size(dtyp) - cr->Op_bit_offset() - cr->Op_bit_size())) & 
+		       Bitmask_of_size(cr->Op_bit_size());
+      else
+#endif
       new_livebits = (Livebits(cr) >> cr->Op_bit_offset()) & 
 		     Bitmask_of_size(cr->Op_bit_size());
       Mark_tree_bits_live(cr->Opnd(1), new_livebits, stmt_visit);
@@ -901,7 +979,7 @@ BITWISE_DCE::Mark_willnotexit_stmts_live(BB_NODE *bb)
 
 // ====================================================================
 // Redundant_cvtl - check whether the CVTL represented by the parameters
-// signed and cvtl_offset is redundant by looking at its operand opnd.
+// sign_xtd and to_bit/from_bit is redundant by looking at its operand opnd.
 // If it is a preg use, follow the use def edge.  Right now, only doing the 
 // simplest cases.
 // ====================================================================
@@ -966,11 +1044,21 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
 	// loop; not doing this for now.
 	return FALSE;
       }
+#ifdef TARG_X8664 // suppress this optimization since not yet in sync with 
+      		  // CG about assumptions for sign extension (bug 1046)
+      else if (MTYPE_size_min(dtyp) == 32 && Is_Target_64bit())
+	return FALSE;
+#endif
       else return Redundant_cvtl(sign_xtd, to_bit, from_bit, opnd->Defstmt()->Rhs());
     }
     // load from memory
     if (Split_64_Bit_Int_Ops && to_bit == 64)
       return FALSE;
+#ifdef TARG_X8664
+    if (MTYPE_size_min(opnd->Dsctyp()) < 32 && to_bit == 64) 
+      return !sign_xtd && !opnd->Is_sign_extd() && 
+	     from_bit >= MTYPE_size_min(opnd->Dsctyp());
+#endif
     if (sign_xtd == opnd->Is_sign_extd())
       return from_bit >= MTYPE_size_min(opnd->Dsctyp());
     return ! opnd->Is_sign_extd() && from_bit > MTYPE_size_min(opnd->Dsctyp());
@@ -983,6 +1071,11 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
       return FALSE;
     if (Split_64_Bit_Int_Ops && to_bit == 64)
       return FALSE;
+#ifdef TARG_X8664
+    if (MTYPE_size_min(opnd->Dsctyp()) < 32 && to_bit == 64)
+      return !sign_xtd && !opnd->Is_sign_extd() &&
+	     from_bit >= MTYPE_size_min(opnd->Dsctyp());
+#endif
     if (sign_xtd == opnd->Is_sign_extd())
       return from_bit >= MTYPE_size_min(opnd->Dsctyp());
     return ! opnd->Is_sign_extd() && from_bit > MTYPE_size_min(opnd->Dsctyp());
@@ -1010,6 +1103,20 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
     case OPR_LNOT:
     case OPR_LAND: case OPR_LIOR:
       return ! sign_xtd || from_bit != 1;
+#ifdef KEY
+    case OPR_BAND: 
+      { CODEREP *kopnd;
+        if (sign_xtd)
+	  return FALSE;
+        if (opnd->Opnd(0)->Kind() == CK_CONST)
+	  kopnd = opnd->Opnd(0);
+	else if (opnd->Opnd(1)->Kind() == CK_CONST)
+	  kopnd = opnd->Opnd(1);
+	else return FALSE;
+	UINT64 uval64 = kopnd->Const_val();
+	return uval64 <= ((0x1ll << from_bit) - 1);
+      }
+#endif
 
     default: ;
     }
@@ -1129,6 +1236,9 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
       if (((Livebits(cr) & ~Bitmask_of_size(cr->Offset())) == 0) ||
 	  Redundant_cvtl(MTYPE_is_signed(cr->Dtyp()), 
 			 MTYPE_size_min(cr->Dtyp()), cr->Offset(), 
+#ifdef KEY
+			 x ? x : 
+#endif
 			 cr->Opnd(0))) {
 	// delete the node
 	cr->DecUsecnt();
@@ -1148,6 +1258,9 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
           if (((Livebits(cr) & ~Bits_in_type(dsctyp)) == 0) ||
 	      Redundant_cvtl(MTYPE_is_signed(dsctyp), 
 			     MTYPE_size_min(dtyp), MTYPE_size_min(dsctyp), 
+#ifdef KEY
+			     x ? x : 
+#endif
 			     cr->Opnd(0))) {
 	    // delete the node
 	    cr->DecUsecnt();
@@ -1156,7 +1269,7 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
 	    else return cr->Opnd(0);
 	  }
         }
-#ifndef TARG_MIPS // undeletable for MIPS since garbage in high bits untolerable
+#if !defined(TARG_MIPS) && !defined(TARG_X8664) // undeletable since garbage in high bits untolerable
         else { // truncation
 	  if ((Livebits(cr) & ~Bitmask_of_size(MTYPE_size_min(dtyp))) == 0) {
 	    // delete the node
@@ -1170,6 +1283,23 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
       }
 #endif
     }
+#ifdef TARG_X8664
+    else if (! Is_Target_64bit() && MTYPE_size_min(cr->Dtyp()) == 64 &&
+	     MTYPE_is_integral(cr->Dtyp()) && 
+	     (Livebits(cr) >> 32) == 0 &&
+	     (opr == OPR_NEG || opr == OPR_BNOT || opr == OPR_LNOT ||
+	      opr == OPR_ADD || opr == OPR_SUB || opr == OPR_MPY ||
+	      opr == OPR_BAND || opr == OPR_BIOR || opr == OPR_BNOR ||
+	      opr == OPR_BXOR || opr == OPR_LAND || opr == OPR_LIOR)) {
+      // change the operation to 32-bit, which is good for 32-bit target
+      cr->Set_dtyp(Mtype_TransferSize(MTYPE_I4, cr->Dtyp()));
+      if (cr->Dsctyp() != MTYPE_V)
+        cr->Set_dsctyp(Mtype_TransferSize(MTYPE_I4, cr->Dsctyp()));
+      new_cr->Set_dtyp(Mtype_TransferSize(MTYPE_I4, new_cr->Dtyp()));
+      if (new_cr->Dsctyp() != MTYPE_V)
+        new_cr->Set_dsctyp(Mtype_TransferSize(MTYPE_I4, new_cr->Dsctyp()));
+    }
+#endif
     // can also apply to some BAND and BIOR with constants
 
     if (need_rehash) {

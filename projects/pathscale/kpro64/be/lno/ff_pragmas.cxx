@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -428,6 +432,10 @@ static void LWN_Process_FF_Pragmas_Walk_r(WN* wn)
 	  INT max_level=LNO_MAX_DO_LOOP_DEPTH;
 	  WN* loop=first_loop;
           for (INT i=0; i<number_of_loops; i++) {
+#ifdef KEY
+	    if (!loop)
+	      break;
+#endif
 	    if (WN_opcode(loop)!=OPC_DO_LOOP) {
 	      max_level=0;
 	      break;

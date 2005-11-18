@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -479,6 +483,9 @@ static char *model_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/m
 #endif
 #ifdef TARG_IA32
 #define	Target_INTRs	8
+#endif
+#ifdef TARG_X8664
+#define	Target_INTRs	16
 #endif
 
 typedef HASH_TABLE<WN*,INT> WN2INT;

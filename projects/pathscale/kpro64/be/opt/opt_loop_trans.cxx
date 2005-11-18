@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -91,7 +96,14 @@
 #include "opt_transform.h"
 #include "opt_main.h"
 
-#include <stack.h>
+#include <iterator>
+#include <stack>
+#include <queue>
+
+using std::insert_iterator;
+using std::priority_queue;
+using std::set;
+using std::stack;
 
 static bool check_hazardous_op(BB_NODE *bb)
 {

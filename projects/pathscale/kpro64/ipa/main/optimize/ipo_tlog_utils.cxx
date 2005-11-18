@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -132,6 +136,18 @@ Set_tlog_phase(const INT32 i)
   else
     tlog_phase = "INLINER";
 }
+
+#ifdef KEY
+extern "C" PHASE_NAME
+Get_tlog_phase(void)
+{
+  if (!tlog_phase)
+  	return INVALID;	// invalid
+  if (!strcmp(tlog_phase, "IPA"))
+  	return PHASE_IPA;
+  return PHASE_INLINER;
+}
+#endif
 
 extern "C" void 
 Ipa_tlog(char *keyword, SRCPOS srcpos, const char *fmt, ...)

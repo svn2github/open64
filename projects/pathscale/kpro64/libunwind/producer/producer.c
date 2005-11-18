@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -311,10 +315,10 @@ __unw_error_t unwind_info_finalize(__unw_info_t *info) {
 	_current_unwind_info->_header = __UNW_VERSION;
 	_current_unwind_info->_header <<= 48;
 	if (_ehandler) {
-		_current_unwind_info->_header |= 0x0000000100000000L;
+		_current_unwind_info->_header |= 0x0000000100000000LL;
 	}
 	if (_uhandler) {
-		_current_unwind_info->_header |= 0x0000000200000000L;
+		_current_unwind_info->_header |= 0x0000000200000000LL;
 	}
 	_current_unwind_info->_header |= (__uint32_t)(real_size - 1);
 

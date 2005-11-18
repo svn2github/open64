@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -91,6 +95,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -618,8 +624,7 @@ void TRANSPOSE_DIRECTED_GRAPH16::Build_Snl_Array(WN *array,
     return;
   }
 
-  ARRAY_TRANSPOSE_DESCRIPTOR atd = ARRAY_TRANSPOSE_DESCRIPTOR(WN_st(base),
-                                                              (BOOL) NULL);
+  ARRAY_TRANSPOSE_DESCRIPTOR atd = ARRAY_TRANSPOSE_DESCRIPTOR(WN_st(base), 0);
   BINARY_TREE_NODE<ARRAY_TRANSPOSE_DESCRIPTOR> *find = arrays->Find(atd);
   if (find && find->Get_Data()->Transposable()) {
     VINDEX16 array_v = find->Get_Data()->Get_Vertex();
@@ -703,8 +708,7 @@ void TRANSPOSE_DIRECTED_GRAPH16::Record(ARRAY_TRANSPOSE_TREE *arrays)
       if (_v[i].value != -1) {
         if (_v[i].value > 0 && !_v[i].is_loop) {
           ARRAY_TRANSPOSE_DESCRIPTOR atd =
-            ARRAY_TRANSPOSE_DESCRIPTOR(_v[i].tvertex_union.st,
-                                       (BOOL) NULL); 
+            ARRAY_TRANSPOSE_DESCRIPTOR(_v[i].tvertex_union.st, 0);
           BINARY_TREE_NODE<ARRAY_TRANSPOSE_DESCRIPTOR> *find = arrays->Find(atd);
 	  find->Get_Data()->Set_Dimension(_v[i].value);
 	  Transpose_Array(_v[i].tvertex_union.st,_v[i].value);
@@ -735,7 +739,7 @@ void TRANSPOSE_DIRECTED_GRAPH16::Transpose(WN *wn, ARRAY_TRANSPOSE_TREE *arrays)
     if ((WN_operator(parent) == OPR_ARRAY) &&
 	(wn == WN_array_base(parent))) {
       ARRAY_TRANSPOSE_DESCRIPTOR atd = ARRAY_TRANSPOSE_DESCRIPTOR(WN_st(wn),
-                                                                  (BOOL) NULL);
+								  0);
       BINARY_TREE_NODE<ARRAY_TRANSPOSE_DESCRIPTOR> *find = arrays->Find(atd);
       if (find && (find->Get_Data()->Get_Dimension() != -1)) {
 	Transpose_Array(parent,find->Get_Data()->Get_Dimension());

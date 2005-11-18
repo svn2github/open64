@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,7 +56,7 @@
 #elif defined(UNIX_NAMING_CONVENTION)
 #define SUBNAME	_SDGEMMX
 #else
-#define SUBNAME	sdgemmx__
+#define SUBNAME	_sdgemmx__
 #endif
 
 /*

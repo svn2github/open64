@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -77,11 +81,12 @@ BOOL  WOPT_Enable_Aggressive_Code_Motion = TRUE;
 INT32 WOPT_Enable_Aggressive_CM_Limit = INT32_MAX;
 INT32 WOPT_Enable_Aggressive_CM_Threshold = 70;
 BOOL  WOPT_Enable_Aggressive_dce = TRUE;
+BOOL  WOPT_Enable_Aggressive_dce_for_bbs = TRUE;
 BOOL  WOPT_Enable_Aggressive_Doloop_Promotion = FALSE;
 BOOL  WOPT_Enable_Aggressive_IVR = TRUE;
 BOOL  WOPT_Enable_Aggressive_Lftr = TRUE;
 BOOL  WOPT_Enable_Aggressive_Phi_Simp = TRUE;
-BOOL  WOPT_Enable_Aggstr_Reduction = TRUE;
+BOOL  WOPT_Enable_Aggstr_Reduction = FALSE;
 BOOL  WOPT_Enable_Alias_ANSI = TRUE;
 BOOL  WOPT_Enable_Alias_Classification = TRUE;
 BOOL  WOPT_Enable_Alias_Class_Fortran_Rule = TRUE;
@@ -124,7 +129,11 @@ BOOL  WOPT_Enable_Exp_PRE = TRUE;
 INT32 WOPT_Enable_Exp_PRE_Limit = -1;
 BOOL  WOPT_Enable_Fast_Simp = TRUE;
 BOOL  WOPT_Enable_Fold2const = TRUE;
+#ifdef KEY
+BOOL  WOPT_Enable_Fold_Lda_Iload_Istore = TRUE;
+#else
 BOOL  WOPT_Enable_Fold_Lda_Iload_Istore = FALSE;
+#endif
 BOOL  WOPT_Enable_LNO_Copy_Propagate = TRUE;
 BOOL  WOPT_Enable_FSA = TRUE;
 INT32 WOPT_Enable_Generate_Trip_Count = 1;
@@ -145,11 +154,15 @@ BOOL  WOPT_Enable_IVE_Old = FALSE;
 BOOL  WOPT_Enable_IVR = TRUE;
 INT32 WOPT_Enable_IVR_Expand_Limit = 1000;  /* expand 1000 statements */
 BOOL  WOPT_Enable_IVR_Outermost_Loop_Parallel_Region = FALSE;
+#ifdef KEY
+INT32 WOPT_Enable_Ivr_Limit = -1;
+INT32 WOPT_Enable_Ivr_Cand_Limit = -1;
+#endif
 BOOL  WOPT_Enable_Ldx = FALSE;
 BOOL  WOPT_Enable_Lego_Opt = FALSE;
 BOOL  WOPT_Enable_LFTR = TRUE;
 BOOL  WOPT_Enable_LFTR_Ivar = FALSE;
-#ifdef TARG_MIPS
+#ifndef TARG_IA64
 BOOL  WOPT_Enable_LFTR2 = TRUE;
 #else
 BOOL  WOPT_Enable_LFTR2 = FALSE;
@@ -195,6 +208,8 @@ SKIPLIST *WOPT_Skip_List = NULL;	/* Processed skiplist */
 BOOL  WOPT_Enable_SLT = TRUE;
 BOOL  WOPT_Enable_Small_Br_Target = FALSE; /* propagation into branch BBs */
 BOOL  WOPT_Enable_Simple_If_Conv = TRUE;   /* simple if-conversion at CFG build time */
+INT32 WOPT_Enable_If_Conv_Limit = 6;    /* max number of leaf nodes allowed in a
+					   simple expr in simple if conv */
 BOOL  WOPT_Enable_Speculation_Defeats_LFTR = TRUE;
 BOOL  WOPT_Enable_SSA_Minimization = TRUE; /* SSA minimization in SSAPRE */
 BOOL  WOPT_Enable_SSA_PRE = TRUE;
@@ -253,6 +268,14 @@ BOOL  WOPT_Enable_Lpre_Before_Ivr = FALSE; // For running lpre early
 BOOL  WOPT_Enable_Spre_Before_Ivr = FALSE; // For running spre early
 BOOL  WOPT_Enable_Bdce_Before_Ivr = FALSE; // For running bdce early
 BOOL  WOPT_Enable_New_Phase_Ordering = TRUE; // Enables some phases before ivr
+#ifdef KEY
+BOOL  WOPT_Enable_Preserve_Mem_Opnds = FALSE; // if TRUE, suppress EPRE on 
+				// iloads that are operands of FP operations
+BOOL  WOPT_Enable_Retype_Expr = FALSE;   // whether to call WN_retype_expr to 
+					// change 64-bit operations to 32-bit 
+INT32 WOPT_Enable_Folded_Scalar_Limit = 1000; // limit to number of scalars
+					// formed by Fold_lda_iload_istore()
+#endif
 
 
 /* ====================================================================
@@ -344,6 +367,8 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_DCE, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "dce_aggressive",	"dce",
     0, 0, 0,	&WOPT_Enable_Aggressive_dce, NULL },
+  { OVK_BOOL,	OV_INTERNAL,	TRUE, "dcebbs_aggressive",	"dcebbs",
+    0, 0, 0,	&WOPT_Enable_Aggressive_dce_for_bbs, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "dce_alias",		"",
     0, 0, 0,	&WOPT_Enable_DCE_Alias, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "dce_branch",		"",
@@ -396,6 +421,12 @@ static OPTION_DESC Options_WOPT[] = {
     1000, 0, INT32_MAX,	&WOPT_Enable_IVR_Expand_Limit, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "iv_outer_parallel",	"",
     0, 0, 0,	&WOPT_Enable_IVR_Outermost_Loop_Parallel_Region, NULL },
+#ifdef KEY
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "ivr_limit",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Ivr_Limit, NULL },
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "ivr_cand_limit",         "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Ivr_Cand_Limit, NULL },
+#endif
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "ivar_common", 		"ivar",
     0, 0, 0,	&WOPT_Enable_Ivar_Common, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "ivar_pre",		"ivar_pre",
@@ -540,6 +571,8 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_Simp_Iload, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "if_conv",		"",
     0, 0, 0,	&WOPT_Enable_Simple_If_Conv, NULL },
+  { OVK_INT32,	OV_INTERNAL,	TRUE, "if_conv_limit",		"",
+    INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_If_Conv_Limit, NULL },
   { OVK_BOOL,   OV_INTERNAL,	TRUE, "tail_recursion",	"tail",
     0, 0, 0,	&WOPT_Enable_Tail_Recur, NULL },
   { OVK_BOOL,   OV_INTERNAL,	TRUE, "edge_placement",	"edge",
@@ -608,5 +641,13 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_Bdce_Before_Ivr, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "new_phase_order", "new_phase_order",
     TRUE, 0, 0,	&WOPT_Enable_New_Phase_Ordering, NULL },
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL,	TRUE, "mem_opnds", "mem_opnds",
+    TRUE, 0, 0,	&WOPT_Enable_Preserve_Mem_Opnds, NULL },
+  { OVK_BOOL,	OV_INTERNAL,	TRUE, "retype_expr", "retype_expr",
+    TRUE, 0, 0,	&WOPT_Enable_Retype_Expr, NULL },
+  { OVK_INT32,	OV_INTERNAL,	TRUE, "folded_scalar_limit",		"",
+    INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_Folded_Scalar_Limit, NULL },
+#endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };

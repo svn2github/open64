@@ -1,27 +1,33 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
 /* Collect static initialization info into data structures that can be
    traversed by C++ initialization and finalization routines.
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998,
-   1999, 2000 Free Software Foundation, Inc.
+   1999, 2000, 2001, 2002 Free Software Foundation, Inc.
    Contributed by Chris Smith (csmith@convex.com).
    Heavily modified by Michael Meissner (meissner@cygnus.com),
    Per Bothner (bothner@cygnus.com), and John Gilmore (gnu@cygnus.com).
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
 
 /* Build tables of static constructors and destructors and run ld.  */
@@ -29,8 +35,11 @@ Boston, MA 02111-1307, USA.  */
 #include "config.h"
 #include "system.h"
 #include <signal.h>
+#if ! defined( SIGCHLD ) && defined( SIGCLD )
+#  define SIGCHLD SIGCLD
+#endif
 
-#ifdef vfork /* Autoconf may define this to fork for us. */
+#ifdef vfork /* Autoconf may define this to fork for us.  */
 # define VFORK_STRING "fork"
 #else
 # define VFORK_STRING "vfork"
@@ -54,10 +63,6 @@ Boston, MA 02111-1307, USA.  */
 #include "obstack.h"
 #include "intl.h"
 #include "version.h"
-
-/* Obstack allocation and deallocation routines.  */
-#define obstack_chunk_alloc xmalloc
-#define obstack_chunk_free free
 
 /* On certain systems, we have code that works by scanning the object file
    directly.  But this code uses system-specific header files and library
@@ -141,15 +146,22 @@ Boston, MA 02111-1307, USA.  */
 
 /* Some systems use __main in a way incompatible with its use in gcc, in these
    cases use the macros NAME__MAIN to give a quoted symbol and SYMBOL__MAIN to
-   give the same symbol without quotes for an alternative entry point.  You
-   must define both, or neither.  */
+   give the same symbol without quotes for an alternative entry point.  */
 #ifndef NAME__MAIN
 #define NAME__MAIN "__main"
-#define SYMBOL__MAIN __main
 #endif
 
 /* This must match tree.h.  */
 #define DEFAULT_INIT_PRIORITY 65535
+
+#ifndef COLLECT_SHARED_INIT_FUNC
+#define COLLECT_SHARED_INIT_FUNC(STREAM, FUNC) \
+  fprintf ((STREAM), "void _GLOBAL__DI() {\n\t%s();\n}\n", (FUNC))
+#endif
+#ifndef COLLECT_SHARED_FINI_FUNC
+#define COLLECT_SHARED_FINI_FUNC(STREAM, FUNC) \
+  fprintf ((STREAM), "void _GLOBAL__DD() {\n\t%s();\n}\n", (FUNC))
+#endif
 
 #if defined (LDD_SUFFIX) || SUNOS4_SHARED_LIBRARIES
 #define SCAN_LIBRARIES
@@ -160,6 +172,10 @@ int do_collecting = 1;
 #else
 int do_collecting = 0;
 #endif
+
+/* Nonzero if we should suppress the automatic demangling of identifiers
+   in linker error messages.  Set from COLLECT_NO_DEMANGLE.  */
+int no_demangle;
 
 /* Linked lists of constructor and destructor names.  */
 
@@ -202,7 +218,6 @@ static const char *c_file;		/* <xxx>.c for constructor/destructor list.  */
 static const char *o_file;		/* <xxx>.o for constructor/destructor list.  */
 #ifdef COLLECT_EXPORT_LIST
 static const char *export_file;	        /* <xxx>.x for AIX export list.  */
-static const char *import_file;	        /* <xxx>.p for AIX import list.  */
 #endif
 const char *ldout;			/* File for ld errors.  */
 static const char *output_file;		/* Output file for ld.  */
@@ -218,24 +233,14 @@ static struct head constructors;	/* list of constructors found */
 static struct head destructors;		/* list of destructors found */
 #ifdef COLLECT_EXPORT_LIST
 static struct head exports;		/* list of exported symbols */
-static struct head imports;		/* list of imported symbols */
-static struct head undefined;		/* list of undefined symbols */
 #endif
 static struct head frame_tables;	/* list of frame unwind info tables */
 
 struct obstack temporary_obstack;
-struct obstack permanent_obstack;
 char * temporary_firstobj;
 
 /* Holds the return value of pexecute.  */
 int pexecute_pid;
-
-/* Defined in the automatically-generated underscore.c.  */
-extern int prepends_underscore;
-
-#ifndef GET_ENV_PATH_LIST
-#define GET_ENV_PATH_LIST(VAR,NAME)	do { (VAR) = getenv (NAME); } while (0)
-#endif
 
 /* Structure to hold all the directories in which to search for files to
    execute.  */
@@ -254,13 +259,13 @@ struct path_prefix
 };
 
 #ifdef COLLECT_EXPORT_LIST
-/* Lists to keep libraries to be scanned for global constructors/destructors. */
+/* Lists to keep libraries to be scanned for global constructors/destructors.  */
 static struct head libs;                    /* list of libraries */
 static struct path_prefix cmdline_lib_dirs; /* directories specified with -L */
 static struct path_prefix libpath_lib_dirs; /* directories in LIBPATH */
 static struct path_prefix *libpaths[3] = {&cmdline_lib_dirs,
 					  &libpath_lib_dirs, NULL};
-static const char *libexts[3] = {"a", "so", NULL};  /* possible library extentions */
+static const char *const libexts[3] = {"a", "so", NULL};  /* possible library extensions */
 #endif
 
 static void handler		PARAMS ((int));
@@ -292,17 +297,23 @@ static void scan_prog_file	PARAMS ((const char *, enum pass));
 #ifdef SCAN_LIBRARIES
 static void scan_libraries	PARAMS ((const char *));
 #endif
+#if LINK_ELIMINATE_DUPLICATE_LDIRECTORIES
+static int is_in_args		PARAMS ((const char *, const char **, const char **));
+#endif
 #ifdef COLLECT_EXPORT_LIST
+#if 0
 static int is_in_list		PARAMS ((const char *, struct id *));
+#endif
 static void write_aix_file	PARAMS ((FILE *, struct id *));
 static char *resolve_lib_name	PARAMS ((const char *));
-static int use_import_list	PARAMS ((const char *));
 static int ignore_library	PARAMS ((const char *));
 #endif
 static char *extract_string	PARAMS ((const char **));
 
-#ifdef NO_DUP2
-int
+#ifndef SGI_MONGOOSE
+#ifndef HAVE_DUP2
+static int dup2 PARAMS ((int, int));
+static int
 dup2 (oldfd, newfd)
      int oldfd;
      int newfd;
@@ -321,7 +332,8 @@ dup2 (oldfd, newfd)
 
   return fd;
 }
-#endif
+#endif /* ! HAVE_DUP2 */
+#endif /* SGI_MONGOOSE */
 
 /* Delete tempfiles and exit function.  */
 
@@ -338,9 +350,6 @@ collect_exit (status)
 #ifdef COLLECT_EXPORT_LIST
   if (export_file != 0 && export_file[0])
     maybe_unlink (export_file);
-
-  if (import_file != 0 && import_file[0])
-    maybe_unlink (import_file);
 #endif
 
   if (ldout != 0 && ldout[0])
@@ -360,19 +369,21 @@ collect_exit (status)
 void
 notice VPARAMS ((const char *msgid, ...))
 {
-#ifndef ANSI_PROTOTYPES
-  const char *msgid;
-#endif
+#ifndef SGI_MONGOOSE
+  VA_OPEN (ap, msgid);
+  VA_FIXEDARG (ap, const char *, msgid);
+#else
   va_list ap;
-
+  
   VA_START (ap, msgid);
-
-#ifndef ANSI_PROTOTYPES
-  msgid = va_arg (ap, const char *);
-#endif
+#endif /* SGI_MONGOOSE */
 
   vfprintf (stderr, _(msgid), ap);
+#ifndef SGI_MONGOOSE
+  VA_CLOSE (ap);
+#else
   va_end (ap);
+#endif /* SGI_MONGOOSE */
 }
 
 /* Die when sys call fails.  */
@@ -380,22 +391,25 @@ notice VPARAMS ((const char *msgid, ...))
 void
 fatal_perror VPARAMS ((const char * msgid, ...))
 {
-#ifndef ANSI_PROTOTYPES
-  const char *msgid;
-#endif
   int e = errno;
+
+#ifndef SGI_MONGOOSE
+  VA_OPEN (ap, msgid);
+  VA_FIXEDARG (ap, const char *, msgid);
+#else
   va_list ap;
 
   VA_START (ap, msgid);
-
-#ifndef ANSI_PROTOTYPES
-  msgid = va_arg (ap, const char *);
-#endif
+#endif /* SGI_MONGOOSE */
 
   fprintf (stderr, "collect2: ");
   vfprintf (stderr, _(msgid), ap);
   fprintf (stderr, ": %s\n", xstrerror (e));
+#ifndef SGI_MONGOOSE
+  VA_CLOSE (ap);
+#else
   va_end (ap);
+#endif /* SGI_MONGOOSE */
 
   collect_exit (FATAL_EXIT_CODE);
 }
@@ -405,21 +419,23 @@ fatal_perror VPARAMS ((const char * msgid, ...))
 void
 fatal VPARAMS ((const char * msgid, ...))
 {
-#ifndef ANSI_PROTOTYPES
-  const char *msgid;
-#endif
+#ifndef SGI_MONGOOSE
+  VA_OPEN (ap, msgid);
+  VA_FIXEDARG (ap, const char *, msgid);
+#else
   va_list ap;
   
   VA_START (ap, msgid);
-
-#ifndef ANSI_PROTOTYPES
-  msgid = va_arg (ap, const char *);
-#endif
+#endif /* SGI_MONGOOSE */
   
   fprintf (stderr, "collect2: ");
   vfprintf (stderr, _(msgid), ap);
   fprintf (stderr, "\n");
+#ifndef SGI_MONGOOSE
+  VA_CLOSE (ap);
+#else
   va_end (ap);
+#endif /* SGI_MONGOOSE */
 
   collect_exit (FATAL_EXIT_CODE);
 }
@@ -429,21 +445,23 @@ fatal VPARAMS ((const char * msgid, ...))
 void
 error VPARAMS ((const char * msgid, ...))
 {
-#ifndef ANSI_PROTOTYPES
-  const char * msgid;
-#endif
+#ifndef SGI_MONGOOSE
+  VA_OPEN (ap, msgid);
+  VA_FIXEDARG (ap, const char *, msgid);
+#else
   va_list ap;
- 
-  VA_START (ap, msgid);
   
-#ifndef ANSI_PROTOTYPES
-  msgid = va_arg (ap, const char *);
-#endif
+  VA_START (ap, msgid);
+#endif /* SGI_MONGOOSE */
 
   fprintf (stderr, "collect2: ");
   vfprintf (stderr, _(msgid), ap);
   fprintf (stderr, "\n");
-  va_end(ap);
+#ifndef SGI_MONGOOSE
+  VA_CLOSE(ap);
+#else
+  va_end (ap);
+#endif /* SGI_MONGOOSE */
 }
 
 /* In case obstack is linked in, and abort is defined to fancy_abort,
@@ -471,9 +489,6 @@ handler (signo)
 #ifdef COLLECT_EXPORT_LIST
   if (export_file != 0 && export_file[0])
     maybe_unlink (export_file);
-
-  if (import_file != 0 && import_file[0])
-    maybe_unlink (import_file);
 #endif
 
   signal (signo, SIG_DFL);
@@ -526,7 +541,6 @@ dump_file (name)
      const char *name;
 {
   FILE *stream = fopen (name, "r");
-  int no_demangle = !! getenv ("COLLECT_NO_DEMANGLE");
 
   if (stream == 0)
     return;
@@ -534,7 +548,12 @@ dump_file (name)
     {
       int c;
       while (c = getc (stream),
+#ifndef SGI_MONGOOSE
+	     c != EOF && (ISIDNUM (c) || c == '$' || c == '.'))
+#else
+	     // ISIDNUM was defined in gcc-3.2.2/include/safe-ctype.h
 	     c != EOF && (ISALNUM (c) || c == '_' || c == '$' || c == '.'))
+#endif /* SGI_MONGOOSE */
 	obstack_1grow (&temporary_obstack, c);
       if (obstack_object_size (&temporary_obstack) > 0)
 	{
@@ -546,13 +565,13 @@ dump_file (name)
 	  if (*word == '.')
 	    ++word, putc ('.', stderr);
 	  p = word;
-	  if (*p == '_' && prepends_underscore)
-	    ++p;
+	  if (!strncmp (p, USER_LABEL_PREFIX, strlen (USER_LABEL_PREFIX)))
+	    p += strlen (USER_LABEL_PREFIX);
 
 	  if (no_demangle)
 	    result = 0;
 	  else
-	    result = cplus_demangle (p, DMGL_PARAMS | DMGL_ANSI);
+	    result = cplus_demangle (p, DMGL_PARAMS | DMGL_ANSI | DMGL_VERBOSE);
 
 	  if (result)
 	    {
@@ -560,7 +579,7 @@ dump_file (name)
 	      fputs (result, stderr);
 
 	      diff = strlen (word) - strlen (result);
-	      while (diff > 0)
+	      while (diff > 0 && c == ' ')
 		--diff, putc (' ', stderr);
 	      while (diff < 0 && c == ' ')
 		++diff, c = getc (stream);
@@ -589,28 +608,26 @@ static int
 is_ctor_dtor (s)
      const char *s;
 {
-  struct names { const char *name; int len; int ret; int two_underscores; };
+  struct names { const char *const name; const int len; const int ret;
+    const int two_underscores; };
 
-  register struct names *p;
-  register int ch;
-  register const char *orig_s = s;
+  const struct names *p;
+  int ch;
+  const char *orig_s = s;
 
-  static struct names special[] = {
-#ifdef NO_DOLLAR_IN_LABEL
-#ifdef NO_DOT_IN_LABEL
+  static const struct names special[] = {
+#ifndef NO_DOLLAR_IN_LABEL
+    { "GLOBAL__I$", sizeof ("GLOBAL__I$")-1, 1, 0 },
+    { "GLOBAL__D$", sizeof ("GLOBAL__D$")-1, 2, 0 },
+#else
+#ifndef NO_DOT_IN_LABEL
+    { "GLOBAL__I.", sizeof ("GLOBAL__I.")-1, 1, 0 },
+    { "GLOBAL__D.", sizeof ("GLOBAL__D.")-1, 2, 0 },
+#endif /* NO_DOT_IN_LABEL */
+#endif /* NO_DOLLAR_IN_LABEL */
     { "GLOBAL__I_", sizeof ("GLOBAL__I_")-1, 1, 0 },
     { "GLOBAL__D_", sizeof ("GLOBAL__D_")-1, 2, 0 },
     { "GLOBAL__F_", sizeof ("GLOBAL__F_")-1, 5, 0 },
-#else
-    { "GLOBAL_.I.", sizeof ("GLOBAL_.I.")-1, 1, 0 },
-    { "GLOBAL_.D.", sizeof ("GLOBAL_.D.")-1, 2, 0 },
-    { "GLOBAL_.F.", sizeof ("GLOBAL_.F.")-1, 5, 0 },
-#endif
-#else
-    { "GLOBAL_$I$", sizeof ("GLOBAL_$I$")-1, 1, 0 },
-    { "GLOBAL_$D$", sizeof ("GLOBAL_$D$")-1, 2, 0 },
-    { "GLOBAL_$F$", sizeof ("GLOBAL_$F$")-1, 5, 0 },
-#endif
     { "GLOBAL__FI_", sizeof ("GLOBAL__FI_")-1, 3, 0 },
     { "GLOBAL__FD_", sizeof ("GLOBAL__FD_")-1, 4, 0 },
 #ifdef CFRONT_LOSSAGE /* Do not collect cfront initialization functions.
@@ -671,8 +688,8 @@ find_a_file (pprefix, name)
   if (debug)
     fprintf (stderr, "Looking for '%s'\n", name);
   
-#ifdef EXECUTABLE_SUFFIX
-  len += strlen (EXECUTABLE_SUFFIX);
+#ifdef HOST_EXECUTABLE_SUFFIX
+  len += strlen (HOST_EXECUTABLE_SUFFIX);
 #endif
 
   temp = xmalloc (len);
@@ -695,11 +712,11 @@ find_a_file (pprefix, name)
 	  return temp;
 	}
 
-#ifdef EXECUTABLE_SUFFIX
+#ifdef HOST_EXECUTABLE_SUFFIX
 	/* Some systems have a suffix for executable files.
 	   So try appending that.  */
       strcpy (temp, name);
-	strcat (temp, EXECUTABLE_SUFFIX);
+	strcat (temp, HOST_EXECUTABLE_SUFFIX);
 	
 	if (access (temp, X_OK) == 0)
 	  return temp;
@@ -721,10 +738,10 @@ find_a_file (pprefix, name)
 	    && access (temp, X_OK) == 0)
 	  return temp;
 
-#ifdef EXECUTABLE_SUFFIX
+#ifdef HOST_EXECUTABLE_SUFFIX
 	/* Some systems have a suffix for executable files.
 	   So try appending that.  */
-	strcat (temp, EXECUTABLE_SUFFIX);
+	strcat (temp, HOST_EXECUTABLE_SUFFIX);
 	
 	if (stat (temp, &st) >= 0
 	    && ! S_ISDIR (st.st_mode)
@@ -784,7 +801,7 @@ prefix_from_env (env, pprefix)
      struct path_prefix *pprefix;
 {
   const char *p;
-  GET_ENV_PATH_LIST (p, env);
+  GET_ENVIRONMENT (p, env);
 
   if (p)
     prefix_from_string (p, pprefix);
@@ -840,27 +857,52 @@ main (argc, argv)
      int argc;
      char *argv[];
 {
-  const char *ld_suffix	= "ld";
-  const char *full_ld_suffix	= ld_suffix;
-  const char *real_ld_suffix	= "real-ld";
-  const char *collect_ld_suffix = "collect-ld";
-  const char *nm_suffix	= "nm";
-  const char *full_nm_suffix	= nm_suffix;
-  const char *gnm_suffix	= "gnm";
-  const char *full_gnm_suffix	= gnm_suffix;
+  static const char *const ld_suffix	= "ld";
+  static const char *const real_ld_suffix = "real-ld";
+  static const char *const collect_ld_suffix = "collect-ld";
+  static const char *const nm_suffix	= "nm";
+  static const char *const gnm_suffix	= "gnm";
 #ifdef LDD_SUFFIX
-  const char *ldd_suffix	= LDD_SUFFIX;
-  const char *full_ldd_suffix	= ldd_suffix;
+  static const char *const ldd_suffix	= LDD_SUFFIX;
 #endif
-  const char *strip_suffix	= "strip";
-  const char *full_strip_suffix = strip_suffix;
-  const char *gstrip_suffix	= "gstrip";
-  const char *full_gstrip_suffix = gstrip_suffix;
+  static const char *const strip_suffix = "strip";
+  static const char *const gstrip_suffix = "gstrip";
+
+#ifdef CROSS_COMPILE
+  /* If we look for a program in the compiler directories, we just use
+     the short name, since these directories are already system-specific.
+     But it we look for a program in the system directories, we need to
+     qualify the program name with the target machine.  */
+
+  const char *const full_ld_suffix =
+    concat(target_machine, "-", ld_suffix, NULL);
+  const char *const full_nm_suffix =
+    concat (target_machine, "-", nm_suffix, NULL);
+  const char *const full_gnm_suffix =
+    concat (target_machine, "-", gnm_suffix, NULL);
+#ifdef LDD_SUFFIX
+  const char *const full_ldd_suffix =
+    concat (target_machine, "-", ldd_suffix, NULL);
+#endif
+  const char *const full_strip_suffix =
+    concat (target_machine, "-", strip_suffix, NULL);
+  const char *const full_gstrip_suffix =
+    concat (target_machine, "-", gstrip_suffix, NULL);
+#else
+  const char *const full_ld_suffix	= ld_suffix;
+  const char *const full_nm_suffix	= nm_suffix;
+  const char *const full_gnm_suffix	= gnm_suffix;
+#ifdef LDD_SUFFIX
+  const char *const full_ldd_suffix	= ldd_suffix;
+#endif
+  const char *const full_strip_suffix	= strip_suffix;
+  const char *const full_gstrip_suffix	= gstrip_suffix;
+#endif /* CROSS_COMPILE */
+
   const char *arg;
   FILE *outf;
 #ifdef COLLECT_EXPORT_LIST
   FILE *exportf;
-  FILE *importf;
 #endif
   const char *ld_file_name;
   const char *p;
@@ -875,16 +917,23 @@ main (argc, argv)
   int first_file;
   int num_c_args	= argc+9;
 
+  no_demangle = !! getenv ("COLLECT_NO_DEMANGLE");
+
+  /* Suppress demangling by the real linker, which may be broken.  */
+  putenv (xstrdup ("COLLECT_NO_DEMANGLE="));
+
 #if defined (COLLECT2_HOST_INITIALIZATION)
-  /* Perform system dependant initialization, if neccessary.  */
+  /* Perform system dependent initialization, if necessary.  */
   COLLECT2_HOST_INITIALIZATION;
 #endif
 
-#ifdef HAVE_LC_MESSAGES
-  setlocale (LC_MESSAGES, "");
+#ifdef SIGCHLD
+  /* We *MUST* set SIGCHLD to SIG_DFL so that the wait4() call will
+     receive the signal.  A different setting is inheritable */
+  signal (SIGCHLD, SIG_DFL);
 #endif
-  (void) bindtextdomain (PACKAGE, localedir);
-  (void) textdomain (PACKAGE);
+
+  gcc_init_libintl ();
 
   /* Do not invoke xcalloc before this point, since locale needs to be
      set first, in case a diagnostic is issued.  */
@@ -916,10 +965,9 @@ main (argc, argv)
 #endif
 
   obstack_begin (&temporary_obstack, 0);
-  obstack_begin (&permanent_obstack, 0);
   temporary_firstobj = (char *) obstack_alloc (&temporary_obstack, 0);
 
-  current_demangling_style = gnu_demangling;
+  current_demangling_style = auto_demangling;
   p = getenv ("COLLECT_GCC_OPTIONS");
   while (p && *p)
     {
@@ -962,31 +1010,6 @@ main (argc, argv)
   /* Extract COMPILER_PATH and PATH into our prefix list.  */
   prefix_from_env ("COMPILER_PATH", &cpath);
   prefix_from_env ("PATH", &path);
-
-#ifdef CROSS_COMPILE
-  /* If we look for a program in the compiler directories, we just use
-     the short name, since these directories are already system-specific.
-     But it we look for a program in the system directories, we need to
-     qualify the program name with the target machine.  */
-
-  full_ld_suffix = concat(target_machine, "-", ld_suffix, NULL);
-
-#if 0
-  full_gld_suffix = concat (target_machine, "-", gld_suffix, NULL);
-#endif
-
-  full_nm_suffix = concat (target_machine, "-", nm_suffix, NULL);
-
-  full_gnm_suffix = concat (target_machine, "-", gnm_suffix, NULL);
-  
-#ifdef LDD_SUFFIX
-  full_ldd_suffix = concat (target_machine, "-", ldd_suffix, NULL);
-#endif
-
-  full_strip_suffix = concat (target_machine, "-", strip_suffix, NULL);
-  
-  full_gstrip_suffix = concat (target_machine, "-", gstrip_suffix, NULL);
-#endif /* CROSS_COMPILE */
 
   /* Try to discover a valid linker/nm/strip to use.  */
 
@@ -1073,7 +1096,6 @@ main (argc, argv)
   o_file = make_temp_file (".o");
 #ifdef COLLECT_EXPORT_LIST
   export_file = make_temp_file (".x");
-  import_file = make_temp_file (".p");
 #endif
   ldout = make_temp_file (".ld");
   *c_ptr++ = c_file_name;
@@ -1102,11 +1124,20 @@ main (argc, argv)
     {
       const char *q = extract_string (&p);
       if (*q == '-' && (q[1] == 'm' || q[1] == 'f'))
-	*c_ptr++ = obstack_copy0 (&permanent_obstack, q, strlen (q));
+	*c_ptr++ = xstrdup (q);
       if (strcmp (q, "-EL") == 0 || strcmp (q, "-EB") == 0)
-	*c_ptr++ = obstack_copy0 (&permanent_obstack, q, strlen (q));
-      if (strncmp (q, "-shared", sizeof ("-shared") - 1) == 0)
+	*c_ptr++ = xstrdup (q);
+      if (strcmp (q, "-shared") == 0)
 	shared_obj = 1;
+      if (*q == '-' && q[1] == 'B')
+	{
+	  *c_ptr++ = xstrdup (q);
+	  if (q[2] == 0)
+	    {
+	      q = extract_string (&p);
+	      *c_ptr++ = xstrdup (q);
+	    }
+	}
     }
   obstack_free (&temporary_obstack, temporary_firstobj);
   *c_ptr++ = "-fno-exceptions";
@@ -1165,14 +1196,6 @@ main (argc, argv)
 	        /* Resolving full library name.  */
 		const char *s = resolve_lib_name (arg+2);
 
-		/* If we will use an import list for this library,
-		   we should exclude it from ld args.  */
-		if (use_import_list (s))
-		  {
-		    ld1--;
-		    ld2--;
-		  }
-
 		/* Saving a full library name.  */
 		add_to_list (&libs, s);
 	      }
@@ -1184,6 +1207,13 @@ main (argc, argv)
        	    case 'L':
 	      add_prefix (&cmdline_lib_dirs, arg+2);
 	      break;
+#else 
+#if LINK_ELIMINATE_DUPLICATE_LDIRECTORIES
+	    case 'L':
+	      if (is_in_args (arg, (const char **) ld1_argv, ld1-1))
+		--ld1;
+	      break;
+#endif /* LINK_ELIMINATE_DUPLICATE_LDIRECTORIES */
 #endif
 
 	    case 'o':
@@ -1191,7 +1221,7 @@ main (argc, argv)
 		output_file = *ld1++ = *ld2++ = *++argv;
 	      else if (1
 #ifdef SWITCHES_NEED_SPACES
-		       && ! index (SWITCHES_NEED_SPACES, arg[1])
+		       && ! strchr (SWITCHES_NEED_SPACES, arg[1])
 #endif
 		       )
 
@@ -1220,9 +1250,10 @@ main (argc, argv)
 	      break;
 	    }
 	}
-      else if ((p = rindex (arg, '.')) != (char *) 0
+      else if ((p = strrchr (arg, '.')) != (char *) 0
 	       && (strcmp (p, ".o") == 0 || strcmp (p, ".a") == 0
-		   || strcmp (p, ".so") == 0))
+		   || strcmp (p, ".so") == 0 || strcmp (p, ".lo") == 0
+		   || strcmp (p, ".obj") == 0))
 	{
 	  if (first_file)
 	    {
@@ -1237,20 +1268,12 @@ main (argc, argv)
 		  *ld2++ = arg;
 		}
 	    }
-	  if (p[1] == 'o')
+	  if (p[1] == 'o' || p[1] == 'l')
 	    *object++ = arg;
 #ifdef COLLECT_EXPORT_LIST
 	  /* libraries can be specified directly, i.e. without -l flag.  */
        	  else
        	    { 
-	      /* If we will use an import list for this library,
-		 we should exclude it from ld args.  */
-	      if (use_import_list (arg))
-	        {
-		  ld1--;
-		  ld2--;
-		}
-
 	      /* Saving a full library name.  */
               add_to_list (&libs, arg);
             }
@@ -1281,19 +1304,10 @@ main (argc, argv)
       scan_prog_file (list->name, PASS_FIRST);
   }
 
-  if (frame_tables.number > 0 && shared_obj)
-    {
-      /* If there are any frames, then we will need
-         the frame table handling functions.  */
-      add_to_list (&imports, "__register_frame_info_table");
-      add_to_list (&imports, "__deregister_frame_info");
-    }
-
   if (exports.first)
     {
-      char *buf = xmalloc (strlen (export_file) + 5);
-
-      sprintf (buf, "-bE:%s", export_file);
+      char *buf = concat ("-bE:", export_file, NULL);
+      
       *ld1++ = buf;
       *ld2++ = buf;
 
@@ -1303,23 +1317,6 @@ main (argc, argv)
       write_aix_file (exportf, exports.first);
       if (fclose (exportf))
 	fatal_perror ("fclose %s", export_file);
-    }
-
-  if (imports.first)
-    {
-      char *buf = xmalloc (strlen (import_file) + 5);
-
-      sprintf (buf, "-bI:%s", import_file);
-      *ld1++ = buf;
-      *ld2++ = buf;
-
-      importf = fopen (import_file, "w");
-      if (importf == (FILE *) 0)
-	fatal_perror ("%s", import_file);
-      fputs ("#! .\n", importf);
-      write_aix_file (importf, imports.first);
-      if (fclose (importf))
-	fatal_perror ("fclose %s", import_file);
     }
 #endif
 
@@ -1397,8 +1394,6 @@ main (argc, argv)
       /* But make sure we delete the export file we may have created.  */
       if (export_file != 0 && export_file[0])
 	maybe_unlink (export_file);
-      if (import_file != 0 && import_file[0])
-	maybe_unlink (import_file);
 #endif
       maybe_unlink (c_file);
       maybe_unlink (o_file);
@@ -1453,14 +1448,13 @@ main (argc, argv)
 
 #ifdef COLLECT_EXPORT_LIST
       maybe_unlink (export_file);
-      maybe_unlink (import_file);
 #endif
       maybe_unlink (c_file);
       maybe_unlink (o_file);
       return 0;
     }
 
-  /* Sort ctor and dtor lists by priority. */
+  /* Sort ctor and dtor lists by priority.  */
   sort_ids (&constructors);
   sort_ids (&destructors);
 
@@ -1477,13 +1471,7 @@ main (argc, argv)
   /* Tell the linker that we have initializer and finalizer functions.  */
 #ifdef LD_INIT_SWITCH
 #ifdef COLLECT_EXPORT_LIST
-  {
-    /* option name + functions + colons + NULL */
-    char *buf = xmalloc (strlen (LD_INIT_SWITCH)
-			 + strlen(initname) + strlen(fininame) + 3);
-    sprintf (buf, "%s:%s:%s", LD_INIT_SWITCH, initname, fininame);
-    *ld2++ = buf;
-  }
+  *ld2++ = concat (LD_INIT_SWITCH, ":", initname, ":", fininame, NULL);
 #else
   *ld2++ = LD_INIT_SWITCH;
   *ld2++ = initname;
@@ -1498,12 +1486,7 @@ main (argc, argv)
       /* If we did not add export flag to link arguments before, add it to
 	 second link phase now.  No new exports should have been added.  */
       if (! exports.first)
-	{
-	  char *buf = xmalloc (strlen (export_file) + 5);
-
-	  sprintf (buf, "-bE:%s", export_file);
-	  *ld2++ = buf;
-	}
+	*ld2++ = concat ("-bE:", export_file, NULL);
 
       add_to_list (&exports, initname);
       add_to_list (&exports, fininame);
@@ -1555,14 +1538,13 @@ main (argc, argv)
 
 #ifdef COLLECT_EXPORT_LIST
   maybe_unlink (export_file);
-  maybe_unlink (import_file);
 #endif
 
   return 0;
 }
 
 
-/* Wait for a process to finish, and exit if a non-zero status is found.  */
+/* Wait for a process to finish, and exit if a nonzero status is found.  */
 
 int
 collect_wait (prog)
@@ -1578,7 +1560,7 @@ collect_wait (prog)
 	  int sig = WTERMSIG (status);
 	  error ("%s terminated with signal %d [%s]%s",
 		 prog, sig, strsignal(sig),
-		 status & 0200 ? "" : ", core dumped");
+		 WCOREDUMP(status) ? ", core dumped" : "");
 	  collect_exit (FATAL_EXIT_CODE);
 	}
 
@@ -1669,7 +1651,7 @@ collect_execute (prog, argv, redir)
       dup2 (stdout_save, STDOUT_FILENO);
       dup2 (stderr_save, STDERR_FILENO);
 
-      /* Close reponse file.  */
+      /* Close response file.  */
       close (redir_handle);
     }
 
@@ -1748,7 +1730,7 @@ extract_init_priority (name)
     ++pos;
   pos += 10; /* strlen ("GLOBAL__X_") */
 
-  /* Extract init_p number from ctor/dtor name. */
+  /* Extract init_p number from ctor/dtor name.  */
   pri = atoi (name + pos);
   return pri ? pri : DEFAULT_INIT_PRIORITY;
 }
@@ -1811,8 +1793,27 @@ write_list (stream, prefix, list)
     }
 }
 
+#if LINK_ELIMINATE_DUPLICATE_LDIRECTORIES
+/* Given a STRING, return nonzero if it occurs in the list in range
+   [ARGS_BEGIN,ARGS_END).  */
+
+static int
+is_in_args (string, args_begin, args_end)
+     const char *string;
+     const char **args_begin;
+     const char **args_end;
+{
+  const char **args_pointer;
+  for (args_pointer = args_begin; args_pointer != args_end; ++args_pointer)
+    if (strcmp (string, *args_pointer) == 0)
+      return 1;
+  return 0;
+}
+#endif /* LINK_ELIMINATE_DUPLICATE_LDIRECTORIES */
+
 #ifdef COLLECT_EXPORT_LIST
 /* This function is really used only on AIX, but may be useful.  */
+#if 0
 static int
 is_in_list (prefix, list)
      const char *prefix;
@@ -1826,6 +1827,7 @@ is_in_list (prefix, list)
     return 0;
 }
 #endif
+#endif /* COLLECT_EXPORT_LIST */
 
 /* Added for debugging purpose.  */
 #ifdef COLLECT_EXPORT_LIST
@@ -1885,7 +1887,7 @@ write_c_file_stat (stream, name)
   int frames = (frame_tables.number > 0);
 
   /* Figure out name of output_file, stripping off .so version.  */
-  p = rindex (output_file, '/');
+  p = strrchr (output_file, '/');
   if (p == 0)
     p = output_file;
   else
@@ -1893,7 +1895,7 @@ write_c_file_stat (stream, name)
   q = p;
   while (q)
     {
-      q = index (q,'.');
+      q = strchr (q,'.');
       if (q == 0)
 	{
 	  q = p + strlen (p);
@@ -1921,13 +1923,8 @@ write_c_file_stat (stream, name)
     notice ("\nwrite_c_file - output name is %s, prefix is %s\n",
 	    output_file, prefix);
 
-#define INIT_NAME_FORMAT "_GLOBAL__FI_%s"
-  initname = xmalloc (strlen (prefix) + sizeof (INIT_NAME_FORMAT) - 2);
-  sprintf (initname, INIT_NAME_FORMAT, prefix);
-
-#define FINI_NAME_FORMAT "_GLOBAL__FD_%s"
-  fininame = xmalloc (strlen (prefix) + sizeof (FINI_NAME_FORMAT) - 2);
-  sprintf (fininame, FINI_NAME_FORMAT, prefix);
+  initname = concat ("_GLOBAL__FI_", prefix, NULL);
+  fininame = concat ("_GLOBAL__FD_", prefix, NULL);
 
   free (prefix);
 
@@ -2003,8 +2000,8 @@ write_c_file_stat (stream, name)
 
   if (shared_obj)
     {
-      fprintf (stream, "void _GLOBAL__DI() {\n\t%s();\n}\n", initname);
-      fprintf (stream, "void _GLOBAL__DD() {\n\t%s();\n}\n", fininame);
+      COLLECT_SHARED_INIT_FUNC(stream, initname);
+      COLLECT_SHARED_FINI_FUNC(stream, fininame);
     }
 }
 
@@ -2185,7 +2182,7 @@ scan_prog_file (prog_name, which_pass)
 	fatal_perror ("close %d", pipe_fd[1]);
 
       execv (nm_file_name, real_nm_argv);
-      fatal_perror ("execvp %s", nm_file_name);
+      fatal_perror ("execv %s", nm_file_name);
     }
 
   /* Parent context from here on.  */
@@ -2374,7 +2371,7 @@ libcompare (d1, d2)
       /* It has a valid numeric extension, prefer this one.  */
       if (*e1 == '.' && e1[1] && ISDIGIT (e1[1]))
 	return 1;
-      /* It has a invalid numeric extension, must prefer the other one.  */
+      /* It has an invalid numeric extension, must prefer the other one.  */
       else
 	return -1;
     }
@@ -2383,7 +2380,7 @@ libcompare (d1, d2)
       /* It has a valid numeric extension, prefer this one.  */
       if (*e2 == '.' && e2[1] && ISDIGIT (e2[1]))
 	return -1;
-      /* It has a invalid numeric extension, must prefer the other one.  */
+      /* It has an invalid numeric extension, must prefer the other one.  */
       else
 	return 1;
     }
@@ -2645,7 +2642,7 @@ scan_libraries (prog_name)
   /* Read each line of ldd output.  */
   while (fgets (buf, sizeof buf, inf) != (char *) 0)
     {
-      int ch, ch2;
+      int ch2;
       char *name, *end, *p = buf;
 
       /* Extract names of libraries and add to list.  */
@@ -2704,13 +2701,16 @@ scan_libraries (prog_name)
 #ifdef OBJECT_FORMAT_COFF
 
 #if defined(EXTENDED_COFF)
+
 #   define GCC_SYMBOLS(X)	(SYMHEADER(X).isymMax + SYMHEADER(X).iextMax)
 #   define GCC_SYMENT		SYMR
 #   define GCC_OK_SYMBOL(X)	((X).st == stProc || (X).st == stGlobal)
 #   define GCC_SYMINC(X)	(1)
 #   define GCC_SYMZERO(X)	(SYMHEADER(X).isymMax)
 #   define GCC_CHECK_HDR(X)	(PSYMTAB(X) != 0)
+
 #else
+
 #   define GCC_SYMBOLS(X)	(HEADER(ldptr).f_nsyms)
 #   define GCC_SYMENT		SYMENT
 #   define GCC_OK_SYMBOL(X) \
@@ -2723,9 +2723,18 @@ scan_libraries (prog_name)
      (((X).n_sclass == C_EXT) && ((X).n_scnum == N_UNDEF))
 #   define GCC_SYMINC(X)	((X).n_numaux+1)
 #   define GCC_SYMZERO(X)	0
+
+/* 0757 = U803XTOCMAGIC (AIX 4.3) and 0767 = U64_TOCMAGIC (AIX V5) */
+#ifdef _AIX51
+#   define GCC_CHECK_HDR(X) \
+     ((HEADER (X).f_magic == U802TOCMAGIC && ! aix64_flag) \
+      || (HEADER (X).f_magic == 0767 && aix64_flag))
+#else
 #   define GCC_CHECK_HDR(X) \
      ((HEADER (X).f_magic == U802TOCMAGIC && ! aix64_flag) \
       || (HEADER (X).f_magic == 0757 && aix64_flag))
+#endif
+
 #endif
 
 extern char *ldgetname ();
@@ -2747,10 +2756,6 @@ scan_prog_file (prog_name, which_pass)
   LDFILE *ldptr = NULL;
   int sym_index, sym_count;
   int is_shared = 0;
-#ifdef COLLECT_EXPORT_LIST
-  /* Should we generate an import list for given prog_name?  */
-  int import_flag = (which_pass == PASS_OBJ ? 0 : use_import_list (prog_name));
-#endif
 
   if (which_pass != PASS_FIRST && which_pass != PASS_OBJ)
     return;
@@ -2815,13 +2820,6 @@ scan_prog_file (prog_name, which_pass)
 #ifdef COLLECT_EXPORT_LIST
 			  if (which_pass == PASS_OBJ)
 			    add_to_list (&exports, name);
-			  /* If this symbol was undefined and we are building
-			     an import list, we should add a symbol to this
-			     list.  */
-			  else
-			    if (import_flag
-				&& is_in_list (name, undefined.first))
-			      add_to_list (&imports, name);
 #endif
 			  break;
 
@@ -2831,13 +2829,6 @@ scan_prog_file (prog_name, which_pass)
 #ifdef COLLECT_EXPORT_LIST
 			  if (which_pass == PASS_OBJ)
 			    add_to_list (&exports, name);
-			  /* If this symbol was undefined and we are building
-			     an import list, we should add a symbol to this
-			     list.  */
-			  else
-			    if (import_flag
-				&& is_in_list (name, undefined.first))
-			      add_to_list (&imports, name);
 #endif
 			  break;
 
@@ -2863,33 +2854,17 @@ scan_prog_file (prog_name, which_pass)
 #ifdef COLLECT_EXPORT_LIST
 			  if (which_pass == PASS_OBJ)
 			    add_to_list (&exports, name);
-			  /* If we are building an import list, we
-			     should add the symbol to the list.  
-			     We'd like to do it only if the symbol
-			     is not defined, but we can't tell
-			     that here (it is only known whether a symbol
-			     is referenced and not defined, but who
-			     would reference an EH table entry?).  */
-			  else
-			    if (import_flag)
-			      add_to_list (&imports, name);
 #endif
 			  break;
 
 			default:	/* not a constructor or destructor */
 #ifdef COLLECT_EXPORT_LIST
 			  /* If we are building a shared object on AIX we need
-			     to explicitly export all global symbols or add
-			     them to import list.  */
+			     to explicitly export all global symbols.  */
 			  if (shared_obj) 
 			    {
 			      if (which_pass == PASS_OBJ && (! export_flag))
 				add_to_list (&exports, name);
-			      else if (! is_shared
-				       && which_pass == PASS_FIRST
-				       && import_flag
-				       && is_in_list(name, undefined.first))
-				add_to_list (&imports, name);
 			    }
 #endif
 			  continue;
@@ -2907,24 +2882,6 @@ scan_prog_file (prog_name, which_pass)
 				 symbol.iss, (long) symbol.value, symbol.index, name);
 #endif
 		    }
-#ifdef COLLECT_EXPORT_LIST
-		  /* If we are building a shared object we should collect
-		     information about undefined symbols for later
-		     import list generation.  */
-		  else if (shared_obj && GCC_UNDEF_SYMBOL (symbol))
-		    {
-		      char *name;
-
-		      if ((name = ldgetname (ldptr, &symbol)) == NULL)
-			continue;		/* should never happen */
-
-		      /* All AIX function names have a duplicate entry
-			 beginning with a dot.  */
-		      if (*name == '.')
-			++name;
-		      add_to_list (&undefined, name);
-		    }
-#endif
 		}
 	    }
 #ifdef COLLECT_EXPORT_LIST
@@ -2951,28 +2908,9 @@ scan_prog_file (prog_name, which_pass)
   (void) ldclose(ldptr);
 #endif
 }
-
+#endif /* OBJECT_FORMAT_COFF */
 
 #ifdef COLLECT_EXPORT_LIST
-
-/* This new function is used to decide whether we should
-   generate import list for an object or to use it directly.  */
-static int
-use_import_list (prog_name)
-     const char *prog_name;
-{
-  char *p;
-
-  /* If we do not build a shared object then import list should not be used.  */
-  if (! shared_obj) return 0;
-
-  /* Currently we check only for libgcc, but this can be changed in future.  */
-  p = strstr (prog_name, "libgcc.a");
-  if (p != 0 && (strlen (p) == sizeof ("libgcc.a") - 1))
-    return 1;
-  return 0;
-}
-
 /* Given a library name without "lib" prefix, this function
    returns a full library name including a path.  */
 static char *
@@ -2993,14 +2931,14 @@ resolve_lib_name (name)
       struct prefix_list *list = libpaths[i]->plist;
       for (; list; list = list->next)
 	{
+	  /* The following lines are needed because path_prefix list
+	     may contain directories both with trailing '/' and
+	     without it.  */
+	  const char *p = "";
+	  if (list->prefix[strlen(list->prefix)-1] != '/')
+	    p = "/";
 	  for (j = 0; libexts[j]; j++)
 	    {
-              /* The following lines are needed because path_prefix list
-                 may contain directories both with trailing '/' and
-                 without it.  */
-              const char *p = "";
-              if (list->prefix[strlen(list->prefix)-1] != '/')
-                p = "/";
        	      sprintf (lib_buf, "%s%slib%s.%s",
 		       list->prefix, p, name, libexts[j]);
 if (debug) fprintf (stderr, "searching for: %s\n", lib_buf);
@@ -3015,39 +2953,42 @@ if (debug) fprintf (stderr, "found: %s\n", lib_buf);
   if (debug)
     fprintf (stderr, "not found\n");
   else
-    fatal ("Library lib%s not found", name);
+    fatal ("library lib%s not found", name);
   return (NULL);
 }
 
 /* Array of standard AIX libraries which should not
    be scanned for ctors/dtors.  */
-static const char *aix_std_libs[] = {
+static const char *const aix_std_libs[] = {
   "/unix",
   "/lib/libc.a",
+  "/lib/libm.a",
   "/lib/libc_r.a",
+  "/lib/libm_r.a",
   "/usr/lib/libc.a",
+  "/usr/lib/libm.a",
   "/usr/lib/libc_r.a",
+  "/usr/lib/libm_r.a",
   "/usr/lib/threads/libc.a",
   "/usr/ccs/lib/libc.a",
+  "/usr/ccs/lib/libm.a",
   "/usr/ccs/lib/libc_r.a",
+  "/usr/ccs/lib/libm_r.a",
   NULL
 };
 
 /* This function checks the filename and returns 1
-   if this name matches the location of a standard AIX library. */
+   if this name matches the location of a standard AIX library.  */
 static int
 ignore_library (name)
      const char *name;
 {
-  const char **p = &aix_std_libs[0];
+  const char *const *p = &aix_std_libs[0];
   while (*p++ != NULL)
     if (! strcmp (name, *p)) return 1;
   return 0;
 }
-
-#endif
-
-#endif /* OBJECT_FORMAT_COFF */
+#endif /* COLLECT_EXPORT_LIST */
 
 
 /*
@@ -3185,7 +3126,7 @@ scan_prog_file (prog_name, which_pass)
       if (rw)
 	{
 	  load_union_t *ptr = (load_union_t *) xmalloc (load_hdr->hdr.ldci_cmd_size);
-	  bcopy ((char *)load_hdr, (char *)ptr, load_hdr->hdr.ldci_cmd_size);
+	  memcpy ((char *)ptr, (char *)load_hdr, load_hdr->hdr.ldci_cmd_size);
 	  load_hdr = ptr;
 
 	  /* null out old command map, because we will rewrite at the end.  */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,8 +54,10 @@
 
 #define ONST(x, y) (y)
 
+#define __STDC_LIMIT_MACROS
 #include <alloca.h>             // alloca
 #include <unistd.h>             // write
+#include <stdint.h>
 
 #include "pu_info.h"            // PU_Info
 

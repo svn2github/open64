@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,7 +54,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
-#include <vector.h>
+#include <vector>
 #include "gen_util.h"
 #include "isa_enums_gen.h"
 
@@ -66,8 +70,8 @@ typedef struct {
 	int last_ecv;
 } EC_struct;
 
-static vector<ECV_struct> all_ecv;
-static vector<EC_struct> all_ec;
+static std::vector<ECV_struct> all_ecv;
+static std::vector<EC_struct> all_ec;
 
 static const char * const interface[] = {
   "/* ====================================================================",
@@ -193,8 +197,8 @@ void ISA_Enums_End(void)
 //  See interface description.
 /////////////////////////////////////
 {
-  vector<EC_struct>::iterator iec;
-  vector<ECV_struct>::iterator iecv;
+  std::vector<EC_struct>::iterator iec;
+  std::vector<ECV_struct>::iterator iecv;
   ECV_struct tecv;
 
 #define FNAME "targ_isa_enums"

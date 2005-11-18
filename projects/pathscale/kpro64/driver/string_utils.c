@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -44,32 +48,44 @@
 #define SLASH	'/'
 #define PERCENT	'%'
 
-extern string
-string_copy (string s)
+char *
+string_copy (char *s)
 {
-        string new;
+        char *new;
 	if (s == NULL) return NULL;
-        new = (string) malloc(strlen(s)+1);
+        new = (char *) malloc(strlen(s)+1);
         strcpy(new, s);
         return new;
 }
 
+/* make a string starting at position i, and extending for len chars */
+char *
+substring_copy (char *s, int i, int len)
+{
+        char *new;
+	if (s == NULL) return NULL;
+        new = (char *) malloc(len+1);
+        strncpy(new, s+i, len);
+	new[len] = '\0';
+        return new;
+}
+
 /* concatenate two strings */
-extern string 
-concat_strings (string a, string b)
+char *
+concat_strings (const char *a, const char *b)
 {
 	/* allocate new space, make sure it fits */
-	string new = (string) malloc(strlen(a) + strlen(b) + 1);
+	char *new = (char *) malloc(strlen(a) + strlen(b) + 1);
 	strcpy(new, a);
 	strcat(new, b);
 	return new;
 }
 
 /* return suffix of string */
-extern string
-get_suffix (string s)
+char *
+get_suffix (const char *s)
 {
-        string suffix;
+        char *suffix;
         suffix = strrchr (s, DOT);
         if (suffix == NULL) return NULL;
         suffix++;       /* skip the period */
@@ -78,11 +94,11 @@ get_suffix (string s)
 
 /* change suffix of string */
 /* if no suffix in string, then just return string */
-extern string
-change_suffix (string s, string suffix)
+char *
+change_suffix (char *s, char *suffix)
 {
-        string new = string_copy(s);
-        string p = get_suffix(new);
+        char *new = string_copy(s);
+        char *p = get_suffix(new);
 	if (p == NULL) return s;
 	if (strlen(suffix) <= strlen(p)) {
         	/* new suffix is not longer than old suffix */
@@ -98,10 +114,10 @@ change_suffix (string s, string suffix)
 
 
 /* string has blank space */
-extern boolean
-has_blank (string s)
+boolean
+has_blank (char *s)
 {
-	string p;
+	char *p;
 	for (p = s; *p != NIL; p++) {
 		if (*p == BLANK) return TRUE;
 	}
@@ -110,10 +126,10 @@ has_blank (string s)
 
 /* Replace old_pattern in base string with new_pattern */
 /* This modifies the base string in place */
-extern void
-replace_substring (string base, string old_pattern, string new_pattern)
+void
+replace_substring (char *base, char *old_pattern, char *new_pattern)
 {
-	string p = strstr (base, old_pattern);
+	char *p = strstr (base, old_pattern);
 	strncpy(p,new_pattern,strlen(old_pattern));
 }
 
@@ -122,11 +138,11 @@ replace_substring (string base, string old_pattern, string new_pattern)
  * e.g. -foo%s with bar becomes -foobar.
  * For now, we assume that %* is last thing in template.
  */
-extern string
-expand_template_string (string template, string arg)
+char *
+expand_template_string (char *template, char *arg)
 {
-        string percent;
-	string new = string_copy(template);	/* because we change it */
+        char *percent;
+	char *new = string_copy(template);	/* because we change it */
         percent = strchr (new, PERCENT);
         if (percent == NULL) return new;
 	*percent = NIL;
@@ -134,7 +150,7 @@ expand_template_string (string template, string arg)
 }
 
 /* must call this before using a string list */
-extern string_list_t *
+string_list_t *
 init_string_list (void)
 {
 	string_list_t *p;
@@ -145,7 +161,7 @@ init_string_list (void)
 
 /* add string that has already been allocated */
 static void
-add_existing_string (string_list_t *list, string s)
+add_existing_string (string_list_t *list, char *s)
 {
 	string_item_t *p;
 	p = (string_item_t *) malloc(sizeof(string_item_t));
@@ -160,21 +176,21 @@ add_existing_string (string_list_t *list, string s)
 }
 
 /* add string to end of list */
-extern void
-add_string (string_list_t *list, string s)
+void
+add_string (string_list_t *list, char *s)
 {
 	/* don't worry about blanks in this version of add_string */
 	add_existing_string (list, string_copy(s));
 }
 
 /* add each blank-separated string to list */
-extern void
-add_multi_strings (string_list_t *list, string s)
+void
+add_multi_strings (string_list_t *list, char *s)
 {
 	/* first copy into new string area */
-	string new = string_copy(s);
+	char *new = string_copy(s);
 	if (has_blank(new)) {
-		string t;
+		char *t;
 		/* break into multiple strings */
 		for (t = new; *t != NIL; t++) {
 			if (*t == BLANK) {
@@ -188,12 +204,12 @@ add_multi_strings (string_list_t *list, string s)
 }
 
 /* add string to end of list if not already in list */
-extern void
-add_string_if_new (string_list_t *list, string s)
+void
+add_string_if_new (string_list_t *list, char *s)
 {
 	string_item_t *p;
 	for (p = list->head; p != NULL; p = p->next) {
-		if (same_string(p->name, s))
+		if (strcmp(p->name, s) == 0)
 			return;		/* already in list */
 	}
 	/* string not in list */
@@ -201,12 +217,12 @@ add_string_if_new (string_list_t *list, string s)
 }
 
 /* replace old in list with new */
-extern void
-replace_string (string_list_t *list, string old, string new)
+void
+replace_string (string_list_t *list, char *old, char *new)
 {
 	string_item_t *p;
 	for (p = list->head; p != NULL; p = p->next) {
-		if (same_string(p->name, old)) {
+		if (strcmp(p->name, old) == 0) {
 			p->name = string_copy(new);
 			return;
 		}
@@ -215,7 +231,7 @@ replace_string (string_list_t *list, string old, string new)
 }
 
 /* append string list b at end of string list a */
-extern void
+void
 append_string_lists (string_list_t *a, string_list_t *b)
 {
 	if (a->head == NULL) {
@@ -230,7 +246,7 @@ append_string_lists (string_list_t *a, string_list_t *b)
 	}
 }
 
-extern void
+void
 print_string_list (FILE *f, string_list_t *list)
 {
 	string_item_t *p;
@@ -240,3 +256,14 @@ print_string_list (FILE *f, string_list_t *list)
 	fprintf(f, "\n");
 }
 
+const char *
+ends_with(const char *s, const char *sfx)
+{
+	int len = strlen(s);
+	int slen = strlen(sfx);
+
+	if (len >= slen && strcmp(s + len - slen, sfx) == 0)
+		return s + len - slen;
+
+	return NULL;
+}

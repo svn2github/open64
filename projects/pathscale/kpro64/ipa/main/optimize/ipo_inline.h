@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -63,9 +67,7 @@
 #include "wn_tree_util.h"
 #endif
 
-#ifndef set_INCLUDED
-#include "set.h"
-#endif
+#include <set>
 
 #define IPO_PARAM_TYPE 0x001
 
@@ -200,7 +202,7 @@ typedef vector<PARAMETER_ATTRIBUTES, mempool_allocator<PARAMETER_ATTRIBUTES> >
 
 typedef PARM_ATTR_VEC::iterator PARM_ITER;
 
-typedef set<ST_IDX, less<ST_IDX>, mempool_allocator<ST_IDX> > PROCESSED_SET;
+typedef std::set<ST_IDX, std::less<ST_IDX>, mempool_allocator<ST_IDX> > PROCESSED_SET;
 
 #include "clone.h"
 
@@ -224,7 +226,7 @@ struct IPO_INLINE_AUX
     
     IPO_INLINE_AUX (INT num_formals, MEM_POOL* pool) : 
 	parm_attr (pool),
-	processed_local_syms (less<ST_IDX>(), pool),
+	processed_local_syms (std::less<ST_IDX>(), pool),
 	rp (),
 	return_label (0),
 	entry_label (0),
@@ -263,6 +265,12 @@ private:
     mUINT32  _flags;			// various Boolean attribute flags
     INT _callee_cross_file_id;		// For Debugging purpose
 
+#ifdef KEY
+    // Merge callee's exception typeinfo table into caller's
+    void Merge_EH_Typeinfo_Tables (void);
+    // Merge callee's exception specification table into caller's
+    void Merge_EH_Spec_Tables (void);
+#endif
 public:
     // ======================================================================
     // member functions
@@ -372,6 +380,10 @@ public:
 
     // Insert inline pragmas, alloca-code
     void Post_Process_Caller (IPO_INLINE_AUX& aux);
+#ifdef KEY
+    // Merge callee's exception tables into caller's
+    void Merge_EH_Tables (void);
+#endif
 
 public:
     // Externally callable functions

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -64,6 +68,8 @@
  *		Pointer to the allocated unit on success.  NULL on error,
  *		with errno set to the specific error code.
  */
+
+extern void _initialize_e_fortran_io(void);
 
 unit *
 _alloc_unit(

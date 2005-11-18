@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -135,7 +139,11 @@ EBO_hash_op (OP *op,
              EBO_TN_INFO **based_on_tninfo)
 {
   INT hash_value = 0;
-  if (OP_memory(op)) {
+  if (OP_memory(op)
+#ifdef TARG_X8664
+      || OP_load_exe(op)
+#endif
+      ) {
     TN * spill_tn = NULL;
     hash_value = EBO_DEFAULT_MEM_HASH;
     if (OP_no_alias(op)) hash_value = EBO_NO_ALIAS_MEM_HASH;
@@ -144,7 +152,28 @@ EBO_hash_op (OP *op,
     } else if (OP_store(op)) {
       spill_tn = OP_opnd(op,TOP_Find_Operand_Use(OP_code(op), OU_storeval));
     }
+#ifdef TARG_X8664
+    if( OP_load_exe(op) && !OP_no_alias(op) ){
+      const INT n = TOP_Find_Operand_Use(OP_code(op), OU_offset);
+      TN* tn = OP_opnd( op, n );
+      if( CGSPILL_Is_Spill_Location( TN_var(tn) ) ){
+	hash_value = EBO_SPILL_MEM_HASH;
+      }
+    }
+#endif
+#ifdef KEY
+    if (spill_tn && TN_has_spill(spill_tn)) {
+      INT n = TOP_Find_Operand_Use(OP_code(op), OU_offset);
+      if (n >= 0) {
+	TN *ctn = OP_opnd(op, n);
+	if (TN_is_constant(ctn) && TN_is_symbol(ctn) && 
+	    TN_var(ctn) == TN_spill(spill_tn))
+	  hash_value = EBO_SPILL_MEM_HASH;
+      }
+    }
+#else
     if (spill_tn && TN_has_spill(spill_tn)) hash_value = EBO_SPILL_MEM_HASH;
+#endif
   } else if (OP_effectively_copy(op)) {
     hash_value = EBO_COPY_OP_HASH;
   } else {
@@ -202,8 +231,26 @@ add_to_hash_table ( BOOL in_delay_slot,
   for (idx = 0; idx < OP_results(op); idx++) {
     EBO_TN_INFO *tninfo = NULL;
     TN *tnr = OP_result(op, idx);
+#ifdef KEY
+    if (OP_cond_def(op)) {
+      EBO_TN_INFO *prev_tninfo = get_tn_info(tnr);
+      if (prev_tninfo != NULL)
+	inc_ref_count(prev_tninfo);
+    }
+#endif
     if ((tnr != NULL) && (tnr != True_TN) && (tnr != Zero_TN)) {
+#ifdef TARG_X8664
+      TN* tmp_tn = CGTARG_Gen_Dedicated_Subclass_TN( op, idx, TRUE );
+      if( tmp_tn == NULL )
+	tmp_tn = tnr;
+      tninfo = tn_info_def (bb, op, tmp_tn, op_predicate_tn, 
+			    op_predicate_tninfo);
+      if (tmp_tn != tnr)
+	tninfo = tn_info_def (bb, op, tnr, op_predicate_tn, 
+			      op_predicate_tninfo);
+#else
       tninfo = tn_info_def (bb, op, tnr, op_predicate_tn, op_predicate_tninfo);
+#endif /* TARG_X8664 */
       tninfo->in_opinfo = opinfo;
     }
     opinfo->actual_rslt[idx] = tninfo;
@@ -357,6 +404,15 @@ mark_tn_live_into_BB (TN *tn, BB *into_bb, BB *outof_bb)
             block.  Otherwise, the Def information was already
             determined for this TN and we shouldn't change it. */
           GRA_LIVE_Add_Live_Def_GTN(outof_bb, tn);
+#ifdef KEY
+	  /* Before promoting a local tn to a global tn across different bbs,
+	     make sure to set that it is not homable to avoid confusing GRA.
+	  */
+	  if( TN_is_gra_homeable(tn) ){
+	    Reset_TN_is_gra_homeable( tn );
+	    Set_TN_home( tn, NULL );
+	  }
+#endif
         }
         GRA_LIVE_Add_Live_Out_GTN(outof_bb, tn);
         GRA_LIVE_Add_Defreach_Out_GTN(outof_bb, tn);

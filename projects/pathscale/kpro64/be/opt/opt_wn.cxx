@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -222,6 +227,10 @@ MTYPE Mtype_from_class_size(MTYPE t1, MTYPE t2)
   	  ("Mtype_from_class_size: MTYPE_BS not handled here."));
   if ((MTYPE_type_class(t1) & MTYPE_CLASS_UNSIGNED_INTEGER) == 0)
     return t1;
+#ifdef KEY
+  if (MTYPE_is_vector(t1))
+    return t1;
+#endif
   if (MTYPE_signed(t1))
     switch (MTYPE_size_best(t2)) {
     case 8: return MTYPE_I1;
@@ -295,6 +304,9 @@ BOOL WN_has_mu( const WN *wn, const REGION_LEVEL region_level )
 {
   const OPCODE opc = WN_opcode(wn);
   switch ( OPCODE_operator(opc) ) {
+#ifdef KEY
+    case OPR_ASM_STMT:
+#endif
     case OPR_ILOAD:
     case OPR_ILDBITS:
     case OPR_MLOAD:
@@ -333,6 +345,9 @@ BOOL WN_has_mu( const WN *wn, const REGION_LEVEL region_level )
 BOOL OPERATOR_has_mu( OPERATOR opr )
 {
   switch ( opr ) {
+#ifdef KEY
+    case OPR_ASM_STMT:
+#endif
     case OPR_ILOAD:
     case OPR_ILDBITS:
     case OPR_MLOAD:
@@ -574,6 +589,7 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
     switch ( bytes ) {
       case 8:  return MTYPE_C4;
       case 16: return MTYPE_C8;
+      case 24:
       case 32: return MTYPE_CQ;
     }
   }
@@ -581,6 +597,7 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
     switch ( bytes ) {
       case 4:  return MTYPE_F4;
       case 8:  return MTYPE_F8;
+      case 12:
       case 16: return MTYPE_FQ;
     }
   }
@@ -598,6 +615,25 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
 extern OPCODE 
 Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
+#ifdef TARG_X8664
+  if ( mtype_class & MTYPE_CLASS_VECTOR ) {
+    if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+      switch ( bytes ) {
+      case 1: return OPC_V16I1V16I1LDID; 
+      case 2: return OPC_V16I2V16I2LDID; 
+      case 4: return OPC_V16I4V16I4LDID; 
+      case 8: return OPC_V16I8V16I8LDID; 
+      }
+    } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+      switch ( bytes ) {
+      case 4: return OPC_V16F4V16F4LDID; 
+      case 8: return OPC_V16F8V16F8LDID; 
+      }
+    } 
+    FmtAssert( FALSE, 
+	       ("Ldid_from_mtype_class_and_size: unknown type"));
+  } else
+#endif
   // unsigned integer?
   if ( (mtype_class & MTYPE_CLASS_UNSIGNED) || 
        Only_Unsigned_64_Bit_Ops && ! Delay_U64_Lowering && (mtype_class & MTYPE_CLASS_INTEGER) ) {
@@ -620,6 +656,7 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
     switch ( bytes ) {
       case 8:  return OPC_C4C4LDID;
       case 16: return OPC_C8C8LDID;
+      case 24:
       case 32: return OPC_CQCQLDID;
     }
   }
@@ -627,6 +664,7 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
     switch ( bytes ) {
       case 4:  return OPC_F4F4LDID;
       case 8:  return OPC_F8F8LDID;
+      case 12:
       case 16: return OPC_FQFQLDID;
     }
   }
@@ -644,6 +682,25 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
 extern OPCODE 
 Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
+#ifdef TARG_X8664
+  if ( mtype_class & MTYPE_CLASS_VECTOR ) {
+    if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+      switch ( bytes ) {
+      case 1: return OPC_V16I1STID; 
+      case 2: return OPC_V16I2STID; 
+      case 4: return OPC_V16I4STID; 
+      case 8: return OPC_V16I8STID; 
+      }
+    } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+      switch ( bytes ) {
+      case 4: return OPC_V16F4STID; 
+      case 8: return OPC_V16F8STID; 
+      }
+    } 
+    FmtAssert( FALSE, 
+	       ("Stid_from_mtype_class_and_size: unknown type"));    
+  } else
+#endif
   // unsigned integer?
   if ( (mtype_class & MTYPE_CLASS_UNSIGNED) || 
        Only_Unsigned_64_Bit_Ops && ! Delay_U64_Lowering && (mtype_class & MTYPE_CLASS_INTEGER) ) {
@@ -666,6 +723,7 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
     switch ( bytes ) {
       case 8:  return OPC_C4STID;
       case 16: return OPC_C8STID;
+      case 24:
       case 32: return OPC_CQSTID;
     }
   }
@@ -673,6 +731,7 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
     switch ( bytes ) {
       case 4:  return OPC_F4STID;
       case 8:  return OPC_F8STID;
+      case 12:
       case 16: return OPC_FQSTID;
     }
   }
@@ -1093,7 +1152,12 @@ Identity_assignment_type( AUX_STAB_ENTRY *sym )
   // determine if we can substitute a predefined type if it has
   // same characteristics (alignment,signedness,etc.)
   if ( ! Is_Simple_Type( ty ) ) {
-    MTYPE mtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
+    MTYPE mtype;
+   
+    if (sym->Mtype()==MTYPE_M)
+    	mtype = sym->Mtype();
+    else
+        mtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
 						  sym->Byte_size());
 
     if ( mtype == MTYPE_UNKNOWN )
@@ -1118,10 +1182,31 @@ WN *
 Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX ty)
 {
   ST          *st  = sym->St();
-  const OPCODE ldidop = Ldid_from_mtype_class_and_size(sym->Mclass(),
-                                                       sym->Byte_size());
-  const OPCODE stidop = Stid_from_mtype_class_and_size(sym->Mclass(),
-                                                       sym->Byte_size());
+  OPCODE ldidop;
+  OPCODE stidop;
+
+  if (sym->Mtype() == MTYPE_M) {
+     ldidop = OPCODE_make_op(OPR_LDID, sym->Mtype(), sym->Mtype());
+     stidop = OPCODE_make_op(OPR_STID, MTYPE_V, sym->Mtype());
+  } else {
+#ifdef TARG_X8664 
+    TYPE_ID type = sym->Mtype();
+    INT bytes = sym->Byte_size();
+    switch (type) {
+    case MTYPE_V16I1: bytes = 1; break;
+    case MTYPE_V16I2: bytes = 2; break;
+    case MTYPE_V16I4:
+    case MTYPE_V16F4: bytes = 4; break;
+    case MTYPE_V16I8:
+    case MTYPE_V16F8: bytes = 8; break;
+    }
+    ldidop = Ldid_from_mtype_class_and_size(sym->Mclass(), bytes);
+    stidop = Stid_from_mtype_class_and_size(sym->Mclass(), bytes);
+#else
+     ldidop = Ldid_from_mtype_class_and_size(sym->Mclass(), sym->Byte_size());
+     stidop = Stid_from_mtype_class_and_size(sym->Mclass(), sym->Byte_size());
+#endif
+  }
 
   WN *rhs = WN_CreateLdid( ldidop, sym->St_ofst(), st, ty );
   WN *copy = WN_CreateStid( stidop, sym->St_ofst(), st, ty, rhs);
@@ -1274,6 +1359,7 @@ BOOL Is_hi_sign_extended(MTYPE result_ty, MTYPE desc_ty)
 {
   Is_True(MTYPE_is_integral(result_ty),
           ("Is_hi_sign_extended: handles integral type only"));
+#ifndef TARG_X8664
   if (MTYPE_size_min(desc_ty) < MTYPE_size_min(result_ty) &&
       (MTYPE_size_min(result_ty) == MTYPE_size_min(MTYPE_I4) ||
        MTYPE_is_signed(result_ty)))
@@ -1284,12 +1370,25 @@ BOOL Is_hi_sign_extended(MTYPE result_ty, MTYPE desc_ty)
   if (MTYPE_size_min(result_ty) == MTYPE_size_min(MTYPE_I4)) return TRUE;
 
   return FALSE;
+#else
+  if (MTYPE_size_min(desc_ty) < MTYPE_size_min(result_ty) &&
+      (MTYPE_size_min(result_ty) == MTYPE_size_min(MTYPE_I4) ||
+       ! MTYPE_is_signed(result_ty)))
+    return FALSE;
+
+  if (! MTYPE_is_signed(result_ty)) return FALSE;
+
+  if (MTYPE_size_min(result_ty) == MTYPE_size_min(MTYPE_I4)) return FALSE;
+
+  return TRUE;
+#endif
 }
 
 BOOL Is_lo_sign_extended(MTYPE result_ty, MTYPE desc_ty)
 {
   Is_True(MTYPE_is_integral(result_ty),
           ("Is_lo_sign_extended: handles integral type only"));
+#ifndef TARG_X8664
   if (MTYPE_size_min(desc_ty) < MTYPE_size_min(result_ty) &&
       MTYPE_is_signed(desc_ty))
     return TRUE;
@@ -1297,6 +1396,15 @@ BOOL Is_lo_sign_extended(MTYPE result_ty, MTYPE desc_ty)
   if (MTYPE_is_signed(result_ty)) return TRUE;
 
   return FALSE;
+#else
+  if (MTYPE_size_min(desc_ty) < MTYPE_size_min(result_ty) &&
+      ! MTYPE_is_signed(desc_ty))
+    return FALSE;
+
+  if (! MTYPE_is_signed(result_ty)) return FALSE;
+
+  return TRUE;
+#endif
 }
 
 // this routine determines the signness, and use the size from the lod_typ

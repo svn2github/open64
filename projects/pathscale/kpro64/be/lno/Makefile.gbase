@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -171,7 +171,7 @@ HEADER_DIRS = \
   $(BE_CG_DIR)          \
   $(BE_BE_DIR)		\
   $(IPA_IPL_DIR)	\
-  $(BE_PROMPF_DIR)
+  $(BE_PROMPF_DIR)      
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
@@ -200,6 +200,8 @@ BE_LNOPT_NLX_CXX_SRCS = \
   fusion.cxx			\
   fiz_fuse.cxx			\
   inner_fission.cxx		\
+  simd.cxx			\
+  lnopt_hoistif.cxx		\
   vintr_fis.cxx			\
   ff_utils.cxx			\
   ff_pragmas.cxx		\
@@ -343,7 +345,7 @@ LDIRT = ii_files *.pch
 
 VPATH    =  $(SRC_DIRS)
 
-LCOPTS = $(STD_COMPILE_OPTS)
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 ifneq ($(BUILD_COMPILER), EDG)
 LCOPTS += -fwritable-strings
 endif
@@ -415,9 +417,9 @@ default: first $(TARGETS) last
 #----------------------------------------------------------------------
 first:
 ## verify that wopt.so is up to date
-	cd $(TARG_OPT_DIR) && $(MAKE)
+	$(call submake,$(TARG_OPT_DIR))
 ## verify that ipl.so if up to date
-	cd $(TARG_IPL_DIR) && $(MAKE)
+	$(call submake,$(TARG_IPL_DIR))
 ifeq ($(BUILD_PCH), USE_PCH)
 ## build pch files first so that we can use precompiled headers
 	( $(MAKE) $(.MAKEFLAGS) BUILD_PCH=USE_PCH PCH_OPTS="-LANG:create_pch=lno_pch.pch" lno_pch.pch lno_pch.o )
@@ -457,7 +459,7 @@ lno_pch_files: $(LNOPT_PCH_OBJS) lno_pch.pch
 
 lno.so:  $(LNOPT_OBJS) $(LNOPT_CXX_OBJS) $(LNOPT_PCH_OBJS) \
          $(LNOPT_DSOS) $(BE_LNOPT_DIR)/Exported $(BE_BE_DIR)/so_locations
-	$(C++F) -o lno.so $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
+	$(link.c++f) -o lno.so $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
          $(LNOPT_OBJS) $(LNOPT_CXX_OBJS) $(LNOPT_PCH_OBJS) \
          $(LNOPT_DSOS) $(LLDLIBS) -show
 	if [ ! -l be.so ]; then ln -sf $(TARG_BE)/be.so .; fi
@@ -470,7 +472,7 @@ else
 
 lno.so:	$(LNOPT_OBJS) $(LNOPT_CXX_OBJS) $(BE_LNOPT_DIR)/Exported \
 	$(LNOPT_DSOS) $(BE_BE_DIR)/so_locations
-	$(C++F) -o lno.so $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
+	$(link.c++f) -o lno.so $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
 	$(LNOPT_OBJS) $(LNOPT_CXX_OBJS) $(LNOPT_DSOS) $(LLDLIBS)
 
 wopt.so:	

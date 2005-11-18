@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,7 +56,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <alloca.h>
-#include <list.h>
+#include <list>
 #include "topcode.h"
 #include "gen_util.h"
 #include "isa_decode_gen.h"
@@ -93,7 +97,7 @@ struct state {
 };
 
 static STATE initial_state;
-static list <STATE> all_states;
+static std::list<STATE> all_states;
 
 static const char * const interface[] = {
   "/* ====================================================================",
@@ -356,7 +360,7 @@ void ISA_Decode_End(void)
 //  See interface description.
 /////////////////////////////////////
 {
-  list <STATE>::iterator state_iter;
+  std::list<STATE>::iterator state_iter;
   char buf[1000];
 #define FNAME "targ_isa_decode"
   sprintf (buf, "%s.h", FNAME);

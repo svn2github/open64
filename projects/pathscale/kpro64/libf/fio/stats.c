@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -70,7 +74,7 @@ extern int _pstatfd; 		/* file descriptor of stat pipe */
  *
  * Return value:  0 on normal exit, -1 with errno set on error.
  */
-_ft_stopen(
+int _ft_stopen(
 	unit	*cup,	/* unit pointer */
 	char	*atstr)	/* assign attributes associated with the file or unit */
 {
@@ -175,7 +179,7 @@ _ft_stopen(
  *
  * Return value:  0 on normal exit, -1 with errno set otherwise.
  */
-_ft_stclose(unit *cup)
+int _ft_stclose(unit *cup)
 {
 #ifndef	_STATS_ENABLED
 				/* No procstat support for MPP or SPARC yet */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -105,8 +109,8 @@ __flush_f90(
 #else
 flush_(
 #endif
-	_f_int	*unump,		/* Fortran unit number */
-	_f_int	*istat		/* Optional error status parameter */
+	const unum_t	*unump,		/* Fortran unit number */
+	_f_int	*istat			/* Optional error status parameter */
 )
 {
 	register short	statp;		/* 1 if istat parameter passed */
@@ -163,6 +167,12 @@ flush_(
 			break;
 
 		case FS_TEXT:
+#ifdef KEY
+			if (!(cup->ufp.std->_flags & _IO_NO_WRITES))
+				if (fflush(cup->ufp.std) == EOF)
+					FLUSH_ERROR(errno);
+			break;
+#endif
 		case STD:
 #if	!defined(_LITTLE_ENDIAN)
 			if (FILE_FLAG(cup->ufp.std) & _IOWRT)
@@ -183,7 +193,7 @@ flush_done:
 
 #if	defined(_LITTLE_ENDIAN)
 void
-flush_( _f_int	*unump)
+flush_( const unum_t	*unump)
 {
 	_f_int	istt;		/* Optional error status is present */
 	__flush_f90(unump, &istt);
@@ -203,7 +213,7 @@ flush_stat_8_(
 	_f_int8	*unump,		/* Fortran unit number */
 	_f_int8	*istat)		/* Optional error status present */
 {
-	_f_int	unum;	/* Fortran unit number */
+	unum_t	unum;	/* Fortran unit number */
 	_f_int	istt;	/* Optional error status is present*/
 
 	unum	= *unump;
@@ -215,7 +225,7 @@ flush_stat_8_(
 
 void
 flush_stat_4_(
-	_f_int	*unump,		/* Fortran unit number */
+	unum_t	*unump,		/* Fortran unit number */
 	_f_int	*istat)		/* Optional error status present */
 {
 	__flush_f90(unump, istat);
@@ -228,9 +238,11 @@ flush_stat_4_8_(
 	_f_int	*unump,		/* Fortran unit number */
 	_f_int8	*istat)		/* Optional error status present */
 {
+	unum_t unum;
 	_f_int	istt;	/* Optional error status is present*/
 
-	__flush_f90(unump, &istt);
+	unum = *unump;
+	__flush_f90(&unum, &istt);
 	*istat	= (_f_int8) istt;
 	return;
 }
@@ -240,7 +252,7 @@ flush_stat_8_4_(
 	_f_int8	*unump,		/* Fortran unit number */
 	_f_int	*istat)		/* Optional error status present */
 {
-	_f_int	unum;	/* Fortran unit number */
+	unum_t	unum;	/* Fortran unit number */
 
 	unum	= *unump;
 	__flush_f90(&unum, istat);
@@ -250,9 +262,11 @@ flush_stat_8_4_(
 void
 flush_f90_4_( _f_int	*unump)		/* Fortran unit number */
 {
+	unum_t unum;
 	_f_int	istat;	/* status word */
 
-	__flush_f90(unump, &istat);
+	unum = *unump;
+	__flush_f90(&unum, &istat);
 	return;
 }
 
@@ -260,7 +274,7 @@ void
 flush_f90_8_( _f_int8	*unump)		/* Fortran unit number */
 {
 	_f_int	istat;		/* status word */
-	_f_int	unum;		/* Fortran unit number */
+	unum_t	unum;		/* Fortran unit number */
 
 	unum	= *unump;
 	__flush_f90(&unum, &istat);

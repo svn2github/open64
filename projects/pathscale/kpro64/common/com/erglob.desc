@@ -312,8 +312,8 @@ ERROR_DESC EDESC_Globals[] = {
   /* Olimit support: */
   /* NOTE: Olimit_opt not fully supported */
   { EC_Olimit_Exceeded,	EM_User | ES_WARNING,	RAG_EN_NONE,
-    "Olimit was exceeded on function %s; will not optimize.\n"
-    "\tTo optimize use -OPT:Olimit=0 (off) or -OPT:Olimit=%d",
+    "Olimit was exceeded on function %s; will not perform function-scope optimization.\n"
+    "\tTo still perform function-scope optimization, use -OPT:Olimit=0 (no limit) or -OPT:Olimit=%d",
     2, ET_STRING, ET_INT, 0,0,0,0 },
   { EC_File_Olimit_Exceeded,	EM_User | ES_WARNING,	RAG_EN_NONE,
     "To override Olimit for all functions in file, use -OPT:Olimit=%d\n"

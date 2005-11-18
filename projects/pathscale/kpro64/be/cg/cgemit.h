@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -74,6 +78,13 @@ extern INT Check_If_Should_Align_BB (BB *bb, INT32 curpc);
 extern BOOL CG_emit_asm_dwarf;
 extern BOOL CG_emit_unwind_info;
 extern BOOL CG_emit_unwind_directives;
+#ifdef TARG_X8664
+extern BOOL CG_emit_unwind_info_Set;
+#endif
+#ifdef KEY
+extern BOOL CG_emit_non_gas_syntax;
+extern BOOL CG_inhibit_size_directive;
+#endif
 
 /* Write a qualified name to a file. */
 extern void EMT_Write_Qualified_Name (FILE *f, ST *st);

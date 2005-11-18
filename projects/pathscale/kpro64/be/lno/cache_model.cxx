@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1380,6 +1384,8 @@
 ***        But if we don't block, we model 100!
 **/
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -4257,7 +4263,7 @@ static BOOL Fits_In_The_Cache(const ARRAY_REF* arl,
   for (i = 0; i < nloops; i++) 
     if (max_iters[loops[i]] == UNBOUNDED_ITERS)
       return FALSE; 
-  double* iters = (double*) alloca(sizeof(double)*nloops);
+  int* iters = (int*) alloca(sizeof(int)*nloops);
   for (i = 0; i < nloops; i++) {
     // est_iters and arl_stripsz both divided through by unrolls, so this is
     // fine as is, so est_iters/arl_stripsz is correct.  We wish to see if
@@ -6154,7 +6160,7 @@ static void One_Cache_Model(const ARRAY_REF*   arl,
           if (double(1 << i) > nblock)
             break;
         }
-        Nominal_Blocksize[l] = MIN(double(1 << (i-1)), (MAX_BLOCKSIZE>>1));
+        Nominal_Blocksize[l] = MIN(1 << (i-1), (MAX_BLOCKSIZE>>1));
       }
     }
     

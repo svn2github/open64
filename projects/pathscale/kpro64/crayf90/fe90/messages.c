@@ -1,5 +1,7 @@
 /*
 
+  Copyright 2004 PathScale, Inc.  All Rights Reserved.
+
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -68,6 +70,7 @@ static char USMID[] = "\n@(#)5.0_pl/sources/messages.c	5.9	10/14/99 14:08:59\n";
 # include "globals.h"
 # include "tokens.h"
 # include "sytb.h"
+# include "pathscale_defs.h"
 # include "messages.h"
 
 #  define	 CIF_VERSION	       3    /* Must be defined before         */
@@ -137,7 +140,7 @@ void init_msg_processing (char *argv[])
    if (msg_sys == (nl_catd) -1) {  /* (nl_catd) is msg_sys's type. */
 
 # if defined(_HOST_OS_LINUX)
-      fprintf (stderr, "sgif90 INTERNAL: Unable to open message system.\n");
+      fprintf (stderr, PSC_NAME_PREFIX "f90 INTERNAL: Unable to open message system.\n");
 # else
       fprintf (stderr, "cf90 INTERNAL: Unable to open message system.\n");
 # endif
@@ -1064,7 +1067,7 @@ void output_msg (int				glb_line_num,
          /* added the specific check later for the "out of memory" case.      */
 
 # if defined(_HOST_OS_LINUX)
-         fprintf(stderr, "sgif90 INTERNAL: "
+         fprintf(stderr, PSC_NAME_PREFIX "f90 INTERNAL: "
 #else       
          fprintf(stderr, "cft90 INTERNAL: "
 #endif
@@ -2257,7 +2260,9 @@ static int compare_message_recs(const void	 *p1,
 |*									      *|
 \******************************************************************************/
 
-void fold_f_abort_(int *oper)
+#define FOLD_ABORT fold_f_abort__
+
+void FOLD_ABORT(int *oper)
 
 {
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,7 +59,11 @@
 #include "f90io.h"
 #include "lio.h"
 
-extern	const ic_func	*_iconvtab[LAST_DATA_ED + 1];
+extern	
+#ifndef KEY /* this can cause wrong func being called when compiled by gcc */
+const 
+#endif
+ic_func	*_iconvtab[LAST_DATA_ED + 1];
 extern	const short	_idedtab[DVTYPE_NTYPES];
 
 /*
@@ -124,7 +132,10 @@ _rdfmt(
 	int	_nicverr(	/* Map NICV-type errors to Fortran errors */
 			const int _Nicverror);
 
-	const ic_func	*ngcf;		/* Generic NICV-type conversion func */
+#ifndef KEY /* this can cause wrong func being called when compiled by gcc */
+	const 
+#endif
+	    ic_func	*ngcf;		/* Generic NICV-type conversion func */
 
 	/* If these assertions are not all true, then we're in deep doo-doo. */
 

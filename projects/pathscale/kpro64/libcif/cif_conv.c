@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -61,13 +65,6 @@ static char USMID[] = "@(#) libcif/cif_conv.c	30.22	12/08/96 14:42:46";
 #include <sys/types.h>
 #include <sys/stat.h>
 
-extern char *strdup(const char *s);
-extern char *tempnam(const char *dir, const char *pfx);
-
-extern void exit (int);
-/*
-extern char *getenv (const char *);
-*/
 enum Boolean {False, True};
 
 
@@ -1097,7 +1094,7 @@ static int sortfile (
 	for (i = 0; i < CIF_MAXRECORD; i++) {
 	    patbl[i].aptr = NULL;
 	    patbl[i].psize = 0;
-	    patbl[i].next = NULL;
+	    patbl[i].next = 0;
 	}
 
 	if ((cifp1 = cif_copy_record(cifp)) == NULL)
@@ -1274,7 +1271,7 @@ static int sortfile (
 		patbl[i].aptr = (struct Cif_generic **) NULL;
 	    }
 	    patbl[i].psize = 0;
-	    patbl[i].next = NULL;
+	    patbl[i].next = 0;
 	}
 
 	return (0);
@@ -2584,7 +2581,7 @@ static long get_id (
 
 	    if (global_error_report == True) {
 		(void) fprintf(stderr,
-			       "libcif : Invalid id in cif %s.\nClosest match to %d is %d, so using 0 in output record.\n",
+			       "libcif : Invalid id in cif %s.\nClosest match to %ld is %ld, so using 0 in output record.\n",
 			       global_outfile, id, (idtp->tbl)[mid]);
 	    }
 	    mid = 0;

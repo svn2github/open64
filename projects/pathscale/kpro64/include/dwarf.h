@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -498,6 +502,8 @@ extern "C" {
 
 	                     Rule describes:
 */
+#ifndef TARG_X8664
+
 #define DW_FRAME_CFA_COL 0  /* column used for CFA */
 #define DW_FRAME_REG1	1  /* integer reg 1 */
 #define DW_FRAME_REG2	2  /* integer reg 2 */
@@ -580,6 +586,41 @@ extern "C" {
    be kept in sync with DW_REG_TABLE_SIZE defined in libdwarf.h */
 #define DW_FRAME_LAST_REG_NUM   (DW_FRAME_STATIC_LINK + 1)
 
+#else
+/**********************************************************************
+			TARG_X8664
+***********************************************************************/
+#define DW_FRAME_CFA_COL 0  /* column used for CFA */
+#define DW_FRAME_REG1	1  /* integer reg 1 */
+#define DW_FRAME_REG2	2  /* integer reg 2 */
+#define DW_FRAME_REG3	3  /* integer reg 3 */
+#define DW_FRAME_REG4	4  /* integer reg 4 */
+#define DW_FRAME_REG5	5  /* integer reg 5 */
+#define DW_FRAME_REG6	6  /* integer reg 6 */
+#define DW_FRAME_REG7	7  /* integer reg 7 */
+#define DW_FRAME_REG8	8  /* integer reg 8 */
+#define DW_FRAME_REG9	9  /* integer reg 9 */
+#define DW_FRAME_REG10	10 /* integer reg 10 */
+#define DW_FRAME_REG11	11 /* integer reg 11 */
+#define DW_FRAME_REG12	12 /* integer reg 12 */
+#define DW_FRAME_REG13	13 /* integer reg 13 */
+#define DW_FRAME_REG14	14 /* integer reg 14 */
+#define DW_FRAME_REG15	15 /* integer reg 15 */
+#define DW_FRAME_REG16	16 /* integer reg 16 */
+
+
+#define DW_FRAME_RA_COL	16 /* column recording ra */
+
+#define DW_FRAME_STATIC_LINK 16 /* column recording static link*/
+				/* applicable to up-level      */
+				/* addressing, as in mp code,  */
+				/* pascal, etc */
+
+/* This is the number of columns in the Frame Table. This constant should
+   be kept in sync with DW_REG_TABLE_SIZE defined in libdwarf.h */
+#define DW_FRAME_LAST_REG_NUM   (DW_FRAME_STATIC_LINK + 1)
+
+#endif // !TARG_X8664
 
 /* 
   DW_FRAME_UNDEFINED_VAL and  DW_FRAME_SAME_VAL  are

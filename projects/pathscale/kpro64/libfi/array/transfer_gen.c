@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -154,7 +158,9 @@ i4 *size)
       p = (void *) malloc (nbytes);
       if (p == NULL)
 	ERROR(_LELVL_ABORT, FENOMEMY);
-
+#ifdef KEY
+      memset(p, 0, nbytes);
+#endif
       SET_ADDRESS_IN_DESC(result,p);
     }
 

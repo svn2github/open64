@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,93 +37,26 @@
 
 */
 
-
+#include <math.h>
 #include "cmplrs/host.h"
 #include "cmplx.h"
-#include "z_div.h"
+#include "defalias.h"
 
-dcomplex __powzi(double adreal, double adimag, int32 n)
-/* __powzi = a**n  */
-{
-  double t;
-  dcomplex x, p;
+extern dcomplex __powzi(double adreal, double adimag, int32 n);
+extern dcomplex __powzl(double adreal, double adimag, int64 n);
 
-  p.dreal = 1;
-  p.dimag = 0;
-
-  if(n == 0)
-    return p;
-
-  if(n < 0) {
-    n = -n;
-    x = __zdiv(p.dreal, p.dimag, adreal, adimag);
-  } else {
-    x.dreal = adreal;
-    x.dimag = adimag;
-  }
-
-  for( ; ; ) {
-    if(n & 01) {
-      t = p.dreal * x.dreal - p.dimag * x.dimag;
-      p.dimag = p.dreal * x.dimag + p.dimag * x.dreal;
-      p.dreal = t;
-    }
-    if(n >>= 1) {
-      t = x.dreal * x.dreal - x.dimag * x.dimag;
-      x.dimag = 2 * x.dreal * x.dimag;
-      x.dreal = t;
-    } else {
-      break;
-    }
-  }
-
-  return p;
-}
-
-void pow_zi_(dcomplex *p, dcomplex *a, int32 *b)   /* p = a**b  */
+void pow_zi__(dcomplex *p, dcomplex *a, int32 *b)   /* p = a**b  */
 {
   *p = __powzi(a->dreal, a->dimag,*b);
 }
 
-dcomplex __powzl(double adreal, double adimag, int64 n)
-/* __powzl = a**n  */
-{
-  double t;
-  dcomplex x, p;
+defalias(pow_zi__, pow_zi_);
+defalias(pow_zi__, pow_zif_);
 
-  p.dreal = 1;
-  p.dimag = 0;
-
-  if(n == 0)
-    return p;
-
-  if(n < 0) {
-    n = -n;
-    x = __zdiv(p.dreal, p.dimag, adreal, adimag);
-  } else {
-    x.dreal = adreal;
-    x.dimag = adimag;
-  }
-
-  for( ; ; ) {
-    if(n & 01) {
-      t = p.dreal * x.dreal - p.dimag * x.dimag;
-      p.dimag = p.dreal * x.dimag + p.dimag * x.dreal;
-      p.dreal = t;
-    }
-    if(n >>= 1) {
-      t = x.dreal * x.dreal - x.dimag * x.dimag;
-      x.dimag = 2 * x.dreal * x.dimag;
-      x.dreal = t;
-    } else {
-      break;
-    }
-  }
-
-  return p;
-}
-
-void pow_zl_(dcomplex *p, dcomplex *a, int64 *b)   /* p = a**b  */
+void pow_zl__(dcomplex *p, dcomplex *a, int64 *b)   /* p = a**b  */
 {
   *p = __powzl(a->dreal, a->dimag,*b);
 }
+
+defalias(pow_zl__, pow_zl_);
+defalias(pow_zl__, pow_zlf_);

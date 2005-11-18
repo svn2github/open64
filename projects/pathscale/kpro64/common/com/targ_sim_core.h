@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -48,6 +52,10 @@ extern "C" {
  * used in WHIRL.
  */
 
+#ifdef TARG_X8664
+#define Preg_Offset_Is_X87(n) \
+        ((n) >= X87_Preg_Min_Offset && (n) <= X87_Preg_Max_Offset)
+#endif // x86
 #define Preg_Offset_Is_Int(n) \
         ((n) >= Int_Preg_Min_Offset && (n) <= Int_Preg_Max_Offset)
 #define Preg_Offset_Is_Float(n) \
@@ -55,6 +63,7 @@ extern "C" {
 #define Preg_Offset_Is_Fcc(n) \
         ((n) >= Fcc_Preg_Min_Offset && (n) <= Fcc_Preg_Max_Offset)
 #define Preg_Is_Dedicated(n) (n <= Last_Dedicated_Preg_Offset)
+
 
 /* return whether preg is a return preg */
 extern BOOL Is_Return_Preg (PREG_NUM preg);
@@ -84,7 +93,11 @@ public:
   friend inline BOOL  RETURN_INFO_return_via_first_arg (const RETURN_INFO&);
   friend inline TYPE_ID  RETURN_INFO_mtype (const RETURN_INFO&, INT32);
   friend inline PREG_NUM RETURN_INFO_preg (const RETURN_INFO&, INT32);
-  friend RETURN_INFO Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level);
+  friend RETURN_INFO Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level
+#ifdef TARG_X8664
+  				      , BOOL ff2c_abi = FALSE
+#endif
+				     );
 };
 
 inline mINT8
@@ -136,12 +149,16 @@ extern void Get_Return_Pregs (
  */
 typedef struct {
 	PREG_NUM reg;
+#if defined(TARG_X8664) || defined(TARG_IA32)
+	PREG_NUM reg2;	/* for second register used in passing a struct */
+#endif
 	INT32 start_offset;
 	INT32 size;
 	PREG_NUM vararg_reg;
 } PLOC;
 
 #define PLOC_reg(p)		(p.reg)
+#define PLOC_reg2(p)		(p.reg2)
 #define PLOC_vararg_reg(p)	(p.vararg_reg)
 #define PLOC_offset(p)		(p.start_offset)
 #define PLOC_on_stack(p)	(p.reg == 0)

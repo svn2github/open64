@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -77,17 +81,23 @@ extern float _IEEE_REMAINDER_H_H(float x, float y);
 float
 _IEEE_REMAINDER_H_H(float argx, float argy)
 {
-	union _ieee_flot {
+	union _ieee_float {
 		float		fpword;
 		unsigned int	usword;
 		int		int32;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa	: IEEE_32_MANT_BITS;
+			unsigned int exponent	: IEEE_32_EXPO_BITS;
+			unsigned int sign	: 1;
+#else
 			unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_32_EXPO_BITS;
 			unsigned int mantissa	: IEEE_32_MANT_BITS;
+#endif
 		} parts;
 	};
-	union _ieee_flot x_val, y_val, nearint, tdiv, evenchk, tmp, res;
+	union _ieee_float x_val, y_val, nearint, tdiv, evenchk, tmp, res;
 	unsigned int	even_x = 0X00000001;
 	int xfpclas	= _fpclassifyf(argx);
 	int yfpclas	= _fpclassifyf(argy);
@@ -95,7 +105,7 @@ _IEEE_REMAINDER_H_H(float argx, float argy)
 	y_val.fpword	= argy;
 
 	if ((xfpclas == FP_INFINITE) || yfpclas == FP_ZERO) {
-		union _ieee_flot x_val;
+		union _ieee_float x_val;
 		int	j;
 
 		x_val.fpword	= _HALF_NaN;

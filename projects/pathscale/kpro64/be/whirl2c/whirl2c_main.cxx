@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,7 +46,7 @@
 #include <stdlib.h>		    /* for getenv() */
 #include <unistd.h>		    /* for execv() */
 #include <string.h>		    /* for strcpy(),etc. */
-#include <limits.h>		    /* for PATH_MAX */
+#include <linux/limits.h>	    /* for PATH_MAX */
 #include <errno.h>		    /* for errno, sys_errlist[] */
 #include <stdarg.h>
 #include <cmplrs/rcodes.h>
@@ -163,7 +167,6 @@ Usage (const char *progname)
 } /* Usage */
 
 
-void
 main (INT argc,                   /* Number of command line arguments */
       const char *const argv[],   /* Array of command line arguments */
       const char *const envp[])   /* Array of environment pointers */
@@ -281,7 +284,7 @@ main (INT argc,                   /* Number of command line arguments */
 
     execv (path, new_argv);
     error("%s: fail to execute %s: %s.\n", argv[0], path,
-	  sys_errlist[errno]);
+	  strerror(errno));
     exit(RC_SYSTEM_ERROR);
 } /* main */
 

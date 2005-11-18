@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -36,6 +40,7 @@
 
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/r_imag.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
 
+#include <math.h>
 #include "cmplx.h"
 #include "cmplrs/host.h"
 

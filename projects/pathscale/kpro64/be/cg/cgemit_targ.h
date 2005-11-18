@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -46,9 +50,15 @@ extern void CGEMIT_Relocs_In_Object (
 // add events and relocs as needed for call.
 extern void CGEMIT_Add_Call_Information (
 	OP *op, BB *bb, INT32 PC, pSCNINFO PU_section);
+#if defined(TARG_MIPS) || defined(TARG_X8664)
+extern void
+CGEMIT_Prn_Scn_In_Asm (ST *st, ST *cur_section);
+extern void CGEMIT_Change_Origin_In_Asm (ST *st, INT64 offset);
+#else
 extern void
 CGEMIT_Prn_Scn_In_Asm (ST *st, Elf64_Word scn_type, Elf64_Word scn_flags,
 		       Elf64_Xword scn_entsize, ST *cur_section);
+#endif
 extern void
 CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
 		       const char *scn_name,
@@ -79,3 +89,8 @@ extern void CGEMIT_Weak_Alias (ST *sym, ST *strongsym);
 
 // generate alias directive.
 extern void CGEMIT_Alias (ST *sym, ST *strongsym);
+
+#ifdef TARG_X8664
+extern INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f );
+extern void CGEMIT_Setup_Ctrl_Register( FILE* f );
+#endif

@@ -1,4 +1,4 @@
-/* Copyright (C) 2000 Free Software Foundation, Inc.
+/* Copyright (C) 2000, 2001 Free Software Foundation, Inc.
    Contributed by Jes Sorensen, <Jes.Sorensen@cern.ch>
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -26,19 +26,15 @@ __CTOR_LIST__:
 __DTOR_LIST__:
 	data8	-1
 
-.section .IA_64.unwind
-__EH_FRAME_BEGIN__:
+.section .jcr,"aw","progbits"
+	.align	8
+__JCR_LIST__:
 
 .section .sdata
 	.type dtor_ptr#,@object
 	.size dtor_ptr#,8
 dtor_ptr:
-	data8	__DTOR_LIST__# + 8
-
-	.type segrel_ofs#,@object
-	.size segrel_ofs#,8
-segrel_ofs:
-	data8	@segrel(.Lsegrel_ref#)
+	data8	@gprel(__DTOR_LIST__# + 8)
 
 	/* A handle for __cxa_finalize to manage c++ local destructors.  */
 	.global __dso_handle#
@@ -53,18 +49,8 @@ __dso_handle:
 __dso_handle:
 	data8	0
 #endif
-#ifdef HAVE_GAS_HIDDEN
 	.hidden __dso_handle#
-#endif
 
-	/* The frame object.  */
-	/* ??? How can we rationally keep this size correct?  */
-.section .bss
-	.type frame_object#,@object
-	.size frame_object#,64
-	.align 8
-frame_object:
-	.zero 64
 
 /*
  * Fragment of the ELF _fini routine that invokes our dtor cleanup.
@@ -81,36 +67,34 @@ frame_object:
  */
 .section .fini,"ax","progbits"
 	{ .mlx
-	  movl r2 = @gprel(__do_global_dtors_aux#)
-	  ;;
+	  movl r2 = @pcrel(__do_global_dtors_aux# - 16)
 	}
 	{ .mii
-	  nop.m 0
-	  add r2 = r2, gp
+	  mov r3 = ip
 	  ;;
-	  mov b6 = r2
+	  add r2 = r2, r3
+	  ;;
 	}
-	{ .bbb
+	{ .mib
+	  mov b6 = r2
 	  br.call.sptk.many b0 = b6
 	  ;;
 	}
 
-/*
- * Fragment of the ELF _init routine that sets up the frame info.
- */
+/* Likewise for _init.  */
 
 .section .init,"ax","progbits"
 	{ .mlx
-	  movl r2 = @gprel(__do_frame_setup#)
-	  ;;
+	  movl r2 = @pcrel(__do_jv_register_classes# - 16)
 	}
 	{ .mii
-	  nop.m 0
-	  add r2 = r2, gp
+	  mov r3 = ip
 	  ;;
-	  mov b6 = r2
+	  add r2 = r2, r3
+	  ;;
 	}
-	{ .bbb
+	{ .mib
+	  mov b6 = r2
 	  br.call.sptk.many b0 = b6
 	  ;;
 	}
@@ -188,44 +172,20 @@ __do_global_dtors_aux:
 	{ .mmi
 	  ld8 r15 = [loc0]
 	  ;;
-	  ld8 r16 = [r15], 8
-	  ;;
-	}
-	{ .mfb
-	  cmp.ne p6, p0 = r0, r16
-(p6)	  br.cond.sptk.few 0b
-	}
-	/*
-		if (__deregister_frame_info)
-		  __deregister_frame_info(__EH_FRAME_BEGIN__)
-	*/
-	{ .mmi
-	  mov gp = loc2
-	  ;;
-	  addl r16 = @ltoff(@fptr(__deregister_frame_info#)), gp
-	  addl out0 = @ltoff(__EH_FRAME_BEGIN__#), gp
+	  add r16 = r15, loc2
+	  adds r15 = 8, r15
 	  ;;
 	}
 	{ .mmi
 	  ld8 r16 = [r16]
-	  ld8 out0 = [out0]
-	  ;;
-	}
-	{ .mmi
-	  cmp.ne p7, p0 = r0, r16
-	  ;;
-(p7)	  ld8 r18 = [r16], 8
+	  mov gp = loc2
+	  mov b0 = loc1
 	  ;;
 	}
 	{ .mib
-(p7)	  ld8 gp = [r16]
-(p7)	  mov b6 = r18
-(p7)	  br.call.sptk.many b0 = b6
-	}
-	{ .mii
-	  mov gp = loc2
-	  mov b0 = loc1
+	  cmp.ne p6, p0 = r0, r16
 	  mov ar.pfs = loc3
+(p6)	  br.cond.sptk.few 0b
 	}
 	{ .bbb
 	  br.ret.sptk.many b0
@@ -233,52 +193,41 @@ __do_global_dtors_aux:
 	}
 	.endp	__do_global_dtors_aux#
 
-	.proc	__do_frame_setup#
-__do_frame_setup:
-	/*
-		if (__register_frame_info)
-		  __register_frame_info(__EH_FRAME_BEGIN__)
-	*/
+	.align	16
+	.proc	__do_jv_register_classes#
+__do_jv_register_classes:
+	{ .mlx
+	  alloc loc2 = ar.pfs, 0, 3, 1, 0
+	  movl out0 = @gprel(__JCR_LIST__)
+	  ;;
+	}
+	{ .mmi
+	  addl r14 = @ltoff(@fptr(_Jv_RegisterClasses)), gp
+	  add out0 = out0, gp
+	  ;;
+	}
+	{ .mmi
+	  ld8 r14 = [r14]
+	  ld8 r15 = [out0]
+	  cmp.ne p6, p0 = r0, r0
+	  ;;
+	}
+	{ .mib
+	  cmp.eq.or p6, p0 = r0, r14
+	  cmp.eq.or p6, p0 = r0, r15
+(p6)	  br.ret.sptk.many b0
+	}
 	{ .mii
-	  alloc loc2 = ar.pfs, 0, 3, 2, 0
-	  addl r16 = @ltoff(@fptr(__register_frame_info#)), gp
-	  addl out0 = @ltoff(__EH_FRAME_BEGIN__#), gp
-	}
-	/* frame_object.pc_base = segment_base_offset;
-	   pc_base is at offset 0 within frame_object.  */
-.Lsegrel_ref:
-	{ .mmi
-	  addl out1 = @ltoff(frame_object#), gp
-	  ;;
-	  addl r2 = @gprel(segrel_ofs#), gp
-	  mov r3 = ip
-	  ;;
-	}
-	{ .mmi
-	  ld8 r2 = [r2]
-	  ld8 r16 = [r16]
+	  ld8 r15 = [r14], 8
 	  mov loc0 = b0
-	  ;;
-	}
-	{ .mii
-	  ld8 out1 = [out1]
-	  cmp.ne p7, p0 = r0, r16
-	  sub r3 = r3, r2
-	  ;;
-	}
-	{ .mmi
-	  st8 [out1] = r3 
-(p7)	  ld8 r18 = [r16], 8
 	  mov loc1 = gp
 	  ;;
 	}
-	{ .mfb
-	  ld8 out0 = [out0]  
-	}
 	{ .mib
-(p7)	  ld8 gp = [r16]
-(p7)	  mov b6 = r18
-(p7)	  br.call.sptk.many b0 = b6
+	  ld8 gp = [r14]
+	  mov b6 = r15
+	  br.call.sptk.many b0 = b6
+	  ;;
 	}
 	{ .mii
 	  mov gp = loc1
@@ -289,45 +238,9 @@ __do_frame_setup:
 	  br.ret.sptk.many b0
 	  ;;
 	}
-	.endp	__do_frame_setup#
+	.endp	__do_jv_register_classes#
 
 #ifdef SHARED
 .weak __cxa_finalize#
 #endif
-.weak __deregister_frame_info#
-.weak __register_frame_info#
-
-	.text
-	.align 16
-	.global	__do_frame_setup_aux#
-	.proc	__do_frame_setup_aux#
-__do_frame_setup_aux:
-	/*
-		if (__register_frame_info_aux)
-		  __register_frame_info_aux(__EH_FRAME_END__)
-	*/
-        alloc loc0 = ar.pfs, 0, 3, 1, 0
-        addl r14 = @ltoff(@fptr(__register_frame_info_aux#)), gp
-        mov loc1 = b0
-        ;;
-	// r16 contains the address of a pointer to __EH_FRAME_END__.
-        ld8 out0 = [r16]
-        ld8 r15 = [r14]
-	mov loc2 = gp
-        ;;
-        cmp.eq p6, p7 = 0, r15
-        (p6) br.cond.dptk 1f
-        ld8 r8 = [r15], 8
-        ;;
-        ld8 gp = [r15]
-        mov b6 = r8
-        ;;
-        br.call.sptk.many b0 = b6
-	;;
-1:
-	mov gp = loc2
-        mov ar.pfs = loc0
-        mov b0 = loc1
-        br.ret.sptk.many b0
-	.endp	__do_frame_setup#
-.weak __register_frame_info_aux#
+.weak _Jv_RegisterClasses

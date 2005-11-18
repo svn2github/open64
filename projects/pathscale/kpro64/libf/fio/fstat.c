@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -149,7 +153,7 @@ fstatf90_4_4_8_(_f_int *u, _f_int8 *stbuf)
 	else if (cup->usysfd == -1)
 		retval	= -1;		/* file is not disk-resident */
 	else {
-		n	= fstat64(cup->usysfd, &buf);
+		n	= fstat(cup->usysfd, &buf);
 		if (n < 0)
 			_ferr(&cfs, errno);
 		*stbuf++ = buf.st_dev;
@@ -195,7 +199,7 @@ fstatf90_8_(_f_int8 *u, _f_int8 *stbuf)
 	else if (cup->usysfd == -1)
 		retval	= -1;		/* file is not disk-resident */
 	else {
-		n	= fstat64(cup->usysfd, &buf);
+		n	= fstat(cup->usysfd, &buf);
 		if (n < 0)
 			_ferr(&cfs, errno);
 		*stbuf++ = buf.st_dev;

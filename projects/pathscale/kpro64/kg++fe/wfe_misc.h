@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -74,6 +80,13 @@ typedef enum {
   wfe_stmk_func_pragmas,
   wfe_stmk_func_body,
   wfe_stmk_region_pragmas,
+#ifdef KEY
+  wfe_stmk_region_body,
+  wfe_stmk_region_exits,
+  wfe_stmk_call_region_pragmas,	// not used currently
+  wfe_stmk_call_region_body,
+  wfe_stmk_call_region_exits,	// not used currently
+#endif // KEY
   wfe_stmk_scope,
   wfe_stmk_if_cond,
   wfe_stmk_if_then,
@@ -96,6 +109,11 @@ extern WN*  WFE_Stmt_Top (void);
 extern void WFE_Stmt_Append (WN* wn, SRCPOS srcpos);
 extern WN*  WFE_Stmt_Last (void);
 extern WN*  WFE_Stmt_Pop (WFE_STMT_KIND kind);
+#ifdef KEY
+extern void WFE_Guard_Var_Push (void);
+extern tree WFE_Guard_Var_Pop (void);
+extern tree WFE_Get_Guard_Var (void);
+#endif
 
 extern UINT current_file;
 extern int lineno;

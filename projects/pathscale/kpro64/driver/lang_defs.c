@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,11 +39,14 @@
 
 /* this is used by both table and the driver */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include "pathscale_defs.h"
 #include "lang_defs.h"
+#include "file_utils.h"
 #include "string_utils.h"
 #include "errors.h"
-string ldpath_for_pixie = NULL;
+char *ldpath_for_pixie = NULL;
 /*
  * If you change any of these keys, be sure to also change the keys
  * in the OPTIONS table.
@@ -49,57 +56,36 @@ string ldpath_for_pixie = NULL;
 typedef struct lang_struct {
 	char key;
 	mask_t mask;
-	string name[MAX_LANG_NAMES];	/* list of strings */
+	char *name[MAX_LANG_NAMES];	/* list of strings */
 } lang_info_t;
 /* languages_t is index into language_info array */
 static lang_info_t language_info[] = {
 	{'N',	0x00000000,	{""}},		/* NONE */
 	{'A',	0x0fffffff,	{""}},		/* ALL */
 	{'p',	0x00000001,	{"cpp"}},		/* cpp */
-	{'c',	0x00000002,	{"cc","sgicc","ia64-sgi-linux-sgicc","gcc","c89"}},	/* cc */
-	{'C',	0x00000004,	{"CC","sgiCC","sgi++","g++"}},	/* c++ */
-	{'f',	0x00000008,	{"f77","sgif77","gf77","fort77"}}, /* f77 */
-	{'F',	0x00000010,	{"f90","sgif90"}},		/* f90 */
-	{'a',	0x00000020,	{"as","sgias","gas"}},		/* as */
-	{'l',	0x00000040,	{"ld","sgild"}},		/* ld */
+	{'c',	0x00000002,	{"cc", PSC_NAME_PREFIX "cc", PSC_TARGET "-" PSC_NAME_PREFIX "cc","gcc","c89"}},	/* cc */
+	{'C',	0x00000004,	{"CC", PSC_NAME_PREFIX "CC", PSC_NAME_PREFIX "++","g++"}},	/* c++ */
+	{'f',	0x00000008,	{"f77", PSC_NAME_PREFIX "f77","gf77","fort77"}}, /* f77 */
+	{'F',	0x00000010,	{"f90", PSC_NAME_PREFIX "f90"}},		/* f90 */
+	{'a',	0x00000020,	{"as", PSC_NAME_PREFIX "as","gas"}},		/* as */
+	{'l',	0x00000040,	{"ld", PSC_NAME_PREFIX "ld"}},		/* ld */
 	{'I',	0x80000000,	{"int"}},		/* Internal option */
 };
 
-#if defined(linux) && defined(TARG_IA64)
-#if defined(HOST_IA32) && !defined(NUE)
-#define NAMEPREFIX	"ia64-sgi-linux-"
-#define BINPATH		"/usr/ia64-sgi-linux/bin"
-#define LIBPATH		"/usr/ia64-sgi-linux/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0"
-#define ALTLIBPATH	"/usr/ia64-sgi-linux/ia64-sgi-linux/lib"
-#else
-#define NAMEPREFIX	""
-#define BINPATH		"/usr/bin"
-#define LIBPATH		"/usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0"
-#define ALTLIBPATH	"/usr/lib"
-#endif
-#define PHASEPATH	LIBPATH
-#define GNUPHASEPATH	LIBPATH
-#elif defined(linux) && defined(TARG_IA32)
+#if defined(linux) && defined(KEY)
 #define NAMEPREFIX	""
 #define BINPATH		"/usr/bin"
 #define LIBPATH		"/usr/lib"
 #define ALTLIBPATH	LIBPATH
-#define PHASEPATH	"/usr/ia32-sgi-linux/bin"
-#define GNUPHASEPATH	"/lib"
-#else
-#define NAMEPREFIX	""
-#define BINPATH		"/usr/bin"
-#define LIBPATH		"/usr/lib"
-#define ALTLIBPATH	LIBPATH
-#define PHASEPATH	"/usr/lib32/cmplrs"
-#define GNUPHASEPATH	PHASEPATH
+#define PHASEPATH	"/usr/lib/" PSC_NAME_PREFIX "cc-lib"
+#define GNUPHASEPATH    PHASEPATH
 #endif
 
 typedef struct phase_struct {
 	char key;
 	mask_t mask;
-	string name;
-	string dir;
+	char *name;
+	char *dir;
 	boolean set_ld_library_path; /* true if need to set LD_LIBRARY_PATH
 					to "dir" */
 } phase_info_t;
@@ -173,15 +159,25 @@ static phase_info_t phase_info[] = {
    /* We use 'B' for options to be passed to be via ipacom. */
 
    {'a',  0x0000001000000000LL,	"asm",	PHASEPATH,	FALSE},	/* as */
+#ifdef KEY
+   {'a',  0x0000002000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* gcc */
+#else
    {'a',  0x0000002000000000LL,	"as",	ALTLIBPATH "/../bin",	FALSE},	/* gas */
+#endif
    {'a',  0x0000003000000000LL,	"",	"",		FALSE},	/* any_as */
 
    {'d',  0x0000008000000000LL, "dsm_prelink", PHASEPATH,FALSE},/* dsm_prelink*/
    {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH,TRUE},	/* ipa_link */
    {'l',  0x0000020000000000LL,	"collect2", GNUPHASEPATH,TRUE},	/* collect */
+#if defined(KEY)
+   {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* ld */
+   {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE}, /* ldplus */
+   {'l',  0x01000f0000000000LL,	"",	"",		TRUE},	/* any_ld */
+#else
    {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* ld */
    {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE}, /* ldplus */
    {'l',  0x00000f0000000000LL,	"",	"",		TRUE},	/* any_ld */
+#endif
    {'c',  0x0000100000000000LL, "cord", BINPATH,	FALSE},	/* cord */
    {'x',  0x0000200000000000LL, "pixie", BINPATH,   FALSE}, /* pixie */
    {'x',  0x0000400000000000LL, "prof",  BINPATH,   FALSE}, /* prof */
@@ -200,7 +196,7 @@ mask_t LIB_MASK =
 
 #define MAX_SUFFIXES	8
 typedef struct source_struct {
-	string suffix[MAX_SUFFIXES];	/* list of strings */
+	char *suffix[MAX_SUFFIXES];	/* list of strings */
 } source_info_t;
 /* source_kind_t is index into source_info array */
 static source_info_t source_info[] = {
@@ -235,7 +231,7 @@ boolean ignore_suffix = FALSE;
 
 /* return earliest phase */
 /* (this routine assumes that phases in enumeration are ordered) */
-extern phases_t
+phases_t
 earliest_phase (phases_t a, phases_t b)
 {
 	if (b < a)
@@ -244,7 +240,7 @@ earliest_phase (phases_t a, phases_t b)
 		return a;
 }
 
-extern languages_t
+languages_t
 get_language (char key)
 {
 	languages_t i;
@@ -257,13 +253,13 @@ get_language (char key)
 	return L_NONE;
 }
 
-extern mask_t
+mask_t
 get_language_mask (languages_t i)
 {
 	return language_info[i].mask;
 }
 
-extern phases_t 
+phases_t 
 get_phase (char key)
 {
         int i;
@@ -279,21 +275,21 @@ get_phase (char key)
 	return P_NONE;
 }
 
-extern mask_t
+mask_t
 get_phase_mask (phases_t i)
 {
 	return phase_info[i].mask;
 }
 
 /* return whether the language matches the mask */
-extern boolean
+boolean
 is_matching_language (mask_t lang_mask, languages_t l)
 {
 	return ((lang_mask & language_info[l].mask) != 0);
 }
 
 /* return whether the phase matches the mask */
-extern boolean
+boolean
 is_matching_phase (mask_t phase_mask, phases_t p)
 {
 	if (p == P_cppf_fe) {
@@ -305,8 +301,8 @@ is_matching_phase (mask_t phase_mask, phases_t p)
 }
 
 /* set phase dir for associated mask of phases */
-extern void
-set_phase_dir (mask_t mask, string path)
+void
+set_phase_dir (mask_t mask, char *path)
 {
 	/* handle case of same key for multiple phases */
 	phases_t i;
@@ -319,9 +315,31 @@ set_phase_dir (mask_t mask, string path)
 	}
 }
 
+/* Replace the directory of all matching phases. */
+/* I.e. substitute ("/usr/bin", base, "bin") => base/bin */
+void
+substitute_phase_dirs (char *orig_dir, char *new_dir, char *leaf)
+{
+	phases_t i;
+	char *odir;
+	char *ndir;
+
+	ndir = concat_strings (new_dir, leaf);
+	if (! is_directory (ndir))
+	        return;
+
+	for (i = P_NONE; i < P_LAST; i++) {
+		if (strcmp(orig_dir, phase_info[i].dir) == 0) {
+			phase_info[i].dir = ndir;
+			if (i == P_ld)
+				ldpath_for_pixie = ndir;
+		}
+	}
+}
+
 /* prefix all phase dirs with path */
-extern void
-prefix_all_phase_dirs (mask_t mask, string path)
+void
+prefix_all_phase_dirs (mask_t mask, char *path)
 {
 	phases_t i;
 	for (i = P_NONE; i < P_LAST; i++) {
@@ -332,17 +350,15 @@ prefix_all_phase_dirs (mask_t mask, string path)
 }
 
 /* append all phase dirs with path */
-extern void
-append_all_phase_dirs (mask_t mask, string path)
+void
+append_all_phase_dirs (mask_t mask, char *path)
 {
 	phases_t i;
 	for (i = P_NONE; i < P_LAST; i++) {
 		if ((phase_info[i].mask & mask) != 0) {
 			/* only append if end with preset PHASEPATH */
-			if (same_string(
-				phase_info[i].dir + strlen(phase_info[i].dir) 
-						  - strlen(PHASEPATH), 
-				PHASEPATH)) 
+			if (strcmp(phase_info[i].dir + strlen(phase_info[i].dir) -
+				   strlen(PHASEPATH), PHASEPATH) == 0)
 			{
 				phase_info[i].dir = 
 					concat_strings(phase_info[i].dir, path);
@@ -352,21 +368,21 @@ append_all_phase_dirs (mask_t mask, string path)
 }
 
 /* append path to end of phase dir */
-extern void
-append_phase_dir (phases_t index, string path)
+void
+append_phase_dir (phases_t index, char *path)
 {
 	phase_info[index].dir = concat_strings (phase_info[index].dir, path);
 }
 
 /* return phase path */
-extern string
+char *
 get_phase_dir (phases_t index)
 {
 	return phase_info[index].dir;
 }
 
 /* return LD_LIBRARY_PATH, if needed */
-extern string
+char *
 get_phase_ld_library_path (phases_t index)
 {
     if (phase_info[index].set_ld_library_path)
@@ -376,14 +392,23 @@ get_phase_ld_library_path (phases_t index)
 }
 
 /* return phase name */
-extern string
+char *
 get_phase_name (phases_t index)
 {
 	return phase_info[index].name;
 }
 
+#ifdef KEY
+/* set phase name */
+void
+set_phase_name (phases_t index, char *s)
+{
+	phase_info[index].name = s;
+}
+#endif
+
 /* return path and name of phase */
-extern string
+char *
 get_full_phase_name (phases_t index)
 {
 	buffer_t tmp;
@@ -393,18 +418,25 @@ get_full_phase_name (phases_t index)
 }
 
 /* return language name */
-extern string
+char *
 get_lang_name (languages_t index)
 {
 	return language_info[index].name[0];
 }
 
-extern languages_t
-get_named_language (string name)
+languages_t
+get_named_language (char *name)
 {
-	languages_t i;
+	languages_t i, lang = L_NONE;
 	int j;
-	string p;
+	char *p;
+	char *nomen = strdup(name);
+
+	if ((p = strstr(nomen, "-" PSC_FULL_VERSION))) {
+	    *p = '\0';
+	    name = nomen;
+	}
+	
 	for (i = L_NONE; i < L_LAST; i++) {
 	    for (j = 0; j < MAX_LANG_NAMES && language_info[i].name[j] != NULL; j++) {
 		/* skip if blank string */
@@ -412,26 +444,31 @@ get_named_language (string name)
 			continue;
 		/* look for language name at end of string */
 		p = name+strlen(name)-strlen(language_info[i].name[j]);
-		if (same_string(language_info[i].name[j], p)) {
+		if (strcmp(language_info[i].name[j], p) == 0) {
 			/* as does not invoke ld */
-			if (i == L_as) last_phase = P_any_as;
-			return i;
+			if (i == L_as)
+			    last_phase = P_any_as;
+			lang = i;
+			goto done;
 		}
 	    }
 	}
 	internal_error("unknown language (%s)", name);
-	return L_NONE;
+
+ done:
+	free(nomen);
+	return lang;
 }
 
-extern source_kind_t
-get_source_kind_from_suffix (string suf)
+source_kind_t
+get_source_kind_from_suffix (char *suf)
 {
 	source_kind_t i;
 	int j;
 	if (suf == NULL) return S_o;
 	for (i = S_NONE; i < S_LAST; i++) {
 		for (j = 0; j < MAX_SUFFIXES && source_info[i].suffix[j] != NULL; j++) {
-			if (same_string(source_info[i].suffix[j], suf)) {
+			if (strcmp(source_info[i].suffix[j], suf) == 0) {
 				return i;
 			}
 		}
@@ -440,8 +477,8 @@ get_source_kind_from_suffix (string suf)
 	return S_o;
 }
 
-extern source_kind_t
-get_source_kind (string src)
+source_kind_t
+get_source_kind (char *src)
 {
 	if (ignore_suffix) {
 		if (default_source_kind != S_NONE)
@@ -460,7 +497,7 @@ get_source_kind (string src)
 	return get_source_kind_from_suffix (get_suffix(src));
 }
 
-extern string
+char *
 get_suffix_string (source_kind_t sk)
 {
 	return source_info[sk].suffix[0];
@@ -468,14 +505,14 @@ get_suffix_string (source_kind_t sk)
 
 /* is_object_source_kind returns TRUE only for objects. FALSE everything else
    including archives (.a) and shared objects (.so) */
-extern boolean
-is_object_source_kind(string src)
+boolean
+is_object_source_kind(char *src)
 {
 	int j;
-	string suf = get_suffix(src);
+	char *suf = get_suffix(src);
 	if (suf == NULL) return FALSE;
 	for (j = 0; j < MAX_SUFFIXES && source_info[S_o].suffix[j] != NULL; j++) {
-	    if (same_string(source_info[S_o].suffix[j], suf)) {
+	    if (strcmp(source_info[S_o].suffix[j], suf) == 0) {
 		return TRUE;
 	    }
 
@@ -485,7 +522,7 @@ is_object_source_kind(string src)
 
 
 
-extern languages_t 
+languages_t 
 get_source_lang (source_kind_t sk)
 {
 	switch (sk) {

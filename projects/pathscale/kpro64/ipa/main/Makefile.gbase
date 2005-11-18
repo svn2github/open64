@@ -41,12 +41,15 @@
 #----------------------------------------------------------------------
 include $(COMMONDEFS)
 
+
 ifeq ($(BUILD_TARGET), IA64)
 # need _ version of targ_ia64
 LCDEFS += -D__MIPS_AND_IA64_ELF_H -DTARG_IA64
 LC++DEFS +=  $(LCDEFS)
 endif
 
+LCDEFS += $(STD_COMPILE_OPTS)
+LC++DEFS += $(STD_COMPILE_OPTS)
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
@@ -154,6 +157,7 @@ IPA_COMMON_CXX_SRCS = \
 	ipc_symtab_merge.cxx 	\
 	ipc_type_merge.cxx	\
 	ipc_ty_hash.cxx		\
+	init.cxx		\
 #	ipc_preopt_ipl.cxx	\
 #	ipc_daVinci.cxx		\
 
@@ -164,6 +168,7 @@ IPA_LOCAL_CXX_SRCS = \
 	ipl_summary_print.cxx \
 	ipl_tlog.cxx \
 
+# KEY:  Skip inline_script_parser.cxx.  Added ipa_builtins.cxx.
 IPA_ANALYZE_CXX_SRCS = \
 	ipa_option.cxx		\
 	ip_graph_trav.cxx	\
@@ -193,7 +198,8 @@ IPA_ANALYZE_CXX_SRCS = \
 	ipa_summary.cxx \
 	ipa_nested_pu.cxx \
         ipa_cost.cxx \
-
+	ipa_reorder.cxx \
+	ipa_builtins.cxx
 
 IPA_OPTIMIZE_SRCS = \
 #	ipo_parent.c \
@@ -202,7 +208,6 @@ IPA_OPTIMIZE_SRCS = \
 IPA_OPTIMIZE_CXX_SRCS =	\
 	ipo_main.cxx		\
 	ipo_const.cxx		\
-	ipo_tlog_utils.cxx	\
 	ipo_inline.cxx	 	\
 	ipo_inline_util.cxx	\
 	ipo_clone.cxx		\
@@ -259,9 +264,9 @@ LDIRT = ii_files be.so ipl.so
 
 VPATH    =  $(SRC_DIRS)
 
-LCOPTS = $(STD_COMPILE_OPTS)
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 
-HOSTDEFS += -D_NEW_SYMTAB -D_MERGE_SUMMARY_ST_IDX_=1 -DBACK_END
+HOSTDEFS += -D_NEW_SYMTAB -D_MERGE_SUMMARY_ST_IDX_=1 -DBACK_END -fpic
 
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 LCDEFS += $(HOSTDEFS)
@@ -294,6 +299,11 @@ OPTIMIZER += -Wl,-Bsymbolic
  endif
 endif
 
+# add define HOST_IA64 to choose suitable headfile
+ifeq (${BUILD_ARCH}, IA64)
+HOSTDEFS +=-DHOST_IA64
+endif
+
 GLDOPTS = $(STD_LOAD_OPTS)
 
 
@@ -315,9 +325,9 @@ pure: $(TARGETS_PURE)
 #----------------------------------------------------------------------
 first:
 ## verify that be.so is up to date
-	cd $(TARG_BE_DIR) && $(MAKE)
+	$(call submake,$(TARG_BE_DIR))
 ## verify that ipl.so is up to date
-	cd $(TARG_IPL_DIR) && $(MAKE)
+	$(call submake,$(TARG_IPL_DIR))
 
 last : make_deps
 
@@ -344,7 +354,7 @@ ipl.so: $(TARG_IPL_DIR)/ipl.so
 
 ipa.so: $(IPA_ALL_OBJS) $(BE_BE_DIR)/so_locations \
 		$(TARG_BE_DIR)/be.so be.so $(TARG_IPL_DIR)/ipl.so ipl.so 
-	$(C++F) $(STD_DSO_LOADOPTS) \
+	$(link.c++f) $(STD_DSO_LOADOPTS) \
 		$(IPA_ALL_OBJS) -o $@ $(NONE_OPT) \
 		be.so ipl.so  $(LLDLIBS)
 endif

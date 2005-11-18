@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -964,7 +969,13 @@ STR_RED::Candidate( const CODEREP *cr,
 		    BB_NODE *use_bb ) const
 {
   const OPERATOR opr = cr->Opr();
-
+#ifdef TARG_X8664
+  if (! WOPT_Enable_Aggstr_Reduction) {
+      if (opr == OPR_ADD || opr == OPR_SUB) {
+          return FALSE ;
+      }
+  }
+#endif
   switch ( opr ) {
     case OPR_ADD:
     case OPR_SUB:
@@ -995,6 +1006,10 @@ STR_RED::Candidate( const CODEREP *cr,
       break;
 
     case OPR_NEG:
+#ifdef TARG_X8664 // avoid U4 due to zero-extension to high-order 32 bits
+      if (cr->Dtyp() == MTYPE_U4)
+	return FALSE;
+#endif
       // i*-1
       if (Defined_by_iv_update( use_opnd0, def_opnd0, NULL, use_bb, cr)) {
 	if (Is_cvt_linear(use_opnd0) && 
@@ -1034,11 +1049,17 @@ STR_RED::Candidate_phi_res( const CODEREP *cr,
 {
   CODEREP *def_opnd;
   const OPERATOR opr = cr->Opr();
-
+#ifdef TARG_X8664
+  if (! WOPT_Enable_Aggstr_Reduction) {
+      if (opr == OPR_ADD || opr == OPR_SUB) {
+          return FALSE ;
+      }
+  }
+#endif
   switch ( opr ) {
     case OPR_ADD:
-    case OPR_MPY:
     case OPR_SUB:
+    case OPR_MPY:
       // i*k
       // i+k
       // i-k
@@ -1065,6 +1086,10 @@ STR_RED::Candidate_phi_res( const CODEREP *cr,
       break;
 
     case OPR_NEG:
+#ifdef TARG_X8664 // avoid U4 due to zero-extension to high-order 32 bits
+      if (cr->Dtyp() == MTYPE_U4)
+	return FALSE;
+#endif
       // i*-1
       if ( Defined_by_iv_update_no_def(use_opnd0, def_bb, &def_opnd,
 				       NULL/*invar*/, use_bb, cr))

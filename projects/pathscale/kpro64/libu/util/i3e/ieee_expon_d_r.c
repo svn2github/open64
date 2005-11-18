@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -53,7 +57,7 @@ _IEEE_EXPONENT_D_R(double x)
 	/* Union defined to work with IEEE 128 bit floating point. */
 	union _ieee_ldouble {
 		long double	dword;
-		long		lword[2];
+		long long	lword[2];
 		struct {
 		   unsigned int sign         : 1;
 		   unsigned int exponent     : IEEE_128_EXPO_BITS;
@@ -63,11 +67,17 @@ _IEEE_EXPONENT_D_R(double x)
 	};
 	union _ieee_double {
 		double	dwrd;
-		int	lwrd;
+		long long	lwrd;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa	: IEEE_64_MANT_BITS;
+			unsigned int expon	: IEEE_64_EXPO_BITS;
+			unsigned int sgn	: 1;
+#else
 			unsigned int sgn	: 1;
 			unsigned int expon	: IEEE_64_EXPO_BITS;
 			unsigned int mantissa	: IEEE_64_MANT_BITS;
+#endif
 		} parts;
 	};
 	switch (_fpclassify(x)) {

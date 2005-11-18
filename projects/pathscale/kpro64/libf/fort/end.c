@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,6 +41,9 @@
 
 #pragma ident "@(#) libf/fort/end.c	92.1	06/24/99 10:18:36"
   
+#include <stdlib.h>
+#include "fio.h"
+
 /*
  *	_END	Process Fortran END statement
  */

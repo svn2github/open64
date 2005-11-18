@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,6 +42,7 @@
 #include <math.h>
 #include "moremath.h"
 #include "cmplx.h"
+#include "defalias.h"
 
 complex __cexp(float zreal, float zimag)
 {
@@ -50,7 +55,9 @@ complex __cexp(float zreal, float zimag)
   return r;
 }
 
-void c_exp(complex *r, complex *z)
+complex c_exp_(complex *z)
 {
-  *r = __cexp(z->real, z->imag);
+  return __cexp(z->real, z->imag);
 }
+
+defalias(c_exp_, c_exp);

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -239,7 +243,7 @@ cwh_block_add_to_enclosing_regions(WN_PRAGMA_ID id, ST * st)
 			    id,
 			    st,
 			    0,
-			    NULL,
+			    0,
 			    FALSE);
 }
 
@@ -286,12 +290,12 @@ cwh_block_dump(void)
 
     if (WN_opcode(wn) == OPC_REGION) {
 
-      printf ("      parent %x \n",
+      printf ("      parent %p \n",
 	      block_stack[i].u.region_parent);
     
     } else {
 
-      printf ("      deferred %x, append %x, pdo %d, top pdo %d \n",
+      printf ("      deferred %p, append %p, pdo %d, top pdo %d \n",
 	      block_stack[i].u.block.deferred,
 	      block_stack[i].u.block.append,
 	      block_stack[i].is_parallel_do,
@@ -422,7 +426,7 @@ cwh_block_append_given_block(WN *wn, WN* block)
     if (cwh_block_add_debug_line) 
       WN_Set_Linenum (wn, USRCPOS_srcpos(current_srcpos) );
     else
-      WN_Set_Linenum (wn, NULL);
+      WN_Set_Linenum (wn, 0);
   }
 
   WN_INSERT_BlockLast(block,wn)   ;
@@ -443,7 +447,7 @@ cwh_block_insert_after(WN *wn, WN*in)
   if (cwh_block_add_debug_line) 
     WN_Set_Linenum (in, USRCPOS_srcpos(current_srcpos) );
   else
-    WN_Set_Linenum (in, NULL);
+    WN_Set_Linenum (in, 0);
 
 
   WN_INSERT_BlockAfter(cwh_block_current_inline(), wn, in);

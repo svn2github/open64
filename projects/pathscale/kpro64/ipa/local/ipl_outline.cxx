@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -209,7 +213,7 @@ Find_Split_Point (CONST_TREE_ITER& iter, const WN* last,
 	    ++iter;
     }
 
-    return make_pair ((const WN*) NULL,
+    return std::make_pair ((const WN*) NULL,
 		      size_under_OPR_IF + PU_Weight (bb_cnt, stmt_cnt,
 						     call_cnt));  
 } // Find_Split_Point

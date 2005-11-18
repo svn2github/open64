@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,6 +59,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -439,6 +445,10 @@ extern void Parallel_And_Padding_Phase(PU_Info* current_pu,
 
 BOOL Run_autopar_save; 
 
+#ifdef KEY
+static BOOL Skip_Simd;
+static BOOL Skip_HoistIf;
+#endif /* KEY */
 extern WN * Lnoptimizer(PU_Info* current_pu, 
 			WN *func_nd , DU_MANAGER *du_mgr,
 			ALIAS_MANAGER *alias_mgr)
@@ -448,6 +458,33 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
 
   MEM_POOL_Initialize(&ARA_memory_pool, "ARA_memory_pool", FALSE);
   MEM_POOL_Push(&ARA_memory_pool);
+  
+#ifdef KEY
+  static INT pu_num = 0;
+  
+  if (pu_num < LNO_Simd_Skip_Before 
+      || pu_num > LNO_Simd_Skip_After
+      || pu_num == LNO_Simd_Skip_Equal)
+    Skip_Simd = TRUE;
+  else 
+    Skip_Simd = FALSE;
+  
+  if (pu_num < LNO_HoistIf_Skip_Before 
+      || pu_num > LNO_HoistIf_Skip_After
+      || pu_num == LNO_HoistIf_Skip_Equal)
+    Skip_HoistIf = TRUE;
+  else 
+    Skip_HoistIf = FALSE;
+ 
+  if (pu_num < LNO_Skip_Before 
+      || pu_num > LNO_Skip_After
+      || pu_num == LNO_Skip_Equal)
+    LNO_enabled = FALSE;
+  else 
+    LNO_enabled = TRUE;
+
+  pu_num ++;
+#endif /* KEY */
   
   // early exit test
   if ( !Du_Built(du_mgr) ) {
@@ -1347,6 +1384,14 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
     Inner_Fission(func_nd,Array_Dependence_Graph);
   }
 
+#ifdef TARG_X8664
+  void Simd_Phase(WN* func_nd);
+  if (LNO_Run_Simd && LNO_Run_Simd_Set && !Skip_Simd && Is_Target_SSE2())
+    Simd_Phase(func_nd);
+  void HoistIf_Phase(WN* func_nd);
+  if (LNO_Run_hoistif==TRUE && !Skip_HoistIf)
+    HoistIf_Phase(func_nd);
+#endif /* KEY */
   void Vintrinsic_Fission_Phase(WN* func_nd);
   if (LNO_Run_Vintr==TRUE)
     Vintrinsic_Fission_Phase(func_nd);

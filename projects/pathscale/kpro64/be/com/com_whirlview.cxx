@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -46,7 +50,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <vector.h>    // STL vector.
+#include <vector>
 
 #include "defs.h"
 #include "errors.h"

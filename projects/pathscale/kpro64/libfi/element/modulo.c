@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -54,6 +58,13 @@ extern long double __floorl();
 #endif /* END _REAL16 == 1 */
 #endif /* END _WORD32 */
 #endif /* END NOT __mips and NOT _LITTLE_ENDIAN */
+
+//Bug# 574
+#ifdef KEY
+#define __floor floor
+#define __floorl floorl
+#define __floorf floorf
+#endif
 
 /*
  *    _MODULO_X(A,P)  - called by compiled Fortran programs to calculate

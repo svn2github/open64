@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -526,7 +531,10 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
        Is_True(vsize >= 32, 
 	       ("Unexpected size of result type in EXP_OCCURS::Get_temp_cr"));
     }
-#ifndef TARG_IA32
+#if defined(TARG_IA32) || defined(TARG_X8664)
+    if (vsize <= 32 && dtyp == MTYPE_U8 && (signess & SIGN_0_EXTD)) 
+      dtyp = MTYPE_U4;
+#else
     if (vsize <= 32 && dtyp == MTYPE_I8 && (signess & SIGN_1_EXTD)) 
       dtyp = MTYPE_I4;
 #endif
@@ -1998,18 +2006,43 @@ ETABLE::Remove_real_occurrence(CODEREP *old_cr, STMTREP *stmt)
       Subsumable_by_branch(old_cr))
     return;
 
+#if defined(TARG_IA32) || defined(TARG_X8664)
+  // This case is OK too, do not assert
+  if ((stmt->Op() == OPC_TRUEBR || stmt->Op() == OPC_FALSEBR) &&
+      old_cr->Kind() == CK_OP &&
+      (old_cr->Opr() == OPR_EQ || old_cr->Opr() == OPR_NE ||
+       old_cr->Opr() == OPR_LT || old_cr->Opr() == OPR_LE || 
+       old_cr->Opr() == OPR_GT || old_cr->Opr() == OPR_GE)) 
+    return;
+#endif
+
   // Cannot not find it in urgent, or regular worklist.
   // This is a problem happen in earlier phase
   Is_True(FALSE, ("ETABLE::Remove_real_occurrences, logic error"));
 }
-
-
+//Bug# 1153
+#ifdef KEY
+void
+ETABLE::Mark_phi_live(PHI_NODE *phi)
+{  
+  if ( phi->Live() )
+    return;
+                                                                                                                                                             
+  phi->Set_live();
+  for ( INT pkid = 0; pkid < phi->Size(); pkid++ ) {
+    CODEREP *cr;
+    cr = phi->OPND(pkid);
+    if (cr->Is_flag_set(CF_DEF_BY_PHI))
+      Mark_phi_live(cr->Defphi());
+  }
+}
+#endif
 //  Generate an expr with current versions for the opnd_num-th operand
 //  of the phi_occur node.  Real_occ is the expr with current versions
 //  at the phi result.
 //
 CODEREP *
-ETABLE::Generate_cur_expr(const BB_NODE *bb, INT opnd_num, CODEREP *newcr, BOOL fix_zero_ver) const
+ETABLE::Generate_cur_expr(const BB_NODE *bb, INT opnd_num, CODEREP *newcr, BOOL fix_zero_ver)
 {
   switch (newcr->Kind()) {
   case CK_VAR:
@@ -2080,6 +2113,10 @@ ETABLE::Generate_cur_expr(const BB_NODE *bb, INT opnd_num, CODEREP *newcr, BOOL 
     if (newcr->Ivar_mu_node() != NULL) {
       PHI_NODE *var_phi = Lookup_var_phi(bb, newcr->Ivar_occ()->Aux_id());
       if (var_phi != NULL) {
+#ifdef KEY
+        if (!var_phi->Live())
+          Mark_phi_live(var_phi);
+#endif
 	Is_True(var_phi->Live(),
 		("ETABLE::Generate_cur_expr: encounter dead phi node."));
 	Is_True(var_phi->OPND(opnd_num) != NULL,
@@ -2190,7 +2227,7 @@ CODEREP *
 ETABLE::Alloc_and_generate_cur_expr(const CODEREP *result_expr,
 				    const BB_NODE *bb, INT opnd_num,
 				    MEM_POOL *mpool,
-				    BOOL fix_zero_ver) const
+				    BOOL fix_zero_ver)
 {
   BB_NODE *nth_pred = bb->Nth_pred(opnd_num);
   CODEREP *newcr;
@@ -2713,6 +2750,15 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	      ! cr->Is_ivar_volatile()) {
 	    Check_lftr_non_candidate(stmt, cr->Ilod_base(), cr->Op());
 	    if (same_base && WOPT_Enable_Ivar_PRE && cr->Ivar_has_e_num()) {
+#ifdef KEY
+	      if (WOPT_Enable_Preserve_Mem_Opnds && opc != OPCODE_UNKNOWN &&
+		  (OPCODE_operator(opc) == OPR_ADD ||
+		   OPCODE_operator(opc) == OPR_SUB ||
+		   MTYPE_is_float(OPCODE_rtype(opc)) &&
+		   OPCODE_operator(opc) == OPR_MPY)) {
+	      }
+	      else
+#endif
 	      if (urgent == NOT_URGENT) {
 		Is_Trace(Tracing(),
 			 (TFile,"====== ETABLE::Bottom_up_cr, Append coderep:\n"));
@@ -2850,6 +2896,13 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 			  opr == OPR_GT || opr == OPR_GE) &&
 			 MTYPE_is_float(cr->Dsctyp())) {
 		cr->Set_omitted();
+#if defined(TARG_IA32) || defined(TARG_X8664)
+	      } else if ((opc == OPC_TRUEBR || opc == OPC_FALSEBR) &&
+			 (opr == OPR_EQ || opr == OPR_NE ||
+			  opr == OPR_LT || opr == OPR_LE || 
+			  opr == OPR_GT || opr == OPR_GE)) {
+		cr->Set_omitted();
+#endif
 	      } else if (!urgent) {
 		Is_Trace(Tracing(),
 			 (TFile,"====== ETABLE::Bottom_up_cr, Append coderep:\n"));
@@ -2921,12 +2974,16 @@ EXP_OCCURS::Load_use_cr(ETABLE *etable, CODEREP * old_cr, CODEREP *cr)
     break;
   }
 
+#ifndef KEY
   if (Split_64_Bit_Int_Ops && MTYPE_size_min(cr->Dtyp()) == 32 &&
       MTYPE_size_min(old_cr->Dtyp()) == 64) {
     opc = MTYPE_signed(old_cr->Dtyp()) ? OPC_I8I4CVT : OPC_U8U4CVT;
     new_cr->Init_expr(opc, cr);
     return etable->Rehash_exp(new_cr, etable->Gvn(cr));
   }
+#else
+  cr = cr->Fixup_type(old_cr->Dtyp(), etable->Htable());
+#endif
 
   return cr; // to satisfy the compiler
 }
@@ -2961,8 +3018,14 @@ EXP_WORKLST::Save_use_cr(const ETABLE *etable, CODEREP * old_cr)
 	old_cr->Set_dtyp(MTYPE_U8);
 	old_cr->Set_dsctyp(MTYPE_U4);
 	old_cr->Set_sign_extension_flag();
+#ifndef KEY
       } else if (opc == OPC_U4U8CVT) {
 	old_cr->Set_dtyp(MTYPE_U4);
+#else
+      } else if (opc == OPC_I8I4CVT) {
+	old_cr->Set_dtyp(MTYPE_I8);
+	old_cr->Set_dsctyp(MTYPE_I4);
+#endif
 	old_cr->Set_sign_extension_flag();
       } else {
 	Is_True(FALSE, ("EXP_WORKLST::Save_use_cr: wrong type conversion"));
@@ -3131,7 +3194,8 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
 				     EXP_OCCURS        *occur,
 				     OCCUR_REPLACEMENT *repl,
 				     const BOOL         replacing_istr_base,
-				     UINT               depth)
+				     UINT               depth,
+				     OPCODE		opc)
 {
   // Recursive_rehash_and_replace - Recursively descend the tree, and
   // at each occurrence of the expression node occur->Occurrence(), replace 
@@ -3200,7 +3264,7 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
     // process the base expression
     if (replacing_istr_base) {
       expr = Recursive_rehash_and_replace(x->Istr_base(), occur, repl, 
-					  FALSE, depth+1);
+					  FALSE, depth+1, x->Op());
       if (expr) {
 	need_rehash = TRUE;
 	cr->Set_istr_base(expr);
@@ -3211,7 +3275,7 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
     }
     else {
       expr = Recursive_rehash_and_replace(x->Ilod_base(), occur, repl,
-					  FALSE, depth+1);
+					  FALSE, depth+1, x->Op());
       if (expr) {
 	need_rehash = TRUE;
 	cr->Set_ilod_base(expr);
@@ -3223,7 +3287,7 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
     if (x->Opr() == OPR_MLOAD) {
       // process the MLOAD size expression
       expr = Recursive_rehash_and_replace(x->Mload_size(), occur, repl,
-					  FALSE, depth+1);
+					  FALSE, depth+1, x->Op());
       if (expr) {
         need_rehash = TRUE;
         cr->Set_mload_size(expr);
@@ -3238,9 +3302,19 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
     if (Pre_kind() == PK_VNFRE)
        VNFRE::replace_occurs(original_cr, x, occur->Stmt());
 
+#ifdef KEY
+    if (WOPT_Enable_Preserve_Mem_Opnds && opc != OPCODE_UNKNOWN &&
+	MTYPE_is_float(OPCODE_rtype(opc)) &&
+	(OPCODE_operator(opc) == OPR_ADD ||
+	 OPCODE_operator(opc) == OPR_MPY ||
+	 OPCODE_operator(opc) == OPR_SUB)) {
+    }
+    else
+#endif
     if (Pre_kind() == PK_EPRE && 
 	all_kids_are_terminal &&
 	OPERATOR_is_scalar_iload (x->Opr()) &&
+	x->Dtyp() != MTYPE_M &&
 	! x->Is_ivar_volatile()) {
       // need_rehash must be TRUE
       Is_Trace(Tracing(),
@@ -3293,7 +3367,7 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
       cr->Set_usecnt(0);
       for  (INT32 i = 0; i < x->Kid_count(); i++) {
 	expr = Recursive_rehash_and_replace(x->Opnd(i), occur, repl,
-					    FALSE, depth+1);
+					    FALSE, depth+1, x->Op());
 	if (expr) {
 	  need_rehash = TRUE;
 	  cr->Set_opnd(i, expr);
@@ -3366,7 +3440,8 @@ CODEREP *
 ETABLE::Rehash_and_replace(CODEREP           *x,
 			   EXP_OCCURS        *occur,
 			   OCCUR_REPLACEMENT *repl,
-			   const BOOL         replacing_istr_base)
+			   const BOOL         replacing_istr_base,
+			   OPCODE	      parent_opc)
 {
   // Top level routine, traversing down from coderep level.
   //
@@ -3392,7 +3467,7 @@ ETABLE::Rehash_and_replace(CODEREP           *x,
 
      VNFRE::delete_occurs(occur, x);
      new_cr = 
-       Recursive_rehash_and_replace(x, occur, repl, replacing_istr_base, 0);
+       Recursive_rehash_and_replace(x, occur, repl, replacing_istr_base, 0, parent_opc);
 
      if (set_cr_id)
        x->Set_coderep_id(0);
@@ -3400,7 +3475,7 @@ ETABLE::Rehash_and_replace(CODEREP           *x,
   else
   {
     new_cr = 
-      Recursive_rehash_and_replace(x, occur, repl, replacing_istr_base, 0);
+      Recursive_rehash_and_replace(x, occur, repl, replacing_istr_base, 0, parent_opc);
   }
   return new_cr;
 
@@ -3439,7 +3514,8 @@ ETABLE::Replace_occurs(EXP_OCCURS *occur, OCCUR_REPLACEMENT *repl)
   if (OPCODE_is_fake(stmt->Op()))
   {
     CODEREP *new_opnd = 
-       Rehash_and_replace(stmt->Rhs()->Opnd(kid_num), occur, repl, FALSE);
+       Rehash_and_replace(stmt->Rhs()->Opnd(kid_num), occur, repl, FALSE,
+	       		  stmt->Rhs()->Op());
 
     Is_True(new_opnd != NULL, 
 	    ("ETABLE::Replace_occurs: RHS opnd must rehash"));
@@ -3454,7 +3530,8 @@ ETABLE::Replace_occurs(EXP_OCCURS *occur, OCCUR_REPLACEMENT *repl)
 	  !stmt->Iv_update()     ||
 	  stmt->Rhs()->E_num() != occur->Occurrence()->E_num())
       { 
-	CODEREP *new_rhs = Rehash_and_replace(stmt->Rhs(), occur, repl, FALSE);
+	CODEREP *new_rhs = Rehash_and_replace(stmt->Rhs(), occur, repl, FALSE,
+					      stmt->Op());
 
 	Is_True(new_rhs != NULL,
 		("ETABLE::Replace_occurs: RHS must need rehash"));
@@ -3480,7 +3557,7 @@ ETABLE::Replace_occurs(EXP_OCCURS *occur, OCCUR_REPLACEMENT *repl)
 	CODEREP *x = Alloc_stack_cr(stmt->Lhs()->Extra_ptrs_used());
 	x->Copy(*stmt->Lhs());
 	x->Set_usecnt(0);
-	x = Rehash_and_replace(x, occur, repl, TRUE);
+	x = Rehash_and_replace(x, occur, repl, TRUE, stmt->Op());
 
 	Is_True(x == NULL || x->Istr_base() != NULL,
 		("ETABLE::Replace_occurs: Istr_base should not be NULL"));
@@ -3494,7 +3571,8 @@ ETABLE::Replace_occurs(EXP_OCCURS *occur, OCCUR_REPLACEMENT *repl)
 	Is_True(stmt->Opr() == OPR_MSTORE, 
 		("ETABLE::Replace_occurs: bad stmt_kid_num"));
 	CODEREP *new_mstore_size = 
-	  Rehash_and_replace(stmt->Lhs()->Mstore_size(), occur, repl, FALSE);
+	  Rehash_and_replace(stmt->Lhs()->Mstore_size(), occur, repl, FALSE,
+		  	     stmt->Lhs()->Op());
 	Is_True(new_mstore_size != NULL,
 		("ETABLE::Replace_occurs: Mstore_size() must not be NULL"));
 
@@ -3510,7 +3588,8 @@ ETABLE::Replace_occurs(EXP_OCCURS *occur, OCCUR_REPLACEMENT *repl)
   {
     Is_True(kid_num == 0, ("ETABLE::Replace_occurs: wrong stmt_kid_num"));
     CODEREP *new_ilod_base = 
-       Rehash_and_replace(stmt->Rhs()->Ilod_base(), occur, repl, FALSE);
+       Rehash_and_replace(stmt->Rhs()->Ilod_base(), occur, repl, FALSE, 
+	       		  stmt->Rhs()->Op());
 
     Is_True(new_ilod_base != NULL,
 	    ("ETABLE::Replace_occurs: new_ilod_base must not be NULL"));
@@ -3519,7 +3598,8 @@ ETABLE::Replace_occurs(EXP_OCCURS *occur, OCCUR_REPLACEMENT *repl)
   else
   {
     Is_True(kid_num == 0, ("ETABLE::Replace_occurs: wrong stmt_kid_num"));
-    CODEREP *new_rhs = Rehash_and_replace(stmt->Rhs(), occur, repl, FALSE);
+    CODEREP *new_rhs = Rehash_and_replace(stmt->Rhs(), occur, repl, FALSE, 
+	    				  stmt->Op());
     Is_True(new_rhs != NULL,
 	    ("ETABLE::Replace_occurs: new_rhs must not be NULL"));
     stmt->Set_rhs(new_rhs);
@@ -3613,7 +3693,7 @@ ETABLE::No_replace(EXP_OCCURS *occur, BOOL dont_rehash)
   if (OPCODE_is_fake(stmt->Op())) {
     CODEREP *new_opnd =
       Rehash_and_replace(stmt->Rhs()->Opnd(kid_num),
-			 &original_occur, &repl, FALSE);
+			 &original_occur, &repl, FALSE, stmt->Rhs()->Op());
     Is_True(new_opnd != NULL,
 	    ("ETABLE::No_replace: RHS opnd must need rehash"));
     stmt->Rhs()->Set_opnd(kid_num, new_opnd );
@@ -3622,7 +3702,8 @@ ETABLE::No_replace(EXP_OCCURS *occur, BOOL dont_rehash)
     switch (kid_num) {
     case 0: {
       CODEREP *new_rhs = 
-	 Rehash_and_replace(stmt->Rhs(), &original_occur, &repl, FALSE);
+	 Rehash_and_replace(stmt->Rhs(), &original_occur, &repl, FALSE, 
+		 	    stmt->Rhs()->Op());
       Is_True(new_rhs != NULL,
 	      ("ETABLE::No_replace: RHS must need rehash"));
       stmt->Set_rhs(new_rhs);
@@ -3636,7 +3717,7 @@ ETABLE::No_replace(EXP_OCCURS *occur, BOOL dont_rehash)
       CODEREP *x = Alloc_stack_cr(stmt->Lhs()->Extra_ptrs_used());
       x->Copy(*stmt->Lhs());
       x->Set_usecnt(0);
-      x = Rehash_and_replace(x, &original_occur, &repl, TRUE);
+      x = Rehash_and_replace(x, &original_occur, &repl, TRUE, stmt->Op());
 
       Is_True(x==NULL || x->Istr_base() != NULL,
 	      ("ETABLE::No_replace: Istr_base must not be NULL"));
@@ -3651,7 +3732,7 @@ ETABLE::No_replace(EXP_OCCURS *occur, BOOL dont_rehash)
 	      ("ETABLE::No_replace: bad stmt_kid_num"));
       CODEREP *new_mstore_size =
 	 Rehash_and_replace(stmt->Lhs()->Mstore_size(),
-			    &original_occur, &repl, TRUE);
+			    &original_occur, &repl, TRUE, stmt->Lhs()->Op());
       Is_True(new_mstore_size != NULL,
 	      ("ETABLE::No_replace: Mstore_size() must not be NULL"));
       stmt->Lhs()->Set_mstore_size(new_mstore_size);
@@ -3666,7 +3747,7 @@ ETABLE::No_replace(EXP_OCCURS *occur, BOOL dont_rehash)
     Is_True(kid_num == 0, ("ETABLE::No_replace: wrong stmt_kid_num"));
     CODEREP *new_ilod_base =
       Rehash_and_replace(stmt->Rhs()->Ilod_base(),
-			 &original_occur, &repl, TRUE);
+			 &original_occur, &repl, TRUE, stmt->Rhs()->Op());
 
     Is_True(new_ilod_base != NULL,
 	    ("ETABLE::No_replace: new_ilod_base must not be NULL"));
@@ -3675,7 +3756,7 @@ ETABLE::No_replace(EXP_OCCURS *occur, BOOL dont_rehash)
   else {
     Is_True(kid_num == 0, ("ETABLE::No_replace: wrong stmt_kid_num"));
     CODEREP *new_rhs = 
-       Rehash_and_replace(stmt->Rhs(), &original_occur, &repl, TRUE);
+       Rehash_and_replace(stmt->Rhs(), &original_occur, &repl, TRUE, stmt->Op());
     Is_True(new_rhs != NULL,
 	    ("ETABLE::No_replace: new_rhs must not be NULL"));
     stmt->Set_rhs(new_rhs);
@@ -4105,6 +4186,11 @@ EXP_WORKLST::Prune_phi_phi_pred(ETABLE *etable)
 void
 ETABLE::Perform_PRE_optimization(void)
 {
+  if (Tracing()) {
+    fprintf( TFile, "%sProgram before Expr PRE:\n%s",
+             DBar, DBar );
+    Cfg()->Print(TFile);
+  }
 
   _str_red = CXX_NEW(STR_RED(Cfg(), Htable(), _etable_pool, _tracing),
 		     _etable_pool);

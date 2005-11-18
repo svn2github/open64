@@ -1,0 +1,9 @@
+Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+
+This directory contains the binutils-2.14 linker that is modified to handle
+IPA.  The IPA enhencements are extracted from the corresponding files in
+cygnus_20000828.  "20030612" reflects the fact that binutils-2.14 was released
+on June 12, 2003.
+
+PathScale
+6/24/2003

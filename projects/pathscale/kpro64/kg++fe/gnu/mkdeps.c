@@ -1,5 +1,5 @@
 /* Dependency generator for Makefile fragments.
-   Copyright (C) 2000 Free Software Foundation, Inc.
+   Copyright (C) 2000, 2001 Free Software Foundation, Inc.
    Contributed by Zack Weinberg, Mar 2000
 
 This program is free software; you can redistribute it and/or modify it
@@ -24,12 +24,20 @@ Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "system.h"
 #include "mkdeps.h"
 
-static const char *munge	PARAMS ((const char *));
-static const char *base_name	PARAMS ((const char *));
+/* Keep this structure local to this file, so clients don't find it
+   easy to start making assumptions.  */
+struct deps
+{
+  const char **targetv;
+  unsigned int ntargets;	/* number of slots actually occupied */
+  unsigned int targets_size;	/* amt of allocated space - in words */
 
-#ifndef OBJECT_SUFFIX
-# define OBJECT_SUFFIX ".o"
-#endif
+  const char **depv;
+  unsigned int ndeps;
+  unsigned int deps_size;
+};
+
+static const char *munge	PARAMS ((const char *));
 
 /* Given a filename, quote characters in that filename which are
    significant to Make.  Note that it's not possible to quote all such
@@ -64,15 +72,14 @@ munge (filename)
 	  break;
 
 	case '$':
-	  /* '$' is quoted by doubling it. This can mishandle things
-	     like "$(" but there's no easy fix.  */
+	  /* '$' is quoted by doubling it.  */
 	  len++;
 	  break;
 	}
     }
 
   /* Now we know how big to make the buffer.  */
-  buffer = malloc (len + 1);
+  buffer = xmalloc (len + 1);
 
   for (p = filename, dst = buffer; *p; p++, dst++)
     {
@@ -99,33 +106,6 @@ munge (filename)
   return buffer;
 }
 
-/* Given a pathname, calculate the non-directory part.  This always
-   knows how to handle Unix-style pathnames, and understands VMS and
-   DOS paths on those systems.  */
-
-/* Find the base name of a (partial) pathname FNAME.
-   Returns a pointer into the string passed in.
-   Accepts Unix (/-separated) paths on all systems,
-   DOS and VMS paths on those systems.  */
-
-static const char *
-base_name (fname)
-     const char *fname;
-{
-  const char *s = fname;
-  const char *p;
-#if defined (HAVE_DOS_BASED_FILE_SYSTEM)
-  if (ISALPHA (s[0]) && s[1] == ':') s += 2;
-  if ((p = strrchr (s, '\\'))) s = p + 1;
-#elif defined VMS
-  if ((p = strrchr (s, ':'))) s = p + 1; /* Skip device.  */
-  if ((p = strrchr (s, ']'))) s = p + 1; /* Skip directory.  */
-  if ((p = strrchr (s, '>'))) s = p + 1; /* Skip alternate (int'n'l) dir.  */
-#endif
-  if ((p = strrchr (s, '/'))) s = p + 1;
-  return s;
-}
-
 /* Public routines.  */
 
 struct deps *
@@ -133,15 +113,15 @@ deps_init ()
 {
   struct deps *d = (struct deps *) xmalloc (sizeof (struct deps));
 
-  /* Allocate space for the vectors now.  */
+  /* Allocate space for the vectors only if we need it.  */
 
-  d->targetv = (const char **) xmalloc (2 * sizeof (const char *));
-  d->depv = (const char **) xmalloc (8 * sizeof (const char *));
+  d->targetv = 0;
+  d->depv = 0;
 
   d->ntargets = 0;
-  d->targets_size = 2;
+  d->targets_size = 0;
   d->ndeps = 0;
-  d->deps_size = 8;
+  d->deps_size = 0;
 
   return d;
 }
@@ -152,52 +132,78 @@ deps_free (d)
 {
   unsigned int i;
 
-  for (i = 0; i < d->ntargets; i++)
-    free ((PTR) d->targetv[i]);
+  if (d->targetv)
+    {
+      for (i = 0; i < d->ntargets; i++)
+	free ((PTR) d->targetv[i]);
+      free (d->targetv);
+    }
 
-  for (i = 0; i < d->ndeps; i++)
-    free ((PTR) d->depv[i]);
+  if (d->depv)
+    {
+      for (i = 0; i < d->ndeps; i++)
+	free ((PTR) d->depv[i]);
+      free (d->depv);
+    }
 
-  free (d->targetv);
-  free (d->depv);
   free (d);
 }
 
+/* Adds a target T.  We make a copy, so it need not be a permanent
+   string.  QUOTE is true if the string should be quoted.  */
 void
-deps_add_target (d, t)
+deps_add_target (d, t, quote)
      struct deps *d;
      const char *t;
+     int quote;
 {
-  t = munge (t);  /* Also makes permanent copy.  */
-
   if (d->ntargets == d->targets_size)
     {
-      d->targets_size *= 2;
+      d->targets_size = d->targets_size * 2 + 4;
       d->targetv = (const char **) xrealloc (d->targetv,
 			     d->targets_size * sizeof (const char *));
     }
 
+  if (quote)
+    t = munge (t);  /* Also makes permanent copy.  */
+  else
+    t = xstrdup (t);
+
   d->targetv[d->ntargets++] = t;
 }
 
+/* Sets the default target if none has been given already.  An empty
+   string as the default target in interpreted as stdin.  The string
+   is quoted for MAKE.  */
 void
-deps_calc_target (d, t)
+deps_add_default_target (d, tgt)
      struct deps *d;
-     const char *t;
+     const char *tgt;
 {
-  char *o, *suffix;
+  /* Only if we have no targets.  */
+  if (d->ntargets)
+    return;
 
-  t = base_name (t);
-  o = (char *) alloca (strlen (t) + 8);
-
-  strcpy (o, t);
-  suffix = strrchr (o, '.');
-  if (suffix)
-    strcpy (suffix, OBJECT_SUFFIX);
+  if (tgt[0] == '\0')
+    deps_add_target (d, "-", 1);
   else
-    strcat (o, OBJECT_SUFFIX);
+    {
+#ifndef TARGET_OBJECT_SUFFIX
+# define TARGET_OBJECT_SUFFIX ".o"
+#endif
+      const char *start = lbasename (tgt);
+      char *o = (char *) alloca (strlen (start) + strlen (TARGET_OBJECT_SUFFIX) + 1);
+      char *suffix;
 
-  deps_add_target (d, o);
+      strcpy (o, start);
+      
+      suffix = strrchr (o, '.');
+      if (!suffix)
+        suffix = o + strlen (o);
+      strcpy (suffix, TARGET_OBJECT_SUFFIX);
+      
+      deps_add_target (d, o, 1);
+    }
 }
 
 void
@@ -209,7 +215,7 @@ deps_add_dep (d, t)
 
   if (d->ndeps == d->deps_size)
     {
-      d->deps_size *= 2;
+      d->deps_size = d->deps_size * 2 + 8;
       d->depv = (const char **)
 	xrealloc (d->depv, d->deps_size * sizeof (const char *));
     }
@@ -269,7 +275,7 @@ deps_write (d, fp, colmax)
 }
   
 void
-deps_dummy_targets (d, fp)
+deps_phony_targets (d, fp)
      const struct deps *d;
      FILE *fp;
 {
@@ -277,6 +283,7 @@ deps_dummy_targets (d, fp)
 
   for (i = 1; i < d->ndeps; i++)
     {
+      putc ('\n', fp);
       fputs (d->depv[i], fp);
       putc (':', fp);
       putc ('\n', fp);

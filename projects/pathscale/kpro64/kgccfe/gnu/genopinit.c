@@ -1,23 +1,29 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
 /* Generate code to initialize optabs from machine description.
    Copyright (C) 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000 Free Software Foundation, Inc.
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
 
 #include "hconfig.h"
@@ -46,14 +52,17 @@ Boston, MA 02111-1307, USA.  */
 
    If $N is present in the pattern, it means the two modes must be consecutive
    widths in the same mode class (e.g, QImode and HImode).  $I means that
-   only integer modes should be considered for the next mode, and $F means
-   that only float modes should be considered.
+   only full integer modes should be considered for the next mode, and $F
+   means that only float modes should be considered.
+   $P means that both full and partial integer modes should be considered.
+
+   $V means to emit 'v' if the first mode is a MODE_FLOAT mode.
 
    For some optabs, we store the operation by RTL codes.  These are only
    used for comparisons.  In that case, $c and $C are the lower-case and
    upper-case forms of the comparison, respectively.  */
 
-const char * const optabs[] =
+static const char * const optabs[] =
 { "extendtab[$B][$A][0] = CODE_FOR_$(extend$a$b2$)",
   "extendtab[$B][$A][1] = CODE_FOR_$(zero_extend$a$b2$)",
   "fixtab[$A][$B][0] = CODE_FOR_$(fix$F$a$I$b2$)",
@@ -62,20 +71,29 @@ const char * const optabs[] =
   "fixtrunctab[$A][$B][1] = CODE_FOR_$(fixuns_trunc$F$a$I$b2$)",
   "floattab[$B][$A][0] = CODE_FOR_$(float$I$a$F$b2$)",
   "floattab[$B][$A][1] = CODE_FOR_$(floatuns$I$a$F$b2$)",
-  "add_optab->handlers[$A].insn_code = CODE_FOR_$(add$a3$)",
-  "sub_optab->handlers[$A].insn_code = CODE_FOR_$(sub$a3$)",
-  "smul_optab->handlers[$A].insn_code = CODE_FOR_$(mul$a3$)",
+  "add_optab->handlers[$A].insn_code = CODE_FOR_$(add$P$a3$)",
+  "addv_optab->handlers[(int) $A].insn_code =\n\
+    add_optab->handlers[(int) $A].insn_code = CODE_FOR_$(add$F$a3$)",
+  "addv_optab->handlers[(int) $A].insn_code = CODE_FOR_$(addv$I$a3$)",
+  "sub_optab->handlers[$A].insn_code = CODE_FOR_$(sub$P$a3$)",
+  "subv_optab->handlers[(int) $A].insn_code =\n\
+    sub_optab->handlers[(int) $A].insn_code = CODE_FOR_$(sub$F$a3$)",
+  "subv_optab->handlers[(int) $A].insn_code = CODE_FOR_$(subv$I$a3$)",
+  "smul_optab->handlers[$A].insn_code = CODE_FOR_$(mul$P$a3$)",
+  "smulv_optab->handlers[(int) $A].insn_code =\n\
+    smul_optab->handlers[(int) $A].insn_code = CODE_FOR_$(mul$F$a3$)",
+  "smulv_optab->handlers[(int) $A].insn_code = CODE_FOR_$(mulv$I$a3$)",
   "umul_highpart_optab->handlers[$A].insn_code = CODE_FOR_$(umul$a3_highpart$)",
   "smul_highpart_optab->handlers[$A].insn_code = CODE_FOR_$(smul$a3_highpart$)",
   "smul_widen_optab->handlers[$B].insn_code = CODE_FOR_$(mul$a$b3$)$N",
   "umul_widen_optab->handlers[$B].insn_code = CODE_FOR_$(umul$a$b3$)$N",
-  "sdiv_optab->handlers[$A].insn_code = CODE_FOR_$(div$I$a3$)",
+  "sdiv_optab->handlers[$A].insn_code = CODE_FOR_$(div$a3$)",
+  "sdivv_optab->handlers[(int) $A].insn_code = CODE_FOR_$(div$V$I$a3$)",
   "udiv_optab->handlers[$A].insn_code = CODE_FOR_$(udiv$I$a3$)",
   "sdivmod_optab->handlers[$A].insn_code = CODE_FOR_$(divmod$a4$)",
   "udivmod_optab->handlers[$A].insn_code = CODE_FOR_$(udivmod$a4$)",
   "smod_optab->handlers[$A].insn_code = CODE_FOR_$(mod$a3$)",
   "umod_optab->handlers[$A].insn_code = CODE_FOR_$(umod$a3$)",
-  "flodiv_optab->handlers[$A].insn_code = CODE_FOR_$(div$F$a3$)",
   "ftrunc_optab->handlers[$A].insn_code = CODE_FOR_$(ftrunc$F$a2$)",
   "and_optab->handlers[$A].insn_code = CODE_FOR_$(and$a3$)",
   "ior_optab->handlers[$A].insn_code = CODE_FOR_$(ior$a3$)",
@@ -91,11 +109,19 @@ const char * const optabs[] =
   "smax_optab->handlers[$A].insn_code = CODE_FOR_$(max$F$a3$)",
   "umin_optab->handlers[$A].insn_code = CODE_FOR_$(umin$I$a3$)",
   "umax_optab->handlers[$A].insn_code = CODE_FOR_$(umax$I$a3$)",
-  "neg_optab->handlers[$A].insn_code = CODE_FOR_$(neg$a2$)",
-  "abs_optab->handlers[$A].insn_code = CODE_FOR_$(abs$a2$)",
+  "neg_optab->handlers[$A].insn_code = CODE_FOR_$(neg$P$a2$)",
+  "negv_optab->handlers[(int) $A].insn_code =\n\
+    neg_optab->handlers[(int) $A].insn_code = CODE_FOR_$(neg$F$a2$)",
+  "negv_optab->handlers[(int) $A].insn_code = CODE_FOR_$(negv$I$a2$)",
+  "abs_optab->handlers[$A].insn_code = CODE_FOR_$(abs$P$a2$)",
+  "absv_optab->handlers[(int) $A].insn_code =\n\
+    abs_optab->handlers[(int) $A].insn_code = CODE_FOR_$(abs$F$a2$)",
+  "absv_optab->handlers[(int) $A].insn_code = CODE_FOR_$(absv$I$a2$)",
   "sqrt_optab->handlers[$A].insn_code = CODE_FOR_$(sqrt$a2$)",
   "sin_optab->handlers[$A].insn_code = CODE_FOR_$(sin$a2$)",
   "cos_optab->handlers[$A].insn_code = CODE_FOR_$(cos$a2$)",
+  "exp_optab->handlers[$A].insn_code = CODE_FOR_$(exp$a2$)",
+  "log_optab->handlers[$A].insn_code = CODE_FOR_$(log$a2$)",
   "strlen_optab->handlers[$A].insn_code = CODE_FOR_$(strlen$a$)",
   "one_cmpl_optab->handlers[$A].insn_code = CODE_FOR_$(one_cmpl$a2$)",
   "ffs_optab->handlers[$A].insn_code = CODE_FOR_$(ffs$a2$)",
@@ -109,6 +135,7 @@ const char * const optabs[] =
   "cbranch_optab->handlers[$A].insn_code = CODE_FOR_$(cbranch$a4$)",
   "cmov_optab->handlers[$A].insn_code = CODE_FOR_$(cmov$a6$)",
   "cstore_optab->handlers[$A].insn_code = CODE_FOR_$(cstore$a4$)",
+  "push_optab->handlers[$A].insn_code = CODE_FOR_$(push$a1$)",
   "reload_in_optab[$A] = CODE_FOR_$(reload_in$a$)",
   "reload_out_optab[$A] = CODE_FOR_$(reload_out$a$)",
   "movstr_optab[$A] = CODE_FOR_$(movstr$a$)",
@@ -134,9 +161,9 @@ gen_insn (insn)
   /* See if NAME matches one of the patterns we have for the optabs we know
      about.  */
 
-  for (pindex = 0; pindex < sizeof optabs / sizeof optabs[0]; pindex++)
+  for (pindex = 0; pindex < ARRAY_SIZE (optabs); pindex++)
     {
-      int force_float = 0, force_int = 0;
+      int force_float = 0, force_int = 0, force_partial_int = 0;
       int force_consec = 0;
       int matches = 1;
 
@@ -160,9 +187,14 @@ gen_insn (insn)
 	      case 'I':
 		force_int = 1;
 		break;
+	      case 'P':
+                force_partial_int = 1;
+                break;
 	      case 'F':
 		force_float = 1;
 		break;
+	      case 'V':
+                break;
 	      case 'c':
 		for (op = 0; op < NUM_RTX_CODE; op++)
 		  {
@@ -195,8 +227,14 @@ gen_insn (insn)
 			break;
 
 		    if (*p == 0
-			&& (! force_int || mode_class[i] == MODE_INT)
-			&& (! force_float || mode_class[i] == MODE_FLOAT))
+			&& (! force_int || mode_class[i] == MODE_INT 
+			    || mode_class[i] == MODE_VECTOR_INT)
+		        && (! force_partial_int
+                            || mode_class[i] == MODE_INT
+                            || mode_class[i] == MODE_PARTIAL_INT
+			    || mode_class[i] == MODE_VECTOR_INT)
+			&& (! force_float || mode_class[i] == MODE_FLOAT 
+			    || mode_class[i] == MODE_VECTOR_FLOAT))
 		      break;
 		  }
 
@@ -207,7 +245,7 @@ gen_insn (insn)
 		else
 		  m2 = i, np += strlen (GET_MODE_NAME(i));
 
-		force_int = force_float = 0;
+		force_int = force_partial_int = force_float = 0;
 		break;
 
 	      default:
@@ -221,7 +259,7 @@ gen_insn (insn)
 	break;
     }
 
-  if (pindex == sizeof optabs / sizeof optabs[0])
+  if (pindex == ARRAY_SIZE (optabs))
     return;
 
   /* We found a match.  If this pattern is only conditionally present,
@@ -243,6 +281,10 @@ gen_insn (insn)
 	  case '(':  case ')':
 	  case 'I':  case 'F':  case 'N':
 	    break;
+	  case 'V':
+            if (GET_MODE_CLASS (m1) == MODE_FLOAT)
+              printf ("v");
+            break;
 	  case 'a':
 	    for (np = GET_MODE_NAME(m1); *np; np++)
 	      putchar (TOLOWER (*np));
@@ -283,9 +325,9 @@ main (argc, argv)
   progname = "genopinit";
 
   if (argc <= 1)
-    fatal ("No input file name.");
+    fatal ("no input file name");
 
-  if (init_md_reader (argv[1]) != SUCCESS_EXIT_CODE)
+  if (init_md_reader_args (argc, argv) != SUCCESS_EXIT_CODE)
     return (FATAL_EXIT_CODE);
 
   printf ("/* Generated automatically by the program `genopinit'\n\
@@ -295,11 +337,14 @@ from the machine description file `md'.  */\n\n");
   printf ("#include \"system.h\"\n");
   printf ("#include \"rtl.h\"\n");
   printf ("#include \"flags.h\"\n");
+#ifdef SGI_MONGOOSE
   printf ("#include \"insn-flags.h\"\n");
   printf ("#include \"insn-codes.h\"\n");
+#endif
   printf ("#include \"insn-config.h\"\n");
   printf ("#include \"recog.h\"\n");
   printf ("#include \"expr.h\"\n");
+  printf ("#include \"optabs.h\"\n");
   printf ("#include \"reload.h\"\n\n");
 
   printf ("void\ninit_all_optabs ()\n{\n");

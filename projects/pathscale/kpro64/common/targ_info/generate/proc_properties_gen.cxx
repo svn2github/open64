@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,8 +56,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
-#include <list.h>
-#include <vector.h>
+#include <list>
+#include <vector>
 #include "gen_util.h"
 #include "targ_proc.h"
 #include "proc_properties_gen.h"
@@ -62,7 +66,7 @@
 struct proc_property {
   const char* name;         // Name given for documentation and debugging
   int bit_position;         // bit postion in flag word
-  vector <bool> members;    // set of opcodes that have this property
+  std::vector<bool> members;    // set of opcodes that have this property
 };
 
 // Define special bit position values to indicate properties which
@@ -74,7 +78,7 @@ enum {
 
 
 static int proc_property_count = 0;  // How many properties?
-static list<PROC_PROPERTY> properties; // All the properties
+static std::list<PROC_PROPERTY> properties; // All the properties
 
 static const char * const interface[] = {
   "/* ====================================================================",
@@ -115,7 +119,7 @@ PROC_PROPERTY PROC_Property_Create( const char* name )
   proc_property_count++;
 
   result->name = name;
-  result->members = vector <bool> (PROCESSOR_count, false);
+  result->members = std::vector<bool> (PROCESSOR_count, false);
 
   properties.push_back(result);
 
@@ -145,7 +149,7 @@ void PROC_Properties_End(void)
 //  See interface description.
 /////////////////////////////////////
 {
-  list<PROC_PROPERTY>::iterator isi;
+  std::list<PROC_PROPERTY>::iterator isi;
   int bit_pos;
   char filename[1000];
   sprintf (filename, "targ_proc_properties.h");

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -60,8 +64,13 @@
 union _hflt {
 	_f_real4	flt;
 	struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+		unsigned int flt1	: 31;
+		unsigned int sign	: 1;
+#else
 		unsigned int sign	: 1;
 		unsigned int flt1	: 31;
+#endif
 	} parts;
 };
 

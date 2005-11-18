@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -319,6 +323,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -356,6 +362,9 @@ typedef HASH_TABLE<WN*,INT> WN2INT;
 #define Reserved_Int_Regs	10	// r0, r1, r12, r13, loop ub, fudge (5)
 #endif
 #ifdef TARG_IA32
+#define Reserved_Int_Regs	3	// $sp, $bp, fudge(1)
+#endif
+#ifdef TARG_X8664
 #define Reserved_Int_Regs	3	// $sp, $bp, fudge(1)
 #endif
 
@@ -619,11 +628,25 @@ LOOP_MODEL::Model(WN* wn,
     _issue_rate = 2.0;
     _base_fp_regs = 14;
     _num_mem_units = 1.0;
+#ifdef TARG_MIPS
+  } else if (Is_Target_Sb1()) {
+    _issue_rate = 4.0;
+    _base_fp_regs = 18;
+    _num_mem_units = 2.0;
+#endif
+#ifdef TARG_IA64
   } else if (Is_Target_Itanium()) {
     // Lmt_DevWarn(1, ("TODO: Tune LNO machine model parameters for IA-64"));
     _issue_rate = 6.0;  // 2 bundles with 3 instructions each
     _base_fp_regs = 32; // (8+1)*2+6
     _num_mem_units = 2.0;
+#endif
+#ifdef TARG_X8664
+  } else if (Is_Target_Opteron()) {
+    _issue_rate = 3.0;
+    _base_fp_regs = 16;
+    _num_mem_units = 2.0;
+#endif
   } else {
     Lmt_DevWarn(1, ("TODO: LNO machine model parameters are just wild guesses"));
     _issue_rate = 4.0;
@@ -1142,7 +1165,7 @@ LOOP_MODEL::Try_Unroll(BOOL* can_be_unrolled, INT inner, INT num_loops,
       }
       new_arl->Remove_Cse(inner, Max_Cse_Dist, Find_Step(_wn,inner));
       new_arl->Mark_Invariants(inner);
-      Try_Unroll(can_be_unrolled,inner,num_loops,unroll_factors,l+1,prod,
+      Try_Unroll(can_be_unrolled,inner,num_loops,unroll_factors,l+1,int(prod),
 		&can_allocate, try_further_unroll, new_arl);
       if ((u == 1) && !can_allocate) {
 	*can_reg_allocate = FALSE;  // don't let people above unroll further
@@ -1241,7 +1264,12 @@ LOOP_MODEL::Evaluate(INT inner, INT num_loops, INT* unroll_factors,
   // MINVAR_MAGIC_COEFF
   //   limit the potential benefit to 20% of the ideal cycle count
   
+#ifndef KEY 
 #define MINVAR_MAGIC_COEFF (0.20 * _loop_rcycles_unroll_by[Max_Unroll_Prod-1])
+#else
+  // Match octane cc MINVAR_MAGIC_COEFF
+#define MINVAR_MAGIC_COEFF 0.20
+#endif
   double minvar_benefit = MINVAR_MAGIC_COEFF
                         * Inner_Invariant_Refs 
                         * unroll_product
@@ -1336,6 +1364,12 @@ LOOP_MODEL::Evaluate(INT inner, INT num_loops, INT* unroll_factors,
   double resource_cycles_minus_spills =
     MAX(_loop_rcycles_unroll_by[unroll_product-1],
         MAX(MEM_rcycles_minus_spills, issue_limit_minus_spills));
+#ifdef KEY
+  // Match Octane CC and it seems logical to subtract minvar_benefit
+  // from resource_cycles_minus_spills because it is going to be compared with 
+  // resource_cycles below.
+  resource_cycles_minus_spills -= minvar_benefit;
+#endif
 
   // is memory or int still a problem, if not, we shouldn't unroll anymore
   if (!(*can_reg_allocate) ||
@@ -1521,6 +1555,11 @@ Multiply_Will_Be_Strength_Reduced(WN* wn)
   if (WN_operator(ldid) != OPR_LDID) {
     return FALSE;
   }
+#ifdef TARG_X8664
+  // multiply is always strength reduced if on of the operands is 
+  // a constant.
+  return TRUE;
+#endif /* TARG_X8664 */
   for (WN* parent = ldid; parent; parent = LWN_Get_Parent(parent)) {
     if (WN_operator(parent) == OPR_DO_LOOP) {
       WN* idx_var = WN_index(parent);
@@ -1582,7 +1621,15 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
       oper == OPR_RND   ||
       oper == OPR_CEIL  || 
       oper == OPR_TRUNC || 
-      oper == OPR_FLOOR) {
+#ifdef TARG_X8664
+      // skip float to float floor
+      oper == OPR_FLOOR &&
+        !(desc == MTYPE_F4 && rtype == MTYPE_F4) &&
+        !(desc == MTYPE_F8 && rtype == MTYPE_F8)
+#else
+      oper == OPR_FLOOR
+#endif
+      ) {
     if (OP_Cycles_Cvt(WN_opcode(wn), resource_count, num_instr) == -1) {
     	return -1;
     }
@@ -1639,6 +1686,11 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
       else if (oper == OPR_RSQRT) {
         *num_instr += LNOTARGET_FP_Rsqrt_Res(resource_count, rtype);
       } 
+#ifdef TARG_X8664
+      else if (oper == OPR_FLOOR) {
+        *num_instr += LNOTARGET_FP_Floor_Res(resource_count, rtype);
+      } 
+#endif
       else {
         return -1;
       }
@@ -1712,11 +1764,22 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
         case OPR_TAS: 
           (*num_instr)++; 
           break;
+#ifdef TARG_X8664
+        case OPR_SELECT:
+          *num_instr += LNOTARGET_Int_Select_Res(resource_count, rtype);
+          break;
+#else
         case OPR_SELECT:
           *num_instr += LNOTARGET_Int_Select_Res(resource_count);
           break;
+#endif /* TARG_X8664 */
         case OPR_CVTL:
+#ifdef TARG_X8664
+          *num_instr += LNOTARGET_Int_Cvtl_Res(resource_count, rtype, 
+					       WN_cvtl_bits(wn));
+#else
           *num_instr += LNOTARGET_Int_Cvtl_Res(resource_count);
+#endif /* TARG_X8664 */
           break;
         case OPR_NEG: 
           *num_instr += LNOTARGET_Int_Neg_Res(resource_count, double_word);
@@ -1726,17 +1789,41 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
           break;
         case OPR_PAREN: 
           break;
+#ifdef TARG_X8664
+        case OPR_BNOT: 
+          *num_instr += LNOTARGET_Int_Bnot_Res(resource_count, rtype);
+          break;
+        case OPR_LNOT: 
+          *num_instr += LNOTARGET_Int_Lnot_Res(resource_count, rtype);
+          break;
+#else
         case OPR_BNOT: 
           *num_instr += LNOTARGET_Int_Bnot_Res(resource_count);
           break;
         case OPR_LNOT: 
           *num_instr += LNOTARGET_Int_Lnot_Res(resource_count);
           break;
+#endif /* TARG_X8664 */
         case OPR_MPY: 
+#ifdef TARG_X8664
+	  // we always strength reduce if one of the operands is an integer constant.
+	  if (WN_operator_is(WN_kid0(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Mult_Str_Red_Res(resource_count, 
+							 rtype, 
+							 WN_const_val(WN_kid0(wn)));
+	  else if (WN_operator_is(WN_kid1(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Mult_Str_Red_Res(resource_count, 
+							 rtype, 
+							 WN_const_val(WN_kid1(wn)));
+	  else
+            *num_instr += LNOTARGET_Int_Mult_Res(resource_count, double_word);
+	  break;
+#else						 
           if (!Multiply_Will_Be_Strength_Reduced(wn)) {
             *num_instr += LNOTARGET_Int_Mult_Res(resource_count, double_word);
             break;
           }
+#endif /* TARG_X8664 */
           // if multiply will be strength reduced
           // fall through to OPR_ADD
         case OPR_ADD: 
@@ -1745,8 +1832,107 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
         case OPR_SUB:  
           *num_instr += LNOTARGET_Int_Sub_Res(resource_count, double_word);
           break;
+#ifdef TARG_X8664
         case OPR_DIV: 
+	  if (WN_operator_is(WN_kid1(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Div_Str_Red_Res(resource_count, 
+							rtype, 
+							WN_const_val(WN_kid1(wn)));
+	  else
+	    *num_instr += LNOTARGET_Int_Div_Res(resource_count, rtype);
+          break;
+        case OPR_MOD: 
+	  if (WN_operator_is(WN_kid1(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Mod_Str_Red_Res(resource_count, 
+							rtype, 
+							WN_const_val(WN_kid1(wn)));
+	  else
+	    *num_instr += LNOTARGET_Int_Mod_Res(resource_count, rtype);
+          break;
+        case OPR_REM: 
+	  if (WN_operator_is(WN_kid1(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Rem_Str_Red_Res(resource_count, 
+							rtype, 
+							WN_const_val(WN_kid1(wn)));
+	  else
+	    *num_instr += LNOTARGET_Int_Rem_Res(resource_count, rtype);
+          break;
+        case OPR_DIVREM: 
+	  if (WN_operator_is(WN_kid1(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_DivRem_Str_Red_Res(resource_count, 
+							   rtype, 
+							   WN_const_val(WN_kid1(wn)));
+	  else
+	    *num_instr += LNOTARGET_Int_DivRem_Res(resource_count, rtype);
+          break;
+        case OPR_MAX:
+          *num_instr += LNOTARGET_Int_Min_Res(resource_count, rtype);
+	  break;
+        case OPR_MIN:
+          *num_instr += LNOTARGET_Int_Max_Res(resource_count, rtype);
+	  break;
+        case OPR_MINMAX:
+          *num_instr += LNOTARGET_Int_Min_Max_Res(resource_count, rtype);
+          break;
+        case OPR_BAND: 
+	  if (WN_operator_is(WN_kid0(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Band_Str_Red_Res(resource_count, 
+							 rtype, 
+							 WN_const_val(WN_kid0(wn)));
+	  else if (WN_operator_is(WN_kid1(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Band_Str_Red_Res(resource_count, 
+							 rtype, 
+							 WN_const_val(WN_kid1(wn)));	  
+	  else
+	    *num_instr += LNOTARGET_Int_Band_Res(resource_count, rtype);
+          break;
+        case OPR_BIOR: 
+	  if (WN_operator_is(WN_kid0(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Bior_Str_Red_Res(resource_count, 
+							 rtype, 
+							 WN_const_val(WN_kid0(wn)));
+	  else if (WN_operator_is(WN_kid1(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Bior_Str_Red_Res(resource_count, 
+							 rtype, 
+							 WN_const_val(WN_kid1(wn)));	  
+	  else
+	    *num_instr += LNOTARGET_Int_Bior_Res(resource_count, rtype);
+          break;
+        case OPR_BNOR: 
+          *num_instr += LNOTARGET_Int_Bnor_Res(resource_count, rtype);
+          break;
+        case OPR_BXOR: 
+	  if (WN_operator_is(WN_kid0(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Bxor_Str_Red_Res(resource_count, 
+							 rtype, 
+							 WN_const_val(WN_kid0(wn)));
+	  else if (WN_operator_is(WN_kid1(wn), OPR_INTCONST))
+	    *num_instr += LNOTARGET_Int_Bxor_Str_Red_Res(resource_count, 
+							 rtype, 
+							 WN_const_val(WN_kid1(wn)));	  
+	  else
+	    *num_instr += LNOTARGET_Int_Bxor_Res(resource_count, rtype);
+          break;
+        case OPR_LAND: 
+          *num_instr += LNOTARGET_Int_Land_Res(resource_count, rtype);
+          break;
+        case OPR_CAND: 
+          *num_instr += LNOTARGET_Int_Cand_Res(resource_count, rtype);
+          break;
+        case OPR_LIOR: 
+          *num_instr += LNOTARGET_Int_Lior_Res(resource_count, rtype);
+          break;
+        case OPR_CIOR: 
+          *num_instr += LNOTARGET_Int_Cior_Res(resource_count, rtype);
+          break;
+#else
+        case OPR_DIV: 
+#ifndef TARG_MIPS
           *num_instr += LNOTARGET_Int_Div_Res(resource_count, double_word);
+#else
+          *num_instr += LNOTARGET_Int_Div_Res(resource_count, double_word, 
+					      MTYPE_signed(WN_desc(wn)));
+#endif
           break;
         case OPR_MOD: 
           *num_instr += LNOTARGET_Int_Mod_Res(resource_count, double_word);
@@ -1787,6 +1973,7 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
         case OPR_CIOR: 
           *num_instr += LNOTARGET_Int_Cior_Res(resource_count);
           break;
+#endif /* TARG_X8664 */
         case OPR_SHL: 
           *num_instr += LNOTARGET_Int_Shl_Res(resource_count, double_word); 
           break;
@@ -1796,6 +1983,26 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
         case OPR_LSHR: 
           *num_instr += LNOTARGET_Int_Lshr_Res(resource_count, double_word); 
           break;
+#ifdef TARG_X8664
+        case OPR_EQ:  
+          *num_instr += LNOTARGET_Int_Eq_Res(resource_count, desc); 
+          break;
+        case OPR_NE:  
+          *num_instr += LNOTARGET_Int_Ne_Res(resource_count, desc); 
+          break;
+        case OPR_GT:  
+          *num_instr += LNOTARGET_Int_Gt_Res(resource_count, desc); 
+          break;
+        case OPR_GE: 
+          *num_instr += LNOTARGET_Int_Ge_Res(resource_count, desc); 
+          break;
+        case OPR_LT: 
+          *num_instr += LNOTARGET_Int_Lt_Res(resource_count, desc); 
+          break;
+        case OPR_LE: 
+          *num_instr += LNOTARGET_Int_Le_Res(resource_count, desc); 
+          break;
+#else
         case OPR_EQ:  
           *num_instr += LNOTARGET_Int_Eq_Res(resource_count); 
           break;
@@ -1814,6 +2021,7 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
         case OPR_LE: 
           *num_instr += LNOTARGET_Int_Le_Res(resource_count); 
           break;
+#endif /* TARG_X8664 */
         case OPR_LDA:
           *num_instr += LNOTARGET_Int_Lda_Res(resource_count); 
           break;
@@ -3069,7 +3277,15 @@ LAT_DIRECTED_GRAPH16::Add_Vertices_Op_Edges_Rec(VINDEX16 store,
       oper == OPR_RND   ||
       oper == OPR_CEIL  || 
       oper == OPR_TRUNC || 
-      oper == OPR_FLOOR) {
+#ifdef TARG_X8664
+      // skip float to float floor
+      oper == OPR_FLOOR &&
+        !(desc == MTYPE_F4 && rtype == MTYPE_F4) &&
+        !(desc == MTYPE_F8 && rtype == MTYPE_F8)
+#else
+      oper == OPR_FLOOR
+#endif
+      ) {
     op_latency = LNOTARGET_Cvt_Lat(WN_opcode(wn));
     if (op_latency == -1) {
       return -1;
@@ -3131,6 +3347,11 @@ LAT_DIRECTED_GRAPH16::Add_Vertices_Op_Edges_Rec(VINDEX16 store,
       else if (oper == OPR_RSQRT) {
         op_latency = LNOTARGET_FP_Rsqrt_Lat(rtype);
       } 
+#ifdef TARG_X8664
+      else if (oper == OPR_FLOOR) {
+        op_latency = LNOTARGET_FP_Floor_Lat(rtype);
+      } 
+#endif
       else {
         return -1;
       }
@@ -4011,11 +4232,25 @@ REGISTER_MODEL::Evaluate(WN* inner,
     issue_rate = 2;
     base_fp_regs = 14;
     num_mem_units = 1;
+#ifdef TARG_MIPS
+  } else if (Is_Target_Sb1()) {
+    issue_rate = 4;
+    base_fp_regs = 18;
+    num_mem_units = 2;
+#endif
+#ifdef TARG_X8664
+  } else if (Is_Target_Opteron()) {
+    issue_rate = 3;
+    base_fp_regs = 16;
+    num_mem_units = 2;
+#endif
+#ifdef TARG_IA64
   } else if (Is_Target_Itanium()) {
     Lmt_DevWarn(1, ("TODO: Tune LNO machine model parameters for IA-64"));
     issue_rate = 6;  // 2 bundles with 3 instructions each
     base_fp_regs = 32; // (8+1)*2+6
     num_mem_units = 2;
+#endif
   } else {
     Lmt_DevWarn(1, ("TODO: LNO machine model parameters are just wild guesses"));
     issue_rate = 4;

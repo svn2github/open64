@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <elf.h>
 #include <sys/elf_whirl.h>
 #include <errno.h>
@@ -146,6 +152,8 @@ IP_READ_pu_infos (IP_FILE_HDR& s)
     }
 
     SUMMARY_FILE_HEADER *file_header = IP_FILE_HDR_file_header (s);
+    UINT vv=file_header->Get_version_number();
+    UINT vv2=IPA_SUMMARY_REVISION;
 
     if (file_header &&
         file_header->Get_version_number() != IPA_SUMMARY_REVISION) {
@@ -714,6 +722,7 @@ IP_READ_pu (IPA_NODE* node, IP_FILE_HDR& s, INT p_index, MEM_POOL *pool)
     if (PU_Info_state (pu, WT_FEEDBACK) == Subsect_InMem) {
 	const Pu_Hdr* pu_hdr = (const Pu_Hdr*)
 	    PU_Info_feedback_ptr (pu);
+#ifdef KEY
 	Cur_PU_Feedback = CXX_NEW (FEEDBACK (PU_Info_tree_ptr (pu),
 					     pool,
 					     pu_hdr->pu_num_inv_entries,
@@ -721,8 +730,23 @@ IP_READ_pu (IPA_NODE* node, IP_FILE_HDR& s, INT p_index, MEM_POOL *pool)
 					     pu_hdr->pu_num_loop_entries,
 					     pu_hdr->pu_num_scircuit_entries,
 					     pu_hdr->pu_num_call_entries,
+					     pu_hdr->pu_num_icall_entries,
+					     pu_hdr->pu_num_switch_entries,
+					     pu_hdr->pu_num_value_entries,
+					     pu_hdr->runtime_fun_address),
+				   pool);
+#else
+	Cur_PU_Feedback = CXX_NEW (FEEDBACK (PU_Info_tree_ptr (pu),
+					     pool,
+					     pu_hdr->pu_num_inv_entries,
+					     pu_hdr->pu_num_br_entries,
+					     pu_hdr->pu_num_loop_entries,
+					     pu_hdr->pu_num_scircuit_entries,
+					     pu_hdr->pu_num_call_entries,
+					     pu_hdr->pu_num_icall_entries,
 					     pu_hdr->pu_num_switch_entries),
 				   pool);
+#endif
 	Read_Feedback_Info (Cur_PU_Feedback, PU_Info_tree_ptr (pu), *pu_hdr);
 	// FB_PU_Has_Feedback = TRUE;
 	IPA_Has_Feedback = TRUE;

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -187,7 +191,7 @@ struct AUXST_TAB {
    AUXST_PTR_ARRAY *Auxst_table;
 }; 
 
-extern AUXST_TAB *Auxst_tab = NULL;
+extern AUXST_TAB *Auxst_tab;
 
 struct AUXST_TAB_SYMTAB_ACCESS;
 

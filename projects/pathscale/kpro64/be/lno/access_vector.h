@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1060,7 +1064,7 @@ public:
 
   ACCESS_ARRAY(UINT16 num_vec,UINT16 nest_depth,MEM_POOL *mem_pool); 
   ACCESS_ARRAY(UINT16 num_vec,ACCESS_VECTOR* dim[],MEM_POOL *mem_pool); 
-  void Print(FILE *fp, BOOL is_bound=FALSE) const;
+  void Print(FILE *fp, BOOL is_bound=FALSE) const __attribute__((weak));
   ACCESS_ARRAY() { Too_Messy = TRUE; _dim = NULL; _num_vec=0;}
   ACCESS_ARRAY(const ACCESS_ARRAY *a, MEM_POOL *pool); 
   mUINT16 Non_Const_Loops() const;

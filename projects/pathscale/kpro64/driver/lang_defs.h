@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -168,35 +172,41 @@ extern mask_t LIB_MASK;		/* mask for all libraries */
 extern mask_t get_language_mask (languages_t i);
 extern mask_t get_phase_mask (phases_t i);
 
+/* Replace the directory of all matching phases. */
+extern void substitute_phase_dirs (char *orig_dir, char *new_dir, char *leaf);
 /* set phase dir for given mask */
-extern void set_phase_dir (mask_t mask, string path);
+extern void set_phase_dir (mask_t mask, char *path);
 /* prefix with path all phase dirs that match the mask */
-extern void prefix_all_phase_dirs (mask_t mask, string path);
+extern void prefix_all_phase_dirs (mask_t mask, char *path);
 /* append with path all phase dirs that match the mask */
-extern void append_all_phase_dirs (mask_t mask, string path);
+extern void append_all_phase_dirs (mask_t mask, char *path);
 /* append path to end of phase dir */
-extern void append_phase_dir (phases_t index, string path);
+extern void append_phase_dir (phases_t index, char *path);
 /* return phase path */
-extern string get_phase_dir (phases_t index);
+extern char *get_phase_dir (phases_t index);
 /* return LD_LIBRARY_PATH, if needed */
-extern string get_phase_ld_library_path (phases_t index);
+extern char *get_phase_ld_library_path (phases_t index);
 /* return phase name */
-extern string get_phase_name (phases_t index);
+extern char *get_phase_name (phases_t index);
 /* return path and name of phase */
-extern string get_full_phase_name (phases_t index);
+extern char *get_full_phase_name (phases_t index);
+#ifdef KEY
+/* set phase name */
+extern void set_phase_name (phases_t index, char *s);
+#endif
 
 /* get language index associated with name */
-extern languages_t get_named_language (string name);
+extern languages_t get_named_language (char *name);
 /* return language name */
-extern string get_lang_name (languages_t index);
+extern char *get_lang_name (languages_t index);
 
 /* get kind of source from suffix */
-extern source_kind_t get_source_kind_from_suffix (string suf);
+extern source_kind_t get_source_kind_from_suffix (char *suf);
 /* get kind of source from file name */
-extern source_kind_t get_source_kind (string src);
-extern boolean is_object_source_kind (string src);
+extern source_kind_t get_source_kind (char *src);
+extern boolean is_object_source_kind (char *src);
 /* get suffix from source kind */
-extern string get_suffix_string (source_kind_t sk);
+extern char *get_suffix_string (source_kind_t sk);
 
 /* get language for source */
 extern languages_t get_source_lang (source_kind_t sk);
@@ -206,5 +216,7 @@ extern boolean ignore_suffix;	/* ignore suffix when determing source lang */
 extern boolean is_matching_language (mask_t lang_mask, languages_t l);
 /* whether the phase mask matches the specified phase */
 extern boolean is_matching_phase (mask_t phase_mask, phases_t p);
+
+extern boolean show_but_not_run;
 
 #endif

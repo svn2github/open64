@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -34,6 +38,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
 
 #if !defined(__sparc__) && !defined(__mips)
@@ -73,11 +78,12 @@ static AR_TYPE			COMPLEX_128 = AR_Complex_IEEE_NR_128;
 #endif
 
 
-main()
+int main(int argc, char **argv)
 {
 	prevflen = 0;
 
 #if defined(__sparc__) || defined(__mips)
+	extern void test_native_();
 	test_native_();
 #else
 	TEST_NATIVE();
@@ -421,7 +427,7 @@ int				rsize;
 				"   arith.a %*.*s result does not match expected result of",
 				flen, flen, fname);
 		for(i=0; i<rsize; i++)
-			fprintf(stderr," %8.8x %8.8x",answer[i]);
+			fprintf(stderr," %16.16llx",answer[i]);
 		fprintf(stderr,"\n");
 		if(ierr != 0)
 			fprintf(stderr,
@@ -430,7 +436,7 @@ int				rsize;
 		else {
 			fprintf(stderr,"   The arith.a routine returned a result of");
 			for(i=0; i<rsize; i++)
-				fprintf(stderr," %8.8x %8.8x",ar_result[i]);
+				fprintf(stderr," %16.16llx",ar_result[i]);
 			fprintf(stderr,"\n");
 		}
 		fail++;

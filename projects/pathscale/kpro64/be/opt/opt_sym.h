@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -106,6 +111,8 @@
 extern "C" {
 #include "bitset.h"
 }
+
+using idmap::ID_MAP;
 
 //  Forward declaration
 class COMP_UNIT;
@@ -238,8 +245,9 @@ enum AUXF2_FLAGS {
                                    // both sign/zero extd mean don't care
   AUXF2_IS_ADDRESS	= 0x8,	   // ADDRESSABILITY_IS_ADDRESS
   AUXF2_NOT_ADDRESS	= 0x10,	   // ADDRESSABILITY_NOT_ADDRESS
-  AUXF2_PROP_CHAIN_SEEN = 0x20     // FFA's IP alias propagation has
+  AUXF2_PROP_CHAIN_SEEN = 0x20,    // FFA's IP alias propagation has
 				   // seen the St_chain of this variable
+  AUXF2_NO_REG		= 0x40,    // no register type (MMLDID/MSTID)
 };
 
 
@@ -258,8 +266,9 @@ class AUX_STAB_ENTRY
 
 private:
   mINT8   stype;                      // Type of the symbol
-  UINT32  _more_flags:5;	      // overflow field for flags field (AUXF2_FLAGS)
-  UINT32  _mclass:3;                  // mtype class, e.g. INT, FLOAT, COMPLEX
+  UINT8  _more_flags;	      // overflow field for flags field (AUXF2_FLAGS)
+  UINT8  _mclass;                  // mtype class, e.g. INT, FLOAT, COMPLEX
+  mTYPE_ID _mtype;                    // mtype 
   mINT16  _flags;                     // flags field (AUXF_FLAGS)
   ST      *st;                        // ST *
   mINT64  _st_ofst;                   // Offset from ST.
@@ -343,6 +352,8 @@ private:
   AUX_STAB_ENTRY(void)                   
 		{ st_chain = 0; 
 		  st = NULL;
+		  _mclass= 0;
+		  _mtype = MTYPE_UNKNOWN;
 		  _flags = 0;
 		  _more_flags = 0;
 		  _spre_node = NULL;
@@ -375,6 +386,7 @@ private:
   void     Set_st_ofst(mINT64 ofst)   { _st_ofst = ofst; }
   void     Set_stype(INT32 type)      { stype = type; }
   void     Set_mclass(INT32 mclass)   { _mclass = mclass; }
+  void	   Set_mtype(MTYPE mtype)     { _mtype = mtype; }
   void	   Set_sym(INT32 t, WN *wn, MTYPE d, MTYPE r, TY_IDX tt);
   void     Set_synonym(AUX_ID i)      { u.synonym = i; }
   void     Set_aux_id_list(AUX_ID_LIST *a) 
@@ -387,6 +399,7 @@ private:
 public:
   OPT_VAR_TYPE  Stype(void) const     { return (OPT_VAR_TYPE) stype; }
   INT32    Mclass(void) const         { return _mclass; }
+  MTYPE	   Mtype(void) const	      { return _mtype; }
   ST	   *St(void) const	      { return st; }
   char     *St_name(void);
   mINT64   St_ofst(void) const        { return _st_ofst; }    // relative to the ST
@@ -461,6 +474,8 @@ public:
   void     Set_not_address(void)      { _more_flags |= AUXF2_NOT_ADDRESS; }
   BOOL     Prop_chain_seen(void) const{ return _more_flags & AUXF2_PROP_CHAIN_SEEN; }
   void     Set_prop_chain_seen(void)  { _more_flags |= AUXF2_PROP_CHAIN_SEEN; }
+  BOOL     No_register(void) const    { return _more_flags & AUXF2_NO_REG; }
+  void     Set_no_register(void)      { _more_flags |= AUXF2_NO_REG; }
 
   void     Reset_emitter_flags(void)  { u.emitter_flags = 0; }
   BOOL     Some_version_renumbered(void) const
@@ -481,6 +496,7 @@ public:
   //  Fast RVI of local variables
   BOOL     Is_local_rvi_candidate(BOOL varargs_func) const
     { return (Is_real_var() &&
+	      !No_register() &&
 	      !Has_nested_ref() &&
 	      !Disable_local_rvi() &&
 	      ST_class(st) != CLASS_PREG &&
@@ -779,6 +795,9 @@ private:
   BOOL                      _has_exc_handler;
   POINTS_TO		   *_points_to_globals;
   BOOL                      _is_varargs_func;
+#ifdef KEY
+  BOOL                      _is_prototyped_func;
+#endif
 
   // ------------------------------------------------------------------
   // Bit vectors of the OPT_ST attributes
@@ -937,6 +956,9 @@ public:
   CFG      *Cfg(void) const              { return _cfg; }
   const ALIAS_RULE *Rule(void) const     { return _rule; }
   BOOL     Is_varargs_func(void) const   { return _is_varargs_func; }
+#ifdef KEY
+  BOOL     Is_prototyped_func(void) const{ return _is_prototyped_func; }
+#endif
   BOOL     Allow_sim_type(void) const    { return _allow_sim_type; }
   BOOL     Has_exc_handler(void) const   { return _has_exc_handler; }
 
@@ -1240,10 +1262,14 @@ public:
   //  Various PRINT functions
   // ------------------------------------------------------------------
 
-  void     Print(FILE *fp=stderr);
+#ifdef KEY
+  void     Print(FILE *fp=stderr, WN* entry_wn=NULL);
+#endif
   void     Print_aux_entry(AUX_ID i, FILE *fp=stderr); // if fp == 0, fp is stderr
   void     Print_alias_info(FILE *fp=stderr);
-  void     Print_occ_tab(FILE *fp=stderr);
+#ifdef KEY
+  void     Print_occ_tab(FILE *fp=stderr, WN* entry_wn=NULL);
+#endif
   void     Print_top_nth_coderep(AUX_ID i, INT n, FILE *fp=stderr);
 
   // ------------------------------------------------------------------
@@ -1293,6 +1319,10 @@ public:
   void     Convert_EH_pragmas(WN *wn);
 
   BOOL     Safe_to_speculate(AUX_ID);
+
+#ifdef KEY
+  AUX_ID   Part_of_reg_size_symbol(AUX_ID);
+#endif
 
   ST      *St_ptr(WN *wn) const      { return aux_stab[WN_aux(wn)].St(); }
 };

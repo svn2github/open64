@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -607,6 +611,52 @@ static FISSION_FUSION_STATUS Fuse_Outer_Loops(WN* loop1, WN* loop2,
   }
 }
 
+#ifdef KEY
+// Bug 1025
+static BOOL Same_Loop_Body ( WN* wn, WN* copy, 
+			     SYMBOL loop_index, SYMBOL copy_loop_index )
+{
+  if (!wn || !copy)
+    return FALSE;
+
+  OPERATOR wn_opr = WN_operator(wn);
+  OPERATOR copy_opr = WN_operator(copy);
+
+  if (wn_opr != wn_opr || WN_kid_count(wn) != WN_kid_count(copy)) 
+    return FALSE;
+
+  if (wn_opr == OPR_LDID || wn_opr == OPR_STID) {
+    SYMBOL wn_sym(wn);
+    SYMBOL copy_sym(copy);
+    if (wn_sym != copy_sym && 
+	wn_sym != loop_index && copy_sym != copy_loop_index)
+      return FALSE;
+  }
+  else if (wn_opr == OPR_BLOCK) {
+    WN* stmt_wn;
+    WN* stmt_copy;
+    for (stmt_wn=WN_first(wn), stmt_copy = WN_first(copy); 
+	 stmt_wn && stmt_copy; 
+	 stmt_wn= WN_next(stmt_wn), stmt_copy = WN_next(stmt_copy))
+      if (!Same_Loop_Body(stmt_wn, stmt_copy, loop_index, copy_loop_index))
+	return FALSE;
+    if (stmt_wn == NULL && stmt_copy != NULL ||
+	stmt_wn != NULL && stmt_copy == NULL)
+      return FALSE;
+  } 
+  else if (wn_opr == OPR_DO_LOOP) {
+    return Same_Loop_Body(WN_do_body(wn), WN_do_body(copy), 
+			  loop_index, copy_loop_index);
+  } 
+
+  for (INT kid = 0; kid < WN_kid_count(wn); kid ++)
+    if (!Same_Loop_Body(WN_kid(wn, kid), WN_kid(copy, kid), 
+			loop_index, copy_loop_index))
+      return FALSE;
+  
+  return TRUE;
+}
+#endif
 static OUTER_FUSION_STATUS Outer_Loop_Fusion_Walk(WN* wn,
        FIZ_FUSE_INFO* ffi, WN2UINT *wn2ffi) {
   OPCODE opc=WN_opcode(wn);
@@ -655,6 +705,13 @@ static OUTER_FUSION_STATUS Outer_Loop_Fusion_Walk(WN* wn,
         INT d1=ffi->Get_Depth(wn_index);
         INT d2=ffi->Get_Depth(next_wn_index);
         UINT fused_level;
+#ifdef KEY
+	// Bug 1025
+	WN* next_next_copy;
+	if (LNO_Fusion == 2)
+	  next_next_copy = 
+	    LWN_Copy_Tree(WN_next(next_wn), TRUE, LNO_Info_Map);	
+#endif
         FISSION_FUSION_STATUS fusion_status=
           Fuse_Outer_Loops(wn,next_wn,ffi,wn2ffi,&fused_level);
         if (fusion_status==Succeeded || fusion_status==Partially_fused) {
@@ -711,6 +768,19 @@ static OUTER_FUSION_STATUS Outer_Loop_Fusion_Walk(WN* wn,
         }
         next_wn=WN_next(wn);
         state=NORMAL;
+#ifdef KEY
+	// Bug 1025
+	if (LNO_Fusion == 2 && next_wn &&
+	    WN_operator(next_wn) == OPR_DO_LOOP &&
+	    (!next_next_copy || WN_operator(next_next_copy) != OPR_DO_LOOP ||
+	    // Make sure the new next_wn is not a remnant (post-peel) from the 
+	    // last fusion. If so, then we have already tried fusing these two
+	    // adjacent loops and we had a remainder loop and there is no 
+	    // point trying to fuse them again.
+	     (!Same_Loop_Body(next_wn, next_next_copy, 
+			      WN_index(next_wn), WN_index(next_next_copy)))))
+	  return SKIP;
+#endif
 
         // hacked to remove pragmas produced by inlining
         while (next_wn && 

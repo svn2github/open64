@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -411,6 +415,9 @@
 #ifndef cg_flags_INCLUDED
 #define cg_flags_INCLUDED
 
+#ifdef KEY
+#include "flags.h"
+#endif
 
 extern BOOL CG_warn_bad_freqs;
 extern BOOL CG_enable_loop_optimizations;
@@ -468,7 +475,9 @@ extern UINT32 CFLOW_clone_incr;
 extern UINT32 CFLOW_clone_max_incr;
 extern UINT32 CFLOW_clone_min_incr;
 extern const char *CFLOW_cold_threshold;
-
+#ifdef KEY
+extern BOOL CFLOW_Enable_Freq_Order_On_Heuristics;
+#endif
 /* FREQ:
  */
 extern BOOL FREQ_enable;
@@ -577,8 +586,15 @@ extern INT32 GRA_non_home_hi;
 extern INT32 GRA_non_home_lo;
 extern const char* GRA_call_split_freq_string;
 extern const char* GRA_spill_count_factor_string;
+#ifdef KEY
+extern BOOL GRA_exclude_callee_saved_regs;
+extern BOOL GRA_eh_exclude_callee_saved_regs;
+#endif
 
 extern BOOL  HB_formation;
+#ifdef KEY
+extern INT32 HB_if_conversion_cut_off;
+#endif
 extern BOOL  HB_static_freq_heuristics;
 extern const char* HB_call_hazard_multiplier;
 extern const char* HB_memory_hazard_multiplier;
@@ -628,6 +644,32 @@ extern BOOL CG_LOOP_interleave_posti_specified;
 extern BOOL CG_LOOP_reassociate;
 extern BOOL CG_LOOP_reassociate_specified;
 extern INT32 CG_LOOP_recurrence_min_omega;
+#ifdef KEY
+extern BOOL  CG_enable_sb1_bug_work_around;
+extern BOOL  CG_sas;
+extern BOOL  LOCS_Fwd_Scheduling;
+extern BOOL CG_min_spill_loc_size;
+extern BOOL CG_min_stack_size;
+extern BOOL flag_test_coverage;
+extern OPTION_LIST *Arc_Profile_Region;
+#endif
+#ifdef TARG_X8664
+extern INT32 CG_load_execute;
+extern BOOL CG_use_movlpd;
+extern BOOL CG_use_short_form;
+extern BOOL CG_loadbw_execute;
+extern BOOL CG_p2align;
+extern UINT64 CG_p2align_freq;
+extern UINT32 CG_p2align_max_skip_bytes;
+extern UINT32 CG_movnti;
+extern BOOL CG_use_xortozero;
+extern BOOL CG_use_incdec;
+extern BOOL CG_fold_shiftadd;
+extern BOOL CG_use_prefetchnta;
+extern BOOL CG_idivbyconst_opt;
+extern BOOL CG_fold_constimul;
+extern BOOL CG_cloop;
+#endif
 
 // temporary flags for controlling algorithm selection for fdiv, sqrt, etc
 extern const char *CGEXP_fdiv_algorithm;

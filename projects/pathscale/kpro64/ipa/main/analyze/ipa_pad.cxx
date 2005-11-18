@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -46,6 +50,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <elf.h>
 #include <cmplrs/host.h>		// for ipc_interafce.h
 #define USE_STANDARD_TYPES		// override unwanted defines in defs.h 
@@ -446,6 +452,10 @@ Update_Summaries (COMMON_SNODE_TBL* common_snode_tbl, INT num_ir)
 extern INT64
 Common_Array_Pad_Size (INT column_size)
 {
+#ifdef TARG_X8664
+  if (column_size % 16 != 0)
+    return column_size % 16;
+#endif
   // Given a multidimensional array, come up with a pad size
   // (in bytes) for the first dimension.
 

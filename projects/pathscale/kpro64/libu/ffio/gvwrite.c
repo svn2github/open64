@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,14 +44,20 @@
 #include <ffio.h>
 #include "gvio.h"
 
-static const uint64 carets	= 0x5e5e5e5e5e5e5e5e; /* '^^^^^^^^' */
+#ifdef KEY
+static put_block( struct fdinfo *, struct ffsw *, long );
+#endif
+
+static const uint32 carets	= 0x5e5e5e5e; /* '^^^^' */
 static const uint64 ctrlz	= 0x1A;
-static const uint64 neg1	= 0xffffffffffffffff;
-static const uint64 seg5	= 0x3030303500000000; /* '0005    ' */
+static const uint64 neg1	= 0xffffffffffffffffLL;
+static const uint64 seg5	= 0x3030303500000000LL; /* '0005    ' */
 static const uint64 soh		= 0x0100;
 static int __zero		= 0;
 
 static void init_block();
+static int init_seg(struct fdinfo *fio, struct ffsw *stat);
+static int put_segment(struct fdinfo *fio, struct ffsw *stat, int fulp);
 
 /*
  *	Generate 4-digit ASCII numbers for use in headers.
@@ -268,9 +278,7 @@ struct ffsw *stat;
  *	to write, set aside room for the BDW. 
  */
 static int
-init_seg(fio, stat)
-struct fdinfo *fio;
-struct ffsw *stat;
+init_seg(struct fdinfo *fio, struct ffsw *stat)
 	{
 	int sdwlen;
 	struct gen_vf *vf_info;
@@ -323,10 +331,7 @@ struct ffsw *stat;
  * Terminate a data segment by filling in the SDW and starting a new segment
  */
 static int
-put_segment(fio, stat, fulp)
-struct fdinfo *fio;
-struct ffsw *stat;
-int fulp;
+put_segment(struct fdinfo *fio, struct ffsw *stat, int fulp)
 	{
 	union sdw_u sdw;
 	bitptr psdw;
@@ -504,8 +509,8 @@ long bits;
  *						get away with this only because
  *						WRITEBLK does no checking.
  */
-						PUT_BITS(fio->_ptr, carets,
-							8);
+						PUT_BITS(fio->_ptr, carets, 4);
+						PUT_BITS(fio->_ptr, carets, 4);
 						bits += 8;
 						}
 					mode = PARTIAL;

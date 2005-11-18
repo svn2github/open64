@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -98,15 +102,15 @@ struct gl_o_inf *oinf)
 	switch(fio->rtype)
 		{
 		case TEXT_NL_WEOF:
-			text_info->eof_mark = (unsigned long)'~e\n' << TEXTNL_JUSTIFY_SHIFT;
+			text_info->eof_mark = TEXT_MAGIC_MARKER << TEXTNL_JUSTIFY_SHIFT;
 			text_info->eof_len = 24;
 		case TEXT_NL:
 			text_info->eor_char = (unsigned long)'\n' << CHAR_JUSTIFY;
 			break;
 		case TEXT_205:
 		case TEXT_CTSS:
-			text_info->eor_char = (unsigned long)0x1f << CHAR_JUSTIFY; /* ASCII US */
-			text_info->eof_mark = (unsigned long)0x1c << CHAR_JUSTIFY; /* ASCII FS */
+			text_info->eor_char = (long)0x1f << CHAR_JUSTIFY; /* ASCII US */
+			text_info->eof_mark = (long)0x1c << CHAR_JUSTIFY; /* ASCII FS */
 			text_info->eof_len = 8;
 			break;
 		}
@@ -115,7 +119,7 @@ struct gl_o_inf *oinf)
  *	Load recsize as the requested EOR characater.
  */
 	if (spec->fld.recsize != 0)
-		text_info->eor_char = (unsigned long)spec->fld.recsize << CHAR_JUSTIFY;
+		text_info->eor_char = ((long)spec->fld.recsize) << CHAR_JUSTIFY;
 
 	fio->rwflag = POSITIN;
 	fio->segbits = 0;

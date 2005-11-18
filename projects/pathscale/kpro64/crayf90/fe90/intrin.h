@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -13572,16 +13576,16 @@ intrin_map_type         intrin_map[MAX_INTRIN_MAP_SIZE] =
    {"ASIN",	"r_asin",	"d_asin"},
    {"ATAN",	"r_atan",	"d_atan"},
    {"ATAN2",	"r_atn2",	"d_atn2"},
-   {"CABS",	"__c8abs",	"z_abs_"},
-   {"CCOS",	"c_cos",	"z_cos_"},
-   {"CEXP",	"c_exp",	"z_exp_"},
-   {"CLOG",	"c_log",	"z_log_"},
-   {"CONJG",	"r_cnjg",	"d_cnjg_"},
+   {"CABS",	"c_abs",	"z_abs_"},
+   {"CCOS",	"c_cos",	"z_cos"},
+   {"CEXP",	"c_exp",	"z_exp"},
+   {"CLOG",	"c_log",	"z_log"},
+   {"CONJG",	"r_cnjg",	"d_cnjg"},
    {"COS",	"r_cos",	"d_cos"},
    {"COSH",	"r_cosh",	"d_cosh"},
    {"COT",	"r_cot",	"d_cot"},
-   {"CSIN",	"c_sin",	"z_sin_"},
-   {"CSQRT",	"c_sqrt",	"z_sqrt_"},
+   {"CSIN",	"c_sin",	"z_sin"},
+   {"CSQRT",	"c_sqrt",	"z_sqrt"},
    {"DABS",	"d_abs",	"__q_abs"},
    {"DACOS",	"d_acos",	"__q_acos"},
    {"DASIN",	"d_asin",	"__q_asin"},

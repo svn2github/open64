@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -298,7 +302,7 @@ WN_get_global_symtab (void *handle)
  * Assume that global symtab and string table are already read.
  */
 
-UINT
+INT
 WN_get_symtab (void *handle, PU_Info *pu)
 {
     Subsect_State st = PU_Info_state(pu, WT_SYMTAB);
@@ -379,7 +383,7 @@ WN_get_symtab (void *handle, PU_Info *pu)
 } /* WN_get_symtab */
 
 
-UINT
+INT
 WN_get_strtab (void *handle)
 {
     OFFSET_AND_SIZE shdr = get_section (handle, SHT_MIPS_WHIRL, WT_STRTAB);

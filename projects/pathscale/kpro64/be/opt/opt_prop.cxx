@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -432,6 +437,14 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
       }
     }
 
+#if defined(TARG_IA32) || defined(TARG_X8664)
+    // do not allow SELECT to be propagated
+    if (x->Opr() == OPR_SELECT) {
+      x->Set_propagatability(NOT_PROPAGATABLE);
+      return NOT_PROPAGATABLE;
+    }
+#endif
+
     prop = PROPAGATABLE;
     *height = 0;
     for  (INT32 i = 0; i < x->Kid_count(); i++) {
@@ -640,7 +653,6 @@ static CODEREP *
 Prop_identity_assignment(CODEREP *cr)
 {
   STMTREP *dstmt;
-
   if (cr->Is_flag_set(CF_DEF_BY_PHI)) 
     return NULL;
   if (cr->Is_flag_set(CF_DEF_BY_CHI)) {
@@ -1010,6 +1022,7 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
   if (Htable()->Phase() == MAINOPT_PHASE &&
       MTYPE_is_float(x->Dtyp()) &&
       ST_class(Opt_stab()->St(x->Aux_id())) == CLASS_PREG &&
+      expr->Is_flag_set((CR_FLAG) CF_DONT_PROP) &&
       (expr->Non_leaf() || expr->Kind() == CK_VAR))
     return NULL;
 #endif
@@ -1215,9 +1228,22 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
     {
       inside_cse = inside_cse || x->Usecnt() > 1;
       CODEREP *id_cr = Prop_identity_assignment(x);
-      if (id_cr)
-	return id_cr;
-      return Prop_var(x, curbb, FALSE, inside_cse, in_array);
+     if (id_cr) {
+      if (id_cr->Dsctyp() == MTYPE_UNKNOWN ||
+         id_cr->Is_flag_set(CF_MADEUP_TYPE)) {
+         id_cr->Set_dtyp(x->Dtyp());
+         id_cr->Set_dsctyp(x->Dsctyp());
+         id_cr->Set_lod_ty(x->Lod_ty());
+         id_cr->Set_field_id(x->Field_id());
+         if (x->Bit_field_valid()) {
+           id_cr->Set_bit_field_valid();
+         }
+         id_cr->Set_sign_extension_flag();
+         id_cr->Reset_flag(CF_MADEUP_TYPE);
+      }
+      return id_cr;
+     }
+     return Prop_var(x, curbb, FALSE, inside_cse, in_array);
     }
   case CK_IVAR: {
     MU_NODE *mnode = x->Ivar_mu_node();
@@ -1315,8 +1341,15 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
 	  if ( i > 0 )
 	    in_array = TRUE;
 	}
-
+#ifdef KEY
+        if (opr != OPR_ASM_INPUT ||
+            (x->Opnd(i)->Kind() != CK_VAR && x->Opnd(i)->Kind() != CK_IVAR) )
+	  expr = Copy_propagate_cr(x->Opnd(i), curbb, inside_cse, in_array);
+        else
+          expr = NULL;
+#else
 	expr = Copy_propagate_cr(x->Opnd(i), curbb, inside_cse, in_array);
+#endif
 	if (expr) {
 	  need_rehash = TRUE;
 	  CODEREP *expr2 = Htable()->Canon_rhs(expr);
@@ -1651,6 +1684,12 @@ COPYPROP::Propagatable_thru_phis(CODEREP *lexp, CODEREP *rexp,
       return FALSE;
     if (lexp->Opr() == OPR_ARRAY && rexp->Opr() == OPR_ARRAY &&
 	lexp->Elm_siz() != rexp->Elm_siz()) return FALSE;
+#ifdef KEY // bug 1795: need to verify boffset and bsize are identical
+    if (lexp->Opr() == OPR_EXTRACT_BITS &&
+	(lexp->Op_bit_offset() != rexp->Op_bit_offset() ||
+	 lexp->Op_bit_size() != rexp->Op_bit_size()))
+        return FALSE;
+#endif
     if (lexp->Opr() == OPR_INTRINSIC_OP && rexp->Opr() == OPR_INTRINSIC_OP
         && lexp->Intrinsic() != rexp->Intrinsic())  // fix 804479
       return FALSE;

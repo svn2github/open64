@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -243,7 +247,7 @@ cwh_intrin_wrap_ref_parm(WN *wa, TY_IDX ty)
   WN * wn  ;
 
 
-  if (ty == NULL) 
+  if (ty == 0) 
     ty = cwh_types_WN_TY(wa,TRUE);
 
   wn = WN_CreateParm (Pointer_Mtype,
@@ -2195,7 +2199,7 @@ cwh_intrin_sync_intrin(INTRINSIC i4intrin, INTRINSIC i8intrin, TYPE_ID rtype, IN
 	    wn = cwh_expr_operand(NULL);
 	    atype = WNRTY(wn);
 	    st = cwh_stab_temp_ST(Be_Type_Tbl(atype),"synctmp");
-	    cwh_addr_store_ST(st,0,NULL,wn);
+	    cwh_addr_store_ST(st,0,0,wn);
 	    args[i] = cwh_addr_address_ST(st,0);
 	    cwh_expr_set_flags(st,f_T_PASSED);
 	 }

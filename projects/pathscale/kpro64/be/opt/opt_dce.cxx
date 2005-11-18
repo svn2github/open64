@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -305,7 +310,10 @@ class DCE {
     void Find_assumed_goto_blocks( BB_NODE_SET *assumed_goto ) const;
     void Insert_required_gotos( void ) const;
     void Update_branch_to_bb_labels( BB_NODE *bb ) const;
-    BOOL Remove_dead_statements( void ) const;
+#ifdef KEY
+    void Update_branch_to_bbs_labels( BB_LIST *bbs ) const;
+#endif
+    BOOL Remove_dead_statements( void ) ;
     BOOL Enable_dce_global( void ) const { return _enable_dce_global; }
     BOOL Enable_dce_alias( void ) const  { return _enable_dce_alias; }
     BOOL Enable_aggressive_dce ( void ) const 
@@ -333,7 +341,6 @@ class DCE {
 		      return FALSE;
 		  }
 		}
-
 public:
 
     DCE(CFG *cfg, OPT_STAB *optstab, ALIAS_RULE *alias_rule, 
@@ -425,6 +432,8 @@ public:
             Htable()->Enter_var_phi_hash(pnode);
           }
         }
+        if ( _mod_phis != NULL )
+          CXX_DELETE(_mod_phis, _cfg->Loc_pool());
       }
 
     BOOL Enable_dce_unreachable( void ) const { return _do_unreachable; }
@@ -434,7 +443,7 @@ public:
 		{ _dce_phase = DCE_DEAD_STORE; }
     BOOL Tracing(void) const	{ return _tracing; }
     BOOL Unreachable_code_elim(void) const;
-    BOOL Dead_store_elim(void) const;
+    BOOL Dead_store_elim(void) ;
     void Init_return_vsym( void );
     
 }; // end of class DCE
@@ -1894,6 +1903,15 @@ DCE::Required_store( const STMTREP *stmt, OPERATOR oper ) const
     }
   }
 
+#ifdef KEY // deleting fetch of MTYPE_M return value can cause lowerer to omit
+  	   // inserting the fake parm
+  if (Opt_stab()->Phase() == PREOPT_IPA0_PHASE && lhs->Dsctyp() == MTYPE_M &&
+      stmt->Rhs()->Kind() == CK_VAR &&
+      ST_class(Opt_stab()->St(stmt->Rhs()->Aux_id())) == CLASS_PREG &&
+      Preg_Is_Dedicated(stmt->Rhs()->Offset())) 
+    return TRUE;
+#endif
+
   // maybe it just isn't required
   return ( FALSE );
 }
@@ -1927,6 +1945,15 @@ DCE::Required_istore( const STMTREP *stmt, OPERATOR oper ) const
   // the __restrict pointer.
   if (stmt->Lhs()->Points_to(Opt_stab())->Restricted()) 
     return TRUE;
+
+#ifdef KEY // deleting fetch of MTYPE_M return value can cause lowerer to omit
+  	   // inserting the fake parm
+  if (Opt_stab()->Phase() == PREOPT_IPA0_PHASE && stmt->Lhs()->Dsctyp() == MTYPE_M &&
+      stmt->Rhs()->Kind() == CK_VAR &&
+      ST_class(Opt_stab()->St(stmt->Rhs()->Aux_id())) == CLASS_PREG &&
+      Preg_Is_Dedicated(stmt->Rhs()->Offset())) 
+    return TRUE;
+#endif
 
   return ( FALSE );
 }
@@ -2011,7 +2038,9 @@ inline BOOL
 DCE::Required_pragma( const STMTREP *stmt ) const
 {
   WN_PRAGMA_ID pragma = (WN_PRAGMA_ID)WN_pragma(stmt->Orig_wn());
-
+#ifdef KEY
+  if (pragma == WN_PRAGMA_UNROLL) return TRUE;
+#endif
   if (Loop_pragma(pragma)) return FALSE;
 
   switch ( pragma ) {
@@ -3601,7 +3630,7 @@ DCE::Add_path_to_ipdom( BB_NODE *bb ) const
   ipdom->Append_pred( bb, _cfg->Mem_pool() ); 
   PHI_LIST *new_philist = 
     ipdom->Phi_list()->Dup_phi_node(_cfg->Mem_pool(), ipdom, rep_pos);
-  _mod_phis->Add_entry(ipdom, ipdom->Phi_list(), new_philist);
+  _mod_phis->Add_entry(ipdom, ipdom->Phi_list(), new_philist, _cfg->Mem_pool());
   ipdom->Set_phi_list(new_philist);
 }
 
@@ -3616,6 +3645,10 @@ DCE::Replace_control_dep_succs( BB_NODE *bb ) const
 {
   BOOL all_cd = TRUE;
 
+#ifdef KEY
+  if (bb->Succ() == NULL)
+    return;
+#endif
   // just remove paths to any control-dep successors
   BB_LIST *succlist, *nextsucc = NULL;
   for ( succlist = bb->Succ(); succlist != NULL; succlist = nextsucc ) {
@@ -4309,6 +4342,73 @@ DCE::Find_required_statements( void ) const
 // Update_branch_to_bb_labels update labels and branch statements so
 // that all branches to this block target its successor instead.
 // ====================================================================
+#ifdef KEY
+void
+DCE::Update_branch_to_bbs_labels( BB_LIST *bbs ) const
+{
+  BB_NODE *bb, *last_bb;
+  BB_LIST_ITER bb_iter;
+  BOOL label_needed = FALSE;
+                                                                                                                                          
+  FOR_ALL_ELEM( bb, bb_iter, Init(bbs) )
+    last_bb = bb;
+
+  FOR_ALL_ELEM( bb, bb_iter, Init(bbs) ){
+    if ( bb->Labnam() != 0 )
+      label_needed = TRUE;
+  }
+  if (label_needed == FALSE)
+    return;
+
+                                                                                                                                          
+  // Find the unique distinct successor
+  BB_LIST_ITER succ_iter;
+  BB_NODE *succ, *the_succ = NULL;
+  FOR_ALL_ELEM( succ, succ_iter, Init( last_bb->Succ() ) )
+    if (succ != last_bb) {
+      Is_True(the_succ == NULL,
+              ("DCE::Update_branch_to_bb_labels: Multiple successors\n"));
+      the_succ = succ;
+    }
+                                                                                                                                          
+  LABEL_IDX label;
+  if (the_succ == NULL)
+    label = 0;
+  else {
+    label = the_succ->Labnam();
+    if ( label == 0 ) {
+      label = _cfg->Alloc_label();
+      the_succ->Set_labnam( label );
+      _cfg->Append_label_map(label, the_succ);
+      if (the_succ->Label_stmtrep() == NULL)
+        the_succ->Add_label_stmtrep( _cfg->Mem_pool() );
+    }
+  }
+                                                                                                                                          
+  // change all pred branch targets to the new label
+  BB_LIST_ITER pred_iter;
+  BB_NODE *pred;
+  FOR_ALL_ELEM( bb, bb_iter, Init(bbs) ){
+    FOR_ALL_ELEM( pred, pred_iter, Init( bb->Pred() ) ) {
+      if (bbs->Contains(pred))
+        continue;
+      STMTREP *branch_stmt = pred->Branch_stmtrep();
+      if (branch_stmt != NULL) {
+        OPERATOR opr = branch_stmt->Opr();
+        if ((opr == OPR_GOTO ||
+             opr == OPR_TRUEBR ||
+             opr == OPR_FALSEBR) && 
+             (branch_stmt->Label_number() == bb->Labnam())){
+          if (Tracing())
+            fprintf( TFile, "  changing label %u to %u in BB%u\n",
+                   bb->Labnam(), label, pred->Id() );
+          branch_stmt->Set_label_number(label);
+        }
+      }
+    }
+  }
+}
+#endif
 
 void
 DCE::Update_branch_to_bb_labels( BB_NODE *bb ) const
@@ -4380,10 +4480,12 @@ DCE::Update_branch_to_bb_labels( BB_NODE *bb ) const
 // ====================================================================
 
 BOOL
-DCE::Remove_dead_statements( void ) const
+DCE::Remove_dead_statements( void )
 {
   BB_NODE *bb;
   BOOL changed_cflow = FALSE;
+  BB_LIST *removable_bbs = NULL;
+  BB_LIST *removable_bb_chain = NULL; 
 
   // visit all blocks
   // NOTE: a "reverse" order is probably better
@@ -4442,9 +4544,14 @@ DCE::Remove_dead_statements( void ) const
         Is_True( _cfg->Removable_bb(bb),
 	  ("DCE::Remove_dead_statements: BB%d not removable",
 	   bb->Id()) );
-
-	Update_branch_to_bb_labels( bb );
-	_cfg->Delete_bb( bb, _mod_phis );
+#ifdef KEY
+        if (WOPT_Enable_Aggressive_dce_for_bbs)
+          removable_bbs = removable_bbs->Append(bb, _cfg->Loc_pool());
+        else{
+	  Update_branch_to_bb_labels( bb );
+	  _cfg->Delete_bb( bb, _mod_phis );
+        }
+#endif
 	changed_cflow = TRUE;
 
 	if ( Tracing() ) {
@@ -4454,12 +4561,59 @@ DCE::Remove_dead_statements( void ) const
       else {
 	bb->Set_reached();
       }
-
-      Remove_unreached_statements( bb );
+#ifdef KEY
+      if ( !removable_bbs->Contains(bb) || !WOPT_Enable_Aggressive_dce_for_bbs ) 
+#endif
+        Remove_unreached_statements( bb );
     }
   } // end loop through blocks
+//Bug# 1278
+#ifdef KEY  
+  if ( !Enable_aggressive_dce() || !WOPT_Enable_Aggressive_dce_for_bbs) 
+    return  ( changed_cflow );
 
+  BB_LIST_ITER bb_iter;
+  BB_NODE *cur_bb;
+  for ( ; removable_bbs->Len() ; ){
+    bb = removable_bbs->Node();
 
+    if (removable_bb_chain != NULL){
+      CXX_DELETE(removable_bb_chain, _cfg->Loc_pool());
+      removable_bb_chain = NULL;
+    }
+
+    while (bb->Pred()->Len() == 1 && bb->Pred()->Node() != bb && removable_bbs->Contains( bb->Pred()->Node() ))
+      bb = bb->Pred()->Node();
+    while (bb){
+      removable_bb_chain = removable_bb_chain->Append(bb, _cfg->Loc_pool());
+      removable_bbs = removable_bbs->Remove(bb, _cfg->Loc_pool());
+      if (bb->Succ()->Len() == 1 && bb->Succ()->Node() != bb && removable_bbs->Contains( bb->Succ()->Node() )){
+        bb = bb->Succ()->Node();
+        if (bb->Succ()->Len() == 1 &&
+            bb->Succ()->Node()->Pred()->Len() == 1 &&
+            bb->Succ()->Node()->Phi_list()->Is_Empty() &&
+            bb->Phi_list() != NULL)
+          bb = NULL;
+      }
+      else
+        bb = NULL;
+    }
+    
+    if ( removable_bb_chain && removable_bb_chain->Len() > 1){
+//Bug 1507
+      Update_branch_to_bbs_labels( removable_bb_chain );
+      _cfg->Delete_bbs( removable_bb_chain, _mod_phis ); 
+      FOR_ALL_ELEM( bb, bb_iter, Init(removable_bb_chain) ){
+        Remove_unreached_statements( bb );
+      }
+    }
+    else if ( removable_bb_chain && removable_bb_chain->Len() == 1 ){
+      Update_branch_to_bb_labels( removable_bb_chain->Node() );
+      _cfg->Delete_bb( removable_bb_chain->Node(), _mod_phis );
+      Remove_unreached_statements( removable_bb_chain->Node() );
+    }
+  }
+#endif
   return ( changed_cflow );
 }
 
@@ -4642,7 +4796,7 @@ DCE::Insert_required_gotos( void ) const
 // ====================================================================
 
 BOOL 
-DCE::Dead_store_elim(void) const
+DCE::Dead_store_elim(void)
 {
   BOOL changed_cflow = FALSE;
 

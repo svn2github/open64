@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -96,6 +101,10 @@
 #include "config_wopt.h"
 
 #include "opt_main.h"
+
+using std::insert_iterator;
+using std::map;
+using std::set;
 
 // for debugging
 #ifdef Is_True_On
@@ -504,7 +513,7 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace)
 
   if (trace) {
     fprintf(TFile, "====\n After CFG transformation\n====\n");
-    cfg->Print(TFile, false, -1);
+    cfg->Print(TFile, false, (unsigned) -1);
     if (cfg->Feedback())
       cfg->Feedback()->Print(TFile);
   }

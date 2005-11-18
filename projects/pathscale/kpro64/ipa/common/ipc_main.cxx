@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "linker.h"			/* linker headers */
 #include "process.h"                    /* For create_tmpdir. */
 
@@ -110,6 +116,12 @@ IP_set_target(void)
     Target_ISA = TRUE;
 #endif
 
+#ifdef TARG_X8664
+    Target_ABI = IPA_Target_Type == IP_64_bit_ABI ? ABI_n64 : ABI_n32;
+    Target_ISA = TARGET_ISA_x86_64;
+    Use_32_Bit_Pointers = IPA_Target_Type == IP_32_bit_ABI;
+#endif
+
     IPA_Configure_Target ();
 }
 
@@ -159,7 +171,11 @@ ipa_driver (INT argc, char **argv)
 
     // turn off these features until they are ported.
     IPA_Enable_Cloning = FALSE;
+#ifdef TARG_X8664
+    IPA_Enable_AutoGnum = FALSE;
+#else
     IPA_Enable_AutoGnum = TRUE;
+#endif
 #if 1
     IPA_Enable_DST = FALSE;
 #else
@@ -204,7 +220,7 @@ Signal_Cleanup (INT sig)
 
     /* now do the ld part */
     /* we fake a fatal error instead of copying all the cleanup code here */
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
     fprintf(stderr,"IPA processing aborted");
     exit(1);
 #else

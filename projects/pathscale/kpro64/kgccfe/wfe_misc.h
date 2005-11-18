@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -93,6 +99,9 @@ typedef enum {
 extern void WFE_Stmt_Push (WN* wn, WFE_STMT_KIND kind, SRCPOS srcpos);
 extern WN*  WFE_Stmt_Top (void);
 extern void WFE_Stmt_Append (WN* wn, SRCPOS srcpos);
+#ifdef KEY
+extern void WFE_Stmt_Prepend_Last (WN* wn, SRCPOS srcpos);
+#endif /* KEY */
 extern WN*  WFE_Stmt_Last (void);
 extern WN*  WFE_Stmt_Pop (WFE_STMT_KIND kind);
 

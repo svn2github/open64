@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -93,12 +97,17 @@
 #include "cgtarget.h"
 #include "entry_exit_targ.h"
 #include "targ_abi_properties.h"
+#include "cxx_template.h"
 
 INT64 Frame_Len;
 
 /* Callee-saved register <-> save symbol/TN map: */
 SAVE_REG *Callee_Saved_Regs;
 INT32 Callee_Saved_Regs_Count;
+
+#ifdef KEY
+STACK<SAVE_REG_LOC> Saved_Callee_Saved_Regs(Malloc_Mem_Pool);
+#endif
 
 /* Special PREGs associated with save locations for Callee Saved registers */
 PREG_NUM *Callee_Saved_Pregs;
@@ -283,7 +292,9 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
   ISA_REGISTER_CLASS cl;
   TN *stn;
 
+#ifndef TARG_X8664  // x86_64 does not use GP
   Setup_GP_TN_For_PU( pu );
+#endif
 
   if (NULL != RA_TN /* IA-32 doesn't have ra reg. */) {
     /* initialize the return address map: */
@@ -368,6 +379,36 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
 }
 
 
+
+#ifdef KEY
+struct Save_user_allocated_saved_regs
+{
+  OPS *ops;
+  BB *bb;
+  Save_user_allocated_saved_regs(OPS *o, BB *b) : ops(o), bb(b) { }
+  void operator() (UINT, ST_ATTR *st_attr) const {
+    if (ST_ATTR_kind (*st_attr) != ST_ATTR_DEDICATED_REGISTER)
+      return;
+    PREG_NUM preg = ST_ATTR_reg_id(*st_attr);
+    ISA_REGISTER_CLASS rclass;
+    REGISTER reg;
+    CGTARG_Preg_Register_And_Class(preg, &rclass, &reg);
+    if (! ABI_PROPERTY_Is_callee(rclass, preg-REGISTER_MIN))
+      return;
+    SAVE_REG_LOC sr;
+    sr.ded_tn = Build_Dedicated_TN(rclass, reg, 0);
+    DevAssert(sr.ded_tn, ("Missing dedicated TN for callee-saved register %s",
+		      REGISTER_name(rclass, reg)));
+    sr.temp = CGSPILL_Get_TN_Spill_Location (sr.ded_tn, CGSPILL_LCL);
+    sr.user_allocated = TRUE;
+    /* Generate the spill ops */
+    CGSPILL_Store_To_Memory (sr.ded_tn, sr.temp, ops, CGSPILL_LCL, bb);
+    Set_OP_no_move_before_gra(OPS_last(ops));
+    Saved_Callee_Saved_Regs.Push(sr);
+  }
+};
+#endif
+
 /* ====================================================================
  *
  * Generate_Entry
@@ -419,6 +460,14 @@ Generate_Entry (BB *bb, BOOL gra_run )
 
     EETARG_Save_Pfs (Caller_Pfs_TN, &ops);	// alloc
 
+#ifdef TARG_X8664
+    /* Initialize the frame pointer if required: */
+    if ( Gen_Frame_Pointer && PUSH_FRAME_POINTER_ON_STACK ) {
+      Build_OP( Is_Target_64bit() ? TOP_pushq : TOP_pushl, SP_TN, FP_TN, &ops );
+      Exp_COPY( FP_TN, SP_TN, &ops );
+    }
+#endif
+
     /* Initialize the stack pointer (this is a placeholder; Adjust_Entry
      * will replace it to the actual sequence once we know the size of
      * the frame):
@@ -457,6 +506,14 @@ Generate_Entry (BB *bb, BOOL gra_run )
       Exp_Spadjust (FP_TN, Frame_Len_TN, V_NONE, &ops);
     }
     ENTRYINFO_sp_adj(ent_info) = OPS_last(&ops);
+
+#ifdef KEY
+    /* save callee-saved registers allocated to local user variables */
+    if ( ST_ATTR_Table_Size (CURRENT_SYMTAB)) {
+      For_all_entries(*Scope_tab[CURRENT_SYMTAB].st_attr_tab, 
+		      Save_user_allocated_saved_regs(&ops, bb), 1);
+    }
+#endif
   }
 
   if ( gra_run ) {
@@ -521,6 +578,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
   if ( gra_run ) 
     EETARG_Save_Extra_Callee_Tns (&ops);
 
+#ifndef TARG_X8664  // x86_64 does not use GP
   /* Save the old GP and setup a new GP if required */
   if (GP_Setup_Code == need_code) {
 
@@ -582,6 +640,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
 	Caller_GP_TN = PREG_To_TN_Array[ Caller_GP_Preg ];
       	Exp_COPY (Caller_GP_TN, GP_TN, &ops);
   }
+#endif
 
   /* set the srcpos field for all the entry OPs */
   FOR_ALL_OPS_OPs(&ops, op)
@@ -729,9 +788,15 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
     if (ST_is_preemptible(call_st)) {
       TN *tn;
 
+#ifdef TARG_X8664
+      addr_op = BB_xfer_op( pred );
+      addr_opnd = 0;
+      if( addr_op == NULL ){
+	return NULL;
+      }
+#else
       addr_op = Find_Call_Addr_Load(pred, &addr_opnd);
       if (addr_op == NULL) return NULL;
-
       tn = OP_opnd(addr_op, addr_opnd);
       if (TN_is_reloc_call16(tn)) {
 #if 1
@@ -751,6 +816,7 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
       } else {
 	return NULL;
       }
+#endif
     }
   }
 
@@ -824,6 +890,7 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
   }
   MEM_POOL_Pop(&MEM_local_pool);
 
+#ifndef TARG_X8664
   /* If we had preemptible symbol for the callee, then change
    * its relocation so we avoid generating a stub for it.
    */
@@ -835,6 +902,7 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
     EMT_Change_Symbol_To_Weak(call_st);
     Set_ST_is_weak_symbol(call_st);
   }
+#endif
 
   return pred;
 }
@@ -1017,6 +1085,10 @@ Target_Unique_Exit (
 	if ( new_tn == NULL ) {
 	  new_tn = Dup_TN_Even_If_Dedicated(tn);
 	  if (TN_is_float(tn)) {
+	    /* For bug#478
+	       OP_result_size measures a TN size in bits; yet
+	       TN_size measures a TN size in bytes.
+	     */
 	    INT tn_size = OP_result_size(op,i) / 8;
 	    Set_TN_size(new_tn, tn_size);
 	  }
@@ -1293,6 +1365,18 @@ Generate_Exit (
     }
   }
 
+#ifdef KEY
+  /* restore callee-saved registers allocated to local user variables */
+  for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {
+    SAVE_REG_LOC sr = Saved_Callee_Saved_Regs.Top_nth(i);
+    if (! sr.user_allocated)
+      continue;
+    /* generate the reload ops */
+    CGSPILL_Load_From_Memory (sr.ded_tn, sr.temp, &ops, CGSPILL_LCL, bb);
+    Set_OP_no_move_before_gra(OPS_last(&ops));
+  }
+#endif
+
   if (PU_Has_Calls) {
   	EETARG_Restore_Pfs (Caller_Pfs_TN, &ops);
   }
@@ -1368,9 +1452,17 @@ Generate_Exit (
 extern void 
 Set_Frame_Len (INT64 val)
 {
-	Frame_Len = val;
-	Set_TN_value(Frame_Len_TN, val);
-	Set_TN_value(Neg_Frame_Len_TN, -val);
+#ifdef KEY
+  if( CG_min_stack_size ){
+    extern BOOL Is_Stack_Used();
+    if( !Is_Stack_Used() )
+      val = 0;
+  }
+#endif
+
+  Frame_Len = val;
+  Set_TN_value(Frame_Len_TN, val);
+  Set_TN_value(Neg_Frame_Len_TN, -val);
 }
 
 /* we now generate the final code after pu is processed,
@@ -1389,6 +1481,14 @@ Init_Entry_Exit_Code (WN *pu_wn)
   Neg_Frame_Len_TN = Gen_Unique_Literal_TN(0,8);
 
   Gen_Frame_Pointer = (Current_PU_Stack_Model != SMODEL_SMALL);
+#ifdef TARG_X8664
+  if (Opt_Level == 0 || Force_Frame_Pointer || Call_Mcount ||
+      Debug_Level > 0)
+    Gen_Frame_Pointer = TRUE;// because return address always stored at offset 0
+#endif
+#ifdef KEY
+  Saved_Callee_Saved_Regs.Clear();
+#endif
 
   // target-specific code (e.g. for stacked registers)
   EETARG_Init_Entry_Exit_Code (pu_wn, Gen_Frame_Pointer);
@@ -1929,7 +2029,7 @@ Adjust_Exit(ST *pu_st, BB *bb)
   /* Perform any adjustments. We will either remove the adjustment
    * or leave it unchanged.
    */
-  if (PUSH_FRAME_POINTER_ON_STACK) {
+  if (Gen_Frame_Pointer && PUSH_FRAME_POINTER_ON_STACK) {
     OP* op = EETARG_High_Level_Procedure_Exit ();
     BB_Insert_Op_After (bb, sp_adj, op);
     BB_Remove_Op (bb, sp_adj);
@@ -1993,14 +2093,22 @@ Adjust_Alloca_Code (void)
 			continue;
 		}
   		OPS_Init(&ops);
+#ifndef KEY
 		if (OP_spadjust_plus(op)) {
+#else
+		if (OP_variant(op) == V_ADJUST_PLUS) {
+#endif
         		// dealloca does copy of kid to $sp 
 			// (op1 is old sp value)
         		Exp_COPY (OP_result(op,0), 
 			  	OP_opnd(op, OP_find_opnd_use(op, OU_opnd2)),
 			  	&ops);
 		}
+#ifndef KEY
 		else if (OP_spadjust_minus(op)) {
+#else
+                else if (OP_variant(op) == V_ADJUST_MINUS) {
+#endif
     			Exp_SUB (Pointer_Mtype, OP_result(op,0),
 			  	OP_opnd(op, OP_find_opnd_use(op, OU_opnd1)),
 			  	OP_opnd(op, OP_find_opnd_use(op, OU_opnd2)),
@@ -2057,3 +2165,67 @@ Adjust_Entry_Exit_Code( ST *pu )
 	Adjust_Alloca_Code ();
   }
 }
+
+#ifdef KEY
+// See the interface description
+
+INT Cgdwarf_Num_Callee_Saved_Regs (void)
+{
+  return Saved_Callee_Saved_Regs.Elements();
+}
+
+struct tn* Cgdwarf_Nth_Callee_Saved_Reg (INT n)
+{
+  return Saved_Callee_Saved_Regs.Top_nth(n).ded_tn;
+}
+
+ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n)
+{
+  return Saved_Callee_Saved_Regs.Top_nth(n).temp;
+}
+
+static inline BOOL
+tn_registers_identical (TN *tn1, TN *tn2)
+{
+  return ((tn1 == tn2) ||
+          ((TN_is_register(tn1) && TN_is_register(tn2) &&
+	    (TN_is_dedicated(tn1) || 
+	     (TN_register(tn1) != REGISTER_UNDEFINED)) &&           
+	    (TN_is_dedicated(tn2) || 
+	     (TN_register(tn2) != REGISTER_UNDEFINED)) &&           
+	    (TN_register_and_class(tn1) == TN_register_and_class(tn2)))));
+}
+
+void Sort_Saved_Register_Stack (BB* bb)
+{
+  INT num_callee_saved_regs = Saved_Callee_Saved_Regs.Elements();
+  if (!num_callee_saved_regs)
+    return;
+
+  STACK<SAVE_REG_LOC> Stack_Temp(&MEM_pu_pool);
+  OP* op;
+  SAVE_REG_LOC sr;
+  INT i;
+
+  FOR_ALL_BB_OPs_REV(bb, op) {
+    if ((OP_code(op) == TOP_store64 || 
+	 (OP_code(op) == TOP_store32 && Is_Target_32bit())) &&
+	(OP_opnd(op, 1) == SP_TN || OP_opnd(op, 1) == FP_TN)) {
+      TN* opnd = OP_opnd(op, 0);
+      for (i = 0; i < num_callee_saved_regs; i ++)
+	if (tn_registers_identical(Saved_Callee_Saved_Regs.Top_nth(i).ded_tn, 
+				   opnd))
+	  break;
+      if (i != num_callee_saved_regs) {
+        sr = Saved_Callee_Saved_Regs.Top_nth(i);
+        Stack_Temp.Push(sr);
+      }
+    }	
+  }
+
+  for (i = 0; i < num_callee_saved_regs && Stack_Temp.Elements(); i ++) 
+    Saved_Callee_Saved_Regs.Top_nth(i) = Stack_Temp.Pop();
+
+  return;
+}
+#endif

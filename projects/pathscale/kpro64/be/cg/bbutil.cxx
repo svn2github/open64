@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,9 +59,10 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <alloca.h>
 #include <stdio.h>
-#include <iterator.h>
 #include "defs.h"
 #include "symtab.h"
 #include "config.h"
@@ -269,7 +274,14 @@ Gen_BB_Like (BB *model)
 BB *
 Gen_And_Append_BB (BB *prev_bb) 
 {
+#ifdef KEY
+  /* bug#448
+     The rid info from <prev_bb> should be propagated.
+   */
+  BB *bb = Gen_BB_Like(prev_bb);
+#else
   BB *bb = Gen_BB();
+#endif
 
   if (prev_bb != NULL) {
     Is_True (BB_next(prev_bb) == NULL, 
@@ -1914,9 +1926,20 @@ BB_MAP BB_Depth_First_Map(BB_SET *region, BB *entry)
   } else {
     BB_LIST *entries;
     INT32 max_id = 0;
-    for (entries = Entry_BB_Head; entries; entries = BB_LIST_rest(entries))
+    for (entries = Entry_BB_Head; entries; entries = BB_LIST_rest(entries)){
+#ifdef KEY
+      /* bug#1458
+	 Don't visit an unrecognizable region twice.
+       */
+      if( BB_MAP32_Get( dfo_map, BB_LIST_first(entries) ) != 0 ){
+	FmtAssert( region == NULL,
+		   ("BB_Depth_First_Map visited a region twice") );
+	continue;
+      }
+#endif
       max_id = map_depth_first(dfo_map, region, BB_LIST_first(entries),
 			       max_id);
+    }
   }
   return dfo_map;
 }
@@ -2175,7 +2198,7 @@ BB_Transfer_Entryinfo(BB* from, BB* to)
   Reset_BB_entry(from);
   if (BB_handler(from)) {
     Set_BB_handler(to);
-    Reset_BB_handler(to);
+    Reset_BB_handler(from);
   }
   annot = ANNOT_Get(BB_annotations(from),ANNOT_ENTRYINFO);
   Is_True(annot != NULL,("No entryinfo annotation for BB%d",BB_id(from)));
@@ -2483,6 +2506,21 @@ ST *BB_st(BB *bb)
 }
 
 
+#ifdef KEY
+static BOOL OP_defs_argument( OP* op )
+{
+  for( int resnum = 0; resnum < OP_results(op); resnum++ ){
+    TN* tn = OP_result( op, resnum );
+    if( TN_is_dedicated( tn ) &&
+	REGISTER_SET_MemberP( REGISTER_CLASS_function_argument(TN_register_class(tn)), TN_register(tn) ) )
+      return TRUE;
+  }
+
+  return FALSE;
+}
+#endif
+
+
 /* =======================================================================
  *
  *  Split_BB
@@ -2539,6 +2577,26 @@ static void Split_BB(BB *bb)
           break;
         }
       }
+#ifdef TARG_X8664
+      /* The life of rflags does not across BBs.
+       */
+      while( min_idx <= len && OP_reads_rflags(op_vec[min_idx]) ){
+	min_idx++;
+      }
+#endif
+
+#ifdef KEY
+      /* Fix bug#1820
+	 While splitting a big bb, don't violate the assumption that
+	 a definition of an argument register should be in the call block.
+       */
+      if( BB_call( bb ) ){
+	while( min_idx > 1 &&
+	       OP_defs_argument( op_vec[min_idx-1] ) ){
+	  min_idx--;
+	}
+      }
+#endif
       splits[split_idx++] = min_idx;
       if (len - min_idx <= Split_BB_Length) break;
       i = min_idx + low;
@@ -2607,6 +2665,14 @@ static void Split_BB(BB *bb)
     INT op_idx;
     for (op_idx = splits[i]; op_idx < splits[i+1]; op_idx++) {
       op = op_vec[op_idx];
+#ifdef Is_True_On
+      if( !BB_call( new_bb ) &&
+	  BB_call( last_bb ) ){
+	if( OP_defs_argument( op ) ){
+	  DevWarn( "Split_BBs: argument and call are not defined at the same BB" );
+	}
+      }
+#endif
       BB_Move_Op_To_End(new_bb, bb, op);
     }
   }

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -88,7 +92,8 @@ const long	*scale
 #ifdef	_F_INT4
 	int32	datum32;
 #endif
-#if	defined(_F_INT2) && defined(__mips)
+/* KEY: This used to also have __mips */
+#if	defined(_F_INT2)
 	_f_int2 datum16;
 	_f_int1 datum8;
 #endif
@@ -101,7 +106,8 @@ const long	*scale
 	if ((*mode & MODEHP) != 0)
 		datum	= *(_f_int4 *)value;
 	else
-#if	defined(_F_INT2) && defined(__mips)
+/* KEY: This used to also have __mips */
+#if	defined(_F_INT2)
 	if ((*mode & MODEWP) != 0)
 		datum	= *(_f_int2 *)value;
 	else if ((*mode & MODEBP) != 0)
@@ -165,7 +171,8 @@ const long	*scale
 		value	= &datum32;
 	}
 	else
-#if	defined(_F_INT2) && defined(__mips)
+/* KEY: This used to also have __mips */
+#if	defined(_F_INT2)
 	if ((*mode & MODEWP) != 0) {
 		datum16	= datum;
 		value	= &datum16;

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -96,7 +100,7 @@ int	*errf,
 ...
 )
 #else
-__OPN(
+int __OPN(
 _f_int	*unitn,
 _f_int	*iostat,
 int	*errf,
@@ -381,7 +385,8 @@ int	isf90_arg)	/* =1 iff Fortran-90 OPEN */
 		 * will be closed and then reopened for the new file.  
 		 */
 
-#if	!defined(__mips) && !defined(_LITTLE_ENDIAN)
+/* KEY: we do want this check */
+#if	(!defined(__mips) && !defined(_LITTLE_ENDIAN)) || defined(KEY)
 		/*
 		 * SGI's F77 and old F90 allowed open with status=NEW,
 		 * OLD, or REPLACE without FILE specifier, so we continue

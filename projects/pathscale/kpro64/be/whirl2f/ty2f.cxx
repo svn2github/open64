@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1112,6 +1116,16 @@ TY2F_scalar(TOKEN_BUFFER decl_tokens, TY_IDX ty_idx)
       base_name = "memory block";
       break;
 
+#ifdef KEY
+   case MTYPE_V16I1:
+   case MTYPE_V16I2:
+   case MTYPE_V16I4:
+   case MTYPE_V16I8:
+   case MTYPE_V16F4:
+   case MTYPE_V16F8:
+      base_name = "REAL";
+      break;
+#endif /* KEY */
    default:
       ASSERT_DBG_FATAL(FALSE,
 		       (DIAG_W2F_UNEXPECTED_BTYPE, 

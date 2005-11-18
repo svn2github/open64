@@ -1,23 +1,27 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Expand the basic unary and binary arithmetic operations, for GNU compiler.
    Copyright (C) 1987, 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
-   1999, 2000 Free Software Foundation, Inc.
+   1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
 
 #include "config.h"
@@ -25,20 +29,22 @@ Boston, MA 02111-1307, USA.  */
 #include "toplev.h"
 
 /* Include insn-config.h before expr.h so that HAVE_conditional_move
-   is properly defined. */
+   is properly defined.  */
 #include "insn-config.h"
 #include "rtl.h"
 #include "tree.h"
 #include "tm_p.h"
 #include "flags.h"
-#include "insn-flags.h"
-#include "insn-codes.h"
 #include "function.h"
+#include "except.h"
 #include "expr.h"
+#include "optabs.h"
+#include "libfuncs.h"
 #include "recog.h"
 #include "reload.h"
 #include "ggc.h"
 #include "real.h"
+#include "basic-block.h"
 
 /* Each optab contains info on how this target machine
    can perform a particular operation
@@ -84,6 +90,11 @@ enum insn_code setcc_gen_code[NUM_RTX_CODE];
 enum insn_code movcc_gen_code[NUM_MACHINE_MODES];
 #endif
 
+/* The insn generating function can not take an rtx_code argument.
+   TRAP_RTX is used as an rtx argument.  Its code is replaced with
+   the code to be used in the trap insn and all other fields are ignored.  */
+static GTY(()) rtx trap_rtx;
+
 static int add_equal_note	PARAMS ((rtx, rtx, enum rtx_code, rtx, rtx));
 static rtx widen_operand	PARAMS ((rtx, enum machine_mode,
 				       enum machine_mode, int, int));
@@ -95,24 +106,37 @@ static int expand_cmplxdiv_wide PARAMS ((rtx, rtx, rtx, rtx,
 				       rtx, rtx, enum machine_mode,
 				       int, enum optab_methods,
 				       enum mode_class, optab));
+static void prepare_cmp_insn PARAMS ((rtx *, rtx *, enum rtx_code *, rtx,
+				      enum machine_mode *, int *,
+				      enum can_compare_purpose));
 static enum insn_code can_fix_p	PARAMS ((enum machine_mode, enum machine_mode,
 				       int, int *));
-static enum insn_code can_float_p PARAMS ((enum machine_mode, enum machine_mode,
-					 int));
+static enum insn_code can_float_p PARAMS ((enum machine_mode,
+					   enum machine_mode,
+					   int));
 static rtx ftruncify	PARAMS ((rtx));
-static optab init_optab	PARAMS ((enum rtx_code));
+static optab new_optab	PARAMS ((void));
+static inline optab init_optab	PARAMS ((enum rtx_code));
+static inline optab init_optabv	PARAMS ((enum rtx_code));
 static void init_libfuncs PARAMS ((optab, int, int, const char *, int));
 static void init_integral_libfuncs PARAMS ((optab, const char *, int));
 static void init_floating_libfuncs PARAMS ((optab, const char *, int));
-#ifdef HAVE_conditional_trap
-static void init_traps PARAMS ((void));
-#endif
 static void emit_cmp_and_jump_insn_1 PARAMS ((rtx, rtx, enum machine_mode,
 					    enum rtx_code, int, rtx));
 static void prepare_float_lib_cmp PARAMS ((rtx *, rtx *, enum rtx_code *,
 					 enum machine_mode *, int *));
+static rtx expand_vector_binop PARAMS ((enum machine_mode, optab,
+					rtx, rtx, rtx, int,
+					enum optab_methods));
+static rtx expand_vector_unop PARAMS ((enum machine_mode, optab, rtx, rtx,
+				       int));
+
+#ifndef HAVE_conditional_trap
+#define HAVE_conditional_trap 0
+#define gen_conditional_trap(a,b) (abort (), NULL_RTX)
+#endif
 
-/* Add a REG_EQUAL note to the last insn in SEQ.  TARGET is being set to
+/* Add a REG_EQUAL note to the last insn in INSNS.  TARGET is being set to
    the result of operation CODE applied to OP0 (and OP1 if it is a binary
    operation).
 
@@ -123,43 +147,65 @@ static void prepare_float_lib_cmp PARAMS ((rtx *, rtx *, enum rtx_code *,
    again, ensuring that TARGET is not one of the operands.  */
 
 static int
-add_equal_note (seq, target, code, op0, op1)
-     rtx seq;
+add_equal_note (insns, target, code, op0, op1)
+     rtx insns;
      rtx target;
      enum rtx_code code;
      rtx op0, op1;
 {
-  rtx set;
-  int i;
+  rtx last_insn, insn, set;
   rtx note;
 
-  if ((GET_RTX_CLASS (code) != '1' && GET_RTX_CLASS (code) != '2'
-       && GET_RTX_CLASS (code) != 'c' && GET_RTX_CLASS (code) != '<')
-      || GET_CODE (seq) != SEQUENCE
-      || (set = single_set (XVECEXP (seq, 0, XVECLEN (seq, 0) - 1))) == 0
-      || GET_CODE (target) == ZERO_EXTRACT
-      || (! rtx_equal_p (SET_DEST (set), target)
-	  /* For a STRICT_LOW_PART, the REG_NOTE applies to what is inside the
-	     SUBREG.  */
-	  && (GET_CODE (SET_DEST (set)) != STRICT_LOW_PART
-	      || ! rtx_equal_p (SUBREG_REG (XEXP (SET_DEST (set), 0)),
-				target))))
+  if (! insns
+      || ! INSN_P (insns)
+      || NEXT_INSN (insns) == NULL_RTX)
+    abort ();
+
+  if (GET_RTX_CLASS (code) != '1' && GET_RTX_CLASS (code) != '2'
+      && GET_RTX_CLASS (code) != 'c' && GET_RTX_CLASS (code) != '<')
+    return 1;
+
+  if (GET_CODE (target) == ZERO_EXTRACT)
+    return 1;
+
+  for (last_insn = insns;
+       NEXT_INSN (last_insn) != NULL_RTX;
+       last_insn = NEXT_INSN (last_insn))
+    ;
+
+  set = single_set (last_insn);
+  if (set == NULL_RTX)
+    return 1;
+
+  if (! rtx_equal_p (SET_DEST (set), target)
+      /* For a STRICT_LOW_PART, the REG_NOTE applies to what is inside the
+	 SUBREG.  */
+      && (GET_CODE (SET_DEST (set)) != STRICT_LOW_PART
+	  || ! rtx_equal_p (SUBREG_REG (XEXP (SET_DEST (set), 0)),
+			    target)))
     return 1;
 
   /* If TARGET is in OP0 or OP1, check if anything in SEQ sets TARGET
      besides the last insn.  */
   if (reg_overlap_mentioned_p (target, op0)
       || (op1 && reg_overlap_mentioned_p (target, op1)))
-    for (i = XVECLEN (seq, 0) - 2; i >= 0; i--)
-      if (reg_set_p (target, XVECEXP (seq, 0, i)))
-	return 0;
+    {
+      insn = PREV_INSN (last_insn);
+      while (insn != NULL_RTX)
+	{
+	  if (reg_set_p (target, insn))
+	    return 0;
+
+	  insn = PREV_INSN (insn);
+	}
+    }
 
   if (GET_RTX_CLASS (code) == '1')
     note = gen_rtx_fmt_e (code, GET_MODE (target), copy_rtx (op0));
   else
     note = gen_rtx_fmt_ee (code, GET_MODE (target), copy_rtx (op0), copy_rtx (op1));
 
-  set_unique_reg_note (XVECEXP (seq, 0, XVECLEN (seq, 0) - 1), REG_EQUAL, note);
+  set_unique_reg_note (last_insn, REG_EQUAL, note);
 
   return 1;
 }
@@ -179,12 +225,16 @@ widen_operand (op, mode, oldmode, unsignedp, no_extend)
 {
   rtx result;
 
-  /* If we must extend do so.  If OP is either a constant or a SUBREG
-     for a promoted object, also extend since it will be more efficient to
-     do so.  */
+  /* If we don't have to extend and this is a constant, return it.  */
+  if (no_extend && GET_MODE (op) == VOIDmode)
+    return op;
+
+  /* If we must extend do so.  If OP is a SUBREG for a promoted object, also
+     extend since it will be more efficient to do so unless the signedness of
+     a promoted object differs from our extension.  */
   if (! no_extend
-      || GET_MODE (op) == VOIDmode
-      || (GET_CODE (op) == SUBREG && SUBREG_PROMOTED_VAR_P (op)))
+      || (GET_CODE (op) == SUBREG && SUBREG_PROMOTED_VAR_P (op)
+	  && SUBREG_PROMOTED_UNSIGNED_P (op) == unsignedp))
     return convert_modes (mode, oldmode, op, unsignedp);
 
   /* If MODE is no wider than a single word, we return a paradoxical
@@ -206,18 +256,30 @@ widen_operand (op, mode, oldmode, unsignedp, no_extend)
 static int
 expand_cmplxdiv_straight (real0, real1, imag0, imag1, realr, imagr, submode,
 			  unsignedp, methods, class, binoptab)
-  rtx real0, real1, imag0, imag1, realr, imagr;
-  enum machine_mode submode;
-  int unsignedp;
-  enum optab_methods methods;
-  enum mode_class class;
-  optab binoptab;
+     rtx real0, real1, imag0, imag1, realr, imagr;
+     enum machine_mode submode;
+     int unsignedp;
+     enum optab_methods methods;
+     enum mode_class class;
+     optab binoptab;
 {
   rtx divisor;
   rtx real_t, imag_t;
   rtx temp1, temp2;
   rtx res;
+  optab this_add_optab = add_optab;
+  optab this_sub_optab = sub_optab;
+  optab this_neg_optab = neg_optab;
+  optab this_mul_optab = smul_optab;
 	      
+  if (binoptab == sdivv_optab)
+    {
+      this_add_optab = addv_optab;
+      this_sub_optab = subv_optab;
+      this_neg_optab = negv_optab;
+      this_mul_optab = smulv_optab;
+    }
+
   /* Don't fetch these from memory more than once.  */
   real0 = force_reg (submode, real0);
   real1 = force_reg (submode, real1);
@@ -228,16 +290,16 @@ expand_cmplxdiv_straight (real0, real1, imag0, imag1, realr, imagr, submode,
   imag1 = force_reg (submode, imag1);
 
   /* Divisor: c*c + d*d.  */
-  temp1 = expand_binop (submode, smul_optab, real1, real1,
+  temp1 = expand_binop (submode, this_mul_optab, real1, real1,
 			NULL_RTX, unsignedp, methods);
 
-  temp2 = expand_binop (submode, smul_optab, imag1, imag1,
+  temp2 = expand_binop (submode, this_mul_optab, imag1, imag1,
 			NULL_RTX, unsignedp, methods);
 
   if (temp1 == 0 || temp2 == 0)
     return 0;
 
-  divisor = expand_binop (submode, add_optab, temp1, temp2,
+  divisor = expand_binop (submode, this_add_optab, temp1, temp2,
 			  NULL_RTX, unsignedp, methods);
   if (divisor == 0)
     return 0;
@@ -248,44 +310,44 @@ expand_cmplxdiv_straight (real0, real1, imag0, imag1, realr, imagr, submode,
       /* Computationally, (a+i0) / (c+id) = (ac/(cc+dd)) + i(-ad/(cc+dd)).  */
 
       /* Calculate the dividend.  */
-      real_t = expand_binop (submode, smul_optab, real0, real1,
+      real_t = expand_binop (submode, this_mul_optab, real0, real1,
 			     NULL_RTX, unsignedp, methods);
 		  
-      imag_t = expand_binop (submode, smul_optab, real0, imag1,
+      imag_t = expand_binop (submode, this_mul_optab, real0, imag1,
 			     NULL_RTX, unsignedp, methods);
 
       if (real_t == 0 || imag_t == 0)
 	return 0;
 
-      imag_t = expand_unop (submode, neg_optab, imag_t,
+      imag_t = expand_unop (submode, this_neg_optab, imag_t,
 			    NULL_RTX, unsignedp);
     }
   else
     {
       /* Mathematically, ((a+ib)(c-id))/divider.  */
       /* Calculate the dividend.  */
-      temp1 = expand_binop (submode, smul_optab, real0, real1,
+      temp1 = expand_binop (submode, this_mul_optab, real0, real1,
 			    NULL_RTX, unsignedp, methods);
 
-      temp2 = expand_binop (submode, smul_optab, imag0, imag1,
+      temp2 = expand_binop (submode, this_mul_optab, imag0, imag1,
 			    NULL_RTX, unsignedp, methods);
 
       if (temp1 == 0 || temp2 == 0)
 	return 0;
 
-      real_t = expand_binop (submode, add_optab, temp1, temp2,
+      real_t = expand_binop (submode, this_add_optab, temp1, temp2,
 			     NULL_RTX, unsignedp, methods);
 		  
-      temp1 = expand_binop (submode, smul_optab, imag0, real1,
+      temp1 = expand_binop (submode, this_mul_optab, imag0, real1,
 			    NULL_RTX, unsignedp, methods);
 
-      temp2 = expand_binop (submode, smul_optab, real0, imag1,
+      temp2 = expand_binop (submode, this_mul_optab, real0, imag1,
 			    NULL_RTX, unsignedp, methods);
 
       if (temp1 == 0 || temp2 == 0)
 	return 0;
 
-      imag_t = expand_binop (submode, sub_optab, temp1, temp2,
+      imag_t = expand_binop (submode, this_sub_optab, temp1, temp2,
 			     NULL_RTX, unsignedp, methods);
 
       if (real_t == 0 || imag_t == 0)
@@ -326,19 +388,30 @@ expand_cmplxdiv_straight (real0, real1, imag0, imag1, realr, imagr, submode,
 static int
 expand_cmplxdiv_wide (real0, real1, imag0, imag1, realr, imagr, submode,
 		      unsignedp, methods, class, binoptab)
-  rtx real0, real1, imag0, imag1, realr, imagr;
-  enum machine_mode submode;
-  int unsignedp;
-  enum optab_methods methods;
-  enum mode_class class;
-  optab binoptab;
+     rtx real0, real1, imag0, imag1, realr, imagr;
+     enum machine_mode submode;
+     int unsignedp;
+     enum optab_methods methods;
+     enum mode_class class;
+     optab binoptab;
 {
   rtx ratio, divisor;
   rtx real_t, imag_t;
   rtx temp1, temp2, lab1, lab2;
   enum machine_mode mode;
-  int align;
   rtx res;
+  optab this_add_optab = add_optab;
+  optab this_sub_optab = sub_optab;
+  optab this_neg_optab = neg_optab;
+  optab this_mul_optab = smul_optab;
+
+  if (binoptab == sdivv_optab)
+    {
+      this_add_optab = addv_optab;
+      this_sub_optab = subv_optab;
+      this_neg_optab = negv_optab;
+      this_mul_optab = smulv_optab;
+    }
 	      
   /* Don't fetch these from memory more than once.  */
   real0 = force_reg (submode, real0);
@@ -357,18 +430,17 @@ expand_cmplxdiv_wide (real0, real1, imag0, imag1, realr, imagr, submode,
     }
   else
     {
-      temp1 = expand_abs (submode, real1, NULL_RTX, 1);
-      temp2 = expand_abs (submode, imag1, NULL_RTX, 1);
+      temp1 = expand_abs (submode, real1, NULL_RTX, unsignedp, 1);
+      temp2 = expand_abs (submode, imag1, NULL_RTX, unsignedp, 1);
     }
 
   if (temp1 == 0 || temp2 == 0)
     return 0;
 
   mode = GET_MODE (temp1);
-  align = GET_MODE_ALIGNMENT (mode);
   lab1 = gen_label_rtx ();
   emit_cmp_and_jump_insns (temp1, temp2, LT, NULL_RTX,
-			   mode, unsignedp, align, lab1);
+			   mode, unsignedp, lab1);
 
   /* |c| >= |d|; use ratio d/c to scale dividend and divisor.  */
 
@@ -384,13 +456,13 @@ expand_cmplxdiv_wide (real0, real1, imag0, imag1, realr, imagr, submode,
 
   /* Calculate divisor.  */
 
-  temp1 = expand_binop (submode, smul_optab, imag1, ratio,
+  temp1 = expand_binop (submode, this_mul_optab, imag1, ratio,
 			NULL_RTX, unsignedp, methods);
 
   if (temp1 == 0)
     return 0;
 
-  divisor = expand_binop (submode, add_optab, temp1, real1,
+  divisor = expand_binop (submode, this_add_optab, temp1, real1,
 			  NULL_RTX, unsignedp, methods);
 
   if (divisor == 0)
@@ -404,13 +476,13 @@ expand_cmplxdiv_wide (real0, real1, imag0, imag1, realr, imagr, submode,
 
       /* Compute a / (c+id) as a / (c+d(d/c)) + i (-a(d/c)) / (c+d(d/c)).  */
 
-      imag_t = expand_binop (submode, smul_optab, real0, ratio,
+      imag_t = expand_binop (submode, this_mul_optab, real0, ratio,
 			     NULL_RTX, unsignedp, methods);
 
       if (imag_t == 0)
 	return 0;
 
-      imag_t = expand_unop (submode, neg_optab, imag_t,
+      imag_t = expand_unop (submode, this_neg_optab, imag_t,
 			    NULL_RTX, unsignedp);
 
       if (real_t == 0 || imag_t == 0)
@@ -421,22 +493,22 @@ expand_cmplxdiv_wide (real0, real1, imag0, imag1, realr, imagr, submode,
       /* Compute (a+ib)/(c+id) as
 	 (a+b(d/c))/(c+d(d/c) + i(b-a(d/c))/(c+d(d/c)).  */
 
-      temp1 = expand_binop (submode, smul_optab, imag0, ratio,
+      temp1 = expand_binop (submode, this_mul_optab, imag0, ratio,
 			    NULL_RTX, unsignedp, methods);
 
       if (temp1 == 0)
 	return 0;
 
-      real_t = expand_binop (submode, add_optab, temp1, real0,
+      real_t = expand_binop (submode, this_add_optab, temp1, real0,
 			     NULL_RTX, unsignedp, methods);
 
-      temp1 = expand_binop (submode, smul_optab, real0, ratio,
+      temp1 = expand_binop (submode, this_mul_optab, real0, ratio,
 			    NULL_RTX, unsignedp, methods);
 
       if (temp1 == 0)
 	return 0;
 
-      imag_t = expand_binop (submode, sub_optab, imag0, temp1,
+      imag_t = expand_binop (submode, this_sub_optab, imag0, temp1,
 			     NULL_RTX, unsignedp, methods);
 
       if (real_t == 0 || imag_t == 0)
@@ -489,13 +561,13 @@ expand_cmplxdiv_wide (real0, real1, imag0, imag1, realr, imagr, submode,
 
   /* Calculate divisor.  */
 
-  temp1 = expand_binop (submode, smul_optab, real1, ratio,
+  temp1 = expand_binop (submode, this_mul_optab, real1, ratio,
 			NULL_RTX, unsignedp, methods);
 
   if (temp1 == 0)
     return 0;
 
-  divisor = expand_binop (submode, add_optab, temp1, imag1,
+  divisor = expand_binop (submode, this_add_optab, temp1, imag1,
 			  NULL_RTX, unsignedp, methods);
 
   if (divisor == 0)
@@ -507,10 +579,10 @@ expand_cmplxdiv_wide (real0, real1, imag0, imag1, realr, imagr, submode,
     {
       /* Compute a / (c+id) as a(c/d) / (c(c/d)+d) + i (-a) / (c(c/d)+d).  */
 
-      real_t = expand_binop (submode, smul_optab, real0, ratio,
+      real_t = expand_binop (submode, this_mul_optab, real0, ratio,
 			     NULL_RTX, unsignedp, methods);
 
-      imag_t = expand_unop (submode, neg_optab, real0,
+      imag_t = expand_unop (submode, this_neg_optab, real0,
 			    NULL_RTX, unsignedp);
 
       if (real_t == 0 || imag_t == 0)
@@ -521,22 +593,22 @@ expand_cmplxdiv_wide (real0, real1, imag0, imag1, realr, imagr, submode,
       /* Compute (a+ib)/(c+id) as
 	 (a(c/d)+b)/(c(c/d)+d) + i (b(c/d)-a)/(c(c/d)+d).  */
 
-      temp1 = expand_binop (submode, smul_optab, real0, ratio,
+      temp1 = expand_binop (submode, this_mul_optab, real0, ratio,
 			    NULL_RTX, unsignedp, methods);
 
       if (temp1 == 0)
 	return 0;
 
-      real_t = expand_binop (submode, add_optab, temp1, imag0,
+      real_t = expand_binop (submode, this_add_optab, temp1, imag0,
 			     NULL_RTX, unsignedp, methods);
 
-      temp1 = expand_binop (submode, smul_optab, imag0, ratio,
+      temp1 = expand_binop (submode, this_mul_optab, imag0, ratio,
 			    NULL_RTX, unsignedp, methods);
 
       if (temp1 == 0)
 	return 0;
 
-      imag_t = expand_binop (submode, sub_optab, temp1, real0,
+      imag_t = expand_binop (submode, this_sub_optab, temp1, real0,
 			     NULL_RTX, unsignedp, methods);
 
       if (real_t == 0 || imag_t == 0)
@@ -574,6 +646,25 @@ expand_cmplxdiv_wide (real0, real1, imag0, imag1, realr, imagr, submode,
   return 1;
 }
 
+/* Wrapper around expand_binop which takes an rtx code to specify
+   the operation to perform, not an optab pointer.  All other
+   arguments are the same.  */
+rtx
+expand_simple_binop (mode, code, op0, op1, target, unsignedp, methods)
+     enum machine_mode mode;
+     enum rtx_code code;
+     rtx op0, op1;
+     rtx target;
+     int unsignedp;
+     enum optab_methods methods;
+{
+  optab binop = code_to_optab[(int) code];
+  if (binop == 0)
+    abort ();
+
+  return expand_binop (mode, binop, op0, op1, target, unsignedp, methods);
+}
+
 /* Generate code to perform an operation specified by BINOPTAB
    on operands OP0 and OP1, with result having machine-mode MODE.
 
@@ -599,9 +690,9 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
        ? OPTAB_WIDEN : methods);
   enum mode_class class;
   enum machine_mode wider_mode;
-  register rtx temp;
+  rtx temp;
   int commutative_op = 0;
-  int shift_op = (binoptab->code ==  ASHIFT
+  int shift_op = (binoptab->code == ASHIFT
 		  || binoptab->code == ASHIFTRT
 		  || binoptab->code == LSHIFTRT
 		  || binoptab->code == ROTATE
@@ -634,11 +725,11 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
   /* If we are inside an appropriately-short loop and one operand is an
      expensive constant, force it into a register.  */
   if (CONSTANT_P (op0) && preserve_subexpressions_p ()
-      && rtx_cost (op0, binoptab->code) > 2)
+      && rtx_cost (op0, binoptab->code) > COSTS_N_INSNS (1))
     op0 = force_reg (mode, op0);
 
   if (CONSTANT_P (op1) && preserve_subexpressions_p ()
-      && ! shift_op && rtx_cost (op1, binoptab->code) > 2)
+      && ! shift_op && rtx_cost (op1, binoptab->code) > COSTS_N_INSNS (1))
     op1 = force_reg (mode, op1);
 
   /* Record where to delete back to if we backtrack.  */
@@ -692,7 +783,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 	  if (GET_MODE (op0) != mode0 && GET_MODE (op1) != mode1
 	      && GET_MODE (op0) == mode1 && GET_MODE (op1) == mode0)
 	    {
-	      register rtx tmp;
+	      rtx tmp;
 
 	      tmp = op0; op0 = op1; op1 = tmp;
 	      tmp = xop0; xop0 = xop1; xop1 = tmp;
@@ -700,17 +791,24 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 	}
 
       /* In case the insn wants input operands in modes different from
-	 the result, convert the operands.  */
+	 those of the actual operands, convert the operands.  It would
+	 seem that we don't need to convert CONST_INTs, but we do, so
+	 that they're properly zero-extended, sign-extended or truncated
+	 for their mode.  */
 
-      if (GET_MODE (op0) != VOIDmode
-	  && GET_MODE (op0) != mode0
-	  && mode0 != VOIDmode)
-	xop0 = convert_to_mode (mode0, xop0, unsignedp);
+      if (GET_MODE (op0) != mode0 && mode0 != VOIDmode)
+	xop0 = convert_modes (mode0,
+			      GET_MODE (op0) != VOIDmode
+			      ? GET_MODE (op0)
+			      : mode,
+			      xop0, unsignedp);
 
-      if (GET_MODE (xop1) != VOIDmode
-	  && GET_MODE (xop1) != mode1
-	  && mode1 != VOIDmode)
-	xop1 = convert_to_mode (mode1, xop1, unsignedp);
+      if (GET_MODE (op1) != mode1 && mode1 != VOIDmode)
+	xop1 = convert_modes (mode1,
+			      GET_MODE (op1) != VOIDmode
+			      ? GET_MODE (op1)
+			      : mode,
+			      xop1, unsignedp);
 
       /* Now, if insn's predicates don't allow our operands, put them into
 	 pseudo regs.  */
@@ -729,10 +827,10 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
       pat = GEN_FCN (icode) (temp, xop0, xop1);
       if (pat)
 	{
-	  /* If PAT is a multi-insn sequence, try to add an appropriate
+	  /* If PAT is composed of more than one insn, try to add an appropriate
 	     REG_EQUAL note to it.  If we can't because TEMP conflicts with an
 	     operand, call ourselves again, this time without a target.  */
-	  if (GET_CODE (pat) == SEQUENCE
+	  if (INSN_P (pat) && NEXT_INSN (pat) != NULL_RTX
 	      && ! add_equal_note (pat, temp, binoptab->code, xop0, xop1))
 	    {
 	      delete_insns_since (last);
@@ -789,7 +887,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 
 	    /* For certain integer operations, we need not actually extend
 	       the narrow operands, as long as we will truncate
-	       the results to the same narrowness.   */
+	       the results to the same narrowness.  */
 
 	    if ((binoptab == ior_optab || binoptab == and_optab
 		 || binoptab == xor_optab
@@ -829,7 +927,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
       && GET_MODE_SIZE (mode) > UNITS_PER_WORD
       && binoptab->handlers[(int) word_mode].insn_code != CODE_FOR_nothing)
     {
-      unsigned int i;
+      int i;
       rtx insns;
       rtx equiv_value;
 
@@ -1051,7 +1149,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 	  if (shift_count > BITS_PER_WORD)
 	    {
 	      first_shift_count = GEN_INT (shift_count - BITS_PER_WORD);
-	      second_shift_count = GEN_INT (2*BITS_PER_WORD - shift_count);
+	      second_shift_count = GEN_INT (2 * BITS_PER_WORD - shift_count);
 	    }
 	  else
 	    {
@@ -1064,7 +1162,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 				     NULL_RTX, unsignedp, next_methods);
 	  into_temp2 = expand_binop (word_mode, reverse_unsigned_shift,
 				     into_input, second_shift_count,
-				     into_target, unsignedp, next_methods);
+				     NULL_RTX, unsignedp, next_methods);
 
 	  if (into_temp1 != 0 && into_temp2 != 0)
 	    inter = expand_binop (word_mode, ior_optab, into_temp1, into_temp2,
@@ -1080,7 +1178,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 				      NULL_RTX, unsignedp, next_methods);
 	  outof_temp2 = expand_binop (word_mode, reverse_unsigned_shift,
 				      outof_input, second_shift_count,
-				      outof_target, unsignedp, next_methods);
+				      NULL_RTX, unsignedp, next_methods);
 
 	  if (inter != 0 && outof_temp1 != 0 && outof_temp2 != 0)
 	    inter = expand_binop (word_mode, ior_optab,
@@ -1107,7 +1205,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 	  if (shift_count != BITS_PER_WORD)
 	    emit_no_conflict_block (insns, target, op0, op1, equiv_value);
 	  else
-	    emit_insns (insns);
+	    emit_insn (insns);
 
 
 	  return target;
@@ -1121,11 +1219,10 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
       && binoptab->handlers[(int) word_mode].insn_code != CODE_FOR_nothing)
     {
       unsigned int i;
-      rtx carry_tmp = gen_reg_rtx (word_mode);
       optab otheroptab = binoptab == add_optab ? sub_optab : add_optab;
-      unsigned int nwords = GET_MODE_BITSIZE (mode) / BITS_PER_WORD;
+      const unsigned int nwords = GET_MODE_BITSIZE (mode) / BITS_PER_WORD;
       rtx carry_in = NULL_RTX, carry_out = NULL_RTX;
-      rtx xop0, xop1;
+      rtx xop0, xop1, xtarget;
 
       /* We can handle either a 1 or -1 value for the carry.  If STORE_FLAG
 	 value is one of those, use it.  Otherwise, use 1 since it is the
@@ -1140,19 +1237,20 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
       xop0 = force_reg (mode, op0);
       xop1 = force_reg (mode, op1);
 
-      if (target == 0 || GET_CODE (target) != REG
-	  || target == xop0 || target == xop1)
-	target = gen_reg_rtx (mode);
+      xtarget = gen_reg_rtx (mode);
+
+      if (target == 0 || GET_CODE (target) != REG)
+	target = xtarget;
 
       /* Indicate for flow that the entire target reg is being set.  */
       if (GET_CODE (target) == REG)
-	emit_insn (gen_rtx_CLOBBER (VOIDmode, target));
+	emit_insn (gen_rtx_CLOBBER (VOIDmode, xtarget));
 
       /* Do the actual arithmetic.  */
       for (i = 0; i < nwords; i++)
 	{
 	  int index = (WORDS_BIG_ENDIAN ? nwords - i - 1 : i);
-	  rtx target_piece = operand_subword (target, index, 1, mode);
+	  rtx target_piece = operand_subword (xtarget, index, 1, mode);
 	  rtx op0_piece = operand_subword_force (xop0, index, mode);
 	  rtx op1_piece = operand_subword_force (xop1, index, mode);
 	  rtx x;
@@ -1177,24 +1275,22 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 
 	  if (i > 0)
 	    {
+	      rtx newx;
+	      
 	      /* Add/subtract previous carry to main result.  */
-	      x = expand_binop (word_mode,
-				normalizep == 1 ? binoptab : otheroptab,
-				x, carry_in,
-				target_piece, 1, next_methods);
-	      if (x == 0)
-		break;
-	      else if (target_piece != x)
-		emit_move_insn (target_piece, x);
+	      newx = expand_binop (word_mode,
+				   normalizep == 1 ? binoptab : otheroptab,
+				   x, carry_in,
+				   NULL_RTX, 1, next_methods);
 
 	      if (i + 1 < nwords)
 		{
-		  /* THIS CODE HAS NOT BEEN TESTED.  */
 		  /* Get out carry from adding/subtracting carry in.  */
+		  rtx carry_tmp = gen_reg_rtx (word_mode);
 		  carry_tmp = emit_store_flag_force (carry_tmp,
-						     binoptab == add_optab
-						     ? LT : GT,
-						     x, carry_in,
+						     (binoptab == add_optab
+						      ? LT : GT),
+						     newx, x,
 						     word_mode, 1, normalizep);
 
 		  /* Logical-ior the two poss. carry together.  */
@@ -1204,16 +1300,17 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 		  if (carry_out == 0)
 		    break;
 		}
+	      emit_move_insn (target_piece, newx);
 	    }
 
 	  carry_in = carry_out;
 	}	
 
-      if (i == GET_MODE_BITSIZE (mode) / BITS_PER_WORD)
+      if (i == GET_MODE_BITSIZE (mode) / (unsigned) BITS_PER_WORD)
 	{
 	  if (mov_optab->handlers[(int) mode].insn_code != CODE_FOR_nothing)
 	    {
-	      rtx temp = emit_move_insn (target, target);
+	      rtx temp = emit_move_insn (target, xtarget);
 
 	      set_unique_reg_note (temp,
 	      			   REG_EQUAL,
@@ -1221,6 +1318,8 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 						   copy_rtx (xop0),
 						   copy_rtx (xop1)));
 	    }
+	  else
+	    target = xtarget;
 
 	  return target;
 	}
@@ -1375,6 +1474,9 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 	  rtx temp = expand_binop (word_mode, binoptab, op0_low, op1_xhigh,
 				   NULL_RTX, 0, OPTAB_DIRECT);
 
+	  if (!REG_P (product_high))
+	    product_high = force_reg (word_mode, product_high);
+
 	  if (temp != 0)
 	    temp = expand_binop (word_mode, add_optab, temp, product_high,
 				 product_high, 0, next_methods);
@@ -1393,6 +1495,8 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 
 	  if (temp != 0 && temp != product_high)
 	    emit_move_insn (product_high, temp);
+
+	  emit_move_insn (operand_subword (product, high, 1, mode), product_high);
 
 	  if (temp != 0)
 	    {
@@ -1417,6 +1521,12 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
       delete_insns_since (last);
     }
 
+  /* Open-code the vector operations if we have no hardware support
+     for them.  */
+  if (class == MODE_VECTOR_INT || class == MODE_VECTOR_FLOAT)
+    return expand_vector_binop (mode, binoptab, op0, op1, target,
+				unsignedp, methods);
+
   /* We need to open-code the complex type operations: '+, -, * and /' */
 
   /* At this point we allow operations between two similar complex
@@ -1435,10 +1545,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
       int ok = 0;
 
       /* Find the correct mode for the real and imaginary parts */
-      enum machine_mode submode
-	= mode_for_size (GET_MODE_UNIT_SIZE (mode) * BITS_PER_UNIT,
-			 class == MODE_COMPLEX_INT ? MODE_INT : MODE_FLOAT,
-			 0);
+      enum machine_mode submode = GET_MODE_INNER(mode);
 
       if (submode == BLKmode)
 	abort ();
@@ -1467,7 +1574,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
       else
 	real1 = op1;
 
-      if (real0 == 0 || real1 == 0 || ! (imag0 != 0|| imag1 != 0))
+      if (real0 == 0 || real1 == 0 || ! (imag0 != 0 || imag1 != 0))
 	abort ();
 
       switch (binoptab->code)
@@ -1484,13 +1591,15 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 	  else if (res != realr)
 	    emit_move_insn (realr, res);
 
-	  if (imag0 && imag1)
+	  if (imag0 != 0 && imag1 != 0)
 	    res = expand_binop (submode, binoptab, imag0, imag1,
 				imagr, unsignedp, methods);
-	  else if (imag0)
+	  else if (imag0 != 0)
 	    res = imag0;
 	  else if (binoptab->code == MINUS)
-	    res = expand_unop (submode, neg_optab, imag1, imagr, unsignedp);
+            res = expand_unop (submode,
+                                binoptab == subv_optab ? negv_optab : neg_optab,
+                                imag1, imagr, unsignedp);
 	  else
 	    res = imag1;
 
@@ -1505,7 +1614,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 	case MULT:
 	  /* (a+ib) * (c+id) = (ac-bd) + i(ad+cb) */
 
-	  if (imag0 && imag1)
+	  if (imag0 != 0 && imag1 != 0)
 	    {
 	      rtx temp1, temp2;
 
@@ -1524,8 +1633,10 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 	      if (temp1 == 0 || temp2 == 0)
 		break;
 
-	      res = expand_binop (submode, sub_optab, temp1, temp2,
-				  realr, unsignedp, methods);
+	      res = (expand_binop
+                     (submode,
+                      binoptab == smulv_optab ? subv_optab : sub_optab,
+                      temp1, temp2, realr, unsignedp, methods));
 
 	      if (res == 0)
 		break;
@@ -1539,10 +1650,12 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 				    NULL_RTX, unsignedp, methods);
 
 	      if (temp1 == 0 || temp2 == 0)
-		  break;
+		break;
 
-	      res = expand_binop (submode, add_optab, temp1, temp2,
-				  imagr, unsignedp, methods);
+	      res = (expand_binop
+                     (submode,
+                      binoptab == smulv_optab ? addv_optab : add_optab,
+                      temp1, temp2, imagr, unsignedp, methods));
 
 	      if (res == 0)
 		break;
@@ -1691,7 +1804,7 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
       /* Pass 1 for NO_QUEUE so we don't lose any increments
 	 if the libcall is cse'd or moved.  */
       value = emit_library_call_value (binoptab->handlers[(int) mode].libfunc,
-				       NULL_RTX, 1, mode, 2,
+				       NULL_RTX, LCT_CONST, mode, 2,
 				       op0, mode, op1x, op1_mode);
 
       insns = get_insns ();
@@ -1778,6 +1891,232 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
   delete_insns_since (entry_last);
   return 0;
 }
+
+/* Like expand_binop, but for open-coding vectors binops.  */
+
+static rtx
+expand_vector_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
+     enum machine_mode mode;
+     optab binoptab;
+     rtx op0, op1;
+     rtx target;
+     int unsignedp;
+     enum optab_methods methods;
+{
+  enum machine_mode submode, tmode;
+  int size, elts, subsize, subbitsize, i;
+  rtx t, a, b, res, seq;
+  enum mode_class class;
+
+  class = GET_MODE_CLASS (mode);
+
+  size = GET_MODE_SIZE (mode);
+  submode = GET_MODE_INNER (mode);
+
+  /* Search for the widest vector mode with the same inner mode that is
+     still narrower than MODE and that allows to open-code this operator.
+     Note, if we find such a mode and the handler later decides it can't
+     do the expansion, we'll be called recursively with the narrower mode.  */
+  for (tmode = GET_CLASS_NARROWEST_MODE (class);
+       GET_MODE_SIZE (tmode) < GET_MODE_SIZE (mode);
+       tmode = GET_MODE_WIDER_MODE (tmode))
+    {
+      if (GET_MODE_INNER (tmode) == GET_MODE_INNER (mode)
+	  && binoptab->handlers[(int) tmode].insn_code != CODE_FOR_nothing)
+	submode = tmode;
+    }
+
+  switch (binoptab->code)
+    {
+    case AND:
+    case IOR:
+    case XOR:
+      tmode = int_mode_for_mode (mode);
+      if (tmode != BLKmode)
+	submode = tmode;
+    case PLUS:
+    case MINUS:
+    case MULT:
+    case DIV:
+      subsize = GET_MODE_SIZE (submode);
+      subbitsize = GET_MODE_BITSIZE (submode);
+      elts = size / subsize;
+
+      /* If METHODS is OPTAB_DIRECT, we don't insist on the exact mode,
+	 but that we operate on more than one element at a time.  */
+      if (subsize == GET_MODE_UNIT_SIZE (mode) && methods == OPTAB_DIRECT)
+	return 0;
+
+      start_sequence ();
+
+      /* Errors can leave us with a const0_rtx as operand.  */
+      if (GET_MODE (op0) != mode)
+	op0 = copy_to_mode_reg (mode, op0);
+      if (GET_MODE (op1) != mode)
+	op1 = copy_to_mode_reg (mode, op1);
+
+      if (!target)
+	target = gen_reg_rtx (mode);
+
+      for (i = 0; i < elts; ++i)
+	{
+	  /* If this is part of a register, and not the first item in the
+	     word, we can't store using a SUBREG - that would clobber
+	     previous results.
+	     And storing with a SUBREG is only possible for the least
+	     significant part, hence we can't do it for big endian
+	     (unless we want to permute the evaluation order.  */
+	  if (GET_CODE (target) == REG
+	      && (BYTES_BIG_ENDIAN
+		  ? subsize < UNITS_PER_WORD
+		  : ((i * subsize) % UNITS_PER_WORD) != 0))
+	    t = NULL_RTX;
+	  else
+	    t = simplify_gen_subreg (submode, target, mode, i * subsize);
+	  if (CONSTANT_P (op0))
+	    a = simplify_gen_subreg (submode, op0, mode, i * subsize);
+	  else
+	    a = extract_bit_field (op0, subbitsize, i * subbitsize, unsignedp,
+				   NULL_RTX, submode, submode, size);
+	  if (CONSTANT_P (op1))
+	    b = simplify_gen_subreg (submode, op1, mode, i * subsize);
+	  else
+	    b = extract_bit_field (op1, subbitsize, i * subbitsize, unsignedp,
+				   NULL_RTX, submode, submode, size);
+
+	  if (binoptab->code == DIV)
+	    {
+	      if (class == MODE_VECTOR_FLOAT)
+		res = expand_binop (submode, binoptab, a, b, t,
+				    unsignedp, methods);
+	      else
+		res = expand_divmod (0, TRUNC_DIV_EXPR, submode,
+				     a, b, t, unsignedp);
+	    }
+	  else
+	    res = expand_binop (submode, binoptab, a, b, t,
+				unsignedp, methods);
+
+	  if (res == 0)
+	    break;
+
+	  if (t)
+	    emit_move_insn (t, res);
+	  else
+	    store_bit_field (target, subbitsize, i * subbitsize, submode, res,
+			     size);
+	}
+      break;
+
+    default:
+      abort ();
+    }
+
+  seq = get_insns ();
+  end_sequence ();
+  emit_insn (seq);
+
+  return target;
+}
+
+/* Like expand_unop but for open-coding vector unops.  */
+
+static rtx
+expand_vector_unop (mode, unoptab, op0, target, unsignedp)
+     enum machine_mode mode;
+     optab unoptab;
+     rtx op0;
+     rtx target;
+     int unsignedp;
+{
+  enum machine_mode submode, tmode;
+  int size, elts, subsize, subbitsize, i;
+  rtx t, a, res, seq;
+
+  size = GET_MODE_SIZE (mode);
+  submode = GET_MODE_INNER (mode);
+
+  /* Search for the widest vector mode with the same inner mode that is
+     still narrower than MODE and that allows to open-code this operator.
+     Note, if we find such a mode and the handler later decides it can't
+     do the expansion, we'll be called recursively with the narrower mode.  */
+  for (tmode = GET_CLASS_NARROWEST_MODE (GET_MODE_CLASS (mode));
+       GET_MODE_SIZE (tmode) < GET_MODE_SIZE (mode);
+       tmode = GET_MODE_WIDER_MODE (tmode))
+    {
+      if (GET_MODE_INNER (tmode) == GET_MODE_INNER (mode)
+	  && unoptab->handlers[(int) tmode].insn_code != CODE_FOR_nothing)
+	submode = tmode;
+    }
+  /* If there is no negate operation, try doing a subtract from zero.  */
+  if (unoptab == neg_optab && GET_MODE_CLASS (submode) == MODE_INT
+      /* Avoid infinite recursion when an
+	 error has left us with the wrong mode.  */
+      && GET_MODE (op0) == mode)
+    {    
+      rtx temp;
+      temp = expand_binop (mode, sub_optab, CONST0_RTX (mode), op0,
+                           target, unsignedp, OPTAB_DIRECT);
+      if (temp)
+	return temp;
+    }
+
+  if (unoptab == one_cmpl_optab)
+    {
+      tmode = int_mode_for_mode (mode);
+      if (tmode != BLKmode)
+	submode = tmode;
+    }
+
+  subsize = GET_MODE_SIZE (submode);
+  subbitsize = GET_MODE_BITSIZE (submode);
+  elts = size / subsize;
+
+  /* Errors can leave us with a const0_rtx as operand.  */
+  if (GET_MODE (op0) != mode)
+    op0 = copy_to_mode_reg (mode, op0);
+
+  if (!target)
+    target = gen_reg_rtx (mode);
+
+  start_sequence ();
+
+  for (i = 0; i < elts; ++i)
+    {
+      /* If this is part of a register, and not the first item in the
+	 word, we can't store using a SUBREG - that would clobber
+	 previous results.
+	 And storing with a SUBREG is only possible for the least
+	 significant part, hence we can't do it for big endian
+	 (unless we want to permute the evaluation order.  */
+      if (GET_CODE (target) == REG
+	  && (BYTES_BIG_ENDIAN
+	      ?  subsize < UNITS_PER_WORD
+	      : ((i * subsize) % UNITS_PER_WORD) != 0))
+	t = NULL_RTX;
+      else
+	t = simplify_gen_subreg (submode, target, mode, i * subsize);
+      if (CONSTANT_P (op0))
+	a = simplify_gen_subreg (submode, op0, mode, i * subsize);
+      else
+	a = extract_bit_field (op0, subbitsize, i * subbitsize, unsignedp,
+			       t, submode, submode, size);
+
+      res = expand_unop (submode, unoptab, a, t, unsignedp);
+
+      if (t)
+	emit_move_insn (t, res);
+      else
+	store_bit_field (target, subbitsize, i * subbitsize, submode, res,
+			 size);
+    }
+
+  seq = get_insns ();
+  end_sequence ();
+  emit_insn (seq);
+
+  return target;
+}
 
 /* Expand a binary operator which has both signed and unsigned forms.
    UOPTAB is the optab for unsigned operations, and SOPTAB is for
@@ -1788,13 +2127,13 @@ expand_binop (mode, binoptab, op0, op1, target, unsignedp, methods)
 
 rtx
 sign_expand_binop (mode, uoptab, soptab, op0, op1, target, unsignedp, methods)
-    enum machine_mode mode;
-    optab uoptab, soptab;
-    rtx op0, op1, target;
-    int unsignedp;
-    enum optab_methods methods;
+     enum machine_mode mode;
+     optab uoptab, soptab;
+     rtx op0, op1, target;
+     int unsignedp;
+     enum optab_methods methods;
 {
-  register rtx temp;
+  rtx temp;
   optab direct_optab = unsignedp ? uoptab : soptab;
   struct optab wide_soptab;
 
@@ -1875,11 +2214,11 @@ expand_twoval_binop (binoptab, op0, op1, targ0, targ1, unsignedp)
   /* If we are inside an appropriately-short loop and one operand is an
      expensive constant, force it into a register.  */
   if (CONSTANT_P (op0) && preserve_subexpressions_p ()
-      && rtx_cost (op0, binoptab->code) > 2)
+      && rtx_cost (op0, binoptab->code) > COSTS_N_INSNS (1))
     op0 = force_reg (mode, op0);
 
   if (CONSTANT_P (op1) && preserve_subexpressions_p ()
-      && rtx_cost (op1, binoptab->code) > 2)
+      && rtx_cost (op1, binoptab->code) > COSTS_N_INSNS (1))
     op1 = force_reg (mode, op1);
 
   if (targ0)
@@ -1902,13 +2241,25 @@ expand_twoval_binop (binoptab, op0, op1, targ0, targ1, unsignedp)
       rtx pat;
       rtx xop0 = op0, xop1 = op1;
 
-      /* In case this insn wants input operands in modes different from the
-	 result, convert the operands.  */
-      if (GET_MODE (op0) != VOIDmode && GET_MODE (op0) != mode0)
-	xop0 = convert_to_mode (mode0, xop0, unsignedp);
+      /* In case the insn wants input operands in modes different from
+	 those of the actual operands, convert the operands.  It would
+	 seem that we don't need to convert CONST_INTs, but we do, so
+	 that they're properly zero-extended, sign-extended or truncated
+	 for their mode.  */
 
-      if (GET_MODE (op1) != VOIDmode && GET_MODE (op1) != mode1)
-	xop1 = convert_to_mode (mode1, xop1, unsignedp);
+      if (GET_MODE (op0) != mode0 && mode0 != VOIDmode)
+	xop0 = convert_modes (mode0,
+			      GET_MODE (op0) != VOIDmode
+			      ? GET_MODE (op0)
+			      : mode,
+			      xop0, unsignedp);
+
+      if (GET_MODE (op1) != mode1 && mode1 != VOIDmode)
+	xop1 = convert_modes (mode1,
+			      GET_MODE (op1) != VOIDmode
+			      ? GET_MODE (op1)
+			      : mode,
+			      xop1, unsignedp);
 
       /* Now, if insn doesn't accept these operands, put them into pseudos.  */
       if (! (*insn_data[icode].operand[1].predicate) (xop0, mode0))
@@ -1943,14 +2294,12 @@ expand_twoval_binop (binoptab, op0, op1, targ0, targ1, unsignedp)
 	  if (binoptab->handlers[(int) wider_mode].insn_code
 	      != CODE_FOR_nothing)
 	    {
-	      register rtx t0 = gen_reg_rtx (wider_mode);
-	      register rtx t1 = gen_reg_rtx (wider_mode);
+	      rtx t0 = gen_reg_rtx (wider_mode);
+	      rtx t1 = gen_reg_rtx (wider_mode);
+	      rtx cop0 = convert_modes (wider_mode, mode, op0, unsignedp);
+	      rtx cop1 = convert_modes (wider_mode, mode, op1, unsignedp);
 
-	      if (expand_twoval_binop (binoptab,
-				       convert_modes (wider_mode, mode, op0,
-						      unsignedp),
-				       convert_modes (wider_mode, mode, op1,
-						      unsignedp),
+	      if (expand_twoval_binop (binoptab, cop0, cop1,
 				       t0, t1, unsignedp))
 		{
 		  convert_move (targ0, t0, unsignedp);
@@ -1967,6 +2316,24 @@ expand_twoval_binop (binoptab, op0, op1, targ0, targ1, unsignedp)
   return 0;
 }
 
+/* Wrapper around expand_unop which takes an rtx code to specify
+   the operation to perform, not an optab pointer.  All other
+   arguments are the same.  */
+rtx
+expand_simple_unop (mode, code, op0, target, unsignedp)
+     enum machine_mode mode;
+     enum rtx_code code;
+     rtx op0;
+     rtx target;
+     int unsignedp;
+{
+  optab unop = code_to_optab[(int) code];
+  if (unop == 0)
+    abort ();
+
+  return expand_unop (mode, unop, op0, target, unsignedp);
+}
+
 /* Generate code to perform an operation specified by UNOPTAB
    on operand OP0, with result having machine-mode MODE.
 
@@ -1988,7 +2355,7 @@ expand_unop (mode, unoptab, op0, target, unsignedp)
 {
   enum mode_class class;
   enum machine_mode wider_mode;
-  register rtx temp;
+  rtx temp;
   rtx last = get_last_insn ();
   rtx pat;
 
@@ -2030,7 +2397,7 @@ expand_unop (mode, unoptab, op0, target, unsignedp)
       pat = GEN_FCN (icode) (temp, xop0);
       if (pat)
 	{
-	  if (GET_CODE (pat) == SEQUENCE
+	  if (INSN_P (pat) && NEXT_INSN (pat) != NULL_RTX
 	      && ! add_equal_note (pat, temp, unoptab->code, xop0, NULL_RTX))
 	    {
 	      delete_insns_since (last);
@@ -2090,7 +2457,7 @@ expand_unop (mode, unoptab, op0, target, unsignedp)
       && GET_MODE_SIZE (mode) > UNITS_PER_WORD
       && unoptab->handlers[(int) word_mode].insn_code != CODE_FOR_nothing)
     {
-      unsigned int i;
+      int i;
       rtx insns;
 
       if (target == 0 || target == op0)
@@ -2105,6 +2472,7 @@ expand_unop (mode, unoptab, op0, target, unsignedp)
 	  rtx x = expand_unop (word_mode, unoptab,
 			       operand_subword_force (op0, i, mode),
 			       target_piece, unsignedp);
+
 	  if (target_piece != x)
 	    emit_move_insn (target_piece, x);
 	}
@@ -2119,7 +2487,7 @@ expand_unop (mode, unoptab, op0, target, unsignedp)
     }
 
   /* Open-code the complex negation operation.  */
-  else if (unoptab == neg_optab
+  else if (unoptab->code == NEG
 	   && (class == MODE_COMPLEX_FLOAT || class == MODE_COMPLEX_INT))
     {
       rtx target_piece;
@@ -2127,10 +2495,7 @@ expand_unop (mode, unoptab, op0, target, unsignedp)
       rtx seq;
 
       /* Find the correct mode for the real and imaginary parts */
-      enum machine_mode submode
-	= mode_for_size (GET_MODE_UNIT_SIZE (mode) * BITS_PER_UNIT,
-			 class == MODE_COMPLEX_INT ? MODE_INT : MODE_FLOAT,
-			 0);
+      enum machine_mode submode = GET_MODE_INNER (mode);
 
       if (submode == BLKmode)
 	abort ();
@@ -2174,7 +2539,7 @@ expand_unop (mode, unoptab, op0, target, unsignedp)
       /* Pass 1 for NO_QUEUE so we don't lose any increments
 	 if the libcall is cse'd or moved.  */
       value = emit_library_call_value (unoptab->handlers[(int) mode].libfunc,
-				       NULL_RTX, 1, mode, 1, op0, mode);
+				       NULL_RTX, LCT_CONST, mode, 1, op0, mode);
       insns = get_insns ();
       end_sequence ();
 
@@ -2184,6 +2549,9 @@ expand_unop (mode, unoptab, op0, target, unsignedp)
 
       return target;
     }
+
+  if (class == MODE_VECTOR_FLOAT || class == MODE_VECTOR_INT)
+    return expand_vector_unop (mode, unoptab, op0, target, unsignedp);
 
   /* It can't be done in this mode.  Can we do it in a wider mode?  */
 
@@ -2230,11 +2598,13 @@ expand_unop (mode, unoptab, op0, target, unsignedp)
 
   /* If there is no negate operation, try doing a subtract from zero.
      The US Software GOFAST library needs this.  */
-  if (unoptab == neg_optab)
+  if (unoptab->code == NEG)
     {    
       rtx temp;
-      temp = expand_binop (mode, sub_optab, CONST0_RTX (mode), op0,
-			   target, unsignedp, OPTAB_LIB_WIDEN);
+      temp = expand_binop (mode,
+                           unoptab == negv_optab ? subv_optab : sub_optab,
+                           CONST0_RTX (mode), op0,
+                           target, unsignedp, OPTAB_LIB_WIDEN);
       if (temp)
 	return temp;
     }
@@ -2252,16 +2622,21 @@ expand_unop (mode, unoptab, op0, target, unsignedp)
  */
 
 rtx
-expand_abs (mode, op0, target, safe)
+expand_abs (mode, op0, target, result_unsignedp, safe)
      enum machine_mode mode;
      rtx op0;
      rtx target;
+     int result_unsignedp;
      int safe;
 {
   rtx temp, op1;
 
+  if (! flag_trapv)
+    result_unsignedp = 1;
+
   /* First try to do it with a special abs instruction.  */
-  temp = expand_unop (mode, abs_optab, op0, target, 0);
+  temp = expand_unop (mode, result_unsignedp ? abs_optab : absv_optab,
+                      op0, target, 0);
   if (temp != 0)
     return temp;
 
@@ -2283,11 +2658,8 @@ expand_abs (mode, op0, target, safe)
 
   /* If this machine has expensive jumps, we can do integer absolute
      value of X as (((signed) x >> (W-1)) ^ x) - ((signed) x >> (W-1)),
-     where W is the width of MODE.  But don't do this if the machine has
-     conditional arithmetic since the branches will be converted into
-     a conditional negation insn.  */
+     where W is the width of MODE.  */
 
-#ifndef HAVE_conditional_arithmetic
   if (GET_MODE_CLASS (mode) == MODE_INT && BRANCH_COST >= 2)
     {
       rtx extended = expand_shift (RSHIFT_EXPR, mode, op0,
@@ -2297,13 +2669,12 @@ expand_abs (mode, op0, target, safe)
       temp = expand_binop (mode, xor_optab, extended, op0, target, 0,
 			   OPTAB_LIB_WIDEN);
       if (temp != 0)
-	temp = expand_binop (mode, sub_optab, temp, extended, target, 0,
-			     OPTAB_LIB_WIDEN);
+	temp = expand_binop (mode, result_unsignedp ? sub_optab : subv_optab,
+                             temp, extended, target, 0, OPTAB_LIB_WIDEN);
 
       if (temp != 0)
 	return temp;
     }
-#endif
 
   /* If that does not win, use conditional jump and negate.  */
 
@@ -2332,9 +2703,10 @@ expand_abs (mode, op0, target, safe)
 				  NULL_RTX, op1);
   else
     do_compare_rtx_and_jump (target, CONST0_RTX (mode), GE, 0, mode,
-			     NULL_RTX, 0, NULL_RTX, op1);
+			     NULL_RTX, NULL_RTX, op1);
 
-  op0 = expand_unop (mode, neg_optab, target, target, 0);
+  op0 = expand_unop (mode, result_unsignedp ? neg_optab : negv_optab,
+                     target, target, 0);
   if (op0 != target)
     emit_move_insn (target, op0);
   emit_label (op1);
@@ -2360,16 +2732,14 @@ expand_complex_abs (mode, op0, target, unsignedp)
 {
   enum mode_class class = GET_MODE_CLASS (mode);
   enum machine_mode wider_mode;
-  register rtx temp;
+  rtx temp;
   rtx entry_last = get_last_insn ();
   rtx last;
   rtx pat;
+  optab this_abs_optab;
 
   /* Find the correct mode for the real and imaginary parts.  */
-  enum machine_mode submode
-    = mode_for_size (GET_MODE_UNIT_SIZE (mode) * BITS_PER_UNIT,
-		     class == MODE_COMPLEX_INT ? MODE_INT : MODE_FLOAT,
-		     0);
+  enum machine_mode submode = GET_MODE_INNER (mode);
 
   if (submode == BLKmode)
     abort ();
@@ -2386,9 +2756,13 @@ expand_complex_abs (mode, op0, target, unsignedp)
   if (target)
     target = protect_from_queue (target, 1);
 
-  if (abs_optab->handlers[(int) mode].insn_code != CODE_FOR_nothing)
+  this_abs_optab = ! unsignedp && flag_trapv
+                   && (GET_MODE_CLASS(mode) == MODE_INT)
+                   ? absv_optab : abs_optab;
+
+  if (this_abs_optab->handlers[(int) mode].insn_code != CODE_FOR_nothing)
     {
-      int icode = (int) abs_optab->handlers[(int) mode].insn_code;
+      int icode = (int) this_abs_optab->handlers[(int) mode].insn_code;
       enum machine_mode mode0 = insn_data[icode].operand[1].mode;
       rtx xop0 = op0;
 
@@ -2412,11 +2786,13 @@ expand_complex_abs (mode, op0, target, unsignedp)
       pat = GEN_FCN (icode) (temp, xop0);
       if (pat)
 	{
-	  if (GET_CODE (pat) == SEQUENCE
-	      && ! add_equal_note (pat, temp, abs_optab->code, xop0, NULL_RTX))
+	  if (INSN_P (pat) && NEXT_INSN (pat) != NULL_RTX
+	      && ! add_equal_note (pat, temp, this_abs_optab->code, xop0, 
+				   NULL_RTX))
 	    {
 	      delete_insns_since (last);
-	      return expand_unop (mode, abs_optab, op0, NULL_RTX, unsignedp);
+	      return expand_unop (mode, this_abs_optab, op0, NULL_RTX, 
+				  unsignedp);
 	    }
 
 	  emit_insn (pat);
@@ -2432,7 +2808,8 @@ expand_complex_abs (mode, op0, target, unsignedp)
   for (wider_mode = GET_MODE_WIDER_MODE (mode); wider_mode != VOIDmode;
        wider_mode = GET_MODE_WIDER_MODE (wider_mode))
     {
-      if (abs_optab->handlers[(int) wider_mode].insn_code != CODE_FOR_nothing)
+      if (this_abs_optab->handlers[(int) wider_mode].insn_code 
+	  != CODE_FOR_nothing)
 	{
 	  rtx xop0 = op0;
 
@@ -2458,7 +2835,8 @@ expand_complex_abs (mode, op0, target, unsignedp)
 
   /* Open-code the complex absolute-value operation
      if we can open-code sqrt.  Otherwise it's not worth while.  */
-  if (sqrt_optab->handlers[(int) submode].insn_code != CODE_FOR_nothing)
+  if (sqrt_optab->handlers[(int) submode].insn_code != CODE_FOR_nothing
+      && ! flag_trapv)
     {
       rtx real, imag, total;
 
@@ -2482,7 +2860,7 @@ expand_complex_abs (mode, op0, target, unsignedp)
     }
 
   /* Now try a library call in this mode.  */
-  if (abs_optab->handlers[(int) mode].libfunc)
+  if (this_abs_optab->handlers[(int) mode].libfunc)
     {
       rtx insns;
       rtx value;
@@ -2492,13 +2870,13 @@ expand_complex_abs (mode, op0, target, unsignedp)
       /* Pass 1 for NO_QUEUE so we don't lose any increments
 	 if the libcall is cse'd or moved.  */
       value = emit_library_call_value (abs_optab->handlers[(int) mode].libfunc,
-				       NULL_RTX, 1, submode, 1, op0, mode);
+				       NULL_RTX, LCT_CONST, submode, 1, op0, mode);
       insns = get_insns ();
       end_sequence ();
 
       target = gen_reg_rtx (submode);
       emit_libcall_block (insns, target, value,
-			  gen_rtx_fmt_e (abs_optab->code, mode, op0));
+			  gen_rtx_fmt_e (this_abs_optab->code, mode, op0));
 
       return target;
     }
@@ -2508,9 +2886,9 @@ expand_complex_abs (mode, op0, target, unsignedp)
   for (wider_mode = GET_MODE_WIDER_MODE (mode); wider_mode != VOIDmode;
        wider_mode = GET_MODE_WIDER_MODE (wider_mode))
     {
-      if ((abs_optab->handlers[(int) wider_mode].insn_code
+      if ((this_abs_optab->handlers[(int) wider_mode].insn_code
 	   != CODE_FOR_nothing)
-	  || abs_optab->handlers[(int) wider_mode].libfunc)
+	  || this_abs_optab->handlers[(int) wider_mode].libfunc)
 	{
 	  rtx xop0 = op0;
 
@@ -2552,7 +2930,7 @@ emit_unop_insn (icode, target, op0, code)
      rtx op0;
      enum rtx_code code;
 {
-  register rtx temp;
+  rtx temp;
   enum machine_mode mode0 = insn_data[icode].operand[1].mode;
   rtx pat;
 
@@ -2577,7 +2955,7 @@ emit_unop_insn (icode, target, op0, code)
 
   pat = GEN_FCN (icode) (temp, op0);
 
-  if (GET_CODE (pat) == SEQUENCE && code != UNKNOWN)
+  if (INSN_P (pat) && NEXT_INSN (pat) != NULL_RTX && code != UNKNOWN)
     add_equal_note (pat, temp, code, op0, NULL_RTX);
   
   emit_insn (pat);
@@ -2605,7 +2983,7 @@ emit_unop_insn (icode, target, op0, code)
    TARGET, OP0, and OP1 are the output and inputs of the operations,
    respectively.  OP1 may be zero for a unary operation.
 
-   EQUIV, if non-zero, is an expression to be placed into a REG_EQUAL note
+   EQUIV, if nonzero, is an expression to be placed into a REG_EQUAL note
    on the last insn.
 
    If TARGET is not a register, INSNS is simply emitted with no special
@@ -2624,21 +3002,28 @@ emit_no_conflict_block (insns, target, op0, op1, equiv)
   rtx prev, next, first, last, insn;
 
   if (GET_CODE (target) != REG || reload_in_progress)
-    return emit_insns (insns);
+    return emit_insn (insns);
   else
     for (insn = insns; insn; insn = NEXT_INSN (insn))
       if (GET_CODE (insn) != INSN
 	  || find_reg_note (insn, REG_LIBCALL, NULL_RTX))
-	return emit_insns (insns);
+	return emit_insn (insns);
 
   /* First emit all insns that do not store into words of the output and remove
      these from the list.  */
   for (insn = insns; insn; insn = next)
     {
-      rtx set = 0;
+      rtx set = 0, note;
       int i;
 
       next = NEXT_INSN (insn);
+
+      /* Some ports (cris) create an libcall regions at their own.  We must
+	 avoid any potential nesting of LIBCALLs.  */
+      if ((note = find_reg_note (insn, REG_LIBCALL, NULL)) != NULL)
+	remove_note (insn, note);
+      if ((note = find_reg_note (insn, REG_RETVAL, NULL)) != NULL)
+	remove_note (insn, note);
 
       if (GET_CODE (PATTERN (insn)) == SET || GET_CODE (PATTERN (insn)) == USE
 	  || GET_CODE (PATTERN (insn)) == CLOBBER)
@@ -2755,24 +3140,43 @@ emit_libcall_block (insns, target, result, equiv)
      rtx result;
      rtx equiv;
 {
+  rtx final_dest = target;
   rtx prev, next, first, last, insn;
 
+  /* If this is a reg with REG_USERVAR_P set, then it could possibly turn
+     into a MEM later.  Protect the libcall block from this change.  */
+  if (! REG_P (target) || REG_USERVAR_P (target))
+    target = gen_reg_rtx (GET_MODE (target));
+  
+  /* If we're using non-call exceptions, a libcall corresponding to an
+     operation that may trap may also trap.  */
+  if (flag_non_call_exceptions && may_trap_p (equiv))
+    {
+      for (insn = insns; insn; insn = NEXT_INSN (insn))
+	if (GET_CODE (insn) == CALL_INSN)
+	  {
+	    rtx note = find_reg_note (insn, REG_EH_REGION, NULL_RTX);
+	    
+	    if (note != 0 && INTVAL (XEXP (note, 0)) <= 0)
+	      remove_note (insn, note);
+	  }
+    }
+  else
   /* look for any CALL_INSNs in this sequence, and attach a REG_EH_REGION
      reg note to indicate that this call cannot throw or execute a nonlocal
-     goto. (Unless there is already a REG_EH_REGION note, in which case
-     we update it.)  */
-
-  for (insn = insns; insn; insn = NEXT_INSN (insn))
-    if (GET_CODE (insn) == CALL_INSN)
-      {
-	rtx note = find_reg_note (insn, REG_EH_REGION, NULL_RTX);
-
-	if (note != 0)
-	  XEXP (note, 0) = GEN_INT (-1);
-	else
-	  REG_NOTES (insn) = gen_rtx_EXPR_LIST (REG_EH_REGION, GEN_INT (-1),
-						REG_NOTES (insn));
-      }
+     goto (unless there is already a REG_EH_REGION note, in which case
+     we update it).  */
+    for (insn = insns; insn; insn = NEXT_INSN (insn))
+      if (GET_CODE (insn) == CALL_INSN)
+	{
+	  rtx note = find_reg_note (insn, REG_EH_REGION, NULL_RTX);
+	
+	  if (note != 0)
+	    XEXP (note, 0) = GEN_INT (-1);
+	  else
+	    REG_NOTES (insn) = gen_rtx_EXPR_LIST (REG_EH_REGION, GEN_INT (-1),
+						  REG_NOTES (insn));
+	}
 
   /* First emit all insns that set pseudos.  Remove them from the list as
      we go.  Avoid insns that set pseudos which were referenced in previous
@@ -2783,6 +3187,14 @@ emit_libcall_block (insns, target, result, equiv)
   for (insn = insns; insn; insn = next)
     {
       rtx set = single_set (insn);
+      rtx note;
+
+      /* Some ports (cris) create an libcall regions at their own.  We must
+	 avoid any potential nesting of LIBCALLs.  */
+      if ((note = find_reg_note (insn, REG_LIBCALL, NULL)) != NULL)
+	remove_note (insn, note);
+      if ((note = find_reg_note (insn, REG_RETVAL, NULL)) != NULL)
+	remove_note (insn, note);
 
       next = NEXT_INSN (insn);
 
@@ -2832,15 +3244,38 @@ emit_libcall_block (insns, target, result, equiv)
       remove_note (last, find_reg_note (last, REG_EQUAL, NULL_RTX));
     }
 
+  if (final_dest != target)
+    emit_move_insn (final_dest, target);
+
   if (prev == 0)
     first = get_insns ();
   else
     first = NEXT_INSN (prev);
 
   /* Encapsulate the block so it gets manipulated as a unit.  */
-  REG_NOTES (first) = gen_rtx_INSN_LIST (REG_LIBCALL, last,
-					 REG_NOTES (first));
-  REG_NOTES (last) = gen_rtx_INSN_LIST (REG_RETVAL, first, REG_NOTES (last));
+  if (!flag_non_call_exceptions || !may_trap_p (equiv))
+    {
+      /* We can't attach the REG_LIBCALL and REG_RETVAL notes
+	 when the encapsulated region would not be in one basic block,
+	 i.e. when there is a control_flow_insn_p insn between FIRST and LAST.
+       */
+      bool attach_libcall_retval_notes = true;
+      next = NEXT_INSN (last);
+      for (insn = first; insn != next; insn = NEXT_INSN (insn))
+	if (control_flow_insn_p (insn))
+	  {
+	    attach_libcall_retval_notes = false;
+	    break;
+	  }
+
+      if (attach_libcall_retval_notes)
+	{
+	  REG_NOTES (first) = gen_rtx_INSN_LIST (REG_LIBCALL, last,
+						 REG_NOTES (first));
+	  REG_NOTES (last) = gen_rtx_INSN_LIST (REG_RETVAL, first,
+						REG_NOTES (last));
+	}
+    }
 }
 
 /* Generate code to store zero in X.  */
@@ -2878,24 +3313,24 @@ can_compare_p (code, mode, purpose)
 {
   do
     {
-      if (cmp_optab->handlers[(int)mode].insn_code != CODE_FOR_nothing)
+      if (cmp_optab->handlers[(int) mode].insn_code != CODE_FOR_nothing)
 	{
 	  if (purpose == ccp_jump)
-	    return bcc_gen_fctn[(int)code] != NULL;
+	    return bcc_gen_fctn[(int) code] != NULL;
 	  else if (purpose == ccp_store_flag)
-	    return setcc_gen_code[(int)code] != CODE_FOR_nothing;
+	    return setcc_gen_code[(int) code] != CODE_FOR_nothing;
 	  else
 	    /* There's only one cmov entry point, and it's allowed to fail.  */
 	    return 1;
 	}
       if (purpose == ccp_jump
-	  && cbranch_optab->handlers[(int)mode].insn_code != CODE_FOR_nothing)
+	  && cbranch_optab->handlers[(int) mode].insn_code != CODE_FOR_nothing)
 	return 1;
       if (purpose == ccp_cmov
-	  && cmov_optab->handlers[(int)mode].insn_code != CODE_FOR_nothing)
+	  && cmov_optab->handlers[(int) mode].insn_code != CODE_FOR_nothing)
 	return 1;
       if (purpose == ccp_store_flag
-	  && cstore_optab->handlers[(int)mode].insn_code != CODE_FOR_nothing)
+	  && cstore_optab->handlers[(int) mode].insn_code != CODE_FOR_nothing)
 	return 1;
 
       mode = GET_MODE_WIDER_MODE (mode);
@@ -2912,8 +3347,7 @@ can_compare_p (code, mode, purpose)
    *PUNSIGNEDP nonzero says that the operands are unsigned;
    this matters if they need to be widened.
 
-   If they have mode BLKmode, then SIZE specifies the size of both operands,
-   and ALIGN specifies the known shared alignment of the operands.
+   If they have mode BLKmode, then SIZE specifies the size of both operands.
 
    This function performs all the setup necessary so that the caller only has
    to emit a single comparison insn.  This setup can involve doing a BLKmode
@@ -2922,22 +3356,19 @@ can_compare_p (code, mode, purpose)
    The values which are passed in through pointers can be modified; the caller
    should perform the comparison on the modified values.  */
 
-void
-prepare_cmp_insn (px, py, pcomparison, size, pmode, punsignedp, align,
-		  purpose)
+static void
+prepare_cmp_insn (px, py, pcomparison, size, pmode, punsignedp, purpose)
      rtx *px, *py;
      enum rtx_code *pcomparison;
      rtx size;
      enum machine_mode *pmode;
      int *punsignedp;
-     int align ATTRIBUTE_UNUSED;
      enum can_compare_purpose purpose;
 {
   enum machine_mode mode = *pmode;
   rtx x = *px, y = *py;
   int unsignedp = *punsignedp;
   enum mode_class class;
-  rtx opalign ATTRIBUTE_UNUSED = GEN_INT (align / BITS_PER_UNIT);;
 
   class = GET_MODE_CLASS (mode);
 
@@ -2955,11 +3386,11 @@ prepare_cmp_insn (px, py, pcomparison, size, pmode, punsignedp, align,
   /* If we are inside an appropriately-short loop and one operand is an
      expensive constant, force it into a register.  */
   if (CONSTANT_P (x) && preserve_subexpressions_p ()
-      && rtx_cost (x, COMPARE) > 2)
+      && rtx_cost (x, COMPARE) > COSTS_N_INSNS (1))
     x = force_reg (mode, x);
 
   if (CONSTANT_P (y) && preserve_subexpressions_p ()
-      && rtx_cost (y, COMPARE) > 2)
+      && rtx_cost (y, COMPARE) > COSTS_N_INSNS (1))
     y = force_reg (mode, y);
 
 #ifdef HAVE_cc0
@@ -2967,7 +3398,7 @@ prepare_cmp_insn (px, py, pcomparison, size, pmode, punsignedp, align,
      states that canonical comparisons are required only for targets which
      have cc0.  */
   if (CONSTANT_P (x) && ! CONSTANT_P (y))
-    abort();
+    abort ();
 #endif
 
   /* Don't let both operands fail to indicate the mode.  */
@@ -2980,6 +3411,8 @@ prepare_cmp_insn (px, py, pcomparison, size, pmode, punsignedp, align,
     {
       rtx result;
       enum machine_mode result_mode;
+      rtx opalign ATTRIBUTE_UNUSED
+	= GEN_INT (MIN (MEM_ALIGN (x), MEM_ALIGN (y)) / BITS_PER_UNIT);
 
       emit_queue ();
       x = protect_from_queue (x, 0);
@@ -2987,6 +3420,40 @@ prepare_cmp_insn (px, py, pcomparison, size, pmode, punsignedp, align,
 
       if (size == 0)
 	abort ();
+#ifdef HAVE_cmpmemqi
+      if (HAVE_cmpmemqi
+	  && GET_CODE (size) == CONST_INT
+	  && INTVAL (size) < (1 << GET_MODE_BITSIZE (QImode)))
+	{
+	  result_mode = insn_data[(int) CODE_FOR_cmpmemqi].operand[0].mode;
+	  result = gen_reg_rtx (result_mode);
+	  emit_insn (gen_cmpmemqi (result, x, y, size, opalign));
+	}
+      else
+#endif
+#ifdef HAVE_cmpmemhi
+      if (HAVE_cmpmemhi
+	  && GET_CODE (size) == CONST_INT
+	  && INTVAL (size) < (1 << GET_MODE_BITSIZE (HImode)))
+	{
+	  result_mode = insn_data[(int) CODE_FOR_cmpmemhi].operand[0].mode;
+	  result = gen_reg_rtx (result_mode);
+	  emit_insn (gen_cmpmemhi (result, x, y, size, opalign));
+	}
+      else
+#endif
+#ifdef HAVE_cmpmemsi
+      if (HAVE_cmpmemsi)
+	{
+	  result_mode = insn_data[(int) CODE_FOR_cmpmemsi].operand[0].mode;
+	  result = gen_reg_rtx (result_mode);
+	  size = protect_from_queue (size, 0);
+	  emit_insn (gen_cmpmemsi (result, x, y,
+				   convert_to_mode (SImode, size, 1),
+				   opalign));
+	}
+      else
+#endif
 #ifdef HAVE_cmpstrqi
       if (HAVE_cmpstrqi
 	  && GET_CODE (size) == CONST_INT
@@ -3023,29 +3490,23 @@ prepare_cmp_insn (px, py, pcomparison, size, pmode, punsignedp, align,
 #endif
 	{
 #ifdef TARGET_MEM_FUNCTIONS
-	  emit_library_call (memcmp_libfunc, 2,
-			     TYPE_MODE (integer_type_node), 3,
-			     XEXP (x, 0), Pmode, XEXP (y, 0), Pmode,
-			     convert_to_mode (TYPE_MODE (sizetype), size,
-					      TREE_UNSIGNED (sizetype)),
-			     TYPE_MODE (sizetype));
+	  result = emit_library_call_value (memcmp_libfunc, NULL_RTX, LCT_PURE_MAKE_BLOCK,
+					    TYPE_MODE (integer_type_node), 3,
+					    XEXP (x, 0), Pmode, XEXP (y, 0), Pmode,
+					    convert_to_mode (TYPE_MODE (sizetype), size,
+							     TREE_UNSIGNED (sizetype)),
+					    TYPE_MODE (sizetype));
 #else
-	  emit_library_call (bcmp_libfunc, 2,
-			     TYPE_MODE (integer_type_node), 3,
-			     XEXP (x, 0), Pmode, XEXP (y, 0), Pmode,
-			     convert_to_mode (TYPE_MODE (integer_type_node),
-					      size,
-					      TREE_UNSIGNED (integer_type_node)),
-			     TYPE_MODE (integer_type_node));
+	  result = emit_library_call_value (bcmp_libfunc, NULL_RTX, LCT_PURE_MAKE_BLOCK,
+					    TYPE_MODE (integer_type_node), 3,
+					    XEXP (x, 0), Pmode, XEXP (y, 0), Pmode,
+					    convert_to_mode (TYPE_MODE (integer_type_node),
+							     size,
+							     TREE_UNSIGNED (integer_type_node)),
+					    TYPE_MODE (integer_type_node));
 #endif
 
-	  /* Immediately move the result of the libcall into a pseudo
-	     register so reload doesn't clobber the value if it needs
-	     the return register for a spill reg.  */
-	  result = gen_reg_rtx (TYPE_MODE (integer_type_node));
 	  result_mode = TYPE_MODE (integer_type_node);
-	  emit_move_insn (result,
-			  hard_libcall_value (result_mode));
 	}
       *px = result;
       *py = const0_rtx;
@@ -3070,14 +3531,8 @@ prepare_cmp_insn (px, py, pcomparison, size, pmode, punsignedp, align,
       if (unsignedp && ucmp_optab->handlers[(int) mode].libfunc)
 	libfunc = ucmp_optab->handlers[(int) mode].libfunc;
 
-      emit_library_call (libfunc, 1,
-			 word_mode, 2, x, mode, y, mode);
-
-      /* Immediately move the result of the libcall into a pseudo
-	 register so reload doesn't clobber the value if it needs
-	 the return register for a spill reg.  */
-      result = gen_reg_rtx (word_mode);
-      emit_move_insn (result, hard_libcall_value (word_mode));
+      result = emit_library_call_value (libfunc, NULL_RTX, LCT_CONST_MAKE_BLOCK,
+					word_mode, 2, x, mode, y, mode);
 
       /* Integer comparison returns a result that must be compared against 1,
 	 so that even if we do an unsigned compare afterward,
@@ -3097,7 +3552,7 @@ prepare_cmp_insn (px, py, pcomparison, size, pmode, punsignedp, align,
 
 /* Before emitting an insn with code ICODE, make sure that X, which is going
    to be used for operand OPNUM of the insn, is converted from mode MODE to
-   WIDER_MODE (UNSIGNEDP determines whether it is a unsigned conversion), and
+   WIDER_MODE (UNSIGNEDP determines whether it is an unsigned conversion), and
    that it is accepted by the operand predicate.  Return the new value.  */
 
 rtx
@@ -3115,7 +3570,12 @@ prepare_operand (icode, x, opnum, mode, wider_mode, unsignedp)
 
   if (! (*insn_data[icode].operand[opnum].predicate)
       (x, insn_data[icode].operand[opnum].mode))
-    x = copy_to_mode_reg (insn_data[icode].operand[opnum].mode, x);
+    {
+      if (no_new_pseudos)
+	return NULL_RTX;
+      x = copy_to_mode_reg (insn_data[icode].operand[opnum].mode, x);
+    }
+
   return x;
 }
 
@@ -3144,7 +3604,7 @@ emit_cmp_and_jump_insn_1 (x, y, mode, comparison, unsignedp, label)
 
       if (label)
 	{	  
-	  icode = cbranch_optab->handlers[(int)wider_mode].insn_code;
+	  icode = cbranch_optab->handlers[(int) wider_mode].insn_code;
 	  
 	  if (icode != CODE_FOR_nothing
 	      && (*insn_data[icode].operand[0].predicate) (test, wider_mode))
@@ -3185,7 +3645,8 @@ emit_cmp_and_jump_insn_1 (x, y, mode, comparison, unsignedp, label)
 	break;
 
       wider_mode = GET_MODE_WIDER_MODE (wider_mode);
-    } while (wider_mode != VOIDmode);
+    }
+  while (wider_mode != VOIDmode);
 
   abort ();
 }
@@ -3199,8 +3660,7 @@ emit_cmp_and_jump_insn_1 (x, y, mode, comparison, unsignedp, label)
    need to be widened by emit_cmp_insn.  UNSIGNEDP is also used to select
    the proper branch condition code.
 
-   If X and Y have mode BLKmode, then SIZE specifies the size of both X and Y,
-   and ALIGN specifies the known shared alignment of X and Y. 
+   If X and Y have mode BLKmode, then SIZE specifies the size of both X and Y.
 
    MODE is the mode of the inputs (in case they are const_int).
 
@@ -3209,30 +3669,26 @@ emit_cmp_and_jump_insn_1 (x, y, mode, comparison, unsignedp, label)
    unsigned variant based on UNSIGNEDP to select a proper jump instruction.  */
 
 void
-emit_cmp_and_jump_insns (x, y, comparison, size, mode, unsignedp, align, label)
+emit_cmp_and_jump_insns (x, y, comparison, size, mode, unsignedp, label)
      rtx x, y;
      enum rtx_code comparison;
      rtx size;
      enum machine_mode mode;
      int unsignedp;
-     unsigned int align;
      rtx label;
 {
-  rtx op0;
-  rtx op1;
-	  
-  if ((CONSTANT_P (x) && ! CONSTANT_P (y))
-      || (GET_CODE (x) == CONST_INT && GET_CODE (y) != CONST_INT))
+  rtx op0 = x, op1 = y;
+
+  /* Swap operands and condition to ensure canonical RTL.  */
+  if (swap_commutative_operands_p (x, y))
     {
-      /* Swap operands and condition to ensure canonical RTL.  */
-      op0 = y;
-      op1 = x;
+      /* If we're not emitting a branch, this means some caller
+         is out of sync.  */
+      if (! label)
+	abort ();
+
+      op0 = y, op1 = x;
       comparison = swap_condition (comparison);
-    }
-  else
-    {
-      op0 = x;
-      op1 = y;
     }
 
 #ifdef HAVE_cc0
@@ -3246,7 +3702,8 @@ emit_cmp_and_jump_insns (x, y, comparison, size, mode, unsignedp, align, label)
   emit_queue ();
   if (unsignedp)
     comparison = unsigned_condition (comparison);
-  prepare_cmp_insn (&op0, &op1, &comparison, size, &mode, &unsignedp, align,
+
+  prepare_cmp_insn (&op0, &op1, &comparison, size, &mode, &unsignedp,
 		    ccp_jump);
   emit_cmp_and_jump_insn_1 (op0, op1, mode, comparison, unsignedp, label);
 }
@@ -3254,15 +3711,14 @@ emit_cmp_and_jump_insns (x, y, comparison, size, mode, unsignedp, align, label)
 /* Like emit_cmp_and_jump_insns, but generate only the comparison.  */
 
 void
-emit_cmp_insn (x, y, comparison, size, mode, unsignedp, align)
+emit_cmp_insn (x, y, comparison, size, mode, unsignedp)
      rtx x, y;
      enum rtx_code comparison;
      rtx size;
      enum machine_mode mode;
      int unsignedp;
-     unsigned int align;
 {
-  emit_cmp_and_jump_insns (x, y, comparison, size, mode, unsignedp, align, 0);
+  emit_cmp_and_jump_insns (x, y, comparison, size, mode, unsignedp, 0);
 }
 
 /* Emit a library call comparison between floating point X and Y.
@@ -3276,6 +3732,7 @@ prepare_float_lib_cmp (px, py, pcomparison, pmode, punsignedp)
      int *punsignedp;
 {
   enum rtx_code comparison = *pcomparison;
+  rtx tmp;
   rtx x = *px = protect_from_queue (*px, 0);
   rtx y = *py = protect_from_queue (*py, 0);
   enum machine_mode mode = GET_MODE (x);
@@ -3295,18 +3752,42 @@ prepare_float_lib_cmp (px, py, pcomparison, pmode, punsignedp)
 
       case GT:
 	libfunc = gthf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = LT;
+	    libfunc = lthf2_libfunc;
+	  }
 	break;
 
       case GE:
 	libfunc = gehf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = LE;
+	    libfunc = lehf2_libfunc;
+	  }
 	break;
 
       case LT:
 	libfunc = lthf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = GT;
+	    libfunc = gthf2_libfunc;
+	  }
 	break;
 
       case LE:
 	libfunc = lehf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = GE;
+	    libfunc = gehf2_libfunc;
+	  }
 	break;
 
       case UNORDERED:
@@ -3329,18 +3810,42 @@ prepare_float_lib_cmp (px, py, pcomparison, pmode, punsignedp)
 
       case GT:
 	libfunc = gtsf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = LT;
+	    libfunc = ltsf2_libfunc;
+	  }
 	break;
 
       case GE:
 	libfunc = gesf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = LE;
+	    libfunc = lesf2_libfunc;
+	  }
 	break;
 
       case LT:
 	libfunc = ltsf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = GT;
+	    libfunc = gtsf2_libfunc;
+	  }
 	break;
 
       case LE:
 	libfunc = lesf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = GE;
+	    libfunc = gesf2_libfunc;
+	  }
 	break;
 
       case UNORDERED:
@@ -3363,18 +3868,42 @@ prepare_float_lib_cmp (px, py, pcomparison, pmode, punsignedp)
 
       case GT:
 	libfunc = gtdf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = LT;
+	    libfunc = ltdf2_libfunc;
+	  }
 	break;
 
       case GE:
 	libfunc = gedf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = LE;
+	    libfunc = ledf2_libfunc;
+	  }
 	break;
 
       case LT:
 	libfunc = ltdf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = GT;
+	    libfunc = gtdf2_libfunc;
+	  }
 	break;
 
       case LE:
 	libfunc = ledf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = GE;
+	    libfunc = gedf2_libfunc;
+	  }
 	break;
 
       case UNORDERED:
@@ -3397,18 +3926,42 @@ prepare_float_lib_cmp (px, py, pcomparison, pmode, punsignedp)
 
       case GT:
 	libfunc = gtxf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = LT;
+	    libfunc = ltxf2_libfunc;
+	  }
 	break;
 
       case GE:
 	libfunc = gexf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = LE;
+	    libfunc = lexf2_libfunc;
+	  }
 	break;
 
       case LT:
 	libfunc = ltxf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = GT;
+	    libfunc = gtxf2_libfunc;
+	  }
 	break;
 
       case LE:
 	libfunc = lexf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = GE;
+	    libfunc = gexf2_libfunc;
+	  }
 	break;
 
       case UNORDERED:
@@ -3431,18 +3984,42 @@ prepare_float_lib_cmp (px, py, pcomparison, pmode, punsignedp)
 
       case GT:
 	libfunc = gttf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = LT;
+	    libfunc = lttf2_libfunc;
+	  }
 	break;
 
       case GE:
 	libfunc = getf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = LE;
+	    libfunc = letf2_libfunc;
+	  }
 	break;
 
       case LT:
 	libfunc = lttf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = GT;
+	    libfunc = gttf2_libfunc;
+	  }
 	break;
 
       case LE:
 	libfunc = letf2_libfunc;
+	if (libfunc == NULL_RTX)
+	  {
+	    tmp = x; x = y; y = tmp;
+	    *pcomparison = GE;
+	    libfunc = getf2_libfunc;
+	  }
 	break;
 
       case UNORDERED:
@@ -3477,13 +4054,8 @@ prepare_float_lib_cmp (px, py, pcomparison, pmode, punsignedp)
   if (libfunc == 0)
     abort ();
 
-  emit_library_call (libfunc, 1, word_mode, 2, x, mode, y, mode);
-
-  /* Immediately move the result of the libcall into a pseudo
-     register so reload doesn't clobber the value if it needs
-     the return register for a spill reg.  */
-  result = gen_reg_rtx (word_mode);
-  emit_move_insn (result, hard_libcall_value (word_mode));
+  result = emit_library_call_value (libfunc, NULL_RTX, LCT_CONST_MAKE_BLOCK,
+				    word_mode, 2, x, mode, y, mode);
   *px = result;
   *py = const0_rtx;
   *pmode = word_mode;
@@ -3502,7 +4074,7 @@ void
 emit_indirect_jump (loc)
      rtx loc;
 {
-  if (! ((*insn_data[(int)CODE_FOR_indirect_jump].operand[0].predicate)
+  if (! ((*insn_data[(int) CODE_FOR_indirect_jump].operand[0].predicate)
 	 (loc, Pmode)))
     loc = copy_to_mode_reg (Pmode, loc);
 
@@ -3539,12 +4111,12 @@ emit_conditional_move (target, code, op0, op1, cmode, op2, op3, mode,
 {
   rtx tem, subtarget, comparison, insn;
   enum insn_code icode;
+  enum rtx_code reversed;
 
   /* If one operand is constant, make it the second one.  Only do this
      if the other operand is not constant as well.  */
 
-  if ((CONSTANT_P (op0) && ! CONSTANT_P (op1))
-      || (GET_CODE (op0) == CONST_INT && GET_CODE (op1) != CONST_INT))
+  if (swap_commutative_operands_p (op0, op1))
     {
       tem = op0;
       op0 = op1;
@@ -3563,15 +4135,14 @@ emit_conditional_move (target, code, op0, op1, cmode, op2, op3, mode,
   if (cmode == VOIDmode)
     cmode = GET_MODE (op0);
 
-  if (((CONSTANT_P (op2) && ! CONSTANT_P (op3))
-       || (GET_CODE (op2) == CONST_INT && GET_CODE (op3) != CONST_INT))
-      && (GET_MODE_CLASS (GET_MODE (op1)) != MODE_FLOAT
-	  || TARGET_FLOAT_FORMAT != IEEE_FLOAT_FORMAT || flag_fast_math))
+  if (swap_commutative_operands_p (op2, op3)
+      && ((reversed = reversed_comparison_code_parts (code, op0, op1, NULL))
+          != UNKNOWN))
     {
       tem = op2;
       op2 = op3;
       op3 = tem;
-      code = reverse_condition (code);
+      code = reversed;
     }
 
   if (mode == VOIDmode)
@@ -3618,7 +4189,7 @@ emit_conditional_move (target, code, op0, op1, cmode, op2, op3, mode,
      and then the conditional move.  */
 
   comparison 
-    = compare_from_rtx (op0, op1, code, unsignedp, cmode, NULL_RTX, 0);
+    = compare_from_rtx (op0, op1, code, unsignedp, cmode, NULL_RTX);
 
   /* ??? Watch for const0_rtx (nop) and const_true_rtx (unconditional)?  */
   /* We can get const0_rtx or const_true_rtx in some circumstances.  Just
@@ -3641,7 +4212,7 @@ emit_conditional_move (target, code, op0, op1, cmode, op2, op3, mode,
   return target;
 }
 
-/* Return non-zero if a conditional move of mode MODE is supported.
+/* Return nonzero if a conditional move of mode MODE is supported.
 
    This function is for combine so it can tell whether an insn that looks
    like a conditional move is actually supported by the hardware.  If we
@@ -3661,7 +4232,7 @@ can_conditionally_move_p (mode)
 
 #endif /* HAVE_conditional_move */
 
-/* These three functions generate an insn body and return it
+/* These functions generate an insn body and return it
    rather than emitting the insn.
 
    They do not protect from queued increments,
@@ -3687,11 +4258,49 @@ gen_add2_insn (x, y)
   return (GEN_FCN (icode) (x, x, y));
 }
 
-int
-have_add2_insn (mode)
-     enum machine_mode mode;
+/* Generate and return an insn body to add r1 and c,
+   storing the result in r0.  */
+rtx
+gen_add3_insn (r0, r1, c)
+     rtx r0, r1, c;
 {
-  return add_optab->handlers[(int) mode].insn_code != CODE_FOR_nothing;
+  int icode = (int) add_optab->handlers[(int) GET_MODE (r0)].insn_code;
+
+  if (icode == CODE_FOR_nothing
+      || ! ((*insn_data[icode].operand[0].predicate)
+	    (r0, insn_data[icode].operand[0].mode))
+      || ! ((*insn_data[icode].operand[1].predicate)
+	    (r1, insn_data[icode].operand[1].mode))
+      || ! ((*insn_data[icode].operand[2].predicate)
+	    (c, insn_data[icode].operand[2].mode)))
+    return NULL_RTX;
+
+  return (GEN_FCN (icode) (r0, r1, c));
+}
+
+int
+have_add2_insn (x, y)
+     rtx x, y;
+{
+  int icode;
+
+  if (GET_MODE (x) == VOIDmode)
+    abort ();
+
+  icode = (int) add_optab->handlers[(int) GET_MODE (x)].insn_code; 
+
+  if (icode == CODE_FOR_nothing)
+    return 0;
+
+  if (! ((*insn_data[icode].operand[0].predicate)
+	 (x, insn_data[icode].operand[0].mode))
+      || ! ((*insn_data[icode].operand[1].predicate)
+	    (x, insn_data[icode].operand[1].mode))
+      || ! ((*insn_data[icode].operand[2].predicate)
+	    (y, insn_data[icode].operand[2].mode)))
+    return 0;
+
+  return 1;
 }
 
 /* Generate and return an insn body to subtract Y from X.  */
@@ -3713,21 +4322,59 @@ gen_sub2_insn (x, y)
   return (GEN_FCN (icode) (x, x, y));
 }
 
-int
-have_sub2_insn (mode)
-     enum machine_mode mode;
+/* Generate and return an insn body to subtract r1 and c,
+   storing the result in r0.  */
+rtx
+gen_sub3_insn (r0, r1, c)
+     rtx r0, r1, c;
 {
-  return sub_optab->handlers[(int) mode].insn_code != CODE_FOR_nothing;
+  int icode = (int) sub_optab->handlers[(int) GET_MODE (r0)].insn_code;
+
+  if (icode == CODE_FOR_nothing
+      || ! ((*insn_data[icode].operand[0].predicate)
+	    (r0, insn_data[icode].operand[0].mode))
+      || ! ((*insn_data[icode].operand[1].predicate)
+	    (r1, insn_data[icode].operand[1].mode))
+      || ! ((*insn_data[icode].operand[2].predicate)
+	    (c, insn_data[icode].operand[2].mode)))
+    return NULL_RTX;
+
+  return (GEN_FCN (icode) (r0, r1, c));
+}
+
+int
+have_sub2_insn (x, y)
+     rtx x, y;
+{
+  int icode;
+
+  if (GET_MODE (x) == VOIDmode)
+    abort ();
+
+  icode = (int) sub_optab->handlers[(int) GET_MODE (x)].insn_code; 
+
+  if (icode == CODE_FOR_nothing)
+    return 0;
+
+  if (! ((*insn_data[icode].operand[0].predicate)
+	 (x, insn_data[icode].operand[0].mode))
+      || ! ((*insn_data[icode].operand[1].predicate)
+	    (x, insn_data[icode].operand[1].mode))
+      || ! ((*insn_data[icode].operand[2].predicate)
+	    (y, insn_data[icode].operand[2].mode)))
+    return 0;
+
+  return 1;
 }
 
 /* Generate the body of an instruction to copy Y into X.
-   It may be a SEQUENCE, if one insn isn't enough.  */
+   It may be a list of insns, if one insn isn't enough.  */
 
 rtx
 gen_move_insn (x, y)
      rtx x, y;
 {
-  register enum machine_mode mode = GET_MODE (x);
+  enum machine_mode mode = GET_MODE (x);
   enum insn_code insn_code;
   rtx seq;
 
@@ -3769,16 +4416,14 @@ gen_move_insn (x, y)
 	  x = gen_lowpart_common (tmode, x1);
 	  if (x == 0 && GET_CODE (x1) == MEM)
 	    {
-	      x = gen_rtx_MEM (tmode, XEXP (x1, 0));
-	      MEM_COPY_ATTRIBUTES (x, x1);
+	      x = adjust_address_nv (x1, tmode, 0);
 	      copy_replacements (x1, x);
 	    }
 
 	  y = gen_lowpart_common (tmode, y1);
 	  if (y == 0 && GET_CODE (y1) == MEM)
 	    {
-	      y = gen_rtx_MEM (tmode, XEXP (y1, 0));
-	      MEM_COPY_ATTRIBUTES (y, y1);
+	      y = adjust_address_nv (y1, tmode, 0);
 	      copy_replacements (y1, y);
 	    }
 	}
@@ -3794,7 +4439,7 @@ gen_move_insn (x, y)
 
   start_sequence ();
   emit_move_insn_1 (x, y);
-  seq = gen_sequence ();
+  seq = get_insns ();
   end_sequence ();
   return seq;
 }
@@ -3808,7 +4453,12 @@ can_extend_p (to_mode, from_mode, unsignedp)
      enum machine_mode to_mode, from_mode;
      int unsignedp;
 {
-  return extendtab[(int) to_mode][(int) from_mode][unsignedp != 0];
+#ifdef HAVE_ptr_extend
+  if (unsignedp < 0)
+    return CODE_FOR_ptr_extend;
+  else
+#endif
+    return extendtab[(int) to_mode][(int) from_mode][unsignedp != 0];
 }
 
 /* Generate the body of an insn to extend Y (with mode MFROM)
@@ -3871,7 +4521,7 @@ expand_float (to, from, unsignedp)
      int unsignedp;
 {
   enum insn_code icode;
-  register rtx target = to;
+  rtx target = to;
   enum machine_mode fmode, imode;
 
   /* Crash now, because we won't be able to decide which mode to use.  */
@@ -3883,10 +4533,10 @@ expand_float (to, from, unsignedp)
      wider mode.  If the integer mode is wider than the mode of FROM,
      we can do the conversion signed even if the input is unsigned.  */
 
-  for (imode = GET_MODE (from); imode != VOIDmode;
-       imode = GET_MODE_WIDER_MODE (imode))
-    for (fmode = GET_MODE (to); fmode != VOIDmode;
-	 fmode = GET_MODE_WIDER_MODE (fmode))
+  for (fmode = GET_MODE (to); fmode != VOIDmode;
+       fmode = GET_MODE_WIDER_MODE (fmode))
+    for (imode = GET_MODE (from); imode != VOIDmode;
+	 imode = GET_MODE_WIDER_MODE (imode))
       {
 	int doing_unsigned = unsignedp;
 
@@ -3916,9 +4566,9 @@ expand_float (to, from, unsignedp)
 	      convert_move (to, target, 0);
 	    return;
 	  }
-    }
+      }
 
-#if !defined (REAL_IS_NOT_DOUBLE) || defined (REAL_ARITHMETIC)
+#ifndef SGI_MONGOOSE
 
   /* Unsigned integer, and no way to convert directly.
      Convert as signed, then conditionally adjust the result.  */
@@ -3970,7 +4620,7 @@ expand_float (to, from, unsignedp)
 
 	      /* Test whether the sign bit is set.  */
 	      emit_cmp_and_jump_insns (from, const0_rtx, LT, NULL_RTX, imode,
-				       0, 0, neglabel);
+				       0, neglabel);
 
 	      /* The sign bit is not set.  Convert as signed.  */
 	      expand_float (target, from, 0);
@@ -3993,7 +4643,7 @@ expand_float (to, from, unsignedp)
 
 	      /* Multiply by 2 to undo the shift above.  */
 	      temp = expand_binop (fmode, add_optab, target, target,
-				     target, 0, OPTAB_LIB_WIDEN);
+				   target, 0, OPTAB_LIB_WIDEN);
 	      if (temp != target)
 		emit_move_insn (target, temp);
 
@@ -4018,12 +4668,10 @@ expand_float (to, from, unsignedp)
 
       do_pending_stack_adjust ();
       emit_cmp_and_jump_insns (from, const0_rtx, GE, NULL_RTX, GET_MODE (from),
-			        0, 0, label);
+			       0, label);
 
-      /* On SCO 3.2.1, ldexp rejects values outside [0.5, 1).
-	 Rather than setting up a dconst_dot_5, let's hope SCO
-	 fixes the bug.  */
-      offset = REAL_VALUE_LDEXP (dconst1, GET_MODE_BITSIZE (GET_MODE (from)));
+      
+      real_2expN (&offset, GET_MODE_BITSIZE (GET_MODE (from)));
       temp = expand_binop (fmode, add_optab, target,
 			   CONST_DOUBLE_FROM_REAL_VALUE (offset, fmode),
 			   target, 0, OPTAB_LIB_WIDEN);
@@ -4034,7 +4682,7 @@ expand_float (to, from, unsignedp)
       emit_label (label);
       goto done;
     }
-#endif
+#endif /* SGI_MONGOOSE */
 
   /* No hardware instruction available; call a library routine to convert from
      SImode, DImode, or TImode into SFmode, DFmode, XFmode, or TFmode.  */
@@ -4101,9 +4749,9 @@ expand_float (to, from, unsignedp)
 
       start_sequence ();
 
-      value = emit_library_call_value (libfcn, NULL_RTX, 1,
-				       GET_MODE (to),
-				       1, from, GET_MODE (from));
+      value = emit_library_call_value (libfcn, NULL_RTX, LCT_CONST,
+				       GET_MODE (to), 1, from,
+				       GET_MODE (from));
       insns = get_insns ();
       end_sequence ();
 
@@ -4138,11 +4786,11 @@ ftruncify (x)
 
 void
 expand_fix (to, from, unsignedp)
-     register rtx to, from;
+     rtx to, from;
      int unsignedp;
 {
   enum insn_code icode;
-  register rtx target = to;
+  rtx target = to;
   enum machine_mode fmode, imode;
   int must_trunc = 0;
   rtx libfcn = 0;
@@ -4152,10 +4800,10 @@ expand_fix (to, from, unsignedp)
      this conversion.  If the integer mode is wider than the mode of TO,
      we can do the conversion either signed or unsigned.  */
 
-  for (imode = GET_MODE (to); imode != VOIDmode;
-       imode = GET_MODE_WIDER_MODE (imode))
-    for (fmode = GET_MODE (from); fmode != VOIDmode;
-	 fmode = GET_MODE_WIDER_MODE (fmode))
+  for (fmode = GET_MODE (from); fmode != VOIDmode;
+       fmode = GET_MODE_WIDER_MODE (fmode))
+    for (imode = GET_MODE (to); imode != VOIDmode;
+	 imode = GET_MODE_WIDER_MODE (imode))
       {
 	int doing_unsigned = unsignedp;
 
@@ -4185,7 +4833,6 @@ expand_fix (to, from, unsignedp)
 	  }
       }
 
-#if !defined (REAL_IS_NOT_DOUBLE) || defined (REAL_ARITHMETIC)
   /* For an unsigned conversion, there is one more way to do it.
      If we have a signed conversion, we generate code that compares
      the real value to the largest representable positive number.  If if
@@ -4208,7 +4855,7 @@ expand_fix (to, from, unsignedp)
 	  rtx limit, lab1, lab2, insn;
 
 	  bitsize = GET_MODE_BITSIZE (GET_MODE (to));
-	  offset = REAL_VALUE_LDEXP (dconst1, bitsize - 1);
+	  real_2expN (&offset, bitsize - 1);
 	  limit = CONST_DOUBLE_FROM_REAL_VALUE (offset, fmode);
 	  lab1 = gen_label_rtx ();
 	  lab2 = gen_label_rtx ();
@@ -4226,7 +4873,7 @@ expand_fix (to, from, unsignedp)
 	  /* See if we need to do the subtraction.  */
 	  do_pending_stack_adjust ();
 	  emit_cmp_and_jump_insns (from, limit, GE, NULL_RTX, GET_MODE (from),
-				   0, 0, lab1);
+				   0, lab1);
 
 	  /* If not, do the signed "fix" and branch around fixup code.  */
 	  expand_fix (to, from, 0);
@@ -4241,7 +4888,9 @@ expand_fix (to, from, unsignedp)
 				 NULL_RTX, 0, OPTAB_LIB_WIDEN);
 	  expand_fix (to, target, 0);
 	  target = expand_binop (GET_MODE (to), xor_optab, to,
-				 GEN_INT ((HOST_WIDE_INT) 1 << (bitsize - 1)),
+				 gen_int_mode
+				 ((HOST_WIDE_INT) 1 << (bitsize - 1),
+				  GET_MODE (to)),
 				 to, 1, OPTAB_LIB_WIDEN);
 
 	  if (target != to)
@@ -4263,7 +4912,6 @@ expand_fix (to, from, unsignedp)
 
 	  return;
 	}
-#endif
 
   /* We can't do it with an insn, so use a library call.  But first ensure
      that the mode of TO is at least as wide as SImode, since those are the
@@ -4335,9 +4983,9 @@ expand_fix (to, from, unsignedp)
 
       start_sequence ();
 
-      value = emit_library_call_value (libfcn, NULL_RTX, 1, GET_MODE (to),
-
-				       1, from, GET_MODE (from));
+      value = emit_library_call_value (libfcn, NULL_RTX, LCT_CONST,
+				       GET_MODE (to), 1, from,
+				       GET_MODE (from));
       insns = get_insns ();
       end_sequence ();
 
@@ -4355,22 +5003,53 @@ expand_fix (to, from, unsignedp)
     }
 }
 
-static optab
-init_optab (code)
+/* Report whether we have an instruction to perform the operation
+   specified by CODE on operands of mode MODE.  */
+int
+have_insn_for (code, mode)
      enum rtx_code code;
+     enum machine_mode mode;
+{
+  return (code_to_optab[(int) code] != 0
+	  && (code_to_optab[(int) code]->handlers[(int) mode].insn_code
+	      != CODE_FOR_nothing));
+}
+
+/* Create a blank optab.  */
+static optab
+new_optab ()
 {
   int i;
-  optab op = (optab) xmalloc (sizeof (struct optab));
-  op->code = code;
+  optab op = (optab) ggc_alloc (sizeof (struct optab));
   for (i = 0; i < NUM_MACHINE_MODES; i++)
     {
       op->handlers[i].insn_code = CODE_FOR_nothing;
       op->handlers[i].libfunc = 0;
     }
 
-  if (code != UNKNOWN)
-    code_to_optab[(int) code] = op;
+  return op;
+}
 
+/* Same, but fill in its code as CODE, and write it into the
+   code_to_optab table.  */
+static inline optab
+init_optab (code)
+     enum rtx_code code;
+{
+  optab op = new_optab ();
+  op->code = code;
+  code_to_optab[(int) code] = op;
+  return op;
+}
+
+/* Same, but fill in its code as CODE, and do _not_ write it into
+   the code_to_optab table.  */
+static inline optab
+init_optabv (code)
+     enum rtx_code code;
+{
+  optab op = new_optab ();
+  op->code = code;
   return op;
 }
 
@@ -4393,24 +5072,23 @@ init_optab (code)
 
 static void
 init_libfuncs (optable, first_mode, last_mode, opname, suffix)
-    register optab optable;
-    register int first_mode;
-    register int last_mode;
-    register const char *opname;
-    register int suffix;
+     optab optable;
+     int first_mode;
+     int last_mode;
+     const char *opname;
+     int suffix;
 {
-  register int mode;
-  register unsigned opname_len = strlen (opname);
+  int mode;
+  unsigned opname_len = strlen (opname);
 
   for (mode = first_mode; (int) mode <= (int) last_mode;
        mode = (enum machine_mode) ((int) mode + 1))
     {
-      register const char *mname = GET_MODE_NAME(mode);
-      register unsigned mname_len = strlen (mname);
-      register char *libfunc_name
-	= ggc_alloc_string (NULL, 2 + opname_len + mname_len + 1 + 1);
-      register char *p;
-      register const char *q;
+      const char *mname = GET_MODE_NAME (mode);
+      unsigned mname_len = strlen (mname);
+      char *libfunc_name = alloca (2 + opname_len + mname_len + 1 + 1);
+      char *p;
+      const char *q;
 
       p = libfunc_name;
       *p++ = '_';
@@ -4420,10 +5098,11 @@ init_libfuncs (optable, first_mode, last_mode, opname, suffix)
       for (q = mname; *q; q++)
 	*p++ = TOLOWER (*q);
       *p++ = suffix;
-      *p++ = '\0';
+      *p = '\0';
 
       optable->handlers[(int) mode].libfunc
-	= gen_rtx_SYMBOL_REF (Pmode, libfunc_name);
+	= gen_rtx_SYMBOL_REF (Pmode, ggc_alloc_string (libfunc_name,
+						       p - libfunc_name));
     }
 }
 
@@ -4434,9 +5113,9 @@ init_libfuncs (optable, first_mode, last_mode, opname, suffix)
 
 static void
 init_integral_libfuncs (optable, opname, suffix)
-    register optab optable;
-    register const char *opname;
-    register int suffix;
+     optab optable;
+     const char *opname;
+     int suffix;
 {
   init_libfuncs (optable, SImode, TImode, opname, suffix);
 }
@@ -4448,34 +5127,29 @@ init_integral_libfuncs (optable, opname, suffix)
 
 static void
 init_floating_libfuncs (optable, opname, suffix)
-    register optab optable;
-    register const char *opname;
-    register int suffix;
+     optab optable;
+     const char *opname;
+     int suffix;
 {
   init_libfuncs (optable, SFmode, TFmode, opname, suffix);
 }
 
 rtx
 init_one_libfunc (name)
-     register const char *name;
+     const char *name;
 {
-  if (ggc_p)
-    name = ggc_alloc_string (name, -1);
+  /* Create a FUNCTION_DECL that can be passed to
+     targetm.encode_section_info.  */
+  /* ??? We don't have any type information except for this is
+     a function.  Pretend this is "int foo()".  */
+  tree decl = build_decl (FUNCTION_DECL, get_identifier (name),
+			  build_function_type (integer_type_node, NULL_TREE));
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_EXTERNAL (decl) = 1;
+  TREE_PUBLIC (decl) = 1;
 
-  return gen_rtx_SYMBOL_REF (Pmode, name);
-}
-
-/* Mark ARG (which is really an OPTAB *) for GC.  */
-
-void
-mark_optab (arg)
-     void *arg;
-{
-  optab o = *(optab *) arg;
-  int i;
-
-  for (i = 0; i < NUM_MACHINE_MODES; ++i)
-    ggc_mark_rtx (o->handlers[i].libfunc);
+  /* Return the symbol_ref from the mem rtx.  */
+  return XEXP (DECL_RTL (decl), 0);
 }
 
 /* Call this once to initialize the contents of the optabs
@@ -4484,34 +5158,29 @@ mark_optab (arg)
 void
 init_optabs ()
 {
-  int i;
-#ifdef FIXUNS_TRUNC_LIKE_FIX_TRUNC
-  int j;
-#endif
-
-  enum insn_code *p;
+  unsigned int i, j, k;
 
   /* Start by initializing all tables to contain CODE_FOR_nothing.  */
 
-  for (p = fixtab[0][0];
-       p < fixtab[0][0] + sizeof fixtab / sizeof (fixtab[0][0][0]); 
-       p++)
-    *p = CODE_FOR_nothing;
+  for (i = 0; i < ARRAY_SIZE (fixtab); i++)
+    for (j = 0; j < ARRAY_SIZE (fixtab[0]); j++)
+      for (k = 0; k < ARRAY_SIZE (fixtab[0][0]); k++)
+	fixtab[i][j][k] = CODE_FOR_nothing;
 
-  for (p = fixtrunctab[0][0];
-       p < fixtrunctab[0][0] + sizeof fixtrunctab / sizeof (fixtrunctab[0][0][0]); 
-       p++)
-    *p = CODE_FOR_nothing;
+  for (i = 0; i < ARRAY_SIZE (fixtrunctab); i++)
+    for (j = 0; j < ARRAY_SIZE (fixtrunctab[0]); j++)
+      for (k = 0; k < ARRAY_SIZE (fixtrunctab[0][0]); k++)
+	fixtrunctab[i][j][k] = CODE_FOR_nothing;
 
-  for (p = floattab[0][0];
-       p < floattab[0][0] + sizeof floattab / sizeof (floattab[0][0][0]); 
-       p++)
-    *p = CODE_FOR_nothing;
+  for (i = 0; i < ARRAY_SIZE (floattab); i++)
+    for (j = 0; j < ARRAY_SIZE (floattab[0]); j++)
+      for (k = 0; k < ARRAY_SIZE (floattab[0][0]); k++)
+	floattab[i][j][k] = CODE_FOR_nothing;
 
-  for (p = extendtab[0][0];
-       p < extendtab[0][0] + sizeof extendtab / sizeof extendtab[0][0][0];
-       p++)
-    *p = CODE_FOR_nothing;
+  for (i = 0; i < ARRAY_SIZE (extendtab); i++)
+    for (j = 0; j < ARRAY_SIZE (extendtab[0]); j++)
+      for (k = 0; k < ARRAY_SIZE (extendtab[0][0]); k++)
+	extendtab[i][j][k] = CODE_FOR_nothing;
 
   for (i = 0; i < NUM_RTX_CODE; i++)
     setcc_gen_code[i] = CODE_FOR_nothing;
@@ -4522,19 +5191,22 @@ init_optabs ()
 #endif
 
   add_optab = init_optab (PLUS);
+  addv_optab = init_optabv (PLUS);
   sub_optab = init_optab (MINUS);
+  subv_optab = init_optabv (MINUS);
   smul_optab = init_optab (MULT);
+  smulv_optab = init_optabv (MULT);
   smul_highpart_optab = init_optab (UNKNOWN);
   umul_highpart_optab = init_optab (UNKNOWN);
   smul_widen_optab = init_optab (UNKNOWN);
   umul_widen_optab = init_optab (UNKNOWN);
   sdiv_optab = init_optab (DIV);
+  sdivv_optab = init_optabv (DIV);
   sdivmod_optab = init_optab (UNKNOWN);
   udiv_optab = init_optab (UDIV);
   udivmod_optab = init_optab (UNKNOWN);
   smod_optab = init_optab (MOD);
   umod_optab = init_optab (UMOD);
-  flodiv_optab = init_optab (DIV);
   ftrunc_optab = init_optab (UNKNOWN);
   and_optab = init_optab (AND);
   ior_optab = init_optab (IOR);
@@ -4548,22 +5220,31 @@ init_optabs ()
   smax_optab = init_optab (SMAX);
   umin_optab = init_optab (UMIN);
   umax_optab = init_optab (UMAX);
-  mov_optab = init_optab (UNKNOWN);
-  movstrict_optab = init_optab (UNKNOWN);
-  cmp_optab = init_optab (UNKNOWN);
+
+  /* These three have codes assigned exclusively for the sake of
+     have_insn_for.  */
+  mov_optab = init_optab (SET);
+  movstrict_optab = init_optab (STRICT_LOW_PART);
+  cmp_optab = init_optab (COMPARE);
+
   ucmp_optab = init_optab (UNKNOWN);
   tst_optab = init_optab (UNKNOWN);
   neg_optab = init_optab (NEG);
+  negv_optab = init_optabv (NEG);
   abs_optab = init_optab (ABS);
+  absv_optab = init_optabv (ABS);
   one_cmpl_optab = init_optab (NOT);
   ffs_optab = init_optab (FFS);
   sqrt_optab = init_optab (SQRT);
   sin_optab = init_optab (UNKNOWN);
   cos_optab = init_optab (UNKNOWN);
+  exp_optab = init_optab (UNKNOWN);
+  log_optab = init_optab (UNKNOWN);
   strlen_optab = init_optab (UNKNOWN);
   cbranch_optab = init_optab (UNKNOWN);
   cmov_optab = init_optab (UNKNOWN);
   cstore_optab = init_optab (UNKNOWN);
+  push_optab = init_optab (UNKNOWN);
 
   for (i = 0; i < NUM_MACHINE_MODES; i++)
     {
@@ -4589,17 +5270,24 @@ init_optabs ()
   /* Initialize the optabs with the names of the library functions.  */
   init_integral_libfuncs (add_optab, "add", '3');
   init_floating_libfuncs (add_optab, "add", '3');
+  init_integral_libfuncs (addv_optab, "addv", '3');
+  init_floating_libfuncs (addv_optab, "add", '3');
   init_integral_libfuncs (sub_optab, "sub", '3');
   init_floating_libfuncs (sub_optab, "sub", '3');
+  init_integral_libfuncs (subv_optab, "subv", '3');
+  init_floating_libfuncs (subv_optab, "sub", '3');
   init_integral_libfuncs (smul_optab, "mul", '3');
   init_floating_libfuncs (smul_optab, "mul", '3');
+  init_integral_libfuncs (smulv_optab, "mulv", '3');
+  init_floating_libfuncs (smulv_optab, "mul", '3');
   init_integral_libfuncs (sdiv_optab, "div", '3');
+  init_floating_libfuncs (sdiv_optab, "div", '3');
+  init_integral_libfuncs (sdivv_optab, "divv", '3');
   init_integral_libfuncs (udiv_optab, "udiv", '3');
   init_integral_libfuncs (sdivmod_optab, "divmod", '4');
   init_integral_libfuncs (udivmod_optab, "udivmod", '4');
   init_integral_libfuncs (smod_optab, "mod", '3');
   init_integral_libfuncs (umod_optab, "umod", '3');
-  init_floating_libfuncs (flodiv_optab, "div", '3');
   init_floating_libfuncs (ftrunc_optab, "ftrunc", '2');
   init_integral_libfuncs (and_optab, "and", '3');
   init_integral_libfuncs (ior_optab, "ior", '3');
@@ -4615,6 +5303,8 @@ init_optabs ()
   init_integral_libfuncs (umax_optab, "umax", '3');
   init_integral_libfuncs (neg_optab, "neg", '2');
   init_floating_libfuncs (neg_optab, "neg", '2');
+  init_integral_libfuncs (negv_optab, "negv", '2');
+  init_floating_libfuncs (negv_optab, "neg", '2');
   init_integral_libfuncs (one_cmpl_optab, "one_cmpl", '2');
   init_integral_libfuncs (ffs_optab, "ffs", '2');
 
@@ -4674,9 +5364,6 @@ init_optabs ()
     = init_one_libfunc ("cabs");
 
   /* The ffs function operates on `int'.  */
-#ifndef INT_TYPE_SIZE
-#define INT_TYPE_SIZE BITS_PER_WORD
-#endif
   ffs_optab->handlers[(int) mode_for_size (INT_TYPE_SIZE, MODE_INT, 0)].libfunc
     = init_one_libfunc ("ffs");
 
@@ -4692,19 +5379,18 @@ init_optabs ()
   truncxfdf2_libfunc = init_one_libfunc ("__truncxfdf2");
   trunctfdf2_libfunc = init_one_libfunc ("__trunctfdf2");
 
+  abort_libfunc = init_one_libfunc ("abort");
   memcpy_libfunc = init_one_libfunc ("memcpy");
+  memmove_libfunc = init_one_libfunc ("memmove");
   bcopy_libfunc = init_one_libfunc ("bcopy");
   memcmp_libfunc = init_one_libfunc ("memcmp");
   bcmp_libfunc = init_one_libfunc ("__gcc_bcmp");
   memset_libfunc = init_one_libfunc ("memset");
   bzero_libfunc = init_one_libfunc ("bzero");
 
-  throw_libfunc = init_one_libfunc ("__throw");
-  rethrow_libfunc = init_one_libfunc ("__rethrow");
-  sjthrow_libfunc = init_one_libfunc ("__sjthrow");
-  sjpopnthrow_libfunc = init_one_libfunc ("__sjpopnthrow");
-  terminate_libfunc = init_one_libfunc ("__terminate");
-  eh_rtime_match_libfunc = init_one_libfunc ("__eh_rtime_match");
+  unwind_resume_libfunc = init_one_libfunc (USING_SJLJ_EXCEPTIONS
+					    ? "_Unwind_SjLj_Resume"
+					    : "_Unwind_Resume");
 #ifndef DONT_USE_BUILTIN_SETJMP
   setjmp_libfunc = init_one_libfunc ("__builtin_setjmp");
   longjmp_libfunc = init_one_libfunc ("__builtin_longjmp");
@@ -4712,6 +5398,9 @@ init_optabs ()
   setjmp_libfunc = init_one_libfunc ("setjmp");
   longjmp_libfunc = init_one_libfunc ("longjmp");
 #endif
+  unwind_sjlj_register_libfunc = init_one_libfunc ("_Unwind_SjLj_Register");
+  unwind_sjlj_unregister_libfunc
+    = init_one_libfunc ("_Unwind_SjLj_Unregister");
 
   eqhf2_libfunc = init_one_libfunc ("__eqhf2");
   nehf2_libfunc = init_one_libfunc ("__nehf2");
@@ -4801,99 +5490,63 @@ init_optabs ()
   fixunstfdi_libfunc = init_one_libfunc ("__fixunstfdi");
   fixunstfti_libfunc = init_one_libfunc ("__fixunstfti");
 
-  /* For check-memory-usage.  */
-  chkr_check_addr_libfunc = init_one_libfunc ("chkr_check_addr");
-  chkr_set_right_libfunc = init_one_libfunc ("chkr_set_right");
-  chkr_copy_bitmap_libfunc = init_one_libfunc ("chkr_copy_bitmap");
-  chkr_check_exec_libfunc = init_one_libfunc ("chkr_check_exec");
-  chkr_check_str_libfunc = init_one_libfunc ("chkr_check_str");
-
   /* For function entry/exit instrumentation.  */
   profile_function_entry_libfunc
     = init_one_libfunc ("__cyg_profile_func_enter");
   profile_function_exit_libfunc
     = init_one_libfunc ("__cyg_profile_func_exit");
 
-#ifdef HAVE_conditional_trap
-  init_traps ();
-#endif
+  if (HAVE_conditional_trap)
+    trap_rtx = gen_rtx_fmt_ee (EQ, VOIDmode, NULL_RTX, NULL_RTX);
 
 #ifdef INIT_TARGET_OPTABS
   /* Allow the target to add more libcalls or rename some, etc.  */
   INIT_TARGET_OPTABS;
 #endif
-
-  /* Add these GC roots.  */
-  ggc_add_root (optab_table, OTI_MAX, sizeof(optab), mark_optab);
-  ggc_add_rtx_root (libfunc_table, LTI_MAX);
 }
 
-#ifdef BROKEN_LDEXP
-
-/* SCO 3.2 apparently has a broken ldexp.  */
-
-double
-ldexp(x,n)
-     double x;
-     int n;
-{
-  if (n > 0)
-    while (n--)
-      x *= 2;
-
-  return x;
-}
-#endif /* BROKEN_LDEXP */
-
-#ifdef HAVE_conditional_trap
-/* The insn generating function can not take an rtx_code argument.
-   TRAP_RTX is used as an rtx argument.  Its code is replaced with
-   the code to be used in the trap insn and all other fields are
-   ignored.  */
-static rtx trap_rtx;
-
-static void
-init_traps ()
-{
-  if (HAVE_conditional_trap)
-    {
-      trap_rtx = gen_rtx_fmt_ee (EQ, VOIDmode, NULL_RTX, NULL_RTX);
-      ggc_add_rtx_root (&trap_rtx, 1);
-    }
-}
-#endif
-
 /* Generate insns to trap with code TCODE if OP1 and OP2 satisfy condition
    CODE.  Return 0 on failure.  */
 
 rtx
 gen_cond_trap (code, op1, op2, tcode)
-  enum rtx_code code ATTRIBUTE_UNUSED;
-  rtx op1, op2 ATTRIBUTE_UNUSED, tcode ATTRIBUTE_UNUSED;
+     enum rtx_code code ATTRIBUTE_UNUSED;
+     rtx op1, op2 ATTRIBUTE_UNUSED, tcode ATTRIBUTE_UNUSED;
 {
   enum machine_mode mode = GET_MODE (op1);
+  enum insn_code icode;
+  rtx insn;
+
+  if (!HAVE_conditional_trap)
+    return 0;
 
   if (mode == VOIDmode)
     return 0;
 
-#ifdef HAVE_conditional_trap
-  if (HAVE_conditional_trap
-      && cmp_optab->handlers[(int) mode].insn_code != CODE_FOR_nothing)
-    {
-      rtx insn;
-      start_sequence();
-      emit_insn (GEN_FCN (cmp_optab->handlers[(int) mode].insn_code) (op1, op2));
-      PUT_CODE (trap_rtx, code);
-      insn = gen_conditional_trap (trap_rtx, tcode);
-      if (insn)
-	{
-	  emit_insn (insn);
-	  insn = gen_sequence ();
-	}
-      end_sequence();
-      return insn;
-    }
-#endif
+  icode = cmp_optab->handlers[(int) mode].insn_code;
+  if (icode == CODE_FOR_nothing)
+    return 0;
 
-  return 0;
+  start_sequence ();
+  op1 = prepare_operand (icode, op1, 0, mode, mode, 0);
+  op2 = prepare_operand (icode, op2, 1, mode, mode, 0);
+  if (!op1 || !op2)
+    {
+      end_sequence ();
+      return 0;
+    }
+  emit_insn (GEN_FCN (icode) (op1, op2));
+
+  PUT_CODE (trap_rtx, code);
+  insn = gen_conditional_trap (trap_rtx, tcode);
+  if (insn)
+    {
+      emit_insn (insn);
+      insn = get_insns ();
+    }
+  end_sequence ();
+
+  return insn;
 }
+
+#include "gt-optabs.h"

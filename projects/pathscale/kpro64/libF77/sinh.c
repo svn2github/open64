@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -62,7 +66,7 @@ static double_t q1   = 0.1521517378790019070696485176e+5;
 static double_t q2  = -0.173678953558233699533450911e+3;
 
 double_t
-sinh(doublt_t arg)
+sinh(double_t arg)
 {
 	double_t temp, argsq;
 	register int32 sign;

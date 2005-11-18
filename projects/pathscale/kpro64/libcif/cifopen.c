@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -65,12 +69,6 @@ static char USMID[] = "@(#) libcif/cifopen.c	30.6	05/22/97 11:49:31";
 #define DEFGLOBAL
 #include "cif_int.h"
 
-#ifdef linux
-extern int fileno( FILE *stream);
-/* else for irix fileno is a define */
-#endif
-extern char *strdup(const char *s);
-
 #define HDRBUF_SIZE	128	/* size of buffer used to read the file header */
 #define HDRTOKENS		10		/* number of tokens in header before tools field */
 
@@ -97,15 +95,7 @@ int _cif_version = 0;
    a version 2 cif, but haven't set CIF_VERSION 2 before including cif.h */
 
 int Cif_Open_V1
-#ifdef __STDC__
 (char *filename, char *optype, int *rtypes, int version)
-#else
-(filename, optype, rtypes, version)
-char *filename;			/* file name */
-char *optype;				/* open type */
-int *rtypes;				/* ptr to array of selected record types */
-int version;				/* CIF version expected by tools */
-#endif
 {
 
   /* We can only enter this function if CIF_VERSION used by the application
@@ -129,15 +119,7 @@ int version;				/* CIF version expected by tools */
    were compiled with. If they compile with version 2, they have to read version 2 */
 
 int Cif_Open_V2
-#ifdef __STDC__
 (char *filename, char *optype, int *rtypes, int version)
-#else
-(filename, optype, rtypes, version)
-char *filename;			/* file name */
-char *optype;				/* open type */
-int *rtypes;				/* ptr to array of selected record types */
-int version;				/* CIF version expected by tools */
-#endif
 {
 
   /* We can only enter this function if CIF_VERSION used by the application
@@ -163,16 +145,7 @@ int version;				/* CIF version expected by tools */
  */
 
 int Cif_Open_V2_1
-#ifdef __STDC__
 (char *filename, char *optype, int *rtypes, int version, int sub_version)
-#else
-(filename, optype, rtypes, version, sub_version)
-char *filename;			/* file name */
-char *optype;				/* open type */
-int *rtypes;				/* ptr to array of selected record types */
-int version;				/* CIF version expected by tools */
-int sub_version;
-#endif
 {
 
   /* We can only enter this function if CIF_VERSION used by the application
@@ -197,16 +170,7 @@ int sub_version;
  */
 
 int Cif_Open_V3_1
-#ifdef __STDC__
 (char *filename, char *optype, int *rtypes, int version, int sub_version)
-#else
-(filename, optype, rtypes, version, sub_version)
-char *filename;			/* file name */
-char *optype;				/* open type */
-int *rtypes;				/* ptr to array of selected record types */
-int version;				/* CIF version expected by tools */
-int sub_version;
-#endif
 {
 
   /* We can only enter this function if CIF_VERSION used by the application
@@ -238,15 +202,7 @@ int sub_version;
  */
 
 int Cif_Open
-#ifdef __STDC__
 (char *filename, char *optype, int *rtypes, int version)
-#else
-(filename, optype, rtypes, version)
-char *filename;			/* file name */
-char *optype;				/* open type */
-int *rtypes;				/* ptr to array of selected record types */
-int version;				/* CIF version expected by tools */
-#endif
 {
 	int i;
 	int cx;					/* _Cif_filetbl index */
@@ -438,19 +394,7 @@ int version;				/* CIF version expected by tools */
 
 	/* determine if seeks are allowed on file */
 
-	/*
-	 * Note. To get fileno to work on 6.1, use (fileno(fd) & 0xffff)
-	 * as the fileno structure changed slightly and the top however
-	 * many bits need to be masked out. I haven't put this in by
-	 * default as libcif should never be put onto a 6.1 system and
-	 * it seems like a kludge with unknown side effects, so it's best
-	 * to leave out
-	 *
-	 * Okay, so I changed my mind...I'm told that this is a safe
-	 * fix, but I'll leave in the warning above
-	 */
-
-	(void) fstat ((int) (fileno(fd) & 0xffffffff), &statbuf);
+	(void) fstat (fileno(fd), &statbuf);
 	_Cif_filetbl[cx].seek = (S_ISREG(statbuf.st_mode) ? YES : NO);
 
 	_Cif_filetbl[cx].fd = fd;

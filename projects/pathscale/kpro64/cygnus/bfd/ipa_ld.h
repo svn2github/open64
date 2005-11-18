@@ -1,3 +1,37 @@
+/*
+
+  Copyright 2004 PathScale, Inc.  All Rights Reserved.
+
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of version 2 of the GNU General Public License as
+  published by the Free Software Foundation.
+
+  This program is distributed in the hope that it would be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+
+  Further, this software is distributed without any warranty that it is
+  free of the rightful claim of any third person regarding infringement 
+  or the like.  Any license provided herein, whether implied or 
+  otherwise, applies only to this software file.  Patent licenses, if 
+  any, provided herein do not apply to combinations of this program with 
+  other software, or any other product whatsoever.  
+
+  You should have received a copy of the GNU General Public License along
+  with this program; if not, write the Free Software Foundation, Inc., 59
+  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+
+  Contact information:  PathScale, Inc., 477 N. Mathilda Avenue,
+  Sunnvale, CA 94085, USA, or:
+
+  http://www.pathscale.com
+
+  For further information regarding this notice, see:
+
+  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+
+ */
+
 #ifndef __IPA_LD_H__
 #define __IPA_LD_H__
 
@@ -176,6 +210,9 @@ extern void (*p_ipa_init_link_line)(int, char **);
 extern void (*p_ipa_add_link_flag)(const char*);
 extern void (*p_ipa_driver)(int, char **);
 extern void (*p_process_whirl64)(void *, off_t, void *, int, const char *);
+#ifdef KEY
+extern void (*p_process_whirl32)(void *, off_t, void *, int, const char *);
+#endif
 extern void (*p_ipa_insert_whirl_marker)(void);
 
 /* Function declarations
@@ -224,7 +261,7 @@ extern string
 ld_compile (bfd *abfd);
 
 extern void *
-ld_slookup_mext(char *, boolean);
+ld_slookup_mext(char *, bfd_boolean);
 
 extern void
 ld_set_st_idx (void *, int);
@@ -235,7 +272,7 @@ ld_get_st_idx (void *);
 extern int
 ipa_set_ndx (bfd *);
 
-extern boolean
+extern bfd_boolean
 ld_resolved_to_obj (void *, void *);
 
 extern char *
@@ -262,7 +299,7 @@ ld_set_cur_obj(bfd *);
 void *
 ld_get_cur_obj(void);
 
-extern boolean
+extern bfd_boolean
 ipa_is_whirl(bfd *);
 
 extern void

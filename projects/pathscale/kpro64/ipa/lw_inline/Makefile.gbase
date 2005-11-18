@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -98,7 +98,7 @@ BE_LNO_DIR              = $(BE_DIR)/lno
 BE_REGION_DIR           = $(BE_DIR)/region
 BE_OPT_DIR              = $(BE_DIR)/opt
 BE_VHO_DIR              = $(BE_DIR)/vho
-GNU_DIR                 = $(BUILD_TOT)/gccfe/gnu
+GNU_DIR                 = $(BUILD_TOT)/kgccfe/gnu
 COMMON_DIR              = $(BUILD_TOT)/common
 COMMON_COM_DIR          = $(COMMON_DIR)/com
 COMMON_COM_TARG_DIR 	= $(COMMON_COM_DIR)/$(BUILD_TARGET_DIR)
@@ -141,12 +141,14 @@ IPA_INLINE_CXX_SRCS = \
 IPA_LOCAL_CXX_SRCS = \
        ipl_summarize_util.cxx \
 
+# KEY: skip inline_script_parser.cxx
 IPA_ANALYZE_CXX_SRCS = \
 	ip_graph_trav.cxx \
 	ipa_cg.cxx \
 	ipa_inline.cxx \
 	ipa_nested_pu.cxx \
 	ipa_summary.cxx \
+#	inline_script_parser.cxx \
 
 
 IPA_OPTIMIZE_CXX_SRCS =	\
@@ -166,6 +168,7 @@ IPA_COMMON_CXX_SRCS = \
 	ip_graph.cxx \
 	ipc_option.cxx \
 	ipc_utils.cxx \
+	ipc_dst_utils.cxx \
 
 BE_COM_CXX_SRCS = \
 	cxx_template.cxx \
@@ -208,7 +211,7 @@ endif
 
 VPATH    =  $(SRC_DIRS)
 
-LCOPTS = $(STD_COMPILE_OPTS)
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS) $(WOFF)
@@ -239,7 +242,7 @@ default: first $(TARGETS) last
 #  built.
 #----------------------------------------------------------------------
 first:
-	cd $(TARG_BE_DIR) && $(MAKE)
+	$(call submake,$(TARG_BE_DIR))
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is
@@ -261,11 +264,11 @@ endif
 
 lw_inline: $(IPA_OBJS) $(IPA_CXX_OBJS)
 	if ! test -a be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
-	$(C++F) -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) be.so  $(LDFLAGS)
+	$(link.c++f) -o $@ $(IPA_OBJS) $(IPA_CXX_OBJS) be.so  $(LDFLAGS)
 
 #ifeq ($(BUILD_OS), LINUX)
 inline.o: $(IPA_INLINE_DIR)/inline.cxx
-	$(C++F) -c -O0 $(IPA_INLINE_DIR)/inline.cxx
+	$(c++f) -c -O0 $(IPA_INLINE_DIR)/inline.cxx
 #endif
 
 #----------------------------------------------------------------------

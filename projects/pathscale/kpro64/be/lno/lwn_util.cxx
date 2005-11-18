@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1214,10 +1218,17 @@ WN *LWN_CreateCompgoto(INT32 num_entries, WN *value,
   return wn;
 }
 
+#ifndef KEY
 WN *LWN_CreateIstore(OPCODE opc, WN_OFFSET offset,
 		     TY_IDX ty, WN *value, WN *addr)
 {
   WN* wn = WN_CreateIstore(opc, offset, ty, value, addr);
+#else
+WN *LWN_CreateIstore(OPCODE opc, WN_OFFSET offset,
+		     TY_IDX ty, WN *value, WN *addr, UINT field_id)
+{
+  WN* wn = WN_CreateIstore(opc, offset, ty, value, addr, field_id);
+#endif /* KEY */
   if (value) LWN_Set_Parent(value, wn);
   if (addr) LWN_Set_Parent(addr, wn);
   return wn;
@@ -1375,10 +1386,17 @@ WN *LWN_CreateExp2(OPCODE opc, WN *kid0, WN *kid1)
   return wn;
 }
 
+#ifndef KEY
 WN *LWN_CreateIload(OPCODE opc, WN_OFFSET offset, 
 		   TY_IDX ty1, TY_IDX ty2,WN *addr)
 {
   WN* wn = WN_CreateIload(opc, offset, ty1, ty2, addr);
+#else
+WN *LWN_CreateIload(OPCODE opc, WN_OFFSET offset, 
+		    TY_IDX ty1, TY_IDX ty2,WN *addr, UINT field_id)
+{
+  WN* wn = WN_CreateIload(opc, offset, ty1, ty2, addr, field_id);
+#endif /* KEY */
   LWN_Parentize_One_Level(wn);
   return wn;
 }
@@ -1419,10 +1437,17 @@ WN* LWN_Int_Type_Conversion(WN *wn, TYPE_ID to_type)
   WN* wn_new = WN_Int_Type_Conversion(wn, to_type);
   if (wn_new != wn &&
       (WN_operator(wn_new) == OPR_CVT || WN_operator(wn_new) == OPR_CVTL)) {
+#ifndef KEY
     FmtAssert(WN_kid0(wn_new) == wn,
               ("strange parent %s: %p != %p",
                OPCODE_name(WN_opcode(wn_new)), WN_kid0(wn_new), wn));
     LWN_Set_Parent(wn, wn_new);
+#else
+    // WN simplifier could over-write wn and create a new wn_new.
+    // Reset parent for wn only if wn is wn_new's kid.
+    if (WN_kid0(wn_new) == wn)
+      LWN_Set_Parent(wn, wn_new);
+#endif
   }
   return wn_new;
 }
@@ -1616,7 +1641,7 @@ void DBX_WN_Map (WN_MAP map, WN* wn) {
     printf ("wn is NULL\n");
     return;
   }
-  printf ("Map = 0x%p (%lld)\n", WN_MAP_Get(map, wn), (INT64)WN_MAP_Get(map, wn));
+  printf ("Map = %p\n", WN_MAP_Get(map, wn));
 }
 
 //-----------------------------------------------------------------------

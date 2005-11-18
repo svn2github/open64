@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -91,6 +95,9 @@ typedef INT64 LOWER_ACTIONS;
 #define LOWER_MLDID_MSTID	  0x004000000000ll
 #define LOWER_BIT_FIELD_ID	  0x008000000000ll
 #define LOWER_BITS_OP		  0x010000000000ll 
+#if defined(TARG_IA32) || defined(TARG_X8664)
+#define LOWER_SLINK_SAVE	  0x020000000000ll
+#endif
 
 #define LOWER_TO_CG		  0x800000000000ll
 
@@ -190,5 +197,9 @@ extern void WN_Lower_Checkdump(char *msg, WN *tree, LOWER_ACTIONS actions);
  * lower M or lower WHIRL to conform to unsigned 64-bit instruction only ISA
  */
 extern void U64_lower_wn(WN *, BOOL);
+
+#ifdef KEY
+extern void WN_retype_expr(WN *);
+#endif
 
 #endif /* wn_lower_INCLUDED */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,6 +46,7 @@
 #ifndef	_ABSOFT
 #include <malloc.h>
 #endif
+#include <stdlib.h>
 #include <liberrno.h>
 #include "fio.h"
 
@@ -95,7 +100,7 @@ _fcleanup(void)
 					sprintf(msgbuf,
 	     "FATAL error closing a Hollerith unit during program termination");
 				}
-				_lmessage(ret, msgbuf, (va_list) NULL);
+				_lmessage(ret, msgbuf, NULL);
 				errflag	= 1;
 			}
 		}

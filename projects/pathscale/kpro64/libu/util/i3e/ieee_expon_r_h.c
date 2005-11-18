@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,22 +54,34 @@ double
 _IEEE_EXPONENT_R_H(float x)
 {
 	/* Union defined to work with IEEE 32 bit floating point. */
-	union _ieee_fdouble {
+	union _ieee_float {
 		float	dword;
-		short	lword;
+		int	lword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa	: IEEE_32_MANT_BITS;
+                        unsigned int exponent	: IEEE_32_EXPO_BITS;
+                        unsigned int sign	: 1;
+#else
 			unsigned int sign	: 1;
 			unsigned int exponent	: IEEE_32_EXPO_BITS;
 			unsigned int mantissa	: IEEE_32_MANT_BITS;
+#endif
 		} fparts;
 	};
 	union _ieee_double {
 		double	dwrd;
-		int	lwrd;
+		long long lwrd;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantisa	: IEEE_64_MANT_BITS;
+			unsigned int expon	: IEEE_64_EXPO_BITS;
+			unsigned int sgn	: 1;
+#else
 			unsigned int sgn	: 1;
 			unsigned int expon	: IEEE_64_EXPO_BITS;
 			unsigned int mantisa	: IEEE_64_MANT_BITS;
+#endif
 		} parts;
 	};
 	switch (_fpclassify(x)) {
@@ -83,13 +99,13 @@ _IEEE_EXPONENT_R_H(float x)
 			}
 		case FP_NORMAL:
 			{
-			union _ieee_fdouble x_val;
+			union _ieee_float x_val;
 			x_val.dword	= x;
 			return(x_val.fparts.exponent - IEEE_32_EXPO_BIAS);
 			}
 		case FP_SUBNORMAL:
 			{
-			union _ieee_fdouble x_val;
+			union _ieee_float x_val;
 			int y;
 			x_val.dword	= x;
 

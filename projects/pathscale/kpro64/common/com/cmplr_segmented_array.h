@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,17 +56,6 @@
 #include <algorithm>
 #endif
 
-using std::find;
-using std::transform;
-using std::sort;
-using std::stable_sort;
-using std::rotate;
-using std::reverse;
-using std::set_union;
-using std::set_intersection;
-using std::set_difference;
-using std::min;
-
 #endif // __SGI_STL_ALGO_H
 
 #ifndef __SGI_STL_VECTOR_H
@@ -79,8 +72,6 @@ using std::min;
 #include <vector>
 #endif
 
-using std::vector;
-
 #endif // __SGI_STL_VECTOR_H
 
 #ifndef __SGI_STL_SLIST_H
@@ -91,14 +82,7 @@ using std::vector;
 #undef long
 #endif // defined(defs_INCLUDED) && !defined(USE_STANDARD_TYPES)
 
-#ifndef __GNUC__
-#include <CC/slist>
-#else
-#include <slist>
-
-using std::slist;
-
-#endif
+#include <ext/slist>
 #endif // __SGI_STL_LIST_H
 
 
@@ -117,6 +101,9 @@ using std::slist;
 #ifndef mempool_allocator_INCLUDED
 #include "mempool_allocator.h"
 #endif
+
+using std::find;
+using __gnu_cxx::slist;
 
 // ======================================================================
 // ======================================================================
@@ -184,7 +171,7 @@ protected:
   UINT                  size;	// total number of elements present
 
 private:
-  typedef std::slist<growing_table *> kids_type;
+  typedef slist<growing_table *> kids_type;
 
   kids_type kids;	
   
@@ -256,7 +243,7 @@ public:
 
   void Un_register(growing_table &kid)
     {
-      kids_type::iterator kid_ptr = std::find(kids.begin(), kids.end(), &kid);
+      kids_type::iterator kid_ptr = find(kids.begin(), kids.end(), &kid);
       if (kid_ptr != kids.end()) {
         kids.erase(kid_ptr);
       }
@@ -344,7 +331,7 @@ private:
     
     // copy n elements to current buffer, assume no overflow
     void Copy (const T* x, UINT n) {
-        std::copy(x, x + n, block + (size - block_base));
+	std::copy(x, x + n, block + (size - block_base));
 	size += n;
 	Increase_kids_size(n);
     }
@@ -371,7 +358,7 @@ public:
   ~RELATED_SEGMENTED_ARRAY() {
     // Free memory from blocks. Map memory gets freed when the map
     // vector is destructed.
-    for (std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> >::iterator
+    for (typename std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> >::iterator
 	   entry = map.begin();
 	 entry != map.end();
 	 ++entry) {
@@ -447,7 +434,7 @@ public:
     // return the number of element till the end of the block
     UINT Get_block_size (UINT idx) const {
       UINT block_idx = idx / block_size;
-      return min(next_block_idx(block_idx) * block_size, size) - idx;
+      return std::min(next_block_idx(block_idx) * block_size, size) - idx;
     }
 
     UINT Block_index (UINT idx) const { return idx / block_size; }
@@ -478,9 +465,11 @@ RELATED_SEGMENTED_ARRAY<T,block_size>::Update_Map(T    *marker,
 						  BOOL  own_memory)
 {
   do {
-    map.push_back(std::pair<T*, BOOL>(marker, own_memory));
+    map.push_back(pair<T*, BOOL>(marker, own_memory));
     new_size -= block_size;
     marker += block_size;
+    own_memory += false;	//Only the first entry can be freed for a block that
+				//is larger than block_size. By: Jon Hsu, 11 May 2001.
   } while (new_size);
 } // RELATED_SEGMENTED_ARRAY<T,block_size>::Update_Map
 
@@ -754,5 +743,26 @@ Copy_array_range (const RELATED_SEGMENTED_ARRAY<T, block_size>& from_array,
 
     return entries;
 } // Copy_array_range
+
+/*
+ * If LABEL.name_idx != 0. This may cause multi define in assembly
+ */                                                                                                        
+
+template <class T, UINT block_size>
+UINT32
+Delete_array_item (const RELATED_SEGMENTED_ARRAY<T, block_size>& from_array,
+		  RELATED_SEGMENTED_ARRAY<T, block_size>& to_array,
+		  UINT32 first_idx = 0, UINT32 last_idx = (UINT32) -1)
+{
+  UINT32 index;
+  index = to_array.Size() - from_array.Size();
+ 
+  while ( index < to_array.Size()) {
+	T* block = &to_array[index];
+        if (block->name_idx !=0 )
+                block->name_idx = 0;
+        index ++;
+  }  
+}
 
 #endif // cmplr_segmented_array_INCLUDED

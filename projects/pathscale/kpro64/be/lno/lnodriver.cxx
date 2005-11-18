@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -54,6 +58,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -235,7 +241,7 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
     if (region_wn != pu_wn) {
       Cur_PU_Name = TYPE_MEM_POOL_ALLOC_N(char, &MEM_local_pool,
 					  strlen(Cur_PU_Name) + 9);
-      sprintf(Cur_PU_Name,"%s.RGN%04.4d", ST_name(current_pu_st),
+      sprintf(Cur_PU_Name,"%s.RGN%04d", ST_name(current_pu_st),
 			    RID_id(REGION_get_rid(region_wn)));
     }
   

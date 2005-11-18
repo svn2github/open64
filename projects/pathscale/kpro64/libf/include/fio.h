@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -99,9 +103,15 @@
  
 #define HASH_SIZE	256	/* must be a power of 2 */
 
+#ifdef KEY
+#define STDIN_U		5	/* Special stdin unit */
+#define STDOUT_U	6	/* Special stdout unit */
+#define STDERR_U	0	/* Special stderr unit */
+#else
 #define STDIN_U		100	/* Special stdin unit */
 #define STDOUT_U	101	/* Special stdout unit */
 #define STDERR_U	102	/* Special stderr unit */
+#endif
 
 #define	RECMAX		1024	/* Default (initial) size of line buffer */
 #define RECMAXLDO	133	/* List-directed output line length */
@@ -1541,15 +1551,18 @@ _release_cup(unit *cup)
 		MEM_UNLOCK(cup->auxlockp);
 }
 
-#if	defined(LIBDEBUG) && ! defined(_UNICOS)
-/*
- * 	_ferr macro.  This is handy on Sparc where tracebacks cannot be printed.
- */
-#define _ferr  \
-	 fprintf(stderr,"ERROR on line %d in file \"%s\"\n", \
-		__LINE__, __FILE__), \
-	_ferr_routine
-#endif	/* LIBDEBUG */
+extern void _ferr(FIOSPTR, int, ...);
+extern int _get_dc_param(FIOSPTR, unit *, struct f90_type, type_packet *);
+extern int _is_file_name(long n);
+extern void flush_(const unum_t *n);
+extern int _f_open(FIOSPTR css, unit **cup_p, olist *olptr, int isf90);
+extern int _f_inqu(FIOSPTR css, unit *cup, inlist *a);
+extern int _fortname(char *buf, unum_t n);
+extern int _mixed_scope(unit *cup);
+extern int _ft_stopen(unit *cup, char *atstr);
+extern int _ft_stclose(unit *cup);
+extern int _unpack_arry(void *dvc, DopeVectorType *dvnc);
+extern int _nonadv_partrec(FIOSPTR css, unit *cup);
 
 #if	defined(__mips) || defined(_LITTLE_ENDIAN)
 /* Putting the pragma inline before the function declaration wasn't */

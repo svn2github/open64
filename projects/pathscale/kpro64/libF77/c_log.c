@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,6 +42,7 @@
 #include <math.h>
 #include "moremath.h"
 #include "cmplx.h"
+#include "defalias.h"
 
 complex __clog(float zreal, float zimag)
 {
@@ -48,7 +53,10 @@ complex __clog(float zreal, float zimag)
   return r;
 }
 
-void c_log(complex *r, complex *z)
+complex c_log_(complex *z)
 {
-  *r = __clog(z->real, z->imag);
+  return __clog(z->real, z->imag);
 }
+
+defalias(c_log_, c_log);
+

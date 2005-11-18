@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -79,12 +83,13 @@
 // ====================================================================
 // ====================================================================
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifndef STANDALONE_SWP_ALLOCATOR
 #include <stdio.h>
 #include <stdarg.h>
 #include <vector>
 #include <algorithm>
-#include <pair.h>
 #include "defs.h"
 #include "glob.h"    // for Cur_PU_Name
 #include "timing.h"

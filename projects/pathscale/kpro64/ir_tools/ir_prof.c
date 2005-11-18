@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -196,18 +200,18 @@ cgt_fini(void)
     if(errno == ENOENT) {
       /* file does not exist */
       if ((fd_counts = open(name, O_RDWR|O_CREAT, 0555)) < 0) {
-	errmsg = sys_errlist[errno];
+	errmsg = strerror(errno);
 	ir_prof_error(ER_FATAL, "Unable to open addr_counts file: %s", name);
       }
     } else {
-      errmsg = sys_errlist[errno];
+      errmsg = strerror(errno);
       ir_prof_error(ER_FATAL, "Unable to open addr_counts file: %s", name);
     }
   } 
   else { /* file exists */
     file_exists = 1;
     if ((fd_counts = open(name, O_RDWR|O_TRUNC, 0555)) == 0) {
-      errmsg = sys_errlist[errno];
+      errmsg = strerror(errno);
       ir_prof_error(ER_FATAL, "Existing addr_counts file open error: %s", name);
     }
   }

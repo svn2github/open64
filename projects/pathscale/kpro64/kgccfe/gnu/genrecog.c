@@ -1,23 +1,29 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
 /* Generate code from machine description to recognize rtl as insns.
    Copyright (C) 1987, 1988, 1992, 1993, 1994, 1995, 1997, 1998,
-   1999, 2000 Free Software Foundation, Inc.
+   1999, 2000, 2001, 2002 Free Software Foundation, Inc.
 
-   This file is part of GNU CC.
+   This file is part of GCC.
 
-   GNU CC is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
+   GCC is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2, or (at your option)
    any later version.
 
-   GNU CC is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GCC is distributed in the hope that it will be useful, but WITHOUT
+   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+   License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with GNU CC; see the file COPYING.  If not, write to
-   the Free Software Foundation, 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   along with GCC; see the file COPYING.  If not, write to the Free
+   Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+   02111-1307, USA.  */
 
 
 /* This program is used to produce insn-recog.c, which contains a
@@ -43,11 +49,11 @@
 
    This program also generates the function `split_insns', which
    returns 0 if the rtl could not be split, or it returns the split
-   rtl in a SEQUENCE.
+   rtl as an INSN list.
 
    This program also generates the function `peephole2_insns', which
    returns 0 if the rtl could not be matched.  If there was a match,
-   the new rtl is returned in a SEQUENCE, and LAST_INSN will point
+   the new rtl is returned in an INSN list, and LAST_INSN will point
    to the last recognized insn in the old sequence.  */
 
 #include "hconfig.h"
@@ -73,7 +79,7 @@ struct decision_head
   struct decision *first;
   struct decision *last;
 };
-    
+
 /* A single test.  The two accept types aren't tests per-se, but
    their equality (or lack thereof) does affect tree merging so
    it is convenient to keep them here.  */
@@ -84,12 +90,13 @@ struct decision_test
   struct decision_test *next;
 
   /* These types are roughly in the order in which we'd like to test them.  */
-  enum decision_type {
-    DT_mode, DT_code, DT_veclen,
-    DT_elt_zero_int, DT_elt_one_int, DT_elt_zero_wide,
-    DT_dup, DT_pred, DT_c_test, 
-    DT_accept_op, DT_accept_insn
-  } type;
+  enum decision_type
+    {
+      DT_mode, DT_code, DT_veclen,
+      DT_elt_zero_int, DT_elt_one_int, DT_elt_zero_wide, DT_elt_zero_wide_safe,
+      DT_veclen_ge, DT_dup, DT_pred, DT_c_test,
+      DT_accept_op, DT_accept_insn
+    } type;
 
   union
   {
@@ -180,28 +187,29 @@ static int error_count;
    of tree nodes.  Also, if a predicate can match only one code, we can
    hardwire that code into the node testing the predicate.  */
 
-static struct pred_table
+static const struct pred_table
 {
-  const char *name;
-  RTX_CODE codes[NUM_RTX_CODE];
+  const char *const name;
+  const RTX_CODE codes[NUM_RTX_CODE];
 } preds[] = {
   {"general_operand", {CONST_INT, CONST_DOUBLE, CONST, SYMBOL_REF,
-		       LABEL_REF, SUBREG, REG, MEM}},
+		       LABEL_REF, SUBREG, REG, MEM, ADDRESSOF}},
 #ifdef PREDICATE_CODES
   PREDICATE_CODES
 #endif
   {"address_operand", {CONST_INT, CONST_DOUBLE, CONST, SYMBOL_REF,
-		       LABEL_REF, SUBREG, REG, MEM, PLUS, MINUS, MULT}},
-  {"register_operand", {SUBREG, REG}},
-  {"pmode_register_operand", {SUBREG, REG}},
+		       LABEL_REF, SUBREG, REG, MEM, ADDRESSOF,
+		       PLUS, MINUS, MULT}},
+  {"register_operand", {SUBREG, REG, ADDRESSOF}},
+  {"pmode_register_operand", {SUBREG, REG, ADDRESSOF}},
   {"scratch_operand", {SCRATCH, REG}},
   {"immediate_operand", {CONST_INT, CONST_DOUBLE, CONST, SYMBOL_REF,
 			 LABEL_REF}},
   {"const_int_operand", {CONST_INT}},
   {"const_double_operand", {CONST_INT, CONST_DOUBLE}},
-  {"nonimmediate_operand", {SUBREG, REG, MEM}},
+  {"nonimmediate_operand", {SUBREG, REG, MEM, ADDRESSOF}},
   {"nonmemory_operand", {CONST_INT, CONST_DOUBLE, CONST, SYMBOL_REF,
-			 LABEL_REF, SUBREG, REG}},
+			 LABEL_REF, SUBREG, REG, ADDRESSOF}},
   {"push_operand", {MEM}},
   {"pop_operand", {MEM}},
   {"memory_operand", {SUBREG, MEM}},
@@ -210,20 +218,19 @@ static struct pred_table
 			   UNORDERED, ORDERED, UNEQ, UNGE, UNGT, UNLE,
 			   UNLT, LTGT}},
   {"mode_independent_operand", {CONST_INT, CONST_DOUBLE, CONST, SYMBOL_REF,
-				LABEL_REF, SUBREG, REG, MEM}}
+				LABEL_REF, SUBREG, REG, MEM, ADDRESSOF}}
 };
 
-#define NUM_KNOWN_PREDS (sizeof preds / sizeof preds[0])
+#define NUM_KNOWN_PREDS ARRAY_SIZE (preds)
 
-static const char * special_mode_pred_table[] = {
+static const char *const special_mode_pred_table[] = {
 #ifdef SPECIAL_MODE_PREDICATES
   SPECIAL_MODE_PREDICATES
 #endif
   "pmode_register_operand"
 };
 
-#define NUM_SPECIAL_MODE_PREDS \
-  (sizeof (special_mode_pred_table) / sizeof (special_mode_pred_table[0]))
+#define NUM_SPECIAL_MODE_PREDS ARRAY_SIZE (special_mode_pred_table)
 
 static struct decision *new_decision
   PARAMS ((const char *, struct decision_head *));
@@ -231,8 +238,10 @@ static struct decision_test *new_decision_test
   PARAMS ((enum decision_type, struct decision_test ***));
 static rtx find_operand
   PARAMS ((rtx, int));
+static rtx find_matching_operand
+  PARAMS ((rtx, int));
 static void validate_pattern
-  PARAMS ((rtx, rtx, rtx));
+  PARAMS ((rtx, rtx, rtx, int));
 static struct decision *add_to_sequence
   PARAMS ((rtx, struct decision_head *, const char *, enum routine_type, int));
 
@@ -293,7 +302,7 @@ static struct decision_head make_insn_sequence
   PARAMS ((rtx, enum routine_type));
 static void process_tree
   PARAMS ((struct decision_head *, enum routine_type));
-  
+
 static void record_insn_name
   PARAMS ((int, const char *));
 
@@ -315,7 +324,7 @@ new_decision (position, last)
      const char *position;
      struct decision_head *last;
 {
-  register struct decision *new
+  struct decision *new
     = (struct decision *) xmalloc (sizeof (struct decision));
 
   memset (new, 0, sizeof (*new));
@@ -380,6 +389,11 @@ find_operand (pattern, n)
 	    return r;
 	  break;
 
+	case 'V':
+	  if (! XVEC (pattern, i))
+	    break;
+	  /* FALLTHRU */
+
 	case 'E':
 	  for (j = 0; j < XVECLEN (pattern, i); j++)
 	    if ((r = find_operand (XVECEXP (pattern, i, j), n)) != NULL_RTX)
@@ -397,14 +411,70 @@ find_operand (pattern, n)
   return NULL;
 }
 
+/* Search for and return operand M, such that it has a matching
+   constraint for operand N.  */
+
+static rtx
+find_matching_operand (pattern, n)
+     rtx pattern;
+     int n;
+{
+  const char *fmt;
+  RTX_CODE code;
+  int i, j, len;
+  rtx r;
+
+  code = GET_CODE (pattern);
+  if (code == MATCH_OPERAND
+      && (XSTR (pattern, 2)[0] == '0' + n
+	  || (XSTR (pattern, 2)[0] == '%'
+	      && XSTR (pattern, 2)[1] == '0' + n)))
+    return pattern;
+
+  fmt = GET_RTX_FORMAT (code);
+  len = GET_RTX_LENGTH (code);
+  for (i = 0; i < len; i++)
+    {
+      switch (fmt[i])
+	{
+	case 'e': case 'u':
+	  if ((r = find_matching_operand (XEXP (pattern, i), n)))
+	    return r;
+	  break;
+
+	case 'V':
+	  if (! XVEC (pattern, i))
+	    break;
+	  /* FALLTHRU */
+
+	case 'E':
+	  for (j = 0; j < XVECLEN (pattern, i); j++)
+	    if ((r = find_matching_operand (XVECEXP (pattern, i, j), n)))
+	      return r;
+	  break;
+
+	case 'i': case 'w': case '0': case 's':
+	  break;
+
+	default:
+	  abort ();
+	}
+    }
+
+  return NULL;
+}
+
+
 /* Check for various errors in patterns.  SET is nonnull for a destination,
-   and is the complete set pattern.  */
+   and is the complete set pattern.  SET_CODE is '=' for normal sets, and
+   '+' within a context that requires in-out constraints.  */
 
 static void
-validate_pattern (pattern, insn, set)
+validate_pattern (pattern, insn, set, set_code)
      rtx pattern;
      rtx insn;
      rtx set;
+     int set_code;
 {
   const char *fmt;
   RTX_CODE code;
@@ -457,6 +527,7 @@ validate_pattern (pattern, insn, set)
 		    if (c != REG
 			&& c != SUBREG
 			&& c != MEM
+			&& c != ADDRESSOF
 			&& c != CONCAT
 			&& c != PARALLEL
 			&& c != STRICT_LOW_PART)
@@ -482,17 +553,52 @@ validate_pattern (pattern, insn, set)
 		}
 	  }
 
-	/* A MATCH_OPERAND that is a SET should have an output reload.  */
-	if (set
-	    && code == MATCH_OPERAND
-	    && XSTR (pattern, 2)[0] != '\0'
-	    && XSTR (pattern, 2)[0] != '='
-	    && XSTR (pattern, 2)[0] != '+')
+	if (code == MATCH_OPERAND)
 	  {
-	    message_with_line (pattern_lineno,
-			       "operand %d missing output reload", 
-			       XINT (pattern, 0));
-	    error_count++;
+	    const char constraints0 = XSTR (pattern, 2)[0];
+
+	    /* In DEFINE_EXPAND, DEFINE_SPLIT, and DEFINE_PEEPHOLE2, we 
+	       don't use the MATCH_OPERAND constraint, only the predicate.
+	       This is confusing to folks doing new ports, so help them
+	       not make the mistake.  */
+	    if (GET_CODE (insn) == DEFINE_EXPAND
+		|| GET_CODE (insn) == DEFINE_SPLIT
+		|| GET_CODE (insn) == DEFINE_PEEPHOLE2)
+	      {
+		if (constraints0)
+		  message_with_line (pattern_lineno,
+				     "warning: constraints not supported in %s",
+				     rtx_name[GET_CODE (insn)]);
+	      }
+	      
+	    /* A MATCH_OPERAND that is a SET should have an output reload.  */
+	    else if (set && constraints0)
+	      {
+		if (set_code == '+')
+		  {
+		    if (constraints0 == '+')
+		      ;
+		    /* If we've only got an output reload for this operand,
+		       we'd better have a matching input operand.  */
+		    else if (constraints0 == '='
+			     && find_matching_operand (insn, XINT (pattern, 0)))
+		      ;
+		    else
+		      {
+			message_with_line (pattern_lineno,
+					   "operand %d missing in-out reload",
+					   XINT (pattern, 0));
+			error_count++;
+		      }
+		  }
+		else if (constraints0 != '=' && constraints0 != '+')
+		  {
+		    message_with_line (pattern_lineno,
+				       "operand %d missing output reload", 
+				       XINT (pattern, 0));
+		    error_count++;
+		  }
+	      }
 	  }
 
 	/* Allowing non-lvalues in destinations -- particularly CONST_INT --
@@ -510,7 +616,7 @@ validate_pattern (pattern, insn, set)
 	/* A modeless MATCH_OPERAND can be handy when we can
 	   check for multiple modes in the c_test.  In most other cases,
 	   it is a mistake.  Only DEFINE_INSN is eligible, since SPLIT
-	   and PEEP2 can FAIL within the output pattern.  Exclude 
+	   and PEEP2 can FAIL within the output pattern.  Exclude
 	   address_operand, since its mode is related to the mode of
 	   the memory not the operand.  Exclude the SET_DEST of a call
 	   instruction, as that is a common idiom.  */
@@ -542,6 +648,11 @@ validate_pattern (pattern, insn, set)
 	dest = SET_DEST (pattern);
 	src = SET_SRC (pattern);
 
+	/* STRICT_LOW_PART is a wrapper.  Its argument is the real
+	   destination, and it's mode should match the source.  */
+	if (GET_CODE (dest) == STRICT_LOW_PART)
+	  dest = XEXP (dest, 0);
+
 	/* Find the referant for a DUP.  */
 
 	if (GET_CODE (dest) == MATCH_DUP
@@ -553,11 +664,6 @@ validate_pattern (pattern, insn, set)
 	    || GET_CODE (src) == MATCH_OP_DUP
 	    || GET_CODE (src) == MATCH_PAR_DUP)
 	  src = find_operand (insn, XINT (src, 0));
-
-	/* STRICT_LOW_PART is a wrapper.  Its argument is the real
-	   destination, and it's mode should match the source.  */
-	if (GET_CODE (dest) == STRICT_LOW_PART)
-	  dest = XEXP (dest, 0);
 
 	dmode = GET_MODE (dest);
 	smode = GET_MODE (src);
@@ -578,7 +684,7 @@ validate_pattern (pattern, insn, set)
 	    error_count++;
 	  }
 
-	/* If only one of the operands is VOIDmode, and PC or CC0 is 
+	/* If only one of the operands is VOIDmode, and PC or CC0 is
 	   not involved, it's probably a mistake.  */
 	else if (dmode != smode
 		 && GET_CODE (dest) != PC
@@ -594,14 +700,24 @@ validate_pattern (pattern, insn, set)
 	  }
 
 	if (dest != SET_DEST (pattern))
-	  validate_pattern (dest, insn, pattern);
-	validate_pattern (SET_DEST (pattern), insn, pattern);
-        validate_pattern (SET_SRC (pattern), insn, NULL_RTX);
+	  validate_pattern (dest, insn, pattern, '=');
+	validate_pattern (SET_DEST (pattern), insn, pattern, '=');
+        validate_pattern (SET_SRC (pattern), insn, NULL_RTX, 0);
         return;
       }
 
     case CLOBBER:
-      validate_pattern (SET_DEST (pattern), insn, pattern);
+      validate_pattern (SET_DEST (pattern), insn, pattern, '=');
+      return;
+
+    case ZERO_EXTRACT:
+      validate_pattern (XEXP (pattern, 0), insn, set, set ? '+' : 0);
+      validate_pattern (XEXP (pattern, 1), insn, NULL_RTX, 0);
+      validate_pattern (XEXP (pattern, 2), insn, NULL_RTX, 0);
+      return;
+
+    case STRICT_LOW_PART:
+      validate_pattern (XEXP (pattern, 0), insn, set, set ? '+' : 0);
       return;
 
     case LABEL_REF:
@@ -625,12 +741,12 @@ validate_pattern (pattern, insn, set)
       switch (fmt[i])
 	{
 	case 'e': case 'u':
-	  validate_pattern (XEXP (pattern, i), insn, NULL_RTX);
+	  validate_pattern (XEXP (pattern, i), insn, NULL_RTX, 0);
 	  break;
 
 	case 'E':
 	  for (j = 0; j < XVECLEN (pattern, i); j++)
-	    validate_pattern (XVECEXP (pattern, i, j), insn, NULL_RTX);
+	    validate_pattern (XVECEXP (pattern, i, j), insn, NULL_RTX, 0);
 	  break;
 
 	case 'i': case 'w': case '0': case 's':
@@ -667,8 +783,8 @@ add_to_sequence (pattern, last, position, insn_type, top)
   struct decision_test *test;
   struct decision_test **place;
   char *subpos;
-  register size_t i;
-  register const char *fmt;
+  size_t i;
+  const char *fmt;
   int depth = strlen (position);
   int len;
   enum machine_mode mode;
@@ -676,7 +792,7 @@ add_to_sequence (pattern, last, position, insn_type, top)
   if (depth > max_depth)
     max_depth = depth;
 
-  subpos = (char *) alloca (depth + 2);
+  subpos = (char *) xmalloc (depth + 2);
   strcpy (subpos, position);
   subpos[depth + 1] = 0;
 
@@ -690,7 +806,7 @@ add_to_sequence (pattern, last, position, insn_type, top)
   switch (code)
     {
     case PARALLEL:
-      /* Toplevel peephole pattern. */
+      /* Toplevel peephole pattern.  */
       if (insn_type == PEEPHOLE2 && top)
 	{
 	  /* We don't need the node we just created -- unlink it.  */
@@ -699,23 +815,32 @@ add_to_sequence (pattern, last, position, insn_type, top)
 	  for (i = 0; i < (size_t) XVECLEN (pattern, 0); i++)
 	    {
 	      /* Which insn we're looking at is represented by A-Z. We don't
-	         ever use 'A', however; it is always implied. */
+	         ever use 'A', however; it is always implied.  */
 
 	      subpos[depth] = (i > 0 ? 'A' + i : 0);
 	      sub = add_to_sequence (XVECEXP (pattern, 0, i),
 				     last, subpos, insn_type, 0);
 	      last = &sub->success;
 	    }
-	  return sub;
+	  goto ret;
 	}
 
       /* Else nothing special.  */
       break;
 
+    case MATCH_PARALLEL:
+      /* The explicit patterns within a match_parallel enforce a minimum
+	 length on the vector.  The match_parallel predicate may allow
+	 for more elements.  We do need to check for this minimum here
+	 or the code generated to match the internals may reference data
+	 beyond the end of the vector.  */
+      test = new_decision_test (DT_veclen_ge, &place);
+      test->u.veclen = XVECLEN (pattern, 2);
+      /* FALLTHRU */
+
     case MATCH_OPERAND:
     case MATCH_SCRATCH:
     case MATCH_OPERATOR:
-    case MATCH_PARALLEL:
     case MATCH_INSN:
       {
 	const char *pred_name;
@@ -736,30 +861,22 @@ add_to_sequence (pattern, last, position, insn_type, top)
 	      code = UNKNOWN;
 	  }
 
-	/* We know exactly what const_int_operand matches -- any CONST_INT.  */
-	if (strcmp ("const_int_operand", pred_name) == 0)
-	  {
-	    code = CONST_INT;
-	    mode = VOIDmode;
-	  }
-	else if (pred_name[0] != 0)
+	if (pred_name[0] != 0)
 	  {
 	    test = new_decision_test (DT_pred, &place);
 	    test->u.pred.name = pred_name;
 	    test->u.pred.mode = mode;
 
-	    /* See if we know about this predicate and save its number.  If
-	       we do, and it only accepts one code, note that fact.  The
-	       predicate `const_int_operand' only tests for a CONST_INT, so
-	       if we do so we can avoid calling it at all.
+	    /* See if we know about this predicate and save its number.
+	       If we do, and it only accepts one code, note that fact.
 
-	       Finally, if we know that the predicate does not allow
-	       CONST_INT, we know that the only way the predicate can match
-	       is if the modes match (here we use the kludge of relying on
-	       the fact that "address_operand" accepts CONST_INT; otherwise,
-	       it would have to be a special case), so we can test the mode
-	       (but we need not).  This fact should considerably simplify the
-	       generated code.  */
+	       If we know that the predicate does not allow CONST_INT,
+	       we know that the only way the predicate can match is if
+	       the modes match (here we use the kludge of relying on the
+	       fact that "address_operand" accepts CONST_INT; otherwise,
+	       it would have to be a special case), so we can test the
+	       mode (but we need not).  This fact should considerably
+	       simplify the generated code.  */
 
 	    for (i = 0; i < NUM_KNOWN_PREDS; i++)
 	      if (! strcmp (preds[i].name, pred_name))
@@ -863,10 +980,16 @@ add_to_sequence (pattern, last, position, insn_type, top)
 	}
       else if (fmt[i] == 'w')
 	{
+	  /* If this value actually fits in an int, we can use a switch
+	     statement here, so indicate that.  */
+	  enum decision_type type
+	    = ((int) XWINT (pattern, i) == XWINT (pattern, i))
+	      ? DT_elt_zero_wide_safe : DT_elt_zero_wide;
+
 	  if (i != 0)
 	    abort ();
 
-	  test = new_decision_test (DT_elt_zero_wide, &place);
+	  test = new_decision_test (type, &place);
 	  test->u.intval = XWINT (pattern, i);
 	}
       else if (fmt[i] == 'E')
@@ -892,7 +1015,7 @@ add_to_sequence (pattern, last, position, insn_type, top)
 
 	case 'E':
 	  {
-	    register int j;
+	    int j;
 	    for (j = 0; j < XVECLEN (pattern, i); j++)
 	      {
 		subpos[depth] = 'a' + j;
@@ -934,6 +1057,8 @@ add_to_sequence (pattern, last, position, insn_type, top)
   if (this->tests == NULL)
     abort ();
 
+ ret:
+  free (subpos);
   return sub;
 }
 
@@ -960,6 +1085,7 @@ maybe_both_true_2 (d1, d2)
 	case DT_elt_zero_int:
 	case DT_elt_one_int:
 	case DT_elt_zero_wide:
+	case DT_elt_zero_wide_safe:
 	  return d1->u.intval == d2->u.intval;
 
 	default:
@@ -1038,6 +1164,12 @@ maybe_both_true_2 (d1, d2)
 	}
     }
 
+  /* Tests vs veclen may be known when strict equality is involved.  */
+  if (d1->type == DT_veclen && d2->type == DT_veclen_ge)
+    return d1->u.veclen >= d2->u.veclen;
+  if (d1->type == DT_veclen_ge && d2->type == DT_veclen)
+    return d2->u.veclen >= d1->u.veclen;
+
   return -1;
 }
 
@@ -1051,7 +1183,7 @@ maybe_both_true_1 (d1, d2)
   struct decision_test *t1, *t2;
 
   /* A match_operand with no predicate can match anything.  Recognize
-     this by the existance of a lone DT_accept_op test.  */
+     this by the existence of a lone DT_accept_op test.  */
   if (d1->type == DT_accept_op || d2->type == DT_accept_op)
     return 1;
 
@@ -1076,7 +1208,7 @@ maybe_both_true_1 (d1, d2)
    D1 and D2.  Otherwise, return 1 (it may be that there is an RTL that
    can match both or just that we couldn't prove there wasn't such an RTL).
 
-   TOPLEVEL is non-zero if we are to only look at the top level and not
+   TOPLEVEL is nonzero if we are to only look at the top level and not
    recursively descend.  */
 
 static int
@@ -1109,14 +1241,14 @@ maybe_both_true (d1, d2, toplevel)
   if (cmp != 0)
     {
       if (toplevel)
-	abort();
+	abort ();
 
       /* If the d2->position was lexically lower, swap.  */
       if (cmp > 0)
 	p1 = d1, d1 = d2, d2 = p1;
 
       if (d1->success.first == 0)
-	return 0;
+	return 1;
       for (p1 = d1->success.first; p1; p1 = p1->next)
 	if (maybe_both_true (p1, d2, 0))
 	  return 1;
@@ -1168,6 +1300,7 @@ nodes_identical_1 (d1, d2)
       return strcmp (d1->u.c_test, d2->u.c_test) == 0;
 
     case DT_veclen:
+    case DT_veclen_ge:
       return d1->u.veclen == d2->u.veclen;
 
     case DT_dup:
@@ -1176,6 +1309,7 @@ nodes_identical_1 (d1, d2)
     case DT_elt_zero_int:
     case DT_elt_one_int:
     case DT_elt_zero_wide:
+    case DT_elt_zero_wide_safe:
       return d1->u.intval == d2->u.intval;
 
     case DT_accept_op:
@@ -1191,7 +1325,7 @@ nodes_identical_1 (d1, d2)
 }
 
 /* True iff the two nodes are identical (on one level only).  Due
-   to the way these lists are constructed, we shouldn't have to 
+   to the way these lists are constructed, we shouldn't have to
    consider different orderings on the tests.  */
 
 static int
@@ -1213,7 +1347,9 @@ nodes_identical (d1, d2)
     return 0;
 
   /* Check that their subnodes are at the same position, as any one set
-     of sibling decisions must be at the same position.  */
+     of sibling decisions must be at the same position.  Allowing this
+     requires complications to find_afterward and when change_state is
+     invoked.  */
   if (d1->success.first
       && d2->success.first
       && strcmp (d1->success.first->position, d2->success.first->position))
@@ -1225,7 +1361,7 @@ nodes_identical (d1, d2)
 /* A subroutine of merge_trees; given two nodes that have been declared
    identical, cope with two insn accept states.  If they differ in the
    number of clobbers, then the conflict was created by make_insn_sequence
-   and we can drop the with-clobbers version on the floor.  If both 
+   and we can drop the with-clobbers version on the floor.  If both
    nodes have no additional clobbers, we have found an ambiguity in the
    source machine description.  */
 
@@ -1313,7 +1449,7 @@ merge_trees (oldh, addh)
 	 that tests just the same mode.
 
 	 If we have no match, place NEW after the closest match we found.  */
-	 
+
       for (old = oldh->last; old; old = old->prev)
 	{
 	  if (nodes_identical (old, add))
@@ -1330,7 +1466,7 @@ merge_trees (oldh, addh)
 	     how expensive/important the test is.  Given that the tests
 	     are also ordered within the list, examining the first is
 	     sufficient.  */
-	  if (add->tests->type < old->tests->type)
+	  if ((int) add->tests->type < (int) old->tests->type)
 	    insert_before = old;
 	}
 
@@ -1355,7 +1491,7 @@ merge_trees (oldh, addh)
     }
 }
 
-/* Walk the tree looking for sub-nodes that perform common tests.  
+/* Walk the tree looking for sub-nodes that perform common tests.
    Factor out the common test into a new node.  This enables us
    (depending on the test type) to emit switch statements later.  */
 
@@ -1377,14 +1513,14 @@ factor_tests (head)
       if (next->tests->type != type)
 	continue;
 
-      /* Don't want all node types, just those we can turn into 
+      /* Don't want all node types, just those we can turn into
 	 switch statements.  */
       if (type != DT_mode
 	  && type != DT_code
 	  && type != DT_veclen
 	  && type != DT_elt_zero_int
 	  && type != DT_elt_one_int
-	  && type != DT_elt_zero_wide)
+	  && type != DT_elt_zero_wide_safe)
 	continue;
 
       /* If we'd been performing more than one test, create a new node
@@ -1395,7 +1531,7 @@ factor_tests (head)
 	  new->tests = first->tests->next;
 	  first->tests->next = NULL;
 	}
-	
+
       /* Crop the node tree off after our first test.  */
       first->next = NULL;
       old_last = head->last;
@@ -1512,7 +1648,7 @@ find_afterward (head, real_afterward)
 {
   struct decision *p, *q, *afterward;
 
-  /* We can't propogate alternatives across subroutine boundaries. 
+  /* We can't propagate alternatives across subroutine boundaries.
      This is not incorrect, merely a minor optimization loss.  */
 
   p = head->first;
@@ -1525,7 +1661,7 @@ find_afterward (head, real_afterward)
 	if (maybe_both_true (p, q, 1))
 	  break;
 
-      /* If we reached the end of the list without finding one, 
+      /* If we reached the end of the list without finding one,
 	 use the incoming afterward position.  */
       if (!q)
 	q = afterward;
@@ -1549,10 +1685,10 @@ find_afterward (head, real_afterward)
 
 /* Assuming that the state of argument is denoted by OLDPOS, take whatever
    actions are necessary to move to NEWPOS.  If we fail to move to the
-   new state, branch to node AFTERWARD if non-zero, otherwise return.
+   new state, branch to node AFTERWARD if nonzero, otherwise return.
 
    Failure to move to the new state can only occur if we are trying to
-   match multiple insns and we try to step past the end of the stream. */
+   match multiple insns and we try to step past the end of the stream.  */
 
 static void
 change_state (oldpos, newpos, afterward, indent)
@@ -1572,27 +1708,27 @@ change_state (oldpos, newpos, afterward, indent)
 
   /* Hunt for the last [A-Z] in both strings.  */
   for (old_has_insn = odepth - 1; old_has_insn >= 0; --old_has_insn)
-    if (oldpos[old_has_insn] >= 'A' && oldpos[old_has_insn] <= 'Z')
+    if (ISUPPER (oldpos[old_has_insn]))
       break;
   for (new_has_insn = ndepth - 1; new_has_insn >= 0; --new_has_insn)
-    if (newpos[new_has_insn] >= 'A' && newpos[new_has_insn] <= 'Z')
+    if (ISUPPER (newpos[new_has_insn]))
       break;
 
   /* Go down to desired level.  */
   while (depth < ndepth)
     {
-      /* It's a different insn from the first one. */
-      if (newpos[depth] >= 'A' && newpos[depth] <= 'Z')
+      /* It's a different insn from the first one.  */
+      if (ISUPPER (newpos[depth]))
 	{
 	  /* We can only fail if we're moving down the tree.  */
 	  if (old_has_insn >= 0 && oldpos[old_has_insn] >= newpos[depth])
 	    {
-	      printf ("%stem = peep2_next_insn (%d);\n", 
+	      printf ("%stem = peep2_next_insn (%d);\n",
 		      indent, newpos[depth] - 'A');
 	    }
 	  else
 	    {
-	      printf ("%stem = peep2_next_insn (%d);\n", 
+	      printf ("%stem = peep2_next_insn (%d);\n",
 		      indent, newpos[depth] - 'A');
 	      printf ("%sif (tem == NULL_RTX)\n", indent);
 	      if (afterward)
@@ -1602,7 +1738,7 @@ change_state (oldpos, newpos, afterward, indent)
 	    }
 	  printf ("%sx%d = PATTERN (tem);\n", indent, depth + 1);
 	}
-      else if (newpos[depth] >= 'a' && newpos[depth] <= 'z')
+      else if (ISLOWER (newpos[depth]))
 	printf ("%sx%d = XVECEXP (x%d, 0, %d);\n",
 		indent, depth + 1, depth, newpos[depth] - 'a');
       else
@@ -1619,7 +1755,7 @@ static void
 print_code (code)
      enum rtx_code code;
 {
-  register const char *p;
+  const char *p;
   for (p = GET_RTX_NAME (code); *p; p++)
     putchar (TOUPPER (*p));
 }
@@ -1641,7 +1777,7 @@ write_afterward (start, afterward, indent)
     }
 }
 
-/* Emit a switch statement, if possible, for an initial sequence of 
+/* Emit a switch statement, if possible, for an initial sequence of
    nodes at START.  Return the first node yet untested.  */
 
 static struct decision *
@@ -1651,6 +1787,7 @@ write_switch (start, depth)
 {
   struct decision *p = start;
   enum decision_type type = p->tests->type;
+  struct decision *needs_label = NULL;
 
   /* If we have two or more nodes in sequence that test the same one
      thing, we may be able to use a switch statement.  */
@@ -1658,7 +1795,8 @@ write_switch (start, depth)
   if (!p->next
       || p->tests->next
       || p->next->tests->type != type
-      || p->next->tests->next)
+      || p->next->tests->next
+      || nodes_identical_1 (p->tests, p->next->tests))
     return p;
 
   /* DT_code is special in that we can do interesting things with
@@ -1673,8 +1811,11 @@ write_switch (start, depth)
 
       printf ("  switch (GET_CODE (x%d))\n    {\n", depth);
       code = p->tests->u.code;
-      do 
+      do
 	{
+	  if (p != start && p->need_label && needs_label == NULL)
+	    needs_label = p;
+
 	  printf ("    case ");
 	  print_code (code);
 	  printf (":\n      goto L%d;\n", p->success.first->number);
@@ -1698,7 +1839,10 @@ write_switch (start, depth)
 	 we don't actually write the test here, as it gets kinda messy.
 	 It is trivial to leave this to later by telling our caller that
 	 we only processed the CODE tests.  */
-      ret = p;
+      if (needs_label != NULL)
+	ret = needs_label;
+      else
+	ret = p;
 
       while (p && p->tests->type == DT_pred
 	     && p->tests->u.pred.index >= 0)
@@ -1746,9 +1890,18 @@ write_switch (start, depth)
 	   || type == DT_veclen
 	   || type == DT_elt_zero_int
 	   || type == DT_elt_one_int
-	   || type == DT_elt_zero_wide)
+	   || type == DT_elt_zero_wide_safe)
     {
-      printf ("  switch (");
+      const char *indent = "";
+
+      /* We cast switch parameter to integer, so we must ensure that the value
+	 fits.  */
+      if (type == DT_elt_zero_wide_safe)
+	{
+	  indent = "  ";
+	  printf("  if ((int) XWINT (x%d, 0) == XWINT (x%d, 0))\n", depth, depth);
+	}
+      printf ("%s  switch (", indent);
       switch (type)
 	{
 	case DT_mode:
@@ -1763,7 +1916,7 @@ write_switch (start, depth)
 	case DT_elt_one_int:
 	  printf ("XINT (x%d, 1)", depth);
 	  break;
-	case DT_elt_zero_wide:
+	case DT_elt_zero_wide_safe:
 	  /* Convert result of XWINT to int for portability since some C
 	     compilers won't do it and some will.  */
 	  printf ("(int) XWINT (x%d, 0)", depth);
@@ -1771,11 +1924,22 @@ write_switch (start, depth)
 	default:
 	  abort ();
 	}
-      printf (")\n    {\n");
+      printf (")\n%s    {\n", indent);
 
       do
 	{
-	  printf ("    case ");
+	  /* Merge trees will not unify identical nodes if their
+	     sub-nodes are at different levels.  Thus we must check
+	     for duplicate cases.  */
+	  struct decision *q;
+	  for (q = start; q != p; q = q->next)
+	    if (nodes_identical_1 (p->tests, q->tests))
+	      goto case_done;
+
+	  if (p != start && p->need_label && needs_label == NULL)
+	    needs_label = p;
+
+	  printf ("%s    case ", indent);
 	  switch (type)
 	    {
 	    case DT_mode:
@@ -1787,21 +1951,24 @@ write_switch (start, depth)
 	    case DT_elt_zero_int:
 	    case DT_elt_one_int:
 	    case DT_elt_zero_wide:
-	      printf (HOST_WIDE_INT_PRINT_DEC, p->tests->u.intval);
+	    case DT_elt_zero_wide_safe:
+	      printf (HOST_WIDE_INT_PRINT_DEC_C, p->tests->u.intval);
 	      break;
 	    default:
 	      abort ();
 	    }
-	  printf (":\n      goto L%d;\n", p->success.first->number);
+	  printf (":\n%s      goto L%d;\n", indent, p->success.first->number);
 	  p->success.first->need_label = 1;
 
 	  p = p->next;
 	}
       while (p && p->tests->type == type && !p->tests->next);
-      
-      printf ("    default:\n      break;\n    }\n");
 
-      return p;
+    case_done:
+      printf ("%s    default:\n%s      break;\n%s    }\n",
+	      indent, indent, indent);
+
+      return needs_label != NULL ? needs_label : p;
     }
   else
     {
@@ -1842,8 +2009,13 @@ write_cond (p, depth, subroutine_type)
       break;
 
     case DT_elt_zero_wide:
+    case DT_elt_zero_wide_safe:
       printf ("XWINT (x%d, 0) == ", depth);
-      printf (HOST_WIDE_INT_PRINT_DEC, p->u.intval);
+      printf (HOST_WIDE_INT_PRINT_DEC_C, p->u.intval);
+      break;
+
+    case DT_veclen_ge:
+      printf ("XVECLEN (x%d, 0) >= %d", depth, p->u.veclen);
       break;
 
     case DT_dup:
@@ -1942,7 +2114,7 @@ write_action (p, test, depth, uncond, success, subroutine_type)
 	    int match_len = 0, i;
 
 	    for (i = strlen (p->position) - 1; i >= 0; --i)
-	      if (p->position[i] >= 'A' && p->position[i] <= 'Z')
+	      if (ISUPPER (p->position[i]))
 		{
 		  match_len = p->position[i] - 'A';
 		  break;
@@ -2084,7 +2256,7 @@ write_tree (head, prevpos, type, initial)
      enum routine_type type;
      int initial;
 {
-  register struct decision *p = head->first;
+  struct decision *p = head->first;
 
   putchar ('\n');
   if (p->need_label)
@@ -2146,7 +2318,7 @@ write_subroutine (head, type)
   const char *s_or_e;
   char extension[32];
   int i;
-  
+
   s_or_e = subfunction ? "static " : "";
 
   if (subfunction)
@@ -2162,7 +2334,7 @@ write_subroutine (head, type)
       printf ("%sint recog%s PARAMS ((rtx, rtx, int *));\n", s_or_e, extension);
       printf ("%sint\n\
 recog%s (x0, insn, pnum_clobbers)\n\
-     register rtx x0;\n\
+     rtx x0 ATTRIBUTE_UNUSED;\n\
      rtx insn ATTRIBUTE_UNUSED;\n\
      int *pnum_clobbers ATTRIBUTE_UNUSED;\n", s_or_e, extension);
       break;
@@ -2170,7 +2342,7 @@ recog%s (x0, insn, pnum_clobbers)\n\
       printf ("%srtx split%s PARAMS ((rtx, rtx));\n", s_or_e, extension);
       printf ("%srtx\n\
 split%s (x0, insn)\n\
-     register rtx x0;\n\
+     rtx x0 ATTRIBUTE_UNUSED;\n\
      rtx insn ATTRIBUTE_UNUSED;\n", s_or_e, extension);
       break;
     case PEEPHOLE2:
@@ -2178,17 +2350,20 @@ split%s (x0, insn)\n\
 	      s_or_e, extension);
       printf ("%srtx\n\
 peephole2%s (x0, insn, _pmatch_len)\n\
-     register rtx x0;\n\
+     rtx x0 ATTRIBUTE_UNUSED;\n\
      rtx insn ATTRIBUTE_UNUSED;\n\
      int *_pmatch_len ATTRIBUTE_UNUSED;\n", s_or_e, extension);
       break;
     }
 
-  printf ("{\n  register rtx * const operands ATTRIBUTE_UNUSED = &recog_data.operand[0];\n");
+  printf ("{\n  rtx * const operands ATTRIBUTE_UNUSED = &recog_data.operand[0];\n");
   for (i = 1; i <= max_depth; i++)
-    printf ("  register rtx x%d ATTRIBUTE_UNUSED;\n", i);
+    printf ("  rtx x%d ATTRIBUTE_UNUSED;\n", i);
 
   printf ("  %s tem ATTRIBUTE_UNUSED;\n", IS_SPLIT (type) ? "rtx" : "int");
+
+  if (!subfunction)
+    printf ("  recog_data.insn = NULL_RTX;\n");
 
   if (head->first)
     write_tree (head, "", type, 1);
@@ -2237,6 +2412,8 @@ write_header ()
 #include \"flags.h\"\n\
 #include \"hard-reg-set.h\"\n\
 #include \"resource.h\"\n\
+#include \"toplev.h\"\n\
+#include \"reload.h\"\n\
 \n");
 
   puts ("\n\
@@ -2247,13 +2424,14 @@ write_header ()
    returns a nonnegative number which is the insn code number for the\n\
    pattern that matched.  This is the same as the order in the machine\n\
    description of the entry that matched.  This number can be used as an\n\
-   index into `insn_data' and other tables.\n\
-\n\
+   index into `insn_data' and other tables.\n");
+  puts ("\
    The third argument to recog is an optional pointer to an int.  If\n\
    present, recog will accept a pattern if it matches except for missing\n\
    CLOBBER expressions at the end.  In that case, the value pointed to by\n\
    the optional pointer will be set to the number of CLOBBERs that need\n\
-   to be added (it should be initialized to zero by the caller).  If it\n\
+   to be added (it should be initialized to zero by the caller).  If it");
+  puts ("\
    is set nonzero, the caller should allocate a PARALLEL of the\n\
    appropriate size, copy the initial entries, and call add_clobbers\n\
    (found in insn-emit.c) to fill in the CLOBBERs.\n\
@@ -2261,10 +2439,10 @@ write_header ()
 
   puts ("\n\
    The function split_insns returns 0 if the rtl could not\n\
-   be split or the split rtl in a SEQUENCE if it can be.\n\
+   be split or the split rtl as an INSN list if it can be.\n\
 \n\
    The function peephole2_insns returns 0 if the rtl could not\n\
-   be matched. If there was a match, the new rtl is returned in a SEQUENCE,\n\
+   be matched. If there was a match, the new rtl is returned in an INSN list,\n\
    and LAST_INSN will point to the last recognized insn in the old sequence.\n\
 */\n\n");
 }
@@ -2282,10 +2460,15 @@ make_insn_sequence (insn, type)
 {
   rtx x;
   const char *c_test = XSTR (insn, type == RECOG ? 2 : 1);
+  int truth = maybe_eval_c_test (c_test);
   struct decision *last;
   struct decision_test *test, **place;
   struct decision_head head;
   char c_test_pos[2];
+
+  /* We should never see an insn whose C test is false at compile time.  */
+  if (truth == 0)
+    abort ();
 
   record_insn_name (next_insn_code, (type == RECOG ? XSTR (insn, 0) : NULL));
 
@@ -2324,7 +2507,7 @@ make_insn_sequence (insn, type)
       PUT_MODE (x, VOIDmode);
     }
 
-  validate_pattern (x, insn, NULL_RTX);
+  validate_pattern (x, insn, NULL_RTX, 0);
 
   memset(&head, 0, sizeof(head));
   last = add_to_sequence (x, &head, "", type, 1);
@@ -2334,7 +2517,8 @@ make_insn_sequence (insn, type)
     continue;
   place = &test->next;
 
-  if (c_test[0])
+  /* Skip the C test if it's known to be true at compile time.  */
+  if (truth == -1)
     {
       /* Need a new node if we have another test to add.  */
       if (test->type == DT_accept_op)
@@ -2407,7 +2591,9 @@ make_insn_sequence (insn, type)
 		  place = &last->tests;
 		}
 
-	      if (c_test[0])
+	      /* Skip the C test if it's known to be true at compile
+                 time.  */
+	      if (truth == -1)
 		{
 		  test = new_decision_test (DT_c_test, &place);
 		  test->u.c_test = c_test;
@@ -2485,9 +2671,9 @@ main (argc, argv)
   memset (&peephole2_tree, 0, sizeof peephole2_tree);
 
   if (argc <= 1)
-    fatal ("No input file name.");
+    fatal ("no input file name");
 
-  if (init_md_reader (argv[1]) != SUCCESS_EXIT_CODE)
+  if (init_md_reader_args (argc, argv) != SUCCESS_EXIT_CODE)
     return (FATAL_EXIT_CODE);
 
   next_insn_code = 0;
@@ -2518,7 +2704,7 @@ main (argc, argv)
 	  h = make_insn_sequence (desc, PEEPHOLE2);
 	  merge_trees (&peephole2_tree, &h);
 	}
-	
+
       next_index++;
     }
 
@@ -2561,7 +2747,7 @@ record_insn_name (code, name)
       new_size = (insn_name_ptr_size ? insn_name_ptr_size * 2 : 512);
       insn_name_ptr =
 	(char **) xrealloc (insn_name_ptr, sizeof(char *) * new_size);
-      memset (insn_name_ptr + insn_name_ptr_size, 0, 
+      memset (insn_name_ptr + insn_name_ptr_size, 0,
 	      sizeof(char *) * (new_size - insn_name_ptr_size));
       insn_name_ptr_size = new_size;
     }
@@ -2576,9 +2762,9 @@ record_insn_name (code, name)
       last_real_name = new = xstrdup (name);
       last_real_code = code;
     }
-  
+
   insn_name_ptr[code] = new;
-}  
+}
 
 static void
 debug_decision_2 (test)
@@ -2605,6 +2791,13 @@ debug_decision_2 (test)
       fprintf (stderr, "elt0_w=");
       fprintf (stderr, HOST_WIDE_INT_PRINT_DEC, test->u.intval);
       break;
+    case DT_elt_zero_wide_safe:
+      fprintf (stderr, "elt0_ws=");
+      fprintf (stderr, HOST_WIDE_INT_PRINT_DEC, test->u.intval);
+      break;
+    case DT_veclen_ge:
+      fprintf (stderr, "veclen>=%d", test->u.veclen);
+      break;
     case DT_dup:
       fprintf (stderr, "dup=%d", test->u.dup);
       break;
@@ -2624,7 +2817,7 @@ debug_decision_2 (test)
       fprintf (stderr, "A_op=%d", test->u.opno);
       break;
     case DT_accept_insn:
-      fprintf (stderr, "A_insn=(%d,%d)", 
+      fprintf (stderr, "A_insn=(%d,%d)",
 	       test->u.insn.code_number, test->u.insn.num_clobbers_to_add);
       break;
 

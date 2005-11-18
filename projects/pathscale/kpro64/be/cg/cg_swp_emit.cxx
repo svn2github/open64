@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -228,7 +232,9 @@ Lookup_Register_TN(SWP_REG_ASSIGNMENT::REG2TN_MAP& reg2tn_map,
     rtn = Dup_TN(tn);
     Set_TN_class_reg(rtn, rp);
     // Set TN is dedicated.  Otherwise GRA will assign registers again.
-    // Set_TN_is_dedicated(rtn);
+#ifdef KEY
+    Set_TN_is_dedicated(rtn);
+#endif
     reg2tn_map[rp] = rtn;
     if (trace) {
       fPrint_TN(TFile, "SWP Allocator: Reference to %s", tn);
@@ -250,11 +256,17 @@ TN *SWP_REG_ASSIGNMENT::Get_Register_TN(TN *tn, INT adjustment)
 {
   Is_True(adjustment >= 0,
 	  ("SWP_REG_ASSIGNMENT: Unexpected negative register-number offset."));
+#ifndef KEY
   Is_True(reg_allocation.find(tn) != reg_allocation.end(),
 	  ("SWP_REG_ASSIGNMENT: can't locate TN%d.", TN_number(tn)));
+#endif
   CLASS_REG_PAIR rp = reg_allocation[tn];
   REGISTER r = CLASS_REG_PAIR_reg(rp);
   ISA_REGISTER_CLASS c = CLASS_REG_PAIR_rclass(rp);
+
+#ifdef KEY
+  c = ISA_REGISTER_CLASS_integer;
+#endif
     
   // Assuming a rotating logical register is numbered the same as the
   // corresponding physical pseudo-register location at stage 0, add in
@@ -358,7 +370,7 @@ void SWP_REG_ASSIGNMENT::Update_Annotation(ROTATING_KERNEL_INFO *info)
     //
     REGISTER_SET tmp = REGISTER_CLASS_allocatable(i);
     tmp = REGISTER_SET_Difference(tmp, non_rotating_reg[i]);
-
+#ifndef KEY
     if (i != ISA_REGISTER_CLASS_integer) {
       // assume all rotating registers are killed 
       // for some reason, rotating reg are not in REGISTER_CLASS_allocatable()?
@@ -366,6 +378,7 @@ void SWP_REG_ASSIGNMENT::Update_Annotation(ROTATING_KERNEL_INFO *info)
 			       REGISTER_SET_Range(rotating_reg_base[i],
 						  rotating_reg_base[i] + rotating_reg_avail[i] - 1));
     }
+#endif
 
     ROTATING_KERNEL_INFO_live_in(info)[i] = tmp;
     ROTATING_KERNEL_INFO_kill(info)[i] = tmp;

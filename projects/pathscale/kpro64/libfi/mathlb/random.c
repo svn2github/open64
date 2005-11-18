@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,11 +43,9 @@
 
 #include <fortran.h>
 #include <stddef.h>
-#if  (defined( __mips) || defined(__ia64) || defined(__ia32) )
 #include <string.h>
-#endif
 
-#if  !(defined( __mips) || defined(__ia64) || defined(__ia32) )
+#if  !(defined( __mips) || defined(__ia64) || defined(__ia32) || defined(KEY))
 
 #if defined(_SOLARIS)
 int _rand_r(unsigned int *seed);
@@ -147,7 +149,12 @@ _RANGET(long *x)
 #define TWOMINUS52 2.22044604925031308E-16
 #define TWOMINUS24 5.960464478E-8
 
+#if !defined(KEY)
 #undef  USE_RANDOM
+#else
+#define USE_RANDOM
+#endif
+
 #ifndef USE_RANDOM  /* Use a linear congruential generator of period 2^62 */
 
 static unsigned long long randstate=01274321477413155LL;
@@ -195,7 +202,7 @@ float _RANF_4(void)
  * ranget_  - pass by address - CALL RANGET() is legal.
  */
 
-__attribute__ ((weak)) ranget_(_f_int8 *x)
+__attribute__ ((weak)) _f_int8 ranget_(_f_int8 *x)
 {
         if (x != NULL)
                 *x	= randstate;
@@ -206,7 +213,7 @@ __attribute__ ((weak)) ranget_(_f_int8 *x)
  * ranset_  - pass by address - CALL RANSET() is legal.
  */
 
-__attribute__ ((weak)) ranset_(_f_int8 *x)
+__attribute__ ((weak)) _f_int8 ranset_(_f_int8 *x)
 {
         if (x != NULL)
                 randstate	= *x;;
@@ -228,7 +235,21 @@ __attribute__ ((weak)) ranset_(_f_int8 *x)
 #define	SEP 3
 
 static int front=0,rear=SEP;
-
+#ifdef _LITTLE_ENDIAN
+static struct {
+	int	index;
+	int	randtbl[SEED_WORDS];
+} randstate = { 0, {  
+        0x90399a31, 0xc02432d9, 0x31829b66, 0xf3425da1,
+        0x81e0de3b, 0x6fb5df0a, 0xbc02f103, 0x40fb48f3,
+        0xe56b7449, 0xdbb0beb1, 0x5918ab5c, 0x54fd9465,
+        0x680f8c2e, 0x799feb3d, 0xe0b7b11e, 0x6b862d43,
+        0x2e2ada67, 0xca881588, 0x735de369, 0x35f7904f,
+        0x8fd6d715, 0xf0516fa6, 0x6b96616e, 0xefdcac94,
+        0x3f933641, 0xc298c622, 0x2ab8f5a4, 0xd77b8a88,
+        0x9d0ef5ad, 0x220b8999, 0x47b927fb }
+};
+#else
 static struct {
 	int	index;
 	int	randtbl[SEED_WORDS];
@@ -242,6 +263,7 @@ static struct {
 	0x36413f93, 0xc622c298, 0xf5a42ab8, 0x8a88d77b, 
 	0xf5ad9d0e, 0x8999220b, 0x27fb47b9 }
 };
+#endif
 
 void _RANGET(void *seed)
 {
@@ -252,8 +274,8 @@ void _RANGET(void *seed)
 void _RANSET(void *seed)
 {
 	memcpy(&randstate,seed,sizeof(randstate));
-	front	= randstate.index & SEED_WORDS;
-	rear	= (front + SEP) & SEED_WORDS;
+	front	= randstate.index % SEED_WORDS;
+	rear	= (front + SEP) % SEED_WORDS;
 }
 
 double _RANF_8(void) 
@@ -265,17 +287,22 @@ double _RANF_8(void)
 
 	/* 32 bits */
 	i = ((unsigned long long) ((unsigned)randstate.randtbl[front])) << 21;
-	front	= (front + 1) & SEED_WORDS;
-	rear	= (rear + 1) & SEED_WORDS;
+	front	= (front + 1) % SEED_WORDS;
+	rear	= (rear + 1) % SEED_WORDS;
 	randstate.randtbl[front] += randstate.randtbl[rear];
 
 	/* 20 bits, not 21 bits because of performance and matching the
 	 * the size of the linear congruential method
 	 */
 	i |= (unsigned long long) ((unsigned)randstate.randtbl[front] >> 12);
-	front	= (front + 1) & SEED_WORDS;
-	rear	= (rear + 1) & SEED_WORDS;
+	front	= (front + 1) % SEED_WORDS;
+	rear	= (rear + 1) % SEED_WORDS;
+#ifdef KEY
+// Bug 1818
+	d	= TWOMINUS53 * (double) i;
+#else
 	d	= TWOMINUS52 * (double) i;
+#endif
 	return (d);
 }
 
@@ -288,8 +315,8 @@ float _RANF_4(void)
 
 	/* 24 bits */
 	i = ((unsigned int) randstate.randtbl[front]) >> 8;
-	front	= (front + 1) & SEED_WORDS;
-	rear	= (rear + 1) & SEED_WORDS;
+	front	= (front + 1) % SEED_WORDS;
+	rear	= (rear + 1) % SEED_WORDS;
 	f	= (float) TWOMINUS24 * (float) i;
 	return (f);
 }

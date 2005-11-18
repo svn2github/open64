@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -473,8 +478,16 @@ void OPT_TAIL::Fixup_exit(BB_NODE *bb)
     TYPE_ID arg_type_id = WN_rtype(arg);
 
     arg = WN_kid0(arg);
-    
+#ifdef KEY
+// Bug 1640
+    static INT Temp_Index = 0;
+    UINT len = strlen("_temp_") + 17;
+    char *new_str = (char *) alloca (len);
+    sprintf(new_str, "%s%d", "_temp_", Temp_Index++);
+    AUX_ID tmp_preg = _opt_stab->Create_preg(arg_type_id, new_str);
+#else
     AUX_ID tmp_preg = _opt_stab->Create_preg(arg_type_id);
+#endif
     WN *stid = WN_CreateStid(OPR_STID, MTYPE_V, arg_type_id, 
 			     _opt_stab->St_ofst(tmp_preg), 
 			     ST_st_idx(_opt_stab->St(tmp_preg)),

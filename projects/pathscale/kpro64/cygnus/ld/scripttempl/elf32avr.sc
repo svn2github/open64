@@ -5,8 +5,8 @@ OUTPUT_ARCH(${ARCH})
 MEMORY
 {
   text   (rx)   : ORIGIN = 0,    LENGTH = $TEXT_LENGTH
-  data   (rw!x) : ORIGIN = 0x800060, LENGTH = $DATA_LENGTH
-  eeprom (rw!x) : ORIGIN = 0,    LENGTH = $EEPROM_LENGTH
+  data   (rw!x) : ORIGIN = (0x800000 + $DATA_START), LENGTH = $DATA_LENGTH
+  eeprom (rw!x) : ORIGIN = 0x810000, LENGTH = $EEPROM_LENGTH
 }
 
 SECTIONS
@@ -96,7 +96,6 @@ SECTIONS
   } ${RELOCATING+ > data}
 
   .bss ${RELOCATING+ SIZEOF(.data) + ADDR(.data)} :
-       ${RELOCATING+AT (ADDR (.text) + SIZEOF (.text) + SIZEOF (.data))}
   {
     ${RELOCATING+ PROVIDE (__bss_start = .) ; }
     *(.bss)
@@ -106,6 +105,7 @@ SECTIONS
   } ${RELOCATING+ > data}
 
   .eeprom ${RELOCATING-0}:
+	${RELOCATING+AT (ADDR (.text) + SIZEOF (.text) + SIZEOF (.data))}
   {
     *(.eeprom*)
     ${RELOCATING+ __eeprom_end = . ; }
@@ -137,7 +137,7 @@ SECTIONS
   .debug_pubnames 0 : { *(.debug_pubnames) }
 
   /* DWARF 2 */
-  .debug_info     0 : { *(.debug_info) }
+  .debug_info     0 : { *(.debug_info) *(.gnu.linkonce.wi.*) }
   .debug_abbrev   0 : { *(.debug_abbrev) }
   .debug_line     0 : { *(.debug_line) }
   .debug_frame    0 : { *(.debug_frame) }

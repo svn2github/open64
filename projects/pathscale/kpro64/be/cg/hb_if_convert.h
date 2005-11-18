@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -105,7 +109,7 @@
 #ifndef HB_IF_CONVERT_H_INCLUDED
 #define HB_IF_CONVERT_H_INCLUDED
 
-extern void HB_If_Convert(HB* hb, list<HB_CAND_TREE*>& candidate_regions);
+extern void HB_If_Convert(HB* hb, std::list<HB_CAND_TREE*>& candidate_regions);
 extern BOOL HB_Safe_For_If_Conversion(HB* hb);
 
 #endif

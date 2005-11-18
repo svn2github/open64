@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -131,6 +135,16 @@ MOVBITZ(void *a, _f_int8 *az, _f_int8 *nb, void *b, _f_int8 *bz)
 	uint64		*bptr;	/* Temporary pointer for backwards moves */
 	uint64		*tptr;	/* Temporary pointer for all moves */
 
+	union {
+		void *p;
+		uint64 u;
+	} ua, ub;
+
+	ua.u = 0;
+	ua.p = a;
+	ub.u = 0;
+	ub.p = b;
+	
 	a0	= *az;
 	b0	= *bz;
 	n	= *nb;
@@ -140,12 +154,12 @@ MOVBITZ(void *a, _f_int8 *az, _f_int8 *nb, void *b, _f_int8 *bz)
 
 #if defined(_LITTLE_ENDIAN)
         /* setup the context in a nice straight forward way using byte pointers */
-	af_byte = (((uint64) a) + (a0 >> 3)); 
-	bf_byte = (((uint64) b) + (b0 >> 3));
+	af_byte = (ua.u + (a0 >> 3)); 
+	bf_byte = (ub.u + (b0 >> 3));
 	af_bit = a0 & BITMASK;
 	bf_bit = b0 & BITMASK;
-	al_byte = (((uint64) a) + ((a0 +n -1)>> 3) );
-	bl_byte = (((uint64) b) + ((b0 +n -1)>> 3) );
+	al_byte = (ua.u + ((a0 +n -1)>> 3) );
+	bl_byte = (ub.u + ((b0 +n -1)>> 3) );
 	afwa = (uint64 *) af_byte;
 	bfwa = (uint64 *) bf_byte;
 #else

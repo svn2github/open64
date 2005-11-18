@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,7 +59,7 @@
 #define HB_TRACE_H_INCLUDED
 
 #include <stdio.h>
-#include <list.h>
+#include <list>
 
 #include "tracing.h"
 #include "hb_path.h"
@@ -93,7 +97,7 @@ extern void HB_Trace_Init(void);
 extern void HB_Trace_If_Convert_Blocks(HB* hb);
 extern void HB_Trace_HB_List();
 extern void HB_Trace_Candidates(char* tstring,
-				list<HB_CAND_TREE*>& cands);
+				std::list<HB_CAND_TREE*>& cands);
 extern void HB_Trace_Print_Cand_Tree(HB_CAND_TREE* cand,INT indent=0);
 
 extern FILE *HB_TFile;

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -174,5 +178,19 @@ BOOL Constant_Operand1 (OP *op,
 BOOL Special_Sequence (OP *op,
                        TN **opnd_tn,
                        EBO_TN_INFO **opnd_tninfo);
+
+#ifdef TARG_MIPS
+void Redundancy_Elimination ();
+#endif
+#ifdef TARG_X8664
+#undef USE_ORG_LOAD_EXEC
+void Update_op_must_not_be_moved( OP*, EBO_TN_INFO** );
+BOOL EBO_Merge_Memory_Addr( OP*, TN**, EBO_TN_INFO**, EBO_TN_INFO** );
+BOOL EBO_Load_Execution( OP*, TN**, EBO_TN_INFO** );
+BOOL EBO_Lea_Insertion( OP*, TN**, EBO_TN_INFO** );
+BOOL Combine_L1_L2_Prefetches( OP*, TN**, EBO_TN_INFO** );
+void Lea_Insertion ();
+void Init_Load_Exec_Map( BB*, MEM_POOL* );
+#endif /* TARG_X8664 */
 
 BOOL EBO_Can_Merge_Into_Offset (OP *op);

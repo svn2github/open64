@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -34,6 +38,8 @@
 
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "be_com_pch.h"
 #endif /* USE_PCH */
@@ -52,13 +58,8 @@
 #include "wb_browser.h" 
 #include "wb.h"
 
-#if defined(__GNUC__)
-#pragma weak s_lno_debug__FPc
-#pragma weak cg_sdebug__FPc
-#else
-#pragma weak s_lno_debug__GPc
-#pragma weak cg_sdebug__GPc
-#endif
+#pragma weak _Z11s_lno_debugPc
+#pragma weak _Z9cg_sdebugPc
 
 extern void s_f90_lower_debug(char init_buffer[]); 
 extern void s_omp_debug(char init_buffer[]); 

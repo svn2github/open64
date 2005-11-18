@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -112,7 +117,7 @@ MAP::Hash(POINTER k)
 {
   mUINT32      retval;
 
-  retval = ((mINT64)k) % size;
+  retval = UINTPS(k) % size;
   return retval;
 }
 

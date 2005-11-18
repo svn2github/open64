@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -134,5 +138,15 @@ extern BOOL Prefetch_Kind_Enabled(WN *wn);
 extern void TN_CORRESPOND_Free(void);
 
 extern BB * Add_Label(LABEL_IDX);
+
+#ifdef KEY
+extern OPS New_OPs;
+extern OP *Last_Processed_OP;
+extern SRCPOS current_srcpos;
+extern INT total_bb_insts;
+extern BB *Cur_BB;
+extern void Process_New_OPs(void);
+extern BB_MAP outer_label_map;
+#endif
 
 #endif /* whirl2ops_INCLUDED */

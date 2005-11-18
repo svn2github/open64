@@ -1,4 +1,4 @@
-# USMID @(#) libf/fio/fio.makeinclude	92.4	11/16/99 15:43:33
+# -*- Makefile -*-
 
 #
 #
@@ -86,7 +86,6 @@ CFILES += \
     lread.c \
     lu2s.c \
     lwrite.c \
-    main.c \
     numblks.c \
     oconvtab.c \
     open.c \
@@ -131,6 +130,7 @@ CFILES += \
     wnl90.c \
     wnl90to77.c \
     wnlutil.c \
+    xarg.c \
     $(IRFILES)
 
 SRC_DIRS += \

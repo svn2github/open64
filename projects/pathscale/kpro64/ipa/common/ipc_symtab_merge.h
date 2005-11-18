@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -91,9 +95,7 @@ Linker_mark_not_gp_rel (ST_IDX st_idx);
 
 #ifndef _LD_IPA_INTERFACE
 
-#ifndef __SGI_STL_VECTOR_H
-#include <vector.h>
-#endif
+#include <vector>
 
 #ifndef mempool_allocator_INCLUDED
 #include "mempool_allocator.h"
@@ -287,7 +289,7 @@ struct IPC_GLOBAL_IDX_MAP
 
     IPC_GLOBAL_IDX_MAP (UINT32 st_size, UINT32 ty_size, UINT32 tcon_size,
 			UINT32 initv_size, MEM_POOL *pool) :
-	sym_str (0, hash<STR_IDX>(), equal_to<STR_IDX> (),
+	sym_str (0, __gnu_cxx::hash<STR_IDX>(), std::equal_to<STR_IDX> (),
 		 SYMSTR_IDX_MAP::allocator_type (pool)),
 	st (st_size, ST_IDX_MAP::allocator_type (pool)),
 	ty (ty_size, TY_IDX_MAP::allocator_type (pool)),
@@ -320,7 +322,7 @@ struct block_element_compare
 
 typedef std::map<const BLOCK_ELEMENT_DESC, ST_IDX, block_element_compare,
     mempool_allocator<ST_IDX> > BLOCK_ELEMENTS;
-typedef hash_map<ST_IDX, BLOCK_ELEMENTS*, hash<ST_IDX>, equal_to<ST_IDX>,
+typedef hash_map<ST_IDX, BLOCK_ELEMENTS*, __gnu_cxx::hash<ST_IDX>, std::equal_to<ST_IDX>,
     mempool_allocator<BLOCK_ELEMENTS*> > COMMON_BLOCK_ELEMENTS_MAP;
 
 extern COMMON_BLOCK_ELEMENTS_MAP *Common_Block_Elements_Map;

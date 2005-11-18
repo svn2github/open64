@@ -1,5 +1,25 @@
+# -*- Makefile -*-
 #
-#  Makefile.base for libunwind
+# Makefile.base for libunwind
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of version 2 of the GNU General Public License as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it would be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+# Further, this software is distributed without any warranty that it is
+# free of the rightful claim of any third person regarding infringement 
+# or the like.  Any license provided herein, whether implied or 
+# otherwise, applies only to this software file.  Patent licenses, if 
+# any, provided herein do not apply to combinations of this program with 
+# other software, or any other product whatsoever.  
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write the Free Software Foundation, Inc., 59
+# Temple Place - Suite 330, Boston MA 02111-1307, USA.
 #
 
 include	$(COMMONDEFS)
@@ -26,7 +46,7 @@ CFLAGS += -DFOR_GDB
 endif
 
 # set compilation options
-LCOPTS = $(STD_COMPILE_OPTS)
+LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LC++OPTS = $(STD_COMPILE_OPTS)
 ifeq ($(BUILD_COMPILER), EDG)
 # okay for all abis?
@@ -36,7 +56,7 @@ endif
 
 LC++INCS = -I$(BUILD_TOT)/common/com \
 	   -I$(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR) \
- 	   -I$(BUILD_TOT)/common/util
+	   -I$(BUILD_TOT)/common/util
 # set compilation includes
 ifeq ($(BUILD_VARIANT), PRODUCER)
 LCINCS = -I$(BUILD_TOT)/common/com -I$(BUILD_AREA)/targ_info
@@ -140,12 +160,12 @@ default: first $(TARGETS) last
 include $(COMMONRULES)
 
 first :
-	cd $(BUILD_AREA)/include && $(MAKE)
+	$(call submake,$(BUILD_AREA)/include)
 ifeq ($(BUILD_VARIANT), PRODUCER)
-	cd $(BUILD_AREA)/targ_info && $(MAKE)
+	$(call submake,$(BUILD_AREA)/targ_info)
 endif
-#	cd $(BUILD_AREA)/libelf && $(MAKE)
-#	cd $(BUILD_AREA)/libelfutil && $(MAKE)
+#	$(call submake,$(BUILD_AREA)/libelf)
+#	$(call submake,$(BUILD_AREA)/libelfutil)
 
 last:  make_libdeps
 
@@ -155,13 +175,14 @@ exports: default
 install: default
 	$(STD_INSTALL) -m 444 -F $(STD_LIBRARY_LOC) $(INSTALL_TARGETS)
 
-.PRECIOUS : $(PRODUCER_LIBRARY) $(CONSUMER_LIBRARY) $(GDB_LIBRARY)
+$(PRODUCER_LIBRARY): $(PRODUCER_OBJECTS)
+	$(ar) cru $@ $^
 
-$(PRODUCER_LIBRARY): $(PRODUCER_LIBRARY)($(PRODUCER_OBJECTS))
+$(CONSUMER_LIBRARY): $(CONSUMER_OBJECTS)
+	$(ar) cru $@ $^
 
-$(CONSUMER_LIBRARY): $(CONSUMER_LIBRARY)($(CONSUMER_OBJECTS))
-
-$(GDB_LIBRARY): $(GDB_LIBRARY)($(CONSUMER_OBJECTS))
+$(GDB_LIBRARY): $(CONSUMER_OBJECTS)
+	$(ar) cru $@ $^
 
 # $(CONSUMER_DSO): $(CONSUMER_LIBRARY)
 #	$(LD) $(LDOPTS) $(LD_CONSUMER_EXPORT_FILE) $(LD_CONSUMER_INIT_FINI_SECTS) $(CONSUMER_LIBRARY) -o $@ -soname $@ $(LDLIBS)

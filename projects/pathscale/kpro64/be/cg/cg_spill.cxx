@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -144,6 +148,16 @@ typedef struct local_spills {
 /* One for each kind of spill location: */
 static LOCAL_SPILLS lra_float_spills, lra_int_spills;
 static LOCAL_SPILLS swp_float_spills, swp_int_spills;
+
+#ifdef TARG_X8664
+static LOCAL_SPILLS lra_sse2_spills;
+static LOCAL_SPILLS lra_x87_spills;
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+static LOCAL_SPILLS lra_float32_spills;
+static LOCAL_SPILLS lra_int32_spills;
+#endif
 
 /*
  * only rematerialize LDID's homeable by gra if spilling in service
@@ -301,6 +315,15 @@ CGSPILL_Reset_Local_Spills (void)
   LOCAL_SPILLS_Reset(&lra_int_spills);
   LOCAL_SPILLS_Reset(&swp_float_spills);
   LOCAL_SPILLS_Reset(&swp_int_spills);
+#ifdef TARG_X8664
+  LOCAL_SPILLS_Reset(&lra_sse2_spills);
+  LOCAL_SPILLS_Reset(&lra_x87_spills);
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+  LOCAL_SPILLS_Reset(&lra_float32_spills);
+  LOCAL_SPILLS_Reset(&lra_int32_spills);
+#endif
 }
 
 
@@ -332,6 +355,29 @@ CGSPILL_Initialize_For_PU(void)
   LOCAL_SPILLS_mem_type(slc) = Spill_Float_Type;
   LOCAL_SPILLS_free(slc) = NULL;
   LOCAL_SPILLS_used(slc) = NULL;
+#ifdef TARG_X8664
+  slc = &lra_sse2_spills;
+  LOCAL_SPILLS_mem_type(slc) = Quad_Type;
+  LOCAL_SPILLS_free(slc) = NULL;
+  LOCAL_SPILLS_used(slc) = NULL;
+
+  slc = &lra_x87_spills;
+  LOCAL_SPILLS_mem_type(slc) = MTYPE_To_TY( MTYPE_FQ );
+  LOCAL_SPILLS_free(slc) = NULL;
+  LOCAL_SPILLS_used(slc) = NULL;
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+  slc = &lra_int32_spills;
+  LOCAL_SPILLS_mem_type(slc) = Spill_Int32_Type;
+  LOCAL_SPILLS_free(slc) = NULL;
+  LOCAL_SPILLS_used(slc) = NULL;
+
+  slc = &lra_float32_spills;
+  LOCAL_SPILLS_mem_type(slc) = Spill_Float32_Type;
+  LOCAL_SPILLS_free(slc) = NULL;
+  LOCAL_SPILLS_used(slc) = NULL;
+#endif // KEY
 
   Trace_Remat = Get_Trace(TP_CG, 4);
   Trace_GRA_spill_placement = Get_Trace(TP_GRA, 0x2000);
@@ -435,6 +481,25 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
       const char *root;
       TY_IDX mem_type = TN_is_float(tn) || TN_is_fcc_register(tn) ? 
 		        Spill_Float_Type : Spill_Int_Type;
+#ifdef TARG_X8664
+      /* bug#1741
+	 For -m32, the size of long double is 96-bit long.
+       */
+      if( TN_size(tn) == 16 || TN_size(tn) == 12 ){
+	mem_type = TN_register_class(tn) == ISA_REGISTER_CLASS_x87
+	  ? MTYPE_To_TY( MTYPE_FQ ) : Quad_Type;
+      }
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+      if( CG_min_spill_loc_size && TN_size(tn) <= 4 ){
+	mem_type = TN_is_float(tn) ? Spill_Float32_Type : Spill_Int32_Type;
+      }
+      
+      Is_True( TN_size(tn) <= MTYPE_byte_size(TY_mtype(mem_type)),
+	       ("TN size is larger than the size of spill type.") );
+#endif
+
       if (client == CGSPILL_GRA) {
 	root = SYM_ROOT_GRA;
       } else if (client == CGSPILL_LGRA) {
@@ -451,6 +516,19 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
     if (mem_location == NULL) {
       slc = TN_is_float(tn) || TN_is_fcc_register(tn) ?
 	      &lra_float_spills : &lra_int_spills;
+#ifdef TARG_X8664
+      if( TN_size(tn) == 16 || TN_size(tn) == 12 ){
+	slc = TN_register_class(tn) == ISA_REGISTER_CLASS_x87
+	  ? &lra_x87_spills : &lra_sse2_spills;
+      }
+#endif /* TARG_X8664 */
+
+#ifdef KEY
+      if( CG_min_spill_loc_size && TN_size(tn) <= 4 ){
+	slc = TN_is_float(tn) ? &lra_float32_spills : &lra_int32_spills;
+      }
+#endif
+
       mem_location = LOCAL_SPILLS_Get_Spill_Location (slc, SYM_ROOT_LRA);
       Set_TN_spill(tn, mem_location);
     }
@@ -506,7 +584,20 @@ CGSPILL_OP_Spill_Location (OP *op)
     } else if (OP_store(op)) {
       spill_tn = OP_opnd(op,TOP_Find_Operand_Use(OP_code(op), OU_storeval));
     }
+#ifdef KEY
+    if( spill_tn != NULL &&
+	TN_has_spill( spill_tn ) ){
+      INT n = TOP_Find_Operand_Use( OP_code(op), OU_offset );
+      if( n >= 0 ){
+	TN* ctn = OP_opnd( op, n );
+	if ( TN_is_constant(ctn) && TN_is_symbol(ctn) &&
+	     TN_var(ctn) == TN_spill(spill_tn))
+	  mem_loc = TN_spill( ctn );
+      }
+    }
+#else
     if (spill_tn) mem_loc = TN_spill(spill_tn);
+#endif
 
     if (mem_loc &&
 	(ST_level(mem_loc) > max_spill_level ||
@@ -649,6 +740,21 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
 	       OPERATOR_UNKNOWN, ops);
       break;
     case OPR_CONST:
+#ifdef TARG_X8664
+    if (OPCODE_rtype(opcode) == MTYPE_V16F4 ||
+	OPCODE_rtype(opcode) == MTYPE_V16F8 ||
+	OPCODE_rtype(opcode) == MTYPE_V16I1 ||
+	OPCODE_rtype(opcode) == MTYPE_V16I2 ||
+	OPCODE_rtype(opcode) == MTYPE_V16I4 ||
+	OPCODE_rtype(opcode) == MTYPE_V16I8) {
+      TCON then = ST_tcon_val(WN_st(home));
+      TCON now  = Create_Simd_Const (OPCODE_rtype(opcode), then);
+      ST *sym = New_Const_Sym (Enter_tcon (now), 
+			       Be_Type_Tbl(OPCODE_rtype(opcode)));
+      Allocate_Object(sym);
+      Exp_OP1 (opcode, tn, Gen_Symbol_TN (sym, 0, 0), ops);
+    } else
+#endif
       Exp_OP1 (opcode, tn, Gen_Symbol_TN(WN_st(home),0,0), ops);
       break;
     case OPR_INTCONST:
@@ -732,6 +838,12 @@ CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
       fprintf(TFile, "<Rematerialize> Suppressing spill of rematerializable "
 		     "TN%d.\n", TN_number(src_tn));
     }
+#ifdef KEY
+    // Looks like a bug in the Open64 compiler. 
+    // In the case of entry/exit BBs, the Max_Sdata_Elt_Size might get
+    // reset and never set back if the next return is executed.
+    Max_Sdata_Elt_Size = max_sdata_save;  
+#endif
     return;
   }
 
@@ -1112,6 +1224,10 @@ CGSPILL_Append_Ops (BB *bb, OPS *ops)
       Fix_Xfer_Dependences (bb, ops);
       before_point = BB_last_op(bb);
     }
+#ifdef TARG_X8664
+    else if (last_op != NULL && OP_code(last_op) == TOP_savexmms)
+      before_point = BB_last_op(bb);
+#endif
   }
 
   if (before_point != NULL) {

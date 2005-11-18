@@ -1,3 +1,4 @@
+# -*- Makefile -*-
 #
 #  Makefile.base for libinstr
 #
@@ -65,6 +66,7 @@ CURDIR  = .
 #----------------------------------------------------------------------
 include $(COMMONDEFS)
 
+
 #----------------------------------------------------------------------
 #  Set environment variables
 #
@@ -126,7 +128,7 @@ LDIRT = ii_files *.pch so_locations
 
 VPATH    =  $(LIBINSTR_DIRS)
 
-LCOPTS += $(STD_COMPILE_OPTS)
+LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(LIBINSTR_HEADER_DIRS))
 
@@ -145,6 +147,10 @@ LASOPTS = $(STD_COMPILE_OPTS)
 LASDEFS = $(HOSTDEFS) $(TARGDEFS)
 LASINCS = $(LCINCS)
 
+ifeq ($(BUILD_TARGET), IA32)
+LCDEFS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+LC++DEFS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+endif
 
 # setup stuff to build shared or non-shared
 GLDOPTS = $(STD_LOAD_OPTS)
@@ -167,7 +173,8 @@ endif
 #  Define target
 #----------------------------------------------------------------------
 
-DSO	= libinstr.so
+dso_version := 1
+DSO	= libinstr.so.$(dso_version)
 LIBRARY = libinstr.a
 
 ifeq ($(BUILD_TYPE), NONSHARED)
@@ -177,7 +184,7 @@ ifeq ($(BUILD_VARIANT), ABI)
 TARGETS = $(LIBRARY)
 endif
 ifndef TARGETS
-TARGETS = $(DSO) 
+TARGETS = $(LIBRARY) $(DSO) 
 endif
 
 
@@ -210,6 +217,7 @@ last : make_libdeps
 #
 #----------------------------------------------------------------------
 
+
 install: default
 	$(STD_INSTALL) $(STD_INSTALL_READ_MASK) -F $(STD_LIBRARY_LOC) $(TARGETS)
 ifeq ($(BUILD_TYPE), SHARED)
@@ -220,20 +228,13 @@ so_locations: $(SO_LOCATION_DIR)/so_locations
 	cp $(SO_LOCATION_DIR)/so_locations so_locations
 	chmod u+w so_locations
 
-ifeq ($(BUILD_OS), IRIX)
-libinstr.so: $(LIBINSTR_CXX_OBJS) $(SO_LOCATION_DIR)/Exported \
-	 $(SO_LOCATION_DIR)/so_locations
-	$(C++F) -o libinstr.so $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
-	 $(LIBINSTR_CXX_OBJS) \
-	 $(LLDLIBS) -show
-else
-.PRECIOUS : $(LIBRARY)
-$(LIBRARY): $(LIBRARY)($(LIBINSTR_CXX_OBJS))
+$(LIBRARY): $(LIBINSTR_CXX_OBJS)
+	$(ar) cru $@ $^
+	$(ranlib) $@
 
-$(DSO): $(LIBRARY)
-	$(LD) $(STD_DSO_LOADOPTS) -exports_file $(BUILD_BASE)/common.exports $(EXTRA_EXPORTS) \
-	$(LIBRARY) -o $@ -lc
-endif
+$(DSO): $(LIBINSTR_CXX_OBJS:%.o=%.pic.o)
+	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -Wl,-soname=$(DSO) -Wl,--version-script=$(BUILD_BASE)/$(DSO:%.so.$(dso_version)=%.vs) $(EXTRA_EXPORTS) -o $@ $^ -lstdc++
+	$(ln) -sf $(DSO) $(basename $(DSO))
 
 
 
@@ -243,4 +244,3 @@ LDIRT += $(LIBRARY)
 #  Include the usual commonrules
 #----------------------------------------------------------------------
 include $(COMMONRULES)
-

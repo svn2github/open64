@@ -1,5 +1,5 @@
 /* ia64-dis.c -- Disassemble ia64 instructions
-   Copyright (C) 1998, 1999 Free Software Foundation, Inc.
+   Copyright 1998, 1999, 2000 Free Software Foundation, Inc.
    Contributed by David Mosberger-Tang <davidm@hpl.hp.com>
 
    This file is part of GDB, GAS, and the GNU binutils.
@@ -117,7 +117,7 @@ print_insn_ia64 (bfd_vma memaddr, struct disassemble_info *info)
     {
       /* skip L slot in MLI template: */
       slotnum = 2;
-      retval = 16 - slot_multiplier;
+      retval += slot_multiplier;
     }
 
   insn = slot[slotnum];
@@ -167,10 +167,10 @@ print_insn_ia64 (bfd_vma memaddr, struct disassemble_info *info)
         }
       else if (odesc - elf64_ia64_operands == IA64_OPND_TGT64)
 	{
-	  /* 60-bit immedate for long branches.  */
+	  /* 60-bit immediate for long branches. */
 	  value = (((insn >> 13) & 0xfffff)
 		   | (((insn >> 36) & 1) << 59)
-		   | (slot[1] << 20)) << 4;
+		   | (((slot[1] >> 2) & 0x7fffffffffLL) << 20)) << 4;
 	}
       else
 	{
@@ -261,7 +261,7 @@ print_insn_ia64 (bfd_vma memaddr, struct disassemble_info *info)
     (*info->fprintf_func) (info->stream, ";;");
 
  done:
-  ia64_free_opcode (idesc);
+  ia64_free_opcode ((struct ia64_opcode *)idesc);
  failed:
   if (slotnum == 2)
     retval += 16 - 3*slot_multiplier;

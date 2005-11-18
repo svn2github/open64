@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -91,16 +95,27 @@ public:
         dst = Current_DST;
 	feedback = Cur_PU_Feedback;
 
+#ifdef KEY
+	// Support these as necessary.
+	if (node->Is_Builtin()) {
+	  MEM_src_pool_ptr = NULL;
+	  Current_PU_Info = node->Builtin_PU_Info();
+	  Current_DST = NULL;
+	  Parent_Map = 0;
+	} else
+#endif
+	{
 	MEM_src_pool_ptr = IP_FILE_HDR_mem_pool (node->File_Header ());
+	Current_PU_Info = node->PU_Info ();
+        Current_DST = node->File_Dst();
+	Parent_Map = node->Parent_Map();
+	}
+	Current_Map_Tab = PU_Info_maptab (Current_PU_Info);
 	WN_mem_pool_ptr = node->Mem_Pool();
 	MEM_pu_pool_ptr = WN_mem_pool_ptr;
 	Current_pu = &(node->Get_PU ());
 	CURRENT_SYMTAB = PU_lexical_level (*Current_pu);
 	Scope_tab = node->Scope ();
-	Parent_Map = node->Parent_Map();
-	Current_PU_Info = node->PU_Info ();
-	Current_Map_Tab = PU_Info_maptab (Current_PU_Info);
-        Current_DST = node->File_Dst();
 	Cur_PU_Feedback = node->Feedback_Info ();
     }
 

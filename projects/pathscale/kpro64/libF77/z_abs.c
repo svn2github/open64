@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -36,9 +40,10 @@
 
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/z_abs.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
 
+#include <math.h>
 #include "cmplx.h"
 #include "cmplrs/host.h"
-#include <math.h>
+#include "defalias.h"
 #include "moremath.h"
 
 double_t __zabs(double_t zdreal, double_t zdimag)
@@ -46,7 +51,10 @@ double_t __zabs(double_t zdreal, double_t zdimag)
   return(hypot(zdreal, zdimag));
 }
 
-double_t z_abs(dcomplex *z)
+double_t z_abs__(dcomplex *z)
 {
   return(hypot(z->dreal, z->dimag));
 }
+
+defalias(z_abs__, z_abs_);
+defalias(z_abs__, z_abs);

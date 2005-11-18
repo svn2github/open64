@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -8106,14 +8110,23 @@ int cast_typeless_constant(int		cn_idx,
          if (k < 0) {
             break;
          }
+#ifdef TARG_X8664
+         the_constant[new_word_size-1-i] = CP_CONSTANT(CN_POOL_IDX(cn_idx) + k);
+#else
          the_constant[i] = CP_CONSTANT(CN_POOL_IDX(cn_idx) + k);
+#endif
          k--;
       }
 
       while (i >= 0) {
          /* fill in pad */
          if (zero_pad) {
+#ifdef TARG_X8664
+// Bug 1819
+            the_constant[new_word_size-1-i] = 0;
+#else
             the_constant[i] = 0;
+#endif
          }
          else {
             char_ptr = (char *)&(the_constant[i]);

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,6 +56,8 @@
 // ====================================================================
 // ====================================================================
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <stdio.h>
 #include <elf.h>
 #include <sys/elf_whirl.h>
@@ -95,6 +101,9 @@
 #include "ipa_nested_pu.h" // Build_Nested_Pu_Relations
 #include "privatize_common.h"   // for Rename_Privatized_COMMON
 #include "inline_split_common.h"
+#ifdef KEY
+#include "ipo_inline_util.h"	// for Get_enclosing_region
+#endif
 
 #include "mempool.h"         // MEM_Trace
 
@@ -108,9 +117,11 @@
 // temporary placeholder until feedback is fixed
 // BOOL FB_PU_Has_Feedback = FALSE;
 
+#ifndef KEY
 #define BZERO(b, len) \
 bzero((void *)(b), (int)(len))
 /* copied for now from ld3264/ld_defs.h */
+#endif /* KEY */
 
 const UINT32 inliner_main_file_index = 0;
 SCOPE** Inliner_Aux_Pu_Table;	// for mapping PUs to SCOPE
@@ -428,7 +439,11 @@ Write_callee(IPA_NODE* callee, BOOL non_local, BOOL inline_performed)
     if (All_Calls_Processed (callee, IPA_Call_Graph)) {
 
 	if (IPA_Enable_DFE && All_Calls_Inlined (callee, IPA_Call_Graph) &&
-	    !callee->Is_Externally_Callable ()) {
+	    !callee->Is_Externally_Callable ()
+#ifdef KEY
+	    && ! PU_no_delete(Pu_Table[ST_pu(callee->Func_ST())])
+#endif
+	    ) {
 	    callee->Set_Deletable();
 	    /* mark this ST not_used */
             Set_ST_is_not_used(callee->Func_ST());
@@ -462,7 +477,6 @@ Write_caller(IPA_NODE* node)
     }
 }
 
-
 static void
 Inline_callees_into_caller(IPA_NODE* caller)
 {
@@ -483,6 +497,11 @@ Inline_callees_into_caller(IPA_NODE* caller)
 	IPA_NODE* callee = IPA_Call_Graph->Callee(call);
 
 	Current_Map_Tab = PU_Info_maptab(caller->PU_Info());
+#ifdef KEY
+// Current_Map_Tab is set to the proper value above, and is required in
+// Get_enclosing_region(). Parent_Map is set in the function
+	Get_enclosing_region (caller, e);
+#endif
 
 	BOOL inline_performed = FALSE;
 	if (Is_do_inline(call, e->Array_Index()) && !caller->Is_Deletable()) {
@@ -776,7 +795,11 @@ Inliner_Write_PUs (PU_Info *pu_tree, INT *p_num_PU)
 	    {
                 if (IPA_Enable_DFE && 
 		    	All_Calls_Inlined (node, IPA_Call_Graph) &&
-                    	!node->Is_Externally_Callable ()) {
+                    	!node->Is_Externally_Callable ()
+#ifdef KEY
+		        && ! PU_no_delete(Pu_Table[ST_pu(node->Func_ST())])
+#endif
+			) {
                     node->Set_Deletable();
                     /* mark this ST not_used */
                     Set_ST_is_not_used(node->Func_ST());

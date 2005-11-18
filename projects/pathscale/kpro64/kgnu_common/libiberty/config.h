@@ -1,18 +1,11 @@
 /* config.h.  Generated automatically by configure.  */
 /* config.in.  Generated automatically from configure.in by autoheader.  */
 
-/* Define if using alloca.c.  */
-/* #undef C_ALLOCA */
+/* Define to empty if the keyword does not work.  */
+/* #undef const */
 
-/* Define to one of _getb67, GETB67, getb67 for Cray-2 and Cray-YMP systems.
-   This function is required for alloca.c support on those systems.  */
-/* #undef CRAY_STACKSEG_END */
-
-/* Define if you have alloca, as a function or macro.  */
-#define HAVE_ALLOCA 1
-
-/* Define if you have <alloca.h> and it should be used (not on Ultrix).  */
-#define HAVE_ALLOCA_H 1
+/* Define if you have a working `mmap' system call.  */
+#define HAVE_MMAP 1
 
 /* Define if you have <sys/wait.h> that is POSIX.1 compatible.  */
 #define HAVE_SYS_WAIT_H 1
@@ -20,38 +13,32 @@
 /* Define if you have <vfork.h>.  */
 /* #undef HAVE_VFORK_H */
 
+/* Define as __inline if that's what the C compiler calls it.  */
+/* #undef inline */
+
+/* Define if your C compiler doesn't accept -c and -o together.  */
+/* #undef NO_MINUS_C_MINUS_O */
+
 /* Define to `int' if <sys/types.h> doesn't define.  */
 /* #undef pid_t */
 
 /* Define if you need to in order for stat and other things to work.  */
 /* #undef _POSIX_SOURCE */
 
-/* If using the C implementation of alloca, define if you know the
-   direction of stack growth for your system; otherwise it will be
-   automatically deduced at run-time.
- STACK_DIRECTION > 0 => grows toward higher addresses
- STACK_DIRECTION < 0 => grows toward lower addresses
- STACK_DIRECTION = 0 => direction of growth unknown
- */
-/* #undef STACK_DIRECTION */
-
 /* Define if you have the ANSI C header files.  */
 #define STDC_HEADERS 1
+
+/* Define if you can safely include both <sys/time.h> and <time.h>.  */
+#define TIME_WITH_SYS_TIME 1
 
 /* Define vfork as fork if vfork does not work.  */
 /* #undef vfork */
 
-/* Define if you have the sys_errlist variable.  */
-#define HAVE_SYS_ERRLIST 1
+/* Define to `unsigned long' if <sys/types.h> doesn't define.  */
+#define uintptr_t unsigned long
 
-/* Define if you have the sys_nerr variable.  */
-#define HAVE_SYS_NERR 1
-
-/* Define if you have the sys_siglist variable.  */
-#define HAVE_SYS_SIGLIST 1
-
-/* Define if you have the strerror function.  */
-#define HAVE_STRERROR 1
+/* Define if you have the _doprnt function.  */
+/* #undef HAVE__DOPRNT */
 
 /* Define if you have the asprintf function.  */
 #define HAVE_ASPRINTF 1
@@ -68,6 +55,9 @@
 /* Define if you have the bcopy function.  */
 #define HAVE_BCOPY 1
 
+/* Define if you have the bsearch function.  */
+#define HAVE_BSEARCH 1
+
 /* Define if you have the bzero function.  */
 #define HAVE_BZERO 1
 
@@ -77,6 +67,9 @@
 /* Define if you have the clock function.  */
 #define HAVE_CLOCK 1
 
+/* Define if you have the ffs function.  */
+#define HAVE_FFS 1
+
 /* Define if you have the getcwd function.  */
 #define HAVE_GETCWD 1
 
@@ -85,6 +78,9 @@
 
 /* Define if you have the getrusage function.  */
 #define HAVE_GETRUSAGE 1
+
+/* Define if you have the getsysinfo function.  */
+/* #undef HAVE_GETSYSINFO */
 
 /* Define if you have the gettimeofday function.  */
 #define HAVE_GETTIMEOFDAY 1
@@ -118,6 +114,12 @@
 
 /* Define if you have the psignal function.  */
 #define HAVE_PSIGNAL 1
+
+/* Define if you have the pstat_getdynamic function.  */
+/* #undef HAVE_PSTAT_GETDYNAMIC */
+
+/* Define if you have the pstat_getstatic function.  */
+/* #undef HAVE_PSTAT_GETSTATIC */
 
 /* Define if you have the putenv function.  */
 #define HAVE_PUTENV 1
@@ -176,6 +178,15 @@
 /* Define if you have the sysconf function.  */
 #define HAVE_SYSCONF 1
 
+/* Define if you have the sysctl function.  */
+#define HAVE_SYSCTL 1
+
+/* Define if you have the sysmp function.  */
+/* #undef HAVE_SYSMP */
+
+/* Define if you have the table function.  */
+/* #undef HAVE_TABLE */
+
 /* Define if you have the times function.  */
 #define HAVE_TIMES 1
 
@@ -197,6 +208,18 @@
 /* Define if you have the waitpid function.  */
 #define HAVE_WAITPID 1
 
+/* Define if you have the <alloca.h> header file.  */
+#define HAVE_ALLOCA_H 1
+
+/* Define if you have the <fcntl.h> header file.  */
+#define HAVE_FCNTL_H 1
+
+/* Define if you have the <limits.h> header file.  */
+#define HAVE_LIMITS_H 1
+
+/* Define if you have the <machine/hal_sysinfo.h> header file.  */
+/* #undef HAVE_MACHINE_HAL_SYSINFO_H */
+
 /* Define if you have the <stdlib.h> header file.  */
 #define HAVE_STDLIB_H 1
 
@@ -209,8 +232,14 @@
 /* Define if you have the <sys/file.h> header file.  */
 #define HAVE_SYS_FILE_H 1
 
+/* Define if you have the <sys/mman.h> header file.  */
+#define HAVE_SYS_MMAN_H 1
+
 /* Define if you have the <sys/param.h> header file.  */
 #define HAVE_SYS_PARAM_H 1
+
+/* Define if you have the <sys/pstat.h> header file.  */
+/* #undef HAVE_SYS_PSTAT_H */
 
 /* Define if you have the <sys/resource.h> header file.  */
 #define HAVE_SYS_RESOURCE_H 1
@@ -218,8 +247,60 @@
 /* Define if you have the <sys/stat.h> header file.  */
 #define HAVE_SYS_STAT_H 1
 
+/* Define if you have the <sys/sysctl.h> header file.  */
+#define HAVE_SYS_SYSCTL_H 1
+
+/* Define if you have the <sys/sysinfo.h> header file.  */
+#define HAVE_SYS_SYSINFO_H 1
+
+/* Define if you have the <sys/sysmp.h> header file.  */
+/* #undef HAVE_SYS_SYSMP_H */
+
+/* Define if you have the <sys/systemcfg.h> header file.  */
+/* #undef HAVE_SYS_SYSTEMCFG_H */
+
+/* Define if you have the <sys/table.h> header file.  */
+/* #undef HAVE_SYS_TABLE_H */
+
 /* Define if you have the <sys/time.h> header file.  */
 #define HAVE_SYS_TIME_H 1
 
+/* Define if you have the <time.h> header file.  */
+#define HAVE_TIME_H 1
+
 /* Define if you have the <unistd.h> header file.  */
 #define HAVE_UNISTD_H 1
+
+/* Define if you have the <malloc.h> header file.  */
+#define HAVE_MALLOC_H 1
+
+/* Define if errno must be declared even when <errno.h> is included. */
+/* #undef NEED_DECLARATION_ERRNO */
+
+/* Define if you have the `uintptr_t' type. */
+#define HAVE_UINTPTR_T 1
+
+/* Define if you have the sys_errlist variable. */
+#define HAVE_SYS_ERRLIST 1
+
+/* Define if you have the sys_nerr variable. */
+#define HAVE_SYS_NERR 1
+
+/* Define if you have the sys_siglist variable. */
+#define HAVE_SYS_SIGLIST 1
+
+/* Define to one of _getb67, GETB67, getb67 for Cray-2 and Cray-YMP
+   systems. This function is required for alloca.c support on those
+   systems. */
+/* #undef CRAY_STACKSEG_END */
+
+/* Define if you know the direction of stack growth for your system;
+   otherwise it will be automatically deduced at run-time.
+        STACK_DIRECTION > 0 => grows toward higher addresses
+        STACK_DIRECTION < 0 => grows toward lower addresses
+        STACK_DIRECTION = 0 => direction of growth unknown */
+#define STACK_DIRECTION -1
+
+/* Define if you have the _system_configuration variable. */
+/* #undef HAVE__SYSTEM_CONFIGURATION */
+

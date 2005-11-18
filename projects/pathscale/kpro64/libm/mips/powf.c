@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -65,7 +69,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/libm/mips/powf
 extern	double	__log(double);
 extern	double	__exp(double);
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern  float   fpow(float, float);
 extern  float   powf(float, float);
 

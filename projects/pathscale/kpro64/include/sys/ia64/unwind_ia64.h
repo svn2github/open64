@@ -1,3 +1,7 @@
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -127,9 +131,9 @@ typedef struct __unw_info_struct {
 /* access macros for unwind info records/blocks */
 /* (where x is the leading double word) */
 #define __UNW_VER(x) ((x) >> 48)
-#define __UNW_FLAG_EHANDLER(x) ((x) & 0x0000000100000000L)
-#define __UNW_FLAG_UHANDLER(x) ((x) & 0x0000000200000000L)
-#define __UNW_LENGTH(x) ((x) & 0x00000000ffffffffL)
+#define __UNW_FLAG_EHANDLER(x) ((x) & 0x0000000100000000LL)
+#define __UNW_FLAG_UHANDLER(x) ((x) & 0x0000000200000000LL)
+#define __UNW_LENGTH(x) ((x) & 0x00000000ffffffffLL)
 
 /* ========================================================================== */
 

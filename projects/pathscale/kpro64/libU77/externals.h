@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -60,16 +64,16 @@ extern void _cleanup (void);			/* unknown */
 #endif /* FTN90_IO */
 
 #if defined(__mips)
-#ifdef FTN90_IO
-extern int __Argc;
-extern char **__Argv;
-#else
-extern int f77argc;		/* from libF77/main.c */
-extern char **f77argv;
-#endif
+# ifdef FTN90_IO
+   extern int __Argc;
+   extern char **__Argv;
+# else
+   extern int f77argc;		/* from libF77/main.c */
+   extern char **f77argv;
+# endif
 #elif defined(__linux)
-extern int _f90argc;
-extern char **_f90argv;
+  extern int f__xargc;
+  extern char **f__xargv;
 #endif
 
 /* these are set and used within libU77 */

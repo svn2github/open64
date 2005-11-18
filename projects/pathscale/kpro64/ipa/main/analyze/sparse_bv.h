@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,9 +41,9 @@
 #ifndef cxx_sparse_bv_INCLUDED
 #define cxx_sparse_bv_INCLUDED
 
-#ifndef __SGI_STL_VECTOR_H
-#include <vector.h>
-#endif 
+#include <vector>
+
+using std::vector;
 
 #define mUINT64_BIT	64		// number of bits in an mUINT64
 

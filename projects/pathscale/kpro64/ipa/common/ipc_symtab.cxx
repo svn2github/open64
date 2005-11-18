@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <elf.h>
 #include <sys/elf_whirl.h>		// for WHIRL_REVISION
 
@@ -381,7 +387,7 @@ process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
 		       gsymtab); 
     pair<Sym *, UINT> ext_symtab = walk_st_list (gtabs, elf_symtab);
 
-#ifndef TARG_IA64    // Merge the new ELF symbol table entries with the existing ones.
+#if !defined(TARG_IA64) && !defined(TARG_X8664)    // Merge the new ELF symbol table entries with the existing ones.
     //
     if (ext_symtab.second  > 0) {
 #if 1
@@ -417,12 +423,21 @@ process_whirl (an_object_file_ptr p_obj, int nsec, const Shdr* section_table,
 
 static BOOL ipa_dot_so_initialized = FALSE;
 
+#ifdef KEY
+#include "ipc_defs.h"
+
+ IP_TARGET_TYPE IPA_Target_Type;
+#endif
+
 extern "C" void
 process_whirl32 (an_object_file_ptr p_obj, INT nsec,
 		 const Elf32_Shdr* section_table,
 		 BOOL check_whirl_revision, const char* file_name) 
 {
     if (!ipa_dot_so_initialized) {
+#ifdef KEY
+        IPA_Target_Type = IP_32_bit_ABI;
+#endif
 	ipa_dot_so_initialized = TRUE;
 	ipa_dot_so_init ();
     }
@@ -438,6 +453,9 @@ process_whirl64 (an_object_file_ptr p_obj, INT nsec,
 		 BOOL check_whirl_revision, const char* file_name)
 { 
     if (!ipa_dot_so_initialized) {
+#ifdef KEY
+        IPA_Target_Type = IP_64_bit_ABI;
+#endif
 	ipa_dot_so_initialized = TRUE;
 	ipa_dot_so_init ();
     }
@@ -446,7 +464,7 @@ process_whirl64 (an_object_file_ptr p_obj, INT nsec,
     process_whirl (p_obj, nsec, section_table, check_whirl_revision,
 		   file_name, tag); 
 }
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
 
     /* This is just a door to the be.so open routines. */
 extern "C" void *

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -92,6 +96,8 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cw
 #include "cwh_auxst.h"
 #include "cwh_auxst.i"
 #include "sgi_cmd_line.h"
+
+AUXST_TAB *Auxst_tab;
 
 /*===================================================
  *
@@ -1278,7 +1284,7 @@ cwh_auxst_dump_list (LIST * l, BOOL verbose)
       if (verbose) 
 	DUMP_ST(I_element(i));
       else 
-	printf ("    0x%x (%s) \n",I_element(i),ST_name(I_element(i)));
+	printf ("    %p (%s) \n",I_element(i),ST_name(I_element(i)));
 
       i = I_next(i);
     }
@@ -1302,12 +1308,12 @@ cwh_auxst_dump_dummies(DUMMIES * d)
   if (d == NULL)
     return ;
 
-  printf ("  DUMMIES : 0x%x   next : 0x%x  \n",
+  printf ("  DUMMIES : %p   next : %p  \n",
 	  d,
 	  d->next_entry);
 
   if (d->ret_type != 0)
-    printf ("    result TY : 0x%x, \n",d->ret_type);
+    printf ("    result TY : %d, \n",d->ret_type);
 
 
   if (d->total_args != 0) {
@@ -1319,7 +1325,7 @@ cwh_auxst_dump_dummies(DUMMIES * d)
 	    d->arg_lengths_index);
 
     for (i = 0 ; i < d->args_seen ; i ++ ) {
-      printf ("      arg ST : 0x%x (%s) \n", 
+      printf ("      arg ST : %p (%s) \n", 
 	      d->arglist[i],
 	      ST_name( d->arglist[i]));
     }
@@ -1328,7 +1334,7 @@ cwh_auxst_dump_dummies(DUMMIES * d)
 	 i < d->arg_lengths_index ; 
 	 i ++) {
 
-      printf ("      len ST : 0x%x (%s) \n", 
+      printf ("      len ST : %p (%s) \n", 
 	      d->arglist[i],
 	      ST_name( d->arglist[i]));
     }
@@ -1364,10 +1370,10 @@ cwh_auxst_dump (ST * st)
   if (o == NULL)
     return ;
 
-  printf ("AUXST: 0x%x   next: 0x%x \n",o,AUXST_Next(o));
+  printf ("AUXST: %p   next: %p \n",o,AUXST_Next(o));
 
   if (AUXST_OwningST(o) != NULL ) {
-    printf ("  associated ST: 0x%x (%s) \n",
+    printf ("  associated ST: %p (%s) \n",
 	    AUXST_OwningST(o),
 	    ST_name(AUXST_OwningST(o))); 
   }
@@ -1406,13 +1412,13 @@ cwh_auxst_dump (ST * st)
     printf ("  DST name: %s \n",AUXST_Stem(o));
   
   if (AUXST_Pragma(o)) 
-    printf ("  pragma: WN 0x%x \n",AUXST_Pragma(o)) ;
+    printf ("  pragma: WN %p \n",AUXST_Pragma(o)) ;
 
   if (AUXST_CRIPointee(o)) 
-    printf ("  cri_pointee: ST 0x%x (%s)\n",AUXST_CRIPointee(o),ST_name(AUXST_CRIPointee(o))) ;
+    printf ("  cri_pointee: ST %p (%s)\n",AUXST_CRIPointee(o),ST_name(AUXST_CRIPointee(o))) ;
 
   if (AUXST_DataInfo(o)) 
-    printf ("  data info: 0x%x \n",AUXST_DataInfo(o)) ;
+    printf ("  data info: %p \n",AUXST_DataInfo(o)) ;
 
   l = cwh_auxst_find_list(o,l_ALTENTRY) ;
   if (L_first(l) != NULL){

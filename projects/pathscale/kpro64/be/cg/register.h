@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -736,6 +740,10 @@ typedef struct {
   REGISTER_SET      shrink_wrap;
   REGISTER_SET	    stacked;
   REGISTER_SET      rotating;
+#ifdef TARG_X8664
+  /* Set of registers that are eight-bit addressable. */
+  REGISTER_SET      eight_bit_regs;
+#endif
 } REGISTER_CLASS_INFO;
 
 
@@ -782,6 +790,10 @@ REGISTER_CLASS_info[ISA_REGISTER_CLASS_MAX + 1];
                                 (REGISTER_CLASS_info[x].can_store)
 #define REGISTER_CLASS_multiple_save(x)				\
                                 (REGISTER_CLASS_info[x].multiple_save)
+#ifdef TARG_X8664
+#define REGISTER_CLASS_eight_bit_regs(x)			\
+                                (REGISTER_CLASS_info[x].eight_bit_regs)
+#endif
 #define REGISTER_CLASS_last_register(x)				\
 			(REGISTER_CLASS_register_count(x) + REGISTER_MIN - 1)
 

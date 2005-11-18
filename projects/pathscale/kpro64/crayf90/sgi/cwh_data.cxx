@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -167,7 +171,7 @@ fei_static_base(INTPTR sym_idx)
 
    current_data_info = ST_auxst_data_info(current_st);
    if (!current_data_info) {
-      current_data_info = CXX_NEW(data_info_s(current_st),FE_Mempool);
+      current_data_info = CXX_NEW(data_info_s(current_st), Malloc_Mem_Pool);
       Set_ST_auxst_data_info(current_st,current_data_info);
    }
    current_inito = current_data_info->Get_Inito();
@@ -258,7 +262,7 @@ static INT32 get_TCON_size(TCON_IDX tc)
 {
    TYPE_ID t;
    INT32 esize;
-   if (tc == NULL) {
+   if (tc == 0) {
       /* Must be doing an init of a symbol, rather than 
        * a constant. Return Pointer_Size.
        */
@@ -456,9 +460,9 @@ static INITV_IDX create_initv(INITO_IDX ino, INT32 repeat, TCON_IDX tc,
 			    b_and_o *bo)
 {
    if (tc) {
-      return (Irb_Init_Val(ino, NULL, repeat, tc));
+      return (Irb_Init_Val(ino, 0, repeat, tc));
    } else {
-      return (Irb_Init_Symoff(ino, NULL, repeat, bo->base, bo->offset));
+      return (Irb_Init_Symoff(ino, 0, repeat, bo->base, bo->offset));
    }
 }
 
@@ -555,7 +559,7 @@ void fei_static_simple_reloc_init  ( INT64 bit_offset,
    DevAssert((value.base),("NULL base found"));
    cwh_expr_set_flags(value.base,f_T_SAVED);
    
-   static_simple_init_helper(dup_count,stride,NULL,&value);
+   static_simple_init_helper(dup_count,stride,0,&value);
 }
 
 
@@ -611,9 +615,9 @@ static void emit_inits_for_symbol(ST_IDX st_idx, ST *st)
      // Do we need to pad before? 
      pad_size = offset - pos;
      if (pad_size > 0) {
-       pad = Irb_Init_Pad(NULL,prev_initv,pad_size);
+       pad = Irb_Init_Pad(0,prev_initv,pad_size);
        if (prev_initv == 0) {
-	 prev_initv = Irb_Init_Block(inito,NULL,1);
+	 prev_initv = Irb_Init_Block(inito,0,1);
 	 Set_INITV_blk(prev_initv,pad);
        } else {
 	 Set_INITV_next(prev_initv,pad);
@@ -628,7 +632,7 @@ static void emit_inits_for_symbol(ST_IDX st_idx, ST *st)
       
      // Add the initv to the chain
      if (prev_initv == 0) {
-       prev_initv = Irb_Init_Block(inito,NULL,1);
+       prev_initv = Irb_Init_Block(inito,0,1);
        Set_INITV_blk(prev_initv,initv);
      } else {
        Set_INITV_next(prev_initv,initv);
@@ -640,11 +644,13 @@ static void emit_inits_for_symbol(ST_IDX st_idx, ST *st)
    // Do we need to pad the end? 
    pad_size = TY_size(ST_type(st)) - pos;
    if (pad_size > 0) {
-      pad = Irb_Init_Pad(NULL,prev_initv,pad_size);
+      pad = Irb_Init_Pad(0,prev_initv,pad_size);
    }
 
    // Delete the structure
-   CXX_DELETE(d,FE_Mempool);
+   // use malloc mempool because there's direct call to delete from destructors
+   // causing nested calls to operator delete 
+   CXX_DELETE(d,Malloc_Mem_Pool);
    Set_ST_auxst_data_info(st,NULL);
 
    return;

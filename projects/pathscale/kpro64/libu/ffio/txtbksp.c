@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -95,7 +99,7 @@ _txt_bksp(struct fdinfo *fio, struct ffsw *stat)
 		(text_info->eof_len == 24));
 
 	if (text_info->eof_len == 24){
-		if (text_info->eof_mark != ((unsigned long)'~e\n'<<TEXTNL_JUSTIFY_SHIFT)){
+		if (text_info->eof_mark != (TEXT_MAGIC_MARKER<<TEXTNL_JUSTIFY_SHIFT)){
 			ERETURN(stat,FDC_ERR_INTERR,0);
 		}
 	}

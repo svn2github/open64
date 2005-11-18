@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -44,6 +48,13 @@ static int scc_nve_convert[4] = {SCCFULL, SCCFRST, SCCMIDL, SCCLAST};
 
 #define	CNTLZ	0x1A	/* Control-Z */
 
+static int _gen_baddata(struct fdinfo *fio, struct ffsw *stat);
+static int get_block(struct fdinfo *fio, struct ffsw *stat);
+static int get_segment(struct fdinfo *fio, struct ffsw *stat);
+static int seteof(struct fdinfo *fio, struct ffsw *stat);
+static int skip2bor(struct fdinfo *fio, struct ffsw *stat);
+static int skip2eor(struct fdinfo *fio, struct ffsw *stat);
+
 /*
  *	Read a 4-digit ASCII number used in headers.
  */
@@ -69,6 +80,8 @@ _DTB(char *p, int *err)
 
 	return(value);
 }
+
+static const uint32 PAD_PATTERN = 0x5e5e5e5e;
 
 /*
  * Read a generic V class file
@@ -200,9 +213,7 @@ int fulp, int *ubc)
  *		<0 some error.
  */
 static int
-get_segment(fio, stat)
-struct fdinfo *fio;
-struct ffsw *stat;
+get_segment(struct fdinfo *fio, struct ffsw *stat)
 	{
 	union sdw_u	sdw;
 	int		i, sdwlen, scc, scci, err;
@@ -254,8 +265,8 @@ again:
 /*
  *			Check for padd and go get new block if found
  */
-			tword = sdw.wword & 0xFFFFFFFF00000000;
-			if ((tword >> 32) == '^^^^')
+			tword = sdw.wword & 0xFFFFFFFF00000000LL;
+			if ((tword >> 32) == PAD_PATTERN)
 				{
 				/* should check ALL of the bytes here... */
 				fio->_cnt = 0;	/* skip to end of block */
@@ -271,8 +282,8 @@ again:
 /*
  *			Check for padd and go get new block if found
  */
-			tword = sdw.wword & 0xFFFFFFFF00000000;
-			if ((tword >> 32) == '^^^^')
+			tword = sdw.wword & 0xFFFFFFFF00000000LL;
+			if ((tword >> 32) == PAD_PATTERN)
 				{
 				/* should check ALL of the bytes here... */
 				fio->_cnt = 0;	/* skip to end of block */
@@ -294,8 +305,8 @@ again:
 /*
  *			Check for padd and go get new block if found
  */
-			tword = (sdw.wword & 0x00FFFFFFFF000000) << 8;
-			if (((tword >> 24) & 0xFFFFFFFF) == '^^^^')
+			tword = (sdw.wword & 0x00FFFFFFFF000000LL) << 8;
+			if (((tword >> 24) & 0xFFFFFFFF) == PAD_PATTERN)
 				{
 				/* should check ALL of the bytes here... */
 				fio->_cnt = 0;	/* skip to end of block */
@@ -354,7 +365,7 @@ again:
 /*
  *	Common code to handle EOF return
  */
-static
+static int
 seteof(struct fdinfo *fio, struct ffsw *stat)
 	{
 	fio->segbits = 0;	/* no data here.. */
@@ -385,7 +396,7 @@ seteod(struct fdinfo *fio, struct ffsw *stat)
  * Read a block of data as defined by the next 32 bits.  This assumes
  * that the next 32 bits ARE a BDW.
  */
-static
+static int
 get_block(struct fdinfo *fio, struct ffsw *stat)
 	{
 	int		bdwlen, zero, req, ret, padd;
@@ -573,7 +584,7 @@ got_end:
  * Skip2eor skips ahead to the end of the record, reading up blocks and
  * records as needed until the SCC says FFEOR, or hit EOD.
  */
-static
+static int
 skip2eor(struct fdinfo *fio, struct ffsw *stat)
 	{
 	int ret;
@@ -633,7 +644,7 @@ _gen_vseek(struct fdinfo *fio, int pos, int whence, struct ffsw *stat)
  * Skips to the end of the record. If an error is encountered,
  * "stat" will contain the error number.
  */
-static 
+static int
 _gen_baddata(struct fdinfo *fio, struct ffsw *stat)
 	{
 	struct gen_vf *vf_info;
@@ -675,7 +686,7 @@ _gen_baddata(struct fdinfo *fio, struct ffsw *stat)
  * reading up blocks and records as needed until the SCC says
  * FFEOR, or beginning of record, or hit EOD.
  */
-static
+static int
 skip2bor(struct fdinfo *fio, struct ffsw *stat)
 	{
 	int ret;

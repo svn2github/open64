@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -98,7 +102,9 @@
 					whether to repeat alias
 					classification within preopt
 					for LNO */
-
+#ifdef KEY
+#define PU_IS_PROFILER          0x20
+#endif
 /* reserve the top 4 bits for internal use within IPA */
 #define PU_INTERNAL_MASK 0xf0000000
 #define PU_DELETED	0x10000000  /* only used internally within IPA */

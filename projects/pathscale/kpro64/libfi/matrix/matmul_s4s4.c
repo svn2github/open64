@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -47,8 +51,8 @@
 #define SUBNAME1 _S4GEMMX
 #define SUBNAME2 _S4GEMVX
 #else
-#define SUBNAME1 s4gemmx__
-#define SUBNAME2 s4gemvx__
+#define SUBNAME1 _s4gemmx__
+#define SUBNAME2 _s4gemvx__
 #endif
 /*
  * Type of constants alpha and beta

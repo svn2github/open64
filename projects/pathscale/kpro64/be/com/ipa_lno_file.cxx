@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,6 +37,8 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -98,9 +104,12 @@ static void Ir_Lno_Signal_Handler(int sig,
   // Invoke a fatal error instead of normal handling.  The variable 
   // 'Doing_mmapped_io' is defined in common/com/ir_bcom.cxx
 
-  if (Doing_mmapped_io && err_num > 0 && err_num < sys_nerr)
+  errno = 0;
+  char *err_str = strerror(err_num);
+  
+  if (Doing_mmapped_io && errno == 0)
     Fatal_Error("I/O error in %s: %s", Current_Output ?
-      Current_Output->file_name : "mmapped object", sys_errlist[err_num]);
+      Current_Output->file_name : "mmapped object", err_str);
 
   // Otherwise, handle this as a normal SIGSEGV or SIGBUS
   switch (sig) {

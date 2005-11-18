@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -146,6 +151,9 @@ struct OPT_FB_NODE {
   EDGES incoming_edges;
   EDGES outgoing_edges;
 
+#ifdef KEY
+  WN* orig_wn;
+#endif
 
   INT      update_count;
   bool     in_out_same;
@@ -253,7 +261,7 @@ public:
 
   void Clone_edge( IDTYPE nx_src_old, IDTYPE nx_dst_old,
 		   IDTYPE nx_src_new, IDTYPE nx_dst_new, float scale );
-  void Clone_zone( zone& z, map<vertex_id, vertex_id>& nx_old_to_new );
+  void Clone_zone( zone& z, std::map<vertex_id, vertex_id>& nx_old_to_new );
 
   void Print( FILE *fp = stderr ) const;
   FB_VERIFY_STATUS Verify( CFG *cfg, const char *const phase );

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,6 +56,7 @@
 #if	defined(_LITTLE_ENDIAN)
 #include <cray/nlcatmsg.h>
 #endif
+#include <unistd.h>
 
 #ifdef	_UNICOS
 

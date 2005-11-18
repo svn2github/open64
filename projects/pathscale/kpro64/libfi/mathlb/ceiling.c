@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -112,7 +116,7 @@
 			result	= -HUGE_INT8_F90;	\
 	}
 
-#elif	defined(__mips) || defined(_LITTLE_ENDIAN)
+#elif	defined(_garbage) && (defined(__mips) || defined(_LITTLE_ENDIAN))
 /* This is mips ---------------------------------------------	*/
 
 /* Use largest precision for the conversion of float to int.
@@ -163,7 +167,7 @@
 #if _F_REAL4 == 1
 #define	_CEIL4()					\
 	_f_real4	ia;				\
-	result		= x;				\
+	result		= (typeof(result)) x;		\
 	ia	= result;				\
 	if (fabsf(x) < 8388608) {			\
 		if (x >= 0.0 && ia != x)		\
@@ -188,16 +192,16 @@
  */
 #define	_CEIL8()					\
 	_f_real8	ia;				\
-	result		= x;				\
+	result		= (typeof(result)) x;		\
 	ia	= result;				\
-	if (fabs(x) < 4503599627370496) {		\
+	if (fabs(x) < 4503599627370496LL) {		\
 		if (x >= 0.0 && ia != x)		\
 			result	= result + 1;		\
 	} else {					\
-		if (x >= _TWO_POWER_63)			\
-			result	= HUGE_INT8_F90;	\
-		else if (x <= -_TWO_POWER_63)		\
-			result	= -HUGE_INT8_F90 - 1;	\
+		if ((long long) x >= _TWO_POWER_63)	\
+			result	= (typeof(result)) HUGE_INT8_F90;	\
+		else if ((long long) x <= -_TWO_POWER_63)\
+			result	= (typeof(result))(-HUGE_INT8_F90 - 1);	\
 	}
 
 #if _F_REAL16 == 1
@@ -212,16 +216,16 @@
  */
 #define _CEIL16()					\
 	_f_real16	ia;				\
-	result		= x;				\
+	result		= (typeof(result)) x;		\
 	ia	= result;				\
 	if (fabsl(x) <= HUGE_INT8_F90) {		\
 		if (x >= 0.0 && ia != x)		\
 			result	= result + 1;		\
 	} else {					\
 		if (x >= 0.0)				\
-			result	= HUGE_INT8_F90;	\
+			result	= (typeof(result)) HUGE_INT8_F90;	\
 		else if (x <= -_TWO_POWER_63)		\
-			result	= -HUGE_INT8_F90 - 1;	\
+			result	= (typeof(result))(-HUGE_INT8_F90 - 1);	\
 	}
 
 #endif	/* _F_REAL16 equal 1 */

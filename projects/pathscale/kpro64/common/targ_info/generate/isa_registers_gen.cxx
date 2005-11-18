@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,7 +56,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include <list.h>
+#include <list>
 #include "gen_util.h"
 #include "targ_isa_subset.h"
 #include "isa_registers_gen.h"
@@ -80,12 +84,12 @@ struct isa_register_class {
   bool multiple_save;
   int min_reg;
   int max_reg;
-  list<ISA_REGISTER_SET> regsets;
-  list<ISA_REGISTER_SUBCLASS> subclasses;
+  std::list<ISA_REGISTER_SET> regsets;
+  std::list<ISA_REGISTER_SUBCLASS> subclasses;
 };
 
-static list<ISA_REGISTER_CLASS> rclasses; // All the classes
-static list<ISA_REGISTER_SUBCLASS> subclasses; // All the sub classes
+static std::list<ISA_REGISTER_CLASS> rclasses; // All the classes
+static std::list<ISA_REGISTER_SUBCLASS> subclasses; // All the sub classes
 
 static const char * const interface[] = {
   "/* ====================================================================",
@@ -354,8 +358,8 @@ void ISA_Registers_End(void)
 //  See interface description.
 /////////////////////////////////////
 {
-  list <ISA_REGISTER_CLASS>::iterator rc_iter;
-  list <ISA_REGISTER_SUBCLASS>::iterator rsc_iter;
+  std::list <ISA_REGISTER_CLASS>::iterator rc_iter;
+  std::list <ISA_REGISTER_SUBCLASS>::iterator rsc_iter;
   int i;
 
   int max_reg = 0;
@@ -363,7 +367,7 @@ void ISA_Registers_End(void)
     ISA_REGISTER_CLASS rclass = *rc_iter;
     int class_max = 0;
     int class_min = 0;
-    list<ISA_REGISTER_SET>::iterator reg_iter;
+    std::list<ISA_REGISTER_SET>::iterator reg_iter;
     for (reg_iter = rclass->regsets.begin();
 	 reg_iter != rclass->regsets.end();
 	 ++reg_iter
@@ -448,7 +452,7 @@ void ISA_Registers_End(void)
 		 0, 0, -1, 0, 0, 0, "UNDEFINED");
   for (rc_iter = rclasses.begin(); rc_iter != rclasses.end(); ++rc_iter) {
     ISA_REGISTER_CLASS rclass = *rc_iter;
-    list<ISA_REGISTER_SET>::iterator reg_iter;
+    std::list<ISA_REGISTER_SET>::iterator reg_iter;
     for (reg_iter = rclass->regsets.begin();
 	 reg_iter != rclass->regsets.end();
 	 ++reg_iter
@@ -486,7 +490,7 @@ void ISA_Registers_End(void)
   int index = 1;
   for (rc_iter = rclasses.begin(); rc_iter != rclasses.end(); ++rc_iter) {
     ISA_REGISTER_CLASS rclass = *rc_iter;
-    list<ISA_REGISTER_SET>::iterator reg_iter;
+    std::list<ISA_REGISTER_SET>::iterator reg_iter;
     fprintf(cfile, "  %d,  /* ISA_REGISTER_CLASS_%s */\n", index, rclass->name);
     for (reg_iter = rclass->regsets.begin();
 	 reg_iter != rclass->regsets.end();

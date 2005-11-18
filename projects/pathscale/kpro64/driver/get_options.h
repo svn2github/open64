@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,13 +39,16 @@
 
 #include "basic.h"
 
-extern string option_name;	/* current option name */
+extern char *option_name;	/* current option name */
 
-extern string optargs;          /* string argument following fixed prefix */
+extern char *optargs;          /* string argument following fixed prefix */
 extern int optargd;             /* number argument following fixed prefix */
 
 /* add arg to prefix for indirect option */
-extern int add_string_option (int flag, string arg);
+extern int add_string_option (int flag, char *arg);
+#ifdef KEY
+extern int add_string_option_or_dash (int flag, char *arg);
+#endif
 
 /* iteratively get a single option from the command line */
 extern int get_option(int *argi, char *argv[]);

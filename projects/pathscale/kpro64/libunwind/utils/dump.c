@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -577,8 +581,7 @@ __unw_error_t unwind_dump2ascii(char *unwind_table_ptr,
 							sizeof(__unw_dbl_word_t)));
 
 			/* dump unwind info */
-			fprintf(fp, "Unwind info @ 0x%llx ",
-				(unsigned long long)info);
+			fprintf(fp, "Unwind info @ %p ", info);
 			fprintf(fp, "(Offset: 0x%llx)\n",
 				(unsigned long long)unwind_info_offset);
 			fprintf(fp, "\tVersion: %llu   ",

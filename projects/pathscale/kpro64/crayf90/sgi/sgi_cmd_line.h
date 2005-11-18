@@ -76,6 +76,9 @@ extern BOOL enable_dsm_recompile;
 extern BOOL enable_dsm_processing;
 
 extern char *FE_gdar_filename;
+#ifdef KEY
+extern char *F2C_ABI_filename;
+#endif
 
 extern BOOL  global_chunk_pragma_set;   /* From the -chunk= command line option */
 extern INT32 global_chunk_pragma_value;

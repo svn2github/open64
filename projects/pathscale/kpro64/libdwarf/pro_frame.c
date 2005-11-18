@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,6 +47,12 @@
 #include "pro_incl.h"
 #include "pro_frame.h"
 
+#ifdef KEY
+// whether we need to generate eh_frame entries in PIC mode
+Dwarf_Bool generate_fpic_dwarf = false;
+// is it m64 or m32 ?
+Dwarf_Bool generate_m64_dwarf = false;
+#endif
 static void _dwarf_pro_add_to_fde(Dwarf_P_Fde fde, Dwarf_P_Frame_Pgm inst);
 
 /*-------------------------------------------------------------------------
@@ -61,11 +71,20 @@ dwarf_add_frame_cie(
 	Dwarf_Small code_align,
 	Dwarf_Small data_align,
 	Dwarf_Small return_reg,
+#ifdef KEY
+	Dwarf_Unsigned personality,
+	Dwarf_Bool     fpic,
+	Dwarf_Bool     is_64bit,
+#endif // KEY
 	Dwarf_Ptr init_bytes,
 	Dwarf_Unsigned init_n_bytes,
 	Dwarf_Error *error)
 {
 	Dwarf_P_Cie curcie;
+#ifdef KEY
+	generate_fpic_dwarf = fpic;
+	generate_m64_dwarf = is_64bit;
+#endif
 
 	if (dbg->de_frame_cies == NULL) {
 	    dbg->de_frame_cies = (Dwarf_P_Cie) 
@@ -93,6 +112,9 @@ dwarf_add_frame_cie(
 	curcie->cie_code_align = code_align;
 	curcie->cie_data_align = data_align;
 	curcie->cie_ret_reg = return_reg;
+#ifdef KEY
+	curcie->personality = personality;
+#endif // KEY
 	curcie->cie_inst = (char *) init_bytes;
 	curcie->cie_inst_bytes = (long)init_n_bytes;
 	curcie->cie_next = NULL;
@@ -515,6 +537,22 @@ dwarf_add_fde_inst(
 
     switch (op) {
 
+#ifdef TARG_X8664
+	case DW_CFA_advance_loc4:
+	    // We will use 2 half-words to copy the labels; cg will later
+	    // fix the relocatable symbols.
+	    dh = val1;
+	    ptr = (char *) _dwarf_p_get_alloc(NULL, 4);
+	    if (ptr == NULL) {
+	      _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
+	      return((Dwarf_P_Fde)DW_DLV_BADADDR);
+	    }
+	    memcpy((void *)ptr, (const void *)&dh,2);
+	    dh = val2;
+	    memcpy((void *)ptr+2, (const void *)&dh,2);
+	    nbytes = 4;
+	    break;
+#endif // TARG_X8664
         case DW_CFA_advance_loc:
 	    if (val1 <= 0x3f) {
 	        db = val1;

@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -848,11 +853,15 @@ RVI::Perform_RVI( WN *entry_wn, ALIAS_MANAGER *alias_mgr )
 	    ("RVI::Perform_RVI, inconsistent region from RVI phase 1"));
   Verify_alias(alias_mgr,phase1_wn);
 
-  WN *lda_wn = WN_Lower( phase1_wn, 
+  LOWER_ACTIONS actions = 
     LOWER_SPLIT_CONST_OFFSETS |
     LOWER_SPLIT_SYM_ADDRS |
     LOWER_PICCALL |
-    LOWER_ALL_MAPS,
+    LOWER_MLDID_MSTID |
+    LOWER_ALL_MAPS;      
+
+  WN *lda_wn = WN_Lower( phase1_wn, 
+    actions,
     alias_mgr, "RVI" );
 
   REGION_new_wn(lda_wn, phase1_wn);

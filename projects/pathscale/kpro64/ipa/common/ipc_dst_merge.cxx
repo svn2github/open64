@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,10 +39,14 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <dwarf.h>
 #include <vector>
 #include <algorithm>
-#include <hash_map>
+
+#include <ext/hash_map>
+
 #include "mempool.h"
 #include "mempool_allocator.h"
 #define USE_STANDARD_TYPES
@@ -97,7 +105,7 @@ struct DST_TYPE_hash {
     return reinterpret_cast<size_t>(p);
   }
 };
-typedef std::hash_map<DST_TYPE, idx_pair_vector,
+typedef __gnu_cxx::hash_map<DST_TYPE, idx_pair_vector,
                       DST_TYPE_hash, std::equal_to<DST_TYPE>,
                       dst_hash_allocator>
         dst_hash_map;
@@ -117,6 +125,15 @@ void initialize_dst_map(dst_hash_map& M, pu_info* pu)
 
   while (pu) {
     IPA_NODE* cg_node = Get_Node_From_PU(pu);
+
+#ifdef KEY
+    // IPA builtins don't have dst.
+    if (cg_node->Is_Builtin()) {
+      pu = PU_Info_next(pu);
+      continue;
+    }
+#endif
+
     DST_TYPE dst = IP_FILE_HDR_dst(cg_node->File_Header());
     Is_True(dst != 0, ("No dst"));
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -60,13 +64,19 @@ float
 _IEEE_NEXT_AFTER_H_D(float x, long double y)
 {
 	/* Union defined to work with IEEE 32-bit floating point. */
-	union _ieee_double {
+	union _ieee_float {
 		float dword;
-		short	lword;
+		int lword;
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+			unsigned int mantissa : IEEE_32_MANT_BITS;
+			unsigned int exponent : IEEE_32_EXPO_BITS;
+			unsigned int sign     : 1;
+#else
 			unsigned int sign     : 1;
 			unsigned int exponent : IEEE_32_EXPO_BITS;
 			unsigned int mantissa : IEEE_32_MANT_BITS;
+#endif
 		} parts;
 	};
 
@@ -75,7 +85,7 @@ _IEEE_NEXT_AFTER_H_D(float x, long double y)
 	if (xfpclas == FP_NAN) {
 		return x;
 	} else if (yfpclas == FP_NAN) {
-		union _ieee_double x_val;
+		union _ieee_float x_val;
 		x_val.dword	= _HALF_NaN;
 		return(x_val.dword);
 	} else if (xfpclas == FP_ZERO && yfpclas == FP_ZERO) {
@@ -85,14 +95,14 @@ _IEEE_NEXT_AFTER_H_D(float x, long double y)
 	} else if ((long double) x == y) {
 		return x;
 	} else if (xfpclas == FP_ZERO) {
-		union _ieee_double x_val;
+		union _ieee_float x_val;
 		x_val.dword = FLT_MIN;
 		x_val.parts.sign	 = (long double) x > y;
 
 		/* return smallest normal number */
 		return(x_val.dword);
 	} else {  /* first argument is normal or denormal */
-		union _ieee_double x_val;
+		union _ieee_float x_val;
 		int j;
 		int resfpclas;
 

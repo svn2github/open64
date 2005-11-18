@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -265,6 +269,7 @@ int      blank        = ' ';
 int      marked_blank = ((1 << SIGN_BIT) | ' ');
 int      tab          = '\t';
 int      newline      = '\n';
+int      dosnewline   = '\r';
 int      bang         = '!';
 int      lparen       = '(';
 int      rparen       = ')';

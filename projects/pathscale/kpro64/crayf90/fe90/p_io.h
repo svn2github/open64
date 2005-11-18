@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -660,9 +664,10 @@ ciitem_tbl_type	ciitem_tbl[NUM_IO_STMT_TYPES] =
 		/* arg_position   */		 6,
 		/* has_const_opts */		 TRUE,
 		/* scalar         */		 TRUE,
-		/* num_const_opts */		 2,
+		/* num_const_opts */		 3,
 		/* const_opts     */			{"SEQUENTIAL",
-							 "DIRECT"}
+							 "DIRECT",
+							 "APPEND"}
 						},
 
 	/* ciitem_entry # 1 */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -255,6 +259,14 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
    case IRETURN_DA1:
       ret_ty = WN_Tree_Type(WN_kid0(call));
       break;
+#ifdef KEY
+   case IRETURN_PC:
+      ret_ty = Stab_Pointer_To(Stab_Mtype_To_Ty(MTYPE_V));
+      break;
+   case IRETURN_SZT:
+      ret_ty = Stab_Mtype_To_Ty(MTYPE_I4);
+      break;
+#endif
    default:
       Is_True(FALSE, 
 	      ("Unexpected INTRN_RETKIND in WN_intrinsic_return_ty()"));
@@ -562,6 +574,20 @@ WN_Tree_Type(const WN *wn)
          ty = WN_ty(wn);
          break;
 
+#ifdef TARG_X8664
+      case OPR_REPLICATE:
+	ty = Stab_Mtype_To_Ty(WN_opc_rtype(wn));
+	break;
+
+      case OPR_COMPOSE_BITS:
+	ty = WN_Tree_Type(WN_kid0(wn));
+	break;
+
+      case OPR_EXTRACT_BITS:
+	ty = WN_Tree_Type(WN_kid0(wn));
+	break;
+
+#endif /* TARG_X8664 */
       default:
 	 /* Only the above forms of expression nodes are handled here */
 	 ErrMsg ( EC_Invalid_Case, "WN_Tree_Type", __LINE__ );

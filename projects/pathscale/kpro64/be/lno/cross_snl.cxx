@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -33,12 +37,17 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
 #pragma hdrstop
 
 #include <math.h>
+#ifdef KEY // to get DBL_MAX
+#include <float.h>
+#endif
 #include <sys/types.h>
 #include <limits.h>
 #include "pu_info.h"

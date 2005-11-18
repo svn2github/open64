@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -77,7 +81,7 @@ G@CHRPCK(
 	register _f_int8	cp;
 
 #if	defined(__mips) || defined(_LITTLE_ENDIAN)
-	cp	= (_f_int8) cd;
+	cp	= (_f_int8) (unsigned long) cd;
 #else
 	cp	= (_f_int8) _fcdtocp(cd);
 #endif
@@ -88,7 +92,7 @@ G@CHRPCK(
 #endif
 #if	defined(__mips) || defined(_LITTLE_ENDIAN)
 	*blen	= _len << 3;	/* Set bit length */
-	*woff	= (cd - (char *) *waddr) << 3;	/* Set bit offset */
+	*woff	= (cd - (char *) (unsigned long) *waddr) << 3;	/* Set bit offset */
 #else
 	*blen	= _fcdlen(cd) << 3;	/* Set bit length */
 	*woff	= (_fcdtocp(cd) - (char *) *waddr) << 3;	/* Set bit offset */

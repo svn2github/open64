@@ -1,5 +1,5 @@
 /* Generic support for 64-bit ELF
-   Copyright 1993, 1995, 1998 Free Software Foundation, Inc.
+   Copyright 1993, 1995, 1998, 1999, 2001, 2002 Free Software Foundation, Inc.
 
 This file is part of BFD, the Binary File Descriptor library.
 
@@ -30,32 +30,64 @@ static reloc_howto_type dummy =
 	 0,			/* rightshift */
 	 0,			/* size (0 = byte, 1 = short, 2 = long) */
 	 0,			/* bitsize */
-	 false,			/* pc_relative */
+	 FALSE,			/* pc_relative */
 	 0,			/* bitpos */
 	 complain_overflow_dont, /* complain_on_overflow */
 	 NULL,			/* special_function */
 	 "UNKNOWN",		/* name */
-	 false,			/* partial_inplace */
+	 FALSE,			/* partial_inplace */
 	 0,			/* src_mask */
 	 0,			/* dst_mask */
-	 false);		/* pcrel_offset */
+	 FALSE);		/* pcrel_offset */
+
+static void elf_generic_info_to_howto
+  PARAMS ((bfd *, arelent *, Elf_Internal_Rela *));
+static void elf_generic_info_to_howto_rel
+  PARAMS ((bfd *, arelent *, Elf_Internal_Rela *));
+static bfd_boolean elf64_generic_link_add_symbols
+  PARAMS ((bfd *, struct bfd_link_info *));
 
 static void
 elf_generic_info_to_howto (abfd, bfd_reloc, elf_reloc)
-     bfd *abfd;
+     bfd *abfd ATTRIBUTE_UNUSED;
      arelent *bfd_reloc;
-     Elf64_Internal_Rela *elf_reloc;
+     Elf_Internal_Rela *elf_reloc ATTRIBUTE_UNUSED;
 {
   bfd_reloc->howto = &dummy;
 }
 
 static void
 elf_generic_info_to_howto_rel (abfd, bfd_reloc, elf_reloc)
-     bfd *abfd;
+     bfd *abfd ATTRIBUTE_UNUSED;
      arelent *bfd_reloc;
-     Elf64_Internal_Rel *elf_reloc;
+     Elf_Internal_Rela *elf_reloc ATTRIBUTE_UNUSED;
 {
   bfd_reloc->howto = &dummy;
+}
+
+static bfd_boolean
+elf64_generic_link_add_symbols (abfd, info)
+     bfd *abfd;
+     struct bfd_link_info *info;
+{
+  asection *o;
+
+  /* Check if there are any relocations.  */
+  for (o = abfd->sections; o != NULL; o = o->next)
+    if ((o->flags & SEC_RELOC) != 0)
+      {
+	Elf_Internal_Ehdr *ehdrp;
+
+	ehdrp = elf_elfheader (abfd);
+	(*_bfd_error_handler) (_("%s: Relocations in generic ELF (EM: %d)"),
+			       bfd_archive_filename (abfd),
+			       ehdrp->e_machine);
+
+	bfd_set_error (bfd_error_wrong_format);
+	return FALSE;
+      }
+
+  return bfd_elf64_bfd_link_add_symbols (abfd, info);
 }
 
 #define TARGET_LITTLE_SYM		bfd_elf64_little_generic_vec
@@ -66,6 +98,7 @@ elf_generic_info_to_howto_rel (abfd, bfd_reloc, elf_reloc)
 #define ELF_MACHINE_CODE		EM_NONE
 #define ELF_MAXPAGESIZE			0x1
 #define bfd_elf64_bfd_reloc_type_lookup bfd_default_reloc_type_lookup
+#define bfd_elf64_bfd_link_add_symbols	elf64_generic_link_add_symbols
 #define elf_info_to_howto		elf_generic_info_to_howto
 #define elf_info_to_howto_rel		elf_generic_info_to_howto_rel
 

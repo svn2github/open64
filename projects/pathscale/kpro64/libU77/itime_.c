@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -44,7 +48,7 @@
  */
 
 #include <sys/types.h>
-#if defined(_SYSV) || defined(_SYSTYPE_SVR4)
+#if defined(_SYSV) || defined(_SYSTYPE_SVR4) || defined(KEY)
 #include <time.h>
 #else
 #include <sys/time.h>

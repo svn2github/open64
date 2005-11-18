@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -59,8 +63,7 @@ _HCOT_( _f_real4 *x )
 _f_real4
 _HCOT( _f_real4 x )
 {
-	_f_real8 __tan(_f_real8 x);
-	return ( (_f_real4) ((_f_real8) 1.0) / __tan((_f_real8) x) );
+	return ( (_f_real4) ((_f_real8) 1.0) / tan((_f_real8) x) );
 }
 
 #else	/* NOT __mips */

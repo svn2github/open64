@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -49,8 +53,8 @@ extern _f_real16 _DTAN_(_f_real16 *x);
 _f_real16
 _DTAN_( _f_real16 *x )
 {
-	_f_real16 __tanl(_f_real16 x);
-	return ( (_f_real16) __tanl((_f_real16) *x));
+	_f_real16 tanl(_f_real16 x);
+	return ( (_f_real16) tanl((_f_real16) *x));
 }
 
 /*
@@ -60,6 +64,5 @@ _DTAN_( _f_real16 *x )
 _f_real16
 _DTAN( _f_real16 x )
 {
-	_f_real16 __tanl(_f_real16 x);
-	return ( (_f_real16) __tanl((_f_real16) x));
+	return ( (_f_real16) tanl((_f_real16) x));
 }

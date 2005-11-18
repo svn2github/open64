@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,6 +43,7 @@
 
 #include <stdio.h>
 #include <cray/nassert.h>
+#include <ctype.h>
 #include "fio.h"
 #include "f90io.h"
 #include "fmt.h"
@@ -63,7 +68,7 @@ _CLS (
 	...			/* STATUS character descriptor  */
 )
 #else
-_CLS (
+int _CLS (
 	_f_int	*unump,		/* Pointer to unit identifier   */
 	_f_int	*iostat,	/* Pointer to IOSTAT variable   */
 	int	*err,		/* Pointer to ERR specifier     */

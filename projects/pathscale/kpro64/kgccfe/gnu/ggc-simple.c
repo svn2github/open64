@@ -1,22 +1,22 @@
 /* Simple garbage collection for the GNU compiler.
-   Copyright (C) 1998, 1999, 2000 Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001 Free Software Foundation, Inc.
 
-   This file is part of GNU CC.
+   This file is part of GCC.
 
-   GNU CC is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
+   GCC is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2, or (at your option)
    any later version.
 
-   GNU CC is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GCC is distributed in the hope that it will be useful, but WITHOUT
+   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+   License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with GNU CC; see the file COPYING.  If not, write to
-   the Free Software Foundation, 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   along with GCC; see the file COPYING.  If not, write to the Free
+   Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+   02111-1307, USA.  */
 
 #include "config.h"
 #include "system.h"
@@ -27,19 +27,15 @@
 #include "varray.h"
 #include "ggc.h"
 #include "timevar.h"
+#include "params.h"
 
 /* Debugging flags.  */
 
 /* Zap memory before freeing to catch dangling pointers.  */
-#define GGC_POISON
+#undef GGC_POISON
 
 /* Collect statistics on how bushy the search tree is.  */
 #undef GGC_BALANCE
-
-/* Perform collection every time ggc_collect is invoked.  Otherwise,
-   collection is performed only when a significant amount of memory
-   has been allocated since the last collection.  */
-#undef GGC_ALWAYS_COLLECT
 
 /* Always verify that the to-be-marked memory is collectable.  */
 #undef GGC_ALWAYS_VERIFY
@@ -48,13 +44,6 @@
 #define GGC_POISON
 #define GGC_ALWAYS_VERIFY
 #endif
-#ifdef ENABLE_GC_ALWAYS_COLLECT
-#define GGC_ALWAYS_COLLECT
-#endif
-
-/* Constants for general use.  */
-
-char *empty_string;
 
 #ifndef HOST_BITS_PER_PTR
 #define HOST_BITS_PER_PTR  HOST_BITS_PER_LONG
@@ -119,16 +108,6 @@ static struct globals
   int context;
 } G;
 
-/* Skip garbage collection if the current allocation is not at least
-   this factor times the allocation at the end of the last collection.
-   In other words, total allocation must expand by (this factor minus
-   one) before collection is performed.  */
-#define GGC_MIN_EXPAND_FOR_GC (1.3)
-
-/* Bound `allocated_last_gc' to 4MB, to prevent the memory expansion
-   test from triggering too often when the heap is small.  */
-#define GGC_MIN_LAST_ALLOCATED (4 * 1024 * 1024)
-
 /* Local function prototypes.  */
 
 static void tree_insert PARAMS ((struct ggc_mem *));
@@ -137,10 +116,13 @@ static void clear_marks PARAMS ((struct ggc_mem *));
 static void sweep_objs PARAMS ((struct ggc_mem **));
 static void ggc_pop_context_1 PARAMS ((struct ggc_mem *, int));
 
+/* For use from debugger.  */
+extern void debug_ggc_tree PARAMS ((struct ggc_mem *, int));
+
 #ifdef GGC_BALANCE
 extern void debug_ggc_balance PARAMS ((void));
-static void tally_leaves PARAMS ((struct ggc_mem *, int, size_t *, size_t *));
 #endif
+static void tally_leaves PARAMS ((struct ggc_mem *, int, size_t *, size_t *));
 
 /* Insert V into the search tree.  */
 
@@ -182,9 +164,8 @@ tree_lookup (v)
 /* Alloc SIZE bytes of GC'able memory.  If ZERO, clear the memory.  */
 
 void *
-ggc_alloc_obj (size, zero)
+ggc_alloc (size)
      size_t size;
-     int zero;
 {
   struct ggc_mem *x;
 
@@ -195,11 +176,8 @@ ggc_alloc_obj (size, zero)
   x->context = G.context;
   x->size = size;
 
-  if (zero)
-    memset (&x->u, 0, size);
 #ifdef GGC_POISON
-  else
-    memset (&x->u, 0xaf, size);
+  memset (&x->u, 0xaf, size);
 #endif
 
   tree_insert (x);
@@ -233,27 +211,21 @@ ggc_set_mark (p)
   return 0;
 }
 
-/* Mark a node, but check first to see that it's really gc-able memory.  */
+/* Return 1 if P has been marked, zero otherwise.  */
 
-void
-ggc_mark_if_gcable (p)
+int
+ggc_marked_p (p)
      const void *p;
 {
   struct ggc_mem *x;
 
-  if (p == NULL)
-    return;
-
   x = (struct ggc_mem *) ((const char *)p - offsetof (struct ggc_mem, u));
+#ifdef GGC_ALWAYS_VERIFY
   if (! tree_lookup (x))
-    return;
+    abort ();
+#endif
 
-  if (x->mark)
-    return;
-
-  x->mark = 1;
-  G.allocated += x->size;
-  G.objects += 1;
+   return x->mark;
 }
 
 /* Return the size of the gc-able object P.  */
@@ -262,7 +234,7 @@ size_t
 ggc_get_size (p)
      const void *p;
 {
-  struct ggc_mem *x 
+  struct ggc_mem *x
     = (struct ggc_mem *) ((const char *)p - offsetof (struct ggc_mem, u));
   return x->size;
 }
@@ -335,10 +307,16 @@ sweep_objs (root)
 void
 ggc_collect ()
 {
-#ifndef GGC_ALWAYS_COLLECT
-  if (G.allocated < GGC_MIN_EXPAND_FOR_GC * G.allocated_last_gc)
+  /* Avoid frequent unnecessary work by skipping collection if the
+     total allocations haven't expanded much since the last
+     collection.  */
+  size_t allocated_last_gc =
+    MAX (G.allocated_last_gc, (size_t)PARAM_VALUE (GGC_MIN_HEAPSIZE) * 1024);
+
+  size_t min_expand = allocated_last_gc * PARAM_VALUE (GGC_MIN_EXPAND) / 100;
+
+  if (G.allocated < allocated_last_gc + min_expand)
     return;
-#endif
 
 #ifdef GGC_BALANCE
   debug_ggc_balance ();
@@ -356,8 +334,6 @@ ggc_collect ()
   sweep_objs (&G.root);
 
   G.allocated_last_gc = G.allocated;
-  if (G.allocated_last_gc < GGC_MIN_LAST_ALLOCATED)
-    G.allocated_last_gc = GGC_MIN_LAST_ALLOCATED;
 
   timevar_pop (TV_GC);
 
@@ -371,13 +347,9 @@ ggc_collect ()
 
 /* Called once to initialize the garbage collector.  */
 
-void 
+void
 init_ggc ()
 {
-  G.allocated_last_gc = GGC_MIN_LAST_ALLOCATED;
-
-  empty_string = ggc_alloc_string ("", 0);
-  ggc_add_string_root (&empty_string, 1);
 }
 
 /* Start a new GGC context.  Memory allocated in previous contexts
@@ -397,7 +369,7 @@ ggc_push_context ()
 /* Finish a GC context.  Any uncollected memory in the new context
    will be merged with the old context.  */
 
-void 
+void
 ggc_pop_context ()
 {
   G.context--;
@@ -438,8 +410,8 @@ debug_ggc_tree (p, indent)
 
   for (i = 0; i < indent; ++i)
     putc (' ', stderr);
-  fprintf (stderr, "%lx %p\n", PTR_KEY (p), p);
- 
+  fprintf (stderr, "%lx %p\n", (unsigned long)PTR_KEY (p), p);
+
   if (p->sub[1])
     debug_ggc_tree (p->sub[1], indent + 1);
 }
@@ -464,7 +436,9 @@ debug_ggc_balance ()
 	   (float)sumdepth / (float)nleaf,
 	   log ((double) G.objects) / M_LN2);
 }
+#endif
 
+/* Used by debug_ggc_balance, and also by ggc_print_statistics.  */
 static void
 tally_leaves (x, depth, nleaf, sumdepth)
      struct ggc_mem *x;
@@ -485,4 +459,45 @@ tally_leaves (x, depth, nleaf, sumdepth)
 	tally_leaves (x->sub[1], depth + 1, nleaf, sumdepth);
     }
 }
-#endif
+
+#define SCALE(x) ((unsigned long) ((x) < 1024*10 \
+		  ? (x) \
+		  : ((x) < 1024*1024*10 \
+		     ? (x) / 1024 \
+		     : (x) / (1024*1024))))
+#define LABEL(x) ((x) < 1024*10 ? ' ' : ((x) < 1024*1024*10 ? 'k' : 'M'))
+
+/* Report on GC memory usage.  */
+void
+ggc_print_statistics ()
+{
+  struct ggc_statistics stats;
+  size_t nleaf = 0, sumdepth = 0;
+
+  /* Clear the statistics.  */
+  memset (&stats, 0, sizeof (stats));
+
+  /* Make sure collection will really occur.  */
+  G.allocated_last_gc = 0;
+
+  /* Collect and print the statistics common across collectors.  */
+  ggc_print_common_statistics (stderr, &stats);
+
+  /* Report on tree balancing.  */
+  tally_leaves (G.root, 0, &nleaf, &sumdepth);
+
+  fprintf (stderr, "\n\
+Total internal data (bytes)\t%ld%c\n\
+Number of leaves in tree\t%d\n\
+Average leaf depth\t\t%.1f\n",
+	   SCALE(G.objects * offsetof (struct ggc_mem, u)),
+	   LABEL(G.objects * offsetof (struct ggc_mem, u)),
+	   nleaf, (double)sumdepth / (double)nleaf);
+
+  /* Report overall memory usage.  */
+  fprintf (stderr, "\n\
+Total objects allocated\t\t%d\n\
+Total memory in GC arena\t%ld%c\n",
+	   G.objects,
+	   SCALE(G.allocated), LABEL(G.allocated));
+}

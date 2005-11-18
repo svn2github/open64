@@ -1,3 +1,45 @@
+#ifdef L__divtf3
+// Compute a 80-bit IEEE double-extended quotient.
+//
+// From the Intel IA-64 Optimization Guide, choose the minimum latency
+// alternative.
+//
+// farg0 holds the dividend.  farg1 holds the divisor.
+
+	.text
+	.align 16
+	.global __divtf3
+	.proc __divtf3
+__divtf3:
+	cmp.eq p7, p0 = r0, r0
+	frcpa.s0 f10, p6 = farg0, farg1
+	;;
+(p6)	cmp.ne p7, p0 = r0, r0
+	.pred.rel.mutex p6, p7
+(p6)	fnma.s1 f11 = farg1, f10, f1
+(p6)	fma.s1 f12 = farg0, f10, f0
+	;;
+(p6)	fma.s1 f13 = f11, f11, f0
+(p6)	fma.s1 f14 = f11, f11, f11
+	;;
+(p6)	fma.s1 f11 = f13, f13, f11
+(p6)	fma.s1 f13 = f14, f10, f10
+	;;
+(p6)	fma.s1 f10 = f13, f11, f10
+(p6)	fnma.s1 f11 = farg1, f12, farg0
+	;;
+(p6)	fma.s1 f11 = f11, f10, f12
+(p6)	fnma.s1 f12 = farg1, f10, f1
+	;;
+(p6)	fma.s1 f10 = f12, f10, f10
+(p6)	fnma.s1 f12 = farg1, f11, farg0
+	;;
+(p6)	fma.s0 fret0 = f12, f10, f11
+(p7)	mov fret0 = f10
+	br.ret.sptk rp
+	.endp __divtf3
+#endif
+
 #ifdef L__divdf3
 // Compute a 64-bit IEEE double quotient.
 //
@@ -11,17 +53,21 @@
 	.global __divdf3
 	.proc __divdf3
 __divdf3:
-	frcpa f10, p6 = farg0, farg1
+	cmp.eq p7, p0 = r0, r0
+	frcpa.s0 f10, p6 = farg0, farg1
 	;;
-(p6)	fma.s1 f11 = farg0, f10, f0
+(p6)	cmp.ne p7, p0 = r0, r0
+	.pred.rel.mutex p6, p7
+(p6)	fmpy.s1 f11 = farg0, f10
 (p6)	fnma.s1 f12 = farg1, f10, f1
 	;;
 (p6)	fma.s1 f11 = f12, f11, f11
-(p6)	fma.s1 f13 = f12, f12, f0
-(p6)	fma.s1 f10 = f12, f10, f10
+(p6)	fmpy.s1 f13 = f12, f12
 	;;
+(p6)	fma.s1 f10 = f12, f10, f10
 (p6)	fma.s1 f11 = f13, f11, f11
-(p6)	fma.s1 f12 = f13, f13, f0
+	;;
+(p6)	fmpy.s1 f12 = f13, f13
 (p6)	fma.s1 f10 = f13, f10, f10
 	;;
 (p6)	fma.d.s1 f11 = f12, f11, f11
@@ -29,9 +75,8 @@ __divdf3:
 	;;
 (p6)	fnma.d.s1 f8 = farg1, f11, farg0
 	;;
-(p6)	fma.d f10 = f8, f10, f11
-	;;
-	mov fret0 = f10
+(p6)	fma.d fret0 = f8, f10, f11
+(p7)	mov fret0 = f10
 	br.ret.sptk rp
 	;;
 	.endp __divdf3
@@ -50,22 +95,24 @@ __divdf3:
 	.global __divsf3
 	.proc __divsf3
 __divsf3:
-	frcpa f10, p6 = farg0, farg1
+	cmp.eq p7, p0 = r0, r0
+	frcpa.s0 f10, p6 = farg0, farg1
 	;;
-(p6)	fma.s1 f8 = farg0, f10, f0
+(p6)	cmp.ne p7, p0 = r0, r0
+	.pred.rel.mutex p6, p7
+(p6)	fmpy.s1 f8 = farg0, f10
 (p6)	fnma.s1 f9 = farg1, f10, f1
 	;;
 (p6)	fma.s1 f8 = f9, f8, f8
-(p6)	fma.s1 f9 = f9, f9, f0
+(p6)	fmpy.s1 f9 = f9, f9
 	;;
 (p6)	fma.s1 f8 = f9, f8, f8
-(p6)	fma.s1 f9 = f9, f9, f0
+(p6)	fmpy.s1 f9 = f9, f9
 	;;
-(p6)	fma.d.s1 f8 = f9, f8, f8
+(p6)	fma.d.s1 f10 = f9, f8, f8
 	;;
-(p6)	fma.s f10 = f8, f1, f0
-	;;
-	mov fret0 = f10
+(p6)	fnorm.s.s0 fret0 = f10
+(p7)	mov fret0 = f10
 	br.ret.sptk rp
 	;;
 	.endp __divsf3
@@ -74,16 +121,10 @@ __divsf3:
 #ifdef L__divdi3
 // Compute a 64-bit integer quotient.
 //
-// Use reciprocal approximation and Newton-Raphson iteration to compute the
-// quotient.  frcpa gives 8.6 significant bits, so we need 3 iterations
-// to get more than the 64 bits of precision that we need for DImode.
+// From the Intel IA-64 Optimization Guide, choose the minimum latency
+// alternative.
 //
-// Must use max precision for the reciprocal computations to get 64 bits of
-// precision.
-//
-// r32/f8 holds the dividend.  r33/f9 holds the divisor.
-// f10 holds the value 2.0.  f11 holds the reciprocal approximation.
-// f12 is a temporary.
+// in0 holds the dividend.  in1 holds the divisor.
 
 	.text
 	.align 16
@@ -103,29 +144,25 @@ __divdi3:
 	frcpa.s1 f10, p6 = f8, f9
 	;;
 	// 3 Newton-Raphson iterations.
-(p6)	fma.s1 f11 = farg0, f10, f0
-(p6)	fnma.s1 f12 = farg1, f10, f1
+(p6)	fnma.s1 f11 = f9, f10, f1
+(p6)	fmpy.s1 f12 = f8, f10
 	;;
-(p6)	fma.s1 f11 = f12, f11, f11
-(p6)	fma.s1 f13 = f12, f12, f0
-(p6)	fma.s1 f10 = f12, f10, f10
+(p6)	fmpy.s1 f13 = f11, f11
+(p6)	fma.s1 f12 = f11, f12, f12
 	;;
-(p6)	fma.s1 f11 = f13, f11, f11
-(p6)	fma.s1 f12 = f13, f13, f0
+(p6)	fma.s1 f10 = f11, f10, f10
+(p6)	fma.s1 f11 = f13, f12, f12
+	;;
 (p6)	fma.s1 f10 = f13, f10, f10
+(p6)	fnma.s1 f12 = f9, f11, f8
 	;;
-(p6)	fma.s1 f11 = f12, f11, f11
-(p6)	fma.s1 f10 = f12, f10, f10
-	;;
-(p6)	fnma.s1 f8 = f9, f11, f8
-	;;
-(p6)	fma.s1 f10 = f8, f10, f11
+(p6)	fma.s1 f10 = f12, f10, f11
 	;;
 	// Round quotient to an integer.
-	fcvt.fx.trunc.s1 f8 = f10
+	fcvt.fx.trunc.s1 f10 = f10
 	;;
 	// Transfer result to GP registers.
-	getf.sig ret0 = f8
+	getf.sig ret0 = f10
 	br.ret.sptk rp
 	;;
 	.endp __divdi3
@@ -134,16 +171,10 @@ __divdi3:
 #ifdef L__moddi3
 // Compute a 64-bit integer modulus.
 //
-// Use reciprocal approximation and Newton-Raphson iteration to compute the
-// quotient.  frcpa gives 8.6 significant bits, so we need 3 iterations
-// to get more than the 64 bits of precision that we need for DImode.
+// From the Intel IA-64 Optimization Guide, choose the minimum latency
+// alternative.
 //
-// Must use max precision for the reciprocal computations to get 64 bits of
-// precision.
-//
-// r32/f8 holds the dividend.  r33/f9 holds the divisor.
-// f10 holds the value 2.0.  f11 holds the reciprocal approximation.
-// f12 is a temporary.
+// in0 holds the dividend (a).  in1 holds the divisor (b).
 
 	.text
 	.align 16
@@ -152,49 +183,40 @@ __divdi3:
 __moddi3:
 	.regstk 2,0,0,0
 	// Transfer inputs to FP registers.
-	setf.sig f8 = in0
+	setf.sig f14 = in0
 	setf.sig f9 = in1
 	;;
 	// Convert the inputs to FP, so that they won't be treated as unsigned.
-	fcvt.xf f8 = f8
+	fcvt.xf f8 = f14
 	fcvt.xf f9 = f9
 	;;
 	// Compute the reciprocal approximation.
 	frcpa.s1 f10, p6 = f8, f9
 	;;
 	// 3 Newton-Raphson iterations.
-(p6)	fma.s1 f11 = farg0, f10, f0
-(p6)	fnma.s1 f12 = farg1, f10, f1
+(p6)	fmpy.s1 f12 = f8, f10
+(p6)	fnma.s1 f11 = f9, f10, f1
 	;;
-(p6)	fma.s1 f11 = f12, f11, f11
-(p6)	fma.s1 f13 = f12, f12, f0
-(p6)	fma.s1 f10 = f12, f10, f10
+(p6)	fma.s1 f12 = f11, f12, f12
+(p6)	fmpy.s1 f13 = f11, f11
 	;;
-(p6)	fma.s1 f11 = f13, f11, f11
-(p6)	fma.s1 f12 = f13, f13, f0
+(p6)	fma.s1 f10 = f11, f10, f10
+(p6)	fma.s1 f11 = f13, f12, f12
+	;;
+	sub in1 = r0, in1
 (p6)	fma.s1 f10 = f13, f10, f10
-	;;
-(p6)	fma.s1 f11 = f12, f11, f11
-(p6)	fma.s1 f10 = f12, f10, f10
-	;;
 (p6)	fnma.s1 f12 = f9, f11, f8
 	;;
+	setf.sig f9 = in1
 (p6)	fma.s1 f10 = f12, f10, f11
 	;;
-	// Round quotient to an integer.
 	fcvt.fx.trunc.s1 f10 = f10
 	;;
-	// Renormalize.
-	fcvt.xf f10 = f10
-	;;
-	// Compute remainder.
-	fnma.s1 f8 = f10, f9, f8
-	;;
-	// Round remainder to an integer.
-	fcvt.fx.trunc.s1 f8 = f8
+	// r = q * (-b) + a
+	xma.l f10 = f10, f9, f14
 	;;
 	// Transfer result to GP registers.
-	getf.sig ret0 = f8
+	getf.sig ret0 = f10
 	br.ret.sptk rp
 	;;
 	.endp __moddi3
@@ -203,16 +225,10 @@ __moddi3:
 #ifdef L__udivdi3
 // Compute a 64-bit unsigned integer quotient.
 //
-// Use reciprocal approximation and Newton-Raphson iteration to compute the
-// quotient.  frcpa gives 8.6 significant bits, so we need 3 iterations
-// to get more than the 64 bits of precision that we need for DImode.
+// From the Intel IA-64 Optimization Guide, choose the minimum latency
+// alternative.
 //
-// Must use max precision for the reciprocal computations to get 64 bits of
-// precision.
-//
-// r32/f8 holds the dividend.  r33/f9 holds the divisor.
-// f10 holds the value 2.0.  f11 holds the reciprocal approximation.
-// f12 is a temporary.
+// in0 holds the dividend.  in1 holds the divisor.
 
 	.text
 	.align 16
@@ -232,29 +248,25 @@ __udivdi3:
 	frcpa.s1 f10, p6 = f8, f9
 	;;
 	// 3 Newton-Raphson iterations.
-(p6)	fma.s1 f11 = farg0, f10, f0
-(p6)	fnma.s1 f12 = farg1, f10, f1
+(p6)	fnma.s1 f11 = f9, f10, f1
+(p6)	fmpy.s1 f12 = f8, f10
 	;;
-(p6)	fma.s1 f11 = f12, f11, f11
-(p6)	fma.s1 f13 = f12, f12, f0
-(p6)	fma.s1 f10 = f12, f10, f10
+(p6)	fmpy.s1 f13 = f11, f11
+(p6)	fma.s1 f12 = f11, f12, f12
 	;;
-(p6)	fma.s1 f11 = f13, f11, f11
-(p6)	fma.s1 f12 = f13, f13, f0
+(p6)	fma.s1 f10 = f11, f10, f10
+(p6)	fma.s1 f11 = f13, f12, f12
+	;;
 (p6)	fma.s1 f10 = f13, f10, f10
+(p6)	fnma.s1 f12 = f9, f11, f8
 	;;
-(p6)	fma.s1 f11 = f12, f11, f11
-(p6)	fma.s1 f10 = f12, f10, f10
-	;;
-(p6)	fnma.s1 f8 = f9, f11, f8
-	;;
-(p6)	fma.s1 f10 = f8, f10, f11
+(p6)	fma.s1 f10 = f12, f10, f11
 	;;
 	// Round quotient to an unsigned integer.
-	fcvt.fxu.trunc.s1 f8 = f10
+	fcvt.fxu.trunc.s1 f10 = f10
 	;;
 	// Transfer result to GP registers.
-	getf.sig ret0 = f8
+	getf.sig ret0 = f10
 	br.ret.sptk rp
 	;;
 	.endp __udivdi3
@@ -263,16 +275,10 @@ __udivdi3:
 #ifdef L__umoddi3
 // Compute a 64-bit unsigned integer modulus.
 //
-// Use reciprocal approximation and Newton-Raphson iteration to compute the
-// quotient.  frcpa gives 8.6 significant bits, so we need 3 iterations
-// to get more than the 64 bits of precision that we need for DImode.
+// From the Intel IA-64 Optimization Guide, choose the minimum latency
+// alternative.
 //
-// Must use max precision for the reciprocal computations to get 64 bits of
-// precision.
-//
-// r32/f8 holds the dividend.  r33/f9 holds the divisor.
-// f10 holds the value 2.0.  f11 holds the reciprocal approximation.
-// f12 is a temporary.
+// in0 holds the dividend (a).  in1 holds the divisor (b).
 
 	.text
 	.align 16
@@ -281,49 +287,41 @@ __udivdi3:
 __umoddi3:
 	.regstk 2,0,0,0
 	// Transfer inputs to FP registers.
-	setf.sig f8 = in0
+	setf.sig f14 = in0
 	setf.sig f9 = in1
 	;;
 	// Convert the inputs to FP, to avoid FP software assist faults.
-	fcvt.xuf.s1 f8 = f8
+	fcvt.xuf.s1 f8 = f14
 	fcvt.xuf.s1 f9 = f9
 	;;
 	// Compute the reciprocal approximation.
 	frcpa.s1 f10, p6 = f8, f9
 	;;
 	// 3 Newton-Raphson iterations.
-(p6)	fma.s1 f11 = farg0, f10, f0
-(p6)	fnma.s1 f12 = farg1, f10, f1
+(p6)	fmpy.s1 f12 = f8, f10
+(p6)	fnma.s1 f11 = f9, f10, f1
 	;;
-(p6)	fma.s1 f11 = f12, f11, f11
-(p6)	fma.s1 f13 = f12, f12, f0
-(p6)	fma.s1 f10 = f12, f10, f10
+(p6)	fma.s1 f12 = f11, f12, f12
+(p6)	fmpy.s1 f13 = f11, f11
 	;;
-(p6)	fma.s1 f11 = f13, f11, f11
-(p6)	fma.s1 f12 = f13, f13, f0
+(p6)	fma.s1 f10 = f11, f10, f10
+(p6)	fma.s1 f11 = f13, f12, f12
+	;;
+	sub in1 = r0, in1
 (p6)	fma.s1 f10 = f13, f10, f10
-	;;
-(p6)	fma.s1 f11 = f12, f11, f11
-(p6)	fma.s1 f10 = f12, f10, f10
-	;;
 (p6)	fnma.s1 f12 = f9, f11, f8
 	;;
+	setf.sig f9 = in1
 (p6)	fma.s1 f10 = f12, f10, f11
 	;;
 	// Round quotient to an unsigned integer.
 	fcvt.fxu.trunc.s1 f10 = f10
 	;;
-	// Renormalize.
-	fcvt.xuf.s1 f10 = f10
-	;;
-	// Compute remainder.
-	fnma.s1 f8 = f10, f9, f8
-	;;
-	// Round remainder to an integer.
-	fcvt.fxu.trunc.s1 f8 = f8
+	// r = q * (-b) + a
+	xma.l f10 = f10, f9, f14
 	;;
 	// Transfer result to GP registers.
-	getf.sig ret0 = f8
+	getf.sig ret0 = f10
 	br.ret.sptk rp
 	;;
 	.endp __umoddi3
@@ -332,21 +330,10 @@ __umoddi3:
 #ifdef L__divsi3
 // Compute a 32-bit integer quotient.
 //
-// Use reciprocal approximation and Newton-Raphson iteration to compute the
-// quotient.  frcpa gives 8.6 significant bits, so we need 2 iterations
-// to get more than the 32 bits of precision that we need for SImode.
+// From the Intel IA-64 Optimization Guide, choose the minimum latency
+// alternative.
 //
-// ??? This is currently not used.  It needs to be fixed to be more like the
-// above DImode routines.
-//
-// ??? Check to see if the error is less than >.5ulp error.  We may need
-// some adjustment code to get precise enough results.
-//
-// ??? Should probably use max precision for the reciprocal computations.
-//
-// r32/f8 holds the dividend.  r33/f9 holds the divisor.
-// f10 holds the value 2.0.  f11 holds the reciprocal approximation.
-// f12 is a temporary.
+// in0 holds the dividend.  in1 holds the divisor.
 
 	.text
 	.align 16
@@ -354,28 +341,30 @@ __umoddi3:
 	.proc __divsi3
 __divsi3:
 	.regstk 2,0,0,0
+	sxt4 in0 = in0
+	sxt4 in1 = in1
+	;;
 	setf.sig f8 = in0
 	setf.sig f9 = in1
 	;;
+	mov r2 = 0x0ffdd
 	fcvt.xf f8 = f8
 	fcvt.xf f9 = f9
 	;;
-	frcpa f11, p6 = f8, f9
-	fadd f10 = f1, f1
+	setf.exp f11 = r2
+	frcpa.s1 f10, p6 = f8, f9
 	;;
-	fnma f12 = f9, f11, f10
+(p6)	fmpy.s1 f8 = f8, f10
+(p6)	fnma.s1 f9 = f9, f10, f1
 	;;
-	fmpy f11 = f11, f12
+(p6)	fma.s1 f8 = f9, f8, f8
+(p6)	fma.s1 f9 = f9, f9, f11
 	;;
-	fnma f12 = f9, f11, f10
+(p6)	fma.s1 f10 = f9, f8, f8
 	;;
-	fmpy f11 = f11, f12
+	fcvt.fx.trunc.s1 f10 = f10
 	;;
-	fmpy f8 = f8, f11
-	;;
-	fcvt.fx.trunc f8 = f8
-	;;
-	getf.sig ret0 = f8
+	getf.sig ret0 = f10
 	br.ret.sptk rp
 	;;
 	.endp __divsi3
@@ -384,21 +373,10 @@ __divsi3:
 #ifdef L__modsi3
 // Compute a 32-bit integer modulus.
 //
-// Use reciprocal approximation and Newton-Raphson iteration to compute the
-// quotient.  frcpa gives 8.6 significant bits, so we need 2 iterations
-// to get more than the 32 bits of precision that we need for SImode.
+// From the Intel IA-64 Optimization Guide, choose the minimum latency
+// alternative.
 //
-// ??? This is currently not used.  It needs to be fixed to be more like the
-// above DImode routines.
-//
-// ??? Check to see if the error is less than >.5ulp error.  We may need
-// some adjustment code to get precise enough results.
-//
-// ??? Should probably use max precision for the reciprocal computations.
-//
-// r32/f8 holds the dividend.  r33/f9 holds the divisor.
-// f10 holds the value 2.0.  f11 holds the reciprocal approximation.
-// f12 is a temporary.
+// in0 holds the dividend.  in1 holds the divisor.
 
 	.text
 	.align 16
@@ -406,34 +384,34 @@ __divsi3:
 	.proc __modsi3
 __modsi3:
 	.regstk 2,0,0,0
-	setf.sig f8 = r32
+	mov r2 = 0x0ffdd
+	sxt4 in0 = in0
+	sxt4 in1 = in1
+	;;
+	setf.sig f13 = r32
 	setf.sig f9 = r33
 	;;
-	fcvt.xf f8 = f8
+	sub in1 = r0, in1
+	fcvt.xf f8 = f13
 	fcvt.xf f9 = f9
 	;;
-	frcpa f11, p6 = f8, f9
-	fadd f10 = f1, f1
+	setf.exp f11 = r2
+	frcpa.s1 f10, p6 = f8, f9
 	;;
-	fnma f12 = f9, f11, f10
+(p6)	fmpy.s1 f12 = f8, f10
+(p6)	fnma.s1 f10 = f9, f10, f1
 	;;
-	fmpy f11 = f11, f12
+	setf.sig f9 = in1
+(p6)	fma.s1 f12 = f10, f12, f12
+(p6)	fma.s1 f10 = f10, f10, f11	
 	;;
-	fnma f12 = f9, f11, f10
+(p6)	fma.s1 f10 = f10, f12, f12
 	;;
-	fmpy f11 = f11, f12
+	fcvt.fx.trunc.s1 f10 = f10
 	;;
-	fmpy f10 = f8, f11
+	xma.l f10 = f10, f9, f13
 	;;
-	fcvt.fx.trunc f10 = f10
-	;;
-	fcvt.xf f10 = f10
-	;;
-	fnma f8 = f10, f9, f8
-	;;
-	fcvt.fx f8 = f8
-	;;
-	getf.sig r32 = f8
+	getf.sig ret0 = f10
 	br.ret.sptk rp
 	;;
 	.endp __modsi3
@@ -442,24 +420,10 @@ __modsi3:
 #ifdef L__udivsi3
 // Compute a 32-bit unsigned integer quotient.
 //
-// Use reciprocal approximation and Newton-Raphson iteration to compute the
-// quotient.  frcpa gives 8.6 significant bits, so we need 2 iterations
-// to get more than the 32 bits of precision that we need for SImode.
+// From the Intel IA-64 Optimization Guide, choose the minimum latency
+// alternative.
 //
-// ??? This is currently not used.  It needs to be fixed to be more like the
-// above DImode routines.
-//
-// ??? Check to see if the error is less than >.5ulp error.  We may need
-// some adjustment code to get precise enough results.
-//
-// ??? Should probably use max precision for the reciprocal computations.
-//
-// r32/f8 holds the dividend.  r33/f9 holds the divisor.
-// f10 holds the value 2.0.  f11 holds the reciprocal approximation.
-// f12 is a temporary.
-//
-// This is the same as divsi3, except that we don't need fcvt instructions
-// before the frcpa.
+// in0 holds the dividend.  in1 holds the divisor.
 
 	.text
 	.align 16
@@ -467,25 +431,30 @@ __modsi3:
 	.proc __udivsi3
 __udivsi3:
 	.regstk 2,0,0,0
-	setf.sig f8 = r32
-	setf.sig f9 = r33
+	mov r2 = 0x0ffdd
+	zxt4 in0 = in0
+	zxt4 in1 = in1
 	;;
-	frcpa f11, p6 = f8, f9
-	fadd f10 = f1, f1
+	setf.sig f8 = in0
+	setf.sig f9 = in1
 	;;
-	fnma f12 = f9, f11, f10
+	fcvt.xf f8 = f8
+	fcvt.xf f9 = f9
 	;;
-	fmpy f11 = f11, f12
+	setf.exp f11 = r2
+	frcpa.s1 f10, p6 = f8, f9
 	;;
-	fnma f12 = f9, f11, f10
+(p6)	fmpy.s1 f8 = f8, f10
+(p6)	fnma.s1 f9 = f9, f10, f1
 	;;
-	fmpy f11 = f11, f12
+(p6)	fma.s1 f8 = f9, f8, f8
+(p6)	fma.s1 f9 = f9, f9, f11
 	;;
-	fmpy f8 = f8, f11
+(p6)	fma.s1 f10 = f9, f8, f8
 	;;
-	fcvt.fxu.trunc f8 = f8
+	fcvt.fxu.trunc.s1 f10 = f10
 	;;
-	getf.sig ret0 = f8
+	getf.sig ret0 = f10
 	br.ret.sptk rp
 	;;
 	.endp __udivsi3
@@ -494,24 +463,10 @@ __udivsi3:
 #ifdef L__umodsi3
 // Compute a 32-bit unsigned integer modulus.
 //
-// Use reciprocal approximation and Newton-Raphson iteration to compute the
-// quotient.  frcpa gives 8.6 significant bits, so we need 2 iterations
-// to get more than the 32 bits of precision that we need for SImode.
+// From the Intel IA-64 Optimization Guide, choose the minimum latency
+// alternative.
 //
-// ??? This is currently not used.  It needs to be fixed to be more like the
-// above DImode routines.
-//
-// ??? Check to see if the error is less than >.5ulp error.  We may need
-// some adjustment code to get precise enough results.
-//
-// ??? Should probably use max precision for the reciprocal computations.
-//
-// r32/f8 holds the dividend.  r33/f9 holds the divisor.
-// f10 holds the value 2.0.  f11 holds the reciprocal approximation.
-// f12 is a temporary.
-//
-// This is the same as modsi3, except that we don't need fcvt instructions
-// before the frcpa.
+// in0 holds the dividend.  in1 holds the divisor.
 
 	.text
 	.align 16
@@ -519,31 +474,34 @@ __udivsi3:
 	.proc __umodsi3
 __umodsi3:
 	.regstk 2,0,0,0
-	setf.sig f8 = r32
-	setf.sig f9 = r33
+	mov r2 = 0x0ffdd
+	zxt4 in0 = in0
+	zxt4 in1 = in1
 	;;
-	frcpa f11, p6 = f8, f9
-	fadd f10 = f1, f1
+	setf.sig f13 = in0
+	setf.sig f9 = in1
 	;;
-	fnma f12 = f9, f11, f10
+	sub in1 = r0, in1
+	fcvt.xf f8 = f13
+	fcvt.xf f9 = f9
 	;;
-	fmpy f11 = f11, f12
+	setf.exp f11 = r2
+	frcpa.s1 f10, p6 = f8, f9
 	;;
-	fnma f12 = f9, f11, f10
+(p6)	fmpy.s1 f12 = f8, f10
+(p6)	fnma.s1 f10 = f9, f10, f1
 	;;
-	fmpy f11 = f11, f12
+	setf.sig f9 = in1
+(p6)	fma.s1 f12 = f10, f12, f12
+(p6)	fma.s1 f10 = f10, f10, f11
 	;;
-	fmpy f10 = f8, f11
+(p6)	fma.s1 f10 = f10, f12, f12
 	;;
-	fcvt.fxu.trunc f10 = f10
+	fcvt.fxu.trunc.s1 f10 = f10
 	;;
-	fcvt.xuf f10 = f10
+	xma.l f10 = f10, f9, f13
 	;;
-	fnma f8 = f10, f9, f8
-	;;
-	fcvt.fxu f8 = f8
-	;;
-	getf.sig r32 = f8
+	getf.sig ret0 = f10
 	br.ret.sptk rp
 	;;
 	.endp __umodsi3
@@ -563,33 +521,43 @@ __umodsi3:
 	.global __ia64_save_stack_nonlocal
 	.proc __ia64_save_stack_nonlocal
 __ia64_save_stack_nonlocal:
-	alloc r18=ar.pfs,2,0,0,0
-	st8 [in0]=in1,8
-	mov r19=ar.rsc
-	;;
-	flushrs
-	and r19=0x1c,r19
-	mov ar.pfs=r18
-	;;
-	mov ar.rsc=r19
-	mov r16=ar.bsp
-	adds r2=16,in0
-	;;
-	mov r17=ar.rnat
-	st8 [in0]=r16,8
-	or r19=0x3,r19
-	;;
-	st8 [in0]=r17
-	mov ar.rsc=r19
-	st8 [r2]=r18
-	mov ar.pfs=r18
-	br.ret.sptk.few rp
-	;;
+	{ .mmf
+	  alloc r18 = ar.pfs, 2, 0, 0, 0
+	  mov r19 = ar.rsc
+	  ;;
+	}
+	{ .mmi
+	  flushrs
+	  st8 [in0] = in1, 24
+	  and r19 = 0x1c, r19
+	  ;;
+	}
+	{ .mmi
+	  st8 [in0] = r18, -16
+	  mov ar.rsc = r19
+	  or r19 = 0x3, r19
+	  ;;
+	}
+	{ .mmi
+	  mov r16 = ar.bsp
+	  mov r17 = ar.rnat
+	  adds r2 = 8, in0
+	  ;;
+	}
+	{ .mmi
+	  st8 [in0] = r16
+	  st8 [r2] = r17
+	}
+	{ .mib
+	  mov ar.rsc = r19
+	  br.ret.sptk.few rp
+	  ;;
+	}
 	.endp __ia64_save_stack_nonlocal
 #endif
 
 #ifdef L__nonlocal_goto
-// void __ia64_nonlocal_goto(void *fp, void *target_label, void *save_area,
+// void __ia64_nonlocal_goto(void *target_label, void *save_area,
 //			     void *static_chain);
 
 	.text
@@ -597,35 +565,47 @@ __ia64_save_stack_nonlocal:
 	.global __ia64_nonlocal_goto
 	.proc __ia64_nonlocal_goto
 __ia64_nonlocal_goto:
-	alloc r20=ar.pfs,4,0,0,0
-	mov r19=ar.rsc
-	adds r2=8,in2
-	ld8 r12=[in2],16
-	mov.ret.sptk rp = r33, .L0
-	;;
-	flushrs
-	ld8 r16=[r2],16
-	and r19=0x1c,r19
-	ld8 r17=[in2]
-	;;
-	ld8 r18=[r2]
-	mov ar.rsc=r19
-	;;
-	mov ar.bspstore=r16
-	;;
-	mov ar.rnat=r17
-	mov ar.pfs=r18
-	or r19=0x3,r19
-	;;
-	loadrs
-	invala
-	mov r7=r32
-.L0:	{
-	mov ar.rsc=r19
-	mov r15=r35
-	br.ret.sptk.few rp
+	{ .mmi
+	  alloc r20 = ar.pfs, 3, 0, 0, 0
+	  ld8 r12 = [in1], 8
+	  mov.ret.sptk rp = in0, .L0
+	  ;;
 	}
-	;;
+	{ .mmf
+	  ld8 r16 = [in1], 8
+	  mov r19 = ar.rsc
+	  ;;
+	}
+	{ .mmi
+	  flushrs
+	  ld8 r17 = [in1], 8
+	  and r19 = 0x1c, r19
+	  ;;
+	}
+	{ .mmi
+	  ld8 r18 = [in1]
+	  mov ar.rsc = r19
+	  or r19 = 0x3, r19
+	  ;;
+	}
+	{ .mmi
+	  mov ar.bspstore = r16
+	  ;;
+	  mov ar.rnat = r17
+	  ;;
+	}
+	{ .mmi
+	  loadrs
+	  invala
+	  mov r15 = in2
+	  ;;
+	}
+.L0:	{ .mib
+	  mov ar.rsc = r19
+	  mov ar.pfs = r18
+	  br.ret.sptk.few rp
+	  ;;
+	}
 	.endp __ia64_nonlocal_goto
 #endif
 
@@ -640,31 +620,84 @@ __ia64_nonlocal_goto:
 	.global __ia64_restore_stack_nonlocal
 	.proc __ia64_restore_stack_nonlocal
 __ia64_restore_stack_nonlocal:
-	alloc r20=ar.pfs,4,0,0,0
-	mov r19=ar.rsc
-	adds r2=8,in0
-	ld8 r12=[in0],16
-	;;
-	flushrs
-	ld8 r16=[r2],16
-	and r19=0x1c,r19
-	ld8 r17=[in0]
-	;;
-	ld8 r18=[r2]
-	mov ar.rsc=r19
-	;;
-	mov ar.bspstore=r16
-	;;
-	mov ar.rnat=r17
-	mov ar.pfs=r18
-	or r19=0x3,r19
-	;;
-	loadrs
-	invala
-.L0:	{
-	mov ar.rsc=r19
-	br.ret.sptk.few rp
+	{ .mmf
+	  alloc r20 = ar.pfs, 4, 0, 0, 0
+	  ld8 r12 = [in0], 8
+	  ;;
 	}
-	;;
+	{ .mmb
+	  ld8 r16=[in0], 8
+	  mov r19 = ar.rsc
+	  ;;
+	}
+	{ .mmi
+	  flushrs
+	  ld8 r17 = [in0], 8
+	  and r19 = 0x1c, r19
+	  ;;
+	}
+	{ .mmf
+	  ld8 r18 = [in0]
+	  mov ar.rsc = r19
+	  ;;
+	}
+	{ .mmi
+	  mov ar.bspstore = r16
+	  ;;
+	  mov ar.rnat = r17
+	  or r19 = 0x3, r19
+	  ;;
+	}
+	{ .mmf
+	  loadrs
+	  invala
+	  ;;
+	}
+.L0:	{ .mib
+	  mov ar.rsc = r19
+	  mov ar.pfs = r18
+	  br.ret.sptk.few rp
+	  ;;
+	}
 	.endp __ia64_restore_stack_nonlocal
+#endif
+
+#ifdef L__trampoline
+// Implement the nested function trampoline.  This is out of line
+// so that we don't have to bother with flushing the icache, as
+// well as making the on-stack trampoline smaller.
+//
+// The trampoline has the following form:
+//
+//		+-------------------+ >
+//	TRAMP:	| __ia64_trampoline | |
+//		+-------------------+  > fake function descriptor
+//		| TRAMP+16          | |
+//		+-------------------+ >
+//		| target descriptor |
+//		+-------------------+
+//		| static link	    |
+//		+-------------------+
+
+	.text
+	.align 16
+	.global __ia64_trampoline
+	.proc __ia64_trampoline
+__ia64_trampoline:
+	{ .mmi
+	  ld8 r2 = [r1], 8
+	  ;;
+	  ld8 r15 = [r1]
+	}
+	{ .mmi
+	  ld8 r3 = [r2], 8
+	  ;;
+	  ld8 r1 = [r2]
+	  mov b6 = r3
+	}
+	{ .bbb
+	  br.sptk.many b6
+	  ;;
+	}
+	.endp __ia64_trampoline
 #endif

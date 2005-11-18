@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -145,7 +149,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Misaligned_Load ( opcode, result, op1, op2, variant, ops);
 	}
 	else {
+#if defined(TARG_MIPS) || defined(TARG_X8664)
+		Expand_Load (opcode, result, op1, op2, ops);
+#else
 		Expand_Load (opcode, result, op1, op2, variant, ops);
+#endif
 	}
 	break;
   case OPR_ISTORE:
@@ -154,7 +162,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Misaligned_Store (desc, op1, op2, op3, variant, ops);
 	}
 	else {
+#if defined(TARG_MIPS) || defined(TARG_X8664)
+		Expand_Store (desc, op1, op2, op3, ops);
+#else
 		Expand_Store (desc, op1, op2, op3, variant, ops);
+#endif
 	}
 	break;
   case OPR_ABS:
@@ -262,7 +274,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_CVT:
 	Is_True(rtype != MTYPE_B, ("conversion to bool unsupported"));
 	if (MTYPE_is_float(rtype) && MTYPE_is_float(desc)) {
+#ifdef TARG_X8664
+		Expand_Float_To_Float (result, op1, rtype, desc, ops);
+#else
 		Expand_Float_To_Float (result, op1, rtype, ops);
+#endif
 	}
 	else if (MTYPE_is_float(rtype)) {
 		// desc is int
@@ -297,6 +313,17 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Float_To_Int_Ceil (result, op1, rtype, desc, ops);
 	break;
   case OPR_FLOOR:
+#ifdef KEY
+    if( MTYPE_is_float( rtype ) ){
+      if( MTYPE_is_quad( rtype ) )
+	Expand_Float_To_Float_Floorl( result, op1, rtype, desc, ops );
+      else if( rtype == MTYPE_F8 )
+	Expand_Float_To_Float_Floor( result, op1, rtype, desc, ops );
+      else
+	Expand_Float_To_Float_Floorf( result, op1, rtype, desc, ops );
+      break;
+    }	
+#endif
 	Expand_Float_To_Int_Floor (result, op1, rtype, desc, ops);
 	break;
   case OPR_MIN:
@@ -323,6 +350,12 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Flop (opcode, result, op1, op2, op3, ops);
 	break;
 
+#ifdef TARG_X8664
+  case OPR_REPLICATE:
+        Expand_Replicate (opcode, result, op1, ops);
+	break;
+
+#endif /* TARG_X8664 */
   default:
 	FmtAssert(FALSE, 
 		("Expand_OP:  unexpected opcode %s", OPCODE_name(opcode)));

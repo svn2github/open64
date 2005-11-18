@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,22 +45,22 @@ extern boolean keep_flag;	/* keep intermediate files */
 extern string_list_t *count_files;
 
 /* return object file that corresponds to source name */
-extern string get_object_file (string src);
+extern char *get_object_file (char *src);
 
 /* construct name for intermediate file with given suffix */
-extern string construct_name (string src, string suffix);
+extern char *construct_name (char *src, char *suffix);
 /* create name for temp file (similar to construct_name except
    it always gives a temp file even in the presence of -keep */
-extern string create_temp_file_name (string suffix);
+extern char *create_temp_file_name (char *suffix);
 /* use given src name, but check if treated as a temp file or not */
-extern string construct_given_name (string src, string suffix, boolean keep);
+extern char *construct_given_name (char *src, char *suffix, boolean keep);
 
 /* For C++ single-source compilations, we still do multiple phases.
  * We need a special mechanism for getting rid of the .o file. */
 extern void mark_saved_object_for_cleanup(void);
 
 /* Create filename with the given extension, eg. create foo.anl from foo.f*/
-extern string construct_file_with_extension (string src, string ext);
+extern char *construct_file_with_extension (char *src, char *ext);
 
 /* init the maintenance of temp files */
 extern void init_temp_files (void);
@@ -67,3 +71,7 @@ extern void init_count_files (void );
 /* this will clean up temp files */
 extern void cleanup (void);
 
+#ifdef KEY
+/* mark file as a temp file to be cleaned up */
+extern void mark_for_cleanup (char *file);
+#endif

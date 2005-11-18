@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,6 +46,16 @@
 #include <string.h>
 
 typedef struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#ifdef	_CRAYIEEE
+	unsigned int	mantissa : 52;
+	unsigned int	exponent : 11;
+#else
+	unsigned int	mantissa : 48;
+	unsigned int	exponent : 15;
+#endif
+	unsigned int	    sign : 1;
+#else
 	unsigned int	    sign : 1;
 #ifdef	_CRAYIEEE
 	unsigned int	exponent : 11;
@@ -49,6 +63,7 @@ typedef struct {
 #else
 	unsigned int	exponent : 15;
 	unsigned int	mantissa : 48;
+#endif
 #endif
 } fpnum;
 

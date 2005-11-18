@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -630,7 +634,7 @@ void POINTS_TO::Analyze_ST_as_base(ST *st, INT64 ofst, TY_IDX ty)
       Set_expr_kind(EXPR_IS_ADDR);
       Set_base_kind(BASE_IS_UNKNOWN);
       Set_ofst_kind(OFST_IS_UNKNOWN);
-    } else if (ST_pt_to_unique_mem(st)) {
+    } else if (WOPT_Enable_Unique_Pt_Vsym && ST_pt_to_unique_mem(st)) {
       Set_unique_pt();
       Set_based_sym(st);
       Set_expr_kind(EXPR_IS_ADDR);

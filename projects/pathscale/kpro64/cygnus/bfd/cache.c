@@ -1,5 +1,5 @@
 /* BFD library -- caching of file descriptors.
-   Copyright 1990, 91, 92, 93, 94, 95, 1996, 2000
+   Copyright 1990, 1991, 1992, 1993, 1994, 1996, 2000, 2001, 2002
    Free Software Foundation, Inc.
    Hacked by Steve Chamberlain of Cygnus Support (steve@cygnus.com).
 
@@ -32,7 +32,7 @@ SECTION
 	<<bfd_cache_lookup>>, which runs around and makes sure that
 	the required BFD is open. If not, then it chooses a file to
 	close, closes it and opens the one wanted, returning its file
-	handle. 
+	handle.
 
 */
 
@@ -42,8 +42,8 @@ SECTION
 
 static void insert PARAMS ((bfd *));
 static void snip PARAMS ((bfd *));
-static boolean close_one PARAMS ((void));
-static boolean bfd_cache_delete PARAMS ((bfd *));
+static bfd_boolean close_one PARAMS ((void));
+static bfd_boolean bfd_cache_delete PARAMS ((bfd *));
 
 /*
 INTERNAL_FUNCTION
@@ -79,19 +79,18 @@ bfd *bfd_last_cache;
 /*
   INTERNAL_FUNCTION
   	bfd_cache_lookup
- 
+
   DESCRIPTION
  	Check to see if the required BFD is the same as the last one
  	looked up. If so, then it can use the stream in the BFD with
  	impunity, since it can't have changed since the last lookup;
  	otherwise, it has to perform the complicated lookup function.
- 
+
   .#define bfd_cache_lookup(x) \
   .    ((x)==bfd_last_cache? \
-  .      (FILE*)(bfd_last_cache->iostream): \
+  .      (FILE*) (bfd_last_cache->iostream): \
   .       bfd_cache_lookup_worker(x))
- 
- 
+
  */
 
 /* Insert a BFD into the cache.  */
@@ -134,7 +133,7 @@ snip (abfd)
 /* We need to open a new file, and the cache is full.  Find the least
    recently used cacheable BFD and close it.  */
 
-static boolean
+static bfd_boolean
 close_one ()
 {
   register bfd *kill;
@@ -158,7 +157,7 @@ close_one ()
   if (kill == NULL)
     {
       /* There are no open cacheable BFD's.  */
-      return true;
+      return TRUE;
     }
 
   kill->where = ftell ((FILE *) kill->iostream);
@@ -168,17 +167,17 @@ close_one ()
 
 /* Close a BFD and remove it from the cache.  */
 
-static boolean
+static bfd_boolean
 bfd_cache_delete (abfd)
      bfd *abfd;
 {
-  boolean ret;
+  bfd_boolean ret;
 
   if (fclose ((FILE *) abfd->iostream) == 0)
-    ret = true;
+    ret = TRUE;
   else
     {
-      ret = false;
+      ret = FALSE;
       bfd_set_error (bfd_error_system_call);
     }
 
@@ -195,13 +194,13 @@ INTERNAL_FUNCTION
 	bfd_cache_init
 
 SYNOPSIS
-	boolean bfd_cache_init (bfd *abfd);
+	bfd_boolean bfd_cache_init (bfd *abfd);
 
 DESCRIPTION
 	Add a newly opened BFD to the cache.
 */
 
-boolean
+bfd_boolean
 bfd_cache_init (abfd)
      bfd *abfd;
 {
@@ -209,11 +208,11 @@ bfd_cache_init (abfd)
   if (open_files >= BFD_CACHE_MAX_OPEN)
     {
       if (! close_one ())
-	return false;
+	return FALSE;
     }
   insert (abfd);
   ++open_files;
-  return true;
+  return TRUE;
 }
 
 /*
@@ -221,24 +220,24 @@ INTERNAL_FUNCTION
 	bfd_cache_close
 
 SYNOPSIS
-	boolean bfd_cache_close (bfd *abfd);
+	bfd_boolean bfd_cache_close (bfd *abfd);
 
 DESCRIPTION
 	Remove the BFD @var{abfd} from the cache. If the attached file is open,
 	then close it too.
 
 RETURNS
-	<<false>> is returned if closing the file fails, <<true>> is
+	<<FALSE>> is returned if closing the file fails, <<TRUE>> is
 	returned if all is well.
 */
 
-boolean
+bfd_boolean
 bfd_cache_close (abfd)
      bfd *abfd;
 {
   if (abfd->iostream == NULL
       || (abfd->flags & BFD_IN_MEMORY) != 0)
-    return true;
+    return TRUE;
 
   return bfd_cache_delete (abfd);
 }
@@ -262,7 +261,7 @@ FILE *
 bfd_open_file (abfd)
      bfd *abfd;
 {
-  abfd->cacheable = true;	/* Allow it to be closed later. */
+  abfd->cacheable = TRUE;	/* Allow it to be closed later.  */
 
   if (open_files >= BFD_CACHE_MAX_OPEN)
     {
@@ -278,7 +277,7 @@ bfd_open_file (abfd)
       break;
     case both_direction:
     case write_direction:
-      if (abfd->opened_once == true)
+      if (abfd->opened_once)
 	{
 	  abfd->iostream = (PTR) fopen (abfd->filename, FOPEN_RUB);
 	  if (abfd->iostream == NULL)
@@ -312,8 +311,8 @@ bfd_open_file (abfd)
 	  if (stat (abfd->filename, &s) == 0 && s.st_size != 0)
 	    unlink (abfd->filename);
 #endif
-	  abfd->iostream = (PTR) fopen (abfd->filename, FOPEN_WB);
-	  abfd->opened_once = true;
+	  abfd->iostream = (PTR) fopen (abfd->filename, FOPEN_WUB);
+	  abfd->opened_once = TRUE;
 	}
       break;
     }
@@ -339,7 +338,7 @@ DESCRIPTION
 	quick answer.  Find a file descriptor for @var{abfd}.  If
 	necessary, it open it.  If there are already more than
 	<<BFD_CACHE_MAX_OPEN>> files open, it tries to close one first, to
-	avoid running out of file descriptors.  
+	avoid running out of file descriptors.
 */
 
 FILE *
@@ -349,7 +348,7 @@ bfd_cache_lookup_worker (abfd)
   if ((abfd->flags & BFD_IN_MEMORY) != 0)
     abort ();
 
-  if (abfd->my_archive) 
+  if (abfd->my_archive)
     abfd = abfd->my_archive;
 
   if (abfd->iostream != NULL)
@@ -365,7 +364,9 @@ bfd_cache_lookup_worker (abfd)
     {
       if (bfd_open_file (abfd) == NULL)
 	return NULL;
-      if (fseek ((FILE *) abfd->iostream, abfd->where, SEEK_SET) != 0)
+      if (abfd->where != (unsigned long) abfd->where)
+	return NULL;
+      if (fseek ((FILE *) abfd->iostream, (long) abfd->where, SEEK_SET) != 0)
 	return NULL;
     }
 

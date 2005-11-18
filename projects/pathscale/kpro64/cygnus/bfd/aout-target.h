@@ -1,5 +1,6 @@
 /* Define a target vector and some small routines for a variant of a.out.
-   Copyright (C) 1990, 91, 92, 93, 94, 95, 96, 97, 98, 99, 2000
+   Copyright 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
+   2000, 2001, 2002
    Free Software Foundation, Inc.
 
 This file is part of BFD, the Binary File Descriptor library.
@@ -61,7 +62,7 @@ MY(callback) (abfd)
       bfd_vma adjust;
 
       adjust = execp->a_entry - obj_textsec (abfd)->vma;
-      /* Adjust only by whole pages. */
+      /* Adjust only by whole pages.  */
       adjust &= ~(TARGET_PAGE_SIZE - 1);
       obj_textsec (abfd)->vma += adjust;
       obj_datasec (abfd)->vma += adjust;
@@ -84,12 +85,12 @@ MY(callback) (abfd)
   /* The file offsets of the string table and symbol table.  */
   obj_sym_filepos (abfd) = N_SYMOFF (*execp);
   obj_str_filepos (abfd) = N_STROFF (*execp);
-  
+
   /* Determine the architecture and machine type of the object file.  */
 #ifdef SET_ARCH_MACH
-  SET_ARCH_MACH(abfd, *execp);
+  SET_ARCH_MACH (abfd, *execp);
 #else
-  bfd_default_set_arch_mach(abfd, DEFAULT_ARCH, 0);
+  bfd_default_set_arch_mach (abfd, DEFAULT_ARCH, 0);
 #endif
 
   /* The number of relocation records.  This must be called after
@@ -145,18 +146,19 @@ MY(object_p) (abfd)
   struct external_exec exec_bytes;	/* Raw exec header from file */
   struct internal_exec exec;		/* Cleaned-up exec header */
   const bfd_target *target;
+  bfd_size_type amt = EXEC_BYTES_SIZE;
 
-  if (bfd_read ((PTR) &exec_bytes, 1, EXEC_BYTES_SIZE, abfd)
-      != EXEC_BYTES_SIZE) {
-    if (bfd_get_error () != bfd_error_system_call)
-      bfd_set_error (bfd_error_wrong_format);
-    return 0;
-  }
+  if (bfd_bread ((PTR) &exec_bytes, amt, abfd) != amt)
+    {
+      if (bfd_get_error () != bfd_error_system_call)
+	bfd_set_error (bfd_error_wrong_format);
+      return 0;
+    }
 
 #ifdef SWAP_MAGIC
   exec.a_info = SWAP_MAGIC (exec_bytes.e_info);
 #else
-  exec.a_info = bfd_h_get_32 (abfd, exec_bytes.e_info);
+  exec.a_info = GET_MAGIC (abfd, exec_bytes.e_info);
 #endif /* SWAP_MAGIC */
 
   if (N_BADMAG (exec)) return 0;
@@ -164,7 +166,7 @@ MY(object_p) (abfd)
   if (!(MACHTYPE_OK (N_MACHTYPE (exec)))) return 0;
 #endif
 
-  NAME(aout,swap_exec_header_in)(abfd, &exec_bytes, &exec);
+  NAME(aout,swap_exec_header_in) (abfd, &exec_bytes, &exec);
 
 #ifdef SWAP_MAGIC
   /* swap_exec_header_in read in a_info with the wrong byte order */
@@ -178,7 +180,7 @@ MY(object_p) (abfd)
    * means that it isn't obvious if EXEC_P should be set.
    * All of the following must be true for an executable:
    * There must be no relocations, the bfd can be neither an
-   * archive nor an archive element, and the file must be executable. */
+   * archive nor an archive element, and the file must be executable.  */
 
   if (exec.a_trsize + exec.a_drsize == 0
       && bfd_get_format(abfd) == bfd_object && abfd->my_archive == NULL)
@@ -197,24 +199,23 @@ MY(object_p) (abfd)
 #define MY_object_p MY(object_p)
 #endif
 
-
 #ifndef MY_mkobject
 
-static boolean MY(mkobject) PARAMS ((bfd *));
+static bfd_boolean MY(mkobject) PARAMS ((bfd *));
 
-static boolean
+static bfd_boolean
 MY(mkobject) (abfd)
      bfd *abfd;
 {
-  if (NAME(aout,mkobject)(abfd) == false)
-    return false;
+  if (! NAME(aout,mkobject) (abfd))
+    return FALSE;
 #if 0 /* Sizes get set in set_sizes callback, later, after we know
 	 the architecture and machine.  */
   adata(abfd).page_size = TARGET_PAGE_SIZE;
   adata(abfd).segment_size = SEGMENT_SIZE;
   adata(abfd).exec_bytes_size = EXEC_BYTES_SIZE;
 #endif
-  return true;
+  return TRUE;
 }
 #define MY_mkobject MY(mkobject)
 #endif
@@ -227,11 +228,10 @@ MY(mkobject) (abfd)
    section contents, and copy_private_bfd_data is not called until
    after the section contents have been set.  */
 
-static boolean MY_bfd_copy_private_section_data
+static bfd_boolean MY_bfd_copy_private_section_data
   PARAMS ((bfd *, asection *, bfd *, asection *));
 
-/*ARGSUSED*/
-static boolean
+static bfd_boolean
 MY_bfd_copy_private_section_data (ibfd, isec, obfd, osec)
      bfd *ibfd;
      asection *isec ATTRIBUTE_UNUSED;
@@ -241,7 +241,7 @@ MY_bfd_copy_private_section_data (ibfd, isec, obfd, osec)
   if (bfd_get_flavour (ibfd) == bfd_target_aout_flavour
       && bfd_get_flavour (obfd) == bfd_target_aout_flavour)
     obj_aout_subformat (obfd) = obj_aout_subformat (ibfd);
-  return true;
+  return TRUE;
 }
 
 #endif
@@ -251,7 +251,9 @@ MY_bfd_copy_private_section_data (ibfd, isec, obfd, osec)
    file header, symbols, and relocation.  */
 
 #ifndef MY_write_object_contents
-static boolean
+static bfd_boolean MY(write_object_contents) PARAMS ((bfd *));
+
+static bfd_boolean
 MY(write_object_contents) (abfd)
      bfd *abfd;
 {
@@ -262,16 +264,16 @@ MY(write_object_contents) (abfd)
 
   WRITE_HEADERS(abfd, execp);
 
-  return true;
+  return TRUE;
 }
 #define MY_write_object_contents MY(write_object_contents)
 #endif
 
 #ifndef MY_set_sizes
 
-static boolean MY(set_sizes) PARAMS ((bfd *));
+static bfd_boolean MY(set_sizes) PARAMS ((bfd *));
 
-static boolean
+static bfd_boolean
 MY(set_sizes) (abfd)
      bfd *abfd;
 {
@@ -285,7 +287,7 @@ MY(set_sizes) (abfd)
 #endif
 
   adata(abfd).exec_bytes_size = EXEC_BYTES_SIZE;
-  return true;
+  return TRUE;
 }
 #define MY_set_sizes MY(set_sizes)
 #endif
@@ -327,7 +329,7 @@ MY(set_sizes) (abfd)
 #define MY_finish_dynamic_link 0
 #endif
 
-static CONST struct aout_backend_data MY(backend_data) = {
+static const struct aout_backend_data MY(backend_data) = {
   MY_zmagic_contiguous,
   MY_text_includes_header,
   MY_entry_is_text_address,
@@ -373,9 +375,9 @@ MY_final_link_callback (abfd, ptreloff, pdreloff, psymoff)
 /* Final link routine.  We need to use a call back to get the correct
    offsets in the output file.  */
 
-static boolean MY_bfd_final_link PARAMS ((bfd *, struct bfd_link_info *));
+static bfd_boolean MY_bfd_final_link PARAMS ((bfd *, struct bfd_link_info *));
 
-static boolean
+static bfd_boolean
 MY_bfd_final_link (abfd, info)
      bfd *abfd;
      struct bfd_link_info *info;
@@ -508,6 +510,12 @@ MY_bfd_final_link (abfd, info)
 #ifndef MY_bfd_gc_sections
 #define MY_bfd_gc_sections bfd_generic_gc_sections
 #endif
+#ifndef MY_bfd_merge_sections
+#define MY_bfd_merge_sections bfd_generic_merge_sections
+#endif
+#ifndef MY_bfd_discard_group
+#define MY_bfd_discard_group bfd_generic_discard_group
+#endif
 #ifndef MY_bfd_reloc_type_lookup
 #define MY_bfd_reloc_type_lookup NAME(aout,reloc_type_lookup)
 #endif
@@ -523,13 +531,18 @@ MY_bfd_final_link (abfd, info)
 #ifndef MY_bfd_link_hash_table_create
 #define MY_bfd_link_hash_table_create NAME(aout,link_hash_table_create)
 #endif
+#ifndef MY_bfd_link_hash_table_free
+#define MY_bfd_link_hash_table_free _bfd_generic_link_hash_table_free
+#endif
 #ifndef MY_bfd_link_add_symbols
 #define MY_bfd_link_add_symbols NAME(aout,link_add_symbols)
+#endif
+#ifndef MY_bfd_link_just_syms
+#define MY_bfd_link_just_syms _bfd_generic_link_just_syms
 #endif
 #ifndef MY_bfd_link_split_section
 #define MY_bfd_link_split_section  _bfd_generic_link_split_section
 #endif
-
 
 #ifndef MY_bfd_copy_private_bfd_data
 #define MY_bfd_copy_private_bfd_data _bfd_generic_bfd_copy_private_bfd_data
@@ -581,7 +594,7 @@ MY_bfd_final_link (abfd, info)
 #endif
 
 /* Aout symbols normally have leading underscores */
-#ifndef MY_symbol_leading_char 
+#ifndef MY_symbol_leading_char
 #define MY_symbol_leading_char '_'
 #endif
 
@@ -643,7 +656,7 @@ const bfd_target MY(vec) =
 
   /* Alternative_target */
   NULL,
-  
+
   (PTR) MY_backend_data
 };
 #endif /* MY_BFD_TARGET */

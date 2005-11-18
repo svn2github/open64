@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -243,6 +247,9 @@ struct tn {
       WN        *home;		/* Whirl home if rematerializable */
     } u3;
   } u2;
+#ifdef TARG_X8664
+  BOOL preallocated;		/* Is the TN pre-allocated in LRA? */
+#endif /* TARG_X8664 */
 };
 
 
@@ -296,8 +303,16 @@ typedef enum {
   TN_RELOC_IA_GPREL22	= 0x23,
   TN_RELOC_IA_LTOFF22	= 0x24,
   TN_RELOC_IA_LTOFF_FPTR= 0x25,
+
+#ifdef TARG_X8664
+  TN_RELOC_X8664_PC32 = 0x30,   /* X86-64 symbols start at 0x30 */
+  TN_RELOC_X8664_32   = 0x31,   /* X86-64 symbols start at 0x30 */
+  TN_RELOC_X8664_64   = 0x32,   
+  TN_RELOC_X8664_GOTPCREL   = 0x33,   
+
 				     /* IA-32 relocations start at 0x40 */
   TN_RELOC_IA32_ALL 	= 0x40,	     /* All 32 bits of a symbol value. */
+#endif
 } TN_RELOCS;
 
 
@@ -413,6 +428,11 @@ inline TN * CAN_USE_REG_TN (const TN *t)
 #define TN_is_true_pred(r) (TN_register_and_class(r) == CLASS_AND_REG_true)
 #define TN_is_fzero_reg(r) (TN_register_and_class(r) == CLASS_AND_REG_fzero)
 #define TN_is_fone_reg(r)  (TN_register_and_class(r) == CLASS_AND_REG_fone)
+#ifdef TARG_X8664
+#define TN_is_preallocated(r) (CAN_USE_TN(r)->preallocated)
+#define Set_TN_preallocated(r) (CAN_USE_TN(r)->preallocated = TRUE)
+#define Reset_TN_preallocated(r) (CAN_USE_TN(r)->preallocated = FALSE)
+#endif /* TARG_X8664 */
 
 // Check if the TN is either a constant zero or the zero register TN.
 // If you know it is a register TN, use TN_is_zero_reg directly.
@@ -485,8 +505,16 @@ inline BOOL TN_is_const_reg(const TN *r)
 #define Set_TN_is_reloc_ia_ltoff22(r)	Set_TN_relocs(r,TN_RELOC_IA_LTOFF22)
 #define TN_is_reloc_ia_ltoff_fptr(r)	(TN_relocs(r) == TN_RELOC_IA_LTOFF_FPTR)
 #define Set_TN_is_reloc_ia_ltoff_fptr(r) Set_TN_relocs(r,TN_RELOC_IA_LTOFF_FPTR)
+#ifdef TARG_X8664
+#define TN_is_reloc_x8664_pc32(r)	(TN_relocs(r) == TN_RELOC_X8664_PC32)
+#define Set_TN_is_reloc_x8664_pc32(r)	Set_TN_relocs(r,TN_RELOC_X8664_PC32)
+#define TN_is_reloc_x8664_32(r)	        (TN_relocs(r) == TN_RELOC_X8664_32)
+#define Set_TN_is_reloc_x8664_32(r)	Set_TN_relocs(r,TN_RELOC_X8664_32)
+#define TN_is_reloc_x8664_gotpcrel(r)   (TN_relocs(r)==TN_RELOC_X8664_GOTPCREL)
+#define Set_TN_is_reloc_x8664_gotpcrel(r) Set_TN_relocs(r,TN_RELOC_X8664_GOTPCREL)
+#endif /* TARG_X8664 */
 
-
+
 /* ====================================================================
  *
  * External variables.
@@ -547,6 +575,10 @@ extern	void Init_TNs_For_REGION (void);
 /* The following set of routines can be used only for register TNs */
 
 extern TN* Gen_Register_TN (ISA_REGISTER_CLASS rclass, INT size);
+
+#ifdef KEY
+extern TN* Gen_Typed_Register_TN (TYPE_ID mtype, INT size);
+#endif
 
 extern  TN *Build_Dedicated_TN ( ISA_REGISTER_CLASS rclass, REGISTER reg, INT size);
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -47,6 +51,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/param.h>
+#include <stdlib.h>
 #ifdef	_UNICOS
 #include <sys/category.h>
 #endif

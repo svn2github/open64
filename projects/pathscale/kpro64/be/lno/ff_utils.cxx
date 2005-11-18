@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -563,6 +567,9 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
     return FALSE;
 
   TYPE_ID desc_type = WN_desc(equivalence_class->Top_nth(0));
+  if (desc_type == MTYPE_M) {
+     can_rename = FALSE;
+  }
 
   // for each reference in the equivalence class, check if it is FUNC_ENTRY
   // and if it has the same name as the variable to be renamed
@@ -583,6 +590,15 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
 	can_rename = FALSE;
       else if (Is_Reduction_In_Prallel_Region(scalar_ref))
 	can_rename = FALSE;
+#ifdef KEY
+      // Can not create CVT/CVTL for bit-field later on. 
+      else if ((opr == OPR_STID) && WN_desc(scalar_ref) == MTYPE_BS)
+	can_rename = FALSE;
+      // Bug 1258 - can not promote temporary storing floating point complex 
+      // type to pseudo-register.
+      else if ((opr == OPR_STID) && MTYPE_is_complex(WN_desc(scalar_ref)))
+        can_rename = FALSE;
+#endif      
     } else
       can_rename= FALSE;
   }
@@ -645,12 +661,33 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
       WN_st_idx(scalar_ref)=ST_st_idx(new_symbol.St());
       WN_offset(scalar_ref)=new_symbol.WN_Offset();
 
+#ifdef KEY
+      // Fix for bug 1129
+      if (WN_operator(scalar_ref) == OPR_LDID &&
+	  MTYPE_bit_size(desc) == 32 &&
+	  MTYPE_bit_size(WN_rtype(scalar_ref)) == 64) {
+	// this handles the rule that pregs have no implicit conversions
+	// while memory does 
+	OPCODE cvt_o=OPCODE_make_op(OPR_CVT,WN_rtype(scalar_ref), desc);
+	WN* parent = LWN_Get_Parent(scalar_ref);
+	INT kid;
+	for (kid = 0; kid < WN_kid_count(parent); kid ++)
+	  if (WN_kid(parent, kid) == scalar_ref)
+	    break;
+	WN *cvt = LWN_CreateExp1(cvt_o,scalar_ref);
+	LWN_Set_Parent(cvt,parent);
+	WN_kid(parent, kid) = cvt;
+	WN_set_rtype(scalar_ref, desc);
+      } 
+      else       
+#endif
       WN_set_opcode(scalar_ref,OPCODE_make_op(
                 OPCODE_operator(scalar_op),
 		OPCODE_rtype(scalar_op),
 		Promote_Type(OPCODE_desc(scalar_op))));
       WN_set_ty(scalar_ref,Be_Type_Tbl(Promote_Type(desc))); 
-      WN_offset(scalar_ref)=new_symbol.WN_Offset();
+      WN_set_field_id(scalar_ref, 0); // fix 819155
+
       if (Alias_Mgr) {
         Create_alias(Alias_Mgr,scalar_ref);
       }

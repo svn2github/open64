@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -385,7 +389,7 @@
 static char *cg_dep_graph_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/cg_dep_graph.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-#include <list.h>
+#include <list>
 #include "op.h"
 #include "op_map.h"
 #include "op_list.h"
@@ -642,19 +646,19 @@ void CG_DEP_Compute_Graph(struct bb      *bb,
 			  BOOL           control_arcs,
 			  TN_SET         *need_anti_out_dep);
 
-void CG_DEP_Compute_Region_Graph(list<BB*>   bb_region,
+void CG_DEP_Compute_Region_Graph(std::list<BB*>   bb_region,
 				 BOOL        assigned_regs,
 				 BOOL        memread_arcs,
 				 BOOL        control_arcs);
 
-void CG_DEP_Prune_Dependence_Arcs(list<BB*>   bblist,
+void CG_DEP_Prune_Dependence_Arcs(std::list<BB*>   bblist,
 				  BOOL prune_predicate_arcs,
 				  BOOL trace);
 
 void CG_DEP_Trace_Graph(BB *bb);
 #pragma mips_frequency_hint NEVER CG_DEP_Trace_Graph
 
-void CG_DEP_Trace_HB_Graph(list<BB*> bblist);
+void CG_DEP_Trace_HB_Graph(std::list<BB*> bblist);
 #pragma mips_frequency_hint NEVER CG_DEP_Trace_HB_Graph
 
 void CG_DEP_Trace_Arc(ARC *arc, BOOL is_succ, BOOL verbose);

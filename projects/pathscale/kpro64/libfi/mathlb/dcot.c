@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -60,8 +64,7 @@ _DCOT_( _f_real16 *x )
 _f_real16
 _DCOT( _f_real16 x )
 {
-	_f_real16 __tanl(_f_real16 x);
-	return ( ((_f_real16) 1.0) / __tanl(x) );
+	return ( ((_f_real16) 1.0) / tanl(x) );
 }
 
 #else	/* NOT __mips */

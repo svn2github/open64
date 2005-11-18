@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -134,21 +138,36 @@ union _uval_d {
 union _uval_r {
   _f_real8 dwd;
   struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    unsigned int lo     : IEEE_64_MANT_BTS2;
+    unsigned int up     : IEEE_64_MANT_BTS1-1;
+    unsigned int q_bit  : 1;
+    unsigned int exp    : IEEE_64_EXPO_BITS;
+    unsigned int sign   : 1;
+#else
     unsigned int sign   : 1;
     unsigned int exp    : IEEE_64_EXPO_BITS;
     unsigned int q_bit  : 1;
     unsigned int up     : IEEE_64_MANT_BTS1-1;
     unsigned int lo     : IEEE_64_MANT_BTS2;
+#endif
   } parts;
 };
 
 union _uval_h {
   _f_real4 dwd;
   struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    unsigned int mant  : IEEE_32_MANT_BTS-1;
+    unsigned int q_bit : 1;
+    unsigned int exp   : IEEE_32_EXPO_BITS;
+    unsigned int sign  : 1;
+#else
     unsigned int sign  : 1;
     unsigned int exp   : IEEE_32_EXPO_BITS;
     unsigned int q_bit : 1;
     unsigned int mant  : IEEE_32_MANT_BTS-1;
+#endif
   } parts;
 };
 

@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -66,6 +71,8 @@
 static char *rcs_id = opt_fold_CXX"$Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "defs.h"
 #include "errors.h"
 #include "erglob.h"

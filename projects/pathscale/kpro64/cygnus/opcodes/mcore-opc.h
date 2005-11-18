@@ -1,5 +1,5 @@
 /* Assembler instructions for Motorola's Mcore processor
-   Copyright (C) 1999, 2000 Free Software Foundation, Inc.
+   Copyright 1999, 2000 Free Software Foundation, Inc.
 
    
 This program is free software; you can redistribute it and/or modify
@@ -39,7 +39,7 @@ typedef struct inst
 mcore_opcode_info;
 
 #ifdef DEFINE_TABLE
-mcore_opcode_info mcore_table[] =
+const mcore_opcode_info mcore_table[] =
 {
   { "bkpt",	O0,	0,	0x0000 },
   { "sync",	O0,	0,	0x0001 },

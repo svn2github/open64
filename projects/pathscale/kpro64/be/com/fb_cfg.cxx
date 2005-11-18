@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -71,7 +75,6 @@
 #include "com_whirlview.h"
 
 #include "cxx_graph.h"
-#include <pair.h>         // STL pair.
 
 #include "DaVinci.h"      // for DaVinci viewer (for FB CFG).
 #include "wb_util.h"      // more: move this to another file (gwe).
@@ -96,6 +99,76 @@ FB_CFG::New_node( FB_EDGE_TYPE node_type, WN *source, FB_FREQ freq_total_in,
   FB_NODEX new_nodex = _nodes.size();
   _nodes.push_back(new_node);
   return new_nodex;
+}
+
+/*
+ * Adjust_edge, it is used to prevent critical edge happen in fb cfg
+ */
+void
+FB_CFG::Adjust_edge( FB_NODEX nodex)
+{
+    INT s;
+
+    for ( INT t = _nodes[nodex].preds.size() - 1; t >= 0; --t ){
+	FB_NODEX nx_pred = _nodes[nodex].preds[t];
+	FB_NODE& pred = _nodes[nx_pred];
+	if(!( _nodes[nodex].one_edge_preds || pred.one_edge_succs)) {
+
+		_nodes[nodex].preds.erase(_nodes[nodex].preds.begin() + t);
+
+		for ( s = pred.succs.size() - 1; s >= 0; --s ){
+			FB_NODEX nx_succs = pred.succs[s];
+			if (nx_succs == nodex) {
+				FB_NODEX *del_one;
+				del_one = &(pred.succs[s]);
+				pred.succs.erase(pred.succs.begin()+s);
+    				_nodes[nx_pred].undelayed_succs -= 1;
+
+				break;
+			}
+		}
+		
+		if (s < 0)
+    			DevWarn( "Some thing wrong with edge adjust" );
+
+		FB_NODEX nx_tmp = New_node();
+
+  		if ( ! _nodes[nodex].freq_total_in.Exact() ) {
+    			_nodes[nx_pred].unexact_out -= 1;
+    			if ( ! _nodes[nodex].freq_total_in.Known() )
+      				_nodes[nx_pred].unknown_out -= 1;
+  		}
+
+  		if ( ! _nodes[nx_pred].freq_total_out.Exact() ) {
+    			_nodes[nodex].unexact_in -= 1;
+    			if ( ! _nodes[nx_pred].freq_total_out.Known() )
+      				_nodes[nodex].unknown_in -= 1;
+  		}
+			
+		Add_edge(nx_pred, nx_tmp);
+		Add_edge(nx_tmp, nodex);
+		
+    		_nodes[nodex].one_edge_preds = TRUE;
+    		for ( s = _nodes[nodex].preds.size() - 1; s >= 0; --s ){
+			FB_NODEX nx_spred = _nodes[nodex].preds[s];
+			FB_NODE& spred = _nodes[nx_spred];
+			if (spred.succs.size() >=2 ){
+    				_nodes[nodex].one_edge_preds = FALSE; 
+				break;
+			}
+		}
+    		_nodes[nx_pred].one_edge_succs = TRUE;
+    		for ( s = _nodes[nx_pred].succs.size() - 1; s >= 0; --s ){
+			FB_NODEX nx_succ = _nodes[nx_pred].succs[s];
+			FB_NODE& succ= _nodes[nx_succ];
+			if (succ.preds.size() >=2 ){
+    				_nodes[nx_pred].one_edge_succs = FALSE;
+				break;
+			}
+		}
+
+	}
+    }
 }
 
 void
@@ -386,11 +459,21 @@ FB_CFG::Walk_WN_test_expression( WN *wn, FB_NODEX nx_true, FB_NODEX nx_false )
 
       // Walk through THEN branch
       Set_curr( nx_then );
-      Walk_WN_test_expression( WN_kid1(wn), nx_true, nx_false );
+      FB_NODEX nx_then_true = New_node();
+      FB_NODEX nx_then_false = New_node();
+      Walk_WN_test_expression( WN_kid1(wn), nx_then_true, nx_then_false );
 
       // Walk through ELSE branch
       Set_curr( nx_else );
-      Walk_WN_test_expression( WN_kid2(wn), nx_true, nx_false );
+      FB_NODEX nx_else_true = New_node();
+      FB_NODEX nx_else_false = New_node();
+      Walk_WN_test_expression( WN_kid2(wn), nx_else_true, nx_else_false );
+
+      // Add join edges
+      Add_edge( nx_then_true, nx_true );
+      Add_edge( nx_else_true, nx_true );
+      Add_edge( nx_then_false, nx_false );
+      Add_edge( nx_else_false, nx_false );
     }
     break;
 
@@ -406,8 +489,11 @@ FB_CFG::Walk_WN_test_expression( WN *wn, FB_NODEX nx_true, FB_NODEX nx_false )
 
   default:
     Walk_WN_expression(wn);
-    Add_edge( Get_curr(), nx_true );
-    Add_edge( Curr(), nx_false );
+    Add_edge(Get_curr(), nx_true);
+    Add_edge(Curr(), nx_false);
+
+    Adjust_edge(nx_true);
+    Adjust_edge(nx_false);
     break;
   }
 }
@@ -855,6 +941,12 @@ FB_CFG::Walk_WN_statement( WN *wn )
 
   case OPR_COMMENT:
     break;
+
+#ifdef KEY
+  case OPR_PREFETCH:
+  case OPR_PREFETCHX:
+    break;
+#endif
 
     // case OPR_PREFETCH:
     // case OPR_PREFETCHX:

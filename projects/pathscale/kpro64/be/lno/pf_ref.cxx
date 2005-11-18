@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -120,6 +124,8 @@
  *
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -147,7 +153,7 @@
 #include "w2c_weak.h"
 #include "w2f_weak.h"
 
-#define INFINITY 9999
+#define INT_INFINITY 9999
 #define absof(x) (((x)>0) ? (x) : (0-(x)))
 #define maxof(x, y) (((x)>(y)) ? (x) : (y))
 #define minof(x, y) (((x)<(y)) ? (x) : (y))
@@ -1575,7 +1581,7 @@ PF_VOLUME PF_LG::Volume () {
     ACCESS_ARRAY* aa =  (ACCESS_ARRAY*) WN_MAP_Get (LNO_Info_Map,
                                                     Get_Ref(_leading_ref));
     ACCESS_VECTOR* av = aa->Dim(aa->Num_Vec()-1);
-    INT stride = INFINITY;
+    INT stride = INT_INFINITY;
     // find stride, based on loop within thisnest that has the smallest coeff
     for (j=_depth; j<num_loops; j++) {
       INT64 cur = av->Loop_Coeff(j);
@@ -1583,7 +1589,7 @@ PF_VOLUME PF_LG::Volume () {
       cur = abs(cur);
       stride = minof (stride, cur);
     }
-    if (stride < INFINITY) {
+    if (stride < INT_INFINITY) {
       // "stride" elements
       stride = stride * (INT) WN_element_size(Get_Ref(_leading_ref));
       // now stride is in bytes. Is it within a cache line?
@@ -1928,7 +1934,11 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
             // confident of that one too
             PF_VOLUME vol = oloop->Get_Total ();
             if (vol.Localized_1L()) {
+#ifdef KEY
+              confidence = (LNO_Run_Prefetch > SOME_PREFETCH) ? (LNO_Run_Prefetch - 1) : LNO_Run_Prefetch;
+#else
               confidence = LNO_Run_Prefetch;
+#endif
             }
             break;
           }
@@ -1957,7 +1967,11 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         }
         // should we prefetch more aggressively?
         if (confidence == 1) {
+#ifdef KEY
+              confidence = (LNO_Run_Prefetch > SOME_PREFETCH) ? (LNO_Run_Prefetch - 1) : LNO_Run_Prefetch;
+#else
           confidence = LNO_Run_Prefetch;
+#endif
         }
       }
       break;
@@ -1978,7 +1992,11 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
             // confident of that one too
             PF_VOLUME vol = oloop->Get_Total ();
             if (vol.Localized_2L()) {
+#ifdef KEY
+              confidence = (LNO_Run_Prefetch > SOME_PREFETCH) ? (LNO_Run_Prefetch - 1) : LNO_Run_Prefetch;
+#else
               confidence = LNO_Run_Prefetch;
+#endif
             }
             break;
           }
@@ -2007,7 +2025,11 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         }
         // should we prefetch more aggressively?
         if (confidence == 1) {
+#ifdef KEY
+              confidence = (LNO_Run_Prefetch > SOME_PREFETCH) ? (LNO_Run_Prefetch - 1) : LNO_Run_Prefetch;
+#else
           confidence = LNO_Run_Prefetch;
+#endif
         }
       }
       break;

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -103,6 +107,8 @@
  * ====================================================================
  */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #ifdef USE_PCH
 #include "lno_pch.h"
 #endif // USE_PCH
@@ -224,7 +230,7 @@ static void Inter_Iteration_Cses_Loop(WN *loop)
   EQUIV_WN_HASH *hash_table = CXX_NEW(EQUIV_WN_HASH(200,&LNO_local_pool),
 					&LNO_local_pool);
   INT i;
-  for (i=0; i<load_stack->Elements(); i++) {
+  for (i=0; i<load_stack->Elements(); i++) {   
     WN *load = load_stack->Bottom_nth(i);
     UINT16 eq1 = (UINT16) WN_MAP32_Get(Equivalence_Class_Map,load);
     if (eq1) { // might be zero if we've dealt with this load already
@@ -334,6 +340,12 @@ static EQUIVALENCE_TYPE Set_Up_Equivalence_Classes(WN *wn, WN *loop)
 
   if (OPCODE_is_store(opcode)) {
     if (!OPCODE_is_load(WN_opcode(WN_kid0(wn)))) { // shortcut avoid a[i]=b
+#ifdef TARG_X8664
+      if (WN_desc(wn) == MTYPE_V16I1 || WN_desc(wn) == MTYPE_V16I2 || 
+	  WN_desc(wn) == MTYPE_V16I4 || WN_desc(wn) == MTYPE_V16I8 || 
+	  WN_desc(wn) == MTYPE_V16F4 || WN_desc(wn) == MTYPE_V16F8)
+	return EQ_NONE;      
+#endif /* TARG_X8664 */
       if (Set_Up_Equivalence_Classes(WN_kid0(wn),loop) != EQ_NONE) {
 	equivalence_class_number++;
 	Set_Up_Equivalence_Class(WN_kid0(wn),
@@ -808,6 +820,14 @@ static void Process_Pair(WN *a1, WN *b1, WN *a2, WN *b2, WN *loop)
 //
 static void Transform_Code(STACK<WN_PAIR_EC> *cse_stack, WN *loop, BOOL all_invariant)
 {
+#ifdef KEY
+  static UINT cse_num = 0;
+  cse_num ++;
+  if (cse_num < LNO_Cse_Loop_Skip_Before ||
+      cse_num > LNO_Cse_Loop_Skip_After ||
+      cse_num == LNO_Cse_Loop_Skip_Equal)
+    return;
+#endif /* KEY */
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(loop);
   WN *guard = dli->Guard;
   if (guard) {

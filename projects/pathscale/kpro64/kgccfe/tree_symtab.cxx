@@ -1,3 +1,15 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
+
+/* 
+   Copyright (C) 2002 Tensilica, Inc.  All Rights Reserved.
+   Revised to support Tensilica processors and to improve overall performance
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -39,17 +51,29 @@
 #include "defs.h"
 #include "errors.h"
 #include "gnu_config.h"
+#ifdef KEY
+// To get HW_WIDE_INT ifor flags.h */
+#include "gnu/hwint.h"
+#endif /* KEY */
 #include "gnu/flags.h"
 extern "C" {
 #include "gnu/system.h"
 #include "gnu/tree.h"
 #include "gnu/toplev.h"
 }
-#ifdef TARG_IA32
+#if defined(TARG_IA32) || defined(TARG_X8664)
 // the definition in gnu/config/i386/i386.h causes problem
 // with the enumeration in common/com/ia32/config_targ.h
 #undef TARGET_PENTIUM
 #endif /* TARG_IA32 */
+
+#ifdef KEY 
+#ifdef TARG_MIPS
+// ABI_N32 is defined in config/MIPS/mips.h and conflicts with 
+// common/com/MIPS/config_targ.h
+#undef ABI_N32
+#endif /* TARG_MIPS */
+#endif /* KEY */
 
 #include "symtab.h"
 #include "strtab.h"
@@ -122,7 +146,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 	}
 
 	TYPE_ID mtype;
-	INT tsize;
+	INT64 tsize;
 	BOOL variable_size = FALSE;
 	tree type_size = TYPE_SIZE(type_tree);
 
@@ -131,11 +155,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		tsize = 0;
 	else
 	if (type_size == NULL) {
+#ifndef KEY
 		// incomplete structs have 0 size
 		FmtAssert(TREE_CODE(type_tree) == ARRAY_TYPE 
 			|| TREE_CODE(type_tree) == UNION_TYPE
 			|| TREE_CODE(type_tree) == RECORD_TYPE,
 			  ("Create_TY_For_Tree: type_size NULL for non ARRAY/RECORD"));
+#endif
 		tsize = 0;
 	}
 	else {
@@ -143,7 +169,15 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			if (TREE_CODE(type_tree) == ARRAY_TYPE)
 				DevWarn ("Encountered VLA at line %d", lineno);
 			else
+#ifndef KEY
 				Fail_FmtAssertion ("VLA at line %d not currently implemented", lineno);
+#else
+			// Bug 943
+			{
+			  printf("pathcc: variable-length structure not yet implemented\n");
+			  exit(2);
+			}
+#endif
 			variable_size = TRUE;
 			tsize = 0;
 		}
@@ -161,9 +195,17 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 2:  mtype = MTYPE_I2; break;
 		case 4:  mtype = MTYPE_I4; break;
 		case 8:  mtype = MTYPE_I8; break;
+#ifndef TARG_X8664 
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
 #endif /* _LP64 */
+#else 
+	        // needed for compiling variable length array
+		// as in gcc.c-torture/execute/920929-1.c
+		// we need to fix the rest of the compiler 
+		// with _LP64 but seems to work fine without.	
+		case 16:  mtype = MTYPE_I8; break;
+#endif /* KEY */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		if (TREE_UNSIGNED(type_tree)) {
@@ -178,20 +220,26 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		break;
 	case ENUMERAL_TYPE:
 		mtype = (TREE_UNSIGNED(type_tree) ? MTYPE_U4 : MTYPE_I4);
+#ifdef KEY
+		/* bug#500 */
+		if( tsize == 8 ){
+		  mtype = (TREE_UNSIGNED(type_tree) ? MTYPE_U8 : MTYPE_I8);
+		}
+#endif
 		idx = MTYPE_To_TY (mtype);	// use predefined type
 		break;
 	case REAL_TYPE:
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
 		case 16: mtype = MTYPE_FQ; break;
 #endif /* TARG_MIPS */
 #ifdef TARG_IA64
 		case 12: mtype = MTYPE_F10; break;
 #endif /* TARG_IA64 */
-#ifdef TARG_IA32
-		case 12: mtype = MTYPE_F10; break;
+#if defined(TARG_IA32) || defined(TARG_X8664)
+		case 12: mtype = MTYPE_FQ; break;
 #endif /* TARG_IA32 */
 		default: FmtAssert(FALSE, ("Get_TY unexpected REAL_TYPE size %d", tsize));
 		}
@@ -201,14 +249,14 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case  8: mtype = MTYPE_C4; break;
 		case 16: mtype = MTYPE_C8; break;
-#ifdef TARG_MIPS
+#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
 		case 32: mtype = MTYPE_CQ; break;
 #endif /* TARG_MIPS */
 #ifdef TARG_IA64
 		case 24: mtype = MTYPE_C10; break;
 #endif /* TARG_IA64 */
-#ifdef TARG_IA32
-		case 24: mtype = MTYPE_C10; break;
+#if defined(TARG_IA32) || defined(TARG_X8664)
+		case 24: mtype = MTYPE_CQ; break;
 #endif /* TARG_IA32 */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
@@ -234,6 +282,15 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		Set_ARB_first_dimen (arb);
 		Set_ARB_last_dimen (arb);
 		Set_ARB_dimension (arb, 1);
+#ifdef KEY
+		// Bug 660
+		// Due to the way we handle extern variables, we may end up 
+		// with a type whose base type is undefined upto this point.
+		// For example, extern struct bar_t bar[]; 
+		// (don't know size of struct bar_t)
+		if (!TYPE_SIZE(TREE_TYPE(type_tree)))
+		  break;
+#endif		
 		if (TREE_CODE(TYPE_SIZE(TREE_TYPE(type_tree))) == INTEGER_CST) {
 			Set_ARB_const_stride (arb);
 			Set_ARB_stride_val (arb, 
@@ -247,6 +304,23 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			    WN_opcode (swn) == OPC_U8I8CVT) {
 				swn = WN_kid0 (swn);
 			}
+#ifdef KEY
+			// In the event that swn operator is not 
+			// OPR_LDID, save expr node swn 
+			// and use LDID of that stored address as swn.
+			// Copied from Wfe_Save_Expr in wfe_expr.cxx
+			if (WN_operator (swn) != OPR_LDID) {
+			  TY_IDX    ty_idx  = 
+			    Get_TY (TREE_TYPE (type_size));
+			  TYPE_ID   mtype   = TY_mtype (ty_idx);
+			  ST       *st;
+			  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+			  WFE_Set_ST_Addr_Saved (swn);
+			  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
+			  WFE_Stmt_Append (swn, Get_Srcpos());
+			  swn = WN_Ldid (mtype, 0, st, ty_idx);
+			}
+#endif /* KEY */
 			FmtAssert (WN_operator (swn) == OPR_LDID,
 				("stride operator for VLA not LDID"));
 			ST *st = WN_st (swn);
@@ -261,6 +335,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		Set_ARB_const_lbnd (arb);
 		Set_ARB_lbnd_val (arb, 0);
 		if (type_size) {
+#ifdef KEY
+		    // For Zero-length arrays, TYPE_MAX_VALUE tree is NULL
+		    if (!TYPE_MAX_VALUE (TYPE_DOMAIN (type_tree))) {
+			Set_ARB_const_ubnd (arb);
+			Set_ARB_ubnd_val (arb, 0xffffffff);
+		    } else
+#endif /* KEY */
 		    if (TREE_CODE(TYPE_MAX_VALUE (TYPE_DOMAIN (type_tree))) ==
 			INTEGER_CST) {
 			Set_ARB_const_ubnd (arb);
@@ -273,6 +354,23 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			    WN_opcode (uwn) == OPC_U8I8CVT) {
 				uwn = WN_kid0 (uwn);
 			}
+#ifdef KEY
+			// In the event that uwn operator is not 
+			// OPR_LDID, save expr node uwn 
+			// and use LDID of that stored address as uwn.
+			// Copied from Wfe_Save_Expr in wfe_expr.cxx
+			if (WN_operator (uwn) != OPR_LDID) {
+			  TY_IDX    ty_idx  = 
+			    Get_TY (TREE_TYPE (type_size));
+			  TYPE_ID   mtype   = TY_mtype (ty_idx);
+			  ST       *st;
+			  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+			  WFE_Set_ST_Addr_Saved (uwn);
+			  uwn = WN_Stid (mtype, 0, st, ty_idx, uwn);
+			  WFE_Stmt_Append (uwn, Get_Srcpos());
+			  uwn = WN_Ldid (mtype, 0, st, ty_idx);
+			}
+#endif /* KEY */
 			FmtAssert (WN_operator (uwn) == OPR_LDID,
 				("bounds operator for VLA not LDID"));
 			ST *st = WN_st (uwn);
@@ -297,6 +395,23 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				    WN_opcode (swn) == OPC_U8I8CVT) {
 					swn = WN_kid0 (swn);
 				}
+#ifdef KEY
+				// In the event that swn operator is not 
+				// OPR_LDID, save expr node swn 
+				// and use LDID of that stored address as swn.
+				// Copied from Wfe_Save_Expr in wfe_expr.cxx
+				if (WN_operator (swn) != OPR_LDID) {
+				  TY_IDX    ty_idx  = 
+				    Get_TY (TREE_TYPE (type_size));
+				  TYPE_ID   mtype   = TY_mtype (ty_idx);
+				  ST       *st;
+				  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+				  WFE_Set_ST_Addr_Saved (swn);
+				  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
+				  WFE_Stmt_Append (swn, Get_Srcpos());
+				  swn = WN_Ldid (mtype, 0, st, ty_idx);
+				}
+#endif /* KEY */
 				FmtAssert (WN_operator (swn) == OPR_LDID,
 					("size operator for VLA not LDID"));
 				ST *st = WN_st (swn);
@@ -392,11 +507,21 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			field;
 			field = TREE_CHAIN(field))
 		{
+#ifdef KEY
+			const  int FLD_BIT_FIELD_SIZE   = 64;
+#endif
 			if (TREE_CODE(field) == TYPE_DECL)
 				continue;
 			if (TREE_CODE(field) == CONST_DECL)
 				continue;
 			if ( ! DECL_BIT_FIELD(field)
+#ifdef KEY
+			        && DECL_SIZE(field)
+// We don't handle bit-fields > 64 bits. For an INT field of 128 bits, we
+// make it 64 bits. But then don't set it as FLD_IS_BIT_FIELD.
+				&& Get_Integer_Value(DECL_SIZE(field)) <=
+				   FLD_BIT_FIELD_SIZE
+#endif /* KEY */
 				&& Get_Integer_Value(DECL_SIZE(field)) > 0
 				&& Get_Integer_Value(DECL_SIZE(field))
 				  != (TY_size(Get_TY(TREE_TYPE(field))) 
@@ -407,7 +532,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				// (e.g. int f: 16;).  But we need it set
 				// so we know how to pack it, because 
 				// otherwise the field type is wrong.
-				DevWarn("field size %d doesn't match type size %d", 
+				DevWarn("field size %lld doesn't match type size %lld", 
 					Get_Integer_Value(DECL_SIZE(field)),
 					TY_size(Get_TY(TREE_TYPE(field)))
 						* BITSPERBYTE );
@@ -438,7 +563,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		tree arg;
 		INT32 num_args;
 		TY &ty = New_TY (idx);
-		TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, NULL); 
+		TY_Init (ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, 0); 
 		Set_TY_align (idx, 1);
 		TY_IDX ret_ty_idx;
 		TY_IDX arg_ty_idx;
@@ -567,9 +692,19 @@ Create_ST_For_Tree (tree decl_node)
 
         st = New_ST (GLOBAL_SYMTAB);
 
+#ifdef KEY	// Fix bug # 34
+// gcc sometimes adds a '*' and itself handles it this way while outputing
+	char * check_for_star = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (
+								decl_node));
+	if (*check_for_star == '*')
+	    check_for_star++;
+        ST_Init (st, Save_Str (check_for_star),
+                 CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
+#else
         ST_Init (st,
                  Save_Str ( IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl_node))),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
+#endif // KEY
 /*
        if (TREE_CODE(TREE_TYPE(decl_node)) == METHOD_TYPE)
          fprintf (stderr, "Create_ST_For_Tree: METHOD_TYPE\n");
@@ -684,9 +819,18 @@ Create_ST_For_Tree (tree decl_node)
 	Set_PU_has_syscall_linkage (Pu_Table [ST_pu(st)]);
   }
   if(Debug_Level >= 2) {
+#ifdef KEY
+    // Bug 559
+    if (ST_sclass(st) != SCLASS_EXTERN) {
+      struct mongoose_gcc_DST_IDX dst =
+	Create_DST_decl_For_Tree(decl_node,st);
+      DECL_DST_IDX(decl_node) = dst;
+    }
+#else
      struct mongoose_gcc_DST_IDX dst =
        Create_DST_decl_For_Tree(decl_node,st);
      DECL_DST_IDX(decl_node) = dst;
+#endif
   }
   return st;
 }

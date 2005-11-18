@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -88,10 +92,10 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 #define USE_STANDARD_TYPES
-#include <algo.h>  // STL
+#include <algorithm>
 #include <stdlib.h>
-#include <vector.h>
-#include <stack.h>
+#include <vector>
+#include <stack>
 
 #include "defs.h"
 #include "stab.h"
@@ -185,7 +189,7 @@ class WN_Verifier{
     WN_MAP   _map;
     BOOL     _is_tree_OK;
     WN      *_func;
-    stack< pragma_stack_type > _pragma_stack; 
+    std::stack< pragma_stack_type > _pragma_stack; 
    
     /*--------------------------------------------------------
      * Private function section
@@ -491,7 +495,11 @@ WN_Verifier::Is_return_register_of_call(WN *call_wn, PREG_NUM preg)
   if (WHIRL_Return_Info_On) {
 
     RETURN_INFO return_info = Get_Return_Info (TY_ret_type (Ty_Table[PU_prototype (pu)]),
-					       Complex_Not_Simulated);
+					       Complex_Not_Simulated
+#ifdef TARG_X8664
+					       , PU_ff2c_abi(pu)
+#endif
+					      );
 
     if (RETURN_INFO_count(return_info) <= 2) {
 
@@ -535,7 +543,7 @@ BOOL WN_Verifier::CALL_parent_LDID(WN *wn, WN *parent_wn)
   WN       *temp_wn;  
   BOOL     slink_used;
 
-#ifndef TARG_IA64
+#if !defined(TARG_IA64) && !defined(TARG_X8664)
 
   // At the LDID node with special registers that are dedicated only
   // to return values:
@@ -816,6 +824,7 @@ BOOL WN_Verifier::STID_check_st_class(WN *wn)
 	      "not CLASS: VAR, PREG or Block but %d", ST_class(st));
       return FALSE;
     } 
+#ifndef TARG_X8664
     if ( (ST_class(st) == CLASS_PREG) && 
          (Is_dedicated_return_register(WN_offset(wn))) )
     {
@@ -857,6 +866,7 @@ BOOL WN_Verifier::STID_check_st_class(WN *wn)
 		   WN_offset(wn),OPCODE_name(WN_opcode(temp_wn)));
 	 }
     }
+#endif
 
     // Restricting the ST_sclass
     switch(ST_sclass(st))

@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 
 /*
 
@@ -73,7 +77,7 @@
 #include <errno.h>
 #include "libm.h"
 
-#ifdef mips
+#if defined(mips) && !defined(__GNUC__)
 extern	int	signgam;
 extern	double	gamma(double);
 extern	double	lgamma(double);

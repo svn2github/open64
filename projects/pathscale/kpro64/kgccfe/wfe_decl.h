@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -60,6 +66,17 @@ extern void WFE_Finish_Function (void);
 
 /* called for each initialized variable */
 extern void WFE_Initialize_Decl (tree decl);
+
+#ifdef KEY
+// For initialization of any variables  except globals.
+/* called for each initialized variable */
+extern void WFE_Initialize_Nested_Decl (tree decl);
+
+// Handle to get CURRENT_SYMTAB i.e., current scope level
+extern INT WFE_Get_Current_Scope ();
+
+extern bool defer_function;
+#endif /* KEY */
 
 /* called for each aggregate initialization */
 extern void WFE_Start_Aggregate_Init (tree decl);

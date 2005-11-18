@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -69,7 +73,7 @@ typedef union {
 #elif defined(_WORD32)
 typedef union {
 	_f_real4		f;
-	unsigned long		ui;
+	unsigned int		ui;
 	_f_int4			i;
 }               REGISTER_4;
 
@@ -286,9 +290,15 @@ union _ieee_f {
    _f_real4 dwd;
    _f_int4 lwd;
    struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+     unsigned int manta : IEEE_32_MANT_BITS;
+     unsigned int expt : IEEE_32_EXPO_BITS;
+     unsigned int sign : 1;
+#else
      unsigned int sign : 1;
      unsigned int expt: IEEE_32_EXPO_BITS;
      unsigned int manta : IEEE_32_MANT_BITS;
+#endif
    } pts;
 };
 #else
@@ -297,9 +307,15 @@ union _ieee_f {
    _f_real4 dwd;
    _f_int4 lwd;
    struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+     unsigned int manta : IEEE_32_MANT_BITS;
+     unsigned int expt : IEEE_32_EXPO_BITS;
+     unsigned int sign : 1;
+#else
      unsigned int sign : 1;
      unsigned int expt : IEEE_32_EXPO_BITS;
      unsigned int manta : IEEE_32_MANT_BITS;
+#endif
    } pts;
 };
 #endif        /* end of _F_REAL4 */
@@ -310,10 +326,17 @@ union _ieee_d {
    _f_real8 dwd;
    _f_int8 lwd;
    struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+     unsigned int manta2 : IEEE_64_MANT_BTS2;
+     unsigned int manta1 : IEEE_64_MANT_BTS1;
+     unsigned int expt : IEEE_64_EXPO_BITS;
+     unsigned int sign : 1;
+#else
      unsigned int sign : 1;
      unsigned int expt : IEEE_64_EXPO_BITS;
      unsigned int manta1 : IEEE_64_MANT_BTS1;
      unsigned int manta2 : IEEE_64_MANT_BTS2;
+#endif
    } pts;
 };
 
@@ -323,12 +346,21 @@ union _ieee_q {
    _f_real16 dwd;
    _f_int8 lwd[2];
    struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+     unsigned int manta4 : IEEE_128_MANT_BTS_LO2;
+     unsigned int manta3 : IEEE_128_MANT_BTS_LO1;
+     unsigned int manta2 : IEEE_128_MANT_BTS_UP2;
+     unsigned int manta1 : IEEE_128_MANT_BTS_UP1;
+     unsigned int expt : IEEE_128_EXPO_BITS;
+     unsigned int sign : 1;
+#else
      unsigned int sign : 1;
      unsigned int expt : IEEE_128_EXPO_BITS;
      unsigned int manta1 : IEEE_128_MANT_BTS_UP1;
      unsigned int manta2 : IEEE_128_MANT_BTS_UP2;
      unsigned int manta3 : IEEE_128_MANT_BTS_LO1;
      unsigned int manta4 : IEEE_128_MANT_BTS_LO2;
+#endif
    } pts;
 };
 #endif	/* _F_REAL16 */

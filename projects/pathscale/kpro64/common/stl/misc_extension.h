@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,10 +41,12 @@
 #ifndef SGI_misc_extension_h_INCLUDED
 #define SGI_misc_extension_h_INCLUDED
 
-#include <iterator.h>
+#include <iterator>
 
 namespace SGI {
 
+using std::random_access_iterator_tag;
+  
 template <class T1, class T2, class T3>
 struct triple {
   typedef T1 first_type;
@@ -145,6 +151,11 @@ inline bool operator==(int_iterator<Integer> x, int_iterator<Integer> y) {
 }
 
 template <class Integer>
+inline bool operator!=(int_iterator<Integer> x, int_iterator<Integer> y) {
+  return *x != *y; 
+}
+
+template <class Integer>
 inline bool operator<(int_iterator<Integer> x, int_iterator<Integer> y) {
   return *x < *y; 
 }
@@ -183,6 +194,15 @@ operator>=(const int_iterator<Integer>& x, const int_iterator<Integer>& y) {
 
 #endif /* __STL_FUNCTION_TMPL_PARTIAL_ORDER */
 
+// This is a holdover from pre-standard STL days.
+struct output_iterator {
+  typedef std::output_iterator_tag iterator_category;
+  typedef void value_type;
+  typedef void difference_type;
+  typedef void pointer;
+  typedef void reference;
+};
+
 template <class Container>
 class push_iterator : public output_iterator {
 protected:
@@ -220,7 +240,7 @@ public:
 
 
 template <class From, class To>
-struct converter : public unary_function<From, To> {
+struct converter : public std::unary_function<From, To> {
   To operator()(const From& x) { return To(x); }
 };
 

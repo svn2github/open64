@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -49,7 +54,7 @@
 #include "defs.h"
 #include "config_wopt.h"
 #include "opt_etable.h"
-#include "algo.h"
+#include <algorithm>
 #include "connected_components.h"
 
 using SGI::find_representative_and_compress_path;

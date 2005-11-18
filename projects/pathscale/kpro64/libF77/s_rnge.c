@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -64,7 +68,7 @@ s_rnge(char *varn, int32 offset, char *procn, int32 line)
     for(i = 0 ; i < len ; ++i)
 	putc(*procn++, stderr);
     fprintf(stderr,
-	    ".\nAttempt to access the %ld-th element of variable ", offset+1);
+	    ".\nAttempt to access the %d-th element of variable ", offset+1);
 #ifdef sgi
     for(i = 0; i < 32 && *varn!=' '; ++i)
 	putc(*varn++, stderr);

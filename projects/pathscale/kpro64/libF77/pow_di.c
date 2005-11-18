@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,65 +43,8 @@
 #include <math.h>
 #include "moremath.h"
 
-double_t __powdi(double_t x, int32 n)
-{
-double_t pow;
-
-pow = 1;
-
-if(n != 0)
-	{
-	if(n < 0)
-		{
-		if(x == 0)
-			{
-			return(pow);
-			}
-		n = -n;
-		x = 1/x;
-		}
-	for( ; ; )
-		{
-		if(n & 01)
-			pow *= x;
-		if(n >>= 1)
-			x *= x;
-		else
-			break;
-		}
-	}
-return(pow);
-}
-
-double_t __powdl(double_t x, int64 n)
-{
-double_t pow;
-
-pow = 1;
-
-if(n != 0)
-	{
-	if(n < 0)
-		{
-		if(x == 0)
-			{
-			return(pow);
-			}
-		n = -n;
-		x = 1/x;
-		}
-	for( ; ; )
-		{
-		if(n & 01)
-			pow *= x;
-		if(n >>= 1)
-			x *= x;
-		else
-			break;
-		}
-	}
-return(pow);
-}
+extern double_t __powdi(double_t x, int32 n);
+extern double_t __powdl(double_t x, int64 n);
 
 /* By-reference versions for backward compatibility. */
 

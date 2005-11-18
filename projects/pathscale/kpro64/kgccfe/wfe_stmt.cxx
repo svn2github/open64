@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -380,9 +386,17 @@ WFE_Add_Case_Node (tree low, tree high, tree label)
   }
   case_info_stack [case_info_i].case_lower_bound_value = WN_const_val (lower_bound);
   case_info_stack [case_info_i].case_upper_bound_value = WN_const_val (upper_bound);
+#ifdef KEY
+  if (label->decl.sgi_u1.label_idx != (LABEL_IDX) 0)
+    case_label_idx = label->decl.sgi_u1.label_idx;
+  else {
+#endif
   FmtAssert (label->decl.sgi_u1.label_idx == (LABEL_IDX) 0,
              ("WFE_Add_Case_Node: label already defined"));
   New_LABEL (CURRENT_SYMTAB, case_label_idx);
+#ifdef KEY
+  }
+#endif
   label->decl.sgi_u1.label_idx = case_label_idx;
   label->decl.label_defined = TRUE;
   case_info_stack [case_info_i].case_label_idx = case_label_idx;
@@ -413,7 +427,7 @@ WFE_Expand_End_Case (tree orig_index)
   WN    *wn;
   TYPE_ID index_mtype = switch_info_stack [switch_info_i].index_mtype;
 
-  n = case_info_i - switch_info_stack [switch_info_i].start_case_index;
+  n = case_info_i - switch_info_stack [switch_info_i].start_case_index + 1;
   if (switch_info_stack [switch_info_i].exit_label_idx == 0) {
     New_LABEL (CURRENT_SYMTAB, switch_info_stack [switch_info_i].exit_label_idx);
   }
@@ -478,8 +492,16 @@ WFE_Record_Switch_Default_Label (tree label)
   LABEL_IDX  default_label_idx;
   WN        *wn;
 
+#ifdef KEY
+// Fix bug 951. If we have already formed the label (during expansion
+// of STMT_EXPR), don't do it again (when called from GNU code)
+  if (label->decl.sgi_u1.label_idx != (LABEL_IDX) 0)
+      default_label_idx = label->decl.sgi_u1.label_idx;
+  else
+#else
   FmtAssert (label->decl.sgi_u1.label_idx == (LABEL_IDX) 0,
              ("WFE_Record_Switch_Default_Label: label already defined"));
+#endif
   New_LABEL (CURRENT_SYMTAB, default_label_idx);
   label->decl.sgi_u1.label_idx = default_label_idx;
   label->decl.label_defined = TRUE;
@@ -508,7 +530,14 @@ WFE_Expand_Exit_Something (struct nesting *n,
   }
   else
   if (n == loop_stack) {
+#ifndef KEY
     if (n == loop_info_stack [loop_info_i].whichloop) {
+#else
+    // We do not use a stack for STMT_EXPR Nodes for simplicity hence the
+    // n and whichloop may not match. The case where we may have nested 
+    // loops will be caught and asserted inside the caller.
+    if (1) {
+#endif 
       if (exit_label_idx == 0) {
         New_LABEL (CURRENT_SYMTAB, exit_label_idx);
         *label_idx = exit_label_idx;
@@ -687,6 +716,10 @@ idname_from_regnum (int gcc_reg)
 		st = Int_Preg;
 	else if (Preg_Offset_Is_Float(preg))
 		st = Float_Preg;
+#ifdef TARG_X8664
+	else if (Preg_Offset_Is_X87(preg))
+		st = X87_Preg;
+#endif
 	else
 		FmtAssert (FALSE, ("unexpected preg %d", preg));
   	return WN_CreateIdname((WN_OFFSET) preg, st);
@@ -745,7 +778,7 @@ st_of_new_temp_for_expr(const WN *expr)
 
   static char temp_name[64];
 
-  sprintf(temp_name, "asm.by.address.temp_%u\0", temp_count++);
+  sprintf(temp_name, "asm.by.address.temp_%u", temp_count++);
 
   ST *retval = New_ST(CURRENT_SYMTAB);
   
@@ -766,7 +799,11 @@ static char *operand_constraint_array[MAX_RECOG_OPERANDS];
 static BOOL
 constraint_by_address (const char *s)
 {
+#ifndef TARG_X8664
   if (strchr (s, 'm')) {
+#else
+  if (strchr (s, 'm') || strchr (s, 'g')) {
+#endif
     return TRUE;
   }
   else if (isdigit(*s)) {
@@ -828,7 +865,7 @@ Wfe_Expand_Asm_Operands (tree  string,
 			 tree  inputs,
 			 tree  clobbers,
 			 int   vol,
-			 char *filename,
+			 const char *filename,
 			 int   line)
 {
   // filename and line are ignored for now; eventually maybe they
@@ -849,7 +886,12 @@ Wfe_Expand_Asm_Operands (tree  string,
   int i = 0;
   // Store the constraint strings
   for (tail = outputs; tail; tail = TREE_CHAIN (tail)) {
-    constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
+#ifdef KEY
+    // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
+    // first operand gives the string constant.
+    constraint_string = 
+      TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+#endif /* KEY */
     operand_constraint_array[i] = constraint_string;
     ++i;
   }
@@ -875,7 +917,12 @@ Wfe_Expand_Asm_Operands (tree  string,
        tail;
        tail = TREE_CHAIN (tail))
     {
-      constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
+#ifdef KEY
+      // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
+      // first operand gives the string constant.
+      constraint_string = 
+	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+#endif /* KEY */
 
       if (strchr (constraint_string, '+') ||
 	  constraint_by_address (constraint_string))
@@ -975,7 +1022,12 @@ Wfe_Expand_Asm_Operands (tree  string,
        tail;
        tail = TREE_CHAIN (tail))
     {
-      constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
+#ifdef KEY
+      // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
+      // first operand gives the string constant.
+      constraint_string = 
+	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+#endif /* KEY */
 
       if (constraint_by_address(constraint_string)) {
 	// This operand is by address, and gets represented as an
@@ -1003,7 +1055,12 @@ Wfe_Expand_Asm_Operands (tree  string,
 	  return;
 	}
 
-      constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
+#ifdef KEY
+      // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
+      // first operand gives the string constant.
+      constraint_string = 
+	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+#endif /* KEY */
 
       if (flag_bad_asm_constraint_kills_stmt &&
 	  !constraint_supported (constraint_string)) {
@@ -1060,7 +1117,12 @@ Wfe_Expand_Asm_Operands (tree  string,
        tail;
        tail = TREE_CHAIN (tail), ++opnd_num)
     {
-      constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
+#ifdef KEY
+      // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
+      // first operand gives the string constant.
+      constraint_string = 
+	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+#endif /* KEY */
 
       if (!constraint_by_address(constraint_string)) {
 	// This operand is copy-in/copy-out.
@@ -1068,6 +1130,19 @@ Wfe_Expand_Asm_Operands (tree  string,
 	BOOL plus_modifier = (strchr (constraint_string, '+') != NULL);
 
 	char input_opnd_constraint[8];
+	tree output = TREE_VALUE(tail);
+
+#ifdef KEY // otherwise, WFE_Lhs_Of_Modify_Expr can't handle NOP_EXPR
+        STRIP_NOPS(output);
+        while (TREE_CODE (output) == NOP_EXPR
+	       || TREE_CODE (output) == CONVERT_EXPR
+	       || TREE_CODE (output) == FLOAT_EXPR
+	       || TREE_CODE (output) == FIX_TRUNC_EXPR
+	       || TREE_CODE (output) == FIX_FLOOR_EXPR
+	       || TREE_CODE (output) == FIX_ROUND_EXPR
+	       || TREE_CODE (output) == FIX_CEIL_EXPR)
+	  output = TREE_OPERAND (output, 0);
+#endif
 
 	if (plus_modifier)
 	  {
@@ -1080,7 +1155,7 @@ Wfe_Expand_Asm_Operands (tree  string,
 	  }
 
 	WN *output_rvalue_wn = WFE_Lhs_Of_Modify_Expr (MODIFY_EXPR,
-						       TREE_VALUE (tail),
+						       output,
 						       plus_modifier,
 						       (TY_IDX) 0, // component type
 						       (INT64) 0,  // component offset
@@ -1150,3 +1225,34 @@ WFE_Check_Undefined_Labels (void)
   }
   undefined_labels_i = i;
 } /* WFE_Check_Undefined_Labels */
+#ifdef KEY
+
+// Bug 1023
+int
+WFE_Emit_Side_Effects_Pending (tree* node)
+{
+  if ( TREE_CODE(*node) == POSTINCREMENT_EXPR || 
+       TREE_CODE(*node) == POSTDECREMENT_EXPR )
+    WFE_One_Stmt(*node);
+
+  return 0;
+}
+
+int
+WFE_Null_ST_References (tree* node)
+{
+  if ( TREE_CODE (*node) == VAR_DECL )
+  {
+    ST_SCLASS sc = ST_sclass (DECL_ST (*node));
+
+    // Don't null out global symbols
+    if ( sc != SCLASS_DGLOBAL &&
+         sc != SCLASS_EXTERN &&
+         sc != SCLASS_FSTATIC &&
+         sc != SCLASS_UGLOBAL )
+      DECL_ST(*node) = NULL;
+  }
+
+  return 0;
+}
+#endif

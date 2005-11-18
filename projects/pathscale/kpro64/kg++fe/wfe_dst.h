@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -111,7 +117,7 @@ extern DST_INFO_IDX DST_Create_Subprogram (ST *func_st,tree fndecl);
 
 extern DST_INFO_IDX DST_Get_Comp_Unit (void);
 extern DST_INFO_IDX Create_DST_type_For_Tree(
-	tree type_tree, TY_IDX ttidx  , TY_IDX idx);
+	tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignoreconst = false, bool ignorevolatile = false);
 extern DST_INFO_IDX Create_DST_decl_For_Tree(
 	tree decl_node, ST* var_st);
 

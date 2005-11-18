@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -38,16 +38,15 @@
 
 include $(COMMONDEFS)
 
-BUILD_SUBDIRS = libf90sgi fe90 sgi
+BUILD_SUBDIRS = fe90 sgi
 
 default : first
 
 first:
-	cd libf90sgi && $(MAKE)
-	cd fe90 && $(MAKE)
-	cd sgi && $(MAKE)
+	$(call submake,fe90)
+	$(call submake,sgi)
 
 $(BUILD_SUBDIRS):
-	cd $@ && $(MAKE)
+	$(call submake,$@)
 
 include $(COMMONRULES)

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,9 +47,15 @@ extern "C" {
 #endif
 
 #ifdef __linux
-#define	MS_STAMP 0
-#define	LS_STAMP 9
-#define INCLUDE_STAMP "0.01.0-13"
+#include "pathscale_defs.h"
+
+#ifndef PSC_MAJOR_VERSION
+#error PSC_MAJOR_VERSION not defined - check include path for pathscale_defs.h
+#endif
+
+#define	MS_STAMP PSC_MAJOR_VERSION_NUM
+#define	LS_STAMP PSC_MINOR_VERSION_NUM
+#define INCLUDE_STAMP PSC_FULL_VERSION
 #else
 #define	MS_STAMP 7
 #define	LS_STAMP 40

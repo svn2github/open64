@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -135,7 +139,7 @@ fei_dv_def(INT32 num_dims )
   if (cwh_stk_get_class() == ST_item || cwh_stk_get_class() == ST_item_whole_array) {
      st = cwh_stk_pop_ST();
      wa = NULL;
-     ty = NULL;
+     ty = 0;
 
   } else if (cwh_stk_get_class() == FLD_item) {
      fld = cwh_stk_pop_FLD();
@@ -147,7 +151,7 @@ fei_dv_def(INT32 num_dims )
   } else {
      wa = cwh_expr_address(f_NONE);
      st = NULL;
-     ty = NULL;
+     ty = 0;
   }
   cwh_dope_initialize(st,wa,ty,dp,bd,n);
 
@@ -293,7 +297,7 @@ fei_dv_deref(TYPE result)
   } else {
 
      wn = cwh_expr_operand(NULL);
-     dope_ty = NULL;
+     dope_ty = 0;
   }
   cwh_stk_push_typed(wn,DEREF_item,dope_ty);
 }
@@ -845,7 +849,7 @@ WN *craytype_wn)
   /* Create the dope vector */
   ty = cwh_types_dope_TY(nd,tarray,FALSE,FALSE);
   wn = cwh_expr_temp(ty,NULL,f_T_PASSED);
-  cwh_dope_initialize(WN_st(wn),NULL,NULL,dp,bd,nd*BOUND_NM);  
+  cwh_dope_initialize(WN_st(wn),NULL,0,dp,bd,nd*BOUND_NM);  
   return(wn);
 
 }
@@ -876,7 +880,7 @@ cwh_dope_initialize(ST *st, WN *wa, TY_IDX dope_ty, WN *dp[DOPE_USED],WN **bd, I
   OFFSET_64 invar_off;
   INT shift;
 
-  if (dope_ty == NULL) {
+  if (dope_ty == 0) {
      if ( wa == NULL ) {
 	fli = TY_fld(Ty_Table[ST_type(st)]);
      } else {

@@ -1,31 +1,44 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Pragma related interfaces.
-   Copyright (C) 1995, 1998, 1999, 2000 Free Software Foundation, Inc.
+   Copyright (C) 1995, 1998, 1999, 2000, 2001, 2002
+   Free Software Foundation, Inc.
 
-This file is part of GNU CC.
+This file is part of GCC.
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+GCC is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2, or (at your option) any later
+version.
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GCC is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  */
+along with GCC; see the file COPYING.  If not, write to the Free
+Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.  */
 
-#ifndef _C_PRAGMA_H
-#define _C_PRAGMA_H
+#ifndef GCC_C_PRAGMA_H
+#define GCC_C_PRAGMA_H
+
+/* Cause the `yydebug' variable to be defined.  */
+#define YYDEBUG 1
+extern int yydebug;
+
+struct cpp_reader;
+extern struct cpp_reader* parse_in;
 
 #ifdef HANDLE_SYSV_PRAGMA
-/* Support #pragma weak iff ASM_WEAKEN_LABEL and ASM_OUTPUT_DEF are
-   defined.  */
-#if defined (ASM_WEAKEN_LABEL) && defined (ASM_OUTPUT_DEF)
-#define HANDLE_PRAGMA_WEAK SUPPORTS_WEAK
+#if ((defined (ASM_WEAKEN_LABEL) && defined (ASM_OUTPUT_WEAK_ALIAS)) \
+     || defined (ASM_WEAKEN_DECL))
+# ifndef HANDLE_PRAGMA_WEAK
+#  define HANDLE_PRAGMA_WEAK SUPPORTS_WEAK
+# endif
 #endif
 
 /* We always support #pragma pack for SYSV pragmas.  */
@@ -35,67 +48,32 @@ Boston, MA 02111-1307, USA.  */
 #endif /* HANDLE_SYSV_PRAGMA */
 
 
+#ifdef SGI_MONGOOSE
+extern tree weak_decls;
+#endif /* SGI_MONGOOSE */
+
 #ifdef HANDLE_PRAGMA_PACK_PUSH_POP
 /* If we are supporting #pragma pack(push... then we automatically
    support #pragma pack(<n>)  */
 #define HANDLE_PRAGMA_PACK 1
 #endif /* HANDLE_PRAGMA_PACK_PUSH_POP */
 
-
-#ifdef HANDLE_PRAGMA_WEAK
-/* This structure contains any weak symbol declarations waiting to be emitted.  */
-struct weak_syms
-{
-  struct weak_syms * next;
-  char * name;
-  char * value;
-};
-
-/* Declared in varasm.c */
-extern struct weak_syms * weak_decls;
-
-extern int add_weak PARAMS ((char *, char *));
-#endif /* HANDLE_PRAGMA_WEAK */
-
-
-/* Define HANDLE_GENERIC_PRAGMAS if any kind of front-end pragma
-   parsing is to be done.  The code in GCC's generic C source files
-   will only look for the definition of this constant.  They will
-   ignore definitions of HANDLE_PRAGMA_PACK and so on. 
-   With #pragma poison, this is always set.  */
-#define HANDLE_GENERIC_PRAGMAS 1
-
-
-#ifdef HANDLE_GENERIC_PRAGMAS
-enum pragma_state
-{
-  ps_start,
-  ps_done,
-#ifdef HANDLE_PRAGMA_WEAK
-  ps_weak,
-  ps_name,
-  ps_equals,
-  ps_value,
-#endif
-#ifdef HANDLE_PRAGMA_PACK
-  ps_pack,
-  ps_left,
-  ps_align,
-  ps_right,
-#endif
-#ifdef HANDLE_PRAGMA_PACK_PUSH_POP
-  ps_push, ps_pushcomma, ps_pushid, ps_pushcomma2,
-  ps_pop, ps_popcomma,
-#endif
-  ps_poison,
-  ps_bad
-};
-
-/* Handle a C style pragma */
-extern int handle_pragma_token PARAMS ((const char *, tree));
-
-#endif /* HANDLE_GENERIC_PRAGMAS */
-
 extern void init_pragma PARAMS ((void));
 
-#endif /* _C_PRAGMA_H */
+/* Duplicate prototypes for the register_pragma stuff and the typedef for
+   cpp_reader, to avoid dragging cpplib.h in almost everywhere...  */
+#ifndef GCC_CPPLIB_H
+typedef struct cpp_reader cpp_reader;
+
+extern void cpp_register_pragma PARAMS ((cpp_reader *,
+					 const char *, const char *,
+					 void (*) PARAMS ((cpp_reader *))));
+#endif
+
+extern void maybe_apply_pragma_weak PARAMS ((tree));
+extern tree maybe_apply_renaming_pragma PARAMS ((tree, tree));
+extern void add_to_renaming_pragma_list PARAMS ((tree, tree));
+
+extern int c_lex PARAMS ((tree *));
+
+#endif /* GCC_C_PRAGMA_H */

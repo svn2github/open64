@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -67,6 +72,8 @@ static char *rcs_id = 	opt_emit_CXX"$Revision: 1.1.1.1 $";
 // standard types.
 #define USE_STANDARD_TYPES
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include "defs.h"
 #include "tracing.h"
 #include "erglob.h"
@@ -167,6 +174,9 @@ Create_block_stmt(BB_NODE *ff, BB_NODE *ll)
   //  is to rely on STMTREP * to screen out empty BBs.
   // 
   while (ff->First_stmtrep() == NULL &&
+#ifdef KEY
+         ff->Firststmt() == NULL &&
+#endif
 	 ff->Kind() == BB_GOTO &&
 	 ff != ll)
     ff = ff->Next();
@@ -1001,6 +1011,9 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
     prev_bb->Set_laststmt(WN_prev(init_stmt));
   WN_prev(init_stmt) = WN_next(init_stmt) = NULL;
 
+#ifdef KEY
+  if (preheader->Last_stmtrep())
+#endif
   preheader->Remove_stmtrep( preheader->Last_stmtrep());
 
   STMTREP *goto_end = loopback->Branch_stmtrep();
@@ -1437,6 +1450,23 @@ EMITTER::Gen_wn(BB_NODE *first_bb, BB_NODE *last_bb)
 	  } else {
 	    prev_bb->Set_firststmt(bb->Firststmt());
 	    prev_bb->Set_laststmt(bb->Laststmt());
+#ifdef KEY // bug 1294
+	    if (bb != last_bb && bb->Succ() && !bb->Succ()->Multiple_bbs() &&
+		bb->Succ()->Node() == bb->Next()) { 
+	      // only 1 successor: delete this BB
+	      // fix up predecessor list of successor
+	      BB_LIST *pred = bb->Next()->Pred();
+	      while (pred->Node() != bb)
+		pred = pred->Next();
+	      pred->Set_node(prev_bb);
+
+	      // fix up successor list of predecessor
+	      prev_bb->Succ()->Set_node(bb->Next());
+
+	      bb = bb->Next(); // delete this BB
+	      break;
+	    }
+#endif
 	  }
 	}
       }
@@ -1520,7 +1550,7 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
   // tell everyone that the generated WHIRL has feedback info if it
   // does
   if (Cur_PU_Feedback) {
-    Set_PU_Info_state(Current_PU_Info, WT_FREQ, Subsect_InMem);
+    Set_PU_Info_state(Current_PU_Info, WT_FEEDBACK, Subsect_InMem);
   }
 
   Is_True(Get_Preg_Num(PREG_Table_Size(CURRENT_SYMTAB)) ==

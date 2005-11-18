@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -34,6 +38,7 @@
 
 
 #include <malloc.h>
+#include <stdio.h>
 #include "option_seen.h"
 #include "options.h"
 #include "option_names.h"
@@ -72,7 +77,7 @@ static int_list* IMPLICITLY_SEEN;
 static int_list* current_seen;	/* for iterator */
 
 /* init the option_seen list */
-extern void 
+void 
 init_option_seen (void)
 {
 	int i;
@@ -90,7 +95,7 @@ init_option_seen (void)
 }
 
 /* double the number of options available in our structures */
-extern void
+void
 double_max_option_seen (void)
 {
 	/* we assume that max_options var has already been doubled */
@@ -112,21 +117,21 @@ double_max_option_seen (void)
 }
 
 /* whether option flag was seen or not */
-extern boolean 
+boolean 
 option_was_seen (int optflag)
 {
 	return (option_is_seen[optflag] != NOT_SEEN);
 }
 
 /* whether option flag was implicitly seen or not */
-extern boolean 
+boolean 
 option_was_implicitly_seen (int optflag)
 {
 	return (option_is_seen[optflag] == IMPLICITLY_SEEN);
 }
 
 /* set option as seen */
-extern void 
+void 
 add_option_seen (int optflag)
 {
 	/* create cross-reference between option_is_seen and 
@@ -141,7 +146,7 @@ add_option_seen (int optflag)
 }
 
 /* set option as seen, add to beginning of ordered list */
-extern void 
+void 
 prepend_option_seen (int optflag)
 {
 	/* create cross-reference between option_is_seen and 
@@ -159,7 +164,7 @@ prepend_option_seen (int optflag)
 }
 
 /* set option as implicitly seen */
-extern void 
+void 
 add_option_implicitly_seen (int optflag)
 {
 	/* just mark flag as being implicitly seen;
@@ -168,7 +173,7 @@ add_option_implicitly_seen (int optflag)
 }
 
 /* replace old option seen with new value, but in same place */
-extern void
+void
 replace_option_seen (int old_optflag, int new_optflag)
 {
 	int_list* p = option_is_seen[old_optflag];
@@ -200,7 +205,7 @@ delete_order_option (int_list *old)
 }
 
 /* set option as unseen */
-extern void
+void
 set_option_unseen (int optflag)
 {
 	int_list *p;
@@ -213,7 +218,7 @@ set_option_unseen (int optflag)
  * for (i = first_option_seen(); more_option_seen(); i = next_option_seen())
  */
 
-extern int 
+int 
 first_option_seen (void)
 {
 	current_seen = order_options_seen.head->next;	/* skip implicit */
@@ -224,7 +229,7 @@ first_option_seen (void)
 	}
 }
 
-extern int 
+int 
 next_option_seen (void)
 {
 	current_seen = current_seen->next;
@@ -235,7 +240,7 @@ next_option_seen (void)
 	}
 }
 
-extern boolean 
+boolean 
 more_option_seen (void)
 {
 	return (current_seen != NULL);
@@ -243,7 +248,7 @@ more_option_seen (void)
 
 /* return true if this option was repeated later */
 /* Warning:  this routine only works if inside an iterator */
-extern boolean
+boolean
 current_option_seen_later (int optflag)
 {
 	/* if was seen later, then option_is_seen will point to later use */
@@ -252,13 +257,13 @@ current_option_seen_later (int optflag)
 
 /* set current option as unseen */
 /* Warning:  this routine only works if inside an iterator */
-extern void
+void
 set_current_option_unseen (void)
 {
 	delete_order_option(current_seen);
 }
 
-extern void
+void
 dump_option_seen (void)
 {
 	int_list *p;

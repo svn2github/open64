@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -319,6 +323,7 @@ typedef struct op {
   struct bb	*unroll_bb;	/* BB just after unrolling */
   mUINT32	flags;		/* attributes associated with OP */
   mUINT16  	order;		/* relative order in BB */
+  mINT16        variant;        /* Opcode variant */
   mUINT16	map_idx;	/* index used by OP_MAPs; unique in BB */
   mUINT16	orig_idx;	/* index of orig op before unrolling */
   mINT16	scycle;		/* Start cycle */
@@ -352,6 +357,9 @@ typedef struct op {
 
 /* Define the access functions: */
 #define OP_srcpos(o)	((o)->srcpos)
+#ifdef KEY
+#define OP_variant(o)	((o)->variant)
+#endif
 #define OP_scycle(o)	((o)->scycle)
 #define OP_flags(o)	((o)->flags)
 
@@ -434,6 +442,11 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_TAG 	  0x00008000 /* OP has tag */
 #define OP_MASK_SPADJ_PLUS  0x00010000 /* Is OP de-alloca spadjust (plus)? */
 #define OP_MASK_SPADJ_MINUS 0x00020000 /* Is OP alloca spadjust (minus)? */
+#ifdef TARG_X8664
+#define OP_MASK_MEMORY_HI   0x00040000 /* Is OP load/store the high 32-bit? */
+/* Is this OP the first OP following the PRAGMA_PREAMBLE_END ? */
+#define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END 0x00080000
+#endif
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
 # define Set_OP_glue(o)		(OP_flags(o) |= OP_MASK_GLUE)
@@ -484,6 +497,14 @@ enum OP_COND_DEF_KIND {
 # define OP_spadjust_minus(o)	(OP_flags(o) & OP_MASK_SPADJ_MINUS)
 # define Set_OP_spadjust_minus(o) (OP_flags(o) |= OP_MASK_SPADJ_MINUS)
 # define Reset_OP_spadjust_minus(o) (OP_flags(o) &= ~OP_MASK_SPADJ_MINUS)
+#ifdef TARG_X8664
+# define OP_memory_hi(o)	(OP_flags(o) & OP_MASK_MEMORY_HI)
+# define Set_OP_memory_hi(o)	(OP_flags(o) |= OP_MASK_MEMORY_HI)
+# define Reset_OP_memory_hi(o)	(OP_flags(o) &= ~OP_MASK_MEMORY_HI)
+# define OP_first_after_preamble_end(o) (OP_flags(o) & OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
+# define Set_OP_first_after_preamble_end(o) (OP_flags(o) |= OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
+# define Reset_OP_first_after_preamble_end(o) (OP_flags(o) &= ~OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
+#endif
 
 extern BOOL OP_cond_def(const OP*);
 extern BOOL OP_has_implicit_interactions(OP*);
@@ -494,7 +515,12 @@ extern BOOL OP_has_implicit_interactions(OP*);
 #define OP_load(o)		(TOP_is_load(OP_code(o)))
 #define OP_store(o)		(TOP_is_store(OP_code(o)))
 #define OP_prefetch(o)		(TOP_is_prefetch(OP_code(o)))
+#ifdef TARG_X8664
+#define OP_load_exe(o)		(TOP_is_load_exe(OP_code(o)))
 #define OP_memory(o)		(OP_load(o) | OP_store(o) | OP_prefetch(o))
+#else
+#define OP_memory(o)		(OP_load(o) | OP_store(o) | OP_prefetch(o))
+#endif
 #define OP_mem_fill_type(o)     (TOP_is_mem_fill_type(OP_code(o)))
 #define OP_call(o)		(TOP_is_call(OP_code(o)))
 #define OP_xfer(o)		(TOP_is_xfer(OP_code(o)))
@@ -544,6 +570,10 @@ extern BOOL OP_has_implicit_interactions(OP*);
 #define OP_branch_predict(o)	(TOP_is_branch_predict(OP_code(o)))
 #define OP_var_opnds(o)		(TOP_is_var_opnds(OP_code(o)))
 #define OP_uncond(o)            (OP_xfer(o) && !OP_cond(o))
+#ifdef TARG_X8664
+#define OP_x86_style(o)	        (TOP_is_x86_style(OP_code(o)))
+#define OP_reads_rflags(o)      (TOP_is_read_rflags(OP_code(o)))
+#endif
 
 #define OP_operand_info(o)	(ISA_OPERAND_Info(OP_code(o)))
 #define OP_has_hazard(o)	(ISA_HAZARD_TOP_Has_Hazard(OP_code(o)))

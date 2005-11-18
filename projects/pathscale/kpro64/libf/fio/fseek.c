@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -258,7 +262,7 @@ __setpos64(
 		if ( cup->ufmt == NO )
 			ioff <<= 3;
 
-		ret	= fseek64(cup->ufp.std, ioff, whence);
+		ret	= fseek(cup->ufp.std, ioff, whence);
 		if (ret != 0)
 			return(errno);
 

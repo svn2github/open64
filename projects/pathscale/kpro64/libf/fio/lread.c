@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -80,7 +84,11 @@ _set_stride(void *dest, void *src, long count, int elsize, long inc);
  *	This table is used to drive input conversion based on the type of the
  *	data.
  */
-extern const ic_func	*_ilditab[DVTYPE_NTYPES];
+extern 
+#ifndef KEY /* this can cause wrong func being called when compiled by gcc */
+const 
+#endif
+ic_func	*_ilditab[DVTYPE_NTYPES];
 
 /*
  *	_gen_real is a float (REAL) variable type of largest supported kind.
@@ -773,7 +781,10 @@ _get_value(
 	long		width;
 	long		*begin;
 	long		*end;
-	const ic_func 	*ngcf;
+#ifndef KEY /* this can cause wrong func being called when compiled by gcc */
+	const 
+#endif
+	    ic_func 	*ngcf;
 
 	begin	= lptr;			/* Mark start of field */
 	ngcf	= _ilditab[type];	/* Conversion function */

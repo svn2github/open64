@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -1943,11 +1948,13 @@ private:
 				       EXP_OCCURS        *occur,
 				       OCCUR_REPLACEMENT *repl,
 				       const BOOL         replacing_istr_base,
-				       UINT               depth);
+				       UINT               depth,
+  				       OPCODE		  opc);
    CODEREP       *Rehash_and_replace(CODEREP           *x,
 				     EXP_OCCURS        *occur,
 				     OCCUR_REPLACEMENT *repl,
-				     const BOOL         replacing_istr_base);
+				     const BOOL         replacing_istr_base,
+				     OPCODE		parent_opc);
    void           Replace_occurs(EXP_OCCURS *occur, OCCUR_REPLACEMENT *repl);
 
   // remove a single occurrence from one of the worklsts
@@ -1958,7 +1965,9 @@ private:
   void            Set_entry_chi(STMTREP *entry_chi) { _entry_chi = entry_chi; }
 
   void		  Count_lex_ident_exprs(INT32); // for statistics only
-
+#ifdef KEY
+  void            Mark_phi_live(PHI_NODE *phi);
+#endif
 public:
                   ETABLE(CFG      *cfg,
                          OPT_STAB *opt_stab,
@@ -2125,14 +2134,14 @@ public:
 			{ return _phi_pred_cr[bb->Id()]; }
 
   // derive phi opnd codereps from result coderep
-  CODEREP            *Generate_cur_expr(const BB_NODE *, INT, CODEREP *, BOOL) const;
+  CODEREP            *Generate_cur_expr(const BB_NODE *, INT, CODEREP *, BOOL);
   CODEREP            *Get_cached_cur_expr(const BB_NODE *, INT);
   void                Update_cached_cur_expr(const BB_NODE *, INT, CODEREP *);
   CODEREP            *Alloc_and_generate_cur_expr(const CODEREP *,
 						  const BB_NODE *,
 						  INT,
 						  MEM_POOL *,
-						  BOOL) const;
+						  BOOL) ;
 
   STACK<EXP_OCCURS *> *Deferred_ocopy_occurs(void)
     { return &_deferred_ocopy_occurs; }

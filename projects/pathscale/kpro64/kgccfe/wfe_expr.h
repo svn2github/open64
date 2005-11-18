@@ -1,3 +1,15 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
+
+/* 
+   Copyright (C) 2001 Tensilica, Inc.  All Rights Reserved.
+   Revised to support Tensilica processors and to improve overall performance
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -90,6 +102,12 @@ extern UINT64 Get_Integer_Value (tree exp);
 
 /* traverse the tree and addr_saved if address of a variable is taken */
 extern void WFE_Set_ST_Addr_Saved (WN *);
+
+#ifdef KEY
+// Convert inplace target order words in 'buf' to host order. 'buf' is a two
+// word array. 
+extern void WFE_Convert_To_Host_Order (long *buf);
+#endif
 
 #endif /* __cplusplus */
 

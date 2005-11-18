@@ -1,3 +1,9 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.2.2 release.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -67,8 +73,27 @@ extern "C" ST* Create_ST_For_Tree (tree);
 
 #else /* EXTRA_WORD_IN_TREE_NODES */
 
+// These are defined in tree.h.
+#undef TREE_STRING_ST
+#undef TYPE_TY_IDX
+#undef TYPE_FIELD_IDS_USED
+#undef TYPE_DST_IDX
+#undef DECL_ST
+#undef DECL_FIELD_ID
+#undef DECL_DST_IDX
+
 TY_IDX& TYPE_TY_IDX(tree);
+#ifdef KEY
+extern "C" void add_duplicates (tree, tree);
+extern "C" void erase_duplicates (tree);
+void set_DECL_ST(tree, ST*);
+ST*& get_DECL_ST(tree);
+BOOL& expanded_decl(tree);
+BOOL& func_PU_uplevel(tree);
+#define DECL_ST(x)	get_DECL_ST(x)
+#else
 ST*& DECL_ST(tree);
+#endif
 SYMTAB_IDX& DECL_SYMTAB_IDX(tree);
 LABEL_IDX& DECL_LABEL_IDX(tree);
 ST*& TREE_STRING_ST(tree);
@@ -83,6 +108,9 @@ DST_INFO_IDX& TYPE_DST_IDX(tree);
 DST_INFO_IDX& DECL_DST_SPECIFICATION_IDX(tree);
 DST_INFO_IDX& DECL_DST_ABSTRACT_ROOT_IDX(tree);
 LABEL_IDX& HANDLER_LABEL(tree);
+#ifdef KEY
+tree& PARENT_SCOPE(tree);
+#endif
 
 
 #endif /* EXTRA_WORD_IN_TREE_NODES */
@@ -122,6 +150,17 @@ Get_ST (tree decl_tree)
 		    !DECL_EXTERNAL(decl_tree)        &&
 		    !DECL_INITIAL(decl_tree))
 			Set_ST_sclass (st, SCLASS_UGLOBAL);
+#ifdef KEY // the earlier definition may not have the complete type
+		if (TREE_CODE(decl_tree) == VAR_DECL) {
+		  TY_IDX ty_idx = Get_TY(TREE_TYPE(decl_tree));
+		  if (ty_idx && ty_idx != st->u2.type) {
+		    // Preserve volatile.
+		    if (TY_is_volatile(ST_type(st)))
+		      Set_TY_is_volatile(ty_idx);
+		    st->u2.type = ty_idx;
+		  }
+		}
+#endif
                 return st;
         }
 	return Create_ST_For_Tree (decl_tree);

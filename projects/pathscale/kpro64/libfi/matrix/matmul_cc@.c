@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -61,8 +65,8 @@
 #define SUBNAME1 _CGEMMX
 #define SUBNAME2 _CGEMVX
 #else
-#define SUBNAME1 cgemmx__
-#define SUBNAME2 cgemvx__
+#define SUBNAME1 _cgemmx__
+#define SUBNAME2 _cgemvx__
 #endif
 
 /*

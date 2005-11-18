@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -106,6 +106,12 @@ endif
 ifeq ($(BUILD_TARGET), IA32)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), MIPS)
+TARGDEFS = -D__MIPS_AND_IA64_ELF_H
+endif
+ifeq ($(BUILD_TARGET), X8664)
+TARGDEFS = -D__MIPS_AND_IA64_ELF_H
+endif
 
 TARG_TARG_INFO = $(TARGDIR)/targ_info
 ifeq ($(BUILD_OS), IRIX)
@@ -148,6 +154,7 @@ COMMON_STL_DIR 		= $(COMMON_DIR)/stl
 COMMON_COM_TARG_DIR 	= $(COMMON_COM_DIR)/$(BUILD_TARGET_DIR)
 COMMON_TARG_INFO_ACCESS_DIR = $(COMMON_DIR)/targ_info/access
 COMMON_UTIL_DIR 	= $(COMMON_DIR)/util
+LIBDWARF_DIR		= $(BUILD_TOT)/libdwarf
 
 # These are the directories in which to look for source files.
 
@@ -173,7 +180,8 @@ HEADER_DIRS = \
   $(BE_OPT_DIR)		\
   $(COMMON_TARG_INFO_ACCESS_DIR) \
   $(TARG_TARG_INFO)	\
-  $(TARG_BE)
+  $(TARG_BE)		\
+  $(LIBDWARF_DIR)
 
 ifeq ($(BUILD_OS), LINUX)
 HEADER_DIRS += $(TARGDIR)/include/libelf
@@ -276,6 +284,15 @@ ifeq ($(BUILD_TARGET), IA32)
   BE_CG_TARG_CXX_SRCS += exp_longlong.cxx
 endif
 
+ifeq ($(BUILD_TARGET), MIPS)
+  BE_CG_TARG_CXX_SRCS += cg_sas.cxx
+endif
+
+ifeq ($(BUILD_TARGET), X8664)
+  BE_CG_TARG_CXX_SRCS += cg_sched.cxx
+  BE_CG_TARG_CXX_SRCS += cg_convert_x87.cxx
+endif
+
 CG_CXX_PCH_SRCS = 	\
   cg_cflow.cxx		\
   cg_dep_graph.cxx 	\
@@ -348,6 +365,8 @@ CG_CXX_SRCS = 		\
   hb_tail_duplication.cxx\
   hb_block_select.cxx	\
   hb_cflow.cxx          \
+  cxx_memory.cxx	\
+  cg_gcov.cxx		\
   $(DERIVED_SRCS)
 
 ifeq ($(BUILD_PCH), USE_PCH)
@@ -364,7 +383,7 @@ CG_CXX_OBJS = $(CG_CXX_SRCS:.cxx=.o)
 
 VPATH    =  $(SRC_DIRS)
 
-LCOPTS += $(STD_COMPILE_OPTS)
+LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 ifneq ($(BUILD_COMPILER), EDG)
 LCOPTS += -fwritable-strings
 endif
@@ -436,11 +455,20 @@ endif
 ifeq ($(BUILD_TARGET), IA32)
 TARGET_SO = pentium.so
 endif
+ifeq ($(BUILD_TARGET), X8664)
+TARGET_SO = opteron.so
+endif
 
 ifeq ($(BUILD_OS), IRIX)
 LLDLIBS += -lelf_xtnd -ldwarf_xtnd -lelfutil_xtnd -lm -lc
 else
  ifeq ($(BUILD_TARGET), IA64)
+LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
+ endif
+ ifeq ($(BUILD_TARGET), X8664)
+LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
+ endif
+ ifeq ($(BUILD_TARGET), MIPS)
 LLDLIBS += $(TARG_LIBUNWIND)/libunwindP.a
  endif
 LLDLIBS += $(TARG_LIBDWARF)/libdwarf.a \
@@ -458,17 +486,24 @@ default: first derived_files $(TARGETS) last
 #----------------------------------------------------------------------
 first:
 ifeq ($(BUILD_OS), LINUX)
-	cd $(TARG_LIBELF) && $(MAKE)
-	cd $(TARG_LIBELFUTIL) && $(MAKE)
-	cd $(TARG_LIBDWARF) && $(MAKE)
+	$(call submake,$(TARG_LIBELF))
+	$(call submake,$(TARG_LIBELFUTIL))
+	$(call submake,$(TARG_LIBDWARF))
  ifeq ($(BUILD_TARGET), IA64)
-	cd $(TARG_LIBUNWIND) && $(MAKE)
+	$(call submake,$(TARG_LIBUNWIND))
+ endif
+ ifeq ($(BUILD_TARGET), MIPS)
+	$(call submake,$(TARG_LIBUNWIND))
+ endif
+ ifeq ($(BUILD_TARGET), X8664)
+	$(call submake,$(TARG_LIBUNWIND))
  endif
 endif
 ## verify that be.so is up to date
-	cd $(TARG_BE) && $(MAKE)
+	$(call submake,$(TARG_BE))
 ifeq ($(BUILD_OS), LINUX)
 	if ! test -a be.so; then ln -sf $(TARG_BE)/be.so .; fi
+	if ! test -a be; then ln -sf $(TARG_BE)/be .; fi
 	if ! test -a $(TARGET_SO); then ln -sf $(TARG_TARG_INFO)/$(TARGET_SO) .; fi
 endif
 ifeq ($(BUILD_PCH), USE_PCH)
@@ -525,7 +560,7 @@ cg_gra_pch_files: $(CG_GRA_PCH_OBJS) cg_gra_pch.pch
 cg.so:  $(CG_CXX_OBJS) $(CG_C_OBJS) $(CG_PCH_OBJS) $(CG_GRA_PCH_OBJS)\
 	$(BE_CG_DIR)/Exported $(TARG_BE)/be.so \
 	$(BE_BE_DIR)/so_locations
-	$(C++F) $(UNRESOLVED_FLAGS) $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
+	$(link.c++f) $(UNRESOLVED_FLAGS) $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
 	$(CG_C_OBJS) $(CG_CXX_OBJS) $(CG_PCH_OBJS) $(CG_GRA_PCH_OBJS)\
 	-o $@ $(TARG_BE)/be.so $(LLDLIBS)
 
@@ -543,7 +578,7 @@ LINK_DSOS = $(TARG_BE)/be.so
  endif
 cg.so:  $(CG_CXX_OBJS) $(CG_C_OBJS) $(BE_CG_DIR)/Exported $(TARG_BE)/be.so \
 		$(BE_BE_DIR)/so_locations
-	$(C++F) $(UNRESOLVED_FLAGS) $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
+	$(link.c++f) $(UNRESOLVED_FLAGS) $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
 		$(CG_C_OBJS) $(CG_CXX_OBJS) \
 		-o $@ $(LINK_DSOS) $(LLDLIBS)
 
@@ -655,4 +690,9 @@ include $(COMMONRULES)
 #----------------------------------------------------------------------
 
 .cxx.pch:
-	$(C++F) -c $(.IMPSRC)
+	$(c++f) -c $(.IMPSRC)
+
+ifeq (gcc,$(firstword $(CCNAME)))
+# work around gcc bug optimizing this file on ia32
+cg_loop.o: OPTIMIZER = -O0
+endif

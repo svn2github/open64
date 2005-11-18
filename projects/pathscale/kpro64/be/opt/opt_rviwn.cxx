@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -552,6 +557,9 @@ RVI::Is_const_candidate( const WN *parent, const WN *constant, INT whichkid ) co
 BOOL
 RVI::Is_lda_candidate( const WN *parent, const WN *lda, INT whichkid ) const
 {
+#if defined(TARG_X8664) || defined(TARG_IA32)
+  return FALSE;
+#else
   const OPCODE   lda_opc = WN_opcode(lda);
   const OPERATOR lda_opr = OPCODE_operator(lda_opc);
   const OPCODE   par_opc = WN_opcode(parent);
@@ -637,6 +645,7 @@ RVI::Is_lda_candidate( const WN *parent, const WN *lda, INT whichkid ) const
     default:
       return TRUE;
   }
+#endif
 }
 
 /* CVTL-RELATED start (correctness) */

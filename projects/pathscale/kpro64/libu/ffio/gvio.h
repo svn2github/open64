@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -216,4 +220,11 @@ struct v_rec_limit_s
 	int max_mbs;	/* maximum block size */
 	int def_mbs;	/* default block size */
 	};
+
+#if _MIPS_SZPTR == _MIPS_SZLONG
+typedef unsigned long uintps_t;
+#else
+typedef unsigned long long uintps_t;
+#endif
+
 #endif

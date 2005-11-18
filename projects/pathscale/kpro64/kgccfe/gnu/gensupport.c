@@ -1,36 +1,45 @@
+/* 
+   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
+   front-ends to GNU 3.3.1 release.
+ */
+
 /* Support routines for the various generation passes.
-   Copyright (C) 2000 Free Software Foundation, Inc.
+   Copyright (C) 2000, 2001, 2002 Free Software Foundation, Inc.
 
-   This file is part of GNU CC.
+   This file is part of GCC.
 
-   GNU CC is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
+   GCC is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by
    the Free Software Foundation; either version 2, or (at your option)
    any later version.
 
-   GNU CC is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GCC is distributed in the hope that it will be useful, but WITHOUT
+   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+   or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+   License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with GNU CC; see the file COPYING.  If not, write to
-   the Free Software Foundation, 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.  */
+   along with GCC; see the file COPYING.  If not, write to the Free
+   Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+   02111-1307, USA.  */
 
 #include "hconfig.h"
 #include "system.h"
 #include "rtl.h"
 #include "obstack.h"
 #include "errors.h"
+#include "hashtab.h"
 #include "gensupport.h"
 
 
+/* In case some macros used by files we include need it, define this here.  */
+int target_flags;
+
+int insn_elision = 1;
+
 static struct obstack obstack;
 struct obstack *rtl_obstack = &obstack;
-
-#define obstack_chunk_alloc xmalloc
-#define obstack_chunk_free free
 
 static int sequence_num;
 static int errors;
@@ -39,12 +48,17 @@ static int predicable_default;
 static const char *predicable_true;
 static const char *predicable_false;
 
+static htab_t condition_table;
+
+static char *base_dir = NULL;
+
 /* We initially queue all patterns, process the define_insn and
    define_cond_exec patterns, then return them one at a time.  */
 
 struct queue_elem
 {
   rtx data;
+  const char *filename;
   int lineno;
   struct queue_elem *next;
 };
@@ -58,7 +72,25 @@ static struct queue_elem **define_cond_exec_tail = &define_cond_exec_queue;
 static struct queue_elem *other_queue;
 static struct queue_elem **other_tail = &other_queue;
 
-static void queue_pattern PARAMS ((rtx, struct queue_elem ***, int));
+static void queue_pattern PARAMS ((rtx, struct queue_elem ***,
+				   const char *, int));
+
+/* Current maximum length of directory names in the search path
+   for include files.  (Altered as we get more of them.)  */
+
+size_t max_include_len;
+
+struct file_name_list
+  {
+    struct file_name_list *next;
+    const char *fname;
+  };
+
+struct file_name_list *first_dir_md_include = 0;  /* First dir to search */
+        /* First dir to search for <file> */
+struct file_name_list *first_bracket_include = 0;
+struct file_name_list *last_dir_md_include = 0;        /* Last in chain */
+
 static void remove_constraints PARAMS ((rtx));
 static void process_rtx PARAMS ((rtx, int));
 
@@ -75,40 +107,58 @@ static const char *alter_output_for_insn PARAMS ((struct queue_elem *,
 						  int, int));
 static void process_one_cond_exec PARAMS ((struct queue_elem *));
 static void process_define_cond_exec PARAMS ((void));
+static void process_include PARAMS ((rtx, int));
+static char *save_string PARAMS ((const char *, int));
 
 void
 message_with_line VPARAMS ((int lineno, const char *msg, ...))
 {
-#ifndef ANSI_PROTOTYPES
-  int lineno;
-  const char *msg;
-#endif
+#ifdef SGI_MONGOOSE 
   va_list ap;
-
   VA_START (ap, msg);
-
-#ifndef ANSI_PROTOTYPES
-  lineno = va_arg (ap, int);
-  msg = va_arg (ap, const char *);
-#endif
+#else
+  VA_OPEN (ap, msg);
+  VA_FIXEDARG (ap, int, lineno);
+  VA_FIXEDARG (ap, const char *, msg);
+#endif /* SGI_MONGOOSE */
 
   fprintf (stderr, "%s:%d: ", read_rtx_filename, lineno);
   vfprintf (stderr, msg, ap);
   fputc ('\n', stderr);
 
+#ifndef SGI_MONGOOSE
+  VA_CLOSE (ap);
+#else
   va_end (ap);
+#endif
+}
+
+/* Make a version of gen_rtx_CONST_INT so that GEN_INT can be used in
+   the gensupport programs.  */
+
+rtx
+gen_rtx_CONST_INT (mode, arg)
+     enum machine_mode mode ATTRIBUTE_UNUSED;
+     HOST_WIDE_INT arg;
+{
+  rtx rt = rtx_alloc (CONST_INT);
+
+  XWINT (rt, 0) = arg;
+  return rt;
 }
 
 /* Queue PATTERN on LIST_TAIL.  */
 
 static void
-queue_pattern (pattern, list_tail, lineno)
+queue_pattern (pattern, list_tail, filename, lineno)
      rtx pattern;
      struct queue_elem ***list_tail;
+     const char *filename;
      int lineno;
 {
   struct queue_elem *e = (struct queue_elem *) xmalloc (sizeof (*e));
   e->data = pattern;
+  e->filename = filename;
   e->lineno = lineno;
   e->next = NULL;
   **list_tail = e;
@@ -121,8 +171,8 @@ static void
 remove_constraints (part)
      rtx part;
 {
-  register int i, j;
-  register const char *format_ptr;
+  int i, j;
+  const char *format_ptr;
 
   if (part == 0)
     return;
@@ -149,6 +199,85 @@ remove_constraints (part)
       }
 }
 
+/* Process an include file assuming that it lives in gcc/config/{target}/ 
+   if the include looks like (include "file").  */
+
+static void
+process_include (desc, lineno)
+     rtx desc;
+     int lineno;
+{
+  const char *filename = XSTR (desc, 0);
+  const char *old_filename;
+  int old_lineno;
+  char *pathname;
+  FILE *input_file;
+
+  /* If specified file name is absolute, skip the include stack.  */
+  if (! IS_ABSOLUTE_PATHNAME (filename))
+    {
+      struct file_name_list *stackp;
+
+      /* Search directory path, trying to open the file.  */
+      for (stackp = first_dir_md_include; stackp; stackp = stackp->next)
+	{
+	  static const char sep[2] = { DIR_SEPARATOR, '\0' };
+
+	  pathname = concat (stackp->fname, sep, filename, NULL);
+	  input_file = fopen (pathname, "r");
+	  if (input_file != NULL) 
+	    goto success;
+	  free (pathname);
+	}
+    }
+
+  if (base_dir)
+    pathname = concat (base_dir, filename, NULL);
+  else
+    pathname = xstrdup (filename);
+  input_file = fopen (pathname, "r");
+  if (input_file == NULL)
+    {
+      free (pathname);
+      message_with_line (lineno, "include file `%s' not found", filename);
+      errors = 1;
+      return;
+    }
+ success:
+
+  /* Save old cursor; setup new for the new file.  Note that "lineno" the
+     argument to this function is the beginning of the include statement,
+     while read_rtx_lineno has already been advanced.  */
+  old_filename = read_rtx_filename;
+  old_lineno = read_rtx_lineno;
+  read_rtx_filename = pathname;
+  read_rtx_lineno = 1;
+
+  /* Read the entire file.  */
+  while (1)
+    {
+      rtx desc;
+      int c;
+
+      c = read_skip_spaces (input_file);
+      if (c == EOF)
+	break;
+
+      ungetc (c, input_file);
+      lineno = read_rtx_lineno;
+      desc = read_rtx (input_file);
+      process_rtx (desc, lineno);
+    }
+
+  /* Do not free pathname.  It is attached to the various rtx queue
+     elements.  */
+
+  read_rtx_filename = old_filename;
+  read_rtx_lineno = old_lineno;
+
+  fclose (input_file);
+}
+
 /* Process a top level rtx in some way, queueing as appropriate.  */
 
 static void
@@ -159,24 +288,29 @@ process_rtx (desc, lineno)
   switch (GET_CODE (desc))
     {
     case DEFINE_INSN:
-      queue_pattern (desc, &define_insn_tail, lineno);
+      queue_pattern (desc, &define_insn_tail, read_rtx_filename, lineno);
       break;
 
     case DEFINE_COND_EXEC:
-      queue_pattern (desc, &define_cond_exec_tail, lineno);
+      queue_pattern (desc, &define_cond_exec_tail, read_rtx_filename, lineno);
       break;
 
     case DEFINE_ATTR:
-      queue_pattern (desc, &define_attr_tail, lineno);
+      queue_pattern (desc, &define_attr_tail, read_rtx_filename, lineno);
+      break;
+
+    case INCLUDE:
+      process_include (desc, lineno);
       break;
 
     case DEFINE_INSN_AND_SPLIT:
       {
 	const char *split_cond;
 	rtx split;
+	rtvec attr;
 	int i;
 
-	/* Create a split with values from the insn_and_split. */
+	/* Create a split with values from the insn_and_split.  */
 	split = rtx_alloc (DEFINE_SPLIT);
 
 	i = XVECLEN (desc, 1);
@@ -191,34 +325,24 @@ process_rtx (desc, lineno)
 	   insn condition to create the new split condition.  */
 	split_cond = XSTR (desc, 4);
 	if (split_cond[0] == '&' && split_cond[1] == '&')
-	  {
-	    const char *insn_cond = XSTR (desc, 2);
-	    size_t insn_cond_len = strlen (insn_cond);
-	    size_t split_cond_len = strlen (split_cond);
-	    char *combined;
-
-	    combined = (char *) xmalloc (insn_cond_len + split_cond_len + 1);
-	    memcpy (combined, insn_cond, insn_cond_len);
-	    memcpy (combined + insn_cond_len, split_cond, split_cond_len + 1);
-
-	    split_cond = combined;
-	  }
+	  split_cond = concat (XSTR (desc, 2), split_cond, NULL);
 	XSTR (split, 1) = split_cond;
 	XVEC (split, 2) = XVEC (desc, 5);
 	XSTR (split, 3) = XSTR (desc, 6);
 
 	/* Fix up the DEFINE_INSN.  */
+	attr = XVEC (desc, 7);
 	PUT_CODE (desc, DEFINE_INSN);
-	XVEC (desc, 4) = XVEC (desc, 7);
+	XVEC (desc, 4) = attr;
 
 	/* Queue them.  */
-	queue_pattern (desc, &define_insn_tail, lineno);
-	queue_pattern (split, &other_tail, lineno);
+	queue_pattern (desc, &define_insn_tail, read_rtx_filename, lineno);
+	queue_pattern (split, &other_tail, read_rtx_filename, lineno);
 	break;
       }
 
     default:
-      queue_pattern (desc, &other_tail, lineno);
+      queue_pattern (desc, &other_tail, read_rtx_filename, lineno);
       break;
     }
 }
@@ -306,7 +430,7 @@ is_predicable (elem)
     return 0;
 
   message_with_line (elem->lineno,
-		     "Unknown value `%s' for `predicable' attribute",
+		     "unknown value `%s' for `predicable' attribute",
 		     value);
   errors = 1;
   return 0;
@@ -319,9 +443,8 @@ static void
 identify_predicable_attribute ()
 {
   struct queue_elem *elem;
-  char *true, *false;
+  char *p_true, *p_false;
   const char *value;
-  size_t len;
 
   /* Look for the DEFINE_ATTR for `predicable', which must exist.  */
   for (elem = define_attr_queue; elem ; elem = elem->next)
@@ -329,28 +452,25 @@ identify_predicable_attribute ()
       goto found;
 
   message_with_line (define_cond_exec_queue->lineno,
-		     "Attribute `predicable' not defined");
+		     "attribute `predicable' not defined");
   errors = 1;
   return;
 
  found:
   value = XSTR (elem->data, 1);
-  len = strlen (value);
-  false = (char *) xmalloc (len + 1);
-  memcpy (false, value, len + 1);
-
-  true = strchr (false, ',');
-  if (true == NULL || strchr (++true, ',') != NULL)
+  p_false = xstrdup (value);
+  p_true = strchr (p_false, ',');
+  if (p_true == NULL || strchr (++p_true, ',') != NULL)
     {
       message_with_line (elem->lineno,
-			 "Attribute `predicable' is not a boolean");
+			 "attribute `predicable' is not a boolean");
       errors = 1;
       return;
     }
-  true[-1] = '\0';
+  p_true[-1] = '\0';
 
-  predicable_true = true;
-  predicable_false = false;
+  predicable_true = p_true;
+  predicable_false = p_false;
 
   switch (GET_CODE (XEXP (elem->data, 2)))
     {
@@ -360,25 +480,25 @@ identify_predicable_attribute ()
 
     case CONST:
       message_with_line (elem->lineno,
-			 "Attribute `predicable' cannot be const");
+			 "attribute `predicable' cannot be const");
       errors = 1;
       return;
 
     default:
       message_with_line (elem->lineno,
-			 "Attribute `predicable' must have a constant default");
+			 "attribute `predicable' must have a constant default");
       errors = 1;
       return;
     }
 
-  if (strcmp (value, true) == 0)
+  if (strcmp (value, p_true) == 0)
     predicable_default = 1;
-  else if (strcmp (value, false) == 0)
+  else if (strcmp (value, p_false) == 0)
     predicable_default = 0;
   else
     {
       message_with_line (elem->lineno,
-			 "Unknown value `%s' for `predicable' attribute",
+			 "unknown value `%s' for `predicable' attribute",
 			 value);
       errors = 1;
     }
@@ -451,7 +571,7 @@ collect_insn_data (pattern, palt, pmax)
 	    collect_insn_data (XVECEXP (pattern, i, j), palt, pmax);
 	  break;
 
-	case 'i': case 'w': case '0': case 's': case 'S':
+	case 'i': case 'w': case '0': case 's': case 'S': case 'T':
 	  break;
 
 	default:
@@ -479,7 +599,7 @@ alter_predicate_for_insn (pattern, alt, max_op, lineno)
 	if (n_alternatives (c) != 1)
 	  {
 	    message_with_line (lineno,
-			       "Too many alternatives for operand %d",
+			       "too many alternatives for operand %d",
 			       XINT (pattern, 0));
 	    errors = 1;
 	    return NULL;
@@ -556,8 +676,6 @@ alter_test_for_insn (ce_elem, insn_elem)
      struct queue_elem *ce_elem, *insn_elem;
 {
   const char *ce_test, *insn_test;
-  char *new_test;
-  size_t len, ce_len, insn_len;
 
   ce_test = XSTR (ce_elem->data, 1);
   insn_test = XSTR (insn_elem->data, 2);
@@ -566,14 +684,7 @@ alter_test_for_insn (ce_elem, insn_elem)
   if (!insn_test || *insn_test == '\0')
     return ce_test;
 
-  ce_len = strlen (ce_test);
-  insn_len = strlen (insn_test);
-  len = 1 + ce_len + 1 + 4 + 1 + insn_len + 1 + 1;
-  new_test = (char *) xmalloc (len);
-
-  sprintf (new_test, "(%s) && (%s)", ce_test, insn_test);
-
-  return new_test;
+  return concat ("(", ce_test, ") && (", insn_test, ")", NULL);
 }
 
 /* Adjust all of the operand numbers in OLD to match the shift they'll
@@ -595,8 +706,7 @@ shift_output_template (new, old, disp)
 	  c = *old++;
 	  if (ISDIGIT ((unsigned char) c))
 	    c += disp;
-	  else if (ISUPPER ((unsigned char) c)
-		   || ISLOWER ((unsigned char) c))
+	  else if (ISALPHA (c))
 	    {
 	      *new++ = c;
 	      c = *old++ + disp;
@@ -620,7 +730,7 @@ alter_output_for_insn (ce_elem, insn_elem, alt, max_op)
   /* ??? Could coordinate with genoutput to not duplicate code here.  */
 
   ce_out = XSTR (ce_elem->data, 2);
-  insn_out = XSTR (insn_elem->data, 3);
+  insn_out = XTMPL (insn_elem->data, 3);
   if (!ce_out || *ce_out == '\0')
     return insn_out;
 
@@ -722,7 +832,7 @@ process_one_cond_exec (ce_elem)
 	}
 
       XSTR (insn, 2) = alter_test_for_insn (ce_elem, insn_elem);
-      XSTR (insn, 3) = alter_output_for_insn (ce_elem, insn_elem,
+      XTMPL (insn, 3) = alter_output_for_insn (ce_elem, insn_elem,
 					      alternatives, max_operand);
 
       /* ??? Set `predicable' to false.  Not crucial since it's really
@@ -739,7 +849,8 @@ process_one_cond_exec (ce_elem)
 	 patterns into the define_insn chain just after their generator
 	 is something we'll have to experiment with.  */
 
-      queue_pattern (insn, &other_tail, insn_elem->lineno);
+      queue_pattern (insn, &other_tail, insn_elem->filename,
+		     insn_elem->lineno);
     }
 }
 
@@ -758,6 +869,74 @@ process_define_cond_exec ()
   for (elem = define_cond_exec_queue; elem ; elem = elem->next)
     process_one_cond_exec (elem);
 }
+
+static char *
+save_string (s, len)
+     const char *s;
+     int len;
+{
+  register char *result = xmalloc (len + 1);
+
+  memcpy (result, s, len);
+  result[len] = 0;
+  return result;
+}
+
+
+/* The entry point for initializing the reader.  */
+
+int
+init_md_reader_args (argc, argv)
+     int argc;
+     char **argv;
+{
+  int i;
+  const char *in_fname;
+
+  max_include_len = 0;
+  in_fname = NULL;
+  for (i = 1; i < argc; i++)
+    {
+      if (argv[i][0] != '-')
+	{
+	  if (in_fname == NULL)
+	    in_fname = argv[i];
+	}
+      else
+	{
+	  int c = argv[i][1];
+	  switch (c)
+	    {
+	    case 'I':		/* Add directory to path for includes.  */
+	      {
+		struct file_name_list *dirtmp;
+
+		dirtmp = (struct file_name_list *)
+		  xmalloc (sizeof (struct file_name_list));
+		dirtmp->next = 0;	/* New one goes on the end */
+		if (first_dir_md_include == 0)
+		  first_dir_md_include = dirtmp;
+		else
+		  last_dir_md_include->next = dirtmp;
+		last_dir_md_include = dirtmp;	/* Tail follows the last one */
+		if (argv[i][1] == 'I' && argv[i][2] != 0)
+		  dirtmp->fname = argv[i] + 2;
+		else if (i + 1 == argc)
+		  fatal ("directory name missing after -I option");
+		else
+		  dirtmp->fname = argv[++i];
+		if (strlen (dirtmp->fname) > max_include_len)
+		  max_include_len = strlen (dirtmp->fname);
+	      }
+	      break;
+	    default:
+	      fatal ("invalid option `%s'", argv[i]);
+
+	    }
+	}
+    }
+    return init_md_reader (in_fname);
+}
 
 /* The entry point for initializing the reader.  */
 
@@ -767,6 +946,12 @@ init_md_reader (filename)
 {
   FILE *input_file;
   int c;
+  size_t i;
+  char *lastsl;
+
+  lastsl = strrchr (filename, '/');
+  if (lastsl != NULL) 
+    base_dir = save_string (filename, lastsl - filename + 1 );
 
   read_rtx_filename = filename;
   input_file = fopen (filename, "r");
@@ -775,6 +960,14 @@ init_md_reader (filename)
       perror (filename);
       return FATAL_EXIT_CODE;
     }
+
+  /* Initialize the table of insn conditions.  */
+  condition_table = htab_create (n_insn_conditions,
+				 hash_c_test, cmp_c_test, NULL);
+
+  for (i = 0; i < n_insn_conditions; i++)
+    *(htab_find_slot (condition_table, (PTR) &insn_conditions[i], INSERT))
+      = (PTR) &insn_conditions[i];
 
   obstack_init (rtl_obstack);
   errors = 0;
@@ -788,7 +981,7 @@ init_md_reader (filename)
 
       c = read_skip_spaces (input_file);
       if (c == EOF)
-	break;
+        break;
 
       ungetc (c, input_file);
       lineno = read_rtx_lineno;
@@ -814,6 +1007,8 @@ read_md_rtx (lineno, seqnr)
   struct queue_elem **queue, *elem;
   rtx desc;
 
+ discard:
+
   /* Read all patterns from a given queue before moving on to the next.  */
   if (define_attr_queue != NULL)
     queue = &define_attr_queue;
@@ -827,19 +1022,35 @@ read_md_rtx (lineno, seqnr)
   elem = *queue;
   *queue = elem->next;
   desc = elem->data;
+  read_rtx_filename = elem->filename;
   *lineno = elem->lineno;
   *seqnr = sequence_num;
 
   free (elem);
 
+  /* Discard insn patterns which we know can never match (because
+     their C test is provably always false).  If insn_elision is
+     false, our caller needs to see all the patterns.  Note that the
+     elided patterns are never counted by the sequence numbering; it
+     it is the caller's responsibility, when insn_elision is false, not
+     to use elided pattern numbers for anything.  */
   switch (GET_CODE (desc))
     {
     case DEFINE_INSN:
     case DEFINE_EXPAND:
+      if (maybe_eval_c_test (XSTR (desc, 2)) != 0)
+	sequence_num++;
+      else if (insn_elision)
+	goto discard;
+      break;
+
     case DEFINE_SPLIT:
     case DEFINE_PEEPHOLE:
     case DEFINE_PEEPHOLE2:
-      sequence_num++;
+      if (maybe_eval_c_test (XSTR (desc, 1)) != 0)
+	sequence_num++;
+      else if (insn_elision)
+	    goto discard;
       break;
 
     default:
@@ -849,7 +1060,125 @@ read_md_rtx (lineno, seqnr)
   return desc;
 }
 
+/* Helper functions for insn elision.  */
+
+/* Compute a hash function of a c_test structure, which is keyed
+   by its ->expr field.  */
+hashval_t
+hash_c_test (x)
+     const PTR x;
+{
+  const struct c_test *a = (const struct c_test *) x;
+  const unsigned char *base, *s = (const unsigned char *) a->expr;
+  hashval_t hash;
+  unsigned char c;
+  unsigned int len;
+
+  base = s;
+  hash = 0;
+
+  while ((c = *s++) != '\0')
+    {
+      hash += c + (c << 17);
+      hash ^= hash >> 2;
+    }
+
+  len = s - base;
+  hash += len + (len << 17);
+  hash ^= hash >> 2;
+
+  return hash;
+}
+
+/* Compare two c_test expression structures.  */
+int
+cmp_c_test (x, y)
+     const PTR x;
+     const PTR y;
+{
+  const struct c_test *a = (const struct c_test *) x;
+  const struct c_test *b = (const struct c_test *) y;
+
+  return !strcmp (a->expr, b->expr);
+}
+
+/* Given a string representing a C test expression, look it up in the
+   condition_table and report whether or not its value is known
+   at compile time.  Returns a tristate: 1 for known true, 0 for
+   known false, -1 for unknown.  */
+int
+maybe_eval_c_test (expr)
+     const char *expr;
+{
+  const struct c_test *test;
+  struct c_test dummy;
+
+  if (expr[0] == 0)
+    return 1;
+
+  if (insn_elision_unavailable)
+    return -1;
+
+  dummy.expr = expr;
+  test = (const struct c_test *) htab_find (condition_table, &dummy);
+  if (!test)
+    abort ();
+
+  return test->value;
+}
+
+/* Given a string, return the number of comma-separated elements in it.
+   Return 0 for the null string.  */
+int
+n_comma_elts (s)
+     const char *s;
+{
+  int n;
+
+  if (*s == '\0')
+    return 0;
+
+  for (n = 1; *s; s++)
+    if (*s == ',')
+      n++;
+
+  return n;
+}
+
+/* Given a pointer to a (char *), return a pointer to the beginning of the
+   next comma-separated element in the string.  Advance the pointer given
+   to the end of that element.  Return NULL if at end of string.  Caller
+   is responsible for copying the string if necessary.  White space between
+   a comma and an element is ignored.  */
+
+const char *
+scan_comma_elt (pstr)
+     const char **pstr;
+{
+  const char *start;
+  const char *p = *pstr;
+
+  if (*p == ',')
+    p++;
+  while (ISSPACE(*p))
+    p++;
+
+  if (*p == '\0')
+    return NULL;
+
+  start = p;
+
+  while (*p != ',' && *p != '\0')
+    p++;
+
+  *pstr = p;
+  return start;
+}
+
+#ifdef SGI_MONGOOSE
 /* Until we can use the versions in libiberty.  */
+#ifndef KEY
+// we have got it from libiberty
 char *
 xstrdup (input)
   const char *input;
@@ -867,9 +1196,17 @@ xrealloc (old, size)
 {
   register PTR ptr;
   if (old)
+#if (GCC_VERSION >= 3000)
+    ptr = (PTR) really_call_realloc (old, size);
+#else
     ptr = (PTR) realloc (old, size);
+#endif
   else
+#if (GCC_VERSION >= 3000)
+    ptr = (PTR) really_call_malloc (size);
+#else
     ptr = (PTR) malloc (size);
+#endif
   if (!ptr)
     fatal ("virtual memory exhausted");
   return ptr;
@@ -879,9 +1216,15 @@ PTR
 xmalloc (size)
   size_t size;
 {
+#if (GCC_VERSION >= 3000)
+  register PTR val = (PTR) really_call_malloc (size);
+#else
   register PTR val = (PTR) malloc (size);
+#endif
 
   if (val == 0)
     fatal ("virtual memory exhausted");
   return val;
 }
+#endif // !KEY
+#endif /* SGI_MONGOOSE */

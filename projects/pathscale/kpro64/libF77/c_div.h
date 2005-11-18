@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -37,7 +41,7 @@
 #ifndef __C_DIV_H__
 #define __C_DIV_H__
 
-extern void c_div(complex *, complex *, complex *);
+extern complex c_div_(complex *, complex *);
 extern complex __cdiv(float, float, float, float);
 
 #endif /* __C_DIV_H__ */

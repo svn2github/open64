@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -406,6 +410,11 @@ class FORMULA {
     return CXX_NEW(FORMULA(FORMULA_OR, left, right), Fpool);
   }
 
+  // debugging aid
+  ~FORMULA() {
+    _fop = FORMULA_BAD;
+  }
+
  private:
 
   FORMULA(double v) {
@@ -441,10 +450,6 @@ class FORMULA {
     _kids.Cond = cond;
     _kids.Left = left;
     _kids.Right = right;
-  }
-  // debugging aid
-  ~FORMULA() {
-    _fop = FORMULA_BAD;
   }
 
   double                Eval(const double* vars) const;

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -95,6 +99,9 @@ enum GBB_FLAG {
   GRA_BB_FLAGS_region_prolog	=  0x4, // if block borders region entry
   GRA_BB_FLAGS_region_epilog	=  0x8, // if block borders region exit
   GRA_BB_FLAGS_setjmp		=  0x10,// if block contains a call to setjmp
+#ifdef TARG_X8664
+  GRA_BB_FLAGS_savexmms		=  0x20,// if block ends with savexmms pseudo-op
+#endif
 };
 
 class GRA_BB {
@@ -233,6 +240,10 @@ public:
   void Region_Epilog_Set(void)  { flags |= (UINT) GRA_BB_FLAGS_region_epilog; }
   BOOL Setjmp(void)		{ return flags & GRA_BB_FLAGS_setjmp; }
   void Setjmp_Set(void)    	{ flags |= (UINT) GRA_BB_FLAGS_setjmp; }
+#ifdef TARG_X8664
+  BOOL Savexmms(void)		{ return flags & GRA_BB_FLAGS_savexmms; }
+  void Savexmms_Set(void)    	{ flags |= (UINT) GRA_BB_FLAGS_savexmms; }
+#endif
 
   // inline functions
   GRA_BB* Split_List_Push( GRA_BB* new_elt ) { new_elt->split_list_next = this;
@@ -381,7 +392,9 @@ public:
 };
 
 extern GBB_MGR gbb_mgr;
-
+#ifdef TARG_X8664
+extern OP *gra_savexmms_op;
+#endif
 
 // Use to iterate over the elements of an internally linked _Split_List of BBs.
 class GRA_BB_SPLIT_LIST_ITER {
