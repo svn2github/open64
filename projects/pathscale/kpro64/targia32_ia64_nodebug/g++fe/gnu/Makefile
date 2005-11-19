@@ -41,7 +41,7 @@
 #
 BUILD_AREA     = ../..
 BUILD_TOT      = ../../..
-BUILD_BASE     = ../../../g++fe/gnu
+BUILD_BASE     = ../../../kg++fe/gnu
 BUILD_ROOTS    = TARGET
 BUILD_ABI      = I32BIT
 BUILD_ARCH     = IA32

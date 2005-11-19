@@ -7,7 +7,7 @@
 #
 BUILD_AREA     = ..
 BUILD_TOT      = ../..
-BUILD_BASE     = ../../gnu_common/libgcc2
+BUILD_BASE     = ../../kgnu_common/libgcc2
 BUILD_ROOTS    = TARGET
 BUILD_ABI      = I64BIT
 BUILD_ARCH     = IA64

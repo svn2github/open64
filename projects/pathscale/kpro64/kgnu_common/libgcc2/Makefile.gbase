@@ -77,7 +77,7 @@ endif
 #  List of directories, and source files of interest
 #----------------------------------------------------------------------
 
-GCC_DIR              = $(BUILD_BASE)/../../g++fe/gnu
+GCC_DIR              = $(BUILD_BASE)/../../kg++fe/gnu
 GXX_DIR              = $(GCC_DIR)/cp
 CONFIG_DIR           = $(GCC_DIR)/config
 GCC_IA64_DIR         = $(GCC_DIR)/config/ia64

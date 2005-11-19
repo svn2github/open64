@@ -87,7 +87,7 @@ Before doing the build make sure you have permissions
 in the tree where you will be doing the builds. You
 can do this by:
 
-       %chown -R your_username osprey1.0
+       %chown -R your_username kpro64
 
 Each of the programs below is included in the rpm
 that you downloaded from the ftp site. A short description
@@ -104,7 +104,7 @@ The following components are CROSS components in that
 they will be built by IA-32 tools and run on IA-32 platforms
 but they produce IA-64 code. They are built by doing a make 
 in the corresponding 
-osprey1.0/targia32_ia64_nodebug directories.
+kpro64/targia32_ia64_nodebug directories.
 
 
 A sample makefile has been provided for your convenience
@@ -135,7 +135,7 @@ These are links to
 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/driver
 
 To build the driver:
-% cd osprey1.0/targia32_ia64_nodebug/driver.nue; gmake
+% cd kpro64/targia32_ia64_nodebug/driver.nue; gmake
 
 ==================================================
 C Front-End
@@ -148,7 +148,7 @@ from gcc version 2.95 19990929 to gcc version
 
 To build:
 
-% cd osprey1.0/targia32_ia64_nodebug/gccfe; gmake
+% cd kpro64/targia32_ia64_nodebug/gccfe; gmake
 
 ==================================================
 C++ Front-End
@@ -161,7 +161,7 @@ to g++ version 2.96 20000605 (experimental).
 
 To build:
 
-% cd osprey1.0/targia32_ia64_nodebug/g++fe; gmake
+% cd kpro64/targia32_ia64_nodebug/g++fe; gmake
 
 ==================================================
 Fortran 90 Front-End
@@ -177,7 +177,7 @@ Is the message catalog file for it:
 
 To build:
 
-% cd osprey1.0/targia32_ia64_nodebug/crayf90; gmake
+% cd kpro64/targia32_ia64_nodebug/crayf90; gmake
 
 NOTE: mfef90 does not build at this time because it
       needs an IA-32 version of f90 to compile parts
@@ -198,7 +198,7 @@ are the backend components
 
 To build:
 
-%cd osprey1.0/targia32_ia64_nodebug/be ; gmake
+%cd kpro64/targia32_ia64_nodebug/be ; gmake
 
 
 ==================================================
@@ -210,7 +210,7 @@ Code Generator
 is the code generator
 
 To build:
-%cd osprey1.0/targia32_ia64_nodebug/cg ; gmake
+%cd kpro64/targia32_ia64_nodebug/cg ; gmake
 
 ==================================================
 
@@ -222,7 +222,7 @@ is the global optimizer. It is invoked when sgicc
 is run with -O2.
 
 To build:
-%cd osprey1.0/targia32_ia64_nodebug/wopt ; gmake
+%cd kpro64/targia32_ia64_nodebug/wopt ; gmake
 
 ==================================================
 
@@ -234,7 +234,7 @@ is the loop nest optimizer. It is invoked when
 sgicc is run with -O3.
 
 To build:
-%cd osprey1.0/targia32_ia64_nodebug/lno ; gmake
+%cd kpro64/targia32_ia64_nodebug/lno ; gmake
 
 ==================================================
 
@@ -245,7 +245,7 @@ Stand-Alone Inliner
 is the stand-alone inliner
 
 To build:
-%cd osprey1.0/targia32_ia64_nodebug/lw_inline; gmake
+%cd kpro64/targia32_ia64_nodebug/lw_inline; gmake
 
 (lw_inline is built which is renamed to inline)
 
@@ -258,7 +258,7 @@ Interprocedural analysis optimizer
 is the interprocedural analysis optimizer
 
 To build:
-%cd osprey1.0/targia32_ia64_nodebug/ipa; gmake
+%cd kpro64/targia32_ia64_nodebug/ipa; gmake
 
 ==================================================
 
@@ -271,7 +271,7 @@ is the interprocedural analysis optimizer
 (local summary phase).
 
 To build:
-%cd osprey1.0/targia32_ia64_nodebug/ipl; gmake
+%cd kpro64/targia32_ia64_nodebug/ipl; gmake
 
 ==================================================
 
@@ -282,7 +282,7 @@ Interprocedural analysis linker driver (ipa_link)
 is the interprocedural analysis linker driver
 
 To build:
-%cd osprey1.0/targcygnus_ia32_ia64; ./CONFIGURE ; gmake
+%cd kpro64/targcygnus_ia32_ia64; ./CONFIGURE ; gmake
 
 ld-new is created under the targcygnus_ia32_ia64/ld
 directory. It is renamed to ipa_link in the INSTALL
@@ -298,7 +298,7 @@ is the Itanium(TM) processor target description
 module.
 
 To build:
-%cd osprey1.0/targia32_ia64_nodebug/targ_info; gmake
+%cd kpro64/targia32_ia64_nodebug/targ_info; gmake
 
 ==================================================
 
@@ -311,7 +311,7 @@ is the WHIRL (the sgicc intermediate language)
 to C converter.
 
 To build:
-%cd osprey1.0/targia32_ia64_nodebug/whirl2c; gmake
+%cd kpro64/targia32_ia64_nodebug/whirl2c; gmake
 
 ==================================================
 
@@ -325,7 +325,7 @@ to Fortran converter.
 
 
 To build:
-%cd osprey1.0/targia32_ia64_nodebug/whirl2f; gmake
+%cd kpro64/targia32_ia64_nodebug/whirl2f; gmake
 
 ==================================================
 
@@ -337,7 +337,7 @@ is the WHIRL (the sgicc intermediate language)
 to ASCII converter utility.
 
 To build:
-%cd osprey1.0/targia32_ia64_nodebug/ir_tools; gmake
+%cd kpro64/targia32_ia64_nodebug/ir_tools; gmake
 
 ==================================================
 
@@ -368,7 +368,7 @@ To do a full build of the CROSS components:
 
 Each library may also be built separately 
 by doing a make in the corresponding 
-osprey1.0/targia64 directories as described below.
+kpro64/targia64 directories as described below.
 
 ==================================================
 /usr/lib/libfortran.a
@@ -376,8 +376,8 @@ osprey1.0/targia64 directories as described below.
 is the Fortran90 runtime library:
 
 To build:
-%cd osprey1.0/targia64/include; gmake
-%cd osprey1.0/targia64/libfortran; gmake
+%cd kpro64/targia64/include; gmake
+%cd kpro64/targia64/libfortran; gmake
 
 ==================================================
 /usr/lib/libffio.a
@@ -385,8 +385,8 @@ To build:
 is the Fast Fortran I/O runtime library:
 
 To build:
-%cd osprey1.0/targia64/include; gmake
-%cd osprey1.0/targia64/libu; gmake
+%cd kpro64/targia64/include; gmake
+%cd kpro64/targia64/libu; gmake
 
 
 ==================================================
@@ -395,7 +395,7 @@ To build:
 is the SGI math library:
 
 To build:
-%cd osprey1.0/targia64/libmsgi; gmake
+%cd kpro64/targia64/libmsgi; gmake
 
 ==================================================
 /usr/lib/libmv.a
@@ -403,19 +403,19 @@ To build:
 is the SGI math library (vector version):
 
 To build:
-%cd osprey1.0/targia64/libmv; gmake
+%cd kpro64/targia64/libmv; gmake
 
 ==================================================
 /usr/lib/libgcc.a
 
 To build:
-%cd osprey1.0/targia64/libgcc; gmake
+%cd kpro64/targia64/libgcc; gmake
 
 ==================================================
 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/libstdc++.a.2.10.0
 
 To build:
-%cd osprey1.0/targia64/libstdc++; gmake
+%cd kpro64/targia64/libstdc++; gmake
 
 ==================================================
 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/libinstr.a
@@ -423,7 +423,7 @@ To build:
 is the SGI feedback instrumentation library
 
 To build:
-%cd osprey1.0/targia64/libinstr; gmake
+%cd kpro64/targia64/libinstr; gmake
 
 ==================================================
 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/ftz.o
@@ -432,7 +432,7 @@ is the SGI implementation for turning on
 FLUSH to ZERO
 
 To build:
-%cd osprey1.0/targia64/init; gmake
+%cd kpro64/targia64/init; gmake
 
 ==================================================
 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/lib.cat
@@ -440,7 +440,7 @@ To build:
 
 Are already provided under:
 
-osprey1.0/targia32_ia64_nodebug/temp_f90/libs
+kpro64/targia32_ia64_nodebug/temp_f90/libs
 ==================================================
 ==================================================
 
@@ -449,7 +449,7 @@ osprey1.0/targia32_ia64_nodebug/temp_f90/libs
 INSTALLING YOUR NEWLY BUILT COMPILER
 
 
-An INSTALL script has been provided under osprey1.0.
+An INSTALL script has been provided under kpro64.
 What it does is install all of the components into their
 proper locations in the NUE environment after they 
 have been built.

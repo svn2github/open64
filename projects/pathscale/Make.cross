@@ -36,8 +36,8 @@
 # are located
 #
 
-CROSS_BUILD_DIR = osprey1.0/targia32_ia64_nodebug
-CROSS_BUILD_DIR_LD = osprey1.0/targcygnus_ia32_ia64
+CROSS_BUILD_DIR = kpro64/targia32_ia64_nodebug
+CROSS_BUILD_DIR_LD = kpro64/targcygnus_ia32_ia64
 
 
 # All CROSS compiler components:

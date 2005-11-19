@@ -7,7 +7,7 @@
 #
 BUILD_AREA     = ..
 BUILD_TOT      = ../..
-BUILD_BASE     = ../../gnu_common/libstdc++
+BUILD_BASE     = ../../kgnu_common/libstdc++
 BUILD_ROOTS    = TARGET
 BUILD_ABI      = I64BIT
 BUILD_ARCH     = IA64

@@ -36,7 +36,7 @@
 # are located
 #
 
-LIB_BUILD_DIR = osprey1.0/targia64
+LIB_BUILD_DIR = kpro64/targia64
 
 
 # All LIB compiler components:
