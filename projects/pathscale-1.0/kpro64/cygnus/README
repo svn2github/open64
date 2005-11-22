@@ -1,0 +1,17 @@
+Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+
+This directory contains the binutils-2.14 linker that is modified to handle
+IPA.  The IPA enhencements are extracted from the corresponding files in
+cygnus_20000828.  "20030612" reflects the fact that binutils-2.14 was released
+on June 12, 2003.
+
+PathScale
+6/24/2003
+
+ADDENDUM:
+	The timestamp has been removed from the directory name.  The
+cygnus_20000828 directory referenced above existed in the Pro64 sources and
+has been renamed to cygnus prior to importing PathScale 1.0. The PathScale
+sources contained cygnus_20030612, but that directory got renamed to cygnus
+prior to the import as well.
+	-- marcel@cup.hp.com
