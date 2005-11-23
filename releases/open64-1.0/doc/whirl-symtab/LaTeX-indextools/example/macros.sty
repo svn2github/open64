@@ -1,0 +1,117 @@
+
+% Custom macros
+
+%------------------------------------------------------------------------- 
+
+% page sizes
+
+% standard page definitions for 8.5 x 11 output
+% disable these settings for book
+% \textwidth 6.0in
+% \textheight 8.5in
+% \oddsidemargin .3in
+% \evensidemargin .3in
+% \marginparsep 0pt
+
+% rare
+% \marginparwidth 0pt
+% \topmargin -.5in
+
+%------------------------------------------------------------------------- 
+
+% paragraphs
+
+\parskip 11pt
+\parindent 0em
+
+%------------------------------------------------------------------------- 
+
+% For some environments we switch to double-spacing, also
+% provides \dsp in case you need double-spacing where single-spacing
+% is otherwise used.
+
+\def\ssp{\def\baselinestretch{1.0}\large\normalsize}
+
+% \def\dsp{\def\baselinestretch{1.37}\large\normalsize}
+% \def\dsp{\def\baselinestretch{2.0}\large\normalsize}
+\def\dsp{\def\baselinestretch{1.67}\large\normalsize}
+
+%------------------------------------------------------------------------- 
+
+% cache default length values
+%
+\newlength{\parskipdefault}
+\setlength{\parskipdefault}{\parskip}
+
+%------------------------------------------------------------------------- 
+
+% Postscript encapsulation macro(s)
+
+%UNIX version *****************************%%
+\input epsf
+%%
+% putfig{filespec.eps}{scale}
+\def\putfig#1#2{\mbox{ \def\epsfsize##1##2{#2##1} \epsfbox{#1}}}
+%%
+
+%**MAC version********************************************
+% \input epsf.def
+% \def\putfig#1#2{\epsfxsize=5in \epsfbox{#1}} %my try 2
+
+%------------------------------------------------------------------------- 
+
+% Caligraphic and Math font macros
+%
+\def\Cal#1{${\cal{#1}}$}
+%
+\def\BigO#1{{\Cal{O}}{$($}{#1}{$)$}}
+%
+\def\Bf#1{${\bf{#1}}$}
+%
+\def\rarrow{${\rightarrow}$}
+\def\larrow{${\leftarrow}$}
+%
+\def\Ptr{${\bf{\Rightarrow}}$}
+%
+\def\AvailC#1{${\rm{Avail}}({\cal{C}} \mid {\bf{#1}})$}
+%
+\def\bullito{{$\scriptstyle{\bullet}$}}
+
+%------------------------------------------------------------------------- 
+
+% Column alignment macros
+
+% Produce "flushleft" paragraph text in column of table ("tabular" env.).
+% Column must be declared with "p"; i.e., \begin{tabular}{|l|l|p{3.0 in}|}
+%
+\def\FC#1{{ \vspace*{-\topsep} \vspace*{-1em} \protect\begin{flushleft} #1 \protect\end{flushleft} }}
+
+%------------------------------------------------------------------------- 
+
+% Environments
+
+\newenvironment{ttsmall}{\begin{flushleft} \begin{tt} \begin{footnotesize}}{\end{footnotesize} \end{tt} \end{flushleft}}
+
+\newenvironment{ttsmalltabs}{\begin{tt} \begin{footnotesize} \begin{tabbing}}{\end{tabbing} \end{footnotesize} \end{tt}}
+
+\def\smallstops{\hspace{2 em} \= \hspace{2 em} \= \hspace{2 em} \= \hspace{2 em} \= \hspace{2 em} \= \hspace{2 em} \= \hspace{2 em} \= \hspace{2 em} \= \hspace{2 em} \= \hspace{2 em} \= \hspace{2 em} \= \hspace{2 em} \= \kill}
+
+\newenvironment{ttsmalltabstops}{\begin{tt} \begin{footnotesize} \begin{tabbing} \smallstops}{\end{tabbing} \end{footnotesize} \end{tt}}
+
+\def\bigstops{\hspace{10 em} \= \hspace{10 em} \= \hspace{10 em} \= \hspace{10 em} \= \hspace{10 em} \= \hspace{10 em} \= \hspace{10 em} \= \hspace{10 em} \= \hspace{10 em} \= \hspace{10 em} \= \hspace{10 em} \= \hspace{10 em} \= \kill}
+
+\newenvironment{ttbigtabstops}{\begin{tt} \begin{footnotesize} \begin{tabbing} \bigstops}{\end{tabbing} \end{footnotesize} \end{tt} }
+
+%------------------------------------------------------------------------- 
+
+% In-place comments for draft document development
+%
+\def\Concern#1{\vspace*{1 em} \noindent {\bf{Concern: }}{#1} \vspace*{1 em}}
+%
+\def\Owner#1{\vspace*{1 em} \noindent {\bf{Owner: }}{#1} \vspace*{1 em}}
+
+%------------------------------------------------------------------------- 
+
+
+
+

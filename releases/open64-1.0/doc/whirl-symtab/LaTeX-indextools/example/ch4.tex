@@ -1,0 +1,110 @@
+
+{\chapter{Analyzing Efficiencies}}
+
+
+%%%%%%%%%%
+
+{\bf{1.}} Suppose you work as the IT manager at an accounting firm.
+Suppose that the nightly accounting runs are composed of processing
+$n$ client data files. You've been evaluating the run times of
+accounting runs on your old hardware and some new hardware. You've
+found:
+\begin{eqnarray*}
+{\mathit{Old\ machine:}} & & T(n) \ = \ 5{\cdot}n \\
+& & \\
+{\mathit{New\ machine:}} & & T(n) \ = \ 2{\cdot}n
+\end{eqnarray*}
+It's great that the new machine takes less time to finish
+the processing than the old machine. However, this just means that
+the night operators are left with nothing to do for part of their shift.
+Instead, you'd like to either save money by cutting back on the operator
+labor hours or (better) do more processing in the same amount of time
+and increase the corporate
+\index{profits}%
+profits~\cite{techreport-full}.
+Let's look at the latter scenario.
+
+What we'd like to do is: given that $n$ data files took $5{\cdot}n$
+time to process on the old machine, how many $m$ files can we process
+in the same amount of time on the new machine? We need:
+\begin{eqnarray*}
+5{\cdot}n & = & 2{\cdot}m
+\end{eqnarray*}
+Right away we get
+\begin{eqnarray*}
+m & = & 2.5{\cdot}n
+\end{eqnarray*}
+The new machine can handle $2.5$ the workload of the old machine.
+
+
+%%%%%%%%%%
+
+
+\vspace*{2em}
+
+{\bf{2.}} Suppose you are evaluating a data processing task on
+two machines. The task is known to be $\Theta(n^2)$.
+You want to know how much work load (in terms of $n$) you can
+put on machine 2 so that it takes the same amount of time as
+machine 1. You've found:
+\begin{eqnarray*}
+{\mathit{machine\ \#1:}} & & T(14000) \ = \ 3 \ {\mathit{hours}} \\
+& & \\
+{\mathit{machine\ \#2:}} & & T(14000) \ = \ 2 \ {\mathit{hours}}
+\end{eqnarray*}
+Since the task is $\Theta(n^2)$, we know that $T(n) \approx c{\cdot}n^2$
+for some constant $c$. We want to find the appropriate load $m$ for
+machine 2 in terms of the $n$ used for machine 1:
+\begin{eqnarray*}
+\frac{c_1{\cdot}{14000}^2}{c_2{\cdot}{14000}^2} & = & \frac{3}{2} \\
+& & \\
+\Rightarrow \ \frac{c_1}{c_2} & = & \frac{3}{2} \\
+& & \\
+c_1{\cdot}n^2 & = & c_2{\cdot}m^2 \\
+& & \\
+\Rightarrow \ \frac{c_1}{c_2}{\cdot}n^2 & = & m^2 \\
+& & \\
+\Rightarrow \ m & = & n{\cdot}\sqrt{1.5} \\
+\end{eqnarray*}
+
+
+%%%%%%%%%%
+
+
+\vspace*{2em}
+
+{\bf{3.}} Suppose you are evaluating a data processing task on
+two machines. The task is $O(n^3)$ on machine 1, but because
+of new hardware features is $O(n^2)$ on machine 2.
+You want to know how much work load (in terms of $n$) you can
+put on machine 2 so that it takes the same amount of time as
+machine 1. You've found:
+\begin{eqnarray*}
+{\mathit{machine\ \#1:}} & & T(10000) \ = \ 6 \ {\mathit{hours}} \\
+& & \\
+{\mathit{machine\ \#2:}} & & T(10000) \ = \ 1 \ {\mathit{hour}}
+\end{eqnarray*}
+We want to find the appropriate load $m$ for
+machine 2 in terms of the $n$ used for machine 1. Since the $T(n)$ functions
+are different on the two machines, we have to
+\index{compute}%
+compute the constants
+separately:
+\begin{eqnarray*}
+c_1{\cdot}{10000}^3 & = & 6 \\
+& & \\
+\Rightarrow \ c_1 & = & 6{\cdot}10^{-12} \\
+& & \\
+c_2{\cdot}{10000}^2 & = & 1 \\
+& & \\
+\Rightarrow \ c_2 & = & 10^{-8} \\
+& & \\
+c_1{\cdot}{n}^3 & = & c_2{\cdot}{m}^2 \\
+& & \\
+\Rightarrow \ \frac{c_1}{c_2}{\cdot}n^3 & = & m^2 \\
+& & \\
+\Rightarrow \ m & = & \sqrt{n^3{\cdot}6{\cdot}10^{-4}} \\
+\end{eqnarray*}
+In the case of $n = 10000$, $m = 10000{\cdot}\sqrt{6} \approx 24500$. \\
+For the case of $n = 100$, $m = \sqrt{6{\cdot}10^5} \approx 775$.
+

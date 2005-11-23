@@ -1,0 +1,187 @@
+#
+#
+#  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of version 2 of the GNU General Public License as
+#  published by the Free Software Foundation.
+#
+#  This program is distributed in the hope that it would be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+#
+#  Further, this software is distributed without any warranty that it is
+#  free of the rightful claim of any third person regarding infringement 
+#  or the like.  Any license provided herein, whether implied or 
+#  otherwise, applies only to this software file.  Patent licenses, if 
+#  any, provided herein do not apply to combinations of this program with 
+#  other software, or any other product whatsoever.  
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write the Free Software Foundation, Inc., 59
+#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+#  Mountain View, CA 94043, or:
+#
+#  http://www.sgi.com
+#
+#  For further information regarding this notice, see:
+#
+#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
+#
+#
+
+# The directory where all NATIVE compiler component build subdirectories
+# are located
+#
+
+NATIVE_BUILD_DIR = osprey1.0/targia64_ia64_nodebug
+NATIVE_BUILD_DIR_LD = osprey1.0/targcygnus_ia64_ia64
+NATIVE_BUILD_DIR_LIB = osprey1.0/targia64
+
+NATIVE_COMPONENTS = \
+                $(NATIVE_BUILD_DIR)/driver/driver \
+                $(NATIVE_BUILD_DIR)/gccfe/gfec \
+                $(NATIVE_BUILD_DIR)/g++fe/gfecc \
+                $(NATIVE_BUILD_DIR)/targ_info/itanium.so \
+                $(NATIVE_BUILD_DIR)/targ_info/itanium2.so \
+                $(NATIVE_BUILD_DIR)/be/be \
+                $(NATIVE_BUILD_DIR)/be/be.so \
+                $(NATIVE_BUILD_DIR)/cg/cg.so \
+                $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so \
+                $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so \
+                $(NATIVE_BUILD_DIR)/wopt/wopt.so \
+                $(NATIVE_BUILD_DIR)/lno/lno.so \
+                $(NATIVE_BUILD_DIR)/lw_inline/inline \
+                $(NATIVE_BUILD_DIR)/ipa/ipa.so \
+                $(NATIVE_BUILD_DIR)/ipl/ipl.so \
+                $(NATIVE_BUILD_DIR)/ipl/ipl \
+                $(NATIVE_BUILD_DIR)/whirl2c/whirl2c.so \
+                $(NATIVE_BUILD_DIR)/whirl2c/whirl2c \
+                $(NATIVE_BUILD_DIR)/whirl2f/whirl2f.so \
+                $(NATIVE_BUILD_DIR)/whirl2f/whirl2f \
+                $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a \
+                $(NATIVE_BUILD_DIR)/cord/gen_cord \
+                $(NATIVE_BUILD_DIR_LD)/ld/ld-new 
+#                $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef90
+
+PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done)
+.PHONY : $(PHONY_TARGET) install clean clobber all
+
+all: build
+
+$(NATIVE_BUILD_DIR)/driver/driver driver: force
+		gmake -C $(NATIVE_BUILD_DIR)/driver
+
+$(NATIVE_BUILD_DIR)/gccfe/gfec: force
+		gmake -C $(NATIVE_BUILD_DIR)/gccfe
+
+$(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc: force
+		gmake -C $(NATIVE_BUILD_DIR)/g++fe
+
+$(NATIVE_BUILD_DIR)/be/be: force
+		gmake -C $(NATIVE_BUILD_DIR)/be
+
+$(NATIVE_BUILD_DIR)/be/be.so: force
+		gmake -C $(NATIVE_BUILD_DIR)/be
+
+$(NATIVE_BUILD_DIR)/cg/cg.so cg.so: force
+		gmake -C $(NATIVE_BUILD_DIR)/cg
+
+$(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so : force
+		gmake -C $(NATIVE_BUILD_DIR)/orc_ict
+
+$(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so : force
+		gmake -C $(NATIVE_BUILD_DIR)/orc_intel
+
+$(NATIVE_BUILD_DIR)/wopt/wopt.so: force
+		gmake -C $(NATIVE_BUILD_DIR)/wopt
+
+$(NATIVE_BUILD_DIR)/lno/lno.so: force
+		gmake -C $(NATIVE_BUILD_DIR)/lno
+
+$(NATIVE_BUILD_DIR)/ipa/ipa.so: force
+		gmake -C $(NATIVE_BUILD_DIR)/ipa
+
+$(NATIVE_BUILD_DIR)/ipl/ipl.so: force
+		gmake -C $(NATIVE_BUILD_DIR)/ipl
+
+$(NATIVE_BUILD_DIR)/ipl/ipl: force
+		gmake -C $(NATIVE_BUILD_DIR)/ipl
+
+$(NATIVE_BUILD_DIR)/lw_inline/inline: force
+		gmake -C $(NATIVE_BUILD_DIR)/lw_inline
+
+$(NATIVE_BUILD_DIR)/whirl2c/whirl2c.so: force
+		gmake -C $(NATIVE_BUILD_DIR)/whirl2c
+
+$(NATIVE_BUILD_DIR)/whirl2c/whirl2c: force
+		gmake -C $(NATIVE_BUILD_DIR)/whirl2c
+
+$(NATIVE_BUILD_DIR)/whirl2f/whirl2f.so: force
+		gmake -C $(NATIVE_BUILD_DIR)/whirl2f
+
+$(NATIVE_BUILD_DIR)/whirl2f/whirl2f: force
+		gmake -C $(NATIVE_BUILD_DIR)/whirl2f
+
+$(NATIVE_BUILD_DIR)/targ_info/itanium.so: force
+		gmake -C $(NATIVE_BUILD_DIR)/targ_info
+
+$(NATIVE_BUILD_DIR)/targ_info/itanium2.so: force
+		gmake -C $(NATIVE_BUILD_DIR)/targ_info
+
+$(NATIVE_BUILD_DIR)/ir_tools/ir_b2a: force
+		gmake -C $(NATIVE_BUILD_DIR)/ir_tools
+
+$(NATIVE_BUILD_DIR)/cord/gen_cord: force
+		gmake -C $(NATIVE_BUILD_DIR)/cord
+
+$(NATIVE_BUILD_DIR_LD)/ld/ld-new: 
+		cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE ; gmake
+
+#$(NATIVE_BUILD_DIR)/crayf90/sgi/mfef90: force
+#		gmake -C $(NATIVE_BUILD_DIR)/crayf90/sgi
+
+build: $(NATIVE_COMPONENTS)
+
+install:; @./INSTALL.native
+
+clean:clobber
+clobber:
+		gmake clobber -C $(NATIVE_BUILD_DIR)/include
+		gmake clobber -C $(NATIVE_BUILD_DIR)/driver
+		gmake clobber -C $(NATIVE_BUILD_DIR)/gccfe
+		gmake clobber -C $(NATIVE_BUILD_DIR)/g++fe
+		gmake clobber -C $(NATIVE_BUILD_DIR)/be
+		gmake clobber -C $(NATIVE_BUILD_DIR)/cg
+		gmake clobber -C $(NATIVE_BUILD_DIR)/orc_ict
+		gmake clobber -C $(NATIVE_BUILD_DIR)/orc_intel
+		gmake clobber -C $(NATIVE_BUILD_DIR)/wopt
+		gmake clobber -C $(NATIVE_BUILD_DIR)/lno
+		gmake clobber -C $(NATIVE_BUILD_DIR)/ipa
+		gmake clobber -C $(NATIVE_BUILD_DIR)/ipl
+		gmake clobber -C $(NATIVE_BUILD_DIR)/lw_inline
+		gmake clobber -C $(NATIVE_BUILD_DIR)/whirl2c
+		gmake clobber -C $(NATIVE_BUILD_DIR)/whirl2f
+		gmake clobber -C $(NATIVE_BUILD_DIR)/targ_info
+		gmake clean -C $(NATIVE_BUILD_DIR)/../libkapi
+		gmake clobber -C $(NATIVE_BUILD_DIR)/ir_tools
+		gmake clobber -C $(NATIVE_BUILD_DIR)/cord
+		gmake clobber -C $(NATIVE_BUILD_DIR)/crayf90/sgi
+		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/include
+		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/libfortran
+		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/libu
+		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/libmsgi
+		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/libmv
+		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/libgcc
+		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/libstdc++
+		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/libinstr
+		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/libcginstr
+		gmake clobber -C $(NATIVE_BUILD_DIR_LIB)/init
+		@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf \
+            libelfutil libiberty libunwindP ; do  \
+            gmake clobber -C "$(NATIVE_BUILD_DIR)/$${i}" ; \
+        done
+
+force: ;
