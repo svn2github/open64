@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,6 +54,9 @@
 #include "pu_info.h"
 #include "ir_bwrite.h"
 #include "ipl_driver.h"
+#ifdef KEY
+#include "ipl_reorder.h"
+#endif
 
 // from ipa/local/ipl_main.cxx
 extern void (*Ipl_Extra_Output_p) (Output_File *);
@@ -58,6 +65,9 @@ extern void (*Ipl_Fini_p) ();
 extern void (*ipl_main_p) (INT, char **);
 extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 						  ALIAS_MANAGER*, void*);
+#ifdef KEY
+extern void (*Preprocess_struct_access_p) (void);
+#endif
 
 struct IPL_INIT
 {
@@ -67,6 +77,9 @@ struct IPL_INIT
 	Ipl_Fini_p = Ipl_Fini;
 	ipl_main_p = ipl_main;
 	Perform_Procedure_Summary_Phase_p = Perform_Procedure_Summary_Phase;
+#ifdef KEY	// bug 3672
+	Preprocess_struct_access_p = Preprocess_struct_access;
+#endif
     }
 } Ipl_Initializer;
 

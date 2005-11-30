@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -133,6 +138,9 @@ public:
   MAP_LIST   *Find_map_list(POINTER k);
   void        Add_map(POINTER k, POINTER v);
   POINTER     Get_val(POINTER k);
+#ifdef Is_True_On
+  void	      Dump_map(FILE *fp=stderr);
+#endif
 };
 
 

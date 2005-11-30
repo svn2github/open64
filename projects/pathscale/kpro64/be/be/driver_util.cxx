@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -84,7 +88,11 @@ static UINT phase_max_argc[PHASE_COUNT];
 #define	ERR_FILE_EXTENSION ".e"	    /* Error file */
 #define	TRC_FILE_EXTENSION ".t"	    /* Trace file */
 #define IRB_FILE_EXTENSION ".B"	    /* WHIRL file */
+#ifdef KEY	// bug 4711
+#define LST_FILE_EXTENSION ".lst"    /* Listing file */
+#else
 #define LST_FILE_EXTENSION ".l"	    /* Listing file */
+#endif
 #define TLOG_FILE_EXTENSION ".tlog" /* Transformation log file */
 
 static BOOL Tlog_Enabled = FALSE;

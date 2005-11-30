@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -965,6 +970,10 @@ Verify_version_expr(CODEREP *expr, OPT_STAB *opt_stab, BB_NODE *bb, INT32 linenu
 
       FmtAssert(! past_ret_reg_def || expr->Opr() != OPR_INTRINSIC_OP,
 		("cr%d is INTRINSIC_OP appearing after the def of a return register", expr->Coderep_id()));
+#ifdef KEY
+      FmtAssert(! past_ret_reg_def || expr->Opr() != OPR_PURE_CALL_OP,
+		("cr%d is PURE_CALL_OP appearing after the def of a return register", expr->Coderep_id()));
+#endif
     }
     return;
     

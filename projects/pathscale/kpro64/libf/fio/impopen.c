@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,6 +42,9 @@
 #pragma ident "@(#) libf/fio/impopen.c	92.1	06/21/99 10:37:55"
 
 #include <cray/nassert.h>
+#ifdef KEY /* Bug 4260 */
+#  include <cray/assign.h>
+#endif /* KEY Bug 4260 */
 #include "fio.h"
 
 /*
@@ -77,6 +84,13 @@ _ll_implicit_open(
 	unit	*cup;
 
 	OPENLOCK();		/* prevent any other OPENs or CLOSEs now */
+
+#ifdef KEY /* Bug 4260 */
+	/* Before we open the first file in the course of execution, we must
+	 * set byte-swapping based on __io_byteswap_value defined by Fortran
+	 * main in response to command-line options like -byteswapio */
+        __io_byteswap();
+#endif /* KEY Bug 4260 */
 
 	errn	= 0;
 	cup	= NULL;

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,7 +39,7 @@
 
 // convert a WHIRL symbol table into Elf
 
-#include <elf.h>
+#include "elf_stuff.h"
 #include <sys/types.h>
 
 #include "defs.h"
@@ -173,14 +177,15 @@ Write_Elf_Symtab (Output_File* fl, const ELF& tag)
 	     st_to_elfsym<ELFSYMTAB, ELF> (&symtab, tag));
 
 #ifndef __GNUC__
-    UINT align = __builtin_alignof(ELF::Elf_Sym);
+    UINT align = __builtin_alignof(typename ELF::Elf_Sym);
 #else
-    UINT align = __alignof(ELF::Elf_Sym);
+    UINT align = __alignof(typename ELF::Elf_Sym);
 #endif
     
 
-    WN_write_elf_symtab (symtab.table, symtab.size * sizeof(ELF::Elf_Sym),
-			 sizeof(ELF::Elf_Sym), align, fl);
+    WN_write_elf_symtab (symtab.table,
+			 symtab.size * sizeof(typename ELF::Elf_Sym),
+			 sizeof(typename ELF::Elf_Sym), align, fl);
 }
 
 #ifdef __linux__

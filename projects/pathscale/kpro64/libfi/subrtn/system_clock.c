@@ -1,4 +1,8 @@
 /*
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -296,7 +300,7 @@ _sysclock_4(_f_int4 *val, _f_int4 *wrap)
 	 * extension which would cause the total to be less than
 	 * tv_sec * 1000000.
 	 */
-	cval = (long long)buf.tv_sec * 1000000LL + (uint64)buf.tv_usec;
+	cval = (long long)buf.tv_sec * 10000LL + (uint64)buf.tv_usec / 100LL;
 
 	*wrap = (_f_int4)(cval >> 31);
 	*val  = (_f_int4)(cval & 0x7fffffffLL);
@@ -329,7 +333,7 @@ _SYSTEM_CLOCK_4 (_f_int4 *c, _f_int4 *r, _f_int4 *m)
  */
 
 	if (r != NULL)
-	    *r = 1000000;		/* 1 microsecond per clock tick */
+	    *r = 10000;		/* 100 microsecond per clock tick */
 
 /*
  *	If count_max argument is present, return maximim value clock can hold.
