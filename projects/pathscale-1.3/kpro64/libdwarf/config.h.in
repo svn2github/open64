@@ -1,0 +1,50 @@
+/* config.h.in.  Generated automatically from configure.in by autoheader.  */
+
+/* Define if your processor stores words with the most significant
+   byte first (like Motorola and SPARC, unlike Intel and VAX).  */
+#undef WORDS_BIGENDIAN
+
+/* Define to 1 if the elf64_getshdr function is in libelf.a */
+#undef HAVE_ELF64_GETSHDR
+
+/* Define to 1 if the elf64_getehdr function is in libelf.a */
+#undef HAVE_ELF64_GETEHDR
+
+/* see if __uint32_t is predefined in the compiler */
+#undef HAVE___UINT32_T
+
+/* see if __uint64_t is predefined in the compiler */
+#undef HAVE___UINT64_T
+
+/* Define 1 if sys/types.h defines __uint32_t */
+#undef HAVE___UINT32_T_IN_SYS_TYPES_H
+
+/* Define 1 if  R_IA_64_DIR32LSB is defined (might be enum value) */
+#undef HAVE_R_IA_64_DIR32LSB
+
+/* Define 1 if want only 32bit section offsets per pure dwarf2.0.0 spec */
+#undef HAVE_OLD_DWARF2_32BIT_OFFSET
+
+/* Define if you have the <bstring.h> header file.  */
+#undef HAVE_BSTRING_H
+
+/* Define if you have the <elf.h> header file.  */
+#undef HAVE_ELF_H
+
+/* Define if you have the <elfaccess.h> header file.  */
+#undef HAVE_ELFACCESS_H
+
+/* Define if you have the <libelf.h> header file.  */
+#undef HAVE_LIBELF_H
+
+/* Define if you have the <libelf/libelf.h> header file.  */
+#undef HAVE_LIBELF_LIBELF_H
+
+/* Define if you have the <sgidefs.h> header file.  */
+#undef HAVE_SGIDEFS_H
+
+/* Define if you have the <sys/ia64/elf.h> header file.  */
+#undef HAVE_SYS_IA64_ELF_H
+
+/* Define if you have the <sys/types.h> header file.  */
+#undef HAVE_SYS_TYPES_H
