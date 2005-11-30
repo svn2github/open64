@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,7 +43,11 @@
 #include <math.h>
 #include "moremath.h"
 
-double_t pow_dd(double_t *ap, double_t *bp)
+#ifdef KEY
+double pow_dd(double *ap, double *bp)
+#else
+double pow_dd(double *ap, double_t *bp)
+#endif
 {
 
 return(pow(*ap, *bp) );

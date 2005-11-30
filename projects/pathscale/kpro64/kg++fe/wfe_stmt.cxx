@@ -123,6 +123,11 @@ typedef struct scope_cleanup_info_t {
 #ifdef KEY
   LABEL_IDX	    cmp_idx;
   bool		    cleanup_eh_only;
+  struct vla_ {
+    bool		    has_alloca;
+    ST * 		    alloca_st;
+    vector<ST*>	*	    alloca_sts_vector;
+  } vla;
 #endif // KEY
 } SCOPE_CLEANUP_INFO;
 
@@ -347,6 +352,10 @@ Push_Scope_Cleanup (tree t)
   else
     scope_cleanup_stack [scope_cleanup_i].cmp_idx = 0;
   scope_cleanup_stack [scope_cleanup_i].cleanup_eh_only = eh_only;
+  scope_cleanup_stack [scope_cleanup_i].vla.has_alloca = FALSE;
+  scope_cleanup_stack [scope_cleanup_i].vla.alloca_st = NULL;
+  scope_cleanup_stack [scope_cleanup_i].vla.alloca_sts_vector = 
+  						new vector<ST*>();
 #endif // KEY
 }
 
@@ -693,7 +702,15 @@ Pop_Scope_And_Do_Cleanups (void)
     tree t = scope_cleanup_stack [scope_cleanup_i].stmt;
     if (TREE_CODE(t) != CLEANUP_STMT) {
       if (TREE_CODE(t) == SCOPE_STMT)
+      {
+#ifdef KEY
+	// Leaving scope, so use dealloca for any alloca within the scope
+	if (scope_cleanup_stack[scope_cleanup_i].vla.has_alloca)
+	  WFE_Dealloca (scope_cleanup_stack[scope_cleanup_i].vla.alloca_st,
+	       scope_cleanup_stack[scope_cleanup_i].vla.alloca_sts_vector);
+#endif
  	--scope_cleanup_i;
+      }
       break;
     }
     Is_True(scope_cleanup_i != -1,
@@ -1606,6 +1623,7 @@ WFE_Stmt_Init (void)
 } /* WFE_Stmt_Init */
 
 #ifdef KEY
+// Special case to also handle while we are inside a handler
 static void
 Cleanup_To_Scope_From_Handler(tree scope)
 {
@@ -1685,6 +1703,18 @@ Cleanup_To_Scope(tree scope)
 }
  
 #ifdef KEY
+//
+// for (;;) { try { throw 1; } catch (...) { break; } }
+// While expanding the handler in the above code, break_continue_info_i
+// will be -1, since we are expanding the handler after finishing the
+// function. Hence we need to get the break-continue-info from the associated
+// try-block.
+// bug 2823: For code like:
+// try { throw 1;} catch (...) {for (;;) { break; }}
+// The for-loop is in the handler and does not have any try-block. So we
+// need to set the break-continue labels in 
+// WFE_Expand_Break/ WFE_Expand_Continue, even though we are inside a handler
+//
 static void
 WFE_Expand_Break (void)
 {
@@ -1709,7 +1739,8 @@ WFE_Expand_Break (void)
   }
 
   if (label_idx == 0) {
-    FmtAssert (!processing_handler, ("Label must be set before getting into handler"));
+    // bug 2823: Control can reach here even while processing an
+    // exception handler.
     New_LABEL (CURRENT_SYMTAB, label_idx);
     break_continue_info_stack [i].break_label_idx = label_idx;
   }
@@ -1763,7 +1794,7 @@ WFE_Expand_Continue (void)
     hi = handler_stack.top();
   if (i == -1) 
   {
-    FmtAssert (processing_handler, ("No break/continue info"));
+    FmtAssert (processing_handler, ("WFE_Expand_Continue: No break/continue info"));
     scope = (*hi.break_continue)[hi.break_continue->size()-1].scope;
   }
   else scope = break_continue_info_stack [i].scope;
@@ -1775,7 +1806,8 @@ WFE_Expand_Continue (void)
    if (i != -1) { 
     label_idx = break_continue_info_stack [i].continue_label_idx;
     if (label_idx == 0) {
-      FmtAssert (!processing_handler, ("Label must be set before getting into handler"));
+      // bug 2823: Control can reach here even while processing an
+      // exception handler.
       New_LABEL (CURRENT_SYMTAB, label_idx);
       break_continue_info_stack [i].continue_label_idx = label_idx;
     }
@@ -1788,8 +1820,7 @@ WFE_Expand_Continue (void)
 	while ((*hi.break_continue)[j].tree_code == SWITCH_STMT) --j;
 	FmtAssert (j != -1, ("Error with 'continue' in handler"));
 	label_idx = (*hi.break_continue)[j].continue_label_idx;
-    	if (label_idx == 0)
-	    Fail_FmtAssertion ("Label must be set before getting into handler");
+	FmtAssert (label_idx,("WFE_Expand_Goto: No label to goto"));
   }
 
   if (scope)
@@ -1919,8 +1950,16 @@ WFE_Expand_Loop (tree stmt)
 			0, NULL),
 	Get_Srcpos());
     }
+#ifdef KEY	// bug 3265
+    if (incr) {
+      Push_Temp_Cleanup(incr, false);
+      WFE_One_Stmt(incr);
+      Do_Temp_Cleanups(incr);
+    }
+#else
     if (incr)
       WFE_One_Stmt(incr);
+#endif
 
     WFE_Stmt_Pop (wfe_stmk_while_body);
   }
@@ -2152,12 +2191,18 @@ WFE_Expand_Return (tree stmt, tree retval)
     // If the return object must be passed through memory and the return
     // object is created by a TARGET_EXPR, have the TARGET_EXPR write directly
     // to the memory return area.
-    if (TY_return_in_mem(ret_ty_idx) &&
-	TREE_CODE(retval) == TARGET_EXPR) {
+    if (TY_return_in_mem(ret_ty_idx)) {
       FmtAssert (TY_mtype (ret_ty_idx) == MTYPE_M,
-	         ("WFE_Expand_Return: must-be-in-mem type is not MTYPE_M"));
-      WFE_fixup_target_expr(retval);
-      copied_return_value = TRUE;
+	         ("WFE_Expand_Return: return_in_mem type is not MTYPE_M"));
+      // Skip the NOP_EXPRs, if any, before the TARGET_EXPR.  Bug 3448.
+      tree t = retval;
+      while (TREE_CODE(t) == NOP_EXPR) {
+	t = TREE_OPERAND(t, 0);
+      }
+      if (TREE_CODE(t) == TARGET_EXPR) {
+	WFE_fixup_target_expr(t);
+	copied_return_value = TRUE;
+      }
     }
 #endif
 
@@ -2213,15 +2258,19 @@ WFE_Expand_Return (tree stmt, tree retval)
 	WN_INSERT_BlockAfter (insertee, WN_last (insertee), cleanup_block);
       }
       else {
+#ifndef KEY	// bug 3265
 	if (WN_has_side_effects (rhs_wn)) {
 	  DevWarn ("WFE_Expand_Return: cleanup block and expressson has side effects");
+#endif
 	  ST *ret_st = Gen_Temp_Symbol (ret_ty_idx, "__return_val");
 	  TYPE_ID ret_mtype = TY_mtype (ret_ty_idx);
 	  WFE_Set_ST_Addr_Saved (rhs_wn);
 	  wn = WN_Stid (ret_mtype, 0, ret_st, ret_ty_idx, rhs_wn);
 	  WFE_Stmt_Append (wn, Get_Srcpos ());
 	  rhs_wn = WN_Ldid (ret_mtype, 0, ret_st, ret_ty_idx);
+#ifndef KEY
 	}
+#endif
 	WFE_Stmt_Append (cleanup_block, Get_Srcpos ());
       }
     }
@@ -2248,7 +2297,7 @@ WFE_Expand_Return (tree stmt, tree retval)
       // lower_return_val().
 
       FmtAssert (TY_mtype (ret_ty_idx) == MTYPE_M,
-		 ("WFE_Expand_Return: must-be-in-mem type is not MTYPE_M"));
+		 ("WFE_Expand_Return: return_in_mem type is not MTYPE_M"));
 
       WN *first_formal = WN_formal(Current_Entry_WN(), 0);
       TY_IDX tidx = ST_type(WN_st(first_formal));
@@ -2258,53 +2307,15 @@ WFE_Expand_Return (tree stmt, tree retval)
 				    TY_mtype(Ty_Table[tidx]),
 				    WN_idname_offset(first_formal),
 				    WN_st(first_formal), tidx);
-      // If the return type has a copy constructor, then call the copy
-      // constructor to perform the copy.
-      tree copy_constructor_decl = NULL;
-      tree type = TREE_TYPE(TREE_TYPE(Current_Function_Decl()));
-      if (CLASS_TYPE_P(type))
-	copy_constructor_decl = CLASSTYPE_COPY_CONSTRUCTOR(type);
-      if (copy_constructor_decl) {
-	FmtAssert (TREE_CODE(copy_constructor_decl) == FUNCTION_DECL,
-		   ("WFE_Expand_Return: copy constructor not a func decl"));
-      	ST *copy_constructor_st = Get_ST(copy_constructor_decl);
-	ST_IDX copy_constructor_st_idx = ST_st_idx(copy_constructor_st);
+      // Call copy constructor if it exists, else do regular store.
+      tree return_type = TREE_TYPE(TREE_TYPE(Current_Function_Decl()));
 
-      	// Find the src address of the return object.
-      	WN *src_addr;
-	if (WN_operator(rhs_wn) == OPR_COMMA) {
-	  // Make the COMMA return the address of the object instead of the
-	  // object itself, i.e., replace "LDID x" with "LDA x".
-	  WN *value_wn = WN_kid1(rhs_wn);
-	  FmtAssert (WN_operator(value_wn) == OPR_LDID,
-		     ("WFE_Expand_Return: unexpected value in COMMA"));
-	  WN_kid1(rhs_wn) = address_of(value_wn);
-	  WN_set_rtype(rhs_wn, WN_rtype(WN_kid1(rhs_wn)));
-	  WFE_Set_ST_Addr_Saved(value_wn);
-	  src_addr = rhs_wn;
-	} else {
-	  FmtAssert (WN_operator(rhs_wn) == OPR_LDID ||
-		     WN_operator(rhs_wn) == OPR_ILOAD ||
-		     WN_operator(rhs_wn) == OPR_MLOAD,
-		     ("WFE_Expand_Return: unexpected return val"));
-	  src_addr = address_of(rhs_wn);
-	  WFE_Set_ST_Addr_Saved(src_addr);
-	}
-
-	// Create call to the copy constructor.
-        wn = WN_Call(MTYPE_V, MTYPE_V, 2, copy_constructor_st_idx);
-	// Create arg 0, which is the dest addr.
-	WN_actual(wn, 0) = WN_CreateParm (TY_mtype(Ty_Table[tidx]), dest_addr,
-					  tidx, WN_PARM_BY_VALUE);
-	// Create arg 1, src addr.
-	WN_actual(wn, 1) = WN_CreateParm (TY_mtype(Ty_Table[tidx]), src_addr,
-					  tidx, WN_PARM_BY_VALUE);
-      } else {
-	// Create mstore.
+      if (!WFE_call_copy_constructor(rhs_wn, dest_addr, tidx, return_type)) {
+	// No copy constructor, create mstore.
 	wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, MTYPE_M, 0, tidx, rhs_wn,
 			     dest_addr, 0);
+        WFE_Stmt_Append(wn, Get_Srcpos());
       }
-      WFE_Stmt_Append(wn, Get_Srcpos());
       // Create return.
       wn = WN_CreateReturn ();
     }
@@ -2504,6 +2515,10 @@ WFE_Expand_End_Case (void)
          case_value++) {
       case_entry = WN_CreateCasegoto (case_value, case_label_idx);
       WN_INSERT_BlockLast (case_block, case_entry);
+#ifdef KEY	// bug 2814.  TODO: Port the switch-related code from kgccfe.
+      if (case_value == case_info_stack[i].case_upper_bound_value)
+	break;
+#endif
     }
   }
   switch_wn = WN_CreateSwitch (n,
@@ -2621,6 +2636,7 @@ Add_Handler_Info (WN * call_wn, INT i, INT num_handlers)
 #endif /* ADD_HANDLER_INFO */
 
 #ifdef KEY
+// Given a type tree, return the typeinfo var for the exception tables
 static tree
 Get_typeinfo_var (tree t)
 {
@@ -3567,12 +3583,21 @@ WFE_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 }
 
 void
-WFE_Expand_Stmt(tree stmt)
+WFE_Expand_Stmt(tree stmt, WN* target_wn)
 {
 #ifdef WFE_DEBUG
   fprintf (stderr,
            "{( WFE_Expand_Expr: %s\n", WFE_Tree_Node_Name (stmt)); // ")}"
 #endif /* WFE_DEBUG */
+
+#ifdef KEY
+#if 0
+ // Close a region before any stmt, we may be able to relax this restriction.
+ // We at least want to close it on seeing a cleanup_stmt.
+ if (opt_regions && Check_For_Call_Region ())
+   Did_Not_Terminate_Region = FALSE;
+#endif
+#endif
 
  if (TREE_CODE(stmt) == LABEL_DECL)
    lineno = DECL_SOURCE_LINE(stmt);
@@ -3604,6 +3629,8 @@ WFE_Expand_Stmt(tree stmt)
 
     case CLEANUP_STMT:
 #ifdef KEY
+      if (opt_regions && Check_For_Call_Region ())
+          Did_Not_Terminate_Region = FALSE;
       if (!CLEANUP_EH_ONLY(stmt))
     	  Push_Scope_Cleanup (stmt);
       else Push_Scope_Cleanup (stmt, true /* cleanup_eh_only */);
@@ -3617,7 +3644,7 @@ WFE_Expand_Stmt(tree stmt)
       for (t = COMPOUND_BODY(stmt);
 	   t != NULL;
 	   t = TREE_CHAIN(t))
-	WFE_Expand_Stmt (t);
+	WFE_Expand_Stmt (t, target_wn);
       break;
     }
 
@@ -3647,7 +3674,7 @@ WFE_Expand_Stmt(tree stmt)
       break;
 
     case EXPR_STMT:
-      WFE_One_Stmt (EXPR_STMT_EXPR(stmt));
+      WFE_One_Stmt (EXPR_STMT_EXPR(stmt), target_wn);
       break;
 
     case FOR_STMT:
@@ -3673,6 +3700,8 @@ WFE_Expand_Stmt(tree stmt)
 
     case RETURN_STMT: {
 #ifdef KEY
+      if (opt_regions && Check_For_Call_Region ())
+          Did_Not_Terminate_Region = FALSE;
       tree t = RETURN_STMT_EXPR(stmt);
 #else
       tree t = RETURN_EXPR(stmt);
@@ -3691,6 +3720,10 @@ WFE_Expand_Stmt(tree stmt)
     }
 
     case SCOPE_STMT:
+#ifdef KEY
+      if (opt_regions && Check_For_Call_Region ())
+          Did_Not_Terminate_Region = FALSE;
+#endif
       if (SCOPE_BEGIN_P(stmt))
 	Push_Scope_Cleanup (stmt);
       else
@@ -3796,5 +3829,104 @@ WFE_fixup_target_expr (tree retval)
   TREE_SET_CODE(decl, INDIRECT_REF);
   TREE_OPERAND(decl, 0) = ptr_var;
   set_DECL_ST(ptr_var, WN_st(first_formal));
+}
+
+
+// If type has a copy constructor, then call the copy constructor to copy
+// val_wn to the address pointed to by dest_addr.  Otherwise, return FALSE.
+bool
+WFE_call_copy_constructor (WN* val_wn, WN* dest_addr, TY_IDX tidx, tree type)
+{
+  // It is observed that Get_TY(type) and tidx can be different.  See bug 2526.
+
+  tree copy_constructor_decl = NULL;
+
+  if (CLASS_TYPE_P(type))
+    copy_constructor_decl = CLASSTYPE_COPY_CONSTRUCTOR(type);
+
+  if (copy_constructor_decl == NULL)
+    return FALSE;	// Type has no copy constructor.
+
+  FmtAssert (TREE_CODE(copy_constructor_decl) == FUNCTION_DECL,
+	     ("WFE_call_copy_constructor: copy constructor not a func decl"));
+  ST *copy_constructor_st = Get_ST(copy_constructor_decl);
+  ST_IDX copy_constructor_st_idx = ST_st_idx(copy_constructor_st);
+
+  // Find the address of the src.
+  WN *src_addr;
+  if (WN_operator(val_wn) == OPR_COMMA) {
+    // Make the COMMA return the address of the object instead of the object
+    // itself, i.e., replace "LDID x" with "LDA x".
+    WN *value_wn = WN_kid1(val_wn);
+    FmtAssert (WN_operator(value_wn) == OPR_LDID,
+	       ("WFE_call_copy_constructor: unexpected value in COMMA"));
+    WN_kid1(val_wn) = address_of(value_wn);
+    WN_set_rtype(val_wn, WN_rtype(WN_kid1(val_wn)));
+    WFE_Set_ST_Addr_Saved(value_wn);
+    src_addr = val_wn;
+  } else {
+    FmtAssert (WN_operator(val_wn) == OPR_LDID ||
+	       WN_operator(val_wn) == OPR_ILOAD ||
+	       WN_operator(val_wn) == OPR_MLOAD,
+	       ("WFE_call_copy_constructor: unexpected value"));
+    src_addr = address_of(val_wn);
+    WFE_Set_ST_Addr_Saved(src_addr);
+  }
+
+  // Create call to the copy constructor.
+  WN* wn = WN_Call(MTYPE_V, MTYPE_V, 2, copy_constructor_st_idx);
+  // Create arg 0, which is the dest addr.
+  WN_actual(wn, 0) = WN_CreateParm (TY_mtype(Ty_Table[tidx]), dest_addr,
+				    tidx, WN_PARM_BY_VALUE);
+  // Create arg 1, src addr.
+  WN_actual(wn, 1) = WN_CreateParm (TY_mtype(Ty_Table[tidx]), src_addr,
+				    tidx, WN_PARM_BY_VALUE);
+  WFE_Stmt_Append(wn, Get_Srcpos());
+
+  // Mark the copy constructor as referenced by WHIRL so it will be translated
+  // into WHIRL.
+  FmtAssert(DECL_ASSEMBLER_NAME(copy_constructor_decl),
+	    ("WFE_call_copy_constructor: func has no assembler name"));
+  TREE_SYMBOL_REFERENCED_BY_WHIRL(DECL_ASSEMBLER_NAME(copy_constructor_decl))=1;
+
+  return TRUE;
+}
+
+bool
+// Looks up the current scope we are in. Returns true if the current scope
+// already has alloca, otherwise false. Modifies parameter idx.
+Set_Current_Scope_Has_Alloca (INT & idx)
+{
+  int i = scope_cleanup_i;
+  while (i != -1)
+  {
+    if (TREE_CODE (scope_cleanup_stack[i].stmt) == SCOPE_STMT)
+      break;
+    i--;
+  }
+  Is_True (i != -1, ("No scope stmt available"));
+  // return the idx for the scope
+  idx = i;
+  if (scope_cleanup_stack[i].vla.has_alloca) return TRUE;
+  scope_cleanup_stack[i].vla.has_alloca = TRUE;
+  return FALSE;
+}
+
+// Save the original sp for scope 'idx'
+void
+Set_Current_Scope_Alloca_St (ST * st, int idx)
+{
+  Is_True (TREE_CODE (scope_cleanup_stack[idx].stmt) == SCOPE_STMT,
+  	("Unexpected tree code"));
+  scope_cleanup_stack[idx].vla.alloca_st = st;
+}
+
+// Save st's for kids 1..n of DEALLOCA for scope 'idx'
+void
+Add_Current_Scope_Alloca_St (ST * st, int idx)
+{
+  Is_True (TREE_CODE (scope_cleanup_stack[idx].stmt) == SCOPE_STMT,
+  	("Unexpected tree code"));
+  scope_cleanup_stack[idx].vla.alloca_sts_vector->push_back (st);
 }
 #endif

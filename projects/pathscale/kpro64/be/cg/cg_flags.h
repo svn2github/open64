@@ -648,6 +648,7 @@ extern INT32 CG_LOOP_recurrence_min_omega;
 extern BOOL  CG_enable_sb1_bug_work_around;
 extern BOOL  CG_sas;
 extern BOOL  LOCS_Fwd_Scheduling;
+extern BOOL  LOCS_Fwd_Scheduling_set;
 extern BOOL CG_min_spill_loc_size;
 extern BOOL CG_min_stack_size;
 extern BOOL flag_test_coverage;
@@ -656,6 +657,7 @@ extern OPTION_LIST *Arc_Profile_Region;
 #ifdef TARG_X8664
 extern INT32 CG_load_execute;
 extern BOOL CG_use_movlpd;
+extern BOOL CG_use_setcc;
 extern BOOL CG_use_short_form;
 extern BOOL CG_loadbw_execute;
 extern BOOL CG_p2align;

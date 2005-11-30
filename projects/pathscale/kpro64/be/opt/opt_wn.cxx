@@ -1031,7 +1031,11 @@ UINT Actual_data_size(CODEREP *cr, OPT_STAB *opt_stab, INT &signess)
 	  case OPC_U4I8CVT:
 	  case OPC_I4U8CVT:
 	  case OPC_U4U8CVT:
+#ifdef TARG_X8664
+	    signess |= SIGN_0_EXTD;
+#else
 	    signess |= SIGN_1_EXTD;
+#endif
 	    return MTYPE_size_min(rtype);
 	  case OPC_I8U4CVT:
 	  case OPC_U8U4CVT:
@@ -1132,7 +1136,7 @@ UINT Actual_data_size(CODEREP *cr, OPT_STAB *opt_stab, INT &signess)
 // created.
 //
 extern TY_IDX 
-Identity_assignment_type( AUX_STAB_ENTRY *sym )
+Identity_assignment_type( AUX_STAB_ENTRY *sym, OPT_PHASE phase )
 {
   ST     *st  = sym->St();
   TY_IDX  ty = ST_type(st);
@@ -1143,6 +1147,12 @@ Identity_assignment_type( AUX_STAB_ENTRY *sym )
   //
   while (TY_kind(ty) == KIND_ARRAY && sym->Byte_size() < TY_size(ty))
     ty = TY_AR_etype(ty);
+
+#ifdef KEY // bug 3091: avoid generating bad identity assignments for bitfields
+  if (phase != MAINOPT_PHASE && sym->Field_id() != 0 && sym->Bit_size() > 0 &&
+      Is_Structure_Type(ty))
+    return ty;
+#endif
 
   // the size needs to match
   if ( sym->Byte_size() != TY_size(ty) )
@@ -1222,6 +1232,15 @@ Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX ty)
     else { // if field id != 0, then it is MTYPE_BS, not LD_BITS
       WN_set_desc(rhs, MTYPE_BS);
       WN_set_desc(copy, MTYPE_BS);
+#ifdef KEY // bug 3091: get field id, offset field and ty from a good WN
+      	   // 		(the offset field in opt_stab is not what we want)
+      WN_set_field_id(rhs, WN_field_id(sym->Wn()));
+      WN_load_offset(rhs) = WN_offset(sym->Wn());
+      WN_set_ty(rhs, WN_ty(sym->Wn()));
+      WN_set_field_id(copy, WN_field_id(sym->Wn()));
+      WN_load_offset(copy) = WN_offset(sym->Wn());
+      WN_set_ty(copy, WN_ty(sym->Wn()));
+#endif
     }
   }
   WN_set_aux(rhs, aux_id);

@@ -1,6 +1,6 @@
 Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
 
-This directory is modeled after ../targcygnus_ia32_ia64.  To build:
+To build:
 
   ./CLOBBER
   ./CONFIGURE

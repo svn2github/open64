@@ -195,6 +195,8 @@ private:
   static const mUINT32 _builtin =           0x100000;	// IPA builtin
   static const mUINT32 _pu_write_complete = 0x200000;	// all EH info processed
   static const mUINT32 _recursive =	    0x400000;	// recursive
+  static const mUINT32 _merged =	    0x800000;	// Merged node
+  static const mUINT32 _can_throw = 	   0x1000000;   // PU can throw exc.
 #endif
 
   // map to the file I/O info
@@ -216,6 +218,7 @@ private:
 #ifdef KEY
   struct pu_info    *_builtin_pu_info;
   mUINT32	    _sizeof_eh_spec;	// # of types in eh-specification
+  mINT32	    _file_id;		// id of the file containing this pu
 #endif
 
   IPAA_NODE_INFO*        _mod_ref_info; // mod/ref information
@@ -277,6 +280,7 @@ public:
 #ifdef KEY
     ,_builtin_pu_info (NULL)
     ,_sizeof_eh_spec (0)
+    ,_file_id (-1)
 #endif
   {
 #ifdef KEY
@@ -505,6 +509,17 @@ public:
   // is node recursive?
   void Set_Recursive () { _flags |= _recursive; }
   BOOL Is_Recursive () { return _flags & _recursive; }
+
+  void Set_Merged () { _flags |= _merged; }
+  BOOL Is_Merged () { return _flags & _merged; }
+
+  void Set_PU_Can_Throw () { _flags |= _can_throw; }
+  BOOL PU_Can_Throw () { return _flags & _can_throw; }
+
+  void Set_File_Id (mINT32 f) { _file_id = f; }
+  mINT32 File_Id () const	{ return _file_id; }
+
+  static mINT32 next_file_id; // public field
 #endif
 
   // node contains SCLASS_FORMAL variables that are based on another formal.
@@ -741,6 +756,49 @@ public:
 
 }; // IPA_NODE
 
+#ifdef KEY
+#include <ext/hash_map>
+#include <functional>
+struct option_cmp : public std::binary_function<char *, char *, bool>
+{
+  bool operator() (char * s1, char * s2)
+  {
+        return (strcmp (s1, s2) < 0);
+  }
+};
+
+struct hashfn
+{
+    size_t operator()(const IPA_NODE* n) const {
+        return reinterpret_cast<size_t>(n);
+    }
+};
+
+struct eqnode
+{
+  bool operator()(const IPA_NODE* n1, const IPA_NODE* n2) const
+  {
+    return n1 == n2;
+  }
+};
+extern vector<IPA_NODE *> emit_order;
+
+class Nodes_To_Edge
+{
+  NODE_INDEX caller_id, callee_id;
+  IPA_EDGE * e;
+  public:
+  Nodes_To_Edge (NODE_INDEX from, NODE_INDEX to, IPA_EDGE * edge=0) :
+  		caller_id (from), callee_id (to), e (edge) {}
+  IPA_EDGE * Edge (void) const { return e; }
+  NODE_INDEX Caller (void) const { return caller_id; }
+  NODE_INDEX Callee (void) const { return callee_id; }
+  bool operator== (const Nodes_To_Edge * o)
+  {
+  	return (caller_id == o->caller_id && callee_id == o->callee_id);
+  }
+};
+#endif
 
 class IPA_EDGE
 {
@@ -904,6 +962,13 @@ public:
     return Summary_Callsite() ?  Summary_Callsite()->Get_frequency_count() : FB_FREQ_UNKNOWN;
   }
 
+#ifdef KEY
+  void Set_frequency ( FB_FREQ freq ) {
+    if (Summary_Callsite()) 
+    	Summary_Callsite()->Set_frequency_count (freq) ;
+  }
+#endif
+
 }; // IPA_EDGE
 
 
@@ -1032,6 +1097,10 @@ public:
     return NODE_level(&GRAPH_v_i(_graph, node->Node_Index()));
   }
 
+#ifdef KEY
+  void Merge_Nodes (NODE_INDEX, NODE_INDEX);
+#endif
+
   // Number of edges from the caller to the callee
   INT32 Num_Calls (IPA_NODE* caller, IPA_NODE* callee) const;
 
@@ -1102,6 +1171,7 @@ extern BOOL IPA_Call_Graph_Built;
 extern void IPA_Process_File (IP_FILE_HDR& hdr);
 extern void Build_Call_Graph ();
 #ifdef KEY
+extern IPA_CALL_GRAPH *IPA_Graph_Undirected;
 extern void IPA_update_ehinfo_in_pu (IPA_NODE *);
 extern void IPA_Convert_Icalls( IPA_CALL_GRAPH* );
 #endif
@@ -1186,57 +1256,59 @@ public:
 
     ~AUX_IPA_NODE () { MEM_POOL_FREE (pool, data); }
 
+// KEY: Added '|| !_STANDALONE_INLINER' to enable code for IPA in all the 
+// following functions
     NODE& operator[] (const IPA_NODE* node) {
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER) || !defined(_STANDALONE_INLINER)
         if (node->Array_Index () >= node_size) {
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
 	    bzero (((char *)data)+size, size);
         }
-#else // _LIGHTWEIGHT_INLINER
+#else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (node->Array_Index () < node_size, ("Subscript out of bound"));
-#endif // _LIGHTWEIGHT_INLINER
+#endif // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	return data[node->Array_Index ()];
     }
     const NODE& operator[] (const IPA_NODE* node) const {
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER) || !defined(_STANDALONE_INLINER)
         if (node->Array_Index () >= node_size) {
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
 	    bzero (data+size, size);
         }
-#else // _LIGHTWEIGHT_INLINER
+#else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (node->Array_Index () < node_size, ("Subscript out of bound"));
-#endif // _LIGHTWEIGHT_INLINER
+#endif // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	return data[node->Array_Index ()];
     }
 
     NODE& operator[] (UINT32 n_idx) {
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER) || !defined(_STANDALONE_INLINER)
         if (n_idx >= node_size) {
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
 	    bzero (data+size, size);
         }
-#else // _LIGHTWEIGHT_INLINER
+#else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (n_idx < node_size, ("Subscript out of bound"));
-#endif // _LIGHTWEIGHT_INLINER
+#endif // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	return data[n_idx];
     }
     const NODE& operator[] (UINT32 n_idx) const {
-#ifdef _LIGHTWEIGHT_INLINER
+#if defined(_LIGHTWEIGHT_INLINER) || !defined(_STANDALONE_INLINER)
         if (n_idx >= node_size) {
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
 	    bzero (data+size, size);
 	}
-#else // _LIGHTWEIGHT_INLINER
+#else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	Is_True (n_idx < node_size, ("Subscript out of bound"));
-#endif // _LIGHTWEIGHT_INLINER
+#endif // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	return data[n_idx];
     }
 }; // AUX_IPA_NODE
@@ -1422,6 +1494,11 @@ extern UINT32 Eliminate_Dead_Func (BOOL update_modref_count = TRUE);
 extern IPA_NODE* Main_Entry (IPA_NODE* ipan_alt);
 extern void IPA_update_summary_st_idx (const IP_FILE_HDR& hdr);
 extern char* IPA_Node_Name(IPA_NODE* node);
+
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+extern void Mark_PUs_With_File_Id (PU_Info *, UINT);
+extern BOOL Opt_Options_Inconsistent;
+#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
 
 #ifdef _LIGHTWEIGHT_INLINER
 extern BOOL Is_Node_Inlinable_In_Call_Graph(ST_IDX idx);

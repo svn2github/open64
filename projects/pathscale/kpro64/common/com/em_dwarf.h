@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -96,6 +100,9 @@ extern void Em_Dwarf_Process_PU (Dwarf_Unsigned begin_label,
 				 INT32          end_offset,
 				 Dwarf_P_Die    PU_die,
 				 Dwarf_P_Fde    fde,
+#ifdef TARG_X8664
+				 Dwarf_P_Fde    eh_fde,
+#endif
 				 Elf64_Word     eh_symindex,
 				 INT            eh_offset);
 

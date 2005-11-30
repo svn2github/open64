@@ -1265,7 +1265,8 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
     x = _htable->Ssa()->Get_zero_version_CR(cr->Scalar_aux_id(), _opt_stab, 0);
 #if 1 // bug fix aug-26-02
     // indirect load is not volatile, but folded-to scalar is volatile
-    if (x->Is_var_volatile()) return NULL;
+    if (x->Is_var_volatile() || _opt_stab->Is_volatile(cr->Scalar_aux_id())) 
+      return NULL;
 #endif
     x->Set_dtyp(cr->Dtyp());
     x->Set_dsctyp(cr->Dsctyp());
@@ -1283,6 +1284,10 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
     cr->DecUsecnt();
     return x;
   case CK_OP:
+#ifdef KEY // bug 3064
+    if (cr->Is_isop_flag_set(ISOP_LDAFOLD2_VISITED))
+      return NULL;
+#endif
     need_rehash = FALSE;
     new_cr->Copy(*cr);
     new_cr->Set_usecnt(0);
@@ -1300,6 +1305,9 @@ OPT_REVISE_SSA::Fold_lda_iloads(CODEREP *cr)
       cr->DecUsecnt();
       return _htable->Rehash(new_cr);
     }
+#ifdef KEY // bug 3064
+    cr->Set_isop_flag(ISOP_LDAFOLD2_VISITED);
+#endif
     return NULL;
   }
 }

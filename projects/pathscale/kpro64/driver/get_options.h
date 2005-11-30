@@ -46,9 +46,7 @@ extern int optargd;             /* number argument following fixed prefix */
 
 /* add arg to prefix for indirect option */
 extern int add_string_option (int flag, char *arg);
-#ifdef KEY
 extern int add_string_option_or_dash (int flag, char *arg);
-#endif
 
 /* iteratively get a single option from the command line */
 extern int get_option(int *argi, char *argv[]);
@@ -60,3 +58,6 @@ extern int get_real_option_if_aliased (int flag);
 extern void check_for_driver_controls (int argc, char *argv[]);
 
 extern string_list_t *feedback_files;
+
+/* explicitly set language */
+void set_explicit_lang(const char *flag, const char *lang);

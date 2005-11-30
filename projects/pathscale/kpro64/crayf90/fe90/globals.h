@@ -320,6 +320,9 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Dtan_Intrinsic,
 				Dtand_Intrinsic,
 				Dtanh_Intrinsic,
+# ifdef KEY
+                                Dtime_Intrinsic,
+# endif
 				Enable_Ieee_Interrupt_Intrinsic,
 				Eoshift_Intrinsic,
 				Epsilon_Intrinsic,
@@ -328,6 +331,9 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Exp_Intrinsic,
 				Exponent_Intrinsic,
 				Fcd_Intrinsic,
+# ifdef KEY
+				Fdate_Intrinsic,
+# endif
 				Fetch_And_Add_Intrinsic,
 				Fetch_And_And_Intrinsic,
 				Fetch_And_Nand_Intrinsic,
@@ -339,9 +345,15 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Floatj_Intrinsic,
 				Floatk_Intrinsic,
 				Floor_Intrinsic,
+# ifdef KEY
+				Fnum_Intrinsic,
+# endif
 				Fp_Class_Intrinsic,
 				Fraction_Intrinsic,
 				Free_Intrinsic,
+#ifdef KEY
+                                Fstat_Intrinsic,
+#endif
 				Getpos_Intrinsic,
 				Get_Ieee_Exceptions_Intrinsic,
 				Get_Ieee_Interrupts_Intrinsic,
@@ -450,6 +462,9 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Kidint_Intrinsic,
 				Kieor_Intrinsic,
 				Kifix_Intrinsic,
+#ifdef KEY
+				Kill_Intrinsic,
+#endif
 				Kind_Intrinsic,
 				Kint_Intrinsic,
 				Kior_Intrinsic,
@@ -606,6 +621,9 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Shiftr_Intrinsic,
 				Short_Intrinsic,
 				Sign_Intrinsic,
+#ifdef KEY
+				Signal_Intrinsic,
+#endif
 				Sin_Intrinsic,
 				Sind_Intrinsic,
 				Sinh_Intrinsic,
@@ -616,6 +634,9 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Spacing_Intrinsic,
 				Spread_Intrinsic,
 				Sqrt_Intrinsic,
+#ifdef KEY
+                                Stat_Intrinsic,
+#endif
 				Sub_And_Fetch_Intrinsic,
 				Sum_Intrinsic,
 				Synchronize_Intrinsic,
@@ -628,6 +649,9 @@ enum    intrinsic_values       {Unknown_Intrinsic,
                                 Test_Ieee_Interrupt_Intrinsic,
 				This_Image_Intrinsic,
 				Time_Intrinsic,
+#ifdef KEY
+				Time8_Intrinsic,
+#endif
 				Tiny_Intrinsic,
 				Transfer_Intrinsic,
 				Transpose_Intrinsic,
@@ -638,7 +662,15 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Verify_Intrinsic,
                                 Write_Memory_Barrier_Intrinsic,
 				Xor_Intrinsic,
-				Xor_And_Fetch_Intrinsic 
+				Xor_And_Fetch_Intrinsic,
+# ifdef KEY
+				Zabs_Intrinsic,
+				Zcos_Intrinsic,
+				Zexp_Intrinsic,
+				Zlog_Intrinsic,
+				Zsin_Intrinsic,
+				Zsqrt_Intrinsic
+# endif
 				};
 
 
@@ -2500,6 +2532,10 @@ extern  void  numarg_intrinsic  (opnd_type *, expr_arg_type *, int *);
 extern  void  fcd_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  loc_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  clock_intrinsic   (opnd_type *, expr_arg_type *, int *);
+#ifdef KEY
+extern  void  time_intrinsic    (opnd_type *, expr_arg_type *, int *);
+extern  void  dtime_intrinsic    (opnd_type *, expr_arg_type *, int *);
+#endif
 extern  void  rtc_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  my_pe_intrinsic   (opnd_type *, expr_arg_type *, int *);
 extern  void  cvmgp_intrinsic   (opnd_type *, expr_arg_type *, int *);
@@ -2577,6 +2613,13 @@ extern  void  null_intrinsic 	     (opnd_type *, expr_arg_type *, int *);
 extern  void  malloc_intrinsic 	     (opnd_type *, expr_arg_type *, int *);
 extern  void  num_images_intrinsic   (opnd_type *, expr_arg_type *, int *);
 extern  void  system_clock_intrinsic (opnd_type *, expr_arg_type *, int *);
+#ifdef KEY
+extern  void  fnum_intrinsic         (opnd_type *, expr_arg_type *, int *);
+extern  void  stat_intrinsic         (opnd_type *, expr_arg_type *, int *);
+extern  void  fstat_intrinsic         (opnd_type *, expr_arg_type *, int *);
+extern  void  signal_intrinsic       (opnd_type *, expr_arg_type *, int *);
+extern  void  kill_intrinsic         (opnd_type *, expr_arg_type *, int *);
+#endif
 extern  void  dsm_numthreads_intrinsic      
 			(opnd_type *, expr_arg_type *, int *);
 extern  void  omp_get_max_threads_intrinsic 

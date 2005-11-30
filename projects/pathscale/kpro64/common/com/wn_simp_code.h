@@ -1660,8 +1660,12 @@ static simpnode  simp_add_sub(OPCODE opc,
    /* Try the simple ones first */
 
    if (k1const && 
-       (SIMP_IS_TYPE_INTEGRAL(ty) && SIMP_Int_ConstVal(k1)==0) ||
-       (SIMP_IS_TYPE_FLOATING(ty) && is_floating_equal(k1,0.0))) {
+       ((SIMP_IS_TYPE_INTEGRAL(ty) && SIMP_Int_ConstVal(k1)==0) ||
+        (SIMP_IS_TYPE_FLOATING(ty) && is_floating_equal(k1,0.0)
+#ifdef KEY // bug 2780: if x is -0.0, it is wrong to delete the + with 0.0
+	 && IEEE_Arithmetic >= IEEE_INEXACT
+#endif
+	 ))) {
       SHOW_RULE(" x +- 0 ");
       r = k0;
       SIMP_DELETE(k1);
@@ -1674,8 +1678,8 @@ static simpnode  simp_add_sub(OPCODE opc,
    }
 
    if (k0const && issub &&
-       (SIMP_IS_TYPE_INTEGRAL(ty) && SIMP_Int_ConstVal(k0)==0) ||
-       (SIMP_IS_TYPE_FLOATING(ty) && is_floating_equal(k0,0.0))) {
+       ((SIMP_IS_TYPE_INTEGRAL(ty) && SIMP_Int_ConstVal(k0)==0) ||
+        (SIMP_IS_TYPE_FLOATING(ty) && is_floating_equal(k0,0.0)))) {
       SHOW_RULE(" 0 - x ");
       r = SIMPNODE_SimpCreateExp1(negop,k1);
       SIMP_DELETE(k0);
@@ -2160,7 +2164,12 @@ static simpnode  simp_times( OPCODE opc,
       r = SIMPNODE_SimpCreateExp1(OPC_FROM_OPR(OPR_NEG,ty),r);
       SIMP_DELETE(k1);
       return (r);
-   } else if (first_op==OPR_NEG && k1const) {
+   } else if (first_op==OPR_NEG && k1const
+#ifdef KEY /* negate of a const will become a large unsigned const causing */
+   	   /* wrong strength reduction (bug 2253) */
+   		&& MTYPE_is_signed(ty)
+#endif
+   					   ) {
       SHOW_RULE(" -x * c ");
       r = SIMPNODE_SimpCreateExp1(OPC_FROM_OPR(OPR_NEG,ty),k1);
       r = SIMPNODE_SimpCreateExp2(opc,SIMPNODE_kid0(k0),r);
@@ -3716,6 +3725,9 @@ static simpnode  simp_shift( OPCODE opc,
 	     rty != MTYPE_BS &&
 #endif
 	     		  ((op == OPR_LSHR)
+#ifdef KEY // bug 2643
+			    && SIMP_IS_TYPE_UNSIGNED(rty)
+#endif
 			   || (op == OPR_ASHR &&
 			       SIMP_IS_TYPE_UNSIGNED(SIMP_TYPE(k0)) &&
 			       SIMP_TYPE_SIZE(rty) < SIMP_TYPE_SIZE(ty)))) {
@@ -4214,6 +4226,12 @@ simp_eq_neq (OPCODE opc, simpnode k0, simpnode k1, BOOL k0const, BOOL k1const)
 		   OPCODE_operator(firstop)==OPR_BAND) &&
 		  SIMP_Is_Constant(SIMPNODE_kid1(k0))) {
 	  c2 = SIMP_Int_ConstVal(SIMPNODE_kid1(k0));
+#ifdef KEY // bug 2846: handle case where c2 is -0x80000000 and c1 is 0x80000000
+	  if (MTYPE_bit_size(OPCODE_rtype(opc)) == 32) {
+	    c2 &= 0xffffffff;
+	    c1 &= 0xffffffff;
+	  }
+#endif
 	 /*
 	  *  (j & c2) == c1 	0 if (c1 & ~c2) is non-zero
 	  *  (j | c2) == c1 	0 if (c2 & ~c1) is non-zero

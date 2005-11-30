@@ -51,16 +51,20 @@ extern boolean file_exists (char *path);
 /* check whether is a directory */
 extern boolean is_directory (char *path);
 
+/* check whether is a directory */
+extern boolean want_directory (char *path);
+
 /* check whether directory is writable */
 extern boolean directory_is_writable (char *path);
 
 /* get current working directory */
 extern char *get_cwd (void);
 
-/* get the directory containing the executable */
-extern char *get_executable_dir (char *argv0);
+/* save the program name in case get_executable_dir needs it */
+extern void file_utils_set_program_name(char *name);
 
-#ifdef KEY
+/* get the directory containing the executable */
+extern char *get_executable_dir (void);
+
 /* Copy content of file to stdout. */
 extern void dump_file_to_stdout (char *filename);
-#endif

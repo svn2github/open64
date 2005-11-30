@@ -688,7 +688,8 @@ Print_Common (FILE *pfile, ST *st)
     EMT_Write_Qualified_Name(pfile, st);
 #ifdef TARG_X8664
     // Bug 1276 - g77 compatibility issue - emit 16 byte alignment always
-    fprintf ( pfile, ", %lld, 16\n", TY_size(ST_type(st)));
+    const UINT32 size = (UINT32)TY_size(ST_type(st));
+    fprintf ( pfile, ", %u, 16\n", size );
 #if 0
     if (LNO_Run_Simd && Simd_Align && TY_size(ST_type(st)) >= 16)
       fprintf ( pfile, ", %lld, 16\n", TY_size(ST_type(st)));
@@ -1028,8 +1029,12 @@ r_apply_l_const (
   if ( TN_is_symbol(t) ) {
     st = TN_var(t);
     // call put_symbol so that we emit .type info, once per symbol
-    if (ST_class(st) != CLASS_CONST) {
-    	(void) EMT_Put_Elf_Symbol (st);
+    if( (ST_class(st) != CLASS_CONST)
+#ifdef TARG_X8664
+	&& ( TN_relocs(t) != TN_RELOC_IA32_GLOBAL_OFFSET_TABLE )
+#endif
+	){
+      (void) EMT_Put_Elf_Symbol (st);
     }
     if (TN_relocs(t) != 0) {
 	// use base if referring to current pu or local data
@@ -1830,7 +1835,7 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
 LABEL_IDX Label_pushbp   = LABEL_IDX_ZERO;
 LABEL_IDX Label_movespbp = LABEL_IDX_ZERO;
 LABEL_IDX Label_adjustsp = LABEL_IDX_ZERO;
-LABEL_IDX Label_Callee_Saved_Reg[50]; // 50 is just a conservative number
+LABEL_IDX Label_Callee_Saved_Reg = LABEL_IDX_ZERO; 
 
 static inline BOOL
 tn_registers_identical (TN *tn1, TN *tn2)
@@ -1863,6 +1868,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 
 #ifdef TARG_X8664
   static INT32 label_adjustsp_pu = -1;
+  static INT32 label_callee_saved_reg_store_pu = -1;
 
   if (REGION_First_BB == bb && CG_emit_unwind_info) {
     if (OP_code(op) == TOP_pushq || 
@@ -1902,40 +1908,32 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
       LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
       fprintf( Asm_File, "%s:\n", LABEL_name(Label_adjustsp));
       label_adjustsp_pu = Current_PU_Count();
-    } else if ((OP_code(op) == TOP_store64 || 
-    	        (OP_code(op) == TOP_store32 && Is_Target_32bit()) ) &&
-		(OP_opnd(op, 1) == SP_TN || OP_opnd(op, 1) == FP_TN)) {
-      static INT curr_id = 0;
-      TN* opnd = OP_opnd(op, 0);
-      INT num_callee_saved_regs;
-      if (num_callee_saved_regs = Cgdwarf_Num_Callee_Saved_Regs()) {
-	for (INT i = 0; i < num_callee_saved_regs; i ++) {
-	  if (tn_registers_identical(Cgdwarf_Nth_Callee_Saved_Reg(i), opnd) ||
-	      (TN_is_save_reg(opnd) &&
-	       tn_registers_identical(Cgdwarf_Nth_Callee_Saved_Reg(i), 
-			       Build_Dedicated_TN(TN_register_class(opnd), 
-						  TN_save_reg(opnd), 
-						  Is_Target_64bit()?8:4)))) {
-	    ST* sym = Cgdwarf_Nth_Callee_Saved_Reg_Location(i);
-            char* buf;
-            LABEL* label;
-            buf = (char *)alloca(strlen(Cur_PU_Name) + 
-      		/* EXTRA_NAME_LEN */ 32);
-            sprintf(buf, ".LEH_csr_%s_%d", Cur_PU_Name, curr_id ++);
-            label = &New_LABEL(CURRENT_SYMTAB, Label_Callee_Saved_Reg[i]);
-            LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
-            fprintf( Asm_File, "%s:\n", LABEL_name(Label_Callee_Saved_Reg[i]));
-	    break;
-	  }
-	}
+      // Bug 2929 - The exact position of the last Callee Saved Register
+      // spill does not matter. So, we could emit the csr label immediately
+      // after adjustsp label (this order is important). The positions of
+      // the callee saved register(s) on the stack will be emitted in the 
+      // concerned dwarf sections using this csr label. At higher optimization
+      // levels, the adjustsp and csr saves can be moved around by EBO and this
+      // is a work-around.
+      if (Cgdwarf_Num_Callee_Saved_Regs()) { 
+	buf = (char *)alloca(strlen(Cur_PU_Name) + 
+			       /* EXTRA_NAME_LEN */ 32);
+	sprintf(buf, ".LEH_csr_%s", Cur_PU_Name);
+	label = &New_LABEL(CURRENT_SYMTAB, Label_Callee_Saved_Reg);
+	LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
+	fprintf( Asm_File, "%s:\n", LABEL_name(Label_Callee_Saved_Reg));
+        label_callee_saved_reg_store_pu = Current_PU_Count();
       }
     }
   }
 #endif // KEY
 #ifdef TARG_X8664
   Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
-  if (Debug_Level > 0 && OP_first_after_preamble_end(op)) 
+  if (Debug_Level > 0 && OP_first_after_preamble_end(op)) {
     Cg_Dwarf_First_Op_After_Preamble_End = TRUE;
+    if (OP_srcpos(op) == 0 && op->next != 0)
+      OP_srcpos(op) = OP_srcpos(OP_next(op));
+  }
 #endif
   Cg_Dwarf_Add_Line_Entry (PC, OP_srcpos(op));
   if (Assembly) {
@@ -2006,7 +2004,10 @@ if (Get_Trace ( TP_EMIT,0x100 )) {
     Last_Label = LABEL_IDX_ZERO;
   }
   else {
+#ifndef TARG_X8664 
+    // Bug 2468 - can not update offset/PC for x86 target (variable length)
     Offset_From_Last_Label = PC_Incr_N(Offset_From_Last_Label, words);
+#endif
   }
 
   return words;
@@ -2036,6 +2037,90 @@ Replace_Substring(char* in, char* from, char* to)
     in = leftover;
   }
   free(tmp);
+  if (strcmp(buf, "") == 0) {
+    free(buf);
+    return cpy;
+  }  
+  strcat(buf, in);
+  return buf;
+}
+
+// bugs 504, 2455
+//                              [a]             [b]           [c]
+// To replace %r10 in "rorw $8, %r10d;rorl $16, %r10;rorw $8, %r10d"
+// The %r10d (positions [a] and [c]) should not be affected (already 
+// transformed). Replace only position [b].
+static char* 
+Replace_Exact_Substring(char* in, char* from, char* to)
+{
+  UINT  buflen = strlen(in) + 64;
+  char* buf = (char*) malloc(buflen);
+  char* tmp = (char*) malloc(buflen);
+  char* cpy = in;
+  char* p;
+  char* leftover;
+  char* p_to;
+  char* to_b = (char *)malloc(buflen);
+  char* to_w = (char *)malloc(buflen);
+  char* to_d = (char *)malloc(buflen);
+
+  strcpy(buf, ""); // initialize
+  strcpy(tmp, ""); // initialize
+  strcat(in, "\0");
+  strcpy(to_b, from);
+  strcat(to_b, "b");
+  strcpy(to_w, from);
+  strcat(to_w, "w");
+  strcpy(to_d, from);
+  strcat(to_d, "d");
+  while ((p = strstr(in, from)) != NULL) {
+    leftover = p + strlen(from);
+    if ((p_to = strstr(in, to)) == p) {
+      leftover = p_to + strlen(to);
+      strncpy(tmp, in, strlen(in) - strlen(p_to));
+      tmp[strlen(in) - strlen(p_to)] = '\0'; // terminate the string
+      strcat(buf, tmp);
+      strcat(buf, to);
+      in = leftover;
+      continue;
+    }
+    else if ((p_to = strstr(in, to_b)) == p) {
+      leftover = p_to + strlen(to_b);
+      strncpy(tmp, in, strlen(in) - strlen(p_to));
+      tmp[strlen(in) - strlen(p_to)] = '\0'; // terminate the string
+      strcat(buf, tmp);
+      strcat(buf, to_b);
+      in = leftover;
+      continue;
+    }
+    else if ((p_to = strstr(in, to_w)) == p) {
+      leftover = p_to + strlen(to_w);
+      strncpy(tmp, in, strlen(in) - strlen(p_to));
+      tmp[strlen(in) - strlen(p_to)] = '\0'; // terminate the string
+      strcat(buf, tmp);
+      strcat(buf, to_w);
+      in = leftover;
+      continue;
+    }
+    else if ((p_to = strstr(in, to_d)) == p) {
+      leftover = p_to + strlen(to_d);
+      strncpy(tmp, in, strlen(in) - strlen(p_to));
+      tmp[strlen(in) - strlen(p_to)] = '\0'; // terminate the string
+      strcat(buf, tmp);
+      strcat(buf, to_d);
+      in = leftover;
+      continue;
+    }
+    strncpy(tmp, in, strlen(in) - strlen(p));
+    tmp[strlen(in) - strlen(p)] = '\0'; // terminate the string
+    strcat(buf, tmp);
+    strcat(buf, to);
+    in = leftover;
+  }
+  free(tmp);
+  free(to_b);
+  free(to_w);
+  free(to_d);
   if (strcmp(buf, "") == 0) {
     free(buf);
     return cpy;
@@ -2084,7 +2169,7 @@ static char* int_reg_names[4][16] = {
 static char* 
 Modify_Asm_String (char* asm_string, UINT32 position, bool memory, TN* tn, BB *bb)
 {
-  char* name;
+  char* name = NULL;
   if (TN_is_register(tn)) {
     ISA_REGISTER_CLASS cl = TN_register_class(tn);
     REGISTER reg = TN_register(tn);
@@ -2118,6 +2203,45 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory, TN* tn, BB *b
       name = buf;
     }
   }
+#ifdef TARG_X8664
+  else if( memory && TN_is_symbol(tn) ){
+    char* buf = (char*)alloca( 28 );
+    ST* base_st = NULL;
+    INT64 base_ofst = 0;
+    TN* base_tn = NULL;
+
+    ST* st = TN_var(tn);
+    Base_Symbol_And_Offset( st, &base_st, &base_ofst );
+
+    base_ofst += TN_offset(tn);
+
+    if( base_st == SP_Sym || base_st == FP_Sym ){
+      base_tn = base_st == SP_Sym ? SP_TN : FP_TN;
+      name = (char*)REGISTER_name( TN_register_class(base_tn), TN_register(base_tn) );
+      if( Is_Target_32bit() ){
+	name = (char*)CGTARG_Modified_Asm_Opnd_Name( 'r', base_tn, name );
+      }
+
+      sprintf( buf, "%d(%s)", (int)base_ofst, name );
+
+    } else {
+      name = ST_name( st );
+
+      if( base_ofst == 0 ){
+	if( Is_Target_32bit() )
+	  sprintf( buf, "%s", name );
+	else
+	  sprintf( buf, "%s(%%rip)", name );
+      } else
+	if( Is_Target_32bit() )
+	  sprintf( buf, "%s+%d", name, (int)base_ofst );
+	else
+	  sprintf( buf, "%s+%d(%%rip)", name, (int)base_ofst );
+    }
+
+    name = buf;
+  }
+#endif
   else {
     FmtAssert(!memory && TN_is_constant(tn) && TN_has_value(tn),
               ("ASM operand must be a register or a numeric constant"));
@@ -2133,7 +2257,7 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory, TN* tn, BB *b
 
 #ifdef TARG_X8664
   // Replace any %c<num> constraint with the immediate value
-  if (!TN_is_register(tn)) {
+  if (!TN_is_register(tn) && !TN_is_symbol(tn)) {
     if (strstr(asm_string, "%c")) {
       char replace[5];
       sprintf(replace, "%%c%c", '0'+position);
@@ -2225,10 +2349,8 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory, TN* tn, BB *b
     FmtAssert( strstr(asm_string, x86pattern) == NULL,
 	       ("Handle %%z constraint in this inline assembly: '%s'", asm_string));    
   }
-  if (TN_is_register(tn) && !replaced) {
-#else
-  if (TN_is_register(tn)) {
 #endif // TARG_X8664
+  if (TN_is_register(tn)) {
     for (INT i = 0; i < CGTARG_Num_Asm_Opnd_Modifiers; i++) {
       char modifier = CGTARG_Asm_Opnd_Modifiers[i];
 #ifndef TARG_X8664
@@ -2239,13 +2361,19 @@ Modify_Asm_String (char* asm_string, UINT32 position, bool memory, TN* tn, BB *b
       sprintf(pattern, "%s", name);
 #endif
       name = (char*) CGTARG_Modified_Asm_Opnd_Name(modifier, tn, name);
+#ifdef TARG_X8664      
+      if (replaced && TN_register(tn) >= REGISTER_MIN + 8) // r8x, r9x, ...
+	asm_string  = Replace_Exact_Substring(asm_string, pattern, name);
+      else
+	asm_string  = Replace_Substring(asm_string, pattern, name);
+#else
       asm_string  = Replace_Substring(asm_string, pattern, name);
+#endif // TARG_X8664
     }
   }
   
   return asm_string;
 }
-
 
 static char*
 Generate_Asm_String (OP* asm_op, BB *bb)
@@ -2255,6 +2383,17 @@ Generate_Asm_String (OP* asm_op, BB *bb)
   char* asm_string = strdup(WN_asm_string(ASM_OP_wn(asm_info)));
 
 #ifdef KEY
+  // Bug 2486
+  static INT asm_unique_number = 111; // each asm with a %= has a unique number
+  if (strstr(asm_string, "%=")) {
+    char pattern[3];
+    char name[10];
+    strcpy(pattern, "%=");
+    sprintf(name, "%d", asm_unique_number);
+    asm_string = Replace_Substring(asm_string, pattern, name);
+    asm_unique_number ++;
+  }
+
   if (strcmp(asm_string, "__asm_builtin_apply_load") == 0) {
     FmtAssert(OP_opnds(asm_op) == 1, ("Has to have 1 operand"));
     TN *tn = OP_opnd(asm_op, 0);
@@ -2544,10 +2683,6 @@ Assemble_Ops(BB *bb)
 			  INST_BYTES * words, INST_BYTES);
     }
   }
-#ifdef TARG_X8664
-  if (REGION_First_BB == bb && CG_emit_unwind_info)
-    Sort_Saved_Register_Stack(bb);
-#endif
 }
 
 /* ====================================================================
@@ -2664,28 +2799,38 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   RID *rid = BB_rid(bb);
 
 #ifdef TARG_X8664 
-  if (CG_p2align_freq > 0) {
-    // Add .p2align if the sum of the incoming frequencies, excluding the
-    // incoming fall-thru path, is greater than the CG_p2align_freq threshold.
-    if (!BB_entry(bb)) {
-      float freq = 0.0;
-      BBLIST *edge;
-      BB *fall_thru_pred = BB_Fall_Thru_Predecessor(bb);
-      FOR_ALL_BB_PREDS(bb, edge) {
-	BB* pred = BBLIST_item(edge);
-	if (pred != fall_thru_pred) {
-	  BBLIST *succ_edge = BB_Find_Succ(pred, bb);
-	  FmtAssert(succ_edge != NULL, ("EMT_Assemble_BB: succ bb not found"));
-	  freq += BB_freq(pred) * BBLIST_prob(succ_edge);
-	}
+  if (!BB_entry(bb)) {
+    float fall_thru_freq = 0.0;
+    float branch_in_freq = 0.0;
+    BBLIST *edge;
+    BB *fall_thru_pred = BB_Fall_Thru_Predecessor(bb);
+    FOR_ALL_BB_PREDS(bb, edge) {
+      BB* pred = BBLIST_item(edge);
+      BBLIST *succ_edge = BB_Find_Succ(pred, bb);
+      FmtAssert(succ_edge != NULL, ("EMT_Assemble_BB: succ bb not found"));
+      if (pred == fall_thru_pred) {
+	fall_thru_freq = BB_freq(pred) * BBLIST_prob(succ_edge);
+      } else {
+	branch_in_freq += BB_freq(pred) * BBLIST_prob(succ_edge);
       }
-      if (freq > CG_p2align_freq) {
-	// Add the max skip byte argument if necessary.
-	if (CG_p2align_max_skip_bytes > 0)
-	  fprintf(Asm_File, "\t.p2align 4,,%d\n", CG_p2align_max_skip_bytes);
-	else
-	  fprintf(Asm_File, "\t.p2align 4\n");
-      }
+    }
+
+    int max_skip_bytes = CG_p2align_max_skip_bytes;
+    float branch_in_ratio = branch_in_freq / fall_thru_freq;
+    bool add_p2align = FALSE;
+
+    // bug 2191
+    if (branch_in_freq > 100000000.0 &&
+	branch_in_ratio > 50.0) {
+      max_skip_bytes = 15;
+      add_p2align = TRUE;
+    }
+
+    if (add_p2align ||
+	(CG_p2align_freq > 0 &&
+	 branch_in_freq > CG_p2align_freq &&
+	 branch_in_ratio > 0.5)) {
+      fprintf(Asm_File, "\t.p2align 4,,%d\n", max_skip_bytes);
     }
   }
 #endif
@@ -2782,14 +2927,21 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
 #ifdef KEY
       // We do not want to emit labels between consecutive asms.
       // And, we know each asm ends a BB.
+
+      /* We need to emit label for bb that has a label used to mark the
+	 beginning or ending of an exception-handling region or exception handler.
+	 (bug#3068)
+      */
       BOOL emit_label = TRUE;
-      if (BB_preds(bb) &&
-	  !BB_entry(bb) &&
-	  (BBlist_Len(BB_preds(bb)) == 1) &&
-	  (BBLIST_item(BB_preds(bb)) == bb->prev) &&
-	  (bb->ops.length == 1) &&
-	  BB_asm(bb))
-	emit_label = FALSE;
+      if( !BB_Has_Exc_Label(bb) ){
+	if (BB_preds(bb) &&
+	    !BB_entry(bb) &&
+	    (BBlist_Len(BB_preds(bb)) == 1) &&
+	    (BBLIST_item(BB_preds(bb)) == bb->prev) &&
+	    (bb->ops.length == 1) &&
+	    BB_asm(bb))
+	  emit_label = FALSE;
+      }
 
       if (emit_label)
         fprintf ( Asm_File, "%s:\n", LABEL_name(lab)); 
@@ -5049,6 +5201,16 @@ Process_Bss_Data (SYMTAB_IDX stab)
       continue;	// not a leaf symbol
     if (!Has_Base_Block(sym))
       continue;	// not a data symbol
+#ifdef KEY // bug 3182: to avoid .org backwards with cray pointers
+    if (ST_sclass(sym) == SCLASS_PSTATIC &&
+	(&Get_Current_PU() != NULL) && PU_ftn_lang(Get_Current_PU()) && 
+	ST_class(ST_base(sym)) != CLASS_BLOCK &&
+	TY_size(ST_type(ST_base(sym))) == Pointer_Size &&
+	ST_ofst(sym) == 0 && TY_size(ST_type(sym)) > Pointer_Size) {
+      DevWarn("Process_Bss_Data: skipped symbol %s because based on cray pointer", ST_name(sym));
+      continue; // is based on a cray pointer
+    }
+#endif
     if (ST_sclass(sym) == SCLASS_UGLOBAL ||
         ST_sclass(sym) == SCLASS_FSTATIC ||
         ST_sclass(sym) == SCLASS_PSTATIC) {
@@ -5428,11 +5590,23 @@ Setup_Text_Section_For_PU (ST *pu)
       end_previous_text_region(old_section, Em_Get_Section_Offset(old_section));
     }
     if (generate_dwarf) {
-    	Em_Dwarf_Start_Text_Region_Semi_Symbolic (PU_section, text_PC,
+#ifdef TARG_X8664
+      // Bug 2468 - use the appropriate labels for the debug_aranges
+      LABEL_IDX Text_Label = LABEL_IDX_ZERO;
+      Text_Label = Gen_Label_For_BB (REGION_First_BB);
+      Em_Dwarf_Start_Text_Region_Semi_Symbolic (
+        PU_section, text_PC,
+        Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+                              Text_Label,
+                              ST_elf_index(text_base)),
+        Offset_From_Last_Label);
+#else    	
+	Em_Dwarf_Start_Text_Region_Semi_Symbolic (PU_section, text_PC,
 					      Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
 								    Last_Label,
 								    ST_elf_index(text_base)),
 					      Offset_From_Last_Label);
+#endif
 	}
   }
 
@@ -5456,16 +5630,26 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   INT64 ofst;
   INT i;
 
+#ifdef KEY
+  // bugs 2178, 2152
+  if (PU_is_extern_inline (Pu_Table[ST_pu(pu)]))
+        return;
+  // Notes on bugs 2839 and 2934: CG_emit_asm_dwarf controls generate_dwarf
+  // and generate_elf_symbols. generate_dwarf and generate_elf_symbols are
+  // used interchangeably in cgemit for generating dwarf code as well as to 
+  // emit other useful info such as "weak" symbols. This is why we can not
+  // turn off dwarf generation (for non -g/C++ compilation).
+#endif
+
   Trace_Inst	= Get_Trace ( TP_EMIT,1 );
   BOOL trace_unwind = Get_Trace (TP_EMIT, 64);
 
   Init_Unwind_Info (trace_unwind);
 #ifdef TARG_X8664
-  if (CG_emit_unwind_info) {
-    Label_pushbp   = LABEL_IDX_ZERO;
-    Label_movespbp = LABEL_IDX_ZERO;
-    Label_adjustsp = LABEL_IDX_ZERO;
-  }
+  // bug 3031: initialize these unconditionally
+  Label_pushbp   = LABEL_IDX_ZERO;
+  Label_movespbp = LABEL_IDX_ZERO;
+  Label_adjustsp = LABEL_IDX_ZERO;
 #endif // TARG_X8664
 
   /* In the IA-32 case, we need to convert fp register references
@@ -5732,7 +5916,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 		Label_pushbp,
 		Label_movespbp,
 		Label_adjustsp,
-		(LABEL_IDX*)&Label_Callee_Saved_Reg[0],
+		Label_Callee_Saved_Reg,
 		0,
 		pu, pu_dst, symindex, eh_offset,
 		// The following two arguments need to go away
@@ -6117,6 +6301,14 @@ EMT_End_File( void )
                 if (ST_is_not_used (sym)) continue;
                 EMT_Put_Elf_Symbol (sym);
         }
+#ifdef KEY
+	/* Emit .weak directive for the used weak symbol. (bug#3202)
+	 */
+	if( ST_is_weak_symbol(sym) &&
+	    !ST_is_not_used(sym) ){
+	  EMT_Put_Elf_Symbol(sym);
+	}
+#endif
   }
 
   if (Emit_Global_Data) {

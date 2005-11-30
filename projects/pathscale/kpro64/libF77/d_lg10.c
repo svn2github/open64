@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,12 +43,12 @@
 #include "moremath.h"
 #include <cmplrs/host.h>
 
-double_t __dlg10(double_t x)
+double __dlg10(double x)
 {
   return (M_LOG10E * log(x));
 }
 
-double_t d_lg10(double_t *x)
+double d_lg10(double *x)
 {
   return (__dlg10(*x));
 }

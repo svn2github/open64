@@ -74,6 +74,10 @@ SKIPLIST *Build_Skiplist ( OPTION_LIST *olist );
  * ====================================================================
  */
 
+#ifdef KEY
+const float DEFAULT_MIN_PROBABILITY = 0.20;
+#endif
+
 #define DEFAULT_BLOAT_FACTOR	100
 #define DEFAULT_PU_LIMIT	2500
 #define DEFAULT_HARD_LIMIT	(2500 + (2500 >> 2))
@@ -152,6 +156,9 @@ BOOL	IPA_Echo_Commands = FALSE;
 UINT32	IPA_Bloat_Factor = DEFAULT_BLOAT_FACTOR;
 BOOL	IPA_Bloat_Factor_Set = FALSE;
 
+#ifdef KEY
+float	IPA_Min_Branch_Prob = DEFAULT_MIN_PROBABILITY;
+#endif
 UINT32	IPA_PU_Limit = DEFAULT_PU_LIMIT;/* Max nodes per PU after inlining */
 BOOL	IPA_PU_Limit_Set = FALSE;	/* if IPA_PU_Limit is set by user */
 
@@ -231,12 +238,16 @@ BOOL IPA_Enable_Keeplight = TRUE;  /* allow the user to ONLY keep the .I
 				     */
 
 #ifdef KEY
-BOOL IPA_Enable_Icall_Opt = FALSE;   /* allow ipa change icall to call */
+BOOL IPA_Enable_Icall_Opt = TRUE;   /* allow ipa change icall to call */
+BOOL IPA_Enable_EH_Region_Removal = FALSE; // remove useless exception regions
+BOOL IPA_Enable_Branch_Heuristic = FALSE; // use branch prob. for inlining
+BOOL IPA_Check_Options = TRUE; // check for inconsistent options
+BOOL IPA_Clone_List_Actions = FALSE; // report function cloner actions
 #endif
 
 #ifdef TARG_X8664
 BOOL IPA_Enable_Cord = FALSE;		/* will bring up for x86-64 */
-BOOL IPA_Enable_PU_Reorder = FALSE; /* Procedure reordering: PathScale version */
+PU_REORDER_SCHEME IPA_Enable_PU_Reorder = REORDER_DISABLE; /* Procedure reordering: PathScale version */
 BOOL IPA_Enable_Ctype = FALSE;		/* Insert array for use by ctype.h. */
 #else
 BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
@@ -514,11 +525,23 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,	FALSE, "icall_opt",	"",
 	  0, 0, 0,		&IPA_Enable_Icall_Opt,	NULL,
 	  "Enable conversion of icall to call"},
+    { OVK_BOOL, OV_INTERNAL,	FALSE, "eh_opt",	"",
+	  0, 0, 0,		&IPA_Enable_EH_Region_Removal,	NULL,
+	  "Enable removal of exception regions"},
+    { OVK_BOOL, OV_INTERNAL,	FALSE, "branch",	"",
+	  0, 0, 0,		&IPA_Enable_Branch_Heuristic,	NULL,
+	  "Enable use of branch probabilities for inlining"},
+    { OVK_BOOL, OV_INTERNAL,	FALSE, "check_opt",	"",
+	  0, 0, 0,		&IPA_Check_Options,	NULL,
+	  "Enable handling of any inconsistent optimization options"},
+    { OVK_BOOL,	OV_VISIBLE,	FALSE, "clone_list",	"",
+	  0, 0, 0,	&IPA_Clone_List_Actions,	NULL,
+	  "Report function cloner actions" },
 #endif // KEY
 #ifdef TARG_X8664 
-    { OVK_BOOL, OV_INTERNAL,	FALSE, "pu_reorder",	"",
-	  0, 0, 0,		&IPA_Enable_PU_Reorder,	NULL,
-	  "Enable procedure reordering"},
+    { OVK_INT32, OV_INTERNAL,	FALSE, "pu_reorder",	"",
+	  REORDER_DISABLE, REORDER_DISABLE, REORDER_BY_EDGE_FREQ,
+	  &IPA_Enable_PU_Reorder, NULL, "Enable procedure reordering"},
     { OVK_BOOL, OV_INTERNAL,	FALSE, "ctype",	"",
 	  0, 0, 0,		&IPA_Enable_Ctype,	NULL,
 	  "Enable insertion of ctype.h array"},
@@ -554,6 +577,7 @@ BOOL	INLINE_Enable_Restrict_Pointers = FALSE; // Allow restrict pointers
 					// as formal parameter
 #ifdef KEY
 BOOL	INLINE_Recursive = TRUE;	// Do recursive inlining
+BOOL	INLINE_Param_Mismatch = TRUE;	// Inline even if # of actuals < # of formals
 #endif
 
 OPTION_LIST *INLINE_List_Names = NULL;	/* Must/never/file options */
@@ -647,6 +671,9 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL, OV_INTERNAL,	FALSE,	"recurse",	"",
 	  0, 0, 0,		&INLINE_Recursive, NULL,
 	  "Allow recursive inlining of PUs" },
+    { OVK_BOOL, OV_INTERNAL,	FALSE,	"num_mismatch",	"",
+	  0, 0, 0,		&INLINE_Param_Mismatch, NULL,
+	  "Allow inlining even if # of parameters does not match between call and callee" },
 #endif
     { OVK_LIST,	OV_VISIBLE,	FALSE, "skip",	"s",
 	  0, 0, 0,	&INLINE_List_Names,	NULL,

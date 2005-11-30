@@ -51,10 +51,10 @@
 #include <math.h>
 #include "moremath.h"
 
-double_t
-tanh(double_t arg)
+double
+tanh(double arg)
 {
-	double_t sign;
+	double sign;
 
 	sign = 1.;
 	if(arg < 0.){

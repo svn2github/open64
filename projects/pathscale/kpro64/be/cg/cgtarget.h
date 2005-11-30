@@ -653,6 +653,7 @@ extern void CGTARG_Compute_Branch_Parameters(INT32 *mispredict,
 extern BOOL CGTARG_Can_Change_To_Brlikely(OP *xfer_op, TOP *new_opcode);
 extern TOP CGTARG_Negate_Branch(TOP op);
 extern BOOL CGTARG_Is_Long_Latency(TOP op);
+extern INT32 CGTARG_Latency(TOP op);
 
 extern VARIANT CGTARG_Analyze_Branch(OP *br, TN **tn1, TN **tn2);
 extern VARIANT CGTARG_Analyze_Compare(OP *br, TN **tn1, TN **tn2,
@@ -786,6 +787,7 @@ extern void CGTARG_Generate_Countdown_Loop(TN *trip_count_tn, BB *tail,
 					   OPS *prolog_ops, OPS *body_ops, 
 					   BOOL single_bb, LOOP_DESCR *loop);
 extern void CGTARG_LOOP_Optimize( LOOP_DESCR* loop );
+extern TN* CGTARG_Process_Asm_m_constraint( WN*, OPS* );
 #endif
 
 /* call init routine once per asm stmt */

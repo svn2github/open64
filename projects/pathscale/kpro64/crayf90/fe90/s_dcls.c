@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -6189,6 +6193,9 @@ static	void	attr_semantics(int	attr_idx,
       if (ATP_PROC(attr_idx) != Intrin_Proc ||
           AT_OBJ_NAME(attr_idx) != '_' ||
           (!(strcmp(AT_OBJ_NAME_PTR(attr_idx), "_DATE") == 0)) &&
+# ifdef KEY
+          (!(strcmp(AT_OBJ_NAME_PTR(attr_idx), "_FDATE") == 0)) &&
+# endif
           (!(strcmp(AT_OBJ_NAME_PTR(attr_idx), "_JDATE") == 0)) &&
           (!(strcmp(AT_OBJ_NAME_PTR(attr_idx), "_CLOCK") == 0))) {
 # endif

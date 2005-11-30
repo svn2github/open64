@@ -355,12 +355,40 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
         Expand_Replicate (opcode, result, op1, ops);
 	break;
 
+  case OPR_REDUCE_ADD:
+        Expand_Reduce_Add (opcode, result, op1, ops);
+	break;
+
+  case OPR_REDUCE_MPY:
+        Expand_Reduce_Mpy (opcode, result, op1, ops);
+	break;
+
+  case OPR_REDUCE_MAX:
+        Expand_Reduce_Max (opcode, result, op1, ops);
+	break;
+
+  case OPR_REDUCE_MIN:
+        Expand_Reduce_Min (opcode, result, op1, ops);
+	break;
+
 #endif /* TARG_X8664 */
   default:
 	FmtAssert(FALSE, 
 		("Expand_OP:  unexpected opcode %s", OPCODE_name(opcode)));
 	break;
   }
+
+#ifdef TARG_X8664
+  /* For comparsions, the upper 32-bit of the result is ignored.
+     Thus under -m32, the value of the higher 32-bit part is undefined.
+     (bug#2499)
+  */
+  if( OPCODE_is_compare( opcode ) &&
+      OP_NEED_PAIR( rtype ) ){
+    TN* result_hi = Create_TN_Pair( result, rtype );
+    Exp_Immediate( result_hi, Gen_Literal_TN(0,4), FALSE, ops );
+  }
+#endif // TARG_X8664
 }
 
 

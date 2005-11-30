@@ -47,9 +47,7 @@
 #include "ipa_ld.h"
 #include "ipa_cmdline.h"
 
-#ifdef KEY
 char *psclp_arg = NULL;	// PathScale subscription
-#endif
 
 int arg_count;			    /* argument count */
 char **arg_vector;		    /* argument vector */
@@ -627,7 +625,6 @@ ipa_search_command_line(int argc,
 		blank_arg(argv,i);
 	    	continue;
 	    }
-#ifdef KEY
 	    // PathScale subscription
 	    if ((strcmp (string, "-psclp") == 0)) {
 	    	psclp_arg = malloc(10 + strlen(argv[i+1]));
@@ -636,7 +633,6 @@ ipa_search_command_line(int argc,
 		blank_arg(argv,i+1);
 	    	continue;
 	    }
-#endif
 	    else if ((strcmp(string,"-keep")) == 0) {
     	    	ld_ipa_opt[LD_IPA_KEEP_TEMPS].flag = TRUE;
 
@@ -661,11 +657,7 @@ ipa_search_command_line(int argc,
 	    else if ((strcmp(string,"-o")) == 0) {
     	    	outfilename = MALLOC(strlen(argv[i+1])+3);
     	    	MALLOC_ASSERT(outfilename);
-#ifdef KEY
 		strcpy(outfilename,"");
-#else
-		strcpy(outfilename,"./");
-#endif
 		strcat(outfilename,argv[i+1]);
 	    	(*p_ipa_add_link_flag) (argv[i++]);
 		(*p_ipa_add_link_flag) (argv[i]);

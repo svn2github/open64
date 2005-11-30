@@ -1006,7 +1006,11 @@ static void Transform_Code(STACK<WN_PAIR_EC> *cse_stack, WN *loop, BOOL all_inva
       while (WN_kid(parent,j) != plus1) j++;
       WN_kid(parent,j) = ldid;
       LWN_Set_Parent(ldid,parent);
+#ifndef KEY
+      // Bug 3170: Do not delete this node. Node is used for copying line number
+      // and frequency information at the end of this module.
       WN_Delete(plus1);
+#endif
     } else {
       if (wn1 == WN_kid0(plus1)) {
         // don't delete for last preg because we will use it below
@@ -1056,7 +1060,11 @@ static void Transform_Code(STACK<WN_PAIR_EC> *cse_stack, WN *loop, BOOL all_inva
       while (WN_kid(parent,j) != plus2) j++;
       WN_kid(parent,j) = other_kid;
       LWN_Set_Parent(other_kid,parent);
+#ifndef KEY
+      // Bug 3170: Do not delete this node. Node is used for copying line number
+      // and frequency information at the end of this module.
       WN_Delete(plus2);
+#endif
 
     }
   }

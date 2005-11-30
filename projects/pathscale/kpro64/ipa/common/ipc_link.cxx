@@ -203,6 +203,23 @@ ipa_add_link_flag (const char* str)
 } // ipa_add_link_flag
 
 
+#ifdef KEY
+extern "C" void
+ipa_erase_link_flag (const char* str)
+{
+    ARGV::iterator p;
+    for (p = current_ld_flags->begin();
+	 p != current_ld_flags->end();
+	 p++) {
+      if (!strcmp(str, *p)) {
+	current_ld_flags->erase(p);
+	break;
+      }
+    }
+} // ipa_erase_link_flag
+#endif
+
+
 // mark where the list of .I's should be inserted
 void
 ipa_insert_whirl_obj_marker ()

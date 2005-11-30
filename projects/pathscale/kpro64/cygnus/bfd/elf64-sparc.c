@@ -65,7 +65,8 @@ static bfd_boolean sparc64_elf_add_symbol_hook
 	   const char **, flagword *, asection **, bfd_vma *));
 static bfd_boolean sparc64_elf_output_arch_syms
   PARAMS ((bfd *, struct bfd_link_info *, PTR,
-	   bfd_boolean (*) (PTR, const char *, Elf_Internal_Sym *, asection *)));
+	   bfd_boolean (*) (PTR, const char *, Elf_Internal_Sym *,
+			    asection *, struct elf_link_hash_entry *)));
 static void sparc64_elf_symbol_processing
   PARAMS ((bfd *, asymbol *));
 
@@ -518,7 +519,7 @@ sparc64_elf_canonicalize_reloc (abfd, section, relptr, symbols)
 {
   arelent *tblptr;
   unsigned int i;
-  struct elf_backend_data *bed = get_elf_backend_data (abfd);
+  const struct elf_backend_data *bed = get_elf_backend_data (abfd);
 
   if (! bed->s->slurp_reloc_table (abfd, section, symbols, FALSE))
     return -1;
@@ -1101,7 +1102,7 @@ sparc64_elf_check_relocs (abfd, info, sec, relocs)
   asection *srelgot;
   asection *sreloc;
 
-  if (info->relocateable || !(sec->flags & SEC_ALLOC))
+  if (info->relocatable || !(sec->flags & SEC_ALLOC))
     return TRUE;
 
   dynobj = elf_hash_table (info)->dynobj;
@@ -1502,7 +1503,7 @@ sparc64_elf_add_symbol_hook (abfd, info, sym, namep, flagsp, secp, valp)
   return TRUE;
 }
 
-/* This function takes care of emiting STT_REGISTER symbols
+/* This function takes care of emitting STT_REGISTER symbols
    which we cannot easily keep in the symbol hash table.  */
 
 static bfd_boolean
@@ -1511,7 +1512,8 @@ sparc64_elf_output_arch_syms (output_bfd, info, finfo, func)
      struct bfd_link_info *info;
      PTR finfo;
      bfd_boolean (*func)
-       PARAMS ((PTR, const char *, Elf_Internal_Sym *, asection *));
+       PARAMS ((PTR, const char *, Elf_Internal_Sym *, asection *,
+		struct elf_link_hash_entry *));
 {
   int reg;
   struct sparc64_elf_app_reg *app_regs =
@@ -1557,7 +1559,8 @@ sparc64_elf_output_arch_syms (output_bfd, info, finfo, func)
 	sym.st_shndx = app_regs [reg].shndx;
 	if (! (*func) (finfo, app_regs [reg].name, &sym,
 		       sym.st_shndx == SHN_ABS
-			 ? bfd_abs_section_ptr : bfd_und_section_ptr))
+			 ? bfd_abs_section_ptr : bfd_und_section_ptr,
+		       NULL))
 	  return FALSE;
       }
 
@@ -1781,7 +1784,7 @@ sparc64_elf_size_dynamic_sections (output_bfd, info)
   if (elf_hash_table (info)->dynamic_sections_created)
     {
       /* Set the contents of the .interp section to the interpreter.  */
-      if (! info->shared)
+      if (info->executable)
 	{
 	  s = bfd_get_section_by_name (dynobj, ".interp");
 	  BFD_ASSERT (s != NULL);
@@ -1880,7 +1883,7 @@ sparc64_elf_size_dynamic_sections (output_bfd, info)
       struct elf_strtab_hash *dynstr;
       struct elf_link_hash_table *eht = elf_hash_table (info);
 
-      if (!info->shared)
+      if (info->executable)
 	{
 	  if (!add_dynamic_entry (DT_DEBUG, 0))
 	    return FALSE;
@@ -2022,7 +2025,7 @@ sparc64_elf_relocate_section (output_bfd, info, input_bfd, input_section,
   Elf_Internal_Rela *rel;
   Elf_Internal_Rela *relend;
 
-  if (info->relocateable)
+  if (info->relocatable)
     return TRUE;
 
   dynobj = elf_hash_table (info)->dynobj;
@@ -2070,46 +2073,18 @@ sparc64_elf_relocate_section (output_bfd, info, input_bfd, input_section,
 	{
 	  sym = local_syms + r_symndx;
 	  sec = local_sections[r_symndx];
-	  relocation = _bfd_elf_rela_local_sym (output_bfd, sym, sec, rel);
+	  relocation = _bfd_elf_rela_local_sym (output_bfd, sym, &sec, rel);
 	}
       else
 	{
-	  h = sym_hashes[r_symndx - symtab_hdr->sh_info];
-	  while (h->root.type == bfd_link_hash_indirect
-		 || h->root.type == bfd_link_hash_warning)
-	    h = (struct elf_link_hash_entry *) h->root.u.i.link;
+	  bfd_boolean warned;
 
-	  relocation = 0;
-	  if (h->root.type == bfd_link_hash_defined
-	      || h->root.type == bfd_link_hash_defweak)
+	  RELOC_FOR_GLOBAL_SYMBOL (h, sym_hashes, r_symndx,
+				   symtab_hdr, relocation, sec,
+				   unresolved_reloc, info,
+				   warned);
+	  if (warned)
 	    {
-	      sec = h->root.u.def.section;
-	      if (sec->output_section == NULL)
-		/* Set a flag that will be cleared later if we find a
-		   relocation value for this symbol.  output_section
-		   is typically NULL for symbols satisfied by a shared
-		   library.  */
-		unresolved_reloc = TRUE;
-	      else
-		relocation = (h->root.u.def.value
-			      + sec->output_section->vma
-			      + sec->output_offset);
-	    }
-	  else if (h->root.type == bfd_link_hash_undefweak)
-	    ;
-	  else if (info->shared
-		   && !info->no_undefined
-		   && ELF_ST_VISIBILITY (h->other) == STV_DEFAULT)
-	    ;
-	  else
-	    {
-	      if (! ((*info->callbacks->undefined_symbol)
-		     (info, h->root.root.string, input_bfd,
-		      input_section, rel->r_offset,
-		      (!info->shared || info->no_undefined
-		       || ELF_ST_VISIBILITY (h->other)))))
-		return FALSE;
-
 	      /* To avoid generating warning messages about truncated
 		 relocations, set the relocation's address to be the same as
 		 the start of this section.  */
@@ -2275,16 +2250,8 @@ sparc64_elf_relocate_section (output_bfd, info, input_bfd, input_section,
 
 			if (is_plt)
 			  sec = splt;
-			else if (h == NULL)
-			  sec = local_sections[r_symndx];
-			else
-			  {
-			    BFD_ASSERT (h->root.type == bfd_link_hash_defined
-					|| (h->root.type
-					    == bfd_link_hash_defweak));
-			    sec = h->root.u.def.section;
-			  }
-			if (sec != NULL && bfd_is_abs_section (sec))
+
+			if (bfd_is_abs_section (sec))
 			  indx = 0;
 			else if (sec == NULL || sec->owner == NULL)
 			  {
@@ -2684,7 +2651,7 @@ sparc64_elf_relocate_section (output_bfd, info, input_bfd, input_section,
 	       overflows.  We don't, but this breaks stabs debugging
 	       info, whose relocations are only 32-bits wide.  Ignore
 	       overflows for discarded entries.  */
-	    if (r_type == R_SPARC_32
+	    if ((r_type == R_SPARC_32 || r_type == R_SPARC_DISP32)
 		&& _bfd_elf_section_offset (output_bfd, info, input_section,
 					    rel->r_offset) == (bfd_vma) -1)
 	      break;
@@ -3170,7 +3137,7 @@ const struct elf_size_info sparc64_elf_size_info =
      we use 2.  */
   1,
   64,		/* arch_size.  */
-  8,		/* file_align.  */
+  3,		/* log_file_align.  */
   ELFCLASS64,
   EV_CURRENT,
   bfd_elf64_write_out_phdrs,
@@ -3264,6 +3231,5 @@ const struct elf_size_info sparc64_elf_size_info =
 #define elf_backend_plt_alignment 8
 
 #define elf_backend_got_header_size 8
-#define elf_backend_plt_header_size PLT_HEADER_SIZE
 
 #include "elf64-target.h"

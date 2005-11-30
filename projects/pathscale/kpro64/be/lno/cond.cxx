@@ -518,12 +518,28 @@ COND_DO_INFO COND_Do_Info(WN* wn_do, MEM_POOL* pool)
             rval = COND_DO_MAYBE;
             goto return_point;
           }
+#ifdef KEY
+          // Bug 3084 - without copy propagation, loop coefficients may be 
+	  // missing; make the safest assumption.
+	  if (!avlb->Has_Loop_Coeff()) {
+	    rval = COND_DO_MAYBE;
+	    goto return_point;
+	  }	    
+#endif
           for(INT dimub = 0; dimub < dli->UB->Num_Vec(); dimub++) {
             ACCESS_VECTOR* avub = dli->UB->Dim(dimub);
             if (avub->Too_Messy) {
               rval = COND_DO_MAYBE;
               goto return_point;
             }
+#ifdef KEY
+            // Bug 3084 - without copy propagation, loop coefficients may be 
+	    // missing; make the safest assumption.
+	    if (!avub->Has_Loop_Coeff()) {
+	      rval = COND_DO_MAYBE;
+	      goto return_point;
+	    }	    
+#endif
   
             ACCESS_VECTOR* nox = Difference_Inequality(avlb, avub,
                                                        avlb->Nest_Depth()-1,
@@ -1562,8 +1578,30 @@ static void STD_Canonicalize_Upper_Bound(WN* wn_loop)
     if (COND_Do_Info(wn_loop, &LNO_local_pool) != COND_DO_AT_LEAST_ONCE)
       Guard_A_Do(wn_loop);
     TYPE_ID desc = WN_desc(WN_end(wn_loop));
+#ifndef KEY
     WN_set_opcode(WN_end(wn_loop), 
       OPCODE_make_op(OPR_LE, OPCODE_rtype(opc), desc));
+#else
+    // Bug 2679 - the following transformation is not legal
+    // Preserve the signedness of comparison.
+    //
+    //  I8I8LDID x        I8I8LDID x
+    //  U8U8LDID y  ==>     U8U8LDID y
+    // I4U8LT               U8INTCONST 1
+    //                    U8SUB
+    //                   I4U8LE
+    // 
+    // Instead, transform to:
+    //      I8I8LDID x
+    //       U8U8LDID y
+    //       U8U8LDID 1
+    //      U8SUB
+    //     I4I8LE
+    if (MTYPE_is_unsigned(desc)) 
+      desc = MTYPE_complement(desc);
+    WN_set_opcode(WN_end(wn_loop), 
+      OPCODE_make_op(OPR_LE, OPCODE_rtype(opc), desc));
+#endif
     OPCODE subop = OPCODE_make_op(OPR_SUB, desc, MTYPE_V);
     WN* ub1 = LWN_CreateExp2(subop, WN_kid1(WN_end(wn_loop)), 
       LWN_Make_Icon(desc, 1));

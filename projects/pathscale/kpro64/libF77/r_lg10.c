@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,12 +43,12 @@
 #include <math.h>
 #include "moremath.h"
 
-float_t __rlg10(float_t x)
+float __rlg10(float x)
 {
-  return ((float_t)M_LOG10E * logf(x));
+  return ((float)M_LOG10E * logf(x));
 }
 
-float_t r_lg10(float_t *x)
+float r_lg10(float *x)
 {
   return (__rlg10(*x));
 }

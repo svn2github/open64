@@ -498,6 +498,9 @@ typedef struct ti_res_count TI_RES_COUNT;
 // bad array, FALSE otherwise. 
 
 extern BOOL Is_Bad_Array(WN* wn_ref, INT nloops); 
+#ifdef KEY
+extern BOOL Is_Vectorizable_Loop(WN* loop);
+#endif
 
 class LOOP_MODEL {
   INT *_block_number_inner;

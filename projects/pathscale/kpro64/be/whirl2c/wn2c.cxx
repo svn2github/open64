@@ -485,6 +485,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_U8F4FLOOR, "_U8F4FLOOR"},
   {OPC_U8FQFLOOR, "_U8FQFLOOR"},
   {OPC_U8F8FLOOR, "_U8F8FLOOR"},
+#ifdef KEY
+  {OPC_F4F4FLOOR, "_F4F4FLOOR"},
+#endif
   {OPC_I4BNOT, "~"},
   {OPC_U8BNOT, "~"},
   {OPC_I8BNOT, "~"},
@@ -615,6 +618,8 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_BI4EQ, "=="},
   {OPC_BF4EQ, "=="},
   {OPC_BC4EQ, "=="},
+  {OPC_I8I4EQ, "=="},
+  {OPC_I8I4NE, "!="},
   {OPC_BU8NE, "!="},
   {OPC_BFQNE, "!="},
   {OPC_BI8NE, "!="},
@@ -700,6 +705,9 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_I4FQLE, "<="},
   {OPC_I4I8LE, "<="},
   {OPC_I4U4LE, "<="},
+#ifdef KEY
+  {OPC_U8U8EQ, "=="},
+#endif
 #ifdef TARG_X8664
   {OPC_V16F4RECIP, "_V16F4RECIP"},
   {OPC_F8F8FLOOR, "_F8F8FLOOR"},
@@ -3463,7 +3471,8 @@ WN2C_compgoto(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
       Is_True(WN_operator(goto_stmt) == OPR_GOTO,
 	      ("Expected each COMPGOTO case to be an OPR_GOTO"));
       Append_Token_String(tokens, "case");
-      TCON2C_translate(tokens, Host_To_Targ(switch_mty, goto_entry));
+      if (switch_mty != MTYPE_M)
+	TCON2C_translate(tokens, Host_To_Targ(switch_mty, goto_entry));
       Append_Token_Special(tokens, ':');
       Increment_Indentation();
       Append_Indented_Newline(tokens, 1);

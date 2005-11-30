@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -178,6 +182,8 @@ struct CVCHRT_DATA _cvrt_parse_tables[] = {
     { NCV_VAD,   "vms_dp"  },
     { NCV_NVE,   "nosve"   },
     { NCV_MIPS,  "mips"    },
+    { NCV_MIPS,  "bigendian" },
+    { NCV_MIPS,  "be"      },
     { NCV_205,   "c205"    },
     { NCV_205,   "eta"     },
     { NCV_IEU,   "ultrix"  },
@@ -189,10 +195,18 @@ struct CVCHRT_DATA _cvrt_parse_tables[] = {
     { NCV_T3D,   "t3d"     },
     { NCV_T3D,   "t3e"     },
 #endif
+#ifdef  KEY
+    { NCV_IA,    "ia32"    },
+    { NCV_IA,    "ia64"    },
+    { NCV_MIPS,  "bigendian" },
+    { NCV_MIPS,  "be"      },
+#endif /* KEY */
 #else	/* !__mips */
     { NCV_IEL,   "ieee_64" },
     { NCV_IEU,   "ieee_le" },
     { NCV_MIPS,  "mips"    },
+    { NCV_MIPS,  "bigendian" },
+    { NCV_MIPS,  "be"      },
     { NCV_VMS,   "vax"     },
     { NCV_VMS,   "vms"     },
     { NCV_IBM,   "ibm"     },

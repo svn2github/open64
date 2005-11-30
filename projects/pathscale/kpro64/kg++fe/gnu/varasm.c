@@ -523,6 +523,10 @@ asm_output_bss (file, decl, name, size, rounded)
 #ifdef ASM_DECLARE_OBJECT_NAME
   last_assemble_variable_decl = decl;
   ASM_DECLARE_OBJECT_NAME (file, name, decl);
+#ifdef KEY
+  DECL_EMITTED_BY_GXX (decl) = 1;
+  gxx_emits_decl (decl);
+#endif
 #else
   /* Standard thing is just output label for the object.  */
   ASM_OUTPUT_LABEL (file, name);
@@ -551,6 +555,10 @@ asm_output_aligned_bss (file, decl, name, size, align)
 #ifdef ASM_DECLARE_OBJECT_NAME
   last_assemble_variable_decl = decl;
   ASM_DECLARE_OBJECT_NAME (file, name, decl);
+#ifdef KEY
+  DECL_EMITTED_BY_GXX (decl) = 1;
+  gxx_emits_decl (decl);
+#endif
 #else
   /* Standard thing is just output label for the object.  */
   ASM_OUTPUT_LABEL (file, name);
@@ -835,7 +843,9 @@ make_decl_rtl (decl, asmspec)
   new_name = name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
 
   reg_number = decode_reg_name (asmspec);
-#ifndef KEY
+#ifdef KEY
+  if (TREE_CODE(decl) == FUNCTION_DECL)
+#endif  /* KEY */
   if (reg_number == -2)
     {
       /* ASMSPEC is given, and not the name of a register.  Mark the
@@ -845,7 +855,6 @@ make_decl_rtl (decl, asmspec)
       strcpy (starred + 1, asmspec);
       new_name = starred;
     }
-#endif  /* KEY */
 
   if (TREE_CODE (decl) != FUNCTION_DECL && DECL_REGISTER (decl))
     {
@@ -1666,6 +1675,10 @@ assemble_variable (decl, top_level, at_end, dont_output_data)
 #ifdef ASM_DECLARE_OBJECT_NAME
   last_assemble_variable_decl = decl;
   ASM_DECLARE_OBJECT_NAME (asm_out_file, name, decl);
+#ifdef KEY
+  DECL_EMITTED_BY_GXX (decl) = 1;
+  gxx_emits_decl (decl);
+#endif
 #else
   /* Standard thing is just output label for the object.  */
   ASM_OUTPUT_LABEL (asm_out_file, name);

@@ -934,8 +934,15 @@ void DO_LOOP_INFO::Set_Est_Num_Iterations(DOLOOP_STACK *do_stack)
     ua = LB;
     step = -step;
   }
-  
+
+#ifndef KEY  
   if (la->Too_Messy || ua->Too_Messy) {
+#else
+  // Bug 3084 - without copy propagation, loop coefficients may be missing
+  if (la->Too_Messy || ua->Too_Messy ||
+      !la->Dim(0)->Has_Loop_Coeff() ||
+      !ua->Dim(0)->Has_Loop_Coeff()) {
+#endif
     Est_Num_Iterations = LNO_Num_Iters;
     if (Est_Max_Iterations_Index >= 0 &&
         Est_Max_Iterations_Index < Est_Num_Iterations) {
@@ -1494,6 +1501,110 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
   } 
 
 
+#ifdef KEY // Bug 2565
+  if (Is_Target_64bit() && (addr_oper == OPR_ADD || addr_oper == OPR_SUB)) {
+    // Sometimes there is type conversion in the address computation
+    // that prevents the rest of canonincizer to "promote" a pointer to ARRAY.
+    // For example,
+    //        I4I4LDID 41 <1,4,.preg_I4> T<4,.predef_I4,4> # i
+    //        U4INTCONST 8 (0x8)
+    //       I4MPY
+    //      U8I4CVT
+    //     U8U8LDID 0 <2,1,rowsptr2> T<32,anon_ptr.,8>
+    //    U8ADD
+    // This can be safely converted into (without performance loss):
+    //      I8INTCONST 8 (0x8)
+    //      I8I4LDID 41 <1,4,.preg_I4> T<4,.predef_I4,4> # i
+    //     I8MPY
+    //     U8U8LDID 0 <2,1,rowsptr2> T<32,anon_ptr.,8>
+    //    U8ADD
+    // We will do this only for small powers of 2 so that 
+    // the I8MPY gets converted into shifts (no imul64 versus imul32).
+    if (WN_operator(WN_kid0(addr)) == OPR_CVT &&
+	WN_operator(WN_kid0(WN_kid0(addr))) == OPR_MPY) {
+      WN* mpy = WN_kid0(WN_kid0(addr));
+      BOOL const_mpy = FALSE;
+      INT kid = -1;
+      if (WN_operator(WN_kid0(mpy)) == OPR_INTCONST &&
+	  (WN_const_val(WN_kid0(mpy)) == 2 ||
+	   WN_const_val(WN_kid0(mpy)) == 4 ||
+	   WN_const_val(WN_kid0(mpy)) == 8)) {
+	kid = 0; // kid0
+	const_mpy = TRUE;
+      }
+      else if (WN_operator(WN_kid1(mpy)) == OPR_INTCONST &&
+	       (WN_const_val(WN_kid1(mpy)) == 2 ||
+		WN_const_val(WN_kid1(mpy)) == 4 ||
+		WN_const_val(WN_kid1(mpy)) == 8)) {
+	kid = 1; // kid1
+	const_mpy = TRUE;
+      }
+      if (kid != -1 && WN_operator(WN_kid(mpy, (kid + 1)%2)) != OPR_LDID)
+	const_mpy = FALSE;
+      if (const_mpy) {
+	INT val = WN_const_val(WN_kid(mpy, kid));
+	WN* cvt = WN_kid0(addr);
+	BOOL simp_state_save = WN_Simplifier_Enable(FALSE);
+	TYPE_ID cvt_rtype = WN_rtype(cvt);
+	TYPE_ID cvt_desc = WN_desc(cvt);
+	if (MTYPE_is_unsigned(cvt_rtype)) 
+	  cvt_rtype = MTYPE_complement(cvt_rtype);
+	if (MTYPE_is_unsigned(cvt_desc))
+	  cvt_rtype = MTYPE_complement(cvt_desc);
+	WN* ldid = WN_kid(mpy, (kid+1)%2);
+	WN_set_rtype(ldid, cvt_rtype);
+	WN_set_desc(ldid, cvt_desc);
+	WN* multiply = LWN_CreateExp2( OPCODE_make_op(OPR_MPY,cvt_rtype, 
+						      MTYPE_V),
+				       LWN_Make_Icon(cvt_rtype,val),ldid);
+	WN_kid0(addr) = multiply;
+	LWN_Set_Parent(multiply,addr);
+	WN_Simplifier_Enable(simp_state_save);
+      }
+    } else if (WN_operator(WN_kid1(addr)) == OPR_CVT &&
+	       WN_operator(WN_kid0(WN_kid1(addr))) == OPR_MPY) {
+      WN* mpy = WN_kid0(WN_kid1(addr));      
+      BOOL const_mpy = FALSE;
+      INT kid = -1;
+      if (WN_operator(WN_kid0(mpy)) == OPR_INTCONST &&
+	  (WN_const_val(WN_kid0(mpy)) == 2 ||
+	   WN_const_val(WN_kid0(mpy)) == 4 ||
+	   WN_const_val(WN_kid0(mpy)) == 8)) {
+	kid = 0; // kid0
+	const_mpy = TRUE;
+      }
+      else if (WN_operator(WN_kid1(mpy)) == OPR_INTCONST &&
+	       (WN_const_val(WN_kid1(mpy)) == 2 ||
+		WN_const_val(WN_kid1(mpy)) == 4 ||
+		WN_const_val(WN_kid1(mpy)) == 8)) {
+	kid = 1; // kid1
+	const_mpy = TRUE;
+      }
+      if (kid != -1 && WN_operator(WN_kid(mpy, (kid + 1)%2)) != OPR_LDID)
+	const_mpy = FALSE;
+      if (const_mpy) {
+	INT val = WN_const_val(WN_kid(mpy, kid));
+	WN* cvt = WN_kid1(addr);
+	BOOL simp_state_save = WN_Simplifier_Enable(FALSE);
+	TYPE_ID cvt_rtype = WN_rtype(cvt);
+	TYPE_ID cvt_desc = WN_desc(cvt);
+	if (!MTYPE_is_unsigned(cvt_rtype)) 
+	  cvt_rtype = MTYPE_complement(cvt_rtype);
+	if (!MTYPE_is_unsigned(cvt_desc)) 
+	  cvt_rtype = MTYPE_complement(cvt_desc);
+	WN* ldid = WN_kid(mpy, (kid+1)%2);
+	WN_set_rtype(ldid, cvt_rtype);
+	WN_set_desc(ldid, cvt_desc);
+	WN* multiply = LWN_CreateExp2( OPCODE_make_op(OPR_MPY,cvt_rtype, 
+	                                              MTYPE_V),
+				       LWN_Make_Icon(cvt_rtype,val),ldid);
+	WN_kid1(addr) = multiply;
+	LWN_Set_Parent(multiply,addr);
+	WN_Simplifier_Enable(simp_state_save);
+      }
+    }
+  }
+#endif
   if (addr_oper == OPR_ADD) {
     if (WN_operator(WN_kid0(addr)) == OPR_MPY) {
       mult = WN_kid0(addr);
@@ -1562,6 +1673,15 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
   // we would like to have an expression of the form coeff * index_expr
   int reassoc_idx = 0;
   WN *index_expr = WN_kid1(mult);
+  // Bug 3017 - for nodes like *(a + const1 x const2) where const1 is 
+  // integer constant '1' introduced by the canonicizer.
+  if (WN_operator(WN_kid0(mult)) == OPR_INTCONST &&
+      WN_operator(WN_kid1(mult)) == OPR_INTCONST &&
+      WN_const_val(WN_kid0(mult)) == 1) {
+    reassoc_idx = 1;
+    index_expr = WN_kid0(mult);
+    FmtAssert(MTYPE_byte_size(WN_desc(wn)) == 1, ("Handle this case"));
+  }
   WN *intconst = Find_Term_Coeff(index_expr);
   if (intconst == NULL) {
     reassoc_idx = 1;
@@ -1619,6 +1739,13 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
       if (char_canon) WN_Simplify_Tree(wn);
       return;  // not 1-d
     }
+#ifdef KEY
+    // Bug 2427 - pattern does not match then return
+    if (val == 0) {
+      if (char_canon) WN_Simplify_Tree(wn);
+      return;
+    }
+#endif
     if ((WN_element_size(base) % val) != 0) {
       if (val % WN_element_size(base) == 0) { // separate out element size
         OPCODE index_op = WN_opcode(index_expr);
@@ -1674,8 +1801,21 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
 
     if (val < 0) {
       OPCODE index_op = WN_opcode(index_expr);
+#ifndef KEY
       index_expr = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,OPCODE_rtype(index_op),
 			MTYPE_V),index_expr);
+#else
+      // Bug 3017 - have to complement type for creating a NEG of a unsigned
+      // node.
+      if (MTYPE_is_signed(OPCODE_rtype(index_op)))
+	index_expr = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,
+						   OPCODE_rtype(index_op),
+						   MTYPE_V),index_expr);
+      else
+	index_expr = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,
+				 MTYPE_complement(OPCODE_rtype(index_op)),
+						   MTYPE_V),index_expr);	
+#endif
     }
     WN_kid(addr,kid_that_is_mult) = index_expr;
     LWN_Set_Parent(index_expr,addr); 
@@ -1692,12 +1832,33 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
     WN *new_index = index_expr;
     if (negate) {
       OPCODE index_op = WN_opcode(index_expr);
+#ifndef KEY
       new_index = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,OPCODE_rtype(index_op),
 			MTYPE_V),index_expr);
+#else
+      // Bug 3017 - have to complement type for creating a NEG of a unsigned
+      // node.
+      if (MTYPE_is_signed(OPCODE_rtype(index_op)))
+	new_index = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,
+					          OPCODE_rtype(index_op),
+						  MTYPE_V), index_expr);
+      else
+	new_index = LWN_CreateExp1(OPCODE_make_op(OPR_NEG,
+				MTYPE_complement(OPCODE_rtype(index_op)),
+						  MTYPE_V), index_expr);
+#endif
     }
 
+#ifndef KEY
     WN_const_val(intconst) = 0;  // we're going to use it for the dimension size
 				// zero is what's used for real*8 a(*)
+#else
+    // Bug 3017 - create a new constant WN because last LWN_CreateExp1
+    // may erase intconst node if !MTYPE_is_signed(OPCODE_rtype(index_op))
+    // when creating a NEG WN.
+    intconst = WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST, 
+						Pointer_type, MTYPE_V), 0);
+#endif
     OPCODE op_array = OPCODE_make_op(OPR_ARRAY,Pointer_type, MTYPE_V);
     array = WN_Create(op_array,3);
     WN_element_size(array) = abs(val);
@@ -1883,6 +2044,10 @@ static BOOL Compatible_Type(MTYPE add, MTYPE index)
 static void Fold_Base(WN *array)
 {
   if (WN_kid_count(array) != 3) return;
+#ifdef KEY
+  // Bug 2285 - do not mess around with non-contiguous arrays
+  if (WN_element_size(array) < 0) return;
+#endif
   WN *base = WN_array_base(array);
   OPERATOR oper = WN_operator(base);
   if (oper != OPR_ADD && (oper != OPR_SUB)) {

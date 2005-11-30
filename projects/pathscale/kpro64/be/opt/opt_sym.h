@@ -231,7 +231,7 @@ enum AUXF_FLAGS {
   AUXF_MP_REDUCTION  = 0x200,      // marked reduction in MP pragma
   AUXF_DONT_REPLACE_IV = 0x400,    // do not replace this IV by another IV
   AUXF_NO_SPRE       = 0x800,      // disable SPRE for this var
-  AUXF_EPRE_TEMP     = 0x1000,     // PREG introduced by EPRE/LPRE
+  AUXF_EPRE_TEMP     = 0x1000,     // PREG introduced by EPRE
   AUXF_SPRE_TEMP     = 0x2000,     // PREG introduced by SPRE
   AUXF_SIGN_EXTD     = 0x4000,     // Is sign extended set by LPRE
   AUXF_DISABLE_LOCAL_RVI  = 0x8000, // Is live out of current REGION
@@ -248,6 +248,7 @@ enum AUXF2_FLAGS {
   AUXF2_PROP_CHAIN_SEEN = 0x20,    // FFA's IP alias propagation has
 				   // seen the St_chain of this variable
   AUXF2_NO_REG		= 0x40,    // no register type (MMLDID/MSTID)
+  AUXF2_LPRE_VNFRE_TEMP     	= 0x80,     // PREG introduced by LPRE and VNFRE
 };
 
 
@@ -322,6 +323,10 @@ private:
   mUINT16      _value_size;            // size of its content value    
   mUINT16      _version;               // Current SSA version
   CODEREP     *_zero_cr;	       // pt to the zero version coderep node
+#ifdef KEY
+  WN		*_wn;		       // to help create identity assignment
+  				       // for BS vars
+#endif
 
   //  Take a union of the following field to conserve space
   //	synonym is used during canonicalization for regular variables
@@ -362,6 +367,9 @@ private:
 		  _home_symbol = ILLEGAL_AUX_ID;
 		  _value_size = 0;
 		  _zero_cr = NULL;
+#ifdef KEY
+		  _wn = NULL;
+#endif
 		};
   ~AUX_STAB_ENTRY(void);
   AUX_STAB_ENTRY(const AUX_STAB_ENTRY&);
@@ -387,7 +395,6 @@ private:
   void     Set_stype(INT32 type)      { stype = type; }
   void     Set_mclass(INT32 mclass)   { _mclass = mclass; }
   void	   Set_mtype(MTYPE mtype)     { _mtype = mtype; }
-  void	   Set_sym(INT32 t, WN *wn, MTYPE d, MTYPE r, TY_IDX tt);
   void     Set_synonym(AUX_ID i)      { u.synonym = i; }
   void     Set_aux_id_list(AUX_ID_LIST *a) 
     { _aux_id_list = a; }
@@ -411,6 +418,10 @@ public:
   void     Set_value_size(UINT vsize) { _value_size = vsize; }
   CODEREP *Zero_cr(void) const        { return _zero_cr; }
   void     Set_zero_cr(CODEREP *p)     { _zero_cr = p; }
+#ifdef KEY
+  WN      *Wn(void) const             { return _wn; }
+  void     Set_wn(WN *w)              { _wn = w; }
+#endif
   BOOL     Equivalent(AUX_STAB_ENTRY *);
   void     Prepend_def_bbs(BB_NODE *bb, MEM_POOL *p)
                                       { if ( u.def_bbs == NULL ||
@@ -476,6 +487,8 @@ public:
   void     Set_prop_chain_seen(void)  { _more_flags |= AUXF2_PROP_CHAIN_SEEN; }
   BOOL     No_register(void) const    { return _more_flags & AUXF2_NO_REG; }
   void     Set_no_register(void)      { _more_flags |= AUXF2_NO_REG; }
+  BOOL     LPRE_VNFRE_temp(void) const { return _more_flags & AUXF2_LPRE_VNFRE_TEMP; }
+  void     Set_LPRE_VNFRE_temp(void)   { _more_flags |= AUXF2_LPRE_VNFRE_TEMP; }
 
   void     Reset_emitter_flags(void)  { u.emitter_flags = 0; }
   BOOL     Some_version_renumbered(void) const
@@ -1048,7 +1061,7 @@ public:
 
   //  Enter into AUX_STAB
   AUX_ID   Enter_symbol(OPERATOR opr, ST *st, INT64 ofst, TY_IDX wn_object_ty, 
-			BOOL is_volatile, const WN* wn = NULL);
+			BOOL is_volatile, WN* wn = NULL);
   AUX_ID   Enter_ded_preg(ST *, INT64, TY_IDX, INT32);
   AUX_ID   Identify_vsym(WN *);
 

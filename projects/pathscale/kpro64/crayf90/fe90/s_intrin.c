@@ -775,6 +775,9 @@ void    sin_intrinsic(opnd_type     *result_opnd,
       case Csin_Intrinsic:
       case Cdsin_Intrinsic:
       case Cqsin_Intrinsic:
+# ifdef KEY
+      case Zsin_Intrinsic:
+# endif
          IR_OPR(ir_idx) = Sin_Opr;
          break;
 
@@ -790,6 +793,9 @@ void    sin_intrinsic(opnd_type     *result_opnd,
       case Ccos_Intrinsic:
       case Cdcos_Intrinsic:
       case Cqcos_Intrinsic:
+# ifdef KEY
+      case Zcos_Intrinsic:
+# endif
          IR_OPR(ir_idx) = Cos_Opr;
          break;
 
@@ -806,6 +812,9 @@ void    sin_intrinsic(opnd_type     *result_opnd,
       case Clog_Intrinsic:
       case Cdlog_Intrinsic:
       case Cqlog_Intrinsic:
+# ifdef KEY
+      case Zlog_Intrinsic:
+# endif
          if ((IL_FLD(list_idx1) == CN_Tbl_Idx) &&
              (arg_info_list[info_idx1].ed.type == Real)) {
 
@@ -906,6 +915,9 @@ void    sin_intrinsic(opnd_type     *result_opnd,
       case Cexp_Intrinsic:
       case Cdexp_Intrinsic:
       case Cqexp_Intrinsic:
+# ifdef KEY
+      case Zexp_Intrinsic:
+# endif
          IR_OPR(ir_idx) = Exp_Opr;
          break;
 
@@ -915,6 +927,9 @@ void    sin_intrinsic(opnd_type     *result_opnd,
       case Csqrt_Intrinsic:
       case Cdsqrt_Intrinsic:
       case Cqsqrt_Intrinsic:
+# ifdef KEY
+      case Zsqrt_Intrinsic:
+# endif
          if ((IL_FLD(list_idx1) == CN_Tbl_Idx) &&
              (arg_info_list[info_idx1].ed.type == Real)) {
 
@@ -15470,6 +15485,7 @@ void    omp_set_lock_intrinsic(opnd_type     *result_opnd,
 |*                                                                            *|
 |* Description:                                                               *|
 |*      Function    DATE() intrinsic.                                         *|
+|*      Function    FDATE() intrinsic.                                        *|
 |*      Function    JDATE() intrinsic.                                        *|
 |*      Function    CLOCK() intrinsic.                                        *|
 |*                                                                            *|
@@ -15504,7 +15520,11 @@ void    clock_intrinsic(opnd_type     *result_opnd,
    TYP_LINEAR(TYP_WORK_IDX) = CHARACTER_DEFAULT_TYPE;
    TYP_CHAR_CLASS(TYP_WORK_IDX) = Const_Len_Char;
    TYP_FLD(TYP_WORK_IDX) = CN_Tbl_Idx;
+# ifdef KEY
+   TYP_IDX(TYP_WORK_IDX) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, 24);
+# else
    TYP_IDX(TYP_WORK_IDX) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, 8);
+# endif
    type_idx = ntr_type_tbl();
 
    res_exp_desc->type_idx = type_idx;
@@ -17804,7 +17824,20 @@ void    reshape_intrinsic(opnd_type     *result_opnd,
                      IR_IDX_L(OPND_IDX(new_opnd)) = IR_IDX_L(IL_IDX(list_idx1));
                      ATD_ARRAY_IDX(IR_IDX_L(IL_IDX(list_idx1))) =
                      ATD_ARRAY_IDX(attr_idx);
-
+// Bug 2183
+# ifdef KEY
+                    int para_idx = IR_IDX_R(OPND_IDX(new_opnd));
+                    while (para_idx != NULL_IDX) {
+                      if (IL_FLD(para_idx) == CN_Tbl_Idx &&
+                          IL_IDX(para_idx) != CN_INTEGER_ONE_IDX) 
+                        IL_IDX(para_idx) = CN_INTEGER_ONE_IDX;
+                      else if (IL_FLD(para_idx) != IR_Tbl_Idx || IR_OPR(IL_IDX(para_idx)) != Triplet_Opr){
+                        IL_FLD(para_idx) = CN_Tbl_Idx;
+                        IL_IDX(para_idx) = CN_INTEGER_ONE_IDX;
+                      }
+                      para_idx = IL_NEXT_LIST_IDX(para_idx);
+                    }
+# endif
                      res_exp_desc->rank = 2;
                      ATP_EXTERNAL_INTRIN(*spec_idx) = FALSE;
                      fold_it = FALSE;
@@ -18557,3 +18590,396 @@ void	unknown_intrinsic(opnd_type     *result_opnd,
    TRACE (Func_Exit, "unknown_intrinsic", NULL);
 
 }  /* unknown_intrinsic */
+
+#ifdef KEY 
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      Function    TIME8() intrinsic.                                        *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void    time_intrinsic(opnd_type     *result_opnd,
+                       expr_arg_type *res_exp_desc,
+                       int           *spec_idx)
+
+{
+   int            ir_idx;
+   int            type_idx;
+
+
+   TRACE (Func_Entry, "time_intrinsic", NULL);
+
+   ir_idx = OPND_IDX((*result_opnd));
+   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
+
+   type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
+
+   conform_check(0,
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+
+   IR_TYPE_IDX(ir_idx) = type_idx;
+   IR_RANK(ir_idx) = res_exp_desc->rank;
+   res_exp_desc->type_idx = type_idx;
+   res_exp_desc->linear_type = TYP_LINEAR(type_idx);
+
+   /* must reset foldable and will_fold_later because there is no */
+   /* folder for this intrinsic in constructors.                  */
+
+   res_exp_desc->foldable = FALSE;
+   res_exp_desc->will_fold_later = FALSE;
+
+   TRACE (Func_Exit, "time_intrinsic", NULL);
+
+}  /* time_intrinsic */
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      Function    FNUM(I) intrinsic.                                        *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void    fnum_intrinsic(opnd_type     *result_opnd,
+                       expr_arg_type *res_exp_desc,
+                       int           *spec_idx)
+{
+   int            ir_idx;
+   int            type_idx;
+
+
+   TRACE (Func_Entry, "fnum_intrinsic", NULL);
+
+   ir_idx = OPND_IDX((*result_opnd));
+   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
+
+   type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
+
+   conform_check(0, 
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+
+   IR_TYPE_IDX(ir_idx) = type_idx;
+   IR_RANK(ir_idx) = res_exp_desc->rank;
+   res_exp_desc->type_idx = type_idx;
+   res_exp_desc->linear_type = TYP_LINEAR(type_idx);
+
+   /* must reset foldable and will_fold_later because there is no */
+   /* folder for this intrinsic in constructors.                  */
+
+   res_exp_desc->foldable = FALSE;
+   res_exp_desc->will_fold_later = FALSE;
+
+   TRACE (Func_Exit, "fnum_intrinsic", NULL);
+
+}  /* fnum_intrinsic */
+
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      Function    DTIME(ARRAY) intrinsic.                                   *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void    dtime_intrinsic(opnd_type     *result_opnd,
+                       expr_arg_type *res_exp_desc,
+                       int           *spec_idx)
+{
+   int            ir_idx;
+   int            type_idx;
+
+
+   TRACE (Func_Entry, "dtime_intrinsic", NULL);
+
+   ir_idx = OPND_IDX((*result_opnd));
+   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = Real_8;
+
+   type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
+
+   conform_check(0, 
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+
+   IR_TYPE_IDX(ir_idx) = type_idx;
+   IR_RANK(ir_idx) = res_exp_desc->rank;
+   res_exp_desc->type_idx = type_idx;
+   res_exp_desc->linear_type = TYP_LINEAR(type_idx);
+
+   /* must reset foldable and will_fold_later because there is no */
+   /* folder for this intrinsic in constructors.                  */
+
+   res_exp_desc->foldable = FALSE;
+   res_exp_desc->will_fold_later = FALSE;
+
+   TRACE (Func_Exit, "dtime_intrinsic", NULL);
+
+}  /* dtime_intrinsic */
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      Function    STAT(File, SArray, Status) intrinsic.                     *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void    stat_intrinsic(opnd_type     *result_opnd,
+                       expr_arg_type *res_exp_desc,
+                       int           *spec_idx)
+{
+   int            ir_idx;
+   int            type_idx;
+   int            cn_type_idx;
+   int            list_idx1;
+   int            list_idx2;
+   int            list_idx3;
+   int            info_idx1;
+   int            info_idx2;
+
+
+   TRACE (Func_Entry, "stat_intrinsic", NULL);
+
+   ir_idx = OPND_IDX((*result_opnd));
+   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
+
+   type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
+
+   list_idx1 = IR_IDX_R(ir_idx);
+   list_idx2 = IL_NEXT_LIST_IDX(list_idx1);
+   info_idx1 = IL_ARG_DESC_IDX(list_idx1);
+   info_idx2 = IL_ARG_DESC_IDX(list_idx2);
+
+   conform_check(0, 
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+
+   cn_type_idx = CN_TYPE_IDX(IL_IDX(list_idx1));
+
+   NTR_IR_LIST_TBL(list_idx3);
+   IL_FLD(list_idx3) = CN_Tbl_Idx;
+   IL_ARG_DESC_VARIANT(list_idx3) = TRUE;
+   IL_LINE_NUM(list_idx3) = IL_LINE_NUM(list_idx1);
+   IL_COL_NUM(list_idx3)  = IL_COL_NUM(list_idx1);
+   IL_NEXT_LIST_IDX(list_idx2) = IL_NEXT_LIST_IDX(list_idx3);
+   IL_IDX(list_idx3) = C_INT_TO_CN(INTEGER_DEFAULT_TYPE, CN_CONST(TYP_IDX(cn_type_idx)));
+
+   IR_TYPE_IDX(ir_idx) = type_idx;
+   IR_RANK(ir_idx) = res_exp_desc->rank;
+   res_exp_desc->type_idx = type_idx;
+   res_exp_desc->linear_type = TYP_LINEAR(type_idx);
+
+   /* must reset foldable and will_fold_later because there is no */
+   /* folder for this intrinsic in constructors.                  */
+
+   res_exp_desc->foldable = FALSE;
+   res_exp_desc->will_fold_later = FALSE;
+
+   TRACE (Func_Exit, "stat_intrinsic", NULL);
+
+}  /* stat_intrinsic */
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      Function    SIGNAL(Number, Handler, Status) intrinsic.                *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void    signal_intrinsic(opnd_type     *result_opnd,
+                         expr_arg_type *res_exp_desc,
+                         int           *spec_idx)
+{
+   int            ir_idx;
+   int            type_idx;
+
+
+   TRACE (Func_Entry, "signal_intrinsic", NULL);
+
+   ir_idx = OPND_IDX((*result_opnd));
+   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
+
+   type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
+
+   conform_check(0, 
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+
+   IR_TYPE_IDX(ir_idx) = type_idx;
+   IR_RANK(ir_idx) = res_exp_desc->rank;
+   res_exp_desc->type_idx = type_idx;
+   res_exp_desc->linear_type = TYP_LINEAR(type_idx);
+
+   /* must reset foldable and will_fold_later because there is no */
+   /* folder for this intrinsic in constructors.                  */
+
+   res_exp_desc->foldable = FALSE;
+   res_exp_desc->will_fold_later = FALSE;
+
+   TRACE (Func_Exit, "sigal_intrinsic", NULL);
+
+}  /* signal_intrinsic */
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      Function    KILL(Pid, Signal) intrinsic.                              *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void    kill_intrinsic(opnd_type     *result_opnd,
+                       expr_arg_type *res_exp_desc,
+                       int           *spec_idx)
+{
+   int            ir_idx;
+   int            type_idx;
+
+
+   TRACE (Func_Entry, "kill_intrinsic", NULL);
+
+   ir_idx = OPND_IDX((*result_opnd));
+   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
+
+   type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
+
+   conform_check(0, 
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+
+   IR_TYPE_IDX(ir_idx) = type_idx;
+   IR_RANK(ir_idx) = res_exp_desc->rank;
+   res_exp_desc->type_idx = type_idx;
+   res_exp_desc->linear_type = TYP_LINEAR(type_idx);
+
+   /* must reset foldable and will_fold_later because there is no */
+   /* folder for this intrinsic in constructors.                  */
+
+   res_exp_desc->foldable = FALSE;
+   res_exp_desc->will_fold_later = FALSE;
+
+   TRACE (Func_Exit, "kill_intrinsic", NULL);
+
+}  /* kill_intrinsic */
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      Function    FSTAT(File, SArray, Status) intrinsic.                    *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void   fstat_intrinsic(opnd_type     *result_opnd,
+                       expr_arg_type *res_exp_desc,
+                       int           *spec_idx)
+{
+   int            ir_idx;
+   int            type_idx;
+   int            list_idx1;
+   int            list_idx2;
+   int            info_idx1;
+   int            info_idx2;
+   
+
+
+   TRACE (Func_Entry, "fstat_intrinsic", NULL);
+
+   ir_idx = OPND_IDX((*result_opnd));
+   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
+
+   type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
+
+   list_idx1 = IR_IDX_R(ir_idx);
+   list_idx2 = IL_NEXT_LIST_IDX(list_idx1);
+   info_idx1 = IL_ARG_DESC_IDX(list_idx1);
+   info_idx2 = IL_ARG_DESC_IDX(list_idx2);
+
+   conform_check(0, 
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+
+   IR_TYPE_IDX(ir_idx) = type_idx;
+   IR_RANK(ir_idx) = res_exp_desc->rank;
+   res_exp_desc->type_idx = type_idx;
+   res_exp_desc->linear_type = TYP_LINEAR(type_idx);
+
+   /* must reset foldable and will_fold_later because there is no */
+   /* folder for this intrinsic in constructors.                  */
+
+   res_exp_desc->foldable = FALSE;
+   res_exp_desc->will_fold_later = FALSE;
+
+   TRACE (Func_Exit, "fstat_intrinsic", NULL);
+
+}  /* fstat_intrinsic */
+#endif

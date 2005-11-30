@@ -321,6 +321,11 @@ static void region_stack_eh_set_has_call(void)
 
 #ifdef TARG_X8664
 static BOOL WN_pragma_preamble_end_seen = FALSE;
+
+BOOL W2OPS_Pragma_Preamble_End_Seen ()
+{
+   return WN_pragma_preamble_end_seen;
+}
 #endif
 /* Process the new OPs that have been created since the last call to 
  * this routine. We set their srcpos field and increment the count
@@ -695,6 +700,10 @@ Preg_Is_Rematerializable(PREG_NUM preg, BOOL *gra_homeable)
            do with poor supply of available registers under -m32.
   */
   if( OP_NEED_PAIR( OPCODE_rtype(opc) ) ){
+    return NULL;
+  }
+
+  if( mcmodel >= MEDIUM ){
     return NULL;
   }
 #endif
@@ -2122,7 +2131,12 @@ Handle_SELECT(WN *select, TN *result, OPCODE opcode)
   if (result == NULL) result = Allocate_Result_TN (select, NULL);
 
   variant = WHIRL_Compare_To_OP_variant (WN_opcode(compare), FALSE);
+#ifndef KEY
   if (Check_Select_Expansion (WN_opcode(compare)) || (variant == V_BR_NONE)) {
+#else
+  if (Check_Select_Expansion (WN_opcode(compare)) || 
+      (variant == V_BR_NONE && !MTYPE_is_vector(WN_desc(compare)))) {
+#endif
 	Is_True(   WN_desc(select) != MTYPE_B
 		|| (   WN_operator_is(compare, OPR_LDID) 
 		    && WN_class(compare) == CLASS_PREG),
@@ -2393,6 +2407,15 @@ Handle_ALLOCA (WN *tree, TN *result)
   if (!is_zero) {
 	Exp_Spadjust (SP_TN, tsize, V_SPADJUST_MINUS, &New_OPs);
 
+#ifdef TARG_X8664
+	/* Make the stack pointer be 16-byte aligned after alloca even under -m32.
+	   ( Is it a requirement ??? bug#2599)
+	 */
+	if( Is_Target_32bit() ){
+	  Exp_BAND( Pointer_Mtype,
+		    SP_TN, SP_TN, Gen_Literal_TN( -15, Pointer_Size ), &New_OPs);
+	}
+#endif
   	// return sp + arg area
 	offset = Current_PU_Actual_Size + stack_adjustment;
   }
@@ -2400,6 +2423,7 @@ Handle_ALLOCA (WN *tree, TN *result)
 	// return original $sp + stack_adjustment
 	offset = stack_adjustment;
   }
+
   if (offset == 0) {
 	if (result == NULL)
 		result = SP_TN;
@@ -2413,6 +2437,7 @@ Handle_ALLOCA (WN *tree, TN *result)
 		Gen_Literal_TN (offset, Pointer_Size), 
 		&New_OPs);
   }
+
   return result;
 }
 
@@ -2753,8 +2778,14 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 
     if (CGSPILL_Rematerialize_Constants && result == NULL) {
       result = Allocate_Result_TN (expr, NULL);
-      Set_TN_is_rematerializable(result);
-      Set_TN_home (result, expr);
+#ifdef TARG_X8664
+      // Don't rematerialize a 64-bit imm value under -m32.
+      if( !OP_NEED_PAIR( WN_rtype(expr) ) )
+#endif // TARG_X8664
+	{
+	  Set_TN_is_rematerializable(result);
+	  Set_TN_home (result, expr);
+	}
     }
 
     opnd_tn[0] = const_tn;
@@ -3850,9 +3881,6 @@ Handle_ASM (const WN* asm_wn)
       (strchr(constraint, 'm') != NULL || strchr(constraint, 'g') != NULL);
 #endif
 
-    opnd[num_opnds] = tn;
-    num_opnds++;
-    
     // we should create a TN even if it's an immediate
     // constraints on immediates are target-specific
     if (TN_is_register(tn)) {
@@ -3870,6 +3898,20 @@ Handle_ASM (const WN* asm_wn)
 #endif // TARG_X8664
 	Expand_Expr (load, NULL, tn);
     }
+
+#ifdef TARG_X8664
+    /* To save some registers, we need some special handling for
+       the "m" constraint.
+    */
+    if( ASM_OP_opnd_memory(asm_info)[num_opnds] ){
+      TN* new_opnd_tn = CGTARG_Process_Asm_m_constraint( load, &New_OPs );
+      if( new_opnd_tn != NULL )
+	tn = new_opnd_tn;
+    }
+#endif // TARG_X8664
+
+    opnd[num_opnds] = tn;    
+    num_opnds++;
   }
 
   // now create ASM op
@@ -4273,6 +4315,20 @@ convert_stmt_list_to_OPs(WN *stmt)
 	if (RID_TYPE_eh(rid)) {
 #endif
 	  EH_Set_End_Label(RID_eh_range_ptr(rid));
+#ifdef KEY
+	  /* When a region is ended, always force to create a new bb, so
+	     that the next region will not share any common bb with the
+	     current region. (bug#3140)
+	   */
+	  {
+	    BB* old_bb = Cur_BB;
+	    Start_New_Basic_Block();
+	    if( Cur_BB == old_bb ){
+	      Cur_BB = Gen_And_Append_BB( Cur_BB );
+	      BB_rid(Cur_BB) = Non_Transparent_RID(current_region);
+	    }
+	  }
+#endif
         }
 	rid = region_stack_pop();
       } else {			/* the region has been lowered to OPs */

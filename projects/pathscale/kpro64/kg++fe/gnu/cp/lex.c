@@ -212,6 +212,7 @@ cxx_init_options ()
   flag_exceptions = 1;
 #ifdef KEY
   key_exceptions = 1;
+  opt_regions = 0;
 #endif
   /* By default wrap lines at 80 characters.  Is getenv ("COLUMNS")
      preferable?  */

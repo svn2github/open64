@@ -974,22 +974,6 @@ Propagate_Constants (IPA_NODE* node, WN* w, VALUE_DYN_ARRAY* cprop_annot)
           need_to_update_array_bounds = TRUE;
         }
 
-#ifdef KEY
-	// Source program can intentionally change the value of 
-	// formal parameters. In C, actual parameters are not modified 
-	// (unless passed by reference) and in Fortran, actual parameters are
-	// modified. This module looks at incoming parameters to decide 
-	// whether a reference to the parameter can be replaced by the constant
-	// value, if the incoming parameter value is always a constant.
-	// It does not check whether the parameter is modified inside the 
-	// current_pu.
-	// Skip the optimization if there is a store to the incoming parameter,
-	// even though it may be a constant.
-	// Bug exposed by -O3 -IPA NAS/CG
-	if (Store_To_Formal (formal /* the formal parameter */, 
-			     w      /* current_pu */ ))
-	  continue;				  
-#endif
 	if (ST_sclass (formal) != SCLASS_FORMAL_REF) {
 	    // passed by value
 
@@ -1030,6 +1014,22 @@ Propagate_Constants (IPA_NODE* node, WN* w, VALUE_DYN_ARRAY* cprop_annot)
 		}
 	    }
 	} else {
+#ifdef KEY
+	// Source program can intentionally change the value of 
+	// formal parameters. In C, actual parameters are not modified 
+	// (unless passed by reference) and in Fortran, actual parameters are
+	// modified. This module looks at incoming parameters to decide 
+	// whether a reference to the parameter can be replaced by the constant
+	// value, if the incoming parameter value is always a constant.
+	// It does not check whether the parameter is modified inside the 
+	// current_pu.
+	// Skip the optimization if there is a store to the incoming parameter,
+	// even though it may be a constant.
+	// Bug exposed by -O3 -IPA NAS/CG
+	if (Store_To_Formal (formal /* the formal parameter */, 
+			     w      /* current_pu */ ))
+	  continue;				  
+#endif
 	    // parameter passed by reference
 	    if (annot_node.Is_addr_of ()) {
 		// "normal" case: we can peel off the LDA from the actual
@@ -1296,6 +1296,17 @@ Reset_param_list (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 	    
 	} 
     }
+
+#ifdef KEY
+    // bug 2636
+    // We have created used_param_count+fake_param_count kids, but it won't
+    // always have that many kids.
+    if (WN_kid_count (new_call) > last)
+    	WN_set_kid_count (new_call, last);
+
+    // Also update the # of parameters in the summary_callsite.
+    edge->Summary_Callsite()->Set_param_count (WN_kid_count (new_call));
+#endif
 
     if (Trace_IPA || Trace_Perf)
 	fputc ('\n', TFile);

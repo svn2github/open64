@@ -1301,10 +1301,18 @@ Rematerializable_IntConst(
   switch (opcode) {
   case OPC_I8INTCONST:
   case OPC_U8INTCONST:
+#ifdef TARG_X8664 
+  // Bug 3262 - zero-extend; to be complete, we should zero-extend 
+  // OPC_I4INTCONST also. We will be conservative, since this case
+  // might have been handled already in the back-end.
+  case OPC_U4INTCONST:
+#endif
     *val = WN_const_val(home);
     break;
   case OPC_I4INTCONST:
+#ifndef TARG_X8664 // see above
   case OPC_U4INTCONST:
+#endif
 
     /* Even for U4 we sign-extend the value
      * so it matches what we want register to look like

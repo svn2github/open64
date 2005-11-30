@@ -68,7 +68,11 @@
  * ====================================================================
  */
 
+#ifdef KEY
+BOOL    VHO_Force_Lowering              = TRUE;
+#else
 BOOL    VHO_Force_Lowering              = FALSE;
+#endif
 BOOL    VHO_Struct_Opt                  = TRUE;
 BOOL    VHO_Combine_Loads               = FALSE;
 BOOL    VHO_Recycle_Pregs               = FALSE;
@@ -97,6 +101,12 @@ BOOL    VHO_Icall_Devir			= TRUE;
 BOOL    VHO_Check_Tree                  = FALSE;
 BOOL    VHO_Single_Loop_Test            = FALSE;
 BOOL    VHO_Use_Do_While                = FALSE;
+#ifdef KEY
+/* simple if-conversion at VHO lower time */
+BOOL    VHO_Enable_Simple_If_Conv = TRUE;   
+/* maximum overhead allowed after If-Conversion */
+INT32   VHO_Enable_If_Conv_Limit = 6;   
+#endif
 
 /* List of global variables to turn on and off various optimizations */
 
@@ -143,5 +153,11 @@ static OPTION_DESC Options_VHO[] = {
     TRUE, 0, 0,  &VHO_Single_Loop_Test,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "use_do_while",       "use_do_while",
     TRUE, 0, 0,  &VHO_Use_Do_While,      NULL },
+#ifdef KEY
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "if_conv",                "",
+    0, 0, 0,    &VHO_Enable_Simple_If_Conv, NULL },
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "ifconv_limit",           "",
+    INT32_MAX, 0, INT32_MAX,    &VHO_Enable_If_Conv_Limit, NULL },
+#endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };

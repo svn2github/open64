@@ -517,6 +517,36 @@ struct process_compile_time_addr_saved
 }; // process_compile_time_addr_saved
 
 #ifdef KEY
+// bug 2954
+#include <sys/param.h> // MAXPATHLEN
+#include <unistd.h>
+static unsigned int
+hash_of_full_path_name (int index)
+{
+  bool malloced = false;
+  // taken from driver/file_utils.c
+  // Seems there is a memory leak in this code in file_utils.c
+  char *cwd = getcwd((char *) NULL, MAXPATHLEN);
+  if (cwd == NULL)
+  {
+    cwd = getenv("PWD");
+    if (cwd == NULL)
+    {
+      // can't get path, we will see if it fails because of this. 
+      cwd = ".";
+    }
+  }
+  else malloced = true;
+
+  char fullname[10 + strlen(cwd) + strlen(Src_File_Name) + 1 + 1];
+  sprintf (fullname, "%d%s/%s", index, cwd, Src_File_Name);
+  __gnu_cxx::hash<char*> hfn;
+
+  if (malloced) free (cwd);
+
+  return (unsigned int) hfn (fullname);
+}
+
 //bug# 555
 template <PROGRAM program>
 struct set_local_static_to_global
@@ -544,8 +574,9 @@ struct set_local_static_to_global
                                                                                                                                                              
         Set_ST_export(st, EXPORT_PREEMPTIBLE);
                                                                                                                                                              
-        char idname[10];
-        sprintf(idname, "%s%d", "_", ST_index(st));
+        char idname[30];
+	
+        sprintf(idname, "_%d_%u", ST_index(st), hash_of_full_path_name(ST_index(st)));
         int newname = Save_Str2(ST_name(st), idname);
         Set_ST_name (st, newname);
     }
@@ -960,7 +991,15 @@ SUMMARIZE<program>::Process_eh_region (WN * wn)
     	       INITV_blk (INITO_val (WN_ereg_supp (wn))) &&
 	       INITV_next (INITV_blk (INITO_val (WN_ereg_supp (wn)))),
 	       ("No exception info attached to EH region"));
-    INITV_IDX types = INITV_next (INITV_blk (INITO_val (WN_ereg_supp (wn))));
+    INITV_IDX blk = INITO_val (WN_ereg_supp (wn));
+
+    // Return if we have already summarized this block of initv's
+    if (INITV_flags (Initv_Table[blk]) == INITVFLAGS_SUMMARIZED)
+      return;
+
+    Set_INITV_flags (blk, INITVFLAGS_SUMMARIZED);
+
+    INITV_IDX types = INITV_next (INITV_blk (blk));
     for (; types; types = INITV_next (types))
     {
       int sym = 0;
@@ -978,6 +1017,47 @@ SUMMARIZE<program>::Process_eh_region (WN * wn)
 	Set_INITV_next (types, next);
       }
     }
+}
+
+#include <ext/hash_map>
+
+namespace Local
+{
+  struct hashfn
+  {
+    size_t operator() (const WN * w) const
+    {
+      return reinterpret_cast<size_t>(w);
+    }
+  };
+
+  struct eqnode
+  {
+    bool operator()(WN * w1, WN * w2) const
+    {
+      return w1 == w2;
+    }
+  };
+};
+
+struct branch_dir
+{
+  float taken, not_taken;
+};
+hash_map<WN*, branch_dir, Local::hashfn, Local::eqnode> if_map;
+
+inline void get_parent_if ( WN ** p, WN ** b )
+{
+  WN * parent = *p;
+  WN * block;
+  while ( parent && WN_operator (parent) != OPR_IF )
+  {
+    if ( WN_operator ( parent ) == OPR_BLOCK )
+	block = parent;
+    parent = LWN_Get_Parent ( parent );
+  }
+  *p = parent;
+  *b = block;
 }
 #endif
 
@@ -1005,6 +1085,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     BOOL Has_local_pragma = FALSE;
 #ifdef KEY
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback;
+    SUMMARY_CALLSITE* icall_site[100];
     INT icall_cnt = 0;
 #else
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback&& IPA_Enable_Reorder;//and other things, such as Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO]
@@ -1180,6 +1261,52 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
 	    break;
 
+#ifdef KEY
+	case OPR_IF:
+	    {
+		// Remove the use of this flag in future
+		if ( ! IPA_Enable_Branch_Heuristic || ! Cur_PU_Feedback ) break;
+
+		FB_Info_Branch info = Cur_PU_Feedback->Query_branch ( w2 );
+		if (!info.freq_taken.Known() || !info.freq_not_taken.Known())
+		{
+		    if_map[w2].taken = if_map[w2].not_taken = -1;
+		    break;
+		}
+		float taken = info.freq_taken.Value() / info.Total().Value();
+		float not_taken = info.freq_not_taken.Value() / info.Total().Value();
+		// Check if we are inside another 'if', then adjust the 
+		// probabilities.
+		if ( !if_map.empty() )
+		{
+		  WN * block;
+		  WN * parent = LWN_Get_Parent ( w2 );
+
+		  get_parent_if ( &parent, &block );
+
+		  if ( parent )
+		  {
+		    Is_True (block && WN_operator (block) == OPR_BLOCK, ("kid of if stmt wrong"));
+		    // OPR_IF
+		    if ( WN_kid1 (parent) == block )
+		    {
+		      taken *= if_map[parent].taken;
+		      not_taken *= if_map[parent].taken;
+		    }
+		    else
+		    {
+		      Is_True ( WN_kid2 (parent) == block, ("kid of if stmt wrong"));
+		      taken *= if_map[parent].not_taken;
+		      not_taken *= if_map[parent].not_taken;
+		    }
+		  }
+		}
+		
+		if_map[w2].taken = taken;
+		if_map[w2].not_taken = not_taken;
+	    }
+	    break;
+#endif
 	case OPR_ICALL:
 	case OPR_CALL: {
             // ignore fake call from exception handling block
@@ -1188,17 +1315,40 @@ SUMMARIZE<program>::Process_procedure (WN* w)
               break;
 
             proc->Incr_call_count ();
+#ifdef KEY
+	    float probability = -1;
+	    // Remove the use of this flag in future
+	    if ( IPA_Enable_Branch_Heuristic && Cur_PU_Feedback && 
+	    	 WN_operator (w2) == OPR_CALL )
+	    {
+	      WN * block, * parent = LWN_Get_Parent ( w2 );
+
+	      get_parent_if ( &parent, &block );
+
+	      if (parent)
+	      { // we are inside an if stmt
+	    	Is_True (block && WN_operator (block) == OPR_BLOCK, ("kid of if stmt wrong"));
+		if ( WN_kid1 (parent) == block )
+		    probability = if_map[parent].taken;
+		else
+		    probability = if_map[parent].not_taken;
+	      }
+	    }
+            Process_callsite (w2, proc->Get_callsite_count (), loopnest, probability);
+#else
             Process_callsite (w2, proc->Get_callsite_count (), loopnest);
+#endif
             proc->Incr_callsite_count ();
             Direct_Mod_Ref = TRUE;
 
 #ifdef KEY
 	    if( Cur_PU_Feedback != NULL &&
-		IPA_Enable_Icall_Opt    &&
 		WN_operator(w2) == OPR_ICALL ){
 	      FB_FREQ freq = Cur_PU_Feedback->Query(w2, FB_EDGE_CALL_INCOMING);
-	      if( freq.Known() )
+	      if( freq.Known() ){
+		icall_site[icall_cnt] = Get_callsite( Get_callsite_idx() );
 		icall_cnt++;
+	      }
 	    }
 #endif	      
             // update actual parameter count
@@ -1458,14 +1608,30 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     }
 
 #ifdef KEY
+    if_map.clear ();
     /* Append a list of free slots to the currnet callsite_array for
        the future use by IPA_Convert_Icalls.
     */
+    FmtAssert( icall_cnt < sizeof(icall_site) / sizeof(icall_site[0]),
+	       ("icall array is too small.") );
     for( int i = 0; i < icall_cnt; i++ ){
+      SUMMARY_CALLSITE* icall_info = icall_site[i];
       SUMMARY_CALLSITE* callsite = New_callsite ();
+
       callsite->Set_callsite_id( proc->Get_callsite_count()  );
       callsite->Set_icall_slot();
-      proc->Incr_callsite_count ();
+
+      callsite->Set_param_count( icall_info->Get_param_count() );
+      callsite->Set_return_type( icall_info->Get_return_type() );
+      callsite->Set_map_id( icall_info->Get_map_id() );
+      callsite->Set_loopnest( icall_info->Get_loopnest() );
+      callsite->Set_probability( icall_info->Get_probability() );
+
+      if( callsite->Get_param_count() > 0 ){
+	callsite->Set_actual_index( icall_info->Get_actual_index() );
+      }
+
+      proc->Incr_callsite_count();
     }
 #endif // KEY    
 
@@ -1601,7 +1767,7 @@ SUMMARIZE<program>::Update_call_pragmas (SUMMARY_CALLSITE *callsite)
 //-----------------------------------------------------------
 template <PROGRAM program>
 void
-SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest)
+SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probability)
 {
     INT count;
     SUMMARY_CALLSITE *callsite = New_callsite ();
@@ -1611,6 +1777,9 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest)
 
     callsite->Set_callsite_id (id);
     callsite->Set_loopnest (loopnest);
+#ifdef KEY
+    callsite->Set_probability (probability);
+#endif
     callsite->Set_param_count (WN_num_actuals(w));
     callsite->Set_return_type (WN_rtype(w));
 

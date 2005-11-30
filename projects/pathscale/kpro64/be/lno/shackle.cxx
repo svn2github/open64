@@ -67,6 +67,9 @@
 #include "prompf.h"
 #include "anl_driver.h"
 #include "debug.h" 
+#ifdef KEY
+#include "wn_simp.h"            // for WN_Simp_Compare_Trees
+#endif
 
 #pragma weak New_Construct_Id
 
@@ -583,6 +586,22 @@ _xfunc_has_stmts2prevent_shackle(QUEUE<WN *> *stmts)
   return FALSE;
 }
 
+#ifdef KEY
+// We just want to return a ST that is meaningful
+static ST* Array_Base_St (WN* node)
+{
+  if (OPCODE_is_load(WN_opcode(node))) return WN_st(node);
+
+  // Recurse
+  ST* sym;
+  for (INT kid = 0; kid < WN_kid_count(node); kid ++)
+    if (sym = Array_Base_St(WN_kid(node, kid)))
+      return sym;
+
+  return NULL;
+}
+#endif
+
 ST*
 Identical_Array_Refbase (WN *array1, WN *array2)
 {
@@ -609,6 +628,12 @@ Identical_Array_Refbase (WN *array1, WN *array2)
     if (DEP_CONTINUE == DEPV_COMPUTE::Base_Test (p1, NULL, 
 						 p2, NULL)) {
       // assert (WN_array_base (array1) == WN_array_base (array2));
+#ifdef KEY // Bug 2484
+      if (WN_Simp_Compare_Trees(t1, t2) != 0)
+	return NULL;
+      else if (WN_kid_count(t1) != 0)
+	return Array_Base_St(t1);
+#endif
       if (WN_st (t1) == WN_st (t2))
 	return WN_st (t1);
       else

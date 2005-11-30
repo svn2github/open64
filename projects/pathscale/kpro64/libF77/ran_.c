@@ -48,7 +48,7 @@ multiplication is mod 2**31
 #include <math.h>
 #include "cmplrs/host.h"
 
-float_t ran_(int32 *i)
+float ran_(int32 *i)
 {
 	(*i) = (*i) * 1103515245L + 12345;
 	return((((*i) >> 16) & 0x7fff) / 32768.0);

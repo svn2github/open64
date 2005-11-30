@@ -321,7 +321,7 @@ extern WN *Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX
 
 // Find the type to use for Create_identity_assignment()
 // Returns null if a reasonable type for assignment can't be found
-extern TY_IDX Identity_assignment_type( AUX_STAB_ENTRY *sym );
+extern TY_IDX Identity_assignment_type( AUX_STAB_ENTRY *sym, OPT_PHASE phase );
 
 //  Obtain the mod-ref information from the uplevel procedure variable list
 extern READ_WRITE Get_MP_modref(const WN *pragma_list, const POINTS_TO *pt,

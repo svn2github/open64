@@ -134,6 +134,11 @@
 //
 // ====================================================================
 
+#ifdef KEY
+static WN* pu_wn = NULL;
+#endif
+
+
 #define TNV_N 10
 
 class WN_INSTRUMENT_WALKER {
@@ -1077,12 +1082,20 @@ WN_INSTRUMENT_WALKER::Instrument_Call( WN *wn, INT32 id, WN *block )
 		    wn, block );
 }
 
+
 void
 WN_INSTRUMENT_WALKER::Instrument_Icall( WN *wn, INT32 id, WN *block )
 {
   // Get the address of the called function.
-  WN *called_func_address;
-  called_func_address = WN_COPY_Tree(WN_kid(wn,WN_kid_count(wn)-1));
+  WN* orig_wn = WN_kid( wn, WN_kid_count(wn)-1 );
+  WN* called_func_address = WN_COPY_Tree( orig_wn );
+
+  if( !WN_Rename_Duplicate_Labels( orig_wn,
+				   called_func_address,
+				   pu_wn,
+				   _mempool ) ){
+    FmtAssert( FALSE, ("external labels renamed") );
+  }
 
   // profile_icall( handle, call_id, called_func_address )
   Instrument_Before( Gen_Call( ICALL_INSTRUMENT_NAME,
@@ -1878,6 +1891,10 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 	   DevWarn("There is no Icall feedback data for current PU!");
     }
   }
+
+#ifdef KEY
+  pu_wn = root;
+#endif
    
   // Instrument all statements after (and including) the preamble end;
   // Do not instrument statements in the preamble
@@ -1918,6 +1935,16 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
       WN *pusize = WN_Intconst( MTYPE_I4, pusize_est );
       WN *checksum = WN_Intconst( MTYPE_I4, _instrument_count );
       // r2 = __profile_pu_init( src_file_name, pu_name, pc, pusize, checksum )
+
+#ifdef KEY
+      /* The body of an "extern __inline__" function will not be emitted.
+	 So don't bother to mention its name in the instrumented assemble
+	 file (bug#2255).
+      */
+      if( PU_is_extern_inline(Get_Current_PU()) ){
+	pc = WN_Zerocon( Pointer_type );
+      }
+#endif
       Instrument_Entry( Gen_Call( PU_INIT_NAME, src_file_name,
 				  pu_name, pc, pusize, checksum, Pointer_type ) );
 	  
@@ -1979,12 +2006,12 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 	  
       UINT32 checksum = Get_PU_Checksum( *i );
 	
-      Is_True( _instrument_count == checksum,
-	       ( "Instrumenter Error: (Phase %d) Feedback file has invalid "
-		 " checksum for program unit %s in file %s. "
-		 " Computed = %d, In file = %d.",
-		 _phase, Cur_PU_Name, Src_File_Name, _instrument_count, 
-		 checksum ) );
+      FmtAssert( _instrument_count == checksum,
+		 ( "Instrumenter Error: (Phase %d) Feedback file has invalid "
+		   " checksum for program unit %s in file %s. "
+		   " Computed = %d, In file = %d.",
+		   _phase, Cur_PU_Name, Src_File_Name, _instrument_count, 
+		   checksum ) );
     }
   }
 

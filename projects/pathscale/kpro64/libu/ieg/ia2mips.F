@@ -350,7 +350,7 @@ C     Set lengths, stride and bit offsets
       ILENB  = LOGB2(ILEN)              !  Log (base 2) of ILEN
       MLENB  = LOGB2(MLEN)              !  Log (base 2) of MLEN
 
-      SWAP   = 2
+      SWAP   = 1
 
       GOTO (100,200,300,400,500,600), TYPE
 
@@ -847,21 +847,21 @@ C
 
             CASE (32)               !  ILEN .EQ. 32 .AND. MLEN .EQ. 32
               DO I = 0, NMBR - 1
-                MIPSS(MI) = IEEESS$(CSWAPS$(IEEES(II)))
+                MIPSS(MI) = IEEESS$(IEEES(II))
                 II        = II + IINC
                 MI        = MI + MINC
               ENDDO
 
             CASE (64)               !  ILEN .EQ. 32 .AND. MLEN .EQ. 64
               DO I = 0, NMBR - 1
-                MIPSD(MI) = IEEESD$(CSWAPS$(IEEES(II)))
+                MIPSD(MI) = IEEESD$(IEEES(II))
                 II        = II + IINC
                 MI        = MI + MINC
               ENDDO
 #ifdef HAVE_FKIND16
             CASE (128)              !  ILEN .EQ. 32 .AND. MLEN .EQ. 128
               DO I = 0, NMBR - 1
-                MIPSQ(MI) = IEM128I$(IEEESQ$(CSWAPS$(IEEES(II))))
+                MIPSQ(MI) = IEM128I$(IEEESQ$(IEEES(II)))
                 II        = II + IINC
                 MI        = MI + MINC
               ENDDO
@@ -875,14 +875,14 @@ C
 
             CASE (32)               !  ILEN .EQ. 64 .AND. MLEN .EQ. 32
               DO I = 0, NMBR - 1
-                MIPSS(MI) = IEEEDS$(CSWAPD$(IEEED(II)))
+                MIPSS(MI) = IEEEDS$(IEEED(II))
                 II        = II + IINC
                 MI        = MI + MINC
               ENDDO
 
             CASE (64)               !  ILEN .EQ. 64 .AND. MLEN .EQ. 64
               DO I = 0, NMBR - 1
-                MIPSD(MI) = IEEEDD$(CSWAPD$(IEEED(II)))
+                MIPSD(MI) = IEEEDD$(IEEED(II))
                 II        = II + IINC
                 MI        = MI + MINC
               ENDDO
@@ -890,7 +890,7 @@ C
 #ifdef HAVE_FKIND16
             CASE (128)              !  ILEN .EQ. 64 .AND. MLEN .EQ. 128
               DO I = 0, NMBR - 1
-                MIPSQ(MI) = IEM128I$(IEEEDQ$(CSWAPD$(IEEED(II))))
+                MIPSQ(MI) = IEM128I$(IEEEDQ$(IEEED(II)))
                 II        = II + IINC
                 MI        = MI + MINC
               ENDDO
@@ -904,21 +904,21 @@ C
 
             CASE (32)               !  ILEN .EQ. 128 .AND. MLEN .EQ. 32
               DO I = 0, NMBR - 1
-                MIPSS(MI) = IEEEQS$(CSWAPQ$(IEEEQ(II)))
+                MIPSS(MI) = IEEEQS$(IEEEQ(II))
                 II        = II + IINC
                 MI        = MI + MINC
               ENDDO
 
             CASE (64)               !  ILEN .EQ. 128 .AND. MLEN .EQ. 64
               DO I = 0, NMBR - 1
-                MIPSD(MI) = IEEEQD$(CSWAPQ$(IEEEQ(II)))
+                MIPSD(MI) = IEEEQD$(IEEEQ(II))
                 II        = II + IINC
                 MI        = MI + MINC
               ENDDO
 
             CASE (128)              !  ILEN .EQ. 128 .AND. MLEN .EQ. 128
               DO I = 0, NMBR - 1
-                MIPSQ(MI) = IEM128I$(IEEEQQ$(CSWAPQ$(IEEEQ(II))))
+                MIPSQ(MI) = IEM128I$(CSWAPQ$(IEEEQ(II)))
                 II        = II + IINC
                 MI        = MI + MINC
               ENDDO
@@ -1046,8 +1046,8 @@ C
 
           CASE (64)               !  ILEN .EQ.  64 .AND. MLEN .EQ. 64
             DO I = 0, NMBR - 1
-              MIPSF(MI) = CMPLX(IEEESS$(CSWAPS$(REAL (IEEEF(II)))),
-     1                          IEEESS$(CSWAPS$(AIMAG(IEEEF(II)))),
+              MIPSF(MI) = CMPLX(IEEESS$(REAL (IEEEF(II))),
+     1                          IEEESS$(AIMAG(IEEEF(II))),
      2                          KIND=4)
               II        = II + IINC
               MI        = MI + MINC
@@ -1055,8 +1055,8 @@ C
 
           CASE (128)              !  ILEN .EQ.  64 .AND. MLEN .EQ. 128
             DO I = 0, NMBR - 1
-              MIPSC(MI) = CMPLX(IEEESD$(CSWAPS$(REAL (IEEEF(II)))),
-     1                          IEEESD$(CSWAPS$(AIMAG(IEEEF(II)))),
+              MIPSC(MI) = CMPLX(IEEESD$(REAL (IEEEF(II))),
+     1                          IEEESD$(AIMAG(IEEEF(II))),
      2                          KIND=8)
               II        = II + IINC
               MI        = MI + MINC
@@ -1065,8 +1065,8 @@ C
 #ifdef HAVE_FKIND16
           CASE (256)              !  ILEN .EQ.  64 .AND. MLEN .EQ. 256
             DO I = 0, NMBR - 1
-         MIPSE(MI) = CMPLX(IEM128I$(IEEESQ$(CSWAPS$(REAL (IEEEF(II))))),
-     1                     IEM128I$(IEEESQ$(CSWAPS$(AIMAG(IEEEF(II))))),
+         MIPSE(MI) = CMPLX(IEM128I$(IEEESQ$(REAL (IEEEF(II)))),
+     1                     IEM128I$(IEEESQ$(AIMAG(IEEEF(II)))),
      2                     KIND=16)
               II        = II + IINC
               MI        = MI + MINC
@@ -1081,8 +1081,8 @@ C
 
           CASE (64)               !  ILEN .EQ. 128 .AND. MLEN .EQ. 64
             DO I = 0, NMBR - 1
-              MIPSF(MI) = CMPLX(IEEEDS$(CSWAPD$(REAL (IEEEC(II)))),
-     1                          IEEEDS$(CSWAPD$(AIMAG(IEEEC(II)))),
+              MIPSF(MI) = CMPLX(IEEEDS$(REAL (IEEEC(II))),
+     1                          IEEEDS$(AIMAG(IEEEC(II))),
      2                          KIND=4)
               II        = II + IINC
               MI        = MI + MINC
@@ -1090,8 +1090,8 @@ C
 
           CASE (128)              !  ILEN .EQ. 128 .AND. MLEN .EQ. 128
             DO I = 0, NMBR - 1
-              MIPSC(MI) = CMPLX(IEEEDD$(CSWAPD$(REAL (IEEEC(II)))),
-     1                          IEEEDD$(CSWAPD$(AIMAG(IEEEC(II)))),
+              MIPSC(MI) = CMPLX(IEEEDD$(REAL (IEEEC(II))),
+     1                          IEEEDD$(AIMAG(IEEEC(II))),
      2                          KIND=8)
               II        = II + IINC
               MI        = MI + MINC
@@ -1100,8 +1100,8 @@ C
 #ifdef HAVE_FKIND16
           CASE (256)              !  ILEN .EQ. 128 .AND. MLEN .EQ. 256
             DO I = 0, NMBR - 1
-         MIPSE(MI) = CMPLX(IEM128I$(IEEEDQ$(CSWAPD$(REAL (IEEEC(II))))),
-     1                     IEM128I$(IEEEDQ$(CSWAPD$(AIMAG(IEEEC(II))))),
+         MIPSE(MI) = CMPLX(IEM128I$(IEEEDQ$(REAL (IEEEC(II)))),
+     1                     IEM128I$(IEEEDQ$(AIMAG(IEEEC(II)))),
      2                     KIND=16)
               II        = II + IINC
               MI        = MI + MINC
@@ -1117,8 +1117,8 @@ C
 
           CASE (64)               !  ILEN .EQ. 256 .AND. MLEN .EQ. 64
             DO I = 0, NMBR - 1
-              MIPSF(MI) = CMPLX(IEEEQS$(CSWAPQ$(REAL (IEEEE(II)))),
-     1                          IEEEQS$(CSWAPQ$(AIMAG(IEEEE(II)))),
+              MIPSF(MI) = CMPLX(IEEEQS$(REAL (IEEEE(II))),
+     1                          IEEEQS$(AIMAG(IEEEE(II))),
      2                          KIND=4)
               II        = II + IINC
               MI        = MI + MINC
@@ -1126,8 +1126,8 @@ C
 
           CASE (128)              !  ILEN .EQ. 256 .AND. MLEN .EQ. 128
             DO I = 0, NMBR - 1
-              MIPSC(MI) = CMPLX(IEEEQD$(CSWAPQ$(REAL (IEEEE(II)))),
-     1                          IEEEQD$(CSWAPQ$(AIMAG(IEEEE(II)))),
+              MIPSC(MI) = CMPLX(IEEEQD$(REAL (IEEEE(II))),
+     1                          IEEEQD$(AIMAG(IEEEE(II))),
      2                          KIND=8)
               II        = II + IINC
               MI        = MI + MINC
@@ -1135,8 +1135,8 @@ C
 
           CASE (256)              !  ILEN .EQ. 256 .AND. MLEN .EQ. 256
             DO I = 0, NMBR - 1
-         MIPSE(MI) = CMPLX(IEM128I$(IEEEQQ$(CSWAPQ$(REAL (IEEEE(II))))),
-     1                     IEM128I$(IEEEQQ$(CSWAPQ$(AIMAG(IEEEE(II))))),
+         MIPSE(MI) = CMPLX(IEM128I$(IEEEQQ$(REAL (IEEEE(II)))),
+     1                     IEM128I$(IEEEQQ$(AIMAG(IEEEE(II)))),
      2                     KIND=16)
               II        = II + IINC
               MI        = MI + MINC

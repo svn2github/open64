@@ -4386,6 +4386,19 @@ default_flag_random_seed ()
     return;
 
   /* Get some more or less random data.  */
+#ifdef KEY	// bug 3099
+  {
+    int i;
+    value = 0;
+    if (main_input_filename) {
+      for (i = 0; i < strlen (main_input_filename); i++) {
+	value = (value << 1) ^ main_input_filename[i];
+      }
+    } else {
+      value = getpid ();
+    }
+  }
+#else
 #ifdef HAVE_GETTIMEOFDAY
  {
    struct timeval tv;
@@ -4396,6 +4409,7 @@ default_flag_random_seed ()
  }
 #else
   value = getpid ();
+#endif
 #endif
 
   /* This slightly overestimates the space required.  */

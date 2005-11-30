@@ -96,6 +96,7 @@ FC = $(F90) -c -Wf,-eQ
 
 
 LIBRARY = libfortran.a
+PROF_LIB = libfortran_p.a
 DSO = libfortran.so
 DSO_NAME = libfortran.so
 
@@ -109,7 +110,7 @@ ifeq ($(BUILD_TYPE), NONSHARED)
 TARGETS = $(LIBRARY)
 LINK_TARGET = $(LIBRARY)
 else
-TARGETS = $(LIBRARY) $(DSO)
+TARGETS = $(LIBRARY) $(PROF_LIB) $(DSO)
 LINK_TARGET = $(DSO)
 endif
 
@@ -189,7 +190,11 @@ LCINCS += $(addprefix -I, $(SRC_DIRS))
 
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
-	$(ranlib) $(LIBRARY)
+	$(ranlib) $@
+
+$(PROF_LIB): $(OBJECTS:%.o=%.pg.o)
+	$(ar) cru $@ $^
+	$(ranlib) $@
 
 $(DSO): $(OBJECTS:%.o=%.pic.o)
 	$(ld) $(STD_DSO_LOADOPTS) -o $@ $^

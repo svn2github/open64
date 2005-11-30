@@ -61,6 +61,9 @@ extern void gxx_emits_decl (tree t);
 
 // Add a VAR_DECL typeinfo to be emitted
 extern void gxx_emits_typeinfos (tree);
+
+// Add VAR_DECLs that are to be expanded last.
+extern void defer_emit_var_decl (tree);
 #endif /* KEY */
 
 /* called for each aggregate initialization */
@@ -109,12 +112,15 @@ extern ST *WFE_Alloca_0 (void);
 /* call this routine to assign ST for VLA as well as allocate space for it */
 extern ST *WFE_Alloca_ST (tree decl);
 
+#ifndef KEY	// obsolete
 /* call this routine to deallocate STs for VLA */
 extern void WFE_Dealloca (ST *alloca0_st, tree vars);
 
-#ifndef KEY	// obsolete
 /* call this routine to record variables assigned to registers using asm */
 extern void WFE_Record_Asmspec_For_ST (tree decl, char *asmspec, int reg);
+#else
+/* call this routine to deallocate STs for VLA */
+extern void WFE_Dealloca (ST *, vector<ST*> *);
 #endif
 
 /* call this routine to resolve conflicts between duplicate declarations */

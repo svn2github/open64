@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,12 +44,12 @@
 #include <math.h>
 #include "moremath.h"
 
-float_t __rasind(float_t x)
+float __rasind(float x)
 {
   return (asinf(x) * 57.29577951308232F);
 }
 
-float_t r_asind(float_t *x)
+float r_asind(float *x)
 {
   return (__rasind(*x));
 }

@@ -42,7 +42,11 @@
 #include <math.h>
 #include "cmplrs/host.h"
 
-float_t r_dim(float_t *a,float_t *b)
+#ifdef KEY
+float r_dim(float *a,float *b)
+#else
+float r_dim(float *a,float_t *b)
+#endif // KEY
 {
 return( *a > *b ? *a - *b : 0);
 }

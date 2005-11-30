@@ -149,6 +149,10 @@ static void Process_Store(WN *store_wn, VINDEX16 v,
 		ARRAY_DIRECTED_GRAPH16 *dep_graph, BOOL do_variants,
 		BOOL do_invariants, REDUCTION_MANAGER *red_manager)
 {
+#ifdef TARG_X8664
+  // Do not sclrze vector stores.
+  if (MTYPE_is_vector(WN_desc(store_wn))) return;
+#endif
   if (Inside_Loop_With_Goto(store_wn)) return;
   INT debug = Get_Trace(TP_LNOPT,TT_LNO_SCLRZE);
 

@@ -282,6 +282,9 @@ WFE_Start_Function (tree fndecl)
     ST_EXPORT  eclass = TREE_PUBLIC(fndecl) ? EXPORT_PREEMPTIBLE
                                             : EXPORT_LOCAL;
 
+#ifdef KEY
+    bool extern_inline = FALSE;
+#endif
     if (DECL_INLINE (fndecl) && TREE_PUBLIC (fndecl)) {
       if (DECL_EXTERNAL (fndecl) && DECL_ST2 (fndecl) == 0) {
         // encountered first extern inline definition
@@ -290,6 +293,9 @@ WFE_Start_Function (tree fndecl)
         func_st =  Get_ST (fndecl);
         DECL_ST (fndecl) = oldst;
         DECL_ST2 (fndecl) = func_st;
+#ifdef KEY // bugs 2178, 2152
+	extern_inline = TRUE;
+#endif // KEY
         eclass = EXPORT_LOCAL;
       }
       else {
@@ -312,6 +318,23 @@ WFE_Start_Function (tree fndecl)
     Set_ST_export (func_st, eclass);
 
 #ifdef KEY
+    if (extern_inline)
+    {
+    	Set_PU_is_extern_inline (Pu_Table [ST_pu (func_st)]); //bugs 2178, 2152
+	if (optimize) // bug 2218
+	    Set_PU_must_inline (Pu_Table [ST_pu (func_st)]);
+    }
+
+    // bug 2395
+    if (DECL_NOINLINE_ATTRIB (fndecl))
+	Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
+
+    // bug 2646
+    // If there is an 'always_inline' attribute, and the function definition
+    // is before the call(s), GNU fe will do it. If the definition is after
+    // any call, we need to handle it here.
+    if (DECL_ALWAYS_INLINE_ATTRIB (fndecl))
+    	Set_PU_must_inline (Pu_Table [ST_pu (func_st)]);
 // Fix Bug# 45 (comments below)
     Scope_tab [Current_scope].st = func_st;
 #endif // KEY
@@ -462,6 +485,7 @@ WFE_Start_Function (tree fndecl)
 #ifdef KEY
 // We are not writing out this PU since it has been deferred for after
 // processing. So delete this PU from the PU tree.
+// TODO: Update for nested functions.
 static bool
 Search_and_Remove_PU_Info (PU_Info *pu_tree, PU_Info *search, PU_Info *prev=0)
 {
@@ -471,7 +495,16 @@ Search_and_Remove_PU_Info (PU_Info *pu_tree, PU_Info *search, PU_Info *prev=0)
 	if (pu == search)
 	{ // Found it!
 	  if (prev_pu)
+	  {
+	    // If pu is not the last PU, we need to traverse the list to
+	    // find the last PU, and assign that pu to 
+	    // PU_Info_Table[CURRENT_SYMTAB]
+	    // For non-nested PUs, it should be the last PU
+	    Is_True (PU_Info_next (pu) == NULL, ("PU should be last PU in list"));
+	    // bug 2107
+	    PU_Info_Table [CURRENT_SYMTAB] = prev_pu;
 	    PU_Info_next (prev_pu) = PU_Info_next (pu);
+	  }
 	  else
 	  { // Must be the first child
 	    FmtAssert (prev, ("No previous PU found"));
@@ -482,8 +515,11 @@ Search_and_Remove_PU_Info (PU_Info *pu_tree, PU_Info *search, PU_Info *prev=0)
 	}
 
 	if (PU_Info_child (pu))
+	{
+	  DevWarn ("Nested PU's not supported");
 	  if (Search_and_Remove_PU_Info (PU_Info_child (pu), search, pu))
 	  	return TRUE;
+	}
     	prev_pu = pu;
     }
     Fail_FmtAssertion ("Deferred PU not found in PU tree");
@@ -530,6 +566,7 @@ WFE_Finish_Function (void)
     }
 
 #ifdef KEY
+    // bug 1940
     if (defer_function)	// Delete the WN tree
       IPA_WN_DELETE_Tree (Current_Map_Tab, func_wn);
 #endif
@@ -547,10 +584,12 @@ WFE_Finish_Function (void)
     { // We are not writing this PU now, so delete it from PU tree and fix
       // up a few things.
       Set_Max_Region_Id (0);
-      if (PU_Info_Table [CURRENT_SYMTAB] == pu_info)
-      	PU_Info_Table [CURRENT_SYMTAB] = NULL;
       if (PU_Tree_Root == pu_info)
-      	PU_Tree_Root = PU_Info_next (pu_info);
+      {
+	// bug 2107
+      	PU_Info_Table [CURRENT_SYMTAB] = PU_Tree_Root = PU_Info_next (pu_info);
+	PU_Info_next (pu_info) = NULL;
+      }
       else
         Search_and_Remove_PU_Info (PU_Tree_Root, pu_info);
     }
@@ -1068,6 +1107,15 @@ Add_Initv_For_Tree (tree val, UINT size)
 				WN_const_val(init_wn), size);
 			break;
 		}
+#ifdef KEY // bug 3227
+		else if ((WN_opcode (init_wn) == OPC_U4I4CVT ||
+		          WN_opcode (init_wn) == OPC_I4U4CVT) &&
+			  WN_operator (WN_kid0 (init_wn)) == OPR_INTCONST) {
+			WFE_Add_Aggregate_Init_Integer (
+				WN_const_val(WN_kid0(init_wn)), size);
+			break;		  
+		}		
+#endif
 		// following cases for ADD and SUB are needed because the
 		// simplifier may be unable to fold due to overflow in the
 		// 32-bit offset field
@@ -1206,14 +1254,34 @@ Gen_Assign_Of_Init_Val (ST *st, tree init, UINT offset, UINT array_elem_offset,
 	UINT size = TY_size(ty);
 	TY_IDX ptr_ty = Make_Pointer_Type(ty);
 	WN *load_wn = WN_CreateMload (0, ptr_ty, init_wn,
+#ifdef KEY // bug 3188
+			      WN_Intconst(MTYPE_I4, TREE_STRING_LENGTH(init)));
+#else
 				      WN_Intconst(MTYPE_I4, size));
+#endif
 	WN *addr_wn = WN_Lda(Pointer_Mtype, 0, st);
 	WFE_Stmt_Append(
 		WN_CreateMstore (offset, ptr_ty,
 				 load_wn,
 				 addr_wn,
+#ifdef KEY // bug 3188
+			       WN_Intconst(MTYPE_I4, TREE_STRING_LENGTH(init))),
+#else
 				 WN_Intconst(MTYPE_I4,size)),
+#endif
 		Get_Srcpos());
+#ifdef KEY // bug 3247
+	if (size - TREE_STRING_LENGTH(init)) {
+	  load_wn = WN_Intconst(MTYPE_U4, 0);
+	  addr_wn = WN_Lda(Pointer_Mtype, 0, st);
+	  WFE_Stmt_Append(
+		  WN_CreateMstore (offset+TREE_STRING_LENGTH(init), ptr_ty,
+				   load_wn,
+				   addr_wn,
+			   WN_Intconst(MTYPE_I4,size-TREE_STRING_LENGTH(init))),
+		  Get_Srcpos());
+	}
+#endif
 	bytes += size;
     }
     else {
@@ -1299,6 +1367,21 @@ Traverse_Aggregate_Array (
   UINT   esize         = TY_size (ety);
   tree   init;
 
+#ifdef KEY
+  // Bug 2373 - pad for multi-dimensional arrays correctly  
+  if (gen_initv) {
+    init = CONSTRUCTOR_ELTS(init_list);
+    if (TY_kind(ty) == KIND_ARRAY) {
+      INT index = Get_Integer_Value(TREE_PURPOSE(init));
+      while (index > 0) {
+	Traverse_Aggregate_Pad (st, gen_initv, esize, current_offset);
+	emitted_bytes += esize;
+	current_offset = emitted_bytes;
+	index --;
+      }
+    }
+  }
+#endif
   for (init = CONSTRUCTOR_ELTS(init_list);
        init;
        init = TREE_CHAIN(init)) {
@@ -2270,6 +2353,20 @@ WFE_Resolve_Duplicate_Decls (tree olddecl, tree newdecl)
     Set_TY_size (ty, size);
     if (TY_kind (ty) == KIND_ARRAY) {
       Set_ARB_const_ubnd (TY_arb(ty));
+#ifdef KEY
+// bug 3042: It may be that we had an incomplete type so that size information
+// is zero.
+      if (!TY_size (TY_etype (ty)))
+      {
+        tree newesize = TYPE_SIZE (TREE_TYPE (newtype)); // element size
+	if (newesize && TREE_CODE (newesize) == INTEGER_CST)
+	{
+	  UINT64 esize = Get_Integer_Value (newesize) / BITSPERBYTE;
+	  Set_TY_size (TY_etype (ty), esize);
+	}
+	Is_True (TY_size (TY_etype (ty)), ("Invalid array of 0-size structs"));
+      }
+#endif // KEY
       Set_ARB_ubnd_val (TY_arb(ty), (size / TY_size(TY_etype(ty))) - 1);
     }
   } 

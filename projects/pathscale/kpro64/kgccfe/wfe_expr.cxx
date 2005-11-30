@@ -1046,23 +1046,8 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
       // ignore zero length structs
     }
     else {
-#ifndef KEY
       wn = WN_Stid (desc, ST_ofst(st) + component_offset + lhs_preg_num, st,
 		    hi_ty_idx, rhs_wn, field_id);
-#else
-      // Fix for bug 463
-      // For cases like (x = y).field where x & y are structures, we pass down
-      // valid component_offset, field_id and component_ty_idx. 
-      // But, for the STID, desc should be MTYPE_M. So we will check the
-      // descriptor of rhs_wn and use appropriate values (0) for
-      // component_offset, field_id and component_ty_idx.  
-      if ( WN_rtype( rhs_wn ) == MTYPE_M && need_result ) 
-	wn = WN_Stid (MTYPE_M, ST_ofst(st) + lhs_preg_num, st,
-		      hi_ty_idx, rhs_wn, 0);
-      else
-	wn = WN_Stid (desc, ST_ofst(st) + component_offset + lhs_preg_num, st,
-		      hi_ty_idx, rhs_wn, field_id);	
-#endif
       WFE_Stmt_Append(wn, Get_Srcpos());
     }
     if (need_result) {
@@ -1984,6 +1969,31 @@ static WN *WFE_x8664_va_arg_2_float(WN *ap_wn, TY_IDX ty_idx)
 }
 #endif
 
+#ifdef KEY
+// bug 2813
+// If we are expanding a stmt and we reach here through the expansion of
+// STMT_EXPR, the stmt may have a tree-chain even if it is not a COMPOUND_STMT.
+// Tree-chain for a COMPOUND_STMT is already handled. So handle it for the 
+// other stmts (mimick expand_stmt (c-semantics.c))
+// e.g.if GNU inlines a function containing "if (1) return 1;",
+// The then-clause will have 2 stmts, one is a store
+// of 1 into a temporary variable, the 2nd is a jmp. We will miss the jmp
+// if we don't traverse the TREE_CHAIN.
+static inline void
+traverse_tree_chain (tree op1)
+{
+  if (TREE_CODE (op1) != COMPOUND_STMT && TREE_CHAIN (op1))
+  {
+    tree last = TREE_CHAIN (op1);
+    while (last)
+    {
+      WFE_Expand_Expr (last, FALSE);
+      last = TREE_CHAIN (last);
+    }
+  }
+}
+#endif // KEY
+
 /* expand gnu expr tree into symtab & whirl */
 WN *
 WFE_Expand_Expr (tree exp, 
@@ -2056,6 +2066,12 @@ WFE_Expand_Expr (tree exp,
 	    }
 	    break;
 
+#ifdef KEY // bug 3228
+	  case INDIRECT_REF:
+	    wn = WFE_Expand_Expr (TREE_OPERAND(arg0, 0));
+            break;
+#endif
+
 	  case STRING_CST:
 	    {
               TCON tcon;
@@ -2115,6 +2131,13 @@ WFE_Expand_Expr (tree exp,
 				   Operator_From_Tree [code0].name);
 	    }
 	    break;
+
+#ifdef KEY // bug 3228
+	  case ARRAY_REF:
+	    wn = WFE_Expand_Expr (arg0);
+	    ty_idx = Get_TY(TREE_TYPE(arg0));
+	    break;
+#endif
 
 #ifdef KEY
 	  case COMPOUND_LITERAL_EXPR:
@@ -2439,6 +2462,12 @@ WFE_Expand_Expr (tree exp,
         wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
         wn  = WN_Unary (Operator_From_Tree [code].opr,
                         Widen_Mtype(TY_mtype(Get_TY(TREE_TYPE(exp)))), wn0);
+#ifdef KEY // bug 2648
+	TYPE_ID mtyp = TY_mtype(Get_TY(TREE_TYPE(exp)));
+	if (mtyp != WN_rtype(wn))
+	  wn = WN_CreateCvtl (OPR_CVTL, WN_rtype(wn), MTYPE_V,
+	  		      MTYPE_size_min(mtyp), wn);
+#endif
       }
       break;
 
@@ -2570,6 +2599,34 @@ WFE_Expand_Expr (tree exp,
 	else ofst = 0;
         wn = WFE_Expand_Expr (arg0, TRUE, nop_ty_idx, ty_idx, ofst+component_offset,
 			      field_id + DECL_FIELD_ID(arg1), is_bit_field);
+#ifdef KEY
+	// For code such as (p->a = q->a).b, the gnu tree is:
+	//   component_ref
+	//     modify_expr
+	//       indirect_ref
+	//       indirect_ref
+	// WFE_Expand_Expr will call WFE_Lhs_Of_Modify_Expr to expand the
+	// modify_expr.  WFE_Lhs_Of_Modify_Expr will return an iload
+	// corresponding to p->a.  Since we want p->a.b, recreate the iload
+	// here.  Bug 3122 and 3210
+	if (TREE_CODE(arg0) == MODIFY_EXPR) {
+	  TYPE_ID rtype = Widen_Mtype(TY_mtype(ty_idx));
+	  TYPE_ID desc = TY_mtype(ty_idx);
+	  if (WN_operator(wn) == OPR_ILOAD) {
+            wn = WN_CreateIload(OPR_ILOAD, rtype, desc,
+			        ofst + component_offset, ty_idx,
+			        Make_Pointer_Type (ty_idx, FALSE), WN_kid0(wn),
+			        field_id + DECL_FIELD_ID(arg1));
+	  } 
+	  else if (WN_operator(wn) == OPR_LDID) {
+	    WN_set_rtype(wn, rtype);
+	    WN_set_desc(wn, desc);
+	    WN_offset(wn) = WN_offset(wn)+ofst+component_offset;
+	    WN_set_ty(wn, ty_idx);
+	    WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
+	  } 
+	} 
+#endif
       }
       break;
 
@@ -2765,7 +2822,14 @@ WFE_Expand_Expr (tree exp,
 	if ((MTYPE_is_integral(etype)) &&
 	    (Widen_Mtype(etype) != etype) &&
 	    (TY_size (Get_TY(TREE_TYPE(exp))) < 32) &&
-	    (code == PLUS_EXPR || code == MINUS_EXPR || code == MULT_EXPR))
+#ifdef KEY // bug 2649
+	    (code == PLUS_EXPR || code == MINUS_EXPR || 
+	    code == MULT_EXPR || code == LSHIFT_EXPR || 
+	    code == BIT_XOR_EXPR || code == BIT_IOR_EXPR)
+#else
+	    (code == PLUS_EXPR || code == MINUS_EXPR || code == MULT_EXPR)
+#endif
+	    )
 	  wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(etype), MTYPE_V,
 			     TY_size (Get_TY(TREE_TYPE(exp))) * 8, wn);
 
@@ -2807,8 +2871,12 @@ WFE_Expand_Expr (tree exp,
     case TRUTH_ANDIF_EXPR:
     case TRUTH_ORIF_EXPR:
       {
+#ifdef KEY // bug 2651
+        wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
+#else
         wn0 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 0),
 						   Boolean_type);
+#endif // KEY
         wn1 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 1),
 						   Boolean_type);
         wn  = WN_Binary (Operator_From_Tree [code].opr,
@@ -2858,8 +2926,12 @@ WFE_Expand_Expr (tree exp,
     case COND_EXPR:
       {
 	ty_idx = Get_TY (TREE_TYPE(exp));
+#ifdef KEY // bug 2645
+	wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
+#else
 	wn0 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 0),
 						   Boolean_type);
+#endif
 	if (TY_mtype (ty_idx) == MTYPE_V) {
 	  WN *then_block = WN_CreateBlock ();
 	  WN *else_block = WN_CreateBlock ();
@@ -2899,25 +2971,8 @@ WFE_Expand_Expr (tree exp,
     case POSTINCREMENT_EXPR:
       {
         wn1 = WFE_Expand_Expr (TREE_OPERAND (exp, 1)); // r.h.s.
-#ifndef KEY
 	wn  = WFE_Lhs_Of_Modify_Expr(code, TREE_OPERAND (exp, 0), need_result, 
 				     0, 0, 0, FALSE, wn1, 0, FALSE, FALSE);
-#else
-        // Fix for bug 463
-	// For cases like (x = y).field where x and y are variables of type 
-	// structure, we need to pass down the component_ty_idx, 
-	// component_offset and field_id.
-	if ( WN_rtype( wn1 ) == MTYPE_M && need_result )
-	  wn  = WFE_Lhs_Of_Modify_Expr(code, TREE_OPERAND (exp, 0), 
-				       need_result, 
-				       component_ty_idx, component_offset, 
-				       field_id, 
-				       FALSE, wn1, 0, FALSE, FALSE);
-	else
-	  wn  = WFE_Lhs_Of_Modify_Expr(code, TREE_OPERAND (exp, 0), 
-				       need_result, 
-				       0, 0, 0, FALSE, wn1, 0, FALSE, FALSE);
-#endif
       }
       break;
 
@@ -3154,7 +3209,7 @@ WFE_Expand_Expr (tree exp,
 		else {
 			wn = WN_CreateIstore (OPR_ISTORE, MTYPE_V,
 					      Pointer_Mtype, 0, arg_ty_idx,
-					      arg_wn, 0);
+					      wn, arg_wn, 0);
 		}
 
 		WFE_Stmt_Append (wn, Get_Srcpos());
@@ -3184,6 +3239,29 @@ WFE_Expand_Expr (tree exp,
 		arg1 = TREE_VALUE (arglist);
 		arg2 = TREE_VALUE (TREE_CHAIN (arglist));
                 TY_IDX arg_ty_idx = Get_TY (TREE_TYPE (arg1));
+
+#ifdef TARG_X8664
+		/* Under -m32, convert a __builtin_va_copy to an assignment if the
+		   type of va_list is not array.
+		   Also, the original code seems to only work for -m64, like other
+		   va_XYZ code; under -m32, the source address is wrong.  (bug#2601)
+		   (But even under -m64, the using of memcpy is unnecessary.)
+		 */
+		if( !TARGET_64BIT ){
+		  FmtAssert( TREE_CODE(arglist) != ARRAY_TYPE,
+			     ("unexpected array type for intrinsic 'va_copy'") );
+		  WN* addr = WFE_Expand_Expr( arg1 );
+		  WN* value = WFE_Expand_Expr( arg2 );
+		  wn = WN_CreateIstore( OPR_ISTORE, MTYPE_V, Pointer_Mtype,
+					0, arg_ty_idx, value, addr, 0 );
+
+		  WFE_Stmt_Append( wn, Get_Srcpos() );
+		  whirl_generated = TRUE;
+		  wn = NULL;
+		  break;
+		}
+#endif // TARG_X8664
+
 		WN *dst  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg1),
 					  arg_ty_idx, WN_PARM_BY_VALUE);
 		WN *src  = WN_CreateParm (Pointer_Mtype, WFE_Expand_Expr (arg2),
@@ -3199,6 +3277,9 @@ WFE_Expand_Expr (tree exp,
 		WFE_Stmt_Append (wn, Get_Srcpos());
 		whirl_generated = TRUE;
 		wn = NULL;
+#ifdef KEY
+		break;
+#endif
 	      }
 
 	      case BUILT_IN_VA_END:
@@ -3332,6 +3413,10 @@ WFE_Expand_Expr (tree exp,
                 break;
 
               case BUILT_IN_SIN:
+#ifdef KEY
+		// See comments below.
+                if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+#endif
 		     if (ret_mtype == MTYPE_F4) iopc = INTRN_F4SIN;
                 else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8SIN;
                 else Fail_FmtAssertion ("unexpected mtype for intrinsic 'sin'");
@@ -3339,11 +3424,30 @@ WFE_Expand_Expr (tree exp,
                 break;
 
               case BUILT_IN_COS:
+#ifdef KEY
+		// See comments below.
+                if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+#endif
 		     if (ret_mtype == MTYPE_F4) iopc = INTRN_F4COS;
                 else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8COS;
                 else Fail_FmtAssertion ("unexpected mtype for intrinsic 'cos'");
 		intrinsic_op = TRUE;
                 break;
+
+#ifdef KEY
+              case BUILT_IN_EXP:
+		// bug 3390
+		// If return type is void, generate an intrinsic assuming
+		// double (so if it is without side-effects, optimizer can 
+		// remove it)
+		if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+
+                if (ret_mtype == MTYPE_F4) iopc = INTRN_F4EXP;
+		else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8EXP;
+		else Fail_FmtAssertion ("unexpected mtype for intrinsic 'exp'");
+		intrinsic_op = TRUE;
+		break;
+#endif // KEY
 
               case BUILT_IN_CONSTANT_P:
               {
@@ -4304,16 +4408,19 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       tree expr = TREE_OPERAND (exp, 0);
-       tree last = TREE_CHAIN (expr);
+       tree expr = TREE_OPERAND (exp, 0); // COMPOUND_BODY
+       if (expr) // bug 3151
+       {
+       	 tree last = TREE_CHAIN (expr);
        
-       while (TREE_CHAIN (last))
+         while (TREE_CHAIN (last))
 	 {
 	   WN *dummy = WFE_Expand_Expr(expr, FALSE);
 	   expr = last;
 	   last = TREE_CHAIN (last);
 	 }
-       wn = WFE_Expand_Expr(expr, FALSE);
+         wn = WFE_Expand_Expr(expr, FALSE);
+       }
      }
      break;
 
@@ -4330,10 +4437,14 @@ WFE_Expand_Expr (tree exp,
 	 }
        WFE_Expand_Start_Cond (cond, 0);
        if (TREE_OPERAND (exp, 1)) // THEN_CLAUSE
+       {
 	 WFE_Expand_Expr (TREE_OPERAND (exp, 1), FALSE); 
+	 traverse_tree_chain (TREE_OPERAND (exp,1));
+       }
        if (TREE_OPERAND (exp, 2)) { // ELSE_CLAUSE
 	 WFE_Expand_Start_Else ();
 	 WFE_Expand_Expr (TREE_OPERAND (exp, 2), FALSE); 
+	 traverse_tree_chain (TREE_OPERAND (exp,2));
        }
        WFE_Expand_End_Cond ();       
      }
@@ -4385,7 +4496,10 @@ WFE_Expand_Expr (tree exp,
        // 3. Expand the body
        //    WFE_Expand_Expr (FOR_BODY (exp));
        if (TREE_OPERAND (exp, 3))
+       {
 	 WFE_Expand_Expr (TREE_OPERAND (exp, 3), FALSE);
+	 traverse_tree_chain (TREE_OPERAND (exp, 3));
+       }
        WFE_Expand_Loop_Continue_Here ();
        // 4. Expand the post-iteration expression
        //    WFE_One_Stmt (FOR_EXPR (exp));
@@ -4419,7 +4533,10 @@ WFE_Expand_Expr (tree exp,
        // 2. Expand the body
        //    WFE_Expand_Expr (WHILE_BODY (exp));
        if (TREE_OPERAND (exp, 1))
+       {
 	 WFE_Expand_Expr (TREE_OPERAND (exp, 1), FALSE);
+	 traverse_tree_chain (TREE_OPERAND (exp, 1));
+       }
        // 3. End the loop
        WFE_Expand_End_Loop ();       
        loop_stmt --;
@@ -4444,7 +4561,12 @@ WFE_Expand_Expr (tree exp,
        // 1. Expand the body
        //    WFE_Expand_Expr (DO_BODY (exp));
        if (TREE_OPERAND (exp, 1))
+       {
 	 WFE_Expand_Expr (TREE_OPERAND (exp, 1), FALSE);
+	 traverse_tree_chain (TREE_OPERAND (exp, 1));
+       }
+       // Bug 2126
+       WFE_Expand_Loop_Continue_Here();
        // 2. Expand the condition
        //   WHILE_COND (exp)
        tree cond = TREE_OPERAND (exp, 0);
@@ -4486,7 +4608,10 @@ WFE_Expand_Expr (tree exp,
        // 2. Expand the body
        //    WFE_Expand_Expr (SWITCH_BODY (exp));
        if (TREE_OPERAND (exp, 1))
+       {
 	 WFE_Expand_Expr (TREE_OPERAND (exp, 1), FALSE);
+	 traverse_tree_chain (TREE_OPERAND (exp, 1));
+       }
        // 3. End case
        wn = WN_CreateLabel ((ST_IDX) 0,
 			    switch_exit_label_idx,

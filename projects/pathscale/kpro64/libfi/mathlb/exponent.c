@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -78,7 +82,12 @@ _EXPONENT(_f_real8 x)
 		/* get leading zeros in mantissa part. */
 		i = _leadz8(s2.ui) - IEEE_64_EXPO_BITS - 1;
 		/* calculate exponent. */
+# ifdef KEY
+// Bug 2365
+		s1.i -= (IEEE_64_EXPO_BIAS - 1 + i);
+# else
 		s1.i -= (IEEE_64_EXPO_BIAS + i);
+# endif
 	} else {
 		/* subtract exponent bias and implicit bit. */
 		s1.i -= (IEEE_64_EXPO_BIAS - 1);

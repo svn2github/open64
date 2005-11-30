@@ -328,27 +328,71 @@ Perform_Interprocedural_Analysis ()
 
 #ifdef KEY
 	if( IPA_Enable_Icall_Opt ){
+	  if( has_nested_pu ){
+	    Build_Nested_Pu_Relations();
+	    if (Verbose) {
+		fprintf (stderr, "Building Nested PU Relations...");
+		fflush (stderr);
+	    }
+	    has_nested_pu = FALSE;
+	  }
+
 	  IPA_Convert_Icalls( IPA_Call_Graph );
 	}
 #endif // KEY
 
 #ifdef KEY
-      {
-      IPA_NODE_ITER cg_iter(IPA_Call_Graph, POSTORDER);
-      for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-        IPA_NODE* node = cg_iter.Current();
-	if (!node)
-	    continue;
-	// we don't care if it is not C++
-	// Also note that since node->PU_Info() is null for fortran ALTENTRY,
-	// IPA_NODE_CONTEXT will fail for such cases without the check below.
-	if (!(PU_src_lang (node->Get_PU()) & PU_CXX_LANG))
-	    break;
+        {
+          IPA_NODE_ITER cg_iter(IPA_Call_Graph, POSTORDER);
+          for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+            IPA_NODE* node = cg_iter.Current();
+	    if (!node)
+	      continue;
+	    // We don't care if it is not C++
+	    // Also note that since node->PU_Info() is null for fortran 
+	    // ALTENTRY, IPA_NODE_CONTEXT will fail for such cases 
+	    // without the check below.
+	    if (!(PU_src_lang (node->Get_PU()) & PU_CXX_LANG))
+	      break;
 
-	IPA_NODE_CONTEXT context (node);   // get node context
-      	IPA_update_ehinfo_in_pu (node);
-	}
-      }
+	    IPA_NODE_CONTEXT context (node);   // get node context
+      	    IPA_update_ehinfo_in_pu (node);
+	  }
+
+	  // Traverse the call graph and mark C++ nodes as PU_Can_Throw
+	  // appropriately.
+          for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next())
+	  {
+	    if (!IPA_Enable_EH_Region_Removal)
+	    	break;
+
+	    IPA_NODE * node = cg_iter.Current();
+	    if (!node)	continue;
+
+	    if (node->PU_Can_Throw())
+	    { // Mark its callers as PU_Can_Throw
+	    	IPA_PRED_ITER preds (node->Node_Index());
+		for (preds.First(); !preds.Is_Empty(); preds.Next())
+		{
+		    IPA_EDGE * edge = preds.Current_Edge();
+		    if (edge)
+		    {
+			IPA_NODE * caller = IPA_Call_Graph->Caller (edge);
+
+			PU caller_pu = Pu_Table[ST_pu((caller)->Func_ST())];
+			if (PU_src_lang (caller_pu) & PU_CXX_LANG)
+		    	    caller->Set_PU_Can_Throw();
+		    }
+		}
+	    }
+	  }
+
+    	  if (Opt_Options_Inconsistent)
+	    for (UINT i = 0; i < IP_File_header.size(); ++i)
+	    { // Store the file-id in each IPA_NODE
+	      Mark_PUs_With_File_Id (IP_FILE_HDR_pu_list (IP_File_header[i]), i);
+	    }
+        }
 #endif
 
 	// INLINING TOOL

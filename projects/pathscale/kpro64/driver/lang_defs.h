@@ -190,10 +190,8 @@ extern char *get_phase_ld_library_path (phases_t index);
 extern char *get_phase_name (phases_t index);
 /* return path and name of phase */
 extern char *get_full_phase_name (phases_t index);
-#ifdef KEY
 /* set phase name */
 extern void set_phase_name (phases_t index, char *s);
-#endif
 
 /* get language index associated with name */
 extern languages_t get_named_language (char *name);
@@ -218,5 +216,15 @@ extern boolean is_matching_language (mask_t lang_mask, languages_t l);
 extern boolean is_matching_phase (mask_t phase_mask, phases_t p);
 
 extern boolean show_but_not_run;
+
+typedef enum {
+	M_SMALL,
+	M_MEDIUM,
+	M_LARGE,
+	M_KERNEL,
+	M_LAST,
+} mem_model_t;
+
+extern mem_model_t mem_model;
 
 #endif

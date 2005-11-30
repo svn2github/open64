@@ -213,6 +213,118 @@ Edge_has_new_cprop_annot(const IPA_EDGE* edge,
   return TRUE;
 }
 
+#ifdef KEY
+static void
+Clone_Trace (const IPA_NODE * clone, const IPA_EDGE * e)
+{
+  Is_True (IPA_Clone_List_Actions, ("Tracing when it is disabled"));
+
+  VALUE_DYN_ARRAY * actuals = e->Cprop_Annot();
+  Is_True (actuals && actuals != (void*)-1, ("Clone_Trace: Invalid actuals"));
+
+  for (UINT32 i=0; i<actuals->Elements(); ++i)
+  {
+    SUMMARY_VALUE * value = &(*actuals)[i];
+    if (value->Is_int_const())
+      fprintf (stderr, "argument %d has constant value %lld\n", i+1, value->Get_int_const_value());
+    else if (value->Is_const_st() && MTYPE_is_integral (value->Get_mtype()))
+      fprintf (stderr, "argument %d has constant value %lld\n", i+1, TCON_i0 (Tcon_Table[value->Get_tcon_idx()]));
+  }
+}
+
+static void
+Report_Reason (const IPA_EDGE * e, const char * reason, float count=0.0, 
+	       float limit=0.0)
+{
+  if (!IPA_Clone_List_Actions) return;
+
+  fprintf (stderr, "%s not cloned for call in %s: ", DEMANGLE (IPA_Call_Graph->Callee (e)->Name()), DEMANGLE (IPA_Call_Graph->Caller (e)->Name()));
+  if (limit)
+    fprintf (stderr, reason, count, limit);
+  else
+    fprintf (stderr, reason);
+}
+
+// TODO: tune these consts
+const UINT32 max_param_count = 10;
+const float min_hotness = 7.0;
+const UINT32 callee_limit = 500;
+
+// taken from inliner
+static float
+compute_hotness_during_cloning (IPA_EDGE *e, IPA_NODE *c, INT s)
+{
+    FB_FREQ cycle_ratio = (e->Get_frequency () / c->Get_frequency () *
+                           c->Get_cycle_count ()) / Total_cycle_count;
+    float cycle_ratio_float = cycle_ratio.Value();
+    float size_ratio = (float) s / ((float) MIN (Total_Prog_Size, Orig_Prog_Weight));
+    float result_float = (cycle_ratio_float / size_ratio * 100.0);
+    return (result_float);
+}
+
+static BOOL
+Node_should_be_cloned (IPA_NODE * n /* callee */, IPA_EDGE * e)
+{
+  if (e->Has_frequency() && e->Get_frequency().Value() == 0.0)
+  {
+    Report_Reason (e, "Edge is never invoked\n");
+    return FALSE;
+  }
+
+  IPA_NODE * caller = IPA_Call_Graph->Caller (e);
+  if (caller->Summary_Proc()->Is_Never_Invoked() ||
+      n->Summary_Proc()->Is_Never_Invoked())
+  {
+    Report_Reason (e, "Edge is never invoked\n");
+    return FALSE;
+  }
+
+  VALUE_DYN_ARRAY * formals = n->Cprop_Annot();
+  VALUE_DYN_ARRAY * actuals = e->Cprop_Annot();
+
+  // No parameteres, or the function Is_Externally_Callable, or ...
+  if (formals == NULL || actuals == NULL ||
+      formals == (void*)-1 || actuals == (void*)-1)
+  {
+#ifdef Is_True_On
+    if (formals == (void*)-1 || actuals == (void*)-1)
+      DevWarn ("cprop_annot == -1 during ipa cloning analysis");
+#endif
+    Report_Reason (e, "No parameters?\n");
+    return FALSE;
+  }
+
+  UINT32 param_count = formals->Elements() < actuals->Elements() ?
+  			formals->Elements() : actuals->Elements();
+
+  // Lots of parameters, so may not be of much help
+  if (param_count > max_param_count)
+  {
+    Report_Reason (e, "Number of parameters %f > max (%f)\n", (float) param_count, (float) max_param_count);
+    return FALSE;
+  }
+
+  UINT32 callee_weight = Effective_weight (n);
+  if (n->Get_feedback())
+  {
+    float hotness = compute_hotness_during_cloning (e, n, callee_weight);
+    if (hotness < min_hotness)
+    {
+      Report_Reason (e, "Hotness (%f) < min hotness (%f)\n", hotness, min_hotness);
+      return FALSE;
+    }
+  }
+
+  if (callee_weight > callee_limit)
+  {
+    Report_Reason (e, "Callee size (%f) > callee limit (%f)\n", (float) callee_weight, (float) callee_limit);
+    return FALSE;
+  }
+
+  return TRUE;
+}
+#endif // KEY
+
 // ----------------------------------------------------
 // check if the node can be further cloned 
 // don't clone if:
@@ -279,7 +391,11 @@ IPA_CPROP_DF_FLOW::Meet (void*, void* vertex, INT* change)
       if (Edge_has_new_cprop_annot(e, clone_edges, num_clone_edges)) {
 
         // Apply the more precise union ehnanced by cloning
-        if (num_clone_edges < IPA_Max_Node_Clones && Node_can_be_cloned(n)) {
+        if (num_clone_edges < IPA_Max_Node_Clones && Node_can_be_cloned(n)
+#ifdef KEY
+	    && Node_should_be_cloned(n, e)
+#endif
+	) {
           IPA_CLONING_ACTION action = 
             Union_Formal_Cprop_Annot_With_Cloning(n, e);
           if (action == NEEDS_CLONING) {
@@ -318,6 +434,17 @@ IPA_CPROP_DF_FLOW::Meet (void*, void* vertex, INT* change)
                 n->Input_File_Name(), 
                 IPA_Node_Name(clone_node));
       }
+#ifdef KEY
+      if (IPA_Clone_List_Actions)
+      {
+        extern char* IPA_Node_Name(IPA_NODE*);
+        fprintf(stderr, "%s is cloned (%s) for call from %s\n",
+                DEMANGLE(n->Name()), 
+                IPA_Node_Name(clone_node),
+		DEMANGLE (IPA_Call_Graph->Caller (clone_edges[i])->Name()));
+        Clone_Trace (clone_node, clone_edges[i]);
+      }
+#endif
     }
 
     extern BOOL IPA_Should_Rebuild_DFN;

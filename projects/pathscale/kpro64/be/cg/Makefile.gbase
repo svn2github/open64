@@ -390,6 +390,12 @@ endif
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 
+ifeq ($(shell test -e /usr/include/valgrind/valgrind.h && echo y || echo n), y)
+HEADER_DIRS += /usr/include/valgrind
+else
+LCOPTS += -DNO_VALGRIND
+endif
+
 LC++OPTS += $(STD_COMPILE_OPTS) $(PCH_OPTS)
 ifneq ($(BUILD_COMPILER), EDG)
 LC++OPTS += -fwritable-strings

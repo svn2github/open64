@@ -4254,11 +4254,18 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
          imp_idx         = imp_do_var_list;
          imp_do_var_list = IL_NEXT_LIST_IDX(imp_idx);
          FREE_IR_LIST_NODE(imp_idx);
-
+//Bug# 2521: the compiler should not generate a temp whose size is smaller than that of the loop index. 
+# ifdef KEY
+         if (do_var_ok &&
+             storage_bit_size_tbl[TYP_LINEAR(ATD_TYPE_IDX(attr_idx))] < 
+                storage_bit_size_tbl[TYP_LINEAR(CG_INTEGER_DEFAULT_TYPE)] &&
+             ! IL_MUST_BE_LOOP(list_idx)) {
+# else
          if (do_var_ok &&
              storage_bit_size_tbl[TYP_LINEAR(ATD_TYPE_IDX(attr_idx))] !=
                 storage_bit_size_tbl[TYP_LINEAR(CG_INTEGER_DEFAULT_TYPE)] &&
              ! IL_MUST_BE_LOOP(list_idx)) {
+# endif
 
             new_do_var_idx = gen_compiler_tmp(stmt_start_line, stmt_start_col,
                                               Priv, TRUE);

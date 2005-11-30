@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -58,3 +62,7 @@ extern OP* EETARG_High_Level_Procedure_Exit();
 inline OP* EETARG_High_Level_Procedure_Exit() { return NULL; }
 #endif
 
+#ifdef TARG_X8664
+void EETARG_Generate_PIC_Entry_Code( BB* bb, OPS* ops );
+void EETARG_Generate_PIC_Exit_Code( BB* bb, OPS* ops );
+#endif

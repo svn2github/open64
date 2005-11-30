@@ -1324,22 +1324,46 @@ intrin_tbl_type         intrin_tbl[MAX_INTRIN_TBL_SIZE] =
 {"CCOS",4,1,1,1,0,0,0,1,0,1,0,0},
    {"CCOS",4,1,1,0,0,0,0,0,0,0,Ccos_Intrinsic,Complex_4},
       {"X",1,0,0,0,0,0,0,0,0,0,0,COMPLEX_MASK},
+#ifdef KEY
+{"CDABS",5,1,1,1,0,0,0,1,1,1,0,0},
+#else
 {"CDABS",5,1,1,0,0,0,0,1,1,1,0,0},
+#endif
    {"CDABS",5,1,1,0,0,0,0,0,1,0,Cdabs_Intrinsic,Real_8},
       {"A",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
+#ifdef KEY
+{"CDCOS",5,1,1,1,0,0,0,1,1,1,0,0},
+#else
 {"CDCOS",5,1,1,0,0,0,0,1,1,1,0,0},
+#endif
    {"CDCOS",5,1,1,0,0,0,0,0,1,0,Cdcos_Intrinsic,Complex_8},
       {"X",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
+#ifdef KEY
+{"CDEXP",5,1,1,1,0,0,0,1,1,1,0,0},
+#else
 {"CDEXP",5,1,1,0,0,0,0,1,1,1,0,0},
+#endif
    {"CDEXP",5,1,1,0,0,0,0,0,1,0,Cdexp_Intrinsic,Complex_8},
       {"X",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
+#ifdef KEY
+{"CDLOG",5,1,1,1,0,0,0,1,1,1,0,0},
+#else
 {"CDLOG",5,1,1,0,0,0,0,1,1,1,0,0},
+#endif
    {"CDLOG",5,1,1,0,0,0,0,0,1,0,Cdlog_Intrinsic,Complex_8},
       {"X",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
+#ifdef KEY
+{"CDSIN",5,1,1,1,0,0,0,1,1,1,0,0},
+#else
 {"CDSIN",5,1,1,0,0,0,0,1,1,1,0,0},
+#endif
    {"CDSIN",5,1,1,0,0,0,0,0,1,0,Cdsin_Intrinsic,Complex_8},
       {"X",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
+#ifdef KEY
+{"CDSQRT",6,1,1,1,0,0,0,1,1,1,0,0},
+#else
 {"CDSQRT",6,1,1,0,0,0,0,1,1,1,0,0},
+#endif
    {"CDSQRT",6,1,1,0,0,0,0,0,1,0,Cdsqrt_Intrinsic,Complex_8},
       {"X",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
 {"CEILING",7,1,1,0,0,0,0,1,0,1,0,0},
@@ -2699,6 +2723,11 @@ intrin_tbl_type         intrin_tbl[MAX_INTRIN_TBL_SIZE] =
 {"DTANH",5,1,1,1,0,0,0,1,0,1,0,0},
    {"DTANH",5,1,1,0,0,0,0,0,0,0,Dtanh_Intrinsic,Real_8},
       {"X",1,0,0,0,0,0,0,0,0,0,0,S8_MASK},
+# ifdef KEY
+{"DTIME",5,0,1,0,1,0,0,1,1,1,0,0},
+   {"dtime_",6,0,1,0,1,0,0,0,1,0,Dtime_Intrinsic,Real_8},
+      {"ARRAY",5,0,0,0,0,0,1,0,0,1,0,S4_MASK},
+# endif
 {"ENABLE_IEEE_INTERRUPT",21,1,0,0,0,1,0,1,0,1,0,0},
    {"ENABLE_IEEE_INTERRUPT",21,1,0,0,0,0,0,0,0,0,
                                      Enable_Ieee_Interrupt_Intrinsic,0},
@@ -2798,6 +2827,14 @@ intrin_tbl_type         intrin_tbl[MAX_INTRIN_TBL_SIZE] =
    {"FCD",3,1,1,0,0,0,0,0,1,0,Fcd_Intrinsic,0},
       {"I",1,0,0,0,0,0,0,0,0,0,0,INTEGER_POINTER_MASK},
       {"J",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK},
+# ifdef KEY
+{"FDATE",5,0,1,0,1,0,0,1,1,1,0,0},
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+   {"fdate_",6,0,1,0,1,0,0,0,1,0,Fdate_Intrinsic,0},
+# else
+   {"_FDATE",6,0,1,0,1,0,0,0,1,0,Fdate_Intrinsic,TYPELESS_DEFAULT_TYPE},
+# endif
+# endif
 {"FETCH_AND_ADD",13,1,1,0,0,0,0,1,1,2,0,0},
    {"FETCH_AND_ADD",13,1,1,0,0,0,0,0,1,0,Fetch_And_Add_Intrinsic,0},
       {"I",1,0,0,0,0,0,0,0,0,0,0,I4_MASK},
@@ -2856,6 +2893,11 @@ intrin_tbl_type         intrin_tbl[MAX_INTRIN_TBL_SIZE] =
    {"FLOOR",5,1,1,0,0,0,0,0,0,0,Floor_Intrinsic,0},
       {"A",1,0,0,0,0,0,0,0,0,0,0,REAL_MASK},
       {"KIND",4,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK},
+#ifdef KEY
+{"FNUM",4,0,1,0,1,0,0,1,1,1,0,0},
+   {"fnum_",5,0,1,0,1,0,0,0,1,0,Fnum_Intrinsic,Integer_4},
+      {"I",1,0,0,0,0,0,0,0,0,0,0,INTEGER_POINTER_MASK},
+#endif
 {"FP_CLASS",8,1,1,0,1,1,0,1,1,3,0,0},
    {"_FP_CLASS_I4_H",14,1,1,0,1,0,0,0,0,0,Fp_Class_Intrinsic,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,S4_MASK},
@@ -2883,6 +2925,13 @@ intrin_tbl_type         intrin_tbl[MAX_INTRIN_TBL_SIZE] =
    {"_FREE_I8",8,1,0,0,1,0,0,0,1,0,Free_Intrinsic,0},
       {"P",1,0,0,0,0,0,0,0,0,0,0,(I8_MASK|P_MASK)},
 # endif
+#ifdef KEY
+{"FSTAT",5,0,1,0,1,0,0,1,1,1,0,0},
+   {"fstatf90_",9,0,1,0,1,0,0,0,1,0,Fstat_Intrinsic,Integer_4},
+      {"FILE",4,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK},
+      {"VALUES",6,0,0,0,0,0,1,0,0,1,0,INTEGER_MASK},
+      {"STATUS",6,0,0,0,0,1,0,0,0,1,0,INTEGER_MASK},
+#endif
 {"GETPOS",6,1,1,0,0,0,0,1,1,1,0,0},
    {"GETPOS",6,1,1,0,0,0,0,0,1,0,Getpos_Intrinsic,0},
       {"I",1,0,0,0,0,0,0,0,0,0,0,INTEGER_TYPELESS_MASK},
@@ -3348,6 +3397,12 @@ intrin_tbl_type         intrin_tbl[MAX_INTRIN_TBL_SIZE] =
 {"KIFIX",5,1,1,0,0,0,1,1,1,1,0,0},
    {"KIFIX",5,1,1,0,0,0,0,0,0,0,Kifix_Intrinsic,Integer_8},
       {"A",1,0,0,0,0,0,0,0,0,0,0,REAL_MASK},
+#ifdef KEY
+{"KILL",4,0,1,0,1,0,0,1,1,1,0,0},
+   {"KILL",4,0,1,0,1,0,0,0,1,0,Kill_Intrinsic,Integer_4},
+      {"PID",3,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK},
+      {"SIG",3,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK},
+#endif
 {"KIND",4,1,1,0,0,0,0,1,0,1,0,0},
    {"KIND",4,1,1,0,0,0,0,0,0,0,Kind_Intrinsic,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,ALL_MASK},
@@ -10885,6 +10940,13 @@ intrin_tbl_type         intrin_tbl[MAX_INTRIN_TBL_SIZE] =
    {"SIGN",4,1,1,0,0,0,0,0,0,0,Sign_Intrinsic,0},
       {"A",1,0,0,0,0,0,0,0,0,0,0,S8_MASK},
       {"B",1,0,0,0,0,0,0,0,0,0,0,S8_MASK},
+#ifdef KEY
+{"SIGNAL",6,0,1,0,1,0,0,1,1,1,0,0},
+   {"FSIGNAL",7,0,1,0,1,0,0,0,1,0,Signal_Intrinsic,Integer_4},
+      {"NUM",3,0,0,0,0,0,0,0,0,0,0,INTEGER_POINTER_MASK},
+      {"HD",2,0,0,0,0,0,0,0,0,1,0,REAL_MASK},
+      {"STATUS",5,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK},
+#endif
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
    {"_QSIGN",6,1,1,0,0,0,0,0,0,0,Sign_Intrinsic,0},
       {"A",1,0,0,0,0,0,0,0,0,0,0,S16_MASK},
@@ -11054,6 +11116,12 @@ intrin_tbl_type         intrin_tbl[MAX_INTRIN_TBL_SIZE] =
 {"SQRT",4,1,1,1,0,0,1,1,0,1,0,0},
    {"SQRT",4,1,1,0,0,0,0,0,0,0,Sqrt_Intrinsic,Real_4},
       {"X",1,0,0,0,0,0,0,0,0,0,0,REAL_COMPLEX_MASK},
+#ifdef KEY
+{"STAT",4,0,1,0,1,0,0,1,1,1,0,0},
+   {"stat_",5,0,1,0,1,0,0,0,1,0,Stat_Intrinsic,Integer_4},
+      {"FILE",4,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK},
+      {"VALUES",6,0,0,0,0,1,0,0,0,1,0,INTEGER_MASK},
+#endif
 {"SUB_AND_FETCH",13,1,1,0,0,0,0,1,1,2,0,0},
    {"SUB_AND_FETCH",13,1,1,0,0,0,0,0,1,0,Sub_And_Fetch_Intrinsic,0},
       {"I",1,0,0,0,0,0,0,0,0,0,0,I4_MASK},
@@ -12493,6 +12561,10 @@ intrin_tbl_type         intrin_tbl[MAX_INTRIN_TBL_SIZE] =
       {"BUF",1,0,0,0,0,0,1,0,0,6,0,(IRC_MASK|CHARACTER_MASK)},
    {"_TIME",5,0,0,0,1,0,0,0,1,0,Time_Intrinsic,0},
       {"BUF",1,0,0,0,0,0,1,0,0,7,0,(IRC_MASK|CHARACTER_MASK)},
+#ifdef KEY
+{"TIME8",5,0,1,0,1,0,0,1,1,1,0,0},
+   {"time_",5,0,1,0,1,0,0,0,1,0,Time8_Intrinsic,Integer_4},
+#endif
 {"TINY",4,1,1,0,0,0,0,1,0,1,0,0},
    {"TINY",4,1,1,0,0,0,0,0,0,0,Tiny_Intrinsic,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,REAL_MASK},
@@ -13090,7 +13162,27 @@ intrin_tbl_type         intrin_tbl[MAX_INTRIN_TBL_SIZE] =
       {"J",1,0,0,0,0,0,0,0,0,0,0,I4_MASK},
    {"XOR_AND_FETCH",13,1,1,0,0,0,0,0,1,0,Xor_And_Fetch_Intrinsic,0},
       {"I",1,0,0,0,0,0,0,0,0,0,0,I8_MASK},
-      {"J",1,0,0,0,0,0,0,0,0,0,0,I8_MASK} 
+      {"J",1,0,0,0,0,0,0,0,0,0,0,I8_MASK},
+#ifdef KEY
+{"ZABS",4,1,1,1,0,0,0,1,1,1,0,0},
+   {"ZABS",4,1,1,0,0,0,0,0,1,0,Zabs_Intrinsic,Real_8},
+      {"A",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
+{"ZCOS",4,1,1,1,0,0,0,1,1,1,0,0},
+   {"ZCOS",4,1,1,0,0,0,0,0,1,0,Zcos_Intrinsic,Complex_8},
+      {"X",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
+{"ZEXP",4,1,1,1,0,0,0,1,1,1,0,0},
+   {"ZEXP",4,1,1,0,0,0,0,0,1,0,Zexp_Intrinsic,Complex_8},
+      {"X",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
+{"ZLOG",4,1,1,1,0,0,0,1,1,1,0,0},
+   {"ZLOG",4,1,1,0,0,0,0,0,1,0,Zlog_Intrinsic,Complex_8},
+      {"X",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
+{"ZSIN",4,1,1,1,0,0,0,1,1,1,0,0},
+   {"ZSIN",4,1,1,0,0,0,0,0,1,0,Zsin_Intrinsic,Complex_8},
+      {"X",1,0,0,0,0,0,0,0,0,0,0,C8_MASK},
+{"ZSQRT",5,1,1,1,0,0,0,1,1,1,0,0},
+   {"ZSQRT",5,1,1,0,0,0,0,0,1,0,Zsqrt_Intrinsic,Complex_8},
+      {"X",1,0,0,0,0,0,0,0,0,0,0,C8_MASK}
+#endif
 };
 
 
@@ -13232,6 +13324,9 @@ void	(*intrinsic_semantics[]) ()	= {
         sin_intrinsic,       		/*  Dtan_Intrinsic     	     	     */
         sin_intrinsic,       		/*  Dtand_Intrinsic     	     */
         sin_intrinsic,       		/*  Dtanh_Intrinsic     	     */
+# ifdef KEY
+        dtime_intrinsic,                /*  Dtime_Intrinsic                  */
+# endif
 	set_ieee_exception_intrinsic,   /*  Enable_Ieee_Interrupt_Intrinsic  */
 	eoshift_intrinsic,      	/*  Eoshift_Intrinsic       	     */
 	epsilon_intrinsic,      	/*  Epsilon_Intrinsic       	     */
@@ -13240,6 +13335,9 @@ void	(*intrinsic_semantics[]) ()	= {
 	sin_intrinsic,          	/*  Exp_Intrinsic           	     */
 	exponent_intrinsic,     	/*  Exponent_Intrinsic      	     */
 	fcd_intrinsic,          	/*  Fcd_Intrinsic           	     */
+# ifdef KEY
+	clock_intrinsic,		/*  Fdate_Intrinsic          	     */
+# endif
 	fetch_and_add_intrinsic,  	/*  Fetch_And_Add_Intrinsic  	     */
 	fetch_and_add_intrinsic,  	/*  Fetch_And_And_Intrinsic  	     */
 	fetch_and_add_intrinsic,  	/*  Fetch_And_Nand_Intrinsic  	     */
@@ -13251,9 +13349,15 @@ void	(*intrinsic_semantics[]) ()	= {
 	real_intrinsic,        		/*  Floatj_Intrinsic         	     */
 	real_intrinsic,        		/*  Floatk_Intrinsic         	     */
 	floor_intrinsic,        	/*  Floor_Intrinsic         	     */
+#ifdef KEY
+	fnum_intrinsic,        	        /*  Fnum_Intrinsic         	     */
+#endif
 	ieee_finite_intrinsic,        	/*  Fp_Class_Intrinsic       	     */
 	fraction_intrinsic,     	/*  Fraction_Intrinsic      	     */
 	free_intrinsic, 	    	/*  Free_Intrinsic      	     */
+#ifdef KEY
+	fstat_intrinsic,	        /*  Fstat_Intrinsic          	     */
+#endif
 	getpos_intrinsic,       	/*  Getpos_Intrinsic        	     */
 	get_ieee_status_intrinsic,      /*  Get_Ieee_Exceptions_Intrinsic    */
 	get_ieee_status_intrinsic,      /*  Get_Ieee_Interrupts_Intrinsic    */
@@ -13362,6 +13466,9 @@ void	(*intrinsic_semantics[]) ()	= {
 	int_intrinsic,        		/*  Kidint_Intrinsic         	     */
 	iand_intrinsic,        		/*  Kieor_Intrinsic         	     */
 	int_intrinsic,        		/*  Kifix_Intrinsic         	     */
+#ifdef KEY
+	kill_intrinsic,        		/*  Kill_Intrinsic         	     */
+#endif
 	kind_intrinsic,         	/*  Kind_Intrinsic          	     */
 	int_intrinsic,        		/*  Kint_Intrinsic         	     */
 	iand_intrinsic,        		/*  Kior_Intrinsic         	     */
@@ -13518,6 +13625,9 @@ void	(*intrinsic_semantics[]) ()	= {
 	shift_intrinsic,        	/*  Shiftr_Intrinsic        	     */
 	int_intrinsic,        		/*  Short_Intrinsic        	     */
 	sign_intrinsic,         	/*  Sign_Intrinsic          	     */
+#ifdef KEY
+	signal_intrinsic,         	/*  Signal_Intrinsic          	     */
+#endif
 	sin_intrinsic,          	/*  Sin_Intrinsic           	     */
 	sin_intrinsic,          	/*  Sind_Intrinsic           	     */
 	sin_intrinsic,	         	/*  Sinh_Intrinsic          	     */
@@ -13528,6 +13638,9 @@ void	(*intrinsic_semantics[]) ()	= {
 	spacing_intrinsic,      	/*  Spacing_Intrinsic       	     */
 	spread_intrinsic,       	/*  Spread_Intrinsic         	     */
 	sin_intrinsic,	         	/*  Sqrt_Intrinsic          	     */
+#ifdef KEY
+	stat_intrinsic,	         	/*  Stat_Intrinsic          	     */
+#endif
 	fetch_and_add_intrinsic,       	/*  Sub_And_Fetch_Intrinsic          */
 	minval_intrinsic,		/*  Sum_Intrinsic           	     */
 	synchronize_intrinsic,		/*  Synchronize_Intrinsic            */
@@ -13540,6 +13653,9 @@ void	(*intrinsic_semantics[]) ()	= {
  	test_ieee_interrupt_intrinsic,  /*  Test_Ieee_Interrupt_Intrinsic    */
         num_images_intrinsic,           /*  This_Image_Intrinsic             */
 	free_intrinsic,         	/*  Time_Intrinsic          	     */
+#ifdef KEY
+	time_intrinsic,         	/*  Time8_Intrinsic          	     */
+#endif
 	tiny_intrinsic,         	/*  Tiny_Intrinsic          	     */
 	transfer_intrinsic,     	/*  Transfer_Intrinsic      	     */
 	transpose_intrinsic,    	/*  Transpose_Intrinsic     	     */
@@ -13550,7 +13666,15 @@ void	(*intrinsic_semantics[]) ()	= {
 	index_intrinsic,	       	/*  Verify_Intrinsic                 */
         write_memory_barrier_intrinsic, /*  W_M_B_Intrinsic          	     */
 	iand_intrinsic,  	       	/*  Xor_Intrinsic            	     */
-	fetch_and_add_intrinsic 	/*  Xor_And_Fetch_Intrinsic          */
+	fetch_and_add_intrinsic, 	/*  Xor_And_Fetch_Intrinsic          */
+#ifdef KEY
+	abs_intrinsic,        		/*  Zabs_Intrinsic         	     */
+	sin_intrinsic,        		/*  Zcos_Intrinsic         	     */
+	sin_intrinsic,        		/*  Zexp_Intrinsic         	     */
+	sin_intrinsic,        		/*  Zlog_Intrinsic         	     */
+	sin_intrinsic,        		/*  Zsin_Intrinsic         	     */
+	sin_intrinsic        		/*  Zsqrt_Intrinsic         	     */
+#endif
 	};
 
 
@@ -13623,7 +13747,21 @@ intrin_map_type         intrin_map[MAX_INTRIN_MAP_SIZE] =
    {"SINH",	"r_sinh",	"d_sinh"},
    {"SQRT",	"r_sqrt",	"d_sqrt"},
    {"TAN",	"r_tan",	"d_tan"},
-   {"TANH",	"r_tanh",	"d_tanh"}
+   {"TANH",	"r_tanh",	"d_tanh"},
+#ifdef KEY
+   {"ZABS",	"z_abs_",	"z_abs_"},
+   {"ZCOS",	"z_cos",	"z_cos"},
+   {"ZEXP",	"z_exp",	"z_exp"},
+   {"ZLOG",	"z_log",	"z_log"},
+   {"ZSIN",	"z_sin",	"z_sin"},
+   {"ZSQRT",	"z_sqrt",	"z_sqrt"},
+   {"CDABS",	"z_abs_",	"z_abs_"},
+   {"CDCOS",	"z_cos",	"z_cos"},
+   {"CDEXP",	"z_exp",	"z_exp"},
+   {"CDLOG",	"z_log",	"z_log"},
+   {"CDSIN",	"z_sin",	"z_sin"},
+   {"CDSQRT",	"z_sqrt",	"z_sqrt"}
+#endif
 
 # elif defined(_TARGET_SV2)
 

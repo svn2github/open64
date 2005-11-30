@@ -62,7 +62,11 @@
 static void
 _gdc_abort(FIOSPTR css, unit *cup, struct f90_type ts);
 
+#ifdef KEY
+static int
+#else
 int
+#endif /* KEY */
 _gdc_dflt2len(int ncindex, struct f90_type ts, short dp);
 
 int
@@ -388,7 +392,11 @@ done:
  *
  */
 
+#ifdef KEY
+static int
+#else
 int
+#endif /* KEY */
 _gdc_dflt2len(
 	int	ncindex,
 	struct f90_type	ts,		/* Type descriptor word */
@@ -451,6 +459,11 @@ _gdc_dflt2len(
 			forlen	= ts.int_len;
 #else
 		/*
+#ifdef KEY
+		 * bug 2969: don't want to treat -i8/-r8
+		 * differently, contrary to the following comment.
+#endif
+		 *
 		 * Foreign size equals internal size; except variables
 		 * that got promoted via -i8/-r8 are treated as if they
 		 * had not been promoted.
@@ -463,15 +476,27 @@ _gdc_dflt2len(
 
 			assert ( INTEGER_SZ == LOGICAL_SZ );
 
+#ifdef KEY
+			forlen	= ts.int_len;
+#else
 			forlen	= MIN(ts.int_len, INTEGER_SZ);
+#endif /* KEY */
 			break;
 
 		case DVTYPE_REAL:
+#ifdef KEY
+			forlen	= ts.int_len;
+#else
 			forlen	= MIN(ts.int_len, (REAL_SZ << dpflag));
+#endif /* KEY */
 			break;
 
 		case DVTYPE_COMPLEX:
+#ifdef KEY
+			forlen	= ts.int_len;
+#else
 			forlen	= MIN(ts.int_len, (COMPLEX_SZ << dpflag));
+#endif /* KEY */
 			break;
 
 		case DVTYPE_TYPELESS:

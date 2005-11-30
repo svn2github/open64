@@ -47,11 +47,13 @@ extern char *program_name;		/* name of invoked program */
 
 extern boolean print_warnings;		/* whether to print warning msgs */
 extern boolean fullwarn;		/* whether to print all warnings */
+extern boolean pass_exit_codes;         /* If true, remember the highest
+					 * exit code. */
 
 extern void error (char *format, ...)
      __attribute__((format (printf, 1, 2)));
 
-extern void parse_error (char *name, char *msg);
+extern void parse_error (const char *name, const char *msg);
 
 extern void warning (char *format, ...)
      __attribute__((format (printf, 1, 2)));

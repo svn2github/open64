@@ -337,7 +337,7 @@ SSA::Insert_identity_assignment_4_loopexit(BB_NODE *start, AUX_ID aux_id, MEM_PO
 
       // make sure we can come up with a valid type for this identity
       // assignment (pv 418175)
-      TY_IDX ty = Identity_assignment_type( sym );
+      TY_IDX ty = Identity_assignment_type( sym, Htable()->Phase());
       if ( ty == TY_IDX_ZERO ) {
 	sym->Set_dont_replace_iv();
 	return NULL;
@@ -1229,6 +1229,29 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
 
     stmt->Enter_rhs(htable, opt_stab, copyprop, exc);
     stmt->Enter_lhs(htable, opt_stab, copyprop);
+
+#ifdef KEY // bug 3130
+    // Simplification of CVT in identity assignments as in:
+    //   I8I4LDID sym10
+    //  I4I8CVT
+    // I4STID sym10
+    OPERATOR stmt_opr = stmt->Opr();
+    if (stmt_opr == OPR_STID &&
+	ST_class(opt_stab->St(stmt->Lhs()->Aux_id())) != CLASS_PREG) {
+      CODEREP *rhs_cr = stmt->Rhs();
+      CODEREP *lhs = stmt->Lhs();
+      if (rhs_cr->Kind() == CK_OP && rhs_cr->Opr() == OPR_CVT && 
+	  rhs_cr->Opnd(0)->Kind() == CK_VAR &&
+	  lhs->Aux_id() == rhs_cr->Opnd(0)->Aux_id() &&
+	  MTYPE_is_integral(rhs_cr->Dsctyp()) &&
+	  MTYPE_is_integral(rhs_cr->Dtyp()) && 
+	  MTYPE_is_integral(lhs->Dsctyp()) &&
+	  MTYPE_byte_size(rhs_cr->Dtyp()) == MTYPE_byte_size(lhs->Dsctyp())) {
+	stmt->Set_rhs(rhs_cr->Opnd(0));
+	rhs_cr->DecUsecnt();
+      }
+    }
+#endif
 
 #if 0
     // Simplification of CVT/CVTL

@@ -63,7 +63,7 @@ LIBRARY_SUBDIRS := \
 #  Note that be_driver must come last since it depends on other components
 #  being built first.
 #
-TOOL_SUBDIRS := 
+TOOL_SUBDIRS := assign
 
 
 SUBDIRS := $(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)

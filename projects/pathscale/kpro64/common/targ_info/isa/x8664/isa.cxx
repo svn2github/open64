@@ -183,10 +183,12 @@ main ()
 	      "idiv32",
 	      "idiv64",
 	      "imul32",
+	      "imulx32",
 	      "imul64",
 	      "imuli32",
 	      "imuli64",
 	      "imulx64",
+	      "mul128v16",
 	      "inc8",
 	      "dec8",
 	      "inc16",
@@ -242,6 +244,9 @@ main ()
 	      "ld32_n32",
 	      "ldss_n32",
 	      "ldsd_n32",
+	      "ldaps_n32",
+	      "ldapd_n32",
+	      "lddqa_n32",
 
 	      /* store without base or index register for n32 abi. */
 	      "store8_n32",
@@ -249,6 +254,9 @@ main ()
 	      "store32_n32",
 	      "stss_n32",
 	      "stsd_n32",
+	      "staps_n32",
+	      "stapd_n32",
+	      "stdqa_n32",
 
 	      /* 8,16-bit -> 32-bit */
 	      "movsbl",
@@ -336,6 +344,7 @@ main ()
 	      "pushl",
 	      "pushq",
 	      "ret",
+	      "reti",
 	      "prefetch",
 	      "prefetchw",
 	      "prefetcht0",
@@ -526,6 +535,8 @@ main ()
 	      "comixxxss",
 	      "cmpss",
 	      "cmpsd",
+	      "cmpps",
+	      "cmppd",
 
 	      // sign-extend dword in %eax to quad in %edx:%eax
 	      "cltd",
@@ -535,16 +546,33 @@ main ()
 	      /* fp -> fp */
 	      "cvtss2sd",
 	      "cvtsd2ss",
+	      "cvtsd2ss_x",
+	      "cvtsd2ss_xx",
+	      "cvtsd2ss_xxx",
 	      /* int -> fp */
 	      "cvtsi2sd",
+	      "cvtsi2sd_x",
+	      "cvtsi2sd_xx",
+	      "cvtsi2sd_xxx",
 	      "cvtsi2ss",
+	      "cvtsi2ss_x",
+	      "cvtsi2ss_xx",
+	      "cvtsi2ss_xxx",
 	      "cvtsi2sdq",
+	      "cvtsi2sdq_x",
+	      "cvtsi2sdq_xx",
+	      "cvtsi2sdq_xxx",
 	      "cvtsi2ssq",
+	      "cvtsi2ssq_x",
+	      "cvtsi2ssq_xx",
+	      "cvtsi2ssq_xxx",
 	      /* fp -> int */
 	      "cvttss2si",
 	      "cvttsd2si",
 	      "cvttss2siq",
 	      "cvttsd2siq",
+	      /* vector cvt */
+	      "cvtdq2pd",
 	      /* misc */
 	      "ldsd",
 	      "ldsdx",
@@ -626,7 +654,9 @@ main ()
 	      "fminx128v64",
 	      "fminxx128v64",
 	      "fminxxx128v64",
+	      "movx2g64",
 	      "movx2g",
+	      "movg2x64",
 	      "movg2x",
 	      "movsd",
 	      "movss",
@@ -695,10 +725,19 @@ main ()
 	      "fsqrt128v32",
 	      "frsqrt128v32",
 	      "fsqrt128v64",
+	      "punpcklwd",
+	      "punpcklbw",
+	      "pshufd",
 	      "unpckhpd",
 	      "unpckhps",
 	      "unpcklpd",
 	      "unpcklps",
+	      "shufpd",
+	      "shufps",
+	      "movhlps",
+	      "movlhps",
+	      "psrldq",
+	      "psrlq",
 	      "subus128v16",
 
               /* Fence instructions. */
@@ -719,6 +758,8 @@ main ()
               /* Instruction to zero out fp registers */
 	      "xzero32",
 	      "xzero64",
+	      "xzero128v32",
+	      "xzero128v64",
 
 	      /* x87 floating-point instructions */
 	      "fadd",
@@ -779,6 +820,17 @@ main ()
 	      "fcmovne",
 	      "fcmovu",
 	      "fcmovnu",
+	      
+	      /* instructions to support -mcmodel=medium */
+	      "movabsq",
+	      "store8_m",
+	      "store16_m",
+	      "store32_m",
+	      "store64_m",
+	      "ld8_m",
+	      "ld16_m",
+	      "ld32_m",
+	      "ld64_m",
 
 	      /* Dummy instructions. */
 	      "begin_pregtn",

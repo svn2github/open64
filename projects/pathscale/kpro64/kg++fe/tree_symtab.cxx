@@ -332,7 +332,12 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			tsize = 0;
 		}
 		else
+#ifdef KEY		// bug 3045
+			tsize = (Get_Integer_Value(type_size) + BITSPERBYTE - 1)
+				  / BITSPERBYTE;
+#else
 			tsize = Get_Integer_Value(type_size) / BITSPERBYTE;
+#endif
 	}
 	switch (TREE_CODE(type_tree)) {
 	case VOID_TYPE:
@@ -364,7 +369,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			mtype = MTYPE_complement(mtype);
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
-		Set_TY_align (idx, align);
+#ifdef TARG_X8664
+		/* At least for -m32, the alignment is not the same as the data
+		   type's natural size. (bug#2932)
+		*/
+		if( TARGET_64BIT )
+#endif // TARG_X8664
+		  Set_TY_align (idx, align);
 		break;
 	case CHAR_TYPE:
 		mtype = (TREE_UNSIGNED(type_tree) ? MTYPE_U1 : MTYPE_I1);
@@ -606,8 +617,30 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
                                     field_type != type_tree)
                                         Get_TY(field_type);
                         }
+#ifdef KEY	// Defer expansion of static vars until all the fields in
+		// _every_ struct are laid out.  Consider this code (see
+		// bug 3044):
+		//  struct A
+		//    struct B *p
+		//  struct B
+		//    static struct A *q = ...	// static data member with
+		//                              // initializer
+		// We cannot expand static member vars while expanding the
+		// enclosing stuct, for the following reason:  Expansion of
+		// struct A leads to expansion of p, which leads to the
+		// expansion of struct B, which leads to the expansion of q and
+		// q's initializer.  The code that expands the initializer goes
+		// through the fields of struct A, but these fields are not yet
+		// completely defined, and this will cause kg++fe to die.
+		//
+		// The solution is the delay all static var expansions until
+		// the very end.
+			else if (TREE_CODE(field) == VAR_DECL)
+				defer_emit_var_decl(field);
+#else
 			else if (TREE_CODE(field) == VAR_DECL)
 				WFE_Expand_Decl(field);
+#endif
 			else if (TREE_CODE(field) == TEMPLATE_DECL)
 				WFE_Expand_Decl(field);
 
@@ -729,6 +762,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 // make it 64 bits. But then don't set it as FLD_IS_BIT_FIELD.
 				&& Get_Integer_Value(DECL_SIZE(field)) <= 
 				   FLD_BIT_FIELD_SIZE
+				// bug 2401
+				&& TY_size(Get_TY(TREE_TYPE(field))) != 0
 #endif
 				&& Get_Integer_Value(DECL_SIZE(field))
 				  != (TY_size(Get_TY(TREE_TYPE(field))) 
@@ -832,6 +867,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		// function to return void.
 		if (TY_return_in_mem(ret_ty_idx)) {
 		  ret_ty_idx = Be_Type_Tbl (MTYPE_V);
+		  Set_TY_return_to_param(idx);		// bugs 2423 2424
 		}
 #endif
 		Set_TYLIST_type (New_TYLIST (tylist_idx), ret_ty_idx);
@@ -977,9 +1013,17 @@ Create_ST_For_Tree (tree decl_node)
 
         st = New_ST (GLOBAL_SYMTAB);
 
+#ifdef KEY	// Fix bug # 34, 3356
+	char *p = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl_node));
+	if (*p == '*')
+	  p++;
+        ST_Init (st, Save_Str(p),
+                 CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
+#else
         ST_Init (st,
                  Save_Str ( IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl_node))),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
+#endif
 	if (DECL_THUNK_P(decl_node) &&
             TREE_CODE(CP_DECL_CONTEXT(decl_node)) != NAMESPACE_DECL)
 	  Set_ST_is_weak_symbol(st);
@@ -1091,6 +1135,34 @@ Create_ST_For_Tree (tree decl_node)
 	if (TREE_THIS_VOLATILE(decl_node))
 		Set_TY_is_volatile (ty_idx);
         ST_Init (st, Save_Str(name), CLASS_VAR, sclass, eclass, ty_idx);
+#ifdef KEY
+        if (DECL_SIZE_UNIT (decl_node) &&
+            TREE_CODE (DECL_SIZE_UNIT (decl_node)) != INTEGER_CST)
+        {
+            // if this is the first alloca, save sp.
+            int idx;
+            if (!Set_Current_Scope_Has_Alloca (idx))
+            {
+              ST * save_st = WFE_Alloca_0 ();
+              Set_Current_Scope_Alloca_St (save_st, idx);
+            }
+            WN * size = WFE_Expand_Expr (DECL_SIZE_UNIT (decl_node));
+            // mimic WFE_Alloca_ST
+            ST * alloca_st = New_ST (CURRENT_SYMTAB);
+            ST_Init (alloca_st, Save_Str (name),
+                       CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL,
+                                  Make_Pointer_Type (ty_idx, FALSE));
+            Set_ST_is_temp_var (alloca_st);
+            Set_ST_pt_to_unique_mem (alloca_st);
+            Set_ST_base_idx (st, ST_st_idx (alloca_st));
+            WN *wn  = WN_CreateAlloca (size);
+            wn = WN_Stid (Pointer_Mtype, 0, alloca_st, ST_type (alloca_st), wn);
+            WFE_Stmt_Append (wn, Get_Srcpos());
+            Set_PU_has_alloca (Get_Current_PU());
+	    // For kids 1..n of DEALLOCA
+            Add_Current_Scope_Alloca_St (alloca_st, idx);
+        }
+#endif // KEY
         if (TREE_CODE(decl_node) == PARM_DECL) {
 		Set_ST_is_value_parm(st);
         }

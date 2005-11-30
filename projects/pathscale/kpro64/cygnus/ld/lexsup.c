@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Parse options for the GNU linker.
@@ -57,110 +57,108 @@
 #define	S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
 #endif
 
-static int is_num PARAMS ((const char *, int, int, int));
-static void set_default_dirlist PARAMS ((char *));
-static void set_section_start PARAMS ((char *, char *));
-static void help PARAMS ((void));
+static void set_default_dirlist (char *);
+static void set_section_start (char *, char *);
+static void help (void);
 
 /* Non-zero if we are processing a --defsym from the command line.  */
 int parsing_defsym = 0;
 
 /* Codes used for the long options with no short synonyms.  150 isn't
    special; it's just an arbitrary non-ASCII char value.  */
-
-#define OPTION_ASSERT			150
-#define OPTION_CALL_SHARED		(OPTION_ASSERT + 1)
-#define OPTION_CREF			(OPTION_CALL_SHARED + 1)
-#define OPTION_DEFSYM			(OPTION_CREF + 1)
-#define OPTION_DEMANGLE			(OPTION_DEFSYM + 1)
-#define OPTION_DYNAMIC_LINKER		(OPTION_DEMANGLE + 1)
-#define OPTION_EB			(OPTION_DYNAMIC_LINKER + 1)
-#define OPTION_EL			(OPTION_EB + 1)
-#define OPTION_EMBEDDED_RELOCS		(OPTION_EL + 1)
-#define OPTION_EXPORT_DYNAMIC		(OPTION_EMBEDDED_RELOCS + 1)
-#define OPTION_HELP			(OPTION_EXPORT_DYNAMIC + 1)
-#define OPTION_IGNORE			(OPTION_HELP + 1)
-#define OPTION_MAP			(OPTION_IGNORE + 1)
-#define OPTION_NO_DEMANGLE		(OPTION_MAP + 1)
-#define OPTION_NO_KEEP_MEMORY		(OPTION_NO_DEMANGLE + 1)
-#define OPTION_NO_WARN_MISMATCH		(OPTION_NO_KEEP_MEMORY + 1)
-#define OPTION_NOINHIBIT_EXEC		(OPTION_NO_WARN_MISMATCH + 1)
-#define OPTION_NON_SHARED		(OPTION_NOINHIBIT_EXEC + 1)
-#define OPTION_NO_WHOLE_ARCHIVE		(OPTION_NON_SHARED + 1)
-#define OPTION_OFORMAT			(OPTION_NO_WHOLE_ARCHIVE + 1)
-#define OPTION_RELAX			(OPTION_OFORMAT + 1)
-#define OPTION_RETAIN_SYMBOLS_FILE	(OPTION_RELAX + 1)
-#define OPTION_RPATH			(OPTION_RETAIN_SYMBOLS_FILE + 1)
-#define OPTION_RPATH_LINK		(OPTION_RPATH + 1)
-#define OPTION_SHARED			(OPTION_RPATH_LINK + 1)
-#define OPTION_SONAME			(OPTION_SHARED + 1)
-#define OPTION_SORT_COMMON		(OPTION_SONAME + 1)
-#define OPTION_STATS			(OPTION_SORT_COMMON + 1)
-#define OPTION_SYMBOLIC			(OPTION_STATS + 1)
-#define OPTION_TASK_LINK		(OPTION_SYMBOLIC + 1)
-#define OPTION_TBSS			(OPTION_TASK_LINK + 1)
-#define OPTION_TDATA			(OPTION_TBSS + 1)
-#define OPTION_TTEXT			(OPTION_TDATA + 1)
-#define OPTION_TRADITIONAL_FORMAT	(OPTION_TTEXT + 1)
-#define OPTION_UR			(OPTION_TRADITIONAL_FORMAT + 1)
-#define OPTION_VERBOSE			(OPTION_UR + 1)
-#define OPTION_VERSION			(OPTION_VERBOSE + 1)
-#define OPTION_VERSION_SCRIPT		(OPTION_VERSION + 1)
-#define OPTION_VERSION_EXPORTS_SECTION	(OPTION_VERSION_SCRIPT + 1)
-#define OPTION_WARN_COMMON		(OPTION_VERSION_EXPORTS_SECTION + 1)
-#define OPTION_WARN_CONSTRUCTORS	(OPTION_WARN_COMMON + 1)
-#define OPTION_WARN_FATAL		(OPTION_WARN_CONSTRUCTORS + 1)
-#define OPTION_WARN_MULTIPLE_GP		(OPTION_WARN_FATAL + 1)
-#define OPTION_WARN_ONCE		(OPTION_WARN_MULTIPLE_GP + 1)
-#define OPTION_WARN_SECTION_ALIGN	(OPTION_WARN_ONCE + 1)
-#define OPTION_SPLIT_BY_RELOC		(OPTION_WARN_SECTION_ALIGN + 1)
-#define OPTION_SPLIT_BY_FILE 	    	(OPTION_SPLIT_BY_RELOC + 1)
-#define OPTION_WHOLE_ARCHIVE		(OPTION_SPLIT_BY_FILE + 1)
-#define OPTION_WRAP			(OPTION_WHOLE_ARCHIVE + 1)
-#define OPTION_FORCE_EXE_SUFFIX		(OPTION_WRAP + 1)
-#define OPTION_GC_SECTIONS		(OPTION_FORCE_EXE_SUFFIX + 1)
-#define OPTION_NO_GC_SECTIONS		(OPTION_GC_SECTIONS + 1)
-#define OPTION_CHECK_SECTIONS		(OPTION_NO_GC_SECTIONS + 1)
-#define OPTION_NO_CHECK_SECTIONS	(OPTION_CHECK_SECTIONS + 1)
-#define OPTION_MPC860C0                 (OPTION_NO_CHECK_SECTIONS + 1)
-#define OPTION_NO_UNDEFINED		(OPTION_MPC860C0 + 1)
-#define OPTION_INIT                     (OPTION_NO_UNDEFINED + 1)
-#define OPTION_FINI                     (OPTION_INIT + 1)
-#define OPTION_SECTION_START		(OPTION_FINI + 1)
-#define OPTION_UNIQUE			(OPTION_SECTION_START + 1)
-#define OPTION_TARGET_HELP              (OPTION_UNIQUE + 1)
-#define OPTION_ALLOW_SHLIB_UNDEFINED	(OPTION_TARGET_HELP + 1)
-#define OPTION_NO_ALLOW_SHLIB_UNDEFINED	(OPTION_ALLOW_SHLIB_UNDEFINED + 1)
-#define OPTION_ALLOW_MULTIPLE_DEFINITION (OPTION_NO_ALLOW_SHLIB_UNDEFINED + 1)
-#define OPTION_NO_UNDEFINED_VERSION	(OPTION_ALLOW_MULTIPLE_DEFINITION + 1)
-#define OPTION_DISCARD_NONE		(OPTION_NO_UNDEFINED_VERSION + 1)
-#define OPTION_SPARE_DYNAMIC_TAGS	(OPTION_DISCARD_NONE + 1)
-#define OPTION_NO_DEFINE_COMMON		(OPTION_SPARE_DYNAMIC_TAGS + 1)
-#define OPTION_NOSTDLIB			(OPTION_NO_DEFINE_COMMON + 1)
-#define OPTION_NO_OMAGIC		(OPTION_NOSTDLIB + 1)
-#define OPTION_STRIP_DISCARDED		(OPTION_NO_OMAGIC + 1)
-#define OPTION_NO_STRIP_DISCARDED	(OPTION_STRIP_DISCARDED + 1)
-#define OPTION_ACCEPT_UNKNOWN_INPUT_ARCH    (OPTION_NO_STRIP_DISCARDED + 1)
-#define OPTION_NO_ACCEPT_UNKNOWN_INPUT_ARCH (OPTION_ACCEPT_UNKNOWN_INPUT_ARCH + 1)
-
-#ifdef IPA_LINK
-
-#define OPTION_KEEP		(OPTION_NO_ACCEPT_UNKNOWN_INPUT_ARCH + 1)
-#define OPTION_SHOW                     (OPTION_KEEP + 1)
-#define OPTION_IPA                      (OPTION_SHOW + 1)
-#define OPTION_DEFAULT_GROUP            (OPTION_IPA + 1)
-#define OPTION_IPA_GROUP                (OPTION_DEFAULT_GROUP + 1)
-#define OPTION_INLINE_GROUP             (OPTION_IPA_GROUP + 1)
-#define OPTION_INTERNAL_GROUP           (OPTION_INLINE_GROUP + 1)
-#define OPTION_AR_MEMBERS               (OPTION_INTERNAL_GROUP + 1)
-#define OPTION_IPACOM                   (OPTION_AR_MEMBERS + 1)
-#define OPTION_OPT_GROUP                (OPTION_IPACOM + 1)
-#define OPTION_TENV_GROUP               (OPTION_OPT_GROUP + 1)
-#ifdef KEY
-#define OPTION_LINKER_ONLY              (OPTION_TENV_GROUP + 1)
-#endif
-
-#endif
+enum option_values
+{
+  OPTION_ASSERT = 150,
+  OPTION_CALL_SHARED,
+  OPTION_CREF,
+  OPTION_DEFSYM,
+  OPTION_DEMANGLE,
+  OPTION_DEMANGLER,
+  OPTION_DYNAMIC_LINKER,
+  OPTION_EB,
+  OPTION_EL,
+  OPTION_EMBEDDED_RELOCS,
+  OPTION_EXPORT_DYNAMIC,
+  OPTION_HELP,
+  OPTION_IGNORE,
+  OPTION_MAP,
+  OPTION_NO_DEMANGLE,
+  OPTION_NO_KEEP_MEMORY,
+  OPTION_NO_WARN_MISMATCH,
+  OPTION_NOINHIBIT_EXEC,
+  OPTION_NON_SHARED,
+  OPTION_NO_WHOLE_ARCHIVE,
+  OPTION_OFORMAT,
+  OPTION_RELAX,
+  OPTION_RETAIN_SYMBOLS_FILE,
+  OPTION_RPATH,
+  OPTION_RPATH_LINK,
+  OPTION_SHARED,
+  OPTION_SONAME,
+  OPTION_SORT_COMMON,
+  OPTION_STATS,
+  OPTION_SYMBOLIC,
+  OPTION_TASK_LINK,
+  OPTION_TBSS,
+  OPTION_TDATA,
+  OPTION_TTEXT,
+  OPTION_TRADITIONAL_FORMAT,
+  OPTION_UR,
+  OPTION_VERBOSE,
+  OPTION_VERSION,
+  OPTION_VERSION_SCRIPT,
+  OPTION_VERSION_EXPORTS_SECTION,
+  OPTION_WARN_COMMON,
+  OPTION_WARN_CONSTRUCTORS,
+  OPTION_WARN_FATAL,
+  OPTION_WARN_MULTIPLE_GP,
+  OPTION_WARN_ONCE,
+  OPTION_WARN_SECTION_ALIGN,
+  OPTION_SPLIT_BY_RELOC,
+  OPTION_SPLIT_BY_FILE ,
+  OPTION_WHOLE_ARCHIVE,
+  OPTION_WRAP,
+  OPTION_FORCE_EXE_SUFFIX,
+  OPTION_GC_SECTIONS,
+  OPTION_NO_GC_SECTIONS,
+  OPTION_CHECK_SECTIONS,
+  OPTION_NO_CHECK_SECTIONS,
+  OPTION_NO_UNDEFINED,
+  OPTION_INIT,
+  OPTION_FINI,
+  OPTION_SECTION_START,
+  OPTION_UNIQUE,
+  OPTION_TARGET_HELP,
+  OPTION_ALLOW_SHLIB_UNDEFINED,
+  OPTION_NO_ALLOW_SHLIB_UNDEFINED,
+  OPTION_ALLOW_MULTIPLE_DEFINITION,
+  OPTION_NO_UNDEFINED_VERSION,
+  OPTION_DISCARD_NONE,
+  OPTION_SPARE_DYNAMIC_TAGS,
+  OPTION_NO_DEFINE_COMMON,
+  OPTION_NOSTDLIB,
+  OPTION_NO_OMAGIC,
+  OPTION_STRIP_DISCARDED,
+  OPTION_NO_STRIP_DISCARDED,
+  OPTION_ACCEPT_UNKNOWN_INPUT_ARCH,
+  OPTION_NO_ACCEPT_UNKNOWN_INPUT_ARCH,
+  OPTION_PIE,
+  OPTION_UNRESOLVED_SYMBOLS,
+  OPTION_WARN_UNRESOLVED_SYMBOLS,
+  OPTION_ERROR_UNRESOLVED_SYMBOLS,
+  OPTION_KEEP,
+  OPTION_SHOW,
+  OPTION_IPA,
+  OPTION_DEFAULT_GROUP,
+  OPTION_IPA_GROUP,
+  OPTION_INLINE_GROUP,
+  OPTION_INTERNAL_GROUP,
+  OPTION_AR_MEMBERS,
+  OPTION_IPACOM,
+  OPTION_OPT_GROUP,
+  OPTION_TENV_GROUP,
+  OPTION_LINKER_ONLY,
+};
 
 /* The long options.  This structure is used for both the option
    parsing and the help text.  */
@@ -256,8 +254,8 @@ static const struct ld_option ld_options[] =
       '\0', NULL, N_("Ignored for SVR4 compatibility"), ONE_DASH },
   { {"emit-relocs", no_argument, NULL, 'q'},
       'q', NULL, "Generate relocations in final output", TWO_DASHES },
-  { {"relocateable", no_argument, NULL, 'r'},
-      'r', NULL, N_("Generate relocateable output"), TWO_DASHES },
+  { {"relocatable", no_argument, NULL, 'r'},
+      'r', NULL, N_("Generate relocatable output"), TWO_DASHES },
   { {NULL, no_argument, NULL, '\0'},
       'i', NULL, NULL, ONE_DASH },
   { {"just-symbols", required_argument, NULL, 'R'},
@@ -332,6 +330,8 @@ static const struct ld_option ld_options[] =
       '\0', N_("SYMBOL=EXPRESSION"), N_("Define a symbol"), TWO_DASHES },
   { {"demangle", optional_argument, NULL, OPTION_DEMANGLE},
       '\0', N_("[=STYLE]"), N_("Demangle symbol names [using STYLE]"), TWO_DASHES },
+  { {"demangler", no_argument, NULL, OPTION_DEMANGLER},
+      '\0', "DSO:FUNCTION", N_("Set DSO and demangler function"), TWO_DASHES },
   { {"embedded-relocs", no_argument, NULL, OPTION_EMBEDDED_RELOCS},
       '\0', NULL, N_("Generate embedded relocs"), TWO_DASHES},
   { {"fini", required_argument, NULL, OPTION_FINI},
@@ -357,11 +357,11 @@ static const struct ld_option ld_options[] =
   { {"no-keep-memory", no_argument, NULL, OPTION_NO_KEEP_MEMORY},
       '\0', NULL, N_("Use less memory and more disk I/O"), TWO_DASHES },
   { {"no-undefined", no_argument, NULL, OPTION_NO_UNDEFINED},
-     '\0', NULL, N_("Allow no undefined symbols"), TWO_DASHES },
+     '\0', NULL, N_("Do not allow unresolved references in object files"), TWO_DASHES },
   { {"allow-shlib-undefined", no_argument, NULL, OPTION_ALLOW_SHLIB_UNDEFINED},
-     '\0', NULL, N_("Allow undefined symbols in shared objects (the default)"), TWO_DASHES },
+     '\0', NULL, N_("Allow unresolved references in shared libaries"), TWO_DASHES },
   { {"no-allow-shlib-undefined", no_argument, NULL, OPTION_NO_ALLOW_SHLIB_UNDEFINED},
-     '\0', NULL, N_("Do not allow undefined symbols in shared objects"), TWO_DASHES },
+     '\0', NULL, N_("Do not allow unresolved references in shared libs"), TWO_DASHES },
   { {"allow-multiple-definition", no_argument, NULL, OPTION_ALLOW_MULTIPLE_DEFINITION},
      '\0', NULL, N_("Allow multiple definitions"), TWO_DASHES },
   { {"no-undefined-version", no_argument, NULL, OPTION_NO_UNDEFINED_VERSION},
@@ -393,6 +393,10 @@ static const struct ld_option ld_options[] =
       '\0', NULL, N_("Create a shared library"), ONE_DASH },
   { {"Bshareable", no_argument, NULL, OPTION_SHARED }, /* FreeBSD.  */
       '\0', NULL, NULL, ONE_DASH },
+  { {"pie", no_argument, NULL, OPTION_PIE},
+      '\0', NULL, N_("Create a position independent executable"), ONE_DASH },
+  { {"pic-executable", no_argument, NULL, OPTION_PIE},
+      '\0', NULL, NULL, TWO_DASHES },
   { {"sort-common", no_argument, NULL, OPTION_SORT_COMMON},
       '\0', NULL, N_("Sort common symbols by size"), TWO_DASHES },
   { {"sort_common", no_argument, NULL, OPTION_SORT_COMMON},
@@ -419,6 +423,9 @@ static const struct ld_option ld_options[] =
       '\0', N_("ADDRESS"), N_("Set address of .data section"), ONE_DASH },
   { {"Ttext", required_argument, NULL, OPTION_TTEXT},
       '\0', N_("ADDRESS"), N_("Set address of .text section"), ONE_DASH },
+  { {"unresolved-symbols=<method>", required_argument, NULL, OPTION_UNRESOLVED_SYMBOLS},
+     '\0', NULL, N_("How to handle unresolved symbols.  <method> is:\n\t\t\t\tignore-all, report-all, ignore-in-object-files,\n\t\t\t\tignore-in-shared-libs"),
+    TWO_DASHES },
   { {"verbose", no_argument, NULL, OPTION_VERBOSE},
       '\0', NULL, N_("Output lots of information during link"), TWO_DASHES },
   { {"dll-verbose", no_argument, NULL, OPTION_VERBOSE}, /* Linux.  */
@@ -441,6 +448,10 @@ static const struct ld_option ld_options[] =
   { {"warn-section-align", no_argument, NULL, OPTION_WARN_SECTION_ALIGN},
       '\0', NULL, N_("Warn if start of section changes due to alignment"),
       TWO_DASHES },
+  { {"warn-unresolved-symbols", no_argument, NULL, OPTION_WARN_UNRESOLVED_SYMBOLS},
+    '\0', NULL, N_("Report unresolved symbols as warnings"), TWO_DASHES },
+  { {"error-unresolved-symbols", no_argument, NULL, OPTION_ERROR_UNRESOLVED_SYMBOLS},
+    '\0', NULL, N_("Report unresolved symbols as errors"), TWO_DASHES },
   { {"fatal-warnings", no_argument, NULL, OPTION_WARN_FATAL},
      '\0', NULL, N_("Treat warnings as errors"),
      TWO_DASHES },
@@ -448,85 +459,39 @@ static const struct ld_option ld_options[] =
       '\0', NULL, N_("Include all objects from following archives"), TWO_DASHES },
   { {"wrap", required_argument, NULL, OPTION_WRAP},
       '\0', N_("SYMBOL"), N_("Use wrapper functions for SYMBOL"), TWO_DASHES },
-  { {"mpc860c0", optional_argument, NULL, OPTION_MPC860C0},
-      '\0', N_("[=WORDS]"), N_("Modify problematic branches in last WORDS (1-10,\n\t\t\t\tdefault 5) words of a page"), TWO_DASHES }
-
 #ifdef IPA_LINK
-    ,
   { {"ipa", no_argument, NULL, OPTION_IPA},
       '\0', NULL, N_("Use Inter Process Analysis"), TWO_DASHES },
-
   { {"show", no_argument, NULL, OPTION_SHOW},
       '\0', NULL, N_("If IPA then show phases, otherwise unused"), ONE_DASH },
-
   { {"keep", no_argument, NULL, OPTION_KEEP},
       '\0', NULL, N_("Don't delete intermediate files"), TWO_DASHES },
-
   { {"DEFAULT", no_argument, NULL, OPTION_DEFAULT_GROUP},
       '\0', NULL, N_("Message about xxxxxx"), TWO_DASHES },
-
   { {"IPA:", no_argument, NULL, OPTION_IPA_GROUP},
       '\0', NULL, N_("Options passed to IPA"), TWO_DASHES },
-
   { {"INLINE:", no_argument, NULL, OPTION_INLINE_GROUP},
       '\0', NULL, N_("Options passed to inliner during ipa phase"), TWO_DASHES },
-
   { {"INTERNAL:", no_argument, NULL, OPTION_INTERNAL_GROUP},
-      '\0', NULL, N_("Non-user options passed to the backend during ipa phase"), TWO_DASHES },
-
+      '\0', NULL, N_("Non-user options passed to the backend during ipa phase"),
+      TWO_DASHES },
   { {"ar_members", required_argument, NULL, OPTION_AR_MEMBERS},
       '\0', NULL, N_("Designates specific objects within an archive"), TWO_DASHES },
-
   { {"ipacom", no_argument, NULL, OPTION_IPACOM},
       '\0', NULL, N_("Message about xxxxxx"), TWO_DASHES },
-
   { {"OPT:", no_argument, NULL, OPTION_OPT_GROUP},
       '\0', NULL, N_("Optimization options passed to backend during ipa phase"), TWO_DASHES },
-
   { {"TENV:", no_argument, NULL, OPTION_TENV_GROUP},
-      '\0', NULL, N_("Target environment options passed to backend during ipa phase"), TWO_DASHES }
-
-#ifdef KEY
-	,
+      '\0', NULL, N_("Target environment options passed to backend during ipa phase"), TWO_DASHES },
   { {"pg", no_argument, NULL, OPTION_LINKER_ONLY},
-      '\0', NULL, N_("-pg flag passed to ipa_link should be passed over to the final linker"), ONE_DASH }
-#endif
+      '\0', NULL, N_("-pg flag passed to ipa_link should be passed over to the final linker"), ONE_DASH },
 #endif
 };
 
 #define OPTION_COUNT ARRAY_SIZE (ld_options)
 
-/* Test STRING for containing a string of digits that form a number
-   between MIN and MAX.  The return value is the number or ERR.  */
-
-static int
-is_num (string, min, max, err)
-     const char *string;
-     int min;
-     int max;
-     int err;
-{
-  int result = 0;
-
-  for (; *string; ++string)
-    {
-      if (! ISDIGIT (*string))
-	{
-	  result = err;
-	  break;
-	}
-      result = result * 10 + (*string - '0');
-    }
-  if (result < min || result > max)
-    result = err;
-
-  return result;
-}
-
 void
-parse_args (argc, argv)
-     unsigned argc;
-     char **argv;
+parse_args (unsigned argc, char **argv)
 {
   unsigned i;
   int is, il, irl;
@@ -536,13 +501,13 @@ parse_args (argc, argv)
   struct option *longopts;
   struct option *really_longopts;
   int last_optind;
+  enum report_method how_to_report_unresolved_symbols = RM_GENERATE_ERROR;
+  const char *demangler = NULL, *style = NULL;
   int extend = 0;
 
-  shortopts = (char *) xmalloc (OPTION_COUNT * 3 + 2);
-  longopts = (struct option *) xmalloc (sizeof (*longopts)
-					* (OPTION_COUNT + 1));
-  really_longopts = (struct option *) xmalloc (sizeof (*really_longopts)
-					       * (OPTION_COUNT + 1));
+  shortopts = xmalloc (OPTION_COUNT * 3 + 2);
+  longopts = xmalloc (sizeof (*longopts) * (OPTION_COUNT + 1));
+  really_longopts = xmalloc (sizeof (*really_longopts) * (OPTION_COUNT + 1));
 
   /* Starting the short option string with '-' is for programs that
      expect options and other ARGV-elements in any order and that care about
@@ -679,7 +644,7 @@ parse_args (argc, argv)
 	{
 	  char *n;
 
-	  n = (char *) xmalloc (strlen (argv[i]) + 20);
+	  n = xmalloc (strlen (argv[i]) + 20);
 	  sprintf (n, "--library=%s", argv[i] + 2);
 	  argv[i] = n;
 	}
@@ -726,16 +691,15 @@ parse_args (argc, argv)
 	  einfo (_("%P%F: use the --help option for usage information\n"));
 
 	case 1:			/* File name.  */
-	  lang_add_input_file (optarg, lang_input_file_is_file_enum,
-			       (char *) NULL);
+	  lang_add_input_file (optarg, lang_input_file_is_file_enum, NULL);
 	  break;
 
 	case OPTION_IGNORE:
 	  break;
 	case 'a':
 	  /* For HP/UX compatibility.  Actually -a shared should mean
-             ``use only shared libraries'' but, then, we don't
-             currently support shared libraries on HP/UX anyhow.  */
+	     ``use only shared libraries'' but, then, we don't
+	     currently support shared libraries on HP/UX anyhow.  */
 	  if (strcmp (optarg, "archive") == 0)
 	    config.dynamic_link = FALSE;
 	  else if (strcmp (optarg, "shared") == 0
@@ -770,9 +734,27 @@ parse_args (argc, argv)
 	  break;
 	case OPTION_CALL_SHARED:
 	  config.dynamic_link = TRUE;
+	  /* When linking against shared libraries, the default behaviour is
+	     to report any unresolved references.  Although strictly speaking
+	     it is not a failure to encounter unresolved symbols at link time
+	     - the symbol *might* be available at load time - it is a strong
+	     indication that the resulting executable will not work.  Plus it
+	     is necessary for the correct execution of the autoconf package,
+	     which needs to be able to detect functions that are not provided
+	     by the host OS.  */
+	  if (link_info.unresolved_syms_in_objects == RM_NOT_YET_SET)
+	    link_info.unresolved_syms_in_objects = how_to_report_unresolved_symbols;
+	  if (link_info.unresolved_syms_in_shared_libs == RM_NOT_YET_SET)
+	    link_info.unresolved_syms_in_shared_libs = how_to_report_unresolved_symbols;
 	  break;
 	case OPTION_NON_SHARED:
 	  config.dynamic_link = FALSE;
+	  /* When linking against static libraries, the default
+	     behaviour is to report any unresolved references.  */
+	  if (link_info.unresolved_syms_in_objects == RM_NOT_YET_SET)
+	    link_info.unresolved_syms_in_objects = how_to_report_unresolved_symbols;
+	  if (link_info.unresolved_syms_in_shared_libs == RM_NOT_YET_SET)
+	    link_info.unresolved_syms_in_shared_libs = how_to_report_unresolved_symbols;
 	  break;
 	case OPTION_CREF:
 	  command_line.cref = TRUE;
@@ -793,16 +775,10 @@ parse_args (argc, argv)
 	case OPTION_DEMANGLE:
 	  demangling = TRUE;
 	  if (optarg != NULL)
-	    {
-	      enum demangling_styles style;
-
-	      style = cplus_demangle_name_to_style (optarg);
-	      if (style == unknown_demangling)
-		einfo (_("%F%P: unknown demangling style `%s'"),
-		       optarg);
-
-	      cplus_demangle_set_style (style);
-	    }
+	    style = optarg;
+	  break;
+	case OPTION_DEMANGLER:
+	  demangler = optarg;
 	  break;
 	case 'I':		/* Used on Solaris.  */
 	case OPTION_DYNAMIC_LINKER:
@@ -827,8 +803,7 @@ parse_args (argc, argv)
 	case 'f':
 	  if (command_line.auxiliary_filters == NULL)
 	    {
-	      command_line.auxiliary_filters =
-		(char **) xmalloc (2 * sizeof (char *));
+	      command_line.auxiliary_filters = xmalloc (2 * sizeof (char *));
 	      command_line.auxiliary_filters[0] = optarg;
 	      command_line.auxiliary_filters[1] = NULL;
 	    }
@@ -840,9 +815,9 @@ parse_args (argc, argv)
 	      c = 0;
 	      for (p = command_line.auxiliary_filters; *p != NULL; p++)
 		++c;
-	      command_line.auxiliary_filters =
-		(char **) xrealloc (command_line.auxiliary_filters,
-				    (c + 2) * sizeof (char *));
+	      command_line.auxiliary_filters
+		= xrealloc (command_line.auxiliary_filters,
+			    (c + 2) * sizeof (char *));
 	      command_line.auxiliary_filters[c] = optarg;
 	      command_line.auxiliary_filters[c + 1] = NULL;
 	    }
@@ -868,6 +843,7 @@ parse_args (argc, argv)
 	  command_line.gc_sections = TRUE;
 	  break;
 	case OPTION_HELP:
+	  init_demangler (style, NULL, demangler);
 	  help ();
 	  xexit (0);
 	  break;
@@ -875,8 +851,7 @@ parse_args (argc, argv)
 	  ldfile_add_library_path (optarg, TRUE);
 	  break;
 	case 'l':
-	  lang_add_input_file (optarg, lang_input_file_is_l_enum,
-			       (char *) NULL);
+	  lang_add_input_file (optarg, lang_input_file_is_l_enum, NULL);
 	  break;
 	case 'M':
 	  config.map_filename = "-";
@@ -915,14 +890,53 @@ parse_args (argc, argv)
 	  link_info.keep_memory = FALSE;
 	  break;
 	case OPTION_NO_UNDEFINED:
-	  link_info.no_undefined = TRUE;
+	  link_info.unresolved_syms_in_objects = how_to_report_unresolved_symbols;
 	  break;
 	case OPTION_ALLOW_SHLIB_UNDEFINED:
-	  link_info.allow_shlib_undefined = TRUE;
+	  link_info.unresolved_syms_in_shared_libs = RM_IGNORE;
 	  break;
 	case OPTION_NO_ALLOW_SHLIB_UNDEFINED:
-	  link_info.allow_shlib_undefined = FALSE;
+	  link_info.unresolved_syms_in_shared_libs = how_to_report_unresolved_symbols;
 	  break;
+	case OPTION_UNRESOLVED_SYMBOLS:
+	  if (strcmp (optarg, "ignore-all") == 0)
+	    {
+	      link_info.unresolved_syms_in_objects = RM_IGNORE;
+	      link_info.unresolved_syms_in_shared_libs = RM_IGNORE;
+	    }
+	  else if (strcmp (optarg, "report-all") == 0)
+	    {
+	      link_info.unresolved_syms_in_objects = how_to_report_unresolved_symbols;
+	      link_info.unresolved_syms_in_shared_libs = how_to_report_unresolved_symbols;
+	    }
+	  else if (strcmp (optarg, "ignore-in-object-files") == 0)
+	    {
+	      link_info.unresolved_syms_in_objects = RM_IGNORE;
+	      link_info.unresolved_syms_in_shared_libs = how_to_report_unresolved_symbols;
+	    }
+      	  else if (strcmp (optarg, "ignore-in-shared-libs") == 0)
+	    {
+	      link_info.unresolved_syms_in_objects = how_to_report_unresolved_symbols;
+	      link_info.unresolved_syms_in_shared_libs = RM_IGNORE;
+	    }
+	  else
+	    einfo (_("%P%F: bad --unresolved-symbols option: %s\n"), optarg);
+	  break;
+	case OPTION_WARN_UNRESOLVED_SYMBOLS:
+	  how_to_report_unresolved_symbols = RM_GENERATE_WARNING;
+	  if (link_info.unresolved_syms_in_objects == RM_GENERATE_ERROR)
+	    link_info.unresolved_syms_in_objects = RM_GENERATE_WARNING;
+	  if (link_info.unresolved_syms_in_shared_libs == RM_GENERATE_ERROR)
+	    link_info.unresolved_syms_in_shared_libs = RM_GENERATE_WARNING;
+	  break;
+	  
+	case OPTION_ERROR_UNRESOLVED_SYMBOLS:
+	  how_to_report_unresolved_symbols = RM_GENERATE_ERROR;
+	  if (link_info.unresolved_syms_in_objects == RM_GENERATE_WARNING)
+	    link_info.unresolved_syms_in_objects = RM_GENERATE_ERROR;
+	  if (link_info.unresolved_syms_in_shared_libs == RM_GENERATE_WARNING)
+	    link_info.unresolved_syms_in_shared_libs = RM_GENERATE_ERROR;
+	  break;	  
 	case OPTION_ALLOW_MULTIPLE_DEFINITION:
 	  link_info.allow_multiple_definition = TRUE;
 	  break;
@@ -955,7 +969,7 @@ parse_args (argc, argv)
 	  lang_add_output (optarg, 0);
 	  break;
 	case OPTION_OFORMAT:
-	  lang_add_output_format (optarg, (char *) NULL, (char *) NULL, 0);
+	  lang_add_output_format (optarg, NULL, NULL, 0);
 	  break;
 	case 'q':
 	  link_info.emitrelocations = TRUE;
@@ -973,7 +987,7 @@ parse_args (argc, argv)
 	       and will seg-fault the next time around.  */
 	    einfo(_("%P%F: bad -rpath option\n"));
 
-	  link_info.relocateable = TRUE;
+	  link_info.relocatable = TRUE;
 	  config.build_constructors = FALSE;
 	  config.magic_demand_paged = FALSE;
 	  config.text_read_only = FALSE;
@@ -995,7 +1009,7 @@ parse_args (argc, argv)
 	      {
 		lang_add_input_file (optarg,
 				     lang_input_file_is_symbols_only_enum,
-				     (char *) NULL);
+				     NULL);
 		break;
 	      }
 	  }
@@ -1073,9 +1087,26 @@ parse_args (argc, argv)
 	  break;
 	case OPTION_SHARED:
 	  if (config.has_shared)
-	    link_info.shared = TRUE;
+	    {
+	      link_info.shared = TRUE;
+	      /* When creating a shared library, the default
+		 behaviour is to ignore any unresolved references.  */
+	      if (link_info.unresolved_syms_in_objects == RM_NOT_YET_SET)
+		link_info.unresolved_syms_in_objects = RM_IGNORE;
+	      if (link_info.unresolved_syms_in_shared_libs == RM_NOT_YET_SET)
+		link_info.unresolved_syms_in_shared_libs = RM_IGNORE;
+	    }
 	  else
 	    einfo (_("%P%F: -shared not supported\n"));
+	  break;
+	case OPTION_PIE:
+	  if (config.has_shared)
+	    {
+	      link_info.shared = TRUE;
+	      link_info.pie = TRUE;
+	    }
+	  else
+	    einfo (_("%P%F: -pie not supported\n"));
 	  break;
 	case 'h':		/* Used on Solaris.  */
 	case OPTION_SONAME:
@@ -1146,7 +1177,7 @@ parse_args (argc, argv)
 	  link_info.task_link = TRUE;
 	  /* Fall through - do an implied -r option.  */
 	case OPTION_UR:
-	  link_info.relocateable = TRUE;
+	  link_info.relocatable = TRUE;
 	  config.build_constructors = TRUE;
 	  config.magic_demand_paged = FALSE;
 	  config.text_read_only = FALSE;
@@ -1165,6 +1196,7 @@ parse_args (argc, argv)
 	  ldversion (1);
 	  version_printed = TRUE;
 	  trace_file_tries = TRUE;
+	  overflow_cutoff_limit = -2;
 	  break;
 	case 'v':
 	  ldversion (0);
@@ -1180,8 +1212,8 @@ parse_args (argc, argv)
 	  break;
 	case OPTION_VERSION_SCRIPT:
 	  /* This option indicates a small script that only specifies
-             version information.  Read it, but don't assume that
-             we've seen a linker script.  */
+	     version information.  Read it, but don't assume that
+	     we've seen a linker script.  */
 	  {
 	    FILE *hold_script_handle;
 
@@ -1282,22 +1314,6 @@ parse_args (argc, argv)
 	  lang_leave_group ();
 	  ingroup = 0;
 	  break;
-	case OPTION_MPC860C0:
-	  /* Default value (in bytes).  */
-	  link_info.mpc860c0 = 20;
-	  if (optarg)
-	    {
-	      unsigned words;
-
-	      words = is_num (optarg, 1, 10, 0);
-	      if (words == 0)
-		einfo (_("%P%F: invalid argument to option \"mpc860c0\"\n"));
-
-	      /* Convert words to bytes.  */
-	      link_info.mpc860c0 = words * 4;
-	    }
-	  command_line.relax = TRUE;
-	  break;
 
 	case OPTION_INIT:
 	  link_info.init_function = optarg;
@@ -1320,11 +1336,9 @@ parse_args (argc, argv)
         case OPTION_IPA:
         case OPTION_SHOW:
           break;
-#ifdef KEY
 	case OPTION_LINKER_ONLY:
 	  /* Ignore */
 	  break;
-#endif
 
         case OPTION_AR_MEMBERS:
           lang_add_input_file ( optarg,
@@ -1343,14 +1357,23 @@ parse_args (argc, argv)
       set_default_dirlist (default_dirlist);
       free (default_dirlist);
     }
+
+  if (link_info.unresolved_syms_in_objects == RM_NOT_YET_SET)
+    /* FIXME: Should we allow emulations a chance to set this ?  */
+    link_info.unresolved_syms_in_objects = how_to_report_unresolved_symbols;
+  
+  if (link_info.unresolved_syms_in_shared_libs == RM_NOT_YET_SET)
+    /* FIXME: Should we allow emulations a chance to set this ?  */
+    link_info.unresolved_syms_in_shared_libs = how_to_report_unresolved_symbols;
+
+  init_demangler (style, NULL, demangler);
 }
 
 /* Add the (colon-separated) elements of DIRLIST_PTR to the
    library search path.  */
 
 static void
-set_default_dirlist (dirlist_ptr)
-     char *dirlist_ptr;
+set_default_dirlist (char *dirlist_ptr)
 {
   char *p;
 
@@ -1368,8 +1391,7 @@ set_default_dirlist (dirlist_ptr)
 }
 
 static void
-set_section_start (sect, valstr)
-     char *sect, *valstr;
+set_section_start (char *sect, char *valstr)
 {
   const char *end;
   bfd_vma val = bfd_scan_vma (valstr, &end, 16);
@@ -1381,7 +1403,7 @@ set_section_start (sect, valstr)
 /* Print help messages for the options.  */
 
 static void
-help ()
+help (void)
 {
   unsigned i;
   const char **targets, **pp;
@@ -1487,6 +1509,9 @@ help ()
   printf (_("%s: emulation specific options:\n"), program_name);
   ldemul_list_emulation_options (stdout);
   printf ("\n");
+
+  printf (_("\nSupported demangler style: %s\n\n"),
+ 	  get_demangler_list ());
 
   printf (_("Report bugs to %s\n"), REPORT_BUGS_TO);
 }

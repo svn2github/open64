@@ -1238,6 +1238,12 @@ static void fixed_get_stmt (void)
       
       for (idx = nxt_line_EOL; idx > 0; idx --) {
          stmt_buf[stmt_buf_idx] = nxt_line[NXT_COL(idx)];
+#ifdef KEY
+         if (stmt_buf_idx >= MAX_STMT_CHAR_SIZE)
+           PRINTMSG(curr_glb_line, 1, Internal, 1,
+               "invalid smt_buf_idx",
+               "invalid smt_buf_idx");
+#endif
          stmt_buf_col[stmt_buf_idx] = nxt_line_col[NXT_COL(idx)];
          stmt_buf_idx--;
 
@@ -1625,7 +1631,11 @@ boolean read_line (boolean	cc_continuation_line)
    }
 
    /* copy max number characters in the next line to the source input buffer  */
-
+#ifdef KEY
+   if (src_stk_idx == NULL_IDX) { /* src_stk_idx underflow */     
+     PRINTMSG (curr_glb_line, 1, Internal, 0, "src_stk_idx");
+   }                                                              
+#endif
    ch = getc(SRC_STK_FILE_PTR(src_stk_idx));
 
    if (on_off_flags.preprocess &&

@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -857,7 +862,7 @@ EXP_HOISTING::Generate_hoisted_occur(EXP_WORKLST *exp_worklst)
 	    if (exp_phi->Need_insertion(opnd_num)) {
 	      insert_cr = Etable()->Get_cached_cur_expr(succ_bb, opnd_num);
 	      Is_True(insert_cr, ("EXP_HOISTING::Generate_hoisted_occur: unable to get cached expr.")); 
-	      Is_True(inCODEKIND(insert_cr->Kind(),CK_VAR|CK_RCONST|CK_CONST)
+	      Is_True(inCODEKIND(insert_cr->Kind(),CK_VAR|CK_RCONST|CK_CONST|CK_LDA)
 		      || insert_cr->Coderep_id() == 0, // expr need rehashing
 		      ("EXP_HOISTING::Generate_hoisted_occ: valno not cleared."));  
 	      break;

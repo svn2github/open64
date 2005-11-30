@@ -90,6 +90,7 @@ endif
 # use the f90 compiler for fortran
 
 LIBRARY = libF77.a
+PROF_LIB = libF77_p.a
 DSO = libF77.so
 DSO_NAME = libF77.so
 
@@ -103,7 +104,7 @@ ifeq ($(BUILD_TYPE), NONSHARED)
 TARGETS = $(LIBRARY)
 LINK_TARGET = $(LIBRARY)
 else
-TARGETS = $(LIBRARY) $(DSO)
+TARGETS = $(LIBRARY) $(PROF_LIB) $(DSO)
 LINK_TARGET = $(DSO)
 endif
 
@@ -148,6 +149,10 @@ VPATH    = $(SRC_DIRS)
 LCINCS += $(addprefix -I, $(SRC_DIRS))
 
 $(LIBRARY): $(OBJECTS)
+	$(ar) cru $@ $^
+	$(ranlib) $@
+
+$(PROF_LIB): $(OBJECTS:%.o=%.pg.o)
 	$(ar) cru $@ $^
 	$(ranlib) $@
 

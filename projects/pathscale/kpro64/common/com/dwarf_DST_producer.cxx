@@ -2002,6 +2002,7 @@ DST_mk_class_type(USRCPOS      decl,      /* Source location */
  * offset, and bit_size only apply to bitfields, while memb_loc is the
  * location of the block containing (properly aligned) the bitfield.
 */
+#ifndef KEY
 DST_INFO_IDX
 DST_mk_member(USRCPOS      decl,       /* Source location */
 	      char        *name,       /* Name of member */
@@ -2014,6 +2015,21 @@ DST_mk_member(USRCPOS      decl,       /* Source location */
 	      BOOL         is_static,
 	      BOOL         is_declaration,
 	      BOOL	   is_artificial)
+#else
+DST_INFO_IDX
+DST_mk_member(USRCPOS      decl,       /* Source location */
+	      char        *name,       /* Name of member */
+              DST_INFO_IDX type,       /* Type of member */
+	      DST_size_t   memb_loc,   /* Byte-offset of member container */
+	      DST_size_t   byte_size,  /* Byte-size of container */
+	      DST_bitsize  bit_offset, /* Offset within container */
+	      DST_bitsize  bit_size,   /* Size of bitfield member */
+	      BOOL         is_bitfield,
+	      BOOL         is_static,
+	      BOOL         is_declaration,
+	      BOOL	   is_artificial,
+	      DST_accessibility accessibility)
+#endif
 {
    DST_INFO_IDX info_idx;
    DST_ATTR_IDX attr_idx;
@@ -2044,17 +2060,29 @@ DST_mk_member(USRCPOS      decl,       /* Source location */
       DST_SET_static(flag);
    if (is_artificial)
       DST_SET_artificial(flag);
+#ifdef KEY
+   DST_MEMBER_accessibility(attr) = accessibility;
+#endif
    return DST_init_info(info_idx, DW_TAG_member, flag, attr_idx);
 }
 
 
 /* Creates a DW_TAG_inheritance entry.
 */
+#ifndef KEY
 DST_INFO_IDX
 DST_mk_inheritance(USRCPOS      decl,     /* Source location */
 		   DST_INFO_IDX type,     /* Type of member */
 		   DST_virtuality virtuality, /* AT_virtuality code */
 		   DST_size_t   memb_loc) /* Byte-offset of member container */
+#else
+DST_INFO_IDX
+DST_mk_inheritance(USRCPOS      decl,     /* Source location */
+		   DST_INFO_IDX type,     /* Type of member */
+		   DST_virtuality virtuality, /* AT_virtuality code */
+		   DST_size_t   memb_loc, /* Byte-offset of member container */
+		   DST_accessibility accessibility) /* AT_accessibility */
+#endif
 {
    DST_INFO_IDX info_idx;
    DST_ATTR_IDX attr_idx;
@@ -2072,6 +2100,9 @@ DST_mk_inheritance(USRCPOS      decl,     /* Source location */
    DST_INHERITANCE_type(attr) = type;
    DST_INHERITANCE_virtuality(attr) = virtuality;
    DST_INHERITANCE_memb_loc(attr) = memb_loc;
+#ifdef KEY
+   DST_INHERITANCE_accessibility(attr) = accessibility;
+#endif
    return DST_init_info(info_idx, DW_TAG_inheritance, flag, attr_idx);
 }
 

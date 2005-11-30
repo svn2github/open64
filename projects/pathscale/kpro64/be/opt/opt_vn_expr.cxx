@@ -74,6 +74,7 @@
 #include "cxx_memory.h"
 #include "wn_util.h"
 #include "targ_const.h"			// for TCON-related stuff
+#include "targ_const_private.h"		// for TCON-related stuff
 #include "const.h"			// for symbol/TCON-related
 
 #include "opt_config.h"
@@ -597,6 +598,17 @@ VN_LITERAL_EXPR::is_equal_to(CONST_PTR expr) const
 		strncmp(Targ_String_Address(_tcon),
 			Targ_String_Address(other_tcon),
 			Targ_String_Length(_tcon))); 
+#ifdef KEY
+	 // fix bug 2691: when both are floating-point zero, use integer
+	 // comparison so +0 and -0 will be regarded as different for value
+	 // numbering purpose
+	 else if (this_mty == MTYPE_F8 && 
+	          TCON_R8(other_tcon) == 0 && TCON_R8(_tcon) == 0)
+	    truth = TCON_v1(other_tcon) == TCON_v1(_tcon);
+	 else if (this_mty == MTYPE_F4 && 
+	          TCON_R4(other_tcon) == 0 && TCON_R4(_tcon) == 0)
+	    truth = TCON_word0(other_tcon) == TCON_word0(_tcon);
+#endif
 	 else
 	 {
 	    BOOL folded;

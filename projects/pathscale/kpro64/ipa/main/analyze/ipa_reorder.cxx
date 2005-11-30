@@ -468,7 +468,7 @@ void check_reorder_legality_of_type(INDEX ty_index)//
     	visited[ty_index] = TRUE;
 	return;
     }
-    if ((ty->size <= 112) || (ty->size > 120))
+    if ((ty->size <= 56) || (ty->size > 60))
     {// no reordering for greater sizes
     	visited[ty_index] = TRUE;
 	return;
@@ -786,9 +786,6 @@ handle_duplicates (void)
 {
     // remove the trace prints after debugging
     bool Trace_it=Get_Trace ( TP_IPA,IPA_TRACE_TUNING_NEW );
-    if (Trace_it)
-    	for (int i=0; i<reorder_candidate.size; ++i)
-	    fprintf (TFile, "%d\n", Ty_tab[(reorder_candidate.list+i)->ty_index].name_idx);
     qsort (reorder_candidate.list, reorder_candidate.size, sizeof(CAND_ITEM),
   					Cmp_NAME_IDX);
 
@@ -1009,6 +1006,18 @@ Cmp_old_field_id(const void *p1,const void*p2)
     return 0;
 }
 
+#ifdef KEY
+static void
+undo_field_reordering (FLD_ACCESS * flds, int count)
+{
+  for (int i=0; i<count; ++i)
+  {
+    flds[i].new_field_id = flds[i].old_field_id;
+    flds[i].offset = flds[i].old_offset;
+  }
+}
+#endif // KEY
+
 /*------------------------------------------------------------------*/
 /*function name :   IPO_get_new_ordering()                          */
 /*  1) get a new order according to field_access_info collected in IPL*/
@@ -1069,6 +1078,7 @@ void IPO_get_new_ordering()
         qsort( be_sorted_list,fld_num, sizeof(FLD_ACCESS), Cmp_FLD_ACCESS);
         //fill in new_field_id , and offset
         cur_offset=0;
+	int max_align = 0; // KEY
         for(k=0;k<fld_num;k++){
             be_sorted_list[k].new_field_id=k+1;
             cur_size=be_sorted_list[k].offset;
@@ -1079,6 +1089,8 @@ void IPO_get_new_ordering()
 	    }
             else
 	    {
+		if (be_sorted_list[k].align > max_align)
+		    max_align = be_sorted_list[k].align;
 	    	int rem = 0;
 		if (be_sorted_list[k].align)
 		    rem = cur_offset % be_sorted_list[k].align;
@@ -1104,8 +1116,17 @@ void IPO_get_new_ordering()
 #endif // KEY
         }
 #ifdef KEY
-	// TODO : compare the size with old size and handle it
-	Ty_tab [p_cand->ty_index].size = cur_offset;
+	// cur_offset is now the size of the struct
+	{
+	    // The ABI says that the size must be multiple of the largest
+	    // alignment.
+	    int rem = 0;
+	    if (max_align && (rem = cur_offset % max_align))
+	    	cur_offset += max_align - rem;
+	}
+	// if size changes, we cannot reorder it
+	if (Ty_tab [p_cand->ty_index].size != cur_offset)
+	    undo_field_reordering (be_sorted_list, fld_num);
 #endif // KEY
         //sort according to old_field_id in ascending order
         qsort( be_sorted_list,fld_num, sizeof(FLD_ACCESS), Cmp_old_field_id);
@@ -1190,6 +1211,7 @@ void IPO_get_new_ordering()
             fld_num=p_cand->fld_info.flatten_fields;
 #ifdef KEY	// give some more information
 // Note: Different entries in Ty_tab can have the same type_name
+	    if (!p_cand->flag.changed) continue;
             fprintf(TFile,"type name: %s, type id: %d, flatten_fields: %d, changed: %d\n",
                 Index_To_Str(ty.name_idx),
 		p_cand->ty_index,

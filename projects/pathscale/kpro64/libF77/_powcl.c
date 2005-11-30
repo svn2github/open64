@@ -44,7 +44,7 @@
 
 complex __powcl(float areal, float aimag, int64 n)   /* __powcl = a**n  */
 {
-  float_t t;
+  float t;
   complex x, p;
 
   p.real = 1;

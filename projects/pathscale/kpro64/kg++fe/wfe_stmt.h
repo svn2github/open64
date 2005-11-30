@@ -47,6 +47,10 @@ extern void Push_Temp_Cleanup (tree, bool, bool=0);
 extern void Do_EH_Tables (void);
 extern void Call_Terminate();
 extern LABEL_IDX lookup_cleanups(INITV_IDX&);
+extern bool WFE_call_copy_constructor (WN* val_wn, WN* dest_addr, TY_IDX tidx, tree type);
+extern bool Set_Current_Scope_Has_Alloca (INT &);
+extern void Set_Current_Scope_Alloca_St (ST *, int);
+extern void Add_Current_Scope_Alloca_St (ST *, int);
 extern ST_IDX exc_ptr;
 extern int make_symbols_weak;
 extern bool try_block_seen;
@@ -59,7 +63,7 @@ extern
 #ifdef __cplusplus
 "C"
 #endif
-void WFE_Expand_Stmt (tree stmt);
+void WFE_Expand_Stmt (tree stmt, WN* target_wn = NULL);
 
 #ifdef KEY
 extern LABEL_IDX WFE_unusable_label_idx;

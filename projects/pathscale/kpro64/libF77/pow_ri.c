@@ -42,21 +42,21 @@
 #include <math.h>
 #include "cmplrs/host.h"
 
-extern float_t __powri(float_t x, int32 n);
-extern float_t __powrl(float_t x, int64 n);
+extern float __powri(float x, int32 n);
+extern float __powrl(float x, int64 n);
 
 /* By-reference versions for backward compatibility. */
 
-float_t pow_ri(float_t *ap, int32 *bp)
+float pow_ri(float *ap, int32 *bp)
 {
-float_t pow;
+float pow;
 pow=__powri(*ap,*bp);
 return pow;
 }
 
-float_t pow_rl(float_t *ap, int64 *bp)
+float pow_rl(float *ap, int64 *bp)
 {
-float_t pow;
+float pow;
 pow=__powrl(*ap,*bp);
 return pow;
 }

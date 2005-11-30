@@ -86,7 +86,7 @@ BOOL  WOPT_Enable_Aggressive_Doloop_Promotion = FALSE;
 BOOL  WOPT_Enable_Aggressive_IVR = TRUE;
 BOOL  WOPT_Enable_Aggressive_Lftr = TRUE;
 BOOL  WOPT_Enable_Aggressive_Phi_Simp = TRUE;
-BOOL  WOPT_Enable_Aggstr_Reduction = FALSE;
+BOOL  WOPT_Enable_Aggstr_Reduction = TRUE;
 BOOL  WOPT_Enable_Alias_ANSI = TRUE;
 BOOL  WOPT_Enable_Alias_Classification = TRUE;
 BOOL  WOPT_Enable_Alias_Class_Fortran_Rule = TRUE;
@@ -193,7 +193,11 @@ BOOL  WOPT_Enable_Replace_Second_IV = TRUE;
 BOOL  WOPT_Enable_Replace_While_Loop_Second_IV = TRUE;
 BOOL  WOPT_Enable_Restricted_Map = TRUE;
 INT32 WOPT_Enable_Rsv_Bits = 16;	/* reserve bit count in itable */
+#ifdef TARG_X8664
+BOOL  WOPT_Enable_RVI = FALSE;		/* perform both rvi1 and rvi2 */
+#else
 BOOL  WOPT_Enable_RVI = TRUE;		/* perform both rvi1 and rvi2 */
+#endif
 BOOL  WOPT_Enable_RVI1 = TRUE;		/* phase 1 of rvi */
 BOOL  WOPT_Enable_RVI2 = TRUE;		/* phase 2 of rvi */
 BOOL  WOPT_Enable_Rviistore = TRUE;	/* agg. chi-handling on istore*/
@@ -275,6 +279,8 @@ BOOL  WOPT_Enable_Retype_Expr = FALSE;   // whether to call WN_retype_expr to
 					// change 64-bit operations to 32-bit 
 INT32 WOPT_Enable_Folded_Scalar_Limit = 1000; // limit to number of scalars
 					// formed by Fold_lda_iload_istore()
+INT32 WOPT_Enable_Bdceprop_Limit = -1; 	// to limit the BBs in which BDCE's
+					// copy propagation is performed
 #endif
 
 
@@ -318,7 +324,7 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,    &WOPT_Enable_Alias_Class_Fortran_Rule, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "avoid_rehash",		"",
     0, 0, 0,	&WOPT_Enable_Avoid_Rehash, NULL },
-  { OVK_BOOL,	OV_INTERNAL,	TRUE, "bdce",		"",
+  { OVK_BOOL,	OV_INTERNAL,	TRUE, "bdce",		"bdce",
     0, 0, 0,	&WOPT_Enable_Bitwise_DCE, NULL },
   { OVK_BOOL, OV_INTERNAL,    TRUE, "cse_fcmp",    "",
     0, 0, 0,  &WOPT_Enable_CSE_FP_comparison, NULL },
@@ -571,7 +577,7 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_Simp_Iload, NULL },
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "if_conv",		"",
     0, 0, 0,	&WOPT_Enable_Simple_If_Conv, NULL },
-  { OVK_INT32,	OV_INTERNAL,	TRUE, "if_conv_limit",		"",
+  { OVK_INT32,	OV_INTERNAL,	TRUE, "ifconv_limit",		"",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_If_Conv_Limit, NULL },
   { OVK_BOOL,   OV_INTERNAL,	TRUE, "tail_recursion",	"tail",
     0, 0, 0,	&WOPT_Enable_Tail_Recur, NULL },
@@ -648,6 +654,8 @@ static OPTION_DESC Options_WOPT[] = {
     TRUE, 0, 0,	&WOPT_Enable_Retype_Expr, NULL },
   { OVK_INT32,	OV_INTERNAL,	TRUE, "folded_scalar_limit",		"",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_Folded_Scalar_Limit, NULL },
+  { OVK_INT32,	OV_INTERNAL,	TRUE, "bdceprop_limit",	"bdceprop_limit",
+    INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_Bdceprop_Limit, NULL },
 #endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };

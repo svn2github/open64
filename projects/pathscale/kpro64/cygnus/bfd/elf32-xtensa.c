@@ -47,9 +47,6 @@ static bfd_boolean elf_xtensa_check_relocs
 	   const Elf_Internal_Rela *));
 static void elf_xtensa_hide_symbol
   PARAMS ((struct bfd_link_info *, struct elf_link_hash_entry *, bfd_boolean));
-static void elf_xtensa_copy_indirect_symbol
-  PARAMS ((struct elf_backend_data *, struct elf_link_hash_entry *,
-	   struct elf_link_hash_entry *));
 static asection *elf_xtensa_gc_mark_hook
   PARAMS ((asection *, struct bfd_link_info *, Elf_Internal_Rela *,
 	   struct elf_link_hash_entry *, Elf_Internal_Sym *));
@@ -63,7 +60,7 @@ static bfd_boolean elf_xtensa_adjust_dynamic_symbol
 static bfd_boolean elf_xtensa_size_dynamic_sections
   PARAMS ((bfd *, struct bfd_link_info *));
 static bfd_boolean elf_xtensa_modify_segment_map
-  PARAMS ((bfd *));
+  PARAMS ((bfd *, struct bfd_link_info *));
 static bfd_boolean elf_xtensa_relocate_section
   PARAMS ((bfd *, struct bfd_link_info *, bfd *, asection *, bfd_byte *,
 	   Elf_Internal_Rela *, Elf_Internal_Sym *, asection **));
@@ -102,6 +99,8 @@ static bfd_boolean elf_xtensa_new_section_hook
 
 /* Local helper functions.  */
 
+static bfd_boolean xtensa_elf_dynamic_symbol_p
+  PARAMS ((struct elf_link_hash_entry *, struct bfd_link_info *));
 static int property_table_compare
   PARAMS ((const PTR, const PTR));
 static bfd_boolean elf_xtensa_in_literal_pool
@@ -127,16 +126,14 @@ static char *build_encoding_error_message
   PARAMS ((xtensa_opcode, xtensa_encode_result));
 static bfd_reloc_status_type bfd_elf_xtensa_reloc
   PARAMS ((bfd *, arelent *, asymbol *, PTR, asection *, bfd *, char **));
-static void do_fix_for_relocateable_link
+static void do_fix_for_relocatable_link
   PARAMS ((Elf_Internal_Rela *, bfd *, asection *));
 static void do_fix_for_final_link
   PARAMS ((Elf_Internal_Rela *, asection *, bfd_vma *));
-static bfd_boolean xtensa_elf_dynamic_symbol_p
-  PARAMS ((struct bfd_link_info *, struct elf_link_hash_entry *));
 static bfd_vma elf_xtensa_create_plt_entry
   PARAMS ((bfd *, bfd *, unsigned));
 static int elf_xtensa_combine_prop_entries
-  PARAMS ((bfd *, const char *));
+  PARAMS ((bfd *, asection *, asection *));
 static bfd_boolean elf_xtensa_discard_info_for_section
   PARAMS ((bfd *, struct elf_reloc_cookie *, struct bfd_link_info *,
 	   asection *));
@@ -206,14 +203,14 @@ static bfd_boolean pcrel_reloc_fits
   PARAMS ((xtensa_operand, bfd_vma, bfd_vma));
 static bfd_boolean xtensa_is_property_section
   PARAMS ((asection *));
+static bfd_boolean xtensa_is_littable_section
+  PARAMS ((asection *));
 static bfd_boolean is_literal_section
   PARAMS ((asection *));
 static int internal_reloc_compare
   PARAMS ((const PTR, const PTR));
-static bfd_boolean get_is_linkonce_section
-  PARAMS ((bfd *, asection *));
 extern char *xtensa_get_property_section_name
-  PARAMS ((bfd *, asection *, const char *));
+  PARAMS ((asection *, const char *));
 
 /* Other functions called directly by the linker.  */
 
@@ -231,7 +228,7 @@ typedef struct xtensa_relax_info_struct xtensa_relax_info;
    The actual PLT code must be split into multiple sections and all
    the sections have to be created before size_dynamic_sections,
    where we figure out the exact number of PLT entries that will be
-   needed.  It is OK is this count is an overestimate, e.g., some
+   needed.  It is OK if this count is an overestimate, e.g., some
    relocations may be removed by GC.  */
 
 static int plt_reloc_count = 0;
@@ -447,6 +444,21 @@ static const bfd_byte elf_xtensa_le_plt_entry[PLT_ENTRY_SIZE] =
   0			/* unused */
 };
 
+
+static inline bfd_boolean
+xtensa_elf_dynamic_symbol_p (h, info)
+     struct elf_link_hash_entry *h;
+     struct bfd_link_info *info;
+{
+  /* Check if we should do dynamic things to this symbol.  The
+     "ignore_protected" argument need not be set, because Xtensa code
+     does not require special handling of STV_PROTECTED to make function
+     pointer comparisons work properly.  The PLT addresses are never
+     used for function pointers.  */
+
+  return _bfd_elf_dynamic_symbol_p (h, info, 0);
+}
+
 
 static int
 property_table_compare (ap, bp)
@@ -487,8 +499,9 @@ xtensa_read_table_entries (abfd, section, table_p, sec_name)
   Elf_Internal_Rela *internal_relocs;
 
   table_section_name = 
-    xtensa_get_property_section_name (abfd, section, sec_name);
+    xtensa_get_property_section_name (section, sec_name);
   table_section = bfd_get_section_by_name (abfd, table_section_name);
+  free (table_section_name);
   if (table_section != NULL)
     table_size = bfd_get_section_size_before_reloc (table_section);
   
@@ -498,7 +511,7 @@ xtensa_read_table_entries (abfd, section, table_p, sec_name)
       return 0;
     }
 
-  num_records = table_size / sizeof (property_table_entry);
+  num_records = table_size / 8;
   table_data = retrieve_contents (abfd, table_section, TRUE);
   blocks = (property_table_entry *)
     bfd_malloc (num_records * sizeof (property_table_entry));
@@ -540,7 +553,7 @@ xtensa_read_table_entries (abfd, section, table_p, sec_name)
 	 and the addresses are already in the table.  */
       bfd_vma off;
 
-      for (off = 0; off < table_size; off += sizeof (property_table_entry)) 
+      for (off = 0; off < table_size; off += 8) 
 	{
 	  bfd_vma address = bfd_get_32 (abfd, table_data + off);
 
@@ -609,7 +622,7 @@ elf_xtensa_check_relocs (abfd, info, sec, relocs)
   property_table_entry *lit_table;
   int ltblsize;
 
-  if (info->relocateable)
+  if (info->relocatable)
     return TRUE;
 
   symtab_hdr = &elf_tdata (abfd)->symtab_hdr;
@@ -780,19 +793,6 @@ elf_xtensa_hide_symbol (info, h, force_local)
 }
 
 
-static void
-elf_xtensa_copy_indirect_symbol (bed, dir, ind)
-     struct elf_backend_data *bed;
-     struct elf_link_hash_entry *dir, *ind;
-{
-  _bfd_elf_link_hash_copy_indirect (bed, dir, ind);
-
-  /* The standard function doesn't copy the NEEDS_PLT flag.  */
-  dir->elf_link_hash_flags |=
-    (ind->elf_link_hash_flags & ELF_LINK_HASH_NEEDS_PLT);
-}
-
-
 /* Return the section that should be marked against GC for a given
    relocation.  */
 
@@ -904,7 +904,7 @@ elf_xtensa_create_dynamic_sections (dynobj, info)
      bfd *dynobj;
      struct bfd_link_info *info;
 {
-  flagword flags;
+  flagword flags, noalloc_flags;
   asection *s;
 
   /* First do all the standard stuff.  */
@@ -916,8 +916,9 @@ elf_xtensa_create_dynamic_sections (dynobj, info)
   if (!add_extra_plt_sections (dynobj, plt_reloc_count))
     return FALSE;
 
-  flags = (SEC_ALLOC | SEC_LOAD | SEC_HAS_CONTENTS | SEC_IN_MEMORY
-	   | SEC_LINKER_CREATED | SEC_READONLY);
+  noalloc_flags = (SEC_HAS_CONTENTS | SEC_IN_MEMORY
+		   | SEC_LINKER_CREATED | SEC_READONLY);
+  flags = noalloc_flags | SEC_ALLOC | SEC_LOAD;
 
   /* Mark the ".got.plt" section READONLY.  */
   s = bfd_get_section_by_name (dynobj, ".got.plt");
@@ -932,10 +933,17 @@ elf_xtensa_create_dynamic_sections (dynobj, info)
       || ! bfd_set_section_alignment (dynobj, s, 2))
     return FALSE;
 
+  /* Create ".got.loc" (literal tables for use by dynamic linker).  */
+  s = bfd_make_section (dynobj, ".got.loc");
+  if (s == NULL
+      || ! bfd_set_section_flags (dynobj, s, flags)
+      || ! bfd_set_section_alignment (dynobj, s, 2))
+    return FALSE;
+
   /* Create ".xt.lit.plt" (literal table for ".got.plt*").  */
   s = bfd_make_section (dynobj, ".xt.lit.plt");
   if (s == NULL
-      || ! bfd_set_section_flags (dynobj, s, flags)
+      || ! bfd_set_section_flags (dynobj, s, noalloc_flags)
       || ! bfd_set_section_alignment (dynobj, s, 2))
     return FALSE;
 
@@ -1053,7 +1061,7 @@ elf_xtensa_fix_refcounts (h, arg)
   if (h->root.type == bfd_link_hash_warning)
     h = (struct elf_link_hash_entry *) h->root.u.i.link;
 
-  if (! xtensa_elf_dynamic_symbol_p (info, h))
+  if (! xtensa_elf_dynamic_symbol_p (h, info))
     elf_xtensa_make_sym_local (info, h);
 
   /* If the symbol has a relocation outside the GOT, set the
@@ -1136,8 +1144,8 @@ elf_xtensa_size_dynamic_sections (output_bfd, info)
      bfd *output_bfd ATTRIBUTE_UNUSED;
      struct bfd_link_info *info;
 {
-  bfd *dynobj;
-  asection *s, *srelplt, *splt, *sgotplt, *srelgot, *spltlittbl;
+  bfd *dynobj, *abfd;
+  asection *s, *srelplt, *splt, *sgotplt, *srelgot, *spltlittbl, *sgotloc;
   bfd_boolean relplt, relgot;
   int plt_entries, plt_chunks, chunk;
 
@@ -1152,7 +1160,7 @@ elf_xtensa_size_dynamic_sections (output_bfd, info)
   if (elf_hash_table (info)->dynamic_sections_created)
     {
       /* Set the contents of the .interp section to the interpreter.  */
-      if (! info->shared)
+      if (info->executable)
 	{
 	  s = bfd_get_section_by_name (dynobj, ".interp");
 	  if (s == NULL)
@@ -1241,6 +1249,25 @@ elf_xtensa_size_dynamic_sections (output_bfd, info)
 	      splt->_raw_size = 0;
 	    }
 	}
+
+      /* Allocate space in ".got.loc" to match the total size of all the
+	 literal tables.  */
+      sgotloc = bfd_get_section_by_name (dynobj, ".got.loc");
+      if (sgotloc == NULL)
+	abort ();
+      sgotloc->_raw_size = spltlittbl->_raw_size;
+      for (abfd = info->input_bfds; abfd != NULL; abfd = abfd->link_next)
+	{
+	  if (abfd->flags & DYNAMIC)
+	    continue;
+	  for (s = abfd->sections; s != NULL; s = s->next)
+	    {
+	      if (! elf_discarded_section (s)
+		  && xtensa_is_littable_section (s)
+		  && s != spltlittbl)
+		sgotloc->_raw_size += s->_raw_size;
+	    }
+	}
     }
 
   /* Allocate memory for dynamic sections.  */
@@ -1291,7 +1318,8 @@ elf_xtensa_size_dynamic_sections (output_bfd, info)
       else if (strcmp (name, ".got") != 0
 	       && strcmp (name, ".plt") != 0
 	       && strcmp (name, ".got.plt") != 0
-	       && strcmp (name, ".xt.lit.plt") != 0)
+	       && strcmp (name, ".xt.lit.plt") != 0
+	       && strcmp (name, ".got.loc") != 0)
 	{
 	  /* It's not one of our sections, so don't allocate space.  */
 	  continue;
@@ -1387,8 +1415,9 @@ elf_xtensa_size_dynamic_sections (output_bfd, info)
    this and it probably ought to be moved into elf.c as well.  */
 
 static bfd_boolean
-elf_xtensa_modify_segment_map (abfd)
+elf_xtensa_modify_segment_map (abfd, info)
      bfd *abfd;
+     struct bfd_link_info *info ATTRIBUTE_UNUSED;
 {
   struct elf_segment_map **m_p;
 
@@ -1662,7 +1691,7 @@ bfd_elf_xtensa_reloc (abfd, reloc_entry, symbol, data, input_section,
   asection *reloc_target_output_section;
   bfd_boolean is_weak_undef;
 
-  /* ELF relocs are against symbols.  If we are producing relocateable
+  /* ELF relocs are against symbols.  If we are producing relocatable
      output, and the reloc is against an external symbol, the resulting
      reloc will also be against the same symbol.  In such a case, we
      don't want to change anything about the way the reloc is handled,
@@ -1685,7 +1714,7 @@ bfd_elf_xtensa_reloc (abfd, reloc_entry, symbol, data, input_section,
 			      / bfd_octets_per_byte (abfd)))
     return bfd_reloc_outofrange;
 
-  /* Work out which section the relocation is targetted at and the
+  /* Work out which section the relocation is targeted at and the
      initial relocation command value.  */
 
   /* Get symbol value.  (Common symbols are special.)  */
@@ -1800,48 +1829,8 @@ elf_xtensa_create_plt_entry (dynobj, output_bfd, reloc_index)
 }
 
 
-static bfd_boolean
-xtensa_elf_dynamic_symbol_p (info, h)
-     struct bfd_link_info *info;
-     struct elf_link_hash_entry *h;
-{
-  if (h == NULL)
-    return FALSE;
-
-  while (h->root.type == bfd_link_hash_indirect
-	 || h->root.type == bfd_link_hash_warning)
-    h = (struct elf_link_hash_entry *) h->root.u.i.link;
-
-  if (h->dynindx == -1)
-    return FALSE;
-
-  if (h->root.type == bfd_link_hash_undefweak
-      || h->root.type == bfd_link_hash_defweak)
-    return TRUE;
-
-  switch (ELF_ST_VISIBILITY (h->other))
-    {
-    case STV_DEFAULT:
-      break;
-    case STV_HIDDEN:
-    case STV_INTERNAL:
-      return FALSE;
-    case STV_PROTECTED:
-      if (h->elf_link_hash_flags & ELF_LINK_HASH_DEF_REGULAR)
-        return FALSE;
-      break;
-    }
-
-  if ((info->shared && !info->symbolic)
-      || (h->elf_link_hash_flags & ELF_LINK_HASH_DEF_REGULAR) == 0)
-    return TRUE;
-
-  return FALSE;
-}
-
-
 /* Relocate an Xtensa ELF section.  This is invoked by the linker for
-   both relocateable and final links.  */
+   both relocatable and final links.  */
 
 static bfd_boolean
 elf_xtensa_relocate_section (output_bfd, info, input_bfd,
@@ -1909,9 +1898,9 @@ elf_xtensa_relocate_section (output_bfd, info, input_bfd,
 
       r_symndx = ELF32_R_SYM (rel->r_info);
 
-      if (info->relocateable)
+      if (info->relocatable)
 	{
-	  /* This is a relocateable link. 
+	  /* This is a relocatable link. 
 	     1) If the reloc is against a section symbol, adjust
 	     according to the output section.
 	     2) If there is a new target for this relocation,
@@ -1922,7 +1911,7 @@ elf_xtensa_relocate_section (output_bfd, info, input_bfd,
 	  if (relaxing_section)
 	    {
 	      /* Check if this references a section in another input file.  */
-	      do_fix_for_relocateable_link (rel, input_bfd, input_section);
+	      do_fix_for_relocatable_link (rel, input_bfd, input_section);
 	      r_type = ELF32_R_TYPE (rel->r_info);
 	    }
 
@@ -1934,7 +1923,7 @@ elf_xtensa_relocate_section (output_bfd, info, input_bfd,
 	      r_type = ELF32_R_TYPE (rel->r_info);
 	    }
 
-	  /* This is a relocateable link, so we don't have to change
+	  /* This is a relocatable link, so we don't have to change
 	     anything unless the reloc is against a section symbol,
 	     in which case we have to adjust according to where the
 	     section symbol winds up in the output section.  */
@@ -1950,7 +1939,7 @@ elf_xtensa_relocate_section (output_bfd, info, input_bfd,
 
 	  /* If there is an addend with a partial_inplace howto,
 	     then move the addend to the contents.  This is a hack
-	     to work around problems with DWARF in relocateable links
+	     to work around problems with DWARF in relocatable links
 	     with some previous version of BFD.  Now we can't easily get
 	     rid of the hack without breaking backward compatibility.... */
 	  if (rel->r_addend)
@@ -1973,7 +1962,7 @@ elf_xtensa_relocate_section (output_bfd, info, input_bfd,
 		}
 	    }
 
-	  /* Done with work for relocateable link; continue with next reloc.  */
+	  /* Done with work for relocatable link; continue with next reloc.  */
 	  continue;
 	}
 
@@ -2000,49 +1989,19 @@ elf_xtensa_relocate_section (output_bfd, info, input_bfd,
 	{
 	  sym = local_syms + r_symndx;
 	  sec = local_sections[r_symndx];
-	  relocation = _bfd_elf_rela_local_sym (output_bfd, sym, sec, rel);
+	  relocation = _bfd_elf_rela_local_sym (output_bfd, sym, &sec, rel);
 	}
       else
 	{
-	  h = sym_hashes[r_symndx - symtab_hdr->sh_info];
+	  RELOC_FOR_GLOBAL_SYMBOL (h, sym_hashes, r_symndx,
+				   symtab_hdr, relocation, sec,
+				   unresolved_reloc, info,
+				   warned);
 
-	  while (h->root.type == bfd_link_hash_indirect
-		 || h->root.type == bfd_link_hash_warning)
-	    h = (struct elf_link_hash_entry *) h->root.u.i.link;
-
-	  relocation = 0;
-	  if (h->root.type == bfd_link_hash_defined
-	      || h->root.type == bfd_link_hash_defweak)
-	    {
-	      sec = h->root.u.def.section;
-
-	      if (sec->output_section == NULL)
-		/* Set a flag that will be cleared later if we find a
-		   relocation value for this symbol.  output_section
-		   is typically NULL for symbols satisfied by a shared
-		   library.  */
-		unresolved_reloc = TRUE;
-	      else
-		relocation = (h->root.u.def.value
-			      + sec->output_section->vma
-			      + sec->output_offset);
-	    }
-	  else if (h->root.type == bfd_link_hash_undefweak)
+	  if (relocation == 0
+	      && !unresolved_reloc
+	      && h->root.type == bfd_link_hash_undefweak)
 	    is_weak_undef = TRUE;
-	  else if (info->shared
-		   && !info->no_undefined
-		   && ELF_ST_VISIBILITY (h->other) == STV_DEFAULT)
-	    ;
-	  else
-	    {
-	      if (! ((*info->callbacks->undefined_symbol)
-		     (info, h->root.root.string, input_bfd,
-		      input_section, rel->r_offset,
-		      (!info->shared || info->no_undefined
-		       || ELF_ST_VISIBILITY (h->other)))))
-		return FALSE;
-	      warned = TRUE;
-	    }
 	}
 
       if (relaxing_section)
@@ -2066,7 +2025,7 @@ elf_xtensa_relocate_section (output_bfd, info, input_bfd,
       /* Generate dynamic relocations.  */
       if (elf_hash_table (info)->dynamic_sections_created)
 	{
-	  bfd_boolean dynamic_symbol = xtensa_elf_dynamic_symbol_p (info, h);
+	  bfd_boolean dynamic_symbol = xtensa_elf_dynamic_symbol_p (h, info);
 
 	  if (dynamic_symbol && (r_type == R_XTENSA_OP0
 				 || r_type == R_XTENSA_OP1
@@ -2106,8 +2065,8 @@ elf_xtensa_relocate_section (output_bfd, info, input_bfd,
 		memset (&outrel, 0, sizeof outrel);
 	      else
 		{
-		  outrel.r_offset = (input_section->output_section->vma
-				     + input_section->output_offset);
+		  outrel.r_offset += (input_section->output_section->vma
+				      + input_section->output_offset);
 
 		  if (dynamic_symbol)
 		    {
@@ -2236,24 +2195,30 @@ elf_xtensa_finish_dynamic_symbol (output_bfd, info, h, sym)
    on error.  */
 
 static int
-elf_xtensa_combine_prop_entries (output_bfd, secname)
+elf_xtensa_combine_prop_entries (output_bfd, sxtlit, sgotloc)
      bfd *output_bfd;
-     const char *secname;
+     asection *sxtlit;
+     asection *sgotloc;
 {
-  asection *sec;
   bfd_byte *contents;
   property_table_entry *table;
-  bfd_size_type section_size;
+  bfd_size_type section_size, sgotloc_size;
   bfd_vma offset;
   int n, m, num;
 
-  sec = bfd_get_section_by_name (output_bfd, secname);
-  if (!sec)
-    return -1;
-
-  section_size = (sec->_cooked_size != 0 ? sec->_cooked_size : sec->_raw_size);
+  section_size = (sxtlit->_cooked_size != 0
+		  ? sxtlit->_cooked_size : sxtlit->_raw_size);
   BFD_ASSERT (section_size % 8 == 0);
   num = section_size / 8;
+
+  sgotloc_size = (sgotloc->_cooked_size != 0
+		  ? sgotloc->_cooked_size : sgotloc->_raw_size);
+  if (sgotloc_size != section_size)
+    {
+      (*_bfd_error_handler)
+	("internal inconsistency in size of .got.loc section");
+      return -1;
+    }
 
   contents = (bfd_byte *) bfd_malloc (section_size);
   table = (property_table_entry *)
@@ -2264,9 +2229,10 @@ elf_xtensa_combine_prop_entries (output_bfd, secname)
   /* The ".xt.lit.plt" section has the SEC_IN_MEMORY flag set and this
      propagates to the output section, where it doesn't really apply and
      where it breaks the following call to bfd_get_section_contents.  */
-  sec->flags &= ~SEC_IN_MEMORY;
+  sxtlit->flags &= ~SEC_IN_MEMORY;
 
-  if (! bfd_get_section_contents (output_bfd, sec, contents, 0, section_size))
+  if (! bfd_get_section_contents (output_bfd, sxtlit, contents, 0,
+				  section_size))
     return -1;
 
   /* There should never be any relocations left at this point, so this
@@ -2321,13 +2287,18 @@ elf_xtensa_combine_prop_entries (output_bfd, secname)
   if ((bfd_size_type) (num * 8) < section_size)
     {
       memset (&contents[num * 8], 0, section_size - num * 8);
-      sec->_cooked_size = num * 8;
+      sxtlit->_cooked_size = num * 8;
     }
 
-  if (! bfd_set_section_contents (output_bfd, sec, contents, 0, section_size))
+  if (! bfd_set_section_contents (output_bfd, sxtlit, contents, 0,
+				  section_size))
     return -1;
 
+  /* Copy the contents to ".got.loc".  */
+  memcpy (sgotloc->contents, contents, section_size);
+
   free (contents);
+  free (table);
   return num;
 }
 
@@ -2340,7 +2311,7 @@ elf_xtensa_finish_dynamic_sections (output_bfd, info)
      struct bfd_link_info *info;
 {
   bfd *dynobj;
-  asection *sdyn, *srelplt, *sgot;
+  asection *sdyn, *srelplt, *sgot, *sxtlit, *sgotloc;
   Elf32_External_Dyn *dyncon, *dynconend;
   int num_xtlit_entries;
 
@@ -2465,8 +2436,12 @@ elf_xtensa_finish_dynamic_sections (output_bfd, info)
     }
 
   /* Combine adjacent literal table entries.  */
-  BFD_ASSERT (! info->relocateable);
-  num_xtlit_entries = elf_xtensa_combine_prop_entries (output_bfd, ".xt.lit");
+  BFD_ASSERT (! info->relocatable);
+  sxtlit = bfd_get_section_by_name (output_bfd, ".xt.lit");
+  sgotloc = bfd_get_section_by_name (dynobj, ".got.loc");
+  BFD_ASSERT (sxtlit && sgotloc);
+  num_xtlit_entries =
+    elf_xtensa_combine_prop_entries (output_bfd, sxtlit, sgotloc);
   if (num_xtlit_entries < 0)
     return FALSE;
 
@@ -2486,13 +2461,11 @@ elf_xtensa_finish_dynamic_sections (output_bfd, info)
 	  break;
 
 	case DT_XTENSA_GOT_LOC_SZ:
-	  s = bfd_get_section_by_name (output_bfd, ".xt.lit");
-	  BFD_ASSERT (s);
 	  dyn.d_un.d_val = num_xtlit_entries;
 	  break;
 
 	case DT_XTENSA_GOT_LOC_OFF:
-	  name = ".xt.lit";
+	  name = ".got.loc";
 	  goto get_vma;
 	case DT_PLTGOT:
 	  name = ".got";
@@ -2564,7 +2537,7 @@ elf_xtensa_merge_private_bfd_data (ibfd, obfd)
   if (out_mach != in_mach) 
     {
       (*_bfd_error_handler)
-	("%s: incompatible machine type. Output is 0x%x. Input is 0x%x\n",
+	("%s: incompatible machine type. Output is 0x%x. Input is 0x%x",
 	 bfd_archive_filename (ibfd), out_mach, in_mach);
       bfd_set_error (bfd_error_wrong_format);
       return FALSE;
@@ -2810,6 +2783,24 @@ elf_xtensa_discard_info_for_section (abfd, cookie, info, sec)
       sec->_cooked_size = section_size - removed_bytes;
       /* Also shrink _raw_size.  See comments in relax_property_section.  */
       sec->_raw_size = sec->_cooked_size;
+
+      if (xtensa_is_littable_section (sec))
+	{
+	  bfd *dynobj = elf_hash_table (info)->dynobj;
+	  if (dynobj)
+	    {
+	      asection *sgotloc =
+		bfd_get_section_by_name (dynobj, ".got.loc");
+	      if (sgotloc)
+		{
+		  bfd_size_type sgotloc_size =
+		    (sgotloc->_cooked_size ? sgotloc->_cooked_size
+		     : sgotloc->_raw_size);
+		  sgotloc->_cooked_size = sgotloc_size - removed_bytes;
+		  sgotloc->_raw_size = sgotloc_size - removed_bytes;
+		}
+	    }
+	}
     }
   else
     {
@@ -3088,7 +3079,7 @@ elf_xtensa_do_asm_simplify (contents, address, content_length)
   if (content_length < address)
     {
       (*_bfd_error_handler)
-	("Attempt to convert L32R/CALLX to CALL failed\n");
+	("Attempt to convert L32R/CALLX to CALL failed");
       return bfd_reloc_other;
     }
 
@@ -3097,7 +3088,7 @@ elf_xtensa_do_asm_simplify (contents, address, content_length)
   if (direct_call_opcode == XTENSA_UNDEFINED)
     {
       (*_bfd_error_handler)
-	("Attempt to convert L32R/CALLX to CALL failed\n");
+	("Attempt to convert L32R/CALLX to CALL failed");
       return bfd_reloc_other;
     }
   
@@ -3539,6 +3530,7 @@ hash_literal_value (src)
      const literal_value *src;
 {
   unsigned hash_val;
+
   if (r_reloc_is_const (&src->r_rel))
     return hash_bfd_vma (src->value);
 
@@ -3547,9 +3539,9 @@ hash_literal_value (src)
   
   /* Now check for the same section and the same elf_hash.  */
   if (r_reloc_is_defined (&src->r_rel))
-    hash_val += hash_bfd_vma ((bfd_vma) r_reloc_get_section (&src->r_rel));
+    hash_val += hash_bfd_vma ((bfd_vma) (unsigned) r_reloc_get_section (&src->r_rel));
   else
-    hash_val += hash_bfd_vma ((bfd_vma) r_reloc_get_hash_entry (&src->r_rel));
+    hash_val += hash_bfd_vma ((bfd_vma) (unsigned) r_reloc_get_hash_entry (&src->r_rel));
 
   return hash_val;
 }
@@ -3925,7 +3917,7 @@ retrieve_internal_relocs (abfd, sec, keep_memory)
 
   internal_relocs = elf_section_data (sec)->relocs;
   if (internal_relocs == NULL)
-    internal_relocs = (_bfd_elf32_link_read_relocs
+    internal_relocs = (_bfd_elf_link_read_relocs
 		       (abfd, sec, (PTR) NULL, (Elf_Internal_Rela *) NULL,
 			keep_memory));
   return internal_relocs;
@@ -4179,7 +4171,7 @@ analyze_relocations (link_info)
    expensive and unnecessary unless the target section is actually going
    to be relaxed.  This pass identifies all such sections by checking if
    they have L32Rs pointing to them.  In the process, the total number
-   of relocations targetting each section is also counted so that we
+   of relocations targeting each section is also counted so that we
    know how much space to allocate for source_relocs against each
    relaxable literal section.  */
 
@@ -4431,10 +4423,10 @@ is_resolvable_asm_expansion (abfd, sec, contents, irel, link_info,
   if (!target_sec->output_section)
     return FALSE;
       
-  /* For relocateable sections, we can only simplify when the output
+  /* For relocatable sections, we can only simplify when the output
      section of the target is the same as the output section of the
      source.  */
-  if (link_info->relocateable
+  if (link_info->relocatable
       && (target_sec->output_section != sec->output_section))
     return FALSE;
 
@@ -4931,7 +4923,7 @@ shrink_dynamic_reloc_sections (info, abfd, input_section, rel)
   else
     h = sym_hashes[r_symndx - symtab_hdr->sh_info];
 
-  dynamic_symbol = xtensa_elf_dynamic_symbol_p (info, h);
+  dynamic_symbol = xtensa_elf_dynamic_symbol_p (h, info);
 
   if ((r_type == R_XTENSA_32 || r_type == R_XTENSA_PLT)
       && (input_section->flags & SEC_ALLOC) != 0
@@ -5264,9 +5256,27 @@ relax_property_section (abfd, sec, link_info)
 	     relaxed; shrinking _raw_size means that these checks will
 	     not be unnecessarily lax.)  */
 	  sec->_raw_size = sec->_cooked_size;
+
+	  if (xtensa_is_littable_section (sec))
+	    {
+	      bfd *dynobj = elf_hash_table (link_info)->dynobj;
+	      if (dynobj)
+		{
+		  asection *sgotloc =
+		    bfd_get_section_by_name (dynobj, ".got.loc");
+		  if (sgotloc)
+		    {
+		      bfd_size_type sgotloc_size =
+			(sgotloc->_cooked_size ? sgotloc->_cooked_size
+			 : sgotloc->_raw_size);
+		      sgotloc->_cooked_size = sgotloc_size - removed_bytes;
+		      sgotloc->_raw_size = sgotloc_size - removed_bytes;
+		    }
+		}
+	    }
 	}
     }
-	  
+
  error_return:
   release_internal_relocs (sec, internal_relocs);
   release_contents (sec, contents);
@@ -5345,7 +5355,7 @@ relax_section_symbols (abfd, sec)
 /* "Fix" handling functions, called while performing relocations.  */
 
 static void
-do_fix_for_relocateable_link (rel, input_bfd, input_section)
+do_fix_for_relocatable_link (rel, input_bfd, input_section)
      Elf_Internal_Rela *rel;
      bfd *input_bfd;
      asection *input_section;
@@ -5580,16 +5590,42 @@ pcrel_reloc_fits (opnd, self_address, dest_address)
 }
 
 
+static int linkonce_len = sizeof (".gnu.linkonce.") - 1;
+static int insn_sec_len = sizeof (XTENSA_INSN_SEC_NAME) - 1;
+static int lit_sec_len = sizeof (XTENSA_LIT_SEC_NAME) - 1;
+
+
 static bfd_boolean 
 xtensa_is_property_section (sec)
      asection *sec;
 {
-  static int len = sizeof (".gnu.linkonce.t.") - 1;
+  if (strncmp (XTENSA_INSN_SEC_NAME, sec->name, insn_sec_len) == 0
+      || strncmp (XTENSA_LIT_SEC_NAME, sec->name, lit_sec_len) == 0)
+    return TRUE;
 
-  return (strcmp (".xt.insn", sec->name) == 0
-	  || strcmp (".xt.lit", sec->name) == 0
-	  || strncmp (".gnu.linkonce.x.", sec->name, len) == 0
-	  || strncmp (".gnu.linkonce.p.", sec->name, len) == 0);
+  if (strncmp (".gnu.linkonce.", sec->name, linkonce_len) == 0
+      && (sec->name[linkonce_len] == 'x'
+	  || sec->name[linkonce_len] == 'p')
+      && sec->name[linkonce_len + 1] == '.')
+    return TRUE;
+
+  return FALSE;
+}
+
+
+static bfd_boolean 
+xtensa_is_littable_section (sec)
+     asection *sec;
+{
+  if (strncmp (XTENSA_LIT_SEC_NAME, sec->name, lit_sec_len) == 0)
+    return TRUE;
+
+  if (strncmp (".gnu.linkonce.", sec->name, linkonce_len) == 0
+      && sec->name[linkonce_len] == 'p'
+      && sec->name[linkonce_len + 1] == '.')
+    return TRUE;
+
+  return FALSE;
 }
 
 
@@ -5616,78 +5652,42 @@ internal_reloc_compare (ap, bp)
 }
 
 
-static bfd_boolean
-get_is_linkonce_section (abfd, sec)
-     bfd *abfd ATTRIBUTE_UNUSED;
-     asection *sec;
-{
-  flagword flags, link_once_flags;
-  bfd_boolean is_linkonce = FALSE;;
-
-  flags = bfd_get_section_flags (abfd, sec);
-  link_once_flags = (flags & SEC_LINK_ONCE);
-  if (link_once_flags != 0)
-    is_linkonce = TRUE;
-
-  /* In order for this to be useful to the assembler
-     before the linkonce flag is set we need to
-     check for the GNU extension name.  */
-  if (!is_linkonce &&
-      strncmp (sec->name, ".gnu.linkonce", sizeof ".gnu.linkonce" - 1) == 0)
-    is_linkonce = TRUE;
-  
-  return is_linkonce;
-}
-
-
 char *
-xtensa_get_property_section_name (abfd, sec, base_name)
-     bfd *abfd;
+xtensa_get_property_section_name (sec, base_name)
      asection *sec;
-     const char * base_name;
+     const char *base_name;
 {
-  char *table_sec_name = NULL;
-  bfd_boolean is_linkonce;
-
-  is_linkonce = get_is_linkonce_section (abfd, sec);
-
-  if (!is_linkonce)
+  if (strncmp (sec->name, ".gnu.linkonce.", linkonce_len) == 0)
     {
-      table_sec_name = strdup (base_name);
-    }
-  else
-    {
-      static size_t prefix_len = sizeof (".gnu.linkonce.t.") - 1;
-      size_t len = strlen (sec->name) + 1;
-      char repl_char = '\0';
-      const char *segname = sec->name;
+      char *prop_sec_name;
+      const char *suffix;
+      char linkonce_kind = 0;
 
-      if (strncmp (segname, ".gnu.linkonce.t.", prefix_len) == 0)
-	{
-	  if (strcmp (base_name, ".xt.insn") == 0) 
-	    repl_char = 'x';
-	  else if (strcmp (base_name, ".xt.lit") == 0) 
-	    repl_char = 'p';
-	}
-      
-      if (repl_char != '\0')
-	{
-	  char *name = (char *) bfd_malloc (len);
-	  memcpy (name, sec->name, len);
-	  name[prefix_len - 2] = repl_char;
-	  table_sec_name = name;
-	}
+      if (strcmp (base_name, XTENSA_INSN_SEC_NAME) == 0) 
+	linkonce_kind = 'x';
+      else if (strcmp (base_name, XTENSA_LIT_SEC_NAME) == 0) 
+	linkonce_kind = 'p';
       else
+	abort ();
+
+      prop_sec_name = (char *) bfd_malloc (strlen (sec->name) + 1);
+      memcpy (prop_sec_name, ".gnu.linkonce.", linkonce_len);
+      prop_sec_name[linkonce_len] = linkonce_kind;
+      prop_sec_name[linkonce_len + 1] = '.';
+
+      suffix = sec->name + linkonce_len;
+      while (*suffix)
 	{
-	  size_t base_len = strlen (base_name) + 1;
-	  char *name = (char *) bfd_malloc (len + base_len);
-	  memcpy (name, sec->name, len - 1);
-	  memcpy (name + len - 1, base_name, base_len);
-	  table_sec_name = name;
+	  suffix += 1;
+	  if (suffix[-1] == '.')
+	    break;
 	}
+      strcpy (prop_sec_name + linkonce_len + 2, suffix);
+
+      return prop_sec_name;
     }
 
-  return table_sec_name;
+  return strdup (base_name);
 }
 
 
@@ -5781,6 +5781,17 @@ xtensa_callback_required_dependence (abfd, sec, link_info, callback, closure)
   return ok;
 }
 
+/* The default literal sections should always be marked as "code" (i.e.,
+   SHF_EXECINSTR).  This is particularly important for the Linux kernel
+   module loader so that the literals are not placed after the text.  */
+static struct bfd_elf_special_section const elf_xtensa_special_sections[]=
+{
+  { ".literal",       8, 0, SHT_PROGBITS, SHF_ALLOC + SHF_EXECINSTR },
+  { ".init.literal", 13, 0, SHT_PROGBITS, SHF_ALLOC + SHF_EXECINSTR },
+  { ".fini.literal", 13, 0, SHT_PROGBITS, SHF_ALLOC + SHF_EXECINSTR },
+  { NULL,             0, 0, 0,            0 }
+};
+
 
 #ifndef ELF_ARCH
 #define TARGET_LITTLE_SYM		bfd_elf32_xtensa_le_vec
@@ -5824,7 +5835,6 @@ xtensa_callback_required_dependence (abfd, sec, link_info, callback, closure)
 
 #define elf_backend_adjust_dynamic_symbol    elf_xtensa_adjust_dynamic_symbol
 #define elf_backend_check_relocs	     elf_xtensa_check_relocs
-#define elf_backend_copy_indirect_symbol     elf_xtensa_copy_indirect_symbol
 #define elf_backend_create_dynamic_sections  elf_xtensa_create_dynamic_sections
 #define elf_backend_discard_info	     elf_xtensa_discard_info
 #define elf_backend_ignore_discarded_relocs  elf_xtensa_ignore_discarded_relocs
@@ -5841,5 +5851,6 @@ xtensa_callback_required_dependence (abfd, sec, link_info, callback, closure)
 #define elf_backend_reloc_type_class	     elf_xtensa_reloc_type_class
 #define elf_backend_relocate_section	     elf_xtensa_relocate_section
 #define elf_backend_size_dynamic_sections    elf_xtensa_size_dynamic_sections
+#define elf_backend_special_sections	     elf_xtensa_special_sections
 
 #include "elf32-target.h"

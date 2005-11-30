@@ -571,6 +571,9 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
      can_rename = FALSE;
   }
 
+#ifdef KEY
+  WN* home = NULL;
+#endif
   // for each reference in the equivalence class, check if it is FUNC_ENTRY
   // and if it has the same name as the variable to be renamed
   // in addition, we do not rename for volatiles and scalars with
@@ -582,6 +585,9 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
     if (OPCODE_has_sym(WN_opcode(scalar_ref))) {
       SYMBOL temp_symbol(scalar_ref);
       OPERATOR opr=WN_operator(scalar_ref);
+#ifdef KEY
+      if (opr == OPR_LDID) home = scalar_ref;
+#endif
       if ((opr!=OPR_STID && opr!=OPR_LDID) || (ref_symbol!=temp_symbol))
         can_rename= FALSE;
       else if (TY_is_volatile(WN_ty(scalar_ref)))
@@ -603,8 +609,18 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
       can_rename= FALSE;
   }
   if (can_rename) {
-  
+
+#ifndef KEY  
     SYMBOL new_symbol=Create_Preg_Symbol(ref_symbol.Name(), ref_symbol.Type);
+#else
+#if 0
+    SYMBOL new_symbol=Create_Preg_Symbol_Homed(ref_symbol.Name(), 
+					       ref_symbol.Type, 
+					       LWN_Copy_Tree(home));
+#else
+    SYMBOL new_symbol=Create_Preg_Symbol(ref_symbol.Name(), ref_symbol.Type);
+#endif
+#endif
     if (LNO_Verbose) { 
       fprintf(stdout, " Renaming %s\n", ref_symbol.Name());
       fprintf(TFile, " Renaming %s\n", ref_symbol.Name());

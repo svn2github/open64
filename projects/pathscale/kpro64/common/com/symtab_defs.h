@@ -604,6 +604,9 @@ public:
 #ifdef TARG_X8664
 #define PU_FF2C_ABI		0x0000001000000000LL // PU use g77 linkage convention for returns of complex and float
 #endif
+#ifdef KEY
+#define PU_IS_EXTERN_INLINE	0x0000002000000000LL // PU is marked extern _inline_ in C
+#endif
 
 enum PU_SRC_LANG_FLAGS
 {

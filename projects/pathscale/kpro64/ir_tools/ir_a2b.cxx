@@ -230,6 +230,10 @@ ir_sel (char *input_file, char *output_file, char *func_name)
     BOOL found = FALSE;
     
     (void)Open_Input_Info (input_file);
+#ifdef KEY
+    Initialize_Symbol_Tables (FALSE);
+    New_Scope (GLOBAL_SYMTAB, Malloc_Mem_Pool, FALSE);
+#endif
     pu_tree = Read_Global_Info (NULL);
 
     Open_Output_Info (output_file);
@@ -277,15 +281,52 @@ ir_sel (char *input_file, char *output_file, char *func_name)
 
 } /* ir_sel */
 
+static void
+ir_all (char *input_file, char *output_file)
+{
+    WN *wn;
+    PU_Info *pu_tree, *pu = NULL;
+    
+    (void)Open_Input_Info (input_file);
+#ifdef KEY
+    Initialize_Symbol_Tables (FALSE);
+    New_Scope (GLOBAL_SYMTAB, Malloc_Mem_Pool, FALSE);
+#endif
+    pu_tree = Read_Global_Info (NULL);
+
+    Open_Output_Info (output_file);
+
+    /* don't bother searching through nested procedures since they can't
+       be written out by themselves anyway */
+
+    for (pu = pu_tree; pu != NULL; pu = PU_Info_next (pu)) {
+	MEM_POOL_Push(MEM_pu_nz_pool_ptr);
+	MEM_POOL_Push(MEM_pu_pool_ptr);
+	Read_Local_Info (MEM_pu_nz_pool_ptr, pu);
+
+	wn = PU_Info_tree_ptr(pu);
+	Write_PU_Info (pu);
+
+	Free_Local_Info (pu);
+	MEM_POOL_Pop(MEM_pu_nz_pool_ptr);
+	MEM_POOL_Pop(MEM_pu_pool_ptr);
+    }
+
+    Write_Global_Info(pu_tree);
+    Close_Output_Info ();
+    Free_Input_Info ();
+
+} /* ir_sel */
 
 static void
 usage (char *progname)
 {
-  INT a2b, b2a, sel;
+  INT a2b, b2a, sel, all;
 
   a2b = (strcmp (progname, "ir_a2b") == 0);
   b2a = (strcmp (progname, "ir_b2a") == 0);
   sel = (strcmp (progname, "ir_sel") == 0);
+  all = (strcmp (progname, "ir_all") == 0);
   
   if (a2b) {
       fprintf (stderr, "New symbol table format not supported by ir_a2b (yet)\n");
@@ -300,6 +341,8 @@ usage (char *progname)
     fprintf (stderr, "\t-sym <.G file> is the same as -global_local\n");
   } else if (sel) {
     fprintf (stderr, "Usage: %s <function> <Binary IR input> [<Binary IR output>]\n", progname);
+  } else if (all) {
+    fprintf (stderr, "Usage: %s <Binary IR input> [<Binary IR output>]\n", progname);
 
   }
   exit (1);
@@ -308,7 +351,7 @@ usage (char *progname)
 main (INT argc, char *argv[])
 {
     register char *progname;
-    register INT a2b, b2a, sel;
+    register INT a2b, b2a, sel, all;
     char *infile;
     char *outfile;
     INT binarg = 1;
@@ -329,6 +372,7 @@ main (INT argc, char *argv[])
     a2b = (strcmp (progname, "ir_a2b") == 0);
     b2a = (strcmp (progname, "ir_b2a") == 0);
     sel = (strcmp (progname, "ir_sel") == 0);
+    all = (strcmp (progname, "ir_all") == 0);
 
     if (a2b) {
 	usage (progname);
@@ -406,6 +450,14 @@ main (INT argc, char *argv[])
 	  outfile = argv[3];
 	}
 	ir_sel (argv[2], outfile, argv[1]);
+    }
+    else if (all) {
+	if (argc < 2)
+	    usage(progname);
+	if (!file_exists(argv[1]))
+	    usage(progname);
+	outfile = argv[2];
+	ir_all (argv[1], outfile);
     }
     else 
 	fprintf(stderr, "unrecognized command %s\n", progname);

@@ -67,23 +67,23 @@ static const char source_file[] = __FILE__;
 
 void MHD::Initialize()
 {
-  if (Target == TARGET_opteron) {
+  Non_Blocking_Loads      = TRUE;
+  Loop_Overhead_Memref    = 1;
+  TLB_NoBlocking_Model    = TRUE;
 
+  // Bugs 2471, 2580, 2627
+  Loop_Overhead_Base      = 18;
+  TLB_Trustworthiness     = 20;
 
-    Non_Blocking_Loads      = TRUE;
-    Loop_Overhead_Memref    = 1;
-    TLB_NoBlocking_Model    = TRUE;
-
-    Loop_Overhead_Base      = 18;
-    TLB_Trustworthiness     = 75;
-
+  switch (Target) {
+  case TARGET_opteron:
     L[0] = MHD_LEVEL(MHD_TYPE_CACHE, 	// Type
                      64*1024, 		// Size
                      64,		// Line Size
                      11,		// Clean Miss Penalty
                      11,		// Dirty Miss Penalty
                      2,			// Associativity
-                     32,		// TLB Entries
+		     64,		// TLB Entries
                      4*1024,		// Page Size
                      50,		// TLB Clean Miss Penalty ?
                      50,		// TLB Dirty Miss Penalty ?
@@ -91,7 +91,48 @@ void MHD::Initialize()
                      0.8,		// Load_OP_Overlap_1 ?
                      0.4,		// Load_OP_Overlap_2 ?
                      50);		// Pct_Excess_Writes_Nonhidable ?
-
+    break;
+  case TARGET_athlon64:
+    L[0] = MHD_LEVEL(MHD_TYPE_CACHE, 	// Type
+                     64*1024, 		// Size
+                     64,		// Line Size
+                     11,		// Clean Miss Penalty
+                     11,		// Dirty Miss Penalty
+                     2,			// Associativity
+		     1088,		// TLB Entries
+                     4*1024,		// Page Size
+                     50,		// TLB Clean Miss Penalty ?
+                     50,		// TLB Dirty Miss Penalty ?
+                     6.0,		// Typical Outstanding Loads ?
+                     0.8,		// Load_OP_Overlap_1 ?
+                     0.4,		// Load_OP_Overlap_2 ?
+                     50);		// Pct_Excess_Writes_Nonhidable ?
+    break;
+  case TARGET_athlon:
+  case TARGET_pentium4:
+    L[0] = MHD_LEVEL(MHD_TYPE_CACHE, 	// Type
+                     64*1024, 		// Size
+                     64,		// Line Size
+                     27,		// Clean Miss Penalty
+                     27,		// Dirty Miss Penalty
+                     2,			// Associativity
+		     40,		// TLB Entries
+                     4*1024,		// Page Size
+                     5,			// TLB Clean Miss Penalty ?
+                     5,			// TLB Dirty Miss Penalty ?
+                     2.0,		// Typical Outstanding Loads ?
+                     0.8,		// Load_OP_Overlap_1 ?
+                     0.4,		// Load_OP_Overlap_2 ?
+                     50);		// Pct_Excess_Writes_Nonhidable ?
+    break;
+  default:
+    FmtAssert(FALSE, ("Cannot handle L1 for %s in MHD::Initialize\n",
+		      Targ_Name(Target)));
+    break;
+  }
+  
+  switch (Target) {
+  case TARGET_opteron:
     // TODO: this might be too generous: in multiple processor situations,
     // there is a cost to loading the shared bus/memory.
     L[1] = MHD_LEVEL(MHD_TYPE_CACHE, 
@@ -100,7 +141,7 @@ void MHD::Initialize()
                      150,
                      200, // ? 
                      16,  
-                     512,
+                     64,
                      4*1024, 
                      50, // ?
                      50, // ?
@@ -108,13 +149,55 @@ void MHD::Initialize()
                      LNO_Run_Prefetch ? 0.7 : 0.1,  // ?
                      LNO_Run_Prefetch ? 0.3 : 0.05, // ?
                      LNO_Run_Prefetch ? 25 : 50);  // ?
-#ifdef Is_True_On
-    if (LNO_Verbose)
-      printf ("Target Processor: TARGET_opteron. %lld (%d), %lld (%d)\n", 
-              L[0].Effective_Size, L[0].Line_Size,
-              L[1].Effective_Size, L[1].Line_Size);
-#endif
-  } else {
-    FmtAssert(FALSE, ("Unknown target in MHD::Initialize\n"));
+    break;
+  case TARGET_athlon64:
+    // TODO: this might be too generous: in multiple processor situations,
+    // there is a cost to loading the shared bus/memory.
+    L[1] = MHD_LEVEL(MHD_TYPE_CACHE, 
+                     1*1024*1024, 
+                     64, 
+                     150,
+                     200, // ? 
+                     16,  
+                     1088,
+                     4*1024, 
+                     50, // ?
+                     50, // ?
+                     LNO_Run_Prefetch ? 1.8: 1.0,  // ?
+                     LNO_Run_Prefetch ? 0.7 : 0.1,  // ?
+                     LNO_Run_Prefetch ? 0.3 : 0.05, // ?
+                     LNO_Run_Prefetch ? 25 : 50);  // ?
+    break;
+  case TARGET_athlon:
+  case TARGET_pentium4:
+    // TODO: this might be too generous: in multiple processor situations,
+    // there is a cost to loading the shared bus/memory.
+    L[1] = MHD_LEVEL(MHD_TYPE_CACHE, 
+                     1*512*1024, 
+                     64, 
+                     103,
+                     103, // ? 
+                     16,  
+                     256,
+                     4*1024, 
+                     52, // ?
+                     52, // ?
+                     LNO_Run_Prefetch ? 1.8: 1.0,  // ?
+                     LNO_Run_Prefetch ? 0.7 : 0.1,  // ?
+                     LNO_Run_Prefetch ? 0.3 : 0.05, // ?
+                     LNO_Run_Prefetch ? 25 : 50);  // ?
+    break;
+  default:
+    FmtAssert(FALSE, ("Cannot handle L2 for %s in MHD::Initialize\n",
+		      Targ_Name(Target)));
+    break;
   }
+
+#ifdef Is_True_On
+  if (LNO_Verbose)
+    printf ("Target Processor: %s. %lld (%d), %lld (%d)\n", 
+	    Targ_Name(Target),
+	    L[0].Effective_Size, L[0].Line_Size,
+	    L[1].Effective_Size, L[1].Line_Size);
+#endif
 }

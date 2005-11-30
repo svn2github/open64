@@ -1656,6 +1656,7 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (flags & PU_IS_THUNK)		fprintf (f, " thunk");
 #ifdef KEY
 	    if (flags & PU_NEEDS_MANUAL_UNWINDING) fprintf (f, " needs_manual_unwinding");
+	    if (flags & PU_IS_EXTERN_INLINE) fprintf (f, " extern_inline");
 #endif
 #ifdef TARG_X8664
 	    if (flags & PU_FF2C_ABI) fprintf (f, " ff2c_abi");
@@ -2004,6 +2005,24 @@ FILE_INFO::Print (FILE *f) const
 } // FILE_INFO::Print
     
 
+
+#if 1 // Fix 10-26-2002: Enhancement to reset addr_saved flag before Mainopt
+struct clear_addr_flag_op
+{
+    clear_addr_flag_op() {};
+
+    void operator () (UINT idx, ST *entry) const {
+      if( (ST_sclass(*entry) == SCLASS_AUTO) && ST_addr_saved(*entry))
+        Clear_ST_addr_saved(*entry); 
+    } ;
+}; // clear_addr_flag_op  
+
+void
+Clear_local_symtab_addr_flags(const SCOPE& scope)
+{
+  For_all_entries (*scope.st_tab, clear_addr_flag_op(), 1);
+}
+#endif
 
 // function object used in "For_all"
 template <class T>

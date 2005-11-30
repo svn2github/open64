@@ -93,6 +93,9 @@
 #include "opt_cvtl_rule.h"
 #include "fb_whirl.h"
 #include "intrn_info.h"
+#ifdef KEY
+#include "config_vho.h"		// for VHO_Enable_Simple_If_Conv
+#endif
 
 /* My changes are a hack till blessed by Steve. (suneel) */
 #define SHORTCIRCUIT_HACK 1
@@ -4022,7 +4025,7 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
 	WN_set_ty(tree, MTYPE_To_TY(MTYPE_F8));
       }
 
-      if( !Is_Target_SSE2() ||
+      if( Is_Target_32bit() && ! MTYPE_is_complex(mtype) ||
 	  MTYPE_is_quad(mtype) ){
 	WN_st_idx(tree) = ST_st_idx( MTYPE_To_PREG(mtype) );
 	WN_load_offset(tree) = First_X87_Preg_Return_Offset;
@@ -4392,7 +4395,11 @@ static void lower_bit_field_id(WN *wn)
   UINT bsize = FLD_bsize(fld);
   UINT bofst = FLD_bofst(fld) + (field_offset-ofst) * 8;
   if ((bofst + bsize) > (bytes_accessed * 8)) {
-    if (bytes_accessed == MTYPE_byte_size(Max_Int_Mtype)) { 
+#ifdef TARG_X8664
+    if (bytes_accessed == MTYPE_byte_size(MTYPE_I8)){ 
+#else
+    if (bytes_accessed == MTYPE_byte_size(Max_Int_Mtype)){ 
+#endif // TARG_X8664
       // can't enlarge; reverse the adjustment
       ofst = field_offset;
       bofst = FLD_bofst(fld);
@@ -4403,7 +4410,12 @@ static void lower_bit_field_id(WN *wn)
 
   if ((bsize & 7) == 0 && 		   // field size multiple of bytes
       (bytes_accessed * 8 % bsize) == 0 && // bytes_accessed multiple of bsize
-      (bofst % bsize) == 0) {		   // bofst multiple of bsize
+#ifdef TARG_X8664
+      (bofst & 7) == 0
+#else
+      (bofst % bsize) == 0		   // bofst multiple of bsize
+#endif // TARG_X8664
+      ) {
     // bit-field operation not needed; leave operator as previous one
     WN_set_field_id(wn, 0);
     WN_set_desc(wn, Mtype_AlignmentClass(bsize >> 3, MTYPE_type_class(rtype)));
@@ -4421,7 +4433,16 @@ static void lower_bit_field_id(WN *wn)
     }
 #endif
     WN_set_operator(wn, new_opr);
+
+#ifdef KEY
+    const TYPE_ID mtype =
+      Mtype_AlignmentClass(bytes_accessed, MTYPE_type_class(rtype));
+    Is_True( mtype != MTYPE_UNKNOWN, ("Unknown mtype encountered.") );
+    WN_set_desc(wn, mtype);
+#else
     WN_set_desc(wn, Mtype_AlignmentClass(bytes_accessed, MTYPE_type_class(rtype)));
+#endif // KEY
+
     if (OPERATOR_is_load(new_opr) && 
 	MTYPE_byte_size(WN_rtype(wn)) < bytes_accessed)
       WN_set_rtype(wn, WN_desc(wn));
@@ -4500,10 +4521,12 @@ static BOOL Is_Fast_Divide(WN *wn)
 /* Convert stmt
       a = a / b
    into
-      if( b == N ){
-         a = a / N
+      if( b == N1 ){
+         a = a / N1;
+      } else if( b == ... ){
+         ...;
       } else {
-         a = a / b
+         a = a / b;
       }
    via feedback information.
 */
@@ -4520,63 +4543,76 @@ static WN* simp_remdiv( WN* block, WN* tree )
   if( info.num_values == 0 )
     return NULL;
 
-  /* Quit if this operation is executed less than Div_Exe_Counter times. */
   if( info.exe_counter < (float)Div_Exe_Counter )
     return NULL;
 
-  if( info.freq[0] / info.exe_counter < 0.7F )
+  /* Sum up the freq of the top <Div_Exe_Candidates> entries. And perform div
+     conversion only if the total freq is not less than <Div_Exe_Ratio>.
+  */
+  int items = 0;
+  const float cutoff_ratio = (float)Div_Exe_Ratio / 100;
+  const int num_candidates = MIN( info.num_values, Div_Exe_Candidates );
+  FB_FREQ freq(0.0);
+
+  for( items = 1; items <= num_candidates; items++ ){
+    freq += info.freq[items-1];
+    if( freq / info.exe_counter >= cutoff_ratio )
+      break;
+  }
+
+  if( freq / info.exe_counter < cutoff_ratio )
     return NULL;
 
   const TYPE_ID type = WN_rtype( WN_kid(tree,1) );
-  PREG_NUM result = Create_Preg( type, ".remdiv_value" );
+  const PREG_NUM result = Create_Preg( type, ".remdiv_value" );
 
-  WN* if_then = WN_CreateBlock();
-  {
-    WN* value = WN_CreateIntconst( OPCODE_make_op(OPR_INTCONST, type, MTYPE_V),
-				   info.value[0] );
-    WN* tmp = WN_Binary( WN_operator(tree), type,
-			 WN_COPY_Tree( WN_kid(tree,0) ),
-			 value );
-    WN* stid = WN_StidIntoPreg( type, result, MTYPE_To_PREG( type ), tmp );
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, stid);
-#endif
-    WN_INSERT_BlockLast( if_then, stid );
-  }
+  for( int entry = 0; entry < items; entry++ ){
+    WN* div_tree = NULL;
+
+    WN* if_then = WN_CreateBlock();
+    {
+      WN* value = WN_CreateIntconst( OPCODE_make_op(OPR_INTCONST, type, MTYPE_V),
+				     info.value[entry] );
+      WN* tmp = WN_Binary( WN_operator(tree), type,
+			   WN_COPY_Tree( WN_kid(tree,0) ),
+			   value );
+      WN* stid = WN_StidIntoPreg( type, result, MTYPE_To_PREG( type ), tmp );
+      WN_copy_linenum(tree, stid);
+      WN_INSERT_BlockLast( if_then, stid );
+    }
 	  
-  WN* if_else = WN_CreateBlock();
-  {
-    WN* tmp = WN_Binary( WN_operator(tree), type,
-			 WN_COPY_Tree( WN_kid(tree,0) ),
-			 WN_COPY_Tree( WN_kid(tree,1) ) );
-    WN* stid = WN_StidIntoPreg( type, result, MTYPE_To_PREG( type ), tmp );
-#ifdef KEY
-    // Bug 1268 - copy linenumber when creating WNs.
-    WN_copy_linenum(tree, stid);
-#endif
-    WN_INSERT_BlockLast( if_else, stid );
-  }
+    WN* if_else = WN_CreateBlock();
+    {
+      div_tree = WN_Binary( WN_operator(tree), type,
+			    WN_COPY_Tree( WN_kid(tree,0) ),
+			    WN_COPY_Tree( WN_kid(tree,1) ) );
+      if( entry+1 == items ){
+	WN* stid = WN_StidIntoPreg( type, result, MTYPE_To_PREG( type ), div_tree );
+	WN_copy_linenum(tree, stid);
+	WN_INSERT_BlockLast( if_else, stid );
+      }
+    }
       
-  WN* value = WN_CreateIntconst( OPCODE_make_op(OPR_INTCONST, type, MTYPE_V),
-				 info.value[0] );
-  WN* if_tree = WN_CreateIf( WN_EQ( type, WN_COPY_Tree(WN_kid(tree,1)),
-				    value ),
-			     if_then, if_else );
+    WN* value = WN_CreateIntconst( OPCODE_make_op(OPR_INTCONST, type, MTYPE_V),
+				   info.value[entry] );
+    WN* if_tree = WN_CreateIf( WN_EQ( type, WN_COPY_Tree(WN_kid(tree,1)),
+				      value ),
+			       if_then, if_else );
 
-  Cur_PU_Feedback->Annot( if_tree, FB_EDGE_BRANCH_TAKEN, info.freq[0] );
-  Cur_PU_Feedback->Annot( if_tree, FB_EDGE_BRANCH_NOT_TAKEN,
-			  ( info.exe_counter - info.freq[0] ) );
+    Cur_PU_Feedback->Annot( if_tree, FB_EDGE_BRANCH_TAKEN, info.freq[entry] );
+    Cur_PU_Feedback->Annot( if_tree, FB_EDGE_BRANCH_NOT_TAKEN,
+			    ( info.exe_counter - info.freq[entry] ) );
 	  
-#ifdef KEY
-  // Bug 1268 - copy linenumber when creating WNs.
-  WN_copy_linenum(tree, if_tree);
-#endif
-  WN_INSERT_BlockLast( block, if_tree );
+    WN_copy_linenum(tree, if_tree);
+    WN_INSERT_BlockLast( block, if_tree );
 	  
-  WN_Delete( WN_kid(tree,0) );
-  WN_Delete( WN_kid(tree,1) );
-  WN_Delete( tree );
+    WN_Delete( WN_kid(tree,0) );
+    WN_Delete( WN_kid(tree,1) );
+    WN_Delete( tree );
+
+    tree = div_tree;
+    block = if_else;
+  }
       
   return WN_LdidPreg( type, result );
 }
@@ -4634,6 +4670,26 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 
     if (INTRN_cg_intrinsic(WN_intrinsic(tree)))
       break;
+
+#ifdef TARG_X8664
+    if( ( (INTRINSIC)WN_intrinsic(tree) == INTRN_F8ANINT ) &&
+	Is_Target_SSE2() ){
+      /* The code implemented in em_nearest_aint will introduce conversions
+	 between long long and float, which will slow down the performance
+	 under -m32.
+      */
+      if( Is_Target_32bit() )
+	break;
+
+      /* cg can generate a more accurate and faster version when
+	 -OPT:fast_dnint is ON.
+	 Expand the fast version as late as possible to avoid being
+	 screwed up by cfold reassociation.
+      */
+      if( Fast_ANINT_Allowed )
+	break;
+    }
+#endif
 
     if (INTRN_is_actual(WN_intrinsic(tree)))
     {
@@ -5267,6 +5323,14 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 	  iwn = lower_expr(block, iwn, actions);
 	}
 
+#ifdef TARG_X8664
+	if( Action( LOWER_TO_CG ) &&
+	    Action( LOWER_INTRINSIC) ){
+	  BOOL intrinsic_lowered = FALSE;
+	  iwn = lower_emulation( block, iwn, actions, intrinsic_lowered );
+	}
+#endif
+
 	WN_Delete(tree);
 	return iwn;
       }
@@ -5845,6 +5909,17 @@ static WN *lower_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
 }
 
 
+#ifdef KEY
+static BOOL Equiv (WN* wn1, WN* wn2) {
+  if (!WN_Equiv(wn1,wn2)) return(FALSE);
+  for (INT kidno=0; kidno<WN_kid_count(wn1); kidno++) {
+    if (!Equiv(WN_kid(wn1,kidno),WN_kid(wn2,kidno))) {
+      return(FALSE);
+    }
+  }
+  return(TRUE);
+}
+#endif
 /* ====================================================================
  *
  * WN *lower_store(block, WN *tree, LOWER_ACTIONS actions)
@@ -6177,7 +6252,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     }
 #ifdef TARG_X8664 // fortran complex treated as structs (bug 1664)
     if (Action(LOWER_RETURN_VAL) && MTYPE_is_complex(WN_desc(tree)) &&
-       (last_call_ff2c_abi || F2c_Abi) &&
+       (Is_Target_32bit() || last_call_ff2c_abi || F2c_Abi) &&
        WN_operator(WN_kid0(tree)) == OPR_LDID && 
        WN_st(WN_kid0(tree)) == Return_Val_Preg) {
        return lower_return_mstid(block, tree, actions);
@@ -6226,6 +6301,45 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	WN_kid0(tree) = WN_Ldid(MTYPE_F8, 0, c4temp_st, MTYPE_To_TY(MTYPE_F8));
 	WN_set_desc(tree, MTYPE_F8);
 	return tree;
+
+      } else if( Is_Target_32bit()         &&
+		 WN_desc(tree) == MTYPE_C4 &&
+		 WN_st(tree) == Float_Preg && 
+		 WN_load_offset(tree) == First_X87_Preg_Return_Offset &&
+		 ( PU_c_lang(Get_Current_PU()) ||
+		   PU_cxx_lang(Get_Current_PU()) ) ){
+	/* For C/C++ under -m32, if the return value is type
+	   "__complex__ float", the real part will be stored at %eax, and
+	   the imag part will be stored at %edx.  (bug#2842)
+	 */
+	const TYPE_ID mtype = MTYPE_I4;
+	// the store target is %eax
+	ST* c4temp_st = Gen_Temp_Symbol(MTYPE_To_TY(realTY), ".c4");
+
+	// store the real part
+	WN *stid = WN_Stid( WN_rtype(realexp), 0, c4temp_st, realTY, realexp );
+        WN_Set_Linenum( stid, WN_Get_Linenum(tree) );
+        WN_INSERT_BlockLast( block, stid );
+
+	WN* ldid = WN_Ldid( mtype, 0, c4temp_st, MTYPE_To_TY(mtype) );
+	stid = WN_Stid( mtype, First_Int_Preg_Return_Offset,
+			Int_Preg, mtype, ldid );
+        WN_Set_Linenum( stid, WN_Get_Linenum(tree) );
+        WN_INSERT_BlockLast( block, stid );
+
+	// store the imag part
+	stid = WN_Stid( WN_rtype(imagexp), 4, c4temp_st, realTY, imagexp );
+        WN_Set_Linenum (stid, WN_Get_Linenum(tree));
+        WN_INSERT_BlockLast(block, stid);
+
+        WN_Delete(WN_kid0(tree));
+	WN_Delete( tree );
+
+	ldid = WN_Ldid( mtype, 4, c4temp_st, MTYPE_To_TY(mtype) );
+	tree = WN_Stid( mtype, Last_Int_Preg_Return_Offset,
+			Int_Preg, mtype, ldid );
+
+	return tree;	
       }
       else
 #endif
@@ -6424,6 +6538,49 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 
   }
 
+#ifdef KEY
+  // If VHO lowerer if-converts, we would be left with speculated scalar 
+  // versions (possibly remainder or pre-peel loops after vectorization
+  // or even the main loop in the absence of LNO or vectorizer).
+  // Convert back the SELECT to If-Then to avoid any overhead.
+  // Convert: 
+  // 	a[i] = <compare> ? <expr> : a[i]
+  // back to:
+  //    if <compare>
+  //      a[i] = <expr>
+  //    end if
+  if (VHO_Enable_Simple_If_Conv && 
+      !Action(LOWER_RETURN_VAL) /* Lower after LNO */ &&
+      OPCODE_is_store(WN_opcode(tree)) &&
+      WN_operator(WN_kid0(tree)) == OPR_SELECT &&
+      !MTYPE_is_vector(WN_desc(tree)) && MTYPE_is_float(WN_desc(tree))) {
+    WN* store = tree;
+    WN* load = WN_kid2(WN_kid0(tree));
+    WN* array_l = WN_kid0(load);
+    WN* array_s = WN_kid1(store);
+    if ((WN_operator(load) == OPR_ILOAD &&
+	 WN_operator(store) == OPR_ISTORE &&
+	 WN_store_offset(store) == WN_load_offset(load) &&
+	 Equiv(array_l, array_s) &&
+	 WN_field_id(load) == WN_field_id(store)) ||
+	(WN_operator(load) == OPR_LDID &&
+	 WN_operator(store) == OPR_STID &&
+	 WN_offset(store) == WN_offset(load) &&
+	 ST_base(WN_st(store)) == ST_base(WN_st(load)) &&
+	 ST_ofst(WN_st(store)) == ST_ofst(WN_st(load)))) {
+      WN* select = WN_kid0(tree);
+      WN* test = WN_COPY_Tree(WN_kid0(select));
+      WN* then_block = WN_CreateBlock();
+      WN* else_block = WN_CreateBlock();
+      WN* istore = WN_COPY_Tree(tree);
+      WN_kid0(istore) = WN_COPY_Tree(WN_kid1(select));
+      tree = WN_CreateIf (test, then_block, else_block);
+      WN_INSERT_BlockLast(then_block, istore);
+      tree = lower_if(block, tree, actions);
+      return tree;
+    } 
+  }
+#endif
   /* Lower kids if not done already. */
   if (! kids_lowered)
   {
@@ -7505,8 +7662,10 @@ extern INT32 compute_copy_alignment(TY_IDX src, TY_IDX dst, INT32 offset)
   align= MIN(srcAlign, dstAlign);
   align= MIN(align, max);
 
+#ifndef KEY // bug 1990
   Is_True((compute_offset_alignment(offset, align) == align),
 	  ("compute_copy_alignment: alignment not consistent with offset"));
+#endif
 
   return MIN(align, max);
 }
@@ -8542,7 +8701,10 @@ static WN *lower_cis_intrinsic(WN *block, WN *tree, LOWER_ACTIONS actions)
   parms[2] = WN_CreateParm(Pointer_type, acosx, MTYPE_To_TY(Pointer_type),
 			   WN_PARM_BY_VALUE);
   call = WN_Create_Intrinsic(OPC_VINTRINSIC_CALL, sincos_id, 3, parms);
+#ifndef KEY // cannot delete because it needs to be around to be looked at after
+  	    // call to lower_complex_expr in lower_store (bug 3048)
   WN_Delete(tree);
+#endif
 
   callblock = WN_CreateBlock();
   callblock = lower_block(callblock, actions);
@@ -8866,7 +9028,8 @@ static WN *lower_actual(WN *block, WN *actual, TYPE_ID parmType, INT32 reg)
     if (Is_Target_64bit() && parmType == MTYPE_C4) {
 	regST = MTYPE_To_PREG(MTYPE_F8);
 	WN_set_rtype(actual, MTYPE_F8);
-	WN_set_desc(actual, MTYPE_F8);
+	WN_set_desc( actual,
+		     WN_operator_is(actual,OPR_CONST) ? MTYPE_V : MTYPE_F8 );
     }
     else
 #endif
@@ -8953,8 +9116,8 @@ static WN *lower_profile_call(WN *block, WN *tree, INT32 state,
  *
  * Descend the tree to find and unnest divide/rem/shift-by-variable-amount out
  * of parameter passing code because these operations require registers rdx 
- * or rcx which are parameter registers.  Also applying to F8U8CVT because
- * its expansion requires creating new basic blocks.
+ * or rcx which are parameter registers.  Also applying to F8U8CVT,
+ * U8F4CVT and U8F8CVT because its expansion requires creating new basic blocks.
  *
  * ==================================================================== */
 static WN *take_out_special_ia32_ops(WN *block, WN *tree)
@@ -8968,7 +9131,9 @@ static WN *take_out_special_ia32_ops(WN *block, WN *tree)
          WN_operator(tree) == OPR_SHL ||
          WN_operator(tree) == OPR_RROTATE) && 
         WN_operator(WN_kid(tree,1)) != OPR_INTCONST)) ||
-      WN_opcode(tree) == OPC_F8U8CVT) {
+      WN_opcode(tree) == OPC_F8U8CVT ||
+      Is_Target_64bit() && 
+       (WN_opcode(tree) == OPC_U8F4TRUNC || WN_opcode(tree) == OPC_U8F8TRUNC)) {
       TYPE_ID mtype = WN_rtype(tree);
       TY_IDX ty_idx = MTYPE_To_TY(mtype);
       ST *temp_st = Gen_Temp_Symbol(ty_idx, ".unnested_parm");
@@ -9823,6 +9988,15 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
       else preg_st = (mtype==MTYPE_I8 || mtype==MTYPE_U8) ? 
 	  		MTYPE_To_PREG(mtype) : Int_Preg;
 
+#ifdef TARG_X8664
+      if( Is_Target_SSE2()         &&
+	  Preg_Offset_Is_X87(preg) &&
+	  !MTYPE_is_quad( mtype ) ){
+	WN_kid0(tree) = WN_Cvt( Promoted_Mtype[mtype], MTYPE_FQ, WN_kid0(tree) );
+	wn = WN_CreateStid( OPR_STID, MTYPE_V, MTYPE_FQ,
+			    preg, preg_st, Be_Type_Tbl(mtype), WN_kid0(tree) );
+      } else
+#endif // TARG_X8664
       wn  = WN_CreateStid (OPR_STID, MTYPE_V, Promoted_Mtype[mtype], 
 	  		   preg, preg_st, Be_Type_Tbl(mtype), WN_kid0(tree));
     }
@@ -12336,9 +12510,8 @@ static LOWER_ACTIONS lower_actions(WN *pu, LOWER_ACTIONS actions)
     *  do not split divides into mul/recip at the CG lowering
     */
     save_Div_Split_Allowed = Div_Split_Allowed;
-#ifndef KEY
+    // KEY: bug 1449: Don't comment out the following line
     Div_Split_Allowed = FALSE;;
-#endif
   }
   if (WN_opcode(pu) == OPC_FUNC_ENTRY)
   {

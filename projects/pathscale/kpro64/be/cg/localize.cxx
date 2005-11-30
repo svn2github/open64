@@ -321,10 +321,20 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 			;	// okay
 		else if (def && is_func_retval && BB_exit(current_bb))
 			;	// okay
-#if defined(TARG_IA32) || defined(TARG_X8664)
+#if defined(TARG_IA32)
 		else if (def && is_func_retval && BB_asm(current_bb))
 			;	// okay
-#endif
+#endif // TARG_IA32
+#ifdef TARG_X8664
+		/* An inline asm could read whatever it wants (bug#3059,3257). */
+		else if (BB_asm(current_bb))
+			;	// okay
+		/* An inline asm could write whatever it wants (bug#3059). */
+		else if (!def && is_func_arg
+			 && BB_prev(current_bb) != NULL 
+			 && BB_asm(BB_prev(current_bb)))
+			;	// okay	
+#endif // TARG_X8664
 		else if (def && is_func_arg && BB_asm(current_bb))
 			;	// okay
 		else if (def && is_func_retval && BB_call(current_bb)
@@ -1133,6 +1143,13 @@ Localize_or_Replace_Dedicated_TNs(void)
 
     FOR_ALL_BB_OPs (bb, op) {
 
+#ifdef TARG_X8664
+      /* Do not replace dedicated tn inside an inline asm. (bug#3067)
+       */
+      if( OP_code(op) == TOP_asm ){
+	continue;
+      }
+#endif
       for ( opndnum = 0; opndnum < OP_opnds( op ); opndnum++ ) {
 	tn = OP_opnd( op, opndnum );
 	if ( TN_is_constant(tn) || TN_is_zero_reg(tn) )

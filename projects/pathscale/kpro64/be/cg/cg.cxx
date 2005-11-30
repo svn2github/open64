@@ -365,8 +365,9 @@ CG_Generate_Code(
 
 #ifdef TARG_X8664
 // Cannot enable emit_unwind_info if Force_Frame_Pointer is not set
+// Need this flag set for C++ exceptions and for -g
   if (!CG_emit_unwind_info_Set)
-  	CG_emit_unwind_info = Force_Frame_Pointer && ((PU_src_lang (Get_Current_PU()) & PU_CXX_LANG));
+  	CG_emit_unwind_info = Force_Frame_Pointer;
 #endif
 
   // Use of feedback information can be disabled in CG using the 
@@ -658,6 +659,16 @@ CG_Generate_Code(
     /* Convert all the x87 regs to stack-like regs. */
     extern void Convert_x87_Regs( MEM_POOL* );
     Convert_x87_Regs( &MEM_local_region_pool );
+
+    /* When a function returns a structure under -m32, the value of SP will be
+       increased by 4 bytes.
+    */
+    if( Is_Target_32bit() ){
+      for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
+	if( BB_call(bb) )
+	  Adjust_SP_After_Call( bb );
+      }
+    }
   }
 #endif
 

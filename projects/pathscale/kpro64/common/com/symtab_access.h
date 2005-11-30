@@ -836,6 +836,13 @@ inline void
 Set_PU_needs_manual_unwinding (PU& pu) { pu.flags |= PU_NEEDS_MANUAL_UNWINDING;}
 inline void
 Clear_PU_needs_manual_unwinding (PU& pu) { pu.flags &= ~PU_NEEDS_MANUAL_UNWINDING;}
+
+inline BOOL
+PU_is_extern_inline (const PU& pu)	{ return (pu.flags & PU_IS_EXTERN_INLINE) != 0; }
+inline void
+Set_PU_is_extern_inline (PU& pu) 	{ pu.flags |= PU_IS_EXTERN_INLINE; }
+inline void
+Clear_PU_is_extern_inline (PU& pu)	{ pu.flags &= ~PU_IS_EXTERN_INLINE; }
 #endif
 #ifdef TARG_X8664
 inline BOOL

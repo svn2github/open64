@@ -92,6 +92,10 @@
 #include "ipa_lno_util.h"
 #endif 
 
+#ifdef KEY
+#include "config.h"                                  // for Allow_wrap_around_opt
+#endif
+
 //-----------------------------------------------------------------------
 // greatest common divisor
 //-----------------------------------------------------------------------
@@ -1088,6 +1092,12 @@ SVPC_RESULT SYSTEM_OF_EQUATIONS::SVPC()
 // This routine changes _lower_bound and _upper_bound
 BOOL SYSTEM_OF_EQUATIONS::One_Var_Consistent(INT32 var, INT32 from, INT32 to)
 {
+#ifdef KEY 
+  // Bug 2927 - SVPC does not handle overflow correctly. When wrap-around
+  // optimization is off, turn off SVPC by always returning consistent 
+  // loop bounds.
+  if (! Allow_wrap_around_opt ) return (TRUE);
+#endif
   for (INT32 i=from; i<=to; i++) {
     if ((_work_const[i] >= (INT32_MAX-1)) || (_work_const[i]<=(INT32_MIN+1))) {
       return(TRUE);  // Overflow

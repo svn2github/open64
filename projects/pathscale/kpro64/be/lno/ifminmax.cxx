@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -113,7 +117,11 @@ static WN* Store_Expr(WN* wn_store)
   case OPR_STID: 
     return WN_kid0(wn_store); 
   case OPR_ISTORE:
+#ifdef KEY // Bug 2096
+    return WN_kid0(wn_store);
+#else
     return WN_kid1(wn_store);
+#endif
   default: 
     FmtAssert(TRUE, ("Store_Expr(): Don't understand this store type")); 
     return NULL; 

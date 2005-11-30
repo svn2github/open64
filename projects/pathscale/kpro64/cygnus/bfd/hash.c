@@ -3,7 +3,7 @@
  */
 
 /* hash.c -- hash table routines for BFD
-   Copyright 1993, 1994, 1995, 1997, 1999, 2001, 2002
+   Copyright 1993, 1994, 1995, 1997, 1999, 2001, 2002, 2003
    Free Software Foundation, Inc.
    Written by Steve Chamberlain <sac@cygnus.com>
 
@@ -450,7 +450,6 @@ bfd_hash_replace (table, old, nw)
 
 /* Base method for creating a new hash table entry.  */
 
-/*ARGSUSED*/
 struct bfd_hash_entry *
 bfd_hash_newfunc (entry, table, string)
      struct bfd_hash_entry *entry;
@@ -475,9 +474,8 @@ bfd_hash_allocate (table, size)
   ret = objalloc_alloc ((struct objalloc *) table->memory, size);
   if (ret == NULL && size != 0)
     bfd_set_error (bfd_error_no_memory);
-#ifdef IPA_LINK			// Added by KEY.
-  memset (ret, 0, size);	// For invalid_section_owner.
-#endif
+  /* For invalid_section_owner.  */
+  memset (ret, 0, size);
   return ret;
 }
 

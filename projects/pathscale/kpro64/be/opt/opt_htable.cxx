@@ -1832,8 +1832,10 @@ CODEMAP::Add_const(MTYPE typ, INT64 val)
   CODEREP *cr = Alloc_stack_cr(0);
   cr->Init_const(typ, val);
   cr = Hash_Const(cr);
+#ifndef KEY // this is bad for performance
   if (Split_64_Bit_Int_Ops && MTYPE_size_min(cr->Dtyp()) < MTYPE_size_min(typ))
     cr = Add_unary_node(OPCODE_make_op(OPR_CVT, typ, cr->Dtyp()), cr);
+#endif
   return cr;
 }
 
@@ -1940,6 +1942,12 @@ CODEMAP::Canon_mpy(WN       *wn,
   propagated1 = Add_expr(WN_kid(wn, 1), opt_stab, stmt, &kid1, copyprop);
   if (ccr->Tree() == NULL && kid1.Tree() == NULL) {
     ccr->Set_scale(ccr->Scale() * kid1.Scale());
+#ifdef KEY // bug 2846: check for need to truncate the folded result
+    if (WN_rtype(wn) == MTYPE_I4)
+      ccr->Set_scale((INT32) ccr->Scale());
+    else if (WN_rtype(wn) == MTYPE_U4)
+      ccr->Set_scale((UINT32) ccr->Scale());
+#endif
     return propagated+propagated1;
   }
   if (kid1.Tree() == NULL) {
@@ -2004,6 +2012,9 @@ CODEMAP::Canon_cvt(WN       *wn,
   // Fix_var_type at emitter time, we do not delete U8I4CVT #329096
   if (Is_Target_ISA_M3Plus() && (op == OPC_I8I4CVT || op == OPC_U8I4CVT))
     return propagated;
+#elif defined(TARG_X8664)
+  if (! Is_Target_32bit() && op == OPC_U8U4CVT)
+    return propagated;
 #endif
   if ((Get_mtype_class(OPCODE_rtype(op)) & 
        Get_mtype_class(OPCODE_desc(op))) != 0 &&
@@ -2028,7 +2039,7 @@ CODEMAP::Canon_cvt(WN       *wn,
   CODEREP *retv;
   CODEREP *expr;
 #ifdef TARG_X8664
-  if (ccr->Tree() != NULL && Allow_wrap_around_opt) {
+  if (!Is_Target_32bit() && ccr->Tree() != NULL && Allow_wrap_around_opt) {
     cr->Set_opnd(0, ccr->Tree());
     retv = Hash_Op(cr);
     ccr->Set_tree(retv); // move the CVT to the operand
@@ -2969,10 +2980,16 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 	    CODEREP *crtmp = ftmp.Fold_Expr(retv);
 	    if (crtmp != NULL) retv = Hash_Const(crtmp);
 	  }
+#ifdef KEY // bug 3054
+	  if (retv->Kind() == CK_CONST) {
+#endif
 	  retv->DecUsecnt();
 	  ccr->Set_tree(NULL);
 	  ccr->Set_scale(retv->Const_val());
 	  return TRUE;
+#ifdef KEY // bug 3054
+	  }
+#endif
         }
 	if (retv->Kind() == CK_OP) {
 	  // if CRSIMP flag is turned on, the opr is +,-,

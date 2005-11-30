@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -282,7 +286,7 @@ void retour_(int32 *arg1,  ... )
     char *cval;
     int32 *ip, *ival;
     int32 nargs, len, n;
-    double_t *dp, *dval;
+    double *dp, *dval;
 
     va_start(ap, arg1);
     nargs = *arg1;

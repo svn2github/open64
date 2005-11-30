@@ -161,6 +161,19 @@ Adjusted_Alignment(ST *sym)
         align = stack_align;
       }
     }
+
+    /* If -TENV:align_double is ON, then align double and long double
+       stack variables on a double word boundary.
+    */
+    if( ST_sclass(sym) == SCLASS_AUTO &&
+	Align_Double ){
+      if( ( TY_mtype(ty) == MTYPE_FQ ||
+	    TY_mtype(ty) == MTYPE_F8 ) &&
+	  ( align < 8 ) ){
+	Is_True( Stack_Alignment() >= 8, ("stack is not double word aligned") );
+	align = 8;
+      }
+    }
 #endif
     return align ;
  
@@ -596,12 +609,23 @@ Base_Symbol_And_Offset_For_Addressing (
    * 2. For preemptible symbols, we cannot use the base where the symbol
    *    is allocated since it could be preempted. 
    */
+#ifdef KEY
+  /* 3. For weak symbol, we cannot use the base where the symbol
+        is allocated since weak symbol could be defined in another file.
+	(bug#3052)
+   */
+#endif // KEY
+
   INT64 tofst = 0;
   ST *base = sym;
 
-  while ( (ST_base(base) != base  ) 
-	&& (ST_sclass(base) != SCLASS_TEXT) 
-	&& !((Gen_PIC_Shared || Gen_PIC_Call_Shared) && ST_is_preemptible(base)) )
+  while( (ST_base(base) != base  ) 
+	 && (ST_sclass(base) != SCLASS_TEXT) 
+	 && !((Gen_PIC_Shared || Gen_PIC_Call_Shared) && ST_is_preemptible(base))
+#ifdef KEY
+	 && !ST_is_weak_symbol(base)
+#endif // KEY
+	 )
   {
       tofst += ST_ofst(base);
       base = ST_base(base); 

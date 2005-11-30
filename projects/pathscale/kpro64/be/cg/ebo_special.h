@@ -191,6 +191,13 @@ BOOL EBO_Lea_Insertion( OP*, TN**, EBO_TN_INFO** );
 BOOL Combine_L1_L2_Prefetches( OP*, TN**, EBO_TN_INFO** );
 void Lea_Insertion ();
 void Init_Load_Exec_Map( BB*, MEM_POOL* );
+BOOL Delete_Unwanted_Prefetches( OP* );
+
 #endif /* TARG_X8664 */
 
 BOOL EBO_Can_Merge_Into_Offset (OP *op);
+
+#ifdef KEY
+void EBO_Special_Start( MEM_POOL* );
+void EBO_Special_Finish();
+#endif // KEY

@@ -389,11 +389,16 @@ Match_Loop_Indexes (WN* wn, vector<ST*> formals, INT num_formals)
 }
 
 static BOOL
-Formal_Is_Loop_Index (IPA_NODE* callee, WN* call)
+Formal_Is_Loop_Index (IPA_NODE* callee, const IPA_EDGE* edge)
 {
+  WN * call = edge->Whirl_Node();
   WN* callee_wn = callee->Whirl_Tree(FALSE);
   INT num_formals = WN_num_formals(callee_wn);
   INT count_formals_to_test = 0;
+
+  // now that we allow inlining even if there is a mismatch..
+  if (edge->Num_Actuals() < num_formals)
+    num_formals = edge->Num_Actuals();
 
   vector<ST*> formals;
   formals.reserve (num_formals);
@@ -425,7 +430,7 @@ Can_Inline_Call (IPA_NODE* caller, IPA_NODE* callee, const IPA_EDGE* edge)
   // If the callee uses the formal parameter as a loop index variable then we 
   // can not inline the call because we can not transform the IDNAME in a 
   // meaningful way.
-  if ( Formal_Is_Loop_Index(callee, edge->Whirl_Node()) ) {
+  if ( Formal_Is_Loop_Index(callee, edge) ) {
     Report_Reason ( callee, caller,
                     "formal parameter is a loop index ", edge );
     callee->Set_Noinline_Attrib();
@@ -1942,6 +1947,12 @@ void
 IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 {
     WN* wn = iter.Wn ();
+#ifdef KEY
+    // bug 3060
+    // Give everything the linenum of the callsite
+    if (OPERATOR_has_next_prev(WN_operator(wn)))
+      WN_Set_Linenum (wn, WN_Get_Linenum (Call_Wn()));
+#endif // KEY
     OPERATOR oper = WN_operator (wn);
     switch(oper) {
     case OPR_RETURN_VAL:
@@ -1970,7 +1981,12 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	}
 	if (WN_rtype (WN_kid0 (wn)) == MTYPE_M) {
 	    ST* tmp_st = aux.rp.find_st ();
+#ifdef KEY
+	    TY_IDX stid_ty = ST_type(tmp_st);
+#else
 	    TY_IDX stid_ty = WN_ty(WN_kid0(wn));
+#endif // KEY
+
 #if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
 	    if (stid_ty == 0) { // This is potentially a COMMA node
 
@@ -1991,6 +2007,11 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	// we should have generated a real OPR_RETURN node, but a fake
 	// should be enough in this case
 	WN_set_operator (wn, OPR_RETURN);
+#ifdef KEY
+	// make sure we have proper types
+	WN_set_rtype (wn, MTYPE_V);
+	WN_set_desc (wn, MTYPE_V);
+#endif
 	return;
 	
     case OPR_RETURN:
@@ -2675,8 +2696,31 @@ Create_Assert (ST* formal, WN* const_wn, TYPE_ID desc)
 void
 IPO_INLINE::Process_Formal_ST (TREE_ITER& iter, ST* cp, IPO_INLINE_AUX& aux)
 { 
+#ifdef KEY
+    WN *wn = iter.Wn ();
+    PARM_ITER p = Lookup_Parm (aux.parm_attr, cp);
+    if (p == aux.parm_attr.end())
+    { // There is no match for this parameter, so this must be a case where
+      // # of parameters at the callsite < # of formals, and we are looking
+      // for the parameter missing at the callsite.
+	ST_IDX idx = 0;
+	for (replace_st_vec::iterator i=aux.replace_st.begin(); 
+	     i!=aux.replace_st.end(); ++i)
+	    if ((*i).formal == cp)
+	    {
+	    	idx = (*i).replace;
+	    	break;
+	    }
+	Is_True (idx, ("No ST to replace formal"));
+	WN_st_idx (wn) = idx;
+    	iter++;
+	return;
+    }
+    PARAMETER_ATTRIBUTES& parm = *p;
+#else
     PARAMETER_ATTRIBUTES& parm = *(Lookup_Parm (aux.parm_attr, cp));
     WN *wn = iter.Wn ();
+#endif
 
     switch (parm.Fixup_Method ()) {
 	WN* new_wn;
@@ -3357,7 +3401,15 @@ IPO_INLINE::Process_Formals (IPO_INLINE_AUX& aux)
 
     // initialize the vector holding all the aux. data structures for each
     // parameter 
-    for (INT j=0; j < WN_num_formals(callee); ++j) {
+#ifdef KEY
+    INT num_params = Call_edge()->Num_Actuals() < WN_num_formals(callee) ?
+    		Call_edge()->Num_Actuals() : WN_num_formals(callee);
+
+    for (INT j=0; j < num_params; ++j)
+#else
+    for (INT j=0; j < WN_num_formals(callee); ++j)
+#endif
+    {
         ST* ste = get_formal(Callee_Scope(), WN_formal(callee,j));
 	ste = Symtab()->Get_ST(ste);	// Get the ST version in the caller side
 	Is_True (ST_sclass (ste) == SCLASS_FORMAL ||
@@ -3372,6 +3424,21 @@ IPO_INLINE::Process_Formals (IPO_INLINE_AUX& aux)
 	    has_array = TRUE;
 	parm_attr.push_back (PARAMETER_ATTRIBUTES (actual, ste)); 
     }
+
+#ifdef KEY
+    // For formals that are missing from the list of actuals, store the
+    // dummy ST with which to replace it.
+    for (; num_params < WN_num_formals(callee); ++num_params)
+    {
+        ST* ste = get_formal(Callee_Scope(), WN_formal(callee, num_params));
+	ste = Symtab()->Get_ST(ste);	// Get the ST version in the caller side
+	pair<ST*, WN_OFFSET> sym = Create_Copy_In_Symbol (ste); 
+	Is_True (!sym.second, ("Non-zero offset not handled yet"));
+
+	formal_to_replace_st param (ste, ST_st_idx (sym.first));
+	aux.replace_st.push_back (param);
+    }
+#endif
 
     aux.copy_in_block = WN_CreateBlock(); // Empty block into which assignments
 					  // to formals will go
@@ -3878,12 +3945,23 @@ IPO_INLINE::Process()
 #endif
 
   if (Cur_PU_Feedback) {
-        BOOL not_pass = Cur_PU_Feedback->Verify("IPA/inline");
-      if ( not_pass ) { //FB_VERIFY_CONSISTENT = 0 
-	  DevWarn("Feedback Verify fails after inlining %s to %s",
-		  Callee_node()->Name (), Caller_node()->Name ());
-      }
-}
+#ifdef KEY
+    const FB_VERIFY_STATUS status = Cur_PU_Feedback->Verify("IPA/inline");
+    if( status == FB_VERIFY_UNBALANCED ){
+      ;
+
+    } else if( status == FB_VERIFY_INVALID ){
+      DevWarn( "Feedback Verify fails after inlining %s to %s",
+	       Callee_node()->Name(), Caller_node()->Name() );
+    }
+#else
+    BOOL not_pass = Cur_PU_Feedback->Verify("IPA/inline");
+    if ( not_pass ) { //FB_VERIFY_CONSISTENT = 0 
+      DevWarn("Feedback Verify fails after inlining %s to %s",
+	      Callee_node()->Name (), Caller_node()->Name ());
+    }
+#endif // KEY
+  }
 
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
   if (IPA_Enable_DST) {

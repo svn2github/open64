@@ -64,14 +64,13 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/driver/main.c,
 #include "objects.h"
 #include "version.h"
 
-char *help_pattern = NULL;
-boolean debug = FALSE;
+char *help_pattern;
+boolean debug;
 boolean nostdinc = TRUE;
-boolean show_version = FALSE;
-boolean show_copyright = FALSE;
-#ifdef KEY
-boolean dump_version = FALSE;
-#endif
+int show_version;
+boolean show_copyright;
+boolean dump_version;
+boolean show_search_path;
 
 extern void check_for_combos(void);
 extern boolean is_replacement_combo(int);
@@ -90,7 +89,11 @@ static string_list_t *file_suffixes;
 string_list_t *feedback_files;
 
 static char compiler_version[] = INCLUDE_STAMP;
-static void set_executable_dir (char *argv0);
+static void set_executable_dir (void);
+
+#ifdef KEY
+static void prescan_options (int argc, char *argv[]);
+#endif
 
 static void no_args(void)
 {
@@ -112,6 +115,7 @@ main (int argc, char *argv[])
 	save_command_line(argc, argv);		/* for prelinker    */	
 	program_name = drop_path(argv[0]);	/* don't print path */
 	orig_program_name = string_copy(argv[0]);
+        file_utils_set_program_name(orig_program_name);
 	files = init_string_list();
 	file_suffixes = init_string_list();
 	feedback_files = init_string_list ();	/* for cord feedback files */
@@ -134,15 +138,13 @@ main (int argc, char *argv[])
 
 	/* Try to find where the compiler is located and set the phase
 	   and library directories appropriately. */
-	set_executable_dir(argv[0]);
+	set_executable_dir();
 
-#ifdef KEY
 	// "-o -" will set this to TRUE.
 	dump_outfile_to_stdout = FALSE;
 
 	// Change the phase names based on run-time info.
 	init_phase_names();
-#endif
 
 	init_phase_info();	/* can't add toolroot until other prefixes */
 
@@ -154,6 +156,13 @@ main (int argc, char *argv[])
 
 	remove_phase_for_option(O_A,P_f90_cpp);
 	remove_phase_for_option(O_E,P_f90_cpp);
+
+#ifdef KEY
+	// First check for the existence of certain options anywhere in the
+	// command line, because these options affect the behavior of other
+	// actions.
+	prescan_options(argc, argv);
+#endif
 
 	i = 1;
 	while (i < argc) {
@@ -185,6 +194,13 @@ main (int argc, char *argv[])
 				base_flag = flag;
 			}
 
+#ifdef KEY
+			// Add options that are potentially linker options, in
+			// case pathcc is called as a linker.
+			if (is_maybe_linker_option(base_flag)) {
+				add_maybe_linker_option(base_flag);
+			} else
+#endif
 			if (is_object_option(base_flag)) {
 				/* put in separate object list */
 				add_object (base_flag, optargs);
@@ -193,16 +209,8 @@ main (int argc, char *argv[])
 				/* add unique real flag to list */
 				add_option_seen (flag);
 			}
-			if (base_flag == O_generate_instantiation_info) {
-			     /* This is a def_list_file option that is being
-				passed by the prelinker to the frontend.
-				It should not be recorded in the command
-				line. Therefore cancel the saved arg. */
-			    cancel_saved_arg(1);
-			}
 
 			opt_action(base_flag);
-
 		} else if (argv[i][0] == '+') {
 			check_old_CC_options(argv[i]);
 			i++;
@@ -251,45 +259,57 @@ main (int argc, char *argv[])
 		}
 	}
 
+#ifdef KEY
+	// By now we know if pathcc is called as a linker.  If so, turned all
+	// the potential linker options into real linker options; otherwise
+	// delete them.
+	finalize_maybe_linker_options (num_files == 0);
+#endif
+
 	/* Check target specifications for consistency: */
 	Check_Target ();
 
-#ifdef KEY
 	if (dump_version) {
+	    if (option_was_seen(O_compat_gcc))
+		puts(PSC_GCC_VERSION);
+	    else
 		puts(PSC_FULL_VERSION);
 	}
-#endif
 
         if (show_version) {
-            /* Echo information about the compiler version */
-#ifdef linux
-            fprintf(stderr, "PathScale Compiler Suite(TM): Version %s\n", compiler_version);
-            fprintf(stderr, "ChangeSet: %s (%s)\n", cset_rev, cset_key);
-            fprintf(stderr, "Built by: %s@%s in %s\n", build_user, build_host, build_root);
+            fprintf(stderr, "PathScale EKO Compiler Suite(TM): Version %s\n",
+		    compiler_version);
+	    if (show_version > 1) {
+		fprintf(stderr, "ChangeSet: %s (%s)\n", cset_rev, cset_key);
+		fprintf(stderr, "Built by: %s@%s in %s\n", build_user,
+			build_host, build_root);
+	    }
             fprintf(stderr, "Built on: %s\n", build_date);
             fprintf(stderr, "gcc version " PSC_GCC_VERSION
                     " (PathScale " PSC_FULL_VERSION " driver)\n");
-#else
-            fprintf(stderr, "MIPSpro Compilers: Version %s\n", compiler_version);
-#endif
         }
 	if (show_copyright) {
 	    if (show_version)
 		fputc('\n', stderr);
-	    char *exe_dir = get_executable_dir(NULL);
+	    char *exe_dir = get_executable_dir();
 
 	    fprintf(stderr, "Copyright 2000, 2001 Silicon Graphics, Inc.  "
 		    "All Rights Reserved.\n");
-	    fprintf(stderr, "Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.\n");
+	    fprintf(stderr, "Copyright 2002, 2003, 2004 PathScale, Inc.  "
+		    "All Rights Reserved.\n");
 
-	    fprintf(stderr, "See complete copyright, patent and legal notices in the ");
+	    fprintf(stderr, "See complete copyright, patent and legal notices "
+		    "in the\n");
 	    fprintf(stderr, "%.*s/share/doc/pathscale-compilers-" 
 	    	    PSC_FULL_VERSION "/LEGAL.pdf file.\n",
 		    strlen(exe_dir) - 4, exe_dir);
 	}
-	if (option_was_seen(O_show_defaults)) {
-		/* TODO: print default values */
-		do_exit(RC_OKAY);
+	if (show_search_path) {
+		char *exe_dir = get_executable_dir();
+		fprintf (stderr, "install: %.*s\n", strlen(exe_dir) - 4,
+			 exe_dir);
+		fprintf (stderr, "programs: %s\n", get_phase_dir (P_be));
+		fprintf (stderr, "libraries: %s\n", get_phase_dir (P_library));
 	}
 
 	if (argc == 1)
@@ -305,24 +325,25 @@ main (int argc, char *argv[])
 	if ( ! execute_flag && ! show_flag) {
 		do_exit(RC_OKAY);	/* just exit */
 	}
-#ifdef KEY
 	if (dump_version) {
 		do_exit(RC_OKAY);
 	}
-#endif
-	if (source_kind == S_NONE) {
-		if (show_version) {	/* just exit */
-			do_exit(RC_OKAY);
-		}
+	if (source_kind == S_NONE || read_stdin) {
 		if (read_stdin) {
 			source_file = "-";
 			if (option_was_seen(O_E)) {
 				source_lang = L_cpp;
-			}
-			else {
+			} else {
 				source_kind = get_source_kind(source_file);
 				source_lang = invoked_lang;
+				char *obj_name =
+				  get_object_file(
+				    fix_name_by_lang(source_file));
+				add_object (O_object, obj_name);
 			}
+		}
+		else if (show_version) {	/* just exit */
+			do_exit(RC_OKAY);
 		}
 		else {
 			no_args();
@@ -342,6 +363,13 @@ main (int argc, char *argv[])
 
 	/* check for certain combinations of options */
 	check_for_combos();
+#ifdef KEY
+	if ((option_was_seen(O_fpic) ||
+	     option_was_seen(O_fPIC))
+	     && mem_model == M_MEDIUM) {
+	  error("unimplemented: code model medium not supported in PIC mode");
+	}
+#endif
 
 	if (debug) {
 		dump_args("user flags");
@@ -349,13 +377,11 @@ main (int argc, char *argv[])
 	if (ipa == TRUE)
 	    save_ipl_commands ();
 
-#ifdef KEY
 	if (outfile != NULL && (strcmp(outfile, "-") == 0)) {
 	  // Use suffix "x" just because it's not used.
 	  outfile = create_temp_file_name("x");
 	  dump_outfile_to_stdout = TRUE;
 	}
-#endif
 
 	/* if user has specified feedback files, turn on cord */
 	if (feedback_files->head) cordflag=TRUE;
@@ -415,19 +441,11 @@ main (int argc, char *argv[])
 	      warning ("-fb_cdir cannot be used with -fbuse; -fb_cdir ignored");
 	   save_name(&fb_file, concat_strings(drop_path(prof_file), ".x.cfb"));
 	   if (!(stat(fb_file, &stat_buf) != 0 && errno == ENOENT))
-#ifdef linux
 		fb_file_mod_time = stat_buf.st_mtime;
-#else
-		fb_file_mod_time = stat_buf.st_mtim.tv_sec;
-#endif
            else
 		fb_file_exists = FALSE;
            if (!(stat(count_files->head->name, &stat_buf) != 0 && errno == ENOENT))
-#ifdef linux
 		count_file_mod_time = stat_buf.st_mtime;
-#else
-		count_file_mod_time = stat_buf.st_mtim.tv_sec;
-#endif
            else {
 		internal_error("%s doesn't exist", count_files->head->name);
 		perror(program_name);
@@ -473,6 +491,9 @@ main (int argc, char *argv[])
 	}
 	if (has_errors()) {
 		cleanup();
+#ifdef KEY
+		cleanup_temp_objects();
+#endif
 		return error_status;
 	}
 
@@ -487,6 +508,9 @@ main (int argc, char *argv[])
           	    run_dsm_prelink();
           	    if (has_errors()) {
                       cleanup();
+#ifdef KEY
+		      cleanup_temp_objects();
+#endif
                       return error_status;
                     }
                 }
@@ -499,16 +523,16 @@ main (int argc, char *argv[])
 		if (Gen_feedback)
 		  run_pixie();
 	}
-#ifdef KEY
 	if (dump_outfile_to_stdout == TRUE)
 	  dump_file_to_stdout(outfile);
-#endif
 	cleanup();
+#ifdef KEY
+	cleanup_temp_objects();
+#endif
 	return error_status;
 }
 
-static void set_executable_dir (char *argv0) {
-#ifdef KEY
+static void set_executable_dir (void) {
   char *dir;
   size_t dirlen;
   char *ldir;
@@ -516,7 +540,7 @@ static void set_executable_dir (char *argv0) {
   /* Try to find where the compiler is located in the
      filesystem, and relocate the phase and library
      directories based on where the executable is found. */
-  dir = get_executable_dir (argv0);
+  dir = get_executable_dir ();
   if (dir == NULL) return;	
 
   /* If installed in a bin directory; get phases and stuff from
@@ -552,7 +576,6 @@ static void set_executable_dir (char *argv0) {
     }
     return;
   }
-#endif
 }
 
 static void
@@ -718,3 +741,64 @@ void do_exit(int code)
 
 	exit(code);
 }
+
+
+static struct explicit_lang {
+	const char *name;
+	source_kind_t kind;
+	languages_t lang;
+} explicit_langs[] = {
+	{ "assembler", S_s, L_as, },
+	{ "assembler-with-cpp", S_S, L_as, },
+	{ "c", S_c, L_cc, },
+	{ "c++", S_C, L_CC, },
+	{ "c++-cpp-output", S_ii, L_CC, },
+	{ "c-header", S_c, L_cc, },
+	{ "cpp-output", S_i, L_cc, },
+	{ "f77", S_f90, L_f77, },
+	{ "f77-cpp-input", S_i, L_f77, },
+	{ "f90", S_f90, L_f90, },
+	{ "f90-cpp-input", S_i, L_f90, },
+	{ "f95", S_f90, L_f90, },
+	{ "f95-cpp-input", S_i, L_f90, },
+	{ "none", S_NONE, L_NONE, },
+	{ "ratfor", S_r, L_f77, },
+	{ NULL, S_NONE, L_NONE, },
+};
+
+void set_explicit_lang(const char *flag, const char *lang)
+{
+	struct explicit_lang *x;
+	
+	for (x = explicit_langs; x->name != NULL; x++) {
+		if (strcmp(lang, x->name) == 0) {
+			ignore_suffix = x->lang != S_NONE;
+			source_kind = default_source_kind = x->kind;
+			source_lang = x->lang;
+			break;
+		}
+	}
+
+	if (x->name == NULL) {
+		parse_error(flag, "Unknown language");
+		do_exit(RC_USER_ERROR);
+	}
+}
+
+#ifdef KEY
+// Quick and dirty way to scan for options that must be parsed first.
+static void
+prescan_options (int argc, char *argv[])
+{
+  int i;
+  for (i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "-ipa") == 0) {
+      ipa = TRUE;
+    } else if (strcmp(argv[i], "-keep") == 0) {	// bug 2181
+      keep_flag = TRUE;
+    } else if (strcmp(argv[i], "-save_temps") == 0) {
+      keep_flag = TRUE;
+    }
+  }
+}
+#endif	// KEY

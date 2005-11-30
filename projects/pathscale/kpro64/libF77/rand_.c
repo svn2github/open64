@@ -61,7 +61,7 @@ irand_(void)
 	return(((randx = randx * 1103515245L + 12345)>>16) & 0x7fff);
 }
 
-double_t rand_(void)
+double rand_(void)
 {
     
 	return(irand_()/32768.0);

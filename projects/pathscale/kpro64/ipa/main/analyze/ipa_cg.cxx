@@ -98,6 +98,22 @@
 #include "ipa_option.h"         // for IPA_Enable_Reorder and Merge_struct_access();
 
 IPA_CALL_GRAPH* IPA_Call_Graph;     // "The" call graph of IPA
+#ifdef KEY
+// Temporary graph built for pu-reordering based on edge frequencies.
+IPA_CALL_GRAPH* IPA_Graph_Undirected;
+// IPA_Call_Graph is a global variable used widely, even in member functions
+// of IPA_CALL_GRAPH (where it is appropriate to either use 'this' or 
+// nothing). Building another call graph (IPA_Graph_Undirected) becomes
+// non-trivial, since the process starts using IPA_Call_Graph instead. So
+// when we process IPA_Graph_Undirected, we store IPA_Call_Graph in
+// IPA_Call_Graph_Tmp, and use IPA_Call_Graph and IPA_Graph_Undirected
+// interchangeably.
+static IPA_CALL_GRAPH* IPA_Call_Graph_Tmp = NULL;
+// hash_map mapping nodes in IPA_Call_Graph to IPA_Graph_Undirected, and
+// vice versa.
+static hash_map<IPA_NODE*, IPA_NODE*, hashfn, eqnode> node_map;
+static vector<Nodes_To_Edge *> q_order;
+#endif
 BOOL IPA_Call_Graph_Built = FALSE;
 
 typedef hash_map<NODE_INDEX, NODE_INDEX> ALT_ENTRY_MAP;
@@ -356,6 +372,94 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
 	    } while (idx);
 	}
 }
+
+static inline IPA_NODE *
+pu_info_to_node (PU_Info *pu)
+{
+    return IPA_Call_Graph->Graph()->Node_User (AUX_PU_node(Aux_Pu_Table[ST_pu(St_Table[PU_Info_proc_sym (pu)])]));
+}
+
+void
+Mark_PUs_With_File_Id (PU_Info * pu, UINT id)
+{
+  for (; pu; pu = PU_Info_next (pu))
+  {
+    IPA_NODE * node = pu_info_to_node (pu);
+    node->Set_File_Id (id);
+    if (PU_Info_child (pu))
+    	Mark_PUs_With_File_Id (PU_Info_child (pu), id);
+  }
+}
+
+std::vector<char *> options;
+
+BOOL Opt_Options_Inconsistent = FALSE;
+mINT32 IPA_NODE::next_file_id = -1;
+
+// This is a simple scheme to check if there is mismatch in options passed
+// to different files doing IPA.
+// TODO: Accept different options as the user requested, and remove this
+// warning.
+static void
+IPA_Check_Optimization_Options (IP_FILE_HDR& hdr)
+{
+  static bool warned = false;
+
+  if (warned) return;
+
+  char * base_addr = (char *) 
+  	WN_get_section_base (IP_FILE_HDR_input_map_addr (hdr), WT_COMP_FLAGS);
+
+  if (base_addr == (char*) -1)
+    ErrMsg (EC_IR_Scn_Read, "command line", IP_FILE_HDR_file_name (hdr));
+
+  Elf64_Word argc = *((Elf64_Word *) base_addr);
+
+  // Detect early if the # of options doesn't match
+  // argv[0] == compiler-name (e.g. pathcc), so we start from argv[1]
+  if (!options.empty() && ((argc-1) != options.size()))
+  {
+    warned = true;
+    Opt_Options_Inconsistent = TRUE;
+    ErrMsg (EC_Ipa_Options);
+    return;
+  }
+
+  Elf64_Word* args = (Elf64_Word *) (base_addr + sizeof(Elf64_Word));
+
+  if (options.empty())
+  {
+    options.reserve (sizeof (char *) * (argc-1));
+    for (int i=1; i<argc; ++i)
+	options.push_back (base_addr + args[i]);
+    std::sort (options.begin(), options.end(), option_cmp());
+    return;
+  }
+
+  Is_True (argc-1 == options.size(), ("IPA_Check_Optimization_Options error"));
+
+  std::vector<char *> current_options;
+
+  current_options.reserve (sizeof (char *) * (argc-1));
+  for (int i=1; i<argc; ++i)
+    current_options.push_back (base_addr + args[i]);
+
+  std::sort (current_options.begin(), current_options.end(), option_cmp());
+
+  for (int i=0; i<argc-1; ++i)
+  {
+    if (strcmp (options[i], current_options[i]))
+    {
+    	warned = true;
+	Opt_Options_Inconsistent = TRUE;
+	current_options.clear();
+    	ErrMsg (EC_Ipa_Options);
+	return;
+    }
+  }
+  current_options.clear();
+  return;
+}
 #endif
 
 //-------------------------------------------------------------------------
@@ -365,6 +469,10 @@ IPA_update_ehinfo_in_pu (IPA_NODE *node)
 void
 IPA_Process_File (IP_FILE_HDR& hdr)
 {
+#ifdef KEY
+  if (IPA_Check_Options)
+    IPA_Check_Optimization_Options (hdr);
+#endif
   IP_READ_pu_infos (hdr);
 
   IPA_update_summary_st_idx (hdr);
@@ -491,7 +599,13 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     // symbol resolution should have set the NOT_USED bit of duplicated
     // PUs
 
-    if (AUX_PU_file_hdr (Aux_Pu_Table[ST_pu (st)]) != &s) {
+#ifdef KEY
+    if (IPA_Call_Graph_Tmp == NULL /*Do it only the first pass */ && 
+        AUX_PU_file_hdr (Aux_Pu_Table[ST_pu (st)]) != &s)
+#else
+    if (AUX_PU_file_hdr (Aux_Pu_Table[ST_pu (st)]) != &s)
+#endif
+    {
 	Is_True (ST_export (st) != EXPORT_LOCAL &&
 		     ST_export (st) != EXPORT_LOCAL_INTERNAL,
 		     ("Multiply defined symbols should not be EXPORT_LOCAL"));
@@ -523,6 +637,18 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 		
     ipa_node = 
           IPA_Call_Graph->Add_New_Node (st, file_idx, i, i);
+
+#ifdef KEY
+    if (IPA_Enable_PU_Reorder == REORDER_BY_EDGE_FREQ && IPA_Call_Graph_Tmp)
+    {
+	// Get the original node from THE call graph
+    	IPA_NODE * node_dup = IPA_Call_Graph_Tmp->Graph()->Node_User (AUX_PU_node(Aux_Pu_Table[ST_pu(st)]));
+    	node_map [ipa_node] = node_dup;
+    	node_map [node_dup] = ipa_node;
+    }
+    else
+    {
+#endif
 //;;printf( "PU   %-50s (freq = %.1f) \n", IPA_Node_Name(ipa_node), (ipa_node->Get_frequency())._value);//pengzhao
     NODE_INDEX cg_node = ipa_node->Node_Index ();
 	
@@ -590,6 +716,9 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     // Mark overrides for externally visible routines
 
     Mark_inline_overrides(ipa_node, st);
+#ifdef KEY
+    } // else of '(REORDER_BY_EDGE_FREQ && IPA_Call_Graph_Tmp)'
+#endif
 
     return ipa_node;
 	
@@ -627,6 +756,26 @@ append_icall_list (IPA_ICALL_LIST& ilist, SUMMARY_CALLSITE *c)
     ilist.push_back (cnode);
 }
 
+#ifdef KEY
+// Check if we already have an edge between the 2 nodes (in ne).
+static vector<Nodes_To_Edge *>::iterator 
+find_if_equal (vector<Nodes_To_Edge*>::iterator b, vector<Nodes_To_Edge*>::iterator e, Nodes_To_Edge * ne)
+{
+    vector<Nodes_To_Edge *>::iterator it = b;
+    for (; it!=e; it++)
+    	if (((*it)->Caller() == ne->Caller() && 
+	     (*it)->Callee() == ne->Callee()) ||
+	     // Edges are considered undirected
+	     ((*it)->Caller() == ne->Callee() &&
+	     (*it)->Callee() == ne->Caller()))
+	    return b;
+    return e;
+}
+
+// Update frequency of the edge with the frequency in the callsite
+static void Update_freq (SUMMARY_CALLSITE *, IPA_EDGE *);
+#endif
+
 void
 Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMARY_SYMBOL* symbol_array)
 {
@@ -645,7 +794,13 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
     const ST* caller_st = &St_Table[temp_st_idx];
 
     NODE_INDEX caller_idx = AUX_PU_node (Aux_Pu_Table[ST_pu(caller_st)]);
-    IPA_NODE* caller = IPA_Call_Graph->Graph()->Node_User (caller_idx);
+    IPA_NODE* caller;
+#ifdef KEY
+    if (IPA_Call_Graph_Tmp) // Actual call graph
+      caller = IPA_Call_Graph_Tmp->Graph()->Node_User (caller_idx);
+    else
+#endif
+      caller = IPA_Call_Graph->Graph()->Node_User (caller_idx);
     SUMMARY_CALLSITE *callsite_array = IPA_get_callsite_array (caller);
     
     INT callsite_count = proc_array[i].Get_callsite_count();
@@ -661,12 +816,13 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 
       // for indirect call sites
       if ( callsite_array[callsite_index].Is_func_ptr() ) {
+      	if (!IPA_Call_Graph_Tmp) { // KEY
 #ifdef _LIGHTWEIGHT_INLINER
           if (!INLINE_Inlined_Pu_Call_Graph)
 #endif // _LIGHTWEIGHT_INLINER
               append_icall_list (caller->Icall_List(), 
                            &callsite_array[callsite_index]);
-
+	} // KEY
       } 
       // for direct calls
       else if (!callsite_array[callsite_index].Is_intrinsic()) {
@@ -701,6 +857,36 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
         // If the callee is not in a WHIRL IR file, its index will 
         // be invalid. In that case we do not add the edge, but we
         // add the callsite to a special list of opaque calls.
+#ifdef KEY
+	if (callee_idx != INVALID_NODE_INDEX && 
+	    IPA_Enable_PU_Reorder == REORDER_BY_EDGE_FREQ && 
+	    IPA_Call_Graph_Tmp) {
+	  IPA_NODE * callee = IPA_Call_Graph_Tmp->Graph()->Node_User (callee_idx);
+	  IPA_NODE * caller_u = node_map [ caller ];
+	  IPA_NODE * callee_u = node_map [ callee ];
+	  NODE_INDEX caller_idx_u = caller_u->Node_Index();
+	  NODE_INDEX callee_idx_u = callee_u->Node_Index();
+	  Nodes_To_Edge * ne = new Nodes_To_Edge (caller_idx_u, callee_idx_u);
+	  vector<Nodes_To_Edge *>::iterator it;
+	  if ((it = find_if_equal (q_order.begin(), q_order.end(), ne)) == q_order.end())
+	  { // No edge between these 2 nodes
+	    IPA_EDGE * edge_u = 
+	        IPA_Call_Graph->Add_New_Edge 
+				    (&callsite_array[callsite_index],
+                                     caller_idx_u, callee_idx_u);
+	    Nodes_To_Edge * o = new Nodes_To_Edge (caller_idx_u,
+	      					callee_idx_u, edge_u);
+	    q_order.push_back (o);
+	  }
+	  else
+	  { // Already have edge between the 2 nodes.
+	    SUMMARY_CALLSITE * c = &callsite_array[callsite_index];
+	    Update_freq (c, (*it)->Edge());
+	  }
+	  delete ne;
+	  continue;
+	}
+#endif
         if (callee_idx != INVALID_NODE_INDEX) {
           IPA_EDGE* ipa_edge = 
             IPA_Call_Graph->Add_New_Edge (&callsite_array[callsite_index],
@@ -710,7 +896,7 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
             Total_call_freq += ipa_edge->Get_frequency ();
           }
 	  Mark_inline_edge_overrides(ipa_edge);
-        } 
+        }
         else {
 #ifdef _LIGHTWEIGHT_INLINER
             if (INLINE_Inlined_Pu_Call_Graph)
@@ -719,6 +905,13 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 #endif // _LIGHTWEIGHT_INLINER
                 append_icall_list (caller->Ocall_List(), 
                              &callsite_array[callsite_index]);
+#ifdef KEY
+		// If we have no WHIRL, we assume any C++ PU can throw
+		if (IPA_Enable_EH_Region_Removal &&
+		    (PU_src_lang (Pu_Table [ST_pu (caller->Func_ST())]) & 
+		     PU_CXX_LANG))
+		    caller->Set_PU_Can_Throw ();
+#endif
         }
       }
     }
@@ -852,17 +1045,308 @@ struct add_edges
     }
 }; // add_edges
 
+#ifdef KEY
+// Used by sort.
+struct order : public binary_function<IPA_EDGE *, IPA_EDGE *, bool>
+{
+  bool operator() (IPA_EDGE * e1, IPA_EDGE * e2)
+  {
+    // Don't use operator< since it exposes a g++ bug.
+    // Don't use operator<= since it fails the requirements of 'sort'
+    return (e1->Has_frequency() || e2->Has_frequency()) && 
+    	   e1->Get_frequency()._value < e2->Get_frequency()._value;
+  }
+};
+
+static void
+Update_freq (SUMMARY_CALLSITE *c, IPA_EDGE *e)
+{
+  FB_FREQ sum = 0.0;
+  if (c && c->Has_callsite_freq ())
+    sum = c->Get_frequency_count ();
+  if (e->Has_frequency())
+  {
+    sum += e->Get_frequency ();
+    e->Set_frequency (sum);
+  }
+}
+
+// List of edges in the changing undirected graph.
+static vector<IPA_EDGE *> edges;
+// Assumption: Called with the undirected graph for pu reordering
+// Merges the 2 nodes into 'caller_idx'.
+void
+IPA_CALL_GRAPH::Merge_Nodes (NODE_INDEX caller_idx, NODE_INDEX callee_idx)
+{
+  EDGE_INDEX nf;
+  EDGE_INDEX f = NODE_from (&(_graph->v[callee_idx]));
+  // Update the 'from' edges from callee to start from caller.
+  while (f != INVALID_EDGE_INDEX)
+  {
+    nf = EDGE_nfrom (&(_graph->e[f]));
+    IPA_EDGE * from = _graph->Edge_User (f);
+
+    if (!from)
+    {
+    	f = nf;
+	continue;
+    }
+    // Create an edge between caller_idx and to_idx, so that we can later delete
+    // 'from'.
+    NODE_INDEX to_idx = Callee (from)->Node_Index();
+
+    Nodes_To_Edge * ne = new Nodes_To_Edge (caller_idx, to_idx);
+    vector<Nodes_To_Edge *>::iterator it;
+
+    if ((it = find_if_equal (q_order.begin(), q_order.end(), ne)) == q_order.end())
+    {
+	IPA_EDGE* ipa_edge = 
+            Add_New_Edge (from->Summary_Callsite(), caller_idx, to_idx);
+	edges.push_back (ipa_edge);
+    	// No need to push this edge into q_order, since we don't expect
+	// this edge to appear again in the undirected call graph.
+    }
+    else
+    {
+	Update_freq (from->Summary_Callsite(), (*it)->Edge());
+    }
+    delete ne;
+    f = nf;
+  }
+
+  // Update the 'to' edges to callee to end at caller.
+  EDGE_INDEX nt, t = NODE_to (&(_graph->v[callee_idx]));
+  while (t != INVALID_EDGE_INDEX)
+  {
+    nt = EDGE_nto (&(_graph->e[t]));
+    IPA_EDGE * to = _graph->Edge_User (t);
+
+    if (!to)
+    {
+    	t = nt;
+	continue;
+    }
+    
+    NODE_INDEX from_idx = Caller (to)->Node_Index();
+    if (from_idx == caller_idx)
+    {
+	t = nt;
+    	continue;
+    }
+
+    Nodes_To_Edge * ne = new Nodes_To_Edge (from_idx, caller_idx);
+    vector<Nodes_To_Edge *>::iterator it;
+    if ((it = find_if_equal (q_order.begin(), q_order.end(), ne)) == q_order.end())
+    {
+    	IPA_EDGE* ipa_edge =
+	    Add_New_Edge (to->Summary_Callsite(), from_idx, caller_idx);
+	edges.push_back (ipa_edge);
+    }
+    else
+    {
+    	Update_freq (to->Summary_Callsite(), (*it)->Edge());
+    }
+    delete ne;
+    t = nt;
+  }
+  _graph->Node_User (caller_idx)->Set_Merged ();
+}
+
+NODE_INDEX node_g;
+struct matching : public unary_function<IPA_EDGE *, bool>
+{ // Must assign to node_g before using this predicate
+  bool operator() (IPA_EDGE * e)
+  {
+    return IPA_Call_Graph->Caller(e)->Node_Index() == node_g ||
+    	   IPA_Call_Graph->Callee(e)->Node_Index() == node_g;
+  }
+};
+
+// Store our order in which the nodes should be emitted, for later use in
+// optimize phase.
+vector<IPA_NODE *> emit_order;
+// Determine_Affinity is currently not called.
+#ifdef TODO_KEY
+static void
+Determine_Affinity (vector<IPA_NODE *> v)
+{
+  FB_FREQ f[] = {0.0, 0.0, 0.0, 0.0};
+
+    {
+    	Nodes_To_Edge * ne = new Nodes_To_Edge (v[0]->Node_Index(), v[2]->Node_Index());
+	vector<Nodes_To_Edge *>::iterator it;
+	if ((it = find_if_equal (q_order.begin(), q_order.end(), ne)) != q_order.end())
+	    f[0] = (*it)->Edge()->Get_frequency();
+    	delete ne;
+    }
+    if (v.size() == 4)
+    {
+    	Nodes_To_Edge * ne = new Nodes_To_Edge (v[0]->Node_Index(), v[3]->Node_Index());
+	vector<Nodes_To_Edge *>::iterator it;
+	if ((it = find_if_equal (q_order.begin(), q_order.end(), ne)) != q_order.end())
+	    f[1] = (*it)->Edge()->Get_frequency();
+    	delete ne;
+    }
+    {
+    	Nodes_To_Edge * ne = new Nodes_To_Edge (v[1]->Node_Index(), v[2]->Node_Index());
+	vector<Nodes_To_Edge *>::iterator it;
+	if ((it = find_if_equal (q_order.begin(), q_order.end(), ne)) != q_order.end())
+	    f[2] = (*it)->Edge()->Get_frequency();
+    	delete ne;
+    }
+    if (v.size() == 4)
+    {
+    	Nodes_To_Edge * ne = new Nodes_To_Edge (v[1]->Node_Index(), v[3]->Node_Index());
+	vector<Nodes_To_Edge *>::iterator it;
+	if ((it = find_if_equal (q_order.begin(), q_order.end(), ne)) != q_order.end())
+	    f[3] = (*it)->Edge()->Get_frequency();
+    	delete ne;
+    }
+
+    bool swapped = false;
+    if (f[0]+f[1] > f[2]+f[3])
+    { // swap v[0] and v[1]
+    	IPA_NODE * tmp = v[0];
+	v[0] = v[1];
+	v[1] = tmp;
+	swapped = true;
+    }
+    if (v.size() == 4)
+    {
+      FB_FREQ f0, f1;
+      if (swapped)
+      {
+    	f0 = f[0];
+	f1 = f[1];
+      }
+      else
+      {
+    	f0 = f[2];
+	f1 = f[3];
+      }
+      if (f0 < f1)
+      { // swap v[2] and v[3]
+    	IPA_NODE * tmp = v[2];
+	v[2] = v[3];
+	v[3] = tmp;
+      }
+    }
+    for (vector<IPA_NODE *>::iterator it=v.begin(); it!=v.end(); ++it)
+    	emit_order.push_back ((*it));
+}
+#endif // TODO_KEY
+
+// Top level function for doing REORDER_BY_EDGE_FREQ
+static void
+Determine_Emit_Order (IPA_CALL_GRAPH * cg)
+{
+  IPA_NODE_ITER walk (cg, PREORDER);
+
+  for (walk.First (); !walk.Is_Empty (); walk.Next ())
+  {
+    IPA_NODE * node = walk.Current ();
+    if (!node) continue;
+    IPA_SUCC_ITER succ_iter (cg, node);
+    for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next())
+    {
+	IPA_EDGE * edge = succ_iter.Current_Edge ();
+	if (edge)
+    	  edges.push_back (edge);
+    }
+  }
+  sort (edges.begin(), edges.end(), order());
+
+#ifdef TODO_KEY
+  vector<IPA_NODE *> last;
+#endif
+  while (!edges.empty())
+  {
+    IPA_EDGE * e = edges.back ();
+    IPA_NODE * caller = IPA_Call_Graph->Caller (e);
+    IPA_NODE * callee = IPA_Call_Graph->Callee (e);
+
+    NODE_INDEX caller_idx = caller->Node_Index();
+    NODE_INDEX callee_idx = callee->Node_Index();
+
+#ifdef TODO_KEY
+    if (last.empty())
+    {
+    	if (!caller->Is_Merged())
+	  last.push_back (node_map[caller]);
+	if (!callee->Is_Merged())
+	  last.push_back (node_map[callee]);
+    }
+    else
+    {
+    	if (!caller->Is_Merged())
+	  last.push_back (node_map[caller]);
+	if (!callee->Is_Merged())
+	  last.push_back (node_map[callee]);
+	if (last.size() <= 2)
+	{
+	  emit_order.push_back (last[0]);
+	  if (last.size() == 2) emit_order.push_back (last[1]);
+	}
+	else Determine_Affinity (last);
+	last.clear();
+    }
+#else
+    
+    if (!caller->Is_Merged())
+    	emit_order.push_back (node_map[caller]);
+    if (!callee->Is_Merged())
+    	emit_order.push_back (node_map[callee]);
+#endif
+
+    // Merge the callee information into the caller, then delete the callee.
+    IPA_Call_Graph->Merge_Nodes (caller_idx, callee_idx);
+    node_g = callee_idx;
+    // node_g is used by remove_if
+    vector<IPA_EDGE *>::iterator new_end = remove_if (edges.begin(), edges.end(), matching());
+    edges.erase (new_end, edges.end());
+
+    IPA_Call_Graph->Graph()->Delete_Node (callee_idx);
+    
+    sort (edges.begin(), edges.end(), order());
+  }
+}
+#endif
 
 void
 Build_Call_Graph ()
 {
   IPA_Call_Graph = CXX_NEW(IPA_CALL_GRAPH(Malloc_Mem_Pool), Malloc_Mem_Pool);
+#ifdef KEY
+  if (IPA_Enable_PU_Reorder == REORDER_BY_EDGE_FREQ)
+      IPA_Graph_Undirected = CXX_NEW(IPA_CALL_GRAPH(Malloc_Mem_Pool), Malloc_Mem_Pool);
+  for (int iter=0; iter<2; ++iter)
+  {
+#endif
 
-  For_all_entries (IP_File_header, add_nodes ());
+    For_all_entries (IP_File_header, add_nodes ());
 
-  For_all_entries (IP_File_header, add_edges ());
+    For_all_entries (IP_File_header, add_edges ());
 
-  Connect_call_graph();
+    Connect_call_graph();
+#ifdef KEY
+    if (IPA_Enable_PU_Reorder != REORDER_BY_EDGE_FREQ)
+    	break;
+    else if (!iter)
+    { // Prepare to build the "undirected" graph
+    	IPA_Call_Graph_Tmp = IPA_Call_Graph;
+	IPA_Call_Graph = IPA_Graph_Undirected;
+    }
+    else
+    { // Restore pointers
+	Determine_Emit_Order (IPA_Call_Graph);
+	FmtAssert (IPA_Call_Graph == IPA_Graph_Undirected, (""));
+    	IPA_Call_Graph = IPA_Call_Graph_Tmp;
+	IPA_Call_Graph_Tmp = NULL;
+	q_order.clear();
+	node_map.clear();
+    }
+  }
+#endif
 
   IPA_Call_Graph_Built = TRUE;
 
@@ -883,7 +1367,7 @@ static void IPA_Collect_Runtime_Addr( IPA_CALL_GRAPH* cg )
 
   for( cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next() ){
     IPA_NODE* node = cg_iter.Current();
-    if( node == NULL || node->PU_Info() == NULL )
+    if( node == NULL || node->PU_Info() == NULL || node->Should_Be_Skipped() )
       continue;
 
     IPA_NODE_CONTEXT context(node);
@@ -1013,192 +1497,337 @@ static bool Check_Heuristic( IPA_NODE* caller,
 
 static void Convert_Icall( IPA_CALL_GRAPH* cg, IPA_NODE* node )
 {
-  if( node == NULL || node->PU_Info() == NULL )
+  if( node == NULL            ||
+      node->Total_Succ() == 0 ||
+      node->PU_Info() == NULL ||
+      node->Should_Be_Skipped() ){
     return;
+  }
+
+  FmtAssert( !node->Is_Visited(), ("node is visited") );
 
   // Use the node's mempool for wn creation.
   IPA_NODE_CONTEXT context(node);
-  cg->Map_Callsites( node );
 
   if( Cur_PU_Feedback == NULL )
     return;
 
-  bool bChanged = false;
+  SUMMARY_PROCEDURE* node_summary = node->Summary_Proc();
+  SUMMARY_CALLSITE* callsite_array = 
+    IPA_get_callsite_array( node ) + node_summary->Get_callsite_index();
+
+  int intr_call_count = 0;
+  int callsite_id = 0;
+
+  /* First, we need to the callsite_id for each wn. */
+  std::map<WN*,UINT16> wn_cs_id_map;
+  int* new_call_id =
+    (int*)alloca( sizeof(new_call_id[0]) * node_summary->Get_callsite_count() );
+  bzero( new_call_id, sizeof(new_call_id[0]) * node_summary->Get_callsite_count() );
+
+  std::map<UINT16,ST*> new_st_map;
+
+  for( WN_ITER* wni = WN_WALK_TreeIter(node->Whirl_Tree(FALSE) );
+       wni != NULL;
+       wni = WN_WALK_TreeNext(wni) ){
+    WN* wn = WN_ITER_wn (wni);
+
+    switch( WN_operator(wn) ){
+    case OPR_INTRINSIC_CALL:
+      intr_call_count++;
+      // fall thru
+    case OPR_CALL:
+      if( WN_opcode(wn) == OPC_VCALL &&
+	  WN_Fake_Call_EH_Region( wn, Parent_Map ) ){
+	break;
+      }
+      // fall thru
+    case OPR_ICALL:
+      wn_cs_id_map[wn] = callsite_id;
+      callsite_id++;
+      break;
+    }
+  }
+
+  const int freq_threshold = 200;
+  const int orig_call_count = node_summary->Get_call_count();
 
   for( WN_ITER* wni = WN_WALK_SCFIter(node->Whirl_Tree(FALSE)); 
        wni != NULL;
        wni = WN_WALK_SCFNext(wni) ){
+    if( WN_operator(WN_ITER_wn(wni)) != OPR_BLOCK )
+      continue;
 
-    if( WN_operator(WN_ITER_wn(wni)) == OPR_BLOCK ){
-      WN* block = WN_ITER_wn(wni);
+    WN* block = WN_ITER_wn(wni);
 
-      for( WN* wn = WN_first(block); wn != NULL; wn = WN_next(wn) ){
-	if( WN_operator(wn) != OPR_ICALL )
-	  continue;
+    for( WN* wn = WN_first(block); wn != NULL; wn = WN_next(wn) ){
+      if( WN_operator(wn) != OPR_ICALL )
+	continue;
 
-	const FB_Info_Call& info_call = Cur_PU_Feedback->Query_call(wn);
+      const FB_Info_Call& info_call = Cur_PU_Feedback->Query_call(wn);
 
-	if( !info_call.freq_entry.Known() ){
-	  continue;
-	}
-
-	if( info_call.freq_entry.Value() < IPA_Min_Freq ){
-	  continue;
-	}
-
-	const FB_Info_Icall& info_icall = Cur_PU_Feedback->Query_icall(wn);
-
-	if( info_icall.Is_uninit() )
-	  continue;
-
-	const UINT64 exec_counter   = info_icall.tnv._exec_counter;
-	const UINT64 callee_counter = info_icall.tnv._counters[0];
-	const UINT64 callee_addr    = info_icall.tnv._values[0];
-
-	if( exec_counter == 0 || callee_counter == 0 ){
-	  continue;
-	}
-
-	if( Trace_IPA || Trace_Perf ){
-	  fprintf( TFile, "icall table entries --->\n" );
-
-	  for( int i = 0; i < FB_TNV_SIZE; i++ ){
-	    if( info_icall.tnv._values[i] == 0 )
-	      break;
-
-	    char* p = addr_node_map[info_icall.tnv._values[i]]->Name();
-	    const float ratio = (float)info_icall.tnv._counters[i] / exec_counter;
-      
-	    fprintf( TFile, "\t%s(%llu,%f)\n", p, info_icall.tnv._counters[i], ratio );
-	  }
-	}
-
-	IPA_NODE* callee = addr_node_map[callee_addr];
-	Is_True( callee != NULL, ("function address must be positive!") );
- 
-	ST* st_callee = WN_st( PU_Info_tree_ptr( callee->PU_Info() ) );
-	TY_IDX ty_callee = ST_pu_type( st_callee );
-	char* callee_name = callee->Name();
-
-	/* Heuristic check to favor the inline phase.
-	   But how is the impact for the cprop phase ???
-	 */
-
-	if( !Check_Heuristic( node, callee, callee_counter , cg ) ){
-	  //cg->Graph()->Delete_Edge( edge->Edge_Index() );
-	  if( Trace_IPA || Trace_Perf ){
-	    fprintf( TFile, "Convert_Icall: target %s will not be converted",
-		     callee_name );
-	  }
-
-	  continue;
-	}
-
-	if( Trace_IPA || Trace_Perf ){
-	  fprintf( TFile,
-		   "map addr 0x%llx to func %s (freq:%llu/%llu)\n",
-		   callee_addr, callee_name, callee_counter, exec_counter);
-	}
-
-	SUMMARY_CALLSITE* callsite_array = IPA_get_callsite_array( node );
-	SUMMARY_PROCEDURE* node_summary = node->Summary_Proc();
-	SUMMARY_PROCEDURE* callee_summary = callee->Summary_Proc();
-	SUMMARY_CALLSITE* callsite = NULL;
-	int callsite_index =
-	  node_summary->Get_callsite_index() + node_summary->Get_call_count();
-
-	for( int i = node_summary->Get_call_count();
-	     i < node_summary->Get_callsite_count();
-	     i++, callsite_index++ ){
-	  if( callsite_array[callsite_index].Is_icall_slot() ){
-	    callsite = &callsite_array[callsite_index];
-	    break;
-	  }
-	}
-
-	if( callsite == NULL ){
-	  DevWarn( "Convert_Icall: no available callsite found." );
-	  continue;
-	}
-
-	bChanged = true;
-	node_summary->Incr_call_count();
-	callsite->Reset_icall_slot();
-	callsite->Set_param_count( WN_num_actuals(wn) );
-	callsite->Set_return_type( WN_rtype(wn) );
-	callsite->Set_callsite_freq();
-	callsite->Set_frequency_count( (INT64)callee_counter );
-	//callsite->Set_loopnest(?);
-
-	IPA_EDGE* edge = cg->Add_New_Edge( callsite,
-					   node->Node_Index(),
-					   callee->Node_Index() );
-
-
-	/* Perform icall to call conversion here.
-	 */
-
-	WN* tmpkid0 = WN_CreateLda( Use_32_Bit_Pointers ? OPC_U4LDA : OPC_U8LDA,
-				    0, Make_Pointer_Type(ty_callee),st_callee );
-	WN* tmpkid1 = WN_COPY_Tree_With_Map( WN_kid(wn,WN_kid_count(wn)-1) );
-	WN* test = WN_Create( Use_32_Bit_Pointers ? OPC_U4U4EQ : OPC_U8U8EQ, 2 );
-	
-	WN_kid0(test) = tmpkid0;
-	WN_kid1(test) = tmpkid1;
-
-	WN* if_then = WN_Create(WN_opcode(wn),WN_kid_count(wn)-1);
-	WN* if_then_block = WN_CreateBlock();
-	WN_set_operator(if_then,OPR_CALL);
-
-	edge->Set_Whirl_Node( if_then );
-
-	for( int i = 0; i < WN_kid_count(if_then); i++ ){
-	  WN_kid(if_then,i) = WN_COPY_Tree_With_Map( WN_kid(wn,i) );
-	}
-
-	WN_st_idx(if_then) = ST_st_idx(st_callee);
-
-	WN_Set_Parent( if_then, if_then_block,
-		       node->Parent_Map(), node->Map_Table() );
-	WN_INSERT_BlockLast( if_then_block, if_then );
-	WN_Parentize( if_then, node->Parent_Map(), node->Map_Table() );
-
-	WN* if_else = WN_COPY_Tree_With_Map( wn );
-	WN* if_else_block = WN_CreateBlock();
-	WN_INSERT_BlockLast(if_else_block,if_else);
-
-	for( WN* stmt = WN_next(wn);
-	     stmt != NULL && Is_Return_Store_Stmt( stmt ); ){
-	  WN_INSERT_BlockLast( if_then_block, WN_COPY_Tree(stmt) );
-	  WN_INSERT_BlockLast( if_else_block, WN_COPY_Tree(stmt) );
-
-	  //empty the stmt
-	  WN* ret_wn = stmt;
-	  stmt = WN_next( stmt );
-
-	  WN_EXTRACT_FromBlock( block, ret_wn );
-	}
-
-	WN* wn_if = WN_CreateIf( test, if_then_block, if_else_block );
-	Cur_PU_Feedback->FB_lower_icall( wn, if_else, if_then, wn_if );
-
-	// Delete the map info. We delete it from <Cur_PU_Feedback>
-	Cur_PU_Feedback->Delete(wn);
-
-	// Replace wn with call_wn.
-	WN_INSERT_BlockAfter( block, wn, wn_if );
-	WN_EXTRACT_FromBlock( block, wn );
-
-	wn = wn_if;
+      if( !info_call.freq_entry.Known() ){
+	continue;
       }
-    }
+
+      if( info_call.freq_entry.Value() < freq_threshold ){
+	continue;
+      }
+
+      FB_Info_Icall info_icall = Cur_PU_Feedback->Query_icall(wn);
+
+      if( info_icall.Is_uninit() )
+	continue;
+
+      /* Repair the icall freq info which is distorted by earlier phase.
+	 Now it is only a work-around to get rid of later warning mesg.
+	 TODO: fix it in the first place.
+      */
+
+      if( info_icall.tnv._exec_counter < info_call.freq_entry.Value() ){
+	const UINT64 gap = (UINT64)info_call.freq_entry.Value() -
+	  info_icall.tnv._exec_counter;
+	info_icall.tnv._exec_counter += gap;
+	info_icall.tnv._counters[0] += gap;
+	Cur_PU_Feedback->Annot_icall( wn, info_icall );
+      }
+
+      const UINT64 exec_counter   = info_icall.tnv._exec_counter;
+      const UINT64 callee_counter = info_icall.tnv._counters[0];
+      const UINT64 callee_addr    = info_icall.tnv._values[0];
+
+      if( exec_counter == 0 || callee_counter == 0 ){
+	continue;
+      }
+
+      if( Trace_IPA || Trace_Perf ){
+	fprintf( TFile, "icall table entries --->\n" );
+
+	for( int i = 0; i < FB_TNV_SIZE; i++ ){
+	  if( info_icall.tnv._values[i] == 0 )
+	    break;
+
+	  char* p = addr_node_map[info_icall.tnv._values[i]]->Name();
+	  const float ratio = (float)info_icall.tnv._counters[i] / exec_counter;
+	  
+	  fprintf( TFile, "\t%s(%llu,%f)\n", p, info_icall.tnv._counters[i], ratio );
+	}
+      }
+
+      IPA_NODE* callee = addr_node_map[callee_addr];
+      if( callee == NULL ){
+	//Is_True( callee != NULL, ("function address must be positive!") );
+	continue;
+      }
+ 
+      ST* st_callee = WN_st( PU_Info_tree_ptr( callee->PU_Info() ) );
+      TY_IDX ty_callee = ST_pu_type( st_callee );
+      char* callee_name = callee->Name();
+
+      /* Heuristic check to favor the inline phase.
+	 But how is the impact for the cprop phase ???
+      */
+
+      if( !Check_Heuristic( node, callee, callee_counter , cg ) ){
+	//cg->Graph()->Delete_Edge( edge->Edge_Index() );
+	if( Trace_IPA || Trace_Perf ){
+	  fprintf( TFile, "Convert_Icall: target %s will not be converted",
+		   callee_name );
+	}
+
+	continue;
+      }
+
+      if( Trace_IPA || Trace_Perf ){
+	fprintf( TFile,
+		 "map addr 0x%llx to func %s (freq:%llu/%llu)\n",
+		 callee_addr, callee_name, callee_counter, exec_counter);
+      }
+
+      SUMMARY_CALLSITE* callsite = NULL;
+
+      for( int i = node_summary->Get_call_count();
+	   i < node_summary->Get_callsite_count();
+	   i++ ){
+	if( callsite_array[i].Is_icall_slot() ){
+	  callsite = &callsite_array[i];
+	  break;
+	}
+      }
+
+      FmtAssert( callsite->Get_callsite_id() == callsite - callsite_array,
+		 ("callsite_id mismatch") );
+      FmtAssert( callsite != NULL, ("Convert_Icall: no available callsite found") );
+
+      node_summary->Incr_call_count();
+      callsite->Reset_icall_slot();
+      callsite->Set_param_count( WN_num_actuals(wn) );
+      callsite->Set_return_type( WN_rtype(wn) );
+      callsite->Set_callsite_freq();
+      callsite->Set_frequency_count( (INT64)callee_counter );
+      callsite->Set_probability( -1 ); // don't consider p for this call
+      callsite->Set_symbol_index( 0 ); // ??? get rid of <new_st_map>
+
+      new_st_map[wn_cs_id_map[wn]] = st_callee;
+      new_call_id[wn_cs_id_map[wn]] = callsite->Get_callsite_id();
+
+      IPA_EDGE* edge = cg->Add_New_Edge( callsite,
+					 node->Node_Index(),
+					 callee->Node_Index() );
+
+      /* Perform icall to call conversion here.
+       */
+
+      WN* tmpkid0 = WN_CreateLda( Use_32_Bit_Pointers ? OPC_U4LDA : OPC_U8LDA,
+				  0, Make_Pointer_Type(ty_callee),st_callee );
+      WN* tmpkid1 = WN_COPY_Tree_With_Map( WN_kid(wn,WN_kid_count(wn)-1) );
+      WN* test = WN_Create( Use_32_Bit_Pointers ? OPC_U4U4EQ : OPC_U8U8EQ, 2 );
+	
+      WN_kid0(test) = tmpkid0;
+      WN_kid1(test) = tmpkid1;
+
+      WN* if_then = WN_Create(WN_opcode(wn),WN_kid_count(wn)-1);
+      WN* if_then_block = WN_CreateBlock();
+      WN_set_operator( if_then, OPR_CALL );
+
+      edge->Set_Whirl_Node( if_then );
+
+      for( int i = 0; i < WN_kid_count(if_then); i++ ){
+	WN_kid(if_then,i) = WN_COPY_Tree_With_Map( WN_kid(wn,i) );
+      }
+
+      WN_st_idx(if_then) = ST_st_idx(st_callee);
+
+      WN_Set_Parent( if_then, if_then_block,
+		     node->Parent_Map(), node->Map_Table() );
+      WN_INSERT_BlockLast( if_then_block, if_then );
+      WN_Parentize( if_then, node->Parent_Map(), node->Map_Table() );
+
+      WN* if_else = WN_COPY_Tree_With_Map( wn );
+      WN* if_else_block = WN_CreateBlock();
+      WN_INSERT_BlockLast(if_else_block,if_else);
+
+      for( WN* stmt = WN_next(wn);
+	   stmt != NULL && Is_Return_Store_Stmt( stmt ); ){
+	WN_INSERT_BlockLast( if_then_block, WN_COPY_Tree(stmt) );
+	WN_INSERT_BlockLast( if_else_block, WN_COPY_Tree(stmt) );
+
+	//empty the stmt
+	WN* ret_wn = stmt;
+	stmt = WN_next( stmt );
+
+	WN_EXTRACT_FromBlock( block, ret_wn );
+      }
+
+      WN* wn_if = WN_CreateIf( test, if_then_block, if_else_block );
+      Cur_PU_Feedback->FB_lower_icall( wn, if_else, if_then, wn_if );
+
+      // Delete the map info. We delete it from <Cur_PU_Feedback>
+      Cur_PU_Feedback->Delete(wn);
+
+      // Replace wn with call_wn.
+      WN_INSERT_BlockAfter( block, wn, wn_if );
+      WN_EXTRACT_FromBlock( block, wn );
+
+      wn = wn_if;
+    } // for( WN* wn ...
   }  // for( WN_ITER* wni ...
 
-  if( bChanged ){
-    WN_verifier( node->Whirl_Tree(FALSE) );
+  if( node_summary->Get_call_count() == orig_call_count )
+    return;
 
-    if( Trace_IPA || Trace_Perf ){
-      //fdump_tree( TFile, node->Whirl_Tree(FALSE) );
+  WN_verifier( node->Whirl_Tree(FALSE) );
+
+  /* First, sort the callsite_array. */
+
+  const int callsite_count = node_summary->Get_call_count() + intr_call_count;
+  node_summary->Set_callsite_count( callsite_count );
+
+  const size_t aux_callsite_size = callsite_count * sizeof( SUMMARY_CALLSITE );
+  SUMMARY_CALLSITE* aux_callsite = (SUMMARY_CALLSITE*)alloca( aux_callsite_size );
+  bzero( aux_callsite, aux_callsite_size );
+
+  std::map<UINT16,ST*> aux_st_map;
+
+  int new_callsite_id = 0;
+
+  for( int callsite_id = 0;
+       callsite_id < orig_call_count + intr_call_count;
+       callsite_id++, new_callsite_id++ ){
+    const int org_callsite = new_call_id[callsite_id];
+    if( org_callsite > 0 ){
+      aux_st_map[new_callsite_id] = new_st_map[callsite_id];
+      aux_callsite[new_callsite_id++] = callsite_array[org_callsite];
+    }
+
+    aux_callsite[new_callsite_id] = callsite_array[callsite_id];
+  }
+
+  FmtAssert( new_callsite_id == callsite_count, ("callsite count mismatch") );
+
+  for( int i = 0; i < callsite_count; i++ ){
+    callsite_array[i] = aux_callsite[i];
+    callsite_array[i].Set_callsite_id( i );
+  }
+
+  /* Second, update summary_callsite for each edge. */
+
+  EDGE_INDEX* out_edges = 
+    (EDGE_INDEX*) alloca (cg->Num_Out_Edges(node) * sizeof(EDGE_INDEX));
+
+  int out_count = 0;
+  IPA_SUCC_ITER succ_iter (cg, node);
+  for( succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next() ){
+    out_edges[out_count++] = succ_iter.Current_Edge_Index();
+  }
+
+  for( int i = 0; i < out_count; i++ ){
+    cg->Graph()->Delete_Edge (out_edges[i]);
+  }
+
+  node->Icall_List().clear();
+  node->Ocall_List().clear();
+
+  SUMMARY_SYMBOL* symbol_array = IPA_get_symbol_array (node);
+  
+  for( int j = 0; j < callsite_count; j++ ){
+    FmtAssert( !callsite_array[j].Is_icall_slot(),
+	       ("callsite is an icall slot") );
+    
+    if( callsite_array[j].Is_func_ptr() ){
+      append_icall_list (node->Icall_List(), &callsite_array[j] );
+      continue;
+    }
+
+    if( callsite_array[j].Is_intrinsic() ){
+      continue;
+    }
+
+    const INT32 callee_sym_index = callsite_array[j].Get_symbol_index();
+    ST* callee_st = callee_sym_index == 0
+      ? aux_st_map[j] : ST_ptr(symbol_array[callee_sym_index].St_idx());
+    
+    FmtAssert( callee_st != NULL, ("Unknown callee") );
+    
+    // if it is a weak symbol, find the corresponding strong
+    while (ST_is_weak_symbol (callee_st) &&
+	   ST_st_idx (callee_st) != ST_base_idx (callee_st)) {
+      callee_st = ST_base (callee_st);
+    }
+    Clear_ST_is_not_used (callee_st);
+
+    NODE_INDEX callee_idx = AUX_PU_node(Aux_Pu_Table[ST_pu(callee_st)]);
+    if( callee_idx != INVALID_NODE_INDEX ){
+      IPA_EDGE* edge = cg->Add_New_Edge(&callsite_array[j],
+					node->Node_Index(), 
+					callee_idx);
+      IPA_NODE* callee = cg->Graph()->Node_User(callee_idx);
+      if (callee->Has_Propagated_Const()) {
+	edge->Set_Propagated_Const();
+      }
+
+    } else {
+      append_icall_list( node->Ocall_List(), &callsite_array[j] );
     }
   }
 
@@ -2414,8 +3043,15 @@ IPA_CALL_GRAPH::Print_vobose (FILE* fp, TRAVERSAL_ORDER order)
   float hotness2=-1.0;
   float density = -1.0;
   vector<IPA_EDGE_INDEX> callsite_list;
+#ifdef KEY
+// An effort to at least partially fix the problem that we use the call-graph
+// global variable everywhere. Similar changes follow.
+  IPA_NODE_ITER cg_iter(this, order);
+  AUX_IPA_EDGE<INT32> cost_vector (this, _pool);
+#else
   IPA_NODE_ITER cg_iter(IPA_Call_Graph, order);
   AUX_IPA_EDGE<INT32> cost_vector (IPA_Call_Graph, _pool);
+#endif
 
 fprintf(fp, "Finally, Total_Prog_Size = %d\n", Total_Prog_Size);
 fprintf(fp, SBar);
@@ -2454,6 +3090,9 @@ fprintf(fp, "Reason30: small, but $combined_weight exceeds hard function size li
 fprintf(fp, "Reason31: Olimit $Get_combined_olimit(caller->PU_Size(), callee->PU_Size(), callee) exceeds -OPT:Olimit= %d\n", Olimit);
 fprintf(fp, "Reason32: Edge is never invoked\n");
 fprintf(fp, "Reason33: Density is too high (infrequent called but contains hot loops) > %d\n",IPA_Max_Density);
+#ifdef KEY
+fprintf(fp, "Reason34: optimization options are different for caller and callee\n");
+#endif
 fprintf(fp, SBar);
   
   for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) //all nodes
@@ -2461,7 +3100,11 @@ fprintf(fp, SBar);
     IPA_NODE* node = cg_iter.Current();
     if (node) {
 	  IPA_NODE_CONTEXT context (node);
+#ifdef KEY
+	  Map_Callsites (node);
+#else
 	  IPA_Call_Graph->Map_Callsites (node);
+#endif
 
 	  float caller_freq=-1.0;
 	  float cycle = -1.0;
@@ -2481,10 +3124,18 @@ fprintf(fp, SBar);
 
           BOOL seen_callee = FALSE;
           callsite_list.clear ();
+#ifdef KEY
+          Get_Sorted_Callsite_List(node, this, cost_vector, callsite_list);
+#else
           Get_Sorted_Callsite_List(node, IPA_Call_Graph, cost_vector, callsite_list);
+#endif
           vector<IPA_EDGE_INDEX>::const_iterator last = callsite_list.end ();
 	  for(vector<IPA_EDGE_INDEX>::iterator first = callsite_list.begin (); first != last; ++first) {
+#ifdef KEY
+              IPA_EDGE* tmp_edge = Edge (*first) ; 
+#else
               IPA_EDGE* tmp_edge = IPA_Call_Graph->Edge (*first) ; 
+#endif
               IPA_EDGE_INDEX idx = tmp_edge->Array_Index ();
               INT32 callsite_linenum;
               WN* call_wn = tmp_edge->Whirl_Node();
@@ -2612,7 +3263,11 @@ fprintf(fp, SBar);
 void 
 IPA_CALL_GRAPH::Print (FILE* fp, TRAVERSAL_ORDER order)
 {
+#ifdef KEY
+  IPA_NODE_ITER cg_iter(this, order);
+#else
   IPA_NODE_ITER cg_iter(IPA_Call_Graph, order);
+#endif
   for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
 
     IPA_NODE* node = cg_iter.Current();

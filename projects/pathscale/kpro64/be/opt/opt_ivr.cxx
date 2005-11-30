@@ -1297,7 +1297,12 @@ IVR::Choose_primary_IV(const BB_LOOP *loop)
 
       STMTREP *incr_stmt =
 	incr_rhs->Create_cpstmt(incr_cr, Htable()->Mem_pool());
+// Bug 2569
+# ifdef KEY
+      Loop()->Loopback()->Append_stmt_before_branch(incr_stmt);
+# else
       Loop()->Loopback()->Append_stmtrep(incr_stmt);
+# endif
       incr_stmt->Set_bb(Loop()->Loopback());
 
       Htable()->Enter_var_phi_hash(phi);

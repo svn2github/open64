@@ -375,8 +375,8 @@ default: pathscale_defs.h
 	    fi; \
 	done
 
-pathscale_defs.h: $(BUILD_TOT)/pathscale/defs.mk $(BUILD_TOT)/pathscale/process-defs
-	$(BUILD_TOT)/pathscale/process-defs cpp > $@
+pathscale_defs.h: $(BUILD_TOT)/pathscale/defs.mk $(BUILD_TOT)/pathscale/process-defs $(BUILD_TOT)/ChangeSet
+	$(BUILD_TOT)/pathscale/process-defs cpp $@
 
 clean:
 

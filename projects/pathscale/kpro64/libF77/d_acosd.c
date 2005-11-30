@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,12 +44,12 @@
 #include "moremath.h"
 #include <cmplrs/host.h>
 
-double_t __dacosd(double_t x)
+double __dacosd(double x)
 {
   return (acos(x) * 57.29577951308232);
 }
 
-double_t d_acosd(double_t *x)
+double d_acosd(double *x)
 {
   return (__dacosd(*x));
 }

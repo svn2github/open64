@@ -548,6 +548,7 @@ return_point:
   if (dli->Est_Num_Iterations == -1) {
     dli->Set_Est_Num_Iterations(stack);
     if (Cur_PU_Feedback && dli->Num_Iterations_Symbolic) {
+#ifndef KEY
       INT32 freq_loop_header = WN_MAP32_Get(WN_MAP_FEEDBACK,WN_start(wn));
       INT32 freq_loop_body = WN_MAP32_Get(WN_MAP_FEEDBACK,WN_step(wn));
       if (LNO_Verbose) {
@@ -562,6 +563,17 @@ return_point:
 	if (LNO_Verbose)
 	  fprintf(stdout, "Iteration counts from profile %lld\n", dli->Est_Num_Iterations);
       }
+#else
+      const FB_Info_Loop fb_info = Cur_PU_Feedback->Query_loop(wn);
+
+      if (fb_info.freq_iterate._value > 0) {
+	dli->Est_Num_Iterations = (INT64) (fb_info.freq_iterate._value);
+	dli->Num_Iterations_Symbolic = FALSE;
+	dli->Num_Iterations_Profile=TRUE;
+	if (LNO_Verbose)
+	  fprintf(stdout, "Iteration counts from profile %lld\n", dli->Est_Num_Iterations);
+      }
+#endif
     }
   }
 }

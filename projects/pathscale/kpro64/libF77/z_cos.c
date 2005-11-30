@@ -46,7 +46,7 @@
 #include "defalias.h"
 #include "moremath.h"
 
-dcomplex __zcos(double_t zdreal, double_t zdimag)
+dcomplex __zcos(double zdreal, double zdimag)
 {
   dcomplex r;
 

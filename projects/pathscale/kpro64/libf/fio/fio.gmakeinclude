@@ -59,6 +59,7 @@ CFILES += \
     flush.c \
     fmtchk.c \
     fmtparse.c \
+    fnum.c \
     fopn.c \
     fork.c \
     fortunit.c \

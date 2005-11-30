@@ -1488,8 +1488,13 @@ Merge_St_With_St(const IPC_GLOBAL_TABS &original_tabs,
 #endif // _STANDALONE_INLINER
 
     if (ST_sym_class (original_st) != ST_sym_class (merged_st)) {
+#ifdef KEY
+	// bug 2461
+	ErrMsg (EC_Inc_Types, ST_name (merged_st)); 
+#else
 	Fail_FmtAssertion ("symbol %s declared both as function and variable",
 			   ST_name (merged_st)); 
+#endif
     }
 
     if (ST_sym_class (original_st) == CLASS_FUNC) {

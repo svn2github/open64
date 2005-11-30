@@ -91,6 +91,12 @@ LNOTARGET_Complex_Neg_Res (TI_RES_COUNT* resource_count, TYPE_ID mtype);
 
 #ifdef TARG_X8664
 extern double
+LNOTARGET_Fp_Compare_Res (TI_RES_COUNT* resource_count, TYPE_ID rtype);
+
+extern double
+LNOTARGET_Fp_Select_Res (TI_RES_COUNT* resource_count, TYPE_ID rtype);
+
+extern double
 LNOTARGET_Int_Select_Res (TI_RES_COUNT* resource_count, TYPE_ID rtype);
 
 extern double
@@ -342,6 +348,12 @@ LNOTARGET_FP_Exp_Lat (INTRINSIC intr, INT num_multiplies);
 #ifdef TARG_X8664
 extern INT
 LNOTARGET_FP_Floor_Lat (TYPE_ID mtype);
+
+extern INT
+LNOTARGET_FP_Select_Lat (TYPE_ID mtype);
+
+extern INT
+LNOTARGET_FP_Compare_Lat (TYPE_ID mtype);
 #endif
 
 extern INT

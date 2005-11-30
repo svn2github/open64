@@ -60,6 +60,10 @@
 
 #include "defs.h"
 #include "mtypes.h"
+#ifdef TARG_X8664
+#include "config_targ.h"  // for Is_Target_32bit()
+#endif
+
 
 TYPE_DESC Machine_Types[] =
 { { MTYPE_UNKNOWN, 0, 0, 0, 0, 0, 0, 0, 0, 0, "",0,0, MTYPE_UNKNOWN },
@@ -195,6 +199,21 @@ Mtype_Name (TYPE_ID b)
 TYPE_ID Mtype_AlignmentClass(INT32 align, mUINT8 type_class)
 {
   INT32	i;
+
+#ifdef TARG_X8664
+  /* Some callers, e.g., lower_bit_field_id(), assume the alignment is
+     the same as the natural size. But that is not true under -m32 for
+     MTYPE_I8 and MTYPE_U8, whose alignments are 4-byte-long.
+     (One alternative is to add one more attr. to the MTYPE_CLASS
+     to distinguish 64-bit int from 32-bit int.)
+   */
+  if( Is_Target_32bit() ){
+    if( align == 8 &&
+	( type_class & MTYPE_CLASS_INTEGER ) != 0 ){
+      return ( type_class & MTYPE_CLASS_UNSIGNED ) ? MTYPE_U8 : MTYPE_I8;
+    }
+  }
+#endif
 
   for(i=0; i<MTYPE_LAST; i++)
   {

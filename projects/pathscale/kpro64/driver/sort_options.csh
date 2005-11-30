@@ -32,7 +32,6 @@
 #  http://oss.sgi.com/projects/GenInfo/NoticeExplan
 #
 #
-
 # $1 == source dir, $2 == OPTIONS file
 # $3 == optional cpp defines
 # need C locale for sort to work as expected
@@ -41,8 +40,10 @@ set dir = $1
 set file = $2
 shift
 shift
-/usr/lib/cpp -P $* $dir/$file > tmp.options.cpp
+/lib/cpp -traditional -P $* $dir/$file > tmp.options.cpp
 awk -f $dir/sort_options.awk tmp.options.cpp
+# note that some linux versions of sort are broken,
+# so we actually re-sort within table for safety.
 sort -r tmp.options > tmp.options.sort
 echo "%%% OPTIONS"
 cat tmp.options.sort

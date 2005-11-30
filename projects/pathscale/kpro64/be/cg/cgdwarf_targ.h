@@ -64,7 +64,7 @@ extern Dwarf_P_Fde Build_Fde_For_Proc (Dwarf_P_Debug  dw_dbg,
 				       Dwarf_Unsigned      pushbp_label,
 				       Dwarf_Unsigned      movespbp_label,
 				       Dwarf_Unsigned      adjustsp_label,
-				       Dwarf_Unsigned*     callee_saved_reg,
+				       Dwarf_Unsigned      callee_saved_reg,
 				       INT32          end_offset,
 				       // The following two arguments
 				       // need to go away once

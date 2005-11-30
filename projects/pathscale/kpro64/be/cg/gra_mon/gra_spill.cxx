@@ -653,7 +653,6 @@ LUNIT_Spill(LUNIT* lunit)
       gbb->Remove_Live_Out_LRANGE(lrange);
       return;
     }
-#if 0 // disable until we undergo more testing
     // put saved location info in Saved_Callee_Saved_Regs for dwarf generation
     if (TN_is_save_reg(orig_tn) && BB_entry(bb)) {
       SAVE_REG_LOC sr;
@@ -663,7 +662,6 @@ LUNIT_Spill(LUNIT* lunit)
       				     TN_save_reg(orig_tn), 0);
       Saved_Callee_Saved_Regs.Push(sr);
     }
-#endif
 #endif
 
     //

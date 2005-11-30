@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -6360,11 +6364,19 @@ static void	cvrt_data_impl_do(int		idx,
                    the_constant[0] = 0;
                 }
 # endif
-
+# ifdef KEY
+                SET_LCV_CONST(do_control_var[do_control_idx],
+                              (the_constant[0]),
+                              num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(
+                                            do_control_var[do_control_idx]))],
+                              num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(
+                                            do_control_var[do_control_idx]))]);
+# else
                 SET_LCV_CONST(do_control_var[do_control_idx],
                               (the_constant[0]),
                               num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(
                                             do_control_var[do_control_idx]))]);
+# endif
 
                 cvrt_data_impl_do(IR_IDX_L(idx), IR_FLD_L(idx));
 	    }

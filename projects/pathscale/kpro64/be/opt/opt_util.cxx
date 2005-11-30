@@ -434,14 +434,19 @@ Find_one_variant(BB_NODE *bb, CODEREP *vr, CODEREP *cr, NUMBER *factor,
       return r0;
 
     case OPR_CVT:
-#if defined(TARG_MIPS) || defined(TARG_X8664)
       /* CVTL-RELATED start (performance)  */
+#ifdef TARG_MIPS
       if (opc == OPC_U8I4CVT) {
 	r0 = Find_one_variant(bb, vr, cr->Opnd(0), factor, htable);
 	return r0;
       } else
-      /* CVTL-RELATED finish */
+#elif defined(TARG_X8664)
+      if (opc == OPC_U8I4CVT || opc == OPC_I8I4CVT || opc == OPC_U8U4CVT) {
+	r0 = Find_one_variant(bb, vr, cr->Opnd(0), factor, htable);
+	return r0;
+      } else
 #endif
+      /* CVTL-RELATED finish */
 	return NOT_ONE_VARIANT;
       
     case OPR_ADD:

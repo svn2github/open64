@@ -46,9 +46,9 @@
 #include "defalias.h"
 #include "moremath.h"
 
-dcomplex __zexp(double_t zdreal, double_t zdimag)
+dcomplex __zexp(double zdreal, double zdimag)
 {
-  double_t expx;
+  double expx;
   dcomplex r;
 
   expx = exp(zdreal);

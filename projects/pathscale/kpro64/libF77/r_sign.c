@@ -45,16 +45,24 @@
 #include <math.h>
 #include "cmplrs/host.h"
 
-float_t r_sign(float_t *a,float_t *b)
+#ifdef KEY
+float r_sign(float *a,float *b)
+#else
+float r_sign(float *a,float_t *b)
+#endif // KEY
 {
-float_t x;
+float x;
 x = (*a >= 0.0F ? *a : - *a);
 return( *b >= 0.0F ? x : -x);
 }
 
-float_t __rsign(float_t a,float_t b)
+#ifdef KEY
+float __rsign(float a,float b)
+#else
+float __rsign(float a,float_t b)
+#endif // KEY
 {
-float_t x;
+float x;
 x = (a >= 0.0F ? a : - a);
 return( b >= 0.0F ? x : -x);
 }

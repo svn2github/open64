@@ -400,6 +400,10 @@ copy_node (node)
     DECL_UID (t) = next_decl_uid++;
   else if (TREE_CODE_CLASS (code) == 't')
     {
+#ifdef KEY
+      // bug 2563
+      TYPE_TY_IDX (t) = 0;	// reset the ty_idx
+#endif
       TYPE_UID (t) = next_type_uid++;
       /* The following is so that the debug code for
 	 the copy is different from the original type.

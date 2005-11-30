@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -382,7 +386,12 @@ union	attr_tbl_entry	{
 
 				 Uint			orig_module_idx	: 20;
 				 boolean		module_object	:  1;
+#ifdef KEY
+                                 boolean                flag57          :  1;
+				 Uint			unused		: 10;
+#else
 				 Uint			unused		: 11;
+#endif
 				 Uint			unused1		:  8;
 				 Uint			field7		: 24;
 

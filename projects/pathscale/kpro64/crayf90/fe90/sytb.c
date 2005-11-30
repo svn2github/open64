@@ -3971,6 +3971,10 @@ size_offset_type	stor_bit_size_of(int		 attr_idx,
                    BD_ARRAY_SIZE(bd_idx) == Symbolic_Constant_Size) {
                   length.fld	= BD_LEN_FLD(bd_idx);
                   length.idx	= BD_LEN_IDX(bd_idx);
+//Bug 2242
+#ifdef KEY
+                  length.type_idx = CG_INTEGER_DEFAULT_TYPE;
+#endif
 
                   if (!size_offset_binary_calc(&length,
                                                &constant,
@@ -7840,6 +7844,9 @@ void	align_bit_length(size_offset_type	*bit_len,
    long		 plus_val;
    int		 plus_ir_idx;
    int		 result_type;
+# if defined(KEY)
+   int           saved_result_type;
+# endif
    int		 shiftr_ir_idx;
    int		 shiftl_ir_idx;
    long		 shift_val;
@@ -7898,6 +7905,11 @@ void	align_bit_length(size_offset_type	*bit_len,
          result_type	= CN_TYPE_IDX((*bit_len).idx);
          constant	= &(CN_CONST((*bit_len).idx));
       }
+# if defined(KEY)
+      saved_result_type = result_type;
+      if (result_type == Integer_4 && *constant < 0)
+        result_type = Integer_8;
+# endif
 
 #     if defined(_TARGET64) && defined(_HOST64) &&  \
       !defined(_TARGET_LITTLE_ENDIAN)
@@ -7955,8 +7967,11 @@ void	align_bit_length(size_offset_type	*bit_len,
 #     endif
 
       /* If we overflow - folder_driver will issue the error */
- 
+# if defined(KEY)
+      (*bit_len).type_idx	= saved_result_type;
+# else 
       (*bit_len).type_idx	= result_type;
+# endif
       (*bit_len).fld		= NO_Tbl_Idx;
    }
    else {  /* This contains the IR for the value to be bit aligned. */

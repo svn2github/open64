@@ -774,19 +774,44 @@ Mk_OP(TOP opr, ...)
 
   CGTARG_Init_OP_cond_def_kind(op);
 
+#if Is_True_On
 #ifdef TARG_X8664
   // Make sure no 64-bit int operations for n32 will be generated.
   if( Is_Target_32bit() &&
-      !OP_flop( op )    &&
       !OP_dummy( op )   &&
       !OP_simulated(op) &&
       !OP_cond_move(op) &&
-      OP_code(op) != TOP_leave &&
-      OP_results(op) >= 1  ){
-    Is_True( OP_result_size( op, 0 ) < 64,
-	     ("i386 does not support 64-bit operation -- %s", TOP_Name(opr) ) );
+      OP_code(op) != TOP_leave ){
+
+    for( int i = 0; i < OP_results(op); i++ ){
+      TN* tn = OP_result( op, i );
+      if( tn != NULL && 
+	  OP_result_size( op, i ) > 32 &&
+	  TN_register_class(tn) == ISA_REGISTER_CLASS_integer ){
+	FmtAssert( FALSE, ("i386 does not support 64-bit operation -- %s",
+			   TOP_Name(opr) ) );
+      }
+    }
+
+    const int base_idx = OP_find_opnd_use( op, OU_base );
+    const int index_idx = OP_find_opnd_use( op, OU_index );
+    const int target_idx = OP_find_opnd_use( op, OU_target );
+
+    for( int i = 0; i < OP_opnds(op); i++ ){
+      TN* tn = OP_opnd( op, i );
+      if( tn != NULL     &&
+	  i != base_idx  &&
+	  i != index_idx &&
+	  i != target_idx&&
+	  OP_opnd_size( op, i ) > 32 &&
+	  TN_register_class(tn) == ISA_REGISTER_CLASS_integer ){
+	FmtAssert( FALSE, ("i386 does not support 64-bit operation -- %s",
+			   TOP_Name(opr) ) );
+      }
+    }
   }
-#endif
+#endif // TARG_X8664
+#endif // Is_True_On
 
 #ifdef TARG_X8664
   if ( TOP_is_vector_high_loadstore ( OP_code ( op ) ) )

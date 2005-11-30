@@ -42,6 +42,8 @@
 #
 
 CFILES += \
-    exit.c
+    exit.c \
+    kill.c \
+    signal.c
 SRC_DIRS += \
    $(BUILD_TOT)/libu/clib

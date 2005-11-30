@@ -37,8 +37,10 @@
 */
 
 
-#include <stdio.h>
 #include <alloca.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include "basic.h"
 #include "string_utils.h"
 #include "objects.h"
@@ -59,6 +61,10 @@ string_list_t *lib_objects;
 static string_list_t *cxx_prelinker_objects;
 static string_list_t *ar_objects; 
 static string_list_t *library_dirs;
+
+#ifdef KEY
+static int check_for_whirl(char *name);
+#endif
 
 void
 init_objects (void)
@@ -147,26 +153,72 @@ is_object_option (int flag)
 {
 	switch (flag) {
 	case O_object:
-	case O_objectlist:
 	case O_l:
 	case O_all:
-	case O_notall:
         case O__whole_archive:
         case O__no_whole_archive:
-	case O_none:
-	case O_exports:
-	case O_hides:
-	case O_ignore_minor:
-	case O_require_minor:
-	case O_exact_version:
-	case O_ignore_version:
-	case O_exclude:
-	case O_delay_load:
-	case O_force_load:
+#ifdef KEY
+        case O_WlC:
+#endif
 		return TRUE;
 	default:
 		return FALSE;
 	}
+}
+
+struct prof_lib 
+{
+    const char *name;
+    int always;
+};
+
+static struct prof_lib prof_libs[] = {
+    /* from glibc-profile */
+    { "BrokenLocale", 0 },
+    { "anl", 0 },
+    { "c", 0 },
+    { "crypt", 0 },
+    { "dl", 0 },
+    { "m", 0 },
+    { "nsl", 0 },
+    { "pthread", 0 },
+    { "resolv", 0 },
+    { "rpcsvc", 0 },
+    { "rt", 0 },
+    { "util", 0 },
+    /* from our own libraries */
+    { "instr", 1 },
+    { "mpath", 1 },
+    { "mv", 1 },
+    { PSC_NAME_PREFIX "fortran", 1 },
+    { "pscrt", 1 },
+    { NULL, 0 },
+};
+
+int prof_lib_exists(const char *lib)
+{
+    char *path;
+    int exists;
+    asprintf(&path, "%s/lib%s_p.a", abi == ABI_N32 ? "/usr/lib" : "/usr/lib64",
+	     lib);
+    exists = access(path, R_OK) == 0;
+    free(path);
+    return exists;
+}
+
+void add_library(string_list_t *list, const char *lib)
+{
+    if (option_was_seen(O_pg)) {
+	for (struct prof_lib *l = prof_libs; l->name; l++) {
+	    if (strcmp(l->name, lib) != 0)
+		continue;
+	    if (!l->always && !prof_lib_exists(lib))
+		continue;
+	    lib = concat_strings(lib, "_p");
+	}
+    }
+
+    add_string(list, concat_strings("-l", lib));
 }
 
 /* library list options get put in object list,
@@ -177,81 +229,57 @@ add_object (int flag, char *arg)
     /* cxx_prelinker_object_list contains real objects, -objectlist flags. */
 	switch (flag) {
 	case O_l:
-		/* xpg fort77 has weird rule about putting all libs after objects */
-		if (xpg_flag && invoked_lang == L_f77) {
-			add_string(lib_objects, concat_strings("-l",arg));
-		} else {
-			add_string(objects, concat_strings("-l",arg));
-		}
-		if (invoked_lang == L_CC) {
-		    add_string(cxx_prelinker_objects,concat_strings("-l",arg));
-		}
-
 		/* when -lm, implicitly add extra math libraries */
 		if (strcmp(arg, "m") == 0) {
 			/* add -lmv -lmblah */
 			if (xpg_flag && invoked_lang == L_f77) {
-				add_string(lib_objects, "-lmv");
-				add_string(lib_objects, "-lm" PSC_NAME_PREFIX);
+				add_library(lib_objects, "mv");
+				add_library(lib_objects, "m" PSC_NAME_PREFIX);
 			} else {
-				add_string(objects, "-lmv");
-				add_string(objects, "-lm" PSC_NAME_PREFIX);
+				add_library(objects, "mv");
+				add_library(objects, "m" PSC_NAME_PREFIX);
 			}
 			if (invoked_lang == L_CC) {
-			    add_string(cxx_prelinker_objects, "-lmv");
-			    add_string(cxx_prelinker_objects, "-lm" PSC_NAME_PREFIX);
+			    add_library(cxx_prelinker_objects, "mv");
+			    add_library(cxx_prelinker_objects, "m" PSC_NAME_PREFIX);
 			}
 		}
-		break;
-	case O_objectlist:
-		add_multi_strings(objects, concat_strings("-objectlist ",arg));
+
+		/* xpg fort77 has weird rule about putting all libs after objects */
+		if (xpg_flag && invoked_lang == L_f77) {
+			add_library(lib_objects, arg);
+		} else {
+			add_library(objects, arg);
+		}
 		if (invoked_lang == L_CC) {
-		    add_string(cxx_prelinker_objects,
-				concat_strings("-YO=",arg));
+		    add_library(cxx_prelinker_objects, arg);
 		}
 		break;
 	case O_object:
-		if (dashdash_flag && arg[0] == '-') {
-		  add_string(objects,"--");
-		  dashdash_flag = 1;
-		}
-		add_string(objects, arg);
-		if (invoked_lang == L_CC) {
-		    add_string(cxx_prelinker_objects, arg);
-		}
+	       if (dashdash_flag && arg[0] == '-') {
+		 add_string(objects,"--");
+		 dashdash_flag = 1;
+	       }
+	       if (strncmp(arg, "-l", 2) == 0)
+		   add_object(O_l, arg + 2);
+	       else
+		   add_string(objects, arg);
+	       if (invoked_lang == L_CC) {
+		   add_string(cxx_prelinker_objects, arg);
+	       }
 
-		break;
-	case O_all:
-          /* O_all and O_notall are special cases.  They're object
-             options, but (at least for the gnu linker) we don't 
-             pass them as-is to the linker.  For normal non-object
-             options this would be handled automatically. */
-#if defined(linux)
-          add_string(objects, get_option_name(O__whole_archive));
-          break;
+	       break;
+#ifdef KEY
+	case O_WlC:
+	       add_string(objects, concat_strings("-Wl,", arg));
+	       break;
+	case O__whole_archive:
+	       add_string(objects, "-Wl,-whole-archive");
+	       break;
+	case O__no_whole_archive:
+	       add_string(objects, "-Wl,-no-whole-archive");
+	       break;
 #endif
-	case O_notall:
-#if defined(linux)
-          add_string(objects, get_option_name(O__no_whole_archive));
-          break;
-#endif
-	case O_none:
-	case O_exports:
-	case O_hides:
-	case O_ignore_minor:
-	case O_require_minor:
-	case O_exact_version:
-	case O_ignore_version:
-		add_string(objects, get_option_name(flag));
-		break;
-	case O_delay_load:
-	case O_force_load:
-		add_string(objects, get_option_name(flag));
-		break;
-	case O_exclude:
-		add_string(objects, get_option_name(flag));
-		add_string(objects, arg);
-		break;
 	default:
 		internal_error("add_object called with not-an-object");
 	}
@@ -268,6 +296,22 @@ add_ar_objects (char *arg)
 void
 append_objects_to_list (string_list_t *list)
 {
+#ifdef KEY
+	// If without -ipa, don't accept IPA-created objects.
+	if (ipa != TRUE) {
+	  int has_ipa_obj = FALSE;
+	  string_item_t *p;
+	  for (p = objects->head; p != NULL; p = p->next) {
+	    char *filename = p->name;
+	    if (check_for_whirl(filename) == TRUE) {
+	      error("IPA-created object %s not allowed without -ipa", filename);
+	      has_ipa_obj = TRUE;
+	    }
+	  }
+	  if (has_ipa_obj == TRUE)
+	    do_exit(1);
+	}
+#endif
 	append_string_lists (list, objects);
 	if (xpg_flag && invoked_lang == L_f77) {
 		append_string_lists (list, lib_objects);
@@ -294,16 +338,6 @@ append_libraries_to_list (string_list_t *list)
         for (p = library_dirs->head; p != NULL; p = p->next) {
 		add_string(list, concat_strings("-L", p->name));
         }
-#ifndef KEY
-        /*
-         * get_phase_dir(P_library) is not in library_dirs because
-         * library_dirs is also used as the search path for the crt file
-         */
-        if (!option_was_seen(O_L)) {
-                add_string(list,
-                           concat_strings("-L", get_phase_dir(P_library)));
-        }
-#endif
 }
 
 void
@@ -358,21 +392,6 @@ add_library_options (void)
 	default:
 		internal_error("no abi set? (%d)", abi);
 	}
-#ifdef TARG_MIPS
-	if (isa > ISA_MIPS1 && isa <= ISA_MIPS6) {
-		sprintf(mbuf, "%s/mips%d", get_phase_dir(P_library), isa);
-		mips_lib = mbuf;
-	}
-	if (proc > 4 || (proc == 4 && isa == 3)) {
-		/* add processor-specific r* lib-path */
-		sprintf(rbuf, "%s/r%d000", mips_lib, proc);
-		proc_lib = rbuf;
-	}
-#endif
-#if !defined(linux)
-	flag = add_string_option(O_L__, get_phase_dir(P_library));
-        add_option_seen (flag);
-#endif
 }
 
 /* search library_dirs for the crt file */
@@ -400,3 +419,147 @@ find_crt_path (char *crtname)
 		return string_copy(buf);
 	}
 }
+
+#ifdef KEY
+// Check whether the option should be turned into a linker option when pathcc
+// is called as a linker.
+boolean
+is_maybe_linker_option (int flag)
+{
+  switch (flag) {
+    case O_static:
+      return TRUE;
+    default:
+      break;
+  }
+  return FALSE;
+}
+
+// Add the linker version of the option.
+void
+add_maybe_linker_option (int flag)
+{
+  // Add ',' in front of the option name to indicate that the option is active
+  // only if pathcc is called as a linker.
+  switch (flag) {
+    case O_static:
+      add_string(objects, ",-Wl,-static");
+      break;
+    default:
+      break;
+  }
+}
+
+// If is_linker is TRUE, then turn the potential linker options into real
+// linker options; otherwise delete them.
+void
+finalize_maybe_linker_options (boolean is_linker)
+{
+  string_item_t *p;
+
+  if (is_linker) {
+    // Potential linker options begin with ','.
+    for (p = objects->head; p != NULL; p = p->next) {
+      if (p->name[0] == ',') {
+	// Remove the ',' in front.
+        char *new_str = string_copy(&(p->name[1]));
+	p->name = new_str;
+      }
+    }
+  } else {
+    string_item_t *prev = NULL;
+    for (p = objects->head; p != NULL; p = p->next) {
+      // Potential linker options begin with ','.
+      if (p->name[0] == ',') {
+	// Put back the non-linker version of the option if necessary.
+	char *str = p->name;
+	if (!strcmp (str, ",-Wl,-static")) {
+	  add_option_seen (O_static);
+	}
+
+	// Delete the option.
+	if (prev == NULL) {
+	  objects->head = p->next;
+	} else {
+	  prev->next = p->next;
+	}
+      } else {
+	prev = p;
+      }
+    }
+  }
+}
+
+// Check for ELF files containing WHIRL objects.  Code taken from
+// ../cygnus/bfd/ipa_cmdline.c.
+
+#include <elf.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <stdint.h>
+
+// Check to see if this is an ELF file and then if it is a WHIRL object.
+#define ET_SGI_IR   (ET_LOPROC + 0)
+static int
+check_for_whirl(char *name)
+{
+    int fd = -1;
+    char *raw_bits = NULL;
+    int size,bufsize;
+    Elf32_Ehdr *p_ehdr = NULL;
+    struct stat statb;
+    int test;
+    
+    fd = open(name, O_RDONLY, 0755);
+    if (fd < 0)
+	return FALSE;
+
+    if ((test = fstat(fd, &statb) != 0)) {
+    	close(fd);
+	return FALSE;
+    }
+
+    if (statb.st_size < sizeof(Elf64_Ehdr)) {
+    	close(fd);
+    	return FALSE;
+    }
+    
+    bufsize = sizeof(Elf64_Ehdr);
+    
+    raw_bits = (char *)alloca(bufsize*4);
+
+    size = read(fd, raw_bits, bufsize);
+    
+		/*
+		 * Check that the file is an elf executable.
+		 */
+    p_ehdr = (Elf32_Ehdr *)raw_bits;
+    if (p_ehdr->e_ident[EI_MAG0] != ELFMAG0 ||
+	p_ehdr->e_ident[EI_MAG1] != ELFMAG1 ||
+	p_ehdr->e_ident[EI_MAG2] != ELFMAG2 ||
+	p_ehdr->e_ident[EI_MAG3] != ELFMAG3) {
+	    close(fd);
+	    return(FALSE);
+    }
+
+    if(p_ehdr->e_ident[EI_CLASS] == ELFCLASS32){
+    	Elf32_Ehdr *p32_ehdr = (Elf32_Ehdr *)raw_bits;
+	if (p32_ehdr->e_type == ET_SGI_IR) {
+	    close(fd);
+	    return TRUE;
+	}
+    }
+    else {
+	Elf64_Ehdr *p64_ehdr = (Elf64_Ehdr *)raw_bits;
+	if (p64_ehdr->e_type == ET_SGI_IR) {
+	    close(fd);
+	    return TRUE;
+	}
+     }
+
+    close(fd);
+    return FALSE;
+    
+}
+#endif

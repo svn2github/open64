@@ -43,9 +43,7 @@ extern void init_objects (void);
 
 /* need to init crt paths if doing ipa link */
 extern void init_crt_paths (void);
-#ifdef KEY
 extern void init_stdc_plus_plus_path( void );
-#endif
 
 /*
  * Whether option is an object or not.
@@ -73,6 +71,17 @@ extern void dump_objects (void);	/* for debugging */
 /* extra hand-coded stuff for library options */
 extern void add_library_options (void);
 
+/* determine whether we have a profiling version of a library */
+extern int prof_lib_exists (const char *lib);
+
+/* add library to path */
+extern void add_library (string_list_t *list, const char *lib);
+
 /* search library_dirs for the crt file */
 extern char *find_crt_path (char *crtname);
 
+#ifdef KEY
+boolean is_maybe_linker_option (int flag);
+void add_maybe_linker_option (int flag);
+void finalize_maybe_linker_options (boolean is_linker);
+#endif

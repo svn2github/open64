@@ -4126,8 +4126,11 @@ static void gen_dv_stride_mult(opnd_type	*stride_opnd,
          ADD_TMP_TO_SHARED_LIST(OPND_IDX((*stride_opnd)));
       }
 
-# if defined(_EXTENDED_CRI_CHAR_POINTER)
+# if defined(_EXTENDED_CRI_CHAR_POINTER) 
       if (ATD_CLASS(attr_idx) == CRI__Pointee &&
+# if defined(KEY)
+          AT_IS_DARG(attr_idx) &&
+# endif
           TYP_TYPE(ATD_TYPE_IDX(attr_idx)) == Character) {
 
          NTR_IR_TBL(ir_idx);

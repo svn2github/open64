@@ -398,6 +398,9 @@ extern BOOL WHIRL_Merge_Types_Set;
 
 extern BOOL LANG_Symtab_Verify_On;
 extern BOOL LANG_Symtab_Verify_Set;
+#ifdef KEY
+extern BOOL LANG_Formal_Deref_Unsafe;
+#endif
 
 extern BOOL WHIRL_Mtype_A_On;
 extern BOOL WHIRL_Mtype_B_On;
@@ -507,6 +510,10 @@ extern BOOL Fast_Bit_Allowed;		/* Fast inlined bit intrinsics? */
 extern BOOL Fast_Bit_Set;		/* ... option seen? */
 extern BOOL Fast_NINT_Allowed;		/* Fast NINT and ANINT? */
 extern BOOL Fast_NINT_Set;		/* ... option seen? */
+#ifdef TARG_X8664
+extern BOOL Fast_ANINT_Allowed;		/* Fast ANINT? */
+extern BOOL Fast_ANINT_Set;		/* ... option seen? */
+#endif
 extern BOOL Fast_trunc_Allowed;		/* Fast trunc of NINT/ANINT/AINT/AMOD */
 extern BOOL Fast_trunc_Set;		/* ... option seen? */
 extern BOOL Fast_IO_Allowed;		/* Fast printf/scanf/printw */
@@ -621,6 +628,26 @@ extern char *Read_Global_Data;	/* only read global data */
 extern char *Library_Name;              /* -TENV:io_library=xxx */
 extern INT  target_io_library;
 
+#ifdef TARG_X8664
+extern char* Mcmodel_Name;              /* -TENV:mcmodel=xxx */
+typedef enum {
+  SMALL = 0, /* The program and its symbols must be linked in the lower
+		2 GB of the address space. This is the default code model.
+	     */
+  KERNEL,    /* The kernel runs in the negative 2 GB of the address space.
+		This model has to be used for Linux kernel code.
+	     */
+  MEDIUM,    /* The program is linked in the lower 2 GB of the address space but
+		symbols can be located anywhere in the address space.
+		Programs can be statically or dynamically linked, but building of
+		shared libraries are not supported with the medium model.
+	     */
+  LARGE      /* This model makes no assumptions about addresses and sizes of sections.
+	      */
+} MCMODEL;
+extern MCMODEL mcmodel;
+#endif // TARG_X8664
+
 extern BOOL Meld_Schedule;	/* Attempt to meld basic blocks	*/
 extern BOOL Gap_Schedule;	/* Attempt to perform gap scheduling */
 extern BOOL Attempt_Bypass;	/* Attempt to use bypass registers */
@@ -680,6 +707,16 @@ extern BOOL Force_Frame_Pointer_Set;
 /* Use g77 ABI (affects complex and real function return values) */
 extern BOOL F2c_Abi;
 extern BOOL F2c_Abi_Set;
+/* Align double and long double stack variables on a double word boundary. */
+extern BOOL Align_Double;
+extern BOOL Align_Double_Set;
+
+extern BOOL SIMD_IMask;
+extern BOOL SIMD_DMask;
+extern BOOL SIMD_ZMask;
+extern BOOL SIMD_OMask;
+extern BOOL SIMD_UMask;
+extern BOOL SIMD_PMask;
 #endif
 /* put each function in its own text section */
 extern BOOL Section_For_Each_Function;

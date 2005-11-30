@@ -528,6 +528,12 @@ BE_DRIVER_OBJS = \
 # extra files to be removed with make clobber
 LDIRT += ii_files so_locations  *.pch
 
+ifeq ($(shell test -e /usr/include/valgrind/valgrind.h && echo y || echo n), y)
+HEADER_DIRS += /usr/include/valgrind
+else
+LCOPTS += -DNO_VALGRIND
+endif
+
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 LC++INCS = $(addprefix -I, $(HEADER_DIRS))
 LASINCS = $(addprefix -I, $(HEADER_DIRS))

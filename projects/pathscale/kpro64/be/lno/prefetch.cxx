@@ -275,7 +275,7 @@ static void Process_PU_Pragmas (WN* func_nd);
 static inline BOOL
 Target_ISA_Has_Prefetch()
 {
-  return (Is_Target_ISA_M4Plus() || Is_Target_ISA_I1Plus() || Is_Target_Opteron() );
+  return (Is_Target_ISA_M4Plus() || Is_Target_ISA_I1Plus() || Is_Target_x86_64() );
 }
 
 // R10K (and its successors) and Itanium (TM) support prefetching
@@ -290,8 +290,7 @@ Target_Proc_Run_Prefetch()
   if (Is_Target_Itanium()) return 2; // more aggressive
 #endif
 #ifdef TARG_X8664
-  // previously, default was CONSERVATIVE_PREFETCH
-  if (Is_Target_Opteron()) return SOME_PREFETCH; // more aggressive
+  if (Is_Target_x86_64()) return CONSERVATIVE_PREFETCH; // more aggressive
 #endif
   return 0;
 }

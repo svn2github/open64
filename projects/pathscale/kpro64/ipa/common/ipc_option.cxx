@@ -340,8 +340,19 @@ Process_Non_Local_Libraries()
 
 template <class DATA, class ACTION>
 static void
-Add_Symbols(char *args, DATA data, ACTION perform_action)
+Add_Symbols(char *args, DATA data, ACTION perform_action
+#ifdef KEY
+, char * opt
+#endif
+)
 {
+#ifdef KEY
+  if (! args)
+  {
+    ErrMsg (EC_No_Opt_Val, opt, "INLINE");
+    return;
+  }
+#endif // KEY
   BOOL more_symbols = TRUE;
 
   do {
@@ -469,6 +480,42 @@ Process_Inline_Options ( void )
   }
 
   /* Walk the list of must/never options: */
+#ifdef KEY
+// Get rid of some compiler crashes and assertion failures and replace with
+// appropriate error messages
+  for ( ol = INLINE_List_Names; ol != NULL; ol = OLIST_next(ol) ) {
+    if ( strcmp ( OLIST_opt(ol), "must" ) == 0 ) {
+      Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Symbols_For_Inlining(), "must" );
+    } 
+    else if ( strcmp ( OLIST_opt(ol), "never" ) == 0 ) {
+      Add_Symbols( OLIST_val(ol), USER_NO_INLINE, Hash_Symbols_For_Inlining(), "never" );
+    } 
+    else if ( strcmp ( OLIST_opt(ol), "skip" ) == 0 ) {
+      Add_Symbols( OLIST_val(ol), USER_NO_INLINE, Hash_Edges_For_Inlining(), "skip" );
+    }
+    else if ( strcmp ( OLIST_opt(ol), "edge" ) == 0 ) {
+      INLINE_None = TRUE;
+      Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining(), "edge" );
+    }
+    else if ( strcmp ( OLIST_opt(ol), "in" ) == 0 ) {
+      Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining(), "in" );
+    }
+#ifdef _STANDALONE_INLINER
+// not yet enabled
+    else if ( strcmp ( OLIST_opt(ol), "file" ) == 0 ) {
+      Add_Symbols( OLIST_val(ol), NULL, Process_Specified_Files(), "file" );
+    }
+    else if ( strcmp ( OLIST_opt(ol), "library" ) == 0 ) {
+      Add_Symbols( OLIST_val(ol), NULL, Process_Specified_Libraries(), "library" );
+    }
+#endif // _STANDALONE_INLINER
+    else {
+	char flag[256];
+	sprintf (flag, "INLINE:%s", OLIST_opt(ol));
+	ErrMsg (EC_Not_In_Grp, OLIST_opt(ol), "INLINE", flag);
+    }
+ }
+#else
   for ( ol = INLINE_List_Names; ol != NULL; ol = OLIST_next(ol) ) {
     if ( strcmp ( OLIST_opt(ol), "must" ) == 0 ) {
       Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Symbols_For_Inlining());
@@ -499,6 +546,7 @@ Process_Inline_Options ( void )
 		   ( "Unknown -INLINE option: %s", OLIST_opt(ol) ) );
     }
  }
+#endif // KEY
 
   /* Check that we don't have conflicting defaults: */
   if ( INLINE_All && INLINE_None ) {
@@ -526,7 +574,11 @@ Process_IPA_Skip_Options ( void )
   /* only implement skip_equal for now */
   for ( ol = IPA_Skip; ol != NULL; ol = OLIST_next(ol) ) {
     if ( strcmp ( OLIST_opt(ol), "skip_equal" ) == 0 ) {
+#ifdef KEY
+      Add_Symbols( OLIST_val(ol), SKIP_EQUAL, Hash_Symbols_For_Skipping(), "skip_equal");
+#else
       Add_Symbols( OLIST_val(ol), SKIP_EQUAL, Hash_Symbols_For_Skipping());
+#endif
     } 
     else {
 	FmtAssert ( FALSE,

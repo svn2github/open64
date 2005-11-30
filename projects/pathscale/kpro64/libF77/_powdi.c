@@ -43,9 +43,9 @@
 #include <math.h>
 #include "moremath.h"
 
-double_t __powdi(double_t x, int32 n)
+double __powdi(double x, int32 n)
 {
-	double_t pow;
+	double pow;
 
 	pow = 1;
 

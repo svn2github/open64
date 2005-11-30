@@ -44,7 +44,7 @@
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libF77/r_abs.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
 #include <math.h>
 #include "cmplrs/host.h"
-float_t r_abs(float_t *x)
+float r_abs(float *x)
 {
 if(*x >= 0.0F)
 	return(*x);

@@ -72,6 +72,10 @@ void Initialize_Targ_Info(void)
 
   switch (Target) {
   case TARGET_opteron:
+  case TARGET_athlon64:
+  case TARGET_athlon:
+  case TARGET_pentium4:
+  case TARGET_xeon:
     proc = PROCESSOR_opteron;
     break;
   default:

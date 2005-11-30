@@ -125,7 +125,12 @@ extern BOOL IPA_Enable_Preopt;		/* call preopt during IPA */
 extern BOOL IPA_Enable_Preopt_Set;
 
 #ifdef KEY
-extern BOOL IPA_Enable_Icall_Opt;
+extern BOOL IPA_Enable_Icall_Opt;	// allow ipa change icall to call
+extern BOOL IPA_Enable_EH_Region_Removal; // remove useless exception regions
+extern BOOL IPA_Enable_Branch_Heuristic; // use branch prob. for inlining
+extern float IPA_Min_Branch_Prob;
+extern BOOL IPA_Check_Options;		// check for inconsistent options
+extern BOOL IPA_Clone_List_Actions;	// report cloner actions
 #endif
 
 /* ===== Inlining heuristics: ===== */
@@ -239,7 +244,14 @@ extern BOOL     IPA_Enable_Inline_Struct_Array_Actual;   /* Enable inlining of P
 extern BOOL     IPA_Enable_Inline_Var_Dim_Array;   /* Enable inlining of PU with param that is variable-dimensioned array */
 extern BOOL  IPA_Enable_Reorder;   /*Enable structure field reordering */
 #ifdef TARG_X8664 
-extern BOOL IPA_Enable_PU_Reorder; /* Procedure reordering */
+typedef enum
+{
+  REORDER_DISABLE = 0,
+  REORDER_BY_NODE_FREQ = 1,
+  REORDER_BY_EDGE_FREQ = 2
+} PU_REORDER_SCHEME;
+
+extern PU_REORDER_SCHEME IPA_Enable_PU_Reorder; /* Procedure reordering */
 extern BOOL IPA_Enable_Ctype;	   /* Insert array for ctype.h. */
 #endif // TARG_X8664 
 
@@ -284,6 +296,7 @@ extern BOOL     INLINE_Enable_Auto_Inlining;    /* automatic inline analysis */
 extern BOOL	INLINE_Enable_Restrict_Pointers; /* allow restrict pointers */
 #ifdef KEY
 extern BOOL	INLINE_Recursive;	//  do recursive inlining
+extern BOOL	INLINE_Param_Mismatch;	// inline even if # of params doesn't match between call and callee
 #endif
 
 extern struct option_list *INLINE_List_Names;	/* Must/never/file/library 

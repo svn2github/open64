@@ -1528,13 +1528,20 @@ WN *WN_CreateExp1(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,WN *kid0)
 WN *WN_CreateExp2(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, WN *kid0, WN *kid1)
 {
   OPCODE opc = OPCODE_make_op (opr, rtype, desc);
-  WN *wn;
+  WN *wn = NULL;
 
   Is_True(OPCODE_is_expression(WN_opcode(kid0)),
 	  ("Bad kid0 in WN_CreateExp2"));
   Is_True(OPCODE_is_expression(WN_opcode(kid1)),
 	  ("Bad kid1 in WN_CreateExp2"));
-  wn = WN_SimplifyExp2(opc, kid0, kid1);
+
+  /* bug#2731 */
+#ifdef KEY
+  if( !WN_has_side_effects(kid0) &&
+      !WN_has_side_effects(kid1) )
+#endif
+    wn = WN_SimplifyExp2(opc, kid0, kid1);
+
   if (!wn) {
      wn = WN_Create(opr,rtype,desc,2);
      WN_kid0(wn) = kid0;
@@ -1554,7 +1561,7 @@ WN *WN_CreateExp3(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
 		  WN *kid0, WN *kid1, WN *kid2)
 {
   OPCODE opc = OPCODE_make_op (opr, rtype, desc);
-  WN *wn;
+  WN *wn = NULL;
 
   Is_True(OPCODE_is_expression(WN_opcode(kid0)),
 	  ("Bad kid0 in WN_CreateExp3"));
@@ -1563,7 +1570,12 @@ WN *WN_CreateExp3(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc,
   Is_True(OPCODE_is_expression(WN_opcode(kid2)),
 	  ("Bad kid2 in WN_CreateExp3"));
 
-  wn = WN_SimplifyExp3(opc, kid0, kid1, kid2);
+  /* bug#2731 */
+#ifdef KEY
+  if( !WN_has_side_effects(kid0) )
+#endif
+    wn = WN_SimplifyExp3(opc, kid0, kid1, kid2);
+
   if (!wn) {
      wn = WN_Create(opr,rtype,desc,3);
      WN_kid0(wn) = kid0;
@@ -3018,6 +3030,11 @@ WN_set_st_addr_saved (WN* wn)
       WN_set_st_addr_saved (WN_kid0(wn));
       break;
 
+    case OPR_REPLICATE:
+
+      WN_set_st_addr_saved (WN_kid0(wn));
+      break;
+
 #endif /* KEY */
     default:
 
@@ -3058,6 +3075,14 @@ WN_has_side_effects (const WN* wn)
     case OPR_TAS:
     case OPR_TRUNC:
     case OPR_EXTRACT_BITS:
+#ifdef KEY
+    case OPR_REDUCE_ADD:
+    case OPR_REDUCE_MAX:
+    case OPR_REDUCE_MIN:
+    case OPR_REDUCE_MPY:
+    case OPR_REPLICATE:
+    case OPR_ILDA:
+#endif // KEY
 
       return WN_has_side_effects (WN_kid0(wn));
 
@@ -3090,6 +3115,9 @@ WN_has_side_effects (const WN* wn)
     case OPR_SUB:
     case OPR_XMPY:
     case OPR_COMPOSE_BITS:
+#ifdef KEY
+    case OPR_RROTATE:
+#endif
 
       if (WN_has_side_effects (WN_kid0(wn)))
         return TRUE;
@@ -3101,6 +3129,9 @@ WN_has_side_effects (const WN* wn)
     case OPR_MSUB:
     case OPR_NMADD:
     case OPR_NMSUB:
+#ifdef KEY
+    case OPR_TRIPLET:
+#endif
 
       if (WN_has_side_effects (WN_kid0(wn)))
         return TRUE;
@@ -3142,6 +3173,7 @@ WN_has_side_effects (const WN* wn)
     }
 
     case OPR_LDID:
+    case OPR_LDBITS:
 
       if (TY_is_volatile (WN_ty(wn)))
         return (TRUE);
@@ -3172,6 +3204,9 @@ WN_has_side_effects (const WN* wn)
     case OPR_INTCONST:
     case OPR_LDA:
     case OPR_LDMA:
+#ifdef KEY
+    case OPR_LDA_LABEL:
+#endif
 
       return FALSE;
 
@@ -3193,10 +3228,34 @@ WN_has_side_effects (const WN* wn)
 
       return TRUE;
 
-    default:
+#ifdef KEY
+  case OPR_ASM_INPUT:
+    return TRUE;
 
+  case OPR_ARRAYEXP:
+  case OPR_ARRSECTION:
+    return TRUE;
+
+  case OPR_WHERE:
+    return TRUE;
+
+  case OPR_IO:
+  case OPR_IO_ITEM:
+    return TRUE;
+
+  case OPR_STID:
+  case OPR_ISTBITS:
+  case OPR_ISTORE:
+  case OPR_ISTOREX:
+  case OPR_STBITS:
+  case OPR_MSTORE:
+    return TRUE;
+#endif // KEY
+
+    default:
       Fail_FmtAssertion ("WN_has_side_effects not implemented for %s",
                          OPERATOR_name (WN_operator (wn)));
+
       return FALSE;
   }
 } /* WN_has_side_effects */

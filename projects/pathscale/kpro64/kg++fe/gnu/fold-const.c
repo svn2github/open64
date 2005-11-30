@@ -4112,6 +4112,8 @@ extract_muldiv_1 (t, c, code, wide_type)
 	return const_binop (code, convert (ctype, t), convert (ctype, c), 0);
       break;
 
+#ifndef KEY
+// disable for bug 2781
     case CONVERT_EXPR:  case NON_LVALUE_EXPR:  case NOP_EXPR:
       /* If op0 is an expression ...  */
       if ((TREE_CODE_CLASS (TREE_CODE (op0)) == '<'
@@ -4143,6 +4145,7 @@ extract_muldiv_1 (t, c, code, wide_type)
 				     code == MULT_EXPR ? ctype : NULL_TREE)))
 	return t1;
       break;
+#endif // !KEY
 
     case NEGATE_EXPR:  case ABS_EXPR:
       if ((t1 = extract_muldiv (op0, c, code, wide_type)) != 0)
@@ -4319,12 +4322,17 @@ extract_muldiv_1 (t, c, code, wide_type)
 	 overflowed.  */
       if ((! TREE_UNSIGNED (ctype)
 #ifndef KEY
-	   || (TREE_CODE (ctype) == INTEGER_TYPE && TYPE_IS_SIZETYPE (ctype)))
+	   || (TREE_CODE (ctype) == INTEGER_TYPE && TYPE_IS_SIZETYPE (ctype))
 #else
-           || (TYPE_IS_SIZETYPE (ctype)))
+           || (TYPE_IS_SIZETYPE (ctype))
 #endif
+	  )
 	  && ((code == MULT_EXPR && tcode == EXACT_DIV_EXPR)
 	      || (tcode == MULT_EXPR
+#ifdef KEY
+// bug 2957
+		  && code != MULT_EXPR
+#endif
 		  && code != TRUNC_MOD_EXPR && code != CEIL_MOD_EXPR
 		  && code != FLOOR_MOD_EXPR && code != ROUND_MOD_EXPR)))
 	{
@@ -5088,7 +5096,11 @@ fold (expr)
 	    t = build_real (type, REAL_VALUE_NEGATE (TREE_REAL_CST (arg0)));
 	}
       else if (TREE_CODE (arg0) == NEGATE_EXPR)
-	return TREE_OPERAND (arg0, 0);
+#ifdef KEY // bug 2685
+        return convert (type, TREE_OPERAND (arg0,0));
+#else
+        return TREE_OPERAND (arg0, 0);
+#endif // KEY
 
       /* Convert - (a - b) to (b - a) for non-floating-point.  */
       else if (TREE_CODE (arg0) == MINUS_EXPR
@@ -5170,7 +5182,11 @@ fold (expr)
 	  TREE_CONSTANT_OVERFLOW (t) = TREE_CONSTANT_OVERFLOW (arg0);
 	}
       else if (TREE_CODE (arg0) == BIT_NOT_EXPR)
+#ifdef KEY // bug 2772
+	return convert (type, TREE_OPERAND (arg0, 0));
+#else
 	return TREE_OPERAND (arg0, 0);
+#endif
       return t;
 
     case PLUS_EXPR:
@@ -6415,6 +6431,10 @@ fold (expr)
 	       && (t1 = get_unwidened (arg1, TREE_TYPE (tem))) != 0
 	       && (TREE_TYPE (t1) == TREE_TYPE (tem)
 		   || (TREE_CODE (t1) == INTEGER_CST
+#ifdef KEY // bug 2686
+		       && (TREE_UNSIGNED (TREE_TYPE (tem)) ||
+		       	   !TREE_UNSIGNED (TREE_TYPE (t1)))
+#endif // KEY
 		       && int_fits_type_p (t1, TREE_TYPE (tem)))))
 	return fold (build (code, type, tem, convert (TREE_TYPE (tem), t1)));
 

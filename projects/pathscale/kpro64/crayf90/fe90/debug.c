@@ -577,7 +577,7 @@ void print_ml_tbl()
 |*									      *|
 \******************************************************************************/
 
-void print_ro_tbl (ro_start_idx)
+void print_ro_tbl (int ro_start_idx)
 
 {
    int	ro_idx;
@@ -6278,7 +6278,7 @@ static void dump_cn_ntry (FILE	*out_file,
    fprintf(out_file, "  %-16s= %-7s %-16s= %-7d %-16s\n",
                "CN_EXTRA_ZERO_WO", boolean_str[CN_EXTRA_ZERO_WORD(cn_idx)],
                "CN_POOL_IDX", CN_POOL_IDX(cn_idx),
-                cn_hollerith_str[CN_HOLLERITH_ENDIAN(cn_idx)]);
+                cn_hollerith_str[CN_HOLLERITH_TYPE(cn_idx)]);
 
 # if defined(_TARGET_LITTLE_ENDIAN)
    fprintf(out_file, "  %-16s= %-2s\n",

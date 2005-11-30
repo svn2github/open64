@@ -351,6 +351,7 @@ GNU_SRCS =		\
   stringpool.c		\
   timevar.c		\
   toplev.c		\
+  tracer.c		\
   tree.c		\
   tree-dump.c		\
   tree-inline.c		\

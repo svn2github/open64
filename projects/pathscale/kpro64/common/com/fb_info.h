@@ -128,6 +128,8 @@ struct FB_Info_Value {
     }
   }
 
+  FB_FREQ Total() const {    return exe_counter;   }
+
   void Print( FILE* fp ) const {
     fprintf( fp, "execution counter: %d\n", (int)exe_counter.Value() );
     for( int i = 0; i < num_values; i++ ){

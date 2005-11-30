@@ -272,6 +272,28 @@ void Print_BB_Info(BB *bb);
 void Print_Cflow_Graph(char *banner);
 #pragma mips_frequency_hint NEVER Print_Cflow_Graph
 
+#ifdef TARG_X8664
+/* ====================================================================
+ *
+ * BB_savexmms_op
+ *
+ * Return the terminating savexmms OP in a given BB
+ *
+ * ====================================================================
+ */
+static inline OP* BB_savexmms_op( BB *bb )
+{
+  OP* op = BB_last_op(bb);
+  return ( (op != NULL) && (OP_code(op) == TOP_savexmms) ) ? op : NULL;
+}
+
+static inline bool BB_computes_got( BB* bb )
+{
+  OP* op = BB_first_op(bb);
+  return ( (op != NULL) && OP_computes_got(op) );
+}
+#endif
+
 
 /* ====================================================================
  *
@@ -1862,6 +1884,11 @@ Collapse_Empty_Goto(BB *bp, BB *targ, float in_freq)
   BB *new_targ;
 
   if (BBINFO_cold(bp) != BBINFO_cold(targ)) return targ;
+
+#ifdef TARG_X8664
+  if( BB_savexmms_op(bp) != NULL )
+    return targ;
+#endif
 
   new_targ = targ;
   cnt = 0;
@@ -3462,8 +3489,10 @@ Can_Append_Succ(
   }
 
 #ifdef TARG_X8664
-  if (BB_last_op(b) && OP_code(BB_last_op(b)) == TOP_savexmms)
-    return FALSE;	// merging would delete the label needed by this instr
+  // merging would delete the label needed by this instr
+  if( BB_savexmms_op(b) != NULL ){
+    return FALSE;
+  }
 #endif
 
   /* Reject if suc is an entry point.
@@ -4008,8 +4037,14 @@ Merge_Blocks ( BOOL in_cgprep )
       if (BB_Unique_Predecessor(suc)) {
 
 #ifdef TARG_X8664
-	if (BB_last_op(b) && OP_code(BB_last_op(b)) == TOP_savexmms)
-	  break;	// merging would delete the label needed by this instr
+	// merging would delete the label needed by this instr
+	if( BB_savexmms_op(b) != NULL ){
+	  break;
+	}
+
+	if( BB_computes_got(b) ){
+	  break;
+	}
 #endif
 
 	/* We have a candidate to merge with its successor.

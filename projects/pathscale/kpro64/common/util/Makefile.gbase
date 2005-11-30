@@ -51,14 +51,22 @@ CVERSION =
 WOFF =
 endif
 
+ifeq ($(shell test -e /usr/include/valgrind/valgrind.h && echo y || echo n), y)
+VGINC = -I/usr/include/valgrind
+VGDEF =
+else
+VGINC =
+VGDEF = -DNO_VALGRIND
+endif
+
 LASOPTS = $(STD_COMPILE_OPTS)
 
 LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
-LCDEFS += $(HOSTDEFS) $(TARGDEFS)
+LCDEFS += $(HOSTDEFS) $(TARGDEFS) $(VGDEF)
 LCXXOPTS = $(STD_COMPILE_OPTS)
 LCXXDEFS += $(HOSTDEFS) $(TARGDEFS)
 
-LCINCS = -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com -I$(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR)
+LCINCS = -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com -I$(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR) $(VGINC)
 LCXXINCS = -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com -I$(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR)
 
 ifneq ($(BUILD_COMPILER), EDG)

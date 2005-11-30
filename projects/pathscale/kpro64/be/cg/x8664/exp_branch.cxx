@@ -121,7 +121,8 @@ static void Expand_Split_Branch( TOP cmp_opcode, TN* src1_lo, TN* src2_lo,
 
   if( src2_hi == NULL ){
     if( TN_has_value( src2_lo ) ){
-      src2_hi = Gen_Literal_TN( 0, 4 );
+      const INT64 val = TN_value( src2_lo ) >> 32;
+      src2_hi = Gen_Literal_TN( val, 4 );
 
     } else {
       DevWarn( "The higher 32-bit of TN%d is treated as 0\n",
@@ -129,6 +130,13 @@ static void Expand_Split_Branch( TOP cmp_opcode, TN* src1_lo, TN* src2_lo,
       src2_hi = Build_TN_Like( src2_lo );
       Build_OP( TOP_ldc32, src2_hi, Gen_Literal_TN(0,4), ops );    
     }
+  }
+
+  if( src1_hi == NULL ){
+    DevWarn( "The higher 32-bit of TN%d is treated as 0\n",
+	     TN_number(src1_lo) );
+    src1_hi = Build_TN_Like( src1_lo );
+    Build_OP( TOP_ldc32, src1_hi, Gen_Literal_TN(0,4), ops );    
   }
 
   TN* rflags = Rflags_TN();
@@ -201,12 +209,19 @@ static void Expand_Split_Branch( TOP cmp_opcode, TN* src1_lo, TN* src2_lo,
     OPS_Init( bb_then_ops );
   }
 
-  // Compare the lower 32-bit here.
+  // Compare the lower 32-bit using unsigned comparision.
   {
     OPS* bb_then1_ops = &New_OPs;
+    TOP jmp = jmp_opcode;
+    switch( jmp_opcode ){
+    case TOP_jg:  jmp = TOP_ja;  break;
+    case TOP_jge: jmp = TOP_jae; break;
+    case TOP_jl:  jmp = TOP_jb;  break;
+    case TOP_jle: jmp = TOP_jbe; break;
+    }
 
     Build_OP( cmp_opcode, rflags, src1_lo, src2_lo, bb_then1_ops );
-    Build_OP( jmp_opcode, rflags, targ, bb_then1_ops );
+    Build_OP( jmp, rflags, targ, bb_then1_ops );
 
     total_bb_insts = 0;
     Last_Processed_OP = NULL;
@@ -490,6 +505,13 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 	FmtAssert(FALSE, ("unimplemented branch variant in Expand_Branch"));
       }
 
+      if( TN_has_value(src1) ){
+	TN* tmp = Gen_Register_TN( ISA_REGISTER_CLASS_integer,
+				   is_64bit ? 8 : 4 );
+	Build_OP( is_64bit ? TOP_ldc64 : TOP_ldc32, tmp, src1, ops );
+	src1 = tmp;
+      }
+
       if( TN_has_value(src2) ){
 	const INT64 imm = TN_value(src2);
 
@@ -653,9 +675,12 @@ void Exp_Local_Jump(BB *bb, INT64 offset, OPS *ops)
   FmtAssert(FALSE, ("NYI: Exp_Local_Jump"));
 }
 
-void Exp_Return (TN *return_address, OPS *ops)
+void Exp_Return (TN *return_address, int sp_adjust, OPS *ops)
 {
-  Build_OP(TOP_ret, return_address, ops);
+  if( sp_adjust == 0 )
+    Build_OP( TOP_ret, return_address, ops );
+  else
+    Build_OP( TOP_reti, Gen_Literal_TN(sp_adjust,4), ops );
 }
 
 void Exp_Call( OPERATOR opr, TN *return_address, TN *target, OPS *ops )

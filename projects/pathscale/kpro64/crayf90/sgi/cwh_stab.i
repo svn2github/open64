@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -298,7 +302,12 @@ BOOL cwh_stab_pu_has_globals; /* Were any global symbols seen in the PU */
 
 static  char * const crayf90_def_main = "main___" ;
 static  char * const def_main_u = "MAIN__" ;
+#ifndef KEY
 static  char * const def_main   = "MAIN_" ;
+#else
+/* Bug 2672- use the mangled name in Dwarf output to match the assembly name */
+static  char * const def_main   = "MAIN__" ;
+#endif
 
 /* forward references */
 

@@ -554,7 +554,12 @@
 #	define _INTEGER_1_AND_2			1
 #	define _NAME_SUBSTITUTION_INLINING	1
 #	define _NO_AT_SIGN_IN_NAMES		1
+/* Bug 2001 */
+#       ifdef KEY
+#       define _EXTENDED_CRI_CHAR_POINTER       1
+#       else
 #	define _NO_CRAY_CHARACTER_PTR		1
+#       endif
 #	define _NO_IO_ALTERNATE_RETURN		1
 #	define _POINTEES_CAN_BE_STRUCT		1
 #       define _QUAD_PRECISION                  1

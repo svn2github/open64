@@ -113,6 +113,8 @@ extern WN*  WFE_Stmt_Pop (WFE_STMT_KIND kind);
 extern void WFE_Guard_Var_Push (void);
 extern tree WFE_Guard_Var_Pop (void);
 extern tree WFE_Get_Guard_Var (void);
+extern bool Check_For_Call_Region (void);
+extern bool Did_Not_Terminate_Region;
 #endif
 
 extern UINT current_file;

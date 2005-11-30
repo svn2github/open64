@@ -39,7 +39,7 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include "config_platform.h"
+#include "cmplrs/rcodes.h"
 #include "opt_actions.h"
 #include "options.h"
 #include "option_names.h"
@@ -69,16 +69,18 @@ int inline_t = UNDEFINED;
 boolean dashdash_flag = FALSE;
 boolean read_stdin = FALSE;
 boolean xpg_flag = FALSE;
-#ifndef KEY
-int default_olevel = UNDEFINED;
-#else
 int default_olevel = 2;
-#endif
 static int default_isa = UNDEFINED;
 static int default_proc = UNDEFINED;
 int instrumentation_invoked = UNDEFINED;
 int profile_type = 0;
 boolean ftz_crt = FALSE;
+int isa = UNDEFINED;
+int proc = UNDEFINED;
+
+#ifdef KEY
+void set_memory_model(char *model);
+#endif
 
 /* ====================================================================
  *
@@ -94,48 +96,7 @@ boolean ftz_crt = FALSE;
  * ====================================================================
  */
 
-/* Mapping from processors to best ISA: */
-static struct {
-  PROCESSOR p;
-  ISA	isa;
-  int	opt;
-} P_to_I_Map[] =
-{
-#if 0
-  { PROC_R4K,	ISA_MIPS3,  O_mips3 },
-  { PROC_R5K,	ISA_MIPS4,  O_mips4 },
-  { PROC_R8K,	ISA_MIPS4,  O_mips4 },
-  { PROC_R10K,	ISA_MIPS4,  O_mips4 },
-#endif
-  { PROC_ITANIUM,	ISA_IA641,  O_Unrecognized },
-  { PROC_NONE,	ISA_NONE,  O_Unrecognized }
-};
-
-static struct {
-  char *pname;
-  PROCESSOR pid;
-} Proc_Map[] =
-{
-  { "r4000",	PROC_R4K },
-  { "r4k",	PROC_R4K },
-  { "r5000",	PROC_R5K },
-  { "r5k",	PROC_R5K },
-  { "r8000",	PROC_R8K },
-  { "r8k",	PROC_R8K },
-  { "r10000",	PROC_R10K },
-  { "r10k",	PROC_R10K },
-  { "r12000",	PROC_R10K },
-  { "r12k",	PROC_R10K },
-  { "r14000",	PROC_R10K },
-  { "r14k",	PROC_R10K },
-  { "r16000",	PROC_R10K },
-  { "r16k",	PROC_R10K },
-  { "itanium",	PROC_ITANIUM },
-  { NULL,	PROC_NONE }
-};
-
 int ofast = UNDEFINED;	/* -Ofast toggle -- implicit in Process_Ofast */
-char *Ofast_Name = NULL;/* -Ofast= name */
 
 
 static void
@@ -280,9 +241,6 @@ Process_Ofast ( char *ipname )
   int flag;
   char *suboption;
 
-  /* Remember the name for later defaulting of ISA/processor: */
-  Ofast_Name = string_copy (ipname);
-
   /* -O3: */
   if (!Gen_feedback) {
      O3_flag = TRUE;
@@ -293,11 +251,9 @@ Process_Ofast ( char *ipname )
      ftz_crt = TRUE;	// flush to zero
 #endif
 
-#ifdef KEY
      /* -fno-math-errno */
      toggle ( &fmath_errno, 0);
      add_option_seen (O_fno_math_errno);
-#endif
 
      /* -IPA: */
      toggle ( &ipa, TRUE );
@@ -350,9 +306,11 @@ Process_Opt_Group ( char *opt_args )
   /* Go look for -OPT:reorg_common: */
   optval = Get_Group_Option_Value ( opt_args, "reorg_common", "reorg");
   if ( optval != NULL && Bool_Group_Value(optval)) {
+#ifndef KEY
     /* If we found it, set -Wl,-split_common,-ivpad: */
     add_option_seen ( O_split_common );
     add_option_seen ( O_ivpad );
+#endif
   }
 }
 
@@ -370,15 +328,6 @@ Process_Default_Group (char *default_args)
   s = Get_Group_Option_Value ( default_args, "isa", "isa");
   if (s != NULL && same_string_prefix (s, "mips")) {
 	default_isa = atoi(s + strlen("mips"));
-  }
-  /* Go look for -DEFAULT:proc=rN000: */
-  s = Get_Group_Option_Value ( default_args, "proc", "proc");
-  if (s != NULL) {
-	for (i = 0; Proc_Map[i].pname != NULL; i++) {
-		if (strcmp(s, Proc_Map[i].pname) == 0) {
-			default_proc = Proc_Map[i].pid;
-		}
-	}
   }
   /* Go look for -DEFAULT:opt=[0-3]: */
   s = Get_Group_Option_Value ( default_args, "opt", "opt");
@@ -442,7 +391,7 @@ Process_Targ_Group ( char *targ_args )
 	    add_option_seen ( O_n32 );
 	    toggle ( &abi, ABI_N32 );
 	  } else if ( strncasecmp ( cp+4, "64", 2 ) == 0 ) {
-	    add_option_seen ( O_64 );
+	    add_option_seen ( O_m64 );
 	    toggle ( &abi, ABI_64 );
 	  }
 #endif
@@ -509,26 +458,6 @@ Process_Targ_Group ( char *targ_args )
 	}
 #endif
 	break;
-
-      case 'p':
-	/* Allow abbreviation of "processor" to "pr" or longer: */
-	cpeq = strchr ( cp, '=' );
-	if ( cpeq != NULL
-	  && strncasecmp ( cp, "processor", cpeq-cp ) == 0 )
-	{
-	  /* We don't actually add options here, because they don't
-	   * have implications (e.g. associated -D options), and the
-	   * phases will do just fine based on the -TARG: option:
-	   */
-	  int i;
-	  cp = cpeq+1;
-	  for (i = 0; Proc_Map[i].pname != NULL; i++) {
-		if (strcmp(cp, Proc_Map[i].pname) == 0) {
-			toggle (&proc, Proc_Map[i].pid);
-		}
-	  }
-	}
-	break;
     }
 
     /* Skip to the next group option: */
@@ -536,68 +465,7 @@ Process_Targ_Group ( char *targ_args )
     if ( *cp == ':' ) ++cp;
   }
 }
-
-/* ====================================================================
- *
- * Ofast_Target
- *
- * There was a -Ofast option, which affects the target defaults.
- * The ABI always defaults to -n32 (today).  The processor then
- * defaults to that used in the platform indicated by -Ofast, or the
- * r10000 (today).  Finally, the ISA is defaulted to the highest
- * supported by the platform, usually -mips4 today.
- *
- * ====================================================================
- */
 
-static void
-Ofast_Target ( void )
-{
-  int ix;
-  PLATFORM_OPTIONS *popts;
-
-  /* Driverwrap should always insert an ABI, but just in case: */
-  if ( abi == UNDEFINED ) {
-    add_option_seen ( O_64 );
-    option_name = get_option_name ( O_Ofast );
-    toggle ( &abi, ABI_64 );
-  }
-
-  /* Now fetch the IP descriptor by name: */
-  popts = Get_Platform_Options ( Ofast_Name );
-
-  /* Get the processor -- we won't bother to toggle it since the
-   * compiler will figure it out the same way and only this routine
-   * in the driver needs it:
-   */
-  if ( proc == UNDEFINED ) {
-    if ( Ofast_Name != NULL
-      && *Ofast_Name != 0
-      && popts->id == IP0 )
-    {
-      warning ( "Unrecognized -Ofast value '%s': defaulting to '%s' (%s)", 
-		Ofast_Name, popts->name, popts->nickname );
-    }
-    proc = popts->processor;
-  }
-
-  /* Finally, get the ISA (the purpose of all this): */
-  if ( isa == UNDEFINED ) {
-    for ( ix = 0;
-	  P_to_I_Map[ix].p != proc && P_to_I_Map[ix].p != PROC_NONE;
-	  ++ix )
-    { }
-    add_option_seen ( P_to_I_Map[ix].opt );
-    option_name = get_option_name ( P_to_I_Map[ix].opt );
-    toggle ( &isa, P_to_I_Map[ix].isa );
-  }
-
-  if ( debug ) {
-    fprintf ( stderr,
-	      "Ofast_Target -Ofast=%s: '%s' (%s) r%dk mips%d\n",
-	      Ofast_Name, popts->name, popts->nickname, proc, isa );
-  }
-}
 
 /* ====================================================================
  *
@@ -619,13 +487,6 @@ Check_Target ( void )
 	      abi, isa, proc );
   }
 
-  /* If -Ofast is given, default to -n32, specified platform's
-   * processor, and best ISA:
-   */
-  if ( (ofast == TRUE) || (Gen_feedback == TRUE)) {
-    Ofast_Target ();
-  }
-
   if (abi == UNDEFINED) {
 #ifdef TARG_IA64
 	toggle(&abi, ABI_I64);
@@ -638,7 +499,7 @@ Check_Target ( void )
     	add_option_seen ( O_n32 );
 #elif TARG_X8664
 	toggle(&abi, ABI_64);
-    	add_option_seen ( O_64 );
+    	add_option_seen ( O_m64 );
 #else
 	warning("abi should have been specified by driverwrap");
   	/* If nothing is defined, default to -n32 */
@@ -704,12 +565,6 @@ Check_Target ( void )
 	  opt_val = ISA_MIPS4;
 	  opt_id = O_mips4;
 	}
-#ifndef KEY
-	else if (abi == ABI_64 && proc != PROC_R4K) {
-	  opt_val = ISA_MIPS4;
-	  opt_id = O_mips4;
-	}
-#endif
 	else {
 	  opt_val = ISA_MIPS64;
 	  opt_id = O_mips64;
@@ -878,7 +733,7 @@ toggle_inline_off(void)
   }
   inline_t = FALSE;
 }
-#ifdef KEY
+
 void
 Process_Profile_Arcs( void )
 {
@@ -892,7 +747,7 @@ Process_Test_Coverage( void )
   if (strncmp (option_name, "-ftest-coverage", 15) == 0)
     add_string_option (O_CG_, "test_coverage=true");
 }
-#endif
+
 /* process -INLINE option */
 void
 Process_Inline ( void )
@@ -1316,6 +1171,21 @@ Process_Promp ( void )
   }
 }
 
+#ifdef KEY
+void
+Process_Tenv_Group ( char *opt_args )
+{
+  if ( debug ) {
+    fprintf ( stderr, "Process_TENV_Group: %s\n", opt_args );
+  }
+  
+  /* Go look for -TENV:mcmodel=xxx */
+  if (strncmp (opt_args, "mcmodel=", 8) == 0) {
+    set_memory_model (opt_args + 8);
+  }
+}
+#endif	// KEY
+
 static int
 print_magic_path(const char *base, const char *fname)
 {
@@ -1368,7 +1238,7 @@ print_phase_path(phases_t phase, const char *fname)
 
 static int print_relative_path(const char *s, const char *fname)
 {
-  char *root_prefix = directory_path(get_executable_dir(NULL));
+  char *root_prefix = directory_path(get_executable_dir());
   char *base;
 
   asprintf(&base, "%s/%s", root_prefix, s);
@@ -1422,5 +1292,72 @@ print_file_path (char *fname)
   printf("%s\n", fname);
 }
 
-#include "opt_action.i"
+mem_model_t mem_model;
 
+void
+set_memory_model(char *model)
+{
+  if (strcmp(model, "small") == 0) {
+    mem_model = M_SMALL;
+  }
+  else if (strcmp(model, "medium") == 0) {
+    mem_model = M_MEDIUM;
+  }
+  else if (strcmp(model, "large") == 0) {
+    mem_model = M_LARGE;
+  }
+  else if (strcmp(model, "kernel") == 0) {
+    mem_model = M_KERNEL;
+  } else {
+    error("unknown memory model \"%s\"", model);
+  }
+
+  if (abi == ABI_N32) {
+    error("code model \"%s\" not supported in 32-bit mode", model );
+    do_exit(RC_USER_ERROR);
+  }
+}
+
+static struct 
+{
+  char *cpu_name;
+  char *target_name;
+  int abi;
+} supported_cpu_types[] = {
+  { "athlon", "athlon", ABI_N32, },
+  { "athlon-mp", "athlon", ABI_N32, },
+  { "athlon-xp", "athlon", ABI_N32, },
+  { "athlon64", "athlon64", },
+  { "athlon64fx", "opteron", },
+  { "i686", "pentium4", ABI_N32, },
+  { "ia32", "pentium4", ABI_N32, },
+  { "ia32e", "opteron", },
+  { "k7", "athlon", ABI_N32, },
+  { "k8", "opteron", },
+  { "opteron", "opteron", },
+  { "pentium4", "pentium4", ABI_N32, },
+  { "xeon", "xeon", ABI_N32, },
+  { NULL, NULL, },
+};
+  
+char *target_cpu;
+
+static void
+set_cpu(char *name)
+{
+  for (int i = 0; supported_cpu_types[i].cpu_name; i++) {
+    if (strcmp(name, supported_cpu_types[i].cpu_name) == 0) {
+      target_cpu = supported_cpu_types[i].target_name;
+      if (supported_cpu_types[i].abi) {
+	abi = supported_cpu_types[i].abi;
+      }
+      break;
+    }
+  }
+
+  if (target_cpu == NULL) {
+    error("unknown CPU type \"%s\"", name);
+  }
+}
+
+#include "opt_action.i"

@@ -70,6 +70,9 @@ static pSCNINFO dwarf_scn[MAX_DWARF_SECTIONS];
 static size_t num_dwarf_scns = 0;
 /* Allocate only one cie for the whole file. */
 static Dwarf_Unsigned cie_index;
+#ifdef KEY
+static Dwarf_Unsigned eh_cie_index;
+#endif
 
 typedef struct {
   UINT16 dwarf_idx;
@@ -325,19 +328,20 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 	augmenter = "";
 #endif
 
-  cie_index = dwarf_add_frame_cie (dw_dbg, augmenter,
 #ifdef TARG_X8664
+  cie_index = dwarf_add_frame_cie (dw_dbg, "", // augmenter
 		    1, data_alignment_factor,
 		    // In common/com/em_dwarf.cxx, we have 
 		    // target description only for x86_64. So, we need to 
 		    // specify what is the right column for x86.
 		    Is_Target_64bit() ? DW_FRAME_RA_COL: 0x8,
 #else
+  cie_index = dwarf_add_frame_cie (dw_dbg, augmenter,
 		    4, data_alignment_factor,
 		    DW_FRAME_RA_COL,
 #endif // TARG_X8664
 #ifdef KEY
-		    personality,
+		    0, // no personality
 		    (Gen_PIC_Call_Shared || Gen_PIC_Shared),
 		    is_64bit,
 		    Is_Target_64bit() ? init_bytes :  init_x86_bytes, 
@@ -347,6 +351,22 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 		    init_bytes, sizeof(init_bytes), &dw_error);
 #endif // KEY
 
+#ifdef KEY
+  // Generate a CIE for .eh_frame only if it is C++
+  if (is_cplus)
+    eh_cie_index = dwarf_add_ehframe_cie (dw_dbg, augmenter,
+		    1, data_alignment_factor,
+		    // In common/com/em_dwarf.cxx, we have 
+		    // target description only for x86_64. So, we need to 
+		    // specify what is the right column for x86.
+		    Is_Target_64bit() ? DW_FRAME_RA_COL: 0x8,
+		    personality,
+		    (Gen_PIC_Call_Shared || Gen_PIC_Shared),
+		    is_64bit,
+		    Is_Target_64bit() ? init_bytes :  init_x86_bytes, 
+		    Is_Target_64bit() ? sizeof(init_bytes) : sizeof(init_x86_bytes), 
+		    &dw_error);
+#endif // KEY
 
   return dw_dbg;
 }
@@ -654,6 +674,9 @@ void Em_Dwarf_Process_PU (Dwarf_Unsigned begin_label,
 			  INT32          end_offset,
 			  Dwarf_P_Die    PU_die, 
 			  Dwarf_P_Fde    fde,
+#ifdef TARG_X8664
+			  Dwarf_P_Fde    eh_fde,
+#endif
 			  Elf64_Word     eh_symindex,
 			  INT            eh_offset)
 {
@@ -685,4 +708,26 @@ void Em_Dwarf_Process_PU (Dwarf_Unsigned begin_label,
 				(Dwarf_Unsigned) end_label,
 				end_offset,
 				eh_offset, eh_symindex, &dw_error);
+
+#ifdef TARG_X8664
+  if (eh_fde == NULL)
+  	return;
+
+  if (eh_offset == DW_DLX_NO_EH_OFFSET)	/* no exception handler */
+  	dwarf_add_ehframe_fde_b (dw_dbg, eh_fde, PU_die, eh_cie_index, 
+			       begin_offset,
+			       0 /* dummy code length */,
+			       (Dwarf_Unsigned) begin_label,
+			       (Dwarf_Unsigned) end_label,
+			       end_offset,
+			       &dw_error);
+  else
+  	dwarf_add_ehframe_info_b (dw_dbg, eh_fde, PU_die, eh_cie_index, 
+				begin_offset,
+				0 /* dummy code length */,
+				(Dwarf_Unsigned) begin_label,
+				(Dwarf_Unsigned) end_label,
+				end_offset,
+				eh_offset, eh_symindex, &dw_error);
+#endif
 }

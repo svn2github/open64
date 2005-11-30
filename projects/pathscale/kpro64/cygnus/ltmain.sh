@@ -2892,6 +2892,13 @@ EOF
 			*) potlib=`$echo "X$potlib" | $Xsed -e 's,[^/]*$,,'`"$potliblink";;
 			esac
 		      done
+		      # It is ok to link against an archive when
+		      # building a shared library.
+		      if $AR -t $potlib > /dev/null 2>&1; then
+			newdeplibs="$newdeplibs $a_deplib"
+			a_deplib=""
+			break 2
+		      fi
 		      if eval $file_magic_cmd \"\$potlib\" 2>/dev/null \
 			 | sed 10q \
 			 | egrep "$file_magic_regex" > /dev/null; then
@@ -3990,7 +3997,7 @@ sed_quote_subst='$sed_quote_subst'
 # if CDPATH is set.
 if test \"\${CDPATH+set}\" = set; then CDPATH=:; export CDPATH; fi
 
-relink_command=\"$relink_command\"
+relink_command=\"$relink_command > /dev/null 2>&1\"
 
 # This environment variable determines our operation mode.
 if test \"\$libtool_install_magic\" = \"$magic\"; then

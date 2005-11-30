@@ -312,6 +312,28 @@ DST_put_virtuality_attribute(const char *at_name, DST_virtuality virtuality)
    DST_nput_char(1, ')');
 }
 
+#ifdef KEY
+static void
+DST_put_accessibility_attribute(const char *at_name, 
+                                DST_accessibility accessibility)
+{
+   DST_put_string(at_name);
+   DST_nput_char(1, '(');
+   switch (accessibility) {
+    case DW_ACCESS_public:
+      DST_put_string("DW_ACCESS_public");
+      break;
+    case DW_ACCESS_private:
+      DST_put_string("DW_ACCESS_private");
+      break;
+    case DW_ACCESS_protected:
+      DST_put_string("DW_ACCESS_protected");
+      break;
+   }
+   DST_nput_char(1, ')');
+}
+#endif
+
 static void
 DST_put_language_attribute(const char *at_name, DST_language lang_code)
 {
@@ -911,6 +933,10 @@ DST_put_inheritance(DST_flag flag, DST_INHERITANCE *attr)
    DST_put_idx_attribute(" type", DST_INHERITANCE_type(attr), TRUE);
    DST_put_INT32_attribute(" data_member_location", 
 			   DST_INHERITANCE_memb_loc(attr));
+#ifdef KEY
+   DST_put_accessibility_attribute(" accessibility", 
+                                   DST_INHERITANCE_accessibility(attr));
+#endif
 }
 
 

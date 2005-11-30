@@ -64,6 +64,8 @@ CFILES += \
 
 ifeq ($(BUILD_OS), LINUX)
 PREPFFILES += \
+    mips2ia.F \
+    ia2mips.F
 
 else
 PREPFFILES += \

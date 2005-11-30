@@ -186,6 +186,9 @@ typedef struct lno_flags {
   BOOL	Blocking;
   UINT32 Blocking_Size;
   BOOL	Cache_model_edge_effects;
+#ifdef KEY
+  UINT32 EffectiveCacheSizePct; 
+#endif
   BOOL	Coupled_opts;
   BOOL	Cse;
 #ifdef KEY
@@ -195,13 +198,25 @@ typedef struct lno_flags {
   UINT32 Simd_Skip_Before;
   UINT32 Simd_Skip_After;
   UINT32 Simd_Skip_Equal;
+  UINT32 Simd_Loop_Skip_Before;
+  UINT32 Simd_Loop_Skip_After;
+  UINT32 Simd_Loop_Skip_Equal;
   UINT32 HoistIf_Skip_Before;
   UINT32 HoistIf_Skip_After;
   UINT32 HoistIf_Skip_Equal;
   UINT32 HoistIf_Threshold;
+  UINT32 SVR_Skip_Before;
+  UINT32 SVR_Skip_After;
+  UINT32 SVR_Skip_Equal;
+  UINT32 Full_Unroll_Skip_Before;
+  UINT32 Full_Unroll_Skip_After;
+  UINT32 Full_Unroll_Skip_Equal;
   UINT32 Skip_Before;
   UINT32 Skip_After;
   UINT32 Skip_Equal;
+  UINT32 Dummy_Skip_Before;
+  UINT32 Dummy_Skip_After;
+  UINT32 Dummy_Skip_Equal;
 #endif /* KEY */
   BOOL	Fancy_tile;
   BOOL	Run_fiz_fuse;
@@ -225,6 +240,10 @@ typedef struct lno_flags {
   UINT32 Opt;
   UINT32 Cache_model;
   BOOL	Run_outer;
+#ifdef KEY
+  UINT32 OLF_Upper_Bound;
+  UINT32 OLF_Lower_Bound;
+#endif
   UINT32 Outer_unroll;
   BOOL	Outer_unroll_deep;
   UINT32 Outer_unroll_min_for_further_unroll;
@@ -259,12 +278,18 @@ typedef struct lno_flags {
   BOOL	Use_parm;
   BOOL	Verbose;
   BOOL	Version_mp_loops;
+#ifndef KEY
   BOOL	Run_vintr;
-#ifdef KEY
+#else
+  UINT32  Run_vintr;
+  BOOL	  Run_vintr_set;
+  BOOL 	  Vintr_Verbose;
   UINT32  Run_simd;
   BOOL	  Run_simd_set;
   BOOL 	  Simd_Verbose;
-  BOOL  Run_hoistif;
+  BOOL 	  Simd_Reduction;
+  BOOL 	  Simd_Avoid_Fusion;
+  BOOL    Run_hoistif;
 #endif /* KEY */
   BOOL	Run_oinvar;
   UINT32 Run_doacross;
@@ -279,8 +304,15 @@ typedef struct lno_flags {
   UINT32 Num_Iters;
   UINT32 Pure_Level;
   UINT32 Small_trip_count;
+#ifdef KEY
+  UINT32 Assume_Unknown_Trip_Count;
+#endif
   UINT32 Local_pad_size;
   UINT32 Full_unrolling;  
+#ifdef KEY
+  UINT32 Full_unrolling_loop_size_limit;
+  BOOL   Full_Unroll_Outer;
+#endif
   /* This buffer area allows references to new fields to be added in
    * later revisions, from other DSOs, without requiring a new be.so
    * or running the risk of referencing illegal data.  Assuming that
@@ -320,6 +352,9 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Blocking			Current_LNO->Blocking
 #define LNO_Blocking_Size		Current_LNO->Blocking_Size
 #define LNO_Cache_Model_Edge_Effects	Current_LNO->Cache_model_edge_effects
+#ifdef KEY
+#define LNO_EffectiveCacheSizePct	Current_LNO->EffectiveCacheSizePct
+#endif
 #define LNO_Coupled_Opts		Current_LNO->Coupled_opts
 #define LNO_Cse				Current_LNO->Cse
 #ifdef KEY
@@ -329,13 +364,25 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Simd_Skip_Before	        Current_LNO->Simd_Skip_Before
 #define LNO_Simd_Skip_After	        Current_LNO->Simd_Skip_After
 #define LNO_Simd_Skip_Equal	        Current_LNO->Simd_Skip_Equal
+#define LNO_Simd_Loop_Skip_Before	Current_LNO->Simd_Loop_Skip_Before
+#define LNO_Simd_Loop_Skip_After	Current_LNO->Simd_Loop_Skip_After
+#define LNO_Simd_Loop_Skip_Equal	Current_LNO->Simd_Loop_Skip_Equal
 #define LNO_HoistIf_Skip_Before	        Current_LNO->HoistIf_Skip_Before
 #define LNO_HoistIf_Skip_After	        Current_LNO->HoistIf_Skip_After
 #define LNO_HoistIf_Skip_Equal	        Current_LNO->HoistIf_Skip_Equal
 #define LNO_HoistIf_Threshold		Current_LNO->HoistIf_Threshold
+#define LNO_SVR_Skip_Before	        Current_LNO->SVR_Skip_Before
+#define LNO_SVR_Skip_After	        Current_LNO->SVR_Skip_After
+#define LNO_SVR_Skip_Equal	        Current_LNO->SVR_Skip_Equal
+#define LNO_Full_Unroll_Skip_Before	Current_LNO->Full_Unroll_Skip_Before
+#define LNO_Full_Unroll_Skip_After	Current_LNO->Full_Unroll_Skip_After
+#define LNO_Full_Unroll_Skip_Equal	Current_LNO->Full_Unroll_Skip_Equal
 #define LNO_Skip_Before	                Current_LNO->Skip_Before
 #define LNO_Skip_After	                Current_LNO->Skip_After
 #define LNO_Skip_Equal	                Current_LNO->Skip_Equal
+#define LNO_Dummy_Skip_Before	        Current_LNO->Dummy_Skip_Before
+#define LNO_Dummy_Skip_After	        Current_LNO->Dummy_Skip_After
+#define LNO_Dummy_Skip_Equal	        Current_LNO->Dummy_Skip_Equal
 #endif /* KEY */
 #define LNO_Fancy_Tile			Current_LNO->Fancy_tile
 #define LNO_Run_Fiz_Fuse		Current_LNO->Run_fiz_fuse
@@ -360,6 +407,10 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Opt				Current_LNO->Opt
 #define LNO_Cache_Model			Current_LNO->Cache_model
 #define LNO_Run_Outer			Current_LNO->Run_outer
+#ifdef KEY
+#define OLF_size_upperbound		Current_LNO->OLF_Upper_Bound
+#define OLF_size_lowerbound		Current_LNO->OLF_Lower_Bound
+#endif
 #define LNO_Outer_Unroll		Current_LNO->Outer_unroll
 #define LNO_Outer_Unroll_Deep		Current_LNO->Outer_unroll_deep
 #define LNO_Outer_Unroll_Min_For_Further_Unroll	\
@@ -397,11 +448,17 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Use_Parm			Current_LNO->Use_parm
 #define LNO_Verbose			Current_LNO->Verbose
 #define LNO_Version_Mp_Loops		Current_LNO->Version_mp_loops
+#ifndef KEY
 #define LNO_Run_Vintr			Current_LNO->Run_vintr
-#ifdef KEY
+#else
+#define LNO_Run_Vintr			Current_LNO->Run_vintr
+#define LNO_Run_Vintr_Set		Current_LNO->Run_vintr_set
+#define LNO_Vintr_Verbose		Current_LNO->Vintr_Verbose
 #define LNO_Run_Simd                    Current_LNO->Run_simd
 #define LNO_Run_Simd_Set		Current_LNO->Run_simd_set
 #define LNO_Simd_Verbose		Current_LNO->Simd_Verbose
+#define LNO_Simd_Reduction		Current_LNO->Simd_Reduction
+#define LNO_Simd_Avoid_Fusion		Current_LNO->Simd_Avoid_Fusion
 #define LNO_Run_hoistif                 Current_LNO->Run_hoistif
 #endif /* KEY */
 #define LNO_Run_Oinvar			Current_LNO->Run_oinvar
@@ -432,11 +489,21 @@ extern LNO_FLAGS Initial_LNO;
 // Largest inner loop trip count for which we'll try full unrolling
 #define LNO_Small_Trip_Count		Current_LNO->Small_trip_count
 
+#ifdef KEY
+// The trip count assumed by LNO to avoid prefetches in the absence of feedback
+#define LNO_Assume_Unknown_Trip_Count   Current_LNO->Assume_Unknown_Trip_Count
+#endif
+
 // The amount by which to pad local array dimensions
 #define LNO_Local_Pad_Size		Current_LNO->Local_pad_size
 
-// The amount by which to pad local array dimensions
+// Unroll loops with trip count <= LNO_Full_Unrolling_Limit
 #define LNO_Full_Unrolling_Limit	Current_LNO->Full_unrolling
+#ifdef KEY
+#define LNO_Full_Unrolling_Loop_Size_Limit \
+Current_LNO->Full_unrolling_loop_size_limit
+#define LNO_Full_Unroll_Outer           Current_LNO->Full_Unroll_Outer
+#endif
 
 /* Initialize the current top of stack to defaults: */
 extern void LNO_Init_Config ( void );

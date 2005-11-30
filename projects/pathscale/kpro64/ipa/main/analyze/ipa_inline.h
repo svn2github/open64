@@ -69,5 +69,6 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH *cg, MEM_POOL* pool);
 extern void 
 Get_Sorted_Callsite_List (IPA_NODE *n, IPA_CALL_GRAPH *cg, AUX_IPA_EDGE<INT32>& cost_vector, vector<IPA_EDGE_INDEX>& callsite_list); //pengzhao
 extern float compute_hotness(IPA_EDGE *edge, IPA_NODE *callee, INT callee_size);
+extern UINT32 Effective_weight (const IPA_NODE *);
 //INLINING_TUNING static->exportable$
 #endif // cxx_ipa_inline_INCLUDED

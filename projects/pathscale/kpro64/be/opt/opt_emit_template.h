@@ -348,7 +348,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
             }
             else{
               WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
-              if (opnd->Opr()!=OPR_CVTL)
+	      if (WN_desc(WN_kid(wn, i)) != MTYPE_V)
                 WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
             }
           } 
@@ -412,6 +412,31 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	     && MTYPE_byte_size(WN_rtype(opnd0))< MTYPE_byte_size(exp->Dsctyp())
 	     && OPERATOR_is_compare(exp->Opr()))
 	    exp->Set_dsctyp(WN_rtype(opnd0));
+#endif
+#ifdef KEY // bug 3347: fix INTCONSTs unnecessarily made 64-bit
+	  else if (Is_Target_32bit() && ! OPERATOR_is_compare(exp->Opr()) &&
+	      	   MTYPE_byte_size(exp->Dtyp()) == 4) {
+	    if (WN_operator(opnd0) == OPR_INTCONST && 
+		MTYPE_byte_size(WN_rtype(opnd0)) == 8) {
+#if 0
+	      Is_True(( WN_const_val(opnd0) << 32 >> 32) == WN_const_val(opnd0),
+	      	      ("Inconsistent INTCONST type"));
+#else
+	      if ((WN_const_val(opnd0) << 32 >> 32) == WN_const_val(opnd0))
+#endif
+	      WN_set_rtype(opnd0, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd0)));
+	    }
+	    if (WN_operator(opnd1) == OPR_INTCONST && 
+		MTYPE_byte_size(WN_rtype(opnd1)) == 8) {
+#if 0 // umlau6.f of sixtrack hits this assertion
+	      Is_True((WN_const_val(opnd1) << 32 >> 32) == WN_const_val(opnd1),
+	      	      ("Inconsistent INTCONST type"));
+#else
+	      if ((WN_const_val(opnd1) << 32 >> 32) == WN_const_val(opnd1))
+#endif
+	      WN_set_rtype(opnd1, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd1)));
+	    }
+	  }
 #endif
 	  wn = WN_CreateExp2(exp->Op(), opnd0, opnd1);
 	} else if (exp->Kid_count() == 3) {

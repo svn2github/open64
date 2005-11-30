@@ -1593,6 +1593,55 @@ List_Based_Fwd::Is_OP_Better (OP *cur_op, OP *best_op)
     if (OPSCH_estart(cur_opsch) > OPSCH_estart(best_opsch)) return TRUE;
     if (OPSCH_estart(cur_opsch) < OPSCH_estart(best_opsch)) return FALSE;
   }
+
+#ifdef TARG_X8664
+  /* TODO:
+     Now it is seperated for debugging purpose. Once it is stable,
+     merge it with its parent. 
+   */
+
+  /* Favor load over prefetching. */
+
+  if( OP_memory(cur_op) && OP_prefetch(best_op) ){
+    return Is_Fwd_Schedule() ? TRUE : FALSE;
+  }
+
+  if( OP_memory(best_op) && OP_prefetch(cur_op) ){
+    return Is_Fwd_Schedule() ? FALSE : TRUE;
+  }
+
+  /* For two load/store operations that access the same array,
+     schedule the one load/store the lower address first.
+  */
+
+  if( ( OP_load( cur_op ) && OP_load( best_op ) ) ||
+      ( OP_store( cur_op ) && OP_store( best_op ) ) ){
+    TN* cur_base = NULL;
+    TN* cur_ofst = NULL;
+    TN* best_base = NULL;
+    TN* best_ofst = NULL;
+
+    OP_Base_Offset_TNs( cur_op,  &cur_base,  &cur_ofst );
+    OP_Base_Offset_TNs( best_op, &best_base, &best_ofst );
+
+    if( cur_base == best_base &&
+	( cur_ofst != NULL && best_ofst != NULL ) ){
+      if( TN_has_value( cur_ofst )  &&
+	  TN_has_value( best_ofst ) ){
+	const bool cur_is_better = TN_value(cur_ofst) < TN_value(best_ofst );
+	return Is_Fwd_Schedule() ?  cur_is_better : !cur_is_better;
+      }
+      
+      if( TN_is_symbol( cur_ofst )  &&
+	  TN_is_symbol( best_ofst ) &&
+	  TN_var(cur_ofst) == TN_var(best_ofst) ){
+	const bool cur_is_better = TN_offset( cur_ofst) < TN_offset( best_ofst );
+	return Is_Fwd_Schedule() ? cur_is_better : !cur_is_better;
+      }
+    }
+  }
+#endif
+
   return FALSE;
 }
 

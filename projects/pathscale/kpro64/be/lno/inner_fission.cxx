@@ -169,11 +169,29 @@ extern WN* Find_Stmt_Under(WN* stmt,WN* body) {
     return stmt;
 
   WN* parent;
+#ifndef KEY
   while ((parent=LWN_Get_Parent(stmt))!=body)
     if (WN_opcode(parent)==OPC_FUNC_ENTRY)
       return NULL;
     else
       stmt=parent;
+#else
+  // Bug 2795
+  // For Analyse_Dependencies (from the vectorizer), we pass down a loop
+  // copy without a parent (because it does not make sense to make a copy of
+  // the entire WHIRL tree). When Analyse_Dependencies is called by 
+  // Mark_Auto_Vectorizable_Loops (that is early in LNO phase), some
+  // references in the loop (in this case, the loop termination test)
+  // point to outside the loop. We do not have a complete view of the WHIRL 
+  // tree and so should return NULL when the parent pointer becomes NULL.
+  while ((parent=LWN_Get_Parent(stmt))!=body && parent)
+    if (WN_opcode(parent)==OPC_FUNC_ENTRY)
+      return NULL;
+    else
+      stmt=parent;
+  if (!parent)
+    return NULL;
+#endif
   return stmt;
 }
 

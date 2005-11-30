@@ -765,7 +765,8 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 		if (IPA_Enable_Array_Sections)
 		    IPA_LNO_Map_Node(callee, IPA_LNO_Summary);
 #ifdef KEY
-		if (!IPA_Enable_PU_Reorder)
+		if (IPA_Enable_PU_Reorder == REORDER_DISABLE && 
+		    !Opt_Options_Inconsistent)
 		{
 #endif // KEY
 		IPA_Rename_Builtins(callee);
@@ -832,7 +833,8 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 	    if (IPA_Enable_Array_Sections)
 		IPA_LNO_Map_Node(caller, IPA_LNO_Summary);
 #ifdef KEY
-	    if (!IPA_Enable_PU_Reorder)
+	    if (IPA_Enable_PU_Reorder == REORDER_DISABLE && 
+	        !Opt_Options_Inconsistent)
 	    {
 #endif // KEY
 	    IPA_Rename_Builtins(caller);
@@ -1435,12 +1437,97 @@ struct order_node_by_freq {
     }
 };
 
-struct order_edge_by_freq {
-    bool operator() (IPA_EDGE * first, IPA_EDGE * second)
+struct order_node_by_file_id {
+    bool operator() (IPA_NODE * first, IPA_NODE * second)
     {
-    	return first->Get_frequency() < second->Get_frequency();
+    	return first->File_Id() < second->File_Id();
     }
 };
+#include "ipo_parent.h"
+static void
+IPA_Remove_Regions (IPA_NODE_VECTOR v, IPA_CALL_GRAPH * cg)
+{
+    SCOPE * old_scope = Scope_tab;
+
+    for (IPA_NODE_VECTOR::iterator node = v.begin ();
+	 node != v.end (); ++node)
+    
+    {
+      PU pu = Pu_Table[ST_pu((*node)->Func_ST())];
+
+      if (!(PU_src_lang (pu) & PU_CXX_LANG) || !PU_has_region (pu))
+      	continue;
+
+      IPA_NODE_CONTEXT context (*node);	// switch to the node context
+      cg->Map_Callsites (*node);
+      WN_MAP Node_Parent_Map = (*node)->Parent_Map();
+      WN_MAP_TAB * Node_Map_Tab = PU_Info_maptab ((*node)->PU_Info());
+
+      IPA_SUCC_ITER succ_iter (*node);
+      BOOL changed = false;
+      for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next())
+      {
+	IPA_EDGE *edge = succ_iter.Current_Edge ();
+	IPA_NODE *callee = cg->Callee (edge);
+
+	if (callee->PU_Can_Throw())
+	  continue;
+	
+	// Remove any region immediately surrounding this edge at caller
+	WN * call = edge->Whirl_Node();
+	Is_True (call, ("Call whirl node absent in IPA edge"));
+	WN * parent = WN_Get_Parent (call, Node_Parent_Map, Node_Map_Tab);
+	for (; parent; parent = WN_Get_Parent (parent, Node_Parent_Map, Node_Map_Tab))
+	{
+	    if (WN_operator(parent) != OPR_REGION || !WN_region_is_EH(parent))
+	    	continue;
+	    if (WN_block_empty (WN_region_pragmas (parent)))
+	    {
+	      WN * body = WN_region_body (parent);
+	      if (WN_first (body) == WN_last (body) && 
+	      	  WN_first (body) == call)
+		{ // remove the region
+		    changed = true;
+
+      		    WN * parent_of_region = WN_Get_Parent (parent, 
+		    				Node_Parent_Map, Node_Map_Tab);
+		    
+		    Is_True (parent_of_region, 
+		    	     ("Region node not within any block"));
+		    Is_True (WN_prev (parent) || 
+		    	     (WN_operator (parent_of_region) == 
+			     OPR_BLOCK && WN_first (parent_of_region) == 
+			     parent), ("Error removing EH region"));
+
+		    // if region is the 1st stmt
+		    if (!WN_prev (parent))
+		      WN_first (parent_of_region) = call;
+		    else
+		      WN_next (WN_prev (parent)) = call;
+		    WN_prev (call) = WN_prev (parent);
+
+		    // if region is the last stmt
+		    if (!WN_next (parent))
+		      WN_last (parent_of_region) = call;
+		    else
+		      WN_prev (WN_next (parent)) = call;
+		    WN_next (call) = WN_next (parent);
+		    // remove the call node from the region body
+		    WN_first (body) = WN_last (body) = NULL;
+		    // detach the region
+		    WN_prev (parent) = WN_next (parent) = NULL;
+		}
+	    }
+	}
+      }
+      if (changed)
+      {
+	WN_Parentize ((*node)->Whirl_Tree (FALSE), Node_Parent_Map, Node_Map_Tab);
+      	changed = false;
+      }
+    }
+    Scope_tab = old_scope;
+}
 #endif // KEY
 
 static void
@@ -1482,6 +1569,12 @@ IPO_main (IPA_CALL_GRAPH* cg)
     IPA_NODE_VECTOR walk_order;
      
     Build_Transformation_Order (walk_order, cg->Graph(), cg->Root());
+
+#ifdef KEY
+    if (IPA_Enable_EH_Region_Removal)
+    	IPA_Remove_Regions (walk_order, cg); // Remove EH regions that are not required
+#endif
+
     for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
 	 first != walk_order.end ();
 	 ++first) {
@@ -1497,45 +1590,44 @@ IPO_main (IPA_CALL_GRAPH* cg)
     }
 
 #ifdef KEY
-    BOOL IPA_Enable_PU_Reorder_Debug = FALSE;
-    if (IPA_Enable_PU_Reorder)
-    {	// reorder by edge frequency
-      if (IPA_Enable_PU_Reorder_Debug) // PU reorder debugging (can be enabled internally ONLY)
-      {
-    	priority_queue<IPA_EDGE*, vector<IPA_EDGE*>, order_edge_by_freq> emit_order;
+    { // PU reordering heuristics
+      if (Opt_Options_Inconsistent)
+      { // We cannot do any PU-reordering
+      	priority_queue<IPA_NODE*, vector<IPA_NODE*>, order_node_by_file_id> emit_order;
     	for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
 	 	first != walk_order.end (); ++first)
-	{// push edges in order of freq
-    	    IPA_SUCC_ITER succ_iter (*first);
-    	    for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next())
-		emit_order.push (succ_iter.Current_Edge ());
-	}
-	while (!emit_order.empty())
-	{
-	    IPA_EDGE *edge = emit_order.top();
-	    IPA_NODE *caller = cg->Caller (edge);
-	    IPA_NODE *callee = cg->Callee (edge);
-	    //printf ("Processing edge with frequency %f\n", edge->Get_frequency().Value());
-	    // caller
-      	    if (!PU_Deleted (cg->Graph(), caller->Node_Index(), // deleted
-	    		&caller->File_Header()) && 
-			!PU_Written (cg->Graph(), caller,	// written
-			&caller->File_Header()))
-	    {
-		IPA_Rename_Builtins(caller);
-		caller->Write_PU();
-	    }
-	    // callee
-      	    if (!PU_Deleted (cg->Graph(), callee->Node_Index(), // deleted
-	    		&callee->File_Header()) &&
-			!PU_Written (cg->Graph(), callee,       // written
-			&callee->File_Header()))
-	    {
-		IPA_Rename_Builtins(callee);
-		callee->Write_PU();
-	    }
+    	{
+      	    if (!PU_Deleted (cg->Graph(), (*first)->Node_Index(), 
+      		&(*first)->File_Header()))
+      	    {
+      	    	emit_order.push (*first);
+      	    }
+    	}
+    	while (!emit_order.empty())
+    	{
+      	    IPA_NODE *emit = emit_order.top();
 	    emit_order.pop();
+	    IPA_Rename_Builtins(emit);
+	    IPA_NODE::next_file_id = emit_order.empty() ? -1 : emit_order.top()->File_Id();
+	    emit->Write_PU();
+    	}
+      }
+      else if (IPA_Enable_PU_Reorder == REORDER_BY_EDGE_FREQ)
+      {	// reorder by edge frequency
+	for (vector<IPA_NODE*>::iterator it = emit_order.begin(); 
+					 it != emit_order.end(); ++it)
+	{
+	    IPA_NODE * n = *it;
+      	    if (!PU_Deleted (cg->Graph(), n->Node_Index(), // deleted
+	    		&n->File_Header()) && 
+			!PU_Written (cg->Graph(), n,	// written
+			&n->File_Header()))
+	    {
+		IPA_Rename_Builtins(n);
+		n->Write_PU();
+	    }
 	}
+	emit_order.clear();
 	// Do we have nodes not belonging to an edge? Write them now.
     	for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
 	 	first != walk_order.end (); ++first)
@@ -1550,8 +1642,8 @@ IPO_main (IPA_CALL_GRAPH* cg)
 	    }
 	}
       }
-      else	// reorder by node frequency
-      {
+      else if (IPA_Enable_PU_Reorder == REORDER_BY_NODE_FREQ)
+      {	// reorder by node frequency
     	priority_queue<IPA_NODE*, vector<IPA_NODE*>, order_node_by_freq> emit_order;
     	for (IPA_NODE_VECTOR::iterator first = walk_order.begin ();
 	 	first != walk_order.end (); ++first)

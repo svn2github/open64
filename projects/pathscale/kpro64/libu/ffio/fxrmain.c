@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -383,6 +387,50 @@ struct xtr_s *_recfm_tab[NUM_CLASSES] =
 	&USR7_XLIST_P,	/* user7 */
 	&USR8_XLIST_P,	/* user8 */
 	&USR9_XLIST_P,	/* user9 */
+};
+#elif   defined(KEY)
+struct xtr_s *_recfm_tab[NUM_CLASSES] =
+{
+	&END_XLIST_P,
+	&SYSCALL_XLIST_P,
+	&NULL_XLIST_P,
+	&SYSTEM_XLIST_P,
+	&COS_XLIST_P,
+	NULL,
+	&F_XLIST_P,
+	&V_XLIST_P,
+	&TXT_XLIST_P,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	&ERR_XLIST_P,	/* error (generate errors) */
+	&FD_XLIST_P,	/* fd (user specified) */
+	NULL,           /* blx */
+	&CCH_XLIST_P,	/* cache */
+	NULL,           /* er90 byte-stream */
+	&BUFA_XLIST_P,  /* bufa */
+	&CACHEA_XLIST_P, /* cachea */
+	&EVENT_XLIST_P,	/* event */
+	&LOCK_XLIST_P,	/* lock */
+	NULL,           /* global */
+	&F77_XLIST_P,	/* f77 */
+	NULL,           /* tmf (IRIX only) */
+	NULL,           /* compression */
+	NULL,		/* 29 */
+	NULL,   	/* user0 */
+	NULL,	        /* user1 */
+	NULL,           /* user2 */
+	NULL,           /* user3 */
+	NULL,           /* user4 */
+	NULL,           /* user5 */
+	NULL,           /* user6 */
+	NULL,           /* user7 */
+	NULL,           /* user8 */
+	NULL,           /* user9 */
 };
 #elif	defined(__mips)
 struct xtr_s *_recfm_tab[NUM_CLASSES] =

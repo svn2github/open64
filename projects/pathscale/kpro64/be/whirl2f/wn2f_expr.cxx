@@ -275,6 +275,12 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_I8MIN, "MIN"},
   {OPC_U4MIN, "MIN"},
   {OPC_F8MIN, "MIN"},
+#ifdef TARG_X8664
+  {OPC_V16F4MIN, "MIN"},
+  {OPC_V16F8MIN, "MIN"},
+  {OPC_V16F4MAX, "MAX"},
+  {OPC_V16F8MAX, "MAX"},
+#endif
   {OPC_I4BAND, "IAND"},
   {OPC_U8BAND, "IAND"},
   {OPC_I8BAND, "IAND"},
@@ -335,6 +341,14 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_BI8GT, ".GT."},
   {OPC_BU4GT, ".GT."},
   {OPC_BF8GT, ".GT."},
+#ifdef KEY
+  {OPC_V16I8V16F8GT, ".GT."},
+  {OPC_V16I8V16F8LT, ".LT."},
+  {OPC_V16I8V16F8GE, ".GE."},
+  {OPC_V16I8V16F8LE, ".LE."},
+  {OPC_V16I8V16F8NE, ".NE."},
+  {OPC_V16I8V16F8EQ, ".EQ."},
+#endif
   {OPC_BI4GE, ".GE."},
   {OPC_BU8GE, ".GE."},
   {OPC_BF4GE, ".GE."},
@@ -366,6 +380,8 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_I4I4EQ, ".EQ."},
   {OPC_I4F4EQ, ".EQ."},
   {OPC_I4C4EQ, ".EQ."},
+  {OPC_I8I4EQ, ".EQ."},
+  {OPC_I8I4NE, ".NE."},
   {OPC_I4U8NE, ".NE."},
   {OPC_I4FQNE, ".NE."},
   {OPC_I4I8NE, ".NE."},

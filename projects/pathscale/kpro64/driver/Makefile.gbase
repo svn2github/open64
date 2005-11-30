@@ -115,7 +115,6 @@ SHARED_HFILES = \
 	string_utils.h
 
 SRC_HFILES = \
-	config_platform.h \
 	options.h \
 	option_seen.h \
 	opt_actions.h \
@@ -145,7 +144,6 @@ SRC_CFILES = \
 	main.c \
 	options.c \
 	option_seen.c \
-	config_platform.c \
 	get_options.c \
 	opt_actions.c \
 	file_names.c \
@@ -169,7 +167,7 @@ OPTIONS_SRC = \
 SRC_OBJECTS = $(SRC_CFILES:.c=.o)
 SHARED_OBJECTS = $(SHARED_CFILES:.c=.o)
 
-LDIRT = OPTIONS.P table generated $(GEN_HFILES) $(GEN_CFILES)
+LDIRT = OPTIONS.P table generated $(GEN_HFILES) $(GEN_CFILES) driver version_bk.c
 
 LANGS = as cc c89 CC f77 fort77 f90
 
@@ -224,11 +222,7 @@ table : table.o $(SHARED_OBJECTS)
 
 # invoke shell script in source tree, but put output here
 OPTIONS.P : $(OPTIONS_SRC)
-ifeq ($(BUILD_OS), IRIX)
 	$(BUILD_BASE)/sort_options.csh $(BUILD_BASE) OPTIONS $(LCDEFS) > OPTIONS.P
-else
-	$(BUILD_BASE)/sort_options.linux.csh $(BUILD_BASE) OPTIONS $(LCDEFS) > OPTIONS.P
-endif
 
 driver: $(OBJECTS)
 	$(link.ccf) -o $@ $(OBJECTS) $(LDFLAGS)

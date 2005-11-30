@@ -283,6 +283,8 @@ extern BOOL  WOPT_Enable_Retype_Expr;   // whether to call WN_retype_expr to
 					// change 64-bit operations to 32-bit 
 extern INT32 WOPT_Enable_Folded_Scalar_Limit; // to limit number of scalars
 					// formed by Fold_Lda_Iload_Istore()
+extern INT32 WOPT_Enable_Bdceprop_Limit; // to limit the BBs in which BDCE's
+					// copy propagation is performed
 #endif
 #endif /* config_wopt_INCLUDED */
 

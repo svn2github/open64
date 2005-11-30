@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -78,6 +82,9 @@ GRA_LOOP_MGR::Create(LOOP_DESCR *ld)
   ISA_REGISTER_CLASS rc;
 
   GRA_LOOP* gloop = TYPE_MEM_POOL_ALLOC(GRA_LOOP, GRA_pool);
+#ifdef KEY
+  bzero( gloop, sizeof(gloop[0]) );
+#endif
   gloop->Nest_Level_Set(LOOP_DESCR_nestlevel(ld));
   gloop->Loop_Head_Set(LOOP_DESCR_loophead(ld));
   BB_MAP_Set(_map, LOOP_DESCR_loophead(ld), (void *) gloop);

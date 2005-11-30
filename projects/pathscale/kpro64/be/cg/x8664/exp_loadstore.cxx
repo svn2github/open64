@@ -79,51 +79,85 @@ Expand_Lda (TN *dest, TN *src, OPS *ops)
 }
 
 static TOP
-Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,BOOL has_base_reg)
+Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
+		       TN* base,
+		       TN* ofst,
+		       ISA_REGISTER_CLASS rclass)
 {
   const BOOL is_64bit = MTYPE_is_size_double(rtype);
+  const BOOL is_reloc_x8664_64 = ( ofst != NULL         &&
+				   TN_is_symbol( ofst ) &&
+				   TN_is_reloc_x8664_64( ofst ) );
+
+  if( is_reloc_x8664_64 ){
+    FmtAssert( ( base == NULL ) && ( rtype == desc ),
+	       ("Illegal load operation when mcmodel is medium") );
+  }
 
   switch (desc) {
   case MTYPE_I1:
-    return is_64bit ? TOP_ld8_64 :  ( has_base_reg ? TOP_ld8_32  : TOP_ld8_32_n32 );
+    if( is_64bit )
+      return TOP_ld8_64;
+    if( base != NULL )
+      return TOP_ld8_32;
+    return is_reloc_x8664_64 ? TOP_ld8_m : TOP_ld8_32_n32;
   case MTYPE_U1:
-    return is_64bit ? TOP_ldu8_64 : ( has_base_reg ? TOP_ldu8_32 : TOP_ldu8_32_n32 );
+    if( is_64bit )
+      return TOP_ldu8_64;
+    if( base != NULL )
+      return TOP_ldu8_32;
+    return is_reloc_x8664_64 ? TOP_ld8_m : TOP_ldu8_32_n32;
   case MTYPE_I2:
-    return is_64bit ? TOP_ld16_64 : ( has_base_reg ? TOP_ld16_32 : TOP_ld16_32_n32 );
+    if( is_64bit )
+      return TOP_ld16_64;
+    if( base != NULL )
+      return TOP_ld16_32;
+    return is_reloc_x8664_64 ? TOP_ld16_m : TOP_ld16_32_n32;
   case MTYPE_U2:
-    return is_64bit ? TOP_ldu16_64: ( has_base_reg ? TOP_ldu16_32 : TOP_ldu16_32_n32 );
+    if( is_64bit )
+      return TOP_ldu16_64;
+    if( base != NULL )
+      return TOP_ldu16_32;
+    return is_reloc_x8664_64 ? TOP_ld16_m : TOP_ldu16_32_n32;
   case MTYPE_I4:
-    return is_64bit ? TOP_ld32_64 : ( has_base_reg ? TOP_ld32 : TOP_ld32_n32 );
-  case MTYPE_U4: return has_base_reg ? TOP_ld32 : TOP_ld32_n32;
+    if( is_64bit )
+      return TOP_ld32_64;
+    if( base != NULL )
+      return TOP_ld32;
+    return is_reloc_x8664_64 ? TOP_ld32_m : TOP_ld32_n32;
+  case MTYPE_U4:
+    if( base != NULL )
+      return TOP_ld32;
+    return is_reloc_x8664_64 ? TOP_ld32_m : TOP_ld32_n32;
   case MTYPE_I8:
-  case MTYPE_U8: return TOP_ld64;
+  case MTYPE_U8: return is_reloc_x8664_64 ? TOP_ld64_m : TOP_ld64;
   case MTYPE_F4:
-    if( Is_Target_SSE2() )
-      return has_base_reg ? TOP_ldss : TOP_ldss_n32;
+    if( rclass == ISA_REGISTER_CLASS_float )
+      return base != NULL ? TOP_ldss : TOP_ldss_n32;
     else
-      return has_base_reg ? TOP_flds : TOP_flds_n32;
+      return base != NULL ? TOP_flds : TOP_flds_n32;
   case MTYPE_F8:
-    if( Is_Target_SSE2() )
-      return has_base_reg ? TOP_ldsd : TOP_ldsd_n32;
+    if( rclass == ISA_REGISTER_CLASS_float )
+      return base != NULL ? TOP_ldsd : TOP_ldsd_n32;
     else
-      return has_base_reg ? TOP_fldl : TOP_fldl_n32;
+      return base != NULL ? TOP_fldl : TOP_fldl_n32;
   case MTYPE_F16:
       return TOP_lddqu;
   case MTYPE_FQ:
-    return has_base_reg ? TOP_fldt : TOP_fldt_n32;
+    return base != NULL ? TOP_fldt : TOP_fldt_n32;
   case MTYPE_V16F4:
-    return TOP_ldaps;
+    return base != NULL ? TOP_ldaps : TOP_ldaps_n32;
   case MTYPE_V16F8:
-    return TOP_ldapd;
+    return base != NULL ? TOP_ldapd : TOP_ldapd_n32;
   case MTYPE_V16I1:
   case MTYPE_V16I2:
   case MTYPE_V16I4:
-  case MTYPE_V16I8: return TOP_lddqa;
+  case MTYPE_V16I8: return base != NULL ? TOP_lddqa : TOP_lddqa_n32;
     
   case MTYPE_V:
     if (rtype != MTYPE_V)
       // use rtype to pick load (e.g. if lda)
-      return Pick_Load_Instruction(rtype,rtype,has_base_reg);
+      return Pick_Load_Instruction(rtype,rtype,base,ofst,rclass);
     // else fallthru
   default:  
     FmtAssert(FALSE, ("NYI: Pick_Load_Instruction mtype"));
@@ -139,7 +173,11 @@ static void Expand_Split_Load( OPCODE opcode,
   const TYPE_ID rtype = OPCODE_rtype(opcode);
   const TYPE_ID new_mtype = (rtype == MTYPE_I8 ? MTYPE_I4 : MTYPE_U4);
   const TYPE_ID new_desc = MTYPE_is_size_double(desc) ? new_mtype : desc;
-  const TOP new_top = Pick_Load_Instruction( new_mtype, new_desc, base != NULL );
+  const TOP new_top =
+    Pick_Load_Instruction( new_mtype, new_desc,
+			   base,
+			   ofst,
+			   TN_register_class(result) );
 
   FmtAssert( MTYPE_is_size_double(rtype), ("NYI") );
 
@@ -172,8 +210,19 @@ static void Expand_Split_Load( OPCODE opcode,
       Build_OP( TOP_ldc32, tn_h, Gen_Literal_TN(0,4), ops );
 
     } else {
-      TN* tmp = Build_TN_Like( tn_h );
-      Build_OP( TOP_mov32, tmp, result, ops );
+      /* Don't use a dedicated tn as operand; otherwise, later localization
+	 will be confused. (bug#2777)
+      */
+      TN* tmp = result;
+
+      if( TN_is_dedicated(result ) ){
+	tmp = Build_TN_Like( tn_h );
+	if( base == NULL )
+	  Build_OP( new_top, tmp, ofst, ops );
+	else
+	  Build_OP( new_top, tmp, base, ofst, ops );
+      }
+
       Build_OP( TOP_sari32, tn_h, tmp, Gen_Literal_TN(31,4), ops );
     }
   }
@@ -191,11 +240,20 @@ Expand_Load (OPCODE opcode, TN *result, TN *base, TN *ofst, OPS *ops)
   }
 
   const TYPE_ID mtype = OPCODE_desc(opcode);
-  TOP top = Pick_Load_Instruction (OPCODE_rtype(opcode), mtype, base != NULL);
+  const BOOL is_reloc_x8664_64 = ( ofst != NULL         &&
+				   TN_is_symbol( ofst ) &&
+				   TN_is_reloc_x8664_64( ofst ) );
+  const TYPE_ID rtype = is_reloc_x8664_64 ? mtype : OPCODE_rtype(opcode);
+
+  TOP top = Pick_Load_Instruction (rtype, mtype,
+				   base,
+				   ofst,
+				   TN_register_class(result));
   Is_True (TN_is_constant(ofst), ("Expand_Load: Illegal offset TN"));
 
   if (top == TOP_lddqu && mtype == MTYPE_F16 &&
-      (base == SP_TN || base == FP_TN)) {
+      (base == SP_TN || base == FP_TN) &&
+      Stack_Alignment() == 16 ) {
     if (TN_has_value(ofst) &&
 	(TN_value(ofst) % 16 == 0))
       top = TOP_lddqa;
@@ -210,7 +268,33 @@ Expand_Load (OPCODE opcode, TN *result, TN *base, TN *ofst, OPS *ops)
   }
 
   if( base == NULL ){
-    Build_OP( top, result, ofst, ops );
+    if( rtype == OPCODE_rtype(opcode) ){
+
+      if( is_reloc_x8664_64 &&
+	  TN_is_dedicated( result ) ){
+	TN* tmp_result = Build_TN_Like( result );
+	Build_OP( top, tmp_result, ofst, ops );
+	Exp_COPY( result, tmp_result, ops );
+
+      } else 
+	Build_OP( top, result, ofst, ops );
+
+    } else {
+      TN* tmp_result = Build_TN_Of_Mtype( mtype );
+      Build_OP( top, tmp_result, ofst, ops );
+      const TOP old_top = Pick_Load_Instruction( OPCODE_rtype(opcode),
+						 mtype,
+						 base,
+						 NULL,
+						 TN_register_class(result) );
+
+      Exp_COPY_Ext( old_top, result, tmp_result, ops );
+
+      if( TN_is_gra_homeable(result) ){
+	Reset_TN_is_gra_homeable( result );
+	Set_TN_home( result, NULL );
+      }
+    }
     return;
   }
 
@@ -241,39 +325,57 @@ Expand_Load (OPCODE opcode, TN *result, TN *base, TN *ofst, OPS *ops)
 }
 
 static TOP
-Pick_Store_Instruction (TYPE_ID mtype, BOOL has_base_reg)
+Pick_Store_Instruction( TYPE_ID mtype,
+			TN* base,
+			TN* ofst,
+			ISA_REGISTER_CLASS rclass )
 {
+  const BOOL is_reloc_x8664_64 = ( ofst != NULL         &&
+				   TN_is_symbol( ofst ) &&
+				   TN_is_reloc_x8664_64( ofst ) );
+
   switch (mtype) {
   case MTYPE_I1:
-  case MTYPE_U1: return has_base_reg ? TOP_store8  : TOP_store8_n32;
+  case MTYPE_U1:
+    if( base != NULL )
+      return TOP_store8;
+    return is_reloc_x8664_64 ? TOP_store8_m : TOP_store8_n32;
   case MTYPE_I2:
-  case MTYPE_U2: return has_base_reg ? TOP_store16 : TOP_store16_n32;
+  case MTYPE_U2:
+    if( base != NULL )
+      return TOP_store16;
+    return is_reloc_x8664_64 ? TOP_store16_m : TOP_store16_n32;
   case MTYPE_I4:
-  case MTYPE_U4: return has_base_reg ? TOP_store32 : TOP_store32_n32;
+  case MTYPE_U4:
+    if( base != NULL )
+      return TOP_store32;
+    return is_reloc_x8664_64 ? TOP_store32_m : TOP_store32_n32;
   case MTYPE_I8:
-  case MTYPE_U8: return TOP_store64;
+  case MTYPE_U8:
+    return is_reloc_x8664_64 ? TOP_store64_m : TOP_store64;
   case MTYPE_F4:
-    if( Is_Target_SSE2() )
-      return has_base_reg ? TOP_stss : TOP_stss_n32;
+    if( rclass == ISA_REGISTER_CLASS_float )
+      return base != NULL ? TOP_stss : TOP_stss_n32;
     else
-      return has_base_reg ? TOP_fstps : TOP_fstps_n32;
+      return base != NULL ? TOP_fstps : TOP_fstps_n32;
   case MTYPE_F8:
-    if( Is_Target_SSE2() )
-      return has_base_reg ? TOP_stsd : TOP_stsd_n32;
+    if( rclass == ISA_REGISTER_CLASS_float )
+      return base != NULL ? TOP_stsd : TOP_stsd_n32;
     else
-      return has_base_reg ? TOP_fstpl : TOP_fstpl_n32;
+      return base != NULL ? TOP_fstpl : TOP_fstpl_n32;
   case MTYPE_F16:
     return TOP_stdqu;
   case MTYPE_FQ:
-    return has_base_reg ? TOP_fstpt : TOP_fstpt_n32;
+    return base != NULL ? TOP_fstpt : TOP_fstpt_n32;
   case MTYPE_V16F4: 
-    return TOP_staps;
+    return base != NULL ? TOP_staps : TOP_staps_n32;
   case MTYPE_V16F8: 
-    return TOP_stapd;
+    return base != NULL ? TOP_stapd : TOP_stapd_n32;
   case MTYPE_V16I1: 
   case MTYPE_V16I2: 
   case MTYPE_V16I4: 
-  case MTYPE_V16I8: return TOP_stdqa;
+  case MTYPE_V16I8:
+    return base != NULL ? TOP_stdqa : TOP_stdqa_n32;
   default:  FmtAssert(FALSE, ("NYI: Pick_Store_Instruction mtype"));
     return TOP_UNDEFINED;
   }
@@ -284,7 +386,8 @@ static void Expand_Split_Store( TYPE_ID mtype,
 				TN *src, TN *base, TN *ofst, OPS *ops )
 {
   const TYPE_ID new_mtype = (mtype == MTYPE_I8 ? MTYPE_I4 : MTYPE_U4);
-  TOP new_top = Pick_Store_Instruction( new_mtype, base != NULL );
+  const TOP new_top =
+    Pick_Store_Instruction( new_mtype, base, ofst, TN_register_class(src) );
   TN* src_h = Get_TN_Pair( src );
   TN* ofst_h = TN_is_symbol( ofst )
     ? Gen_Symbol_TN( TN_var(ofst), TN_offset(ofst) + 4, TN_RELOC_NONE )
@@ -317,11 +420,13 @@ static void Expand_Split_Store( TYPE_ID mtype,
 void
 Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, OPS *ops)
 {
-  TOP top = Pick_Store_Instruction (mtype, base != NULL);
+  TOP top =
+    Pick_Store_Instruction( mtype, base, ofst, TN_register_class(src) );
   Is_True (TN_is_constant(ofst), ("Expand_Store: Illegal offset TN"));
 
   if (top == TOP_stdqu && mtype == MTYPE_F16 &&
-      (base == SP_TN || base == FP_TN)) {
+      (base == SP_TN || base == FP_TN) &&
+      Stack_Alignment() == 16 ) {
     if (TN_has_value(ofst) &&
 	(TN_value(ofst) % 16 == 0))
       top = TOP_stdqa;
@@ -333,12 +438,6 @@ Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, OPS *ops)
       if (offset % 16 == 0)
 	top = TOP_stdqa;
     }      
-  }
-
-  // We don't have OPC_I1I1LDID, but OPC_I4I1LDID.
-  if( !TN_is_dedicated( src ) &&
-      MTYPE_bit_size( mtype ) == 8 ){
-    Set_TN_size( src, 1 );
   }
 
   if( OP_NEED_PAIR( mtype ) ){
@@ -568,8 +667,10 @@ Exp_Ldst (
 
   } else {
     if( !ST_is_export_local(base_sym) &&
-	!ISA_LC_Value_In_Class(base_ofst, LC_simm32) ){ // use %got_page and %got_offset
-      FmtAssert( FALSE, ("NYI") );
+	!ISA_LC_Value_In_Class(base_ofst, LC_simm32) &&
+	mcmodel < MEDIUM ){
+      // use %got_page and %got_offset
+      FmtAssert( FALSE, ("offset cannot be fit into 32-bit") );
     }
   }
 
@@ -613,43 +714,143 @@ Exp_Ldst (
 			 Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ),
 			 &newops );	      
 	}
-	else if (ISA_LC_Value_In_Class(base_ofst, LC_simm32))
+	else if (ISA_LC_Value_In_Class(base_ofst, LC_simm32) &&
+		 mcmodel < MEDIUM ){
 	  Build_OP( TOP_ldc64, tn,
 		    Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_X8664_PC32 ),
 		    &newops );
-	else Build_OP( TOP_ldc64, tn,
-		       Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_X8664_64 ),
-		       &newops );
+	} else {
+	  FmtAssert( mcmodel >= MEDIUM, ("code model is not medium or higher") );
+	  TN* sym_tn = NULL;
+
+	  if( ISA_LC_Value_In_Class(base_ofst, LC_simm32) ){
+	    Build_OP( TOP_movabsq,
+		      tn, Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_X8664_64 ),
+		      &newops );
+
+	  } else {
+	    TN* tmp_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+	    TN* const_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+
+	    Build_OP( TOP_movabsq,
+		      tmp_tn, Gen_Symbol_TN( base_sym, 0, TN_RELOC_X8664_64 ),
+		      &newops );
+
+	    Build_OP( TOP_movabsq, const_tn, Gen_Literal_TN(base_ofst,8), &newops );
+	    Build_OP( TOP_add64, tn, tmp_tn, const_tn, &newops );
+	    base_ofst = 0;
+	  }
+	}
+
       } else {
+	// The Is_Target_32bit() cases.
+
 	FmtAssert(ISA_LC_Value_In_Class(base_ofst, LC_simm32),
 		  ("NYI: 64-bit offset under -m32"));
-	if (Gen_PIC_Shared && !ST_is_export_local(base_sym) ) {
-	  FmtAssert(FALSE,
-		    ("NYI: lda under PIC in -m32"));
+
+	if( Gen_PIC_Shared && !ST_is_export_local(base_sym) ){
+	  TN* tmp = base_ofst == 0 ? tn : Build_TN_Like(tn);
+	  Build_OP( TOP_ld32, tmp, Ebx_TN(),
+		    Gen_Symbol_TN( base_sym, 0, TN_RELOC_IA32_GOT ),
+		    &newops );
+	  // got address should not alias
+	  Set_OP_no_alias(OPS_last(&newops));
+	  if( base_ofst != 0 ){
+	    Build_OP( TOP_addi32, tn, tmp, Gen_Literal_TN(base_ofst, 4), &newops );
+	  }
+
+	} else {
+	  Build_OP( TOP_ldc32, tn,
+		    Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ),
+		    &newops );
 	}
-	else Build_OP( TOP_ldc32, tn,
-		       Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_NONE ),
-		       &newops );
       }
     }
 
   } else {
     if( base_tn == NULL ){
       Is_True(! on_stack, ("Exp_Ldst: unexpected stack reference"));
-      base_tn = Is_Target_64bit() ? Rip_TN() : NULL;
-      if ( Gen_PIC_Shared && !ST_is_export_local(base_sym) ) {
-	FmtAssert(Is_Target_64bit(),
-		  ("NYI: load/store under PIC in -m32"));
-	TN *new_base = Build_TN_Of_Mtype(Pointer_Mtype);
-	Build_OP (TOP_ld64, new_base, base_tn, 
-		  Gen_Symbol_TN(base_sym, 0, TN_RELOC_X8664_GOTPCREL),
-		  &newops);
-	// got address should not alias
-	Set_OP_no_alias(OPS_last(&newops));
-	base_tn = new_base;
-	ofst_tn = Gen_Literal_TN( base_ofst, 4 );
+
+      if( Is_Target_64bit() ){
+	if( mcmodel < MEDIUM )
+	  base_tn = Rip_TN();
+	else {
+
+	  if( ISA_LC_Value_In_Class(base_ofst, LC_simm32) ){
+	    ofst_tn = Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_X8664_64 );
+	    base_ofst = 0;
+
+	  } else {
+	    ofst_tn = Gen_Symbol_TN( base_sym, 0, TN_RELOC_X8664_64 );
+	  }
+
+	  if( base_ofst != 0 ){
+	    FmtAssert( FALSE, ("NYI") );
+	    TN* tmp_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+
+	    Build_OP( TOP_movabsq, tmp_tn, Gen_Literal_TN(base_ofst,8), &newops );
+	    Build_OP( TOP_add64, base_tn, base_tn, tmp_tn, &newops );
+	    base_ofst = 0;
+	  }
+
+	  /* The target of a load operation under -mcmodel=medium is %rax.
+	     Make sure no conflicts will happen; otherwise, use indirect load.
+	  */
+	  bool use_iload = 
+	    ( ( is_load  && !MTYPE_is_integral( OPCODE_rtype(opcode) ) ) ||
+	      ( is_store && !MTYPE_is_integral( OPCODE_desc(opcode) ) ) );
+
+	  if( !use_iload ){
+	    /* If <tn> holds a register already, very likely this routine
+	       is called by gra spilling. If so, use iload to avoid disturbing
+	       the spilling routine.
+	    */
+	    if( TN_register(tn) != REGISTER_UNDEFINED )
+	      use_iload = TRUE;
+	    else {
+	      for( OP* op = OPS_last(ops);
+		   op != NULL;
+		   op = OP_prev(op) ){
+		if( OP_Defs_Reg( op, ISA_REGISTER_CLASS_integer, RAX ) ){
+		  use_iload = TRUE;
+		  break;
+		}
+	      }
+	    }
+	  }
+
+	  if( use_iload ){
+	    base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+	    Build_OP( TOP_movabsq, base_tn, ofst_tn, &newops );
+	    ofst_tn = Gen_Literal_TN( 0, 4 );
+	  }
+	}
       }
-      else {
+
+      if( Gen_PIC_Shared && !ST_is_export_local(base_sym) ){
+	if( Is_Target_64bit() ){
+	  TN *new_base = Build_TN_Of_Mtype(Pointer_Mtype);
+	  Build_OP (TOP_ld64, new_base, base_tn, 
+		    Gen_Symbol_TN(base_sym, 0, TN_RELOC_X8664_GOTPCREL),
+		    &newops);
+	  // got address should not alias
+	  Set_OP_no_alias(OPS_last(&newops));
+	  base_tn = new_base;
+	  ofst_tn = Gen_Literal_TN( base_ofst, 4 );
+
+	} else {
+	  // for -m32 here
+	  TN *new_base = Build_TN_Of_Mtype(Pointer_Mtype);
+	  Build_OP (TOP_ld32, new_base, Ebx_TN(), 
+		    Gen_Symbol_TN(base_sym, 0, TN_RELOC_IA32_GOT),
+		    &newops);
+	  // got address should not alias
+	  Set_OP_no_alias(OPS_last(&newops));
+	  base_tn = new_base;
+	  ofst_tn = Gen_Literal_TN( base_ofst, 4 );
+	}
+      }
+      else if( ofst_tn == NULL ){
 	ofst_tn = Gen_Symbol_TN(base_sym, base_ofst, TN_RELOC_NONE);
       }
     }
@@ -772,6 +973,13 @@ void Exp_Extract_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_si
   UINT pos = (Target_Byte_Sex == BIG_ENDIAN || CG_emit_non_gas_syntax)
 	     ? MTYPE_bit_size(desc)-bit_offset-bit_size : bit_offset;
   if (pos == 0 && bit_size <= 16 && ! MTYPE_signed(rtype)) {
+
+    if( OP_NEED_PAIR(rtype) &&
+	!OP_NEED_PAIR(desc) ){
+      TN* tn_hi = Create_TN_Pair( tgt_tn, rtype );
+      Exp_Immediate( tn_hi, Gen_Literal_TN(0,4), FALSE, ops );
+    }
+
     Expand_Binary_And( tgt_tn, src_tn, Gen_Literal_TN((1 << bit_size)-1, 4),
 		       desc, ops );
     return;
@@ -799,7 +1007,7 @@ void Exp_Deposit_Bits (TYPE_ID rtype, TYPE_ID desc, UINT bit_offset, UINT bit_si
   if (Target_Byte_Sex == BIG_ENDIAN) {
     targ_bit_offset = MTYPE_bit_size(desc) - bit_offset - bit_size;
   }
-  TN *tmp1_tn = Build_TN_Like (src1_tn);
+  TN *tmp1_tn = Build_TN_Like(tgt_tn);
 
   Expand_Shift( tmp1_tn, src1_tn, Gen_Literal_TN(targ_bit_offset,4),
 		rtype, shift_lright, ops );

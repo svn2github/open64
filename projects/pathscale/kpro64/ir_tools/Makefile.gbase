@@ -80,7 +80,7 @@ else
 LLDLIBS	= $(LIBCOMUTIL) -lm
 endif
 
-TARGETS = ir_b2a ir_size
+TARGETS = ir_b2a ir_size ir_sel ir_all
 
 COMMON_UTIL_DIR= $(BUILD_TOT)/common/util
 COMMON_COM_DIR= $(BUILD_TOT)/common/com
@@ -158,6 +158,7 @@ install: default
 	$(STD_INSTALL) -F /usr/sbin ir_b2a
 	$(STD_INSTALL) -lns ir_b2a -F /usr/sbin ir_a2b
 	$(STD_INSTALL) -lns ir_b2a -F /usr/sbin ir_sel
+	$(STD_INSTALL) -lns ir_b2a -F /usr/sbin ir_all
 	$(STD_INSTALL) -F /usr/sbin ir_size
 
 include $(COMMONRULES)
@@ -172,6 +173,9 @@ ir_a2b: ir_b2a
 
 ir_sel: ir_b2a
 	ln -sf ir_b2a ir_sel
+
+ir_all: ir_b2a
+	ln -sf ir_b2a ir_all
 
 ir_size: $(OBJECTS) ir_size.o ir_b2a
 	$(link.c++f) -o ir_size ir_size.o $(OBJECTS) $(LDFLAGS)

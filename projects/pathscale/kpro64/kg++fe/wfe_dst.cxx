@@ -105,7 +105,9 @@ extern "C" {
 #include <string>
 #include <vector>
 #include <map>
-
+#ifdef KEY
+#include "stamp.h"	/* For INCLUDE_STAMP */
+#endif
 
 extern const char *dump_base_name ;              // in toplev.c
 
@@ -515,6 +517,27 @@ DST_enter_static_data_mem(tree  parent_tree,
     return ;
 }
 
+#ifdef KEY
+// Bug 3041 - The DST creation should follow the ST creation; during the
+// mainstream compilation, sometimes types are left incomplete and filled 
+// later. The DST creation should not build DST entries based on imcomplete 
+// types. So, we should not create new types as part of DST creation (Get_TY
+// does this so, instead call DST_Get_TY which just queries the current TY_IDX).
+static inline TY_IDX 
+DST_Get_TY (tree type_tree)
+{
+  TY_IDX idx = TYPE_TY_IDX(type_tree);  
+  if (idx > 1) {
+    if (TREE_CODE(type_tree) == RECORD_TYPE ||
+        TREE_CODE(type_tree) == UNION_TYPE) {
+      FLD_HANDLE elt_fld = TY_fld(idx);
+      if (elt_fld.Is_Null() && TYPE_METHODS(type_tree) == NULL) 
+	return 0; // forward declared
+    }
+  }
+  return idx;
+}
+#endif
 
 // Called for member functions, whether static member funcs
 // or non-static member funcs.
@@ -547,7 +570,12 @@ DST_enter_member_function( tree parent_tree,
 	   restype = TREE_TYPE(resdecl);
     }
     if(restype) {
+#ifndef KEY
 	 TY_IDX itx = Get_TY(restype);
+#else
+	 TY_IDX itx = DST_Get_TY(restype);
+	 if (itx <= 1) return;
+#endif
 	 ret_dst = TYPE_DST_IDX(restype);
     }
 
@@ -571,7 +599,12 @@ DST_enter_member_function( tree parent_tree,
 
     // is_declaration TRUE  as this is function declared in class,
     // not a definition or abstract root.
+#ifndef KEY
     TY_IDX base =  Get_TY(ftype);
+#else
+    TY_IDX base =  DST_Get_TY(ftype);
+    if (base <= 1) return;
+#endif
 
 
     BOOL is_external = TRUE;
@@ -648,6 +681,9 @@ DST_enter_normal_field(tree  parent_tree,
 		tree field, int &currentoffset, int &currentcontainer)
 {
     char isbit = 0; 
+#ifdef KEY
+    if (DST_Get_TY(TREE_TYPE(field)) <= 1) return;
+#endif
     if ( ! DECL_BIT_FIELD(field)
            && Get_Integer_Value(DECL_SIZE(field)) > 0
            && Get_Integer_Value(DECL_SIZE(field))
@@ -683,7 +719,12 @@ DST_enter_normal_field(tree  parent_tree,
     tree ftype = TREE_TYPE(field);
 
 
+#ifndef KEY
     TY_IDX base = Get_TY(ftype);
+#else
+    TY_IDX base = DST_Get_TY(ftype);
+    if (base <= 1) return;
+#endif
 
     DST_INFO_IDX fidx = Create_DST_type_For_Tree(ftype,base,parent_ty_idx);
 
@@ -729,6 +770,7 @@ UINT align = TYPE_ALIGN(ftype)/BITSPERBYTE;
 
     if(isbit == 0) {
           currentcontainer = -1 ;                    // invalidate bitfield calculation
+#ifndef KEY
 	  field_idx = DST_mk_member(
 		src,
 		field_name,
@@ -741,6 +783,30 @@ UINT align = TYPE_ALIGN(ftype)/BITSPERBYTE;
 	       FALSE, // is_static= not a static member
 	       FALSE, // is_declaration= 
 	       FALSE); // is_artificial = no
+#else
+	  int accessibility;
+	  if (TREE_VIA_PRIVATE(field))
+	    accessibility = DW_ACCESS_private;
+	  else if (TREE_VIA_PROTECTED(field))
+	    accessibility = DW_ACCESS_protected;
+	  else if (TREE_VIA_PUBLIC(field))
+	    accessibility = DW_ACCESS_public;
+	  else
+	    accessibility = 0;
+	  field_idx = DST_mk_member(
+		src,
+		field_name,
+		fidx, // field type	
+		fld_offset_bytes, // field offset in bytes
+			0, // no container (size zero)
+			0, // bit_offset= no offset into container
+		        0, // bit_size= no bitfield size
+	       FALSE, // is_bitfield= not a bitfield
+	       FALSE, // is_static= not a static member
+	       FALSE, // is_declaration= 
+	       FALSE, // is_artificial = no
+	       accessibility); // accessibility = public/private/protected
+#endif
 			
     } else {
 	  if(tsize == 0) {
@@ -763,15 +829,12 @@ UINT align = TYPE_ALIGN(ftype)/BITSPERBYTE;
           }
 #endif
 
+#ifndef KEY
 	  field_idx = DST_mk_member(
 			src,
 			field_name,
 			fidx	,      // field type	
-#ifdef KEY
-                        container_off,    // container offset in bytes
-#else
                         fld_offset_bytes,    // container offset in bytes
-#endif
 			tsize,         // container size, bytes
                         into_cont_off, // offset into 
 					// container, bits
@@ -781,6 +844,32 @@ UINT align = TYPE_ALIGN(ftype)/BITSPERBYTE;
                         FALSE, // not a static member
                         FALSE, // Only TRUE for C++?
                         FALSE); // artificial (no)
+#else
+	  int accessibility;
+	  if (TREE_VIA_PRIVATE(field))
+	    accessibility = DW_ACCESS_private;
+	  else if (TREE_VIA_PROTECTED(field))
+	    accessibility = DW_ACCESS_protected;
+	  else if (TREE_VIA_PUBLIC(field))
+	    accessibility = DW_ACCESS_public;
+	  else
+	    accessibility = 0;
+	  field_idx = DST_mk_member(
+			src,
+			field_name,
+			fidx	,      // field type	
+                        container_off,    // container offset in bytes
+			tsize,         // container size, bytes
+                        into_cont_off, // offset into 
+					// container, bits
+
+                        Get_Integer_Value(DECL_SIZE(field)), // bitfield size
+                        TRUE, // a bitfield
+                        FALSE, // not a static member
+                        FALSE, // Only TRUE for C++?
+                        FALSE, // artificial (no)
+			accessibility); // accessibility = public/private/protected
+#endif
     }
     DST_append_child(parent_idx,field_idx);
 
@@ -794,7 +883,12 @@ DST_enter_struct_union_members(tree parent_tree,
 { 
     DST_INFO_IDX dst_idx = DST_INVALID_INIT;
 
+#ifndef KEY
     TY_IDX parent_ty_idx = Get_TY(parent_tree);
+#else
+    TY_IDX parent_ty_idx = DST_Get_TY(parent_tree);
+    if (parent_ty_idx <= 1) return;
+#endif
     
     //if(TREE_CODE_CLASS(TREE_CODE(parent_tree)) != 'd') {
      //   DevWarn("DST_enter_struct_union_members input not 't' but %c",
@@ -934,6 +1028,15 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 			// it is pure_virtual.  FIX
 			virtuality = DW_VIRTUALITY_virtual;
 		    }
+#ifdef KEY
+		    // For inheritance, accessibility is private unless
+		    // otherwise mentioned - bug 3041.
+		    int accessibility = DW_ACCESS_private;
+		    if (TREE_VIA_PUBLIC(binfo))
+		      accessibility = DW_ACCESS_public;
+		    else if (TREE_VIA_PROTECTED(binfo))
+		      accessibility = DW_ACCESS_protected;
+#endif
                     offset = Roundup (offset,
                                     TYPE_ALIGN(basetype) / BITSPERBYTE);
 
@@ -941,6 +1044,7 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 		    DST_INFO_IDX bcidx =
                        Create_DST_type_For_Tree (basetype,itx, idx);
 
+#ifndef KEY
 		    // There is no way to pass in DW_ACCESS_* here.
 		    // That is am omission.  FIX
 		    DST_INFO_IDX inhx = 
@@ -948,9 +1052,25 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 				bcidx,
 			        virtuality,
 				offset);
+#else
+		    DST_INFO_IDX inhx = 
+		      DST_mk_inheritance(src,
+				bcidx,
+			        virtuality,
+				// Bug 1737 - handle virtual base classes
+				virtuality ? 
+				    -(tree_low_cst(BINFO_VPTR_FIELD(binfo),0)):
+				    offset, 
+				accessibility);
+#endif
 
 		    DST_append_child(dst_idx,inhx);
-
+#ifdef KEY
+		    if (DST_Get_TY(basetype) <= 1) {
+		      DST_INFO_IDX error_idx = DST_INVALID_INIT;
+		      return error_idx;
+		    }
+#endif
                     if (!is_empty_base_class(basetype) ||
                         !TREE_VIA_VIRTUAL(binfo)) {
                       //FLD_Init (fld, Save_Str(Get_Name(0)),
@@ -1346,7 +1466,12 @@ DST_construct_pointer_to_member(tree type_tree)
 	DevWarn("Unexpected tree shape1: pointer_to_member %c\n",
 		TREE_CODE_CLASS(TREE_CODE(ttree)));
     }
+#ifndef KEY
     TY_IDX midx = Get_TY(member_type);
+#else
+    TY_IDX midx = DST_Get_TY(member_type);
+    if (midx <= 1) return error_idx;
+#endif
     TYPE_TY_IDX(member_type) = midx;
     TY_IDX orig_idx = 0;
 
@@ -1365,7 +1490,12 @@ DST_construct_pointer_to_member(tree type_tree)
 	DevWarn("Unexpected tree shape2: pointer_to_member %c\n",
 		TREE_CODE_CLASS(TREE_CODE(base_type)));
     }
+#ifndef KEY
     TY_IDX container_idx = Get_TY(base_type);
+#else
+    TY_IDX container_idx = DST_Get_TY(base_type);
+    if (container_idx <= 1) return error_idx;
+#endif
 
 
     DST_INFO_IDX container_dst = Create_DST_type_For_Tree(
@@ -1421,9 +1551,17 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 	if(  idx == 0  &&
 	    (TREE_CODE(type_tree) == RECORD_TYPE ||
 	     TREE_CODE(type_tree) == UNION_TYPE) &&
-	    TREE_CODE(TYPE_NAME(type_tree)) == TYPE_DECL &&
-	    TYPE_MAIN_VARIANT(type_tree) != type_tree) {
+	     TREE_CODE(TYPE_NAME(type_tree)) == TYPE_DECL &&
+	     TYPE_MAIN_VARIANT(type_tree) != type_tree) {
+#ifndef KEY
 		idx = Get_TY (TYPE_MAIN_VARIANT(type_tree));
+#else	        
+		idx = DST_Get_TY (TYPE_MAIN_VARIANT(type_tree));
+		if (idx <= 1) {
+		  DST_INFO_IDX error_idx = DST_INVALID_INIT;
+		  return error_idx;
+		}
+#endif
 
 #ifndef KEY
 		// The following code always a return an invalid DST_IDX. This 
@@ -1670,11 +1808,28 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		// this is needed to avoid mixing TYLISTs if one
 		// of the parameters is a pointer to a function
 
+#ifndef KEY
 		ret_ty_idx = Get_TY(TREE_TYPE(type_tree));
 		for (arg = TYPE_ARG_TYPES(type_tree);
 		     arg;
 		     arg = TREE_CHAIN(arg))
 			arg_ty_idx = Get_TY(TREE_VALUE(arg));
+#else
+		ret_ty_idx = DST_Get_TY(TREE_TYPE(type_tree));
+		if (ret_ty_idx <= 1) {
+		  DST_INFO_IDX error_idx = DST_INVALID_INIT;
+		  return error_idx;
+		}
+		for (arg = TYPE_ARG_TYPES(type_tree);
+		     arg;
+		     arg = TREE_CHAIN(arg)) {
+		  arg_ty_idx = DST_Get_TY(TREE_VALUE(arg));
+		  if (arg_ty_idx <= 1) {
+		    DST_INFO_IDX error_idx = DST_INVALID_INIT;
+		    return error_idx;
+		  }
+		}
+#endif
 
 		// if return type is pointer to a zero length struct
 		// convert it to void
@@ -1692,7 +1847,15 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		     arg;
 		     num_args++, arg = TREE_CHAIN(arg))
 		{
+#ifndef KEY
 			arg_ty_idx = Get_TY(TREE_VALUE(arg));
+#else
+			arg_ty_idx = DST_Get_TY(TREE_VALUE(arg));
+			if (arg_ty_idx <= 1) {
+			  DST_INFO_IDX error_idx = DST_INVALID_INIT;
+			  return error_idx;
+			}
+#endif
 			if (!WFE_Keep_Zero_Length_Structs    &&
 			    TY_mtype (arg_ty_idx) == MTYPE_M &&
 			    TY_size (arg_ty_idx) == 0) {
@@ -1870,7 +2033,15 @@ DST_Create_type(ST *typ_decl, tree decl)
     } 
     // Do for side effect of creating DST for base type.
     // ie, in typedef int a, ensure int is there.
+#ifndef KEY
     base = Get_TY(undt);
+#else
+    base = DST_Get_TY(undt);
+    if (base <= 1) {
+      DST_INFO_IDX error_idx = DST_INVALID_INIT;
+      return error_idx;
+    }
+#endif
     DST_INFO_IDX dst = 
 	Create_DST_type_For_Tree(undt,base,
 		/* struct/union fwd decl TY_IDX=*/ 0);
@@ -1910,7 +2081,15 @@ DST_Create_Parmvar(ST *var_st, tree param)
 		// and in the DST
     tree type = TREE_TYPE(param);
 
+#ifndef KEY
     TY_IDX ty_idx = Get_TY(type); 
+#else
+    TY_IDX ty_idx = DST_Get_TY(type); 
+    if (ty_idx <= 1)  {
+      DST_INFO_IDX error_idx = DST_INVALID_INIT;
+      return error_idx;
+    }
+#endif
 
     DST_INFO_IDX dtype = DECL_DST_IDX(param);
     return dtype;
@@ -2143,7 +2322,12 @@ DST_enter_param_vars(tree fndecl,
 	
 
 
+#ifndef KEY
         TY_IDX ty_idx = Get_TY(type);
+#else
+        TY_IDX ty_idx = DST_Get_TY(type);
+	if (ty_idx <= 1) return;	  
+#endif
 
 
 	type_idx = TYPE_DST_IDX(type);
@@ -2242,7 +2426,15 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
 	  restype = TREE_TYPE(TREE_TYPE(fndecl));
 #endif
 	if(restype) {
+#ifndef KEY
 	 TY_IDX itx = Get_TY(restype);
+#else
+	 TY_IDX itx = DST_Get_TY(restype);
+	 if (itx <= 1)  {
+	   DST_INFO_IDX error_idx = DST_INVALID_INIT;
+	   return error_idx;
+	 }
+#endif
 	 ret_dst = TYPE_DST_IDX(restype);
 	}
 
@@ -2449,7 +2641,14 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
    }
 
    /* Get the AT_producer attribute! */
+#ifndef KEY
    comp_info = DST_get_command_line_options(num_copts, copts);
+#else
+   comp_info = (char *)malloc(sizeof(char)*100);   
+   strcpy(comp_info, "pathCC ");
+   if (INCLUDE_STAMP)
+     strcat(comp_info, INCLUDE_STAMP);
+#endif
 
    {
       comp_unit_idx = DST_mk_compile_unit((char*)dump_base_name,

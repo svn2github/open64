@@ -207,21 +207,31 @@ CG_Init_Func_Infos(ST *func_infos)
   INITO_IDX inito;
   INITV_IDX last_aggregate_initv = INITV_IDX_ZERO;
   inito = New_INITO(func_infos);
+  TYPE_ID rtype;
+
+  if (Is_Target_32bit()) 
+    rtype = MTYPE_I4;
+  else 
+    rtype = MTYPE_I8;
+  
 
   for (; item != 0; item = item->next){
 #ifndef GCC_303
     /* checksum */
     inv = New_INITV();
-    INITV_Init_Integer(inv, MTYPE_I8, item->cfg_checksum);
+    INITV_Init_Integer(inv, rtype, item->cfg_checksum);
     last_aggregate_initv = Append_INITV(inv, inito, last_aggregate_initv);
     inito = INITO_IDX_ZERO;
    /* arc_count */
     inv = New_INITV();
     INITV_Init_Integer(inv, MTYPE_I4, item->count_edges);
     last_aggregate_initv = Append_INITV(inv, inito, last_aggregate_initv);
-    inv = New_INITV();
-    INITV_Init_Pad(inv, 4);
-    last_aggregate_initv = Append_INITV(inv, inito, last_aggregate_initv);
+
+    if (Is_Target_64bit()) {
+      inv = New_INITV();
+      INITV_Init_Pad(inv, 4);
+      last_aggregate_initv = Append_INITV(inv, inito, last_aggregate_initv);
+    }
 #endif
     /* name */                                                        
     table = Make_Array_Type(MTYPE_U2, 1, strlen(item->name)+1);
@@ -284,18 +294,15 @@ CG_Init_Func_Infos(ST *func_infos)
 #endif
   } 
 #ifndef GCC_303
-//    inv = New_INITV();
-//    INITV_Init_Integer(inv, MTYPE_I8, 0);
-//    last_aggregate_initv = Append_INITV(inv, inito, last_aggregate_initv);
     inv = New_INITV();
-    INITV_Init_Pad(inv, 8);
+    INITV_Init_Pad(inv, Is_Target_32bit() ? 4 : 8 );
     last_aggregate_initv = Append_INITV(inv, inito, last_aggregate_initv);
     inito = INITO_IDX_ZERO;
     inv = New_INITV();
     INITV_Init_Integer(inv, MTYPE_I4, -1);
     last_aggregate_initv = Append_INITV(inv, inito, last_aggregate_initv);
     inv = New_INITV();
-    INITV_Init_Pad(inv, 12);
+    INITV_Init_Pad(inv, Is_Target_32bit() ? 4 : 12 );
     last_aggregate_initv = Append_INITV(inv, inito, last_aggregate_initv);
 #endif
 }
@@ -500,10 +507,22 @@ struct bb
   struct bb_function_info *function_infos;
 };
 #endif
+  TYPE_ID rtype;
+  INT32 ty_size;
+
+  if (Is_Target_32bit()) {
+    rtype = MTYPE_U4;
+    ty_size = 4;
+  }
+  else {
+    rtype = MTYPE_U8;
+    ty_size = 8;
+  }
+  
   /* The zero word.  */
   INITO_IDX aggregate_inito = New_INITO(st);
   INITV_IDX inv = New_INITV();
-  INITV_Init_Integer(inv, MTYPE_U8, 0);
+  INITV_Init_Integer(inv, rtype, 0);
   INITV_IDX last_aggregate_initv;
   last_aggregate_initv = Append_INITV (inv, aggregate_inito, INITV_IDX_ZERO);
 
@@ -548,14 +567,11 @@ struct bb
   TY& ty = New_TY(tyi);
   TY_Init(ty, n_instr_edges*8, KIND_STRUCT, MTYPE_M,
           STR_IDX_ZERO);
-  Set_TY_align(tyi, 32);
+  Set_TY_align(tyi, Is_Target_32bit() ? 4 : 32);
   ST* new_st = New_ST(GLOBAL_SYMTAB);
   ST_Init(new_st, Save_Str("LPBX2_TMP"),
           CLASS_VAR, SCLASS_PSTATIC, EXPORT_LOCAL, tyi);
   Allocate_Object(new_st);
-
-  //Set_ST_is_initialized(st);
-  //Allocate_Object(st);
 
   INITO_IDX inito_lpbx2 = New_INITO(st);
   INITV_IDX initv_lpbx2;
@@ -563,44 +579,36 @@ struct bb
   INITV_Init_Symoff(initv_lpbx2, new_st, 0);
   Append_INITV(initv_lpbx2, inito_lpbx2, INITV_IDX_ZERO);
 
-/*
-  INITV_IDX initv_lpbx2;
-  INITO_IDX inito_lpbx2 = Find_INITO_For_Symbol(st);
-  FmtAssert( inito_lpbx2 != 0, ("LPBX2 should have initialization value"));
-  initv_lpbx2 = INITO_val(inito_lpbx2);
-  INITV_Init_Symoff(initv_lpbx2, new_st, 0);
-*/
-
   inv = New_INITV();
   INITV_Init_Symoff(inv, new_st, 0);
   last_aggregate_initv = Append_INITV(inv, INITO_IDX_ZERO, last_aggregate_initv);
 
   /* Count of the # of instrumented arcs  */
   inv = New_INITV();
-  INITV_Init_Integer(inv, MTYPE_U8, n_instr_edges);
+  INITV_Init_Integer(inv, rtype, n_instr_edges);
   last_aggregate_initv = Append_INITV(inv, INITO_IDX_ZERO, last_aggregate_initv
 );
 
   /* Pointer to the next bb.  */
   inv = New_INITV();
-  INITV_Init_Integer(inv, MTYPE_U8, 0);
+  INITV_Init_Integer(inv, rtype, 0);
   last_aggregate_initv = Append_INITV(inv, INITO_IDX_ZERO, last_aggregate_initv);
 
  /* sizeof(struct bb) */
   inv = New_INITV();
-  INITV_Init_Integer(inv, MTYPE_U8, 7*8);
+  INITV_Init_Integer(inv, rtype, 7*ty_size);
   last_aggregate_initv = Append_INITV(inv, INITO_IDX_ZERO, last_aggregate_initv);
  
   /* struct bb_function [].  */
-  UINT32 checksum_size = 8;
+  UINT32 checksum_size = ty_size;
   UINT32 n_arcs_size = 4;
-  UINT32 func_name_size = 8;
-  UINT32 function_info_size =  checksum_size + n_arcs_size*2 + func_name_size;
+  UINT32 func_name_size = ty_size;
+  UINT32 function_info_size =  checksum_size + n_arcs_size*(Is_Target_32bit()?1:2) + func_name_size;
   TY_IDX tyi_function;
   TY& ty_function = New_TY(tyi_function);
   TY_Init(ty_function, function_info_size * (num_nodes + 1), KIND_STRUCT, MTYPE_M,
           STR_IDX_ZERO);
-  Set_TY_align(tyi_function, 8);
+  Set_TY_align(tyi_function, ty_size);
   ST *func_infos = New_ST(GLOBAL_SYMTAB);
   ST_Init(func_infos, Save_Str("function_infos"), CLASS_VAR, SCLASS_FSTATIC, EXPORT_LOCAL, tyi_function);
   Set_ST_is_initialized(func_infos);
@@ -1285,17 +1293,23 @@ CG_Instrument_Arcs()
   TN *ld_2nd_result_tn;
   TN *const_tn;
   TN *result_tn;
+  TYPE_ID rtype;
+
+  if (Is_Target_32bit())
+    rtype = MTYPE_U4;
+  else
+    rtype = MTYPE_U8;
 
   if ((begin_id == -1 && end_id == -1) || (begin_id <= count && count <= end_id)) {
     OPS_Init(&new_ops);
-    ld_result_tn = Build_TN_Of_Mtype(MTYPE_U8);
-    Exp_Load (MTYPE_U8, MTYPE_U8, ld_result_tn, st, 0, &new_ops, 0);
-    ld_2nd_result_tn = Build_TN_Of_Mtype(MTYPE_U8);
-    Expand_Load( OPCODE_make_op (OPR_LDID, MTYPE_U8, MTYPE_U8),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+    ld_result_tn = Build_TN_Of_Mtype(rtype);
+    Exp_Load (rtype, rtype, ld_result_tn, st, 0, &new_ops, 0);
+    ld_2nd_result_tn = Build_TN_Of_Mtype(rtype);
+    Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
     const_tn = Gen_Literal_TN(1,4);
-    result_tn = Build_TN_Of_Mtype(MTYPE_U8);
+    result_tn = Build_TN_Of_Mtype(rtype);
     Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
-    Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, MTYPE_U8)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+    Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
     BB_Prepend_Ops(REGION_First_BB,  &new_ops);
   }
   count++;
@@ -1330,14 +1344,14 @@ CG_Instrument_Arcs()
           continue;
         }
 	OPS_Init(&new_ops);
-	ld_result_tn = Build_TN_Of_Mtype(MTYPE_U8);
-	Exp_Load (MTYPE_U8, MTYPE_U8, ld_result_tn, st, 0, &new_ops, 0);
-	ld_2nd_result_tn = Build_TN_Of_Mtype(MTYPE_U8);
-	Expand_Load( OPCODE_make_op (OPR_LDID, MTYPE_U8, MTYPE_U8),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+	ld_result_tn = Build_TN_Of_Mtype(rtype);
+	Exp_Load (rtype, rtype, ld_result_tn, st, 0, &new_ops, 0);
+	ld_2nd_result_tn = Build_TN_Of_Mtype(rtype);
+	Expand_Load( OPCODE_make_op (OPR_LDID, rtype, rtype),ld_2nd_result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 	const_tn = Gen_Literal_TN(1,4);
-	result_tn = Build_TN_Of_Mtype(MTYPE_U8);
+	result_tn = Build_TN_Of_Mtype(rtype);
 	Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
-	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, MTYPE_U8)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
+	Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
 
         if (BB_Is_Unique_Instr_Predecessor(bb_succ, bb))
 	{

@@ -381,6 +381,8 @@ RETYPE_EXPR_expr(WN *tree, BOOL can_be_32bit, BOOL addr_expr)
   case OPR_TAS:
   case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
   case OPR_REPLICATE:
+  case OPR_REDUCE_ADD: case OPR_REDUCE_MPY: 
+  case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:
     WN_kid0(tree) = RETYPE_EXPR_expr(WN_kid0(tree), FALSE, FALSE);
     return tree;
 

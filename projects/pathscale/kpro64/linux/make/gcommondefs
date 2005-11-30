@@ -90,6 +90,26 @@ ASNAME = gcc -m32
 CCNAME = gcc -m32
 C++NAME = g++ -m32
 ifeq ($(BUILD_ARCH), X8664)
+CCNAME  = $(PSC_NAME_PREFIX)cc
+C++NAME = $(PSC_NAME_PREFIX)CC
+ifeq ($(BUILD_HOST), IA32)
+AR      = $(PSC_INSTALL_PREFIX)/bin/ar
+else
+AR      = ar
+endif
+endif
+F90 = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90
+ifeq ($(BUILD_TARGET), IA32)
+F90 += -m32
+endif
+F77 = $(F90)
+endif
+
+ifeq ($(BUILD_COMPILER), PSC)
+ASNAME = $(PSC_NAME_PREFIX)cc -m32
+CCNAME = $(PSC_NAME_PREFIX)cc -m32
+C++NAME = $(PSC_NAME_PREFIX)CC -m32
+ifeq ($(BUILD_ARCH), X8664)
 CCNAME  = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)cc
 C++NAME = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)CC
 ifeq ($(BUILD_HOST), IA32)
@@ -508,7 +528,7 @@ OBJECTS=$(ASFILES:.s=.o) $(CXXOALL) $(CFILES:.c=.o) $(EFILES:.e=.o) \
 # Makefile will just worry about its own dirt.
 #
 DIRT=$(GDIRT) $(VDIRT) $(LDIRT) $(XDIRT)
-GDIRT=*.[doue] a.out core lex.yy.[co] y.tab.[cho] $(_FORCE) ar.tmp.*
+GDIRT=Makedepend *.[douea] *.so *.so.[0-9] a.out core lex.yy.[co] y.tab.[cho] $(_FORCE) ar.tmp.*
 
 #
 #  This exitop should be used by those who are building the FTR database.

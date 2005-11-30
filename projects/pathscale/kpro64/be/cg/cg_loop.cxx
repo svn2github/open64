@@ -2079,17 +2079,69 @@ static void unroll_names_finish(void)
   unroll_names_valid = FALSE;
 }
 
+#ifdef KEY
+/* Given a result <tn>, check whether it shows up in the epilog backpatch with
+   omega > 0.
+ */
+static BOOL Has_Nonzero_Omega_in_Epilog( TN* tn )
+{
+  if( !TN_is_gra_homeable(tn) )
+    return FALSE;
+
+  CG_LOOP_BACKPATCH* bpatches = CG_LOOP_Backpatch_First(CG_LOOP_epilog,tn);
+  while( bpatches != NULL ){
+    const TN* body_tn = CG_LOOP_BACKPATCH_body_tn(bpatches);
+    if( body_tn == tn ){
+      if( CG_LOOP_BACKPATCH_omega(bpatches) > 0 )
+	return TRUE;
+    }
+    bpatches = CG_LOOP_Backpatch_Next(bpatches);
+  }
+
+  return FALSE;
+}
+#endif
 
 static void unroll_names_init_tn(TN *result, UINT16 ntimes, MEM_POOL *pool)
 {
   TN **entry = TYPE_MEM_POOL_ALLOC_N(TN *, pool, ntimes);
   UINT16 unrolling;
   TN_MAP_Set(unroll_names, result, entry);
-  for (unrolling = 0; unrolling < ntimes; ++unrolling)
-    if (TN_is_dedicated(result))
+#ifdef KEY
+  const BOOL reset_gra_home =
+    !TN_is_dedicated(result) && Has_Nonzero_Omega_in_Epilog(result);
+#endif // KEY
+  for (unrolling = 0; unrolling < ntimes; ++unrolling){
+    if (TN_is_dedicated(result)){
       entry[unrolling] = result;
-    else
+    }
+#ifdef KEY
+    /* Avoid generating code like
+           <result> = <result_body_tn>
+       in the loop epilog, where <result> is a gra homeable non_body tn;
+       otherwise, redundant spill code could be generated.
+     */
+    else if( unrolling == ntimes - 1 && 
+	     TN_is_gra_homeable(result) ){
+      entry[unrolling] = result;
+    }
+#endif // KEY
+    else{
       entry[unrolling] = Dup_TN(result);
+#ifdef KEY
+      /* If the <result> has a use outside of the body, and the omega is
+	 greater than 0, we should nullify the home of the copied tn of
+	 <result>; otherwise, gra cannot tell which home is the real home.
+	 (bug#2698)
+      */
+      if( reset_gra_home &&
+	  unrolling < ntimes - 1 ){
+	Reset_TN_is_gra_homeable( entry[unrolling] );
+	Set_TN_home( entry[unrolling], NULL );
+      }
+#endif // KEY      
+    }
+  }
 }
 
 // Bug 1064 & Bug 1221
@@ -4606,6 +4658,21 @@ void CG_LOOP::Determine_Unroll_Factor()
     if (trace) fprintf(TFile, "<unroll> not unrolling; %s\n", reason);
     return;
   }
+
+#ifdef TARG_X8664
+  if( Is_Target_32bit() ){
+    for( OP* op = BB_first_op(head); op != NULL; op = OP_next(op) ){
+      if( TOP_is_change_x87_cw(OP_code(op)) ){
+	char* reason = "fldcw/fnstcw slows down the performance";
+	note_not_unrolled( head, reason );
+	if( trace )
+	  fprintf(TFile, "<unroll> not unrolling; %s\n", reason);
+
+	return;
+      }
+    }
+  }
+#endif
 
   if (CG_LOOP_unroll_times_max < 2) {
     const char * const reason = "OPT:unroll_times_max=%d";

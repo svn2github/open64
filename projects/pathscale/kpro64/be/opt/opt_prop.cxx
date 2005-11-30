@@ -520,6 +520,10 @@ CODEREP::Convert_type(CODEMAP *htable, CODEREP *expr, BOOL icopy_phase)
   MTYPE    rhs_type = expr->Dtyp();
   MTYPE    dsc_type = Dsctyp();
 
+#ifdef KEY // bug 2668: screen out obvious case where no conversion is needed
+  if (expr->Kind() == CK_VAR && Kind() == CK_VAR && expr->Aux_id() == Aux_id())
+    return expr;
+#endif
   if ( MTYPE_is_integral(rhs_type) && MTYPE_is_integral(dsc_type) ) {
     cvt_kind = NOT_AT_ALL;
     if (dsc_type == MTYPE_BS)
@@ -995,7 +999,8 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
 
   // disable copy prop for SPRE and EPRE/LPRE temps
   if (Opt_stab()->Aux_stab_entry(x->Aux_id())->SPRE_temp() ||
-      Opt_stab()->Aux_stab_entry(x->Aux_id())->EPRE_temp())  // includes both EPRE and LPRE
+      Opt_stab()->Aux_stab_entry(x->Aux_id())->LPRE_VNFRE_temp() ||  
+      Opt_stab()->Aux_stab_entry(x->Aux_id())->EPRE_temp())
     return NULL;
 
   CODEREP *retv = Prop_const_init_scalar(x, x->Aux_id());
@@ -1229,6 +1234,12 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
       inside_cse = inside_cse || x->Usecnt() > 1;
       CODEREP *id_cr = Prop_identity_assignment(x);
      if (id_cr) {
+#ifdef KEY // bug 3009
+      if (id_cr->Is_flag_set(CF_IS_ZERO_VERSION)) {
+	Htable()->Fix_zero_version(x->Defchi(), x->Defstmt());
+	id_cr = x->Defchi()->OPND();
+      }
+#endif
       if (id_cr->Dsctyp() == MTYPE_UNKNOWN ||
          id_cr->Is_flag_set(CF_MADEUP_TYPE)) {
          id_cr->Set_dtyp(x->Dtyp());
@@ -1241,6 +1252,10 @@ COPYPROP::Copy_propagate_cr(CODEREP *x, BB_NODE *curbb,
          id_cr->Set_sign_extension_flag();
          id_cr->Reset_flag(CF_MADEUP_TYPE);
       }
+#ifdef KEY // bug 3009
+      if (Prop_identity_assignment(id_cr)) // bug 3091
+        return Copy_propagate_cr(id_cr, curbb, inside_cse, in_array);
+#endif
       return id_cr;
      }
      return Prop_var(x, curbb, FALSE, inside_cse, in_array);
@@ -1688,6 +1703,12 @@ COPYPROP::Propagatable_thru_phis(CODEREP *lexp, CODEREP *rexp,
     if (lexp->Opr() == OPR_EXTRACT_BITS &&
 	(lexp->Op_bit_offset() != rexp->Op_bit_offset() ||
 	 lexp->Op_bit_size() != rexp->Op_bit_size()))
+        return FALSE;
+    if (lexp->Opr() == OPR_CVTL && lexp->Offset() != rexp->Offset())
+	return FALSE;
+    if (lexp->Opr() == OPR_COMPOSE_BITS &&
+        (lexp->Op_bit_offset() != rexp->Op_bit_offset() ||
+         lexp->Op_bit_size() != rexp->Op_bit_size()))
         return FALSE;
 #endif
     if (lexp->Opr() == OPR_INTRINSIC_OP && rexp->Opr() == OPR_INTRINSIC_OP

@@ -1,6 +1,6 @@
 /*
 
-  Copyright 2004 PathScale, Inc.  All Rights Reserved.
+  Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -65,7 +65,7 @@ extern bfd_boolean is_ipa;
 extern struct bfd_link_info link_info; /* defined in ld/ldmain.c */
 extern char **environ_vars;	    /* list of environment variables */
 
-#if defined(KEY) && !defined(EF_IRIX_ABI64)
+#if !defined(EF_IRIX_ABI64)
 #define EF_IRIX_ABI64   0x00000010
 #endif
 
@@ -78,12 +78,13 @@ void (*p_ipa_init_link_line)(int, char **) = NULL;
 void (*p_ipa_add_link_flag)(const char*) = NULL;
 void (*p_ipa_driver)(int, char **) = NULL;
 void (*p_process_whirl64)(void *, off_t, void *, int, const char *) = NULL;
-#ifdef KEY
 void (*p_process_whirl32)(void *, off_t, void *, int, const char *) = NULL;
-#endif
 int  (*p_Count_elf_external_gots)(void) = NULL;
 void (*p_ipa_insert_whirl_marker)(void) = NULL;
 void (*p_Sync_symbol_attributes)(unsigned int, unsigned int, bfd_boolean, unsigned int) = NULL;
+#ifdef KEY
+void (*p_ipa_erase_link_flag)(const char*) = NULL;
+#endif
 
 string toolroot = 0;		    /* set to environment variable TOOLROOT */
 
@@ -1081,7 +1082,7 @@ ipa_process_whirl ( bfd *abfd)
     off_t mapped_size;
     abfd->usrdata = (PTR)(*p_ipa_open_input)((char *)abfd->filename, &mapped_size);
 
-#if defined(KEY) && !defined(__ALWAYS_USE_64BIT_ELF__)
+#if !defined(__ALWAYS_USE_64BIT_ELF__)
     /* Should be sync. with Config_Target_From_ELF() defined in be.so
      */
     if( ( elf_elfheader (abfd)->e_flags & EF_IRIX_ABI64 ) == 0 )
@@ -1153,13 +1154,11 @@ ipa_set_syms(void)
     	exit(1);
     }
 
-#ifdef KEY
     p_process_whirl32 = dlsym(p_handle,"process_whirl32");
     if ((p_error = dlerror()) != NULL)  {
     	fputs(p_error, stderr);
     	exit(1);
     }
-#endif
 
     p_ipa_insert_whirl_marker = dlsym(p_handle,"ipa_insert_whirl_marker");
     if ((p_error = dlerror()) != NULL)  {
@@ -1173,6 +1172,13 @@ ipa_set_syms(void)
     	exit(1);
     }
 
+#ifdef KEY
+    p_ipa_erase_link_flag = dlsym(p_handle,"ipa_erase_link_flag");
+    if ((p_error = dlerror()) != NULL)  {
+    	fputs(p_error, stderr);
+    	exit(1);
+    }
+#endif
 }
 
 	/*******************************************************

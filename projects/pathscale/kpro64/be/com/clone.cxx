@@ -725,6 +725,35 @@ IPO_SYMTAB::Update_Symtab (BOOL label_only)
   Copy_Local_Tables(label_only);
 }
 
+#ifdef KEY
+// bug 3089: Fix traversal of INITVs, the original code never actually
+// traversed the tree of INITVs, so even though the ST was promoted to
+// global symtab, the ST reference in an initv was not being updated.
+static inline void
+traverse_initvs (INITV_IDX start, ST_IDX old, ST_IDX copy)
+{
+    if (! start) return;
+
+    switch (INITV_kind (start))
+    {
+      case INITVKIND_BLOCK:
+	traverse_initvs (INITV_blk (start), old, copy);
+	traverse_initvs (INITV_next (start), old, copy);
+        break;
+      case INITVKIND_SYMOFF:
+      {	
+	ST_IDX st = INITV_st (start);
+	if (st == old)
+	  Set_INITV_st (start, copy);
+        // fall through
+      }
+      default:
+        traverse_initvs (INITV_next (start), old, copy);
+        break;
+    }
+}
+#endif // KEY
+
 // ======================================================================
 // Walk the ST list and for those that are PU-level static, move them and
 // their correcponding INITO to the Global Symtab
@@ -770,6 +799,9 @@ IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
         // to global symtab, update it with the new st in global symtab
 	for(INITO_IDX it_idx = 1; it_idx<(INITO_IDX)it_tab_size; it_idx++) {
 	  INITV_IDX iv_idx = (*it_tab)[it_idx].val;
+#ifdef KEY
+          traverse_initvs (iv_idx, ST_st_idx (old_st), ST_st_idx (copy_st));
+#else
 	  INITV &iv = Initv_Table[iv_idx];
           switch (INITV_kind(iv)) {
           case INITVKIND_SYMOFF:
@@ -786,6 +818,7 @@ IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
     	  default:
               break;
           }
+#endif // KEY
 	}	
 	break;
     default:

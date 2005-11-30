@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,12 +45,20 @@
 #include "moremath.h"
 #include <cmplrs/host.h>
 
-double_t __datn2d(double_t x, double_t y)
+#ifdef KEY
+double __datn2d(double x, double y)
+#else
+double __datn2d(double x, double_t y)
+#endif // KEY
 {
   return (atan2(x, y) * 57.29577951308232);
 }
 
-double_t d_atn2d(double_t *x, double_t *y)
+#ifdef KEY
+double d_atn2d(double *x, double *y)
+#else
+double d_atn2d(double *x, double_t *y)
+#endif
 {
   return (__datn2d(*x, *y));
 }

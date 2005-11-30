@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -53,6 +57,9 @@ static char USMID[] = "\n@(#)5.0_pl/sources/p_dcl_pu.c	5.5	09/01/99 09:11:00\n";
 # include "tokens.h"
 # include "sytb.h"
 # include "p_globals.h"
+# ifdef KEY
+# include "i_cvrt.h"
+# endif
 
 
 /*****************************************************************\
@@ -3251,6 +3258,15 @@ void parse_typed_function_stmt()
    AT_TYPED(rslt_idx)		= TRUE;
    ATD_TYPE_IDX(rslt_idx)	= ATD_TYPE_IDX(AT_WORK_IDX);
 
+#ifdef KEY
+// Bug 2164
+   if (AT_OBJ_CLASS(rslt_idx) == Data_Obj && !AT_IS_INTRIN(rslt_idx) &&
+       TYP_LINEAR(ATD_TYPE_IDX(rslt_idx)) == Real_4 &&
+       Check_FF2C_Script(AT_OBJ_NAME_PTR(rslt_idx), 0) )
+   {
+     ATD_TYPE_IDX(rslt_idx) = Real_8;
+   }
+#endif
    if (LA_CH_VALUE != EOS) {
       parse_err_flush(Find_EOS, EOS_STR);
    }

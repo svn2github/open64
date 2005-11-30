@@ -346,6 +346,71 @@ Num_Inner_Loops(WN* loop)
   return max_inner_loops;
 }
 
+#ifdef KEY
+// Count the number of basic operations
+static
+INT64 Loop_Size(WN* wn)
+{
+  OPCODE opcode = WN_opcode(wn);
+  if (OPCODE_is_leaf(opcode))
+    return 1;
+  else if (OPCODE_is_load(opcode))
+    return 1;
+  else if (opcode == OPC_BLOCK) {
+    WN *kid = WN_first(wn);
+    INT64 count = 0;
+    while (kid) {
+      count += Loop_Size(kid);
+      kid = WN_next(kid);
+    }
+    return count;
+  } else if (opcode == OPC_DO_LOOP) {
+    INT64 count = Loop_Size(WN_start(wn));
+    count += Loop_Size(WN_end(wn));
+    INT64 count1 = Loop_Size(WN_do_body(wn));
+    count1 += Loop_Size(WN_step(wn));
+    DO_LOOP_INFO* dli = Get_Do_Loop_Info(wn);
+    if (dli) {
+      count1 *= MAX(1,dli->Est_Num_Iterations);
+    }
+    return (count+count1);
+  }
+
+  OPERATOR oper = OPCODE_operator(opcode);
+  
+  INT64 count = 0;
+  INT kid_cnt = WN_kid_count(wn);
+
+  if ((oper == OPR_TRUNC) || (oper == OPR_RND) ||
+      (oper == OPR_CEIL) || (oper == OPR_FLOOR) || (oper == OPR_INTRINSIC_OP)) {
+    count++;
+  } else if ((oper == OPR_REALPART) || (oper == OPR_IMAGPART) ||
+	     (oper == OPR_PARM) || (oper == OPR_PAREN)) {
+    // no-ops
+  } else if (OPCODE_is_expression(opcode) && (oper != OPR_CONST)) {
+    if ((oper == OPR_MAX) || (oper == OPR_MIN) || 
+	(oper == OPR_ADD) || (oper == OPR_SUB) || (oper == OPR_MPY) ||
+	(oper == OPR_NEG))
+      count++;
+    else if ((oper == OPR_DIV || oper == OPR_SQRT))
+      count = count + 10;
+    
+  } else if (OPCODE_is_store(opcode)) {
+    count++;
+    kid_cnt = kid_cnt - 1;
+  } else if (oper == OPR_CALL) {
+    count = count + LNO_Full_Unrolling_Loop_Size_Limit;
+  }
+  
+  for (INT kidno=0; kidno<kid_cnt; kidno++) {
+    WN *kid = WN_kid(wn,kidno);
+    count += Loop_Size(kid);
+  }
+
+  return count;
+  
+}
+#endif
 static void
 Fully_Unroll_Short_Loops(WN* wn)
 {
@@ -370,12 +435,43 @@ Fully_Unroll_Short_Loops(WN* wn)
            !Is_Nested_Doacross(wn) &&
            Num_Inner_Loops(wn) < MAX_INNER_LOOPS) {
     INT64 trip_count = Num_Iters(wn);
-    if (trip_count == 0) {
+    if (trip_count == 0
+#ifdef KEY
+	// bug 3444
+	// Why do we have 2 functions to find # of iterations?
+        && Iterations(wn, &LNO_local_pool) == 0
+#endif
+      ) {
       Remove_Zero_Trip_Loop(wn);
       return;
     }
     if (trip_count >= 1 && trip_count <= LNO_Full_Unrolling_Limit) {
       if (trip_count > 1) {
+#ifdef KEY
+	if (Loop_Size(wn)*trip_count > LNO_Full_Unrolling_Loop_Size_Limit) {
+	  Fully_Unroll_Short_Loops(WN_do_body(wn));
+	  return;
+	}
+	static INT count = 0;
+	count ++;
+	if (LNO_Full_Unroll_Skip_Before > count - 1 ||
+	    LNO_Full_Unroll_Skip_After < count - 1 ||
+	    LNO_Full_Unroll_Skip_Equal == count - 1) {
+	  Fully_Unroll_Short_Loops(WN_do_body(wn));
+	  return;
+	}
+	if (LNO_Full_Unroll_Outer == FALSE) {
+	  DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
+	  WN* parent = LWN_Get_Parent(wn);
+	  while(parent && WN_operator(parent) != OPR_DO_LOOP &&
+		WN_operator(parent) != OPR_FUNC_ENTRY)
+	    parent = LWN_Get_Parent(parent);
+	  if (!parent || WN_operator(parent) == OPR_FUNC_ENTRY) {
+	    Fully_Unroll_Short_Loops(WN_do_body(wn));
+	    return;	    
+	  }
+	}
+#endif
         Unroll_Loop_By_Trip_Count(wn, trip_count);
         // Du_Sanity_Check(Current_Func_Node);
       }
@@ -448,6 +544,7 @@ BOOL Run_autopar_save;
 #ifdef KEY
 static BOOL Skip_Simd;
 static BOOL Skip_HoistIf;
+static BOOL Skip_SVR;
 #endif /* KEY */
 extern WN * Lnoptimizer(PU_Info* current_pu, 
 			WN *func_nd , DU_MANAGER *du_mgr,
@@ -475,6 +572,13 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
     Skip_HoistIf = TRUE;
   else 
     Skip_HoistIf = FALSE;
+ 
+  if (pu_num < LNO_SVR_Skip_Before 
+      || pu_num > LNO_SVR_Skip_After
+      || pu_num == LNO_SVR_Skip_Equal)
+    Skip_SVR = TRUE;
+  else 
+    Skip_SVR = FALSE;
  
   if (pu_num < LNO_Skip_Before 
       || pu_num > LNO_Skip_After
@@ -773,6 +877,10 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
         Transpose_For_MP(func_nd);  // gwe? want this here?
         IPA_LNO_Unevaluate_Call_Infos(func_nd);
     }
+#ifdef KEY
+    if (LNO_Run_Simd > 0)
+      Mark_Auto_Vectorizable_Loops(func_nd);
+#endif
   
     // Process pragmas
     if (!LNO_Ignore_Pragmas) {
@@ -815,6 +923,9 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       WB_Set_Sanity_Check_Level(WBC_FULL_SNL); 
   
       if (!Get_Trace(TP_LNOPT, TT_LNO_NORENAME))
+#ifdef KEY
+	if (!Skip_SVR)
+#endif
         if (Scalar_Variable_Renaming(func_nd))
           LNO_Build_Access(func_nd,&LNO_default_pool);
   
@@ -1135,6 +1246,10 @@ void DO_LOOP_INFO::Print(FILE *fp, INT indentation)
     fprintf(fp,"%sSuggested_Parallel is %d \n", buf, Suggested_Parallel);
   if (Parallelizable)
     fprintf(fp,"%sParallelizable is %d \n", buf, Parallelizable);
+#ifdef KEY
+  if (Vectorizable)
+    fprintf(fp,"%sVectorizable is %d \n", buf, Vectorizable);
+#endif
   if (Last_Value_Peeled)
     fprintf(fp,"%sLast Value Peeled is %d \n", buf, Last_Value_Peeled); 
   if (Not_Enough_Parallel_Work)
@@ -1350,6 +1465,9 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
     
     if (!Get_Trace(TP_LNOPT, TT_LNO_NORENAME))
       // rename after phase 2
+#ifdef KEY
+      if (!Skip_SVR)
+#endif
       if (Scalar_Variable_Renaming(func_nd))
         LNO_Build_Access(func_nd,&LNO_default_pool);
 
@@ -1371,9 +1489,16 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
 #endif
   }
 
+#ifndef KEY
   if ((do_inner_fission || LNO_Run_Vintr==TRUE) && LNO_Fission!=0)
+#else
+  if ((do_inner_fission || LNO_Run_Vintr > 0) && LNO_Fission!=0)
+#endif
     if (!Get_Trace(TP_LNOPT, TT_LNO_NORENAME))
       // rename after phase 2
+#ifdef KEY
+      if (!Skip_SVR)
+#endif
       if (Scalar_Variable_Renaming(func_nd))
         LNO_Build_Access(func_nd,&LNO_default_pool);
 
@@ -1393,7 +1518,11 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
     HoistIf_Phase(func_nd);
 #endif /* KEY */
   void Vintrinsic_Fission_Phase(WN* func_nd);
+#ifndef KEY
   if (LNO_Run_Vintr==TRUE)
+#else
+  if (LNO_Run_Vintr)
+#endif
     Vintrinsic_Fission_Phase(func_nd);
   Finalize_Loops(func_nd); 
 
@@ -1469,6 +1598,9 @@ DO_LOOP_INFO::DO_LOOP_INFO(MEM_POOL *pool, ACCESS_ARRAY *lb, ACCESS_ARRAY *ub,
     Sync_Distances[0] = NULL_DIST; 
     Sync_Distances[0] = NULL_DIST; 
     Parallelizable = FALSE; 
+#ifdef KEY
+    Vectorizable = FALSE; 
+#endif
     Last_Value_Peeled = FALSE; 
     Not_Enough_Parallel_Work = FALSE; 
     Inside_Critical_Section = FALSE;
@@ -1565,6 +1697,9 @@ DO_LOOP_INFO::DO_LOOP_INFO(DO_LOOP_INFO *dli, MEM_POOL *pool) {
     Sync_Distances[0] = dli->Sync_Distances[0]; 
     Sync_Distances[1] = dli->Sync_Distances[1]; 
     Parallelizable = dli->Parallelizable; 
+#ifdef KEY
+    Vectorizable = dli->Vectorizable; 
+#endif
     Last_Value_Peeled = dli->Last_Value_Peeled; 
     Not_Enough_Parallel_Work = dli->Not_Enough_Parallel_Work; 
     Inside_Critical_Section = dli->Inside_Critical_Section;

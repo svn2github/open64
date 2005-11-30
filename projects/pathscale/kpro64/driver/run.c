@@ -72,7 +72,6 @@ boolean execute_flag = TRUE;
 boolean time_flag = FALSE;
 boolean prelink_flag = TRUE;
 boolean quiet_flag = TRUE;
-int memory_flag = 0;
 boolean run_m4 = FALSE;
 static boolean ran_twice = FALSE;
 static int f90_fe_status = RC_OKAY;
@@ -82,22 +81,8 @@ static void init_time (void);
 static void print_time (char *phase);
 static void my_psema(void);
 static void my_vsema(void);
-static int stop_on_exit( int pid );
-static void print_mem(char *phase, int num_maps);
 
-static int Pipe[2]; /* for implementing semaphore */
-#ifndef linux
-static prmap_sgi_t mapbuf[100];
-static prmap_sgi_arg_t mapbuf_desc = { (char *) mapbuf, sizeof (mapbuf)} ;
-#define DATA_ADDRESS ((char *)0x10000000)
-#define TEXT_ADDRESS ((char *)0x400000)
-#endif
-
-#ifdef linux
 #define LOGFILE "/var/log/messages"
-#else
-#define LOGFILE "/usr/adm/SYSLOG"
-#endif
 
 static void my_execv(const char *name, char *const argv[])
 {
@@ -237,7 +222,7 @@ get_binutils_lib_path(void)
 	static const char *binutils_library_path = "../i686-pc-linux-gnu/" PSC_TARGET "/lib";
 	char *my_path;
 	
-	asprintf(&my_path, "%s/%s", get_executable_dir(NULL),
+	asprintf(&my_path, "%s/%s", get_executable_dir(),
 		 binutils_library_path);
 	return my_path;
 }
@@ -257,10 +242,6 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 	int waitpid;
 	int waitstatus;
 	int termsig;
-#ifndef linux
-	SIG_PF sigterm;
-	SIG_PF sigint;
-#endif
 	int	num_maps;
 	char *rld_path;
 	struct stat stat_buf;
@@ -280,23 +261,19 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 	/* copy arg_list to argv format that exec wants */
 	argc = 1;
 	for (p = args->head; p != NULL; p=p->next) {
-#ifdef KEY
-//bug# 581, bug #932, bug #1049
+		//bug# 581, bug #932, bug #1049
 		if (p->name == NULL) 
                   continue;
-#endif
 		argc++;
 	}
 	argv = (char **) malloc((argc+1)*sizeof(char*));
 	argv[0] = name;
 	for (argc = 1, p = args->head; p != NULL; argc++, p=p->next) {
-#ifdef KEY
-//bug# 581, bug #932
+		//bug# 581, bug #932
 		if (p->name[0] == '\0') {
 		  argc--;
                   continue;
 		}
-#endif
 		/* don't put redirection in arg list */
 		if (strcmp(p->name, "<") == 0) {
 			/* has input file */
@@ -316,18 +293,6 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 	}
 	argv[argc] = NULL;
 
-	/* if we want memory stats, we need to open a pipe as a semaphore */
-	if (memory_flag)
-		{
-		if (pipe(Pipe) < 0)
-			{
-			error("pipe failed for -showm");
-			cleanup ();
-			do_exit (RC_SYSTEM_ERROR);
-			/* NOTREACHED */
-			}
-		}
-
 	/* fork a process */
 	forkpid = fork();
 	if (forkpid == -1) {
@@ -338,13 +303,11 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 	}
 
 	if (forkpid == 0) {
-		char *my_path, *l_path, *l32_path;
+		char *my_path, *l_path, *l32_path, *nls_path, *env_path;
 		
 		/* child */
 		/* if we want memory stats, we have to wait for
 		   parent to connect to our /proc */
-		if (memory_flag) my_psema();
-
 		if (input != NULL) {
 			if ((fdin = open (input, O_RDONLY)) == -1) {
 				error ("cannot open input file %s", input);
@@ -386,25 +349,15 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 		my_putenv("LD_LIBRARY_PATH", l_path);
 		my_putenv("LD_LIBRARYN32_PATH", l32_path);
 		
-		if (uses_message_system) {
-		   char *toolroot;
-		   char *nlspath;
-		   toolroot = getenv("TOOLROOT");
-		   nlspath = getenv("NLSPATH");
-		   if (nlspath==NULL) {
-			char *env_file = "/%N.cat";
-#ifdef linux
-			char *env_path = get_phase_dir(P_f90_fe);
-			/* The phase_dir already has the prepended toolroot */
-			toolroot = "";
-#else
-			char *env_path = "/usr/lib/locale/C/LC_MESSAGES";
-		      	if (toolroot == NULL) {
-				toolroot = "";
-		      	}
-#endif
-			my_putenv("NLSPATH", "%s%s%s", toolroot, env_path, env_file);
-		   }
+		// Set up NLSPATH, for the Fortran front end.
+
+		nls_path = getenv("NLSPATH");
+		env_path = get_phase_dir(P_f90_fe);
+
+		if (nls_path) {
+		    my_putenv("NLSPATH", "%s:%s/%%N.cat", nls_path, env_path);
+		} else {
+		    my_putenv("NLSPATH", "%s/%%N.cat", env_path);
 		}
 
 		if (uses_message_system && getenv("ORIG_CMD_NAME") == NULL)
@@ -443,60 +396,17 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 		   
 		   my_putenv ("FORTRAN_SYSTEM_MODULES", "%s", env_val);
 		}
-#ifdef linux
 		/* need to setenv COMPILER_PATH for collect to find ld */
 		my_putenv ("COMPILER_PATH", "%s", get_phase_dir(P_collect));
 
 		/* Tell IPA where to find the driver. */
 		my_putenv ("COMPILER_BIN", "%s/" PSC_NAME_PREFIX "cc-"
-			   PSC_FULL_VERSION,
-			   get_executable_dir(NULL));
-#endif
+			   PSC_FULL_VERSION, get_executable_dir());
 
 		my_execv(name, argv);
 	} else {
 		/* parent */
 		int procid;	/* id of the /proc file */
-#ifndef linux
-   		sysset_t syscallSet;
-		/* copy this wait stuff from old driver */
-		sigint = sigset (SIGINT, SIG_IGN);
-		sigterm = sigset (SIGTERM, SIG_IGN);
-#endif
-		/* if we are interested in memory statistics, we need to
-		   set a stop-on-exit for the child */
-		if (memory_flag && (procid = stop_on_exit(forkpid))) {
-#ifndef linux
-   		  /* now go and get the memory maps */
-		  while (1) {
-   			if ((num_maps=ioctl(procid, PIOCMAP_SGI, &mapbuf_desc)) < 0) {
-				perror("PIOCMAP_SGI");
-				close(procid);
-				memory_flag = 0;
-				break;
-   			}
-			
-   			premptyset(&syscallSet);
-   			if (ioctl(procid, PIOCSEXIT, &syscallSet) < 0) {
-      				perror("PIOCSEXIT");
-				close(procid);
-				memory_flag = 0;
-				break;
-				}
-   			/* continue the process */
-   			ioctl(procid, PIOCRUN, NULL);
-   			close(procid);
-			break;
-		  } /* while */
-#else
-		  /* not supported under linux */
-		  memory_flag = 0;
-#endif
-		} else {
-			/* if we cant set flags on child, dont use -showm */
-			memory_flag = 0;
-		}
-
 		while ((waitpid = wait (&waitstatus)) != forkpid) {
 			if (waitpid == -1) {
 				error("bad return from wait");
@@ -505,12 +415,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				/* NOTREACHED */
 			}
 		}
-#ifndef linux
-		(void)sigset (SIGINT, sigint);
-		(void)sigset (SIGTERM, sigterm);
-#endif
 		if (time_flag) print_time(name);
-		if (memory_flag) print_mem(name, num_maps);
 
 		if (WIFSTOPPED(waitstatus)) {
 			termsig = WSTOPSIG(waitstatus);
@@ -689,10 +594,6 @@ catch_signals (void)
         signal (SIGTRAP,  handler);
     if (signal (SIGIOT, SIG_IGN) != SIG_IGN)
         signal (SIGIOT,  handler);
-#ifndef linux
-    if (signal (SIGEMT, SIG_IGN) != SIG_IGN)
-        signal (SIGEMT,  handler);
-#endif
     if (signal (SIGFPE, SIG_IGN) != SIG_IGN)
         signal (SIGFPE,  handler);
     if (signal (SIGBUS, SIG_IGN) != SIG_IGN)
@@ -737,209 +638,3 @@ print_time (char *phase)
 		(double)(wtime % (60*HZ)) / (double)HZ,
 		(utime + stime) / ((double)wtime / (double)HZ) * 100.0);
 }
-
-/* code used to handle the -showm */
-
-static int
-stop_on_exit( int pid )
-{	/* sets a child process to stop on exit */
-#ifndef linux
-   int procid;	/* fd for process */
-   char procname[20];	/* name - /proc/<pid> */
-   prstatus_t pstatus;
-   long modeFlags = 0;
-   sysset_t syscallSet;
-
-   sprintf(procname, "/proc/%-d", pid);
-   if ((procid = open(procname, O_RDWR|O_EXCL)) == -1 ) {
-      warning("Failed Opening /proc");
-      /* kill(pid, SIGKILL); */
-      return 0;
-   }
-
-   /* set it so it wont trace child */
-   modeFlags = PR_FORK;
-   if (ioctl(procid, PIOCRESET, &modeFlags) < 0) {
-      perror("PIOCRESET");
-      /* kill(pid, SIGKILL); */
-      close(procid);
-      return 0;
-   }
-
-   premptyset(&syscallSet);
-   praddset(&syscallSet, SYS_exit);
-   if (ioctl(procid, PIOCSENTRY, &syscallSet) < 0) {
-      perror("PIOCSENTRY");
-      /* kill(pid, SIGKILL); */
-      close(procid);
-      return 0;
-   }
-
-   my_vsema();
-
-   if (ioctl(procid, PIOCWSTOP, &pstatus) < 0) {
-      warning("process disappeared\n");
-      perror("PIOCWSTOP");
-      /* kill(pid, SIGKILL); */
-      close(procid);
-      return 0;
-   }
-   
-   if (pstatus.pr_why != PR_SYSENTRY) {
-      warning("program halted prematurely\n");
-      /* kill(pid, SIGKILL); */
-      close(procid);
-      return 0;
-   }
-   if (pstatus.pr_what != SYS_exit ) {
-      warning("program halted in wrong system call\n");
-      /* kill(pid, SIGKILL); */
-      close(procid);
-      return 0;
-   }
-   if (pstatus.pr_errno != 0) {
-      warning("unknown problem\n");
-      return 0;
-   }
-
-	/* at this point the child is stopped on exit */
-   return procid;
-#else
-  return 0;
-#endif
-}
-
-static void
-my_psema(void)
-{
-  char c;
-
-  close ( Pipe[1] );
-  if ( read(Pipe[0], &c, 1) != 1 ) {
-    error ( "read on pipe failed" );
-    do_exit ( RC_SYSTEM_ERROR );
-  }
-  close ( Pipe[0] );
-}
-
-static void
-my_vsema(void)
-{
-        char c;
-
-	close(Pipe[0]);
-        if (write(Pipe[1], &c, 1) != 1)
-		{
-                error("write on pipe failed");
-		do_exit(RC_SYSTEM_ERROR);
-		}
-	close(Pipe[1]);
-}
-
-static void
-print_mem(char *phase, int num_maps)
-{
-#ifndef linux
-	int i,identified;
-	ulong_t mflags;
-	size_t text_size, data_size, brk_size, stack_size,
-		so_text_size, so_data_size, so_brk_size, mmap_size;
-	int verbose=(memory_flag>1);
-
-	text_size= data_size= brk_size= stack_size=
-		so_text_size= so_data_size= so_brk_size= mmap_size= 0;
-
-   /* now print out the maps obtained */
-   for (i=0; i<num_maps; i++)
-    {
-    identified=0;
-    mflags= mapbuf[i].pr_mflags & ((1 << MA_REFCNT_SHIFT)-1);
-    if (mflags==(MA_READ|MA_SHARED|MA_EXEC|MA_PRIMARY))
-	{
-	/* program text */
-	text_size += mapbuf[i].pr_size ;
-	identified=1;
-	}
-    if (mflags==(MA_READ|MA_SHARED|MA_EXEC))
-	{
-	/* .so text */
-	so_text_size += mapbuf[i].pr_size ;
-	identified=1;
-	}
-    if (mflags==(MA_COW|MA_READ|MA_WRITE) && mapbuf[i].pr_vaddr < DATA_ADDRESS)
-	{
-	/* .so  data */
-	so_data_size += mapbuf[i].pr_size ;
-	identified=1;
-	}
-    if ((mflags==(MA_READ|MA_WRITE) || mflags==(MA_READ) ||
-	mflags==(MA_READ|MA_WRITE|MA_SHARED) || mflags==(MA_READ|MA_SHARED))
-	&& mapbuf[i].pr_vaddr < DATA_ADDRESS)
-	{
-	/* some sort of mmap region */
-	mmap_size += mapbuf[i].pr_size ;
-	identified=1;
-	}
-    mflags&= ~MA_PRIMARY;
-    if (mflags==(MA_COW|MA_READ|MA_WRITE) && mapbuf[i].pr_vaddr >= DATA_ADDRESS)
-	{
-	/* data space */
-	data_size += mapbuf[i].pr_size ;
-	identified=1;
-	}
-    if (mflags==(MA_COW|MA_READ|MA_WRITE|MA_BREAK) && mapbuf[i].pr_vaddr >= DATA_ADDRESS)
-	{
-	/* brk space */
-	brk_size += mapbuf[i].pr_size ;
-	identified=1;
-	}
-    if (mflags==(MA_STACK|MA_READ|MA_WRITE) || mflags==(MA_STACK|MA_READ|MA_WRITE|MA_COW))
-	{
-	/* stack space */
-	stack_size += mapbuf[i].pr_size ;
-	identified=1;
-	}
-    if (identified==0) 
-	{
-	fprintf(stderr,"-showm: Unidentified: segment %d\n",i);
-	}
-    if (verbose || identified==0)
-	{
-	fprintf(stderr,"pr_vaddr[%d]= %lx\n",i,mapbuf[i].pr_vaddr);
-	fprintf(stderr,"pr_size[%d]= %lx\n",i,mapbuf[i].pr_size);
-	fprintf(stderr,"pr_off[%d]= %lx\n",i,mapbuf[i].pr_off);
-	fprintf(stderr,"pr_mflags[%d]= %lx\n",i,mapbuf[i].pr_mflags);
-	fprintf(stderr,"pr_vsize[%d]= %lx\n",i,mapbuf[i].pr_vsize);
-	fprintf(stderr,"pr_psize[%d]= %lx\n",i,mapbuf[i].pr_psize);
-	fprintf(stderr,"pr_wsize[%d]= %lx\n",i,mapbuf[i].pr_wsize);
-	fprintf(stderr,"pr_rsize[%d]= %lx\n",i,mapbuf[i].pr_rsize);
-	fprintf(stderr,"pr_msize[%d]= %lx\n",i,mapbuf[i].pr_msize);
-	fprintf(stderr,"pr_dev[%d]= %lx\n",i,mapbuf[i].pr_dev);
-	fprintf(stderr,"pr_ino[%d]= %lx\n",i,mapbuf[i].pr_ino);
-	fprintf(stderr,"\n");
-	}
-    }
-  fprintf(stderr, "%s phase mem: %ldT %ldD %ldB %ldS %ldt %ldd %ldb %ldm= %ldK\n",
-	phase, text_size/1024, data_size/1024, brk_size/1024, stack_size/1024, 
-	so_text_size/1024, so_data_size/1024, so_brk_size/1024, mmap_size/1024,
-	(text_size+data_size+brk_size+stack_size+
-		so_text_size+so_data_size+so_brk_size+mmap_size)/1024);
-  if (verbose) {
-   fprintf(stderr,"text_size= %ld Kbytes\n", text_size/1024);
-   fprintf(stderr,"data_size= %ld Kbytes\n", data_size/1024);
-   fprintf(stderr,"brk_size= %ld Kbytes\n", brk_size/1024);
-   fprintf(stderr,"stack_size= %ld Kbytes\n", stack_size/1024);
-   fprintf(stderr,"so_text_size= %ld Kbytes\n", so_text_size/1024);
-   fprintf(stderr,"so_data_size= %ld Kbytes\n", so_data_size/1024);
-   fprintf(stderr,"so_brk_size= %ld Kbytes\n", so_brk_size/1024);
-   fprintf(stderr,"mmap_size= %ld Kbytes\n", mmap_size/1024);
-   fprintf(stderr,"TOTAL_SIZE= %ld Kbytes\n", (text_size+data_size+brk_size+stack_size+
-	so_text_size+so_data_size+so_brk_size+mmap_size)/1024);
-  }
-#else
-  fprintf(stderr, "-showm not implemented under linux\n");
-#endif
-}
-
-
-

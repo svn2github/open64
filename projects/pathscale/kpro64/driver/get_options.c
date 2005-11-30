@@ -165,7 +165,6 @@ add_string_option (int flag, char *arg)
 	return add_derived_option(flag, arg);
 }
 
-#ifdef KEY
 /* Same as add_string_option but add '-' if arg consists of only '-'. */
 int 
 add_string_option_or_dash (int flag, char *arg)
@@ -183,7 +182,6 @@ add_string_option_or_dash (int flag, char *arg)
 	}
 	return add_derived_option(flag, arg);
 }
-#endif
 
 /* do initial pass through args to check for options that affect driver */
 void
@@ -328,6 +326,34 @@ parse_R_option (char **argv, int *argi)
 	}
 }
 
+#ifdef KEY
+/* need to hand code -Xlinker option since the generic code doesn't like
+   the arg string to begin with - */
+static int
+parse_Xlinker_option (char **argv, int *argi)
+{
+	if (!strcmp(argv[*argi], "-Xlinker"))
+	{
+		/* -Xlinker */
+		int flag;
+		get_next_arg(argi);
+		warning("%s is no longer supported, use %s instead",
+			option_name, "-Wl,");
+		if (argv[*argi] == NULL) {
+		  parse_error(option_name, "no argument given for option");
+		  return add_new_option(option_name);
+		}
+		flag = add_derived_option(O_Xlinker__, argv[*argi]);
+		add_phase_for_option(flag, P_any_ld);
+		get_next_arg(argi);
+		return flag;
+	} else {
+       		get_next_arg(argi);
+		return O_Unrecognized;
+	}
+}
+#endif
+
 static boolean middle_of_multi_option = FALSE;
 
 /* common routine to end -W by adjusting to correct place */
@@ -420,67 +446,6 @@ parse_W_option (char **argv, int *argi)
 	 */
 	set_internal_option ( flag );
 
-	return flag;
-}
-
-/* for -K option: */
-static char *optargp = NULL;	/* keep track of current -K arg */
-static char *Kopts[] = {
-#define K_PIC 0
-	"PIC",
-#define K_minabi 1
-	"minabi",
-#define K_sd 2
-	"sd",
-#define K_sz 3
-	"sz",
-#define K_fpe 4
-	"fpe",
-#define K_mau 5
-	"mau",
-	NULL};
-
-static int
-parse_K_option (char **argv, int *argi)
-{
-	int flag;
-	char *value;
-	if (optargp == NULL) {
-		optargp = string_copy(next_string(argv,argi));
-	}
-	switch (getsubopt(&optargp, Kopts, &value)) {
-	case K_PIC:
-		flag = O_KPIC; break;
-	case K_minabi:
-		flag = O_Kminabi; break;
-	case K_sd:
-		flag = O_Ksd; break;
-	case K_sz:
-		flag = O_Ksz; break;
-	case K_fpe:
-		flag = O_Kfpe; break;
-	case K_mau:
-		flag = O_Kmau; break;
-	default:
-		flag = O_K; break;
-	};
-	if (flag == O_K) {
-		/* no more options */ 
-		optargp = NULL;
-		if (!is_last_char(argv,argi)) {
-			/* Could be something like -Kv,
-		 	 * but we won't handle this as multi-opt argument,
-		 	 * and that is okay because no single -K in svr4 */
-			optargs = current_string(argv,argi);
-			flag = O_Unrecognized;
-		}
-		get_next_arg(argi);
-	} else if (*optargp == '\0') {
-		/* done with -K<values>; no more options */
-		optargp = NULL;
-		(void) get_optarg (argv,argi);	/* values arg */
-		get_next_arg(argi);
-	}
 	return flag;
 }
 

@@ -187,6 +187,7 @@ int main (int argc, char *argv[])
 		     TOP_movslq,
 		     TOP_ldc32,
 		     TOP_ldc64,
+		     TOP_movabsq,
 		     TOP_cltd,
 		     TOP_cqto,
 		     TOP_UNDEFINED );
@@ -311,6 +312,7 @@ int main (int argc, char *argv[])
 
   Instruction_Group( "ret near",
 		     TOP_ret,
+		     TOP_reti,
 		     TOP_fcmovb,
 		     TOP_fcmovbe,
 		     TOP_fcmovnb,
@@ -345,6 +347,7 @@ int main (int argc, char *argv[])
   Instruction_Group( "imult32",
 		     TOP_mul32,
 		     TOP_imul32,
+		     TOP_imulx32,
 		     TOP_imuli32,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
@@ -412,6 +415,8 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
 
   Instruction_Group("load8_16/32/64",
+		    TOP_ld8_m,
+		    TOP_ld16_m,
 		    TOP_ld8_32_n32,
 		    TOP_ldu8_32_n32,
 		    TOP_ld16_32_n32,
@@ -458,6 +463,8 @@ int main (int argc, char *argv[])
 		    TOP_ld32_64,
 		    TOP_ldx32_64,
 		    TOP_ldxx32_64,
+		    TOP_ld32_m,
+		    TOP_ld64_m,		    
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(3);
@@ -487,6 +494,10 @@ int main (int argc, char *argv[])
 		    TOP_storenti64,
 		    TOP_storentix64,
 		    TOP_storentixx64,
+		    TOP_store8_m,
+		    TOP_store16_m,
+		    TOP_store32_m,
+		    TOP_store64_m,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(3);
@@ -541,6 +552,8 @@ int main (int argc, char *argv[])
 		     TOP_movdq,
 		     TOP_movapd,
 		     TOP_movaps,
+		     TOP_movhlps,
+		     TOP_movlhps,
 		     TOP_cmpsd,
 		     TOP_cmpss,
 		     TOP_fmov,
@@ -551,9 +564,6 @@ int main (int argc, char *argv[])
   Any_Result_Available_Time(2);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fadd,  0);
-#ifdef KEY_1873
-  Resource_Requirement(res_fmul,  0);
-#endif
 
   Instruction_Group( "float-load",
 		     TOP_ldss_n32,
@@ -565,6 +575,7 @@ int main (int argc, char *argv[])
 		     TOP_ldsdx,
 		     TOP_ldsdxx,
 		     TOP_lddqa,
+		     TOP_lddqa_n32,
 		     TOP_lddqax,
 		     TOP_lddqaxx,
 		     TOP_fld,
@@ -595,9 +606,11 @@ int main (int argc, char *argv[])
 
   Instruction_Group( "float-load vector II",
 		     TOP_ldapd,
+		     TOP_ldapd_n32,
 		     TOP_ldapdx,
 		     TOP_ldapdxx,
 		     TOP_ldaps,
+		     TOP_ldaps_n32,
 		     TOP_ldapsx,
 		     TOP_ldapsxx,
 		     TOP_UNDEFINED );
@@ -673,6 +686,7 @@ int main (int argc, char *argv[])
 		     TOP_stsdx,
 		     TOP_stsdxx,
 		     TOP_stdqa,
+		     TOP_stdqa_n32,
 		     TOP_stdqax,
 		     TOP_stdqaxx,
 		     TOP_stntpd,
@@ -714,9 +728,11 @@ int main (int argc, char *argv[])
 
   Instruction_Group( "float-store vector II",
 		     TOP_staps,
+		     TOP_staps_n32,
 		     TOP_stapsx,
 		     TOP_stapsxx,
 		     TOP_stapd,
+		     TOP_stapd_n32,
 		     TOP_stapdx,
 		     TOP_stapdxx,
 		     TOP_UNDEFINED );
@@ -726,21 +742,89 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_fstore, 0);
   Store_Available_Time(3);
 
+  Instruction_Group( "vector cvt",
+		     TOP_cvtdq2pd,
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(5);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+  Store_Available_Time(5);
+
+  Instruction_Group( "int-2-float w/ mem",
+		     TOP_cvtsi2ss_x,
+		     TOP_cvtsi2ss_xx,
+		     TOP_cvtsi2ss_xxx,
+		     TOP_cvtsi2ssq_x,
+		     TOP_cvtsi2ssq_xx,
+		     TOP_cvtsi2ssq_xxx,
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
   Instruction_Group( "int-2-float",
-		     TOP_movg2x,
 		     TOP_cvtsi2ss,
-		     TOP_cvtsi2sd,
-		     TOP_cvtsi2sdq,
 		     TOP_cvtsi2ssq,
 		     TOP_UNDEFINED );
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(2);
+  Any_Result_Available_Time(14);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "double-2-float",
+		     TOP_cvtsd2ss,
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(12);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "double-2-float w/ mem",
+		     TOP_cvtsd2ss_x,
+		     TOP_cvtsd2ss_xx,
+		     TOP_cvtsd2ss_xxx,
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "int-2-double",
+		     TOP_cvtsi2sd,
+		     TOP_cvtsi2sdq,
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(11);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "int-2-double w/ mem",
+		     TOP_cvtsi2sd_x,
+		     TOP_cvtsi2sd_xx,
+		     TOP_cvtsi2sd_xxx,
+		     TOP_cvtsi2sdq_x,
+		     TOP_cvtsi2sdq_xx,
+		     TOP_cvtsi2sdq_xxx,
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(6);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fstore, 0);
+
+  Instruction_Group( "int-2-float",
+		     TOP_movg2x,
+		     TOP_movg2x64,
+		     TOP_UNDEFINED );
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(9);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "float-2-int",
 		     TOP_movx2g,
-		     TOP_cvtsd2ss,
+		     TOP_movx2g64,
 		     TOP_cvtss2sd,
 		     TOP_cvttss2si,
 		     TOP_cvttsd2si,
@@ -758,13 +842,7 @@ int main (int argc, char *argv[])
 		    TOP_subsd,
 		    TOP_subss,
 		    TOP_comisd,
-		    TOP_comixsd,
-		    TOP_comixxsd,
 		    TOP_comiss,
-		    TOP_comixss,
-		    TOP_comixxss,
-		    TOP_comixxxsd,
-		    TOP_comixxxss,
 		    TOP_fadd,
 		    TOP_faddp,
 		    TOP_fsub,
@@ -831,6 +909,8 @@ int main (int argc, char *argv[])
 		    TOP_xorpd,
 		    TOP_xzero32,
 		    TOP_xzero64,
+		    TOP_xzero128v32,
+		    TOP_xzero128v64,
 		    TOP_orps,
 		    TOP_orpd,
 		    TOP_UNDEFINED);
@@ -987,7 +1067,7 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fmul, 0);
 
-  Instruction_Group("float-alu for float vector class X",
+  Instruction_Group("float-alu for float vector class XI",
 		    TOP_unpcklps,
 		    TOP_unpckhps,
 		    TOP_UNDEFINED);
@@ -995,6 +1075,43 @@ int main (int argc, char *argv[])
   Any_Result_Available_Time(3);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fmul, 0);
+
+  Instruction_Group("float-alu for float vector class XII",
+		    TOP_shufps,
+		    TOP_shufpd,
+		    TOP_pshufd,
+		    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(4);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fmul, 0);
+
+  Instruction_Group("float-alu for float vector class XIII",
+		    TOP_psrldq,
+		    TOP_psrlq,
+		    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fmul, 0);
+
+  Instruction_Group("float-alu for float vector class XIV",
+		    TOP_punpcklwd,
+		    TOP_punpcklbw,
+		    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(2);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fmul, 0);
+
+  Instruction_Group("float-alu for float vector class XV",
+		    TOP_cmpps,
+		    TOP_cmppd,
+		    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(3);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fadd, 0);
 
   Instruction_Group("float-alu for int vector",
 		    TOP_add128v8,
@@ -1024,6 +1141,14 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fadd, 0);
 
+  Instruction_Group("float-alu for int mpy vector",
+		    TOP_mul128v16,
+		    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(6);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fmul, 0);
+		    
   Instruction_Group("float-alu for int vector w/ memory operand",
 		    TOP_addx128v8,
 		    TOP_addx128v16,
@@ -1100,6 +1225,12 @@ int main (int argc, char *argv[])
 		    TOP_subxss,
 		    TOP_subxxsd,
 		    TOP_subxxss,
+		    TOP_comixsd,
+		    TOP_comixxsd,
+		    TOP_comixss,
+		    TOP_comixxss,
+		    TOP_comixxxsd,
+		    TOP_comixxxss,
 		    TOP_filds,
 		    TOP_fildl,
 		    TOP_fildll,
@@ -1134,34 +1265,48 @@ int main (int argc, char *argv[])
   Instruction_Group("float-mul",
 		    TOP_mulsd,
 		    TOP_mulss,
-		    TOP_mulxsd,
-		    TOP_mulxss,
-		    TOP_mulxxsd,
-		    TOP_mulxxss,
-		    TOP_mulxxxsd,
-		    TOP_mulxxxss,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(4);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fmul, 0);
 
+  Instruction_Group("float-mul w/ mem operand",
+		    TOP_mulxsd,
+		    TOP_mulxxsd,
+		    TOP_mulxxxsd,
+		    TOP_mulxss,
+		    TOP_mulxxss,
+		    TOP_mulxxxss,
+		    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(6);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fmul, 0);
+
   Instruction_Group("float-divide",
-		    TOP_divsd,
-		    TOP_divxsd,
-		    TOP_divxxsd,
 		    TOP_divss,
-		    TOP_divxss,
-		    TOP_divxxss,
-		    TOP_divxxxss,
-		    TOP_divxxxsd,
+		    TOP_divsd,
 		    TOP_fdiv,
 		    TOP_fdivp,
 		    TOP_fdivr,
 		    TOP_fdivrp,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
-  Any_Result_Available_Time(18);
+  Any_Result_Available_Time(20);
+  Resource_Requirement(res_issue, 0);
+  Resource_Requirement(res_fmul, 0);
+
+  Instruction_Group("float-divide",
+		    TOP_divxsd,
+		    TOP_divxxsd,
+		    TOP_divxss,
+		    TOP_divxxss,
+		    TOP_divxxxss,
+		    TOP_divxxxsd,
+		    TOP_UNDEFINED);
+  Any_Operand_Access_Time(0);
+  Any_Result_Available_Time(22);
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_fmul, 0);
 

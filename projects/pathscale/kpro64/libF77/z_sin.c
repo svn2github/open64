@@ -45,7 +45,7 @@
 #include "defalias.h"
 #include "moremath.h"
 
-dcomplex __zsin(double_t zdreal, double_t zdimag)
+dcomplex __zsin(double zdreal, double zdimag)
 {
   dcomplex r;
 

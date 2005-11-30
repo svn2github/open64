@@ -44,9 +44,9 @@
 #include "defalias.h"
 #include "moremath.h"
 
-dcomplex __zsqrt(double_t zdreal, double_t zdimag)
+dcomplex __zsqrt(double zdreal, double zdimag)
 {
-  double_t mag;
+  double mag;
   dcomplex result;
 
   if ((mag = hypot(zdreal, zdimag)) == 0.) {

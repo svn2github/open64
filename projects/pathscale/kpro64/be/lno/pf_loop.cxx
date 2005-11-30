@@ -198,6 +198,16 @@ static BOOL Loop_Before_MP_Region (WN* wn) {
   return FALSE;
 }
 
+#ifdef KEY
+static BOOL Has_Indirect_Ref (WN* wn)
+{
+  if (WN_operator(wn) == OPR_ILOAD) return TRUE;
+  for (INT kid = 0; kid < WN_kid_count(wn); kid ++)
+    if (Has_Indirect_Ref(WN_kid(wn, kid)))
+      return TRUE;
+  return FALSE;
+}
+#endif
 /***********************************************************************
  *
  * Add_Ref - If reference is reasonable, 
@@ -227,12 +237,30 @@ void PF_LOOPNODE::Add_Ref (WN* wn_array) {
   }
 
   if (array) {
+#ifdef KEY 
+    // Bug 1656, 2945 - filter out indirect references from the messy vectors
+    // to enable aggressive prefetching under AGGRESSIVE_PREFETCH.
+    // TODO: If this is always safe, then we could make it default.
+    for (INT i=0; i<array->Num_Vec(); i++) {
+      ACCESS_VECTOR *av = array->Dim(i);
+      if (av->Contains_Non_Lin_Symb()) {
+        messy = TRUE;
+      } else if (av->Too_Messy) {
+	if (LNO_Run_Prefetch == AGGRESSIVE_PREFETCH) {
+	  if (Has_Indirect_Ref(wn_array))
+	    messy = TRUE;
+	} else
+	  messy = TRUE;
+      }
+    }
+#else
     for (INT i=0; i<array->Num_Vec(); i++) {
       ACCESS_VECTOR *av = array->Dim(i);
       if (av->Too_Messy || av->Contains_Non_Lin_Symb()) {
         messy = TRUE;
       }
     }
+#endif
   }
 
   if (WN_element_size(wn_array) < 0) {
@@ -497,8 +525,25 @@ void PF_LOOPNODE::Process_Loop () {
   // immediately nested loops in _child
   const WN * w = WN_do_body(_code);
 #ifdef KEY
-  if (LNO_Run_Prefetch > SOME_PREFETCH || 
-      (LNO_Run_Prefetch == SOME_PREFETCH && !Is_Multi_BB (w)))
+  DO_LOOP_INFO *dli = (DO_LOOP_INFO *) WN_MAP_Get(LNO_Info_Map, _code);
+  BOOL single_small_trip_loop = FALSE; 
+ 
+  if (LNO_Run_Prefetch != AGGRESSIVE_PREFETCH && dli->Is_Inner) {
+    // Check if loop is not inside a nested loop (outermost loop) and if the
+    // trip count is small then avoid inserting prefetches - bug 2958
+    WN* parent = LWN_Get_Parent(_code);
+    while (parent && WN_opcode(parent) != OPC_DO_LOOP)
+      parent = LWN_Get_Parent(parent);
+    if (!parent && 
+	((!dli->Num_Iterations_Symbolic && 
+	  dli->Est_Num_Iterations < 100) ||
+	 (dli->Num_Iterations_Symbolic &&
+	  LNO_Assume_Unknown_Trip_Count < 100)))
+      single_small_trip_loop = TRUE; 
+  }
+  if ((LNO_Run_Prefetch > SOME_PREFETCH || 
+       (LNO_Run_Prefetch == SOME_PREFETCH && !Is_Multi_BB (w))) &&
+      !single_small_trip_loop)
 #endif
     Process_Refs (w);
 

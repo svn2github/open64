@@ -542,7 +542,11 @@
 #	define		_ACCEPT_CMD_ed_z		TRUE
 #	undef		_ACCEPT_CMD_ed_A
 #	undef		_ACCEPT_CMD_ed_C
+# ifdef KEY
+#	define		_ACCEPT_CMD_ed_D                TRUE
+# else
 #	undef		_ACCEPT_CMD_ed_D
+# endif
 #	define		_ACCEPT_CMD_ed_U		TRUE
 #	define		_ACCEPT_CMD_ed_X		TRUE
 #	undef		_ACCEPT_CMD_ed_0

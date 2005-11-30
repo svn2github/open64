@@ -652,6 +652,12 @@ Generate_Entry (BB *bb, BOOL gra_run )
     Print_OPS (&ops);
   }
 
+#ifdef TARG_X8664
+  if( Is_Target_32bit() && Gen_PIC_Shared ){
+    EETARG_Generate_PIC_Entry_Code( bb, &ops );
+  }
+#endif
+
   /* Merge the new operations into the beginning of the entry BB: */
   BB_Prepend_Ops(bb, &ops);
 }
@@ -851,6 +857,41 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
       if (PLOC_on_stack(ploc)) return NULL;
     }
   }
+
+#ifdef TARG_X8664
+  /* Don't perform tail call optimization if the caller does not write the result to
+     the x87 stack, but the callee does. (bug#2841)
+   */
+  if( Is_Target_32bit() ){
+    bool caller_uses_stack = false;
+
+    const RETURN_INFO caller_return_info =
+      Get_Return_Info( TY_ret_type(ST_pu_type(pu_st)),
+		       No_Simulated,
+		       PU_ff2c_abi(Pu_Table[ST_pu(pu_st)]) );
+
+    for( int i = 0; i < RETURN_INFO_count(caller_return_info); i++ ){
+      const TYPE_ID type = RETURN_INFO_mtype( caller_return_info, i );
+      if( MTYPE_is_float( type ) ){
+	caller_uses_stack = true;
+	break;
+      }
+    }
+
+    const RETURN_INFO callee_return_info =
+      Get_Return_Info( TY_ret_type(func_type),
+		       No_Simulated,
+		       call_st ? PU_ff2c_abi(Pu_Table[ST_pu(call_st)]) : FALSE ); 
+
+    for( int i = 0; i < RETURN_INFO_count(callee_return_info); i++ ){
+      const TYPE_ID type = RETURN_INFO_mtype( callee_return_info, i );
+      if( MTYPE_is_float( type ) ){
+	if( !caller_uses_stack )
+	  return NULL;
+      }
+    }
+  }
+#endif // TARG_X8664
 
   /* We need to make sure that the function values for the current
    * PU are the same or a subset of the function values for the
@@ -1218,6 +1259,43 @@ Generate_Unique_Exit(void)
   }
 }
 
+#ifdef TARG_X8664
+void Adjust_SP_After_Call( BB* bb )
+{
+  OP* op = BB_last_op(bb);
+  if( op == NULL || !OP_call( op ) )
+    return;
+
+  const ANNOTATION* ant = ANNOT_Get( BB_annotations(bb), ANNOT_CALLINFO );
+  const CALLINFO* call_info = ANNOT_callinfo(ant);
+  const ST* call_st = CALLINFO_call_st(call_info);
+  const WN* call_wn = CALLINFO_call_wn(call_info);
+  const TY_IDX call_ty = call_st != NULL ? ST_pu_type(call_st) : WN_ty(call_wn);
+  const BOOL ff2c_abi =
+    call_st != NULL ? PU_ff2c_abi( Pu_Table[ST_pu(call_st)] ) : FALSE;
+  const RETURN_INFO return_info = Get_Return_Info( TY_ret_type(call_ty),
+						   No_Simulated,
+						   ff2c_abi );
+
+  /* The C++ front-end will add the first fake param, then convert the
+     function return type to void. (bug#2424)
+   */
+  if( RETURN_INFO_return_via_first_arg(return_info) ||
+      TY_return_to_param( call_ty ) ){
+    OPS ops = OPS_EMPTY;
+    Exp_SUB( Pointer_Mtype, SP_TN, SP_TN, Gen_Literal_TN(4,0), &ops );
+    BB_Append_Ops( bb, &ops );
+
+    if( Trace_EE ){
+#pragma mips_frequency_hint NEVER
+      fprintf( TFile, "%sDecrease SP by 4 bytes after call in BB:%d\n",
+	       DBar, BB_id(bb) );
+      Print_OPS( &ops );
+    }
+  }
+}
+#endif
+
 
 /* ====================================================================
  *
@@ -1315,6 +1393,12 @@ Generate_Exit (
   if ( gra_run )
     EETARG_Restore_Extra_Callee_Tns (&ops);
 
+#ifdef TARG_X8664
+  if( Is_Target_32bit() && Gen_PIC_Shared ){
+    EETARG_Generate_PIC_Exit_Code( bb_epi, &ops );
+  }
+#endif
+
   if (NULL != RA_TN) {
     if ( PU_has_return_address(Get_Current_PU()) ) {
       /* If the return address builtin is required, restore RA_TN from the 
@@ -1372,7 +1456,7 @@ Generate_Exit (
     if (! sr.user_allocated)
       continue;
     /* generate the reload ops */
-    CGSPILL_Load_From_Memory (sr.ded_tn, sr.temp, &ops, CGSPILL_LCL, bb);
+    CGSPILL_Load_From_Memory (sr.ded_tn, sr.temp, &ops, CGSPILL_LCL, bb_epi);
     Set_OP_no_move_before_gra(OPS_last(&ops));
   }
 #endif
@@ -1421,7 +1505,25 @@ Generate_Exit (
    * block, in which case the xfer instruction is already there.
    */
   if (!BB_call(bb_epi)) { 
-	Exp_Return (RA_TN, &ops);
+#ifdef TARG_X8664
+    int sp_adjust = 0;
+
+    if( Is_Target_32bit() ){
+      const TY_IDX call_ty = ST_pu_type(st);
+      const BOOL ff2c_abi = PU_ff2c_abi(Pu_Table[ST_pu(st)]);
+      const RETURN_INFO return_info = Get_Return_Info( TY_ret_type(call_ty),
+						       No_Simulated,
+						       ff2c_abi );
+      if( RETURN_INFO_return_via_first_arg(return_info) ||
+	  TY_return_to_param( call_ty ) ){
+	sp_adjust = Pointer_Size;
+      }
+    }
+
+    Exp_Return( RA_TN, sp_adjust, &ops );
+#else
+    Exp_Return (RA_TN, &ops);
+#endif // TARG_X8664
   }
 
   /* set the srcpos field for all the exit OPs */
@@ -2031,6 +2133,10 @@ Adjust_Exit(ST *pu_st, BB *bb)
    */
   if (Gen_Frame_Pointer && PUSH_FRAME_POINTER_ON_STACK) {
     OP* op = EETARG_High_Level_Procedure_Exit ();
+#ifdef TARG_X8664
+    if (W2OPS_Pragma_Preamble_End_Seen())
+      Set_OP_first_after_preamble_end(op);
+#endif
     BB_Insert_Op_After (bb, sp_adj, op);
     BB_Remove_Op (bb, sp_adj);
     sp_adj = op;
@@ -2171,6 +2277,14 @@ Adjust_Entry_Exit_Code( ST *pu )
 
 INT Cgdwarf_Num_Callee_Saved_Regs (void)
 {
+  if (PU_has_altentry(Get_Current_PU())) {
+    if (Debug_Level > 0) {
+      fprintf(stderr, 
+            "Warning! -g is not supported when ENTRY statements are used\n");
+      DevWarn("NYI: we need different Saved_Callee_Saved_Regs for different entry");
+    }
+    return 0;
+  }
   return Saved_Callee_Saved_Regs.Elements();
 }
 
@@ -2182,50 +2296,5 @@ struct tn* Cgdwarf_Nth_Callee_Saved_Reg (INT n)
 ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n)
 {
   return Saved_Callee_Saved_Regs.Top_nth(n).temp;
-}
-
-static inline BOOL
-tn_registers_identical (TN *tn1, TN *tn2)
-{
-  return ((tn1 == tn2) ||
-          ((TN_is_register(tn1) && TN_is_register(tn2) &&
-	    (TN_is_dedicated(tn1) || 
-	     (TN_register(tn1) != REGISTER_UNDEFINED)) &&           
-	    (TN_is_dedicated(tn2) || 
-	     (TN_register(tn2) != REGISTER_UNDEFINED)) &&           
-	    (TN_register_and_class(tn1) == TN_register_and_class(tn2)))));
-}
-
-void Sort_Saved_Register_Stack (BB* bb)
-{
-  INT num_callee_saved_regs = Saved_Callee_Saved_Regs.Elements();
-  if (!num_callee_saved_regs)
-    return;
-
-  STACK<SAVE_REG_LOC> Stack_Temp(&MEM_pu_pool);
-  OP* op;
-  SAVE_REG_LOC sr;
-  INT i;
-
-  FOR_ALL_BB_OPs_REV(bb, op) {
-    if ((OP_code(op) == TOP_store64 || 
-	 (OP_code(op) == TOP_store32 && Is_Target_32bit())) &&
-	(OP_opnd(op, 1) == SP_TN || OP_opnd(op, 1) == FP_TN)) {
-      TN* opnd = OP_opnd(op, 0);
-      for (i = 0; i < num_callee_saved_regs; i ++)
-	if (tn_registers_identical(Saved_Callee_Saved_Regs.Top_nth(i).ded_tn, 
-				   opnd))
-	  break;
-      if (i != num_callee_saved_regs) {
-        sr = Saved_Callee_Saved_Regs.Top_nth(i);
-        Stack_Temp.Push(sr);
-      }
-    }	
-  }
-
-  for (i = 0; i < num_callee_saved_regs && Stack_Temp.Elements(); i ++) 
-    Saved_Callee_Saved_Regs.Top_nth(i) = Stack_Temp.Pop();
-
-  return;
 }
 #endif

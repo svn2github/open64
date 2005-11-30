@@ -3113,14 +3113,19 @@ boolean  operation_is_intrinsic(operator_type   opr,
          break;
 
       case Eq_Opr :
+# ifndef KEY
       case Ge_Opr :
+# endif
 
          if (EQ_NE_TYPE(exp_idx_l, exp_idx_r) == Err_Res ||
              EQ_NE_EXTN(exp_idx_l, exp_idx_r)) {
             intrinsic = FALSE;
          }
          break;
-
+// Bug 2236
+# ifdef KEY
+      case Ge_Opr :
+# endif
       case Gt_Opr :
       case Le_Opr :
       case Lt_Opr :
@@ -3241,6 +3246,159 @@ boolean fold_relationals(int		idx_1,
 
 }  /* fold_relationals */
 
+# ifdef KEY
+static boolean is_loop_index_of_forall_loop (int ir_idx)
+{
+  int stmt_sh_idx, forall_list_idx, index_idx;
+  boolean found = FALSE;
+
+  stmt_sh_idx = SH_PREV_IDX(curr_stmt_sh_idx);
+  while (stmt_sh_idx != NULL_IDX){
+    if ( IR_OPR(SH_IR_IDX(stmt_sh_idx)) == Forall_Opr ){
+      found = TRUE;
+      break;
+    }
+    else if (SH_STMT_TYPE(stmt_sh_idx) == End_Forall_Stmt)
+      break;
+    stmt_sh_idx = SH_PREV_IDX(stmt_sh_idx);
+  }
+
+  if (!found)
+    return FALSE;
+
+  forall_list_idx = IR_IDX_R(SH_IR_IDX(stmt_sh_idx));
+  index_idx = IL_IDX(forall_list_idx);
+
+  if (IL_FLD(index_idx) == AT_Tbl_Idx){
+    index_idx = IL_IDX(index_idx);
+    ir_idx = IL_IDX(ir_idx);
+    if (AT_ATTR_LINK(index_idx) == ir_idx)
+      return TRUE;
+  }
+  return FALSE;
+}
+static int ir_contains_variable_subscript(int ir_idx, int pos)
+{
+  int ret_idx = NULL_IDX;
+  int attr_bd_idx;
+
+  if (IR_OPR(ir_idx) == Subscript_Opr)
+  {
+    int arg_idx = IR_IDX_R(ir_idx);
+    for (int index = 1; index < pos; index++)
+      arg_idx = IL_NEXT_LIST_IDX(arg_idx);
+    if (IL_FLD(arg_idx) == AT_Tbl_Idx){
+      int array_idx = IR_IDX_L(ir_idx);
+      if (IR_FLD_L(ir_idx) == AT_Tbl_Idx &&
+          is_loop_index_of_forall_loop(arg_idx)){
+        attr_bd_idx =  ATD_ARRAY_IDX(array_idx);
+        if (BD_LB_FLD(attr_bd_idx, pos) == CN_Tbl_Idx &&
+          BD_UB_FLD(attr_bd_idx, pos) == CN_Tbl_Idx &&
+          BD_SM_FLD(attr_bd_idx, pos) == CN_Tbl_Idx)
+          return ir_idx;
+      }
+    }
+  }
+  else{
+    if (IR_FLD_L(ir_idx) == IR_Tbl_Idx){
+      ret_idx = ir_contains_variable_subscript(IR_IDX_L(ir_idx), pos);
+      if (ret_idx != NULL_IDX)
+        return ret_idx;
+     }
+
+    if (IR_FLD_R(ir_idx) == IR_Tbl_Idx){
+      ret_idx = ir_contains_variable_subscript(IR_IDX_R(ir_idx), pos);
+      if (ret_idx != NULL_IDX)
+        return ret_idx;
+    }
+  }
+  return ret_idx;
+}
+static void change_extent(opnd_type          *result_opnd)
+{
+  int subscript_idx, list_idx_11, list_idx_12, list_idx_13,list_idx_14, list_idx_15, list_idx_16, maxval_idx, arg_idx, triplet_idx, attr_bd_idx, i, line, col;
+
+  i = 1;
+  line = OPND_LINE_NUM((*result_opnd));
+  col = OPND_COL_NUM((*result_opnd));
+  subscript_idx = NULL_IDX;
+  if (OPND_FLD((*result_opnd)) == IR_Tbl_Idx)
+    subscript_idx = ir_contains_variable_subscript(OPND_IDX((*result_opnd)),i);
+  if (subscript_idx != NULL_IDX)
+  {
+
+    NTR_IR_LIST_TBL(list_idx_11);
+    maxval_idx = gen_ir(IL_Tbl_Idx, list_idx_11, Maxval_Opr, SA_INTEGER_DEFAULT_TYPE, line, col, NO_Tbl_Idx, NULL_IDX);
+    IR_RANK(maxval_idx) = 0;
+    IR_LIST_CNT_L(maxval_idx) = 3;
+    IR_LIST_CNT_R(maxval_idx) = 0;
+
+    IL_FLD(list_idx_11) = IR_Tbl_Idx;
+    IL_ARG_DESC_VARIANT(list_idx_11) = TRUE;
+    IL_LINE_NUM(list_idx_11) = line;
+    IL_COL_NUM(list_idx_11)  = col;
+    IL_IDX(list_idx_11) = OPND_IDX((*result_opnd));
+
+    IR_OPR(subscript_idx) = Whole_Subscript_Opr;
+    arg_idx = IR_IDX_R(subscript_idx);
+    for (int index = 1; index < i; index++)
+      arg_idx = IL_NEXT_LIST_IDX(arg_idx);
+
+    attr_bd_idx =  ATD_ARRAY_IDX(IR_IDX_L(subscript_idx));
+
+    NTR_IR_LIST_TBL(list_idx_14);
+    triplet_idx = gen_ir(IL_Tbl_Idx, list_idx_14, Triplet_Opr, SA_INTEGER_DEFAULT_TYPE, line, col, NO_Tbl_Idx, NULL_IDX);
+    IR_LIST_CNT_L(triplet_idx) = 3;
+
+    IL_FLD(arg_idx) = IR_Tbl_Idx;
+    IL_IDX(arg_idx) = triplet_idx;
+    IL_LINE_NUM(arg_idx) = line;
+    IL_COL_NUM(arg_idx)  = col;
+
+    IL_ARG_DESC_VARIANT(list_idx_14) = TRUE;
+    IL_LINE_NUM(list_idx_14) = line;
+    IL_COL_NUM(list_idx_14)  = col;
+    IL_FLD(list_idx_14) = BD_LB_FLD(attr_bd_idx, i);
+    IL_IDX(list_idx_14) = BD_LB_IDX(attr_bd_idx, i);
+
+    NTR_IR_LIST_TBL(list_idx_15);
+    IL_ARG_DESC_VARIANT(list_idx_15) = TRUE;
+    IL_LINE_NUM(list_idx_15) = line;
+    IL_COL_NUM(list_idx_15)  = col;
+    IL_FLD(list_idx_15) = BD_UB_FLD(attr_bd_idx, i);
+    IL_IDX(list_idx_15) = BD_UB_IDX(attr_bd_idx, i);
+    IL_NEXT_LIST_IDX(list_idx_14) = list_idx_15;
+                       
+    NTR_IR_LIST_TBL(list_idx_16);
+    IL_ARG_DESC_VARIANT(list_idx_16) = TRUE;
+    IL_LINE_NUM(list_idx_16) = line;
+    IL_COL_NUM(list_idx_16)  = col;
+    IL_FLD(list_idx_16) = BD_XT_FLD(attr_bd_idx, i);
+    IL_IDX(list_idx_16) = C_INT_TO_CN(SA_INTEGER_DEFAULT_TYPE, CN_INT_TO_C(BD_UB_IDX(attr_bd_idx,i))/CN_INT_TO_C(BD_XT_IDX(attr_bd_idx,i)));
+    IL_NEXT_LIST_IDX(list_idx_15) = list_idx_16;
+                       
+    IL_NEXT_LIST_IDX(list_idx_16) = NULL_IDX;
+
+    NTR_IR_LIST_TBL(list_idx_12);
+    IL_FLD(list_idx_12) = CN_Tbl_Idx;
+    IL_IDX(list_idx_12) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, i);;
+    IL_ARG_DESC_VARIANT(list_idx_12) = TRUE;
+    IL_LINE_NUM(list_idx_12) = line;
+    IL_COL_NUM(list_idx_12)  = col;
+    IL_NEXT_LIST_IDX(list_idx_11) = list_idx_12;
+
+    NTR_IR_LIST_TBL(list_idx_13);
+    IL_FLD(list_idx_13) = NO_Tbl_Idx;
+    IL_LINE_NUM(list_idx_13) = line;
+    IL_COL_NUM(list_idx_13)  = col;
+    IL_ARG_DESC_VARIANT(list_idx_13) = TRUE;
+    IL_NEXT_LIST_IDX(list_idx_12) = list_idx_13;
+    IL_NEXT_LIST_IDX(list_idx_13) = NULL_IDX;
+                      
+    OPND_IDX((*result_opnd)) = maxval_idx;
+  }
+}
+#endif
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -3347,6 +3505,10 @@ void	make_triplet_extent_tree(opnd_type	*opnd,
    /* end */
    COPY_OPND(topnd, IL_OPND(list_idx));
    copy_subtree(&topnd, &topnd);
+// Bug 2364
+# ifdef KEY
+   change_extent(&topnd);
+# endif
    COPY_OPND(IR_OPND_L(sub_idx), topnd);
 
    foldable = foldable && (IL_FLD(list_idx) == CN_Tbl_Idx ||
@@ -9003,6 +9165,7 @@ static boolean array_construct_opr_handler(opnd_type		*result_opnd,
 
 }  /* array_construct_opr_handler */
 
+
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -9685,7 +9848,10 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
                }
                else {
                   COPY_OPND(opnd, IL_OPND(list_idx));
+// Bug 2606
+# ifndef KEY
                   cast_to_cg_default(&opnd, &exp_desc_r);
+# endif
                   COPY_OPND(IL_OPND(list_idx), opnd);
                }
             }
@@ -14658,8 +14824,11 @@ void transform_cri_ch_ptr(opnd_type     *result_opnd)
 
       overlay_attr_idx = gen_compiler_tmp(line, col, Shared, TRUE);
       ATD_CLASS(overlay_attr_idx) = Variable;
-
+#ifdef KEY
+      ATD_TYPE_IDX(overlay_attr_idx)         = SA_INTEGER_DEFAULT_TYPE;
+#else
       ATD_TYPE_IDX(overlay_attr_idx)         = INTEGER_DEFAULT_TYPE;
+#endif
       ATD_STOR_BLK_IDX(overlay_attr_idx)     = ATD_STOR_BLK_IDX(attr_idx);
       ATD_EQUIV(overlay_attr_idx)            = TRUE;
       AT_REFERENCED(overlay_attr_idx)        = Referenced;

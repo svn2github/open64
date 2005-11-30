@@ -777,6 +777,12 @@ static void MIR_Replace(WN*                      loop,
   TYPE_ID       type = WN_desc(LWN_Get_Parent(p->Wnlist[0]));
   TY_IDX        ty = Be_Type_Tbl(type);
   TY_IDX        pty = Make_Pointer_Type(ty);
+#ifdef KEY
+  // Bug 3072 - If parent type is MTYPE_BS then, we can not create OPC_BSBSLDID 
+  // - triggered by fix to this bug in model.cxx (adjust esz to 1-byte in 
+  // Build_Aarray).
+  if (type == MTYPE_BS) return;
+#endif
 
   if (Minv_Debug) {
     fprintf(TFile, "In loop %s, hoisting", SYMBOL(WN_index(loop)).Name());

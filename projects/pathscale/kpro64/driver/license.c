@@ -48,7 +48,7 @@ void obtain_license (char *exedir, int argc, char *argv[]) {
     int i ;
     char *l ;
 
-    const char *errortext = "Unable to obtain subscription.  The PathScale compiler cannot run without a subscription.\nPlease see http://www.pathscale.com/support/subscription_msgs.html for details.\n" ;
+    const char *errortext = "Unable to obtain subscription.  The PathScale compiler cannot run without a subscription.\nPlease see http://www.pathscale.com/subscription/1.1/msgs.html for details.\n" ;
    
     l = getenv ("PATHSCALE_SUBSCRIPTION_CLIENT") ;
     if (l == NULL) {

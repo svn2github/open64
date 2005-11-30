@@ -174,6 +174,8 @@ extern void Exp_Immediate (TN *dest, TN *src, BOOL is_signed, OPS *);
 	Exp_OP2 (OPCODE_make_op(OPR_SUB,mtype,MTYPE_V), dest,src1,src2,ops)
 #define Exp_MPY(mtype,dest,src1,src2,ops)	\
 	Exp_OP2 (OPCODE_make_op(OPR_MPY,mtype,MTYPE_V), dest,src1,src2,ops)
+#define Exp_BAND(mtype,dest,src1,src2,ops)	\
+	Exp_OP2 (OPCODE_make_op(OPR_BAND,mtype,MTYPE_V), dest,src1,src2,ops)
 
 /* check whether to eval the condition separate from the select */
 extern BOOL Check_Select_Expansion (OPCODE compare);
@@ -220,7 +222,11 @@ extern void Exp_Deposit_Bits (TYPE_ID rtype, TYPE_ID desc,
 			      TN *tgt_tn, TN *src1_tn, TN *src2_tn, OPS *ops);
 
 /* expand return instruction */
+#ifdef TARG_X8664
+extern void Exp_Return (TN *return_address, int sp_adjust, OPS *ops);
+#else
 extern void Exp_Return (TN *return_address, OPS *ops);
+#endif
 
 /* expand call instruction */
 extern void Exp_Call (OPERATOR opr, TN *return_address, TN *target, OPS *ops);

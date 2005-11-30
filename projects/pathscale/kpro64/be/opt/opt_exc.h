@@ -111,60 +111,10 @@ public:
   EXC_SCOPE *Parent(void) const           { return _parent; }
   void       Set_begin_wn(WN *wn)         { _begin_wn = wn; }
   WN        *Begin_wn(void) const         { return _begin_wn; }
-  BOOL       Is_cleanup_region(void) const;
-  INT        Destruct_object_cnt(void);
-  AUX_ID     Destruct_object(INT); // call Destruct_object_cnt first!
   BOOL       Is_try_region(void) const;
   void       Add_call(WN *wn)             { _call_list->AddElement(wn); }
   mINT32     Call_count(void) const       { return _call_list->Lastidx()+1; }
   WN        *Get_call(INT i)              { return (*_call_list)[i]; }
-};
-
-// iterator to traverse the exc_scope through its parent chain
-class EXC_SCOPE_ITER {
-  EXC_SCOPE *_exc_scope;
-  EXC_SCOPE *_cur;
-
-  // private constructor so it cannot be used
-  EXC_SCOPE_ITER(void);
-  EXC_SCOPE_ITER(const EXC_SCOPE_ITER&);
-  EXC_SCOPE_ITER& operator = (const EXC_SCOPE_ITER&);
-
-  // private methods
-
-public:
-  EXC_SCOPE_ITER(EXC_SCOPE *exc_scope)  { _exc_scope = exc_scope; }
-  ~EXC_SCOPE_ITER(void)                 {}
-  void       Init(void)                 {}
-  EXC_SCOPE *First(void)                { return _cur = _exc_scope; }
-  EXC_SCOPE *Next(void)                 { return _cur = _cur->Parent(); }
-  EXC_SCOPE *Cur(void)                  { return _cur; }
-  BOOL       Is_Empty(void)   const     { return _cur == NULL; }
-  EXC_SCOPE *First_elem(void)           { return First();}
-  EXC_SCOPE *Next_elem(void)            { return Next();}
-};
-
-class EXC_SCOPE_CLEANUP_ITER {
-  EXC_SCOPE *_exc_scope;  // the related exc_scope;
-  mINT32     _cur;
-
-  // private constructor so it cannot be used
-  EXC_SCOPE_CLEANUP_ITER(void);
-  EXC_SCOPE_CLEANUP_ITER(const EXC_SCOPE_CLEANUP_ITER&);
-  EXC_SCOPE_CLEANUP_ITER& operator = (const EXC_SCOPE_CLEANUP_ITER&);
-
-  // private methods
-
-public:
-  EXC_SCOPE_CLEANUP_ITER(EXC_SCOPE *exc_scope) {_exc_scope = exc_scope; }
-  ~EXC_SCOPE_CLEANUP_ITER(void) { }
-  void    Init(void)		{ }
-  mINT32  First(void)		{ return _cur =
-				    _exc_scope->Destruct_object_cnt() - 1; }
-  mINT32  Next(void)		{ return --_cur; }
-  BOOL    Is_Empty(void)	{ return _cur < 0; }
-  AUX_ID  First_elem(void)	{ return _exc_scope->Destruct_object(First());}
-  AUX_ID  Next_elem(void)	{ return _exc_scope->Destruct_object(Next()); }
 };
 
 class EXC_SCOPE_TRY_ITER {

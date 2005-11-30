@@ -1938,19 +1938,24 @@ static SAME_ADDR_RESULT CG_DEP_Address_Analyze(OP *pred_op, OP *succ_op)
   SAME_ADDR_RESULT res = DONT_KNOW;
   INT64 diff0, diff1;
 
+#ifndef TARG_X8664
   /* Unaligned mem ops can be tricky and aren't very common.
    * Rely on WOPT/LNO analysis of these (in their original form,
    * before they were split into two unaligned ops).
    */
   if (OP_unalign_mem(pred_op) || OP_unalign_mem(succ_op))
     return DONT_KNOW;
+#endif // !TARG_X8664
 
-#ifndef TARG_X8664_1873
-  if( TOP_Find_Operand_Use( OP_code(pred_op), OU_index ) >= 0 ||
-      TOP_Find_Operand_Use( OP_code(succ_op), OU_index ) >= 0 ){
+#ifdef TARG_X8664
+  /* Stay away from floating-point mpy until it is well-understood.
+   */
+  if( ( OP_code(pred_op) == OP_code(succ_op) ) &&
+      OP_load_exe(pred_op) &&
+      OP_fmul(pred_op) ){
     return DONT_KNOW;
   }
-#else
+
   /* Check the index register and scale value first.
    */
   const TOP pred_top = OP_code(pred_op);
@@ -1973,7 +1978,7 @@ static SAME_ADDR_RESULT CG_DEP_Address_Analyze(OP *pred_op, OP *succ_op)
     if( TN_value( pred_scale ) != TN_value( succ_scale ) )
       return DONT_KNOW;
   }
-#endif
+#endif // TARG_X8664
 
   if (symbolic_addr_subtract(pred_op, succ_op, &res)) {
     return res;
@@ -2156,6 +2161,16 @@ static BOOL verify_mem(BOOL              result,
 {
   /* Don't bother with non-definite MEMREAD arcs */
   if (!*definite && OP_load(pred_op) && OP_load(succ_op)) return FALSE;
+
+#ifdef TARG_X8664
+  /* Stay away from floating-point mpy until it is well-understood.
+   */
+  if( !*definite && OP_load_exe(pred_op) && OP_load_exe(succ_op) ){
+    if( !OP_fmul(pred_op) ||
+	!OP_fmul(succ_op) )
+      return FALSE;
+  }
+#endif
 
   if (!CG_DEP_Verify_Mem_Deps || !CG_DEP_Addr_Analysis) return result;
 
@@ -2404,8 +2419,6 @@ static BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
     if (!CG_DEP_Ignore_LNO && Current_Dep_Graph != NULL &&
 #ifdef KEY
 	/* bug#1964
-	   The LNO data dependence graph is not updated after simd optimization.
-	   TODO: update the dep. graph in simd.
 	 */
 	!TOP_is_vector_op(OP_code(pred_op)) &&
 	!TOP_is_vector_op(OP_code(succ_op)) &&
@@ -3573,9 +3586,17 @@ static void Add_MEM_Arcs(BB *bb)
    */
   if (BB_exit(bb)) {
     OP *exit_sp_adj = BB_exit_sp_adj_op(bb);
-    for (op = exit_sp_adj; op != NULL; op = OP_prev(op)) {
-      maybe_add_exit_sp_adj_arc (op, exit_sp_adj);
-    }
+#ifdef KEY
+    /* <exit_sp_adj> could reside in a different bb, say _epilog_bb
+       for bug#3241.
+     */
+    if( OP_bb(exit_sp_adj) == bb )
+#endif // KEY
+      {
+	for (op = exit_sp_adj; op != NULL; op = OP_prev(op)) {
+	  maybe_add_exit_sp_adj_arc (op, exit_sp_adj);
+	}
+      }
   }
 
 #ifdef KEY

@@ -128,6 +128,14 @@ static struct cvt_rule {
 // or NEED_CVTL.
 INT Need_type_conversion(TYPE_ID from_ty, TYPE_ID to_ty, OPCODE *opc)
 {
+#ifdef TARG_X8664 // bug 2879
+  if (Is_Target_32bit() && from_ty == MTYPE_U4 && 
+      MTYPE_is_integral(to_ty) && MTYPE_byte_size(to_ty) == 8) {
+    if (opc != NULL) 
+      *opc = OPC_U8U4CVT;
+    return NEED_CVT;
+  }
+#endif
   if (!(MTYPE_is_integral(from_ty) && MTYPE_is_integral(to_ty))) {
     if (from_ty == to_ty) return NOT_AT_ALL;
     if (opc != NULL) 

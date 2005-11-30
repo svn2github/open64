@@ -76,9 +76,7 @@ extern char *ld_libraryn32_path;   /* env. variable LD_LIBRARYN32_PATH */
 
 extern char *orig_program_name; /* actual name passed in to argv[0] */
 
-#ifdef KEY
 boolean dump_outfile_to_stdout;	// for "-o -"
-#endif
 
 
 /* call once before running compiler */
@@ -96,6 +94,9 @@ extern void run_prof (void);
 /* run whole compiler */
 extern void run_compiler (int argc, char *argv[]);
 
+/* return fixed-up file name */
+extern char *fix_name_by_lang (char *name);
+
 /* save original command line */
 extern void save_command_line(int, char **);
 extern void set_current_arg_pos(int n);
@@ -107,10 +108,8 @@ extern void add_minus_c_option(void);
 extern void save_ipl_commands (void);
 extern char *dirname(char *const s);
 
-#ifdef KEY
 // Change the phase names based on run-time info.
-extern void init_phase_names ();
-#endif
+extern void init_phase_names (void);
 
 #define PASS1 0
 #define PASS2 1

@@ -3002,7 +3002,15 @@ DCE::Prop_return_vsym_new_result( CODEREP *cr ) const
     else {
       // dead statements skip over this, so return the chi operand
       // which should have been updated to the correct value by now
+//Bug 2659
+# ifdef KEY
+      if (!cr->Defchi()->Live())
+        return Prop_return_vsym_new_result(cr->Defchi()->OPND());
+      else
+        return cr->Defchi()->OPND();
+# else
       return cr->Defchi()->OPND();
+# endif
     }
   }
   else {
@@ -4574,6 +4582,8 @@ DCE::Remove_dead_statements( void )
 
   BB_LIST_ITER bb_iter;
   BB_NODE *cur_bb;
+  BOOL last_bb_unique_succ = TRUE;
+
   for ( ; removable_bbs->Len() ; ){
     bb = removable_bbs->Node();
 
@@ -4595,11 +4605,14 @@ DCE::Remove_dead_statements( void )
             bb->Phi_list() != NULL)
           bb = NULL;
       }
-      else
+      else{
+        if (bb->Succ()->Len() != 1)
+          last_bb_unique_succ = FALSE;
         bb = NULL;
+      }
     }
     
-    if ( removable_bb_chain && removable_bb_chain->Len() > 1){
+    if ( removable_bb_chain && removable_bb_chain->Len() > 1 && last_bb_unique_succ){
 //Bug 1507
       Update_branch_to_bbs_labels( removable_bb_chain );
       _cfg->Delete_bbs( removable_bb_chain, _mod_phis ); 
@@ -4607,10 +4620,13 @@ DCE::Remove_dead_statements( void )
         Remove_unreached_statements( bb );
       }
     }
-    else if ( removable_bb_chain && removable_bb_chain->Len() == 1 ){
-      Update_branch_to_bb_labels( removable_bb_chain->Node() );
-      _cfg->Delete_bb( removable_bb_chain->Node(), _mod_phis );
-      Remove_unreached_statements( removable_bb_chain->Node() );
+    else if ( removable_bb_chain ){
+// If the last basic block has more than one successor, remove basic block one by one. It fixes bug 2379.
+      FOR_ALL_ELEM( bb, bb_iter, Init(removable_bb_chain) ){
+        Update_branch_to_bb_labels( bb );
+        _cfg->Delete_bb( bb, _mod_phis );
+        Remove_unreached_statements( bb );
+      }
     }
   }
 #endif

@@ -204,6 +204,17 @@ typedef PARM_ATTR_VEC::iterator PARM_ITER;
 
 typedef std::set<ST_IDX, std::less<ST_IDX>, mempool_allocator<ST_IDX> > PROCESSED_SET;
 
+#ifdef KEY
+struct formal_to_replace_st
+{
+    ST * formal;
+    ST_IDX replace;
+    formal_to_replace_st (ST * f, ST_IDX r) : formal (f), replace (r) {}
+};
+
+typedef vector<formal_to_replace_st, mempool_allocator<formal_to_replace_st> >
+	replace_st_vec;
+#endif
 #include "clone.h"
 
 #include "ipa_cg.h"
@@ -223,6 +234,9 @@ struct IPO_INLINE_AUX
     WN* copy_out_block;			// copy the result back to the actual
     WN* inlined_body;			// callee's function body
     PROCESSED_SET processed_local_syms; // Set of symbols that have PRAGMA LOCAL processed
+#ifdef KEY
+    replace_st_vec replace_st;
+#endif
     
     IPO_INLINE_AUX (INT num_formals, MEM_POOL* pool) : 
 	parm_attr (pool),
@@ -232,7 +246,11 @@ struct IPO_INLINE_AUX
 	entry_label (0),
 	copy_in_block (NULL),
 	copy_out_block (NULL),
-	inlined_body (NULL) {
+	inlined_body (NULL)
+#ifdef KEY
+	, replace_st (pool)
+#endif
+    {
 
 	parm_attr.reserve (num_formals);
     }

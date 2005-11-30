@@ -81,13 +81,30 @@ Get_ST (tree decl_tree)
 {
 	ST *st = DECL_ST(decl_tree);
         if (st != NULL) {
+#ifndef KEY
 		if (TREE_CODE(decl_tree) == VAR_DECL &&
 		    ST_sclass(st) == SCLASS_EXTERN   &&
 		    !ST_is_weak_symbol(st)           &&
 		    !DECL_EXTERNAL(decl_tree)        &&
 		    !DECL_INITIAL(decl_tree))
 			Set_ST_sclass (st, SCLASS_UGLOBAL);
-#ifdef KEY // the earlier definition may not have the complete type
+#else
+		// bug 3117: mimick Create_ST_For_Tree:
+		// Mark as COMMON if appropriate, instead of UGLOBAL
+		// And change sclass only if it is TREE_STATIC
+		if (TREE_CODE(decl_tree) == VAR_DECL &&
+		    ST_sclass(st) == SCLASS_EXTERN   &&
+		    !ST_is_weak_symbol(st)           &&
+		    !DECL_EXTERNAL(decl_tree)        &&
+		    !DECL_INITIAL(decl_tree)         &&
+		    TREE_STATIC(decl_tree))
+		{
+		    if (flag_no_common || DECL_SECTION_NAME(decl_tree))
+			Set_ST_sclass (st, SCLASS_UGLOBAL);
+		    else
+		        Set_ST_sclass (st, SCLASS_COMMON);
+		}
+		// the earlier definition may not have the complete type
 		if (TREE_CODE(decl_tree) == VAR_DECL) {
 		  TY_IDX ty_idx = Get_TY(TREE_TYPE(decl_tree));
 		  if (ty_idx && 

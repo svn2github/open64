@@ -499,7 +499,11 @@ POINTS_TO::Analyze_ST(ST *st, INT64 byte_ofst, INT64 byte_size,
       //             altentry, since some entries may not define it
       if (ST_is_optional_argument(st) ||
 	  (ST_sclass(sclass_st) == SCLASS_FORMAL_REF &&
-	   PU_has_altentry(Get_Current_PU())))
+	   (PU_has_altentry(Get_Current_PU())
+#ifdef KEY
+	    || LANG_Formal_Deref_Unsafe
+#endif
+	   )))
 	Reset_safe_to_speculate();
       break;
     case SCLASS_FORMAL:

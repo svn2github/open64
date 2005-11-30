@@ -1994,7 +1994,17 @@ struct Cif_file *file;
 	  if (file->name == NULL)
 	      return (CIF_NOMEM);
 	  (void) strcpy (file->name, c);
-	  file->fid = atol (token());
+#ifdef KEY
+          char *fld = token();
+          if (fld == NULL) { 
+            fprintf(stderr, "libcif, Cif_file error : Could not open ascii_file\n");
+            exit(-1);
+          }
+
+	  file->fid = atol (fld);
+#else
+          file->fid = atol (token());
+#endif
 
 	  if (delim == SEPARATOR) {
 

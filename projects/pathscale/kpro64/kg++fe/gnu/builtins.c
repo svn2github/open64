@@ -1562,6 +1562,7 @@ expand_builtin_mathfn (exp, target, subtarget)
 #ifdef KEY
     case BUILT_IN_FLOOR:
     case BUILT_IN_FLOORF:
+    case BUILT_IN_FLOORL:
 #endif
     case BUILT_IN_SQRT:
     case BUILT_IN_SQRTF:
@@ -4235,6 +4236,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 #ifdef KEY
       case BUILT_IN_FLOOR:
       case BUILT_IN_FLOORF:
+      case BUILT_IN_FLOORL:
 #endif
       case BUILT_IN_SQRT:
       case BUILT_IN_SQRTF:
@@ -4374,6 +4376,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 #ifdef KEY
     case BUILT_IN_FLOOR:
     case BUILT_IN_FLOORF:
+    case BUILT_IN_FLOORL:
 #endif
     case BUILT_IN_SQRT:
     case BUILT_IN_SQRTF:

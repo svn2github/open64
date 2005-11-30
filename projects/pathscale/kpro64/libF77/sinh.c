@@ -57,18 +57,18 @@
 #include <math.h>
 #include "moremath.h"
 
-static double_t p0  = -0.6307673640497716991184787251e+6;
-static double_t p1  = -0.8991272022039509355398013511e+5;
-static double_t p2  = -0.2894211355989563807284660366e+4;
-static double_t p3  = -0.2630563213397497062819489e+2;
-static double_t q0  = -0.6307673640497716991212077277e+6;
-static double_t q1   = 0.1521517378790019070696485176e+5;
-static double_t q2  = -0.173678953558233699533450911e+3;
+static double p0  = -0.6307673640497716991184787251e+6;
+static double p1  = -0.8991272022039509355398013511e+5;
+static double p2  = -0.2894211355989563807284660366e+4;
+static double p3  = -0.2630563213397497062819489e+2;
+static double q0  = -0.6307673640497716991212077277e+6;
+static double q1   = 0.1521517378790019070696485176e+5;
+static double q2  = -0.173678953558233699533450911e+3;
 
-double_t
-sinh(double_t arg)
+double
+sinh(double arg)
 {
-	double_t temp, argsq;
+	double temp, argsq;
 	register int32 sign;
 
 	sign = 1;
@@ -95,8 +95,8 @@ sinh(double_t arg)
 	return(sign*temp);
 }
 
-double_t
-cosh(double_t arg)
+double
+cosh(double arg)
 {
 	if(arg < 0)
 		arg = - arg;

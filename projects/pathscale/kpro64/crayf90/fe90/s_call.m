@@ -56,6 +56,7 @@
 # define MAKE_NEW_DV			9
 # define PASS_SECTION_ADDRESS		10
 # define CHECK_CONTIG_FLAG		11
+# define COPY_INOUT_MAKE_DV             12
 
 /********************\
 |* SIZES AND LIMITS *|

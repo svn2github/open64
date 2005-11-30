@@ -113,7 +113,11 @@
 #define STDERR_U	102	/* Special stderr unit */
 #endif
 
+#ifdef KEY
+#define	RECMAX		10240   /* Default (initial) size of line buffer */
+#else
 #define	RECMAX		1024	/* Default (initial) size of line buffer */
+#endif
 #define RECMAXLDO	133	/* List-directed output line length */
  
 #define	ERROR	1

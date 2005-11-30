@@ -239,6 +239,14 @@ CGEMIT_Prn_Scn_In_Asm (FILE       *asm_file,
       *p = '\0'; // null terminate the string.
       fprintf (asm_file, ", \"%s\"", scn_flags_string);
     }
+#ifdef TARG_X8664
+    if (strcmp(scn_name, ".debug_frame") == 0) // bug 2463
+      fprintf(asm_file, "\n.LCIE:");
+
+    // Generate a label at the start of the .eh_frame CIE
+    if (!strcmp (scn_name, ".eh_frame")) // bug 2729
+      fprintf (asm_file, "\n.EHCIE:");
+#endif
   }
 
   fprintf (asm_file, "\n");
@@ -339,15 +347,26 @@ CGEMIT_Relocs_In_Asm (TN *t, ST *st, vstring *buf, INT64 *val)
 	case TN_RELOC_LOW16:
         	*buf = vstr_concat (*buf, "%lo");
 		break;
+	case TN_RELOC_X8664_64:
+	  break;
 	case TN_RELOC_X8664_PC32:
 	  *buf = vstr_concat (*buf, "$");
 	  break;
-	case TN_RELOC_X8664_64:
-	  FmtAssert(FALSE, ("Handle this case"));
-	  break;
+	case TN_RELOC_IA32_GOT:
+	  *buf = vstr_concat (*buf, ST_name(st));
+	  *buf = vstr_concat (*buf, "@GOT");
+	  return 0;
 	case TN_RELOC_X8664_GOTPCREL:
 	  *buf = vstr_concat (*buf, ST_name(st));
 	  *buf = vstr_concat (*buf, "@GOTPCREL");
+	  return 0;
+	case TN_RELOC_IA32_GLOBAL_OFFSET_TABLE:
+	  {
+	    char* str = NULL;
+	    asprintf( &str, "$_GLOBAL_OFFSET_TABLE_+[.-%s]", ST_name(st) );
+	    *buf = vstr_concat( *buf, str );
+	    free( str );
+	  }
 	  return 0;
     	default:
 		#pragma mips_frequency_hint NEVER
@@ -525,6 +544,7 @@ static void Init_OP_Name()
 
   // Only put in the name which is different from isa.cxx.
 
+  OP_Name[TOP_reti]  = "ret";
   OP_Name[TOP_comixsd]  = "comisd";
   OP_Name[TOP_comixxsd] = "comisd";
   OP_Name[TOP_comixxxsd]= "comisd";
@@ -550,6 +570,7 @@ static void Init_OP_Name()
   OP_Name[TOP_addx128v8] = "paddb";
   OP_Name[TOP_addxx128v8] = "paddb";
   OP_Name[TOP_addxxx128v8] = "paddb";
+  OP_Name[TOP_mul128v16] = "pmullw";
   OP_Name[TOP_add128v16] = "paddw";
   OP_Name[TOP_addx128v16] = "paddw";
   OP_Name[TOP_addxx128v16] = "paddw";
@@ -827,6 +848,8 @@ static void Init_OP_Name()
   OP_Name[TOP_zero64] = "xorq";
   OP_Name[TOP_xzero32] = "xorps";
   OP_Name[TOP_xzero64] = "xorpd";
+  OP_Name[TOP_xzero128v32] = "xorps";
+  OP_Name[TOP_xzero128v64] = "xorpd";
   OP_Name[TOP_inc8] = "incb";
   OP_Name[TOP_inc16] = "incw";
   OP_Name[TOP_inc32] = "incl";
@@ -862,6 +885,7 @@ static void Init_OP_Name()
   OP_Name[TOP_imul32] = "imull";
   OP_Name[TOP_imul64] = "imulq";
   OP_Name[TOP_imulx64] = "imulq";
+  OP_Name[TOP_imulx32] = "imull";
   OP_Name[TOP_mul32] = "mull";
   OP_Name[TOP_mulx64] = "mulq";
   OP_Name[TOP_mulxss] = "mulss";
@@ -996,7 +1020,9 @@ static void Init_OP_Name()
   OP_Name[TOP_ldssx]  = "movss";
   OP_Name[TOP_ldssxx] = "movss";
   OP_Name[TOP_lddqa] = "movdqa";
+  OP_Name[TOP_lddqa_n32] = "movdqa";
   OP_Name[TOP_stdqa] = "movdqa";
+  OP_Name[TOP_stdqa_n32] = "movdqa";
   OP_Name[TOP_stntpd]= "movntpd";
   OP_Name[TOP_stntps]= "movntps";
   OP_Name[TOP_lddqu] = "movdqu";
@@ -1038,9 +1064,13 @@ static void Init_OP_Name()
   OP_Name[TOP_ldhpdxx] = "movhpd";
   OP_Name[TOP_sthpdxx] = "movhpd";
   OP_Name[TOP_staps] = "movaps";
+  OP_Name[TOP_staps_n32] = "movaps";
   OP_Name[TOP_stapd] = "movapd";
+  OP_Name[TOP_stapd_n32] = "movapd";
   OP_Name[TOP_ldaps] = "movaps";
+  OP_Name[TOP_ldaps_n32] = "movaps";
   OP_Name[TOP_ldapd] = "movapd";
+  OP_Name[TOP_ldapd_n32] = "movapd";
   OP_Name[TOP_stapsx] = "movaps";
   OP_Name[TOP_stapdx] = "movapd";
   OP_Name[TOP_ldapsx] = "movaps";
@@ -1052,12 +1082,39 @@ static void Init_OP_Name()
   OP_Name[TOP_movss] = "movaps";
   OP_Name[TOP_movdq] = "movdqa";
   OP_Name[TOP_movg2x] = "movd";
+  OP_Name[TOP_movg2x64] = "movd";
   OP_Name[TOP_movx2g] = "movd";
+  OP_Name[TOP_movx2g64] = "movd";
   OP_Name[TOP_stss_n32]   = "movss";
   OP_Name[TOP_stss]   = "movss";
   OP_Name[TOP_stssx]  = "movss";
   OP_Name[TOP_stssxx] = "movss";
   OP_Name[TOP_fmov] = "fld";
+  OP_Name[TOP_ld8_m]  = "movabsb";
+  OP_Name[TOP_ld16_m] = "movabsw";
+  OP_Name[TOP_ld32_m] = "movabsl";
+  OP_Name[TOP_ld64_m] = "movabsq";
+  OP_Name[TOP_store8_m]  = "movabsb";
+  OP_Name[TOP_store16_m] = "movabsw";
+  OP_Name[TOP_store32_m] = "movabsl";
+  OP_Name[TOP_store64_m] = "movabsq";
+
+  OP_Name[TOP_cvtsd2ss_x]   = "cvtsd2ss";
+  OP_Name[TOP_cvtsd2ss_xx]  = "cvtsd2ss";
+  OP_Name[TOP_cvtsd2ss_xxx] = "cvtsd2ss";
+  OP_Name[TOP_cvtsi2sd_x]   = "cvtsi2sd";
+  OP_Name[TOP_cvtsi2sd_xx]  = "cvtsi2sd";
+  OP_Name[TOP_cvtsi2sd_xxx] = "cvtsi2sd";
+  OP_Name[TOP_cvtsi2ss_x]   = "cvtsi2ss";
+  OP_Name[TOP_cvtsi2ss_xx]  = "cvtsi2ss";
+  OP_Name[TOP_cvtsi2ss_xxx] = "cvtsi2ss";
+  OP_Name[TOP_cvtsi2sdq_x]  = "cvtsi2sdq";
+  OP_Name[TOP_cvtsi2sdq_xx] = "cvtsi2sdq";
+  OP_Name[TOP_cvtsi2sdq_xxx]= "cvtsi2sdq";
+  OP_Name[TOP_cvtsi2ssq_x]  = "cvtsi2ssq";
+  OP_Name[TOP_cvtsi2ssq_xx] = "cvtsi2ssq";
+  OP_Name[TOP_cvtsi2ssq_xxx]= "cvtsi2ssq";
+
   if (CG_use_movlpd) {
     OP_Name[TOP_ldsd] = "movlpd";
     OP_Name[TOP_ldsd_n32] = "movlpd";
@@ -1151,8 +1208,8 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
   const TOP topcode = OP_code( op );
 
   if( TOP_is_ijump( topcode ) &&
-      ( opnd == TOP_Find_Operand_Use(topcode,OU_target) ||
-	opnd == TOP_Find_Operand_Use(topcode,OU_offset) ) ){
+      ( opnd == OP_find_opnd_use(op,OU_target) ||
+	opnd == OP_find_opnd_use(op,OU_offset) ) ){
     Str_Prepend( name, '*' );
     return;
   }
@@ -1168,6 +1225,7 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
     // Bug 578
     // Add a reference to the PLT under -fPIC compilation.
     if ( Gen_PIC_Shared &&  
+	 !TN_is_label( OP_opnd(op,0) ) &&
 	 ( topcode == TOP_call || 
 	   // tail-call optimization 
 	   ( topcode == TOP_jmp && !TN_is_label( OP_opnd( op, 0))))) {
@@ -1177,9 +1235,9 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
     }
 
     if( name[0] != '$' &&   /* A '$' has been added by CGEMIT_Relocs_In_Asm() */
-	( opnd != TOP_Find_Operand_Use(topcode,OU_offset) &&
-	  opnd != TOP_Find_Operand_Use(topcode,OU_scale)  &&
-	  opnd != TOP_Find_Operand_Use(topcode,OU_target) ) ){
+	( opnd != OP_find_opnd_use(op,OU_offset) &&
+	  opnd != OP_find_opnd_use(op,OU_scale)  &&
+	  opnd != OP_find_opnd_use(op,OU_target) ) ){
       Str_Prepend( name, '$' );
     }
 
@@ -1321,7 +1379,13 @@ INT CGEMIT_Print_Inst( OP* op, const char* result[], const char* opnd[], FILE* f
 
 void CGEMIT_Setup_Ctrl_Register( FILE* f )
 {
-  if (IEEE_Arithmetic <= IEEE_ACCURATE)
+  if (IEEE_Arithmetic <= IEEE_ACCURATE &&
+      SIMD_IMask &&
+      SIMD_DMask &&
+      SIMD_ZMask &&
+      SIMD_OMask &&
+      SIMD_UMask &&
+      SIMD_PMask)
     return;
 
   /* The following sequence of code is used to turn off
@@ -1329,18 +1393,51 @@ void CGEMIT_Setup_Ctrl_Register( FILE* f )
    */
 
   const int mask = 32768 ;
+  const int simd_imask = 0xff7f; // bit 7 : f f 0111 f
+  const int simd_dmask = 0xfeff; // bit 8 : f 1110 f f
+  const int simd_zmask = 0xfdff; // bit 9 : f 1101 f f
+  const int simd_omask = 0xfbff; // bit 10: f 1011 f f
+  const int simd_umask = 0xf7ff; // bit 11: f 0111 f f
+  const int simd_pmask = 0xefff; // bit 12: 1110 f f f
+  // bits 16..31 are 0, and must remain 0
 
   if( Is_Target_64bit() ){
     fprintf( f, "\t%s\n", "addq    $-8,%rsp"      );
     fprintf( f, "\t%s\n", "stmxcsr (%rsp)"        );
-    fprintf( f, "\torq $%d, (%%rsp)\n", mask);
+    if (IEEE_Arithmetic > IEEE_ACCURATE)
+      fprintf( f, "\torq $%d, (%%rsp)\n", mask);
+    if ( !SIMD_IMask )
+      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_imask );
+    if ( !SIMD_DMask )
+      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_dmask );
+    if ( !SIMD_ZMask )
+      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_zmask );
+    if ( !SIMD_OMask )
+      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_omask );
+    if ( !SIMD_UMask )
+      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_umask );
+    if ( !SIMD_PMask )
+      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_pmask );
     fprintf( f, "\t%s\n", "ldmxcsr (%rsp)"        );
     fprintf( f, "\t%s\n", "addq    $8,%rsp"       );
 
   } else {
     fprintf( f, "\t%s\n", "addl    $-8,%esp"      );
     fprintf( f, "\t%s\n", "stmxcsr (%esp)"        );
-    fprintf( f, "\torl $%d, (%%esp)\n", mask);
+    if (IEEE_Arithmetic > IEEE_ACCURATE)
+      fprintf( f, "\torl $%d, (%%esp)\n", mask);
+    if ( !SIMD_IMask )
+      fprintf( f, "\tandl $%d, (%%esp)\n", simd_imask );
+    if ( !SIMD_DMask )
+      fprintf( f, "\tandl $%d, (%%esp)\n", simd_dmask );
+    if ( !SIMD_ZMask )
+      fprintf( f, "\tandl $%d, (%%esp)\n", simd_zmask );
+    if ( !SIMD_OMask )
+      fprintf( f, "\tandl $%d, (%%esp)\n", simd_omask );
+    if ( !SIMD_UMask )
+      fprintf( f, "\tandl $%d, (%%esp)\n", simd_umask );
+    if ( !SIMD_PMask)
+      fprintf( f, "\tandl $%d, (%%esp)\n", simd_pmask );
     fprintf( f, "\t%s\n", "ldmxcsr (%esp)"        );
     fprintf( f, "\t%s\n", "addl    $8,%esp"       );
   }

@@ -145,9 +145,15 @@ typedef struct Dwarf_P_Per_Reloc_Sect_s *Dwarf_P_Per_Reloc_Sect;
 #define         DEBUG_WEAKNAMES 10
 #define         DEBUG_MACINFO   11
 #define         DEBUG_LOC   12
+#ifdef KEY
+#define		EH_FRAME	13
+    /* number of debug_* sections not including the relocations */
+#define         NUM_DEBUG_SECTIONS      EH_FRAME + 1
+#else
 
     /* number of debug_* sections not including the relocations */
 #define         NUM_DEBUG_SECTIONS      DEBUG_LOC + 1
+#endif // KEY
 
 
 struct Dwarf_P_Die_s {
@@ -368,6 +374,19 @@ struct Dwarf_P_Debug_s {
     Dwarf_P_Fde			de_frame_fdes;
     Dwarf_P_Fde			de_last_fde;
     Dwarf_Unsigned		de_n_fde;
+
+#ifdef KEY
+        /* List of cie's for the debug unit */
+    Dwarf_P_Cie			eh_frame_cies;
+    Dwarf_P_Cie			eh_last_cie;
+    Dwarf_Unsigned		eh_n_cie;
+
+
+        /* Singly-linked list of fde's for the debug unit */
+    Dwarf_P_Fde			eh_frame_fdes;
+    Dwarf_P_Fde			eh_last_fde;
+    Dwarf_Unsigned		eh_n_fde;
+#endif
 
         /* First die, leads to all others */
     Dwarf_P_Die 		de_dies;   

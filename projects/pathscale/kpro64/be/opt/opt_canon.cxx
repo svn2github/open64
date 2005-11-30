@@ -94,6 +94,11 @@ CANON_CR::Convert2cr(WN *wn, CODEMAP *htable, BOOL foldit) const
   MTYPE typ = WN_rtype(wn);
   if (typ == MTYPE_V) 
     typ = WN_desc(wn);
+#ifdef TARG_X8664
+  else if (WN_opcode(wn) == OPC_U8U4CVT)
+    typ = MTYPE_U4; // U8U4CVT is deleted in Canon_cvt; otherwise will 
+    		       // generate U8ADD instead of U4ADD which is wrong
+#endif
 
   if (Tree() && Scale() != 0) {
     return htable->Add_bin_node_and_fold

@@ -369,6 +369,14 @@ DEF_LIB_BUILTIN(BUILT_IN_FLOORF,
                                    ? ATTR_CONST_NOTHROW_LIST
                                    : ATTR_PURE_NOTHROW_LIST))
 
+DEF_LIB_BUILTIN(BUILT_IN_FLOORL,
+                "__builtin_floorl",
+                BT_FN_LONG_DOUBLE_LONG_DOUBLE,
+                flag_errno_math ? ATTR_NOTHROW_LIST
+                                : (flag_unsafe_math_optimizations
+                                   ? ATTR_CONST_NOTHROW_LIST
+                                   : ATTR_PURE_NOTHROW_LIST))
+
 #ifdef TARG_X8664
 DEF_LIB_BUILTIN(BUILT_IN_IDIV3,
 		"__builtin___divdi3",

@@ -216,8 +216,13 @@ Is_Const_Bounds(ARB_HANDLE arb)
 static INT64
 Num_Elements(ARB_HANDLE arb)
 {
+#ifdef KEY
+// bug 2132: for dimensions -n1:n1, # of elements is n1 - (-n1) + 1
+   return abs(ARB_ubnd_val(arb) - ARB_lbnd_val(arb)) + 1;
+#else
  INT64 count = 0;
    return abs(abs(ARB_ubnd_val(arb)) - abs((ARB_lbnd_val(arb)))) + 1;
+#endif
 }
 // ===========================================================
 // DESCR: Create_New_Array_Type

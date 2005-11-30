@@ -143,6 +143,9 @@ static BOOL Simp_Unsafe_Relops_Set = FALSE;
 BOOL Simp_Canonicalize = TRUE;          /* Simplifier canonicalization */
 BOOL Enable_WN_Simp = TRUE;             /* Use the WHIRL simplifier */
 static BOOL Enable_WN_Simp_Set=FALSE;   /* ... option seen? */
+# ifdef KEY
+INT32 Enable_WN_Simp_Expr_Limit = -1;
+# endif
 BOOL GCM_Eager_Null_Ptr_Deref = FALSE; /* allow speculation past NULL ptr
 					  test. assumes page zero as
 					  readable */
@@ -215,6 +218,8 @@ OPTION_LIST *Feedback_Option = NULL;
 #ifdef KEY
 BOOL   Asm_Memory = FALSE;
 UINT32 Div_Exe_Counter = 40000;  /* A number that can avoid regression on facerec. */
+UINT32 Div_Exe_Ratio = 50;      /* A cut-off percentage for value profiling. */
+UINT32 Div_Exe_Candidates = 2;  /* The top entries that will be considered. */
 BOOL   profile_arcs = FALSE;
 #endif
 
@@ -281,8 +286,14 @@ static OPTION_DESC Options_OPT[] = {
     "Allow splitting of a/b into a*recip(b)" },
 
 #ifdef KEY
-  { OVK_UINT32,	OV_VISIBLE,	TRUE, "div_exe_counter",	"",
+  { OVK_UINT32,	OV_INTERNAL,	TRUE, "div_exe_counter",	"",
     0, 0, UINT32_MAX,	&Div_Exe_Counter, NULL ,
+    "Restrict div/rem/mod optimization via value profiling" },
+  { OVK_UINT32,	OV_INTERNAL,	TRUE, "div_exe_ratio",	"",
+    0, 0, 100,	&Div_Exe_Ratio, NULL ,
+    "Restrict div/rem/mod optimization via value profiling" },
+  { OVK_UINT32,	OV_INTERNAL,	TRUE, "div_exe_candidates",	"",
+    0, 0, 10,	&Div_Exe_Candidates, NULL ,
     "Restrict div/rem/mod optimization via value profiling" },
 #endif
 
@@ -309,6 +320,12 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "fast_nint",		"fast_nint",
     0, 0, 0,	&Fast_NINT_Allowed,	&Fast_NINT_Set,
     "Use IEEE rounding instead of Fortran rounding for NINT intrinsics" },
+
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "fast_anint",		"fast_anint",
+    0, 0, 0,	&Fast_ANINT_Allowed,	&Fast_ANINT_Set,
+    "Use IEEE rounding instead of Fortran rounding for ANINT intrinsics" },
+#endif
 
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "fast_sqrt",		"fast_sq",
     0, 0, 0,	&Fast_Sqrt_Allowed,	&Fast_Sqrt_Set,
@@ -507,7 +524,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wn_simplify",		"wn_simp",
     0, 0, 0,	&Enable_WN_Simp, &Enable_WN_Simp_Set,
     "Enable simplifier" },
-
+# ifdef KEY
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "simp_limit",             "",
+    INT32_MAX, 0, INT32_MAX,    &Enable_WN_Simp_Expr_Limit, NULL },
+# endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "wrap_around_unsafe_opt", "wrap_around_unsafe",
     0, 0, 0,	&Allow_wrap_around_opt,	&Allow_wrap_around_opt_Set,
     "Allow LFTR which may wrap around MAX_INT" },

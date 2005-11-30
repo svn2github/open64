@@ -1,4 +1,5 @@
 sinclude(../bfd/acinclude.m4)
+sinclude(../libiberty/aclibdl.m4)
 
 dnl sinclude(../libtool.m4) already included in bfd/acinclude.m4
 dnl The lines below arrange for aclocal not to bring libtool.m4

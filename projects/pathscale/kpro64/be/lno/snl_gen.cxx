@@ -3032,6 +3032,25 @@ extern SNL_REGION SNL_GEN_2D_Regtile(SNL_NEST_INFO* ni,
         Build_Doloop_Stack(bwn, &bstack);
         count++;
 
+#ifdef KEY
+	// Bug 2946 - when creating scalar expansion tiles, we must take care 
+	// not to make loop nests deeper than 15, which is the maximum allowed 
+	// for dependence vectors (this is also noted in sxlist.cxx by nenad).
+	// Reduction manager is initialzed in lnopt_main.cxx only if
+	// ROUNDOFF_LEVEL >= ROUNDOFF_ASSOC (for Cse, zmult). Without reduction
+	// manager, SX_INFO makes worst case assumption that scalars are not
+	// scalar expandable. If the reduction manager is initialized, then 
+	// outer loops are marked SE okay (privatizable scalars), and we end up 
+	// with a 16-deep loop nest. This is the reason bug shows up only with
+	// -OPT:Ofast (-OPT:ro=2).
+	if (astack.Elements() >= 15 ||
+	    bstack.Elements() >= 15) {
+	  LNO_Erase_Dg_From_Here_In(awn, dg); 
+	  LNO_Erase_Dg_From_Here_In(bwn, dg);
+          failed = TRUE;
+          goto out;
+	}
+#endif
         // TODO: don't use bounds info when recomputing dependences. This 
         // makes the run time tolerable.  Remove the optional last parameter
         // and watch it crawl.

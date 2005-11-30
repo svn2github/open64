@@ -1056,7 +1056,7 @@ Build_Fde_For_Proc (Dwarf_P_Debug dw_dbg, BB *firstbb,
 		    Dwarf_Unsigned pushbp_label,
 		    Dwarf_Unsigned movespbp_label,
 		    Dwarf_Unsigned adjustsp_label,
-		    Dwarf_Unsigned *callee_saved_reg,
+		    Dwarf_Unsigned callee_saved_reg,
 		    INT32     end_offset,
 		    // The following two arguments need to go away
 		    // once libunwind gives us an interface that
@@ -1111,24 +1111,33 @@ Build_Fde_For_Proc (Dwarf_P_Debug dw_dbg, BB *firstbb,
 		      movespbp_label, adjustsp_label, &dw_error);
   dwarf_add_fde_inst (fde, DW_CFA_def_cfa_register, 
 		      Is_Target_64bit() ? 0x6 : 0x5, 0x0, &dw_error);
-  if (callee_saved_reg) {
+  if (Cgdwarf_Num_Callee_Saved_Regs()) {
     INT num = Cgdwarf_Num_Callee_Saved_Regs();    
+    dwarf_add_fde_inst (fde, DW_CFA_advance_loc4, 
+			adjustsp_label,
+			callee_saved_reg, &dw_error);
     for (INT i = num - 1; i >= 0; i --) {
       TN* tn = Cgdwarf_Nth_Callee_Saved_Reg(i);
       ST* sym = Cgdwarf_Nth_Callee_Saved_Reg_Location(i);
       INT n = Is_Target_64bit() ? 16 : 8;
       // data alignment factor
       INT d_align = Is_Target_64bit() ? 8 : 4;
-      dwarf_add_fde_inst (fde, DW_CFA_advance_loc4, 
-      			  (i == num - 1)? adjustsp_label : callee_saved_reg[i+1],
-			  callee_saved_reg[i], &dw_error);
       mUINT8 reg_id = REGISTER_machine_id (TN_register_class(tn), TN_register(tn));
       // If we need the DWARF register id's for all registers, we need a 
       // general register mapping from REGISTER_machine_id to DWARF register
       // id. But the following suffices for this case,
       // The machine_id is the same as the DWARF id for all callee-saved 
       // registers except rbx, so give it the proper id here.
-      if (reg_id == 1) reg_id = 3;
+      //
+      // And for -m32, handle the 2 additional callee-saved registers
+      if (Is_Target_32bit())
+      {
+      	if (reg_id == 5) // %esi
+	  reg_id = 6;
+	else if (reg_id == 4) // %edi
+	  reg_id = 7;
+      }
+      if (reg_id == 1) reg_id = 3; // %rbx
       dwarf_add_fde_inst (fde, DW_CFA_offset, reg_id,
 	          ((ST_base(sym) == FP_Sym ? -1 : 1)*ST_ofst(sym)+n)/d_align,
 	          &dw_error);
@@ -1185,10 +1194,6 @@ static char *drop_these[] = {
 	".debug_funcnames",
      // we don't use debug_frame in IA-64.
 #endif
-#ifndef KEY
-// we are trying to use GNU .eh_frame instead
-	".debug_frame",
-#endif // !KEY
 	0
 };
 // return TRUE if we want to emit the section (IA-64).

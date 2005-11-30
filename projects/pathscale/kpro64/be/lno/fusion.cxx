@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -901,6 +905,25 @@ mINT32 offset[])
     return Failed;
   }
 
+#ifdef KEY
+ {
+   DO_LOOP_INFO* dli1 = Get_Do_Loop_Info(in_loop1);
+   DO_LOOP_INFO* dli2 = Get_Do_Loop_Info(in_loop2);
+   if (LNO_Run_Simd > 0 && LNO_Simd_Avoid_Fusion && 
+       (dli1->Vectorizable || dli2->Vectorizable)) {
+    if (LNO_Verbose)
+      fusion_verbose_info(srcpos1,srcpos2,fusion_level,
+	"Vectorizable loop can not be fused with a serial loop.");
+    if (LNO_Analysis)
+      fusion_analysis_info(FALSE,srcpos1,srcpos2,fusion_level,
+	"Vectorizable loop can not be fused with a serial loop.");
+    if (LNO_Tlog)
+      fusion_tlog_info(Failed,in_loop1,in_loop2,fusion_level,
+	"Vectorizable loop can not be fused with a serial loop.");
+     return Failed;
+   }
+ }
+#endif
   for (i=1; i<fusion_level; i++) {
     WN* lwn= Get_Only_Loop_Inside(loop_nest1[i-1],FALSE);
     if (!lwn) {
@@ -3536,6 +3559,15 @@ WN** epilog_loop_out, mINT32 offset_out[])
 
     // temporary used in pre_loop_peeling
     char pre_loop_var_name[80];
+#ifdef KEY
+    // 'name' may change after call to Create_Preg_Symbol (reallocation of 
+    // memory) and point to illegal memory. So, need to reinitialize 'name'.
+    // - exposed by bug 2658.
+    if (ST_class(st) == CLASS_PREG)
+      name=Preg_Name(WN_offset(WN_start(loop_nest1[i])));
+    else
+      name=ST_name(st);
+#endif
     if (strlen(name)>=70) {
       DevWarn("Loop var %s name too long",name);
       strcpy(pre_loop_var_name,"name_too_long");

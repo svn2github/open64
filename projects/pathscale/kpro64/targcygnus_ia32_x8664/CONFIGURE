@@ -25,10 +25,10 @@
 #       ia32-host x86_64-target build area
 #
 
-setenv CFLAGS " -g -O2"
+setenv CFLAGS " -g -O2 -m32"
 
 set bk_root=`bk root`
-${bk_root}/pathscale/process-defs csh | source /dev/stdin
+${bk_root}/pathscale/process-defs csh - | source /dev/stdin
 
 set     SRC_DIR         = ../cygnus
 set	INSTALL_DIR	= ${PSC_INSTALL_PREFIX}

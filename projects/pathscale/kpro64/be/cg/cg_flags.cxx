@@ -180,8 +180,9 @@ BOOL CGTARG_Enable_Brlikely = TRUE;
 BOOL Enable_Fill_Delay_Slots = FALSE;
 BOOL GCM_Enable_Fill_Delay_Slots = FALSE;
 BOOL CG_use_movlpd = FALSE;
+BOOL CG_use_setcc = TRUE;
 BOOL CG_use_short_form = FALSE;
-UINT64 CG_p2align_freq = 0;
+UINT64 CG_p2align_freq = 10000;
 UINT32 CG_p2align_max_skip_bytes = 3;
 UINT32 CG_movnti = 1024;
 BOOL CG_use_incdec = FALSE;
@@ -246,7 +247,7 @@ const char* GRA_call_split_freq_string = "0.1";
 const char* GRA_spill_count_factor_string = "0.5";
 #ifdef KEY
 BOOL GRA_exclude_callee_saved_regs = FALSE;
-BOOL GRA_eh_exclude_callee_saved_regs = TRUE;
+BOOL GRA_eh_exclude_callee_saved_regs = FALSE;
 #endif
 
 #ifdef KEY
@@ -305,6 +306,7 @@ BOOL CG_LOOP_reassociate_specified = FALSE;
 INT32 CG_LOOP_recurrence_min_omega = 0;
 #ifdef KEY
 BOOL LOCS_Fwd_Scheduling = FALSE;
+BOOL LOCS_Fwd_Scheduling_set = FALSE;
 BOOL CG_enable_sb1_bug_work_around = FALSE;
 BOOL CG_sas = TRUE;
 BOOL CG_min_spill_loc_size = FALSE;
@@ -314,7 +316,7 @@ OPTION_LIST *Arc_Profile_Region = NULL;
 #endif
 #ifdef TARG_X8664
 INT32 CG_load_execute = 1;
-BOOL CG_loadbw_execute = TRUE;
+BOOL CG_loadbw_execute = FALSE;
 BOOL CG_p2align = FALSE;
 #endif
 

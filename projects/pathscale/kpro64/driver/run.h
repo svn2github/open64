@@ -43,16 +43,16 @@
 #include "lang_defs.h"
 #endif
 
-extern boolean show_version;	/* show the compiler version */
+extern int show_version;	/* show the compiler version */
 extern boolean show_copyright;	/* show the compiler copyright */
 extern boolean dump_version;	/* dump the compiler version */
 extern boolean show_flag;	/* show what driver does */
 extern boolean execute_flag;	/* execute phases */
 extern boolean time_flag;	/* give time info */
-extern boolean memory_flag;	/* give memory usage info */
 extern boolean run_m4;		/* run m4 on each ratfor file */
 extern boolean prelink_flag;	/* C++ only:  run the prelinker before ld */
 extern boolean quiet_flag;	/* g++: suppress timing information */
+extern boolean show_search_path; /* show the directory search path */
 
 /* run a phase of the compiler */
 extern void run_phase (phases_t, char *, string_list_t *); 

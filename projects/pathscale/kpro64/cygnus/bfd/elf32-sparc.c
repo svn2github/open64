@@ -68,7 +68,7 @@ static bfd_boolean create_got_section
 static bfd_boolean elf32_sparc_create_dynamic_sections
   PARAMS ((bfd *, struct bfd_link_info *));
 static void elf32_sparc_copy_indirect_symbol
-  PARAMS ((struct elf_backend_data *, struct elf_link_hash_entry *,
+  PARAMS ((const struct elf_backend_data *, struct elf_link_hash_entry *,
 	  struct elf_link_hash_entry *));
 static int elf32_sparc_tls_transition
   PARAMS ((struct bfd_link_info *, bfd *, int, int));
@@ -502,6 +502,35 @@ sparc_elf_lox10_reloc (abfd,
   return bfd_reloc_ok;
 }
 
+/* Support for core dump NOTE sections.  */
+
+static bfd_boolean
+elf32_sparc_grok_psinfo (bfd *abfd, Elf_Internal_Note *note)
+{
+  switch (note->descsz)
+    {
+    default:
+      return FALSE;
+
+    case 260:			/* Solaris prpsinfo_t.  */
+      elf_tdata (abfd)->core_program
+	= _bfd_elfcore_strndup (abfd, note->descdata + 84, 16);
+      elf_tdata (abfd)->core_command
+	= _bfd_elfcore_strndup (abfd, note->descdata + 100, 80);
+      break;
+
+    case 336:			/* Solaris psinfo_t.  */
+      elf_tdata (abfd)->core_program
+	= _bfd_elfcore_strndup (abfd, note->descdata + 88, 16);
+      elf_tdata (abfd)->core_command
+	= _bfd_elfcore_strndup (abfd, note->descdata + 104, 80);
+      break;
+    }
+
+  return TRUE;
+}
+
+
 /* Functions for the SPARC ELF linker.  */
 
 /* The name of the dynamic interpreter.  This is put in the .interp
@@ -750,7 +779,7 @@ elf32_sparc_create_dynamic_sections (dynobj, info)
 
 static void
 elf32_sparc_copy_indirect_symbol (bed, dir, ind)
-     struct elf_backend_data *bed;
+     const struct elf_backend_data *bed;
      struct elf_link_hash_entry *dir, *ind;
 {
   struct elf32_sparc_link_hash_entry *edir, *eind;
@@ -862,7 +891,7 @@ elf32_sparc_check_relocs (abfd, info, sec, relocs)
   asection *sreloc;
   bfd_boolean checked_tlsgd = FALSE;
 
-  if (info->relocateable)
+  if (info->relocatable)
     return TRUE;
 
   htab = elf32_sparc_hash_table (info);
@@ -1024,10 +1053,13 @@ elf32_sparc_check_relocs (abfd, info, sec, relocs)
 	      }
 	  }
 
-	  if (htab->elf.dynobj == NULL)
-	    htab->elf.dynobj = abfd;
-	  if (!create_got_section (htab->elf.dynobj, info))
-	    return FALSE;
+	  if (htab->sgot == NULL)
+	    {
+	      if (htab->elf.dynobj == NULL)
+		htab->elf.dynobj = abfd;
+	      if (!create_got_section (htab->elf.dynobj, info))
+		return FALSE;
+	    }
 	  break;
 
 	case R_SPARC_TLS_GD_CALL:
@@ -1820,7 +1852,7 @@ elf32_sparc_size_dynamic_sections (output_bfd, info)
   if (elf_hash_table (info)->dynamic_sections_created)
     {
       /* Set the contents of the .interp section to the interpreter.  */
-      if (! info->shared)
+      if (info->executable)
 	{
 	  s = bfd_get_section_by_name (dynobj, ".interp");
 	  BFD_ASSERT (s != NULL);
@@ -1997,7 +2029,7 @@ elf32_sparc_size_dynamic_sections (output_bfd, info)
 #define add_dynamic_entry(TAG, VAL) \
   bfd_elf32_add_dynamic_entry (info, (bfd_vma) (TAG), (bfd_vma) (VAL))
 
-      if (!info->shared)
+      if (info->executable)
 	{
 	  if (!add_dynamic_entry (DT_DEBUG, 0))
 	    return FALSE;
@@ -2079,10 +2111,10 @@ static bfd_vma
 dtpoff_base (info)
      struct bfd_link_info *info;
 {
-  /* If tls_segment is NULL, we should have signalled an error already.  */
-  if (elf_hash_table (info)->tls_segment == NULL)
+  /* If tls_sec is NULL, we should have signalled an error already.  */
+  if (elf_hash_table (info)->tls_sec == NULL)
     return 0;
-  return elf_hash_table (info)->tls_segment->start;
+  return elf_hash_table (info)->tls_sec->vma;
 }
 
 /* Return the relocation value for @tpoff relocation
@@ -2093,14 +2125,12 @@ tpoff (info, address)
      struct bfd_link_info *info;
      bfd_vma address;
 {
-  struct elf_link_tls_segment *tls_segment
-    = elf_hash_table (info)->tls_segment;
+  struct elf_link_hash_table *htab = elf_hash_table (info);
 
-  /* If tls_segment is NULL, we should have signalled an error already.  */
-  if (tls_segment == NULL)
+  /* If tls_sec is NULL, we should have signalled an error already.  */
+  if (htab->tls_sec == NULL)
     return 0;
-  return -(align_power (tls_segment->size, tls_segment->align)
-	   + tls_segment->start - address);
+  return address - htab->tls_size - htab->tls_sec->vma;
 }
 
 /* Relocate a SPARC ELF section.  */
@@ -2126,7 +2156,7 @@ elf32_sparc_relocate_section (output_bfd, info, input_bfd, input_section,
   Elf_Internal_Rela *rel;
   Elf_Internal_Rela *relend;
 
-  if (info->relocateable)
+  if (info->relocatable)
     return TRUE;
 
   htab = elf32_sparc_hash_table (info);
@@ -2179,46 +2209,16 @@ elf32_sparc_relocate_section (output_bfd, info, input_bfd, input_section,
 	{
 	  sym = local_syms + r_symndx;
 	  sec = local_sections[r_symndx];
-	  relocation = _bfd_elf_rela_local_sym (output_bfd, sym, sec, rel);
+	  relocation = _bfd_elf_rela_local_sym (output_bfd, sym, &sec, rel);
 	}
       else
 	{
-	  h = sym_hashes[r_symndx - symtab_hdr->sh_info];
-	  while (h->root.type == bfd_link_hash_indirect
-		 || h->root.type == bfd_link_hash_warning)
-	    h = (struct elf_link_hash_entry *) h->root.u.i.link;
+	  bfd_boolean warned ATTRIBUTE_UNUSED;
 
-	  relocation = 0;
-	  if (h->root.type == bfd_link_hash_defined
-	      || h->root.type == bfd_link_hash_defweak)
-	    {
-	      sec = h->root.u.def.section;
-	      if (sec->output_section == NULL)
-		 /* Set a flag that will be cleared later if we find a
-		   relocation value for this symbol.  output_section
-		   is typically NULL for symbols satisfied by a shared
-		   library.  */
-		unresolved_reloc = TRUE;
-	      else
-		relocation = (h->root.u.def.value
-			      + sec->output_section->vma
-			      + sec->output_offset);
-	    }
-	  else if (h->root.type == bfd_link_hash_undefweak)
-	    ;
-	  else if (info->shared
-		   && !info->no_undefined
-		   && ELF_ST_VISIBILITY (h->other) == STV_DEFAULT)
-	    ;
-	  else
-	    {
-	      if (! ((*info->callbacks->undefined_symbol)
-		     (info, h->root.root.string, input_bfd,
-		      input_section, rel->r_offset,
-		      (!info->shared || info->no_undefined
-		       || ELF_ST_VISIBILITY (h->other)))))
-		return FALSE;
-	    }
+	  RELOC_FOR_GLOBAL_SYMBOL (h, sym_hashes, r_symndx,
+				   symtab_hdr, relocation, sec,
+				   unresolved_reloc, info,
+				   warned);
 	}
 
       switch (r_type)
@@ -2486,16 +2486,8 @@ elf32_sparc_relocate_section (output_bfd, info, input_bfd, input_section,
 
 		      if (is_plt)
 			sec = htab->splt;
-		      else if (h == NULL)
-			sec = local_sections[r_symndx];
-		      else
-			{
-			  BFD_ASSERT (h->root.type == bfd_link_hash_defined
-				      || (h->root.type
-					  == bfd_link_hash_defweak));
-			  sec = h->root.u.def.section;
-			}
-		      if (sec != NULL && bfd_is_abs_section (sec))
+
+		      if (bfd_is_abs_section (sec))
 			indx = 0;
 		      else if (sec == NULL || sec->owner == NULL)
 			{
@@ -3291,8 +3283,7 @@ elf32_sparc_finish_dynamic_sections (output_bfd, info)
 		      splt->contents + splt->_raw_size - 4);
 	}
 
-      elf_section_data (splt->output_section)->this_hdr.sh_entsize =
-	PLT_ENTRY_SIZE;
+      elf_section_data (splt->output_section)->this_hdr.sh_entsize = 0;
     }
 
   /* Set the first entry in the global offset table to the address of
@@ -3377,15 +3368,6 @@ static bfd_boolean
 elf32_sparc_object_p (abfd)
      bfd *abfd;
 {
-  /* Allocate our special target data.  */
-  struct elf32_sparc_obj_tdata *new_tdata;
-  bfd_size_type amt = sizeof (struct elf32_sparc_obj_tdata);
-  new_tdata = bfd_zalloc (abfd, amt);
-  if (new_tdata == NULL)
-    return FALSE;
-  new_tdata->root = *abfd->tdata.elf_obj_data;
-  abfd->tdata.any = new_tdata;
-
   if (elf_elfheader (abfd)->e_machine == EM_SPARC32PLUS)
     {
       if (elf_elfheader (abfd)->e_flags & EF_SPARC_SUN_US3)
@@ -3497,6 +3479,7 @@ elf32_sparc_reloc_type_class (rela)
 					elf32_sparc_final_write_processing
 #define elf_backend_gc_mark_hook	elf32_sparc_gc_mark_hook
 #define elf_backend_gc_sweep_hook       elf32_sparc_gc_sweep_hook
+#define elf_backend_grok_psinfo		elf32_sparc_grok_psinfo
 #define elf_backend_reloc_type_class	elf32_sparc_reloc_type_class
 
 #define elf_backend_can_gc_sections 1
@@ -3505,7 +3488,6 @@ elf32_sparc_reloc_type_class (rela)
 #define elf_backend_plt_readonly 0
 #define elf_backend_want_plt_sym 1
 #define elf_backend_got_header_size 4
-#define elf_backend_plt_header_size (4*PLT_ENTRY_SIZE)
 #define elf_backend_rela_normal 1
 
 #include "elf32-target.h"

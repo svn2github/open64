@@ -576,6 +576,10 @@ WN_Tree_Type(const WN *wn)
 
 #ifdef TARG_X8664
       case OPR_REPLICATE:
+      case OPR_REDUCE_ADD:
+      case OPR_REDUCE_MPY:
+      case OPR_REDUCE_MAX:
+      case OPR_REDUCE_MIN:
 	ty = Stab_Mtype_To_Ty(WN_opc_rtype(wn));
 	break;
 

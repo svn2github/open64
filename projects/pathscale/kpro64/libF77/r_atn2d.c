@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,12 +44,20 @@
 #include <math.h>
 #include "moremath.h"
 
-float_t __ratn2d(float_t x, float_t y)
+#ifdef KEY
+float __ratn2d(float x, float y)
+#else
+float __ratn2d(float x, float_t y)
+#endif // KEY
 {
   return (atan2f(x, y) * 57.29577951308232F);
 }
 
-float_t r_atn2d(float_t *x, float_t *y)
+#ifdef KEY
+float r_atn2d(float *x, float *y)
+#else
+float r_atn2d(float *x, float_t *y)
+#endif // KEY
 {
   return (__ratn2d(*x, *y));
 }

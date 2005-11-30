@@ -155,6 +155,46 @@ pic_flag := -fpic
 %.pic.o : %.F90
 	$(fc) $(pic_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $<
 
+prof_flag := -pg
+
+%.pg.o : %.cxx
+	$(cxx) $(prof_flag) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+
+%.pg.o : %.c
+	$(cc) $(prof_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+%.pg.o : %.s
+	$(as) $(prof_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+%.pg.o : %.f
+	$(fc) $(prof_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
+
+%.pg.o : %.F
+	$(fc) $(prof_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
+
+%.pg.o : %.F90
+	$(fc) $(prof_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $<
+
+ipa_flag := -ipa
+
+%.ipa.o : %.cxx
+	$(cxx) $(ipa_flag) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+
+%.ipa.o : %.c
+	$(cc) $(ipa_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+%.ipa.o : %.s
+	$(as) $(ipa_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+%.ipa.o : %.f
+	$(fc) $(ipa_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
+
+%.ipa.o : %.F
+	$(fc) $(ipa_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
+
+%.ipa.o : %.F90
+	$(fc) $(ipa_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $<
+
 make_deps:
 	-@cat *.d > $(MKDEPFILE)
 

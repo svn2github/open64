@@ -172,7 +172,7 @@ static STACK_DIR stack_direction;
 #endif // DEFAULT_STACK_ALIGNMENT
 
 #ifdef TARG_X8664
-#define stack_align (Is_Target_64bit() ? _QUAD_ALIGN : _WORD_ALIGN)
+#define stack_align   ( Stack_Alignment() )
 #else
 static INT16 stack_align = DEFAULT_STACK_ALIGNMENT;
 #endif
@@ -504,7 +504,20 @@ static ST *Formal_Sym(ST *sym, BOOL onstack)
 INT32
 Stack_Alignment ( void )
 {
+#ifdef TARG_X8664
+  if( Is_Target_64bit() )
+    return _QUAD_ALIGN;
+
+  /* TODO:
+     We need something like -mpreferred-stack-boundary=num.
+   */
+  if( Align_Double )
+    return  _DWORD_ALIGN;
+
+  return _WORD_ALIGN;
+#else
   return stack_align;
+#endif
 }
 
 
@@ -629,7 +642,13 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
       fprintf (TFile, " to %s: offset = %lld, size = %lld\n",
 	ST_name(base), ST_ofst(blk), size);
     else fprintf (TFile, " to %s: offset = %lld, size = %lld, align = %d\n",
-	ST_name(base), ST_ofst(blk), size, TY_align(ST_type(blk)));
+		  ST_name(base), ST_ofst(blk), size,
+#ifdef KEY
+		  align
+#else
+		  TY_align(ST_type(blk) 
+#endif // KEY
+		  );
   }
   if (STB_size(base) > maxsize
 	&& Is_Local_Symbol(base)			// on stack
@@ -741,7 +760,16 @@ Add_Object_To_Frame_Segment ( ST *sym, SF_SEGMENT seg, BOOL allocate )
     case SFSEG_UPFORMAL:
     case SFSEG_FORMAL:
       size = ST_size(sym);
-
+#ifdef KEY
+      /* The size of an object of an empty class is regarded as 1-byte-long.
+	 (bug#2967)
+       */
+      if( size == 0 &&
+	  ( Current_pu == NULL ||
+	    PU_cxx_lang( Get_Current_PU() ) ) ){
+	size = 1;
+      }    
+#endif
       // struct params are left-justified.
       if (TY_kind(ST_type(sym)) == KIND_STRUCT)
       {

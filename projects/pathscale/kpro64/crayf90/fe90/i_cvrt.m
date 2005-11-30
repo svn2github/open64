@@ -48,8 +48,8 @@
 
 
 # define SIGN_EXTEND(VALU)						       \
-    VALU = VALU << 32;           					       \
-    VALU = VALU >> 32; 							       \
+{   VALU = VALU << 32;           					       \
+    VALU = VALU >> 32;   }						       \
 
 
 

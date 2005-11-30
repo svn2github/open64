@@ -268,14 +268,18 @@ OUTPUT_FUNC_START_PROFILER::Fill_In_Func_Body(void)
     UINT32 bb_function_info_size = 8;
     UINT32 size = zero_word_size + filename_size + counts_size + ncounts_size + next_size + sizeofbb_size + bb_function_info_size;
 #else
-    UINT32 size = 7*8;
+    UINT32 size;
+    if (Is_Target_32bit())
+      size = 7*4;
+    else
+      size = 7*8;
 #endif
 
     TY_IDX tyi;
     TY& ty = New_TY(tyi);
     TY_Init(ty, size, KIND_STRUCT, MTYPE_M,
           STR_IDX_ZERO);
-    Set_TY_align(tyi, 32);
+    Set_TY_align(tyi, Is_Target_32bit()? 4 : 32);
     _lpbx_st = New_ST(GLOBAL_SYMTAB);
     ST_Init(_lpbx_st, Save_Str(Construct_Func_Name(_lpbx_0)),
             CLASS_VAR, SCLASS_PSTATIC, EXPORT_PREEMPTIBLE, tyi);
@@ -283,7 +287,7 @@ OUTPUT_FUNC_START_PROFILER::Fill_In_Func_Body(void)
     Set_ST_is_not_used(_lpbx_st);
     WN* parm_var_addr = WN_CreateLda (OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V),
                                           0,
-                                          Make_Pointer_Type(MTYPE_I8,FALSE),
+                                          Make_Pointer_Type(Is_Target_32bit()?MTYPE_I4:MTYPE_I8,FALSE),
                                           _lpbx_st);
     WN* call_stmt;
     call_stmt = Gen_Call(_init_proc,

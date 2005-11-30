@@ -2806,9 +2806,17 @@ c_common_truthvalue_conversion (expr)
       return expr;
 
     case INTEGER_CST:
+#ifdef KEY // bug 2684
+      if (TREE_CONSTANT_OVERFLOW (expr))
+      	break;
+#endif
       return integer_zerop (expr) ? boolean_false_node : boolean_true_node;
 
     case REAL_CST:
+#ifdef KEY // bug 2684
+      if (TREE_CONSTANT_OVERFLOW (expr))
+      	break;
+#endif
       return real_zerop (expr) ? boolean_false_node : boolean_true_node;
 
     case ADDR_EXPR:
@@ -5405,7 +5413,12 @@ handle_noinline_attribute (node, name, args, flags, no_add_attrs)
      bool *no_add_attrs;
 {
   if (TREE_CODE (*node) == FUNCTION_DECL)
+  {
     DECL_UNINLINABLE (*node) = 1;
+#ifdef KEY
+    DECL_NOINLINE_ATTRIB (*node) = 1;
+#endif
+  }
   else
     {
       warning ("`%s' attribute ignored", IDENTIFIER_POINTER (name));
@@ -5430,6 +5443,10 @@ handle_always_inline_attribute (node, name, args, flags, no_add_attrs)
     {
       /* Do nothing else, just set the attribute.  We'll get at
 	 it later with lookup_attribute.  */
+#ifdef KEY
+      // bug 2646
+      DECL_ALWAYS_INLINE_ATTRIB (*node) = 1;
+#endif
     }
   else
     {

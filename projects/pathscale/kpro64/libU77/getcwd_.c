@@ -61,6 +61,17 @@ getcwd_(char *path, int len)
 	char	*p;
 	char	pathname[MAXPATHLEN];
 
+#ifdef KEY
+/* Bug 3349: Modern Unix should have 2-arg getcwd; if the target OS is
+ * unexpected, the code should fail instead of silently compiling with
+ * neither getwd nor getcwd .
+ */
+#  ifdef __linux
+	p = getcwd(pathname,MAXPATHLEN);
+#  else
+#    error "Check function getwd/getcwd signature"
+#  endif
+#else
 #ifdef _BSD
 	extern char	*getwd();		/* sjc #nit 27Jan88 */
 	p = getwd(pathname);
@@ -68,6 +79,8 @@ getcwd_(char *path, int len)
 #if defined(_SYSV) || defined(_SYSTYPE_SVR4)
 	p = getcwd(pathname,MAXPATHLEN);	/* AGC #710 2/17/87 */
 #endif /* _SYSV */
+#endif /* KEY */
+
 	b_char(pathname, path, len);
 #ifdef __sgi
 	return((long)p);

@@ -800,6 +800,9 @@ static  WN* LWN_Copy_Tree_R(WN *wn, BOOL copy_access, WN_MAP access_map,
 
 
 #ifdef LNO
+#ifdef KEY
+extern WN * Loop_being_replaced;
+#endif
 
 void LWN_Copy_Def_Use_Node(WN* from_node, WN* to_node, DU_MANAGER* du)
 { 
@@ -815,7 +818,15 @@ void LWN_Copy_Def_Use_Node(WN* from_node, WN* to_node, DU_MANAGER* du)
       du->Create_Def_List(to_node);
       deflist2 = du->Ud_Get_Def(to_node);
     } 
+#ifdef KEY
+    WN * loop = deflist->Loop_stmt();
+    if (Loop_being_replaced == loop)
+      deflist2->Set_loop_stmt (NULL);
+    else
+      deflist2->Set_loop_stmt (loop);
+#else
     deflist2->Set_loop_stmt(deflist->Loop_stmt());
+#endif // KEY
     if (deflist->Incomplete()) 
       deflist2->Set_Incomplete();
   }

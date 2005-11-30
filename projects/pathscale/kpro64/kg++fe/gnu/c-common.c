@@ -2804,9 +2804,17 @@ c_common_truthvalue_conversion (expr)
       return expr;
 
     case INTEGER_CST:
+#ifdef KEY // bug 2684
+      if (TREE_CONSTANT_OVERFLOW (expr))
+      	break;
+#endif
       return integer_zerop (expr) ? boolean_false_node : boolean_true_node;
 
     case REAL_CST:
+#ifdef KEY // bug 2684
+      if (TREE_CONSTANT_OVERFLOW (expr))
+      	break;
+#endif
       return real_zerop (expr) ? boolean_false_node : boolean_true_node;
 
     case ADDR_EXPR:

@@ -42,9 +42,9 @@
 #include <math.h>
 #include "cmplrs/host.h"
 
-float_t __powrl(float_t x, int64 n)
+float __powrl(float x, int64 n)
 {
-double_t pow;
+double pow;
 
 pow = 1;
 

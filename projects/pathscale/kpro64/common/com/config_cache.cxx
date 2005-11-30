@@ -67,6 +67,9 @@ static const char source_file[] = __FILE__;
 #include "defs.h"
 #include "errors.h"
 #include "config_cache.h"
+#ifdef KEY
+#include "config_lno.h" // For EffectiveCacheSizePct
+#endif
 
 //---------------------------------------------------------------------------
 
@@ -229,6 +232,10 @@ void MHD_LEVEL::Compute_Effective_Size()
   }
 
   Effective_Size = (INT64) (pct*Size);
+#ifdef KEY
+  if (LNO_EffectiveCacheSizePct != 0)
+    Effective_Size = (INT64) ((double)LNO_EffectiveCacheSizePct/100.0*Size);
+#endif
 }
 
 void MHD_LEVEL::Print(FILE* f) const
@@ -286,6 +293,10 @@ void MHD::Merge_Options(const MHD& o)
     Loop_Overhead_Base = o.Loop_Overhead_Base;
   if (o.Loop_Overhead_Memref >= 0)
     Loop_Overhead_Memref = o.Loop_Overhead_Memref;
+#ifdef KEY
+  if (o.TLB_Trustworthiness >= 0)
+    TLB_Trustworthiness = o.TLB_Trustworthiness;
+#endif
 }
 
 void MHD::Print(FILE* f) const

@@ -397,7 +397,9 @@ WFE_Init (INT argc, char **argv, char **envp )
   ABI_Name = "i64";
 #endif
 #if defined(TARG_IA32) || defined(TARG_X8664)
-  ABI_Name = TARGET_64BIT ? "n64" : "n32";
+  if (TARGET_64BIT)
+    ABI_Name = "n64";
+  else ABI_Name = "n32";
 #endif
   Init_Controls_Tbl();
   Argc = argc;

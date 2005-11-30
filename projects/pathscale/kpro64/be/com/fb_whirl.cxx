@@ -105,6 +105,12 @@ FB_old_Annotate_whirl(WN *wn)
 ADDRESS_NAME_MAP PU_Addr_Name_Map;
 ADDRESS_PUSIZE_MAP PU_Addr_Pusize_Map;
 
+#ifdef KEY
+#define IS_VALID_DIV_VALUE(wn)                           \
+  ( !WN_operator_is( WN_kid1(wn), OPR_INTCONST ) &&	 \
+    MTYPE_is_integral( OPCODE_rtype(WN_opcode(wn) ) ) )
+#endif
+
 
 // ====================================================================
 void
@@ -544,12 +550,27 @@ FEEDBACK::Print( FILE *fp, const WN *wn ) const
   fb_opr_cases_call:
     fb_index = Get_index_call( wn );
     _calls[fb_index].Print( fp );
+#ifdef KEY
+    if( WN_operator(wn) == OPR_ICALL ){
+      fb_index = Get_index_icall( wn );
+      _icalls[fb_index].Print( fp );
+    }
+#endif
     break;
 
   fb_opr_cases_switch:
     fb_index = Get_index_switch( wn );
     _switches[fb_index].Print( fp );
     break;
+
+#ifdef KEY
+  fb_opr_cases_value:
+    if( IS_VALID_DIV_VALUE( wn ) ){
+      fb_index = Get_index_value( wn );
+      _values[fb_index].Print( fp );
+      break;
+    }
+#endif
 
   default:
     break;
@@ -950,6 +971,15 @@ FEEDBACK::Query_total_out( const WN *wn ) const
     fb_index = Get_index_switch( wn );
     freq     = _switches[fb_index].Total();
     break;
+
+#ifdef KEY
+  fb_opr_cases_value:
+    if( IS_VALID_DIV_VALUE( wn ) ){
+      fb_index = Get_index_value( wn );
+      freq     = _values[fb_index].Total();
+      break;
+    }
+#endif
 
   default:
     break;
@@ -1988,7 +2018,7 @@ FEEDBACK::FB_set_zero_node( WN *wn )
       Annot_call( wn, fb_info );
 #ifdef KEY
       if( WN_operator(wn) == OPR_ICALL ){
-	FB_Info_Icall fb_icall_info;
+	FB_Info_Icall fb_icall_info;   // ???
 	Annot_icall( wn, fb_icall_info );
       }
 #endif
@@ -2009,6 +2039,15 @@ FEEDBACK::FB_set_zero_node( WN *wn )
       Annot_switch( wn, fb_info );
     }
     break;
+
+#ifdef KEY
+  fb_opr_cases_value:
+    if( IS_VALID_DIV_VALUE( wn ) ){
+      FB_Info_Value fb_info( 0, 0, NULL, NULL );
+      Annot_value( wn, fb_info );
+      break;
+    }
+#endif
 
   default:
     break;
@@ -2076,7 +2115,7 @@ FEEDBACK::FB_set_unknown_node( WN *wn )
       Annot_call( wn, fb_info );
 #ifdef KEY
       if( WN_operator(wn) == OPR_ICALL ){
-	FB_Info_Icall fb_icall_info;
+	FB_Info_Icall fb_icall_info;   // ???
 	Annot_icall( wn, fb_icall_info );
       }
 #endif
@@ -2097,6 +2136,15 @@ FEEDBACK::FB_set_unknown_node( WN *wn )
       Annot_switch( wn, fb_info );
     }
     break;
+
+#ifdef KEY
+  fb_opr_cases_value:
+    if( IS_VALID_DIV_VALUE( wn ) ){
+      FB_Info_Value fb_info( 0, 0, NULL, NULL );
+      Annot_value( wn, fb_info );
+      break;
+    }
+#endif
 
   default:
     break;
@@ -2209,6 +2257,19 @@ FEEDBACK::FB_scale_node( WN *wn, FB_FREQ freq_scale )
     }
     break;
 
+#ifdef KEY
+  fb_opr_cases_value:
+    if( IS_VALID_DIV_VALUE( wn ) ){
+      FB_Info_Value fb_info = Query_value( wn );
+      fb_info.exe_counter *= freq_scale;
+      for( int i = 0; i < fb_info.num_values; i++ ){
+	fb_info.freq[i] *= freq_scale;
+      }
+      Annot_value( wn, fb_info );
+      break;
+    }
+#endif
+
   default:
     break;
   }
@@ -2290,6 +2351,15 @@ FEEDBACK::FB_duplicate_node( WN *wn_origl, WN *wn_dupli )
       Annot_switch( wn_dupli, fb_info );
     }
     break;
+
+#ifdef KEY
+  fb_opr_cases_value:
+    if( IS_VALID_DIV_VALUE( wn_origl ) ){
+      const FB_Info_Value& fb_info = Query_value( wn_origl );
+      Annot_value( wn_dupli, fb_info );
+      break;
+    }
+#endif
 
   default:
     break;
@@ -2408,6 +2478,23 @@ FEEDBACK::FB_recombine_node( WN *wn_origl, WN *wn_extra )
       Delete( wn_extra );
     }
     break;
+
+#ifdef KEY
+  fb_opr_cases_value:
+    if( IS_VALID_DIV_VALUE( wn_origl ) ){
+      FB_Info_Value fb_info_origl = Query_value( wn_origl );
+      const FB_Info_Value& fb_info_extra = Query_value( wn_extra );
+
+      fb_info_origl.exe_counter += fb_info_extra.exe_counter;
+      for( int i = 0; i < fb_info_origl.num_values; i++ ){
+	fb_info_origl.freq[i] += fb_info_extra.freq[i];
+      }
+
+      Annot_value( wn_origl, fb_info_origl );
+      Delete( wn_extra );
+      break;
+    }
+#endif
 
   default:
     break;
@@ -2554,6 +2641,26 @@ FEEDBACK::FB_clone_node( WN *wn_origl, WN *wn_clone, FB_FREQ freq_scale )
       Annot_switch( wn_clone, fb_info_clone );
     }
     break;
+
+#ifdef KEY
+  fb_opr_cases_value:
+    if( IS_VALID_DIV_VALUE( wn_origl ) ){
+      FB_Info_Value fb_info_origl = Query_value( wn_origl );
+      FB_Info_Value fb_info_clone = fb_info_origl;
+
+      fb_info_clone.exe_counter *= freq_scale;
+      fb_info_origl.exe_counter -= fb_info_clone.exe_counter;
+      for( int i = 0; i < fb_info_origl.num_values; i++ ){
+	fb_info_clone.freq[i] *= freq_scale;
+	fb_info_origl.freq[i] -= fb_info_clone.freq[i];
+      }
+
+      Annot_value( wn_origl, fb_info_origl );
+      Annot_value( wn_clone, fb_info_clone );
+
+      break;
+    }
+#endif
 
   default:
     break;
@@ -2907,6 +3014,27 @@ FB_IPA_Clone_node( FEEDBACK *feedback_origl, FEEDBACK *feedback_clone,
     }
     break;
 
+#ifdef KEY
+  fb_opr_cases_value:
+    if( IS_VALID_DIV_VALUE( wn_origl ) ){
+      FB_Info_Value fb_info_origl = feedback_origl->Query_value( wn_origl );
+      FB_Info_Value fb_info_clone = fb_info_origl;
+
+      fb_info_clone.exe_counter = fb_info_origl.exe_counter * freq_scale;
+      fb_info_origl.exe_counter -= fb_info_clone.exe_counter;
+
+      for( int i = 0; i < fb_info_origl.num_values; i++ ){
+	fb_info_clone.freq[i] = fb_info_origl.freq[i] * freq_scale;
+	fb_info_origl.freq[i] -= fb_info_clone.freq[i];
+      }
+
+      feedback_origl->Annot_value( wn_origl, fb_info_origl );
+      feedback_origl->Annot_value( wn_clone, fb_info_clone );
+
+      break;
+    }
+#endif // KEY
+
   default:
     break;
   }
@@ -3024,6 +3152,15 @@ FB_Transfer_node(FEEDBACK *feedback_origl, FEEDBACK *feedback_new, WN *wn)
     feedback_new->Annot_switch(wn, feedback_origl->Query_switch(wn));
     feedback_origl->Delete(wn);
     break;
+
+#ifdef KEY
+  fb_opr_cases_value:
+    if( IS_VALID_DIV_VALUE( wn ) ){
+      feedback_new->Annot_value( wn, feedback_origl->Query_value(wn) );
+      feedback_origl->Delete(wn);
+      break;
+    }
+#endif
 
   default:
     break;
@@ -3194,8 +3331,7 @@ Convert_Feedback_Info (const FEEDBACK* fb, const WN* tree,
 
 #ifdef KEY
     fb_opr_cases_value:
-      if( !WN_operator_is( WN_kid1(wn), OPR_INTCONST ) &&
-	  MTYPE_is_integral( OPCODE_rtype(WN_opcode(wn) ) ) ){
+      if( IS_VALID_DIV_VALUE( wn ) ){
 	pu_handle.Get_Value_Table ().push_back (fb->Query_value (wn));
 	++count;
 	break;
@@ -3304,17 +3440,6 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
       ++count;
       break;
 
-#ifdef KEY
-    fb_opr_cases_value:
-      if( !WN_operator_is( WN_kid1(wn), OPR_INTCONST ) &&
-	  MTYPE_is_integral( OPCODE_rtype(WN_opcode(wn) ) ) ){
-	fb->Annot_value( wn, *fb_value );
-	++fb_value;
-	++count;
-      }
-      break;
-#endif
-
     fb_opr_cases_switch:
       {
 	FB_Info_Switch info;
@@ -3327,24 +3452,43 @@ Read_Feedback_Info (FEEDBACK* fb, WN* tree, const Pu_Hdr& pu_hdr)
       }
       break;
 
+#ifdef KEY
+    fb_opr_cases_value:
+      if( IS_VALID_DIV_VALUE( wn ) ){
+	fb->Annot_value( wn, *fb_value );
+	++fb_value;
+	++count;
+	break;
+      }
+#endif
+
     default:
       break;
     }
   }
 
 #ifdef KEY
-  Is_True( fb_value == fb_value_last, ("Error in reading value feedback info") );
-#endif
+  FmtAssert( count == pu_hdr.pu_checksum &&
+	     fb_invoke == fb_invoke_last &&
+	     fb_branch == fb_branch_last &&
+	     fb_value  == fb_value_last  &&
+	     fb_switch_target == fb_switch_target_last &&
+	     fb_loop == fb_loop_last &&
+	     fb_circuit == fb_circuit_last &&
+	     fb_icall == fb_icall_last &&
+	     fb_call == fb_call_last,
+	     ("Feedback data is stale. Please rebuild the feedback data.") );
+#else
+  Is_True( count == pu_hdr.pu_checksum &&
+	   fb_invoke == fb_invoke_last &&
+	   fb_branch == fb_branch_last &&
+	   fb_switch_target == fb_switch_target_last &&
+	   fb_loop == fb_loop_last &&
+	   fb_circuit == fb_circuit_last &&
+	   fb_icall == fb_icall_last &&
+	   fb_call == fb_call_last, ( "Error in reading Feedback info" ) );
+#endif // KEY
 
-  Is_True ( count == pu_hdr.pu_checksum &&
-	    fb_invoke == fb_invoke_last &&
-	    fb_branch == fb_branch_last &&
-	    fb_switch_target == fb_switch_target_last &&
-	    fb_loop == fb_loop_last &&
-	    fb_circuit == fb_circuit_last &&
-	    fb_icall == fb_icall_last &&
-	    fb_call == fb_call_last, ( "Error in reading Feedback info" ) );
-	   
 } // Read_Feedback_Info
 
 #if 1

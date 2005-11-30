@@ -2345,9 +2345,9 @@ expand_body (fn)
 #ifdef KEY
   /* Assume all copy constructors are needed because pathCC needs to
      copy objects returned from procedure calls. */
-  if (DECL_ASSEMBLER_NAME (fn) &&
-      DECL_COPY_CONSTRUCTOR_P (fn) &&
-      DECL_COMPLETE_CONSTRUCTOR_P (fn))
+  if (DECL_COPY_CONSTRUCTOR_P (fn) &&
+      DECL_COMPLETE_CONSTRUCTOR_P (fn) &&
+      DECL_ASSEMBLER_NAME_SET_P (fn))
     TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (fn)) = 1;
 #endif
 

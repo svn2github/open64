@@ -1619,6 +1619,13 @@ static WN *em_divfloor(WN *block, TYPE_ID type, WN *x, WN *y)
     */
     TYPE_ID	ytype = WN_rtype(y);
     WN		*sra, *add, *one, *bxor, *mask, *sub, *band;
+#ifdef TARG_X8664 
+    // Bug 3264 - This algorithm requires that byte size be identical for 
+    // ytype and type, for zero-extended 64-bit target ISA.
+    if (MTYPE_is_unsigned(ytype) &&
+	MTYPE_byte_size(ytype) < MTYPE_byte_size(type))
+      ytype = type;
+#endif
 
     sra = WN_Ashr(type,
 		  WN_LdidPreg(type, yN),
@@ -3387,9 +3394,10 @@ ST *Get_Vararg_Save_Area_Info(int &fixed_int_parms, int &fixed_float_parms,
 static WN *em_x8664_va_start(WN *block, WN *ap)
 {
   TY_IDX ty_idx;
-  TY_IDX va_list_struct_ty;
+  // TY_IDX va_list_struct_ty;
   INT fixed_int_parms, fixed_float_parms;
   BOOL direct;
+  BOOL non_leaf = FALSE;
   if (WN_operator(ap) == OPR_LDA) {
     ty_idx = WN_ty(ap);
     Is_True(TY_kind(ty_idx) == KIND_POINTER,
@@ -3398,7 +3406,7 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
     Is_True(TY_kind(ty_idx) == KIND_ARRAY && TY_size(ty_idx) == 24,
 	("em_x8664_va_start: argument pointer does not point to type va_list"));
     direct = TRUE;
-    va_list_struct_ty = TY_etype(ty_idx);
+    // va_list_struct_ty = TY_etype(ty_idx);
   }
   else if (WN_operator(ap) == OPR_LDID) {
     ty_idx = WN_ty(ap);
@@ -3408,9 +3416,12 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
     Is_True(TY_size(ty_idx) == 24,
 	("em_x8664_va_start: argument pointer does not point to type va_list"));
     direct = FALSE;
-    va_list_struct_ty = ty_idx;
+    // va_list_struct_ty = ty_idx;
   }
-  else Fail_FmtAssertion("em_x8664_va_start: unexpected argument node");
+  else { // bug 3147
+    non_leaf = TRUE;
+    direct = FALSE;
+  }
 
   ST *upformal;
   ST *reg_save_area = Get_Vararg_Save_Area_Info(fixed_int_parms, fixed_float_parms, upformal);
@@ -3421,7 +3432,9 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
   if (direct)
     wn = WN_Stid(MTYPE_I4, 0, WN_st(ap), MTYPE_To_TY(MTYPE_I4), wn);
   else {
-    addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+    if (! non_leaf)
+      addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+    else addr = WN_COPY_Tree(ap);
     wn = WN_Istore(MTYPE_I4, 0, Make_Pointer_Type(MTYPE_To_TY(MTYPE_I4)),
     		   addr, wn);
   }
@@ -3431,7 +3444,9 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
   if (direct)
     wn = WN_Stid(MTYPE_I4, 4, WN_st(ap), MTYPE_To_TY(MTYPE_I4), wn);
   else {
-    addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+    if (! non_leaf)
+      addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+    else addr = WN_COPY_Tree(ap);
     wn = WN_Istore(MTYPE_I4, 4, Make_Pointer_Type(MTYPE_To_TY(MTYPE_I4)),
     		   addr, wn);
   }
@@ -3441,7 +3456,9 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
   if (direct)
     wn = WN_Stid(Pointer_Mtype, 8, WN_st(ap), MTYPE_To_TY(Pointer_Mtype), wn);
   else {
-    addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+    if (! non_leaf)
+      addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+    else addr = WN_COPY_Tree(ap);
     wn = WN_Istore(Pointer_Mtype, 8, 
     		   Make_Pointer_Type(MTYPE_To_TY(Pointer_Mtype)), addr, wn);
   }
@@ -3457,7 +3474,9 @@ static WN *em_x8664_va_start(WN *block, WN *ap)
     if (direct)
       wn = WN_Stid(Pointer_Mtype, 16, WN_st(ap), MTYPE_To_TY(Pointer_Mtype),wn);
     else {
-      addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+      if (! non_leaf)
+        addr = WN_Ldid(Pointer_Mtype, WN_offset(ap), WN_st(ap), WN_ty(ap));
+      else addr = WN_COPY_Tree(ap);
       wn = WN_Istore(Pointer_Mtype, 16, 
     		     Make_Pointer_Type(MTYPE_To_TY(Pointer_Mtype)), addr, wn);
     }
@@ -4037,7 +4056,25 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     // and assumes a vararg function if there is no prorotype.
     Set_TY_has_prototype(ty);
 #endif
+
+#ifdef KEY
+    /* Replace exp() with fastexp(). Note that only the -m64 version of fastexp()
+       is provided so far.  (bug#3163)
+     */
+    ST* st = NULL;
+
+    if( Is_Target_64bit() &&
+	IEEE_Arithmetic >= IEEE_INEXACT &&
+	WN_intrinsic(tree) == INTRN_F8EXP ){
+      st = Gen_Intrinsic_Function(ty, "fastexp");
+
+    } else {
+      st = Gen_Intrinsic_Function(ty, function);
+    }
+#else
     ST	*st = Gen_Intrinsic_Function(ty, function);
+#endif // KEY
+
     WN	*call;
 
    /*

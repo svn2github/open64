@@ -561,6 +561,12 @@ copy_body_r (tp, walk_subtrees, data)
      knows not to copy VAR_DECLs, etc., so this is safe.  */
   else
     {
+#ifdef KEY
+// bugs 2647, 2681
+      if (TREE_CODE (*tp) == VAR_DECL && DECL_P (*tp) && 
+          DECL_CONTEXT (*tp) == fn && TREE_STATIC (*tp))
+        DECL_PROMOTE_STATIC (*tp) = 1; // promote its whirl st
+#endif // KEY
       copy_tree_r (tp, walk_subtrees, NULL);
 
       /* The copied TARGET_EXPR has never been expanded, even if the

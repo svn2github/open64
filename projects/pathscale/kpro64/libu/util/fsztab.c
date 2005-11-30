@@ -666,11 +666,7 @@ struct c_funs_s __fndc_ncfunc[NCV_MAX] = {
 	{ _conv_err,	_conv_err,	0, 0, 0 },	/* NCV_IUD */
 	{ _conv_err,	_conv_err,	0, 0, 0 },	/* NCV_T3D */
 	{ _conv_err,	_conv_err,	0, 0, 0 },	/* NCV_IEL */
-#ifndef KEY
-	{ mips2ia_,	_conv_err,	1, 0, 0 },	/* NCV_MIPS */
-#else
-	{ _conv_err,	_conv_err,	1, 0, 0 },	/* NCV_MIPS */
-#endif
+	{ mips2ia_,	ia2mips_,	1, 0, 0 },	/* NCV_MIPS */
 
 #else						/* SPARC, et al */
 	{ _conv_err,	_conv_err,	0, 0, 0 },	/* NCV_CRAY */

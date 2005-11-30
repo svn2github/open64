@@ -122,6 +122,12 @@ AC_CHECK_HEADERS(string.h strings.h stdlib.h unistd.h)
 AC_CHECK_FUNCS(sbrk realpath)
 AC_HEADER_DIRENT
 
+LIBIBERTY_HAVE_WEAK_SYMBOL
+if test $libiberty_cv_have_weak_symbol = yes; then
+  # demangler may use dlopen.
+  AC_SEARCH_LIBS(dlopen, dl)
+fi
+
 BFD_BINARY_FOPEN
 
 BFD_NEED_DECLARATION(strstr)

@@ -158,6 +158,7 @@ enum Dwarf_Rel_Type {
                 dwarf_drt_data_reloc, /* simple normal relocation */
                 dwarf_drt_segment_rel, /* special reloc, exceptions*/
 #ifdef KEY
+		dwarf_drt_cie_label, /* simple string */
 		dwarf_drt_data_reloc_by_str_id, /* drd_symbol_index==str_idx */
 		dwarf_drt_first_of_length_pair_create_second,
 	/* similar to the next, but first create/put the 2nd symbol here */
@@ -1280,6 +1281,14 @@ Dwarf_P_Attribute dwarf_add_AT_unsigned_const_ext(Dwarf_P_Debug /*dbg*/,
     Dwarf_Unsigned 	/*value*/, 
     Dwarf_Error* 	/*error*/,
     Dwarf_Unsigned 	/*size*/);
+// Bug 1785
+Dwarf_P_Attribute dwarf_add_AT_complex_const(Dwarf_P_Debug /*dbg*/, 
+    Dwarf_P_Die 	/*ownerdie*/, 
+    Dwarf_Half 		/*attr*/, 
+    Dwarf_Unsigned 	/*value*/, 
+    Dwarf_Unsigned 	/*value*/, 
+    Dwarf_Error* 	/*error*/,
+    Dwarf_Unsigned 	/*size*/);
 #endif
 
 Dwarf_P_Attribute dwarf_add_AT_signed_const(Dwarf_P_Debug /*dbg*/, 
@@ -1403,6 +1412,68 @@ Dwarf_Unsigned dwarf_add_frame_fde_b(
         Dwarf_Unsigned /*sym_idx_of_end*/,
         Dwarf_Addr     /*offset_from_end_sym*/,
         Dwarf_Error*   /*error*/);
+
+#ifdef KEY
+Dwarf_Unsigned dwarf_add_ehframe_cie(Dwarf_P_Debug /*dbg*/, 
+    char* 		/*augmenter*/, 
+    Dwarf_Small 	/*code_alignent_factor*/, 
+    Dwarf_Small 	/*data_alignment_factor*/, 
+    Dwarf_Small 	/*return_address_reg*/, 
+    Dwarf_Unsigned	/* personality routine */,
+    Dwarf_Bool		/* generate fpic ? */,
+    Dwarf_Bool		/* for -m64 or -m32 ? */,
+    Dwarf_Ptr 		/*initialization_bytes*/, 
+    Dwarf_Unsigned 	/*init_byte_len*/, 
+    Dwarf_Error* 	/*error*/);
+
+Dwarf_Unsigned dwarf_add_ehframe_fde( 
+    Dwarf_P_Debug 	/*dbg*/,
+    Dwarf_P_Fde 	/*fde*/, 
+    Dwarf_P_Die 	/*corresponding subprogram die*/,
+    Dwarf_Unsigned 	/*cie_to_use*/, 
+    Dwarf_Unsigned  	/*virt_addr_of_described_code*/, 
+    Dwarf_Unsigned  	/*length_of_code*/, 
+    Dwarf_Unsigned 	/*symbol_index*/, 
+    Dwarf_Error* 	/*error*/);
+
+Dwarf_Unsigned dwarf_add_ehframe_fde_b(
+        Dwarf_P_Debug  /*dbg*/,
+        Dwarf_P_Fde    /*fde*/,
+        Dwarf_P_Die    /*die*/,
+        Dwarf_Unsigned /*cie*/,
+        Dwarf_Addr     /*virt_addr*/,
+        Dwarf_Unsigned /*code_len*/,
+        Dwarf_Unsigned /*sym_idx*/,
+        Dwarf_Unsigned /*sym_idx_of_end*/,
+        Dwarf_Addr     /*offset_from_end_sym*/,
+        Dwarf_Error*   /*error*/);
+
+Dwarf_Unsigned dwarf_add_ehframe_info_b( 
+    Dwarf_P_Debug dbg   /*dbg*/,
+    Dwarf_P_Fde 	/*fde*/,
+    Dwarf_P_Die 	/*die*/,
+    Dwarf_Unsigned 	/*cie*/,
+    Dwarf_Addr 	        /*virt_addr*/,
+    Dwarf_Unsigned 	/*code_len*/,
+    Dwarf_Unsigned 	/*symidx*/,
+    Dwarf_Unsigned      /* end_symbol */,
+    Dwarf_Addr          /* offset_from_end_symbol */,
+    Dwarf_Signed   	/*offset_into_exception_tables*/,
+    Dwarf_Unsigned 	/*exception_table_symbol*/,
+    Dwarf_Error*	/*error*/);
+
+Dwarf_Unsigned dwarf_add_ehframe_info( 
+    Dwarf_P_Debug dbg   /*dbg*/,
+    Dwarf_P_Fde 	/*fde*/,
+    Dwarf_P_Die 	/*die*/,
+    Dwarf_Unsigned 	/*cie*/,
+    Dwarf_Addr 	        /*virt_addr*/,
+    Dwarf_Unsigned 	/*code_len*/,
+    Dwarf_Unsigned 	/*symidx*/,
+    Dwarf_Signed   	/*offset_into_exception_tables*/,
+    Dwarf_Unsigned 	/*exception_table_symbol*/,
+    Dwarf_Error*	/*error*/);
+#endif // KEY
 
 Dwarf_Unsigned dwarf_add_frame_info_b( 
     Dwarf_P_Debug dbg   /*dbg*/,

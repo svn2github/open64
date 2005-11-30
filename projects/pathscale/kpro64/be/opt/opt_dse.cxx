@@ -918,43 +918,24 @@ DSE::Add_EH_exposed_use(WN *call) const
   Is_True(_exc != NULL, ("DSE::Add_EH_exposed_use, NULL exception scope (1)"));
   EXC_SCOPE *es = _exc->Get_es_link(call);
   Is_True(es != NULL, ("DSE::Add_EH_exposed_use, NULL exception scope (2)"));
-  EXC_SCOPE_ITER exc_scope_iter(es);
-  EXC_SCOPE *exc_scope;
+
   MU_LIST   *mu_list = _opt_stab->Get_stmt_mu_list(call);
   MU_NODE   *mu;
+  AUX_ID     var;
+  VER_ID     vse;
+  EXC_SCOPE *exc_scope, *exc_scope2;
 
-  FOR_ALL_NODE(exc_scope, exc_scope_iter, Init()) {
-    AUX_ID     var;
-    VER_ID     vse;
-    if (exc_scope->Is_cleanup_region()) {
-      EXC_SCOPE_CLEANUP_ITER cleanup_iter(exc_scope);
-      FOR_ALL_ELEM(var, cleanup_iter, Init()) {
-	// var can be AUX_ID 0 for undefined
-        if (var != 0 && !_opt_stab->Stack(var)->Is_Empty()) {
-          vse = _opt_stab->Stack(var)->Top();
-          mu = mu_list->New_mu_node_w_cur_vse(var, vse,
-                                              _cfg->Mem_pool());
-          if (mu) {
-            Set_Required_MU( mu, FALSE );
-            if ( Tracing() )
-              fprintf( TFile, "<dse> Required CLEANUP_MU: var:%d\n", var );
-          }
-        }
-      }
-    }
-    else if (exc_scope->Is_try_region()) { // try region
-      EXC_SCOPE_TRY_ITER try_iter(exc_scope);
-      FOR_ALL_ELEM(var, try_iter, Init()) {
-        if (var != 0) {
-          vse = _opt_stab->Stack(var)->Top();
-          mu = mu_list->New_mu_node_w_cur_vse(var, vse,
-                                              _cfg->Mem_pool());
-          if (mu) {
-            Set_Required_MU( mu, FALSE );
-            if ( Tracing() )
-              fprintf( TFile, "<dse> Required EH_MU: var:%d\n", var );
-          }
-        }
+  for (exc_scope = es; exc_scope != NULL; exc_scope = exc_scope->Parent()) {
+    EXC_SCOPE_TRY_ITER try_iter(exc_scope);
+    FOR_ALL_ELEM(var, try_iter, Init()) {
+      if (var != 0) {
+	vse = _opt_stab->Stack(var)->Top();
+	mu = mu_list->New_mu_node_w_cur_vse(var, vse, _cfg->Mem_pool());
+	if (mu) {
+	  Set_Required_MU( mu, FALSE );
+	  if ( Tracing() )
+	    fprintf( TFile, "<dse> Required EH_MU: var:%d\n", var );
+	}
       }
     }
   }

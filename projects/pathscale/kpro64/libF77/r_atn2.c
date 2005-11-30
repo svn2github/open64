@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,7 +43,11 @@
 #include <math.h>
 #include "moremath.h"
 
-float_t r_atn2(float_t *x,float_t *y)
+#ifdef KEY
+float r_atn2(float *x,float *y)
+#else
+float r_atn2(float *x,float_t *y)
+#endif // KEY
 {
   return (atan2f(*x, *y));
 }

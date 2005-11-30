@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 //
 // Module: opt_cse.cxx
@@ -139,6 +144,7 @@ ETABLE::Generate_stid_to_preg( CODEREP *lhs, CODEREP *rhs, MTYPE rhs_type,
 			    BB_NODE *bb, SRCPOS linenum ) const
 {
   CODEREP *new_cr = Alloc_stack_cr(0);
+#ifndef KEY // bug 3022
   if (Split_64_Bit_Int_Ops) { // make sure the types correspond in size
     if (MTYPE_size_min(rhs->Dtyp()) == 64 &&
         MTYPE_size_min(lhs->Dsctyp()) == 32) { // generate a truncation
@@ -158,6 +164,7 @@ ETABLE::Generate_stid_to_preg( CODEREP *lhs, CODEREP *rhs, MTYPE rhs_type,
 #endif
     }
   }
+#endif
 
   STMTREP *savestmt;
   savestmt = CXX_NEW(STMTREP, Htable()->Mem_pool());

@@ -355,7 +355,7 @@ C     Set lengths, stride and bit offsets
       ILENB  = LOGB2(ILEN)              !  Log (base 2) of ILEN
       MLENB  = LOGB2(MLEN)              !  Log (base 2) of MLEN
 
-      SWAP   = 1  
+      SWAP   = 1
 
       GOTO (100,200,300,400,200,600), TYPE
 

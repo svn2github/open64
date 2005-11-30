@@ -582,7 +582,7 @@ static UINT64 Desc_type_byte_size(const WN* wn) {
 
 AUX_ID
 OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
-		       TY_IDX wn_object_ty, BOOL is_volatile, const WN* wn)
+		       TY_IDX wn_object_ty, BOOL is_volatile, WN* wn)
 {
   Is_True(st, ("Enter_symbol:  can't enter NULL symbol."));
 
@@ -778,6 +778,10 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   sym->Set_field_id(field_id);
   sym->Set_mclass(0);
   sym->Set_mtype(MTYPE_UNKNOWN);
+#ifdef KEY // bug 3091: to help create correct identity assignment for BS var
+  if (opr == OPR_LDID || opr == OPR_STID)
+    sym->Set_wn(wn);
+#endif
 
   if (is_scalar) {
     sym->Set_stype(VT_NO_LDA_SCALAR);

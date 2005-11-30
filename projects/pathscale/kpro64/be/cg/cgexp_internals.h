@@ -104,6 +104,10 @@ extern void Expand_Flop (OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3
 #define OP_NEED_PAIR(t)  \
    (Is_Target_32bit() && ((t)==MTYPE_I8 || (t)==MTYPE_U8))
 extern void Expand_Replicate (OPCODE opcode, TN *result, TN *src1, OPS *ops);
+extern void Expand_Reduce_Add (OPCODE opcode, TN *result, TN *src1, OPS *ops);
+extern void Expand_Reduce_Mpy (OPCODE opcode, TN *result, TN *src1, OPS *ops);
+extern void Expand_Reduce_Max (OPCODE opcode, TN *result, TN *src1, OPS *ops);
+extern void Expand_Reduce_Min (OPCODE opcode, TN *result, TN *src1, OPS *ops);
 TN* Get_TN_Pair( TN* );
 TN* Create_TN_Pair( TN*, TYPE_ID );
 void Create_TN_Pair( TN*, TN* );

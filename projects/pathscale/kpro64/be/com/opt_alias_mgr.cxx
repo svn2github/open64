@@ -967,7 +967,8 @@ ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
     }
   }
 
-  if (OPERATOR_is_store(WN_operator(wn1)) && OPERATOR_is_load(WN_operator(wn2))) {
+  if (OPERATOR_is_store(WN_operator(wn1)) && OPERATOR_is_load(WN_operator(wn2)) ||
+      OPERATOR_is_store(WN_operator(wn2)) && OPERATOR_is_load(WN_operator(wn1))) {
     if (am->Rule()->Aliased_Memop(pt1, pt2, WN_object_ty(wn1), WN_object_ty(wn2))) 
       return POSSIBLY_ALIASED;
   } else {
@@ -1512,7 +1513,7 @@ BOOL ALIAS_MANAGER::May_refer_to_alloca_mem(const WN *wn) const
 #ifdef KEY
   // no alias info, conservatively return TRUE;
   if (alias_id == 0) {
-   return TRUE; 
+   return FALSE; 
   }
 #endif
   POINTS_TO *pt = Pt(alias_id);

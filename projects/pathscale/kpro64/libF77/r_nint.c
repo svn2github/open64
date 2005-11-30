@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,7 +45,7 @@
 
 #define TWO_EXP_23 8388608.0F
 
-float_t __rnint(float_t x)
+float __rnint(float x)
 {
   /* Need to worry about case where LSB of floating-point type
      represents 1.0, e.g., ANINT(8388609.0) needs to return 8388609.0
@@ -52,7 +56,7 @@ float_t __rnint(float_t x)
     return (x >= 0.0F ? floorf(x + .5F) : -floorf(.5F - x));
 }
 
-float_t r_nint(float_t *x)
+float r_nint(float *x)
 {
   return (__rnint(*x));
 }

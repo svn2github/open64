@@ -497,6 +497,32 @@ LNOTARGET_Complex_Neg_Res (TI_RES_COUNT* resource_count, TYPE_ID mtype)
 }
 
 double
+LNOTARGET_Fp_Select_Res (TI_RES_COUNT* resource_count, TYPE_ID rtype)
+{  
+  const BOOL is_64bit = MTYPE_is_size_double(rtype);
+
+  TI_RES_COUNT_Add_Op_Resources(resource_count, 
+				is_64bit ? TOP_andpd: TOP_andps);
+  TI_RES_COUNT_Add_Op_Resources(resource_count, 
+				is_64bit ? TOP_andnpd: TOP_andnps);
+  TI_RES_COUNT_Add_Op_Resources(resource_count, 
+				is_64bit ? TOP_orpd: TOP_orps);
+  
+  return 3.0;
+}
+
+double
+LNOTARGET_Fp_Compare_Res (TI_RES_COUNT* resource_count, TYPE_ID rtype)
+{  
+  const BOOL is_64bit = MTYPE_is_size_double(rtype);
+
+  TI_RES_COUNT_Add_Op_Resources(resource_count, 
+				is_64bit ? TOP_cmpsd: TOP_cmpss);
+  
+  return 1.0;
+}
+
+double
 LNOTARGET_Int_Select_Res (TI_RES_COUNT* resource_count, TYPE_ID rtype)
 {  
   const BOOL is_64bit = MTYPE_is_size_double(rtype);
@@ -1947,6 +1973,25 @@ LNOTARGET_FP_Floor_Lat (TYPE_ID mtype)
   }
   FmtAssert(FALSE, ("LNOTARGET_FP_Floor_Res: mtype not yet implemented"));
   return 0;	// dummy
+}
+
+INT
+LNOTARGET_FP_Select_Lat (TYPE_ID mtype)
+{
+  BOOL is_64bit = MTYPE_is_size_double(mtype);
+  TOP andp = is_64bit ? TOP_andpd : TOP_andps;
+  TOP andnp = is_64bit ? TOP_andnpd : TOP_andnps;
+  TOP orp = is_64bit ? TOP_orpd : TOP_orps;
+  return LNOTARGET_Top_Latency(andp) +
+    LNOTARGET_Top_Latency(andnp) +
+    LNOTARGET_Top_Latency(orp);
+}
+
+INT
+LNOTARGET_FP_Compare_Lat (TYPE_ID mtype)
+{
+  TOP cmp = (mtype == MTYPE_F4 ? TOP_cmpss: TOP_cmpsd);
+  return LNOTARGET_Top_Latency(cmp);
 }
 
 INT

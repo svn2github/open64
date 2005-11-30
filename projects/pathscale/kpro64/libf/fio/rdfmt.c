@@ -646,7 +646,12 @@ _rdfmt(
 			 * Literals and H edit-descriptors are invalid in
 			 * input formats.
 			 */
+// Bug 1883
+# ifdef KEY
+                        cup->ulineptr          += width;
+# else
 			stat			= FEFMTLII;
+# endif
 			repcnt			= repcnt - 1;
 			break;
 
@@ -854,6 +859,7 @@ _nicverr(const int nicverror)
 			if ((fpgetmask() & FP_X_UFL) == 0)
 				errn	= 0;
 #elif	defined (_LITTLE_ENDIAN) && !defined(__sv2)
+			errn	= 0; /* needs fixing for F2003 IEEE 754 support */
 #endif
 			break;
 		case EX_EXPOFLO:	/* Floating-point overflow */
@@ -863,6 +869,7 @@ _nicverr(const int nicverror)
 			if ((fpgetmask() & FP_X_OFL) == 0)
 				errn	= 0;
 #elif	defined (_LITTLE_ENDIAN) && !defined(__sv2)
+			errn	= 0; /* needs fixing for F2003 IEEE 754 support */
 #endif
 			break;
 		case EX_NULLFLD:	/* Null field */

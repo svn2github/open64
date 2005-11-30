@@ -100,6 +100,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cw
 // for tolower
 #include <ctype.h>
 #endif /* TARG_X8664 */
+#ifdef KEY
+#include "stamp.h"      /* For INCLUDE_STAMP */
+#endif
 
 char *FE_command_line = NULL;
 
@@ -125,8 +128,15 @@ cwh_dst_init_file(char *src_path)
 
   file = strrchr(src_path,'/');
 
+#ifndef KEY
   comp_info = cwh_dst_get_command_line_options(); 
-
+#else
+  // Bug 178 - AT_producer should be the name of the compiler and version info
+  comp_info = (char *)malloc(sizeof(char)*100);
+  strcpy(comp_info, "pathf90 ");
+  if (INCLUDE_STAMP)
+    strcat(comp_info, INCLUDE_STAMP);
+#endif
 
   comp_unit_idx = DST_mk_compile_unit(++(file),
 				      current_host_dir,
@@ -305,11 +315,20 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
      ptr[ j ] = tolower(ptr[ j ]);
 #endif /* TARG_X8664 */
    while (ptr != NULL) {
+#ifndef TARG_X8664
       i = DST_mk_constant_def(s,
                               ptr,
                               t,
                               cval,
                               FALSE);
+#else
+      i = DST_mk_variable_const(s, 
+      			        ptr,
+				t,
+				TRUE,
+				FALSE,
+				cval);
+#endif
       DST_append_child(current_scope_idx,i);
       ptr = strtok(NULL, " ");
    }
@@ -429,7 +448,15 @@ cwh_dst_mk_func(ST * st)
   s = GET_ST_LINENUM(st);
 
   l = NULL;  
+#ifndef KEY
   p = GET_MODIFIED_NAME(st);
+#else
+  // Bug 2672- use the mangled name in Dwarf output to match the assembly name
+  if (PU_is_mainpu(pu)) 
+    p = ST_name(st);
+  else
+    p = GET_MODIFIED_NAME(st);
+#endif
   if (p != NULL)
     r = p ;
 
@@ -633,7 +660,7 @@ cwh_dst_mk_variable(ST * st)
     t = cwh_dst_mk_type(d);
 
 #ifdef TARG_X8664
-  INT len = ST_name(st)?strlen(ST_name(st)):0;
+  INT len = ST_name(st)?strlen(ST_name(st))+1:0;
   INT j;
   char name[len];
   if (len) {
@@ -667,6 +694,7 @@ cwh_dst_mk_variable(ST * st)
      DST_SET_assumed_size(DST_INFO_flag(DST_INFO_IDX_TO_PTR(i)));
   }
 
+#ifndef TARG_X8664
   if (IS_DOPE_TY(d)) {
      def_info     = DST_INFO_IDX_TO_PTR(i);
      def_attr_idx = DST_INFO_attributes(def_info);
@@ -684,6 +712,7 @@ cwh_dst_mk_variable(ST * st)
         DST_SET_f90_pointer(DST_INFO_flag(def_info));
      }
   }
+#endif
 
   if (dr)
     DST_SET_deref(DST_INFO_flag(DST_INFO_IDX_TO_PTR(i)));
@@ -759,7 +788,7 @@ cwh_dst_mk_formal(ST * st)
 
 #ifdef TARG_X8664
   INT j;
-  INT len = ST_name(st) ? strlen(ST_name(st)):0;
+  INT len = ST_name(st) ? strlen(ST_name(st))+1:0;
   char name[len];
   if (len) {
     strcpy(name, ST_name(st));
@@ -789,6 +818,7 @@ cwh_dst_mk_formal(ST * st)
 			      FALSE);          /* is_declaration_only */
 #endif /* TARG_X8664 */
 
+#ifndef TARG_X8664
   if (IS_DOPE_TY(ta)) {
      def_info     = DST_INFO_IDX_TO_PTR(i);
      def_attr_idx = DST_INFO_attributes(def_info);
@@ -803,6 +833,7 @@ cwh_dst_mk_formal(ST * st)
         DST_SET_f90_pointer(DST_INFO_flag(def_info));
      }
   }
+#endif
 
   if (ST_auxst_is_assumed_size(st)) {
      DST_SET_assumed_size(DST_INFO_flag(DST_INFO_IDX_TO_PTR(i)));
@@ -876,7 +907,7 @@ cwh_dst_mk_common(ST * st)
 
 #ifdef TARG_X8664
   INT j;
-  INT len = ST_name(st) ? strlen(ST_name(st)):0;
+  INT len = ST_name(st) ? strlen(ST_name(st))+1:0;
   char name[len];
   if (len) {
     strcpy(name, ST_name(st));
@@ -913,7 +944,7 @@ cwh_dst_mk_common(ST * st)
 
 #ifdef TARG_X8664
     INT j;
-    INT len = ST_name(el) ? strlen(ST_name(el)):0;
+    INT len = ST_name(el) ? strlen(ST_name(el))+1:0;
     char name[len];
     if (len) {
       strcpy(name, ST_name(el));
@@ -1177,7 +1208,7 @@ cwh_dst_struct_type(TY_IDX ty)
   if (DST_IS_NULL(i) || Top_ST_has_dope) {
 
 #ifdef TARG_X8664
-    INT len = TY_name(ty)?strlen(TY_name(ty)):0;
+    INT len = TY_name(ty)?strlen(TY_name(ty))+1:0;
     INT j;
     char name[len];
     if (len) {
@@ -1545,7 +1576,7 @@ cwh_dst_member(FLD_HANDLE fld, DST_INFO_IDX parent)
     t = cwh_dst_mk_type(ty);
 
 #ifdef TARG_X8664
-  INT len = FLD_name(fld)?strlen(FLD_name(fld)):0;
+  INT len = FLD_name(fld)?strlen(FLD_name(fld))+1:0;
   INT j;
   char name[len];
   if (len) {

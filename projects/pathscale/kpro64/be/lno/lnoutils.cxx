@@ -81,6 +81,9 @@
 #include "ipa_lno_util.h"
 #include "debug.h" 
 #include "wutil.h"
+#ifdef KEY
+#include "be_symtab.h" // for Be_preg_tab
+#endif
 
 #pragma weak New_Construct_Id
 
@@ -1283,6 +1286,19 @@ SYMBOL Create_Preg_Symbol(const char* name, TYPE_ID type)
   return SYMBOL(MTYPE_To_PREG(type), reg, type);
 }
 
+#ifdef KEY
+SYMBOL Create_Preg_Symbol_Homed(const char* name, TYPE_ID type, WN* home)
+{
+#ifdef _NEW_SYMTAB
+  PREG_NUM reg = Create_Preg(type, (char*)name);
+  Be_preg_tab[reg - Last_Dedicated_Preg_Offset].Set_home_location(home);
+#else
+  PREG_NUM reg = Create_Preg(type, (char*)name, home);
+#endif
+  return SYMBOL(MTYPE_To_PREG(type), reg, type);
+}
+#endif
+
 SYMBOL Create_Stack_Symbol(const char *name, TYPE_ID type)
 {
    ST* st = New_ST(CURRENT_SYMTAB);
@@ -1585,6 +1601,20 @@ void Print_Def_Use(WN *wn, FILE *fp)
   }
 }
 
+#ifdef KEY
+static BOOL Is_node_in_loop (WN * node, WN * loop)
+{
+  WN * parent = LWN_Get_Parent (node);
+
+  while (parent)
+  {
+    if (parent == loop) return TRUE;
+    parent = LWN_Get_Parent (parent);
+  }
+
+  return FALSE;
+}
+#endif // KEY
 
 // UPDATE DEF-USE, USE-DEF Chains after unrolling
 
@@ -1797,7 +1827,20 @@ static void Unrolled_DU_Update_E(UINT u, INT loopno,
         DEF_LIST *def_list_copy = Du_Mgr->Ud_Get_Def(ldid_array[i]);
 	if (update_pointers) {
 	  WN** stmt_array = hash_table->Find(loop_stmt);
+#ifdef KEY
+// bug 3388:
+// When called from Fission_DU_Update, Unrolled_DU_Update is never called
+// with the loop-stmt. So the above hash_table won't contain any entry for it.
+// TODO: The correct thing may be to store a mapping from the original loop 
+// to an array of the new fission-ed loops in hash_table, in which case the 
+// correct thing would be done here, but we don't want to do it now.
+//
+// From the defn of loop_stmt in opt_du.h and other codes, it seems the use
+// must be inside the loop_stmt, so check for that as a temporary solution.
+	  WN* stmt = stmt_array ? stmt_array[i] : Is_node_in_loop (ldid_array[i], loop_stmt) ? loop_stmt : NULL;
+#else
 	  WN* stmt = stmt_array ? stmt_array[i] : loop_stmt;
+#endif
 	  def_list_copy->Set_loop_stmt(stmt);
 	}
 	else
@@ -2449,7 +2492,14 @@ void Finalize_Index_Variable(WN* loop, BOOL insert_after_loop, BOOL try_sink)
 
   if (insert_after_loop && try_sink) { 
     WN* wn_sink_loop = NULL; 
+#ifndef KEY
     for (WN* wn = LWN_Get_Parent(loop); wn != NULL; wn = LWN_Get_Parent(wn))  
+#else
+    // Bug 2901 - can not sink out if final_store is inside an enclosing 'if'
+    for (WN* wn = LWN_Get_Parent(loop); 
+	 wn != NULL && WN_operator(wn) != OPR_IF; 
+	 wn = LWN_Get_Parent(wn))  
+#endif
       if (WN_opcode(wn) == OPC_DO_LOOP 
 	  && Statement_Sinkable_Out_Of_Loop(final_store, wn))
 	wn_sink_loop = wn; 
@@ -2825,9 +2875,15 @@ void Du_Sanity_Check_Matching_Du(STACK<WN*>* read_stack,
         OPERATOR opr=WN_operator(write);
         fprintf(fp,"WARNING: %s %d [0x%p]", 
 	  OPERATOR_name(opr), WN_map_id(write), write);
+#ifdef KEY
+	if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
         Dump_WN(write,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
         fprintf(fp,"has a non-matching DU relation with node: %d [0x%p]\n",
                 WN_map_id(use), use);
+#ifdef KEY
+	if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
         Dump_WN(use,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
       }
     }
@@ -2850,9 +2906,15 @@ void Du_Sanity_Check_Matching_Du(STACK<WN*>* read_stack,
         OPERATOR opr=WN_operator(read);
         fprintf(fp,"WARNING: %s %d [0x%p]", 
 	  OPERATOR_name(opr), WN_map_id(read), read);
+#ifdef KEY
+	if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
         Dump_WN(read,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
         fprintf(fp,"has a non-matching DU relation with node: %d [0x%p]\n",
                 WN_map_id(def), def);
+#ifdef KEY
+	if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
         if (WN_opcode(def)==OPC_FUNC_ENTRY)
           fprintf(fp,"FUNC_ENTRY\n");
         else
@@ -2888,9 +2950,15 @@ void Du_Sanity_Check_Matching_Du(STACK<WN*>* read_stack,
           OPERATOR opr=WN_operator(write);
           fprintf(fp,"WARNING: %s %d 0x%p", 
 	    OPERATOR_name(opr), WN_map_id(write), write);
+#ifdef KEY
+	if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
           Dump_WN(write,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
           fprintf(fp,"has a non-matching DU relation with node: %d [0x%p]\n",
                 WN_map_id(use), use);
+#ifdef KEY
+	if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
           Dump_WN(use,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
         }
         write_vector[index].Reset(i);
@@ -2923,6 +2991,9 @@ static void Du_Sanity_Check_r(
       if (Aliased(Alias_Mgr,wn,wn)==NOT_ALIASED) {
         fprintf(fp,"WARNING: %s %d [0x%p]", 
 	  OPERATOR_name(opr), WN_map_id(wn), wn);
+#ifdef KEY
+	if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
         Dump_WN(wn,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
         fprintf(fp,"is not aliased to itself\n");
       }
@@ -2935,9 +3006,15 @@ static void Du_Sanity_Check_r(
         if (WN_opcode(loop)!=OPC_DO_LOOP) {
           fprintf(fp,"WARNING: %s %d [0x%p]", 
 	    OPERATOR_name(opr), WN_map_id(wn), wn);
+#ifdef KEY
+	  if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
           Dump_WN(wn,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
           fprintf(fp,"has a non-loop node as loop_stmt: %d (0x%p 0x%p)\n",
                       WN_map_id(loop), wn, loop);
+#ifdef KEY
+	  if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
           Dump_WN(loop,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
         }
         WN* wn1=wn;
@@ -2950,9 +3027,15 @@ static void Du_Sanity_Check_r(
         if (wn1!=loop) {
           fprintf(fp,"WARNING: %s %d [0x%p]", 
 	    OPERATOR_name(opr), WN_map_id(wn), wn);
+#ifdef KEY
+	  if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
           Dump_WN(wn,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
           fprintf(fp,"has a non-ancestor node as loop_stmt: %d\n",
                       WN_map_id(loop));
+#ifdef KEY
+	  if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
           Dump_WN(loop,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
         }
       }
@@ -2974,6 +3057,9 @@ static void Du_Sanity_Check_r(
           if (LWN_Get_Parent(def1)!=parent_loop) {
             fprintf(fp,"WARNING: %s %d [0x%p]", 
 	      OPERATOR_name(opr), WN_map_id(wn), wn);
+#ifdef KEY
+	    if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
             Dump_WN(wn,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
             fprintf(fp, 
               "is ldid in loop head but has def out of loop head: %d [0x%p]\n",
@@ -2983,9 +3069,15 @@ static void Du_Sanity_Check_r(
         if (!h_table->Find(def1)) {
           fprintf(fp,"WARNING: %s %d [0x%p]", 
 	    OPERATOR_name(opr), WN_map_id(wn), wn);
+#ifdef KEY
+	  if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
           Dump_WN(wn,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
           fprintf(fp,"has a def outside the tree: %d\n",
                       WN_map_id(def1));
+#ifdef KEY
+	  if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
           if (WN_opcode(def1)==OPC_FUNC_ENTRY)
             fprintf(fp,"FUNC_ENTRY\n");
           else
@@ -2995,6 +3087,9 @@ static void Du_Sanity_Check_r(
     } else if (opr == OPR_LDID) {
       fprintf(fp,"WARNING: %s %d [0x%p]", 
 	OPERATOR_name(opr), WN_map_id(wn), wn);
+#ifdef KEY
+      if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
       Dump_WN(wn,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
       fprintf(fp,"is missing def_list\n");
     }
@@ -3007,9 +3102,15 @@ static void Du_Sanity_Check_r(
         WN* use1=use_node->Wn();
         if (!h_table->Find(use1)) {
           fprintf(fp,"WARNING: Def %d [0x%p]", WN_map_id(wn), wn);
+#ifdef KEY
+	  if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
           Dump_WN(wn,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
           fprintf(fp,"has a use outside the tree: %d [0x%p]\n",
                       WN_map_id(use1), use1);
+#ifdef KEY
+	  if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
           Dump_WN(use1,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
         }
      }
@@ -3018,6 +3119,9 @@ static void Du_Sanity_Check_r(
 		Preg_Is_Dedicated(WN_offset(wn)))) {
        fprintf(fp,"WARNING: %s %d [0x%p]", OPERATOR_name(opr), 
 	 WN_map_id(wn), wn);
+#ifdef KEY
+       if (getenv("PATHSCALE_LNO_DEBUG"))
+#endif
        Dump_WN(wn,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
        fprintf(fp,"is missing use_list\n");
     }

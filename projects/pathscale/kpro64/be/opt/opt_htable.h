@@ -229,7 +229,10 @@ enum ISOP_FLAG {
   ISOP_IVE_VISITED = 0x2000, // has been visited during IVE for coderep
 				// in the Source() bit vector
   ISOP_XLOWER_VISITED = 0x4000,// has been visited during Lower_to_extract_compose
-  ISOP_LDAFOLD_VISITED = 0x8000,// has been visited during Fold_lda_iload_istore
+  ISOP_LDAFOLD_VISITED = 0x8000,// has been visited during first pass of
+  				// Fold_lda_iload_istore
+  ISOP_LDAFOLD2_VISITED = 0x10000,// has been visited during second pass of
+  				// Fold_lda_iload_istore
   // at most 22 bits for this enumeration, due to size of isop_flags field
 };
 

@@ -409,6 +409,15 @@ SUMMARIZE<program>::Process_chi_jump_function (WN *wn,
     if (stmt == NULL)
 	return -1;			// could be volatile
 
+#ifdef KEY
+    // bug 3121
+    // We should not create a chi for const. Also, such a summary_chi
+    // will have symbol_index == -1 (invalid). TODO: check if it is coming
+    // from preopt, and fix it there.
+    if (WN_st (wn) && ST_sym_class (*WN_st (wn)) == CLASS_CONST)
+        return -1;
+#endif // KEY
+
 #if 0
     printf("sym%dv%d (cr%d) = CHI[sym%dv%d (cr%d)]\n",
            desc.Get_chi_cr()->Aux_id(),
@@ -691,9 +700,19 @@ SUMMARIZE<program>::Mismatched_load_store (CODEREP *cr, BOOL is_ptr_var,
             depot[idx].ret_val = TRUE;
             return TRUE;
         }
+#ifndef KEY
         depot[idx].ret_val =
           Mismatched_load_store (cr->Defchi()->OPND(), is_ptr_var, 
                                  st, load_offset, load_type);
+#else
+// The following code looks same as above, but depot is a vector which would
+// be changed in the callee. So depot[idx] calculated before the call can 
+// be invalid after the callee returns. So separate it out.
+	BOOL r = 
+          Mismatched_load_store (cr->Defchi()->OPND(), is_ptr_var, 
+                                 st, load_offset, load_type);
+        depot[idx].ret_val = r;
+#endif // !KEY
         return depot[idx].ret_val;
     }
     

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,12 +45,12 @@
 #include "moremath.h"
 #include <cmplrs/host.h>
 
-double_t __dasind(double_t x)
+double __dasind(double x)
 {
   return (asin(x) * 57.29577951308232);
 }
 
-double_t d_asind(double_t *x)
+double d_asind(double *x)
 {
   return (__dasind(*x));
 }

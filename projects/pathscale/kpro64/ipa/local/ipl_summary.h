@@ -501,6 +501,18 @@ public:
     void Set_symbol_index (INT32 s)		{ _symbol_index = s; }
     INT32 Get_symbol_index () const		{ return _symbol_index; }
 
+#ifdef KEY
+// Use proper types of mINT32, otherwise the value gets truncated while
+// assigning.
+    void Set_callsite_index (mINT32 c)		{ _callsite_index = c;}
+    mINT32 Get_callsite_index () const		{ return _callsite_index;}
+
+    void Set_ctrl_dep_index (mINT32 c)		{ _ctrl_dep_index = c;}
+    mINT32 Get_ctrl_dep_index () const		{ return _ctrl_dep_index;}
+
+    void Set_formal_index (mINT32 f)		{ _formal_index = f;}
+    mINT32 Get_formal_index () const		{ return _formal_index;}
+#else
     void Set_callsite_index (mUINT16 c)		{ _callsite_index = c;}
     mUINT16 Get_callsite_index () const		{ return _callsite_index;}
 
@@ -509,6 +521,7 @@ public:
 
     void Set_formal_index (mUINT16 f)		{ _formal_index = f;}
     mUINT16 Get_formal_index () const		{ return _formal_index;}
+#endif
     
     void Set_global_index (INT g)		{ _global_index = g;}
     INT Get_global_index() const		{ return _global_index;}
@@ -786,6 +799,9 @@ private:
     FB_FREQ _frequency;			// callsite frequency count;
     mUINT16 _callsite_id;		// postorder number
     mUINT16 _loopnest;			// 0 = not in loop, n = nth-level nested loop
+#ifdef KEY
+    float _probability;			// if inside a branch, probability of it being taken
+#endif
     TYPE_ID _return_type;		// Return type of this CALL
 
 public:
@@ -833,6 +849,9 @@ public:
     void Set_icall_slot ()		{ _state |= IPL_ICALL_SLOT; }
     void Reset_icall_slot ()		{ _state &= ~IPL_ICALL_SLOT; }
     BOOL Is_icall_slot () const		{ return (_state & IPL_ICALL_SLOT); }
+
+    void Set_probability (float p)	{ _probability = p; }
+    float Get_probability () const	{ return _probability; }
 #endif
 
     void Set_intrinsic()		{ _state |= IPL_INTRINSIC_FUNC; }

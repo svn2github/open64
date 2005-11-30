@@ -71,7 +71,10 @@ extern void init_count_files (void );
 /* this will clean up temp files */
 extern void cleanup (void);
 
-#ifdef KEY
 /* mark file as a temp file to be cleaned up */
 extern void mark_for_cleanup (char *file);
+
+#ifdef KEY
+/* delete temp object files */
+extern void cleanup_temp_objects ();
 #endif

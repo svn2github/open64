@@ -311,7 +311,9 @@ typedef enum {
   TN_RELOC_X8664_GOTPCREL   = 0x33,   
 
 				     /* IA-32 relocations start at 0x40 */
-  TN_RELOC_IA32_ALL 	= 0x40,	     /* All 32 bits of a symbol value. */
+  TN_RELOC_IA32_ALL   = 0x40,	     /* All 32 bits of a symbol value. */
+  TN_RELOC_IA32_GOT   = 0x41,
+  TN_RELOC_IA32_GLOBAL_OFFSET_TABLE = 0x42
 #endif
 } TN_RELOCS;
 
@@ -512,6 +514,7 @@ inline BOOL TN_is_const_reg(const TN *r)
 #define Set_TN_is_reloc_x8664_32(r)	Set_TN_relocs(r,TN_RELOC_X8664_32)
 #define TN_is_reloc_x8664_gotpcrel(r)   (TN_relocs(r)==TN_RELOC_X8664_GOTPCREL)
 #define Set_TN_is_reloc_x8664_gotpcrel(r) Set_TN_relocs(r,TN_RELOC_X8664_GOTPCREL)
+#define TN_is_reloc_x8664_64(r)	        (TN_relocs(r) == TN_RELOC_X8664_64)
 #endif /* TARG_X8664 */
 
 

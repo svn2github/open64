@@ -1727,6 +1727,15 @@ struct tree_type GTY(())
 /* In a FUNCTION_DECL, nonzero if the function cannot be inlined.  */
 #define DECL_UNINLINABLE(NODE) (FUNCTION_DECL_CHECK (NODE)->decl.uninlinable)
 
+#ifdef KEY
+// Set to 1 if __attribute__ ((noinline)) is passed
+#define DECL_NOINLINE_ATTRIB(NODE) (FUNCTION_DECL_CHECK (NODE)->decl.noinline_attrib)
+#define DECL_ALWAYS_INLINE_ATTRIB(NODE) (FUNCTION_DECL_CHECK (NODE)->decl.always_inline_attrib)
+// GNU is inlining the function containing this static var, so promote the
+// WHIRL ST to global symtab
+#define DECL_PROMOTE_STATIC(NODE) (FUNCTION_DECL_CHECK (NODE)->decl.promote_static)
+#endif
+
 /* In a VAR_DECL, nonzero if the data should be allocated from
    thread-local storage.  */
 #define DECL_THREAD_LOCAL(NODE) (VAR_DECL_CHECK (NODE)->decl.thread_local_flag)
@@ -1918,7 +1927,9 @@ struct tree_decl GTY(())
   unsigned uninlinable : 1;
   unsigned thread_local_flag : 1;
   unsigned inlined_function_flag : 1;
-  /* One unused bit.  */
+#ifdef KEY
+  unsigned noinline_attrib : 1;
+#endif
 
   unsigned lang_flag_0 : 1;
   unsigned lang_flag_1 : 1;
@@ -1933,6 +1944,10 @@ struct tree_decl GTY(())
   unsigned syscall_linkage_flag : 1;    /* has syscall_linkage attribute */
   unsigned widen_retval_flag : 1;       /* widen return value attribute */
 #endif /* SGI_MONGOOSE */
+#ifdef KEY
+  unsigned promote_static : 1;		// promote this static var to global
+  unsigned always_inline_attrib : 1;
+#endif // KEY
 
   union tree_decl_u1 {
     /* In a FUNCTION_DECL for which DECL_BUILT_IN holds, this is

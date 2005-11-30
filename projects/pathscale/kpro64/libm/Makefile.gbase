@@ -87,14 +87,14 @@ LCDEFS +=  -DPIC
 LASDEFS += -DPIC
 endif
 
-# LLDDSOOPTS = -exclude fabs.o
-
 ifeq ($(BUILD_VARIANT), LIBMV)
 LIBRARY = libmv.a
+PROF_LIB = libmv_p.a
 dso_version := 1
 DSO = libmv.so.$(dso_version)
 else
 LIBRARY = libm$(PSC_NAME_PREFIX).a
+PROF_LIB = libm$(PSC_NAME_PREFIX)_p.a
 dso_version := 1
 DSO = libm$(PSC_NAME_PREFIX).so.$(dso_version)
 endif
@@ -102,7 +102,7 @@ endif
 ifeq ($(BUILD_TYPE), NONSHARED)
 TARGETS = $(LIBRARY)
 else
-TARGETS = $(LIBRARY) $(DSO)
+TARGETS = $(LIBRARY) $(PROF_LIB) $(DSO)
 endif
 
 ifeq ($(BUILD_ABI), I64BIT)
@@ -307,6 +307,11 @@ include $(COMMONRULES)
 
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
+	$(ranlib) $@
+
+$(PROF_LIB): $(OBJECTS:%.o=%.pg.o)
+	$(ar) cru $@ $^
+	$(ranlib) $@
 
 $(DSO): $(OBJECTS:%.o=%.pic.o)
 	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -Wl,-soname=$(DSO) -Wl,--version-script=$(BUILD_BASE)/$(DSO:%.so.$(dso_version)=%.vs) -o $@ $^ -lm

@@ -79,7 +79,8 @@ enum INITVFLAGS {	// currently only for EH
     INITVFLAGS_UNDEFINED	= 0,
     INITVFLAGS_ACTION_REC,
     INITVFLAGS_TYPEINFO,
-    INITVFLAGS_EH_SPEC
+    INITVFLAGS_EH_SPEC,
+    INITVFLAGS_SUMMARIZED // initv has been summarized in ipl, don't redo
 };
 #endif // KEY
 

@@ -50,6 +50,7 @@
 #include "file_utils.h"
 
 extern int errno;
+static char *saved_orig_program_name;
 
 /* drops path prefix in string */
 char *
@@ -126,6 +127,21 @@ is_directory (char *path)
 		return FALSE;
 }
 
+boolean want_directory (char *path)
+{
+	if (is_directory(path))
+		return TRUE;
+
+	if (fullwarn)
+		warning("%s is not a directory", path);
+
+#ifdef KEY
+	return FALSE;
+#else
+	return TRUE;
+#endif
+}
+
 /* check if directory is writable */
 boolean
 directory_is_writable (char *path)
@@ -161,8 +177,13 @@ get_cwd (void)
 	return cwd;
 }
 
+void file_utils_set_program_name(char *name)
+{
+        saved_orig_program_name = name;
+}
+
 char *
-get_executable_dir (char *argv0)
+get_executable_dir (void)
 {
 	char path[MAXPATHLEN];
 	int rval;
@@ -171,6 +192,10 @@ get_executable_dir (char *argv0)
 	/* Look in this special place for a link to the executable. This
 	   only works on Linux, but it is benign if we try it elsewhere. */
 	rval = readlink ("/proc/self/exe", path, sizeof(path));
+	if(rval <= 0) {
+		strncpy(path, saved_orig_program_name, sizeof(path));
+		rval = strlen(path);
+	}
 	if (rval > 0) {
 		for (i=rval-1; i >= 0; i--) {
 			if (path[i] == '/') break;
@@ -195,7 +220,6 @@ get_executable_dir (char *argv0)
 	return NULL;
 }
 
-#ifdef KEY
 void
 dump_file_to_stdout(char *filename)
 {
@@ -217,4 +241,3 @@ dump_file_to_stdout(char *filename)
   }
   fclose(f);
 }
-#endif

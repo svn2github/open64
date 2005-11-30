@@ -850,6 +850,9 @@ public:
   mBOOL Is_Doacross;
   mBOOL Suggested_Parallel; 
   mBOOL Parallelizable; 
+#ifdef KEY
+  mBOOL Vectorizable;
+#endif
   mBOOL Last_Value_Peeled; 
   mBOOL Not_Enough_Parallel_Work; 
   mBOOL Inside_Critical_Section;
@@ -1006,6 +1009,9 @@ extern BOOL Build_Array_Dependence_Graph (WN* func_nd);
 extern void Build_CG_Dependence_Graph (WN* func_nd);
 extern void Build_CG_Dependence_Graph (ARRAY_DIRECTED_GRAPH16*
                                        Array_Dependence_Graph);
+#ifdef KEY
+extern void Mark_Auto_Vectorizable_Loops (WN* func_nd);
+#endif
 
 inline IF_INFO* Get_If_Info(WN* wn, BOOL ok_if_none = FALSE)
 {

@@ -690,7 +690,11 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
   INT dbase_num = TOP_Find_Operand_Use(OP_code(deref_op), OU_base);
   INT doffset_num = TOP_Find_Operand_Use(OP_code(deref_op), OU_offset);
 
+#ifdef KEY
+  deref_base_tn = dbase_num >= 0 ? OP_opnd(deref_op, dbase_num) : NULL;
+#else
   deref_base_tn = OP_opnd(deref_op, dbase_num);
+#endif // KEY
 
   for (cur_op = (forw) ? BB_last_op(dest_bb) : BB_first_op(dest_bb);
        cur_op && cur_op != limit_op;
@@ -705,7 +709,11 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
       INT cbase_num = TOP_Find_Operand_Use(OP_code(cur_op), OU_base);
       INT coffset_num = TOP_Find_Operand_Use(OP_code(cur_op), OU_offset);
 
+#ifdef KEY
+      TN *cur_base_tn = cbase_num >= 0 ? OP_opnd(cur_op, cbase_num) : NULL;
+#else
       TN *cur_base_tn = OP_opnd(cur_op, cbase_num);
+#endif // KEY
       TN *cur_result_tn = OP_load(cur_op) ? OP_result(cur_op, 0) : NULL;
 
       if (!Similar_Ptr_Addrs_Match(cur_op, deref_op)) {
@@ -717,7 +725,10 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
 	  } else {
 	    // Need to check if the OP doesn;t modify the base.
 
-	    BOOL modifies_base = cur_result_tn && 
+	    BOOL modifies_base = cur_result_tn &&
+#ifdef KEY
+	      ( cur_base_tn != NULL ) &&
+#endif // KEY
 	      TNs_Are_Equivalent(cur_result_tn, cur_base_tn);
 
 	    if (!modifies_base && 
@@ -738,27 +749,32 @@ Eager_Ptr_Deref_Spec(OP *deref_op, BB *dest_bb, BOOL forw)
     // if the memory reference is being modified by this <op>, removed it 
     // from the list of valid memory references.
 
-    BOOL base_redef = FALSE;
-    for (INT i = 0; i < OP_results(cur_op); ++i) {
-      TN *result = OP_result(cur_op,i);
-      if (Ignore_TN_Dep) {
-	REGISTER result_reg = TN_register(result);
+#ifdef KEY
+    if( deref_base_tn != NULL )
+#endif // KEY
+      {
+	BOOL base_redef = FALSE;
+	for (INT i = 0; i < OP_results(cur_op); ++i) {
+	  TN *result = OP_result(cur_op,i);
+	  if (Ignore_TN_Dep) {
+	    REGISTER result_reg = TN_register(result);
 
-	// If there was a previous update of <result_reg>, remove it.
-	// Sometimes, this may be the first occurence of <result_reg>, so
-	// discontinue further.
-	if (result_reg == TN_register(deref_base_tn)) 
-	  base_redef = TRUE;
-      } else {
-	if (TNs_Are_Equivalent(result, deref_base_tn)) base_redef = TRUE;
+	    // If there was a previous update of <result_reg>, remove it.
+	    // Sometimes, this may be the first occurence of <result_reg>, so
+	    // discontinue further.
+	    if (result_reg == TN_register(deref_base_tn)) 
+	      base_redef = TRUE;
+	  } else {
+	    if (TNs_Are_Equivalent(result, deref_base_tn)) base_redef = TRUE;
+	  }
+	}
+	
+	// No need to look further if there exists a base redef.
+	if (base_redef) {
+	  valid_addrs_found = FALSE;
+	  break;
+	}
       }
-    }
-
-    // No need to look further if there exists a base redef.
-    if (base_redef) {
-      valid_addrs_found = FALSE;
-      break;
-    }
 
     // use CG_DEP_Call_Aliases interface to determine if the
     // deref_op is being read/write in the called procedure. uses info
@@ -920,6 +936,30 @@ Can_Mem_Op_Be_Moved(OP *mem_op, BB *cur_bb, BB *src_bb, BB *dest_bb,
     if (OP_store(mem_op)) 
 	return FALSE;
   }
+
+#ifdef TARG_X8664
+  /* Do not allow a load operation under -mcmodel=medium to across a
+     call, since such load will overwrite %rax that holds the return value.
+     (bug#2419)
+
+     TODO ???:
+     The right fix should be done inside OP_To_Move(), but <failed_reg_defs>
+     is not updated if an op has restrictions.
+   */
+  if( mcmodel >= MEDIUM &&
+      !Ignore_TN_Dep    &&
+      forw ){
+    BB* prev = BB_prev( src_bb );
+
+    if( prev != NULL &&
+	BB_call( prev ) ){
+      const TOP top = OP_code(mem_op);
+      if( top == TOP_ld8_m  || top == TOP_ld16_m ||
+	  top == TOP_ld32_m || top == TOP_ld64_m )
+	return FALSE;
+    }
+  }
+#endif
 
   // volatile ops shouldn't be touched at all
   if (OP_volatile(mem_op)) return FALSE;

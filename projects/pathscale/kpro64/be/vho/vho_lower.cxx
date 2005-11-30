@@ -65,6 +65,9 @@
 #include "prompf.h" 
 #include "wb_f90_lower.h"
 #include "wn_lower.h"
+#ifdef KEY
+#include "w2op.h"		// For OPCODE_Can_Be_Spculative
+#endif
 
 typedef enum {
   ADDRESS_USED,
@@ -239,7 +242,11 @@ static FB_FREQ   VHO_Switch_Default_Freq;  /* goto switch default freq       */
 
 /* Variables related to struct lowering */
 
+#ifdef TARG_X8664
+INT32  VHO_Struct_Limit = 8;               /* max # of fields/statements     */
+#else
 INT32  VHO_Struct_Limit = 4;               /* max # of fields/statements     */
+#endif
 
 // static INT32  VHO_Struct_Alignment;      /* Alignment of struct           */
 static BOOL   VHO_Struct_Can_Be_Lowered;    /* FALSE if cannot be lowered    */
@@ -2074,12 +2081,13 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info )
         result = WN_CreateLdid (OPC_MMLDID, 0, st, ty_idx);
       }
 #ifdef TARG_X8664
-      else if (desc == MTYPE_C4) {
+      else if (desc == MTYPE_C4 ||
+	       MTYPE_is_complex(desc) && Is_Target_32bit()) {
         ST* st = Gen_Temp_Symbol (ty_idx, ".call");
-        wn = WN_CreateStid (OPC_C4STID, 0, st, ty_idx, result);
+        wn = WN_CreateStid (OPR_STID, MTYPE_V, desc, 0, st, ty_idx, result);
         WN_Set_Linenum ( wn, VHO_Srcpos );
         WN_INSERT_BlockLast (comma_block, wn);
-        result = WN_CreateLdid (OPC_C4C4LDID, 0, st, ty_idx);
+        result = WN_CreateLdid (OPR_LDID, desc, desc, 0, st, ty_idx);
       }
 #endif
 
@@ -2325,7 +2333,12 @@ vho_simplify_cand ( WN * wn, WN * l_wn, WN * r_wn )
          lr_wn = llr_wn;
          WN_const_val(lr_wn) = WN_const_val(r_wn);
          l_wn = WN_CreateExp2 ( WN_opcode(rl_wn), ll_wn, lr_wn );
-         wn = WN_CreateExp2 ( OPC_I4I4EQ, l_wn, r_wn );
+#ifdef KEY
+	 if( MTYPE_is_size_double(WN_rtype(l_wn)) )
+	   wn = WN_CreateExp2 ( OPC_I4I8EQ, l_wn, r_wn );
+	 else
+#endif
+	   wn = WN_CreateExp2 ( OPC_I4I4EQ, l_wn, r_wn );
          simplified = TRUE;
        }
     }
@@ -3696,9 +3709,39 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info )
 
     case OPR_INTRINSIC_OP:
 
+#ifndef TARG_X8664
       for ( i = 0; i < nkids; i++ )
         WN_kid(wn,i) = vho_lower_expr (WN_kid(wn,i), block, NULL);
       break;
+#else
+      {
+	// Fortran expression like a[i]**n can be vectorized if we expand 
+	// inline before LNO. However, we do this only for small values of n.
+	// The math library (powd) may do a better job for large values of n.
+	if ( WN_intrinsic(wn) == INTRN_F8I4EXPEXPR || 
+	     WN_intrinsic(wn) == INTRN_F4I4EXPEXPR ) {	  
+	  WN* parm1 = WN_kid1(wn);
+	  WN* exp = WN_kid0(parm1);
+	  if (WN_operator(exp) == OPR_INTCONST &&
+	      WN_const_val(exp) > 0 &&
+	      WN_const_val(exp) <= 5) {
+	    INT n = WN_const_val(exp);
+	    WN* opnd = WN_COPY_Tree ( WN_kid0(WN_kid0(wn)) );
+	    if ( n == 1 ) {
+	      wn = opnd; break;
+	    }
+	    wn = WN_Mpy(WN_rtype(wn), opnd, WN_COPY_Tree ( opnd )); n-= 2;
+	    for (;n > 0; n--)
+	      wn = WN_Mpy(WN_rtype(wn), wn, WN_COPY_Tree ( opnd ));
+	    break;
+	  }
+	} 
+
+	for ( i = 0; i < nkids; i++ )
+	  WN_kid(wn,i) = vho_lower_expr (WN_kid(wn,i), block, NULL);
+	break;
+      }
+#endif
 
     case OPR_TAS:
 
@@ -4813,12 +4856,38 @@ vho_lower_stmt ( WN * wn, WN * block )
 } /* vho_lower_stmt */
 
 
+#ifdef KEY
+static WN *
+vho_lower_region ( WN * wn, WN * block )
+{
+  WN_region_body(wn) = vho_lower_block ( WN_region_body(wn) );
+  // bug 2631:
+  // If we have a COMPGOTO stmt inside the region, move it outside the
+  // region.
+  WN * last = WN_last ( WN_region_body (wn) );
+  if ( last && WN_operator(last) == OPR_COMPGOTO && WN_region_is_EH (wn) )
+  {
+    Is_True (WN_first (WN_region_body (wn)) != last, ("No call inside region"));
+    if (WN_prev (last))
+    	WN_next (WN_prev (last)) = NULL;
+    WN_last (WN_region_body (wn)) = WN_prev (last);
+
+    WN_next (last) = WN_prev (last) = NULL;
+    WN_INSERT_BlockLast (block, wn);
+    // Now insert the compgoto after the region
+    WN_INSERT_BlockLast (block, last);
+    wn = NULL;	// don't insert it again
+  }
+  return wn;
+} /* vho_lower_region */
+#else
 static WN *
 vho_lower_region ( WN * wn )
 {
   WN_region_body(wn) = vho_lower_block ( WN_region_body(wn) );
   return wn;
 } /* vho_lower_region */
+#endif
 
 
 static WN *
@@ -6180,6 +6249,96 @@ vho_lower_while_do ( WN * wn, WN *block )
 
 static INT32 vho_if_nest_level = 0;
 
+#ifdef KEY
+static BOOL 
+Address_Expressions_Match ( WN *wn1, WN* wn2 )
+{
+  if (WN_kid_count(wn1) != WN_kid_count(wn2))
+    return FALSE;
+
+  for (INT kid = 0; kid < WN_kid_count(wn1); kid ++) {
+    if (WN_operator(WN_kid(wn1, kid)) != WN_operator(WN_kid(wn2, kid)) ||
+	WN_desc(WN_kid(wn1, kid)) != WN_desc(WN_kid(wn2, kid)) ||
+	WN_rtype(WN_kid(wn1, kid)) != WN_rtype(WN_kid(wn2, kid)))
+      return FALSE;
+    if (WN_has_sym(WN_kid(wn1, kid))) {
+      if (!WN_has_sym(WN_kid(wn2, kid)) ||
+	  WN_st(WN_kid(wn2, kid)) != WN_st(WN_kid(wn1, kid)))
+	return FALSE;
+    }
+    if (WN_operator(WN_kid(wn1, kid)) == OPR_INTCONST) {
+      if (WN_const_val(WN_kid(wn1, kid)) != WN_const_val(WN_kid(wn2, kid)))
+	return FALSE;
+    }
+    for (INT kid_tmp = 0; kid_tmp < WN_kid_count(WN_kid(wn1, kid)); kid_tmp ++)
+      if (!Address_Expressions_Match(WN_kid(wn1, kid), WN_kid(wn2, kid)))
+	return FALSE;
+  }
+  return TRUE;
+}
+
+static BOOL
+Opcodes_Can_Be_Speculated_Vectorized (WN* wn) 
+{
+  if (!OPCODE_Can_Be_Speculative(WN_opcode(wn)))
+    return FALSE;
+
+  if (WN_operator(wn) == OPR_ILOAD) // note test passed above
+    return TRUE;
+
+  // We can If-Convert and vectorize only the FP operations
+  if (!MTYPE_is_float(WN_rtype(wn))) 
+    return FALSE;
+
+  // Check if the operator can be vectorized. This should be in synch with
+  // simd.cxx: is_vectorizable_op (with some exceptions). 
+  OPERATOR opr = WN_operator(wn);
+  if (!OPCODE_is_load(WN_opcode(wn)) &&
+      opr != OPR_NEG && opr != OPR_ADD && opr != OPR_SUB &&
+      opr != OPR_MPY && opr != OPR_DIV && opr != OPR_MAX &&
+      opr != OPR_MIN && opr != OPR_SQRT && opr != OPR_RSQRT && 
+      opr != OPR_RECIP && opr != OPR_CONST && opr != OPR_INTCONST)
+    return FALSE;
+  
+  // Recurse
+  for (INT kid = 0; kid < WN_kid_count(wn); kid ++)
+    if (!Opcodes_Can_Be_Speculated_Vectorized(WN_kid(wn, kid)))
+      return FALSE;
+
+  return TRUE;
+}
+
+// The primary goal for this counting algorithm is to reasonably predict
+// the overhead in If-Converting the WHIRL tree 'wn'. It assumes that 
+// all the operators inside 'wn' are vectorizable (pre-screened by 
+// Opcodes_Can_Be_Speculated_And_Vectorized). Count the vector forms.
+//
+// TODO_1.2 : move this to a target dependent directory table.
+//
+static INT 
+Ifconv_Overhead (WN* wn) {
+  OPERATOR opr = WN_operator(wn);
+  INT count = 0;
+ 
+  if      (opr == OPR_ILOAD) count = 3;
+  else if (opr == OPR_DIV)   count = 40;
+  else if (opr == OPR_SQRT)  count = 40;
+  else if (opr == OPR_RECIP) count = 4;
+  else if (opr == OPR_RSQRT) count = 4;
+  else if (opr == OPR_MPY)   count = 5;
+  else if (opr == OPR_ADD)   count = 5;
+  else if (opr == OPR_SUB)   count = 5;
+  else if (opr == OPR_MAX)   count = 3;
+  else if (opr == OPR_MIN)   count = 3;
+  else                       count = 0; // LDID, CONST, etc.
+
+  // Recurse
+  for (INT kid = 0; kid < WN_kid_count(wn); kid ++)
+    count += Ifconv_Overhead(WN_kid(wn, kid));
+
+  return count; 
+}
+#endif
 
 static WN *
 vho_lower_if ( WN * wn, WN *block )
@@ -6192,6 +6351,147 @@ vho_lower_if ( WN * wn, WN *block )
   BOOL        emit_join_label;
   WN        * rcomma_block;
 
+#ifdef KEY
+  /* Handle saturation arithmetic SUB operator by converting it 
+   * to an intrinsic 
+   * if (y >= 0x8000)
+   *   x = y - 0x8000;
+   * else
+   *   x = 0;
+   */
+
+  WN* test = WN_if_test(wn);  
+  if ( WN_operator(test) == OPR_GT &&
+       WN_rtype(test) == MTYPE_I4 &&
+       WN_desc(test) == MTYPE_U4 &&
+       WN_operator(WN_kid1(test)) == OPR_INTCONST &&
+       WN_const_val(WN_kid1(test)) == 0X7fff ) {
+    WN* wn_then = WN_then(wn);
+    WN* wn_else = WN_else(wn);
+    if (WN_first(wn_then) && !WN_next(WN_first(wn_then)) &&
+	WN_first(wn_else) && !WN_next(WN_first(wn_else)) &&
+
+	WN_operator(WN_first(wn_then)) == OPR_ISTORE &&
+	WN_operator(WN_first(wn_else)) == OPR_ISTORE &&
+	WN_desc(WN_first(wn_then)) == MTYPE_U2 &&
+	WN_desc(WN_first(wn_else)) == MTYPE_U2 &&
+
+	WN_operator(WN_kid0(WN_first(wn_then))) == OPR_SUB &&
+	WN_rtype(WN_kid0(WN_first(wn_then))) == MTYPE_U4 &&
+	WN_operator(WN_kid1(WN_kid0(WN_first(wn_then)))) == OPR_INTCONST &&
+	WN_const_val(WN_kid1(WN_kid0(WN_first(wn_then)))) == 0x8000 &&
+
+	WN_operator(WN_kid0(WN_first(wn_else))) == OPR_INTCONST &&
+	WN_const_val(WN_kid0(WN_first(wn_else))) == 0 &&
+
+	Address_Expressions_Match(WN_kid1(WN_first(wn_then)), 
+				  WN_kid1(WN_first(wn_else))) &&
+	
+	WN_has_sym(WN_kid0(test)) && 
+	WN_has_sym(WN_kid0(WN_kid0(WN_first(wn_then)))) &&
+	WN_st(WN_kid0(test)) == WN_st(WN_kid0(WN_kid0(WN_first(wn_then))))) {      
+      WN* kids[2];
+      WN* tmp;
+      kids[0] = WN_kid0(test);
+      kids[1] = WN_kid1(WN_kid0(WN_first(wn_then)));
+      // Create parm nodes for intrinsic op
+      kids[0] = WN_CreateParm (MTYPE_U4, kids[0], 
+			       Be_Type_Tbl(MTYPE_U4),
+			       WN_PARM_BY_VALUE);
+      kids[1] = WN_CreateParm (MTYPE_U4, kids[1], 
+			       Be_Type_Tbl(MTYPE_U4),
+			       WN_PARM_BY_VALUE);
+      tmp = WN_Create_Intrinsic(OPCODE_make_op(OPR_INTRINSIC_OP,
+					       MTYPE_U4, MTYPE_V),
+				INTRN_SUBSU2, 2, kids);
+      wn = WN_COPY_Tree(WN_first(wn_then));
+      WN_kid0(wn) = tmp;
+      return wn;
+    }
+  }
+
+  // If-Convert:
+  //   if <compare>
+  //     a[i] = <expr>
+  //   endif
+  // to:
+  //   a[i] = <compare> ? <expr> : a[i]
+  // If this select is not vectorized then the scalar form will be
+  // converted back to the If-then form to avoid the overhead associated with
+  // if-conversion.
+  if (VHO_Enable_Simple_If_Conv &&
+      WN_first(WN_then(wn)) && !WN_next(WN_first(WN_then(wn))) &&
+      !WN_first(WN_else(wn)) &&
+      WN_operator(WN_first(WN_then(wn))) == OPR_ISTORE &&
+      WN_operator(WN_kid1(WN_first(WN_then(wn)))) == OPR_ARRAY &&
+      MTYPE_is_float(WN_desc(WN_first(WN_then(wn)))) &&
+      OPCODE_is_compare(WN_opcode(test)) &&
+      ((WN_operator(WN_kid0(test)) == OPR_ILOAD && 
+	WN_operator(WN_kid0(WN_kid0(test))) == OPR_ARRAY) ||
+       (WN_operator(WN_kid1(test)) == OPR_ILOAD && 
+	WN_operator(WN_kid0(WN_kid1(test))) == OPR_ARRAY)) &&
+      MTYPE_is_float(WN_desc(test)) && MTYPE_is_integral(WN_rtype(test)) &&
+      WN_desc(WN_first(WN_then(wn))) == WN_desc(test) &&
+      Opcodes_Can_Be_Speculated_Vectorized(WN_kid0(WN_first(WN_then(wn)))) &&
+      (Ifconv_Overhead(WN_kid0(WN_first(WN_then(wn))))*
+       MTYPE_byte_size(WN_desc(test))/16) < VHO_Enable_If_Conv_Limit) {
+    WN* istore = WN_first(WN_then(wn));
+    WN* t1 = WN_COPY_Tree(WN_kid0(istore));
+    WN* t2 = WN_CreateIload(OPR_ILOAD, WN_desc(istore), WN_desc(istore), 
+			    WN_store_offset(istore), 
+			    TY_pointed(WN_ty(istore)), 
+			    WN_ty(istore),
+			    WN_COPY_Tree(WN_kid1(istore)),
+			    WN_field_id(istore));
+    wn = WN_COPY_Tree(istore);
+    WN_kid0(wn) = 
+      WN_CreateExp3(MTYPE_is_size_double(WN_desc(istore)) ?
+		    OPC_F8SELECT : OPC_F4SELECT,
+		    test, t1, t2);
+    return wn;		       
+  }
+
+  // If-Convert:
+  //   if <compare>
+  //     a[i] = <expr1>
+  //   else
+  //     a[i] = <expr2>
+  //   endif
+  // to:
+  //   a[i] = <compare> ? <expr1> : <expr2>
+  // -- bug 2724, 2722
+  if (VHO_Enable_Simple_If_Conv &&
+      WN_first(WN_then(wn)) && !WN_next(WN_first(WN_then(wn))) &&
+      WN_first(WN_else(wn)) && !WN_next(WN_first(WN_else(wn))) &&
+      WN_operator(WN_first(WN_then(wn))) == OPR_ISTORE &&
+      WN_operator(WN_kid1(WN_first(WN_then(wn)))) == OPR_ARRAY &&
+      MTYPE_is_float(WN_desc(WN_first(WN_then(wn)))) &&
+      WN_operator(WN_first(WN_else(wn))) == OPR_ISTORE &&
+      WN_operator(WN_kid1(WN_first(WN_else(wn)))) == OPR_ARRAY &&
+      MTYPE_is_float(WN_desc(WN_first(WN_else(wn)))) &&
+      OPCODE_is_compare(WN_opcode(test)) &&
+      MTYPE_is_float(WN_desc(test)) && MTYPE_is_integral(WN_rtype(test)) &&
+      WN_desc(WN_first(WN_then(wn))) == WN_desc(test) &&
+      Opcodes_Can_Be_Speculated_Vectorized(WN_kid0(WN_first(WN_then(wn)))) &&
+      (Ifconv_Overhead(WN_kid0(WN_first(WN_then(wn))))*
+       MTYPE_byte_size(WN_desc(test))/16) < VHO_Enable_If_Conv_Limit &&
+      WN_desc(WN_first(WN_else(wn))) == WN_desc(test) &&
+      Opcodes_Can_Be_Speculated_Vectorized(WN_kid0(WN_first(WN_else(wn)))) &&
+      (Ifconv_Overhead(WN_kid0(WN_first(WN_else(wn))))*
+       MTYPE_byte_size(WN_desc(test))/16) < VHO_Enable_If_Conv_Limit &&
+      WN_Simp_Compare_Trees(WN_kid1(WN_first(WN_else(wn))), 
+			    WN_kid1(WN_first(WN_then(wn)))) == 0) {
+    WN* istore = WN_first(WN_then(wn));
+    WN* t1 = WN_COPY_Tree(WN_kid0(istore));
+    WN* t2 = WN_COPY_Tree(WN_kid0(WN_first(WN_else(wn))));
+    wn = WN_COPY_Tree(istore);
+    WN_kid0(wn) = 
+      WN_CreateExp3(MTYPE_is_size_double(WN_desc(istore)) ?
+		    OPC_F8SELECT : OPC_F4SELECT,
+		    test, t1, t2);
+    return wn;		       
+  }
+#endif
   ++vho_if_nest_level;
 
   then_block = vho_lower_block ( WN_then(wn) );
@@ -6388,7 +6688,11 @@ vho_lower_scf ( WN * wn, WN * block )
 
     case OPC_REGION:
 
+#ifdef KEY
+      wn = vho_lower_region ( wn, block );
+#else
       wn = vho_lower_region ( wn );
+#endif
       break;
   }
 

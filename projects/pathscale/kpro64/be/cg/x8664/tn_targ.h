@@ -51,6 +51,9 @@
 //
 // Generate TN to contain a general predicate value
 //
+
+#include "targ_sim.h"
+
 inline TN*
 Gen_Predicate_TN()
 {
@@ -79,4 +82,9 @@ inline TN* Rip_TN()
 inline TN* X87_cw_TN()
 {
   return Build_Dedicated_TN( ISA_REGISTER_CLASS_x87_cw, REGISTER_MIN, 0 );
+}
+
+inline TN* Ebx_TN()
+{
+  return Build_Dedicated_TN( ISA_REGISTER_CLASS_integer, RBX, 4 );
 }

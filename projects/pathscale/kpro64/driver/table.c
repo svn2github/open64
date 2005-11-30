@@ -65,9 +65,7 @@ typedef enum {
 	multiletter_space, 	/* >1 letters followed by space and value */
 	complicated,		/* too complicated, parse by hand */
 	needs_string,		/* option needs string arg */
-#ifdef KEY
 	needs_string_or_dash,	/* same as needs_string but also allow '-' */
-#endif
 	needs_directory,	/* option needs directory arg */
 	needs_decimal,		/* option needs decimal arg */
 	combo 			/* is combination of options */
@@ -141,9 +139,7 @@ find_name(char *s)
 				return i;
 			}
 			break;
-#ifdef KEY
 		case needs_string_or_dash:
-#endif
 		case needs_string:
 		case needs_directory:
 			len = strlen(options[i].name);
@@ -205,11 +201,9 @@ set_option_name(char *name, char *s, int *num_letters)
 			case 's':
 				f = needs_string;
 				break;
-#ifdef KEY
 			case '-':
 				f = needs_string_or_dash;
 				break;
-#endif
 			case 'd':
 			case 'x':
 				f = needs_decimal;
@@ -789,9 +783,7 @@ write_get_option (void)
 			fprintf(f, "\t\t/* NOTREACHED */\n");
 			fprintf(f, "\t}\n");
 			break;
-#ifdef KEY
 		    case needs_string_or_dash:
-#endif
 		    case needs_string:
 		    case needs_directory:
 		    case needs_decimal:
@@ -808,21 +800,19 @@ write_get_option (void)
 			if (options[i].syntax == needs_decimal) {
 				fprintf(f, "\tif (is_decimal(next_string(argv,argi))) {\n");
 			} else if (options[i].syntax == needs_directory) {
-				fprintf(f, "\tif (is_directory(next_string(argv,argi))) {\n");
+				fprintf(f, "\tif (want_directory(next_string(argv,argi))) {\n");
 			}
 			fprintf(f, "\t\toptargs = get_optarg(argv, argi);\n");
 			if (options[i].syntax == needs_decimal) {
 				fprintf(f, "\t\toptargd = atoi(optargs);\n");
 			}
 			fprintf(f, "\t\tget_next_arg(argi);\n");
-#ifdef KEY
 			if (options[i].syntax == needs_string_or_dash)
 			  fprintf(f, "\t\treturn add_string_option_or_dash(%s,optargs);\n", 
-				options[i].flag);
+				  options[i].flag);
 			else
-#endif
-			fprintf(f, "\t\treturn add_string_option(%s,optargs);\n", 
-				options[i].flag);
+			  fprintf(f, "\t\treturn add_string_option(%s,optargs);\n", 
+				  options[i].flag);
 			fprintf(f, "\t\t/* NOTREACHED */\n");
 			if (options[i].syntax == needs_directory) {
 				fprintf(f, "\t} else if (!is_last_char(argv,argi)) {\n");
@@ -836,9 +826,7 @@ write_get_option (void)
 				fprintf(f, "\t\t/* NOTREACHED */\n");
 			}
 			if (options[i].syntax != needs_string
-#ifdef KEY
 			    && options[i].syntax != needs_string_or_dash
-#endif
 					) {
 				fprintf(f, "\t}\n");
 			}
@@ -904,11 +892,8 @@ write_get_option (void)
 					options[i].flag, 
 					options[j].flag);
 			}
-			else if (options[j].syntax == needs_string
-#ifdef KEY
-				 || options[j].syntax == needs_string_or_dash
-#endif
-				) {
+			else if (options[j].syntax == needs_string ||
+				 options[j].syntax == needs_string_or_dash) {
 				fprintf(f, "\tcase %s: {\n", options[i].flag);
 				fprintf(f, "\t\toptargs = \"%s\";\n",
 					options[i].implies->name 
@@ -987,7 +972,7 @@ write_opt_action (void)
 static void
 write_check_combos (void)
 {
-	int i;
+	int i, n;
 	index_list_t *q;
 	FILE *f;
 	f = fopen("check_combos.c", "w");
@@ -1036,14 +1021,16 @@ write_check_combos (void)
 	fprintf(f, "is_replacement_combo (int combo_index)\n");
 	fprintf(f, "{\n");
 	fprintf(f, "\tswitch (combo_index) {\n");
-	for (i = 0; i < num_options; i++) {
+	for (i = n = 0; i < num_options; i++) {
 		if (options[i].syntax == combo && !EMPTY(options[i].action)
 			&& strcmp(options[i].action, "WARNING") == 0 )
 		{
 			fprintf(f, "\tcase %s:\n", options[i].flag);
+			n++;
 		}
 	}
-	fprintf(f, "\t\treturn TRUE;\n");
+	if (n)
+		fprintf(f, "\t\treturn TRUE;\n");
 	fprintf(f, "\tdefault:\n");
 	fprintf(f, "\t\treturn FALSE;\n");
 	fprintf(f, "\t}\n");

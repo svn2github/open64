@@ -513,6 +513,25 @@ bool output_queue::should_flush(const IPA_NODE* node)
   static UINT32 promp_id = 1;		// 0 is not a valid promp id
   static UINT32 count = 0;
   count += node->Weight ();
+
+#ifdef KEY
+  if (Opt_Options_Inconsistent)
+  {
+      if (IPA_NODE::next_file_id != -1 &&
+          IPA_NODE::next_file_id != node->File_Id())
+      {
+      // The next node we would write belongs to a different file, so close
+      // the current file.
+        if (ProMP_Listing) {
+  	  ProMP_next_idx = promp_id;
+	  promp_id = count;
+        }
+	count = 0;
+	return TRUE;
+      }
+  }
+#endif
+
   if (count >= IPA_Max_Output_File_Size) {
       if (ProMP_Listing) {
 	ProMP_next_idx = promp_id;

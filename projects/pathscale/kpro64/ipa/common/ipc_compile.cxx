@@ -228,7 +228,7 @@ static const char* abi()
 #endif
 
 #ifdef TARG_X8664
-    return IPA_Target_Type == IP_64_bit_ABI ? "-64" : "-m32";
+    return IPA_Target_Type == IP_64_bit_ABI ? "-m64" : "-m32";
 #endif
 
   return "-n32";                // This line is never reached.
@@ -841,7 +841,13 @@ void ipacom_doit (const char* ipaa_filename)
     fprintf(makefile, "%s = %s\n\n", executable_macro_name, executable);
     fprintf(makefile, "default: %s\n\n", executable_macro);
     fprintf(makefile, ".IGNORE: %s\n\n", executable_macro);
+#ifdef KEY
+    // bug 2487
+    fprintf(makefile, "%s%s%s\n", executable_macro, TARGET_DELIMITER,
+	    outfiles->size() ? "\\" : "");
+#else
     fprintf(makefile, "%s%s\\\n", executable_macro, TARGET_DELIMITER);
+#endif
 
 #ifdef TODO
     if (IPA_Enable_Cord) 
@@ -1209,6 +1215,9 @@ void ipacom_doit (const char* ipaa_filename)
           && strlen((*command_map)[MAKE_STRING]) != 0,
           ("Full pathname for smake not set up"));
   const char* smake_name = (*command_map)[MAKE_STRING];
+#ifdef KEY	// bug 2487
+  fprintf(sh_cmdfile, "rm -f %s\n", outfilename);
+#endif
   fprintf(sh_cmdfile, "%s -f %s ", smake_name, makefile_name);
 
 #if 1

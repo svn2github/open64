@@ -204,6 +204,8 @@ WN *Current_Entry_WN(void) { return curr_entry_wn.back(); }
 std::vector<tree> gxx_emitted_decls;
 // Any typeinfo symbols that we have determined we should emit
 std::vector<tree> emit_typeinfos;
+// Any var_decls that we want to emit last.
+std::vector<tree> emit_var_decls;
 
 void
 gxx_emits_decl(tree t) {
@@ -214,16 +216,42 @@ void
 gxx_emits_typeinfos (tree t) {
   emit_typeinfos.push_back (t);
 }
+
+void
+defer_emit_var_decl (tree t) {
+  emit_var_decls.push_back (t);
+}
 #endif
 
-static
-void WFE_Expand_Function_Body (tree decl)
+// Return 1 if we actually expand decl.
+static int
+WFE_Expand_Function_Body (tree decl)
 {
   tree body;
 
 #ifdef KEY
   if (expanded_decl(decl) == TRUE)
-    return;
+    return 0;
+
+  // bug 2694
+  // If decl is a copy constructor that is not (yet) referenced by the WHIRL,
+  // then delay its expansion because we don't know if it is really needed.
+  // Currently all copy constructors are marked as needed in the g++ front-end
+  // regardless if they are really needed, in case the WHIRL needs them later.
+  if (// see if decl should be public
+      !(TREE_PUBLIC(decl) && !DECL_COMDAT(decl)) &&
+      // check for declared inline (same as cp/semantics.c:expand_body)
+      DECL_INLINE(decl) &&
+      !flag_keep_inline_functions &&
+      // check for copy constructor
+      DECL_COPY_CONSTRUCTOR_P(decl) &&
+      DECL_COMPLETE_CONSTRUCTOR_P(decl) &&
+      // check for reference by WHIRL
+      DECL_ASSEMBLER_NAME(decl) &&
+      !TREE_SYMBOL_REFERENCED_BY_WHIRL(DECL_ASSEMBLER_NAME(decl))) {
+    return 0;
+  }
+
   expanded_decl(decl) = TRUE;
 #endif
 
@@ -241,6 +269,7 @@ void WFE_Expand_Function_Body (tree decl)
     WFE_Expand_Stmt(body);
 
   WFE_Finish_Function();
+  return 1;
 }
 
 /*
@@ -1026,6 +1055,13 @@ WFE_Finish_Function (void)
       DevWarn ("Encountered nested function");
       Set_PU_is_nested_func (Get_Current_PU ());
     }
+    if (opt_regions)
+    {
+    	Check_For_Call_Region ();
+	// Since we are finishing a function, we must have terminated all
+	// regions. So reset the flag.
+	Did_Not_Terminate_Region = FALSE;
+    }
 #else
     if (CURRENT_SYMTAB > GLOBAL_SYMTAB + 1) {
 
@@ -1578,6 +1614,16 @@ Add_Initv_For_Tree (tree val, UINT size)
 		{
 		WN *init_wn;
 		init_wn = WFE_Expand_Expr (val);
+#ifdef KEY
+		if (TREE_CODE(val) == PTRMEM_CST) {
+		  FmtAssert(WN_operator(init_wn) == OPR_INTCONST,
+		   ("Add_Initv_For_Tree: wrong wn after expanding PTRMEM_CST"));
+		  WFE_Add_Aggregate_Init_Integer(WN_const_val(init_wn),
+						 Pointer_Size);
+		  //WFE_Add_Aggregate_Init_Address (WREE_OPERAND
+		  break;
+		}
+#endif
 		if (WN_operator (init_wn) == OPR_LDA) {
 			WFE_Add_Aggregate_Init_Symbol (WN_st (init_wn),
 						       WN_offset (init_wn));
@@ -1745,14 +1791,34 @@ Gen_Assign_Of_Init_Val (ST *st, tree init, UINT offset, UINT array_elem_offset,
 	UINT size = TY_size(ty);
 	TY_IDX ptr_ty = Make_Pointer_Type(ty);
 	WN *load_wn = WN_CreateMload (0, ptr_ty, init_wn,
+#ifdef KEY // bug 3188
+			      WN_Intconst(MTYPE_I4, TREE_STRING_LENGTH(init)));
+#else
 				      WN_Intconst(MTYPE_I4, size));
+#endif
 	WN *addr_wn = WN_Lda(Pointer_Mtype, 0, st);
 	WFE_Stmt_Append(
 		WN_CreateMstore (offset, ptr_ty,
 				 load_wn,
 				 addr_wn,
+#ifdef KEY // bug 3188
+                              WN_Intconst(MTYPE_I4, TREE_STRING_LENGTH(init))),
+#else
 				 WN_Intconst(MTYPE_I4,size)),
+#endif
 		Get_Srcpos());
+#ifdef KEY // bug 3247
+	if (size - TREE_STRING_LENGTH(init)) {
+	  load_wn = WN_Intconst(MTYPE_U4, 0);
+	  addr_wn = WN_Lda(Pointer_Mtype, 0, st);
+	  WFE_Stmt_Append(
+		  WN_CreateMstore (offset+TREE_STRING_LENGTH(init), ptr_ty,
+				   load_wn,
+				   addr_wn,
+			   WN_Intconst(MTYPE_I4,size-TREE_STRING_LENGTH(init))),
+		  Get_Srcpos());
+	}
+#endif
 	bytes += size;
     }
     else {
@@ -1951,6 +2017,13 @@ Traverse_Aggregate_Struct (
         if (field == TREE_PURPOSE(init)) {
           break;
         }
+#ifdef KEY
+	// The same field can be created more than once.  Bug 2708.
+        if (DECL_NAME(field) &&
+	    DECL_NAME(field) == DECL_NAME(TREE_PURPOSE(init))) {
+          break;
+        }
+#endif
         ++field_id;
         fld = FLD_next (fld);
         field = next_real_or_virtual_field(type, field);
@@ -1979,6 +2052,21 @@ Traverse_Aggregate_Struct (
                                                  array_elem_offset, field_id);
       emitted_bytes += TY_size(fld_ty);
     }
+#ifdef KEY
+    // Fields corresponding to pointer-to-member-functions are represented as
+    // records with fields __pfn and __delta.  The initializer is a TREE_LIST
+    // of __pfn and __delta.  Bug 3143.
+    else if (TYPE_PTRMEMFUNC_P(TREE_TYPE(field))) {
+      tree element_type;
+      element_type = TREE_TYPE(field);
+      tree t = cplus_expand_constant(TREE_VALUE(init));
+      field_id = Traverse_Aggregate_Constructor (st, t,
+                                                 element_type, gen_initv,
+                                                 current_offset,
+                                                 array_elem_offset, field_id);
+      emitted_bytes += TY_size(fld_ty);
+    }
+#endif
     else {
       // initialize SCALARs and POINTERs
       is_bit_field = FLD_is_bit_field(fld);
@@ -2567,6 +2655,28 @@ WFE_Alloca_ST (tree decl)
   return st;
 } /* WFE_Alloca_ST */
 
+#ifdef KEY
+void
+WFE_Dealloca (ST * alloca_st, vector<ST*> * vars)
+{
+  int nkids = vars->size();
+  Is_True (nkids > 0, ("No object allocated by alloca?"));
+
+  WN * wn = WN_CreateDealloca (nkids+1);
+  WN_kid0 (wn) = WN_Ldid (Pointer_Mtype, 0, alloca_st, ST_type (alloca_st));
+  nkids = 0;
+
+  while (! vars->empty())
+  {
+    ST * base_st = vars->back();
+    WN_kid (wn, ++nkids) = WN_Ldid (Pointer_Mtype, 0, base_st, ST_type (base_st));
+    vars->pop_back();
+  }
+  WFE_Stmt_Append (wn, Get_Srcpos());
+}
+#endif // KEY
+
+#ifndef KEY	// obsolete
 void
 WFE_Dealloca (ST *alloca_st, tree vars)
 {
@@ -2599,7 +2709,6 @@ WFE_Dealloca (ST *alloca_st, tree vars)
   WFE_Stmt_Append (wn, Get_Srcpos());
 } /* WFE_Dealloca */
 
-#ifndef KEY	// obsolete
 void
 WFE_Record_Asmspec_For_ST (tree decl, char *asmspec, int reg)
 {
@@ -2806,12 +2915,35 @@ decl_is_needed_vtable (tree decl)
 
       fnaddr = TREE_VALUE (entries);
 
+#ifdef KEY
+      if (TREE_CODE (fnaddr) == NOP_EXPR &&
+	  TREE_CODE (TREE_OPERAND (fnaddr, 0)) == ADDR_EXPR) {
+	fn = TREE_OPERAND (TREE_OPERAND (fnaddr, 0), 0);  // fn can be VAR_DECL
+	
+      } else if (TREE_CODE (fnaddr) != ADDR_EXPR) {
+        /* This entry is an offset: a virtual base class offset, a
+           virtual call offset, and RTTI offset, etc.  */
+        continue;
+      } else
+        fn = TREE_OPERAND (fnaddr, 0);
+#else
       if (TREE_CODE (fnaddr) != ADDR_EXPR)
         /* This entry is an offset: a virtual base class offset, a
            virtual call offset, and RTTI offset, etc.  */
         continue;
 
       fn = TREE_OPERAND (fnaddr, 0);
+#endif
+
+#ifdef KEY
+      // As shown by bug 3133, some objects are emitted by g++ even though they
+      // are weak and external.
+      if (DECL_EMITTED_BY_GXX(fn)) {
+	needed = TRUE;
+	break;
+      }
+#endif
+
       if (!DECL_EXTERNAL(fn) &&
           !DECL_WEAK(fn)
 #ifndef KEY	// Under g++ 3.2 -O3, all functions are marked DECL_INLINE.
@@ -2939,25 +3071,29 @@ WFE_Expand_Top_Level_Decl (tree top_level_decl)
     // Catch all the functions that are emitted by g++ that we haven't
     // translated into WHIRL.
     std::vector<tree>::iterator it;
-    for (it = gxx_emitted_decls.begin(); 
-         it != gxx_emitted_decls.end();
-         it++) {
-      tree decl = *it;
-      if (expanded_decl(decl) == TRUE)
-        continue;
-      if (TREE_CODE(decl) == FUNCTION_DECL) {
-	if (DECL_THUNK_P(decl))
-	  WFE_Generate_Thunk(decl);
-	else        
-	  WFE_Expand_Function_Body(decl);
-      } else if (TREE_CODE(decl) == VAR_DECL) {
-	WFE_Process_Var_Decl (decl);
-      } else if (TREE_CODE(decl) == NAMESPACE_DECL) {
-	WFE_Expand_Decl (decl);
-      } else {
-	FmtAssert(FALSE, ("WFE_Expand_Top_Level_Decl: invalid node"));
+    int changed;
+    do {
+      changed = 0;
+      for (it = gxx_emitted_decls.begin(); 
+           it != gxx_emitted_decls.end();
+           it++) {
+        tree decl = *it;
+        if (expanded_decl(decl) == TRUE)
+          continue;
+        if (TREE_CODE(decl) == FUNCTION_DECL) {
+	  if (DECL_THUNK_P(decl))
+	    WFE_Generate_Thunk(decl);
+	  else        
+	    changed |= WFE_Expand_Function_Body(decl);
+        } else if (TREE_CODE(decl) == VAR_DECL) {
+	  WFE_Process_Var_Decl (decl);
+        } else if (TREE_CODE(decl) == NAMESPACE_DECL) {
+	  WFE_Expand_Decl (decl);
+        } else {
+	  FmtAssert(FALSE, ("WFE_Expand_Top_Level_Decl: invalid node"));
+        }
       }
-    }
+    } while (changed);	// Repeat until emitted all needed copy constructors.
     // Emit any typeinfos that we have referenced
     for (it = emit_typeinfos.begin(); it != emit_typeinfos.end(); ++it) {
     	tree decl = *it;
@@ -3006,6 +3142,19 @@ WFE_Expand_Top_Level_Decl (tree top_level_decl)
       }
     }
   }
+
+#ifdef KEY
+  {
+    // Expand any VAR_DECL that should be expanded last.
+    std::vector<tree>::iterator it;
+    for (it = emit_var_decls.begin(); it != emit_var_decls.end(); ++it) {
+      tree decl = *it;
+      Is_True(TREE_CODE(decl) == VAR_DECL,
+	      ("WFE_Expand_Top_Level_Decl: VAR_DECL not found"));
+      WFE_Expand_Decl(decl);
+    }
+  }
+#endif
 } /* WFE_Expand_Top_Level_Decl */
 
 #ifdef KEY
@@ -3049,10 +3198,6 @@ WFE_Handle_Named_Return_Value (tree fn)
   TY_IDX ret_ty_idx = Get_TY(TREE_TYPE(TREE_TYPE(fn)));
   FmtAssert(TY_return_in_mem(ret_ty_idx),
 	    ("WFE_Handle_Named_Return_Value: nrv type not in mem"));
-
-  // TODO:  NRV's with initializers is not fully tested.
-  FmtAssert(!DECL_INITIAL(named_ret_obj),
-	    ("WFE_Handle_Named_Return_Value: nrv has DECL_INITIAL"));
 
   // Get the ST for the fake first parm.
   WN *first_formal = WN_formal(Current_Entry_WN(), 0);

@@ -56,6 +56,8 @@
 #include "get_options.h"
 #include "phases.h"
 
+int endian = UNDEFINED;
+
 static char compiler_version[] = INCLUDE_STAMP;
 
 void
@@ -66,13 +68,7 @@ set_defaults (void)
 	char *psc_cc = getenv("PSC_CC");
 	if (psc_cc != NULL && !is_toggled(ansi)) {
 		/* value not set yet */
-		if (strcmp(psc_cc, "-cckr") == 0) {
-			toggle(&ansi,KR_ANSI);
-			prepend_option_seen (O_cckr);
-		} else if (strcmp(psc_cc, "-xansi") == 0) {
-			toggle(&ansi,EXTENDED_ANSI);
-			prepend_option_seen (O_xansi);
-		} else if (strcmp(psc_cc, "-ansi") == 0) {
+		if (strcmp(psc_cc, "-ansi") == 0) {
 			toggle(&ansi,STRICT_ANSI);
 			prepend_option_seen (O_ansi);
 		}
@@ -93,16 +89,6 @@ set_defaults (void)
 		}
 	  }
 	}
-#ifdef IRIX62
-	flag = add_string_option(O_LNO_, "plower=off");
-	prepend_option_seen(flag);
-	flag = add_string_option(O_CG_, "pjump_all=off");
-	prepend_option_seen(flag);
-#endif
-#ifdef IRIX64
-	flag = add_string_option(O_CG_, "pjump_all=off");
-	prepend_option_seen(flag);
-#endif
 	if (endian == UNDEFINED) {
 #ifdef TARG_MIPS
 		/* Default to little-endian -JMB */
@@ -112,7 +98,6 @@ set_defaults (void)
 #else
 #ifdef LITTLE_ENDIAN_HOST
 		toggle(&endian, ENDIAN_LITTLE);
-		prepend_option_seen(O_EL);
 #else
 		toggle(&endian, ENDIAN_BIG);
 		prepend_option_seen(O_EB);
@@ -125,103 +110,24 @@ set_defaults (void)
 
 	if (ansi == UNDEFINED) {
 		toggle(&ansi,EXTENDED_ANSI);
-#ifndef KEY	// don't need because we are using gcc to do preprocessing
-		prepend_option_seen(O_xansi);
-#endif
 	}
-#ifndef linux
-	prepend_option_seen (O_cpp_irix);
-	prepend_option_seen(O_cpp_svr4);
-	prepend_option_seen(O__SYSTYPE_SVR4);
-	prepend_option_seen(O_cpp_cfe);
-	if (ansi != STRICT_ANSI) {
-		prepend_option_seen (O_cpp_nonansi_svr4);
-		prepend_option_seen (O_cpp_extensions);
-		prepend_option_seen (O_cpp_krdefs);
-	}
-#endif
-#ifndef KEY
-#ifdef HOST_IA32
-	flag = add_string_option(O_D, "__host_ia32");
-	prepend_option_seen (flag);
-#endif
-#ifdef HOST_IA64
-	flag = add_string_option(O_D, "__host_ia64");
-	prepend_option_seen (flag);
-#endif
-#ifdef HOST_MIPS
-	flag = add_string_option(O_D, "__host_mips");
-	prepend_option_seen (flag);
-	if (ansi != STRICT_ANSI) {
-		flag = add_string_option(O_D, "host_mips");
-		prepend_option_seen (flag);
-	}
-#endif
 
-#ifdef MIPS
-	prepend_option_seen(O_cpp_mips);
-#endif
-#endif
-	prepend_option_seen(O_m1);
-
-#ifndef KEY	// don't need because we are using gcc to do preprocessing
-	prepend_option_seen(O_cpp_version);
-#endif
-#ifndef linux
-	/* old compiler-version define */
-	flag = add_string_option(O_D, "_COMPILER_VERSION=740");
-	prepend_option_seen (flag);
-#endif
-	prepend_option_seen(O_cpp_nonansi_f77);
 	prepend_option_seen(O_cpp_fortran90);
 	prepend_option_seen(O_cpp_fortran77);
 	prepend_option_seen(O_cpp_fortran);
-#ifdef linux 
-	prepend_option_seen(O_cpp_cplus_linux);
-#else
-	prepend_option_seen(O_cpp_cplus);
-#endif
 	prepend_option_seen(O_cpp_assembly);
-#ifndef KEY	// don't need because we are using gcc to do preprocessing
-	prepend_option_seen(O_D_LANGUAGE_C);
-#endif
-	prepend_option_seen(O_ptnone);
 	prepend_option_seen(O_prelink);
 	prepend_option_seen(O_demangle);
-	if (shared == UNDEFINED) {
-		if (abi == ABI_IA32) {
-			toggle(&shared,NON_SHARED);
-			prepend_option_seen(O_non_shared);
-		}
-		else {
+	if (shared == UNDEFINED && abi == ABI_IA32) {
+		toggle(&shared,NON_SHARED);
 #ifndef KEY
-			toggle(&shared,CALL_SHARED);
-			prepend_option_seen(O_call_shared);
+		prepend_option_seen(O_non_shared);
 #endif
-		}
 	}
-#ifndef linux
-	if (shared != NON_SHARED) {
-		prepend_option_seen(O_cpp_pic);
-	}
-#endif
-#ifndef linux
-	if (abi == ABI_64 || abi == ABI_I64)
-		add_option_seen(O_cpp_lp64);
-	else
-		add_option_seen(O_cpp_lp32);
-	if (abi == ABI_I32)
-		add_option_seen(O_cpp_i32);
-	else if (abi == ABI_I64)
-		add_option_seen(O_cpp_i64);
-	else if (abi == ABI_IA32)
-		add_option_seen(O_cpp_ia32);
-#endif
 	if (!is_toggled(isstatic)) {
 		toggle(&isstatic,1);
 		prepend_option_seen(O_automatic);
 	}
-	prepend_option_seen(O_auto_include);
 }
 
 
@@ -279,9 +185,7 @@ add_special_options (void)
 	int flag;
 	buffer_t buf;
 	char *s;
-#ifdef KEY
 	boolean undefined_olevel_flag = FALSE; 
-#endif
 
 	/* Hack for F90 -MDupdate. We need to pass the MDupdate to mfef90, because we don't
 	 * have an integrated pre-processor. I can't figure out a better way to do this, given
@@ -302,16 +206,10 @@ add_special_options (void)
 		/* ftpp means pass defines directly to mfef90,
 		 * and since not using gcc we have to pass some options
 		 * that are otherwise implicit. */
-		if (endian == ENDIAN_LITTLE)
-    			flag = add_string_option(O_D, "_LITTLE_ENDIAN");
-		else
-    			flag = add_string_option(O_D, "_BIG_ENDIAN");
+		flag = add_string_option(O_D, "_LITTLE_ENDIAN");
 		prepend_option_seen (flag);
     		flag = add_string_option(O_D, "__LONG_MAX__=9223372036854775807L");
 		prepend_option_seen (flag);
-		prepend_option_seen (O_elf);
-		prepend_option_seen (O_cpp_unix);
-		prepend_option_seen (O_cpp_linux);
 		prepend_option_seen (O_cpp_nonansi);
 		if (keep_flag) {
 			add_phase_for_option (O_keep, P_cppf90_fe);
@@ -326,28 +224,10 @@ add_special_options (void)
 		add_phase_for_option(O_traditional, P_cplus_gfe);
 	}
 
-#ifndef linux /* jul-2-02 */
-	if (abi == ABI_N32 || abi == ABI_64) {
-		if (endian == ENDIAN_LITTLE)
-			prepend_option_seen(O_mel);
-		else
-			prepend_option_seen(O_meb);
-	}
-#endif
-
 #if defined(TARG_IA32)
 	flag = add_string_option(O_D, "__NO_MATH_INLINES");
 	prepend_option_seen (flag);
 #endif
-
-	if (ansi != STRICT_ANSI || invoked_lang == L_CC) {
-		/* C++:  Add the extensions that are valid in xansi mode. */
-#ifdef linux
-		prepend_option_seen(O_xtendefs_linux);
-#else
-		prepend_option_seen(O_xtendefs);
-#endif
-	}
 
 	if (mpkind == CRAY_MP) {
 		Process_Cray_Mp();
@@ -375,50 +255,10 @@ add_special_options (void)
 		}
 		flag = get_olevel_flag(olevel);
 		prepend_option_seen (flag);
-#ifdef KEY
-// fix for bug 447
+		// fix for bug 447
 		undefined_olevel_flag = TRUE;
-#endif
 	}
-#ifndef KEY	// don't need because we are using gcc to do preprocessing
-	if (abi == ABI_N32 || abi == ABI_64) {
-		/* mips-based */
-		/* can't define _{BIG,LITTLE}_ENDIAN until 6.5.3 */
-		if (endian == ENDIAN_LITTLE) {
-			flag = add_string_option(O_D, "_MIPSEL");
-			prepend_option_seen (flag);
-			if (ansi != STRICT_ANSI) {
-				flag = add_string_option(O_D, "MIPSEL");
-				prepend_option_seen (flag);
-			}
-		}
-		else {
-			flag = add_string_option(O_D, "_MIPSEB");
-			prepend_option_seen (flag);
-			if (ansi != STRICT_ANSI) {
-				flag = add_string_option(O_D, "MIPSEB");
-				prepend_option_seen (flag);
-			}
-		}
-	}
-	if (abi != ABI_I64 && abi != ABI_I32 && abi != ABI_IA32) {
-		/* add mips-specific flags */
-		if (ansi != STRICT_ANSI) {
-			flag = add_string_option(O_D, "mips");
-			prepend_option_seen (flag);
-		}
-	}
-#endif
 	if (!nostdinc) {
-                /* mips only: add -I path for MIPS abi include directory */
-                if (abi != ABI_I64 && abi != ABI_I32 && abi != ABI_IA32) {
-                  if (option_was_seen(O_abi)) {
-                          flag = add_string_option(O_I__, 
-                             concat_strings(get_phase_dir(P_include),"/abi"));
-                          add_option_seen (flag);
-                  }
-                }
-
 		/* mips only: add -I path for CC */
                 if (abi != ABI_I64 && abi != ABI_I32 && abi != ABI_IA32) {
                   flag = add_string_option(O_I__, 
@@ -437,49 +277,26 @@ add_special_options (void)
 				toggle(&gnum,0);
 			}
 		} else {
-			if (option_was_seen(O_xgot))
-				toggle(&gnum,0);
-			else
-				toggle(&gnum,8);
+			toggle(&gnum,8);
 		}
 		sprintf(buf, "%d", gnum);
 		flag = add_string_option(O_G__, buf);
 		prepend_option_seen(flag);
 	}
-	/* fix COMPILER_VERSION: */
-	FOREACH_IMPLIED_OPTION(flag, O_cpp_version) {
-		s = get_current_implied_name();
-		if (strstr(s, "XXX") != NULL) {
-		   /* This handles the case of 6.1 vs. 6.02, etc.
-		    * better. Richard Shapiro, 8/23/95
-		    */
-		   buf[0] = compiler_version[0];
-		   buf[1] = compiler_version[2];
-		   buf[2] = compiler_version[3] ?  compiler_version[3] : '0';
-		   buf[3] = '\0';
-		   replace_substring (s, "XXX", buf);
-		}
-	}
 	/* some checks are easier to do by hand */
-#ifdef KEY
 	if (undefined_olevel_flag == TRUE && glevel >= 0) {
 		if ( ipa != TRUE )
-			turn_down_opt_level(0, "-O2 conflicts with -g; changing to -O0; if you want -O, use -g3");
+			turn_down_opt_level(0, "-g changes optimization to -O0 since no optimization level is specified");
 		 /* KEY: bug 1917: disable lw-inliner if -g and (!-inline) */
 		if (glevel == 2 && inline_t != TRUE)
 			inline_t = FALSE;
 	}	
-#endif
 	if (olevel >= 2 && glevel == 2) {
-#ifdef linux
 		glevel = 3;
 		if (option_was_seen (O_g))
 			replace_option_seen (O_g, O_g3);
 		if (option_was_seen (O_g2))
 			replace_option_seen (O_g2, O_g3);
-#else
-		turn_down_opt_level(0, "-O conflicts with -g; changing to -O0; if you want -O, use -g3");
-#endif /* linux */
 	}
 
 	if (option_was_seen(O_S) && ipa == TRUE) {
@@ -501,16 +318,10 @@ add_special_options (void)
 	if (Gen_feedback && ipa == TRUE) {
 		turn_off_ipa ("-IPA -fbgen combination not allowed, replaced with -fbgen");
 	}
-#ifdef KEY
-/* Fix for BUG 451 */
+	/* Fix for BUG 451 */
 	if (glevel >= 1 && ipa == TRUE) {
 		turn_off_ipa ("-IPA -g combination not allowed, replaced with -g");
 	}
-#else
-	if (glevel == 2 && ipa == TRUE) {
-		turn_off_ipa ("-IPA -g combination not allowed, replaced with -g");
-	}
-#endif
 	if (ipa == TRUE) {
 	    if (olevel <= 1)
 		flag = add_string_option (O_PHASE_, "i");
@@ -546,14 +357,7 @@ add_special_options (void)
 	}
 	
 	if (skip_as == UNDEFINED) {
-#ifndef KEY
-		/* for mips we generate object directly;
-		 * for other targets we go thru as. */
-		if (abi == ABI_N32 || abi == ABI_64)
-			skip_as = TRUE;
-		else
-#endif
-			skip_as = FALSE;
+		skip_as = FALSE;
 	}
 	if (skip_as == FALSE && ! keep_flag && last_phase != P_be) {
 		/* if going thru asm and not keeping .s file,

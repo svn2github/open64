@@ -532,8 +532,10 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 	       ("Unexpected size of result type in EXP_OCCURS::Get_temp_cr"));
     }
 #if defined(TARG_IA32) || defined(TARG_X8664)
+#if 0 // this can cause inconsistent sizes for the same symbol
     if (vsize <= 32 && dtyp == MTYPE_U8 && (signess & SIGN_0_EXTD)) 
       dtyp = MTYPE_U4;
+#endif
 #else
     if (vsize <= 32 && dtyp == MTYPE_I8 && (signess & SIGN_1_EXTD)) 
       dtyp = MTYPE_I4;
@@ -552,7 +554,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 	ADDRESSABILITY  addressable = 
 	   exp->Check_if_result_is_address(htable->Sym());
 
-	aux_preg->Set_EPRE_temp();
+	aux_preg->Set_LPRE_VNFRE_temp();
         wk->Set_preg(id);
         aux_preg->Set_value_size(vsize);
 
@@ -599,7 +601,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 	if (inCODEKIND(exp->Kind(), CK_LDA|CK_RCONST|CK_CONST)) {
 	  wk->Set_preg(htable->Sym()->Create_preg(dtyp, "lpre_cst", home_wn));
 	  AUX_STAB_ENTRY *aux_preg = htable->Sym()->Aux_stab_entry(wk->Preg());
-	  aux_preg->Set_EPRE_temp();
+	  aux_preg->Set_LPRE_VNFRE_temp();
 	  aux_preg->Set_value_size(vsize);
 	  if (signess & SIGN_1_EXTD) aux_preg->Set_sign_extd();
 	  if (signess & SIGN_0_EXTD) aux_preg->Set_zero_extd();
@@ -621,7 +623,7 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
 	  aux_entry->Set_home_sym(wk->Preg());
 
 	  aux_preg->Set_home_sym(aux_id);
-	  aux_preg->Set_EPRE_temp();
+	  aux_preg->Set_LPRE_VNFRE_temp();
 	  aux_preg->Set_value_size(vsize);
 	  if (wk->Sign_extd()) 
 	    aux_preg->Set_sign_extd();
@@ -684,7 +686,9 @@ ETABLE::New_temp_cr(MTYPE dtype, ADDRESSABILITY addressable)
    AUX_ID          id = Htable()->Sym()->Create_preg(dtype);
    AUX_STAB_ENTRY *aux_preg = Htable()->Sym()->Aux_stab_entry(id);
 
-   aux_preg->Set_EPRE_temp();
+   if (Pre_kind() == PK_LPRE || Pre_kind() == PK_VNFRE)
+     aux_preg->Set_LPRE_VNFRE_temp();
+   else aux_preg->Set_EPRE_temp();
    aux_preg->Set_value_size(vsize);
 
    // at most 1 of following can be true
@@ -2145,6 +2149,19 @@ ETABLE::Generate_cur_expr(const BB_NODE *bb, INT opnd_num, CODEREP *newcr, BOOL 
 		       "node bb:%d Aux:%d.", bb->Id(), kid->Aux_id()));
 	      if (fix_zero_ver && var_phi->OPND(opnd_num)->Is_flag_set(CF_IS_ZERO_VERSION))
 		Htable()->Fix_zero_version(var_phi, opnd_num);
+#ifdef KEY // bug 3070
+	      if (var_phi->OPND(opnd_num)->Dsctyp() == MTYPE_UNKNOWN ||
+		  var_phi->OPND(opnd_num)->Is_flag_set(CF_MADEUP_TYPE)) {
+		var_phi->OPND(opnd_num)->Set_dtyp(kid->Dtyp());
+		var_phi->OPND(opnd_num)->Set_dsctyp(kid->Dsctyp());
+		var_phi->OPND(opnd_num)->Set_lod_ty(kid->Lod_ty());
+		var_phi->OPND(opnd_num)->Set_field_id(kid->Field_id());
+		if (kid->Bit_field_valid())
+		  var_phi->OPND(opnd_num)->Set_bit_field_valid();
+		var_phi->OPND(opnd_num)->Set_sign_extension_flag();
+		var_phi->OPND(opnd_num)->Reset_flag(CF_MADEUP_TYPE);
+	      }
+#endif
 	      newcr->Set_opnd(i, var_phi->OPND(opnd_num));
 	    }
 	  }

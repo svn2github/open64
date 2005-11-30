@@ -182,7 +182,12 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			tsize = 0;
 		}
 		else
+#ifdef KEY		// bug 3045
+			tsize = (Get_Integer_Value(type_size) + BITSPERBYTE - 1)
+				  / BITSPERBYTE;
+#else
 			tsize = Get_Integer_Value(type_size) / BITSPERBYTE;
+#endif
 	}
 	switch (TREE_CODE(type_tree)) {
 	case VOID_TYPE:
@@ -212,7 +217,14 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			mtype = MTYPE_complement(mtype);
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
-		Set_TY_align (idx, align);
+#ifdef TARG_X8664
+		/* At least for -m32, the alignment is not the same as the data
+		   type's natural size. (bug#2932)
+		*/
+		if( TARGET_64BIT )
+#endif // TARG_X8664
+		  Set_TY_align (idx, align);
+
 		break;
 	case CHAR_TYPE:
 		mtype = (TREE_UNSIGNED(type_tree) ? MTYPE_U1 : MTYPE_I1);
@@ -750,7 +762,14 @@ Create_ST_For_Tree (tree decl_node)
             else {
 	      if (TREE_STATIC (decl_node)) {
 		sclass = SCLASS_PSTATIC;
-		if (pstatic_as_global)
+		if (pstatic_as_global
+#ifdef KEY
+// bugs 2647, 2681
+// Promote it if we are sure the function containing this var has been
+// inlined.
+		    || DECL_PROMOTE_STATIC (decl_node)
+#endif
+		   )
 			level = GLOBAL_SYMTAB;
 		else
 			level = CURRENT_SYMTAB;

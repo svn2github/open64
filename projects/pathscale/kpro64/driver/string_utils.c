@@ -175,6 +175,20 @@ add_existing_string (string_list_t *list, char *s)
 	}
 }
 
+/* add string after another */
+void
+add_after_string (string_list_t *list, string_item_t *item, char *s)
+{
+	string_item_t *p;
+	p = (string_item_t *) malloc(sizeof(string_item_t));
+	p->name = s;
+	p->next = item->next;
+	item->next = p;
+	if (list->tail == item) {
+		list->tail = p;
+	}
+}
+
 /* add string to end of list */
 void
 add_string (string_list_t *list, char *s)
@@ -267,3 +281,32 @@ ends_with(const char *s, const char *sfx)
 
 	return NULL;
 }
+
+#ifdef KEY
+/* must call this before using a string pair list */
+string_pair_list_t *
+init_string_pair_list (void)
+{
+  string_pair_list_t *p;
+  p = (string_pair_list_t *) malloc(sizeof(string_pair_list_t));
+  p->head = p->tail = NULL;
+  return p; 
+}
+
+/* add string pair to end of list */
+void
+add_string_pair (string_pair_list_t *list, char *key, char *val)
+{
+  string_pair_item_t *p;
+  p = (string_pair_item_t *) malloc(sizeof(string_pair_item_t));
+  p->key = string_copy(key);
+  p->val = string_copy(val);
+  p->next = NULL;
+  if (list->head == NULL) {
+    list->head = list->tail = p;
+  } else {
+    list->tail->next = p;
+    list->tail = p;
+  }
+}
+#endif	// KEY

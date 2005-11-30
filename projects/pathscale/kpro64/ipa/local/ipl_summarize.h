@@ -476,7 +476,7 @@ private:
     }
 
     void Process_alt_procedure (WN *w, INT formal_index, INT formal_count);
-    void Process_callsite (WN *w, INT id, INT loopnest);
+    void Process_callsite (WN *w, INT id, INT loopnest, float =-1);
     void Process_formal (WN *w, INT num_formals, SUMMARY_PROCEDURE *proc);
     void Process_formal_alt (WN *w, INT kid_count);
     void Process_actual (WN *actual);

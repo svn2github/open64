@@ -72,7 +72,6 @@
 
 #include "ipo_clone.h"
 
-
 //----------------------------------------------------------------------  
 // Interface for the main IPA
 // It's assumed that the cloned_node has already had the MEM_POOL m
@@ -169,13 +168,44 @@ IPO_Clone (IPA_NODE* orig_node, IPA_NODE* clone_node)
   Set_PU_Info_state (clone_pu_info, WT_TREE,     Subsect_InMem);
   Set_PU_Info_state (clone_pu_info, WT_SYMTAB,   Subsect_InMem);
   Set_PU_Info_state (clone_pu_info, WT_PROC_SYM, Subsect_InMem);
+  //Set_PU_Info_state (clone_pu_info, WT_FEEDBACK, Subsect_InMem);
 
+#ifdef KEY
   if (orig_node->Has_Feedback () && clone_node->Has_Feedback ())
-      DevWarn("Need to fix up feedback in IPO_Clone\n");
-#if TODO  // Need to fix the call to this routine to add call freq
-      FB_IPA_Clone(orig_node()->Feedback_Info(), clone_node()->Feedback_Info,
-                    WN_func_body(Callee_Wn ()), clone.Get_Cloned_PU(),
-                    (Call_edge()->Get_frequency()/orig_node()->Get_frequency));
+  {
+      IP_PROC_INFO& info = IP_FILE_HDR_proc_info (file_hdr)[orig_node->Proc_Info_Index()];
+      const PU_Info * pu = IP_PROC_INFO_pu_info (info);
+      const Pu_Hdr* orig_fb = (const Pu_Hdr*) PU_Info_feedback_ptr (pu);
+      FEEDBACK * fb = CXX_NEW (FEEDBACK (PU_Info_tree_ptr (clone_pu_info),
+      					 clone_node->Mem_Pool(),
+					 orig_fb->pu_num_inv_entries,
+					 orig_fb->pu_num_br_entries,
+					 orig_fb->pu_num_loop_entries,
+					 orig_fb->pu_num_scircuit_entries,
+					 orig_fb->pu_num_call_entries,
+					 orig_fb->pu_num_icall_entries,
+					 orig_fb->pu_num_switch_entries,
+					 orig_fb->pu_num_value_entries,
+					 orig_fb->runtime_fun_address), 
+      			       clone_node->Mem_Pool());
+      clone_node->Set_Feedback_Info (fb);
+
+      // original frequency, i.e. sum of invocations of original-node and
+      // cloned-node.
+      FB_FREQ orig_freq = orig_node->Has_frequency() ? 
+      			  orig_node->Get_frequency() : FB_FREQ_UNKNOWN;
+      FB_FREQ clone_freq (0.0, TRUE);
+      IPA_PRED_ITER preds (IPA_Call_Graph, clone_node);
+      for (preds.First(); !preds.Is_Empty(); preds.Next())
+      {
+      	IPA_EDGE * e = preds.Current_Edge();
+	if (e && e->Has_frequency())
+	  clone_freq += e->Get_frequency();
+      }
+      FB_IPA_Clone(orig_node->Feedback_Info(), clone_node->Feedback_Info(),
+                    orig_node->Whirl_Tree (FALSE), clone.Get_Cloned_PU(),
+                    clone_freq/orig_freq);
+  }
 #endif
 
   DST_IDX clone_dst = DST_INVALID_IDX;

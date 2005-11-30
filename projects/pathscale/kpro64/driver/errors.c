@@ -43,21 +43,35 @@
 #include "errors.h"
 
 status_codes error_status = RC_OKAY;
-#define set_error_status(e)	if (error_status == RC_OKAY) error_status = e;
-
 char *program_name;
 boolean print_warnings = TRUE;
 boolean fullwarn = FALSE;
+boolean pass_exit_codes = FALSE;
 
 static int errors = 0;
 static int previous_errors = 0;
+
+static void
+set_error_status (status_codes e)
+{
+	if (pass_exit_codes) {
+		if (e > error_status) {
+			error_status = e;
+		}
+	}
+	else {
+		if (error_status == RC_OKAY) {
+			error_status = e;
+		}
+	}
+}
 
 void
 error(char *format, ...)
 {
 	va_list args;
 	va_start (args, format);
-	fprintf(stderr, "%s ERROR:  ", program_name);
+	fprintf(stderr, "%s ERROR: ", program_name);
 	vfprintf(stderr, format, args);
 	fprintf(stderr, "\n");
 	va_end (args);
@@ -66,9 +80,9 @@ error(char *format, ...)
 }
 
 void
-parse_error (char *name, char *msg)
+parse_error (const char *name, const char *msg)
 {
-	fprintf(stderr, "%s ERROR parsing %s:  %s\n", 
+	fprintf(stderr, "%s ERROR parsing %s: %s\n", 
 		program_name, name, msg);
 	set_error_status(RC_USER_ERROR);
 	errors++;
@@ -80,7 +94,7 @@ warning (char *format, ...)
 	va_list args;
 	if (!print_warnings) return;
 	va_start (args, format);
-	fprintf(stderr, "%s WARNING:  ", program_name);
+	fprintf(stderr, "%s WARNING: ", program_name);
 	vfprintf(stderr, format, args);
 	fprintf(stderr, "\n");
 	va_end (args);
@@ -121,7 +135,7 @@ internal_error (char *format, ...)
 {
 	va_list args;
 	va_start (args, format);
-	fprintf(stderr, "%s INTERNAL ERROR:  ", program_name);
+	fprintf(stderr, "%s INTERNAL ERROR: ", program_name);
 	vfprintf(stderr, format, args);
 	fprintf(stderr, "\n");
 	va_end (args);

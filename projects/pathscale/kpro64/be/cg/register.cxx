@@ -508,6 +508,10 @@ REGISTER_Pu_Begin(void)
 {
   ISA_REGISTER_CLASS rclass;
 
+#ifdef TARG_X8664
+  const TN* ebx_tn = Ebx_TN();
+#endif
+
   /* Scan all the registers to find if the initial allocation status
    * will be different from the current state. The initial status
    * is all registers are set to their "default".
@@ -525,6 +529,18 @@ REGISTER_Pu_Begin(void)
 	re_init = TRUE;
       }
     }
+
+#ifdef TARG_X8664
+    /* Set register %ebx as un-allocatable under -m32 -fpic. %ebx will
+       be used to hold the address pointing to the global offset table.
+    */
+    if( Is_Target_32bit() &&
+	Gen_PIC_Shared    &&
+	rclass == TN_register_class(ebx_tn) ){
+      reg_alloc_status[rclass][TN_register(ebx_tn)] = AS_not_allocatable;
+      re_init = TRUE;
+    }
+#endif
 
     if ( re_init ) Initialize_Register_Class(rclass);
 

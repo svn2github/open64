@@ -641,6 +641,13 @@ Adjust_Opt_Level (PU_Info* current_pu, WN *pu, char *pu_name)
         if (Run_prompf) 
 	  Prompf_Emit_Whirl_to_Source(current_pu, pu);
     }
+#ifdef KEY
+#define OLIMIT_WARN_THRESHOLD 50000
+    else if (Opt_Level > 1 && !Olimit_opt && 
+	     (PU_Olimit > OLIMIT_WARN_THRESHOLD) && Show_OPT_Warnings) {
+      ErrMsg (EC_Olimit_Slow, pu_name, PU_Olimit);
+    }
+#endif
 
     if ((PU_Olimit > Olimit) && Olimit_opt) {
       /* split into regions (ORI) */

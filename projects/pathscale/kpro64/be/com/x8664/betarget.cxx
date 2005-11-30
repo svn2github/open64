@@ -376,5 +376,5 @@ BOOL Can_Be_Immediate(OPERATOR opr,
 		      INT whichkid,
 		      ST *stid_st)
 {
-  return TRUE ;
+  return ISA_LC_Value_In_Class( val, LC_simm32 );
 }

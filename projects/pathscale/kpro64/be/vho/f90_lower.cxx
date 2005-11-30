@@ -4410,7 +4410,12 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
 
       /* All cases, create a temp and insert an identity store */
       red_index = Create_Preg(doloop_ty,create_tempname("@f90redindex"));
+// Bug 2155
+# ifdef KEY
+      red_store = WN_StidPreg(doloop_ty,red_index,WN_Intconst(doloop_ty,0));
+# else
       red_store = WN_StidPreg(doloop_ty,red_index,WN_Intconst(doloop_ty,-1));
+# endif
       
       /* Determine the sizes of reduction argument */
       (void) F90_Size_Walk(kids[0],&rank,sizes);
@@ -5383,12 +5388,19 @@ static WN * F90_Lower_Walk(WN *expr, PREG_NUM *indices, INT ndim, WN * block, WN
       kid = F90_Lower_Walk(WN_kid0(expr),NULL,0,block,insert_point);
       kid1 = F90_Lower_Walk(WN_kid1(expr),NULL,0,block,insert_point);
       ty = doloop_ty;
+#ifdef KEY // bug 3130
+      if (MTYPE_byte_size(ty) != MTYPE_byte_size(WN_rtype(kid)))
+        kid = WN_Cvt(WN_rtype(kid), ty, kid);
+#endif
       index_ldid = WN_LdidPreg(ty,indices[0]);
-      result = WN_CreateExp2(OPCODE_make_op(OPR_ADD,ty,MTYPE_V),
-			     kid,
-			     WN_CreateExp2(OPCODE_make_op(OPR_MPY,ty,MTYPE_V),
+      kid1 = WN_CreateExp2(OPCODE_make_op(OPR_MPY,ty,MTYPE_V),
 					   index_ldid,
-					   kid1));
+					   kid1);
+#ifdef KEY // bug 3130
+      if (MTYPE_byte_size(ty) != MTYPE_byte_size(WN_rtype(kid1)))
+        kid1 = WN_Cvt(WN_rtype(kid1), ty, kid1);
+#endif
+      result = WN_CreateExp2(OPCODE_make_op(OPR_ADD,ty,MTYPE_V), kid, kid1);
       break;
 
     case OPR_WHERE:

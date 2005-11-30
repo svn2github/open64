@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,9 +46,13 @@
 #include <math.h>
 #include "moremath.h"
 
-float_t __rmod(float_t x, float_t y)
+#ifdef KEY
+float __rmod(float x, float y)
+#else
+float __rmod(float x, float_t y)
+#endif // KEY
 {
-  float_t q1, q2;
+  float q1, q2;
 
   if ((q1 = x/y) >= 0.0F)
     q2 = floorf(q1);
@@ -53,7 +61,11 @@ float_t __rmod(float_t x, float_t y)
   return (x - y * q2);
 }
 
-float_t r_mod(float_t *x, float_t *y)
+#ifdef KEY
+float r_mod(float *x, float *y)
+#else
+float r_mod(float *x, float_t *y)
+#endif // KEY
 {
   return (__rmod(*x, *y));
 }

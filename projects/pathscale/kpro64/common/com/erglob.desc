@@ -235,6 +235,11 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_Inv_Opt_Val,	EM_User | ES_WARNING,	RAG_EN_NONE,
     "Invalid option value in \"-%s\" -- ignored",
     1, ET_STRING, 0,0,0,0,0 },
+#ifdef KEY
+  { EC_No_Opt_Val,	EM_User | ES_WARNING,	RAG_EN_NONE,
+    "Option  \"%s\" in group '%s' should be provided a value -- ignored",
+    2, ET_STRING, ET_STRING,0,0,0,0 },
+#endif
 
   /* Control processing: */
   { EC_Unimp_Ctrl,	EM_User | ES_WARNING,	RAG_EN_NONE,
@@ -339,6 +344,27 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_Not_Ansi_Setjmp,       EM_User | ES_WARNING,   RAG_EN_NONE,
      "Function %s (#%d) is optimized at -O%d because of non-ANSI setjmp",
      3, ET_STRING, ET_INT, ET_INT,0,0,0 },
+
+#ifdef KEY
+   /* Olimit support warnings: */
+  { EC_Olimit_Slow,	EM_User | ES_WARNING,   RAG_EN_NONE,
+    "Optimizing huge function %s because Olimit has been overridden;\n"
+    "\tcompiler may run out of memory or run very slowly",
+    2, ET_STRING, ET_INT, 0,0,0,0 },
+
+   /* Inconsistent IPA optimization options passed */
+  { EC_Ipa_Options,	EM_User | ES_WARNING,   RAG_EN_NONE,
+    "Inconsistent optimization options detected between files involved\n"
+    "\tin inter-procedural optimization.\n" 
+    "\tIn order to honor their specified optimization options,\n"
+    "\tcompiler will not perform layout order optimization for the functions.",
+    0, 0, 0, 0, 0, 0, 0 },
+
+   /* Inconsistent types for same symbol */
+  { EC_Inc_Types,	EM_User | ES_ERRABORT,   RAG_EN_NONE,
+    "Symbol %s declared both as function and variable\n",
+    1, ET_STRING, 0, 0, 0, 0, 0 },
+#endif
 
   /* Tree (ND) support: */
   { EC_B_Access,	EM_Compiler | ES_ERRPHASE,	RAG_EN_NONE,

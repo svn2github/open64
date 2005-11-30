@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -44,9 +48,13 @@
 
 #include <cmplrs/host.h>
 
-double_t __dmod(double_t x, double_t y)
+#ifdef KEY
+double __dmod(double x, double y)
+#else
+double __dmod(double x, double_t y)
+#endif // KEY
 {
-  double_t q1, q2;
+  double q1, q2;
 
   if ((q1 = x/y) >= 0.0F)
     q2 = floor(q1);
@@ -55,7 +63,11 @@ double_t __dmod(double_t x, double_t y)
   return (x - y * q2);
 }
 
-double_t d_mod(double_t *x, double_t *y)
+#ifdef KEY
+double d_mod(double *x, double *y)
+#else
+double d_mod(double *x, double_t *y)
+#endif // KEY
 {
   return (__dmod(*x, *y));
 }

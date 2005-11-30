@@ -138,6 +138,9 @@ convert_floor_to_floorf (tree e)
 
   if (TREE_CODE (e) == CALL_EXPR &&
       (fn = get_callee_fndecl (e)) &&
+      // First check if it is a built-in function
+      // bug 2591
+      DECL_BUILT_IN (fn) && 
       DECL_FUNCTION_CODE (fn) == BUILT_IN_FLOOR &&
       // It is floor(x).  See if x is an expression that converts a float to a
       // double.  First check if the result type of x is a double.

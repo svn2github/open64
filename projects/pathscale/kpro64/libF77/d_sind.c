@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,13 +46,13 @@
 #include <cmplrs/host.h>
 #include "d_mod.h"
 
-double_t __dsind(double_t x)
+double __dsind(double x)
 {
-  double_t circle = 360.0;
+  double circle = 360.0;
   return sin(.017453292519943295 * __dmod(x, circle));
 }
 
-double_t d_sind(double_t *x)
+double d_sind(double *x)
 {
   return __dsind(*x);
 }

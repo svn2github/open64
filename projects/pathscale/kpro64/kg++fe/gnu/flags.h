@@ -494,6 +494,7 @@ extern int flag_exceptions;
 #ifdef KEY
 /* Nonzero means enable implementation of KEY exception handling */
 extern int key_exceptions;
+extern int opt_regions;
 #endif
 
 /* Nonzero means generate frame unwind info table when supported */

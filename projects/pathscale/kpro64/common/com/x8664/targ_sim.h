@@ -76,8 +76,10 @@ extern "C" {
 
 #define MAX_NUMBER_OF_REGISTERS_FOR_RETURN 2
 #define MAX_NUMBER_OF_REGISTER_PARAMETERS  14 // used in data_layout.cxx
-#define MAX_NUMBER_OF_INT_REGISTER_PARAMETERS  6 // used in data_layout.cxx
-#define MAX_NUMBER_OF_FLOAT_REGISTER_PARAMETERS  8 // used in data_layout.cxx
+#define MAX_NUMBER_OF_INT_REGISTER_PARAMETERS \
+               ( Is_Target_64bit() ? 6 : 0 )  // used in data_layout.cxx
+#define MAX_NUMBER_OF_FLOAT_REGISTER_PARAMETERS  \
+               ( Is_Target_64bit() ? 8 : 0 )  // used in data_layout.cxx
 
 #define PUSH_RETURN_ADDRESS_ON_STACK TRUE
 #define PUSH_FRAME_POINTER_ON_STACK  TRUE

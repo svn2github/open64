@@ -176,6 +176,7 @@ endif
 dso_version := 1
 DSO	= libinstr.so.$(dso_version)
 LIBRARY = libinstr.a
+PROF_LIB = libinstr_p.a
 
 ifeq ($(BUILD_TYPE), NONSHARED)
 TARGETS = $(LIBRARY)
@@ -184,7 +185,7 @@ ifeq ($(BUILD_VARIANT), ABI)
 TARGETS = $(LIBRARY)
 endif
 ifndef TARGETS
-TARGETS = $(LIBRARY) $(DSO) 
+TARGETS = $(LIBRARY) $(PROF_LIB) $(DSO) 
 endif
 
 
@@ -229,6 +230,10 @@ so_locations: $(SO_LOCATION_DIR)/so_locations
 	chmod u+w so_locations
 
 $(LIBRARY): $(LIBINSTR_CXX_OBJS)
+	$(ar) cru $@ $^
+	$(ranlib) $@
+
+$(PROF_LIB): $(LIBINSTR_CXX_OBJS:%.o=%.pg.o)
 	$(ar) cru $@ $^
 	$(ranlib) $@
 

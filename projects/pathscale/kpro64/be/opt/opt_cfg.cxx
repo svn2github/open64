@@ -1159,7 +1159,7 @@ CFG::Is_simple_expr(WN *wn) {
 #if defined(TARG_IA32) || defined(TARG_X8664)
   if (! MTYPE_is_integral(WN_rtype(wn)))
     return 0;
-  if (opr == OPR_NEG)
+  if (opr == OPR_NEG || opr == OPR_ABS)
     return Is_simple_expr(WN_kid0(wn));
   if (opr == OPR_ADD || opr == OPR_SUB || opr == OPR_NEG ||
       opr == OPR_SHL || opr == OPR_ASHR || opr == OPR_LSHR ||
@@ -1266,6 +1266,14 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
       // is beneficial for ISA supporting cmov
 #ifdef TARG_MIPS
       Is_Target_ISA_M4Plus() &&  
+#endif
+#ifdef KEY  // do not if-convert if it has either empty then or else part and it
+      // is the only statement in the BB since CG's cflow can be quite effective
+      ((!empty_else && !empty_then) ||
+       WN_next(wn) != NULL || // no next statement in BB
+       (_current_bb->Firststmt() != NULL && // no previous statement in BB
+        (_current_bb->Firststmt() != _current_bb->Laststmt() || // prev is LABEL
+         (WN_operator(_current_bb->Firststmt()) != OPR_LABEL)))) &&
 #endif
 
       // at least one of the then or else statement is non-empty

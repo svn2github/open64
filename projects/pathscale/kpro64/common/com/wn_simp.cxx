@@ -74,6 +74,10 @@
 
 #include "wn_simp.h"
 
+# if defined(KEY) && defined(Is_True_On)
+# include "config_opt.h"
+# endif
+
 BOOL WN_Simp_Fold_ILOAD = FALSE;
 
 BOOL WN_Simp_Fold_LDA = FALSE;
@@ -324,6 +328,9 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
    OPERATOR opr;
    WN *k0, *k1, *k2, *r=NULL, *result;
    INT16 numkids;
+# if defined(KEY) && defined(Is_True_On)
+   static INT cur_idx = 0;
+# endif
 
    op = WN_opcode(t);
    if (!OPCODE_is_expression(op)) return (t);
@@ -334,23 +341,35 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
 
    if (opr == OPR_ILOAD) {
       k0 = WN_kid0(t);
+# if defined (KEY) && defined (Is_True_On)
+      if (Enable_WN_Simp_Expr_Limit == -1 || (Enable_WN_Simp_Expr_Limit != -1 && cur_idx < Enable_WN_Simp_Expr_Limit))
+# endif
       r = WN_SimplifyIload(op,WN_load_offset(t),WN_ty(t),WN_field_id(t),WN_load_addr_ty(t),k0);
       if (r) {
-#ifdef BACK_END
+# ifdef BACK_END
 	 if (alias_manager) {
 	    Copy_alias_info(alias_manager,t,r);
 	 }
-#endif
+# endif
 	 WN_Delete(t);
 	 result = r;
+# if defined (KEY) && defined (Is_True_On)
+         cur_idx ++;
+# endif
       } else {
 	 result = t;
       }
    } else if (opr == OPR_INTRINSIC_OP) {
+# if defined (KEY) && defined (Is_True_On)
+      if (Enable_WN_Simp_Expr_Limit == -1 || (Enable_WN_Simp_Expr_Limit != -1 && cur_idx < Enable_WN_Simp_Expr_Limit))
+# endif
       r = WN_SimplifyIntrinsic(op, WN_intrinsic(t), numkids, &WN_kid0(t));
       if (r) {
 	 WN_Delete(t);
 	 result = r;
+# if defined (KEY) && defined (Is_True_On)
+         cur_idx ++;
+# endif
       } else {
 	 result = t;
       }
@@ -358,13 +377,22 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
       k0 = WN_kid0(t);
 
       if (WN_operator(t) != OPR_CVTL) {
+# if defined (KEY) && defined (Is_True_On)
+        if (Enable_WN_Simp_Expr_Limit == -1 || (Enable_WN_Simp_Expr_Limit != -1 && cur_idx < Enable_WN_Simp_Expr_Limit))
+# endif
 	 r = WN_SimplifyExp1(op, k0);
       } else {
+# if defined (KEY) && defined (Is_True_On)
+        if (Enable_WN_Simp_Expr_Limit == -1 || (Enable_WN_Simp_Expr_Limit != -1 && cur_idx < Enable_WN_Simp_Expr_Limit))
+# endif
 	 r = WN_SimplifyCvtl(op, WN_cvtl_bits(t),k0);
       }
       if (r) {
 	 WN_Delete(t);
 	 result = r;
+# if defined (KEY) && defined (Is_True_On)
+         cur_idx ++;
+# endif
       } else {
 	 WN_kid0(t) = k0;
 	 result = t;
@@ -372,10 +400,16 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
    } else if (numkids == 2) {
       k0 = WN_kid0(t);
       k1 = WN_kid1(t);
+# if defined (KEY) && defined (Is_True_On)
+      if (Enable_WN_Simp_Expr_Limit == -1 || (Enable_WN_Simp_Expr_Limit != -1 && cur_idx < Enable_WN_Simp_Expr_Limit))
+# endif
       r = WN_SimplifyExp2(op, k0, k1);
       if (r) {
 	 WN_Delete(t);
 	 result = r;
+# if defined (KEY) && defined (Is_True_On)
+         cur_idx ++;
+# endif
       } else {
 	 result = t;
       }
@@ -383,10 +417,16 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
       k0 = WN_kid0(t);
       k1 = WN_kid1(t);
       k2 = WN_kid(t,2);
+# if defined (KEY) && defined (Is_True_On)
+      if (Enable_WN_Simp_Expr_Limit == -1 || (Enable_WN_Simp_Expr_Limit != -1 && cur_idx < Enable_WN_Simp_Expr_Limit))
+# endif
       r = WN_SimplifyExp3(op, k0, k1, k2);
       if (r) {
 	 WN_Delete(t);
 	 result = r;
+# if defined (KEY) && defined (Is_True_On)
+         cur_idx ++;
+# endif
       } else {
 	 result = t;
       }

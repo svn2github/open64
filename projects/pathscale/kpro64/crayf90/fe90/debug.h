@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -418,6 +422,9 @@ char		*intrin_str[]		= {
 				"Dtan_Intrinsic",
 				"Dtand_Intrinsic",
 				"Dtanh_Intrinsic",
+# ifdef KEY
+				"Dtime_Intrinsic",
+# endif
 				"Enable_Ieee_Interrupt_Intrinsic",
 				"Eoshift_Intrinsic",
 				"Epsilon_Intrinsic",
@@ -426,6 +433,9 @@ char		*intrin_str[]		= {
 				"Exp_Intrinsic",
 				"Exponent_Intrinsic",
 				"Fcd_Intrinsic",
+# ifdef KEY
+				"Fdate_Intrinsic",
+# endif
 				"Fetch_And_Add_Intrinsic",
 				"Fetch_And_And_Intrinsic",
 				"Fetch_And_Nand_Intrinsic",
@@ -437,9 +447,15 @@ char		*intrin_str[]		= {
 				"Floatj_Intrinsic",
 				"Floatk_Intrinsic",
 				"Floor_Intrinsic",
+# ifdef KEY
+				"Fnum_Intrinsic",
+# endif
 				"Fp_Class_Intrinsic",
 				"Fraction_Intrinsic",
 				"Free_Intrinsic",
+#ifdef KEY
+                                "Fstat_Intrinsic",
+#endif
 				"Getpos_Intrinsic",
 				"Get_Ieee_Exceptions_Intrinsic",
 				"Get_Ieee_Interrupts_Intrinsic",
@@ -545,6 +561,9 @@ char		*intrin_str[]		= {
 				"Kidint_Intrinsic",
 				"Kieor_Intrinsic",
 				"Kifix_Intrinsic",
+#ifdef KEY
+				"Kill_Intrinsic",
+#endif
 				"Kind_Intrinsic",
 				"Kint_Intrinsic",
 				"Kior_Intrinsic",
@@ -702,6 +721,9 @@ char		*intrin_str[]		= {
 				"Shiftr_Intrinsic",
 				"Short_Intrinsic",
 				"Sign_Intrinsic",
+#ifdef KEY
+				"Signal_Intrinsic",
+#endif
 				"Sin_Intrinsic",
 				"Sind_Intrinsic",
 				"Sinh_Intrinsic",
@@ -712,6 +734,9 @@ char		*intrin_str[]		= {
 				"Spacing_Intrinsic",
 				"Spread_Intrinsic",
 				"Sqrt_Intrinsic",
+#ifdef KEY
+                                "Stat_Intrinsic",
+#endif
 				"Sub_And_Fetch_Intrinsic",
 				"Sum_Intrinsic",
 				"Synchronize_Intrinsic",
@@ -724,6 +749,9 @@ char		*intrin_str[]		= {
                                 "Test_Ieee_Interrupt_Intrinsic",
 				"This_Image_Intrinsic",
 				"Time_Intrinsic",
+#ifdef KEY
+				"Time8_Intrinsic",
+#endif
 				"Tiny_Intrinsic",
 				"Transfer_Intrinsic",
 				"Transpose_Intrinsic",
@@ -734,7 +762,15 @@ char		*intrin_str[]		= {
 				"Verify_Intrinsic",
                                 "Write_Memory_Barrier_Intrinsic",
 				"Xor_Intrinsic",
-				"Xor_And_Fetch_Intrinsic" 
+				"Xor_And_Fetch_Intrinsic", 
+# ifdef KEY
+				"Zabs_Intrinsic",
+				"Zcos_Intrinsic",
+				"Zexp_Intrinsic",
+				"Zlog_Intrinsic",
+				"Zsin_Intrinsic",
+				"Zsqrt_Intrinsic"
+# endif
 		};
 
 char		*msg_lvl_str[]		= {

@@ -5804,11 +5804,19 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
                      cn_idx = get_next_array_expr_element(&l_opnd, &vv);  
                      COPY_OPND(IL_OPND(search_idx), l_opnd);
                   }
-
+#ifdef KEY
+                  SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
+                                CN_CONST(cn_idx), 
+                                num_host_wds[TYP_LINEAR(
+                                     ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))], 
+				num_host_wds[TYP_LINEAR(
+				     CN_TYPE_IDX(cn_idx))]);
+#else
                   SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
                                 CN_CONST(cn_idx), 
                                 num_host_wds[TYP_LINEAR(
                                      ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))]);
+#endif
 
                   t_idx = IR_IDX_L(ir_idx);
                   while (t_idx != NULL_IDX) {
@@ -5839,11 +5847,19 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
                      cn_idx = get_next_array_expr_element(&l_opnd, &vv);
                      COPY_OPND(IL_OPND(search_idx), l_opnd);
                   }
-
+#ifdef KEY
+                  SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
+                                CN_CONST(cn_idx),
+                                num_host_wds[TYP_LINEAR(
+                                   ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))],
+				num_host_wds[TYP_LINEAR(
+				     CN_TYPE_IDX(cn_idx))]);
+#else
                   SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
                                 CN_CONST(cn_idx),
                                 num_host_wds[TYP_LINEAR(
                                    ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))]);
+#endif
 
                   t_idx = IR_IDX_L(ir_idx);
                   while (t_idx != NULL_IDX) {
@@ -5864,10 +5880,19 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
            }
 
            /* Restore the guts of the LCV temp attr. */
+#ifdef KEY
+           SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
+                         CN_CONST(ATD_TMP_IDX(IL_IDX(IR_IDX_R(ir_idx)))),
+                         num_host_wds[TYP_LINEAR(
+                              ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))],
+			 num_host_wds[TYP_LINEAR(
+			      CN_TYPE_IDX(ATD_TMP_IDX(IL_IDX(IR_IDX_R(ir_idx)))))]);
+#else
            SET_LCV_CONST(IL_IDX(IR_IDX_R(ir_idx)),
                          CN_CONST(ATD_TMP_IDX(IL_IDX(IR_IDX_R(ir_idx)))),
                          num_host_wds[TYP_LINEAR(
                               ATD_TYPE_IDX(IL_IDX(IR_IDX_R(ir_idx))))]);
+#endif
 
         }
         else {
@@ -11151,6 +11176,10 @@ static void send_stor_blk(int	 sb_idx,
    switch (SB_LEN_FLD(sb_idx)) {
    case CN_Tbl_Idx :   
       blk_len = CN_INT_TO_C(SB_LEN_IDX(sb_idx));
+# ifdef KEY
+      if (TYP_LINEAR(CN_TYPE_IDX(SB_LEN_IDX(sb_idx))) == Integer_4 && blk_len != 0)
+        blk_len = (unsigned) blk_len;
+# endif
       break;
 
    case AT_Tbl_Idx : 
@@ -11655,9 +11684,18 @@ static void  send_procedure(int			attr_idx,
 
       if (ATP_EXTRA_DARG(attr_idx)) {
          pgm_unit = Subroutine;
+// Bug 2204
+# ifdef KEY
+         if  (TYP_LINEAR(ATD_TYPE_IDX(ATP_RSLT_IDX(attr_idx))) == Structure_Type)
+           type_desc = get_type_desc(attr_idx);
+         else 
+           type_desc = pdg_type_void;
+# else
          type_desc = pdg_type_void;
+# endif
       }
       else {
+
          /*
          Need to send the attr_idx to
          get_type_desc, because we need
@@ -12828,9 +12866,18 @@ static void send_attr_ntry(int		attr_idx)
             offset = CN_INT_TO_C(ATD_OFFSET_IDX(attr_idx));  
 
 # if defined(_TARGET_OS_MAX) || defined(_HOST32)  /* JEFFL ?? */
-            if (TYP_LINEAR(CN_TYPE_IDX(ATD_OFFSET_IDX(attr_idx))) != Integer_8){
-               SIGN_EXTEND(offset);
+# ifdef KEY
+            if (TYP_LINEAR(CN_TYPE_IDX(ATD_OFFSET_IDX(attr_idx))) == Integer_4 && offset != 0){
+              offset = (unsigned)offset;
             }
+            else if (TYP_LINEAR(CN_TYPE_IDX(ATD_OFFSET_IDX(attr_idx))) != Integer_8){
+              SIGN_EXTEND(offset);
+            }
+# else
+            if (TYP_LINEAR(CN_TYPE_IDX(ATD_OFFSET_IDX(attr_idx))) != Integer_8){
+              SIGN_EXTEND(offset);
+            }
+# endif
 # endif
          }
          else if (ATD_OFFSET_FLD(attr_idx) == AT_Tbl_Idx) {

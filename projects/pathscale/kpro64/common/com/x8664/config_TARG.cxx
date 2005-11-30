@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -77,6 +81,12 @@ static char * Platform_Name = NULL;
 INT16 Target_FPRs = 0;		/* -TARG:fp_regs=nn */
 BOOL Pure_ABI = FALSE;		/* Avoid non-ABI constructs? */
 
+BOOL Target_SSE2 = TRUE;        /* -TARG:sse2=on/off */
+BOOL Target_SSE2_Set = FALSE;
+
+BOOL Target_SSE3 = FALSE;       /* -TARG:sse3=on/off */
+BOOL Target_SSE3_Set = FALSE;
+
 /* Fault handling: */
 BOOL Force_FP_Precise_Mode = FALSE;	/* Force precise FP traps? */
 BOOL Force_Memory_Dismiss = FALSE;	/* Force mem fault dismissal? */
@@ -106,6 +116,12 @@ static OPTION_DESC Options_TARG[] = {
   { OVK_NAME,	OV_VISIBLE,	FALSE, "isa",		"is",
     0, 0, 0, &ISA_Name,		NULL,
     "Specify the instruction set architecture to use" },
+  { OVK_BOOL,	OV_VISIBLE,	FALSE, "msse2",		"msse2",
+    0, 0, 0,	&Target_SSE2,	&Target_SSE2_Set,
+    "Enable SSE2 extensions" },
+  { OVK_BOOL,	OV_VISIBLE,	FALSE, "msse3",		"msse3",
+    0, 0, 0,	&Target_SSE3,	&Target_SSE3_Set,
+    "Enable SSE3 extensions" },
 #if 0
   { OVK_SELF,	OV_SHY,		FALSE, "mips1",	NULL,
     0, 0, 0, &ISA_Name,		NULL,

@@ -446,6 +446,7 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_MEMORY_HI   0x00040000 /* Is OP load/store the high 32-bit? */
 /* Is this OP the first OP following the PRAGMA_PREAMBLE_END ? */
 #define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END 0x00080000
+#define OP_MASK_COMPUTES_GOT  0x00100000  /* Does OP compute GOT ? */
 #endif
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
@@ -504,6 +505,8 @@ enum OP_COND_DEF_KIND {
 # define OP_first_after_preamble_end(o) (OP_flags(o) & OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
 # define Set_OP_first_after_preamble_end(o) (OP_flags(o) |= OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
 # define Reset_OP_first_after_preamble_end(o) (OP_flags(o) &= ~OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
+# define OP_computes_got(o)       (OP_flags(o) & OP_MASK_COMPUTES_GOT)
+# define Set_OP_computes_got(o)   (OP_flags(o) |= OP_MASK_COMPUTES_GOT)
 #endif
 
 extern BOOL OP_cond_def(const OP*);

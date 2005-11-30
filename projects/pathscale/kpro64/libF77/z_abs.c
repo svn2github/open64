@@ -46,12 +46,16 @@
 #include "defalias.h"
 #include "moremath.h"
 
-double_t __zabs(double_t zdreal, double_t zdimag)
+#ifdef KEY
+double __zabs(double zdreal, double zdimag)
+#else
+double __zabs(double zdreal, double_t zdimag)
+#endif
 {
   return(hypot(zdreal, zdimag));
 }
 
-double_t z_abs__(dcomplex *z)
+double z_abs__(dcomplex *z)
 {
   return(hypot(z->dreal, z->dimag));
 }

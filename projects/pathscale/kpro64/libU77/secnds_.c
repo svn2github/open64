@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,6 +47,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "defalias.h"
 #include <sys/types.h>
 #ifdef _BSD
 #include <sys/time.h>
@@ -85,7 +90,19 @@ secnds_vms (float *start)
 	return( (float) hms + ((float) curtime.tv_usec / 1000000.0) - *start );
 #endif  /* _BSD */
 
+#ifdef KEY
+	if ((hms = time(0)) == -1)
+	  {
+	  perror("secnds");
+	  exit(99);
+	  }
+	t = localtime(&hms);
+	return((t->tm_sec+t->tm_min*60+t->tm_hour*3600) - *start);
+#endif  /* KEY */
 }
+
+defalias(secnds_vms, secnds_);
+
 double dsecnds_vms(start)  
 double *start;
 {
@@ -121,4 +138,15 @@ double *start;
 	return( (double) hms + ((double) curtime.tv_usec / 1000000.0) - *start );
 #endif  /* _BSD */
 
+#ifdef KEY
+	if ((hms = time(0)) == -1)
+	  {
+	  perror("secnds");
+	  exit(99);
+	  }
+	t = localtime(&hms);
+	return((double) (t->tm_sec+t->tm_min*60+t->tm_hour*3600) - *start);
+#endif  /* KEY */
 }
+
+defalias(dsecnds_vms, dsecnds_);

@@ -330,8 +330,6 @@ Uncombine_mpy_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
   const OPERATOR kid1_opr = OPCODE_operator(kid1_opc);
 
 #ifdef KEY
-  if (MTYPE_is_vector(OPCODE_rtype(old_wn_opc)))
-    return FALSE;
   if (Recip_Allowed)
     return FALSE;
 #endif

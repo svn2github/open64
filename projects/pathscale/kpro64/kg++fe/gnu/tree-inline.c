@@ -1011,11 +1011,7 @@ inlinable_function_p (fn, id)
      can inline this function, investigate further.  */
   if (! (*lang_hooks.tree_inlining.disregard_inline_limits) (fn)
       && inlinable
-      && (key_exceptions || currfn_insns > MIN_INLINE_INSNS)) 
-      // KEY: key_exceptions
-      // If exceptions are enabled, we want to reduce the aggressiveness of
-      // the inliner. Some of the controlling parameters are modified (in
-      // toplev.c) if exceptions are enabled.
+      && currfn_insns > MIN_INLINE_INSNS)
     {
       int sum_insns = (id ? id->inlined_stmts : 0) * INSNS_PER_STMT
 		     + currfn_insns;

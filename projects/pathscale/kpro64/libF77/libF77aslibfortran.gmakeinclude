@@ -267,8 +267,10 @@ CFILES += \
 	chdir_.c \
 	chmod_.c \
 	ctime_.c \
+	dtime_.c \
 	etime_.c \
 	exit_.c \
+        fdate_.c \
 	getarg_.c \
 	getcwd_.c \
 	getenv_.c \
@@ -287,7 +289,9 @@ CFILES += \
 	rename_.c \
 	secnds_.c \
 	sleep_.c \
+        stat_.c \
         system_.c \
+        time_.c \
 	unlink_.c \
 	wait_.c
 
@@ -740,3 +744,16 @@ pow_hh.o: pow_hh.c
 	$(CC) $(CFLAGS) -TENV:X=1 -c $<
 pow_ii.o: pow_ii.c
 	$(CC) $(CFLAGS) -TENV:X=1 -c $<
+dtime_.o: dtime_.c
+	$(CC) $(CFLAGS)  -DHAVE_GETRUSAGE -DHAVE_STDLIB_H -c $<
+stat_.o: stat_.c
+	$(CC) $(CFLAGS)  -DHAVE_GETRUSAGE -DHAVE_STDLIB_H -c $<
+dtime_.pic.o: dtime_.c
+	$(CC) $(CFLAGS) $(pic_flag) -DHAVE_GETRUSAGE -DHAVE_STDLIB_H -c $< -o $@
+stat_.pic.o: stat_.c
+	$(CC) $(CFLAGS) $(pic_flag) -DHAVE_GETRUSAGE -DHAVE_STDLIB_H -c $< -o $@
+dtime_.pg.o: dtime_.c
+	$(CC) $(CFLAGS) $(pg_flag) -DHAVE_GETRUSAGE -DHAVE_STDLIB_H -c $< -o $@
+stat_.pg.o: stat_.c
+	$(CC) $(CFLAGS) $(pg_flag) -DHAVE_GETRUSAGE -DHAVE_STDLIB_H -c $< -o $@
+

@@ -283,10 +283,17 @@ static INTRINSIC get_vec_intrinsic(INTRINSIC intr_id) {
     case INTRN_F8COS: return INTRN_F8VCOS ;
     case INTRN_F4EXP: return INTRN_F4VEXP ;
     case INTRN_F8EXP: return INTRN_F8VEXP ;
-#ifndef TARG_X8664
+#ifndef KEY 
     case INTRN_F4LOG: return INTRN_F4VLOG ;
-    // vlog implementation has a bug that shows up with NAS/EP -O3
     case INTRN_F8LOG: return INTRN_F8VLOG ;
+#else
+    case INTRN_F4LOG: 
+      if (LNO_Run_Vintr == 2) return INTRN_F4VLOG ;
+      else return INTRINSIC_INVALID;
+    // vlog implementation has a bug that shows up with NAS/EP -O3
+    case INTRN_F8LOG: 
+      if (LNO_Run_Vintr == 2) return INTRN_F8VLOG ;
+      else return INTRINSIC_INVALID;
 #endif
     case INTRN_F4LOG10: return INTRN_F4VLOG10;
     case INTRN_F8LOG10: return INTRN_F8VLOG10;
@@ -780,6 +787,9 @@ void Gather_Intrinsic_Ops(
   }
 }
 
+#ifdef KEY
+WN * Loop_being_replaced=NULL;
+#endif
 // Fission a inner loop 'innerloop' such that the intrinsic ops inside
 // can be separated and be vectorized
 static INT Vintrinsic_Fission(WN* innerloop)
@@ -1476,6 +1486,19 @@ static INT Vintrinsic_Fission(WN* innerloop)
 
     WN* count=NULL;
     if (opr==OPR_LT || opr==OPR_GT) {
+#ifdef KEY
+// bug 3388: For creating the vintrinsic call, we use the loop termination
+// condition from the loop that is being replaced. When we are copying the 
+// def-use, the loop_stmt for the uses in the orig loop should not be copied
+// over to the uses in the terminating condition because 
+// 1) it seems to be wrong according to the defn of loop_stmt in opt_du.h
+// 2) the loop is going to be replaced and hence invalid.
+// Also since 'new_loop', i.e. the outermost loop containing the original
+// use is being removed, there is NO outermost loop that contains the use
+// in vintrinsic call && that follows the defn of loop_stmt. So loop_stmt
+// should be null.
+      Loop_being_replaced = new_loop;
+#endif
       WN* tmp0=LWN_Copy_Tree(WN_kid(loop_end,1-kid_id));
       WN* tmp1=LWN_Copy_Tree(WN_kid(loop_end,kid_id));
       LWN_Copy_Def_Use(WN_kid(loop_end,1-kid_id),tmp0,Du_Mgr);
@@ -1647,11 +1670,23 @@ static INT Vintrinsic_Fission(WN* innerloop)
       if (parent==NULL)
         adg->Delete_Vertex(v);
 
+#ifdef KEY
+      if (LNO_Vintr_Verbose) {
+	printf("(%s:%d) ",
+	       Src_File_Name,
+	       Srcpos_To_Line(WN_Get_Linenum(new_loop)));
+	printf("LOOP WAS VECTORIZED.\n");
+      }
+#endif
       LWN_Update_Def_Use_Delete_Tree(new_loop,Du_Mgr);
       LWN_Update_Dg_Delete_Tree(new_loop,adg);
       LWN_Delete_Tree(new_loop);
 
       does_vectorization=TRUE;
+
+#ifdef KEY
+      Loop_being_replaced = NULL;
+#endif
 
       if (LNO_Verbose)
         vintr_fission_verbose_info(srcpos,intr_op_name);

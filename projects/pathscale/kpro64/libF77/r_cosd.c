@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,15 +44,19 @@
 #include <math.h>
 #include "moremath.h"
 
-extern float_t __rmod(float_t, float_t);
+#ifdef KEY
+extern float __rmod(float, float);
+#else
+extern float __rmod(float, float_t);
+#endif // KEY
 
-float_t __rcosd(float_t x)
+float __rcosd(float x)
 {
-  float_t circle = 360.0F;
+  float circle = 360.0F;
   return cosf(.017453292519943295F * __rmod(x, circle));
 }
 
-float_t r_cosd(float_t *x)
+float r_cosd(float *x)
 {
   return __rcosd(*x);
 }

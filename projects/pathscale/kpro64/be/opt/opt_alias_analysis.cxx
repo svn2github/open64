@@ -1918,7 +1918,38 @@ OPT_STAB::Generate_call_mu_chi_by_ref(WN *wn, ST *call_st,
 	  }
 	}
       }
+#ifdef KEY
+//Bug 1976
+    if ( Aux_stab_entry(idx)->St() && IS_FORTRAN && (idx != Return_vsym() || idx != Default_vsym())){
 
+      if (strncmp(Aux_stab_entry(idx)->St_name(), "cray_fcd_", 8) ==0 || 
+          strncmp(Aux_stab_entry(idx)->St_name(), "_cray_", 6) ==0 )
+        continue;
+      
+      if ((WN_operator(wn) == OPR_INTRINSIC_CALL &&
+          WN_intrinsic(wn) == INTRN_CASSIGNSTMT) || 
+         (WN_operator(wn) == OPR_CALL &&
+         (WN_st(wn) && strcmp(ST_name(WN_st(wn)), "_OPEN" ) ==0 ||
+          WN_st(wn) && strcmp(ST_name(WN_st(wn)), "_CLOSE" ) ==0) )){
+
+        BOOL idx_is_accessed_by_call = FALSE;
+
+        for (INT32 i = 0; i < WN_kid_count(wn); i++) {
+          OCC_TAB_ENTRY *occ = Get_occ(WN_kid(wn, i));
+// Bug 2450. default vsym can be aliased with any other idx.
+	  if (occ != NULL &&
+	      (occ->Aux_id() == idx || occ->Aux_id() == Default_vsym() ||  occ->Aux_id() == Return_vsym()) ) {
+            idx_is_accessed_by_call = TRUE;
+            break;
+          }
+        }
+        if (!idx_is_accessed_by_call &&
+            strncmp(Aux_stab_entry(idx)->St_name(), ".preg_I", 7) != 0)
+          continue;
+      }
+
+    }
+#endif
     if (how & READ)
       mu->New_mu_node(idx, Occ_pool());
 

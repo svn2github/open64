@@ -354,8 +354,30 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
 
     case MTYPE_C4:
       if (Is_Target_32bit()) {
-        info.count = 0;
-        info.return_via_first_arg = TRUE;
+	/* Under -m32 for C and C++, if type "float _Complex" is passed as argument,
+	   there is no need to introduce a fake first parameter; and if it is a return
+	   value, the real part and the imaginary part are set aside in
+	   %eax and %edx, respectively.    (bug#2707)
+	 */
+	if( PU_c_lang(Get_Current_PU()) ||
+	    PU_cxx_lang(Get_Current_PU()) ){
+
+	  if( level == Use_Simulated ){
+	    info.count = 1;
+	    info.mtype[0] = mtype;
+	    info.preg[0] = PR_first_reg(SIM_INFO.flt_results);
+
+	  } else {
+	    info.count = 2;
+	    info.mtype[0] = info.mtype[1] = SIM_INFO.int_type;
+	    info.preg[0] = PR_first_reg(SIM_INFO.int_results);
+	    info.preg[1] = info.preg[0] + PR_skip_value(SIM_INFO.int_results);
+	  }
+
+	} else {
+	  info.count = 0;
+	  info.return_via_first_arg = TRUE;
+	}
       }
       else if (ff2c_abi || F2c_Abi) { // bug 1664
         info.count = 0;

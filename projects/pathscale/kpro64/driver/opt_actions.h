@@ -143,8 +143,4 @@ extern void Process_Cray_Mp (void);
 
 extern void print_file_path (char *);	/* print path to named file */
 
-#ifdef KEY
 extern int subverbose ;
-
-#endif
-

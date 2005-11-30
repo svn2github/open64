@@ -64,10 +64,33 @@ static char *saved_object = NULL;
 
 #define DEFAULT_TMPDIR	"/tmp"
 
+#ifdef KEY
+static string_pair_list_t *temp_obj_files = NULL;
+#endif	// KEY
+
+
 /* get object file corresponding to src file */
 char *
 get_object_file (char *src)
 {
+#ifdef KEY
+	// bug 2025
+	// Create .o files in /tmp in case the src dir is not writable.
+	if (!(keep_flag || (ipa == TRUE) || remember_last_phase == P_any_as)) {
+	  char *obj_name = change_suffix(drop_path(src), "o");
+	  string_pair_item_t *p;
+	  FOREACH_STRING_PAIR (p, temp_obj_files) {
+	    if (strcmp (STRING_PAIR_KEY(p), obj_name) == 0)
+	      return STRING_PAIR_VAL(p);
+	  }
+	  // Create temp file name as in create_temp_file_name.
+	  buffer_t buf;
+	  sprintf(buf, "cco.");
+	  char *mapped_name = tempnam (tmpdir, buf);
+	  add_string_pair (temp_obj_files, obj_name, mapped_name);
+	  return mapped_name;
+	}
+#endif
 	return change_suffix(drop_path(src), "o");
 }
 
@@ -191,6 +214,10 @@ init_temp_files (void)
 		tmpdir[strlen(tmpdir)-1] = '\0';
 	}
 	temp_files = init_string_list();
+
+#ifdef KEY
+	temp_obj_files = init_string_pair_list();
+#endif
 }
 
 void
@@ -219,10 +246,25 @@ cleanup (void)
 	temp_files->head = temp_files->tail = NULL; 
 }
 
-#ifdef KEY
 void
 mark_for_cleanup (char *s)
 {
 	add_string_if_new (temp_files, s);
+}
+
+#ifdef KEY
+void
+cleanup_temp_objects ()
+{
+  // Delete the mapped files.
+  string_pair_item_t *p;
+  FOREACH_STRING_PAIR (p, temp_obj_files) {
+    char *s = STRING_PAIR_VAL(p);
+    int status = unlink (s);
+    if (status != 0 && errno != ENOENT) {
+      internal_error("cannot unlink temp object file %s", s);
+      perror(program_name);
+    }
+  }
 }
 #endif

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -2415,9 +2419,13 @@ static boolean interpret_implied_do(int		   ir_idx,
          else {
             break;
          }
-
+# ifdef KEY
+         SET_LCV_CONST(lcv_idx, lcv_value[0], 
+                       num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))], num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+# else
          SET_LCV_CONST(lcv_idx, lcv_value[0], 
                        num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+# endif
 
          list_idx = IR_IDX_L(ir_idx);
 
@@ -2563,9 +2571,15 @@ static boolean interpret_implied_do(int		   ir_idx,
       }
 
       /* restore the guts of the lcv temp attr */
-
+# ifdef KEY
+      SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
+                    num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))],
+                    num_host_wds[TYP_LINEAR(CN_TYPE_IDX(ATD_TMP_IDX(lcv_idx)))]);
+# else
       SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
                     num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+# endif
+      
 
       if (count) {
          exp_desc->rank         = 1;
@@ -2749,9 +2763,13 @@ static boolean interpret_implied_do(int		   ir_idx,
                break;
             }
 
-
+# ifdef KEY
+            SET_LCV_CONST(lcv_idx, lcv_value[0], 
+                          num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))], num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+# else
             SET_LCV_CONST(lcv_idx, lcv_value[0], 
                           num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+# endif
 
             list_idx = IR_IDX_L(ir_idx);
 
@@ -2822,9 +2840,14 @@ static boolean interpret_implied_do(int		   ir_idx,
          char_result_len	= longest_char_len;
 
          /* restore the guts of the lcv temp attr */
-   
+#ifdef KEY   
+         SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
+                       num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))],
+                       num_host_wds[TYP_LINEAR(CN_TYPE_IDX(ATD_TMP_IDX(lcv_idx)))]);
+#else
          SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
                        num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+#endif
 
          ATD_FLD(lcv_idx) = OPND_FLD(save_atd_tmp_opnd);
          ATD_TMP_IDX(lcv_idx) = OPND_IDX(save_atd_tmp_opnd);
@@ -3078,9 +3101,13 @@ static boolean interpret_implied_do(int		   ir_idx,
             }
 
             list_idx = IL_NEXT_LIST_IDX(IR_IDX_R(ir_idx));
-
+#ifdef KEY
+            SET_LCV_CONST(lcv_idx, start_value[0],
+                          num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))], num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+#else
             SET_LCV_CONST(lcv_idx, start_value[0],
                           num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+#endif
       
             list_idx = IL_NEXT_LIST_IDX(list_idx);
 
@@ -3227,9 +3254,13 @@ static boolean interpret_implied_do(int		   ir_idx,
                                   compare_opr) && ok;
 
                if (THIS_IS_TRUE(loc_value, unused)) {
-
+#ifdef KEY
+                  SET_LCV_CONST(lcv_idx, lcv_value[0],
+                               num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))], num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+#else
                   SET_LCV_CONST(lcv_idx, lcv_value[0],
                                num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+#endif
                   IL_NEXT_LIST_IDX(position_idx) = IR_IDX_L(ir_idx);
                   IL_ELEMENT(position_idx)       = 1;
                   (*element)++;
@@ -3264,9 +3295,13 @@ static boolean interpret_implied_do(int		   ir_idx,
                   IL_NEXT_LIST_IDX(list_idx) = NULL_IDX;
 
                   /* restore the guts of the lcv temp attr */
-
+#ifdef KEY
+                  SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
+                             num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))],num_host_wds[TYP_LINEAR(CN_TYPE_IDX(ATD_TMP_IDX(lcv_idx)))]);
+#else
                   SET_LCV_CONST(lcv_idx, CN_CONST(ATD_TMP_IDX(lcv_idx)),
                              num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(lcv_idx))]);
+#endif
                }
             }
          }

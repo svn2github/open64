@@ -723,7 +723,11 @@ int flag_keep_inline_functions;
 
 /* Nonzero means that functions will not be inlined.  */
 
+#ifdef KEY
+int flag_no_inline = 1; // disable GNU inliner
+#else
 int flag_no_inline = 2;
+#endif // KEY
 
 /* Nonzero means that we don't want inlining by virtue of -fno-inline,
    not just because the tree inliner turned us off.  */
@@ -779,6 +783,7 @@ int flag_exceptions;
 
 #ifdef KEY
 int key_exceptions;
+int opt_regions;
 #endif // KEY
 
 /* Nonzero means generate frame unwind info table when supported.  */
@@ -1163,6 +1168,8 @@ static const lang_independent_options f_options[] =
 #else
   {"exceptions", &key_exceptions, 1,
    N_("Enable exception handling") },
+  {"optimize-regions", &opt_regions, 1,
+   N_("Optimize EH region formation") },
 #endif
   {"unwind-tables", &flag_unwind_tables, 1,
    N_("Just generate unwind tables for exception handling") },
@@ -5125,7 +5132,12 @@ parse_options_and_default_flags (argc, argv)
 
   if (optimize >= 2)
     {
+#ifndef KEY	// Disable gcc's sibling call optimization because it may
+		// inline away some functions that kg++fe doesn't inline,
+		// resulting in the code calling undefined functions under
+		// kg++fe.  Bug 3397.
       flag_optimize_sibling_calls = 1;
+#endif
       flag_cse_follow_jumps = 1;
       flag_cse_skip_blocks = 1;
       flag_gcse = 1;
@@ -5258,11 +5270,12 @@ parse_options_and_default_flags (argc, argv)
 	}
     }
 
-#ifdef KEY
+#if 0
+  // undo fix of bug 2254
   if (key_exceptions)
   {
-      set_param_value ("max-inline-insns", 420);
-      set_param_value ("max-inline-insns-single", 210);
+      set_param_value ("max-inline-insns", 440);
+      set_param_value ("max-inline-insns-single", 220);
       set_param_value ("min-inline-insns", 80);
   }
 #endif

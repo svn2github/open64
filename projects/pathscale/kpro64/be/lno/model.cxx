@@ -522,6 +522,17 @@ LOOP_MODEL::Model(WN* wn,
   i = wndepth;
   WN *tmp = wn;
   _blocking_disabled = LNO_Blocking == 0;
+#ifdef KEY
+  // Bug 2456 - if the innerloop is vectorizable then disable blocking for
+  // thae loop.
+  // TODO: If the innerloop overflows the cache then it may still be good to
+  // cache-block. We need a model for estimating the trade-off between 
+  // vectorization and cache-blocking. For now, we may shut this off 
+  // by preventing cache-blocking only under -LNO:simd=2. Need to come across
+  // a case yet.
+  if (Is_Vectorizable_Loop(wn))
+    _blocking_disabled = TRUE;
+#endif
   if (LNO_Interchange == FALSE) {
     for (INT j = 0; j <= wndepth; j++)
       _required_permutation[j] = j;
@@ -642,7 +653,7 @@ LOOP_MODEL::Model(WN* wn,
     _num_mem_units = 2.0;
 #endif
 #ifdef TARG_X8664
-  } else if (Is_Target_Opteron()) {
+  } else if (Is_Target_x86_64()) {
     _issue_rate = 3.0;
     _base_fp_regs = 16;
     _num_mem_units = 2.0;
@@ -1690,6 +1701,12 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
       else if (oper == OPR_FLOOR) {
         *num_instr += LNOTARGET_FP_Floor_Res(resource_count, rtype);
       } 
+      else if (oper == OPR_SELECT) {
+        *num_instr += LNOTARGET_Fp_Select_Res(resource_count, rtype);
+      }
+      else if (OPCODE_is_compare(WN_opcode(wn))) {
+	*num_instr += LNOTARGET_Fp_Compare_Res(resource_count, rtype);
+      }
 #endif
       else {
         return -1;
@@ -3022,6 +3039,14 @@ ARRAY_REF::Build_Array(WN* wn_array,
 {
   TYPE_ID type = WN_desc(LWN_Get_Parent(wn_array));
   INT esz = MTYPE_size_min(type) >> 3;
+#ifdef KEY
+  // Bug 3072 - For BSISTORE (1-bit MTYPE_bit_size), adjust esz to 1-byte:
+  // 1-byte is the minimum unit recognized by LNO model.
+  if (esz == 0) {
+    FmtAssert(type == MTYPE_BS, ("Handle this case"));
+    esz = 1;
+  }
+#endif
 
   ACCESS_ARRAY *array = (ACCESS_ARRAY *) WN_MAP_Get(LNO_Info_Map,wn_array);
   if (!array || array->Too_Messy 
@@ -3349,8 +3374,14 @@ LAT_DIRECTED_GRAPH16::Add_Vertices_Op_Edges_Rec(VINDEX16 store,
       } 
 #ifdef TARG_X8664
       else if (oper == OPR_FLOOR) {
-        op_latency = LNOTARGET_FP_Floor_Lat(rtype);
+        op_latency = LNOTARGET_FP_Floor_Lat(rtype);	
+      }       
+      else if (oper == OPR_SELECT) {
+        op_latency = LNOTARGET_FP_Select_Lat(rtype);	
       } 
+      else if (OPCODE_is_compare(WN_opcode(wn))) {
+        op_latency = LNOTARGET_FP_Compare_Lat(rtype);	
+      }             
 #endif
       else {
         return -1;
@@ -4239,7 +4270,7 @@ REGISTER_MODEL::Evaluate(WN* inner,
     num_mem_units = 2;
 #endif
 #ifdef TARG_X8664
-  } else if (Is_Target_Opteron()) {
+  } else if (Is_Target_x86_64()) {
     issue_rate = 3;
     base_fp_regs = 16;
     num_mem_units = 2;

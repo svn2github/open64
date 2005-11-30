@@ -169,7 +169,6 @@ static char *option_string;
 
 /* Software pipelining options: */
 static OPTION_DESC Options_CG_SWP[] = {
-
   /* General software pipelining options */
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "", NULL,
@@ -307,22 +306,28 @@ static OPTION_DESC Options_GRA[] = {
   },    
   { OVK_NAME,   OV_INTERNAL, TRUE,"call_split_freq", "",
     0, 0, 0,	&GRA_call_split_freq_string,
+#ifdef KEY
+    NULL,
+#endif // KEY
     "Threshold frequency of block containing a call below which a caller saved register will be preferred and live ranges spanning it will be split [Default .1]"
   },    
   { OVK_NAME,   OV_INTERNAL, TRUE,"spill_count_factor", "",
     0, 0, 0,	&GRA_spill_count_factor_string,
+#ifdef KEY
+    NULL,
+#endif // KEY
     "Factor by which count of spills affects the priority of a split.  Only valid under OPT:space [Default 0.5]"
   },    
 #ifdef KEY
-  { OVK_NAME,   OV_INTERNAL, TRUE,"exclude_saved_regs", "",
-    0, 0, 0,	&GRA_exclude_callee_saved_regs,
+  { OVK_BOOL,   OV_INTERNAL, TRUE,"exclude_saved_regs", "",
+    0, 0, 0,	&GRA_exclude_callee_saved_regs, NULL,
     "If true, callee-saved registers are never used to allocate to variables by GRA"
   },    
-  { OVK_NAME,   OV_INTERNAL, TRUE,"eh_exclude_saved_regs", "",
-    0, 0, 0,	&GRA_eh_exclude_callee_saved_regs,
+  { OVK_BOOL,   OV_INTERNAL, TRUE,"eh_exclude_saved_regs", "",
+    0, 0, 0,	&GRA_eh_exclude_callee_saved_regs, NULL,
     "If true, callee-saved registers are never used to allocate to variables in functions with exception handlers"
   },    
-#endif
+#endif // KEY
   
   { OVK_COUNT }		/* List terminator -- must be last */
 };
@@ -527,10 +532,17 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CFLOW_Enable_Reorder, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_clone", "",
     0, 0, 0, &CFLOW_Enable_Clone, &CFLOW_Enable_Clone_overridden },
+#ifdef KEY
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order", "cflow_freq_order",
+    0, 0, 0, &CFLOW_Enable_Freq_Order, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order_on_heu", "cflow_freq_order_on_heu",
+    0, 0, 0, &CFLOW_Enable_Freq_Order_On_Heuristics, NULL },
+#else
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order", "",
     0, 0, 0, &CFLOW_Enable_Freq_Order, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_freq_order_on_heu", "",
     0, 0, 0, &CFLOW_Enable_Freq_Order_On_Heuristics, NULL },
+#endif // KEY
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow_opt_all_br_to_bcond", "",
     0, 0, 0, &CFLOW_opt_all_br_to_bcond, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"cflow_heuristic_tolerance", "",
@@ -692,7 +704,7 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &IGLS_Enable_HB_Scheduling, NULL },
 #ifdef KEY
   { OVK_BOOL,	OV_INTERNAL, TRUE,"local_fwd_scheduler", "local_fwd_sched",
-    0, 0, 0, &LOCS_Fwd_Scheduling, NULL },
+    0, 0, 0, &LOCS_Fwd_Scheduling, &LOCS_Fwd_Scheduling_set },
 #endif
 
   // Turns of all scheduling (LOCS, HBS, GCM) for triaging.
@@ -826,14 +838,16 @@ static OPTION_DESC Options_CG[] = {
 #ifdef TARG_X8664
   { OVK_BOOL,	OV_INTERNAL, TRUE,"use_movlpd", "",
     0, 0, 0, &CG_use_movlpd, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"use_setcc", "",
+    0, 0, 0, &CG_use_setcc, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"short_form", "",
     0, 0, 0, &CG_use_short_form, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "p2align", "p2align",
     0, 0, 0,	&CG_p2align, NULL },
   { OVK_UINT64,	OV_INTERNAL, TRUE, "p2align_freq", "",
-    0, 0, UINT64_MAX>>1, &CG_p2align_freq, "freq threshold for .p2align" },
+    0, 0, UINT64_MAX>>1, &CG_p2align_freq, NULL, "freq threshold for .p2align" },
   { OVK_UINT32,	OV_INTERNAL, TRUE,"p2align_max_skip_bytes", "",
-    3, 0, 64, &CG_p2align_max_skip_bytes, "max skip bytes for .p2align" },
+    3, 0, 64, &CG_p2align_max_skip_bytes, NULL, "max skip bytes for .p2align" },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "use_xortozero", "",
     0, 0, 0,	&CG_use_xortozero, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "fold_constimul", "",
@@ -1369,16 +1383,16 @@ Prepare_Source (void)
 
     /* Prepare relocatable object file name: */
     if ( Obj_File_Name == NULL ) {
+#ifdef KEY
+	/* bug 2025
+	   Always create the object file in /tmp, since the current dir might
+	   not be writable.
+	 */
+	char* tmp_fname = tempnam( NULL, NULL );
+	Obj_File_Name = New_Extension( tmp_fname, OBJ_FILE_EXTENSION );
+#else
 	/* Replace source file extension to get	object file: */
 	Obj_File_Name =	New_Extension (fname, OBJ_FILE_EXTENSION);
-#ifdef KEY
-	/* bug#605
-	   Do not over-write an object file that already exists.
-	 */
-	if( !Object_Code && Is_File( Obj_File_Name ) ){
-	  char* tmp_fname = tempnam( NULL, fname );
-	  Obj_File_Name = New_Extension( tmp_fname, OBJ_FILE_EXTENSION );
-	}
 #endif
     }
 
@@ -1540,7 +1554,17 @@ CG_Init (void)
 #ifdef KEY
     if (flag_test_coverage || profile_arcs)
         CG_Init_Gcov();
-#endif
+#endif // KEY
+
+#ifdef TARG_X8664
+    /* Perform forward scheduling for -m32 by default.
+     */
+    if( Is_Target_32bit() ){
+      if( !LOCS_Fwd_Scheduling_set ){
+	LOCS_Fwd_Scheduling = TRUE;
+      }
+    }
+#endif // TARG_X8664
 
 
 } /* CG_Init */

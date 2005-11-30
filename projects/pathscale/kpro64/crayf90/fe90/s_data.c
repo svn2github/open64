@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -3988,11 +3992,19 @@ static void interpret_data_imp_do(int	 init_ir_idx)
       C_TO_F_INT(loc_value, 
                  loop_tbl[lt_idx].curr_value,
                  TYP_LINEAR(ATD_TYPE_IDX(loop_tbl[lt_idx].lcv_idx)));
-
+#ifdef KEY
+      SET_LCV_CONST(loop_tbl[lt_idx].lcv_idx, 
+                    (loc_value[0]),
+                    num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(
+                                          loop_tbl[lt_idx].lcv_idx))], 
+                    num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(
+                                          loop_tbl[lt_idx].lcv_idx))]);
+#else
       SET_LCV_CONST(loop_tbl[lt_idx].lcv_idx, 
                     (loc_value[0]),
                     num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(
                                           loop_tbl[lt_idx].lcv_idx))]);
+#endif
 
       target_il_idx          = loop_tbl[lt_idx].target_list;
       first_offspring_imp_do = TRUE;
@@ -4046,10 +4058,15 @@ static void interpret_data_imp_do(int	 init_ir_idx)
 EXIT:
 
    /* Restore the guts of the LCV temp Attr.				      */
-
+#ifdef KEY
+   SET_LCV_CONST(loop_tbl[lt_idx].lcv_idx, 
+                 CN_CONST(ATD_TMP_IDX(loop_tbl[lt_idx].lcv_idx)),
+            num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(loop_tbl[lt_idx].lcv_idx))], num_host_wds[TYP_LINEAR(CN_TYPE_IDX(ATD_TMP_IDX(loop_tbl[lt_idx].lcv_idx)))]);
+#else
    SET_LCV_CONST(loop_tbl[lt_idx].lcv_idx, 
                  CN_CONST(ATD_TMP_IDX(loop_tbl[lt_idx].lcv_idx)),
             num_host_wds[TYP_LINEAR(ATD_TYPE_IDX(loop_tbl[lt_idx].lcv_idx))]);
+#endif
 
    lt_idx = loop_tbl[lt_idx].parent_idx;
 

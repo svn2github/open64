@@ -55,6 +55,127 @@
 #include "stblock.h"
 #include "cgtarget.h"
 #include "whirl2ops.h"
+#include "cgexp.h"
+#include "cxx_template.h" // for STACK
+#include "cg_spill.h"
+
+static ST* save_ebx_loc = NULL;
+static INT32 last_pu_count = -1;
+
+void EETARG_Generate_PIC_Exit_Code( BB* bb, OPS* ops )
+{
+  CGSPILL_Load_From_Memory( Ebx_TN(), save_ebx_loc, ops, CGSPILL_LCL, bb );
+  Set_OP_computes_got( OPS_last(ops) );
+  //Set_OP_no_move_before_gra( OPS_last(ops) );
+}
+
+
+void EETARG_Generate_PIC_Entry_Code( BB* bb, OPS* ops )
+{
+  FmtAssert( BB_entry(bb), ("BB is not entry") );
+  FmtAssert( Is_Target_32bit(), ("PIC entry for -m32 only") );
+
+  if( BB_handler( bb ) )
+    return;
+
+  TN* ebx_tn = Ebx_TN();
+
+  if( last_pu_count != Current_PU_Count() ){
+    save_ebx_loc = CGSPILL_Get_TN_Spill_Location( ebx_tn, CGSPILL_LCL );
+    last_pu_count = Current_PU_Count();
+  }
+
+  /* Put saved location info of %ebx for dwarf generation when gra is not running.
+     (bug#2676)
+   */
+  {
+    SAVE_REG_LOC sr;
+    extern STACK<SAVE_REG_LOC> Saved_Callee_Saved_Regs;
+
+    sr.user_allocated = FALSE;
+    sr.ded_tn = ebx_tn;
+    sr.temp = save_ebx_loc;
+    Saved_Callee_Saved_Regs.Push(sr);
+  }
+
+  CGSPILL_Store_To_Memory( ebx_tn, save_ebx_loc, ops, CGSPILL_LCL, bb );
+  //Set_OP_no_move_before_gra( OPS_last(ops) );
+    
+  BB* call_bb = Gen_And_Insert_BB_Before(bb);
+  BB_Transfer_Entryinfo( bb, call_bb );
+  REGION_First_BB = call_bb;
+  Entry_BB_Head = BB_LIST_Delete( bb, Entry_BB_Head );
+  Entry_BB_Head = BB_LIST_Push( call_bb, Entry_BB_Head, &MEM_pu_pool );
+
+  Chain_BBs( call_bb, bb );
+  Link_Pred_Succ_with_Prob( call_bb, bb, 1.0 );
+
+  BB_rid( call_bb ) = BB_rid( bb );
+  BB_freq( call_bb ) = BB_freq( bb );
+  if( BB_freq_fb_based( bb ) )
+    Set_BB_freq_fb_based( call_bb );
+
+  BB* pop_bb = Gen_And_Insert_BB_Before(bb);
+
+  Chain_BBs( pop_bb, bb );
+  Link_Pred_Succ_with_Prob( pop_bb, bb, 1.0 );
+
+  BB_rid( pop_bb ) = BB_rid( bb );
+  BB_freq( pop_bb ) = BB_freq( bb );
+  if( BB_freq_fb_based( bb ) )
+    Set_BB_freq_fb_based( pop_bb );
+
+  Change_Succ( call_bb, bb, pop_bb );
+
+  const LABEL_IDX bb_label = Gen_Label_For_BB( pop_bb );
+
+  PU_IDX pu_idx;
+  PU& pu = New_PU (pu_idx);
+  ST* st = New_ST( GLOBAL_SYMTAB );
+  TY_IDX func_ty_idx;
+  TY &func_ty = New_TY(func_ty_idx);
+  TY_Init( func_ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, STR_IDX_ZERO );
+  Set_TY_align( func_ty_idx, 1 );
+
+  TYLIST tylist_idx;
+  Set_TYLIST_type( New_TYLIST(tylist_idx), MTYPE_To_TY(Pointer_Mtype) );
+  Set_TY_tylist( func_ty, tylist_idx );
+  Set_TYLIST_type( New_TYLIST (tylist_idx), 0 );
+
+  Set_TY_has_prototype(func_ty_idx);
+
+  PU_Init( pu, func_ty_idx, CURRENT_SYMTAB );
+
+  ST_Init( st, Save_Str(LABEL_name(bb_label)),
+	   CLASS_FUNC, SCLASS_EXTERN,
+	   EXPORT_PREEMPTIBLE,
+	   TY_IDX(pu_idx) );
+
+  CALLINFO* call_info = TYPE_PU_ALLOC(CALLINFO);
+  CALLINFO_call_st(call_info) = st;
+  CALLINFO_call_wn(call_info) = WN_Call(MTYPE_V, MTYPE_V, 0, st);
+  BB_Add_Annotation( call_bb, ANNOT_CALLINFO, call_info );
+  Set_BB_call( call_bb );
+
+  TN* label_tn = Gen_Label_TN( bb_label, 0 );
+  Exp_Call( OPR_CALL, NULL, label_tn, ops );
+  BB_Append_Ops( call_bb, ops );
+
+  OPS_Remove_All( ops );
+
+  Build_OP( TOP_popl, ebx_tn, ops );
+  Set_OP_computes_got( OPS_last(ops) );
+  Exp_ADD( Pointer_Mtype,
+	   ebx_tn, ebx_tn, Gen_Symbol_TN(st, 0, TN_RELOC_IA32_GLOBAL_OFFSET_TABLE),
+	   ops );
+  Set_OP_computes_got( OPS_last(ops) );
+  BB_Append_Ops( pop_bb, ops );
+
+  OPS_Remove_All( ops );
+
+  return;
+}
+
 
 void
 EETARG_Save_Pfs (TN *saved_pfs, OPS *ops)

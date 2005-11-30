@@ -86,7 +86,23 @@
 /* Note - A target constant is stored and retrieved                           */
 
 # define LCV_WORDS(VAR)  (sizeof(VAR) / sizeof(attr_tbl[0].wd[0]))
-
+# ifdef KEY
+# define SET_LCV_CONST(ATTR, VALUE, WORDS, VAL_WORDS) {				       \
+	 attr_tbl[ATTR].wd[LCV_CONST_IDX] = *(long *) &((VALUE));	       \
+	 if (WORDS == 2) {						       \
+	    attr_tbl[ATTR].wd[LCV_CONST_IDX+1] = (VAL_WORDS<WORDS)?0:*((long *) &((VALUE))+1);     \
+	 }								       \
+	 else if (WORDS == 3) {						       \
+	    attr_tbl[ATTR].wd[LCV_CONST_IDX+1] = (VAL_WORDS<WORDS)?0:*((long *) &((VALUE))+1);     \
+            attr_tbl[ATTR].wd[LCV_CONST_IDX+2] = (VAL_WORDS<WORDS)?0:*((long *) &((VALUE))+2);     \
+	 }								       \
+	 else if (WORDS == 4) {						       \
+	    attr_tbl[ATTR].wd[LCV_CONST_IDX+1] = (VAL_WORDS<WORDS)?0:*((long *) &((VALUE))+1);     \
+            attr_tbl[ATTR].wd[LCV_CONST_IDX+2] = (VAL_WORDS<WORDS)?0:*((long *) &((VALUE))+2);     \
+            attr_tbl[ATTR].wd[LCV_CONST_IDX+3] = (VAL_WORDS<WORDS)?0:*((long *) &((VALUE))+3);     \
+	 }								       \
+	 }
+# else
 # define SET_LCV_CONST(ATTR, VALUE, WORDS) {				       \
 	 attr_tbl[ATTR].wd[LCV_CONST_IDX] = *(long *) &((VALUE));	       \
 	 if (WORDS == 2) {						       \
@@ -102,6 +118,7 @@
             attr_tbl[ATTR].wd[LCV_CONST_IDX+3] = *((long *) &((VALUE))+3);     \
 	 }								       \
 	 }
+# endif
 
 # define GET_LCV_CONST(ATTR, VALUE, WORDS) {                                   \
          *(long *) &((VALUE)) = attr_tbl[ATTR].wd[LCV_CONST_IDX];              \

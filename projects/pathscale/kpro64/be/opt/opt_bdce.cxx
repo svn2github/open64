@@ -327,7 +327,11 @@ BITWISE_DCE::Mark_var_bits_live(CODEREP *cr, UINT64 live_bits,
   }
   else { // def is real stid
     if (cr->Defstmt()) {       	    // defstmt is NULL if volatile
+#ifdef KEY // bug 2580
+      Mark_tree_bits_live(cr->Defstmt()->Rhs(), live_bits, stmt_visit);
+#else
       Mark_tree_bits_live(cr->Defstmt()->Rhs(), live_bits, FALSE);
+#endif
     }
 //  Make_bb_live(cr->Defstmt()->Bb()); not needed because all BBs already live
   }
@@ -515,6 +519,10 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
     case OPR_TAS:
 #ifdef KEY
     case OPR_REPLICATE:
+    case OPR_REDUCE_ADD:
+    case OPR_REDUCE_MPY:
+    case OPR_REDUCE_MAX:
+    case OPR_REDUCE_MIN:
 #endif
       if (visit_all)
 	Mark_tree_bits_live(cr->Opnd(0), Bits_in_type(dsctyp), stmt_visit);
@@ -1086,8 +1094,27 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
     switch(opr) {
 
     case OPR_CVTL:
-      if (MTYPE_is_signed(dtyp) == sign_xtd)
+#ifdef KEY
+      // if the opnd is newly created, the usecnt should be 0.
+      // Therefore, it doesn't contain any livebits information. In addition,
+      // since it is new cr, it will not be marked as dead by bdce in early phase.
+      // The bug 2656 will not expose for this case.
+      if (opnd->Usecnt() > 0  && 
+          (Livebits(opnd) & ~Bitmask_of_size(opnd->Offset())) == 0)
+	return FALSE; // this current node will be deleted any way (bug 2656)
+#endif
+      if (MTYPE_is_signed(dtyp) == sign_xtd) {
+#ifndef TARG_X8664
 	return from_bit >= opnd->Offset();
+#else
+	if (! MTYPE_is_signed(dtyp))
+	  return from_bit >= opnd->Offset();
+	else { // bug 2838: I4CVTL will not sign-extend the highest 32 bits
+	  INT32 cvtl_to_bit = MTYPE_size_min(dtyp);
+	  return from_bit >= opnd->Offset() && to_bit <= cvtl_to_bit;
+	}
+#endif
+      }
       return ! MTYPE_is_signed(dtyp) && from_bit > opnd->Offset();
 
     case OPR_CVT:
@@ -1095,6 +1122,12 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
       if (! MTYPE_is_integral(dsctyp) ||
 	  MTYPE_size_min(dtyp) <= MTYPE_size_min(dsctyp))
 	return FALSE;
+#ifdef KEY
+      if (MTYPE_size_min(dtyp) > MTYPE_size_min(dsctyp) &&
+          opnd->Usecnt() > 0 && 
+	  (Livebits(opnd) & ~Bits_in_type(dsctyp)) == 0)
+	return FALSE; // this current node will be deleted any way (bug 2656)
+#endif
       return MTYPE_is_signed(dtyp) == sign_xtd && 
 	     from_bit >= MTYPE_size_min(dsctyp);
 
@@ -1141,9 +1174,21 @@ BITWISE_DCE::Copy_propagate(CODEREP *cr, STMTREP *use_stmt) {
   Is_True(cr->Defstmt()->Opr() == OPR_STID,
 	  ("BITWISE_DCE::Copy_propagate: cr->Defstmt()->Opr() != OPR_STID"));
 
+#ifndef KEY
   // For now, just test if the definition immediately preceeds the use.
   if (use_stmt->Prev() != cr->Defstmt())
     return NULL;
+#else
+  // Relax to improve coverage
+  if (use_stmt->Prev() != cr->Defstmt()) {
+    if (WOPT_Enable_Bdceprop_Limit != -1 &&
+        use_stmt->Bb()->Id() > WOPT_Enable_Bdceprop_Limit)
+      return NULL;
+    else if (! (Opt_stab()->Aux_stab_entry(cr->Aux_id())->EPRE_temp() &&
+           use_stmt->Bb() == cr->Defstmt()->Bb()) )
+      return NULL;
+  }
+#endif
 
   CODEREP *new_expr = cr->Defstmt()->Rhs();
   Is_True(new_expr != NULL,

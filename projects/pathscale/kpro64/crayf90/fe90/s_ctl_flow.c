@@ -6120,6 +6120,14 @@ static void case_value_range_semantics(int	ir_idx,
       if (! SH_ERR_FLG(curr_stmt_sh_idx)  &&
           IR_FLD_L(ir_idx) != NO_Tbl_Idx    &&
           fold_relationals(IR_IDX_L(ir_idx), IR_IDX_R(ir_idx), Gt_Opr)) {
+# ifdef KEY
+// Bug 2153
+         int next_sh_idx = curr_stmt_sh_idx;
+         while (IR_OPR(SH_IR_IDX(next_sh_idx)) != Label_Opr)
+           next_sh_idx = SH_NEXT_IDX(next_sh_idx);
+         SH_NEXT_IDX(SH_PREV_IDX(curr_stmt_sh_idx)) = SH_NEXT_IDX(next_sh_idx);
+         SH_PREV_IDX(SH_NEXT_IDX(next_sh_idx)) = SH_PREV_IDX(curr_stmt_sh_idx);
+# endif
          PRINTMSG(IR_LINE_NUM(ir_idx), 758, Warning, IR_COL_NUM(ir_idx));
          goto EXIT;
       }

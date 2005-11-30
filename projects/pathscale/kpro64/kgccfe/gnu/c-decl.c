@@ -1611,6 +1611,11 @@ duplicate_decls (newdecl, olddecl, different_binding_level)
     ST* st2 = DECL_ST2(olddecl);
 #endif /* SGI_MONGOOSE */
 
+#ifdef KEY
+    unsigned always_inline_attrib = DECL_ALWAYS_INLINE_ATTRIB (olddecl);
+    unsigned noinline_attrib = DECL_NOINLINE_ATTRIB (olddecl);
+#endif
+
     memcpy ((char *) olddecl + sizeof (struct tree_common),
 	    (char *) newdecl + sizeof (struct tree_common),
 	    sizeof (struct tree_decl) - sizeof (struct tree_common));
@@ -1621,6 +1626,14 @@ duplicate_decls (newdecl, olddecl, different_binding_level)
     DECL_ST2 (olddecl) = st2;
     DECL_ST2 (newdecl) = st2;
 #endif /* SGI_MONGOOSE */
+
+#ifdef KEY
+    // bug 2646
+    DECL_ALWAYS_INLINE_ATTRIB (olddecl) = DECL_ALWAYS_INLINE_ATTRIB (newdecl)
+    	= always_inline_attrib;
+    DECL_NOINLINE_ATTRIB (olddecl) = DECL_NOINLINE_ATTRIB (newdecl)
+    	= noinline_attrib;
+#endif
   }
 
   /* NEWDECL contains the merged attribute lists.
@@ -6667,9 +6680,16 @@ c_expand_deferred_function (fndecl)
       // Refer to comments inside c_expand_body for bug 1566
       // NULL all the references to WHIRL ST from the body of this function
       // We should reallocate all these entries later.
+#if 0
+      // This call has been moved into c_expand_body.
+      // NULLing out these references here is too late in some cases. If the 
+      // function has statics, we want to create new STs for them while
+      // expanding the inlined body. NULLing out here won't let us do that,
+      // since we will expand the inlined body before reaching here.
       walk_tree_without_duplicates(&DECL_SAVED_TREE(fndecl), 
 				   (walk_tree_fn)WFE_Null_ST_References,
 				   NULL);
+#endif
       WFE_Start_Function(fndecl);
 #endif
       c_expand_body (fndecl, 0, 0);
@@ -6773,6 +6793,12 @@ c_expand_body (fndecl, nested_p, can_defer_p)
 	  for (pdecl = DECL_ARGUMENTS (fndecl); pdecl; 
 	       pdecl = TREE_CHAIN (pdecl))
 	    DECL_ST(pdecl) = NULL;
+
+	  // NULL references to WHIRL st
+	  // bugs 2647, 2681
+	  walk_tree_without_duplicates(&DECL_SAVED_TREE(fndecl), 
+				   (walk_tree_fn)WFE_Null_ST_References,
+				   NULL);
 #endif
 	  return;
 	}

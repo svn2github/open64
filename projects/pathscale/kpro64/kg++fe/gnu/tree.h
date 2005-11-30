@@ -224,6 +224,8 @@ struct tree_common GTY(())
            TREE_LIST or TREE_VEC
        TREE_PRIVATE in
            ..._DECL
+       TREE_SYMBOL_REFERENCED_BY_WHIRL in	// KEY
+           IDENTIFIER_NODE
 
    protected_flag:
 
@@ -575,6 +577,12 @@ extern void tree_vec_elt_check_failed PARAMS ((int, int, const char *,
    this string as an argument.  */
 #define TREE_SYMBOL_REFERENCED(NODE) \
   (IDENTIFIER_NODE_CHECK (NODE)->common.static_flag)
+#ifdef KEY
+/* In an IDENTIFIER_NODE, this means the function with this assembler_name was
+   called from WHIRL. */
+#define TREE_SYMBOL_REFERENCED_BY_WHIRL(NODE) \
+  (IDENTIFIER_NODE_CHECK (NODE)->common.private_flag)
+#endif
 
 /* In an INTEGER_CST, REAL_CST, COMPLEX_CST, or VECTOR_CST, this means
    there was an overflow in folding, and no warning has been issued
@@ -1912,6 +1920,12 @@ struct tree_type GTY(())
 #define DECL_WIDEN_RETVAL(NODE) (DECL_CHECK (NODE)->decl.widen_retval_flag)
 #endif /* SGI_MONGOOSE */
 
+#ifdef KEY
+/* Used to indicate that this decl is emitted by g++, regardless of the decl's
+   other attributes such as weak or external. */
+#define DECL_EMITTED_BY_GXX(NODE) (DECL_CHECK (NODE)->decl.emitted_by_gxx)
+#endif
+
 struct function;
 
 struct tree_decl GTY(())
@@ -1969,6 +1983,12 @@ struct tree_decl GTY(())
   unsigned syscall_linkage_flag : 1;    /* has syscall_linkage attribute */
   unsigned widen_retval_flag : 1;       /* widen return value attribute */
 #endif /* SGI_MONGOOSE */
+#ifdef KEY
+  unsigned emitted_by_gxx : 1;		/* g++ emitted the decl to assembly.
+					   This flag is only set for those
+					   decl's where kg++fe normally would
+					   assume the decl is not emitted. */
+#endif
 
   union tree_decl_u1 {
     /* In a FUNCTION_DECL for which DECL_BUILT_IN holds, this is

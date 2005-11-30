@@ -100,6 +100,7 @@ main()
   Name();
   Operand(1);
   Instruction_Print_Group( op1,
+			   TOP_imulx32,
 			   TOP_imulx64,
 			   TOP_mul32,
 			   TOP_mulx64,
@@ -244,6 +245,7 @@ main()
   Result(0);
   Operand(0);
   Instruction_Print_Group( ropop,
+			   TOP_mul128v16,
 			   TOP_add32,
 			   TOP_adc32,
 			   TOP_add64,
@@ -592,6 +594,8 @@ main()
   Instruction_Print_Group( ropopop,
 			   TOP_cmpss,
 			   TOP_cmpsd,
+			   TOP_cmpps,
+			   TOP_cmppd,
 			   TOP_shldi32,
 			   TOP_shrdi32,
 			   TOP_UNDEFINED );
@@ -601,6 +605,7 @@ main()
   Name();
   Operand(0);
   Instruction_Print_Group( op0,
+			   TOP_reti,
 			   TOP_flds_n32,
 			   TOP_fldl_n32,
 			   TOP_fldt_n32,
@@ -722,6 +727,8 @@ main()
   			   TOP_zero64,
   			   TOP_xzero32,
   			   TOP_xzero64,
+  			   TOP_xzero128v32,
+  			   TOP_xzero128v64,
 			   TOP_UNDEFINED );
 
   /* One result / one operand */
@@ -730,6 +737,12 @@ main()
   Result(0);
   Operand(0);
   Instruction_Print_Group( rop,
+			   TOP_movlhps,
+			   TOP_movhlps,
+			   TOP_ld8_m,
+			   TOP_ld16_m,
+			   TOP_ld32_m,
+			   TOP_ld64_m,
 			   TOP_ldss_n32,
 			   TOP_ldsd_n32,
 			   TOP_ld8_32_n32,
@@ -737,6 +750,9 @@ main()
 			   TOP_ld16_32_n32,
 			   TOP_ldu16_32_n32,
 			   TOP_ld32_n32,
+			   TOP_ldaps_n32,
+			   TOP_ldapd_n32,
+			   TOP_lddqa_n32,
 			   TOP_cvttss2si,
 			   TOP_cvttsd2si,
 			   TOP_cvttss2siq,
@@ -747,8 +763,10 @@ main()
 			   TOP_cvtsi2ssq,
 			   TOP_cvtss2sd,
 			   TOP_cvtsd2ss,
+			   TOP_cvtdq2pd,
 			   TOP_ldc32,
 			   TOP_ldc64,
+			   TOP_movabsq,
 			   TOP_mov32,
 			   TOP_mov64,
 			   TOP_movsbl,
@@ -765,7 +783,9 @@ main()
 			   TOP_movdq,
 			   TOP_movapd,
 			   TOP_movaps,
+			   TOP_movx2g64,
 			   TOP_movx2g,
+			   TOP_movg2x64,
 			   TOP_movg2x,
 			   TOP_cmovb,
 			   TOP_cmovae,
@@ -805,11 +825,18 @@ main()
   Operand(0);
   Operand(1);
   Instruction_Print_Group( opop1,
+			   TOP_store8_m,
+			   TOP_store16_m,
+			   TOP_store32_m,
+			   TOP_store64_m,
 			   TOP_stss_n32,
 			   TOP_stsd_n32,
 			   TOP_store8_n32,
 			   TOP_store16_n32,
 			   TOP_store32_n32,
+			   TOP_staps_n32,
+			   TOP_stapd_n32,
+			   TOP_stdqa_n32,
 			   TOP_UNDEFINED );
 
 #if 0
@@ -843,6 +870,11 @@ main()
 			   TOP_ld64,
 			   TOP_ldsd,
 			   TOP_ldss,
+			   TOP_cvtsd2ss_x,
+			   TOP_cvtsi2sd_x,
+			   TOP_cvtsi2ss_x,
+			   TOP_cvtsi2sdq_x,
+			   TOP_cvtsi2ssq_x,
 			   TOP_lddqa,
 			   TOP_lddqu,
 			   TOP_ldlps,
@@ -866,6 +898,11 @@ main()
   Instruction_Print_Group( leax,
 		  	   TOP_leax32,
 			   TOP_leax64,
+			   TOP_cvtsd2ss_xx,
+			   TOP_cvtsi2sd_xx,
+			   TOP_cvtsi2ss_xx,
+			   TOP_cvtsi2sdq_xx,
+			   TOP_cvtsi2ssq_xx,
 			   TOP_UNDEFINED );
 
   /* lea instruction with indx but without base */
@@ -878,6 +915,11 @@ main()
   Instruction_Print_Group( leaxx,
 		  	   TOP_leaxx32,
 			   TOP_leaxx64,
+			   TOP_cvtsd2ss_xxx,
+			   TOP_cvtsi2sd_xxx,
+			   TOP_cvtsi2ss_xxx,
+			   TOP_cvtsi2sdq_xxx,
+			   TOP_cvtsi2ssq_xxx,
 			   TOP_UNDEFINED );
 
   /* load instruction with indx */
@@ -1086,6 +1128,41 @@ main()
 			   TOP_unpckhps,
 			   TOP_unpcklpd,
 			   TOP_unpcklps,
+			   TOP_punpcklwd,
+			   TOP_punpcklbw,
+			   TOP_UNDEFINED );
+
+  /* shuffle */
+  ISA_PRINT_TYPE shuffle = ISA_Print_Type_Create("shuffle", "%s %s,%s,%s");
+  Name();
+  Operand(2);
+  Operand(1);
+  Result(0);
+  Instruction_Print_Group( shuffle,
+			   TOP_shufps,
+			   TOP_shufpd,
+			   TOP_pshufd,
+			   TOP_UNDEFINED );
+
+  /* shuffle_int */
+  ISA_PRINT_TYPE shuffle_int = 
+                          ISA_Print_Type_Create("shuffle_int", "%s %s,%s,%s");
+  Name();
+  Operand(1);
+  Operand(0);
+  Result(0);
+  Instruction_Print_Group( shuffle_int,
+			   TOP_pshufd,
+			   TOP_UNDEFINED );
+
+  /* shift_packed */
+  ISA_PRINT_TYPE shift_packed = ISA_Print_Type_Create("shift_packed", "%s %s,%s");
+  Name();
+  Operand(1);
+  Result(0);
+  Instruction_Print_Group( shift_packed,
+			   TOP_psrldq,
+			   TOP_psrlq,
 			   TOP_UNDEFINED );
 
   /* No results / no operands TODO */

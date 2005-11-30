@@ -203,6 +203,10 @@ typedef UINT16 DST_language;      /* AT_language codes */
 typedef UINT16 DST_identifier_case; /* AT_identifier codes */
 typedef UINT8  DST_inline;        /* AT_inline (INL_not_inlined if absent) */
 typedef UINT8  DST_virtuality;    /* AT_virtuality (member functions and bases */
+#ifdef KEY
+typedef UINT8  DST_accessibility; /* AT_accessibility 
+                                     (member functions and bases */
+#endif
 typedef UINT16 DST_vtable_elem_location;
 				  /* Used for index of function in vtable */
 typedef UINT8  DST_bitsize;       /* Used for bit_offset and bit_size */
@@ -998,6 +1002,9 @@ typedef struct DST_member
    DST_bitsize  bit_offset;   /* Offset of bitfield within block */
    DST_bitsize  bit_size;     /* Size of bitfield */
    DST_INFO_IDX dopetype;     /* Type of dope vector */
+#ifdef KEY
+   DST_accessibility accessibility; /* AT_accessibility */
+#endif
 } DST_MEMBER;
 
 #define DST_MEMBER_decl(attr) ((attr)->decl)
@@ -1008,6 +1015,9 @@ typedef struct DST_member
 #define DST_MEMBER_bit_offset(attr) ((attr)->bit_offset)
 #define DST_MEMBER_bit_size(attr) ((attr)->bit_size)
 #define DST_MEMBER_dopetype(attr) ((attr)->dopetype)
+#ifdef KEY
+#define DST_MEMBER_accessibility(attr) ((attr)->accessibility)
+#endif
 
 
 
@@ -1021,12 +1031,18 @@ typedef struct DST_inheritance
    DST_virtuality virtuality;   /* AT_virtuality codes (Page 17, V2, Draft 5) */
    DST_size_t     memb_loc;     /* Offset of member (data-block) within
 			         struct/class  (0 for union) */
+#ifdef KEY
+   DST_accessibility 	accessibility;/* Accessibility for C++ */ 
+#endif
 } DST_INHERITANCE;
 
 #define DST_INHERITANCE_decl(attr)      ((attr)->decl)
 #define DST_INHERITANCE_type(attr)      ((attr)->type)
 #define DST_INHERITANCE_virtuality(attr) ((attr)->virtuality)
 #define DST_INHERITANCE_memb_loc(attr)  ((attr)->memb_loc)
+#ifdef KEY
+#define DST_INHERITANCE_accessibility(attr) ((attr)->accessibility)
+#endif
 
 
 

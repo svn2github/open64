@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -155,6 +160,9 @@ Rehash_tree_rec(CODEREP *newcr,
         Is_Trace(htable->Tracing(), (TFile, "  with:"));
         Is_Trace_cmd(htable->Tracing(), rhs->Print(0,TFile));
         *changed = TRUE;
+#ifdef KEY // fix bug 2657
+	rhs = newcr->Convert_type(htable, rhs, FALSE);
+#endif
         return rhs;
       }
     }

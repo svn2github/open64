@@ -162,6 +162,9 @@ static char *erglob_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #define EC_Replaced_Opt	EC_Undef_Code+63	/* str, str */
 #define EC_Unimp_Opt	EC_Undef_Code+64	/* str */
 #define EC_Inv_Opt_Val	EC_Undef_Code+65	/* str */
+#ifdef KEY
+#define EC_No_Opt_Val   EC_Undef_Code+66	/* str, str */
+#endif // KEY
 
 /* Control processing: */
 #define EC_Unimp_Ctrl	EC_Undef_Code+70	/* str */
@@ -200,6 +203,15 @@ static char *erglob_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 
 /* Lower optimization for non-ANSI setjmp support */
 #define EC_Not_Ansi_Setjmp      EC_Undef_Code+106       /* str, int, int */
+
+#ifdef KEY
+/* Olimit support warnings: */
+#define EC_Olimit_Slow		EC_Undef_Code+107	/* str, int */
+/* IPA inconsistent options warning: */
+#define EC_Ipa_Options		EC_Undef_Code+108	/* */
+/* Same symbol declared as function and variable error from IPA */
+#define EC_Inc_Types		EC_Undef_Code+109	/* str */
+#endif
 
 /* Tree (ND) support: */
 #define EC_B_Access	EC_Undef_Code+110	/* int, int */

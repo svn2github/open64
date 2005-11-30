@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -3466,7 +3470,10 @@ void parse_type_dcl_stmt (void)
          if (AT_OBJ_CLASS(attr_idx) == Data_Obj && !AT_IS_INTRIN(attr_idx) &&
              TYP_LINEAR(ATD_TYPE_IDX(attr_idx)) == Real_4 &&
              Check_FF2C_Script(AT_OBJ_NAME_PTR(attr_idx), 0) )
-             ATD_TYPE_IDX(attr_idx) = Real_8; 
+         {
+           ATD_TYPE_IDX(attr_idx) = Real_8; 
+           ATD_F2C_ABI_VAR(attr_idx) = TRUE;
+         }
 #endif
          AT_CIF_SYMBOL_ID(attr_idx)	= 0;
 

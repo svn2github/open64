@@ -44,7 +44,7 @@
 #include "cmplx.h"
 #include "cmplrs/host.h"
 
-float_t r_imag(complex *z)
+float r_imag(complex *z)
 {
 return(z->imag);
 }

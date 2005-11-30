@@ -1110,6 +1110,13 @@ Raise_whiledo_stmt(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB_NODE **ne
   {
      WN_CopyMap(rwn, Prompf_Id_Map, bb->Loop()->Orig_wn());
   }
+#ifdef KEY
+  if (bb->Loop()->Orig_wn() != NULL &&
+      WN_MAP32_Get(WN_MAP_FEEDBACK, bb->Loop()->Orig_wn()) != 0)
+  {
+    WN_CopyMap(rwn, WN_MAP_FEEDBACK, bb->Loop()->Orig_wn());
+  }
+#endif
   return rwn;
 }
 

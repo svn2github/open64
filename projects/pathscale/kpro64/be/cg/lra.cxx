@@ -101,6 +101,9 @@
 #include "targ_proc_properties.h"
 #include "hb_sched.h"
 #include "ebo.h"
+#ifdef TARG_X8664
+#include "config_lno.h"  // for LNO_Run_Simd
+#endif
 
 #define TN_is_local_reg(r)   (!(TN_is_dedicated(r) | TN_is_global_reg(r)))
 
@@ -285,6 +288,10 @@ static ISA_REGISTER_CLASS trace_cl = (ISA_REGISTER_CLASS)2;
 #define Always_Trace(t) (t)
 #define Do_LRA_Trace(t) ((t) && !Calculating_Fat_Points())
 #define Do_LRA_Fat_Point_Trace(t) ((t) && Calculating_Fat_Points())
+
+#ifdef TARG_X8664
+static mBOOL float_reg_could_be_128bit[REGISTER_MAX + 1];
+#endif
 
 //
 // allow 32 bit register values during fat point calculation.  tn register
@@ -1379,6 +1386,16 @@ Update_Callee_Availability(BB *bb)
     // can't allow callee saved registers to be used below stack adjustment
     // in exit block (restores are above it).
     //
+#ifdef KEY
+    FOR_ALL_ISA_REGISTER_CLASS(cl) {
+      avail_set[cl] = REGISTER_SET_Union(avail_set[cl],
+					 Callee_Saved_Regs_Used[cl]);
+
+      FOR_ALL_REGISTER_SET_members(Callee_Saved_Regs_Used[cl], reg) {
+	avail_regs[cl].reg[reg] = TRUE;
+      }
+    }	  
+#else
     FOR_ALL_ISA_REGISTER_CLASS(cl) {
       avail_set[cl] = REGISTER_SET_Union(avail_set[cl],
 					 Callee_Saved_Regs_Used[cl]);
@@ -1386,6 +1403,7 @@ Update_Callee_Availability(BB *bb)
     FOR_ALL_REGISTER_SET_members(Callee_Saved_Regs_Used[cl], reg) {
       avail_regs[cl].reg[reg] = TRUE;
     }	  
+#endif // KEY
   } else if (BB_entry(bb)) {
     //
     // can't allow callee saved registers above stack adjustment in
@@ -1438,9 +1456,16 @@ Usable_Registers (TN* tn, LIVE_RANGE* lr)
       (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, op) : NULL;
 
     // cannot use registers clobbered by an ASM statement
-    if (asm_info) {
+    if (asm_info
+#ifdef KEY
+	/* Don't consider the clobber list if the current inline asm
+	   is the last use of <tn> (bug#3111)
+	*/
+	&& ( opnum + 1 < last_op )
+#endif
+	) {
       usable_regs = REGISTER_SET_Difference(usable_regs, 
-                                            ASM_OP_clobber_set(asm_info)[cl]);
+					    ASM_OP_clobber_set(asm_info)[cl]);
     }
 
     for (INT resnum = 0; resnum < OP_results(op); resnum++) {
@@ -1768,11 +1793,16 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
     REGISTER_SET must_use = Usable_Registers(tn, clr);
 
 #ifdef TARG_X8664
-    if( Is_Target_32bit() && 
-	( ( OP_opnd_size( op, opndnum ) == 8 ) ||
-	  ( TN_size(tn) == 1 ) ) ){
+    if( Is_Target_32bit() ){
       const REGISTER_SET regs = REGISTER_CLASS_eight_bit_regs(regclass);
-      must_use = REGISTER_SET_Intersection( must_use, regs );
+
+      if( TN_size(tn) == 1 ){
+	must_use = REGISTER_SET_Intersection( must_use, regs );
+
+      } else if( OP_code(op) != TOP_asm &&
+		 OP_opnd_size( op, opndnum ) == 8 ){
+	must_use = REGISTER_SET_Intersection( must_use, regs );
+      }
     }
 
     /* When the register of a GTN is preallocated for a later div-like op,
@@ -2176,6 +2206,13 @@ Spill_Global_Register (BB *bb, SPILL_CANDIDATE *best)
   ST *spill_loc;
   ST *sv_spill_location = NULL;
   BOOL magic_spill_used = FALSE;
+
+#ifdef TARG_X8664
+  if( cl == ISA_REGISTER_CLASS_float &&
+      float_reg_could_be_128bit[reg] ){
+    Set_TN_size( spill_tn, 16 );
+  }
+#endif
 
   if (Trip_Count == MAX_TRIP_COUNT &&
       Magic_Spill_Location != NULL &&
@@ -3576,6 +3613,16 @@ Fix_LRA_Blues (BB *bb, TN *tn, HB_Schedule *Sched)
 		regs_avail);
     Sched->Schedule_BB(bb, NULL);
     Reset_BB_scheduled (bb);
+#ifdef KEY
+    // Fix memory leak - call the appropriate destructor to pop and delete
+    // _hb_pool after it is used.
+    // Note: can not call the destructor in the caller because it is trying to
+    // pop lra_pool before.
+    if (Sched) {
+      CXX_DELETE(Sched, &MEM_local_pool);
+      Sched = NULL;
+    }
+#endif // KEY
     return;
   }
 
@@ -4250,6 +4297,61 @@ Move_Spill_Loads_Stores (BB *bb)
    are addressable.
 */
 
+static void Adjust_eight_bit_regs( BB* bb, OP* op, int opnd_idx, BOOL is_opnd )
+{
+  TN* opnd = is_opnd ? OP_opnd( op, opnd_idx ) : OP_result( op, opnd_idx );
+
+  if( OP_code(op) == TOP_asm ){
+    if( !TN_is_register(opnd) ||
+	TN_size(opnd) != 1 )
+      return;
+    
+  } else {
+    if( is_opnd ){
+      if( !TN_is_register( opnd ) ||
+	  OP_opnd_size( op, opnd_idx ) != 8 )
+	return;
+
+    } else {
+      if( OP_result_size( op, opnd_idx ) != 8 )
+	return;
+    }
+  }
+
+  const ISA_REGISTER_CLASS cl = TN_register_class( opnd );
+  const REGISTER reg = LRA_TN_register( opnd );
+
+  if( reg != REGISTER_UNDEFINED ){
+    const REGISTER_SET regs = REGISTER_CLASS_eight_bit_regs(cl);
+    if( REGISTER_SET_MemberP( regs, reg ) )
+      return;
+
+  } else {
+    if( TN_size(opnd) == 1 )
+      return;
+  }
+
+  // Insert a mov here.
+
+  OPS ops = OPS_EMPTY;
+  TN* result = Gen_Register_TN( cl, 1 );
+
+  if( is_opnd ){
+    Exp_COPY( result, opnd, &ops );
+    OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+    BB_Insert_Ops_Before( bb, op, &ops );
+    Set_OP_opnd( op, opnd_idx, result );
+
+  } else {
+    Exp_COPY( opnd, result, &ops );
+    OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+    BB_Insert_Ops_After( bb, op, &ops );
+    Set_OP_result( op, opnd_idx, result );
+  }
+
+}
+
+
 static void Adjust_X86_Style_For_BB( BB* bb, BOOL* redundant_code, MEM_POOL* pool )
 {
   OP* op = NULL;
@@ -4261,39 +4363,12 @@ static void Adjust_X86_Style_For_BB( BB* bb, BOOL* redundant_code, MEM_POOL* poo
   if( Is_Target_32bit() ){
     FOR_ALL_BB_OPs( bb, op ){
       for( int i = 0; i < OP_opnds( op ); i++ ){
-	TN* opnd = OP_opnd( op, i );
-	if( !TN_is_register( opnd ) ||
-	    OP_opnd_size( op, i ) != 8 ){
-	  continue;
-	}
+	Adjust_eight_bit_regs( bb, op, i, TRUE );
+      }
 
-	const ISA_REGISTER_CLASS cl = TN_register_class( opnd );
-	const REGISTER reg = LRA_TN_register( opnd );
-
-	if( reg != REGISTER_UNDEFINED ){
-	  const REGISTER_SET regs = REGISTER_CLASS_eight_bit_regs(cl);
-	  if( REGISTER_SET_MemberP( regs, reg ) )
-	    continue;
-
-	} else {
-	  if( TN_size(opnd) == 1 )
-	    continue;
-
-	  if( !OP_store( op ) )
-	    DevWarn( "TN%d size should be 1-byte-long", TN_number(opnd) );
-	}
-
-	// Insert a mov here.
-
-	OPS ops = OPS_EMPTY;
-	TN* result = Gen_Register_TN( cl, 1 );
-
-	Exp_COPY( result, opnd, &ops );
-	OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
-	BB_Insert_Ops_Before( bb, op, &ops );
-	
-	Set_OP_opnd( op, i, result );
-      } // for each opnd
+      for( int i = 0; i < OP_results( op ); i++ ){
+	Adjust_eight_bit_regs( bb, op, i, FALSE );
+      }
     }  // for each op
   }  // for -m32
 
@@ -4398,6 +4473,9 @@ static void Verify_TARG_X86_Op_For_BB( BB* bb )
 
   FOR_ALL_BB_OPs( bb, op ){
     const TOP top = OP_code( op );
+
+    if( top == TOP_asm )
+      continue;
 
     /* Verify the 8-bit-reg requirement. */
     if( Is_Target_32bit() ){
@@ -4621,6 +4699,46 @@ LRA_Allocate_Registers (BOOL lra_for_pu)
   FOR_ALL_ISA_REGISTER_CLASS(cl) last_assigned_reg[cl] = REGISTER_UNDEFINED;
   HB_Schedule *Sched = NULL;
   global_spills = 0;
+
+#ifdef TARG_X8664
+  /* When LRA spills a global register, LRA does not know the size of that global
+     register, and always assumes its size is the default value
+     (which is 64-bit for x86-64 and 32-bit for x86). Such spilling will lead to
+     only half of the 128-bit value (coming from simd) is spilled.
+
+     My current fix is to scan through all the BBs, and use float_reg_could_be_128bit
+     to indicate whether the size of a float register could be 128-bit or not.
+     (bug#2801)
+
+     TODO:
+     Look for an accurate way to get the global register info.
+   */
+  memset( (void*)float_reg_could_be_128bit, sizeof(float_reg_could_be_128bit), 0 );
+
+  if( Is_Target_SSE2() &&
+      !CG_localize_tns &&
+      LNO_Run_Simd ){
+
+    for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
+      if( BB_reg_alloc(bb) )
+	continue;
+      for( OP* op = BB_first_op(bb); op != NULL; op = OP_next(op) ){
+	if( !TOP_is_vector_op( OP_code(op) ) )
+	  continue;
+
+	for( int i = 0; i < OP_results(op); i++ ){
+	  TN* result = OP_result( op, i );
+	  if( TN_is_global_reg(result ) &&
+	      TN_size(result) == 16 ){
+	    const REGISTER reg = LRA_TN_register(result);
+	    float_reg_could_be_128bit[reg] = true;
+	  }
+	} // for each result
+
+      } // for each OP
+    }  // for each BB
+  }
+#endif
 
   for (bb = REGION_First_BB; bb != NULL; bb = BB_next(bb)) 
   {

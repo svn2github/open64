@@ -302,8 +302,11 @@
 # define TYP_LAST_USED_IDX	Num_Linear_Types + 1 /* 2 extra entries */
 
 # define MAX_INTRIN_TBL_SIZE   13400    /* max entries in intrinsic table     */
-
+# ifdef KEY
+# define MAX_INTRIN_MAP_SIZE   71       /* max entries in intrinsic map       */
+# else
 # define MAX_INTRIN_MAP_SIZE   59       /* max entries in intrinsic map       */
+# endif
 
 # define MAX_INLINE_ARGS       256      /* max actual args allowed on a       */
                                         /* call to be inlined                 */
@@ -1013,6 +1016,17 @@
                 [IDX].fld.flag52
 # else
 # define ATD_READ_ONLY_VAR(IDX)           attr_tbl[IDX].fld.flag52
+# endif
+
+# ifdef KEY
+# ifdef _DEBUG
+# define ATD_F2C_ABI_VAR(IDX)                                                \
+	((AT_OBJ_CLASS(IDX) == Data_Obj || AT_OBJ_CLASS(IDX) == Pgm_Unit) ?				       \
+                attr_tbl : sytb_var_error("ATD_F2C_ABI_VAR", IDX))           \
+                [IDX].fld.flag57
+# else
+# define ATD_F2C_ABI_VAR(IDX)           attr_tbl[IDX].fld.flag57
+# endif
 # endif
 
 # ifdef _DEBUG

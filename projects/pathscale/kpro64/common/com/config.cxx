@@ -185,6 +185,10 @@ BOOL Fast_Bit_Allowed = FALSE;		/* Fast inlined bit intrinsics? */
 BOOL Fast_Bit_Set = FALSE;		/* ... option seen? */
 BOOL Fast_NINT_Allowed = FALSE;		/* Fast NINT and ANINT? */
 BOOL Fast_NINT_Set = FALSE;		/* ... option seen? */
+#ifdef TARG_X8664
+BOOL Fast_ANINT_Allowed = FALSE;	/* Fast ANINT? */
+BOOL Fast_ANINT_Set = FALSE;		/* ... option seen? */
+#endif
 BOOL Fast_trunc_Allowed = FALSE;	/* Fast truncs for NINT/ANINT/AINT/AMOD? */
 BOOL Fast_trunc_Set = FALSE;		/* ... option seen? */
 BOOL Inline_Intrinsics_Allowed = TRUE;	/* Inline intrinsics? Or lib calls? */
@@ -218,7 +222,11 @@ BOOL C_Restrict_On = FALSE;
 BOOL C_Restrict_Set = FALSE;
 char *C_Auto_Restrict = NULL;
 BOOL C_Auto_Restrict_Set = FALSE;
+#ifdef KEY
+BOOL FTN_Short_Circuit_On = TRUE;
+#else
 BOOL FTN_Short_Circuit_On = FALSE;
+#endif
 BOOL FTN_Short_Circuit_Set = FALSE;
 BOOL Macro_Expand_Pragmas_On = FALSE;
 BOOL Macro_Expand_Pragmas_Set = FALSE;
@@ -238,6 +246,11 @@ BOOL LANG_Ansi_Setjmp_On = TRUE;
 BOOL LANG_Ansi_Setjmp_Set = FALSE;
 BOOL LANG_Ignore_Carriage_Return_On = TRUE; 
 BOOL LANG_Ignore_Carriage_Return_Set = FALSE;
+# ifdef KEY
+BOOL LANG_Read_Write_Const = FALSE;
+BOOL LANG_Formal_Deref_Unsafe = FALSE;
+BOOL LANG_Copy_Inout = TRUE;
+# endif
 
 BOOL LANG_Pch;
 BOOL LANG_Pch_Set;
@@ -321,6 +334,15 @@ BOOL Force_Frame_Pointer_Set = FALSE;
 /* Use g77 ABI (affect complex and single float return values) */
 BOOL F2c_Abi = FALSE;
 BOOL F2c_Abi_Set = FALSE;
+/* Align double and long double stack variables on a double word boundary. */
+BOOL Align_Double = TRUE;
+BOOL Align_Double_Set = FALSE;
+BOOL SIMD_IMask = TRUE;
+BOOL SIMD_DMask = TRUE;
+BOOL SIMD_ZMask = TRUE;
+BOOL SIMD_OMask = TRUE;
+BOOL SIMD_UMask = TRUE;
+BOOL SIMD_PMask = TRUE;
 #endif
 BOOL Force_GP_Prolog;	/* force usage of gp prolog */
 
@@ -376,6 +398,30 @@ static OPTION_DESC Options_TENV[] = {
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "f2c",			NULL,
     0, 0, 0,	&F2c_Abi, &F2c_Abi_Set,
     "Use g77 linkage convention" },
+  { OVK_NAME,   OV_INTERNAL,	FALSE, "mcmodel",		NULL,
+    0, 0, 0,	&Mcmodel_Name,		NULL,
+    "Set the memory model to us" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "align_double",		NULL,
+    0, 0, 0,	&Align_Double, &Align_Double_Set,
+    "Align double and long double stack variables on a double word boundary" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "simd_imask",		NULL,
+    0, 0, 0,	&SIMD_IMask, NULL,
+    "Unmask SIMD invalid-operation exception" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "simd_dmask",		NULL,
+    0, 0, 0,	&SIMD_DMask, NULL,
+    "Unmask SIMD denormalized-operand exception" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "simd_zmask",		NULL,
+    0, 0, 0,	&SIMD_ZMask, NULL,
+    "Unmask SIMD zero-divide exception" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "simd_omask",		NULL,
+    0, 0, 0,	&SIMD_OMask, NULL,
+    "Unmask SIMD overflow exception" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "simd_umask",		NULL,
+    0, 0, 0,	&SIMD_UMask, NULL,
+    "Unmask SIMD underflow exception" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "simd_pmask",		NULL,
+    0, 0, 0,	&SIMD_PMask, NULL,
+    "Unmask SIMD precision exception" },
 #endif
   { OVK_BOOL,	OV_VISIBLE,	FALSE, "local_names",		"",
     0, 0, 0,	&PIC_Local_Names, NULL },
@@ -610,7 +656,17 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_VISIBLE,	FALSE, "ignore_carriage_return",	"",
       0, 0, 0,  &LANG_Ignore_Carriage_Return_On, &LANG_Ignore_Carriage_Return_Set,
       "C/C++: ignore carriage returns in source" },
-
+# ifdef KEY
+    { OVK_BOOL, OV_VISIBLE,	FALSE, "rw_const",		"",
+      0, 0, 0,	&LANG_Read_Write_Const,	&LANG_Read_Write_Const,
+      "FORTRAN: store the constant in a temporary location and pass the address of the temporary location" },
+    { OVK_BOOL, OV_VISIBLE,	FALSE, "formal_deref_unsafe",		"",
+      0, 0, 0,	&LANG_Formal_Deref_Unsafe,	&LANG_Formal_Deref_Unsafe,
+      "FORTRAN: the dereference of a formal parameter is unsafe, so do not speculate such dereferences" },
+    { OVK_BOOL, OV_VISIBLE,	TRUE, "copyinout",		"",
+      0, 0, 0,	&LANG_Copy_Inout,	&LANG_Copy_Inout,
+      "FORTRAN: create a tempoarary array to improve the locality" },
+# endif
 
     { OVK_COUNT }		    /* List terminator -- must be last */
 };
@@ -779,6 +835,11 @@ char *Read_Global_Data = NULL;	/* only read global data */
 char *Library_Name = NULL;      /* -TENV:io_library=xxx */
 INT  target_io_library;
 
+#ifdef TARG_X8664
+char* Mcmodel_Name = NULL;      /* -TENV:mcmodel=xxx */
+MCMODEL mcmodel = SMALL;
+#endif
+
 BOOL Meld_Schedule = FALSE;	/* Attempt to meld basic blocks	*/
 BOOL Gap_Schedule = FALSE;	/* Attempt to perform gap scheduling */
 BOOL Attempt_Bypass = FALSE;	/* Attempt to use bypass registers */
@@ -933,7 +994,13 @@ Configure_Ofast ( void )
   /* We assume that the driver has defaulted Opt_Level properly. */
   /* First set the options that are common to all targets: */
   if ( ! Olimit_Set ) {
+#ifdef KEY
+// bug 2679
+// With -OPT:Olimit=0, we assign MAX_OLIMIT to it, do the same here.
+    Olimit = MAX_OLIMIT;
+#else
     Olimit = 0;
+#endif
     Olimit_Set = TRUE;
   }
   if ( ! Roundoff_Set ) {
@@ -944,6 +1011,13 @@ Configure_Ofast ( void )
 #endif
     Roundoff_Set = TRUE;
   }
+
+#ifdef KEY
+  if( !Target_SSE2_Set ){
+    Target_SSE2 = TRUE;
+  }
+#endif // KEY
+
   if ( ! Div_Split_Set ) {
     Div_Split_Allowed = TRUE;
     Div_Split_Set = TRUE;
@@ -1072,7 +1146,7 @@ Configure (void)
 
   if (Force_GP_Prolog) Force_Jalr = TRUE;
 #ifdef TARG_X8664
-  if ( Opt_Level > 2 )
+  if ( Opt_Level > 2 && Is_Target_SSE2() )
     Aggregate_Alignment = 16;
 #endif
 }
@@ -1131,6 +1205,30 @@ Configure_Source ( char	*filename )
 	target_io_library = IOLIB_MIPS;
      }
   }
+
+#ifdef TARG_X8664
+  /* Determine the generated code model. */
+  if( Mcmodel_Name == NULL ){
+    mcmodel = SMALL;
+
+  } else {
+    FmtAssert( Is_Target_64bit(),
+	       ("code model `%s' not supported in the 32-bit mode",
+		Mcmodel_Name) );
+
+    if( strcmp( Mcmodel_Name, "small" ) == 0 )
+      mcmodel = SMALL;
+    else if( strcmp( Mcmodel_Name, "kernel" ) == 0 )
+      mcmodel = KERNEL;
+    else if( strcmp( Mcmodel_Name, "medium" ) == 0 )
+      mcmodel = MEDIUM;
+    else if( strcmp( Mcmodel_Name, "large" ) == 0 )
+      mcmodel = LARGE;
+    else
+      FmtAssert( FALSE, ("code model `%s' not supported in the 64-bit mode",
+			 Mcmodel_Name) );
+  }
+#endif // TARG_X8664
 
 #ifdef BACK_END
 
@@ -1298,6 +1396,11 @@ Configure_Source ( char	*filename )
     if ( ! Enable_NaryExpr_Set )
       Enable_NaryExpr = Roundoff_Level >= ROUNDOFF_ASSOC;
 
+#ifdef TARG_X8664
+    if( !Fast_ANINT_Set ){
+      Fast_ANINT_Allowed = Roundoff_Level >= ROUNDOFF_ASSOC;
+    }
+#endif
     if (!Fast_Complex_Set)
       Fast_Complex_Allowed = Roundoff_Level >= ROUNDOFF_ANY;
     if (!Fast_NINT_Set)

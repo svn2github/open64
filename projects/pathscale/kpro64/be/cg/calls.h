@@ -140,6 +140,10 @@ extern BOOL LC_Used_In_PU;	/* flag whether LC_TN was used */
 /* Tail calls: */
 extern void Optimize_Tail_Calls( ST* pu );
 
+#ifdef TARG_X8664
+void Adjust_SP_After_Call( BB* );
+#endif
+
 #ifdef KEY
 // The following are interfaces into calls.cxx Callee saved registers stack
 typedef struct save_reg_loc {
@@ -154,7 +158,5 @@ extern INT Cgdwarf_Num_Callee_Saved_Regs (void);
 extern struct tn* Cgdwarf_Nth_Callee_Saved_Reg (INT n);
 // The location on the stack that corresponds to the nth TN on the stack.
 extern ST* Cgdwarf_Nth_Callee_Saved_Reg_Location (INT n);
-// Sort the saved register stack based on the order in entry BB.
-extern void Sort_Saved_Register_Stack (BB* bb);
 #endif
 #endif /* calls_INCLUDED */

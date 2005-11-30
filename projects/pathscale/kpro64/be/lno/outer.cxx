@@ -124,9 +124,11 @@ static void outer_fusion_tlog_info(
           tmp_string, "", message);
 }
 
+#ifndef KEY // moved to common/com/config_lno.* and controllable by a flag
 #define OLF_size_upperbound 100		// max size allowed for fusion
 #define OLF_size_lowerbound 15		// remove several restriction
 					// if size is smaller than this
+#endif
 
 static BINARY_TREE<NAME2BIT> *mapping_dictionary;
 static UINT Bit_Position_Count=0;

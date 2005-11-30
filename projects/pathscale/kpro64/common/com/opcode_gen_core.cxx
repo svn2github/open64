@@ -999,6 +999,26 @@ struct OPERATOR_info_struct OPERATOR_info[OPERATOR_LAST+1] = {
    1 /* nkids */,
    OPERATOR_MAPCAT_OEXP /* mapcat */,
    OPERATOR_PROPERTY_expression},
+
+  {"OPR_REDUCE_ADD",
+   1 /* nkids */,
+   OPERATOR_MAPCAT_OEXP /* mapcat */,
+   OPERATOR_PROPERTY_expression},
+
+  {"OPR_REDUCE_MPY",
+   1 /* nkids */,
+   OPERATOR_MAPCAT_OEXP /* mapcat */,
+   OPERATOR_PROPERTY_expression},
+
+  {"OPR_REDUCE_MAX",
+   1 /* nkids */,
+   OPERATOR_MAPCAT_OEXP /* mapcat */,
+   OPERATOR_PROPERTY_expression},
+
+  {"OPR_REDUCE_MIN",
+   1 /* nkids */,
+   OPERATOR_MAPCAT_OEXP /* mapcat */,
+   OPERATOR_PROPERTY_expression},
 #endif /* TARG_X8664 */
 };
 
@@ -2348,8 +2368,15 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 
       case OPR_EQ:
       case OPR_NE:
+#ifndef KEY
         // [RTYPE] : b [DESC] : f,i,p,z
         valid = Is_MTYPE_b [rtype] && Is_MTYPE_b_f_i_p_z [desc];
+#else
+        // [RTYPE] : b, i [DESC] : f,i,p,z
+        valid = (Is_MTYPE_b [rtype] || 
+		 Is_MTYPE_i [ rtype ]) && 
+	  Is_MTYPE_b_f_i_p_z [desc];	
+#endif
         break;
 
       case OPR_LNOT:
@@ -2361,8 +2388,15 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
       case OPR_GT:
       case OPR_LE:
       case OPR_LT:
+#ifndef KEY
         // [RTYPE] : b [DESC] : f,i,p
         valid = Is_MTYPE_b [rtype] && Is_MTYPE_f_i_p [desc];
+#else
+        // [RTYPE] : b, i [DESC] : f,i,p,z
+        valid = (Is_MTYPE_b [rtype] || 
+		 Is_MTYPE_i [ rtype ]) && 
+	  Is_MTYPE_f_i_p [desc];	
+#endif
         break;
 
       case OPR_LDBITS:
@@ -2531,11 +2565,32 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
         break;
 #ifdef TARG_X8664
       case OPR_REPLICATE:
-	valid = ((rtype == MTYPE_V16F4 || rtype == MTYPE_V16F8 ||
-		  rtype == MTYPE_V16I1 || rtype == MTYPE_V16I2 ||
-		  rtype == MTYPE_V16I4 || rtype == MTYPE_V16I8) &&
-		 (desc == MTYPE_I1 || desc == MTYPE_I2 || desc == MTYPE_I4 || 
-		  desc == MTYPE_I8 || desc == MTYPE_F4 || desc == MTYPE_F8));
+	valid = ((rtype == MTYPE_V16I1 && desc == MTYPE_I1) ||
+		 (rtype == MTYPE_V16I2 && desc == MTYPE_I2) ||
+		 (rtype == MTYPE_V16I4 && desc == MTYPE_I4) ||
+		 (rtype == MTYPE_V16I8 && desc == MTYPE_I8) ||
+		 (rtype == MTYPE_V16F4 && desc == MTYPE_F4) ||
+		 (rtype == MTYPE_V16F8 && desc == MTYPE_F8));
+	break;
+
+      case OPR_REDUCE_ADD: 
+	valid = ((desc == MTYPE_V16I1 && rtype == MTYPE_I4) ||
+		 (desc == MTYPE_V16I2 && rtype == MTYPE_I4) ||
+		 (desc == MTYPE_V16I4 && rtype == MTYPE_I4) ||
+		 (desc == MTYPE_V16I8 && rtype == MTYPE_I8) ||
+		 (desc == MTYPE_V16F4 && rtype == MTYPE_F4) ||
+		 (desc == MTYPE_V16F8 && rtype == MTYPE_F8));
+	break;
+
+      case OPR_REDUCE_MPY:
+	valid = ((desc == MTYPE_V16I2 && rtype == MTYPE_I4) ||
+		 (desc == MTYPE_V16F4 && rtype == MTYPE_F4) ||
+		 (desc == MTYPE_V16F8 && rtype == MTYPE_F8));
+	break;
+
+      case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:
+	valid = ((desc == MTYPE_V16F4 && rtype == MTYPE_F4) ||
+		 (desc == MTYPE_V16F8 && rtype == MTYPE_F8));
 	break;
 #endif /* TARG_X8664 */
       default:
@@ -2851,6 +2906,21 @@ OPCODE_name (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 #ifdef TARG_X8664
     case OPR_REPLICATE:
       // [RTYPE] : V16F4, V16F8, V16I1, V16I2, V16I4, V16I8  [DESC] :  I1, I2, I4, I8, F4, F8
+      sprintf (buffer, "OPC_%s%s%s", MTYPE_name(rtype), MTYPE_name(desc), &OPERATOR_info [opr]._name [4]);
+      break;
+
+    case OPR_REDUCE_ADD:
+      // [DESC] : V16F4, V16F8, V16I1, V16I2, V16I4, V16I8  [RTYPE] :  I4, I8, F4, F8
+      sprintf (buffer, "OPC_%s%s%s", MTYPE_name(rtype), MTYPE_name(desc), &OPERATOR_info [opr]._name [4]);
+      break;
+
+    case OPR_REDUCE_MPY:
+      // [DESC] : V16F4, V16F8, V16I2 [RTYPE] :  I4, F4, F8
+      sprintf (buffer, "OPC_%s%s%s", MTYPE_name(rtype), MTYPE_name(desc), &OPERATOR_info [opr]._name [4]);
+      break;
+
+    case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:
+      // [DESC] : V16F4, V16F8 [RTYPE] :  F4, F8
       sprintf (buffer, "OPC_%s%s%s", MTYPE_name(rtype), MTYPE_name(desc), &OPERATOR_info [opr]._name [4]);
       break;
 

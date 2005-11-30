@@ -156,6 +156,8 @@ static const char source_file[] = __FILE__;
 
 #ifdef TARG_X8664
 #include "targ_sim.h"
+#include "config_wopt.h"
+#include "config_lno.h"
 #endif
 
 /* ===================================================================== */
@@ -538,6 +540,9 @@ static void EBO_Start()
   MEM_POOL_Push(&MEM_local_pool);
   EBO_tninfo_table = TN_MAP_Create();
 
+#ifdef KEY
+  EBO_Special_Start( &MEM_local_pool );
+#endif // KEY
 }
 
 
@@ -547,6 +552,10 @@ static void EBO_Finish(void)
  * -----------------------------------------------------------------------
  */
 {
+#ifdef KEY
+  EBO_Special_Finish();
+#endif
+
   TN_MAP_Delete (EBO_tninfo_table);
   EBO_tninfo_table = NULL;
   MEM_POOL_Pop(&MEM_local_pool);
@@ -1717,7 +1726,32 @@ Find_BB_TNs (BB *bb)
 	for (i = 0; i < OP_results(op) && !dont_replace; i ++)	  
 	  if (OP_result(op, i) == tn)
 	    dont_replace = TRUE;
-      }      
+
+	// Bug 2408 - asm constraints may force us to use particular registers.
+	// To really optimize this case, we have to look at the constraints for
+	// each of the operand(s) and result(s) from the ASM WN that generated
+	// this asm 'op'.
+	for (i = 0; i < OP_opnds(op) && !dont_replace; i ++)
+	  if (OP_opnd(op, i) == tn)
+	    dont_replace = TRUE;	
+      }
+
+      /* Don't replace a gra homeable gtn; otherwise, gra will do the wrong
+	 spilling.  (bug#2913)
+      */
+      if( !EBO_in_peep     &&
+	  !CG_localize_tns &&
+	  TN_is_gra_homeable(tn) &&
+	  TN_is_global_reg(tn)   &&
+	  OP_store( op ) ){
+	WN* wn = Get_WN_From_Memory_OP( op );
+	if( wn != NULL     &&
+	    WN_has_sym(wn) &&
+	    /* (Aliased( Alias_Manager, TN_home(tn), wn ) != NOT_ALIASED) */
+	    WN_st(wn) == WN_st(TN_home(tn)) ){
+	  dont_replace = TRUE;
+	}
+      }
 #endif
 
       if (tn != True_TN) {
@@ -1971,6 +2005,11 @@ Find_BB_TNs (BB *bb)
         op_replaced = find_duplicate_mem_op (bb, op, opnd_tn, opnd_tninfo, orig_tninfo);
       }
 #ifdef TARG_X8664
+      if (WOPT_Enable_Aggstr_Reduction && 
+	  LNO_Run_Prefetch != AGGRESSIVE_PREFETCH &&
+	  !EBO_in_peep && !op_replaced && OP_prefetch(op)) {
+	op_replaced = Delete_Unwanted_Prefetches(op);
+      }
       if( !op_replaced    &&
 	  do_load_execute &&
 	  OP_store(op) ){

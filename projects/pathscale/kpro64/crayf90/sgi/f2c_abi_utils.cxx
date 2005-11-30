@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -81,7 +81,7 @@ static void Parse_script(const char *script_name)
   infile.open(script_name, ifstream::in);
 
   strcpy(callee_key, "");
-  DevAssert((infile.good()), ("Inline script parsing error: can't open the inlining description file"));
+  FmtAssert((infile.good()), ("Ff2c abi script parsing error: can't open the ff2c abi description file"));
 
   // Read in the file line by line,
   // Perform syntax analysis based on the keywords of call-site type specification

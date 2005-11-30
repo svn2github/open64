@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,6 +42,10 @@
 #define __Z_DIV_H__
 
 extern dcomplex z_div(dcomplex *, dcomplex *);
-extern dcomplex __zdiv(double_t, double_t, double_t, double_t);
+#ifdef KEY
+extern dcomplex __zdiv(double, double, double, double);
+#else
+extern dcomplex __zdiv(double, double, double_t, double_t);
+#endif // KEY
 
 #endif /* __Z_DIV_H__ */

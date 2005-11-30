@@ -3128,11 +3128,22 @@ boolean size_offset_logical_calc(size_offset_type	*op1,
    case NO_Tbl_Idx:
       constant1	= &((*op1).constant[0]);
       type1_idx	= (*op1).type_idx;
+# ifdef KEY
+      if (type1_idx == Integer_4 && *constant1 < 0){
+        type1_idx = Integer_8;
+      }
+# endif
       break;
 
    case CN_Tbl_Idx:
       constant1	= &(CN_CONST((*op1).idx));
       type1_idx	= CN_TYPE_IDX((*op1).idx);
+# ifdef KEY
+      if (TYP_LINEAR(CN_TYPE_IDX((*op1).idx)) == Integer_4 && *constant1 < 0){
+        type1_idx = Integer_8;
+      }
+# endif
+
       break;
 
    case AT_Tbl_Idx:
@@ -3158,11 +3169,21 @@ boolean size_offset_logical_calc(size_offset_type	*op1,
    case NO_Tbl_Idx:
       constant2	= &((*op2).constant[0]);
       type2_idx	= (*op2).type_idx;
+# ifdef KEY
+      if (type2_idx == Integer_4 && *constant2 < 0){
+        type2_idx = Integer_8;
+      }
+# endif
       break;
 
    case CN_Tbl_Idx:
       constant2	= &(CN_CONST((*op2).idx));
       type2_idx	= CN_TYPE_IDX((*op2).idx);
+# ifdef KEY
+      if (TYP_LINEAR(CN_TYPE_IDX((*op2).idx)) == Integer_4 && *constant2 < 0){
+        type2_idx = Integer_8;
+      }
+# endif
       break;
 
    case AT_Tbl_Idx:

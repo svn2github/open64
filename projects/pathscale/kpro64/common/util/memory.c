@@ -46,6 +46,29 @@
 #include "tracing.h"
 #include "erglob.h"
 
+#ifdef KEY
+#ifndef NO_VALGRIND
+#include <memcheck.h>
+
+/*
+ * Check to see if we have an old version of Valgrind without mempool
+ * support.  Disable Valgrind support if this is the case.
+ */
+
+#ifndef VALGRIND_CREATE_MEMPOOL
+#define NO_VALGRIND
+#endif
+
+#endif /* NO_VALGRIND */
+#endif /* KEY */
+
+#ifdef NO_VALGRIND
+#define REDZONE_SIZE 0
+#else
+static int redzone_size = 0;
+#define REDZONE_SIZE redzone_size
+#endif /* NO_VALGRIND */
+
 /* The value of the following macro must be distinct from TRUE and FALSE
  * as defined in defs.h. The macro is used only in the case that
  * PURIFY_MEMPOOLS is switched on (ON, ON-TRACE, or ON-TRACE-X).
@@ -982,6 +1005,13 @@ Allocate_Block (MEM_POOL *pool)
   }
 #endif
 
+#ifdef KEY
+#ifndef NO_VALGRIND
+  /* Tell Valgrind that this memory is not (yet) valid. */
+  VALGRIND_MAKE_NOACCESS(MEM_BLOCK_first_ptr(block), BLOCK_SIZE);
+#endif /* NO_VALGRIND */
+#endif /* KEY */
+
   return block;
 }
 
@@ -1057,9 +1087,16 @@ Raw_Allocate(
       b = Allocate_Block (pool);
     }
 
-    result = MEM_BLOCK_ptr(b);
-    MEM_BLOCK_ptr(b) = (MEM_PTR) (((char*) MEM_BLOCK_ptr(b)) + size);
-    MEM_BLOCK_avail(b) -= size;
+    result = MEM_BLOCK_ptr(b) + REDZONE_SIZE;
+    MEM_BLOCK_ptr(b) = (MEM_PTR) (((char*) MEM_BLOCK_ptr(b)) + size + (REDZONE_SIZE*2));
+    MEM_BLOCK_avail(b) -= size + (REDZONE_SIZE*2);
+
+#ifdef KEY
+#ifndef NO_VALGRIND
+    /* Tell Valgrind that we've allocated this piece of memory.  */
+    VALGRIND_MEMPOOL_ALLOC(MEM_POOL_blocks(pool), result, size);
+#endif /* NO_VALGRIND */
+#endif /* KEY */
 
     return result;
   } else
@@ -1409,6 +1446,12 @@ MEM_POOL_Push_P
      */
     pb = free_mem_pool_blocks_list;
     free_mem_pool_blocks_list = MEM_POOL_BLOCKS_rest(pb);
+#ifdef KEY
+#ifndef NO_VALGRIND
+    VALGRIND_MAKE_READABLE(pb, sizeof(MEM_POOL_BLOCKS));
+    VALGRIND_MAKE_WRITABLE(pb, sizeof(MEM_POOL_BLOCKS));
+#endif /* NO_VALGRIND */
+#endif /* KEY */
   } else {
      /* Need to allocate a new one.
       */
@@ -1436,6 +1479,12 @@ MEM_POOL_Push_P
     }
   }
   MEM_POOL_blocks(pool) = pb;
+
+#ifdef KEY
+#ifndef NO_VALGRIND
+  VALGRIND_CREATE_MEMPOOL(pb, REDZONE_SIZE, MEM_POOL_bz(pool));
+#endif /* NO_VALGRIND */
+#endif /* KEY */
 }
 
 /* ====================================================================
@@ -1555,8 +1604,19 @@ MEM_POOL_Pop_P
     if (bp == MEM_POOL_BLOCKS_base_block(bsp)) {
       MEM_BLOCK_ptr(bp) = MEM_POOL_BLOCKS_base_ptr(bsp);
       MEM_BLOCK_avail(bp) = MEM_POOL_BLOCKS_base_avail(bsp);
-      if (MEM_POOL_bz(pool))
+      if (MEM_POOL_bz(pool)) {
+#ifdef KEY
+#ifndef NO_VALGRIND
+	VALGRIND_MAKE_WRITABLE(MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
+#endif /* NO_VALGRIND */
+#endif /* KEY */
 	bzero (MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
+#ifdef KEY
+#ifndef NO_VALGRIND
+	VALGRIND_MAKE_NOACCESS(MEM_BLOCK_ptr(bp), MEM_BLOCK_avail(bp));
+#endif /* NO_VALGRIND */
+#endif /* KEY */
+      }
       break;
     }
     free (bp);
@@ -1578,8 +1638,28 @@ MEM_POOL_Pop_P
     MEM_POOL_blocks(pool) = MEM_POOL_BLOCKS_rest(bsp);
     MEM_POOL_BLOCKS_rest(bsp) = free_mem_pool_blocks_list;
     free_mem_pool_blocks_list = bsp;
+#ifdef KEY
+#ifndef NO_VALGRIND
+    /* Tell Valgrind everything in here has been freed.  */
+    VALGRIND_DESTROY_MEMPOOL(bsp);
+#endif /* NO_VALGRIND */
+#endif /* KEY */
   } else {
+#ifdef KEY
+#ifndef NO_VALGRIND
+    VALGRIND_MAKE_WRITABLE(bsp, sizeof(MEM_POOL_BLOCKS));
+#endif /* NO_VALGRIND */
+#endif /* KEY */
     bzero (bsp, sizeof(MEM_POOL_BLOCKS));
+#ifdef KEY
+#ifndef NO_VALGRIND
+    VALGRIND_MAKE_NOACCESS(bsp, sizeof(MEM_POOL_BLOCKS));
+    /* Tell Valgrind everything in here has been freed, but then put it
+     * back as empty.  */
+    VALGRIND_DESTROY_MEMPOOL(bsp);
+    VALGRIND_CREATE_MEMPOOL(bsp, REDZONE_SIZE, MEM_POOL_bz(pool));
+#endif /* NO_VALGRIND */
+#endif /* KEY */
   }
 }
 
@@ -1819,6 +1899,18 @@ MEM_POOL_Initialize_P
   MEM_STAT_ARGS(line,file)
 )
 {
+#ifdef KEY
+#ifndef NO_VALGRIND
+  static BOOL mem_overhead_pool_initialized = FALSE;
+  if(RUNNING_ON_VALGRIND && (mem_overhead_pool_initialized == FALSE)) {
+    mem_overhead_pool_initialized = TRUE;
+    redzone_size = 8;
+    VALGRIND_CREATE_MEMPOOL(MEM_POOL_blocks(&mem_overhead_pool), 
+                            REDZONE_SIZE, MEM_POOL_bz(&mem_overhead_pool));
+  }
+#endif /* NO_VALGRIND */
+#endif /* KEY */
+
   if (pool == Default_Mem_Pool) pool = The_Default_Mem_Pool;
   if (pool == Malloc_Mem_Pool) return;
   MEM_POOL_name(pool) = name;

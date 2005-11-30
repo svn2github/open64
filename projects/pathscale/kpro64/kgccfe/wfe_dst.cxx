@@ -107,7 +107,9 @@ extern "C" {
 #include <string>
 #include <vector>
 #include <map>
-
+#ifdef KEY
+#include "stamp.h"	/* For INCLUDE_STAMP */
+#endif
 extern const char *dump_base_name ;             // in toplev.c
 
 extern FILE *tree_dump_file; //for debugging only
@@ -1672,6 +1674,20 @@ DST_Create_var(ST *var_st, tree decl)
     struct mongoose_gcc_DST_IDX type_gcc_dst = 
 			TYPE_DST_IDX(TREE_TYPE(decl));
     cp_to_dst_from_tree(&type,&type_gcc_dst);
+#ifdef KEY
+    DST_INFO_IDX current_scope_idx =
+         DST_get_context(DECL_CONTEXT(decl));
+    // Bug 1511 - Handle const type qualifier
+    if (TYPE_READONLY(TREE_TYPE(decl))) {
+      type = DST_mk_const_type (type) ;  
+      DST_append_child(current_scope_idx, type);
+    }
+    // Handle volatile type qualifier
+    if (TYPE_VOLATILE(TREE_TYPE(decl))) {
+      type = DST_mk_volatile_type (type) ;
+      DST_append_child(current_scope_idx, type);
+    }
+#endif
     dst = DST_mk_variable(
         src,                    // srcpos
         ST_name(var_st),
@@ -1691,8 +1707,10 @@ DST_Create_var(ST *var_st, tree decl)
     // producer routines thinks we will set pc to fe ptr initially
     //DST_RESET_assoc_fe (DST_INFO_flag(DST_INFO_IDX_TO_PTR(dst)));
 
+#ifndef KEY // moved above
     DST_INFO_IDX current_scope_idx =
          DST_get_context(DECL_CONTEXT(decl));
+#endif
 
     DST_append_child (current_scope_idx, dst);
     return dst;
@@ -1944,7 +1962,15 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
    }
 
    /* Get the AT_producer attribute! */
+#ifndef KEY
    comp_info = DST_get_command_line_options(num_copts, copts);
+#else
+   // Bug 178 - AT_producer should be the name of the compiler and version info
+   comp_info = (char *)malloc(sizeof(char)*100);   
+   strcpy(comp_info, "pathcc ");
+   if (INCLUDE_STAMP)
+     strcat(comp_info, INCLUDE_STAMP);
+#endif
 
    {
       comp_unit_idx = DST_mk_compile_unit((char*)dump_base_name,

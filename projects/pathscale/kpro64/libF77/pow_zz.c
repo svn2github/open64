@@ -46,9 +46,13 @@
 
 extern	void	sincos(double, double *, double *);
 
-dcomplex __powzz(double_t adreal, double_t adimag, double_t bdreal, double_t bdimag)
+#ifdef KEY
+dcomplex __powzz(double adreal, double adimag, double bdreal, double bdimag)
+#else
+dcomplex __powzz(double adreal, double adimag, double_t bdreal, double_t bdimag)
+#endif // KEY
 {
-  double_t logr, logi, x, y;
+  double logr, logi, x, y;
   double sinx, cosx;
   dcomplex r;
 

@@ -46,7 +46,7 @@
 
 #define TWO_EXP_52 4503599627370496.0
 
-double_t __dnint(double_t x)
+double __dnint(double x)
 {
 
   /* Need to worry about case where LSB of floating-point type
@@ -60,7 +60,7 @@ double_t __dnint(double_t x)
     return (x >= 0.0 ? floor(x + .5) : -floor(.5 - x));
 }
 
-double_t d_nint(double_t *x)
+double d_nint(double *x)
 {
   return (__dnint(*x));
 }

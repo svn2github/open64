@@ -818,6 +818,20 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
     // Update any occurances in the prolog and epilog backpatch lists
     TN *tn_old = cio_copy_table[index].tn_result;
     TN *tn_new = OP_opnd( op, OP_COPY_OPND );
+
+#ifdef KEY
+    /* Don't update the prolog and epilog if source and result are
+       the same TNs; otherwise the original omega value will be overwritten
+       by CG_LOOP_Backpatch_Replace_Body_TN().  (bug#2484)
+
+       Or should we use CG_LOOP_Backpatch_Add instead to resolve the
+       conflicts ???
+     */
+    if( tn_old == tn_new ){
+      continue;
+    }
+#endif // KEY
+
     UINT8 omega_change = OP_omega( op, OP_COPY_OPND );
     CG_LOOP_Backpatch_Replace_Body_TN( CG_LOOP_epilog,
 				       tn_old, tn_new, omega_change );
@@ -2582,6 +2596,12 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
       // If source TN occurs later as a result, then new TN is required
       // NOT ALWAYS NECESSARY!  IMPROVE THIS!
       INT tn_index = hTN_MAP32_Get( tn_last_op, change.new_tns[0] );
+#ifdef KEY
+      /* fix bug#1989 where the store value is not put in the table. */
+      if( tn_index == 0 )
+	change.new_tns[0] = Build_TN_Like( change.new_tns[0] );      
+      else
+#endif // KEY
       if ( OP_Precedes( change.source, cicse_table[tn_index].op ) )
 	change.new_tns[0] = Build_TN_Like( change.new_tns[0] );
 

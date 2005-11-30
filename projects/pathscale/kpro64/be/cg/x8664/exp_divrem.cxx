@@ -56,6 +56,7 @@
 #include "op.h"
 #include "cgexp.h"
 #include "cgexp_internals.h"
+#include "whirl2ops.h"
 
 #define RESET_COND_DEF_LAST(ops) Set_OP_cond_def_kind(OPS_last(ops),OP_ALWAYS_UNC_DEF)
 
@@ -340,33 +341,30 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
 	else
 	  Expand_Sub(result, tmp3_tn, tmp4_tn, mtype, ops);
          
-      } else if( false && Is_Target_32bit() ){
-	FmtAssert( mtype == MTYPE_I4, ("NYI") );
+      } else if( Is_Target_32bit() ){
+	TN* eax_tn = Build_TN_Of_Mtype(mtype);
+	Expand_Immediate( eax_tn, Gen_Literal_TN(m,4), is_signed, ops );
 
-	TN* tmp1_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Copy( tmp1_tn, numer_tn, mtype, ops );
+	TN* edx_tn = Build_TN_Like( result );
+	Build_OP( TOP_imulx32, eax_tn, edx_tn, eax_tn, numer_tn, ops );
 
-	mult_tn = Build_TN_Of_Mtype(mtype);
-	d_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Immediate (d_tn, Gen_Literal_TN (m, 4), is_signed, ops);
-	Expand_High_Multiply( mult_tn, tmp1_tn, d_tn, mtype, ops );
-    
-	TN* tmp2_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Shift( tmp2_tn, numer_tn, Gen_Literal_TN(31, 4), 
+	Expand_Copy( eax_tn, numer_tn, mtype, ops );
+
+	if( s ){
+	  Expand_Shift( edx_tn, edx_tn, Gen_Literal_TN(s, 4), 
+			mtype, shift_aright, ops);
+	}
+
+	Expand_Shift( eax_tn, eax_tn, Gen_Literal_TN(31, 4), 
 		      mtype, shift_lright, ops);
 
-	Expand_Copy( tmp1_tn, mult_tn, mtype, ops );
-	if (s) 
-	  Expand_Shift(tmp1_tn, shift_tn, Gen_Literal_TN(s, 4), 
-		       mtype, shift_aright, ops);
-	else
-	  Expand_Copy(tmp1_tn, shift_tn, mtype, ops);
+	Expand_Add( edx_tn, edx_tn, eax_tn, mtype, ops );
 
-	if( e < 0 ) 
-	  // Bug 1214
-	  Expand_Sub(result, tmp2_tn, tmp1_tn, mtype, ops);
-	else
-	  Expand_Sub(result, tmp1_tn, tmp2_tn, mtype, ops);
+	if( e < 0 ){
+	  Expand_Neg( edx_tn, edx_tn, mtype, ops );
+	}
+
+	Expand_Copy( result, edx_tn, mtype, ops );
 
       } else {	
 	TN* tmp1_tn = Build_TN_Of_Mtype(MTYPE_I8);
@@ -624,6 +622,94 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
  *	f=	x & MASK(n)		x>=0
  *	f=	-(-x & MASK(n))		x<0
  */
+
+static void Expand_Fast_Power_Of_2_Rem( TN* result, TN* src1, INT64 src2_val,
+					TYPE_ID mtype, OPS* ops )
+{
+  FmtAssert( !TN_is_dedicated(result), ("NYI") );
+
+  const BOOL is_64bit = MTYPE_is_size_double(mtype);
+  BB* bb_entry = Cur_BB;
+  BB* bb_then  = Gen_And_Append_BB( bb_entry );  // for case <src1> < 0
+  BB* bb_else  = Gen_And_Append_BB( bb_then );   // for case <src1> >= 0
+  const LABEL_IDX bb_else_label = Gen_Label_For_BB( bb_else );
+
+  BB* bb_exit  = Gen_And_Append_BB( bb_else );
+  const LABEL_IDX bb_exit_label = Gen_Label_For_BB( bb_exit );
+
+  BB_branch_wn(bb_then) = WN_Create(OPC_GOTO,0);
+  WN_label_number(BB_branch_wn(bb_then)) = bb_exit_label;
+
+  BB_branch_wn(bb_entry) = WN_Create(OPC_TRUEBR,1);
+  WN_kid0(BB_branch_wn(bb_entry)) = NULL;
+  WN_label_number(BB_branch_wn(bb_entry)) = bb_else_label;
+
+  // Build bb_entry
+  {
+    Exp_OP3v( OPC_TRUEBR,
+	      NULL,
+	      Gen_Label_TN( bb_else_label, 0 ),
+	      src1,
+	      Gen_Literal_TN(0,4),
+	      V_BR_I4GE,
+	      ops );
+
+    if( &New_OPs != ops )
+      OPS_Append_Ops( &New_OPs, ops );
+    Process_New_OPs();
+    BB_Append_Ops( bb_entry, &New_OPs );
+    OPS_Init( &New_OPs );
+    OPS_Init( ops );
+  }
+
+  // Build bb_then here.
+  {
+    OPS* bb_then_ops = &New_OPs;
+
+    TN *t1 = Build_TN_Of_Mtype(mtype);
+    INT64 absdvsr = src2_val < 0 ? -src2_val : src2_val;
+    BOOL is_double = MTYPE_is_size_double(mtype);
+    TN *t2 = Build_TN_Of_Mtype(mtype);
+    TN *t3 = Build_TN_Of_Mtype(mtype);
+    TN *t4 = Build_TN_Of_Mtype(mtype);
+    TN *t5 = Build_TN_Of_Mtype(mtype);
+    Expand_Shift(t1, src1, Gen_Literal_TN(is_double?63:31, 4), mtype, 
+		 shift_aright, bb_then_ops);
+    Expand_Immediate (t2, Gen_Literal_TN (absdvsr - 1, is_double?8:4), 
+		      FALSE, bb_then_ops);
+    Expand_Binary_And( t3, t1, t2, mtype, bb_then_ops );
+    Expand_Add( t4, t3, src1, mtype, bb_then_ops );
+    Expand_Binary_And( t5, t4, t2, mtype, bb_then_ops );
+    Expand_Sub( result, t5, t3, mtype, bb_then_ops );
+
+    Build_OP( TOP_jmp, Gen_Label_TN( bb_exit_label, 0 ), bb_then_ops );
+
+    total_bb_insts = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    BB_Append_Ops( bb_then, bb_then_ops );
+    OPS_Init( bb_then_ops );
+  }
+
+  // Build bb_else here.
+  {
+    OPS* bb_else_ops = &New_OPs;
+
+    FmtAssert( ISA_LC_Value_In_Class( src2_val, LC_simm32 ), ("NYI") );
+    Expand_Binary_And( result, src1, Gen_Literal_TN(src2_val-1,4),
+		       mtype, bb_else_ops );    
+
+    total_bb_insts = 0;
+    Last_Processed_OP = NULL;
+    Process_New_OPs();
+    BB_Append_Ops( bb_else, bb_else_ops );
+    OPS_Init( bb_else_ops );
+  }
+
+  Cur_BB = bb_exit;
+}
+
+
 static void 
 Expand_Power_Of_2_Rem (TN *result, TN *src1, INT64 src2_val, TYPE_ID mtype, OPS *ops)
 {
@@ -633,22 +719,29 @@ Expand_Power_Of_2_Rem (TN *result, TN *src1, INT64 src2_val, TYPE_ID mtype, OPS 
   TN *con = Gen_Literal_TN(nMask, is_double ? 8 : 4);
 
   if (MTYPE_is_signed(mtype)) {
-    TN *t1 = Build_TN_Of_Mtype(mtype);
-    INT64 absdvsr = src2_val < 0 ? -src2_val : src2_val;
-    BOOL is_double = MTYPE_is_size_double(mtype);
-    TN *t2 = Build_TN_Of_Mtype(mtype);
-    TN *t3 = Build_TN_Of_Mtype(mtype);
-    TN *t4 = Build_TN_Of_Mtype(mtype);
-    TN *t5 = Build_TN_Of_Mtype(mtype);
-    Expand_Shift(t1, src1, Gen_Literal_TN(is_double?63:31, 4), mtype, 
-		    shift_aright, ops);
-    Expand_Immediate (t2, Gen_Literal_TN (absdvsr - 1, is_double?8:4), 
-		    FALSE, ops);
-    Expand_Binary_And( t3, t1, t2, mtype, ops );
-    Expand_Add( t4, t3, src1, mtype, ops );
-    Expand_Binary_And( t5, t4, t2, mtype, ops );
-    Expand_Sub( result, t5, t3, mtype, ops );
+    /* Avoid generating multi-BBs under -m32, which does not have too many
+       registers.
+    */
+    if( CG_use_setcc || Is_Target_32bit() || src2_val < 0 ){
+      TN *t1 = Build_TN_Of_Mtype(mtype);
+      INT64 absdvsr = src2_val < 0 ? -src2_val : src2_val;
+      BOOL is_double = MTYPE_is_size_double(mtype);
+      TN *t2 = Build_TN_Of_Mtype(mtype);
+      TN *t3 = Build_TN_Of_Mtype(mtype);
+      TN *t4 = Build_TN_Of_Mtype(mtype);
+      TN *t5 = Build_TN_Of_Mtype(mtype);
+      Expand_Shift(t1, src1, Gen_Literal_TN(is_double?63:31, 4), mtype, 
+		   shift_aright, ops);
+      Expand_Immediate (t2, Gen_Literal_TN (absdvsr - 1, is_double?8:4), 
+			FALSE, ops);
+      Expand_Binary_And( t3, t1, t2, mtype, ops );
+      Expand_Add( t4, t3, src1, mtype, ops );
+      Expand_Binary_And( t5, t4, t2, mtype, ops );
+      Expand_Sub( result, t5, t3, mtype, ops );
 
+    } else {
+      Expand_Fast_Power_Of_2_Rem( result, src1, src2_val, mtype, ops );
+    }
   } else {
     Expand_Binary_And(result, src1, con, mtype, ops);
   }
@@ -880,10 +973,6 @@ Expand_Mod (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 void 
 Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {
-  if( OP_NEED_PAIR(mtype) ){
-    FmtAssert( false, ("Expand_DivRem: NYI") );
-  }
-
   BOOL is_double = MTYPE_is_size_double(mtype);
 
   /* Usually we expect whirl operators to be folded where possible.
@@ -964,11 +1053,13 @@ Expand_DivRem(TN *result, TN *result2, TN *src1, TN *src2, TYPE_ID mtype, OPS *o
       } else {
 	TN *t1 = Build_TN_Like(result);
 	Expand_Multiply(t1, result, src2, mtype, ops);
-	Build_OP(is_double?TOP_sub64:TOP_sub32, result2, src1, t1, ops);
+	Expand_Sub( result2, src1, t1, mtype, ops );
       }
       return;
     }
   }
+
+  FmtAssert( !OP_NEED_PAIR(mtype), ("Expand_DivRem: DIVREM should not be 64-bit") );
 
   TOP top;
   FmtAssert(!TN_is_constant(src1),

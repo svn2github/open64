@@ -395,7 +395,7 @@ include $(COMMONRULES)
 
 ifeq (gcc,$(firstword $(CCNAME)))
 # work around ia32 gcc bug in optimizing these files
-cwh_dst.o: OPTIMIZER = -O0
-cwh_stab.o: OPTIMIZER = -O0
-cwh_auxst.o: OPTIMIZER = -O0
+cwh_dst.o: OPTIMIZER = -O0 
+cwh_stab.o: OPTIMIZER = -O0 
+cwh_auxst.o: OPTIMIZER = -O0 
 endif

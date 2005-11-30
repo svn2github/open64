@@ -130,6 +130,7 @@ endif
 LANG_C_MSG_DIR=/usr/lib/locale/C/LC_MESSAGES
 
 LIBRARY = libffio.a
+PROF_LIB = libffio_p.a
 DSO     = libffio.so
 MSGFILE = lib.cat
 EXPFILE = lib.exp
@@ -141,7 +142,7 @@ EXPFILE = lib.exp
 ifeq ($(BUILD_TYPE), NONSHARED)
 LIB_TARGETS = $(LIBRARY)
 else
-LIB_TARGETS = $(DSO) $(LIBRARY)
+LIB_TARGETS = $(DSO) $(PROF_LIB) $(LIBRARY)
 LDIRT += $(LIBRARY)
 endif
 
@@ -178,7 +179,7 @@ FC += -Wa,-mips4
 endif
 ifeq ($(BUILD_ARCH), IA32)
 ## Do not build the f90 routines yet.
-SKIP_F90_ROUTINES = TRUE
+#SKIP_F90_ROUTINES = TRUE
 endif
 ifeq ($(BUILD_ARCH), IA64)
 endif
@@ -274,7 +275,11 @@ LF77INCS = $(LCINCS)
 
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
-	$(ranlib) $(LIBRARY)
+	$(ranlib) $@
+
+$(PROF_LIB): $(OBJECTS:%.o=%.pg.o)
+	$(ar) cru $@ $^
+	$(ranlib) $@
 
 ifeq ($(BUILD_ABI),I32BIT)
 ld += -m32

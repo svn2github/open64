@@ -1,6 +1,6 @@
 /*
 
-  Copyright 2004 PathScale, Inc.  All Rights Reserved.
+  Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -210,10 +210,11 @@ extern void (*p_ipa_init_link_line)(int, char **);
 extern void (*p_ipa_add_link_flag)(const char*);
 extern void (*p_ipa_driver)(int, char **);
 extern void (*p_process_whirl64)(void *, off_t, void *, int, const char *);
-#ifdef KEY
 extern void (*p_process_whirl32)(void *, off_t, void *, int, const char *);
-#endif
 extern void (*p_ipa_insert_whirl_marker)(void);
+#ifdef KEY
+extern void (*p_ipa_erase_link_flag)(const char*);
+#endif
 
 /* Function declarations
  */

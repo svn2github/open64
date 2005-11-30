@@ -413,7 +413,7 @@ compute_hotness (IPA_EDGE *edge, IPA_NODE *callee, INT callee_size)
     return (result_float);
 }
 
-static UINT32
+UINT32 // KEY
 Effective_weight (const IPA_NODE* node)  {
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
     if (IPA_Use_Effective_Size && node->Has_frequency ()) {
@@ -540,10 +540,11 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	
 	if (ed->Has_frequency ()) {
 #ifdef KEY
-	    if(ed->Get_frequency ().Value() == 0.0) {
+	    if(ed->Get_frequency ().Value() == 0.0)
 #else
-	    if(ed->Get_frequency ()._value == 0.0) {
+	    if(ed->Get_frequency ()._value == 0.0)
 #endif
+	    {
 		ed->Set_reason_id(32);
 		Report_Reason (callee, caller, "Edge is never invoked", ed);
 		return FALSE;
@@ -561,7 +562,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	    Report_Reason (callee, caller, "Edge is never invoked", ed);
 	    return FALSE;
 	}
-	
+
         if (callee_weight > IPA_PU_Minimum_Size) {
             if (combined_weight > IPA_PU_Limit) {
 		ed->Set_reason_id(26);
@@ -592,7 +593,8 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
                     if(density > IPA_Max_Density) {
                         ed->Set_reason_id(33);
                         ed->Set_reason_data(density);
-                        Report_Limit_Reason (callee, caller, ed, "Density (%f) > Max_density (%d)", density, IPA_Max_Density);
+			// KEY: use %f for IPA_Max_Density
+                        Report_Limit_Reason (callee, caller, ed, "Density (%f) > Max_density (%f)", density, (float)IPA_Max_Density);
                         return FALSE;
 		    }
 		}else{
@@ -673,6 +675,21 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	    Report_Limit_Reason (callee, caller, ed, "Olimit (%f) exceeds -OPT:Olimit=%f", Get_combined_olimit (caller->PU_Size(), callee->PU_Size(), callee), Olimit );
 	    return FALSE;
 	}
+
+#ifdef KEY
+	if (IPA_Enable_Branch_Heuristic)
+	{
+	    // ********** REMOVE THIS ************* 
+	    if (getenv ("branch"))
+	    	IPA_Min_Branch_Prob = atof (getenv("branch"));
+	    float branch_p = ed->Summary_Callsite()->Get_probability();
+	    if (branch_p >= 0 && branch_p < IPA_Min_Branch_Prob)
+	    {
+	    	fprintf (stderr, "%s not inlined into %s because branch probability %f < minimum probability %f\n", callee->Name(), caller->Name(), branch_p, IPA_Min_Branch_Prob);
+		return FALSE;
+	    }
+	}
+#endif
     }//
     
 #ifdef TODO
@@ -881,7 +898,14 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 static BOOL
 param_types_are_compatible (IPA_NODE* caller_node, IPA_NODE* callee_node, IPA_EDGE *ed)
 {
+#ifdef KEY
+    // num_formals is actually the lesser of the # of actual parameters and
+    // # of formal parameters.
+    INT num_formals = ed->Num_Actuals() < callee_node->Num_Formals() ? 
+    			ed->Num_Actuals() : callee_node->Num_Formals();
+#else
     INT num_formals = callee_node->Num_Formals();
+#endif
 
     if (!num_formals) // No types to check
 	return TRUE;
@@ -1029,6 +1053,53 @@ no_inline_pu_with_nested_pus(IPA_NODE* caller, IPA_GRAPH* cg)
     return FALSE;
 }
 
+#ifdef KEY
+#include "ir_bread.h"		// for WN_get_section_base
+#include "sys/elf_whirl.h"	// for WT_COMP_FLAGS
+// Fills in the vector with options
+static void
+get_command_options (IPA_NODE * node, vector<char *> &v)
+{
+    PU_IDX pu = ST_pu (node->Func_ST ());
+    const IP_FILE_HDR& hdr = *AUX_PU_file_hdr (Aux_Pu_Table [pu]);
+
+    char * base_addr = (char *) 
+    	WN_get_section_base (IP_FILE_HDR_input_map_addr (hdr), WT_COMP_FLAGS);
+    if (base_addr == (char *) -1)
+    	ErrMsg (EC_IR_Scn_Read, "command line", IP_FILE_HDR_file_name (hdr));
+
+    Elf64_Word argc = *((Elf64_Word *) base_addr);
+    Elf64_Word * args = (Elf64_Word *) (base_addr + sizeof (Elf64_Word));
+
+    v.reserve (sizeof (char *) * (argc - 1));
+    for (INT i=1; i<argc; ++i)
+    	v.push_back (base_addr + args[i]);
+}
+
+static BOOL
+different_options (IPA_NODE * caller, IPA_NODE * callee)
+{
+    vector<char *> caller_opt;
+    get_command_options (caller, caller_opt);
+
+    vector<char *> callee_opt;
+    get_command_options (callee, callee_opt);
+
+    if (caller_opt.size() != callee_opt.size())
+    	return TRUE;
+
+    sort (caller_opt.begin(), caller_opt.end(), option_cmp());
+    sort (callee_opt.begin(), callee_opt.end(), option_cmp());
+
+    UINT size = caller_opt.size();
+
+    for (UINT i=0; i<size; ++i)
+    	if (strcmp (caller_opt[i], callee_opt[i]))
+	  return TRUE;
+
+    return FALSE;
+}
+#endif
 
 /*-------------------------------------------------------------*/
 /* check to see if we should be inlining                       */
@@ -1146,7 +1217,14 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	result = FALSE;
 	reason = "function with alternate entry point";
 	ed->Set_reason_id (8);
-    } else if (ed->Num_Actuals() < callee->Num_Formals()) {
+    }
+#ifdef KEY
+    else if (!INLINE_Param_Mismatch 
+    	     && ed->Num_Actuals() < callee->Num_Formals())
+#else
+    else if (ed->Num_Actuals() < callee->Num_Formals())
+#endif
+    {
 	result = FALSE;
 	reason = "number of parameters mismatched";
 	ed->Set_reason_id (9);
@@ -1255,6 +1333,19 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	        ed->Set_reason_id (23);
 	result = FALSE;
     } 
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    else if (Opt_Options_Inconsistent && 
+    	     caller->File_Id() != callee->File_Id()) {
+    // The caller and callee come from different files, check if they
+    // are to be compiled with different options
+    	if (different_options (caller, callee)) {
+	    result = FALSE;
+	    reason = "optimization options are different for caller and callee";
+	    ed->Set_reason_id (34);
+	}
+    }
+    // The following else-if must be last
+#endif
     else if (!IPA_Enable_Lang) {
 	if ((callee->Summary_Proc()->Get_lang() == LANG_F77) || 
 	    (caller->Summary_Proc()->Get_lang() == LANG_F77)) {
@@ -1457,6 +1548,107 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
 /*-------------------------------------------------------------------------*/
 /* Solve the interprocedural analysis phase of inlining.                   */
 /*-------------------------------------------------------------------------*/
+
+#ifdef KEY
+
+// invocation freq for each IPA_EDGE during inline analysis
+typedef AUX_IPA_EDGE<float> INVOCATION_FREQ;
+
+// comparision function object for sorting the callsites
+struct INVOCATION_FREQ_COMP
+{
+  const INVOCATION_FREQ& freq_vector;
+
+  INVOCATION_FREQ_COMP( const INVOCATION_FREQ& c ) : freq_vector (c) {}
+
+  BOOL operator() (IPA_EDGE_INDEX e1, IPA_EDGE_INDEX e2) const {
+    return freq_vector[e1] > freq_vector[e2];
+  }
+};
+
+
+void Perform_Inline_Analysis2( IPA_CALL_GRAPH* cg, MEM_POOL* pool )
+{
+  INVOCATION_FREQ freq_vector( cg, pool );
+    
+  if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+    Verbose_inlining = fopen ("Verbose_inlining.log", "w");
+    N_inlining = fopen ("N_inlining.log", "w");
+    Y_inlining = fopen ("Y_inlining.log", "w");
+    e_weight = fopen ("callee_wght.log","w");
+  }
+
+  Init_inline_parameters ();
+
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+  if( IPA_Enable_DFE ){
+    inline_count = CXX_NEW (INLINE_COUNTER_ARRAY (cg, pool), pool);
+  }
+#endif // !_STANDALONE_INLINER
+
+  EDGE_INDEX_VECTOR callsite_list;
+
+  IPA_NODE_ITER cg_iter( cg, PREORDER, pool );
+
+  /* traverse all nodes at PREORDER */
+  for( cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next() ){
+    IPA_NODE* caller = cg_iter.Current();
+
+    if( caller == NULL ||
+	caller->Should_Be_Skipped() ||
+	cg->Num_Out_Edges(caller) == 0 ){
+      Total_Not_Inlined++;
+      continue;
+    }
+
+    IPA_SUCC_ITER edge_iter( cg, caller );
+
+    for( edge_iter.First (); !edge_iter.Is_Empty (); edge_iter.Next() ){
+      IPA_EDGE *edge = edge_iter.Current_Edge ();
+
+      if( edge != NULL &&
+	  edge->Has_frequency() ){
+	const FB_FREQ freq = edge->Get_frequency();
+
+	if( freq.Known() &&
+	    freq.Value() > 0 ){
+	  const IPA_EDGE_INDEX idx = edge->Array_Index();
+	  freq_vector[idx] = freq.Value();
+	  callsite_list.push_back (idx);
+	}
+      }
+    }   
+  }    
+
+  sort( callsite_list.begin(),
+	callsite_list.end(),
+	INVOCATION_FREQ_COMP( freq_vector ) );
+
+  for( EDGE_INDEX_VECTOR::iterator first = callsite_list.begin();
+       first != callsite_list.end();
+       first++ ){
+    IPA_EDGE* edge = cg->Edge(*first);
+    Analyze_call( cg->Caller(edge), edge, cg );
+  }
+
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+  if( IPA_Enable_DFE ){
+    CXX_DELETE (inline_count, pool);
+    inline_count = NULL;
+  }
+#endif  // !_STANDALONE_INLINER
+
+  if( Get_Trace ( TP_IPA, IPA_TRACE_TUNING) ){
+    fclose(e_weight);
+    fclose(Y_inlining);
+    fclose(N_inlining);
+    fclose(Verbose_inlining);
+  }
+
+  //return Perform_Inline_Analysis( cg, pool );
+}
+#endif // KEY
+
 void
 Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
 {

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -2073,9 +2077,14 @@ extern	void init_type(void)
       COMPLEX_DEFAULT_TYPE	  = double_linear_type[Fortran_Complex];
       LOGICAL_DEFAULT_TYPE	  = double_linear_type[Fortran_Logical];
       REAL_DEFAULT_TYPE		  = double_linear_type[Fortran_Real];
-
+// Bug 2238
+# ifdef KEY
+      type_init_tbl[DOUBLE_PRECISION_TYPE_IDX].fld.linear_type =
+                                    init_default_linear_type[Fortran_Double];
+# else
       type_init_tbl[DOUBLE_PRECISION_TYPE_IDX].fld.linear_type =
                                     double_linear_type[Fortran_Double];
+# endif
 
       type_init_tbl[DOUBLE_COMPLEX_TYPE_IDX].fld.linear_type =
                                     double_linear_type[Fortran_Double_Complex];

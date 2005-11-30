@@ -91,6 +91,10 @@ extern string_list_t * init_string_list (void);
 
 /* add string to end of list */
 extern void add_string (string_list_t *list, char *s);
+
+/* add string after item in list */
+extern void add_after_string (string_list_t *list, string_item_t *item, char *s);
+
 /* add each blank-separated substring to end of list */
 extern void add_multi_strings (string_list_t *list, char *s);
 
@@ -113,4 +117,28 @@ extern const char *ends_with(const char *s, const char *sfx);
 	for (p = list->head; p != NULL; p = p->next)
 #define STRING_NAME(p)	(p->name)
 
+#ifdef KEY
+/* linked list of string pairs */
+typedef struct string_pair_item_rec {
+	char *key;
+	char *val;
+	struct string_pair_item_rec *next;
+} string_pair_item_t;
+typedef struct string_pair_list_rec {
+	string_pair_item_t *head;
+	string_pair_item_t *tail;
+} string_pair_list_t;
+
+/* must call this before using a string pair list */
+extern string_pair_list_t * init_string_pair_list (void);
+
+/* add string pair to end of list */
+extern void add_string_pair (string_pair_list_t *list, char *key, char *val);
+
+/* iterator */
+#define FOREACH_STRING_PAIR(p,list)	\
+	for (p = list->head; p != NULL; p = p->next)
+#define STRING_PAIR_KEY(p)	(p->key)
+#define STRING_PAIR_VAL(p)	(p->val)
+#endif	// KEY
 #endif

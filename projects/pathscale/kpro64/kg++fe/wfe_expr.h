@@ -44,7 +44,7 @@ extern "C" {
 extern void WFE_Expr_Init (void);
 
 /* expand one gnu stmt tree into symtab & whirl */
-extern void WFE_One_Stmt (tree exp);
+extern void WFE_One_Stmt (tree exp, WN* target_wn = NULL);
 
 #ifdef KEY
 /* same as WFE_One_Stmt but use new label indexes */
@@ -75,7 +75,8 @@ extern WN * WFE_Expand_Expr (tree exp,
 
 extern WN  *WFE_Rcomma_Block;
 extern int  WFE_Disable_Rcomma;
-extern WN* WFE_Expand_Expr_With_Sequence_Point (tree exp, TYPE_ID mtype);
+extern WN* WFE_Expand_Expr_With_Sequence_Point (tree exp, TYPE_ID mtype,
+						WN *target_wn = NULL);
 
 /* rhs is the WN representing the rhs of a MODIFY_EXPR node; this routine
  * processes the lhs of the node and generate the appropriate form of store

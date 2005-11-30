@@ -117,7 +117,9 @@ extern BOOL Cfold_Intrinsics_Set;	/* ... option seen? */
 extern BOOL CIS_Allowed;	/* sin(x) and cos(x) => cis(x) ? */
 extern BOOL Div_Split_Allowed;	/* Change a/b --> a*1/b ? */
 #ifdef KEY
-extern UINT32 Div_Exe_Counter;	/* Change a/b --> a/N if b==N ? */
+extern UINT32 Div_Exe_Counter;	  /* Change a/b --> a/N if b==N ?             */
+extern UINT32 Div_Exe_Ratio;	  /* Change a/b --> a/N if b has high ratio   */
+extern UINT32 Div_Exe_Candidates; /* The top entries that will be taken care. */
 #endif
 extern BOOL Fast_Exp_Allowed;	/* Avoid exp() calls? */
 extern BOOL Fast_IO_Allowed;	/* Fast printf/scanf/printw */
@@ -159,6 +161,7 @@ extern OPTION_LIST* Feedback_Option;
 #ifdef KEY
 extern BOOL profile_arcs;
 extern BOOL Asm_Memory;
+extern INT32 Enable_WN_Simp_Expr_Limit;
 #endif
 #ifdef __cplusplus
 }

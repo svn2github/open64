@@ -495,9 +495,6 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
       if( CG_min_spill_loc_size && TN_size(tn) <= 4 ){
 	mem_type = TN_is_float(tn) ? Spill_Float32_Type : Spill_Int32_Type;
       }
-      
-      Is_True( TN_size(tn) <= MTYPE_byte_size(TY_mtype(mem_type)),
-	       ("TN size is larger than the size of spill type.") );
 #endif
 
       if (client == CGSPILL_GRA) {
@@ -771,10 +768,17 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
 #endif
 	break;
       case OPC_I4INTCONST:
+	const_tn = Gen_Literal_TN ((INT32) WN_const_val(home), 4);
+	break;
       case OPC_U4INTCONST:
+#ifdef TARG_X8664
+	/* Opteron will zero-out the higher 32-bit. (bug#3387) */
+	const_tn = Gen_Literal_TN ((UINT32) WN_const_val(home), 4);
+#else
 	/* even for U4 we sign-extend the value
 	 * so it matches what we want register to look like */
 	const_tn = Gen_Literal_TN ((INT32) WN_const_val(home), 4);
+#endif // TARG_X8664
 	break;
       default:
 	ErrMsg (EC_Unimplemented,
@@ -832,6 +836,7 @@ CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
     if (WN_operator(home) == OPR_LDID) {
       Exp_Store (OPCODE_desc(WN_opcode(home)), src_tn, WN_st(home),
 		 WN_offset(home), ops, V_NONE);
+
     } else if (Trace_Remat) {
 #pragma mips_frequency_hint NEVER
       Check_Phase_And_PU();

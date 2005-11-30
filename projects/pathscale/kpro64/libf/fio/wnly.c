@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -558,6 +562,15 @@ ret:
 	return(ss);
 }
 
+static int dont_display_repeats;
+
+static void should_display_repeats(void) __attribute__((constructor));
+
+static void should_display_repeats(void)
+{
+	dont_display_repeats = getenv("FTN_SUPPRESS_REPEATS") != NULL;
+}
+
 /*
  * find_rep: find and put out the repeat count.
  * Returns a pointer to the last repeated value.
@@ -577,6 +590,11 @@ find_rep(
 	int	i;
 	long	*p1, *p2, *q1, *q2; 
 
+	if (dont_display_repeats) {
+		*lcount = 1;
+		return ptr;
+	}
+	
 	p1	= ptr;
 	q1	= ptr + inc;
 
