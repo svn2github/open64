@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* A Bison parser, made from gengtype-yacc.y
    by GNU bison 1.35.  */
 

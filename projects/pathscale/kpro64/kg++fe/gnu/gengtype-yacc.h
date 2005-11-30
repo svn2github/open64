@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ */
+
 #ifndef BISON_GENGTYPE_YACC_H
 # define BISON_GENGTYPE_YACC_H
 
