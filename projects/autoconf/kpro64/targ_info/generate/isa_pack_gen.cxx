@@ -321,7 +321,7 @@ void Instruction_Pack_Group(ISA_PACK_TYPE pack_type, ...)
     for (i = 0; i < words; ++i) {
       unsigned long long opcode_mask;
       opcode_mask = inst_bits > 32 ? va_arg(ap,unsigned long long)
-				   : va_arg(ap,unsigned long);
+				   : va_arg(ap,unsigned int);
       op_pack->opcode_mask[i] = opcode_mask;
     }
     for (i = words; i < MAX_WORDS; ++i) op_pack->opcode_mask[i] = 0;
@@ -649,9 +649,9 @@ void ISA_Pack_End(void)
     op_assembly *op_pack = op_packs[top];
     fprintf(cfile, "  {");
     for (w = 0; w < inst_words; ++w) {
-      fprintf(cfile, " 0x%0*llx%s,",
-		     init_digits, op_pack ? op_pack->opcode_mask[w] : 0LL,
-		     int_suffix);
+      fprintf(cfile, " 0x%0*llx%s,", init_digits,
+		(long long)(op_pack ? op_pack->opcode_mask[w] : 0),
+		int_suffix);
     }
     fprintf(cfile, " }, /* %s */\n", TOP_Name((TOP)top));
 
