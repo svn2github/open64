@@ -233,7 +233,7 @@ typedef unsigned char mBOOL;
 #ifndef FALSE
 #define FALSE   ((BOOL) 0)
 #endif
-#if defined(_LANGUAGE_C) && !defined(inline)
+#if !defined(__cplusplus) && !defined(inline)
 #define inline static __inline
 #endif
 #endif
