@@ -7,6 +7,8 @@ AM_INIT_AUTOMAKE
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_INSTALL
+AC_PROG_RANLIB
+AC_FUNC_ALLOCA
 AC_CONFIG_FILES([Makefile
 		 kpro64/Makefile
 		 kpro64/targ_info/Makefile])
