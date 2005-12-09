@@ -49,7 +49,13 @@
 //  $Author: marcel $
 //  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_bundle_gen.cxx,v $
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -711,7 +717,7 @@ static void Emit_Pack_Component(
   if (first_comps[comp] < 0) first_comps[comp] = *pack_index;
 
   if (comp == END) {
-    fprintf (cfile, "  { %-30s, %2d, %2d, %2d,   %16lld },  /* %s */\n",
+    fprintf (cfile, "  { %-30s, %2d, %2d, %2d, %16lldll },  /* %s */\n",
 		    pack_comp_name[comp],
 		    -1,
 		    -1,
@@ -740,7 +746,7 @@ static void Emit_Pack_Component(
       int b = bundle_pos % incr;
       int w = width;
       if (b + width > incr) w = incr - b;
-      fprintf (cfile, "  { %-30s, %2d, %2d, %2d, 0x%016llx },  /* %s */\n",
+      fprintf (cfile, "  { %-30s, %2d, %2d, %2d, 0x%016llxll },  /* %s */\n",
 		      pack_comp_name[comp],
 		      index,
 		      comp_pos,
