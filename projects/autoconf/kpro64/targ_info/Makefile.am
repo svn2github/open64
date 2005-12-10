@@ -134,11 +134,5 @@ proc_properties_gen.${OBJEXT}: targ_proc.h
 
 AM_CPPFLAGS = -I${srcdir}/generate
 
-# XXX hardcode for now.
-#TARG=ia64
-#AM_CPPFLAGS += -DTARG_IA64
-TARG=x8664
-AM_CPPFLAGS += -DTARG_X8664
-
-VPATH = ${srcdir}/abi/${TARG} ${srcdir}/access ${srcdir}/generate \
-	${srcdir}/isa/${TARG} ${srcdir}/proc/${TARG}
+VPATH = ${srcdir}/abi/${TARG_SUBDIR} ${srcdir}/access ${srcdir}/generate \
+	${srcdir}/isa/${TARG_SUBDIR} ${srcdir}/proc/${TARG_SUBDIR}
