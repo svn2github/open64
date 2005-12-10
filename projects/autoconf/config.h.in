@@ -41,5 +41,11 @@
 	STACK_DIRECTION = 0 => direction of growth unknown */
 #undef STACK_DIRECTION
 
+/* Define when building an ia64 compiler */
+#undef TARG_IA64
+
+/* Define when building an amd64 compiler */
+#undef TARG_X8664
+
 /* Version number of package */
 #undef VERSION

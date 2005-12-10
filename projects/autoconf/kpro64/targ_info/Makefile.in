@@ -215,8 +215,8 @@ DIST_SOURCES = $(libtarginfo_a_SOURCES) $(abi_properties_gen_SOURCES) \
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-VPATH = ${srcdir}/abi/${TARG} ${srcdir}/access ${srcdir}/generate \
-	${srcdir}/isa/${TARG} ${srcdir}/proc/${TARG}
+VPATH = ${srcdir}/abi/${TARG_SUBDIR} ${srcdir}/access ${srcdir}/generate \
+	${srcdir}/isa/${TARG_SUBDIR} ${srcdir}/proc/${TARG_SUBDIR}
 
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
@@ -264,6 +264,7 @@ RANLIB = @RANLIB@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
+TARG_SUBDIR = @TARG_SUBDIR@
 VERSION = @VERSION@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
@@ -363,12 +364,7 @@ proc_properties_gen_SOURCES = gen_util.cxx proc_properties.cxx \
 	proc_properties_gen.cxx
 
 nodist_proc_properties_gen_SOURCES = targ_proc.c
-AM_CPPFLAGS = -I${srcdir}/generate -DTARG_X8664
-
-# XXX hardcode for now.
-#TARG=ia64
-#AM_CPPFLAGS += -DTARG_IA64
-TARG = x8664
+AM_CPPFLAGS = -I${srcdir}/generate
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
