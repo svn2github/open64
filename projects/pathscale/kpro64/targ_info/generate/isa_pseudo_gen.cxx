@@ -49,13 +49,19 @@
 //  $Author: marcel $
 //  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_pseudo_gen.cxx,v $
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
 #include <strings.h>
-#include <alloca.h>
 #include <list>
 #include <vector>
 #include "topcode.h"
