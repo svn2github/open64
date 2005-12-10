@@ -36,6 +36,9 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #ifdef _KEEP_RCS_ID
 static const char source_file[] = __FILE__;
