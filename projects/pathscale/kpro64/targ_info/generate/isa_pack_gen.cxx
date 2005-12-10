@@ -457,11 +457,12 @@ void ISA_Pack_End(void)
   const char * const isa_pack_null_format = 
 			"  { %-22s, %2d, %2d,   %*d },  /* %s */\n";
   const char * const isa_pack_operand_format = 
-			"  { %-22s, %2d, %2d, 0x%0*llx },  /* %s, OPND%d */\n";
+			"  { %-22s, %2d, %2d, 0x%0*llx%s },  /* %s, OPND%d */\n";
   const char * const isa_pack_result_format = 
-			"  { %-22s, %2d, %2d, 0x%0*llx },  /* %s, RESULT%d */\n";
+			"  { %-22s, %2d, %2d, 0x%0*llx%s },  /* %s, RESULT%d */\n";
   int init_digits;
   int mask_digits;
+  const char *int_suffix;
   int top;
   bool err;
   bool only_zero_opndpos;
@@ -487,6 +488,8 @@ void ISA_Pack_End(void)
     }
   }
   if (err) exit(EXIT_FAILURE);
+
+  int_suffix = (inst_bits > 32 || mask_width > 32) ? "ull" : "u";
 
   // setup types and formats depending on instruction size.
   if (inst_bits > 32) {
@@ -583,7 +586,7 @@ void ISA_Pack_End(void)
 			Print_Name(curr_atype->name), 
 			curr_atype->opnd_position,
 			curr_atype->inst_position,
-			mask_digits, Mask(curr_atype->width),
+			mask_digits, Mask(curr_atype->width), int_suffix,
 			curr_ptype->name, 
 			i++);
       }
@@ -595,7 +598,7 @@ void ISA_Pack_End(void)
 			Print_Name(curr_atype->name), 
 			curr_atype->opnd_position,
 			curr_atype->inst_position,
-			mask_digits, Mask(curr_atype->width),
+			mask_digits, Mask(curr_atype->width), int_suffix,
 			curr_ptype->name,
 			i++);
       }
@@ -646,8 +649,9 @@ void ISA_Pack_End(void)
     op_assembly *op_pack = op_packs[top];
     fprintf(cfile, "  {");
     for (w = 0; w < inst_words; ++w) {
-      fprintf(cfile, " 0x%0*llx,",
-		     init_digits, op_pack ? op_pack->opcode_mask[w] : 0LL);
+      fprintf(cfile, " 0x%0*llx%s,",
+		     init_digits, op_pack ? op_pack->opcode_mask[w] : 0LL,
+		     int_suffix);
     }
     fprintf(cfile, " }, /* %s */\n", TOP_Name((TOP)top));
 
