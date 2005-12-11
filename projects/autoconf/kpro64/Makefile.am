@@ -1,1 +1,1 @@
-SUBDIRS = targ_info
+SUBDIRS = targ_info arith
