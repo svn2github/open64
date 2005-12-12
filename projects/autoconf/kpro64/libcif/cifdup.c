@@ -54,7 +54,6 @@ static char USMID[] = "@(#) libcif/cifdup.c	30.5	07/26/96 07:19:13";
 #endif
 
 #include <stdlib.h>
-#include <malloc.h>
 #include <stdio.h>
 #include <string.h>
 
