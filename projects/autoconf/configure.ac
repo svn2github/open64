@@ -31,5 +31,6 @@ AC_CONFIG_FILES([Makefile
 		 kpro64/Makefile
 		 kpro64/arith/Makefile
 		 kpro64/libcif/Makefile
+		 kpro64/libcmplrs/Makefile
 		 kpro64/targ_info/Makefile])
 AC_OUTPUT
