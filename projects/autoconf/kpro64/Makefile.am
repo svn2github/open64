@@ -1,1 +1,1 @@
-SUBDIRS = targ_info arith
+SUBDIRS = targ_info arith libcif
