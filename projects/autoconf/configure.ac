@@ -13,7 +13,7 @@ AC_PROG_RANLIB
 AC_FUNC_ALLOCA
 
 case $target_cpu in 
-    amd64|x86_64)
+    amd64|x86_64|i386)
 	AC_DEFINE(TARG_X8664,1,[Define when building an amd64 compiler])
 	TARG_SUBDIR=x8664
 	;;
