@@ -4417,7 +4417,7 @@ echo "$as_me: error: *** Unsupported target architecture: $target_cpu" >&2;}
 esac
 
 
-                                                  ac_config_files="$ac_config_files Makefile kpro64/Makefile kpro64/arith/Makefile kpro64/libcif/Makefile kpro64/targ_info/Makefile"
+                                                            ac_config_files="$ac_config_files Makefile kpro64/Makefile kpro64/arith/Makefile kpro64/libcif/Makefile kpro64/libcmplrs/Makefile kpro64/targ_info/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4979,6 +4979,7 @@ do
   "kpro64/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/Makefile" ;;
   "kpro64/arith/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/arith/Makefile" ;;
   "kpro64/libcif/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/libcif/Makefile" ;;
+  "kpro64/libcmplrs/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/libcmplrs/Makefile" ;;
   "kpro64/targ_info/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/targ_info/Makefile" ;;
   "depfiles" ) CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
   "config.h" ) CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
