@@ -45,7 +45,6 @@ Initializer and space-requester
 
 */
 #include <stdio.h>
-#include <malloc.h>
 #include <string.h>
 #include <stdlib.h>
 #include "array_alloc.h"

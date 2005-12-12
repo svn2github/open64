@@ -87,7 +87,6 @@
  *
  ****************************************************************************
  */
-#include <bstring.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -241,8 +240,8 @@ char * MDstrcatdup ( const char *s1, const char *s2 ) {
 	s2_len	= strlen(s2);
 	targ_len= s1_len + s2_len;
 	targ = (char*)malloc(targ_len);
-	bcopy(s1,targ,s1_len);
-	bcopy(s2,&targ[s1_len], s2_len);
+	memcpy(targ, s1, s1_len);
+	memcpy(&targ[s1_len], s2, s2_len);
 	targ[targ_len]='\0';
 	return targ;
 }
@@ -693,7 +692,7 @@ MDclose(MDhandle h, char *target)
 	if ( 0 < md.stb.st_size ) {
 		md.base = mmap	( 0, md.stb.st_size, PROT_READ|PROT_WRITE
 				, MAP_SHARED, md.f, 0);
-		if ((int) md.base < 0) 
+		if (md.base == MAP_FAILED) 
 			ERR(("mmap (%s): %s", md.filename, strerror(errno)));
 		md.size  = md.stb.st_size;
 		md.limit = md.base + md.size;
