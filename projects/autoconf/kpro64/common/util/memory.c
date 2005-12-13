@@ -40,7 +40,7 @@
 
 #include <sys/types.h>
 #include <malloc.h>
-#include <bstring.h>
+#include <strings.h>
 #include "defs.h"
 #include "mempool.h"
 #include "tracing.h"
