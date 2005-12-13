@@ -55,11 +55,11 @@
  * This file is included in common/com/config.c.
  *
  * Declarations of -OPT flags should be put here, instead of in
- * config.h.  The intent is to allow updates of the -OPT group
- * without forcing recompilation of everything that includes config.h.
- * (However, the transfer of the flags' definitions here from config.h
- * is not yet complete, so most of the old ones still require
- * config.h.)
+ * config_global.h.  The intent is to allow updates of the -OPT
+ * group without forcing recompilation of everything that includes
+ * config_global.h. (However, the transfer of the flags' definitions
+ * here from config_global.h is not yet complete, so most of the old
+ * ones still require config_global.h.)
  *
  * ====================================================================
  * WARNING: WHENEVER A NEW FLAG IS ADDED:

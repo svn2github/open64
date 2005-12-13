@@ -63,7 +63,7 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "erglob.h"
 
 #include "strtab.h"

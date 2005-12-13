@@ -37,7 +37,7 @@
 
 #ifndef symtab_verify_INCLUDED
 #define symtab_verify_INCLUDED
-#include "config.h" // For LANG_Symtab_Verify_On
+#include "config_global.h" // For LANG_Symtab_Verify_On
 
 //
 // Extern interface for Symbol Table Verifiers; 

@@ -55,8 +55,8 @@
  *
  * NOTE:  This interface should only be visible to modules involved in
  * configuration and other initialization.  More widely-visible
- * configuration options belong in config.h and related files.  See
- * config.h for a more complete discussion.
+ * configuration options belong in config_global.h and related files.
+ * See config_global.h for a more complete discussion.
  *
  *
  * Exported types:
@@ -261,7 +261,7 @@
  *
  * SEE ALSO:
  *
- *	com/config.h	General configuration options.
+ *	com/config_global.h	General configuration options.
  *	com/controls.h	Flag/pragma-based compiler control options.
  *
  * ====================================================================

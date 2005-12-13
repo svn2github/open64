@@ -57,7 +57,7 @@
 #include "defs.h"		// INT32
 #include "region_util.h"	// debug flags
 #include "tracing.h"		// Get_Trace
-#include "config.h"		// Opt_Level
+#include "config_global.h"	// Opt_Level
 #include "phase.h"		// BE_PHASES
 #include "driver_util.h"	// Process_Command_Line
 #include "cxx_memory.h"		// CXX_NEW_ARRAY

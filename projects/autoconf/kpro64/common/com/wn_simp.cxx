@@ -61,7 +61,7 @@
 #include "wn_util.h"
 #include "ir_reader.h"
 
-#include "config.h"
+#include "config_global.h"
 #include "config_opt.h"
 #include "config_targ.h"
 

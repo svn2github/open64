@@ -56,7 +56,7 @@ extern "C" {
  * This file defines general configuration parameters which are
  * specific to the compiler's host machine and system.
  *
- * See com/config.h for a detailed description of configuration
+ * See com/config_global.h for a detailed description of configuration
  * parameters, where they are declared, and how they are processed.
  *
  * See also:

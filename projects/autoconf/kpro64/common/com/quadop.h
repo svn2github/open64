@@ -63,7 +63,7 @@ extern "C" {
  *    operations or for some other reason), it does not matter what
  *    the operations defined below do.  They will never be used.
  *
- *    md_ctarg.h and config.h will respectively define 
+ *    md_ctarg.h and config_global.h will respectively define 
  *    CTARG_NEEDS_QUAD_OPS and TARG_NEEDS_QUAD_OPS to FALSE. Somewhere
  *    in tran.c we will check that they are defined to same values.
  *
@@ -90,7 +90,7 @@ extern "C" {
  *    written to actually do double precision operations, as long as 
  *    the QUAD_TYPE ise defined to be a 16 byte struct.
  *
- *    md_ctarg.h and config.h will respectively define 
+ *    md_ctarg.h and config_global.h will respectively define 
  *    CTARG_NEEDS_QUAD_OPS and TARG_NEEDS_QUAD_OPS to TRUE.  Somewhere
  *    in tran.c we will check that they are defined to same values.
  *

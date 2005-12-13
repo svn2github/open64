@@ -49,7 +49,7 @@
 #include <ext/algorithm>
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "tracing.h"			// for DBar
 #include "cxx_memory.h"			// for CXX_NEW
 

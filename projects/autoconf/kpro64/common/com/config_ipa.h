@@ -61,7 +61,7 @@ struct option_list;
 extern "C" {
 #endif /* __cplusplus */
 
-/* Defined in config.h -- here too to avoid including that: */
+/* Defined in config_global.h -- here too to avoid including that: */
 extern BOOL Tracing_Enabled;	/* Any trace options set? */
 
 /* ====================================================================

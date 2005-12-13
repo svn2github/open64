@@ -65,7 +65,7 @@ char *Feedback_Filename = NULL;
 char *Annotation_Filename = NULL;
 FILE *Ipa_File = NULL;		/* IPAA summary file (if open) */
 
-/* Skiplist support from config.h: */
+/* Skiplist support from config_global.h: */
 typedef struct skiplist SKIPLIST;
 SKIPLIST *Build_Skiplist ( OPTION_LIST *olist );
 

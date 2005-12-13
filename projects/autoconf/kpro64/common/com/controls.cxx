@@ -74,7 +74,7 @@
 
 #include "defs.h"
 #include "controls.h"
-#include "config.h"
+#include "config_global.h"
 #include "erglob.h"
 #include "glob.h"
 #include "tracing.h"

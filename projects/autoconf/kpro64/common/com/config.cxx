@@ -56,8 +56,8 @@
  *
  * Configuration data and routines to set up configuration.
  *
- * Refer to the	discussion in config.h for the distribution of such
- * data	and processing among the various configuration files.
+ * Refer to the discussion in config_global.h for the distribution of
+ * such data and processing among the various configuration files.
  *
  * ====================================================================
  * ====================================================================
@@ -85,7 +85,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/con
 #define USE_STANDARD_TYPES 1
 #include "defs.h"
 #include "em_elf.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_platform.h"
 #include "config_targ.h"
 #include "erglob.h"
@@ -1635,8 +1635,8 @@ Configure_Alias_Options( OPTION_LIST *olist )
  * SKIPLIST
  *
  * Support for lists of PU numbers to skip (e.g. for optimization)
- * based on options in a command line group.  A typedef for SKIPLIST
- * is defined in config.h, but the type is opaque outside; for now,
+ * based on options in a command line group.  A typedef for SKIPLIST is
+ * defined in config_global.h, but the type is opaque outside; for now,
  * Build_Skiplist and Query_Skiplist are the only visible interface.
  *
  * This interface is sufficiently generic that it could go into flags.*

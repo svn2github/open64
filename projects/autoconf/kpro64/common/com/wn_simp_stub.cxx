@@ -49,7 +49,7 @@ places where we don't want it. */
 #include "wn_util.h"
 #include "ir_reader.h"
 
-#include "config.h"
+#include "config_global.h"
 #include "config_targ.h"
 
 #include "const.h"

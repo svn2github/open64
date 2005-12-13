@@ -63,7 +63,7 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #include "flags.h"
 #include "erglob.h"
 #include "tracing.h"		/* Is_Trace */
-#include "config.h"		/* Opt_Level */
+#include "config_global.h"	/* Opt_Level */
 
 extern char *SBar;	/* Line of dashes from tracing.h */
 

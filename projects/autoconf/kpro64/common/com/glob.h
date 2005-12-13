@@ -63,9 +63,9 @@ extern "C" {
  * which don't belong anywhere else.
  *
  * Also, external interface to global compiler data which doesn't
- * belong anywhere else.  See com/config.h for a general discussion
- * of where global configuration and option data declarations are
- * placed.
+ * belong anywhere else.  See com/config_global.h for a general
+ * discussion of where global configuration and option data
+ * declarations are placed.
  *
  * All of this data is currently located in the process driver,
  * bedriver.c for the back end.

@@ -68,7 +68,7 @@
 #include "targ_const.h"
 #include "const.h"
 #include "strtab.h"
-#include "config.h"
+#include "config_global.h"
 #ifdef BACK_END
 #include "fb_whirl.h"
 #include "tracing.h"

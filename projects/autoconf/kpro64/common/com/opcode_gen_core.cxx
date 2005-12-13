@@ -41,7 +41,7 @@
 
 #include "errors.h"
 #include "opcode.h"
-#include "config.h"
+#include "config_global.h"
 
 struct OPERATOR_info_struct OPERATOR_info[OPERATOR_LAST+1] = {
 

@@ -40,7 +40,7 @@
 #include "config_targ.h"
 #include "mempool.h"
 #include "mempool_allocator.h"
-#include "config.h"
+#include "config_global.h"
 #include "opcode.h"
 #include "symtab.h"
 #include "strtab.h"
