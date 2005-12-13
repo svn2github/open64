@@ -48,7 +48,6 @@ INCLUDE_SUBDIRS = \
 #  Next, all of the libraries are built because the tools depend on them.
 #
 LIBRARY_SUBDIRS = \
-	init \
 	libfortran \
 	libgcc \
 	libmp \
