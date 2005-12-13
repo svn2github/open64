@@ -192,9 +192,15 @@ LIT_RANGE ISA_Create_Lit_Range(const char *name, long long min, long long max)
   return range;
 }
 
+#ifndef LONG_LONG_MAX
 #define	LONG_LONG_MAX	0x7fffffffffffffffll
+#endif
+#ifndef LONG_LONG_MIN
 #define	LONG_LONG_MIN	(-LONG_LONG_MAX - 1ll)
+#endif
+#ifndef ULONG_LONG_MAX
 #define	ULONG_LONG_MAX	0xffffffffffffffffull
+#endif
 
 /////////////////////////////////////
 void ISA_Create_Lit_Class(const char* name, LIT_CLASS_TYPE type, ...)
