@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -110,10 +110,11 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_PREDEF+1] =
     {"unsigned long long", "_UINT64"},          /* MTYPE_U8 = 9 */
     {"float",              "_IEEE32"},          /* MTYPE_F4 = 10 */
     {"double",             "_IEEE64"},          /* MTYPE_F8 = 11 */
-    {Name_Unknown_Type,    "_IEEE80"},          /* MTYPE_F10 = 12 */
 #ifndef TARG_X8664
+    {Name_Unknown_Type,    "_IEEE80"},          /* MTYPE_F10 = 12 */
     {Name_Unknown_Type,    "_IEEE128"}  /* MTYPE_F16 = 13 = MTYPE_PREDEF */
 #else
+    {Name_Unknown_Type,        ""},             /* MTYPE_V16C4 = 12 */
     {Name_Unknown_Type,        "_IEEE128"},     /* MTYPE_F16 = 13 */
     {Name_Unknown_Type,        ""},             /* MTYPE_STRING = 14 */
     {Name_Unknown_Type,        ""},             /* MTYPE_FQ = 15 */
@@ -125,8 +126,8 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_PREDEF+1] =
     {Name_Unknown_Type,        ""},             /* MTYPE_BS = 21 */
     {Name_Unknown_Type,        ""},             /* MTYPE_A4 = 22 */
     {Name_Unknown_Type,        ""},             /* MTYPE_A8 = 23 */
-    {Name_Unknown_Type,        ""},             /* MTYPE_C10 = 24 */
-    {Name_Unknown_Type,        ""},             /* MTYPE_C16 = 25 */
+    {Name_Unknown_Type,        "_CMPLX8[2]"},   /* MTYPE_V16C4 = 24 */
+    {Name_Unknown_Type,        "_CMPLX16[1]"},  /* MTYPE_V16C8 = 25 */
     {"signed char[16]",        "_INT8[16]"},    /* MTYPE_V16I1 = 26 */
     {"signed short[8]",        "_INT16[8]"},    /* MTYPE_V16I2 = 27 */
     {"signed int[4]",          "_INT32[4]"},    /* MTYPE_V16I4 = 28 */

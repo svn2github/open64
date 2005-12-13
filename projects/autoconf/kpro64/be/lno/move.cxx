@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -373,6 +373,9 @@ extern WN* Hoist_Place(WN* wn_stat,
       return Scalar_Store_Hoist_Place(WN_kid0(wn_stat));  
     FmtAssert(FALSE, ("Parameter must be by value or by reference."));
   case OPR_CALL: 
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
     {
       if (!Special_Lego_Or_Mp_Call(WN_st(wn_stat)) 
         && (WN_Call_Never_Return(wn_stat) || WN_Call_Non_Data_Mod(wn_stat) 
@@ -721,6 +724,14 @@ static BOOL Maybe_Assigned_Exp_Traverse(WN* wn_exp,
 	  LWN_ITER* itr = LWN_WALK_TreeIter(wnn);
 	  for (; itr != NULL; itr = LWN_WALK_TreeNext(itr)) {
 	    WN* wn = itr->wn; 
+#ifdef KEY
+	    // Bug 4426 - address is passed as a parameter to call 
+	    // and call does not have a valid alias mapping. Also, the call
+	    // uses dope vector to pass the address of the array so it is not
+	    // immediately obvious how we can match 'wn' and 'wn_exp'. 
+	    if (WN_operator(wn) == OPR_CALL && !Valid_alias(Alias_Mgr, wn))
+	      return TRUE;
+#endif
 	    if (Valid_alias(Alias_Mgr, wn) 
 	        && !OPCODE_is_load(WN_opcode(wn))
 	        && Aliased(Alias_Mgr, wn, wn_exp) != NOT_ALIASED)
@@ -774,6 +785,9 @@ static BOOL Maybe_Assigned_Exp_Traverse(WN* wn_exp,
   case OPR_INTRINSIC_CALL:
   case OPR_INTRINSIC_OP:
   case OPR_ARRAY: 
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
     {
       for (INT i = 0; i < WN_kid_count(wn_exp); i++)
         if (Maybe_Assigned_Exp_Traverse(WN_kid(wn_exp, i), wn_first, wn_last))
@@ -920,6 +934,9 @@ static BOOL Sinkable_Into_Loop(WN* wn_stat,
     }
     FmtAssert(FALSE, ("Parameter must be by value or by reference."));
   case OPR_CALL: 
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
     {
       if (!Special_Lego_Or_Mp_Call(WN_st(wn_test)) 
         && (WN_Call_Never_Return(wn_test) || WN_Call_Non_Data_Mod(wn_test) 
@@ -1046,6 +1063,9 @@ static BOOL Sinkable_Out_Of_Loop(WN* wn_stat,
       return !Maybe_Assigned(WN_kid0(wn_test), WN_next(wn_stat), wn_sink_loop); 
     FmtAssert(FALSE, ("Parameter must be by value or by reference."));
   case OPR_CALL: 
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
     {
       if (!Special_Lego_Or_Mp_Call(WN_st(wn_test)) 
         && (WN_Call_Never_Return(wn_test) || WN_Call_Non_Data_Mod(wn_test) 

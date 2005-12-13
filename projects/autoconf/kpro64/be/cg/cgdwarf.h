@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,7 +41,7 @@
 #ifndef cgdwarf_INCLUDED
 #define cgdwarf_INCLUDED
 
-#include <libelf.h>
+#include "libelf/libelf.h"
 #include <libdwarf.h>
 #include "dwarf_DST_mem.h"
 
@@ -70,10 +70,13 @@ extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
 extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
 				 LABEL_IDX   begin_label,
 				 LABEL_IDX   end_label,
-				 LABEL_IDX   eh_pushbp_label,
-				 LABEL_IDX   eh_movespbp_label,
-				 LABEL_IDX   eh_adjustsp_label,
-				 LABEL_IDX   eh_callee_saved_reg,
+				 LABEL_IDX   *eh_pushbp_label,
+				 LABEL_IDX   *eh_movespbp_label,
+				 LABEL_IDX   *eh_adjustsp_label,
+				 LABEL_IDX   *eh_callee_saved_reg,
+				 LABEL_IDX   *first_bb_labels,
+				 LABEL_IDX   *last_bb_labels,
+				 INT32       pu_entries,
 				 INT32       end_offset,
 				 ST         *PU_st,
 				 DST_IDX     pu_dst,
@@ -88,10 +91,15 @@ extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
 // To force a line number entry after the end of preamble in entry BB.
 extern BOOL Cg_Dwarf_First_Op_After_Preamble_End;
 #endif // TARG_X8664
+#ifdef KEY
+// To force a line number entry at the start op of every BB.
+extern BOOL Cg_Dwarf_BB_First_Op;
+#endif
 
 extern void Cg_Dwarf_Gen_Asm_File_Table (void);
 
 #ifdef KEY
+extern void Cg_Dwarf_Gen_Macinfo (void);
 extern void Print_Directives_For_All_Files (void);
 #endif
 

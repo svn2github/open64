@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -157,6 +157,11 @@ FOLD::Fold_Expr(CODEREP *cr)
   if (!WOPT_Enable_Fold2const)	// do nothing if OFF
     return NOHASH;
 
+#ifdef KEY
+  if (cr->Kind() == CK_IVAR)
+    return CR_Simplify_Iload(cr);
+#endif
+
   if (cr->Kind() != CK_OP)
     return NOHASH;
 
@@ -288,7 +293,11 @@ FOLD::CR_Simplify_Tree(CODEREP *cr)
   if (!WOPT_Enable_CRSIMP || cr->Is_isop_flag_set(ISOP_FOLD_TREE_VISITED))
     return NOHASH;
 
-  if (opr == OPR_INTRINSIC_OP) {
+  if (opr == OPR_INTRINSIC_OP
+#ifdef KEY
+      || opr == OPR_PURE_CALL_OP
+#endif
+     ) {
     for (i=0; i<numkids; i++) {
       k0 = CR_Simplify_Tree(cr->Opnd(i));
       if (k0 == NOHASH)
@@ -297,6 +306,11 @@ FOLD::CR_Simplify_Tree(CODEREP *cr)
 	found = TRUE;
       cr->Set_opnd(i,k0);
     }
+#ifdef KEY
+    if (opr == OPR_PURE_CALL_OP)
+      result = NULL;
+    else
+#endif
     result = SIMPNODE_SimplifyIntrinsic(op, SIMPNODE_intrinsic(cr), numkids,
 					cr->Opnd_ptr());
     if (result) {
@@ -443,10 +457,21 @@ FOLD::CR_Simplify_Expr(CODEREP *cr)
       } else
 	result = NOHASH;
 
+#ifdef KEY
+   } else if (opr == OPR_PURE_CALL_OP) {
+      result = NOHASH;
+#endif
    } else if (numkids == 1) {	// unary operators and IVAR
 
       CODEREP *k0 = SIMPNODE_kid0(cr); // could be CK_OP or CK_IVAR
       found = check_convert(cr, &k0, 0);
+#ifdef TARG_X8664 
+      // Bug 5935 - disable simplification because if it is a SQRT(RECIP)
+      // when the type is F8 because there is no x86 instruction for translating
+      // F8RSQRT.
+      if ( op == OPC_F8SQRT && SIMPNODE_opcode(k0) == OPC_F8RECIP )
+	return NOHASH;
+#endif
       if ( opr != OPR_CVTL )
 	r = SIMPNODE_SimplifyExp1(op, k0);
       else
@@ -512,6 +537,33 @@ FOLD::CR_Simplify_Expr(CODEREP *cr)
    }
    return result;
 }
+
+#ifdef KEY
+static CODEREP *CR_CreateIntconst(OPCODE opc, INT64 val);
+
+// return value:
+//   	valid hashed CR if ILOAD can be folded to a constant
+//	NOHASH if nothing was done
+//
+CODEREP *
+FOLD::CR_Simplify_Iload(CODEREP *cr)
+{
+  if (cr->Ilod_base()->Kind() != CK_LDA)
+    return NOHASH;
+  if (MTYPE_byte_size(cr->Dsctyp()) != 1)
+    return NOHASH;
+  CODEREP *x = cr->Ilod_base();
+  ST *s = CR_st(x);
+  if (ST_class(s) == CLASS_CONST && TCON_ty(ST_tcon_val(s)) == MTYPE_STR) {
+    TCON c = ST_tcon_val(s);
+    char *p = Index_to_char_array(TCON_str_idx(c));
+    p += x->Offset() + cr->Offset();
+    return CR_CreateIntconst(OPCODE_make_op(OPR_INTCONST, cr->Dtyp(), MTYPE_V), 
+    			     *p);
+  }
+  return NOHASH;
+}
+#endif
 
 BOOL
 FOLD::check_convert(CODEREP *cr, CODEREP **k, INT kid)
@@ -717,9 +769,13 @@ CR_st(CODEREP *cr)
       return cr->Lda_base_st();
     case CK_RCONST:
       return cr->Const_id();
+    case CK_OP:
+#ifdef KEY
+      if (cr->Opr() == OPR_PURE_CALL_OP)
+        return &St_Table[cr->Call_op_aux_id()];
+#endif
     case CK_CONST:
     case CK_IVAR:
-    case CK_OP:
     default:
       FmtAssert(FALSE,("CRSIMP, CR_st, no symbol table entry for kind 0x%x",
 		       cr->Kind()));

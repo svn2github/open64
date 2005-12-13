@@ -1,4 +1,8 @@
 /*
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 **  DosFCheck - check file names for DOS consistency
 **
 **  Distribute freely, it only encourages DOS compatibility!
@@ -15,6 +19,9 @@
 #endif
 #include <ctype.h>
 #include <string.h>
+#ifdef KEY
+#include <stdlib.h>
+#endif
 
 typedef struct ENT
 {
@@ -328,6 +335,7 @@ display_problems ()
  *  Main entry point						*
 \****************************************************************/
 
+int
 main (argc, argv)
 int argc;
 char **argv;

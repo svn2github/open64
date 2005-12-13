@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -277,7 +277,7 @@ Is_BB_Empty (BB *bb)
 static void
 Print_Trace_File(OP *cand_op, BB *src_bb, BB *cand_bb, BOOL success)
 {
-  char *str = (success) ? "SUCCESS" : "FAIL";
+  const char *str = (success) ? "SUCCESS" : "FAIL";
   fprintf (TFile, "%s_GCM(%s): MOVE ",Ignore_TN_Dep ? "POST":"PRE",str);
   Print_OP_No_SrcLine (cand_op);
   fprintf (TFile,"	FROM BB:%d => TO BB:%d:\n", 
@@ -2468,6 +2468,10 @@ OP_To_Move (BB *bb, BB *tgt_bb, BB_SET **pred_bbs, mINT32 motion_type, mUINT8 *s
 
     // don't consider dummy or transfer ops
     if (OP_xfer(cur_op) || OP_noop(cur_op)) continue;
+
+#ifdef KEY // bug 4850
+    if (CGTARG_Is_OP_Barrier(cur_op)) continue;
+#endif
 
     // All real OPs and some dummy OPs which have real operands/results.
     // typo?: if (OP_Real_Ops(cur_op) != 1 || OP_Real_Ops(cur_op) != 0) {

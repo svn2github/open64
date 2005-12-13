@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -465,10 +465,10 @@ public:
    // this permits loading of wn_operator, rtype and desc as bytes
    struct {
       OPERATOR          wn_operator : 8;  /* 8 bits of operator       */
-      TYPE_ID           rtype       : 5;  /* result */
-      mINT16            kid_count   :14; /* gives kid_count for free */
-      TYPE_ID           desc        : 5;  /* descriptor type */
-      INT32             map_id;
+      TYPE_ID           rtype       : 6;  /* result */
+      mUINT32           kid_count   :14; /* gives kid_count for free */
+      mINT64            map_id      :30;
+      TYPE_ID           desc        : 6;  /* descriptor type */
    } common;
 
    union {
@@ -621,7 +621,6 @@ public:
   friend inline TYPE_ID     WN_desc (const WN *);
   friend inline void        WN_set_desc (WN *, TYPE_ID);
   friend inline INT32       WN_map_id (const WN *);
-  friend inline INT32&      WN_map_id (WN *);
 
   friend inline TY_IDX      WN_ty (const WN *, const int);
   friend inline TY_IDX&     WN_ty (WN *, const int);
@@ -748,7 +747,7 @@ inline TYPE_ID    WN_rtype (const WN* wn) { return wn->common.rtype; }
 inline void       WN_set_rtype (WN* wn, TYPE_ID ty) { wn->common.rtype = ty; }
 inline INT        WN_kid_count (const WN* wn) { return OPERATOR_nkids(WN_operator(wn)) == -1 ? wn->common.kid_count : OPERATOR_nkids(WN_operator(wn)); }
 inline void       WN_set_kid_count (WN* wn, UINT n) { if (OPERATOR_nkids(WN_operator(wn)) == -1) wn->common.kid_count = n; }
-inline UINT  	  WN_field_id (const WN* wn) { return wn->common.kid_count; }
+inline UINT32  	  WN_field_id (const WN* wn) { return wn->common.kid_count; }
 inline void	  WN_set_field_id (WN* wn, UINT n) { wn->common.kid_count = (n > MAX_FIELD_ID) ? UNKNOWN_FIELD_ID : n; }
 inline UINT	  WN_bit_offset (const WN* wn) { return wn->common.kid_count >> 7; }
 inline UINT	  WN_bit_size (const WN* wn) { return wn->common.kid_count & 0x7f; }
@@ -756,7 +755,7 @@ inline void	  WN_set_bit_offset_size (WN* wn, UINT ofst, UINT siz) { wn->common.
 inline TYPE_ID    WN_desc (const WN* wn) { return wn->common.desc; }
 inline void       WN_set_desc (WN* wn, TYPE_ID ty) { wn->common.desc = ty; }
 inline INT32      WN_map_id (const WN* wn) { return wn->common.map_id; }
-inline INT32&     WN_map_id (WN* wn) { return wn->common.map_id; }
+inline void       WN_set_map_id (WN* wn, INT32 m) { wn->common.map_id = m; }
 
 inline WN* WN_kid (const WN* wn, int i) { return wn->u3.kids [i]; }
 inline WN*& WN_kid (WN* wn, int i) { return wn->u3.kids [i]; }
@@ -1175,6 +1174,9 @@ inline UINT32 WN_flag(const WN *wn)
   case OPR_INTRINSIC_OP:
   case OPR_REGION:
   case OPR_PARM:
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
     return(WN_call_flag(wn));
   case OPR_PREFETCH:
   case OPR_PREFETCHX:
@@ -1205,6 +1207,9 @@ inline void WN_set_flag(WN *wn, UINT32 flag)
   case OPR_INTRINSIC_OP:
   case OPR_REGION:
   case OPR_PARM:
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
     WN_call_flag(wn) = flag;
     break;
   case OPR_PREFETCH:

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -60,6 +60,25 @@ typedef struct {
  int isec;
 } itime_struct;
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+void
+pathf90_itime(pathf90_i4 *iar)
+{
+	struct tm *lclt;
+	time_t t;
+
+	t = time(0);
+	lclt = localtime(&t);
+	iar[0] = lclt->tm_hour;
+	iar[1] = lclt->tm_min;
+	iar[2] = lclt->tm_sec;
+}
+
+#else
+
 extern void
 itime_ (itime_struct *iar)
 {
@@ -73,4 +92,4 @@ itime_ (itime_struct *iar)
 	iar->isec = lclt->tm_sec;
 }
 
-
+#endif /* KEY Bug 1683 */

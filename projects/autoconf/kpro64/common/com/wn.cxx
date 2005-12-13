@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -219,9 +219,25 @@ IPO_Types_Are_Compatible ( TYPE_ID ltype, TYPE_ID rtype )
     /* if the base types are the same or the base type of the stid  */
     /* is of comparable type and size of lhs is  */
     /* greater than size of rhs then return true */
+#ifdef KEY
+    BOOL type_compatible = ((WTYPE_base_type(ltype) == WTYPE_base_type(rtype))
+		   || (WTYPE_base_type(ltype) == WTYPE_comp_type(rtype)));
+    BOOL size_compatible = WTYPE_size(ltype) >= WTYPE_size(rtype);
+
+    compatible = type_compatible && size_compatible;
+
+    if (!compatible && type_compatible)
+    {
+      // incompatible size
+      // If RHS is a 32-bit int, allow conversion to smaller-sized LHS.
+      if (rtype == MTYPE_U4 || rtype == MTYPE_I4)
+        compatible = TRUE;
+    }
+#else
     compatible = (((WTYPE_base_type(ltype) == WTYPE_base_type(rtype))
 		   || (WTYPE_base_type(ltype) == WTYPE_comp_type(rtype)))
 		  && (WTYPE_size(ltype) >= WTYPE_size(rtype)));
+#endif // KEY
 
     return (compatible);
 } /* IPO_Types_Are_Compatible */
@@ -555,7 +571,7 @@ WN_Create (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count)
     WN_set_rtype(wn, rtype);
     WN_set_desc(wn, desc);
     WN_set_kid_count(wn, kid_count);
-    WN_map_id(wn) = New_Map_Id();
+    WN_set_map_id(wn, New_Map_Id());
 
     return wn;
 }
@@ -1535,6 +1551,14 @@ WN *WN_CreateExp2(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, WN *kid0, WN *kid1)
   Is_True(OPCODE_is_expression(WN_opcode(kid1)),
 	  ("Bad kid1 in WN_CreateExp2"));
 
+#if 0 // with 32-bit MPY, need U8U4CVT to zero-out high-order 32 bits (bug 4637)
+  Is_True(opr != OPR_MPY || 
+  	  WN_operator(kid0) == OPR_INTCONST ||
+  	  WN_operator(kid1) == OPR_INTCONST ||
+          MTYPE_byte_size(WN_rtype(kid0)) == MTYPE_byte_size(WN_rtype(kid1)),
+  	  ("inconsistent sizes in operands of MPY"));
+#endif
+
   /* bug#2731 */
 #ifdef KEY
   if( !WN_has_side_effects(kid0) &&
@@ -1995,7 +2019,7 @@ void IPA_WN_Move_Maps_PU (WN_MAP_TAB *src, WN_MAP_TAB *dst, WN *wn)
     return;
 
   WN_MAP_Add_Free_List(src, wn);
-  WN_map_id(wn) = WN_MAP_UNDEFINED;
+  WN_set_map_id(wn, WN_MAP_UNDEFINED);
   WN_MAP_Set_ID(dst,wn);
 
   /* iterate through the mappings */
@@ -2403,10 +2427,18 @@ WN *WN_UVConst( TYPE_ID type)
     return WN_Intconst( Mtype_TransferSign(type, MTYPE_I4), 0x5a5a);
   case MTYPE_I4:
   case MTYPE_U4:
+#ifdef KEY
+    return WN_Intconst(type, 0xffa5a5a5);		// Signalling NaN
+#else
     return WN_Intconst(type, 0xfffa5a5a);
+#endif
   case MTYPE_I8:
   case MTYPE_U8:
+#ifdef KEY
+    return WN_Intconst(type, 0xfff5a5a5fff5a5a5ll);	// Signalling NaN
+#else
     return WN_Intconst(type, 0xfffa5a5afffa5a5all);
+#endif
   case MTYPE_F4:
   case MTYPE_F8:
   case MTYPE_FQ:
@@ -2939,6 +2971,9 @@ WN_set_st_addr_saved (WN* wn)
     case OPR_LT:
     case OPR_LE:
     case OPR_ALLOCA:
+#ifdef KEY
+    case OPR_PURE_CALL_OP:
+#endif
 
       break;
 
@@ -3029,13 +3064,16 @@ WN_set_st_addr_saved (WN* wn)
 
       WN_set_st_addr_saved (WN_kid0(wn));
       break;
+#endif /* KEY */
 
+#ifdef TARG_X8664
     case OPR_REPLICATE:
+    case OPR_SHUFFLE:
 
       WN_set_st_addr_saved (WN_kid0(wn));
       break;
+#endif // TARG_X8664
 
-#endif /* KEY */
     default:
 
       Fail_FmtAssertion ("WN_set_st_addr_saved not implemented for %s",
@@ -3075,12 +3113,15 @@ WN_has_side_effects (const WN* wn)
     case OPR_TAS:
     case OPR_TRUNC:
     case OPR_EXTRACT_BITS:
-#ifdef KEY
+#ifdef TARG_X8664
     case OPR_REDUCE_ADD:
     case OPR_REDUCE_MAX:
     case OPR_REDUCE_MIN:
     case OPR_REDUCE_MPY:
+    case OPR_SHUFFLE:
     case OPR_REPLICATE:
+#endif // TARG_X8664
+#ifdef KEY
     case OPR_ILDA:
 #endif // KEY
 
@@ -3159,6 +3200,9 @@ WN_has_side_effects (const WN* wn)
         return FALSE;
       }
 
+#ifdef KEY
+    case OPR_PURE_CALL_OP:
+#endif
     case OPR_INTRINSIC_OP: {
 
       INT32 n = WN_kid_count (wn);

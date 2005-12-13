@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Copyright (C) 1995, 1996, 2001 Free Software Foundation, Inc.
@@ -20,9 +20,7 @@ License along with GNU Fortran; see the file COPYING.LIB.  If
 not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 #include <stdio.h>
 #include <sys/types.h>
 #if TIME_WITH_SYS_TIME
@@ -47,8 +45,19 @@ Boston, MA 02111-1307, USA.  */
    also a subroutine version.  Of course, the calling convention is
    essentially the same for both. */
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+void
+pathf90_fdate(char *ret_val, int ret_val_len) 
+
+#else
+
 /* Character *24 */ void
 fdate_ (char *ret_val, ftnlen ret_val_len)
+
+#endif /* KEY Bug 1683 */
 {
   int s_copy ();
   time_t tloc;

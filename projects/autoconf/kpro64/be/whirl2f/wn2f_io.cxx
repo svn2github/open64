@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -358,7 +362,7 @@ WN2F_io_control(TOKEN_BUFFER tokens,
 			  Concat2_Strings("IOC", IOITEM_name(item_kind))));
       Append_Token_String(tokens, IOITEM_name(item_kind));
       Append_Token_Special(tokens, '=');
-      Append_Token_String(tokens, "<???>");
+      Append_Token_String(tokens, "<??""?>");
       break;
       
    case IOC_KEY_START:

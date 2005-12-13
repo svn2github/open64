@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,8 +45,19 @@
  *		if ENV_NAME is not defined
  */
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+void
+pathf90_getenv(char *fname, char *value, int flen, int vlen)
+
+#else
+
 extern void
 getenv_ (char *fname, char *value, int flen, int vlen)
+
+#endif /* KEY Bug 1683 */
 {
 /* fixed bug 9931 */
 #ifdef _SYSTYPE_SVR4

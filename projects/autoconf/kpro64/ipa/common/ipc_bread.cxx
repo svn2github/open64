@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -733,6 +733,7 @@ IP_READ_pu (IPA_NODE* node, IP_FILE_HDR& s, INT p_index, MEM_POOL *pool)
 					     pu_hdr->pu_num_icall_entries,
 					     pu_hdr->pu_num_switch_entries,
 					     pu_hdr->pu_num_value_entries,
+					    pu_hdr->pu_num_value_fp_bin_entries,
 					     pu_hdr->runtime_fun_address),
 				   pool);
 #else

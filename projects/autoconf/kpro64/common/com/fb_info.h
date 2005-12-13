@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -66,7 +66,14 @@
 
 #include "fb_freq.h"
 #include "fb_tnv.h"
+
+#ifdef _INCLUDED_FROM_LIBINSTR_
+#include "vector.h"
+
+using Instr::vector;
+#else
 #include <vector>             // STL vector.
+#endif
 
 #ifdef MONGOOSE_BE
 
@@ -135,6 +142,36 @@ struct FB_Info_Value {
     for( int i = 0; i < num_values; i++ ){
       fprintf( fp, "value %lld\t freq %f\n", value[i], freq[i].Value() );
     }
+  }
+};
+
+struct FB_Info_Value_FP_Bin {
+  FB_FREQ exe_counter;  // how many times this inst is executed
+  FB_FREQ zopnd0;       // how many times was operand 0 == 0.0
+  FB_FREQ zopnd1;       // how many times was operand 1 == 0.0
+  FB_FREQ uopnd0;       // how many times was operand 0 == 1.0
+  FB_FREQ uopnd1;       // how many times was operand 1 == 1.0
+
+  FB_Info_Value_FP_Bin() : exe_counter(0.0), zopnd0(0.0), zopnd1(0.0),
+                           uopnd0(0.0), uopnd1(0.0) {}
+
+  FB_Info_Value_FP_Bin( const INT64 e, const INT64 z0, const INT64 z1,
+  			const INT64 u0, const INT64 u1 ) {
+    exe_counter = e;
+    zopnd0 = z0;
+    zopnd1 = z1;
+    uopnd0 = u0;
+    uopnd1 = u1;
+  }
+
+  FB_FREQ Total() const {    return exe_counter;   }
+
+  void Print( FILE* fp ) const {
+    fprintf( fp, "execution counter: %d\n", (int)exe_counter.Value() );
+    fprintf( fp, "operand 0 zero counter: %d\n", (int)zopnd0.Value() );
+    fprintf( fp, "operand 1 zero counter: %d\n", (int)zopnd1.Value() );
+    fprintf( fp, "operand 0 one counter: %d\n", (int)uopnd0.Value() );
+    fprintf( fp, "operand 1 one counter: %d\n", (int)uopnd1.Value() );
   }
 };
 #endif
@@ -400,8 +437,10 @@ struct FB_Info_Switch {
 
   FB_FREQ& operator[] ( const vector<FB_FREQ>::size_type n ) {
     if ( n >= freq_targets.size() ) {
-      freq_targets.insert( freq_targets.end(), n - freq_targets.size() + 1,
-			   FB_FREQ_UNINIT );
+      // KEY
+      vector<FB_FREQ>::size_type size = freq_targets.size();
+      for (int i = 0; i < n - size + 1; i++)
+        freq_targets.push_back (FB_FREQ_UNINIT);
     }
     return freq_targets[n];
   }
@@ -521,6 +560,10 @@ typedef vector<FB_Info_Edge, mempool_allocator<FB_Info_Edge> >
 					FB_Edge_Vector;
 typedef vector<FB_Info_Value, mempool_allocator<FB_Info_Value> >
                                        FB_Value_Vector;
+#ifdef KEY
+typedef vector<FB_Info_Value_FP_Bin, mempool_allocator<FB_Info_Value_FP_Bin> >
+                                       FB_Value_FP_Bin_Vector;
+#endif
 
 // ====================================================================
 // FB_EDGE_TYPE -- Indicates the source of a node's frequency data
@@ -653,11 +696,15 @@ inline bool FB_valid_opr_loop(const WN *wn) {
   case OPR_DIV:            \
   case OPR_REM:            \
   case OPR_MOD
+#define fb_opr_cases_value_fp_bin \
+  case OPR_MPY
 
 inline bool FB_valid_opr_value(const WN *wn) {
   OPERATOR opr = WN_operator( wn );
   switch ( opr ) {
   fb_opr_cases_value:
+    return true;
+  fb_opr_cases_value_fp_bin:
     return true;
   default:
     return false;

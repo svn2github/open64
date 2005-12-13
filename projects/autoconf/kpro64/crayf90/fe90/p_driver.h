@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -82,6 +86,8 @@ static	int			 blk_err_msgs[]		= {
                                1588,	/* Open_Mp_Master_Blk		*/
                                1588,	/* Open_Mp_Critical_Blk		*/
                                1588,	/* Open_Mp_Ordered_Blk		*/
+                               1588,   /* Open_Mp_Workshare_Blk */ /* by jhs, 02/7/18 */
+                               1588,   /* Open_Mp_Parallel_Workshare_Blk */ /* by jhs, 02/7/18 */
 				264,	/* Contains_Blk       */
 			 	26,	/* Interface_Blk      */
 			 	25	/* Derived_Type_Blk   */
@@ -440,7 +446,11 @@ void		(*stmt_parsers[]) () = {
 				parse_forall,		/* Forall_Stmt        */
 				parse_end_stmt,		/* End_Forall_Stmt    */
 				parse_else_stmt,       /* Else_Where_Mask_Stmt*/
-				parse_volatile_stmt    /* Volatile_Stmt */
+				parse_volatile_stmt,    /* Volatile_Stmt */
+				parse_directive_stmt,
+					/* Open_MP_End_Parallel_Workshare_Stmt */
+				parse_directive_stmt
+					/* Open_MP_End_Workshare_Stmt */
 				};
 
 
@@ -506,6 +516,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -549,6 +561,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -592,6 +606,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -634,6 +650,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -679,6 +697,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -729,6 +749,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk)),    
 
@@ -785,6 +807,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -827,6 +851,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -874,6 +900,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -917,6 +945,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -976,6 +1006,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1018,6 +1050,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1063,6 +1097,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1107,6 +1143,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1149,6 +1187,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1199,6 +1239,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Derived_Type_Blk)), 
 
@@ -1258,6 +1300,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1300,6 +1344,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1342,6 +1388,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1390,6 +1438,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk)),    
 
@@ -1437,6 +1487,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1479,6 +1531,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1529,6 +1583,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk)),    
 
@@ -1573,6 +1629,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1615,6 +1673,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1661,6 +1721,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)), 
@@ -1703,6 +1765,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk)),    
 
@@ -1744,6 +1808,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1794,6 +1860,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1918,6 +1986,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -1967,6 +2037,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2128,6 +2200,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2178,6 +2252,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2225,6 +2301,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2273,6 +2351,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2324,6 +2404,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Derived_Type_Blk)), 
 
@@ -2373,6 +2455,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2423,6 +2507,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2472,6 +2558,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2517,6 +2605,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2564,6 +2654,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2615,6 +2707,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk)),   
 
@@ -2662,6 +2756,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -2826,6 +2922,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -3016,6 +3114,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -3065,6 +3165,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -3114,6 +3216,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -3195,6 +3299,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -3588,6 +3694,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)),
@@ -3638,6 +3746,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -3688,6 +3798,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)), 
@@ -3738,6 +3850,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -3788,6 +3902,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -3841,6 +3957,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -3890,6 +4008,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -3940,6 +4060,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -3985,6 +4107,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4035,6 +4159,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4085,6 +4211,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4135,6 +4263,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4183,6 +4313,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4233,6 +4365,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4283,6 +4417,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4333,6 +4469,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4383,6 +4521,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4433,6 +4573,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4483,6 +4625,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4533,6 +4677,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4583,6 +4729,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Do_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4633,6 +4781,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Parallel_Do_Blk) |
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4763,6 +4913,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
 				(ONE << Derived_Type_Blk)), 
@@ -4812,6 +4964,8 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
                                 (ONE << Contains_Blk) |
                                 (ONE << Interface_Blk) |
                                 (ONE << Derived_Type_Blk)),
@@ -4854,9 +5008,116 @@ long long     stmt_in_blk [] = {
                                 (ONE << Open_Mp_Master_Blk) |
                                 (ONE << Open_Mp_Critical_Blk) |
                                 (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
 				(ONE << Contains_Blk) |
 				(ONE << Interface_Blk) |
-				(ONE << Derived_Type_Blk))
+				(ONE << Derived_Type_Blk)),
+
+			/*****  Open_MP_End_Parallel_workshare_Stmt  *****/
+
+                               ((ONE << Unknown_Blk) |
+                                (ONE << Blockdata_Blk) |
+                                (ONE << Module_Blk) |
+                                (ONE << Program_Blk) |
+                                (ONE << Function_Blk) |
+                                (ONE << Subroutine_Blk) |
+                                (ONE << Internal_Blk) |
+                                (ONE << Module_Proc_Blk) |
+                                (ONE << Interface_Body_Blk) |
+                                (ONE << Do_Blk) |
+				(ONE << Forall_Blk) |
+                                (ONE << If_Blk) |
+                                (ONE << If_Then_Blk) |
+                                (ONE << If_Else_If_Blk) |
+                                (ONE << If_Else_Blk) |
+                                (ONE << Select_Blk) |
+                                (ONE << Case_Blk) |
+                                (ONE << Where_Then_Blk) |
+                                (ONE << Where_Else_Blk) |
+				(ONE << Where_Else_Mask_Blk) |
+                                (ONE << Parallel_Blk) |
+                                (ONE << Doall_Blk) |
+                                (ONE << Do_Parallel_Blk) |
+                                (ONE << Guard_Blk) |
+                                (ONE << Parallel_Case_Blk) |
+				(ONE << Wait_Blk) |
+                                (ONE << SGI_Doacross_Blk) |
+                                (ONE << SGI_Psection_Blk) |
+                                (ONE << SGI_Section_Blk) |
+                                (ONE << SGI_Pdo_Blk) |
+                                (ONE << SGI_Parallel_Do_Blk) |
+                                (ONE << SGI_Parallel_Blk) |
+                                (ONE << SGI_Critical_Section_Blk) |
+                                (ONE << SGI_Single_Process_Blk) |
+                                (ONE << SGI_Region_Blk) |
+                                (ONE << Open_Mp_Parallel_Blk) |
+                                (ONE << Open_Mp_Do_Blk) |
+				(ONE << Open_Mp_Parallel_Sections_Blk) |
+                                (ONE << Open_Mp_Sections_Blk) |
+                                (ONE << Open_Mp_Section_Blk) |
+                                (ONE << Open_Mp_Single_Blk) |
+                                (ONE << Open_Mp_Parallel_Do_Blk) |
+                                (ONE << Open_Mp_Master_Blk) |
+                                (ONE << Open_Mp_Critical_Blk) |
+                                (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Contains_Blk) |
+                                (ONE << Interface_Blk) |
+                                (ONE << Derived_Type_Blk)),
+
+			/*****  Open_MP_End_Workshare_Stmt  *****/
+
+                               ((ONE << Unknown_Blk) |
+                                (ONE << Blockdata_Blk) |
+                                (ONE << Module_Blk) |
+                                (ONE << Program_Blk) |
+                                (ONE << Function_Blk) |
+                                (ONE << Subroutine_Blk) |
+                                (ONE << Internal_Blk) |
+                                (ONE << Module_Proc_Blk) |
+                                (ONE << Interface_Body_Blk) |
+                                (ONE << Do_Blk) |
+				(ONE << Forall_Blk) |
+                                (ONE << If_Blk) |
+                                (ONE << If_Then_Blk) |
+                                (ONE << If_Else_If_Blk) |
+                                (ONE << If_Else_Blk) |
+                                (ONE << Select_Blk) |
+                                (ONE << Case_Blk) |
+                                (ONE << Where_Then_Blk) |
+                                (ONE << Where_Else_Blk) |
+				(ONE << Where_Else_Mask_Blk) |
+                                (ONE << Parallel_Blk) |
+                                (ONE << Doall_Blk) |
+                                (ONE << Do_Parallel_Blk) |
+                                (ONE << Guard_Blk) |
+                                (ONE << Parallel_Case_Blk) |
+				(ONE << Wait_Blk) |
+                                (ONE << SGI_Doacross_Blk) |
+                                (ONE << SGI_Psection_Blk) |
+                                (ONE << SGI_Section_Blk) |
+                                (ONE << SGI_Pdo_Blk) |
+                                (ONE << SGI_Parallel_Do_Blk) |
+                                (ONE << SGI_Parallel_Blk) |
+                                (ONE << SGI_Critical_Section_Blk) |
+                                (ONE << SGI_Single_Process_Blk) |
+                                (ONE << SGI_Region_Blk) |
+                                (ONE << Open_Mp_Parallel_Blk) |
+                                (ONE << Open_Mp_Do_Blk) |
+				(ONE << Open_Mp_Parallel_Sections_Blk) |
+                                (ONE << Open_Mp_Sections_Blk) |
+                                (ONE << Open_Mp_Section_Blk) |
+                                (ONE << Open_Mp_Single_Blk) |
+                                (ONE << Open_Mp_Parallel_Do_Blk) |
+                                (ONE << Open_Mp_Master_Blk) |
+                                (ONE << Open_Mp_Critical_Blk) |
+                                (ONE << Open_Mp_Ordered_Blk) |
+                                (ONE << Open_Mp_Parallel_Workshare_Blk) | /* by jhs, 02/7/18 */
+                                (ONE << Contains_Blk) |
+                                (ONE << Interface_Blk) |
+                                (ONE << Derived_Type_Blk))
+
 				};
 # undef ONE
 
@@ -5015,7 +5276,11 @@ stmt_category_type	stmt_top_cat [] = {
 				Executable_Stmt_Cat,	/* Forall_Stmt	      */
 				Executable_Stmt_Cat,    /* End_Forall_Stmt    */
 				Executable_Stmt_Cat,   /* Else_Where_Mask_Stmt*/
-				Declaration_Stmt_Cat};  /* Volatile_Stmt      */
+				Declaration_Stmt_Cat,  /* Volatile_Stmt      */
+				Executable_Stmt_Cat,
+						/* Open_MP_End_Parallel_Workshare_Stmt */
+				Executable_Stmt_Cat};
+						/* Open_MP_End_Workshare_Stmt */
 
 
 boolean		first_time_tbl_alloc = TRUE;

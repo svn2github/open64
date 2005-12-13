@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -374,6 +374,9 @@ Prepare_Source ( void )
   return FALSE;
 }
 
+#ifdef KEY
+extern void WFE_Omp_Init (void);
+#endif // KEY
 
 
 void
@@ -410,6 +413,9 @@ WFE_Init (INT argc, char **argv, char **envp )
   Initialize_Symbol_Tables (TRUE);
   WFE_Stmt_Stack_Init ();
   WFE_Stmt_Init ();
+#ifdef KEY
+  WFE_Omp_Init ();
+#endif
   WFE_Expr_Init ();
   WHIRL_Mldid_Mstid_On = TRUE;
   WN_Simp_Fold_LDA = TRUE;  // fold (LDA offset) + const to LDA (offset+const)
@@ -497,6 +503,9 @@ char * WFE_Stmt_Kind_Name [wfe_stmk_last+1] = {
   "'switch'",
   "'comma'",
   "'rcomma'",
+#ifdef KEY
+  "'dummy'",	// does not generate code
+#endif // KEY
   "'last'"
 };
 
@@ -655,3 +664,54 @@ WFE_Stmt_Prepend_Last (WN* wn, SRCPOS srcpos)
 } /* WFE_Stmt_Prepend_Last */
 #endif /* KEY */
 
+#ifdef KEY
+WFE_STMT_KIND
+WFE_Stmt_Top_Kind (void)
+{
+  FmtAssert (wn_stmt_sp >= wn_stmt_stack,
+             ("no more entries on stack in function WFE_Stmt_Top"));
+
+  return (wn_stmt_sp->kind);
+} /* WFE_Stmt_Top */
+
+void WFE_Stmt_Append_Before (WN* wn, SRCPOS srcpos)
+{
+  WN * body;
+  WN * last;
+
+  if (srcpos) {
+    WN_Set_Linenum ( wn, srcpos );
+    if (WN_operator(wn) == OPR_BLOCK && WN_first(wn) != NULL)
+    	WN_Set_Linenum ( WN_first(wn), srcpos );
+  }
+
+  body = (wn_stmt_sp-1)->wn;
+
+  if (body) {
+
+    last = WN_last(body);
+    WN_INSERT_BlockAfter (body, last, wn);
+  }
+
+}
+
+// Currently this function is only used for searching func_entry, but it
+// is intended to be a general utility function.
+WN *
+WFE_Find_Stmt_In_Stack (WFE_STMT_KIND kind)
+{
+  WN_STMT * sp = wn_stmt_sp;
+  Is_True (sp, ("Null WN stack pointer"));
+
+  while (sp->kind != wfe_stmk_func_entry)
+  {
+    if (sp->kind == kind)
+      break;
+    sp--;
+    Is_True (sp, ("FUNC_ENTRY node not found"));
+  }
+  FmtAssert (sp->kind == kind, ("Stmt kind not found in stack"));
+  Is_True (sp->wn, ("Null WN stmt in apparently valid stack location"));
+  return sp->wn;
+}
+#endif

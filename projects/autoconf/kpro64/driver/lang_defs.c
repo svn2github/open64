@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -66,7 +66,7 @@ static lang_info_t language_info[] = {
 	{'c',	0x00000002,	{"cc", PSC_NAME_PREFIX "cc", PSC_TARGET "-" PSC_NAME_PREFIX "cc","gcc","c89"}},	/* cc */
 	{'C',	0x00000004,	{"CC", PSC_NAME_PREFIX "CC", PSC_NAME_PREFIX "++","g++"}},	/* c++ */
 	{'f',	0x00000008,	{"f77", PSC_NAME_PREFIX "f77","gf77","fort77"}}, /* f77 */
-	{'F',	0x00000010,	{"f90", PSC_NAME_PREFIX "f90"}},		/* f90 */
+	{'F',	0x00000010,	{"f90", PSC_NAME_PREFIX "f95"}},		/* f90/95 */
 	{'a',	0x00000020,	{"as", PSC_NAME_PREFIX "as","gas"}},		/* as */
 	{'l',	0x00000040,	{"ld", PSC_NAME_PREFIX "ld"}},		/* ld */
 	{'I',	0x80000000,	{"int"}},		/* Internal option */
@@ -128,8 +128,8 @@ static phase_info_t phase_info[] = {
    /* ffe is chosen by same letter as cfe */
    {'f',  0x0000000000010000LL,	"mfef77",PHASEPATH,	FALSE},	/* f_fe */
    {'f',  0x0000000000020000LL, "mfef77",PHASEPATH,     FALSE}, /* cppf_fe */
-   {'f',  0x0000000000040000LL,	"mfef90",PHASEPATH,	FALSE},	/* f90_fe */
-   {'f',  0x0000000000080000LL,	"mfef90",PHASEPATH,	FALSE},	/* cppf90_fe */
+   {'f',  0x0000000000040000LL,	"mfef95",PHASEPATH,	FALSE},	/* f90_fe */
+   {'f',  0x0000000000080000LL,	"mfef95",PHASEPATH,	FALSE},	/* cppf90_fe */
    {'f',  0x0000000000100000LL,	"gfec",PHASEPATH,	TRUE }, /* c_gfe */
    {'f',  0x0000000000200000LL,	"gfecc",PHASEPATH,	TRUE }, /* cplus_gfe */
    /* place-holder for generic fe, whose mask unites all fe's; */
@@ -184,8 +184,8 @@ static source_info_t source_info[] = {
 	{"C","CC","CPP","CXX","cc","cpp","cxx","c++"},	/* C */
 	{"f","for"},			/* f */
 	{"F","FOR"},			/* F */
-	{"f90"},			/* f90 */
-	{"F90"},			/* F90 */
+	{"f90","f95"},			/* f90 */
+	{"F90","F95"},			/* F90 */
 	{"r"},				/* r */
 	{"i"},				/* i */
 	{"ii"},				/* ii */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -197,6 +197,7 @@ private:
   static const mUINT32 _recursive =	    0x400000;	// recursive
   static const mUINT32 _merged =	    0x800000;	// Merged node
   static const mUINT32 _can_throw = 	   0x1000000;   // PU can throw exc.
+  static const mUINT32 _ehinfo_updated =   0x2000000;   // summary updated
 #endif
 
   // map to the file I/O info
@@ -516,6 +517,9 @@ public:
   void Set_PU_Can_Throw () { _flags |= _can_throw; }
   BOOL PU_Can_Throw () { return _flags & _can_throw; }
 
+  void Set_EHinfo_Updated () { _flags |= _ehinfo_updated; }
+  BOOL EHinfo_Updated () { return _flags & _ehinfo_updated; }
+
   void Set_File_Id (mINT32 f) { _file_id = f; }
   mINT32 File_Id () const	{ return _file_id; }
 
@@ -585,6 +589,9 @@ public:
 
   BOOL Is_Lang_F77() const      { return PU_f77_lang (Get_PU()); }
   BOOL Is_Lang_F90() const      { return PU_f90_lang (Get_PU()); }
+#ifdef KEY
+  BOOL Is_Lang_CXX() const      { return PU_cxx_lang (Get_PU()); }
+#endif
 
 
   UINT32 Weight (void) const	{ return _pu_size.Weight (); }
@@ -819,6 +826,7 @@ private:
 #ifdef KEY
   WN *_eh_wn;				// enclosing eh-region wn
   LABEL_IDX try_label;			// try label from enclosing try-region if any
+  WN *_mp_wn;				// enclosing mp-region wn
 #endif
 
   VALUE_DYN_ARRAY       *_cprop_annot;  // constant propagation annotation
@@ -840,6 +848,7 @@ public:
 #ifdef KEY
     _eh_wn(0),
     try_label(0),
+    _mp_wn(0),
 #endif
     _cprop_annot(0),
     _flags(0),
@@ -872,6 +881,9 @@ public:
   // try_label is not being used currently
   void Set_Try_Label (LABEL_IDX l) { try_label = l; }
   LABEL_IDX Try_Label () const	   { return try_label; }
+
+  void Set_MP_Whirl_Node (WN * w) { _mp_wn = w; }
+  WN * MP_Whirl_Node () const     { return _mp_wn; }
 #endif
 
   void Set_Cprop_Annot (VALUE_DYN_ARRAY* annot)	{ _cprop_annot = annot; }
@@ -1172,7 +1184,6 @@ extern void IPA_Process_File (IP_FILE_HDR& hdr);
 extern void Build_Call_Graph ();
 #ifdef KEY
 extern IPA_CALL_GRAPH *IPA_Graph_Undirected;
-extern void IPA_update_ehinfo_in_pu (IPA_NODE *);
 extern void IPA_Convert_Icalls( IPA_CALL_GRAPH* );
 #endif
 

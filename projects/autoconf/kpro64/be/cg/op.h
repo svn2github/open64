@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -12,7 +12,7 @@
 
   This program is distributed in the hope that it would be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 
   Further, this software is distributed without any warranty that it is
   free of the rightful claim of any third person regarding infringement 
@@ -447,7 +447,9 @@ enum OP_COND_DEF_KIND {
 /* Is this OP the first OP following the PRAGMA_PREAMBLE_END ? */
 #define OP_MASK_FIRST_OP_AFTER_PREAMBLE_END 0x00080000
 #define OP_MASK_COMPUTES_GOT  0x00100000  /* Does OP compute GOT ? */
+#define OP_MASK_PREFIX_LOCK   0x01000000
 #endif
+
 
 # define OP_glue(o)		(OP_flags(o) & OP_MASK_GLUE)
 # define Set_OP_glue(o)		(OP_flags(o) |= OP_MASK_GLUE)
@@ -507,7 +509,9 @@ enum OP_COND_DEF_KIND {
 # define Reset_OP_first_after_preamble_end(o) (OP_flags(o) &= ~OP_MASK_FIRST_OP_AFTER_PREAMBLE_END)
 # define OP_computes_got(o)       (OP_flags(o) & OP_MASK_COMPUTES_GOT)
 # define Set_OP_computes_got(o)   (OP_flags(o) |= OP_MASK_COMPUTES_GOT)
-#endif
+# define Set_OP_prefix_lock(o)    (OP_flags(o) |= OP_MASK_PREFIX_LOCK)
+# define OP_prefix_lock(o)        (OP_flags(o) & OP_MASK_PREFIX_LOCK)
+#endif // TARG_X8664
 
 extern BOOL OP_cond_def(const OP*);
 extern BOOL OP_has_implicit_interactions(OP*);
@@ -520,6 +524,7 @@ extern BOOL OP_has_implicit_interactions(OP*);
 #define OP_prefetch(o)		(TOP_is_prefetch(OP_code(o)))
 #ifdef TARG_X8664
 #define OP_load_exe(o)		(TOP_is_load_exe(OP_code(o)))
+#define OP_load_exe_store(o)	(TOP_is_load_exe_store(OP_code(o)))
 #define OP_memory(o)		(OP_load(o) | OP_store(o) | OP_prefetch(o))
 #else
 #define OP_memory(o)		(OP_load(o) | OP_store(o) | OP_prefetch(o))

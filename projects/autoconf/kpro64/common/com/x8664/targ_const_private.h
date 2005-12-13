@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -76,6 +80,8 @@
 #define TCON_U4(c)	TCON_u0(c)
 #define TCON_I8(c)	((c).vals.i0)
 #define TCON_U8(c)	((c).vals.k0)
+#define TCON_ll0(c)     ((c).vals.llval.ll0)
+#define TCON_ll1(c)     ((c).vals.llval.ll1)
 
 /* special TCON accessors for simplifier:
 	I8I4CVT and U8I4CVT are nops for MIPS III and above and are removed.

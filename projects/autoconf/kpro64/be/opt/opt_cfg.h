@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -526,6 +526,11 @@ public:
   // Find a region with the given pragma, that encloses the given BB
   // Note that the region encloses "bb" and does not start with it
   BB_NODE *Find_enclosing_region_bb( BB_NODE *, WN_PRAGMA_ID );
+#ifdef KEY
+  // Find a parallel region that dominates the given BB.
+  // Note that the region encloses "bb" and does not start with it
+  BB_NODE *Find_enclosing_parallel_region_bb( BB_NODE *);
+#endif
 
   // Determine if this loop is the outermost one in a parallel region
   // (any sort of parallel loop or region for which we probably do not

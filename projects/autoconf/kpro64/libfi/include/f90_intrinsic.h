@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -137,6 +141,14 @@ static size_t GET_STRIDE_FROM_DESC(DopeVectorType * array, int32_t dim)
 #define i2 int16_t 
 #define i1 int8_t  
 
+#ifdef KEY /* Bug 4039 */
+/* Provide 16-byte data type for use when an intrinsic like "spread_gen.c"
+ * wants to move bits around without regard to whether the underlying
+ * data is a single 16-byte real or a pair of 8-bytes reals. Using "long
+ * double" or "dcomplex" can generate fp instructions which have ill effects
+ * when the underlying data isn't what those instructions expect. */
+typedef struct { uint64_t x[2]; } ui16;
+#endif /* KEY Bug 4039 */
 #define ui8 uint64_t 
 #define ui4 uint32_t 
 #define ui2 uint16_t 

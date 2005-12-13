@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -76,8 +80,8 @@ static char *rcs_id = region_bounds_CXX"$Revision: 1.1.1.1 $";
 #include "ir_reader.h"		// for fdump_tree
 #include "region_util.h"	// RID structure
 #include "tracing.h"		// TFile
-#include "opt_main.h"		// COMP_UNIT
 #include "opt_cfg.h"		// CFG
+#include "opt_main.h"		// COMP_UNIT
 #include "opt_alias_rule.h"	// ALIAS_RULE
 #include "pragma_weak.h"	// pragma weak
 #include "opt_points_to.h"	// Is_nested_call

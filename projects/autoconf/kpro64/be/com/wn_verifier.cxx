@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -357,6 +357,9 @@ WN_Verifier::WN_traverse_tree(WN *wn, WN *parent_wn)
       case OPR_INTRINSIC_CALL:
       case OPR_IO:
       case OPR_INTRINSIC_OP:
+#ifdef KEY
+      case OPR_PURE_CALL_OP:
+#endif
  	   // Check if children of the CALL node are
 	   // are PARMS
            _is_tree_OK &= Call_children_are_PARM(wn);
@@ -679,6 +682,9 @@ BOOL WN_Verifier::Param_parent_is_Call(WN *wn,WN *parent_wn)
     if (opr == OPR_CALL || opr == OPR_ICALL ||
         opr == OPR_INTRINSIC_CALL ||
         opr == OPR_PICCALL || opr == OPR_IO ||
+#ifdef KEY
+	opr == OPR_PURE_CALL_OP ||
+#endif
         opr == OPR_INTRINSIC_OP)
     {
       // It is ok, the parents of the PARM is a Call node.
@@ -711,6 +717,9 @@ BOOL WN_Verifier::Call_children_are_PARM(WN *wn)
   if (opr == OPR_CALL || 
       opr == OPR_INTRINSIC_CALL || 
       opr == OPR_INTRINSIC_OP   ||
+#ifdef KEY
+      opr == OPR_PURE_CALL_OP   ||
+#endif
       opr == OPR_IO) 
   {
     for(INT32 i=0; i < WN_kid_count(wn); i++)
@@ -1247,6 +1256,11 @@ Rename_INITV_Labels(INITO_IDX inito_idx, LABEL_RENAMING_MAP *lab_map,
                           INITV_lab1(val_idx);
           if (lab_map->Find(lab))
             renamed_labels_found = TRUE;
+#ifdef KEY
+          // bug 5193
+          else
+            val_idx = INITV_next(val_idx);
+#endif // KEY
         }
         break;
 

@@ -1,4 +1,7 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -51,6 +54,31 @@ struct tb { float usrtime; float systime; };
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#ifdef KEY /* Bug 3018 */
+
+#include "pathf90_libU_intrin.h"
+
+float
+pathf90_etime (float tarray[2])
+{	struct rusage ru;
+
+	getrusage (RUSAGE_SELF, &ru);
+	tarray[0] = (float)ru.ru_utime.tv_sec
+		    + (float)ru.ru_utime.tv_usec * 1e-6;
+	tarray[1] = (float)ru.ru_stime.tv_sec
+		    + (float)ru.ru_stime.tv_usec * 1e-6;
+	return(tarray[0] + tarray[1]);
+}
+
+/* Alternate G77 subroutine form */
+void
+pathf90_subr_etime (float tarray[2], float *result)
+{
+  *result = pathf90_etime(tarray);
+}
+
+#else
+
 float
 etime_ (struct tb *et)
 {	struct rusage ru;
@@ -62,6 +90,8 @@ etime_ (struct tb *et)
 		    + (float)ru.ru_stime.tv_usec * 1e-6;
 	return(et->usrtime + et->systime);
 }
+
+#endif /* KEY Bug 3018 */
 
 #else  /* sgi || __linux */
 

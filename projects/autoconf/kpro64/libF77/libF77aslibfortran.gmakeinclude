@@ -109,7 +109,6 @@ CFILES += \
 	c_log.c \
 	c_sin.c \
 	c_sqrt.c \
-	cabs.c \
 	d_abs.c \
 	d_acos.c \
 	d_acosd.c \
@@ -231,7 +230,6 @@ CFILES += \
 	r_tand.c \
 	r_tanh.c \
 	ran_.c \
-	rand_.c \
 	s_abort.c \
 	s_paus.c \
 	s_rnge.c \
@@ -261,16 +259,21 @@ CFILES += \
 
 # other files common to f77 and f90
 CFILES += \
+	abort_.c \
 	access_.c \
 	alarm_.c \
+	bes.c \
+	dbes.c \
 	charutil.c \
 	chdir_.c \
 	chmod_.c \
 	ctime_.c \
+	date_.c \
 	dtime_.c \
 	etime_.c \
 	exit_.c \
         fdate_.c \
+	gerror_.c \
 	getarg_.c \
 	getcwd_.c \
 	getenv_.c \
@@ -279,19 +282,54 @@ CFILES += \
 	getpid_.c \
 	getuid_.c \
 	gmtime_.c \
+	hostnm_.c \
 	iargc_.c \
+	ierrno_.c \
+	irand_.c \
 	itime_.c \
+	legacy_access_.c \
+	legacy_alarm_.c \
+	legacy_chdir_.c \
+	legacy_chmod_.c \
+	legacy_dtime_.c \
+	legacy_etime_.c \
+	legacy_fdate_.c \
+	legacy_getarg_.c \
+	legacy_getcwd_.c \
+	legacy_getenv_.c \
+	legacy_getgid_.c \
+	legacy_getlog_.c \
+	legacy_getpid_.c \
+	legacy_getuid_.c \
+	legacy_gmtime_.c \
+	legacy_hostnm_.c \
+	legacy_iargc_.c \
+	legacy_itime_.c \
+	legacy_ltime_.c \
+	legacy_rename_.c \
+	legacy_sleep_.c \
+	legacy_stat_.c \
+	legacy_symlnk_.c \
+	legacy_system_.c \
+	legacy_time_.c \
+	legacy_unlink_.c \
+	link_.c \
 	ltime_.c \
 	malloc_.c \
 	output.c \
+	perror_.c \
 	putenv_.c \
 	qsort_.c \
+	rand_.c \
 	rename_.c \
 	secnds_.c \
 	sleep_.c \
+	srand_.c \
         stat_.c \
-        system_.c \
+	symlnk_.c \
+	system_.c \
         time_.c \
+	umask_.c \
 	unlink_.c \
 	wait_.c
 
@@ -488,7 +526,6 @@ CFILES += \
 	lnblnk_.c \
 	outstr_.c \
 	ran_.c \
-	rand_.c \
 	subout.c \
 	access_.c \
 	alarm_.c \

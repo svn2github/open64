@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -93,6 +93,9 @@ typedef enum {
   wfe_stmk_switch,
   wfe_stmk_comma,
   wfe_stmk_rcomma,
+#ifdef KEY
+  wfe_stmk_dummy,	// does not generate code
+#endif // KEY
   wfe_stmk_last
 } WFE_STMT_KIND;
 
@@ -104,6 +107,12 @@ extern void WFE_Stmt_Prepend_Last (WN* wn, SRCPOS srcpos);
 #endif /* KEY */
 extern WN*  WFE_Stmt_Last (void);
 extern WN*  WFE_Stmt_Pop (WFE_STMT_KIND kind);
+
+#ifdef KEY
+void WFE_Stmt_Append_Before (WN* wn, SRCPOS srcpos);
+WFE_STMT_KIND WFE_Stmt_Top_Kind (void);
+extern WN * WFE_Find_Stmt_In_Stack (WFE_STMT_KIND);
+#endif
 
 extern UINT current_file;
 extern int lineno;

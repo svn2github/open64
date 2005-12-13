@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Type information for cp.
@@ -103,6 +103,181 @@ gt_ggc_mx_cxx_binding (x_p)
         }
   }
 }
+
+#ifdef KEY
+/* Tell the GNU garbage collector about 'tree' nodes used for EKO OpenMP
+ * processing.
+ */
+void
+gt_ggc_m_9tree_node_for_mp (tree x)
+{
+  /* Two-level switch statement */
+  switch (x->omp.choice)
+  {
+    case parallel_dir_b:
+      {
+        struct parallel_clause_list * clause =
+          (struct parallel_clause_list *) (x->omp.omp_clause_list);
+
+        if (!clause) break;
+        switch (clause->type)
+        {
+          case p_if:
+          case p_num_threads:
+            gt_ggc_m_9tree_node (clause->node.expr_no_commas);
+            break;
+          case p_private:
+          case p_firstprivate:
+          case p_shared:
+          case p_copyin:
+            gt_ggc_m_9tree_node (clause->node.var_list);
+            break;
+          case p_reduction:
+            gt_ggc_m_9tree_node (clause->node.reduction_node.var_list);
+            break;
+          default:
+            break;
+        }
+      }
+      break;
+
+    case for_dir_b:
+      {
+        struct for_clause_list * clause = 
+          (struct for_clause_list *) (x->omp.omp_clause_list);
+        if (!clause) break;
+        switch (clause->type)
+        {
+          case f_private:
+          case f_firstprivate:
+          case f_lastprivate:
+            gt_ggc_m_9tree_node (clause->node.var_list);
+            break;
+          case f_schedule_2:
+            gt_ggc_m_9tree_node (clause->node.schedule_node.chunk_size);
+            break;
+          case f_reduction:
+            gt_ggc_m_9tree_node (clause->node.reduction_node.var_list);
+            break;
+          default:
+            break;
+        }
+      }
+      break;
+
+    case sections_cons_b:
+      {
+        struct sections_clause_list * clause =
+          (struct sections_clause_list *) (x->omp.omp_clause_list);
+        if (!clause) break;
+        switch (clause->type)
+        {
+          case sections_private:
+          case sections_firstprivate:
+          case sections_lastprivate:
+            gt_ggc_m_9tree_node (clause->node.var_list);
+            break;
+          case sections_reduction:
+            gt_ggc_m_9tree_node (clause->node.reduction_node.var_list);
+            break;
+          default:
+            break;
+        }
+      }
+      break;
+
+    case single_cons_b:
+      {
+        struct single_clause_list * clause =
+          (struct single_clause_list *) (x->omp.omp_clause_list);
+        if (!clause) break;
+        switch (clause->type)
+        {
+          case single_private:
+          case single_firstprivate:
+          case single_copyprivate:
+            gt_ggc_m_9tree_node (clause->node.var_list);
+            break;
+          default:
+            break;
+        }
+      }
+      break;
+
+    case par_for_cons_b:
+      {
+        struct parallel_for_clause_list * clause =
+          (struct parallel_for_clause_list *) (x->omp.omp_clause_list);
+        if (!clause) break;
+
+        switch (clause->type)
+        {
+          case p_for_if:
+          case p_for_num_threads:
+            gt_ggc_m_9tree_node (clause->node.expr_no_commas);
+            break;
+          case p_for_copyprivate:
+          case p_for_shared:
+          case p_for_copyin:
+          case p_for_firstprivate:
+          case p_for_lastprivate:
+          case p_for_private:
+	    gt_ggc_m_9tree_node (clause->node.var_list);
+	    break;
+          case p_for_schedule_2:
+            gt_ggc_m_9tree_node (clause->node.schedule_node.chunk_size);
+            break;
+          case p_for_reduction:
+            gt_ggc_m_9tree_node (clause->node.reduction_node.var_list);
+            break;
+          default:
+	    break;
+        }
+      }
+      break;
+
+    case par_sctn_cons_b:
+      {
+        struct parallel_sections_clause_list * clause =
+          (struct parallel_sections_clause_list *) (x->omp.omp_clause_list);
+        if (!clause) break;
+
+        switch (clause->type)
+          {
+            case p_sections_if:
+            case p_sections_num_threads:
+              gt_ggc_m_9tree_node (clause->node.expr_no_commas);
+              break;
+            case p_sections_private:
+            case p_sections_copyprivate:
+            case p_sections_firstprivate:
+            case p_sections_lastprivate:
+            case p_sections_shared:
+            case p_sections_copyin:
+              gt_ggc_m_9tree_node (clause->node.var_list);
+              break;
+            case p_sections_reduction:
+              gt_ggc_m_9tree_node (clause->node.reduction_node.var_list);
+              break;
+            default:
+              break;
+          }
+      }
+      break;
+
+    case critical_cons_b:
+    case flush_dir:
+    case thdprv_dir:
+    case options_dir:
+    case exec_freq_dir:
+      gt_ggc_m_9tree_node ((tree)x->omp.omp_clause_list);
+      break;
+
+    default:
+      break;
+  }
+}
+#endif /* KEY */
 
 void
 gt_ggc_mx_lang_tree_node (x_p)
@@ -289,6 +464,14 @@ gt_ggc_mx_lang_tree_node (x_p)
               gt_ggc_m_9tree_node ((*x).generic.block.fragment_origin);
               gt_ggc_m_9tree_node ((*x).generic.block.fragment_chain);
               break;
+#ifdef KEY
+            case TS_OMP:
+              gt_ggc_m_9tree_node ((*x).generic.omp.common.chain);
+              gt_ggc_m_9tree_node ((*x).generic.omp.common.type);
+
+	      gt_ggc_m_9tree_node_for_mp ((tree) &(*x));
+              break;
+#endif /* KEY */
             default:
               break;
             }

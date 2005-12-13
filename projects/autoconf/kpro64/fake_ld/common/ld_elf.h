@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,9 +43,9 @@
 #define __LD_ELF_H__
 
 #include <elf.h>
-#include <elfaccess.h>
-#include <sys/elf_whirl.h>
-#include <libelf.h>
+#include "elfaccess.h"
+#include "sys/elf_whirl.h"
+#include "libelf/libelf.h"
 
 #ifdef _64BIT_OBJECTS
 

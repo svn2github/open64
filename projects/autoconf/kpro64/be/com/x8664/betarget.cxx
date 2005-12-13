@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -107,6 +107,7 @@ OPCODE_To_TOP (OPCODE opcode)
     if (rtype == MTYPE_F4) return TOP_noop;
     else if (rtype == MTYPE_F8) return TOP_noop;
 #ifdef TARG_X8664
+    else if (rtype == MTYPE_FQ) return TOP_noop;
     else if (rtype == MTYPE_I1) return TOP_noop;
     else if (rtype == MTYPE_I2) return TOP_noop;
     else if (rtype == MTYPE_I4) return TOP_noop;
@@ -117,6 +118,8 @@ OPCODE_To_TOP (OPCODE opcode)
     else if (rtype == MTYPE_V16I2) return TOP_noop;    
     else if (rtype == MTYPE_V16I4) return TOP_noop;
     else if (rtype == MTYPE_V16I8) return TOP_noop;    
+    else if (rtype == MTYPE_V16C4) return TOP_noop;
+    else if (rtype == MTYPE_V16C8) return TOP_noop;    
 #endif
     else                        return TOP_UNDEFINED;
 
@@ -138,25 +141,28 @@ TAS_To_TOP (WN *tas_wn)
 {
   TYPE_ID kid_mtype = WN_rtype(WN_kid0(tas_wn));
 
-  FmtAssert( false, ("") );
-  return TOP_UNDEFINED;
-
-#if 0
   switch (WN_opcode(tas_wn)) {
     case OPC_I8TAS:
     case OPC_U8TAS:
-      return MTYPE_float(kid_mtype) ? TOP_getf_d : TOP_nop;
+      if (Is_Target_32bit())
+	return TOP_UNDEFINED;
+      return MTYPE_float(kid_mtype) ? TOP_movx2g64 : TOP_nop;
     case OPC_I4TAS:
     case OPC_U4TAS:
-      return MTYPE_float(kid_mtype) ? TOP_getf_s : TOP_nop;
+      if (Is_Target_32bit() && !Is_Target_SSE2())
+	return TOP_UNDEFINED;
+      return MTYPE_float(kid_mtype) ? TOP_movx2g : TOP_nop;
     case OPC_F8TAS:
-      return MTYPE_float(kid_mtype) ? TOP_nop : TOP_setf_d;
+      if (Is_Target_32bit())
+	return TOP_UNDEFINED;
+      return MTYPE_float(kid_mtype) ? TOP_nop : TOP_movg2x64;
     case OPC_F4TAS:
-      return MTYPE_float(kid_mtype) ? TOP_nop : TOP_setf_s;
+      if (Is_Target_32bit() && !Is_Target_SSE2())
+	return TOP_UNDEFINED;
+      return MTYPE_float(kid_mtype) ? TOP_nop : TOP_movg2x;
     default:
       return TOP_UNDEFINED;
   }
-#endif
 }
 
 /* return TRUE if the val is a power of 2 */

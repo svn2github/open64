@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -819,7 +819,11 @@ CSE::Generate_injury_repair( STMTREP *injury, CODEREP *new_temp,
   // mark the statement as an iv update, which it is, unless the
   // result type is a floating point type. This can happen when we
   // strength-reduce an int-to-float convert.
-  if (MTYPE_IS_INTEGER(OPCODE_desc(new_stid->Op()))) {
+  if (MTYPE_IS_INTEGER(OPCODE_desc(new_stid->Op()))
+#ifdef KEY // bug 5029
+      && new_rhs->Kind() == CK_OP
+#endif
+      ) {
     new_stid->Set_iv_update();
   }
 
@@ -900,6 +904,12 @@ CSE::Repair_injury_rec(CODEREP *iv_def, CODEREP *iv_use,
 	new_temp = temp_owner_cr;
       }
       Generate_injury_repair( injury, new_temp, old_temp, multiplier );
+      if (_worklist->Exp()->Kind() == CK_OP &&
+	  (_worklist->Exp()->Opr() == OPR_ADD || 
+	   _worklist->Exp()->Opr() == OPR_SUB))
+	injury->Inc_str_red_num();
+      Is_True(injury->Str_red_num() <= WOPT_Enable_Autoaggstr_Reduction_Threshold,
+	      ("CSE::Repair_injury_rec: autoaggstr_limit exceeded"));
     }
     else {
       // injury was fixed already, so find the temp that the repair

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -96,13 +96,16 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cw
 #include "cwh_auxst.h"
 #include "cwh_types.h"
 #include "sgi_cmd_line.h"
-#ifdef TARG_X8664 
+#ifdef KEY 
 // for tolower
 #include <ctype.h>
-#endif /* TARG_X8664 */
-#ifdef KEY
 #include "stamp.h"      /* For INCLUDE_STAMP */
-#endif
+
+// Bug 4457 - for DW_AT_comp_dir
+#include <sys/param.h>  /* For MAXHOSTNAMELEN */
+#define MAX_CWD_CHARS (256 - (MAXHOSTNAMELEN+1))
+static char  cwd_buffer[MAX_CWD_CHARS+MAXHOSTNAMELEN+1];
+#endif // KEY
 
 char *FE_command_line = NULL;
 
@@ -136,6 +139,41 @@ cwh_dst_init_file(char *src_path)
   strcpy(comp_info, "pathf90 ");
   if (INCLUDE_STAMP)
     strcat(comp_info, INCLUDE_STAMP);
+
+  // Bug 4457 - get the DW_AT_comp_dir working.
+  // (copied over from C/C++ front-end).
+  /* Get the DW_AT_comp_dir attribute (current_host_dir) */
+  if (Debug_Level > 0) {
+    int host_name_length = 0;
+    
+    current_host_dir = &cwd_buffer[0];
+    if (gethostname(current_host_dir, MAXHOSTNAMELEN) == 0) {
+      /* Host name is ok */
+      host_name_length = strlen(current_host_dir);
+      if(strchr(current_host_dir,'.')) {
+	// If hostname is already a FQDN (fully qualified
+	// domain name) don't add the domain again...
+	// Somehow.
+      } else {
+	current_host_dir[host_name_length] = '.';
+	if (getdomainname(&current_host_dir[host_name_length+1], 
+			  MAXHOSTNAMELEN-host_name_length) == 0) {
+	  /* Domain name is ok */
+	  host_name_length += strlen(&current_host_dir[host_name_length]);
+	}
+      }      
+    }
+    current_host_dir[host_name_length++] = ':';  /* Prefix cwd with ':' */
+    current_working_dir = &cwd_buffer[host_name_length];
+  } else /* No debugging */ {
+    current_host_dir = NULL;
+    current_working_dir = &cwd_buffer[0];
+  }
+  strcpy(current_working_dir, Get_Current_Working_Directory());
+  if (current_working_dir == NULL) {
+    perror("getcwd");
+    exit(2);
+  }
 #endif
 
   comp_unit_idx = DST_mk_compile_unit(++(file),
@@ -309,11 +347,6 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
       
    ptr = strtok(name, " ");
 
-#ifdef TARG_X8664
-   INT j;
-   for (j = 0; ptr && j < strlen(ptr); j ++)
-     ptr[ j ] = tolower(ptr[ j ]);
-#endif /* TARG_X8664 */
    while (ptr != NULL) {
 #ifndef TARG_X8664
       i = DST_mk_constant_def(s,
@@ -322,6 +355,9 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
                               cval,
                               FALSE);
 #else
+      INT j;
+      for (j = 0; ptr && j < strlen(ptr); j ++)
+	ptr[ j ] = tolower(ptr[ j ]);
       i = DST_mk_variable_const(s, 
       			        ptr,
 				t,
@@ -332,6 +368,13 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
       DST_append_child(current_scope_idx,i);
       ptr = strtok(NULL, " ");
    }
+#ifdef KEY /* Bug 4901 */
+   /* There is a single ST for all named constants having a particular value,
+    * across all program units. Now that we have generated Dwarf for all
+    * the names in the current program unit, get rid of those names so we
+    * can start afresh in the next program unit. */
+   cwh_auxst_clear_stem_name(st);
+#endif /* KEY Bug 4901 */
    return;
 }
 
@@ -549,6 +592,50 @@ cwh_dst_mk_MAIN(ST *mn, DST_INFO_IDX en_idx)
   }
 }
 
+#ifdef KEY
+// Bug 3704 - generate DW_TAG for namlist and namelist items
+
+static void
+cwh_dst_mk_namelist(ST *st, DST_INFO_IDX  parent)
+{
+  USRCPOS s;
+  DST_INFO_IDX i ; 
+
+  s = GET_ST_LINENUM(st);
+  INT len = ST_name(st)?strlen(ST_name(st))+1:0;
+  INT j;
+  char name[len];
+  if (len) {
+    strcpy(name, ST_name(st));
+    for (j=0; j < len; j ++)
+      name[j] = tolower(name[j]);
+  }
+  i = DST_mk_namelist(s, name);
+  DST_append_child(parent,i);
+  return;
+}
+
+static void
+cwh_dst_mk_namelist_item(ST *st, DST_INFO_IDX  parent)
+{
+  USRCPOS s;
+  DST_INFO_IDX i ; 
+
+  s = GET_ST_LINENUM(st);
+  INT len = ST_name(st)?strlen(ST_name(st))+1:0;
+  INT j;
+  char name[len];
+  if (len) {
+    strcpy(name, ST_name(st));
+    for (j=0; j < len; j ++)
+      name[j] = tolower(name[j]);
+  }
+  i = DST_mk_namelist_item(s, name);
+  DST_append_child(parent,i);
+  return;
+}
+#endif
+
 /*===================================================
  *
  * cwh_dst_mk_var
@@ -572,6 +659,27 @@ cwh_dst_mk_var(ST * st,DST_INFO_IDX  parent)
   DST_INFO_IDX i ; 
   DST_INFO_IDX j ;
 
+#ifdef KEY
+  if (ST_is_namelist(st)) {
+    LIST* l;
+    ITEM* item;
+    INT item_num = 0;
+    INT num_items;
+    ST* item_st;
+    cwh_dst_mk_namelist(st, parent);
+    l = cwh_auxst_get_list(st, l_NAMELIST);
+    num_items = L_num(l);
+    FmtAssert(num_items != 0, ("Namelist item list is empty."));
+    item = L_first(l);
+    while (item_num < num_items) {
+      item_st = I_element(item);
+      cwh_dst_mk_namelist_item(item_st, parent);
+      item = I_next(item);
+      item_num ++;
+    }
+    return;
+  }
+#endif
   Top_ST = st ;
   Making_FLD_DST = FALSE;
 
@@ -606,7 +714,14 @@ cwh_dst_mk_var(ST * st,DST_INFO_IDX  parent)
         DST_append_child(parent,i);
       }
     } else if  (!ST_is_temp_var(st)) {
+#ifndef KEY
       if (* ST_name(st) != '@') {  
+#else
+      // Bug 4834 - do not create DST entry for t$ variables which are 
+      // probably compiler generated temporaries (used in I/O statements).
+      if (* ST_name(st) != '@' &&
+	  strncmp(ST_name(st), "t$", sizeof(char)*2) != 0) {
+#endif
 	Top_ST_has_dope = cwh_dst_has_dope(ST_type(st));
 	i = cwh_dst_mk_variable(st);
 	DST_append_child(parent,i);

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -770,7 +774,21 @@ boolean parse_deref (opnd_type *result_opnd,
       if (attr_idx != NULL_IDX) {  /* the name was found locally */
 
          /* copy intrinsic attr to the local scope from the 0th scope */
-
+#ifdef KEY
+         if (LA_CH_VALUE == LPAREN &&
+             AT_REFERENCED(attr_idx) == Not_Referenced &&
+             !AT_NAMELIST_OBJ(attr_idx) &&
+             ((AT_OBJ_CLASS(attr_idx) == Pgm_Unit &&
+               strncasecmp(TOKEN_STR(attr_name), "omp_",4) == 0) ||
+             (AT_OBJ_CLASS(attr_idx) == Data_Obj &&
+              ATD_CLASS(attr_idx) == Atd_Unknown &&
+             !ATD_ALLOCATABLE(attr_idx) &&
+             !ATD_TARGET(attr_idx) &&
+             !ATD_POINTER(attr_idx) &&
+              ATD_ARRAY_IDX(attr_idx) == NULL_IDX &&
+              (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) != Character ||
+               ! is_substring_ref())))) {
+#else
          if (LA_CH_VALUE == LPAREN &&
              AT_REFERENCED(attr_idx) == Not_Referenced &&
              !AT_NAMELIST_OBJ(attr_idx) &&
@@ -782,7 +800,7 @@ boolean parse_deref (opnd_type *result_opnd,
               ATD_ARRAY_IDX(attr_idx) == NULL_IDX &&
               (TYP_TYPE(ATD_TYPE_IDX(attr_idx)) != Character ||
                ! is_substring_ref())) {
-
+#endif
 
             /* search INTRINSIC host for the INTRINSIC in question */
             save_curr_scp_idx = curr_scp_idx;
@@ -832,10 +850,26 @@ boolean parse_deref (opnd_type *result_opnd,
          ambiguous_ref = TRUE;
 
          /* search host sym tab */
-         host_attr_idx = srch_host_sym_tbl(TOKEN_STR(attr_name),
-                                           TOKEN_LEN(attr_name), 
-                                           &host_name_idx,
-                                           TRUE);
+#ifdef KEY
+         if (strncasecmp(TOKEN_STR(attr_name), "omp_",4) == 0){
+           save_curr_scp_idx = curr_scp_idx;
+           curr_scp_idx = INTRINSIC_SCP_IDX;
+           host_attr_idx = srch_sym_tbl(TOKEN_STR(attr_name),
+                                        TOKEN_LEN(attr_name), 
+                                        &host_name_idx);
+           curr_scp_idx = save_curr_scp_idx;
+           if (!host_attr_idx)
+             host_attr_idx = srch_host_sym_tbl(TOKEN_STR(attr_name),
+                                               TOKEN_LEN(attr_name), 
+                                               &host_name_idx,
+                                               TRUE);
+         }
+         else
+#endif
+           host_attr_idx = srch_host_sym_tbl(TOKEN_STR(attr_name),
+                                             TOKEN_LEN(attr_name), 
+                                             &host_name_idx,
+                                             TRUE);
 
 
          if (host_attr_idx != NULL_IDX && IS_STMT_ENTITY(host_attr_idx)) {
@@ -1174,6 +1208,26 @@ boolean parse_deref (opnd_type *result_opnd,
             for (i = 0; i < MAX_INTRIN_MAP_SIZE; i++) {
                if ((strcmp(AT_OBJ_NAME_PTR(attr_idx), 
                    (char *)&intrin_map[i].id_str) == 0)) {
+
+#ifdef KEY /* Bug 3869 */
+	       /* NINT is a special case: though it begins with "N" and its
+	        * result type is integer, its argument type is real */
+               if (0 == strcmp(AT_OBJ_NAME_PTR(attr_idx), "NINT")) {
+		 tmp_token = initial_token;
+		 TOKEN_COLUMN(tmp_token) = 1;
+		 TOKEN_LINE(tmp_token) = 1;
+		 strcat(
+		   strcpy((char *)&(TOKEN_STR(tmp_token)[0]),
+		     (char *) ((INTEGER_DEFAULT_TYPE == Integer_4) ?
+		       &intrin_map[i].mapped_4 :
+		       &intrin_map[i].mapped_8)),
+		   ((REAL_DEFAULT_TYPE == Real_4) ?
+		     "" :
+		     "_d")
+		   );
+		 break;
+	       }
+#endif /* KEY Bug 3869 */
 
                   if (INTEGER_DEFAULT_TYPE == Integer_1 ||
                       INTEGER_DEFAULT_TYPE == Integer_2 ||

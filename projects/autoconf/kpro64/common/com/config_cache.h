@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -388,7 +392,6 @@ typedef struct MHD_LEVEL {
 
  private:
 
-  MHD_LEVEL(const MHD_LEVEL&); /* undefined */
   void      Compute_Effective_Size();
 #endif
 } MHD_LEVEL;

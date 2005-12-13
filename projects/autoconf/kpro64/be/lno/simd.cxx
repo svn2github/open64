@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -55,9 +55,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/simd.cx
 #include "lwn_util.h"
 #include "ff_utils.h"
 #include "lnoutils.h"
+#include "lnopt_main.h"
 #include "scalar_expand.h"
 #include "fission.h"
-#include "lnopt_main.h"
 #include "opt_du.h"
 #include "dep_graph.h"
 #include "reduc.h"
@@ -71,6 +71,11 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/simd.cx
 #include "const.h"		   // for New_Const_Sym
 #include "data_layout.h"	   // for Stack_Alignment
 #include "cond.h"                  // for Guard_A_Do
+#include "config_opt.h"            // for Align_Unsafe
+#include "region_main.h" 	   // for creating new region id.
+#include "lego_util.h"             // for AWN_StidIntoSym, AWN_Add
+#include "minvariant.h"            // for Minvariant_Removal
+#include "prompf.h"
 
 #define ABS(a) ((a<0)?-(a):(a))
 
@@ -174,8 +179,14 @@ static BOOL is_vectorizable_op (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc) {
       return TRUE;
     else
       return FALSE;
+  case OPR_TRUNC:
+    if (rtype == MTYPE_I4 && desc == MTYPE_F4)
+      return TRUE;
+    else
+      return FALSE;
   case OPR_CVT:
-    if (rtype == MTYPE_F8 && desc == MTYPE_I4)
+    if ((rtype == MTYPE_F8 || rtype == MTYPE_F4) && 
+	(desc == MTYPE_I4 || desc == MTYPE_F4))
       return TRUE;
     else
       return FALSE;
@@ -183,6 +194,7 @@ static BOOL is_vectorizable_op (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc) {
     return TRUE;
   case OPR_PAREN:    
     return TRUE;
+  case OPR_ABS:
   case OPR_NEG:
     if (rtype == MTYPE_F4 || rtype == MTYPE_F8)
       return TRUE;
@@ -193,6 +205,9 @@ static BOOL is_vectorizable_op (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc) {
     return TRUE;
   case OPR_MPY:
     if (rtype == MTYPE_F8 || rtype == MTYPE_F4 || 
+#ifdef TARG_X8664
+	((rtype == MTYPE_C4 || rtype == MTYPE_C8) && Is_Target_SSE3()) ||
+#endif
 	// I2MPY followed by I2STID is actually I4MPY followed by I2STID 
 	// We will distinguish between I4MPY and I2MPY in Is_Well_Formed_Simd
 	rtype == MTYPE_I4)
@@ -201,13 +216,17 @@ static BOOL is_vectorizable_op (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc) {
       return FALSE;
   case OPR_DIV:
     // Look at icc
-    if (rtype == MTYPE_F8 || rtype == MTYPE_F4)
+    if (rtype == MTYPE_F8 || rtype == MTYPE_F4
+#ifdef TARG_X8664
+        || (rtype == MTYPE_C4 && Is_Target_SSE3())
+#endif
+       )
       return TRUE;
     else
       return FALSE;
   case OPR_MAX:
   case OPR_MIN:
-    if (rtype == MTYPE_F4 || rtype == MTYPE_F8)
+    if (rtype == MTYPE_F4 || rtype == MTYPE_F8 || rtype == MTYPE_I4)
       return TRUE;
     else
       return FALSE;
@@ -229,6 +248,8 @@ static BOOL is_vectorizable_op (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc) {
       return TRUE;
     else
       return FALSE;
+  case OPR_PARM:
+    return TRUE;
   default:
     return FALSE;
   }  
@@ -403,6 +424,53 @@ static SIMD_OPERAND_KIND simd_operand_kind(WN* wn, WN* loop) {
   return Complex;  
 }
 
+/*
+ * The caller (currently only Cache Blocking model) is interested 
+ * in knowing if vectorization is expected to give speed-up. 
+ * We consider the following cases:
+ * (1) single-precision operators when vectorized can speed-up the code
+ * (2) Under -LNO:simd=2, the user requested SIMD at all costs, so return TRUE.
+ * (3) Special double-precision operators like CVT/RECIP/SQRT are known to 
+ *     produce speed-up.
+ * TODO: Consider (1) dependencies (2) operand alignments (3) streaming stores
+ * 
+ */
+extern BOOL Is_Vectorization_Beneficial (WN* wn) 
+{
+  if (LNO_Run_Simd == 0)
+    return FALSE;
+  else if (LNO_Run_Simd == 2)
+    return TRUE;
+
+  if (wn == NULL)
+    return FALSE;
+
+  OPERATOR opr = WN_operator(wn);
+
+  if (opr == OPR_CVT || opr == OPR_RECIP || 
+      opr == OPR_SQRT || opr == OPR_TRUNC)
+    return TRUE;
+
+  if (OPCODE_is_store(WN_opcode(wn)) &&
+      MTYPE_byte_size(WN_desc(wn)) < 8)
+    return TRUE;
+
+  if (WN_opcode(wn) == OPC_BLOCK) 
+    for (WN* stmt=WN_first(wn); stmt;) {
+      WN* next_stmt=WN_next(stmt);
+      if (Is_Vectorization_Beneficial(stmt))
+	return TRUE;
+      stmt=next_stmt;
+    }
+
+  for (UINT kidno = 0; kidno < WN_kid_count(wn); kidno ++) {
+    if (Is_Vectorization_Beneficial(WN_kid(wn, kidno)))
+      return TRUE;
+  }
+
+  return FALSE;
+}
+
 /* Are the loads and stores in this tree node all unaligned ?
  * Better said, are we going to mark down all the vector loads and vector 
  * stores as unaligned, because we can not determine alignment at compile time.
@@ -422,14 +490,15 @@ static BOOL Simd_Benefit (WN* wn) {
   if (wn == NULL)
     return FALSE;
 
-  if (WN_operator(wn) == OPR_CVT)
-    return TRUE;
-     
-  if (WN_operator(wn) == OPR_RECIP)
+  OPERATOR opr = WN_operator(wn);
+
+  if (opr == OPR_CVT || opr == OPR_RECIP || 
+      opr == OPR_SQRT || opr == OPR_TRUNC)
     return TRUE;
 
   if (OPCODE_is_store(WN_opcode(wn)) &&
-      MTYPE_byte_size(WN_desc(wn)) < 8)
+      (MTYPE_byte_size(WN_desc(wn)) < 8 ||
+       MTYPE_is_complex(WN_desc(wn))))
     return TRUE;
 
   if (WN_operator(wn) == OPR_ARRAY &&
@@ -482,6 +551,49 @@ static BOOL Is_Vectorizable_Tree (WN* tree)
   return TRUE;
 }
 
+static BOOL Array_Subscript_Uses_IV (WN *wn, SYMBOL loop_var)
+{
+  if (WN_operator(wn) == OPR_LDID) {
+    SYMBOL symbol(wn);
+    if (symbol == loop_var)
+      return TRUE;
+  }
+  for (INT kid = 0; kid < WN_kid_count(wn); kid ++)
+    if (Array_Subscript_Uses_IV(WN_kid(wn, kid), loop_var))
+      return TRUE;
+  return FALSE;
+}
+
+// Bug 4932 - Accesses like e[c[j]][j] in a j-loop should not be 
+// vectorized but accesses like e[c[i][j] in a j-loop can be vectorized.
+// Unfortunately, the loop coefficients are not computed for such cases.
+// The access vector is marked too messy but we have to distinguish
+// these two cases.      
+static BOOL Identify_Messy_Array_Subscript (WN* array, WN* loop, 
+					    ACCESS_ARRAY* aa, 
+					    INT i /* current dim */)
+{
+  WN* index;
+  if (WN_num_dim(array) == aa->Num_Vec()) {
+    Is_True(i + 1 + WN_num_dim(array) < WN_kid_count(array), ("NYI"));
+    if (i + 1 + WN_num_dim(array) < WN_kid_count(array)) {
+      index = WN_kid(array, i + 1 + WN_num_dim(array));
+      SYMBOL symbol(WN_index(loop));
+      if (Array_Subscript_Uses_IV(index, symbol))
+	return TRUE;
+    }
+  }		
+  return FALSE;
+}
+
+// Bug 5208
+// We support only one induction type per loop. To support more than one type,
+// we need to split the loop or generate multiple vec_index_preg and incr 
+// stores. We will screen out such loops.
+INT Induction_Type_Size;
+BOOL Induction_Seen;
+BOOL Inconsistent_Induction;
+
 static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
 {
   // for vectorizing copies
@@ -533,34 +645,69 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
   if (WN_operator(wn) == OPR_MPY && WN_rtype(wn) == MTYPE_I4 &&
       WN_desc(parent) != MTYPE_I2)
     return FALSE;
- 
-  // F4 REDUCE_MPY is known to be inaccurate with other compilers also.
-  if (WN_operator(wn) == OPR_MPY && WN_desc(parent) == MTYPE_F4 &&
-      WN_operator(parent) == OPR_STID && LNO_Run_Simd != 2 &&
-      // bug 2456 - scalar expansion test may pass down non-reduction statements
-      // and we don't care if OPR_MPY is in the middle of the expression.
-      curr_simd_red_manager->Which_Reduction(parent) == RED_MPY)
+  
+  // F4 REDUCE_MPY and REDUCE_ADD are known to be inaccurate with other 
+  // compilers also. This is true for Opteron and EM64T.
+  // (Bug 4636 - lapack failure with -msse3 is attributable to difference
+  // in association introduced due to REDUCE style operations. SSE3 instructions
+  // show more variability due to roundoff than their SSE2 counterparts).
+  // Bug 4426 - associativity problem shows up with F8 type also.
+  if (MTYPE_is_float(WN_desc(parent)) && WN_operator(parent) == OPR_STID && 
+      LNO_Run_Simd != 2 && Roundoff_Level == ROUNDOFF_NONE &&
+      // bug 2456 - scalar expansion test may pass down non-reduction 
+      // statements and we don't care if OPR_MPY/ADD is in the middle of the 
+      // expression.
+      ((WN_operator(wn) == OPR_MPY &&
+        curr_simd_red_manager->Which_Reduction(parent) == RED_MPY) ||
+       (WN_operator(wn) == OPR_ADD &&
+        curr_simd_red_manager->Which_Reduction(parent) == RED_ADD)))
     return FALSE;
      
   if (WN_operator(parent) != OPR_ISTORE && WN_operator(parent) != OPR_STID &&
       !is_vectorizable_op(WN_operator(parent), 
 			  WN_rtype(parent), WN_desc(parent)))
     return FALSE;
-  
+
   if (WN_operator(kid0) == OPR_ILOAD) {
     WN* array0 = WN_kid0(kid0);
     if (WN_operator(array0) == OPR_ARRAY &&
 	WN_operator(WN_kid0(array0)) != OPR_LDID &&
-	WN_operator(WN_kid0(array0)) != OPR_LDA)
-      return FALSE;
+	WN_operator(WN_kid0(array0)) != OPR_LDA) {
+      // Bug 5057 - tolerate base addresses of the form (+ const LDID).
+      if (WN_operator(WN_kid0(array0)) == OPR_ADD) {
+	WN* opnd0 = WN_kid0(WN_kid0(array0));
+	WN* opnd1 = WN_kid1(WN_kid0(array0));
+	if ((WN_operator(opnd0) == OPR_LDID &&
+	     WN_operator(opnd1) == OPR_INTCONST) ||
+	    (WN_operator(opnd1) == OPR_LDID &&
+	     WN_operator(opnd0) == OPR_INTCONST))
+	  ;
+	else
+	  return FALSE;
+      } else
+	return FALSE;
+    }
   }
   if (WN_kid_count(wn) > 1 && 
       WN_operator(kid1) == OPR_ILOAD) {
     WN* array1 = WN_kid0(kid1);
     if (WN_operator(array1) == OPR_ARRAY &&
 	WN_operator(WN_kid0(array1)) != OPR_LDID &&
-	WN_operator(WN_kid0(array1)) != OPR_LDA)
-      return FALSE;
+	WN_operator(WN_kid0(array1)) != OPR_LDA) {
+      // Bug 5057 - tolerate base addresses of the form (+ const LDID).
+      if (WN_operator(WN_kid0(array1)) == OPR_ADD) {
+	WN* opnd0 = WN_kid0(WN_kid0(array1));
+	WN* opnd1 = WN_kid1(WN_kid0(array1));
+	if ((WN_operator(opnd0) == OPR_LDID &&
+	     WN_operator(opnd1) == OPR_INTCONST) ||
+	    (WN_operator(opnd1) == OPR_LDID &&
+	     WN_operator(opnd0) == OPR_INTCONST))
+	  ;
+	else
+	  return FALSE;
+      } else
+	return FALSE;
+    }
   }
 
   if (WN_operator(kid0) == OPR_ILOAD && 
@@ -572,7 +719,18 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
       av = aa->Dim(i);
       if (av->Loop_Coeff(loopno)!=0 && i != aa->Num_Vec()-1)
 	return FALSE;
-      if (i == aa->Num_Vec()-1 && av->Loop_Coeff(loopno) != 1)
+      if (i == aa->Num_Vec()-1 && av->Loop_Coeff(loopno) != 1 &&
+	  av->Loop_Coeff(loopno) != -1)
+	return FALSE;
+      // There is no instruction to shuffle I1/U1.
+      if (i == aa->Num_Vec()-1 && av->Loop_Coeff(loopno) == -1 &&
+	  ABS(WN_element_size(WN_kid0(kid0))) == 1)
+	return FALSE;
+      // Bug 4984 - non-linear symbols in the last dimension (access[i+i*l]).
+      if (i == aa->Num_Vec()-1 && av->Contains_Non_Lin_Symb())
+	return FALSE;
+      if (!av->Has_Loop_Coeff() && av->Too_Messy &&
+	  Identify_Messy_Array_Subscript(WN_kid0(kid0), loop, aa, i))
 	return FALSE;
     }
   }
@@ -586,7 +744,17 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
       av = aa->Dim(i);
       if (av->Loop_Coeff(loopno)!=0 && i != aa->Num_Vec()-1)
 	return FALSE;
-      if (i == aa->Num_Vec()-1 && av->Loop_Coeff(loopno) != 1)
+      if (i == aa->Num_Vec()-1 && av->Loop_Coeff(loopno) != 1 &&
+	  av->Loop_Coeff(loopno) != -1)
+	return FALSE;
+      // There is no instruction to shuffle I1/U1.
+      if (i == aa->Num_Vec()-1 && av->Loop_Coeff(loopno) == -1 &&
+	  ABS(WN_element_size(WN_kid0(kid1))) == 1)
+	return FALSE;
+      if (i == aa->Num_Vec()-1 && av->Contains_Non_Lin_Symb())
+	return FALSE;
+      if (!av->Has_Loop_Coeff() && av->Too_Messy &&
+	  Identify_Messy_Array_Subscript(WN_kid0(kid1), loop, aa, i))
 	return FALSE;
     }
   }
@@ -599,7 +767,17 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
       av = aa->Dim(i);
       if (av->Loop_Coeff(loopno)!=0 && i != aa->Num_Vec()-1)
 	return FALSE;
-      if (i == aa->Num_Vec()-1 && av->Loop_Coeff(loopno) != 1)
+      if (i == aa->Num_Vec()-1 && av->Loop_Coeff(loopno) != 1 &&
+	  av->Loop_Coeff(loopno) != -1)
+	return FALSE;
+      // There is no instruction to shuffle I1/U1.
+      if (i == aa->Num_Vec()-1 && av->Loop_Coeff(loopno) == -1 &&
+	  ABS(WN_element_size(WN_kid1(parent))) == 1)
+	return FALSE;
+      if (i == aa->Num_Vec()-1 && av->Contains_Non_Lin_Symb())
+	return FALSE;
+      if (!av->Has_Loop_Coeff() && av->Too_Messy &&
+	  Identify_Messy_Array_Subscript(WN_kid1(parent), loop, aa, i))
 	return FALSE;
     }    
   }
@@ -630,15 +808,41 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
   if (WN_operator(kid0) == OPR_LDID) {
     SYMBOL symbol1(kid0);
     SYMBOL symbol2(WN_index(loop));
-    if (symbol1 == symbol2)
-      return FALSE;
+    if (symbol1 == symbol2) {
+      // Bug 7255 - induction loop in MP region needs special treatment.
+      if (Do_Loop_Is_Mp(loop)) 
+	return FALSE;
+      INT Type_Size = MTYPE_byte_size(WN_rtype(wn));
+      if (WN_operator(wn) == OPR_CVT) 
+	Type_Size = MTYPE_byte_size(WN_desc(wn));
+      if (Induction_Seen &&
+	  Type_Size != Induction_Type_Size) {
+	Inconsistent_Induction = TRUE;
+	return FALSE;
+      } 
+      Induction_Seen = TRUE;
+      Induction_Type_Size = Type_Size;
+    }
   }
 
   if (kid1 && WN_operator(kid1) == OPR_LDID) {
     SYMBOL symbol1(kid1);
     SYMBOL symbol2(WN_index(loop));
-    if (symbol1 == symbol2)
-      return FALSE;
+    if (symbol1 == symbol2) { 
+      // Bug 7255 - induction loop in MP region needs special treatment.
+      if (Do_Loop_Is_Mp(loop)) 
+	return FALSE;
+      INT Type_Size = MTYPE_byte_size(WN_rtype(wn));
+      if (WN_operator(wn) == OPR_CVT) 
+	Type_Size = MTYPE_byte_size(WN_desc(wn));
+      if (Induction_Seen &&
+	  Type_Size != Induction_Type_Size) {
+	Inconsistent_Induction = TRUE;
+	return FALSE;
+      }
+      Induction_Seen = TRUE;
+      Induction_Type_Size = Type_Size;
+    }
   }
 
   if ((WN_operator(kid0) == OPR_ILOAD && WN_field_id(kid0) != 0) ||
@@ -646,36 +850,86 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
       (WN_operator(parent) == OPR_ISTORE && WN_field_id(parent) != 0))
     return FALSE;
 
+  // Bug 6606 - Add additional checks for assumed shape arrays (ARRAY with -ve
+  // element size) when identifying vectorizable loads and stores :
+  // (1) if the WN offset > 0, then it can not be vectorized (this is a 
+  //     practical observation that speeds up the check) and,
+  // (2) if the WN offset is = 0, for cases like struct_a[i].field_b where 
+  //     field_b is first field in struct_a[i], then have to check the type 
+  //     of the base (struct_a in the case of struct_a[i].field_b should 
+  //     prevent vectorization if struct_a has more than one element).
   if (WN_operator(kid0) == OPR_ILOAD && 
       WN_operator(WN_kid0(kid0)) == OPR_ARRAY &&
-      WN_operator(WN_kid0(WN_kid0(kid0))) == OPR_LDID &&
-      WN_operator(WN_kid1(WN_kid0(kid0))) == OPR_LDID) {
-    SYMBOL symbol1(WN_kid0(WN_kid0(kid0)));
-    SYMBOL symbol2(WN_kid1(WN_kid0(kid0)));    
-    if (symbol1.St() == symbol2.St())
-      return FALSE;
+      WN_element_size(WN_kid0(kid0)) < 0 &&
+      WN_operator(WN_array_base(WN_kid0(kid0))) == OPR_LDID) {
+    if (WN_offset(kid0) > 0) return FALSE;
+    TY_IDX ty_dope = ST_type(WN_st(WN_array_base(WN_kid0(kid0))));
+    if (TY_kind(ty_dope) == KIND_STRUCT) {
+      UINT field_id = 0;    
+      TY_IDX ty_base = 
+	FLD_type(FLD_get_to_field(ty_dope, 1, field_id));
+      if (TY_kind(ty_base) == KIND_POINTER) {
+	ty_base = TY_pointed(ty_base);
+	if (TY_kind(ty_base) == KIND_ARRAY) {
+	  TY_IDX etype = TY_etype(ty_base);
+	  if (TY_kind(etype) == KIND_STRUCT) {
+	    field_id = 0;
+	    if (!FLD_last_field(FLD_get_to_field(etype, 1, field_id)))
+	      return FALSE;
+	  }
+	}
+      }
+    }
   }
-
+      
   if (kid1 && WN_operator(kid1) == OPR_ILOAD && 
       WN_operator(WN_kid0(kid1)) == OPR_ARRAY &&
-      WN_operator(WN_kid0(WN_kid0(kid1))) == OPR_LDID &&
-      WN_operator(WN_kid1(WN_kid0(kid1))) == OPR_LDID) {
-    SYMBOL symbol1(WN_kid0(WN_kid0(kid1)));
-    SYMBOL symbol2(WN_kid1(WN_kid0(kid1)));
-    if (symbol1.St() == symbol2.St())
-      return FALSE;
+      WN_element_size(WN_kid0(kid1)) < 0 &&
+      WN_operator(WN_array_base(WN_kid0(kid1))) == OPR_LDID) {
+    if (WN_offset(kid1) > 0) return FALSE;
+    TY_IDX ty_dope = ST_type(WN_st(WN_array_base(WN_kid0(kid1))));
+    if (TY_kind(ty_dope) == KIND_STRUCT) {
+      UINT field_id = 0;    
+      TY_IDX ty_base = 
+	FLD_type(FLD_get_to_field(ty_dope, 1, field_id));
+      if (TY_kind(ty_base) == KIND_POINTER) {
+	ty_base = TY_pointed(ty_base);
+	if (TY_kind(ty_base) == KIND_ARRAY) {
+	  TY_IDX etype = TY_etype(ty_base);
+	  if (TY_kind(etype) == KIND_STRUCT) {
+	    field_id = 0;
+	    if (!FLD_last_field(FLD_get_to_field(etype, 1, field_id)))
+	      return FALSE;
+	  }
+	}
+      }
+    }    
   }
-
+      
   if (WN_operator(parent) == OPR_ISTORE && 
       WN_operator(WN_kid1(parent)) == OPR_ARRAY &&
-      WN_operator(WN_kid0(WN_kid1(parent))) == OPR_LDID &&
-      WN_operator(WN_kid1(WN_kid1(parent))) == OPR_LDID) {
-    SYMBOL symbol1(WN_kid0(WN_kid1(parent)));
-    SYMBOL symbol2(WN_kid1(WN_kid1(parent)));
-    if (symbol1.St() == symbol2.St())
-      return FALSE;
+      WN_element_size(WN_kid1(parent)) < 0 &&
+      WN_operator(WN_array_base(WN_kid1(parent))) == OPR_LDID) {
+    if (WN_offset(parent) > 0) return FALSE;
+    TY_IDX ty_dope = ST_type(WN_st(WN_array_base(WN_kid1(parent))));
+    if (TY_kind(ty_dope) == KIND_STRUCT) {
+      UINT field_id = 0;    
+      TY_IDX ty_base = 
+	FLD_type(FLD_get_to_field(ty_dope, 1, field_id));
+      if (TY_kind(ty_base) == KIND_POINTER) {
+	ty_base = TY_pointed(ty_base);
+	if (TY_kind(ty_base) == KIND_ARRAY) {
+	  TY_IDX etype = TY_etype(ty_base);
+	  if (TY_kind(etype) == KIND_STRUCT) {
+	    field_id = 0;
+	    if (!FLD_last_field(FLD_get_to_field(etype, 1, field_id)))
+	      return FALSE;
+	  }
+	}
+      }
+    }
   }
-
+      
   // Can not vector copy different sized arrays. 
   // The elements are not contiguous
   WN* stmt = parent; // bug 2336 - trace up the correct type
@@ -691,76 +945,72 @@ static BOOL Is_Well_Formed_Simd ( WN* wn, WN* loop)
        WN_desc(kid1) != WN_desc(stmt)))
     return FALSE;
 
-  // Fix Bug 566
-  // Check for array bases that are pointer variables assigned to registers.
-  // There is no way to align such arrays.  
-  if (WN_operator(parent) == OPR_ISTORE && 
-      WN_operator(WN_kid1(parent)) == OPR_ARRAY &&
-      WN_operator(WN_kid0(WN_kid1(parent))) == OPR_LDID) {
-    ST *base_st; INT64 offset;
-    Base_Symbol_And_Offset(WN_st(WN_array_base(WN_kid1(parent))), 
-			   &base_st, &offset);
-    if (ST_sclass(base_st) == SCLASS_REG)
-      return FALSE;
-  }
-  if (WN_operator(kid0) == OPR_ILOAD && 
-      WN_operator(WN_kid0(kid0)) == OPR_ARRAY &&
-      WN_operator(WN_kid0(WN_kid0(kid0))) == OPR_LDID) {
-    ST *base_st; INT64 offset;
-    Base_Symbol_And_Offset(WN_st(WN_array_base(WN_kid0(kid0))), 
-			   &base_st, &offset);
-    if (ST_sclass(base_st) == SCLASS_REG)
-      return FALSE;
-  }
-  if (kid1 && WN_operator(kid1) == OPR_ILOAD && 
-      WN_operator(WN_kid0(kid1)) == OPR_ARRAY &&
-      WN_operator(WN_kid0(WN_kid0(kid1))) == OPR_LDID) {
-    ST *base_st; INT64 offset;
-    Base_Symbol_And_Offset(WN_st(WN_array_base(WN_kid0(kid1))), 
-			   &base_st, &offset);
-    if (ST_sclass(base_st) == SCLASS_REG)
-      return FALSE;
-  }
-
-
-  // Fix bug 568
+  // Bug 568
   // For Fortran loops that copy array sections, the lowerer may return
   // fields in structure without a field Id. Also, we can not
   // rely on the offset field in the ISTORE which may be 0 (first field in
   // a structure). To work around the problem, we compare the size of the 
   // array nodes.
-  {
-    INT store_size, load0_size, load1_size;
-    store_size = load0_size = load1_size = -1;
+  // Revised for bug 4554 after 2.0 change for bug 3359.
+  if (WN_operator(wn) != OPR_INTRINSIC_OP) {
+    INT oper_size = -1, opnd_size = -1;
+    WN* address;
 
-    if (WN_operator(parent) == OPR_ISTORE && 
-        WN_operator(WN_kid1(parent)) == OPR_ARRAY)
-      store_size = WN_element_size(WN_kid1(parent));
-    if (WN_operator(kid0) == OPR_ILOAD &&
-        WN_operator(WN_kid0(kid0)) == OPR_ARRAY)
-      load0_size = WN_element_size(WN_kid0(kid0));
-    if (kid1 && WN_operator(kid1) == OPR_ILOAD &&
-        WN_operator(WN_kid0(kid1)) == OPR_ARRAY)
-      load1_size = WN_element_size(WN_kid0(kid1));
-    if (WN_operator(kid0) == OPR_INTCONST ||
-	WN_operator(kid0) == OPR_CONST)
-      load0_size = MTYPE_byte_size(WN_rtype(kid0));
-    if (kid1 && 
-	(WN_operator(kid1) == OPR_INTCONST ||
-	 WN_operator(kid1) == OPR_CONST))
-      load1_size = MTYPE_byte_size(WN_rtype(kid1));
-    if (store_size != -1 && load0_size != -1 && (!kid1 || load1_size != -1) &&
-        (store_size != load0_size || (kid1 && (store_size != load1_size))))
-      if (WN_operator(wn) != OPR_INTRINSIC_OP)
+    if (WN_operator(parent) == OPR_ISTORE) {
+      address = WN_kid1(parent);
+      if (WN_operator(address) != OPR_ARRAY)
 	return FALSE;
+      else {
+	if (WN_element_size(address) > 8)
+	  return FALSE;
+	else 
+	  oper_size = ABS(WN_element_size(address));
+      } 
+    } else {
+      oper_size = MTYPE_byte_size(WN_rtype(wn));
+      if (WN_rtype(wn) == MTYPE_V)
+	oper_size = MTYPE_byte_size(WN_desc(wn));
+    }
+    
+    for (INT kid_count = 0; kid_count < WN_kid_count(wn); 
+	 kid_count ++) {
+      WN* kid = WN_kid(wn, kid_count);
+
+      if (WN_operator(kid) == OPR_ILOAD) {
+	address = WN_kid0(kid);
+	if (WN_operator(address) != OPR_ARRAY)
+	  return FALSE;
+	else {
+	  if (WN_element_size(address) > 8)
+	    return FALSE;
+	  else 
+	    opnd_size = ABS(WN_element_size(address));
+	} 
+      } else {
+	opnd_size = MTYPE_byte_size(WN_rtype(kid));
+	if (WN_rtype(kid) == MTYPE_V)
+	  opnd_size = MTYPE_byte_size(WN_desc(kid));
+      }
+      
+      if (opnd_size != oper_size && WN_operator(wn) != OPR_PARM &&
+	  WN_operator(wn) != OPR_CVT && WN_operator(wn) != OPR_TRUNC)
+	return FALSE;
+      if (WN_operator(wn) == OPR_CVT || WN_operator(wn) == OPR_TRUNC) {
+	INT rsize = MTYPE_byte_size(WN_rtype(wn));
+	INT dsize = MTYPE_byte_size(WN_desc(wn));
+	if (rsize != oper_size || dsize != opnd_size)
+	  return FALSE;
+      }
+    }
   }
-  
+
   // Bug 2962
   // Can not vectorize "a[i].b = " ; this is not caught by the other checks 
   // because sometimes field id is not set and even if set it may be zero.
   if (WN_operator(parent) == OPR_ISTORE && 
       WN_operator(WN_kid1(parent)) == OPR_ARRAY &&
-      WN_element_size(WN_kid1(parent)) != MTYPE_byte_size(WN_desc(parent)))
+      ABS(WN_element_size(WN_kid1(parent))) != 
+      MTYPE_byte_size(WN_desc(parent)))
     return FALSE;
 
   return TRUE;
@@ -1051,9 +1301,11 @@ static void simd_fis_separate_loop_and_scalar_expand(
   }
 }
 
-typedef enum { V16I1, V16I2, V16I4, V16I8, INVALID } SIMD_KIND;
+typedef enum { V16I1, V16I2, V16I4, V16I8, V16C8, INVALID } SIMD_KIND;
 #define V16F4 V16I4
 #define V16F8 V16I8
+#define V16C4 V16F8
+INT Vec_Unit_Size[6] = { 1, 2, 4, 8, 16, -1 };
 
 static SIMD_KIND 
 Find_Simd_Kind ( STACK_OF_WN *vec_simd_ops )
@@ -1082,6 +1334,14 @@ Find_Simd_Kind ( STACK_OF_WN *vec_simd_ops )
       type = WN_desc(istore);
 
     switch(type) {
+    case MTYPE_C4:
+      if (last_simd_kind >= V16C4)
+	last_simd_kind = V16C4;
+      break;
+    case MTYPE_C8:
+      if (last_simd_kind >= V16C8)
+	last_simd_kind = V16C8;
+      break;
     case MTYPE_F4:
       if (last_simd_kind >= V16F4)
 	last_simd_kind = V16F4;
@@ -1119,6 +1379,32 @@ Find_Simd_Kind ( STACK_OF_WN *vec_simd_ops )
   return last_simd_kind;
 }
 
+BOOL Is_Vectorizable_Intrinsic (WN *wn) 
+{
+  INTRINSIC intrn = WN_intrinsic(wn);
+  
+  if (intrn == INTRN_SUBSU2)
+    return TRUE;
+
+  if (!OPT_Fast_Math || Is_Target_32bit())
+    return FALSE;
+
+  switch (intrn) {
+  case INTRN_F4EXP:
+  case INTRN_F8EXP:
+  case INTRN_F4LOG:
+  case INTRN_F8LOG:
+  case INTRN_F8SIN:
+  case INTRN_F8COS:
+  case INTRN_F4EXPEXPR:
+  case INTRN_F8EXPEXPR:
+  case INTRN_F8LOG10:
+    return TRUE;
+  default:
+    return FALSE;
+  }  
+}
+
 BOOL Gather_Vectorizable_Ops(
   WN* wn, SCALAR_REF_STACK* simd_ops, MEM_POOL *pool, WN *loop)
 {
@@ -1136,18 +1422,14 @@ BOOL Gather_Vectorizable_Ops(
   TYPE_ID rtype = WN_rtype(wn);
   TYPE_ID desc = WN_desc(wn);
   
-  if (opr == OPR_IF)
-    return FALSE;
-
-  // Bug 3028 - ignore complex types.
-  if (MTYPE_is_complex(WN_rtype(wn)) || 
-      MTYPE_is_complex(WN_desc(wn)))
+  if (opr == OPR_IF || opr == OPR_REGION)
     return FALSE;
 
   if (is_vectorizable_op(opr, rtype, desc)) {
     if ((opr != OPR_INTRINSIC_OP && 
 	 Is_Well_Formed_Simd(wn, loop)) ||
-	WN_intrinsic(wn) == INTRN_SUBSU2) {	
+	(opr == OPR_INTRINSIC_OP && 
+	 Is_Vectorizable_Intrinsic(wn))) {
       SCALAR_REF scalar_ref(wn,0);
       simd_ops->Push(scalar_ref);
     } else {
@@ -1183,30 +1465,9 @@ BOOL Gather_Vectorizable_Ops(
       return FALSE;
   }
 
-  // Bug 2330
-  // Reduction loops of the form  
-  //   do i 
-  //     x = x + array[0][i]
-  //     x = x + array[1][i]
-  //   enddo 
-  // (equivalent of Fortran SUM(array) intrinsic)
-  // should not be vectorized with current framework. 
-  // TODO_1.2 : update pregs on multiple statements and vectorize
-  // several statements at once (this is not easy because we handle one 
-  // statement at a time). Another option is to tweak VHO lowerer when 
-  // lowering ARRSECTION and TRIPLET for F90 SUM intrinsic. 
-  if (WN_operator(wn) == OPR_STID) {
-    WN* stmt_next = WN_next(wn);
-    while(stmt_next) {
-      if (WN_operator(stmt_next) == OPR_STID &&
-	  ST_base(WN_st(wn)) == ST_base(WN_st(stmt_next)) &&
-	  WN_offset(wn) == WN_offset(stmt_next))
-	return FALSE;	
-      stmt_next = WN_next(stmt_next);
-    }    
-  }
   // Bug 3011 - If 'wn' is a reduction statement then it should not be used
-  // more than once (except the one in 'wn' itself) inside this loop body.
+  // more than once (except in reductions on the same variable) inside this 
+  // loop body.
   if (WN_operator(wn) == OPR_STID && curr_simd_red_manager &&
       curr_simd_red_manager->Which_Reduction(wn) != RED_NONE) {
     // 'wn' is a reduction statement.
@@ -1217,17 +1478,112 @@ BOOL Gather_Vectorizable_Ops(
     USE_LIST* use_list=Du_Mgr->Du_Get_Use(wn);
     if (!use_list)
       return FALSE;
+    WN *body = WN_do_body(loop);
+    USE_LIST_ITER uiter(use_list);
+    INT num_reuse = 0;
+    for (DU_NODE* u = uiter.First(); !uiter.Is_Empty(); u=uiter.Next()) {
+      WN* use=u->Wn();
+      if (Wn_Is_Inside(use, loop)) {
+	WN* stmt = Find_Stmt_Under(use, body);
+	if (curr_simd_red_manager->Which_Reduction(stmt) == RED_NONE ||
+	    (WN_operator(stmt) == OPR_STID && 
+	     (WN_st(stmt) != WN_st(wn) || 
+	      WN_store_offset(stmt) != WN_store_offset(wn))))
+	  return FALSE;	    
+      }
+      // Bug 6248 - can not vectorize if there are multiple uses in the 
+      // reduction statement.
+      if (Wn_Is_Inside(use, wn)) {
+	if (num_reuse > 0)
+	  return FALSE;
+	else
+	  num_reuse ++;
+      }	
+    }
+  }
+
+  // Bug 2952 - use before def of a loop variant scalar that is not 
+  // involved in a reduction.
+  if (WN_operator(wn) == OPR_STID && curr_simd_red_manager &&
+      curr_simd_red_manager->Which_Reduction(wn) == RED_NONE) {
+    if (!Du_Mgr)
+      return FALSE;
+    USE_LIST* use_list=Du_Mgr->Du_Get_Use(wn);
+    if (!use_list)
+      return FALSE;
+    USE_LIST_ITER uiter(use_list);
+    for (DU_NODE* u = uiter.First(); !uiter.Is_Empty(); u=uiter.Next()) {
+      WN* use=u->Wn();
+      WN* body = WN_do_body(loop);
+      WN* stmt = Find_Stmt_Under(use, body);
+      WN* loop_stmt = WN_first(body);
+      for (; loop_stmt; loop_stmt = WN_next(loop_stmt)) {
+	if (loop_stmt == stmt)
+	  return FALSE;
+	if (loop_stmt == wn)
+	  break;
+      }
+    }
+  }
+
+  // Bug 3875 - Also, the STID should not be used to compute address from a
+  // ARRAY node.
+  if (WN_operator(wn) == OPR_STID) {
+    if (!Du_Mgr)
+      return FALSE;
+    USE_LIST* use_list=Du_Mgr->Du_Get_Use(wn);
+    if (!use_list)
+      return FALSE;
     USE_LIST_ITER uiter(use_list);
     INT num_use_in_loop = 0;
     for (DU_NODE* u = uiter.First(); !uiter.Is_Empty(); u=uiter.Next()) {
       WN* use=u->Wn();
-      if (Wn_Is_Inside(use, loop))
-	num_use_in_loop ++;
-      if (num_use_in_loop > 1)
-	return FALSE;
+      if (Wn_Is_Inside(use, loop)) {
+	WN* parent = LWN_Get_Parent(use);
+	while(parent && 
+	      !OPCODE_is_load(WN_opcode(parent)) &&
+	      !OPCODE_is_store(WN_opcode(parent))) {
+	  if (WN_operator(parent) == OPR_ARRAY) return FALSE;
+	  parent = LWN_Get_Parent(parent);
+	}
+      }    
     }
   }
 
+  // Bug 4971 - result of a STID is never used inside the loop. So you wonder
+  // why a loop. 
+  if (WN_operator(wn) == OPR_STID && curr_simd_red_manager &&
+      curr_simd_red_manager->Which_Reduction(wn) == RED_NONE) {
+    if (!Du_Mgr)
+      return FALSE;
+    USE_LIST* use_list=Du_Mgr->Du_Get_Use(wn);
+    if (!use_list)
+      return FALSE;
+    USE_LIST_ITER uiter(use_list);
+    BOOL used_in_loop = FALSE;
+    for (DU_NODE* u = uiter.First(); !uiter.Is_Empty() && !used_in_loop; 
+	 u=uiter.Next()) {
+      WN* use=u->Wn();
+      if (Wn_Is_Inside(use, loop))
+	used_in_loop = TRUE;
+
+      // A non-reduction statement that has a re-use in itself should 
+      // not be vectorized. An example is bug 5296 (x = (x + a[i])*y;).
+      if (Wn_Is_Inside(use, wn))
+	return FALSE;
+    }
+    if (used_in_loop == FALSE)
+      return FALSE;
+  }
+  
+  // Bug 4061 - vectorization of reduction loops involving complex types
+  // is not yet supported.
+  if (WN_operator(wn) == OPR_STID &&
+      curr_simd_red_manager &&
+      curr_simd_red_manager->Which_Reduction(wn) != RED_NONE &&
+      MTYPE_is_complex(WN_desc(wn)))
+    return FALSE;
+  
   // Bug 2612
   if (WN_operator(wn) == OPR_ISTORE) {
     WN* stmt_next = WN_next(wn);
@@ -1235,7 +1591,8 @@ BOOL Gather_Vectorizable_Ops(
       if (WN_operator(stmt_next) == OPR_ISTORE &&
 	  WN_Simp_Compare_Trees(WN_kid1(wn), WN_kid1(stmt_next)) == 0 &&
 	  ABS(WN_offset(wn) - WN_offset(stmt_next)) <= 
-	  MTYPE_byte_size(WN_desc(wn)))
+	  MTYPE_byte_size(WN_desc(wn)) && 
+	  WN_offset(wn) != WN_offset(stmt_next))
 	return FALSE;	
       stmt_next = WN_next(stmt_next);
     }    
@@ -1290,8 +1647,9 @@ static void Delete_Def_Use (WN *wn_tree)
     DEF_LIST *def_list = Du_Mgr->Ud_Get_Def(wn_tree);
     DEF_LIST_ITER iter(def_list);
     const DU_NODE *node = iter.First();
+    const DU_NODE *next;
     Is_True(!iter.Is_Empty(),("Empty def list in Delete_Def_Use"));
-    for(; !iter.Is_Empty();node=iter.Next()){
+    for(next = iter.Next(); node; node=next, next=iter.Next()){
       WN *def = (WN *) node->Wn();
       Du_Mgr->Delete_Def_Use(def,wn_tree);
     }
@@ -1708,6 +2066,10 @@ extern BOOL Is_Vectorizable_Loop (WN* innerloop)
     CXX_NEW(SCALAR_REF_STACK(&SIMD_tmp_pool),
 	    &SIMD_tmp_pool);
 
+  BOOL save_simp_state = WN_Simplifier_Enable(FALSE);
+  Simd_Mark_Code(WN_do_body(innerloop)); 
+  WN_Simplifier_Enable(save_simp_state);
+
   if (LNO_Simd_Reduction) {
     WN* func_nd = LWN_Get_Parent(innerloop);
     while(func_nd && WN_opcode(func_nd) != OPC_FUNC_ENTRY)
@@ -1717,6 +2079,9 @@ extern BOOL Is_Vectorizable_Loop (WN* innerloop)
     simd_red_manager->Build(func_nd,TRUE,FALSE); // build scalar reductions
     curr_simd_red_manager = simd_red_manager;
   }
+
+  Induction_Seen = FALSE;
+
   for (stmt=WN_first(body); stmt; stmt=WN_next(stmt))
     if (!Gather_Vectorizable_Ops(stmt, simd_ops,&SIMD_tmp_pool, innerloop)) {
       if (LNO_Simd_Reduction && simd_red_manager)
@@ -1736,10 +2101,14 @@ extern BOOL Is_Vectorizable_Loop (WN* innerloop)
     CXX_NEW(DO_LOOP_INFO(dli,&LNO_default_pool), &LNO_default_pool);
   Set_Do_Loop_Info(loop_copy, new_loop_info);
   adg=Array_Dependence_Graph;
-  adg->Add_Deps_To_Copy_Block(innerloop, loop_copy, TRUE);
+  if (!adg->Add_Deps_To_Copy_Block(innerloop, loop_copy, TRUE)) {
+    LNO_Erase_Dg_From_Here_In(loop_copy, adg);
+    MEM_POOL_Pop(&SIMD_tmp_pool);
+    MEM_POOL_Delete(&SIMD_tmp_pool);
+    return FALSE;
+  }
   MEM_POOL_Initialize(&SIMD_default_pool,"SIMD_default_pool",FALSE);
   MEM_POOL_Push(&SIMD_default_pool);
-  Simd_Mark_Code(WN_do_body(loop_copy)); 
   BOOL Has_Dependencies = Analyse_Dependencies(loop_copy);
   LNO_Erase_Dg_From_Here_In(loop_copy, adg);
   MEM_POOL_Pop(&SIMD_default_pool);
@@ -1839,11 +2208,20 @@ static INT Simd_Compute_Best_Align (INT offset, INT fn, INT size)
   return (A == 0 ? A : ((16 - A)/size));
 }
 
+// Have we created a vector type preg to create unroll copies for the use of 
+// induction variable. Note that the index variable can only be updated by 
+// factors : 1, 2, 4, 8. So, we only need to create these 4 types of pregs 
+// utmost and can reuse every time the loop induction variable is used inside
+// the loop.
+BOOL vec_unroll_preg_created[4]; 
+WN *vec_unroll_preg_store[4]; 
+
 // Descend unroll copy and update the index into the last dimension for all 
 // arrays. Assumes all operators inside WN copy are vectorizable.
 static void 
 Create_Unroll_Copy(WN* copy, INT add_to_base, 
-		   WN* orig, TYPE_ID index_type)
+		   WN* orig, TYPE_ID index_type,
+		   WN* vec_preg_incr, WN* loop)
 {
   FmtAssert(WN_operator(copy) == WN_operator(orig), ("Handle this"));
   OPCODE add_opc= OPCODE_make_op(OPR_ADD,index_type, MTYPE_V);
@@ -1852,75 +2230,311 @@ Create_Unroll_Copy(WN* copy, INT add_to_base,
   WN* array_index;
 
   if (WN_operator(copy) == OPR_ARRAY) {
-    ACCESS_ARRAY* aa=(ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,copy);
-    INT kid = aa->Num_Vec()*2;
+    INT kid = WN_num_dim(copy)<<1;
     array_index = WN_kid(copy, kid);
     WN_kid(copy, kid) = 
       LWN_CreateExp2(add_opc, array_index, 
 		     WN_CreateIntconst(intconst_opc, add_to_base));
     // Look at WN structure for OPR_ARRAY
-    dim_max = aa->Num_Vec();
+    dim_max = WN_num_dim(copy);
     for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
       LWN_Copy_Def_Use(WN_kid(orig, aa_num + dim_max + 1), 
 		       WN_kid(copy, aa_num + dim_max + 1),
 		       Du_Mgr);    
     }
+    // When a CVT operation is involved, the array element may not be the 
+    // same size as the add_to_base factor used to unroll. In such cases, we
+    // need to set back the alignment from the load or the store. (Bug 5294)
+    if (ABS(WN_element_size(copy)) != add_to_base) {
+      WN* parent = LWN_Get_Parent(copy);
+      FmtAssert(WN_operator(parent) == OPR_ILOAD ||
+		WN_operator(parent) == OPR_ISTORE, ("NYI"));      
+      TY_IDX ty_parent;
+      if (WN_operator(parent) == OPR_ILOAD)
+	ty_parent = TY_pointed(WN_load_addr_ty(parent));
+      else
+	ty_parent = TY_pointed(WN_ty(parent));
+      Set_TY_align (ty_parent, 
+		    ABS(WN_element_size(copy)) ?
+		    TY_log_base2(ABS(WN_element_size(copy))) :
+		    8 /* non-16-byte aligned */);
+      TY_IDX ty_idx = 0;
+      TY &ty = New_TY (ty_idx);      
+      TY_Init (ty, Pointer_Size, KIND_POINTER, Pointer_Mtype, 
+	       Save_Str ("anon_ptr."));
+      Set_TY_pointed (ty, ty_parent);
+      if (WN_operator(parent) == OPR_ILOAD)
+	WN_set_load_addr_ty (parent, ty_idx);
+      else
+	WN_set_ty (parent, ty_idx);
+    }
     return;
+  } 
+  else if (WN_operator(copy) == OPR_LDID && vec_preg_incr) {
+    SYMBOL sym1(copy);
+    SYMBOL sym2(vec_preg_incr);
+    if (sym1 == sym2) {
+      FmtAssert(MTYPE_is_vector(WN_desc(copy)), ("Handle this case"));
+
+      TYPE_ID vec_type = WN_desc(copy);
+      INT unroll_type;
+
+      switch(add_to_base) {
+      case 1: unroll_type = 0; break;
+      case 2: unroll_type = 1; break;
+      case 4: unroll_type = 2; break;
+      case 8: unroll_type = 3; break;
+      default: FmtAssert(FALSE, ("NYI"));
+      }
+
+      if (!vec_unroll_preg_created[unroll_type]) {
+	WN* body = WN_do_body(loop);
+	// Create the const (..., add_to_base, add_to_base, ...) in a vector preg
+	TCON unroll_const_tcon = Host_To_Targ(MTYPE_I4, add_to_base);
+	ST* unroll_const_symbol = 
+	  New_Const_Sym (Enter_tcon(unroll_const_tcon),
+			 Be_Type_Tbl(MTYPE_I4));
+	WN* unroll_const = 
+	  WN_CreateConst (OPR_CONST, vec_type, MTYPE_V, 
+			  unroll_const_symbol);
+	SYMBOL vec_unroll_symbol;
+	WN* loop_enclosing_block = loop;
+
+	vec_unroll_symbol = 
+	  Create_Preg_Symbol(sym1.Name(), vec_type);
+	vec_unroll_preg_store[unroll_type] = 
+	  AWN_StidIntoSym(&vec_unroll_symbol, unroll_const);
+	while (WN_operator(loop_enclosing_block) != OPR_BLOCK)
+	  loop_enclosing_block = 
+	    LWN_Get_Parent(loop_enclosing_block);
+	LWN_Insert_Block_Before(loop_enclosing_block, loop, 
+				vec_unroll_preg_store[unroll_type]);
+	WN_Set_Linenum ( vec_unroll_preg_store[unroll_type], 
+			 WN_Get_Linenum(loop) );	
+	LWN_Parentize(vec_unroll_preg_store[unroll_type]);
+	LWN_Set_Parent(vec_unroll_preg_store[unroll_type], 
+		       loop_enclosing_block);
+	vec_unroll_preg_created[unroll_type] = TRUE;	
+      }
+
+      // Use the vector preg created to update the use of the induction variable.
+      SYMBOL vec_unroll_preg_symbol(vec_unroll_preg_store[unroll_type]);
+      WN *use_vec_unroll_preg = AWN_LdidSym(&vec_unroll_preg_symbol);
+      WN* parent = LWN_Get_Parent(copy);
+      INT kid = 0;
+      while(WN_kid(parent, kid) != copy && kid < WN_kid_count(parent))
+	kid++;
+      FmtAssert(WN_kid(parent, kid), ("Handle this"));
+      WN_kid(parent, kid) = 
+	AWN_Add(vec_type, use_vec_unroll_preg, copy);
+      Du_Mgr->Add_Def_Use(vec_unroll_preg_store[unroll_type],
+			  use_vec_unroll_preg);
+      LWN_Parentize(parent);
+    }
   }
 
   // Recurse
   for (INT kid = 0; kid < WN_kid_count(copy); kid ++)
     Create_Unroll_Copy(WN_kid(copy, kid), add_to_base, 
-		       WN_kid(orig, kid), index_type);
+		       WN_kid(orig, kid), index_type, vec_preg_incr, loop);
   
   return;
 }
 
-// Identify reduction loops that reduce a vector rather than compute 
-// a reduction on scalars. The reduction manager will return a valid reduction
-// for " do i a = a @ ... " where ... is some scalar variable/expression. 
-// We need to guard against unnecessary scalar expansion that may grow 
-// the stack to abnormal levels even when the loop is not vectorized. When
-// a loop is vectorized, it is more likely that the loop bounds are at
-// more sensible level for scalar expansion. This is only temporary because
-// we will eliminate scalar expansion in our next release: TODO_1.3. Another
-// possibility is to scalarize back all loops that are not vectorized. Instead, 
-// this is a hack to avoid the overhead. - Bug 2576
-static BOOL Is_Vector_Reduction(WN* node) 
+// Rename all reduction statements involving the variable st, at old_offset, with
+// new offset.
+static void Rename_Reductions_Rec (WN_OFFSET orig_offset, ST *orig_st,
+				   WN_OFFSET offset, ST *st, 
+				   WN *node, TYPE_ID vmtype)
 {
-  if (WN_operator(node) == OPR_ILOAD)
-    return TRUE;
-
-  // Recurse
+  if (WN_operator(node) == OPR_LDID && WN_st(node) == orig_st &&
+      WN_load_offset(node) == orig_offset) {
+    WN_set_desc(node, vmtype);
+    WN_set_rtype(node, vmtype);
+    WN_load_offset(node) = offset;
+    WN_st_idx(node) = ST_st_idx(st);
+  } 
+  else if (WN_operator(node) == OPR_STID && WN_st(node) == orig_st &&
+	   WN_store_offset(node) == orig_offset) {
+    WN_set_desc(node, vmtype);
+    WN_store_offset(node) = offset;
+    WN_st_idx(node) = ST_st_idx(st);
+  }
   for (INT kid = 0; kid < WN_kid_count(node); kid ++)
-    if (Is_Vector_Reduction(WN_kid(node, kid)))
-      return TRUE;
-
-  return FALSE;
+    Rename_Reductions_Rec(orig_offset, orig_st, 
+			  offset, st, WN_kid(node, kid), vmtype);
 }
 
-static BOOL Needs_Guard(WN *wn)
+static void Rename_Other_Reductions (WN_OFFSET orig_offset, ST *orig_st,
+				     WN_OFFSET offset,
+				     WN *start, WN *last, 
+				     TYPE_ID vmtype) 
 {
-  OPERATOR opr = WN_operator(wn);
+  WN *stmt = start;
+  ST *st = WN_st(last);
 
-  if (opr == OPR_DO_LOOP) {
-    if (Needs_Guard(WN_start(wn)) || Needs_Guard(WN_end(wn)))
-      return TRUE;
-    else 
+  while (stmt != last) {
+    Rename_Reductions_Rec(orig_offset, orig_st, offset, st, stmt, vmtype);
+    stmt = WN_next(stmt);
+  }
+}
+
+// Is stmt the last reduction statement involving that symbol in the block
+// containing stmt.
+static BOOL Is_Last_Red_Stmt ( WN *stmt )
+{
+  ST* st = WN_st(stmt);
+  WN_OFFSET offset = WN_offset(stmt);
+  WN* curr_stmt = WN_next(stmt);
+
+  while(curr_stmt) {
+    if (WN_operator(curr_stmt) == OPR_STID && WN_st(curr_stmt) == st &&
+	WN_store_offset(curr_stmt) == offset)
       return FALSE;
-  } else if (opr == OPR_MAX || opr == OPR_MIN)
-    return TRUE;
+    curr_stmt = WN_next(curr_stmt);
+  }
+  return TRUE;
+}
 
-  // Recurse
-  for (INT kid = 0; kid < WN_kid_count(wn); kid ++)
-    if (Needs_Guard(WN_kid(wn, kid))) return TRUE;
+static void Create_Stride1_Condition_If_Required (WN *array_base, 
+						  WN **if_noncontig)
+{
+  TYPE_ID mtype = Is_Target_32bit() ? MTYPE_I4 : MTYPE_I8;
+  OPCODE intconst_opc= OPCODE_make_op(OPR_INTCONST,mtype, MTYPE_V);
+  WN *value = WN_CreateIntconst(intconst_opc, 1);
+  WN *stride;
+  TY_IDX ty_dope = ST_type(WN_st(array_base));
+  if (TY_kind(ty_dope) != KIND_STRUCT) return;
+  FLD_ITER fld_iter_dope = Make_fld_iter(TY_fld(ty_dope));
+  while(!FLD_last_field(fld_iter_dope)) fld_iter_dope++;
+  FLD_HANDLE fld_dims(fld_iter_dope);
+  UINT64 dims_offset = FLD_ofst(fld_dims);
+  TY_IDX ty_dims = FLD_type(fld_dims);
+  if (TY_kind(ty_dims) != KIND_ARRAY) return;
+  TY_IDX ty_dope_bnd = TY_etype(ty_dims);
+  if (TY_kind(ty_dope_bnd) != KIND_STRUCT) return;
+  FLD_ITER fld_iter_dope_bnd = Make_fld_iter(TY_fld(ty_dope_bnd));
+  while(!FLD_last_field(fld_iter_dope_bnd)) fld_iter_dope_bnd++; 
+  FLD_HANDLE fld_dope_bnd(fld_iter_dope_bnd);
+  UINT64 str_offset = FLD_ofst(fld_dope_bnd);	
+  TY_IDX ty_dope_bnd_str = FLD_type(fld_dope_bnd);
+  if (TY_kind(ty_dope_bnd_str) != KIND_SCALAR) return;
+  stride = LWN_Copy_Tree(array_base, TRUE, LNO_Info_Map);
+  LWN_Copy_Def_Use(array_base, stride, Du_Mgr);
+  WN_set_rtype(stride, mtype);
+  WN_set_desc(stride, mtype);
+  WN_offset(stride) = dims_offset + str_offset;
+  if (*if_noncontig) 
+    *if_noncontig = WN_CAND( *if_noncontig, WN_EQ( mtype, stride, value ) );
+  else          
+    *if_noncontig = WN_EQ( mtype, stride, value );
 
-  return FALSE;
+  return;
+}
+
+//-----------------------------------------------------------------------
+// NAME: Version_Loop
+// FUNCTION: Create two identical versions of 'wn_loop' under a bogus if
+//   test.  
+//-----------------------------------------------------------------------
+
+static WN* Version_Loop(WN* wn_loop)
+{ 
+  ARRAY_DIRECTED_GRAPH16* dg = Array_Dependence_Graph;
+  REDUCTION_MANAGER* rm = red_manager;
+  WN_MAP version_map = WN_MAP_Create(&LNO_local_pool);
+  WN* wn_copy = LWN_Copy_Tree(wn_loop, TRUE, LNO_Info_Map, TRUE, version_map);
+  if (Prompf_Info != NULL && Prompf_Info->Is_Enabled()) { 
+    STACK<WN*> st_old(&LNO_local_pool);
+    STACK<WN*> st_new(&LNO_local_pool);
+    Prompf_Assign_Ids(wn_loop, wn_copy, &st_old, &st_new, TRUE);
+  } 
+  BOOL all_internal = WN_Rename_Duplicate_Labels(wn_loop, wn_copy,
+    Current_Func_Node, &LNO_local_pool);
+  Is_True(all_internal, ("external labels renamed"));
+
+  // Clone the dependences for the scalar copy.
+  WN* wn_array[2];
+  wn_array[0] = wn_loop;
+  wn_array[1] = wn_copy;
+  Unrolled_DU_Update(wn_array, 2, Do_Loop_Depth(wn_loop) - 1, TRUE, FALSE);
+  dg->Versioned_Dependences_Update(wn_loop, wn_copy, Do_Loop_Depth(wn_loop),
+    version_map);
+  WN_MAP_Delete(version_map);
+  if (rm != NULL)
+    rm->Unroll_Update(wn_array, 2);
+
+  // Start with a condition of .TRUE. for the version test
+  WN* wn_total_cond = LWN_Make_Icon(Boolean_type, 1);
+  LWN_Extract_From_Block(wn_loop);
+  WN* wn_if = LWN_CreateIf(wn_total_cond, WN_CreateBlock(), WN_CreateBlock());
+  LWN_Insert_Block_After(WN_then(wn_if), NULL, wn_loop);
+  LWN_Insert_Block_After(WN_else(wn_if), NULL, wn_copy);
+  WN_Set_Linenum(wn_if, WN_Get_Linenum(wn_loop));
+  IF_INFO *ii =
+    CXX_NEW(IF_INFO(&LNO_default_pool, TRUE, FALSE), &LNO_default_pool);
+  WN_MAP_Set(LNO_Info_Map, wn_if, (void *) ii);
+  DOLOOP_STACK *stack = CXX_NEW(DOLOOP_STACK(&LNO_default_pool),
+    &LNO_default_pool);
+  Build_Doloop_Stack(wn_if, stack);
+  LNO_Build_If_Access(wn_if, stack);
+  return wn_if;
+}
+
+//-----------------------------------------------------------------------
+// NAME: Version_Region
+// FUNCTION: Create two identical versions of 'region' under a bogus if
+//   test. Update the region id of the cloned region.
+//-----------------------------------------------------------------------
+
+static WN* Version_Region(WN* region, WN *wn_loop)
+{ 
+  ARRAY_DIRECTED_GRAPH16* dg = Array_Dependence_Graph;
+  REDUCTION_MANAGER* rm = red_manager;
+  WN_MAP version_map = WN_MAP_Create(&LNO_local_pool);
+  WN* region_copy = LWN_Copy_Tree(region, TRUE, LNO_Info_Map, TRUE, version_map);
+  if (Prompf_Info != NULL && Prompf_Info->Is_Enabled()) { 
+    STACK<WN*> st_old(&LNO_local_pool);
+    STACK<WN*> st_new(&LNO_local_pool);
+    Prompf_Assign_Ids(region, region_copy, &st_old, &st_new, TRUE);
+  } 
+  BOOL all_internal = WN_Rename_Duplicate_Labels(region, region_copy,
+    Current_Func_Node, &LNO_local_pool);
+  Is_True(all_internal, ("external labels renamed"));
+
+  // Clone the dependences for the scalar copy.
+  WN* wn_array[2];
+  wn_array[0] = region;
+  wn_array[1] = region_copy;
+  Unrolled_DU_Update(wn_array, 2, Do_Loop_Depth(wn_loop) - 1, TRUE, FALSE);
+  dg->Versioned_Dependences_Update(region, region_copy, Do_Loop_Depth(wn_loop),
+    version_map);
+  WN_MAP_Delete(version_map);
+  if (rm != NULL)
+    rm->Unroll_Update(wn_array, 2);
+
+  // Start with a condition of .TRUE. for the version test
+  WN* wn_total_cond = LWN_Make_Icon(Boolean_type, 1);
+  LWN_Extract_From_Block(region);
+  WN* wn_if = LWN_CreateIf(wn_total_cond, WN_CreateBlock(), WN_CreateBlock());
+  LWN_Insert_Block_After(WN_then(wn_if), NULL, region);
+  LWN_Insert_Block_After(WN_else(wn_if), NULL, region_copy);
+  WN_Set_Linenum(wn_if, WN_Get_Linenum(region));
+  IF_INFO *ii =
+    CXX_NEW(IF_INFO(&LNO_default_pool, TRUE, TRUE), &LNO_default_pool);
+  WN_MAP_Set(LNO_Info_Map, wn_if, (void *) ii);
+  DOLOOP_STACK *stack = CXX_NEW(DOLOOP_STACK(&LNO_default_pool),
+    &LNO_default_pool);
+  Build_Doloop_Stack(wn_if, stack);
+  LNO_Build_If_Access(wn_if, stack);
+  return wn_if;
 }
 
 // Vectorize an innerloop
 static INT Simd(WN* innerloop)
 {
+// Don't do anything for now for non-x8664
+#ifdef TARG_X8664
   INT good_vector = 0;
 
   if (!Do_Loop_Is_Good(innerloop) || 
@@ -1967,10 +2581,13 @@ static INT Simd(WN* innerloop)
     return 0;
   }
 
+#if 0
   // The Vectorizable flag in dli is not meant to be that accurate, 
   // (given that the marking happens pretty early) but it can be used here
   // for debug puposes.
-  if (dli->Vectorizable) {
+  if (dli->Vectorizable) 
+#endif
+  {
     Last_Vectorizable_Loop_Id ++;
     if (Last_Vectorizable_Loop_Id < LNO_Simd_Loop_Skip_Before ||
 	Last_Vectorizable_Loop_Id > LNO_Simd_Loop_Skip_After ||
@@ -1978,10 +2595,47 @@ static INT Simd(WN* innerloop)
       return 0;
   }
  
+  WN* stmt;
+  WN* body=WN_do_body(innerloop);
+
+  // Bug 3784
+  // Check for useless loops (STID's use_list is empty) of the form
+  // do i
+  //   x = a[i]
+  // enddo 
+  // and screen them out from vectorizer.
+  for (stmt=WN_first(body); stmt; stmt=WN_next(stmt)) {
+    if (WN_operator(stmt) == OPR_STID) {
+      USE_LIST* use_list=Du_Mgr->Du_Get_Use(stmt);
+      if (!use_list) {
+	if (debug || LNO_Simd_Verbose) {
+	  printf("(%s:%d) ", 
+		 Src_File_Name, 
+		 Srcpos_To_Line(WN_Get_Linenum(innerloop)));
+	  printf("Loop has missing use_list. Not vectorized.\n");
+	}
+	return 0;	
+      }
+    }
+  }  
+
   // if the loop index var is live at exit and cannot be finalized,
   // we will not vectorize
   if (Index_Variable_Live_At_Exit(innerloop)) {
   
+    // Bug 5139 - The Loop index variable is probably a LAST PRIVATE
+    // variable and vectorizing this loop here will cause MP lowerer
+    // to not write out the loop index variable from the last iteration.
+    if (Do_Loop_Is_Mp(innerloop) && !Early_MP_Processing) {
+      if (debug || LNO_Simd_Verbose) {
+	printf("(%s:%d) ", 
+	       Src_File_Name, 
+	       Srcpos_To_Line(WN_Get_Linenum(innerloop)));
+	printf("Loop index variable in OpenMP loop is probably last private and is not handled by the MP lowerer. Loop was not vectorized.\n");
+      }
+      return 0;
+    }
+
     if (Upper_Bound_Standardize(WN_end(innerloop),TRUE)==FALSE) {
       if (debug || LNO_Simd_Verbose) {
 	printf("(%s:%d) ", 
@@ -2016,6 +2670,36 @@ static INT Simd(WN* innerloop)
     return 0;
   }
 
+  // Bug 5730 - OMP DO LOOP that are REDUCTIONs should not be vectorized
+  // because of lack of functionality in the OMP lowerer.
+  if (Do_Loop_Is_Mp(innerloop) && !Early_MP_Processing) {    
+    WN *enclosing_parallel_region, *region_pragma;
+    BOOL reduction = FALSE, pdo = FALSE;
+    enclosing_parallel_region = LWN_Get_Parent(innerloop);
+    while(enclosing_parallel_region && 
+	  WN_operator(enclosing_parallel_region) != OPR_REGION)
+      enclosing_parallel_region = 
+	LWN_Get_Parent(enclosing_parallel_region);
+    FmtAssert(enclosing_parallel_region, ("NYI"));
+    region_pragma = WN_first(WN_region_pragmas(enclosing_parallel_region));
+    while(region_pragma && (!reduction || !pdo)) {
+      if (WN_pragma(region_pragma) == WN_PRAGMA_REDUCTION)
+	reduction = TRUE;
+      else if (WN_pragma(region_pragma) == WN_PRAGMA_PDO_BEGIN)
+	pdo = TRUE;
+      region_pragma = WN_next(region_pragma);
+    }
+    if (pdo && reduction) {
+      if (debug || LNO_Simd_Verbose) {
+	printf("(%s:%d) ", 
+	       Src_File_Name, 
+	       Srcpos_To_Line(WN_Get_Linenum(innerloop)));
+	printf("Reduction loop in a DO region. Loop was not vectorized.\n");
+      }
+      return 0;      
+    }
+  }
+
   MEM_POOL_Push(&SIMD_default_pool);
   {
 
@@ -2025,10 +2709,9 @@ static INT Simd(WN* innerloop)
   } else
     strcpy(loop_index_name,ST_name(WN_st(WN_index(innerloop))));
 
-  WN* stmt;
-  WN* body=WN_do_body(innerloop);
-
-  Simd_Mark_Code(WN_do_body(innerloop));
+  BOOL save_simp_state = WN_Simplifier_Enable(FALSE);
+  Simd_Mark_Code(WN_do_body(innerloop)); 
+  WN_Simplifier_Enable(save_simp_state);
 
   WN* parent_block=LWN_Get_Parent(innerloop);
 
@@ -2059,6 +2742,17 @@ static INT Simd(WN* innerloop)
 
   UINT stmt_count=0;
 
+  Induction_Seen = FALSE;
+  Inconsistent_Induction = FALSE;
+  vec_unroll_preg_created[0] = 
+    vec_unroll_preg_created[1] = 
+    vec_unroll_preg_created[2] = 
+    vec_unroll_preg_created[3] = FALSE;
+  vec_unroll_preg_store[0] = 
+    vec_unroll_preg_store[1] = 
+    vec_unroll_preg_store[2] = 
+    vec_unroll_preg_store[3] = NULL;
+
   // TODO we need copy propagation for (FP) scalars
 
   // step 1: gather all (scalar and array) references in the loop
@@ -2072,7 +2766,10 @@ static INT Simd(WN* innerloop)
 	printf("(%s:%d) ", 
 	       Src_File_Name,
 	       Srcpos_To_Line(WN_Get_Linenum(innerloop)));
-	printf("Nonvectorizable ops/non-unit stride. Loop was not vectorized.\n");
+	if (!Inconsistent_Induction) 
+	  printf("Nonvectorizable ops/non-unit stride. Loop was not vectorized.\n");
+	else
+	  printf("Induction Loop has to be split. Loop was not vectorized.\n");
       }
       return 0;
     }
@@ -2103,8 +2800,8 @@ static INT Simd(WN* innerloop)
   }
 
   BOOL needs_scalar_expansion = FALSE;
-  for (stmt=WN_first(body); stmt; stmt=WN_next(stmt)) {
-    FmtAssert(curr_simd_red_manager, ("NYI"));
+  for (stmt=WN_first(body); stmt && curr_simd_red_manager; 
+       stmt=WN_next(stmt)) {
     if (WN_operator(stmt) == OPR_STID &&
 	curr_simd_red_manager->Which_Reduction(stmt) == RED_NONE) {
       STACK<WN*>* equivalence_class=
@@ -2138,9 +2835,10 @@ static INT Simd(WN* innerloop)
     CXX_NEW_ARRAY(INT,simd_ops->Elements(),&SIMD_default_pool);
 
   INT i;
+  WN* simd_op;
   for (i=0; i<simd_ops->Elements(); i++) {
 
-    WN* simd_op=simd_ops->Top_nth(i).Wn;
+    simd_op=simd_ops->Top_nth(i).Wn;
     //WN* stmt=Find_Stmt_Under(simd_op,body);
     WN* stmt=simd_op;
     WN* stmt1;
@@ -2193,12 +2891,93 @@ static INT Simd(WN* innerloop)
     return 0;
   }
 
+  // Bug 5487 - number of invariant operands should be < 8 (otherwise, this may
+  // cause register spills on x86-64). For m32, the number of invariant 
+  // operands should be < 4. The reason for the 8 and 4 is invariants occupy a 
+  // register each and their replicates occupy another register each.
+  // We disable this check when there are operators that operate on < 64 bits.
+  // TODO: model special 64 bit operators like CVT that are good to vectorize.
+  INT invariant_operands = 0; 
+  for (i=vec_simd_ops->Elements()-1; i >= 0 && good_vector == 0; i--) {
+    simd_op=vec_simd_ops->Top_nth(i);
+    if (simd_operand_invariant[0][vec_simd_ops->Elements()-i-1] == 1)
+      invariant_operands++;
+    if (WN_kid_count(simd_op) >= 2 && 
+	simd_operand_invariant[1][vec_simd_ops->Elements()-i-1] == 1)
+      invariant_operands++;
+    if (WN_kid_count(simd_op) >= 3 && 
+	simd_operand_invariant[2][vec_simd_ops->Elements()-i-1] == 1)
+      invariant_operands++;
+    if (OPCODE_is_compare(WN_opcode(simd_op)) &&
+	MTYPE_is_size_double(WN_desc(simd_op)))
+      continue;
+    if (WN_rtype(simd_op) != MTYPE_V &&
+	WN_rtype(simd_op) != MTYPE_F8 && WN_rtype(simd_op) != MTYPE_I8) {
+      invariant_operands = -1; break;
+    }
+    else if (WN_desc(simd_op) != MTYPE_V &&
+	     WN_desc(simd_op) != MTYPE_F8 && WN_desc(simd_op) != MTYPE_I8) {
+      invariant_operands = -1; break;
+    }
+  }
+  if ((Is_Target_64bit() && invariant_operands >= 8) ||
+      (Is_Target_32bit() && invariant_operands >= 4)) {
+    CXX_DELETE(dep_g_p, &SIMD_default_pool);
+    MEM_POOL_Pop(&SIMD_default_pool);
+    if (debug || LNO_Simd_Verbose) {
+      printf("(%s:%d) ", 
+	     Src_File_Name, 
+	     Srcpos_To_Line(WN_Get_Linenum(innerloop)));
+      printf("Loop has too many loop invariants. Loop was not vectorized.\n");
+    }
+    return 0;
+  }
+
+  // Do not vectorize loops with complex type invariants : loop invariants
+  // will be hoisted out of loop and may be assigned to registers and 
+  // vcast_complex skips the STID, or LDID from preg_C8 (need further work in 
+  // back-end to enable this). If vcast_complex skips the STID to the 
+  // invariant, then we would be left with an inconsistent state (store to 
+  // invariant C8 will be lowered to 2 F8 type pregs and we would be expecting
+  // a V16C8 128-bit value inside the loop). 
+  for (i=vec_simd_ops->Elements()-1; i >= 0; i--) {
+    simd_op=vec_simd_ops->Top_nth(i);
+    if (WN_rtype(simd_op) != MTYPE_C8 && WN_desc(simd_op) != MTYPE_C8)
+      continue;
+    if (simd_operand_invariant[0][vec_simd_ops->Elements()-i-1] == 1 ||
+	(WN_kid_count(simd_op) >= 2 && 
+	 simd_operand_invariant[1][vec_simd_ops->Elements()-i-1] == 1) ||
+	(WN_kid_count(simd_op) >= 3 && 
+	 simd_operand_invariant[2][vec_simd_ops->Elements()-i-1] == 1)) {
+      CXX_DELETE(dep_g_p, &SIMD_default_pool);
+      MEM_POOL_Pop(&SIMD_default_pool);
+      if (debug || LNO_Simd_Verbose) {
+	printf("(%s:%d) ", 
+	       Src_File_Name, 
+	       Srcpos_To_Line(WN_Get_Linenum(innerloop)));
+	printf("Loop has C8 type invariant. Loop was not vectorized.\n");
+      }
+      return 0;
+    }
+  }
+
   WN* loop_copy = LWN_Copy_Tree(innerloop, TRUE, LNO_Info_Map);
   // Set loop info for copy loop
   DO_LOOP_INFO* new_loop_info =
     CXX_NEW(DO_LOOP_INFO(dli,&LNO_default_pool), &LNO_default_pool);
   Set_Do_Loop_Info(loop_copy, new_loop_info);
-  adg->Add_Deps_To_Copy_Block(innerloop, loop_copy, TRUE);
+  if (!adg->Add_Deps_To_Copy_Block(innerloop, loop_copy, TRUE)) {
+    LNO_Erase_Dg_From_Here_In(loop_copy, adg);
+    CXX_DELETE(dep_g_p, &SIMD_default_pool);
+    MEM_POOL_Pop(&SIMD_default_pool);
+    if (debug || LNO_Simd_Verbose) {
+      printf("(%s:%d) ", 
+	     Src_File_Name, 
+	     Srcpos_To_Line(WN_Get_Linenum(innerloop)));
+      printf("Too many edges in Dependence graph. Loop was not vectorized.\n");
+    }
+    return 0;
+  }
   if (Analyse_Dependencies(loop_copy)) {
     LNO_Erase_Dg_From_Here_In(loop_copy, adg);
     CXX_DELETE(dep_g_p, &SIMD_default_pool);
@@ -2212,6 +2991,79 @@ static INT Simd(WN* innerloop)
     return 0;
   }
   LNO_Erase_Dg_From_Here_In(loop_copy, adg);
+
+  if (PU_src_lang(Get_Current_PU()) == PU_F90_LANG) {
+    // Bug 6644 - version loop if non-contiguous arrays are present.
+    WN *if_noncontig = NULL;
+    STACK_OF_WN *noncontig_array_dope=
+      CXX_NEW(STACK_OF_WN(&SIMD_default_pool),&SIMD_default_pool);
+    for (i=vec_simd_ops->Elements()-1; i >= 0; i--) {
+      simd_op=vec_simd_ops->Top_nth(i);
+      for (INT kid = 0; kid < WN_kid_count(simd_op); kid ++) {
+        WN* opnd = WN_kid(simd_op, kid);
+        if (WN_operator(opnd) == OPR_ILOAD &&
+	    WN_operator(WN_kid0(opnd)) == OPR_ARRAY &&	  	  
+	    WN_element_size(WN_kid0(opnd)) < 0 &&
+	    WN_operator(WN_array_base(WN_kid0(opnd))) == OPR_LDID) {
+	  WN *array_base = WN_array_base(WN_kid0(opnd));
+	  BOOL entered = FALSE;
+	  for (INT id = 0; id < noncontig_array_dope->Elements(); id ++) {
+	    if (SYMBOL(noncontig_array_dope->Bottom_nth(id)) == 
+	        SYMBOL(array_base)) {
+	      entered = TRUE;	    
+	      break;
+	    }
+	  }
+	  if (entered) continue;
+	  Create_Stride1_Condition_If_Required(array_base, &if_noncontig);
+	  noncontig_array_dope->Push(array_base);
+        }
+      }
+      WN *parent = LWN_Get_Parent(simd_op);
+      if (WN_operator(parent) == OPR_ISTORE &&
+	  WN_operator(WN_kid1(parent)) == OPR_ARRAY &&	  	  
+	  WN_element_size(WN_kid1(parent)) < 0 &&
+	  WN_operator(WN_array_base(WN_kid1(parent))) == OPR_LDID) {
+        WN *array_base = WN_array_base(WN_kid1(parent));
+        BOOL entered = FALSE;
+        for (INT id = 0; id < noncontig_array_dope->Elements(); id ++) {
+	  if (SYMBOL(noncontig_array_dope->Bottom_nth(id)) == 
+	      SYMBOL(array_base)) {
+	    entered = TRUE;	    
+	    break;
+ 	  }
+        }
+        if (entered) continue;
+        Create_Stride1_Condition_If_Required(array_base, &if_noncontig);
+        noncontig_array_dope->Push(array_base);
+      }
+    }
+    if (if_noncontig) {
+      if (Do_Loop_Is_Mp(innerloop)) { 
+	// Bug 7258 - when loop is inside MP region, clone the outer region
+	WN* enclosing_parallel_region;
+	enclosing_parallel_region = LWN_Get_Parent(innerloop);
+	while(enclosing_parallel_region && 
+	      WN_operator(enclosing_parallel_region) != OPR_REGION)
+	  enclosing_parallel_region = 
+	    LWN_Get_Parent(enclosing_parallel_region);
+	WN *stmt_before_region = WN_prev(enclosing_parallel_region);
+	FmtAssert(stmt_before_region, ("NYI"));
+	WN *parent_block = LWN_Get_Parent(enclosing_parallel_region);
+	WN *wn_if = Version_Region(enclosing_parallel_region, innerloop);
+	WN_if_test(wn_if) = if_noncontig;
+	LWN_Insert_Block_After(parent_block, stmt_before_region, wn_if);
+	LWN_Parentize(wn_if);
+      } else {
+	WN *stmt_before_loop = WN_prev(innerloop);
+	WN *parent_block = LWN_Get_Parent(innerloop);
+	WN *wn_if = Version_Loop(innerloop);
+	WN_if_test(wn_if) = if_noncontig;
+	LWN_Insert_Block_After(parent_block, stmt_before_loop, wn_if);
+	LWN_Parentize(wn_if);
+      }
+    }
+  }
 
   REF_LIST_STACK* writes = CXX_NEW(REF_LIST_STACK(&SIMD_default_pool),
         &SIMD_default_pool);
@@ -2457,7 +3309,7 @@ static INT Simd(WN* innerloop)
     // may kill. This is not relevant to this bug.
     BOOL super_vector = FALSE;
     for (i=0; i<vec_simd_ops->Elements() && !super_vector; i++) {
-      WN* simd_op=vec_simd_ops->Top_nth(i);
+      simd_op=vec_simd_ops->Top_nth(i);
       if (OPCODE_is_compare(WN_opcode(simd_op)) &&
           MTYPE_is_size_double(WN_desc(simd_op)))
         continue;
@@ -2504,7 +3356,7 @@ static INT Simd(WN* innerloop)
     CXX_NEW_ARRAY(SIMD_KIND, vec_simd_ops->Elements(),&LNO_local_pool);
 
   for (i=0; i < vec_simd_ops->Elements(); i++) {
-    WN* simd_op=vec_simd_ops->Top_nth(i);
+    simd_op=vec_simd_ops->Top_nth(i);
     
     WN* istore=LWN_Get_Parent(simd_op);
     WN* new_body=Find_Do_Body(istore);
@@ -2542,7 +3394,7 @@ static INT Simd(WN* innerloop)
 
     // Look for simd ops that belong to same loop.
     for (j=i+1; j<vec_simd_ops->Elements(); j++) {
-      WN* simd_op_next=vec_simd_ops->Top_nth(j);
+      WN *simd_op_next=vec_simd_ops->Top_nth(j);
       
       WN* istore_next=LWN_Get_Parent(simd_op_next);
       WN* new_body_next = Find_Do_Body(istore_next);
@@ -2594,7 +3446,7 @@ static INT Simd(WN* innerloop)
   }
   
   for (i=vec_simd_ops->Elements()-1; i >= 0; i--) {
-    WN* simd_op=vec_simd_ops->Top_nth(i);
+    simd_op=vec_simd_ops->Top_nth(i);
 
     SIMD_KIND simd_kind = simd_op_kind[i];
     if (simd_kind == INVALID) {
@@ -2606,8 +3458,8 @@ static INT Simd(WN* innerloop)
     }
 
     WN* iload0=WN_kid0(simd_op);
-    WN* iload1=WN_kid1(simd_op);
-    WN* iload2=WN_kid2(simd_op);
+    WN* iload1=WN_kid_count(simd_op) > 1 ? WN_kid1(simd_op) : NULL;
+    WN* iload2=WN_kid_count(simd_op) > 2 ? WN_kid2(simd_op) : NULL;
     WN* istore=LWN_Get_Parent(simd_op);
     WN* new_body=Find_Do_Body(istore);
     WN* innerloop=LWN_Get_Parent(new_body);
@@ -2615,9 +3467,15 @@ static INT Simd(WN* innerloop)
 
     if (WN_operator(simd_op) == OPR_INTRINSIC_OP) {
       FmtAssert(WN_operator(iload0) == OPR_PARM, ("NYI"));
-      FmtAssert(WN_operator(iload1) == OPR_PARM, ("NYI"));
       iload0 = WN_kid0(iload0);
-      iload1 = WN_kid0(iload1);
+      if (iload1) {
+	FmtAssert(WN_operator(iload1) == OPR_PARM, ("NYI"));
+	iload1 = WN_kid0(iload1);
+      } 
+      if (iload2) {
+	FmtAssert(WN_operator(iload2) == OPR_PARM, ("NYI"));
+	iload2 = WN_kid0(iload2);
+      } 
     }
     switch(simd_kind) {
     case V16I1: vect = 16; break;
@@ -2626,6 +3484,7 @@ static INT Simd(WN* innerloop)
     case V16F4: vect = 4;  break;
     //case V16I8: 
     case V16F8: vect = 2;  break;
+    case V16C8: vect = 1;  break;
     }
     size = 16/vect;
 
@@ -2647,7 +3506,7 @@ static INT Simd(WN* innerloop)
 	WN_operator(iload0) == OPR_ILOAD) {
       WN *array0 = WN_kid0(iload0);
       ACCESS_ARRAY* aa0=(ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,array0);
-      
+
       WN *copy = LWN_Copy_Tree(WN_kid(array0, WN_kid_count(array0) - 1), 
 			       TRUE, LNO_Info_Map);
       WN *start = LWN_Copy_Tree(WN_kid0(WN_start(innerloop)),
@@ -2684,10 +3543,25 @@ static INT Simd(WN* innerloop)
       else if (!WN_has_sym(WN_array_base(WN_kid0(iload0))))
 	// TODO: compute alignment for cases like a.b[i] (bug 1703)
 	simd_op_best_align[0][i] = -2;
-      else if (WN_operator(simd_op) == OPR_CVT) 
+      else if ((WN_operator(simd_op) == OPR_CVT &&
+	        MTYPE_byte_size(WN_rtype(simd_op)) != 
+	        MTYPE_byte_size(WN_desc(simd_op))) ||
+	       (WN_operator(simd_op) == OPR_TRUNC &&
+	        MTYPE_byte_size(WN_rtype(simd_op)) !=
+		MTYPE_byte_size(WN_desc(simd_op))))
 	// related to Bug 2665 but faults at run-time
 	simd_op_best_align[0][i] = -2;
+      else if (Vec_Unit_Size[simd_kind] != MTYPE_byte_size(WN_desc(iload0)))
+	simd_op_best_align[0][i] = -2;
       else {
+	if (aa0->Dim(aa0->Num_Vec()-1)->Loop_Coeff(Do_Loop_Depth(innerloop))== 
+	    -1)
+	  copy = LWN_CreateExp2(OPCODE_make_op(OPR_SUB,index_type, MTYPE_V),
+				copy, 
+				WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,
+								 index_type, 
+								 MTYPE_V), 
+						  (16/ABS(WN_element_size(array0)))-1));
 	fn = WN_const_val(copy);
 	
 	// Compute A0 (alignment of the base of the array).
@@ -2706,17 +3580,28 @@ static INT Simd(WN* innerloop)
 	// ARRAYs within COMMON blocks that are not padded to align
 	Base_Symbol_And_Offset(WN_st(WN_array_base(WN_kid0(iload0))), 
 			       &base_st, &offset);
-	if (ST_sclass(base_st) == SCLASS_COMMON && offset != 0)
+	if (ST_sclass(base_st) == SCLASS_COMMON && offset%16 != 0)
 	  simd_op_best_align[0][i] = -2;
 
 	// Fortran Equivalenced arrays should not be aligned
 	if (ST_is_equivalenced(st))
 	  simd_op_best_align[0][i] = -2;
 
-	if (aa0->Num_Vec() >= 2 && 
-	    (!WN_kid(array0, aa0->Num_Vec()) ||
-	     WN_operator(WN_kid(array0, aa0->Num_Vec())) != OPR_INTCONST ||
-	     (WN_const_val(WN_kid(array0, aa0->Num_Vec()))*
+	// Check for array bases that are pointer variables assigned to registers.
+	// There is no way to align such arrays.
+	if (ST_sclass(base_st) == SCLASS_REG)
+	  simd_op_best_align[0][i] = -2;
+	
+	// If base address was a memory invariant hoisted out of the loop, 
+	// it is not possible to know the base alignment without looking at 
+	// ud chain.
+	if (strncmp(ST_name(base_st), "_misym_temp_", 12) == 0)
+	  simd_op_best_align[0][i] = -2;
+
+	if (WN_num_dim(array0) >= 2 &&
+	    (!WN_kid(array0, WN_num_dim(array0)) || 
+	     WN_operator(WN_kid(array0, WN_num_dim(array0))) != OPR_INTCONST ||
+	     (WN_const_val(WN_kid(array0, WN_num_dim(array0)))*
 	      // TODO: Element size can be computed more reliably by following 
 	      // the pointed-to type, but we will just use the desc type of the
 	      // ISTORE.
@@ -2726,8 +3611,15 @@ static INT Simd(WN* innerloop)
 	if (simd_op_best_align[0][i] == -2 || 
 	    (TY_kind(ST_type(st)) == KIND_STRUCT &&
 	     strncmp(TY_name(ST_type(st)),".dope.",6) == 0) ||
-	    TY_kind(ST_type(st)) == KIND_POINTER)
+	    (TY_kind(ST_type(st)) == KIND_POINTER && !Align_Unsafe &&
+	     (!ST_pt_to_unique_mem(st) || ST_is_temp_var(st) ||
+	      ST_pt_to_compiler_generated_mem(st))))
 	  ; // Do nothing
+	else if (TY_kind(ST_type(st)) == KIND_POINTER) {
+	  TY_IDX ty = TY_pointed(ST_type(st));
+	  Set_TY_align_exp(ty, 4);
+	  Set_TY_pointed(ST_type(st), ty);		
+	} 
 	else if (base_st->sym_class != CLASS_BLOCK && 
 	    ST_sclass(st) != SCLASS_FORMAL &&
 	    ST_sclass(st) != SCLASS_FORMAL_REF)
@@ -2751,7 +3643,9 @@ static INT Simd(WN* innerloop)
 	if (simd_op_best_align[0][i] == -2 || 
 	    (TY_kind(ST_type(st)) == KIND_STRUCT &&
 	     strncmp(TY_name(ST_type(st)),".dope.",6) == 0) ||
-	    TY_kind(ST_type(st)) == KIND_POINTER)
+	    (TY_kind(ST_type(st)) == KIND_POINTER && !Align_Unsafe &&
+	     (!ST_pt_to_unique_mem(st) || ST_is_temp_var(st) ||
+	      ST_pt_to_compiler_generated_mem(st))))
 	  simd_op_best_align[0][i] = -2;	
 	else if (ST_sclass(st) == SCLASS_AUTO && 
 		 (ST_level(st) != Current_scope ||
@@ -2806,7 +3700,17 @@ static INT Simd(WN* innerloop)
       else if (!WN_has_sym(WN_array_base(WN_kid0(iload1))))
 	// TODO: compute alignment for cases like a.b[i] (bug 1703)
 	simd_op_best_align[1][i] = -2;
+      else if (Vec_Unit_Size[simd_kind] != MTYPE_byte_size(WN_desc(iload1)))
+	simd_op_best_align[1][i] = -2;
       else {
+	if (aa1->Dim(aa1->Num_Vec()-1)->Loop_Coeff(Do_Loop_Depth(innerloop))==
+	    -1)
+	  copy = LWN_CreateExp2(OPCODE_make_op(OPR_SUB,index_type, MTYPE_V),
+				copy, 
+				WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,
+								 index_type, 
+								 MTYPE_V), 
+						  (16/ABS(WN_element_size(array1)))-1));
 	fn = WN_const_val(copy);
 	
 	// Compute A0 (alignment of the base of the array).
@@ -2826,17 +3730,28 @@ static INT Simd(WN* innerloop)
 	// ARRAYs within COMMON blocks that are not padded to align
 	Base_Symbol_And_Offset(WN_st(WN_array_base(WN_kid0(iload1))), 
 			       &base_st, &offset);
-	if (ST_sclass(base_st) == SCLASS_COMMON && offset != 0)
+	if (ST_sclass(base_st) == SCLASS_COMMON && offset%16 != 0)
 	  simd_op_best_align[1][i] = -2;
 
 	// Fortran Equivalenced arrays should not be aligned
 	if (ST_is_equivalenced(st))
 	  simd_op_best_align[1][i] = -2;
 	  
-	if (aa1->Num_Vec() >= 2 &&
-	    (!WN_kid(array1, aa1->Num_Vec()) ||
-	     WN_operator(WN_kid(array1, aa1->Num_Vec())) != OPR_INTCONST ||
-	     (WN_const_val(WN_kid(array1, aa1->Num_Vec()))*
+	// Check for array bases that are pointer variables assigned to registers.
+	// There is no way to align such arrays.
+	if (ST_sclass(base_st) == SCLASS_REG)
+	  simd_op_best_align[1][i] = -2;
+
+	// If base address was a memory invariant hoisted out of the loop, 
+	// it is not possible to know the base alignment without looking at 
+	// ud chain.
+	if (strncmp(ST_name(base_st), "_misym_temp_", 12) == 0)
+	  simd_op_best_align[1][i] = -2;
+
+	if (WN_num_dim(array1) >= 2 &&
+	    (!WN_kid(array1, WN_num_dim(array1)) ||
+	     WN_operator(WN_kid(array1, WN_num_dim(array1))) != OPR_INTCONST ||
+	     (WN_const_val(WN_kid(array1, WN_num_dim(array1)))*
 	      // TODO: Element size can be computed more reliably by following 
 	      // the pointed-to type, but we will just use the desc type of the
 	      // ISTORE.
@@ -2846,8 +3761,15 @@ static INT Simd(WN* innerloop)
 	if (simd_op_best_align[1][i] == -2 || 
 	    (TY_kind(ST_type(st)) == KIND_STRUCT &&
 	     strncmp(TY_name(ST_type(st)),".dope.",6) == 0) ||
-	    TY_kind(ST_type(st)) == KIND_POINTER)
+	    (TY_kind(ST_type(st)) == KIND_POINTER && !Align_Unsafe &&
+	     (!ST_pt_to_unique_mem(st) || ST_is_temp_var(st) ||
+	      ST_pt_to_compiler_generated_mem(st))))
 	  ; // Do nothing
+	else if (TY_kind(ST_type(st)) == KIND_POINTER) {
+	  TY_IDX ty = TY_pointed(ST_type(st));
+	  Set_TY_align_exp(ty, 4);
+	  Set_TY_pointed(ST_type(st), ty);		
+	} 
 	// Bug 1381 - forgot to check for CLASS_BLOCK variables
 	else if (base_st->sym_class != CLASS_BLOCK && 
 	    ST_sclass(st) != SCLASS_FORMAL &&
@@ -2872,8 +3794,15 @@ static INT Simd(WN* innerloop)
 	if (simd_op_best_align[1][i] == -2 || 
 	    (TY_kind(ST_type(st)) == KIND_STRUCT &&
 	     strncmp(TY_name(ST_type(st)),".dope.",6) == 0) ||
-	    TY_kind(ST_type(st)) == KIND_POINTER)
+	    (TY_kind(ST_type(st)) == KIND_POINTER && !Align_Unsafe &&
+	     (!ST_pt_to_unique_mem(st) || ST_is_temp_var(st) ||
+	      ST_pt_to_compiler_generated_mem(st))))
 	  simd_op_best_align[1][i] = -2;	
+	else if (TY_kind(ST_type(st)) == KIND_POINTER) {
+	  TY_IDX ty = TY_pointed(ST_type(st));
+	  Set_TY_align_exp(ty, 4);
+	  Set_TY_pointed(ST_type(st), ty);		
+	} 
 	else if (ST_sclass(st) == SCLASS_AUTO && 
 		 (ST_level(st) != Current_scope ||
 		  Stack_Alignment() != 16))
@@ -2927,7 +3856,17 @@ static INT Simd(WN* innerloop)
       else if (!WN_has_sym(WN_array_base(WN_kid0(iload2))))
 	// TODO: compute alignment for cases like a.b[i] (bug 1703)
 	simd_op_best_align[2][i] = -2;
+      else if (Vec_Unit_Size[simd_kind] != MTYPE_byte_size(WN_desc(iload2)))
+	simd_op_best_align[2][i] = -2;
       else {
+	if (aa2->Dim(aa2->Num_Vec()-1)->Loop_Coeff(Do_Loop_Depth(innerloop))==
+	    -1)
+	  copy = LWN_CreateExp2(OPCODE_make_op(OPR_SUB,index_type, MTYPE_V),
+				copy, 
+				WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,
+								 index_type, 
+								 MTYPE_V), 
+						  (16/ABS(WN_element_size(array2)))-1));
 	fn = WN_const_val(copy);
 	
 	// Compute A0 (alignment of the base of the array).
@@ -2947,17 +3886,28 @@ static INT Simd(WN* innerloop)
 	// ARRAYs within COMMON blocks that are not padded to align
 	Base_Symbol_And_Offset(WN_st(WN_array_base(WN_kid0(iload2))), 
 			       &base_st, &offset);
-	if (ST_sclass(base_st) == SCLASS_COMMON && offset != 0)
+	if (ST_sclass(base_st) == SCLASS_COMMON && offset%16 != 0)
 	  simd_op_best_align[2][i] = -2;
 
 	// Fortran Equivalenced arrays should not be aligned
 	if (ST_is_equivalenced(st))
 	  simd_op_best_align[2][i] = -2;
 	  
-	if (aa2->Num_Vec() >= 2 &&
-	    (!WN_kid(array2, aa2->Num_Vec()) ||
-	     WN_operator(WN_kid(array2, aa2->Num_Vec())) != OPR_INTCONST ||
-	     (WN_const_val(WN_kid(array2, aa2->Num_Vec()))*
+	// Check for array bases that are pointer variables assigned to registers.
+	// There is no way to align such arrays.
+	if (ST_sclass(base_st) == SCLASS_REG)
+	  simd_op_best_align[2][i] = -2;
+
+	// If base address was a memory invariant hoisted out of the loop, 
+	// it is not possible to know the base alignment without looking at 
+	// ud chain.
+	if (strncmp(ST_name(base_st), "_misym_temp_", 12) == 0)
+	  simd_op_best_align[2][i] = -2;
+
+	if (WN_num_dim(array2) >= 2 &&
+	    (!WN_kid(array2, WN_num_dim(array2)) ||
+	     WN_operator(WN_kid(array2, WN_num_dim(array2))) != OPR_INTCONST ||
+	     (WN_const_val(WN_kid(array2, WN_num_dim(array2)))*
 	      // TODO: Element size can be computed more reliably by following 
 	      // the pointed-to type, but we will just use the desc type of the
 	      // ISTORE.
@@ -2967,8 +3917,15 @@ static INT Simd(WN* innerloop)
 	if (simd_op_best_align[2][i] == -2 || 
 	    (TY_kind(ST_type(st)) == KIND_STRUCT &&
 	     strncmp(TY_name(ST_type(st)),".dope.",6) == 0) ||
-	    TY_kind(ST_type(st)) == KIND_POINTER)
+	    (TY_kind(ST_type(st)) == KIND_POINTER && !Align_Unsafe &&
+	     (!ST_pt_to_unique_mem(st) || ST_is_temp_var(st) ||
+	      ST_pt_to_compiler_generated_mem(st))))
 	  ; // Do nothing
+	else if (TY_kind(ST_type(st)) == KIND_POINTER) {
+	  TY_IDX ty = TY_pointed(ST_type(st));
+	  Set_TY_align_exp(ty, 4);
+	  Set_TY_pointed(ST_type(st), ty);		
+	} 
 	// Bug 1381 - forgot to check for CLASS_BLOCK variables
 	else if (base_st->sym_class != CLASS_BLOCK && 
 	    ST_sclass(st) != SCLASS_FORMAL &&
@@ -2993,7 +3950,9 @@ static INT Simd(WN* innerloop)
 	if (simd_op_best_align[2][i] == -2 || 
 	    (TY_kind(ST_type(st)) == KIND_STRUCT &&
 	     strncmp(TY_name(ST_type(st)),".dope.",6) == 0) ||
-	    TY_kind(ST_type(st)) == KIND_POINTER)
+	    (TY_kind(ST_type(st)) == KIND_POINTER && !Align_Unsafe &&
+	     (!ST_pt_to_unique_mem(st) || ST_is_temp_var(st) ||
+	      ST_pt_to_compiler_generated_mem(st))))
 	  simd_op_best_align[2][i] = -2;	
 	else if (ST_sclass(st) == SCLASS_AUTO && 
 		 (ST_level(st) != Current_scope ||
@@ -3050,6 +4009,13 @@ static INT Simd(WN* innerloop)
       // TODO: compute alignment for cases like a.b[i] (bug 1703)
       simd_op_best_align[3][i] = -2;
     else {
+      if (aas->Dim(aas->Num_Vec()-1)->Loop_Coeff(Do_Loop_Depth(innerloop)) == -1)
+	copy = LWN_CreateExp2(OPCODE_make_op(OPR_SUB,index_type, MTYPE_V),
+			      copy, 
+			      WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,
+							       index_type, 
+							       MTYPE_V),
+				                (16/ABS(WN_element_size(arrays)))-1));
       fn = WN_const_val(copy);
       
       // Compute A0 (alignment of the base of the array).
@@ -3069,17 +4035,28 @@ static INT Simd(WN* innerloop)
       // ARRAYs within COMMON blocks that are not padded to align
       Base_Symbol_And_Offset(WN_st(WN_array_base(WN_kid1(istore))), 
 			     &base_st, &offset);
-      if (ST_sclass(base_st) == SCLASS_COMMON && offset != 0)
+      if (ST_sclass(base_st) == SCLASS_COMMON && offset%16 != 0)
 	simd_op_best_align[3][i] = -2;
 
       // Fortran Equivalenced arrays should not be aligned
       if (ST_is_equivalenced(st))
 	simd_op_best_align[3][i] = -2;
 	  
-      if (aas->Num_Vec() >= 2 &&
-	  (!WN_kid(arrays, aas->Num_Vec()) ||
-	   WN_operator(WN_kid(arrays, aas->Num_Vec())) != OPR_INTCONST ||
-	   (WN_const_val(WN_kid(arrays, aas->Num_Vec()))*
+      // Check for array bases that are pointer variables assigned to registers.
+      // There is no way to align such arrays.
+      if (ST_sclass(base_st) == SCLASS_REG)
+	simd_op_best_align[3][i] = -2;
+
+      // If base address was a memory invariant hoisted out of the loop, 
+      // it is not possible to know the base alignment without looking at 
+      // ud chain.
+      if (strncmp(ST_name(base_st), "_misym_temp_", 12) == 0)
+	simd_op_best_align[3][i] = -2;
+
+      if (WN_num_dim(arrays) >= 2 &&
+	  (!WN_kid(arrays, WN_num_dim(arrays)) ||
+	   WN_operator(WN_kid(arrays, WN_num_dim(arrays))) != OPR_INTCONST ||
+	   (WN_const_val(WN_kid(arrays, WN_num_dim(arrays)))*
 	    // TODO: Element size can be computed more reliably by following 
 	    // the pointed-to type, but we will just use the desc type of the 
 	    // ISTORE.
@@ -3089,8 +4066,15 @@ static INT Simd(WN* innerloop)
       if (simd_op_best_align[3][i] == -2 || 
 	  (TY_kind(ST_type(st)) == KIND_STRUCT &&
 	   strncmp(TY_name(ST_type(st)),".dope.",6) == 0) ||
-	  TY_kind(ST_type(st)) == KIND_POINTER)
+	    (TY_kind(ST_type(st)) == KIND_POINTER && !Align_Unsafe &&
+	     (!ST_pt_to_unique_mem(st) || ST_is_temp_var(st) ||
+	      ST_pt_to_compiler_generated_mem(st))))
 	; // Do nothing
+      else if (TY_kind(ST_type(st)) == KIND_POINTER) {
+	TY_IDX ty = TY_pointed(ST_type(st));
+	Set_TY_align_exp(ty, 4);
+	Set_TY_pointed(ST_type(st), ty);		
+      } 
       else if (base_st->sym_class != CLASS_BLOCK && 
 	  ST_sclass(st) != SCLASS_FORMAL &&
 	  ST_sclass(st) != SCLASS_FORMAL_REF)
@@ -3114,8 +4098,10 @@ static INT Simd(WN* innerloop)
       //Set_ST_type(WN_st(WN_array_base(WN_kid1(istore))), ty_istore);
       if (simd_op_best_align[3][i] == -2 || 
 	  (TY_kind(ST_type(st)) == KIND_STRUCT &&
-	   strncmp(TY_name(ST_type(st)),".dope.",6) == 0) ||
-	  TY_kind(ST_type(st)) == KIND_POINTER)
+	  strncmp(TY_name(ST_type(st)),".dope.",6) == 0) ||
+	  (TY_kind(ST_type(st)) == KIND_POINTER && !Align_Unsafe &&
+	   (!ST_pt_to_unique_mem(st) || ST_is_temp_var(st) ||
+	    ST_pt_to_compiler_generated_mem(st))))
 	simd_op_best_align[3][i] = -2;	
       else if (ST_sclass(st) == SCLASS_AUTO && 
 	       (ST_level(st) != Current_scope ||
@@ -3130,7 +4116,7 @@ static INT Simd(WN* innerloop)
     }
   }
   for (i=vec_simd_ops->Elements()-1; i >= 0; i--) {
-    WN* simd_op=vec_simd_ops->Top_nth(i);
+    simd_op=vec_simd_ops->Top_nth(i);
 
     SIMD_KIND simd_kind = simd_op_kind[i];
     if (simd_kind == INVALID ||
@@ -3138,8 +4124,8 @@ static INT Simd(WN* innerloop)
       continue;
 
     WN* iload0=WN_kid0(simd_op);
-    WN* iload1=WN_kid1(simd_op);
-    WN* iload2=WN_kid2(simd_op);
+    WN* iload1=WN_kid_count(simd_op) > 1 ? WN_kid1(simd_op) : NULL;
+    WN* iload2=WN_kid_count(simd_op) > 2 ? WN_kid2(simd_op) : NULL;
     WN* istore=LWN_Get_Parent(simd_op);
     WN* new_body=Find_Do_Body(istore);
     WN* innerloop=LWN_Get_Parent(new_body);
@@ -3149,9 +4135,15 @@ static INT Simd(WN* innerloop)
 
     if (WN_operator(simd_op) == OPR_INTRINSIC_OP) {
       FmtAssert(WN_operator(iload0) == OPR_PARM, ("NYI"));
-      FmtAssert(WN_operator(iload1) == OPR_PARM, ("NYI"));
       iload0 = WN_kid0(iload0);
-      iload1 = WN_kid0(iload1);
+      if (iload1) {
+	FmtAssert(WN_operator(iload1) == OPR_PARM, ("NYI"));
+	iload1 = WN_kid0(iload1);
+      } 
+      if (iload2) {
+	FmtAssert(WN_operator(iload2) == OPR_PARM, ("NYI"));
+	iload2 = WN_kid0(iload2);
+      } 
     }
 
     for (peel = 0; peel < 16; peel ++) {
@@ -3166,8 +4158,10 @@ static INT Simd(WN* innerloop)
 	  continue;
 
 	WN* iload0_next=WN_kid0(simd_op_next);
-	WN* iload1_next=WN_kid1(simd_op_next);
-	WN* iload2_next=WN_kid2(simd_op_next);
+	WN* iload1_next=
+	  WN_kid_count(simd_op_next) > 1 ? WN_kid1(simd_op_next) : NULL;
+	WN* iload2_next=
+	  WN_kid_count(simd_op_next) > 2 ? WN_kid2(simd_op_next) : NULL;
 	WN* istore_next=LWN_Get_Parent(simd_op_next);
 	WN* new_body_next=Find_Do_Body(istore_next);
 	WN* innerloop_next=LWN_Get_Parent(new_body_next);
@@ -3204,8 +4198,10 @@ static INT Simd(WN* innerloop)
 	  continue;
 	
 	WN* iload0_next=WN_kid0(simd_op_next);
-	WN* iload1_next=WN_kid1(simd_op_next);
-	WN* iload2_next=WN_kid2(simd_op_next);
+	WN* iload1_next=
+	  WN_kid_count(simd_op_next) > 1 ? WN_kid1(simd_op_next) : NULL;
+	WN* iload2_next=
+	  WN_kid_count(simd_op_next) > 2 ? WN_kid2(simd_op_next) : NULL;
 	WN* istore_next=LWN_Get_Parent(simd_op_next);
 	WN* new_body_next=Find_Do_Body(istore_next);
 	WN* innerloop_next=LWN_Get_Parent(new_body_next);
@@ -3215,9 +4211,15 @@ static INT Simd(WN* innerloop)
 	
 	if (WN_operator(simd_op_next) == OPR_INTRINSIC_OP) {
 	  FmtAssert(WN_operator(iload0_next) == OPR_PARM, ("NYI"));
-	  FmtAssert(WN_operator(iload1_next) == OPR_PARM, ("NYI"));
 	  iload0_next = WN_kid0(iload0_next);
-	  iload1_next = WN_kid0(iload1_next);
+	  if (iload1_next) {
+	    FmtAssert(WN_operator(iload1_next) == OPR_PARM, ("NYI"));
+	    iload1_next = WN_kid0(iload1_next);
+	  } 
+	  if (iload2_next) {
+	    FmtAssert(WN_operator(iload2_next) == OPR_PARM, ("NYI"));
+	    iload2_next = WN_kid0(iload2_next);
+	  } 
 	}
 
 	if (simd_op_best_align[0][j] == best_peel) {
@@ -3288,7 +4290,7 @@ static INT Simd(WN* innerloop)
 			  WN_index(innerloop), FALSE);
     
     WN *peelloop = LWN_Copy_Tree(innerloop, TRUE, LNO_Info_Map);
-    
+
     Copy_Def_Use(WN_start(innerloop), WN_start(peelloop), 
 		 WN_index(innerloop), FALSE /* synch */);
     
@@ -3415,6 +4417,14 @@ static INT Simd(WN* innerloop)
       def_list->Set_loop_stmt(peelloop); 
     }
     
+    // Set Unimportant flag in loop_info.
+    if (WN_kid_count(peelloop) == 6) {
+      WN *loop_info = WN_do_loop_info(peelloop);
+      WN_Set_Loop_Unimportant_Misc(loop_info);
+      DO_LOOP_INFO *dli_p = Get_Do_Loop_Info(peelloop);
+      dli_p->Set_Generally_Unimportant();
+    }
+
     // Now, insert the peeled loop before the vectorizable innerloop.
     LWN_Insert_Block_Before(LWN_Get_Parent(innerloop),
 			    innerloop,peelloop);
@@ -3437,8 +4447,10 @@ static INT Simd(WN* innerloop)
 	continue;
       
       WN* iload0_next=WN_kid0(simd_op_next);
-      WN* iload1_next=WN_kid1(simd_op_next);
-      WN* iload2_next=WN_kid2(simd_op_next);
+      WN* iload1_next=
+	WN_kid_count(simd_op_next) > 1 ? WN_kid1(simd_op_next) : NULL;
+      WN* iload2_next=
+	WN_kid_count(simd_op_next) > 2 ? WN_kid2(simd_op_next) : NULL;
       WN* istore_next=LWN_Get_Parent(simd_op_next);
       WN* new_body_next=Find_Do_Body(istore_next);
       WN* innerloop_next=LWN_Get_Parent(new_body_next);
@@ -3448,11 +4460,17 @@ static INT Simd(WN* innerloop)
       
       if (WN_operator(simd_op_next) == OPR_INTRINSIC_OP) {
 	FmtAssert(WN_operator(iload0_next) == OPR_PARM, ("NYI"));
-	FmtAssert(WN_operator(iload1_next) == OPR_PARM, ("NYI"));
 	iload0_next = WN_kid0(iload0_next);
-	iload1_next = WN_kid0(iload1_next);
+	if (iload1_next) {
+	  FmtAssert(WN_operator(iload1_next) == OPR_PARM, ("NYI"));
+	  iload1_next = WN_kid0(iload1_next);
+	} 
+	if (iload2_next) {
+	  FmtAssert(WN_operator(iload2_next) == OPR_PARM, ("NYI"));
+	  iload2_next = WN_kid0(iload2_next);
+	} 
       }
-
+      
       if (simd_op_best_align[0][j] == best_peel) {
 	TY_IDX ty_iload0 = TY_pointed(WN_load_addr_ty(iload0_next));
 	TY_IDX ty_idx = 0;
@@ -3498,7 +4516,7 @@ static INT Simd(WN* innerloop)
 
   // Count the number of floating point single precision vectorization ops
   for (i=0; i<vec_simd_ops->Elements(); i++) {
-    WN* simd_op=vec_simd_ops->Top_nth(i);
+    simd_op=vec_simd_ops->Top_nth(i);
     SIMD_KIND simd_kind = simd_op_kind[i];
     if (simd_kind == INVALID)
       continue;
@@ -3506,17 +4524,25 @@ static INT Simd(WN* innerloop)
 	MTYPE_is_size_double(WN_desc(simd_op)))
       continue;
     if (WN_rtype(simd_op) != MTYPE_V && 
-	    WN_rtype(simd_op) != MTYPE_F8 && WN_rtype(simd_op) != MTYPE_I8)
+	WN_rtype(simd_op) != MTYPE_C8 &&
+	WN_rtype(simd_op) != MTYPE_F8 && WN_rtype(simd_op) != MTYPE_I8)
       good_vector ++;
     else if (WN_desc(simd_op) != MTYPE_V && 
-	    WN_desc(simd_op) != MTYPE_F8 && WN_desc(simd_op) != MTYPE_I8)
+	     WN_rtype(simd_op) != MTYPE_C8 &&
+	     WN_desc(simd_op) != MTYPE_F8 && WN_desc(simd_op) != MTYPE_I8)
       good_vector ++;
   }
 
   WN* reduction_node= NULL;
+  BOOL vec_index_preg_created = FALSE;
+  SYMBOL vec_index_symbol;
+  SYMBOL vec_loop_incr_symbol;
+  WN *vec_index_preg_store = NULL;
+  WN *vec_loop_incr_preg_store;
+  WN *incr_vec_index_symbol;
 
   for (i=vec_simd_ops->Elements()-1; i >= 0; i--) {
-    WN* simd_op=vec_simd_ops->Top_nth(i); 
+    simd_op=vec_simd_ops->Top_nth(i); 
 
     // If we are unable to find combination SIMD Kind for this simd_op
     // then skip.
@@ -3525,8 +4551,8 @@ static INT Simd(WN* innerloop)
       continue;
     
     WN* iload0=WN_kid0(simd_op);
-    WN* iload1=WN_kid1(simd_op);
-    WN* iload2=WN_kid2(simd_op);
+    WN* iload1=WN_kid_count(simd_op) > 1 ? WN_kid1(simd_op) : NULL;
+    WN* iload2=WN_kid_count(simd_op) > 2 ? WN_kid2(simd_op) : NULL;
     WN* istore=LWN_Get_Parent(simd_op);
     WN* new_body=Find_Do_Body(simd_op);
     WN* new_loop=LWN_Get_Parent(new_body);
@@ -3542,14 +4568,22 @@ static INT Simd(WN* innerloop)
 
     if (WN_operator(simd_op) == OPR_INTRINSIC_OP) {
       FmtAssert(WN_operator(iload0) == OPR_PARM, ("NYI"));
-      FmtAssert(WN_operator(iload1) == OPR_PARM, ("NYI"));
       iload0 = WN_kid0(iload0);
-      iload1 = WN_kid0(iload1);
+      if (iload1) {
+	FmtAssert(WN_operator(iload1) == OPR_PARM, ("NYI"));
+	iload1 = WN_kid0(iload1);
+      } 
+      if (iload2) {
+	FmtAssert(WN_operator(iload2) == OPR_PARM, ("NYI"));
+	iload2 = WN_kid0(iload2);
+      } 
     }
 
     // Add def-use for remainder loop only if this is the last simd_op
     // in its loop.
     if (simd_op_last_in_loop[i]) {
+      if (!adg->Add_Deps_To_Copy_Block(innerloop, remainderloop, TRUE))
+	FmtAssert(FALSE, ("Probably too many edges in dependence graph.")); 
       // If the remainder loop were to be added, the loop ends in innerloop 
       // before xformation would be identical to the loop end for the
       // remainder loop
@@ -3604,18 +4638,22 @@ static INT Simd(WN* innerloop)
 	  }
 	}
       }
-    }
+    } 
 
     OPCODE intconst_opc= OPCODE_make_op(OPR_INTCONST,index_type, MTYPE_V);
     OPCODE add_opc= OPCODE_make_op(OPR_ADD,index_type, MTYPE_V);
     OPCODE sub_opc= OPCODE_make_op(OPR_SUB,index_type, MTYPE_V);
     TYPE_ID vmtype;
     TYPE_ID type;
+    TYPE_ID prog_const_type;
     if (WN_operator(istore) != OPR_ISTORE && WN_operator(istore) != OPR_STID) {
       // bug 2336 - trace up the correct type 
       WN* stmt = istore;
       while(stmt && !OPCODE_is_store(WN_opcode(stmt)) && 
-	    WN_operator(stmt) != OPR_DO_LOOP){
+	    WN_operator(stmt) != OPR_DO_LOOP &&
+	    // Bug 5225 - trace up should stop at a CVT or a TRUNC.
+	    WN_operator(stmt) != OPR_CVT &&
+	    WN_operator(stmt) != OPR_TRUNC) {
 	stmt = LWN_Get_Parent(stmt);
       }    
       if (!stmt || WN_operator(stmt) == OPR_DO_LOOP)
@@ -3625,25 +4663,31 @@ static INT Simd(WN* innerloop)
     } else
       type = WN_desc(istore);
     switch(type) {
-      case MTYPE_F4:
+      case MTYPE_V16C8: case MTYPE_C8:
+        vmtype = MTYPE_V16C8; 
+        break;
+      case MTYPE_V16C4: case MTYPE_C4:
+        vmtype = MTYPE_V16C4;
+	break;
+      case MTYPE_V16F4: case MTYPE_F4:
 	vmtype = MTYPE_V16F4;	
 	break;
-      case MTYPE_F8:
+      case MTYPE_V16F8: case MTYPE_F8:
 	vmtype = MTYPE_V16F8;	
 	break;
-      case MTYPE_I1:
+      case MTYPE_V16I1: case MTYPE_I1:
       case MTYPE_U1:
 	vmtype = MTYPE_V16I1;	
 	break;
-      case MTYPE_I2:
+      case MTYPE_V16I2: case MTYPE_I2:
       case MTYPE_U2:
 	vmtype = MTYPE_V16I2;	
 	break;
-      case MTYPE_I4:
+      case MTYPE_V16I4: case MTYPE_I4:
       case MTYPE_U4:
 	vmtype = MTYPE_V16I4;	
 	break;
-      case MTYPE_I8:
+      case MTYPE_V16I8: case MTYPE_I8:
       case MTYPE_U8:
 	vmtype = MTYPE_V16I8;	
 	break;
@@ -3658,6 +4702,102 @@ static INT Simd(WN* innerloop)
       iload2 = iload0;     
     } 
     
+    // Handle operands with negative loop coefficient.
+    for (INT kid = 0; kid < WN_kid_count(simd_op); kid ++) {
+      WN* opnd = WN_kid(simd_op, kid);
+      if (WN_operator(opnd) == OPR_ILOAD) {
+	WN* array = WN_kid0(opnd);
+	if (WN_operator(array) == OPR_ARRAY) {
+	  FmtAssert(WN_element_size(array), ("NYI"));
+	  INT incr = 16/ABS(WN_element_size(array));
+	  ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,array);
+	  if (aa->Dim(aa->Num_Vec()-1)->Loop_Coeff(Do_Loop_Depth(innerloop))==
+	      -1){
+	    TYPE_ID vector_type;	  	  
+	    switch(ABS(WN_element_size(array))) {
+	    case 1: vector_type = MTYPE_V16I1; break;
+	    case 2: vector_type = MTYPE_V16I2; break;
+	    case 4: 
+	      if (MTYPE_is_float(WN_desc(opnd)))
+		vector_type = MTYPE_V16F4; 
+	      else
+		vector_type = MTYPE_V16I4;
+	      break;
+	    case 8: 
+	      if (MTYPE_is_float(WN_desc(opnd)))
+		vector_type = MTYPE_V16F8; 
+	      else
+		vector_type = MTYPE_V16I8;
+	      break;
+	    default: FmtAssert(FALSE, ("NYI"));
+	    }
+	    WN* index = WN_kid(array, WN_num_dim(array)<<1);
+	    WN_kid(array, WN_num_dim(array)<<1) = 
+	      LWN_CreateExp2(sub_opc, index, 
+			     WN_CreateIntconst(intconst_opc, incr-1));
+	    LWN_Parentize(array);
+	    WN_kid(simd_op, kid) = 
+	      LWN_CreateExp1(OPCODE_make_op(OPR_SHUFFLE, vector_type, 
+					    vector_type),
+			     opnd);
+	    WN_offset(WN_kid(simd_op, kid)) = 0 /* Reverse */;
+	    LWN_Parentize(simd_op);	    
+	  }	    
+	}	
+      }
+    }
+    // Handle parent node with negative loop coefficient.
+    if (WN_operator(istore) == OPR_ISTORE &&
+	WN_operator(WN_kid1(istore)) == OPR_ARRAY) {
+      WN* array = WN_kid1(istore);
+      if (WN_operator(array) == OPR_ARRAY) {
+	FmtAssert(WN_element_size(array), ("NYI"));
+	INT incr = 16/ABS(WN_element_size(array));
+	ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,array);
+	if (aa->Dim(aa->Num_Vec()-1)->Loop_Coeff(Do_Loop_Depth(innerloop))==
+	    -1){
+	  TYPE_ID vector_type;	  	  
+	  switch(ABS(WN_element_size(array))) {
+	  case 1: vector_type = MTYPE_V16I1; break;
+	  case 2: vector_type = MTYPE_V16I2; break;
+	  case 4: 
+	    if (MTYPE_is_float(WN_desc(istore)))
+	      vector_type = MTYPE_V16F4; 
+	    else
+	      vector_type = MTYPE_V16I4;
+	    break;
+	  case 8: 
+	    if (MTYPE_is_float(WN_desc(istore)))
+	      vector_type = MTYPE_V16F8; 
+	    else
+	      vector_type = MTYPE_V16I8;
+	    break;
+	  default: FmtAssert(FALSE, ("NYI"));
+	  }
+	  WN* index = WN_kid(array, WN_num_dim(array)<<1);
+	  WN_kid(array, WN_num_dim(array)<<1) = 
+	    LWN_CreateExp2(sub_opc, index, 
+			   WN_CreateIntconst(intconst_opc, incr-1));
+	  LWN_Parentize(array);
+	  if (WN_operator(WN_kid0(istore)) == OPR_PAREN &&
+	      ((WN_operator(WN_kid0(WN_kid0(istore))) == OPR_LDID && 
+		SYMBOL(WN_kid0(WN_kid0(istore))) != 
+		SYMBOL(WN_index(innerloop))) ||
+	       WN_operator(WN_kid0(WN_kid0(istore))) == OPR_INTCONST ||
+	       WN_operator(WN_kid0(WN_kid0(istore))) == OPR_CONST))
+	    ;
+	  else {
+	    WN_kid(istore, 0) = 
+	      LWN_CreateExp1(OPCODE_make_op(OPR_SHUFFLE, vector_type, 
+					    vector_type),
+			     WN_kid(istore, 0));
+	    WN_offset(WN_kid(istore, 0)) = 0 /* Reverse */;
+	  }
+	  LWN_Parentize(istore);	    
+	}	    
+      }	
+    }      
+
     for (INT kid = 0, invariant_kid; kid < WN_kid_count(simd_op); kid ++) {
       WN* inv_node;
 
@@ -3679,11 +4819,14 @@ static INT Simd(WN* innerloop)
 	continue;
       
       inv_node = WN_kid(simd_op, invariant_kid);
-      if (WN_operator(inv_node) == OPR_PARM)
+      if (WN_operator(inv_node) == OPR_PARM) {
 	inv_node = WN_kid0(inv_node);
+	if (WN_operator(inv_node) == OPR_REPLICATE) continue;
+      }
 
-      if (WN_operator(inv_node) == OPR_CONST ||
-	  WN_operator(inv_node) == OPR_INTCONST) {
+      if ((WN_operator(inv_node) == OPR_CONST ||
+	   WN_operator(inv_node) == OPR_INTCONST) &&
+	  !MTYPE_is_vector(WN_rtype(inv_node))) {
 	TYPE_ID desc = WN_desc(inv_node);      
 	TYPE_ID type;
 	TCON tcon;
@@ -3692,6 +4835,11 @@ static INT Simd(WN* innerloop)
 	  type = WN_rtype(istore);
 	else
 	  type = WN_desc(istore);
+	if (WN_operator(simd_op) == OPR_PARM && 
+	    WN_operator(istore) == OPR_INTRINSIC_OP &&
+	    WN_intrinsic(istore) == INTRN_SUBSU2) {
+	  type = WN_desc(LWN_Get_Parent(istore));
+	}
 	if (!MTYPE_is_float(type)) {
 	  if (MTYPE_is_size_double(type)) {
 	    INT64 value = (INT64)WN_const_val(inv_node);
@@ -3724,16 +4872,26 @@ static INT Simd(WN* innerloop)
 	  break;
 	}
       }
-      else {
+      else if (WN_operator(inv_node) != OPR_CONST &&
+	       WN_operator(inv_node) != OPR_INTCONST) {
 	if (simd_operand_invariant[kid][vec_simd_ops->Elements()-i-1] != 1) {
 	  WN* stmt = simd_op;
 	  while(stmt && !OPCODE_is_store(WN_opcode(stmt)))
 	    stmt = LWN_Get_Parent(stmt);
-	  FmtAssert(stmt && curr_simd_red_manager, ("NYI"));
+	  FmtAssert(stmt && 
+		    (curr_simd_red_manager || WN_operator(stmt) != OPR_STID), 
+		    ("NYI"));
 	  if (WN_operator(stmt) == OPR_STID && 
 	      curr_simd_red_manager->Which_Reduction(stmt) != RED_NONE &&
 	      WN_st(WN_kid(simd_op, kid)) == WN_st(stmt) &&
 	      WN_offset(WN_kid(simd_op, kid)) == WN_offset(stmt)) {
+
+	    if (!Is_Last_Red_Stmt(stmt))
+	      continue;
+
+	    WN_OFFSET orig_offset = WN_load_offset(WN_kid(simd_op, kid));
+	    ST *orig_st = WN_st(WN_kid(simd_op, kid));
+
 	    WN* tmp = WN_kid(simd_op, kid);
 	    WN* copy = LWN_Copy_Tree(tmp, TRUE, LNO_Info_Map);
 	    DEF_LIST *def_list = Du_Mgr->Ud_Get_Def(tmp);
@@ -3801,7 +4959,30 @@ static INT Simd(WN* innerloop)
 	    WN_kid0(tmp) = inv_node;
 	    // Hoist the new preg STID above this loop.
 	    LWN_Extract_From_Block(tmp);
-	    LWN_Insert_Block_Before(LWN_Get_Parent(innerloop), innerloop, tmp);
+	    if (!Do_Loop_Is_Mp(innerloop))
+	      LWN_Insert_Block_Before(LWN_Get_Parent(innerloop), 
+				      innerloop, tmp);
+	    else {
+	      // Bug 4850 - For DO loops inside a PARALLEL region, 
+	      // move this initialization to before the region containing
+	      // this vectorized loop.
+	      WN* enclosing_parallel_region;
+	      enclosing_parallel_region = LWN_Get_Parent(innerloop);
+	      while(enclosing_parallel_region && 
+		    WN_operator(enclosing_parallel_region) != OPR_REGION)
+		enclosing_parallel_region = 
+		  LWN_Get_Parent(enclosing_parallel_region);
+	      FmtAssert(enclosing_parallel_region, ("NYI"));
+	      if (WN_pragma(WN_first(WN_region_pragmas(
+		   enclosing_parallel_region))) !=
+		  WN_PRAGMA_PARALLEL_DO)
+		LWN_Insert_Block_Before(LWN_Get_Parent(
+		  enclosing_parallel_region), 
+					enclosing_parallel_region, tmp);
+	      else
+		LWN_Insert_Block_Before(LWN_Get_Parent(innerloop), 
+					innerloop, tmp);
+	    }
 	    LWN_Parentize(tmp);
 	    last_tmp = tmp;
 	    
@@ -3815,7 +4996,35 @@ static INT Simd(WN* innerloop)
 	    WN_set_rtype(last_op, rtype);
 	    // Move the new preg STID below this loop.
 	    LWN_Extract_From_Block(istore);
-	    LWN_Insert_Block_After(LWN_Get_Parent(innerloop), innerloop, istore);
+	    if (!Do_Loop_Is_Mp(innerloop))
+	      LWN_Insert_Block_After(LWN_Get_Parent(innerloop), 
+				     innerloop, istore);
+	    else {
+	      // Bug 4850 - For DO loops inside a PARALLEL region, 
+	      // move this reduction to after the region containing
+	      // this vectorized loop.
+	      WN* enclosing_parallel_region;
+	      enclosing_parallel_region = LWN_Get_Parent(innerloop);
+	      while(enclosing_parallel_region && 
+		    WN_operator(enclosing_parallel_region) != OPR_REGION)
+		enclosing_parallel_region = 
+		  LWN_Get_Parent(enclosing_parallel_region);
+	      FmtAssert(enclosing_parallel_region, ("NYI"));
+	      
+	      // Bugs 5150, 4850
+	      WN *region_pragma =
+		WN_first(WN_region_pragmas(enclosing_parallel_region));
+	      while(region_pragma && 
+		    WN_pragma(region_pragma) != WN_PRAGMA_REDUCTION)
+		region_pragma = WN_next(region_pragma);	      
+	      if (!region_pragma)
+		LWN_Insert_Block_After(LWN_Get_Parent(
+		  enclosing_parallel_region), 
+				       enclosing_parallel_region, istore);
+	      else
+		LWN_Insert_Block_After(LWN_Get_Parent(innerloop), 
+				       innerloop, istore);
+	    }	    
 	    // Create a REDUCE operation on this STID
 	    OPERATOR opr;
 	    OPERATOR s_opr = WN_operator(simd_op);
@@ -3851,25 +5060,195 @@ static INT Simd(WN* innerloop)
 	    Du_Mgr->Add_Def_Use(tmp, WN_kid0(WN_kid1(reduce)));
 	    def_list = Du_Mgr->Ud_Get_Def(WN_kid(simd_op, kid));
 	    def_list->Set_loop_stmt(innerloop);
+
+	    // Rename all other reduction statement involving this variable now.
+	    Rename_Other_Reductions(orig_offset, orig_st, offset, 
+				    WN_first(WN_do_body(innerloop)), tmp, vmtype);
 	    continue;
 	  } else {
+	    // If we have already renamed this kid then skip.
+	    if (MTYPE_is_vector(WN_desc(WN_kid(simd_op, kid)))) continue;
+
+	    // Reference to 'i', a loop induction variable, is changed to
+	    // use the vector preg containing i, i+1, etc.
+	    if (WN_operator(WN_kid(simd_op, kid)) == OPR_LDID) {
+	      WN* operand = WN_kid(simd_op, kid);
+	      SYMBOL symbol(operand);
+	      SYMBOL index(WN_index(innerloop));	
+
+	      if (symbol == index) {
+		if (!vec_index_preg_created) {
+		  // Create the constant ( ... 3 2 1 0) in a vector preg.
+		  BOOL const_lb = 
+		    WN_operator(WN_kid0(WN_start(innerloop))) == OPR_INTCONST;
+		  INT const_val = 0;
+		  if (const_lb) {
+		    const_val = WN_const_val(WN_kid0(WN_start(innerloop)));
+		  }
+		  INT vec_unit;
+		  BOOL shorter_type = FALSE;
+		  TYPE_ID scalar_type;
+		  if (WN_desc(simd_op) == MTYPE_V)
+		    scalar_type = WN_rtype(simd_op);
+		  else
+		    scalar_type = WN_desc(simd_op);
+		  switch(vmtype) {
+		  case MTYPE_V16I1: 
+		    prog_const_type = vmtype; break;
+		  case MTYPE_V16I2: 
+		    prog_const_type = vmtype; 
+		    if (MTYPE_byte_size(scalar_type) < 2)
+		      shorter_type = TRUE;
+		    break;		    
+		  case MTYPE_V16I4: 
+		    prog_const_type = vmtype; 
+		    if (MTYPE_byte_size(scalar_type) < 4)
+		      shorter_type = TRUE;
+		    break;		    
+		  case MTYPE_V16I8: 
+		    prog_const_type = vmtype; 
+		    if (MTYPE_byte_size(scalar_type) < 8)
+		      shorter_type = TRUE;
+		    break;		    
+		  case MTYPE_V16F4: 
+		    prog_const_type = MTYPE_V16I4; 
+		    if (MTYPE_byte_size(scalar_type) < 4)
+		      shorter_type = TRUE;
+		    break;		    
+		  case MTYPE_V16F8: 
+		    prog_const_type = MTYPE_V16I8; 
+		    if (MTYPE_byte_size(scalar_type) < 8)
+		      shorter_type = TRUE;
+		    break;		    
+		  default: FmtAssert(FALSE, ("NYI"));
+		  }
+		  if (shorter_type) {
+		    switch(scalar_type) {
+		    case MTYPE_U1:
+		    case MTYPE_I1: prog_const_type = MTYPE_V16I1; break;
+		    case MTYPE_U2:
+		    case MTYPE_I2: prog_const_type = MTYPE_V16I2; break;
+		    case MTYPE_U4:
+		    case MTYPE_I4: prog_const_type = MTYPE_V16I4; break;
+		    case MTYPE_U8:
+		    case MTYPE_I8: prog_const_type = MTYPE_V16I8; break;
+		    case MTYPE_F4: prog_const_type = MTYPE_V16I4; break;
+		    default: FmtAssert(FALSE, ("NYI"));
+		    }
+		  }
+		  switch (simd_kind) {
+		  case V16I1: vec_unit = 16; break;
+		  case V16I2: vec_unit = 8; break;
+		  case V16I4: vec_unit = 4; break;
+		  case V16I8: vec_unit = 2; break;
+		  case V16C8: vec_unit = 1; break;
+		  default: FmtAssert(FALSE, ("NYI"));
+		  }
+		  // For an induction loop, the induction variable should
+		  // always be within the bounds of the vector type so no need
+		  // to check for overflow in calling Create_Simd_Prog_Const.
+		  TCON prog_const_tcon = Create_Simd_Prog_Const(prog_const_type, 
+		                                                const_val); 
+		  ST* prog_const_symbol = 
+		    New_Const_Sym (Enter_tcon(prog_const_tcon),
+				   Be_Type_Tbl(prog_const_type));
+		  WN* prog_const = 
+		    WN_CreateConst (OPR_CONST, prog_const_type, MTYPE_V, 
+				    prog_const_symbol);
+
+		  // Create the const (..., vec, vec, vec) in a vector preg
+		  TCON loop_incr_const_tcon = Host_To_Targ(MTYPE_I4, vec_unit);
+		  ST* loop_incr_const_symbol = 
+		    New_Const_Sym (Enter_tcon(loop_incr_const_tcon),
+				   Be_Type_Tbl(MTYPE_I4));
+		  WN* loop_incr_const = 
+		    WN_CreateConst (OPR_CONST, prog_const_type, MTYPE_V, 
+				    loop_incr_const_symbol);		  
+
+		  vec_index_symbol=
+		    Create_Preg_Symbol(symbol.Name(), prog_const_type);
+		  vec_loop_incr_symbol = 
+		    Create_Preg_Symbol(symbol.Name(), prog_const_type);
+
+		  if (const_lb)
+		    vec_index_preg_store = 
+		      AWN_StidIntoSym(&vec_index_symbol, prog_const);
+		  else {
+		    WN* lb = LWN_Copy_Tree(WN_kid0(WN_start(innerloop)));
+		    LWN_Copy_Def_Use(WN_kid0(WN_start(innerloop)), lb, Du_Mgr);
+		    WN* lb_replicate = 
+		      LWN_CreateExp1(OPCODE_make_op(OPR_REPLICATE, 
+		                                    prog_const_type,
+			WN_desc(lb)==MTYPE_V?WN_rtype(lb):WN_desc(lb)), lb);
+		    vec_index_preg_store = 
+		      AWN_StidIntoSym(&vec_index_symbol, 
+				      AWN_Add(prog_const_type, prog_const, 
+					      lb_replicate));
+		  }
+		  LWN_Parentize(vec_index_preg_store);
+		  vec_loop_incr_preg_store = 
+		    AWN_StidIntoSym(&vec_loop_incr_symbol, loop_incr_const);
+
+		  WN* loop_enclosing_block = innerloop;
+		  while (WN_operator(loop_enclosing_block) != OPR_BLOCK)
+		    loop_enclosing_block = 
+		      LWN_Get_Parent(loop_enclosing_block);
+		  LWN_Insert_Block_Before(loop_enclosing_block, innerloop, 
+					  vec_index_preg_store);
+		  WN_Set_Linenum ( vec_index_preg_store, 
+				   WN_Get_Linenum(innerloop) );
+		  LWN_Insert_Block_Before(loop_enclosing_block, innerloop, 
+					  vec_loop_incr_preg_store);
+		  WN_Set_Linenum ( vec_loop_incr_preg_store, 
+				   WN_Get_Linenum(innerloop) );
+		  
+		  // Increment vec_index for next time around the loop.
+		  WN* use_vec_incr_loop = AWN_LdidSym(&vec_loop_incr_symbol);
+		  WN* use_vec_index_symbol = AWN_LdidSym(&vec_index_symbol); 
+		  incr_vec_index_symbol =
+		    AWN_StidIntoSym(&vec_index_symbol, 
+				    AWN_Add(prog_const_type, 
+					    use_vec_index_symbol,
+					    use_vec_incr_loop));      
+		  LWN_Insert_Block_After(WN_do_body(innerloop), 
+					 WN_last(WN_do_body(innerloop)), 
+					 incr_vec_index_symbol);
+		  WN_Set_Linenum ( incr_vec_index_symbol,
+				   WN_Get_Linenum(innerloop) );		  
+		  Du_Mgr->Add_Def_Use(vec_loop_incr_preg_store, 
+				      use_vec_incr_loop);
+		  Du_Mgr->Add_Def_Use(vec_index_preg_store, 
+				      use_vec_index_symbol);
+		  Du_Mgr->Add_Def_Use(incr_vec_index_symbol, 
+				      use_vec_index_symbol);
+
+		  vec_index_preg_created = TRUE;		  
+		} 
+
+		Delete_Def_Use(operand);		
+		WN_st_idx(operand)=ST_st_idx(vec_index_symbol.St());
+		WN_offset(operand)=vec_index_symbol.WN_Offset();
+		WN_set_desc(operand, prog_const_type);
+		WN_set_rtype(operand, prog_const_type);
+		Du_Mgr->Add_Def_Use(vec_index_preg_store, operand);
+		Du_Mgr->Add_Def_Use(incr_vec_index_symbol, operand);
+		continue;
+	      }
+	    }
+	    
 	    // Bug 2456 - avoid scalar expansion and promote the scalars to 
 	    // pregs of appropriate vector type. This is a major revision 
 	    // in other parts of the vectorizer also.
 
-	    // If we have already renamed this kid then skip.
-	    if (MTYPE_is_vector(WN_desc(WN_kid(simd_op, kid)))) continue;
-	    
 	    STACK<WN*>* equivalence_class=
 	      Scalar_Equivalence_Class(WN_kid(simd_op, kid),
 	                               Du_Mgr,&LNO_local_pool);
-	    //FmtAssert(equivalence_class, ("NYI"));
 	    if (!equivalence_class)
 	    {
 	      equivalence_class = CXX_NEW(STACK<WN*>(&LNO_local_pool), &LNO_local_pool);
 	      equivalence_class->Push(WN_kid(simd_op, kid));
 	    }
-		      
+		      	    
 	    INT i;
 	    SYMBOL symbol(WN_kid(simd_op, kid));
 	    SYMBOL new_symbol=
@@ -3892,7 +5271,7 @@ static INT Simd(WN* innerloop)
 	      if (WN_operator(scalar_ref) != OPR_STID)
 		WN_set_rtype(scalar_ref, vmtype);
             }
-	    // TODO: Don't we need to do a CXX_DELETE of equivalence_class??
+	    CXX_DELETE (equivalence_class, &LNO_local_pool);
 	    continue;
 	  }
 	}
@@ -3904,9 +5283,25 @@ static INT Simd(WN* innerloop)
 	  type = WN_rtype(istore);
 	else
 	  type = WN_desc(istore);
-	if (WN_operator(simd_op) == OPR_CVT)
+	if (WN_operator(simd_op) == OPR_CVT || 
+	    WN_operator(simd_op) == OPR_TRUNC)
 	  type = desc;
 	switch (type) {
+	case MTYPE_V16C8:
+	case MTYPE_C8:
+	  // We need not replicate this load, but we do set the types 
+	  // to mean there are two F8 quantities.
+	  WN_set_rtype(inv_node, MTYPE_V16C8);
+	  WN_set_desc(inv_node, MTYPE_V16C8);
+	  break;
+	case MTYPE_V16C4:
+	case MTYPE_C4:
+	  WN_set_rtype(inv_node, MTYPE_F8);
+	  WN_set_desc(inv_node, MTYPE_F8);
+	  inv_node = 
+	    LWN_CreateExp1(OPCODE_make_op(OPR_REPLICATE, MTYPE_V16C4, MTYPE_F8),
+			   inv_node);
+	  break;
 	case MTYPE_V16F4:
 	case MTYPE_F4:
 	  inv_node = 
@@ -3956,26 +5351,80 @@ static INT Simd(WN* innerloop)
     }
 
     if (WN_operator(simd_op) != OPR_CVT && 
+	WN_operator(simd_op) != OPR_TRUNC && 
 	!OPCODE_is_compare(WN_opcode(simd_op))) {
+      TYPE_ID vec_type;
+      TYPE_ID type;
+      if (WN_operator(istore) != OPR_ISTORE && 
+	  WN_operator(istore) != OPR_STID) {
+	WN* stmt = istore;
+	while(stmt && !OPCODE_is_store(WN_opcode(stmt)) && 
+	      WN_operator(stmt) != OPR_DO_LOOP && 
+	      WN_operator(stmt) != OPR_CVT &&
+	      WN_operator(stmt) != OPR_TRUNC) {
+	  stmt = LWN_Get_Parent(stmt);
+	}    
+	if (!stmt || WN_operator(stmt) == OPR_DO_LOOP)
+	  type = WN_rtype(istore);
+	else
+	  type = WN_desc(stmt);
+      } else
+	type = WN_desc(istore);
+      switch(type) {
+      case MTYPE_C8:
+        vec_type = MTYPE_V16C8;
+        break;
+      case MTYPE_C4:
+        vec_type = MTYPE_V16C4;
+	break;
+      case MTYPE_F4:
+	vec_type = MTYPE_V16F4;	
+	break;
+      case MTYPE_F8:
+	vec_type = MTYPE_V16F8;	
+	break;
+      case MTYPE_I1:
+      case MTYPE_U1:
+	vec_type = MTYPE_V16I1;	
+	break;
+      case MTYPE_I2:
+      case MTYPE_U2:
+	vec_type = MTYPE_V16I2;	
+	break;
+      case MTYPE_I4:
+      case MTYPE_U4:
+	vec_type = MTYPE_V16I4;	
+	break;
+      case MTYPE_I8:
+      case MTYPE_U8:
+	vec_type = MTYPE_V16I8;	
+	break;
+      default:
+        vec_type = type;
+	FmtAssert(MTYPE_is_vector(type), ("NYI"));
+	break;
+      }    
+
       if (iload0 && WN_desc(iload0) != MTYPE_V && 
 	  !MTYPE_is_vector(WN_desc(iload0)))
-	WN_set_desc(iload0, vmtype);      
+	WN_set_desc(iload0, vec_type);      
       if (iload0 && WN_rtype(iload0) != MTYPE_V && 
 	  !MTYPE_is_vector(WN_rtype(iload0)))
-	WN_set_rtype(iload0, vmtype);      
+	WN_set_rtype(iload0, vec_type);      
       if (iload1 && WN_desc(iload1) != MTYPE_V && 
 	  !MTYPE_is_vector(WN_desc(iload1)))
-	WN_set_desc(iload1, vmtype);      
+	WN_set_desc(iload1, vec_type);      
       if (iload1 && WN_rtype(iload1) != MTYPE_V && 
 	  !MTYPE_is_vector(WN_rtype(iload1)))
-	WN_set_rtype(iload1, vmtype);      
+	WN_set_rtype(iload1, vec_type);      
       if (iload2 && WN_desc(iload2) != MTYPE_V && 
 	  !MTYPE_is_vector(WN_desc(iload2)))
-	WN_set_desc(iload2, vmtype);      
+	WN_set_desc(iload2, vec_type);      
       if (iload2 && WN_rtype(iload2) != MTYPE_V && 
 	  !MTYPE_is_vector(WN_rtype(iload2)))
-	WN_set_rtype(iload2, vmtype);      
-      WN_set_rtype (simd_op, vmtype);
+	WN_set_rtype(iload2, vec_type);     
+      if (!MTYPE_is_vector(WN_rtype(simd_op)))
+	WN_set_rtype (simd_op, vec_type);
     } else if (OPCODE_is_compare(WN_opcode(simd_op))) {
       if (iload0 && WN_desc(iload0) != MTYPE_V && 
 	  !MTYPE_is_vector(WN_desc(iload0)))
@@ -3994,21 +5443,37 @@ static INT Simd(WN* innerloop)
       else
 	WN_set_rtype (simd_op, MTYPE_V16I8);
       WN_set_desc(simd_op, vmtype);
-    } else {
-      if (iload0 && WN_operator(iload0) == OPR_ILOAD &&
-	  WN_desc(iload0) == MTYPE_I4 && 
-	  WN_rtype(iload0) == MTYPE_I4) {
-	WN_set_rtype(iload0, MTYPE_V16I4);
-	WN_set_desc(iload0, MTYPE_V16I4);   
-      } else
-	FmtAssert(WN_operator(WN_kid0(simd_op)) == OPR_REPLICATE ||
-		  // Already marked
-		  MTYPE_is_vector(WN_rtype(WN_kid0(simd_op))), ("NYI"));
+    } else { // it is a CVT
       FmtAssert(iload1 == iload0, ("NYI"));      
-      WN_set_rtype(simd_op, MTYPE_V16F8);
-      WN_set_desc(simd_op, MTYPE_V16I4);
+      TYPE_ID vec_rtype, vec_desc;
+      switch(WN_desc(simd_op)) {
+      case MTYPE_I4: vec_desc = MTYPE_V16I4; break;
+      case MTYPE_F4: vec_desc = MTYPE_V16F4; break;
+      default: FmtAssert(FALSE, ("NYI"));
+      }
+      switch(WN_rtype(simd_op)) {
+      case MTYPE_F8: 
+        vec_rtype = MTYPE_V16F8; 
+	if (vec_desc == MTYPE_V16I4) // bug 7334
+	  vec_desc = MTYPE_V8I4;
+	else vec_desc = MTYPE_V8F4;
+	break;
+      case MTYPE_F4: vec_rtype = MTYPE_V16F4; break;
+      case MTYPE_I4: vec_rtype = MTYPE_V16I4; break;
+      default: FmtAssert(FALSE, ("NYI"));
+      }
+      WN_set_rtype(simd_op, vec_rtype);
+      WN_set_desc(simd_op, vec_desc);
+      if (iload0) {
+	if (!MTYPE_is_vector(WN_rtype(iload0)))
+	  WN_set_rtype(iload0, vec_desc);
+	if (!MTYPE_is_vector(WN_desc(iload0)) && 
+	    WN_desc(iload0) != MTYPE_V)
+	  WN_set_desc(iload0, vec_desc);      
+      }
     }
     if (WN_operator(istore) != OPR_STID && WN_operator(istore) != OPR_CVT &&
+	WN_operator(istore) != OPR_TRUNC &&
 	!OPCODE_is_compare(WN_opcode(istore))) {
       if (WN_desc(istore) != MTYPE_V)
 	WN_set_desc(istore, vmtype);      
@@ -4017,11 +5482,51 @@ static INT Simd(WN* innerloop)
     }
     
     if (WN_operator(simd_op) == OPR_INTRINSIC_OP) {
-      FmtAssert(WN_intrinsic(simd_op) == INTRN_SUBSU2, 
-		("NYI"));
-      WN_intrinsic(simd_op) = INTRN_SUBSV16I2;
-      WN_set_rtype(WN_kid0(simd_op), MTYPE_V16I2);
-      WN_set_rtype(WN_kid1(simd_op), MTYPE_V16I2);
+      if (WN_intrinsic(simd_op) == INTRN_SUBSU2) {
+	WN_intrinsic(simd_op) = INTRN_SUBSV16I2;
+	WN_set_rtype(WN_kid0(simd_op), MTYPE_V16I2);
+	WN_set_rtype(WN_kid1(simd_op), MTYPE_V16I2);
+      } else {
+	INTRINSIC intrn = WN_intrinsic(simd_op);
+	switch(intrn) {
+	case INTRN_F8EXPEXPR: 
+	  WN_intrinsic(simd_op) = INTRN_V16F8EXPEXPR;
+	  WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
+	  break;
+	case INTRN_F4EXPEXPR: 
+	  WN_intrinsic(simd_op) = INTRN_V16F4EXPEXPR;
+	  WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
+	  break;
+	case INTRN_F4EXP: 
+	  WN_intrinsic(simd_op) = INTRN_V16F4EXP;
+	  WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
+	  break;
+	case INTRN_F8EXP:
+	  WN_intrinsic(simd_op) = INTRN_V16F8EXP;
+	  WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
+	  break;
+	case INTRN_F4LOG: 
+	  WN_intrinsic(simd_op) = INTRN_V16F4LOG;
+	  WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F4);
+	  break;
+	case INTRN_F8LOG:
+	  WN_intrinsic(simd_op) = INTRN_V16F8LOG;
+	  WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
+	  break;
+	case INTRN_F8LOG10:
+	  WN_intrinsic(simd_op) = INTRN_V16F8LOG10;
+	  WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
+	  break;
+	case INTRN_F8SIN:
+	  WN_intrinsic(simd_op) = INTRN_V16F8SIN;
+	  WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
+	  break;
+	case INTRN_F8COS:
+	  WN_intrinsic(simd_op) = INTRN_V16F8COS;
+	  WN_set_rtype(WN_kid0(simd_op), MTYPE_V16F8);
+	  break;
+	}
+      }
     }
 
     INT vect;
@@ -4032,6 +5537,7 @@ static INT Simd(WN* innerloop)
     case V16F4: vect = 4;  break;
     //case V16I8: 
     case V16F8: vect = 2;  break;
+    case V16C8: vect = 1;  break;
     }
         
     // START: unroll
@@ -4042,6 +5548,7 @@ static INT Simd(WN* innerloop)
     INT add_to_base = 0; // const to be added to base if unrolled
 
     switch(simd_kind) {
+    case V16C8: simd_kind_vmtype = MTYPE_V16C8; break;
     //case V16I4:
     case V16F4: simd_kind_vmtype = MTYPE_V16F4; break;
     //case V16I8:
@@ -4053,14 +5560,21 @@ static INT Simd(WN* innerloop)
 	((simd_kind_vmtype != MTYPE_V16F4 && 
 	  simd_kind_vmtype != MTYPE_V16F8) ||
 	 (simd_kind_vmtype == MTYPE_V16F8 &&
+	  vmtype != MTYPE_V16C4 &&
 	  vmtype != MTYPE_V16I8) ||
 	 (simd_kind_vmtype == MTYPE_V16F4 &&
 	  vmtype != MTYPE_V16I4))) {
       switch (simd_kind) {
+      case V16F8:
+	{
+	  unroll_times = 2; add_to_base = 1; break;
+	}
       //case V16F4:
       case V16I4:
 	{
 	  switch (vmtype) {
+	  case MTYPE_V16C8: unroll_times = 4; add_to_base = 1; break;
+	  case MTYPE_V16C4:
 	  case MTYPE_V16I8: 
 	  case MTYPE_V16F8: unroll_times = 2; add_to_base = 2; break;
 	  }
@@ -4069,6 +5583,8 @@ static INT Simd(WN* innerloop)
       case V16I2:
 	{
 	  switch (vmtype) {
+	  case MTYPE_V16C8: unroll_times = 8; add_to_base = 1; break;
+	  case MTYPE_V16C4:
 	  case MTYPE_V16I8: 
 	  case MTYPE_V16F8: unroll_times = 4; add_to_base = 2; break;
 	  case MTYPE_V16I4: 
@@ -4079,6 +5595,8 @@ static INT Simd(WN* innerloop)
       case V16I1:
 	{
 	  switch (vmtype) {
+	  case MTYPE_V16C8: unroll_times =16; add_to_base = 1; break;
+	  case MTYPE_V16C4:
 	  case MTYPE_V16I8: 
 	  case MTYPE_V16F8: unroll_times = 8; add_to_base = 2; break;
 	  case MTYPE_V16I4: 
@@ -4123,14 +5641,15 @@ static INT Simd(WN* innerloop)
       INT dim_max;
 
       if (iload0_copy && WN_operator(iload0_copy) == OPR_ARRAY) {
-	ACCESS_ARRAY* aa0=(ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload0_copy);
-	INT kid_for0 = aa0->Num_Vec()*2;
+	INT kid_for0 = WN_num_dim(iload0_copy)<<1;
 	array0_index = WN_kid(iload0_copy, kid_for0);
+	ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload0_copy);
 	WN_kid(WN_kid0(WN_kid0(WN_kid0(copy))), kid_for0) = 
 	  LWN_CreateExp2(add_opc, array0_index, 
 			 WN_CreateIntconst(intconst_opc, add_to_base));
+
 	// Look at WN structure for OPR_ARRAY
-	dim_max = aa0->Num_Vec();
+	dim_max = WN_num_dim(iload0_copy);
 	for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
 	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid0(WN_kid0(istore))), 
 				  aa_num + dim_max + 1), 
@@ -4138,40 +5657,65 @@ static INT Simd(WN* innerloop)
 				  aa_num + dim_max + 1),
 			   Du_Mgr);
 	}
+
+      } else if (iload0_copy && WN_operator(iload0_copy) == OPR_ILOAD &&
+		 WN_operator(WN_kid0(iload0_copy)) == OPR_ARRAY &&
+		 WN_operator(LWN_Get_Parent(iload0_copy)) == OPR_SHUFFLE) {
+	iload0_copy = WN_kid0(iload0_copy); // ARRAY node
+	INT kid_for0 = WN_num_dim(iload0_copy)<<1;
+	array0_index = WN_kid(iload0_copy, kid_for0);
+	ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload0_copy);
+	WN_kid(iload0_copy, kid_for0) = 
+	  LWN_CreateExp2(add_opc, array0_index, 
+			 WN_CreateIntconst(intconst_opc, -add_to_base));
+
+	// Look at WN structure for OPR_ARRAY
+	dim_max = WN_num_dim(iload0_copy);
+	for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
+	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid0(WN_kid0(WN_kid0(istore)))), 
+				  aa_num + dim_max + 1), 
+			   WN_kid(WN_kid0(WN_kid0(WN_kid0(WN_kid0(copy)))), 
+				  aa_num + dim_max + 1),
+			   Du_Mgr);
+	}
+	
+      } else if (iload0_copy && WN_operator(iload0_copy) == OPR_SHUFFLE &&
+		 WN_operator(WN_kid0(iload0_copy)) == OPR_ILOAD &&
+		 WN_operator(WN_kid0(WN_kid0(iload0_copy))) == OPR_ARRAY) {
+	iload0_copy = WN_kid0(WN_kid0(iload0_copy)); // ARRAY node
+	INT kid_for0 = WN_num_dim(iload0_copy)<<1;
+	array0_index = WN_kid(iload0_copy, kid_for0);
+	ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload0_copy);
+	WN_kid(iload0_copy, kid_for0) = 
+	  LWN_CreateExp2(add_opc, array0_index, 
+			 WN_CreateIntconst(intconst_opc, -add_to_base));
+
+	// Look at WN structure for OPR_ARRAY
+	dim_max = WN_num_dim(iload0_copy);
+	for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
+	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid0(WN_kid0(WN_kid0(WN_kid0(istore))))), 
+				  aa_num + dim_max + 1), 
+			   WN_kid(WN_kid0(WN_kid0(WN_kid0(WN_kid0(WN_kid0(copy))))), 
+				  aa_num + dim_max + 1),
+			   Du_Mgr);
+	}
+	
       } else if (iload0_copy) // Bug 2233
 	Create_Unroll_Copy(WN_kid0(WN_kid0(copy)), add_to_base, 
-			   WN_kid0(WN_kid0(istore)), index_type);
+			   WN_kid0(WN_kid0(istore)), index_type, 
+			   vec_index_preg_store, innerloop);
       
       if (WN_kid_count(WN_kid0(copy)) == 2 &&
 	  iload1_copy && WN_operator(iload1_copy) == OPR_ARRAY) {
-	ACCESS_ARRAY* aa1=(ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload1_copy);
-	INT kid_for1 = aa1->Num_Vec()*2;
+	INT kid_for1 = WN_num_dim(iload1_copy)<<1;
 	array1_index = WN_kid(iload1_copy, kid_for1);
+	ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload1_copy);
 	WN_kid(WN_kid0(WN_kid1(WN_kid0(copy))), kid_for1) = 
 	  LWN_CreateExp2(add_opc, array1_index, 
 			 WN_CreateIntconst(intconst_opc, add_to_base));
-	// Bug 1962
-	if (WN_kid_count(WN_kid(WN_kid0(WN_kid1(WN_kid0(istore))), 
-				kid_for1)) ==
-	    WN_kid_count(WN_kid(WN_kid0(WN_kid1(WN_kid0(copy))), kid_for1)) &&
-	    // Bug 3434
-	    WN_kid_count(WN_kid0(WN_kid(WN_kid0(WN_kid1(WN_kid0(istore))), 
-				kid_for1))) ==
-	    WN_kid_count(WN_kid0(WN_kid(WN_kid0(WN_kid1(WN_kid0(copy))), kid_for1))))
-	  LWN_Copy_Def_Use(WN_kid0(WN_kid(WN_kid0(WN_kid1(WN_kid0(istore))), 
-					  kid_for1)), 
-			   WN_kid0(WN_kid(WN_kid0(WN_kid1(WN_kid0(copy))), 
-					  kid_for1)), 
-			   Du_Mgr);
-	else
-	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid1(WN_kid0(istore))), 
-				  kid_for1), 
-			   WN_kid0(WN_kid(WN_kid0(WN_kid1(WN_kid0(copy))), 
-					  kid_for1)), 
-			   Du_Mgr);
 
 	// Look at WN structure for OPR_ARRAY
-	dim_max = aa1->Num_Vec();
+	dim_max = WN_num_dim(iload1_copy);
 	for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
 	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid1(WN_kid0(istore))), 
 				  aa_num + dim_max + 1), 
@@ -4179,36 +5723,67 @@ static INT Simd(WN* innerloop)
 				  aa_num + dim_max + 1),
 			   Du_Mgr);
 	}
+
+      } else if (WN_kid_count(WN_kid0(copy)) == 2 &&
+		 iload1_copy && WN_operator(iload1_copy) == OPR_ILOAD &&
+		 WN_operator(WN_kid0(iload1_copy)) == OPR_ARRAY &&
+		 WN_operator(LWN_Get_Parent(iload1_copy)) == OPR_SHUFFLE) {
+	iload1_copy = WN_kid0(iload1_copy);
+	INT kid_for1 = WN_num_dim(iload1_copy)<<1;
+	array1_index = WN_kid(iload1_copy, kid_for1);
+	ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload1_copy);
+	WN_kid(iload1_copy, kid_for1) = 
+	  LWN_CreateExp2(add_opc, array1_index, 
+			 WN_CreateIntconst(intconst_opc, -add_to_base));
+
+	// Look at WN structure for OPR_ARRAY
+	dim_max = WN_num_dim(iload1_copy);
+	for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
+	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid0(WN_kid1(WN_kid0(istore)))), 
+				  aa_num + dim_max + 1), 
+			   WN_kid(WN_kid0(WN_kid0(WN_kid1(WN_kid0(copy)))), 
+				  aa_num + dim_max + 1),
+			   Du_Mgr);
+	}
+
+      } else if (WN_kid_count(WN_kid0(copy)) == 2 &&
+		 iload1_copy && WN_operator(iload1_copy) == OPR_SHUFFLE &&
+		 WN_operator(WN_kid0(iload1_copy)) == OPR_ILOAD &&
+		 WN_operator(WN_kid0(WN_kid0(iload1_copy))) == OPR_ARRAY) {
+	iload1_copy = WN_kid0(WN_kid0(iload1_copy));
+	INT kid_for1 = WN_num_dim(iload1_copy)<<1;
+	array1_index = WN_kid(iload1_copy, kid_for1);
+	ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload1_copy);
+	WN_kid(iload1_copy, kid_for1) = 
+	  LWN_CreateExp2(add_opc, array1_index, 
+			 WN_CreateIntconst(intconst_opc, -add_to_base));
+
+	// Look at WN structure for OPR_ARRAY
+	dim_max = WN_num_dim(iload1_copy);
+	for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
+	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid0(WN_kid0(WN_kid1(WN_kid0(istore))))), 
+				  aa_num + dim_max + 1), 
+			   WN_kid(WN_kid0(WN_kid0(WN_kid0(WN_kid1(WN_kid0(copy))))), 
+				  aa_num + dim_max + 1),
+			   Du_Mgr);
+	}
+
       } else if (WN_kid_count(WN_kid0(copy)) == 2 && iload1_copy) // Bug 2233
 	Create_Unroll_Copy(WN_kid1(WN_kid0(copy)), add_to_base, 
-			   WN_kid1(WN_kid0(istore)),index_type);
+			   WN_kid1(WN_kid0(istore)),index_type,
+			   vec_index_preg_store, innerloop);
 
       if (WN_kid_count(WN_kid0(copy)) == 3 &&
 	  iload2_copy && WN_operator(iload2_copy) == OPR_ARRAY) {
-	ACCESS_ARRAY* aa2=(ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload2_copy);
-	INT kid_for2 = aa2->Num_Vec()*2;
+	INT kid_for2 = WN_num_dim(iload2_copy)<<1;
 	array2_index = WN_kid(iload2_copy, kid_for2);
+	ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload2_copy);
 	WN_kid(WN_kid0(WN_kid2(WN_kid0(copy))), kid_for2) = 
 	  LWN_CreateExp2(add_opc, array2_index, 
 			 WN_CreateIntconst(intconst_opc, add_to_base));
-	// Bug 1962
-	if (WN_kid_count(WN_kid(WN_kid0(WN_kid2(WN_kid0(istore))), 
-				kid_for2)) !=
-	    WN_kid_count(WN_kid(WN_kid0(WN_kid2(WN_kid0(copy))), kid_for2)))
-	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid2(WN_kid0(istore))), 
-				  kid_for2), 
-			   WN_kid0(WN_kid(WN_kid0(WN_kid2(WN_kid0(copy))), 
-					  kid_for2)), 
-			   Du_Mgr);
-	else
-	  LWN_Copy_Def_Use(WN_kid0(WN_kid(WN_kid0(WN_kid2(WN_kid0(istore))), 
-					  kid_for2)), 
-			   WN_kid0(WN_kid(WN_kid0(WN_kid2(WN_kid0(copy))), 
-					  kid_for2)), 
-			   Du_Mgr);
 
 	// Look at WN structure for OPR_ARRAY
-	dim_max = aa2->Num_Vec();
+	dim_max = WN_num_dim(iload2_copy);
 	for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
 	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid2(WN_kid0(istore))), 
 				  aa_num + dim_max + 1), 
@@ -4216,19 +5791,69 @@ static INT Simd(WN* innerloop)
 				  aa_num + dim_max + 1),
 			   Du_Mgr);
 	}
+
+      } else if (WN_kid_count(WN_kid0(copy)) == 3 &&
+		 iload2_copy && WN_operator(iload2_copy) == OPR_ILOAD &&
+		 WN_operator(WN_kid0(iload2_copy)) == OPR_ARRAY &&
+		 WN_operator(LWN_Get_Parent(iload2_copy)) == OPR_SHUFFLE) {
+	iload2_copy = WN_kid0(iload2_copy);
+	INT kid_for2 = WN_num_dim(iload2_copy)<<1;
+	array2_index = WN_kid(iload2_copy, kid_for2);
+	ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload2_copy);
+	WN_kid(iload2_copy, kid_for2) = 
+	  LWN_CreateExp2(add_opc, array2_index, 
+			 WN_CreateIntconst(intconst_opc, -add_to_base));
+
+	// Look at WN structure for OPR_ARRAY
+	dim_max = WN_num_dim(iload2_copy);
+	for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
+	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid0(WN_kid2(WN_kid0(istore)))), 
+				  aa_num + dim_max + 1), 
+			   WN_kid(WN_kid0(WN_kid0(WN_kid2(WN_kid0(copy)))), 
+				  aa_num + dim_max + 1),
+			   Du_Mgr);
+	}
+
+      } else if (WN_kid_count(WN_kid0(copy)) == 3 &&
+		 iload2_copy && WN_operator(iload2_copy) == OPR_SHUFFLE &&
+		 WN_operator(WN_kid0(iload2_copy)) == OPR_ILOAD &&
+		 WN_operator(WN_kid0(WN_kid0(iload2_copy))) == OPR_ARRAY) {
+	iload2_copy = WN_kid0(WN_kid0(iload2_copy));
+	INT kid_for2 = WN_num_dim(iload2_copy)<<1;
+	array2_index = WN_kid(iload2_copy, kid_for2);
+	ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,iload2_copy);
+	WN_kid(iload2_copy, kid_for2) = 
+	  LWN_CreateExp2(add_opc, array2_index, 
+			 WN_CreateIntconst(intconst_opc, -add_to_base));
+
+	// Look at WN structure for OPR_ARRAY
+	dim_max = WN_num_dim(iload2_copy);
+	for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
+	  LWN_Copy_Def_Use(WN_kid(WN_kid0(WN_kid0(WN_kid0(WN_kid2(WN_kid0(istore))))), 
+				  aa_num + dim_max + 1), 
+			   WN_kid(WN_kid0(WN_kid0(WN_kid0(WN_kid2(WN_kid0(copy))))),
+				  aa_num + dim_max + 1),
+			   Du_Mgr);
+	}
+
       } else if (WN_kid_count(WN_kid0(copy)) == 3 && iload2_copy) // Bug 2233
 	Create_Unroll_Copy(WN_kid2(WN_kid0(copy)), add_to_base, 
-			   WN_kid2(WN_kid0(istore)),index_type);
+			   WN_kid2(WN_kid0(istore)),index_type,
+			   vec_index_preg_store, innerloop);
 
-      ACCESS_ARRAY* aas=(ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,WN_kid1(copy));
-      INT kid_fors = aas->Num_Vec()*2;
+      INT kid_fors = WN_num_dim(WN_kid1(copy))<<1;
       arraystore_index = WN_kid(WN_kid1(copy), kid_fors);
+      ACCESS_ARRAY* aa = (ACCESS_ARRAY*)WN_MAP_Get(LNO_Info_Map,
+						   WN_kid1(copy));
+      if (aa->Dim(aa->Num_Vec()-1)->Loop_Coeff(Do_Loop_Depth(innerloop))==-1)
+	add_to_base = -add_to_base;
       WN_kid(WN_kid1(copy), kid_fors) = 
 	LWN_CreateExp2(add_opc, arraystore_index, 
 			WN_CreateIntconst(intconst_opc, add_to_base));
+      add_to_base = ABS(add_to_base);
 
       // Look at WN structure for OPR_ARRAY
-      dim_max = aas->Num_Vec();
+      dim_max = WN_num_dim(copy);
       for (aa_num = 0; aa_num < dim_max - 1; aa_num ++) {
 	LWN_Copy_Def_Use(WN_kid(WN_kid1(istore), aa_num + dim_max + 1), 
 			 WN_kid(WN_kid1(copy), aa_num + dim_max + 1), Du_Mgr);
@@ -4294,10 +5919,14 @@ static INT Simd(WN* innerloop)
 	       opr == OPR_GE || opr == OPR_GT), ("NYI"));
     if (opr == OPR_GE || opr == OPR_GT) {
       opr = (opr == OPR_GE) ? OPR_LE: OPR_LT;
+      // Bug 4566 - Do not let the simplifier change the LE back to GE because
+      // we rely on the order (loop_variable <= upper_bound).
+      BOOL save_simp_state = WN_Simplifier_Enable(FALSE);
       WN_end(innerloop) = 
 	LWN_CreateExp2(new_cmp_opc,
 		       WN_kid1(WN_end(innerloop)), 
 		       WN_kid0(WN_end(innerloop)));
+      WN_Simplifier_Enable(save_simp_state);
     }      
     WN *bound;
     WN *loop_index;
@@ -4617,12 +6246,106 @@ static INT Simd(WN* innerloop)
 
     // Now, insert the remainder loop after the vectorized innerloop.
     if (rloop_needed) {
-      if (reduction_node)	
+      if (reduction_node &&
+	  // Bug 4921 - Place the remainder loop for a vectorized MP reduction 
+	  // loop in the SINGLE region following the PARALLEL region containing
+	  // the vectorized reduction loop.
+	  !Do_Loop_Is_Mp(innerloop)) {
 	LWN_Insert_Block_After(LWN_Get_Parent(innerloop),
 			       reduction_node,remainderloop);
-      else
-	LWN_Insert_Block_After(LWN_Get_Parent(innerloop),
-			       innerloop,remainderloop);
+      }
+      else {
+	WN* enclosing_parallel_region;
+	if (Do_Loop_Is_Mp(innerloop)) {
+	  enclosing_parallel_region = LWN_Get_Parent(innerloop);
+	  while(enclosing_parallel_region && 
+		WN_operator(enclosing_parallel_region) != OPR_REGION)
+	    enclosing_parallel_region = 
+	      LWN_Get_Parent(enclosing_parallel_region);
+	  FmtAssert(enclosing_parallel_region, ("NYI"));
+	}
+
+	if (!Do_Loop_Is_Mp(innerloop))
+	  LWN_Insert_Block_After(LWN_Get_Parent(innerloop),
+				 innerloop,remainderloop);
+	else if (Do_Loop_Is_Mp(innerloop) &&
+	  WN_pragma(WN_first(WN_region_pragmas(enclosing_parallel_region))) ==
+		    WN_PRAGMA_PARALLEL_DO) 
+	  // Bug 4930 - Do not create a SINGLE region for a PARALLEL DO loop.
+	  LWN_Insert_Block_After(LWN_Get_Parent(enclosing_parallel_region),
+				 enclosing_parallel_region,remainderloop);
+	else {
+	  // Bug 4884 - Place the remainderloop inside a new REGION marked
+	  // with a SINGLE pragma.
+	  
+	  WN *body,*pragmas,*exits,*region;
+	  
+	  /* create region on current remainderloop */
+	  
+	  body    = WN_CreateBlock ();
+	  pragmas = WN_CreateBlock ();
+	  exits   = WN_CreateBlock ();
+	  region  = WN_CreateRegion (REGION_KIND_MP,
+				     body,
+				     pragmas,
+				     exits,
+				     -1, 
+				     0);
+	  WN* pragma = 
+	    WN_CreatePragma(WN_PRAGMA_SINGLE_PROCESS_BEGIN, 
+			    (ST_IDX)NULL, 0, 0);
+ 	  WN_set_pragma_omp(pragma);
+	  LWN_Insert_Block_After(pragmas,NULL,pragma);
+	  // Bug 5150: Check if the enclosing_parallel_region has NOWAIT 
+	  // directive and (only) if it does, transfer the pragma to the 
+	  // remainder loop. There is an optimization opportunity here to 
+	  // insert a NOWAIT clause if we correctly identify all possible 
+	  // situations but we need to be semantically correct first.
+	  WN* region_pragma = 
+	    WN_first(WN_region_pragmas(enclosing_parallel_region));
+	  while(region_pragma && WN_pragma(region_pragma) != WN_PRAGMA_NOWAIT)
+	    region_pragma = WN_next(region_pragma);
+	  if (region_pragma && WN_pragma(region_pragma) == WN_PRAGMA_NOWAIT) {
+	    WN* nowait_pragma =
+	      WN_CreatePragma (WN_PRAGMA_NOWAIT,
+			       (ST_IDX) NULL, 0, 0);
+	    WN_set_pragma_omp(nowait_pragma);
+	    LWN_Insert_Block_After(pragmas,pragma,nowait_pragma);
+	    pragma = nowait_pragma;
+	  } 	    
+	  WN* pragma_end = 
+	    WN_CreatePragma(WN_PRAGMA_END_MARKER, 
+			    (ST_IDX)NULL, 0, 0);
+	  WN_set_pragma_omp(pragma_end);
+	  LWN_Insert_Block_After(pragmas,pragma,pragma_end);
+	  LWN_Insert_Block_After(LWN_Get_Parent(enclosing_parallel_region),
+				 enclosing_parallel_region, region);
+	  LWN_Insert_Block_After(body,NULL,remainderloop);
+	  LWN_Set_Parent(remainderloop, body);
+	  LWN_Parentize(region);
+	  LWN_Set_Parent(region, LWN_Get_Parent(enclosing_parallel_region));
+
+	  // Create a new region id for the new "region". 
+	  // Code from REGION_clone in be/region/region_util.cxx.
+	  RID *o_rid, *n_rid, *p_rid;
+	  o_rid = REGION_get_rid(enclosing_parallel_region);
+	  n_rid = RID_Create(WN_region_id(region), RID_level(o_rid), region);
+	  /* copy some flags over, set others */
+	  RID_level(n_rid) = RID_level(o_rid);
+	  RID_type(n_rid) = RID_type(o_rid);
+	  RID_depth(n_rid) = RID_depth(o_rid);
+	  RID_srcpos(n_rid) = WN_Get_Linenum(region);
+	  RID_bounds_exist(n_rid) = REGION_BOUND_UNKNOWN;
+	  RID_has_return(n_rid) = REGION_NO_RETURN;
+	  RID_num_exits(n_rid) = RID_num_exits(o_rid);
+	  RID_eh_range_ptr(n_rid) = RID_eh_range_ptr(o_rid);
+	  /* connect to RID to WHIRL */
+	  WN_MAP_Set(RID_map, region, (void *)n_rid);
+	  RID_rwn(n_rid) = region;
+	  p_rid = RID_parent(o_rid);
+	  RID_Add_kid(n_rid, p_rid);
+	}	
+      }
     }
     else {
       Delete_Def_Use(WN_end(remainderloop));
@@ -4638,25 +6361,43 @@ static INT Simd(WN* innerloop)
     LWN_Parentize(innerloop);    
     if (rloop_needed) {
       LWN_Parentize(remainderloop); 
-      LWN_Set_Parent(remainderloop, LWN_Get_Parent(innerloop));
+      if (!Do_Loop_Is_Mp(innerloop)) {      
+	LWN_Set_Parent(remainderloop, LWN_Get_Parent(innerloop));
+      }
     }
 
     if (rloop_needed) {
-      Add_Vertices(WN_do_body(remainderloop));
-      adg->Fission_Dep_Update(remainderloop, 1);
+      // Reset the bounds info for the remainderloop and the main innerloop.
+      DO_LOOP_INFO *dli_m = Get_Do_Loop_Info(innerloop);
+      DO_LOOP_INFO *dli_r = Get_Do_Loop_Info(remainderloop);
+      INT num_bounds_m = Num_Lower_Bounds(innerloop, dli_m->Step);
+      INT num_bounds_r = Num_Lower_Bounds(remainderloop, dli_r->Step);
+      DOLOOP_STACK stack_m(&SIMD_default_pool);
+      DOLOOP_STACK stack_r(&SIMD_default_pool);
+      CXX_DELETE(dli_m->UB, dli_m->UB->Pool());
+      CXX_DELETE(dli_r->LB, dli_r->LB->Pool());      
+      Build_Doloop_Stack(innerloop, &stack_m);
+      Build_Doloop_Stack(remainderloop, &stack_r);
+      dli_r->LB =
+	CXX_NEW(ACCESS_ARRAY(num_bounds_r,stack_r.Elements(),
+			     &LNO_default_pool),
+		&LNO_default_pool);
+      dli_r->LB->Set_LB(WN_kid0(WN_start(remainderloop)), &stack_r, 
+			dli_r->Step->Const_Offset);
+      dli_m->UB = CXX_NEW(ACCESS_ARRAY(num_bounds_m,stack_m.Elements(),
+				       &LNO_default_pool),
+			  &LNO_default_pool);
+      dli_m->UB->Set_UB(WN_end(innerloop), &stack_m);
 
-      // Bug 3001 - COND_Do_Info may return COND_DO_AT_LEAST_ONCE in some cases
-      // that causes the Guard_Dos to skip the remainder loop (Mark_Do does not
-      // mark the remainder loop). This happens when there are MINs and MAXs in 
-      // the loop bounds and the do loop information does not correctly account
-      // for the number of bounds. Looking at Num_Lower_Bounds and 
-      // Num_Upper_Bounds in access_vector.cxx, the utility expects a special
-      // pattern of nested MAXs or MINs in the loop bounds.
-      if (Needs_Guard(remainderloop))
-	Guard_A_Do(remainderloop);
+      // Set Unimportant flag in loop_info.
+      if (WN_kid_count(remainderloop) == 6) {
+	WN *loop_info = WN_do_loop_info(remainderloop);
+	WN_Set_Loop_Unimportant_Misc(loop_info);
+	dli_r->Set_Generally_Unimportant();
+      }
 
-    } else {      
-      LWN_Delete_Tree(remainderloop);
+    } else { 
+      LNO_Erase_Dg_From_Here_In(remainderloop,adg);
     }
     adg->Fission_Dep_Update(innerloop, 1);
     // END: create remainder loop
@@ -4681,6 +6422,9 @@ static INT Simd(WN* innerloop)
     printf("Loop has %d super vectors\n", good_vector);
 #endif
   return 1;
+#else
+  return 0;
+#endif // TARG_X8664
   
 }
 
@@ -4691,7 +6435,7 @@ static void Simd_Walk(WN* wn) {
     return;
   else if (opc==OPC_DO_LOOP) {
     if (Do_Loop_Is_Good(wn) && Do_Loop_Is_Inner(wn) && !Do_Loop_Has_Calls(wn)
-	&& !Do_Loop_Is_Mp(wn) && !Do_Loop_Has_Gotos(wn)) {
+	&& !Do_Loop_Has_Gotos(wn)) {
       if (Simd(wn))
         Simd_Align = TRUE;
     } else
@@ -4729,6 +6473,22 @@ void Simd_Phase(WN* func_nd) {
     simd_red_manager->Build(func_nd,TRUE,FALSE); // build scalar reductions
     curr_simd_red_manager = simd_red_manager;
   }
+  // Remove (Hoist) memory invariants to aid the vectorizer (bug 5058).
+  // When doing memory invariant removal for SIMD, use a temporary instead of 
+  // a preg. The reason for doing this is that a following scalar expansion 
+  // may incorrectly replace the instances of the memory invariants outside
+  // the loop (an example is attached to bug 6606).
+  Minvariant_Removal_For_Simd = TRUE;
+  if (!Get_Trace(TP_LNOPT, TT_LNO_GUARD) && LNO_Minvar) {
+    // If invariants are hoisted, have to guard the loops. This is similar
+    // to the other call in lnopt_main.
+    Guard_Dos(func_nd);
+    Minvariant_Removal(func_nd, Array_Dependence_Graph);
+    // Rebuild reduction information after minvariant removal.
+    if (curr_simd_red_manager) 
+      curr_simd_red_manager->Build(func_nd, TRUE, TRUE, adg);
+  }
+  Minvariant_Removal_For_Simd = FALSE;
   Simd_Walk(func_nd);
   if (debug) {
     fprintf(TFile, "=======================================================================\n");
@@ -4751,3 +6511,8 @@ void Simd_Phase(WN* func_nd) {
 // of PAREN of ILOAD, then the PAREN can be treated like any other vectorizable
 // op. PAREN is later converted to NOP so, there is no overhead in this 
 // transformation but it enables vectorization without a different routine.
+
+// Notes on bug fixes:
+// Bug 3617 : Num_Vec() from ACCESS_ARRAY may not be in synch with
+// WN_num_dim(array) dues to delinearization. If we were to access different
+// kids in array, WN_num_dim(array) is the reliable source to find #kids.

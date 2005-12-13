@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,10 +39,10 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <elf.h>
+#include "elf_stuff.h"
 #include <elfaccess.h>
-#include <libelf.h>
-#include <libdwarf.h>
+#include "libelf/libelf.h"
+#include "libdwarf.h"
 #include "targ_em_dwarf.h"
 #include <assert.h>	// temporary
 #define USE_STANDARD_TYPES 1
@@ -85,13 +89,13 @@ translate_reloc32(Dwarf_Relocation_Data       rentry,
   return &retval;
 }
 
-static Elf64_Rel *
+static Elf64_AltRel *
 translate_reloc64(Dwarf_Relocation_Data       rentry,
 		  Cg_Dwarf_Sym_To_Elfsym_Ofst translate_symndx,
 		  Dwarf_Ptr                   buffer,
 		  Dwarf_Unsigned              bufsize)
 {
-  static Elf64_Rel retval;
+  static Elf64_AltRel retval;
   Dwarf_Unsigned   elf_symidx, elf_symoff;
 
   REL_offset(retval) = rentry->drd_offset;
@@ -217,7 +221,7 @@ Em_Dwarf_Symbolic_Relocs_To_Elf(next_buffer_retriever     get_buffer,
 #endif
 	}
       if (is_64bit) {
-	*((Elf64_Rel *) cur_reloc) =
+	*((Elf64_AltRel *) cur_reloc) =
 	  *translate_reloc64(reloc_buf,
 			     translate_symndx,
 			     // DON'T TRY THIS AT HOME

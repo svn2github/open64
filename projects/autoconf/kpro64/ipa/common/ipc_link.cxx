@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -204,16 +204,39 @@ ipa_add_link_flag (const char* str)
 
 
 #ifdef KEY
+// Prepend "../" to name if it is a relative pathname.
+extern "C" char *
+ipa_add_parent_dir_to_relative_pathname (const char *name)
+{
+  if (name[0] != '/') {
+    const char *prefix = "../";
+    char *buf;
+    buf = (char *) malloc(strlen(prefix)+strlen(name)+1);
+    strcpy(buf, prefix);
+    strcat(buf, name);
+    return (buf);
+  }
+  return (char*) name;
+}
+
 extern "C" void
 ipa_erase_link_flag (const char* str)
 {
     ARGV::iterator p;
-    for (p = current_ld_flags->begin();
-	 p != current_ld_flags->end();
+
+    for (p = ld_flags_part1->begin();
+	 p != ld_flags_part1->end();
 	 p++) {
       if (!strcmp(str, *p)) {
-	current_ld_flags->erase(p);
-	break;
+	ld_flags_part1->erase(p);
+      }
+    }
+
+    for (p = ld_flags_part2->begin();
+	 p != ld_flags_part2->end();
+	 p++) {
+      if (!strcmp(str, *p)) {
+	ld_flags_part2->erase(p);
       }
     }
 } // ipa_erase_link_flag
@@ -300,9 +323,15 @@ ipa_link_line_argv (const ARGV* output_files,
 	    static_cast<char*>(malloc(strlen(dir) + strlen(symtab_base) + 2));
 	if (!symtab)
 	    ErrMsg (EC_No_Mem, "ipa_link_line_argv");
+#ifdef KEY
+	// Don't print the path component of symtab.o since we are linking
+	// while in the ipa temp dir.  Bug 5876.
+	strcpy(symtab, symtab_base);
+#else
 	strcpy(symtab, dir);
 	strcat(symtab, "/");
 	strcat(symtab, symtab_base);
+#endif
 	argv->push_back(symtab);
     }
     

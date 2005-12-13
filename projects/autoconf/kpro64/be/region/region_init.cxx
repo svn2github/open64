@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1187,6 +1187,17 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
     rinit.Print_sets();
   }
 
+#ifdef KEY
+// bug 3144: A region is not aware of any label in its nested regions.
+// Since we allow goto into a region, we need a parent region to know of 
+// labels in its nested regions, so that gotos can be cancelled out properly.
+// So, propagate the labels in a nested region to its parent.
+  for (RGN_LABEL * labels = rinit.Label_list(); 
+       labels;
+       labels = labels->Next())
+    Add_label (labels->Label(), labels->Block());
+#endif // KEY
+
   // cancel goto-label pairs inside the region, add leftovers to parent
   // sets number of exits (these are the leftovers propagated up)
   GOTO *glist = rinit.Cancel_internal_gotos(TRUE);
@@ -1213,6 +1224,16 @@ RINIT::Process_region(WN *wtmp, WN *block, INT32 level, RID *root,
 void
 RINIT::Region_init(WN *block, INT32 level, RID *root, char *options)
 {
+#ifdef KEY
+// bug 3740: traverse kids
+  if (WN_operator(block) != OPR_BLOCK)
+  {
+    for (INT32 i=0; i<WN_kid_count(block); i++)
+      Region_init (WN_kid(block, i), level, root, options);
+    return;
+  }
+#endif
+
   for (WN *wtmp=WN_first(block); wtmp; wtmp=WN_next(wtmp)) {
 
     switch (WN_operator(wtmp)) {
@@ -1284,6 +1305,11 @@ RINIT::Region_init(WN *block, INT32 level, RID *root, char *options)
         break;
 
       default:
+#ifdef KEY
+// bug 3740: traverse kids
+        for (INT32 i=0; i<WN_kid_count(wtmp); i++)
+          Region_init (WN_kid (wtmp, i), level, root, options);
+#endif // KEY
 	break;
     } // switch (WN_operator(wtmp))
 

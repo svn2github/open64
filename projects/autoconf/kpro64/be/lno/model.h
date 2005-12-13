@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -498,8 +498,9 @@ typedef struct ti_res_count TI_RES_COUNT;
 // bad array, FALSE otherwise. 
 
 extern BOOL Is_Bad_Array(WN* wn_ref, INT nloops); 
-#ifdef KEY
+#ifdef TARG_X8664
 extern BOOL Is_Vectorizable_Loop(WN* loop);
+extern BOOL Is_Vectorization_Beneficial(WN* loop);
 #endif
 
 class LOOP_MODEL {

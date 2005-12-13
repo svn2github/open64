@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -245,7 +245,7 @@ Join_Exit( BB* bb )
 //  
 /////////////////////////////////////
 {
-  BB* new_exit BB_prev(bb);
+  BB* new_exit = BB_prev(bb);
 
   BB_Transfer_Exitinfo(bb,new_exit);
   GRA_GRANT_Transfer(bb,new_exit);

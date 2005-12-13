@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* This file contains the definitions and documentation for the common
@@ -583,6 +583,19 @@ build_continue_stmt ()
   return (build_stmt (CONTINUE_STMT));
 }
 
+#ifdef KEY
+/* Build a omp-marker statement node and return it */
+tree
+build_omp_stmt (enum omp_tree_type c, void * p)
+{
+  tree t = build_stmt (OMP_MARKER_STMT);
+  t->omp.choice = c;
+  t->omp.omp_clause_list = p;
+                                                                                
+  return t;
+}
+#endif
+
 /* Generate the RTL for a CONTINUE_STMT.  */
 
 void
@@ -871,6 +884,11 @@ expand_stmt (t)
 	case CLEANUP_STMT:
 	  genrtl_decl_cleanup (t);
 	  break;
+
+#ifdef KEY
+	case OMP_MARKER_STMT:
+	  break;
+#endif
 
 	default:
 	  if (lang_expand_stmt)

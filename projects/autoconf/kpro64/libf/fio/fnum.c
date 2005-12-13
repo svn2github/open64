@@ -1,5 +1,5 @@
 /*
-Copyright 2004 PathScale, Inc.  All Rights Reserved.
+Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
 
 Unpublished -- rights reserved under the copyright laws of the United
 States. USE OF A COPYRIGHT NOTICE DOES NOT IMPLY PUBLICATION OR
@@ -15,8 +15,8 @@ and "commercial computer software documentation," as such terms are used
 in 48 C.F.R. 12.212 (SEPT 1995).  Consistent with 48 C.F.R. 12.212 and
 48 C.F.R. 227-7202-1 through 227-7202-4 (JUNE 1995), all U.S. Government
 End Users acquire the Software with only those rights set forth in the
-accompanying license agreement. PathScale, Inc. 477 N. Mathilda Ave;
-Sunnyvale, CA 94085.
+accompanying license agreement. PathScale, Inc. 2071 Stierlin Court, Suite 200;
+Mountain View CA 94043.
 
 */
 
@@ -33,9 +33,18 @@ Sunnyvale, CA 94085.
 #include <sys/stat.h>
 #include "fio.h"
 
+#ifdef KEY /* Bug 1683 */
+/* Don't pollute the Fortran namespace */
+
+int pathf90_fnum(int *u)
+
+#else
+
 extern int fnum_(int *u);
 
 int fnum_(int *u)
+
+#endif /* KEY Bug 1683 */
 {
         int             n, retval;
         unum_t          unum; 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -2894,7 +2898,11 @@ extern void Init_Special_Lego_Mp_Call() {
     ST* st;
     st             = New_ST(GLOBAL_SYMTAB);
     ST_Init (st,
+#ifndef KEY
              Save_Str("__mp_sug_numthreads"),
+#else
+             Save_Str("__ompc_sug_numthreads"),
+#endif
              CLASS_VAR,
              SCLASS_EXTERN,
              EXPORT_PREEMPTIBLE,
@@ -2904,7 +2912,11 @@ extern void Init_Special_Lego_Mp_Call() {
 
     st             = New_ST(GLOBAL_SYMTAB);
     ST_Init (st,
+#ifndef KEY
              Save_Str("__mp_cur_numthreads"),
+#else
+             Save_Str("__ompc_cur_numthreads"),
+#endif
              CLASS_VAR,
              SCLASS_EXTERN,
              EXPORT_PREEMPTIBLE,
@@ -2914,19 +2926,31 @@ extern void Init_Special_Lego_Mp_Call() {
   }
   {
     distr_st_entries[mp_numthreads_fn] =
+#ifndef KEY
       Declare_Func_Zero_Arg (".__mp_numthreads", "__mp_numthreads",
                              Be_Type_Tbl(MTYPE_I4));
+#else
+      Declare_Func_Zero_Arg (".omp_get_num_threads", "omp_get_num_threads",
+                             Be_Type_Tbl(MTYPE_I4));
+#endif
   }
+#ifndef KEY // Pathscale does not have this
   { 
     distr_st_entries[mp_cur_numthreads_func] =
       Declare_Func_Zero_Arg (".__mp_cur_numthreads_func", 
                              "__mp_cur_numthreads_func",
                              Be_Type_Tbl(MTYPE_I4));
   }
+#endif
   { 
     distr_st_entries[mp_my_threadnum] =
+#ifndef KEY
       Declare_Func_Zero_Arg (".mp_my_threadnum", "mp_my_threadnum",
 			    Be_Type_Tbl(MTYPE_I4));
+#else
+      Declare_Func_Zero_Arg (".omp_get_thread_num", "omp_get_thread_num",
+			    Be_Type_Tbl(MTYPE_I4));
+#endif
   } 
 }
 

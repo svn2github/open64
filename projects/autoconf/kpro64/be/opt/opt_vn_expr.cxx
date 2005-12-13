@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -337,6 +337,9 @@ FREE_STACK *VN_PHI_EXPR::_Free = NULL;
 FREE_STACK *VN_LDA_ADDR_EXPR::_Free = NULL;
 FREE_STACK *VN_ARRAY_ADDR_EXPR::_Free = NULL;
 FREE_STACK *VN_MEMLOC_EXPR::_Free = NULL;
+#ifdef KEY
+FREE_STACK *VN_CALL_OP_EXPR::_Free = NULL;
+#endif
 
 
 void 
@@ -352,6 +355,9 @@ VN_EXPR::Init_Free_Lists(MEM_POOL *mpool)
    VN_LDA_ADDR_EXPR::Init_Free_List();
    VN_ARRAY_ADDR_EXPR::Init_Free_List();
    VN_MEMLOC_EXPR::Init_Free_List();
+#ifdef KEY
+   VN_CALL_OP_EXPR::Init_Free_List();
+#endif
 } // VN_EXPR::Init_Free_Lists
 
 
@@ -369,6 +375,9 @@ VN_EXPR::Reclaim_Free_Lists()
       VN_LDA_ADDR_EXPR::Reclaim_Free_List();
       VN_ARRAY_ADDR_EXPR::Reclaim_Free_List();
       VN_MEMLOC_EXPR::Reclaim_Free_List();
+#ifdef KEY
+      VN_CALL_OP_EXPR::Reclaim_Free_List();
+#endif
    }
 } // VN_EXPR::Reclaim_Free_Lists
 
@@ -447,7 +456,15 @@ VN_EXPR::Create_Memloc(MTYPE            dsctype,
    return VN_MEMLOC_EXPR::Create(dsctype, 
 				 bytesize, offset,base_addr, vsym_valnum);
 }
-   
+
+
+#ifdef KEY
+VN_EXPR::PTR 
+VN_EXPR::Create_Call_Op(ST_IDX aux_id, UINT32 num_opnds)
+{
+   return VN_CALL_OP_EXPR::Create(aux_id, num_opnds);
+}
+#endif   
 
 VN_VALNUM 
 VN_EXPR::get_opnd(UINT) const 
@@ -559,6 +576,15 @@ VN_EXPR::get_vsym(UINT) const
    return VN_VALNUM::Bottom();
 }
 
+#ifdef KEY
+ST_IDX
+VN_EXPR::get_aux_id() const
+{
+   Unimplemented("VN_EXPR::get_aux_id");
+   return 0;
+}
+#endif
+
 //------------- Implementation of VN_LITERAL_EXPR  -------------
 //--------------------------------------------------------------
 
@@ -576,6 +602,10 @@ VN_LITERAL_EXPR::is_equal_to(CONST_PTR expr) const
       TCON        other_tcon = expr->get_tcon();
       const MTYPE other_mty = TCON_ty(other_tcon);
 
+#ifdef TARG_X8664
+      if (MTYPE_is_vector(this_mty) || 	MTYPE_is_vector(other_mty))
+	return FALSE;
+#endif
       if (MTYPE_is_integral(this_mty) && MTYPE_is_integral(other_mty))
       {
 	 // We only care about the value and the signedness of integral types,
@@ -1231,7 +1261,16 @@ VN_BINARY_EXPR::simplify(VN *v)
    CONST_PTR      opnd2 = v->valnum_expr(_vn[1]);
    const BOOL     is_integral = 
       (OPERATOR_is_compare(opr)? 
-       MTYPE_is_integral(OPCODE_desc(_opc)) : MTYPE_is_integral(rty));
+       MTYPE_is_integral(OPCODE_desc(_opc)) 
+#ifdef TARG_X8664 // bug 7554
+       	&& ! MTYPE_is_vector(OPCODE_desc(_opc))
+#endif
+       :
+       MTYPE_is_integral(rty)
+#ifdef TARG_X8664 // bug 7554
+       	&& ! MTYPE_is_vector(rty)
+#endif
+       );
 
    PTR   simplified = this;
    INT64 intconst;
@@ -1876,3 +1915,52 @@ VN_MEMLOC_EXPR::simplify(VN *v)
 
    return simplified;
 } // VN_MEMLOC_EXPR::simplify
+
+
+#ifdef KEY
+//------------- Implementation of VN_CALL_OP_EXPR  -------------
+//--------------------------------------------------------------
+
+VN_CALL_OP_EXPR *
+VN_CALL_OP_EXPR::Create(ST_IDX    aux_id,
+			UINT32    num_opnds)
+{
+   VN_CALL_OP_EXPR *expr = (VN_CALL_OP_EXPR *)_Free->pop();
+   if (expr == NULL)
+      expr = CXX_NEW(VN_CALL_OP_EXPR(aux_id, num_opnds), _Mpool);
+   else
+   {
+      expr->_aux_id = aux_id;
+      expr->_num_opnds = num_opnds;
+
+      if (num_opnds > 3)
+	 expr->_opnd_array = CXX_NEW_ARRAY(VN_VALNUM_PAIR, num_opnds, _Mpool);
+   }
+	 
+   for (INT i = 0; i < num_opnds; i++)
+   {
+      expr->set_opnd(i, VN_VALNUM::Bottom());      // Must be equivalent
+      expr->set_opnd_vsym(i, VN_VALNUM::Bottom()); // Must match exactly
+   }
+
+   return expr;
+} // VN_CALL_OP_EXPR::Create
+
+
+VN_EXPR::PTR 
+VN_CALL_OP_EXPR::simplify(VN *)
+{
+   PTR simplified;
+
+   if (has_bottom_opnd() || has_top_opnd())
+   {
+      simplified = Create_Unary(OPC_VPARM, VN_VALNUM::Bottom());
+      free();
+   }
+   else
+   {
+      simplified = this;
+   }
+   return simplified;
+} // VN_CALL_OP_EXPR::simplify
+#endif

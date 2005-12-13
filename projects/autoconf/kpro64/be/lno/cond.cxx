@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1713,3 +1713,428 @@ extern void Update_Guarded_Do_FB(WN *if_wn, WN *do_wn, FEEDBACK *feedback)
   loop_freq.freq_exit = loop_freq.freq_positive;
   feedback->Annot_loop (do_wn, loop_freq);
 }
+
+#ifdef KEY
+//
+//
+/* The purpose of the following is to effect the transformation of the kind
+
+   do I = const_lb, const_ub
+     if (<cond1>)
+       stmt1     // non-SCF
+     endif
+     if (<cond2>)
+       stmt2     // non-SCF
+     endif
+     ...
+     if (<condn>)
+       stmtn     // non-SCF
+     endif     
+   end do
+   
+   to:
+   
+   do I = const_lb1, const_ub1
+     stmt1
+   end do
+   do I = const_lb2, const_ub2
+     stmt2
+   end do   
+   ...
+   do I = const_lbn, const_ubn
+     stmt2
+   end do
+   
+   Here, const_lb{1,n} and const_lb{1,n} are all constants derived from 
+   the corresponding (more stringent) conditions cond{1,n}.
+
+   One constraint is that the ranges [const_lb1,const_ub1], 
+   [const_lb2,const_ub2], ..., [const_lbn,const_ubn]
+   do not overlap. As in lnopt_hoistif.cxx (which just happens to be a special
+   case of this transformation) we may need to do additional checks on dependencies
+   if the ranges overlap. 
+   
+   For example a const_lb = 1, const_ub = 300 and <condi> = I.LT.100.AND.I.GT.34
+   would yield a const_lbi = 35 and const_ubi = 99.
+
+   This acts like an if-conversion with the additional benefit of the
+   unneeded conditonals being removed. 
+
+   This transformation is only applied to the innermost loop but can be extended
+   if need be.
+
+   The loops may later be fused together based on the outer loop fusion limit.
+
+   The benefit to bug 5376 is that this transformation exposes an opportunity for
+   vectorization and improves run-time by around 15% on Athlon64.
+
+   This framework can also be extended to implement loop unswitching of the kind:
+   do I = lb, ub
+     if (<loop_invariant_cond>)
+       <stmts>
+     endif
+   end do
+   to:
+   if (<loop_invariant_cond>)
+     do I = lb, ub
+       <stmts>
+     end do
+   endif
+   Note that lb and ub need not be constants.
+   
+*/
+//
+//
+
+#include "fission.h"                    // Fission_DU_Update
+#include "ff_utils.h"                   // for scalar_rename
+#include "glob.h"                       // For Src_File_Name
+#include "ir_reader.h"			// for fdump_tree
+#include "wn_simp.h"                    // for WN_Simplify_Tree
+
+BOOL debug_loop_unswitch = FALSE;
+static INT Last_Unswitchable_Loop_Id = 0;
+
+// Return TRUE if unswitched any loop.
+static BOOL Loop_Unswitch_InnerDo (WN *wn)
+{
+  COND_BOUNDS_INFO *info = 
+    CXX_NEW(COND_BOUNDS_INFO(&LNO_local_pool),&LNO_local_pool);
+  STACK<WN*> stack_of_ifs(&LNO_local_pool);
+  STACK<INT> stack_of_lbs(&LNO_local_pool);
+  STACK<INT> stack_of_ubs(&LNO_local_pool);
+  INT32_INFIN const_lb, const_ub, const_lbi, const_ubi;
+
+  info->Collect_Do_Info(wn);
+  info->Bounds().Copy_To_Work();
+  if (!info->Bounds().SVPC_Applicable()) { 
+    if (debug_loop_unswitch || LNO_Unswitch_Verbose) {
+      printf("(%s:%d) ", 
+	     Src_File_Name, 
+	     Srcpos_To_Line(WN_Get_Linenum(wn)));
+      printf("Loop has multi-variate constraint. Loop was not unswitched.\n");
+    }
+    return FALSE;
+  }
+  if (info->Bounds().Work_Cols() != 1) {
+    if (debug_loop_unswitch || LNO_Unswitch_Verbose) {
+      printf("(%s:%d) ", 
+	     Src_File_Name, 
+	     Srcpos_To_Line(WN_Get_Linenum(wn)));
+      printf("Loop termination condition has multi-variate constraint. Loop was not unswitched.\n");
+    }
+    return FALSE;
+  }
+
+  // Copy the bounds info first so we can restore when needed.
+  INT le = info->Bounds().Num_Le_Constraints();
+  INT eq = info->Bounds().Num_Eq_Constraints();
+  INT c  = info->Symbol_Info().Elements();
+  DYN_ARRAY<WN*> kill_array(&LNO_local_pool);
+  for (INT i = 0; i < c; i++) {
+    WN* wn = info->Symbol_Info().Bottom_nth(i).Outer_Nondef;
+    kill_array.AddElement(wn);
+  }
+
+  const_lb = info->Bounds().Lower_Bound(0);
+  const_ub = info->Bounds().Upper_Bound(0);
+  
+  // Walk the loop statements and search for any suitable If statements that
+  // can be switched out.
+  WN* body = WN_do_body(wn);
+  WN* stmt;
+  INT number_of_statements = 0;
+  for (stmt = WN_first(body); stmt; stmt = WN_next(stmt)) {
+    number_of_statements ++;
+    if (WN_operator(stmt) != OPR_IF ||
+	(WN_operator(stmt) == OPR_IF && WN_first(WN_else(stmt)))) 
+      continue;
+    info->Collect_If_Info(stmt, TRUE);
+    info->Bounds().Copy_To_Work();
+    if (!info->Bounds().SVPC_Applicable()) {
+      if (debug_loop_unswitch || LNO_Unswitch_Verbose) {
+	printf("(%s:%d) ", 
+	       Src_File_Name, 
+	       Srcpos_To_Line(WN_Get_Linenum(wn)));
+	printf("If-stmt condition has multi-variate constraint. Loop was not unswitched.\n");
+      }
+      return FALSE;
+    }
+    const_lbi = info->Bounds().Lower_Bound(0);
+    const_ubi = info->Bounds().Upper_Bound(0);
+#ifdef Is_True_On
+    if (info->Bounds().Work_Cols() != 1)
+      DevWarn(("Loop is possibly a candidate for loop unswitching."));
+#endif
+    if ((const_lb != const_lbi || const_ub != const_ubi) &&
+	info->Bounds().Work_Cols() == 1) {
+      stack_of_ifs.Push(stmt);
+      stack_of_lbs.Push(const_lbi.Value());
+      stack_of_ubs.Push(const_ubi.Value());
+    }
+    info->Reset_Bounds_To(le, eq, c, &kill_array);
+  }
+ 
+  if (stack_of_ifs.Elements() == 0) {
+    if (debug_loop_unswitch || LNO_Unswitch_Verbose) {
+      printf("(%s:%d) ", 
+	     Src_File_Name, 
+	     Srcpos_To_Line(WN_Get_Linenum(wn)));
+      printf("Loop has no suitable if statements. Loop was not unswitched.\n");
+    }
+    return FALSE;
+  }
+
+  // TODO: Verify if the [const_lbi, const_ubi] ranges overlap.
+  
+  // TODO: Topologically sort the ranges [const_lbi, const_ubi] and 
+  // rearrange ifs.
+
+  // TODO: Relax the restriction that all if statements have to participate 
+  // in this transformation by recomputing the list of 'if' statements in
+  // the new copy loop (used for analysing dependencies).
+
+  // TODO: The run-time order of the execution of the statements contained 
+  // in the 'then' parts is totally ignored in the following dependence analysis.
+  // One possibility to fix that (given that we have SVPC in the if conditions) 
+  // is to first lexicographically sort the if statements then apply dependence
+  // analysis on the loop copy.
+  
+  // START: dependence analysis
+  // Assumes: all if statements participate in the unswitching. 
+  // The way this analysis works is by hoisting all the then parts
+  // into the loop body followed by removing the 'if' statements, and then
+  // calling Is_Vectorizable_Tree. Is_Vectorizable_Tree does the necessary
+  // dependence analysis for us and also makes sure there are vectorizable 
+  // operations (one of the main benefits of doing this transformation).
+
+  WN* loop_copy = LWN_Copy_Tree(wn, TRUE, LNO_Info_Map);
+  DO_LOOP_INFO* dli=Get_Do_Loop_Info(wn);
+  DO_LOOP_INFO* new_loop_info =
+    CXX_NEW(DO_LOOP_INFO(dli,&LNO_local_pool), &LNO_local_pool);
+  Set_Do_Loop_Info(loop_copy, new_loop_info);
+  Array_Dependence_Graph->Add_Deps_To_Copy_Block(wn, loop_copy, TRUE);
+  body = WN_do_body(loop_copy);
+  WN* current_statement = WN_first(body);  
+  INT curr_if = 0;
+  while(current_statement) {
+    WN* next_statement = WN_next(current_statement);
+    if (WN_operator(current_statement) == OPR_IF) { 
+      // Remove the if statement and attach the body of the then part
+      // directly under loop body.
+      stmt = WN_first(WN_then(current_statement));
+      while(stmt) {
+	WN* next = WN_next(stmt);
+	LWN_Insert_Block_Before(body,current_statement,
+				LWN_Extract_From_Block(stmt));
+	stmt = next;
+      }            
+      // Remove the If statement.
+      LWN_Delete_Tree(current_statement);
+      curr_if ++;
+    }
+    current_statement = next_statement;
+  }  
+  LWN_Set_Parent(loop_copy, LWN_Get_Parent(wn));
+  LWN_Parentize(loop_copy);
+#ifdef TARG_X8664
+  BOOL Has_Dependencies = !Is_Vectorizable_Loop(loop_copy);
+#else
+  BOOL Has_Dependencies = TRUE;
+#endif
+  LNO_Erase_Dg_From_Here_In(loop_copy, Array_Dependence_Graph);  
+  LNO_Erase_Vertices_In_Loop(loop_copy, Array_Dependence_Graph);
+  if (Has_Dependencies) {
+    if (debug_loop_unswitch || LNO_Unswitch_Verbose) {
+      printf("(%s:%d) ", 
+	     Src_File_Name, 
+	     Srcpos_To_Line(WN_Get_Linenum(wn)));
+      printf("Loop may have loop carried dependency. Loop was not unswitched.\n");
+    }
+    return FALSE;
+  }    
+
+  // END: dependence analysis
+
+  if (Last_Unswitchable_Loop_Id < LNO_Unswitch_Loop_Skip_Before ||
+      Last_Unswitchable_Loop_Id > LNO_Unswitch_Loop_Skip_After ||
+      Last_Unswitchable_Loop_Id == LNO_Unswitch_Loop_Skip_Equal) {
+    Last_Unswitchable_Loop_Id ++;
+    printf("(%s:%d) ", 
+	   Src_File_Name, 
+	   Srcpos_To_Line(WN_Get_Linenum(wn)));
+    printf("Loop unswitch: skipping loop.\n");
+    return FALSE;
+  }
+  
+  Last_Unswitchable_Loop_Id ++;
+
+  // Create new loops with the bounds [const_lbi, const_ubi]
+  WN* tmp_loop1=wn;
+  INT total_loops = number_of_statements;
+  WN** wn_starts=CXX_NEW_ARRAY(WN*, total_loops, &LNO_local_pool);
+  WN** wn_ends=CXX_NEW_ARRAY(WN*, total_loops, &LNO_local_pool);
+  WN** wn_steps=CXX_NEW_ARRAY(WN*, total_loops, &LNO_local_pool);
+  WN** new_loops=CXX_NEW_ARRAY(WN*, total_loops, &LNO_local_pool);  
+  DO_LOOP_INFO* loop_info = Get_Do_Loop_Info(wn);
+
+  wn_starts[0]=WN_kid0(WN_start(tmp_loop1));
+  wn_ends[0]=WN_end(tmp_loop1);
+  wn_steps[0]=WN_kid0(WN_step(tmp_loop1));
+  new_loops[0]=wn;
+
+  body = WN_do_body(wn);
+  current_statement = WN_first(body);
+  INT j = 0; // at jth if statement identified for this transformation.
+  INT i = 0; // ith loop generated due to this transformation
+  DOLOOP_STACK stack(&LNO_local_pool);
+  Build_Doloop_Stack(wn, &stack);
+  
+  while(current_statement) {
+    WN* next_statement = WN_next(current_statement);
+    WN* tmp_loop2;
+    Separate(tmp_loop1, current_statement, 1, &tmp_loop2);
+    if (tmp_loop2) {
+      LWN_Parentize(tmp_loop2);
+      DO_LOOP_INFO* new_loop_info =
+        CXX_NEW(DO_LOOP_INFO(loop_info,&LNO_default_pool), &LNO_default_pool);
+      Set_Do_Loop_Info(tmp_loop2,new_loop_info);
+      wn_starts[i+1]=WN_kid0(WN_start(tmp_loop2));
+      wn_ends[i+1]=WN_end(tmp_loop2);
+      wn_steps[i+1]=WN_kid0(WN_step(tmp_loop2));
+      new_loops[i+1]=tmp_loop2;   
+    }     
+
+    if (j == stack_of_ifs.Elements() ||
+	current_statement != stack_of_ifs.Bottom_nth(j)) {
+      current_statement = next_statement;
+      i ++; // next loop
+      tmp_loop1 = tmp_loop2;
+      continue;
+    }
+    
+    body = WN_do_body(tmp_loop1);
+    DO_LOOP_INFO* dli = Get_Do_Loop_Info(tmp_loop1);
+
+    // Adjust loop bounds for tmp_loop1.
+    if (WN_const_val(wn_starts[i]) < stack_of_lbs.Bottom_nth(j)) {
+      FmtAssert(const_lb == WN_const_val(wn_starts[i]), ("Handle this case"));
+      WN_const_val(wn_starts[i]) = stack_of_lbs.Bottom_nth(j);
+      CXX_DELETE(dli->LB, dli->LB->Pool());
+      INT num_bounds = Num_Lower_Bounds(wn, dli->Step); 
+      dli->LB =
+	CXX_NEW(ACCESS_ARRAY(num_bounds,stack.Elements(),&LNO_default_pool),
+		&LNO_default_pool);
+      dli->LB->Set_LB(WN_kid0(WN_start(tmp_loop1)), &stack, 
+		      dli->Step->Const_Offset);
+    }
+    FmtAssert(WN_operator(wn_ends[i]) == OPR_LE || 
+	      WN_operator(wn_ends[i]) == OPR_LT, 
+	      ("Unhandled loop upperbound in loop unswitch."));
+    // Notice that the upper bound will be overwritten. The loop bounds will 
+    // look like [lb,ub] rather than [lb, ub).
+    WN_kid1(wn_ends[i]) = WN_Simplify_Tree(WN_kid1(wn_ends[i]));
+    if (WN_operator(wn_ends[i]) == OPR_LT) {
+      WN_set_operator(wn_ends[i], OPR_LE);
+      WN_const_val(WN_kid1(wn_ends[i])) = 	
+	WN_const_val(WN_kid1(wn_ends[i])) - 1;
+    }
+    if (WN_const_val(WN_kid1(wn_ends[i])) > stack_of_ubs.Bottom_nth(j)) {
+      WN_const_val(WN_kid1(wn_ends[i])) = 
+	stack_of_ubs.Bottom_nth(j)-(const_ub.Value()-
+				    WN_const_val(WN_kid1(wn_ends[i])));
+      CXX_DELETE(dli->UB, dli->UB->Pool());
+      INT num_bounds = Num_Upper_Bounds(wn);
+      dli->UB = CXX_NEW(ACCESS_ARRAY(num_bounds,stack.Elements(),
+				     &LNO_default_pool),
+			&LNO_default_pool);
+      dli->UB->Set_UB(WN_end(tmp_loop1), &stack);
+    }
+
+    // Remove the if statement and attach the body of the then part
+    // directly under loop body.
+    stmt = WN_first(WN_then(stack_of_ifs.Bottom_nth(j)));
+    while(stmt) {
+      WN* next = WN_next(stmt);
+      LWN_Insert_Block_Before(body,stack_of_ifs.Bottom_nth(j),
+			      LWN_Extract_From_Block(stmt));
+      stmt = next;
+    }      
+
+    // Remove the If statement.
+    LWN_Delete_Tree(stack_of_ifs.Bottom_nth(j));
+
+    current_statement = next_statement;
+    j ++; // move to the next if statement.
+    i ++; // next loop
+    tmp_loop1 = tmp_loop2;
+  }
+
+  Fission_DU_Update(Du_Mgr,red_manager,wn_starts,wn_ends,wn_steps,
+		    total_loops,new_loops);
+  for (i=0; i<total_loops-1; i++)
+    scalar_rename(LWN_Get_Parent(wn_starts[i]));
+  Array_Dependence_Graph->Fission_Dep_Update(new_loops[0],total_loops);
+  
+  if (debug_loop_unswitch || LNO_Unswitch_Verbose) {
+    printf("(%s:%d) ", 
+	   Src_File_Name, 
+	   Srcpos_To_Line(WN_Get_Linenum(wn)));
+    printf("Loop was unswitched.\n");    
+  }
+
+  return TRUE;
+}
+
+// Return TRUE if unswitched any loop.
+static BOOL Loop_Unswitch_SCF_rec(WN *wn)
+{
+  BOOL result = FALSE;
+  OPCODE opcode = WN_opcode(wn);
+
+  if (opcode == OPC_BLOCK) {
+    WN* kid = WN_first(wn);
+    while(kid) {
+      WN* next = WN_next(kid);
+      result |= Loop_Unswitch_SCF_rec(kid);
+      kid = next;
+    }
+  }
+  
+  else if (opcode == OPC_DO_LOOP) {
+    DO_LOOP_INFO* dli = Get_Do_Loop_Info(wn);
+    if (dli->Is_Inner)
+      result |= Loop_Unswitch_InnerDo(wn);
+    else
+      result |= Loop_Unswitch_SCF_rec(WN_do_body(wn));
+  }
+  
+  else if (OPCODE_is_scf(opcode)) {
+    for (INT kidno=0; kidno<WN_kid_count(wn); kidno++) {
+      WN *kid = WN_kid(wn,kidno);
+      result |= Loop_Unswitch_SCF_rec(kid);
+    }
+  }
+
+  return result;
+}
+
+extern BOOL Loop_Unswitch_SCF (WN * func_nd)
+{
+  debug_loop_unswitch = Get_Trace(TP_LNOPT,TT_LNO_LOOP_UNSWITCH);
+  if (debug_loop_unswitch) {
+    fprintf(TFile, "=======================================================================\n");
+    fprintf(TFile, "LNO: \"WHIRL tree before loop unswitch phase\"\n");
+    fdump_tree (TFile, func_nd);
+  }
+  MEM_POOL_Push(&LNO_local_pool);
+  BOOL result =  Loop_Unswitch_SCF_rec(func_nd);
+  if (debug_loop_unswitch) {
+    fprintf(TFile, "=======================================================================\n");
+    fprintf(TFile, "LNO: \"WHIRL tree after loop unswitch phase\"\n");
+    fdump_tree (TFile, func_nd);
+  }
+  MEM_POOL_Pop(&LNO_local_pool);
+  return result;
+}
+#endif

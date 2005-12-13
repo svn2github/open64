@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Output variables, constants and external declarations, for GNU compiler.
@@ -62,7 +62,9 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #endif  // SGI_MONGOOSE
 
 #ifdef KEY
+#include "diagnostic.h"	// errorcount, sorrycount
 extern void gxx_emits_decl PARAMS ((tree));
+extern void gxx_emits_asm PARAMS ((char *));
 #endif  // KEY
 
 #ifndef TRAMPOLINE_ALIGNMENT
@@ -1015,6 +1017,9 @@ assemble_asm (string)
   if (TREE_CODE (string) == ADDR_EXPR)
     string = TREE_OPERAND (string, 0);
 
+#ifdef KEY
+  gxx_emits_asm ((char *)TREE_STRING_POINTER (string));
+#endif // KEY
   fprintf (asm_out_file, "\t%s\n", TREE_STRING_POINTER (string));
 }
 
@@ -4619,6 +4624,8 @@ merge_weak (newdecl, olddecl)
     mark_weak (newdecl);
 }
 
+extern void WFE_Add_Weak (void); // KEY
+extern void WFE_Weak_Finish (void); // KEY
 /* Declare DECL to be a weak symbol.  */
 
 void
@@ -4650,6 +4657,9 @@ void
 weak_finish ()
 {
 #ifdef SGI_MONGOOSE
+#ifdef KEY
+  if (errorcount == 0 && sorrycount == 0)	// bug 4748, 5596
+#endif
   WFE_Weak_Finish();
 #else
   tree t;
@@ -4721,6 +4731,10 @@ assemble_alias (decl, target)
      tree decl, target ATTRIBUTE_UNUSED;
 {
   const char *name;
+
+#ifdef KEY
+  DECL_ALIAS_TARGET (decl) = target;
+#endif
 
   /* We must force creation of DECL_RTL for debug info generation, even though
      we don't use it here.  */

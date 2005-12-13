@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -2961,6 +2961,16 @@ Optimize_Branches(void)
 	    changed = TRUE;
 	    Cflow_Change_Succ(bp, 1, old_tgt, new_tgt);
 	  }
+#ifdef KEY
+	  /* If both false branch and true branch target to the
+	     same bb, then it is not a LOGIF bb any more. (bug#3515)
+	  */
+	  if( BBINFO_succ_bb(bp, 0) == BBINFO_succ_bb(bp, 1) ){
+	    if( !Convert_Indirect_Goto_To_Direct( bp ) ){
+	      FmtAssert( FALSE, ("Optimize_Branches: fail to merge") );
+	    }
+	  }
+#endif
 	}
 	break;
       case BBKIND_GOTO:
@@ -3764,6 +3774,9 @@ Append_Succ(
   INT i;
   RID *b_rid = BB_rid(b);
   INT nsuccs = BBINFO_nsuccs(suc);
+#ifdef KEY
+  OP *first_new_op = NULL;
+#endif
 
   /* If the block we're merging into ended in a branch, remove it.
    */
@@ -3780,6 +3793,10 @@ Append_Succ(
       OP *new_op = Dup_OP(op);
       if (OP_memory(op)) Copy_WN_For_Memory_OP(new_op, op);
       BB_Append_Op(b, new_op);
+#ifdef KEY
+      if (first_new_op == NULL)
+	first_new_op = new_op;
+#endif
 
       // After an OP is duplicated, its TN becomes GTN.
       if (!CG_localize_tns) {
@@ -3797,6 +3814,14 @@ Append_Succ(
     GRA_LIVE_Merge_Blocks(b, b, suc);
     Rename_TNs_For_BB(b, NULL);
   }
+#ifdef KEY
+  else {
+    // Rename duplicated local TNs.  Otherwise, those (non-GTN) TNs would
+    // appear in <suc> as well as in the merged BB, causing LRA's
+    // Consistency_Check to complain.  Bug 4327.
+    Rename_TNs_For_BB(b, NULL, first_new_op);
+  }
+#endif
 
   /* Merge the ending of suc into b
    */

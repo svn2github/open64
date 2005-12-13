@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -69,10 +69,13 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <alloca.h>
-#include "mat.h"
 #ifdef LNO
 #include "lnopt_main.h"
+#else
+#include "mempool.h"
+static MEM_POOL LNO_local_pool;
 #endif
+#include "mat.h"
 #include "access_vector.h"
 #include "stab.h"
 #include "lwn_util.h"
@@ -87,13 +90,12 @@
 #include "targ_sim.h"
 
 #ifndef LNO
-static MEM_POOL LNO_local_pool;
 static DU_MANAGER *Du_Mgr;
 extern void Initialize_Access_Vals(DU_MANAGER* du_mgr, FILE *tfile);
 extern void Finalize_Access_Vals();
 extern WN* LNO_Common_Loop(WN* wn1, WN* wn2);
 extern WN* UBvar (WN *end);	/* In lieu of lnoutils.h for IPL */
-MEM_POOL* MAT<mINT32>::_default_pool = &LNO_local_pool;
+template <> MEM_POOL* MAT<mINT32>::_default_pool = &LNO_local_pool;
 // since wopt.so is loaded dynamically in ipl
 #pragma weak Add_Def_Use__10DU_MANAGERGP2WNT1
 #endif
@@ -1302,6 +1304,16 @@ void ACCESS_ARRAY::Set_Array(WN *wn, DOLOOP_STACK *stack)
   WN *base = WN_array_base(wn);
   if (WN_operator(base) == OPR_LDID) {
     Update_Non_Const_Loops(base,stack);
+#ifdef KEY // Bug 5057 - tolerate base addresses of the form (+ const LDID).
+  } else if (WN_operator(base) == OPR_ADD &&
+	     (WN_operator(WN_kid0(base)) == OPR_INTCONST &&
+	      WN_operator(WN_kid1(base)) == OPR_LDID)) {
+    Update_Non_Const_Loops(WN_kid1(base),stack);
+  } else if (WN_operator(base) == OPR_ADD &&
+	     (WN_operator(WN_kid1(base)) == OPR_INTCONST &&
+	      WN_operator(WN_kid0(base)) == OPR_LDID)) {
+    Update_Non_Const_Loops(WN_kid0(base),stack);
+#endif
   } else if (WN_operator(base) != OPR_LDA) {
     for (INT32 i=0; i<_num_vec; i++) {
       Dim(i)->Max_Non_Const_Loops(stack->Elements());
@@ -2070,6 +2082,17 @@ void ACCESS_VECTOR::Add_Sum(WN *wn, INT64 coeff, DOLOOP_STACK *stack,
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
   } else if (WN_opcode(wn) == OPC_I8I4CVT) {
     Add_Sum(WN_kid(wn,0),coeff,stack,allow_nonlin);
+#ifdef KEY 
+  // Bug 4525 - tolerate CVTs in the access vector for -m64 compilation
+  // when the type of loop variable is I8 but the rest of the ARRAY kids 
+  // are of type U4/I4. The CVT and the associated CVTL introduced by the 
+  // front-end or inliner can be ignored. The return type can be assumed 
+  // to be of type I4.
+  } else if (WN_opcode(wn) == OPC_I4U8CVT &&
+	     WN_opcode(WN_kid0(wn)) == OPC_U8CVTL &&
+	     WN_cvtl_bits(WN_kid0(wn)) == 32) {
+    Add_Sum(WN_kid0(WN_kid0(wn)),coeff,stack,allow_nonlin);    
+#endif
   } else {
     Too_Messy = TRUE;
   }

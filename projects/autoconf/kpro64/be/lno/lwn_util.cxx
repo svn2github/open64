@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -84,6 +84,10 @@ void REGION_clone(WN *old_wn, WN *new_wn, WN *parent_region);
 #include "cxx_hash.h"
 
 typedef STACK<WN *> STACK_OF_WN;
+
+#ifdef KEY
+extern INT Num_Prefetches;
+#endif
 
 /* Return next tree node in in-order traversal. 
  * Go all the way to the leaves.
@@ -1437,6 +1441,9 @@ WN *LWN_CreateParm(TYPE_ID rtype, WN *parm_node, TY_IDX ty, UINT32 flag)
 
 #ifdef LNO
 WN *LWN_CreatePrefetch(WN_OFFSET offset, UINT32 flag, WN* addr) {
+#ifdef KEY
+  Num_Prefetches ++;
+#endif
   WN* wn = WN_CreatePrefetch (offset, flag, addr);
   LWN_Parentize_One_Level (wn);
   return wn;

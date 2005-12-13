@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -94,6 +94,29 @@
 #undef putc
 #endif
 
+#ifdef KEY /* Bug 5926 */
+/*
+ * Return a terminator to pass to function _pack().
+ *
+ * If this is a full record, and we're about to write the last chunk of it,
+ * and there's room in the buffer, return newline so that pack() will append
+ * it to the buffer, and set the mode to "PARTIAL" so we don't write the
+ * newline separately later on. Otherwise, return -1. In case the file
+ * descriptor has been set to "unbuffered" (e.g. by a parent process) and
+ * this is a parallel program, we don't want to write the newline separately
+ * for fear that output from some other process will intervene between our
+ * text and our newline.
+ */
+static int terminator(int *mode, long nchr, long count, long chars)
+{
+	if (FULL == *mode && (nchr + count) >= chars && count < TBUFSZB) {
+		*mode = PARTIAL;
+		return '\n';
+	}
+	return -1;
+}
+#endif /* KEY Bug 5926 */
+
 /*
  *	_fwch
  *
@@ -163,7 +186,12 @@ _fwch(
 			count	= chars - nchr;
 			if (count > TBUFSZB)
 				count	= TBUFSZB;
+#ifdef KEY /* Bug 5926 */
+			count = _pack(&uda[nchr], (char *)tbuf, count,
+			  terminator(&mode, nchr, count, chars));
+#else /* KEY Bug 5926 */
 			_pack(&uda[nchr], (char *)tbuf, count, -1);
+#endif /* KEY Bug 5926 */
 			ret	= fwrite(tbuf, 1, count, fptr);
 			if ( ret != count || ferror(fptr) ) {
 				if ( ret != count || errno == 0)
@@ -188,8 +216,13 @@ _fwch(
 				if (count > TBUFSZB)
 					count	= TBUFSZB;
 
+#ifdef KEY /* Bug 5926 */
+			count= _pack(&uda[nchr], (char *)tbuf, count,
+			  terminator(&mode, nchr, count, chars));
+#else /* KEY Bug 5926 */
 				_pack(&uda[nchr], (char *)tbuf, count, -1);
 
+#endif /* KEY Bug 5926 */
 				ret	= fwrite(tbuf, 1, count, fptr);
 
 				if ( ret != count || ferror(fptr) ) {

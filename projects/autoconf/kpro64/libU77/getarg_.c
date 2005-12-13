@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -52,9 +52,19 @@
 #define ARGV f__xargv 
 #endif
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+void
+pathf90_getarg(pathf90_i4 *n, char *s, int ls)
+
+#else
 
 extern void
 getarg_ (int *n, register char *s, int ls)
+
+#endif /* KEY Bug 1683 */
 {
 register char *t;
 register int i;

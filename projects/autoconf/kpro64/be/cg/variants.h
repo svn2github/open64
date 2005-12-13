@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -314,5 +314,16 @@ extern const char *BR_Variant_Name(VARIANT variant);
 #define Set_V_spadjust_minus(v)		((v) |= V_SPADJUST_MINUS)
 #define Reset_V_spadjust_plus(v)	((v) &= ~V_SPADJUST_PLUS)
 #define Reset_V_spadjust_minus(v)	((v) &= ~V_SPADJUST_MINUS)
+
+#ifdef KEY
+/* ====================================================================
+ *
+ * Variants for Shuffle
+ *
+ * ====================================================================
+ */
+#define V_SHUFFLE_REVERSE	0x0000	/* Reverse */
+// TODO : add more shuffle operations
+#endif
 
 #endif /* variants_INCLUDED */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,8 +47,18 @@
 #include <cmplrs/host.h>
 #include <string.h>
 
+#ifdef KEY /* Bug 1683 */
+
+/* Don't pollute the Fortran namespace */
+int32
+pathf90_lnblnk(string s, fsize_t len)
+
+#else
+
 int32
 lnblnk_ (string s, fsize_t len)
+
+#endif /* KEY Bug 1683 */
 {	
     register string e;
     

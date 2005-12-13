@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -61,7 +61,7 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-#include <elf.h>
+#include "elf_stuff.h"
 #include <ctype.h>
 
 #define USE_STANDARD_TYPES 1 
@@ -353,7 +353,8 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 	break;
 	}
 
-      case MTYPE_C8: {
+      case MTYPE_C8: 
+      case MTYPE_V16C8: {
 	INT i;
         char *p = (char *) & TCON_R8(tc);
 	emit_bytes( fl, p, sizeof(TCON_R8(tc)) );
@@ -368,7 +369,7 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 
       case MTYPE_FQ: {
         char *p = (char *) & TCON_R16(tc);
-	emit_bytes( fl, p, sizeof(TCON_R16(tc)) );
+	emit_bytes( fl, p, Is_Target_64bit() ? 16 : sizeof(TCON_R16(tc)) );
 	fprintf(fl, "\t%s quad %#Lg\n", ASM_CMNT, TCON_R16(tc) );
 	--rc;
 	break;
@@ -389,10 +390,19 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 
       case MTYPE_STRING: {
 	INTSC count;
+#ifdef KEY	// Use .rept/.endr to reduce .s file size.  Bug 4620.
+	if (rc > 1)
+	  fprintf(fl, ".rept %ld\n", rc);
+	char *p = Index_to_char_array (TCON_cp(tc));
+	Targ_Emit_String ( fl, p, TCON_len(tc) + (add_null ? 1 : 0), 0 );
+	if (rc > 1)
+	  fprintf(fl, ".endr\n");
+#else
 	for (count=0; count<rc; ++count) {
 	  char *p = Index_to_char_array (TCON_cp(tc));
 	  Targ_Emit_String ( fl, p, TCON_len(tc) + (add_null ? 1 : 0), 0 );
 	}
+#endif
 	rc = 0;
 	break;
 	}
@@ -458,23 +468,77 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
         }
 
       case MTYPE_V16I1:
-	for (INT i = 0; i < 16; i ++)
-	  Emit_Repeated_Constant ( fl, AS_BYTE, TCON_v0(tc) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, TCON_v0(tc) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v0(tc)>>8) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v0(tc)>>16) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v0(tc)>>24) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, TCON_v1(tc) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v1(tc)>>8) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v1(tc)>>16) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v1(tc)>>24) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, TCON_v2(tc) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v2(tc)>>8) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v2(tc)>>16) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v2(tc)>>24) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, TCON_v3(tc) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v3(tc)>>8) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v3(tc)>>16) & 0xff, rc, 10 );
+	Emit_Repeated_Constant ( fl, AS_BYTE, (TCON_v3(tc)>>24) & 0xff, rc, 10 );
 	rc = 0;
 	break;
 
       case MTYPE_V16I2:
 	if (CG_emit_non_gas_syntax) {
-	  for (INT i = 0; i < 8; i ++)
-	    Emit_Repeated_Constant ( fl, ".half", 
-				     TCON_v0(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   TCON_v0(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   (TCON_v0(tc)>>16) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   TCON_v1(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   (TCON_v1(tc)>>16) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   TCON_v2(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   (TCON_v2(tc)>>16) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   TCON_v3(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl, ".half", 
+				   (TCON_v3(tc)>>16) & 0xffff, rc, 8 );
 	}
-	else {
-	  for (INT i = 0; i < 8; i ++)
-	    Emit_Repeated_Constant ( fl,
-				     ((loc % 2) == 0 ? AS_HALF : 
-				      AS_HALF_UNALIGNED), 
-				     TCON_v0(tc) & 0xffff, rc, 8 );
+	else {	  
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   TCON_v0(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   (TCON_v0(tc)>>16) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   TCON_v1(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   (TCON_v1(tc)>>16) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   TCON_v2(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   (TCON_v2(tc)>>16) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   TCON_v3(tc) & 0xffff, rc, 8 );
+	  Emit_Repeated_Constant ( fl,
+				   ((loc % 2) == 0 ? AS_HALF : 
+				    AS_HALF_UNALIGNED), 
+				   (TCON_v3(tc)>>16) & 0xffff, rc, 8 );
 	}
 	rc = 0;
 	break;
@@ -483,22 +547,22 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 	{
 	  if (CG_emit_non_gas_syntax) {
 	    Emit_Repeated_Constant ( fl, ".word", TCON_v0(tc), rc, 4 );
-	    Emit_Repeated_Constant ( fl, ".word", TCON_v0(tc), rc, 4 );
-	    Emit_Repeated_Constant ( fl, ".word", TCON_v0(tc), rc, 4 );
-	    Emit_Repeated_Constant ( fl, ".word", TCON_v0(tc), rc, 4 );
+	    Emit_Repeated_Constant ( fl, ".word", TCON_v1(tc), rc, 4 );
+	    Emit_Repeated_Constant ( fl, ".word", TCON_v2(tc), rc, 4 );
+	    Emit_Repeated_Constant ( fl, ".word", TCON_v3(tc), rc, 4 );
 	  } else {
 	    Emit_Repeated_Constant ( fl, 
 				     ((loc % 4) == 0 ? AS_WORD : AS_WORD_UNALIGNED), 
 				     TCON_v0(tc), rc, 4 );
 	    Emit_Repeated_Constant ( fl, 
 				     ((loc % 4) == 0 ? AS_WORD : AS_WORD_UNALIGNED), 
-				     TCON_v0(tc), rc, 4 );
+				     TCON_v1(tc), rc, 4 );
 	    Emit_Repeated_Constant ( fl, 
 				     ((loc % 4) == 0 ? AS_WORD : AS_WORD_UNALIGNED), 
-				     TCON_v0(tc), rc, 4 );
+				     TCON_v2(tc), rc, 4 );
 	    Emit_Repeated_Constant ( fl, 
 				     ((loc % 4) == 0 ? AS_WORD : AS_WORD_UNALIGNED), 
-				     TCON_v0(tc), rc, 4 );
+				     TCON_v3(tc), rc, 4 );
 	  }
 	  rc = 0;
 	  break;
@@ -507,15 +571,15 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
       case MTYPE_V16I8:
 	{
 	  if (CG_emit_non_gas_syntax) {
-	    Emit_Repeated_Constant ( fl, ".dword", TCON_I8(tc), rc, 2 );
-	    Emit_Repeated_Constant ( fl, ".dword", TCON_I8(tc), rc, 2 );
+	    Emit_Repeated_Constant ( fl, ".dword", TCON_ll0(tc), rc, 2 );
+	    Emit_Repeated_Constant ( fl, ".dword", TCON_ll1(tc), rc, 2 );
 	  } else {
 	    Emit_Repeated_Constant ( fl, 
 				     ((loc % 8) == 0 ? AS_DWORD : AS_DWORD_UNALIGNED), 
-				     TCON_I8(tc), rc, 2 );
+				     TCON_ll0(tc), rc, 2 );
 	    Emit_Repeated_Constant ( fl, 
 				     ((loc % 8) == 0 ? AS_DWORD : AS_DWORD_UNALIGNED), 
-				     TCON_I8(tc), rc, 2 );
+				     TCON_ll1(tc), rc, 2 );
 	  }
 	  rc = 0;
 	  break;

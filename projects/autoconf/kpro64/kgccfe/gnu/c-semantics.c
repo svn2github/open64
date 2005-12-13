@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -49,6 +49,10 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "output.h"
 #include "timevar.h"
 #include "predict.h"
+#ifdef KEY
+#include "omp_types.h"
+#include "omp_directive.h"
+#endif // KEY
 
 /* If non-NULL, the address of a language-specific function for
    expanding statements.  */
@@ -525,6 +529,10 @@ genrtl_return_stmt (stmt)
     }
 }
 
+#ifdef KEY
+extern struct nesting * get_loop_stack (void);
+#endif // KEY
+
 /* Generate the RTL for T, which is a FOR_STMT.  */
 
 void
@@ -535,6 +543,26 @@ genrtl_for_stmt (t)
   const char *saved_filename;
   int saved_lineno;
 
+#ifdef KEY
+  if (TREE_ADDRESSABLE (t))
+  { // Generate a DO-loop for OpenMP
+    tree init_expr = FOR_INIT_STMT (t);
+    // Make GNU believe we have a loop here
+    expand_start_null_loop ();
+    if (TREE_CODE (init_expr) == EXPR_STMT)
+      init_expr = TREE_OPERAND (init_expr, 0);
+    if (TREE_CODE (init_expr) != MODIFY_EXPR && 
+        TREE_CODE (init_expr) != VAR_DECL)
+      abort();
+    expand_start_do_loop (init_expr, FOR_COND (t), FOR_EXPR (t), get_loop_stack());
+    expand_stmt (FOR_BODY (t));
+    expand_end_do_loop (get_loop_stack());
+    // Took care of GNU
+    expand_end_null_loop ();
+  }
+  else
+#endif // KEY
+  { // the normal case
   if (NEW_FOR_SCOPE_P (t))
     genrtl_do_pushlevel ();
 
@@ -569,6 +597,7 @@ genrtl_for_stmt (t)
   if (FOR_EXPR (t))
     genrtl_expr_stmt (FOR_EXPR (t));
   expand_end_loop ();
+  }
 }
 
 /* Build a break statement node and return it.  */
@@ -596,6 +625,20 @@ build_continue_stmt ()
 {
   return (build_stmt (CONTINUE_STMT));
 }
+
+#ifdef KEY
+
+/* Build a omp-marker statement node and return it */
+tree
+build_omp_stmt (enum omp_tree_type c, void * p)
+{
+  tree t = build_stmt (OMP_MARKER_STMT);
+  t->omp.choice = c;
+  t->omp.omp_clause_list = p;
+
+  return t;
+}
+#endif
 
 /* Generate the RTL for a CONTINUE_STMT.  */
 
@@ -783,6 +826,96 @@ prep_stmt (t)
   current_stmt_tree ()->stmts_are_full_exprs_p = STMT_IS_FULL_EXPR_P (t);
 }
 
+#ifdef KEY
+extern void WFE_Expand_Pragma (tree);
+extern void
+process_omp_stmt (tree t)
+{
+  switch (t->omp.choice)
+  {
+    case parallel_dir_b:
+      expand_start_parallel ((struct parallel_clause_list *)t->omp.omp_clause_list);
+      break;
+    case parallel_dir_e:
+      expand_end_parallel ();
+      break;
+    case for_dir_b:
+      expand_start_for ((struct for_clause_list *)t->omp.omp_clause_list);
+      break;
+    case for_dir_e:
+      expand_end_for ();
+      break;
+    case sections_cons_b:
+      expand_start_sections ((struct sections_clause_list *)t->omp.omp_clause_list);
+      break;
+    case sections_cons_e:
+      expand_end_sections ();
+      break;
+    case section_cons_b:
+      expand_start_section ();
+      break;
+    case section_cons_e:
+      expand_end_section ();
+      break;
+    case single_cons_b:
+      expand_start_single ((struct single_clause_list *)t->omp.omp_clause_list);
+      break;
+    case single_cons_e:
+      expand_end_single ();
+      break;
+    case par_for_cons_b:
+      expand_start_parallel_for ((struct parallel_for_clause_list *)t->omp.omp_clause_list);
+      break;
+    case par_for_cons_e:
+      expand_end_parallel_for ();
+      break;
+    case par_sctn_cons_b:
+      expand_start_parallel_sections ((struct parallel_sections_clause_list *)t->omp.omp_clause_list);
+      break;
+    case par_sctn_cons_e:
+      expand_end_parallel_sections ();
+      break;
+    case master_cons_b:
+      expand_start_master ();
+      break;
+    case master_cons_e:
+      expand_end_master ();
+      break;
+    case critical_cons_b:
+      expand_start_critical ((tree)t->omp.omp_clause_list);
+      break;
+    case critical_cons_e:
+      expand_end_critical ();
+      break;
+    case barrier_dir:
+      expand_barrier ();
+      break;
+    case flush_dir:
+      expand_flush ((tree)t->omp.omp_clause_list);
+      break;
+    case atomic_cons:
+      check_atomic_expression ((tree)t->omp.omp_clause_list);
+      expand_start_atomic ();
+      expand_expr_stmt_value ((tree)t->omp.omp_clause_list, 0, 1);
+      expand_end_atomic ();
+      break;
+    case ordered_cons_b:
+      expand_start_ordered ();
+      break;
+    case ordered_cons_e:
+      expand_end_ordered ();
+      break;
+    case options_dir:
+    case exec_freq_dir:
+      WFE_Expand_Pragma (t);
+      break;
+
+    default:
+      abort();
+  }
+}
+#endif // KEY
+
 /* Generate the RTL for the statement T, its substatements, and any
    other statements at its nesting level.  */
 
@@ -885,6 +1018,12 @@ expand_stmt (t)
 	case CLEANUP_STMT:
 	  genrtl_decl_cleanup (t);
 	  break;
+
+#ifdef KEY
+	case OMP_MARKER_STMT:
+	  process_omp_stmt (t);
+	  break;
+#endif // KEY
 
 	default:
 	  if (lang_expand_stmt)

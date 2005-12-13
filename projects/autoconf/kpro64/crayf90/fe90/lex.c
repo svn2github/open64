@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -241,6 +245,85 @@ void flush_LA_to_symbol (void)
    return;
 
 }  /* flush_LA_to_symbol */
+#ifdef KEY /* Bug 3635 */
+
+/******************************************************************************\
+|*									      *|
+|* Description:								      *|
+|*	Check whether token exceeds our internal limit, and whether it        *|
+|*	exceeds the ANSI standard limit, issuing a warning and, if need be,   *|
+|*	adjusting tok_len to truncate the identifier to meet the internal     *|
+|*      limit.                                                                *|
+|*									      *|
+|* Input parameters:							      *|
+|*	tok_len			length of token             	 	      *|
+|*									      *|
+|* Output parameters:							      *|
+|*	tok_len			new length of token            	 	      *|
+|*									      *|
+|* Returns:								      *|
+|*	TRUE indicates that we needed to truncate the token                   *|
+|*	FALSE indicates that we did not need to truncate the token	      *|
+|*									      *|
+\******************************************************************************/
+static int id_too_long(int *tok_len)
+{
+   if (*tok_len > ANSI90_ID_LEN) {
+      if (*tok_len > MAX_ID_LEN) {
+	 /* Id len exceeds our maximum, so truncate */
+	 PRINTMSG (TOKEN_LINE(token), 67, Warning, TOKEN_COLUMN(token));
+	 *tok_len = MAX_ID_LEN;
+	 return 1;
+      }
+      /* Exceeds constraint imposed by F90 std, which requires
+	 us to issue a message */
+      PRINTMSG (TOKEN_LINE(token), 1671, Ansi, TOKEN_COLUMN(token));
+   }
+   return 0;
+}
+
+/******************************************************************************\
+|*									      *|
+|* Description:								      *|
+|*	Like id_too_long, but slightly different message.                     *|
+|*									      *|
+\******************************************************************************/
+static int kind_too_long(int *tok_len) {
+  if (*tok_len > ANSI90_ID_LEN) {
+    if (*tok_len > MAX_ID_LEN) {
+      /* Id len exceeds our maximum, so truncate */
+      *tok_len = MAX_ID_LEN;
+      PRINTMSG(LA_CH_LINE, 67, Warning, LA_CH_COLUMN);
+      return 1;
+    }
+  /* Exceeds constraint imposed by F90 std, which requires
+     us to issue a message */
+  PRINTMSG(LA_CH_LINE, 101, Ansi, LA_CH_COLUMN);
+  }
+  return 0;
+}
+
+/******************************************************************************\
+|*									      *|
+|* Description:								      *|
+|*	Like id_too_long and kind_too_long, but slightly different message.   *|
+|*									      *|
+\******************************************************************************/
+static int defined_op_too_long(int *tok_len) {
+  if (*tok_len > ANSI90_ID_LEN) {
+    if (*tok_len > MAX_ID_LEN) {
+      /* Id len exceeds our maximum, so truncate */
+      *tok_len = MAX_ID_LEN;
+      PRINTMSG(LA_CH_LINE, 67, Warning, LA_CH_COLUMN);
+      return 1;
+    }
+  /* Exceeds constraint imposed by F90 std, which requires
+     us to issue a message */
+  PRINTMSG(LA_CH_LINE, 65, Ansi, LA_CH_COLUMN);
+  }
+  return 0;
+}
+#endif /* KEY Bug 3635 */
 
 /******************************************************************************\
 |*									      *|
@@ -297,10 +380,16 @@ boolean get_token (token_class_type class)
             }
             TOKEN_LEN(token)	= tok_len;
 
+#ifdef KEY /* Bug 3635 */
+            if (id_too_long(&tok_len)) {
+               TOKEN_LEN(token) = MAX_ID_LEN;
+	    }
+#else
             if (tok_len > MAX_ID_LEN) { /* Id len exceeds maximum of 31 chars */
                PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
                TOKEN_LEN(token) = MAX_ID_LEN;
             }
+#endif /* KEY Bug 3635 */
             else if (tok_len == 5  &&
                      strcmp(TOKEN_STR(token), "N$PES") == 0  &&
                      havent_issued_ndollarpes_ansi) {
@@ -421,10 +510,16 @@ boolean get_token (token_class_type class)
             }
             TOKEN_LEN(token)    = tok_len;
 
+#ifdef KEY /* Bug 3635 */
+            if (id_too_long(&tok_len)) {
+               TOKEN_LEN(token) = MAX_ID_LEN;
+	    }
+#else
             if (tok_len > MAX_ID_LEN) { /* Id len exceeds maximum of 31 chars */
                PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
                TOKEN_LEN(token) = MAX_ID_LEN;
             }
+#endif /* KEY Bug 3635 */
          }
 
 	 break;
@@ -576,12 +671,16 @@ boolean get_token (token_class_type class)
                NEXT_LA_CH;
 
                if (LA_CH_VALUE != COLON) { /* id followed by :: */
+#ifdef KEY /* Bug 3635 */
+		  id_too_long(&tok_len);
+#else
                   if (tok_len > MAX_ID_LEN) { 
                      /* Id len exceeds maximum of 31 chars */
                      PRINTMSG (TOKEN_LINE(token), 67, Error, 
                                TOKEN_COLUMN(token));
                      tok_len = MAX_ID_LEN;
                   }
+#endif /* KEY Bug 3635 */
                   result		= TRUE;
                   TOKEN_LEN(token)	= tok_len;
                   TOKEN_VALUE(token)	= Tok_Id;
@@ -906,10 +1005,14 @@ static boolean get_directive (void)
 	 NEXT_LA_CH;
       }
     
+#ifdef KEY /* Bug 3635 */
+      id_too_long(&tok_len);
+#else
       if (tok_len > MAX_ID_LEN) { /* Id len exceeds maximum of 31 characters. */
          PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
 	 tok_len = MAX_ID_LEN;
       }
+#endif /* KEY Bug 3635 */
 
       TOKEN_LEN(token) = tok_len;
    }
@@ -1080,10 +1183,14 @@ static boolean fixed_get_keyword (void)
          NEXT_LA_CH;
       }
    
+#ifdef KEY /* Bug 3635 */
+      id_too_long(&tok_len);
+#else
       if (tok_len > MAX_ID_LEN) { /* Id len exceeds max of 31 characters */
          PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
          tok_len = MAX_ID_LEN;
       }
+#endif /* KEY Bug 3635 */
       TOKEN_LEN(token) = tok_len;
    }
 
@@ -1209,10 +1316,14 @@ static boolean free_get_keyword (void)
 
    if (TOKEN_VALUE(token) == Tok_Id) {
 
+#ifdef KEY /* Bug 3635 */
+      id_too_long(&tok_len);
+#else
       if (tok_len > MAX_ID_LEN) { /* Id len exceeds max of 31 characters */
          PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
          tok_len = MAX_ID_LEN;
       }
+#endif /* KEY Bug 3635 */
       TOKEN_LEN(token) = tok_len;
    }
 
@@ -1413,10 +1524,14 @@ static boolean get_micro_directive (void)
 	 NEXT_LA_CH;
       }
     
+#ifdef KEY /* Bug 3635 */
+      id_too_long(&tok_len);
+#else
       if (tok_len > MAX_ID_LEN) { /* Id len exceeds maximum of 31 characters. */
          PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
 	 tok_len = MAX_ID_LEN;
       }
+#endif /* KEY Bug 3635 */
       TOKEN_LEN(token) = tok_len;
    }
 
@@ -1680,10 +1795,14 @@ static boolean get_open_mp_directive (void)
          NEXT_LA_CH;
       }
 
+#ifdef KEY /* Bug 3635 */
+      id_too_long(&tok_len);
+#else
       if (tok_len > MAX_ID_LEN) { /* Id len exceeds maximum of 31 characters. */
          PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
          tok_len = MAX_ID_LEN;
       }
+#endif /* KEY Bug 3635 */
       TOKEN_LEN(token) = tok_len;
    }
 
@@ -1813,10 +1932,14 @@ static boolean get_sgi_directive (void)
          NEXT_LA_CH;
       }
 
+#ifdef KEY /* Bug 3635 */
+      id_too_long(&tok_len);
+#else
       if (tok_len > MAX_ID_LEN) { /* Id len exceeds maximum of 31 characters. */
          PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
          tok_len = MAX_ID_LEN;
       }
+#endif /* KEY Bug 3635 */
       TOKEN_LEN(token) = tok_len;
    }
 
@@ -2075,6 +2198,9 @@ boolean is_star_directive (int	start_idx)
                   case Tok_SGI_Dir_Noipa:
                   case Tok_SGI_Dir_Opaque:
                   case Tok_SGI_Dir_Optional:
+#ifdef KEY /* Bug 2660 */
+                  case Tok_SGI_Dir_Options:
+#endif /* KEY Bug 2660 */
                   case Tok_SGI_Dir_Prefetch:
                   case Tok_SGI_Dir_Prefetch_Manual:
                   case Tok_SGI_Dir_Prefetch_Ref:
@@ -2302,11 +2428,17 @@ static boolean get_operand_digit (void)
 	 }
 	 while (LA_CH_CLASS == Ch_Class_Digit && !sig_blank);
 
+#ifdef KEY /* Bug 3635 */
+         if (kind_too_long(&tok_len)) {
+	    result = FALSE;
+	 }
+#else
          if (tok_len > MAX_ID_LEN) {
             tok_len = MAX_ID_LEN;
             PRINTMSG(LA_CH_LINE, 101, Error, LA_CH_COLUMN);
             result = FALSE;
          }
+#endif /* KEY Bug 3635 */
          TOKEN_KIND_LEN(token) = tok_len;
          TOKEN_KIND_STR(token)[tok_len] = EOS;
       }
@@ -2317,11 +2449,17 @@ static boolean get_operand_digit (void)
 	 }
 	 while (VALID_LA_CH); 
 
+#ifdef KEY /* Bug 3635 */
+         if (kind_too_long(&tok_len)) {
+	    result = FALSE;
+	 }
+#else
          if (tok_len > MAX_ID_LEN) {
             tok_len = MAX_ID_LEN;
             PRINTMSG(LA_CH_LINE, 101, Error, LA_CH_COLUMN);
             result = FALSE;
          }
+#endif /* KEY Bug 3635 */
          TOKEN_KIND_LEN(token) = tok_len;
          TOKEN_KIND_STR(token)[tok_len] = EOS;
       }
@@ -2602,10 +2740,14 @@ static boolean get_operand_dot (void)
       NEXT_LA_CH;
    }
 
+#ifdef KEY /* Bug 3635 */
+   id_too_long(&tok_len);
+#else
    if (tok_len > MAX_ID_LEN) {
       PRINTMSG(TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
       tok_len = MAX_ID_LEN;
    }
+#endif /* KEY Bug 3635 */
    TOKEN_LEN(token) = tok_len;
  
    if (LA_CH_VALUE == DOT && !sig_blank) {
@@ -2811,10 +2953,14 @@ static boolean get_operand_dot (void)
                result = FALSE;
 	    }
 
+#ifdef KEY /* Bug 3635 */
+            kind_too_long(&tok_len);
+#else
             if (tok_len > MAX_ID_LEN) {
                tok_len = MAX_ID_LEN;
                PRINTMSG(LA_CH_LINE, 101, Error, LA_CH_COLUMN);
             }
+#endif /* KEY Bug 3635 */
             TOKEN_KIND_LEN(token) = tok_len;
             TOKEN_KIND_STR(token)[tok_len] = EOS;
 	 }  /* if */
@@ -2824,10 +2970,14 @@ static boolean get_operand_dot (void)
 	 PRINTMSG (TOKEN_LINE(token), 95, Error, TOKEN_COLUMN(token));
          result = FALSE;
 
+#ifdef KEY /* Bug 3635 */
+         id_too_long(&tok_len);
+#else
          if (tok_len > MAX_ID_LEN) {
             PRINTMSG(TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
             tok_len = MAX_ID_LEN;
          }
+#endif /* KEY Bug 3635 */
          TOKEN_LEN(token) = tok_len;
       }
    }
@@ -2930,10 +3080,14 @@ static boolean get_operand_letter (void)
    }
    while (VALID_LA_CH); 
 
+#ifdef KEY /* Bug 3635 */
+   id_too_long(&tok_len);
+#else
    if (tok_len > MAX_ID_LEN) {
       PRINTMSG(TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
       tok_len = MAX_ID_LEN;
    }
+#endif /* KEY Bug 3635 */
    TOKEN_LEN(token) = tok_len;
  
    if ((LA_CH_VALUE == QUOTE  ||  LA_CH_VALUE == DBL_QUOTE) && !sig_blank) {
@@ -3154,11 +3308,18 @@ static boolean get_operand_letter (void)
 
 	 TOKEN_VALUE(token) = Tok_Const_Char;
 	 
+#ifdef KEY /* Bug 3635 */
+         tok_len -= 1;
+	 if (id_too_long(&tok_len)) {
+            result	= FALSE;
+	 }
+#else
 	 if (--tok_len > MAX_ID_LEN) {
 	    PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
             result	= FALSE;
 	    tok_len	= MAX_ID_LEN;
 	 }
+#endif /* KEY Bug 3635 */
 	 TOKEN_STR(token)[tok_len] = EOS;			/* remove '_' */
 
 	 strcpy (TOKEN_KIND_STR(token), TOKEN_STR(token));
@@ -3184,19 +3345,27 @@ static boolean get_operand_letter (void)
       else {
 	 TOKEN_VALUE(token) = Tok_Id;
 
+#ifdef KEY /* Bug 3635 */
+         id_too_long(&tok_len);
+#else
 	 if (tok_len > MAX_ID_LEN) { /* Id len exceeds max of 31 characters */
 	    PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
 	    tok_len = MAX_ID_LEN;
 	 }
+#endif /* KEY Bug 3635 */
       }
    }  /* if */
    else {
       TOKEN_VALUE(token) = Tok_Id;
 
+#ifdef KEY /* Bug 3635 */
+      id_too_long(&tok_len);
+#else
       if (tok_len > MAX_ID_LEN) { /* Id len exceeds maximum of 31 characters */
 	 PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
 	 tok_len = MAX_ID_LEN;
       }
+#endif /* KEY Bug 3635 */
    }
 
    TRACE (Func_Exit, "get_operand_letter", NULL);
@@ -3763,10 +3932,18 @@ static boolean get_operator_dot (void)
       NEXT_LA_CH;
    }
 
-   if (tok_len > MAX_ID_LEN) {
+#ifdef KEY /* Bug 3635 */
+   if (defined_op_too_long(&tok_len))
+#else
+   if (tok_len > MAX_ID_LEN)
+#endif /* KEY Bug 3635 */
+   {
+#ifdef KEY /* Bug 3635 */
+#else
       /* Defined operator exceeds maximum length of 31 characters */
       PRINTMSG (LA_CH_LINE, 65, Error, LA_CH_COLUMN);
       tok_len	 	 = MAX_ID_LEN;
+#endif /* KEY Bug 3635 */
       TOKEN_LEN(token)	 = tok_len;
       /* call this a user defined opr */
       TOKEN_VALUE(token) = Tok_Op_Defined;
@@ -4670,10 +4847,14 @@ static boolean get_debug_directive (void)
 	 NEXT_LA_CH;
       }
     
+#ifdef KEY /* Bug 3635 */
+      id_too_long(&tok_len);
+#else
       if (tok_len > MAX_ID_LEN) { /* Id len exceeds maximum of 31 characters. */
          PRINTMSG (TOKEN_LINE(token), 67, Error, TOKEN_COLUMN(token));
 	 tok_len = MAX_ID_LEN;
       }
+#endif /* KEY Bug 3635 */
       TOKEN_LEN(token) = tok_len;
    }
 

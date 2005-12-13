@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1781,6 +1781,45 @@ EXIT:
 }  /* deallocate_stmt_semantics */
 
 
+#ifdef KEY /* Bug 4889 */
+/*
+ * Given a clause of an OMP directive such as "private", look for a
+ * variable within the clause which matches the do_var_idx. Return the
+ * IL_IDX if found, or NULL_IDX if not.
+ */
+static int find_omp_clause_matching(int clause, int do_var_idx) {
+  if (NULL_IDX == clause) {
+    return NULL_IDX;
+    }
+  for (int vars = IL_IDX(clause); NULL_IDX != vars;
+    vars = IL_NEXT_LIST_IDX(vars)) {
+    if (AT_Tbl_Idx == IL_FLD(vars) && do_var_idx == IL_IDX(vars)) {
+      return vars;
+    }
+  }
+  return NULL_IDX;
+}
+/*
+ * Set list_array to hold the IL_IDX for each clause in the Open MP directive
+ * whose IR_IDX is omp_dir_idx; or fill the list_array with NULL_IDX if
+ * omp_dir_idx is NULL_IDX.
+ */
+static void set_list_array(int list_array[], int omp_dir_idx) {
+  if (NULL_IDX == omp_dir_idx) {
+    for (int i = 0; i < OPEN_MP_LIST_CNT; i += 1) {
+      list_array[i] = NULL_IDX;
+      }
+    return;
+    }
+  int clauses = IR_IDX_L(omp_dir_idx);
+  for (int i = 0; i < OPEN_MP_LIST_CNT; i += 1) {
+    list_array[i] = clauses;
+    clauses = IL_NEXT_LIST_IDX(clauses);
+    }
+  }
+
+
+#endif /* KEY Bug 4889 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -1873,7 +1912,6 @@ void do_stmt_semantics (void)
 
       case Do_Iterative_Stmt:
 
-
          if (IR_IDX_L(SH_IR_IDX(do_sh_idx)) == NULL_IDX) {
 
             /* If this was a DOALL loop make sure that the parallel region    */
@@ -1909,6 +1947,66 @@ void do_stmt_semantics (void)
 
          do_var_idx = (IL_FLD(lc_il_idx) == AT_Tbl_Idx) ?
                          IL_IDX(lc_il_idx) : NULL_IDX;
+
+#ifdef KEY /* Bug 4889 */
+	 /*
+	  * Inside an OMP "parallel do" or "do" directive, add a
+	  * "private" clause for the do loop index if there isn't one already.
+	  */
+
+         if (NULL_IDX != inside_paralleldo && NULL_IDX != do_var_idx) {
+	   int parallel_do_idx = SH_IR_IDX(inside_paralleldo);
+	   int parallel_idx = SH_IR_IDX(inside_parallel);
+
+	   /* Program need not provide an explicit "enddo" or "endparalleldo"
+	     directive, but the directive applies to only the next loop */
+	   inside_paralleldo = NULL_IDX;
+
+	   int do_list_array[OPEN_MP_LIST_CNT];
+	   int parallel_list_array[OPEN_MP_LIST_CNT];
+	   set_list_array(do_list_array, parallel_do_idx);
+	   set_list_array(parallel_list_array, parallel_idx);
+
+	   /* Has the "do" variable already been declared "private",
+	     "lastprivate", or "firstprivate" in either the "do" directive,
+	     the "parallel do" directive, or an enclosing "parallel"
+	     directive? */
+	   if (NULL_IDX == find_omp_clause_matching(
+	       do_list_array[OPEN_MP_PRIVATE_IDX], do_var_idx) &&
+	     NULL_IDX == find_omp_clause_matching(
+	       do_list_array[OPEN_MP_FIRSTPRIVATE_IDX], do_var_idx) &&
+	     NULL_IDX == find_omp_clause_matching(
+	       do_list_array[OPEN_MP_LASTPRIVATE_IDX], do_var_idx) &&
+	     NULL_IDX == find_omp_clause_matching(
+	       parallel_list_array[OPEN_MP_PRIVATE_IDX], do_var_idx) &&
+	     NULL_IDX == find_omp_clause_matching(
+	       parallel_list_array[OPEN_MP_FIRSTPRIVATE_IDX], do_var_idx) &&
+	     NULL_IDX == find_omp_clause_matching(
+	       parallel_list_array[OPEN_MP_LASTPRIVATE_IDX], do_var_idx)) {
+
+	     /* No, so add it to the "private" list */
+	     int new_var;
+	     NTR_IR_LIST_TBL(new_var);
+	     int private_list = do_list_array[OPEN_MP_PRIVATE_IDX];
+	     int private_vars = IL_IDX(private_list);
+	     if (NULL_IDX == private_vars) {
+	       /* No list at all, so create first element */
+	       IL_FLD(private_list) = IL_Tbl_Idx;
+	       IL_NEXT_LIST_IDX(new_var) = NULL_IDX;
+	     }
+	     else {
+	       /* Prepend to existing list */
+	       IL_NEXT_LIST_IDX(new_var) = private_vars;
+	     }
+	     IL_IDX(private_list) = new_var;
+	     IL_FLD(new_var) = AT_Tbl_Idx;
+	     IL_IDX(new_var) = do_var_idx;
+	     IL_LINE_NUM(new_var) = IR_COL_NUM(parallel_do_idx);
+	     IL_COL_NUM(new_var) = IR_COL_NUM(parallel_do_idx);
+	     IL_LIST_CNT(private_list) = IL_LIST_CNT(private_list) + 1;
+	   }
+	 }
+#endif /* KEY Bug 4889 */
 
 # if defined(_HIGH_LEVEL_DO_LOOP_FORM)
          if (cdir_switches.doall_sh_idx) {
@@ -6120,14 +6218,41 @@ static void case_value_range_semantics(int	ir_idx,
       if (! SH_ERR_FLG(curr_stmt_sh_idx)  &&
           IR_FLD_L(ir_idx) != NO_Tbl_Idx    &&
           fold_relationals(IR_IDX_L(ir_idx), IR_IDX_R(ir_idx), Gt_Opr)) {
-# ifdef KEY
-// Bug 2153
-         int next_sh_idx = curr_stmt_sh_idx;
-         while (IR_OPR(SH_IR_IDX(next_sh_idx)) != Label_Opr)
-           next_sh_idx = SH_NEXT_IDX(next_sh_idx);
-         SH_NEXT_IDX(SH_PREV_IDX(curr_stmt_sh_idx)) = SH_NEXT_IDX(next_sh_idx);
-         SH_PREV_IDX(SH_NEXT_IDX(next_sh_idx)) = SH_PREV_IDX(curr_stmt_sh_idx);
-# endif
+#ifdef KEY /* Bug 2153 and Bug 4947 */
+	 /* A "select" with n cases looks like this:
+	  * block s: Select_Stmt: Select_Opr
+	  *
+	  *   Label_Opr <i=0>
+	  *   Case_Stmt: Case_Opr, parent block=s
+	  *   <various statements>
+	  *   Br_Uncond_Opr n (omitted for last case)
+	  *
+	  *   <repeat this for cases i=1, 2,...,n-1>
+	  *
+	  *   Label_Opr <n>
+	  * End_Select_Stmt, parent block=s
+	  *
+	  * To discard a particular case, we must omit every statment from
+	  * the Label_Opr preceding the Case_Opr up to but not including
+	  * the Label_Opr preceding the next CASE or END SELECT whose parent
+	  * block matches the current SELECT.
+	  */
+	 int our_parent_idx = SH_PARENT_BLK_IDX(curr_stmt_sh_idx);
+	 int last_live_sh_idx = SH_PREV_IDX(SH_PREV_IDX(curr_stmt_sh_idx));
+	 for (int nextcase_sh_idx = SH_NEXT_IDX(curr_stmt_sh_idx);
+	   ;
+	   nextcase_sh_idx = SH_NEXT_IDX(nextcase_sh_idx)) {
+	   if (((SH_STMT_TYPE(nextcase_sh_idx) == Case_Stmt ||
+	     SH_STMT_TYPE(nextcase_sh_idx) == End_Select_Stmt)) &&
+	     SH_PARENT_BLK_IDX(nextcase_sh_idx) == our_parent_idx) {
+	     int next_live_sh_idx = SH_PREV_IDX(nextcase_sh_idx);
+	     SH_NEXT_IDX(last_live_sh_idx) = next_live_sh_idx;
+	     SH_PREV_IDX(next_live_sh_idx) = last_live_sh_idx;
+	     break;
+	   }
+	 }
+
+#endif /* KEY Bug 2153 and Bug 4947 */
          PRINTMSG(IR_LINE_NUM(ir_idx), 758, Warning, IR_COL_NUM(ir_idx));
          goto EXIT;
       }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -66,7 +66,7 @@
 // character array with a specified size (may contain null character within
 // the array.
 
-typedef UINT32 STR_INDEX;
+typedef STR_IDX STR_INDEX;
 
 #ifdef linux
 
@@ -77,13 +77,13 @@ typedef UINT32 STR_INDEX;
 
 static inline mUINT8
 STR_INDEX_size (STR_INDEX idx)		{ return idx & 0xff; }
-static inline mUINT32
+static inline STR_INDEX
 STR_INDEX_index (STR_INDEX idx)		{ return idx >> 8; }
 
 #endif /* linux */
 
 static inline STR_INDEX
-make_STR_INDEX (UINT32 size, UINT32 idx)
+make_STR_INDEX (UINT32 size, STR_INDEX idx)
 {
     // if string length larger than 0xff, just use 0xff
     if (size > 0xff)
@@ -184,7 +184,7 @@ struct STR_TAB
 {
     char *buffer;
     STR_IDX last_idx;
-    UINT32 buffer_size;
+    STR_INDEX buffer_size;
 
     // the following 4 function objects are required for setting up the
     // hash table declared after them.
@@ -272,9 +272,9 @@ struct STR_TAB
     
     void init_hash ();
 
-    UINT32 insert (const char *str, UINT32 size);
+    STR_INDEX insert (const char *str, UINT32 size);
 
-    UINT32 insert (const char *str) {
+    STR_INDEX insert (const char *str) {
 	return insert (str, strlen (str));
     }
     
@@ -284,10 +284,10 @@ struct STR_TAB
 
 
 template <class STR>
-UINT32
+STR_INDEX
 STR_TAB<STR>::insert (const char *str, UINT32 size)
 {
-    UINT32 index = last_idx;
+    STR_INDEX index = last_idx;
 
     copy_str (str, size);
 
@@ -328,7 +328,7 @@ template <class STR>
 void
 STR_TAB<STR>::init_hash ()
 {
-    UINT32 idx = 1;			// first entry always null
+    STR_INDEX idx = 1;			// first entry always null
     while (idx < last_idx) {
 
 	UINT32 length = STR::get_length (buffer + idx);
@@ -370,7 +370,7 @@ static STR_TAB<NULL_TERMINATED_STRING> Strtab (1000);
 
 STRING_TABLE Str_Table;
 
-UINT32
+STR_IDX
 STR_Table_Size ()
 {
     return Strtab.last_idx;

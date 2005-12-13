@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -618,9 +618,25 @@ CODEMAP::Separate_iv_invar(CODEREP *cr, BB_NODE *curbb)
 	  {
 	    OPCODE subop = OPCODE_make_op(OPR_SUB, OPCODE_rtype(iv->Op()), MTYPE_V);
 	    if (curbb->Innermost()->Invariant_cr(iv->Opnd(0))) {
+#ifdef KEY // bug 4959 wraparound will cause problem
+	      if (OPCODE_rtype(subop) == MTYPE_U4 &&
+		  invar->Kind() == CK_CONST && iv->Opnd(0)->Kind() ==CK_CONST &&
+		  invar->Const_val() < iv->Opnd(0)->Const_val()) {
+	        cont = FALSE;
+		break;
+	      }
+#endif
 	      invar = Add_bin_node_and_fold(subop, invar, iv->Opnd(0));
 	      iv = iv->Opnd(1);
 	    } else {
+#ifdef KEY // bug 4959 wraparound will cause problem
+	      if (OPCODE_rtype(subop) == MTYPE_U4 &&
+		  invar->Kind() == CK_CONST && iv->Opnd(1)->Kind() ==CK_CONST &&
+		  invar->Const_val() < iv->Opnd(1)->Const_val()) {
+	        cont = FALSE;
+		break;
+	      }
+#endif
 	      invar = Add_bin_node_and_fold(subop, invar, iv->Opnd(1));
 	      iv = iv->Opnd(0);
 	    }

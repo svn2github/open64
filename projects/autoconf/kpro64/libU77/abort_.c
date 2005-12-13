@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -34,9 +38,20 @@
 #include "externals.h"
 #endif
 
+#ifdef KEY /* Bug 1683 */
+#include "pathf90_libU_intrin.h"
 
+/* We provide no legacy version of this "abort", because the library has
+ * up to now been using the one in libf/fort/f90_abort.c, which has a
+ * different interface.
+ */
+void
+pathf90_abort(void)
+
+#else
 extern void
 abort_ (void)
+#endif /* KEY Bug 1683 */
 {
 fprintf(stderr, "Fortran abort routine called\n");
 #ifndef FTN90_IO

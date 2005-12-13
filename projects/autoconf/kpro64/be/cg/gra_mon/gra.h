@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -106,9 +106,30 @@ extern BOOL GRA_pu_has_handler;
 #endif
 
 // interface with cgdriver
-extern BOOL GRA_split_lranges; 		// controlled by -CG:split_lranges=
-extern INT GRA_non_split_tn_id;		// controlled by -CG:non_split_tn=
-extern INT GRA_non_preference_tn_id;	// controlled by -CG:non_preference_tn=
-extern BOOL GRA_optimize_placement;	// controlled by -CG:optimize_placement=
+extern BOOL GRA_split_lranges; 		// controlled by -GRA:split_lranges
+extern INT GRA_non_split_tn_id;		// controlled by -GRA:non_split_tn
+extern INT GRA_non_preference_tn_id;	// controlled by -GRA:non_preference_tn
+extern BOOL GRA_optimize_placement;	// controlled by -GRA:optimize_placement
+#ifdef KEY
+extern BOOL GRA_optimize_boundary;	// controlled by -GRA:optimize_boundary
+#endif
+
+#ifdef TARG_X8664
+extern BOOL GRA_grant_special_regs;	// controlled by -GRA:grant_special_regs
+extern BOOL GRA_local_forced_max_set;
+
+static inline INT GRA_LOCAL_FORCED_MAX( ISA_REGISTER_CLASS rc )
+{
+  if( Is_Target_32bit()         &&
+      !GRA_local_forced_max_set &&
+      rc == ISA_REGISTER_CLASS_integer )
+    return 3;
+  else
+    return GRA_local_forced_max;
+}
+#else
+#define GRA_LOCAL_FORCED_MAX(rc)   GRA_local_forced_max
+#endif // TARG_X8664
+
 
 #endif

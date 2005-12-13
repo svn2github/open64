@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -972,6 +972,93 @@ void    sin_intrinsic(opnd_type     *result_opnd,
    TRACE (Func_Exit, "sin_intrinsic", NULL);
 
 }  /* sin_intrinsic */
+#ifdef KEY /* Bug 1324 */
+
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      Function    ERF(X) intrinsic.                                         *|
+|*      Function    ERFC(X) intrinsic.                                        *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void    erf_intrinsic(opnd_type     *result_opnd,
+                      expr_arg_type *res_exp_desc,
+                      int           *spec_idx)
+{
+
+   int		info_idx1;
+   int		list_idx1;
+   int		ir_idx;
+
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+   opnd_type	  opnd;
+# endif
+
+   TRACE (Func_Entry, "erf_intrinsic", NULL);
+
+   ir_idx = OPND_IDX((*result_opnd));
+   list_idx1 = IR_IDX_R(ir_idx);
+   info_idx1 = IL_ARG_DESC_IDX(list_idx1);
+   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = arg_info_list[info_idx1].ed.type_idx;
+
+   conform_check(0, 
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+   COPY_OPND(opnd, IR_OPND_R(ir_idx));
+   final_arg_work(&opnd, IR_IDX_L(ir_idx), IR_LIST_CNT_R(ir_idx), NULL);
+   COPY_OPND(IR_OPND_R(ir_idx), opnd);
+# endif
+
+   IR_TYPE_IDX(ir_idx) = arg_info_list[info_idx1].ed.type_idx;
+   IR_RANK(ir_idx) = res_exp_desc->rank;
+
+   switch (ATP_INTRIN_ENUM(*spec_idx)) {
+      case Derf_Intrinsic:
+      case Erf_Intrinsic:
+         IR_OPR(ir_idx) = Erf_Opr;
+         break;
+
+      case Derfc_Intrinsic:
+      case Erfc_Intrinsic:
+         IR_OPR(ir_idx) = Erfc_Opr;
+         break;
+
+      default:
+         PRINTMSG(IR_LINE_NUM(ir_idx), 179, Internal, IR_COL_NUM(ir_idx),
+                  "erf_intrinsic");
+         break;
+   }
+
+   COPY_OPND(IR_OPND_L(ir_idx), IR_OPND_R(ir_idx));
+   IR_OPND_R(ir_idx) = null_opnd;
+
+   /* must reset foldable and will_fold_later because there is no */
+   /* folder for this intrinsic in constructors.                  */
+
+   res_exp_desc->foldable = FALSE;
+   res_exp_desc->will_fold_later = FALSE;
+
+   /* set this flag so this opr is pulled off io lists */
+   io_item_must_flatten = TRUE;
+
+   TRACE (Func_Exit, "erf_intrinsic", NULL);
+
+}  /* erf_intrinsic */
+#endif /* KEY Bug 1324 */
 
 
 /******************************************************************************\
@@ -1640,11 +1727,20 @@ void    iand_intrinsic(opnd_type     *result_opnd,
                        IR_COL_NUM(ir_idx));
               ok = FALSE;
            }
+#ifdef KEY /* Bug 1683 */
+#else
+	   /* g77 compatibility requires an "xor" which operates bitwise
+	    * regardless of data type. Seems stupid for Xor_Intrinsic and
+	    * Neqv_Intrinsic to do the same thing, so make Xor_Intrinsic
+	    * operate bitwise, and then the table in intrin.h can map
+	    * each user-visible intrinsic name onto whichever operation
+	    * we desire.  */
            else if (arg_info_list[info_idx1].ed.type == Logical &&
                     arg_info_list[info_idx2].ed.type == Logical) {
               ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = LOGICAL_DEFAULT_TYPE;
               opr = Neqv_Opr;
            }
+#endif /* KEY Bug 1683 */
            break;
 
       case Neqv_Intrinsic:
@@ -5143,7 +5239,13 @@ void    index_intrinsic(opnd_type     *result_opnd,
    list_idx3 = IL_NEXT_LIST_IDX(list_idx2);
    info_idx1 = IL_ARG_DESC_IDX(list_idx1);
    info_idx2 = IL_ARG_DESC_IDX(list_idx2);
+#ifdef KEY /* Bug 2611 */
+   /* Intrinsic table specifies this as integer*4, and the code
+    * generator always calls the same (integer*4) function. So accept the
+    * return value type already present in "spec_idx".  */
+#else
    ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
+#endif /* KEY Bug 2611 */
 
    type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
 
@@ -14323,7 +14425,13 @@ void    len_trim_intrinsic(opnd_type     *result_opnd,
    ir_idx = OPND_IDX((*result_opnd));
    list_idx1 = IR_IDX_R(ir_idx);
    info_idx1 = IL_ARG_DESC_IDX(list_idx1);
+#ifdef KEY /* Bug 2611 */
+   /* Intrinsic table specifies this as integer*4, and the code
+    * generator always calls the same (integer*4) function. So accept the
+    * return value type already present in "spec_idx".  */
+#else
    ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
+#endif /* KEY Bug 2611 */
    type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
 
    conform_check(0, 
@@ -15369,6 +15477,11 @@ void    omp_get_max_threads_intrinsic(opnd_type     *result_opnd,
        ATP_INTRIN_ENUM(*spec_idx) == Omp_Get_Thread_Num_Intrinsic) {
       ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
    }
+#ifdef KEY
+   else if (ATP_INTRIN_ENUM(*spec_idx) == Omp_Get_Wtime_Intrinsic ||
+            ATP_INTRIN_ENUM(*spec_idx) == Omp_Get_Wtick_Intrinsic)
+      ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = DOUBLE_DEFAULT_TYPE;
+#endif
 
    type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
 
@@ -17782,6 +17895,25 @@ void    reshape_intrinsic(opnd_type     *result_opnd,
                  spec_idx,
                  FALSE);
 
+#ifdef KEY /* Bug 4165 */
+   /* The code in the "else" part does nothing unless the statement is a
+    * simple assignment of a call to "reshape". In that case, it bashes
+    * the data type of the first argument to "reshape" so that it has the
+    * same shape as the target, and uses the first argument in place of the
+    * "reshape" itself. But that may not be valid. For example, the source
+    * program may exhibit an erroneous mismatch between the shapes of the
+    * lhs and rhs of the assignment, which the "optimization" ignores. Or
+    * the source program may be correct, but the first argument may have
+    * excess elements which need to be discarded, and simply changing
+    * its data type without adjusting the entry in the constant table
+    * which defines its value creates a subtle bug (4165) in the assembly.
+    * Fortunately, the front end contains other code (see the call to
+    * "folder_driver" below) to simplify "reshape", and I haven't found
+    * any case (including that of bug 2183) where the other code fails to
+    * do at least as good a job as this invalid code, so it seems better
+    * to eliminate it than to correct it.
+    */
+#else /* KEY Bug 4165 */
    /*
    This block of code will optimize a call to RESHAPE by
    completely eliminating the call.   This is attempted
@@ -17851,6 +17983,7 @@ void    reshape_intrinsic(opnd_type     *result_opnd,
          }
       }
    }
+#endif /* KEY Bug 4165 */
 
    if (OPND_FLD(arg_info_list[info_idx2].ed.shape[0]) == IR_Tbl_Idx) {
       PRINTMSG(arg_info_list[info_idx2].line, 1106, Error, 
@@ -18595,7 +18728,7 @@ void	unknown_intrinsic(opnd_type     *result_opnd,
 /******************************************************************************\
 |*                                                                            *|
 |* Description:                                                               *|
-|*      Function    TIME8() intrinsic.                                        *|
+|*      Function    TIME8() or TIME4() intrinsic                              *|
 |*                                                                            *|
 |* Input parameters:                                                          *|
 |*      NONE                                                                  *|
@@ -18620,7 +18753,15 @@ void    time_intrinsic(opnd_type     *result_opnd,
    TRACE (Func_Entry, "time_intrinsic", NULL);
 
    ir_idx = OPND_IDX((*result_opnd));
-   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
+
+   switch (ATP_INTRIN_ENUM(*spec_idx)) {
+     case Time4_Intrinsic:
+       ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = INTEGER_DEFAULT_TYPE;
+       break;
+     case Time8_Intrinsic:
+       ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = Integer_8;
+       break;
+     }
 
    type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
 
@@ -18723,7 +18864,12 @@ void    dtime_intrinsic(opnd_type     *result_opnd,
    TRACE (Func_Entry, "dtime_intrinsic", NULL);
 
    ir_idx = OPND_IDX((*result_opnd));
+#ifdef KEY /* Bug 3018 */
+   /* Why don't any of the funcs in this file get this from the intrin_tbl? */
+   ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = Real_4;
+#else
    ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = Real_8;
+#endif /* KEY Bug 3018 */
 
    type_idx = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
 
@@ -18983,3 +19129,78 @@ void   fstat_intrinsic(opnd_type     *result_opnd,
 
 }  /* fstat_intrinsic */
 #endif
+#ifdef KEY /* Bug 1683 */
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      General purpose function for handling "external" intrinsics           *|
+|*      Modeled after "dtime_intrinsic" and "free_intrinsic", but sets        *|
+|*      result type automatically based on intrinsic declaration              *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void    pathf90_intrinsic(opnd_type     *result_opnd,
+                       expr_arg_type *res_exp_desc,
+                       int           *spec_idx)
+{
+   int            ir_idx;
+   int            type_idx;
+
+   TRACE (Func_Entry, "pathf90_intrinsic", NULL);
+
+   /* Set the return value type if it's a function */
+   ir_idx = OPND_IDX((*result_opnd));
+   if (ATP_PGM_UNIT(*spec_idx) == Function) {
+     int return_value = ATP_RSLT_IDX(*spec_idx);
+     type_idx = ATD_TYPE_IDX(return_value);
+     if (type_idx == CHARACTER_DEFAULT_TYPE) {
+       CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
+       TYP_TYPE(TYP_WORK_IDX) = Character;
+       TYP_LINEAR(TYP_WORK_IDX) = CHARACTER_DEFAULT_TYPE;
+       TYP_CHAR_CLASS(TYP_WORK_IDX) = Const_Len_Char;
+       TYP_FLD(TYP_WORK_IDX) = CN_Tbl_Idx;
+       TYP_IDX(TYP_WORK_IDX) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE, 24);
+       type_idx = ntr_type_tbl();
+
+       res_exp_desc->type_idx = type_idx;
+       res_exp_desc->char_len.fld = TYP_FLD(type_idx);
+       res_exp_desc->char_len.idx = TYP_IDX(type_idx);
+     }
+     ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = type_idx;
+   }
+   else {
+     type_idx = TYPELESS_DEFAULT_TYPE;
+   }
+
+   conform_check(0, 
+                 ir_idx,
+                 res_exp_desc,
+                 spec_idx,
+                 FALSE);
+
+   IR_TYPE_IDX(ir_idx) = type_idx;
+   IR_RANK(ir_idx) = res_exp_desc->rank;
+   if (type_idx != TYPELESS_DEFAULT_TYPE) {
+     res_exp_desc->type_idx = type_idx;
+     res_exp_desc->linear_type = TYP_LINEAR(type_idx);
+     }
+
+   /* must reset foldable and will_fold_later because there is no */
+   /* folder for this intrinsic in constructors.                  */
+
+   res_exp_desc->foldable = FALSE;
+   res_exp_desc->will_fold_later = FALSE;
+
+   TRACE (Func_Exit, "pathf90_intrinsic", NULL);
+
+}  /* pathf90_intrinsic */
+#endif /* KEY Bug 1683 */

@@ -44,7 +44,6 @@
 /* must always be set to the default types for the machine.           */
 
 # define CG_INTEGER_DEFAULT_TYPE init_default_linear_type[Fortran_Integer]
-
 /* These macros are used for the default types.  They are set in init_type. */
 
 # define CHARACTER_DEFAULT_TYPE      default_linear_type[Fortran_Character]
@@ -68,7 +67,13 @@
 # define IO_TYPE_CODE_TYPE	     TYPELESS_DEFAULT_TYPE
 # endif
 
+#ifdef KEY /* Bug 3635 */
+/* Function srch_name_tbl would need to change if this exceeded 272 */
+# define MAX_ID_LEN		63			/* Num of chars in ID */
+# define ANSI90_ID_LEN		31			/* F90 std constraint */
+#else
 # define MAX_ID_LEN		31			/* Num of chars in ID */
+#endif /* KEY Bug 3635 */
 # define MAX_EXTERNAL_ID_LEN	255			/* Num chars in extern*/
 
 # define FALSE			0
@@ -137,25 +142,27 @@
 |* open mp directive argument index macros *|
 \*******************************************/
 
-# define OPEN_MP_LIST_CNT               17
+# define OPEN_MP_LIST_CNT               19 /* by jhs, 02/7/20 */
 
 # define OPEN_MP_IF_IDX                  0
-# define OPEN_MP_PRIVATE_IDX             1
-# define OPEN_MP_SHARED_IDX              2
-# define OPEN_MP_FIRSTPRIVATE_IDX        3
-# define OPEN_MP_DEFAULT_IDX             4
-# define OPEN_MP_COPYIN_IDX              5
-# define OPEN_MP_REDUCTION_OPR_IDX       6
-# define OPEN_MP_REDUCTION_LIST_IDX      7
-# define OPEN_MP_LASTPRIVATE_IDX         8
-# define OPEN_MP_ORDERED_IDX             9
-# define OPEN_MP_SCHEDULE_TYPE_IDX      10
-# define OPEN_MP_SCHEDULE_CHUNK_IDX     11
-# define OPEN_MP_AFFINITY_IDX           12
-# define OPEN_MP_IS_THREAD_IDX          13
-# define OPEN_MP_THREAD_DATA_IDX        14
-# define OPEN_MP_ONTO_IDX               15
-# define OPEN_MP_NEST_IDX               16
+# define OPEN_MP_NUM_THREADS			 1 /* by jhs, 02/7/20 */
+# define OPEN_MP_PRIVATE_IDX             2
+# define OPEN_MP_SHARED_IDX              3
+# define OPEN_MP_FIRSTPRIVATE_IDX        4
+# define OPEN_MP_DEFAULT_IDX             5
+# define OPEN_MP_COPYIN_IDX              6
+# define OPEN_MP_REDUCTION_OPR_IDX       7
+# define OPEN_MP_REDUCTION_LIST_IDX      8
+# define OPEN_MP_LASTPRIVATE_IDX         9
+# define OPEN_MP_ORDERED_IDX            10
+# define OPEN_MP_SCHEDULE_TYPE_IDX      11
+# define OPEN_MP_SCHEDULE_CHUNK_IDX     12
+# define OPEN_MP_AFFINITY_IDX           13
+# define OPEN_MP_IS_THREAD_IDX          14
+# define OPEN_MP_THREAD_DATA_IDX        15
+# define OPEN_MP_ONTO_IDX               16
+# define OPEN_MP_NEST_IDX               17
+# define OPEN_MP_COPYPRIVATE_IDX        18
 
 /***************************************\
 |* sgi directive argument index macros *|

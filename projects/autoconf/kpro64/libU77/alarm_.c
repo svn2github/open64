@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,6 +54,29 @@
 #include <unistd.h>
 #include <signal.h>
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_alarm(pathf90_i4 *sec,void (*proc)(), pathf90_i4 *status)
+{
+	register unsigned	lt;
+
+	lt = alarm(1000);	/* time to maneuver */
+
+	if (*sec)
+		signal(SIGALRM, proc);
+
+	alarm(*sec);
+	if (0 != status) {
+	  *status = lt;
+	  }
+	return(lt);
+}
+
+#else
+
 extern int 
 alarm_(int *sec, void (* proc)())
 {
@@ -63,3 +90,4 @@ alarm_(int *sec, void (* proc)())
 	alarm(*sec);
 	return(lt);
 }
+#endif /* KEY Bug 1683 */

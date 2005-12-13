@@ -1,39 +1,26 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it would be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * Further, this software is distributed without any warranty that it is
+ * free of the rightful claim of any third person regarding infringement 
+ * or the like.  Any license provided herein, whether implied or 
+ * otherwise, applies only to this software file.  Patent licenses, if 
+ * any, provided herein do not apply to combinations of this program with 
+ * other software, or any other product whatsoever.  
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write the Free Software Foundation, Inc., 59
+ * Temple Place - Suite 330, Boston MA 02111-1307, USA.
  */
 
-/*
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement
-  or the like.  Any license provided herein, whether implied or
-  otherwise, applies only to this software file.  Patent licenses, if
-  any, provided herein do not apply to combinations of this program with
-  other software, or any other product whatsoever.
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-                                                                                                                                                    
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-                                                                                                                                                     
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-                                                                                                                                                     
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-                                                                                                                                                     
-*/
-                                                                                                                                                   
                                                                                                                                                      
 /* ====================================================================
  * ====================================================================
@@ -72,6 +59,11 @@
 #include "symtab.h"
 #include "symtab_access.h"
 #include "unistd.h"
+
+#ifdef TARG_MIPS
+static BOOL inline Is_Target_64bit (void) { return TRUE; }
+static BOOL inline Is_Target_32bit (void) { return FALSE; }
+#endif // TARG_MIPS
 
 MEM_POOL name_pool, *name_pool_ptr = NULL;
 #define MAX_COUNTER_SECTIONS       4
@@ -152,6 +144,24 @@ static ST * get_symbol(const char* sym_name)
   }
   return NULL;
 }
+// Bug 3806
+void Gcov_BB_Prepend_Ops(BB *bb, OPS *ops)
+{
+#ifdef TARG_X8664
+  if (OPS_first(ops) == NULL) return;
+  OP *op = BB_first_op(bb);
+  if (op && OP_opnds(op) > 0 && 
+      TN_is_register(OP_opnd(op, 0)) && 
+      TN_register(OP_opnd(op, 0)) == RAX)
+    BB_Insert_Ops_After(bb, op, ops);
+  else
+    BB_Prepend_Ops(bb, ops);
+#else
+// Will see later
+  return;
+#endif
+}
+
 #ifdef GCC_303
 void 
 CG_Init_Couner_Infos(ST *counter_section)
@@ -209,7 +219,7 @@ CG_Init_Func_Infos(ST *func_infos)
   inito = New_INITO(func_infos);
   TYPE_ID rtype;
 
-  if (Is_Target_32bit()) 
+  if (Is_Target_32bit())
     rtype = MTYPE_I4;
   else 
     rtype = MTYPE_I8;
@@ -1121,11 +1131,13 @@ Opnd_Tn_In_BB( BB* bb, REGISTER reg, unsigned char type )
 static INT32 
 Get_Return_Reg_Sum(BB* bb)
 {
+#ifdef TARG_X8664
   if ( Opnd_Tn_In_BB( bb, RDX, 0 ) )
     return 2;
 
   if ( Opnd_Tn_In_BB( bb, RAX, 0 ) )
     return 1;
+#endif
 
   return 0;
 }
@@ -1134,11 +1146,13 @@ Get_Return_Reg_Sum(BB* bb)
 static INT32 
 Get_Float_Return_Reg_Sum(BB* bb)
 {
+#ifdef TARG_X8664
   for ( int i = 1 ; i >= 0; i-- )
   {
     if ( Opnd_Tn_In_BB( bb,XMM0 + i, 1) )
       return i + 1;
   }
+#endif
   return 0;
 }
 static BOOL
@@ -1159,7 +1173,8 @@ BB_Mov_Ops(BB* dest_bb, BB *src_bb, REGISTER reg, unsigned char type)
     for ( i = 0; i < OP_opnds( op ); i++ )
     {
       TN *tn = OP_opnd( op,i );
-      if ( (type == 0 && TN_register_class(tn) == ISA_REGISTER_CLASS_integer) || (type == 1 && TN_register_class(tn) == ISA_REGISTER_CLASS_float) && TN_register(tn) == reg )
+      if ( ((type == 0 && TN_register_class(tn) == ISA_REGISTER_CLASS_integer) || (type == 1 && TN_register_class(tn) == ISA_REGISTER_CLASS_float)) && 
+	   TN_register(tn) == reg )
       {
 	BB_Remove_Op( src_bb, op);
 	FmtAssert( !Is_BB_Empty(src_bb), ("BB can not be empty!"));
@@ -1173,6 +1188,7 @@ BB_Mov_Ops(BB* dest_bb, BB *src_bb, REGISTER reg, unsigned char type)
 static void 
 Move_Save_Regs_OP(BB *instr_bb, BB *bb, INT32 ret_reg_num, INT32 f_ret_reg_num)
 {
+#ifdef TARG_X8664
   FmtAssert (ret_reg_num == 0 || f_ret_reg_num == 0, ("cannot be both integer and floating point at the same time"));
   if (ret_reg_num){
     BB_Mov_Ops(instr_bb, bb, RAX, 0);
@@ -1187,6 +1203,7 @@ Move_Save_Regs_OP(BB *instr_bb, BB *bb, INT32 ret_reg_num, INT32 f_ret_reg_num)
       BB_Mov_Ops(instr_bb, bb,  XMM0+i++, 1);
     }
   }
+#endif
 }
 
 static void
@@ -1310,7 +1327,7 @@ CG_Instrument_Arcs()
     result_tn = Build_TN_Of_Mtype(rtype);
     Exp_OP2 (OPC_U4ADD, result_tn, ld_2nd_result_tn, const_tn, &new_ops);
     Expand_Store (OPCODE_desc(OPCODE_make_op(OPR_STID, MTYPE_V, rtype)),result_tn, ld_result_tn, Gen_Literal_TN(count*8,4), &new_ops);
-    BB_Prepend_Ops(REGION_First_BB,  &new_ops);
+    Gcov_BB_Prepend_Ops(REGION_First_BB,  &new_ops);
   }
   count++;
 
@@ -1355,7 +1372,7 @@ CG_Instrument_Arcs()
 
         if (BB_Is_Unique_Instr_Predecessor(bb_succ, bb))
 	{
-	  BB_Prepend_Ops(bb_succ, &new_ops);
+	  Gcov_BB_Prepend_Ops(bb_succ, &new_ops);
 	  count ++;
 	  continue;
 	}
@@ -1381,11 +1398,16 @@ CG_Instrument_Arcs()
 	  // tgt_label is the branch target bb's label
 	  LABEL_IDX tgt_label;
 	  tgt_label = Gen_Label_For_BB( bb_succ );
+#ifdef TARG_X8664
 	  Build_OP( TOP_jmp, Gen_Label_TN(tgt_label, 0), &new_ops);
+#else
+	  // mips
+	  Build_OP( TOP_j, Gen_Label_TN(tgt_label, 0), &new_ops);
+#endif
 	  FmtAssert(TN_is_label( tgt_tn ), ("should be branch target label"));
 	}
 
-	BB_Prepend_Ops(instr_bb, &new_ops);
+	Gcov_BB_Prepend_Ops(instr_bb, &new_ops);
 	if (BB_call( bb )){
 	  int ret_reg_num = Get_Return_Reg_Sum( bb_succ );
 	  int f_ret_reg_num = Get_Float_Return_Reg_Sum( bb_succ );

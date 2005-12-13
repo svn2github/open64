@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -881,7 +881,11 @@ static void Create_Sync_Structure () {
 
   st        = New_ST(is_global ? GLOBAL_SYMTAB : CURRENT_SYMTAB);
   ST_Init (st,
+#ifndef KEY
            Save_Str("__mp_max_numthreads"),
+#else
+           Save_Str("__ompc_max_numthreads"),
+#endif
            CLASS_VAR,
            SCLASS_EXTERN,
            EXPORT_PREEMPTIBLE,

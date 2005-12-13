@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -119,6 +123,9 @@ void		(*end_blocks[]) () = {
 		/* Open_Mp_Master_Blk	*/	end_open_mp_master_blk,
 		/* Open_Mp_Critical_Blk	*/	end_open_mp_critical_blk,
 		/* Open_Mp_Ordered_Blk	*/	end_open_mp_ordered_blk,
+		/* Open_Mp_Workshare_Blk */	end_open_mp_workshare_blk,
+		/* Open_Mp_Parallel_Workshare_Blk */
+						end_open_mp_parallel_workshare_blk,
 		/* Contains_Blk		*/	end_contains,
 		/* Interface_Blk	*/	end_interface_blk,
 		/* Derived_Type_Blk	*/	end_type_blk };

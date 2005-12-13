@@ -1,5 +1,5 @@
 /* 
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -59,6 +59,7 @@ extern "C" {
 
 #ifdef KEY
 #include "wn.h"		// New_Region_Id()
+#include "const.h"
 int make_symbols_weak = FALSE;	// if TRUE, emit all new symbols as weak
 bool in_cleanup = FALSE;	// TRUE if we are expanding code to be executed during stack unwinding
 #endif // KEY
@@ -166,7 +167,10 @@ typedef struct handler_info_t {
   vector<ST_IDX>    *handler_list; // list of handlers outside this try-catch block
   vector<ST_IDX>    *eh_spec; // eh_spec of the containing region to be used while inside its handler
   LABEL_IDX	    label_idx;
-  LABEL_IDX	    cmp_idx; // label where the first cmp for this handler set should start
+  // cmp_idx: 1st is the label where the first cmp for this handler set 
+  // should start. If the 2nd label is non-zero it must be marked 
+  // handler_begin
+  LABEL_IDX	    cmp_idx[2];
   LABEL_IDX 	    goto_idx; // label where the current handler should jmp to
   LABEL_IDX 	    cleanups_idx;
   bool		    outermost; // handler for outermost try block in PU?
@@ -365,7 +369,7 @@ Push_Handler_Info (tree handler, vector<tree> *v,
 	vector<SCOPE_CLEANUP_INFO> *scope, vector<TEMP_CLEANUP_INFO> *temp, 
 	vector<BREAK_CONTINUE_INFO> *break_continue,
 	vector<ST_IDX> *handler_list, vector<ST_IDX> *eh_spec,
-	LABEL_IDX label_idx, bool outermost, LABEL_IDX cmp_idx, 
+	LABEL_IDX label_idx, bool outermost, LABEL_IDX cmp_idx[], 
 	LABEL_IDX goto_idx)
 {
    if (++handler_info_i == handler_info_max) {
@@ -383,7 +387,8 @@ Push_Handler_Info (tree handler, vector<tree> *v,
   handler_info_stack [handler_info_i].handler_list = handler_list;
   handler_info_stack [handler_info_i].eh_spec = eh_spec;
   handler_info_stack [handler_info_i].label_idx = label_idx;
-  handler_info_stack [handler_info_i].cmp_idx = cmp_idx;
+  handler_info_stack [handler_info_i].cmp_idx[0] = cmp_idx[0];
+  handler_info_stack [handler_info_i].cmp_idx[1] = cmp_idx[1];
   New_LABEL (CURRENT_SYMTAB, handler_info_stack [handler_info_i].cleanups_idx);
   handler_info_stack [handler_info_i].goto_idx = goto_idx;
   handler_info_stack [handler_info_i].outermost = outermost;
@@ -439,13 +444,20 @@ Do_Handlers (void)
     WFE_Stmt_Append (WN_CreateLabel ((ST_IDX) 0, start_handlers, 0, NULL),
 		     Get_Srcpos());
 #else
-    LABEL_IDX start_handlers = handler_info_stack[handler_info_i].cmp_idx;
+    LABEL_IDX start_handlers = handler_info_stack[handler_info_i].cmp_idx[1];
     // TODO: Check if we need to mark this label as LABEL_addr_saved
-    WN * cmp_wn = WN_CreateLabel ((ST_IDX) 0, start_handlers, 0, NULL);
     // Set handler_begin if there is no other entry point for this try-block
-    if (LABEL_kind (Label_Table[start_handlers]) == LKIND_BEGIN_HANDLER)
-    	WN_Set_Label_Is_Handler_Begin (cmp_wn);
-    WFE_Stmt_Append (cmp_wn, Get_Srcpos());
+    if (start_handlers)
+    {
+	Is_True (LABEL_kind (Label_Table[start_handlers]) ==
+	         LKIND_BEGIN_HANDLER, ("Wrong label kind, expecting handler_begin"));
+        WN * cmp_wn = WN_CreateLabel ((ST_IDX) 0, start_handlers, 0, NULL);
+	WN_Set_Label_Is_Handler_Begin (cmp_wn);
+	WFE_Stmt_Append (cmp_wn, Get_Srcpos());
+    }
+    WN * actual_cmp = WN_CreateLabel ((ST_IDX) 0, 
+	       handler_info_stack[handler_info_i].cmp_idx[0], 0, NULL);
+    WFE_Stmt_Append (actual_cmp, Get_Srcpos());
 #endif // !KEY
 
 #ifdef KEY
@@ -475,24 +487,14 @@ static void Call_Terminate (void);
 void
 Do_EH_Cleanups (void)
 {
-#if 0
-// The following code is commented out, and will be removed if it does not
-// cause any regression. If it can be removed, it will enable removal of
-// some more code.
-//
-// The following code handles eh cleanups, but they are currently handled
-// differently.
+#ifndef KEY
   for (int i = 0; i <= eh_cleanup_i; ++i) {
     WFE_Stmt_Append (
      WN_CreateLabel ((ST_IDX) 0, eh_cleanup_stack [i].label_idx,
 		     0, NULL),
      Get_Srcpos());
     tree cleanup = eh_cleanup_stack [i].cleanup;
-#ifdef KEY
-    Emit_Cleanup (cleanup);
-#else
     WFE_One_Stmt (CLEANUP_EXPR(eh_cleanup_stack [i].cleanup));
-#endif
     LABEL_IDX goto_idx = eh_cleanup_stack [i].goto_idx;
     if (goto_idx)
       WFE_Stmt_Append (
@@ -500,13 +502,6 @@ Do_EH_Cleanups (void)
     else
       Call_Rethrow();
   }
-#ifdef KEY
-  Do_Cleanups_For_EH();
-  // the above code expansions may have introduced new handlers
-  if (handler_info_i >= 0)
-  	Do_Handlers();
-  if (eh_cleanup_i >= 0)
-#endif // KEY
   	Call_Terminate();
 #endif
   eh_cleanup_i = -1;
@@ -1175,7 +1170,7 @@ Wfe_Expand_Asm_Operands (tree  string,
     // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
     // first operand gives the string constant.
     constraint_string = 
-      TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+      const_cast<char*>TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
 #else
     constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
 #endif /* KEY */
@@ -1208,7 +1203,7 @@ Wfe_Expand_Asm_Operands (tree  string,
       // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
       // first operand gives the string constant.
       constraint_string = 
-	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+	const_cast<char*>TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
 #else
       constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
 #endif /* KEY */
@@ -1228,7 +1223,7 @@ Wfe_Expand_Asm_Operands (tree  string,
     }
 
   WN *asm_wn = WN_CreateAsm_Stmt (ninputs + 2,
-				  TREE_STRING_POINTER (string));
+				  const_cast<char*>TREE_STRING_POINTER (string)); // KEY
 
   WN *clobber_block = WN_CreateBlock ();
 
@@ -1237,7 +1232,7 @@ Wfe_Expand_Asm_Operands (tree  string,
   for (tail = clobbers; tail; tail = TREE_CHAIN (tail))
     {
       char *clobber_string =
-	TREE_STRING_POINTER (TREE_VALUE (tail));
+	const_cast<char *>TREE_STRING_POINTER (TREE_VALUE (tail));  // KEY
 
       WN *clobber_pragma = NULL;
 
@@ -1315,7 +1310,7 @@ Wfe_Expand_Asm_Operands (tree  string,
       // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
       // first operand gives the string constant.
       constraint_string = 
-	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+	const_cast<char*>TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
 #else
       constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
 #endif /* KEY */
@@ -1350,7 +1345,7 @@ Wfe_Expand_Asm_Operands (tree  string,
       // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
       // first operand gives the string constant.
       constraint_string = 
-	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+	const_cast<char*>TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
 #else
       constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
 #endif /* KEY */
@@ -1406,6 +1401,15 @@ Wfe_Expand_Asm_Operands (tree  string,
   // Side effects of copy-out operands occur after the asm. Kind of
   // weird, but that's what GCC does.
   opnd_num = 0;
+#ifdef KEY 
+  // Bug 5622
+  // If (constraint_by_address(constraint_string)) is true then,
+  // this operand is by address, and gets represented as an
+  // ASM_INPUT even though the user told us it's an output.
+  // This should be factored when memory operand constraints (+m) appear 
+  // before other output constraints that are both read & write.
+  INT nonmem_opnd_num = 0;
+#endif
   for (tail = outputs;
        tail;
        tail = TREE_CHAIN (tail), ++opnd_num)
@@ -1414,7 +1418,7 @@ Wfe_Expand_Asm_Operands (tree  string,
       // In gcc-3.2, TREE_PURPOSE of tail represents a TREE_LIST node whose
       // first operand gives the string constant.
       constraint_string = 
-	TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
+	const_cast<char*>TREE_STRING_POINTER (TREE_OPERAND (TREE_PURPOSE (tail), 0));
 #else
       constraint_string = TREE_STRING_POINTER (TREE_PURPOSE (tail));
 #endif /* KEY */
@@ -1433,8 +1437,15 @@ Wfe_Expand_Asm_Operands (tree  string,
 
 	    // Make up a numeric matching constraint string for the
 	    // input operand we're going to add.
+#ifdef KEY
+	    sprintf(input_opnd_constraint, "%d", nonmem_opnd_num);
+#else
 	    sprintf(input_opnd_constraint, "%d", opnd_num);
+#endif
 	  }
+#ifdef KEY
+	nonmem_opnd_num ++;
+#endif
 
 	WN *output_rvalue_wn = WFE_Lhs_Of_Modify_Expr (MODIFY_EXPR,
 						       TREE_VALUE (tail),
@@ -2148,6 +2159,10 @@ WFE_Expand_Label (tree label)
   }
 } /* WFE_Expand_Label */
 
+#ifdef KEY
+extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
+#endif // KEY
+
 void
 WFE_Expand_Return (tree stmt, tree retval)
 {
@@ -2263,6 +2278,9 @@ WFE_Expand_Return (tree stmt, tree retval)
 	  DevWarn ("WFE_Expand_Return: cleanup block and expressson has side effects");
 #endif
 	  ST *ret_st = Gen_Temp_Symbol (ret_ty_idx, "__return_val");
+#ifdef KEY
+	  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, ret_st);
+#endif
 	  TYPE_ID ret_mtype = TY_mtype (ret_ty_idx);
 	  WFE_Set_ST_Addr_Saved (rhs_wn);
 	  wn = WN_Stid (ret_mtype, 0, ret_st, ret_ty_idx, rhs_wn);
@@ -2307,15 +2325,14 @@ WFE_Expand_Return (tree stmt, tree retval)
 				    TY_mtype(Ty_Table[tidx]),
 				    WN_idname_offset(first_formal),
 				    WN_st(first_formal), tidx);
-      // Call copy constructor if it exists, else do regular store.
+      // Make sure there's no copy constructor, then do regular store.
       tree return_type = TREE_TYPE(TREE_TYPE(Current_Function_Decl()));
-
-      if (!WFE_call_copy_constructor(rhs_wn, dest_addr, tidx, return_type)) {
-	// No copy constructor, create mstore.
-	wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, MTYPE_M, 0, tidx, rhs_wn,
-			     dest_addr, 0);
-        WFE_Stmt_Append(wn, Get_Srcpos());
-      }
+      Is_True(!WFE_has_copy_constructor(return_type),
+	      ("WFE_Expand_Return: return type has copy constructor"));
+      // Create mstore.
+      wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, MTYPE_M, 0, tidx, rhs_wn,
+			   dest_addr, 0);
+      WFE_Stmt_Append(wn, Get_Srcpos());
       // Create return.
       wn = WN_CreateReturn ();
     }
@@ -3182,6 +3199,7 @@ WFE_Expand_Try (tree stmt)
   --scope_cleanup_i;
 
 #ifdef KEY
+  LABEL_IDX start = 0;
   if (key_exceptions)
   {
     WFE_Stmt_Pop (wfe_stmk_region_body);
@@ -3201,8 +3219,14 @@ WFE_Expand_Try (tree stmt)
     }
     else // ==
     {
-    	Set_LABEL_KIND (Label_Table[cmp_idx], LKIND_BEGIN_HANDLER);
-    	WN_INSERT_BlockLast (region_pragmas, WN_CreateGoto (cmp_idx));
+	// bug 4550: use a new label to mark handler-begin, don't use
+	// the existing cmp_idx since we may have goto to it.
+	// i.e. generate 
+	// LABEL L1 2
+	// LABEL L2
+	New_LABEL (CURRENT_SYMTAB, start);
+    	Set_LABEL_KIND (Label_Table[start], LKIND_BEGIN_HANDLER);
+    	WN_INSERT_BlockLast (region_pragmas, WN_CreateGoto (start));
     }
 
     // insert the label to go to for an inlined callee
@@ -3221,7 +3245,9 @@ WFE_Expand_Try (tree stmt)
     Set_PU_has_region (Get_Current_PU());
   }
   vector<tree> *cleanups = new vector<tree>();
-  LABEL_IDX cmp_idx = scope_cleanup_stack[scope_cleanup_i+1].cmp_idx;
+  LABEL_IDX cmp_idxs[2];
+  cmp_idxs[0] = scope_cleanup_stack[scope_cleanup_i+1].cmp_idx;
+  cmp_idxs[1] = start;
   LABEL_IDX goto_idx=0;
   bool outermost = 0;
   if (key_exceptions) outermost = Get_Cleanup_Info (cleanups, &goto_idx);
@@ -3244,7 +3270,7 @@ WFE_Expand_Try (tree stmt)
 #ifdef KEY
   Push_Handler_Info (TRY_HANDLERS(stmt), cleanups, scope_cleanup, temp_cleanup,
 	break_continue, handler_list, eh_spec_list, end_label_idx, outermost, 
-	cmp_idx, goto_idx);
+	cmp_idxs, goto_idx);
 #else
   Push_Handler_Info (TRY_HANDLERS(stmt), end_label_idx);
 #endif // KEY
@@ -3420,6 +3446,7 @@ Generate_unwind_resume (void)
   WN * call_wn = WN_Create (OPR_CALL, Pointer_Mtype, MTYPE_V, 1);
   WN_kid0 (call_wn) = arg0;
   WN_st_idx (call_wn) = ST_st_idx (st);
+  WN_Set_Call_Never_Return (call_wn);
 
 // Before calling _Unwind_Resume(), if we have eh-spec, compare filter with
 // -1, goto __cxa_call_unexpected call if required. Otherwise fall-through.
@@ -3577,10 +3604,155 @@ WFE_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 // We will see if control reaches here.
 // Let me comment this out, may need to do something else later.
       //Fail_FmtAssertion ("Handle it");
+#if 0
+      // Don't do anything for TREE_CODE(t) == BIND_EXPR.
+      // Clean up this code once it stabilizes.
       WFE_One_Stmt (t);
       Call_Rethrow();
+#endif
   }    
 }
+
+#ifdef KEY
+#include "omp_directive.h"
+static void
+WFE_Expand_Omp (tree stmt)
+{
+  switch (stmt->omp.choice)
+  {
+    case parallel_dir_b:
+      expand_start_parallel ((struct parallel_clause_list *) stmt->omp.omp_clause_list);
+      break;
+    case parallel_dir_e:
+      expand_end_parallel ();
+      break;
+    case for_dir_b:
+      expand_start_for ((struct for_clause_list *) stmt->omp.omp_clause_list);
+      break;
+    case for_dir_e:
+      expand_end_for ();
+      break;
+    case sections_cons_b:
+      expand_start_sections ((struct sections_clause_list *) stmt->omp.omp_clause_list);
+      break;
+    case sections_cons_e:
+      expand_end_sections ();
+      break;
+    case section_cons_b:
+      expand_start_section ();
+      break;
+    case section_cons_e:
+      expand_end_section ();
+      break;
+    case single_cons_b:
+      expand_start_single ((struct single_clause_list *) stmt->omp.omp_clause_list);      break;
+    case single_cons_e:
+      expand_end_single ();
+      break;
+    case par_for_cons_b:
+      expand_start_parallel_for ((struct parallel_for_clause_list *) stmt->omp.omp_clause_list);
+      break;
+    case par_for_cons_e:
+      expand_end_parallel_for ();
+      break;
+    case par_sctn_cons_b:
+      expand_start_parallel_sections ((struct parallel_sections_clause_list *) stmt->omp.omp_clause_list);
+      break;
+    case par_sctn_cons_e:
+      expand_end_parallel_sections ();
+      break;
+    case master_cons_b:
+      expand_start_master ();
+      break;
+    case master_cons_e:
+      expand_end_master ();
+      break;
+    case critical_cons_b:
+      expand_start_critical ((tree) stmt->omp.omp_clause_list);
+      break;
+    case critical_cons_e:
+      expand_end_critical ();
+      break;
+   case barrier_dir:
+      expand_barrier ();
+      break;
+    case flush_dir:
+      expand_flush ((tree) stmt->omp.omp_clause_list);
+      break;
+    case atomic_cons_b:
+      expand_start_atomic ();
+      break;
+    case atomic_cons_e:
+      expand_end_atomic ();
+      break;
+    case ordered_cons_b:
+      expand_start_ordered ();
+      break;
+    case ordered_cons_e:
+      expand_end_ordered ();
+      break;
+    case thdprv_dir:
+      expand_threadprivate ((tree) stmt->omp.omp_clause_list);
+      break;
+    case options_dir:
+    case exec_freq_dir:
+      WFE_Expand_Pragma (stmt);
+      break;
+                                                                                
+    default:
+      Fail_FmtAssertion ("Unexpected stmt node");
+  }
+}
+
+void
+WFE_Expand_DO (tree stmt)
+{
+  tree init, incr, cond, body;
+
+  WFE_Record_Loop_Switch  (TREE_CODE (stmt));
+
+  init = FOR_INIT_STMT (stmt);
+  incr = FOR_EXPR(stmt);
+  cond = FOR_COND(stmt);
+  body = FOR_BODY(stmt);
+#if 0
+  for (init = FOR_INIT_STMT(stmt); init; init = TREE_CHAIN(init))
+	WFE_Expand_Stmt(init);
+#endif
+  expand_start_do_loop (init, cond, incr);
+  while (body)
+  {
+    WFE_Expand_Stmt (body);
+    body = TREE_CHAIN(body);
+  }
+
+  // label for continue
+  if (break_continue_info_stack [break_continue_info_i].continue_label_idx)
+  {
+      WFE_Stmt_Append (
+	WN_CreateLabel ((ST_IDX) 0,
+			break_continue_info_stack
+			  [break_continue_info_i].continue_label_idx,
+			0, NULL),
+	Get_Srcpos());
+  }
+
+  // loop ends
+  expand_end_do_loop ();
+
+  // label for break
+  if (break_continue_info_stack [break_continue_info_i].break_label_idx)
+  {
+      WFE_Stmt_Append (
+	WN_CreateLabel ((ST_IDX) 0,
+			break_continue_info_stack
+			  [break_continue_info_i].break_label_idx,
+			0, NULL),
+	Get_Srcpos());
+  }
+  --break_continue_info_i;
+}
+#endif // KEY
 
 void
 WFE_Expand_Stmt(tree stmt, WN* target_wn)
@@ -3678,6 +3850,11 @@ WFE_Expand_Stmt(tree stmt, WN* target_wn)
       break;
 
     case FOR_STMT:
+#ifdef KEY
+      if (TREE_ADDRESSABLE (stmt))	// OpenMP DO loop
+        WFE_Expand_DO (stmt);
+      else
+#endif
       WFE_Expand_Loop (stmt);
       break;
 
@@ -3766,6 +3943,12 @@ WFE_Expand_Stmt(tree stmt, WN* target_wn)
     case USING_STMT:
       break;
 
+#ifdef KEY
+    case OMP_MARKER_STMT:
+      WFE_Expand_Omp (stmt);
+      break;
+#endif // KEY
+
     default:
       Is_True(FALSE,
               ("WFE_Expand_Stmt: Unexpected statement node %s", WFE_Tree_Node_Name (stmt)));
@@ -3831,65 +4014,15 @@ WFE_fixup_target_expr (tree retval)
   set_DECL_ST(ptr_var, WN_st(first_formal));
 }
 
-
-// If type has a copy constructor, then call the copy constructor to copy
-// val_wn to the address pointed to by dest_addr.  Otherwise, return FALSE.
+// Return TRUE if TYPE has copy constructor.
 bool
-WFE_call_copy_constructor (WN* val_wn, WN* dest_addr, TY_IDX tidx, tree type)
+WFE_has_copy_constructor (tree type)
 {
-  // It is observed that Get_TY(type) and tidx can be different.  See bug 2526.
+  if (CLASS_TYPE_P(type) &&
+      CLASSTYPE_COPY_CONSTRUCTOR(type) != NULL)
+    return TRUE;
 
-  tree copy_constructor_decl = NULL;
-
-  if (CLASS_TYPE_P(type))
-    copy_constructor_decl = CLASSTYPE_COPY_CONSTRUCTOR(type);
-
-  if (copy_constructor_decl == NULL)
-    return FALSE;	// Type has no copy constructor.
-
-  FmtAssert (TREE_CODE(copy_constructor_decl) == FUNCTION_DECL,
-	     ("WFE_call_copy_constructor: copy constructor not a func decl"));
-  ST *copy_constructor_st = Get_ST(copy_constructor_decl);
-  ST_IDX copy_constructor_st_idx = ST_st_idx(copy_constructor_st);
-
-  // Find the address of the src.
-  WN *src_addr;
-  if (WN_operator(val_wn) == OPR_COMMA) {
-    // Make the COMMA return the address of the object instead of the object
-    // itself, i.e., replace "LDID x" with "LDA x".
-    WN *value_wn = WN_kid1(val_wn);
-    FmtAssert (WN_operator(value_wn) == OPR_LDID,
-	       ("WFE_call_copy_constructor: unexpected value in COMMA"));
-    WN_kid1(val_wn) = address_of(value_wn);
-    WN_set_rtype(val_wn, WN_rtype(WN_kid1(val_wn)));
-    WFE_Set_ST_Addr_Saved(value_wn);
-    src_addr = val_wn;
-  } else {
-    FmtAssert (WN_operator(val_wn) == OPR_LDID ||
-	       WN_operator(val_wn) == OPR_ILOAD ||
-	       WN_operator(val_wn) == OPR_MLOAD,
-	       ("WFE_call_copy_constructor: unexpected value"));
-    src_addr = address_of(val_wn);
-    WFE_Set_ST_Addr_Saved(src_addr);
-  }
-
-  // Create call to the copy constructor.
-  WN* wn = WN_Call(MTYPE_V, MTYPE_V, 2, copy_constructor_st_idx);
-  // Create arg 0, which is the dest addr.
-  WN_actual(wn, 0) = WN_CreateParm (TY_mtype(Ty_Table[tidx]), dest_addr,
-				    tidx, WN_PARM_BY_VALUE);
-  // Create arg 1, src addr.
-  WN_actual(wn, 1) = WN_CreateParm (TY_mtype(Ty_Table[tidx]), src_addr,
-				    tidx, WN_PARM_BY_VALUE);
-  WFE_Stmt_Append(wn, Get_Srcpos());
-
-  // Mark the copy constructor as referenced by WHIRL so it will be translated
-  // into WHIRL.
-  FmtAssert(DECL_ASSEMBLER_NAME(copy_constructor_decl),
-	    ("WFE_call_copy_constructor: func has no assembler name"));
-  TREE_SYMBOL_REFERENCED_BY_WHIRL(DECL_ASSEMBLER_NAME(copy_constructor_decl))=1;
-
-  return TRUE;
+  return FALSE;
 }
 
 bool
@@ -3928,5 +4061,48 @@ Add_Current_Scope_Alloca_St (ST * st, int idx)
   Is_True (TREE_CODE (scope_cleanup_stack[idx].stmt) == SCOPE_STMT,
   	("Unexpected tree code"));
   scope_cleanup_stack[idx].vla.alloca_sts_vector->push_back (st);
+}
+
+// This function is intended to be a general function to handle different
+// pragmas (other than openmp pragmas). Currently it handles
+// #pragma options, mips_frequency_hint
+//
+void
+WFE_Expand_Pragma (tree exp)
+{
+  switch (exp->omp.choice)
+  {
+    case options_dir:
+    { // pragma options
+      TCON tcon;
+      exp = (tree) exp->omp.omp_clause_list;
+      tcon = Host_To_Targ_String (MTYPE_STRING,
+                                  const_cast<char*>TREE_STRING_POINTER(exp),
+                                  TREE_STRING_LENGTH(exp) - 1 /* ignore \0 */);
+      TY_IDX ty_idx = Get_TY(TREE_TYPE(exp));
+      ST * st = New_Const_Sym (Enter_tcon (tcon), ty_idx);  
+      TREE_STRING_ST (exp) = st;
+      WN * wn = WN_CreatePragma (WN_PRAGMA_OPTIONS, st, 0, 0);
+      WN * func_wn = WFE_Find_Stmt_In_Stack (wfe_stmk_func_entry);
+      WN_INSERT_BlockLast (WN_func_pragmas(func_wn), wn);
+      break;
+    }
+    case exec_freq_dir:
+    { // pragma mips_frequency_hint
+      MIPS_FREQUENCY_HINT freq_hint;
+      Is_True (TREE_CODE ((tree) exp->omp.omp_clause_list) == STRING_CST,
+               ("Expected string constant with mips_frequency_hint"));
+      const char * hint = TREE_STRING_POINTER ((tree) exp->omp.omp_clause_list);                                                                                
+      if (!strcmp (hint, "never")) freq_hint = FREQUENCY_HINT_NEVER;
+      else if (!strcmp (hint, "init")) freq_hint = FREQUENCY_HINT_INIT;
+      else if (!strcmp (hint, "frequent")) freq_hint = FREQUENCY_HINT_FREQUENT;
+      else // Invalid mips_frequency_hint
+        break;
+                                                                                
+      WN * wn = WN_CreatePragma (WN_PRAGMA_MIPS_FREQUENCY_HINT, (ST*)NULL, freq_hint, 0);
+      WFE_Stmt_Append (wn, Get_Srcpos());
+      break;
+    }
+  }
 }
 #endif

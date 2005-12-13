@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -298,6 +298,17 @@ HB_Schedule::Estimate_Reg_Cost_For_OP (OP *op)
 	local_regs_avail[cl]++;
       }
     }
+#ifdef TARG_X8664
+    // If OP defines a preallocated TN(s), then schedule OP as soon as it is
+    // ready, so that it will be scheduled immediately after the move(s) that
+    // copy the preallocated TN(s) to regular TN(s).  This only works for
+    // backward scheduling, which is what we do when scheduling to reduce
+    // register pressure.  Bug 6081.
+    Is_True(!LOCS_Fwd_Scheduling,
+	    ("Estimate_Reg_Cost_For_OP: Fwd scheduling called from LRA"));
+    if (TN_is_preallocated(result_tn))
+      cost -= 1000;	// make it large enough to force OP to be scheduled next
+#endif
   }
   for (i = 0; i < OP_opnds(op); i++) {
     TN *opnd_tn = OP_opnd(op,i);
@@ -1322,6 +1333,70 @@ Priority_Selector::Select_OP_For_Delay_Slot (OP *xfer_op)
   return best_op;
 }
 
+#ifdef TARG_X8664
+// ======================================================================
+// Determine how to schedule an OP with preallocated TNs.  Return 1 if it must
+// be scheduled now, -1 if it should not be scheduled now, or 0 if it is ok but
+// not necessary to schedule it now.
+// ======================================================================
+int
+Priority_Selector::Sched_OP_With_Preallocated_TN (OP *op)
+{
+  // If OP references a preallocated TN, then determine if OP must be scheduled
+  // in the current cycle as follows.  Find PRED_OP that defines the
+  // preallocated TN.  Find the OPs that reference the preallocated TN(s)
+  // defined by PRED_OP.  These are OP's "siblings".  Schedule OP and the
+  // siblings together as a group so that PRED_OP can be scheduled immediately
+  // afterwards, thereby shortening the live ranges of the preallocated TNs.
+  // (This assumes backwards scheduling.)  Handle three cases for OP:
+  //  1)  One of OP's siblings is not ready.  Try not to schedule OP now.
+  //  2)  One of OP's siblings is already scheduled.  Must schedule OP now.
+  //  3)  All of OP's siblings are ready but none has scheduled.  It is ok but
+  //      not necessary to schedule OP now.
+  for (int opndnum = 0; opndnum < OP_opnds(op); opndnum++) {
+    TN *op_opnd_tn = OP_opnd(op, opndnum);
+    if (TN_is_register(op_opnd_tn) &&
+	TN_is_preallocated(op_opnd_tn)) {
+      ARC_LIST *arcs1, *arcs2;
+      for (arcs1 = OP_preds(op); arcs1 != NULL; arcs1 = ARC_LIST_rest(arcs1)) {
+	ARC *arc1 = ARC_LIST_first(arcs1);
+	OP *pred_op = ARC_pred(arc1);
+	if (!OP_Defs_TN(pred_op, op_opnd_tn))
+	  continue;
+	// PRED_OP defines the preallocated TN referenced by OP.
+	for (int i = 0; i < OP_results(pred_op); i++) {
+	  TN *pred_result_tn = OP_result(pred_op, i);
+	  if (TN_is_register(pred_result_tn) &&
+	      TN_is_preallocated(pred_result_tn)) {
+	    // Pred's RESULT_TN is a preallocated TN.  For each of OP's
+	    // siblings that references RESULT_TN, see if it is ready or
+	    // scheduled.
+	    for (arcs2 = OP_succs(pred_op);
+		 arcs2 != NULL;
+		 arcs2 = ARC_LIST_rest(arcs2)) {
+	      ARC *arc2 = ARC_LIST_first(arcs2);
+	      OP *sib_op = ARC_succ(arc2);
+	      // See if it's a sibling OP that references pred's RESULT_TN.
+	      if (op != sib_op &&
+		  OP_Refs_TN(sib_op, pred_result_tn)) {
+		OPSCH *sib_opsch = OP_opsch(sib_op, _cur_sched->hb_map());
+		if (OPSCH_scheduled(sib_opsch))
+		  return 1;	// Sibling is scheduled.  Must schedule OP now.
+		if (!VECTOR_Member_Element(_cur_sched->ready_vector(),
+					   (void*) sib_op))
+		  return -1;	// Sibling is not ready.  Try not to schedule
+				// OP now.
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+  return 0;
+}
+#endif
+
 // ======================================================================
 // Put the scheduled list of instructions back into the basic block. 
 // This is done by emptying the basic block and inserting the scheduled
@@ -1482,6 +1557,9 @@ List_Based_Bkwd::List_Based_Bkwd (std::list<BB*> bblist, HB_Schedule *sched,
 void*
 Priority_Selector::Get_Next_Element(HB_Schedule *Cur_Sched)
 {
+#ifdef TARG_X8664
+  OP *last_choice_op = NULL;
+#endif
   _best_op = NULL;
 
   if (Trace_HB) {
@@ -1530,6 +1608,24 @@ Priority_Selector::Get_Next_Element(HB_Schedule *Cur_Sched)
     }
 #endif
 
+#ifdef TARG_X8664
+    // If scheduling to reduce LRA register pressure, schedule the OPs that
+    // have preallocated TNs as close as possible to the copies that move the
+    // preallocated TNs to/from regular TNs.  This is needed to shorten the
+    // live range of the registers corresponding to the preallocated TNs;
+    // otherwise LRA can run out of registers and die.  Bug 6081.
+    if (Cur_Sched->HBS_Minimize_Regs()) {
+      INT status = Sched_OP_With_Preallocated_TN(cur_op);
+      if (status == 1) {		// Must pick cur_op.
+	_best_op = cur_op;
+	break;
+      } else if (status == -1) {	// Try not to pick cur_op.
+	last_choice_op = cur_op;
+	continue;
+      }
+    }
+#endif
+
     // Replace the best_op by the cur_op if any of the following is true:
     //   1. best_op is NULL, i.e. cur_op is the first one we have seen.
     //   2. The cur_op is better based on some heuristics.
@@ -1538,7 +1634,11 @@ Priority_Selector::Get_Next_Element(HB_Schedule *Cur_Sched)
     }
   }
 
-#ifdef KEY
+#ifdef TARG_X8664
+  // Must pick a copy of a preallocated TN if that's the only ready OP.
+  if (_best_op == NULL)
+    _best_op = last_choice_op;
+
   _last_sched_op = _best_op;
 #endif // KEY
 

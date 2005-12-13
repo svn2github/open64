@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -227,6 +227,11 @@ DSE::Required_stid( const WN *wn ) const
 
   if (ST_sclass(s) == SCLASS_FORMAL)  // leave the details to DCE
     return TRUE;   
+
+#ifdef KEY // bugs 5401 and 5267
+  if (Opt_stab()->Aux_stab_entry(Opt_stab()->Du_aux_id(du))->Mp_no_dse())
+    return TRUE;   
+#endif
 
 #ifdef KEY // deleting fetch of MTYPE_M return value can cause lowerer to omit
   	   // inserting the fake parm
@@ -691,7 +696,7 @@ DSE::Dead_store_elim( void ) const
   }
 
   VER_STAB_ITER ver_stab_iter(Opt_stab()->Ver_stab());
-  AUX_ID ssa_id;
+  VER_ID ssa_id;
 
   // clear all of the versions' uses
   FOR_ALL_NODE( ssa_id, ver_stab_iter, Init() ) {
@@ -708,7 +713,7 @@ DSE::Dead_store_elim( void ) const
     }
 
     if ( Tracing() ) {
-      vse->Print(TFile);
+      vse->Print(TFile, ssa_id);
     }
   }
 
@@ -838,7 +843,7 @@ DSE::Dead_store_elim( void ) const
     FOR_ALL_NODE( ssa_id, ver_stab_iter, Init() ) {
       VER_STAB_ENTRY *vse = Opt_stab()->Ver_stab_entry(ssa_id);
       fprintf(TFile, " [%3d]", ssa_id);
-      vse->Print(TFile);
+      vse->Print(TFile, ssa_id);
     }
     FOR_ALL_NODE( bb, cfg_iter, Init() ) {
       bb->Print_head(TFile);

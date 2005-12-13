@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -3214,6 +3214,8 @@ static void c_init_attributes PARAMS ((void));
 /* Build tree nodes and builtin functions common to both C and C++ language
    frontends.  */
 
+static const char *null;
+
 void
 c_common_nodes_and_builtins ()
 {
@@ -3979,6 +3981,9 @@ statement_code_p (code)
     case ASM_STMT:
     case FILE_STMT:
     case CASE_LABEL:
+#ifdef KEY
+    case OMP_MARKER_STMT:
+#endif /* KEY */
       return 1;
 
     default:

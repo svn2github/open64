@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -320,6 +320,7 @@ ipa_compile_init ()
   static char* cord_name_base= "/usr/bin/gen_cord";
   static char my_cc[MAXPATHLEN];
   char *where_am_i = getenv("COMPILER_BIN");
+  int retval;
 
   if (where_am_i) {
     tmp_cc_name_base = where_am_i;
@@ -327,7 +328,9 @@ ipa_compile_init ()
   }
   
   if (my_cc[0] == '\0' &&
-      readlink ("/proc/self/exe", my_cc, sizeof(my_cc)) >= 0) {
+      (retval = readlink ("/proc/self/exe", my_cc, sizeof(my_cc))) >= 0) {
+
+      my_cc[retval] = '\0';	// readlink doesn't append NULL
 
       if (looks_like (my_cc, PSC_NAME_PREFIX "cc") ||
 	  looks_like (my_cc, PSC_NAME_PREFIX "CC") ||
@@ -617,7 +620,15 @@ size_t ipacom_process_file (char* input_file,
 
   infiles->push_back(input_base);
   outfiles->push_back(output_base);
+#ifdef KEY
+  {
+    // Don't write the path component into the linkopt file, in order to
+    // shorten the link command's arg list.  Bug 5876.
+    outfiles_fullpath->push_back(ipa_basename(output_file));
+  }
+#else
   outfiles_fullpath->push_back(output_file);
+#endif
 
   // Assemble the command line.
 
@@ -843,8 +854,9 @@ void ipacom_doit (const char* ipaa_filename)
     fprintf(makefile, ".IGNORE: %s\n\n", executable_macro);
 #ifdef KEY
     // bug 2487
+    // bug 3594: emit backslash if there is only symtab.o
     fprintf(makefile, "%s%s%s\n", executable_macro, TARGET_DELIMITER,
-	    outfiles->size() ? "\\" : "");
+	    outfiles->size() || strlen(elf_symtab_name) ? "\\" : "");
 #else
     fprintf(makefile, "%s%s\\\n", executable_macro, TARGET_DELIMITER);
 #endif
@@ -881,7 +893,7 @@ void ipacom_doit (const char* ipaa_filename)
     // Print all but link_line[0] into cmdfile.
     ARGV::const_iterator i = link_line->begin();
     for (++i; i != link_line->end(); ++i) {
-#ifdef TARG_X8664
+#ifdef KEY
       // Since we are using GCC to link, don't print out the run-time support
       // files.
       char *p;
@@ -925,9 +937,18 @@ void ipacom_doit (const char* ipaa_filename)
 
     // Print the final link command into the makefile.
 #if defined(TARG_IA64) || defined(TARG_X8664)
-    fprintf(makefile, "\t%s `cat %s `\n",
+#ifdef KEY
+    // cd into the ipa tmp dir first, since we removed the objs' full path
+    // from the linkopt file.  Bug 5876.
+    fprintf(makefile, "\tcd %s ; %s `cat %s ` ; mv %s ..\n",
+            tmpdir, link_line->front(), cmdfile_buf,
+	    ipa_basename((char*) executable));
+#else
+    fprintf(makefile,
+	    "\t%s `cat %s `\n",
             link_line->front(),
             link_cmdfile_name);
+#endif
 #else
     fprintf(makefile, "\t%s -from %s\n",
             link_line->front(),
@@ -1227,8 +1248,13 @@ void ipacom_doit (const char* ipaa_filename)
 #endif
     fprintf(sh_cmdfile, "-s ");
 
+#ifdef KEY
+  if (IPA_Max_Jobs > 1)
+    fprintf(sh_cmdfile, "-j %u ", IPA_Max_Jobs);
+#else
   if (IPA_Max_Jobs_Set) 
     fprintf(sh_cmdfile, "-J %u ", IPA_Max_Jobs);
+#endif
 
   fprintf(sh_cmdfile, "\nretval=$?\n");
 
@@ -1488,3 +1514,28 @@ static void exec_smake (char* sh_cmdfile_name)
 
   Fail_FmtAssertion ("ipa: exec sh failed");
 }
+
+#ifdef KEY
+extern "C" {
+// Allow ipa_link to call the error routines.
+
+void
+Ipalink_Set_Error_Phase (char *name)
+{
+  Set_Error_Phase (name);
+}
+
+void
+Ipalink_ErrMsg_EC_infile (char *name)
+{ 
+  ErrMsg(EC_Ipa_Infile, name);
+}
+
+void
+Ipalink_ErrMsg_EC_outfile (char *name)
+{ 
+  ErrMsg(EC_Ipa_Outfile, name);
+}
+
+}	// extern "C"
+#endif

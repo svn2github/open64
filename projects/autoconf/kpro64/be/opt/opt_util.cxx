@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -153,6 +153,7 @@ Opt_tlog( char *keyword, long long srcpos, const char *fmt, ...)
 #include "tlog.h"
 #include "optimizer.h"
 #include "opt_bb.h"
+#include "erglob.h"
 #include "opt_htable.h"
 #include "opt_cfg.h"
 

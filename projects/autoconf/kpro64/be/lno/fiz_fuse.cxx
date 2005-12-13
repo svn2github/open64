@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -950,7 +950,7 @@ extern FIZ_FUSE_INFO* Fiz_Fuse(WN* loop, FIZ_FUSE_INFO* snls, MEM_POOL* mpool) {
     }
 #ifdef KEY
     if ( try_fusion && LNO_Run_Simd > 0 && LNO_Simd_Avoid_Fusion &&
-	 (dli1->Vectorizable || dli2->Vectorizable) ) {
+	 (dli1->Vectorizable ^ dli2->Vectorizable) ) {
 
       if (LNO_Analysis) {
 	fiz_fuse_analysis_info(INFO, srcpos1, srcpos2, min_snl_level,

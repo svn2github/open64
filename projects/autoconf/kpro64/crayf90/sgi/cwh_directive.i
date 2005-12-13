@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -79,7 +83,9 @@ static struct {
 
 static WN * do_loop_directive_block=NULL;
 static void cwh_directive_pragma_to_region(WN * prag, WN * region) ;
+#ifndef KEY
 static void cwh_directive_set_PU_flags(BOOL nested);
+#endif
 static void cwh_directive_set_LNO_flags(void);
 static void cwh_directive_pop_and_nowait( BOOL nowait, BOOL is_omp);
 static void cwh_directive_add_pragma_to_loop(WN * wn, BOOL is_omp);

@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -87,6 +92,9 @@ private:
   // routines to interface to simplifier
   CODEREP *CR_Simplify_Tree(CODEREP *);
   CODEREP *CR_Simplify_Expr(CODEREP *);
+#ifdef KEY
+  CODEREP *CR_Simplify_Iload(CODEREP *);
+#endif
 
   // allow expr simplifier to look one level past CVT and CVTL
   BOOL check_convert(CODEREP *, CODEREP **, INT);

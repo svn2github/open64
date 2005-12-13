@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -126,6 +126,11 @@ static char *erglob_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 /* Warning of unimplemented optimization: */
 #define EC_Development_Warning EC_Undef_Code+20
 
+#ifdef KEY
+/* Error for unimplemented features: */
+#define EC_Unimplemented_Feature EC_Undef_Code+24 /* str */
+#endif // KEY
+
 /* Trace package errors: */
 #define EC_Trace_Func	EC_Undef_Code+30	/* int */
 #define EC_Trace_Phase	EC_Undef_Code+31	/* int, int, int */
@@ -221,6 +226,11 @@ static char *erglob_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #define EC_Null_Tree	EC_Undef_Code+114	/* str */
 #define EC_Inv_Treenum	EC_Undef_Code+115	/* int, tree, tree, int */
 
+#ifdef KEY
+#define EC_Bad_Omp	EC_Undef_Code+116	/* str */
+#define EC_Ill_Alias	EC_Undef_Code+117	/* str, str, str */
+#endif /* KEY */
+
 /* Region errors: */
 #define EC_Rgn_Ill_Entry	EC_Undef_Code+120	/* str */
 #define EC_Rgn_Ill_Exit		EC_Undef_Code+121	/* str */
@@ -305,6 +315,9 @@ static char *erglob_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #define EC_FPR_16	EC_Undef_Code+244	/* none */
 #define EC_FPR_32	EC_Undef_Code+245	/* none */
 #define EC_Inv_OPT	EC_Undef_Code+246	/* str, str */
+#ifdef KEY
+#define EC_Inv_x87_Prec	EC_Undef_Code+247	/* int */
+#endif
 
 /* Pragma errors: */
 #define EC_Pragma_Scope	EC_Undef_Code+270	/* str, str */
@@ -391,60 +404,67 @@ static char *erglob_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #define EC_Inv_Ipa	EC_BASE_FILE+41		/* str */
 #define EC_Obs_Ipa	EC_BASE_FILE+42		/* str */
 #define EC_Ipa_Rename   EC_BASE_FILE+43         /* str, str */
+#ifdef KEY
+#define EC_Ipa_Infile   EC_BASE_FILE+44         /* str */
+#define EC_Ipa_Outfile  EC_BASE_FILE+45         /* str */
+#endif
 
-#define EC_Asm_Exists	EC_BASE_FILE+45		/* str */
-#define EC_Asm_Open	    EC_BASE_FILE+46		/* str, err */
-#define EC_Asm_Create	EC_BASE_FILE+47		/* str, err */
-#define EC_Asm_Delete	EC_BASE_FILE+48		/* str, err */
-#define EC_Asm_Close	EC_BASE_FILE+49		/* str, err */
-#define EC_No_Asm	    EC_BASE_FILE+50		/* str */
+#define EC_Asm_Exists	EC_BASE_FILE+50		/* str */
+#define EC_Asm_Open	    EC_BASE_FILE+51		/* str, err */
+#define EC_Asm_Create	EC_BASE_FILE+52		/* str, err */
+#define EC_Asm_Delete	EC_BASE_FILE+53		/* str, err */
+#define EC_Asm_Close	EC_BASE_FILE+54		/* str, err */
+#define EC_No_Asm	    EC_BASE_FILE+55		/* str */
 
-#define EC_X_Exists	EC_BASE_FILE+52		/* str */
-#define EC_X_Open	EC_BASE_FILE+53		/* str, err */
-#define EC_X_Create	EC_BASE_FILE+54		/* str, err */
-#define EC_X_Delete	EC_BASE_FILE+55		/* str, err */
-#define EC_X_Close	EC_BASE_FILE+56		/* str, err */
-#define EC_No_X		EC_BASE_FILE+57		/* str */
+#define EC_X_Exists	EC_BASE_FILE+60		/* str */
+#define EC_X_Open	EC_BASE_FILE+61		/* str, err */
+#define EC_X_Create	EC_BASE_FILE+62		/* str, err */
+#define EC_X_Delete	EC_BASE_FILE+63		/* str, err */
+#define EC_X_Close	EC_BASE_FILE+64		/* str, err */
+#define EC_No_X		EC_BASE_FILE+65		/* str */
 
 /* Cpp invocation error codes: */
-#define EC_Cpp_Prep	EC_BASE_FILE+60		/* str */
-#define EC_Cpp_Exec	EC_BASE_FILE+61		/* str, err */
+#define EC_Cpp_Prep	EC_BASE_FILE+70		/* str */
+#define EC_Cpp_Exec	EC_BASE_FILE+71		/* str, err */
 
 /* Linker invocation error codes: */
-#define EC_Link         EC_BASE_FILE+64		/* none */
-#define EC_Link_Exec	EC_BASE_FILE+65		/* err */
+#define EC_Link         EC_BASE_FILE+75		/* none */
+#define EC_Link_Exec	EC_BASE_FILE+76		/* err */
 
 /* Transformation log file error codes: */
-#define EC_Tlog_Exists	EC_BASE_FILE+70		/* str */
-#define EC_Tlog_Open	EC_BASE_FILE+71		/* str, err */
-#define EC_Tlog_Create	EC_BASE_FILE+72		/* str, err */
-#define EC_Tlog_Delete	EC_BASE_FILE+73		/* str, err */
-#define EC_Tlog_Close	EC_BASE_FILE+74		/* str, err */
-#define EC_No_Tlog	    EC_BASE_FILE+75		/* str */
+#define EC_Tlog_Exists	EC_BASE_FILE+80		/* str */
+#define EC_Tlog_Open	EC_BASE_FILE+81		/* str, err */
+#define EC_Tlog_Create	EC_BASE_FILE+82		/* str, err */
+#define EC_Tlog_Delete	EC_BASE_FILE+83		/* str, err */
+#define EC_Tlog_Close	EC_BASE_FILE+84		/* str, err */
+#define EC_No_Tlog	    EC_BASE_FILE+85		/* str */
 
 /* Feedback file error codes: */
-#define EC_FB_File_Fmt	EC_BASE_FILE+80		/* str, str */
-#define EC_FB_Dup_Scn	EC_BASE_FILE+81		/* str, str */
-#define EC_FB_Miss_Scn	EC_BASE_FILE+82		/* str, str */
-#define EC_FB_Unk_Scn	EC_BASE_FILE+83		/* str */
-#define EC_FB_Ent_Size	EC_BASE_FILE+84		/* str, str, int, int */
-#define EC_FB_File_Old  EC_BASE_FILE+85	 	/* str */
+#define EC_FB_File_Fmt	EC_BASE_FILE+90		/* str, str */
+#define EC_FB_Dup_Scn	EC_BASE_FILE+91		/* str, str */
+#define EC_FB_Miss_Scn	EC_BASE_FILE+92		/* str, str */
+#define EC_FB_Unk_Scn	EC_BASE_FILE+93		/* str */
+#define EC_FB_Ent_Size	EC_BASE_FILE+94		/* str, str, int, int */
+#define EC_FB_File_Old  EC_BASE_FILE+95	 	/* str */
+#ifdef KEY
+#define EC_FB_No_File   EC_BASE_FILE+96  	/* str */
+#endif
 
 /* CIF file error codes: */
-#define EC_Cif_Open     EC_BASE_FILE+90		/* str, err */
-#define EC_Cif_Write    EC_BASE_FILE+91		/* str, err */
-#define EC_Cif_Close    EC_BASE_FILE+92		/* str, err */
-#define EC_GI_Fork      EC_BASE_FILE+93		/* str, err */
-#define EC_GI_Exec      EC_BASE_FILE+94		/* str, err */
+#define EC_Cif_Open     EC_BASE_FILE+100	/* str, err */
+#define EC_Cif_Write    EC_BASE_FILE+101	/* str, err */
+#define EC_Cif_Close    EC_BASE_FILE+102	/* str, err */
+#define EC_GI_Fork      EC_BASE_FILE+103	/* str, err */
+#define EC_GI_Exec      EC_BASE_FILE+104	/* str, err */
 
 /* IPA LNO file error codes: */ 
-#define EC_IPALNO_Create    EC_BASE_FILE+100    /* str, err */ 
-#define EC_IPALNO_Close     EC_BASE_FILE+101	/* str, err */ 
-#define EC_IPALNO_Open      EC_BASE_FILE+102	/* str, err */ 
-#define EC_IPALNO_Revision  EC_BASE_FILE+103	/* str, err */ 
+#define EC_IPALNO_Create    EC_BASE_FILE+110    /* str, err */ 
+#define EC_IPALNO_Close     EC_BASE_FILE+111	/* str, err */ 
+#define EC_IPALNO_Open      EC_BASE_FILE+112	/* str, err */ 
+#define EC_IPALNO_Revision  EC_BASE_FILE+113	/* str, err */ 
 
 /* IPA dladd error codes: */
-#define EC_IP_Load_Dso  EC_BASE_FILE+110    /* str, str */
+#define EC_IP_Load_Dso  EC_BASE_FILE+120    /* str, str */
 
 #ifdef __cplusplus
 }

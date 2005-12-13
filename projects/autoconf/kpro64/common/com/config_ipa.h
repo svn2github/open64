@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -131,6 +131,8 @@ extern BOOL IPA_Enable_Branch_Heuristic; // use branch prob. for inlining
 extern float IPA_Min_Branch_Prob;
 extern BOOL IPA_Check_Options;		// check for inconsistent options
 extern BOOL IPA_Clone_List_Actions;	// report cloner actions
+extern BOOL IPA_Enable_Pure_Call_Opt;	// optimizes callsites w/o side-effects
+extern INT32 IPA_Pure_Call_skip_before;
 #endif
 
 /* ===== Inlining heuristics: ===== */
@@ -243,7 +245,7 @@ extern BOOL     IPA_Enable_Inline_Optional_Arg;   /* Enable inlining of PU with 
 extern BOOL     IPA_Enable_Inline_Struct_Array_Actual;   /* Enable inlining of PU with F90 structures with actuals being array type */
 extern BOOL     IPA_Enable_Inline_Var_Dim_Array;   /* Enable inlining of PU with param that is variable-dimensioned array */
 extern BOOL  IPA_Enable_Reorder;   /*Enable structure field reordering */
-#ifdef TARG_X8664 
+#ifdef KEY
 typedef enum
 {
   REORDER_DISABLE = 0,
@@ -252,8 +254,19 @@ typedef enum
 } PU_REORDER_SCHEME;
 
 extern PU_REORDER_SCHEME IPA_Enable_PU_Reorder; /* Procedure reordering */
+extern BOOL IPA_Enable_PU_Reorder_Set;  // Enable user to override
 extern BOOL IPA_Enable_Ctype;	   /* Insert array for ctype.h. */
-#endif // TARG_X8664 
+
+typedef enum
+{
+  STRICT_CHECK = 0,
+  RELAXED_CHECK = 1,
+  AGGRESSIVE = 2
+} CHECK_PARAM_COMPATIBILITY;
+
+// Check if parameters are compatible during inlining
+extern CHECK_PARAM_COMPATIBILITY INLINE_Check_Compatibility;
+#endif // KEY
 
 /* Maximum number of clones for a call graph node */
 extern UINT32 IPA_Max_Node_Clones;
@@ -297,6 +310,8 @@ extern BOOL	INLINE_Enable_Restrict_Pointers; /* allow restrict pointers */
 #ifdef KEY
 extern BOOL	INLINE_Recursive;	//  do recursive inlining
 extern BOOL	INLINE_Param_Mismatch;	// inline even if # of params doesn't match between call and callee
+extern BOOL	INLINE_Type_Mismatch; // inline even if actuals' types!=formals'
+extern BOOL     INLINE_Ignore_Bloat; // ignore code bloat
 #endif
 
 extern struct option_list *INLINE_List_Names;	/* Must/never/file/library 

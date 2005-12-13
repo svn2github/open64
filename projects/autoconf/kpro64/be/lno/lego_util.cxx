@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -319,6 +323,10 @@ extern WN* Get_Numthreads_Ldid (LEGO_INFO* li) {
  * 
  ***********************************************************************/
 extern WN* Get_Runtime_Numthreads_Ldid () {
+#ifdef KEY
+  if (LNO_Num_Processors != 0)
+    return LWN_Make_Icon(MTYPE_I4, LNO_Num_Processors);
+#endif
   OPCODE ldid_op = OPCODE_make_op(OPR_LDID, MTYPE_I4, MTYPE_I4);
   WN* ldid_wn = WN_CreateLdid (ldid_op, 0, distr_st_entries[mp_sug_numthreads],
                                Be_Type_Tbl(MTYPE_I4));
@@ -666,8 +674,10 @@ extern void Set_Runtime_Call_Side_Effects (WN* call_wn) {
   case Compare_Darts:
     WN_Set_Call_Parm_Ref (call_wn);
     break;
+#ifndef KEY // Pathscale does not have this
   case mp_cur_numthreads_func:
     break;
+#endif
   case DST_MAX:
   default:
     FmtAssert (FALSE, ("Set_Runtime_Call_Side_Effects: switch failed\n"));
@@ -891,6 +901,7 @@ extern void Freeze_Cur_Numthreads_Func(WN* wn_loop)
 {
   char Str_Buf[67];
   DU_MANAGER* du = Du_Mgr;
+#ifndef KEY
   OPCODE op_call = OPCODE_make_op(OPR_CALL, MTYPE_I4, MTYPE_V);
   WN* wn_call = WN_Create(op_call, 0);
   WN_st_idx(wn_call) = ST_st_idx(distr_st_entries[mp_cur_numthreads_func]);
@@ -898,19 +909,29 @@ extern void Freeze_Cur_Numthreads_Func(WN* wn_loop)
   PREG_NUM rreg1, rreg2;
   ST* rst = Find_Return_Registers(MTYPE_I4, &rreg1, &rreg2);
   FmtAssert(rreg1 != 0 && rreg2 == 0, ("Bad pointer type ret regs"));
+#endif
   WN* wn_region = LWN_Get_Parent(LWN_Get_Parent(wn_loop));
   FmtAssert(WN_opcode(wn_region) == OPC_REGION,
     ("Freeze_Numthreads_Ldid: Could not find mp region"));
+#ifndef KEY
   LWN_Insert_Block_Before(LWN_Get_Parent(wn_region), wn_region, wn_call);
   WN* wn_ldid = WN_CreateLdid(OPCODE_make_op(OPR_LDID, MTYPE_I4, MTYPE_I4),
-    rreg1, rst, Be_Type_Tbl(MTYPE_I4));;
+    rreg1, rst, Be_Type_Tbl(MTYPE_I4));
   du->Add_Def_Use(wn_call, wn_ldid);
+#else // load the variable __ompc_cur_numthreads instead of doing a call
+  WN* wn_ldid = WN_CreateLdid(OPCODE_make_op(OPR_LDID, MTYPE_I4, MTYPE_I4),
+    0, distr_st_entries[mp_cur_numthreads], Be_Type_Tbl(MTYPE_I4));
+#endif
   sprintf(Str_Buf, "$frz_cur_num_threads%d", WN_map_id(wn_loop));
   SYMBOL* sym_frozen = Create_Local_Symbol(Str_Buf, MTYPE_I4);
   WN* wn_stid = AWN_StidIntoSym(sym_frozen, wn_ldid);
   Create_local_alias(Alias_Mgr, wn_stid);
   WN_Set_Linenum(wn_stid, WN_Get_Linenum(wn_loop));
+#ifndef KEY
   LWN_Insert_Block_After(LWN_Get_Parent(wn_call), wn_call, wn_stid);
+#else
+  LWN_Insert_Block_Before(LWN_Get_Parent(wn_region), wn_region, wn_stid);
+#endif
   DO_LOOP_INFO* dli_loop = Get_Do_Loop_Info(wn_loop);
   dli_loop->Mp_Info->Set_Sym_Frozen(sym_frozen);
   Add_Pragma_To_MP_Region(wn_loop, sym_frozen->St(), 
@@ -989,7 +1010,10 @@ extern void Freeze_Numthreads_Ldid(WN* wn_loop)
 
 extern WN* Get_Frozen_Numthreads_Ldid(WN* wn_loop)
 {
-  WN *wn;
+  // WN *wn;
+	// modifed by csc. 2002/11/14
+  WN *wn = WN_Intconst( MTYPE_I4, 4 );
+  return wn;
   for (wn = wn_loop; wn != NULL; wn = LWN_Get_Parent(wn)) {
     if (WN_opcode(wn) == OPC_DO_LOOP) {
       DO_LOOP_INFO* dli_wn = Get_Do_Loop_Info(wn);

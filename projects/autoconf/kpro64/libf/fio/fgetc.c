@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -74,6 +74,17 @@
 
 #include "fio.h"
 
+#ifdef KEY /* Bug 1683 */
+#include <string.h>
+
+static _f_int fgetcf90_(_f_int *u, char *c, int clen);
+extern _f_int8 fgetcf90_8_(_f_int8 *u, char *c, int clen);
+extern _f_int8 fgetcf90_8_4_(_f_int4 *u, char *c, int clen);
+extern _f_int4 fgetcf90_4_8_(_f_int8 *u, char *c, int clen);
+static int getc_(char *c, int clen);
+static _f_int4 getcf90_(char *c, int clen);
+extern _f_int8 getcf90_8_(char *c, int clen);
+#else
 extern int __fgetc_f90(_f_int *u, char *c, int clen);
 extern _f_int fgetcf90_(_f_int *u, char *c, int clen);
 extern _f_int8 fgetcf90_8_(_f_int8 *u, char *c, int clen);
@@ -82,6 +93,27 @@ extern _f_int4 fgetcf90_4_8_(_f_int8 *u, char *c, int clen);
 extern int getc_(char *c, int clen);
 extern _f_int4 getcf90_(char *c, int clen);
 extern _f_int8 getcf90_8_(char *c, int clen);
+#endif /* KEY Bug 1683 */
+
+#ifdef KEY /* Bug 1683 */
+
+int 
+__fgetc_f90(_f_int *u, char *c, int *status, int clen)
+{
+	int junk;
+	status = (status == 0) ? (&junk) : status;
+	return *status = fgetcf90_(u, c, clen);
+}
+
+int
+pathf90_fget(char *c, int *status, int clen)
+{
+	int junk;
+	status = (status == 0) ? (&junk) : status;
+	return *status = getc_(c, clen);
+}
+
+#else
 
 int 
 __fgetc_f90(_f_int *u, char *c, int clen)
@@ -89,6 +121,12 @@ __fgetc_f90(_f_int *u, char *c, int clen)
 	return fgetcf90_(u, c, clen);
 }
 
+#endif /* KEY Bug 1683 */
+
+#ifdef KEY /* Bug 1683 */
+/* Don't pollute the Fortran namespace with library functions */
+static
+#endif /* KEY Bug 1683 */
 _f_int 
 fgetcf90_(_f_int *u, char *c, int clen)
 {
@@ -104,12 +142,30 @@ fgetcf90_(_f_int *u, char *c, int clen)
 
 	/* lock the unit */
 	STMT_BEGIN( unum, 0, T_RSF, NULL,  &cfs, cup);
+#ifdef KEY /* Bug 1683 */
+        memset(c, ' ', clen);
+	/* Copied from rf90.c; list-directed uses SEQ, so we do too */
+	if (cup == NULL) {
+	  int stat;
+	  int errf = 0;
+	  cup = _imp_open(&cfs, SEQ, FMT, unum, errf, &stat);
+	  if (0 == cup) {
+	    return errno = stat;
+	  }
+	}
+#endif /* KEY Bug 1683 */
 
 	if (unum < 0 || !cup)
 		return((errno=FEIVUNIT));
 	
 	if (_frch(cup, &buf, 1, PARTIAL, &status) == -1)
 		res	= errno;
+#ifdef KEY /* Bug 5805 */
+	/* Negative status without error implies EOF, which G77 says is -1 */
+	else if (0 > status) {
+		res = -1;
+	}
+#endif /* KEY Bug 5805 */
 
 	*c	= (char)buf;
 
@@ -183,6 +239,10 @@ fgetcf90_4_8_(_f_int8 *u, char *c, int clen)
  *
  */
 
+#ifdef KEY /* Bug 1683 */
+/* Don't pollute the Fortran namespace with library functions */
+static
+#endif /* KEY Bug 1683 */
 int
 getc_(char *c, int clen)
 {
@@ -190,6 +250,10 @@ getc_(char *c, int clen)
 	return fgetcf90_(&stdin_unit, c, clen);
 }
 
+#ifdef KEY /* Bug 1683 */
+/* Don't pollute the Fortran namespace with library functions */
+static
+#endif /* KEY Bug 1683 */
 _f_int4
 getcf90_(char *c, int clen)
 {

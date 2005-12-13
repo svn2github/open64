@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -297,7 +297,7 @@ public:
 private:
 
    typedef mempool_allocator<CODEREP*>      CODEREP_ALLOCATOR;
-   typedef vector<CODEREP*, STMT_ALLOCATOR> CODEREP_VECTOR;
+   typedef vector<CODEREP*, CODEREP_ALLOCATOR> CODEREP_VECTOR;
 
    typedef mempool_allocator<STMT_LIST> STMTLIST_ALLOCATOR;
    typedef vector<STMT_LIST, STMTLIST_ALLOCATOR> STMTLIST_VECTOR;

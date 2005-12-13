@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,14 +47,19 @@ double d_sign(double *a, double *b)
 {
     register double x = *a;
 
+#ifdef KEY /* Bug 3405 */
+    /* The code generator interprets IEEE_minus_zero=OFF to mean that
+     * we ignore the sign of b when b is zero, not that we refrain from
+     * generating negative zero. So this function should behave likewise.
+     */
+    x = (*a >= 0.0 ? *a : - *a);
+    return( *b >= 0.0 ? x : -x);
+#else
     if (x <= 0.0)
 	x = -x;
     if (*b < 0.0)
 	x = -x;
     return (x);
-#if 0
-    x = (*a >= 0.0 ? *a : - *a);
-    return( *b >= 0.0 ? x : -x);
 #endif
 }
 
@@ -68,3 +77,15 @@ double __dsign(double a, double b)
     return( b >= 0.0 ? x : -x);
 #endif
 }
+
+#ifdef KEY /* Bug 3405 */
+/* Copy IEEE sign bit from b to a */
+double dIsign(double *a, double *b)
+{
+#define SIGN 0x8000000000000000LL
+  unsigned long long aval = *(unsigned long long *)a;
+  unsigned long long bval = *(unsigned long long *)b;
+  aval = (aval & ~SIGN) | (bval & SIGN);
+  return *(double *)&aval;
+}
+#endif /* KEY Bug 3405 */

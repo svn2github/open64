@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,6 +48,7 @@
 #include "stab.h"
 #include "wn.h"
 #include "opt_points_to.h"
+#include "erglob.h"
 #include "opt_sym.h"
 #include "opt_util.h"
 

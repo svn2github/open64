@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -101,6 +101,21 @@ struct Value_Profile {
   INT64 value[TNV];
   INT64 freq[TNV];
   Value_Profile() : num_values(0), exe_counter(0) {}
+};
+
+// All the information about a F8MPY node is stored in the
+// Value_FP_Profile structure. Currently for each value of a
+// multiplicand we maintain information on how many times this value
+// is accessed through the lifetime of the program.
+
+struct Value_FP_Bin_Profile {
+  INT64 exe_counter;
+  INT64 zopnd0;
+  INT64 zopnd1;
+  INT64 uopnd0;
+  INT64 uopnd1;
+  Value_FP_Bin_Profile() : exe_counter(0),
+  			   zopnd0(0), zopnd1(0), uopnd0(0), uopnd1(0) {}
 };
 #endif
 
@@ -216,6 +231,7 @@ typedef vector<Call_Profile>		Call_Profile_Vector;
 typedef vector<Icall_Profile>		Icall_Profile_Vector;
 #ifdef KEY
 typedef vector<Value_Profile>		Value_Profile_Vector;
+typedef vector<Value_FP_Bin_Profile>	Value_FP_Bin_Profile_Vector;
 #endif
 
 struct PU_Profile_Handle {
@@ -229,6 +245,7 @@ struct PU_Profile_Handle {
     Icall_Profile_Vector	Icall_Profile_Table;
 #ifdef KEY
     Value_Profile_Vector	Value_Profile_Table;
+    Value_FP_Bin_Profile_Vector	Value_FP_Bin_Profile_Table;
 #endif
 
     INT32 checksum;
@@ -291,6 +308,10 @@ struct PU_Profile_Handle {
 #ifdef KEY
     Value_Profile_Vector& Get_Value_Table () {
       return Value_Profile_Table;
+    }
+
+    Value_FP_Bin_Profile_Vector& Get_Value_FP_Bin_Table () {
+      return Value_FP_Bin_Profile_Table;
     }
 #endif
 

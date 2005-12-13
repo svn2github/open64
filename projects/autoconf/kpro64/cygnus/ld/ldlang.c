@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Linker command language support.
@@ -50,6 +50,10 @@
 #include "elf-bfd.h"
 #include "libbfd.h"
 #include "aout/ar.h"		// struct ar_hdr
+
+#if !defined(EF_IRIX_ABI64)
+#define EF_IRIX_ABI64   0x00000010
+#endif
 #endif
 
 #ifndef offsetof
@@ -64,6 +68,10 @@ ipa_is_whirl(bfd *);
 
 extern void
 ipa_process_whirl ( bfd *);
+
+#ifdef KEY
+extern void (*p_Ipalink_ErrMsg_EC_outfile)(char *);
+#endif
 #endif
 
 /* Locals variables.  */
@@ -1509,15 +1517,26 @@ load_symbols (lang_input_statement_type *entry,
 		      entry->the_bfd, member);
 	      }
 	      member->usrdata = buf;
-	      (*p_process_whirl64) ((void *)member,
-				    elf_elfheader (member)->e_shnum,
-				    member->usrdata+elf_elfheader(member)->e_shoff,
-				    0, /* check_whirl_revision */
-				    member->filename);
+	      if ((elf_elfheader(member)->e_flags & EF_IRIX_ABI64) == 0)
+	        (*p_process_whirl32) ((void *)member,
+				elf_elfheader (member)->e_shnum,
+				member->usrdata+elf_elfheader(member)->e_shoff,
+				0, /* check_whirl_revision */
+				member->filename);
+	      else
+	        (*p_process_whirl64) ((void *)member,
+				elf_elfheader (member)->e_shnum,
+				member->usrdata+elf_elfheader(member)->e_shoff,
+				0, /* check_whirl_revision */
+				member->filename);
 
 	      // Since it is not a regular object archive, don't pass it to the
 	      // linker.
-	      (*p_ipa_erase_link_flag) (entry->local_sym_name);
+	      // Prepend "../" to relative pathname since linking is done
+	      // inside the ipa temp dir.  Bug 6165.
+	      (*p_ipa_erase_link_flag)
+	       ((*p_ipa_add_parent_dir_to_relative_pathname)
+	         (entry->local_sym_name));
 	    }
 	  } else {			// non-WHIRL object
 	    seen_nonwhirl_obj = TRUE;
@@ -1870,7 +1889,11 @@ open_output (const char *name)
       if (bfd_get_error () == bfd_error_invalid_target)
 	einfo (_("%P%F: target %s not found\n"), output_target);
 
+#ifdef KEY	// bug 3956
+      (*p_Ipalink_ErrMsg_EC_outfile)(name);
+#else
       einfo (_("%P%F: cannot open output file %s: %E\n"), name);
+#endif
     }
 
   delete_output_file_on_failure = TRUE;

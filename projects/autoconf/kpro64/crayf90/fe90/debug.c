@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1789,7 +1793,11 @@ void print_ln_by_name (void)
 
 
    printf("Enter LOCAL name->");
+#ifdef KEY
+   fgets(name_string, MAX_ID_LEN, stdin);
+#else /* KEY */
    gets(name_string);
+#endif /* KEY */
    build_fake_token(name_string);
 
    if (srch_sym_tbl(TOKEN_STR(fake_token), TOKEN_LEN(fake_token),
@@ -1836,7 +1844,11 @@ void print_at_by_name(void)
    char		reply;
 
    printf("Entity name->");
+#ifdef KEY
+   fgets(name_string, MAX_ID_LEN, stdin);
+#else /* KEY */
    gets(name_string);
+#endif /* KEY */
    
    /* This is where the code should go to break down a qualified name.       */
 
@@ -1904,7 +1916,11 @@ void print_sb_by_name (void)
    char 		name_string[MAX_ID_LEN + 1];
 
    printf("Enter common block or module name->");
+#ifdef KEY
+   fgets(name_string, MAX_ID_LEN, stdin);
+#else /* KEY */
    gets(name_string);
+#endif /* KEY */
 
    if (strlen(name_string) > 0) {
       build_fake_token(name_string);
@@ -4586,6 +4602,10 @@ static	void	print_expanded_ir(int	ir_idx)
       case Repeat_Opr:
       case Trim_Opr:
       case Transfer_Opr:
+#ifdef KEY /* Bug 1324 */
+      case Erf_Opr:
+      case Erfc_Opr:
+#endif /* KEY Bug 1324 */
 # ifdef _TARGET_OS_MAX
       case My_Pe_Opr:
 # endif

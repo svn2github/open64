@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -47,6 +47,9 @@ extern char *directory_path (char *s);
 
 /* check whether file exists */
 extern boolean file_exists (char *path);
+
+/* check whether file exists and has any executable bits set */
+extern boolean is_executable (char *path);
 
 /* check whether is a directory */
 extern boolean is_directory (char *path);

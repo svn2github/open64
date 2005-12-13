@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -39,8 +43,19 @@
  */
 #include <unistd.h>
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+void
+pathf90_sleep(pathf90_i4 *sec)
+
+#else
+
 extern void
 sleep_ (int *sec)
+
+#endif /* KEY Bug 1683 */
 {
 	sleep((unsigned)*sec);
 }

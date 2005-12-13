@@ -1,5 +1,5 @@
-/* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+/* -*- c -*-
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -141,7 +141,7 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 /* A built-in that is not currently used.  */
 #undef DEF_UNUSED_BUILTIN					
 #define DEF_UNUSED_BUILTIN(X)					\
-  DEF_BUILTIN (X, (const char *) NULL, NOT_BUILT_IN, BT_LAST,	\
+  DEF_BUILTIN (X, null, NOT_BUILT_IN, BT_LAST,	\
 	       BT_LAST, false, false, false, ATTR_NOTHROW_LIST)
 
 /* If SMALL_STACK is defined, then `alloca' is only defined in its
@@ -256,7 +256,6 @@ DEF_EXT_LIB_BUILTIN(BUILT_IN_FFS,
 		    "__builtin_ffs",
 		    BT_FN_INT_INT,
 		    ATTR_CONST_NOTHROW_LIST)
-#ifndef SGI_MONGOOSE
 DEF_EXT_LIB_BUILTIN(BUILT_IN_INDEX,
 		    "__builtin_index",
 		    BT_FN_STRING_CONST_STRING_INT,
@@ -265,7 +264,6 @@ DEF_EXT_LIB_BUILTIN(BUILT_IN_RINDEX,
 		    "__builtin_rindex",
 		    BT_FN_STRING_CONST_STRING_INT,
 		    ATTR_PURE_NOTHROW_LIST)
-#endif /* SGI_MONGOOSE */
 
 DEF_LIB_BUILTIN(BUILT_IN_MEMCPY,
 		"__builtin_memcpy",
@@ -288,7 +286,6 @@ DEF_EXT_LIB_BUILTIN(BUILT_IN_MEMPCPY,
 		BT_FN_PTR_PTR_CONST_PTR_SIZE,
 		ATTR_NOTHROW_LIST)
 
-#ifndef SGI_MONGOOSE
 DEF_LIB_BUILTIN(BUILT_IN_STRCAT,
 		"__builtin_strcat",
 		BT_FN_STRING_STRING_CONST_STRING,
@@ -297,7 +294,6 @@ DEF_LIB_BUILTIN(BUILT_IN_STRNCAT,
 		"__builtin_strncat",
 		BT_FN_STRING_STRING_CONST_STRING_SIZE,
 		ATTR_NOTHROW_LIST)
-#endif /* SGI_MONGOOSE */
 DEF_EXT_LIB_BUILTIN(BUILT_IN_STPCPY,
 		"__builtin_stpcpy",
 		BT_FN_STRING_STRING_CONST_STRING,
@@ -306,22 +302,18 @@ DEF_LIB_BUILTIN(BUILT_IN_STRCPY,
 		"__builtin_strcpy",
 		BT_FN_STRING_STRING_CONST_STRING,
 		ATTR_NOTHROW_LIST)
-#ifndef SGI_MONGOOSE
 DEF_LIB_BUILTIN(BUILT_IN_STRNCPY,
 		"__builtin_strncpy",
 		BT_FN_STRING_STRING_CONST_STRING_SIZE,
 		ATTR_NOTHROW_LIST)
-#endif /* SGI_MONGOOSE */
 DEF_LIB_BUILTIN(BUILT_IN_STRCMP,
 		"__builtin_strcmp",
 		BT_FN_INT_CONST_STRING_CONST_STRING,
 		ATTR_PURE_NOTHROW_LIST)
-#ifndef SGI_MONGOOSE
 DEF_LIB_BUILTIN(BUILT_IN_STRNCMP,
 		"__builtin_strncmp",
 		BT_FN_INT_CONST_STRING_CONST_STRING_SIZE,
 		ATTR_PURE_NOTHROW_LIST)
-#endif /* SGI_MONGOOSE */
 DEF_LIB_BUILTIN(BUILT_IN_STRLEN,
 		"__builtin_strlen",
 		BT_FN_SIZE_CONST_STRING,
@@ -334,7 +326,6 @@ DEF_LIB_BUILTIN(BUILT_IN_STRPBRK,
 		"__builtin_strpbrk",
 		BT_FN_STRING_CONST_STRING_CONST_STRING,
 		ATTR_PURE_NOTHROW_LIST)
-#ifndef SGI_MONGOOSE
 DEF_LIB_BUILTIN(BUILT_IN_STRSPN,
 		"__builtin_strspn",
 		BT_FN_SIZE_CONST_STRING_CONST_STRING,
@@ -343,7 +334,6 @@ DEF_LIB_BUILTIN(BUILT_IN_STRCSPN,
 		"__builtin_strcspn",
 		BT_FN_SIZE_CONST_STRING_CONST_STRING,
 		ATTR_PURE_NOTHROW_LIST)
-#endif /* SGI_MONGOOSE */
 DEF_LIB_BUILTIN(BUILT_IN_STRCHR,
 		"__builtin_strchr",
 		BT_FN_STRING_CONST_STRING_INT,
@@ -378,6 +368,18 @@ DEF_LIB_BUILTIN(BUILT_IN_FLOORL,
                                    ? ATTR_CONST_NOTHROW_LIST
                                    : ATTR_PURE_NOTHROW_LIST))
 
+DEF_LIB_BUILTIN(BUILT_IN_POW,
+		"__builtin_pow",
+		BT_FN_DOUBLE_DOUBLE_DOUBLE,
+		flag_errno_math ? ATTR_NOTHROW_LIST
+		                : (flag_unsafe_math_optimizations
+                                   ? ATTR_CONST_NOTHROW_LIST
+                                   : ATTR_PURE_NOTHROW_LIST))
+
+#else
+// This part is ! KEY. Comment out the following since we are not using
+// the following builtins any more. If we ever need the following, change
+// the definitions to take 2 parameters, not 1. For bug 3793.
 #ifdef TARG_X8664
 DEF_LIB_BUILTIN(BUILT_IN_IDIV3,
 		"__builtin___divdi3",
@@ -602,21 +604,29 @@ DEF_GCC_BUILTIN(BUILT_IN_RETURN,
 		"__builtin_return",
 		BT_FN_VOID_PTR,
 		ATTR_NORETURN_NOTHROW_LIST)
-#ifndef SGI_MONGOOSE
+#ifdef KEY
+DEF_LIB_BUILTIN(BUILT_IN_SETJMP,
+		"__builtin_setjmp",
+		BT_FN_INT_PTR,
+		ATTR_NULL)
+DEF_LIB_BUILTIN(BUILT_IN_LONGJMP,
+		"__builtin_longjmp",
+		BT_FN_VOID_PTR_INT,
+		ATTR_NORETURN_NOTHROW_LIST)
+#else
 DEF_GCC_BUILTIN(BUILT_IN_SETJMP,
 		"__builtin_setjmp",
 		BT_FN_INT_PTR,
 		ATTR_NULL)
-#endif /* SGI_MONGOOSE */
 DEF_GCC_BUILTIN(BUILT_IN_LONGJMP,
 		"__builtin_longjmp",
 		BT_FN_VOID_PTR_INT,
 		ATTR_NORETURN_NOTHROW_LIST)
+#endif /* KEY */
 DEF_GCC_BUILTIN(BUILT_IN_TRAP,
 		"__builtin_trap",
 		BT_FN_VOID,
 		ATTR_NORETURN_NOTHROW_LIST)
-#ifndef SGI_MONGOOSE
 DEF_GCC_BUILTIN(BUILT_IN_PREFETCH,
 		"__builtin_prefetch",
 		BT_FN_VOID_CONST_PTR_VAR,
@@ -624,10 +634,17 @@ DEF_GCC_BUILTIN(BUILT_IN_PREFETCH,
 
 /* stdio.h builtins (without FILE *).  */
 
+#ifdef KEY
+DEF_LIB_BUILTIN(BUILT_IN_PRINTF,
+	  	"__builtin_printf",
+		BT_FN_INT_CONST_STRING_VAR,
+		ATTR_FORMAT_PRINTF_1_2)
+#else
 DEF_FRONT_END_LIB_BUILTIN(BUILT_IN_PRINTF,
 			  "__builtin_printf",
 			  BT_FN_INT_CONST_STRING_VAR,
 			  ATTR_FORMAT_PRINTF_1_2)
+#endif /* KEY */
 DEF_LIB_BUILTIN(BUILT_IN_PUTCHAR,
 		"__builtin_putchar",
 		BT_FN_INT_INT,
@@ -636,7 +653,6 @@ DEF_LIB_BUILTIN(BUILT_IN_PUTS,
 		"__builtin_puts",
 		BT_FN_INT_CONST_STRING,
 		ATTR_NOTHROW_LIST)
-#endif // SGI_MONGOOSE
 DEF_C99_BUILTIN(BUILT_IN_SNPRINTF,
 		"__builtin_snprintf",
 		BT_FN_INT_STRING_SIZE_CONST_STRING_VAR,
@@ -682,7 +698,6 @@ DEF_LIB_BUILTIN(BUILT_IN_VSPRINTF,
    regular style declaration since we had to use void* instead of
    FILE* in the __builtin_ prototype supplied here.  */
 
-#ifndef SGI_MONGOOSE
 DEF_FALLBACK_BUILTIN(BUILT_IN_FPUTC,
 		     "__builtin_fputc",
 		     BT_FN_INT_INT_PTR,
@@ -697,11 +712,17 @@ DEF_FALLBACK_BUILTIN(BUILT_IN_FWRITE,
 		     "__builtin_fwrite",
 		     BT_FN_SIZE_CONST_PTR_SIZE_SIZE_PTR,
 		      ATTR_NOTHROW_LIST)
+#ifdef KEY
+DEF_LIB_BUILTIN(BUILT_IN_FPRINTF,
+		"__builtin_fprintf",
+		BT_FN_INT_PTR_CONST_STRING_VAR,
+		ATTR_FORMAT_PRINTF_2_3)
+#else
 DEF_FRONT_END_LIB_BUILTIN(BUILT_IN_FPRINTF,
 			 "__builtin_fprintf",
 			 BT_FN_INT_PTR_CONST_STRING_VAR,
 			 ATTR_FORMAT_PRINTF_2_3)
-#endif // SGI_MONGOOSE
+#endif /* KEY */
 
 /* stdio unlocked builtins (without FILE *).  */
 
@@ -824,6 +845,12 @@ DEF_GCC_BUILTIN(BUILT_IN_EXPECT,
 		"__builtin_expect",
 		BT_FN_LONG_LONG_LONG,
 		ATTR_NULL)
+
+/* From gcc patch to support __builtin_extend_pointer */
+DEF_GCC_BUILTIN(BUILT_IN_EXTEND_POINTER,
+                "__builtin_extend_pointer",
+                BT_FN_WORD_PTR,
+                ATTR_CONST_NOTHROW_LIST)
 
 /* C++ extensions */
 DEF_UNUSED_BUILTIN(BUILT_IN_NEW)

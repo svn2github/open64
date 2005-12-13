@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -168,6 +168,10 @@ main()
 			     ISA_REGISTER_SUBCLASS_UNDEFINED,
 			     16, UNSIGNED, INVALID);
 
+  const OPERAND_VALUE_TYPE mmx =
+    ISA_Reg_Opnd_Type_Create("mmx", ISA_REGISTER_CLASS_mmx,
+                             ISA_REGISTER_SUBCLASS_UNDEFINED,
+                             64, SIGNED, INVALID);
   /* Enums */
 
   const OPERAND_VALUE_TYPE pfhint =
@@ -211,6 +215,7 @@ main()
 		    TOP_mfence,
 		    TOP_lfence,
 		    TOP_sfence,
+		    TOP_emms,
 		    TOP_UNDEFINED);
 
   Instruction_Group("ret imm16",
@@ -282,12 +287,18 @@ main()
 		     TOP_add128v64,
 		     TOP_fadd128v32,
 		     TOP_fadd128v64,
+		     TOP_fhadd128v32,
+		     TOP_fhadd128v64,
+		     TOP_faddsub128v32,
+		     TOP_faddsub128v64,
 		     TOP_sub128v8,
 		     TOP_sub128v16,
 		     TOP_sub128v32,
 		     TOP_sub128v64,
 		     TOP_fsub128v32,
 		     TOP_fsub128v64,
+		     TOP_fhsub128v32,
+		     TOP_fhsub128v64,
 		     TOP_and128v8,
 		     TOP_and128v16,
 		     TOP_and128v32,
@@ -321,6 +332,16 @@ main()
 		     TOP_fmul128v32,
 		     TOP_fmul128v64,
 		     TOP_subus128v16,
+		     TOP_cmpgt128v8,
+		     TOP_cmpgt128v16,
+		     TOP_cmpgt128v32,
+		     TOP_cmpeq128v8,
+		     TOP_cmpeq128v16,
+		     TOP_cmpeq128v32,
+		     TOP_max128v8,
+		     TOP_max128v16,
+		     TOP_min128v8,
+		     TOP_min128v16,
 		     TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -333,6 +354,10 @@ main()
 			   TOP_addx128v64,
 			   TOP_faddx128v32,
 			   TOP_faddx128v64,
+			   TOP_fhaddx128v32,
+			   TOP_fhaddx128v64,
+			   TOP_faddsubx128v32,
+			   TOP_faddsubx128v64,
 			   TOP_andx128v8,
 			   TOP_andx128v16,
 			   TOP_andx128v32,
@@ -365,6 +390,18 @@ main()
 			   TOP_subx128v64,
 			   TOP_fsubx128v32,
 			   TOP_fsubx128v64,
+			   TOP_fhsubx128v32,
+		           TOP_fhsubx128v64,
+		           TOP_cmpgtx128v8,
+		           TOP_cmpgtx128v16,
+		           TOP_cmpgtx128v32,
+		           TOP_cmpeqx128v8,
+		           TOP_cmpeqx128v16,
+		           TOP_cmpeqx128v32,
+		           TOP_maxx128v8,
+		           TOP_maxx128v16,
+		           TOP_minx128v8,
+		           TOP_minx128v16,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -378,6 +415,10 @@ main()
 			   TOP_addxx128v64,
 			   TOP_faddxx128v32,
 			   TOP_faddxx128v64,
+			   TOP_fhaddxx128v32,
+			   TOP_fhaddxx128v64,
+			   TOP_faddsubxx128v32,
+			   TOP_faddsubxx128v64,
 			   TOP_andxx128v8,
 			   TOP_andxx128v16,
 			   TOP_andxx128v32,
@@ -410,6 +451,18 @@ main()
 			   TOP_subxx128v64,
 			   TOP_fsubxx128v32,
 			   TOP_fsubxx128v64,
+			   TOP_fhsubxx128v32,
+			   TOP_fhsubxx128v64,
+		           TOP_cmpgtxx128v8,
+		           TOP_cmpgtxx128v16,
+		           TOP_cmpgtxx128v32,
+		           TOP_cmpeqxx128v8,
+		           TOP_cmpeqxx128v16,
+		           TOP_cmpeqxx128v32,
+		           TOP_maxxx128v8,
+		           TOP_maxxx128v16,
+		           TOP_minxx128v8,
+		           TOP_minxx128v16,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -425,6 +478,10 @@ main()
 			   TOP_addxxx128v64,
 			   TOP_faddxxx128v32,
 			   TOP_faddxxx128v64,
+			   TOP_fhaddxxx128v32,
+			   TOP_fhaddxxx128v64,
+			   TOP_faddsubxxx128v32,
+			   TOP_faddsubxxx128v64,
 			   TOP_andxxx128v8,
 			   TOP_andxxx128v16,
 			   TOP_andxxx128v32,
@@ -457,6 +514,18 @@ main()
 			   TOP_subxxx128v64,
 			   TOP_fsubxxx128v32,
 			   TOP_fsubxxx128v64,
+			   TOP_fhsubxxx128v32,
+			   TOP_fhsubxxx128v64,
+		           TOP_cmpgtxxx128v8,
+		           TOP_cmpgtxxx128v16,
+		           TOP_cmpgtxxx128v32,
+		           TOP_cmpeqxxx128v8,
+		           TOP_cmpeqxxx128v16,
+		           TOP_cmpeqxxx128v32,
+		           TOP_maxxxx128v8,
+		           TOP_maxxxx128v16,
+		           TOP_minxxx128v8,
+		           TOP_minxxx128v16,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -801,6 +870,7 @@ main()
 		    TOP_prefetchw,
 		    TOP_prefetcht0,
 		    TOP_prefetcht1,
+		    TOP_prefetchnta,
 		    TOP_UNDEFINED);
   Operand(0, pfhint);
   Operand(1, int64, base);
@@ -811,6 +881,7 @@ main()
 		    TOP_prefetchwx,
 		    TOP_prefetcht0x,
 		    TOP_prefetcht1x,
+		    TOP_prefetchntax,
 		    TOP_UNDEFINED);
   Operand(0, pfhint);
   Operand(1, int64, base);
@@ -823,6 +894,7 @@ main()
 		    TOP_prefetchwxx,
 		    TOP_prefetcht0xx,
 		    TOP_prefetcht1xx,
+		    TOP_prefetchntaxx,
 		    TOP_UNDEFINED);
   Operand(0, pfhint);
   Operand(1, int64, index);
@@ -1005,9 +1077,79 @@ main()
 
   Instruction_Group("vector cvt",
 		    TOP_cvtdq2pd,
+		    TOP_cvtdq2ps,
+		    TOP_cvtps2pd,
+		    TOP_cvtpd2ps,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
+
+  Instruction_Group("vector cvt w/ trunc",
+		    TOP_cvttps2dq,
+		    TOP_cvttpd2dq,
+		    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128, opnd1);
+
+  Instruction_Group("vector cvt I",
+		    TOP_cvtdq2pd_x,
+		    TOP_cvtdq2ps_x,
+		    TOP_cvtps2pd_x,
+		    TOP_cvtpd2ps_x,
+		    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+
+  Instruction_Group("vector cvt w/ trunc I",
+		    TOP_cvttps2dq_x,
+		    TOP_cvttpd2dq_x,
+		    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+
+  Instruction_Group("vector cvt II",
+		    TOP_cvtdq2pd_xx,
+		    TOP_cvtdq2ps_xx,
+		    TOP_cvtps2pd_xx,
+		    TOP_cvtpd2ps_xx,
+		    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset); 
+
+  Instruction_Group("vector cvt w/ trunc II",
+		    TOP_cvttps2dq_xx,
+		    TOP_cvttpd2dq_xx,
+		    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, base);
+  Operand(1, int64, index);
+  Operand(2, uimm8, scale);
+  Operand(3, simm32, offset); 
+
+  Instruction_Group("vector cvt III",
+		    TOP_cvtdq2pd_xxx,
+		    TOP_cvtdq2ps_xxx,
+		    TOP_cvtps2pd_xxx,
+		    TOP_cvtpd2ps_xxx,
+		    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
+
+  Instruction_Group("vector cvt w/ trunc III",
+		    TOP_cvttps2dq_xxx,
+		    TOP_cvttpd2dq_xxx,
+		    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, int64, index);
+  Operand(1, uimm8, scale);
+  Operand(2, simm32, offset);
 
   Instruction_Group("int32 2 float",
   		    TOP_movg2x,
@@ -1045,6 +1187,9 @@ main()
 		    TOP_sari32,
 		    TOP_shli32,
 		    TOP_shri32,
+		    TOP_rori8,
+		    TOP_rori16,
+		    TOP_rori32,
 		    TOP_UNDEFINED);
   Result(0, int32);
   Operand(0, int32, opnd1);
@@ -1054,6 +1199,7 @@ main()
 		    TOP_sari64,
 		    TOP_shli64,
 		    TOP_shri64,
+		    TOP_rori64,
 		    TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64, opnd1);
@@ -1063,6 +1209,9 @@ main()
 		    TOP_sar32,
 		    TOP_shl32,
 		    TOP_shr32,
+		    TOP_ror8,
+		    TOP_ror16,
+		    TOP_ror32,
 		    TOP_UNDEFINED);
   Result(0, int32);
   Operand(0, int32, opnd1);
@@ -1090,6 +1239,7 @@ main()
 		    TOP_sar64,
 		    TOP_shl64,
 		    TOP_shr64,
+		    TOP_ror64,
 		    TOP_UNDEFINED);
   Result(0, int64);
   Operand(0, int64, opnd1);
@@ -1179,6 +1329,9 @@ main()
 		    TOP_lddqa_n32,
 		    TOP_ldapd_n32,
 		    TOP_ldaps_n32,
+		    TOP_ldlps_n32,
+		    TOP_ldlpd_n32,
+		    TOP_ldhpd_n32,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, simm32, offset);
@@ -1192,6 +1345,9 @@ main()
 		    TOP_ldlpd,
 		    TOP_ldapd,
 		    TOP_ldaps,
+		    TOP_fmovsldupx,
+		    TOP_fmovshdupx,
+		    TOP_fmovddupx,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, int64, base);
@@ -1216,6 +1372,9 @@ main()
 		    TOP_stdqa_n32,
 		    TOP_stapd_n32,
 		    TOP_staps_n32,
+		    TOP_stlps_n32,
+		    TOP_stlpd_n32,
+		    TOP_sthpd_n32,
 		    TOP_UNDEFINED);
   Operand(0, fp128, storeval);
   Operand(1, simm32, offset);
@@ -1242,6 +1401,9 @@ main()
 		    TOP_fistpll,
 		    TOP_fists,
 		    TOP_fistl,
+		    TOP_fisttps,
+		    TOP_fisttpl,
+		    TOP_fisttpll,
 		    TOP_UNDEFINED);
   Operand(0, x87, storeval);
   Operand(1, int64, base);
@@ -1293,14 +1455,17 @@ main()
   Result(0, fp128);
   Operand(0, fp128, opnd1);
   Operand(1, fp128, opnd2);
-  Operand(2, simm8, opnd3);
+  Operand(2, uimm8, opnd3);
 
   Instruction_Group("shuffle-int",
 		    TOP_pshufd,
+		    TOP_pshufw,
+		    TOP_pshuflw,
+		    TOP_pshufhw,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
-  Operand(1, simm8, opnd3);
+  Operand(1, uimm8, opnd3);
 
   Instruction_Group("move-high-low",
 		    TOP_movlhps,
@@ -1442,6 +1607,9 @@ main()
 		    TOP_movdq,
 		    TOP_movapd,
 		    TOP_movaps,
+		    TOP_fmovsldup,
+		    TOP_fmovshdup,
+		    TOP_fmovddup,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -1801,6 +1969,20 @@ main()
   Operand(1, fp64,  opnd2);
   Operand(2, simm8, opnd3);
 
+  Instruction_Group("fp compare I",
+		    TOP_cmpeqss,
+		    TOP_cmpltss,
+		    TOP_cmpless,
+		    TOP_cmpunordss,
+		    TOP_cmpneqss,
+		    TOP_cmpnltss,
+		    TOP_cmpnless,
+		    TOP_cmpordss,
+		    TOP_UNDEFINED);
+  Result(0, fp64);
+  Operand(0, fp64,  opnd1);
+  Operand(1, fp64,  opnd2);
+
   Instruction_Group("fp vector compare",
 		    TOP_cmpps,
 		    TOP_cmppd,
@@ -1809,6 +1991,20 @@ main()
   Operand(0, fp128,  opnd1);
   Operand(1, fp128,  opnd2);
   Operand(2, simm8, opnd3);
+
+  Instruction_Group("fp vector compare I",
+		    TOP_cmpeqps,
+		    TOP_cmpltps,
+		    TOP_cmpleps,
+		    TOP_cmpunordps,
+		    TOP_cmpneqps,
+		    TOP_cmpnltps,
+		    TOP_cmpnleps,
+		    TOP_cmpordps,
+		    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, fp128,  opnd1);
+  Operand(1, fp128,  opnd2);
 
   Instruction_Group("load32 effective addr",
 		    TOP_lea32,
@@ -2014,6 +2210,9 @@ main()
 		    TOP_ldlpdx,
 		    TOP_ldapdx,
 		    TOP_ldapsx,
+		    TOP_fmovsldupxx,
+		    TOP_fmovshdupxx,
+		    TOP_fmovddupxx,
 		    TOP_UNDEFINED);
   Result(0,  fp128);
   Operand(0, int64, base);
@@ -2051,6 +2250,9 @@ main()
 		    TOP_ldlpdxx,
 		    TOP_ldapdxx,
 		    TOP_ldapsxx,
+		    TOP_fmovsldupxxx,
+		    TOP_fmovshdupxxx,
+		    TOP_fmovddupxxx,
 		    TOP_UNDEFINED);
   Result(0,  fp128);
   Operand(0, int64, index);
@@ -2210,6 +2412,144 @@ main()
 		    TOP_UNDEFINED);
   Result(0, fp128);
 
+  Instruction_Group( "int32 arithmetic lock",
+		     TOP_lock_add32,
+		     TOP_lock_adc32,
+		     TOP_lock_and32,
+		     TOP_lock_or32,
+		     TOP_lock_xor32,
+		     TOP_lock_sub32,
+		     TOP_UNDEFINED);
+  Operand(0, int32, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group( "int64 arithmetic lock",
+		     TOP_lock_add64,
+		     TOP_lock_and64,
+		     TOP_lock_or64,
+		     TOP_lock_xor64,
+		     TOP_lock_sub64,
+		     TOP_UNDEFINED);
+  Operand(0, int64, opnd1);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group("int32 compare & exchange mem opnd lock",
+		    TOP_lock_cmpxchg32,
+		    TOP_UNDEFINED);
+  Result(0,  eflags);
+  Operand(0, eax, opnd1);
+  Operand(1, int32, opnd2);
+  Operand(2, int64, base);
+  Operand(3, simm32, offset);
+
+  Instruction_Group("int64 compare & exchange mem opnd lock",
+		    TOP_lock_cmpxchg64,
+		    TOP_UNDEFINED);
+  Result(0,  rflags);
+  Operand(0, rax, opnd1);
+  Operand(1, int64, opnd2);
+  Operand(2, int64, base);
+  Operand(3, simm32, offset);
+
+  Instruction_Group( "bsf32",
+                     TOP_bsf32,
+                     TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int32, opnd1);
+
+  Instruction_Group( "bsf64",
+                     TOP_bsf64,
+                     TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, int64, opnd1);
+
+  Instruction_Group("int64 load to mmx",
+		    TOP_ld64_2m,
+		    TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, int64, base);
+  Operand(1, simm32, offset);
+
+  Instruction_Group("int64 store from mmx",
+		    TOP_store64_fm,
+		    TOP_UNDEFINED);
+  Operand(0, mmx, storeval);
+  Operand(1, int64, base);
+  Operand(2, simm32, offset);
+
+  Instruction_Group("int64 mov between mmx",
+		    TOP_mov64_m,
+		    TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, mmx, opnd1);
+
+  Instruction_Group("mmx packed move",
+                    TOP_pmovmskb,
+                    TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, mmx, opnd1);
+
+  Instruction_Group("packed word modification",
+		    TOP_pextrw,
+		    TOP_UNDEFINED);
+  Result(0, int32);
+  Operand(0, mmx, opnd1);
+  Operand(1, uimm8, opnd2);
+
+  Instruction_Group("packed word insertion",
+		    TOP_pinsrw,
+		    TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, int32, opnd1);
+  Operand(1, uimm8, opnd2);
+
+  Instruction_Group( "mmx vector arithmetic",
+		     TOP_add64v8,
+		     TOP_add64v16,
+		     TOP_add64v32,
+		     TOP_sub64v8,
+		     TOP_sub64v16,
+		     TOP_sub64v32,
+		     TOP_paddsb,
+		     TOP_paddsw,
+		     TOP_psubsb,
+		     TOP_psubsw,
+		     TOP_paddusb,
+		     TOP_paddusw,
+		     TOP_psubusb,
+		     TOP_psubusw,
+		     TOP_pmullw,
+		     TOP_pmulhw,
+		     TOP_pcmpeqb,
+		     TOP_pcmpeqw,
+		     TOP_pcmpeqd,
+		     TOP_pcmpgtb,
+		     TOP_pcmpgtw,
+		     TOP_pcmpgtd,
+		     TOP_punpckhbw,
+		     TOP_punpckhwd,
+		     TOP_punpckhdq,
+		     TOP_punpckl64v8,
+		     TOP_punpckl64v16,
+		     TOP_punpckl64v32,
+		     TOP_packsswb,
+		     TOP_packssdw,
+		     TOP_packuswb,
+		     TOP_pmulhuw,
+		     TOP_pavgb,
+		     TOP_pavgw,
+		     TOP_psadbw,
+		     TOP_max64v8,
+		     TOP_max64v16,
+		     TOP_min64v8,
+		     TOP_min64v16,
+		     TOP_UNDEFINED);
+  Result(0, mmx);
+  Operand(0, mmx, opnd1);
+  Operand(1, mmx, opnd2);
+  
   ISA_Operands_End();
   return 0;
 }

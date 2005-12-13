@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -400,7 +400,11 @@ COPYPROP::Propagatable(CODEREP *x, BOOL chk_inverse,
 
     // intrinsic op may by lowered into a call, so propagating it past the
     // def of a return preg is wrong
-    if (Past_ret_reg_def() && x->Opr() == OPR_INTRINSIC_OP)
+    if (Past_ret_reg_def() && (x->Opr() == OPR_INTRINSIC_OP
+#ifdef KEY
+        || x->Opr() == OPR_PURE_CALL_OP
+#endif
+       ))
       return NOT_PROPAGATABLE;
 
     if (icopy_phase) {
@@ -1015,6 +1019,18 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
   if (x->Is_flag_set((CR_FLAG)(CF_DEF_BY_PHI|CF_DEF_BY_CHI)) )
     return NULL;
 
+#ifdef KEY // bug 6220: do not propagate anything to the fields of a dope vector
+  if (Htable()->Phase() != PREOPT_IPA0_PHASE && 
+      Htable()->Phase() != PREOPT_IPA1_PHASE &&
+      ! WOPT_Enable_Prop_Dope) {
+    ST *st = Opt_stab()->St(x->Aux_id());
+    if (ST_class(st) == CLASS_VAR && 
+	TY_kind(ST_type(st)) == KIND_STRUCT &&
+	strncmp(TY_name(ST_type(st)), ".dope.", 6) == 0)
+      return NULL;
+  }
+#endif
+
   stmt = x->Defstmt();
   if (! stmt) return NULL;
 
@@ -1042,6 +1058,23 @@ COPYPROP::Prop_var(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
       (expr->Non_leaf() ||
        (expr->Kind() == CK_VAR && expr->Aux_id() != x->Aux_id())))
     return NULL;
+
+#ifdef KEY // bug 5131
+  if (x->Mp_shared())
+    return NULL;
+#endif
+
+#ifdef KEY // bug 1596: do not propagate an ARRAY node to the base field of
+	   // 		a dope vector
+  if (expr->Kind() == CK_OP && expr->Opr() == OPR_ARRAY) {
+    ST *st = Opt_stab()->St(x->Aux_id());
+    if (ST_class(st) == CLASS_VAR && 
+        TY_kind(ST_type(st)) == KIND_STRUCT &&
+        x->Offset() == 0 &&
+        strncmp(TY_name(ST_type(st)), ".dope.", 6) == 0)
+      return NULL;
+  }
+#endif
 
   // Fix 658173: In IPL's preopt, don't propagate through
   // PT_TO_UNIQUE_MEM objects. The reason is that IPL's preopt doesn't
@@ -1138,6 +1171,10 @@ COPYPROP::Prop_ivar(CODEREP *x, BB_NODE *curbb, BOOL icopy_phase,
 {
 
   if (! WOPT_Enable_Prop_Ivar) return NULL;
+#ifdef KEY // bug 5804
+  if (Htable()->Phase() != MAINOPT_PHASE && PU_has_mp(Get_Current_PU())) 
+    return NULL;
+#endif
   if (x->Is_ivar_volatile()) return NULL;
 
   STMTREP *stmt = x->Ivar_defstmt();
@@ -1714,6 +1751,11 @@ COPYPROP::Propagatable_thru_phis(CODEREP *lexp, CODEREP *rexp,
     if (lexp->Opr() == OPR_INTRINSIC_OP && rexp->Opr() == OPR_INTRINSIC_OP
         && lexp->Intrinsic() != rexp->Intrinsic())  // fix 804479
       return FALSE;
+#ifdef KEY
+    if (lexp->Opr() == OPR_PURE_CALL_OP && rexp->Opr() == OPR_PURE_CALL_OP
+        && lexp->Call_op_aux_id() != rexp->Call_op_aux_id())
+      return FALSE;
+#endif
     PROP_THRU_PHI_PREFERENCE pref0;
     BOOL can_prop = TRUE;
     *ppref = EITHER_SIDE;
@@ -1992,7 +2034,11 @@ COPYPROP::Copy_propagate(BB_NODE *bb)
   // copy propagated and breaks the emitter.
   INT32 saved_prop_limit = WOPT_Enable_Prop_Limit;
   if (bb->Kind() == BB_DOEND) 
+#if 0 // bug 6097
+    WOPT_Enable_Prop_Limit = 17;
+#else
     WOPT_Enable_Prop_Limit = 9999;
+#endif
 
   // iterate through each statement in this bb
   STMTREP_ITER stmt_iter(bb->Stmtlist());

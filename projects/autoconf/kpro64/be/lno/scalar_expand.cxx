@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -62,6 +62,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/scalar_
 #include "pu_info.h"
 #include "defs.h"
 #include "stab.h"
+#include "lnopt_main.h"
 #include "scalar_expand.h"
 #include "snl.h"
 
@@ -71,7 +72,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/scalar_
 #include "cxx_template.h"
 #include "dep_graph.h"
 #include "opt_du.h"
-#include "lnopt_main.h"
 #include "cxx_memory.h"
 #include "cxx_hash.h"
 #include "lwn_util.h"
@@ -1140,6 +1140,20 @@ static WN* BND_Max_Expr(WN* wn,
         FmtAssert(0, ("Bounds too complicated for scalar expansion."));
       } 
   }
+#ifdef KEY
+  // Bug 5240 - Compiling for a 64-bit target introduces a CVT in the 
+  // loop ub that should be handled here.
+  case OPR_CVT:
+    {
+      TYPE_ID ty_cvt_rtype = OPCODE_rtype(wn_op); 
+      TYPE_ID ty_cvt_desc = OPCODE_desc(wn_op); 
+      OPCODE cvt_opc = OPCODE_make_op(wn_oper, ty_cvt_rtype, ty_cvt_desc); 
+      WN* wn_kid = BND_Max_Expr(WN_kid0(wn), loops, nloops); 
+      wn_new = WN_CreateExp1(cvt_opc, wn_kid);
+      LWN_Parentize(wn_new);
+    }
+    return wn_new;  
+#endif
   default: 
     FmtAssert(0, ("Bounds too complicated for scalar expansion."));  
     return NULL; 

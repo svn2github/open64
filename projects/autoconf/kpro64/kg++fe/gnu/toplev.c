@@ -1,5 +1,5 @@
 /*
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++
    front-ends to GNU 3.3.1 release.
  */
@@ -733,6 +733,11 @@ int flag_no_inline = 2;
    not just because the tree inliner turned us off.  */
 
 int flag_really_no_inline = 2;
+
+#ifdef KEY
+/* Is OpenMP enabled? */
+int flag_openmp = 0;
+#endif // KEY
 
 /* Nonzero means that we should emit static const variables
    regardless of whether or not optimization is turned on.  */
@@ -2390,6 +2395,13 @@ rest_of_decl_compilation (decl, asmspec, top_level, at_end)
 	alias = TREE_VALUE (TREE_VALUE (alias));
 	alias = get_identifier (TREE_STRING_POINTER (alias));
 	assemble_alias (decl, alias);
+#ifdef KEY
+	// Put aliases into the list of decls emitted by g++ so that we can
+	// iterate through the list when expanding aliases to WHIRL.  An An
+	// alias can be expanded only if its target, which can be another
+	// alias, is expanded.  Bug 4393.
+	gxx_emits_decl (decl);
+#endif
       }
   }
 
@@ -4547,6 +4559,14 @@ independent_decode_option (argc, argv)
       return 2;
     }
 
+#ifdef KEY
+  if (!strcmp (arg, "mp"))
+  {
+    flag_openmp = 1;
+    return 1;
+  }
+#endif /* KEY */
+
   if (*arg == 'Y')
     arg++;
 
@@ -5039,6 +5059,10 @@ general_init (argv0)
   init_ttree ();
 }
 
+#ifdef KEY
+extern int Opt_Level;
+#endif // KEY
+
 /* Parse command line options and set default flag values, called
    after language-independent option-independent initialization.  Do
    minimal options processing.  Outputting diagnostics is OK, but GC
@@ -5106,6 +5130,10 @@ parse_options_and_default_flags (argc, argv)
 	    }
 	}
     }
+
+#ifdef KEY
+  Opt_Level = optimize;
+#endif
 
   if (!optimize)
     {
@@ -5645,7 +5673,7 @@ finalize ()
 /* Initialize the compiler, and compile the input file.  */
 
 #ifdef SGI_MONGOOSE
-static char *
+static const char * // KEY
 do_init_compile ()
 {
   /* All command line options have been parsed; allow the front end to
@@ -5733,7 +5761,7 @@ do_compile ()
    It is not safe to call this function more than once.  */
 
 #ifdef SGI_MONGOOSE
-char *
+const char * // KEY
 gnu_init (argc, argv)
      int argc;
      char **argv;
@@ -5760,7 +5788,7 @@ toplev_main (argc, argv)
 #endif /* SGI_MONGOOSE */
 
   if (errorcount || sorrycount)
-    return (FATAL_EXIT_CODE);
+    return (const char *)(FATAL_EXIT_CODE);
 
-  return (SUCCESS_EXIT_CODE);
+  return (const char *)(SUCCESS_EXIT_CODE);
 }

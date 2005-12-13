@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -626,6 +630,9 @@ static  kwd_type	kwd_sgi_dir[] = {
 	"NEST",			 	  Tok_SGI_Dir_Nest,
 
 	"OPTIONAL",	 		  Tok_SGI_Dir_Optional,
+#ifdef KEY /* Bug 2660 */
+	"OPTIONS",	 		  Tok_SGI_Dir_Options,
+#endif /* KEY Bug 2660 */
 	"ORDERED",	 		  Tok_SGI_Dir_Ordered,
 	"OPAQUE",	 		  Tok_SGI_Dir_Opaque,
 	"ONTO",		 		  Tok_SGI_Dir_Onto,
@@ -707,6 +714,7 @@ static  kwd_type        kwd_open_mp_dir[] = {
 
 	"BARRIER",			Tok_Open_Mp_Dir_Barrier,
 
+	"COPYPRIVATE",		Tok_Open_Mp_Dir_Copyprivate, /* by jhs, 02/7/5 */
 	"CRITICAL",			Tok_Open_Mp_Dir_Critical,
 	"COPYIN",			Tok_Open_Mp_Dir_Copyin,
 
@@ -717,8 +725,10 @@ static  kwd_type        kwd_open_mp_dir[] = {
 	"DATA",				Tok_Open_Mp_Dir_Data,
 	"DO",				Tok_Open_Mp_Dir_Do,
 
+	"ENDPARALLELWORKSHARE",	Tok_Open_Mp_Dir_Endparallelworkshare, /* by jhs, 02/7/5 */
 	"ENDPARALLELSECTIONS",		Tok_Open_Mp_Dir_Endparallelsections,
 	"ENDPARALLELDO",		Tok_Open_Mp_Dir_Endparalleldo,
+	"ENDWORKSHARE",		Tok_Open_Mp_Dir_Endworkshare, /* by jhs, 02/7/5 */
 	"ENDCRITICAL",			Tok_Open_Mp_Dir_Endcritical,
 	"ENDPARALLEL",			Tok_Open_Mp_Dir_Endparallel,
 	"ENDSECTIONS",			Tok_Open_Mp_Dir_Endsections,
@@ -738,6 +748,7 @@ static  kwd_type        kwd_open_mp_dir[] = {
 
 	"MASTER",			Tok_Open_Mp_Dir_Master,
 
+	"NUM_THREADS",		Tok_Open_Mp_Dir_Num_Threads, /* by jhs, 02/7/5 */
 	"NOWAIT",			Tok_Open_Mp_Dir_Nowait,
 	"NEST",				Tok_Open_Mp_Dir_Nest,
 	"NONE",				Tok_Open_Mp_Dir_None,
@@ -745,6 +756,7 @@ static  kwd_type        kwd_open_mp_dir[] = {
 	"ORDERED",			Tok_Open_Mp_Dir_Ordered,
 	"ONTO",				Tok_Open_Mp_Dir_Onto,
 
+	"PARALLELWORKSHARE",	Tok_Open_Mp_Dir_Parallelworkshare, /* by jhs, 02/7/5 */
 	"PARALLELSECTIONS",		Tok_Open_Mp_Dir_Parallelsections,
 	"PAGE_PLACE",   		Tok_Open_Mp_Dir_Page_Place,
 	"PARALLELDO",			Tok_Open_Mp_Dir_Paralleldo,
@@ -764,6 +776,8 @@ static  kwd_type        kwd_open_mp_dir[] = {
 
 	"THREADPRIVATE",		Tok_Open_Mp_Dir_Threadprivate,
 	"THREAD",			Tok_Open_Mp_Dir_Thread,
+
+	"WORKSHARE",		Tok_Open_Mp_Dir_Workshare, /* by jhs, 02/7/5 */
 	"",				Tok_LAST };
 
 static  int                     kwd_open_mp_dir_idx[27];

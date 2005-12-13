@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -5183,6 +5183,21 @@ static void	merge_type(int		attr_idx,
       if (AT_TYPED(attr_idx)) {
          ptr = get_basic_type_str(type_idx);
 
+#ifdef KEY /* Bug 5040 */
+	 ptr2 = get_basic_type_str(ATD_TYPE_IDX(attr_idx));
+	 /* Type mismatch might still look like identical type within error
+	  * message (e.g. "real" and "real*8" both print "real(kind=8)") so
+	  * treat them as equal if they compare equal. */
+         if (type_idx == ATD_TYPE_IDX(attr_idx) ||
+	   0 == strcmp(ptr, ptr2)) {
+            PRINTMSG(id_line, 1259, ansi_or_warning(), id_column,
+                     AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), ptr);
+         }
+         else {
+            PRINTMSG(id_line, 550, Error, id_column, AT_OBJ_NAME_PTR(attr_idx),
+	             ptr2, ptr, AT_DEF_LINE(attr_idx));
+         }
+#else /* KEY Bug 5040 */
          if (type_idx == ATD_TYPE_IDX(attr_idx)) {
             PRINTMSG(id_line, 1259, Ansi, id_column,
                      AT_OBJ_NAME_PTR(attr_idx), ptr);
@@ -5192,6 +5207,7 @@ static void	merge_type(int		attr_idx,
             PRINTMSG(id_line, 550, Error, id_column,
                      AT_OBJ_NAME_PTR(attr_idx), ptr2, ptr);
          }
+#endif /* KEY Bug 5040 */
       }
       else {
          AT_TYPED(attr_idx)	= TRUE;

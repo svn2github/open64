@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -314,6 +314,11 @@ Init_inline_parameters (void)
 
 	Real_Orig_WN_Count = Orig_Prog_WN_Count; //INLINING_TUNING
 
+#ifdef KEY
+    if (INLINE_Ignore_Bloat && ! IPA_Bloat_Factor_Set)
+      IPA_Bloat_Factor = UINT32_MAX;
+#endif // KEY
+
     bloat_size = current_size * (UINT64) IPA_Bloat_Factor;
 
     if (bloat_size > UINT32_MAX || IPA_Bloat_Factor == UINT32_MAX)
@@ -426,6 +431,44 @@ Effective_weight (const IPA_NODE* node)  {
 	return node->Weight ();
 }
 
+#ifdef KEY
+void inline_do_it (IPA_EDGE * ed, IPA_NODE * caller, IPA_NODE * callee,
+                   const IPA_CALL_GRAPH * cg)
+{
+    UINT32 caller_weight = caller->Weight();
+    UINT32 combined_weight = Get_combined_weight (caller->PU_Size(),
+                                                  callee->PU_Size(),
+						  callee);
+    if (Trace_IPA || Trace_Perf) {
+        UINT32 callee_weight = Effective_weight (callee);
+	fprintf (stderr, "%s inlined into %s", callee->Name(),caller->Name());
+	fprintf (TFile, "%s inlined into ", DEMANGLE (callee->Name()));
+	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n", DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
+    }
+    
+#ifdef TODO
+    if( IPA_Enable_Feedback ) {
+	/* check for cross-file inlining */
+	if( callee->File_Index() !=  caller->File_Index()) {
+	    (callee->Get_fbk_ptr() )->Set_Cross_File_Fnd();
+	}
+    }
+#endif
+    
+    Total_Prog_Size += (combined_weight - caller_weight);
+    caller->UpdateSize (callee, ed);
+    
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+    if (IPA_Enable_DFE)
+	Update_Total_Prog_Size (caller, callee, cg);
+#endif // _STANDALONE_INLINER
+    
+    if (callee->Summary_Proc()->Has_var_dim_array()) {  // propagate the bit up
+	caller->Summary_Proc()->Set_has_var_dim_array();
+    }
+}
+#endif // KEY
+
 static BOOL
 check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		     IPA_NODE *callee, const IPA_CALL_GRAPH *cg)
@@ -461,7 +504,13 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
      if ( caller->Summary_Proc()->Is_Never_Invoked() == FALSE && 
          callee->Summary_Proc()->Is_Never_Invoked() == FALSE) { 
         if (callee_weight <= TINY_SIZE) {
+#ifdef KEY
+	    // don't use goto
+	    inline_do_it(ed, caller, callee, cg);
+	    return TRUE;
+#else
             goto inline_do_it;
+#endif
         }             
      } 
     
@@ -514,17 +563,24 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     ) {
 	
 	if (Total_Prog_Size >= Max_Total_Prog_Size) {
+#ifndef KEY
 	    static BOOL reported = FALSE;
 	    
 	    if ( ! reported ) {
+#endif // !KEY
 		if ( Trace_IPA || Trace_Perf ) {
 		    fprintf ( TFile, "Inlining stopped because total " "program size limit exceeded\n" );
 		}
+#ifdef KEY
+                Report_Reason (callee, caller, 
+		               "Total program size limit exceeded", ed);
+#else
 		if ( INLINE_List_Actions ) {
 		    fprintf ( stderr, "Inlining stopped because total " "program size limit exceeded\n" );
 		}
 		reported = TRUE;
 	    }
+#endif
 	    return FALSE;
 	}// if (Total_Prog_Size >= Max_Total_Prog_Size) 
 	
@@ -701,6 +757,9 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 #endif
     
     /* Finally, we decide to inline this call */
+#ifdef KEY
+    inline_do_it (ed, caller, callee, cg);
+#else
     inline_do_it: if (Trace_IPA || Trace_Perf) {
 	fprintf (stderr, "%s inlined into %s", callee->Name(),caller->Name());
 	fprintf (TFile, "%s inlined into ", DEMANGLE (callee->Name()));
@@ -738,6 +797,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     if (callee->Summary_Proc()->Has_var_dim_array()) {  // propagate the bit up
 	caller->Summary_Proc()->Set_has_var_dim_array();
     }
+#endif // KEY
     return TRUE;
 } // check-size-and-freq
 
@@ -828,6 +888,35 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
         else
     	    actual_is_array = (TY_kind(ty_actual) == KIND_ARRAY);
     
+#ifdef KEY
+	UINT64 formal_type_size, actual_type_size;
+
+	if (INLINE_Check_Compatibility == RELAXED_CHECK)
+	{
+	  formal_type_size = TY_size (ty_formal);
+	  actual_type_size = TY_size (ty_actual);
+
+	  if (!actual_is_array && formal_is_array && 
+	      (!formal_type_size /* variable-sized formal array */ ||
+	      actual_type_size == formal_type_size))
+	  {
+	    // check if actual is a complex and formal is array of 2 floats
+	    TY_IDX formal = base_type_of_array (ty_formal);
+	    TYPE_ID actual_type = BASETYPE (ty_actual);
+	    TYPE_ID formal_type = BASETYPE (formal);
+	    if ((actual_type == MTYPE_C8 && formal_type == MTYPE_F8) ||
+	        (actual_type == MTYPE_C4 && formal_type == MTYPE_F4))
+	      return TRUE;
+
+	    // Actual can be complex, and formal can be array of 1 formal or
+	    // of variable size where size should be 1.
+	    if ((actual_type == MTYPE_C8 && formal_type == MTYPE_C8) ||
+	        (actual_type == MTYPE_C4 && formal_type == MTYPE_C4))
+	      return TRUE;
+	  }
+	}
+#endif // KEY
+
         // PV 374125, don't inline in this case
         // where one of the parameters is an array and the
         // other is a scalar
@@ -850,6 +939,34 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
         
         if (formal_element_size == actual_element_size)
     	    return TRUE;
+
+#ifdef KEY
+	if (INLINE_Check_Compatibility == RELAXED_CHECK)
+	{
+	  if (actual_is_array && formal_is_array &&
+	      ((actual_element_size==MTYPE_C8 && 
+	        formal_element_size==MTYPE_F8) ||
+	       (actual_element_size==MTYPE_C4 && 
+	        formal_element_size==MTYPE_F4)))
+	  {
+	    if (!formal_type_size || !actual_type_size ||
+	        formal_type_size == actual_type_size)
+	      return TRUE;
+	  }
+	  // the other way
+	  if (actual_is_array && formal_is_array &&
+	      ((actual_element_size==MTYPE_F8 && 
+	        formal_element_size==MTYPE_C8) ||
+	       (actual_element_size==MTYPE_F4 && 
+	        formal_element_size==MTYPE_C4)))
+	  {
+	    if (!formal_type_size || !actual_type_size ||
+	        formal_type_size == actual_type_size)
+	      return TRUE;
+	  }
+	}
+#endif // KEY
+
 #if 0
         else
     	    return FALSE;
@@ -883,7 +1000,11 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 
 	TYPE_ID rtype = BASETYPE(ty_actual);
 	TYPE_ID ltype = OPCODE_desc(stid);
+#ifdef KEY
+        if (INLINE_Type_Mismatch || IPO_Types_Are_Compatible(ltype, rtype))
+#else
         if (IPO_Types_Are_Compatible(ltype, rtype))
+#endif
 	    return TRUE;
 #if 0
     }
@@ -1099,7 +1220,46 @@ different_options (IPA_NODE * caller, IPA_NODE * callee)
 
     return FALSE;
 }
-#endif
+
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+// Return TRUE if a call to this PU is suitable for pure-call optimization
+static bool check_node (IPA_NODE * node)
+{
+    WN * func = node->Whirl_Tree(FALSE);
+    Is_True (WN_operator(func) == OPR_FUNC_ENTRY, ("Unexpected WN node"));
+
+    WN * body = WN_func_body (func);
+    WN * first = WN_first (body);
+    Is_True (first, ("No code in function body"));
+
+    WN * last = WN_last (body);
+
+    if (WN_operator (first) == OPR_PRAGMA)
+      first = WN_next (first);
+    Is_True (first, ("No code in function body"));
+
+    Is_True (WN_operator (first) != OPR_PRAGMA, ("Unexpected pragma"));
+
+    // returns an expression
+    if (first == last && WN_operator (first) == OPR_RETURN_VAL)
+      return FALSE;
+
+    // returns void
+    if (WN_operator (last) == OPR_RETURN)
+      return FALSE;
+
+    // no control-flow statements?
+    for (; first != last; first = WN_next (first))
+    {
+       if (OPERATOR_is_scf (WN_operator (first)) ||
+           OPERATOR_is_non_scf (WN_operator (first)))
+         return TRUE;
+    }
+
+    return FALSE;
+}
+#endif // ! _STANDALONE_INLINER && ! _LIGHTWEIGHT_INLINER
+#endif // KEY
 
 /*-------------------------------------------------------------*/
 /* check to see if we should be inlining                       */
@@ -1328,7 +1488,8 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	        ed->Set_reason_id (22);
 	result = FALSE;
     }
-    else if (!param_types_are_compatible(caller, callee, ed)) {
+    else if (INLINE_Check_Compatibility != AGGRESSIVE && // KEY
+             !param_types_are_compatible(caller, callee, ed)) {
 	reason = "incompatible parameter types";
 	        ed->Set_reason_id (23);
 	result = FALSE;
@@ -1344,8 +1505,27 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
 	    ed->Set_reason_id (34);
 	}
     }
+    else if (IPA_Enable_Pure_Call_Opt && 
+             !callee->Summary_Proc()->Has_side_effect() &&
+	     !callee->Summary_Proc()->Is_must_inline() &&
+	     !ed->Has_Must_Inline_Attrib() &&
+	     !callee->Has_Must_Inline_Attrib() &&
+	     // Check several heuristics to determine if it is a good
+	     // candidate.
+	     check_node (callee)) {
+	    result = FALSE;
+	    reason = "Trying to do pure-call-optimization for this callsite";
+	    ed->Set_reason_id (35);
+    }
+    // This can only arise with ipa
+    else if (callee->Is_Lang_CXX() && !caller->Is_Lang_CXX() &&
+             PU_has_exc_scopes (callee->Get_PU())) {
+            result = FALSE;
+            reason = "not inlining C++ with exceptions into non-C++";
+            ed->Set_reason_id (36);
+    }
     // The following else-if must be last
-#endif
+#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
     else if (!IPA_Enable_Lang) {
 	if ((callee->Summary_Proc()->Get_lang() == LANG_F77) || 
 	    (caller->Summary_Proc()->Get_lang() == LANG_F77)) {
@@ -1487,7 +1667,7 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
     if (IPA_Enable_DCE) {
 	// Do dead call elimination analysis
 		
-	if (!callee->Summary_Proc()->Has_side_effect() &&
+	if (!callee->Summary_Proc()->Has_pragma_side_effect() && // KEY
 	    ((edge->Is_Deletable () || // set by const. propagation
 
 	      (cg->Node_Depth (callee) == 0 &&

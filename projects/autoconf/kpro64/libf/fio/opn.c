@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -47,6 +47,9 @@
 #include <string.h>
 #include <stdarg.h>
 #include <cray/nassert.h>
+#ifdef KEY /* Bug 4260 */
+#  include <cray/assign.h>
+#endif /* KEY Bug 4260 */
 #include "fmt.h"
 #include "fio.h"
 #include "f90io.h"
@@ -207,6 +210,13 @@ int	isf90_arg)	/* =1 iff Fortran-90 OPEN */
 
 	OPENLOCK();		/* prevent other OPENs or CLOSEs right now */
 
+#ifdef KEY /* Bug 4260 */
+	/* Before we open the first file in the course of execution, we must
+	 * set byte-swapping based on __io_byteswap_value defined by Fortran
+	 * main in response to command-line options like -byteswapio */
+        __io_byteswap();
+#endif /* KEY Bug 4260 */
+
 	unum	= *unitn;	/* UNIT= is required by compiler */
 	a.ounit	= unum;
 
@@ -256,9 +266,16 @@ int	isf90_arg)	/* =1 iff Fortran-90 OPEN */
 		if (_fcdtocp(position) != NULL) {
 			OPNERR(FEOPACCS);	/* Invalid ACCESS */
 		}
+#ifdef KEY /* Bug 86 */
+                /* The Fortran 90 standard does not place a constraint
+		 * on the value of 'access=', so there's no need to
+		 * issue an error message in normal or -ansi mode (and
+		 * "isf90" seems always to be set anyway).  */
+#else
 		else if (isf90) {
 			OPNERR(FEOPACCS);	/* Invalid ACCESS */
 		}
+#endif /* KEY */
 		else {
 			a.oposition	= OS_APPEND;
 			a.oaccess	= OS_SEQUENTIAL;

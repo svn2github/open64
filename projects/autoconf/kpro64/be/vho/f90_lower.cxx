@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -190,6 +190,7 @@ static WN * F90_Current_Loopnest; /* The statement containing the current loopne
 static WN * F90_Current_Stmt;     /* The current statement being lowered */
 
 static WN_VECTOR F90_MP_Region;    /* The current MP region, if any */
+static BOOL_VECTOR F90_MP_Region_Isworkshare;
 
 // Keep track of the current PU
 static PU *current_pu;
@@ -614,6 +615,7 @@ static void F90_Expand_Array(ST *st, F90_LOOP_INFO *loop_info, WN *parent_loop, 
     ARB_HANDLE old_arb_base = TY_arb(old_array_ty_idx);
     ARB_HANDLE  arb, old_arb;
     UINT i;
+#ifndef KEY
     for (i = 0; i < num_dims-1 ; ++i)
     {
       arb = arb_base[i];
@@ -629,6 +631,28 @@ static void F90_Expand_Array(ST *st, F90_LOOP_INFO *loop_info, WN *parent_loop, 
     ARB_Init(arb, 1, 1+abs((loop_info->end-loop_info->start)/loop_info->step), abs((loop_info->end-loop_info->start)/loop_info->step));
     Set_ARB_dimension(arb, num_dims-i);
     Set_ARB_last_dimen(arb_base[i]);
+#else
+   // When expanding an array (increasing the number of dimensions), attach 
+    // the newly added dimension before all other arb dimensions not after. 
+    // Based on bug 1973, this seems to be the right thing to do. Without
+    // this, LNO pad will see a mismatch between WN and symtable ARB entry and
+    // will adjust the ARRAY WNs incorrectly.
+    arb = arb_base[0];
+    ARB_Init(arb, 1, 1+abs((loop_info->end-loop_info->start)/loop_info->step), abs((loop_info->end-loop_info->start)/loop_info->step));    
+    Set_ARB_first_dimen(arb_base[0]);
+    Set_ARB_dimension(arb, num_dims);
+    for (i = 1; i < num_dims ; ++i)
+    {
+      arb = arb_base[i];
+      old_arb = old_arb_base[i-1];
+      ARB_Init(arb, ARB_lbnd_val(old_arb),
+               ARB_ubnd_val(old_arb),
+               ARB_stride_val(old_arb)*(loop_info->end-loop_info->start+1)/loop_info->step);
+      Set_ARB_dimension(arb, num_dims-i);
+      if (i==num_dims-1)
+        Set_ARB_last_dimen(arb_base[i]);
+    }
+#endif
 
     TY& new_array_ty = Ty_Table[new_array_ty_idx];
     TY& old_array_ty = Ty_Table[old_array_ty_idx];
@@ -694,7 +718,16 @@ static void F90_Modify_Array_Section(ST *st, WN *old_wn, WN *parent, INT pos, WN
    WN_element_size(arrsection) = element_size;
 
    ARB_HANDLE arb_base = TY_arb(array_ty_idx);
+#ifndef KEY
    WN_kid(arrsection, 1) = WN_Intconst(MTYPE_I8, ARB_ubnd_val(arb_base[ndim-1]));
+#else
+   // When expanding an array (increasing the number of dimensions), attach 
+   // the newly added dimension before all other arb dimensions not after. 
+   // Based on bug 1973, this seems to be the right thing to do. Without
+   // this, LNO pad will see a mismatch between WN and symtable ARB entry and
+   // will adjust the ARRAY WNs incorrectly.
+   WN_kid(arrsection, 1) = WN_Intconst(MTYPE_I8, ARB_ubnd_val(arb_base[0]));
+#endif
    WN_kid(arrsection, ndim+1) = WN_COPY_Tree(new_wn);
    
    for (INT i=1; i < ndim; i++) {
@@ -824,6 +857,18 @@ static BOOL F90_Walk_Statements_Helper(WN * tree, WN * block,
    if (op == OPC_REGION && WN_region_kind(tree) == REGION_KIND_MP) {
      is_mp_region = TRUE;
      F90_MP_Region.insert(F90_MP_Region.begin(),tree);
+     WN *pragma_wn = WN_first(WN_region_pragmas(tree));
+     bool bWorkshare;
+     if( (pragma_wn != NULL) &&
+       (WN_opcode(pragma_wn) == OPC_PRAGMA) ){
+       WN_PRAGMA_ID pragma = (WN_PRAGMA_ID)WN_pragma(pragma_wn);
+       bWorkshare = (pragma == WN_PRAGMA_PWORKSHARE_BEGIN) ||
+                    (pragma == WN_PRAGMA_PARALLEL_WORKSHARE);
+     }
+     else{
+       bWorkshare = false;
+     }
+     F90_MP_Region_Isworkshare.insert(F90_MP_Region_Isworkshare.begin(), bWorkshare);
    }
 
    if (op == OPC_BLOCK) {
@@ -859,6 +904,7 @@ static BOOL F90_Walk_Statements_Helper(WN * tree, WN * block,
 done:
    if (is_mp_region) {
      F90_MP_Region.erase(F90_MP_Region.begin());
+     F90_MP_Region_Isworkshare.erase(F90_MP_Region_Isworkshare.begin());
    }
    return (keep_going);
 }
@@ -886,7 +932,6 @@ static void F90_Walk_All_Statements(WN * tree, BOOL prewalk(WN * node, WN *block
 *
 **************************************************************
 **************************************************************/
-
 
 /*
    Auxilliary stuff needed to maintain correspondence between PREG used for allocation
@@ -1153,6 +1198,12 @@ static ST * new_temp_st(char * name)
 
    Add_Pragma_To_MP_Regions (&F90_MP_Region,WN_PRAGMA_LOCAL,
 			     st,0,WN_MAP_UNDEFINED,FALSE);
+#ifdef KEY
+   // Bug 4479 - set is_temp flag for this ST. This is later used 
+   // inside the SIMD module to identify (unaligned) loads and 
+   // stores if need be.
+   Set_ST_is_temp_var(st);
+#endif
    return (st);
 }
 
@@ -1211,6 +1262,7 @@ static ST * F90_Lower_Create_Temp(WN **alloc_block, WN **free_block, WN **size,
    WN *call;
    INTRINSIC aintrin,fintrin;
    BOOL is_var_len_char = FALSE;
+   WN *cur_size;
    
    /* Create a stack temp symbol */
    st = new_temp_st("@f90");
@@ -1252,7 +1304,12 @@ static ST * F90_Lower_Create_Temp(WN **alloc_block, WN **free_block, WN **size,
       }
    }
    for (i=0; i < ndim; i++) {
-      total_size = WN_CreateExp2(OPCmpy,total_size,WN_COPY_Tree(size[i]));
+      cur_size = WN_COPY_Tree(size[i]);
+#ifdef KEY
+      if (MTYPE_size_min(WN_rtype(cur_size)) != MTYPE_size_min(WN_rtype(total_size)))
+        cur_size = WN_Cvt(WN_rtype(cur_size), WN_rtype(total_size), cur_size);
+#endif
+      total_size = WN_CreateExp2(OPCmpy,total_size,cur_size);
    }
    
    if (Heap_Allocation_Threshold == -1) {
@@ -3128,7 +3185,9 @@ static DEP_SUMMARY Analyze_bases(WN * addr, BOOL is_expr, BOOL is_char)
 	 r_pointer = r_pointer || ST_is_f90_pointer(rhs_sym);
 	 r_target  = r_target  || ST_is_f90_target(rhs_sym);
       }
-      if ((l_pointer && r_target) ||
+      if (is_f90_formal(lhsa) || is_f90_formal(rhsa)) {
+	 r = DEP_INDEPENDENT;
+      } else if ((l_pointer && r_target) ||
 	  (r_pointer && l_target) || 
 	  (r_pointer && l_pointer)) {
 	 if (Alias_F90_Pointer_Unaliased) {
@@ -3136,8 +3195,6 @@ static DEP_SUMMARY Analyze_bases(WN * addr, BOOL is_expr, BOOL is_char)
 	 } else {
 	    r = DEP_UNKNOWN;
 	 }
-      } else if (is_f90_formal(lhsa) || is_f90_formal(rhsa)) {
-	 r = DEP_INDEPENDENT;
       } else {
 	 /* Need to check for the case where we have only one indirection */
 	 if ((rhs_flag ^ lhs_flag) & F90_INDIRECTION) {
@@ -4123,6 +4180,7 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
    INT dim;
    OPCODE reduction_op;
    PREG_NUM accum;
+   ST * accum_st;
    WN *sizes[MAX_NDIM];
    PREG_NUM new_indices[MAX_NDIM],index;
    INT rank,i,j;
@@ -4135,6 +4193,8 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
    F90_LOWER_AUX_DATA *adata;
    WN *dealloc_post,*post;
    TYPE_ID ty;
+   WN* region;
+
 
    if (kids[1]) {
       dim = F90_Get_Dim(kids[1]);
@@ -4153,10 +4213,19 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
    ty = Mtype_comparison(rty);
 
    /* All cases, create a temp and insert an identity store */
-   accum = Create_Preg(ty,create_tempname("@f90acc"));
-   
+   accum_st = New_ST(CURRENT_SYMTAB);
+   ST_Init(accum_st, Save_Str(create_tempname("@f90acc")),
+                   CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL, MTYPE_To_TY(ty));
+   Add_Pragma_To_MP_Regions (&F90_MP_Region,WN_PRAGMA_LOCAL,
+			     accum_st,0,WN_MAP_UNDEFINED,FALSE);
+#ifdef DEBUG
+   printf("%s:%d -- accum_st = 0x%x, ST_type(accum_st) = %d\n",
+		   __FILE__, __LINE__, (unsigned)accum_st, (int)ST_type(accum_st) );
+#endif
+//   Set_ST_is_temp_var(accum_st);
    reduction_op = OPCODE_make_op(reduction_opr,ty,MTYPE_V);
-   idty_store = WN_StidPreg(ty,accum,Make_Reduction_Identity(reduction_opr,rty));
+   idty_store = WN_Stid(ty,0,accum_st,MTYPE_To_TY(ty),
+		   Make_Reduction_Identity(reduction_opr,rty));
 
    /* Determine the sizes of reduction argument */
    (void) F90_Size_Walk(kids[0],&rank,sizes);
@@ -4181,10 +4250,51 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
 	 loopnest = create_doloop(&index,tempname,sizes[i],DIR_POSITIVE,loopnest);
 	 new_indices[i] = index;
       }
-      WN_INSERT_BlockBefore(F90_Current_Block,F90_Current_Loopnest,loopnest);
-      /* Update the Current_Loopnest, to point at the identity store
-	 so that all lower-level insertions happen there */
-      F90_Current_Loopnest = loopnest;
+      BOOL_VECTOR::iterator bi = F90_MP_Region_Isworkshare.begin();
+      if( (bi != F90_MP_Region_Isworkshare.end()) && *bi ){
+	/* if locate in a WORKSHARE region */
+	region = WN_CreateRegion(REGION_KIND_MP,
+			WN_CreateBlock(),
+			WN_CreateBlock(),
+			WN_CreateBlock(),
+			-1,
+			0);
+	WN_INSERT_BlockBefore(F90_Current_Block, F90_Current_Loopnest, region);
+	WN_INSERT_BlockFirst(WN_region_body(region), loopnest);
+	F90_Current_Loopnest = region;
+
+	WN* pragmas = WN_region_pragmas(region);
+
+	WN* pragma = WN_CreatePragma(WN_PRAGMA_PDO_BEGIN, (ST *)NULL, 0, 1);
+	WN_set_pragma_omp(pragma);
+	WN_set_pragma_compiler_generated(pragma);
+	WN_INSERT_BlockFirst(pragmas, pragma);
+
+	pragma = WN_CreatePragma(WN_PRAGMA_REDUCTION, accum_st, 0, reduction_opr);
+	WN_set_pragma_omp(pragma);
+	WN_set_pragma_compiler_generated(pragma);
+	WN_INSERT_BlockLast(pragmas, pragma);
+
+	ST *index_st = MTYPE_To_PREG(doloop_ty);
+
+	for(i=0; i<rank; i++){
+	  pragma = WN_CreatePragma(WN_PRAGMA_LOCAL, index_st, new_indices[i], 0);
+	  WN_set_pragma_omp(pragma);
+	  WN_set_pragma_compiler_generated(pragma);
+	  WN_INSERT_BlockLast(pragmas, pragma);
+	}
+
+	pragma = WN_CreatePragma(WN_PRAGMA_END_MARKER, (ST *)NULL, 0, 0);
+	WN_set_pragma_omp(pragma);
+	WN_set_pragma_compiler_generated(pragma);
+	WN_INSERT_BlockLast(pragmas, pragma);
+      }
+      else{
+        WN_INSERT_BlockBefore(F90_Current_Block,F90_Current_Loopnest,loopnest);
+        /* Update the Current_Loopnest, to point at the identity store
+	   so that all lower-level insertions happen there */
+        F90_Current_Loopnest = loopnest;
+      }
       
       /* put the DEALLOC_POSTLIST and POSTLIST on the current loopnest */
       if (adata) {
@@ -4196,9 +4306,9 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
 
       /* Lower the mask and array argument */
       accum_expr = F90_Lower_Walk(kids[0],new_indices,rank,stlist,NULL);
-      accum_store = WN_StidPreg(ty,accum,WN_CreateExp2(reduction_op,
-						       WN_LdidPreg(ty,accum),
-						       accum_expr));
+      accum_store = WN_Stid(ty,0,accum_st,MTYPE_To_TY(ty),WN_CreateExp2(reduction_op,
+			                 WN_Ldid(ty, 0, accum_st, MTYPE_To_TY(ty)),
+					 accum_expr));
       accum_block = WN_CreateBlock();
       WN_INSERT_BlockFirst(accum_block,accum_store);
       if (Mask_Present) {
@@ -4234,9 +4344,9 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
       WN_INSERT_BlockBefore(block,insert_point,loopnest);
       /* Lower the mask and array argument */
       accum_expr = F90_Lower_Walk(kids[0],new_indices,ndim+1,stlist,NULL);
-      accum_store = WN_StidPreg(ty,accum,WN_CreateExp2(reduction_op,
-						       WN_LdidPreg(ty,accum),
-						       accum_expr));
+      accum_store = WN_Stid(ty,0,accum_st,MTYPE_To_TY(ty),WN_CreateExp2(reduction_op,
+			                   WN_Ldid(ty, 0, accum_st, MTYPE_To_TY(ty)),
+					   accum_expr));
       accum_block = WN_CreateBlock();
       WN_INSERT_BlockFirst(accum_block,accum_store);
       if (Mask_Present) {
@@ -4249,7 +4359,7 @@ static WN * lower_reduction(TYPE_ID rty, OPERATOR reduction_opr,
    }
    
    /* Return the load of the result variable */
-   result = WN_LdidPreg(ty,accum);
+   result = WN_Ldid(ty, 0, accum_st, MTYPE_To_TY(ty));
    if (rty == MTYPE_I1) {
       result = WN_CreateCvtl(OPC_I4CVTL,8,result);
    } else if (rty == MTYPE_I2) {
@@ -4318,9 +4428,17 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
    accum = Create_Preg(expr_ty,create_tempname("@f90acc"));
    cur_val = Create_Preg(expr_ty,create_tempname("@f90accval"));
    if (reduction_opr == OPR_MAX) {
+#ifdef KEY /* Bug 3395 */
+      reduction_op = OPCODE_make_op(OPR_GE,MTYPE_I4,expr_ty);
+#else
       reduction_op = OPCODE_make_op(OPR_GT,MTYPE_I4,expr_ty);
+#endif /* KEY */
    } else {
+#ifdef KEY /* Bug 3395 */
+      reduction_op = OPCODE_make_op(OPR_LE,MTYPE_I4,expr_ty);
+#else
       reduction_op = OPCODE_make_op(OPR_LT,MTYPE_I4,expr_ty);
+#endif /* KEY */
    }
    idty_store = WN_StidPreg(expr_ty,accum,Make_Reduction_Identity(reduction_opr,expr_ty));
 
@@ -4338,7 +4456,11 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
       num_temps += 1;
       for (i=rank-1; i >=0 ; i--) {
 	 sprintf(tempname,"@f90li_%d_%d",i,num_temps);
+#ifdef KEY /* Bug 3395 */
+	 loopnest = create_doloop(&index,tempname,sizes[i],DIR_NEGATIVE,loopnest);
+#else
 	 loopnest = create_doloop(&index,tempname,sizes[i],DIR_POSITIVE,loopnest);
+#endif /* KEY */
 	 new_indices[i] = index;
       }
       WN_INSERT_BlockBefore(F90_Current_Block,F90_Current_Loopnest,loopnest);
@@ -4429,7 +4551,11 @@ static WN * lower_maxminloc(OPERATOR reduction_opr,
       num_temps += 1;
       dim = ndim + 2 - dim; /* account for ordering */
       sprintf(tempname,"@f90red_%d",num_temps);
+#ifdef KEY /* Bug 3395 */
+      loopnest = create_doloop(&index,tempname,sizes[dim-1],DIR_NEGATIVE,loopnest);
+#else
       loopnest = create_doloop(&index,tempname,sizes[dim-1],DIR_POSITIVE,loopnest);
+#endif /* KEY */
       for (i=0,j=0; i < ndim+1; i++) {
 	 if (i != dim-1) {
 	    WN_DELETE_Tree(sizes[i]);
@@ -5392,6 +5518,10 @@ static WN * F90_Lower_Walk(WN *expr, PREG_NUM *indices, INT ndim, WN * block, WN
       if (MTYPE_byte_size(ty) != MTYPE_byte_size(WN_rtype(kid)))
         kid = WN_Cvt(WN_rtype(kid), ty, kid);
 #endif
+#ifdef KEY // bug 3518
+      if (MTYPE_byte_size(ty) != MTYPE_byte_size(WN_rtype(kid1)))
+        kid1 = WN_Cvt(WN_rtype(kid1), ty, kid1);
+#endif
       index_ldid = WN_LdidPreg(ty,indices[0]);
       kid1 = WN_CreateExp2(OPCODE_make_op(OPR_MPY,ty,MTYPE_V),
 					   index_ldid,
@@ -5513,6 +5643,44 @@ static BOOL F90_Generate_Loops(WN *stmt, WN *block)
       (void) WN_EXTRACT_FromBlock(block,stmt);
       WN_INSERT_BlockFirst(stlist,stmt);
       
+      /* if in the workshare region, autoparallelize the DO loop */
+      BOOL_VECTOR::iterator bi = F90_MP_Region_Isworkshare.begin();
+      if( (bi != F90_MP_Region_Isworkshare.end()) && *bi ){
+        WN* region = WN_CreateRegion(REGION_KIND_MP,
+                        WN_CreateBlock(),
+                        WN_CreateBlock(),
+                        WN_CreateBlock(),
+                        -1,
+                        0);
+        WN* region_body = WN_region_body(region);
+
+        WN_INSERT_BlockBefore(block,loopnest,region);
+        (void) WN_EXTRACT_FromBlock(block, loopnest);
+        WN_INSERT_BlockFirst(region_body,loopnest);
+	      
+        WN* pragmas = WN_region_pragmas(region);
+
+        WN* pragma = WN_CreatePragma(WN_PRAGMA_PDO_BEGIN, (ST *)NULL, 0, 1);
+        WN_set_pragma_omp(pragma);
+        WN_INSERT_BlockFirst(pragmas, pragma);
+
+        ST *index_st = MTYPE_To_PREG(doloop_ty);
+
+        for(i=0; i<ndim; i++){
+          pragma = WN_CreatePragma(WN_PRAGMA_LOCAL, index_st, indices[i], 0);
+          WN_set_pragma_omp(pragma);
+          WN_INSERT_BlockLast(pragmas, pragma);
+        }
+
+        pragma = WN_CreatePragma(WN_PRAGMA_END_MARKER, (ST *)NULL, 0, 0);
+        WN_set_pragma_omp(pragma);
+        WN_INSERT_BlockLast(pragmas, pragma);
+        F90_Current_Loopnest = region;
+      }
+      else{
+        F90_Current_Loopnest = loopnest;
+      }
+       
       /* Lower the statement */
       F90_Current_Stmt = stmt;
       F90_Current_Loopnest = loopnest;
@@ -5577,6 +5745,14 @@ static void check_for_duplicates(WN *pu,char *str)
 	    fprintf(TFile,"\n%s: Multiparented node p=%8p, w=%8p, k=%d\n",str,p,w,i);
 	    fprintf(TFile,"parent:\n"); fdump_tree(TFile,p);
 	    fprintf(TFile,"current:\n"); fdump_tree(TFile,w);
+	    
+	    // csc. 2002/11/14
+	    WN * temp_csc = GET_P_MAP(w);
+	    if( temp_csc != NULL ){
+		    fprintf(TFile, "current's parent:\n");
+		    fdump_tree(TFile, temp_csc );
+	    }
+	    
 	    fprintf(TFile,"multichild:\n"); fdump_tree(TFile,k);
 	    found_dup = TRUE;
 	 } else {
@@ -5592,6 +5768,60 @@ static void check_for_duplicates(WN *pu,char *str)
    }
 }
 #endif
+/*=============================================================
+ *  *
+ *   * void Strip_OMP_Workshare(WN *pu)
+ *    *
+ *     * Simply strip OpenMP WORKSHARE/END WORKSHARE directives for the program unit.
+ *      * (Added by Jiang Hongshan, Aug., 8, 2003)
+ *       *
+ *        *================================================================
+ *         */
+void Strip_OMP_Workshare(WN * pu)
+{
+  OPCODE opcode = WN_opcode(pu);
+    if(opcode != OPC_REGION){
+      if(opcode == OPC_BLOCK){
+        WN *kid = WN_first(pu);
+        while(kid){
+            Strip_OMP_Workshare(kid);
+            kid = WN_next(kid);
+        }
+      }
+      else if(OPCODE_is_scf(opcode)){
+        INT numkids = WN_kid_count(pu);
+        for(INT i=0; i<numkids; i++){
+          Strip_OMP_Workshare(WN_kid(pu,i));
+        }
+      }
+      return;
+    }
+    WN *pragmas = WN_region_pragmas(pu);
+    WN *body = WN_region_body(pu);
+    if(pragmas){
+      WN *pragma = WN_first(pragmas);
+      while(pragma){
+        if(WN_opcode(pragma)==OPC_PRAGMA){
+          if((WN_PRAGMA_ID)WN_pragma(pragma)==WN_PRAGMA_PWORKSHARE_BEGIN){
+            WN_Delete(WN_EXTRACT_FromBlock(pragmas, pragma));
+            WN *end_wn = WN_last(pragmas);
+            if(end_wn && WN_opcode(end_wn) == OPC_PRAGMA &&
+              ((WN_PRAGMA_ID)WN_pragma(end_wn)==WN_PRAGMA_NOWAIT) ||
+              ((WN_PRAGMA_ID)WN_pragma(end_wn)==WN_PRAGMA_END_MARKER) ){
+              WN_Delete(WN_EXTRACT_FromBlock(pragmas, end_wn));
+            }
+          break;
+        }
+        if((WN_PRAGMA_ID)WN_pragma(pragma)==WN_PRAGMA_PARALLEL_WORKSHARE){
+          WN_pragma(pragma) = WN_PRAGMA_PARALLEL_BEGIN;
+          break;
+        }
+      }
+      pragma = WN_next(pragma);
+    }
+  }
+  Strip_OMP_Workshare(body);
+}
 
 /*=============================================================
  *
@@ -5611,7 +5841,10 @@ WN * F90_Lower (PU_Info* pu_info, WN *pu) {
    F90_Lower_Prompf_Init(pu_info);
 
    /* See if we are actually processing an F90 pu */
-   if (!PU_f90_lang(*current_pu)) return (pu);
+   if (!PU_f90_lang(*current_pu)){
+	if(PU_has_mp(*current_pu)) Strip_OMP_Workshare(pu);
+	return (pu);
+   }
    
    F90_Lower_Init();
    

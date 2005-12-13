@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -149,7 +149,11 @@ _flushall(void)
 	uptr	= _get_next_unit(NULL, 0, 0);
 
 	while (uptr != NULL) {     /* while more open units */
+#ifdef KEY /* Bug 6433 */
+		_f_int4	unum;
+#else /* KEY Bug 6433 */
 		unum_t	unum;
+#endif /* KEY Bug 6433 */
 		
 		unum	= uptr->uid;
 		

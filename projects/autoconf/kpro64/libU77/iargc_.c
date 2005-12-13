@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -53,8 +53,20 @@
 #define ARGC f__xargc
 #endif
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_iargc(void) {
+  return ARGC - 1;
+  }
+
+#else
+
 extern int
 iargc_(void)
 {
    return ARGC - 1;
 }
+#endif /* KEY Bug 1683 */

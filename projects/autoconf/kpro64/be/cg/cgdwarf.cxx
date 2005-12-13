@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -60,9 +60,8 @@
 #endif
 
 #include <stdio.h>
-#include <elf.h>
+#include "elf_stuff.h"
 #include <elfaccess.h>
-#include <libelf.h>
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
@@ -96,6 +95,9 @@
 #include "vstring.h"
 #include "cgemit_targ.h"
 #include "cgdwarf_targ.h"
+#ifdef KEY
+#include "config_debug.h" // for DEBUG_Emit_Ehframe.
+#endif
 
 BOOL Trace_Dwarf;
 
@@ -138,6 +140,10 @@ struct CGD_SYMTAB_ENTRY {
 };
 
 vector <CGD_SYMTAB_ENTRY, mempool_allocator<CGD_SYMTAB_ENTRY> > CGD_Symtab;
+
+#ifdef KEY
+static DST_INFO_IDX Current_Top_Level_Idx = DST_INVALID_IDX;
+#endif
 
 Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
 				     Dwarf_Unsigned         index,
@@ -448,54 +454,39 @@ put_const_attribute (DST_CONST_VALUE cval, Dwarf_Half ref_attr, Dwarf_P_Die die)
     case DST_FORM_STRING:
       put_string (DST_CONST_VALUE_form_string(cval), ref_attr, die);
       break;
-#ifndef KEY
-    case DST_FORM_DATA1:
-      dwarf_add_AT_unsigned_const (dw_dbg, die, ref_attr,
-	      DST_CONST_VALUE_form_data1(cval), &dw_error);
-      break;
-    case DST_FORM_DATA2:
-      dwarf_add_AT_unsigned_const (dw_dbg, die, ref_attr,
-	      DST_CONST_VALUE_form_data2(cval), &dw_error);
-      break;
-    case DST_FORM_DATA4:
-      dwarf_add_AT_unsigned_const (dw_dbg, die, ref_attr,
-	      DST_CONST_VALUE_form_data4(cval), &dw_error);
-      break;
-    case DST_FORM_DATA8:
-      dwarf_add_AT_unsigned_const (dw_dbg, die, ref_attr,
-	      DST_CONST_VALUE_form_data8(cval), &dw_error);
-      break;
-#else
     // Bug 1188
     case DST_FORM_DATA1:
-      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
-	      DST_CONST_VALUE_form_data1(cval), &dw_error, 1);
+      dwf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+				     DST_CONST_VALUE_form_data1(cval),
+				     &dw_error, 1);
       break;
     case DST_FORM_DATA2:
-      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
-	      DST_CONST_VALUE_form_data2(cval), &dw_error, 2);
+      dwf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+				     DST_CONST_VALUE_form_data2(cval),
+				     &dw_error, 2);
       break;
     case DST_FORM_DATA4:
-      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
-	      DST_CONST_VALUE_form_data4(cval), &dw_error, 4);
+      dwf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+				     DST_CONST_VALUE_form_data4(cval),
+				     &dw_error, 4);
       break;
     case DST_FORM_DATA8:
-      dwarf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
-	      DST_CONST_VALUE_form_data8(cval), &dw_error, 8);
+      dwf_add_AT_unsigned_const_ext (dw_dbg, die, ref_attr,
+				     DST_CONST_VALUE_form_data8(cval),
+				     &dw_error, 8);
       break;
     case DST_FORM_DATAC4:
-      dwarf_add_AT_complex_const (dw_dbg, die, ref_attr,
-				  DST_CONST_VALUE_form_crdata4(cval), 
-				  DST_CONST_VALUE_form_cidata4(cval), 
-				  &dw_error, 4);
+      dwf_add_AT_complex_const (dw_dbg, die, ref_attr,
+				DST_CONST_VALUE_form_crdata4(cval), 
+				DST_CONST_VALUE_form_cidata4(cval), 
+				&dw_error, 4);
       break;
     case DST_FORM_DATAC8:
-      dwarf_add_AT_complex_const (dw_dbg, die, ref_attr,
-				  DST_CONST_VALUE_form_crdata8(cval), 
-				  DST_CONST_VALUE_form_cidata8(cval), 
-				  &dw_error, 8);
+      dwf_add_AT_complex_const (dw_dbg, die, ref_attr,
+				DST_CONST_VALUE_form_crdata8(cval), 
+				DST_CONST_VALUE_form_cidata8(cval), 
+				&dw_error, 8);
       break;
-#endif // KEY
   }
 }
 
@@ -620,6 +611,48 @@ put_subprogram(DST_flag flag,
 	        die, 
 	        DST_IS_external(flag) ? pb_pubname : pb_funcname);
     }
+#ifdef KEY
+    // Bug 4311 - The front-end does not set up the correct type information
+    // in the DST tree for the subprogram. In such cases, we use the top-level
+    // DST tree to derive the return type from a variable of same name as the
+    // subroutine. We check only the first child entry of the top level node
+    // that is either a decalaration or not a subprogram itself.
+    // The reason for following this method is there is no link back
+    // from the ST table to the DST table. So, given a ST_pu_type, we are not
+    // able to get a DST entry for that type.
+    if (DST_IS_NULL(DST_SUBPROGRAM_def_type(attr)) &&
+	(Dwarf_Language == DW_LANG_Fortran77 ||
+	 Dwarf_Language == DW_LANG_Fortran90) &&
+	Current_Top_Level_Idx != DST_INVALID_IDX) {
+      DST_INFO_IDX child_idx;
+      for (child_idx = DST_first_child (Current_Top_Level_Idx);
+	   !DST_IS_NULL(child_idx); 
+	   child_idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(child_idx))) {
+	if (child_idx != DST_INVALID_IDX) {
+	  DST_INFO *child_info = DST_INFO_IDX_TO_PTR (child_idx);
+	  if (child_info && 
+	      DST_INFO_tag(child_info) == DW_TAG_variable) {
+	    DST_ATTR_IDX child_attr_idx = DST_INFO_attributes(child_info);
+	    DST_VARIABLE *child_attr = 
+	      DST_ATTR_IDX_TO_PTR(child_attr_idx, DST_VARIABLE);
+	    if (child_attr) {
+	      DST_STR_IDX child_str_idx = DST_VARIABLE_def_name(child_attr);
+	      if (child_str_idx != DST_INVALID_IDX) {
+		ST *pu_st = Get_ST_From_DST(DST_SUBPROGRAM_def_st(attr));
+		char *pu_name = ST_name(pu_st);
+		char *variable_name = DST_STR_IDX_TO_PTR(child_str_idx);
+		if (strncasecmp(variable_name, pu_name, 
+				strlen(variable_name)) == 0)
+		  put_reference (DST_VARIABLE_decl_type(child_attr), 
+				 DW_AT_type, die);
+	      }
+	    }
+	    break;
+	  }
+	}
+      }
+    } else
+#endif
     put_reference (DST_SUBPROGRAM_def_type(attr), DW_AT_type, die);
     if (DST_IS_external(flag))  put_flag (DW_AT_external, die);
     if (DST_IS_prototyped(flag)) put_flag (DW_AT_prototyped, die);
@@ -745,6 +778,9 @@ put_location (
 	st =	Get_ST_formal_ref_base(st);
   if (st == NULL) return;
   if (ST_is_not_used(st)) return;
+#ifdef KEY	// Ignore asm string names.  Bug 7604.
+  if (ST_sym_class(st) == CLASS_NAME) return;
+#endif
 
   Base_Symbol_And_Offset (st, &base_st, &base_ofst);
 
@@ -758,7 +794,15 @@ put_location (
 	&& ST_sclass(st) != SCLASS_COMMON && ST_sclass(st) != SCLASS_EXTERN) 
   {
 	/* symbol was not allocated, so doesn't have dwarf location */
+#ifndef KEY
 	return;
+#else
+	// Bug 4723 - Allocate any object not allocated because the rest of 
+	// compilation never encountered that object. Note that ST_is_not_used 
+	// is not set for this object.
+	Allocate_Object(st);
+	Base_Symbol_And_Offset (st, &base_st, &base_ofst);
+#endif
   }
 
   switch (ST_sclass(st)) {
@@ -1568,6 +1612,20 @@ put_string_type (DST_flag flag, DST_STRING_TYPE *attr, Dwarf_P_Die die)
   }
 }
 
+#ifdef KEY
+static void
+put_namelist (DST_NAMELIST *attr, Dwarf_P_Die die)
+{
+  put_name (DST_NAMELIST_name(attr), die, pb_none);
+}
+
+static void
+put_namelist_item (DST_NAMELIST_ITEM *attr, Dwarf_P_Die die)
+{
+  put_name (DST_NAMELIST_ITEM_name(attr), die, pb_none);
+}
+#endif
+
 static void
 Write_Attributes (
     DST_DW_tag   tag,
@@ -1700,6 +1758,15 @@ Write_Attributes (
       put_string_type (flag, 
 	  DST_ATTR_IDX_TO_PTR(iattr, DST_STRING_TYPE), die);
     break;
+#ifdef KEY
+    // Bug 3704 - handle namelist and namelist items for Fortran.
+    case DW_TAG_namelist:
+      put_namelist (DST_ATTR_IDX_TO_PTR(iattr, DST_NAMELIST), die);
+      break;
+    case DW_TAG_namelist_item:
+      put_namelist_item (DST_ATTR_IDX_TO_PTR(iattr, DST_NAMELIST_ITEM), die);
+      break;
+#endif
       
    default:
       ErrMsg (EC_Unimplemented, "Write_Attributes: TAG not handled");
@@ -1779,6 +1846,9 @@ preorder_visit (
     }
   }
 
+#ifdef KEY
+  Current_Top_Level_Idx = idx;
+#endif
   //Current_Tree_Level = tree_level;
   Write_Attributes (tag,
 		   flag,
@@ -1929,9 +1999,22 @@ Traverse_DST (ST *PU_st, DST_IDX pu_idx)
 	("Traverse_DST:  pu_idx is not a subprogram def?"));
   PU_attr = DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_SUBPROGRAM);
   assoc_info = DST_SUBPROGRAM_def_st(PU_attr);
+#ifndef KEY
   FmtAssert ( (DST_ASSOC_INFO_st_level(assoc_info) == ST_level(PU_st))
 	&& (DST_ASSOC_INFO_st_index(assoc_info) == ST_index(PU_st)),
 	("Traverse_DST:  pu_idx doesn't match PU_st"));
+#else
+  // Bug 6679 - when a PU is declared extern and later defined in 
+  // the current file with an attribute, then there will be two ST entries 
+  // corresponding to that PU. If that is the case, then the assoc_info may 
+  // point to a different st_index than the PU_st. In such cases, we make use 
+  // of the fact that there can be utmost one PU with a given name at a given 
+  // level.
+  FmtAssert ( (DST_ASSOC_INFO_st_level(assoc_info) == ST_level(PU_st))
+	      && (strcmp(ST_name(Get_ST_From_DST (assoc_info)), 
+			 ST_name(PU_st)) == 0),
+	("Traverse_DST:  pu_idx doesn't match PU_st"));  
+#endif
   if (Trace_Dwarf)
     fprintf ( TFile, "Traverse_DST:  found idx [%d,%d] for %s\n",
 	pu_idx.block_idx, pu_idx.byte_idx, ST_name(PU_st));
@@ -1978,10 +2061,13 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 		     LABEL_IDX  begin_label,
 		     LABEL_IDX  end_label,
 #ifdef TARG_X8664
-		     LABEL_IDX eh_pushbp_label,
-		     LABEL_IDX eh_movespbp_label,
-		     LABEL_IDX eh_adjustsp_label,
-		     LABEL_IDX eh_callee_saved_reg,
+		     LABEL_IDX *eh_pushbp_label,
+		     LABEL_IDX *eh_movespbp_label,
+		     LABEL_IDX *eh_adjustsp_label,
+		     LABEL_IDX *eh_callee_saved_reg,
+		     LABEL_IDX *first_bb_labels,
+		     LABEL_IDX *last_bb_labels,
+		     INT32     pu_entries,
 #endif // TARG_X8664
 		     INT32      end_offset,
 		     ST        *PU_st,
@@ -2114,19 +2200,19 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 			    low_pc, high_pc);
 #else
   Dwarf_Unsigned pushbp_entry = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-						      eh_pushbp_label,
+						      eh_pushbp_label[0],
 						      scn_index);
   Dwarf_Unsigned movespbp_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-							  eh_movespbp_label,
+							  eh_movespbp_label[0],
 							  scn_index);
   Dwarf_Unsigned adjustsp_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-							  eh_adjustsp_label,
+							  eh_adjustsp_label[0],
 							  scn_index);
   Dwarf_Unsigned callee_saved_reg;
   INT num_callee_saved_regs;
   if (num_callee_saved_regs = Cgdwarf_Num_Callee_Saved_Regs())
     callee_saved_reg = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-					     eh_callee_saved_reg,
+					     eh_callee_saved_reg[0],
 					     scn_index);      
   fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
 			    begin_entry,
@@ -2138,8 +2224,8 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 			    end_offset,
 			    low_pc, high_pc);  
 
-  // Generate .eh_frame FDE only for C++
-  if (Dwarf_Language == DW_LANG_C_plus_plus)
+  // Generate .eh_frame FDE only for C++ or when -DEBUG:eh_frame=on
+  if (Dwarf_Language == DW_LANG_C_plus_plus || DEBUG_Emit_Ehframe)
     eh_fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
 				 begin_entry,
 			    	 end_entry,
@@ -2171,6 +2257,49 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 #endif
 		       eh_handle,
 		       eh_offset);
+#ifdef TARG_X8664
+  if (pu_entries > 1) {
+    FmtAssert(Dwarf_Language == DW_LANG_Fortran77 ||
+              Dwarf_Language == DW_LANG_Fortran90, 
+	      ("Dwarf handler: > 1 PU entry in a non-Fortran language"));
+    for (INT pu_entry = 1; pu_entry <= pu_entries; pu_entry ++) {
+      begin_entry = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					  first_bb_labels[pu_entry],
+					  scn_index);
+      end_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					  last_bb_labels[pu_entry],
+					  scn_index);
+      pushbp_entry = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					   eh_pushbp_label[pu_entry],
+					   scn_index);
+      movespbp_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					       eh_movespbp_label[pu_entry],
+					       scn_index);
+      adjustsp_entry   = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+					       eh_adjustsp_label[pu_entry],
+					       scn_index);
+      if (num_callee_saved_regs = Cgdwarf_Num_Callee_Saved_Regs())
+	callee_saved_reg = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
+						 eh_callee_saved_reg[pu_entry],
+						 scn_index);      
+      fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
+				begin_entry,
+				end_entry,
+				pushbp_entry,
+				movespbp_entry,
+				adjustsp_entry,
+				callee_saved_reg,
+				end_offset,
+				low_pc, high_pc);  
+      Em_Dwarf_Add_PU_Entries (begin_entry,
+			       end_entry,
+			       0,	// begin_offset
+			       end_offset,
+			       PU_die,
+			       fde);
+    }
+  }
+#endif
 
 }
 
@@ -2330,6 +2459,61 @@ void Cg_Dwarf_Gen_Asm_File_Table (void)
 }
 
 #ifdef KEY
+void Cg_Dwarf_Gen_Macinfo (void)
+{
+  DST_IDX idx;
+  DST_MACR *macr;
+  char *macro, *macname, *macvalue;
+  INT fileindex, linenumber;
+  BOOL processed_start_file = FALSE;
+  BOOL processed_end_file = FALSE;
+
+  for (idx = DST_get_macro_info();
+       !DST_IS_NULL(idx);
+       idx = DST_MACR_next(macr)) {
+    macr = DST_MACR_IDX_TO_PTR(idx);
+    switch (DST_MACR_tag(macr)) {
+    case DW_MACINFO_define:
+      if (!processed_start_file) {
+	dwarf_start_macro_file(dw_dbg, 
+			       1 /* fileindex */, 0 /* linenumber */, &dw_error);
+	processed_start_file = TRUE;
+      }	
+      macro  = DST_STR_IDX_TO_PTR(DST_MACR_macro(macr));
+      dwarf_def_macro(dw_dbg, DST_MACR_lineno(macr), 
+		      macro, NULL, &dw_error);
+      break;
+    case DW_MACINFO_undef:
+      if (!processed_start_file) {
+	dwarf_start_macro_file(dw_dbg, 
+			       1 /* fileindex */, 0 /* linenumber */, &dw_error);
+	processed_start_file = TRUE;
+      }	
+      macname  = DST_STR_IDX_TO_PTR(DST_MACR_macro(macr));
+      macvalue = dwarf_find_macro_value_start(macname);
+      macname[strlen(macname) - strlen(macvalue) - 1] = '\0';
+      dwarf_undef_macro(dw_dbg, DST_MACR_lineno(macr), 
+			macname, &dw_error);
+      break;
+    case DW_MACINFO_start_file:
+      fileindex = DST_MACR_fileno(macr);
+      linenumber = DST_MACR_lineno(macr);
+      dwarf_start_macro_file(dw_dbg, fileindex, linenumber, &dw_error);
+      processed_start_file = TRUE;
+      break;
+    case DW_MACINFO_end_file:
+      dwarf_end_macro_file(dw_dbg, &dw_error);
+      processed_end_file = TRUE;
+      break;
+    default:
+      break;
+    }
+  }
+  if (processed_start_file && !processed_end_file)
+    // End the macinfo section manually.
+    dwarf_end_macro_file(dw_dbg, &dw_error);
+}
+
 void
 Print_Directives_For_All_Files(void) {
   DST_IDX idx;
@@ -2344,7 +2528,7 @@ Print_Directives_For_All_Files(void) {
 	    file_table[count].filename);
     count++;
   }
-  fprintf(Asm_File, "\n");
+  fputc ('\n', Asm_File);
 }
 #endif
 
@@ -2408,6 +2592,10 @@ print_source (SRCPOS srcpos)
 #ifdef TARG_X8664
 BOOL Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
 #endif
+#ifdef KEY
+BOOL Cg_Dwarf_BB_First_Op = FALSE;
+#endif
+
 // THis adds line info and, as a side effect,
 // builds tables in dwarf2 for the file numbers
 
@@ -2434,7 +2622,8 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
   if (srcpos == 0 || srcpos == last_srcpos) return;
 #else
   if (srcpos == 0 || 
-      (!Cg_Dwarf_First_Op_After_Preamble_End && srcpos == last_srcpos))
+      (!Cg_Dwarf_First_Op_After_Preamble_End && !Cg_Dwarf_BB_First_Op &&
+       srcpos == last_srcpos))
     return;
 #endif
 
@@ -2530,7 +2719,7 @@ static inline Elf64_Word
 reloc_sym_index(char *reloc, BOOL is_64bit)
 {
   if (is_64bit) {
-    return REL64_sym(*((Elf64_Rel *) reloc));
+    return REL64_sym(*((Elf64_AltRel *) reloc));
   }
   else {
     return REL32_sym(*((Elf32_Rel *) reloc));
@@ -2680,14 +2869,95 @@ namespace {
 Dwarf_Unsigned 
 virtual_section_position::vsp_print_bytes(
 		FILE * asm_file,
-	        Dwarf_Unsigned current_reloc_target,
+	        Dwarf_Unsigned cur_reloc_target,
 		Dwarf_Unsigned cur_byte_in)
 {
-
-    const int bytes_per_line = 8;
     Dwarf_Unsigned cur_byte = cur_byte_in;
 
-    int nlines_this_reloc = (current_reloc_target - cur_byte) / bytes_per_line;
+#ifdef KEY
+    /* The efficiency of this routine turns out to be more important
+     * than you might first suspect.  In particular, when compiling
+     * with "-O0 -g" a lot of time is spent doing file IO, and the
+     * debug info is typically the single largest data source.  To
+     * conserve space this routine packs data into words which take
+     * about half as much space as bytes in the ASCII intermediate.
+     */
+
+    const int bytes_per_word_line = 16; /* must be multiple of 4 */
+    const int bytes_per_byte_line = 8;  /* can be anything you want */
+    int i, nlines_this_reloc;
+
+    /* Write byte stream in word-sized chunks, by line  */
+    nlines_this_reloc = (cur_reloc_target - cur_byte) / bytes_per_word_line;
+    for (i = 0; i < nlines_this_reloc; i++) {
+
+      fputs("\t" AS_WORD_UNALIGNED "\t", asm_file);
+
+      int j;
+      for (j = 0; j < bytes_per_word_line; j += 4) {
+        UINT32 val = 0;
+
+        if (Target_Byte_Sex == BIG_ENDIAN) {
+          int k;
+          for (k = 3*CHAR_BIT; k >= 0; k-=CHAR_BIT) {
+            val |= vsp_get_bytes(cur_byte,1) << k;
+            cur_byte++;
+          }
+        } else {
+          int k;
+          for (k = 0; k < 4*CHAR_BIT; k+=CHAR_BIT) {
+            val |= vsp_get_bytes(cur_byte,1) << k;
+            cur_byte++;
+          }
+        }
+
+        if (j != 0) {
+          fputs(", ", asm_file);
+        }
+
+        fprintf(asm_file, "0x%08x", (int)val);
+      }
+
+      fputc('\n', asm_file);
+    }
+
+    /* Write byte stream in byte-sized chunks, by line  */
+    nlines_this_reloc = (cur_reloc_target - cur_byte) / bytes_per_byte_line;
+    for (i = 0; i < nlines_this_reloc; i++) {
+      fputs("\t" AS_BYTE "\t", asm_file);
+
+      fprintf(asm_file, "0x%02x",
+        (int)vsp_get_bytes(cur_byte,1));
+      cur_byte++;
+
+      int j;
+      for (j = 1; j < bytes_per_byte_line; j++) {
+        fprintf(asm_file, ", 0x%02x",
+          (int)vsp_get_bytes(cur_byte,1));
+        cur_byte++;
+      }
+
+      fputc('\n', asm_file);
+    }
+
+    /* Write byte stream in byte-sized chunks, remainder */
+    if (cur_byte != cur_reloc_target) {
+      fputs("\t" AS_BYTE "\t", asm_file);
+
+      fprintf(asm_file, "0x%02x",
+        (int)vsp_get_bytes(cur_byte,1));
+      cur_byte++;
+
+      for (; cur_byte < cur_reloc_target; cur_byte++) {
+        fprintf(asm_file, ", 0x%02x",
+          (int)vsp_get_bytes(cur_byte,1));
+      }
+
+      fputc('\n', asm_file);
+    } 
+#else
+    const int bytes_per_line = 8;
+    int nlines_this_reloc = (cur_reloc_target - cur_byte) / bytes_per_line;
 
     int i;
     for (i = 0; i < nlines_this_reloc; ++i) {
@@ -2702,9 +2972,9 @@ virtual_section_position::vsp_print_bytes(
 		(int)vsp_get_bytes(cur_byte,1));
       ++cur_byte;
     }
-    if (cur_byte != current_reloc_target) {
+    if (cur_byte != cur_reloc_target) {
       fprintf(asm_file, "\t%s\t", AS_BYTE);
-      for (; cur_byte != current_reloc_target - 1; ) {
+      for (; cur_byte != cur_reloc_target - 1; ) {
         fprintf(asm_file, "0x%02x, ", 
 		(int)vsp_get_bytes(cur_byte,1));
 	++cur_byte;
@@ -2713,7 +2983,7 @@ virtual_section_position::vsp_print_bytes(
 		(int)vsp_get_bytes(cur_byte,1));
       ++cur_byte;
     }
-
+#endif
     return cur_byte - cur_byte_in;
 }
 
@@ -2867,7 +3137,7 @@ Cg_Dwarf_Output_Asm_Bytes_Elf_Relocs (FILE          *asm_file,
       switch (reloc_scn_type) {
       case SHT_REL:
 	if (is_64bit) {
-	  Check_Dwarf_Rel(*((Elf64_Rel *) current_reloc));
+	  Check_Dwarf_Rel(*((Elf64_AltRel *) current_reloc));
           FmtAssert(current_reloc_size == sizeof(UINT64),
 			("reloc size error"));
 	  ofst = vsp.vsp_get_bytes(cur_byte,sizeof(UINT64));
@@ -2885,7 +3155,7 @@ Cg_Dwarf_Output_Asm_Bytes_Elf_Relocs (FILE          *asm_file,
 	break;
       case SHT_RELA:
 	if (is_64bit) {
-	  Check_Dwarf_Rela(*((Elf64_Rela *) current_reloc));
+	  Check_Dwarf_Rela(*((Elf64_AltRela *) current_reloc));
 
 	  // position vsp to match cur_byte, discard value
 	  vsp.vsp_get_bytes(cur_byte,sizeof(current_reloc_size));
@@ -2912,7 +3182,7 @@ Cg_Dwarf_Output_Asm_Bytes_Elf_Relocs (FILE          *asm_file,
       if (ofst != 0) {
 	fprintf(asm_file, " + 0x%llx", (unsigned long long)ofst);
       }
-      fprintf(asm_file, "\n");
+      fputc ('\n', asm_file);
       cur_byte += current_reloc_size;
     }
   } while (cur_byte != ( buffer) + bufsize);
@@ -3010,7 +3280,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
       //
       // If pointer-length reloc, use data8.ua, else dwarf offset
       // size to be relocated, use data4.ua
-      char *reloc_name = 
+      const char *reloc_name = 
 #ifdef TARG_MIPS
 	   CG_emit_non_gas_syntax ? (Use_32_Bit_Pointers ? ".word" : ".dword") :
 #endif
@@ -3031,7 +3301,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 		Cg_Dwarf_Name_From_Handle(reloc_buffer[k].drd_symbol_index));
 #ifdef KEY
 	if (gen_pic)
-	    fprintf(asm_file, "-.");
+	    fputs ("-.", asm_file);
 #endif
 	break;
 
@@ -3106,6 +3376,12 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	Fail_FmtAssertion("current_reloc_size %ld, 4 or 8 required!\n", 
 		(long)current_reloc_size);
       }
+#ifdef TARG_X8664
+      // Bug 5357 - we emit 0x0 for the CIE_ID for eh_frame (in accordance with
+      // g++). The following code will skip that 4byte if that is the case.
+      if (ofst == 0 && cur_byte == 4 && strcmp(section_name, ".eh_frame") == 0) 
+	fprintf(asm_file, "\t%s 0x%llx", reloc_name, (unsigned long long)ofst);
+#endif
       if (ofst != 0) {
 #ifdef KEY
 	if (reloc_buffer[k].drd_type == dwarf_drt_none)
@@ -3114,7 +3390,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 #endif // KEY
 	fprintf(asm_file, " + 0x%llx", (unsigned long long)ofst);
       }
-      fprintf(asm_file, "\n");
+      fputc ('\n', asm_file);
       cur_byte += current_reloc_size;
     }
     ++k;
@@ -3389,7 +3665,7 @@ Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs (FILE *asm_file,
     // The .debug_line will be generated from the .loc directives by the 
     // assembler. - bug 2779 (why did it get exposed now?)
     else if (strcmp(section_name, ".debug_line") == 0)
-      fprintf(asm_file, "\n\t.section .debug_line, \"\"\n");
+      fputs("\n\t.section .debug_line, \"\"\n", asm_file);
 #endif
     for(int i = 0; i < scn_count; ++i) {
 	scn_buffers[i]->sc_output = TRUE;
@@ -3425,7 +3701,7 @@ Cg_Dwarf_Write_Assembly_From_Symbolic_Relocs (FILE *asm_file,
       // The .debug_line will be generated from the .loc directives by the 
       // assembler. - bug 2779 (why did it get exposed now?)
       else if (strcmp(section_name, ".debug_line") == 0)
-	fprintf(asm_file, "\n\t.section .debug_line, \"\"\n");
+	fputs("\n\t.section .debug_line, \"\"\n", asm_file);
 #endif
     }
   }

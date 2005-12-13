@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -57,9 +61,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <bstring.h>
-#include <elf.h>
+#include "elf_stuff.h"
 #include <elfaccess.h>
-#include <libelf.h>
+#include "libelf/libelf.h"
 #include <stamp.h>
 #include <alloca.h>
 #include <assert.h>
@@ -165,7 +169,7 @@ Em_Change_Section_Alignment (pSCNINFO scn, Elf64_Word scn_align)
 Elf64_Xword
 Em_Add_Bytes_To_Scn (
     pSCNINFO scninfo, 
-    void *input_buf, 
+    const void *input_buf, 
     Elf64_Xword length, 
     Elf64_Word align)
 {
@@ -198,7 +202,7 @@ Em_Add_Bytes_To_Scn (
 	Increase_Data_Buffer_Size (scninfo, newoffset + BUFSIZ);
       }
       if (length > 0) 
-	memcpy(SCNINFO_buffer(scninfo) + index, (char *)input_buf, length);
+	memcpy(SCNINFO_buffer(scninfo) + index, input_buf, length);
 
     }
 
@@ -585,7 +589,7 @@ Em_Add_New_Rel (
 	Create_New_Relocation_Section (FALSE, scninfo);
     }
     if (Sixtyfour_Bit) {
-	Elf64_Rel reloc;
+	Elf64_AltRel reloc;
 
 	REL_offset(reloc) = reloffset; 
 	Set_REL64_info ( reloc, symindex, reltype );
@@ -634,7 +638,7 @@ Em_Add_New_Rela (
 	Create_New_Relocation_Section (TRUE, scninfo);
     }
     if (Sixtyfour_Bit) {
-	Elf64_Rela reloc;
+	Elf64_AltRela reloc;
 
 	Set_REL64_info ( reloc, symindex, reltype );
 	REL64_ssym(reloc) = 0;
@@ -661,7 +665,7 @@ Em_Add_New_Rela (
    case, emit multiple relocations.
 */
 void
-Em_Add_New_Composite_Rela (Elf64_Rela *preloc, pSCNINFO scninfo)
+Em_Add_New_Composite_Rela (Elf64_AltRela *preloc, pSCNINFO scninfo)
 {
     /* if nothing to do, return. */
     if (REL64_type(*preloc) == R_NONE) return;

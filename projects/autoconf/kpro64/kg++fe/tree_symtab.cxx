@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -82,6 +82,8 @@ extern FILE *tree_dump_file; /* for debugging */
 extern void Push_Deferred_Function(tree);
 
 #ifdef KEY
+extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
+
 // Map duplicate gcc nodes that refer to the same function.
 std::multimap<tree, tree> duplicate_of;
 void
@@ -292,7 +294,10 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			Set_TY_is_const (idx);
 		if (TYPE_VOLATILE(type_tree))
 			Set_TY_is_volatile (idx);
-		// restrict qualifier not supported by gcc
+#ifdef KEY
+		if (TYPE_RESTRICT(type_tree))
+			Set_TY_is_restrict (idx);
+#endif
 		TYPE_TY_IDX(type_tree) = idx;
 		if(Debug_Level >= 2) {
 		  DST_INFO_IDX dst = Create_DST_type_For_Tree(type_tree,
@@ -471,6 +476,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			  TYPE_ID   mtype   = TY_mtype (ty_idx);
 			  ST       *st;
 			  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+			  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
 			  WFE_Set_ST_Addr_Saved (swn);
 			  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
 			  WFE_Stmt_Append (swn, Get_Srcpos());
@@ -516,6 +522,9 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			if (WN_operator (uwn) != OPR_LDID) {
 				ty_idx = Get_TY (TREE_TYPE (TYPE_MAX_VALUE (TYPE_DOMAIN (type_tree)) ) );
 				st = Gen_Temp_Symbol (ty_idx, "__vla_bound");
+#ifdef KEY
+			  	WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#endif
 				wn = WN_Stid (TY_mtype (ty_idx), 0, st, ty_idx, uwn);
 				WFE_Stmt_Append (wn, Get_Srcpos());
 			}
@@ -553,6 +562,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				  TYPE_ID   mtype   = TY_mtype (ty_idx);
 				  ST       *st;
 				  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+			  	  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
 				  WFE_Set_ST_Addr_Saved (swn);
 				  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
 				  WFE_Stmt_Append (swn, Get_Srcpos());
@@ -576,7 +586,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		{	// new scope for local vars
 
 		TY &ty = (idx == TY_IDX_ZERO) ? New_TY(idx) : Ty_Table[idx];
-#ifdef KEY	// GCC 3.2 pads empty structures with a fake 1-byte field.
+#ifdef KEY
+		// Must create DSTs in the order that the records are declared,
+		// in order to preserve their scope.  Bug 4168.
+		if (Debug_Level >= 2)
+		  defer_DST_type(type_tree, idx, orig_idx);
+
+		// GCC 3.2 pads empty structures with a fake 1-byte field.
 		// These structures should have tsize = 0.
 		if (tsize != 0 &&
 		    // is_empty_class assumes non-null CLASSTYPE_SIZE
@@ -614,8 +630,18 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
                                 tree field_type = TREE_TYPE(field);
 				if ((TREE_CODE(field_type) == RECORD_TYPE ||
 				     TREE_CODE(field_type) == UNION_TYPE) &&
-                                    field_type != type_tree)
+                                    field_type != type_tree) {
+#ifdef KEY
+					// Defer typedefs within class
+					// declarations to avoid circular
+					// declaration dependences.  See
+					// example in bug 5134.
+                                        if (TREE_CODE(field) == TYPE_DECL)
+					  defer_decl(field_type);
+                                        else
+#endif
                                         Get_TY(field_type);
+				}
                         }
 #ifdef KEY	// Defer expansion of static vars until all the fields in
 		// _every_ struct are laid out.  Consider this code (see
@@ -636,7 +662,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		// The solution is the delay all static var expansions until
 		// the very end.
 			else if (TREE_CODE(field) == VAR_DECL)
-				defer_emit_var_decl(field);
+				defer_decl(field);
 #else
 			else if (TREE_CODE(field) == VAR_DECL)
 				WFE_Expand_Decl(field);
@@ -749,6 +775,23 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				continue;
 			if (TREE_CODE(field) == TEMPLATE_DECL)
 				continue;
+#ifdef KEY
+			// Don't expand the field's type if it's a pointer
+			// type, in order to avoid circular dependences
+			// involving member object types and base types.  See
+			// example in bug 4954.  
+			if (TREE_CODE(TREE_TYPE(field)) == POINTER_TYPE) {
+				// Defer expanding the field's type.  Put in a
+				// generic pointer type for now.
+				TY_IDX p_idx =
+				  Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8),
+						    FALSE);
+				Set_FLD_type(fld, p_idx);
+				defer_field(field, fld);
+				fld = FLD_next(fld);
+				continue;
+			}
+#endif
 			TY_IDX fty_idx = Get_TY(TREE_TYPE(field));
 
 			if ((TY_align (fty_idx) > align) || (TY_is_packed (fty_idx)))
@@ -901,6 +944,57 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
 		} // end FUNCTION_TYPE scope
 		break;
+#ifdef TARG_X8664
+        // x86 gcc vector types
+        case VECTOR_TYPE:
+                {
+                  switch (GET_MODE_SIZE (TYPE_MODE (type_tree)))
+                  {
+                    case 8:
+                      switch (GET_MODE_UNIT_SIZE (TYPE_MODE (type_tree)))
+                      {
+                        case 1:
+                          idx = MTYPE_To_TY (MTYPE_V8I1);
+                          break;
+                        case 2:
+                          idx = MTYPE_To_TY (MTYPE_V8I2);
+                          break;
+                        case 4:
+                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_V8I4);
+                          else
+                            idx = MTYPE_To_TY (MTYPE_V8F4);
+                          break;
+                        default: Fail_FmtAssertion ("Get_TY: NYI");
+                      }
+                      break;
+                    case 16:
+                      switch (GET_MODE_UNIT_SIZE (TYPE_MODE (type_tree)))
+                      {
+                        case 1:
+                          idx = MTYPE_To_TY (MTYPE_V16I1);
+                          break;
+                        case 2:
+                          idx = MTYPE_To_TY (MTYPE_V16I2);
+                          break;
+                        case 4:
+                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_V16I4);
+                          else
+                            idx = MTYPE_To_TY (MTYPE_V16F4);
+                          break;
+                        case 8:
+                          if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)                            idx = MTYPE_To_TY (MTYPE_V16I8);
+                          else
+                            idx = MTYPE_To_TY (MTYPE_V16F8);
+                          break;
+                        default: Fail_FmtAssertion ("Get_TY: NYI");
+                      }
+                      break;
+                    default:
+                      Fail_FmtAssertion ("Get_TY: Unexpected vector type");
+                  }
+                }
+                break;
+#endif // TARG_X8664
 	default:
 		FmtAssert(FALSE, ("Get_TY unexpected tree_type"));
 	}
@@ -908,13 +1002,30 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		Set_TY_is_const (idx);
 	if (TYPE_VOLATILE(type_tree))
 		Set_TY_is_volatile (idx);
-	// restrict qualifier not supported by gcc
+#ifdef KEY
+	if (TYPE_RESTRICT(type_tree))
+		Set_TY_is_restrict (idx);
+#endif
 	TYPE_TY_IDX(type_tree) = idx;
         if(Debug_Level >= 2) {
+#ifdef KEY
+	  // DSTs for records were entered into the defer list in the order
+	  // that the records are declared, in order to preserve their scope.
+	  // Bug 4168.
+	  if (TREE_CODE(type_tree) != RECORD_TYPE &&
+	      TREE_CODE(type_tree) != UNION_TYPE) {
+	    // Defer creating DST info until there are no partially constructed
+	    // types, in order to prevent Create_DST_type_For_Tree from calling
+	    // Get_TY, which in turn may use field IDs from partially created
+	    // structs.  Such fields IDs are wrong.  Bug 5658.
+	    defer_DST_type(type_tree, idx, orig_idx);
+	  }
+#else
           DST_INFO_IDX dst =
             Create_DST_type_For_Tree(type_tree,
               idx,orig_idx);
           TYPE_DST_IDX(type_tree) = dst;
+#endif
         }
 
 	return idx;
@@ -931,6 +1042,9 @@ Create_ST_For_Tree (tree decl_node)
   ST_EXPORT  eclass;
   SYMTAB_IDX level;
   static INT anon_count = 0;
+#ifdef KEY
+  BOOL anon_st = FALSE;
+#endif
 
   if(TREE_CODE(decl_node) == ERROR_MARK) {
         Fail_FmtAssertion ("Unable to handle ERROR_MARK. internal error");
@@ -964,6 +1078,9 @@ Create_ST_For_Tree (tree decl_node)
   else {
     sprintf(tempname, "anon%d", ++anon_count);
     name = tempname;
+#ifdef KEY
+    anon_st = TRUE;
+#endif
   }
 
 #ifdef KEY
@@ -1032,6 +1149,9 @@ Create_ST_For_Tree (tree decl_node)
 
     case PARM_DECL:
     case VAR_DECL:
+#ifdef KEY
+    case RESULT_DECL:	// bug 3878
+#endif
       {
         if (TREE_CODE(decl_node) == PARM_DECL) {
           sclass = SCLASS_FORMAL;
@@ -1056,7 +1176,12 @@ Create_ST_For_Tree (tree decl_node)
 	      if (DECL_INITIAL(decl_node))
 		sclass = SCLASS_UGLOBAL;
 	      else if (TREE_STATIC(decl_node)) {
+#ifdef KEY
+// bugs 340, 3717
+		if (flag_no_common || !DECL_COMMON (decl_node))
+#else
 		if (flag_no_common)
+#endif
 		  sclass = SCLASS_UGLOBAL;
 		else
 		  sclass = SCLASS_COMMON;
@@ -1125,17 +1250,36 @@ Create_ST_For_Tree (tree decl_node)
             TY_size (ty_idx) == 0) {
           Set_TY_size (ty_idx, TY_size (Get_TY (TREE_TYPE (TREE_TYPE (decl_node)))));
         }
+#ifndef KEY
+// bug 3735: the compiler cannot arbitrarily change the alignment of
+// individual structures
 	if (TY_mtype (ty_idx) == MTYPE_M &&
 	    Aggregate_Alignment > 0 &&
 	    Aggregate_Alignment > TY_align (ty_idx))
 	  Set_TY_align (ty_idx, Aggregate_Alignment);
+#endif // !KEY
 	// qualifiers are set on decl nodes
 	if (TREE_READONLY(decl_node))
 		Set_TY_is_const (ty_idx);
 	if (TREE_THIS_VOLATILE(decl_node))
 		Set_TY_is_volatile (ty_idx);
+#ifdef KEY
+        // Handle aligned attribute (bug 7331)
+        if (DECL_USER_ALIGN (decl_node))
+          Set_TY_align (ty_idx, DECL_ALIGN_UNIT (decl_node));
+        // NOTE: we do not update the ty_idx value in the TYPE_TREE. So
+        // if any of the above properties are set, the next time we get into
+        // Get_ST, the ty_idx in the TYPE_TREE != ty_idx in st. The solution
+        // is either to update TYPE_TREE now, or compare the ty_idx_index
+        // in Get_ST (instead of ty_idx). Currently we do the latter
+#endif // KEY
         ST_Init (st, Save_Str(name), CLASS_VAR, sclass, eclass, ty_idx);
 #ifdef KEY
+	if (TREE_CODE (decl_node) == VAR_DECL && DECL_THREADPRIVATE (decl_node))
+	  Set_ST_is_thread_private (st);
+	if (TREE_CODE (decl_node) == VAR_DECL && anon_st)
+	  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+
         if (DECL_SIZE_UNIT (decl_node) &&
             TREE_CODE (DECL_SIZE_UNIT (decl_node)) != INTEGER_CST)
         {
@@ -1238,7 +1382,14 @@ Create_ST_For_Tree (tree decl_node)
   }
 
   if (DECL_WEAK      (decl_node) &&
-      !DECL_EXTERNAL (decl_node)) {
+      (!DECL_EXTERNAL (decl_node)
+#ifdef KEY
+       // Make weak symbols for:
+       //   extern "C" int bar() __attribute__ ((weak, alias("foo")))
+       // Bug 3841.
+       || DECL_ALIAS_TARGET(decl_node))
+#endif
+      ) {
     Set_ST_is_weak_symbol (st);
   }
 
@@ -1259,8 +1410,12 @@ Create_ST_For_Tree (tree decl_node)
   // cleanups and try handlers as weak.
   if (make_symbols_weak) {
     if (eclass != EXPORT_LOCAL &&
-	eclass != EXPORT_LOCAL_INTERNAL) {
+	eclass != EXPORT_LOCAL_INTERNAL &&
+	// Don't make symbol weak if it is defined in current file.  Workaround
+	// for SLES 8 linker.  Bug 3758.
+	WEAK_WORKAROUND(st) != WEAK_WORKAROUND_dont_make_weak) {
       Set_ST_is_weak_symbol (st);
+      WEAK_WORKAROUND(st) = WEAK_WORKAROUND_made_weak;
     }
   }
   // See comment above about guard variables.
@@ -1291,6 +1446,9 @@ Create_ST_For_Tree (tree decl_node)
 #ifdef KEY
     // Bug 559
     if (ST_sclass(st) != SCLASS_EXTERN) {
+      // Add DSTs for all types seen so far.
+      add_deferred_DST_types();
+
       DST_INFO_IDX dst = Create_DST_decl_For_Tree(decl_node,st);
       DECL_DST_IDX(decl_node) = dst;
     }
@@ -1338,6 +1496,11 @@ namespace {
   // TRUE if TREE is a DECL_FUNCTION whose PU should have PU_uplevel set.
   hash_map<tree, BOOL,        ptrhash>     func_PU_uplevel_map;
   hash_map<tree, tree,	      ptrhash>	   parent_scope_map;
+  // Record whether a symbol referenced in a cleanup should be marked weak as a
+  // workaround to the fact that kg++fe may emit cleanups that g++ won't emit
+  // because g++ knows that are not needed.  The linker will complain if these
+  // symbols are not defined.
+  hash_map<ST*, INT32,        ptrhash>     weak_workaround_map;
 #endif
 }
 
@@ -1472,6 +1635,8 @@ func_PU_uplevel(tree t) {
 	     ("func_PU_uplevel: not a FUNCTION_DECL tree node"));
   return func_PU_uplevel_map[t];
 }
+
+INT32& WEAK_WORKAROUND(ST *st)         { return weak_workaround_map[st]; }
 #else
 
 ST*& DECL_ST(tree t) {

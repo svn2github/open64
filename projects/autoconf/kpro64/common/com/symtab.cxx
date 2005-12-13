@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -2113,7 +2113,7 @@ Print_global_symtab (FILE *f)
     fprintf (f, "%sST_ATTRs:\n", DBar);
     For_all (St_Attr_Table, GLOBAL_SYMTAB, print_op<ST_ATTR> (f));
 
-    fprintf (f, "%sString table size = %d\n", DBar, STR_Table_Size());
+    fprintf (f, "%sString table size = %lld\n", DBar, STR_Table_Size());
     fprintf (f, "%s\n", DBar);
 } // Print_global_symtab
 

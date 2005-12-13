@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -206,7 +210,7 @@ extern OPCODE           OPCODE_commutative_op(OPCODE op);
 extern BOOL Operator_To_Opcode_Table_Inited;
 void Init_Operator_To_Opcode_Table(void);
 
-#define OPCODE_make_op_MACRO(opr,rtype,desc)  ((OPCODE) ((opr) | ((rtype) << 8) | ((desc) << 13)))
+#define OPCODE_make_op_MACRO(opr,rtype,desc)  ((OPCODE) ((opr) | ((rtype) << 8) | ((desc) << 14)))
 
 
 

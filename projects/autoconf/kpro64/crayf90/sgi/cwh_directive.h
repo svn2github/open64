@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -80,6 +84,11 @@ cwh_directive_add_do_loop_directive(WN *directive);
 
 extern void
 cwh_directive_barrier_insert(WN *ins, int  args) ;
+// Bug 3836
+#ifdef KEY
+extern void 
+cwh_directive_set_PU_flags(BOOL nested);
+#endif
 
 #endif /* CWH_DIRECTIVE_INCLUDED */
 

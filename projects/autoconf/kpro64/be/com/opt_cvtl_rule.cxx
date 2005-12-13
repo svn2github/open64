@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -135,6 +135,8 @@ INT Need_type_conversion(TYPE_ID from_ty, TYPE_ID to_ty, OPCODE *opc)
       *opc = OPC_U8U4CVT;
     return NEED_CVT;
   }
+  if ((from_ty == MTYPE_V16C8 && to_ty == MTYPE_V16F8) ||
+      (from_ty == MTYPE_V16F8 && to_ty == MTYPE_V16C8)) return NOT_AT_ALL;
 #endif
   if (!(MTYPE_is_integral(from_ty) && MTYPE_is_integral(to_ty))) {
     if (from_ty == to_ty) return NOT_AT_ALL;
@@ -142,6 +144,13 @@ INT Need_type_conversion(TYPE_ID from_ty, TYPE_ID to_ty, OPCODE *opc)
       *opc = OPCODE_make_op(OPR_CVT, to_ty, from_ty);
     return NEED_CVT;
   }
+#ifdef KEY // bug 3742
+  if (from_ty > MTYPE_U8 || to_ty > MTYPE_U8)
+  {
+    if (from_ty == to_ty) return NOT_AT_ALL;
+    Fail_FmtAssertion ("Need_type_conversion: Don't know how to convert");
+  }
+#endif
 
   if (opc != NULL)
     *opc = (OPCODE)cvt_rule[to_ty][from_ty]._cvt_opcode;

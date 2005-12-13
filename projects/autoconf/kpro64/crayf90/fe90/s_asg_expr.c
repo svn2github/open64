@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -177,6 +177,112 @@ static void	linearize_pe_dims(int, int, int, int, opnd_type *);
 # endif
 
 
+#ifdef KEY /* Bug 4810 */
+/*
+ * Return true if op0 is the same node as op1
+ */
+static boolean opnd_matches(opnd_type *op0, opnd_type *op1) {
+  return op0->fld == op1->fld && op0->idx == op1->idx;
+  }
+
+/*
+ * An assignment statement following an OMP "atomic" statement is supposed to
+ * have one of these forms, with any operators inside "expr" having precedence
+ * greater than or equal to that of "op":
+ *
+ *   lhs = function_call(...)
+ *   lhs = expr op lhs
+ *   lhs = lhs op expr
+ *
+ * But in a case like this:
+ *
+ *   lhs = lhs + expr_b + expr_c
+ *
+ * the parser generates a left-associative expression:
+ *
+ *   lhs = (lhs + expr_b) + expr_c
+ *
+ * and the OMP lowering code cannot find the nested reference to "lhs". We use
+ * the Fortran associativity rules to change this to:
+ *
+ *   lhs = lhs + (expr_b + expr_c)
+ *
+ * While OMP allows non-commutative operators "-" and "/", it also requires
+ * that "lhs op expr" be mathematically equivalent to "lhs op (expr)". That
+ * means "lhs + expr_b - expr_c" must work (so we can't just swap "lhs" with
+ * "expr_c") but "lhs - expr_b - expr_c" is a user error (which we want to
+ * leave alone, so the lowerer can issue a diagnostic.) Thus the operator
+ * adjacent to "lhs" must be one of the commutative ones.
+ */
+static void unbury_lhs_for_omp() {
+  /* Previous statement wasn't OMP "atomic" */
+  if (curr_stmt_sh_idx == SCP_FIRST_SH_IDX(curr_scp_idx) ||
+    IR_OPR(SH_IR_IDX(SH_PREV_IDX(curr_stmt_sh_idx))) != Atomic_Open_Mp_Opr) {
+    return;
+  }
+  int stmt_idx = SH_IR_IDX(curr_stmt_sh_idx);
+  int rhs_idx = IR_IDX_R(stmt_idx);
+  /* RHS isn't an operator node */
+  if (IR_FLD_R(stmt_idx) != IR_Tbl_Idx) {
+    return;
+  }
+  operator_type operator = IR_OPR(rhs_idx);
+  /* RHS is not an OMP-approved operator */
+  if (operator != Plus_Opr && operator != Minus_Opr &&
+    operator != Mult_Opr && operator != Div_Opr &&
+    operator != And_Opr && operator != Or_Opr &&
+    operator != Eqv_Opr && operator != Neqv_Opr) {
+    return;
+    }
+  opnd_type *lhs_opnd = &(IR_OPND_L(stmt_idx));
+  /* Top left operand already matches LHS, so no need to swap */
+  if (opnd_matches(lhs_opnd, &(IR_OPND_L(rhs_idx)))) {
+    return;
+  }
+  /* Top right operand already matches LHS, so no need to swap */
+  if (opnd_matches(lhs_opnd, &(IR_OPND_R(rhs_idx)))) {
+    return;
+  }
+
+  operator_type alt_operator = operator;
+  if (operator == Plus_Opr) {
+    alt_operator = Minus_Opr;
+    }
+  else if (operator == Minus_Opr) {
+    alt_operator = Plus_Opr;
+    }
+  else if (operator == Mult_Opr) {
+    alt_operator = Div_Opr;
+    }
+  else if (operator == Div_Opr) {
+    alt_operator = Mult_Opr;
+    }
+  else if (operator == Eqv_Opr) {
+    alt_operator == Neqv_Opr;
+    }
+  else if (operator == Neqv_Opr) {
+    alt_operator == Eqv_Opr;
+    }
+
+  int parent_idx = rhs_idx;
+  for (int node_idx = IR_IDX_L(parent_idx);
+    IR_Tbl_Idx == IR_FLD_L(parent_idx) &&
+      (operator == IR_OPR(node_idx) || alt_operator == IR_OPR(node_idx));
+    parent_idx = node_idx, node_idx = IR_IDX_L(parent_idx)) {
+    /* "-" or "/" can't be the operator we're unburying */
+    if (opnd_matches(lhs_opnd, &(IR_OPND_L(node_idx))) &&
+      (IR_OPR(node_idx) != Minus_Opr) && (IR_OPR(node_idx) != Div_Opr)) {
+      opnd_type save_rhs = IR_OPND_R(stmt_idx);
+      opnd_type save_right_opnd = IR_OPND_R(node_idx);
+      IR_OPND_R(stmt_idx) = IR_OPND_L(parent_idx);
+      IR_OPND_R(node_idx) = save_rhs;
+      IR_OPND_L(parent_idx) = save_right_opnd;
+      break;
+    }
+  }
+}
+
+#endif /* KEY Bug 4810 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -225,6 +331,10 @@ void assignment_stmt_semantics (void)
 
 
    TRACE (Func_Entry, "assignment_stmt_semantics", NULL);
+
+#ifdef KEY /* Bug 4810 */
+   unbury_lhs_for_omp();
+#endif /* KEY Bug 4810 */
 
    ir_idx = SH_IR_IDX(curr_stmt_sh_idx);
 
@@ -2716,6 +2826,12 @@ boolean  gen_whole_subscript (opnd_type *opnd, expr_arg_type *exp_desc)
                                  TYP_LINEAR(loc_exp_desc.type_idx);
          }
 
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
          if (in_io_list) {
 
             /* on mpp, must cast shorts to longs in io lists */
@@ -2725,6 +2841,7 @@ boolean  gen_whole_subscript (opnd_type *opnd, expr_arg_type *exp_desc)
             cast_to_cg_default(&opnd2, &loc_exp_desc);
             COPY_OPND(IL_OPND(tlst1_idx), opnd2);
          }
+#endif /* KEY Bug 4709 */
 
          IL_FLD(tlst2_idx)      = BD_UB_FLD(bd_idx, i);
          IL_IDX(tlst2_idx)      = BD_UB_IDX(bd_idx, i);
@@ -2750,6 +2867,12 @@ boolean  gen_whole_subscript (opnd_type *opnd, expr_arg_type *exp_desc)
                                  TYP_LINEAR(loc_exp_desc.type_idx);
          }
 
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
          if (in_io_list) {
 
             /* on mpp, must cast shorts to longs in io lists */
@@ -2759,6 +2882,7 @@ boolean  gen_whole_subscript (opnd_type *opnd, expr_arg_type *exp_desc)
             cast_to_cg_default(&opnd2, &loc_exp_desc);
             COPY_OPND(IL_OPND(tlst2_idx), opnd2);
          }
+#endif /* KEY Bug 4709 */
       }
 
       IL_FLD(tlst3_idx)      = CN_Tbl_Idx;
@@ -6362,6 +6486,18 @@ static boolean concat_opr_handler(opnd_type		*result_opnd,
    col    = IR_COL_NUM(ir_idx);
    save_in_call_list = in_call_list;
    in_call_list = FALSE;
+
+#ifdef KEY /* Bug 3273 */
+   /* If we already visited this node once and converted it from a node
+    * having two children into a node having one child which is itself a
+    * list of children, then on the second visit (e.g. due to a call to
+    * "process_deferred_io_list") the code in concat_opr_handler will fail.
+    * So skip it.
+    */
+   if (OPND_FLD(IR_OPND_L(ir_idx)) == IL_Tbl_Idx) {
+     return ok;
+     }
+#endif /* KEY Bug 3273 */
    
    COPY_OPND(opnd, IR_OPND_L(ir_idx));
    exp_desc_l.rank = 0;
@@ -9624,6 +9760,12 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
                                                 TYP_LINEAR(exp_desc_r.type_idx);
                         }
 
+#ifdef KEY /* Bug 4709 */
+		       /* Converting array bounds from to Integer_4 breaks
+			* customer code which uses large array bounds, and isn't
+			* correct for our 64-bit-oriented runtime.
+			*/
+#else
                         if (in_io_list) {
 
                            /* on mpp, must cast shorts to longs in io lists */
@@ -9633,6 +9775,7 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
                            cast_to_cg_default(&opnd2, &exp_desc_r);
                            COPY_OPND(IL_OPND(list2_idx), opnd2);
                         }
+#endif /* KEY Bug 4709 */
 
 
                         /* assume that lower bound is constant */
@@ -9724,6 +9867,12 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
                                                 TYP_LINEAR(exp_desc_r.type_idx);
                         }
 
+#ifdef KEY /* Bug 4709 */
+		      /* Converting array bounds to Integer_4 breaks
+		       * customer code which uses large array bounds, and isn't
+		       * correct for our 64-bit-oriented runtime.
+		       */
+#else
                         if (in_io_list) {
 
                            /* on mpp, must cast shorts to longs in io lists */
@@ -9733,6 +9882,7 @@ static boolean subscript_opr_handler(opnd_type		*result_opnd,
                            cast_to_cg_default(&opnd2, &exp_desc_r);
                            COPY_OPND(IL_OPND(list2_idx), opnd2);
                         }
+#endif /* KEY Bug 4709 */
 
                         /* assume that upper bound is constant */
                         /* should be in temp.                  */
@@ -10947,6 +11097,12 @@ static boolean triplet_opr_handler(opnd_type		*result_opnd,
       SHAPE_WILL_FOLD_LATER(IL_OPND(list_idx)) =
                                      exp_desc_l.will_fold_later;
 
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
       if (in_io_list) {
 
          /* on mpp, must cast shorts to longs in io lists */
@@ -10956,6 +11112,7 @@ static boolean triplet_opr_handler(opnd_type		*result_opnd,
          cast_to_cg_default(&opnd, &exp_desc_l);
          COPY_OPND(IL_OPND(list_idx), opnd);
       }
+#endif /* KEY Bug 4709 */
    }
 
 
@@ -11013,6 +11170,12 @@ static boolean triplet_opr_handler(opnd_type		*result_opnd,
       SHAPE_FOLDABLE(IL_OPND(list_idx)) = exp_desc_l.foldable;
       SHAPE_WILL_FOLD_LATER(IL_OPND(list_idx)) = exp_desc_l.will_fold_later;
 
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
       if (in_io_list) {
 
          /* on mpp, must cast shorts to longs in io lists */
@@ -11023,6 +11186,7 @@ static boolean triplet_opr_handler(opnd_type		*result_opnd,
          COPY_OPND(IL_OPND(list_idx), opnd);
 
       }
+#endif /* KEY Bug 4709 */
    }
 
 
@@ -11080,6 +11244,12 @@ static boolean triplet_opr_handler(opnd_type		*result_opnd,
       SHAPE_FOLDABLE(IL_OPND(list_idx)) = exp_desc_l.foldable;
       SHAPE_WILL_FOLD_LATER(IL_OPND(list_idx)) = exp_desc_l.will_fold_later;
 
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
       if (in_io_list) {
 
          /* on mpp, must cast shorts to longs in io lists */
@@ -11090,6 +11260,7 @@ static boolean triplet_opr_handler(opnd_type		*result_opnd,
          COPY_OPND(IL_OPND(list_idx), opnd);
 
       }
+#endif /* KEY Bug 4709 */
    }
 
    exp_desc->rank           = 1;

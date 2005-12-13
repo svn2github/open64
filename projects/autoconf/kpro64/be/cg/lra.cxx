@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -649,7 +649,21 @@ Create_LR_For_TN (TN *tn, BB *bb, BOOL in_lra, MEM_POOL *pool)
     hTN_MAP_Set (live_range_map, tn, lr);
   }
   else if (LR_tn(lr) != orig_tn) {
+#ifdef TARG_X8664
+    // Make LR_tn(lr) be the widest enclosing register so that all parts of the
+    // register are spilled.  Bug 7613.
+    Is_True(TN_is_dedicated(tn), ("Create_LR_For_TN: not dedicated TN"));
+    if (TN_size(tn) >= TN_size(LR_tn(lr)))
+      LR_tn(lr) = tn;
+    else {
+      ISA_REGISTER_CLASS cl = TN_register_class(LR_tn(lr));
+      REGISTER reg = LRA_TN_register(LR_tn(lr));
+      TN *ded_tn = Build_Dedicated_TN (cl, reg, TN_size(LR_tn(lr)));
+      LR_tn(lr) = ded_tn;
+    }
+#else
     LR_tn(lr) = tn;
+#endif
   }
   return lr;
 }
@@ -710,6 +724,13 @@ Mark_Use (TN *tn, OP *op, INT opnum, BB *bb, BOOL in_lra, MEM_POOL *pool)
     }
     /* Add this use to the live range for this TN. */
     LR_use_cnt(clr)++;
+#ifdef KEY
+    // If the live range is not live-out, then set the last use so that we can
+    // determine which OPs the live range spans.  This is needed for making the
+    // live range a candidate for spilling.  Bug 7649.
+    if (LR_last_use(clr) != BB_length(bb)+1)
+      LR_last_use(clr) = opnum;
+#endif
   }
   else {
 #ifdef TARG_X8664 
@@ -1204,19 +1225,59 @@ Get_Avail_Reg (ISA_REGISTER_CLASS regclass,
   REGISTER next_reg = last_assigned_reg[regclass] + 1;
   REGISTER reg;
 
-  // Get the next available register starting from the last_assigned_reg.
-  // This gets registers in a round-robin fashion, which is better for 
-  // the scheduling pass after LRA, since it reduces dependences created
-  // due to register assignment. The following 2 loops get us the 
-  // circular traversal through the registers.
-  for (reg = next_reg; reg < REGISTER_MAX+1; reg++) {
-    if (Is_Reg_Available(regclass, usable_regs, reg, lr) && reg != skip_reg) {
-      return reg;
+#ifdef TARG_X8664
+  if (LRA_prefer_legacy_regs) {
+    // Get the next available register starting from the last_assigned_reg.
+    // Divide up the registers into a low-cost set and a high-cost set.  Try to
+    // get from the low-cost set first.  Use round-robin for both sets.
+    const REGISTER max_preferred_reg =
+      REGISTER_MIN + ((REGISTER_MAX - REGISTER_MIN + 1) / 2) - 1;
+    REGISTER start1, start2, start3, end1, end2, end3;
+
+    if (next_reg <= max_preferred_reg) {
+      start1 = next_reg;
+      end1 = max_preferred_reg;
+      start2 = REGISTER_MIN;
+      end2 = next_reg - 1;
+      start3 = max_preferred_reg + 1;
+      end3 = REGISTER_MAX;
+    } else {
+      start1 = REGISTER_MIN;
+      end1 = max_preferred_reg;
+      start2 = next_reg;
+      end2 = REGISTER_MAX;
+      start3 = max_preferred_reg + 1;
+      end3 = next_reg - 1;
     }
-  }
-  for (reg = REGISTER_MIN; reg < next_reg; reg++) {
-    if (Is_Reg_Available(regclass, usable_regs, reg, lr) && reg != skip_reg) {
-      return reg;
+    for (reg = start1; reg <= end1; reg++) {
+      if (Is_Reg_Available(regclass, usable_regs, reg, lr) && reg != skip_reg)
+        return reg;
+    }
+    for (reg = start2; reg <= end2; reg++) {
+      if (Is_Reg_Available(regclass, usable_regs, reg, lr) && reg != skip_reg)
+        return reg;
+    }
+    for (reg = start3; reg <= end3; reg++) {
+      if (Is_Reg_Available(regclass, usable_regs, reg, lr) && reg != skip_reg)
+        return reg;
+    }
+  } else
+#endif
+  {
+    // Get the next available register starting from the last_assigned_reg.
+    // This gets registers in a round-robin fashion, which is better for the
+    // scheduling pass after LRA, since it reduces dependences created due to
+    // register assignment. The following 2 loops get us the circular traversal
+    // through the registers.
+    for (reg = next_reg; reg < REGISTER_MAX+1; reg++) {
+      if (Is_Reg_Available(regclass, usable_regs, reg, lr) && reg != skip_reg) {
+        return reg;
+      }
+    }
+    for (reg = REGISTER_MIN; reg < next_reg; reg++) {
+      if (Is_Reg_Available(regclass, usable_regs, reg, lr) && reg != skip_reg) {
+        return reg;
+      }
     }
   }
 
@@ -1456,14 +1517,7 @@ Usable_Registers (TN* tn, LIVE_RANGE* lr)
       (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, op) : NULL;
 
     // cannot use registers clobbered by an ASM statement
-    if (asm_info
-#ifdef KEY
-	/* Don't consider the clobber list if the current inline asm
-	   is the last use of <tn> (bug#3111)
-	*/
-	&& ( opnum + 1 < last_op )
-#endif
-	) {
+    if (asm_info) {
       usable_regs = REGISTER_SET_Difference(usable_regs, 
 					    ASM_OP_clobber_set(asm_info)[cl]);
     }
@@ -1701,7 +1755,11 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 	  }
 	}
 	LRA_TN_Allocate_Register (result_tn, result_reg);
-      } else if (result_reg == REGISTER_sp && CG_localize_tns) {
+      } else if (result_reg == REGISTER_sp &&
+#ifdef KEY	 // Bug 4327.
+		 result_cl == ISA_REGISTER_CLASS_integer &&
+#endif
+		 CG_localize_tns) {
 	Update_Callee_Availability(bb);
       } 
 
@@ -2690,6 +2748,29 @@ Analyze_Spilling_Live_Range (
     OP *op = OP_VECTOR_element(Insts_Vector, i);
     if (op == NULL) continue;
 
+#ifdef TARG_X8664
+    // Don't spill the live range if it is a dedicated register that is
+    // preallocated to some OP's operand or result.  Spilling such a live range
+    // is useless because Preallocate_Single_Register_Subclasses would
+    // preallocate the register back to the operand/result.  Bug 5744.
+    for (INT opndnum = 0; opndnum < OP_opnds(op); opndnum++) {
+      TN* opnd_tn = OP_opnd(op, opndnum);
+      if (TN_is_register(opnd_tn) &&
+	  TN_is_preallocated(opnd_tn) &&
+	  TNs_Are_Equivalent(opnd_tn, spill_tn)) {
+	    return;
+      }
+    }
+    for (INT resnum = 0; resnum < OP_results(op); resnum++) {
+      TN* res_tn = OP_result(op, resnum);
+      if (TN_is_register(res_tn) &&
+	  TN_is_preallocated(res_tn) &&
+	  TNs_Are_Equivalent(res_tn, spill_tn)) {
+	    return;
+      }
+    }
+#endif
+
     BOOL at_fatpoint = (fat_points[i] > spill_fatpoint && i <= spill_opnum);
 
     // If the register usage at this point is greater than the fatpoint
@@ -3285,11 +3366,18 @@ Spill_Live_Range (
       }
 
       else if ((OP_results(op) > 1) && (OP_result(op, 0) != spill_tn)) {
-
+#ifdef KEY
+	// TNs_Are_Equivalent gives more accurate result. (bug#3568)
+        for( resnum = OP_results(op)-1; resnum >= 0; resnum-- ){
+          if( TNs_Are_Equivalent( spill_tn, OP_result(op,resnum) ) )
+	    break;
+        }
+	FmtAssert( resnum >= 0, ("Spill_Live_Range: invalide result") );
+#else
         for (resnum = OP_results(op); resnum > 0; resnum--) {
           if (spill_tn == OP_result(op,resnum)) break;
         }
-
+#endif // KEY
       }
 
       Set_OP_result(op, resnum, new_tn);
@@ -4343,7 +4431,10 @@ static void Adjust_eight_bit_regs( BB* bb, OP* op, int opnd_idx, BOOL is_opnd )
     Set_OP_opnd( op, opnd_idx, result );
 
   } else {
-    Exp_COPY( opnd, result, &ops );
+    // Do sign/zero extend instead of regular copy.  Needed for "sete" which
+    // doesn't clear the upper bits.  Bug 5621.
+    Exp_COPY_Ext(TN_size(result) == 1 ? TOP_movzbl : TOP_movzwl,
+		 opnd, result, &ops );
     OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
     BB_Insert_Ops_After( bb, op, &ops );
     Set_OP_result( op, opnd_idx, result );
@@ -4575,6 +4666,7 @@ Preallocate_Single_Register_Subclasses (BB* bb)
       Exp_COPY(new_tn, old_tn, &pre_ops);
       OP_srcpos(OPS_last(&pre_ops)) = OP_srcpos(op);
 
+#ifdef TARG_X8664
       /* Bug_151:
 	 Maintain the "result==OP_opnd(op,0)" property for x86-style operations
 	 after register preallocation.
@@ -4585,6 +4677,7 @@ Preallocate_Single_Register_Subclasses (BB* bb)
 	OP_srcpos(OPS_last(&pre_ops)) = OP_srcpos(op);
 	Set_OP_opnd( op, 0, new_result_tn );
       }
+#endif
 
       BB_Insert_Ops_Before(bb, op, &pre_ops);
       if (has_def) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -87,6 +87,13 @@ BOOL Target_SSE2_Set = FALSE;
 BOOL Target_SSE3 = FALSE;       /* -TARG:sse3=on/off */
 BOOL Target_SSE3_Set = FALSE;
 
+// bug 4405
+BOOL Target_3DNow = FALSE;       // -TARG:3dnow=on/off
+BOOL Target_3DNow_Set = FALSE;
+
+// bug 4327
+int Target_x87_Precision = 80;	// -TARG:x87_precision=32/64/80
+
 /* Fault handling: */
 BOOL Force_FP_Precise_Mode = FALSE;	/* Force precise FP traps? */
 BOOL Force_Memory_Dismiss = FALSE;	/* Force mem fault dismissal? */
@@ -116,12 +123,18 @@ static OPTION_DESC Options_TARG[] = {
   { OVK_NAME,	OV_VISIBLE,	FALSE, "isa",		"is",
     0, 0, 0, &ISA_Name,		NULL,
     "Specify the instruction set architecture to use" },
-  { OVK_BOOL,	OV_VISIBLE,	FALSE, "msse2",		"msse2",
+  { OVK_BOOL,	OV_VISIBLE,	FALSE, "sse2",		"sse2",
     0, 0, 0,	&Target_SSE2,	&Target_SSE2_Set,
     "Enable SSE2 extensions" },
-  { OVK_BOOL,	OV_VISIBLE,	FALSE, "msse3",		"msse3",
+  { OVK_BOOL,	OV_VISIBLE,	FALSE, "sse3",		"sse3",
     0, 0, 0,	&Target_SSE3,	&Target_SSE3_Set,
     "Enable SSE3 extensions" },
+  { OVK_BOOL,	OV_VISIBLE,	FALSE, "3dnow",		"3dnow",
+    0, 0, 0,	&Target_3DNow,	&Target_3DNow_Set,
+    "Enable 3DNow extensions" },
+  { OVK_INT32,	OV_VISIBLE,	FALSE, "x87-precision", "x87-precision",
+    80, 32, 80, &Target_x87_Precision,	NULL,
+    "Specify the precision of x87 floating-point calculations (32, 64, or 80)"},
 #if 0
   { OVK_SELF,	OV_SHY,		FALSE, "mips1",	NULL,
     0, 0, 0, &ISA_Name,		NULL,

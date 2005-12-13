@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -66,6 +66,10 @@ static const char* x87_reg_names[8] = {
   "%st0", "%st1", "%st2", "%st3", "%st4","%st5","%st6","%st7"
 };
 
+static const char* mmx_reg_names[8] = {
+  "%mm0", "%mm1", "%mm2", "%mm3", "%mm4", "%mm5", "%mm6", "%mm7"
+};
+
 
 enum { RAX=0, RBX, RBP, RSP, RDI, RSI, RDX, RCX,
        R8, R9, R10, R11, R12, R13, R14, R15 };
@@ -115,12 +119,14 @@ main (int argc, char** argv)
   ISA_REGISTER_CLASS rc_rip     = ISA_Register_Class_Create( "rip",     64,  false, false );
   ISA_REGISTER_CLASS rc_x87     = ISA_Register_Class_Create( "x87",    128,  true,  false );
   ISA_REGISTER_CLASS rc_x87_cw  = ISA_Register_Class_Create( "x87_cw",  16,  false, false );
+  ISA_REGISTER_CLASS rc_mmx     = ISA_Register_Class_Create( "mmx",     64,  true,  false );
   ISA_Register_Set( rc_integer, 0, 15, "%u", int_reg_names,  All_ISA_Mask() );
   ISA_Register_Set( rc_fp,      0, 15, "%u", xmm_reg_names,  All_ISA_Mask() );
   ISA_Register_Set( rc_rflags,  0, 0,  "%rflags", NULL,      All_ISA_Mask() );
   ISA_Register_Set( rc_rip,     0, 0,  "%rip",    NULL,      All_ISA_Mask() );
   ISA_Register_Set( rc_x87,     0, 7,  "%u", x87_reg_names,  All_ISA_Mask() );
   ISA_Register_Set( rc_x87_cw,  0, 0,  "%%x87_cw",NULL,      All_ISA_Mask() );
+  ISA_Register_Set( rc_mmx,     0, 7,  "%u", mmx_reg_names,  All_ISA_Mask() );
 
   ISA_Register_Subclass_Create("rax", rc_integer, 1, rax_reg, NULL);
   ISA_Register_Subclass_Create("rdx", rc_integer, 1, rdx_reg, NULL);

@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -285,8 +285,58 @@ struct nesting GTY(())
     } GTY ((desc ("%1.desc"))) data;
 };
 
-/* Allocate and return a new `struct nesting'.  */
+#ifdef KEY
+// The following functions need to be defined here since the definition of
+// struct nesting is not visible outside this file.
+//
+// Allocate and return a new `struct nesting'. 
+struct nesting * alloc_nesting(void)
+{
+  return (struct nesting *) malloc (sizeof (struct nesting));
+}
 
+// Only set the fields we need
+void construct_nesting ( struct nesting * this_nest,
+                         struct nesting * next,
+                         struct nesting * all,
+			 LABEL_IDX exit_label_idx)
+{
+  this_nest->next = next;
+  this_nest->all = all;
+  this_nest->exit_label_idx = exit_label_idx;
+}
+
+LABEL_IDX get_nesting_label (struct nesting * this_nest)
+{
+  return this_nest->exit_label_idx;
+}
+
+extern struct nesting * wfe_nesting_stack, * wfe_cond_stack, * wfe_loop_stack, *wfe_case_stack;
+
+void popstack (struct nesting * target)
+{
+  struct nesting * current;
+                                                                                
+  do
+  {
+    current = wfe_nesting_stack;
+    if (wfe_cond_stack == current)
+      wfe_cond_stack = wfe_cond_stack->next;
+                                                                                
+    if (wfe_loop_stack == current)
+      wfe_loop_stack = wfe_loop_stack->next;
+                                                                                
+    if (wfe_case_stack == current)
+      wfe_case_stack = wfe_case_stack->next;
+                                                                                
+    wfe_nesting_stack = current->all;
+                                                                                
+    free (current);
+  } while (current != target);
+}
+#endif // KEY
+
+/* Allocate and return a new `struct nesting'.  */
 #define ALLOC_NESTING() \
  (struct nesting *) ggc_alloc (sizeof (struct nesting))
 
@@ -423,6 +473,13 @@ struct stmt_status GTY(())
 #define emit_filename (cfun->stmt->x_emit_filename)
 #define emit_lineno (cfun->stmt->x_emit_lineno)
 #define goto_fixup_chain (cfun->stmt->x_goto_fixup_chain)
+
+#ifdef KEY
+struct nesting * get_loop_stack (void)
+{
+  return cfun->stmt->x_loop_stack;
+}
+#endif // KEY
 
 /* Non-zero if we are using EH to handle cleanups.  */
 static int using_eh_for_cleanups_p = 0;

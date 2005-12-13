@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -71,7 +75,7 @@ void
 OPTIONS_STACK::Push_Current_Options(void)
 {
   // allocate memory_pool, need guess on size
-  char *tmp = CXX_NEW_ARRAY(char, OPTIONS_SIZE, &MEM_pu_nz_pool);
+  char *tmp = CXX_NEW_ARRAY(char, OPTIONS_SIZE, &MEM_src_nz_pool);
 
   // save all options to temp location
   Save_or_restore_options(tmp, OPTIONS_SIZE, TRUE);
@@ -93,7 +97,7 @@ OPTIONS_STACK::Pop_Current_Options(void)
   // delete old options memory
   char *tmp = _options_stack.Top();
   _options_stack.Pop();
-  CXX_DELETE_ARRAY(tmp, &MEM_pu_nz_pool);
+  CXX_DELETE_ARRAY(tmp, &MEM_src_nz_pool);
 
   // pointer to space where old options are
   tmp = _options_stack.Top();

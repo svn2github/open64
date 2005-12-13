@@ -1,5 +1,6 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+/* -*- c++ -*-
+ *
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -103,7 +104,7 @@
 // 
 
 template <class _Key> struct hash { };
-struct hash<UINT64> {
+template <> struct hash<UINT64> {
   size_t operator()(const UINT64 x)const{return (size_t)x;}
 };
 
@@ -150,7 +151,8 @@ private:
   vector< FB_Info_Icall,   mempool_allocator<FB_Info_Icall>   >  _icalls;
   vector< FB_Info_Switch,  mempool_allocator<FB_Info_Switch>  >  _switches;
 #ifdef KEY
-  vector< FB_Info_Value,   mempool_allocator<FB_Info_Value>   >  _values;
+  vector< FB_Info_Value,   mempool_allocator<FB_Info_Value>    >  _values;
+  vector< FB_Info_Value_FP_Bin,mempool_allocator<FB_Info_Value_FP_Bin> > _values_fp_bin;
 #endif
 
   INT32 Get_index_invoke  ( const WN *wn ) const;
@@ -162,6 +164,7 @@ private:
   INT32 Get_index_switch  ( const WN *wn ) const;
 #ifdef KEY
   INT32 Get_index_value   ( const WN *wn ) const;
+  INT32 Get_index_value_fp_bin( const WN *wn ) const;
 #endif
 
   INT32 Add_index_invoke  ( WN *wn );
@@ -173,6 +176,7 @@ private:
   INT32 Add_index_switch  ( WN *wn );
 #ifdef KEY
   INT32 Add_index_value   ( WN *wn );
+  INT32 Add_index_value_fp_bin( WN *wn );
 #endif
 
 public:
@@ -187,6 +191,7 @@ public:
 	    INT32 switch_size = 1,
 #ifdef KEY
 	    INT32 value_size = 1,
+	    INT32 value_fp_bin_size = 1,
 	    UINT64 runtime_fun_address = 0x0,
 #endif
 	    WN_MAP_TAB *maptab = Current_Map_Tab );
@@ -213,7 +218,8 @@ public:
   const FB_Info_Icall&   Query_icall   ( const WN *wn ) const;
   const FB_Info_Switch&  Query_switch  ( const WN *wn ) const;
 #ifdef KEY
-  const FB_Info_Value&   Query_value   ( const WN *wn ) const;
+  const FB_Info_Value&    Query_value   ( const WN *wn ) const;
+  const FB_Info_Value_FP_Bin& Query_value_fp_bin( const WN *wn ) const;
 #endif
 
   FB_FREQ Query      ( const WN *wn, const FB_EDGE_TYPE type ) const;
@@ -229,6 +235,7 @@ public:
   void Annot_switch  ( WN *wn, const FB_Info_Switch & fb_info );
 #ifdef KEY
   void Annot_value   ( WN *wn, const FB_Info_Value  & fb_info );
+  void Annot_value_fp_bin( WN *wn, const FB_Info_Value_FP_Bin  & fb_info );
 #endif
 
   void Annot         ( WN *wn, const FB_EDGE_TYPE type, FB_FREQ freq );

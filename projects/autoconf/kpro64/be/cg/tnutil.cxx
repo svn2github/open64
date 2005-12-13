@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -339,6 +339,7 @@ Dup_TN_Even_If_Dedicated(
 static TN *ded_tns[ISA_REGISTER_CLASS_MAX + 1][REGISTER_MAX + 1];
 static TN *f4_ded_tns[REGISTER_MAX + 1];
 #ifdef KEY
+static TN *v16_ded_tns[REGISTER_MAX + 1];
 static TN *i1_ded_tns[REGISTER_MAX + 1];
 static TN *i2_ded_tns[REGISTER_MAX + 1];
 static TN *i4_ded_tns[REGISTER_MAX + 1];
@@ -432,6 +433,10 @@ Init_Dedicated_TNs (void)
 	++tnum;
         f4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
   	Set_TN_size(f4_ded_tns[reg], 4);
+#ifdef KEY
+        v16_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
+  	Set_TN_size(v16_ded_tns[reg], 16);
+#endif
     }
 #ifdef KEY
     for (reg = REGISTER_MIN; 
@@ -464,12 +469,25 @@ Init_Dedicated_TNs (void)
 TN *
 Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
 {
+#ifdef KEY
+  // check for F4 tns and 16-byte vector tns
+  if (rclass == ISA_REGISTER_CLASS_float
+	&& size != DEFAULT_RCLASS_SIZE(rclass) )
+  {
+        switch(size) {
+	  case 4:  return f4_ded_tns[reg];
+	  case 16: return v16_ded_tns[reg];
+	}
+  }
+#else
   // check for F4 tns; someday may have to check for F10 tns too
   if (rclass == ISA_REGISTER_CLASS_float && size == 4
 	&& size != DEFAULT_RCLASS_SIZE(rclass) )
   {
 	return f4_ded_tns[reg];
   }
+#endif
+
 #ifdef KEY
   // check for I4 tns
   if (rclass == ISA_REGISTER_CLASS_integer
@@ -540,8 +558,11 @@ Gen_Typed_Register_TN (TYPE_ID mtype, INT size)
   	//if ( size > 16 ) ErrMsg ( EC_TN_Size, size );
   	Set_TN_size(tn, size);
 
-  	if ( rclass == ISA_REGISTER_CLASS_float ||
-	     rclass == ISA_REGISTER_CLASS_x87 )
+  	if ( rclass == ISA_REGISTER_CLASS_float
+#ifdef TARG_X8664
+	     || rclass == ISA_REGISTER_CLASS_x87
+#endif
+           )
 	  Set_TN_is_float(tn);
     	Set_TN_register_class(tn, rclass);
   }
@@ -1143,7 +1164,23 @@ TN_Reaching_Value_At_Op(
 	if (reaching_def) {
 	  FOR_ALL_BB_PREDS(bb, edge) {
 	    cur_bb = BBLIST_item(edge);
+#ifdef KEY
+	    // Ignore cur_bb only if cur_bb doesn't redefine the register.
+	    // Bug 6104.
+	    if (cur_bb == bb) {
+	      OP *op;
+	      bool redefined = FALSE;
+	      FOR_ALL_BB_OPs(cur_bb, op) {
+	        if (OP_Defs_Reg(op, rc, reg)) {
+		  redefined = TRUE;
+		  break;
+	        }
+	      }
+	      if (!redefined) continue;
+	    }
+#else
 	    if (cur_bb == bb) continue;	// ignore self predecessor
+#endif
 	    BOOL live_out = REG_LIVE_Outof_BB(rc, reg, cur_bb);
 	    val_cnt += (live_out) ? 1 : 0;
 	    val_bb = (live_out) ? cur_bb : val_bb;
@@ -1231,7 +1268,23 @@ TN_Reaching_Value_At_Op(
 	if (reaching_def) {
 	  FOR_ALL_BB_PREDS(bb, edge) {
 	    cur_bb = BBLIST_item(edge);
+#ifdef KEY
+	    // Ignore cur_bb only if cur_bb doesn't redefine the TN.
+	    // Bug 6104.
+	    if (cur_bb == bb) {
+	      OP *op;
+	      bool redefined = FALSE;
+	      FOR_ALL_BB_OPs(cur_bb, op) {
+	        if (OP_Defs_TN(op, tn)) {
+		  redefined = TRUE;
+		  break;
+	        }
+	      }
+	      if (!redefined) continue;
+	    }
+#else
 	    if (cur_bb == bb) continue;	// ignore self predecessor
+#endif
 	    BOOL live_out = GRA_LIVE_TN_Live_Outof_BB(tn, cur_bb);
 	    val_cnt += (live_out) ? 1 : 0;
 	    val_bb = (live_out) ? cur_bb : val_bb;

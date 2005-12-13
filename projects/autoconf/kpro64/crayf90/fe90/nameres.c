@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1268,10 +1272,23 @@ ISSUE_ERR:
                      msg_str);
          }
          else {
+#ifdef KEY /* Bug 5040 */
+	    /* Added the initial-declaration line number to all of the
+	     * messages in attr_msg_num which previously took 3 arg strings;
+	     * because AT_DEF_LINE(attr_idx) is at the end of the varargs list,
+	     * it's harmless if a message doesn't want to use it.
+	     */
+            PRINTMSG(line, msg_num, Error, column,
+                     AT_OBJ_NAME_PTR(attr_idx),
+                     msg_str,
+                     obj_str[new_obj],
+		     AT_DEF_LINE(attr_idx));
+#else /* KEY Bug 5040 */
             PRINTMSG(line, msg_num, Error, column,
                      AT_OBJ_NAME_PTR(attr_idx),
                      msg_str,
                      obj_str[new_obj]);
+#endif /* KEY Bug 5040 */
          }
       }
 

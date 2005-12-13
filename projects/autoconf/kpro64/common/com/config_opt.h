@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -120,6 +120,8 @@ extern BOOL Div_Split_Allowed;	/* Change a/b --> a*1/b ? */
 extern UINT32 Div_Exe_Counter;	  /* Change a/b --> a/N if b==N ?             */
 extern UINT32 Div_Exe_Ratio;	  /* Change a/b --> a/N if b has high ratio   */
 extern UINT32 Div_Exe_Candidates; /* The top entries that will be taken care. */
+extern UINT32 Mpy_Exe_Counter;	/* Change a*b to a if b==N or 0.0 if b == 0.0 */
+extern UINT32 Mpy_Exe_Ratio;	/* Change a*b to a if b==N or 0.0 if b == 0.0 */
 #endif
 extern BOOL Fast_Exp_Allowed;	/* Avoid exp() calls? */
 extern BOOL Fast_IO_Allowed;	/* Fast printf/scanf/printw */
@@ -161,7 +163,16 @@ extern OPTION_LIST* Feedback_Option;
 #ifdef KEY
 extern BOOL profile_arcs;
 extern BOOL Asm_Memory;
+extern BOOL Align_Unsafe;
 extern INT32 Enable_WN_Simp_Expr_Limit;
+extern BOOL OPT_Lower_To_Memlib;
+extern INT32 OPT_Threshold_To_Memlib;
+extern INT32 OPT_Enable_Lower_To_Memlib_Limit;
+extern BOOL OPT_Enable_Simp_Fold;
+
+extern BOOL OPT_Fast_Math;
+extern BOOL OPT_Fast_Stdlib;
+extern BOOL OPT_MP_Barrier_Opt;
 #endif
 #ifdef __cplusplus
 }

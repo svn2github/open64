@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -63,7 +63,11 @@ static char USMID[] = "\n@(#)5.0_pl/sources/s_call.c	5.15	10/19/99 17:14:30\n";
 # ifdef KEY
 extern boolean LANG_Read_Write_Const;
 extern boolean LANG_Copy_Inout;
+extern unsigned int LANG_Copy_Inout_Level;
 # endif
+#ifdef KEY /* Bug 7424 */
+extern boolean LANG_Ignore_Target_Attribute;
+#endif /* KEY Bug 7424 */
 boolean	variable_size_func_expr = FALSE;
 #ifdef KEY
 #define MAX_DIMENSION 14
@@ -109,7 +113,6 @@ static	void		check_for_elementals(int);
 static	void		check_expr_for_elementals(opnd_type *);
 static	boolean		check_arg_for_co_array(opnd_type *);
 static	void		update_components(opnd_type *);
-
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
 static	void		set_inline_state(int, int);
@@ -247,7 +250,6 @@ boolean call_list_semantics(opnd_type     *result_opnd,
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
    int		       false_list_idx 		= NULL_IDX;
 # endif
-
 
    TRACE (Func_Entry, "call_list_semantics", NULL);
 
@@ -1006,6 +1008,7 @@ boolean call_list_semantics(opnd_type     *result_opnd,
                          (ATP_INTRIN_ENUM(spec_idx) == Clock_Intrinsic) ||
 #ifdef KEY
                          (ATP_INTRIN_ENUM(spec_idx) == Numarg_Intrinsic) ||
+                         (ATP_INTRIN_ENUM(spec_idx) == Time4_Intrinsic) ||
                          (ATP_INTRIN_ENUM(spec_idx) == Time8_Intrinsic)) {
 #else
                          (ATP_INTRIN_ENUM(spec_idx) == Numarg_Intrinsic)) {
@@ -2316,6 +2319,7 @@ static boolean stride_access_greater_than_1(opnd_type          * opnd, char *dim
   }
   return flag;
 }
+#ifndef KEY /* Bug 4955 */
 static void generate_max_bound(opnd_type *opnd, int ir_idx, int attr_idx, int dim)
 {
    int plus_idx, sub_idx, div_idx, plus_idx1, minus_idx, attr_bd_idx,
@@ -2360,9 +2364,15 @@ static void generate_max_bound(opnd_type *opnd, int ir_idx, int attr_idx, int di
    if (ATD_CLASS(attr_idx) == Variable)
      attr_bd_idx =  ATD_ARRAY_IDX(attr_idx);
                                                                                                                                                              
-   if (ATD_CLASS(attr_idx) == Dummy_Argument){
+   if (ATD_CLASS(attr_idx) == Dummy_Argument ||
+#ifdef KEY /* Bug 5431 */
+       ATD_CLASS(attr_idx) == Function_Result ||
+#endif /* KEY Bug 5431 */
+       ATD_CLASS(attr_idx) == Variable){
      attr_bd_idx =  ATD_ARRAY_IDX(attr_idx);
-     if (attr_bd_idx && BD_ARRAY_CLASS(attr_bd_idx) == Assumed_Shape){
+     if (attr_bd_idx && 
+         (BD_ARRAY_CLASS(attr_bd_idx) == Assumed_Shape ||
+          BD_ARRAY_CLASS(attr_bd_idx) == Explicit_Shape)){
        IR_FLD_R(sub_idx)            = BD_LB_FLD(attr_bd_idx,dim);
        IR_IDX_R(sub_idx)            = BD_LB_IDX(attr_bd_idx,dim);
      }
@@ -2378,11 +2388,6 @@ static void generate_max_bound(opnd_type *opnd, int ir_idx, int attr_idx, int di
      }
      IR_LINE_NUM_R(sub_idx)       = line;
      IR_COL_NUM_R(sub_idx)        = col;
-   } else if (ATD_CLASS(attr_idx) == Variable){
-     IR_FLD_R(sub_idx)            = BD_LB_FLD(attr_bd_idx, dim);
-     IR_IDX_R(sub_idx)            = BD_LB_IDX(attr_bd_idx, dim);
-     IR_LINE_NUM_R(sub_idx)       = line;
-     IR_COL_NUM_R(sub_idx)        = col;
    }
                                                                                                                                                              
    IR_FLD_R(div_idx)            = CN_Tbl_Idx;
@@ -2390,93 +2395,217 @@ static void generate_max_bound(opnd_type *opnd, int ir_idx, int attr_idx, int di
    IR_LINE_NUM_R(div_idx)       = line;
    IR_COL_NUM_R(div_idx)        = col;
                                                                                                                                                              
-   if (ATD_CLASS(attr_idx) == Dummy_Argument){
-     deref_idx = IR_IDX_L(IR_IDX_L(OPND_IDX((*opnd))));
-     deref_fld = IR_FLD_L(IR_IDX_L(OPND_IDX((*opnd))));
-     dv_idx = gen_ir(deref_fld, deref_idx,
-                   Dv_Access_Extent,SA_INTEGER_DEFAULT_TYPE,line,col,
-                   NO_Tbl_Idx, NULL_IDX);
-                                                                                                                                                             
-     IR_DV_DIM(dv_idx)           = dim;
-
+   if (ATD_CLASS(attr_idx) == Dummy_Argument ||
+#ifdef KEY /* Bug 5431 */
+       ATD_CLASS(attr_idx) == Function_Result ||
+#endif /* KEY Bug 5431 */
+       ATD_CLASS(attr_idx) == Variable){
      attr_bd_idx =  ATD_ARRAY_IDX(attr_idx);
-     if (attr_bd_idx &&
-       BD_ARRAY_CLASS(attr_bd_idx) == Assumed_Shape) 
-       plus_idx1 = gen_ir(BD_LB_FLD(attr_bd_idx,dim), BD_LB_IDX(attr_bd_idx,dim), 
-                     Plus_Opr,SA_INTEGER_DEFAULT_TYPE,line,col,
-                     IR_Tbl_Idx, dv_idx);
+     if (BD_ARRAY_CLASS(attr_bd_idx) == Explicit_Shape){
+       IR_FLD_L(sub_idx)            = BD_UB_FLD(attr_bd_idx,dim);
+       IR_IDX_L(sub_idx)            = BD_UB_IDX(attr_bd_idx,dim);
+     }
      else{
        deref_idx = IR_IDX_L(IR_IDX_L(OPND_IDX((*opnd))));
        deref_fld = IR_FLD_L(IR_IDX_L(OPND_IDX((*opnd))));
-       dv_low_idx = gen_ir(deref_fld, deref_idx,
-                  Dv_Access_Low_Bound, SA_INTEGER_DEFAULT_TYPE, line, col,
-                      NO_Tbl_Idx, NULL_IDX);
-       IR_DV_DIM(dv_low_idx) = dim;
-       plus_idx1 = gen_ir(IR_Tbl_Idx, dv_low_idx,
+       dv_idx = gen_ir(deref_fld, deref_idx,
+                   Dv_Access_Extent,SA_INTEGER_DEFAULT_TYPE,line,col,
+                   NO_Tbl_Idx, NULL_IDX);
+                                                                                                                                                             
+       IR_DV_DIM(dv_idx)           = dim;
+
+       if (attr_bd_idx &&
+         BD_ARRAY_CLASS(attr_bd_idx) == Assumed_Shape) 
+         plus_idx1 = gen_ir(BD_LB_FLD(attr_bd_idx,dim), BD_LB_IDX(attr_bd_idx,dim), 
                      Plus_Opr,SA_INTEGER_DEFAULT_TYPE,line,col,
                      IR_Tbl_Idx, dv_idx);
-     }
-                                                                                                                                                             
-     minus_idx = gen_ir(IR_Tbl_Idx, plus_idx1,
+       else{
+         deref_idx = IR_IDX_L(IR_IDX_L(OPND_IDX((*opnd))));
+         deref_fld = IR_FLD_L(IR_IDX_L(OPND_IDX((*opnd))));
+         dv_low_idx = gen_ir(deref_fld, deref_idx,
+                      Dv_Access_Low_Bound, SA_INTEGER_DEFAULT_TYPE, line, col,
+                      NO_Tbl_Idx, NULL_IDX);
+         IR_DV_DIM(dv_low_idx) = dim;
+         plus_idx1 = gen_ir(IR_Tbl_Idx, dv_low_idx,
+                     Plus_Opr,SA_INTEGER_DEFAULT_TYPE,line,col,
+                     IR_Tbl_Idx, dv_idx);
+       }
+       minus_idx = gen_ir(IR_Tbl_Idx, plus_idx1,
                       Minus_Opr,SA_INTEGER_DEFAULT_TYPE,line,col,
                       CN_Tbl_Idx, CN_INTEGER_ONE_IDX);
-     IR_FLD_L(sub_idx)            = IR_Tbl_Idx;
-     IR_IDX_L(sub_idx)            = minus_idx;
+       IR_FLD_L(sub_idx)            = IR_Tbl_Idx;
+       IR_IDX_L(sub_idx)            = minus_idx;
+     }
    }
-   else if (ATD_CLASS(attr_idx) == Variable){
-     IR_FLD_L(sub_idx)          = BD_UB_FLD(attr_bd_idx, dim);
-     IR_IDX_L(sub_idx)          = BD_UB_IDX(attr_bd_idx, dim);
-   }
+
    IR_LINE_NUM_L(sub_idx)       = line;
    IR_COL_NUM_L(sub_idx)        = col;
                                                                                                                                                              
 }
+#endif /* KEY Bug 4955 */
 
-static void move_tmp_alloc_assignment(opnd_type *opnd, int old_stmt_sh_idx, 
-                                      int attr_idx, char *dim)
+#ifdef KEY /* Bug 3607 */
+/*
+ * Check that a subtree involved in the COPY_INOUT_MAKE_DV optimization does
+ * not depend on variables other than the array whose section we are taking.
+ *
+ * fld and idx represent an IR or IL node
+ * array_idx is the AT index for the array itself
+ * returns false if any leaf of the tree is an AT index other than array_idx
+ */
+static boolean check_leaves(fld_type fld, int idx, int array_idx) {
+  switch(fld) {
+    case AT_Tbl_Idx:
+      return idx == array_idx;
+    case IR_Tbl_Idx:
+      return check_leaves(IR_FLD_L(idx), IR_IDX_L(idx), array_idx) &&
+	check_leaves(IR_FLD_R(idx), IR_IDX_R(idx), array_idx);
+    case IL_Tbl_Idx:
+      for (; NULL_IDX != idx; idx = IL_NEXT_LIST_IDX(idx)) {
+        if (!check_leaves(IL_FLD(idx), IL_IDX(idx), array_idx)) {
+	  return FALSE;
+	}
+      }
+  }
+  return TRUE;
+}
+
+/*
+ * Given opnd, which is an array section for which we will generate
+ * copyinout code, return true if it is safe to move the alloc and related
+ * computations from the copyinout site to the prolog. Our pattern-matching
+ * is conservative, since we don't have use/def info.
+ */
+static boolean safe_to_move_copyinout_alloc(opnd_type *opnd)
 {
-  int entry_stmt_sh_idx, stmt_sh_idx, next_stmt_sh_idx,
+#ifdef _DEBUG
+  fprintf(stderr, "safe_to_move_copyinout_alloc\n");
+#endif /* _DEBUG */
+  /* Must be reference to simple array (ruling out "t(n)%a(1,:)", for example,
+   * since n might vary) */
+  int sso_idx = OPND_IDX((*opnd));
+  int array_idx;
+  if (Section_Subscript_Opr != IR_OPR(sso_idx)) return FALSE;
+  if (AT_Tbl_Idx == IR_FLD_L(sso_idx)) {
+    array_idx = IR_IDX_L(sso_idx);
+  }
+  else {
+    if (IR_Tbl_Idx != IR_FLD_L(sso_idx)) return FALSE;
+    int dvdro_idx = IR_IDX_L(sso_idx);
+    if (Dv_Deref_Opr != IR_OPR(dvdro_idx)) return FALSE;
+    if (AT_Tbl_Idx != IR_FLD_L(dvdro_idx)) return FALSE;
+    array_idx = IR_IDX_L(dvdro_idx);
+  }
+
+  /* Each subscript must be either:
+   * (a) expression (an entire rank: size of section is independent of
+   *     which element is chosen, so variables are ok)
+   * (b) constant:constant
+   * (c) constant:
+   * (d) :constant
+   * (e) :
+   * Cases b-e are all represented by Triplet_Opr. The empty bounds will
+   * generate a reference to the dope vector for the array, so we disallow
+   * any variable except the array itself in cases b-e.
+   */
+  if (IL_Tbl_Idx != IR_FLD_R(sso_idx)) return FALSE;
+  for (int list_idx = IR_IDX_R(sso_idx); NULL_IDX != list_idx;
+    list_idx = IL_NEXT_LIST_IDX(list_idx)) {
+    int subscr_idx = IL_IDX(list_idx);
+    if (IR_Tbl_Idx != IL_FLD(list_idx) || Triplet_Opr != IR_OPR(subscr_idx)) {
+      continue;
+    }
+    if (IL_Tbl_Idx != IR_FLD_L(subscr_idx)) return FALSE;
+    for (int tlist_idx = IR_IDX_L(subscr_idx); NULL_IDX != tlist_idx;
+      tlist_idx = IL_NEXT_LIST_IDX(tlist_idx)) {
+      if (!check_leaves(IL_FLD(tlist_idx), IL_IDX(tlist_idx), array_idx)) {
+        return FALSE;
+      }
+    }
+  }
+
+  return TRUE;
+}
+#endif /* KEY Bug 3607 */
+
+/*
+ * Move the alloc-and-assign portion of the copyinout code to the entry of
+ * the enclosing function, so that if the call is inside a loop, this code
+ * occurs once per function instead of once per loop. Caller must ensure
+ * that it is safe to do so.
+ *
+ * old_stmt_sh_idx - first stmt of copyinout code
+ * attr_idx - array variable being sliced
+ *
+ */
+static void move_tmp_alloc_assignment(int old_stmt_sh_idx, int attr_idx)
+{
+#if defined(KEY) && defined(_DEBUG)
+fprintf(stderr, "move_tmp_alloc_assignment, attr_idx=%d\n", attr_idx);
+#endif /* KEY && _DEBUG */
+  int entry_stmt_sh_idx, next_stmt_sh_idx,
       first_stmt_sh_idx, last_stmt_sh_idx, entry_list_idx,
       new_start_sh_idx, new_end_sh_idx, entry_attr_idx;
-  int counter = 0 ,dim_counter = 0;
 
-  entry_stmt_sh_idx = NULL_IDX;
-  stmt_sh_idx = old_stmt_sh_idx;
-  while (stmt_sh_idx != NULL_IDX){
-   if ( IR_OPR(SH_IR_IDX(stmt_sh_idx)) == Entry_Opr )
-      entry_stmt_sh_idx = stmt_sh_idx;
-    stmt_sh_idx = SH_PREV_IDX(stmt_sh_idx);
+  // Set entry_stmt_sh_idx to point to first Entry_Opr in scope
+  // KEY Bug 6935: Searching backward from the curr_stmt_sh_idx doesn't work
+  // because if save_defer_stmt_expansion is true, the machinery in
+  // stmt_expansion_control_start() detaches the current statement from
+  // the surrounding function. Searching forward from SCP_FIRST_SH_IDX()
+  // fixes this and probably executes faster.
+  for (entry_stmt_sh_idx = SCP_FIRST_SH_IDX(curr_scp_idx);
+     entry_stmt_sh_idx != NULL_IDX;
+     entry_stmt_sh_idx = SH_NEXT_IDX(entry_stmt_sh_idx)){
+     if (IR_OPR(SH_IR_IDX(entry_stmt_sh_idx)) == Entry_Opr) {
+	break;
+     }
   }
 
   if (entry_stmt_sh_idx == NULL_IDX)
-    PRINTMSG (old_stmt_sh_idx, 1, Internal, 0, "no entry opr");
+    PRINTMSG (stmt_start_line, 1044, Internal, SH_COL_NUM(old_stmt_sh_idx),
+      "No Entry_Opr");
 
-  while (IR_OPR(SH_IR_IDX(SH_NEXT_IDX(entry_stmt_sh_idx))) != User_Code_Start_Opr)
+  // Search forward and set entry_stmt_sh_idx to User_Code_Start_Opr
+  while (IR_OPR(SH_IR_IDX(SH_NEXT_IDX(entry_stmt_sh_idx)))
+    != User_Code_Start_Opr)
     entry_stmt_sh_idx = SH_NEXT_IDX(entry_stmt_sh_idx);
 
-  for (dim_counter = 0; dim_counter < MAX_DIMENSION; dim_counter ++)
-    if (dim[dim_counter] > 0)
-      break;
+#ifndef KEY /* Bug 4955 */
+. for (dim_counter = 0; dim_counter < MAX_DIMENSION; dim_counter ++)
+.   if (dim[dim_counter] > 0)
+.     break;
+#endif /* Bug 4955 */
 
-  stmt_sh_idx = first_stmt_sh_idx = SH_NEXT_IDX(old_stmt_sh_idx);
+  // Set first_stmt_sh_idx to the first statement we wish to move, and
+  // search forward for the "alloc" which is the last statement we wish to
+  // move
   last_stmt_sh_idx = NULL_IDX;
-
-  while (stmt_sh_idx != curr_stmt_sh_idx && counter < 1 ){
+  for (int stmt_sh_idx = first_stmt_sh_idx = SH_NEXT_IDX(old_stmt_sh_idx);
+    stmt_sh_idx != curr_stmt_sh_idx;
+    stmt_sh_idx = SH_NEXT_IDX(stmt_sh_idx)) {
+#ifndef KEY /* Bug 4955 */
+.   if (IR_OPR(SH_IR_IDX(stmt_sh_idx)) == Asg_Opr &&
+.       IR_OPR(IR_IDX_R(SH_IR_IDX(stmt_sh_idx))) == Max_Opr && dim_counter < MAX_DIMENSION){
+.     /* This wrongly overwrites a valid computation of the section size with
+.      * an invalid computation. The computation is used both in "alloc"
+.      * (where it would be overly generous, but harmless) and in the dope
+.      * vector and the copying of the section, where it causes accesses
+.      * beyond the end of the array.
+.      */
+.     generate_max_bound(opnd, SH_IR_IDX(stmt_sh_idx), attr_idx, dim_counter+1);
+.     dim_counter ++;
+.     for (;dim_counter < MAX_DIMENSION; dim_counter ++)
+.       if (dim[dim_counter] > 0)
+.         break;
+.   }
+#endif /* KEY Bug 4955 */
     if (IR_OPR(SH_IR_IDX(stmt_sh_idx)) == Asg_Opr &&
         IR_OPR(IR_IDX_R(SH_IR_IDX(stmt_sh_idx))) == Alloc_Opr){
-      counter ++;
       last_stmt_sh_idx = stmt_sh_idx;
+      break;
     }
-    if (IR_OPR(SH_IR_IDX(stmt_sh_idx)) == Asg_Opr &&
-        IR_OPR(IR_IDX_R(SH_IR_IDX(stmt_sh_idx))) == Max_Opr && dim_counter < MAX_DIMENSION){
-      generate_max_bound(opnd, SH_IR_IDX(stmt_sh_idx), attr_idx, dim_counter+1);
-      dim_counter ++;
-      for (;dim_counter < MAX_DIMENSION; dim_counter ++)
-        if (dim[dim_counter] > 0)
-          break;
-    }
-    stmt_sh_idx = SH_NEXT_IDX(stmt_sh_idx);
   }
+
   if (last_stmt_sh_idx == NULL_IDX)
     return;
 
@@ -2488,6 +2617,17 @@ static void move_tmp_alloc_assignment(opnd_type *opnd, int old_stmt_sh_idx,
   SH_PREV_IDX(first_stmt_sh_idx) = entry_stmt_sh_idx;
   SH_NEXT_IDX(last_stmt_sh_idx)  = next_stmt_sh_idx;
   SH_PREV_IDX(next_stmt_sh_idx)  = last_stmt_sh_idx;
+
+#ifdef KEY /* Bug 4955 */
+  /* If the variable being sliced/sectioned is an optional formal arg, we
+   * must check that it's present at execution time, since we're moving this
+   * code outside any user-written construct that might be conditional on its
+   * presence.
+   */
+  if (AT_OPTIONAL(attr_idx)) {
+    gen_present_ir(attr_idx, first_stmt_sh_idx, last_stmt_sh_idx);
+  }
+#endif /* KEY Bug 4955 */
 
   entry_list_idx       = SCP_ENTRY_IDX(curr_scp_idx);
   while (entry_list_idx != NULL_IDX) {
@@ -2513,8 +2653,28 @@ static void move_tmp_alloc_assignment(opnd_type *opnd, int old_stmt_sh_idx,
   }
 
   return;
-}
+} /* move_tmp_alloc_assignment */
 #endif
+#ifdef KEY /* Bug 7424 */
+/*
+ * Fortran 90 and later say that you can't assign the address of a dummy
+ * argument to a pointer unless it has the 'target' attribute, and that if
+ * a dummy argument has that attribute, the interface to the procedure must
+ * be explicitly visible to the caller. Thus we don't need to clear the
+ * 'pointer to unique memory' WHIRL attr unless we see that the dummy argument
+ * is a target. However, for performance, one can set
+ * -LANG:ignore_target_attribute=on and we always clear the WHIRL attr.
+ *
+ * In 2.2, arg_info_list[info_idx].ed.target isn't ever set, so we
+ * set LANG_Ignore_Target_Attribute to "off" by default for safety.
+ */
+static int clear_pt_unique_mem(int info_idx) {
+  if (!LANG_Ignore_Target_Attribute) {
+    return 1;
+    }
+  return 0; /* arg_info_list[info_idx].ed.target; */
+  }
+#endif /* KEY Bug 7424 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -2523,9 +2683,10 @@ static void move_tmp_alloc_assignment(opnd_type *opnd, int old_stmt_sh_idx,
 |*      passing the correct actual arg(target, address, dope vector).         *|
 |*									      *|
 |* Input parameters:							      *|
-|*	start_list	- first list text in call list.                       *|
+|*	list_opnd	- call list.                                          *|
 |*      spec_idx	- attr idx for callee.                                *|
 |*      num_args 	- num args.                                           *|
+|*      elemental_exp_desc -                                                  *|
 |*									      *|
 |* Output parameters:							      *|
 |*	NONE								      *|
@@ -2534,7 +2695,6 @@ static void move_tmp_alloc_assignment(opnd_type *opnd, int old_stmt_sh_idx,
 |*	NOTHING								      *|
 |*									      *|
 \******************************************************************************/
-
 boolean final_arg_work(opnd_type	*list_opnd,
                        int		spec_idx,
                        int		num_args,
@@ -2598,7 +2758,6 @@ boolean final_arg_work(opnd_type	*list_opnd,
    int                 true_end_sh_idx2;
    opnd_type           cond_opnd;
 # ifdef KEY
-   int                 old_curr_stmt_sh_idx;
    int                 dim;
 # endif
 
@@ -3494,13 +3653,18 @@ boolean final_arg_work(opnd_type	*list_opnd,
 # if  defined(KEY)
       char dim[MAX_DIMENSION];
       bzero(dim, sizeof(dim));
+      /* Bug 5186: If LANG_Copy_Inout set and LANG_Copy_Inout_Level > 0, then
+       * don't require the call to be inside a loop. */
       if (LANG_Copy_Inout &&
-          a_type == Dv_Array_Section &&
+          (a_type == Dv_Array_Section ||
+           a_type == Sequence_Array_Section) &&
           d_type == Assumed_Shape_Dummy &&
           !ATD_ALLOCATABLE(attr_idx) &&
+          !ATD_POINTER(attr_idx) &&  
           arg_info_list[info_idx].ed.rank > 0 &&
           stride_access_greater_than_1(&opnd, dim) &&
-          inside_loop(SH_PREV_IDX(curr_stmt_sh_idx))){
+	  ((LANG_Copy_Inout_Level > 0) ||
+          inside_loop(SH_PREV_IDX(curr_stmt_sh_idx)))){
         association = COPY_INOUT_MAKE_DV;
       }
 # endif
@@ -3513,8 +3677,14 @@ boolean final_arg_work(opnd_type	*list_opnd,
          case PASS_ADDRESS         :
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
             ATD_NOT_PT_UNIQUE_MEM(
                    (find_left_attr(&IL_OPND(list_idx)))) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 # endif
 
             if (! ATP_VFUNCTION(spec_idx) &&
@@ -3621,8 +3791,14 @@ boolean final_arg_work(opnd_type	*list_opnd,
          case PASS_SECTION_ADDRESS :
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
             ATD_NOT_PT_UNIQUE_MEM(
                    (find_left_attr(&IL_OPND(list_idx)))) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 # endif
 
             /* these are always arrays, no need for %val() or vfunction chks */
@@ -3665,8 +3841,14 @@ boolean final_arg_work(opnd_type	*list_opnd,
          case PASS_ADDRESS_FROM_DV :
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
             ATD_NOT_PT_UNIQUE_MEM(
                    (find_left_attr(&IL_OPND(list_idx)))) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 # endif
 
 
@@ -3715,8 +3897,14 @@ boolean final_arg_work(opnd_type	*list_opnd,
          case PASS_DV              :
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
             ATD_NOT_PT_UNIQUE_MEM(
                    (find_left_attr(&IL_OPND(list_idx)))) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 # endif
 
             NTR_IR_TBL(ir_idx);
@@ -3776,9 +3964,15 @@ boolean final_arg_work(opnd_type	*list_opnd,
                tmp_dv_idx = create_tmp_DV_asg(list_idx, info_idx);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
                ATD_NOT_PT_UNIQUE_MEM(tmp_dv_idx) = TRUE;
                ATD_NOT_PT_UNIQUE_MEM(
                      (find_left_attr(&IL_OPND(list_idx)))) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 # endif
 
                /* gen loc tmp = loc(tmp_dv_idx) */
@@ -3842,9 +4036,15 @@ boolean final_arg_work(opnd_type	*list_opnd,
                tmp_dv_idx = create_tmp_DV_asg(list_idx, info_idx);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
                ATD_NOT_PT_UNIQUE_MEM(tmp_dv_idx) = TRUE;
                ATD_NOT_PT_UNIQUE_MEM(
                      (find_left_attr(&IL_OPND(list_idx)))) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 # endif
 
 
@@ -4246,9 +4446,15 @@ boolean final_arg_work(opnd_type	*list_opnd,
                tmp_idx = gen_compiler_tmp(line, col, Priv, TRUE);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
                ATD_NOT_PT_UNIQUE_MEM(tmp_idx) = TRUE;
                ATD_NOT_PT_UNIQUE_MEM(
                      (find_left_attr(&IL_OPND(list_idx)))) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 # endif
 
                ATD_TYPE_IDX(tmp_idx) = arg_info_list[info_idx].ed.type_idx;
@@ -4334,9 +4540,15 @@ boolean final_arg_work(opnd_type	*list_opnd,
                tmp_idx = gen_compiler_tmp(line, col, Priv, TRUE);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
                ATD_NOT_PT_UNIQUE_MEM(tmp_idx) = TRUE;
                ATD_NOT_PT_UNIQUE_MEM(
                         (find_left_attr(&IL_OPND(list_idx)))) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 # endif
 
                ATD_TYPE_IDX(tmp_idx) = arg_info_list[info_idx].ed.type_idx;
@@ -4378,27 +4590,59 @@ boolean final_arg_work(opnd_type	*list_opnd,
             break;
 
          case COPY_IN_MAKE_DV      :
-# if defined(KEY)
+# if defined(KEY) /* Bug 3230 */
          case COPY_INOUT_MAKE_DV      :
-            old_curr_stmt_sh_idx = SH_PREV_IDX(curr_stmt_sh_idx);  
-# endif
+	    {
+	      int old_curr_stmt_sh_idx = SH_PREV_IDX(curr_stmt_sh_idx);
+# endif /* KEY Bug 3230 */
 
-            /* tmp_idx is the copy in tmp */
-            COPY_OPND(opnd, IL_OPND(list_idx));
+	      /* tmp_idx is the copy in tmp */
+	      COPY_OPND(opnd, IL_OPND(list_idx));
+# if defined(KEY) /* Bug 3230 */
+#ifdef KEY /* Bug 3607 */
+	      boolean copyin = (association == COPY_IN_MAKE_DV);
+	      /* The front end has always performed copyin and copyinout in
+	       * cases where an array section must be passed to a procedure
+	       * which expects its dummy argument to be a contiguous array (for
+	       * example, an array reference whose subscript is itself an array;
+	       * or an array section passed to a dummy argument which doesn't
+	       * expect a dope vector.) The COPY_INOUT_MAKE_DV optimization
+	       * relies on the same code in a situation where the dummy argument
+	       * does expect a dope vector. Because we do this for performance,
+	       * we would like to move the alloc-related statements to the
+	       * prolog, if we know they don't depend on variables which might
+	       * change during execution. */
+	      boolean move = (association == COPY_INOUT_MAKE_DV) &&
+		safe_to_move_copyinout_alloc(&opnd);
+	      tmp_idx = create_tmp_asg(&opnd,
+				(expr_arg_type *)&(arg_info_list[info_idx].ed), 
+				&l_opnd, 
+				copyin ? Intent_In : Intent_Inout,
+				copyin,
+				/* Dealloc unneeded if alloc occurs in prolog */
+				move);
+	       if (move) {
+		 move_tmp_alloc_assignment(old_curr_stmt_sh_idx, attr_idx);
+	       }
+             }
+#else /* KEY Bug 3607 */
             tmp_idx = create_tmp_asg(&opnd,
                               (expr_arg_type *)&(arg_info_list[info_idx].ed), 
                               &l_opnd, 
-# if defined(KEY)
                               association == COPY_IN_MAKE_DV ? Intent_In : Intent_Inout,
                               association == COPY_IN_MAKE_DV ? TRUE : FALSE,
                               association == COPY_IN_MAKE_DV ? FALSE : TRUE);
              if (association == COPY_INOUT_MAKE_DV)
                move_tmp_alloc_assignment(&opnd, old_curr_stmt_sh_idx, attr_idx, dim);
-# else
+#endif /* KEY Bug 3607 */
+# else /* KEY Bug 3230 */
+            tmp_idx = create_tmp_asg(&opnd,
+                              (expr_arg_type *)&(arg_info_list[info_idx].ed), 
+                              &l_opnd, 
                               Intent_In,
                               TRUE, 
                               FALSE);
-# endif
+# endif /* KEY Bug 3230 */
 
             if (! io_call &&
                 arg_info_list[info_idx].ed.rank != 0) {
@@ -4413,14 +4657,29 @@ boolean final_arg_work(opnd_type	*list_opnd,
             tmp_dv_idx = gen_compiler_tmp(line, col, Priv, TRUE);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
             ATD_NOT_PT_UNIQUE_MEM(tmp_idx) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 
+#ifdef KEY /* Bug 7424 */
+            /* I don't understand this, so no call to clear_pt_unique_mem */
+#endif /* KEY Bug 7424 */
             if (ATD_AUTOMATIC(tmp_idx) && 
                 ATD_AUTO_BASE_IDX(tmp_idx) != NULL_IDX) {
                ATD_NOT_PT_UNIQUE_MEM(ATD_AUTO_BASE_IDX(tmp_idx)) = TRUE;
             }
 
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
             ATD_NOT_PT_UNIQUE_MEM(tmp_dv_idx) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 # endif
 
             ATD_TYPE_IDX(tmp_dv_idx) = arg_info_list[info_idx].ed.type_idx;
@@ -4516,8 +4775,14 @@ boolean final_arg_work(opnd_type	*list_opnd,
             AT_SEMANTICS_DONE(addr_tmp_idx) = TRUE;
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
             ATD_NOT_PT_UNIQUE_MEM(addr_tmp_idx) = TRUE;
             ATD_NOT_PT_UNIQUE_MEM(find_left_attr(&IL_OPND(list_idx))) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 # endif
 
             /* find the dope vector opnd */
@@ -4666,8 +4931,17 @@ boolean final_arg_work(opnd_type	*list_opnd,
                                      TRUE, 
                                      FALSE);
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+            if (clear_pt_unique_mem(info_idx)) {
+#endif /* KEY Bug 7424 */
             ATD_NOT_PT_UNIQUE_MEM(tmp_idx) = TRUE;
+#ifdef KEY /* Bug 7424 */
+            }
+#endif /* KEY Bug 7424 */
 
+#ifdef KEY /* Bug 7424 */
+            /* I don't understand this, so no call to clear_pt_unique_mem */
+#endif /* KEY Bug 7424 */
             if (ATD_AUTOMATIC(tmp_idx) &&
                 ATD_AUTO_BASE_IDX(tmp_idx) != NULL_IDX) {
 
@@ -6716,8 +6990,6 @@ static void determine_num_elements(opnd_type     *opnd,
 \******************************************************************************/
 
 void flatten_function_call(opnd_type     *result)
-			   
-
 {
    int		       alloc_idx;
    int                 asg_idx;
@@ -6785,10 +7057,26 @@ void flatten_function_call(opnd_type     *result)
       orig_sh_idx = curr_stmt_sh_idx;
    }
 
+#ifdef KEY /* Bug 4811 */
+   /* If the preceding statement is an OMP "atomic" pragma, add the temp
+    * assignment before the pragma, so that the pragma still applies to
+    * the original assignment statement containing this call.
+    */
+   int sh_prev = SH_PREV_IDX(curr_stmt_sh_idx);
+   int insertion_point = 
+     (curr_stmt_sh_idx != SCP_FIRST_SH_IDX(curr_scp_idx) &&
+       IR_OPR(SH_IR_IDX(sh_prev)) == Atomic_Open_Mp_Opr) ?
+       sh_prev :
+       curr_stmt_sh_idx;
+     gen_sh_at(Before, Call_Stmt, stmt_start_line, stmt_start_col,
+	    FALSE, FALSE, TRUE, insertion_point);
+     curr_stmt_sh_idx = SH_PREV_IDX(insertion_point);
+#else
    gen_sh(Before, Call_Stmt, stmt_start_line, stmt_start_col,
           FALSE, FALSE, TRUE);
 
    curr_stmt_sh_idx = SH_PREV_IDX(curr_stmt_sh_idx);
+#endif /* KEY Bug 4811 */
    new_stmt_idx = curr_stmt_sh_idx;
 
    num_args = IR_LIST_CNT_R(ir_idx);
@@ -6902,6 +7190,9 @@ void flatten_function_call(opnd_type     *result)
       }
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+      /* I don't understand this, so no call to clear_pt_unique_mem */
+#endif /* KEY Bug 7424 */
       ATD_NOT_PT_UNIQUE_MEM(tmp_idx) = TRUE;
 # endif
 
@@ -6923,6 +7214,9 @@ void flatten_function_call(opnd_type     *result)
 
          ATD_AUTO_BASE_IDX(tmp_idx)	= base_tmp_idx;
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+#ifdef KEY /* Bug 7424 */
+	 /* I don't understand this, so no call to clear_pt_unique_mem */
+#endif /* KEY Bug 7424 */
          ATD_NOT_PT_UNIQUE_MEM(base_tmp_idx) = TRUE;
 # endif
 
@@ -8625,6 +8919,9 @@ FOUND:
             case COPY_IN_COPY_OUT :
             case MAKE_DV :
             case COPY_IN_MAKE_DV :
+#ifdef KEY /* Bug 6939 */
+            case COPY_INOUT_MAKE_DV :
+#endif /* KEY Bug 6939 */
                if (OPND_FLD(opnd) == IR_Tbl_Idx &&
                    (IR_OPR(OPND_IDX(opnd)) == Loc_Opr ||
                     IR_OPR(OPND_IDX(opnd)) == Aloc_Opr ||

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -227,7 +227,11 @@ typedef signed int	INT8;	/* Use the natural integer */
 typedef signed int	INT16;	/* Use the natural integer */
 typedef signed int	INT32;	/* The natural integer matches */
 typedef signed long long INT64;	
+#ifdef TARG_IA64 /* by jhs, 02.9.25 */
+typedef unsigned long long INTPTR;
+#else
 typedef unsigned long	INTPTR;	/* Integer the same size as pointer*/
+#endif
 typedef unsigned int	UINT;	/* The natural integer on the host */
 typedef unsigned int	UINT8;	/* Use the natural integer */
 typedef unsigned int	UINT16;	/* Use the natural integer */

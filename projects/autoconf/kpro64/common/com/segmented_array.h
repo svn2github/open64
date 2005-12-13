@@ -1,5 +1,6 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+/* -*- c++ -*-
+ *
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -165,8 +166,8 @@ template <class T, UINT block_size = 128>
 class SEGMENTED_ARRAY
 {
 private:
-    
-    std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> > map;
+    typedef std::pair<T *, BOOL> thingy;
+    std::vector<thingy, mempool_allocator<thingy> > map;
     MEM_POOL *pool;
     UINT size_;				// total number of elements inserted
     UINT max_size_;			// total # of elements allocated
@@ -244,7 +245,7 @@ public:
   ~SEGMENTED_ARRAY() {
     // Free memory from blocks. Map memory gets freed when the map
     // vector is destructed.
-    for (typename std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> >::iterator
+    for (typename std::vector<thingy, mempool_allocator<thingy> >::iterator
 	   entry = map.begin();
 	 entry != map.end();
 	 ++entry) {

@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -40,7 +40,7 @@
 
 
 #ifdef TARG_MIPS
-#include "gnu/MIPS/config.h"
+#include "gnu/mips/config.h"
 #endif /* TARG_MIPS */
 #ifdef TARG_IA64
 #include "gnu/ia64/config.h"

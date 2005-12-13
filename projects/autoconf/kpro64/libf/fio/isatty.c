@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -79,7 +79,11 @@
 #include "fio.h"
 
 extern _f_int __isatty_f90 (_f_int *u);
+#ifdef KEY /* Bug 1683 */
+static _f_int isattyf90_(_f_int *u);
+#else
 extern _f_int isattyf90_(_f_int *u);
+#endif /* KEY Bug 1683 */
 extern _f_int8 isattyf90_8_(_f_int8 *u);
 
 _f_int
@@ -88,6 +92,10 @@ __isatty_f90 (_f_int *u)
 	return isattyf90_(u);
 }
 
+#ifdef KEY /* Bug 1683 */
+/* Don't pollute the Fortran namespace */
+static
+#endif /* KEY Bug 1683 */
 _f_int
 isattyf90_(_f_int *u)
 {

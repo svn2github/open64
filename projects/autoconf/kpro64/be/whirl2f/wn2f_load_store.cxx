@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -164,7 +168,7 @@ WN2F_Initiate_ZeroInt(void)
    bzero(wn, sizeof(WN));
    WN_set_opcode(wn, opcode);
    WN_set_kid_count(wn, 0);
-   WN_map_id(wn) =  WN_MAP_UNDEFINED;
+   WN_set_map_id(wn, WN_MAP_UNDEFINED);
    WN_const_val(wn) = 0LL;
    return wn;
 } /* WN2F_Initiate_ZeroInt */
@@ -179,7 +183,7 @@ WN2F_Initiate_OneInt(void)
    bzero(wn, sizeof(WN));
    WN_set_opcode(wn, opcode);
    WN_set_kid_count(wn, 0);
-   WN_map_id(wn) =  WN_MAP_UNDEFINED;
+   WN_set_map_id(wn, WN_MAP_UNDEFINED);
    WN_const_val(wn) = 1LL;
    return wn;
 } /* WN2F_Initiate_ZeroInt */

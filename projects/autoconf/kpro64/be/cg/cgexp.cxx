@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -143,6 +143,11 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_LSHR:
 	Expand_Shift (result, op1, op2, rtype, shift_lright, ops);
 	break;
+#ifdef TARG_X8664
+  case OPR_RROTATE:
+	Expand_Rrotate (result, op1, op2, rtype, desc, ops);
+	break;
+#endif
   case OPR_ILOAD:
   case OPR_LDID:
 	if ( V_align_all(variant) != 0 ) {
@@ -303,6 +308,13 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 			ops);
 	}
 	break;
+#ifdef TARG_X8664
+  case OPR_TAS:
+  	if (MTYPE_is_integral(rtype))
+	  Expand_Float_To_Int_Tas(result, op1, rtype, ops);
+	else Expand_Int_To_Float_Tas(result, op1, rtype, ops);
+	break;
+#endif
   case OPR_RND:
 	Expand_Float_To_Int_Round (result, op1, rtype, desc, ops);
 	break;
@@ -313,7 +325,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	Expand_Float_To_Int_Ceil (result, op1, rtype, desc, ops);
 	break;
   case OPR_FLOOR:
-#ifdef KEY
+#ifdef TARG_X8664
     if( MTYPE_is_float( rtype ) ){
       if( MTYPE_is_quad( rtype ) )
 	Expand_Float_To_Float_Floorl( result, op1, rtype, desc, ops );

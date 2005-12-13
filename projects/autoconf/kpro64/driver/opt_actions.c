@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,6 +39,8 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <sys/utsname.h>
+#include <unistd.h>
 #include "cmplrs/rcodes.h"
 #include "opt_actions.h"
 #include "options.h"
@@ -77,9 +79,18 @@ int profile_type = 0;
 boolean ftz_crt = FALSE;
 int isa = UNDEFINED;
 int proc = UNDEFINED;
+static int target_supported_abi = UNDEFINED;
+static boolean target_supports_sse2 = FALSE;
+static boolean target_prefers_sse3 = FALSE;
+
+extern boolean parsing_default_options;
+extern boolean drop_option;
+
+static void set_cpu(char *name, m_flag flag_type);
 
 #ifdef KEY
 void set_memory_model(char *model);
+static int get_platform_abi();
 #endif
 
 /* ====================================================================
@@ -143,6 +154,14 @@ is_toggled (int obj)
 void
 toggle (int *obj, int value)
 {
+	// Silently drop a default option if it is already toggled on the
+	// command line.
+	if (parsing_default_options &&
+	    is_toggled(*obj)) {
+	  drop_option = TRUE;
+	  return;
+	}
+
 	if (*obj != UNDEFINED && *obj != value) {
 		warning ("%s conflicts with %s; using latter value (%s)", 
 			get_toggle_name(obj), option_name, option_name);
@@ -224,6 +243,31 @@ Bool_Group_Value ( char *val )
     return TRUE;
   }
 }
+#ifdef KEY /* Bug 4210 */
+
+/* ====================================================================
+ *
+ * Routine to process "-module dirname" and pass "-Jdirname" to Fortran
+ * front end
+ *
+ * ====================================================================
+ */
+char *f90_module_dir = 0;
+
+void
+Process_module ( char *dirname )
+{
+  if (0 != f90_module_dir)
+  {
+    error("Only one -module option allowed");
+  }
+  strcat(
+    strcpy(
+      f90_module_dir = malloc(sizeof "-J" + strlen(dirname)),
+      "-J"),
+    dirname);
+}
+#endif /* KEY Bug 4210 */
 
 /* ====================================================================
  *
@@ -384,6 +428,18 @@ Process_Targ_Group ( char *targ_args )
 
   while ( *cp != 0 ) {
     switch ( *cp ) {
+      case '3':
+#ifdef KEY
+	if (!strncasecmp(cp, "3dnow=on", 9)) {
+	  add_option_seen(O_m3dnow);
+	  toggle(&m3dnow, TRUE);
+	} else if (!strncasecmp(cp, "3dnow=off", 10)) {
+	  add_option_seen(O_mno_3dnow);
+	  toggle(&m3dnow, FALSE);
+	}
+	break;
+#endif
+
       case 'a':
 	if ( strncasecmp ( cp, "abi", 3 ) == 0 && *(cp+3) == '=' ) {
 #ifdef TARG_MIPS
@@ -391,6 +447,19 @@ Process_Targ_Group ( char *targ_args )
 	    add_option_seen ( O_n32 );
 	    toggle ( &abi, ABI_N32 );
 	  } else if ( strncasecmp ( cp+4, "64", 2 ) == 0 ) {
+	    add_option_seen ( O_m64 );
+	    toggle ( &abi, ABI_64 );
+	  }
+#endif
+#ifdef KEY
+	  // The driver needs to handle all the -TARG options that it gives to
+	  // the back-end, even if these -TARG options are not visible to the
+	  // user.  This is because IPA invokes the driver with back-end
+	  // options.  Bug 5466.
+	  if ( strncasecmp ( cp+4, "n32", 3 ) == 0 ) {
+	    add_option_seen ( O_m32 );
+	    toggle ( &abi, ABI_N32 );
+	  } else if ( strncasecmp ( cp+4, "n64", 3 ) == 0 ) {
 	    add_option_seen ( O_m64 );
 	    toggle ( &abi, ABI_64 );
 	  }
@@ -458,6 +527,33 @@ Process_Targ_Group ( char *targ_args )
 	}
 #endif
 	break;
+
+      case 'p':
+#ifdef KEY
+	if (!strncasecmp(cp, "processor=", 10)) {
+	  char *target = cp + 10;
+	  set_cpu (target, M_ARCH);
+	}
+#endif
+	break;
+
+      case 's':
+#ifdef KEY
+	if (!strncasecmp(cp, "sse2=on", 8)) {
+	  add_option_seen(O_msse2);
+	  toggle(&sse2, TRUE);
+	} else if (!strncasecmp(cp, "sse2=off", 9)) {
+	  add_option_seen(O_mno_sse2);
+	  toggle(&sse2, FALSE);
+	} else if (!strncasecmp(cp, "sse3=on", 8)) {
+	  add_option_seen(O_msse3);
+	  toggle(&sse3, TRUE);
+	} else if (!strncasecmp(cp, "sse3=off", 9)) {
+	  add_option_seen(O_mno_sse3);
+	  toggle(&sse3, FALSE);
+	}
+#endif
+	break;
     }
 
     /* Skip to the next group option: */
@@ -487,6 +583,17 @@ Check_Target ( void )
 	      abi, isa, proc );
   }
 
+  if (target_cpu == NULL) {
+    set_cpu ("opteron", M_ARCH);	// Default to Opteron.
+    if (abi == UNDEFINED) {
+      abi = (get_platform_abi() == ABI_64) ? ABI_64 : ABI_N32;
+      if (abi == ABI_64)
+	add_option_seen (O_m64);
+      else
+	add_option_seen (O_m32);
+      }
+  }
+
   if (abi == UNDEFINED) {
 #ifdef TARG_IA64
 	toggle(&abi, ABI_I64);
@@ -498,8 +605,17 @@ Check_Target ( void )
 	toggle(&abi, ABI_N32);
     	add_option_seen ( O_n32 );
 #elif TARG_X8664
-	toggle(&abi, ABI_64);
-    	add_option_seen ( O_m64 );
+	if (target_supported_abi != UNDEFINED)
+	  abi = target_supported_abi;
+	else if (get_platform_abi() == ABI_64)
+	  abi = ABI_64;
+	else
+	  abi = ABI_N32;
+
+	if (abi == ABI_64)
+	  add_option_seen (O_m64);
+	else
+	  add_option_seen (O_m32);
 #else
 	warning("abi should have been specified by driverwrap");
   	/* If nothing is defined, default to -n32 */
@@ -684,6 +800,30 @@ Check_Target ( void )
 	}
   }
 
+#ifdef TARG_X8664
+  // For x86-64, 64-bit code always use SSE2 instructions.
+  if (abi == ABI_64) {
+    if (sse2 == FALSE) {
+      warning("SSE2 required for 64-bit ABI; enabling SSE2.");
+    }
+    sse2 = TRUE;
+  } else {
+    // For m32, use SSE2 on systems that support it.
+    if (sse2 == UNDEFINED &&
+	target_supports_sse2) {
+      sse2 = TRUE;
+    }
+  }
+
+  // Use SSE3 on systems that prefer it.
+  if (target_prefers_sse3 &&
+      sse2 != FALSE &&
+      sse3 != FALSE) {
+    sse2 = TRUE;
+    sse3 = TRUE;
+  }
+#endif
+
   if ( debug ) {
     fprintf ( stderr, "Check_Target done; ABI=%d ISA=%d Processor=%d\n",
 	      abi, isa, proc );
@@ -863,13 +1003,38 @@ check_output_name (char *name)
 	}
 }
 
+#ifdef KEY /* bug 4260 */
+/* Disallow illegal name following "-convert" */
+void
+check_convert_name(char *name)
+{
+	static char *legal_names[] = {
+	  "big_endian",
+	  "big-endian",
+	  "little_endian",
+	  "little-endian",
+	  "native"
+	  };
+	for (int i = 0; i < ((sizeof legal_names) / (sizeof *legal_names));
+	  i += 1) {
+	  if (0 == strcmp(name, legal_names[i])) {
+	    return;
+	  }
+	}
+	parse_error(option_name, "bad conversion name");
+}
+#endif /* KEY bug 4260 */
+
 void
 check_dashdash (void)
 {
+#ifndef KEY	// Silently ignore dashdash options in case pathcc is called as
+		// a linker.  Bug 4736.
 	if(xpg_flag)
 	   dashdash_flag = 1;
 	else
 	   error("%s not allowed in non XPG4 environment", option_name);
+#endif
 }
 
 static char *
@@ -970,6 +1135,7 @@ Process_fb_cdir ( char *fname )
   fb_cdir =  string_copy(fname);
 }
 
+#ifndef KEY	// -dsm no longer supported.  Bug 4406.
 typedef enum {
   DSM_UNDEFINED,
   DSM_OFF,
@@ -1147,6 +1313,7 @@ void Process_Cray_Mp (void) {
   }
   else error ("-cray_mp applicable only to f90");
 }
+#endif
 
 void
 Process_Promp ( void )
@@ -1171,7 +1338,6 @@ Process_Promp ( void )
   }
 }
 
-#ifdef KEY
 void
 Process_Tenv_Group ( char *opt_args )
 {
@@ -1184,7 +1350,6 @@ Process_Tenv_Group ( char *opt_args )
     set_memory_model (opt_args + 8);
   }
 }
-#endif	// KEY
 
 static int
 print_magic_path(const char *base, const char *fname)
@@ -1245,32 +1410,18 @@ static int print_relative_path(const char *s, const char *fname)
   return print_magic_path(base, fname);
 }
 
-/* Keep this in sync with print_file_path over in opt_actions.c. */
+/* Keep this in sync with set_library_paths over in phases.c. */
 
 void
-print_file_path (char *fname)
+print_file_path (char *fname, int exe)
 {
   /* Search for fname in usual places, and print path when found. */
   /* gcc does separate searches for libraries and programs,
    * but that seems redundant as the paths are nearly identical,
-   * so try combining into one search. */
-
-  if (print_relative_path("lib/gcc-lib/" PSC_TARGET "/" PSC_GCC_VERSION, fname))
-    return;
-
-  if (print_relative_path("lib/gcc-lib/" PSC_TARGET "/lib64", fname))
-    return;
-
-  if (print_relative_path(PSC_TARGET "/lib64", fname))
-    return;
+   * so try combining into one search.
+   */
 
   if (print_relative_path("lib/" PSC_FULL_VERSION, fname))
-    return;
-
-  if (print_magic_path("/usr/lib64", fname))
-    return;
-
-  if (print_magic_path("/lib64", fname))
     return;
 
   if (print_phase_path(P_be, fname))
@@ -1288,8 +1439,16 @@ print_file_path (char *fname)
   if (print_phase_path(P_alt_library, fname))
     return;
 
-  /* not found, so just print fname */
-  printf("%s\n", fname);
+  /* not found, so ask gcc */
+  int m32 = check_for_saved_option("-m32");
+  char *argv[4];
+  argv[0] = "gcc";
+  argv[1] = m32 ? "-m32" : "-m64";
+  asprintf(&argv[2], "-print-%s-name=%s", exe ? "prog" : "file", fname);
+  argv[3] = NULL;
+  execvp(argv[0], argv);
+  fprintf(stderr, "could not execute %s: %m\n", argv[0]);
+  exit(1);
 }
 
 mem_model_t mem_model;
@@ -1322,35 +1481,145 @@ static struct
 {
   char *cpu_name;
   char *target_name;
-  int abi;
+  int abi;			// CPUs supporting ABI_64 also support ABI_N32
+  boolean supports_sse2;	// TRUE if support SSE2
+  boolean prefers_sse3;		// TRUE if target prefers code to use SSE3
 } supported_cpu_types[] = {
-  { "athlon", "athlon", ABI_N32, },
-  { "athlon-mp", "athlon", ABI_N32, },
-  { "athlon-xp", "athlon", ABI_N32, },
-  { "athlon64", "athlon64", },
-  { "athlon64fx", "opteron", },
-  { "i686", "pentium4", ABI_N32, },
-  { "ia32", "pentium4", ABI_N32, },
-  { "ia32e", "opteron", },
-  { "k7", "athlon", ABI_N32, },
-  { "k8", "opteron", },
-  { "opteron", "opteron", },
-  { "pentium4", "pentium4", ABI_N32, },
-  { "xeon", "xeon", ABI_N32, },
-  { NULL, NULL, },
+  { "anyx86",	"anyx86",	ABI_64,		TRUE,	FALSE },
+  { "i386",	"anyx86",	ABI_N32,	FALSE,	FALSE },
+  { "i486",	"anyx86",	ABI_N32,	FALSE,	FALSE },
+  { "i586",	"anyx86",	ABI_N32,	FALSE,	FALSE },
+  { "athlon",	"athlon",	ABI_N32,	FALSE,	FALSE },
+  { "athlon-mp", "athlon",	ABI_N32,	FALSE,	FALSE },
+  { "athlon-xp", "athlon",	ABI_N32,	FALSE,	FALSE },
+  { "athlon64",	"athlon64",	ABI_64,		TRUE,	FALSE },
+  { "athlon64fx", "opteron",	ABI_64,		TRUE,	FALSE },
+  { "i686",	"pentium4",	ABI_N32,	FALSE,	FALSE },
+  { "ia32",	"pentium4",	ABI_N32,	TRUE,	FALSE },
+  { "k7",	"athlon",	ABI_N32,	FALSE,	FALSE },
+  { "k8",	"opteron",	ABI_64,		TRUE,	FALSE },
+  { "opteron",	"opteron",	ABI_64,		TRUE,	FALSE },
+  { "pentium4",	"pentium4",	ABI_N32,	TRUE,	FALSE },
+  { "xeon",	"xeon",		ABI_N32,	TRUE,	FALSE },
+  { "em64t",	"em64t",	ABI_64,		TRUE,	TRUE },
+  { NULL,	NULL, },
 };
   
-char *target_cpu;
+char *target_cpu = NULL;
 
-static void
-set_cpu(char *name)
+// Get the platform's default ABI.
+static int
+get_platform_abi()
 {
+  struct utsname u;
+
+  uname(&u);
+  if (!strcmp(u.machine, "x86_64"))
+    return ABI_64;
+  return ABI_N32;
+}
+
+// Get CPU name from /proc/cpuinfo.
+char *
+get_auto_cpu_name ()
+{
+  FILE *f;
+  char buf[256];
+  char *cpu_name = NULL;
+  char *cpu_name_64bit = NULL;		// cpu_name of 64-bit version of CPU
+
+  f = fopen("/proc/cpuinfo", "r");
+  if (f == NULL) {
+    error("cannot read /proc/cpuinfo");
+    return NULL;
+  }
+  while (fgets(buf, 256, f) != NULL) {
+    if (!strncmp("model name", buf, 10)) {
+      if (strstr(buf, "AMD Athlon(tm) 64 ") != NULL)
+	cpu_name = "athlon64";
+      else if (strstr(buf, "AMD Athlon(tm) MP ") != NULL)
+	cpu_name = "athlon-mp";
+      else if (strstr(buf, "AMD Athlon(tm) Processor") != NULL)
+	cpu_name = "athlon";
+      else if (strstr(buf, "AMD Opteron(tm) ") != NULL)
+	cpu_name = "opteron";
+      else if (strstr(buf, "Intel(R) Pentium(R) 4 ") != NULL)
+	cpu_name = "pentium4";
+      else if (strstr(buf, "Intel(R) Xeon(TM) ") != NULL) {
+	cpu_name = "xeon";
+	cpu_name_64bit = "em64t";
+      } else if (strstr(buf, "unknown") != NULL) {	// bug 5785
+	char *abi_name;
+	if (get_platform_abi() == ABI_64) {
+	  cpu_name = "anyx86";
+	  abi_name = "64-bit";
+	} else {
+	  cpu_name = "i386";
+	  abi_name = "32-bit";
+	}
+	warning("CPU model name in /proc/cpuinfo is \"unknown\".  "
+		"Defaulting to basic %s x86.", abi_name);
+      } else {
+	error("/proc/cpuinfo contains unknown CPU model name");
+	return NULL;
+      }
+      break;
+    }
+  }
+  fclose(f);
+  if (cpu_name == NULL) {
+    error("cannot find CPU model name in /proc/cpuinfo");
+    return NULL;
+  }
+
+  // If cpuinfo doesn't say if CPU is 32 or 64-bit, ask the OS.
+  if (cpu_name_64bit != NULL) {
+    if (get_platform_abi() == ABI_64) {
+      cpu_name = cpu_name_64bit;
+    }
+  }
+
+  return cpu_name;
+}
+
+// Find the target name from the CPU name.
+static void
+set_cpu(char *name, m_flag flag_type)
+{
+  // If parsing the default options, don't change the target cpu if it is
+  // already set.
+  if (parsing_default_options &&
+      target_cpu != NULL) {
+    drop_option = TRUE;
+    return;
+  }
+
+  // Warn if conflicting CPU targets are specified.
+  // XXX We are not compatible with gcc here, which assigns different meanings to the
+  // -march, -mtune and -mcpu flags.  We treat them as synonyms, which we should not.
+  if (target_cpu != NULL &&
+      strcmp(target_cpu, name)) {
+    warning("CPU target %s conflicts with %s; using latter (%s)",
+	    get_toggle_name((int*)&target_cpu), name, name);
+    // Reset target_cpu so that the driver will complain if a new value can't
+    // be determined.
+    target_cpu = NULL;
+  }
+  add_toggle_name((int*)&target_cpu, name);
+
+  // Handle "auto".
+  if (!strcmp(name, "auto")) {
+    name = get_auto_cpu_name();
+    if (name == NULL)
+      return;
+  }
+
   for (int i = 0; supported_cpu_types[i].cpu_name; i++) {
     if (strcmp(name, supported_cpu_types[i].cpu_name) == 0) {
       target_cpu = supported_cpu_types[i].target_name;
-      if (supported_cpu_types[i].abi) {
-	abi = supported_cpu_types[i].abi;
-      }
+      target_supported_abi = supported_cpu_types[i].abi;
+      target_supports_sse2 = supported_cpu_types[i].supports_sse2;
+      target_prefers_sse3 = supported_cpu_types[i].prefers_sse3;
       break;
     }
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -108,6 +108,7 @@
 #include "quad.h"
 #include "quadsim.h"
 #include <math.h>
+#include "config_debug.h" /* for DEBUG_Trap_Uv */
 
 /* For fp_class */
 
@@ -159,6 +160,7 @@ TCON Quad_Zero_Tcon = { MTYPE_FQ };
 
 static TCON Targ_Ipower(TCON base, UINT64 exp, BOOL neg_exp, BOOL *folded, TYPE_ID btype);
 static TCON Targ_Power(TCON base, TCON exp, BOOL *folded, TYPE_ID btype);
+static BOOL NaN_Tcon(TYPE_ID ty, TCON c);
 
 
 TCON Targ_Conv ( TYPE_ID ty_to, TCON c ); /* Defined later, used in Targ_WhirlOp */
@@ -595,7 +597,11 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
    TYPE_ID desc = OPCODE_desc(op);
    OPERATOR opr = OPCODE_operator(op);
 
-   if (OPERATOR_is_compare(opr)) {
+   if (DEBUG_Trap_Uv && MTYPE_float(optype) && 
+       (NaN_Tcon(optype, c0) || NaN_Tcon(optype, c1))) {
+     *folded = FALSE;
+   }
+   else if (OPERATOR_is_compare(opr)) {
      if (MTYPE_is_integral(desc))
        BOTH_OPNDS(c0,c1,desc);
      switch (desc) {
@@ -735,6 +741,12 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
    else 
    switch (op) {
 
+#ifdef KEY
+    case OPC_I1PAREN:
+    case OPC_I2PAREN:
+    case OPC_I4PAREN:
+    case OPC_I8PAREN:
+#endif
     case OPC_F4PAREN:
     case OPC_F8PAREN:
     case OPC_FQPAREN:
@@ -1293,20 +1305,24 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 
     case OPC_U4TAS:
     case OPC_I4TAS:
+#if 0 // not needed when HOST_IS_LITTLE_ENDIAN is true
       /* Need to move the bits if the source is an F4 */
       if (TCON_ty(c0) == MTYPE_F4) {
 	 TCON_v0(c0) = TCON_v1(c0);
 	 TCON_v1(c0) = 0;
       }
+#endif
       TCON_ty(c0) = OPCODE_rtype(op);
       break;
 
     case OPC_F4TAS:
+#if 0 // not needed when HOST_IS_LITTLE_ENDIAN is true
       /* Need to move the bits if the source is not an F4 */
       if (TCON_ty(c0) != MTYPE_F4) {
 	 TCON_v1(c0) = TCON_v0(c0);
 	 TCON_v0(c0) = 0;
       }
+#endif
       TCON_ty(c0) = MTYPE_F4;
       break;
 
@@ -2107,6 +2123,39 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
    return c0;
 } /* Targ_WhirlOp */
 
+#ifdef KEY
+/* ====================================================================
+ *
+ * TCON_F4_To_TCON_F8
+ *
+ * Convert a F4 TCON to a F8 TCON, obeying NaN conversion.
+ * ====================================================================
+ */
+static void
+TCON_F4_To_TCON_F8(TCON *r, TCON *c)
+{
+#ifndef TCON_R4_IS_DOUBLE
+  // Convert F4 Signalling NaN to F8 Signalling NaN for trapping uninitialized
+  // variables.
+
+  // Real part.
+  if (TCON_v0(*c) == 0xffa5a5a5) {
+    TCON_v0(*r) = 0xfff5a5a5;
+    TCON_v1(*r) = 0xfff5a5a5;
+  } else {
+    TCON_R8(*r) = TCON_R4(*c);
+  }
+  // Imaginary part.
+  if (TCON_iv0(*c) == 0xffa5a5a5) {
+    TCON_iv0(*r) = 0xfff5a5a5;
+    TCON_iv1(*r) = 0xfff5a5a5;
+  } else {
+    TCON_IR8(*r) = TCON_IR4(*c);
+  }
+#endif
+}
+#endif	// KEY
+
 /* ====================================================================
  *
  * Targ_Conv
@@ -2209,8 +2258,12 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
     case FROM_TO(MTYPE_C4, MTYPE_C8):
+#ifdef KEY
+      TCON_F4_To_TCON_F8(&r, &c);
+#else
       TCON_R8(r) = TCON_R4(c);
       TCON_IR8(r) = TCON_IR4(c);
+#endif
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case FROM_TO(MTYPE_FQ, MTYPE_C8):
@@ -2223,7 +2276,11 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_IR8(r) = 0.0;
       break;
     case FROM_TO(MTYPE_F4, MTYPE_C8):
+#ifdef KEY
+      TCON_F4_To_TCON_F8(&r, &c);
+#else
       TCON_R8(r) = TCON_R4(c);
+#endif
       TCON_IR8(r) = 0.0;
       break;
     case FROM_TO(MTYPE_I8, MTYPE_C8):
@@ -2343,7 +2400,11 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_R8(r) = TCON_R8(c);
       break;
     case FROM_TO(MTYPE_C4, MTYPE_F8):
+#ifdef KEY
+      TCON_F4_To_TCON_F8(&r, &c);
+#else
       TCON_R8(r) = TCON_R4(c);
+#endif
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case FROM_TO(MTYPE_FQ, MTYPE_F8):
@@ -2351,7 +2412,11 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
     case FROM_TO(MTYPE_F4, MTYPE_F8):
+#ifdef KEY
+      TCON_F4_To_TCON_F8(&r, &c);
+#else
       TCON_R8(r) = TCON_R4(c);
+#endif
       break;
     case FROM_TO(MTYPE_I8, MTYPE_F8):
       TCON_R8(r) = TCON_I8(c);
@@ -3201,11 +3266,14 @@ Host_To_Targ_Float ( TYPE_ID ty, double v )
   }
 } /* Host_To_Targ_Float */
 
-#ifdef TARG_X8664
 TCON 
 Create_Simd_Const (TYPE_ID ty, TCON t)
 {
   TCON c;
+
+  // Constant probably created by SIMD.
+  if (MTYPE_is_vector(TCON_ty(t)))
+    return t;
 
   switch (ty) {
   case MTYPE_V16I1:
@@ -3239,10 +3307,8 @@ Create_Simd_Const (TYPE_ID ty, TCON t)
   case MTYPE_V16I8:
     TCON_clear(c);
     TCON_ty(c) = ty;
-    (c).vals.ival.v0 = (t).vals.ival.v0;
-    (c).vals.ival.v1 = (t).vals.ival.v1;
-    (c).vals.ival.v2 = (t).vals.ival.v0;
-    (c).vals.ival.v3 = (t).vals.ival.v1;
+    (c).vals.llval.ll0 = (t).vals.i0;
+    (c).vals.llval.ll1 = (t).vals.i0;
     break;
   case MTYPE_V16F4:
     TCON_clear(c);
@@ -3264,7 +3330,55 @@ Create_Simd_Const (TYPE_ID ty, TCON t)
 
   return c;
 }
-#endif 
+
+
+// Create SIMD constant sequence val, val+1, ...
+// Caller is responsible to check overflows.
+TCON 
+Create_Simd_Prog_Const (TYPE_ID ty, INT64 val)
+{
+  TCON c;
+
+  switch (ty) {
+  case MTYPE_V16I1:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v3 = ((val+15)<<24)|((val+14)<<16)|((val+13)<<8)|(val+12);
+    (c).vals.ival.v2 = ((val+11)<<24)|((val+10)<<16)|((val+9)<<8)|(val+8);
+    (c).vals.ival.v1 = ((val+7)<<24)|((val+6)<<16)|((val+5)<<8)|(val+4);
+    (c).vals.ival.v0 = ((val+3)<<24)|((val+2)<<16)|((val+1)<<8)|val;
+    break;
+  case MTYPE_V16I2:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v3 = ((val+7)<<16)|(val+6);
+    (c).vals.ival.v2 = ((val+5)<<16)|(val+4); 
+    (c).vals.ival.v1 = ((val+3)<<16)|(val+2); 
+    (c).vals.ival.v0 = ((val+1)<<16)|val; 
+    break;
+  case MTYPE_V16F4:
+  case MTYPE_V16I4:
+    TCON_clear(c);
+    TCON_ty(c) = MTYPE_V16I4;
+    (c).vals.ival.v3 = (val+3);
+    (c).vals.ival.v2 = (val+2);
+    (c).vals.ival.v1 = (val+1);
+    (c).vals.ival.v0 = val;
+    break;
+  case MTYPE_V16F8:
+  case MTYPE_V16I8:
+    TCON_clear(c);
+    TCON_ty(c) = MTYPE_V16I8;
+    (c).vals.llval.ll0 = val;
+    (c).vals.llval.ll1 = val+1;
+    break;
+  default: 
+    FmtAssert(FALSE, ("NYI"));
+  }
+
+  return c;
+}
+
 /* like Host_To_Targ_Float but avoids conversion from float to double */
 TCON
 Host_To_Targ_Float_4 ( TYPE_ID ty, float v )
@@ -3312,37 +3426,37 @@ Host_To_Targ_UV( TYPE_ID ty)
 
   switch (ty) {
    case MTYPE_F4:
-     TCON_v1(c)= 0xfffa5a5a;
+     TCON_v0(c)= 0xffa5a5a5;	// 32-bit Signalling NaN
      break;
    case MTYPE_F8:
-     TCON_v0(c)= 0xfffa5a5a;
-     TCON_v1(c)= 0xfffa5a5a;
+     TCON_v0(c)= 0xfff5a5a5;	// 64-bit Signalling NaN
+     TCON_v1(c)= 0xfff5a5a5;
      break;
    case MTYPE_FQ:
-     TCON_v0(c)= 0xfffa5a5a;
-     TCON_v1(c)= 0xfffa5a5a;
-     TCON_v2(c)= 0xfffa5a5a;
-     TCON_v3(c)= 0xfffa5a5a;
+     TCON_v0(c)= 0xfff5a5a5;
+     TCON_v1(c)= 0xfff5a5a5;
+     TCON_v2(c)= 0xfff5a5a5;
+     TCON_v3(c)= 0xfff5a5a5;
      break;
    case MTYPE_C4:
-     TCON_v1(c)= 0xfffa5a5a;
-     TCON_iv1(c)= 0xfffa5a5a;
+     TCON_v0(c)= 0xffa5a5a5;	// 32-bit Signalling NaN
+     TCON_iv0(c)= 0xffa5a5a5;
      break;
    case MTYPE_C8:
-     TCON_v0(c)= 0xfffa5a5a;
-     TCON_v1(c)= 0xfffa5a5a;
-     TCON_iv0(c)= 0xfffa5a5a;
-     TCON_iv1(c)= 0xfffa5a5a;
+     TCON_v0(c)= 0xfff5a5a5;	// 64-bit Signalling NaN
+     TCON_v1(c)= 0xfff5a5a5;
+     TCON_iv0(c)= 0xfff5a5a5;
+     TCON_iv1(c)= 0xfff5a5a5;
      break;
    case MTYPE_CQ:
-     TCON_v0(c)= 0xfffa5a5a;
-     TCON_v1(c)= 0xfffa5a5a;
-     TCON_v2(c)= 0xfffa5a5a;
-     TCON_v3(c)= 0xfffa5a5a;
-     TCON_iv0(c)= 0xfffa5a5a;
-     TCON_iv1(c)= 0xfffa5a5a;
-     TCON_iv2(c)= 0xfffa5a5a;
-     TCON_iv3(c)= 0xfffa5a5a;
+     TCON_v0(c)= 0xfff5a5a5;
+     TCON_v1(c)= 0xfff5a5a5;
+     TCON_v2(c)= 0xfff5a5a5;
+     TCON_v3(c)= 0xfff5a5a5;
+     TCON_iv0(c)= 0xfff5a5a5;
+     TCON_iv1(c)= 0xfff5a5a5;
+     TCON_iv2(c)= 0xfff5a5a5;
+     TCON_iv3(c)= 0xfff5a5a5;
      break;
      
    default:
@@ -3352,6 +3466,32 @@ Host_To_Targ_UV( TYPE_ID ty)
      return c;
   }
   return c;
+} /* Host_To_Targ_UV */
+
+/* A target constant with value NaN; MTYPE_float(ty) must be true */
+static BOOL
+NaN_Tcon(TYPE_ID ty, TCON c)
+{
+  switch (ty) {
+   case MTYPE_F4: // 32-bit Signalling NaN
+     return TCON_v0(c) == 0xffa5a5a5;	
+   case MTYPE_F8: // 64-bit Signalling NaN
+     return TCON_v0(c) == 0xfff5a5a5 && TCON_v1(c) == 0xfff5a5a5;
+   case MTYPE_FQ:
+     return TCON_v0(c) == 0xfff5a5a5 && TCON_v1(c) == 0xfff5a5a5 &&
+     	    TCON_v2(c) == 0xfff5a5a5 && TCON_v3(c) == 0xfff5a5a5;
+   case MTYPE_C4: // 32-bit Signalling NaN
+     return TCON_v0(c) == 0xffa5a5a5 && TCON_iv0(c) == 0xffa5a5a5;
+   case MTYPE_C8: // 64-bit Signalling NaN
+     return TCON_v0(c) == 0xfff5a5a5 && TCON_v1(c) == 0xfff5a5a5 &&
+	    TCON_iv0(c) == 0xfff5a5a5 && TCON_iv1(c) == 0xfff5a5a5;
+   case MTYPE_CQ:
+     return TCON_v0(c) == 0xfff5a5a5 && TCON_v1(c) == 0xfff5a5a5 &&
+	    TCON_v2(c) == 0xfff5a5a5 && TCON_v3(c) == 0xfff5a5a5 &&
+	    TCON_iv0(c) == 0xfff5a5a5 && TCON_iv1(c) == 0xfff5a5a5 &&
+	    TCON_iv2(c) == 0xfff5a5a5 && TCON_iv3(c) == 0xfff5a5a5;
+  }
+  return FALSE;
 } /* Host_To_Targ_UV */
 
 /* Make complex TCON from two TCONs representing real and imaginary parts. */
@@ -3368,6 +3508,7 @@ Make_Complex ( TYPE_ID ctype, TCON real, TCON imag )
      Set_TCON_IR4(c, TCON_R4(imag));
      break;
 
+  case MTYPE_V16C8:
   case MTYPE_C8:
      Set_TCON_R8(c, TCON_R8(real));
      Set_TCON_IR8(c, TCON_R8(imag));
@@ -4603,6 +4744,9 @@ Bit_Str_To_Tcon ( TYPE_ID ty, char *arg_buf )
 BOOL
 Targ_Is_Integral ( TCON tc, INT64 *iv )
 {
+  if (MTYPE_is_vector(TCON_ty(tc)))
+    return FALSE;
+
   switch (TCON_ty(tc)) {
     case MTYPE_B:
     case MTYPE_I1:
@@ -4755,6 +4899,9 @@ Coerce_To_Integer(subtree)
 
 BOOL Targ_Is_Zero ( TCON t )
 {
+  if (MTYPE_is_vector(TCON_ty(t)))
+    return FALSE;
+
   switch (TCON_ty(t)) {
     case MTYPE_B:
     case MTYPE_I1:
@@ -4975,6 +5122,18 @@ Hash_TCON ( TCON * t, UINT32 modulus )
 	hash += (*s) << ((i % 4) * 8);
       }
       break;
+    case MTYPE_V16I1:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
+      break;
+    case MTYPE_V16I2:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
+      break;
+    case MTYPE_V16I4:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
+      break;
+    case MTYPE_V16I8:
+      hash += TCON_ll0(*t) + TCON_ll1(*t);
+      break;
     default:
       ErrMsg ( EC_Inv_Mtype, Mtype_Name(TCON_ty(*t)), "Hash_TCON" );
       return 0;
@@ -5037,6 +5196,8 @@ TCON Targ_IntrinsicOp ( UINT32 intrinsic, TCON c[], BOOL *folded)
 #define DEG_TO_RADQ (M_PIL/180.0l)
 #define RAD_TO_DEGQ (180.0l/M_PIL)
 #endif
+
+   errno = 0;
 
    switch ((INTRINSIC) intrinsic) {
 
@@ -5847,6 +6008,9 @@ TCON Targ_IntrinsicOp ( UINT32 intrinsic, TCON c[], BOOL *folded)
       *folded = FALSE;
       break;
    }
+   // bugs 4824, 4832: errno may have been set by pow, log, acos, asin
+   if (errno != 0 && !PU_ftn_lang (Get_Current_PU()))
+     *folded = FALSE;
    return (c0);
 }
 

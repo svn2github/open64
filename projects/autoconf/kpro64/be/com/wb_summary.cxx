@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -290,8 +290,8 @@ void SUMMARY_PROCEDURE::WB_Print(FILE* fp,
       fprintf(fp, "MP_NEEDS_LNO ");
     if (Has_exc_try())
       fprintf(fp, "EXC_TRY ");
-    if (Has_side_effect())
-      fprintf(fp, "SIDE_EFFECT ");
+    if (Has_pragma_side_effect())
+      fprintf(fp, "PRAGMA_SIDE_EFFECT ");
     if (Has_messy_regions())
       fprintf(fp, "MESSY_REGIONS ");
     if (Has_early_returns())

@@ -1,40 +1,25 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it would be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * Further, this software is distributed without any warranty that it is
+ * free of the rightful claim of any third person regarding infringement 
+ * or the like.  Any license provided herein, whether implied or 
+ * otherwise, applies only to this software file.  Patent licenses, if 
+ * any, provided herein do not apply to combinations of this program with 
+ * other software, or any other product whatsoever.  
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write the Free Software Foundation, Inc., 59
+ * Temple Place - Suite 330, Boston MA 02111-1307, USA.
  */
-
-/*
-
-  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
-
-  This program is free software; you can redistribute it and/or modify it
-  under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation.
-
-  This program is distributed in the hope that it would be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-  Further, this software is distributed without any warranty that it is
-  free of the rightful claim of any third person regarding infringement 
-  or the like.  Any license provided herein, whether implied or 
-  otherwise, applies only to this software file.  Patent licenses, if 
-  any, provided herein do not apply to combinations of this program with 
-  other software, or any other product whatsoever.  
-
-  You should have received a copy of the GNU General Public License along
-  with this program; if not, write the Free Software Foundation, Inc., 59
-  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-
-  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-  Mountain View, CA 94043, or:
-
-  http://www.sgi.com
-
-  For further information regarding this notice, see:
-
-  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-
-*/
 
 
 #include "output_func_start_profiler.h"
@@ -269,9 +254,11 @@ OUTPUT_FUNC_START_PROFILER::Fill_In_Func_Body(void)
     UINT32 size = zero_word_size + filename_size + counts_size + ncounts_size + next_size + sizeofbb_size + bb_function_info_size;
 #else
     UINT32 size;
+#ifdef TARG_X8664
     if (Is_Target_32bit())
       size = 7*4;
     else
+#endif // TARG_X8664
       size = 7*8;
 #endif
 
@@ -279,16 +266,31 @@ OUTPUT_FUNC_START_PROFILER::Fill_In_Func_Body(void)
     TY& ty = New_TY(tyi);
     TY_Init(ty, size, KIND_STRUCT, MTYPE_M,
           STR_IDX_ZERO);
+#ifdef TARG_X8664
     Set_TY_align(tyi, Is_Target_32bit()? 4 : 32);
+#else
+    Set_TY_align(tyi, 32);
+#endif
     _lpbx_st = New_ST(GLOBAL_SYMTAB);
     ST_Init(_lpbx_st, Save_Str(Construct_Func_Name(_lpbx_0)),
             CLASS_VAR, SCLASS_PSTATIC, EXPORT_PREEMPTIBLE, tyi);
     Set_ST_is_initialized(_lpbx_st);
     Set_ST_is_not_used(_lpbx_st);
-    WN* parm_var_addr = WN_CreateLda (OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V),
-                                          0,
-                                          Make_Pointer_Type(Is_Target_32bit()?MTYPE_I4:MTYPE_I8,FALSE),
-                                          _lpbx_st);
+#ifdef TARG_X8664
+    WN* parm_var_addr =
+      WN_CreateLda (OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V),
+                    0,
+                    Make_Pointer_Type(Is_Target_32bit() ?
+                                      MTYPE_I4 : MTYPE_I8,
+                                      FALSE),
+                    _lpbx_st);
+#else
+    WN* parm_var_addr =
+      WN_CreateLda (OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V),
+                    0,
+                    Make_Pointer_Type(MTYPE_I8, FALSE),
+                    _lpbx_st);
+#endif
     WN* call_stmt;
     call_stmt = Gen_Call(_init_proc,
                             parm_var_addr

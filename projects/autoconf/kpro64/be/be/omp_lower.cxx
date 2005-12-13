@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -274,6 +274,18 @@ WN *OMP_Prelower(PU_Info *current_pu, WN *pu)
   Rename_Privatized_COMMON(pu, &rename_common_stack);
   Is_True(rename_common_stack.Elements() == 1,
           ("OMP_Prelower(): rename_common_stack.Elements() != 1"));
+
+# ifdef KEY
+  RENAMING_SCOPE rename_common(NULL, &omp_pool);
+  RENAMING_SCOPE rename_common_blk(NULL, &omp_pool);
+  RENAMING_STACK rename_scope_stack(&omp_pool);
+  rename_scope_stack.Push(CXX_NEW(RENAMING_SCOPE(NULL, &omp_pool),
+                                   &omp_pool));
+  Rename_Threadprivate_COMMON(pu, pu, pu, 
+                             &rename_scope_stack, 
+                             &rename_common,
+                             &rename_common_blk);
+# endif
 
     // create parent map
   Omp_Parent_Map = WN_MAP_Create(&omp_pool);
@@ -789,8 +801,16 @@ Infer_Reduction_Operators(WN *wn, WN_LIST_STACK *reduction_stack)
           // or there are multiple update expressions (which is itself
           // illegal) with different operators (non-OMP).  Probably we
           // should distinguish all these cases.
+#ifndef KEY
+        // There is no way to be sure that we have a bad operator, this
+        // message can aid in debugging, but we cannot give wrong warnings
+        // for that.
         ErrMsgLine(EC_MPLOWER_red_conflict, WN_Find_Linenum(wn),
 	           Store_ST(wn));
+#else
+        DevWarn ("Probably inconsistent reduction operator for variable %s",
+                 ST_name (Store_ST(wn)));
+#endif
       }
     }
 
@@ -879,8 +899,11 @@ static OPERATOR Reduction_Operator(WN *redn_pragma, WN *assign_stmt)
   }
 
   if (!oper_ok) {
+#ifndef KEY
+    // There is no way to be sure that we have a bad operator
     ErrMsgLine(EC_MPLOWER_red_badop, WN_Find_Linenum(assign_stmt),
                Store_ST(assign_stmt));
+#endif // !KEY
     return OPERATOR_UNKNOWN;
   }
 
@@ -985,7 +1008,7 @@ static WN *Translate_OMP_to_MP(WN *wn)
     Convert_Section_To_Pdo(wn,section);
   }
 
-  wn = Lower_Master(wn);
+//  wn = Lower_Master(wn);
   
   if (WN_operator(wn) == OPR_INTRINSIC_CALL) {
     Lower_Fetch_And_Op(wn);
@@ -994,8 +1017,9 @@ static WN *Translate_OMP_to_MP(WN *wn)
 
   if (WN_opcode(wn) == OPC_REGION && RID_TYPE_mp(REGION_get_rid(wn))) {
     // It is an MP region. Add memory barriers around it if necessary
+#ifndef KEY
     Add_Memory_Barriers (wn);
-
+#endif
     // If it is a loop with SIMPLE schedtype plus CHUNK,
     // then convert to INTERLEAVE
     Convert_Simple_To_Interleaved (wn);
@@ -1072,7 +1096,14 @@ WN_st(wn) == NULL is fishy--DRK
 */
 
       // this IF is assertion code to be changed back--DRK
-    if (WN_st(wn) != NULL) {
+    // for test purpose. csc. maybe REMOVED later
+
+    // Adding crit_begin_st !=NULL check.
+    // because cfe may generate a NULL st CRITICAL_SECTION_BEGIN,
+    // but with a zero-length st CRITICAL_SECTION_END.
+    // TODO: fix this after the cfe altered.
+    // csc.
+    if (crit_begin_st != NULL && WN_st(wn) != NULL) {
       FmtAssert (ST_class(WN_st(wn)) == CLASS_CONST, ("non-CONST class"));
       FmtAssert (ST_class(crit_begin_st) == CLASS_CONST, ("non-CONST class"));
 
@@ -1087,6 +1118,13 @@ WN_st(wn) == NULL is fishy--DRK
                  0, ("Name on end-critical differs from begin-critical"));
     }
 
+    if (crit_begin_st == NULL && WN_st(wn) != NULL)
+    {
+	//hack for cfe generated non-name critical section.
+	//csc.
+      WN_st_idx(wn) = ST_st_idx(critical_st[critical_st.Lastidx()]);
+      
+    }
     if (WN_st(wn) == NULL) {
       // copy latest entry from critical
       WN_st_idx(wn) = ST_st_idx(critical_st[critical_st.Lastidx()]);
@@ -1152,8 +1190,14 @@ static void Add_Memory_Barriers (WN *wn) {
       WN_INSERT_BlockAfter (Get_Parent(wn), wn, WN_CreateBarrier(FALSE,0));
     } else {
       // forward then backward just before
-      WN_INSERT_BlockBefore (Get_Parent(wn), wn, WN_CreateBarrier(TRUE,0));
-      WN_INSERT_BlockBefore (Get_Parent(wn), wn, WN_CreateBarrier(FALSE,0));
+#ifdef KEY
+      if (WN_prev(wn) && 
+          (WN_operator(WN_prev(wn)) != OPR_BACKWARD_BARRIER ||
+           WN_operator(WN_prev(wn)) != OPR_FORWARD_BARRIER)){
+#endif
+        WN_INSERT_BlockBefore (Get_Parent(wn), wn, WN_CreateBarrier(TRUE,0));
+        WN_INSERT_BlockBefore (Get_Parent(wn), wn, WN_CreateBarrier(FALSE,0));
+      }
       // forward then backward just after
       WN_INSERT_BlockAfter (Get_Parent(wn), wn, WN_CreateBarrier(FALSE,0));
       WN_INSERT_BlockAfter (Get_Parent(wn), wn, WN_CreateBarrier(TRUE,0));
@@ -1316,8 +1360,12 @@ static void Convert_Section_To_Pdo(WN *sections, WN *pragma)
   WN *index = WN_CreateIdname(index_offset,index_st);
   WN *lb = WN_StidIntoPreg(MTYPE_I4,index_offset, index_st,
 			WN_CreateIntconst(OPC_I4INTCONST, 0 ));
-  WN *ub = WN_LT (MTYPE_I4, WN_LdidPreg (MTYPE_I4,index_offset ),
-                   WN_CreateIntconst(OPC_I4INTCONST,sec_stack->Elements()));
+//  WN *ub = WN_LT (MTYPE_I4, WN_LdidPreg (MTYPE_I4,index_offset ),
+//                   WN_CreateIntconst(OPC_I4INTCONST,sec_stack->Elements()));
+  //  modified by csc. The standard do model of Intel's RTL
+  //  need a ub operator of LE/GE type.
+  WN *ub = WN_LE (MTYPE_I4, WN_LdidPreg (MTYPE_I4,index_offset ),
+                   WN_CreateIntconst(OPC_I4INTCONST,sec_stack->Elements()-1));
   WN *incr = WN_StidIntoPreg ( MTYPE_I4, index_offset, index_st,
 		WN_Add(MTYPE_I4, WN_LdidPreg ( MTYPE_I4,index_offset),
 			WN_CreateIntconst ( OPC_I4INTCONST,(INT64)1 )));
@@ -1389,6 +1437,22 @@ static void Convert_Section_To_Pdo(WN *sections, WN *pragma)
     WN_INSERT_BlockAfter(WN_region_pragmas(sections),pragma,sched_pragma);
     Set_Parent(sched_pragma,WN_region_pragmas(sections));
   }
+#ifdef KEY
+  else
+  {
+    // bug 5201: Give the DO loop a static schedule with chunksize 1
+    WN *sched_pragma = WN_CreatePragma(WN_PRAGMA_MPSCHEDTYPE,(ST*) 0,
+                                       WN_PRAGMA_SCHEDTYPE_SIMPLE,0);
+    WN_INSERT_BlockAfter(WN_region_pragmas(sections),pragma,sched_pragma);
+
+    WN *chunksize = WN_CreateXpragma (WN_PRAGMA_CHUNKSIZE, (ST_IDX)NULL, 1);
+    WN_kid0 (chunksize) = WN_Intconst (MTYPE_U4, 1);
+    WN_INSERT_BlockAfter(WN_region_pragmas(sections),sched_pragma,chunksize);
+
+    Set_Parent(sched_pragma,WN_region_pragmas(sections));
+    Set_Parent(chunksize,WN_region_pragmas(sections));
+  }
+#endif // KEY
 
   // Mark the do loop index variable as local
   WN *local_pragma = WN_CreatePragma(WN_PRAGMA_LOCAL, index_st,index_offset,0);
@@ -1622,6 +1686,73 @@ static WN *Find_Same_Location(WN *loc,WN *wn)
   }
 }
 
+#ifdef KEY
+// Find under wn the location refered to in loc, also return its parent
+// return NULL if you do not find it
+static WN *Find_Same_Location_And_Parent(WN *loc, WN *wn,
+                                         WN ** parent, int * kidnum)
+{
+  if (Same_Location(loc,wn)) {
+    return wn;
+  } else {
+    // Don't expect it to be inside a block
+    if (WN_operator (wn) == OPR_BLOCK)
+      return NULL;
+    for (INT kidno=0; kidno<WN_kid_count(wn); kidno++) {
+      WN *tmp;
+      tmp = Find_Same_Location_And_Parent(loc,WN_kid(wn,kidno), parent, kidnum);
+      if (tmp)
+      {
+        if (WN_kid (wn, kidno) == tmp)
+        {
+          *kidnum = kidno;
+          *parent = wn;
+        }
+        return tmp;
+      }
+    }
+    return NULL;
+  }
+}
+
+// For atomic operations of the form
+//
+// x binop= expr
+//
+// sometimes we have 'x' buried into the whole expression
+//
+// e.g. x += y + 1
+// i.e. x = x + y + 1
+// we often associate as
+// x = (x + y) + 1
+// omp-lowerer expects x to be on top, so fix such expressions
+// Replace x by zero, and add 'x' to the result
+// Currently this function expects 'binop' to be +/-
+// Return true if the rhs format has been fixed.
+static BOOL format_rhs_atomic_stmt (WN * store)
+{
+  WN * op = WN_kid0 (store);
+  // We probably don't need this for operations other than +/-
+  if (WN_operator (op) != OPR_ADD && WN_operator (op) != OPR_SUB)
+    return FALSE;
+  // Now find the load of the lhs st buried somewhere down
+                                                                                
+  WN * parent;
+  int kidno;
+  WN * find = Find_Same_Location_And_Parent (store, op, &parent, &kidno);
+  FmtAssert (find, ("Invalid atomic operation stmt"));
+  Is_True (WN_kid (parent, kidno) == find, ("Operand mismatch"));
+                                                                                
+  WN_kid (parent, kidno) = WN_Intconst (WN_rtype (find), 0);
+  // Avoid a call to the simplifier
+  WN * add = WN_Create (OPR_ADD, WN_rtype (op), MTYPE_V, 2);
+  WN_kid0 (add) = find;
+  WN_kid1 (add) = op;
+  WN_kid0 (store) = add;
+  return TRUE;
+}
+#endif // KEY
+
 /***********************************************************************
  *
  * Allocate and return a SYMBOL* for a local variable of type mtype.
@@ -1777,7 +1908,11 @@ Atomic_Using_Swap(WN *atomic, WN *store, WN *operation, WN *parent,
 
   // copy 'x' into 'x2'
   WN *var_copy = WN_COPY_Tree(var_kid);
+#ifdef KEY // bug 5264
+  if (MTYPE_is_float(type) != MTYPE_is_float(swap_type)) {
+#else
   if (type != swap_type) {
+#endif
     var_copy = WN_Tas(swap_type,Be_Type_Tbl(swap_type),var_copy);
   }
   ST *var_st;
@@ -1817,13 +1952,27 @@ Atomic_Using_Swap(WN *atomic, WN *store, WN *operation, WN *parent,
   }
   if (!unpatterned) {
     new_op = WN_CopyNode(operation);
+#ifdef KEY
+    WN *new_var_kid = WN_Ldid(swap_type, 0, var_st, Be_Type_Tbl(type));
+    if (MTYPE_is_float(type) != MTYPE_is_float(swap_type))
+      new_var_kid = WN_Tas(type, Be_Type_Tbl(type), new_var_kid);  // bug 5552
+#endif
+
     if (expr_kid == WN_kid1(operation)) {
+#ifdef KEY	// bug 5512
+      WN_kid0(new_op) = new_var_kid;
+#else
       WN_kid0(new_op) = WN_COPY_Tree(var_kid);
+#endif
       WN_kid1(new_op) = WN_Ldid(type,0,expr_st,
 		  Be_Type_Tbl(type));
     } else {
       Is_True(expr_kid == WN_kid0(operation),("Bad kid in Atomic_Using_Swap"));
+#ifdef KEY	// bug 5512
+      WN_kid1(new_op) = new_var_kid;
+#else
       WN_kid1(new_op) = WN_COPY_Tree(var_kid);
+#endif
       WN_kid0(new_op) = WN_Ldid(type,0,expr_st,
 		  Be_Type_Tbl(type));
     }
@@ -1833,7 +1982,11 @@ Atomic_Using_Swap(WN *atomic, WN *store, WN *operation, WN *parent,
   } else {
     new_op = WN_COPY_Tree(operation);
   }
+#ifdef KEY // bug 5264
+  if (MTYPE_is_float(type) != MTYPE_is_float(swap_type)) {
+#else
   if (type != swap_type) {
+#endif
     new_op = WN_Tas(swap_type,Be_Type_Tbl(swap_type),new_op);
   }
   stid = WN_Stid(swap_type,0,result_st,
@@ -1872,10 +2025,10 @@ Atomic_Using_Swap(WN *atomic, WN *store, WN *operation, WN *parent,
 
   WN *c_s;
   if (swap_type == MTYPE_I4) {
-    c_s=WN_Create_Intrinsic(OPC_VINTRINSIC_CALL,
+    c_s=WN_Create_Intrinsic(OPC_U4INTRINSIC_CALL,
 		    INTRN_COMPARE_AND_SWAP_I4,3,kids);
   } else {
-    c_s=WN_Create_Intrinsic(OPC_VINTRINSIC_CALL,
+    c_s=WN_Create_Intrinsic(OPC_U8INTRINSIC_CALL,
 		    INTRN_COMPARE_AND_SWAP_I8,3,kids);
   }
   WN_Set_Call_Parm_Mod(c_s);
@@ -1904,6 +2057,7 @@ Atomic_Using_Swap(WN *atomic, WN *store, WN *operation, WN *parent,
 }
 
 // Use a direct fetch-and-op intrinsic
+// Changes contents of store if it is not of proper format
 WN *Atomic_Direct(WN *atomic, WN *store, WN *operation)
 {
   WN *retblock = WN_CreateBlock();
@@ -1915,6 +2069,31 @@ WN *Atomic_Direct(WN *atomic, WN *store, WN *operation)
   // Find which kid is which
   WN *expr_kid;
   WN *var_kid;
+#ifdef KEY
+  for (INT i=0; i<2; i++)
+  {
+    if (Same_Location(store,WN_kid0(operation))) {
+      var_kid = WN_kid0(operation);
+      expr_kid = WN_kid1(operation);
+      break;
+    } else if (Same_Location(store,WN_kid1(operation))) {
+      var_kid = WN_kid1(operation);
+      expr_kid = WN_kid0(operation);
+      break;
+    } else {
+      BOOL format_ok = format_rhs_atomic_stmt (store);
+      if (!format_ok)
+      {
+        ErrMsgSrcpos(EC_MPLOWER_Generic_Error, WN_Get_Linenum(atomic),
+		     "OMP ATOMIC: Right hand side not of appropriate form. \n");
+        return NULL;
+      }
+      // Update with new operation
+      operation = WN_kid0 (store);
+      oper = WN_operator (operation);
+    }
+  }
+#else
   if (Same_Location(store,WN_kid0(operation))) {
     var_kid = WN_kid0(operation);
     expr_kid = WN_kid1(operation);
@@ -1926,6 +2105,7 @@ WN *Atomic_Direct(WN *atomic, WN *store, WN *operation)
 		 "OMP ATOMIC: Right hand side not of appropriate form. \n");
     return NULL;
   }
+#endif // KEY
 
   TYPE_ID type = OPCODE_desc(store_opc);
   Is_True(type == MTYPE_I4 || type == MTYPE_I8,("Bad type in Atomic_Direct"));
@@ -2107,7 +2287,17 @@ static void Lower_Atomic(WN *atomic)
     return;
   }
 
-
+#ifdef TARG_X8664 /*Bug 4874, 4893, 4936 */
+  if (Is_Target_32bit()){
+    TYPE_ID store_type = OPCODE_desc(WN_opcode(store));
+    if (store_type == MTYPE_I8 ||
+        store_type == MTYPE_U8 ||
+         store_type == MTYPE_F8) {
+      Atomic_Using_Critical(atomic, store);
+      return;
+    }
+  }
+#endif
   ATOMIC_Lowering_Class alclass = WN_ATOMIC_Lowering_Class(atomic);
 
   switch (alclass) {
@@ -2527,6 +2717,9 @@ static WN *Add_Ordered_XPragmas (WN* wn) {
                            ST_type(WN_st(WN_kid1(do_wn))));
 
   // insert the first call, to begin_iter
+  // No need to insert the two shell-call for GUIDE RTL.
+  // csc.
+  /*
   WN* call_wn = WN_Create (OPC_VCALL, 1);
   WN_st_idx(call_wn) = ST_st_idx(begin_iter_st);
   WN_Set_Call_Non_Data_Mod(call_wn);
@@ -2548,7 +2741,7 @@ static WN *Add_Ordered_XPragmas (WN* wn) {
   WN_kid0(call_wn) = index_wn;
   Parentize(call_wn);
   WN_INSERT_BlockBefore(body, NULL, call_wn);
-
+  */
   // Now generate an Xpragma for the lower bound and the stride,
   // in the pragma block of the region.
   WN *lb = WN_COPY_Tree (WN_kid0(WN_start(do_wn)));
@@ -2803,6 +2996,8 @@ Apply_Par_Region_Default_Scopes(WN *wn, ST_TO_BOOL_HASH *processed,
  *   (b) If both the outer and inner pragmas are PRIVATE and compiler-
  *       generated. In this case we delete the inner PRIVATE. This can
  *       result from inlining.
+ *       KEY: I don't see why the inner pragma also needs to be compiler-
+ *            generated. bug 6428 shows why !compiler-generated is valid.
  *
  * Parameters:
  *  wn : in/out : Whirl tree in which to perform privatization
@@ -2852,6 +3047,7 @@ Privatize_Index_Vars_And_Check_Final_Scopes(
       ST *st = WN_st(prag);
       WN *scope_prag;
 
+#ifndef KEY
         // PV 596988: check that no THREADPRIVATE variables appear in a
 	// scope clause
       switch (prag_id) {
@@ -2863,7 +3059,6 @@ Privatize_Index_Vars_And_Check_Final_Scopes(
         {
 	  ST *split_blk;
           ST *common_blk = ST_Source_COMMON_Block(st, &split_blk);
-
           if (ST_is_thread_private(st) ||
 	      (split_blk && ST_is_thread_private(split_blk)) ||
               (common_blk && ST_is_thread_private(common_blk)))
@@ -2873,6 +3068,7 @@ Privatize_Index_Vars_And_Check_Final_Scopes(
       default:
         break;
       }
+#endif
 
       if (prag_id == WN_PRAGMA_REDUCTION &&
           pragma_block_list->Elements() == 0 && !is_par_region &&
@@ -2909,8 +3105,13 @@ Privatize_Index_Vars_And_Check_Final_Scopes(
 
 	if (WN_pragma(scope_prag) == WN_PRAGMA_LOCAL &&
 	    prag_id == WN_PRAGMA_LOCAL &&
-	    WN_pragma_compiler_generated(scope_prag) &&
-	    WN_pragma_compiler_generated(prag)) {
+	    WN_pragma_compiler_generated(scope_prag)
+#ifndef KEY
+	    // bug 6428
+	    && WN_pragma_compiler_generated(prag)
+#endif // !KEY
+	    )
+        {
           reprivatizing_pragmas.AddElement(prag);
 	  break;  // exception case (b)
         }

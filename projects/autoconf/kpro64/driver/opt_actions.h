@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -60,6 +60,12 @@
 #define CRAY_MP		1
 
 typedef enum {
+  M_CPU,
+  M_ARCH,
+  M_TUNE,
+} m_flag;
+  
+typedef enum {
   ABI_RAG32,
   ABI_N32,
   ABI_64,
@@ -105,6 +111,10 @@ extern int instrumentation_invoked;	/* Instrument whirl */
 
 extern boolean ftz_crt;		/* add flush-to-zero crt */
 
+#ifdef KEY /* Bug 4210 */
+extern char *f90_module_dir;	/* value of -module option */
+#endif /* KEY Bug 4210 */
+
 /* return whether has been toggled yet */
 extern boolean is_toggled (int obj);
 
@@ -131,6 +141,9 @@ extern void opt_action (int optflag);
 /* return whether to mark this flag as unseen */
 extern boolean flag_is_superceded (int optflag);
 
+#ifdef KEY /* bug 4260 */
+extern void check_convert_name(char *name);
+#endif /* KEY bug 4260 */
 
 /* check if there is a -- and _XPG is set */
 extern void check_dashdash ( void );
@@ -141,6 +154,8 @@ extern void set_dsm_options (void);
 extern void Process_Mp (void);
 extern void Process_Cray_Mp (void);
 
-extern void print_file_path (char *);	/* print path to named file */
+extern void print_file_path (char *, int);	/* print path to named file */
 
 extern int subverbose ;
+
+extern char *target_cpu;

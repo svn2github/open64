@@ -1,3 +1,7 @@
+/*
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* Implements exception handling.
    Copyright (C) 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -742,6 +746,26 @@ expand_eh_region_end_allowed (allowed, failure)
   do_pending_stack_adjust ();
 
   emit_label (around_label);
+}
+
+/* Convert a ptr_mode address ADDR_TREE to a Pmode address controlled by
+   POINTERS_EXTEND_UNSIGNED and return it.  */
+/* gcc patch */
+rtx
+expand_builtin_extend_pointer (tree addr_tree)
+{
+  rtx addr = expand_expr (addr_tree, NULL_RTX, ptr_mode, 0);
+  int extend;
+
+#ifdef POINTERS_EXTEND_UNSIGNED
+  extend = POINTERS_EXTEND_UNSIGNED;
+#else
+  /* The previous EH code did an unsigned extend by default, so we do this also
+     for consistency.  */
+  extend = 1;
+#endif
+
+  return convert_modes (word_mode, ptr_mode, addr, extend);
 }
 
 /* End an exception region for a must-not-throw filter.  FAILURE is an

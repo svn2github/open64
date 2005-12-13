@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1243,6 +1243,15 @@ int ntr_stor_blk_tbl (char *name_str,
    SB_DEF_COLUMN(stor_blk_tbl_idx)	= def_column;
    SB_SCP_IDX(stor_blk_tbl_idx)		= curr_scp_idx;
    SB_ORIG_SCP_IDX(stor_blk_tbl_idx)	= curr_scp_idx;
+#ifdef KEY /* Bug 4630 */
+   /* Because the length of a common block is expressed in bits, Integer_4 is
+    * not adequate in -m32 mode. Not clear whether other entities besides
+    * common block may have the same problem, but we want a safe limited fix.
+    */
+   if (Common == (sb_type_type) blk_type) {
+     SB_LEN_IDX(stor_blk_tbl_idx)		= C_INT_TO_CN(Integer_8, 0);
+   } else
+#endif /* KEY Bug 4630 */
    SB_LEN_IDX(stor_blk_tbl_idx)		= CN_INTEGER_ZERO_IDX;
    SB_LEN_FLD(stor_blk_tbl_idx)		= CN_Tbl_Idx;
    SB_BLK_TYPE(stor_blk_tbl_idx)	= (sb_type_type) blk_type;
@@ -4306,11 +4315,50 @@ char *get_basic_type_str(int			type_idx)
    		char	*str;
    static	char	 str1[45];
 
+#ifdef KEY /* Bug 5040 */
+   static char *type_strings[Num_Linear_Types] = {
+     /* Err_Res */		"[Internal Error0]",
+     /* Short_Char_Const */	"CHARACTER",
+     /* Short_Typeless_Const */	"BOOLEAN",
+     /* Typeless_1 */		"TYPELESS/HOLLERITH",
+     /* Typeless_2 */		"TYPELESS/HOLLERITH",
+     /* Typeless_4 */		"BOOLEAN",
+     /* Typeless_8 */		"BOOLEAN",
+     /* Long_Typeless */	"TYPELESS/HOLLERITH",
+     /* Integer_1 */		"INTEGER(KIND=1)",
+     /* Integer_2 */		"INTEGER(KIND=2)",
+     /* Integer_4 */		"INTEGER(KIND=4)",
+     /* Integer_8 */		"INTEGER(KIND=8)",
+     /* Real_4 */		"REAL(KIND=4)",
+     /* Real_8 */		"REAL(KIND=8)",
+     /* Real_16 */		"REAL(KIND=16)",
+     /* Complex_4 */		"COMPLEX(KIND=4)",
+     /* Complex_8 */		"COMPLEX(KIND=8)",
+     /* Complex_16 */		"COMPLEX(KIND=16)",
+     /* CRI_Ptr_8 */		"Cray pointer",
+     /* Logical_1 */		"LOGICAL(KIND=1)",
+     /* Logical_2 */		"LOGICAL(KIND=2)",
+     /* Logical_4 */		"LOGICAL(KIND=4)",
+     /* Logical_8 */		"LOGICAL(KIND=8)",
+     /* Character_1 */		"CHARACTER",
+     /* Character_2 */		"CHARACTER",
+     /* Character_4 */		"CHARACTER",
+     /* CRI_Ch_Ptr_8 */		"Cray character pointer",
+     /* Structure_Type */	"[Internal Error1]",
+     /* CRI_Parcel_Ptr_8 */	"Cray parcel pointer"
+     };
+# ifdef _DEBUG
+   /* Make sure the initializer isn't missing any elements */
+   if (0 == type_strings[Num_Linear_Types - 1]) { abort(); }
+# endif /* _DEBUG */
+#endif /* KEY Bug 5040 */
 
    TRACE (Func_Entry, "get_basic_type_str", NULL);
 
    switch (TYP_TYPE(type_idx)) {
 
+#ifdef KEY /* Bug 5040 */
+#else
       case Typeless:
          if (TYP_LINEAR(type_idx) == Typeless_4 ||
              TYP_LINEAR(type_idx) == Typeless_8 ||
@@ -4343,6 +4391,7 @@ char *get_basic_type_str(int			type_idx)
       case Character:
          str =  "CHARACTER";
          break;
+#endif /* KEY Bug 5040 */
 
       case Structure:
          str1[0] =  '\0';
@@ -4352,6 +4401,11 @@ char *get_basic_type_str(int			type_idx)
          str  =  str1;
          break;
 
+#ifdef KEY /* Bug 5040 */
+      default:
+	 str = type_strings[TYP_LINEAR(type_idx)];
+	 break;
+#else /* KEY Bug 5040 */
       case CRI_Ptr:
          str = "Cray pointer";
          break;
@@ -4363,6 +4417,7 @@ char *get_basic_type_str(int			type_idx)
       case CRI_Parcel_Ptr:
          str = "Cray parcel pointer";
          break;
+#endif /* KEY Bug 5040 */
 
    }  /* End switch */
 

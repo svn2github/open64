@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -213,7 +217,11 @@
                           forall_semantics,             /* Forall_Stmt        */
                           end_forall_semantics,         /* End_Forall_Stmt    */
                           else_stmt_semantics,     /* Else_Where_Mask_Stmt    */
-                          no_semantics_routine		/* Volatile_Stmt      */
+                          no_semantics_routine,		/* Volatile_Stmt      */
+			  directive_stmt_semantics,
+			  		/* Open_MP_End_Parallel_Workshare_Stmt */
+			  directive_stmt_semantics
+				  	/* Open_MP_End_Workshare_Stmt */
 			};
 
 /*********************************************************\

@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -238,6 +238,11 @@ Rehash_tree_rec(CODEREP *newcr,
 	  *changed = TRUE;
       } else
 	newcr = cr_after_simp;
+
+#ifdef KEY // bug 5285
+      if (newcr->Kind() == CK_CONST)
+	return newcr;
+#endif
 
       // Why isn't CK_VAR possible here?
       Is_True(newcr->Kind()==CK_IVAR || (newcr->Kind()==CK_OP &&

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -364,16 +364,18 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
       FmtAssert (pu, ("Null pu info"));
 
       IPA_NODE * cg_node = Get_Node_From_PU (pu);
-      FmtAssert (cg_node, ("Null ipa node"));
+      Is_True (cg_node, ("Null ipa node"));
 
-      if (!cg_node->Is_PU_Write_Complete())
+      if (!cg_node->Is_PU_Write_Complete() && !cg_node->EHinfo_Updated())
       {
-	FmtAssert (PU_src_lang (cg_node->Get_PU()) & PU_CXX_LANG, 
+	// Note: Don't set EHinfo_Updated here, as we are not yet done with
+	// the entire PU.
+	Is_True (PU_src_lang (cg_node->Get_PU()) & PU_CXX_LANG, 
 		   ("Exception region in non-C++ PU"));
 
 	int sym_size;
 	SUMMARY_SYMBOL * sym_array = IPA_get_symbol_file_array (cg_node->File_Header(), sym_size);
-	FmtAssert (sym_array != NULL, ("Missing SUMMARY_SYMBOL section"));
+	Is_True (sym_array != NULL, ("Missing SUMMARY_SYMBOL section"));
     	INITV_IDX types = INITV_next (INITV_blk (INITO_val (WN_ereg_supp (node))));
 	for (; types; types = INITV_next (types))
 	{
@@ -473,9 +475,9 @@ static Elf64_Word
 write_table (TABLE& fld, off_t base_offset,
 	     Output_File *fl)
 {
-    off_t cur_offset = ir_b_align (fl->file_size, __ALIGNOF(TABLE::base_type),
+    off_t cur_offset = ir_b_align (fl->file_size, __ALIGNOF(typename TABLE::base_type),
 				   0);
-    fl->file_size = ir_b_align (fl->file_size, __ALIGNOF(TABLE::base_type), 0);
+    fl->file_size = ir_b_align (fl->file_size, __ALIGNOF(typename TABLE::base_type), 0);
 
 #ifndef __GNUC__
     const WRITE_TABLE_OP<TABLE::base_type> write_table_op(fl);

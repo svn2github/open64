@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -91,6 +91,11 @@ extern LABEL_IDX WFE_Get_LABEL (tree label, int def);
 // Bug 1023
 extern int WFE_Emit_Side_Effects_Pending (tree* node);
 extern int WFE_Null_ST_References (tree* node);
+
+extern void WFE_Start_Do_Loop (struct nesting *);
+extern void WFE_End_Do_Loop (struct nesting *);
+extern void WFE_Terminate_Do_Loop (struct nesting *);
+extern void WFE_Expand_Pragma (tree);
 #endif
 
 #ifdef __cplusplus

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -113,6 +113,7 @@
 
 #ifdef KEY
 #include "ipa_builtins.h"
+#include "ipo_parent.h"
 #endif
 
 #ifndef KEY
@@ -366,7 +367,59 @@ Rename_Call_To_Cloned_PU (IPA_NODE *caller,
 
 } // Rename_Call_To_Cloned_PU
 
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+static void Fixup_EHinfo_In_PU (IPA_NODE* node, WN * w = NULL)
+{
+  if (w && WN_operator(w) == OPR_REGION && WN_region_is_EH (w) &&
+      WN_block_empty (WN_region_pragmas (w)))
+  {
+    int sym_size;
+    SUMMARY_SYMBOL * sym_array = IPA_get_symbol_file_array (node->File_Header(), sym_size);
+    Is_True (sym_array != NULL, ("Missing SUMMARY_SYMBOL section"));
+    INITV_IDX blk = INITO_val (WN_ereg_supp (w));
+    // ipl may create multiple copies of the same region, so keep track if
+    // a region has been updated
+    if (INITV_flags (Initv_Table[blk]) != INITVFLAGS_UPDATED)
+    {
+      Set_INITV_flags (blk, INITVFLAGS_UPDATED);
+      INITV_IDX types = INITV_next (INITV_blk (blk));
+      for (; types; types = INITV_next (types))
+      {
+        if (INITV_kind (types) == INITVKIND_ZERO)
+          continue;
+        int index = TCON_uval (INITV_tc_val (types));
+        if (index <= 0) continue;
+        ST_IDX new_idx = sym_array[index].St_idx();
+        INITV_IDX next = INITV_next (types);        // for backup
+        INITV_Set_VAL (Initv_Table[types], Enter_tcon (
+                       Host_To_Targ (MTYPE_U4, new_idx)), 1);
+        Set_INITV_next (types, next);
+      }
+    }
+  }
 
+  if (w == NULL)
+    w = node->Whirl_Tree (FALSE);
+
+  if (!OPCODE_is_leaf (WN_opcode (w)))
+  {
+    if (WN_operator (w) == OPR_BLOCK)
+    {
+      WN * kid = WN_first (w);
+      while (kid)
+      {
+        Fixup_EHinfo_In_PU (node, kid);
+	kid = WN_next (kid);
+      }
+    }
+    else
+    {
+      for (INT kidno=0; kidno<WN_kid_count(w); ++kidno)
+        Fixup_EHinfo_In_PU (node, WN_kid(w, kidno));
+    }
+  }
+}
+#endif
 
 static BOOL
 Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
@@ -383,7 +436,29 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 
 #ifdef KEY
     Get_enclosing_region (caller, edge);
-#endif
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    // For C++, fix-up the summarized information in EH regions now, because
+    // after inlining we won't know from which file each symbol came, making
+    // it impossible to replace summary.
+    if (!caller->EHinfo_Updated())
+    {
+      PU p = caller->Get_PU();
+      if ((PU_src_lang (p) & PU_CXX_LANG) && PU_has_region (p))
+        Fixup_EHinfo_In_PU (caller);
+      caller->Set_EHinfo_Updated();
+    }
+    if (!callee->EHinfo_Updated())
+    {
+      PU p = callee->Get_PU();
+      if ((PU_src_lang (p) & PU_CXX_LANG) && PU_has_region (p))
+      {
+        IPA_NODE_CONTEXT temp_context (callee);
+        Fixup_EHinfo_In_PU (callee);
+      }
+      callee->Set_EHinfo_Updated();
+    }
+#endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#endif // KEY
 
 #if Is_True_On
     if ( Get_Trace ( TKIND_ALLOC, TP_IPA) ) {
@@ -625,6 +700,72 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 #endif
     }
     
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    static INT pure_call_opt_count = 0;
+    if (!action_taken &&
+         IPA_Enable_Pure_Call_Opt && 
+	 !callee->Summary_Proc()->Has_side_effect()) 
+    {
+      IPA_NODE_CONTEXT context (caller);
+
+      if (!edge->Whirl_Node())
+        cg->Map_Callsites (caller);
+
+      WN * ret_val, * ret_val_kid;
+
+      WN * call = edge->Whirl_Node();
+      ret_val = WN_next(call);
+
+      if (ret_val)
+      {
+        ret_val_kid = WN_kid0 (ret_val);
+	BOOL types_ok = WN_rtype (call) != MTYPE_M &&
+	                WN_desc (call) == MTYPE_V;
+        BOOL transform = (ret_val_kid && WN_operator (ret_val) == OPR_STID &&
+            WN_operator (ret_val_kid) == OPR_LDID &&
+	    WN_load_offset (ret_val_kid) == -1 &&
+	    types_ok);
+	if (transform) pure_call_opt_count++;
+	if (transform &&
+	    pure_call_opt_count > IPA_Pure_Call_skip_before)
+	{ // actually do the transformation
+	  WN * new_call = WN_Create (OPR_PURE_CALL_OP,
+	                             WN_desc (ret_val), //WN_rtype (call)
+				     MTYPE_V, // WN_desc (call)
+				     WN_kid_count (call));
+	  WN_st_idx (new_call) = WN_st_idx (call);
+	  for (int i=0; i<WN_kid_count(call); ++i)
+	    WN_kid(new_call,i) = WN_kid(call,i);
+	  
+	  IPA_WN_Delete (caller->Map_Table(), ret_val_kid);
+
+	  WN_kid (ret_val, 0) = new_call;
+
+	  // delete the call wn
+	  if (WN_prev (call))
+	    WN_next (WN_prev (call)) = ret_val;
+	  else // find the parent block
+	  {
+	    WN * block = 
+	      WN_Get_Parent (call, caller->Parent_Map(), caller->Map_Table());
+
+	    Is_True (block, ("NULL parent of call node"));
+	    Is_True (WN_operator(block) == OPR_BLOCK, 
+	             ("Parent of stmt not a block"));
+
+	    WN_first (block) = ret_val;
+	  }
+	  WN_prev (ret_val) = WN_prev (call);
+
+	  IPA_WN_Delete (caller->Map_Table(), call);
+	  // delete the edge
+	  cg->Graph()->Delete_Edge (edge->Edge_Index());
+	  return;
+	}
+      }
+    }
+#endif
+
     if (!action_taken) {
 	/* when the type checking for dce and inlining is
 	   moved to the analysis phase, we can optimize the
@@ -1443,7 +1584,6 @@ struct order_node_by_file_id {
     	return first->File_Id() < second->File_Id();
     }
 };
-#include "ipo_parent.h"
 static void
 IPA_Remove_Regions (IPA_NODE_VECTOR v, IPA_CALL_GRAPH * cg)
 {
@@ -1528,6 +1668,47 @@ IPA_Remove_Regions (IPA_NODE_VECTOR v, IPA_CALL_GRAPH * cg)
     }
     Scope_tab = old_scope;
 }
+
+// Bug 4244: Check if the PU we are going to write has child-PUs. If 
+// yes, then write them out (writing them out of course does not write 
+// all their sections). See IP_WRITE_pu for more details on handling 
+// of PUs with lexical-level > 2.
+static void
+check_for_nested_PU (IPA_NODE * node)
+{
+    PU_Info * info = node->PU_Info();
+
+    if (info)
+    {
+      PU_Info * child = PU_Info_child (info);
+      // check for children
+      while (child)
+      {
+	IPA_NODE * child_node = Get_Node_From_PU (child);
+#ifdef Is_True_On
+	int lexical_level = PU_lexical_level (child_node->Func_ST());
+	Is_True (lexical_level > GLOBAL_SYMTAB+1, 
+	         ("Nested PU's level should be greater than 2"));
+	Is_True (node->File_Id() == child_node->File_Id(),
+	         ("Parent and child PU are in different files"));
+	if (!PU_ftn_lang (Pu_Table[ST_pu (child_node->Func_ST())]))
+	  DevWarn ("Encountered nested PU in non-Fortran langage");
+#endif
+	// If it has been written out, the nested PUs should also
+	// have been written out
+	if (!PU_Written (IPA_Call_Graph->Graph(), child_node,
+	    &child_node->File_Header()) &&
+	    !PU_Deleted (IPA_Call_Graph->Graph(), child_node->Node_Index(),
+	    &child_node->File_Header()))
+	{
+          check_for_nested_PU (child_node);
+	  IPA_Rename_Builtins (child_node);
+	  child_node->Write_PU();
+	}
+	child = PU_Info_next (child);
+      }
+    }
+}
 #endif // KEY
 
 static void
@@ -1607,9 +1788,15 @@ IPO_main (IPA_CALL_GRAPH* cg)
     	{
       	    IPA_NODE *emit = emit_order.top();
 	    emit_order.pop();
-	    IPA_Rename_Builtins(emit);
-	    IPA_NODE::next_file_id = emit_order.empty() ? -1 : emit_order.top()->File_Id();
-	    emit->Write_PU();
+	    if (!PU_Written (cg->Graph(), emit,
+	        &emit->File_Header()))
+	    {
+	      // bug 4244
+	      check_for_nested_PU (emit);
+	      IPA_Rename_Builtins(emit);
+	      IPA_NODE::next_file_id = emit_order.empty() ? -1 : emit_order.top()->File_Id();
+	      emit->Write_PU();
+	    }
     	}
       }
       else if (IPA_Enable_PU_Reorder == REORDER_BY_EDGE_FREQ)
@@ -1637,6 +1824,7 @@ IPO_main (IPA_CALL_GRAPH* cg)
 			!PU_Written (cg->Graph(), *first,
 			&(*first)->File_Header()))
 	    {
+		check_for_nested_PU (*first);
 		IPA_Rename_Builtins(*first);
 		(*first)->Write_PU();
 	    }
@@ -1658,10 +1846,16 @@ IPO_main (IPA_CALL_GRAPH* cg)
     	while (!emit_order.empty())
     	{
       	    IPA_NODE *emit = emit_order.top();
-      	    //printf("Writing %s with frequency %f\n", emit->Name(), emit->Get_frequency().Value());
-	    IPA_Rename_Builtins(emit);
-	    emit->Write_PU();
 	    emit_order.pop();
+      	    //printf("Writing %s with frequency %f\n", emit->Name(), emit->Get_frequency().Value());
+	    if (!PU_Written (cg->Graph(), emit,
+	        &emit->File_Header()))
+	    {
+	      // bug 4668
+	      check_for_nested_PU (emit);
+	      IPA_Rename_Builtins(emit);
+	      emit->Write_PU();
+	    }
     	}
       }
     }
@@ -1781,8 +1975,12 @@ Perform_Interprocedural_Optimization (void)
       ipa_compile_init ();
       ipacom_doit (NULL);
       exit (RC_SYSTEM_ERROR); // should never reach here
-    } else
+    } else {
       Signal_Cleanup (0);
+#ifdef KEY
+      exit(1);	// Moved exit(1) from Signal_Cleanup to here.
+#endif
+    }
   }
 
   Set_tlog_phase(PHASE_IPA);

@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -1218,5 +1223,159 @@ public:
    
 }; // VN_MEMLOC_EXPR
 
+
+#ifdef KEY
+//-------------- Interface for VN_CALL_OP_EXPR -----------------
+//--------------------------------------------------------------
+
+class VN_CALL_OP_EXPR : public VN_EXPR
+{
+private:
+   
+   static FREE_STACK *_Free;
+
+   ST_IDX          _aux_id;
+   UINT32          _num_opnds;
+   VN_VALNUM_PAIR  _opnd[3];    // (first == PARAM, second == MU)!
+   VN_VALNUM_PAIR *_opnd_array; // For larger numbers of arguments
+   
+   VN_CALL_OP_EXPR(ST_IDX aux_id, 
+		   UINT32    num_opnds):
+      _aux_id(aux_id), _num_opnds(num_opnds), _opnd_array(NULL)
+   {
+      if (num_opnds > 3)
+	 _opnd_array = CXX_NEW_ARRAY(VN_VALNUM_PAIR, num_opnds, _Mpool);
+      for (INT i = 0; i < num_opnds; i++)
+      {
+	 set_opnd(i, VN_VALNUM::Bottom());
+	 set_opnd_vsym(i, VN_VALNUM::Bottom());
+      }
+   }
+   
+public:
+
+   static void Init_Free_List() {_Free = CXX_NEW(FREE_STACK(_Mpool), _Mpool);}
+   static void Reclaim_Free_List() {CXX_DELETE(_Free, _Mpool); _Free = NULL;}
+
+   static VN_CALL_OP_EXPR *Create(ST_IDX aux_id, 
+				  UINT32    num_opnds);
+  
+   void free() 
+   {
+      if (_opnd_array != NULL)
+      {
+	 CXX_DELETE_ARRAY(_opnd_array, _Mpool);
+	 _opnd_array = NULL;
+      }
+      _Free->push(this);
+   }
+   
+   KIND get_kind() const 
+   {
+      return CALL_OP;
+   }
+
+   UINT32 get_num_opnds() const 
+   {
+      return _num_opnds;
+   }
+
+   VN_VALNUM get_opnd(UINT i) const 
+   {
+      Is_True(i < get_num_opnds(), ("Erroneous VN_CALL_OP_EXPR::opnd access"));
+      return (_opnd_array == NULL? 
+	      _opnd[i].first : _opnd_array[i].first);
+   }
+
+   VN_VALNUM get_vsym(UINT i=0) const 
+   {
+      Is_True(i < get_num_opnds(), ("Erroneous VN_CALL_OP_EXPR::vsym access"));
+      return (_opnd_array == NULL? 
+	      _opnd[i].second : _opnd_array[i].second);
+   }
+
+   BOOL has_top_opnd() const 
+   {
+      INT i = 0;
+      while(i < get_num_opnds() && get_opnd(i) != VN_VALNUM::Top()) i++;
+      return (i < get_num_opnds());
+   }
+
+   BOOL has_bottom_opnd() const 
+   {
+      INT i = 0;
+      while(i < get_num_opnds() && get_opnd(i) != VN_VALNUM::Bottom()) i++;
+      return (i < get_num_opnds());
+   }
+
+   ST_IDX get_aux_id() const 
+   {
+      return _aux_id;
+   }
+
+   void set_opnd(UINT32 i, VN_VALNUM vn)
+   {
+      Is_True(i < get_num_opnds(), ("Erroneous VN_CALL_OP_EXPR::opnd access"));
+      if (_opnd_array == NULL)
+	 _opnd[i].first = vn;
+      else
+	 _opnd_array[i].first = vn;
+   }
+
+   void set_opnd_vsym(UINT32 i, VN_VALNUM vn)
+   {
+      Is_True(i < get_num_opnds(), ("Erroneous VN_CALL_OP_EXPR::vsym access"));
+      if (_opnd_array == NULL)
+	 _opnd[i].second = vn;
+      else
+	 _opnd_array[i].second = vn;
+   }
+   
+   PTR simplify(VN *v);
+   
+   size_t hash()
+   {
+      size_t hashval = _aux_id;
+      Is_True(!has_bottom_opnd() && !has_top_opnd(),
+	     ("Cannot hash() with Top() or Bottom() operand!"));
+      for (INT i = 0; i < get_num_opnds(); i++)
+      {
+	 hashval += (get_opnd(i).ordinal() << 4);
+	 hashval += (get_vsym(i).ordinal() << 4);
+      }
+      return hashval;
+   }
+   
+   BOOL is_equal_to(CONST_PTR expr) const
+   {
+      BOOL truth = (expr != NULL                        &&
+		    expr->get_kind() == CALL_OP         &&
+		    expr->get_num_opnds() == _num_opnds &&
+		    expr->get_aux_id() == _aux_id);
+
+      for (INT i = 0; truth && i < get_num_opnds(); i++)
+	 truth = (expr->get_opnd(i) == get_opnd(i) &&
+		  expr->get_vsym(i) == get_vsym(i));
+      return truth;
+   }
+
+   void print(FILE *fp = stderr) const
+   {
+      fprintf(fp, "%d", _aux_id);
+      for (INT i = 0; i < get_num_opnds(); i++)
+      {
+	 if (i > 0)
+	    fputs(", ", fp);
+	 fputs("<", fp);
+	 get_opnd(i).print(fp);
+	 fputs(",", fp);
+	 get_vsym(i).print(fp);
+	 fputs(">", fp);
+      }
+      fputs(")", fp);
+   }
+   
+}; // VN_CALL_OP_EXPR
+#endif
 
 #endif // opt_vn_expr_taxonomyINCLUDED

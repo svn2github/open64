@@ -1,11 +1,11 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
 
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -1571,6 +1571,7 @@ expand_builtin_mathfn (exp, target, subtarget)
     case BUILT_IN_FLOOR:
     case BUILT_IN_FLOORF:
     case BUILT_IN_FLOORL:
+    case BUILT_IN_POW:
 #endif
     case BUILT_IN_SQRT:
     case BUILT_IN_SQRTF:
@@ -4246,6 +4247,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       case BUILT_IN_FLOOR:
       case BUILT_IN_FLOORF:
       case BUILT_IN_FLOORL:
+      case BUILT_IN_POW:
 #endif
       case BUILT_IN_SQRT:
       case BUILT_IN_SQRTF:
@@ -4279,13 +4281,13 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 #endif /* SGI_MONGOOSE */
       case BUILT_IN_STRLEN:
       case BUILT_IN_STRCPY:
-#ifndef SGI_MONGOOSE
       case BUILT_IN_STRNCPY:
+      case BUILT_IN_STRNCAT:
+#ifndef SGI_MONGOOSE
       case BUILT_IN_STRNCMP:
       case BUILT_IN_STRSTR:
       case BUILT_IN_STRPBRK:
       case BUILT_IN_STRCAT:
-      case BUILT_IN_STRNCAT:
       case BUILT_IN_STRSPN:
       case BUILT_IN_STRCSPN:
 #endif /* SGI_MONGOOSE */
@@ -4386,6 +4388,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
     case BUILT_IN_FLOOR:
     case BUILT_IN_FLOORF:
     case BUILT_IN_FLOORL:
+    case BUILT_IN_POW:
 #endif
     case BUILT_IN_SQRT:
     case BUILT_IN_SQRTF:
@@ -4489,13 +4492,11 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 	return target;
       break;
 
-#ifndef SGI_MONGOOSE
     case BUILT_IN_STRNCPY:
       target = expand_builtin_strncpy (arglist, target, mode);
       if (target)
 	return target;
       break;
-#endif // !SGI_MONGOOSE
 
     case BUILT_IN_STPCPY:
       target = expand_builtin_stpcpy (arglist, target, mode);
@@ -4509,6 +4510,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       if (target)
 	return target;
       break;
+#endif /* !SGI_MONGOOSE */
 
     case BUILT_IN_STRNCAT:
       target = expand_builtin_strncat (arglist, target, mode);
@@ -4516,6 +4518,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 	return target;
       break;
 
+#ifndef SGI_MONGOOSE
     case BUILT_IN_STRSPN:
       target = expand_builtin_strspn (arglist, target, mode);
       if (target)
@@ -4628,6 +4631,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 	break;
       else
 	{
+#ifndef KEY
 	  rtx buf_addr = expand_expr (TREE_VALUE (arglist), subtarget,
 				      VOIDmode, 0);
 	  rtx value = expand_expr (TREE_VALUE (TREE_CHAIN (arglist)),
@@ -4640,6 +4644,7 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 	    }
 
 	  expand_builtin_longjmp (buf_addr, value);
+#endif /* !KEY */
 	  return const0_rtx;
 	}
 
@@ -4691,6 +4696,9 @@ expand_builtin (exp, target, subtarget, mode, ignore)
     case BUILT_IN_EH_RETURN_DATA_REGNO:
       return expand_builtin_eh_return_data_regno (arglist);
 #endif
+    /* Apply gcc patch to support __builtin_extend_pointer */
+    case BUILT_IN_EXTEND_POINTER:
+      return expand_builtin_extend_pointer (TREE_VALUE (arglist));
     case BUILT_IN_VA_START:
     case BUILT_IN_STDARG_START:
       return expand_builtin_va_start (arglist);

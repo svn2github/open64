@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -177,6 +177,17 @@ cp_to_dst_from_tree(
 	dest->byte_idx = src->offset;
 }
 
+#ifdef KEY
+// Returns true if type_tree has a DECL_ORIGINAL_TYPE, which implies this
+// node is a typedef.
+static inline BOOL is_typedef (tree type_tree)
+{
+  tree tname = TYPE_NAME (type_tree);
+  return (tname && TREE_CODE (tname) == TYPE_DECL &&
+          DECL_ORIGINAL_TYPE (tname));
+}
+#endif
+
 // Use DECL_CONTEXT or TYPE_CONTEXT to get
 // the  index of the current applicable scope
 // for the thing indicated.
@@ -319,6 +330,10 @@ static std::vector< std::pair< const char *, UINT > > file_dst_list;
 static UINT
 Get_File_Dst_Info (const char *name, UINT dir)
 {
+#ifdef KEY
+        if (name[0] == '\0') // empty file name from gcc 3.4
+	  return last_file_num;
+#endif
         std::vector< std::pair < const char*, UINT > >::iterator found;
 	// assume linear search is okay cause list will be small?
         for (found = file_dst_list.begin(); 
@@ -933,6 +948,10 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_sclass(var_st) == SCLASS_AUTO,
 			     FALSE,  // is_external
 			     FALSE  ); // is_artificial
+#ifdef KEY
+    // Bug 4829 - do not enter variables without a name.
+    if (ST_name(var_st) != NULL && *ST_name(var_st) != '\0')
+#endif
     DST_append_child(comp_unit_idx,lb.ref);
   } 
 
@@ -958,6 +977,10 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_sclass(var_st) == SCLASS_AUTO,
 			     FALSE,  // is_external
 			     FALSE  ); // is_artificial
+#ifdef KEY
+    // Bug 4829 - do not enter variables without a name.
+    if (ST_name(var_st) != NULL && *ST_name(var_st) != '\0')
+#endif
     DST_append_child(comp_unit_idx,ub.ref);
   }
 
@@ -1219,6 +1242,23 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
    case INTEGER_TYPE:
 		{
 		// enter base type
+#ifdef KEY
+		// Bug 3962 - GNU produces INTEGER_TYPE node
+		// even for CHARACTER_TYPE from gnu/stor_layout.c
+		// and then fixes it up during Dwarf emission in
+		// gnu/dwarf2out.c (base_type_die). We should do
+		// the same.
+		if (tsize == 1 && 
+		    (strcmp(name1, "char") == 0 ||
+		     strcmp(name1, "unsigned char") == 0)) {
+		  if (TREE_UNSIGNED(type_tree)) {
+		    encoding = DW_ATE_unsigned_char;
+		  } else {
+		    encoding = DW_ATE_signed_char;
+		  }
+		  goto common_basetypes;		    
+		}		  
+#endif
 		if (TREE_UNSIGNED(type_tree)) {
 		 encoding = DW_ATE_unsigned;
 		} else {
@@ -1266,10 +1306,19 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 			cp_to_tree_from_dst(&actual_retval,&t);
                         return actual_retval;
                 } else {
+#ifdef KEY
+                       // Handle typedefs for common basetypes
+                       if (is_typedef (type_tree))
+                         dst_idx = DST_Create_type ((ST*)NULL,
+                                                    TYPE_NAME (type_tree));
+                       else
+#endif
+                       {
                        dst_idx = DST_mk_basetype(
                                 name1,encoding,tsize);
                        basetypes[names] = dst_idx;
 		       DST_append_child(comp_unit_idx,dst_idx);
+                       }
                 }
 
                 }
@@ -1305,6 +1354,12 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
                }
 		break;
     case POINTER_TYPE:
+#ifdef KEY
+               // Handle typedefs for pointer types
+               if (is_typedef (type_tree))
+                 dst_idx = DST_Create_type ((ST*)NULL, TYPE_NAME (type_tree));
+               else
+#endif
 	       {
                 struct mongoose_gcc_DST_IDX tdst
                   = TYPE_DST_IDX(type_tree);
@@ -1345,6 +1400,12 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
     case RECORD_TYPE:
     case UNION_TYPE:
 		{
+#ifdef KEY
+                // Handle typedefs for struct/union 
+                if (is_typedef (type_tree))
+                  dst_idx = DST_Create_type ((ST*)NULL, TYPE_NAME (type_tree));
+                else
+#endif
 		dst_idx = DST_enter_struct_union(type_tree,ttidx,idx,
 			tsize);
 		}
@@ -1575,7 +1636,13 @@ DST_Create_type(ST *typ_decl, tree decl)
       name1 =  Get_Name(TREE_TYPE(decl));
     } else {
       // is a typedef type
+#ifdef KEY
+      // Yes, this is a typedef, and so get THAT typename, not the
+      // original typename
+      name1 = Get_Name(TREE_TYPE(decl));
+#else
       name1 = Get_Name(DECL_ORIGINAL_TYPE(decl));
+#endif
     }
   
     // FIX look in various contexts to find known types ?
@@ -1596,7 +1663,12 @@ DST_Create_type(ST *typ_decl, tree decl)
 
     // Nope, something new. make a typedef entry.
     // First, ensure underlying type is set up.
+#ifdef KEY
+    // Same as DECL_RESULT, but this looks to be the right macro
+    tree undt = DECL_ORIGINAL_TYPE(decl);
+#else
     tree undt = DECL_RESULT(decl);
+#endif
     struct mongoose_gcc_DST_IDX dst;
     TY_IDX base;
 
@@ -1712,6 +1784,10 @@ DST_Create_var(ST *var_st, tree decl)
          DST_get_context(DECL_CONTEXT(decl));
 #endif
 
+#ifdef KEY
+    // Bug 4829 - do not enter variables without a name.
+    if (ST_name(var_st) != NULL && *ST_name(var_st) != '\0')
+#endif
     DST_append_child (current_scope_idx, dst);
     return dst;
 
@@ -2020,3 +2096,26 @@ WFE_Set_Line_And_File (UINT line, const char *file)
 	current_file = Get_File_Dst_Info (file_name, current_dir);
 }
 
+#ifdef KEY
+void WFE_Macro_Define (UINT line, const char *buffer)
+{
+  DST_mk_macr(line, (char *)buffer, 1 /* DW_MACINFO_DEFINE */);
+  return;
+}
+
+void WFE_Macro_Undef (UINT line, const char *buffer)
+{
+  DST_mk_macr(line, (char *)buffer, 2 /* DW_MACINFO_UNDEF */);
+  return;
+}
+
+void WFE_Macro_Start_File (UINT line, UINT file)
+{
+  DST_mk_macr_start_file(line, file);
+}
+
+void WFE_Macro_End_File (void)
+{
+  DST_mk_macr_end_file();
+}
+#endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -40,6 +40,11 @@
 
 static char USMID[] = "\n@(#)5.0_pl/sources/src_input.c	5.5	10/20/99 17:17:46\n";
 
+
+#ifdef KEY /* Bug 4719 */
+#include <errno.h>
+#endif /* KEY Bug 4719 */
+
 # include "defines.h"		/* Machine dependent ifdefs */
 
 # include "host.m"		/* Host machine dependent macros.*/
@@ -59,6 +64,11 @@ static char USMID[] = "\n@(#)5.0_pl/sources/src_input.c	5.5	10/20/99 17:17:46\n"
 # include "sytb.h"
 # include "p_globals.h"
 # include "src_input.h"
+
+#ifdef KEY /* Bug 4719 */
+/* Sigh. Including ../sgi/sgi_cmd_line.h is hopeless. */
+extern char *preprocessor_output_file;
+#endif /* KEY /* Bug 4719 */
 
 
 /*****************************************************************\
@@ -221,9 +231,24 @@ void init_src_input (void)
 
    dot_i_fptr = stdout; /* default is stdout */
 
+#ifdef KEY /* Bug 4719 */
+   char *filename = 0;
+#endif /* KEY Bug 4719 */
    if (on_off_flags.save_dot_i) {
-      dot_i_fptr = fopen(dot_i_file, "w");
+      filename = dot_i_file;
    }
+#ifdef KEY /* Bug 4719 */
+   else if (preprocessor_output_file) {
+      filename = preprocessor_output_file;
+   }
+   if (filename) {
+     dot_i_fptr = fopen(filename, "w");
+     if (!dot_i_fptr) {
+       PRINTMSG(0, 1676, Log_Error, 0, filename, strerror(errno));
+       exit_compiler (RC_USER_ERROR);
+     }
+   }
+#endif /* KEY Bug 4719 */
 
    previous_global_line = 0;
 
@@ -1238,11 +1263,10 @@ static void fixed_get_stmt (void)
       
       for (idx = nxt_line_EOL; idx > 0; idx --) {
          stmt_buf[stmt_buf_idx] = nxt_line[NXT_COL(idx)];
-#ifdef KEY
-         if (stmt_buf_idx >= MAX_STMT_CHAR_SIZE)
-           PRINTMSG(curr_glb_line, 1, Internal, 1,
-               "invalid smt_buf_idx",
-               "invalid smt_buf_idx");
+#ifdef KEY /* Bug 3449 */
+         if (stmt_buf_idx >= MAX_STMT_CHAR_SIZE) {
+           PRINTMSG(curr_glb_line, 1593, Limit, 0);
+	   }
 #endif
          stmt_buf_col[stmt_buf_idx] = nxt_line_col[NXT_COL(idx)];
          stmt_buf_idx--;
@@ -1552,12 +1576,6 @@ static void fixed_get_stmt (void)
 
 }  /* fixed_get_stmt */
 
-
-inline int is_newline(char ch) 
-{ 
-  return (ch == newline || ch == dosnewline); 
-}
-
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -1639,11 +1657,7 @@ boolean read_line (boolean	cc_continuation_line)
    ch = getc(SRC_STK_FILE_PTR(src_stk_idx));
 
    if (on_off_flags.preprocess &&
-#ifdef KEY
-       !is_newline(ch) &&
-#else
        ch != newline &&
-#endif
        ch != EOF     &&
        (ch == '#' || cc_continuation_line)) {
 
@@ -1659,19 +1673,28 @@ boolean read_line (boolean	cc_continuation_line)
       SRC_STK_FILE_LINE(src_stk_idx)++;
 
       cc_stmt_buf[++cc_stmt_buf_idx] = ch;
-#ifdef KEY
-      while (!is_newline(ch = getc(SRC_STK_FILE_PTR(src_stk_idx))) && 
-             ch != EOF){
-#else
       while ((ch = getc(SRC_STK_FILE_PTR(src_stk_idx))) != newline && 
-             ch != EOF){
-#endif
+             ch != EOF)
+      {
 
          if (limit > 0) {
             cc_stmt_buf[++cc_stmt_buf_idx] = ch;
             limit--;
          }
+#ifdef KEY /* Bug 3632 */
+	 else {
+           PRINTMSG(curr_glb_line, 1674, Limit, 0, FREE_SRC_LINE_SIZE);
+	 }
+#endif /* KEY Bug 3632 */
       }
+#ifdef KEY
+      // Bug 3605: Don't treat DOS 'carriage return plus linefeed' as two
+      // distinct line separators; just suppress the carriage return
+      if (ch == newline && cc_stmt_buf_idx >= 0 &&
+         cc_stmt_buf[cc_stmt_buf_idx] == dosnewline) {
+         cc_stmt_buf_idx  -= 1;
+      }
+#endif /* KEY */
 
       cc_stmt_buf[++cc_stmt_buf_idx] = newline;
       cc_stmt_buf[++cc_stmt_buf_idx] = eos;
@@ -1693,33 +1716,51 @@ boolean read_line (boolean	cc_continuation_line)
    }
 
    nxt_line_idx = nxt_line_start_idx[nxt_line_num_lines] - 1;
-#ifdef KEY
-   if (!is_newline(ch) && ch != EOF) {
-#else
-   if (ch != newline && ch != EOF) {
-#endif
+   if (ch != newline && ch != EOF)
+   {
       limit = nxt_line_idx + FREE_SRC_LINE_SIZE;
 
       nxt_line[++nxt_line_idx] = ch;
-#ifdef KEY
-      while (!is_newline(ch = getc(SRC_STK_FILE_PTR(src_stk_idx))) && 
-             ch != EOF){
-#else
       while ((ch = getc(SRC_STK_FILE_PTR(src_stk_idx))) != newline && 
-             ch != EOF){
-#endif
+             ch != EOF)
+      {
 
          if (nxt_line_idx < limit) { 
             nxt_line[++nxt_line_idx] = ch;
          }
+#ifdef KEY /* Bug 3632 */
+	 else {
+           PRINTMSG(curr_glb_line, 1674, Limit, 0, FREE_SRC_LINE_SIZE);
+	 }
+#endif /* KEY Bug 3632 */
       }
+#ifdef KEY
+      // Bug 3605: Don't treat DOS 'carriage return plus linefeed' as two
+      // distinct line separators; just suppress the carriage return
+      if (ch == newline && nxt_line_idx >= 0 &&
+         nxt_line[nxt_line_idx] == dosnewline) {
+         nxt_line_idx  -= 1;
+      }
+#endif /* KEY */
    }
 
 
    if (nxt_line_idx > 
                    (nxt_line_start_idx[nxt_line_num_lines] - 1) + line_size) {
 
+#ifdef KEY /* Bug 6839 */
+     /* This statement truncates the line at column 72 (or 132, or whatever is
+      * appropriate) in fixed format. But a '# lineno "filename"' line provided
+      * by cpp should never be truncated, because a lengthy filename will
+      * exceed the limit.
+      */
+     if (1 != nxt_line_num_lines || 1 < nxt_line_start_idx[1] ||
+       '#' != nxt_line[nxt_line_start_idx[1]]) {
+       nxt_line_idx = (nxt_line_start_idx[nxt_line_num_lines] - 1) + line_size;
+       }
+#else /* KEY Bug 6839 */
       nxt_line_idx = (nxt_line_start_idx[nxt_line_num_lines] - 1) + line_size;
+#endif /* KEY Bug 6839 */
    }
 
    if (nxt_line_idx == nxt_line_start_idx[nxt_line_num_lines] - 1 &&
@@ -8331,11 +8372,33 @@ static void pp_get_stmt (void)
 
                   if (ignore_source_line) {
                      /* print blank line */
+#ifdef KEY /* Bug 4724 */
+		     /* See comment for bug 4724 below */
+#else
                      fprintf(dot_i_fptr, "\n");
+#endif /* KEY Bug 4724 */
                      previous_global_line++;
                   }
                   else {
+#ifdef KEY /* Bug 4724 */
+		     /* When a series of more than one regular line (and
+		      * their continuation lines, if any) ends with a comment
+		      * line, this causes the comment line to appear ahead of
+		      * the last regular line, since this function saves up
+		      * the regular and continuation lines, and returns to the
+		      * caller, who prints them later on. That messes up the
+		      * numbering of the regular line. Suppressing the comment
+		      * ensures that the preceding regular line has the
+		      * correct number, and because each series of regular
+		      * lines is preceded by a "# lineno" directive whose
+		      * value is independent of whether we print the comment,
+		      * any subsequent regular line will also have the correct
+		      * number. Preprocessor output (e.g. from cpp) normally
+		      * suppresses the content of comments anyway.
+		      */
+#else
                      print_nxt_line();
+#endif /* KEY Bug 4724 */
                   }
                }
 

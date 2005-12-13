@@ -1,6 +1,6 @@
 % -*- fundamental -*-
 %
-%  Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+%  Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
 %
 %  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 %
@@ -64,10 +64,20 @@
 % A * in the middle of an argument means there can be an optional space here;
 % a * at the end of the argument means the syntax is too complicated and a
 % call to a hand-written routine called parse_<prefix>_option will be generated.
+% A ? at the end of %D means the option will be ignored if the directory
+% argument is missing (KEY).
 
 % A special action is toggle(&<var>,<val>) which stores the value in the 
 % variable, and gives an error if the variable has already been set.
 % This is useful for catching conflicts like -mips1 -mips2.
+#ifdef KEY
+% Toggle is also used in support of options from compiler.defaults.  When the
+% driver starts, <var> is initially set to UNDEFINED.  <var> is toggle'd to
+% other values according to command line options.  When parsing
+% compiler.defaults, toggle will silently drop an option if its <var> is not
+% UNDEFINED, meaning it is already set by a command line option.  All options
+% in compiler.defaults must have a <var>.
+#endif
 
 % The implies field should include the option name if that name is to be 
 % passed to phases.  The special word "self" for the implies field means 
@@ -156,6 +166,8 @@
 % -showd turns on internal driver debugging 
 -showd	{show_flag = debug = TRUE; execute_flag = FALSE;} ALL NONE ""
 	""
+-show-defaults	{show_defaults = TRUE; execute_flag = FALSE;} ALL	NONE	""
+	"Show the default compiler options being used"
 % gcc has -v show version as well as phases, so take that meaning
 -v	{show_flag = TRUE; show_version++;} ALL	cpp,as,ld	self "-show"
 	"show phases and version as they are being invoked"
@@ -207,14 +219,12 @@
 
 I-include=%D  ;		FTN     ffe,PFA     "-include=%D"
 	""
-% KEY	make -I to always mean an include search path, so -I without a
-%	directory argument does nothing
--I	;		ALL	NONE	""
-	""
+% KEY	Make -I to always mean an include search path.  -I without a
+%	directory argument does nothing.
 %-I	;		ALL	NONE	"-nostdinc"
 %	""
-I-ivpad	;		LINK	ld	"-ivpad"
-	"inter-variable padding of common blocks"
+%I-ivpad	;		LINK	ld	"-ivpad"
+%	"inter-variable padding of common blocks"
 -nostdinc	nostdinc=TRUE;		ALL	cpp	self
 	"no predefined include search path list"
 -stdinc 	nostdinc=FALSE;		ALL	cpp	""
@@ -223,8 +233,12 @@ I-ivpad	;		LINK	ld	"-ivpad"
 	"Do not search for header files in the standard directories specific to C++"
 -nostdlib	;	LINK	ld	self
 	"Do not use standard system startup files or libraries when linking"
-I-split_common	;		LINK	ld	"-split_common"
-	"check split COMMON for inconsistencies and fix them"
+-ffast-stdlib	;	A	FE,ld	"-OPT:fast_stdlib=on"
+	"Use faster versions of some standard library functions, when available"
+-fno-fast-stdlib	;	A	FE,ld	"-OPT:fast_stdlib=off"
+	"Do not use faster versions of standard library functions"
+%I-split_common	;		LINK	ld	"-split_common"
+%	"check split COMMON for inconsistencies and fix them"
 
 -LIST:%s	;		ALL	be,ipl	"-LIST:%s"
 	"option group to control listing file and contents"
@@ -274,7 +288,10 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	"default fast option configuration"
 
 -fb_phase=%s Process_fb_phase(optargs);        ALL     N       ""
-        "Option needed to tell compile feedback phase "
+        ""
+
+-fb-phase=%s Process_fb_phase(optargs);        ALL     N       ""
+        "Option needed to tell compile feedback phase"
 
 -fbgen	Gen_feedback=TRUE;		ALL	N	""
 	""
@@ -292,13 +309,22 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	""
 
 -fb_create%s Process_fb_create(optargs);        ALL     N       ""
+        ""
+
+-fb-create%s Process_fb_create(optargs);        ALL     N       ""
         "Option needed for SPEC feedback file generation"
 
 -fb_opt%s Process_fb_opt(optargs);      ALL     N       ""
+        ""
+
+-fb-opt%s Process_fb_opt(optargs);      ALL     N       ""
         "Option needed for using SPEC feedback files"
 
 -fb_type=%s Process_fb_type(optargs);   ALL    N     ""
-        "Option need for the type of profiles "
+        ""
+
+-fb-type=%s Process_fb_type(optargs);   ALL    N     ""
+        "Option need for the type of profiles"
 
 % Basic option groups:
 % See opt_actions.c::Process_Ofast if you change the -OPT: item.
@@ -324,9 +350,11 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	"option group internal-use WOPT options"
 -LNO:%s		;		ALL	be,ld	"-LNO:%s"
 	"option group to control loop nest optimization"
+#ifndef KEY
 -MP:%s		Process_Mp_Group(optargs);		ALL	NONE	""
 	""
--VHO:%s		;		ALL	ffe,be	"-VHO:%s"
+#endif
+-VHO:%s		;		ALL	ffe,be,ipl	"-VHO:%s"
 	"option group to control vho lowering"
 
 % C and Fortran listing related options:
@@ -412,6 +440,10 @@ I-fini%s		;		CC	ld	"-fini %s"
         "Compile for 32-bit ABI"
 -m64	toggle(&abi,ABI_64);	ALL	be	"-TARG:abi=n64"
 	"Compile for 64-bit ABI"
+#ifdef KEY /* Bug 4210 */
+-module%s	Process_module(optargs);	F90	NONE	""
+	"Directory in which to create .mod file"
+#endif /* KEY Bug 4210 */
 
 %%% COMBINATIONS
 % <combo>	<error>		<implies>
@@ -429,7 +461,7 @@ I-cpp_nonansi		;		ALL	NONE	"-D_LONGLONG"
 I-cpp_extensions	;		ALL	NONE	"-D__EXTENSIONS__ -D__MATH_HAS_NO_SIDE_EFFECTS"
 	""
 -ansi	toggle(&ansi,STRICT_ANSI);		cc,FTN	cpp,FE	self ANSI
-	"strict ansi"
+	"strict ansi and standard intrinsics only"
 -std=c89		;		Cc,cpp	cpp,FE	self
 	"Support ISO C from 1990"
 -std=iso9899:1990	;		Cc,cpp	cpp,FE	self
@@ -450,6 +482,10 @@ I-cpp_extensions	;		ALL	NONE	"-D__EXTENSIONS__ -D__MATH_HAS_NO_SIDE_EFFECTS"
 	"Support ISO C from 1999, with GNU extensions"
 -std=gnu9x		;		Cc,cpp	cpp,FE	self
 	"Support ISO C from 1999, with GNU extensions"
+-std=c++98		;		CC,cpp	cpp,FE	self
+	"Support 1998 ISO C++ standard plus amendments"
+-std=gnu++98		;		CC,cpp	cpp,FE	self
+	"The same as `-std=c++98' plus GNU extensions.  This is the default for C++ code."
 % these options are only set for cc:
 I-Xansi                 ;       cc      mpc     self
         ""
@@ -532,8 +568,8 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
 	""
 -g2	toggle(&glevel,2);		ALL	CMP	self
 	""
--g3	toggle(&glevel,3);		ALL	CMP	self
-	"add some debugging to optimized code"
+-g3	toggle(&glevel,3);		ALL	CMP,cpp	self
+	"Add debugging information for C preprocessor macros"
 -gdwarf	warn_ignored(option_name);	ALL	NONE	""
 	""
 -gdwarf-1	warn_ignored(option_name);	ALL	NONE	""
@@ -608,11 +644,17 @@ I-cvs_nosrc,%D	;		FTN	F	"-cvs_nosrc,%D"
 -automatic	toggle(&isstatic,1);		FTN	NONE	""
 	""
 -auto_use%s	;			F90	ffe	"-auto_use=%s"
+	""
+
+-auto-use%s	;			F90	ffe	"-auto_use=%s"
 	"Act as if a USE statement is specified in every PU"
 
 -ftpp		toggle(&use_ftpp,1); 	F90	NONE	""
 	""
 -macro_expand	expand_ftpp_macros=TRUE; 	F90	N	""	
+	""
+
+-macro-expand	expand_ftpp_macros=TRUE; 	F90	N	""	
 	"expand macros everywhere in ftpp"
 
 -static-data		;		FTN	ffe	self
@@ -620,6 +662,9 @@ I-cvs_nosrc,%D	;		FTN	F	"-cvs_nosrc,%D"
 -static		;		LINK	ld	self	
 	""
 -static_threadprivate		;		FTN	ffe	self
+	""
+
+-static-threadprivate		;		FTN	ffe	self
 	"treat locals as static but not shared among multiple threads"
 
 -dumpspecs	warn_ignored(option_name);	ALL	FE	self
@@ -627,6 +672,15 @@ I-cvs_nosrc,%D	;		FTN	F	"-cvs_nosrc,%D"
 
 -backslash	first_phase=P_any_fe;		f77	ffe	self
 	"treat backslash as normal character rather than an escape"
+
+#ifdef KEY /* Bug 4260 */
+-byteswapio	toggle(&io_byteswap,1);		F90	ffe	self
+ 	"Swap bytes during file I/O"
+ 
+-convert%s	toggle(&io_byteswap,2);check_convert_name(optargs);	F90	ffe	"-convert %s"
+	"Convert files by swapping bytes during I/O"
+#endif /* KEY Bug 4260 */
+
 -noexpopt	;		FTN	be	"-OPT:fast_exp=no"
 	"Don't optimize exponentiation operations"
 -keepdollar	;		f77	ffe	self
@@ -693,8 +747,8 @@ I-cvs_nosrc,%D	;		FTN	F	"-cvs_nosrc,%D"
 	""
 -varargs	;		f77	ffe	self
 	"MATRA varargs"
--nocode last_phase=earliest_phase(P_any_fe,last_phase);  FTN ffe   self
-        "do not generate any intermediate code from front-end"
+%-nocode last_phase=earliest_phase(P_any_fe,last_phase);  FTN ffe   self
+%        "do not generate any intermediate code from front-end"
 
 -vms	warn_no_longer_supported2(option_name,"-vms_cc"); 	FTN	NONE	self
 	""
@@ -723,15 +777,20 @@ I-cvs_nosrc,%D	;		FTN	F	"-cvs_nosrc,%D"
 -craylibs	toggle(&use_craylibs,TRUE);toggle(&use_mipslibs,FALSE);		f77	NONE	""
 	""
 
+#ifndef KEY
 -cray_mp    toggle(&mpkind,CRAY_MP);	 FTN ffe self 
     "enable Cray micro-tasking directives"
 
 -dsm			;		FTN,Cc	GRP	self
 	""
+#endif
 
--mp	warn_ignored(option_name);	ALL	NONE	""
-	""
+-mp     toggle(&mpkind,NORMAL_MP);      FTN,Cc  ffe,cfe     self
+        "enable the multiprocessing directives"
+-openmp			;		FTN,Cc	ffe	-mp
+        "enable the multiprocessing directives (same as -mp)"
 
+#ifndef KEY
 -dsm_clone		;		ALL	ipl,be,d	self
 	""
 
@@ -740,6 +799,7 @@ I-cvs_nosrc,%D	;		FTN	F	"-cvs_nosrc,%D"
 
 -dsm_recompile		;		ALL	ffe,cfe,be,ipl	self
 	""
+#endif
 
 -memsim			;		ALL	N	"-LNO:mem_sim=TRUE -lmemsim"
 	""
@@ -771,8 +831,6 @@ I-cvs_nosrc,%D	;		FTN	F	"-cvs_nosrc,%D"
 -mp_use_copy	warn_no_longer_needed(option_name);  FTN NONE ""
 	""
 
--listing	keep_listing=TRUE;		FTN	ffe,PFA	""
-	"keep the listing file"
 % invoke apo  - which discovers parallelism (synonym for -pfa, -pca)
 -apo		auto_parallelize=TRUE;		Cc,FTN	be	"-pfa"
 	""
@@ -824,16 +882,26 @@ I-lo=ocktl	;		FTN	PFA	self
 	""
 
 -extend_source fortran_line_length=132;		FTN	ffe	self "-scan=132"
-	"make each source line 132 bytes long"
+	""
 
+-extend-source fortran_line_length=132;		FTN	ffe	"-extend_source -scan=132"
+	"make each source line 132 bytes long"
+-e*			;		LINK	ld	""
+	""
 -d_lines		;		FTN	ffe	self
+	""
+-d-lines		;		FTN	ffe	self
 	"compile lines with a D in column 1"
 -pad_char_literals		;		F90	ffe	self
+	""
+-pad-char-literals		;		F90	ffe	"-pad_char_literals"
 	"blank pad character literal actual arguments to word boundary"
 -expand_include		;		FTN	ffe	self
 	""
 -noextend_source fortran_line_length=72;		FTN	ffe	self "-scan=72"
-	"sets the source statement length to 72 columns"
+	""
+-noextend-source fortran_line_length=72;		FTN	ffe	"-noextend_source -scan=72"
+	""
 -col72	fortran_line_length=72;		FTN	ffe	self "-scan=72"
 	"sets the source statement length to 72 columns"
 
@@ -870,6 +938,13 @@ I-scan%s		;		FTN	PFA	self
 
 -noinline	Process_Inline();		Cc	NONE	"-INLINE:=OFF"
 	"suppress inline processing"
+
+-intrinsic=%s	;			FTN	ffe	"-intrinsic=%s"
+	"Add intrinsic to the initial set the compiler recognizes"
+
+-no-intrinsic=%s	;			FTN	ffe	"-no-intrinsic=%s"
+	"Remove intrinsic from the initial set the compiler recognizes"
+
 -nobool	;		CC 	cfe	self
 	"disallow bool keyword"
 -fprofile-arcs	Process_Profile_Arcs();		ALL	be	"-OPT:profile_arcs=true"
@@ -907,15 +982,15 @@ I-scan%s		;		FTN	PFA	self
 % for kernel folks
 -jalr		;		ALL	NONE	"-TARG:force_jalr"
 	""
--align8		;		Cc,f77	FE,be	self
+-align8		;		Cc,f77	ffe,be	self
 	"align data in common blocks to 8-bit boundaries"
--align16	;		Cc,f77	FE,be	self
+-align16	;		Cc,f77	ffe,be	self
 	"align data in common blocks to 16-bit boundaries"
--align32	;		Cc,FTN	FE,be	self
+-align32	;		Cc,FTN	ffe,be	self
 	"align data in common blocks to 32-bit boundaries"
--align64	;		Cc,FTN	FE,be	self
+-align64	;		Cc,FTN	ffe,be	self
 	"align data in common blocks to 64-bit boundaries"
--align128	;		Cc,f77	FE,be	self
+-align128	;		Cc,f77	ffe,be	self
 	"align data in common blocks to 128-bit boundaries"
 % -u can have two different meanings, so escape to hand-code
 -u*		;		ALL	NONE	""
@@ -923,8 +998,6 @@ I-scan%s		;		FTN	PFA	self
 I-u%s		;		Cc	ld	"-u %s"
 	""
 -soname%s	;		LINK	ld	"-soname %s"
-	""
--e%s		;		LINK	ld	"-e %s"
 	""
 -y%s		;		LINK	ld	"-y %s"
 	""
@@ -945,6 +1018,8 @@ I-u%s		;		Cc	ld	"-u %s"
 -prelink	;		CC	NONE	""
 	"use prelinker (default)"
 -no_prelink	prelink_flag=FALSE;		CC	cfe	self
+	""
+-no-prelink	prelink_flag=FALSE;		CC	cfe	self
 	"do not use prelinker (i.e. instantiate all templates immediately)"
 
 % IPA-related options:
@@ -962,6 +1037,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -trapuv 		;		Cc,FTN	be	"-DEBUG:trap_uninitialized"
 	"trap uninitialized variables"
+-zerouv 		;		Cc,FTN	be	"-DEBUG:zero_uninitialized"
+	"set uninitialized variables to zero"
 -H	;		Cc,as,cpp	cpp	self
 	"print name of each header file used"
 % cord
@@ -976,6 +1053,8 @@ I-u%s		;		Cc	ld	"-u %s"
 --		check_dashdash();	ALL	NONE	""
 	""
 -ignore_suffix	ignore_suffix=TRUE;	ALL	NONE	""
+	""
+-ignore-suffix	ignore_suffix=TRUE;	ALL	NONE	""
 	"ignore source suffix when determining compiler language"
 
 -cif    keep_cif=TRUE;       F90	FE      self
@@ -988,11 +1067,12 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 
 %%% gcc compiler options
--mcpu=%s	set_cpu(optargs);	ALL	NONE	""
+
+-mcpu=%s	set_cpu(optargs,M_CPU);	ALL	NONE	""
 	"Set CPU type"
--march=%s	set_cpu(optargs);	ALL	NONE	""
+-march=%s	set_cpu(optargs,M_ARCH);	ALL	NONE	""
 	"Set CPU type"
--mtune=%s	set_cpu(optargs);	ALL	NONE	""
+-mtune=%s	set_cpu(optargs,M_TUNE);	ALL	NONE	""
 	"Set CPU type"
 -pipe	;		ALL	NONE	""
 	""
@@ -1003,16 +1083,12 @@ I-u%s		;		Cc	ld	"-u %s"
 %%% C language options
 -flang-isoc9x	;		Cc	f	self
 	""
--fallow-single-precision	;		Cc	f	self
-	"Do not promote floats to double if using -traditional"
 -msoft-float	warn_ignored(option_name);	ALL	NONE	""
 	""
 -mno-soft-float	warn_ignored(option_name);	ALL	NONE	""
 	""
 -fcond-mismatch	;		Cc	f	self
 	""
--fno-cond-mismatch	;		Cc	f	self
-	"Do not allow different types as args of ? operator"
 -fasm	;		Cc	f	self
 	""
 -fms-extensions	;		Cc	f	self
@@ -1025,8 +1101,14 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Do not recognise any built in functions"
 -fmath-errno	toggle(&fmath_errno,1);		Cc	NONE	self
 	""
--fno-math-errno	toggle(&fmath_errno,0);		Cc	NONE	self
+-fno-math-errno	toggle(&fmath_errno,0);		Cc	NONE	self -LANG:math_errno=off
 	"Do not set ERRNO after calling math functions that are executed with a single instruction"
+-fmessage-length=%d	;	C	f	"-fmessage-length=%d"
+	"Try to format error messages so that they fit on lines of about n characters."
+-fdiagnostics-show-location=once	;	C	f	self
+	"Instructs the diagnostic messages reporter to emit source location information once"
+-fdiagnostics-show-location=every-line	;	C	f	self
+	"Instructs the diagnostic messages reporter to emit source location information on every line"
 -ffreestanding	;		Cc	f	self
 	""
 -fno-freestanding	;		Cc	f	self
@@ -1133,6 +1215,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn about printf format anomalies"
 -Wno-format	;		Cc	f	self
 	"Do not warn about printf format anomalies"
+-Wformat=2	;		Cc	f	"-Wformat -Wformat-nonliteral -Wformat-security"
+	"Enable -Wformat plus format checks not included in -Wformat"
 -Wimplicit	;		Cc	f	self
 	"Warn about implicit declarations of functions or variables"
 -Wno-implicit	;		Cc	f	self
@@ -1157,6 +1241,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn if a function declared as inline cannot be inlined"
 -Wno-inline	;		Cc	f	self
 	"Do not warn if a function declared as inline cannot be inlined"
+-Winvalid-pch	;		Cc	f	""
+	""
+-Wno-invalid-pch	;		Cc	f	""
+	""
 -Wlarger-than-%d	;		Cc	f	"-Wlarger-than-%d"
 	"Warn if an object is larger than <number> bytes"
 -Wno-larger-than-%d	;		Cc	f	"-Wno-larger-than-%d"
@@ -1245,7 +1333,7 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn if an undefined identifier appears in a #if directive"
 -Wno-undef	;		Cc,cpp	cpp,f	self
 	"Do not warn if an undefined identifier appears in a #if directive"
--Wuninitialized	;		Cc	f	self
+-Wuninitialized	;		FTN,Cc	f	-WOPT:warn_uninit=on
 	"Warn about unitialized automatic variables"
 -Wno-uninitialized	;		Cc	f	self
 	"Do not warn about unitialized automatic variables"
@@ -1261,9 +1349,9 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Mark strings as 'const char *'"
 -Wno-write-strings	;		Cc	f	self
 	"Do not mark strings as 'const char *'"
--Wdeprecated		;		Cc	cpp	self
+-Wdeprecated		;		Cc,f	cpp	self
 	"Announce deprecation of compiler features"
--Wno-deprecated		;		Cc	cpp	self
+-Wno-deprecated		;		Cc,f	cpp	self
 	"Don't announce deprecation of compiler features"
 -Wctor-dtor-privacy	;		CC	cpp	self
 	"Warn when all constructors/destructors are private"
@@ -1273,9 +1361,9 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn about compile-time integer division by zero"
 -Wno-div-by-zero	;		Cc	f	self
 	"Suppress warnings about compile-time integer division by zero"
--Wendif-labels	;		Cc,cpp	cpp	self
+-Wendif-labels	;		Cc,cpp,f	cpp	self
 	"Warn if #if or #endif is followed by text"
--Wno-endif-labels	;		Cc,cpp	cpp	self
+-Wno-endif-labels	;		Cc,cpp,f	cpp	self
 	"Do not warn if #if or #endif is followed by text"
 -Weffc++	;		CC	f	self
 	"Warn on `Effective C++' style violations"
@@ -1303,8 +1391,6 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Do not warn about extra arguments to printf-like functions"
 -Wno-format-y2k	;		Cc	f	self
 	"Do not warn about `strftime' formats that yield two-digit years"
--Wno-globals	;		Cc	f	self
-	"Do not warn about local/global variable inconsistencies"
 -Wno-non-template-friend	;		CC	f	self
 	"Do not warn about friend functions declared in templates"
 -Wno-pmf-conversions	;		CC	f	self
@@ -1341,10 +1427,6 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn when overload resolution promotes from unsigned to signed"
 -Wno-sign-promo	;		CC	f	self
 	"Do not warn when overload resolution promotes from unsigned to signed"
--Wsurprising	;		Cc	f	self
-	"Warn about code that might have unexpected semantics"
--Wno-surprising	;		Cc	f	self
-	"Do not warn about code that might have unexpected semantics"
 -Wsynth	;		CC	f	self
 	"Warn about synthesis that is not backwards compatible with cfront"
 -Wno-synth	;		CC	f	self
@@ -1400,15 +1482,15 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fexpensive-optimizations	;		Cc	f	self
 	""
--ffast-math	;		Cc	f	"-OPT:IEEE_arithmetic=2 -fno-math-errno"
+-ffast-math	;		Cc,FTN	f,be	"-OPT:IEEE_arithmetic=2 -fno-math-errno -OPT:fast_math=on"
 	"Improve FP speed by violating ANSI & IEEE rules"
--fno-fast-math	;		Cc	f	"-OPT:IEEE_arithmetic=1 -fmath-errno"
+-fno-fast-math	;		Cc,FTN	f	"-OPT:IEEE_arithmetic=1 -fmath-errno -OPT:fast_math=off"
 	"Conform to ANSI & IEEE math rules at the expense of speed"
 -funsafe-math-optimizations	;	Cc	f	"-OPT:IEEE_arithmetic=3 -fno-math-errno"
 	"Improve FP speed by violating ANSI & IEEE rules"
 -fno-unsafe-math-optimizations	;	Cc	f	"-OPT:IEEE_arithmetic=1 -fmath-errno"
 	"Conform to ANSI & IEEE math rules at the expense of speed"
--ffloat-store	;		Cc	f	"-OPT:IEEE_arithmetic=1"
+-ffloat-store	;	Cc,FTN	be	"-CG:localize=1:min_spill_loc_size=1"
 	"Do not store floats in registers"
 -fforce-addr	;		Cc	f	self
 	""
@@ -1438,6 +1520,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fno-inline		;		Cc	f	self "-INLINE:=off"
 	""
+-fabi-version=%d	;		C	f	"-fabi-version=%d"
+	""
+-fno-operator-names	;		C	f	self
+	"Do not treat operator keywords and, bitand, bitor, compl, not, or and xor as keywords."
 -fno-peephole		;		Cc	f	self
 	""
 -fomit-frame-pointer	;		Cc	f	self
@@ -1470,7 +1556,7 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -freduce-all-givs	;		Cc	f	self
 	""
--fstrict-aliasing	;		Cc	f	self
+-fstrict-aliasing	;		Cc	f	self "-OPT:alias=typed"
 	"Assume strictest aliasing rules"
 -Wstrict-aliasing	;		Cc	f	self
 	"Warn about code that breaks strict aliasing rules"
@@ -1573,8 +1659,6 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -isystem%D	;		Cc,as,cpp	cpp	"-isystem %D"
 	""
--isystem	;		ALL	NONE	""
-	""
 -MD	;		Cc,as,cpp	cpp	self
 	"Write dependencies to .d output file"
 -MF%s	;		Cc,as,cpp	cpp	"-MF %s"
@@ -1604,7 +1688,9 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -fcall-used-%s	;		Cc	NONE	""
 	""
--fexceptions	;	Cc	cfe	self
+% KEY: Because of limitation on derived flags, we repeat the -fexceptions
+% in the implied list.  This is to find the parent flag so action is done.
+-fexceptions	;	Cc	cfe	"-fexceptions -TENV:frame_pointer=on"
 	"Enable exception handling"
 -fhandle-exceptions	;	Cc	cfe	self
 	"Enable exception handling"
@@ -1616,7 +1702,7 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -mfixed-range=%s	;	Cc	NONE	"-TENV:registers_not_allocatable=%s"
 	""
--funwind-tables	;		Cc	NONE	"-CG:emit_unwind_info=on"
+-funwind-tables	;		Cc	NONE	"-CG:emit_unwind_info=on -TENV:frame_pointer=on"
 	""
 -fno-unwind-tables	;	Cc	NONE	"-CG:emit_unwind_info=off"
 	""
@@ -1727,18 +1813,21 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Enable SSE extensions"
 -mno-sse	warn_ignored(option_name);	ALL	NONE	self
 	"Disable SSE extensions"
--msse2	;		ALL	be	"-TARG:msse2=on"
+-msse2	toggle(&sse2,TRUE);		ALL	be	""
 	"Enable SSE2 extensions"
--mno-sse2	warn_ignored(option_name);	ALL	be	"-TARG:msse2=off"
+-mno-sse2	toggle(&sse2,FALSE);toggle(&sse3,FALSE);	ALL	be	""
 	"Disable SSE2 extensions"
--msse3	;		ALL	be	"-TARG:msse3=on"
+-msse3	toggle(&sse2,TRUE);toggle(&sse3,TRUE);	ALL	be	""
 	"Enable SSE3 extensions"
--mno-sse3	warn_ignored(option_name);	ALL	be	"-TARG:msse3=off"
+-mno-sse3	toggle(&sse3,FALSE);	ALL	be	""
 	"Disable SSE3 extensions"
--m3dnow	;		ALL	NONE	self
+-m3dnow		toggle(&m3dnow,TRUE);	ALL	be	""
 	"Enable 3Dnow extensions"
--mno-3dnow	warn_ignored(option_name);	ALL	NONE	self
+-mno-3dnow	toggle(&m3dnow,FALSE);	ALL	be	""
 	"Disable 3Dnow extensions"
+%%% x87
+-mx87-precision=%d	;	ALL	be	"-TARG:x87-precision=%d"
+	"Specify the precision of x87 floating-point calculations (32/64/80-bit)"
 %%% ia-64 workaround
 -ma-step	;	ALL	NONE	"-TARG:ma0_step=on -mb-step"
 	""
@@ -1750,11 +1839,11 @@ I-u%s		;		Cc	ld	"-u %s"
 % implied list.  This is to find the parent flag so action is done.
 -mcmodel=%s	set_memory_model(optargs);	ALL	NONE	"-mcmodel=%s -TENV:mcmodel=%s"
 	"Set the memory model to use"
--print-file-name=%s	{execute_flag=FALSE; print_file_path(optargs);}	ALL	NONE	""
+-print-file-name=%s	{execute_flag=FALSE; print_file_path(optargs, 0);}	ALL	NONE	""
 	""
 -print-libgcc-file-name	;	ALL	NONE	"-print-file-name=libgcc.a"
 	""
--print-prog-name=%s	{execute_flag=FALSE; print_file_path(optargs);}	ALL	NONE	""
+-print-prog-name=%s	{execute_flag=FALSE; print_file_path(optargs, 1);}	ALL	NONE	""
 	""
 -print-search-dirs	{show_search_path=TRUE; execute_flag=FALSE;}	ALL	NONE	""
 	"Print the installation directory and directories the compiler will search"
@@ -1877,15 +1966,19 @@ I-u%s		;		Cc	ld	"-u %s"
 --write-user-dependencies	;	ALL	NONE	"-MMD"
 	""
 -subverbose	subverbose=1;	ALL 	NONE	"-subverbose"
-	""
+	"Print diagnostic information about subscription management"
 -pthread	;	ALL	NONE	""
 	"Compile with pthreads support"
 % gcc compatibility flags
--compat-gcc	;	ALL	NONE	""
+-compat-gcc	toggle(&compat_gcc,TRUE);	ALL	NONE	""
 	""
 -Wabi		warn_ignored(option_name);	ALL	cfe	self	""
 	""
 -###		{show_version++; show_but_not_run = TRUE;}	ALL	NONE	"-###"
 	"Like -v, only nothing is run and args are quoted"
 -rdynamic			;		LINK	ld	"-Wl,--export-dynamic"
+	""
+% KEY	The driver ignores options by changing them into -dummy, which does
+%	nothing.
+-dummy	;		ALL	NONE	""
 	""

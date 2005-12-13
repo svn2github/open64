@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -54,9 +58,9 @@ extern "C" {
 
 */
 
-#include <libelf.h> /* sets _LIBELF_XTND_EXPANDED_DATA if appropriate */
-#include <dwarf.h>
-#include <libdwarf.h>
+#include "libelf/libelf.h" /* sets _LIBELF_XTND_EXPANDED_DATA if appropriate */
+#include "dwarf.h"
+#include "libdwarf.h"
 
 #ifndef _XLATE_TABLEKIND_DEF
 #define _XLATE_TABLEKIND_DEF

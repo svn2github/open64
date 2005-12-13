@@ -845,7 +845,7 @@ handle_duplicates (void)
     {
 	fprintf (TFile, "After sorting and deleting duplicates\n");
     	for (int i=0; i<reorder_candidate.size; ++i)
-	    fprintf (TFile, "%d\n", Ty_tab[(reorder_candidate.list+i)->ty_index].name_idx);
+	    fprintf (TFile, "%lld\n", Ty_tab[(reorder_candidate.list+i)->ty_index].name_idx);
     }
 }
 

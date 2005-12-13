@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -158,10 +158,22 @@ extern void Exp_Savexmms_Intrinsic(WN *intrncall, TN *rax_tn, LABEL_IDX *label,
 				   OPS *ops);
 
 extern void Exp_Landingpadentry_Intrinsic (ST *dest1, ST *dest2, OPS* ops);
-#endif
+
+extern void Exp_Fetch_and_Add( TN*, TN*, TYPE_ID, OPS* );
+extern void Exp_Fetch_and_And( TN*, TN*, TYPE_ID, OPS* );
+extern void Exp_Fetch_and_Or( TN*, TN*, TYPE_ID, OPS* );
+extern void Exp_Fetch_and_Xor( TN*, TN*, TYPE_ID, OPS* );
+extern void Exp_Fetch_and_Sub( TN*, TN*, TYPE_ID, OPS* );
+extern TN*  Exp_Compare_and_Swap( TN*, TN*, TN*, TYPE_ID, OPS* );
+
+/* expand intrinsic op */
+extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TYPE_ID mtype, OPS *ops);
+
+#else 
 
 /* expand intrinsic op */
 extern void Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TYPE_ID mtype, OPS *ops);
+#endif // TARG_X8664
 
 /* Expand TN(const) into a sequence of ops (used in prolog)
  */

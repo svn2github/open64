@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -220,6 +220,7 @@ void	init_directive(int	pass)
 
    cdir_switches.firstprivate_list_idx  = NULL_IDX;
    cdir_switches.copyin_list_idx	= NULL_IDX;
+   cdir_switches.copyprivate_list_idx = NULL_IDX; /* by jhs, 02/7/22 */
    cdir_switches.lastprivate_list_idx	= NULL_IDX;
    cdir_switches.default_scope_list_idx = NULL_IDX;
    cdir_switches.do_omp_sh_idx		= NULL_IDX;
@@ -342,6 +343,14 @@ void parse_directive_stmt (void)
    /*****  NOTE:  TO DISTINGUISH BETWEEN COMPILER DIRECTIVES AND      *****/
    /*****  NOTE:  MICRO TASKING DIRECTIVES.  THE TOKEN STRING WILL    *****/
    /*****  NOTE:  NOT CONTAIN THE LEADING "C" OR "!" CHARACTERS.      *****/
+
+#ifdef KEY /* Bug 4067 */
+   if (cmd_line_flags.disregard_all_directives) {
+       parse_err_flush(Find_EOS, NULL);
+       NEXT_LA_CH;
+       goto EXIT;
+   }
+#endif /* KEY Bug 4067 */
 
    /* If the first statement of the first program unit is being parsed, don't */
    /* buffer up any message pertaining to directives that precede this first  */
@@ -1284,6 +1293,9 @@ static void parse_slash_common_dirs(void)
 
 {
    int		sb_idx;
+   int		attr_idx;
+   int		name_idx;
+   token_values_type	token_value;
 
 
    TRACE (Func_Entry, "parse_slash_common_dirs", NULL);
@@ -1313,6 +1325,7 @@ static void parse_slash_common_dirs(void)
                                          Threadprivate);
 
                SB_COMMON_NEEDS_OFFSET(sb_idx)	= TRUE;
+	       SB_IS_COMMON(sb_idx)	= TRUE;
 # if 0
                /* This is allowed now, but I'll leave the message in, */
                /* just in case. BHJ                                   */
@@ -1370,7 +1383,68 @@ static void parse_slash_common_dirs(void)
             break;
          }
       }
-      else if (!parse_err_flush(Find_Comma_Rparen, "/common-block-name/")) {
+      /* the following is added by jhs, 02.9.9 */
+      else if(MATCHED_TOKEN_CLASS(Tok_Class_Id)){
+	 token_value = TOKEN_VALUE(token);
+	 attr_idx = srch_sym_tbl(TOKEN_STR(token),
+			    TOKEN_LEN(token),
+		    	    &name_idx);
+	 if(attr_idx == NULL_IDX){
+	    attr_idx = ntr_sym_tbl(&token, name_idx);
+	    LN_DEF_LOC(name_idx) = FALSE;
+	    AT_OBJ_CLASS(attr_idx) = Data_Obj;
+	    SET_IMPL_TYPE(attr_idx);
+	 }
+#ifdef KEY
+         if (ATD_STOR_BLK_IDX(attr_idx) == NULL_IDX) {
+            assign_storage_blk(attr_idx);
+         }
+         SB_BLK_TYPE(ATD_STOR_BLK_IDX(attr_idx)) = Threadprivate;
+#endif
+	 if(!fnd_semantic_err((token_value == Tok_SGI_Dir_Section_Gp) ?
+				 Obj_Section_Gp : Obj_Section_Non_Gp,
+				 TOKEN_LINE(token),
+				 TOKEN_COLUMN(token),
+				 attr_idx,
+				 TRUE)){
+	    if(AT_OBJ_CLASS(attr_idx) == Pgm_Unit &&
+	      ATP_PGM_UNIT(attr_idx) == Module){
+	      if(token_value == Tok_SGI_Dir_Section_Gp){
+	        if(attr_idx != SCP_ATTR_IDX(curr_scp_idx)){
+		    PRINTMSG(TOKEN_LINE(token), 1491, Error,
+		    	TOKEN_COLUMN(token),
+		    	 "SECTION_GP" );
+		}
+		else if(SB_SECTION_NON_GP(SCP_SB_STATIC_IDX(curr_scp_idx))){
+		    PRINTMSG(TOKEN_LINE(token), 1490, Error,
+			TOKEN_COLUMN(token),
+			AT_OBJ_NAME_PTR(attr_idx),
+			"SECTION_GP", "SECTION_NON_GP");
+		}
+	      }
+	      else if(token_value == Tok_SGI_Dir_Section_Non_Gp){
+		if(attr_idx != SCP_ATTR_IDX(curr_scp_idx)){
+		    PRINTMSG(TOKEN_LINE(token), 1491, Error,
+			TOKEN_COLUMN(token),
+			"SECTION_NON_GP");
+		}
+		else if(SB_SECTION_GP(SCP_SB_STATIC_IDX(curr_scp_idx))){
+		    PRINTMSG(TOKEN_LINE(token), 1490, Error,
+			TOKEN_COLUMN(token),
+			AT_OBJ_NAME_PTR(attr_idx),
+			"SECTION_NON_GP", "SECTION_GP");
+		}
+	      }
+	    }
+	 
+            if(token_value == Tok_SGI_Dir_Section_Gp)
+	      ATD_SECTION_GP(attr_idx) = TRUE;
+	    else if(token_value == Tok_SGI_Dir_Section_Non_Gp)
+	      ATD_SECTION_NON_GP(attr_idx) = TRUE;
+	  }
+      }
+      /* the above is added by jhs, 02.9.9 */
+      else if (!parse_err_flush(Find_Comma_Rparen, "/common-block-name/ or identifier")) {
          break;
       }
 
@@ -1383,7 +1457,7 @@ static void parse_slash_common_dirs(void)
    }
    while (TRUE);
 
-   if (LA_CH_VALUE == RPAREN || parse_err_flush(Find_Rparen, ", or )")) {
+   if (LA_CH_VALUE == RPAREN || parse_err_flush(Find_Rparen, ")")) {
       NEXT_LA_CH;
    }
 
@@ -6511,6 +6585,21 @@ static void parse_star_directives(void)
       }
       break;
 
+#ifdef KEY /* Bug 2660 */
+   /* Syntax is c*$*options "somestring" */
+   case Tok_SGI_Dir_Options:
+      ir_idx = gen_directive_ir(Options_Dir_Opr);
+      if (QUOTE == LA_CH_VALUE || DBL_QUOTE == LA_CH_VALUE) {
+        parse_expr(&opnd);
+	COPY_OPND(IR_OPND_L(ir_idx), opnd);
+      }
+      else {
+	parse_err_flush(Find_EOS, "\"");
+	goto EXIT;
+      }
+      break;
+#endif /* KEY Bug 2660 */
+
    case Tok_SGI_Dir_Purpleconditional:
       ir_idx = gen_directive_ir(Purpleconditional_Star_Opr);
 
@@ -10468,20 +10557,105 @@ static void parse_open_mp_directives(void)
          ATP_HAS_TASK_DIRS(SCP_ATTR_IDX(curr_scp_idx)) = TRUE;
          ir_idx = gen_directive_ir(Endsingle_Open_Mp_Opr);
 
-         if (LA_CH_VALUE != EOS) {
-            if (MATCHED_TOKEN_CLASS(Tok_Class_Open_Mp_Dir_Kwd)) {
-               if (TOKEN_VALUE(token) == Tok_Open_Mp_Dir_Nowait) {
-                  IR_FLD_L(ir_idx) = CN_Tbl_Idx;
-                  IR_IDX_L(ir_idx) = CN_INTEGER_ONE_IDX;
-                  IR_LINE_NUM_L(ir_idx) = TOKEN_LINE(token);
-                  IR_COL_NUM_L(ir_idx) = TOKEN_COLUMN(token);
-               }
-               else {
-                  parse_err_flush(Find_EOS, "NOWAIT");
-               }
-            }
-         }
+	/* the following are added by jhs, 02/7/21 */
+	  NTR_IR_LIST_TBL(list_idx);
+	  IR_FLD_L(ir_idx) = IL_Tbl_Idx;
+	  IR_IDX_L(ir_idx) = list_idx;
+	  IR_LIST_CNT_L(ir_idx) = 2;
 
+	  NTR_IR_LIST_TBL(IL_NEXT_LIST_IDX(list_idx));
+	  IL_PREV_LIST_IDX(IL_NEXT_LIST_IDX(list_idx)) = list_idx;
+
+
+	   while (LA_CH_VALUE != EOS) {
+
+	      if (MATCHED_TOKEN_CLASS(Tok_Class_Open_Mp_Dir_Kwd)) {
+
+	         switch (TOKEN_VALUE(token)) {
+	            case Tok_Open_Mp_Dir_Nowait:
+	               /* only one NOWAIT clause allowed */
+	               if (IL_IDX(list_idx) != NULL_IDX) {
+	                  PRINTMSG(TOKEN_LINE(token), 1360, Error, TOKEN_COLUMN(token),
+	                           "NOWAIT", "END SINGLE");
+	                  parse_err_flush(Find_EOS, NULL);
+	                  goto EXIT;
+	               }
+	               /* COPYPRIVATE clause can't on the same END SINGLE directive*/
+	               if (IL_IDX(IL_NEXT_LIST_IDX(list_idx)) != NULL_IDX) {
+	                  PRINTMSG(TOKEN_LINE(token), 1360, Error, TOKEN_COLUMN(token),
+	                           "COPYPRIVATE", "END SINGLE");
+	                  parse_err_flush(Find_EOS, NULL);
+	                  goto EXIT;
+	               }
+
+	            	 IL_FLD(list_idx) = CN_Tbl_Idx;
+	               IL_IDX(list_idx) = CN_INTEGER_ONE_IDX;
+	               IL_LINE_NUM(list_idx) = TOKEN_LINE(token);
+	               IL_COL_NUM(list_idx) = TOKEN_COLUMN(token);
+	         	 break;
+
+	           case Tok_Open_Mp_Dir_Copyprivate:
+	           	 /* NOWAIT clause can't on the same END SINGLE directive*/
+	               if (IL_IDX(list_idx) != NULL_IDX) {
+	                  PRINTMSG(TOKEN_LINE(token), 1360, Error, TOKEN_COLUMN(token),
+	                           "NOWAIT", "END SINGLE");
+	                  parse_err_flush(Find_EOS, NULL);
+	                  goto EXIT;
+	               }
+
+	               if (LA_CH_VALUE == LPAREN) {
+	                  NEXT_LA_CH;
+	                  parse_var_common_list(&opnd, FALSE);
+
+	                  if (IL_IDX(IL_NEXT_LIST_IDX(list_idx)) == NULL_IDX) {
+	                     COPY_OPND(IL_OPND(IL_NEXT_LIST_IDX(list_idx)), opnd);
+	                  }
+	                  else {
+	                     /* find the end of list */
+	                     int copyprivate_list_idx;
+
+	                     copyprivate_list_idx = IL_IDX(IL_NEXT_LIST_IDX(list_idx));
+	                     while (IL_NEXT_LIST_IDX(copyprivate_list_idx)) {
+	                        copyprivate_list_idx = IL_NEXT_LIST_IDX(copyprivate_list_idx);
+	                     }
+
+	                     /* append the new list */
+	                     IL_NEXT_LIST_IDX(copyprivate_list_idx) = OPND_IDX(opnd);
+	                     IL_PREV_LIST_IDX(OPND_IDX(opnd)) = copyprivate_list_idx;
+	                     IL_LIST_CNT(IL_NEXT_LIST_IDX(list_idx)) += OPND_LIST_CNT(opnd);
+	                  }
+
+	                  if (LA_CH_VALUE == RPAREN) {
+	                     NEXT_LA_CH;
+	                  }
+	                  else {
+	                     parse_err_flush(Find_EOS, ")");
+	                     goto EXIT;
+	                  }
+	               }
+	               else {
+	                  parse_err_flush(Find_EOS, "(");
+	                  goto EXIT;
+	               }
+
+	         	 break;
+
+	           default:
+	               PRINTMSG(TOKEN_LINE(token), 1517, Error, TOKEN_COLUMN(token),
+	                        "OpenMP");
+	               parse_err_flush(Find_EOS, NULL);
+	               break;
+	          }
+	      }
+	      else {
+	         parse_err_flush(Find_EOS, "END SINGLE clause");
+	      }
+
+	      if (LA_CH_VALUE == COMMA) {
+	         NEXT_LA_CH;
+	      }
+	   }
+         /* the above are added by jhs, 02/7/21 */
          if (directive_region_error(Endsingle_Open_Mp_Dir,
                                     IR_LINE_NUM(ir_idx),
                                     IR_COL_NUM(ir_idx))) {
@@ -10670,6 +10844,93 @@ static void parse_open_mp_directives(void)
          CURR_BLK_FIRST_SH_IDX     = curr_stmt_sh_idx;
          LINK_TO_PARENT_BLK;
          break;
+	 
+      case Tok_Open_Mp_Dir_Workshare:
+	 ATP_HAS_TASK_DIRS(SCP_ATTR_IDX(curr_scp_idx)) = TRUE;
+	 ir_idx = gen_directive_ir(Workshare_Open_Mp_Opr);
+
+	 parse_open_mp_clauses(Workshare_Omp);
+
+	 if (directive_region_error(Workshare_Open_Mp_Dir,
+				    IR_LINE_NUM(ir_idx),
+				    IR_COL_NUM(ir_idx))) {
+	    break;
+	 }
+
+	 SET_DIRECTIVE_STATE(Open_Mp_Workshare_Region);
+
+	 check_do_open_mp_nesting();
+
+	 PUSH_BLK_STK(Open_Mp_Workshare_Blk);
+	 BLK_IS_PARALLEL_REGION(blk_stk_idx) = TRUE;
+	 CURR_BLK_FIRST_SH_IDX = curr_stmt_sh_idx;
+	 LINK_TO_PARENT_BLK;
+	 break;
+
+      case Tok_Open_Mp_Dir_Parallelworkshare:
+	 ATP_HAS_TASK_DIRS(SCP_ATTR_IDX(curr_scp_idx)) = TRUE;
+	 ir_idx = gen_directive_ir(Parallelworkshare_Open_Mp_Opr);
+
+	 parse_open_mp_clauses(Parallel_Workshare_Omp);
+
+	 if (directive_region_error(Parallelworkshare_Open_Mp_Dir,
+				   IR_LINE_NUM(ir_idx),
+				   IR_COL_NUM(ir_idx))){
+	    break;
+	 }
+
+	 SET_DIRECTIVE_STATE(Open_Mp_Parallel_Workshare_Region);
+	 PUSH_BLK_STK(Open_Mp_Parallel_Workshare_Blk);
+	 BLK_IS_PARALLEL_REGION(blk_stk_idx) = TRUE;
+	 CURR_BLK_FIRST_SH_IDX = curr_stmt_sh_idx;
+	 LINK_TO_PARENT_BLK;
+	 break;
+
+      case Tok_Open_Mp_Dir_Endworkshare:
+	 ATP_HAS_TASK_DIRS(SCP_ATTR_IDX(curr_scp_idx)) = TRUE;
+	 ir_idx = gen_directive_ir(Endworkshare_Open_Mp_Opr);
+
+	 if (LA_CH_VALUE != EOS) {
+	    if (MATCHED_TOKEN_CLASS(Tok_Class_Open_Mp_Dir_Kwd)) {
+	       if (TOKEN_VALUE(token) == Tok_Open_Mp_Dir_Nowait) {
+		  IR_FLD_L(ir_idx) = CN_Tbl_Idx;
+		  IR_IDX_L(ir_idx) = CN_INTEGER_ONE_IDX;
+		  IR_LINE_NUM_L(ir_idx) = TOKEN_LINE(token);
+		  IR_COL_NUM_L(ir_idx) = TOKEN_COLUMN(token);
+	       }
+	       else{
+		  parse_err_flush(Find_EOS, "NOWAIT");
+	       }
+	    }
+	 }
+
+	 if (directive_region_error(Endworkshare_Open_Mp_Dir,
+				    IR_LINE_NUM(ir_idx),
+				    IR_COL_NUM(ir_idx))) {
+	    break;
+	 }
+
+	 CLEAR_DIRECTIVE_STATE(Open_Mp_Workshare_Region);
+	 SH_STMT_TYPE(curr_stmt_sh_idx) = Open_MP_End_Workshare_Stmt;
+	 stmt_type = Open_MP_End_Workshare_Stmt;
+	 end_open_mp_workshare_blk(FALSE);
+	 break;
+
+      case Tok_Open_Mp_Dir_Endparallelworkshare:
+	 ATP_HAS_TASK_DIRS(SCP_ATTR_IDX(curr_scp_idx)) = TRUE;
+	 ir_idx = gen_directive_ir(Endparallelworkshare_Open_Mp_Opr);
+
+	 if(directive_region_error(Endparallelworkshare_Open_Mp_Dir,
+				   IR_LINE_NUM(ir_idx),
+				   IR_COL_NUM(ir_idx))){
+	    break;
+	 }
+
+	 CLEAR_DIRECTIVE_STATE(Open_Mp_Parallel_Workshare_Region);
+	 SH_STMT_TYPE(curr_stmt_sh_idx) = Open_MP_End_Parallel_Workshare_Stmt;
+	 stmt_type = Open_MP_End_Parallel_Workshare_Stmt;
+	 end_open_mp_parallel_workshare_blk(FALSE);
+	 break;
 
       case Tok_Open_Mp_Dir_Atomic:
          ATP_HAS_TASK_DIRS(SCP_ATTR_IDX(curr_scp_idx)) = TRUE;
@@ -10922,6 +11183,7 @@ EXIT:
 |*                        (open mp directive operator)                        *|
 |*                       /                                                    *|
 |*                      |- IF condition                                       *|
+|*                      |- NUM_THREADS expr                          *|
 |*                      |- PRIVATE var list                                   *|
 |*                      |- SHARED var list                                    *|
 |*                      |- FIRSTPRIVATE var list                              *|
@@ -11028,6 +11290,43 @@ static void parse_open_mp_clauses(open_mp_directive_type directive)
                   goto EXIT;
                }
                break;
+               
+            case Tok_Open_Mp_Dir_Num_Threads: /* by jhs, 02/7/20 */
+               if (! open_mp_clause_allowed[directive][Num_Threads_Omp_Clause]) {
+                  PRINTMSG(TOKEN_LINE(token), 1370, Error, TOKEN_COLUMN(token),
+                           "NUM_THREADS", open_mp_dir_str[directive]);
+                  parse_err_flush(Find_EOS, NULL);
+                  goto EXIT;
+               }
+
+               /* only one NUM_THREADS clause allowed */
+
+               if (IL_IDX(list_array[OPEN_MP_NUM_THREADS]) != NULL_IDX) {
+                  PRINTMSG(TOKEN_LINE(token), 1360, Error, TOKEN_COLUMN(token),
+                           "NUM_THREADS", open_mp_dir_str[directive]);
+                  parse_err_flush(Find_EOS, NULL);
+                  goto EXIT;
+               }
+
+               if (LA_CH_VALUE == LPAREN) {
+                  NEXT_LA_CH;
+                  parse_expr(&opnd);
+
+                  COPY_OPND(IL_OPND(list_array[OPEN_MP_NUM_THREADS]), opnd);
+
+                  if (LA_CH_VALUE == RPAREN) {
+                     NEXT_LA_CH;
+                  }
+                  else {
+                     parse_err_flush(Find_EOS, ")");
+                     goto EXIT;
+                  }
+               }
+               else {
+                  parse_err_flush(Find_EOS, "(");
+                  goto EXIT;
+               }
+            	 break;
 
             case Tok_Open_Mp_Dir_Private:
 
@@ -11958,7 +12257,9 @@ static void check_do_open_mp_nesting(void)
       }
       else if (BLK_TYPE(blk_idx) == Open_Mp_Sections_Blk ||
                BLK_TYPE(blk_idx) == Open_Mp_Single_Blk ||
-               BLK_TYPE(blk_idx) == Open_Mp_Parallel_Sections_Blk) {
+               BLK_TYPE(blk_idx) == Open_Mp_Parallel_Sections_Blk ||
+	       BLK_TYPE(blk_idx) == Open_Mp_Workshare_Blk ||
+	       BLK_TYPE(blk_idx) == Open_Mp_Parallel_Workshare_Blk ) {
 
          PRINTMSG(IR_LINE_NUM(ir_idx), 1474, Error,
                   IR_COL_NUM(ir_idx));

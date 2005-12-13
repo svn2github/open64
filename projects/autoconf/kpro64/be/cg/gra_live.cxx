@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -2285,12 +2285,24 @@ Clear_Defreach(
 
 // Detect TNs that should be renamed in the <bb>. 
 void 
-Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set)
+Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
+#ifdef KEY
+		   , OP *rename_local_TN_op
+#endif
+		   )
 {
   TN_MAP op_for_tn = TN_MAP_Create ();
   OP *op;
+#ifdef KEY
+  BOOL rename_local_TNs = FALSE;
+#endif
 
   FOR_ALL_BB_OPs_FWD (bb, op) {
+#ifdef KEY
+    // Rename local TNs starting at rename_local_TN_op, if it exists,
+    // Bug 4327.
+    rename_local_TNs |= (rename_local_TN_op == op);
+#endif
     for (INT i = 0; i < OP_results(op); i++) {
       TN *tn = OP_result(op, i);
       // Don't rename under the following conditions.
@@ -2345,6 +2357,14 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set)
 	}
 
       }
+#ifdef KEY
+      else if (rename_local_TNs &&
+	       !TN_is_global_reg(tn) &&
+	       !TN_is_const_reg(tn)) {
+        // Rename local TN to new local TN between op and end of bb.  Bug 4327.
+	Rename_TN_In_Range (tn, op, NULL);
+      }
+#endif
       TN_MAP_Set (op_for_tn, OP_result(op, i), op);
     }
   }

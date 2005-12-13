@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -264,7 +264,7 @@ Finalize_Priority_Queue(void)
 
 /////////////////////////////////////
 static REGISTER_SET
-Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc )
+Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange)
 /////////////////////////////////////
 //
 //  Return the set of registers in <rc> used by <gbb>.  If <gbb> is not in the
@@ -278,9 +278,35 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc )
 //  complement region, and its region contains a call, we'll also add the
 //  caller saves registers.
 //
+#ifdef KEY
+//  If GRA_optimize_boundary is TRUE:
+//  Change the semantics of the function to return the registers in <rc> that
+//  are unavailable to hold <tn> in <gbb>.  A register is unavailable only if
+//  it is unavailable over the same portion of <gbb> that is required by <tn>.
+#endif
 /////////////////////////////////////
 {
   REGISTER_SET used  = gbb->Registers_Used(rc);
+#ifdef KEY
+  if (GRA_optimize_boundary) {
+    REGISTER reg;
+    if (! lrange->Contains_Internal_BB(gbb)) {
+      // <gbb> is a boundary BB.  A register is available even if it is used
+      // over some portion of the BB, as long as the used portion does not
+      // interfere with the portion required by <tn>.
+      for (reg = REGISTER_SET_Choose(used);
+	   reg != REGISTER_UNDEFINED;
+	   reg = REGISTER_SET_Choose_Next(used, reg)) {
+	LRANGE_BOUNDARY_BB *boundary_bb = lrange->Get_Boundary_Bb(gbb->Bb());
+	if (! boundary_bb->Interfere(gbb, rc, reg)) {
+	  // Register is available.  Remove it from <used>.
+	  used = REGISTER_SET_Difference1(used, reg);
+	}
+      }
+    }
+  }
+#endif
+
   LUNIT*       lunit = gbb_mgr.Split_LUNIT(gbb);
 
   if ( lunit != NULL ) {
@@ -342,7 +368,7 @@ Max_Colorable_LUNIT( LUNIT** result )
     // Establish map from blocks with LUNITs to their LUNITs:
     gbb_mgr.Split_LUNIT_Set(lunit->Gbb(), lunit);
 
-    regs_used = Regs_Used(tn,lunit->Gbb(),rc);
+    regs_used = Regs_Used(tn,lunit->Gbb(),rc,split_lrange);
 
     // LUNITs can be present to represent spills/restores at live range
     // split borders.  We want to skip these as seeds of splitting because:
@@ -822,11 +848,12 @@ Identify_Max_Colorable_Neighborhood( LUNIT* lunit )
   gbb_mgr.Split_Queued_Set(lunit->Gbb());
   Add_To_Colorable_Neighborhood(lunit->Gbb());
   allowed_regs =
-    REGISTER_SET_Difference(allowed_regs,Regs_Used(tn,lunit->Gbb(),rc));
+    REGISTER_SET_Difference(allowed_regs,Regs_Used(tn,lunit->Gbb(),rc,
+						   split_lrange));
 
   while ( GBBPRQ_Size(&gbbprq) > 0 ) {
     GRA_BB*         gbb       = GBBPRQ_Delete_Top(&gbbprq);
-    REGISTER_SET    regs_used = Regs_Used(tn,gbb,rc);
+    REGISTER_SET    regs_used = Regs_Used(tn,gbb,rc, split_lrange);
     REGISTER_SET    loop_allowed = REGISTER_SET_EMPTY_SET;
 
     if ( REGISTER_SET_EmptyP(REGISTER_SET_Difference(allowed_regs,regs_used)) ||
@@ -1417,6 +1444,18 @@ Add_Deferred_To_Coloring_List( LRANGE_CLIST_ITER* client_iter )
 {
   LRANGE_CLIST_ITER dup_iter;
 
+#ifdef KEY
+  for (dup_iter.Init_Following(client_iter);
+       !dup_iter.Done();
+       dup_iter.Step()) {
+    LRANGE* lrange = dup_iter.Current();
+    if (deferred_lrange->Priority() > lrange->Priority()) {
+      dup_iter.Push(deferred_lrange);
+      return;
+    }
+  }
+  dup_iter.Push(deferred_lrange);
+#else
   if ( lranges_to_pass_count == 0 ) {
     client_iter->Splice(deferred_lrange);
     return;
@@ -1456,6 +1495,7 @@ Add_Deferred_To_Coloring_List( LRANGE_CLIST_ITER* client_iter )
       }
     }
   }
+#endif
 }
 
 /////////////////////////////////////
@@ -1557,6 +1597,92 @@ Fix_Rot_Reg_Clob_Info( LRANGE* lrange )
     }
   }
 }
+
+#ifdef KEY
+/////////////////////////////////////
+static void
+Make_Boundary_BBs_At_Border(GRA_BB* border_gbb, GRA_BB* alloc_gbb)
+/////////////////////////////////////
+//
+//  <border_gbb> and <alloc_gbb> are neighbors on opposite sides of the border.
+//  Turn them into boundary BBs.  <alloc_gbb> is in the alloc_lrange.
+//
+/////////////////////////////////////
+{
+  // Turn <border_gbb> into a boundary BB.
+  if (deferred_lrange->Contains_Internal_BB(border_gbb)) {
+    deferred_lrange->Remove_Internal_BB(border_gbb);
+    deferred_lrange->Add_Boundary_BB(border_gbb);
+  }
+
+  // Turn <alloc_gbb> into a boundary BB.
+  if (alloc_lrange->Contains_Internal_BB(alloc_gbb)) {
+    alloc_lrange->Remove_Internal_BB(alloc_gbb);
+    alloc_lrange->Add_Boundary_BB(alloc_gbb);
+  }
+}
+
+/////////////////////////////////////
+static void
+Fix_Boundary_BBs(void)
+/////////////////////////////////////
+//
+//  Make the right internal_bb sets for both alloc_lrange and deferred_lrange.
+//  Walk the BBs on the (outside) border of the alloc_lrange, turning BBs on
+//  both sides of the border into boundary BBs.
+//
+/////////////////////////////////////
+{
+  GRA_BB_SPLIT_LIST_ITER    iter;
+  GRA_BB_FLOW_NEIGHBOR_ITER flow_iter;
+
+  // For the internal BBs and boundary BBs originally in the live range, move
+  // them either to <alloc_lrange> or <deferred_lrange>.
+  for (iter.Init(alloc_gbb_list_head); ! iter.Done(); iter.Step()) {
+    GRA_BB* gbb = iter.Current();
+
+    if (deferred_lrange->Contains_Internal_BB(gbb)) {
+      // Notice the sneaky fact that deferred_lrange really is split_lrange and
+      // thus we can just remove any of the internal BBs in alloc_lrange and
+      // the result will be the internal BBs in the deferred part.
+      alloc_lrange->Add_Internal_BB(gbb);
+      deferred_lrange->Remove_Internal_BB(gbb);
+    } else {
+      // gbb is a boundary BB.  Remove it from split_lrange and put it in
+      // alloc_lrange.
+      LRANGE_BOUNDARY_BB* boundary_bb =
+        deferred_lrange->Remove_Boundary_Bb(gbb->Bb());
+      Is_True(boundary_bb != NULL, ("Fix_Boundary_BBs: boundary BB not found"));
+      alloc_lrange->Boundary_BBs_Push(boundary_bb);
+    }
+  }
+
+  // Add the boundary BBs created by splitting.
+  for (iter.Init(border_gbb_list_head); ! iter.Done(); iter.Step()) {
+    GRA_BB* gbb = iter.Current();
+
+    //
+    // Check predecessors for members of alloc_lrange.  If found turn the
+    // BBs on both sides of the border into boundary BBs.
+    //
+    if (BB_live_in(gbb->Bb())) {
+      flow_iter.Preds_Init(gbb);
+      Find_Border_Transitions(gbb,&flow_iter,Make_Boundary_BBs_At_Border);
+    }
+
+    //
+    // Check successors for members of lrange0.  If found turn the
+    // BBs on both sides of the border into boundary BBs.
+    //
+    flow_iter.Succs_Init(gbb);
+    Find_Border_Transitions(gbb,&flow_iter,Make_Boundary_BBs_At_Border);
+  }
+
+  // Update the boundary BBs to reflect the BBs' new live-in and live-out info.
+  deferred_lrange->Update_Boundary_BBs();
+  alloc_lrange->Update_Boundary_BBs();
+}
+#endif
 
 /////////////////////////////////////
 static void
@@ -1825,6 +1951,12 @@ LRANGE_Do_Split( LRANGE* lrange, LRANGE_CLIST_ITER* iter,
   Add_Spills_And_Restores();
   Fix_TN_Live_Info();
   Rename_TN_References();
+
+#ifdef KEY
+  if (GRA_optimize_boundary)
+    Fix_Boundary_BBs();
+#endif
+
   deferred_lrange->Calculate_Priority();
   Fix_Interference();
 

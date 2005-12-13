@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -4446,6 +4446,93 @@ EXIT:
    return;
 
 }  /* process_data_imp_do_target */
+#ifdef KEY /* Bug 2949 and Bug 5295 */
+
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      If target is type character and source is "H" hollerith, convert      *|
+|*      source to character string. The goal is to be compatible in certain   *|
+|*      contexts (assignment whose rhs is a single hollerith; parameter       *|
+|*      statement; data statement) with g77. G77 doesn't provide "R" or "L"   *|
+|*      holleriths, so we don't need to handle them.                          *|
+|*
+|*      Also allow an integer to initialize a single character unless -ansi   *|
+|*      is in effect                                                          *|
+|*
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*	target_idx: linear type of target                                     *|
+|*      source_idx: index into const_tbl for source constant                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      source_idx: (possibly changed) index into const_tbl                   *|
+|*      NONE								      *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      TRUE if we performed the conversion                                   *|
+|*                                                                            *|
+\******************************************************************************/
+static boolean force_hollerith_or_int_to_character(linear_type_type target_idx,
+  int *source_idx)
+{
+  if (CHARACTER_DEFAULT_TYPE != target_idx) {
+    return FALSE;
+    }
+
+  int type_byte_len = 1;
+  boolean hollerith = FALSE;
+  int orig_source_idx = *source_idx;
+  basic_type_type orig_source_type = TYP_TYPE(CN_TYPE_IDX(orig_source_idx));
+
+  /* We assume that the existing -ansi "Hollerith is nonstandard" error
+   * message is sufficient to indicate that the assignment is also nonstandard,
+   * so we don't have to test for ansi-ness here
+   */
+  if (H_Hollerith == CN_HOLLERITH_TYPE(orig_source_idx)) {
+    // See print_const() in fortout.c for this computation
+    type_byte_len = TARGET_CHARS_PER_WORD *
+      ((TYP_BIT_LEN(CN_TYPE_IDX(orig_source_idx)) + TARGET_BITS_PER_WORD - 1) /
+	TARGET_BITS_PER_WORD);
+    CN_HOLLERITH_TYPE(orig_source_idx) = Not_Hollerith;
+    CN_HOLLERITH_ENDIAN(orig_source_idx) = FALSE;
+    hollerith = TRUE;
+    }
+
+  /* z'nnn' literals show up as "typeless" */
+  else if ((!on_off_flags.issue_ansi_messages) &&
+    (orig_source_type == Integer || orig_source_type == Typeless)) {
+    /* Done */
+    }
+
+  else {
+    return FALSE;
+    }
+
+  /* See put_c_str_in_cn() in s_utils.c */
+  CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
+  TYP_TYPE(TYP_WORK_IDX) = Character;
+  TYP_LINEAR(TYP_WORK_IDX) = CHARACTER_DEFAULT_TYPE;
+  TYP_DESC(TYP_WORK_IDX) = Default_Typed;
+  TYP_CHAR_CLASS(TYP_WORK_IDX) = Const_Len_Char;
+  TYP_FLD(TYP_WORK_IDX) = CN_Tbl_Idx;
+  TYP_IDX(TYP_WORK_IDX) = C_INT_TO_CN(CG_INTEGER_DEFAULT_TYPE,
+    type_byte_len);
+  int type_index = ntr_type_tbl();
+
+  /* Integer constants are shared, so we must duplicate it before changing
+   * it's type. That appears not to be a problem with holleriths. */
+  if (hollerith) {
+    CN_TYPE_IDX(orig_source_idx) = type_index;
+    }
+  else {
+    *source_idx = ntr_const_tbl(type_index, FALSE,
+      &(CN_CONST(orig_source_idx)));
+    }
+
+  return TRUE;
+}
+#endif /* KEY Bug 2949 and Bug 5295 */
 
 
 /******************************************************************************\
@@ -4460,6 +4547,7 @@ EXIT:
 |*                                                                            *|
 |* Input parameters:                                                          *|
 |*      attr_idx : the target's Attr table index			      *|
+|*      init_ir_idx : index into ir_tbl for initialization value              *|
 |*                                                                            *|
 |* Output parameters:                                                         *|
 |*      NONE								      *|
@@ -4489,6 +4577,9 @@ static boolean check_target_and_value(int	attr_idx,
       goto EXIT;
    }
 
+#ifdef KEY /* Bug 2949 and Bug 5295 */
+   int source_idx = OPND_IDX(value_opnd);
+#endif /* KEY Bug 2949 and Bug 5295 */
    if (check_asg_semantics(ATD_TYPE_IDX(attr_idx),
                            value_desc.type_idx,
                            OPND_LINE_NUM(value_opnd),
@@ -4570,6 +4661,12 @@ static boolean check_target_and_value(int	attr_idx,
          }
       }
    }
+#ifdef KEY /* Bug 2949 and Bug 5295 */
+   else if (force_hollerith_or_int_to_character(
+     TYP_LINEAR(ATD_TYPE_IDX(attr_idx)), &source_idx)) {
+     OPND_IDX(value_opnd) = source_idx;
+   }
+#endif /* KEY Bug 2949 and Bug 5295 */
    else {
       find_opnd_line_and_column(&value_opnd, &line, &column);
       PRINTMSG(line, 97, Error, column, AT_OBJ_NAME_PTR(attr_idx));

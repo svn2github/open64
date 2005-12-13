@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -61,6 +61,7 @@
 
 #include "defs.h"
 #include "cxx_memory.h"
+#include "opt_bb.h"
 #include "opt_main.h"
 #include "opt_etable.h"
 #include "opt_ssu.h"
@@ -528,6 +529,12 @@ EXP_WORKLST::SPRE_perform_insert_delete(ETABLE *etable)
     rhs->IncUsecnt();	// increment use count of preg
 
     // create a new coderep node for the lhs of the store being inserted
+#ifdef KEY // bug 5798
+    if (old_lhs->Dtyp() == MTYPE_UNKNOWN) {
+      old_lhs->Set_dsctyp(Exp()->Dsctyp());
+      old_lhs->Set_dtyp(Exp()->Dtyp());
+    }
+#endif
     CODEREP *new_lhs = etable->Htable()->Add_def(old_lhs->Aux_id(), -1,
 	  NULL /* defstmt */, old_lhs->Dtyp(), old_lhs->Dsctyp(),
 	  old_lhs->Offset(), old_lhs->Lod_ty(), old_lhs->Field_id(), TRUE);

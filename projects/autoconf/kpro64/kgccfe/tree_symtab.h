@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -48,6 +48,10 @@
 
 extern TY_IDX Create_TY_For_Tree (tree, TY_IDX idx = TY_IDX_ZERO);
 extern "C" ST* Create_ST_For_Tree (tree);
+#ifdef KEY
+extern "C" void Create_DST_For_Tree (tree, ST*);
+extern "C" BOOL Is_shared_mp_var (tree);
+#endif // KEY
 
 /* 
  * either return a previously created TY_IDX associated with a type,
@@ -101,8 +105,16 @@ Get_ST (tree decl_tree)
 		{
 		    if (flag_no_common || DECL_SECTION_NAME(decl_tree))
 			Set_ST_sclass (st, SCLASS_UGLOBAL);
-		    else
+		    else {
+		      if (Debug_Level >= 2) { 
+			  // Bug 6183 
+			  // If this symbol was declared extern before and 
+			  // later instantiated in this file, then we need to 
+			  // create a DST entry now.
+		          Create_DST_For_Tree(decl_tree, st);
+			}
 		        Set_ST_sclass (st, SCLASS_COMMON);
+		    }
 		}
 		// the earlier definition may not have the complete type
 		if (TREE_CODE(decl_tree) == VAR_DECL) {

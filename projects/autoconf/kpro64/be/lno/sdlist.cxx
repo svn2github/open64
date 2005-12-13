@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -46,10 +46,10 @@
 
 #include <sys/types.h>
 #include "defs.h"
+#include "lnopt_main.h"
 #include "mat.h"
 #include "cxx_base.h"
 #include "access_vector.h"
-#include "lnopt_main.h"
 #include "snl.h"
 #include "opt_du.h"
 #include "lwn_util.h"

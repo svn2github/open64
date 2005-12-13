@@ -1,3 +1,8 @@
+/*
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   File modified February 23, 2005 by PathScale, Inc. to add OpenMP support.
+ */
+
 /* Type Analyzer for GNU C++.
    Copyright (C) 1987, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -199,6 +204,10 @@ init_spew ()
   gcc_obstack_init (&token_obstack);
 }
 
+#ifdef KEY
+extern int in_omp_pragma;
+#endif /* KEY */
+
 /* Subroutine of read_token.  */
 static SPEW_INLINE int
 read_process_identifier (pyylval)
@@ -208,6 +217,14 @@ read_process_identifier (pyylval)
 
   if (C_IS_RESERVED_WORD (id))
     {
+#ifdef KEY
+      // Special case for some keywords that are also OpenMP keywords
+      if (in_omp_pragma &&
+          (C_RID_CODE (id) == RID_PRIVATE ||
+	   C_RID_CODE (id) == RID_STATIC))
+        return IDENTIFIER;
+#endif /* KEY */
+
       pyylval->ttype = ridpointers[C_RID_CODE (id)];
       return C_RID_YYCODE (id);
     }
@@ -262,6 +279,91 @@ yylexstring (t)
 
   t->yychar = STRING;
 }
+
+
+#ifdef KEY
+extern bool seen_omp_paren;
+static int
+check_omp_string (char * s, bool * status)
+{
+  *status = true;
+                                                                                
+  if (!strcmp (s, "\n"))
+  {
+    in_omp_pragma = seen_omp_paren = FALSE;
+    return '\n';
+  }
+  if (!strcmp (s, "options") && !seen_omp_paren)
+    return OPTIONS_PRAGMA;
+  if ((!strcmp (s, "mips_frequency_hint") ||
+       !strcmp (s, "frequency_hint")) && !seen_omp_paren)
+    return EXEC_FREQ_PRAGMA;
+  if (!strcasecmp (s, "never") && !seen_omp_paren)
+    return FREQ_NEVER;
+  if (!strcasecmp (s, "init") && !seen_omp_paren)
+    return FREQ_INIT;
+  if (!strcasecmp (s, "frequent") && !seen_omp_paren)
+    return FREQ_FREQUENT;
+  if (!strcmp (s, "private") && !seen_omp_paren)
+    return OMP_PRIVATE;
+  if (!strcmp (s, "parallel") && !seen_omp_paren)
+    return OMP_PARALLEL;
+  if (!strcmp (s, "omp") && !seen_omp_paren)
+    return OMP_PRAGMA;
+  if (!strcmp (s, "copyprivate") && !seen_omp_paren)
+    return OMP_COPYPRIVATE;
+  if (!strcmp (s, "firstprivate") && !seen_omp_paren)
+    return OMP_FIRSTPRIVATE;
+  if (!strcmp (s, "lastprivate") && !seen_omp_paren)
+    return OMP_LASTPRIVATE;
+  if (!strcmp (s, "shared"))
+    return OMP_SHARED;
+  if (!strcmp (s, "none"))
+    return OMP_NONE;
+  if (!strcmp (s, "reduction") && !seen_omp_paren)
+    return OMP_REDUCTION;
+  if (!strcmp (s, "copyin") && !seen_omp_paren)
+    return OMP_COPYIN;
+  if (!strcmp (s, "static"))
+    return OMP_STATIC;
+  if (!strcmp (s, "dynamic"))
+    return OMP_DYNAMIC;
+  if (!strcmp (s, "guided"))
+    return OMP_GUIDED;
+  if (!strcmp (s, "runtime"))
+    return OMP_RUNTIME;
+  if (!strcmp (s, "ordered"))
+    return OMP_ORDERED;
+  if (!strcmp (s, "schedule"))
+    return OMP_SCHEDULE;
+  if (!strcmp (s, "nowait"))
+    return OMP_NOWAIT;
+  if (!strcmp (s, "num_threads") && !seen_omp_paren)
+    return OMP_NUM_THREADS;
+  if (!strcmp (s, "sections") && !seen_omp_paren)
+    return OMP_SECTIONS;
+  if (!strcmp (s, "section"))
+    return OMP_SECTION;
+  if (!strcmp (s, "single"))
+    return OMP_SINGLE;
+  if (!strcmp (s, "master") && !seen_omp_paren)
+    return OMP_MASTER;
+  if (!strcmp (s, "critical") && !seen_omp_paren)
+    return OMP_CRITICAL;
+  if (!strcmp (s, "barrier") && !seen_omp_paren)
+    return OMP_BARRIER;
+  if (!strcmp (s, "atomic") && !seen_omp_paren)
+    return OMP_ATOMIC;
+  if (!strcmp (s, "flush") && !seen_omp_paren)
+    return OMP_FLUSH;
+  if (!strcmp (s, "threadprivate") && !seen_omp_paren)
+    return OMP_THREADPRIVATE;
+
+  /* this must be last, return anything */
+  *status = false;
+  return 0;
+}
+#endif /* KEY */
 
 /* Read the next token from the input file.  The token is written into
    T, and its type number is returned.  */
@@ -347,6 +449,17 @@ read_token (t)
 
     case CPP_NAME:
       t->yychar = read_process_identifier (&t->yylval);
+#ifdef KEY
+      if (t->yychar == IDENTIFIER && in_omp_pragma)
+      {
+        if (TREE_CODE(t->yylval.ttype) != IDENTIFIER_NODE) abort();
+	char * omp_name = IDENTIFIER_POINTER (t->yylval.ttype);
+	bool valid = false;
+	int code = check_omp_string (omp_name, &valid);
+	if (valid)
+	  t->yychar = code;
+      }
+#endif /* KEY */
       break;
 
     case CPP_NUMBER:

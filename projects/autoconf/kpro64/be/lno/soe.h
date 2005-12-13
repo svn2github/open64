@@ -1,3 +1,9 @@
+/* -*- c++ -*- */
+
+/*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -305,6 +311,7 @@ static char *soe_rcs_id = soe_INCLUDED "$Revision: 1.1.1.1 $";
 #include "cxx_memory.h"
 #endif
 #ifndef mat_INCLUDED
+#include "lnopt_main.h"
 #include "mat.h"
 #endif
 #ifndef INFIN_DECLARE
@@ -401,6 +408,14 @@ public:
   MEM_POOL *Pool() const {return _pool;}
   void Print(FILE *fp) const;
   static void Print_Work(FILE *fp) ;
+
+#ifdef KEY
+  // External hooks to SVPC and related stuff for implementing loop unswitching
+  BOOL SVPC_Applicable() { return SVPC() != SVPC_INAPPLICABLE; }
+  INT32_INFIN Lower_Bound(INT col) { return _lower_bound[col]; }
+  INT32_INFIN Upper_Bound(INT col) { return _upper_bound[col]; }
+  mINT32 Work_Cols() { return _work_cols; }
+#endif
 
  private:
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -383,6 +383,12 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 		}
 		else if (!def && is_func_arg && BB_entry(current_bb)) 
 			;	// okay
+#ifdef KEY
+		else if (!def && is_func_arg && BB_call(current_bb))
+			;	// okay.  CSE might have replaced a use of a
+				// non-dedicated TN with a use of a param reg,
+				// bug 7219.
+#endif
 #ifdef TARG_X8664
 		else if (!def && regnum == RAX && BB_entry(current_bb)) 
 			;	// okay because RAX gives number of xmm args
@@ -574,6 +580,10 @@ Find_Global_TNs ( RID *rid )
             /* this use is just a self-copy, will disappear */
             continue;
 	  }
+#ifdef KEY
+	  // EBO can copy dedicated TNs to remove duplicate OPs.  Bug 4512.
+          if (!OP_copy(op))
+#endif
           Check_If_Dedicated_TN_Is_Global (tn, bb, FALSE /*def*/);
         } else {
           Check_If_TN_Is_Global (tn, tn_in_bb, bb, FALSE /*def*/);
@@ -582,9 +592,13 @@ Find_Global_TNs ( RID *rid )
       /* process all the result TN */
       for (resnum = 0; resnum < OP_results(op); resnum++) {
         tn = OP_result(op, resnum);
-        if (TN_is_dedicated(tn))
+        if (TN_is_dedicated(tn)) {
+#ifdef KEY
+	  // EBO can copy dedicated TNs to remove duplicate OPs.  Bug 4512.
+          if (!OP_copy(op))
+#endif
           Check_If_Dedicated_TN_Is_Global (tn, bb, TRUE /*def*/);
-        else {
+        } else {
           if (OP_cond_def(op)) {
             // cond_def is an implicit use
             Check_If_TN_Is_Global (tn, tn_in_bb, bb, FALSE /*def*/);
@@ -1165,7 +1179,12 @@ Localize_or_Replace_Dedicated_TNs(void)
 	// unaligned_loads have a copy of last def as an implicit use
 	if ( OP_same_res(op) && tn == OP_result(op,0) )
 	  continue;
-
+#ifdef TARG_X8664
+	// Almost all x86 insns have the OP_same_res property even though they
+	// are not recorded as such in isa_properties.cxx.  Bug 6866.
+	if ( tn == OP_result(op,0) )
+	  continue;
+#endif
 	if ( non_region_def_bb == bb ) // the def is already local
 	  continue;
 	else if ( non_region_def_bb ) {

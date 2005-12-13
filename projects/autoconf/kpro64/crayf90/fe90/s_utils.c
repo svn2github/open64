@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1545,6 +1545,7 @@ void dope_vector_setup(opnd_type	*r_opnd,
    }
 
 
+
    /*************************\
    |* check for whole array *|
    \*************************/
@@ -1861,7 +1862,22 @@ void dope_vector_setup(opnd_type	*r_opnd,
    }
    else {
       IR_FLD_R(dv_idx) = CN_Tbl_Idx;
+#ifdef KEY /* Bug 4933 */
+      /* If RHS of pointer assignment is a dummy argument, we generally
+       * lack dope info for the corresponding formal argument which
+       * would tell us whether that formal argument was allocated by
+       * pointer. It's too late to change our "Fortran ABI" to pass
+       * dope information when a dummy is a pointer target.
+       * Optimistically assume that it was allocated by pointer so
+       * that subsequent "deallocate" doesn't reject it. */
+      IR_IDX_R(dv_idx) = (ptr_assign && NULL_IDX == dope_idx &&
+	  AT_Tbl_Idx == OPND_FLD((*r_opnd)) &&
+	  AT_IS_DARG(OPND_IDX((*r_opnd)))) ?
+        CN_INTEGER_ONE_IDX :
+	CN_INTEGER_ZERO_IDX;
+#else
       IR_IDX_R(dv_idx) = CN_INTEGER_ZERO_IDX;
+#endif /* KEY Bug 4933 */
       IR_LINE_NUM_R(dv_idx) = opnd_line;
       IR_COL_NUM_R(dv_idx)  = opnd_column;
    }
@@ -4346,7 +4362,31 @@ void gen_dv_whole_def_init(opnd_type		*dv_opnd,
    |* BASE ADDR *|
    \*************/
 
+#ifdef KEY /* Bug 6106 */
+   /* We want to set the base address to null explicitly so the code behaves
+    * reproducibly if the user fails to allocate or initialize the variable.
+    */
+   IL_FLD(list_idx) = IR_Tbl_Idx;
+   IL_LINE_NUM(list_idx) = line;
+   IL_COL_NUM(list_idx)	= col;
+
+   int fcd_idx;
+   NTR_IR_TBL(fcd_idx);
+   IL_IDX(list_idx) = fcd_idx;
+   IR_OPR(fcd_idx) = Aloc_Opr;
+   IR_TYPE_IDX(fcd_idx) = CRI_Ptr_8;
+   IR_LINE_NUM(fcd_idx) = line;
+   IR_COL_NUM(fcd_idx)  = col;
+
+   IR_FLD_L(fcd_idx) = CN_Tbl_Idx;
+   IR_IDX_L(fcd_idx) = (SA_INTEGER_DEFAULT_TYPE == CG_INTEGER_DEFAULT_TYPE) ?
+     CN_INTEGER_ZERO_IDX : 
+     C_INT_TO_CN(SA_INTEGER_DEFAULT_TYPE, 0);
+   IR_LINE_NUM_L(fcd_idx) = line;
+   IR_COL_NUM_L(fcd_idx)  = col;
+#else /* KEY Bug 6106 */
    /* leave as null ops */
+#endif /* KEY Bug 6106 */
 
    /*************\
    |* EL_LEN    *|

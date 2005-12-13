@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -75,7 +75,7 @@
 /* for ST */
 #include "symtab.h"
 #include "wn.h"
-#ifdef TARG_X8664
+#ifdef KEY
 #include "bb.h"
 #endif
 
@@ -152,6 +152,8 @@ typedef struct save_reg_loc {
   BOOL		user_allocated; /* true if allocated by user via asm */
 } SAVE_REG_LOC;
 
+// Return TRUE if this tn is not in the list of callee-saved TNs
+extern BOOL Is_Unique_Callee_Saved_Reg (TN *);
 // Number of callee saved registers
 extern INT Cgdwarf_Num_Callee_Saved_Regs (void);
 // Nth callee saved register dedicated TN

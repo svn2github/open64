@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -90,6 +90,10 @@
  * =======================================================================
  */
 
+#ifdef KEY
+#define EBO_REG(regs, cl, op_num)	\
+  (regs[((op_num) * (ISA_REGISTER_CLASS_MAX+1)) + (cl)])
+#endif
 
 inline
 BOOL
@@ -243,11 +247,11 @@ add_to_hash_table ( BOOL in_delay_slot,
       TN* tmp_tn = CGTARG_Gen_Dedicated_Subclass_TN( op, idx, TRUE );
       if( tmp_tn == NULL )
 	tmp_tn = tnr;
-      tninfo = tn_info_def (bb, op, tmp_tn, op_predicate_tn, 
-			    op_predicate_tninfo);
+      tninfo = tn_info_def(bb, op, tmp_tn, op_predicate_tn, 
+			   op_predicate_tninfo);
       if (tmp_tn != tnr)
-	tninfo = tn_info_def (bb, op, tnr, op_predicate_tn, 
-			      op_predicate_tninfo);
+	tninfo = tn_info_def(bb, op, tnr, op_predicate_tn, 
+			     op_predicate_tninfo);
 #else
       tninfo = tn_info_def (bb, op, tnr, op_predicate_tn, op_predicate_tninfo);
 #endif /* TARG_X8664 */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -92,7 +96,12 @@ static BOOL ST_Is_Common_Block (ST *st)
     // N.B.: COMMON blocks are always in the global symtab
   PU& pu = Get_Current_PU();
   if (PU_ftn_lang(pu) &&
-      (ST_sclass(st) == SCLASS_COMMON || ST_sclass(st) == SCLASS_DGLOBAL) &&
+      (ST_sclass(st) == SCLASS_COMMON || ST_sclass(st) == SCLASS_DGLOBAL
+#ifdef KEY
+      // bug 4576
+      || ST_sclass(st) == SCLASS_EXTERN
+#endif
+      ) &&
       TY_kind(ST_type(st)) == KIND_STRUCT)
     return TRUE;
 
@@ -108,7 +117,14 @@ static BOOL ST_Is_Common_Block (ST *st)
  * block in which st appears (or NULL if st is not in a split COMMON).
  ***********************************************************************/
 
+#ifdef KEY
+// 'want_st' defaults to false, it needs to be true for C. If we end up
+// making it true at all callsites, we should remove this parameter and
+// fix this function accordingly.
+ST *ST_Source_COMMON_Block(ST *st, ST **split, BOOL want_st)
+#else
 ST *ST_Source_COMMON_Block(ST *st, ST **split)
+#endif // KEY
 {
   Is_True(st, ("ST_Source_COMMON_Block(): NULL st argument"));
 
@@ -116,6 +132,10 @@ ST *ST_Source_COMMON_Block(ST *st, ST **split)
     *split = NULL;
 
   ST *base = ST_base(st);
+#ifdef KEY
+  if (want_st && base == st)
+    return st;
+#endif // KEY
   if (base == st || !ST_Is_Common_Block(base))
     return NULL;  // st is not in COMMON block
 
@@ -136,6 +156,46 @@ ST *ST_Source_COMMON_Block(ST *st, ST **split)
   return base_full;
 }
 
+#ifdef KEY
+// Differs from ST_Source_COMMON_Block() in that the return value does not
+// have to be COMMON, and it does not need to be the base of st.
+//
+// Returns the base of st if the base is threadprivate and COMMON. Returns
+// st itself if the base is not threadprivate.
+// For static threadprivate in C, the base is not threadprivate, so returns
+// st itself in such cases.
+ST *ST_Source_Block(ST *st, ST **split)
+{
+  Is_True(st, ("ST_Source_Block(): NULL st argument"));
+
+  if (split)
+    *split = NULL;
+
+  ST *base = ST_base(st);
+  if (base == st) return st;
+
+  if (!ST_is_thread_private (base)) return st;
+
+  if (!ST_Is_Common_Block(base))
+    return NULL;  // st is not in COMMON block
+
+  if (!ST_is_split_common(base))
+    return base;  // base is not a split-off COMMON
+
+  ST *base_full = ST_full(base);
+  Is_True(base != base_full,
+          ("invalid base for split-off COMMON for symbol %s", ST_name(st)));
+  Is_True(ST_Is_Common_Block(base_full),
+          ("base of split-off COMMON for symbol %s is not a COMMON "
+           "block", ST_name(st)));
+
+    // base is split-off COMMON, so return base_full
+  if (split)
+    *split = base;
+
+  return base_full;
+}
+#endif
 
 /***********************************************************************
  * Return TRUE if sclass is not that of a variable local to a PU (i.e. if
@@ -246,8 +306,12 @@ Rename_Privatized_COMMON(WN *wn, RENAMING_STACK *stack)
 
     BOOL add_to_ignore;
 
+#ifdef KEY /* Bug 4435 */
+    if (ST_class(st) == CLASS_NAME) {
+#else
     if (ST_is_equivalenced(st) ||
 	ST_class(st) == CLASS_NAME) {
+#endif
         // always ignore st if it's EQUIVALENCEd to something or just a name
       add_to_ignore = TRUE;
     } else if (ST_is_thread_private(st) ||
@@ -345,3 +409,250 @@ Rename_Privatized_COMMON(WN *wn, RENAMING_STACK *stack)
     CXX_DELETE(stack->Pop(), stack->Top()->pool);
   }
 }
+#ifdef KEY
+/***********************************************************************
+ * Create a new symbol table entry for a symbol that has local scope and 
+ * pointer type for the old symbol
+ *
+ ***********************************************************************/
+
+static ST *Create_Local_Threadprivate_Symbol(ST *old_st)
+{
+  ST_SCLASS sclass = ST_sclass(old_st);
+  Is_True(SCLASS_Is_Not_PU_Local(sclass),
+          ("Create_Local_Symbol() called for ST with sclass %d",
+           (INT) sclass ) );
+
+  char *new_name, *old_name = ST_name(old_st);
+  new_name = (char *) alloca(strlen(old_name) + 32);
+  sprintf(new_name, "__ppthd_common_%s", old_name);
+
+  TY_IDX old_ty_idx, new_ty_idx;
+
+  old_ty_idx = ST_type(old_st);
+  new_ty_idx = Make_Pointer_Type(old_ty_idx);
+
+  ST *new_ppthd_st = New_ST(CURRENT_SYMTAB);
+
+  ST_Init(new_ppthd_st, Save_Str(new_name), ST_class(old_st), SCLASS_AUTO,
+          EXPORT_LOCAL, new_ty_idx);
+  //Set_ST_is_thread_private(new_ppthd_st);
+
+  if (Debug_Level > 0) {
+      // create entry in DWARF Symbol Table (DST)
+    DST_INFO_IDX dst_idx = Find_DST_From_ST(old_st, Current_PU_Info);
+    if (!DST_IS_NULL(dst_idx))
+      Create_New_DST(dst_idx, new_ppthd_st, FALSE);
+  }
+
+  return new_ppthd_st;
+}
+
+/***********************************************************************
+ * Create a new symbol table entry for a symbol that has global scope and 
+ * pointer type for the old symbol
+ *
+ ***********************************************************************/
+static ST *Create_Global_Threadprivate_Symbol(ST *old_st)
+{
+  char *new_name, *old_name = ST_name(old_st);
+  new_name = (char *) alloca(strlen(old_name) + 32);
+  sprintf(new_name, "__thdprv_common_%s", old_name);
+
+  ST *new_thdprv_st = New_ST(GLOBAL_SYMTAB); 
+
+  ST_SCLASS sclass = (ST_sclass (old_st) == SCLASS_FSTATIC) ?
+                                SCLASS_FSTATIC : SCLASS_COMMON;
+
+  TY_IDX old_ty_idx, new_ty_idx;
+
+  old_ty_idx = ST_type(old_st);
+  new_ty_idx = Make_Pointer_Type(Make_Pointer_Type(old_ty_idx));
+  ST_Init(new_thdprv_st, Save_Str(new_name), ST_class(old_st), sclass,
+          ST_export(old_st), new_ty_idx);
+
+  if (Debug_Level > 0) {
+    DST_INFO_IDX dst_idx = Find_DST_From_ST(old_st, Current_PU_Info);
+    if (!DST_IS_NULL(dst_idx))
+      Create_New_DST(dst_idx, new_thdprv_st, FALSE);
+  }
+
+  return new_thdprv_st;
+}
+
+/***********************************************************************
+ * If a COMMON block variable is with threadprivate attribute, 
+ * create a new ST for the variable, where the new ST is of pointer type
+ * Replace all references to the old ST appearing in the MP region with 
+ * the deference of the new ST. 
+ *
+ ***********************************************************************/
+void
+Rename_Threadprivate_COMMON(WN* pu, WN* parent, WN *wn, RENAMING_STACK *stack, RENAMING_SCOPE *scope, RENAMING_SCOPE *common_blk_scope)
+{
+
+  Is_True(wn, ("Rename_Threadprivate_COMMON(): NULL wn argument"));
+
+  ST *st = WN_has_sym(wn) ? WN_st(wn) : NULL;
+
+  if (st) {
+    ST *split_block;
+    ST *common_block = ST_Source_Block(st, &split_block);
+    if (ST_is_thread_private(st) || 
+       (split_block && ST_is_thread_private(split_block)) ||
+       (common_block && ST_is_thread_private(common_block))) {
+      ST *new_st; // renamed version of st
+      ST *new_st_for_common_blk;
+
+      new_st_for_common_blk = common_blk_scope->map.Find(common_block);
+      if (!new_st_for_common_blk) {
+        new_st_for_common_blk = Create_Global_Threadprivate_Symbol(common_block);
+        common_blk_scope->map.Enter(common_block, new_st_for_common_blk);
+      }
+
+      new_st = scope->map.Find(common_block);
+      if (!new_st) {
+        new_st = Create_Local_Threadprivate_Symbol(common_block);
+        scope->map.Enter(common_block, new_st);
+        WN *priv_pragma = WN_CreatePragma(WN_PRAGMA_THREADPRIVATE, common_block, ST_st_idx(new_st), ST_st_idx(new_st_for_common_blk));
+        WN_set_pragma_compiler_generated(priv_pragma);
+        WN_INSERT_BlockLast(WN_func_pragmas(pu), priv_pragma);
+      }
+
+      WN *priv_list;
+
+      if (stack->Elements() > 1)
+        priv_list = stack->Top_nth(0)->priv_list;
+      else
+        priv_list = WN_func_pragmas(pu);
+
+      // Add local pragma to function pragmas also, so do a second
+      // iteration if not done in the first pass
+      for (INT i=0; i<2; i++)
+      {
+        BOOL match = FALSE;
+        WN *old_priv_prag;
+        for (old_priv_prag = priv_list ? WN_first(priv_list) : NULL;
+             old_priv_prag; old_priv_prag = WN_next(old_priv_prag))
+          // problem isn't fixed for FIRSTPRIVATE or LASTPRIVATE
+          if (WN_opcode(old_priv_prag) == OPC_PRAGMA &&
+              WN_pragma(old_priv_prag) == WN_PRAGMA_LOCAL &&
+              WN_st(old_priv_prag) == new_st) {
+            match = TRUE;
+            break;  // found a match
+          }
+
+        if (match == FALSE && priv_list) {
+          WN *priv_pragma = WN_CreatePragma(WN_PRAGMA_LOCAL, new_st, 0, 0);
+          WN_set_pragma_compiler_generated(priv_pragma);
+          WN_INSERT_BlockLast(priv_list, priv_pragma);
+          match = TRUE;
+        }
+        if (priv_list == WN_func_pragmas (pu))
+          break;
+        else
+          priv_list = WN_func_pragmas (pu);
+      }
+
+      WN *new_wn = NULL;
+      // Use ST_ofst only if we are generating a pointer to the threadprivate
+      // base of the st, instead of to the st itself.
+      WN_OFFSET ofst = (st == common_block) ? 0 : ST_ofst (st);
+      if (WN_operator(wn) == OPR_LDA) {
+        new_wn = WN_CreateLdid(
+                 OPCODE_make_op(OPR_LDID, 
+                                TY_mtype(ST_type(new_st)), 
+                                TY_mtype(ST_type(new_st))),
+                 0, new_st, ST_type(new_st));
+	ofst += WN_load_offset (wn);
+	if (ofst)
+	  new_wn = WN_Add(Pointer_type, new_wn,
+	    		  WN_Intconst(Pointer_type, ofst));
+        for (INT kidno = 0; kidno < WN_kid_count(parent); kidno++) 
+          if (WN_kid(parent, kidno) == wn)
+            WN_kid(parent, kidno) = new_wn;
+      }
+      else if (WN_operator(wn) == OPR_LDID){
+        ofst += WN_load_offset (wn);
+        new_wn = WN_CreateIload(
+                   OPCODE_make_op(OPR_ILOAD,
+                                  WN_rtype(wn), 
+                                  WN_desc(wn)),
+                   ofst,
+                   Be_Type_Tbl(TY_mtype(ST_type(st))),
+                   Make_Pointer_Type(Be_Type_Tbl(TY_mtype(ST_type(st))),FALSE),
+                   WN_CreateLdid(
+                     OPCODE_make_op(OPR_LDID,
+                                    TY_mtype(ST_type(new_st)),
+                                    TY_mtype(ST_type(new_st))),
+                     0, new_st, ST_type(new_st)));
+        for (INT kidno = 0; kidno < WN_kid_count(parent); kidno++) 
+          if (WN_kid(parent, kidno) == wn)
+            WN_kid(parent, kidno) = new_wn;
+      }
+      else if (WN_operator(wn) == OPR_LDBITS)
+        Fail_FmtAssertion("SCLASS_Is_Not_PU_Local() : got SCLASS_UNKNOWN");
+      else if (WN_operator(wn) == OPR_STID){
+        ofst += WN_store_offset (wn);
+        new_wn = WN_CreateIstore(
+                   OPCODE_make_op(OPR_ISTORE,WN_rtype(wn),WN_desc(wn)),
+                   ofst,
+                   Make_Pointer_Type(Be_Type_Tbl(TY_mtype(ST_type(st))),FALSE),
+                   WN_COPY_Tree(WN_kid(wn,0)),
+                   WN_CreateLdid(
+                     OPCODE_make_op(OPR_LDID,
+                                    TY_mtype(ST_type(new_st)),
+                                    TY_mtype(ST_type(new_st))),
+                     0, new_st, ST_type(new_st)));
+	if (WN_operator(parent) == OPR_BLOCK)
+	{
+          WN_INSERT_BlockBefore(parent, wn, new_wn);
+          WN_DELETE_FromBlock(parent, wn);
+	}
+	else
+	{
+          for (INT kidno = 0; kidno < WN_kid_count(parent); kidno++) 
+            if (WN_kid(parent, kidno) == wn)
+              WN_kid(parent, kidno) = new_wn;
+	}
+        wn = new_wn;
+      }
+      else if (WN_operator(wn) == OPR_STBITS)
+        Fail_FmtAssertion("SCLASS_Is_Not_PU_Local() : got SCLASS_UNKNOWN");
+         
+    }
+  }
+
+  WN *priv_pragma_block = NULL;
+  OPCODE opc = WN_opcode(wn);
+
+  if (opc == OPC_REGION) {
+    WN *priv_prag = WN_first(WN_region_pragmas(wn));
+
+    if (priv_prag && WN_pragma(priv_prag) != WN_PRAGMA_SINGLE_PROCESS_BEGIN && WN_pragma(priv_prag) != WN_PRAGMA_MASTER_BEGIN) {
+      priv_pragma_block = WN_region_pragmas(wn);
+      MEM_POOL *pool = stack->Top()->pool;
+      stack->Push(CXX_NEW(RENAMING_SCOPE(priv_pragma_block, pool), pool));
+    }
+  }
+
+
+  // recursively process all children
+  if (!OPCODE_is_leaf(opc)) {
+    if (opc == OPC_BLOCK)
+      for (WN *kid = WN_first(wn); kid; ){
+        WN *old_kid = WN_next(kid);
+        Rename_Threadprivate_COMMON(pu, wn, kid, stack, scope, common_blk_scope);
+        kid = old_kid;
+      }
+    else {
+      for (INT kidno = 0; kidno < WN_kid_count(wn); kidno++) {
+        WN *kid = WN_kid(wn, kidno);
+        Rename_Threadprivate_COMMON(pu, wn, kid, stack, scope, common_blk_scope);
+      }
+    }
+  }
+  if (priv_pragma_block) 
+    CXX_DELETE(stack->Pop(), stack->Top()->pool);
+}
+#endif

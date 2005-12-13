@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -37,12 +37,12 @@
 #define VERSION "1.1"
 
 int subverbose ;
+char subflags[100*1024] ;
 
 void obtain_license (char *exedir, int argc, char *argv[]) {
     int pipes[2] ;
     int pid ;
     char exename[MAXPATHLEN] ;
-    char flags[1024] ;
     char language[10] ;
     struct stat st ;
     int i ;
@@ -78,7 +78,7 @@ void obtain_license (char *exedir, int argc, char *argv[]) {
         }
     }
 
-    flags[0] = '\0' ;
+    subflags[0] = '\0' ;
     for (i = 1 ; i < argc ; i++) {
         if (argv[i][0] == '-') {
             switch (argv[i][1]) {
@@ -99,8 +99,8 @@ void obtain_license (char *exedir, int argc, char *argv[]) {
                 // fall through
             default:
             addflag:
-                strcat (flags, argv[i]) ;
-                strcat (flags, " ") ;
+                strcat (subflags, argv[i]) ;
+                strcat (subflags, " ") ;
                 break ;
             }
         }
@@ -123,17 +123,18 @@ void obtain_license (char *exedir, int argc, char *argv[]) {
 
     pid = fork() ;
     if (pid == 0) {		// child
-        const char *argvec[7] ;
+        const char *argvec[8] ;
 
         argvec[0] = exename ;
         argvec[1] = "Compiler" ;
         argvec[2] = language ;
-        argvec[3] = flags ;
-        argvec[4] = PSC_FULL_VERSION ;
-        argvec[5] = NULL ;
+        argvec[3] = PSC_BUILD_DATE ;
+        argvec[4] = subflags ;
+        argvec[5] = PSC_FULL_VERSION ;
+        argvec[6] = NULL ;
         if (subverbose) {
-            argvec[5] = "--v" ;
-            argvec[6] = NULL ;
+            argvec[6] = "--v" ;
+            argvec[7] = NULL ;
         }
         execv (exename, (char*const*)argvec) ;
         fprintf (stderr, errortext) ;

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2004 PathScale, Inc.  All Rights Reserved.
+# Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of version 2 of the GNU General Public License as
@@ -25,7 +25,7 @@
 #
 # The explain utility describes a compiler message in detail.  The
 # user passes the message ID given by the compiler, such as
-# pathf90-0012, and explain outputs the full description.
+# pathf95-0012, and explain outputs the full description.
 
 import errno
 import os
@@ -37,7 +37,7 @@ import string
 def construct_search_path():
     '''Return a list of directories to search for the messages file.'''
 
-    cmdline = 'pathf90 -print-file-name=libpscrt.a'
+    cmdline = 'pathf95 -print-file-name=libpscrt.a'
     return [os.path.dirname(os.popen(os.path.join(os.path.dirname(sys.argv[0]),
                                                   cmdline),
                                      'r').read().strip())]
@@ -64,12 +64,21 @@ def print_message (msg_num, msg_id, cat_path):
 
     cat = open (cat_path, 'r')
 
+    # Search for $msg
     line = cat.readline()
     while line:
         line = cat.readline()
         if msg_re.match(line):
             break
-    if not cat.readline():
+
+    # Discard lines up to and including the one that has $nexp
+    msg_re = re.compile(r'\$nexp')
+    while line:
+        line = cat.readline()
+        if msg_re.match(line):
+            break
+
+    if not line:
         raise Exception('Could not find an entry for message %s' % msg_id)
 
     nroff = []
@@ -99,18 +108,26 @@ def usage(code = 1):
 def main():
     msg_id = sys.argv[1]
 
-    # The message ID is in the form of catalog-XXXX, such as pathf90-0010.
+    # The message ID is in the form of catalog-XXXX, such as pathf95-0010.
     # The message catalog is catalog.msgs, or pathf90.msgs in this case.
 
     try:
         cat_name, msg_num = msg_id.split('-', 1)
     except ValueError:
         raise Exception('The parameter must be of the form "string-number", '
-                        'e.g. pathf90-134')
+                        'e.g. pathf95-134')
     try:
         msg_num = int(msg_num)
     except ValueError:
         raise Exception('The string "%s" is not a number' % msg_num)
+
+    # When the library returns a small msg_num, it refers to Unix errno
+    # rather than to the message catalog
+
+    if (msg_num < 1000) and (cat_name == 'lib'):
+        print >> sys.stderr, 'lib-%s: ' % msg_num
+	print >> sys.stderr, '   %s' % os.strerror(msg_num)
+	sys.exit(0)
 
     msg_cat_path = find_message_cat (cat_name)
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,3 +44,25 @@ double d_prod(float *x, float *y)
 {
   return((double)(*x)*(double)(*y));
 }
+
+#ifdef KEY /* Bug 2623 */
+/*
+ * The standard Fortran "dprod" intrinsic takes real*4 args and returns
+ * a real*8 result. The __q_prod function in file mips/quad/q_prod.c
+ * implements an extension which takes real*8 args and returns a real*16
+ * result. Since we don't allow real*16, but we do provide an option -r8 which
+ * promotes real*4 to real*8 but leaves real*8 alone, it seems user-unfriendly
+ * not to provide a version of "dprod" which works with -r8. Here it is. If
+ * we ever support real*16 and add the mips/quad files to the shared library,
+ * the linker will give a "duplicate symbol error" to remind us to remove this
+ * version.
+ *
+ * (The crayfe/fe90 sources use a cpp symbol _TARGET_OS_LINUX to enable code
+ * which knows that real*16 is disallowed, but we can't use that symbol here
+ * because it is defined within the front end itself.)
+ */
+double __q_prod(double *x, double *y)
+{
+  return (*x)*(*y);
+}
+#endif /* KEY Bug 2623 */

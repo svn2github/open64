@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -119,6 +123,13 @@ static char *cxx_graph_rcs_id = cxx_graph_INCLUDED "$Revision: 1.1.1.1 $";
 #ifndef defs_INCLUDED
 #include "defs.h"
 #endif
+
+typedef mUINT16 VINDEX16;
+typedef mUINT16 EINDEX16;
+
+extern const VINDEX16 INVALID_VINDEX16;
+extern VINDEX16 GRAPH16_CAPACITY;
+
 #ifndef graph_template_INCLUDED
 #include "graph_template.h"
 #endif
@@ -135,13 +146,6 @@ static char *cxx_graph_rcs_id = cxx_graph_INCLUDED "$Revision: 1.1.1.1 $";
  * 5. increase LNO_Graph_Capacity in lnodriver.c.
  */
 
-
-
-typedef mUINT16 VINDEX16;
-typedef mUINT16 EINDEX16;
-
-extern const VINDEX16 INVALID_VINDEX16;
-extern VINDEX16 GRAPH16_CAPACITY;
 
 class VERTEX16 {
   friend 	class DIRECTED_GRAPH16<class EDGE16, class VERTEX16>;

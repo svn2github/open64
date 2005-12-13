@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Subroutines used for code generation on IA-32.
@@ -1705,7 +1705,14 @@ classify_argument (mode, type, classes, bit_offset)
      enum x86_64_reg_class classes[MAX_CLASSES];
      int bit_offset;
 {
+#ifdef KEY
+  // int_size_in_bytes returns type HOST_WIDE_INT.  If bytes is declared as an
+  // int and the returned value is 0x100000000, then bytes would get 0, which
+  // would cause this function to return the wrong value.  Bug 6940.
+  HOST_WIDE_INT bytes =
+#else
   int bytes =
+#endif
     (mode == BLKmode) ? int_size_in_bytes (type) : (int) GET_MODE_SIZE (mode);
   int words = (bytes + (bit_offset % 64) / 8 + UNITS_PER_WORD - 1) / UNITS_PER_WORD;
 

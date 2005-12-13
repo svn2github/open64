@@ -3271,7 +3271,7 @@ process_command (argc, argv)
 	  printf (_("%s (GCC) %s\n"), programname, version_string);
 	  extern const char bk_cset_key[], bk_cset_rev[];
 	  printf (_("Revision %s (%s)\n"), bk_cset_rev, bk_cset_key);
-	  fputs (_("Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+	  fputs (_("Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
 		 stdout);
 	  fputs (_("Copyright (C) 2003 Free Software Foundation, Inc.\n"),
 		 stdout);

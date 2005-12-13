@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -307,7 +307,7 @@ IPA_mark_commons_used_in_io (const IP_FILE_HDR& hdr)
 }
 
 #ifdef KEY
-void
+static void
 IPA_update_ehinfo_in_pu (IPA_NODE *node)
 {
 	if (!(PU_src_lang (node->Get_PU()) & PU_CXX_LANG) ||
@@ -385,7 +385,7 @@ Mark_PUs_With_File_Id (PU_Info * pu, UINT id)
   for (; pu; pu = PU_Info_next (pu))
   {
     IPA_NODE * node = pu_info_to_node (pu);
-    node->Set_File_Id (id);
+    if (node) node->Set_File_Id (id);
     if (PU_Info_child (pu))
     	Mark_PUs_With_File_Id (PU_Info_child (pu), id);
   }
@@ -459,6 +459,25 @@ IPA_Check_Optimization_Options (IP_FILE_HDR& hdr)
   }
   current_options.clear();
   return;
+}
+static void
+IPA_update_pragma_in_pu (IPA_NODE *node)
+{
+        int sym_size;
+        SUMMARY_SYMBOL* sym_array = IPA_get_symbol_file_array(node->File_Header(), sym_size);
+        FmtAssert (sym_array != NULL, ("Missing SUMMARY_SYMBOL section"));
+        WN* prags = WN_func_pragmas(node->Whirl_Tree());
+        prags = WN_first(prags);
+                                                                                                                                                             
+        while (prags) {
+          if (WN_opcode(prags) == OPC_PRAGMA &&
+              WN_pragma(prags) == WN_PRAGMA_THREADPRIVATE) {
+            ST_IDX new_idx = sym_array[WN_pragma_arg2(prags)].St_idx();
+            WN_pragma_arg2(prags) = new_idx;
+          }
+          prags = WN_next(prags);
+        }
+        
 }
 #endif
 
@@ -683,6 +702,12 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 	reported = TRUE;
     }
 
+#ifdef KEY
+    // Has static variables
+    if (IPA_Enable_Pure_Call_Opt &&
+        ipa_node->Summary_Proc()->Has_pstatic())
+      ipa_node->Summary_Proc()->Set_has_side_effect();
+#endif // KEY
 #endif // _STANDALONE_INLINER
 
     Orig_Prog_Weight += ipa_node->Weight ();
@@ -720,6 +745,35 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     } // else of '(REORDER_BY_EDGE_FREQ && IPA_Call_Graph_Tmp)'
 #endif
 
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    // Fix summary information in node only once, i.e. for pu_reorder=2
+    // in the first pass.
+    if (ipa_node && (PU_src_lang (ipa_node->Get_PU()) & PU_CXX_LANG) &&
+        IPA_Call_Graph_Tmp == NULL)
+    {
+      IPA_NODE_CONTEXT context (ipa_node);   // get node context
+      IPA_update_ehinfo_in_pu (ipa_node);
+    }
+
+    if (ipa_node && PU_has_mp (ipa_node->Get_PU ()) &&
+        IPA_Call_Graph_Tmp == NULL)
+    {
+      IPA_NODE_CONTEXT context (ipa_node);   // get node context
+      IPA_update_pragma_in_pu (ipa_node);
+    }
+
+    // bug 4880
+    // If lang of main pu is C++, -IPA:pu_reorder defaults to 1 w/ feedback
+    if (!IPA_Enable_PU_Reorder_Set && Annotation_Filename &&
+        ipa_node && !strcmp (ipa_node->Name(), "main") &&
+	(PU_src_lang (ipa_node->Get_PU()) & PU_CXX_LANG))
+    {
+      // Remind us to fix this place if default changes
+      Is_True (IPA_Enable_PU_Reorder == REORDER_DISABLE,
+               ("Attempt to change default of -IPA:pu_reorder"));
+      IPA_Enable_PU_Reorder = REORDER_BY_NODE_FREQ;
+    }
+#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
     return ipa_node;
 	
 }
@@ -809,6 +863,12 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
     for (INT j = 0; j < callsite_count; ++j, ++callsite_index) {
 
 #ifdef KEY
+      if (IPA_Enable_Pure_Call_Opt &&
+          (callsite_array[callsite_index].Is_icall_slot() ||
+	   callsite_array[callsite_index].Is_func_ptr() ||
+	   callsite_array[callsite_index].Is_intrinsic()))
+	caller->Summary_Proc()->Set_has_side_effect ();
+
       if( callsite_array[callsite_index].Is_icall_slot() ){
 	continue;
       }
@@ -911,6 +971,10 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 		    (PU_src_lang (Pu_Table [ST_pu (caller->Func_ST())]) & 
 		     PU_CXX_LANG))
 		    caller->Set_PU_Can_Throw ();
+
+		// If we have no WHIRL, assume it may have side-effect
+		if (IPA_Enable_Pure_Call_Opt)
+		    caller->Summary_Proc()->Set_has_side_effect ();
 #endif
         }
       }
@@ -3092,6 +3156,8 @@ fprintf(fp, "Reason32: Edge is never invoked\n");
 fprintf(fp, "Reason33: Density is too high (infrequent called but contains hot loops) > %d\n",IPA_Max_Density);
 #ifdef KEY
 fprintf(fp, "Reason34: optimization options are different for caller and callee\n");
+fprintf(fp, "Reason35: Trying to do pure-call-optimization for this callsite\n");
+fprintf(fp, "Reason36: not inlining C++ with exceptions into non-C++\n");
 #endif
 fprintf(fp, SBar);
   

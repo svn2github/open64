@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -56,7 +60,7 @@ inline BOOL Target_Has_Prefetch(void)
 
 inline BOOL Enable_Prefetch_For_Target(void)
 {
-  return Is_Target_Pentium4() ? FALSE : TRUE;
+  return TRUE;
 }
 
 inline BOOL Enable_Idiv_In_FPU_For_Target(void)

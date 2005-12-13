@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -368,6 +368,11 @@ typedef enum {
 #ifdef KEY
   WN_PRAGMA_FORALL,
 #endif
+  WN_PRAGMA_COPYPRIVATE, /* by jhs, 02/7/22 */
+  WN_PRAGMA_PARALLEL_WORKSHARE, /* by jhs, 04/3/10 */
+  WN_PRAGMA_PWORKSHARE_BEGIN, /* by jhs, 2004/3/10 */
+  WN_PRAGMA_PWORKSHARE_END, /* by jhs, 2004/3/10 */
+  WN_PRAGMA_THREADPRIVATE, /* by jhs, 02.9.18 */
   MAX_WN_PRAGMA			/* last one in enum			*/
 } WN_PRAGMA_ID;
 

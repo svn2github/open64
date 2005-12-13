@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -58,8 +58,6 @@
 #ifndef profile_com_INCLUDED
 #define profile_com_INCLUDED
 
-#include <string>
-#include <vector>
 #include "defs.h"
 
 #if defined(defs_INCLUDED) && ! defined(USE_STANDARD_TYPES)
@@ -144,6 +142,8 @@ struct Pu_Hdr {
 #ifdef KEY
   ULONG pu_value_offset;
   ULONG pu_num_value_entries;
+  ULONG pu_value_fp_bin_offset;
+  ULONG pu_num_value_fp_bin_entries;
 #endif
 
   ULONG pu_icall_offset;
@@ -155,11 +155,17 @@ struct Pu_Hdr {
   ULONG pu_instr_exec_count;
 #ifdef KEY
   ULONG pu_values_offset;
+  ULONG pu_values_fp_bin_offset;
 #else  // KEY
   ULONG pu_value_offset;
 #endif
   ULONG pu_ld_count;   //prefetch count
   ULONG pu_stride_offset;
+#ifdef KEY
+  // This header file will be compiled into the 64-bit instrumentation library
+  // as well as the 32-bit compiler. So, we should pad it to a 8-byte boundary.
+  ULONG pad;
+#endif
   
   Pu_Hdr() {
     pu_size=54321;
@@ -172,11 +178,15 @@ struct Pu_Hdr {
     pu_num_icall_entries=0;
 #ifdef KEY
     pu_values_offset=444;
+    pu_values_fp_bin_offset=666;
 #else
     pu_value_offset=444;
 #endif
     pu_ld_count=0;
     pu_stride_offset=555;
+#ifdef KEY
+    pad = 0;
+#endif
   }
 
   void Print( FILE * fp, int id=-1) const {
@@ -205,6 +215,9 @@ struct Pu_Hdr {
 #ifdef KEY
   	fprintf(fp, "pu_value_offset = %u\n",      pu_value_offset);
   	fprintf(fp, "pu_num_value_entries = %u\n", pu_num_value_entries);
+  	fprintf(fp, "pu_value_fp_bin_offset = %u\n",  pu_value_fp_bin_offset);
+  	fprintf(fp, "pu_num_value_fp_bin_entries = %u\n", 
+		pu_num_value_fp_bin_entries);
 #endif
   	fprintf(fp, "pu_icall_offset = %u\n", pu_icall_offset);
   	fprintf(fp, "pu_num_icall_entries = %u\n", pu_num_icall_entries);
@@ -215,6 +228,7 @@ struct Pu_Hdr {
   	fprintf(fp, "pu_instr_exec_count = %u\n", pu_instr_exec_count);
 #ifdef KEY
   	fprintf(fp, "pu_values_offset = %u\n", pu_values_offset);
+  	fprintf(fp, "pu_values_fp_bin_offset = %u\n", pu_values_fp_bin_offset);
 #else
   	fprintf(fp, "pu_value_offset = %u\n", pu_value_offset);
 #endif

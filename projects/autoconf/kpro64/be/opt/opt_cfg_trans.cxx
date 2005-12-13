@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -551,6 +551,20 @@ void print_zone(FILE *fp, zone& zone)
 struct comp_zones {
   zone_container *zones;
   bool operator()(int x, int y) {
+#ifdef KEY
+    /* If this function is compiled with x87 stack register,
+       the result is undeterministic depending on the value
+       of (*zones)[x/y].priority(). One simply solution is
+       to add the following comparision to avoid any surprise
+       introduce by x87 operations.       (bug#3532)
+       BTW, I did not use TARG_X8664, since the following stmt
+       can speed up the running time.
+     */
+    if( x == y ){
+      return false;
+    }
+#endif
+
 #if 0
     bool t = (*zones)[x].priority() > (*zones)[y].priority();
 

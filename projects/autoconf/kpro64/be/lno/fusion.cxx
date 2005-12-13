@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -910,7 +910,7 @@ mINT32 offset[])
    DO_LOOP_INFO* dli1 = Get_Do_Loop_Info(in_loop1);
    DO_LOOP_INFO* dli2 = Get_Do_Loop_Info(in_loop2);
    if (LNO_Run_Simd > 0 && LNO_Simd_Avoid_Fusion && 
-       (dli1->Vectorizable || dli2->Vectorizable)) {
+       (dli1->Vectorizable ^ dli2->Vectorizable)) {
     if (LNO_Verbose)
       fusion_verbose_info(srcpos1,srcpos2,fusion_level,
 	"Vectorizable loop can not be fused with a serial loop.");
@@ -2494,7 +2494,14 @@ BOOL unrolled, BOOL preserve_loop_index)
 
       LWN_Copy_Def_Use(WN_kid0(WN_kid0(WN_step(in_loop))), wn1, Du_Mgr);
       LWN_Copy_Def_Use(WN_kid1(WN_kid0(WN_step(in_loop))), wn2, Du_Mgr);
+#ifndef KEY // bug 6239
       Du_Mgr->Ud_Get_Def(wn1)->Set_loop_stmt(NULL);
+#else
+      if (WN_operator(wn1) != OPR_CVT)
+	Du_Mgr->Ud_Get_Def(wn1)->Set_loop_stmt(NULL);
+      else
+	Du_Mgr->Ud_Get_Def(WN_kid0(wn1))->Set_loop_stmt(NULL);
+#endif
       // wn1 is a copy of the loop var index but is not enclosed in the loop
 
       wn = LWN_CreateExp2(
@@ -2715,6 +2722,12 @@ extern BOOL Move_Adjacent(WN* stmt1, WN* stmt2) {
 	 }
 	 dep_e = sdg->Get_Next_In_Edge(dep_e);
        }
+#ifdef KEY
+       // Bug 5206 - do not move a barrier pragma to move loops together.
+       if (WN_operator(stmt) == OPR_PRAGMA &&
+	   WN_pragma(stmt) == WN_PRAGMA_BARRIER)
+	 can_be_moved_up = FALSE;
+#endif
        if (can_be_moved_up) {
 	 LWN_Insert_Block_Before(parent,stmt1,LWN_Extract_From_Block(stmt));
        }
@@ -2754,6 +2767,12 @@ extern BOOL Move_Adjacent(WN* stmt1, WN* stmt2) {
 	 }
 	 dep_e = sdg->Get_Next_Out_Edge(dep_e);
        }
+#ifdef KEY
+       // Bug 5206 - do not move a barrier pragma to move loops together.
+       if (WN_operator(stmt) == OPR_PRAGMA &&
+	   WN_pragma(stmt) == WN_PRAGMA_BARRIER)
+	 can_be_moved_down = FALSE;
+#endif
        if (can_be_moved_down) {
 	 LWN_Insert_Block_After(parent,stmt2,LWN_Extract_From_Block(stmt));
        }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -81,6 +81,7 @@ PU_KIND	Cur_PU_Kind = PU_UNKNOWN;
 BOOL Symbol_Table_Out = FALSE;	/* Symbol table output (list or trace) */
 BOOL Show_Progress = FALSE;     /* Report progress to stdout */
 BOOL Create_Cycle_Output = FALSE;  
+BOOL OpenMP_Profiling = FALSE;
 
 /* ====================================================================
  *

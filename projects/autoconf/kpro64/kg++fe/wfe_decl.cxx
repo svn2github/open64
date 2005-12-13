@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -83,9 +83,18 @@ extern "C" {
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
 #include "tree_cmp.h"
+#ifdef KEY
+#include "wfe_dst.h" // DST_enter_member_function
+#endif
 
 extern "C" void check_gnu_errors (int *, int *);
 #ifdef KEY
+extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
+#ifdef Is_True_On
+extern "C" int flag_openmp;
+#endif
+extern "C" tree lookup_name (tree, int);		// in cp/decl.c
+
 static tree WFE_get_thunk_target (tree decl);
 static void WFE_Handle_Named_Return_Value(tree fn);
 
@@ -177,6 +186,9 @@ static BOOL map_mempool_initialized = FALSE;
 static MEM_POOL Map_Mem_Pool;
 
 static tree curr_func_decl = NULL_TREE;
+#ifdef KEY
+static tree curr_namespace_decl = NULL_TREE;
+#endif
 
 static int __ctors = 0;
 static int __dtors = 0;
@@ -204,8 +216,68 @@ WN *Current_Entry_WN(void) { return curr_entry_wn.back(); }
 std::vector<tree> gxx_emitted_decls;
 // Any typeinfo symbols that we have determined we should emit
 std::vector<tree> emit_typeinfos;
-// Any var_decls that we want to emit last.
-std::vector<tree> emit_var_decls;
+// Any var_decls or type_decls that we want to expand last.
+std::vector<tree> emit_decls;
+// Any asm statements at file scope
+std::vector<char *> gxx_emitted_asm;
+// Struct fields whose type we want to set last.
+std::vector<std::pair<tree, FLD_HANDLE> > defer_fields;
+
+#include <stack>
+// Potentially OpenMP private variables. See comment in parse_end_decl(),
+// some decls go through grokdeclarator, but are finished later.
+// Is_shared_mp_var() requires the decl to be complete, so we push such
+// decls in stack, and wait for their completion, before processing them
+// as private variables.
+std::stack<tree> mp_local_vars;
+
+// Map a variable (e.g. typename X::y z) to its template-instantiated version
+class tsubst_var {
+  tree orig;      // Original variable, may not have a complete type
+  tree sub;       // Template-substituted variable
+  tree func_decl; // Containing function decl
+  public:
+  tsubst_var (tree o, tree s, tree f) : orig(o), sub(s), func_decl(f) {}
+  tree equal (tree o, tree f) const {
+    return (orig == o && func_decl == f) ? sub : NULL;
+  }
+};
+
+std::vector<tsubst_var> tsubst_map;
+
+void
+template_substituted (tree orig, tree sub, tree func_decl) {
+  tsubst_var in (orig, sub, func_decl);
+  tsubst_map.push_back (in);
+}
+
+tree
+get_substituted (tree orig, tree func_decl) {
+  vector<tsubst_var>::const_iterator it = tsubst_map.begin();
+
+  for (; it != tsubst_map.end(); it++) {
+    tree sub = (*it).equal (orig, func_decl);
+    if (sub) return sub;
+  }
+  return NULL;
+}
+
+void
+push_mp_local_vars (tree decl)
+{
+  Is_True (flag_openmp, ("Should not reach here without -mp"));
+  mp_local_vars.push (decl);
+}
+
+tree
+pop_mp_local_vars (void)
+{
+  Is_True (flag_openmp, ("Should not reach here without -mp"));
+  if (mp_local_vars.empty()) return NULL;
+  tree decl = mp_local_vars.top ();
+  mp_local_vars.pop ();
+  return decl;
+}
 
 void
 gxx_emits_decl(tree t) {
@@ -218,8 +290,63 @@ gxx_emits_typeinfos (tree t) {
 }
 
 void
-defer_emit_var_decl (tree t) {
-  emit_var_decls.push_back (t);
+defer_decl (tree t) {
+  emit_decls.push_back (t);
+}
+
+void
+gxx_emits_asm (char *str) {
+  gxx_emitted_asm.push_back (str);
+}
+
+void
+defer_field (tree t, FLD_HANDLE fld) {
+  defer_fields.push_back (std::make_pair(t, fld));
+}
+
+// Support defer creating DST info until all types are created.
+typedef struct {
+  union {
+    struct {		// for is_member_function = 1
+      tree context;
+      tree fndecl;
+    } member_func;
+  } u1;
+  int is_member_function : 1;
+} DST_defer_misc_info;
+
+// List of things that we need to defer creating DST info for.
+std::vector<DST_defer_misc_info *> defer_DST_misc;
+
+typedef struct {
+  tree t;
+  TY_IDX ttidx;
+  TY_IDX idx;
+} DST_defer_type_info;
+
+// List of types that we defer creating DST info for.
+std::vector<DST_defer_type_info *> defer_DST_types;
+
+void
+defer_DST_type (tree t, TY_IDX ttidx, TY_IDX idx)
+{
+  DST_defer_type_info *p =
+    (DST_defer_type_info *) calloc(1, sizeof(DST_defer_type_info));
+  p->t = t;
+  p->ttidx = ttidx;
+  p->idx = idx;
+  defer_DST_types.push_back(p);
+}
+
+void
+defer_DST_member_function (tree context, tree fndecl)
+{
+  DST_defer_misc_info *p =
+    (DST_defer_misc_info *) calloc(1, sizeof(DST_defer_misc_info));
+  p->u1.member_func.context = context;
+  p->u1.member_func.fndecl = fndecl;
+  p->is_member_function = 1;
+  defer_DST_misc.push_back (p);
 }
 #endif
 
@@ -320,6 +447,14 @@ WFE_Generate_Thunk (tree decl)
   WN      *call_wn;
 
   // modify this parameter by the delta
+#ifdef KEY
+  // If kg++fe added a fake arg0 (because the function needs to return the
+  // object in memory), then the "this" pointer is at arg1.  Bug 5017.
+  TY_IDX ret_ty_idx = Get_TY(TREE_TYPE(TREE_TYPE(decl)));
+  if (TY_return_in_mem(ret_ty_idx))
+    arg_st = WN_st (WN_kid1 (entry_wn));
+  else
+#endif
   arg_st = WN_st (WN_kid0 (entry_wn));
   arg_ty = ST_type (arg_st);
   arg_mtype = TY_mtype (arg_ty);
@@ -444,6 +579,13 @@ void WFE_Expand_Decl(tree decl)
           TREE_CODE(CP_DECL_CONTEXT(decl)) != NAMESPACE_DECL) {
         WFE_Generate_Thunk(decl);
       }
+#ifdef KEY
+      // Handle decls that are aliases for other decls.  Bug 3841.
+      else if (DECL_ALIAS_TARGET(decl)) {
+	WFE_Assemble_Alias(decl, DECL_ALIAS_TARGET(decl));
+	return;
+      }
+#endif
       else {
         tree body = DECL_SAVED_TREE(decl);
         if (body != NULL_TREE && !DECL_EXTERNAL(decl) &&
@@ -491,6 +633,10 @@ void WFE_Expand_Decl(tree decl)
 	      break; // ignore namespace std */
       if (DECL_NAMESPACE_ALIAS(decl))
 	break;
+#ifdef KEY
+      tree old_namespace_decl = curr_namespace_decl;
+      curr_namespace_decl = decl;
+#endif
       tree subdecl;
       for (subdecl = cp_namespace_decls(decl);
 	   subdecl != NULL_TREE;
@@ -503,6 +649,9 @@ void WFE_Expand_Decl(tree decl)
 //      fprintf(stderr, "NAMESPACE_DECL: Pop_Deferred_Function\n");
 	WFE_Expand_Function_Body (Pop_Deferred_Function ());
       }
+#endif
+#ifdef KEY
+      curr_namespace_decl = old_namespace_decl;
 #endif
       break;
     }
@@ -551,8 +700,18 @@ void WFE_Expand_Decl(tree decl)
 // remove uses/definitions of TREE_NOT_EMITTED_BY_GXX.
 	if (DECL_ASSEMBLER_NAME_SET_P(decl) && 
 	    TREE_NOT_EMITTED_BY_GXX(decl) &&
-	    !TREE_SYMBOL_REFERENCED(DECL_ASSEMBLER_NAME(decl)))
+	    !TREE_SYMBOL_REFERENCED(DECL_ASSEMBLER_NAME(decl))) {
+	  expanded_decl(decl) = TRUE;
 	  return;
+	}
+
+      // Handle decls that are aliases for other decls.  Bug 3841.
+      if (DECL_ALIAS_TARGET(decl)) {
+	WFE_Assemble_Alias(decl, DECL_ALIAS_TARGET(decl));
+	return;
+      }
+
+      expanded_decl(decl) = TRUE;
 #endif
       (void) Get_ST(decl);
       if (DECL_INITIAL(decl) && !DECL_EXTERNAL(decl)) {
@@ -655,6 +814,121 @@ Setup_Entry_For_EH (void)
 
     Get_Current_PU().unused = New_INITO (ST_st_idx (etable), exc_ptr_iv);
 }
+
+// Generate WHIRL representing an asm at file scope (between functions).
+// Taken from kgccfe/wfe_decl.cxx
+static void
+WFE_Assemble_Asm(char *asm_string)
+{
+  ST *asm_st = New_ST(GLOBAL_SYMTAB);
+  ST_Init(asm_st,
+          Str_To_Index (Save_Str (asm_string),
+                        Global_Strtab),
+          CLASS_NAME,
+          SCLASS_UNKNOWN,
+          EXPORT_LOCAL,
+          (TY_IDX) 0);
+                                                                                
+  Set_ST_asm_function_st(*asm_st);
+                                                                                
+  WN *func_wn = WN_CreateEntry(0,
+                               asm_st,
+                               WN_CreateBlock(),
+                               NULL,
+                               NULL);
+                                                                                
+  /* Not sure how much setup of WN_MAP mechanism, etc. we need to do.
+   * Pretty certainly we need to set up some PU_INFO stuff just to get
+   * this crazy hack of a FUNC_ENTRY node written out to the .B file.
+   */
+                                                                                
+  /* This code patterned after "wfe_decl.cxx":WFE_Start_Function, and
+     specialized for the application at hand. */
+                                                                                
+#ifdef ASM_NEEDS_WN_MAP
+    /* deallocate the old map table */
+    if (Current_Map_Tab) {
+        WN_MAP_TAB_Delete(Current_Map_Tab);
+        Current_Map_Tab = NULL;
+    }
+                                                                                
+    /* set up the mem pool for the map table and predefined mappings */
+    if (!map_mempool_initialized) {
+        MEM_POOL_Initialize(&Map_Mem_Pool,"Map_Mem_Pool",FALSE);
+        map_mempool_initialized = TRUE;
+    } else {
+        MEM_POOL_Pop(&Map_Mem_Pool);
+    }
+                                                                                
+    MEM_POOL_Push(&Map_Mem_Pool);
+    /* create the map table for the next PU */
+    (void)WN_MAP_TAB_Create(&Map_Mem_Pool);
+#endif
+                                                                                
+    // This non-PU really doesn't need a symbol table and the other
+    // trappings of a local scope, but if we create one, we can keep
+    // all the ir_bread/ir_bwrite routines much more blissfully
+    // ignorant of the supreme evil that's afoot here.
+                                                                                
+    FmtAssert(CURRENT_SYMTAB == GLOBAL_SYMTAB,
+              ("file-scope asm must be at global symtab scope."));
+                                                                                
+    New_Scope (CURRENT_SYMTAB + 1, Malloc_Mem_Pool, TRUE);
+                                                                                
+    if (Show_Progress) {
+      fprintf (stderr, "Asm(%s)\n", ST_name (asm_st));
+      fflush (stderr);
+    }
+    PU_Info *pu_info;
+    /* allocate a new PU_Info and add it to the list */
+    pu_info = TYPE_MEM_POOL_ALLOC(PU_Info, Malloc_Mem_Pool);
+    PU_Info_init(pu_info);
+                                                                                
+    Set_PU_Info_tree_ptr (pu_info, func_wn);
+    PU_Info_maptab (pu_info) = Current_Map_Tab;
+    PU_Info_proc_sym (pu_info) = ST_st_idx(asm_st);
+    PU_Info_pu_dst (pu_info) = DST_Create_Subprogram (asm_st,/*tree=*/0);
+    PU_Info_cu_dst (pu_info) = DST_Get_Comp_Unit ();
+                                                                                
+    Set_PU_Info_state(pu_info, WT_SYMTAB, Subsect_InMem);
+    Set_PU_Info_state(pu_info, WT_TREE, Subsect_InMem);
+    Set_PU_Info_state(pu_info, WT_PROC_SYM, Subsect_InMem);
+                                                                                
+    Set_PU_Info_flags(pu_info, PU_IS_COMPILER_GENERATED);
+                                                                                
+    if (PU_Info_Table [CURRENT_SYMTAB])
+      PU_Info_next (PU_Info_Table [CURRENT_SYMTAB]) = pu_info;
+    else
+      PU_Tree_Root = pu_info;
+                                                                                
+    PU_Info_Table [CURRENT_SYMTAB] = pu_info;
+                                                                                
+  /* This code patterned after "wfe_decl.cxx":WFE_Finish_Function, and
+     specialized for the application at hand. */
+                                                                                
+    // write out all the PU information
+    pu_info = PU_Info_Table [CURRENT_SYMTAB];
+    /* deallocate the old map table */
+    if (Current_Map_Tab) {
+        WN_MAP_TAB_Delete(Current_Map_Tab);
+        Current_Map_Tab = NULL;
+    }
+                                                                                
+    PU_IDX pu_idx;
+    PU &pu = New_PU(pu_idx);
+    PU_Init(pu, (TY_IDX) 0, CURRENT_SYMTAB);
+    Set_PU_no_inline(pu);
+    Set_PU_no_delete(pu);
+    Set_ST_pu(*asm_st, pu_idx);
+                                                                                
+    Write_PU_Info (pu_info);
+                                                                                
+    // What does the following line do?
+    PU_Info_Table [CURRENT_SYMTAB+1] = NULL;
+                                                                                
+    Delete_Scope(CURRENT_SYMTAB);
+    --CURRENT_SYMTAB;
+}
 #endif
 
 extern WN *
@@ -668,6 +942,10 @@ WFE_Start_Function (tree fndecl)
                   TREE_CODE(CP_DECL_CONTEXT(fndecl)) != NAMESPACE_DECL;
 
 #ifdef KEY
+    // Add DSTs for all types seen so far.  Do this now because the expansion
+    // of formal parameters needs those DSTs.
+    add_deferred_DST_types();
+
     // Clear out the saved expr stack for new function.
     wfe_save_expr_stack_last = -1;
 
@@ -1038,6 +1316,24 @@ WFE_Start_Function (tree fndecl)
 #ifdef KEY
     // Tell the rest of the front-end this is the current function's entry wn.
     Push_Current_Entry_WN(entry_wn);
+
+    // Function is defined in current file.  Don't make the function symbol
+    // weak even if it is referenced in a cleanup.  Workaround for SLES 8
+    // linker bug.  Bug 3758.  (We originally made symbols refereneced in
+    // cleanups weak as a workaround to the way we generate cleanup code.  See
+    // comment in tree_symtab.cxx.)
+    //
+    // Don't make function symbols defined in gnu.linkonce sections weak, as
+    // this causes ld errors such as:
+    //   foo: discarded in section `.gnu.linkonce.t.mangledfoo' from blah.o
+    // Bug 5723.
+    if (!DECL_ONE_ONLY(fndecl)) {
+      if (ST_is_weak_symbol(func_st) &&
+	  WEAK_WORKAROUND(func_st) == WEAK_WORKAROUND_made_weak) {
+	Clear_ST_is_weak_symbol(func_st);
+      }
+      WEAK_WORKAROUND(func_st) == WEAK_WORKAROUND_dont_make_weak;
+    }
 #endif
 
     return entry_wn;
@@ -1394,9 +1690,15 @@ WFE_Add_Aggregate_Init_Address (tree init)
 
   case STRING_CST:
 	{
+#ifdef KEY
+	TCON tcon = Host_To_Targ_String (MTYPE_STRING,
+			const_cast<char*>TREE_STRING_POINTER(init),
+			TREE_STRING_LENGTH(init));
+#else
 	TCON tcon = Host_To_Targ_String (MTYPE_STRING,
 				       TREE_STRING_POINTER(init),
 				       TREE_STRING_LENGTH(init));
+#endif // KEY
 	ST *const_st = New_Const_Sym (Enter_tcon (tcon), 
 		Get_TY(TREE_TYPE(init)));
       	WFE_Add_Aggregate_Init_Symbol (const_st);
@@ -1573,8 +1875,13 @@ Add_Initv_For_Tree (tree val, UINT size)
 #endif
 		break;
 	case STRING_CST:
+#ifdef KEY
+		WFE_Add_Aggregate_Init_String (
+			const_cast<char*>TREE_STRING_POINTER(val), size);
+#else
 		WFE_Add_Aggregate_Init_String (
 			TREE_STRING_POINTER(val), size);
+#endif
 		break;
 #if 0
 	case PLUS_EXPR:
@@ -2218,7 +2525,7 @@ Add_Inito_For_Tree (tree init, ST *st)
   case STRING_CST:
 	aggregate_inito = New_INITO (st);
 	not_at_root = FALSE;
-	WFE_Add_Aggregate_Init_String (TREE_STRING_POINTER(init), 
+	WFE_Add_Aggregate_Init_String (const_cast<char*>TREE_STRING_POINTER(init),  // KEY
                                        TY_size(ST_type(st)) != 0 ?
                                        TY_size(ST_type(st)) :
                                        TREE_STRING_LENGTH(init));
@@ -2532,25 +2839,77 @@ WFE_Decl (tree decl)
   (void) Get_ST(decl);
 }
 
-#if 0
-void
+BOOL
 WFE_Assemble_Alias (tree decl, tree target)
 {
   DevWarn ("__attribute alias encountered at line %d", lineno);
-  tree base_decl = lookup_name (target, 1);
+  tree base_decl = NULL;
+#ifndef KEY
+  base_decl = lookup_name (target, 0);
   FmtAssert (base_decl != NULL,
              ("undeclared base symbol %s not yet declared in __attribute__ alias is not currently implemented",
               IDENTIFIER_POINTER (target)));
+#else
+  // Handle non-weak aliases, where lookup_name returns NULL.  Example:
+  //   namespace foo {
+  //     extern "C" {
+  //     void func1() {}
+  //     typeof(func1) func2 __attribute__((alias ("func1")));
+  //     }
+  //   }
+  // Bug 4393.
+  if (DECL_ALIAS_TARGET_DECL(decl)) {
+    // Get the target's decl that we found and saved.
+    base_decl = DECL_ALIAS_TARGET_DECL(decl);
+  } else {
+    // Look for target's decl in the current namespace.
+    tree subdecl;
+    for (subdecl = cp_namespace_decls(curr_namespace_decl);
+	 subdecl != NULL_TREE;
+	 subdecl = TREE_CHAIN(subdecl)) {
+      if (DECL_ASSEMBLER_NAME_SET_P(subdecl) &&
+	  !strcmp(IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME(subdecl)),
+		  IDENTIFIER_POINTER(target))) {
+	base_decl = subdecl;
+	break;
+      }
+    }
+    if (base_decl == NULL) {
+      // We fix up weak declarations later in WFE_Weak_Finish; so this case is
+      // okay to return.
+      if (DECL_WEAK(decl))
+	return FALSE;
+      Is_True(FALSE, ("WFE_Assemble_Alias: cannot find decl for alias target"));
+    }
+    DECL_ALIAS_TARGET_DECL(decl) = base_decl;
+  }
+  // Don't expand alias until the target is expanded, so that we can set st's
+  // sclass to base_st's sclass.  This may take more than one iteration since
+  // the target can be an alias to another target.  Bug 4393.
+  if (!expanded_decl(base_decl))
+    return FALSE;
+  expanded_decl(decl) = TRUE;
+#endif // KEY 
   ST *base_st = Get_ST (base_decl);
   ST *st = Get_ST (decl);
-  Set_ST_base_idx (st, ST_st_idx (base_st));
-  if (ST_is_weak_symbol(st))
+  if (ST_is_weak_symbol(st)) {
     Set_ST_sclass (st, SCLASS_EXTERN);
+    Set_ST_strong_idx (*st, ST_st_idx (base_st));
+  }
   else {
+    Set_ST_base_idx (st, ST_st_idx (base_st));
+    Set_ST_emit_symbol(st);	// for cg
     Set_ST_sclass (st, ST_sclass (base_st));
     if (ST_is_initialized (base_st))
       Set_ST_is_initialized (st);
+#ifdef KEY
+    if (ST_init_value_zero (base_st))
+      Set_ST_init_value_zero (st);
+#endif
   }
+#ifdef KEY
+  return TRUE;
+#endif
 /*
   if (ST_is_initialized (base_st)) {
     Set_ST_is_initialized (st);
@@ -2560,6 +2919,7 @@ WFE_Assemble_Alias (tree decl, tree target)
 */
 } /* WFE_Assemble_Alias */
 
+#if 0
 void
 WFE_Assemble_Constructor (char *name)
 {
@@ -2630,6 +2990,9 @@ WFE_Alloca_0 (void)
   WN *wn;
   TY_IDX ty_idx = Make_Pointer_Type (Be_Type_Tbl (MTYPE_V), FALSE);
   ST* alloca_st = Gen_Temp_Symbol (ty_idx, "__alloca");
+#ifdef KEY
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, alloca_st);
+#endif
   wn = WN_CreateAlloca (WN_CreateIntconst (OPC_I4INTCONST, 0));
   wn = WN_Stid (Pointer_Mtype, 0, alloca_st, ty_idx, wn);
   WFE_Stmt_Append (wn, Get_Srcpos());
@@ -3055,6 +3418,10 @@ void
 WFE_Expand_Top_Level_Decl (tree top_level_decl)
 {
   int error_count, sorry_count;
+#ifdef KEY
+  tree old_namespace_decl = curr_namespace_decl;
+  curr_namespace_decl = top_level_decl;
+#endif
 
   if (top_level_decl == global_namespace) {
    check_gnu_errors (&error_count, &sorry_count);
@@ -3065,6 +3432,16 @@ WFE_Expand_Top_Level_Decl (tree top_level_decl)
   }
 
   if (!Enable_WFE_DFE) {
+#ifdef KEY
+    // Emit asm statements at global scope, before expanding the functions,
+    // to prevent them from getting into wrong sections (e.g. .except_table)
+    std::vector<char *>::iterator asm_iter;
+    for (asm_iter = gxx_emitted_asm.begin();
+         asm_iter != gxx_emitted_asm.end();
+	 asm_iter++)
+      WFE_Assemble_Asm (*asm_iter);
+#endif
+
     WFE_Expand_Decl (top_level_decl);
 
 #ifdef KEY
@@ -3083,8 +3460,54 @@ WFE_Expand_Top_Level_Decl (tree top_level_decl)
         if (TREE_CODE(decl) == FUNCTION_DECL) {
 	  if (DECL_THUNK_P(decl))
 	    WFE_Generate_Thunk(decl);
+	  else if (DECL_ALIAS_TARGET(decl))	// Bug 4393.
+	    changed |= WFE_Assemble_Alias(decl, DECL_ALIAS_TARGET(decl));
 	  else        
 	    changed |= WFE_Expand_Function_Body(decl);
+	  // Bugs 4471, 3041, 3531, 3572, 4563.
+	  // In line with the non-debug compilation, delay the DST entry 
+	  // creation for member functions for debug compilation.
+	  // This avoids the following problem 
+	  // (as noted by Tim in tree_symtab.cxx)
+	  // Expanding the methods earlier "will cause error when the
+	  // methods are for a class B that appears as a field in an
+	  // enclosing class A.  When Get_TY is run for A, it will
+	  // call Get_TY for B in order to calculate A's field ID's.
+	  // (Need Get_TY to find B's TYPE_FIELD_IDS_USED.)  If
+	  // Get_TY uses the code below to expand B's methods, it
+	  // will lead to error because the expansion requires the
+	  // field ID's of the enclosing record (A), and these field
+	  // ID's are not yet defined".
+	  if (Debug_Level > 0) {
+	    tree context = DECL_CONTEXT(decl);
+	    if (context && TREE_CODE(context) == RECORD_TYPE) {
+	      // member function
+	      // g++ seems to put the artificial ones in the output too 
+	      // for some reason. In particular, operator= is there.  We do 
+	      // want to omit the __base_ctor stuff though
+	      BOOL skip = FALSE;
+	      if (IDENTIFIER_CTOR_OR_DTOR_P(DECL_NAME(decl)))
+	        skip = TRUE;
+	      else if (DECL_THUNK_P(decl)) {
+		// Skip thunk to constructors and destructors.  Bug 6427.
+	        tree addr = DECL_INITIAL_2(decl);
+		Is_True(TREE_CODE(addr) == ADDR_EXPR &&
+			TREE_CODE(TREE_OPERAND(addr, 0)) == FUNCTION_DECL,
+			("WFE_Expand_Top_Level_Decl: invalid thunk decl"));
+		skip =
+		  IDENTIFIER_CTOR_OR_DTOR_P(DECL_NAME(TREE_OPERAND(addr, 0)));
+	      }
+	      if (!skip) {
+	      	TY_IDX context_ty_idx = Get_TY(context);
+		// The type could have been newly created by the above Get_TY.
+		// If so, call add_deferred_DST_types to create the DST for it.
+		add_deferred_DST_types();
+		DST_INFO_IDX context_dst_idx = TYPE_DST_IDX(context);
+		DST_enter_member_function(context, context_dst_idx,
+					  context_ty_idx, decl);
+	      }
+	    }
+	  }
         } else if (TREE_CODE(decl) == VAR_DECL) {
 	  WFE_Process_Var_Decl (decl);
         } else if (TREE_CODE(decl) == NAMESPACE_DECL) {
@@ -3145,19 +3568,85 @@ WFE_Expand_Top_Level_Decl (tree top_level_decl)
 
 #ifdef KEY
   {
-    // Expand any VAR_DECL that should be expanded last.
-    std::vector<tree>::iterator it;
-    for (it = emit_var_decls.begin(); it != emit_var_decls.end(); ++it) {
-      tree decl = *it;
-      Is_True(TREE_CODE(decl) == VAR_DECL,
-	      ("WFE_Expand_Top_Level_Decl: VAR_DECL not found"));
-      WFE_Expand_Decl(decl);
+    int i;
+    // Can't use iterator to access emit_decls because Get_TY may grow
+    // emit_decls, which invalids all iterators.  Use operator[] instead.
+    for (i = 0; i < emit_decls.size(); i++) {
+      tree decl = emit_decls[i];
+      if (TREE_CODE(decl) == VAR_DECL)
+	WFE_Expand_Decl(decl);
+      else if (TREE_CODE(decl) == RECORD_TYPE ||
+	       TREE_CODE(decl) == UNION_TYPE)
+	Get_TY(decl);
+      else
+	Is_True(FALSE, ("WFE_Expand_Top_Level_Decl: unexpected tree type"));
     }
   }
+
+  {
+    // Set the type for fields whose type we want to set last.
+    std::vector<std::pair<tree, FLD_HANDLE> >::iterator it;
+    for (it = defer_fields.begin(); it != defer_fields.end(); ++it) {
+      tree field = (*it).first;
+      FLD_HANDLE fld = (*it).second;
+      Is_True(TREE_CODE(field) == FIELD_DECL,
+	      ("WFE_Expand_Top_Level_Decl: FIELD_DECL not found"));
+      // Currently we defer only pointer types.
+      Is_True(TREE_CODE(TREE_TYPE(field)) == POINTER_TYPE,
+	      ("WFE_Expand_Top_Level_Decl: POINTER_TYPE not found"));
+      TY_IDX fty_idx = Get_TY(TREE_TYPE(field));
+      Set_FLD_type(fld, fty_idx);
+    }
+  }
+
+  {
+    // Create DST info.
+    int i;
+
+    // Add DSTs for types.
+    add_deferred_DST_types();
+
+    // Add DSTs for member functions.  Do this after all the types are handled.
+    for (i = 0; i < defer_DST_misc.size(); i++) {
+      DST_defer_misc_info *p = defer_DST_misc[i];
+      if (p->is_member_function) {
+	tree context = p->u1.member_func.context;
+	DST_INFO_IDX context_dst_idx = TYPE_DST_IDX(context);
+	TY_IDX context_ty_idx = Get_TY(context);
+	DST_enter_member_function(context, context_dst_idx, context_ty_idx,
+				  p->u1.member_func.fndecl);
+      }
+    }
+
+    // Add DSTs for new types created.  (Don't know if any new type is ever
+    // created.)
+    add_deferred_DST_types();
+  }
+
+  curr_namespace_decl = old_namespace_decl;
 #endif
 } /* WFE_Expand_Top_Level_Decl */
 
 #ifdef KEY
+// Add DSTs for the defered types.  We defer adding DSTs for types in order to
+// avoid calling Get_TY on partially constructed structs, since their field IDs
+// are not yet valid.  It is safe to call add_deferred_DST_types to add DSTs
+// whenever we are sure there are no partially constructed types.
+void
+add_deferred_DST_types()
+{
+  static int last_type_index = -1;
+  int i;
+
+  for (i = last_type_index + 1; i < defer_DST_types.size(); i++) {
+    DST_defer_type_info *p = defer_DST_types[i];
+    DST_INFO_IDX dst = Create_DST_type_For_Tree(p->t, p->ttidx, p->idx);
+    TYPE_DST_IDX(p->t) = dst;
+  }
+  last_type_index = defer_DST_types.size() - 1;
+}
+
+
 // Get the target function that the thunk transfers control to.  The target is
 // an ADDR_EXPR saved in DECL_INITIAL.  However, in GCC 3.2, the ADDR_EXPR in
 // DECL_INITIAL could have been replaced by a BLOCK node.  In that case, get
@@ -3194,6 +3683,10 @@ WFE_Handle_Named_Return_Value (tree fn)
   FmtAssert(TREE_CODE(named_ret_obj) == VAR_DECL,
 	 ("WFE_Handle_Named_Return_Value: named return object not a VAR_DECL"));
 
+  // Even though we won't use the variable, record its existence in the symbol
+  // table in order to generate DWARF for it.  Bug 4900.
+  Get_ST(named_ret_obj);
+
   // The return type should be returned in memory.
   TY_IDX ret_ty_idx = Get_TY(TREE_TYPE(TREE_TYPE(fn)));
   FmtAssert(TY_return_in_mem(ret_ty_idx),
@@ -3219,5 +3712,16 @@ WFE_Handle_Named_Return_Value (tree fn)
   TREE_SET_CODE(named_ret_obj, INDIRECT_REF);
   TREE_OPERAND(named_ret_obj, 0) = ptr_var;
   set_DECL_ST(ptr_var, WN_st(first_formal));
+
+  // Bug 4900 - set the location attribute for the DST entry for named_ret_obj
+  // to point to first_formal; and also set DW_OP_deref for the DST entry.
+  if (Debug_Level >= 2) {
+    DST_INFO_IDX info_idx = DECL_DST_IDX(named_ret_obj);
+    DST_ATTR_IDX attr_idx = DST_INFO_attributes(DST_INFO_IDX_TO_PTR(info_idx));
+    DST_VARIABLE *attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_VARIABLE);
+    DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = 
+      (void *)ST_st_idx(WN_st(first_formal));
+    DST_SET_deref(DST_INFO_flag( DST_INFO_IDX_TO_PTR(info_idx)));
+  }
 }
 #endif

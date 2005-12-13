@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -89,7 +89,8 @@ operator== (const TY& ty1, const TY& ty2)
 
     return (p1 == p2 || (p1[0] == p2[0] &&
 			 p1[1] == p2[1] &&
-			 p1[2] == p2[2]));
+			 p1[2] == p2[2] &&
+			 ty1.Pu_flags() == ty2.Pu_flags()));
 }
 
 
@@ -109,7 +110,7 @@ namespace
     struct TY_HASH {
 	size_t operator() (const TY& key) const {
 	    const UINT64 *p = reinterpret_cast<const UINT64*> (&key);
-	    UINT64 tmp = (p[0] ^ p[1]) + p[2];
+	    UINT64 tmp = (p[0] ^ p[1]) + p[2] + key.Pu_flags();
 	    return (size_t) (tmp ^ (tmp >> 32));
 	}
     };
@@ -619,9 +620,9 @@ Initialize_Type_Merging_Hash_Tables (MEM_POOL* pool)
     // check if the assumption used by fast comparision of structs are valid
 #ifdef  __GNUC__
 
-    Is_True ((sizeof(TY) == 24 && __alignof__(TY) == 4) ,
+    Is_True ((sizeof(TY) == 28 && __alignof__(TY) == 4) ,
 	     ("Invalid size/alignment assumption"));
-    Is_True (sizeof(FLD) == 24 && __alignof__(FLD) == 4,
+    Is_True (sizeof(FLD) == 28 && __alignof__(FLD) == 4,
 	     ("Invalid size/alignment assumption"));
     Is_True (sizeof(ARB) == 32 && __alignof__(ARB) == 4,
 	     ("Invalid size/alignment assumption"));

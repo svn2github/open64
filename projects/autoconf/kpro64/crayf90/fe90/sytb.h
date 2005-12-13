@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1352,10 +1352,17 @@ struct  intrin_tbl_entry       {
                                 boolean         optional                : 1;
                                 boolean         dope                    : 1;
                                 boolean         generic                 : 1;
+#ifdef KEY /* Bug 4656 */
+                                boolean         enabled                 : 1;
+#else /* KEY Bug 4656 */
                                 boolean         non_ansi                : 1;
+#endif /* KEY Bug 4656 */
                                 Uint            n_specifics             : 9;
                                 Uint            intrin_enum		: 9;   
                                 Uint            data_type		: 32;   
+#ifdef KEY /* Bug 4656 */
+                                Uint            families	        : 8;   
+#endif /* KEY Bug 4656 */
         };
 
 struct  intrin_map_entry       {
@@ -1756,7 +1763,12 @@ extern	int			 type_tbl_num_wds;
 extern  int			 type_tbl_init_size;
 extern  int			 type_tbl_largest_idx;
 
+#ifdef KEY /* Bug 4656 */
+extern  intrin_tbl_type    	 intrin_tbl[];
+extern  unsigned		 MAX_INTRIN_TBL_SIZE;
+#else /* KEY Bug 4656 */
 extern  intrin_tbl_type    	 intrin_tbl[MAX_INTRIN_TBL_SIZE];
+#endif /* KEY Bug 4656 */
 extern  intrin_map_type    	 intrin_map[MAX_INTRIN_MAP_SIZE];
 extern	void			 (*intrinsic_semantics[])();
 

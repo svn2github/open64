@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,6 +59,35 @@ char id_symlnk[] = "@(#)symlnk_.c	1.1";
 #endif
 #include "externals.h"
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_symlnk(char *name1, char *name2, pathf90_i4 *status, int n1len,
+  int n2len)
+{
+	char *buf1, *buf2;
+	pathf90_i4 junk;
+	status = (status == 0) ? (&junk) : status;
+
+	if (!bufarg && !(bufarg=malloc(bufarglen=n1len+n2len+2)))
+		return(*status = (errno=F_ERSPACE));
+	else if (bufarglen <= n1len+n2len+1 && !(bufarg=realloc(bufarg, bufarglen=n1len+n2len+2)))
+		return(*status = (errno=F_ERSPACE));
+	buf1 = bufarg;
+	buf2 = &bufarg[n1len+1];
+	g_char(name1, n1len, buf1);
+	g_char(name2, n2len, buf2);
+	if (buf1[0] == '\0' || buf2[0] == '\0')
+		return(*status = (errno=F_ERARG));
+	if (symlink(buf1, buf2) != 0)
+		return(*status = errno);
+	return(*status = 0);
+}
+
+#else
+
 extern int 
 symlnk_ (char *name1, char *name2, int n1len, int n2len)
 {
@@ -95,3 +128,4 @@ symlnk_ (char *name1, char *name2, int n1len, int n2len)
 		return(-1);
 	return(0);
 }
+#endif /* KEY Bug 1683 */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -98,7 +98,7 @@ typedef INT64 LOWER_ACTIONS;
 #if defined(TARG_IA32) || defined(TARG_X8664)
 #define LOWER_SLINK_SAVE	  0x020000000000ll
 #endif
-
+#define LOWER_TO_MEMLIB           0x040000000000ll
 #define LOWER_TO_CG		  0x800000000000ll
 
 
@@ -200,6 +200,7 @@ extern void U64_lower_wn(WN *, BOOL);
 
 #ifdef KEY
 extern void WN_retype_expr(WN *);
+extern WN* Transform_To_Memcpy(WN *dst, WN *src, INT32 offset, TY_IDX dstTY, TY_IDX srcTY, WN *size);
 #endif
 
 #endif /* wn_lower_INCLUDED */

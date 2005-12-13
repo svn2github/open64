@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1154,7 +1154,30 @@ typedef long xfer_func_c(unit *cup, void *uda, type_packet *tip, int mode,
  *		  be opened by the user.
  */
 
+#ifdef KEY /* Bug 6433 */
+/*
+ * Originally, "print"  and "write(*,...)" referred to STDOUT_U which was 101;
+ * and similarly for "read (*,...)" (STDIN_U, 100) and "punch" (STDERR_U, 102).
+ * These were "reserved units" which did not obey all of the normal Fortran
+ * semantics (e.g. "open(100, file='xyz', status='unknown')" would fail, and
+ * "inquire(100,exist=m)" would set m==.false.)
+ *
+ * An explicit reference to "6" in a "write" would implicitly open stdout,
+ * and "5" in a "read" would implicitly open stdin (in contrast to any other
+ * unit value "n", which would implicitly open "fort.n".) However, 5 and 6
+ * were not "reserved" units, so they obeyed the normal Fortran semantics
+ * if (for example) you opened and closed them in connection with named files.
+ *
+ * We wanted "print" and "read (*,...)" to use 5 and 6, not 100 and 101, so we
+ * changed STDIN_U and STDOUT_U earlier in this source file. But we don't want
+ * 5 and 6 to have the "reserved", nonstandard behavior that 100..102 used to
+ * have, so RSVD_UNUM must return false, because there are no longer any
+ * "reserved" units.
+ */
+#define RSVD_UNUM(_U)	(0)
+#else /* KEY Bug 6433 */
 #define RSVD_UNUM(_U)	((_U) >= STDIN_U && (_U) <= STDERR_U)
+#endif /* KEY Bug 6433 */
 
 /*
  * OPEN_UPTR	- returns 1 iff u points to a connected unit.  Returns 0
@@ -1558,7 +1581,11 @@ _release_cup(unit *cup)
 extern void _ferr(FIOSPTR, int, ...);
 extern int _get_dc_param(FIOSPTR, unit *, struct f90_type, type_packet *);
 extern int _is_file_name(long n);
+#ifdef KEY /* Bug 6433 */
+extern void flush_(_f_int4 *n);
+#else /* KEY Bug 6433 */
 extern void flush_(const unum_t *n);
+#endif /* KEY Bug 6433 */
 extern int _f_open(FIOSPTR css, unit **cup_p, olist *olptr, int isf90);
 extern int _f_inqu(FIOSPTR css, unit *cup, inlist *a);
 extern int _fortname(char *buf, unum_t n);

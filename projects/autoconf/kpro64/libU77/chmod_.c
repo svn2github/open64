@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -54,10 +54,57 @@
 #ifndef	MAXPATHLEN
 #define MAXPATHLEN	128
 #endif
-#ifndef KEY
+#ifdef KEY
+#include <sys/stat.h>
+#include <fcntl.h>
+#else
 #include <sgidefs.h>
 #endif
 #include "externals.h"
+
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_chmod(char *name, char *mode, pathf90_i4 *status, int namlen,
+  int modlen)
+{
+        pathf90_i4 junk;
+	char	*modbuf;
+	__int32_t retcode;
+	status = (0 == status) ? (&junk) : status;
+
+	if (!bufarg && !(bufarg=malloc(bufarglen=namlen+modlen+2)))
+		return(*status = errno=F_ERSPACE);
+	else if (bufarglen <= namlen+modlen+1 && !(bufarg=realloc(bufarg, bufarglen=namlen+modlen+2)))
+		return(*status = errno=F_ERSPACE);
+	modbuf = &bufarg[namlen+1];
+	g_char(name, namlen, bufarg);
+	g_char(mode, modlen, modbuf);
+	if (bufarg[0] == '\0')
+		return(*status = errno=ENOENT);
+	if (modbuf[0] == '\0')
+		return(*status = errno=F_ERARG);
+	if (fork())
+	{
+		if (wait(&retcode) == -1)
+			return(*status = errno);
+		return(*status = retcode);
+	}
+	else
+		/* child */
+#ifdef KEY /* Bug 1683 */
+		/* make error messages vanish if possible, since
+		 * we'll use return status to tell caller about errors
+		 */
+		dup2(open("/dev/null", O_WRONLY, 0666), 2);
+#endif /* KEY Bug 1683 */
+		execl("/bin/chmod", "chmod", modbuf, bufarg, (char *)0);
+		/* NOTREACHED */
+}
+
+#else
 
 extern __int32_t
 chmod_ (char *name, char *mode, __int32_t namlen, __int32_t modlen)
@@ -115,3 +162,5 @@ chmod_ (char *name, char *mode, __int32_t namlen, __int32_t modlen)
 		execl("/bin/chmod", "chmod", modbuf, bufarg, (char *)0);
 		/* NOTREACHED */
 }
+
+#endif /* KEY Bug 1683 */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -347,7 +351,7 @@ inline TYPE_ID
 OPCODE_rtype (OPCODE op)
 {
   Is_True(Is_Valid_Opcode (op), ("Bad opcode %d", op));
-  return (TYPE_ID) ((op >> 8) & 0x1F);
+  return (TYPE_ID) ((op >> 8) & 0x3F);
 }
 
 /*REFERENCED*/
@@ -355,7 +359,7 @@ inline TYPE_ID
 OPCODE_desc (OPCODE op)
 {
   Is_True(Is_Valid_Opcode (op), ("Bad opcode %d", op));
-  return (TYPE_ID) ((op >> 13) & 0x1F);
+  return (TYPE_ID) ((op >> 14) & 0x3F);
 }
 
 extern char* OPCODE_name (OPCODE op);

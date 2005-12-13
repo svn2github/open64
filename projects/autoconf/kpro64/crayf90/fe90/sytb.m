@@ -301,9 +301,13 @@
 # define NP_LAST_USED_IDX	2	/* last reserved index                */
 # define TYP_LAST_USED_IDX	Num_Linear_Types + 1 /* 2 extra entries */
 
+#ifdef KEY /* Bug 4656 */
+ /* Let the C compiler figure it out */
+#else
 # define MAX_INTRIN_TBL_SIZE   13400    /* max entries in intrinsic table     */
+#endif /* KEY Bug 4656 */
 # ifdef KEY
-# define MAX_INTRIN_MAP_SIZE   71       /* max entries in intrinsic map       */
+# define MAX_INTRIN_MAP_SIZE   75       /* max entries in intrinsic map       */
 # else
 # define MAX_INTRIN_MAP_SIZE   59       /* max entries in intrinsic map       */
 # endif
@@ -1235,6 +1239,16 @@
 # define ATD_TASK_LASTPRIVATE(IDX)        attr_aux_tbl[IDX].fld.flag19
 # endif
 
+/* the following is added by jhs, 02/7/22*/
+# ifdef _DEBUG
+# define ATD_TASK_COPYPRIVATE(IDX)                                             \
+        ((AT_OBJ_CLASS(IDX) == Data_Obj) ?                                     \
+		attr_aux_tbl:attr_aux_var_error("ATD_TASK_COPYPRIVATE", IDX))  \
+                [IDX].fld.flag20
+# else
+# define ATD_TASK_COPYPRIVATE(IDX)        attr_aux_tbl[IDX].fld.flag20
+# endif
+/* the above is added by jhs, 02/7/22*/
 # ifdef _DEBUG
 # define ATD_TASK_LASTTHREAD(IDX)                                              \
         ((AT_OBJ_CLASS(IDX) == Data_Obj) ?                                     \

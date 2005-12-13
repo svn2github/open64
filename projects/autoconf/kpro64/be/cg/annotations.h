@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -264,22 +268,27 @@ extern ANNOTATION *ANNOT_Get (ANNOTATION *annot_list, ANNOTATION_KIND kind);
 #define ANNOT_Next(list,kind)	(ANNOT_Get (ANNOT_next(list), kind))
 
 
+#define ASM_OP_size	50
+
 struct ASM_OP_ANNOT 
 {
   const WN* wn;
 
   REGISTER_SET clobber_set[ISA_REGISTER_CLASS_MAX+1];
 
-  const char* result_constraint[10];
-  ISA_REGISTER_SUBCLASS result_subclass[10];
-  mUINT32 result_position[10];
-  bool result_clobber[10];
-  bool result_memory[10];
+  const char* result_constraint[ASM_OP_size];
+  ISA_REGISTER_SUBCLASS result_subclass[ASM_OP_size];
+  mUINT32 result_position[ASM_OP_size];
+  bool result_clobber[ASM_OP_size];
+  bool result_memory[ASM_OP_size];
 
-  const char* opnd_constraint[10];
-  ISA_REGISTER_SUBCLASS opnd_subclass[10];
-  mUINT32 opnd_position[10];
-  bool opnd_memory[10];
+  const char* opnd_constraint[ASM_OP_size];
+  ISA_REGISTER_SUBCLASS opnd_subclass[ASM_OP_size];
+  mUINT32 opnd_position[ASM_OP_size];
+  bool opnd_memory[ASM_OP_size];
+#ifdef KEY
+  void* opnd_offset[ASM_OP_size];
+#endif
 };
 
 #define ASM_OP_wn(x)			((x)->wn)
@@ -294,6 +303,8 @@ struct ASM_OP_ANNOT
 #define ASM_OP_opnd_position(x)		((x)->opnd_position)
 #define ASM_OP_opnd_memory(x)		((x)->opnd_memory)
 
-
+#ifdef KEY
+#define ASM_OP_opnd_offset(x)		((x)->opnd_offset)
+#endif
 #endif /* ANNOTATIONS_INCLUDED */
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -128,6 +128,13 @@ set_defaults (void)
 		toggle(&isstatic,1);
 		prepend_option_seen(O_automatic);
 	}
+
+#ifdef KEY
+	// Make -cpp the default for Fortran.  Bug 4243.
+	if (!is_toggled(use_ftpp)) {
+		toggle(&use_ftpp, 0);
+	}
+#endif
 }
 
 
@@ -187,7 +194,7 @@ add_special_options (void)
 	char *s;
 	boolean undefined_olevel_flag = FALSE; 
 
-	/* Hack for F90 -MDupdate. We need to pass the MDupdate to mfef90, because we don't
+	/* Hack for F90 -MDupdate. We need to pass the MDupdate to mfef95, because we don't
 	 * have an integrated pre-processor. I can't figure out a better way to do this, given
 	 * the architecture of the phase generator. 
 	 * R. Shapiro, 2/26/97
@@ -203,7 +210,7 @@ add_special_options (void)
         add_phase_for_option(O_P, P_cppf90_fe);
 
 	if (use_ftpp == TRUE) {
-		/* ftpp means pass defines directly to mfef90,
+		/* ftpp means pass defines directly to mfef95,
 		 * and since not using gcc we have to pass some options
 		 * that are otherwise implicit. */
 		flag = add_string_option(O_D, "_LITTLE_ENDIAN");
@@ -229,18 +236,22 @@ add_special_options (void)
 	prepend_option_seen (flag);
 #endif
 
+#ifndef KEY	// Bug 4406.
 	if (mpkind == CRAY_MP) {
 		Process_Cray_Mp();
 	}
 	else if (mpkind == NORMAL_MP || auto_parallelize) {
 		Process_Mp();
 	}
+#endif
 
+#ifndef KEY	// Bug 7263.
         if (auto_parallelize && ipa) {
                 flag = add_new_option("-IPA:array_summary");
                 add_phase_for_option(flag, P_ipl);
                 prepend_option_seen (flag);
         }
+#endif
 
 	if ((mpkind == NORMAL_MP || auto_parallelize) && !Disable_open_mp) {
 		flag = add_string_option(O_D, "_OPENMP=199810");
@@ -283,14 +294,39 @@ add_special_options (void)
 		flag = add_string_option(O_G__, buf);
 		prepend_option_seen(flag);
 	}
-	/* some checks are easier to do by hand */
-	if (undefined_olevel_flag == TRUE && glevel >= 0) {
-		if ( ipa != TRUE )
-			turn_down_opt_level(0, "-g changes optimization to -O0 since no optimization level is specified");
-		 /* KEY: bug 1917: disable lw-inliner if -g and (!-inline) */
-		if (glevel == 2 && inline_t != TRUE)
-			inline_t = FALSE;
-	}	
+
+	/* Set default optimization to -O0 when compiling with -g.
+	 * We leave ipa alone because mixing -ipa with -g is illegal
+	 * and generates a separate error later on.
+	 */
+	if (undefined_olevel_flag == TRUE && glevel >= 0 && ipa != TRUE) {
+		turn_down_opt_level(0, "-g changes optimization to -O0 since no optimization level is specified");
+	}
+
+#ifdef KEY
+	/* Turn off inlining when compiling -O0.  We definitly want
+	 * this off when compiling with -g -O0, but we don't want
+	 * -g to change the generated code so we leave it off always.
+	 * See bugs 1917 and 7595.
+	 */
+	if (olevel == 0 && inline_t == UNDEFINED)
+	  inline_t = FALSE;
+#endif
+
+#ifdef KEY /* Bug 5367 */
+        /* In the SGI world, -g3 says to emit crippled debug info for use
+	 * with optimized code. In the GNU/Pathscale world, -g3 says to emit
+	 * additional debug info for C preprocessor macros, so changing -g to
+	 * -g3 just because the optimization level is high makes no sense. In
+	 * addition, when the language is Fortran, putting predefined C
+	 * preprocessor macros into the preprocessor output causes trouble.
+	 */
+	if ((invoked_lang == L_f77 || invoked_lang == L_f90) &&
+	  (option_was_seen(O_g3))) {
+	  glevel = 2;
+	  replace_option_seen (O_g3, O_g2);
+	}
+#else
 	if (olevel >= 2 && glevel == 2) {
 		glevel = 3;
 		if (option_was_seen (O_g))
@@ -298,6 +334,7 @@ add_special_options (void)
 		if (option_was_seen (O_g2))
 			replace_option_seen (O_g2, O_g3);
 	}
+#endif /* KEY Bug 5367 */
 
 	if (option_was_seen(O_S) && ipa == TRUE) {
 		turn_off_ipa ("-IPA -S combination not allowed, replaced with -S");
@@ -349,7 +386,9 @@ add_special_options (void)
 	prepend_option_seen (flag);
 
 	if (abi == ABI_N32 || abi == ABI_64) {
+#ifndef KEY
         	set_dsm_options ();
+#endif
 	}
 
 	if (option_was_seen(O_ar) && outfile == NULL) {

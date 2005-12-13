@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -80,7 +80,8 @@ enum INITVFLAGS {	// currently only for EH
     INITVFLAGS_ACTION_REC,
     INITVFLAGS_TYPEINFO,
     INITVFLAGS_EH_SPEC,
-    INITVFLAGS_SUMMARIZED // initv has been summarized in ipl, don't redo
+    INITVFLAGS_SUMMARIZED, // initv has been summarized in ipl, don't redo
+    INITVFLAGS_UPDATED     // summary info in initv has been updated in ipa
 };
 #endif // KEY
 

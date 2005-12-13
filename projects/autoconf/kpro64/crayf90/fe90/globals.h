@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -181,7 +181,26 @@ enum	sgi_inline_state_values	{Not_Specified_Sgi,
 
 typedef enum sgi_inline_state_values sgi_inline_state_type;
 				 
-
+#ifdef KEY /* Bug 4656 */
+/* Bitmask values used for "family" member of intrin_tbl_entry; make sure
+ * "families" member of intrin_tbl_entry is wide enough. */
+enum    intrinsic_family       {
+			        EVERY_FAMILY =	1,
+			        ANSI_FAMILY =	2,
+			        PGI_FAMILY =	4,
+			        G77_FAMILY =	8,
+				OMP_FAMILY =	16,
+				TRADITIONAL_FAMILY = 32
+			       };
+/* Map name of intrinsic family onto mask used within "families" member of
+ * intrin_tbl_entry. */
+typedef struct {
+  char *name;
+  unsigned mask;
+  } intrin_family_t;
+extern intrin_family_t intrin_families[];
+extern int SIZEOF_INTRIN_FAMILIES;
+#endif /* KEY Bug 4656 */
 
 enum    intrinsic_values       {Unknown_Intrinsic,
 			        Abs_Intrinsic,
@@ -279,6 +298,10 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Dcosh_Intrinsic,
 				Dcot_Intrinsic,
 				Ddim_Intrinsic,
+#ifdef KEY /* Bug 1324 */
+				Derf_Intrinsic,
+				Derfc_Intrinsic,
+#endif /* KEY Bug 1324 */
 				Dexp_Intrinsic,
 				Dfloat_Intrinsic,
 				Dfloati_Intrinsic,
@@ -327,6 +350,13 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Eoshift_Intrinsic,
 				Epsilon_Intrinsic,
 				Eqv_Intrinsic,
+#ifdef KEY /* Bug 1324 */
+				Erf_Intrinsic,
+				Erfc_Intrinsic,
+#endif /* KEY Bug 1324 */
+#ifdef KEY /* Bug 3018 */
+				Etime_Intrinsic,
+#endif /* KEY Bug 3018 */
 				Exit_Intrinsic,
 				Exp_Intrinsic,
 				Exponent_Intrinsic,
@@ -531,16 +561,35 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Null_Intrinsic,
 				Numarg_Intrinsic,
 				Num_Images_Intrinsic,
+#ifdef KEY
+                                Omp_Destroy_Lock_Intrinsic,
+                                Omp_Destroy_Nest_Lock_Intrinsic,
+#endif
 				Omp_Get_Dynamic_Intrinsic,
 				Omp_Get_Max_Threads_Intrinsic,
 				Omp_Get_Nested_Intrinsic,
 				Omp_Get_Num_Procs_Intrinsic,
 				Omp_Get_Num_Threads_Intrinsic,
 				Omp_Get_Thread_Num_Intrinsic,
+#ifdef KEY
+                                Omp_Get_Wtick_Intrinsic,
+                                Omp_Get_Wtime_Intrinsic,
+                                Omp_Init_Lock_Intrinsic,
+                                Omp_Init_Nest_Lock_Intrinsic,
+#endif
 				Omp_In_Parallel_Intrinsic,
 				Omp_Set_Lock_Intrinsic,
+#ifdef KEY
+				Omp_Set_Nest_Lock_Intrinsic,
+#endif
 				Omp_Test_Lock_Intrinsic,
+#ifdef KEY
+				Omp_Test_Nest_Lock_Intrinsic,
+#endif
 				Omp_Unset_Lock_Intrinsic,
+#ifdef KEY
+				Omp_Unset_Nest_Lock_Intrinsic,
+#endif
 				Or_Intrinsic,
 				Or_And_Fetch_Intrinsic,
 				Pack_Intrinsic,
@@ -650,6 +699,7 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				This_Image_Intrinsic,
 				Time_Intrinsic,
 #ifdef KEY
+				Time4_Intrinsic,
 				Time8_Intrinsic,
 #endif
 				Tiny_Intrinsic,
@@ -669,8 +719,11 @@ enum    intrinsic_values       {Unknown_Intrinsic,
 				Zexp_Intrinsic,
 				Zlog_Intrinsic,
 				Zsin_Intrinsic,
-				Zsqrt_Intrinsic
+				Zsqrt_Intrinsic,
 # endif
+#ifdef KEY /* Bug 1683 */
+			 	Pathf90_Intrinsic
+#endif /* KEY Bug 1683 */
 				};
 
 
@@ -728,6 +781,10 @@ enum	msg_lvl_values	       {Comment_Lvl,
 /* Note: all message levels are output to CIF, only Comment .. Internal,      */
 /*	 Log_Error, Log_Warning and Ansi are output to stderr		      */
 
+#ifdef KEY /* Bug 6121 */
+/* Move PRINTMSG et al to printmsg.h so C++ can call it */
+#include "printmsg.h"
+#else /* KEY Bug 6121 */
 enum	msg_severities	       {Comment,	Note,		Caution,
 				Warning,	Error,		Internal,
 				Vector,		Scalar,		Table,
@@ -735,6 +792,7 @@ enum	msg_severities	       {Comment,	Note,		Caution,
 				Info,		Tasking,	Limit,
 				Log_Error,	Log_Summary,	F77_Ansi,
 				Optimization,	Stream,		Unknown_Error };
+#endif /* KEY Bug 6121 */
 
 /* NOTE:  Tables in nameres.h are dependent on this enumeration.              */
 /* The following enumeration is used to call fnd_semantic_err.  These are     */
@@ -1362,19 +1420,23 @@ enum    operator_values      {  Null_Opr,
 
 				Endparalleldo_Open_Mp_Opr,
 				Endparallelsections_Open_Mp_Opr,
+				Endparallelworkshare_Open_Mp_Opr, /* by jhs, 02/7/18 */
 				Endmaster_Open_Mp_Opr,
 				Endordered_Open_Mp_Opr,
 				Endsections_Open_Mp_Opr,
 				Endsingle_Open_Mp_Opr,
+				Endworkshare_Open_Mp_Opr, /* by jhs, 02/7/18 */
 				Flush_Open_Mp_Opr,
 				Master_Open_Mp_Opr,
 				Ordered_Open_Mp_Opr,
 				Parallel_Open_Mp_Opr,
 				Paralleldo_Open_Mp_Opr,
 				Parallelsections_Open_Mp_Opr,
+				Parallelworkshare_Open_Mp_Opr, /* by jhs, 02/7/18 */
 				Section_Open_Mp_Opr,
 				Sections_Open_Mp_Opr,
 				Single_Open_Mp_Opr,
+				Workshare_Open_Mp_Opr, /* by jhs, 02/7/18 */
 
                                 Concurrentize_Star_Opr,
                                 Noconcurrentize_Star_Opr,
@@ -1438,6 +1500,13 @@ enum    operator_values      {  Null_Opr,
 				Copyin_Bound_Opr,
 
 				Preferstream_Nocinv_Dir_Opr,
+#ifdef KEY /* Bug 1324 */
+				Erf_Opr,
+				Erfc_Opr,
+#endif /* KEY Bug 1324 */
+#ifdef KEY /* Bug 2660 */
+				Options_Dir_Opr,
+#endif /* KEY Bug 2660 */
 
                                 /* PLACE NEW OPERATORS ABOVE THIS LINE. */
                                 /* DO NOT PUT ANY OPRS AFTER THIS ONE */
@@ -1612,7 +1681,10 @@ enum stmt_type_values           {Null_Stmt,
 
 				 Else_Where_Mask_Stmt,
 
-                                 Volatile_Stmt
+                                 Volatile_Stmt,
+
+				 Open_MP_End_Parallel_Workshare_Stmt,
+				 Open_MP_End_Workshare_Stmt
 
                                  /* When you add a stmt, make sure you change */
                                  /* stmt_type_str in main.h.                  */
@@ -1704,8 +1776,10 @@ enum    open_mp_directive_values     {
                                 Do_Omp,
                                 Sections_Omp,
                                 Single_Omp,
+                                Workshare_Omp, /* by jhs, 02/7/18 */
                                 Parallel_Do_Omp,
                                 Parallel_Sections_Omp,
+                                Parallel_Workshare_Omp, /* by jhs, 02/7/18 */
                                 Num_Omp_Values   /* must be last */
                                 };
 
@@ -1713,6 +1787,7 @@ typedef enum open_mp_directive_values        open_mp_directive_type;
 
 enum    open_mp_clause_values        {
                                 If_Omp_Clause,
+                                Num_Threads_Omp_Clause, /* by jhs, 02/7/18 */
                                 Private_Omp_Clause,
                                 Shared_Omp_Clause,
                                 Firstprivate_Omp_Clause,
@@ -1725,6 +1800,7 @@ enum    open_mp_clause_values        {
 				Affinity_Omp_Clause,
 				Nest_Omp_Clause,
 				Onto_Omp_Clause,
+                                Copyprivate_Omp_Clause,
                                 Last_Omp_Clause     /* must be last */
                                 };
 typedef enum open_mp_clause_values open_mp_clause_type;
@@ -1746,7 +1822,11 @@ typedef	enum	glb_tbl_idx_values		glb_tbl_idx_type;
 typedef	enum	intrinsic_values		intrinsic_type;
 typedef	enum	linear_type_values		linear_type_type;
 typedef enum	msg_lvl_values			msg_lvl_type;
+#ifdef KEY /* Bug 6121 */
+/* Move PRINTMSG et al to printmsg.h so C++ can call it */
+#else /* KEY Bug 6121 */
 typedef enum	msg_severities			msg_severities_type;
+#endif /* KEY Bug 6121 */
 typedef enum	obj_values			obj_type;
 typedef	enum	operator_values			operator_type;
 typedef	enum	scalar_lvl_values		scalar_lvl_type;
@@ -2140,6 +2220,7 @@ struct	cdir_switch_entry	{
 				 int		cache_bypass_ir_idx;
 				 int		concurrent_idx;
 				 int		copyin_list_idx;
+				 int		copyprivate_list_idx; /* by jhs, 02/7/22 */
 				 int		default_scope_list_idx;
 				 int		dir_nest_check_sh_idx;
                                  int		do_omp_sh_idx;
@@ -2491,8 +2572,12 @@ typedef	enum	cif_usage_code_values		cif_usage_code_type;
 \*******************************************/
 
 extern  void  unknown_intrinsic (opnd_type *, expr_arg_type *, int *);
+#ifdef KEY /* Bug 1683 */
+extern  void  pathf90_intrinsic (opnd_type *, expr_arg_type *, int *);
+#endif /* KEY Bug 1683 */
 extern  void  abs_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  sin_intrinsic     (opnd_type *, expr_arg_type *, int *);
+extern  void  erf_intrinsic     (opnd_type *, expr_arg_type *, int *);
 extern  void  atan2_intrinsic   (opnd_type *, expr_arg_type *, int *);
 extern  void  exit_intrinsic    (opnd_type *, expr_arg_type *, int *);
 extern  void  aimag_intrinsic   (opnd_type *, expr_arg_type *, int *);
@@ -2709,7 +2794,11 @@ extern  int		copy_from_gl_subtree(int, fld_type);
 extern  void            copy_entry_exit_sh_list(int, int, int *,  int *);
 extern  int		create_bd_ntry_for_const(expr_arg_type *,int,int);
 extern	void		create_mod_info_tbl(void);
+#ifdef KEY /* Bug 3477 */
+extern	boolean		create_mod_info_file(void);
+#else
 extern	void		create_mod_info_file(void);
+#endif /* KEY Bug 3477 */
 extern	int		cvrt_str_to_cn(char *, int);
 extern	void		cvrt_to_pdg(char *);
 extern	void		decl_semantics(void);
@@ -2747,6 +2836,13 @@ extern	void		gen_runtime_checks(opnd_type *);
 extern	void		gen_runtime_ptr_chk(opnd_type *);
 extern	void		gen_sh(sh_position_type, stmt_type_type, int,
                                int, boolean, boolean, boolean);
+#ifdef KEY /* Bug 4955 */
+extern	void	        gen_present_ir(int, int, int);
+#endif /* KEY Bug 4955 */
+#ifdef KEY /* Bug 4811 */
+extern  int		gen_sh_at(sh_position_type, stmt_type_type, int,
+                               int, boolean, boolean, boolean, int);
+#endif /* KEY Bug 4811 */
 extern	void		gen_gl_sh(sh_position_type, stmt_type_type, int,
                                int, boolean, boolean, boolean);
 extern	void		gen_internal_call_stmt(char *, opnd_type *, 
@@ -2784,7 +2880,14 @@ extern	void		ntr_msg_queue(int, int, msg_severities_type, int,
 extern	void		output_mod_info_file(void);
 extern	void		parse_prog_unit(void);
 extern	void		pdgcs_conversion(void);
+#ifdef KEY /* Bug 6121 */
+/* Move PRINTMSG et al to printmsg.h so C++ can call it */
+#else
 extern	void		PRINTMSG(int, int, msg_severities_type, int, ...);
+#endif /* KEY Bug 6121 */
+#ifdef KEY /* Bug 5040 */
+extern  msg_severities_type ansi_or_warning(void);
+#endif /* KEY Bug 5040 */
 extern	void	        print_const_f(FILE *, int);
 extern	void		print_err_line(int, int);
 extern	void		print_scp_to_fortran(int, int, int, FILE *);
@@ -3411,3 +3514,12 @@ extern int     num_argchck_suppress_msg;
 extern void kludge_input_conversion (char *, int);
 extern void kludge_output_conversion (long_type *, int, char *);
 # endif
+
+#ifdef KEY /* Bug 3018 */
+/* Suffix used in intrin_tbl to indicate G77 subroutine versions of intrinsics
+ * which are normally functions. If you change this,
+ * p_driver.c:enter_intrinsic may also need to change.
+ */
+#               define INTRIN_SUBR_SUFFIX ":Subroutine"
+#endif /* KEY Bug 3018 */
+

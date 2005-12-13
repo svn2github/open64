@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -253,8 +253,26 @@ main()
 			   TOP_add128v16,
 			   TOP_add128v32,
 			   TOP_add128v64,
+			   TOP_add64v8,
+			   TOP_add64v16,
+			   TOP_add64v32,
+			   TOP_paddsb,
+			   TOP_paddsw,
+			   TOP_psubsb,
+			   TOP_psubsw,
+			   TOP_paddusb,
+			   TOP_paddusw,
+			   TOP_psubusb,
+			   TOP_psubusw,
+			   TOP_pmullw,
+			   TOP_pmulhw,
+			   TOP_pmulhuw,
 			   TOP_fadd128v32,
 			   TOP_fadd128v64,
+			   TOP_faddsub128v32,
+			   TOP_faddsub128v64,
+			   TOP_fhadd128v32,
+			   TOP_fhadd128v64,
 			   TOP_and128v8,
 			   TOP_and128v16,
 			   TOP_and128v32,
@@ -287,6 +305,26 @@ main()
 			   TOP_fdiv128v64,
 			   TOP_fmul128v32,
 			   TOP_fmul128v64,
+			   TOP_max128v8,
+			   TOP_max128v16,
+			   TOP_max64v8,
+			   TOP_max64v16,
+			   TOP_min128v8,
+			   TOP_min128v16,
+			   TOP_min64v8,
+			   TOP_min64v16,
+			   TOP_cmpeq128v8,
+			   TOP_cmpeq128v16,
+			   TOP_cmpeq128v32,
+			   TOP_cmpgt128v8,
+			   TOP_cmpgt128v16,
+			   TOP_cmpgt128v32,
+			   TOP_pcmpeqb,
+			   TOP_pcmpeqw,
+			   TOP_pcmpeqd,
+			   TOP_pcmpgtb,
+			   TOP_pcmpgtw,
+			   TOP_pcmpgtd,
 			   TOP_and8,
 			   TOP_and16,
 			   TOP_and32,
@@ -304,8 +342,13 @@ main()
 			   TOP_sub128v16,
 			   TOP_sub128v32,
 			   TOP_sub128v64,
+			   TOP_sub64v8,
+			   TOP_sub64v16,
+			   TOP_sub64v32,
 			   TOP_fsub128v32,
 			   TOP_fsub128v64,
+			   TOP_fhsub128v32,
+			   TOP_fhsub128v64,			   
 			   TOP_xor8,
 			   TOP_xor16,
 			   TOP_xor32,
@@ -322,6 +365,14 @@ main()
 			   TOP_ori64,
 			   TOP_xori32,
 			   TOP_xori64,
+			   TOP_ror8,
+			   TOP_ror16,
+			   TOP_ror32,
+			   TOP_ror64,
+			   TOP_rori8,
+			   TOP_rori16,
+			   TOP_rori32,
+			   TOP_rori64,
 			   TOP_sar32,
 			   TOP_sar64,
 			   TOP_sari32,
@@ -361,6 +412,28 @@ main()
 			   TOP_fsubr,
 			   TOP_fsubrp,
 			   TOP_subus128v16,
+			   TOP_cmpeqps,
+			   TOP_cmpltps,
+			   TOP_cmpleps,
+			   TOP_cmpunordps,
+			   TOP_cmpneqps,
+			   TOP_cmpnltps,
+			   TOP_cmpnleps,
+			   TOP_cmpordps,
+			   TOP_cmpeqss,
+			   TOP_cmpltss,
+			   TOP_cmpless,
+			   TOP_cmpunordss,
+			   TOP_cmpneqss,
+			   TOP_cmpnltss,
+			   TOP_cmpnless,
+			   TOP_cmpordss,
+			   TOP_packsswb,
+			   TOP_packssdw,
+			   TOP_packuswb,
+			   TOP_pavgb,
+			   TOP_pavgw,
+			   TOP_psadbw,
 			   TOP_UNDEFINED );
 
   /* One result / two operands in x86 style w/ mem operand */
@@ -377,6 +450,10 @@ main()
 			   TOP_addx128v64,
 			   TOP_faddx128v32,
 			   TOP_faddx128v64,
+			   TOP_fhaddx128v32,
+			   TOP_fhaddx128v64,
+			   TOP_faddsubx128v32,
+			   TOP_faddsubx128v64,
 			   TOP_andx128v8,
 			   TOP_andx128v16,
 			   TOP_andx128v32,
@@ -403,12 +480,24 @@ main()
 			   TOP_fdivx128v64,
 			   TOP_fmulx128v32,
 			   TOP_fmulx128v64,
+			   TOP_maxx128v8,
+			   TOP_maxx128v16,
+			   TOP_minx128v8,
+			   TOP_minx128v16,
+			   TOP_cmpeqx128v8,
+			   TOP_cmpeqx128v16,
+			   TOP_cmpeqx128v32,
+			   TOP_cmpgtx128v8,
+			   TOP_cmpgtx128v16,
+			   TOP_cmpgtx128v32,
 			   TOP_subx128v8,
 			   TOP_subx128v16,
 			   TOP_subx128v32,
 			   TOP_subx128v64,
 			   TOP_fsubx128v32,
 			   TOP_fsubx128v64,
+			   TOP_fhsubx128v32,
+			   TOP_fhsubx128v64,
 			   TOP_addx32,
 			   TOP_addx64,
 			   TOP_subx32,
@@ -452,6 +541,10 @@ main()
 			   TOP_addxx128v64,
 			   TOP_faddxx128v32,
 			   TOP_faddxx128v64,
+			   TOP_fhaddxx128v32,
+			   TOP_fhaddxx128v64,
+			   TOP_faddsubxx128v32,
+			   TOP_faddsubxx128v64,
 			   TOP_andxx128v8,
 			   TOP_andxx128v16,
 			   TOP_andxx128v32,
@@ -478,12 +571,24 @@ main()
 			   TOP_fdivxx128v64,
 			   TOP_fmulxx128v32,
 			   TOP_fmulxx128v64,
+			   TOP_maxxx128v8,
+			   TOP_maxxx128v16,
+			   TOP_minxx128v8,
+			   TOP_minxx128v16,
+			   TOP_cmpeqxx128v8,
+			   TOP_cmpeqxx128v16,
+			   TOP_cmpeqxx128v32,
+			   TOP_cmpgtxx128v8,
+			   TOP_cmpgtxx128v16,
+			   TOP_cmpgtxx128v32,
 			   TOP_subxx128v8,
 			   TOP_subxx128v16,
 			   TOP_subxx128v32,
 			   TOP_subxx128v64,
 			   TOP_fsubxx128v32,
 			   TOP_fsubxx128v64,
+			   TOP_fhsubxx128v32,
+			   TOP_fhsubxx128v64,
 			   TOP_addxx32,
 			   TOP_addxx64,
 			   TOP_subxx32,
@@ -526,6 +631,10 @@ main()
 			   TOP_addxxx128v64,
 			   TOP_faddxxx128v32,
 			   TOP_faddxxx128v64,
+			   TOP_fhaddxxx128v32,
+			   TOP_fhaddxxx128v64,
+			   TOP_faddsubxxx128v32,
+			   TOP_faddsubxxx128v64,
 			   TOP_andxxx128v8,
 			   TOP_andxxx128v16,
 			   TOP_andxxx128v32,
@@ -552,12 +661,24 @@ main()
 			   TOP_fdivxxx128v64,
 			   TOP_fmulxxx128v32,
 			   TOP_fmulxxx128v64,
+			   TOP_maxxxx128v8,
+			   TOP_maxxxx128v16,
+			   TOP_minxxx128v8,
+			   TOP_minxxx128v16,
+			   TOP_cmpeqxxx128v8,
+			   TOP_cmpeqxxx128v16,
+			   TOP_cmpeqxxx128v32,
+			   TOP_cmpgtxxx128v8,
+			   TOP_cmpgtxxx128v16,
+			   TOP_cmpgtxxx128v32,
 			   TOP_subxxx128v8,
 			   TOP_subxxx128v16,
 			   TOP_subxxx128v32,
 			   TOP_subxxx128v64,
 			   TOP_fsubxxx128v32,
 			   TOP_fsubxxx128v64,
+			   TOP_fhsubxxx128v32,
+			   TOP_fhsubxxx128v64,
 			   TOP_addxxx32,
 			   TOP_addxxx64,
 			   TOP_subxxx32,
@@ -737,6 +858,9 @@ main()
   Result(0);
   Operand(0);
   Instruction_Print_Group( rop,
+			   TOP_fmovsldup,
+			   TOP_fmovshdup,
+			   TOP_fmovddup,
 			   TOP_movlhps,
 			   TOP_movhlps,
 			   TOP_ld8_m,
@@ -753,6 +877,9 @@ main()
 			   TOP_ldaps_n32,
 			   TOP_ldapd_n32,
 			   TOP_lddqa_n32,
+			   TOP_ldlps_n32,
+			   TOP_ldlpd_n32,
+			   TOP_ldhpd_n32,
 			   TOP_cvttss2si,
 			   TOP_cvttsd2si,
 			   TOP_cvttss2siq,
@@ -764,6 +891,11 @@ main()
 			   TOP_cvtss2sd,
 			   TOP_cvtsd2ss,
 			   TOP_cvtdq2pd,
+			   TOP_cvtdq2ps,
+			   TOP_cvtps2pd,
+			   TOP_cvtpd2ps,
+			   TOP_cvttps2dq,
+			   TOP_cvttpd2dq,
 			   TOP_ldc32,
 			   TOP_ldc64,
 			   TOP_movabsq,
@@ -817,6 +949,10 @@ main()
 			   TOP_fcmovne,
 			   TOP_fcmovu,
 			   TOP_fcmovnu,
+			   TOP_bsf32,
+			   TOP_bsf64,
+			   TOP_mov64_m,
+			   TOP_pmovmskb,
 			   TOP_UNDEFINED );
 
   /* Two operands / no result */
@@ -837,6 +973,9 @@ main()
 			   TOP_staps_n32,
 			   TOP_stapd_n32,
 			   TOP_stdqa_n32,
+			   TOP_stlps_n32,
+			   TOP_stlpd_n32,
+			   TOP_sthpd_n32,
 			   TOP_UNDEFINED );
 
 #if 0
@@ -875,6 +1014,12 @@ main()
 			   TOP_cvtsi2ss_x,
 			   TOP_cvtsi2sdq_x,
 			   TOP_cvtsi2ssq_x,
+			   TOP_cvtdq2pd_x,
+			   TOP_cvtdq2ps_x,
+			   TOP_cvtps2pd_x,
+			   TOP_cvtpd2ps_x,
+			   TOP_cvttps2dq_x,
+			   TOP_cvttpd2dq_x,
 			   TOP_lddqa,
 			   TOP_lddqu,
 			   TOP_ldlps,
@@ -885,6 +1030,10 @@ main()
 			   TOP_ldaps,
 			   TOP_lea32,
 			   TOP_lea64,
+			   TOP_fmovsldupx,
+			   TOP_fmovshdupx,
+			   TOP_fmovddupx,			   
+			   TOP_ld64_2m,
 			   TOP_UNDEFINED );
 
   /* lea instruction with indx */
@@ -903,6 +1052,12 @@ main()
 			   TOP_cvtsi2ss_xx,
 			   TOP_cvtsi2sdq_xx,
 			   TOP_cvtsi2ssq_xx,
+			   TOP_cvtdq2pd_xx,
+			   TOP_cvtdq2ps_xx,
+			   TOP_cvtps2pd_xx,
+			   TOP_cvtpd2ps_xx,
+			   TOP_cvttps2dq_xx,
+			   TOP_cvttpd2dq_xx,
 			   TOP_UNDEFINED );
 
   /* lea instruction with indx but without base */
@@ -920,6 +1075,12 @@ main()
 			   TOP_cvtsi2ss_xxx,
 			   TOP_cvtsi2sdq_xxx,
 			   TOP_cvtsi2ssq_xxx,
+			   TOP_cvtdq2pd_xxx,
+			   TOP_cvtdq2ps_xxx,
+			   TOP_cvtps2pd_xxx,
+			   TOP_cvtpd2ps_xxx,
+			   TOP_cvttps2dq_xxx,
+			   TOP_cvttpd2dq_xxx,
 			   TOP_UNDEFINED );
 
   /* load instruction with indx */
@@ -952,6 +1113,9 @@ main()
 			   TOP_ldx32_64,
 			   TOP_ldapdx,
 			   TOP_ldapsx,
+			   TOP_fmovsldupxx,
+			   TOP_fmovshdupxx,
+			   TOP_fmovddupxx,			   
 			   TOP_UNDEFINED );
 
   /* load instruction with indx w/o base*/
@@ -983,6 +1147,9 @@ main()
 			   TOP_ldxx32_64,
 			   TOP_ldapdxx,
 			   TOP_ldapsxx,
+			   TOP_fmovsldupxxx,
+			   TOP_fmovshdupxxx,
+			   TOP_fmovddupxxx,			   
 			   TOP_UNDEFINED );
 
   /* store instruction with indx */
@@ -1052,6 +1219,7 @@ main()
 			   TOP_prefetchw,
 			   TOP_prefetcht0,
 			   TOP_prefetcht1,
+			   TOP_prefetchnta,
 			   TOP_fstps,
 			   TOP_fstpl,
 			   TOP_fstpt,
@@ -1063,6 +1231,9 @@ main()
 			   TOP_fists,
 			   TOP_fistl,
 			   TOP_fistpll,
+			   TOP_fisttps,
+			   TOP_fisttpl,
+			   TOP_fisttpll,
 			   TOP_UNDEFINED );
 
   /* prefetch */
@@ -1077,6 +1248,7 @@ main()
 			   TOP_prefetchwx,
 			   TOP_prefetcht0x,
 			   TOP_prefetcht1x,
+			   TOP_prefetchntax,
 			   TOP_UNDEFINED );
 
   ISA_PRINT_TYPE prefetchxx =  ISA_Print_Type_Create("prefetchxx", "%s %s(,%s,%s)");
@@ -1089,6 +1261,7 @@ main()
 			   TOP_prefetchwxx,
 			   TOP_prefetcht0xx,
 			   TOP_prefetcht1xx,
+			   TOP_prefetchntaxx,
 			   TOP_UNDEFINED );
 
   /* regular store */
@@ -1116,6 +1289,37 @@ main()
 			   TOP_sthpd,
 			   TOP_staps,
 			   TOP_stapd,
+			   TOP_store64_fm,
+			   TOP_UNDEFINED );
+
+  /* instructions that read-modify-write */
+  ISA_PRINT_TYPE rmw =  ISA_Print_Type_Create("rmw", "%s %s,%s(%s)");
+  Name();
+  Operand(0);
+  Operand(2);
+  Operand(1);
+  Instruction_Print_Group( rmw,
+			   TOP_lock_add32,
+			   TOP_lock_adc32,
+			   TOP_lock_add64,
+			   TOP_lock_and32,
+			   TOP_lock_and64,
+			   TOP_lock_or32,
+			   TOP_lock_or64,
+			   TOP_lock_xor32,
+			   TOP_lock_xor64,
+			   TOP_lock_sub32,
+			   TOP_lock_sub64,
+			   TOP_UNDEFINED );
+
+  ISA_PRINT_TYPE cmpxchg =  ISA_Print_Type_Create("cmpxchg", "%s %s,%s(%s)");
+  Name();
+  Operand(1);
+  Operand(3);
+  Operand(2);
+  Instruction_Print_Group( cmpxchg,
+			   TOP_lock_cmpxchg32,
+			   TOP_lock_cmpxchg64,
 			   TOP_UNDEFINED );
 
   /* unpack ( for replicate ) */
@@ -1130,6 +1334,12 @@ main()
 			   TOP_unpcklps,
 			   TOP_punpcklwd,
 			   TOP_punpcklbw,
+			   TOP_punpckhbw,
+			   TOP_punpckhwd,
+			   TOP_punpckhdq,
+			   TOP_punpckl64v8,
+			   TOP_punpckl64v16,
+			   TOP_punpckl64v32,
 			   TOP_UNDEFINED );
 
   /* shuffle */
@@ -1142,6 +1352,9 @@ main()
 			   TOP_shufps,
 			   TOP_shufpd,
 			   TOP_pshufd,
+			   TOP_pshufw,
+			   TOP_pshuflw,
+			   TOP_pshufhw,
 			   TOP_UNDEFINED );
 
   /* shuffle_int */
@@ -1153,6 +1366,11 @@ main()
   Result(0);
   Instruction_Print_Group( shuffle_int,
 			   TOP_pshufd,
+			   TOP_pshufw,
+			   TOP_pshuflw,
+			   TOP_pshufhw,
+			   TOP_pextrw,
+			   TOP_pinsrw,
 			   TOP_UNDEFINED );
 
   /* shift_packed */
@@ -1183,6 +1401,7 @@ main()
 			   TOP_fabs,
 			   TOP_fsqrt,
 			   TOP_fldz,
+			   TOP_emms,
 			   TOP_UNDEFINED );
 
   ISA_Print_End();

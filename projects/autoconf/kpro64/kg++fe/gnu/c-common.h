@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Definitions for c-common.c.
@@ -28,6 +28,9 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "splay-tree.h"
 #include "cpplib.h"
+#ifdef KEY
+#include "omp_types.h"
+#endif
 
 /* Usage of TREE_LANG_FLAG_?:
    0: COMPOUND_STMT_NO_SCOPE (in COMPOUND_STMT).
@@ -90,7 +93,7 @@ enum rid
   RID_PUBLIC,   RID_PRIVATE,  RID_PROTECTED,
   RID_TEMPLATE, RID_NULL,     RID_CATCH,
   RID_DELETE,   RID_FALSE,    RID_NAMESPACE,
-  RID_NEW,      RID_OPERATOR, RID_THIS,
+  RID_NEW,      RID_OFFSETOF, RID_OPERATOR, RID_THIS,
   RID_THROW,    RID_TRUE,     RID_TRY,
   RID_TYPENAME, RID_TYPEID,   RID_USING,
 
@@ -1272,5 +1275,12 @@ struct c_fileinfo *get_fileinfo			PARAMS ((const char *));
 extern void dump_time_statistics		PARAMS ((void));
 
 extern int c_dump_tree				PARAMS ((void *, tree));
+
+#ifdef KEY
+// This function takes a void *, and the type of pointer
+// depends on the 1st argument
+extern tree build_omp_stmt                      PARAMS ((enum omp_tree_type,
+                                                         void *));
+#endif
 
 #endif /* ! GCC_C_COMMON_H */

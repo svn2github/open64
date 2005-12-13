@@ -6904,6 +6904,23 @@ reference manual.
 .Ma WARNING
 .ME
 $ -------|---------|---------|---------|---------|---------|---------|---------|
+$msg FWFILENV The FILENV environment variable overrides compile-time switches\n\
+such as "-byteswap" or "-convert"
+$nexp FWFILENV
+The FILENV environment variable overrides compile-time switches \
+such as "-byteswap" or "-convert"
+.PP
+The Fortran main program was compiled with a command line option such as
+"-byteswap" or "-convert" which causes file I/O to swap bytes so that a
+little-endian processor can use big-endian files (or vice versa.) But
+the environment variable FILENV is set, which overrides the compile-time
+settings and uses the environment established by the command assign(1).
+.PP
+If you do not want to override the compile-time switches, unset the FILENV
+environment variable.
+.Ma WARNING
+.ME
+$ -------|---------|---------|---------|---------|---------|---------|---------|
 $
 $	C Compiler-initiated run-time messages
 $

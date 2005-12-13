@@ -1,5 +1,5 @@
 /* 
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -47,7 +47,7 @@ extern void Push_Temp_Cleanup (tree, bool, bool=0);
 extern void Do_EH_Tables (void);
 extern void Call_Terminate();
 extern LABEL_IDX lookup_cleanups(INITV_IDX&);
-extern bool WFE_call_copy_constructor (WN* val_wn, WN* dest_addr, TY_IDX tidx, tree type);
+extern bool WFE_has_copy_constructor (tree type);
 extern bool Set_Current_Scope_Has_Alloca (INT &);
 extern void Set_Current_Scope_Alloca_St (ST *, int);
 extern void Add_Current_Scope_Alloca_St (ST *, int);
@@ -55,6 +55,7 @@ extern ST_IDX exc_ptr;
 extern int make_symbols_weak;
 extern bool try_block_seen;
 extern bool in_cleanup;
+extern void WFE_Expand_Pragma (tree);
 #endif // KEY
 extern INT Current_Handler_Count();
 extern void Add_Handler_Info (WN * call_wn, INT i, INT num_handlers);

@@ -103,7 +103,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
 	/* CRI_Parcel_Ptr_8  */	{TRUE , INT_WORD   }
 			},
@@ -134,7 +138,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
 	/* CRI_Parcel_Ptr_8  */	{TRUE , INT_WORD   }
 			},
@@ -165,7 +173,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */ {TRUE , INT_WORD   }
                         },
@@ -196,7 +208,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */ {TRUE , INT_WORD   }
                         },
@@ -227,7 +243,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
 	/* CRI_Parcel_Ptr_8  */	{TRUE , INT_WORD   }
 			},
@@ -258,7 +278,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
 	/* CRI_Parcel_Ptr_8  */	{TRUE , INT_WORD   }
 			},
@@ -320,7 +344,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {TRUE , CRI_Ch_Ptr_8    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */        {FALSE, Err_Res    },
 	/* CRI_Parcel_Ptr_8  */	{TRUE , INT_WORD   }
                         },
@@ -351,7 +379,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
 	/* CRI_Parcel_Ptr_8  */	{TRUE , INT_WORD   }
 			},
@@ -382,7 +414,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
 	/* CRI_Parcel_Ptr_8  */	{TRUE , INT_WORD   }
 			},
@@ -413,7 +449,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
 	/* CRI_Parcel_Ptr_8  */	{TRUE , INT_WORD   }
 			},
@@ -630,7 +670,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , INT_WORD    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
 	/* CRI_Parcel_Ptr_8  */	{TRUE , CRI_Ptr_8   }
 			},
@@ -940,7 +984,11 @@ exp_tbl_type	bin_add_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */ {TRUE , INT_WORD   }
                         }
@@ -1006,7 +1054,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
 			},
@@ -1037,7 +1089,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
 			},
@@ -1068,7 +1124,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
                         },
@@ -1099,7 +1159,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
                         },
@@ -1130,7 +1194,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
 			},
@@ -1161,7 +1229,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
 			},
@@ -1223,7 +1295,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */        {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
                         },
@@ -1254,7 +1330,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
 			},
@@ -1285,7 +1365,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
 			},
@@ -1316,7 +1400,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
 			},
@@ -1533,7 +1621,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , INT_WORD    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CRI_Ptr_8   }
 			},
@@ -1773,7 +1865,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Complex_4     */	{FALSE, Err_Res    },
 	/* Complex_8     */	{FALSE, Err_Res    },
 	/* Complex_16    */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ptr_8    */	{TRUE , INT_WORD    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ptr_8      */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Logical_1        */	{FALSE, Err_Res    },
 	/* Logical_2        */	{FALSE, Err_Res    },
 	/* Logical_4        */	{FALSE, Err_Res    },
@@ -1781,7 +1877,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , INT_WORD    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {FALSE, Err_Res    }
 			},
@@ -1843,7 +1943,11 @@ exp_tbl_type	bin_sub_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , INT_WORD   }
                         }
@@ -2118,7 +2222,11 @@ exp_tbl_type	mult_div_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Complex_4     */	{FALSE, Complex_4     },
 	/* Complex_8     */	{FALSE, Complex_8     },
 	/* Complex_16    */	{FALSE, Complex_16    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 87 */
+	/* CRI_Ptr_8    */	{TRUE , INT_WORD    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* CRI_Ptr_8      */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Logical_1        */	{FALSE, Err_Res    },
 	/* Logical_2        */	{FALSE, Err_Res    },
 	/* Logical_4        */	{FALSE, Err_Res    },
@@ -2126,7 +2234,11 @@ exp_tbl_type	mult_div_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 87 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , INT_WORD    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {FALSE, Err_Res    }
 			},
@@ -2149,7 +2261,11 @@ exp_tbl_type	mult_div_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Complex_4     */	{FALSE, Complex_4     },
 	/* Complex_8     */	{FALSE, Complex_8     },
 	/* Complex_16    */	{FALSE, Complex_16    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 87 */
+	/* CRI_Ptr_8    */	{TRUE , INT_WORD    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* CRI_Ptr_8      */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Logical_1        */	{FALSE, Err_Res    },
 	/* Logical_2        */	{FALSE, Err_Res    },
 	/* Logical_4        */	{FALSE, Err_Res    },
@@ -2157,7 +2273,11 @@ exp_tbl_type	mult_div_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 87 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , INT_WORD    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {FALSE, Err_Res    }
 			},
@@ -2180,7 +2300,11 @@ exp_tbl_type	mult_div_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Complex_4     */	{FALSE, Complex_4     },
 	/* Complex_8     */	{FALSE, Complex_8     },
 	/* Complex_16    */	{FALSE, Complex_16    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 87 */
+	/* CRI_Ptr_8    */	{TRUE , INT_WORD    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* CRI_Ptr_8      */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Logical_1        */	{FALSE, Err_Res    },
 	/* Logical_2        */	{FALSE, Err_Res    },
 	/* Logical_4        */	{FALSE, Err_Res    },
@@ -2188,7 +2312,11 @@ exp_tbl_type	mult_div_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 87 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , INT_WORD    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {FALSE, Err_Res    }
 			},
@@ -2211,7 +2339,11 @@ exp_tbl_type	mult_div_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Complex_4     */	{FALSE, Complex_4     },
 	/* Complex_8     */	{FALSE, Complex_8     },
 	/* Complex_16    */	{FALSE, Complex_16    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 87 */
+	/* CRI_Ptr_8    */	{TRUE , Integer_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* CRI_Ptr_8      */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Logical_1        */	{FALSE, Err_Res    },
 	/* Logical_2        */	{FALSE, Err_Res    },
 	/* Logical_4        */	{FALSE, Err_Res    },
@@ -2219,7 +2351,11 @@ exp_tbl_type	mult_div_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 87 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , Integer_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {FALSE, Err_Res    }
 			},
@@ -2418,10 +2554,17 @@ exp_tbl_type	mult_div_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Typeless_4 */  {FALSE, Err_Res    },
         /* Typeless_8 */  {FALSE, Err_Res    },
 	/* Long_Typeless */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 87 */
+	/* Integer_1      */	{TRUE , INT_WORD  },
+	/* Integer_2      */	{TRUE , INT_WORD  },
+	/* Integer_4      */	{TRUE , INT_WORD  },
+	/* Integer_8      */	{TRUE , Integer_8  },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Integer_1      */	{FALSE, Err_Res    },
 	/* Integer_2      */	{FALSE, Err_Res    },
 	/* Integer_4      */	{FALSE, Err_Res    },
 	/* Integer_8      */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Real_4     */	{FALSE, Err_Res    },
 	/* Real_8     */	{FALSE, Err_Res    },
 	/* Real_16    */	{FALSE, Err_Res    },
@@ -2666,10 +2809,17 @@ exp_tbl_type	mult_div_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Typeless_4 */  {FALSE, Err_Res    },
         /* Typeless_8 */  {FALSE, Err_Res    },
 	/* Long_Typeless */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 87 */
+	/* Integer_1      */	{TRUE , INT_WORD  },
+	/* Integer_2      */	{TRUE , INT_WORD  },
+	/* Integer_4      */	{TRUE , INT_WORD  },
+	/* Integer_8      */	{TRUE , Integer_8  },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Integer_1      */	{FALSE, Err_Res    },
 	/* Integer_2      */	{FALSE, Err_Res    },
 	/* Integer_4      */	{FALSE, Err_Res    },
 	/* Integer_8      */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 87 */
 	/* Real_4     */	{FALSE, Err_Res    },
 	/* Real_8     */	{FALSE, Err_Res    },
 	/* Real_16    */	{FALSE, Err_Res    },
@@ -3745,7 +3895,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -3776,7 +3930,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
                         },
@@ -3807,7 +3965,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
                         },
@@ -3838,7 +4000,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -3869,7 +4035,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -3931,7 +4101,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */        {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
                         },
@@ -3962,7 +4136,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -3993,7 +4171,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -4024,7 +4206,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -4241,7 +4427,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -4471,17 +4661,28 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Typeless_4 */  {FALSE, Err_Res    },
         /* Typeless_8 */  {FALSE, Err_Res    },
 	/* Long_Typeless */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* Integer_1      */	{TRUE , CG_LOGICAL_DEFAULT_TYPE },
+	/* Integer_2      */	{TRUE , CG_LOGICAL_DEFAULT_TYPE },
+	/* Integer_4      */	{TRUE , CG_LOGICAL_DEFAULT_TYPE },
+	/* Integer_8      */	{TRUE , CG_LOGICAL_DEFAULT_TYPE },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Integer_1      */	{FALSE, Err_Res    },
 	/* Integer_2      */	{FALSE, Err_Res    },
 	/* Integer_4      */	{FALSE, Err_Res    },
 	/* Integer_8      */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Real_4     */	{FALSE, Err_Res    },
 	/* Real_8     */	{FALSE, Err_Res    },
 	/* Real_16    */	{FALSE, Err_Res    },
 	/* Complex_4     */	{FALSE, Err_Res    },
 	/* Complex_8     */	{FALSE, Err_Res    },
 	/* Complex_16    */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ptr_8      */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Logical_1        */	{FALSE, Err_Res    },
 	/* Logical_2        */	{FALSE, Err_Res    },
 	/* Logical_4        */	{FALSE, Err_Res    },
@@ -4551,7 +4752,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
                         }
@@ -5550,7 +5755,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -5581,7 +5790,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
                         },
@@ -5612,7 +5825,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
                         },
@@ -5643,7 +5860,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -5674,7 +5895,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -5736,7 +5961,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */        {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
                         },
@@ -5767,7 +5996,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -5798,7 +6031,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -5829,7 +6066,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -6046,7 +6287,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
 			},
@@ -6356,7 +6601,11 @@ exp_tbl_type	gt_lt_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CG_LOGICAL_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
                         }
@@ -7325,7 +7574,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
 			},
@@ -7356,7 +7609,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
 			},
@@ -7387,7 +7644,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
                         },
@@ -7418,7 +7679,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
                         },
@@ -7449,7 +7714,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
 			},
@@ -7480,7 +7749,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
 			},
@@ -7542,7 +7815,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */        {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
                         },
@@ -7573,7 +7850,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
 			},
@@ -7604,7 +7885,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
 			},
@@ -7635,7 +7920,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , Typeless_8 },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , Typeless_8 },
 			},
@@ -7666,7 +7955,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
 			},
@@ -7697,7 +7990,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , Typeless_8 },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , Typeless_8 },
 			},
@@ -7852,7 +8149,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
 			},
@@ -8075,19 +8376,37 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 			},
 /* CRI_Ch_Ptr_8 */		{
 	/* Err_Res    */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* Short_Char_Const */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+	/* Short_Typeless_Const */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+        /* Typeless_1 */  {TRUE , TYPELESS_DEFAULT_TYPE    },
+        /* Typeless_2 */  {TRUE , TYPELESS_DEFAULT_TYPE    },
+        /* Typeless_4 */  {TRUE , TYPELESS_DEFAULT_TYPE    },
+        /* Typeless_8 */  {TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Short_Char_Const */	{FALSE, Err_Res    },
 	/* Short_Typeless_Const */	{FALSE, Err_Res    },
         /* Typeless_1 */  {FALSE, Err_Res    },
         /* Typeless_2 */  {FALSE, Err_Res    },
         /* Typeless_4 */  {FALSE, Err_Res    },
         /* Typeless_8 */  {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Long_Typeless */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* Integer_1      */	{TRUE , TYPELESS_DEFAULT_TYPE },
+	/* Integer_2      */	{TRUE , TYPELESS_DEFAULT_TYPE },
+	/* Integer_4      */	{TRUE , TYPELESS_DEFAULT_TYPE },
+	/* Integer_8      */	{TRUE , Typeless_8 },
+	/* Real_4     */	{TRUE , Err_Res    },
+	/* Real_8     */	{TRUE , Typeless_8 },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Integer_1      */	{FALSE, Err_Res    },
 	/* Integer_2      */	{FALSE, Err_Res    },
 	/* Integer_4      */	{FALSE, Err_Res    },
 	/* Integer_8      */	{FALSE, Err_Res    },
 	/* Real_4     */	{FALSE, Err_Res    },
 	/* Real_8     */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Real_16    */	{FALSE, Err_Res    },
 	/* Complex_4     */	{FALSE, Err_Res    },
 	/* Complex_8     */	{FALSE, Err_Res    },
@@ -8100,7 +8419,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {FALSE, Err_Res    }
 			},
@@ -8162,7 +8485,11 @@ exp_tbl_type	and_or_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
                         }
@@ -8446,7 +8773,11 @@ exp_tbl_type	asg_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , Integer_1    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */        {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , Integer_1  }
                         },
@@ -8477,7 +8808,11 @@ exp_tbl_type	asg_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , Integer_2    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , Integer_2  }
 			},
@@ -8508,7 +8843,11 @@ exp_tbl_type	asg_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , Integer_4    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , Integer_4  }
 			},
@@ -8539,7 +8878,11 @@ exp_tbl_type	asg_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , Integer_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , Integer_8  }
 			},
@@ -8756,7 +9099,11 @@ exp_tbl_type	asg_tbl[Num_Linear_Types][Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Ch_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CRI_Ptr_8  }
 			},
@@ -9100,7 +9447,11 @@ exp_tbl_type	asg_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , CRI_Parcel_Ptr_8    },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , CRI_Parcel_Ptr_8  }
                         }
@@ -9169,7 +9520,11 @@ exp_tbl_type    not_tbl[Num_Linear_Types] = {
         /* Character_1       */ {FALSE, Err_Res    },
         /* Character_2       */ {FALSE, Err_Res    },
         /* Character_4       */ {FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* CRI_Ch_Ptr_8    */   {FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
         /* Structure_Type      */       {FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
                 };
@@ -9203,7 +9558,11 @@ exp_tbl_type	not_tbl[Num_Linear_Types] = {
 	/* Character_1       */	{FALSE, Err_Res    },
 	/* Character_2       */	{FALSE, Err_Res    },
 	/* Character_4       */	{FALSE, Err_Res    },
+# if defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) /* Bug 5892 */
+	/* CRI_Ch_Ptr_8    */	{TRUE , TYPELESS_DEFAULT_TYPE },
+#else /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* CRI_Ch_Ptr_8    */	{FALSE, Err_Res    },
+#endif /* defined(KEY) && defined(_EXTENDED_CRI_CHAR_POINTER) Bug 5892 */
 	/* Structure_Type      */	{FALSE, Err_Res    },
         /* CRI_Parcel_Ptr_8  */   {TRUE , TYPELESS_DEFAULT_TYPE }
 		};

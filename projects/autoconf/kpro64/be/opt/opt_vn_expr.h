@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -279,7 +284,11 @@ public:
 	      PHI,         // SSA Phi node
               LDA_ADDR,    // A symbol's address
               ARRAY_ADDR,  // An array element's address
-              MEMLOC};     // The value of a memory location
+              MEMLOC     // The value of a memory location
+#ifdef KEY
+              ,CALL_OP     // Pure function call op	
+#endif
+	      };
 
    // A call to activate the memory allocation scheme for VN_EXPR
    // objects.  Such objects should always be created using one of
@@ -336,6 +345,9 @@ public:
 			    const VN_VALNUM &offset,
 			    const VN_VALNUM &base_addr,
 			    const VN_VALNUM &vsym_valnum);
+#ifdef KEY
+   static PTR Create_Call_Op(ST_IDX, UINT32);
+#endif
    
    // The following will put "this" on a free list, and is the only
    // way to set a VN_EXPR object up for memory deallocation.
@@ -365,6 +377,9 @@ public:
    virtual VN_VALNUM   get_offset() const;        // MEMLOC
    virtual VN_VALNUM   get_base_addr() const;     // MEMLOC
    virtual VN_VALNUM   get_vsym(UINT i=0) const; // MEMLOC/INTR_OP (ivar mu)
+#ifdef KEY
+   virtual ST_IDX      get_aux_id() const;        // PURE_CALL_OP
+#endif
    
    // Modifiers: 
    //

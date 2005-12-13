@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -45,7 +45,11 @@ extern "C" {
 
 typedef long long int          INT64;
 typedef int                    INT32;
+#ifdef TARG_IA64 /* by jhs, 02.9.25 */
+typedef unsigned long long     INTPTR;
+#else
 typedef unsigned long          INTPTR;
+#endif
 
 #define PDGCS_MPP_INIT_APPRENTICE        0
 #define PDGCS_MPP_INIT_S2P_COERCE        1
@@ -542,6 +546,7 @@ typedef enum {
 	Context_Omp_Firstprivate,
 	Context_Omp_Lastprivate,
 	Context_Omp_Copyin,
+	Context_Omp_Copyprivate, /* by jhs, 02/7/22 */
 	Context_Omp_Affinity,
         Context_Omp_Nest } CONTEXT_TYPE;
 
@@ -818,6 +823,9 @@ extern void  fei_nseq_subscr              ( TYPE  type );
 extern void  fei_subscr_size              ( TYPE  type, INT32 bounds_check );
 extern void  fei_subscr_triplet           ( TYPE  type );
 extern void  fei_dv_deref                 ( TYPE  type );
+#ifdef KEY /* Bug 4602 */
+extern void  fei_array_element_by_value	  ( void );
+#endif /* KEY Bug 4602 */
 extern void  fei_store                    ( TYPE  type );
 extern void  fei_non_conform_store        ( TYPE  type );
 extern void  fei_as_ref                   ( TYPE  type );
@@ -1004,6 +1012,9 @@ extern void  fei_redistribute	      	  ( INT32 array,
                                		    INT32 distribution,
                                		    INT32 cyclic_exists,
                                		    INT32 onto_exists );
+#ifdef KEY /* Bug 2660 */
+extern void  fei_options       	  	  ( char * n1);
+#endif /* KEY Bug 2660 */
 extern void  fei_prefetch       	  ( INT32 n1, INT32 n2 );
 extern void  fei_prefetch_manual	  ( INT32 n );
 extern INTPTR fei_proc            	  ( char  *name_string,
@@ -1138,8 +1149,9 @@ extern INT32 fei_mpp_distrib_dim 	  ( INT32 prev_distrib_x,
 extern void  cwh_add_to_used_files_table  ( char  *name, INT32  copy_name );
 extern void  fei_critical_open_mp         ( char  *name );
 extern void  fei_endcritical_open_mp      ( char  *name );
-extern void  fei_parallelsections_open_mp ( INT32 task_if_idx, INT32 defaultt );
+extern void  fei_parallelsections_open_mp ( INT32 task_if_idx, INT32 task_num_threads_idx, INT32 defaultt );
 extern void  fei_paralleldo_open_mp       ( INT32 task_if_idx,
+                                            INT32 task_num_threads_idx,
                                  	    INT32 defaultt,
                                   	    INT32 ordered,
                                   	    INT32 scheduletype,
@@ -1147,6 +1159,13 @@ extern void  fei_paralleldo_open_mp       ( INT32 task_if_idx,
                                             INT32 threadcount,
                                             INT32 datacount,
                                             INT32 ontocount );
+extern void  fei_parallelworkshare_open_mp( INT32 task_if_idx,
+                                            INT32 task_num_threads_idx,
+                                            INT32 defaultt );
+extern void  fei_workshare_open_mp        ( void );
+extern void  fei_endworkshare_open_mp     ( INT32 nowait);
+extern void  fei_endparallelworkshare_open_mp( void );
+
 extern void  fei_single_open_mp           ( void );
 extern void  fei_sections_open_mp         ( void );
 extern void  fei_do_open_mp               ( INT32 ordered,
@@ -1155,7 +1174,7 @@ extern void  fei_do_open_mp               ( INT32 ordered,
                                             INT32 threadcount,
                                             INT32 datacount,
                                             INT32 ontocount );
-extern void  fei_parallel_open_mp         ( INT32 task_if_idx, INT32 defaultt );
+extern void  fei_parallel_open_mp         ( INT32 task_if_idx, INT32 task_num_threads_idx, INT32 defaultt );
 extern void  fei_barrier_open_mp          ( void );
 extern void  fei_section_open_mp          ( void );
 extern void  fei_master_open_mp           ( void );
@@ -1360,6 +1379,7 @@ extern void  fei_exp             	  ( TYPE type );
 extern void  fei_log             	  ( TYPE type );
 extern void  fei_log10           	  ( TYPE type );
 extern void  fei_sin             	  ( TYPE type );
+extern void  fei_erf             	  ( TYPE type, int complement );
 extern void  fei_sind            	  ( TYPE type );
 extern void  fei_sinh            	  ( TYPE type );
 extern void  fei_sqrt            	  ( TYPE type );

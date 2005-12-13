@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -123,7 +123,15 @@
 #endif
 #include "config_ipa.h"    /*for IPA_Enable_Reorder*/
 #ifdef KEY
+#include "config_wopt.h"    // for WOPT_Enable_Simple_If_Conv
 #include "output_func_start_profiler.h"
+#endif
+
+#ifdef KEY
+#include "demangle.h"
+extern "C" char *cplus_demangle (const char *, int);
+extern void Recompute_addr_saved_stmt (WN *);
+extern void Set_addr_saved_stmt (WN *, BOOL);
 #endif
 
 extern void Initialize_Targ_Info(void);
@@ -252,6 +260,11 @@ extern void (*ipl_main_p) (INT, char **);
 extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 						  ALIAS_MANAGER*, void*);
 #define Perform_Procedure_Summary_Phase (*Perform_Procedure_Summary_Phase_p)
+
+#ifdef KEY	// bug 3672
+extern void (*Preprocess_struct_access_p)(void);
+#define Preprocess_struct_access (*Preprocess_struct_access_p)
+#endif
 
 #else
 
@@ -605,6 +618,23 @@ Adjust_Opt_Level (PU_Info* current_pu, WN *pu, char *pu_name)
     INT new_opt_level = 0;
     COMPUTE_PU_OLIMIT;
 
+#ifdef KEY
+    // Demangle C++ pu_name.
+    char *p, *demangled_pu_name = pu_name;
+    BOOL has_demangled_pu_name = FALSE;
+
+    if ((PU_src_lang(Get_Current_PU()) & PU_CXX_LANG) &&
+	// C++ mangled names begin with "_Z".
+	pu_name[0] == '_' &&
+	pu_name[1] == 'Z') {
+      p = cplus_demangle(pu_name, DMGL_PARAMS | DMGL_ANSI | DMGL_TYPES);
+      if (p) {
+	demangled_pu_name = p;
+	has_demangled_pu_name = TRUE;
+      }
+    }
+#endif
+
     if (Get_Trace(TKIND_INFO, TINFO_STATS)) {
 	/* Print Olimit stats to trace file: */
 	INT PU_Var_Cnt = ST_Table_Size (CURRENT_SYMTAB) +
@@ -615,14 +645,22 @@ Adjust_Opt_Level (PU_Info* current_pu, WN *pu, char *pu_name)
 
     if ((Opt_Level > 0 || Run_autopar) && PU_Olimit > Olimit && !Olimit_opt) {
 	if (Show_OPT_Warnings)
+#ifdef KEY
+	  ErrMsg (EC_Olimit_Exceeded, demangled_pu_name, PU_Olimit);
+#else
 	  ErrMsg (EC_Olimit_Exceeded, pu_name, PU_Olimit);
+#endif
 	reset_opt_level = TRUE;
     }
     if (((Opt_Level > 0 || Run_autopar) || Olimit_opt)
       && Query_Skiplist ( Optimization_Skip_List, Current_PU_Count() ) )
     {
 	if (Show_OPT_Warnings)
+#ifdef KEY
+	  ErrMsg (EC_Not_Optimized, demangled_pu_name, Current_PU_Count() );
+#else
 	  ErrMsg (EC_Not_Optimized, pu_name, Current_PU_Count() );
+#endif
 	reset_opt_level = TRUE;
     } 
     if (/* !LANG_Ansi_Setjmp_On && */ 
@@ -631,7 +669,12 @@ Adjust_Opt_Level (PU_Info* current_pu, WN *pu, char *pu_name)
 	PU_calls_setjmp (Get_Current_PU ())) {
       reset_opt_level = TRUE;
       new_opt_level = 1;
+#ifdef KEY
+      ErrMsg (EC_Not_Ansi_Setjmp, demangled_pu_name, Current_PU_Count(),
+	      new_opt_level );
+#else
       ErrMsg (EC_Not_Ansi_Setjmp, pu_name, Current_PU_Count(), new_opt_level );
+#endif
     } 
     if (reset_opt_level) {
 	Opt_Level = new_opt_level;
@@ -645,7 +688,11 @@ Adjust_Opt_Level (PU_Info* current_pu, WN *pu, char *pu_name)
 #define OLIMIT_WARN_THRESHOLD 50000
     else if (Opt_Level > 1 && !Olimit_opt && 
 	     (PU_Olimit > OLIMIT_WARN_THRESHOLD) && Show_OPT_Warnings) {
+#ifdef KEY
+      ErrMsg (EC_Olimit_Slow, demangled_pu_name, PU_Olimit);
+#else
       ErrMsg (EC_Olimit_Slow, pu_name, PU_Olimit);
+#endif
     }
 #endif
 
@@ -662,9 +709,19 @@ Adjust_Opt_Level (PU_Info* current_pu, WN *pu, char *pu_name)
 	LNO_Outer_Unroll = 1;
 	LNO_Fusion = 0;
 	if (Show_OPT_Warnings)
+#ifdef KEY
+	  ErrMsg(EC_LNO_Backoff, demangled_pu_name, LNO_Outer_Unroll,
+		 LNO_Fusion);
+#else
 	  ErrMsg(EC_LNO_Backoff, pu_name, LNO_Outer_Unroll, LNO_Fusion);
+#endif
       }
     }
+
+#ifdef KEY
+    if (has_demangled_pu_name)
+      free (demangled_pu_name);
+#endif
 
     return pu;
 } /* Adjust_Opt_Level */
@@ -915,7 +972,7 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 	 REGION_CS_NoEarlierSub_While(&rgn_iter);
 	 REGION_CS_NoEarlierSub_Next(&rgn_iter)) {
       WN *rwn;
-      BOOL need_options_pop;
+      BOOL need_options_pop = FALSE;
 
       rwn = REGION_remove_and_mark(pu, &rgn_iter);
 
@@ -934,15 +991,16 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 	RID_WN_Tree_Print(TFile, rwn);
       }
 
+#ifndef KEY
       // process any region or PU level options pragmas
       { RID *rid = REGION_get_rid(rwn);
 	Is_True(rid != NULL, ("BE driver, NULL rid inside region loop"));
 	if (RID_options(rid) != NULL) {
 	  Options_Stack->Process_Pragma_Options(RID_options(rid));
 	  need_options_pop = TRUE;
-	} else
-	  need_options_pop = FALSE;
+	} 
       }
+#endif
 
       if (Show_Progress) {
 	if (rwn != pu)
@@ -1018,11 +1076,16 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
     if (!Run_wopt) {
       rwn = WN_Lower(rwn, LOWER_MLDID_MSTID, alias_mgr, 
                        "Lower MLDID/MSTID when not running WOPT");
+#ifdef KEY // bug 7298: this flag could have been set by LNO's preopt
+      Clear_BE_ST_pu_has_valid_addr_flags(PU_Info_proc_sym(current_pu)); 
+#endif
     }
  
 	rwn = WN_Lower(rwn, LOWER_TO_CG, alias_mgr, "Lowering to CG");
+#ifdef TARG_IA64
 	if (Only_Unsigned_64_Bit_Ops && ! Run_wopt)
 	  U64_lower_wn(rwn, FALSE);
+#endif
         WB_LWR_Terminate();
 	if (Get_Trace(TP_REGION,TT_REGION_ALL)) {
 	  fprintf(TFile,"===== driver, after lowering\n");
@@ -1194,6 +1257,20 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 	}
     }
 
+#ifdef KEY
+    BOOL need_options_pop = FALSE;
+
+    // process any PU level options pragmas
+    WN *block = WN_func_pragmas(pu); 
+    for (WN *pragwn = WN_first(block); pragwn; pragwn = WN_next(pragwn))
+      if (WN_pragma(pragwn) == WN_PRAGMA_OPTIONS) {
+	ST *st = WN_st(pragwn);
+	TCON *tc = &Tcon_Table[ST_tcon (st)];
+	Options_Stack->Process_Pragma_Options(Targ_String_Address(*tc));
+	need_options_pop = TRUE;
+      } 
+#endif
+
     PU_adjust_addr_flags(Get_Current_PU_ST(), pu);
 
     if (Run_MemCtr)
@@ -1220,6 +1297,11 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 	Set_Error_Phase ( "MP Lowering" );
         WB_LWR_Initialize(pu, NULL);
 	pu = WN_Lower (pu, LOWER_MP, NULL, "Before MP Lowering");
+//Bug 4688
+#ifdef KEY
+        extern void Post_MP_Processing (WN *);
+        Post_MP_Processing (PU_Info_tree_ptr(Current_PU_Info));
+#endif
         WB_LWR_Terminate();
     }
 
@@ -1239,14 +1321,32 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 	       ST_asm_function_st(*WN_st(pu)))) 
 #endif
 	pu = LNO_Processing (current_pu, pu);/* make -O0, -O1, -O2 a bit faster*/
+#ifndef KEY 
+	// Bug 7283 - the following code cannot handle the case where multiple
+	// fields of struct are used in a region. Only the field pointed to by
+	// the pragma offset will be replaced.
 	if (Run_autopar)
 	    Rewrite_Pragmas_On_Structs (NULL, WN_func_body(pu));
+#endif
     }
 
     /* First round output (.N file, w2c, w2f, etc.) */
     Set_Error_Phase ( "Post LNO Processing" );
     Post_LNO_Processing (current_pu, pu);
     if (!Run_wopt && !Run_cg) return;
+
+#ifdef KEY // bug 7741
+    if (Run_lno && Run_wopt) {
+      // Adapted from code in PU_adjust_addr_flags()
+      // Some LDAs may have been removed in preopt, so recompute
+      // addr_saved flag.
+      Clear_local_symtab_addr_flags(Scope_tab[CURRENT_SYMTAB]);
+      Recompute_addr_saved_stmt (pu);
+      if (!PU_ftn_lang (Get_Current_PU()))
+        Set_addr_saved_stmt(pu, CXX_Alias_Const ||
+           (OPT_IPA_addr_analysis && PU_ipa_addr_analysis(Get_Current_PU())));
+    }
+#endif
 
     Verify_SYMTAB (CURRENT_SYMTAB);
 
@@ -1265,6 +1365,11 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 	Set_Error_Phase ( "MP Lowering" );
         WB_LWR_Initialize(pu, NULL);
 	pu = WN_Lower (pu, LOWER_MP, NULL, "Before MP Lowering");
+#ifdef KEY
+// Bug 4411
+        extern void Post_MP_Processing (WN *);
+        Post_MP_Processing (PU_Info_tree_ptr(Current_PU_Info));
+#endif
         WB_LWR_Terminate();
     }
 
@@ -1296,6 +1401,10 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
     Set_Error_Phase ( "Post Backend Processing" );
     Post_Process_Backend (current_pu, pu);
 
+#ifdef KEY
+    if (need_options_pop)
+      Options_Stack->Pop_Current_Options();
+#endif
 } /* Backend_Processing */
 
 static WN *
@@ -1334,6 +1443,7 @@ Preprocess_PU (PU_Info *current_pu)
 					     pu_hdr->pu_num_icall_entries,
 					     pu_hdr->pu_num_switch_entries,
 					     pu_hdr->pu_num_value_entries,
+					     pu_hdr->pu_num_value_fp_bin_entries,
 					     pu_hdr->runtime_fun_address),
 				   MEM_pu_nz_pool_ptr);
 #else
@@ -1420,8 +1530,13 @@ Preprocess_PU (PU_Info *current_pu)
   Orig_PU_Name = Get_Orig_PU_Name(current_pu);
   Save_Cur_PU_Name(ST_name(PU_Info_proc_sym(current_pu)), 0);
 
+#ifdef KEY // ST_name can be deallocated later
+  Set_Current_PU_For_Trace(Cur_PU_Name, 
+			   Current_PU_Count());
+#else
   Set_Current_PU_For_Trace(ST_name(PU_Info_proc_sym(current_pu)), 
 			   Current_PU_Count());
+#endif
 
   Stop_Timer (T_ReadIR_CU);
   Check_for_IR_Dump(TP_IR_READ,pu,"IR_READ");
@@ -1688,14 +1803,30 @@ Process_Feedback_Options (OPTION_LIST* olist)
 
     INT prefix_len = strlen(prefix);
     DIR* dirp = opendir(path);
+#ifdef KEY
+    if (dirp == NULL)
+      ErrMsg(EC_FB_No_File, Feedback_File_Name);
+#endif
     struct dirent* direntp;
+#ifdef KEY
+    INT fb_file_count = 0;
+#endif
     while ((direntp = readdir(dirp)) != NULL) {
       if (strncmp(direntp->d_name, prefix, prefix_len) == 0) {
 	strcpy(dir_end, direntp->d_name);
 	Process_Feedback_File(path);
+#ifdef KEY
+	fb_file_count++;
+#endif
       }
     }
     closedir(dirp);
+
+#ifdef KEY	// bug 4837
+    if (fb_file_count == 0) {
+      ErrMsg(EC_FB_No_File, prefix);
+    }
+#endif
   }
 
   OPTION_LIST *ol;
@@ -1787,6 +1918,9 @@ main (INT argc, char **argv)
 	  && (Instrumentation_Type_Num & WHIRL_PROFILE)
 	  && (Instrumentation_Phase_Num <= PROFILE_PHASE_IPA_CUTOFF)) {
 	Instrumentation_Enabled = FALSE;
+#ifdef KEY // bug 5684: deleting branches interferes with branch profiling
+	WOPT_Enable_Simple_If_Conv = FALSE;
+#endif
 	Instrumentation_Phase_Num = PROFILE_PHASE_NONE;
       }
   }

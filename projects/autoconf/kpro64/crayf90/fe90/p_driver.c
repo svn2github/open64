@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -59,6 +59,9 @@ static char USMID[] = "\n@(#)5.0_pl/sources/p_driver.c	5.13	10/20/99 16:13:01\n"
 # include "p_globals.h"
 # include "p_driver.h"
 # include "fmath.h"
+#ifdef KEY /* Bug 4607 */
+# include "../sgi/path_intrinsic_list.h"
+#endif /* KEY Bug 4607 */
 
 
 /*****************************************************************\
@@ -76,6 +79,16 @@ static void	stmt_level_semantics(void);
 # if defined(_EXPRESSION_EVAL)
 static void	parse_expr_for_evaluator(void);
 # endif
+
+#ifdef KEY /* Bug 4656 */
+/* Used in constructing a set of pointers to roots ("unindented entries")
+ * within intrin_tbl */
+typedef struct {
+  char *name;	/* Name of intrinsic */
+  int idx;	/* Index into intrin_tbl */
+  } intrin_root_t;
+#endif /* KEY Bug 4656 */
+
 
 
 /******************************************************************************\
@@ -127,9 +140,15 @@ void complete_intrinsic_definition(int		generic_attr)
 # endif
 
    intrin_tbl_idx = ATI_INTRIN_TBL_IDX(generic_attr);
+#ifdef KEY /* Bug 4656 */
+   int non_ansi = (0 == (intrin_tbl[intrin_tbl_idx].families & ANSI_FAMILY));
+#endif /* KEY Bug 4656 */
    j = intrin_tbl_idx + 1;
 
    while ((! intrin_tbl[j].generic) && 
+#ifdef KEY /* Bug 7543 */
+          (j < MAX_INTRIN_TBL_SIZE) &&
+#endif /* KEY Bug 7543 */
           (intrin_tbl[j].name_len > 0)) {  /* just so don't run off end */
 
       if (cmd_line_flags.s_pointer8) {
@@ -285,8 +304,12 @@ void complete_intrinsic_definition(int		generic_attr)
 
       AT_OBJ_CLASS(attr_idx)		= Pgm_Unit;
       AT_ELEMENTAL_INTRIN(attr_idx)	= intrin_tbl[j].elemental;
+#ifdef KEY /* Bug 4656 */
+      ATP_ELEMENTAL(attr_idx)		= intrin_tbl[j].elemental && !non_ansi;
+#else /* KEY Bug 4656 */
       ATP_ELEMENTAL(attr_idx)		= intrin_tbl[j].elemental &&
                                           !(intrin_tbl[j].non_ansi);
+#endif /* KEY Bug 4656 */
       ATP_PURE(attr_idx)		= ATP_ELEMENTAL(attr_idx);
       ATP_PROC(attr_idx)		= Intrin_Proc;
       AT_IS_INTRIN(attr_idx)		= TRUE;
@@ -296,7 +319,11 @@ void complete_intrinsic_definition(int		generic_attr)
                          AT_NAME_LEN(attr_idx));
       ATP_IN_INTERFACE_BLK(attr_idx)	= TRUE;
       ATP_EXTERNAL_INTRIN(attr_idx)	= intrin_tbl[j].external;
+#ifdef KEY /* Bug 4656 */
+      ATP_NON_ANSI_INTRIN(attr_idx)	= non_ansi;
+#else /* KEY Bug 4656 */
       ATP_NON_ANSI_INTRIN(attr_idx)	= intrin_tbl[j].non_ansi;
+#endif /* KEY Bug 4656 */
       ATP_INTRIN_ENUM(attr_idx)		= intrin_tbl[j].intrin_enum;
 
       if (intrin_tbl[j].function) {
@@ -448,6 +475,22 @@ void complete_intrinsic_definition(int		generic_attr)
 
 }  /* complete_intrinsic_definition */
 
+#ifdef KEY /* Bug 4656 */
+/* Compare two args of type intrin_root_t **, for use in qsort or bsearch */
+static int root_cmp(const void *o1, const void *o2) {
+  intrin_root_t *i1 = *(intrin_root_t **) o1;
+  intrin_root_t *i2 = *(intrin_root_t **) o2;
+  return strcmp(i1->name, i2->name);
+}
+
+/* Compare two args of type intrin_family_t **, for use in qsort or bsearch */
+static int family_cmp(const void *o1, const void *o2) {
+  intrin_family_t *f1 = (intrin_family_t *) o1;
+  intrin_family_t *f2 = (intrin_family_t *) o2;
+  return strcmp(f1->name, f2->name);
+}
+
+#endif /* KEY Bug 4656 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -480,8 +523,101 @@ static void enter_intrinsic_info (void)
    TOKEN_LINE(tmp_token) = 1;
    TOKEN_VALUE(tmp_token) = Tok_Id;
 
+#ifdef KEY /* Bug 4656 */
+   int intrin_roots_len = 0;
+   intrin_root_t **intrin_roots =
+     malloc(MAX_INTRIN_TBL_SIZE * (sizeof *intrin_roots));
+   intrin_root_t *intrin_roots_data =
+     malloc(MAX_INTRIN_TBL_SIZE * (sizeof intrin_roots));
+   for (int e = 1; e < MAX_INTRIN_TBL_SIZE; e += 1) {
+     if (!intrin_tbl[e].generic) {
+       continue;
+     }
+
+     /* Make sure that "-intrinsic=EVERY" means "every intrinsic" */
+     intrin_tbl[e].families |= EVERY_FAMILY;
+
+     /* Default is to enable ANSI_FAMILY if -ansi is in effect, or
+      * TRADITIONAL_FAMILY otherwise. If -mp is in effect, add OMP_FAMILY */
+     int families = intrin_tbl[e].families;
+     int default_family = on_off_flags.issue_ansi_messages ?
+       ANSI_FAMILY :
+       TRADITIONAL_FAMILY;
+     intrin_tbl[e].enabled = ((0 != (families & default_family)) ||
+       (dump_flags.open_mp && (0 != (families & OMP_FAMILY))));
+
+     /* Build a directory, mapping intrinsic name to index for each entry in
+      * intrin_tbl which represents the root of an intrinsic description (i.e.
+      * a "singly-indented" entry in source code terms.) */
+     intrin_roots[intrin_roots_len] = &(intrin_roots_data[intrin_roots_len]);
+     intrin_roots[intrin_roots_len]->name = intrin_tbl[e].id_str.string;
+     intrin_roots[intrin_roots_len++]->idx = e;
+   }
+   qsort(intrin_roots, intrin_roots_len, sizeof *intrin_roots, root_cmp);
+
+   int olen = path_intrinsic_list_length();
+   intrin_option_t **options = path_intrinsic_list_list();
+   for (int o = 0; o < olen; o += 1) {
+     intrin_option_t *option = options[o];
+
+     /* Enable or disable family of intrinsics */
+     if (option->isfamily_) {
+       intrin_family_t key;
+       key.name = option->name_;
+       intrin_family_t *keyp = (intrin_family_t *) bsearch(&key,
+         intrin_families, SIZEOF_INTRIN_FAMILIES, (sizeof *intrin_families),
+	 family_cmp);
+       if (keyp) {
+	 for (int r = 0; r < intrin_roots_len; r += 1) {
+	   intrin_tbl_type *entry = &(intrin_tbl[intrin_roots[r]->idx]);
+	   if (0 != (entry->families & keyp->mask)) {
+	     entry->enabled = option->added_;
+	   }
+	 }
+	 continue;	/* Skip the error message at bottom of loop */
+       }
+     }
+
+     /* Enable or disable individual intrinsic */
+     else {
+       char subr_name[sizeof intrin_tbl[0].id_str.string];
+       int found = 0;
+       intrin_root_t key;
+       intrin_root_t *keyp = &key;
+       key.name = option->name_;
+       for (int k = 0; k <= 1; k += 1) {
+	 intrin_root_t **keypp = (intrin_root_t **) bsearch(&keyp, intrin_roots,
+	   intrin_roots_len, sizeof *intrin_roots, root_cmp);
+	 if (keypp) {
+	   intrin_tbl[(*keypp)->idx].enabled = option->added_;
+	   found = 1;
+	 }
+	 /* Now see if there's an extra G77 subroutine version of the
+	  * name provided by the user; must enable or disable it as well */
+	 key.name = strcat(strcpy(subr_name, option->name_),
+	   INTRIN_SUBR_SUFFIX);
+       }
+       if (found) {
+         continue;	/* Skip the error message at bottom of loop */
+       }
+     }
+
+     /* Didn't find the name provided by the user */
+     PRINTMSG(0, 701, Log_Error, 0, option->name_);
+   }
+#endif /* KEY Bug 4656 */
+
+#ifdef KEY /* Bug 4656 */
+   for (int r = 0; r < intrin_roots_len; r += 1) {
+      i = intrin_roots[r]->idx;
+      /* Command-line options did not enable this intrinsic */
+      if (!intrin_tbl[i].enabled) {
+	continue;
+	}
+#else /* KEY Bug 4656 */
    while (i < MAX_INTRIN_TBL_SIZE) {
       if (intrin_tbl[i].generic) {
+#endif /* KEY Bug 4656 */
 
          CREATE_ID(TOKEN_ID(tmp_token), 
                    intrin_tbl[i].id_str.string, 
@@ -506,10 +642,14 @@ static void enter_intrinsic_info (void)
         
          ATI_INTRIN_TBL_IDX(attr_idx) = i;
          name_idx = name_idx + 1;
+#ifndef KEY /* Bug 4656 */
       }
 
       i = i + 1;
    }  
+#else /* KEY Bug 4656 */
+   }  
+#endif /* KEY Bug 4656 */
 
    expanded_intrinsic_list	= NULL_IDX;
 
@@ -1088,8 +1228,14 @@ void init_parse_prog_unit()
       for (i = 0; i < MAX_INTRIN_MAP_SIZE; i++) {
           if ((strcmp("SIGN", (char *)&intrin_map[i].id_str) == 0) ||
               (strcmp("DSIGN", (char *)&intrin_map[i].id_str) == 0)) {
+#ifdef KEY /* Bug 3405 */
+             /* Strings are less than 8 bytes long */
+             intrin_map[i].mapped_4.string[1] = 'I';
+             intrin_map[i].mapped_8.string[1] = 'I';
+#else
              intrin_map[i].mapped_4.string[8] = '_';
              intrin_map[i].mapped_8.string[8] = '_';
+#endif /* KEY Bug 3405 */
           }
       }
    }
@@ -1612,6 +1758,9 @@ void determine_stmt_type(void)
    SH_GLB_LINE(curr_stmt_sh_idx) = stmt_start_line;
    SH_COL_NUM(curr_stmt_sh_idx)  = stmt_start_col;
 
+#ifdef KEY /* Bug 1317 */
+   /* Something like "10 format(i2) = 3.14159" is not a format statement */
+#else
    if (stmt_type == Format_Stmt &&
        stmt_label_idx           &&
        LA_CH_VALUE == LPAREN)   {
@@ -1620,7 +1769,9 @@ void determine_stmt_type(void)
       /* whether you like it or not.                           */
       /* intentionally blank.                                  */
    }
-   else if (stmt_type != Assignment_Stmt &&
+   else
+#endif /* KEY Bug 1317 */
+   if (stmt_type != Assignment_Stmt &&
             stmt_type != Directive_Stmt &&
             stmt_type != End_Parallel_Stmt &&
             stmt_type != End_Do_Parallel_Stmt &&
@@ -2474,6 +2625,8 @@ static void stmt_level_semantics(void)
       case Open_MP_End_Master_Stmt:
       case Open_MP_End_Critical_Stmt:
       case Open_MP_End_Ordered_Stmt:
+      case Open_MP_End_Parallel_Workshare_Stmt:
+      case Open_MP_End_Workshare_Stmt:
       case SGI_Section_Stmt:
       case SGI_End_Psection_Stmt:
       case SGI_End_Pdo_Stmt:
@@ -2858,6 +3011,8 @@ static void stmt_level_semantics(void)
          case Open_MP_End_Master_Stmt:
          case Open_MP_End_Critical_Stmt:
          case Open_MP_End_Ordered_Stmt:
+	 case Open_MP_End_Parallel_Workshare_Stmt:
+	 case Open_MP_End_Workshare_Stmt:
 
             /* Check to see if this label is within a parallel region and */
             /* save the statement header that begins the region if it is. */

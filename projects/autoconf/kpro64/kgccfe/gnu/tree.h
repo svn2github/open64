@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -534,6 +534,9 @@ extern void tree_vec_elt_check_failed PARAMS ((int, int, const char *,
    object cannot go into register parameters, for example.
    In IDENTIFIER_NODEs, this means that some extern decl for this name
    had its address taken.  That matters for inline functions.  */
+
+   // KEY: In a FOR_STMT node, nonzero means generate a do-loop instead
+   // of a while-loop.
 #define TREE_ADDRESSABLE(NODE) ((NODE)->common.addressable_flag)
 
 /* In a VAR_DECL, nonzero means allocate static storage.
@@ -1285,6 +1288,11 @@ struct tree_block GTY(())
 
 #define TYPE_POINTER_DEPTH(TYPE) (TYPE_CHECK (TYPE)->type.pointer_depth)
 
+#ifdef KEY
+// Defer expansion of the variable type size
+#define TYPE_DEFER_EXPANSION(TYPE) (TYPE_CHECK (TYPE)->type.defer_expansion)
+#endif
+
 /* In a FUNCTION_TYPE node, this bit stores the value of
    default_pointer_boundedness at the time TYPE was created.  It is
    useful for choosing default boundedness of function arguments for
@@ -1325,6 +1333,10 @@ struct tree_type GTY(())
   unsigned lang_flag_5 : 1;
   unsigned lang_flag_6 : 1;
   unsigned user_align : 1;
+
+#ifdef KEY
+  unsigned defer_expansion : 1;
+#endif
 
   unsigned int align;
   tree pointer_to;
@@ -2015,6 +2027,17 @@ struct tree_decl GTY(())
   struct mongoose_gcc_DST_IDX decl_dst_id; /* whirl DST */
 #endif /* SGI_MONGOOSE */
 };
+
+#ifdef KEY
+#include "omp_types.h"
+struct tree_omp GTY(())
+{
+  struct tree_common common;
+  enum omp_tree_type choice;
+  void * omp_clause_list;
+};
+#endif // KEY
+
 
 enum tree_node_structure_enum {
   TS_COMMON,
@@ -2030,6 +2053,9 @@ enum tree_node_structure_enum {
   TS_VEC,
   TS_EXP,
   TS_BLOCK,
+#ifdef KEY
+  TS_OMP,
+#endif
   LAST_TS_ENUM
 };
 
@@ -2053,6 +2079,9 @@ union tree_node GTY ((ptr_alias (union lang_tree_node),
   struct tree_vec GTY ((tag ("TS_VEC"))) vec;
   struct tree_exp GTY ((tag ("TS_EXP"))) exp;
   struct tree_block GTY ((tag ("TS_BLOCK"))) block;
+#ifdef KEY
+  struct tree_omp GTY ((tag ("TS_OMP"))) omp;
+#endif
  };
 
 /* Standard named or nameless data types of the C compiler.  */

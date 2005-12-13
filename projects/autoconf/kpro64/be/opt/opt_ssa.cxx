@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -1006,7 +1006,7 @@ SSA::Get_zero_version_CR(AUX_ID aux_id, OPT_STAB *opt_stab, VER_ID du)
     MTYPE dtype, rtype;
     AUX_STAB_ENTRY *sym = opt_stab->Aux_stab_entry(aux_id);
    
-    if (sym->Mtype()==MTYPE_M)
+    if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
         rtype = sym->Mtype();
     else
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
@@ -1088,7 +1088,7 @@ SSA::Du2cr( CODEMAP *htable, OPT_STAB *opt_stab, VER_ID du,
       ST *st = opt_stab->St(vse->Aux_id());
       if (st != NULL) ty = ST_type(st);
       
-      if (sym->Mtype()==MTYPE_M)
+      if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
         rtype = sym->Mtype();
       else
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
@@ -1399,6 +1399,8 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
   BB_NODE *succ; BB_LIST_ITER bb_iter;
   FOR_ALL_ELEM (succ, bb_iter, Init(bb->Succ())) {
     INT32 pos = succ->Pred()->Pos(bb);
+    Is_True(pos >= 0 || succ->Pred() == NULL, 
+    	    ("SSA:Value_number: cannot find BB in predecessor list of successor"));
     FOR_ALL_ELEM (phi, phi_iter, Init(succ->Phi_list())) {
       if (phi->Live()) {
 	if (opt_stab->Du_zero_vers(phi->Opnd(pos)))

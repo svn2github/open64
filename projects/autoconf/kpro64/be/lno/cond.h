@@ -1,5 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
 
+/*
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -176,6 +179,9 @@ BOOL Is_Consistent_Condition(ACCESS_VECTOR *av, WN *expr);
 extern WN* Guard_A_Do(WN *do_wn); 
 extern void Canonicalize_Unsigned_Loops(WN* func_nd);
 extern void Update_Guarded_Do_FB(WN *if_wn, WN *do_wn, FEEDBACK *feedback);
+#ifdef KEY
+extern BOOL Loop_Unswitch_SCF(WN *wn);
+#endif
 
 /**
 *** The data structure used here (no longer private to cond.cxx) is 
@@ -273,4 +279,7 @@ class COND_BOUNDS_INFO {
 extern BOOL Redundant_Condition(COND_BOUNDS_INFO* info, WN* wn_cond,
   WN* wn_if);
 
+#ifdef TARG_X8664
+extern BOOL Is_Vectorizable_Loop(WN* loop);
+#endif
 #endif

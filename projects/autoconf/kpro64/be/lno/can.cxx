@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 
@@ -1502,7 +1502,11 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
 
 
 #ifdef KEY // Bug 2565
-  if (Is_Target_64bit() && (addr_oper == OPR_ADD || addr_oper == OPR_SUB)) {
+  if (
+#ifdef TARG_X8664
+      Is_Target_64bit() &&
+#endif
+      (addr_oper == OPR_ADD || addr_oper == OPR_SUB)) {
     // Sometimes there is type conversion in the address computation
     // that prevents the rest of canonincizer to "promote" a pointer to ARRAY.
     // For example,
@@ -1763,10 +1767,26 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
         return;
       }
     }
+#ifndef KEY
   } else if ((base_oper != OPR_LDID) && (base_oper != OPR_LDA)) {
+#else
+  // Bug 5057 - tolerate ILOAD in base address. Typically, these array
+  // accesses will not be folded, but the transformed pattern can enable
+  // dependence analysis and vectorization.
+  } else if ((base_oper != OPR_LDID) && (base_oper != OPR_LDA) &&
+	     (base_oper != OPR_ILOAD)) {
+#endif
     if (char_canon) WN_Simplify_Tree(wn);
     return;
   }
+#ifdef KEY
+  // Promote SoA access but not a AoS access.
+  if (base_oper == OPR_ILOAD && 
+      WN_operator(WN_kid0(base)) != OPR_LDID) {
+    if (char_canon) WN_Simplify_Tree(wn);
+    return;
+  }      
+#endif
 
   // the pattern matches, do the substitution.
 
@@ -1828,6 +1848,29 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
     } else {
       negate = (val < 0);
     }
+#ifdef KEY
+    /* Bug 3897
+     LOC 1 237 	       rW = W[-2*k]; iW = W[-2*k+1];
+              U4U4LDID 0 <2,20,W> T<143,anon_ptr.,4>
+               U4U4LDID 0 <2,9,k> T<8,.predef_U4,4>
+               U4INTCONST 4294967280 (0xfffffff0)
+              U4MPY
+             U4ADD
+            F8F8ILOAD 0 T<11,.predef_F8,4> T<144,anon_ptr.,4>
+     should not be converted to 
+     LOC 1 237 	       rW = W[-2*k]; iW = W[-2*k+1];
+              U4U4LDID 0 <2,20,W> T<143,anon_ptr.,4>
+              U4INTCONST 0 (0x0)
+              U4U4LDID 0 <2,9,k> T<8,.predef_U4,4>
+             U4ARRAY 1 16
+            F8F8ILOAD 0 T<11,.predef_F8,4> T<144,anon_ptr.,4>
+     The assumption for the bug fix is that the source code will not have
+     a really large positive 'val' for array address computation.
+    */
+    if (MTYPE_byte_size(WN_rtype(index_expr)) == 4  && val > INT32_MAX ||
+	MTYPE_byte_size(WN_rtype(index_expr)) == 8  && val > INT64_MAX)
+      negate = TRUE;
+#endif
 
     WN *new_index = index_expr;
     if (negate) {

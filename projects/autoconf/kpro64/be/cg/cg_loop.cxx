@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -804,7 +804,7 @@ void CG_LOOP::Attach_Prolog_And_Epilog(LOOP_DESCR *loop)
 {
   BB *loop_head = LOOP_DESCR_loophead(loop);
   BB *loop_tail = LOOP_DESCR_Find_Unique_Tail(loop), *bb;
-  char *trace_pfx = Get_Trace(TP_CGLOOP, 1) ? "<cgprep> " : NULL;
+  const char *trace_pfx = Get_Trace(TP_CGLOOP, 1) ? "<cgprep> " : NULL;
   BBLIST *preds;
   BOOL freqs = FREQ_Frequencies_Computed();
 
@@ -3293,8 +3293,15 @@ void unroll_remove_notations(BB *fully_unrolled_body)
       UINT8 omega = OP_omega(op,i);
       if (omega) {
 	TN *old_tn = OP_opnd(op,i);
-	TN *new_tn = CG_LOOP_Backpatch_Find_Non_Body_TN(CG_LOOP_prolog,
-							old_tn, omega);
+	TN *new_tn;
+#ifdef KEY
+	// Dedicated TNs are not backpatched.  Bug 5176.
+	if (!TN_is_register(old_tn) || TN_is_dedicated(old_tn))
+	  new_tn = old_tn;
+	else
+#endif
+	new_tn = CG_LOOP_Backpatch_Find_Non_Body_TN(CG_LOOP_prolog,
+						    old_tn, omega);
 #ifdef TARG_X8664
 	if( new_tn == NULL &&
 	    old_tn == X87_cw_TN() ){
@@ -4739,6 +4746,34 @@ void CG_LOOP::Determine_Unroll_Factor()
       Set_unroll_factor(ntimes);
     }
   }
+
+#ifdef KEY
+  if( Unroll_factor() > 1 ){
+    for( OP* op = BB_first_op(head); op != NULL; op = OP_next(op) ){
+      if( !OP_store(op) )
+	continue;
+
+      TN* tn = OP_opnd( op, OP_find_opnd_use(op,OU_storeval) );
+      if( TN_is_dedicated(tn)   || 
+	  !TN_is_global_reg(tn) ||
+	  !TN_is_gra_homeable(tn) )
+	continue;
+
+      WN* wn = Get_WN_From_Memory_OP(op);
+      if( wn == NULL )
+	continue;
+
+      /* After unrolling, more than one tn will store to the same home
+	 location.  (bug#3471)
+      */
+      if( Aliased( Alias_Manager, TN_home(tn), wn ) == SAME_LOCATION ){
+      	Reset_TN_is_gra_homeable( tn );
+	Set_TN_home( tn, NULL );
+      }
+    }    
+  }
+#endif
+
 //Bug 1520
 #ifdef KEY
   ANNOTATION *info_ant = ANNOT_Get(BB_annotations(head), ANNOT_LOOPINFO);

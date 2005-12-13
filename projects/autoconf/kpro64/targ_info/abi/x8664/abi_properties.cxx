@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -72,6 +72,7 @@ static void x86_32_abi(void)
   enum { EAX=0, EBX, EBP, ESP, EDI, ESI, EDX, ECX };
   enum { XMM0=0, XMM1, XMM2,  XMM3,  XMM4,  XMM5,  XMM6,  XMM7 };
   enum { ST0=0, ST1, ST2, ST3, ST4, ST5, ST6, ST7 };
+  enum { MMX0=0, MMX1, MMX2, MMX3, MMX4, MMX5, MMX6, MMX7 };
 
   // ISA_REGISTER_CLASS_integer
 
@@ -136,6 +137,21 @@ static void x86_32_abi(void)
   Reg_Property( func_val, ISA_REGISTER_CLASS_x87,
 		ST0, ST1,
 		-1 );
+
+  // ISA_REGISTER_CLASS_mmx
+
+  Reg_Property( allocatable, ISA_REGISTER_CLASS_mmx,
+                MMX0, MMX1, MMX2, MMX3, MMX4, MMX5, MMX6, MMX7,
+		-1 );
+  Reg_Property( callee, ISA_REGISTER_CLASS_mmx,
+                -1 );
+  Reg_Property( caller, ISA_REGISTER_CLASS_mmx,
+                MMX0, MMX1, MMX2, MMX3, MMX4, MMX5, MMX6, MMX7,
+		-1 );
+  Reg_Property( func_arg, ISA_REGISTER_CLASS_mmx,
+                -1 );
+  Reg_Property( func_val, ISA_REGISTER_CLASS_mmx,
+                -1 );
 }
 
 
@@ -152,6 +168,7 @@ static void x86_64_abi(void)
   enum { XMM0=0, XMM1, XMM2,  XMM3,  XMM4,  XMM5,  XMM6,  XMM7,
 	 XMM8,   XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15 };
   enum { ST0=0, ST1, ST2, ST3, ST4, ST5, ST6, ST7 };
+  enum { MMX0=0, MMX1, MMX2, MMX3, MMX4, MMX5, MMX6, MMX7 };
 
   // ISA_REGISTER_CLASS_integer
 
@@ -221,6 +238,21 @@ static void x86_64_abi(void)
   Reg_Property( func_val, ISA_REGISTER_CLASS_x87,
 		ST0, ST1,
 		-1 );
+
+  // ISA_REGISTER_CLASS_mmx
+
+  Reg_Property( allocatable, ISA_REGISTER_CLASS_mmx,
+                MMX0, MMX1, MMX2, MMX3, MMX4, MMX5, MMX6, MMX7,
+		-1 );
+  Reg_Property( callee, ISA_REGISTER_CLASS_mmx,
+                -1 );
+  Reg_Property( caller, ISA_REGISTER_CLASS_mmx,
+                MMX0, MMX1, MMX2, MMX3, MMX4, MMX5, MMX6, MMX7,
+		-1 );
+  Reg_Property( func_arg, ISA_REGISTER_CLASS_mmx,
+                -1 );
+  Reg_Property( func_val, ISA_REGISTER_CLASS_mmx,
+                -1 );
 }
 
 

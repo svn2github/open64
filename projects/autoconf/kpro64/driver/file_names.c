@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -40,6 +40,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/utsname.h>
+#include <time.h>
 #include <unistd.h>
 #include <errno.h>
 #include "phases.h"
@@ -52,6 +56,7 @@
 #include "option_seen.h"
 #include "option_names.h"
 #include "run.h"
+#include "version.h"
 
 extern int errno;
 
@@ -64,16 +69,13 @@ static char *saved_object = NULL;
 
 #define DEFAULT_TMPDIR	"/tmp"
 
-#ifdef KEY
 static string_pair_list_t *temp_obj_files = NULL;
-#endif	// KEY
 
 
 /* get object file corresponding to src file */
 char *
 get_object_file (char *src)
 {
-#ifdef KEY
 	// bug 2025
 	// Create .o files in /tmp in case the src dir is not writable.
 	if (!(keep_flag || (ipa == TRUE) || remember_last_phase == P_any_as)) {
@@ -90,7 +92,6 @@ get_object_file (char *src)
 	  add_string_pair (temp_obj_files, obj_name, mapped_name);
 	  return mapped_name;
 	}
-#endif
 	return change_suffix(drop_path(src), "o");
 }
 
@@ -199,7 +200,7 @@ construct_file_with_extension (char *src, char *ext)
 void
 init_temp_files (void)
 {
-        tmpdir = getenv("TMPDIR");
+        tmpdir = string_copy(getenv("TMPDIR"));
         if (tmpdir == NULL) {
                 tmpdir = DEFAULT_TMPDIR;
 	} 
@@ -215,15 +216,197 @@ init_temp_files (void)
 	}
 	temp_files = init_string_list();
 
-#ifdef KEY
 	temp_obj_files = init_string_pair_list();
-#endif
 }
 
 void
 init_count_files (void)
 {
         count_files = init_string_list();
+}
+
+static char *report_file;
+
+void
+init_crash_reporting (void)
+{
+	if ((report_file = getenv("PSC_CRASH_REPORT")) != NULL)
+		goto bail;
+
+	if (asprintf(&report_file, "%s/ekopath_crash_XXXXXX", tmpdir) == -1) {
+		report_file = NULL;
+		goto bail;
+	}
+	
+	if (mkstemp(report_file) == -1) {
+		report_file = NULL;
+		goto bail;
+	}
+	
+	setenv("PSC_CRASH_REPORT", report_file, 1);
+bail:
+	return;
+}
+
+static int save_count;
+
+static int
+save_cpp_output (char *path)
+{
+	char *save_dir, *save_path, *final_path;
+	FILE *ifp = NULL, *ofp = NULL;
+	char *name = drop_path(path);
+	struct utsname uts;
+	char buf[4096];
+	int saved = 0;
+	size_t nread;
+	char *suffix;
+	char *home;
+	time_t now;
+	int i;
+
+	if (strncmp(name, "cci.", 4) == 0)
+		suffix = ".i";
+	else if (strncmp(name, "ccii.", 5) == 0)
+		suffix = ".ii";
+	else
+		goto bail;
+
+	if ((ifp = fopen(path, "r")) == NULL)
+		goto bail;
+
+	if ((save_dir = getenv("PSC_PROBLEM_REPORT_DIR")) == NULL &&
+	    (home = getenv("HOME")) != NULL) {
+		asprintf(&save_dir, "%s/.ekopath-bugs", home);
+	}
+
+	if (save_dir && mkdir(save_dir, 0700) == -1 && errno != EEXIST) {
+		save_dir = NULL;
+	}
+
+	if (save_dir == NULL) {
+		save_dir = tmpdir;
+	}
+
+	asprintf(&save_path, "%s/%s_error_XXXXXX", save_dir, program_name);
+
+	if (mkstemp(save_path) == -1) {
+		goto b0rked;
+	}
+
+	if ((ofp = fopen(save_path, "w")) == NULL) {
+		goto b0rked;
+	}
+	
+	now = time(NULL);
+	fprintf(ofp, "/*\n\nPathScale EKOPath(TM) compiler problem report - %s",
+		ctime(&now));
+	fprintf(ofp, "Please report this problem to <support@pathscale.com>.\n");
+	fprintf(ofp, "If possible, please attach a copy of this file with your "
+		"report.\n");
+	fprintf(ofp, "\nPLEASE NOTE: This file contains a preprocessed copy of the "
+		"source file\n"
+		"that may have led to this problem occurring.\n");
+
+	uname(&uts);
+	fprintf(ofp, "\nCompiler command line (%s ABI used on %s system):\n",
+		abi == ABI_N32 ? "32-bit" : "64-bit",
+		uts.machine);
+
+	fprintf(ofp, " ");
+	for (i = 0; i < saved_argc; ++i)
+		if (saved_argv[i] &&
+		    strcmp(saved_argv[i], "-default_options") != 0) {
+			int len;
+			len = quote_shell_arg(saved_argv[i], buf);
+			buf[len] = '\0';
+			fprintf(ofp, " %s", buf);
+		}
+	fprintf(ofp, "\n\n");
+
+	fprintf(ofp, "Version %s build information:\n",
+		compiler_version);
+	fprintf(ofp, "  ChangeSet %s\n", cset_key);
+	fprintf(ofp, "  Built by %s@%s in %s\n", build_user,
+		build_host, build_root);
+	fprintf(ofp, "  Build date %s\n", build_date);
+	
+	if (report_file) {
+		int newline = 1;
+		struct stat st;
+		FILE *rfp;
+
+		if (stat(report_file, &st) == -1)
+			goto no_report;
+		
+		if (st.st_size == 0)
+			goto no_report;
+
+		fprintf(ofp, "\nDetailed problem report:\n");
+		if ((rfp = fopen(report_file, "r")) == NULL) {
+			goto no_report;
+		}
+
+		while (fgets(buf, sizeof(buf), rfp) != NULL) {
+			int len = strlen(buf);
+			if (newline)
+				fputs("  ", ofp);
+			fputs(buf, ofp);
+			newline = buf[len - 1] == '\n';
+		}
+		if (!newline)
+			putc('\n', ofp);
+
+		fclose(rfp);
+	}
+
+no_report:	
+	if (string_list_size(error_list)) {
+		string_item_t *i;
+		fprintf(ofp, "\nInformation from compiler driver:\n");
+		FOREACH_STRING(i, error_list) {
+			fprintf(ofp, "  %s\n", STRING_NAME(i));
+		}
+	}
+
+	fprintf(ofp, "\nThe remainder of this file contains a preprocessed copy of "
+		"the\n"
+		"source file that appears to have led to this problem.\n\n*/\n");
+	
+	while ((nread = fread(buf, 1, sizeof(buf), ifp)) > 0) {
+		size_t nwrit;
+		if ((nwrit = fwrite(buf, 1, nread, ofp)) < nread) {
+			if (nwrit != 0)
+				errno = EFBIG;
+			goto b0rked;
+		}
+	}
+	
+	fprintf(ofp, "\n/* End of EKOPath problem report. */\n");
+	
+	asprintf(&final_path, "%s%s", save_path, suffix);
+	rename(save_path, final_path);
+
+	if (save_count == 0) {
+		fprintf(stderr, "Please report this problem to "
+			"<support@pathscale.com>.\n");
+	}
+
+	fprintf(stderr, "Problem report saved as %s\n", final_path);
+	save_count++;
+	saved = 1;
+	
+	goto bail;
+b0rked:
+	fprintf(stderr, "Could not save problem report to %s: %s\n",
+		save_path, strerror(errno));
+bail:
+	if (ifp != NULL)
+		fclose(ifp);
+	if (ofp != NULL)
+		fclose(ofp);
+		
+	return saved;
 }
 
 void
@@ -236,14 +419,23 @@ cleanup (void)
 	for (p = temp_files->head; p != NULL; p = p->next) {
 		if (debug) printf("unlink %s\n", p->name);
 		if (execute_flag) {
-		    status = unlink(p->name);
-		    if (status != 0 && errno != ENOENT) {
-			internal_error("cannot unlink temp file %s", p->name);
-			perror(program_name);			
-		    }
+			if (internal_error_occurred)
+				save_cpp_output(p->name);
+			status = unlink(p->name);
+			if (status != 0 && errno != ENOENT) {
+				internal_error("cannot unlink temp file %s", p->name);
+				perror(program_name);			
+			}
 		}
 	}
-	temp_files->head = temp_files->tail = NULL; 
+	temp_files->head = temp_files->tail = NULL;
+
+	if (save_count) {
+		fprintf(stderr, "Please review the above file%s and, "
+			"if possible, attach %s to your problem report.\n",
+			save_count == 1 ? "" : "s",
+			save_count == 1 ? "it" : "them");
+	}
 }
 
 void
@@ -252,7 +444,6 @@ mark_for_cleanup (char *s)
 	add_string_if_new (temp_files, s);
 }
 
-#ifdef KEY
 void
 cleanup_temp_objects ()
 {
@@ -266,5 +457,7 @@ cleanup_temp_objects ()
       perror(program_name);
     }
   }
+  if (report_file) {
+    unlink(report_file);
+  }
 }
-#endif

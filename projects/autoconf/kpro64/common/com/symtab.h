@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -539,11 +539,11 @@ New_ST_ATTR (SYMTAB_IDX scope, ST_ATTR_IDX& p)
 }
 
 inline void
-ST_ATTR_Init (ST_ATTR& st_attr, ST_IDX st_idx, ST_ATTR_KIND akind, UINT32 val)
+ST_ATTR_Init (ST_ATTR& st_attr, ST_IDX st_idx, ST_ATTR_KIND akind, UINT64 val)
 {
     st_attr.st_idx = st_idx;
     st_attr.kind = akind;
-    st_attr.u.value = val;
+    st_attr.Set_u (val);
 }
 
 inline UINT32

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -480,7 +480,14 @@ extern void SNL_Peel_Iteration(WN* wn,
   }
 
   WN* wn_next = NULL; 
+#ifdef KEY
+  // Bug 5489 - If the only statement inside the DO_LOOP 
+  // is another DO_LOOP then, first = last = NULL because 
+  // DO_LOOPs are already deleted out of new_block.
+  for (WN* wn_temp = first; wn_temp; wn_temp = wn_next) {
+#else
   for (WN* wn_temp = first; ; wn_temp = wn_next) {
+#endif
     wn_next = WN_next(wn_temp);  
     Remove_Redundant_Stids(wn_temp, du); 
     if (wn_temp == last) 

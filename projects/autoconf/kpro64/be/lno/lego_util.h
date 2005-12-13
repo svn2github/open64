@@ -223,7 +223,9 @@
 #define ECHT_Pop                26
 #define ECHT_Check              27
 #define ECHT_Compare            28
+#ifndef KEY // Pathscale does not have this
 #define mp_cur_numthreads_func  29
+#endif
 #define DST_MAX                 30 
 
 

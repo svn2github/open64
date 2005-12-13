@@ -68,8 +68,11 @@ enum _sec_kind {
   _SEC_EH_REGION,
   _SEC_EH_REGION_SUPP,
   _SEC_DISTR_ARRAY,
+#ifdef TARG_X8664
+  _SEC_DATA_REL_RO,
+#endif
   _SEC_THREAD_PRIVATE_FUNCS,
-  _SEC_INDEX_MAX
+  _SEC_INDEX_MAX,
   };
 
 typedef struct {

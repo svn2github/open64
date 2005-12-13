@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -132,6 +136,11 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_Development_Warning,	EM_Compiler | ES_WARNING,	RAG_EN_NONE,
     "Lazy warning report in %s: %s",
     2, ET_STRING, ET_STRING, 0,0,0,0 },
+
+#ifdef KEY
+  { EC_Unimplemented_Feature,   EM_Compiler | ES_ERRABORT,	RAG_EN_NONE,
+    "%s not implemented", 1, ET_STRING, 0,0,0,0,0 },
+#endif // KEY
 
   { EC_Trace_Func,	EM_Compiler | ES_WARNING,	RAG_EN_NONE,
     "Trace flag function value (%d) too small",
@@ -382,6 +391,15 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_Inv_Treenum,	EM_Compiler | ES_ERRPHASE,	RAG_EN_NONE,
     "Invalid treenum %d for (0x%x: %s) at line %d",
     4, ET_INT, ET_POINTER, ET_NODE, ET_INT, 0, 0 },
+
+#ifdef KEY
+  { EC_Bad_Omp,		EM_User | ES_ERRABORT,		RAG_EN_NONE,
+    "%s", 1, ET_STRING, 0, 0, 0, 0, 0 },
+  { EC_Ill_Alias,	EM_User | ES_ERRABORT,		RAG_EN_NONE,
+    "Declaration of alias \"%s\" does not match its target \"%s\".",
+    2, ET_STRING, ET_STRING, 0, 0, 0, 0 },
+#endif /* KEY */
+
   { EC_Ill_Align,	EM_User | ES_WARNING ,	RAG_EN_NONE,
     "Illegal alignment (%d) in %s",
     2, ET_INT, ET_STRING, 0, 0, 0, 0 },
@@ -605,6 +623,9 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_Inv_OPT,		EM_User | ES_ERRPHASE,	RAG_EN_NONE,
     "Invalid optimization group option -OPT:%s=%s",
     2, ET_STRING, ET_STRING, 0, 0, 0, 0 },
+  { EC_Inv_x87_Prec,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
+    "Invalid x87 floating point precision: %d-bit",
+    1, ET_INT, 0, 0, 0, 0, 0 },
 
 /* Pragma errors: */
   { EC_Pragma_Scope,	EM_Compiler | ES_WARNING,	RAG_EN_NONE,
@@ -791,6 +812,14 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_Ipa_Rename,      EM_User | ES_ERRPHASE,  RAG_EN_NONE,
     "Cannot rename %s to %s",
     2, ET_STRING, ET_STRING, 0,0,0,0 },
+#ifdef KEY
+  { EC_Ipa_Infile,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
+    "Can't read IPA input file: %s",
+    1, ET_STRING, 0,0,0,0,0 },
+  { EC_Ipa_Outfile,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
+    "Can't create IPA output file: %s",
+    1, ET_STRING, 0,0,0,0,0 },
+#endif
 
   { EC_Asm_Exists,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
     "Assembly file (%s) already exists",
@@ -885,6 +914,11 @@ ERROR_DESC EDESC_Globals[] = {
   { EC_FB_File_Old,     EM_User | ES_WARNING,   RAG_EN_NONE,
     "Source/Feedback line number mismatch; %s probably outdated",
     1, ET_STRING, 0,0,0,0,0 },
+#ifdef KEY
+  { EC_FB_No_File,     EM_User | ES_ERRABORT,   RAG_EN_NONE,
+    "No feedback file with prefix: %s",
+    1, ET_STRING, 0,0,0,0,0 },
+#endif
 
   { EC_Cif_Open,	EM_User | ES_ERRABORT,	RAG_EN_NONE,
     "Can't open CIF file (%s): %s",

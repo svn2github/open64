@@ -1,3 +1,8 @@
+/*
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+   File modified February 23, 2005 by PathScale, Inc. to add OpenMP support.
+ */
+
 /* This file contains the definitions and documentation for the
    additional tree codes used in the GNU C++ compiler (see tree.def
    for the standard codes).
@@ -117,6 +122,15 @@ DEFTREECODE (COMPOUND_LITERAL_EXPR, "compound_literal_expr", 'e', 1)
    constructed.  If, after this point, the CLEANUP_DECL goes out of
    scope, the CLEANUP_EXPR must be run.  */
 DEFTREECODE (CLEANUP_STMT, "cleanup_stmt", 'e', 2)
+
+#ifdef KEY
+/* A OMP_MARKER_STMT marks the start/finish of OpenMP constructs. The
+   parser adds this marker as appropriate, and kg++fe will later expand
+   these appropriately based on the type of marker.
+   Modification: This stmt is also currently used for handling other
+   non-OpenMP pragmas. */
+DEFTREECODE (OMP_MARKER_STMT, "omp_marker_stmt", 'e', 0)
+#endif /* KEY */
 
 /*
 Local variables:

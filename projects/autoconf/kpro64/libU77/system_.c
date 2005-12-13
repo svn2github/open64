@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -35,6 +39,30 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_system(char *str, pathf90_i4 *status, int len)
+{
+      char *buff;
+      pathf90_i4 junk;
+      status = (0 == status) ? (&junk) : status;
+
+      buff = (char *) malloc( len + 1);
+      strncpy( buff, str, len );
+      buff[len] = '\0';
+
+      int err = system(buff);
+
+      free( buff );
+      return *status = err;
+}
+  
+
+#else
+
 extern void
 system_ (register char *str, int len)
 {
@@ -48,3 +76,5 @@ char *buff;
 
       free( buff );
 }
+
+#endif /* KEY Bug 1683 */

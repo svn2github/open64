@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,6 +59,35 @@ char	id_rename[] = "@(#)rename_.c	1.2";
 #include "cmplrs/f_errno.h"
 #include "externals.h"
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_rename(char *from, char *to, pathf90_i4 *status, int frlen, int tolen)
+{
+	char	*frbuf, *tobuf;
+	pathf90_i4 junk;
+	status = (0 == status) ? (&junk) : status;
+
+	if (frlen <= 0 || tolen <= 0 || *from == ' ' || *to == ' ')
+		return ((*status = errno = F_ERARG));
+	if (!bufarg && !(bufarg=malloc(bufarglen=frlen+tolen+2)))
+		return(*status = (errno=F_ERSPACE));
+	else if (bufarglen <= frlen+tolen+1 && !(bufarg=realloc(bufarg, 
+			bufarglen=frlen+tolen+2)))
+		return(*status = (errno=F_ERSPACE));
+	frbuf = bufarg;
+	tobuf = &bufarg[frlen+1];
+	g_char (from, frlen, frbuf);
+	g_char (to, tolen, tobuf);
+	if (rename (frbuf, tobuf) != 0)
+		return (*status = errno);
+	return (*status = 0);
+}
+
+#else
+
 extern int
 rename_ (char *from, char *to, int frlen, int tolen)
 {
@@ -75,3 +108,5 @@ rename_ (char *from, char *to, int frlen, int tolen)
 		return (errno);
 	return (0);
 }
+
+#endif /* KEY Bug 1683 */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -63,6 +63,17 @@
 #include "symtab_idx.h"
 #endif
 
+// New hash function to accommodate unsigned long long, STL hash does
+// not have one.
+namespace __new_hash
+{
+template <class _Key> struct hash { };
+
+  template<> struct hash<unsigned long long> {
+    size_t operator()(unsigned long long __x) const { return __x; }
+  }; 
+}
+
 // From a user point of view, the string table is a collection of unique
 // strings, each of which can be indentified by STR_IDX.  The actual
 // implementation is transparent to the user.
@@ -101,7 +112,7 @@ struct STRING_TABLE
 // New code should use Str_Table[idx] to get the string from an index
 extern STRING_TABLE Str_Table;
 
-extern UINT32
+extern STR_IDX
 STR_Table_Size ();
 
 // for compatibility
@@ -145,7 +156,7 @@ using __gnu_cxx::hash_map;
 
 class STR_IDX_MAP {
 private:
-  typedef hash_map<STR_IDX, STR_IDX, __gnu_cxx::hash<STR_IDX>, std::equal_to<STR_IDX>,
+  typedef hash_map<STR_IDX, STR_IDX, __new_hash::hash<STR_IDX>, std::equal_to<STR_IDX>,
       mempool_allocator<std::pair<const STR_IDX, STR_IDX> > > rep_type;
   rep_type rep;  
 

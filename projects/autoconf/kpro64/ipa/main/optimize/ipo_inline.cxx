@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -313,6 +313,13 @@ IPA_Do_Linearization (IPA_NODE* callee_node, WN* call, SCOPE* caller_scope)
 {
   WN* callee_wn = callee_node->Whirl_Tree();
   INT num_formals = WN_num_formals(callee_wn);
+
+#ifdef KEY // bug 3898
+  // Currently we do inlining even if # of actuals != # of formals. So
+  // be careful!
+  if (num_formals > WN_kid_count (call))
+    num_formals = WN_kid_count (call);
+#endif // KEY
 
   vector<ST*> formals;
   formals.reserve (num_formals);
@@ -947,8 +954,14 @@ Update_Caller_MP_Pragmas(ST* s, WN *wn)
   }
 
   if (ST_sclass(s) == SCLASS_AUTO)
+#ifdef KEY
+      // bug 5149
+      Add_Pragma_To_MP_Regions (&wnv, WN_PRAGMA_LOCAL,
+                            s, 0, Parent_Map, TRUE);
+#else
       Add_Pragma_To_MP_Regions (&wnv, WN_PRAGMA_LOCAL,
                             s, 0, Parent_Map, FALSE);
+#endif // KEY
   else
       Add_Pragma_To_MP_Regions (&wnv, WN_PRAGMA_SHARED,
                             s, 0, Parent_Map, FALSE);
@@ -1947,12 +1960,13 @@ void
 IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 {
     WN* wn = iter.Wn ();
-#ifdef KEY
+#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
     // bug 3060
     // Give everything the linenum of the callsite
+    // bug 6170: for lw-inliner, maintain the callee's line# information
     if (OPERATOR_has_next_prev(WN_operator(wn)))
       WN_Set_Linenum (wn, WN_Get_Linenum (Call_Wn()));
-#endif // KEY
+#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
     OPERATOR oper = WN_operator (wn);
     switch(oper) {
     case OPR_RETURN_VAL:
@@ -2880,6 +2894,11 @@ IPO_INLINE::Process_ST (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 		Set_ST_export(ST_ptr(ST_base_idx(cp)), ST_export(cp));
 	    }
 	}
+#if (defined(KEY) && (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER)))
+        if ((Is_DoAcross)  || (Is_MP_Region)) {
+	    Update_Caller_MP_Pragmas(cp, Call_Wn());
+ 	}
+#endif // KEY && _STANDALONE_INLINER
   
         break;
       
@@ -2976,6 +2995,9 @@ IPO_INLINE::Create_Copy_In_Symbol (ST* formal_st)
     Clear_ST_is_not_used (copy_st);
     Clear_ST_is_optional_argument (copy_st);
     Set_ST_is_temp_var (copy_st);
+#ifdef KEY // bug 6674
+    Clear_TY_is_restrict (copy_st->u2.type);
+#endif
 
     // update the caller pragma list
     SUMMARY_PROCEDURE* caller_proc = Caller_node()->Summary_Proc ();
@@ -3003,7 +3025,11 @@ static WN*
 Copy_Struct (ST* dest, WN* src, UINT64 size)
 {
     if (WHIRL_Mldid_Mstid_On)
+#ifdef KEY // bug 7760: src may not be M type due to fix to bug 7741.
+	return WN_Stid (WN_rtype(src), 0, dest, ST_type (dest), src);  
+#else
 	return WN_Stid (MTYPE_M, 0, dest, ST_type (dest), src);  
+#endif
     else
 	return WN_CreateMstore (0, Make_Pointer_Type (ST_type (dest)),
 				src, WN_Lda (Pointer_Mtype, 0, dest),

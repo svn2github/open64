@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -540,6 +540,9 @@ ipa_search_command_line(int argc,
 	 *  points need to be found with dlsym.
 	 */
     ipa_set_syms();
+#ifdef KEY
+    (*p_Ipalink_Set_Error_Phase)("IPA Startup");
+#endif
 
     	/*
     	 * We need to build up the commandline options
@@ -660,7 +663,20 @@ ipa_search_command_line(int argc,
 		strcpy(outfilename,"");
 		strcat(outfilename,argv[i+1]);
 	    	(*p_ipa_add_link_flag) (argv[i++]);
+#ifdef KEY
+		{
+		  // Remove the path component from the outfile name since we
+		  // will be linking in the ipa temp dir.  After linking, we
+		  // move the outfile to the temp dir's parent.  Bug 5876.
+		  char *bname = basename(argv[i]);
+		  // gnu basename() doesn't strip off multiple slashes.
+		  while (*bname == '/')
+		    bname++;
+		  (*p_ipa_add_link_flag) (bname);
+		}
+#else
 		(*p_ipa_add_link_flag) (argv[i]);
+#endif
 		continue;
 	    }
 	    else if ((strcmp(string,"-v")) == 0) {
@@ -686,6 +702,15 @@ ipa_search_command_line(int argc,
 	    continue;
 	}
 
+#ifdef KEY
+	// Since we perform the final link in the ipa temp dir, get files from
+	// the temp dir's parent.  Bug 6029.
+	if (argv[i][0] != '-') {
+	  (*p_ipa_add_link_flag)
+	    ((*p_ipa_add_parent_dir_to_relative_pathname)(argv[i]));
+	  continue;
+	}
+#endif
     	(*p_ipa_add_link_flag) (argv[i]);
 
     }	    /* for */

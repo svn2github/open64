@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -110,10 +110,19 @@ DST_INFO_IDX& DECL_DST_ABSTRACT_ROOT_IDX(tree);
 LABEL_IDX& HANDLER_LABEL(tree);
 #ifdef KEY
 tree& PARENT_SCOPE(tree);
+INT32& WEAK_WORKAROUND(ST*);
 #endif
 
 
 #endif /* EXTRA_WORD_IN_TREE_NODES */
+
+#ifdef KEY
+// States for tracking whether we want to make a symbol weak as a workaround
+// for emitting all symbols referenced in cleanup code.
+#define WEAK_WORKAROUND_unknown		0
+#define WEAK_WORKAROUND_dont_make_weak	1
+#define WEAK_WORKAROUND_made_weak	2
+#endif
 
 /* 
  * either return a previously created TY_IDX associated with a type,
@@ -153,7 +162,7 @@ Get_ST (tree decl_tree)
 #ifdef KEY // the earlier definition may not have the complete type
 		if (TREE_CODE(decl_tree) == VAR_DECL) {
 		  TY_IDX ty_idx = Get_TY(TREE_TYPE(decl_tree));
-		  if (ty_idx && ty_idx != st->u2.type) {
+		  if (ty_idx && TY_IDX_index(ty_idx) != TY_IDX_index(st->u2.type)) {
 		    // Preserve volatile.
 		    if (TY_is_volatile(ST_type(st)))
 		      Set_TY_is_volatile(ty_idx);

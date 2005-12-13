@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -85,6 +85,24 @@ static int	_defbufsiz_warning;	/* set to 1 after first DEFBUFSIZ warning */
 
 static int
 make_fdspec(union spec_u *fdspec, char *layer, int intnum[FPARMAX]);
+
+#ifdef KEY /* Bug 2559 */
+/*
+ *	Return value:
+ *		1 if we want to suppress repeat factors during list-directed
+ *		output, 0 otherwise
+ *
+ *	Side effects:
+ *		initialize save_suppress_repeats variable to avoid calling
+ *		getenv repeatedly
+ */
+static int suppress_repeats() {
+  static int save_suppress_repeats = 2;
+  return (2 != save_suppress_repeats) ?
+    save_suppress_repeats :
+    (save_suppress_repeats = (0 != getenv("FTN_SUPPRESS_REPEATS")));
+  }
+#endif /* KEY Bug 2559 */
 
 /*
  *	_f_opn - fortran open
@@ -477,6 +495,14 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
 		if (_do_open(cup, css, tufs, actnam, flags, aifound, aip,
 			fdspec, catcherr) == 0)
 			not_open	= 0;
+#ifdef KEY /* Bug 3782 */
+/* When the file already exists but STATUS='new', this bug-workaround code
+ * suppresses the error that ought to be reported. As a consequence, the
+ * customer's program would later crash when it tried to write the file,
+ * because although 'open' reported no error, it did not actually obtain
+ * write access.
+ */
+#else
 #if	defined(__mips) || defined(_LITTLE_ENDIAN)
 		else {
 		/*
@@ -496,6 +522,7 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
 				not_open	= 0;
 		}
 #endif
+#endif /* KEY Bug 3782 */
 	}
 
 	if (not_open &&
@@ -598,9 +625,19 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
  *	Also set the default for writing -0.0 for formatted io.
  */
 	cup->ufunilist	= 0;
+#ifdef KEY /* Bug 5921 */
+	/* Default is 1, which doesn't use commas */
+	cup->ufcomsep	= 1;
+#else /* KEY Bug 5921 */
 	cup->ufcomsep	= 0;
+#endif /* KEY Bug 5921 */
 	cup->ufcomplen	= 0;
+#ifdef KEY /* Bug 5921 */
+	/* Default is 1, which doesn't use repeat count */
+	cup->ufrptcnt	= 1;
+#else /* KEY Bug 5921 */
 	cup->ufrptcnt	= 0;
+#endif /* KEY Bug 5921 */
 #if	!defined(__mips) && !defined(_LITTLE_ENDIAN)
 	cup->ufnl_skip	= 0;
 	cup->ufnegzero	= 0;
@@ -635,7 +672,15 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
  *	individual flags are set.
  */
 	if ( aifound && aip->S_comsep_flg ) {
+#ifdef KEY /* Bug 5921 */
+		/* We reversed the meaning of S_comsep in the assign command
+		 * parser, so that the default 0 now means "don't use commas"
+		 * (but for backward compatibility remains associated with "on")
+		 */
+		cup->ufcomsep	= ! aip->S_comsep;
+#else /* KEY Bug 5921 */
 		cup->ufcomsep	= aip->S_comsep;
+#endif /* KEY Bug 5921 */
 	}
 
 	if ( aifound && aip->W_compwidth_flg ) {
@@ -643,8 +688,21 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
 	}
 
 	if ( aifound && aip->y_reptcnt_flg ) {
+#ifdef KEY /* Bug 5921 */
+		/* We reversed the meaning of y_reptcnt in the assign command
+		 * parser, so that the default 0 now means "don't use repeat*"
+		 * (but for backward compatibility remains associated with "on")
+		 */
+		cup->ufrptcnt	= ! aip->y_reptcnt;
+#else /* KEY Bug 5921 */
 		cup->ufrptcnt	= aip->y_reptcnt;
+#endif /* KEY Bug 5921 */
 	}
+#ifdef KEY /* Bug 2559 */
+	if (suppress_repeats()) {
+		cup->ufrptcnt = 1;
+	}
+#endif /* KEY Bug 2559 */
 
 /*
  *	Override global setting for writing -0.0 in formatted io.

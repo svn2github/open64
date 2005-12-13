@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -65,6 +65,9 @@
 
 #ifndef KEY
 #include "inline_script_parser.h"
+#else
+extern void (*Preprocess_struct_access_p)(void);
+#define Preprocess_struct_access (*Preprocess_struct_access_p)
 #endif /* KEY */
 #include "ipa_reorder.h"
 
@@ -266,6 +269,7 @@ Perform_Interprocedural_Analysis ()
     }
 
     if (run_autopar) {
+#ifndef KEY
       // enable multi_cloning and preopt for parallelization analysis
       if (!IPA_Max_Node_Clones_Set) {
         IPA_Max_Node_Clones = 5; // default number of clones per PU
@@ -273,6 +277,7 @@ Perform_Interprocedural_Analysis ()
       if (!IPA_Enable_Preopt_Set) {
         IPA_Enable_Preopt = TRUE;
       }
+#endif // !KEY
     }
     else {
       // array section analysis is done only with -ipa -pfa
@@ -344,33 +349,19 @@ Perform_Interprocedural_Analysis ()
 #ifdef KEY
         {
           IPA_NODE_ITER cg_iter(IPA_Call_Graph, POSTORDER);
-          for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-            IPA_NODE* node = cg_iter.Current();
-	    if (!node)
-	      continue;
-	    // We don't care if it is not C++
-	    // Also note that since node->PU_Info() is null for fortran 
-	    // ALTENTRY, IPA_NODE_CONTEXT will fail for such cases 
-	    // without the check below.
-	    if (!(PU_src_lang (node->Get_PU()) & PU_CXX_LANG))
-	      break;
-
-	    IPA_NODE_CONTEXT context (node);   // get node context
-      	    IPA_update_ehinfo_in_pu (node);
-	  }
-
 	  // Traverse the call graph and mark C++ nodes as PU_Can_Throw
 	  // appropriately.
           for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next())
 	  {
-	    if (!IPA_Enable_EH_Region_Removal)
+	    if (!IPA_Enable_EH_Region_Removal && !IPA_Enable_Pure_Call_Opt)
 	    	break;
 
 	    IPA_NODE * node = cg_iter.Current();
 	    if (!node)	continue;
 
-	    if (node->PU_Can_Throw())
-	    { // Mark its callers as PU_Can_Throw
+	    if (node->PU_Can_Throw() ||
+	        node->Summary_Proc()->Has_side_effect())
+	    { // Mark its callers appropriately
 	    	IPA_PRED_ITER preds (node->Node_Index());
 		for (preds.First(); !preds.Is_Empty(); preds.Next())
 		{
@@ -380,8 +371,13 @@ Perform_Interprocedural_Analysis ()
 			IPA_NODE * caller = IPA_Call_Graph->Caller (edge);
 
 			PU caller_pu = Pu_Table[ST_pu((caller)->Func_ST())];
-			if (PU_src_lang (caller_pu) & PU_CXX_LANG)
-		    	    caller->Set_PU_Can_Throw();
+			if (IPA_Enable_EH_Region_Removal &&
+			    node->PU_Can_Throw() &&
+			    PU_src_lang (caller_pu) & PU_CXX_LANG)
+		    	  caller->Set_PU_Can_Throw();
+
+		        if (node->Summary_Proc()->Has_side_effect())
+			  caller->Summary_Proc()->Set_has_side_effect();
 		    }
 		}
 	    }
@@ -701,6 +697,11 @@ Perform_Interprocedural_Analysis ()
         MEM_Trace ();
       }
     }
+
+#ifdef KEY
+    if (IPA_Enable_Preopt)
+      Preprocess_struct_access();
+#endif // KEY
 
     // Call preopt on each node if requested
     if (IPA_Enable_Preopt_Set && IPA_Enable_Preopt) {

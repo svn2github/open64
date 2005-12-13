@@ -1,6 +1,6 @@
 /*
 
-  Copyright 2004 PathScale, Inc.  All Rights Reserved.
+  Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -291,15 +291,29 @@ int main (int	 argc,
              ATP_PGM_UNIT(SCP_ATTR_IDX(MAIN_SCP_IDX)) == Function ||
              ATP_PGM_UNIT(SCP_ATTR_IDX(MAIN_SCP_IDX)) == Subroutine) {
             curr_scp_idx = MAIN_SCP_IDX;
+#ifdef KEY /* Bug 3477 */
+            if (create_mod_info_file()) {  /* Creates a name for the file. */
+	      create_mod_info_tbl();        /* Creates the table. */
+	      output_mod_info_file();       /* Writes the table.  */
+	      }
+#else
             create_mod_info_file();  /* Creates a name for the file. */
             create_mod_info_tbl();        /* Creates the table. */
             output_mod_info_file();       /* Writes the table.  */
+#endif /* KEY Bug 3477 */
             free_tables();                /* Frees the tables. */
          }
       }
       else {
+#ifdef KEY /* Bug 3477 */
+	 int do_output_file = FALSE;
+#endif /* KEY Bug 3477 */
          if (ATP_PGM_UNIT(SCP_ATTR_IDX(MAIN_SCP_IDX)) == Module) {
+#ifdef KEY /* Bug 3477 */
+            do_output_file = create_mod_info_file();  /* Creates a name for the file. */
+#else
             create_mod_info_file();  /* Creates a name for the file. */
+#endif /* KEY Bug 3477 */
          }
 
          if (num_prog_unit_errors == 0 && (binary_output || assembly_output)) {
@@ -309,8 +323,15 @@ int main (int	 argc,
 
             if (!SCP_IN_ERR(MAIN_SCP_IDX)) {
                curr_scp_idx = MAIN_SCP_IDX;
+#ifdef KEY /* Bug 3477 */
+	       if (do_output_file) {
+		 create_mod_info_tbl();   /* Creates the table. */
+		 output_mod_info_file();  /* Writes the table.  */
+		 }
+#else
                create_mod_info_tbl();   /* Creates the table. */
                output_mod_info_file();  /* Writes the table.  */
+#endif /* KEY Bug 3477 */
             }
 
             free_tables();           /* Frees the tables. */
@@ -455,7 +476,7 @@ PREPROCESS_ONLY_SKIP:
       msg_name	= "cf90";
 
 # elif defined(_HOST_OS_LINUX)
-      msg_name	= PSC_NAME_PREFIX "f90";
+      msg_name	= PSC_NAME_PREFIX "f95";
 
 # elif (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
 
@@ -1648,10 +1669,9 @@ static void check_enums_for_change(void)
        End_Singleprocess_Par_Opr != 375 ||
        Fetch_And_Nand_Opr != 400 ||
        Endparallel_Open_Mp_Opr != 425 ||
-       Omp_In_Parallel_Opr != 450 ||
-       Io_Item_Type_Code_Opr != 475 ||
-       Copyin_Bound_Opr != 480) {
-
+       Omp_In_Parallel_Opr != 454 ||
+       Io_Item_Type_Code_Opr != 479 ||
+       Copyin_Bound_Opr != 484) { /* modified by jhs, 02.8.31 */
 # if 0
       printf("Char_Opr %d\n ", Char_Opr);
       printf("Stop_Opr %d\n ", Stop_Opr);

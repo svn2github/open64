@@ -75,7 +75,8 @@ AWK	= awk
 
 SIZEDEFS = -D_LONGLONG -D_MIPS_SZINT=32
 ifeq ($(BUILD_ABI), 64BIT)
-SIZEDEFS += -D_MIPS_SZPTR=64 -D_MIPS_SZLONG=64 -D_LP64
+_MIPS_SZLONG := 64
+SIZEDEFS += -D_MIPS_SZPTR=64 -D_MIPS_SZLONG=$(_MIPS_SZLONG) -D_LP64
 else
 SIZEDEFS += -D_MIPS_SZPTR=32 -D_MIPS_SZLONG=32
 endif
@@ -90,37 +91,33 @@ ASNAME = gcc -m32
 CCNAME = gcc -m32
 C++NAME = g++ -m32
 ifeq ($(BUILD_ARCH), X8664)
-CCNAME  = $(PSC_NAME_PREFIX)cc
-C++NAME = $(PSC_NAME_PREFIX)CC
-ifeq ($(BUILD_HOST), IA32)
-AR      = $(PSC_INSTALL_PREFIX)/bin/ar
-else
-AR      = ar
+CCNAME  = $(PSC_NAME_PREFIX)cc -march=anyx86
+C++NAME = $(PSC_NAME_PREFIX)CC -march=anyx86
 endif
-endif
-F90 = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90
 ifeq ($(BUILD_TARGET), IA32)
-F90 += -m32
+CCNAME  = $(PSC_NAME_PREFIX)cc -m32 -march=anyx86 -mno-sse2
+C++NAME = $(PSC_NAME_PREFIX)CC -m32 -march=anyx86 -mno-sse2
+endif
+AR      = ar
+F90 = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90 -march=anyx86
+ifeq ($(BUILD_TARGET), IA32)
+F90 += -m32 -mno-sse2
 endif
 F77 = $(F90)
 endif
 
 ifeq ($(BUILD_COMPILER), PSC)
-ASNAME = $(PSC_NAME_PREFIX)cc -m32
-CCNAME = $(PSC_NAME_PREFIX)cc -m32
-C++NAME = $(PSC_NAME_PREFIX)CC -m32
+ASNAME = $(PSC_NAME_PREFIX)cc -m32 -mno-sse2
+CCNAME = $(PSC_NAME_PREFIX)cc -m32 -march=anyx86 -mno-sse2
+C++NAME = $(PSC_NAME_PREFIX)CC -m32 -march=anyx86 -mno-sse2
 ifeq ($(BUILD_ARCH), X8664)
-CCNAME  = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)cc
-C++NAME = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)CC
-ifeq ($(BUILD_HOST), IA32)
-AR      = $(PSC_INSTALL_PREFIX)/bin/ar
-else
+CCNAME  = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)cc -march=anyx86
+C++NAME = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)CC -march=anyx86
 AR      = ar
 endif
-endif
-F90 = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90
+F90 = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90 -march=anyx86
 ifeq ($(BUILD_TARGET), IA32)
-F90 += -m32
+F90 += -m32 -mno-sse2
 endif
 F77 = $(F90)
 endif
@@ -142,12 +139,9 @@ CXX	= $(C++)
 ECHO	= echo
 FC	= $(F77)
 LEX	= flex
-LD = $(PSC_INSTALL_PREFIX)/bin/gcc
-ifeq ($(BUILD_TARGET), IA32)
-LD += -m32
-endif
+LD	= $(CCNAME)
 
-RANLIB = $(PSC_INSTALL_PREFIX)/bin/ranlib
+RANLIB	= ranlib
 LINT	= glint
 NM	= nm
 SHELL	= sh
@@ -174,21 +168,18 @@ HOST_CC  = gcc -funsigned-char -D_SGI_SOURCE -D__GNU_BUG_WORKAROUND -D_LONGLONG 
 HOST_C++ = g++ -funsigned-char -D_SGI_SOURCE -D__GNU_BUG_WORKAROUND -D_NOTHREADS -D_LONGLONG -D_LANGUAGE_C_PLUS_PLUS $(HOST_ABIFLAGS)
 HOST_CXX = $(HOST_C++)
 
-WOFF= -Wimplicit
-
 #
-# Default C version, optimizer, common global options, and make-depend options.
+# Default optimizer, common global options, and make-depend options.
 #
-CVERSION   = 
 ifndef OPTIMIZER
 OPTIMIZER  = -O
 endif
-MKDEPOPT   = -MD
+MKDEPOPT   = -MMD
 COMMONGOPTS=$(OPTIMIZER) $(MKDEPOPT) $(ENDIAN)
 
 CSTYLE=
 
-GCOPTS	= $(CSTYLE) $(OPTIMIZER) $(ENDIAN) $(SIZEDEFS) $(MKDEPOPT) $(WOFF)
+GCOPTS	= $(CSTYLE) $(OPTIMIZER) $(ENDIAN) $(SIZEDEFS) $(MKDEPOPT)
 GCDEFS	=
 GCINCS  = -I$(INCLDIR)
 
@@ -201,7 +192,7 @@ GCINCS  = -I$(INCLDIR)
 # locally specified include directories are searched before the globally
 # specified ones.
 #
-CFLAGS	= $(CVERSION) $(VCFLAGS) $(LCFLAGS) $(GCFLAGS)
+CFLAGS	= $(VCFLAGS) $(LCFLAGS) $(GCFLAGS)
 
 #
 # Each of these three components is divided into defines (-D's and -U's),
@@ -214,8 +205,6 @@ CFLAGS	= $(CVERSION) $(VCFLAGS) $(LCFLAGS) $(GCFLAGS)
 #     LCFLAGS, although CFLAGS will be correctly set if this is done.
 #   - If a program cannot be optimized, it should override the setting of
 #     OPTIMIZER with a line such as "OPTIMIZER=" in its make file.
-#   - If a program cannot be compiled with ANSI C, its makefile
-#     should set CVERSION=-cckr
 #
 VCFLAGS	= $(VCDEFS) $(VCINCS) $(VCOPTS)
 LCFLAGS	= $(LCDEFS) $(LCINCS) $(LCOPTS)
@@ -228,7 +217,7 @@ CINCS	= $(VCINCS) $(LCINCS) $(GCINCS)
 #
 # CXX flags are decomposed using the same hierarchy as C flags.
 #
-C++FLAGS  = $(CVERSION) $(VCXXFLAGS) $(LCXXFLAGS) $(GCXXFLAGS)
+C++FLAGS  = $(VCXXFLAGS) $(LCXXFLAGS) $(GCXXFLAGS)
 CXXFLAGS  = $(C++FLAGS)
 
 VCXXFLAGS = $(VCXXDEFS) $(VCXXINCS) $(VCXXOPTS) $(VC++FLAGS)
@@ -503,6 +492,9 @@ _FORCE=$(COMMONPREF)_force
 SOURCES=$(HFILES) $(ASFILES) $(CXXFILES) $(CFILES) $(EFILES) $(FFILES) \
 	$(LFILES) $(PFILES) $(RFILES) $(SHFILES) $(YFILES)
 
+ASO1=$(ASFILES:.s=.o)
+ASO2=$(ASO1:.S=.o)
+ASOALL=$(ASO2)
 CXXO1=$(CXXFILES:.c++=.o)
 CXXO2=$(CXXO1:.cxx=.o)
 CXXO3=$(CXXO2:.C=.o)
@@ -515,7 +507,7 @@ LO1=$(LFILES:.l=.o)
 LO2=$(LO1:.lxx=.o)
 LO3=$(LO2:.L=.o)
 LOALL=$(LO3)
-OBJECTS=$(ASFILES:.s=.o) $(CXXOALL) $(CFILES:.c=.o) $(EFILES:.e=.o) \
+OBJECTS=$(ASOALL) $(CXXOALL) $(CFILES:.c=.o) $(EFILES:.e=.o) \
 	$(FFILES:.f=.o) $(LOALL) $(PFILES:.p=.o) $(RFILES:.r=.o) \
 	$(YOALL) 
 

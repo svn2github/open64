@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -52,10 +56,9 @@
 #include "xlatebase.h"
 #include "syn.h"
 #include <elf.h>
-#include <libelf.h>
-#include <dwarf.h>
-#include <libdwarf.h>
-#include <libXlate.h>
+#include "libelf/libelf.h"
+#include "dwarf_stuff.h"
+#include "libXlate.h"
 #include <cmplrs/xlate.h>
 #include <cmplrs/leb128.h>
 #include <bstring.h> /* for bzero */

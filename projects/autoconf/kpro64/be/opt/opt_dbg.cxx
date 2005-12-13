@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -66,12 +71,12 @@ static char *rcs_id = 	opt_dbg_CXX"$Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
-#include "opt_main.h"
 #include "errors.h"
 #include "erglob.h"
 #include "bb_node_set.h"
 #include "opt_bb.h"
 #include "opt_cfg.h"
+#include "opt_main.h"
 #include "opt_cfg_trans.h"
 #include "opt_htable.h"
 

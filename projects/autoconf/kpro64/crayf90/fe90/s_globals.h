@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -238,6 +242,16 @@ extern boolean			 defer_stmt_expansion;
 extern int			 number_of_functions;
 extern boolean                   io_item_must_flatten;
 extern boolean                   tree_has_constructor;
+#ifdef KEY /* Bug 4889 */
+/* Set to the sh_idx when we see an OpenMP "do" or "paralleldo" directive,
+ * cleared when we reach the "do" statement itself.
+ */
+extern int			 inside_paralleldo;
+/* Set to the sh_idx when we see an OpenMP "parallel" directive; cleared when
+ * we reach the OpenMP "endparallel"
+ */
+extern int			 inside_parallel;
+#endif /* KEY Bug 4889 */
 
 
 /*********************************************************\

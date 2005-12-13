@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -298,8 +298,10 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
       UINT d = labs((UINT)denom_val);
       UINT l = log2(d);
       INT64 e = denom_val;
-      UINT s, m, a;
+      UINT s, a;
+      UINT64 m;
       UINT64 m_low, m_high, j, k;
+      UINT shift_amt = 31;
 
       j = (((UINT64)(0x80000000)) % ((UINT64)(d)));
       k = (((UINT64)(1)) << (32 + l)) / ((UINT64)(0X80000000 - j));
@@ -315,21 +317,36 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
       s = l;
       a = (m_high >> 31) ? 1: 0;
 
+      if (is_double) {
+	m |= (m -1)<<32;
+	shift_amt = 63;
+      }
+
       if (a) {
 	TN* tmp1_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Convert_Length(tmp1_tn, numer_tn, Gen_Literal_TN(32, 4), 
-			      MTYPE_I8, TRUE, ops);
+	if (!is_double)
+	  Expand_Convert_Length(tmp1_tn, numer_tn, Gen_Literal_TN(32, 4), 
+				MTYPE_I8, TRUE, ops);
+	else
+	  Expand_Copy( tmp1_tn, numer_tn, mtype, ops);
 	mult_tn = Build_TN_Of_Mtype(MTYPE_I8);
 	d_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Immediate (d_tn, Gen_Literal_TN ((INT)m, 8), is_signed, ops);
-	Expand_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
-	shift_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Shift(shift_tn, mult_tn, Gen_Literal_TN(32, 4), 
-		     MTYPE_I8, shift_lright, ops);
+	Expand_Immediate (d_tn, 
+			  Gen_Literal_TN (!is_double ? (INT)m : m, 8), 
+			  is_signed, ops);
+	if (!is_double) {
+	  Expand_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
+	  shift_tn = Build_TN_Of_Mtype(MTYPE_I8);
+	  Expand_Shift(shift_tn, mult_tn, Gen_Literal_TN(32, 4), 
+		       MTYPE_I8, shift_lright, ops);
+	} else {
+	  Expand_High_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
+	  shift_tn = mult_tn;
+        }
 	TN* tmp2_tn = Build_TN_Of_Mtype(mtype);
 	Expand_Add(tmp2_tn, shift_tn, numer_tn, mtype, ops);
 	TN* tmp3_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Shift(tmp3_tn, numer_tn, Gen_Literal_TN(31, 4), 
+	Expand_Shift(tmp3_tn, numer_tn, Gen_Literal_TN(shift_amt, 4), 
 		mtype, shift_aright, ops);
 	TN* tmp4_tn = Build_TN_Like(result);
 	Expand_Shift(tmp4_tn, tmp2_tn, Gen_Literal_TN(s, 4),
@@ -355,7 +372,7 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
 			mtype, shift_aright, ops);
 	}
 
-	Expand_Shift( eax_tn, eax_tn, Gen_Literal_TN(31, 4), 
+	Expand_Shift( eax_tn, eax_tn, Gen_Literal_TN(shift_amt, 4), 
 		      mtype, shift_lright, ops);
 
 	Expand_Add( edx_tn, edx_tn, eax_tn, mtype, ops );
@@ -368,18 +385,26 @@ Expand_Integer_Divide_By_Constant(TN *result, TN *numer_tn, INT64 denom_val,
 
       } else {	
 	TN* tmp1_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Convert_Length(tmp1_tn, numer_tn, Gen_Literal_TN(32, 4), 
+	if (!is_double)
+	  Expand_Convert_Length(tmp1_tn, numer_tn, Gen_Literal_TN(32, 4), 
 			      MTYPE_I8, TRUE, ops);
+	else
+	  Expand_Copy( tmp1_tn, numer_tn, mtype, ops);
 	TN* tmp2_tn = Build_TN_Of_Mtype(mtype);
-	Expand_Shift(tmp2_tn, numer_tn, Gen_Literal_TN(31, 4), 
+	Expand_Shift(tmp2_tn, numer_tn, Gen_Literal_TN(shift_amt, 4), 
 		     mtype, shift_aright, ops);
 	mult_tn = Build_TN_Of_Mtype(MTYPE_I8);
 	d_tn = Build_TN_Of_Mtype(MTYPE_I8);
 	Expand_Immediate (d_tn, Gen_Literal_TN (m, 8), is_signed, ops);
-	Expand_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
-	shift_tn = Build_TN_Of_Mtype(MTYPE_I8);
-	Expand_Shift(shift_tn, mult_tn, Gen_Literal_TN(32, 4), 
-		     MTYPE_I8, shift_lright, ops);
+	if (!is_double) {
+	  Expand_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
+	  shift_tn = Build_TN_Of_Mtype(MTYPE_I8);
+	  Expand_Shift(shift_tn, mult_tn, Gen_Literal_TN(32, 4), 
+		       MTYPE_I8, shift_lright, ops);
+	} else {
+	  Expand_High_Multiply(mult_tn, tmp1_tn, d_tn, MTYPE_I8, ops);
+	  shift_tn = mult_tn;
+	}
 	TN* tmp3_tn = Build_TN_Like(result);
 	if (s) 
 	  Expand_Shift(tmp3_tn, shift_tn, Gen_Literal_TN(s, 4), 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -472,6 +472,11 @@ static ST *Formal_Sym(ST *sym, BOOL onstack)
   */
   /* Don't put things on the stack because of debug level 3 (PV 642999) */
   onstack |=    (Debug_Level > 0 && Debug_Level != 3)	||
+#ifdef KEY
+  	        // Bug 5072
+		// Make -O0 and -O1 behave like -g.
+		Opt_Level < 2 ||
+#endif
 		ST_has_nested_ref(sym)		||
 		ST_declared_static(sym)		||
 		PU_has_mp(Get_Current_PU());
@@ -1000,10 +1005,17 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
     			else sec = _SEC_DATA;
 			break;
 		case SCLASS_UGLOBAL:
+#ifdef KEY
+    			if (ST_is_constant(st) &&	// bug 4743
+			    !ST_is_weak_symbol(st)) {	// bug 4823
+			  sec = _SEC_RDATA;
+			} else
+#endif
 			sec = _SEC_BSS;
 			break;
 #ifdef KEY
 		case SCLASS_COMMON:
+		case SCLASS_EXTERN:			// bug 4845
 			return;
 #endif
 		default:
@@ -1102,6 +1114,9 @@ Calc_Actual_Area ( TY_IDX pu_type, WN *pu_tree )
 	case OPR_PICCALL:
 	case OPR_ICALL:
 	case OPR_CALL:
+#ifdef KEY
+	case OPR_PURE_CALL_OP:
+#endif
 		num_parms = WN_num_actuals(pu_tree);
        		ploc = Setup_Output_Parameter_Locations(pu_type);
        		for (i = 0; i < num_parms; i++) {
@@ -1236,6 +1251,9 @@ Max_Arg_Area_Bytes(WN *node)
   switch (OPCODE_operator(opcode)) {
   case OPR_CALL:
   case OPR_PICCALL:
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
     maxsize = Calc_Actual_Area ( ST_pu_type (WN_st (node)), node);
     Frame_Has_Calls = TRUE;
     break;
@@ -2169,7 +2187,7 @@ Trace_Stack_Segments( char *msg, ST *SP_baseST, ST *FP_baseST )
     ST          *block;
     INT64	size, offset;
     INT		align;
-    char	*basename;
+    const char	*basename;
 
     block = SF_Block(s);
     basename = block ? ST_name(ST_base(block)) : "<none>";
@@ -2613,7 +2631,11 @@ Allocate_Object ( ST *st )
       if (ST_is_initialized(st) && !ST_init_value_zero (st))
         sec = _SEC_LDATA;
       else
+#ifdef KEY
+        sec = _SEC_BSS;
+#else
         sec = _SEC_LBSS;
+#endif // KEY
     }
     else if (ST_is_initialized(st) && !ST_init_value_zero (st))
         sec = (ST_is_constant(st) ? _SEC_RDATA : _SEC_DATA);
@@ -2670,7 +2692,11 @@ Allocate_Object ( ST *st )
     break;
   case SCLASS_UGLOBAL :
     if (ST_is_thread_private(st)) {
+#ifdef KEY
+      sec = _SEC_BSS;
+#else
       sec = _SEC_LBSS;
+#endif // KEY
     } 
     else sec = _SEC_BSS;
     sec = Shorten_Section ( st, sec );
@@ -2678,7 +2704,14 @@ Allocate_Object ( ST *st )
     break;
   case SCLASS_DGLOBAL :
     if (ST_is_thread_private(st)) sec = _SEC_LDATA;
-    else if (ST_is_constant(st)) sec = _SEC_RDATA;
+    else if (ST_is_constant(st)) {
+#ifdef TARG_X8664
+      if (Gen_PIC_Shared)
+	sec = _SEC_DATA_REL_RO;
+      else
+#endif
+      sec = _SEC_RDATA;
+    }
     else sec = _SEC_DATA;
     sec = Shorten_Section ( st, sec );
     Allocate_Object_To_Section ( base_st, sec, Adjusted_Alignment(base_st));

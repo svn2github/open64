@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -87,6 +87,7 @@
 #include "config_debug.h"
 #include "config_opt.h"
 #include "config_ipa.h"
+#include "ipl_main.h"
 #include "ipl_summarize_template.h" // put these two template files
 #include "ipl_analyze_template.h"   // last in the include list
 #include "ipl_cost_template.h" 	    // execution cost analysis 

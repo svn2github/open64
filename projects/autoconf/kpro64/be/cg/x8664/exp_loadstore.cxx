@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -38,7 +38,7 @@
 
 
 /* CGEXP routines for loads and stores */
-#include <elf.h>
+#include "elf_stuff.h"
 #include "defs.h"
 #include "em_elf.h"
 #include "erglob.h"
@@ -146,13 +146,20 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
   case MTYPE_FQ:
     return base != NULL ? TOP_fldt : TOP_fldt_n32;
   case MTYPE_V16F4:
+  case MTYPE_V16C4:
     return base != NULL ? TOP_ldaps : TOP_ldaps_n32;
+  case MTYPE_V8F4:
+    return base != NULL ? TOP_ldlps : TOP_ldlps_n32;
   case MTYPE_V16F8:
+  case MTYPE_V16C8:
     return base != NULL ? TOP_ldapd : TOP_ldapd_n32;
   case MTYPE_V16I1:
   case MTYPE_V16I2:
   case MTYPE_V16I4:
+  case MTYPE_V8I4: 
   case MTYPE_V16I8: return base != NULL ? TOP_lddqa : TOP_lddqa_n32;
+  case MTYPE_V8I1:
+  case MTYPE_V8I2: return TOP_ld64_2m;
     
   case MTYPE_V:
     if (rtype != MTYPE_V)
@@ -368,14 +375,20 @@ Pick_Store_Instruction( TYPE_ID mtype,
   case MTYPE_FQ:
     return base != NULL ? TOP_fstpt : TOP_fstpt_n32;
   case MTYPE_V16F4: 
+  case MTYPE_V16C4: 
     return base != NULL ? TOP_staps : TOP_staps_n32;
   case MTYPE_V16F8: 
+  case MTYPE_V16C8: 
     return base != NULL ? TOP_stapd : TOP_stapd_n32;
   case MTYPE_V16I1: 
   case MTYPE_V16I2: 
   case MTYPE_V16I4: 
   case MTYPE_V16I8:
     return base != NULL ? TOP_stdqa : TOP_stdqa_n32;
+  case MTYPE_V8I1:
+  case MTYPE_V8I2:
+  case MTYPE_V8I4:
+    return TOP_store64_fm;
   default:  FmtAssert(FALSE, ("NYI: Pick_Store_Instruction mtype"));
     return TOP_UNDEFINED;
   }
@@ -519,20 +532,26 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
 void
 Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT variant, OPS *ops)
 {
-  if (op == OPC_V16I1V16I1ILOAD ||
-      op == OPC_V16I2V16I2ILOAD ||
-      op == OPC_V16I4V16I4ILOAD ||
-      op == OPC_V16I8V16I8ILOAD)
+  TYPE_ID mtype = OPCODE_rtype(op);
+
+  if (mtype == MTYPE_V16I1 || mtype == MTYPE_V16I2 ||
+      mtype == MTYPE_V16I4 || mtype == MTYPE_V16I8)
     Build_OP (TOP_lddqu, result, base, disp, ops);    
-  else if (op == OPC_V16F8V16F8ILOAD) {
+  else if (mtype == MTYPE_V16F8 || mtype == MTYPE_V16C8) {
     TN* ofst = TN_is_symbol( disp )
       ? Gen_Symbol_TN( TN_var(disp), TN_offset(disp) + 8, TN_RELOC_NONE )
       : Gen_Literal_TN( TN_value(disp) + 8, TN_size(disp) );
-    Build_OP (TOP_ldlpd, result, base, disp, ops);    
-    Build_OP (TOP_ldhpd, result, base, ofst, ops);    
+    if (base != NULL) {
+      Build_OP (TOP_ldlpd, result, base, disp, ops);    
+      Build_OP (TOP_ldhpd, result, base, ofst, ops);    
+    }
+    else {
+      Build_OP (TOP_ldlpd_n32, result, disp, ops);    
+      Build_OP (TOP_ldhpd_n32, result, ofst, ops);    
+    }
     Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
   }
-  else if (op == OPC_V16F4V16F4ILOAD) {
+  else if (mtype == MTYPE_V16F4 || mtype == MTYPE_V16C4) {
     TN* ofst = TN_is_symbol( disp )
       ? Gen_Symbol_TN( TN_var(disp), TN_offset(disp) + 8, TN_RELOC_NONE )
       : Gen_Literal_TN( TN_value(disp) + 8, TN_size(disp) );
@@ -556,8 +575,8 @@ Expand_Misaligned_Store (TYPE_ID mtype, TN *obj_tn, TN *base_tn, TN *disp_tn, VA
 {
   if (mtype == MTYPE_V16I1 || mtype == MTYPE_V16I2 ||
       mtype == MTYPE_V16I4 || mtype == MTYPE_V16I8)
-    Build_OP (TOP_stdqu, obj_tn, base_tn, disp_tn, ops);    
-  else if (mtype == MTYPE_V16F4) {
+    Build_OP (TOP_stdqu, obj_tn, base_tn, disp_tn, ops);
+  else if (mtype == MTYPE_V16F4 || mtype == MTYPE_V16C4) {
     TN* ofst = TN_is_symbol( disp_tn )
       ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
       : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
@@ -565,12 +584,18 @@ Expand_Misaligned_Store (TYPE_ID mtype, TN *obj_tn, TN *base_tn, TN *disp_tn, VA
     Build_OP (TOP_sthps, obj_tn, base_tn, ofst, ops);    
     Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
   } 
-  else if (mtype == MTYPE_V16F8) {
+  else if (mtype == MTYPE_V16F8 || mtype == MTYPE_V16C8) {
     TN* ofst = TN_is_symbol( disp_tn )
       ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
       : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
-    Build_OP (TOP_stlpd, obj_tn, base_tn, disp_tn, ops);    
-    Build_OP (TOP_sthpd, obj_tn, base_tn, ofst, ops);    
+    if (base_tn != NULL) {
+      Build_OP (TOP_stlpd, obj_tn, base_tn, disp_tn, ops);    
+      Build_OP (TOP_sthpd, obj_tn, base_tn, ofst, ops);    
+    }
+    else {
+      Build_OP (TOP_stlpd_n32, obj_tn, disp_tn, ops);    
+      Build_OP (TOP_sthpd_n32, obj_tn, ofst, ops);    
+    }
     Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
   }
   else
@@ -585,6 +610,7 @@ BOOL Is_Stack_Used()
   is_stack_used = FALSE;
   return state;
 }
+
 
 static void
 Exp_Ldst (
@@ -670,7 +696,9 @@ Exp_Ldst (
 	!ISA_LC_Value_In_Class(base_ofst, LC_simm32) &&
 	mcmodel < MEDIUM ){
       // use %got_page and %got_offset
+#if 0 // bug 4622
       FmtAssert( FALSE, ("offset cannot be fit into 32-bit") );
+#endif
     }
   }
 
@@ -720,7 +748,9 @@ Exp_Ldst (
 		    Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_X8664_PC32 ),
 		    &newops );
 	} else {
+#if 0 // bug 4622
 	  FmtAssert( mcmodel >= MEDIUM, ("code model is not medium or higher") );
+#endif
 	  TN* sym_tn = NULL;
 
 	  if( ISA_LC_Value_In_Class(base_ofst, LC_simm32) ){
@@ -755,6 +785,8 @@ Exp_Ldst (
 		    &newops );
 	  // got address should not alias
 	  Set_OP_no_alias(OPS_last(&newops));
+	  PU_References_GOT = TRUE;
+
 	  if( base_ofst != 0 ){
 	    Build_OP( TOP_addi32, tn, tmp, Gen_Literal_TN(base_ofst, 4), &newops );
 	  }
@@ -772,8 +804,8 @@ Exp_Ldst (
       Is_True(! on_stack, ("Exp_Ldst: unexpected stack reference"));
 
       if( Is_Target_64bit() ){
-	if( mcmodel < MEDIUM )
-	  base_tn = Rip_TN();
+	if( mcmodel < MEDIUM && ISA_LC_Value_In_Class(base_ofst, LC_simm32) )
+	    base_tn = Rip_TN();
 	else {
 
 	  if( ISA_LC_Value_In_Class(base_ofst, LC_simm32) ){
@@ -785,16 +817,23 @@ Exp_Ldst (
 	  }
 
 	  if( base_ofst != 0 ){
-	    FmtAssert( FALSE, ("NYI") );
-	    TN* tmp_tn = Build_TN_Of_Mtype(Pointer_Mtype);
-
-	    Build_OP( TOP_movabsq, tmp_tn, Gen_Literal_TN(base_ofst,8), &newops );
-	    Build_OP( TOP_add64, base_tn, base_tn, tmp_tn, &newops );
-	    base_ofst = 0;
+// Bug 4461
+            base_tn = Build_TN_Of_Mtype(Pointer_Mtype);
+                                                                                                                                                             
+            Build_OP( TOP_movabsq,
+                      base_tn, Gen_Symbol_TN( base_sym, base_ofst, TN_RELOC_X8664_64 ),
+                      &newops );
+            ofst_tn = Gen_Literal_TN(0, 4);
+            base_ofst = 0;
 	  }
 
 	  /* The target of a load operation under -mcmodel=medium is %rax.
 	     Make sure no conflicts will happen; otherwise, use indirect load.
+
+	     As quoted from i386.md:
+	     ;; Stores and loads of ax to arbitrary constant address.
+	     ;; We fake an second form of instruction to force reload to load address
+	     ;; into register when rax is not available
 	  */
 	  bool use_iload = 
 	    ( ( is_load  && !MTYPE_is_integral( OPCODE_rtype(opcode) ) ) ||
@@ -806,7 +845,7 @@ Exp_Ldst (
 	       the spilling routine.
 	    */
 	    if( TN_register(tn) != REGISTER_UNDEFINED )
-	      use_iload = TRUE;
+	      use_iload = (base_sym == SP_Sym || base_sym == FP_Sym);
 	    else {
 	      for( OP* op = OPS_last(ops);
 		   op != NULL;
@@ -846,6 +885,7 @@ Exp_Ldst (
 		    &newops);
 	  // got address should not alias
 	  Set_OP_no_alias(OPS_last(&newops));
+	  PU_References_GOT = TRUE;
 	  base_tn = new_base;
 	  ofst_tn = Gen_Literal_TN( base_ofst, 4 );
 	}
@@ -856,10 +896,20 @@ Exp_Ldst (
     }
 
     if( is_store ){
-      Expand_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, &newops);
+      if ( opcode == OPC_V16C8STID || 
+	   V_align_all(variant) != 0 ) // Bug 3623 - check if misaligned STID
+	Expand_Misaligned_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, 
+	                         variant, &newops);
+      else
+	Expand_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, &newops);
 
     } else if( is_load ){
-      Expand_Load( opcode, tn, base_tn, ofst_tn, &newops );
+      if ( opcode == OPC_V16C8V16C8LDID ||
+	   V_align_all(variant) != 0 ) // Bug 3623 - check if misaligned LDID
+	Expand_Misaligned_Load ( opcode, tn, base_tn, ofst_tn,
+			         variant, &newops );
+      else
+	Expand_Load ( opcode, tn, base_tn, ofst_tn, &newops );
 
     }
   }
@@ -949,11 +999,19 @@ void Exp_Prefetch (TOP opc, TN* src1, TN* src2, VARIANT variant, OPS* ops)
       Build_OP( TOP_noop, ops );
       return;
     }
-    top = TOP_prefetchw;
+    if ( !Is_Target_3DNow() )
+      top = TOP_prefetcht0;
+    else
+      top = TOP_prefetchw;
 
   } else {
     if( pfhint == ECV_pfhint_L1_load )
-      top = TOP_prefetch;
+    {
+      if ( !Is_Target_3DNow() )
+        top = TOP_prefetcht0;
+      else
+        top = TOP_prefetch;
+    }
     else if( pfhint == ECV_pfhint_L2_load )
       top = TOP_prefetcht1;
     else

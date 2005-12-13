@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -704,7 +704,11 @@
 
 #include "dep_graph.h"
 
+#ifdef KEY // bug 7422
+#define LNO_MAX_DO_LOOP_DEPTH 64
+#else
 #define LNO_MAX_DO_LOOP_DEPTH 32
+#endif
 extern WN_MAP Parent_Map;  /* contains the mapping for the */
 			   /* parent pointers for all nodes */
 extern WN_MAP LNO_Info_Map;
@@ -857,10 +861,10 @@ public:
   mBOOL Not_Enough_Parallel_Work; 
   mBOOL Inside_Critical_Section;
   mBOOL Has_Barriers; 
-  double Work_Estimate; 
   mINT8 Required_Unroll;
-  mINT32 Required_Blocksize[MHD_MAX_LEVELS];
   mINT32 Tile_Size; 
+  double Work_Estimate; 
+  mINT32 Required_Blocksize[MHD_MAX_LEVELS];
   WN    *Guard;
   LEGO_INFO* Lego_Info;
   ARA_LOOP_INFO* ARA_Info;
@@ -1009,7 +1013,7 @@ extern BOOL Build_Array_Dependence_Graph (WN* func_nd);
 extern void Build_CG_Dependence_Graph (WN* func_nd);
 extern void Build_CG_Dependence_Graph (ARRAY_DIRECTED_GRAPH16*
                                        Array_Dependence_Graph);
-#ifdef KEY
+#ifdef TARG_X8664
 extern void Mark_Auto_Vectorizable_Loops (WN* func_nd);
 #endif
 
@@ -1081,6 +1085,7 @@ inline REGION_INFO* Get_Region_Info(const WN* wn)
 #ifdef KEY
 #define TT_LNO_DEBUG_SIMD               0x20000000
 #define TT_LNO_DEBUG_HOISTIF            0x40000000
+#define TT_LNO_LOOP_UNSWITCH             0x80000000
 #endif /* KEY */
 
 // TP_LNOPT = 32 options
@@ -1117,6 +1122,9 @@ inline REGION_INFO* Get_Region_Info(const WN* wn)
 #define TT_SHACKLE_DEBUG            0x02000000
 #define TT_CROSS_LOOP               0x04000000
 
+#ifdef TARG_X8664
+extern BOOL Minvariant_Removal_For_Simd;
+#endif
 #endif /* lnopt_main_INCLUDED */
 
 

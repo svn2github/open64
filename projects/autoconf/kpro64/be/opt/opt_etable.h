@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -1964,7 +1964,6 @@ private:
   STMTREP        *Entry_chi(void) const    { return _entry_chi; }
   void            Set_entry_chi(STMTREP *entry_chi) { _entry_chi = entry_chi; }
 
-  void		  Count_lex_ident_exprs(INT32); // for statistics only
 #ifdef KEY
   void            Mark_phi_live(PHI_NODE *phi);
 #endif
@@ -2002,6 +2001,8 @@ public:
   MEM_POOL       *Per_expr_pool(void) const{ return _per_expr_pool; }
   EXP_HOISTING   *Exp_hoisting(void) const { return _exp_hoisting; }
   EXP_WORKLST_CONTAINER  *Exp_worklst(void)    { return &_exp_worklst; }
+
+  void		  Count_lex_ident_exprs(INT32); // for statistics only
 
   // remove a single occurrence from one of the worklsts
   void            Remove_real_occurrence(CODEREP *old_cr, STMTREP *stmt);

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -94,7 +98,98 @@ void gen_sh(sh_position_type 	position,
 	    boolean		err_flag,
 	    boolean		labeled,
 	    boolean		compiler_gen)
+#ifdef KEY /* Bug 4811 */
+{
+  int sh_idx = gen_sh_at(position, stmt_type, line_num, col_num, err_flag,
+    labeled, compiler_gen, curr_stmt_sh_idx);
+  if (position == After) {
+    curr_stmt_sh_idx = sh_idx;
+  }
+}
 
+
+/******************************************************************************\
+|* Description:								      *|
+|*	Like gen_sh(), but takes "insertion_point" as an argument, instead of *|
+|*      using the global variable "curr_stmt_sh_idx", so one may insert the   *|
+|*      new statement at any point; doesn't update the value of               *|
+|*      curr_stmt_sh_idx; and returns the newly generated sh_idx.             *|
+\******************************************************************************/
+int gen_sh_at(sh_position_type 	position,
+  	    stmt_type_type 	stmt_type,
+	    int			line_num,
+	    int			col_num,
+	    boolean		err_flag,
+	    boolean		labeled,
+	    boolean		compiler_gen,
+	    int			insertion_idx)
+{
+   int		next_idx;
+   int		prev_idx;
+   int		sh_idx;
+
+
+   TRACE (Func_Entry, "gen_sh_at", NULL);
+
+# ifdef _DEBUG
+   if (defer_stmt_expansion) {
+      PRINTMSG(line_num, 626, Internal, col_num,
+               "no defer_stmt_expansion", "gen_sh_at");
+   }
+
+   if (insertion_idx == NULL_IDX) {
+      PRINTMSG(line_num, 626, Internal, col_num,
+               "valid insertion_idx", "gen_sh_at");
+   }
+# endif
+
+   sh_idx		   = ntr_sh_tbl();
+   SH_STMT_TYPE(sh_idx)	   = stmt_type;
+   SH_GLB_LINE(sh_idx)	   = line_num;
+   SH_ERR_FLG(sh_idx)	   = err_flag;
+   SH_COL_NUM(sh_idx)	   = col_num;
+   SH_LABELED(sh_idx)	   = labeled;
+   SH_COMPILER_GEN(sh_idx) = compiler_gen;
+   
+   if (stmt_type == Construct_Def) {
+      SH_P2_SKIP_ME(sh_idx) = TRUE;
+   }
+
+   if (position == Before) {
+      SH_NEXT_IDX(sh_idx) = insertion_idx;
+
+      if (insertion_idx == SCP_FIRST_SH_IDX(curr_scp_idx)) {           
+         SCP_FIRST_SH_IDX(curr_scp_idx) = sh_idx; 
+      }
+      else {
+         prev_idx = SH_PREV_IDX(insertion_idx);
+
+         if (prev_idx != NULL_IDX) { 
+            SH_PREV_IDX(sh_idx)		= prev_idx;
+            SH_NEXT_IDX(prev_idx)	= sh_idx;
+         }
+      }
+
+      SH_PREV_IDX(insertion_idx) = sh_idx;
+   }
+   else {
+      SH_PREV_IDX(sh_idx)	= insertion_idx;
+      next_idx			= SH_NEXT_IDX(insertion_idx);
+ 
+      if (next_idx != NULL_IDX) {
+         SH_NEXT_IDX(sh_idx)	= next_idx;
+         SH_PREV_IDX(next_idx)	= sh_idx;
+      }
+
+      SH_NEXT_IDX(insertion_idx)    = sh_idx;
+   }
+
+   TRACE (Func_Exit, "gen_sh", NULL);
+
+   return sh_idx;
+
+}  /* gen_sh */
+#else /* KEY Bug 4811 */
 {
    int		next_idx;
    int		prev_idx;
@@ -162,6 +257,7 @@ void gen_sh(sh_position_type 	position,
    return;
 
 }  /* gen_sh */
+#endif /* KEY Bug 4811 */
 
 /******************************************************************************\
 |*                                                                            *|

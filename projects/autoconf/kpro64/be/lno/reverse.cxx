@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -680,6 +684,9 @@ static INT RV_Index_Sign(WN* wn_index)
     case OPR_ARRAY: 
     case OPR_PARM:
     case OPR_INTRINSIC_OP:
+#ifdef KEY
+    case OPR_PURE_CALL_OP:
+#endif
       break_loop = TRUE; 
       break; 
     default:  

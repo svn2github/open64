@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -582,8 +582,30 @@ Create_Live_BB_Sets(void)
 
   GRA_Init_Trace_Memory();
 
+#ifdef KEY
+  GTN_SET *incoming_GTNs;
+  GTN_SET *outgoing_GTNs;
+  if (GRA_optimize_boundary) {
+    // Those GTNs that are live_in and defreach_in.
+    incoming_GTNs = GTN_SET_Create(GTN_UNIVERSE_size, &MEM_local_pool);
+    // Those GTNs that are live_out and defreach_out.
+    outgoing_GTNs = GTN_SET_Create(GTN_UNIVERSE_size, &MEM_local_pool);
+  }
+#endif
+
   for ( bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ) {
     GRA_BB* gbb = gbb_mgr.Get(bb);
+
+#ifdef KEY
+    if (GRA_optimize_boundary) {
+      /*	TODO:  Define GTN_SET_IntersectionR in gtn_set.h.
+      GTN_SET_IntersectionR(incoming_GTNs, BB_live_in(bb), BB_defreach_in(bb));
+      GTN_SET_IntersectionR(outgoing_GTNs, BB_live_out(bb), BB_defreach_out(bb));
+      */
+      BS_IntersectionR(incoming_GTNs, BB_live_in(bb), BB_defreach_in(bb));
+      BS_IntersectionR(outgoing_GTNs, BB_live_out(bb), BB_defreach_out(bb));
+    }
+#endif
 
     for ( tn = GTN_SET_Intersection_Choose(BB_live_in(bb),
                                            BB_defreach_in(bb));
@@ -592,8 +614,21 @@ Create_Live_BB_Sets(void)
                                                 BB_defreach_in(bb),
                                                 tn)
     ) {
-      if ( TN_Is_Allocatable(tn) )
+      if ( TN_Is_Allocatable(tn) ) {
 	lrange_mgr.Get(tn)->Add_Live_BB(gbb);
+#ifdef KEY
+	if (GRA_optimize_boundary) {
+	  // The lrange enters the BB.  If the lrange also exits the BB, then
+	  // the BB is an internal BB, else the BB is a boundary BB.  (Ignore
+	  // gaps inside the BB for now.)
+	  // TODO:  Implement gaps.
+	  if (GTN_SET_MemberP(outgoing_GTNs, tn))
+	    lrange_mgr.Get(tn)->Add_Internal_BB(gbb);
+	  else
+	    lrange_mgr.Get(tn)->Add_Boundary_BB(gbb);
+	}
+#endif
+      }
     }
 
     for ( tn = GTN_SET_Intersection_Choose(BB_live_out(bb),
@@ -607,6 +642,18 @@ Create_Live_BB_Sets(void)
         LRANGE* lrange = lrange_mgr.Get(tn);
 
         lrange->Add_Live_BB(gbb);
+
+#ifdef KEY
+	if (GRA_optimize_boundary) {
+	  // The lrange exits the BB.  If the lrange also enters the BB, then
+	  // the BB is an internal BB, else the BB is a boundary BB.  (Ignore
+	  // gaps inside the BB for now.)
+	  if (GTN_SET_MemberP(incoming_GTNs, tn))
+	    lrange->Add_Internal_BB(gbb);
+	  else
+	    lrange->Add_Boundary_BB(gbb);
+	}
+#endif
 
         if ( BB_call(gbb->Bb()) ) {
           if (    lrange->Type() == LRANGE_TYPE_COMPLEMENT
@@ -1180,6 +1227,34 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
       }
     }
 
+#ifdef KEY
+    // Treat clobbered registers as though they are result registers.
+    // Bug 4579.
+    if (OP_code(xop) == TOP_asm) {
+      ASM_OP_ANNOT *asm_info = (ASM_OP_ANNOT *) OP_MAP_Get(OP_Asm_Map, xop);
+      if (asm_info) {
+	ISA_REGISTER_CLASS cl;
+	FOR_ALL_ISA_REGISTER_CLASS(cl) {
+	  REGISTER_SET clobbered_regs = ASM_OP_clobber_set(asm_info)[cl];
+	  for (REGISTER reg = REGISTER_SET_Choose(clobbered_regs);
+	       reg != REGISTER_UNDEFINED;
+	       reg = REGISTER_SET_Choose_Next(clobbered_regs, reg)) {
+	    Wired_TN_Reference(gbb, cl, reg, wired_locals);
+
+	    TN *tn = Build_Dedicated_TN(cl, reg, 0);
+	    GRA_PREF_LIVE* gpl = (GRA_PREF_LIVE*)hTN_MAP_Get(live_data, tn);
+	    if (!gpl) {
+	      gpl = gra_pref_mgr.LIVE_Create(&MEM_local_nz_pool);
+	      hTN_MAP_Set(live_data, tn, gpl);
+	    }
+	    gpl->Num_Defs_Set(gpl->Num_Defs() + 1);
+	    gpl->Last_Def_Set(op_count);
+	  }
+	} 
+      }
+    }
+#endif
+
     if ( CGTARG_Is_Preference_Copy(xop) )
       Complement_Copy(xop, gbb, pref_list);
     else if ( ! OP_glue(xop) ) {
@@ -1223,6 +1298,36 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
     GRA_PREF_LIVE* gpl_dest = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_dest);
     GRA_PREF_LIVE* gpl_src = (GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_src);
 
+#ifdef KEY
+    // Do the same tests as below to see if a preferencing copy is allowed, but
+    // do it for dedicated registers.  Bug 4579.
+    BOOL allow_copy = TRUE;
+
+    // Disallow copy if src is a dedicated register that is redefined later.
+    if (TN_register(tn_src) != REGISTER_UNDEFINED) {
+      TN *tn_dedicated_src = Build_Dedicated_TN(TN_register_class(tn_src),
+						TN_register(tn_src), 0);
+      GRA_PREF_LIVE* gpl_dedicated_src =
+	(GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_dedicated_src);
+      if (gpl_dedicated_src &&
+	  gpl_dedicated_src->Last_Def() > gpl_dest->Last_Def())
+	allow_copy = FALSE;
+    }
+
+    // Disallow copy if dest is a dedicated register with an exposed use or has
+    // more than one definition in the block.
+    if (TN_register(tn_dest) != REGISTER_UNDEFINED) {
+      TN *tn_dedicated_dest = Build_Dedicated_TN(TN_register_class(tn_dest),
+						 TN_register(tn_dest), 0);
+      GRA_PREF_LIVE* gpl_dedicated_dest =
+	(GRA_PREF_LIVE*) hTN_MAP_Get(live_data, tn_dedicated_dest);
+      if (gpl_dedicated_dest &&
+	  (gpl_dedicated_dest->Exposed_Use() ||
+	   gpl_dedicated_dest->Num_Defs() > 1))
+	allow_copy = FALSE;
+    }
+#endif
+
     //
     // If the source of the preferencing copy is redefined after
     // later in the block, or the destination has an exposed use or
@@ -1230,7 +1335,11 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
     // we are conservatively assuming that there is a conflict.
     //
     if (gpl_src->Last_Def() < gpl_dest->Last_Def() &&
-	!gpl_dest->Exposed_Use() && gpl_dest->Num_Defs() == 1) {
+	!gpl_dest->Exposed_Use() && gpl_dest->Num_Defs() == 1
+#ifdef KEY
+	&& allow_copy
+#endif
+	) {
 
       //
       // Complement to complement preference.

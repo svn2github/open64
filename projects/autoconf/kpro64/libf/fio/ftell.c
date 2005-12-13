@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -51,6 +51,26 @@ extern long long __ftell64_f90( _f_int *unump);
 extern _f_int8 ftellf90_8_4_( _f_int *unump);
 extern _f_int8 ftellf90_8_( _f_int8 *unump);
 extern _f_int ftell90_ (_f_int *u);
+
+#ifdef KEY /* Bug 1683 */
+
+void
+pathf90_ftell4(_f_int *unit, _f_int *offset) {
+  _f_int junk;
+  *offset = (_f_int) ftellf90_8_4_(unit);
+  }
+
+void
+pathf90_ftell8(_f_int8 *unit, _f_int8 *offset) {
+  *offset = ftellf90_8_(unit);
+  }
+
+void
+pathf90_ftell48(_f_int *unit, _f_int8 *offset) {
+  *offset = ftellf90_8_4_(unit);
+  }
+
+#endif /* KEY Bug 1683 */
 
 /*
  * __ftell64_f90, _ftell
@@ -201,11 +221,14 @@ getpos_done:
 	return(pos);
 }
 
+#ifdef KEY /* Bug 1683 */
+/* Don't pollute the Fortran namespace */
 _f_int
 ftell90_(_f_int *u)
 {
 	return( (_f_int) ftellf90_8_4_(u));
 }
+#endif /* KEY Bug 1683 */
 
 #if 0
 extern int ftell_(_f_int *u);

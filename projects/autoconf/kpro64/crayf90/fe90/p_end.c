@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -412,6 +416,19 @@ void parse_end_stmt (void)
          reset_lex(TOKEN_BUF_IDX(token), TOKEN_STMT_NUM(token));
          keyword = Tok_Id;  /* Force to default clause for error */
       }
+
+#ifdef KEY /* Bug 5550 */
+      /* If we are ending an interface block which began with "operator(x)" or
+       * "assignment(=)", the "end interface" may have an optional
+       * "operator(x)" or "assignment(=)" too */
+      int blk_name = BLK_NAME(blk_stk_idx);
+      if (AT_OBJ_CLASS(blk_name) == Interface &&
+        ATI_DEFINED_OPR(blk_name) != Null_Opr)
+      {
+	found_name = (LA_CH_VALUE != EOS) && parse_generic_spec();
+      }
+      else
+#endif /* KEY Bug 5550 */
 
       found_name = MATCHED_TOKEN_CLASS(Tok_Class_Id);
 
@@ -5734,6 +5751,90 @@ void end_open_mp_ordered_blk(boolean  err_call)
    return;
 
 }  /* end_open_mp_ordered_blk */
+
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      <description>                                                         *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void end_open_mp_parallel_workshare_blk(boolean  err_call)
+
+{
+   TRACE (Func_Entry, "end_open_mp_parallel_workshare_blk", NULL);
+
+   if (! err_call) {
+      if (STMT_CANT_BE_IN_BLK(Open_MP_End_Parallel_Workshare_Stmt, CURR_BLK)) {
+	 blk_match_err(Open_Mp_Parallel_Workshare_Blk, FALSE, FALSE);
+      }
+
+      if (CURR_BLK == Open_Mp_Parallel_Workshare_Blk) {
+	 IR_FLD_R(SH_IR_IDX(curr_stmt_sh_idx)) = SH_Tbl_Idx;
+	 IR_IDX_R(SH_IR_IDX(curr_stmt_sh_idx)) = CURR_BLK_FIRST_SH_IDX;
+
+	 POP_BLK_STK;
+      }
+   }
+   else{
+      POP_BLK_STK;
+   }
+
+   TRACE(Func_Exit, "end_open_mp_parallel_workshare_blk", NULL);
+
+   return;
+} /* end_open_mp_parallel_workshare_blk */
+
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*      <description>                                                         *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NOTHING                                                               *|
+|*                                                                            *|
+\******************************************************************************/
+
+void end_open_mp_workshare_blk(boolean  err_call)
+
+{
+   TRACE (Func_Entry, "end_open_mp_workshare_blk", NULL);
+
+   if (! err_call) {
+      if (STMT_CANT_BE_IN_BLK(Open_MP_End_Workshare_Stmt, CURR_BLK)) {
+	 blk_match_err(Open_Mp_Workshare_Blk, FALSE, FALSE);
+      }
+
+      if (CURR_BLK == Open_Mp_Workshare_Blk) {
+	 IR_FLD_R(SH_IR_IDX(curr_stmt_sh_idx)) = SH_Tbl_Idx;
+	 IR_IDX_R(SH_IR_IDX(curr_stmt_sh_idx)) = CURR_BLK_FIRST_SH_IDX;
+
+	 POP_BLK_STK;
+      }
+   }
+   else{
+      POP_BLK_STK;
+   }
+
+   TRACE(Func_Exit, "end_open_mp_workshare_blk", NULL);
+
+   return;
+} /* end_open_mp_workshare_blk */
 
 /******************************************************************************\
 |*                                                                            *|

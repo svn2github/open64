@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -232,6 +232,25 @@ void
 __profile_value( void *pu_handle, INT32 inst_id, INT64 value )
 {
   Profile_Value( (PU_PROFILE_HANDLE) pu_handle, inst_id, value );
+}
+
+// For a PU, initialize the data structures that maintain value (FP) profile 
+// information for both the operands of a binary operator.
+
+void __profile_value_fp_bin_init( void *pu_handle, INT32 num_values )
+{
+  Profile_Value_FP_Bin_Init( (PU_PROFILE_HANDLE) pu_handle, num_values );
+}
+
+
+// Gather profile information for Values (FP)
+
+void
+__profile_value_fp_bin( void *pu_handle, INT32 inst_id, 
+			double value_fp_0, double value_fp_1 )
+{
+  Profile_Value_FP_Bin( (PU_PROFILE_HANDLE) pu_handle, inst_id, 
+			value_fp_0, value_fp_1 );
 }
 #endif
 

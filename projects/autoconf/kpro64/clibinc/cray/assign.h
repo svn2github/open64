@@ -544,6 +544,16 @@ typedef struct parse_info_s {
         char            *desc;          /* displayed usage string             */
 } parse_info;
 
+#ifdef KEY /* Bug 4260 */
+typedef enum {
+  IO_DEFAULT,		/* Implicit: no swapping, no warning about FILENV */
+  IO_NATIVE,		/* Explicit: no swapping, warn about FILENV */
+  IO_SWAP,		/* Files are opposite of native, whatever that is */
+  IO_BIG_ENDIAN,	/* Files are big-endian */
+  IO_LITTLE_ENDIAN	/* Files are little-endian */
+} IO_BYTESWAP;
+#endif /* KEY Bug 4260 */
+
 
 /************************************************************************
  *									*
@@ -657,5 +667,9 @@ extern int	_ae_next(assign_record *prev, assign_record **next,
 extern int	_ae_check_attr(assign_info *ai, int warnmode, int errmode);
 
 extern void	_ae_setoflags(assign_info *aip, int *flagmask);
+
+#ifdef KEY /* Bug 4260 */
+extern void	__io_byteswap();
+#endif /* KEY Bug 4260 */
 
 #endif	/* !_CRAY_ASSIGN_H */

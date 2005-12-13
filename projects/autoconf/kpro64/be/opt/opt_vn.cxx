@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -427,6 +427,9 @@ VN::_valnum_vn_expr(EXPRID         exprid,   // Coderep (or WHIRL?) id
 	    "in VN::_valnum_vn_expr()", (INT32)exprid));
    
    if (simplified->get_kind() == VN_EXPR::LITERAL && 
+#ifdef TARG_X8664
+       !MTYPE_is_vector(TCON_ty(simplified->get_tcon())) &&
+#endif
        MTYPE_is_integral(TCON_ty(simplified->get_tcon())))
    {
       const BOOL  is_signed = MTYPE_is_signed(TCON_ty(simplified->get_tcon()));
@@ -592,6 +595,25 @@ VN::_valnum_op(CODEREP *cr)
 			       _exprid_to_vn, *_status.locked_to_vn);
 
    }
+#ifdef KEY
+   else if (OPCODE_operator(opc) == OPR_PURE_CALL_OP)
+   {
+      vn_expr_ptr = VN_EXPR::Create_Call_Op(cr->Call_op_aux_id(),
+                                            cr->Kid_count());
+
+      for (INT32 i = 0; i < cr->Kid_count(); i++)
+      {
+         CODEREP *const vsym = cr->Opnd(i)->Get_ivar_vsym(); // May be NULL
+	 const VN_VALNUM vsym_valnum = _valnum_sym(vsym);
+
+	 valnum = _valnum_expr(cr->Opnd(i));
+	 vn_expr_ptr->set_opnd(i, valnum);
+	 vn_expr_ptr->set_opnd_vsym(i, vsym_valnum);
+      }
+      valnum = _valnum_vn_expr(exprid, vn_expr_ptr,
+                               _exprid_to_vn, *_status.locked_to_vn);
+   }
+#endif
    else if (OPCODE_operator(opc) == OPR_ARRAY)
    {
       vn_expr_ptr = VN_EXPR::Create_Array_Addr(cr->Elm_siz(), cr->Num_dim());

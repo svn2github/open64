@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -165,6 +165,11 @@ CODEREP::Same_bitpos(const CODEREP *cr) const
 	if (OPCODE_operator(Op()) == OPR_INTRINSIC_OP &&
 	    Intrinsic() != cr->Intrinsic())
 	  return FALSE;
+#ifdef KEY
+	else if (OPCODE_operator(Op()) == OPR_PURE_CALL_OP &&
+	         Call_op_aux_id() != cr->Call_op_aux_id())
+	  return FALSE;
+#endif
 	else if (OPCODE_operator(Op()) == OPR_CVTL && Offset() != cr->Offset())
 	  return FALSE;
 

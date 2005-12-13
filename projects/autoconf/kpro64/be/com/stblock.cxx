@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -463,6 +463,9 @@ Create_Slink_Symbol (void)
 {
 	// only create slink if a nested function.
 	if ( ! PU_is_nested_func(Get_Current_PU())) return;
+  // For MP-lowering process, the PU created by compiler
+  // May have created one. added by csc
+  if ( Find_Slink_Symbol( CURRENT_SYMTAB ) != NULL ) return;
 
 	ST *st = Gen_Temp_Symbol (MTYPE_To_TY(Pointer_type), "__slink_sym");
 }

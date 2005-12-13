@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -99,7 +99,11 @@ extern ARRAY_DIRECTED_GRAPH16 *Array_Dependence_Graph;
 extern REDUCTION_MANAGER *red_manager;  // PU reduction manager
 extern ALIAS_MANAGER *Alias_Mgr; // Alias manager
 extern DU_MANAGER *Du_Mgr; // DU manager
+#ifdef KEY // bug 7772
+#define MAX_PROCS (LNO_Num_Processors == 0 ? 8 : LNO_Num_Processors)
+#else
 const INT MAX_PROCS = 128;
+#endif
 
 ARA_LOOP_INFO::ARA_LOOP_INFO():
   _children(&ARA_memory_pool),
@@ -1980,7 +1984,11 @@ void ARA_LOOP_INFO::Walk_Rhs(WN *wn, WN *skip_store_id)
       rhs = LWN_WALK_TreeNext(rhs);
       rhs = LWN_WALK_TreeNext(rhs);
 
-    } else if (WN_operator(wn) == OPR_LDID) {
+    } else if (WN_operator(wn) == OPR_LDID
+#ifdef KEY // bug 7444: MP lowerer cannot handle reduction of field in a struct
+    	       && TY_kind(ST_type(WN_st(wn))) != KIND_STRUCT
+#endif
+    	      ) {
       if (Is_Covered(wn))
 	_scalar_pri.Add_Scalar(wn,0);
       else if (red_manager && red_manager->Which_Reduction(wn) != RED_NONE) {
@@ -2130,6 +2138,19 @@ ARA_LOOP_INFO::Walk_Block(WN *block_stmt)
     } else if (OPCODE_is_not_executable(op) ||
 	       OPCODE_is_prefetch(op))
       continue;
+#ifdef KEY
+    // Bug 7274 - check the ASM_INPUT if any
+    else if (opr == OPR_ASM_STMT) {
+      for (INT kid = 2; kid < WN_kid_count(stmt); ++kid) {
+	WN* asm_input = WN_kid(stmt, kid);
+	WN* load = WN_kid0(asm_input);
+	// Process the reads
+	Walk_Rhs(WN_kid0(asm_input));
+
+	continue;
+      }
+    }
+#endif
 
     // Process the reads (RHS)
     if (OPCODE_is_expression(op) || OPCODE_is_non_scf(op)) Walk_Rhs(stmt);
@@ -3058,7 +3079,11 @@ float ARA_LOOP_INFO::Tc_Parallel_Cost()
 
 float ARA_LOOP_INFO::Tp_Parallel_Cost()
 { 
+#ifdef KEY // bug 7772
+  return 128.0;
+#else
   return 123.0;
+#endif
 } 
 
 //-----------------------------------------------------------------------
@@ -3208,20 +3233,40 @@ WN* ARA_LOOP_INFO::Create_New_IF_Clause(BOOL is_pdo)
     wn_base = Make_Const(Host_To_Targ_Float(MTYPE_F8, (float)
       dli->Work_Estimate)); 
   } 
+#ifdef KEY // bug 7772
+  INT64 wn_base_ival = 0;
+  WN* wn_prod_trips = NULL;
+  if (WN_operator(wn_base) == OPR_CONST)
+    wn_base_ival = (INT64)TCON_dval(ST_tcon_val(WN_st(wn_base)));
+#endif
   for (WN* wn = wn_inner; wn != NULL; wn = LWN_Get_Parent(wn)) {
     if (WN_opcode(wn) == OPC_DO_LOOP) {
       WN* wn_prod = NULL; 
       if (count++ < var_nloops
 	  || !Upper_Bound_Standardize(WN_end(wn), TRUE)) { 
 	DO_LOOP_INFO* dli = Get_Do_Loop_Info(wn); 
+#ifdef KEY // bug 7772
+	wn_prod = LWN_Make_Icon(MTYPE_I4, dli->Est_Num_Iterations);
+#else
 	wn_prod = Make_Const(Host_To_Targ_Float(MTYPE_F8, 
 	  (float) dli->Est_Num_Iterations));  
+#endif
       } else { 
         WN* wn_trip_count = Trip_Count(wn); 
+#ifdef KEY // bug 7772
+	wn_prod = wn_trip_count;
+#else
 	wn_prod = LWN_CreateExp1(OPCODE_make_op(OPR_CVT, MTYPE_F8, 
           Promote_Type(Do_Wtype(wn))), wn_trip_count); 
+#endif
       } 
+#ifdef KEY // bug 7772
+      if (wn == wn_inner)
+	wn_prod_trips = wn_prod;
+      else wn_prod_trips = LWN_CreateExp2(OPC_I4MPY, wn_prod_trips, wn_prod);
+#else
       wn_base = LWN_CreateExp2(OPC_F8MPY, wn_base, wn_prod);  
+#endif
     } 
     if (wn == wn_outer) 
       break;  
@@ -3240,6 +3285,36 @@ WN* ARA_LOOP_INFO::Create_New_IF_Clause(BOOL is_pdo)
   }
   OPCODE subop = OPCODE_make_op(OPR_SUB, proc_type, MTYPE_V);
   WN* wn_pminus1 = LWN_CreateExp2(subop, wn_procs1, wn_one); 
+#ifdef KEY // bug 7772
+  WN* wn_rhs = LWN_CreateExp2(OPC_I4MPY, wn_prod_trips, wn_pminus1);
+      // get P * Tp in wn_PTp
+  WN* wn_procs2 = Current_Numprocs(_loop, is_pdo);  
+  WN* wn_Tp = LWN_Make_Icon(MTYPE_I4, (INT) Tp_Parallel_Cost());
+  WN* wn_PTp = LWN_CreateExp2(OPC_I4MPY, wn_procs2, wn_Tp); 
+      // get LHS expression P * (Tc + P * Tp) in wn_lhs
+  WN* wn_Tc = LWN_Make_Icon(MTYPE_I4, (INT) Tc_Parallel_Cost());
+  WN* wn_lhs_sum = LWN_CreateExp2(OPC_I4ADD, wn_Tc, wn_PTp);
+  WN* wn_procs3 = Current_Numprocs(_loop, is_pdo);
+  WN* wn_lhs = LWN_CreateExp2(OPC_I4MPY, wn_procs3, wn_lhs_sum);
+  WN* wn_result;
+  if (wn_base_ival != 0) {
+    if (WN_operator(wn_lhs) == OPR_INTCONST) {
+      WN_const_val(wn_lhs) = WN_const_val(wn_lhs) / wn_base_ival;
+      wn_result = LWN_CreateExp2(OPC_I4I4GT, wn_rhs, wn_lhs);
+    }
+    else wn_result = LWN_CreateExp2(OPC_I4I4GT, 
+    			       LWN_CreateExp2(OPC_I4MPY, wn_rhs,
+			       		LWN_Make_Icon(MTYPE_I4, wn_base_ival)),
+			       wn_lhs);
+  }
+  else { // use F8 type
+    wn_rhs = LWN_CreateExp1(OPCODE_make_op(OPR_CVT, MTYPE_F8, MTYPE_I4),wn_rhs);
+    wn_lhs = LWN_CreateExp1(OPCODE_make_op(OPR_CVT, MTYPE_F8, MTYPE_I4),wn_lhs);
+    wn_result = LWN_CreateExp2(OPC_I4F8GT, 
+    			       LWN_CreateExp2(OPC_F8MPY, wn_rhs, wn_base),
+			       wn_lhs);
+  }
+#else
   WN* wn_pminus1_float = LWN_CreateExp1(OPCODE_make_op(OPR_CVT, MTYPE_F8, 
     MTYPE_I4), wn_pminus1); 
       // get RHS expression W * (P - 1) in wn_rhs
@@ -3259,6 +3334,7 @@ WN* ARA_LOOP_INFO::Create_New_IF_Clause(BOOL is_pdo)
   WN* wn_lhs = LWN_CreateExp2(OPC_F8MPY, wn_p_float2, wn_lhs_sum);
 
   WN* wn_result = LWN_CreateExp2(OPC_I4F8GT, wn_rhs, wn_lhs);
+#endif
   return wn_result; 
 }
 
@@ -3321,6 +3397,49 @@ static void Print_Non_Parallel_Loop(FILE* fp,
     WB_Whirl_Symbol(wn_loop), (INT) WN_linenum(wn_loop));
 }
 
+#ifdef KEY
+static void Replace_Preg_With_Symbol (WN* node, WN* replace, WN* def,
+				      WN_OFFSET preg_num, ST* preg_st)
+{
+  if (WN_operator(node) == OPR_BLOCK) {
+    for (WN* stmt = WN_first(node); stmt; stmt = WN_next(stmt))
+      Replace_Preg_With_Symbol(stmt, replace, def, preg_num, preg_st);
+  } 
+  else if (WN_operator(node) == OPR_LDID) {
+    if (ST_class(WN_st(node)) == CLASS_PREG &&
+	WN_st(node) == preg_st &&
+	WN_offset(node) == preg_num) {
+      WN* parent = LWN_Get_Parent(node);
+      INT kid = 0;
+      WN *ldid = LWN_Copy_Tree(replace);
+      for (; kid < WN_kid_count(parent); kid ++)
+	if (WN_kid(parent, kid) == node) break;
+      WN_kid(parent, kid) = ldid;
+      Du_Mgr->Add_Def_Use(def, ldid);
+
+      // Delete the def->use for old node and then delete that node itself.
+      DEF_LIST *def_list = Du_Mgr->Ud_Get_Def(node);
+      DEF_LIST_ITER iter(def_list);
+      const DU_NODE *du_node = iter.First();
+      const DU_NODE *next;
+      Is_True(!iter.Is_Empty(),("Empty def list in Delete_Def_Use"));
+      for(next = iter.Next(); du_node; du_node=next, next=iter.Next()){
+	WN *def_node = (WN *) du_node->Wn();
+	// Add def_use for new node. 
+	// TODO: Do once. This is repeated many times unnecessarily.
+	Du_Mgr->Add_Def_Use(def_node, WN_kid0(def));
+	Du_Mgr->Delete_Def_Use(def_node,node);
+      }
+      LWN_Delete_Tree(node);
+    }
+  } 
+  // Recurse.
+  else
+    for (INT kid = 0; kid < WN_kid_count(node); kid ++)
+      Replace_Preg_With_Symbol(WN_kid(node, kid), replace, def, 
+			       preg_num, preg_st);
+}
+#endif
 // ============================================================================
 //
 // Generate parallel pragma for outer-most parallel loops
@@ -3497,9 +3616,41 @@ ARA_LOOP_INFO::Generate_Parallel_Pragma()
       if (Overlap_Local_Scalar(_scalar_use.Bottom_nth(i)->_scalar))
 	FmtAssert(FALSE,("ARA_LOOP_INFO::Generate_Parallel_Pragma, exposed scalar use overlaps with local scalar, something is wrong"));
       if (!Overlap_Reduction_Scalar(_scalar_use.Bottom_nth(i)->_scalar)) {
+#ifdef KEY
+	// Bug 6386 
+	// need to use a temporary instead of a preg for shared variables.
+	if (ST_class(_scalar_use.Bottom_nth(i)->_scalar.St()) == CLASS_PREG) {
+	  TYPE_ID rtype = _scalar_use.Bottom_nth(i)->_scalar.Type;
+	  ST * comma_st = Gen_Temp_Symbol (MTYPE_TO_TY_array[rtype], "_ubtmp");
+	  OPCODE ldid_opc = OPCODE_make_op(OPR_LDID,Promote_Type(rtype),rtype);
+	  WN_OFFSET preg_num = _scalar_use.Bottom_nth(i)->_scalar.WN_Offset();
+	  ST * preg_st = _scalar_use.Bottom_nth(i)->_scalar.St();
+	  WN * ldid = WN_CreateLdid(ldid_opc, preg_num, preg_st, 
+				    Be_Type_Tbl(rtype));	
+	  WN * stid = WN_Stid (rtype, 0, comma_st, WN_ty (ldid), ldid);
+	  WN_Set_Linenum (stid, WN_Get_Linenum(_loop));
+	  LWN_Parentize(stid);
+	  LWN_Insert_Block_Before (parent_block, wn_after_loop, stid);
+	  LWN_Set_Parent(stid, parent_block);
+	  WN *replace = WN_Ldid (rtype, 0, comma_st, WN_ty (ldid));
+	  Replace_Preg_With_Symbol(_loop, replace, stid, 
+				   preg_num, preg_st);
+	  prag = WN_CreatePragma(WN_PRAGMA_SHARED, 
+				 WN_st(replace), 
+				 WN_offset(replace), 0);
+	  WN_set_pragma_compiler_generated(prag);
+	  WN_Set_Linenum(prag, WN_Get_Linenum(_loop));
+	  LWN_Insert_Block_Before(WN_region_pragmas(region), NULL, prag);
+	  // Update access vectors
+	  DOLOOP_STACK dostack(&ARA_memory_pool);
+	  Build_Doloop_Stack(parent_block, &dostack);
+	  LNO_Build_Access(_loop, &dostack, &LNO_default_pool);
+	  continue;
+	}
+#endif
 	prag = WN_CreatePragma(WN_PRAGMA_SHARED, 
-	  _scalar_use.Bottom_nth(i)->_scalar.St(), 
-	  _scalar_use.Bottom_nth(i)->_scalar.WN_Offset(), 0);
+			       _scalar_use.Bottom_nth(i)->_scalar.St(), 
+			       _scalar_use.Bottom_nth(i)->_scalar.WN_Offset(), 0);
 	WN_set_pragma_compiler_generated(prag);
 	WN_Set_Linenum(prag, WN_Get_Linenum(_loop));
 	LWN_Insert_Block_Before(WN_region_pragmas(region), NULL, prag);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -210,11 +210,11 @@ void MRT::Init( BB* bb, int size, BOOL trace, MEM_POOL* mem_pool )
 
   entries = size;
   this->trace = trace;
-  (void*)Resource_Table =
+  Resource_Table = (MRT::Resource_Table_Entry**)
     MEM_POOL_Alloc( mem_pool, (sizeof(Resource_Table[0]) * entries) );
 
   for( int i = 0; i < entries; i++ ){
-    (void*)Resource_Table[i] =
+    Resource_Table[i] = (MRT::Resource_Table_Entry*)
       MEM_POOL_Alloc( mem_pool, sizeof(Resource_Table[i][0]) );
     Init_Table_Entry( Resource_Table[i] );
   }
@@ -423,7 +423,8 @@ void KEY_SCH::Init()
   }
   max_indx++;
 
-  (void*)opr_array = MEM_POOL_Alloc( mem_pool, ( sizeof(opr_array[0]) * max_indx ) );
+  opr_array = (OPR*) MEM_POOL_Alloc( mem_pool,
+				     sizeof(opr_array[0]) * max_indx );
   bzero( opr_array, ( sizeof(opr_array[0]) * max_indx ) );
 
   // Init resource table.

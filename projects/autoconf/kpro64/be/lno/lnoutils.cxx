@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1029,6 +1029,17 @@ BOOL Add_To_Symbol(WN* wn, INT64 i, ST* st,
 WN* Replace_Wnexp_With_Exp_Copy(WN* wn, WN* expr, DU_MANAGER* du, 
   BOOL* added_cvt, ARRAY_DIRECTED_GRAPH16 *dep_graph)
 {
+#ifdef KEY
+  // Bug 6132 - when replacing UnUmLDID with InImILOAD, need to complement
+  // the signedness of the ILOAD to avoid sign-extension.
+  BOOL make_unsigned = FALSE;
+  if (WN_operator(wn) == OPR_LDID && WN_operator(expr) == OPR_ILOAD &&
+      MTYPE_byte_size(WN_rtype(wn)) == MTYPE_byte_size(WN_rtype(expr)) &&
+      MTYPE_byte_size(WN_desc(wn)) == MTYPE_byte_size(WN_desc(expr)) &&
+      !MTYPE_is_signed(WN_rtype(wn)) && !MTYPE_is_signed(WN_desc(wn)) &&
+      MTYPE_is_signed(WN_rtype(expr)) && MTYPE_is_signed(WN_desc(expr)))
+    make_unsigned = TRUE;
+#endif
   Is_True(OPCODE_is_expression(WN_opcode(wn)), ("wn must be expression"));
   INT added_convert = FALSE;  
   WN* parent = LWN_Get_Parent(wn);
@@ -1072,7 +1083,14 @@ WN* Replace_Wnexp_With_Exp_Copy(WN* wn, WN* expr, DU_MANAGER* du,
   }
   if (added_cvt != NULL)
     *added_cvt = added_convert; 
-    
+
+#ifdef KEY
+  // Bug 6132 - see above.
+  if (make_unsigned) {
+    WN_set_rtype(copy, MTYPE_complement(WN_rtype(copy)));
+    WN_set_desc(copy, MTYPE_complement(WN_desc(copy)));
+  }
+#endif    
   return copy; 
 }
 
@@ -1285,19 +1303,6 @@ SYMBOL Create_Preg_Symbol(const char* name, TYPE_ID type)
 #endif
   return SYMBOL(MTYPE_To_PREG(type), reg, type);
 }
-
-#ifdef KEY
-SYMBOL Create_Preg_Symbol_Homed(const char* name, TYPE_ID type, WN* home)
-{
-#ifdef _NEW_SYMTAB
-  PREG_NUM reg = Create_Preg(type, (char*)name);
-  Be_preg_tab[reg - Last_Dedicated_Preg_Offset].Set_home_location(home);
-#else
-  PREG_NUM reg = Create_Preg(type, (char*)name, home);
-#endif
-  return SYMBOL(MTYPE_To_PREG(type), reg, type);
-}
-#endif
 
 SYMBOL Create_Stack_Symbol(const char *name, TYPE_ID type)
 {
@@ -1601,21 +1606,6 @@ void Print_Def_Use(WN *wn, FILE *fp)
   }
 }
 
-#ifdef KEY
-static BOOL Is_node_in_loop (WN * node, WN * loop)
-{
-  WN * parent = LWN_Get_Parent (node);
-
-  while (parent)
-  {
-    if (parent == loop) return TRUE;
-    parent = LWN_Get_Parent (parent);
-  }
-
-  return FALSE;
-}
-#endif // KEY
-
 // UPDATE DEF-USE, USE-DEF Chains after unrolling
 
 
@@ -1837,7 +1827,26 @@ static void Unrolled_DU_Update_E(UINT u, INT loopno,
 //
 // From the defn of loop_stmt in opt_du.h and other codes, it seems the use
 // must be inside the loop_stmt, so check for that as a temporary solution.
-	  WN* stmt = stmt_array ? stmt_array[i] : Is_node_in_loop (ldid_array[i], loop_stmt) ? loop_stmt : NULL;
+	  WN* stmt;
+	  if (stmt_array)
+	    stmt = stmt_array[i];
+	  else {
+	    if (!loop_stmt || WN_opcode(loop_stmt) != OPC_DO_LOOP) 
+	      stmt = loop_stmt;
+	    else {
+	      // Bug 3619 - for a SNL of depth > 1, loop_stmt may be
+	      // several levels above ldid_array[i] and may not have an entry
+	      // in hash_table. This separates the cases for bugs 3388 and 3619.
+	      DO_LOOP_INFO* loop_info = Get_Do_Loop_Info(loop_stmt, FALSE);
+	      if (loop_info->Is_Inner) {
+	        if (Wn_Is_Inside (ldid_array[i], loop_stmt))
+	 	  stmt = loop_stmt;
+	        else
+		  stmt = NULL;
+	      } else 
+	        stmt = loop_stmt;
+	    }
+	  }
 #else
 	  WN* stmt = stmt_array ? stmt_array[i] : loop_stmt;
 #endif
@@ -1933,6 +1942,10 @@ ST *Get_ST_Base(WN *load)
     if (iter.Next()) {  // multiple defs
       return NULL;
     }
+#ifdef KEY // bug 7624
+    if (iter.Is_Empty())
+      return NULL;
+#endif
     WN *def = (WN *) node->Wn();
     if (WN_operator(def) == OPR_STID) {
       return Get_ST_Base(WN_kid0(def));
@@ -2817,7 +2830,11 @@ static void LNO_Erase_Vertices_In_Loop_Rec(WN *wn, ARRAY_DIRECTED_GRAPH16 *dg)
     }
   }
   if (OPCODE_is_load(opcode) || OPCODE_is_store(opcode) || 
-      OPCODE_is_call(opcode) || (OPCODE_operator(opcode) == OPR_INTRINSIC_OP)) {
+      OPCODE_is_call(opcode) || (OPCODE_operator(opcode) == OPR_INTRINSIC_OP)
+#ifdef KEY
+      || (OPCODE_operator(opcode) == OPR_PURE_CALL_OP)
+#endif
+      ) {
     VINDEX16  v = dg->Get_Vertex(wn);
     if (v) {
       dg->Delete_Vertex(v);
@@ -2984,7 +3001,11 @@ static void Du_Sanity_Check_r(
     if (OPCODE_is_load(opc) || OPCODE_is_store(opc) || opr == OPR_ALTENTRY ||
         opr==OPR_FUNC_ENTRY || opr==OPR_RETURN || OPCODE_has_barrier(opc) ||
         opr==OPR_PARM || (opr==OPR_LABEL && WN_Label_Is_Handler_Begin(wn)) ||
-        opr==OPR_IO || OPCODE_is_call(opc) || opr==OPR_INTRINSIC_OP)
+        opr==OPR_IO || OPCODE_is_call(opc) || opr==OPR_INTRINSIC_OP
+#ifdef KEY
+        || opr==OPR_PURE_CALL_OP
+#endif
+	)
       h_table->Enter(wn,1);
   } else {
     if (OPCODE_is_load(opc) || OPCODE_is_store(opc)) {
@@ -3375,7 +3396,11 @@ BOOL Is_Loop_Invariant_Exp(WN* wn,
       if (!Is_Loop_Invariant_Exp(WN_kid(wn, kid), outerloop))
 	return FALSE; 
     return TRUE; 
-  } else if (opr == OPR_INTRINSIC_OP) { 
+  } else if (opr == OPR_INTRINSIC_OP
+#ifdef KEY
+	     || opr == OPR_PURE_CALL_OP
+#endif
+            ) { 
     for (INT i = 0; i < WN_kid_count(wn); i++) {
       WN* wn_parm_node = WN_kid(wn, i);
       if (WN_Parm_By_Reference(wn_parm_node))

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -125,8 +125,13 @@ Evaluate_phi (const SUMMARY_PHI *phi, SUMMARY_VALUE &return_value);
 static void
 Evaluate_expr (const SUMMARY_EXPR *expr, SUMMARY_VALUE &return_value);
 
+#ifdef KEY
+static void
+Evaluate_value (const SUMMARY_VALUE&, SUMMARY_VALUE&, WN * = NULL);
+#else
 static void
 Evaluate_value (const SUMMARY_VALUE& value, SUMMARY_VALUE &return_value);
+#endif
 
 
 //-----------------------------
@@ -1264,8 +1269,51 @@ Evaluate_common_const (const SUMMARY_SYMBOL* sym,
 }
 
 
+#ifdef KEY
+// Return TRUE if symbol idx is "private" (in OpenMP sense) in MP-region
+// region.
+static BOOL
+Var_is_private (ST_IDX idx, WN * region)
+{
+  Is_True (region && (WN_region_kind (region) & REGION_KIND_MP),
+           ("Var_is_private: Valid MP region expected"));
+
+  Is_True (idx, ("Var_is_private: Invalid symbol idx"));
+
+  WN * pragmas = WN_first (WN_region_pragmas (region));
+
+  while (pragmas)
+  {
+    ST_IDX sym = WN_st_idx (pragmas);
+    if (sym == idx)
+    {
+      switch (WN_pragma (pragmas))
+      {
+	case WN_PRAGMA_LOCAL:
+	case WN_PRAGMA_FIRSTPRIVATE:
+	case WN_PRAGMA_LASTLOCAL:
+	  return TRUE;
+
+	default:
+	  break;
+      }
+    }
+    
+    pragmas = WN_next (pragmas);
+  }
+
+  return FALSE;
+}
+
+// If we are processing the actual parameters from a callsite, mp_region
+// is any MP region around the callsite.
+static void
+Evaluate_value (const SUMMARY_VALUE& value, SUMMARY_VALUE& return_value,
+                WN * mp_region)
+#else
 static void
 Evaluate_value (const SUMMARY_VALUE& value, SUMMARY_VALUE &return_value)
+#endif // KEY
 {
     EVAL_HASH::const_iterator idx = eval_hash->find (&value);
 
@@ -1394,6 +1442,12 @@ Evaluate_value (const SUMMARY_VALUE& value, SUMMARY_VALUE &return_value)
 	return_value.Set_global_st_idx (st_idx);
 	return_value.Set_global_index (-1);
 
+#ifdef KEY
+        if (mp_region && Var_is_private (st_idx, mp_region)) {
+	  return_value.Set_not_const ();
+	  return;
+	}
+#endif // KEY
         if (!ST_is_const_var (St_Table[st_idx])) {
           if (Evaluate_common_const(sym, value, return_value)) {
             return;
@@ -1564,6 +1618,40 @@ Process_cond_branches (BOOL *call_deleted)
     
 } // Process_cond_branches
 
+#ifdef KEY
+#include "ipo_parent.h"
+// Find any MP region enclosing callsite 'e' in caller 'c'. If found,
+// set corresponding field in 'e'.
+static void
+Get_enclosing_mp_region (IPA_NODE * c, IPA_EDGE * e)
+{
+  PU caller = c->Get_PU ();
+
+  if (!PU_has_mp (caller)) return;
+
+  // Get context of caller
+  IPA_NODE_CONTEXT context (c);
+
+  // Set callsite information in call-graph edges
+  IPA_Call_Graph->Map_Callsites (c);
+
+  WN * call_wn = e->Whirl_Node ();
+  Is_True (call_wn, ("Get_enclosing_mp_region: NULL callsite in IPA_EDGE"));
+
+  WN * parent = WN_Get_Parent (call_wn, Parent_Map, Current_Map_Tab);
+
+  for (; parent; parent = WN_Get_Parent (parent, Parent_Map, Current_Map_Tab))
+  {
+    // Nested parallelism not supported
+    if (WN_operator (parent) == OPR_REGION && 
+        (WN_region_kind (parent) & REGION_KIND_MP))
+      {
+        e->Set_MP_Whirl_Node (parent);
+        break;
+      }
+  }
+}
+#endif // KEY
 
 // evaluate all actual parameters of the given callsite
 static void
@@ -1632,7 +1720,19 @@ Evaluate_actuals (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge)
           actual = &ipa_value[value_idx];
         }
         
+#ifdef KEY
+	// If the callsite is inside an MP region, and this parameter
+	// is a global variable marked private, then it cannot be
+	// const-propagated.
+	if (!edge->MP_Whirl_Node ())
+	  Get_enclosing_mp_region (caller, edge);
+	WN * mp_region = edge->MP_Whirl_Node ();
+
+	Evaluate_value (*actual, (*annot)[i], mp_region);
+#else
+
 	Evaluate_value (*actual, (*annot)[i]);
+#endif // KEY
 
 	if (check_for_readonly_ref &&
 	    ipa_actual[actual_idx].Get_pass_type() == PASS_LDID) {
@@ -2402,7 +2502,12 @@ Intra_PU_Global_Cprop (IPA_NODE* node)
 
   BOOL change = FALSE;
 
-  if (PU_is_dead(node, &change)) {
+#ifdef KEY // bug 2175
+  if (IPA_Enable_DFE && PU_is_dead(node, &change))
+#else
+  if (PU_is_dead(node, &change))
+#endif
+  {
     return change;
   }
 

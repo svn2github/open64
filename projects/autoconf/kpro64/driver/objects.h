@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -60,6 +60,9 @@ extern void add_ar_objects (char *arg);
 /* add library to list */
 extern void add_library_dir (char *path);
 
+/* get list of library dirs */
+extern string_list_t *get_library_dirs (void);
+
 /* append objects to end of list */
 extern void append_objects_to_list (string_list_t *list);
 extern void append_libraries_to_list (string_list_t *list);
@@ -80,8 +83,6 @@ extern void add_library (string_list_t *list, const char *lib);
 /* search library_dirs for the crt file */
 extern char *find_crt_path (char *crtname);
 
-#ifdef KEY
 boolean is_maybe_linker_option (int flag);
 void add_maybe_linker_option (int flag);
 void finalize_maybe_linker_options (boolean is_linker);
-#endif

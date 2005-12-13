@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,9 +39,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <libelf.h>
+#include "libelf/libelf.h"
 #include <sys/unwindP.h>
 #include <list>
+#include "elf_stuff.h"
+#include <elfaccess.h>
 
 #include "defs.h"
 #include "erglob.h"
@@ -1147,8 +1149,6 @@ Build_Fde_For_Proc (Dwarf_P_Debug dw_dbg, BB *firstbb,
   return fde;
 }
 
-#include <elf.h>
-#include <elfaccess.h>
 
 void
 Check_Dwarf_Rel(const Elf32_Rel &current_reloc)
@@ -1159,7 +1159,7 @@ Check_Dwarf_Rel(const Elf32_Rel &current_reloc)
 }
 
 void
-Check_Dwarf_Rel(const Elf64_Rel &current_reloc)
+Check_Dwarf_Rel(const Elf64_AltRel &current_reloc)
 {
   FmtAssert(REL64_type(current_reloc) == R_IA_64_DIR64MSB,
 	    ("Unimplemented 64-bit relocation type %d",
@@ -1167,7 +1167,7 @@ Check_Dwarf_Rel(const Elf64_Rel &current_reloc)
 }
 
 void
-Check_Dwarf_Rela(const Elf64_Rela &current_reloc)
+Check_Dwarf_Rela(const Elf64_AltRela &current_reloc)
 {
   FmtAssert(FALSE,
 	    ("Unimplemented 64-bit relocation type %d",

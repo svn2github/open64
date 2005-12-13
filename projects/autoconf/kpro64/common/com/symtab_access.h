@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -843,6 +843,13 @@ inline void
 Set_PU_is_extern_inline (PU& pu) 	{ pu.flags |= PU_IS_EXTERN_INLINE; }
 inline void
 Clear_PU_is_extern_inline (PU& pu)	{ pu.flags &= ~PU_IS_EXTERN_INLINE; }
+
+inline BOOL
+PU_mp_lower_generated (const PU& pu)	{ return (pu.flags & PU_MP_LOWER_GENERATED) != 0; }
+inline void
+Set_PU_mp_lower_generated (PU& pu) 	{ pu.flags |= PU_MP_LOWER_GENERATED; }
+inline void
+Clear_PU_mp_lower_generated (PU& pu)	{ pu.flags &= ~PU_MP_LOWER_GENERATED; }
 #endif
 #ifdef TARG_X8664
 inline BOOL
@@ -1478,26 +1485,26 @@ ST_ATTR_reg_id (const ST_ATTR& st_attr)
 {
     Is_True (st_attr.kind == ST_ATTR_DEDICATED_REGISTER,
 	     ("attribute is not for a dedicated register"));
-    return st_attr.u.reg_id;
+    return st_attr.Get_reg_id();
 }
 inline void
 Set_ST_ATTR_reg_id (ST_ATTR& st_attr, PREG_NUM id)
 {
     st_attr.kind = ST_ATTR_DEDICATED_REGISTER;
-    st_attr.u.reg_id = id;
+    st_attr.Set_reg_id (id);
 }
 inline STR_IDX
 ST_ATTR_section_name (const ST_ATTR& st_attr)
 {
     Is_True (st_attr.kind == ST_ATTR_SECTION_NAME,
 	     ("attribute is not for a section name"));
-    return st_attr.u.section_name;
+    return st_attr.Get_section_name ();
 }
 inline void
 Set_ST_ATTR_section_name (ST_ATTR& st_attr, STR_IDX name)
 {
     st_attr.kind = ST_ATTR_SECTION_NAME;
-    st_attr.u.section_name = name;
+    st_attr.Set_section_name (name);
 }
 
 //----------------------------------------------------------------------

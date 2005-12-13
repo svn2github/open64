@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -567,6 +567,9 @@ extern const char *CGEXP_sthint_L1;
 extern const char *CGEXP_sthint_L2;
 
 extern BOOL LRA_do_reorder;
+#ifdef TARG_X8664
+extern BOOL LRA_prefer_legacy_regs;
+#endif
 
 extern BOOL GRA_use_old_conflict;
 extern BOOL GRA_shrink_wrap;
@@ -653,8 +656,11 @@ extern BOOL CG_min_spill_loc_size;
 extern BOOL CG_min_stack_size;
 extern BOOL flag_test_coverage;
 extern OPTION_LIST *Arc_Profile_Region;
+extern INT32 CG_cse_regs;
+extern INT32 CG_sse_cse_regs;
 #endif
 #ifdef TARG_X8664
+extern INT32 CG_sse_load_execute;
 extern INT32 CG_load_execute;
 extern BOOL CG_use_movlpd;
 extern BOOL CG_use_setcc;
@@ -666,11 +672,13 @@ extern UINT32 CG_p2align_max_skip_bytes;
 extern UINT32 CG_movnti;
 extern BOOL CG_use_xortozero;
 extern BOOL CG_use_incdec;
+extern BOOL CG_use_test;
 extern BOOL CG_fold_shiftadd;
 extern BOOL CG_use_prefetchnta;
 extern BOOL CG_idivbyconst_opt;
 extern BOOL CG_fold_constimul;
 extern BOOL CG_cloop;
+extern BOOL CG_use_lddqu;
 #endif
 
 // temporary flags for controlling algorithm selection for fdiv, sqrt, etc

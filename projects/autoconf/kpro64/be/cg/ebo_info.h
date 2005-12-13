@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -198,6 +198,9 @@ typedef struct local_op_info {
 	mBOOL op_must_not_be_moved;	/* This OP can not be moved or recreated. */
         BB *in_bb;			/* The defining BB. */
         OP *in_op;			/* The defining OP. */
+#ifdef KEY
+        int op_num;			/* OP's number in BB; first OP is 1 */
+#endif
         EBO_OP_INFO *same;		/* Other OPs with the same hash. */
         EBO_OP_INFO *prior;		/* Previous info node. */
         EBO_OP_INFO *next;		/* Next info node. */

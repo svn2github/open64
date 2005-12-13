@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Language-independent node constructors for parse phase of GNU compiler.
@@ -53,6 +53,7 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "langhooks.h"
 
 #ifdef KEY
+#include "c-common.h"
 extern void erase_duplicates (tree);
 #endif
 
@@ -188,6 +189,10 @@ tree_size (node)
     case '<':  /* a comparison expression */
     case '1':  /* a unary arithmetic expression */
     case '2':  /* a binary arithmetic expression */
+#ifdef KEY
+      if (code == OMP_MARKER_STMT)
+        return sizeof (struct tree_omp);
+#endif // KEY
       return (sizeof (struct tree_exp)
 	      + TREE_CODE_LENGTH (code) * sizeof (char *) - sizeof (char *));
 
@@ -1512,6 +1517,11 @@ tree_node_structure (t)
 {
   enum tree_code code = TREE_CODE (t);
   
+#ifdef KEY
+  if (code == OMP_MARKER_STMT)
+    return TS_OMP;
+#endif
+
   switch (TREE_CODE_CLASS (code))
     {
     case 'd':	return TS_DECL;
@@ -4814,6 +4824,11 @@ build_common_tree_nodes_2 (short_double)
   long_double_type_node = make_node (REAL_TYPE);
   TYPE_PRECISION (long_double_type_node) = LONG_DOUBLE_TYPE_SIZE;
   layout_type (long_double_type_node);
+
+  float_ptr_type_node = build_pointer_type (float_type_node);
+  double_ptr_type_node = build_pointer_type (double_type_node);
+  long_double_ptr_type_node = build_pointer_type (long_double_type_node);
+  integer_ptr_type_node = build_pointer_type (integer_type_node);
 
   complex_integer_type_node = make_node (COMPLEX_TYPE);
   TREE_TYPE (complex_integer_type_node) = integer_type_node;

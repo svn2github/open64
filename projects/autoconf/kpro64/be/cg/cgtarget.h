@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -787,7 +787,7 @@ extern void CGTARG_Generate_Countdown_Loop(TN *trip_count_tn, BB *tail,
 					   OPS *prolog_ops, OPS *body_ops, 
 					   BOOL single_bb, LOOP_DESCR *loop);
 extern void CGTARG_LOOP_Optimize( LOOP_DESCR* loop );
-extern TN* CGTARG_Process_Asm_m_constraint( WN*, OPS* );
+extern TN* CGTARG_Process_Asm_m_constraint( WN*, void**, OPS* );
 #endif
 
 /* call init routine once per asm stmt */

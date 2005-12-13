@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -64,6 +68,17 @@
 extern void __ttynam_f90 (char *name, int strlen, int *u);
 extern void ttynamf90_(char *name, _f_int strlen, int *u);
 extern void ttynamf90_8_(char *name, _f_int strlen, _f_int8 *u);
+
+#ifdef KEY /* Bug 1683 */
+
+/* Provide subroutine interface as well as function interface */
+void
+pathf90_ttynam(int *u, char *name, int strlen)
+{
+  __ttynam_f90(name, strlen, u);
+}
+
+#endif /* KEY Bug 1683 */
 
 void
 __ttynam_f90 (char *name, int strlen, int *u)

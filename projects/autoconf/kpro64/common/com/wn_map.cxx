@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -295,7 +295,7 @@ WN_MAP_get_map_id (WN_MAP_TAB *maptab, OPERATOR_MAPCAT category, WN *wn)
     INT32 i;
     WN_MAP_ID id =
       maptab->_free_list[category][--maptab->_free_list_count[category]];
-    WN_map_id(wn) = id;
+    WN_set_map_id(wn, id);
     /* grabbed it from the free list, now must zero old mappings */
     for (i = 0; i < WN_MAP_MAX; i++) {
       if (maptab->_is_used[i] && (id < maptab->_map_size[category][i])) {
@@ -318,7 +318,7 @@ WN_MAP_get_map_id (WN_MAP_TAB *maptab, OPERATOR_MAPCAT category, WN *wn)
   }
 
   /* nothing on the free list, give it a new id */
-  WN_map_id(wn) = ++maptab->_last_map_id[category];
+  WN_set_map_id(wn, ++maptab->_last_map_id[category]);
   return WN_map_id(wn);
 }
 
