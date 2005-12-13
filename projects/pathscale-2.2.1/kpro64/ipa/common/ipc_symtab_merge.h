@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -289,7 +289,7 @@ struct IPC_GLOBAL_IDX_MAP
 
     IPC_GLOBAL_IDX_MAP (UINT32 st_size, UINT32 ty_size, UINT32 tcon_size,
 			UINT32 initv_size, MEM_POOL *pool) :
-	sym_str (0, __gnu_cxx::hash<STR_IDX>(), std::equal_to<STR_IDX> (),
+	sym_str (0, __new_hash::hash<STR_IDX>(), std::equal_to<STR_IDX> (),
 		 SYMSTR_IDX_MAP::allocator_type (pool)),
 	st (st_size, ST_IDX_MAP::allocator_type (pool)),
 	ty (ty_size, TY_IDX_MAP::allocator_type (pool)),

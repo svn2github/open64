@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -54,6 +54,15 @@
 
 extern long     _zero_entity;   /* nonzero addr for PRESENT func */
 
+#define NaN32 0xffa5a5a5
+#define NaN64 0xffa5a5a5fff5a5a5ll
+
+static short ps_debug_alloc = -1; /* -1 is uninitialized
+				   * 0 is no allocation debugging
+				   * 1 to fill allocations with 0s
+				   * 2 to fill allocations with 32 bit NaNs
+				   * 3 to fill allocations with 64 bit NaNs */
+
 /*
  *      The alloc list describes all the items in the allocation list
  *      for the ALLOCATE and DEALLOCATE statements.
@@ -86,6 +95,36 @@ typedef struct AllocHead {
 	DopeVectorType *dv[1];		/* array of pointers to dope vects */
 } AllocHeadType;
 
+short get_debug_alloc_state()
+{
+	char * debugenv;
+	
+	debugenv = getenv ("PSC_FDEBUG_ALLOC");
+	if (!debugenv) {
+		return 0;
+	}
+	else if (strcasecmp (debugenv, "ZERO") == 0) {
+		return 1;
+	}
+	else if (strcasecmp (debugenv, "NaN") == 0) {
+		return 2;
+	}
+	else if (strcasecmp (debugenv, "NaN4") == 0) {
+		return 2;
+	}
+	else if (strcasecmp (debugenv, "NaN32") == 0) {
+		return 2;
+	}
+	else if (strcasecmp (debugenv, "NaN8") == 0) {
+		return 3;
+	}
+	else if (strcasecmp (debugenv, "NaN64") == 0) {
+		return 3;
+	}
+	
+	return 0;
+}
+
 /*    _ALLOCATE - called by compiled Fortran programs to allocate space
  *                for objects in the allocation list.  The status is
  *                returned in the optional stat_var.
@@ -114,13 +153,18 @@ _ALLOCATE(AllocHeadType *aloclist,
 	int 		lstat = 0;	/* status variable present */
 	int 		errflag = 0;	/* error flag */
 	DopeVectorType	*dva;		/* pointer to dope vector */
-	int 		i;		/* Loop counter */
+	int 		i, j;		/* Loop counter */
 	int 		iarray=0;	/* array of dv counter */
 	int 		bytalign=0; 	/* byte aligned flag */
 	long 		nbytes;		/* Number bytes in array */
 	long 		fcdleng = 0;	/* fcdlen in array */
 	ptrdiff_t	*base;		/* ptr to result array */
 	int 		imalocflg = 0;	/* imalloc from aloclist */
+
+	/* Check for allocation debugging */
+	if (ps_debug_alloc == -1) {
+		ps_debug_alloc = get_debug_alloc_state();
+	}
 
 	/* setup counter for number of addresses in allocation list */
 	loopcount	= aloclist->icount;
@@ -208,6 +252,29 @@ _ALLOCATE(AllocHeadType *aloclist,
 					return;
 				}
 				_lerror (_LELVL_ABORT, FENOMEMY);
+			}
+			/* If fortran malloc debugging is on, initialize the memory. */
+			
+			if (ps_debug_alloc > 0) {
+				if (ps_debug_alloc == 1) {
+					memset (base, 0, nbytes);
+				}
+				else if (ps_debug_alloc == 2) {
+					unsigned * surrogate = (unsigned *) &(base[0]);
+					if (nbytes % sizeof (unsigned) == 0) {
+						for (i = 0, j = 0; j < nbytes; i ++, j += sizeof (unsigned)) {
+							surrogate[i] = NaN32;
+						}
+					}
+				}
+				else if (ps_debug_alloc == 3) {
+					uint64 * surrogate = (uint64 *) &(base[0]);
+					if (nbytes % sizeof (uint64) == 0) {
+						for (i = 0, j = 0; j < nbytes; i ++, j += sizeof (uint64)) {
+							surrogate[i] = NaN64;
+						}
+					}
+				}
 			}
 		}
 
@@ -332,13 +399,27 @@ _DEALLOCATE(AllocHeadType *aloclist,
 			nsize *= dva->dimension[i].extent;
 
 		/* error if current size not same as original size */
+#ifdef KEY /* Bug 4933 */
+		/* If we don't know the original size (for example, because
+		 * this is a pointer to a dummy argument and we have no dope
+		 * information for the actual argument) then optimistically
+		 * assume it is correct. We believe that there's no other
+		 * case where the original size could be zero and the actual
+		 * size nonzero. */
+		if (dva->orig_size && dva->orig_size != nsize ) {
+#else
 		if (dva->orig_size != nsize ) {
+#endif /* KEY Bug 4933 */
 			if(lstat) {
 				*statvar	= FEDEASIZ;
 				return;
 			}
 			_lerror (_LELVL_ABORT, FEDEASIZ, dva->orig_size, nsize);
+#ifdef KEY /* Bug 4933 */
 		}
+#else
+		}
+#endif /* KEY Bug 4933 */
 		/* free space when size not zero */
 		if (nsize != 0)
 #if	defined(_CRAYT3E)
@@ -490,9 +571,17 @@ _REALLOC(DopeVectorType *array,
 	long 		newlen; 	/* new byte size for array */
 	long 		bitlen; 	/* new bitlen size for array */
 	int 		debyteflag = 0; /* derived byte flag for el_len */
+	long            oldlen;         /* previous byte size for array */
+	int             i, j;
 
 	bitlen	= *length;
 	newlen	= bitlen >> 3;
+	oldlen  = array->orig_size >> 3;
+
+	/* Check for allocation debugging */
+	if (ps_debug_alloc == -1) {
+		ps_debug_alloc = get_debug_alloc_state();
+	}
 
 	/* set flag to indicate byte-aligned data type.
 	 * set address pointer according to data type. */
@@ -516,6 +605,32 @@ _REALLOC(DopeVectorType *array,
 	/* if no memory assigned, error */
 	if (base == NULL && newlen != 0)
 		_lerror (_LELVL_ABORT, FENOMEMY);
+	/* If the array has grown, fill it appropriately. */
+	if (ps_debug_alloc > 0 && newlen > oldlen) {		
+		if (ps_debug_alloc == 1) {
+			memset ((char *) base + oldlen, 0, newlen - oldlen);
+		}
+		else if (ps_debug_alloc == 2) {
+			if ((newlen-oldlen) % sizeof (unsigned) == 0) {
+				unsigned * surrogate = (unsigned *) &(base[0]) + (oldlen / sizeof (unsigned));
+				for (i = 0, j = 0;
+				     j < newlen-oldlen;
+				     i ++, j += sizeof (unsigned)) {
+					surrogate[i] = NaN32;
+				}
+			}
+		}
+		else if (ps_debug_alloc == 3) {
+			if ((newlen-oldlen) % sizeof (uint64) == 0) {
+				uint64 * surrogate = (uint64 *) &(base[0]) + (oldlen / sizeof (uint64));
+				for (i = 0, j = 0;
+				     j < newlen - oldlen;
+				     i ++, j += sizeof (uint64)) {
+					surrogate[i] = NaN64;
+				}
+			}
+		}
+	}
 
 	array->assoc	= (newlen == 0) ? 0 : 1;
 
@@ -576,7 +691,12 @@ _F90_ALLOCATE_B(long size,
 	ptrdiff_t	*base;	/* ptr to result array */
 	char	*p;
 	size_t	nbytes;
-	long	i;
+	long	i, j;
+
+	/* Check for allocation debugging */
+	if (ps_debug_alloc == -1) {
+		ps_debug_alloc = get_debug_alloc_state();
+	}
 
 	/* check for presence of statvar */
 	if(statvar != NULL)
@@ -626,6 +746,30 @@ _F90_ALLOCATE_B(long size,
 			}
 			_lerror (_LELVL_ABORT, FENOMEMY);
 		}
+
+		/* If fortran malloc debugging is on, initialize the memory. */
+		
+		if (ps_debug_alloc > 0) {
+			if (ps_debug_alloc == 1) {
+				memset (base, 0, nbytes);
+			}
+			else if (ps_debug_alloc == 2) {
+				unsigned * surrogate = (unsigned *) &(base[0]);
+				if (nbytes % sizeof (unsigned) == 0) {
+					for (i = 0, j = 0; j < nbytes; i ++, j += sizeof (unsigned)) {
+						surrogate[i] = NaN32;
+					}
+				}
+			}
+			else if (ps_debug_alloc == 3) {
+				uint64 * surrogate = (uint64 *) &(base[0]);
+				if (nbytes % sizeof (uint64) == 0) {
+					for (i = 0, j = 0; j < nbytes; i ++, j += sizeof (uint64)) {
+						surrogate[i] = NaN64;
+					}
+				}
+			}
+		}
 	}
 
 	if (FLAG_TRAPUV(flags)) {
@@ -648,3 +792,53 @@ _F90_ALLOCATE_B(long size,
 defalias(_F90_ALLOCATE_B, _F90_ALLOCATE);
 
 #endif	/* __mips */
+#ifdef _DEBUG
+
+#include <stdio.h>
+
+/*
+ * This is designed to be called from the debugger to display dope vector
+ * information.
+ */
+void
+print_dope_vector(DopeVectorType *dv, FILE *f)
+{
+  static char *P_OR_A[] = { "NOT_P_OR_A", "POINTTR", "ALLOC_ARRY" };
+  if (0 == f)
+  {
+    f = stderr;
+  }
+
+  fprintf(f, "%p: DopeVectorType:\n", (void *) dv);
+  fprintf(f, "+%u: ptr=%p\n",
+    (unsigned int) (((char *) &dv->base_addr.a.ptr) - (char *) dv),
+    dv->base_addr.a.ptr);
+  fprintf(f, "+%u: el_len=%lu\n",
+    (unsigned int) (((char *) &dv->base_addr.a.el_len) - (char *) dv),
+    dv->base_addr.a.el_len);
+  fprintf(f, "assoc, ptr_alloc, p_or_a, a_contig=%d %d %s %d\n",
+    dv->assoc, dv->ptr_alloc, P_OR_A[dv->p_or_a], dv->a_contig);
+  fprintf(f, "n_dim=%u\n", dv->n_dim);
+  fprintf(f, "+%u: type_lens.type/dpflag/kind/int_len/dec_len=%d/%d/%d/%d/%d\n",
+    (unsigned int) (((char *)&dv->type_lens) - (char *) dv),
+    (int) dv->type_lens.type,
+    (int) dv->type_lens.dpflag,
+    (int) dv->type_lens.kind_or_star,
+    (int) dv->type_lens.int_len,
+    (int) dv->type_lens.dec_len);
+  fprintf(f, "+%u: orig_base=%p\n",
+    (unsigned int) (((char *)&dv->orig_base) - (char *) dv),
+    dv->orig_base);
+  fprintf(f, "+%u: orig_size=%lu\n",
+    (unsigned int) (((char *)&dv->orig_size) - (char *) dv),
+    dv->orig_size);
+  int i;
+  for (i = 0; i < dv->n_dim; i += 1)
+  {
+    struct DvDimen *dimen  = &(dv->dimension[i]);
+    fprintf(f, "+%u: low_bound, extent, stride_mult=%ld %ld %ld\n",
+      (unsigned int) (((char*)dimen) - (char *)dv),
+      dimen->low_bound, dimen->extent, dimen->stride_mult);
+  }
+}
+#endif /* _DEBUG */

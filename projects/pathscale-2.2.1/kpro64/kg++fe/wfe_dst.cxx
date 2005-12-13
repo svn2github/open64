@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -107,6 +107,8 @@ extern "C" {
 #include <map>
 #ifdef KEY
 #include "stamp.h"	/* For INCLUDE_STAMP */
+#include "demangle.h"
+extern "C" char *cplus_demangle (const char *, int);
 #endif
 
 extern const char *dump_base_name ;              // in toplev.c
@@ -144,6 +146,17 @@ static void DST_enter_param_vars(tree fndecl,DST_INFO_IDX parent,tree parameter_
 static std::vector< std::pair< char *, UINT > > dir_dst_list;
 typedef std::map< std::string, DST_INFO_IDX > DST_Type_Map;
 static DST_Type_Map basetypes;
+
+#ifdef KEY
+// Returns true if type_tree has a DECL_ORIGINAL_TYPE, which implies this
+// node is a typedef.
+static inline BOOL is_typedef (tree type_tree)
+{
+  tree tname = TYPE_NAME (type_tree);
+  return (tname && TREE_CODE (tname) == TYPE_DECL &&
+          DECL_ORIGINAL_TYPE (tname));
+}
+#endif
 
 // Use DECL_CONTEXT or TYPE_CONTEXT to get
 // the  index of the current applicable scope
@@ -271,6 +284,10 @@ static std::vector< std::pair< char *, UINT > > file_dst_list;
 static UINT
 Get_File_Dst_Info (char *name, UINT dir)
 {
+#ifdef KEY
+        if (name[0] == '\0') // empty file name from g++ 3.4
+          return last_file_num;
+#endif
         std::vector< std::pair < char*, UINT > >::iterator found;
 	// assume linear search is okay cause list will be small?
         for (found = file_dst_list.begin(); 
@@ -497,6 +514,10 @@ DST_enter_static_data_mem(tree  parent_tree,
         FALSE  );      // is_artificial ?
 
     DECL_DST_FIELD_IDX(field) = field_idx;
+#ifdef KEY
+    // Bug 4829 - do not enter variables without a name.
+    if (mem_name != NULL && *mem_name != '\0')
+#endif
     DST_append_child(parent_idx,field_idx);
 
     DST_INFO_IDX varidx = DECL_DST_IDX(field);
@@ -517,28 +538,6 @@ DST_enter_static_data_mem(tree  parent_tree,
     return ;
 }
 
-#ifdef KEY
-// Bug 3041 - The DST creation should follow the ST creation; during the
-// mainstream compilation, sometimes types are left incomplete and filled 
-// later. The DST creation should not build DST entries based on imcomplete 
-// types. So, we should not create new types as part of DST creation (Get_TY
-// does this so, instead call DST_Get_TY which just queries the current TY_IDX).
-static inline TY_IDX 
-DST_Get_TY (tree type_tree)
-{
-  TY_IDX idx = TYPE_TY_IDX(type_tree);  
-  if (idx > 1) {
-    if (TREE_CODE(type_tree) == RECORD_TYPE ||
-        TREE_CODE(type_tree) == UNION_TYPE) {
-      FLD_HANDLE elt_fld = TY_fld(idx);
-      if (elt_fld.Is_Null() && TYPE_METHODS(type_tree) == NULL) 
-	return 0; // forward declared
-    }
-  }
-  return idx;
-}
-#endif
-
 // Called for member functions, whether static member funcs
 // or non-static member funcs.
 // Here we add the member func to the class decl.
@@ -549,7 +548,11 @@ DST_Get_TY (tree type_tree)
 // not DST and not ST information. As this is not a definition point.
 // (for some functions it can be, but we don't yet handle that)
 // 
+#ifndef KEY
 static void
+#else
+void
+#endif
 DST_enter_member_function( tree parent_tree,
 		DST_INFO_IDX parent_idx,
                 TY_IDX parent_ty_idx,
@@ -564,18 +567,21 @@ DST_enter_member_function( tree parent_tree,
 
     
 
+#ifndef KEY
     tree resdecl = DECL_RESULT(fndecl);
     tree restype = 0;
     if( resdecl) {
 	   restype = TREE_TYPE(resdecl);
     }
-    if(restype) {
-#ifndef KEY
-	 TY_IDX itx = Get_TY(restype);
 #else
-	 TY_IDX itx = DST_Get_TY(restype);
-	 if (itx <= 1) return;
+    // Another case of Bug 1510 - get the result type from the function type 
+    // declaration rather than the result declaration type.
+    tree restype = 0;
+    if (TREE_TYPE(fndecl))
+      restype = TREE_TYPE(TREE_TYPE(fndecl));    
 #endif
+    if(restype) {
+	 TY_IDX itx = Get_TY(restype);
 	 ret_dst = TYPE_DST_IDX(restype);
     }
 
@@ -591,6 +597,30 @@ DST_enter_member_function( tree parent_tree,
 #endif
     char * linkage_name = 
 	IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME (fndecl));
+#ifdef KEY
+    // Bug 3846
+    if (IDENTIFIER_OPNAME_P (DECL_NAME(fndecl)) && 
+	IDENTIFIER_TYPENAME_P (DECL_NAME(fndecl))) {
+      basename = cplus_demangle(linkage_name, DMGL_PARAMS | DMGL_ANSI | 
+                                              DMGL_TYPES);
+      if (basename) {
+	basename = strstr(basename, "operator ");
+	FmtAssert(basename, ("NYI"));
+      } else {
+	// Bug 4788 has a weird mangled name which cannot be demangled using
+	// c++filt; g++ also generates the same linkage name (mangled name) for
+	// that symbol. However, g++ is able to get back the demangled name 
+	// somehow. For now, leave this operator name as such.
+	// c++filt version 3.3 has this problem but version 3.4 seems to have
+	// fixed this. Since, there are lot of changes to 
+	// kgnu_common/libiberty/cp-demangle.c, we will wait for the front-end
+	// upgrade to 3.4 which will fix this automatically.
+	DevWarn(
+	 "encountered a mangled name that can not be demangled using c++filt");
+	basename = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+      }
+    }
+#endif
 
 
     tree ftype = TREE_TYPE(fndecl);
@@ -599,12 +629,7 @@ DST_enter_member_function( tree parent_tree,
 
     // is_declaration TRUE  as this is function declared in class,
     // not a definition or abstract root.
-#ifndef KEY
     TY_IDX base =  Get_TY(ftype);
-#else
-    TY_IDX base =  DST_Get_TY(ftype);
-    if (base <= 1) return;
-#endif
 
 
     BOOL is_external = TRUE;
@@ -681,9 +706,6 @@ DST_enter_normal_field(tree  parent_tree,
 		tree field, int &currentoffset, int &currentcontainer)
 {
     char isbit = 0; 
-#ifdef KEY
-    if (DST_Get_TY(TREE_TYPE(field)) <= 1) return;
-#endif
     if ( ! DECL_BIT_FIELD(field)
            && Get_Integer_Value(DECL_SIZE(field)) > 0
            && Get_Integer_Value(DECL_SIZE(field))
@@ -711,7 +733,9 @@ DST_enter_normal_field(tree  parent_tree,
 
 #ifdef KEY
     // bug 1718
-    if (field_name == NULL || field_name[0] == '\0') {
+    if ((field_name == NULL || field_name[0] == '\0' ) &&
+	/* bug 3847 - fields that are anonymous unions should be emitted */ 
+	TREE_CODE(TREE_TYPE(field)) != UNION_TYPE) {
         return ;
     }
 #endif
@@ -719,12 +743,7 @@ DST_enter_normal_field(tree  parent_tree,
     tree ftype = TREE_TYPE(field);
 
 
-#ifndef KEY
     TY_IDX base = Get_TY(ftype);
-#else
-    TY_IDX base = DST_Get_TY(ftype);
-    if (base <= 1) return;
-#endif
 
     DST_INFO_IDX fidx = Create_DST_type_For_Tree(ftype,base,parent_ty_idx);
 
@@ -883,12 +902,7 @@ DST_enter_struct_union_members(tree parent_tree,
 { 
     DST_INFO_IDX dst_idx = DST_INVALID_INIT;
 
-#ifndef KEY
     TY_IDX parent_ty_idx = Get_TY(parent_tree);
-#else
-    TY_IDX parent_ty_idx = DST_Get_TY(parent_tree);
-    if (parent_ty_idx <= 1) return;
-#endif
     
     //if(TREE_CODE_CLASS(TREE_CODE(parent_tree)) != 'd') {
      //   DevWarn("DST_enter_struct_union_members input not 't' but %c",
@@ -919,6 +933,17 @@ DST_enter_struct_union_members(tree parent_tree,
         }
     }
 
+#ifdef KEY
+    // Bug 3533 - Expand all member functions of classes inside ::std namespace
+    // here (I don't know how to get the member functions of the classes
+    // contained in ::std namespace from gxx_emitted_decl in wfe_decl.cxx).
+    tree context = DECL_CONTEXT(parent_tree);
+    if (TREE_CODE(context) != TYPE_DECL ||
+	!DECL_CONTEXT(context) ||
+	TREE_CODE(DECL_CONTEXT(context)) != NAMESPACE_DECL ||
+	!DECL_NAMESPACE_STD_P(DECL_CONTEXT(context)))
+      return;
+#endif
     // member functions
     tree methods = TYPE_METHODS(parent_tree);
     for  ( ; methods != NULL_TREE; methods = TREE_CHAIN(methods)) {
@@ -952,9 +977,34 @@ static DST_INFO_IDX
 DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx, 
 		INT tsize)
 { 
+#ifdef KEY
+    // Get the unqualified gcc type.  Bug 3969.
+    type_tree = TYPE_MAIN_VARIANT(type_tree);
+#endif
+
     DST_INFO_IDX dst_idx  = TYPE_DST_IDX(type_tree);
 
-    DST_INFO_IDX current_scope_idx =
+    DST_INFO_IDX current_scope_idx;
+#ifdef KEY
+    // Want the immediately enclosing scope.  Bug 4168.  (Do this for other
+    // types besides records and unions too?  For now, limit to nested
+    // records/unions.)
+    if (TYPE_CONTEXT(type_tree) &&
+	(TREE_CODE(type_tree) == RECORD_TYPE ||
+	 TREE_CODE(type_tree) == UNION_TYPE) &&
+	(TREE_CODE(TYPE_CONTEXT(type_tree)) == RECORD_TYPE ||
+	 TREE_CODE(TYPE_CONTEXT(type_tree)) == UNION_TYPE)) {
+      current_scope_idx = TYPE_DST_IDX(TYPE_CONTEXT(type_tree));
+#if 0	// Temporary workaround for DST_IS_NULL(current_scope_idx).  Bug 7551.
+      Is_True(!DST_IS_NULL(current_scope_idx),
+	      ("Create_DST_type_For_Tree: invalid current scope index"));
+#else
+      if (DST_IS_NULL(current_scope_idx))
+        current_scope_idx = DST_get_context(TYPE_CONTEXT(type_tree));
+#endif
+    } else
+#endif
+    current_scope_idx =
          DST_get_context(TYPE_CONTEXT(type_tree));
 
     if(DST_IS_NULL(dst_idx)) {
@@ -977,7 +1027,7 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 #endif // KEY
 
 	char *name = Get_Name(type_tree);
-	
+
 #ifdef KEY
         // bug 1718
         if (name == NULL || name[0] == '\0') {
@@ -1065,12 +1115,6 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 #endif
 
 		    DST_append_child(dst_idx,inhx);
-#ifdef KEY
-		    if (DST_Get_TY(basetype) <= 1) {
-		      DST_INFO_IDX error_idx = DST_INVALID_INIT;
-		      return error_idx;
-		    }
-#endif
                     if (!is_empty_base_class(basetype) ||
                         !TREE_VIA_VIRTUAL(binfo)) {
                       //FLD_Init (fld, Save_Str(Get_Name(0)),
@@ -1301,6 +1345,10 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_sclass(var_st) == SCLASS_AUTO,
 			     FALSE,  // is_external
 			     FALSE  ); // is_artificial
+#ifdef KEY
+    // Bug 4829 - do not enter variables without a name.
+    if (ST_name(var_st) != NULL && *ST_name(var_st) != '\0')
+#endif
     DST_append_child(comp_unit_idx,lb.ref);
   } 
 
@@ -1320,6 +1368,10 @@ DST_enter_subrange_type (ARB_HANDLE ar)
 			     ST_sclass(var_st) == SCLASS_AUTO,
 			     FALSE,  // is_external
 			     FALSE  ); // is_artificial
+#ifdef KEY
+    // Bug 4829 - do not enter variables without a name.
+    if (ST_name(var_st) != NULL && *ST_name(var_st) != '\0')
+#endif
     DST_append_child(comp_unit_idx,ub.ref);
   }
 
@@ -1466,12 +1518,7 @@ DST_construct_pointer_to_member(tree type_tree)
 	DevWarn("Unexpected tree shape1: pointer_to_member %c\n",
 		TREE_CODE_CLASS(TREE_CODE(ttree)));
     }
-#ifndef KEY
     TY_IDX midx = Get_TY(member_type);
-#else
-    TY_IDX midx = DST_Get_TY(member_type);
-    if (midx <= 1) return error_idx;
-#endif
     TYPE_TY_IDX(member_type) = midx;
     TY_IDX orig_idx = 0;
 
@@ -1490,12 +1537,7 @@ DST_construct_pointer_to_member(tree type_tree)
 	DevWarn("Unexpected tree shape2: pointer_to_member %c\n",
 		TREE_CODE_CLASS(TREE_CODE(base_type)));
     }
-#ifndef KEY
     TY_IDX container_idx = Get_TY(base_type);
-#else
-    TY_IDX container_idx = DST_Get_TY(base_type);
-    if (container_idx <= 1) return error_idx;
-#endif
 
 
     DST_INFO_IDX container_dst = Create_DST_type_For_Tree(
@@ -1553,15 +1595,7 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 	     TREE_CODE(type_tree) == UNION_TYPE) &&
 	     TREE_CODE(TYPE_NAME(type_tree)) == TYPE_DECL &&
 	     TYPE_MAIN_VARIANT(type_tree) != type_tree) {
-#ifndef KEY
 		idx = Get_TY (TYPE_MAIN_VARIANT(type_tree));
-#else	        
-		idx = DST_Get_TY (TYPE_MAIN_VARIANT(type_tree));
-		if (idx <= 1) {
-		  DST_INFO_IDX error_idx = DST_INVALID_INIT;
-		  return error_idx;
-		}
-#endif
 
 #ifndef KEY
 		// The following code always a return an invalid DST_IDX. This 
@@ -1660,6 +1694,24 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
    case INTEGER_TYPE:
 		{
 		// enter base type
+#ifdef KEY
+		// (copied over from fix for bug 3962 in kgccfe/wfe_dst.cxx).
+		// Bug 4326 - GNU produces INTEGER_TYPE node
+		// even for CHARACTER_TYPE from gnu/stor_layout.c
+		// and then fixes it up during Dwarf emission in
+		// gnu/dwarf2out.c (base_type_die). We should do
+		// the same. 
+		if (tsize == 1 && 
+		    (strcmp(name1, "char") == 0 ||
+		     strcmp(name1, "unsigned char") == 0)) {
+		  if (TREE_UNSIGNED(type_tree)) {
+		    encoding = DW_ATE_unsigned_char;
+		  } else {
+		    encoding = DW_ATE_signed_char;
+		  }
+		  goto common_basetypes;		    
+		}		  
+#endif
 		if (TREE_UNSIGNED(type_tree)) {
 		 encoding = DW_ATE_unsigned;
 		} else {
@@ -1706,10 +1758,19 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
                         DST_INFO_IDX t = (*p).second;
                         return t;
                 } else {
+#ifdef KEY
+                       // Handle typedefs for common basetypes
+                       if (is_typedef (type_tree))
+                         dst_idx = DST_Create_type ((ST*)NULL,
+                                                    TYPE_NAME (type_tree));
+                       else
+#endif
+                       {
                        dst_idx = DST_mk_basetype(
                                 name1,encoding,tsize);
                        basetypes[names] = dst_idx;
 		       DST_append_child(comp_unit_idx,dst_idx);
+                       }
                 }
 
                 }
@@ -1739,6 +1800,12 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
                }
 		break;
     case POINTER_TYPE:
+#ifdef KEY
+               // Handle typedefs for pointer types
+               if (is_typedef (type_tree))
+                 dst_idx = DST_Create_type ((ST*)NULL, TYPE_NAME (type_tree));
+               else
+#endif
 	       {
                 dst_idx =  TYPE_DST_IDX(type_tree);
                 if(DST_IS_NULL(dst_idx)) {
@@ -1782,6 +1849,12 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
     case RECORD_TYPE:
     case UNION_TYPE:
 		{
+#ifdef KEY
+                // Handle typedefs for struct/union
+                if (is_typedef (type_tree))
+                  dst_idx = DST_Create_type ((ST*)NULL, TYPE_NAME (type_tree));
+                else
+#endif
 		dst_idx = DST_enter_struct_union(type_tree,ttidx,idx,
 			tsize);
 		}
@@ -1808,28 +1881,11 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		// this is needed to avoid mixing TYLISTs if one
 		// of the parameters is a pointer to a function
 
-#ifndef KEY
 		ret_ty_idx = Get_TY(TREE_TYPE(type_tree));
 		for (arg = TYPE_ARG_TYPES(type_tree);
 		     arg;
 		     arg = TREE_CHAIN(arg))
 			arg_ty_idx = Get_TY(TREE_VALUE(arg));
-#else
-		ret_ty_idx = DST_Get_TY(TREE_TYPE(type_tree));
-		if (ret_ty_idx <= 1) {
-		  DST_INFO_IDX error_idx = DST_INVALID_INIT;
-		  return error_idx;
-		}
-		for (arg = TYPE_ARG_TYPES(type_tree);
-		     arg;
-		     arg = TREE_CHAIN(arg)) {
-		  arg_ty_idx = DST_Get_TY(TREE_VALUE(arg));
-		  if (arg_ty_idx <= 1) {
-		    DST_INFO_IDX error_idx = DST_INVALID_INIT;
-		    return error_idx;
-		  }
-		}
-#endif
 
 		// if return type is pointer to a zero length struct
 		// convert it to void
@@ -1847,15 +1903,7 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		     arg;
 		     num_args++, arg = TREE_CHAIN(arg))
 		{
-#ifndef KEY
 			arg_ty_idx = Get_TY(TREE_VALUE(arg));
-#else
-			arg_ty_idx = DST_Get_TY(TREE_VALUE(arg));
-			if (arg_ty_idx <= 1) {
-			  DST_INFO_IDX error_idx = DST_INVALID_INIT;
-			  return error_idx;
-			}
-#endif
 			if (!WFE_Keep_Zero_Length_Structs    &&
 			    TY_mtype (arg_ty_idx) == MTYPE_M &&
 			    TY_size (arg_ty_idx) == 0) {
@@ -2003,7 +2051,13 @@ DST_Create_type(ST *typ_decl, tree decl)
       name1 =  Get_Name(TREE_TYPE(decl));
     } else {
       // is a typedef type
+#ifdef KEY
+      // Yes, this is a typedef, and so get THAT typename, not the
+      // original typename
+      name1 = Get_Name(TREE_TYPE(decl));
+#else
       name1 = Get_Name(DECL_ORIGINAL_TYPE(decl));
+#endif
     }
   
     // FIX look in various contexts to find known types ?
@@ -2024,7 +2078,12 @@ DST_Create_type(ST *typ_decl, tree decl)
 
     // Nope, something new. make a typedef entry.
     // First, ensure underlying type is set up.
+#ifdef KEY
+    // Same as DECL_RESULT, but this looks to be the right macro
+    tree undt = DECL_ORIGINAL_TYPE(decl);
+#else
     tree undt = DECL_RESULT(decl);
+#endif
     TY_IDX base;
 
     if(!undt) {
@@ -2033,15 +2092,7 @@ DST_Create_type(ST *typ_decl, tree decl)
     } 
     // Do for side effect of creating DST for base type.
     // ie, in typedef int a, ensure int is there.
-#ifndef KEY
     base = Get_TY(undt);
-#else
-    base = DST_Get_TY(undt);
-    if (base <= 1) {
-      DST_INFO_IDX error_idx = DST_INVALID_INIT;
-      return error_idx;
-    }
-#endif
     DST_INFO_IDX dst = 
 	Create_DST_type_For_Tree(undt,base,
 		/* struct/union fwd decl TY_IDX=*/ 0);
@@ -2053,7 +2104,11 @@ DST_Create_type(ST *typ_decl, tree decl)
     DST_append_child(current_scope_idx,dst_idx);
     // and add the new type to our base types map
     basetypes[names] = dst_idx;
+#ifdef KEY
+    TYPE_DST_IDX(decl) = dst_idx;	// bug 6247
+#else
     TYPE_DST_IDX(undt) = dst_idx;
+#endif
 
     return dst_idx;
 }
@@ -2081,15 +2136,7 @@ DST_Create_Parmvar(ST *var_st, tree param)
 		// and in the DST
     tree type = TREE_TYPE(param);
 
-#ifndef KEY
     TY_IDX ty_idx = Get_TY(type); 
-#else
-    TY_IDX ty_idx = DST_Get_TY(type); 
-    if (ty_idx <= 1)  {
-      DST_INFO_IDX error_idx = DST_INVALID_INIT;
-      return error_idx;
-    }
-#endif
 
     DST_INFO_IDX dtype = DECL_DST_IDX(param);
     return dtype;
@@ -2229,6 +2276,55 @@ DST_Create_var(ST *var_st, tree decl)
     DST_INFO_IDX type = TYPE_DST_IDX(TREE_TYPE(decl));
 
 
+#ifdef KEY
+    // Bug 1717 - for anonymous unions like
+    //      union {
+    //       int member1;
+    //       char member2;
+    //      };
+    // a variable without a name used to be created.
+    // According to the standard, there could be assignment
+    // statements like "member1 = 123" and the compiler is
+    // supposed to emit the correct locations as if the 
+    // union members are all declared as individual variables 
+    // with identical address. Here, we catch all these variables
+    // and generate new entries for all members in the anonymous union as
+    // if they are individual variables.
+    if (field_name && strcmp(field_name, "") == 0 &&
+	TREE_CODE(TREE_TYPE(decl)) == UNION_TYPE &&
+	TREE_PURPOSE(TREE_TYPE(decl)) &&
+	// exposed by bug 3531 - treat types with fields that are
+	// template declarations the usual way; because we don't care
+	// about them right now and we don't know how to handle them yet.
+	(enum cplus_tree_code) TREE_CODE(TREE_PURPOSE(TREE_TYPE(decl))) != 
+	TEMPLATE_DECL) {
+      tree field = TREE_PURPOSE(TREE_TYPE(decl));
+      DST_INFO_IDX current_scope_idx =
+	DST_get_context(DECL_CONTEXT(decl));
+      for( ; field ; field = TREE_CHAIN(field) )
+      { 
+	field_name = Get_Name(field);
+	if (TREE_CODE(field) == FIELD_DECL ||
+	    TREE_CODE(field) == VAR_DECL) {
+	  dst = DST_mk_variable(src,                    // srcpos
+				field_name,
+				TYPE_DST_IDX(TREE_TYPE(field)),
+				0,  // offset (fortran uses non zero )
+				(void*) ST_st_idx(var_st), // underlying type here, not typedef.
+				DST_INVALID_IDX,        // abstract origin
+				external_decl,          // is_declaration
+				FALSE,                  // is_automatic
+				is_external,  // is_external
+				FALSE  ); // is_artificial	
+	  // Bug 4829 - do not enter variables without a name.
+	  if (field_name != NULL && *field_name != '\0')
+	    DST_append_child (current_scope_idx, dst);	
+	} 
+	// Bug 3889 - CONST_DECL, FUNCTION_DECL, and TYPE_DECL  are skipped..
+      }	
+      return dst;
+    }	
+#endif
     dst = DST_mk_variable(
         src,                    // srcpos
         field_name,
@@ -2270,6 +2366,10 @@ DST_Create_var(ST *var_st, tree decl)
     }
 
 
+#ifdef KEY
+    // Bug 4829 - do not enter variables without a name.
+    if (field_name != NULL && *field_name != '\0')
+#endif
     DST_append_child (current_scope_idx, dst);
     return dst;
 
@@ -2296,6 +2396,100 @@ DST_enter_param_vars(tree fndecl,
     tree pdecl = parameter_list;
 
     for(  ; pdecl; pdecl = TREE_CHAIN(pdecl)) {
+#ifdef KEY
+      // Bug 4443 - Due to the change in the front-end, PARM_DECL nodes 
+      // are converted to INDIRECT_REF node now (pass param by invisible
+      // reference in wfe_decl.cxx).
+      if(TREE_CODE(pdecl) == INDIRECT_REF) {
+	TREE_SET_CODE(pdecl, PARM_DECL);
+
+        DST_INFO_IDX param_idx = DST_INVALID_INIT;
+        DST_INFO_IDX type_idx = DST_INVALID_INIT;
+        BOOL is_artificial = DECL_ARTIFICIAL(pdecl);
+	int decl_to_be_restored = 0;
+	int type_to_be_restored = 0;
+	tree type = TREE_TYPE(pdecl);
+
+	
+	DST_INFO_IDX save_type_idx = TYPE_DST_IDX(type);
+	DST_INFO_IDX save_decl_idx = DECL_DST_IDX(pdecl);
+
+	ST *st = 0;
+	if(!is_declaration_only) {
+	  st = Get_ST(TREE_OPERAND(pdecl, 0)); // As a side effect,
+		// parameters and the types are set in ST
+		// and dst
+		// and we do not want ST set up in this case.
+	}
+	
+
+
+        TY_IDX ty_idx = Get_TY(type);
+	
+
+	type_idx = TYPE_DST_IDX(type);
+	
+	char *name = Get_Name(pdecl);
+	
+	DST_INFO_IDX initinfo = DST_INVALID_IDX;
+        //tree initl = DECL_INITIAL(pdecl);
+	//if(initl) {  FIXME: optional params
+		//  Get_TY(initl); // As a side effect,
+			// set types, etc
+	  //initinfo = DECL_DST_IDX(initl);
+	//}
+
+	ST_IDX loc = (is_abstract_root || is_declaration_only)? 
+		ST_IDX_ZERO: ST_st_idx(st);
+	DST_INFO_IDX aroot = DST_INVALID_IDX;
+	if(!is_abstract_root && !is_declaration_only) {
+	  //. get the abstract root idx if it exists
+	  aroot = DECL_DST_ABSTRACT_ROOT_IDX(pdecl);
+	}
+
+
+	param_idx = DST_mk_formal_parameter(
+		src,
+		name,
+		type_idx,
+		(void* )loc, // So backend can get location.
+			// For a formal in abstract root
+			// or a plain declaration (no def)
+			// there is no location.
+		aroot, // If inlined, and this
+			// is concrete instance,pass idx of formal
+			// in the abstract root
+		initinfo, // C++ default value (of optional param)
+		0?TRUE:FALSE, // true if C++ optional param // FIXME
+	        FALSE, // DW_AT_variable_parameter not set in C++.
+		is_artificial,
+		is_declaration_only);           // bug 1735: this is totally bogus but is needed because
+                                                // the backend be/cg/cgdrawf.cxx tries to put a location
+                                                // attribute into the tag if it's not a declaration.
+
+       // producer routines thinks we will set pc to fe ptr initially
+       DST_RESET_assoc_fe (DST_INFO_flag(DST_INFO_IDX_TO_PTR(param_idx)));
+
+	// The abstract root and
+	// each concrete root have
+	// distinct values.
+	// The concrete root values need not be recorded, and
+	// they will differ (no one unique value anyway) based
+        // off the same pdecl node (????). FIXME 
+	if(is_abstract_root) {
+	   DECL_DST_ABSTRACT_ROOT_IDX(pdecl) = param_idx;
+	} 
+	if (!is_declaration_only && !is_abstract_root) {
+	    DECL_DST_IDX(pdecl) = param_idx;
+	}
+
+	DST_append_child(parent_idx,param_idx);	
+
+	DST_SET_deref(DST_INFO_flag( DST_INFO_IDX_TO_PTR(param_idx)));
+
+	TREE_SET_CODE(pdecl, INDIRECT_REF);
+      } else
+#endif
       if(TREE_CODE_CLASS(TREE_CODE(pdecl)) != 'd') {
 	DevWarn("parameter node not decl! tree node code %d ",
 		TREE_CODE(pdecl));
@@ -2322,12 +2516,7 @@ DST_enter_param_vars(tree fndecl,
 	
 
 
-#ifndef KEY
         TY_IDX ty_idx = Get_TY(type);
-#else
-        TY_IDX ty_idx = DST_Get_TY(type);
-	if (ty_idx <= 1) return;	  
-#endif
 
 
 	type_idx = TYPE_DST_IDX(type);
@@ -2426,15 +2615,7 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
 	  restype = TREE_TYPE(TREE_TYPE(fndecl));
 #endif
 	if(restype) {
-#ifndef KEY
 	 TY_IDX itx = Get_TY(restype);
-#else
-	 TY_IDX itx = DST_Get_TY(restype);
-	 if (itx <= 1)  {
-	   DST_INFO_IDX error_idx = DST_INVALID_INIT;
-	   return error_idx;
-	 }
-#endif
 	 ret_dst = TYPE_DST_IDX(restype);
 	}
 
@@ -2448,15 +2629,53 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
     }
 
 
+#ifndef KEY
     char * basename = 
 	IDENTIFIER_POINTER (DECL_NAME (fndecl));
+#else
+    char * basename;
+    if (fndecl)
+	basename = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+    else
+        basename = ST_name(func_st);
+#endif
     char * linkage_name = ST_name(func_st);
+#ifdef KEY
+    // Bug 3846
+    if (Debug_Level > 0 && fndecl &&
+	IDENTIFIER_OPNAME_P (DECL_NAME(fndecl)) && 
+	IDENTIFIER_TYPENAME_P (DECL_NAME(fndecl))) {
+      basename = cplus_demangle(linkage_name, DMGL_PARAMS | DMGL_ANSI | 
+                                              DMGL_TYPES);
+      if (basename) {
+	basename = strstr(basename, "operator ");
+	FmtAssert(basename, ("NYI"));
+      } else {
+	// Bug 4788 has a weird mangled name which cannot be demangled using
+	// c++filt; g++ also generates the same linkage name (mangled name) for
+	// that symbol. However, g++ is able to get back the demangled name 
+	// somehow. For now, leave this operator name as such.
+	// c++filt version 3.3 has this problem but version 3.4 seems to have
+	// fixed this. Since, there are lot of changes to 
+	// kgnu_common/libiberty/cp-demangle.c, we will wait for the front-end
+	// upgrade to 3.4 which will fix this automatically.
+	DevWarn(
+         "encountered a mangled name that can not be demangled using c++filt");
+	basename = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+      }
+    }
+#endif
 
     char * funcname = basename;
     int is_abstract_root = 0;
     DST_INFO_IDX class_func_idx = DST_INVALID_INIT;
     int class_func_found_member = 0;
+#ifdef KEY
+    tree context = NULL;
+    if (fndecl) context = DECL_CONTEXT(fndecl);
+#else
     tree context = DECL_CONTEXT(fndecl);
+#endif
     if(context && TREE_CODE(context) == RECORD_TYPE) {
         /*look for  static data member decl*/
         class_func_idx =
@@ -2696,3 +2915,27 @@ WFE_Set_Line_And_File (UINT line, const char* f)
 	current_dir = Get_Dir_Dst_Info (dir);
 	current_file = Get_File_Dst_Info (file_name, current_dir);
 }
+
+#ifdef KEY
+void WFE_Macro_Define (UINT line, const char *buffer)
+{
+  DST_mk_macr(line, (char *)buffer, 1 /* DW_MACINFO_DEFINE */);
+  return;
+}
+
+void WFE_Macro_Undef (UINT line, const char *buffer)
+{
+  DST_mk_macr(line, (char *)buffer, 2 /* DW_MACINFO_UNDEF */);
+  return;
+}
+
+void WFE_Macro_Start_File (UINT line, UINT file)
+{
+  DST_mk_macr_start_file(line, file);
+}
+
+void WFE_Macro_End_File (void)
+{
+  DST_mk_macr_end_file();
+}
+#endif

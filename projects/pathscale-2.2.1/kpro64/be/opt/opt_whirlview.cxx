@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -163,7 +168,11 @@ static void sir_put_wn(WN *wn)
       SPRINTF_ADV(ir_oidx, (ir_oidx, " %d", WN_offset(wn)));
     }
 
-    if (OPCODE_operator(opcode) == OPR_INTRINSIC_OP) {
+    if (OPCODE_operator(opcode) == OPR_INTRINSIC_OP
+#ifdef KEY
+	|| OPCODE_operator(opcode) == OPR_PURE_CALL_OP
+#endif
+       ) {
       SPRINTF_ADV(ir_oidx, (ir_oidx, " %d", WN_kid_count(wn)));
     }
 

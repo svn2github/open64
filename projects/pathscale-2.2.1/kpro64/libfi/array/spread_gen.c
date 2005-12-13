@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -286,7 +290,11 @@ i4 *ncopies)
 	char * rp1;
 	rp1 = result_p  ;
 	for (k = 0 ; k < nc ; k ++ ) {
+#ifdef KEY /* Bug 4039 */
+	  *(ui16 *)rp1 = *(ui16 *)array_p ;
+#else /* KEY Bug 4039 */
 	  *(r16 *)rp1 = *(r16 *)array_p ;
+#endif /* KEY Bug 4039 */
 	  rp1 += res_stride[res_rank-1] ;
 	}
 	result_p += r_stride ;

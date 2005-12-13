@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -53,6 +57,28 @@
 #endif
 #include "externals.h"
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_chdir(char *dname, pathf90_i4 *status, int dnamlen)
+{
+	pathf90_i4 junk;
+	status = (0 == status) ? &junk : status;
+	if (!bufarg && !(bufarg=malloc(bufarglen=dnamlen+1)))
+		return((*status = errno=F_ERSPACE));
+	else if (bufarglen <= dnamlen && !(bufarg=realloc(bufarg, bufarglen=dnamlen+1)))
+		return(*status = (errno=F_ERSPACE));
+	g_char(dname, dnamlen, bufarg);
+	if (chdir(bufarg) != 0) {
+		return(*status = errno);
+	}
+	return(*status = 0);
+}
+
+#else
+
 extern int 
 chdir_ (char *dname, int dnamlen)
 {
@@ -83,3 +109,4 @@ chdir_ (char *dname, int dnamlen)
 	return(0);
 #endif
 }
+#endif /* KEY Bug 1683 */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -197,6 +201,11 @@ typedef struct debug_flags {
 				   version */ 
   BOOL conform_check;		/* F90 Conformance check */
   BOOL conform_check_set;	/* ... option explicitly set ... */
+#ifdef KEY
+  BOOL emit_ehframe;            /* Emit .eh_frame section for backtrace. */
+  BOOL zero_uv;			/* Enable setting local vars to 0 */
+  BOOL zero_uv_set;		/* ... option explicitly set ... */
+#endif
 
   /* This buffer area allows references to new fields to be added in
    * later revisions, from other DSOs, without requiring a new be.so
@@ -293,6 +302,12 @@ extern DEBUG_FLAGS Initial_DEBUG;
 #define DEBUG_Alignment_Compose		(Current_DEBUG->alignment==ALIGN_COMPOSE)
 #define DEBUG_Conform_Check		(Current_DEBUG->conform_check)
 #define DEBUG_Conform_Check_Set	        (Current_DEBUG->conform_check_set)
+#ifdef KEY
+#define DEBUG_Emit_Ehframe              (Current_DEBUG->emit_ehframe)
+#define DEBUG_Zero_Uv			(Current_DEBUG->zero_uv)
+#define DEBUG_Zero_Uv_Set		(Current_DEBUG->zero_uv_set)
+#endif
+
 
 /* Initialize the current top of stack to defaults: */
 extern void DEBUG_Init_Config ( void );

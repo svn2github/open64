@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -73,7 +73,10 @@ BOOL    VHO_Force_Lowering              = TRUE;
 #else
 BOOL    VHO_Force_Lowering              = FALSE;
 #endif
-BOOL    VHO_Struct_Opt                  = TRUE;
+BOOL    VHO_Struct_Opt                  = FALSE;
+#ifdef KEY
+BOOL    VHO_Struct_Opt_Set              = FALSE;
+#endif
 BOOL    VHO_Combine_Loads               = FALSE;
 BOOL    VHO_Recycle_Pregs               = FALSE;
 INT32   VHO_Switch_Density              = 12;
@@ -81,10 +84,9 @@ INT32   VHO_Switch_If_Else_Limit        = 6;
 INT32   VHO_Switch_Compgoto_Limit       = 3;
 BOOL    VHO_Switch_Opt                  = TRUE;
 INT32   VHO_Switch_Opt_Threshold        = 25;
-#ifdef KEY
-BOOL    VHO_Cselect_Opt                 = TRUE;
-#else
 BOOL    VHO_Cselect_Opt                 = FALSE;
+#ifdef KEY
+BOOL    VHO_Cselect_Opt_Set             = FALSE;
 #endif
 BOOL    VHO_Iload_Opt                   = TRUE;
 BOOL    VHO_Istore_Opt                  = TRUE;
@@ -106,6 +108,18 @@ BOOL    VHO_Use_Do_While                = FALSE;
 BOOL    VHO_Enable_Simple_If_Conv = TRUE;   
 /* maximum overhead allowed after If-Conversion */
 INT32   VHO_Enable_If_Conv_Limit = 6;   
+/* enable misc. loop distribution and interchange at VHO lower time */
+BOOL    VHO_Enable_Misc_Loop_Transformation = TRUE;
+/* enable misc. loop fusion at VHO lower time */
+BOOL    VHO_Enable_Misc_Loop_Fusion = TRUE;
+
+/* Delete REGION_KIND_MP if region falls within these control bounds */
+INT32 	VHO_Disable_MP_PU_Before = 0;
+INT32 	VHO_Disable_MP_PU_After = 10000;
+INT32 	VHO_Disable_MP_PU_Equal = 10000;
+INT32 	VHO_Disable_MP_Local_Before = 0;
+INT32 	VHO_Disable_MP_Local_After = 10000;
+INT32 	VHO_Disable_MP_Local_Equal = 10000;
 #endif
 
 /* List of global variables to turn on and off various optimizations */
@@ -122,7 +136,7 @@ static OPTION_DESC Options_VHO[] = {
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "lower",              "lower",
     FALSE, 0, 0, &VHO_Force_Lowering,  NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "struct_opt",         "struct_opt",
-    TRUE, 0, 0,  &VHO_Struct_Opt,      NULL },
+    TRUE, 0, 0,  &VHO_Struct_Opt,      &VHO_Struct_Opt_Set },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "recycle_pregs",      "recycle_pregs",
     FALSE, 0, 0, &VHO_Recycle_Pregs,   NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "combine_loads",      "combine_loads",
@@ -138,7 +152,7 @@ static OPTION_DESC Options_VHO[] = {
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "switch_opt",         "switch",
     TRUE, 0, 0,  &VHO_Switch_Opt,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "cselect_opt",        "cselect",
-    TRUE, 0, 0,  &VHO_Cselect_Opt,      NULL },
+    TRUE, 0, 0,  &VHO_Cselect_Opt,      &VHO_Cselect_Opt_Set },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "iload_opt",          "iload",
     TRUE, 0, 0,  &VHO_Iload_Opt,      NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "istore_opt",         "istore",
@@ -158,6 +172,23 @@ static OPTION_DESC Options_VHO[] = {
     0, 0, 0,    &VHO_Enable_Simple_If_Conv, NULL },
   { OVK_INT32,  OV_INTERNAL,    TRUE, "ifconv_limit",           "",
     INT32_MAX, 0, INT32_MAX,    &VHO_Enable_If_Conv_Limit, NULL },
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "misc_loop_transformation", "",
+    0, 0, 0,    &VHO_Enable_Misc_Loop_Transformation, NULL },
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "misc_loop_fusion", "",
+    0, 0, 0,    &VHO_Enable_Misc_Loop_Fusion, NULL },
+
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "disable_mp_pu_before", "",
+    INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_PU_Before, NULL },
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "disable_mp_pu_after", "",
+    INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_PU_After, NULL },
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "disable_mp_pu_equal", "",
+    INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_PU_Equal, NULL },
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "disable_mp_local_before", "",
+    INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_Local_Before, NULL },
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "disable_mp_local_after", "",
+    INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_Local_After, NULL },
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "disable_mp_local_equal", "",
+    INT32_MAX, 0, INT32_MAX,    &VHO_Disable_MP_Local_Equal, NULL },
 #endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };

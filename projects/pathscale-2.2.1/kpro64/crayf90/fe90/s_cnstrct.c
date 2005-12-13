@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -8660,6 +8660,13 @@ static boolean interpret_index_opr(int                  ir_idx,
       for (i = 0; i < MAX_WORDS_FOR_NUMERIC; i++) {
          loc_value_r[i] = result_value[i];
       }
+
+#ifdef KEY /* Bug 4867 */
+      /* Pass the result back via "element" (imitating the code in
+       * functions interpret_binary_opr, interpret_concat_opr, etc.)
+       */
+      *element = loc_element_l;
+#endif /* KEY Bug 4867 */
 
       CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
       TYP_TYPE(TYP_WORK_IDX)		= Character;

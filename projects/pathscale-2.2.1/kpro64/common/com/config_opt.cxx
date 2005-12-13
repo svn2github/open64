@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -169,6 +169,10 @@ static OPTION_LIST *Opt_Skip = NULL;		/* Raw list */
 SKIPLIST *Optimization_Skip_List = NULL;	/* Processed list */
 static OPTION_LIST *Region_Skip = NULL;		/* Raw list */
 SKIPLIST *Region_Skip_List = NULL;		/* Processed list */
+#ifdef KEY
+static OPTION_LIST *Goto_Skip = NULL;		/* Raw list */
+SKIPLIST *Goto_Skip_List = NULL;		/* Processed list */
+#endif
 
 /***** Miscellaneous -OPT: group options *****/
 char *Ofast = NULL;		/* -OPT:Ofast platform name */
@@ -217,10 +221,27 @@ OPTION_LIST *Feedback_Option = NULL;
 
 #ifdef KEY
 BOOL   Asm_Memory = FALSE;
+BOOL   Align_Unsafe = FALSE; 
 UINT32 Div_Exe_Counter = 40000;  /* A number that can avoid regression on facerec. */
 UINT32 Div_Exe_Ratio = 50;      /* A cut-off percentage for value profiling. */
 UINT32 Div_Exe_Candidates = 2;  /* The top entries that will be considered. */
+UINT32 Mpy_Exe_Counter = 90000000;  
+UINT32 Mpy_Exe_Ratio = 100;      /* A cut-off percentage for value profiling. */
 BOOL   profile_arcs = FALSE;
+BOOL   OPT_Lower_To_Memlib = TRUE;  /* transform to library calls */
+INT32  OPT_Threshold_To_Memlib = 256;    /* threshold to transform to mem calls */
+INT32  OPT_Enable_Lower_To_Memlib_Limit = -1;
+BOOL   OPT_Enable_Simp_Fold = TRUE;  /* enables new float/complex/str/intrinsic foldings */
+
+/* Use Fast Math equivalents (currently from ACML 2.0) 
+   for the math library functions. */
+BOOL  OPT_Fast_Math = FALSE; 
+
+/* Use fast standard library equivalents for some libc functions. */
+BOOL  OPT_Fast_Stdlib = TRUE;
+
+/* Internal flag to control MP barrier optimization */
+BOOL OPT_MP_Barrier_Opt = FALSE;
 #endif
 
 /***** Obsolete options *****/
@@ -243,6 +264,9 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "asm_memory", "",
     0, 0, 0,	&Asm_Memory,    NULL,
     "Assumes each asm has memory flag specified even if it is not there"},
+  { OVK_BOOL,   OV_INTERNAL,    FALSE, "align_unsafe", "",
+    0, 0, 0,    &Align_Unsafe,    NULL,
+    "Generate aligned load/store even though it may be unsafe"},
 #endif
 
   { OVK_LIST,	OV_VISIBLE,	TRUE, 	"alias",		"alia",
@@ -295,6 +319,27 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_UINT32,	OV_INTERNAL,	TRUE, "div_exe_candidates",	"",
     0, 0, 10,	&Div_Exe_Candidates, NULL ,
     "Restrict div/rem/mod optimization via value profiling" },
+  { OVK_UINT32,	OV_INTERNAL,	TRUE, "mpy_exe_counter",	"",
+    0, 0, UINT32_MAX,	&Mpy_Exe_Counter, NULL ,
+    "Restrict mpy optimization via value profiling" },
+  { OVK_UINT32,	OV_INTERNAL,	TRUE, "mpy_exe_ratio",	"",
+    0, 0, 100,	&Mpy_Exe_Ratio, NULL ,
+    "Restrict mpy optimization via value profiling" },
+  { OVK_BOOL,	OV_INTERNAL,	TRUE, "simp_debug", "simp_debug",
+    0, 0, 0,	&OPT_Enable_Simp_Fold, NULL,
+    "New foldings in simplifier" },
+
+  { OVK_BOOL, OV_VISIBLE, 	TRUE,	"fast_math", 	"",
+    0, 0, 0, &OPT_Fast_Math, NULL,
+    "Use Fast Math Library functions from ACML 2.0" },
+
+  { OVK_BOOL, OV_VISIBLE, 	TRUE,	"fast_stdlib", 	"",
+    0, 0, 0, &OPT_Fast_Stdlib, NULL,
+    "Use fast versions of some standard library functions" },
+
+  { OVK_BOOL, OV_INTERNAL, 	TRUE,	"mp_barrier_opt", "",
+    0, 0, 0, &OPT_MP_Barrier_Opt, NULL,
+    "Optimize generation of barrier calls for OpenMP" },
 #endif
 
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "early_mp",		"early_mp",
@@ -325,6 +370,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "fast_anint",		"fast_anint",
     0, 0, 0,	&Fast_ANINT_Allowed,	&Fast_ANINT_Set,
     "Use IEEE rounding instead of Fortran rounding for ANINT intrinsics" },
+
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "vcast_complex",	"vcast_complex",
+    0, 0, 0,	&Vcast_Complex,	&Vcast_Complex_Set,
+    "Convert MTYPE_C8 to MTYPE_V16C8 in the lowerer" },
 #endif
 
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "fast_sqrt",		"fast_sq",
@@ -501,6 +550,17 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,    &Enable_SWP,	&Enable_SWP_overridden,
     "Enable software pipelining" },
 
+  { OVK_BOOL,   OV_INTERNAL,    FALSE, "transform_to_memlib",   "transform",
+    0, 0, 0,    &OPT_Lower_To_Memlib, NULL,
+    "Allow loop or struct memory copy/set to be library calls" },
+
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "threshold_to_memlib",    "",
+    256, 0, INT32_MAX,    &OPT_Threshold_To_Memlib, NULL,
+    "Threshold to transform loop copy/set to be memory library calls" },
+
+  { OVK_INT32,  OV_INTERNAL,    TRUE, "memlib_limit", "memlib_limit",
+    INT32_MAX, 0, INT32_MAX,    &OPT_Enable_Lower_To_Memlib_Limit, NULL },
+
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "treeheight",		"",
     0, 0, 0,	&OPT_Lower_Treeheight, &OPT_Lower_Treeheight_Set,
     "Allow tree height reduction" },
@@ -524,10 +584,22 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wn_simplify",		"wn_simp",
     0, 0, 0,	&Enable_WN_Simp, &Enable_WN_Simp_Set,
     "Enable simplifier" },
-# ifdef KEY
+#ifdef KEY
   { OVK_INT32,  OV_INTERNAL,    TRUE, "simp_limit",             "",
     INT32_MAX, 0, INT32_MAX,    &Enable_WN_Simp_Expr_Limit, NULL },
-# endif
+
+  { OVK_LIST,	OV_SHY,		FALSE, "goto_skip_equal",	"goto_skip_e",
+    0, 0, 4096,	&Goto_Skip,	NULL,
+    "Skip goto conversion of this subprogram" },
+
+  { OVK_LIST,	OV_SHY,		FALSE, "goto_skip_before",	"goto_skip_b",
+    0, 0, 4096,	&Goto_Skip,	NULL,
+    "Skip goto conversion of subprograms before this one" },
+
+  { OVK_LIST,	OV_SHY,		FALSE, "goto_skip_after",	"goto_skip_a",
+    0, 0, 4096,	&Goto_Skip,	NULL,
+    "Skip goto conversion of subprograms after this one" },
+#endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "wrap_around_unsafe_opt", "wrap_around_unsafe",
     0, 0, 0,	&Allow_wrap_around_opt,	&Allow_wrap_around_opt_Set,
     "Allow LFTR which may wrap around MAX_INT" },

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Subroutines shared by all languages that are variants of C.
@@ -3591,21 +3591,22 @@ c_common_nodes_and_builtins ()
 		    BOTH_P, FALLBACK_P, NONANSI_P, ATTRS)		\
   if (NAME)								\
     {									\
+      const char *__name__ = NAME;					\
       tree decl;							\
 									\
-      if (strncmp (NAME, "__builtin_", strlen ("__builtin_")) != 0)	\
+      if (strncmp (__name__, "__builtin_", strlen ("__builtin_")) != 0)	\
 	abort ();							\
 									\
       if (!BOTH_P)							\
-	decl = builtin_function (NAME, builtin_types[TYPE], ENUM,	\
+	decl = builtin_function (__name__, builtin_types[TYPE], ENUM,	\
 				 CLASS,					\
 				 (FALLBACK_P				\
-				  ? (NAME + strlen ("__builtin_"))	\
+				  ? (__name__ + strlen ("__builtin_"))	\
 				  : NULL),				\
 				 built_in_attributes[(int) ATTRS]);	\
       else								\
-	decl = builtin_function_2 (NAME,				\
-				   NAME + strlen ("__builtin_"),	\
+	decl = builtin_function_2 (__name__,				\
+				   __name__ + strlen ("__builtin_"),	\
 				   builtin_types[TYPE],			\
 				   builtin_types[LIBTYPE],		\
 				   ENUM,				\
@@ -3850,6 +3851,12 @@ expand_unordered_cmp (function, params, unordered_code, ordered_code)
       return error_mark_node;
     }
 
+#ifdef KEY
+  // bug 3183: don't generate "unordered" tree-codes, instead just generate
+  // a call to the builtin.
+  if (MODE_HAS_NANS (TYPE_MODE (type))) return NULL_TREE;
+#endif
+
   if (unordered_code == UNORDERED_EXPR)
     {
       if (MODE_HAS_NANS (TYPE_MODE (type)))
@@ -3972,6 +3979,9 @@ statement_code_p (code)
     case ASM_STMT:
     case FILE_STMT:
     case CASE_LABEL:
+#ifdef KEY
+    case OMP_MARKER_STMT:
+#endif
       return 1;
 
     default:
@@ -6396,7 +6406,7 @@ handle_syscall_linkage_attribute (node, name, args, flags, no_add_attrs)
   int arg_num;
   tree argument;
   tree decl = *node;
-  tree type = &TREE_TYPE (decl);
+  tree type = TREE_TYPE (decl);
                                                                                 
   if (TREE_CODE (decl) != FUNCTION_DECL)
     {

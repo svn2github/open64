@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Tree-dumping functionality for intermediate representation.
@@ -266,7 +266,7 @@ dequeue_and_dump (di)
 
 #ifdef KEY
   /* Print address of node for easier debugging. */
-  fprintf (di->stream, "0x%x  ", t);
+  fprintf (di->stream, "%p  ", t);
 #endif /* KEY */
 
   /* And the type of node this is.  */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -53,6 +53,9 @@ extern boolean run_m4;		/* run m4 on each ratfor file */
 extern boolean prelink_flag;	/* C++ only:  run the prelinker before ld */
 extern boolean quiet_flag;	/* g++: suppress timing information */
 extern boolean show_search_path; /* show the directory search path */
+extern boolean show_defaults;   /* show the default compiler options */
+
+extern const char compiler_version[];
 
 /* run a phase of the compiler */
 extern void run_phase (phases_t, char *, string_list_t *); 
@@ -70,3 +73,7 @@ extern void catch_signals (void);
 /* exit from driver */
 extern void do_exit (int code)
      __attribute__ ((noreturn));
+
+/* get gcc version string, e.g. "2.7.2".
+ * put numeric result in passed param (int), if not null. */
+extern const char *get_gcc_version (int *, int);

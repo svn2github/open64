@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -264,6 +264,10 @@ inline BOOL OP_like_store(OP *op)
 {
   BOOL like_store = (OP_store(op) || CGTARG_Is_OP_Intrinsic(op) || 
 		     CGTARG_Is_OP_Barrier(op) || OP_code(op) == TOP_asm);
+
+#ifdef TARG_X8664
+  like_store |= OP_load_exe_store(op);
+#endif
 
   like_store |= OP_like_barrier(op);
 
@@ -2267,7 +2271,11 @@ static BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
   /* Volatile ops are dependent on all other volatile OPs (but dependence
    * is marked as not definite to prevent removal by r/w elimination).
    */
-  if (OP_volatile(pred_op) && OP_volatile(succ_op)) {
+  if ((OP_volatile(pred_op) && OP_volatile(succ_op))
+#ifdef KEY	// bug 4850
+      || (CGTARG_Is_OP_Barrier(pred_op) || CGTARG_Is_OP_Barrier(succ_op))
+#endif
+     ) {
     *definite = FALSE;
     if (omega) *omega = lex_neg;
     return TRUE;
@@ -2417,7 +2425,7 @@ static BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 
     /* First try the LNO dependence graph */
     if (!CG_DEP_Ignore_LNO && Current_Dep_Graph != NULL &&
-#ifdef KEY
+#ifdef TARG_X8664
 	/* bug#1964
 	 */
 	!TOP_is_vector_op(OP_code(pred_op)) &&
@@ -3493,8 +3501,9 @@ static STACKREF_KIND Memory_OP_References_Stack(OP *op)
     if (WN_has_sym(wn)) {
       st = WN_st(wn);
 #ifdef KEY
-      Is_True(ST_class(st) == CLASS_VAR || ST_class(st) == CLASS_CONST, 
-      	      ("expected CLASS_VAR symbol"));
+      Is_True(ST_class(st) == CLASS_VAR || ST_class(st) == CLASS_CONST ||
+              ST_class(st) == CLASS_FUNC, 
+      	      ("expected CLASS_VAR/CONST/FUNC symbol"));
 #else
       Is_True(ST_class(st) == CLASS_VAR, ("expected CLASS_VAR symbol"));
 #endif

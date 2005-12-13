@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -47,7 +47,7 @@
 #include "glob.h"
 // #include "cmd_line.h"
 
-extern char * gnu_init (INT argc, char **argv, char **envp);
+extern const char * gnu_init (INT argc, char **argv, char **envp);
 
 static INT argc_save;
 static char **argv_save;
@@ -91,7 +91,11 @@ main (
 	argv_save = argv;
 	envp_save = envp;
 
+#ifdef KEY
+	Orig_Src_File_Name = (char *) gnu_init (argc, argv, envp);
+#else
 	Orig_Src_File_Name = gnu_init (argc, argv, envp);
+#endif
 
 	if (Orig_Src_File_Name == NULL) {
 		exit (RC_OKAY);

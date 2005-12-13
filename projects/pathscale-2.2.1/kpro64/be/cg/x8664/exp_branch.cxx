@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -240,52 +240,12 @@ static void Expand_Ordered_Branch( TOP cmp_opcode, TN* src1, TN* src2,
   TN* rflags = Rflags_TN();
 
 
-  if (jmp_opcode == TOP_jb || jmp_opcode == TOP_jbe) { 
+  if (jmp_opcode == TOP_jb || jmp_opcode == TOP_jbe ||
+      jmp_opcode == TOP_jae || jmp_opcode == TOP_ja) {
 
     Build_OP( cmp_opcode, rflags, src1, src2, ops );
     Build_OP( jmp_opcode, rflags, targ, ops );
 
-  } else if (jmp_opcode == TOP_jae || jmp_opcode == TOP_ja) {
-
-    BB* bb_entry = Cur_BB;
-    BB* bb_next = Gen_And_Append_BB( bb_entry );
-    BB* bb_exit = Gen_And_Append_BB( bb_next );
-    
-    const LABEL_IDX bb_next_label = Gen_Label_For_BB( bb_next );
-    const LABEL_IDX bb_exit_label = Gen_Label_For_BB( bb_exit );
-
-    OPS* bb_next_ops;
-
-    BB_branch_wn(bb_entry) = WN_Create(OPC_TRUEBR,1);
-    WN_kid0(BB_branch_wn(bb_entry)) = NULL;
-    WN_label_number(BB_branch_wn(bb_entry)) = bb_exit_label;
-    
-    BB_branch_wn(bb_next) = WN_Create(OPC_TRUEBR,1);
-    WN_kid0(BB_branch_wn(bb_next)) = NULL;
-    WN_label_number(BB_branch_wn(bb_next)) = TN_label( targ );
-
-    // Build BB_entry
-    Build_OP( cmp_opcode, rflags, src2, src1, ops );
-    Build_OP( jmp_opcode == TOP_jae ? TOP_ja: TOP_jae,
-	      rflags, Gen_Label_TN( bb_exit_label, 0 ), ops );
-    if( &New_OPs != ops )
-      OPS_Append_Ops( &New_OPs, ops );    
-    Process_New_OPs();
-    BB_Append_Ops( bb_entry, &New_OPs );
-    OPS_Init( &New_OPs );
-    OPS_Init( ops );
-
-    // Build BB_next
-    bb_next_ops = &New_OPs;
-    Build_OP( TOP_jmp, targ, bb_next_ops );
-    total_bb_insts = 0;
-    Last_Processed_OP = NULL;
-    Process_New_OPs();
-    BB_Append_Ops( bb_next, bb_next_ops );
-    OPS_Init( bb_next_ops );
-
-    Cur_BB = bb_exit;
-    
   } else if (jmp_opcode == TOP_jne) {
 
     BB* bb_entry = Cur_BB;
@@ -409,6 +369,7 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 {
   const BOOL false_br = V_false_br(variant);
   VARIANT cond = V_br_condition(variant);
+  TN *tmp;
 
   /* Trace if required: */
   if ( Trace_Exp2 ) {
@@ -506,7 +467,7 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
       }
 
       if( TN_has_value(src1) ){
-	TN* tmp = Gen_Register_TN( ISA_REGISTER_CLASS_integer,
+	tmp = Gen_Register_TN( ISA_REGISTER_CLASS_integer,
 				   is_64bit ? 8 : 4 );
 	Build_OP( is_64bit ? TOP_ldc64 : TOP_ldc32, tmp, src1, ops );
 	src1 = tmp;
@@ -548,6 +509,8 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
       // integer or floating point conditional branch
 
       FmtAssert( cmp == TOP_UNDEFINED, ("cmp is defined") );
+
+      BOOL flip_opnds = FALSE;
 
       switch( cond ){
       case V_BR_I4GE:   
@@ -616,22 +579,26 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 	  ? ( is_64bit ? TOP_comisd : TOP_comiss ) : TOP_fucomi;
 	break;
       case V_BR_QLT:
-	jmp_opcode = false_br ? TOP_jae : TOP_jb;
+        flip_opnds = false_br;
+	jmp_opcode = false_br ? TOP_jbe : TOP_jb;
 	cmp_opcode = TOP_fucomi;
 	break;
       case V_BR_FLT:
       case V_BR_DLT:
-	jmp_opcode = false_br ? TOP_jae : TOP_jb;
+        flip_opnds = false_br;
+	jmp_opcode = false_br ? TOP_jbe : TOP_jb;
 	cmp_opcode = Is_Target_SSE2()
 	  ? ( is_64bit ? TOP_comisd : TOP_comiss ) : TOP_fucomi;
 	break;
       case V_BR_QLE:
-	jmp_opcode = false_br ? TOP_ja : TOP_jbe;
+        flip_opnds = false_br;
+	jmp_opcode = false_br ? TOP_jb : TOP_jbe;
 	cmp_opcode = TOP_fucomi;
 	break;
       case V_BR_FLE:
       case V_BR_DLE:
-	jmp_opcode = false_br ? TOP_ja : TOP_jbe;
+        flip_opnds = false_br;
+	jmp_opcode = false_br ? TOP_jb : TOP_jbe;
 	cmp_opcode = Is_Target_SSE2()
 	  ? ( is_64bit ? TOP_comisd : TOP_comiss ) : TOP_fucomi;
 	break;
@@ -641,6 +608,12 @@ void Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 
       if( !TOP_is_flop( cmp_opcode ) )
 	FmtAssert( !false_br, ("false_br for int cmp") );
+
+      if (flip_opnds) {
+	tmp = src1;
+	src1 = src2;
+	src2 = tmp;
+      }
 
       if( Is_Target_32bit() &&
 	  ( cond >= V_BR_I8EQ0 &&

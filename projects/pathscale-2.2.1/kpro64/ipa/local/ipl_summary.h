@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -456,13 +456,21 @@ private:
 #define PROC_HAS_PARALLEL_REGION_PRAGMA 0x00010000
 #define PROC_HAS_FSTATIC		0x00020000
 #define PROC_USE_LOWERED_RETURN_PREG	0x00040000 // should be removed by 7.3
+#ifdef KEY
+#define PROC_HAS_SIDE_EFFECT		0x00080000
+#else
 // obsolete				0x00080000
+#endif
 #define PROC_HAS_UNKNOWN_CALLS		0x00100000 // this PU has unknown calls
 #define PROC_HAS_INCOMPLETE_ARRAY_INFO  0x00200000 
 #define PROC_HAS_MP_NEEDS_LNO		0x00400000 // this PU's local symtab has 
 						   // bit SYMTAB_mp_needs_lno set
 #define PROC_HAS_EXC_TRY_REGION		0x00800000 // does it have a try region?
+#ifdef KEY
+#define PROC_HAS_PRAGMA_SIDE_EFFECT	0x01000000 // this PU's contains pragma 
+#else
 #define PROC_HAS_SIDE_EFFECT		0x01000000 // this PU's contains pragma 
+#endif
                                                    // with side effect
 #define PROC_HAS_MESSY_REGIONS		0x02000000 // messy PROJECTED_REGIONs
 #define PROC_HAS_EARLY_RETURNS		0x04000000 // has RETURN stmts not
@@ -657,6 +665,10 @@ public:
     BOOL Has_exc_try() const { return _state &
 				 PROC_HAS_EXC_TRY_REGION; };
 
+#ifdef KEY
+    void Set_has_pragma_side_effect ()  { _state |= PROC_HAS_PRAGMA_SIDE_EFFECT; }
+    BOOL Has_pragma_side_effect () const { return _state & PROC_HAS_PRAGMA_SIDE_EFFECT; }
+#endif
     void Set_has_side_effect ()  { _state |= PROC_HAS_SIDE_EFFECT; }
     BOOL Has_side_effect () const { return _state & PROC_HAS_SIDE_EFFECT; }
 
@@ -1526,9 +1538,9 @@ private:
 	} _s2[2];
     } _u;
 
-    OPCODE _opcode : 18;
+    OPCODE _opcode : 20;
 
-    mINT32 _pad    : 4;
+    mINT32 _pad    : 2;
 
     mBOOL _is_trip_count : 1;	        // is a trip count (can be simplified) 
     mBOOL _has_const_operand : 1;	// specify which struct in _u is used
@@ -2455,7 +2467,11 @@ public:
 	    Set_ty(ty_index); 
 	    Set_flatten_flds(flatten_flds);
 	    _u.flds= (STRUCT_ACCESS*)MEM_POOL_Alloc_P(_mem,
+#ifdef KEY		// Field IDs are 1, ..., flatten_flds.  Bug 5372.
+			sizeof(STRUCT_ACCESS)*(flatten_flds + 1),
+#else
 			sizeof(STRUCT_ACCESS)*flatten_flds,
+#endif
 			TRUE,NULL);
 #ifndef KEY
 	    fprintf(stderr,"new summary: type%d, \n",ty_index);
@@ -2472,7 +2488,7 @@ public:
     void Trace_array ( INT32 size ) const;
     void WB_Print(FILE* fp, INT fld_access_index);
 
-}; // class SUMMARY_FORMAL
+}; // class SUMMARY_STRUCT_ACCESS
 
 extern SUMMARY_SYMBOL *Ipl_Summary_Symbol;
 extern BOOL IPA_Trace_Mod_Ref;          /* Trace log for Mod_Ref */

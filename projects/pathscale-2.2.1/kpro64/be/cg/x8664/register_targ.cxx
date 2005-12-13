@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -340,14 +340,21 @@ void Init_Mtype_RegClass_Map(void)
 
   map[MTYPE_F4] = Is_Target_SSE2() ? ISA_REGISTER_CLASS_float : ISA_REGISTER_CLASS_x87;
   map[MTYPE_F8] = Is_Target_SSE2() ? ISA_REGISTER_CLASS_float : ISA_REGISTER_CLASS_x87;
-  map[MTYPE_F10]= Is_Target_SSE2() ? ISA_REGISTER_CLASS_float : ISA_REGISTER_CLASS_x87;
+  map[MTYPE_F10] = Is_Target_SSE2() ? ISA_REGISTER_CLASS_float : ISA_REGISTER_CLASS_x87;
   map[MTYPE_FQ] = ISA_REGISTER_CLASS_x87;
   map[MTYPE_F16] = ISA_REGISTER_CLASS_UNDEFINED;
 
+  map[MTYPE_V16C4] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_C8]    = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V16C8] = ISA_REGISTER_CLASS_float;
   map[MTYPE_V16F4] = ISA_REGISTER_CLASS_float;
   map[MTYPE_V16F8] = ISA_REGISTER_CLASS_float;
   map[MTYPE_V16I1] = ISA_REGISTER_CLASS_float;
   map[MTYPE_V16I2] = ISA_REGISTER_CLASS_float;
   map[MTYPE_V16I4] = ISA_REGISTER_CLASS_float;
   map[MTYPE_V16I8] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V8I1] = ISA_REGISTER_CLASS_mmx;
+  map[MTYPE_V8I2] = ISA_REGISTER_CLASS_mmx;
+  map[MTYPE_V8I4] = ISA_REGISTER_CLASS_float;
+  map[MTYPE_V8F4] = ISA_REGISTER_CLASS_float;
 }

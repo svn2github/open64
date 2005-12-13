@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -858,6 +858,11 @@ static void Initialize_Stack( BB* bb )
     }
   }
 
+  /* TODO:
+     For the current basic block, the reference input stack is coming
+     from the first predecessor. A better choice is to pick the predecessor
+     that contributes the highest edge probability.
+  */
   FOR_ALL_BB_PREDS( bb, bblst ){
     BB* pbb = BBLIST_item(bblst);
 
@@ -1227,7 +1232,9 @@ static void Convert_Regs( BB* bb )
       Alloc_Stack_Reg( stack, op, 0, st_idx0 );
 
       if( Is_Opnd_Last_Use( stack, op, opnd0 ) ){
-	Pop_Stack( stack, st_idx0, op, false );
+	if( !TNs_Are_Equivalent( result, opnd0 ) ||
+	    Is_Result_Last_Use( stack, op, result ) )
+	  Pop_Stack( stack, st_idx0, op, false );
       }
 
       continue;
@@ -1567,8 +1574,10 @@ void Convert_x87_Regs( MEM_POOL* _mem_pool )
   }
 
 #if 0
+  /* TODO:
+     Turn it on to see whether cflow can optimize the final pu a bit.
+  */
   if( CG_opt_level > 0 && CFLOW_opt_after_cgprep && new_bbs > 5 ){
-    // Insert_Compensate_BB screws cflow up. Fix it later.
     CFLOW_Optimize( CFLOW_BRANCH | CFLOW_MERGE | CFLOW_FREQ_ORDER,
 		    "CFLOW (from cg_convert_x87)" );
   }

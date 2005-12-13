@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -724,6 +724,16 @@ CIO_RWTRAN::CIO_Copy_Remove( BB *body )
 	  if ( cio_copy_table[index].tn_result == tn ) {
 	    OP *op_src = cio_copy_table[index].op;
 	    if ( OP_flag1( op_src ) ) {
+#ifdef KEY
+	      // Don't propagate copy if the copy source is a dedicated
+	      // register, since the omega code can't track dedicated registers
+	      // correctly.  See explanation in bug 4426.
+	      TN *copy_src_opnd = OP_opnd( op_src, OP_COPY_OPND );
+	      if ( TN_is_dedicated( copy_src_opnd ) ) {
+		Reset_OP_flag1( op_src );
+		break;
+	      }
+#endif
 	      Set_OP_opnd( op, opnd, OP_opnd( op_src, OP_COPY_OPND ) );
 	      Set_OP_omega( op, opnd, OP_omega( op, opnd )
 			    + OP_omega( op_src, OP_COPY_OPND ) );
@@ -924,6 +934,15 @@ CIO_RWTRAN::Mark_Op_For_Prolog( OP *op, const UINT8 omega )
   // Step (2)  Some OPs should not be copied to the prolog -- abort!
   if ( OP_has_implicit_interactions( op ) )
     return NULL;
+
+#ifdef TARG_X8664
+  // Arcs between rflags setters and rflags users are labeled as MISC.  When
+  // copying an insn to the prologue, only REGIN preds are copied along with
+  // the insn; MISC preds are not copied.  As a workaround, don't copy rflags
+  // users into the prologue.  Bug 4991.
+  if (OP_reads_rflags(op))
+    return NULL;
+#endif
 
   // Step (3)  Duplicate the OP, but don't insert it anywhere yet
   OP *op_prolog = Dup_OP( op );
@@ -2141,6 +2160,10 @@ CIO_RWTRAN::Append_TN_Copy( TN *tn_dest, TN *tn_from, OP *point, UINT8 omega )
 BOOL
 CIO_RWTRAN::CICSE_Transform( BB *body )
 {
+#ifdef TARG_X8664
+  TN* rflags_tn = Rflags_TN();
+#endif
+
   // Count the number of OPs in the loop body.
   OP *op;
   INT op_count = 0;
@@ -2197,9 +2220,34 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
     for ( INT opnd = OP_opnds( op ) - 1; opnd >= 0; --opnd ) {
       INT source = 0;
       TN *opnd_op = OP_opnd( op, opnd );
-      if ( TN_is_register( opnd_op ) )
+      if ( TN_is_register( opnd_op ) ) {
 	source = hTN_MAP32_Get( tn_last_op, opnd_op );
+#ifdef TARG_X8664
+	// If OP uses rflag, don't eliminate the source OP that sets rflag.
+	// Bug 4934.
+	if (opnd_op == rflags_tn) {
+	  CICSE_entry &source_entry = cicse_table[source];
+	  Reset_OP_flag1(source_entry.op);
+	  source_entry.source = 0;
+	  source = 0;
+	}
+#endif
+      }
 
+#ifdef KEY
+      // Don't eliminate OP if its result is a global TN.  See example in
+      // bug 6255.
+      for (INT res = OP_results(op) - 1; res >= 0; res--) {
+	TN *tn = OP_result(op, res);
+	if (TN_is_global_reg(tn)) {
+	  CICSE_entry &source_entry = cicse_table[index];
+	  Reset_OP_flag1(source_entry.op);
+	  source_entry.source = 0;
+	  source = 0;
+	  break;
+	}
+      }
+#endif
       entry.opnd_source[opnd] = source;
       entry.opnd_omega[opnd]  = OP_omega( op, opnd );
 
@@ -2223,6 +2271,12 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 					       OP_result( op, res ), index );
       entry.result_unique[res] = ( old_index == index );
     }
+#ifdef TARG_X8664
+    // rflag is an implicit result.  Bug 4934.
+    if (TOP_is_change_rflags(OP_code(op))) {
+      hTN_MAP32_Set( tn_last_op, rflags_tn, index);
+    }
+#endif
   }
 
   // Search the CG dependence graph for definite MEMIN and MEMREAD
@@ -2652,16 +2706,17 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
     }
 
 #ifdef KEY
-    /* Bug#358
-       To avoid a tn in the prolog being re-defined, we need to create a
-       new tn, and a copy for it.
-     */
-    for( INT res = OP_results( change.op ) - 1; res >= 0; --res ){
-      if( CG_LOOP_Backpatch_Find_Non_Body_TN(CG_LOOP_prolog,
-					     change.new_tns[res],
-					     change.omega) != NULL ){
-	change.new_tns[res] = Build_TN_Like( change.new_tns[res] );
-	change.need_copy[res] = true;
+    /* To avoid a body tn in the prolog being re-defined, we need to create a
+       new tn, and a copy for it. (bug#358, bug#2912)
+    */
+    for( int start_omega = 1; start_omega <= change.omega; start_omega++ ){
+      for( INT res = OP_results( change.op ) - 1; res >= 0; --res ){
+	if( CG_LOOP_Backpatch_Find_Non_Body_TN(CG_LOOP_prolog,
+					       change.new_tns[res],
+					       start_omega) != NULL ){
+	  change.new_tns[res] = Build_TN_Like( change.new_tns[res] );
+	  change.need_copy[res] = true;
+	}
       }
     }
 #endif

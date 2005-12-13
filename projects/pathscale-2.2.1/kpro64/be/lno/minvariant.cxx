@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -232,6 +232,10 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/minvari
 #include "opt_du.h"
 #include "wn_simp.h"
 #include "snl_utils.h" 
+
+#ifdef TARG_X8664
+BOOL Minvariant_Removal_For_Simd = FALSE;
+#endif
 
 static MEM_POOL MIR_local_pool;
 static BOOL mir_local_pool_initialized = FALSE;
@@ -777,6 +781,9 @@ static void MIR_Replace(WN*                      loop,
   TYPE_ID       type = WN_desc(LWN_Get_Parent(p->Wnlist[0]));
   TY_IDX        ty = Be_Type_Tbl(type);
   TY_IDX        pty = Make_Pointer_Type(ty);
+#ifdef TARG_X8664
+  if (Minvariant_Removal_For_Simd) pty = ty;
+#endif
 #ifdef KEY
   // Bug 3072 - If parent type is MTYPE_BS then, we can not create OPC_BSBSLDID 
   // - triggered by fix to this bug in model.cxx (adjust esz to 1-byte in 
@@ -790,7 +797,26 @@ static void MIR_Replace(WN*                      loop,
   }
 
   sprintf(newname, "$mi%d", unique_mi_num++);
+#ifdef TARG_X8664
+  SYMBOL newsym;
+  if (Minvariant_Removal_For_Simd) {
+    ST * st = Gen_Temp_Symbol (MTYPE_TO_TY_array[type], "_misym");
+    newsym = SYMBOL(st, 0, type);
+    // bug 7446
+    for (WN* wn = loop; wn != NULL; wn = LWN_Get_Parent(wn)) {
+      if (Is_Mp_Region(wn)) {
+	WN *prag = WN_CreatePragma(WN_PRAGMA_LOCAL, newsym.St(), 
+				   newsym.WN_Offset(), 0);
+	WN_set_pragma_compiler_generated(prag);
+	LWN_Insert_Block_Before(WN_region_pragmas(wn), NULL, prag);
+	break;
+      } 
+    } 
+  } else
+    newsym = Create_Preg_Symbol(newname, type);
+#else
   SYMBOL newsym = Create_Preg_Symbol(newname, type);
+#endif
 
   // Are there any reads?  If so, read before.
 
@@ -807,6 +833,10 @@ static void MIR_Replace(WN*                      loop,
     OPCODE      op = OPCODE_make_op(OPR_STID, MTYPE_V, type);
     read_tree = LWN_CreateStid(op, newsym.WN_Offset(), 
 				newsym.St(), pty, new_load);
+#ifdef TARG_X8664
+    if (Minvariant_Removal_For_Simd)
+      Create_alias(Alias_Mgr,read_tree);
+#endif
     LWN_Copy_Linenumber(LWN_Get_Statement(the_load),read_tree);
     LWN_Copy_Frequency_Tree(read_tree,loop);
     LWN_Insert_Block_Before(LWN_Get_Parent(loop), loop, read_tree);
@@ -839,8 +869,18 @@ static void MIR_Replace(WN*                      loop,
     OPCODE      op = OPCODE_make_op(OPR_LDID, Promote_Type(type), type);
     WN*         ldid = WN_CreateLdid(op, newsym.WN_Offset(), 
 				newsym.St(), ty);
+#ifdef TARG_X8664
+    if (Minvariant_Removal_For_Simd)
+      Create_alias(Alias_Mgr,ldid);
+#endif
     OPCODE      storeop = WN_opcode(LWN_Get_Parent(p->Wnlist[j]));
+#ifdef TARG_X8664
+    pty = Make_Pointer_Type(ty);
+#endif
     write_tree = LWN_CreateIstore(storeop, naddr_wnoffset, pty, ldid, naddr);
+#ifdef TARG_X8664
+    pty = ty;
+#endif
     LWN_Insert_Block_After(LWN_Get_Parent(loop), loop, write_tree);
     Copy_alias_info(Alias_Mgr, LWN_Get_Parent(p->Wnlist[j]), write_tree);
     LWN_Copy_Linenumber(LWN_Get_Parent(p->Wnlist[j]),write_tree);
@@ -972,6 +1012,10 @@ static void MIR_Replace(WN*                      loop,
       FmtAssert(WN_kid1(oldistore) == wn, ("Bad ISTORE child!"));
       WN* newstid = LWN_CreateStid(op, newsym.WN_Offset(), 
 				   newsym.St(), pty, WN_kid0(oldistore));
+#ifdef TARG_X8664
+      if (Minvariant_Removal_For_Simd)
+	Create_alias(Alias_Mgr, newstid);
+#endif
       LWN_Copy_Linenumber(oldistore,newstid);
       LWN_Copy_Frequency_Tree(newstid,oldistore);
 
@@ -993,6 +1037,10 @@ static void MIR_Replace(WN*                      loop,
       FmtAssert(WN_kid0(oldiload) == wn, ("Bad iload child!"));
       WN*     newldid = WN_CreateLdid(op, newsym.WN_Offset(), 
 			   newsym.St(), ty);
+#ifdef TARG_X8664
+      if (Minvariant_Removal_For_Simd)
+	Create_alias(Alias_Mgr, newldid);
+#endif
       WN*     p_oldiload = LWN_Get_Parent(oldiload);
       LWN_Copy_Frequency_Tree(newldid,oldiload);
 
@@ -1005,12 +1053,12 @@ static void MIR_Replace(WN*                      loop,
       WN_kid(p_oldiload, ikid) = newldid;
       LWN_Set_Parent(newldid, p_oldiload);
 #ifdef KEY
-      // Bug 1277 - pregs have no implicit conversions so generate a CVT here.
+      // Bug 1277 - generate a CVT here.
       if ( MTYPE_bit_size( WN_rtype(newldid ) ) == 32 &&
 	   MTYPE_bit_size( WN_rtype(p_oldiload ) ) == 64 &&
 	   !MTYPE_is_float( WN_rtype( newldid ) ) &&
 	   !MTYPE_is_float( WN_rtype( p_oldiload ) ) &&
-	   WN_st( newldid ) && ST_class( WN_st( newldid ) ) == CLASS_PREG ) {
+	   WN_st( newldid ) ) {
 	OPCODE cvt_o = OPCODE_make_op(OPR_CVT,WN_rtype(p_oldiload),
 				    WN_rtype(newldid));
         WN *cvt = LWN_CreateExp1(cvt_o, newldid);
@@ -1038,6 +1086,13 @@ static void MIR_Replace(WN*                      loop,
       Du_Mgr->Du_Add_Use(new_defs[ii], new_uses[jj]);
     }
   }
+#ifdef TARG_X8664
+  if (Minvariant_Removal_For_Simd) {
+    for (INT jj = 0; jj < new_uses.Elements(); jj++)
+      if (Wn_Is_Inside(new_uses[jj], loop))
+        Du_Mgr->Ud_Get_Def(new_uses[jj])->Set_loop_stmt(loop);
+  }
+#endif
 
   // Indirect array refs can only become direct when *using* the inner array.
   // So only look at new_uses: see if any array refs become direct as a

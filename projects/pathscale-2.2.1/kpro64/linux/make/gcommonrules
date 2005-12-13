@@ -99,8 +99,11 @@ MAKELIB: .USE .PRECIOUS
 _empty :=
 _space :=	$(_empty) $(_empty)
 
+BISON =		bison
+
 ar =		$(if $V,,@echo 'AR     $(CWD)/$@';) $(AR)
 as =		$(if $V,,@echo 'AS     $(CWD)/$<';) $(CC)
+bison =		$(if $V,,@echo 'BISON  $(CWD)/$<';) $(BISON)
 c++f =		$(if $V,,@echo 'C++    $(CWD)/$<';) $(C++F)
 cc =		$(if $V,,@echo 'C      $(CWD)/$<';) $(CC)
 ccf =		$(if $V,,@echo 'C      $(CWD)/$@';) $(CCF)
@@ -126,6 +129,9 @@ submake =	+$(if $V,,@echo 'MAKE   $(if $(2),$(2) in )$(CWD)/$(1)';) $(MAKE) -C $
 %.o : %.s
 	$(as) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
+%.o : %.S
+	$(as) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
 %.o : %.F
 	$(fc) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
 
@@ -144,6 +150,9 @@ pic_flag := -fpic
 	$(cc) $(pic_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 %.pic.o : %.s
+	$(as) $(pic_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+%.pic.o : %.S
 	$(as) $(pic_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 %.pic.o : %.f
@@ -166,6 +175,9 @@ prof_flag := -pg
 %.pg.o : %.s
 	$(as) $(prof_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
+%.pg.o : %.S
+	$(as) $(prof_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
 %.pg.o : %.f
 	$(fc) $(prof_flag) -c $(FFLAGS_NOLANG) $(F90FLAGS) $< -o $@
 
@@ -184,6 +196,9 @@ ipa_flag := -ipa
 	$(cc) $(ipa_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 %.ipa.o : %.s
+	$(as) $(ipa_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+%.ipa.o : %.S
 	$(as) $(ipa_flag) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 %.ipa.o : %.f

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -58,15 +58,18 @@
 #include "cgexp.h"
 #include "cxx_template.h" // for STACK
 #include "cg_spill.h"
+#include "cg.h"           // for PU_References_GOT
 
 static ST* save_ebx_loc = NULL;
 static INT32 last_pu_count = -1;
 
 void EETARG_Generate_PIC_Exit_Code( BB* bb, OPS* ops )
 {
+  if( save_ebx_loc == NULL )
+    return;
+
   CGSPILL_Load_From_Memory( Ebx_TN(), save_ebx_loc, ops, CGSPILL_LCL, bb );
   Set_OP_computes_got( OPS_last(ops) );
-  //Set_OP_no_move_before_gra( OPS_last(ops) );
 }
 
 
@@ -79,6 +82,12 @@ void EETARG_Generate_PIC_Entry_Code( BB* bb, OPS* ops )
     return;
 
   TN* ebx_tn = Ebx_TN();
+
+  if( REGISTER_allocatable( TN_register_class(ebx_tn),
+			    TN_register(ebx_tn) ) ){
+    save_ebx_loc = NULL;
+    return;
+  }
 
   if( last_pu_count != Current_PU_Count() ){
     save_ebx_loc = CGSPILL_Get_TN_Spill_Location( ebx_tn, CGSPILL_LCL );

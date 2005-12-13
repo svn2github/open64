@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -263,7 +263,7 @@ Mtype_to_Ukind(MTYPE mtype)
    case MTYPE_CQ: 
       ukind = PREG_AS_CQ;
       break;
-#ifdef KEY
+#ifdef TARG_X8664
    case MTYPE_V16I1:
    case MTYPE_V16I2:
    case MTYPE_V16I4:

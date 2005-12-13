@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -264,6 +264,12 @@ BOOL Debug_Prefetch = FALSE;
 BOOL Verbose_Prefetch = FALSE;
 BOOL PU_has_manual_prefetch = FALSE;
 
+#ifdef KEY
+#include "glob.h"        // Src_File_Name
+
+INT Num_Prefetches;
+#endif
+
 static void Prefetch_Manual (WN* func_nd);
 static void Disable_Prefetch_Manual (WN* func_nd);
 static void Prefetch_Auto   (WN* func_nd,
@@ -275,7 +281,11 @@ static void Process_PU_Pragmas (WN* func_nd);
 static inline BOOL
 Target_ISA_Has_Prefetch()
 {
-  return (Is_Target_ISA_M4Plus() || Is_Target_ISA_I1Plus() || Is_Target_x86_64() );
+  return (Is_Target_ISA_M4Plus() || Is_Target_ISA_I1Plus()
+#ifdef TARG_X8664
+          || Is_Target_x86_64()
+#endif
+         );
 }
 
 // R10K (and its successors) and Itanium (TM) support prefetching
@@ -642,7 +652,19 @@ static void Prefetch_Auto (WN* func_nd,
               printf ("\n---------------- prefetches ----------------\n");
               printf ("       (cannot coordinate with splits) \n"));
 
+#ifdef KEY
+    Num_Prefetches = 0;
+#endif
     childnode->Gen_Prefetch (NULL);
+#ifdef KEY
+    if (Num_Prefetches > 0 && LNO_Prefetch_Verbose) {
+      printf("(%s:%d) ", 
+	     Src_File_Name, 
+	     Srcpos_To_Line(WN_Get_Linenum(childnode->Get_Code())));
+      printf ("Generated %d prefetch instructions for this loop\n", 
+	      Num_Prefetches);
+    }      
+#endif
 
     PF_PRINT (fprintf (TFile, "---- Done with Loop nest number: %d ----\n",
                        loopno));

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -165,7 +169,11 @@ static mUINT16      DST_get_ordinal_num(char    *the_name,
 
 /* macros to indicate functions which are external */
 
+#ifdef KEY /* Bug 5271 */
+#define GET_NEXT_ELEMENT_ST(c,s) cwh_auxst_next_element(c,s,l_PU_COMLIST)
+#else /* KEY Bug 5271 */
 #define GET_NEXT_ELEMENT_ST(c,s) cwh_auxst_next_element(c,s,l_COMLIST)
+#endif /* KEY Bug 5271 */
 #define GET_NEXT_ALTENTRY(c,s)  cwh_auxst_next_element(c,s,l_ALTENTRY)
 #define GET_MODIFIED_NAME(s) cwh_auxst_stem_name(s)
 #define GET_NEXT_COMMON(p,c) cwh_auxst_next_element(p,c,l_DST_COMLIST)

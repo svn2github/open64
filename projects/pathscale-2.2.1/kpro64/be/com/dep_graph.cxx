@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -127,7 +127,11 @@ static BOOL LNO_Erase_Dg_From_Here_In_X(WN* wn, ARRAY_DIRECTED_GRAPH16* dg)
 
   VINDEX16      v = dg->Get_Vertex(wn);
   if (OPCODE_is_load(op) || OPCODE_is_store(op) ||
-      OPCODE_is_call(op) || (OPCODE_operator(op) == OPR_INTRINSIC_OP)) {
+      OPCODE_is_call(op) || (OPCODE_operator(op) == OPR_INTRINSIC_OP)
+#ifdef KEY
+      || (OPCODE_operator(op) == OPR_PURE_CALL_OP)
+#endif
+      ) {
     if (v) {
       EINDEX16 enext = 0;
       EINDEX16 e;
@@ -640,6 +644,9 @@ INT ARRAY_DIRECTED_GRAPH16::Find_Region(WN *wn, DOLOOP_STACK *stack)
 	((_type == DEPV_ARRAY_ARRAY_GRAPH) || 
 	  (Do_Loop_Is_Inner(wn) && !dli->Has_Gotos && !dli->Has_Barriers))) {
       if (!Build_Region(WN_do_body(wn),WN_do_body(wn),stack)) {
+#ifdef KEY
+	if (_type == DEPV_ARRAY_ARRAY_GRAPH)
+#endif
         LNO_Erase_Dg_From_Here_In(wn, this);
         return(0);
       } 

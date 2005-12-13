@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -475,6 +479,19 @@ boolean get_temp_file(char       *open_status,
 
    result = FALSE;
 
+#ifdef KEY	// bug 1383
+   int fd;
+   char buf[32];
+   strcpy(buf, "/tmp/pathf90XXXXXX");
+   if ((fd = mkstemp(buf)) != -1) {
+     if (file_name != NULL) {
+       strcpy(file_name, buf);
+     }
+     if ((*file_ptr = fdopen(fd, open_status)) != NULL) {
+       result = TRUE;
+     }
+   }
+#else
    tmp_file_name = (char *) tempnam(NULL, NULL);
 
 
@@ -488,6 +505,7 @@ boolean get_temp_file(char       *open_status,
          result = TRUE;
       }
    }
+#endif
 
    TRACE (Func_Exit, "get_temp_file", NULL);
 

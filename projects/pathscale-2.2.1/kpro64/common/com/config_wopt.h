@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -94,7 +94,7 @@ extern BOOL WOPT_Enable_Aggressive_Doloop_Promotion;
 extern BOOL WOPT_Enable_Aggressive_IVR;
 extern BOOL WOPT_Enable_Aggressive_Lftr;
 extern BOOL WOPT_Enable_Aggressive_Phi_Simp;
-extern BOOL WOPT_Enable_Aggstr_Reduction;
+extern UINT32 WOPT_Enable_Autoaggstr_Reduction_Threshold;
 extern BOOL WOPT_Enable_Alias_Classification;
 extern BOOL WOPT_Enable_Alias_Class_Fortran_Rule;
 extern BOOL WOPT_Enable_Avoid_Rehash;	/* SSAPRE to try to minimize rehashing*/
@@ -176,7 +176,6 @@ extern INT32 WOPT_Enable_Ivr_Cand_Limit;
 extern BOOL WOPT_Enable_IVR_Outermost_Loop_Parallel_Region; 
 extern BOOL WOPT_Enable_Ldx;            /* index load optimization */
 extern BOOL WOPT_Enable_Lego_Opt;       /* max optimization for lego */
-extern BOOL WOPT_Enable_LFTR;           /* linear function test replacement */
 extern BOOL WOPT_Enable_LFTR_Ivar;      /* handle expr containing ivars */
 extern BOOL WOPT_Enable_LFTR2;          /* linear function test replacement */
 extern BOOL WOPT_Enable_LFTR2_Limit;
@@ -205,6 +204,9 @@ extern BOOL WOPT_Enable_Prop_Aggressive;/* use inverse function to avoid
 extern BOOL WOPT_Enable_Prop_Ivar;	/* copy propagation thru iload's */
 extern BOOL WOPT_Enable_Prop_CSE;       /* copy propagation of CSE expressions */
 extern INT32 WOPT_Enable_Prop_Limit;	/* tree height limit in copy prop */
+#ifdef KEY
+extern BOOL  WOPT_Enable_Prop_Dope;	/* propagate dope vector fields? */
+#endif
 extern BOOL WOPT_Enable_Prune;		/* temporary, pv 370066 */
 extern BOOL WOPT_Enable_Replace_Second_IV; /* Force replacement of secondary IV */
 extern BOOL WOPT_Enable_Replace_While_Loop_Second_IV; /* Force replacement of secondary IV */
@@ -223,6 +225,7 @@ extern BOOL WOPT_Enable_Simp_Iload;	/* simplifier folding iload */
 extern BOOL WOPT_Enable_Simple_If_Conv; /* enable simple if-conversion at CFG build time */
 extern INT32 WOPT_Enable_If_Conv_Limit; /* max number of leaf nodes allowed in a
 					   simple expr in simple if conv */
+extern BOOL WOPT_Enable_If_Conv_For_Istore; /* if-conversion is applied if lhs is istore */
 extern char *WOPT_Enable_Skip;
 extern struct option_list *WOPT_Skip;	/* Skip option list */
 extern struct skiplist *WOPT_Skip_List;	/* Preprocessed skip list */
@@ -234,7 +237,6 @@ extern BOOL WOPT_Enable_SSA_Minimization; /* SSA minimization in SSAPRE */
 extern BOOL WOPT_Enable_SSA_PRE;
 extern BOOL WOPT_Enable_Store_PRE;
 extern INT32 WOPT_Enable_Store_PRE_Limit;
-extern BOOL WOPT_Enable_Strength_Reduction;
 extern BOOL WOPT_Enable_Tail_Recur;	/* tail recursion opt */
 extern BOOL WOPT_Enable_Update_Vsym;
 extern char *WOPT_Set_Unique_Pt;
@@ -285,6 +287,10 @@ extern INT32 WOPT_Enable_Folded_Scalar_Limit; // to limit number of scalars
 					// formed by Fold_Lda_Iload_Istore()
 extern INT32 WOPT_Enable_Bdceprop_Limit; // to limit the BBs in which BDCE's
 					// copy propagation is performed
+extern BOOL WOPT_Enable_Warn_Uninit;   // enable warning for detected uninitialized locals
+extern INT32 WOPT_Enable_WN_Unroll;	// 0: disable; 
+					// 1: unroll only loop bodies with IFs
+					// 2: unroll all loop bodies
 #endif
 #endif /* config_wopt_INCLUDED */
 

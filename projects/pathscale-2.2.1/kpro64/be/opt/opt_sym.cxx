@@ -1,7 +1,7 @@
 //-*-c++-*- 
 
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -101,6 +101,7 @@
 #include "be_symtab.h"
 #include "wn_lower.h"
 #include "opt_config.h"
+#include "erglob.h"
 #include "opt_htable.h"
 #include "opt_util.h"
 #include "opt_base.h"
@@ -132,7 +133,9 @@ char *Targ_Print( char *fmt, TCON cvalue );
 extern WN_MAP Prompf_Id_Map;
 #endif // Is_True_On
 
-
+#ifdef KEY
+static BOOL in_parallel_region = FALSE;
+#endif
 
 // ====================================================================
 //
@@ -237,7 +240,11 @@ Collect_addr_passed(WN *wn)
   // Note that we need to deal with calls, and PARM nodes since they may
   // occur under IO_ITEM nodes.
   //
-  if (OPERATOR_is_call(opr))
+  if (OPERATOR_is_call(opr)
+#ifdef KEY
+      || opr == OPR_PURE_CALL_OP
+#endif
+      )
   {
     for (INT i = 0; i < WN_kid_count(wn); i++)
       Collect_addr_passed(WN_kid(wn,i));
@@ -689,9 +696,10 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
   
   // Lookup the opt_stab first
   while (idx && aux_stab[idx].St() != NULL) {
+#if 0 // necessitated by the fix to bug 6293
     Is_True(aux_stab[idx].St() == st,
 	    ("Enter_aux_stab::lookup wrong ST chain."));
- 
+#endif
     BOOL kind_match = FALSE;
     switch (aux_stab[idx].Stype()) {
     case VT_NO_LDA_SCALAR:
@@ -722,6 +730,11 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
       if ( is_volatile && ! aux_stab[idx].Is_volatile() ) {
 	aux_stab[idx].Set_volatile();
       }
+#ifdef KEY // bug 5401 and 5267
+      else if (in_parallel_region && OPERATOR_is_scalar_store(opr) &&
+	       ST_sclass(st) != SCLASS_REG)
+	aux_stab[idx].Set_mp_no_dse();
+#endif
       // found -- update symtab entry
       if (is_scalar) {
 	if (!aux_stab[idx].Is_real_var())
@@ -800,6 +813,12 @@ OPT_STAB::Enter_symbol(OPERATOR opr, ST* st, INT64 ofst,
 
   if (dmod) sym->Set_dmod();
   if ( is_volatile )   sym->Set_volatile();
+
+#ifdef KEY // bug 5401 and 5267
+  if (in_parallel_region && OPERATOR_is_scalar_store(opr) && 
+      ST_sclass(st) != SCLASS_REG)
+    sym->Set_mp_no_dse();
+#endif
 
   if (ST_class(st) == CLASS_VAR && ST_has_nested_ref(st)) {
     sym->Set_has_nested_ref();
@@ -1622,6 +1641,26 @@ OPT_STAB::Convert_ST_to_AUX(WN *wn, WN *block_wn)
 		"processed RGN %d, %s\n", RID_id(rid),RID_level_str(rid));
       return;
     }
+#ifdef KEY
+    BOOL has_parallel_pragma = FALSE;
+    BOOL in_parallel_region_save = FALSE;
+    if (Phase() != MAINOPT_PHASE && PU_has_mp(Get_Current_PU()) && 
+	! PU_mp_lower_generated(Get_Current_PU())) {
+      // see if there is a WN_PRAGMA_PARALLEL
+      has_parallel_pragma = Is_region_with_pragma(wn, WN_PRAGMA_PARALLEL_BEGIN)
+      			 || Is_region_with_pragma(wn, WN_PRAGMA_MASTER_BEGIN);
+    }
+    for (i = 0; i < WN_kid_count(wn); i++) {
+      if (has_parallel_pragma && i == 2) {
+	in_parallel_region_save = in_parallel_region; // save previous value
+	in_parallel_region = TRUE; // set new value
+      }
+      Convert_ST_to_AUX(WN_kid(wn,i), NULL);
+      if (has_parallel_pragma && i == 2) 
+	in_parallel_region = in_parallel_region_save; // restore previous value
+    }
+    return;
+#endif
   }
 
   if (opr == OPR_ASM_STMT) {
@@ -2776,7 +2815,8 @@ OPT_STAB::Identify_vsym(WN *memop_wn)
   OPERATOR opr = WN_operator(memop_wn);
   WN *addr_wn = ((OPERATOR_is_scalar_istore (opr) ||
 		  opr == OPR_MSTORE) ? WN_kid1(memop_wn) : WN_kid0(memop_wn));
-  INT64 offset = (opr == OPR_PARM ? (INT64) 0 : WN_offset(memop_wn));
+  INT64 offset = (opr == OPR_PARM || opr == OPR_ASM_INPUT ? (INT64) 0 
+  							: WN_offset(memop_wn));
 
   // Raymond says to delete the (offset == 0) clause. -- RK 981106
   BOOL direct_use = ((addr_wn != NULL) &&
@@ -3523,9 +3563,9 @@ VER_STAB_FLAG_Print( INT flag, BOOL verbose, FILE *fp=stderr )
 
 //  Print the DU chain entry
 //
-void VER_STAB_ENTRY::Print(FILE *fp) const
+void VER_STAB_ENTRY::Print(FILE *fp, VER_ID ver_id) const
 {
-  fprintf(fp, " sym=%3d ver=%3d ", Aux_id(), Version());
+  fprintf(fp, " vers %d: sym=%3d ver=%3d ", ver_id, Aux_id(), Version());
   VER_STAB_FLAG_Print( flags, FALSE, fp );
 
   switch (Type()) {
@@ -3873,6 +3913,8 @@ AUX_ID OPT_STAB::Part_of_reg_size_symbol(AUX_ID x)
 	  ST_sclass(aux_stab[cur].St()) != SCLASS_AUTO)
 	continue;
       if (aux_stab[cur].Bit_size() != 0) // it is a bit-field
+	continue;
+      if (ST_is_temp_var(aux_stab[cur].St())) // no compiler-generated temps
 	continue;
       if (aux_stab[cur].Is_volatile())
 	continue;

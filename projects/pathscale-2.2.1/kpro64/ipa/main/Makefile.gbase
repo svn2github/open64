@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -82,11 +82,7 @@ COMMON_UTIL_DIR         = $(COMMON_DIR)/util
 COMMON_COM_TARG_DIR     = $(COMMON_COM_DIR)/$(BUILD_TARGET_DIR)
 COMMON_UTIL_TARG_DIR    = $(COMMON_UTIL_DIR)/$(BUILD_TARGET_DIR)
 
-ifeq ($(BUILD_TARGET), MIPS)
-LD_DIR		        = $(BUILD_TOT)/ld
-else
 LD_DIR		        = $(BUILD_TOT)/fake_ld
-endif
 
 INCLUDE_DIR             = $(ROOT)/usr/include
 
@@ -128,7 +124,8 @@ HEADER_DIRS = \
   $(COMMON_UTIL_DIR)    \
   $(LD_COMMON_DIR)	\
   $(LD_DIR)		\
-  $(TARGDIR)/be
+  $(TARGDIR)/be		\
+  $(BUILD_TOT)/include
 
 ifeq ($(BUILD_OS), LINUX)
 HEADER_DIRS += $(TARGDIR)/include/libelf
@@ -271,19 +268,10 @@ HOSTDEFS += -D_NEW_SYMTAB -D_MERGE_SUMMARY_ST_IDX_=1 -DBACK_END -fpic
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 LCDEFS += $(HOSTDEFS)
 LCDEFS += -DSTD_MONGOOSE_LOC='"$(STD_MONGOOSE_LOC)"' -D_SUPPORT_IPA -D_MULTIGOT
-ifeq ($(BUILD_COMPILER), EDG)
-LC++OPTS = $(STD_COMPILE_OPTS)  -fullwarn -woff 1171,1172,1174,1201,1209,1375
-WOFF = -fullwarn
-NONE_OPT = -none
-endif
 LC++DEFS += $(HOSTDEFS) -DSTD_MONGOOSE_LOC='"$(STD_MONGOOSE_LOC)"'
 LC++DEFS += -D_SUPPORT_IPA -DMONGOOSE_BE
 #-DIPA_CPROP_TEST
 LC++INCS = $(LCINCS)
-
-ifeq ($(BUILD_OS), IRIX)
-LLDLIBS += -lgen -lm
-endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 LCDEFS += 
@@ -292,11 +280,6 @@ LC++DEFS +=
 # -DIPA_CPROP_DEBUG
 HOSTDEFS += -DIs_True_On
 HOSTDEFS += -DInsist_On
-else
-# not debug
- ifeq ($(BUILD_OS), IRIX)
-OPTIMIZER += -Wl,-Bsymbolic
- endif
 endif
 
 # add define HOST_IA64 to choose suitable headfile
@@ -338,13 +321,6 @@ install: default
 install.pure: $(TARGETS_PURE)
 	$(STD_INSTALL) -F $(STD_MONGOOSE_LOC) $(TARGETS_PURE)
 
-ifeq ($(BUILD_OS), IRIX)
-ipa.so: $(IPA_ALL_OBJS) $(BE_BE_DIR)/so_locations \
-		$(TARG_BE_DIR)/be.so $(IPA_MAIN_DIR)/Exported 
-	$(C++F) $(STD_DSO_LOADOPTS) -exports_file $(IPA_MAIN_DIR)/Exported \
-		$(IPA_ALL_OBJS) -o $@ $(NONE_OPT) \
-		$(TARG_BE_DIR)/be.so  $(LLDLIBS)
-else
 be.so: $(BE_BE_DIR)/so_locations \
 		$(TARG_BE_DIR)/be.so 
 	ln -s $(TARG_BE_DIR)/be.so .
@@ -357,7 +333,6 @@ ipa.so: $(IPA_ALL_OBJS) $(BE_BE_DIR)/so_locations \
 	$(link.c++f) $(STD_DSO_LOADOPTS) \
 		$(IPA_ALL_OBJS) -o $@ $(NONE_OPT) \
 		be.so ipl.so  $(LLDLIBS)
-endif
 
 ipa.so.pure: ipa.so
 	LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(TARG_BE_DIR) purify ipa.so
@@ -373,8 +348,3 @@ ipc_partition64.o: $(IPA_COMMON_DIR)/ipc_partition.c
 #  Include the usual commonrules
 #----------------------------------------------------------------------
 include $(COMMONRULES)
-
-ifeq ($(BUILD_OS), IRIX)
-DSONAMEOPT = -soname ipa.so
-endif
-

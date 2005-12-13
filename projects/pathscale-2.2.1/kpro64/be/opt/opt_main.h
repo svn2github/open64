@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -161,6 +166,10 @@ public:
   BOOL	       Verify_IR(CFG *, CODEMAP *, INT);// consistency check
   BOOL         Verify_CODEMAP(void);
   void         Verify_version(void);
+#ifdef KEY
+  void	       Find_uninitialized_locals(void); // find uninitialized local vars
+  void	       Find_uninit_locals_for_entry(BB_NODE*); // find uninitialized local vars for an entry to the PU
+#endif
 
   // member access functions
   WN          *Input_tree(void)         { return _input_tree; }

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -493,7 +497,11 @@ DopeVectorType	*order)
     for (;;) {
       while (counter[src_rank] < src_extent[src_rank] ) {
 	for ( i = 0 ; i < a_size ; i ++ ) {
+#ifdef KEY /* Bug 4039 */
+	  *(ui16 *)result_p = *(ui16 *)array_p ;
+#else /* KEY Bug 4039 */
 	  *(r16 *)result_p = *(r16 *)array_p ;
+#endif /* KEY Bug 4039 */
 	  array_p += a_stride ;
 	  result_p += r_stride ;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -274,6 +274,7 @@ static void Lego_Fix_Local_Rec(WN *wn, BOOL in_a_parallel_region)
 		if (WN_operator(parent) == OPR_PARM) {
 		  OPCODE opcode=WN_opcode(LWN_Get_Parent(parent));
 		  Is_True(OPCODE_is_call(opcode) ||
+			  OPCODE_operator(opcode)==OPR_PURE_CALL_OP || // KEY
 			  OPCODE_operator(opcode)==OPR_INTRINSIC_OP,
 			  ("PARAM under neither call or intrinisc op?"));
 		  ErrMsgSrcpos(EC_DRA_unsupported_type,

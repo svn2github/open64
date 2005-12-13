@@ -43,14 +43,6 @@ HOSTDEFS += -DIs_True_On
 HOSTDEFS += -DInsist_On 
 endif
 
-ifeq ($(BUILD_COMPILER), EDG)
-CVERSION = -xansi
-WOFF = -fullwarn
-else
-CVERSION =
-WOFF =
-endif
-
 ifeq ($(shell test -e /usr/include/valgrind/valgrind.h && echo y || echo n), y)
 VGINC = -I/usr/include/valgrind
 VGDEF =
@@ -69,11 +61,6 @@ LCXXDEFS += $(HOSTDEFS) $(TARGDEFS)
 LCINCS = -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com -I$(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR) $(VGINC)
 LCXXINCS = -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com -I$(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR)
 
-ifneq ($(BUILD_COMPILER), EDG)
-LCOPTS   += -fwritable-strings
-LCXXOPTS += -fwritable-strings
-endif
-
 LIBRARY = libcomutil.a
 
 TARGETS = $(LIBRARY)
@@ -83,13 +70,8 @@ ifeq ($(BUILD_TARGET), MIPS)
 STD_LIBRARY_LOC=$(DEF_LIBRARY_LOC)
 endif
 
-ifeq ($(BUILD_COMPILER), EDG)
-ASFILES	= \
-	c_qwmultu.s
-else
 CFIL	= \
 	c_qwmultu.c
-endif
 
 CFILES	= \
 	bitset.c \

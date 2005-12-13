@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Front-end tree definitions for GNU compiler.
@@ -797,15 +797,10 @@ struct tree_real_cst GTY(())
 
 /* In a STRING_CST */
 #define TREE_STRING_LENGTH(NODE) (STRING_CST_CHECK (NODE)->string.length)
-#ifndef SGI_MONGOOSE
 #define TREE_STRING_POINTER(NODE) (STRING_CST_CHECK (NODE)->string.pointer)
-#else
-// Have to pass back a char * and not a const char *
-#define TREE_STRING_POINTER(NODE) \
-        ((char *)STRING_CST_CHECK (NODE)->string.pointer)
-
+#ifdef KEY
 #define TREE_STRING_ST(NODE) (STRING_CST_CHECK (NODE)->string.st)
-#endif /*SGI_MONGOOSE */
+#endif /* KEY */
 
 struct tree_string GTY(())
 {
@@ -1562,6 +1557,8 @@ struct tree_type GTY(())
 #define DECL_INITIAL(NODE) (DECL_CHECK (NODE)->decl.initial)
 #ifdef KEY
 #define DECL_INITIAL_2(NODE) (DECL_CHECK (NODE)->decl.initial_2)
+#define DECL_ALIAS_TARGET(NODE) (DECL_CHECK (NODE)->decl.alias_target)
+#define DECL_ALIAS_TARGET_DECL(NODE) (DECL_CHECK (NODE)->decl.initial_2)
 #endif  /* KEY */
 /* For a PARM_DECL, records the data type used to pass the argument,
    which may be different from the type seen in the program.  */
@@ -1924,6 +1921,11 @@ struct tree_type GTY(())
 /* Used to indicate that this decl is emitted by g++, regardless of the decl's
    other attributes such as weak or external. */
 #define DECL_EMITTED_BY_GXX(NODE) (DECL_CHECK (NODE)->decl.emitted_by_gxx)
+
+#ifdef KEY
+/* Used to mark a threadprivate variable in OpenMP */
+#define DECL_THREADPRIVATE(NODE) (DECL_CHECK (NODE)->decl.threadprivate_flag)
+#endif
 #endif
 
 struct function;
@@ -1968,7 +1970,9 @@ struct tree_decl GTY(())
   unsigned uninlinable : 1;
   unsigned thread_local_flag : 1;
   unsigned inlined_function_flag : 1;
-  /* One unused bit.  */
+#ifdef KEY
+  unsigned threadprivate_flag : 1;
+#endif /* KEY */
 
   unsigned lang_flag_0 : 1;
   unsigned lang_flag_1 : 1;
@@ -2013,6 +2017,7 @@ struct tree_decl GTY(())
   tree initial;	/* Also used for DECL_QUALIFIER */
 #ifdef KEY
   tree initial_2;       /* For thunks, saved value of initial. */
+  tree alias_target;    /* The decl is an alias for this symbol. */
   /* In the original GCC code, THUNK_DELTA maps to u1.i, which collides with
      DECL_NUM_STMTS which also maps to u1.i.  Create a unique field for the
      thunk delta. */
@@ -2066,6 +2071,17 @@ struct tree_decl GTY(())
   struct mongoose_gcc_DST_IDX decl_dst_id; /* whirl DST */
 #endif /* SGI_MONGOOSE */
 };
+
+#ifdef KEY
+#include "omp_types.h"
+struct tree_omp GTY(())
+{
+  struct tree_common common;
+  enum omp_tree_type choice;
+  void * omp_clause_list;
+};
+#endif /* KEY */
+
 
 enum tree_node_structure_enum {
   TS_COMMON,
@@ -2081,6 +2097,9 @@ enum tree_node_structure_enum {
   TS_VEC,
   TS_EXP,
   TS_BLOCK,
+#ifdef KEY
+  TS_OMP,
+#endif
   LAST_TS_ENUM
 };
 
@@ -2104,6 +2123,9 @@ union tree_node GTY ((ptr_alias (union lang_tree_node),
   struct tree_vec GTY ((tag ("TS_VEC"))) vec;
   struct tree_exp GTY ((tag ("TS_EXP"))) exp;
   struct tree_block GTY ((tag ("TS_BLOCK"))) block;
+#ifdef KEY
+  struct tree_omp GTY ((tag ("TS_OMP"))) omp;
+#endif
  };
 
 /* Standard named or nameless data types of the C compiler.  */
@@ -2127,6 +2149,11 @@ enum tree_index
   TI_INTEGER_ONE,
   TI_INTEGER_MINUS_ONE,
   TI_NULL_POINTER,
+
+  TI_FLOAT_PTR_TYPE,
+  TI_DOUBLE_PTR_TYPE,
+  TI_LONG_DOUBLE_PTR_TYPE,
+  TI_INTEGER_PTR_TYPE,
 
   TI_SIZE_ZERO,
   TI_SIZE_ONE,
@@ -2210,6 +2237,11 @@ extern GTY(()) tree global_trees[TI_MAX];
 #define bitsize_unit_node		global_trees[TI_BITSIZE_UNIT]
 
 #define null_pointer_node		global_trees[TI_NULL_POINTER]
+
+#define float_ptr_type_node             global_trees[TI_FLOAT_PTR_TYPE]
+#define double_ptr_type_node            global_trees[TI_DOUBLE_PTR_TYPE]
+#define long_double_ptr_type_node       global_trees[TI_LONG_DOUBLE_PTR_TYPE]
+#define integer_ptr_type_node           global_trees[TI_INTEGER_PTR_TYPE]
 
 #define float_type_node			global_trees[TI_FLOAT_TYPE]
 #define double_type_node		global_trees[TI_DOUBLE_TYPE]

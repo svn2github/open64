@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -184,6 +184,7 @@ private:
   UINT32             _fb_count_icall;
 #ifdef KEY
   UINT32             _count_value;
+  UINT32             _count_value_fp_bin;
 #endif
 
   // _instrument_count is total number of WHIRL nodes that have been
@@ -191,10 +192,10 @@ private:
 
   UINT32             _instrument_count;
 
-  // _pu_handle is the preg acting as a Handle for all profile calls in PU
+  // _pu_handle is the temp storing the Handle for all profile calls in PU
   // _fb_handle is a list of handles for feedback info for this PU
 
-  PREG_NUM           _pu_handle;
+  ST                *_pu_handle;
   PU_PROFILE_HANDLES _fb_handle;
   //_fb_handle_merged is a handle only for merged icall feedback info for this PU.
   PU_PROFILE_HANDLE _fb_handle_merged;
@@ -246,7 +247,7 @@ private:
 
   // Get the PU handle.
   WN *PU_Handle() const {
-    return WN_LdidPreg( Pointer_type, _pu_handle );
+    return WN_Ldid( Pointer_type, 0, _pu_handle, MTYPE_To_TY(Pointer_type));
   }
 
   // Get the feedback handle.
@@ -413,12 +414,20 @@ private:
   void Initialize_Instrumenter_Value( INT32 count );
   void Instrument_Value( WN *wn, INT32 id, WN *block );
   void Annotate_Value( WN *wn, INT32 id );
+  void Initialize_Instrumenter_Value_FP_Bin( INT32 count );
+  void Instrument_Value_FP_Bin( WN *wn, INT32 id, WN *block, WN *parent, 
+				WN *stmt );
+  void Annotate_Value_FP_Bin( WN *wn, INT32 id );
 #endif
 
   // ------------------------------------------------------------------
 
   // Walk the tree and perform instrumentation or annotate feedback
+#ifndef KEY
   void Tree_Walk_Node( WN *wn, WN *stmt, WN *block );
+#else
+  void Tree_Walk_Node( WN *wn, WN *stmt, WN *block, WN* parent = NULL );
+#endif
    
 protected:
   void Merge_Icall_Feedback();
@@ -610,9 +619,10 @@ WN_INSTRUMENT_WALKER::WN_INSTRUMENT_WALKER( BOOL instrumenting,
     _count_compgoto( 0 ),
 #ifdef KEY
     _count_value( 0 ),
+    _count_value_fp_bin( 0 ),
 #endif
     _instrument_count( 0 ),
-    _pu_handle( 0 ),
+    _pu_handle( NULL ),
     _fb_handle( fb_handles ),
     _fb_handle_merged( NULL ),
     _entry_pragma_stmt( NULL ),
@@ -624,7 +634,7 @@ WN_INSTRUMENT_WALKER::WN_INSTRUMENT_WALKER( BOOL instrumenting,
     _compgoto_num_targets( local_mempool )
 {
   if ( _instrumenting )
-    _pu_handle = Create_Preg( Pointer_type, "pu_instrument_handle" );
+    _pu_handle = Gen_Temp_Symbol(MTYPE_To_TY(Pointer_type), "pu_instrument_handle");
 }
 
 
@@ -1088,6 +1098,9 @@ WN_INSTRUMENT_WALKER::Instrument_Icall( WN *wn, INT32 id, WN *block )
 {
   // Get the address of the called function.
   WN* orig_wn = WN_kid( wn, WN_kid_count(wn)-1 );
+  // Make sure orig_wn does not have side-effects
+  if (WN_operator (orig_wn) == OPR_COMMA)
+    orig_wn = WN_kid1 (orig_wn);
   WN* called_func_address = WN_COPY_Tree( orig_wn );
 
   if( !WN_Rename_Duplicate_Labels( orig_wn,
@@ -1098,7 +1111,7 @@ WN_INSTRUMENT_WALKER::Instrument_Icall( WN *wn, INT32 id, WN *block )
   }
 
   // profile_icall( handle, call_id, called_func_address )
-  Instrument_Before( Gen_Call( ICALL_INSTRUMENT_NAME,
+  Instrument_After( Gen_Call( ICALL_INSTRUMENT_NAME,
 			       PU_Handle(),
 			       WN_Intconst( MTYPE_I4, id ),
 			       called_func_address ),
@@ -1128,6 +1141,85 @@ WN_INSTRUMENT_WALKER::Initialize_Instrumenter_Icall( INT32 count )
 }
 
 #ifdef KEY
+void WN_INSTRUMENT_WALKER::Initialize_Instrumenter_Value_FP_Bin( INT32 count )
+{
+  if ( count == 0 ) return;
+
+  WN* total_values = WN_Intconst( MTYPE_I4, count );
+  // __profile_loop_init( handle, total_values )
+  Instrument_Entry( Gen_Call( VALUE_FP_BIN_INIT_NAME,
+			      PU_Handle(), total_values ) );
+}
+
+
+static BOOL Is_Array_Exp ( WN *wn ) 
+{
+  if (WN_operator(wn) == OPR_ARRAYEXP)
+    return TRUE;
+  
+  for (INT kid = 0; kid < WN_kid_count(wn); kid ++)
+    if (Is_Array_Exp(WN_kid(wn, kid))) return TRUE;
+
+  return FALSE;
+}
+
+void WN_INSTRUMENT_WALKER::Instrument_Value_FP_Bin( WN *wn, INT32 id, 
+						    WN *block, WN *parent, 
+						    WN *stmt )
+{
+  if ( !stmt ||
+       /* To work around a bug in the optimizer. */
+       WN_operator(stmt) == OPR_IO )
+    return;
+
+  INT kid_num = -1;
+  for ( INT kid = 0; kid < WN_kid_count(parent); kid ++ )
+    if ( WN_kid(parent, kid) == wn ) {
+      kid_num = kid; break; 
+    }  
+  if (kid_num == -1) return;
+
+  // F90 lowerer is called after instrumentation. So we should not instrument
+  // MPYs with F90 ARRAYEXP operands.
+  if (Is_Array_Exp(WN_kid0(wn)) || Is_Array_Exp(WN_kid1(wn)))
+    return;
+
+  WN* comma = Create_Comma_Kid ( parent, kid_num );
+  WN* expr0 = WN_kid0(wn);
+  WN* expr1 = WN_kid1(wn);
+  
+  const TYPE_ID opnd_type = MTYPE_F8;
+  PREG_NUM preg0 = Create_Preg( opnd_type, "__value_fp_0_prof" );
+  PREG_NUM preg1 = Create_Preg( opnd_type, "__value_fp_1_prof" );
+  WN* stid0 = WN_StidIntoPreg( opnd_type, preg0, MTYPE_To_PREG( opnd_type ),
+			       expr0 );
+  WN* stid1 = WN_StidIntoPreg( opnd_type, preg1, MTYPE_To_PREG( opnd_type ),
+			       expr1 );
+  WN* instr = Gen_Call( VALUE_FP_BIN_INSTRUMENT_NAME, PU_Handle(),
+			WN_Intconst( MTYPE_I4, id ),
+			WN_LdidPreg( opnd_type, preg0 ),
+			WN_LdidPreg( opnd_type, preg1 ) );
+
+  WN_INSERT_BlockLast( WN_kid( comma, 0 ), stid0 );
+  WN_INSERT_BlockLast( WN_kid( comma, 0 ), stid1 );
+  WN_INSERT_BlockLast( WN_kid( comma, 0 ), instr );
+
+  WN_kid0( wn ) = WN_LdidPreg( opnd_type, preg0 );
+  WN_kid1( wn ) = WN_LdidPreg( opnd_type, preg1 );
+}
+
+void WN_INSTRUMENT_WALKER::Annotate_Value_FP_Bin( WN *wn, INT32 id )
+{
+  PU_PROFILE_HANDLES& handles = FB_Handle();
+
+  if( handles.size() == 1 ){
+    Cur_PU_Feedback->Annot_value_fp_bin(wn, 
+				     Get_Value_FP_Bin_Profile(handles[0],id));
+    return;
+  }
+}
+
+
 void WN_INSTRUMENT_WALKER::Initialize_Instrumenter_Value( INT32 count )
 {
   if ( count == 0 ) return;
@@ -1166,7 +1258,6 @@ void WN_INSTRUMENT_WALKER::Instrument_Value( WN *wn, INT32 id, WN *block )
 
   WN_INSERT_BlockLast( WN_kid( comma, 0 ), instr );
 }
-
 
 typedef std::map<INT64, FB_FREQ> V2F_MAP;
 typedef V2F_MAP::iterator V2F_ITERATOR;
@@ -1479,8 +1570,14 @@ WN_INSTRUMENT_WALKER::Annotate_Compgoto( WN *wn, INT32 id )
 // ====================================================================
 
 
+#ifndef KEY
 void
 WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block )
+#else
+void
+WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block,
+				      WN* parent )
+#endif
 {
   OPERATOR opr = WN_operator( wn );
 
@@ -1506,7 +1603,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block )
 
   else if ( opr == OPR_REGION ) {
 
-    // PREG for _pu_handle must be scoped SHARED within PARALLEL regions
+    // temp for _pu_handle must be scoped SHARED within PARALLEL regions
     WN *regn_prag = WN_first( WN_region_pragmas( wn ) );
     if ( regn_prag ) {
       switch ( WN_pragma( regn_prag ) ) {
@@ -1515,9 +1612,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block )
       case WN_PRAGMA_PARALLEL_DO:
       case WN_PRAGMA_DOACROSS:
 	{
-	  WN *prag = WN_CreatePragma( WN_PRAGMA_SHARED,
-				      MTYPE_To_PREG( Pointer_type ),
-				      _pu_handle, 0 );
+	  WN *prag = WN_CreatePragma( WN_PRAGMA_SHARED, _pu_handle, 0, 0 );
 	  WN_set_pragma_compiler_generated( prag );
 	  WN_INSERT_BlockLast( WN_region_pragmas ( wn ), prag );
 	}
@@ -1573,19 +1668,37 @@ WN_INSTRUMENT_WALKER::Tree_Walk_Node( WN *wn, WN *stmt, WN *block )
 
     // Traverse the kids of the current expression
     for ( INT32 i = 0; i < WN_kid_count( wn ); i++ )
+#ifndef KEY
       Tree_Walk_Node( WN_kid( wn, i ), stmt, block );
+#else
+      Tree_Walk_Node( WN_kid( wn, i ), stmt, block, wn );
+#endif
 
   } else {
 
     // Traverse the kids of the current statement
     for ( INT32 i = 0; i < WN_kid_count( wn ); i++ )
+#ifndef KEY
       Tree_Walk_Node( WN_kid( wn, i ), wn, block );
+#else
+      Tree_Walk_Node( WN_kid( wn, i ), wn, block, wn );
+#endif
   }
 
   // Perform the instrumentation or annotation of the current node
   switch ( opr ) {
 
 #ifdef KEY
+  case OPR_MPY:
+    if( OPCODE_rtype(WN_opcode(wn)) == MTYPE_F8 ) {
+      _instrument_count++;
+      const INT32 id = _count_value_fp_bin++;
+      if( _instrumenting )
+        Instrument_Value_FP_Bin( wn, id, block, parent, stmt );
+      else
+        Annotate_Value_FP_Bin( wn, id );
+    }   
+    break;
   case OPR_REM:
   case OPR_DIV:
   case OPR_MOD:
@@ -1971,10 +2084,9 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
       }
 	  
       // handle = r2;
-      Instrument_Entry( WN_StidIntoPreg( Pointer_type, _pu_handle,
-					 MTYPE_To_PREG( Pointer_type ),
-					 WN_LdidPreg( Pointer_type,
-						      rreg1 ) ) );
+      Instrument_Entry( WN_Stid(Pointer_type, 0, _pu_handle, 
+      				MTYPE_To_TY(Pointer_type),
+				WN_LdidPreg( Pointer_type, rreg1 ) ) );
 
       // Initialize specific instrumentation.
       Initialize_Instrumenter_Invoke(   _count_invoke   );
@@ -1987,6 +2099,7 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
       Initialize_Instrumenter_Compgoto( _count_compgoto );
 #ifdef KEY
       Initialize_Instrumenter_Value( _count_value );
+      Initialize_Instrumenter_Value_FP_Bin( _count_value_fp_bin );
 #endif
 
       Pop_Entry_Pragma();
@@ -2006,12 +2119,13 @@ WN_INSTRUMENT_WALKER::Tree_Walk( WN *root )
 	  
       UINT32 checksum = Get_PU_Checksum( *i );
 	
+      // KEY
       FmtAssert( _instrument_count == checksum,
-		 ( "Instrumenter Error: (Phase %d) Feedback file has invalid "
-		   " checksum for program unit %s in file %s. "
-		   " Computed = %d, In file = %d.",
-		   _phase, Cur_PU_Name, Src_File_Name, _instrument_count, 
-		   checksum ) );
+		 ( "Instrumenter Error: (Phase %d) Feedback file %s has "
+		   "invalid checksum for program unit %s in file %s. "
+		   "Computed = %d, In file = %d.",
+		   _phase, (*i)->fb_name, Cur_PU_Name, Src_File_Name,
+		   _instrument_count, checksum ) );
     }
   }
 
@@ -2076,7 +2190,7 @@ WN_Clean_Mapid_for_Calls(WN * wn)
 		{
 			if (WN_map_id(wntmp) != -1)
 			{
-			  WN_map_id(wntmp) = -1;
+			  WN_set_map_id(wntmp, -1);
 			}
 		}
 	}

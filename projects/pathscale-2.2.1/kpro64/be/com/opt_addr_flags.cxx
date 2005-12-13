@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -47,7 +47,10 @@
 // Adjust address flags
 
 static BOOL suppress_all_warnings;
-static void Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved);
+#ifndef KEY
+static
+#endif
+void Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved);
 
 // wn is an actual parameter.  Search for LDAs under the expr that 
 // are not consumed by an ILOAD, and set their addr_saved flag.
@@ -88,13 +91,20 @@ Set_addr_saved_expr(WN *wn, BOOL warn)
 }
 
 
-static void 
+#ifndef KEY
+static
+#endif
+void 
 Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved)
 {
   if (wn == NULL) return;	
   OPCODE opc = WN_opcode(wn);
 
-  if (OPCODE_is_call(opc)) {
+  if (OPCODE_is_call(opc)
+#ifdef KEY
+      || OPCODE_operator(opc) == OPR_PURE_CALL_OP
+#endif
+      ) {
     for (INT32 i = 0; i < WN_kid_count(wn); i++) {
       WN *actual = WN_actual(wn,i);
       // Question: What justification could there be for the
@@ -144,7 +154,10 @@ Set_addr_saved_stmt(WN *wn, BOOL use_passed_not_saved)
 
 
 // For debugging only!
-static void 
+#ifndef KEY
+static
+#endif
+void 
 Recompute_addr_saved_stmt(WN *wn)
 {
   if (wn == NULL) return;	

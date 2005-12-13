@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Exception Handling interface routines.
@@ -130,6 +130,8 @@ extern rtx expand_builtin_frob_return_addr	PARAMS ((tree));
 extern rtx expand_builtin_dwarf_sp_column	PARAMS ((void));
 extern void expand_builtin_eh_return		PARAMS ((tree, tree));
 extern void expand_eh_return			PARAMS ((void));
+/* from gcc patch */
+extern rtx expand_builtin_extend_pointer	PARAMS ((tree));
 extern rtx get_exception_pointer		PARAMS ((struct function *));
 extern int duplicate_eh_regions			PARAMS ((struct function *,
 						 struct inline_remap *));

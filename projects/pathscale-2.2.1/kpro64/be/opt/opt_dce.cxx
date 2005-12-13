@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -70,6 +70,7 @@
 #include "defs.h"
 #include "errors.h"
 #include "erglob.h"
+#include "glob.h"	// for Cur_PU_Name
 #include "tracing.h"
 #include "pf_cg.h"
 
@@ -1339,8 +1340,12 @@ DCE::Check_for_label( BB_NODE *bb ) const
   if ( label_stmt == NULL ) {
     
     // Allocate label number
-    if (bb->Labnam() == 0)
+    if (bb->Labnam() == 0) {
       bb->Set_labnam( _cfg->Alloc_label());
+#ifdef KEY // bug 3152
+      _cfg->Append_label_map( bb->Labnam(), bb );
+#endif
+    }
 
     // Generate label STMTREP
     bb->Add_label_stmtrep( _cfg->Mem_pool() );
@@ -1529,8 +1534,10 @@ void Remove_region_entry(BB_NODE *bb)
   RID_Delete2(rid);
 
   // the region entry BB will soon be a BB_GOTO, don't point to it anymore
+#ifndef KEY // bug 5714
   bb_region->Set_region_start(NULL);
   bb_region->Set_rid(NULL);
+#endif
   bb->Set_regioninfo(NULL);
 }
 
@@ -2074,6 +2081,12 @@ DCE::Required_stmt( const STMTREP *stmt ) const
   if ( WOPT_Enable_Zero_Version && stmt->Has_zver())
     return TRUE;
 
+#ifdef KEY // bugs 5401 and 5267
+  if (OPERATOR_is_scalar_store(opr) && 
+      Opt_stab()->Aux_stab_entry(stmt->Lhs()->Aux_id())->Mp_no_dse())
+    return TRUE;
+#endif
+
   CHI_LIST_ITER  chi_iter;
   CHI_NODE      *cnode;
   FOR_ALL_NODE(cnode, chi_iter, Init(stmt->Chi_list())) {
@@ -2091,10 +2104,17 @@ DCE::Required_stmt( const STMTREP *stmt ) const
   // handle those cases we immediately know about
   switch ( opr ) {
   case OPR_AGOTO:
-  case OPR_COMPGOTO:
   case OPR_TRUEBR:
   case OPR_FALSEBR:
   case OPR_GOTO:
+    return ( !Enable_aggressive_dce() );
+
+  case OPR_COMPGOTO:
+#ifdef KEY 
+    if ((PU_has_mp(Get_Current_PU()) || PU_mp_lower_generated(Get_Current_PU()))
+	&& Early_MP_Processing)
+      return TRUE; // deleting COMPGOTO related to SECTIONS caused bug 5553
+#endif
     return ( !Enable_aggressive_dce() );
 
   case OPR_LABEL:
@@ -4906,3 +4926,70 @@ COMP_UNIT::Do_dead_code_elim(BOOL do_unreachable,
   // get rid of local memory area
   OPT_POOL_Pop( Cfg()->Loc_pool(), DCE_DUMP_FLAG);
 }
+
+#ifdef KEY
+void
+COMP_UNIT::Find_uninit_locals_for_entry(BB_NODE *bb) 
+{
+  if (bb->Kind() != BB_ENTRY)
+    return;
+  STMTREP *stmt = bb->First_stmtrep();
+  Is_True(bb->First_stmtrep()->Op() == OPC_OPT_CHI,
+  	  ("Find_uninit_locals_for_entry: cannot find entry chi"));
+  CHI_NODE *cnode;
+  CHI_LIST_ITER chi_iter;
+  AUX_STAB_ENTRY *sym;
+  FOR_ALL_NODE(cnode, chi_iter, Init(bb->First_stmtrep()->Chi_list())) {
+    if (! cnode->Live())
+      continue;
+    if (cnode->RESULT()->Is_flag_set(CF_IS_ZERO_VERSION))
+      continue;
+    sym = Opt_stab()->Aux_stab_entry(cnode->Aux_id());
+    if (sym->St() == NULL)
+      continue;
+    if (ST_sclass(sym->St()) != SCLASS_AUTO)
+      continue;
+    if (! sym->Is_real_var())
+      continue;
+    if (ST_is_temp_var(sym->St()))
+      continue;
+    if (sym->Is_volatile())
+      continue;
+    if (sym->Mp_shared())
+      continue;
+    if (sym->Has_nested_ref())
+      continue;
+    if (! sym->Points_to()->Local())
+      continue;
+    if (! sym->Points_to()->No_alias())
+      continue;
+    if (sym->Points_to()->F_param())
+      continue;
+    fprintf(stderr, "Warning: variable %s in %s might be used uninitialized\n",
+	    &Str_Table[sym->St()->u1.name_idx], Cur_PU_Name);
+  }
+}
+
+// ====================================================================
+// ====================================================================
+//
+// COMP_UNIT::Find_uninitialized_locals - find uninitialized local variables
+// by going thru the entry CHI list of each entry points to the PU
+//
+// ====================================================================
+// ====================================================================
+
+void
+COMP_UNIT::Find_uninitialized_locals(void) 
+{
+  if (Cfg()->Fake_entry_bb() == NULL)
+    Find_uninit_locals_for_entry(Cfg()->Entry_bb());
+  else {
+    BB_NODE *entry_bb;
+    BB_LIST_ITER bb_iter;
+    FOR_ALL_ELEM (entry_bb, bb_iter, Init(Cfg()->Fake_entry_bb()->Succ())) {
+      Find_uninit_locals_for_entry(entry_bb);
+    }
+  }
+}
+#endif

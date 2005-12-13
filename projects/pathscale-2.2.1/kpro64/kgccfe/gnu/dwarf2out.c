@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -78,6 +78,7 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #ifdef SGI_MONGOOSE 
 // To define DWARF2_UNWIND_INFO 
 #include "defaults.h"
+#include "wfe_dst.h"
 #endif /* SGI_MONGOOSE */
 
 #ifdef DWARF2_DEBUGGING_INFO
@@ -12403,6 +12404,7 @@ dwarf2out_start_source_file (lineno, filename)
      unsigned int lineno;
      const char *filename;
 {
+#ifndef KEY
   if (flag_eliminate_dwarf2_dups && !is_main_source)
     {
       /* Record the beginning of the file for break_out_includes.  */
@@ -12411,11 +12413,16 @@ dwarf2out_start_source_file (lineno, filename)
       bincl_die = new_die (DW_TAG_GNU_BINCL, comp_unit_die, NULL);
       add_AT_string (bincl_die, DW_AT_name, filename);
     }
+#endif
 
   is_main_source = 0;
 
   if (debug_info_level >= DINFO_LEVEL_VERBOSE)
     {
+#ifdef KEY
+      WFE_Macro_Start_File(lineno, lookup_filename (filename));
+      return;
+#endif
       named_section_flags (DEBUG_MACINFO_SECTION, SECTION_DEBUG);
       dw2_asm_output_data (1, DW_MACINFO_start_file, "Start new file");
       dw2_asm_output_data_uleb128 (lineno, "Included from line number %d",
@@ -12431,12 +12438,18 @@ static void
 dwarf2out_end_source_file (lineno)
      unsigned int lineno ATTRIBUTE_UNUSED;
 {
+#ifndef KEY
   if (flag_eliminate_dwarf2_dups)
     /* Record the end of the file for break_out_includes.  */
     new_die (DW_TAG_GNU_EINCL, comp_unit_die, NULL);
+#endif
 
   if (debug_info_level >= DINFO_LEVEL_VERBOSE)
     {
+#ifdef KEY
+      WFE_Macro_End_File();
+      return;
+#endif
       named_section_flags (DEBUG_MACINFO_SECTION, SECTION_DEBUG);
       dw2_asm_output_data (1, DW_MACINFO_end_file, "End file");
     }
@@ -12453,6 +12466,10 @@ dwarf2out_define (lineno, buffer)
 {
   if (debug_info_level >= DINFO_LEVEL_VERBOSE)
     {
+#ifdef SGI_MONGOOSE
+      WFE_Macro_Define(lineno, buffer);
+      return;
+#endif
       named_section_flags (DEBUG_MACINFO_SECTION, SECTION_DEBUG);
       dw2_asm_output_data (1, DW_MACINFO_define, "Define macro");
       dw2_asm_output_data_uleb128 (lineno, "At line number %d", lineno);
@@ -12471,6 +12488,10 @@ dwarf2out_undef (lineno, buffer)
 {
   if (debug_info_level >= DINFO_LEVEL_VERBOSE)
     {
+#ifdef SGI_MONGOOSE
+      WFE_Macro_Undef(lineno, buffer);
+      return;
+#endif
       named_section_flags (DEBUG_MACINFO_SECTION, SECTION_DEBUG);
       dw2_asm_output_data (1, DW_MACINFO_undef, "Undefine macro");
       dw2_asm_output_data_uleb128 (lineno, "At line number %d", lineno);

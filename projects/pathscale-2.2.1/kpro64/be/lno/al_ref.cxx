@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1142,7 +1146,11 @@ WN *Get_Call_Parent(WN *curr_nd)
 
   while (parent) {
     if (OPCODE_is_call(WN_opcode(parent)) ||
-        WN_operator(parent) == OPR_INTRINSIC_OP) {
+        WN_operator(parent) == OPR_INTRINSIC_OP
+#ifdef KEY
+	|| WN_operator(parent) == OPR_PURE_CALL_OP
+#endif
+	) {
       return parent;
     } else {
       parent = LWN_Get_Parent(parent);
@@ -1159,7 +1167,11 @@ WN *Get_Call_Parent(WN *curr_nd)
 TY_IDX Get_Callee_TY(WN *call_nd, 
                   ST *array_st)
 {
-  if (WN_operator(call_nd) == OPR_CALL) {
+  if (WN_operator(call_nd) == OPR_CALL
+#ifdef KEY
+      || WN_operator(call_nd) == OPR_PURE_CALL_OP
+#endif
+     ) {
     ST* callee_st = ST_ptr(WN_entry_name(call_nd));
     return (ST_type(callee_st));
 

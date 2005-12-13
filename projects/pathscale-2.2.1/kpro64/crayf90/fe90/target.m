@@ -134,7 +134,15 @@
 # define SYSTEM_MODULE_USE_VAR			"FORTRAN_SYSTEM_MODULES"
 
 
-# if defined(_HOST_OS_MAX) || defined(_HOST_OS_UNICOS)
+# if defined(KEY) /* Bug 4469 */ && defined(_HOST_OS_LINUX)
+/* Standard C stdio guarantees FILENAME_MAX will be defined (we don't need to
+ * know the value for a particular filesystem, just the max which this stdio
+ * supports); Posix guarantees HOST_NAME_MAX */
+# define MAX_FILE_NAME_SIZE     FILENAME_MAX + 1
+# define MAX_PATH_NAME_SIZE     FILENAME_MAX + 1
+# define MACHINENAMELEN		HOST_NAME_MAX + 1
+
+# elif defined(_HOST_OS_MAX) || defined(_HOST_OS_UNICOS)
 # define MAX_FILE_NAME_SIZE     PATH_MAX+1
 # define MAX_PATH_NAME_SIZE     PATH_MAX+1
 # define MACHINENAMELEN		65

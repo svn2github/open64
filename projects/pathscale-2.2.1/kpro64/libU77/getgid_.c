@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,6 +39,17 @@
 #include <sgidefs.h>
 #endif
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_getgid(void) {
+  return getgid();
+  }
+
+#else
+
 /*
  *
  * get group id
@@ -55,3 +66,4 @@ getgid_(void)
 {
 	return((__int32_t)getgid());
 }
+#endif /* KEY Bug 1683 */

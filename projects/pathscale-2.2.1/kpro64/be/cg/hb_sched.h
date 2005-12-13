@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -280,6 +280,9 @@ public:
 
   // utility functions:
   void Add_Element_Sorted(VECTOR vector, void* element, VECTOR_ELEMENT_COMPARE comp_func);
+#ifdef KEY
+  int Sched_OP_With_Preallocated_TN(OP *op);
+#endif
 
   // Extraneous functions:
   OP* Select_OP_For_Delay_Slot(OP*);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,7 +48,7 @@
 #include <alloca.h>		    /* for alloca() */
 #include <signal.h>		    /* for signal() */
 #include <errno.h>		    /* for system error code */
-#include <elf.h>		    /* for all Elf stuff */
+#include "elf_stuff.h"		    /* for all Elf stuff */
 #include <sys/elf_whirl.h>	    /* for WHIRL sections' sh_info */
 #include <cmplrs/rcodes.h>
 
@@ -306,8 +306,8 @@ write_output (UINT64 e_shoff, const typename ELF::Elf_Shdr& strtab_sec,
     ehdr->e_shoff = e_shoff;
     ehdr->e_flags = Config_ELF_From_Target (! Use_32_Bit_Pointers, FALSE,
 					    (INT) Target_ISA);  
-    ehdr->e_ehsize = sizeof(ELF::Elf_Ehdr);
-    ehdr->e_shentsize = sizeof(ELF::Elf_Shdr);
+    ehdr->e_ehsize = sizeof(typename ELF::Elf_Ehdr);
+    ehdr->e_shentsize = sizeof(typename ELF::Elf_Shdr);
     ehdr->e_shnum = fl->num_of_section + 2;
     ehdr->e_shstrndx = fl->num_of_section + 1;
 
@@ -329,11 +329,12 @@ write_output (UINT64 e_shoff, const typename ELF::Elf_Shdr& strtab_sec,
     /* Finally, the section header table */
     typename ELF::Elf_Shdr* shdr =
 	(typename ELF::Elf_Shdr *) (base_addr + e_shoff);
-    memset (shdr, 0, sizeof(ELF::Elf_Shdr)); /* First null entry */
+    memset (shdr, 0, sizeof(typename ELF::Elf_Shdr)); /* First null entry */
     shdr++;
     if (tag.Elf_class() == ELFCLASS64) {
 	for (i = 0; i < fl->num_of_section; i++, shdr++)
-	    memcpy (shdr, &(fl->section_list[i].shdr), sizeof(ELF::Elf_Shdr));
+	    memcpy (shdr, &(fl->section_list[i].shdr),
+		    sizeof(typename ELF::Elf_Shdr));
     } else {
 	// convert Elf64_Shdr to Elf32_Shdr
 	for (i = 0; i < fl->num_of_section; i++, shdr++) {
@@ -349,7 +350,7 @@ write_output (UINT64 e_shoff, const typename ELF::Elf_Shdr& strtab_sec,
 	    shdr->sh_entsize = fl->section_list[i].shdr.sh_entsize;
 	}
     }
-    memcpy (shdr, &strtab_sec, sizeof(ELF::Elf_Shdr));
+    memcpy (shdr, &strtab_sec, sizeof(typename ELF::Elf_Shdr));
 } /* write_output */
 
 
@@ -761,11 +762,11 @@ namespace
 		   mUINT32& offset) {
 	offset =
 	    ir_b_save_buf (&(data.front()),
-			   data.size () * sizeof(T::value_type),
+			   data.size () * sizeof(typename T::value_type),
 #ifndef __GNUC__
-			   __builtin_alignof(T::value_type),
+			   __builtin_alignof(typename T::value_type),
 #else
-			   __alignof__(T::value_type),
+			   __alignof__(typename T::value_type),
 #endif
 			   0, fl) - base;
 	num = data.size ();
@@ -901,6 +902,10 @@ WN_write_feedback (PU_Info* pu, Output_File* fl)
     write_profile (feedback_base, pu_handle.Get_Value_Table (), fl,
 		   pu_hdr.pu_num_value_entries,
 		   pu_hdr.pu_value_offset);   
+
+    write_profile (feedback_base, pu_handle.Get_Value_FP_Bin_Table (), fl,
+		   pu_hdr.pu_num_value_fp_bin_entries,
+		   pu_hdr.pu_value_fp_bin_offset);   
 #endif
 
     bcopy (&pu_hdr, fl->map_addr + feedback_base, sizeof(pu_hdr));

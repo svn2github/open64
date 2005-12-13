@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -221,6 +221,19 @@ static void Inter_Iteration_Cses_Loop(WN *loop)
   equivalence_class_number = 0;
   Set_Up_Equivalence_Classes(WN_do_body(loop),loop);
 
+#ifdef KEY
+  // Bug 4211 - Too many loop invariants may overflow the dependence graph. 
+  // CICSE on a large loop can also adversely affect quality of compilation for 
+  // 32-bit ABI (probably register allocation related). Here 1000 is a large 
+  // number small enough to peak 173.applu (under -m32).
+  if (invariant_ldid_stack->Elements() > 1000) {
+    CXX_DELETE(load_stack,&LNO_local_pool);
+    CXX_DELETE(invariant_ldid_stack,&LNO_local_pool);
+    CXX_DELETE(delete_stack,&LNO_local_pool);
+    MEM_POOL_Pop(&LNO_local_pool);
+    return;
+  }
+#endif
   // step 1.5 add dependences between invariant ldids
   Add_Invariant_Deps();
 

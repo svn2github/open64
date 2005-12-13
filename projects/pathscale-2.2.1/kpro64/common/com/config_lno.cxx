@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -133,15 +133,22 @@ static LNO_FLAGS Default_LNO = {
   0,            /* SVR_Skip_Before */
   10000,        /* SVR_Skip_After */
   10000,        /* SVR_Skip_Equal */
+  TRUE,		/* SVR_Phase1 */
+  0,            /* Unswitch_Skip_Before */
+  1000,         /* Unswitch_Skip_After */
+  1000,         /* Unswitch_Skip_Equal */
+  0,            /* Unswitch_Loop_Skip_Before */
+  1000,         /* Unswitch_Loop_Skip_After */
+  1000,         /* Unswitch_Loop_Skip_Equal */
   0,		/* Full_Unroll_Skip_Before */
   1000,		/* Full_Unroll_Skip_After */
   1000,		/* Full_Unroll_Skip_Equal */
   0,            /* Skip_Before */
-  1000,         /* Skip_After */
-  1000,         /* Skip_Equal */
+  10000,        /* Skip_After */
+  10000,        /* Skip_Equal */
   0,            /* Dummy_Skip_Before */
-  1000,         /* Dummy_Skip_After */
-  1000,         /* Dummy_Skip_Equal */
+  10000,        /* Dummy_Skip_After */
+  10000,        /* Dummy_Skip_Equal */
 #endif /* KEY */
   FALSE,	/* Fancy_tile */
   FALSE,	/* Run_fiz_fuse */
@@ -215,13 +222,22 @@ static LNO_FLAGS Default_LNO = {
   TRUE,         /* Run_simd_set */
   FALSE,	/* Simd_Verbose */
   TRUE,         /* Simd_Reduction */
-  TRUE,        /* Simd_Avoid_Fusion */
+  TRUE,         /* Simd_Avoid_Fusion */
   TRUE,         /* Run_hoistif */
+  TRUE,		/* Ignore_Feedback */
+  TRUE,        /* Run_unswitch */
+  FALSE,	/* Unswitch_Verbose */
+  FALSE,	/* Prefetch_Verbose */
+  FALSE,        /* Build_Scalar_Reductions */
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
   1,		/* Run_doacross */
   0,		/* Preferred_doacross_tile_size */
+#ifdef KEY
+  2048,		/* Parallel_overhead */ 
+#else
   2600,		/* Parallel_overhead */ 
+#endif
   FALSE, 	/* Prompl */ 
   TRUE, 	/* IfMinMax */ 
   FALSE,	/* Run_call_info */
@@ -241,8 +257,9 @@ static LNO_FLAGS Default_LNO = {
   0,            /* Full_unrolling */
 #endif
 #ifdef KEY
-  1600,         /* Full_unrolling_loop_size_limit */
+  2000,         /* Full_unrolling_loop_size_limit */
   FALSE,	/* Full_Unroll_Outer */
+  0,		/* Processors */
 #endif
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
@@ -282,15 +299,22 @@ LNO_FLAGS Initial_LNO = {
   0,            /* SVR_Skip_Before */
   10000,        /* SVR_Skip_After */
   10000,        /* SVR_Skip_Equal */
+  TRUE,		/* SVR_Phase1 */
+  0,            /* Unswitch_Skip_Before */
+  1000,         /* Unswitch_Skip_After */
+  1000,         /* Unswitch_Skip_Equal */
+  0,            /* Unswitch_Loop_Skip_Before */
+  1000,         /* Unswitch_Loop_Skip_After */
+  1000,         /* Unswitch_Loop_Skip_Equal */
   0,		/* Full_Unroll_Skip_Before */
   1000,		/* Full_Unroll_Skip_After */
   1000,		/* Full_Unroll_Skip_Equal */
   0,            /* Skip_Before */
-  1000,         /* Skip_After */
-  1000,         /* Skip_Equal */
+  10000,        /* Skip_After */
+  10000,        /* Skip_Equal */
   0,            /* Dummy_Skip_Before */
-  1000,         /* Dummy_Skip_After */
-  1000,         /* Dummy_Skip_Equal */
+  10000,        /* Dummy_Skip_After */
+  10000,        /* Dummy_Skip_Equal */
 #endif /* KEY */
   FALSE,	/* Fancy_tile */
   FALSE,	/* Run_fiz_fuse */
@@ -364,13 +388,22 @@ LNO_FLAGS Initial_LNO = {
   TRUE,         /* Run_simd_set */
   FALSE,	/* Simd_Verbose */
   TRUE,         /* Simd_Reduction */
-  TRUE,        /* Simd_Avoid_Fusion */
+  TRUE,         /* Simd_Avoid_Fusion */
   TRUE,         /* Run_hoistif */
+  TRUE,	 	/* Ignore_Feedback */
+  TRUE,        /* Run_unswitch */
+  FALSE,	/* Unswitch_Verbose */
+  FALSE,	/* Prefetch_Verbose */
+  FALSE,        /* Build_Scalar_Reductions */
 #endif /* KEY */
   TRUE,		/* Run_oinvar */
   1,		/* Run_doacross */
   0,		/* Preferred_doacross_tile_size */
+#ifdef KEY
+  2048,		/* Parallel_overhead */ 
+#else
   2600,         /* Parallel_overhead */ 
+#endif
   FALSE, 	/* Prompl */ 
   TRUE, 	/* IfMinMax */ 
   FALSE, 	/* Run_call_info */ 
@@ -390,8 +423,9 @@ LNO_FLAGS Initial_LNO = {
   0,            /* Full_unrolling */
 #endif
 #ifdef KEY
-  1600,         /* Full_unrolling_loop_size_limit */
+  2000,         /* Full_unrolling_loop_size_limit */
   FALSE,	/* Full_Unroll_Outer */
+  0,		/* Processors */
 #endif
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
@@ -510,23 +544,36 @@ static OPTION_DESC Options_LNO[] = {
 	       SVR_Skip_After ),
   LNOPT_U32  ( "svr_skip_equal",	"svr_skip_equal",	32,0,1000, 
 	       SVR_Skip_Equal ),
+  LNOPT_BOOL ( "svr_phase1",			NULL,	SVR_Phase1 ),
+  LNOPT_U32  ( "unswitch_skip_before",	"unswitch_skip_before",	32,0,1000, 
+	       Unswitch_Skip_Before ),
+  LNOPT_U32  ( "unswitch_skip_after",	"unswitch_skip_after",	32,0,1000, 
+	       Unswitch_Skip_After ),
+  LNOPT_U32  ( "unswitch_skip_equal",	"unswitch_skip_equal",	32,0,1000, 
+	       Unswitch_Skip_Equal ),
+  LNOPT_U32  ( "unswitch_loop_skip_before",	"unswitch_loop_skip_before",32,0,1000, 
+	       Unswitch_Loop_Skip_Before ),
+  LNOPT_U32  ( "unswitch_loop_skip_after",	"unswitch_loop_skip_after",32,0,1000, 
+	       Unswitch_Loop_Skip_After ),
+  LNOPT_U32  ( "unswitch_loop_skip_equal",	"unswitch_loop_skip_equal",32,0,1000, 
+	       Unswitch_Loop_Skip_Equal ),
   LNOPT_U32  ( "full_unroll_skip_before", "full_unroll_skip_before",
   	       32,0,1000, Full_Unroll_Skip_Before ),
   LNOPT_U32  ( "full_unroll_skip_after", "full_unroll_skip_after",
   	       32,0,1000, Full_Unroll_Skip_After ),
   LNOPT_U32  ( "full_unroll_skip_equal", "full_unroll_skip_equal",
   	       32,0,1000, Full_Unroll_Skip_Equal ),
-  LNOPT_U32  ( "skip_before",	"skip_before",	32,0,1000, 
+  LNOPT_U32  ( "skip_before",	"skip_before",	32,0,10000, 
 	       Skip_Before ),
-  LNOPT_U32  ( "skip_after",	"skip_after",	32,0,1000, 
+  LNOPT_U32  ( "skip_after",	"skip_after",	32,0,10000, 
 	       Skip_After ),
-  LNOPT_U32  ( "skip_equal",	"skip_equal",	32,0,1000, 
+  LNOPT_U32  ( "skip_equal",	"skip_equal",	32,0,10000, 
 	       Skip_Equal ),
-  LNOPT_U32  ( "dummy_skip_before",	"dummy_skip_before",	32,0,1000, 
+  LNOPT_U32  ( "dummy_skip_before",	"dummy_skip_before",	32,0,10000, 
 	       Dummy_Skip_Before ),
-  LNOPT_U32  ( "dummy_skip_after",	"dummy_skip_after",	32,0,1000, 
+  LNOPT_U32  ( "dummy_skip_after",	"dummy_skip_after",	32,0,10000, 
 	       Dummy_Skip_After ),
-  LNOPT_U32  ( "dummy_skip_equal",	"dummy_skip_equal",	32,0,1000, 
+  LNOPT_U32  ( "dummy_skip_equal",	"dummy_skip_equal",	32,0,10000, 
 	       Dummy_Skip_Equal ),
 #endif /* KEY */
   MHOPT_I32_SET_DUP ( "dirty_miss_penalty",	0,0,1000000000,
@@ -673,14 +720,24 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "simd_reduction",	"simd_red",	Simd_Reduction ),
   LNOPT_BOOL ( "simd_avoid_fusion",	NULL,	Simd_Avoid_Fusion ),
   LNOPT_BOOL ( "hoistif",		NULL,	Run_hoistif ),
+  LNOPT_BOOL ( "ignore_feedback",	NULL,	Ignore_Feedback ),
+  LNOPT_BOOL ( "unswitch",		NULL,	Run_unswitch ),
+  LNOPT_BOOL ( "unswitch_verbose",		NULL,	Unswitch_Verbose ),
+  LNOPT_BOOL ( "prefetch_verbose",		NULL,	Prefetch_Verbose ),
+  LNOPT_BOOL ( "build_scalar_reductions",NULL,	Build_Scalar_Reductions ),
 #endif /* KEY */  
   LNOPT_BOOL ( "oinvar",		NULL,	Run_oinvar ),
   LNOPT_U32  ( "doacross",		NULL,	1,0,4,Run_doacross),
   LNOPT_U32  ( "preferred_doacross_tile_size",
 					NULL,	0,0,999999,
 					Preferred_doacross_tile_size ),
+#ifdef KEY
+  LNOPT_U32  ( "parallel_overhead",     NULL,   2048,0,0x7fffffff, 
+					Parallel_overhead), 
+#else
   LNOPT_U32  ( "parallel_overhead",     NULL,   2600,0,0x7fffffff, 
 					Parallel_overhead), 
+#endif
   LNOPT_BOOL ( "prompl",                NULL,   Prompl ), 
   LNOPT_BOOL ( "ifminmax",              NULL,   IfMinMax ), 
   LNOPT_BOOL ( "call_info",             NULL,   Run_call_info ), 
@@ -699,8 +756,10 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_U32  ( "full_unroll", 	        "fu",   0,0,100,Full_unrolling),
 #ifdef KEY
   LNOPT_U32  ( "full_unroll_size", 	NULL,   
-	       1600,0,10000,Full_unrolling_loop_size_limit),
+	       2000,0,10000,Full_unrolling_loop_size_limit),
   LNOPT_BOOL ( "full_unroll_outer",	NULL,	Full_Unroll_Outer ),
+  LNOPT_U32  ( "processors", 	NULL,   
+	       0,0,10000,Num_Processors),
 #endif
 
   { OVK_COUNT }		    /* List terminator -- must be last */

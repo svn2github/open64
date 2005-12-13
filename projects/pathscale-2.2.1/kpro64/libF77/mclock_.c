@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,8 +44,32 @@
 #include <sys/times.h>
 #include "cmplrs/host.h"
 
+#ifdef KEY /* Bug 1683 */
+
+static clock_t mclock_ (void);
+
+int
+pathf90_mclock(void)
+{
+return (int) mclock_();
+}
+
+long long
+pathf90_mclock8(void)
+{
+return (long long) mclock_();
+}
+
+/* Don't pollute the Fortran namespace */
+static clock_t
+mclock_ (void)
+
+#else
+
 clock_t
 mclock_ (void)
+
+#endif /* KEY Bug 1683 */
 {
     struct tms buf;
     times(&buf);

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -42,6 +46,8 @@
 
 #define USE_STANDARD_TYPES 1
 #include "defs.h"
+#include <elf.h>
+#include "elf_stuff.h"
 #include "em_elf.h"
 
 
@@ -91,20 +97,20 @@ __unw_error_t unwind_dump2elf(char *unwind_table_ptr,
 	for (i = 0; i < unwind_table_size_in_entries; i++) {
 		Em_Add_Bytes_To_Scn(scninfo_table, (void *)&zero_offset,
 			(Elf64_Xword)sizeof(__unw_addr_t), ELF64_FSZ_WORD);
-		Em_Add_New_Rela(symindex_text, (unsigned char)R_IA_64_SEGREL64MSB,
+		Em_Add_New_Rela(symindex_text, (unsigned char)R_IA64_SEGREL64MSB,
 			(Elf64_Addr)(i*sizeof(__unw_table_entry_t)),
 			(Elf64_Sxword)unwind_table[i]._start,
 			scninfo_table);
 		Em_Add_Bytes_To_Scn(scninfo_table, (void *)&zero_offset,
 			(Elf64_Xword)sizeof(__unw_addr_t), ELF64_FSZ_WORD);
-		Em_Add_New_Rela(symindex_text, (unsigned char)R_IA_64_SEGREL64MSB,
+		Em_Add_New_Rela(symindex_text, (unsigned char)R_IA64_SEGREL64MSB,
 			(Elf64_Addr)(i*sizeof(__unw_table_entry_t) +
 							1*sizeof(__unw_addr_t)),
 			(Elf64_Sxword)unwind_table[i]._end,
 			scninfo_table);
 		Em_Add_Bytes_To_Scn(scninfo_table, (void *)&zero_offset,
 			(Elf64_Xword)sizeof(__unw_addr_t), ELF64_FSZ_WORD);
-		Em_Add_New_Rela(symindex_info, (unsigned char)R_IA_64_SEGREL64MSB,
+		Em_Add_New_Rela(symindex_info, (unsigned char)R_IA64_SEGREL64MSB,
 			(Elf64_Addr)(i*sizeof(__unw_table_entry_t) +
 							2*sizeof(__unw_addr_t)),
 			(Elf64_Sxword)unwind_table[i]._info,

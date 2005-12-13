@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -325,6 +325,18 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
     return;
   }
 
+#ifdef TARG_X8664
+  if( CG_opt_level > 0  &&
+      Is_Target_32bit() &&
+      Gen_PIC_Shared    &&
+      !PU_References_GOT ){
+    TN* ebx_tn = Ebx_TN();
+    REGISTER_Set_Allocatable( TN_register_class(ebx_tn),
+			      TN_register(ebx_tn),
+			      TRUE );
+  }  
+#endif
+
   /* allocate the callee-saved register map: */
   Callee_Saved_Regs = (SAVE_REG *)Pu_Alloc (  (ISA_REGISTER_CLASS_MAX + 1) 
 					    * (REGISTER_MAX + 1)
@@ -399,12 +411,14 @@ struct Save_user_allocated_saved_regs
     sr.ded_tn = Build_Dedicated_TN(rclass, reg, 0);
     DevAssert(sr.ded_tn, ("Missing dedicated TN for callee-saved register %s",
 		      REGISTER_name(rclass, reg)));
-    sr.temp = CGSPILL_Get_TN_Spill_Location (sr.ded_tn, CGSPILL_LCL);
-    sr.user_allocated = TRUE;
-    /* Generate the spill ops */
-    CGSPILL_Store_To_Memory (sr.ded_tn, sr.temp, ops, CGSPILL_LCL, bb);
-    Set_OP_no_move_before_gra(OPS_last(ops));
-    Saved_Callee_Saved_Regs.Push(sr);
+    if (Is_Unique_Callee_Saved_Reg (sr.ded_tn)) {
+      sr.temp = CGSPILL_Get_TN_Spill_Location (sr.ded_tn, CGSPILL_LCL);
+      sr.user_allocated = TRUE;
+      /* Generate the spill ops */
+      CGSPILL_Store_To_Memory (sr.ded_tn, sr.temp, ops, CGSPILL_LCL, bb);
+      Set_OP_no_move_before_gra(OPS_last(ops));
+      Saved_Callee_Saved_Regs.Push(sr);
+    }
   }
 };
 #endif
@@ -508,6 +522,15 @@ Generate_Entry (BB *bb, BOOL gra_run )
     ENTRYINFO_sp_adj(ent_info) = OPS_last(&ops);
 
 #ifdef KEY
+    // bug 4583: save callee-saved registers that may get clobbered 
+    // by inline asm
+    for (INT i = 0; i < Saved_Callee_Saved_Regs.Elements(); i++) {
+      SAVE_REG_LOC sr = Saved_Callee_Saved_Regs.Top_nth(i);
+
+      CGSPILL_Store_To_Memory (sr.ded_tn, sr.temp, &ops, CGSPILL_LCL, bb);
+      Set_OP_no_move_before_gra(OPS_last(&ops));
+    }
+
     /* save callee-saved registers allocated to local user variables */
     if ( ST_ATTR_Table_Size (CURRENT_SYMTAB)) {
       For_all_entries(*Scope_tab[CURRENT_SYMTAB].st_attr_tab, 
@@ -890,6 +913,14 @@ Can_Be_Tail_Call(ST *pu_st, BB *exit_bb)
 	  return NULL;
       }
     }
+  }
+
+  /* Under -m32 -fpic, don't do tail call optimization, because the caller
+     needs to restore GOT before return.
+  */
+  if( Is_Target_32bit() &&
+      PU_References_GOT ){
+    return NULL;
   }
 #endif // TARG_X8664
 
@@ -1282,6 +1313,8 @@ void Adjust_SP_After_Call( BB* bb )
    */
   if( RETURN_INFO_return_via_first_arg(return_info) ||
       TY_return_to_param( call_ty ) ){
+    if (call_st != NULL && strncmp(ST_name(call_st), "_TRANSFER", 9) == 0)
+      return; // bug 6153
     OPS ops = OPS_EMPTY;
     Exp_SUB( Pointer_Mtype, SP_TN, SP_TN, Gen_Literal_TN(4,0), &ops );
     BB_Append_Ops( bb, &ops );
@@ -1554,7 +1587,7 @@ Generate_Exit (
 extern void 
 Set_Frame_Len (INT64 val)
 {
-#ifdef KEY
+#ifdef TARG_X8664
   if( CG_min_stack_size ){
     extern BOOL Is_Stack_Used();
     if( !Is_Stack_Used() )
@@ -2133,6 +2166,9 @@ Adjust_Exit(ST *pu_st, BB *bb)
    */
   if (Gen_Frame_Pointer && PUSH_FRAME_POINTER_ON_STACK) {
     OP* op = EETARG_High_Level_Procedure_Exit ();
+#ifdef KEY // bug 3600
+    OP_srcpos(op) = OP_srcpos(sp_adj);
+#endif
 #ifdef TARG_X8664
     if (W2OPS_Pragma_Preamble_End_Seen())
       Set_OP_first_after_preamble_end(op);
@@ -2275,16 +2311,18 @@ Adjust_Entry_Exit_Code( ST *pu )
 #ifdef KEY
 // See the interface description
 
+BOOL Is_Unique_Callee_Saved_Reg (TN * new_tn)
+{
+  for (INT i=0; i<Saved_Callee_Saved_Regs.Elements(); i++)
+    if (TNs_Are_Equivalent (Saved_Callee_Saved_Regs.Top_nth(i).ded_tn,
+                            new_tn))
+      return FALSE;
+
+  return TRUE;
+}
+
 INT Cgdwarf_Num_Callee_Saved_Regs (void)
 {
-  if (PU_has_altentry(Get_Current_PU())) {
-    if (Debug_Level > 0) {
-      fprintf(stderr, 
-            "Warning! -g is not supported when ENTRY statements are used\n");
-      DevWarn("NYI: we need different Saved_Callee_Saved_Regs for different entry");
-    }
-    return 0;
-  }
   return Saved_Callee_Saved_Regs.Elements();
 }
 

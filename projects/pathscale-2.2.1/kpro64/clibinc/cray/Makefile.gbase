@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -68,15 +68,10 @@ headers: install
 exports:
 
 #
-# Check for IRIX, ia32, ia64 installs different under linux.
+# Check for ia32, ia64 installs different under linux.
 #
 install: $(_FORCE) 
-ifeq ($(BUILD_OS), IRIX)
-	cd $(BUILD_BASE); \
-	$(INSTALL) -m 444 -F /usr/include/cray $(PUBLIC_HFILES);
-else
 	cd $(BUILD_BASE); \
 	$(INSTALL) -d $(ROOT)/usr/include/cray
 	cd $(BUILD_BASE); \
 	$(INSTALL) -m 444 $(PUBLIC_HFILES) $(ROOT)/usr/include/cray
-endif

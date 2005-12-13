@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Emit RTL for the GNU C-Compiler expander.
@@ -1251,7 +1251,7 @@ gen_lowpart (mode, x)
 #ifdef SGI_MONGOOSE
 #ifdef KEY
 // gen_rtx_CONST_DOUBLE does not exist
-    return immed_double_const (NULL_RTX, 0, mode);
+    return immed_double_const (0, 0, mode);
 #else
     return gen_rtx_CONST_DOUBLE (mode, NULL_RTX, 0);
 #endif // KEY
@@ -1290,7 +1290,7 @@ gen_highpart (mode, x)
 #ifdef SGI_MONGOOSE
 #ifdef KEY
 // gen_rtx_CONST_DOUBLE does not exist
-    return immed_double_const (NULL_RTX, 0, mode);
+    return immed_double_const (0, 0, mode);
 #else
     return gen_rtx_CONST_DOUBLE (mode, NULL_RTX, 0);
 #endif // KEY

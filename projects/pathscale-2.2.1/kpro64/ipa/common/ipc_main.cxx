@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -156,6 +156,28 @@ ipa_dot_so_init ()
 
 } /* ipa_dot_so_init */
 
+#ifdef KEY
+// Returns number of processors on success, otherwise returns 0
+static int get_num_procs (void)
+{
+  FILE * fp;
+  char buf[256];
+  int cpus = 0;
+  
+  if ((fp = fopen ("/proc/cpuinfo", "r")) == NULL)
+    return 0;
+
+  while (fgets (buf, 256, fp))
+  {
+    if (!strncasecmp (buf, "processor", 9))
+      cpus += 1;
+  }
+
+  fclose (fp);
+  return cpus;
+}
+#endif // KEY
+
 void
 ipa_driver (INT argc, char **argv)
 {
@@ -183,6 +205,15 @@ ipa_driver (INT argc, char **argv)
 #endif
 
     Process_IPA_Options (argc, argv);
+
+#ifdef KEY
+    if (Annotation_Filename == NULL ) // no feedback
+      IPA_Enable_PU_Reorder = REORDER_DISABLE;
+
+    // Enable parallel backend build after ipa
+    if (IPA_Max_Jobs == 0)
+      IPA_Max_Jobs = get_num_procs ();
+#endif // KEY
 
     create_tmpdir ( Tracing_Enabled || List_Cite );
 
@@ -220,7 +251,22 @@ Signal_Cleanup (INT sig)
 
     /* now do the ld part */
     /* we fake a fatal error instead of copying all the cleanup code here */
-#if defined(TARG_IA64) || defined(TARG_X8664)
+
+#ifdef KEY
+    // Let caller do exit(1) as necessary, because not all callers want
+    // exit(1).  For example, if ipa_link calls ErrMsg to report a user error,
+    // then the correct behavior is to have the error trickle down to
+    // ErrMsg_Report_User which calls this Signal_Cleanup.  Execution should go
+    // back to ErrMsg_Report_User which will then do
+    // exit(RC_NORECOVER_USER_ERROR), which will tell the pathcc driver that
+    // it's an user error.  On the other hand, if we always do exit(1), this
+    // will mislead the pathcc driver to emit an "internal compiler error"
+    // message even when it's user error.
+    fprintf(stderr,"IPA processing aborted\n");
+    return;
+#endif
+
+#if defined(TARG_IA64)
     fprintf(stderr,"IPA processing aborted");
     exit(1);
 #else

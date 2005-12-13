@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -102,6 +102,15 @@ extern "C" {
 #endif /* __cplusplus */
 
 extern void  sgi_cmd_line(int *argc, char **argv[]);
+
+#ifdef KEY /* Bug 4719 */
+/* Name of file specified with "-o filename", used when -E is in effect */
+extern  char *preprocessor_output_file;
+#endif /* KEY Bug 4719 */
+#ifdef KEY /* Bug 4260 */
+/* Value of -byteswapio or -convert option */
+extern int io_byteswap;
+#endif /* KEY Bug 4260 */
 
 #ifdef __cplusplus
 }

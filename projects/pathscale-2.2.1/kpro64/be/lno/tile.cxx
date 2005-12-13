@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1992,7 +1992,9 @@ static WN* Mp_Version_Loop(WN* wn_loop)
   Mp_Disable_Opts_On_Internal_Regions(wn_block, 0); 
   Mp_Extract_Parallel_Directives(wn_copy, is_auto_parallel, 1); 
   if (is_omp && !is_auto_parallel) { 
-    WN* wn_begin_spr = Gen_OMP_Begin_SPR(MPP_PARALLEL_DO);
+    // Commented by csc. 2002/11/14
+    // TODO: make the versioning mechanism working.
+/*    WN* wn_begin_spr = Gen_OMP_Begin_SPR(MPP_PARALLEL_DO);
     LWN_Insert_Block_After(wn_copy, NULL, wn_begin_spr); 
     WN* wn_end_spr = Gen_OMP_End_SPR(MPP_PARALLEL_DO); 
     LWN_Insert_Block_Before(wn_copy, NULL, wn_end_spr); 
@@ -2000,6 +2002,7 @@ static WN* Mp_Version_Loop(WN* wn_loop)
       dg->Add_Vertex(wn_begin_spr); 
       dg->Add_Vertex(wn_end_spr); 
     } 
+ */
   } 
 
   // Walk the pragma list, and add user defined conditions 
@@ -2067,6 +2070,7 @@ static WN* Mp_Version_Loop(WN* wn_loop)
 static BOOL Mp_Want_Version_Parallel_Region(WN* wn_region,
                                             BOOL test_already)
 {
+
   if (!LNO_Version_Mp_Loops)
     return FALSE;
 
@@ -2202,6 +2206,9 @@ static WN* Mp_Version_Parallel_Region(WN* wn_region)
   Mp_Disable_Opts_On_Internal_Regions(wn_block, 0);
   Mp_Extract_Parallel_Directives(wn_copy, is_auto_parallel, 1); 
   if (is_omp && !is_auto_parallel) { 
+	  // commented by csc. 2002/11/14
+	  // TODO: make the versioning mechanism working
+/*
     WN* wn_begin_spr = Gen_OMP_Begin_SPR(MPP_PARALLEL_REGION);
     LWN_Insert_Block_After(wn_copy, NULL, wn_begin_spr); 
     WN* wn_end_spr = Gen_OMP_End_SPR(MPP_PARALLEL_REGION); 
@@ -2210,6 +2217,7 @@ static WN* Mp_Version_Parallel_Region(WN* wn_region)
       dg->Add_Vertex(wn_begin_spr); 
       dg->Add_Vertex(wn_end_spr); 
     } 
+ */
   } 
 
   // Walk the pragma list, and add user defined conditions 
@@ -3815,9 +3823,14 @@ extern WN* Mp_Tile_Loop(WN* wn_loop,
 
   WN* wn_return = NULL; 
   INT nest_depth = dli->Mp_Info->Nest_Total(); 
-  BOOL want_freeze_threads = Mp_Want_Freeze_Threads(wn_loop, LNO_Ozero);
-  BOOL want_freeze_cur_threads = Mp_Want_Freeze_Cur_Threads(wn_loop,
-    LNO_Ozero);
+  // modified by csc. 2002/11/14
+  // The original MP framework nolonger needed.
+  // TODO: desert or replace it 
+  BOOL want_freeze_threads = FALSE;
+  BOOL want_freeze_cur_threads = FALSE;
+//  BOOL want_freeze_threads = Mp_Want_Freeze_Threads(wn_loop, LNO_Ozero);
+//  BOOL want_freeze_cur_threads = Mp_Want_Freeze_Cur_Threads(wn_loop,
+//    LNO_Ozero);
   if (nest_depth > 1) {
     Mp_Compress_Nested_Loop(wn_loop);
     WN* wn_scalar_loop = Mp_Version_Loop(wn_loop);
@@ -4100,6 +4113,10 @@ static void Mp_Tile_Traverse(WN* wn_tree)
 
 extern void Mp_Tile(WN* wn_root) 
 {
+	// modified by csc. 2002/11/14
+	// The MP_Tile cause big trouble. Turn off it.
+	// TODO: Check whether the Mp_Tile is needed for SMP.
+	return;
   Mp_Tile_Traverse(wn_root); 
   if (Eliminate_Dead_SCF(wn_root, LWN_Delete_Tree))
     Mark_Code(wn_root, FALSE, FALSE);

@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -53,6 +53,9 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "output.h"
 #include "target.h"
 #include "langhooks.h"
+#ifdef KEY
+#include "c-common.h"
+#endif // KEY
 
 /* obstack.[ch] explicitly declined to prototype this.  */
 extern int _obstack_allocated_p PARAMS ((struct obstack *h, PTR obj));
@@ -186,6 +189,10 @@ tree_size (node)
     case '<':  /* a comparison expression */
     case '1':  /* a unary arithmetic expression */
     case '2':  /* a binary arithmetic expression */
+#ifdef KEY
+      if (code == OMP_MARKER_STMT)
+        return sizeof (struct tree_omp);
+#endif // KEY
       return (sizeof (struct tree_exp)
 	      + TREE_CODE_LENGTH (code) * sizeof (char *) - sizeof (char *));
 
@@ -401,6 +408,10 @@ copy_node (node)
   else if (TREE_CODE_CLASS (code) == 't')
     {
 #ifdef KEY
+      { // bug 6199: reset dst_idx
+	static struct mongoose_gcc_DST_IDX di = {-1,-1};
+	TYPE_DST_IDX(t) = di;
+      }
       // bug 2563
       TYPE_TY_IDX (t) = 0;	// reset the ty_idx
 #endif

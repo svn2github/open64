@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -131,6 +135,36 @@ void EBO_Finalize(void);
 
 extern INT32 EBO_Opt_Level_Default;
 extern INT32 EBO_Opt_Level;
+#ifdef KEY
+extern INT32 EBO_Opt_Mask;
+#define EBO_CAN_MERGE_INTO_OFFSET 	0x1
+#define EBO_COMBINE_L1_L2_PREFETCH  	0x2
+#define EBO_DELETE_SUBSET_MEM_OP  	0x4
+#define EBO_DELETE_MEMORY_OP      	0x8
+#define EBO_DELETE_DUPLICATE_OP   	0x10
+#define EBO_CONVERT_IMM_ADD       	0x20
+#define EBO_CONVERT_OPERAND0      	0x40
+#define EBO_CONVERT_IMM_AND       	0x80
+#define EBO_CONVERT_IMM_OR        	0x100
+#define EBO_CONVERT_IMM_XOR       	0x200
+#define EBO_CONVERT_IMM_CMP       	0x400
+#define EBO_CONVERT_IMM_MUL       	0x800
+#define EBO_CONSTANT_OPERAND1     	0x1000
+#define EBO_RESOLVE_CONDITIONAL_BRANCH	0x2000
+#define EBO_FOLD_CONSTANT_EXPRESSION	0x4000
+#define EBO_DELETE_UNWANTED_PREFETCHES	0x8000
+#define EBO_SPECIAL_SEQUENCE		0x10000
+#define EBO_COMPOSE_ADDR		0x20000
+#define EBO_MERGE_MEMORY_ADDR		0x40000
+#define EBO_CHECK_LOADBW_EXECUTE	0x80000
+#define EBO_TEST_IS_REPLACED		0x100000
+#define EBO_LEA_INSERTION		0x200000
+#define EBO_MOVE_EXT_IS_REPLACED        0x400000
+#define EBO_REDUNDANCY_ELIMINATION      0x800000
+#define EBO_LOAD_EXECUTION              0x1000000
+#define EBO_CONSTANT_OPERAND0     	0x2000000
+#define EBO_FOLD_LOAD_DUPLICATE     	0x4000000
+#endif
 extern BOOL  CG_skip_local_ebo;
 
 #endif /* EBO_INCLUDED */

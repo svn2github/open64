@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -1760,6 +1760,9 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
     break;
 
   case OPR_INTRINSIC_OP:
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
     // no more mu-list for INTRINSIC_OP
     break;
 
@@ -1938,7 +1941,10 @@ OPT_STAB::Generate_call_mu_chi_by_ref(WN *wn, ST *call_st,
           OCC_TAB_ENTRY *occ = Get_occ(WN_kid(wn, i));
 // Bug 2450. default vsym can be aliased with any other idx.
 	  if (occ != NULL &&
-	      (occ->Aux_id() == idx || occ->Aux_id() == Default_vsym() ||  occ->Aux_id() == Return_vsym()) ) {
+	      (occ->Aux_id() == idx || 
+	       Aux_stab_entry(idx)->St()==Aux_stab_entry(occ->Aux_id())->St() ||
+	       occ->Aux_id() == Default_vsym() || 
+	       occ->Aux_id() == Return_vsym()) ) {
             idx_is_accessed_by_call = TRUE;
             break;
           }
@@ -2124,48 +2130,49 @@ OPT_STAB::Generate_asm_mu_chi(WN *wn, MU_LIST *mu, CHI_LIST *chi)
       continue;
     }
 
-    READ_WRITE how;
+    READ_WRITE how = NO_READ_NO_WRITE;
 
     // PREG are not allowed to be in mu/chi list
     // (they cannot be modified by asm statements).
-    if (Aux_stab_entry(idx)->Is_preg()) {
-      if (!Aux_stab_entry(idx)->Is_dedicated_preg())
-	continue;
-    } else {
-//Bug 607 && Bug 1524
-#ifdef KEY
-      if (idx == Return_vsym()){
-        how = READ_AND_WRITE;
-        goto label_how;
-      }
-      for (INT kid = 2; kid < WN_kid_count(wn); ++kid) {
-        WN* asm_input = WN_kid(wn, kid);
-        const char* constraint = WN_asm_input_constraint(asm_input);
-        WN* load = WN_kid0(asm_input);
-        OPERATOR opr = WN_operator(load);
-        if (opr == OPR_LDA || opr == OPR_LDID || opr == OPR_LDBITS){
-          if (WN_aux(load) == idx){
-// Fix Bug 1672
-            if (opr == OPR_LDA && strncmp(constraint, "=m",2)==0)
-              how = READ_AND_WRITE;
-            else
-              how = READ;
-            goto label_how;
-          }
-        }
-      }
-      if (!Asm_Memory && !asm_clobbers_mem) 
-          continue;
-      if (!Addr_saved(idx) && !Addr_passed(idx) && !Addr_used_locally(idx) &&
-          idx != Default_vsym() && idx != Return_vsym())
-        continue;
-#else
-      if (!asm_clobbers_mem)   // non-volatile asm cannot modify memory
-        continue;
-#endif
+    if (Aux_stab_entry(idx)->Is_preg()) 
+      continue;
+#ifdef KEY //Bug 607 && bug 1672 and bug 5022
+    if (idx == Return_vsym()){ // bug 1524
+      how = READ_AND_WRITE;
+      goto label_how;
     }
+
+    if (Asm_Memory || asm_clobbers_mem)
+      if (Addr_saved(idx) || Addr_passed(idx) || Addr_used_locally(idx) ||
+	  idx == Default_vsym()) {
+	how = READ_AND_WRITE;
+	goto label_how;
+      }
+
+    for (INT kid = 2; kid < WN_kid_count(wn); ++kid) {
+      WN* asm_input = WN_kid(wn, kid);
+      const char* constraint = WN_asm_input_constraint(asm_input);
+      if (WN_operator(WN_kid0(asm_input)) == OPR_LDA ||
+	  strncmp(constraint, "=m", 2) == 0 ||
+	  strstr(constraint, "m") != NULL) {
+	AUX_ID vp_idx = Identify_vsym(asm_input);
+	if (vp_idx == idx || 
+	    Rule()->Aliased_Memop(Aux_stab_entry(vp_idx)->Points_to(),
+				  Aux_stab_entry(idx)->Points_to())) {
+	  if (strncmp(constraint, "=m", 2) == 0) {
+	    how = READ_AND_WRITE;
+	    goto label_how;
+	  }
+	  else how = READ;
+	}
+      }
+    }
+#else
+    if (!asm_clobbers_mem)   // non-volatile asm cannot modify memory
+      continue;
     
-    how = Rule()->Aliased_with_Asm(wn, aux_stab[idx].Points_to());
+    how |= Rule()->Aliased_with_Asm(wn, aux_stab[idx].Points_to());
+#endif
 
 label_how:
     if (how & READ) {
@@ -2389,6 +2396,9 @@ OPT_STAB::Generate_mu_and_chi_list(WN *wn, BB_NODE *bb)
     break;
 
   case OPR_INTRINSIC_OP:
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
     {
       for (INT32 i = 0; i < WN_kid_count(wn); i++) {
 	occ = Get_occ(WN_kid(wn, i));
@@ -3175,6 +3185,15 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
       cnode = chi_list->Head();
       while (cnode != NULL) {
 	AUX_ID v = cnode->Aux_id();
+#ifdef KEY // work around bug 7421: return_vsym aliases with a fixed global var
+	if (v == Return_vsym() && 
+	    occ->Points_to()->Base_kind() == BASE_IS_FIXED &&
+	    occ->Points_to()->Not_addr_saved() && occ->Points_to()->Global()) {
+	  prev_cnode = cnode;
+	  cnode = prev_cnode->Next();
+	}
+	else
+#endif
 	// no need to remove UNIQUE_MEM for the chi list. 
 	if (aux_stab[v].Stype() != VT_UNIQUE_VSYM &&
 	    !Rule()->Aliased_Memop(occ->Points_to(),

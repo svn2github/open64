@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -398,7 +398,7 @@ INT64 Loop_Size(WN* wn)
   } else if (OPCODE_is_store(opcode)) {
     count++;
     kid_cnt = kid_cnt - 1;
-  } else if (oper == OPR_CALL) {
+  } else if ((oper == OPR_CALL) || (oper == OPR_PURE_CALL_OP)) {
     count = count + LNO_Full_Unrolling_Loop_Size_Limit;
   }
   
@@ -545,6 +545,7 @@ BOOL Run_autopar_save;
 static BOOL Skip_Simd;
 static BOOL Skip_HoistIf;
 static BOOL Skip_SVR;
+static BOOL Skip_Unswitch;
 #endif /* KEY */
 extern WN * Lnoptimizer(PU_Info* current_pu, 
 			WN *func_nd , DU_MANAGER *du_mgr,
@@ -580,6 +581,13 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
   else 
     Skip_SVR = FALSE;
  
+  if (pu_num < LNO_Unswitch_Skip_Before 
+      || pu_num > LNO_Unswitch_Skip_After
+      || pu_num == LNO_Unswitch_Skip_Equal)
+    Skip_Unswitch = TRUE;
+  else 
+    Skip_Unswitch = FALSE;
+  
   if (pu_num < LNO_Skip_Before 
       || pu_num > LNO_Skip_After
       || pu_num == LNO_Skip_Equal)
@@ -781,7 +789,11 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       Fully_Unroll_Short_Loops(func_nd);
     }
 
+#ifdef KEY 
+    if (LNO_Build_Scalar_Reductions || Roundoff_Level >= ROUNDOFF_ASSOC) {
+#else
     if (Roundoff_Level >= ROUNDOFF_ASSOC) {
+#endif
       red_manager = CXX_NEW 
           (REDUCTION_MANAGER(&LNO_default_pool), &LNO_default_pool);
       red_manager->Build(func_nd,TRUE,FALSE); // build scalar reductions
@@ -878,6 +890,12 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
         IPA_LNO_Unevaluate_Call_Infos(func_nd);
     }
 #ifdef KEY
+    if (LNO_Run_Unswitch && !Skip_Unswitch && Loop_Unswitch_SCF(func_nd)) {
+      // remark because unswitch may have changed things
+      Mark_Code(func_nd, FALSE, TRUE);  
+    }
+#endif
+#ifdef TARG_X8664
     if (LNO_Run_Simd > 0)
       Mark_Auto_Vectorizable_Loops(func_nd);
 #endif
@@ -924,7 +942,13 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
   
       if (!Get_Trace(TP_LNOPT, TT_LNO_NORENAME))
 #ifdef KEY
-	if (!Skip_SVR)
+#ifdef TARG_X8664
+	// Bug 4203 - this is probably exposing some register allocation bug 
+	// for m32. Hide it for now.
+	if (!Skip_SVR && (LNO_SVR_Phase1 || Is_Target_32bit()))
+#else
+	if (!Skip_SVR && LNO_SVR_Phase1)
+#endif
 #endif
         if (Scalar_Variable_Renaming(func_nd))
           LNO_Build_Access(func_nd,&LNO_default_pool);
@@ -1099,7 +1123,14 @@ extern void Build_CG_Dependence_Graph (WN* func_nd) {
   }
   // Build cg's dependence graph from scratch
   BOOL graph_ok=Current_Dep_Graph->Build(func_nd);
+#ifndef KEY
   Is_True(graph_ok,("Overflow converting to cg dependence graph"));
+#else
+#ifdef Is_True_On 
+  if (!graph_ok)
+    DevWarn("Overflow converting to cg dependence graph");
+#endif
+#endif
   if (!graph_ok) Current_Dep_Graph->Erase_Graph();
 
   if (graph_ok) {

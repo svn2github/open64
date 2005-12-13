@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -103,8 +107,19 @@ typedef STACK<RENAMING_SCOPE *> RENAMING_STACK;
 
 extern void
 Rename_Privatized_COMMON(WN *wn, RENAMING_STACK *stack);
+#ifdef KEY
+extern void
+Rename_Threadprivate_COMMON(WN* pu, WN *parent, WN *wn,
+                            RENAMING_STACK *scope_stack,
+                            RENAMING_SCOPE *scope,
+                            RENAMING_SCOPE *common_blk_scope);
+
+extern ST *
+ST_Source_COMMON_Block(ST *st, ST **split, BOOL want_st = FALSE);
+#else
 
 extern ST *
 ST_Source_COMMON_Block(ST *st, ST **split);
+#endif
 
 #endif  // #ifndef privatize_common_INCLUDED

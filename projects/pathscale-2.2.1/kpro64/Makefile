@@ -1,284 +1,82 @@
+# Copyright 2005 PathScale, Inc.  All Rights Reserved.
 #
+# This file is free software; you can redistribute it and/or modify it
+# under the terms of version 2 of the GNU General Public License, as
+# published by the Free Software Foundation.
 #
-#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+# This file is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
 #
-#  This program is free software; you can redistribute it and/or modify it
-#  under the terms of version 2 of the GNU General Public License as
-#  published by the Free Software Foundation.
-#
-#  This program is distributed in the hope that it would be useful, but
-#  WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-#
-#  Further, this software is distributed without any warranty that it is
-#  free of the rightful claim of any third person regarding infringement 
-#  or the like.  Any license provided herein, whether implied or 
-#  otherwise, applies only to this software file.  Patent licenses, if 
-#  any, provided herein do not apply to combinations of this program with 
-#  other software, or any other product whatsoever.  
-#
-#  You should have received a copy of the GNU General Public License along
-#  with this program; if not, write the Free Software Foundation, Inc., 59
-#  Temple Place - Suite 330, Boston MA 02111-1307, USA.
-#
-#  Contact information:  Silicon Graphics, Inc., 1600 Amphitheatre Pky,
-#  Mountain View, CA 94043, or:
-#
-#  http://www.sgi.com
-#
-#  For further information regarding this notice, see:
-#
-#  http://oss.sgi.com/projects/GenInfo/NoticeExplan
-#
-#
+# You should have received a copy of the GNU General Public License
+# along with this file; see the file COPYING.  If not, write to the
+# Free Software Foundation, 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
-#
-#ident "$Revision: 1.1.1.1 $"
+export PSC_MAJOR_VERSION := 0
+export PSC_MINOR_VERSION := 0
+export PSC_PATCH_LEVEL := 0
+export PSC_EXTRA_VERSION := -custom
+export PSC_FULL_VERSION := $(PSC_MAJOR_VERSION).$(PSC_MINOR_VERSION).$(PSC_PATCH_LEVEL)$(PSC_EXTRA_VERSION)
+export export PSC_FULL_VERSION
+export PSC_GCC_VERSION := 3.3.1
+export PSC_ARCH_64 := x86_64
+export PSC_ARCH_32 := i386
+export PSC_ARCH := $(PSC_ARCH_64)
+export PSC_TARGET_64 := $(PSC_ARCH_64)-pathscale-linux
+export PSC_TARGET_32 := $(PSC_ARCH_32)-pathscale-linux
+export PSC_TARGET := $(PSC_TARGET_64)
+export PSC_ROOT_PREFIX := /opt/pathscale
+export PSC_PREFIX := $(PSC_ROOT_PREFIX)/$(PSC_TARGET)
+export PSC_INSTALL_PREFIX := $(PSC_PREFIX)
+export PSC_NAME_PREFIX := path
+export PSC_INCLUDE_DIR := $(PSC_INSTALL_PREFIX)/lib/gcc-lib/$(PSC_TARGET)/pathscale-$(PSC_FULL_VERSION)/include/
+export PSC_LIB_DIR := $(PSC_ROOT_PREFIX)/lib/$(PSC_FULL_VERSION)
 
-SHELL=/bin/sh
-ECHO=echo
+top_dir := .
+compiler_dir := $(top_dir)/targia32_x8664
+cygnus_dir := $(top_dir)/targcygnus_ia32_x8664
+lib32_dir := $(top_dir)/targia32_builtonia32
+lib64_dir := $(top_dir)/targx8664_builtonia32
 
-ifndef GNU_BUILD
+all: compiler messages cygnus libs
 
-ifndef NO64BIT
-SUBDIRS=targ32_m2 targ64_m3 targ64_m4 targ64_m4_r8 targ64_m4_r10 targn32_m3 targn32_m4 targn32_m4_r8 targn32_m4_r10
-else
-SUBDIRS=targ32_m2 targn32_m3 targn32_m4 targn32_m4_r8 targn32_m4_r10
-endif
+compiler:
+	$(MAKE) -C $(compiler_dir)
+	$(MAKE) -C $(compiler_dir)/crayf90/sgi mfef95
 
-SUBDIRS1=targucode
+messages: compiler
+	$(MAKE) -C $(compiler_dir)/crayf90/sgi cf95.cat
+	$(MAKE) -C $(compiler_dir)/arith arith.cat
+	$(MAKE) -C $(compiler_dir)/libu lib.cat
 
-ifdef NON_NDA
-SUBDIRS2=
-##else
-# force targm2i to be exported after targn32_m3
-# --- no longer build targm2i --
-##SUBDIRS2=targm2i
-endif
-BUILDDIR=build
+cygnus:
+	cd $(cygnus_dir) && ./CONFIGURE
+	$(MAKE) -C $(cygnus_dir)
 
-else
+libs: lib32 lib64
 
-SUBDIRS=targia32_ia64
-SUBDIRS1=targia32_ia32
-# force nodebug to be done second
-SUBDIRS2=targia32_ia64_nodebug
-SUBDIRS3=targia64
-BUILDDIR=targia32_ia64_nodebug/build
+lib32:
+	$(MAKE) -C $(lib32_dir)
 
-endif
-# end of #ifdef GNU_BUILD
+lib64:
+	$(MAKE) -C $(lib64_dir)
 
-SUBPROD=buildprod62 buildprod63 buildpatch
+clean: compiler-clean cygnus-clean libs-clean
+	find $(compiler_dir) $(cygnus_dir) $(lib32_dir) $(lib64_dir) \
+	  -name Makedepend -print0 | xargs -r0 rm -f
 
-COMMONTARGS=clobber clean rmtargets fluff tags
-COMMONPREF=mongoose
-_FORCE=$(COMMONPREF)_force
-SRC=`pwd`
-MANDIRS=man
-BOOKDIRS=books
-RELNOTEDIRS=relnotes
+compiler-clean:
+	$(MAKE) -C $(compiler_dir) $@
 
--include localdefs
+cygnus-clean:
+	-[ -f $(cygnus_dir)/Makefile ] && $(MAKE) -C $(cygnus_dir) $@
 
-#
-# parallel targets
-#
-ifndef LOGDIR
-LOGDIR=.
-endif
-ifndef LOG
-LOG=cmplrs.$@
-endif
-ifndef STRAIN
-STRAIN=$(TOOLROOT)/usr/sbin/strain
-endif
-TMPDIR=.
-# on 6.2MR set FOLD to "| fold -w 512"
-FOLD=
-BASENAME=$(basename $@)
-SUFFIX=$(patsubst .%,%,$(suffix $@))
+libs-clean: lib32-clean lib64-clean
 
-test.foo:
-	if test ! -d $(BASENAME) then \
-	   $(ECHO) "SKIPPING $(BASENAME): No such directory."; \
-	else \
-	   $(ECHO) "suffix is $(SUFFIX)"; \
-	fi
+lib32-clean:
+	$(MAKE) -C $(lib32_dir) $@
 
-pexports: $(SUBDIRS:=.exports)
-$(SUBDIRS2:=.exports): $(SUBDIRS:=.exports)
-	if test ! -d $(BASENAME); then \
-	   $(ECHO) "SKIPPING $(BASENAME): No such directory."; \
-	else \
-	   $(ECHO) "\tcd $(BASENAME); $(MAKE) $(SUFFIX)"; \
-	   cd $(BASENAME) ; \
-	     $(MAKE) $(SUFFIX) $(FOLD) > $(LOGDIR)/$(LOG) 2>&1; \
-	     $(STRAIN) $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).strain 2>&1; \
-	     $(STRAIN) -w $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).warnings 2>&1; \
-	fi
-
-pexports2: $(SUBDIRS1:=.exports)
-
-$(SUBDIRS:=.exports) $(SUBDIRS1:=.exports):
-	if test ! -d $(BASENAME); then \
-	   $(ECHO) "SKIPPING $(BASENAME): No such directory."; \
-	else \
-	   $(ECHO) "\tcd $(BASENAME); $(MAKE) $(SUFFIX)"; \
-	   cd $(BASENAME) ; \
-	     $(MAKE) $(SUFFIX) $(FOLD) > $(LOGDIR)/$(LOG) 2>&1; \
-	     $(STRAIN) $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).strain 2>&1; \
-	     $(STRAIN) -w $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).warnings 2>&1; \
-	fi
-
-
-pclobber: $(SUBDIRS:=.clobber) $(SUBDIRS2:=.clobber)
-
-pclobber2: $(SUBDIRS1:=.clobber)
-
-pclobber3: $(SUBDIRS3:=.clobber)
-
-$(SUBDIRS:=.clobber) $(SUBDIRS1:=.clobber) $(SUBDIRS2:=.clobber) $(SUBDIRS3:=.clobber):
-	if test $(BASENAME) = "targucode" ; then \
-		echo "SKIPPING  $(BASENAME): TO SAVE TIME" ; \
-	else \
-		if test ! -d $(BASENAME); then \
-		   $(ECHO) "SKIPPING $(BASENAME): No such directory."; \
-		else \
-		   $(ECHO) "\tcd $(BASENAME); $(MAKE) $(SUFFIX)"; \
-		   cd $(BASENAME) ; \
-		     $(MAKE) $(SUFFIX) $(FOLD) > $(LOGDIR)/$(LOG) 2>&1; \
-		     $(STRAIN) $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).strain 2>&1; \
-		     $(STRAIN) -w $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).warnings 2>&1; \
-		fi; \
-	fi
-
-
-prawidb: $(SUBDIRS:=.rawidb) $(MANDIRS:=.rawidb) $(BOOKDIRS:=.rawidb) $(RELNOTEDIRS:=.rawidb) $(SUBDIRS2:=.rawidb)
-
-prawidb2: $(SUBDIRS1:=.rawidb)
-
-$(SUBDIRS:=.rawidb) $(MANDIRS:=.rawidb) $(BOOKDIRS:=.rawidb) $(RELNOTEDIRS:=.rawidb) $(SUBDIRS1:=.rawidb) $(SUBDIRS2:=.rawidb):
-	SRC=$(SRC); \
-	if test ! -d $(BASENAME); then \
-	   $(ECHO) "SKIPPING $(BASENAME): No such directory."; \
-	else \
-	   $(ECHO) "\tcd $(BASENAME); $(MAKE) $(SUFFIX) SRC=$$SRC"; \
-	   cd $(BASENAME) ; \
-	     $(MAKE) $(SUFFIX) SRC=$$SRC $(FOLD) > $(LOGDIR)/$(LOG) 2>&1; \
-	     $(STRAIN) $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).strain 2>&1; \
-	     $(STRAIN) -w $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).warnings 2>&1; \
-	fi
-
-
-pdefault: $(SUBDIRS2:=.default)
-$(SUBDIRS2:=.default): $(SUBDIRS:=.default)
-	SRC=$(SRC); \
-	if test ! -d $(BASENAME); then \
-	   $(ECHO) "SKIPPING $(BASENAME): No such directory."; \
-	else \
-	   $(ECHO) "\tcd $(BASENAME); $(MAKE) $(SUFFIX) SRC=$$SRC"; \
-	   cd $(BASENAME) ; \
-	     $(MAKE) $(SUFFIX) SRC=$$SRC $(FOLD) > $(LOGDIR)/$(LOG) 2>&1; \
-	     $(STRAIN) $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).strain 2>&1; \
-	     $(STRAIN) -w $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).warnings 2>&1; \
-	fi
-
-pdefault2: $(SUBDIRS1:=.default)
-
-pdefault3: $(SUBDIRS3:=.default)
-
-$(SUBDIRS:=.default) $(SUBDIRS1:=.default) $(SUBDIRS3:=.default):
-	SRC=$(SRC); \
-	if test ! -d $(BASENAME); then \
-	   $(ECHO) "SKIPPING $(BASENAME): No such directory."; \
-	else \
-	   $(ECHO) "\tcd $(BASENAME); $(MAKE) $(SUFFIX) SRC=$$SRC"; \
-	   cd $(BASENAME) ; \
-	     $(MAKE) $(SUFFIX) SRC=$$SRC $(FOLD) > $(LOGDIR)/$(LOG) 2>&1; \
-	     $(STRAIN) $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).strain 2>&1; \
-	     $(STRAIN) -w $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).warnings 2>&1; \
-	fi
-
-
-default $(COMMONTARGS) install exports:
-	@for d in $(SUBDIRS) $(SUBDIRS1) $(SUBDIRS2) ; do \
-		if test ! -d $$d; then \
-			echo "SKIPPING $$d: No such directory."; \
-		else \
-			$(ECHO) "\tcd $$d; $(MAKE) $@"; \
-			cd $$d; $(MAKE) $@; cd ..; \
-		fi \
-	done
-
-headers:
-	@for d in $(SUBDIRS) $(SUBDIRS1) $(SUBDIRS2) ; do \
-		if test ! -d $$d; then \
-			echo "SKIPPING $$d: No such directory."; \
-		else \
-			$(ECHO) "\tcd $$d; $(MAKE) $@"; \
-			cd $$d; $(MAKE) $@; cd ..; \
-		fi \
-	done
-
-rawidb:
-	SRC=$(SRC); \
-	for d in $(SUBDIRS) $(MANDIRS) $(BOOKDIRS) $(RELNOTEDIRS) $(SUBDIRS1) $(SUBDIRS2) ; do \
-		if test ! -d $$d; then \
-			$(ECHO) "SKIPPING $$d: No such directory."; \
-		else \
-			$(ECHO) "\tcd $$d; $(MAKE) SRC=$$SRC $@"; \
-			cd $$d; $(MAKE) SRC=$$SRC $@;  cd ..; \
-		fi \
-	done
-
-startversion version:
-	cd $(BUILDDIR); $(MAKE) $@
-
-ism:
-	cd $(BUILDDIR); $(MAKE) buildism
-
-ismi:
-	if test -d build_i ; then \
-		cd build_i; $(MAKE) buildism ; \
-	fi
-
-images::
-	cd $(BUILDDIR); $(MAKE) buildimages
-
-imagesi::
-	if test -d build_i ; then \
-		cd build_i; $(MAKE) ibuildimages ; \
-	fi
-
-product:: base_product
-	$(MAKE) pproduct_clobber LOGDIR=$(TMPDIR)
-	rm -rf $(TMPDIR)/clobber*
-	$(MAKE) pproduct_clobber pproduct_all
-
-base_product:
-	cd buildprod; $(MAKE) clobber all
-
-pproduct_clobber: $(SUBPROD:=.clobber)
-$(SUBPROD:=.clobber):
-	if test ! -d $(BASENAME); then \
-	   $(ECHO) "SKIPPING $(BASENAME): No such directory."; \
-	else \
-	   $(ECHO) "\tcd $(BASENAME); $(MAKE) $(SUFFIX)"; \
-	   cd $(BASENAME) ; \
-	     $(MAKE) $(SUFFIX) $(FOLD) > $(LOGDIR)/$(LOG) 2>&1; \
-	     $(STRAIN) $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).strain 2>&1; \
-	     $(STRAIN) -w $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).warnings 2>&1; \
-	fi
-
-pproduct_all: $(SUBPROD:=.all)
-$(SUBPROD:=.all):
-	if test ! -d $(BASENAME); then \
-	   $(ECHO) "SKIPPING $(BASENAME): No such directory."; \
-	else \
-	   $(ECHO) "\tcd $(BASENAME); $(MAKE) $(SUFFIX)"; \
-	   cd $(BASENAME) ; \
-	     $(MAKE) $(SUFFIX) $(FOLD) > $(LOGDIR)/$(LOG) 2>&1; \
-	     $(STRAIN) $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).strain 2>&1; \
-	     $(STRAIN) -w $(LOGDIR)/$(LOG) > $(LOGDIR)/$(LOG).warnings 2>&1; \
-	fi
+lib64-clean:
+	$(MAKE) -C $(lib64_dir) $@

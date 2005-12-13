@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -58,6 +58,10 @@ extern BOOL PU_Has_Calls;
 extern BOOL PU_References_GP;
 #ifdef KEY
 extern BOOL PU_Has_Exc_Handler;
+#endif
+
+#ifdef TARG_X8664
+extern BOOL PU_References_GOT; // for -m32 -fpic
 #endif
 
 extern BOOL CG_PU_Has_Feedback;

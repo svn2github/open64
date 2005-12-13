@@ -221,6 +221,12 @@ gt_ggc_mx_lang_tree_node (x_p)
               gt_ggc_m_9tree_node ((*x).generic.block.fragment_origin);
               gt_ggc_m_9tree_node ((*x).generic.block.fragment_chain);
               break;
+#ifdef KEY
+	    case TS_OMP:
+	      gt_ggc_m_9tree_node ((*x).generic.omp.common.chain);
+	      gt_ggc_m_9tree_node ((*x).generic.omp.common.type);
+	      break;
+#endif // KEY
             default:
               break;
             }

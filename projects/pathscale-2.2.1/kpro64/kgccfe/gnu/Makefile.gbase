@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-#  Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+#  Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
 #  File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
 #  front-ends to GNU 3.3.1 release.
 #
@@ -59,11 +59,6 @@ include $(COMMONDEFS)
 #----------------------------------------------------------------------
 #  Set environment variables
 #----------------------------------------------------------------------
-ifeq ($(BUILD_COMPILER), SGI)
-CVERSION = -xansi
-else
-CVERSION =
-endif
 
 #----------------------------------------------------------------------
 #  Compiler Options
@@ -102,9 +97,7 @@ HOSTDEFS += -DMONGOOSE_CIF
 
 HOSTDEFS += -DSGI_RAG_BACKEND
 HOSTDEFS += -DSGI_MONGOOSE
-ifneq ($(BUILD_COMPILER), SGI)
 HOSTDEFS += -DMIPSEL
-endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 HOSTDEFS += -DIs_True_On
@@ -126,15 +119,10 @@ endif
 
 FE_DIR 			= $(BUILD_TOT)/kgccfe
 
-ifeq ($(BUILD_OS), IRIX)
-INCLUDE_DIR 		= $(BUILD_TOT)/include
-else
 INCLUDE_DIR 		= $(BUILD_AREA)/include
-endif
 
 GNU_DIR			= $(BUILD_BASE)
 GNU_CONFIG_DIR		= $(BUILD_BASE)/config
-GNU_COMMON_DIR          = $(BUILD_TOT)/kgnu_common
 
 GNU_TARG_DIR = $(GNU_DIR)/$(BUILD_TARGET_DIR)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/$(BUILD_TARGET_DIR)
@@ -147,7 +135,7 @@ GNU_TARG_DIR = $(GNU_DIR)/i386
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
 endif
 ifeq ($(BUILD_TARGET), MIPS)
-GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/MIPS
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/mips
 endif
 
 TARG_COMUTIL_DIR	= $(TARGDIR)/libcomutil
@@ -172,7 +160,7 @@ INC_DIRS =		\
   $(GNU_TARG_DIR)	\
   $(GNU_CONFIG_DIR)	\
   $(GNU_CONFIG_TARG_DIR)\
-  $(GNU_COMMON_DIR)/include
+  $(BUILD_TOT)/include/gnu
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
@@ -415,7 +403,12 @@ $(LIBRARY): $(OBJECTS)
 
 include $(BUILD_TOT)/kgccfe/gnu/frobnicate-version.mk
 
-ifeq ($(BUILD_TARGET), MIPS)
+c-parse.c: c-parse.y
+	@-rm -f $(<:.y=.[ch])
+	$(bison) -d -o $@ $<
+	@grep '#define YYEMPTY' $@ >> $(@:.c=.h)
+
+ifeq ($(BUILD_TARGET), __disable__)
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 # Generate header and source files from the machine description, 
@@ -682,3 +675,7 @@ gengenrtl.o : gengenrtl.c $(RTL_BASE_H) system.h real.h
 	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $<
 
 endif
+
+# The obstack code in the gcc front end causes warnings with gcc 3.3.3
+# and above.
+read-rtl.o tree.o: ERROR_ON_WARNINGS =

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,6 +45,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <cray/portdefs.h>	/* limits.h is included in portdefs.h */
+#ifdef KEY /* Bug 1683 */
+/* We want to use "getrusage", which gives better info than "times" */
+#define __mips
+#endif /* KEY Bug 1683 */
 #ifdef	__mips
 #include <sys/resource.h>
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -266,6 +266,14 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
    case IRETURN_SZT:
       ret_ty = Stab_Mtype_To_Ty(MTYPE_I4);
       break;
+#ifdef TARG_X8664
+   case IRETURN_V16F8:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V16F8);
+     break;
+   case IRETURN_V16F4:
+     ret_ty = Stab_Mtype_To_Ty(MTYPE_V16F4);
+     break;     
+#endif
 #endif
    default:
       Is_True(FALSE, 
@@ -580,6 +588,7 @@ WN_Tree_Type(const WN *wn)
       case OPR_REDUCE_MPY:
       case OPR_REDUCE_MAX:
       case OPR_REDUCE_MIN:
+      case OPR_SHUFFLE:
 	ty = Stab_Mtype_To_Ty(WN_opc_rtype(wn));
 	break;
 

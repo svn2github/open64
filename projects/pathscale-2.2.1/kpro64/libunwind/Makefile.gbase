@@ -27,15 +27,6 @@ include	$(COMMONDEFS)
 # set install in default place
 STD_LIBRARY_LOC = $(DEF_LIBRARY_LOC)
 
-# set C version & warnings
-ifeq ($(BUILD_COMPILER), SGI)
-CVERSION = -xansi
-WOFF = -fullwarn -woff 1552
-else
-CVERSION =
-WOFF =
-endif
-
 # set compilation defines
 LCDEFS = -DELF -DSYSV -D_SYSV -D__MIPS_AND_IA64_ELF_H
 LC++DEFS = -DELF -DSYSV -D_SYSV -D__MIPS_AND_IA64_ELF_H
@@ -48,11 +39,6 @@ endif
 # set compilation options
 LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LC++OPTS = $(STD_COMPILE_OPTS)
-ifeq ($(BUILD_COMPILER), EDG)
-# okay for all abis?
-LCOPTS += -signed
-LC++OPTS += -signed
-endif
 
 LC++INCS = -I$(BUILD_TOT)/common/com \
 	   -I$(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR) \

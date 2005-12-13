@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -52,6 +52,7 @@
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifndef mat_INCLUDED
+#include "lnopt_main.h"
 #include "mat.h"
 #endif
 

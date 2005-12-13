@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -76,7 +80,11 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
   TYPE_ID desc = U64_LOWER_desc(tree);
   if (desc == MTYPE_V || desc == MTYPE_UNKNOWN) desc = res; 
 
-  if (opr == OPR_INTRINSIC_OP) {
+  if (opr == OPR_INTRINSIC_OP
+#ifdef KEY
+      || opr == OPR_PURE_CALL_OP
+#endif
+     ) {
     for (i = 0; i < U64_LOWER_kid_count(tree); i++) { // kids must be PARMs
       U64_LOWER_set_kid(new_nd, i, U64_LOWER_expr(U64_LOWER_kid(tree,i), 
 			maxsize0, hob_state0, hob_to_do0, leave_CVTL_at_leaf));

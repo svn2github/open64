@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -62,9 +62,7 @@ static string_list_t *cxx_prelinker_objects;
 static string_list_t *ar_objects; 
 static string_list_t *library_dirs;
 
-#ifdef KEY
 static int check_for_whirl(char *name);
-#endif
 
 void
 init_objects (void)
@@ -157,9 +155,7 @@ is_object_option (int flag)
 	case O_all:
         case O__whole_archive:
         case O__no_whole_archive:
-#ifdef KEY
         case O_WlC:
-#endif
 		return TRUE;
 	default:
 		return FALSE;
@@ -230,7 +226,8 @@ add_object (int flag, char *arg)
 	switch (flag) {
 	case O_l:
 		/* when -lm, implicitly add extra math libraries */
-		if (strcmp(arg, "m") == 0) {
+		if (strcmp(arg, "m") == 0 ||
+		    strcmp(arg, "mpath") == 0) {	// bug 5184
 			/* add -lmv -lmblah */
 			if (xpg_flag && invoked_lang == L_f77) {
 				add_library(lib_objects, "mv");
@@ -243,6 +240,13 @@ add_object (int flag, char *arg)
 			    add_library(cxx_prelinker_objects, "mv");
 			    add_library(cxx_prelinker_objects, "m" PSC_NAME_PREFIX);
 			}
+#ifdef TARG_X8664
+			extern boolean link_with_mathlib;
+			// Bug 4680 - It is too early to check target_cpu so we
+			// set a flag here to note that -lm was seen and later 
+			// use this to add -lacml_mv in add_final_ld_args.
+			link_with_mathlib = 1;
+#endif
 		}
 
 		/* xpg fort77 has weird rule about putting all libs after objects */
@@ -269,7 +273,6 @@ add_object (int flag, char *arg)
 	       }
 
 	       break;
-#ifdef KEY
 	case O_WlC:
 	       add_string(objects, concat_strings("-Wl,", arg));
 	       break;
@@ -279,7 +282,6 @@ add_object (int flag, char *arg)
 	case O__no_whole_archive:
 	       add_string(objects, "-Wl,-no-whole-archive");
 	       break;
-#endif
 	default:
 		internal_error("add_object called with not-an-object");
 	}
@@ -296,7 +298,6 @@ add_ar_objects (char *arg)
 void
 append_objects_to_list (string_list_t *list)
 {
-#ifdef KEY
 	// If without -ipa, don't accept IPA-created objects.
 	if (ipa != TRUE) {
 	  int has_ipa_obj = FALSE;
@@ -311,7 +312,6 @@ append_objects_to_list (string_list_t *list)
 	  if (has_ipa_obj == TRUE)
 	    do_exit(1);
 	}
-#endif
 	append_string_lists (list, objects);
 	if (xpg_flag && invoked_lang == L_f77) {
 		append_string_lists (list, lib_objects);
@@ -351,6 +351,12 @@ void
 add_library_dir (char *path)
 {
 	add_string(library_dirs, path);
+}
+
+string_list_t *
+get_library_dirs(void)
+{
+	return library_dirs;
 }
 
 void
@@ -420,15 +426,17 @@ find_crt_path (char *crtname)
 	}
 }
 
-#ifdef KEY
 // Check whether the option should be turned into a linker option when pathcc
 // is called as a linker.
 boolean
 is_maybe_linker_option (int flag)
 {
+  // Example:
+  //  case O_static:
+  //    return TRUE;
+  //    break;
+
   switch (flag) {
-    case O_static:
-      return TRUE;
     default:
       break;
   }
@@ -440,11 +448,12 @@ void
 add_maybe_linker_option (int flag)
 {
   // Add ',' in front of the option name to indicate that the option is active
-  // only if pathcc is called as a linker.
+  // only if pathcc is called as a linker.  For example:
+  //  case O_static:
+  //    add_string(objects, ",-Wl,-static");
+  //    break;
+
   switch (flag) {
-    case O_static:
-      add_string(objects, ",-Wl,-static");
-      break;
     default:
       break;
   }
@@ -468,14 +477,17 @@ finalize_maybe_linker_options (boolean is_linker)
     }
   } else {
     string_item_t *prev = NULL;
+    int deleted = FALSE;
     for (p = objects->head; p != NULL; p = p->next) {
       // Potential linker options begin with ','.
       if (p->name[0] == ',') {
 	// Put back the non-linker version of the option if necessary.
 	char *str = p->name;
-	if (!strcmp (str, ",-Wl,-static")) {
-	  add_option_seen (O_static);
-	}
+
+	// Currently there is nothing, but if there is, follow this example:
+	//   if (!strcmp (str, ",-Wl,-static")) {
+	//     add_option_seen (O_static);
+	//   }
 
 	// Delete the option.
 	if (prev == NULL) {
@@ -483,9 +495,19 @@ finalize_maybe_linker_options (boolean is_linker)
 	} else {
 	  prev->next = p->next;
 	}
+	deleted = TRUE;
       } else {
 	prev = p;
       }
+    }
+
+    // Update the tail.
+    if (deleted) {
+      string_item_t *tail = NULL;
+      for (p = objects->head; p != NULL; p = p->next) {
+	tail = p;
+      }
+      objects->tail = tail;
     }
   }
 }
@@ -562,4 +584,3 @@ check_for_whirl(char *name)
     return FALSE;
     
 }
-#endif

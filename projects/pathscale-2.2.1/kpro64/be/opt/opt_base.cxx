@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -164,5 +164,21 @@ MAP::Get_val(POINTER k)
   MAP_LIST *map_lst = Find_map_list(k);
   return map_lst->Val();
 }
+
+#ifdef Is_True_On
+void	      
+MAP::Dump_map(FILE *fp)
+{
+  if ( hash_vec == NULL ) 
+    return;
+  MAP_LIST *tmp;
+  MAP_LIST_ITER map_lst_iter;
+  for (UINT32 idx = 0; idx < size; idx++) {
+    fprintf(fp, "----- idx=%d ----\n", idx);
+    FOR_ALL_NODE(tmp, map_lst_iter, Init(hash_vec[idx]))
+      fprintf(fp, "key=%p val=%p\n", tmp->Key(), tmp->Val());
+  }
+}
+#endif
 
 // ====================================================================

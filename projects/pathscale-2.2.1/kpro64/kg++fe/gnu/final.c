@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Convert RTL to assembler code and output it, for GNU compiler.
@@ -4202,13 +4202,13 @@ void
 mark_referenced_symbols (rtx x)
 {
   int i, j;
-  char *fmt;
+  const char *fmt;
                                                                                  
   if (!x)
     return;
                                                                                  
   if (GET_CODE (x) == SYMBOL_REF) {
-    char *name = XSTR (x, 0);
+    const char *name = XSTR (x, 0);
     const char *real_name;
     tree id;
                                                                                  

@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -699,6 +699,13 @@ utf8_extend_token (c)
   while (shift);
 }
 #endif
+
+#ifdef KEY
+bool in_omp_pragma = FALSE;
+// TRUE implies we have seen a CPP_HASH, and we have done lookahead
+// to verify that the succeeding tokens are 'pragma omp'.
+extern bool last_token_omp_hash;
+#endif
 
 int
 c_lex (value)
@@ -712,6 +719,20 @@ c_lex (value)
     tok = cpp_get_token (parse_in);
   while (tok->type == CPP_PADDING);
   timevar_pop (TV_CPP);
+
+#ifdef KEY
+  if (last_token_omp_hash && tok->type == CPP_NAME)
+  {
+    last_token_omp_hash = FALSE;
+    tree name = HT_IDENT_TO_GCC_IDENT (HT_NODE (tok->val.node));
+    if (TREE_CODE (name) == IDENTIFIER_NODE &&
+        !strcmp (IDENTIFIER_POINTER (name), "pragma"))
+    {
+      tok = cpp_get_token (parse_in);
+      in_omp_pragma = TRUE;
+    }
+  }
+#endif // KEY
 
   /* The C++ front end does horrible things with the current line
      number.  To ensure an accurate line number, we must reset it

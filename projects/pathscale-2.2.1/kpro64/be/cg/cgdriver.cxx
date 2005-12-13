@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -163,6 +163,9 @@ static BOOL clone_incr_overridden = FALSE;
 static BOOL clone_min_incr_overridden = FALSE;
 static BOOL clone_max_incr_overridden = FALSE;
 static BOOL CFLOW_Enable_Clone_overridden = FALSE;
+#ifdef TARG_X8664
+BOOL cg_load_execute_overridden = FALSE;
+#endif
 
 /* Keep	a copy of the command line options for assembly	output:	*/
 static char *option_string;
@@ -216,10 +219,17 @@ static OPTION_DESC Options_GRA[] = {
     0,0,0,      &GRA_optimize_placement, NULL,
     "Enable/disable movement of spills and restores created during splitting [Default TRUE]."
   },
+#ifdef TARG_X8664
+  { OVK_INT32,	OV_INTERNAL, TRUE, "local_forced_max", "local_forced_max",
+    4, 0, 16,	&GRA_local_forced_max, &GRA_local_forced_max_set,
+    "How many locals to force allocate (out of the number requested by LRA) [Default 4]"
+  },
+#else
   { OVK_INT32,	OV_INTERNAL, TRUE, "local_forced_max", "",
     4, 0, 32,	&GRA_local_forced_max, NULL,
     "How many locals to force allocate (out of the number requested by LRA) [Default 4]"
   },
+#endif // TARG_X8664
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "avoid_glue_references_for_locals", "",
     0,0,0,      &GRA_avoid_glue_references_for_locals,NULL,
     "If possible grant the forced locals from the set of registers not referenced for glue copies in the same block.  [Default TRUE]"
@@ -327,8 +337,17 @@ static OPTION_DESC Options_GRA[] = {
     0, 0, 0,	&GRA_eh_exclude_callee_saved_regs, NULL,
     "If true, callee-saved registers are never used to allocate to variables in functions with exception handlers"
   },    
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "optimize_boundary", "",
+    0,0,0,      &GRA_optimize_boundary, NULL,
+    "Enable/disable reuse of registers in live range boundary basic blocks [Default FALSE]."
+  },
 #endif // KEY
-  
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_INTERNAL, TRUE,  "grant_special_regs", "",
+    0,0,0,      &GRA_grant_special_regs, NULL,
+    "Force GRA to always grant rax/rcx/rdx, whether LRA needs them or not."
+  },
+#endif
   { OVK_COUNT }		/* List terminator -- must be last */
 };
 
@@ -382,10 +401,16 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,    &Arc_Profile_Region, NULL},
   { OVK_LIST, OV_INTERNAL, FALSE, "profile_id2", "",
     0, 0, 0,    &Arc_Profile_Region, NULL},
+  { OVK_INT32,  OV_INTERNAL, FALSE,  "cse_regs", "",
+    0, INT32_MIN, INT32_MAX,    &CG_cse_regs, NULL},
+  { OVK_INT32,  OV_INTERNAL, FALSE,  "sse_cse_regs", "",
+    0, INT32_MIN, INT32_MAX,    &CG_sse_cse_regs, NULL},
 #endif
 #ifdef TARG_X8664
+  { OVK_INT32,  OV_INTERNAL, TRUE,  "sse_load_execute", "sse_load_exe",
+    0, 0, INT32_MAX,    &CG_sse_load_execute, NULL},
   { OVK_INT32,	OV_INTERNAL, TRUE, "load_execute", "load_exe",
-    0, 0, INT32_MAX,	&CG_load_execute, NULL },
+    0, 0, INT32_MAX,	&CG_load_execute, &cg_load_execute_overridden },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "loadbw_execute", "loadbw_exe",
     0, 0, 0,	&CG_loadbw_execute, NULL },
 #endif
@@ -518,6 +543,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CFLOW_opt_after_cgprep, NULL },
   { OVK_INT32,  OV_INTERNAL, TRUE,"ebo_level", "ebo",
     0, INT32_MIN, INT32_MAX, &EBO_Opt_Level, &EBO_Opt_Level_overridden },
+#ifdef KEY
+  { OVK_INT32,  OV_INTERNAL, TRUE,"ebo_opt_mask", "",
+    0, INT32_MIN, INT32_MAX, &EBO_Opt_Mask, NULL },
+#endif
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow", NULL,
     0, 0, 0, &CFLOW_Enable, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"cflow", NULL,
@@ -620,6 +649,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CGSPILL_Enable_Force_Rematerialization, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"lra_reorder", "",
     0, 0, 0, &LRA_do_reorder, NULL },
+#ifdef TARG_X8664
+  { OVK_BOOL,	OV_INTERNAL, FALSE, "prefer_legacy_regs", "",
+    0, 0, 0, &LRA_prefer_legacy_regs, NULL },
+#endif
 #ifdef KEY
   { OVK_BOOL,	OV_INTERNAL, TRUE,  "min_spill_loc_size", "",
     0,0,0,      &CG_min_spill_loc_size, NULL,
@@ -850,6 +883,8 @@ static OPTION_DESC Options_CG[] = {
     3, 0, 64, &CG_p2align_max_skip_bytes, NULL, "max skip bytes for .p2align" },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "use_xortozero", "",
     0, 0, 0,	&CG_use_xortozero, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE, "use_test", "",
+    0, 0, 0,	&CG_use_test, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "fold_constimul", "",
     0, 0, 0,	&CG_fold_constimul, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "use_incdec", "",
@@ -865,6 +900,8 @@ static OPTION_DESC Options_CG[] = {
     "Use x86-64's movnti instead of mov when writing memory blocks of this size or larger (in KB)" },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "cloop", "",
     0, 0, 0,	&CG_cloop, NULL },
+  { OVK_BOOL,	OV_INTERNAL, TRUE,"use_lddqu", "",
+    0, 0, 0, &CG_use_lddqu, NULL },
 #endif
   { OVK_COUNT },
 
@@ -1500,6 +1537,10 @@ Mark_Specified_Registers_As_Not_Allocatable (void)
   }
 }
 
+#ifdef KEY
+char ** be_command_line_args = NULL;
+INT be_command_line_argc = 0;
+#endif // KEY
 
 /* ====================================================================
  *
@@ -1522,6 +1563,11 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
 
     Set_Error_Descriptor (EP_BE, EDESC_BE);
     Set_Error_Descriptor (EP_CG, EDESC_CG);
+
+#ifdef KEY
+    be_command_line_args = be_argv;
+    be_command_line_argc = be_argc;
+#endif // KEY
 
     /* Perform preliminary command line processing: */
     Build_Option_String ( be_argc, be_argv );

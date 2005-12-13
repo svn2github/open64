@@ -1,6 +1,6 @@
 /*
 
-  Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+  Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -21,8 +21,8 @@
   with this program; if not, write the Free Software Foundation, Inc., 59
   Temple Place - Suite 330, Boston MA 02111-1307, USA.
 
-  Contact information:  PathScale, Inc., 477 N. Mathilda Avenue,
-  Sunnvale, CA 94085, USA, or:
+  Contact information:  PathScale, Inc., 2071 Stierlin Court, Suite 200,
+  Mountain View CA 94043, USA, or:
 
   http://www.pathscale.com
 
@@ -84,6 +84,10 @@ void (*p_ipa_insert_whirl_marker)(void) = NULL;
 void (*p_Sync_symbol_attributes)(unsigned int, unsigned int, bfd_boolean, unsigned int) = NULL;
 #ifdef KEY
 void (*p_ipa_erase_link_flag)(const char*) = NULL;
+char* (*p_ipa_add_parent_dir_to_relative_pathname)(const char*) = NULL;
+void (*p_Ipalink_Set_Error_Phase)(char *) = NULL;
+void (*p_Ipalink_ErrMsg_EC_infile)(char *) = NULL;
+void (*p_Ipalink_ErrMsg_EC_outfile)(char *) = NULL;
 #endif
 
 string toolroot = 0;		    /* set to environment variable TOOLROOT */
@@ -1174,6 +1178,31 @@ ipa_set_syms(void)
 
 #ifdef KEY
     p_ipa_erase_link_flag = dlsym(p_handle,"ipa_erase_link_flag");
+    if ((p_error = dlerror()) != NULL)  {
+    	fputs(p_error, stderr);
+    	exit(1);
+    }
+
+    p_ipa_add_parent_dir_to_relative_pathname =
+      dlsym(p_handle,"ipa_add_parent_dir_to_relative_pathname");
+    if ((p_error = dlerror()) != NULL)  {
+    	fputs(p_error, stderr);
+    	exit(1);
+    }
+
+    p_Ipalink_Set_Error_Phase = dlsym(p_handle,"Ipalink_Set_Error_Phase");
+    if ((p_error = dlerror()) != NULL)  {
+    	fputs(p_error, stderr);
+    	exit(1);
+    }
+
+    p_Ipalink_ErrMsg_EC_infile = dlsym(p_handle,"Ipalink_ErrMsg_EC_infile");
+    if ((p_error = dlerror()) != NULL)  {
+    	fputs(p_error, stderr);
+    	exit(1);
+    }
+
+    p_Ipalink_ErrMsg_EC_outfile = dlsym(p_handle,"Ipalink_ErrMsg_EC_outfile");
     if ((p_error = dlerror()) != NULL)  {
     	fputs(p_error, stderr);
     	exit(1);

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -354,6 +358,9 @@ DIRECTED_GRAPH16<EDGE_TYPE,VERTEX_TYPE>::Add_Vertex() {
   VINDEX16 new_vertex;
 
   // Is_True(_vcnt < GRAPH16_CAPACITY, ("Too many vertices\n"));
+#ifdef KEY // bug 4024
+  Is_True(_vcnt < GRAPH16_CAPACITY, ("Too many vertices\n"));
+#endif
   if (_vcnt == GRAPH16_CAPACITY) return 0;
 
   if (_vfree == 0) { // grow the _v[] to accept more vertices
@@ -379,6 +386,12 @@ DIRECTED_GRAPH16<EDGE_TYPE,VERTEX_TYPE>::Add_Edge(VINDEX16 from, VINDEX16 to) {
   EINDEX16 new_edge;
 
   // Is_True(_ecnt < GRAPH16_CAPACITY, ("Too many edges\n"));
+#ifdef KEY // bug 4024
+#ifdef Is_True_On
+  if (_ecnt == GRAPH16_CAPACITY)
+    DevWarn("Too many edges\n");
+#endif
+#endif
   if (_ecnt == GRAPH16_CAPACITY) return 0;
   if (_efree == 0) { // grow the _e[] to accept more edges
     new_edge = _e.Newidx();

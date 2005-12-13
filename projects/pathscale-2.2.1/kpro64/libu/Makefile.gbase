@@ -41,24 +41,15 @@ include $(COMMONDEFS)
 CLIB_INCLUDE = $(BUILD_TOT)/clibroot
 
 #
-# Check for IRIX, IA32, IA64 systems
+# Check for IA32, IA64 systems
 #
-ifeq ($(BUILD_OS), IRIX)
-CVERSION = -xansi
-LUCCMPWOFFS = -woff 1174,1552
-LCOPTS  = $(STD_COMPILE_OPTS) -dollar -common $(LUCCMPWOFFS) $(STD_C_OPTS)
-LCDEFS += -D_FAMILY=_PCC -D_FLEXNAMES -D_SYSV -DSYSV
-LCDEFS += -D__=__P -D_LIB_INTERNAL -D_SGI_MP_SOURCE
-else
 #  Need nlcatmsg.h in clibinc
-CVERSION =
 LCDEFS += -D_LIB_INTERNAL
 LCDEFS += -D_XOPEN_SOURCE -D_XOPEN_SOURCE_EXTENDED
 LCDEFS += -U__mips
 LCDEFS += -D_LITTLE_ENDIAN
 LCINCS += -I$(BUILD_TOT)/clibinc
 LCINCS += -I$(BUILD_TOT)/clibinc/cray
-endif
 
 LCDEFS += -DKEY $(ERROR_ON_WARNINGS)
 
@@ -73,7 +64,6 @@ endif
 ifeq ($(BUILD_ABI), I32BIT)
 LCDEFS += -D_WORD32
 endif
-WOFF =
 
 LASOPTS = $(STD_COMPILE_OPTS)
 ifeq ($(BUILD_TYPE), SHARED)

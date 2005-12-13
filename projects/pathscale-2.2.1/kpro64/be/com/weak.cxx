@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -159,6 +163,9 @@ void (*Ipl_Fini_p) ();
 void (*ipl_main_p) (INT, char **);
 void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*, ALIAS_MANAGER*,
 					   void*);
+#ifdef KEY
+void (*Preprocess_struct_access_p) (void);
+#endif
 
 // symbols from whirl2c.so 
 

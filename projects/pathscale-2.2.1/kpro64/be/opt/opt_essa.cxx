@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -487,7 +492,11 @@ ESSA::Same_e_version_real_occ_real_occ(const EXP_OCCURS *def,
 	return TRUE;
       } 
   } else if (use->Occurrence()->Kind() == CK_OP && 
-	     OPCODE_operator(use->Occurrence()->Op()) == OPR_INTRINSIC_OP) {
+	     (OPCODE_operator(use->Occurrence()->Op()) == OPR_INTRINSIC_OP
+#ifdef KEY
+	      || OPCODE_operator(use->Occurrence()->Op()) == OPR_PURE_CALL_OP
+#endif
+	     )) {
       
     for (INT32 i = 0; i < use->Occurrence()->Kid_count(); i++) {
       CODEREP *opnd = use->Occurrence()->Opnd(i);

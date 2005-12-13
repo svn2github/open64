@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -522,15 +522,15 @@ LOOP_MODEL::Model(WN* wn,
   i = wndepth;
   WN *tmp = wn;
   _blocking_disabled = LNO_Blocking == 0;
-#ifdef KEY
+#ifdef TARG_X8664
   // Bug 2456 - if the innerloop is vectorizable then disable blocking for
   // thae loop.
   // TODO: If the innerloop overflows the cache then it may still be good to
   // cache-block. We need a model for estimating the trade-off between 
   // vectorization and cache-blocking. For now, we may shut this off 
   // by preventing cache-blocking only under -LNO:simd=2. Need to come across
-  // a case yet.
-  if (Is_Vectorizable_Loop(wn))
+  // a case yet. (That case is bug 4672.)
+  if (Is_Vectorizable_Loop(wn) && Is_Vectorization_Beneficial(WN_do_body(wn)))
     _blocking_disabled = TRUE;
 #endif
   if (LNO_Interchange == FALSE) {
@@ -3042,10 +3042,8 @@ ARRAY_REF::Build_Array(WN* wn_array,
 #ifdef KEY
   // Bug 3072 - For BSISTORE (1-bit MTYPE_bit_size), adjust esz to 1-byte:
   // 1-byte is the minimum unit recognized by LNO model.
-  if (esz == 0) {
-    FmtAssert(type == MTYPE_BS, ("Handle this case"));
+  if (esz == 0 && type == MTYPE_BS)
     esz = 1;
-  }
 #endif
 
   ACCESS_ARRAY *array = (ACCESS_ARRAY *) WN_MAP_Get(LNO_Info_Map,wn_array);

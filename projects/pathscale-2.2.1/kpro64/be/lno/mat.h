@@ -1,3 +1,9 @@
+/* -*- c++ -*- */
+
+/*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 /*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -525,7 +531,7 @@ MAT<T> MAT<T>::operator +(const MAT<T>& a) const
 
   MAT<T> m(Rows(), Cols(), Default_Pool());
 
-  for (INT r = 0; r < Rows(); rr++) {
+  for (INT r = 0; r < Rows(); r++) {
     T* pm = &m._data[r*m._cx];
     T* p = &_data[r*_cx];
     T* pa = &a._data[r*a._cx];

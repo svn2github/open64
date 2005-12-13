@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -88,7 +88,9 @@ extern void Expand_Float_To_Int_Round (TN *dest, TN *src, TYPE_ID imtype, TYPE_I
 extern void Expand_Float_To_Int_Trunc (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops);
 extern void Expand_Float_To_Int_Ceil (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops);
 extern void Expand_Float_To_Int_Floor (TN *dest, TN *src, TYPE_ID imtype, TYPE_ID fmtype, OPS *ops);
-#ifdef KEY
+#ifdef TARG_X8664
+extern void Expand_Float_To_Int_Tas (TN *dest, TN *src, TYPE_ID imtype, OPS *ops);
+extern void Expand_Int_To_Float_Tas (TN *dest, TN *src, TYPE_ID fmtype, OPS *ops);
 extern void Expand_Float_To_Float_Floor (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 extern void Expand_Float_To_Float_Floorf (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
 extern void Expand_Float_To_Float_Floorl (TN *dest, TN *src, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
@@ -108,6 +110,8 @@ extern void Expand_Reduce_Add (OPCODE opcode, TN *result, TN *src1, OPS *ops);
 extern void Expand_Reduce_Mpy (OPCODE opcode, TN *result, TN *src1, OPS *ops);
 extern void Expand_Reduce_Max (OPCODE opcode, TN *result, TN *src1, OPS *ops);
 extern void Expand_Reduce_Min (OPCODE opcode, TN *result, TN *src1, OPS *ops);
+extern void Expand_Shuffle (OPCODE opcode, TN* result, TN* src1, 
+                            VARIANT variant, OPS *ops);
 TN* Get_TN_Pair( TN* );
 TN* Create_TN_Pair( TN*, TYPE_ID );
 void Create_TN_Pair( TN*, TN* );
@@ -123,6 +127,9 @@ extern BOOL Expand_Special_And_Immed(TN *dest, TN *src1, INT64 imm, OPS *ops);
 /* enumerate the different kinds of shifts */
 typedef enum {shift_left, shift_aright, shift_lright} SHIFT_DIRECTION;
 extern void Expand_Shift (TN *result, TN *src1, TN *src2, TYPE_ID mtype, SHIFT_DIRECTION kind, OPS *ops);
+#ifdef TARG_X8664
+extern void Expand_Rrotate (TN *result, TN *src1, TN *src2, TYPE_ID rtype, TYPE_ID desc, OPS *ops);
+#endif
 
 /* in exp_loadstore: */
 extern void Expand_Lda (TN *dest, TN *src, OPS *ops);

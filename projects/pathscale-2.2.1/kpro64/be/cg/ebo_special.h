@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -183,11 +183,11 @@ BOOL Special_Sequence (OP *op,
 void Redundancy_Elimination ();
 #endif
 #ifdef TARG_X8664
-#undef USE_ORG_LOAD_EXEC
 void Update_op_must_not_be_moved( OP*, EBO_TN_INFO** );
 BOOL EBO_Merge_Memory_Addr( OP*, TN**, EBO_TN_INFO**, EBO_TN_INFO** );
 BOOL EBO_Load_Execution( OP*, TN**, EBO_TN_INFO** );
 BOOL EBO_Lea_Insertion( OP*, TN**, EBO_TN_INFO** );
+BOOL EBO_Fold_Load_Duplicate( OP*, TN**, EBO_TN_INFO** );
 BOOL Combine_L1_L2_Prefetches( OP*, TN**, EBO_TN_INFO** );
 void Lea_Insertion ();
 void Init_Load_Exec_Map( BB*, MEM_POOL* );

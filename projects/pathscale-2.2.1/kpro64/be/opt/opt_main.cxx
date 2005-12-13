@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -325,8 +325,8 @@
 
 #include "optimizer.h"
 #include "opt_alias_class.h"
-#include "opt_main.h"
 #include "opt_cfg.h"
+#include "opt_main.h"
 #include "opt_fb.h"
 #include "opt_exc.h"
 #include "opt_sym.h"
@@ -349,6 +349,7 @@
 #include "wb_ipl.h"			/* whirl browser for ipl */ 
 
 #include "regex.h"                      // For regcomp and regexec
+#include "xstats.h"                     // For PU_WN_BB_Cnt
 
 
 extern "C" void
@@ -365,6 +366,7 @@ extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 
 extern BOOL Enable_WN_Simp;
 extern void Simplify_bool_expr(COMP_UNIT *);
+extern void WN_unroll(WN *);
 
 static MEM_POOL  Opt_global_pool;
 static MEM_POOL  Opt_local_pool;
@@ -480,7 +482,6 @@ private:
   BOOL  _ivr;		/* induction-var recognition */
   BOOL  _ldx;            /* index load optimization */
   BOOL  _lego_opt;
-  BOOL  _lftr;           /* linear function test replacement */
   BOOL  _load_pre;
   BOOL  _local_rvi;
   BOOL  _ocopy;
@@ -492,7 +493,6 @@ private:
   BOOL  _rvi;		/* reg-var identification			*/
   BOOL  _simp_iload;
   BOOL  _slt;
-  BOOL  _strength_reduction;
   BOOL  _store_pre;
   BOOL  _ssa_pre;
   BOOL  _tail_recur;
@@ -543,7 +543,6 @@ private:
       WOPT_Enable_Ldx =
       WOPT_Enable_Load_PRE =
       WOPT_Enable_Local_Rvi =
-      WOPT_Enable_LFTR =
       WOPT_Enable_Output_Copy = 
       WOPT_Enable_Parm =
       WOPT_Enable_Phi_Simp =
@@ -551,7 +550,6 @@ private:
       WOPT_Enable_SLT =
       WOPT_Enable_Store_PRE =
       WOPT_Enable_SSA_PRE =
-      WOPT_Enable_Strength_Reduction =
       WOPT_Enable_Vsym_Unique =
       Enable_WN_Simp =			// disable WHIRL simplifier
       // WOPT_Enable_Zero_Version =
@@ -572,14 +570,6 @@ private:
 
     case MAINOPT_PHASE:
       WOPT_Enable_While_Loop = FALSE;
-
-      // disable LFTR if strength reduction is not enabled.
-      if (! WOPT_Enable_Strength_Reduction)
-        WOPT_Enable_LFTR = FALSE;
-
-      // disable LFTR if induction variable elimination is not enabled
-      if (! WOPT_Enable_IVE)
-	WOPT_Enable_LFTR = FALSE;
 
       // disable edge placement if new pre is off
       if (! WOPT_Enable_SSA_PRE) {
@@ -612,13 +602,11 @@ private:
 	WOPT_Enable_Compare_Simp = TRUE;
 	WOPT_Enable_Replace_Second_IV = TRUE;
 	WOPT_Enable_LFTR_Ivar = TRUE;
-	WOPT_Enable_LFTR = TRUE;
 	// WOPT_Enable_Iload_Prop = FALSE;
       }
 
       // if the global flag "Allow_wrap_around_opt" is off
       if ( ! Allow_wrap_around_opt ) {
-        WOPT_Enable_LFTR = FALSE;
         WOPT_Enable_LFTR2 = FALSE;
         WOPT_Enable_Compare_Simp = FALSE;
         WOPT_Enable_IVR = FALSE;
@@ -645,7 +633,11 @@ private:
 
       break; // end MAINOPT_PHASE
     case PREOPT_LNO_PHASE: 
-      if (Run_autopar && Current_LNO->IPA_Enabled) { 
+      if (Run_autopar && Current_LNO->IPA_Enabled
+#ifdef KEY // bug 6383
+	  && PU_WN_BB_Cnt < 2000
+#endif
+	  ) { 
 	WOPT_Enable_Call_Zero_Version = FALSE;
 	WOPT_Enable_Zero_Version = FALSE;
 	WOPT_Enable_DU_Full = TRUE;
@@ -702,7 +694,6 @@ private:
       WOPT_Enable_IVE            = _ive;
       WOPT_Enable_IVR            = _ivr;
       WOPT_Enable_Ldx            = _ldx;
-      WOPT_Enable_LFTR           = _lftr;
       WOPT_Enable_LNO_Copy_Propagate = _lno_copy;
       WOPT_Enable_Load_PRE       = _load_pre;
       WOPT_Enable_Local_Rvi      = _local_rvi;
@@ -710,7 +701,6 @@ private:
       WOPT_Enable_Parm           = _parm;
       WOPT_Enable_Phi_Simp       = _phi_simp;
       WOPT_Enable_RVI            = _rvi;
-      WOPT_Enable_Strength_Reduction = _strength_reduction;
       WOPT_Enable_Store_PRE      = _store_pre;
       WOPT_Enable_SSA_PRE        = _ssa_pre;
       WOPT_Enable_Verify         = _verify;
@@ -730,7 +720,6 @@ private:
       WOPT_Enable_CRSIMP         = _crsimp;
       WOPT_Enable_DCE_Label      = _dce_label;
       WOPT_Enable_IVR            = _ivr;
-      WOPT_Enable_LFTR           = _lftr;
       WOPT_Enable_Lego_Opt       = _lego_opt;
       WOPT_Enable_While_Loop     = _while_loop;
       WOPT_Enable_Improved_Addr_Taken = _addr;
@@ -806,7 +795,6 @@ public:
     _ldx = Indexed_Loads_Allowed;       /* from config.h, -OPT:ldx */
     _lego_opt = WOPT_Enable_Lego_Opt;
     //_ldx = WOPT_Enable_Ldx;
-    _lftr = WOPT_Enable_LFTR;		/* linear function test repl */
     _load_pre = WOPT_Enable_Load_PRE;
     _local_rvi = WOPT_Enable_Local_Rvi;
     _ocopy = WOPT_Enable_Output_Copy;
@@ -814,7 +802,6 @@ public:
     _phi_simp = WOPT_Enable_Phi_Simp;
     _rvi = WOPT_Enable_RVI;		/* reg-var identification */
     _slt = WOPT_Enable_SLT;
-    _strength_reduction = WOPT_Enable_Strength_Reduction;
     _store_pre = WOPT_Enable_Store_PRE;
     _ssa_pre = WOPT_Enable_SSA_PRE;
     _trip = WOPT_Enable_Generate_Trip_Count;
@@ -1009,8 +996,6 @@ Do_Pre_Before_Ivr(COMP_UNIT *comp_unit)
   //       -- New PRE: Build initial occurrence lists phase:
   //   ### CODEREP::Kid_count, illegal kind CK_VAR
   //
-  const BOOL enable_sr = WOPT_Enable_Strength_Reduction;
-  const BOOL enable_lftr = WOPT_Enable_LFTR;
 
   // Always do a minimal DCE before early versions of PRE and BDCE,
   // since it sets up the and marks PHI nodes (liveness) appropriately
@@ -1034,8 +1019,6 @@ Do_Pre_Before_Ivr(COMP_UNIT *comp_unit)
   // Disable strength reduction, lftr, and pre for constants in this
   // early invocation of PRE algorithms.
   //
-  WOPT_Enable_Strength_Reduction = FALSE;
-  WOPT_Enable_LFTR = FALSE;
 
   if (WOPT_Enable_Epre_Before_Ivr)
   {
@@ -1080,8 +1063,6 @@ Do_Pre_Before_Ivr(COMP_UNIT *comp_unit)
     Rename_CODEMAP(comp_unit);
   }
 
-  WOPT_Enable_Strength_Reduction = enable_sr;
-  WOPT_Enable_LFTR = enable_lftr;
 } // Do_Pre_Before_Ivr
 
 
@@ -1170,12 +1151,24 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	actions |= LOWER_BIT_FIELD_ID;
     else
 	actions |= LOWER_BITS_OP;
-    
+                                                                                                                                                             
+    actions |= LOWER_TO_MEMLIB; // add memlib transformation
+ 
     wn_tree = WN_Lower(wn_orig, actions, alias_mgr, "Pre_Opt");
 
+#ifdef TARG_X8664
+    BOOL target_64bit = Is_Target_64bit();
+#else
+    BOOL target_64bit = TRUE;
+#endif
+
 #ifdef KEY
-    if (Is_Target_64bit() && WOPT_Enable_Retype_Expr)
+    if (target_64bit && WOPT_Enable_Retype_Expr)
       WN_retype_expr(wn_tree);
+#endif
+
+#ifdef KEY
+    WN_unroll(wn_tree);
 #endif
 
     if (Cur_PU_Feedback)
@@ -1243,6 +1236,14 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
   // goto conversion
   if (WOPT_Enable_Goto &&
       (phase == PREOPT_LNO_PHASE || phase == PREOPT_PHASE)) {
+#ifdef KEY
+    // goto_skip_equal, goto_skip_before, goto_skip_after PU count specified
+    if ( Query_Skiplist ( Goto_Skip_List, Current_PU_Count() ) ) {
+      if ( Show_Progress )
+        ErrMsg(EC_Skip_PU, " goto conversion", Current_PU_Count(), Cur_PU_Name);
+    }
+    else {
+#endif
     SET_OPT_PHASE("Goto conversion");
     OPT_POOL_Push( &Opt_local_pool, MEM_DUMP_FLAG+2 );
     {
@@ -1256,6 +1257,9 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       fprintf( TFile, "%sAfter Goto Conversion\n%s",DBar,DBar );
       fdump_tree(TFile, wn_tree);
     }
+#ifdef KEY
+    }
+#endif
   }
 
   SET_OPT_PHASE("Preparation");
@@ -1457,6 +1461,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 	 comp_unit->Cfg()->Feedback()->Verify( comp_unit->Cfg(),
 					       "after Dead Code Elimination" );
   }
+
+#ifdef KEY
+  if (WOPT_Enable_Warn_Uninit && phase == MAINOPT_PHASE)
+    comp_unit->Find_uninitialized_locals();
+#endif
 
 #ifdef KEY // moved here because renaming causes bad code when there is
     	   // overlapped live ranges, which can be created by copy propagation

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -45,6 +49,29 @@
 #include <unistd.h>
 #include "externals.h"
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_hostnm(char *name, pathf90_i4 *status, int len)
+{
+	char	buf[64];
+	int	blen	= sizeof buf;
+	pathf90_i4 junk;
+	status = (0 == status) ? (&junk) : status;
+
+	if (gethostname (buf, blen) == 0)
+	{
+		b_char (buf, name, len);
+		return (*status = 0);
+	}
+	else
+		return(*status = errno);
+}
+
+#else
+
 extern int
 hostnm_ (char *name, int len)
 {
@@ -59,3 +86,5 @@ hostnm_ (char *name, int len)
 	else
 		return(errno);
 }
+
+#endif /* KEY Bug 1683 */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -74,9 +74,13 @@ void Initialize_Targ_Info(void)
   case TARGET_opteron:
   case TARGET_athlon64:
   case TARGET_athlon:
+  case TARGET_anyx86:
+    proc = PROCESSOR_opteron;
+    break;
   case TARGET_pentium4:
   case TARGET_xeon:
-    proc = PROCESSOR_opteron;
+  case TARGET_em64t:
+    proc = PROCESSOR_em64t;
     break;
   default:
     FmtAssert(FALSE, ("targinfo doesn't handle target: %s\n", Targ_Name(Target)));

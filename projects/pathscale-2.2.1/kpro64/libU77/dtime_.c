@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Copyright (C) 1995, 1996 Free Software Foundation, Inc.
@@ -20,9 +20,7 @@ License along with GNU Fortran; see the file COPYING.LIB.  If
 not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 #if HAVE_STDLIB_H
 #  include <stdlib.h>
 #endif
@@ -47,6 +45,40 @@ Boston, MA 02111-1307, USA.  */
 #endif
 #include <errno.h>		/* for ENOSYS */
 #include "f2c.h"
+
+#ifdef KEY /* Bug 3018 */
+
+#include "pathf90_libU_intrin.h"
+
+/* Provide this to implement intrinsic without polluting Fortran namespace. */
+float
+pathf90_dtime (float tarray[2])
+{
+  float utime, stime;
+  static float old_utime = 0.0, old_stime = 0.0;
+  struct rusage rbuff;
+
+  if (getrusage (RUSAGE_SELF, &rbuff) != 0)
+    abort ();
+  utime = (float) (rbuff.ru_utime).tv_sec +
+    (float) (rbuff.ru_utime).tv_usec / 1000000.0;
+  tarray[0] = utime - (float) old_utime;
+  stime = (float) (rbuff.ru_stime).tv_sec +
+    (float) (rbuff.ru_stime).tv_usec / 1000000.0;
+  tarray[1] = stime - old_stime;
+  old_utime = utime;
+  old_stime = stime;
+  return (tarray[0] + tarray[1]);
+}
+
+/* Alternate G77 subroutine form */
+void
+pathf90_subr_dtime (float tarray[2], float *result)
+{
+  *result = pathf90_dtime(tarray);
+}
+
+#else 
 
 double
 dtime_ (real tarray[2])
@@ -176,3 +208,4 @@ dtime_ (real tarray[2])
   return 0.0;
 #endif /* ! HAVE_GETRUSAGE && ! HAVE_TIMES */
 }
+#endif /* KEY Bug 3018 */

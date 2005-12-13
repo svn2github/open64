@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -3278,9 +3278,19 @@ finish_decl (decl, init, asmspec_tree)
       rest_of_decl_compilation (decl, NULL, DECL_CONTEXT (decl) == 0, 0);
     }
 
+#ifdef KEY
+  if (TREE_CODE (decl) == VAR_DECL)
+    TYPE_DEFER_EXPANSION (TREE_TYPE (decl)) = 1;
+#endif
+
 #ifdef SGI_MONGOOSE
   WFE_Decl (decl);
 #endif /* SGI_MONGOOSE */
+
+#ifdef KEY
+  if (TREE_CODE (decl) == VAR_DECL)
+    TYPE_DEFER_EXPANSION (TREE_TYPE (decl)) = 0;
+#endif
 
   /* At the end of a declaration, throw away any variable type sizes
      of types defined inside that declaration.  There is no use
@@ -6787,18 +6797,18 @@ c_expand_body (fndecl, nested_p, can_defer_p)
 	  // Bugs 1566 and 1940: set defer_function so that we know in 
 	  // WFE_Finish_Function if we need to back out the PU created in 
 	  // WFE_Start_Function.
-	  defer_function = 1;
-	  WFE_Finish_Function();
-	  defer_function = 0;
-	  for (pdecl = DECL_ARGUMENTS (fndecl); pdecl; 
-	       pdecl = TREE_CHAIN (pdecl))
-	    DECL_ST(pdecl) = NULL;
 
 	  // NULL references to WHIRL st
 	  // bugs 2647, 2681
 	  walk_tree_without_duplicates(&DECL_SAVED_TREE(fndecl), 
 				   (walk_tree_fn)WFE_Null_ST_References,
 				   NULL);
+	  defer_function = 1;
+	  WFE_Finish_Function();
+	  defer_function = 0;
+	  for (pdecl = DECL_ARGUMENTS (fndecl); pdecl; 
+	       pdecl = TREE_CHAIN (pdecl))
+	    DECL_ST(pdecl) = NULL;
 #endif
 	  return;
 	}

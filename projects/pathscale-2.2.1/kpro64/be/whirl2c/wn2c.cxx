@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -734,12 +734,16 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_V16I8ADD, "+"},
   {OPC_V16F4ADD, "+"},
   {OPC_V16F8ADD, "+"},
+  {OPC_V16C4ADD, "+"},
+  {OPC_V16C8ADD, "+"},
   {OPC_V16I1SUB, "-"},
   {OPC_V16I2SUB, "-"},
   {OPC_V16I4SUB, "-"},
   {OPC_V16I8SUB, "-"},
   {OPC_V16F4SUB, "-"},
   {OPC_V16F8SUB, "-"},
+  {OPC_V16C4SUB, "-"},
+  {OPC_V16C8SUB, "-"},
   {OPC_V16I1BAND,"&"},
   {OPC_V16I2BAND,"&"},
   {OPC_V16I4BAND,"&"},
@@ -766,6 +770,10 @@ static const OPC2CNAME_MAP WN2C_Opc2cname_Map[] =
   {OPC_V16F8DIV,"/"},
   {OPC_V16F4MPY,"*"},
   {OPC_V16F8MPY,"*"},
+  {OPC_V16C4DIV,"/"},
+  {OPC_V16C8DIV,"/"},
+  {OPC_V16C4MPY,"*"},
+  {OPC_V16C8MPY,"*"},
   {OPC_V16F4SQRT, "SQRT"},
   {OPC_V16F8SQRT, "SQRT"},
   {OPC_V16I1NEG, "-"},
@@ -1830,7 +1838,7 @@ WN2C_create_ref_param_lda(WN *lda, const WN *ldid)
    bzero(lda, sizeof(WN));
    WN_set_opcode(lda, OPCODE_make_op(OPR_LDA, TY_mtype(lhs_addr_ty), MTYPE_V));
    WN_set_kid_count(lda, 0);
-   WN_map_id(lda)      = (WN_MAP_ID) (-1);
+   WN_set_map_id(lda, (WN_MAP_ID) (-1));
    WN_load_offset(lda) = 0;
    WN_st_idx(lda)      = WN_st_idx(ldid);
    WN_set_ty(lda, lhs_addr_ty);

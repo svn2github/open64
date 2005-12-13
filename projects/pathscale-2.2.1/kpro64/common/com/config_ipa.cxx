@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -177,7 +177,12 @@ UINT32	IPA_Force_Depth = 0;		/* force inlining to depth n
 					 * regardless of size */
 BOOL	IPA_Force_Depth_Set = FALSE;
 BOOL	IPA_Enable_Merge_ty = TRUE;	/* merge types across files */
+
+#ifdef KEY
+UINT32	IPA_Max_Jobs = 1;	/* disable concurrent backend compilations */
+#else
 UINT32	IPA_Max_Jobs = 0;	/* concurrent backend compilations */
+#endif
 BOOL	IPA_Max_Jobs_Set = FALSE;
 
 /* 100th% of call freq lower than which will not inlined */
@@ -243,11 +248,13 @@ BOOL IPA_Enable_EH_Region_Removal = FALSE; // remove useless exception regions
 BOOL IPA_Enable_Branch_Heuristic = FALSE; // use branch prob. for inlining
 BOOL IPA_Check_Options = TRUE; // check for inconsistent options
 BOOL IPA_Clone_List_Actions = FALSE; // report function cloner actions
-#endif
+BOOL IPA_Enable_Pure_Call_Opt = FALSE; // optimize callsites w/o side-effects
+INT32 IPA_Pure_Call_skip_before = 0;
 
-#ifdef TARG_X8664
 BOOL IPA_Enable_Cord = FALSE;		/* will bring up for x86-64 */
+// In the absence of feedback, -IPA:pu_reorder defaults to REORDER_DISABLE
 PU_REORDER_SCHEME IPA_Enable_PU_Reorder = REORDER_DISABLE; /* Procedure reordering: PathScale version */
+BOOL IPA_Enable_PU_Reorder_Set = FALSE;
 BOOL IPA_Enable_Ctype = FALSE;		/* Insert array for use by ctype.h. */
 #else
 BOOL IPA_Enable_Cord = TRUE;		/* Enable procedure reordering. */
@@ -408,7 +415,7 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_UINT32,OV_INTERNAL,	FALSE, "map_limit",   "",
           DEFAULT_MAP_LIMIT, 0, UINT32_MAX, &IPA_Map_Limit, NULL},
     { OVK_UINT32,OV_VISIBLE,	FALSE, "max_jobs",	"",
-	  0, 0, UINT32_MAX,	&IPA_Max_Jobs,		&IPA_Max_Jobs_Set,
+	  1, 0, UINT32_MAX,	&IPA_Max_Jobs,		&IPA_Max_Jobs_Set,
 	  "Maximum number of concurrent back-end jobs" },
     { OVK_BOOL, OV_INTERNAL,	FALSE, "merge_ty",	"",
 	  0, 0, 0,		&IPA_Enable_Merge_ty,	NULL},
@@ -537,15 +544,20 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL,	OV_VISIBLE,	FALSE, "clone_list",	"",
 	  0, 0, 0,	&IPA_Clone_List_Actions,	NULL,
 	  "Report function cloner actions" },
-#endif // KEY
-#ifdef TARG_X8664 
+    { OVK_BOOL,	OV_VISIBLE,	FALSE, "pure_call",	"",
+	  0, 0, 0,	&IPA_Enable_Pure_Call_Opt,	NULL,
+	  "Optimize calls to functions without side-effects" },
+    { OVK_INT32, OV_INTERNAL,	FALSE, "call_op_skip_b",	"",
+	  0, 0, INT32_MAX,	&IPA_Pure_Call_skip_before,	NULL,
+	  "For debugging" },
     { OVK_INT32, OV_INTERNAL,	FALSE, "pu_reorder",	"",
 	  REORDER_DISABLE, REORDER_DISABLE, REORDER_BY_EDGE_FREQ,
-	  &IPA_Enable_PU_Reorder, NULL, "Enable procedure reordering"},
+	  &IPA_Enable_PU_Reorder, &IPA_Enable_PU_Reorder_Set,
+	  "Enable procedure reordering" },
     { OVK_BOOL, OV_INTERNAL,	FALSE, "ctype",	"",
 	  0, 0, 0,		&IPA_Enable_Ctype,	NULL,
 	  "Enable insertion of ctype.h array"},
-#endif // TARG_X8664 
+#endif // KEY
     { OVK_COUNT }	    /* List terminator -- must be last */
 };
 
@@ -578,6 +590,10 @@ BOOL	INLINE_Enable_Restrict_Pointers = FALSE; // Allow restrict pointers
 #ifdef KEY
 BOOL	INLINE_Recursive = TRUE;	// Do recursive inlining
 BOOL	INLINE_Param_Mismatch = TRUE;	// Inline even if # of actuals < # of formals
+BOOL	INLINE_Type_Mismatch = FALSE;   // Inline even if actuals' type != formals' type
+// check parameter compatibility during inlining
+CHECK_PARAM_COMPATIBILITY INLINE_Check_Compatibility = RELAXED_CHECK;
+BOOL    INLINE_Ignore_Bloat = TRUE;    // Ignore code bloat (-IPA:space)
 #endif
 
 OPTION_LIST *INLINE_List_Names = NULL;	/* Must/never/file options */
@@ -674,6 +690,15 @@ static OPTION_DESC Options_INLINE[] = {
     { OVK_BOOL, OV_INTERNAL,	FALSE,	"num_mismatch",	"",
 	  0, 0, 0,		&INLINE_Param_Mismatch, NULL,
 	  "Allow inlining even if # of parameters does not match between call and callee" },
+    { OVK_BOOL, OV_INTERNAL,	FALSE,	"type_mismatch",	"",
+	  0, 0, 0,		&INLINE_Type_Mismatch, NULL,
+	  "Allow inlining even if actuals don't exactly match formals" },
+    { OVK_INT32, OV_INTERNAL,	FALSE, "check_types",	"",
+	  RELAXED_CHECK, STRICT_CHECK, AGGRESSIVE,
+	  &INLINE_Check_Compatibility, NULL, "Check parameter type compatibility during inlining"},
+    { OVK_BOOL, OV_INTERNAL,	FALSE,	"ignore_bloat",	"",
+	  0, 0, 0,		&INLINE_Ignore_Bloat, NULL,
+	  "Ignore code bloat controlled by -IPA:space" },
 #endif
     { OVK_LIST,	OV_VISIBLE,	FALSE, "skip",	"s",
 	  0, 0, 0,	&INLINE_List_Names,	NULL,

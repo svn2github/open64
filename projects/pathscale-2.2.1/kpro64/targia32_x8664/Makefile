@@ -52,8 +52,8 @@ LIBRARY_SUBDIRS := \
 	libcif \
 	libcmplrs \
 	libcomutil \
-	libdwarf \
 	libelf \
+	libdwarf \
 	libelfutil \
 	libunwindP \
 	libu 

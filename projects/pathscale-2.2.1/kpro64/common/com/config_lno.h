@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -208,6 +208,13 @@ typedef struct lno_flags {
   UINT32 SVR_Skip_Before;
   UINT32 SVR_Skip_After;
   UINT32 SVR_Skip_Equal;
+  BOOL   SVR_Phase1;
+  UINT32 Unswitch_Skip_Before;
+  UINT32 Unswitch_Skip_After;
+  UINT32 Unswitch_Skip_Equal;
+  UINT32 Unswitch_Loop_Skip_Before;
+  UINT32 Unswitch_Loop_Skip_After;
+  UINT32 Unswitch_Loop_Skip_Equal;
   UINT32 Full_Unroll_Skip_Before;
   UINT32 Full_Unroll_Skip_After;
   UINT32 Full_Unroll_Skip_Equal;
@@ -290,6 +297,11 @@ typedef struct lno_flags {
   BOOL 	  Simd_Reduction;
   BOOL 	  Simd_Avoid_Fusion;
   BOOL    Run_hoistif;
+  BOOL    Ignore_Feedback;
+  BOOL    Run_unswitch;
+  BOOL 	  Unswitch_Verbose;
+  BOOL    Prefetch_Verbose;
+  BOOL    Build_Scalar_Reductions;
 #endif /* KEY */
   BOOL	Run_oinvar;
   UINT32 Run_doacross;
@@ -312,6 +324,7 @@ typedef struct lno_flags {
 #ifdef KEY
   UINT32 Full_unrolling_loop_size_limit;
   BOOL   Full_Unroll_Outer;
+  UINT32 Num_Processors;	// 0 means unknown
 #endif
   /* This buffer area allows references to new fields to be added in
    * later revisions, from other DSOs, without requiring a new be.so
@@ -374,6 +387,13 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_SVR_Skip_Before	        Current_LNO->SVR_Skip_Before
 #define LNO_SVR_Skip_After	        Current_LNO->SVR_Skip_After
 #define LNO_SVR_Skip_Equal	        Current_LNO->SVR_Skip_Equal
+#define LNO_SVR_Phase1			Current_LNO->SVR_Phase1
+#define LNO_Unswitch_Skip_Before	Current_LNO->Unswitch_Skip_Before
+#define LNO_Unswitch_Skip_After	        Current_LNO->Unswitch_Skip_After
+#define LNO_Unswitch_Skip_Equal	        Current_LNO->Unswitch_Skip_Equal
+#define LNO_Unswitch_Loop_Skip_Before	Current_LNO->Unswitch_Loop_Skip_Before
+#define LNO_Unswitch_Loop_Skip_After	Current_LNO->Unswitch_Loop_Skip_After
+#define LNO_Unswitch_Loop_Skip_Equal	Current_LNO->Unswitch_Loop_Skip_Equal
 #define LNO_Full_Unroll_Skip_Before	Current_LNO->Full_Unroll_Skip_Before
 #define LNO_Full_Unroll_Skip_After	Current_LNO->Full_Unroll_Skip_After
 #define LNO_Full_Unroll_Skip_Equal	Current_LNO->Full_Unroll_Skip_Equal
@@ -460,6 +480,11 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Simd_Reduction		Current_LNO->Simd_Reduction
 #define LNO_Simd_Avoid_Fusion		Current_LNO->Simd_Avoid_Fusion
 #define LNO_Run_hoistif                 Current_LNO->Run_hoistif
+#define LNO_Ignore_Feedback             Current_LNO->Ignore_Feedback
+#define LNO_Run_Unswitch                Current_LNO->Run_unswitch
+#define LNO_Unswitch_Verbose		Current_LNO->Unswitch_Verbose
+#define LNO_Prefetch_Verbose            Current_LNO->Prefetch_Verbose
+#define LNO_Build_Scalar_Reductions     Current_LNO->Build_Scalar_Reductions
 #endif /* KEY */
 #define LNO_Run_Oinvar			Current_LNO->Run_oinvar
 #define LNO_Run_Doacross		Current_LNO->Run_doacross
@@ -503,6 +528,7 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Full_Unrolling_Loop_Size_Limit \
 Current_LNO->Full_unrolling_loop_size_limit
 #define LNO_Full_Unroll_Outer           Current_LNO->Full_Unroll_Outer
+#define LNO_Num_Processors              Current_LNO->Num_Processors
 #endif
 
 /* Initialize the current top of stack to defaults: */

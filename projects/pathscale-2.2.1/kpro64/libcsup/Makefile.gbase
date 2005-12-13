@@ -44,16 +44,9 @@
 
 include $(COMMONDEFS)
 
-ifeq ($(BUILD_COMPILER), EDG)
-CVERSION = -xansi
-else
-CVERSION =
-endif
-
 LCINCS   = -I$(BUILD_BASE)/include
 LCOPTS   = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS   = -D_SYSV -DSYSV -D_LIBU
-WOFF     =
 
 LIBRARY = libcsup.a
 

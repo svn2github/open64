@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -115,6 +115,8 @@ typedef enum {
 extern TARGET_ABI Target_ABI;
 extern BOOL Target_SSE2;
 extern BOOL Target_SSE3;
+extern BOOL Target_3DNow;
+extern int Target_x86_Precision;
 
 /* ================ */
 /* Target processor */
@@ -128,6 +130,8 @@ typedef enum {
   TARGET_opteron,	/* AMD Opteron and Athlon64 FX */
   TARGET_athlon64,	/* AMD Athlon64 */
   TARGET_athlon,	/* AMD Athlon */
+  TARGET_em64t,		/* Intel EM64T */
+  TARGET_anyx86,	/* Generic x86 processor */
   TARGET_pentium4,	/* Intel Pentium 4 */
   TARGET_xeon,		/* Intel Pentium 4 Xeon */
 } TARGET_PROCESSOR;
@@ -137,12 +141,17 @@ extern TARGET_PROCESSOR Target;		/* -Tc */
 /* return the target name for <target> */
 extern char *Targ_Name (TARGET_PROCESSOR target);
 
+// NOTE: for this definition, all processors are treated x86-64!
 #define Is_Target_x86_64()	(Target >= TARGET_opteron && Target <= TARGET_xeon)
 #define Is_Target_64bit()       (Target_ABI == ABI_n64)
 #define Is_Target_32bit()       (Target_ABI == ABI_n32)
 #define Is_Target_SSE2()        (Target_SSE2 == TRUE)
 #define Is_Target_SSE3()        (Target_SSE3 == TRUE)
+#define Is_Target_3DNow()       (Target_3DNow == TRUE)
 #define Is_Target_Pentium4()    (Target == TARGET_pentium4)
+#define Is_Target_EM64T()	(Target == TARGET_em64t)
+#define Is_Target_Anyx86()      (Target == TARGET_anyx86)
+#define Target_x87_precision()	(Target_x87_Precision+0)
 
 
 /* ========== */

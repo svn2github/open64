@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -109,6 +109,12 @@ static ST *getpos_st = NULL;
 static ST *omp_set_lock_st=NULL;
 static ST *omp_unset_lock_st=NULL;
 static ST *omp_test_lock_st=NULL;
+#ifdef KEY /* Bug 1324 */
+static ST *erf_st = NULL;
+static ST *erfc_st = NULL;
+static ST *derf_st = NULL;
+static ST *derfc_st = NULL;
+#endif /* KEY Bug 1324 */
 
 /*================================================================
  *
@@ -793,6 +799,16 @@ void fei_near(TYPE type)
    k[1] = cwh_expr_operand(&ae);
    k[0] = cwh_expr_operand(&ae);
    bt   = WN_rtype(k[0]);
+#ifdef KEY /* Bug 4056 */
+   /* When operand types don't match, convert second to match first, since the
+    * BE emits only _NEAREST or _NEAREST_4, and the computation is sensitive
+    * to the precision of the first operand. Although library contains
+    * _NEAREST_4_8, that seems unnecessary, since the 2nd argument is used only
+    * for its sign, and with IEEE floating point, if the 2nd argument exceeds
+    * the range of the first, it gets converted into infinity with the correct
+    * sign. */
+   k[1] = cwh_convert_to_ty(k[1], bt);
+#endif /* KEY Bug 4056 */
    intr = GET_ITAB_IOP(i_near,bt);
 
    wn = cwh_intrin_build(k,intr,bt,2);
@@ -1417,8 +1433,10 @@ fei_ranget (TYPE type) {
    cwh_stk_push(ranget_st,ST_item);
    cwh_stk_push(addr,ADDR_item);
    call = cwh_stmt_call_helper(1,Be_Type_Tbl(MTYPE_V),0,flags);
-   
+#ifdef KEY /* Bug 4434 */
    cwh_stk_push(NULL,WN_item);
+#endif /* KEY Bug 4434 */
+   
 }
 
 /*===============================================
@@ -2261,6 +2279,63 @@ fei_lock_release(void)
    cwh_intrin_sync_intrin(INTRN_LOCK_RELEASE_I4,INTRN_LOCK_RELEASE_I8,MTYPE_V,1);
 }
 
+#ifdef KEY /* Bug 1324 */
+static void
+help_make_intrin_symbol(ST **symbol, char *func_name, TYPE_ID result_type) {
+  if (! *symbol) {
+     *symbol = cwh_intrin_make_intrinsic_symbol(func_name,result_type);
+  }
+}
+
+/*===============================================
+ *
+ * fei_erf
+ *
+ * Generate function call for erf, erfc
+ *
+ *===============================================
+ */ 
+void
+fei_erf (TYPE type, int complement) {
+   WN *addr;
+   WN *call;
+   INT64 flags = 0;
+
+   char *func_name;
+   TYPE_ID result_type = TY_mtype(cast_to_TY(t_TY(type)));
+   ST *symbol;
+
+   if (complement) {
+     if (MTYPE_F4 == result_type) {
+       func_name = "erfc_";
+       symbol = erfc_st;
+       }
+     else {
+       func_name = "derfc_";
+       symbol = derfc_st;
+       }
+     }
+   else {
+     if (MTYPE_F4 == result_type) {
+       func_name = "erf_";
+       symbol = erf_st;
+       }
+     else {
+       func_name = "derf_";
+       symbol = derf_st;
+       }
+     }
+
+   help_make_intrin_symbol(&symbol, func_name, result_type);
+
+   addr = cwh_expr_address(f_T_PASSED);
+   cwh_stk_push(symbol,ST_item);
+   cwh_stk_push(addr,ADDR_item);
+   call = cwh_stmt_call_helper(1,Be_Type_Tbl(result_type),0,flags);
+   WN *wn = cwh_intrin_get_return_value (result_type,"@f90erf{c}");
+   cwh_stk_push(wn,WN_item);
+} /* fei_erf */
+#endif /* KEY Bug 1324 */
 
 /*===============================================
  *

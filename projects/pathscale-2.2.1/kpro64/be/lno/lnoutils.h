@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -776,10 +776,6 @@ extern WN* LWN_Integer_Cast(WN* tree, TYPE_ID to, TYPE_ID from);
 extern WN* LWN_Integer_Casts(WN* tree, TYPE_ID to, TYPE_ID from); 
 
 extern SYMBOL Create_Preg_Symbol(const char* name, TYPE_ID type);
-#ifdef KEY
-extern SYMBOL Create_Preg_Symbol_Homed(const char* name, TYPE_ID type, 
-				       WN* home);
-#endif
 
 extern SYMBOL Create_Stack_Symbol(const char* name, TYPE_ID type);
 

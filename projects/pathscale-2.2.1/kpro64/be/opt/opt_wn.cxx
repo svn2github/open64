@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -542,6 +542,20 @@ Ldid_from_mtype( MTYPE mtype )
     case MTYPE_C4:	return OPC_C4C4LDID;
     case MTYPE_C8:	return OPC_C8C8LDID;
     case MTYPE_CQ:	return OPC_CQCQLDID;
+#ifdef TARG_X8664
+    case MTYPE_V16I1:	return OPC_V16I1V16I1LDID;
+    case MTYPE_V16I2:	return OPC_V16I2V16I2LDID;
+    case MTYPE_V16I4:	return OPC_V16I4V16I4LDID;
+    case MTYPE_V16I8:	return OPC_V16I8V16I8LDID;
+    case MTYPE_V16F4:	return OPC_V16F4V16F4LDID;
+    case MTYPE_V16F8:	return OPC_V16F8V16F8LDID;
+    case MTYPE_V16C4:	return OPC_V16C4V16C4LDID;
+    case MTYPE_V16C8:	return OPC_V16C8V16C8LDID;
+    case MTYPE_V8I1:	return OPC_V8I1V8I1LDID;
+    case MTYPE_V8I2:	return OPC_V8I2V8I2LDID;
+    case MTYPE_V8I4:	return OPC_V8I4V8I4LDID;
+    case MTYPE_V8F4:	return OPC_V8F4V8F4LDID;
+#endif
 
     case MTYPE_B:
     case MTYPE_F10:
@@ -567,6 +581,38 @@ Ldid_from_mtype( MTYPE mtype )
 extern MTYPE
 Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
+#ifdef TARG_X8664
+  if ( mtype_class & MTYPE_CLASS_VECTOR ) {
+    if ( mtype_class == MTYPE_CLASS_SVECTOR ) {
+      if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+        switch ( bytes ) {
+        case 1: return MTYPE_V8I1; 
+        case 2: return MTYPE_V8I2; 
+        case 4: return MTYPE_V8I4; 
+        }
+      } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+        if ( bytes == 4 )
+          return MTYPE_V8F4; 
+      }
+    } else // 128-bit vectors
+    if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+      switch ( bytes ) {
+      case 1: return MTYPE_V16I1; 
+      case 2: return MTYPE_V16I2; 
+      case 4: return MTYPE_V16I4; 
+      case 8: return MTYPE_V16I8; 
+      }
+    } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+      switch ( bytes ) {
+      case 4: return MTYPE_V16F4; 
+      case 8: return MTYPE_V16F8; 
+      case 16: return MTYPE_V16C8;
+      }
+    }
+    FmtAssert( FALSE, 
+	       ("Mtype_from_mtype_class_and_size: unknown type"));
+  } else
+#endif
   // unsigned integer?
   if ( (mtype_class & MTYPE_CLASS_UNSIGNED) || 
        Only_Unsigned_64_Bit_Ops && ! Delay_U64_Lowering && (mtype_class & MTYPE_CLASS_INTEGER) ) {
@@ -617,6 +663,18 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
 #ifdef TARG_X8664
   if ( mtype_class & MTYPE_CLASS_VECTOR ) {
+    if (mtype_class == MTYPE_CLASS_SVECTOR ) {
+      if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+        switch ( bytes ) {
+        case 1: return OPC_V8I1V8I1LDID; 
+        case 2: return OPC_V8I2V8I2LDID; 
+        case 4: return OPC_V8I4V8I4LDID; 
+        }
+      } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+        if ( bytes == 4 )
+          return OPC_V8F4V8F4LDID; 
+      }
+    } else // 128-bit vectors
     if ( mtype_class & MTYPE_CLASS_INTEGER ) {
       switch ( bytes ) {
       case 1: return OPC_V16I1V16I1LDID; 
@@ -628,6 +686,7 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       switch ( bytes ) {
       case 4: return OPC_V16F4V16F4LDID; 
       case 8: return OPC_V16F8V16F8LDID; 
+      case 16: return OPC_V16C8V16C8LDID;
       }
     } 
     FmtAssert( FALSE, 
@@ -684,6 +743,18 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
 {
 #ifdef TARG_X8664
   if ( mtype_class & MTYPE_CLASS_VECTOR ) {
+    if ( mtype_class == MTYPE_CLASS_SVECTOR ) {
+      if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+        switch ( bytes ) {
+        case 1: return OPC_V8I1STID; 
+        case 2: return OPC_V8I2STID; 
+        case 4: return OPC_V8I4STID; 
+        }
+      } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+        if ( bytes == 4 )
+          return OPC_V8F4STID; 
+      }
+    } else // 128-bit vectors
     if ( mtype_class & MTYPE_CLASS_INTEGER ) {
       switch ( bytes ) {
       case 1: return OPC_V16I1STID; 
@@ -695,6 +766,7 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       switch ( bytes ) {
       case 4: return OPC_V16F4STID; 
       case 8: return OPC_V16F8STID; 
+      case 16: return OPC_V16C8STID; 
       }
     } 
     FmtAssert( FALSE, 
@@ -868,6 +940,45 @@ void Print_pf_pointer(FILE *fp, PF_POINTER *p)
 
 
 // Check if a LDID/STID contains any volatility
+#ifdef KEY
+#include <ext/hash_map>
+
+struct TY_IDX_EQ
+{
+  bool operator() (const TY_IDX ty1, const TY_IDX ty2) const
+  {
+    return TY_IDX_index (ty1) == TY_IDX_index (ty2);
+  }
+};
+
+static hash_map<const TY_IDX, INT, __gnu_cxx::hash<TY_IDX>, TY_IDX_EQ> TY_volatility;
+
+#define STRUCT_HAS_VOLATILITY_COMPUTED 1
+#define STRUCT_HAS_VOLATILE 2
+
+BOOL
+Lod_TY_is_volatile(TY_IDX ty)
+{
+  if (ty == TY_IDX_ZERO) return FALSE;
+  if (TY_is_volatile(ty)) return TRUE;
+  if (TY_kind(ty) == KIND_STRUCT) {
+    if (TY_volatility[ty] & STRUCT_HAS_VOLATILITY_COMPUTED)
+      return TY_volatility[ty] & STRUCT_HAS_VOLATILE;
+    if (!TY_fld (ty).Is_Null ()) {
+      FLD_ITER fld_iter = Make_fld_iter (TY_fld (ty));
+      do {
+	TY_IDX fld_ty = FLD_type (fld_iter);
+	if (Lod_TY_is_volatile(fld_ty)) {
+	  TY_volatility[ty] = STRUCT_HAS_VOLATILITY_COMPUTED | STRUCT_HAS_VOLATILE;
+	  return TRUE;
+        }
+      } while (!FLD_last_field (fld_iter++));
+      TY_volatility[ty] = STRUCT_HAS_VOLATILITY_COMPUTED;
+    }
+  }
+  return FALSE;
+}
+#else
 BOOL
 Lod_TY_is_volatile(TY_IDX ty)
 {
@@ -885,6 +996,7 @@ Lod_TY_is_volatile(TY_IDX ty)
   }
   return FALSE;
 }
+#endif // KEY
 
 
 // Check if a ILOAD/ISTORE accesses/contains any volatility
@@ -1164,7 +1276,7 @@ Identity_assignment_type( AUX_STAB_ENTRY *sym, OPT_PHASE phase )
   if ( ! Is_Simple_Type( ty ) ) {
     MTYPE mtype;
    
-    if (sym->Mtype()==MTYPE_M)
+    if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
     	mtype = sym->Mtype();
     else
         mtype = Mtype_from_mtype_class_and_size(sym->Mclass(),
@@ -1203,12 +1315,17 @@ Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX ty)
     TYPE_ID type = sym->Mtype();
     INT bytes = sym->Byte_size();
     switch (type) {
+    case MTYPE_V8I1:
     case MTYPE_V16I1: bytes = 1; break;
+    case MTYPE_V8I2:
     case MTYPE_V16I2: bytes = 2; break;
+    case MTYPE_V8I4:
+    case MTYPE_V8F4:
     case MTYPE_V16I4:
     case MTYPE_V16F4: bytes = 4; break;
     case MTYPE_V16I8:
     case MTYPE_V16F8: bytes = 8; break;
+    case MTYPE_V16C8: bytes = 16; break;
     }
     ldidop = Ldid_from_mtype_class_and_size(sym->Mclass(), bytes);
     stidop = Stid_from_mtype_class_and_size(sym->Mclass(), bytes);

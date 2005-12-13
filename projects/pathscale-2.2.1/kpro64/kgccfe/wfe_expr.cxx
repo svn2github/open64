@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -113,6 +113,9 @@ enum c_tree_code {
 // #define WFE_DEBUG
 
 extern void dump_ty_idx (TY_IDX);
+#ifdef KEY
+extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
+#endif // KEY
 
 extern "C" int get_expr_stmts_for_value (void);
 
@@ -316,6 +319,9 @@ struct operator_from_tree_t {
   STMT_EXPR,               "stmt_expr",               'e', 1,  OPERATOR_UNKNOWN,
   COMPOUND_LITERAL_EXPR,   "compound_literal_expr",   'e', 1,  OPERATOR_UNKNOWN,
   CLEANUP_STMT,            "cleanup_stmt",            'e', 2,  OPERATOR_UNKNOWN,
+#ifdef KEY
+  OMP_MARKER_STMT,         "omp_marker_stmt",         'e', 0,  OPERATOR_UNKNOWN,
+#endif // KEY
   LAST_C_TREE_CODE,        "last_c_tree_code",          0, 0,  OPERATOR_UNKNOWN,
 
 #ifdef GPLUSPLUS_FE
@@ -669,6 +675,9 @@ WFE_Save_Expr (tree save_exp)
   wfe_save_expr_stack [i].st  = 0;
   wn = WFE_Expand_Expr (exp);
   st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+#ifdef KEY
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#endif // KEY
   WFE_Set_ST_Addr_Saved (wn);
   wn = WN_Stid (mtype, 0, st, ty_idx, wn);
   WFE_Stmt_Append (wn, Get_Srcpos());
@@ -735,7 +744,7 @@ WFE_Array_Expr(tree exp,
     // also for the time being do not support VLAs within structs
     if (st != base_st) {
       FmtAssert (component_ty_idx == 0,
-                 ("VLAs within struct not currently implemented"));
+                 ("Variable Length Arrays within struct not currently implemented"));
       wn = WN_Ldid (Pointer_Mtype, 0, base_st, ST_type (base_st));
     }
     else
@@ -805,8 +814,13 @@ WFE_Array_Expr(tree exp,
   else if (code == ARRAY_REF) { // recursive call
     WN *wn0, *wn1, *wn2;
     TY_IDX ty_idx0;
+#ifdef KEY  // Bug 5831.
+    wn0 = WFE_Array_Expr(TREE_OPERAND (exp, 0), &ty_idx0, 0,
+			 component_offset, field_id);
+#else
     wn0 = WFE_Array_Expr(TREE_OPERAND (exp, 0), &ty_idx0, component_ty_idx,
 			 component_offset, field_id);
+#endif
     Is_True(TY_kind(ty_idx0) == KIND_ARRAY,
 	    ("WFE_Array_Expr: arg 0 of ARRAY_REF not of type KIND_ARRAY"));
     ARB_HANDLE arb = TY_arb(ty_idx0);
@@ -815,10 +829,40 @@ WFE_Array_Expr(tree exp,
 	ARB_const_lbnd(arb)) {
       if (ARB_const_ubnd(arb))
         wn1 = WN_Intconst(MTYPE_I4, ARB_ubnd_val(arb) - ARB_lbnd_val(arb) + 1);
+#ifdef KEY
+      // Variable upper bound.  Bug 4692.
+      else if (ARB_ubnd_var(arb)) {
+        ST *ubnd_st = &St_Table[ARB_ubnd_var(arb)];
+	wn1 = WN_Binary(OPR_SUB, MTYPE_I4,
+			WN_Ldid(MTYPE_I4, 0, ubnd_st, ST_type(ubnd_st)),
+			WN_Intconst(MTYPE_I4, ARB_lbnd_val(arb) - 1));
+      }
+#endif
       else
         wn1 = WN_Intconst(MTYPE_I4, 0);
       wn2 = WFE_Expand_Expr (TREE_OPERAND (exp, 1));
+#ifdef KEY
+      // Expand the current dimension by growing the array just expanded.  Bug
+      // 4692.
+      if (TREE_CODE(TREE_OPERAND(exp, 0)) == ARRAY_REF) {
+        Is_True(WN_operator(wn0) == OPR_ARRAY,
+		("WFE_Array_Expr: ARRAY_REF not translated to OPR_ARRAY"));
+	int old_kid_count = WN_kid_count(wn0);
+	int new_kid_count = old_kid_count + 2;
+	wn = WN_Create(OPR_ARRAY, Pointer_Mtype, MTYPE_V, new_kid_count);
+	for (int kid = 0; kid < (old_kid_count >> 1); kid++) {
+	  WN_kid(wn, kid + 1) = WN_kid(wn0, kid + 1);
+	  WN_kid(wn, (new_kid_count >> 1) + kid + 1) =
+	    WN_kid(wn0, (old_kid_count >> 1) + kid + 1);
+	}
+	WN_kid(wn, 0) = WN_kid(wn0, 0);
+	WN_kid(wn, new_kid_count >> 1) = wn1;
+	WN_kid(wn, new_kid_count - 1) = wn2;
+	WN_Delete(wn0);
+      } else
+#endif
       wn = WN_Ternary(OPR_ARRAY, Pointer_Mtype, wn0, wn1, wn2);
+
       WN_element_size(wn) = TY_size(Get_TY (TREE_TYPE(exp)));
     }
     else Is_True(FALSE,
@@ -1093,13 +1137,17 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
       preg    = Create_Preg (Pointer_Mtype, NULL);
       wn      = WN_Stid (Pointer_Mtype, preg, preg_st, address_ty_idx, addr_wn);
       WFE_Set_ST_Addr_Saved (addr_wn);
-#ifndef KEY
-      WFE_Stmt_Append (wn, Get_Srcpos());
-#else
+#ifdef KEY
       // Handle function calls for asm input-output constraints
       // see torture test 990130-1.c
-      WFE_Stmt_Prepend_Last (wn, Get_Srcpos());
+      WN *body = WFE_Stmt_Top();
+      if (body &&		// Do prepend only for asm's.  Bug 4732.
+	  WN_last(body) &&
+	  WN_operator(WN_last(body)) == OPR_ASM_STMT) {
+        WFE_Stmt_Prepend_Last (wn, Get_Srcpos());
+      } else
 #endif /* KEY */
+      WFE_Stmt_Append (wn, Get_Srcpos());
       addr_wn = WN_Ldid (Pointer_Mtype, preg, preg_st, address_ty_idx);
     }
 
@@ -1738,6 +1786,10 @@ static WN *WFE_x8664_va_arg(WN *ap_wn, BOOL isfloat, TY_IDX ty_idx, BOOL twice)
   WFE_Stmt_Append (wn, Get_Srcpos ());
 
   ST *arg_temp_st = Gen_Temp_Symbol(Make_Pointer_Type(ty_idx), ".va_arg");
+
+#ifdef KEY
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, arg_temp_st);
+#endif
   /* compute reg_save_area+gp_offset/fp_offset and store to arg_temp_st */
   wn0 = WN_Iload(MTYPE_I4, !isfloat ? 0 : 4, MTYPE_To_TY(MTYPE_I4), 
       		 WN_CopyNode(ap_wn));
@@ -1813,6 +1865,9 @@ static WN *WFE_x8664_va_arg_2_mixed(WN *ap_wn, BOOL isfloat0, BOOL isfloat1,
   /* allocate a temporary location to assemble the structure value */
   ST *struct_temp_st = Gen_Temp_Symbol(ty_idx, ".va_arg_struct");
 
+#ifdef KEY
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, struct_temp_st);
+#endif
   /* compute reg_save_area+gp_offset and store dereferenced value to 
    * struct_temp_st */
   wn0 = WN_Iload(MTYPE_I4, 0, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
@@ -1851,6 +1906,9 @@ static WN *WFE_x8664_va_arg_2_mixed(WN *ap_wn, BOOL isfloat0, BOOL isfloat1,
 
   /* put the address of struct_temp_st in arg_temp_st */
   ST *arg_temp_st = Gen_Temp_Symbol(Make_Pointer_Type(ty_idx), ".va_arg");
+#ifdef KEY
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, arg_temp_st);
+#endif
   wn = WN_Lda(Pointer_Mtype, 0, struct_temp_st, 0);
   Set_ST_addr_saved(struct_temp_st);
   wn = WN_Stid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx), wn);
@@ -1905,6 +1963,9 @@ static WN *WFE_x8664_va_arg_2_float(WN *ap_wn, TY_IDX ty_idx)
   /* allocate a temporary location to assemble the structure value */
   ST *struct_temp_st = Gen_Temp_Symbol(ty_idx, ".va_arg_struct");
 
+#ifdef KEY
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, struct_temp_st);
+#endif
   /* compute reg_save_area+fp_offset and store 1st dereferenced value to 
    * struct_temp_st */
   wn0 = WN_Iload(MTYPE_I4, 4, MTYPE_To_TY(MTYPE_I4), WN_CopyNode(ap_wn));
@@ -1934,6 +1995,9 @@ static WN *WFE_x8664_va_arg_2_float(WN *ap_wn, TY_IDX ty_idx)
 
   /* put the address of struct_temp_st in arg_temp_st */
   ST *arg_temp_st = Gen_Temp_Symbol(Make_Pointer_Type(ty_idx), ".va_arg");
+#ifdef KEY
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, arg_temp_st);
+#endif
   wn = WN_Lda(Pointer_Mtype, 0, struct_temp_st, 0);
   Set_ST_addr_saved(struct_temp_st);
   wn = WN_Stid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx), wn);
@@ -1992,7 +2056,443 @@ traverse_tree_chain (tree op1)
     }
   }
 }
+
+// bug 3180: Use a stack of struct nesting to handle nested 
+// loops/switch/case in a STMT_EXPR
+struct nesting * wfe_nesting_stack;
+struct nesting * wfe_cond_stack;
+struct nesting * wfe_loop_stack;
+struct nesting * wfe_case_stack;
+extern "C"
+{
+// malloc a structure
+extern struct nesting * alloc_nesting (void);
+// initialize fields in struct (1st parameter)
+extern void construct_nesting ( struct nesting *,
+				struct nesting *,
+				struct nesting *,
+				LABEL_IDX);
+// mimic POPSTACK in gnu/stmt.c
+extern void popstack (struct nesting *);
+extern LABEL_IDX get_nesting_label (struct nesting *);
+
+// process pragma statements, function definition in c-semantics.c
+extern void process_omp_stmt (tree);
+}
+
+static TY_IDX
+get_field_type (TY_IDX struct_type, UINT field_id)
+{
+  Is_True (TY_kind (struct_type) == KIND_STRUCT, ("expecting KIND_STRUCT"));
+  UINT cur_field_id = 0;
+  FLD_HANDLE fld = FLD_get_to_field (struct_type, field_id, cur_field_id);
+  Is_True (! fld.Is_Null(), ("Invalid field id %d for type 0x%x",
+                          field_id, struct_type));
+  return FLD_type (fld);
+}
 #endif // KEY
+
+#ifdef TARG_X8664
+// Handle GNU x86 builtins
+static WN *
+WFE_target_builtins (tree exp, INTRINSIC * iopc, BOOL * intrinsic_op)
+{
+  WN * wn = NULL;
+
+  // Assumption: we would be generating intrinsics for most of the builtins
+  *intrinsic_op = TRUE;
+
+  tree func = TREE_OPERAND (TREE_OPERAND (exp, 0), 0);
+  Is_True (TREE_CODE (func) == FUNCTION_DECL && DECL_BUILT_IN (func) &&
+           DECL_BUILT_IN_CLASS (func) == BUILT_IN_MD, ("Invalid tree node"));
+
+  unsigned int ins_code = DECL_FUNCTION_CODE (func);
+  TYPE_ID res_type = TY_mtype(Get_TY(TREE_TYPE(exp)));
+  tree t_list = TREE_OPERAND (exp, 1);
+  WN * arg0 = NULL, * arg1 = NULL;
+  if (t_list)
+  {
+    // Assumption: every builtin has 2 kids: this will change
+    arg0 = WFE_Expand_Expr (TREE_VALUE (t_list));
+    if (TREE_CHAIN (t_list))
+      arg1 = WFE_Expand_Expr (TREE_VALUE (TREE_CHAIN (t_list)));
+  }
+
+  switch (ins_code)
+  {
+    // Generate WN
+    case IX86_BUILTIN_PADDB:
+    case IX86_BUILTIN_PADDW:
+    case IX86_BUILTIN_PADDD:
+      wn = WN_Add (res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case IX86_BUILTIN_PSUBB:
+    case IX86_BUILTIN_PSUBW:
+    case IX86_BUILTIN_PSUBD:
+      wn = WN_Sub (res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case IX86_BUILTIN_PAND:
+      wn = WN_Band (res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case IX86_BUILTIN_PANDN:
+      wn = WN_Band (res_type, WN_Bnot (res_type, arg0), arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case IX86_BUILTIN_POR:
+      wn = WN_Bior (res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+    case IX86_BUILTIN_PXOR:
+      wn = WN_Bxor (res_type, arg0, arg1);
+      *intrinsic_op = FALSE;
+      break;
+
+    // Generate intrinsics to be expanded in CG expand
+    case IX86_BUILTIN_PADDSB:
+      *iopc = INTRN_PADDSB;
+      break;
+    case IX86_BUILTIN_PADDSW:
+      *iopc = INTRN_PADDSW;
+      break;
+    case IX86_BUILTIN_PSUBSB:
+      *iopc = INTRN_PSUBSB;
+      break;
+    case IX86_BUILTIN_PSUBSW:
+      *iopc = INTRN_PSUBSW;
+      break;
+    case IX86_BUILTIN_PADDUSB:
+      *iopc = INTRN_PADDUSB;
+      break;
+    case IX86_BUILTIN_PADDUSW:
+      *iopc = INTRN_PADDUSW;
+      break;
+    case IX86_BUILTIN_PSUBUSB:
+      *iopc = INTRN_PSUBUSB;
+      break;
+    case IX86_BUILTIN_PSUBUSW:
+      *iopc = INTRN_PSUBUSW;
+      break;
+    case IX86_BUILTIN_PMULLW:
+      *iopc = INTRN_PMULLW;
+      break;
+    case IX86_BUILTIN_PMULHW:
+      *iopc = INTRN_PMULHW;
+      break;
+    case IX86_BUILTIN_PCMPEQB:
+      *iopc = INTRN_PCMPEQB;
+      break;
+    case IX86_BUILTIN_PCMPEQW:
+      *iopc = INTRN_PCMPEQW;
+      break;
+    case IX86_BUILTIN_PCMPEQD:
+      *iopc = INTRN_PCMPEQD;
+      break;
+    case IX86_BUILTIN_PCMPGTB:
+      *iopc = INTRN_PCMPGTB;
+      break;
+    case IX86_BUILTIN_PCMPGTW:
+      *iopc = INTRN_PCMPGTW;
+      break;
+    case IX86_BUILTIN_PCMPGTD:
+      *iopc = INTRN_PCMPGTD;
+      break;
+    case IX86_BUILTIN_PUNPCKHBW:
+      *iopc = INTRN_PUNPCKHBW;
+      break;
+    case IX86_BUILTIN_PUNPCKHWD:
+      *iopc = INTRN_PUNPCKHWD;
+      break;
+    case IX86_BUILTIN_PUNPCKHDQ:
+      *iopc = INTRN_PUNPCKHDQ;
+      break;
+    case IX86_BUILTIN_PUNPCKLBW:
+      *iopc = INTRN_PUNPCKLBW;
+      break;
+    case IX86_BUILTIN_PUNPCKLWD:
+      *iopc = INTRN_PUNPCKLWD;
+      break;
+    case IX86_BUILTIN_PUNPCKLDQ:
+      *iopc = INTRN_PUNPCKLDQ;
+      break;
+    case IX86_BUILTIN_PACKSSWB:
+      *iopc = INTRN_PACKSSWB;
+      break;
+    case IX86_BUILTIN_PACKSSDW:
+      *iopc = INTRN_PACKSSDW;
+      break;
+    case IX86_BUILTIN_PACKUSWB:
+      *iopc = INTRN_PACKUSWB;
+      break;
+    case IX86_BUILTIN_PMULHUW:
+      *iopc = INTRN_PMULHUW;
+      break;
+    case IX86_BUILTIN_PAVGB:
+      *iopc = INTRN_PAVGB;
+      break;
+    case IX86_BUILTIN_PAVGW:
+      *iopc = INTRN_PAVGW;
+      break;
+    case IX86_BUILTIN_PSADBW:
+      *iopc = INTRN_PSADBW;
+      break;
+    case IX86_BUILTIN_PMAXUB:
+      *iopc = INTRN_PMAXUB;
+      break;
+    case IX86_BUILTIN_PMAXSW:
+      *iopc = INTRN_PMAXSW;
+      break;
+    case IX86_BUILTIN_PMINUB:
+      *iopc = INTRN_PMINUB;
+      break;
+    case IX86_BUILTIN_PMINSW:
+      *iopc = INTRN_PMINSW;
+      break;
+    case IX86_BUILTIN_PEXTRW:
+      {
+        Is_True (TREE_CODE (TREE_VALUE (TREE_CHAIN (t_list))) == INTEGER_CST,
+                 ("Immediate value required by pextrw"));
+	UINT val = Get_Integer_Value (TREE_VALUE (TREE_CHAIN (t_list)));
+	switch (val)
+	{
+	  case 0:
+            *iopc = INTRN_PEXTRW0;
+	    break;
+	  case 1:
+            *iopc = INTRN_PEXTRW1;
+	    break;
+	  case 2:
+            *iopc = INTRN_PEXTRW2;
+	    break;
+	  case 3:
+            *iopc = INTRN_PEXTRW3;
+	    break;
+	  default:
+	    Fail_FmtAssertion ("Invalid imm value %d to pextrw", val);
+	}
+	TY_IDX arg_ty_idx = Get_TY(TREE_TYPE(TREE_VALUE(t_list)));
+	TYPE_ID arg_mtype  = TY_mtype(arg_ty_idx);
+        arg0     = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
+				  arg_ty_idx, WN_PARM_BY_VALUE);
+	wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, MTYPE_U4, MTYPE_V,
+				      *iopc, 1, &arg0);
+        break;
+      }
+    case IX86_BUILTIN_PINSRW:
+      {
+	Is_True (TREE_CODE (TREE_VALUE (TREE_CHAIN (TREE_CHAIN (t_list)))) == INTEGER_CST, ("Immediate value required by pinsrw"));
+	UINT val = Get_Integer_Value (TREE_VALUE (TREE_CHAIN (TREE_CHAIN (t_list))));
+	switch (val)
+	{
+	  case 0:
+	    *iopc = INTRN_PINSRW0;
+	    break;
+	  case 1:
+	    *iopc = INTRN_PINSRW1;
+	    break;
+	  case 2:
+	    *iopc = INTRN_PINSRW2;
+	    break;
+	  case 3:
+	    *iopc = INTRN_PINSRW3;
+	    break;
+	  default:
+	    Fail_FmtAssertion ("Invalid imm value %d to pinsrw", val);
+	
+	}
+	WN * args[2];
+	for (int c=0; c<2; c++)
+	{
+	    TY_IDX arg_ty_idx = Get_TY (TREE_TYPE (TREE_VALUE (t_list)));
+	    TYPE_ID arg_mtype = TY_mtype (arg_ty_idx);
+	    args[c] = WN_CreateParm (Mtype_comparison (arg_mtype), arg0,
+	                                arg_ty_idx, WN_PARM_BY_VALUE);
+	    t_list = TREE_CHAIN (t_list);
+	    arg0 = arg1;
+	}
+
+	wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, MTYPE_V8I2, MTYPE_V,
+	                          *iopc, 2, args);
+        break;
+      }
+    case IX86_BUILTIN_PMOVMSKB:
+      *iopc = INTRN_PMOVMSKB;
+      break;
+    case IX86_BUILTIN_ADDPS:
+      *iopc = INTRN_ADDPS;
+      break;
+    case IX86_BUILTIN_SUBPS:
+      *iopc = INTRN_SUBPS;
+      break;
+    case IX86_BUILTIN_MULPS:
+      *iopc = INTRN_MULPS;
+      break;
+    case IX86_BUILTIN_DIVPS:
+      *iopc = INTRN_DIVPS;
+      break;
+    case IX86_BUILTIN_ADDSS:
+      *iopc = INTRN_ADDSS;
+      break;
+    case IX86_BUILTIN_SUBSS:
+      *iopc = INTRN_SUBSS;
+      break;
+    case IX86_BUILTIN_MULSS:
+      *iopc = INTRN_MULSS;
+      break;
+    case IX86_BUILTIN_DIVSS:
+      *iopc = INTRN_DIVSS;
+      break;
+    case IX86_BUILTIN_CMPEQPS:
+      *iopc = INTRN_CMPEQPS;
+      break;
+    case IX86_BUILTIN_CMPLTPS:
+      *iopc = INTRN_CMPLTPS;
+      break;
+    case IX86_BUILTIN_CMPLEPS:
+      *iopc = INTRN_CMPLEPS;
+      break;
+    case IX86_BUILTIN_CMPGTPS:
+      *iopc = INTRN_CMPGTPS;
+      break;
+    case IX86_BUILTIN_CMPGEPS:
+      *iopc = INTRN_CMPGEPS;
+      break;
+    case IX86_BUILTIN_CMPUNORDPS:
+      *iopc = INTRN_CMPUNORDPS;
+      break;
+    case IX86_BUILTIN_CMPNEQPS:
+      *iopc = INTRN_CMPNEQPS;
+      break;
+    case IX86_BUILTIN_CMPNLTPS:
+      *iopc = INTRN_CMPNLTPS;
+      break;
+    case IX86_BUILTIN_CMPNLEPS:
+      *iopc = INTRN_CMPNLEPS;
+      break;
+    case IX86_BUILTIN_CMPNGTPS:
+      *iopc = INTRN_CMPNGTPS;
+      break;
+    case IX86_BUILTIN_CMPNGEPS:
+      *iopc = INTRN_CMPNGEPS;
+      break;
+    case IX86_BUILTIN_CMPORDPS:
+      *iopc = INTRN_CMPORDPS;
+      break;
+    case IX86_BUILTIN_CMPEQSS:
+      *iopc = INTRN_CMPEQSS;
+      break;
+    case IX86_BUILTIN_CMPLTSS:
+      *iopc = INTRN_CMPLTSS;
+      break;
+    case IX86_BUILTIN_CMPLESS:
+      *iopc = INTRN_CMPLESS;
+      break;
+    case IX86_BUILTIN_CMPUNORDSS:
+      *iopc = INTRN_CMPUNORDSS;
+      break;
+    case IX86_BUILTIN_CMPNEQSS:
+      *iopc = INTRN_CMPNEQSS;
+      break;
+    case IX86_BUILTIN_CMPNLTSS:
+      *iopc = INTRN_CMPNLTSS;
+      break;
+    case IX86_BUILTIN_CMPNLESS:
+      *iopc = INTRN_CMPNLESS;
+      break;
+    case IX86_BUILTIN_CMPORDSS:
+      *iopc = INTRN_CMPORDSS;
+      break;
+    case IX86_BUILTIN_MAXPS:
+      *iopc = INTRN_MAXPS;
+      break;
+    case IX86_BUILTIN_MAXSS:
+      *iopc = INTRN_MAXSS;
+      break;
+    case IX86_BUILTIN_MINPS:
+      *iopc = INTRN_MINPS;
+      break;
+    case IX86_BUILTIN_MINSS:
+      *iopc = INTRN_MINSS;
+      break;
+    case IX86_BUILTIN_ANDPS:
+      *iopc = INTRN_ANDPS;
+      break;
+    case IX86_BUILTIN_ANDNPS:
+      *iopc = INTRN_ANDNPS;
+      break;
+    case IX86_BUILTIN_ORPS:
+      *iopc = INTRN_ORPS;
+      break;
+    case IX86_BUILTIN_XORPS:
+      *iopc = INTRN_XORPS;
+      break;
+    case IX86_BUILTIN_MOVSS:
+      *iopc = INTRN_MOVSS;
+      break;
+    case IX86_BUILTIN_MOVHLPS:
+      *iopc = INTRN_MOVHLPS;
+      break;
+    case IX86_BUILTIN_MOVLHPS:
+      *iopc = INTRN_MOVLHPS;
+      break;
+    case IX86_BUILTIN_UNPCKHPS:
+      *iopc = INTRN_UNPCKHPS;
+      break;
+    case IX86_BUILTIN_UNPCKLPS:
+      *iopc = INTRN_UNPCKLPS;
+      break;
+    case IX86_BUILTIN_RCPPS:
+      *iopc = INTRN_RCPPS;
+      break;
+    case IX86_BUILTIN_RSQRTPS:
+      *iopc = INTRN_RSQRTPS;
+      break;
+    case IX86_BUILTIN_SQRTPS:
+      *iopc = INTRN_SQRTPS;
+      break;
+    case IX86_BUILTIN_RCPSS:
+      *iopc = INTRN_RCPSS;
+      break;
+    case IX86_BUILTIN_RSQRTSS:
+      *iopc = INTRN_RSQRTSS;
+      break;
+    case IX86_BUILTIN_SQRTSS:
+      *iopc = INTRN_SQRTSS;
+      break;
+    case IX86_BUILTIN_SHUFPS:
+      *iopc = INTRN_SHUFPS;
+      break;
+    case IX86_BUILTIN_EMMS:
+      *iopc = INTRN_EMMS;
+      *intrinsic_op = FALSE;
+      break;
+    case IX86_BUILTIN_PADDQ:
+      *iopc = INTRN_PADDQ;
+      break;
+    case IX86_BUILTIN_PSUBQ:
+      *iopc = INTRN_PSUBQ;
+      break;
+    case IX86_BUILTIN_LOADAPS:
+      *iopc = INTRN_LOADAPS;
+      break;
+    case IX86_BUILTIN_STOREAPS:
+      *iopc = INTRN_STOREAPS;
+      *intrinsic_op = FALSE;
+      break;
+    default:
+      *iopc = INTRN_UNIMP_PURE;
+      if (res_type == MTYPE_V)
+      {
+	*iopc = INTRN_UNIMP;
+        *intrinsic_op = FALSE;
+      }
+      break;
+  }
+  return wn;
+}
+#endif // TARG_X8664
 
 /* expand gnu expr tree into symtab & whirl */
 WN *
@@ -2010,11 +2510,6 @@ WFE_Expand_Expr (tree exp,
   TY_IDX ty_idx;
   TY_IDX desc_ty_idx;
   tree arg0, arg1, arg2;
-#ifdef KEY
-  static INT case_stmt = 0;
-  static INT loop_stmt = 0;
-  static LABEL_IDX switch_exit_label_idx = 0;
-#endif 
 
   wn = NULL;
 
@@ -2048,7 +2543,7 @@ WFE_Expand_Expr (tree exp,
               if (code0 == VAR_DECL &&
                   st != ST_base(st)) {
                 FmtAssert (ST_ofst (st) == 0,
-                           ("VLA within struct not currently implemented"));
+                           ("Variable Length Arrays within struct not currently implemented"));
                 wn = WN_Ldid (Pointer_Mtype, 0, ST_base(st), ST_type(ST_base(st)));
               }
               else
@@ -2220,6 +2715,9 @@ WFE_Expand_Expr (tree exp,
               st = WN_st (wn1);
             else {
               st = Gen_Temp_Symbol (ty_idx, "__bind_expr");
+#ifdef KEY
+	      WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#endif // KEY
               WFE_Set_ST_Addr_Saved (wn1);
               wn0 = WN_Stid (mtype, 0, st, ty_idx, wn1);
               WFE_Stmt_Append (wn0, Get_Srcpos ());
@@ -2290,6 +2788,12 @@ WFE_Expand_Expr (tree exp,
 
 	Is_True(! is_bit_field || field_id <= MAX_FIELD_ID,
 		("WFE_Expand_Expr: field id for bit-field exceeds limit"));
+#ifdef TARG_X8664
+	// The source may have different types of casting between same-sized
+	// vector types, and between same-sized vector-nonvector types.
+	if (MTYPE_is_vector (rtype) || MTYPE_is_vector (desc))
+	  desc = rtype;
+#endif
 	wn = WN_CreateLdid (OPR_LDID, rtype,
 			    is_bit_field ? MTYPE_BS : desc,
 			    ST_ofst(st)+component_offset+preg_num, st,
@@ -2625,7 +3129,29 @@ WFE_Expand_Expr (tree exp,
 	    WN_set_ty(wn, ty_idx);
 	    WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
 	  } 
-	} 
+	}
+	// bug 6122
+	// Handle code like (x == 1 ? p->a : p->b).c
+	else if (TREE_CODE(arg0) == COND_EXPR &&
+		 WN_operator(wn) == OPR_CSELECT &&
+		 WN_rtype(wn) == MTYPE_M)
+	{
+	  // kid1 and kid2 must be type M and must be of the same struct type
+	  Is_True (WN_rtype (WN_kid1(wn)) == MTYPE_M, ("Unexpected type"));
+	  // code adapted from vho
+	  TY_IDX temp_ty_idx = WN_ty (WN_kid1 (wn));
+	  // Get the struct type corresponding to the field
+	  if (WN_field_id (WN_kid1 (wn)))
+	    temp_ty_idx = get_field_type (temp_ty_idx,
+	                                  WN_field_id (WN_kid1 (wn)));
+	  // Store into temp symbol
+	  ST * temp = Gen_Temp_Symbol (temp_ty_idx, ".mcselect_store");
+	  wn = WN_Stid (MTYPE_M, 0, temp, temp_ty_idx, wn);
+	  WFE_Stmt_Append (wn, Get_Srcpos());
+	  // Load correct field from temp symbol
+	  wn = WN_Ldid (TY_mtype (ty_idx), ofst + component_offset,
+	                temp, temp_ty_idx, field_id + DECL_FIELD_ID(arg1));
+	}
 #endif
       }
       break;
@@ -3165,6 +3691,7 @@ WFE_Expand_Expr (tree exp,
 	  INTRINSIC iopc = INTRINSIC_NONE;
           
 	  if (DECL_BUILT_IN (func)) {
+	    if (DECL_BUILT_IN_CLASS (func) != BUILT_IN_MD) {
 
             switch (DECL_FUNCTION_CODE (func)) {
 
@@ -3322,14 +3849,18 @@ WFE_Expand_Expr (tree exp,
                 break;
 
               case BUILT_IN_MEMSET:
-#ifndef KEY	// Use the memset in the PathScale library.
 		iopc = INTRN_MEMSET;
-#endif
                 break;
 
               case BUILT_IN_STRCPY:
 		iopc = INTRN_STRCPY;
                 break;
+	
+#ifdef KEY // bug 4872
+	      case BUILT_IN_STRNCPY:
+	        iopc = INTRN_STRNCPY;
+		break;
+#endif // KEY
 
               case BUILT_IN_STRCMP:
 		if (arglist == 0
@@ -3447,23 +3978,40 @@ WFE_Expand_Expr (tree exp,
 		else Fail_FmtAssertion ("unexpected mtype for intrinsic 'exp'");
 		intrinsic_op = TRUE;
 		break;
+
+	    case BUILT_IN_POW:
+	        FmtAssert(ret_mtype == MTYPE_F8, 
+			  ("unexpected mtype for intrinsic 'pow'"));
+		iopc = INTRN_F8EXPEXPR;
+		intrinsic_op = TRUE;
+		break;
 #endif // KEY
 
               case BUILT_IN_CONSTANT_P:
               {
-		DevWarn ("Encountered BUILT_IN_CONSTANT_P: at line %d\n",
-                         lineno);
                 tree arg = TREE_VALUE (TREE_OPERAND (exp, 1));
                 STRIP_NOPS (arg);
                 if (really_constant_p (arg)
                     || (TREE_CODE (arg) == ADDR_EXPR
                         && TREE_CODE (TREE_OPERAND (arg, 0)) == STRING_CST))
+		{
                   wn = WN_Intconst (MTYPE_I4, 1);
-
+		  whirl_generated = TRUE; // KEY
+		}
+#ifdef KEY_bug1058
+// If not yet compile-time constant, let the backend decide if it is
+// a constant
+		else
+		{
+		  iopc = INTRN_CONSTANT_P;
+		  intrinsic_op = TRUE;
+		}
+#else
                 else
                   wn = WN_Intconst (MTYPE_I4, 0);
 //                wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
                 whirl_generated = TRUE;
+#endif // KEY
                 break;
               }
 
@@ -3566,6 +4114,8 @@ WFE_Expand_Expr (tree exp,
 		  ST* alloca_st_0 = 
 		    Gen_Temp_Symbol (ty_idx, 
 				     "__builtin_apply_alloca0");
+		  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL,
+		                                       alloca_st_0);
 		  WN *alloca_0 = 
 		    WN_CreateAlloca (WN_CreateIntconst (OPC_I4INTCONST, 0));
 		  WN *alloca_kid0 = alloca_0;
@@ -3576,6 +4126,8 @@ WFE_Expand_Expr (tree exp,
 		  ST *alloca_st_1 = 
 		    Gen_Temp_Symbol (ty_idx, 
 				     "__builtin_apply_alloca1");
+		  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL,
+		                                       alloca_st_1);
 		  WN *alloca_1 = WN_CreateAlloca (kid2);
 		  WN *alloca_kid1 = alloca_1;
 		  alloca_kid1 = WN_Stid (Pointer_Mtype, 
@@ -3703,6 +4255,50 @@ WFE_Expand_Expr (tree exp,
                   ret_mtype = MTYPE_I4;
 		break;
 
+#ifdef KEY
+	      case BUILT_IN_EXTEND_POINTER:
+	        wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+		whirl_generated = TRUE;
+		break;
+
+	      case BUILT_IN_TRAP:
+		call_wn = WN_Create (OPR_CALL, MTYPE_V, MTYPE_V, 0);
+		st = Get_ST (TREE_OPERAND (arg0, 0));
+		Set_ST_name_idx (st, Save_Str ("abort"));
+		WN_st_idx (call_wn) = ST_st_idx (st);
+		WN_Set_Linenum (call_wn, Get_Srcpos());
+		WN_Set_Call_Default_Flags (call_wn);
+		WFE_Stmt_Append (call_wn, Get_Srcpos());
+		whirl_generated = TRUE;
+		break;
+
+	      case BUILT_IN_PREFETCH:
+		{
+		  // prefetch address
+		  tree pf_arg = TREE_OPERAND (exp, 1);
+		  WN * pf_addr = WFE_Expand_Expr (TREE_VALUE (pf_arg));
+		  // Note 2nd/3rd argument optional
+		  // read/write access
+		  pf_arg = TREE_CHAIN (pf_arg);
+		  UINT32 pf_flag = 0;
+		  int access = 0;
+		  if (pf_arg && TREE_CODE (TREE_VALUE (pf_arg)) == INTEGER_CST)
+		    access = Get_Integer_Value (TREE_VALUE (pf_arg));
+		  if (access == 0)
+		    PF_SET_READ (pf_flag);
+		  else // should be 1 (write access)
+		    PF_SET_WRITE (pf_flag);
+		  // Ignore 3rd argument which gives a measure of temporal
+		  // locality. LNO does analyze the temporal locality, but
+		  // not sure what is a good way to encode it in PREFETCH.
+		  PF_SET_MANUAL (pf_flag); // manual prefetch
+		  WFE_Stmt_Append (WN_CreatePrefetch (0, pf_flag, pf_addr),
+		                   Get_Srcpos());
+		  whirl_generated = TRUE;
+		}
+	        break;
+#endif // KEY
+
 #if 0
 	      case BUILT_IN_ROUND_F2LL:
                 arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
@@ -3792,6 +4388,16 @@ WFE_Expand_Expr (tree exp,
 #endif
 		break;
             }
+	  }
+	  else
+	    {
+#ifdef TARG_X8664
+	      wn = WFE_target_builtins (exp, &iopc, &intrinsic_op);
+	      if (wn) break;
+#else
+	      Fail_FmtAssertion ("Target-specific builtins NYI");
+#endif
+	    }
 	  }
 
           if (whirl_generated) {
@@ -3888,15 +4494,22 @@ WFE_Expand_Expr (tree exp,
 
 	  if (ret_mtype == MTYPE_M) { // copy the -1 preg to a temp area
 	    TY_IDX ret_ty_idx = ty_idx;
+#ifndef KEY
+// bug 3735: the compiler cannot arbitrarily change the alignment of
+// individual structures
 	    if (Aggregate_Alignment > 0 &&
 		Aggregate_Alignment > TY_align (ret_ty_idx))
 	      Set_TY_align (ret_ty_idx, Aggregate_Alignment);
+#endif // !KEY
             if (TY_align (ret_ty_idx) < MTYPE_align_best(Spill_Int_Mtype))
               Set_TY_align (ret_ty_idx, MTYPE_align_best(Spill_Int_Mtype));
 	    ST *ret_st = Gen_Temp_Symbol(ret_ty_idx, 
 		  st ? Index_To_Str(Save_Str2((char*) ".Mreturn.",
 					      ST_name(ST_st_idx(st))))
 		     : (char*) ".Mreturn.");
+#ifdef KEY
+	    WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, ret_st);
+#endif // KEY
 	    wn1 = WN_Stid (ret_mtype, 0, ret_st, ty_idx, wn1);
             WN_INSERT_BlockLast (wn0, wn1);
 
@@ -4334,6 +4947,7 @@ WFE_Expand_Expr (tree exp,
 	// STMT_EXPR_STMT is given by first operand of exp.
 	// COMPOUND_BODY is given by first operand of STMT_EXPR_STMT
 	tree expr = TREE_OPERAND (TREE_OPERAND (exp, 0), 0);
+	if (!expr) break;
 	tree last = TREE_CHAIN (expr);
 	
 	while (TREE_CHAIN (last))
@@ -4349,6 +4963,7 @@ WFE_Expand_Expr (tree exp,
 			       is_bit_field);
 	else
 	  WFE_Expand_Expr(expr, FALSE);
+	// FIXME: Are we missing the last expr, i.e. 'last' here?
       }
       break;
     case EXPR_WITH_FILE_LOCATION:
@@ -4399,7 +5014,20 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       WFE_Expand_Expr ( TREE_OPERAND(exp, 0), FALSE /* no result */);
+       wn = WFE_Expand_Expr ( TREE_OPERAND(exp, 0), FALSE /* no result */);
+       // code from WFE_One_Stmt for bug 4642
+       if (wn && 
+           WN_operator (wn) == OPR_COMMA && 
+           WN_operator (WN_kid1 (wn)) == OPR_LDID &&
+           WN_st (WN_kid1 (wn)) == Return_Val_Preg &&
+           (WN_operator (WN_last (WN_kid0 (wn))) == OPR_CALL ||
+            WN_operator (WN_last (WN_kid0 (wn))) == OPR_ICALL))
+       {
+         WN_set_rtype (WN_last (WN_kid0 (wn)), MTYPE_V);
+         WFE_Stmt_Append (WN_kid0 (wn), Get_Srcpos ());
+         WN_Delete (wn);
+       }
+       wn = NULL;
      }
      break;
 
@@ -4415,11 +5043,13 @@ WFE_Expand_Expr (tree exp,
        
          while (TREE_CHAIN (last))
 	 {
-	   WN *dummy = WFE_Expand_Expr(expr, FALSE);
+	   WFE_Expand_Expr(expr, FALSE);
 	   expr = last;
 	   last = TREE_CHAIN (last);
 	 }
-         wn = WFE_Expand_Expr(expr, FALSE);
+         WFE_Expand_Expr(expr, FALSE);
+	 // bug 4150: don't miss the last node
+         wn = WFE_Expand_Expr(last, FALSE);
        }
      }
      break;
@@ -4429,6 +5059,12 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
+
+       struct nesting * cond_nest = alloc_nesting();
+       construct_nesting (cond_nest, wfe_cond_stack, wfe_nesting_stack, 0);
+
+       wfe_nesting_stack = wfe_cond_stack = cond_nest;
+
        tree cond = TREE_OPERAND (exp, 0); // IF_COND
        if (cond && TREE_CODE (cond) == TREE_LIST)
 	 {
@@ -4447,14 +5083,18 @@ WFE_Expand_Expr (tree exp,
 	 traverse_tree_chain (TREE_OPERAND (exp,2));
        }
        WFE_Expand_End_Cond ();       
+       popstack (cond_nest);
      }
      break;
 
    case GOTO_STMT:
      {
-       FmtAssert ((TREE_CODE (TREE_OPERAND (exp, 0)) == LABEL_DECL), 
-		  ("GOTO_STMT: Not Handled yet"));
-       WFE_Expand_Goto (TREE_OPERAND (exp, 0));
+       tree destination = TREE_OPERAND (exp, 0);
+
+       if (TREE_CODE (destination) == LABEL_DECL)
+         WFE_Expand_Goto (destination);
+       else
+         WFE_Expand_Computed_Goto (destination);
      }
      break;
 
@@ -4474,25 +5114,27 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       loop_stmt ++;
+       //
        // 1. Expand the initialization
        //    WFE_Expand_Expr (EXPR_STMT_EXPR (FOR_INIT_STMT (exp)));
-       WFE_Expand_Expr (TREE_OPERAND (TREE_OPERAND (exp, 0), 0), FALSE);
-#if 0 
-       struct obstack stmt_obstack;
-       struct nesting *someloop = 
-	 (struct nesting *) obstack_alloc (&stmt_obstack, sizeof (int));
-#else
-       struct nesting *someloop;
-       someloop = (struct nesting *) malloc (sizeof (int));
-#endif
-       WFE_Expand_Start_Loop (1, someloop);
-       WFE_Expand_Start_Loop_Continue_Elsewhere (1, someloop);
+       //
+       // Initialize if there is an initializer (bug 6098)
+       tree init = TREE_OPERAND (TREE_OPERAND (exp, 0), 0);
+       if (init)
+         WFE_Expand_Expr (init, FALSE);
+
+       struct nesting *loop_nest= alloc_nesting();
+       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack, 0);
+
+       wfe_nesting_stack = wfe_loop_stack = loop_nest;
+
+       WFE_Expand_Start_Loop (1, loop_nest);
+       WFE_Expand_Start_Loop_Continue_Elsewhere (1, loop_nest);
        // 2. Expand the condition
        tree cond = TREE_OPERAND (exp, 1);
-       FmtAssert (TREE_CODE (cond) != TREE_LIST, 
+       FmtAssert (!cond || TREE_CODE (cond) != TREE_LIST, 
 		  ("Handle this case"));
-       WFE_Expand_Exit_Loop_If_False (someloop, cond);
+       WFE_Expand_Exit_Loop_If_False (loop_nest, cond);
        // 3. Expand the body
        //    WFE_Expand_Expr (FOR_BODY (exp));
        if (TREE_OPERAND (exp, 3))
@@ -4507,7 +5149,7 @@ WFE_Expand_Expr (tree exp,
 	 WFE_One_Stmt (TREE_OPERAND (exp, 2));
        // 5. End the loop
        WFE_Expand_End_Loop ();       
-       loop_stmt --;
+       popstack (loop_nest);
        break;
      }
 
@@ -4516,20 +5158,18 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       loop_stmt ++;
-       // The following is intentionally written to generate a new pointer
-       // for different loops. That is how,loop_info_stack gets a different
-       // loop each time.
-       struct obstack stmt_obstack;
-       struct nesting *someloop = 
-	 (struct nesting *) malloc (sizeof (int));
-       WFE_Expand_Start_Loop (1, someloop);
+       struct nesting *loop_nest = alloc_nesting();
+       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack, 0);
+
+       wfe_nesting_stack = wfe_loop_stack = loop_nest;
+
+       WFE_Expand_Start_Loop (1, loop_nest);
        // 1. Expand the condition
        //   WHILE_COND (exp)
        tree cond = TREE_OPERAND (exp, 0);
        FmtAssert (TREE_CODE (cond) != TREE_LIST, 
 		  ("Handle this case"));
-       WFE_Expand_Exit_Loop_If_False (someloop, cond);
+       WFE_Expand_Exit_Loop_If_False (loop_nest, cond);
        // 2. Expand the body
        //    WFE_Expand_Expr (WHILE_BODY (exp));
        if (TREE_OPERAND (exp, 1))
@@ -4539,7 +5179,7 @@ WFE_Expand_Expr (tree exp,
        }
        // 3. End the loop
        WFE_Expand_End_Loop ();       
-       loop_stmt --;
+       popstack (loop_nest);
        break;
      }
 
@@ -4549,15 +5189,13 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       loop_stmt ++;
-       // The following is intentionally written to generate a new pointer
-       // for different loops. That is how,loop_info_stack gets a different
-       // loop each time.
-       struct obstack stmt_obstack;
-       struct nesting *someloop = 
-	 (struct nesting *) malloc (sizeof (int));
-       WFE_Expand_Start_Loop (1, someloop);
-       WFE_Expand_Start_Loop_Continue_Elsewhere (1, someloop);
+       struct nesting *loop_nest = alloc_nesting();
+       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack, 0);
+
+       wfe_nesting_stack = wfe_loop_stack = loop_nest;
+
+       WFE_Expand_Start_Loop (1, loop_nest);
+       WFE_Expand_Start_Loop_Continue_Elsewhere (1, loop_nest);
        // 1. Expand the body
        //    WFE_Expand_Expr (DO_BODY (exp));
        if (TREE_OPERAND (exp, 1))
@@ -4572,10 +5210,10 @@ WFE_Expand_Expr (tree exp,
        tree cond = TREE_OPERAND (exp, 0);
        FmtAssert (TREE_CODE (cond) != TREE_LIST, 
 		  ("Handle this case"));
-       WFE_Expand_Exit_Loop_If_False (someloop, cond);
+       WFE_Expand_Exit_Loop_If_False (loop_nest, cond);
        // 3. End the loop
        WFE_Expand_End_Loop ();       
-       loop_stmt --;
+       popstack (loop_nest);
        break;
      }
 
@@ -4596,8 +5234,15 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       case_stmt ++;
+       LABEL_IDX switch_exit_label_idx;
+
        New_LABEL (CURRENT_SYMTAB, switch_exit_label_idx);
+       struct nesting * case_nest = alloc_nesting();
+       construct_nesting (case_nest, wfe_case_stack, wfe_nesting_stack, 
+       			  switch_exit_label_idx);
+
+       wfe_nesting_stack = wfe_case_stack = case_nest;
+
        // The condition is in SWITCH_COND (exp)
        tree cond = TREE_OPERAND (exp, 0);
        FmtAssert (TREE_CODE (cond) != TREE_LIST, 
@@ -4618,7 +5263,7 @@ WFE_Expand_Expr (tree exp,
 			    0, NULL);
        WFE_Stmt_Append (wn, Get_Srcpos ());
        WFE_Expand_End_Case (cond);       
-       case_stmt --;
+       popstack (case_nest);
        break;
      }
 
@@ -4647,18 +5292,15 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       struct nesting *some_stack = (struct nesting *) malloc (sizeof (int));
        LABEL_IDX *label_idx = (LABEL_IDX *)malloc(sizeof(LABEL_IDX));
-       if (case_stmt)
-	 *label_idx = switch_exit_label_idx;
-       else {
-	 FmtAssert( loop_stmt, ("Handle this case"));
-	 *label_idx = 0;
-       }
-       FmtAssert((case_stmt + loop_stmt) <= 1, 
-		 ("Handle this case"));
-       WFE_Expand_Exit_Something (some_stack, NULL, loop_stmt?some_stack:NULL, 
-				  case_stmt?some_stack:NULL, label_idx);
+       *label_idx = 0;
+
+       if (wfe_nesting_stack == wfe_case_stack)
+         *label_idx = get_nesting_label (wfe_case_stack);
+
+       WFE_Expand_Exit_Something (wfe_nesting_stack, wfe_cond_stack, 
+       				wfe_loop_stack, wfe_case_stack, label_idx);
+       free (label_idx);
        break;
      }
 
@@ -4668,8 +5310,7 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       struct nesting *some_stack = (struct nesting *) malloc (sizeof (int));
-       WFE_Expand_Continue_Loop (some_stack);
+       WFE_Expand_Continue_Loop (NULL);
        break;
      }
 
@@ -4685,6 +5326,14 @@ WFE_Expand_Expr (tree exp,
 				TREE_OPERAND (exp, 0) != NULL,
 				NULL,
 				0);
+       break;
+     }
+   case OMP_MARKER_STMT:
+     {
+       // If the control flows here, it can only be introduced here
+       // by expansion of STMT_EXPR. Otherwise, it would have been 
+       // handled in gnu/ files.
+       process_omp_stmt (exp);
        break;
      }
 #endif

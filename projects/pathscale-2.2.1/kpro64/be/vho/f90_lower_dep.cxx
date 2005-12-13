@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -50,7 +50,7 @@
 
 // Needed to make MAT package work
 
-MEM_POOL* MAT<mINT32>::_default_pool = NULL; 
+template <> MEM_POOL* MAT<mINT32>::_default_pool = NULL;
 
 
 //----------------------------------------------------------------------------------

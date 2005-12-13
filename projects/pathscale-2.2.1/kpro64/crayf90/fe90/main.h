@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -500,7 +504,9 @@ enum    language        {Pdgcs_Ansi_C = 1,      Pdgcs_Fortran_77,
 						   "FORALL",
 						   "END FORALL",
 						   "ELSE WHERE MASK",
-                                                   "VOLATILE"
+                                                   "VOLATILE",
+                                                   "OPEN MP END PARALLEL WORKSHARE",
+                                                   "OPEN MP END WORKSHARE"
 						  };
 
 	target_machine_type	target_machine;

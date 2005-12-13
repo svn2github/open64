@@ -51,7 +51,7 @@ pqstest_lex.c : pqstest_lex.l pqstest.tab.h
 	flex -i -opqstest_lex.c pqstest_lex.l
 
 pqstest_lex.o : pqstest_lex.c
-	CC -c -MDupdate makedepend -woff 1110 $(COPTS) $<
+	CC -c -MDupdate makedepend $(COPTS) $<
 
 clean:
 	rm -f pqstest_lex.c pqstest.tab.h pqstest.tab.c

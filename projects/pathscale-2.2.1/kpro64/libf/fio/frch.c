@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -226,7 +230,22 @@ fill:
 			} else {
 				unsigned char	*tmpptr;
 				ncnt	= count - 1;
+#ifdef KEY /* Bug 3797 */
+				/* no newline if fgets encountered eof */
+				tmpptr	= strchr(tp, '\n');
+#ifdef KEY /* Bug 3975 */
+				char *nlptr	= memchr(tp, '\n', ncnt);
+				/* Temporary fix to deal with the situation
+				 * in which nulls appear before the newline.
+				 * Correct fix is to eliminate those nulls.
+				 */
+				if (NULL == tmpptr && NULL != nlptr) {
+					tmpptr = nlptr;
+				}
+#endif /* KEY Bug 3975 */
+#else
 				tmpptr	= memchr(tp, '\n', ncnt);
+#endif /* KEY Bug 3797 */
 				if (tmpptr != NULL) {	/* eor */
 					*status	= EOR;
 					ncnt	= tmpptr - tp;
@@ -235,6 +254,16 @@ fill:
 					/* Return number of chars read */
 					return(nchr);
 				}
+#ifdef KEY /* Bug 3797 */
+				/* fgets got chars ending in eof, not newline */
+				else if (feof(fptr)) {
+					*status = EOR;
+					ncnt = strlen(tp);
+					nchr += ncnt;
+					_unpack(tp, uda, ncnt, -1);
+					return nchr;
+				}
+#endif /* KEY Bug 3797 */
 				_unpack(tp, uda, ncnt, -1);
 				nchr		+= ncnt;
 				uda		+= ncnt;

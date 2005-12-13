@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -327,6 +332,10 @@ ML_WHIRL_EMITTER::Build_loop_info( BB_NODE *label_bb )
          !Do_rvi()))
     {
       MTYPE ivtype = TY_mtype(iv->Lod_ty());
+#ifdef KEY // bug 5645
+      if (ivtype == MTYPE_M)
+	ivtype = iv->Dtyp();
+#endif
 
       induction = WN_CreateLdid(Ldid_from_mtype(ivtype),
 				iv->Offset(),

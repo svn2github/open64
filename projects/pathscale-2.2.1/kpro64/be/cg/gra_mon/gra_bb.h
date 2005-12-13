@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -181,6 +181,56 @@ private:
     // the number of local LRANGEs for this <gbb> and <rc>.
   GRA_LOOP*	loop;
   UINT8		flags;
+#ifdef KEY
+  mUINT16	OPs_count;	// Number of OPs in the BB.
+  REGISTER_SET  usage_live_in[ISA_REGISTER_CLASS_MAX+1];
+  REGISTER_SET  usage_live_out[ISA_REGISTER_CLASS_MAX+1];
+  mUINT16	usage_start_index[ISA_REGISTER_CLASS_MAX+1][REGISTER_MAX+1];
+  mUINT16	usage_end_index[ISA_REGISTER_CLASS_MAX+1][REGISTER_MAX+1];
+    // While registers_used indicate if a register is used anywhere in the BB,
+    // the following give more detail about how the registers are used in the
+    // BB:
+    //   usage_live_in		which usages are live in
+    //   usage_live_out		which usages are live out
+    //   usage_start_index	OP index in the BB where the usage begins
+    //   usage_end_index	OP index in the BB where the usage ends
+    // The usage_start_index and usage_end_index could be <, >, or = relative
+    // to each other, depending on the live-in and live-out properties of the
+    // usage.  Index 0 means no such OP.
+    //
+    // In general, a usage can have many disjoint segments in the BB.  We model
+    // usages that have at most one segment that is fully contained in the BB.
+    // There are 6 cases:
+    //   live-in	(live-in only)
+    //		usage_live_in=1, usage_live_out=0
+    //		usage_end_index>0
+    //   live-out	(live-out only)
+    //		usage_live_in=0, usage_live_out=1
+    //		usage_start_index>0
+    //   pass-thru	(live-in, live-out, continuous)
+    //		usage_live_in=1, usage_live_out=1
+    //		usage_start_index=0, usage_end_index=0
+    //   disjoint	(live-in, live-out, but not continuous)
+    //		usage_live_in=1, usage_live_out=1
+    //		usage_start_index>0, usage_end_index>0
+    //		  usage_start_index >= usage_end_index
+    //   contained	(usage fully contained in BB)
+    //		usage_live_in=0, usage_live_out=0
+    //		usage_start_index>0, usage_end_index>0
+    //		  usage_start_index < usage_end_index
+    //   empty		(does not appear in BB)
+    //		usage_live_in=0, usage_live_out=0
+    //		usage_start_index=0, usage_end_index=0
+    // If a usage does not fit any of the above patterns, it is because the
+    // usage has extra contained segments.  In that case, we combine the
+    // contained segment(s) with each succeeding segment until one of the above
+    // pattern is reached.  For example, if a usage has these three segments:
+    //   segment 1:	live-in
+    //   segment 2:	contained
+    //   segment 3:	live-out
+    // We treat segments 2 and 3 as one segment, resulting in the "disjoint"
+    // case.
+#endif
 
 public:
   GRA_BB(void) {}
@@ -244,6 +294,30 @@ public:
   BOOL Savexmms(void)		{ return flags & GRA_BB_FLAGS_savexmms; }
   void Savexmms_Set(void)    	{ flags |= (UINT) GRA_BB_FLAGS_savexmms; }
 #endif
+#ifdef KEY
+  mUINT16 OPs_Count(void)	{ return OPs_count; }
+  mUINT16 Usage_Start_Index(ISA_REGISTER_CLASS rc, REGISTER reg)
+				{ return usage_start_index[rc][reg]; }
+  void Usage_Start_Index_Set(ISA_REGISTER_CLASS rc, REGISTER reg, mUINT16 index)
+				{ usage_start_index[rc][reg] = index; }
+  mUINT16 Usage_End_Index(ISA_REGISTER_CLASS rc, REGISTER reg)
+				{ return usage_end_index[rc][reg]; }
+  void Usage_End_Index_Set(ISA_REGISTER_CLASS rc, REGISTER reg, mUINT16 index)
+				{ usage_end_index[rc][reg] = index; }
+  BOOL Is_Usage_Live_In(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ return REGISTER_SET_MemberP(usage_live_in[rc], reg); }
+  void Usage_Live_In_Set(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ usage_live_in[rc] = REGISTER_SET_Union1(usage_live_in[rc], reg); }
+  void Usage_Live_In_Clear(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ usage_live_in[rc] = REGISTER_SET_Difference1(usage_live_in[rc], reg);}
+  BOOL Is_Usage_Live_Out( ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ return REGISTER_SET_MemberP(usage_live_out[rc], reg); }
+  void Usage_Live_Out_Set(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{ usage_live_out[rc] = REGISTER_SET_Union1(usage_live_out[rc], reg); }
+  void Usage_Live_Out_Clear(ISA_REGISTER_CLASS rc, REGISTER reg)
+	{usage_live_out[rc] = REGISTER_SET_Difference1(usage_live_out[rc],reg);}
+    // Is the given <lrange> live-out of the given <gbb>?
+#endif
 
   // inline functions
   GRA_BB* Split_List_Push( GRA_BB* new_elt ) { new_elt->split_list_next = this;
@@ -281,7 +355,8 @@ public:
   BOOL Has_Multiple_Predecessors(void);
   BOOL Region_Is_Complement(void);
   void Add_LUNIT(LUNIT *lunit);
-  void Make_Register_Used(ISA_REGISTER_CLASS rc, REGISTER reg);
+  void Make_Register_Used(ISA_REGISTER_CLASS rc, REGISTER reg,
+			  LRANGE* lrange = NULL);
   REGISTER_SET Registers_Used(ISA_REGISTER_CLASS  rc);
   BOOL Spill_Above_Check(LRANGE *lrange);
   void Spill_Above_Set(LRANGE *lrange);

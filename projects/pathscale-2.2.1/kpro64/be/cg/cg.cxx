@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -121,6 +121,10 @@ BOOL PU_References_GP;
 BOOL PU_Has_Exc_Handler;
 #endif
 
+#ifdef TARG_X8664
+BOOL PU_References_GOT;  // for -m32 -fpic
+#endif
+
 BOOL CG_PU_Has_Feedback;
 
 RID *Current_Rid;
@@ -130,6 +134,9 @@ TN_MAP TN_To_PREG_Map;
 BB_MAP BBs_Map = NULL;
 #endif
 
+#ifdef TARG_X8664
+extern BOOL cg_load_execute_overridden;
+#endif
 
 /* WOPT alias manager */
 struct ALIAS_MANAGER *Alias_Manager;
@@ -151,6 +158,17 @@ CG_PU_Initialize (WN *wn_pu)
   PU_References_GP = FALSE;
 #ifdef KEY
   PU_Has_Exc_Handler = FALSE;
+  if (! cg_load_execute_overridden &&
+      ! Is_Target_32bit() &&
+      (PU_src_lang(Get_Current_PU()) == PU_F77_LANG ||
+       PU_src_lang(Get_Current_PU()) == PU_F90_LANG))
+    CG_load_execute = 2;
+  else if (! cg_load_execute_overridden ) 
+    CG_load_execute = 1;
+#endif
+
+#ifdef TARG_X8664
+  PU_References_GOT = FALSE;
 #endif
 
   Regcopies_Translated = FALSE;
@@ -595,6 +613,17 @@ CG_Generate_Code(
    *   - Local scheduling after register allocation
    */
 
+#ifdef KEY
+  // Earlier phases (esp. CFLOW) might have introduced local definitions and
+  // uses for global TNs. Rename them to local TNs so that LRA can accurately
+  // compute register requests (called from scheduling).
+  // 
+  // (Also, earlier phase, like cflow, does not maintain GTN info if
+  // -CG:localize is on.  Rebuild the consistency for GCM.  Bug 7219.)
+  GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);	
+  GRA_LIVE_Rename_TNs();
+#endif
+
   IGLS_Schedule_Region (TRUE /* before register allocation */);
 
   if (!CG_localize_tns)
@@ -612,7 +641,13 @@ CG_Generate_Code(
       GRA_LIVE_Rename_TNs ();
     }
 
-    if (GRA_redo_liveness) {
+    if (GRA_redo_liveness
+#ifdef KEY	// Inaccurate liveness info will break GRA's boundary BB code.
+		// But don't always redo liveness, bug 4781.
+	|| GRA_optimize_boundary
+#endif
+       )
+    {
       Start_Timer( T_GLRA_CU );
       GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
       Stop_Timer ( T_GLRA_CU );

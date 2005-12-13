@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -846,6 +850,19 @@ int  *ostat)	/* return status: 0 if OK, error code otherwise 	  */
 		return(NULL);
 	}
 
+#ifdef KEY /* Bug 6034 */
+/* Eliminate locking of the FILENV file.
+ *
+ * The use of file locking on NFS on Fedora Core 3 triggers an apparent kernel
+ * bug which causes the kernel to consume 50% of available cpu time. Since we
+ * already ignore locking errors when NFS doesn't provide locks, and since
+ * locking only prevents the 'assign' command from changing the FILENV file in
+ * parallel with the execution of the "open" call (and does not preclude other
+ * changes to that file, e.g. with a text editor), the locking doesn't seem
+ * useful anyway.
+ */ 
+#else /* KEY Bug 6034 */
+
 #if	!defined(_ABSOFT) || (!defined(TARGET_MAC_OS) && !defined(TARGET_NT))
 	ll.l_whence	= 0; 
 	ll.l_start	= 0; 
@@ -869,7 +886,16 @@ int  *ostat)	/* return status: 0 if OK, error code otherwise 	  */
 		/* in this mode */
 		if ((_MPP_MPPSIM != 1) && (errno != EINVAL)) {
 #else
+#ifdef KEY /* Bug 4231 */
+		/* SUSE9 Linux sets ENOLCK when NFS doesn't provide locks
+		 * (or when the number of locks exceeds the limit) so we
+		 * ignore that as well as INVAL, as suggested in the
+		 * comment associated with the do/while/fcntl code above.
+		 */
+		if (errno != EINVAL && errno != ENOLCK) {
+#else
 		if (errno != EINVAL) {
+#endif /* KEY Bug 4231 */
 #endif
 			(void) fclose(stream);
 			*ostat	= errno;
@@ -877,6 +903,7 @@ int  *ostat)	/* return status: 0 if OK, error code otherwise 	  */
 		}
 	}
 #endif
+#endif /* KEY Bug 6034 */
 	return(stream);
 }
 

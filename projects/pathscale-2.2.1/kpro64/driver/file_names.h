@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -42,6 +42,8 @@
 
 extern boolean keep_flag;	/* keep intermediate files */
 
+extern string_list_t *error_list;
+
 extern string_list_t *count_files;
 
 /* return object file that corresponds to source name */
@@ -65,6 +67,9 @@ extern char *construct_file_with_extension (char *src, char *ext);
 /* init the maintenance of temp files */
 extern void init_temp_files (void);
 
+/* init the ability to report compiler crashes */
+extern void init_crash_reporting (void);
+
 /* init the maintenance of count files */
 extern void init_count_files (void );
 
@@ -74,7 +79,5 @@ extern void cleanup (void);
 /* mark file as a temp file to be cleaned up */
 extern void mark_for_cleanup (char *file);
 
-#ifdef KEY
 /* delete temp object files */
 extern void cleanup_temp_objects ();
-#endif

@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -1436,7 +1436,11 @@ ALIAS_CLASSIFICATION::WN_is_alloca_intrinsic(const WN *const call_wn)
     return TRUE;
   }
   else {
+#ifdef KEY
+    return Callee_returns_new_memory(call_wn);
+#else
     return FALSE;
+#endif
   }
 }
 
@@ -2268,6 +2272,25 @@ ALIAS_CLASSIFICATION::Alias_class(const WN *const wn) const
   }
   else {
     return PESSIMISTIC_AC_ID;
+  }
+}
+
+// make targwn have the same alias class as srcwn
+void
+ALIAS_CLASSIFICATION::Copy_alias_class(const WN *const srcwn, WN *const targwn)
+{
+  Is_True(OPCODE_is_store(WN_opcode(srcwn)) ||
+	  OPCODE_is_load(WN_opcode(srcwn)) ||
+	  WN_operator(srcwn) == OPR_LDA ||
+	  WN_operator(srcwn) == OPR_LDMA ||
+	  WN_operator(srcwn) == OPR_PARM,
+	  ("ALIAS_CLASSIFICATION: WN must be memop"));
+
+  if (_memops_classified) {
+    FmtAssert(_mem_pool_valid,
+	      ("ALIAS_CLASSIFICATION: Our memory is gone."));
+    IDTYPE class_id = WN_MAP32_Get(Memop_classification_map(), srcwn);
+    WN_MAP32_Set(Memop_classification_map(), targwn, class_id);
   }
 }
 

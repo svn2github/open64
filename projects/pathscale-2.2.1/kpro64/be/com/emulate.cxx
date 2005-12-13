@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1229,6 +1229,9 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
   {
     TCON	con = Const_Val(pow);
     BOOL	sqrt, rsqrt;
+#ifdef KEY
+    BOOL       sqrt_25, rsqrt_25, sqrt_75, rsqrt_75;
+#endif
     WN		*tree, *x_copy;
     double	n;
 
@@ -1253,6 +1256,9 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
     }
     n = Targ_To_Host_Float(con);
     sqrt = rsqrt = FALSE;
+#ifdef KEY
+    sqrt_25 = rsqrt_25 = sqrt_75 = rsqrt_75 = FALSE;
+#endif
 
     if (trunc(n) == n)
     {
@@ -1270,6 +1276,32 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 	sqrt = TRUE;
       x_copy = WN_COPY_Tree(x);
     }
+#ifdef KEY
+    else if ((trunc(ABS(n))+.25) == ABS(n))
+    {
+      /*
+       *  if we need to multiply by sqrt we need a copy of x
+       *  as it might get changed underneath us.
+       */
+      if (n<0)
+	rsqrt_25 = TRUE;
+      else
+	sqrt_25 = TRUE;
+      x_copy = WN_COPY_Tree(x);
+    }    
+    else if ((trunc(ABS(n))+.75) == ABS(n))
+    {
+      /*
+       *  if we need to multiply by sqrt we need a copy of x
+       *  as it might get changed underneath us.
+       */
+      if (n<0)
+	rsqrt_75 = TRUE;
+      else
+	sqrt_75 = TRUE;
+      x_copy = WN_COPY_Tree(x);
+    }    
+#endif
     else
     {
       return NULL;
@@ -1283,6 +1315,23 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 
     if (sqrt || rsqrt)
     {
+#ifdef KEY
+      // bug 4824: non-constant float x could be negative
+      // bug 4990: Do the check only for C/C++ and if
+      // -fmath-errno (-LANG:math_errno=on)
+      if (!PU_f77_lang (Get_Current_PU()) &&
+          !PU_f90_lang (Get_Current_PU()) && // ! Fortran
+	  LANG_Math_Errno && // -fmath-errno
+          MTYPE_is_float (WN_rtype (x_copy)) &&
+          (!Is_Constant (x_copy) ||
+	   Targ_To_Host_Float (Const_Val (x_copy)) < 0))
+        return NULL;
+#endif // KEY
+#ifdef TARG_X8664
+      // Bug 5935 - rsqrtsd or rsqrtpd is absent.
+      if (rsqrt && (type == MTYPE_F8 || type == MTYPE_V16F8))
+	return NULL;
+#endif 
       if (tree)
       {
 	/*
@@ -1303,6 +1352,88 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 		       fractional);
       }
     }
+#ifdef KEY // bug 6932 
+    // evaluate (x**0.25) as sqrt(sqrt(x))
+    if (sqrt_25 || rsqrt_25) 
+    {
+      if (!PU_f77_lang (Get_Current_PU()) &&
+          !PU_f90_lang (Get_Current_PU()) && // ! Fortran
+	  LANG_Math_Errno && // -fmath-errno
+          MTYPE_is_float (WN_rtype (x_copy)) &&
+          (!Is_Constant (x_copy) ||
+	   Targ_To_Host_Float (Const_Val (x_copy)) < 0))
+        return NULL;
+#ifdef TARG_X8664
+      // rsqrtsd or rsqrtpd is absent.
+      if (rsqrt_25 && (type == MTYPE_F8 || type == MTYPE_V16F8))
+	return NULL;
+#endif 
+      if (tree)
+      {
+	/*
+	 *  x ** n+.25 	->	(x**n) * (x**.25)
+	 *  where the function em_exp_int has already evaluated	
+	 */
+	PREG_NUM	xN, treeN;
+	WN		*fractional;
+
+	xN = AssignExpr(block, x_copy, type);
+	treeN = AssignExpr(block, tree, type);
+
+	if (sqrt_25) 
+	  fractional = WN_Sqrt(type, WN_Sqrt(type, WN_LdidPreg(type, xN)));
+	else
+	  fractional = WN_Sqrt(type, WN_Rsqrt(type, WN_LdidPreg(type, xN)));
+
+	tree =  WN_Mpy(type,
+		       WN_LdidPreg(type, treeN),
+		       fractional);
+      }      
+    }
+    // evaluate (x**0.75) as sqrt(x)*sqrt(sqrt(x))
+    if (sqrt_75 || rsqrt_75) 
+    {
+      if (!PU_f77_lang (Get_Current_PU()) &&
+          !PU_f90_lang (Get_Current_PU()) && // ! Fortran
+	  LANG_Math_Errno && // -fmath-errno
+          MTYPE_is_float (WN_rtype (x_copy)) &&
+          (!Is_Constant (x_copy) ||
+	   Targ_To_Host_Float (Const_Val (x_copy)) < 0))
+        return NULL;
+#ifdef TARG_X8664
+      // rsqrtsd or rsqrtpd is absent.
+      if (rsqrt_75 && (type == MTYPE_F8 || type == MTYPE_V16F8))
+	return NULL;
+#endif 
+      if (tree)
+      {
+	/*
+	 *  x ** n+.75 	->	(x**n) * (x**.75)
+	 *  where the function em_exp_int has already evaluated	
+	 */
+	PREG_NUM	xN, treeN;
+	WN		*fractional;
+
+	xN = AssignExpr(block, x_copy, type);
+	treeN = AssignExpr(block, tree, type);
+
+	if (sqrt_75) 
+	  fractional = WN_Mpy(type, 
+			      WN_Sqrt(type, WN_LdidPreg(type, xN)), 
+			      WN_Sqrt(type, 
+				      WN_Sqrt(type, WN_LdidPreg(type, xN))));
+	else
+	  fractional = WN_Mpy(type, 
+			      WN_Rsqrt(type, WN_LdidPreg(type, xN)), 
+			      WN_Rsqrt(type, 
+				       WN_Sqrt(type, WN_LdidPreg(type, xN))));
+	
+	tree =  WN_Mpy(type,
+		       WN_LdidPreg(type, treeN),
+		       fractional);
+      }      
+    }
+#endif
     return tree;
   }
  
@@ -3345,12 +3476,24 @@ static WN *em_bcopy(WN *block, WN *tree, WN *src, WN *dst, WN *size)
  *  The implementation however, handles the overlap cases, so we should also,
  *  unless we can prove otherwise or the user forces us not to.
  */
+// KEY: The above comment is wrong. For memcpy, src and dest may not
+// overlap.
 static WN *em_memcpy(WN *block, WN *tree, WN *dst, WN *src, WN *size)
 {
   if (check_size(size, src, dst))
   {
+#ifdef KEY
+    // bugs 3510, 3924
+    BOOL aliased = lower_is_aliased(src, dst, WN_const_val(size));
+    if (CG_memcpy_cannot_overlap) // TRUE
+      if (!aliased || // extra condition to guard against perf. regression
+        // For memcpy, we don't want to convert if size > 4
+        ((Is_Integer_Constant(size) && WN_const_val(size) <= 4) ||
+	(!Is_Integer_Constant(size) && CG_memmove_nonconst)))
+#else
     if (CG_memcpy_cannot_overlap ||
 	!lower_is_aliased(src, dst, WN_const_val(size)))
+#endif
     {
       if (WN *em = aux_memcpy(src, dst, size)) {
         aux_memory_msg("memcpy()", tree, em);
@@ -4055,19 +4198,112 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
     // lower_call for x86/x8664 expects every function to have a prototype 
     // and assumes a vararg function if there is no prorotype.
     Set_TY_has_prototype(ty);
-#endif
 
-#ifdef KEY
-    /* Replace exp() with fastexp(). Note that only the -m64 version of fastexp()
-       is provided so far.  (bug#3163)
-     */
     ST* st = NULL;
 
-    if( Is_Target_64bit() &&
-	IEEE_Arithmetic >= IEEE_INEXACT &&
-	WN_intrinsic(tree) == INTRN_F8EXP ){
-      st = Gen_Intrinsic_Function(ty, "fastexp");
+    /* Do the following conversion if either of -ffast-math or -OPT:fast_math
+       are specified.
+       
+       cos -> fastcos
+       exp -> fastexp
+       expf -> fastexpf
+       log -> fastlog
+       logf -> fastlogf
+       pow -> fastpow
+       powf -> fastpowf
+       sin -> fastsin
+       sincos -> fastsincos
 
+       (Bug 4680)	
+    */
+    if( Is_Target_64bit() &&
+        !Is_Target_EM64T() &&
+	!Is_Target_Anyx86() &&
+	OPT_Fast_Math &&
+	( WN_intrinsic(tree) == INTRN_F8COS ||
+	  WN_intrinsic(tree) == INTRN_F8EXP ||
+	  WN_intrinsic(tree) == INTRN_F4EXP ||
+	  WN_intrinsic(tree) == INTRN_F8LOG ||
+	  WN_intrinsic(tree) == INTRN_F4LOG ||
+	  WN_intrinsic(tree) == INTRN_F8EXPEXPR ||
+	  WN_intrinsic(tree) == INTRN_F4EXPEXPR ||
+	  WN_intrinsic(tree) == INTRN_F8SIN ||
+	  WN_intrinsic(tree) == INTRN_SINCOS ||
+	  WN_intrinsic(tree) == INTRN_F8VSIN ||
+	  WN_intrinsic(tree) == INTRN_F8VCOS ||
+	  WN_intrinsic(tree) == INTRN_F8VEXP ||
+	  WN_intrinsic(tree) == INTRN_F4VEXP ||
+	  WN_intrinsic(tree) == INTRN_F4VLOG ||
+	  WN_intrinsic(tree) == INTRN_F8VLOG ) ) {
+      BOOL vector_call_check_constant_stride = FALSE;
+      switch (WN_intrinsic(tree)) {
+      case INTRN_F8COS:    st = Gen_Intrinsic_Function(ty, "fastcos"); break;
+      case INTRN_F8EXP:    st = Gen_Intrinsic_Function(ty, "fastexp"); break;
+      case INTRN_F4EXP:    st = Gen_Intrinsic_Function(ty, "fastexpf"); break;
+      case INTRN_F8LOG:    st = Gen_Intrinsic_Function(ty, "fastlog"); break;
+      case INTRN_F4LOG:    st = Gen_Intrinsic_Function(ty, "fastlogf"); break;
+      case INTRN_F8EXPEXPR:st = Gen_Intrinsic_Function(ty, "fastpow"); break;
+      case INTRN_F4EXPEXPR:st = Gen_Intrinsic_Function(ty, "fastpowf"); break;
+      case INTRN_F8SIN:    st = Gen_Intrinsic_Function(ty, "fastsin"); break;
+      case INTRN_SINCOS: st = Gen_Intrinsic_Function(ty, "fastsincos");break;
+
+      case INTRN_F8VSIN: 
+	st = Gen_Intrinsic_Function(ty, "vrda_sin");	
+	vector_call_check_constant_stride = TRUE;
+	break;
+      case INTRN_F8VCOS: 
+	st = Gen_Intrinsic_Function(ty, "vrda_cos");
+	vector_call_check_constant_stride = TRUE;
+	break;
+      case INTRN_F8VEXP: 
+	st = Gen_Intrinsic_Function(ty, "vrda_exp");
+	vector_call_check_constant_stride = TRUE;
+	break;
+      case INTRN_F4VEXP: 
+	st = Gen_Intrinsic_Function(ty, "vrsa_expf");
+	vector_call_check_constant_stride = TRUE;
+	break;
+      case INTRN_F8VLOG: 
+	st = Gen_Intrinsic_Function(ty, "vrda_log");
+	vector_call_check_constant_stride = TRUE;
+	break;
+      case INTRN_F4VLOG: 
+	st = Gen_Intrinsic_Function(ty, "vrsa_logf");
+	vector_call_check_constant_stride = TRUE;
+	break;
+      }
+
+      if ( vector_call_check_constant_stride ) {
+	WN* x = WN_kid(tree, 0); // opnd
+	WN* y = WN_kid(tree, 1); // result
+	WN* count =   WN_kid(tree, 2);
+	WN* stridex = WN_kid(tree, 3);
+	WN* stridey = WN_kid(tree, 4);
+	if ( WN_operator(WN_kid0(stridex)) != OPR_INTCONST ||
+	     WN_operator(WN_kid0(stridey)) != OPR_INTCONST ||
+	     WN_const_val(WN_kid0(stridex)) != 1 ||
+	     WN_const_val(WN_kid0(stridey)) != 1 )
+	  st = Gen_Intrinsic_Function(ty, function);
+	else {	  
+	  args[ 0 ] = count;
+	  args[ 1 ] = x;
+	  args[ 2 ] = y;
+	  argC = 3;
+	}
+      }
+
+    // Rename memset to the PathScale optimized memset.
+    } else if (WN_intrinsic(tree) == INTRN_MEMSET &&
+	       OPT_Fast_Stdlib &&
+	       Is_Target_64bit()) {
+      if (Is_Target_EM64T())
+	st = Gen_Intrinsic_Function(ty, "memset.pathscale.em64t");
+      else
+	st = Gen_Intrinsic_Function(ty, "memset.pathscale.opteron");
+
+    } else if (WN_intrinsic(tree) == INTRN_POPCOUNT &&
+               Is_Target_32bit()) {
+      st = Gen_Intrinsic_Function(ty, "__popcountsi2");
     } else {
       st = Gen_Intrinsic_Function(ty, function);
     }
@@ -4558,10 +4794,12 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
     break;
 
   case INTRN_MEMSET:
+#ifndef KEY	// Don't emulate memset; call PathScale memset instead.
     if (CG_mem_intrinsics)
     {
       return em_memset(block, tree, WN_arg(tree, 0), WN_arg(tree, 1), WN_arg(tree, 2));
     }
+#endif
     break;
 
   case INTRN_BCOPY:

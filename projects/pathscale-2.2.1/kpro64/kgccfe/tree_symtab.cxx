@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -110,6 +110,23 @@ Get_Name (tree node)
 		return NULL;
 }
 
+#ifdef KEY
+extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
+
+// Called from the parser to find out if a local variable declared within
+// a structured block in OMP context should be shared among threads
+BOOL
+Is_shared_mp_var (tree decl_node)
+{
+  ST * st = DECL_ST (decl_node);
+
+  if (st && ST_sclass (st) == SCLASS_AUTO)
+    return TRUE;
+
+  return FALSE;
+}
+#endif // KEY
+
 // idx is non-zero only for RECORD and UNION, when there is forward declaration
 extern TY_IDX
 Create_TY_For_Tree (tree type_tree, TY_IDX idx)
@@ -135,7 +152,10 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			Set_TY_is_const (idx);
 		if (TYPE_VOLATILE(type_tree))
 			Set_TY_is_volatile (idx);
-		// restrict qualifier not supported by gcc
+#ifdef KEY
+		if (TYPE_RESTRICT(type_tree))
+			Set_TY_is_restrict (idx);
+#endif
 		TYPE_TY_IDX(type_tree) = idx;
 		if(Debug_Level >= 2) {
 		  struct mongoose_gcc_DST_IDX dst = 
@@ -327,6 +347,10 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			  TYPE_ID   mtype   = TY_mtype (ty_idx);
 			  ST       *st;
 			  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+#ifdef KEY
+			  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL,
+			                                       st);
+#endif
 			  WFE_Set_ST_Addr_Saved (swn);
 			  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
 			  WFE_Stmt_Append (swn, Get_Srcpos());
@@ -360,7 +384,14 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			Set_ARB_ubnd_val (arb, Get_Integer_Value (
 				TYPE_MAX_VALUE (TYPE_DOMAIN (type_tree)) ));
 		    }
-		    else {
+#ifdef KEY
+		    // bug 4086: see comments "throw away any variable
+		    // type sizes ..." in finish_decl().
+		    else if (!TYPE_DEFER_EXPANSION (type_tree))
+#else
+		    else
+#endif
+		    {
 			WN *uwn = WFE_Expand_Expr (TYPE_MAX_VALUE (TYPE_DOMAIN (type_tree)) );
 			if (WN_opcode (uwn) == OPC_U4I4CVT ||
 			    WN_opcode (uwn) == OPC_U8I8CVT) {
@@ -377,6 +408,10 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			  TYPE_ID   mtype   = TY_mtype (ty_idx);
 			  ST       *st;
 			  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+#ifdef KEY
+			  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL,
+			                                      st);
+#endif
 			  WFE_Set_ST_Addr_Saved (uwn);
 			  uwn = WN_Stid (mtype, 0, st, ty_idx, uwn);
 			  WFE_Stmt_Append (uwn, Get_Srcpos());
@@ -394,12 +429,24 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			Clear_ARB_const_ubnd (arb);
 			Set_ARB_ubnd_var (arb, ST_st_idx (st));
 		    }
+#ifdef KEY
+		    else
+		    {
+			Clear_ARB_const_ubnd (arb);
+			Set_ARB_ubnd_val (arb, 0);
+		    }
+#endif
 		}
 		else {
 			Clear_ARB_const_ubnd (arb);
 			Set_ARB_ubnd_val (arb, 0);
 		}
-		if (variable_size) {
+		if (variable_size
+#ifdef KEY
+		    // bug 4086
+		    && !TYPE_DEFER_EXPANSION (type_tree)
+#endif
+		   ) {
 			WN *swn, *wn;
 			swn = WFE_Expand_Expr (type_size);
 			if (TY_size(TY_etype(ty))) {
@@ -418,6 +465,10 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				  TYPE_ID   mtype   = TY_mtype (ty_idx);
 				  ST       *st;
 				  st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+#ifdef KEY
+				  WFE_add_pragma_to_enclosing_regions
+				                        (WN_PRAGMA_LOCAL, st);
+#endif
 				  WFE_Set_ST_Addr_Saved (swn);
 				  swn = WN_Stid (mtype, 0, st, ty_idx, swn);
 				  WFE_Stmt_Append (swn, Get_Srcpos());
@@ -632,6 +683,60 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 			Set_TYLIST_type (New_TYLIST (tylist_idx), 0);
 		} // end FUNCTION_TYPE scope
 		break;
+#ifdef TARG_X8664
+	// x86 gcc vector types
+	case VECTOR_TYPE:
+		{
+		  switch (GET_MODE_SIZE (TYPE_MODE (type_tree)))
+		  {
+		    case 8:
+		      switch (GET_MODE_UNIT_SIZE (TYPE_MODE (type_tree)))
+		      {
+		        case 1:
+		          idx = MTYPE_To_TY (MTYPE_V8I1);
+		          break;
+			case 2:
+		          idx = MTYPE_To_TY (MTYPE_V8I2);
+		          break;
+			case 4:
+			  if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)
+			    idx = MTYPE_To_TY (MTYPE_V8I4);
+			  else
+			    idx = MTYPE_To_TY (MTYPE_V8F4);
+			  break;
+			default: Fail_FmtAssertion ("Get_TY: NYI");
+		      }
+		      break;
+		    case 16:
+		      switch (GET_MODE_UNIT_SIZE (TYPE_MODE (type_tree)))
+		      {
+		        case 1:
+			  idx = MTYPE_To_TY (MTYPE_V16I1);
+			  break;
+			case 2:
+			  idx = MTYPE_To_TY (MTYPE_V16I2);
+			  break;
+			case 4:
+			  if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)
+			    idx = MTYPE_To_TY (MTYPE_V16I4);
+			  else
+			    idx = MTYPE_To_TY (MTYPE_V16F4);
+			  break;
+			case 8:
+			  if (TREE_CODE (TREE_TYPE (type_tree)) == INTEGER_TYPE)
+			    idx = MTYPE_To_TY (MTYPE_V16I8);
+			  else
+			    idx = MTYPE_To_TY (MTYPE_V16F8);
+			  break;
+			default: Fail_FmtAssertion ("Get_TY: NYI");
+		      }
+		      break;
+		    default:
+		      Fail_FmtAssertion ("Get_TY: Unexpected vector type");
+		  }
+		}
+		break;
+#endif // TARG_X8664
 	default:
 		FmtAssert(FALSE, ("Get_TY unexpected tree_type"));
 	}
@@ -639,7 +744,10 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		Set_TY_is_const (idx);
 	if (TYPE_VOLATILE(type_tree))
 		Set_TY_is_volatile (idx);
-	// restrict qualifier not supported by gcc
+#ifdef KEY
+	if (TYPE_RESTRICT(type_tree))
+		Set_TY_is_restrict (idx);
+#endif
 	TYPE_TY_IDX(type_tree) = idx;
 	if(Debug_Level >= 2) {
 	  struct mongoose_gcc_DST_IDX dst = 
@@ -648,6 +756,17 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 	}
 	return idx;
 }
+
+#ifdef KEY
+void 
+Create_DST_For_Tree (tree decl_node, ST* st)
+{
+  struct mongoose_gcc_DST_IDX dst =
+    Create_DST_decl_For_Tree(decl_node,st);
+  DECL_DST_IDX(decl_node) = dst; 
+  return;
+}
+#endif
 
 ST*
 Create_ST_For_Tree (tree decl_node)
@@ -791,15 +910,29 @@ Create_ST_For_Tree (tree decl_node)
             TY_size (ty_idx) == 0) {
           Set_TY_size (ty_idx, TY_size (Get_TY (TREE_TYPE (TREE_TYPE (decl_node)))));
         }
+#ifndef KEY
+// bug 3735: the compiler cannot arbitrarily change the alignment of
+// individual structures
 	if (TY_mtype (ty_idx) == MTYPE_M &&
 	    Aggregate_Alignment > 0 &&
 	    Aggregate_Alignment > TY_align (ty_idx))
 	  Set_TY_align (ty_idx, Aggregate_Alignment);
+#endif // !KEY
 	// qualifiers are set on decl nodes
 	if (TREE_READONLY(decl_node))
 		Set_TY_is_const (ty_idx);
 	if (TREE_THIS_VOLATILE(decl_node))
 		Set_TY_is_volatile (ty_idx);
+#ifdef KEY
+	// Handle aligned attribute (bug 7331)
+	if (DECL_USER_ALIGN (decl_node))
+	  Set_TY_align (ty_idx, DECL_ALIGN_UNIT (decl_node));
+	// NOTE: we do not update the ty_idx value in the TYPE_TREE. So
+	// if any of the above properties are set, the next time we get into
+	// Get_ST, the ty_idx in the TYPE_TREE != ty_idx in st. The solution
+	// is either to update TYPE_TREE now, or compare the ty_idx_index
+	// in Get_ST (instead of ty_idx). Currently we do the latter.
+#endif // KEY
         ST_Init (st, Save_Str(name), CLASS_VAR, sclass, eclass, ty_idx);
         if (TREE_CODE(decl_node) == PARM_DECL) {
 		Set_ST_is_value_parm(st);
@@ -841,9 +974,29 @@ Create_ST_For_Tree (tree decl_node)
 #ifdef KEY
     // Bug 559
     if (ST_sclass(st) != SCLASS_EXTERN) {
-      struct mongoose_gcc_DST_IDX dst =
-	Create_DST_decl_For_Tree(decl_node,st);
-      DECL_DST_IDX(decl_node) = dst;
+      DST_INFO_IDX dst_idx ;
+      struct mongoose_gcc_DST_IDX tdst
+	= DECL_DST_IDX(decl_node);
+      cp_to_dst_from_tree(&dst_idx,&tdst);
+      // Bug 6679 - when the variables inside the second definition of an 
+      // "extern inline" function (with an attribute) are encountered, there
+      // will already be an entry in the DST table. In that event, update the
+      // ST (offset) field in the DST entry. The ST offset may change because
+      // now we are expanding the function body.
+      // Just deleting the DECL_DST_IDX entry in WFE_Null_ST_References
+      // will not help because the DST entry was already appended to the 
+      // DST tree.
+      if(ST_class(st) == CLASS_VAR && !DST_IS_NULL(dst_idx)) {
+	DST_INFO *info_ptr = DST_INFO_IDX_TO_PTR(dst_idx);
+	DST_ATTR_IDX attr_idx = DST_INFO_attributes(info_ptr);
+	DST_VARIABLE *attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_VARIABLE);
+	DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = 
+	  (void *)ST_st_idx(st);
+      } else {
+	struct mongoose_gcc_DST_IDX dst =
+	  Create_DST_decl_For_Tree(decl_node,st);
+	DECL_DST_IDX(decl_node) = dst;
+      }
     }
 #else
      struct mongoose_gcc_DST_IDX dst =

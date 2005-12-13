@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -180,6 +180,8 @@ char		*blk_struct_str[]	= {
 	"Open_Mp_Master_Blk",		/* Open_Mp_Master_Blk		*/
 	"Open_Mp_Critical_Blk",		/* Open_Mp_Critical_Blk		*/
 	"Open_Mp_Ordered_Blk",		/* Open_Mp_Ordered_Blk		*/
+	"Open_Mp_Workshare_Blk",	/* Open_Mp_Workshare_Blk	*/
+	"Open_Mp_Parallel_Workshare_Blk", /* Open_Mp_Parallel_Workshare_Blk */
 	"Contains_Blk",	 		/* Contains_Blk	   		*/
 	"Interface_Blk",		/* Interface_Blk		*/
 	"Derived_Type_Blk"		/* Derived_Type_Blk		*/
@@ -429,6 +431,13 @@ char		*intrin_str[]		= {
 				"Eoshift_Intrinsic",
 				"Epsilon_Intrinsic",
 				"Eqv_Intrinsic",
+#ifdef KEY /* Bug 1324 */
+				"Erf_Intrinsic",
+				"Erfc_Intrinsic",
+#endif /* KEY Bug 1324 */
+#ifdef KEY /* Bug 3018 */
+				"Etime_Intrinsic",
+#endif /* KEY Bug 3018 */
 				"Exit_Intrinsic",
 				"Exp_Intrinsic",
 				"Exponent_Intrinsic",
@@ -631,16 +640,35 @@ char		*intrin_str[]		= {
 				"Null_Intrinsic",
 				"Numarg_Intrinsic",
 				"Num_Images_Intrinsic",
+#ifdef KEY
+                                "Omp_Destroy_Lock_Intrinsic",
+                                "Omp_Destroy_Nest_Lock_Intrinsic",
+#endif
 				"Omp_Get_Dynamic_Intrinsic",
 				"Omp_Get_Max_Threads_Intrinsic",
 				"Omp_Get_Nested_Intrinsic",
 				"Omp_Get_Num_Procs_Intrinsic",
 				"Omp_Get_Num_Threads_Intrinsic",
 				"Omp_Get_Thread_Num_Intrinsic",
+#ifdef KEY
+                                "Omp_Get_Wtick_Intrinsic",
+                                "Omp_Get_Wtime_Intrinsic",
+                                "Omp_Init_Lock_Intrinsic",
+                                "Omp_Init_Nest_Lock_Intrinsic",
+#endif
 				"Omp_In_Parallel_Intrinsic",
 				"Omp_Set_Lock_Intrinsic",
+#ifdef KEY
+				"Omp_Set_Nest_Lock_Intrinsic",
+#endif
 				"Omp_Test_Lock_Intrinsic",
+#ifdef KEY
+				"Omp_Test_Nest_Lock_Intrinsic",
+#endif
 				"Omp_Unset_Lock_Intrinsic",
+#ifdef KEY
+				"Omp_Unset_Nest_Lock_Intrinsic",
+#endif
 				"Or_Intrinsic",
 				"Or_And_Fetch_Intrinsic",
 				"Pack_Intrinsic",
@@ -750,6 +778,7 @@ char		*intrin_str[]		= {
 				"This_Image_Intrinsic",
 				"Time_Intrinsic",
 #ifdef KEY
+				"Time4_Intrinsic",
 				"Time8_Intrinsic",
 #endif
 				"Tiny_Intrinsic",
@@ -769,8 +798,11 @@ char		*intrin_str[]		= {
 				"Zexp_Intrinsic",
 				"Zlog_Intrinsic",
 				"Zsin_Intrinsic",
-				"Zsqrt_Intrinsic"
+				"Zsqrt_Intrinsic",
 # endif
+#ifdef KEY /* Bug 1683 */
+				"Pathf90_Intrinsic"
+#endif /* KEY Bug 1683 */
 		};
 
 char		*msg_lvl_str[]		= {
@@ -1252,19 +1284,23 @@ char		*operator_str[]		= {
                         "Endparallel_Open_Mp_Opr",
                         "Endparalleldo_Open_Mp_Opr",
                         "Endparallelsections_Open_Mp_Opr",
+                        "Endparallelworkshare_Open_Mp_Opr",
                         "Endmaster_Open_Mp_Opr",
                         "Endordered_Open_Mp_Opr",
                         "Endsections_Open_Mp_Opr",
                         "Endsingle_Open_Mp_Opr",
+                        "Endworkshare_Open_Mp_Opr",
                         "Flush_Open_Mp_Opr",
                         "Master_Open_Mp_Opr",
                         "Ordered_Open_Mp_Opr",
                         "Parallel_Open_Mp_Opr",
                         "Paralleldo_Open_Mp_Opr",
                         "Parallelsections_Open_Mp_Opr",
+                        "Parallelworkshare_Open_Mp_Opr",
                         "Section_Open_Mp_Opr",
                         "Sections_Open_Mp_Opr",
                         "Single_Open_Mp_Opr",
+                        "Workshare_Open_Mp_Opr",
 
                         "Concurrentize_Star_Opr",
                         "Noconcurrentize_Star_Opr",
@@ -1321,6 +1357,13 @@ char		*operator_str[]		= {
 			"Copyin_Bound_Opr",
 			"Preferstream_Nocinv_Opr",
 
+#ifdef KEY /* Bug 1324 */
+			"Erf_Opr",
+			"Erfc_Opr",
+#endif /* KEY Bug 1324 */
+#ifdef KEY /* Bug 2660 */
+		 	"Options_Dir_Opr",
+#endif /* KEY Bug 2660 */
                         "The_Last_Opr"
 		};
 
@@ -1491,10 +1534,12 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Dir_Cache_Bypass",	/* Tok_Dir_Cache_Bypass */
 			"Tok_Dir_Cache_Noalloc",/* Tok_Dir_Cache_Noalloc*/
 			"Tok_Dir_Chunksize",	/* Tok_Dir_Chunksize	*/
+			"Tok_Dir_Cncall",	/* Tok_Dir_Cncall	*/ 
 			"Tok_Dir_Code",		/* Tok_Dir_Code		*/
 			"Tok_Dir_Common",	/* Tok_Dir_Common	*/
 			"Tok_Dir_Concurrent",	/* Tok_Dir_Concurrent	*/
 			"Tok_Dir_Control",	/* Tok_Dir_Control	*/
+			"Tok_Dir_Copy_Assumed_Shape", /*Tok_Dir_Copy_Assumed_Shaped*/
 			"Tok_Dir_Critical",	/* Tok_Dir_Critical	*/
 			"Tok_Dir_Doshared",	/* Tok_Dir_Doshared	*/
 			"Tok_Dir_Dynamic",	/* Tok_Dir_Dynamic	*/
@@ -1505,9 +1550,11 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Dir_Flow",		/* Tok_Dir_Flow		*/
 			"Tok_Dir_Free",		/* Tok_Dir_Free		*/
 			"Tok_Dir_Geometry",	/* Tok_Dir_Geometry	*/
+			"Tok_Dir_Getfirst",	/* Tok_Dir_Getfirst	*/
 			"Tok_Dir_Guided",	/* Tok_Dir_Guided	*/
 			"Tok_Dir_Id",		/* Tok_Dir_Id		*/
 			"Tok_Dir_If",		/* Tok_Dir_If		*/
+			"Tok_Dir_Ignore_TKR",	/* Tok_Dir_Ignore_TKR	*/
 			"Tok_Dir_Inline",	/* Tok_Dir_Inline	*/
 			"Tok_Dir_Inline_Always",/* Tok_Dir_Inline_Always*/
 			"Tok_Dir_Inline_Never",	/* Tok_Dir_Inline_Never	*/
@@ -1537,16 +1584,19 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Dir_Nopattern",	/* Tok_Dir_Nopattern	*/
 			"Tok_Dir_Norecurrence",	/* Tok_Dir_Norecurrence */
 			"Tok_Dir_Nosideeffects",/* Tok_Dir_Nosideeffects*/
+			"Tok_Dir_Nosplit",	/* Tok_Dir_Nosplit	*/
 			"Tok_Dir_Nostream",     /* Tok_Dir_Nostream     */
 			"Tok_Dir_Notask",	/* Tok_Dir_Notask	*/
 			"Tok_Dir_Nounroll",	/* Tok_Dir_Nounroll	*/
 			"Tok_Dir_Novector",	/* Tok_Dir_Novector	*/
 			"Tok_Dir_Novsearch",	/* Tok_Dir_Novsearch	*/
 			"Tok_Dir_Numchunks",	/* Tok_Dir_Numchunks	*/
+			"Tok_Dir_Numcpus",	/* Tok_Dir_Numcpus	*/
 			"Tok_Dir_Parallel_Only",/* Tok_Dir_Parallel_Only*/
 			"Tok_Dir_Pattern",	/* Tok_Dir_Pattern	*/
 			"Tok_Dir_Pe_Private",	/* Tok_Dir_Pe_Private	*/
 			"Tok_Dir_Pe_Resident",	/* Tok_Dir_Pe_Resident	*/
+			"Tok_Dir_Permutation",	/* Tok_Dir_Permutation	*/
 			"Tok_Dir_Preferstream",	/* Tok_Dir_Preferstream */
 			"Tok_Dir_Prefertask",	/* Tok_Dir_Prefertask   */
 			"Tok_Dir_Prefervector",	/* Tok_Dir_Prefervector */
@@ -1560,6 +1610,7 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Dir_Shortloop",	/* Tok_Dir_Shortloop	*/
 			"Tok_Dir_Shortsequence",/* Tok_Dir_Shortsequence*/
 			"Tok_Dir_Single",	/* Tok_Dir_Single	*/
+			"Tok_Dir_Split",	/* Tok_Dir_Split	*/
 			"Tok_Dir_Stack",	/* Tok_Dir_Stack	*/
 			"Tok_Dir_Static",	/* Tok_Dir_Static	*/
 			"Tok_Dir_Stream",	/* Tok_Dir_Stream       */
@@ -1599,8 +1650,215 @@ char		*token_value_str[Tok_LAST+1]	= {
 			"Tok_Mic_Taskcommon",	/* Tok_Mic_Taskcommon	*/
 			"Tok_Mic_Wait",		/* Tok_Mic_Wait		*/
 			"Tok_Mic_End",		/* Tok_Mic_End-marker 	*/
+
+			/* the following is added by jhs, 2004/03/08 */
+			"Tok_SGI_Dir_Start",		/* Start of SGI directives    */
+			"Tok_SGI_Dir_Affinity",		/* AFFINITY		      */
+			"Tok_SGI_Dir_Aggressiveinner",	/* AGGRESSIVEINNERLOOPFUSION  */
+			"Tok_SGI_Dir_Align_Symbol",	/* ALIGN SYMBOL		      */
+			"Tok_SGI_Dir_Argumentaliasing",	/* ARGUMENT ALIASING 	      */
+
+			"Tok_SGI_Dir_Assert",		/* ASSERT      		      */
+			"Tok_SGI_Dir_Barrier",		/* BARRIER		      */
+			"Tok_SGI_Dir_Benign",		/* BENIGN                     */
+			"Tok_SGI_Dir_Block",		/* BLOCK		      */
+			"Tok_SGI_Dir_Blockable",	/* BLOCKABLE   		      */
+			"Tok_SGI_Dir_Blocked",		/* BLOCKED		      */
+			"Tok_SGI_Dir_Blockingsize",	/* BLOCKING SIZE	      */
+			"Tok_SGI_Dir_Boundsviolations",	/* BOUNDS VIOLATIONS          */
+			"Tok_SGI_Dir_Chunk",		/* CHUNK		      */
+			"Tok_SGI_Dir_Concur",        	/* CONCUR                     */
+			"Tok_SGI_Dir_Concurrent",    	/* CONCURRENT                 */
+			"Tok_SGI_Dir_Concurrentcall",	/* CONCURRENT CALL            */
+			"Tok_SGI_Dir_Concurrentize",   	/* CONCURRENTIZE              */
+			"Tok_SGI_Dir_Copyin",		/* COPYIN		      */
+			"Tok_SGI_Dir_Criticalsection",	/* CRITICAL SECTION	      */
+			"Tok_SGI_Dir_Cyclic",		/* CYCLIC		      */
+			"Tok_SGI_Dir_Data",		/* DATA			      */
+			"Tok_SGI_Dir_Dependence",	/* DEPENDENCE                 */
+			"Tok_SGI_Dir_Distribute",	/* DISTRIBUTE		      */
+			"Tok_SGI_Dir_Distribute_Reshape",	/* DISTRIBUTE_RESHAPE	      */
+			"Tok_SGI_Dir_Do",		/* DO                         */
+			"Tok_SGI_Dir_Doacross",		/* DO ACROSS		      */
+			"Tok_SGI_Dir_Doprefer",		/* DO PREFER                  */
+			"Tok_SGI_Dir_Dynamic",		/* DYNAMIC		      */
+			"Tok_SGI_Dir_Endcriticalsection",	/* END CRITICAL SECTION	      */
+			"Tok_SGI_Dir_Endparallel",	/* END PARALLEL		      */
+			"Tok_SGI_Dir_Endpdo",		/* END PDO		      */
+			"Tok_SGI_Dir_Endpsection",	/* END PSECTION		      */
+			"Tok_SGI_Dir_Endpsections",	/* END PSECTIONS	      */
+			"Tok_SGI_Dir_Endsingleprocess",	/* END SINGLE PROCESS	      */
+			"Tok_SGI_Dir_Equivalencehazard",	/* EQUIVALENCE HAZARD         */
+			"Tok_SGI_Dir_Fill_Symbol",	/* FILL SYMBOL 		      */
+			"Tok_SGI_Dir_Fission",		/* FISSION     		      */
+			"Tok_SGI_Dir_Fissionable",	/* FISSIONABLE 		      */
+			"Tok_SGI_Dir_Flush",      	/* FLUSH       		      */
+			"Tok_SGI_Dir_Frequency",	/* FREQUENCY                  */
+			"Tok_SGI_Dir_Fusable",		/* FUSABLE      	      */
+			"Tok_SGI_Dir_Fuse",		/* FUSE        		      */
+			"Tok_SGI_Dir_Global",		/* GLOBAL      		      */
+			"Tok_SGI_Dir_Gss",		/* GSS			      */
+			"Tok_SGI_Dir_Guided",		/* GUIDED		      */
+			"Tok_SGI_Dir_Here",		/* HERE 	 	      */
+			"Tok_SGI_Dir_If",		/* IF			      */
+			"Tok_SGI_Dir_Ignoreanydependence",/* IGNORE ANY DEPENDENCE      */
+			"Tok_SGI_Dir_Ignoreanydependences",/* IGNORE ANY DEPENDENCES    */
+			"Tok_SGI_Dir_Ignoreassumeddependence",
+                                                /* IGNORE ASSUMED DEPENDENCE  */
+			"Tok_SGI_Dir_Ignoreassumeddependences",
+                                                /* IGNORE ASSUMED DEPENDENCES */
+			"Tok_SGI_Dir_Inline",		/* INLINE	       	      */
+			"Tok_SGI_Dir_Interchange",	/* INTERCHANGE         	      */
+			"Tok_SGI_Dir_Interleave",	/* INTERLEAVE		      */
+			"Tok_SGI_Dir_Interleaved",	/* INTERLEAVED		      */
+			"Tok_SGI_Dir_Ipa",		/* IPA	         	      */
+			"Tok_SGI_Dir_Kind",		/* KIND       	 	      */
+			"Tok_SGI_Dir_Lastlocal",	/* LASTLOCAL		      */
+			"Tok_SGI_Dir_Lastthread",	/* LAST THREAD		      */
+			"Tok_SGI_Dir_Lastvalueneeded",	/* LAST VALUE NEEDED          */
+			"Tok_SGI_Dir_Lastvaluesneeded",	/* LAST VALUES NEEDED         */
+			"Tok_SGI_Dir_Level",		/* LEVEL		      */
+			"Tok_SGI_Dir_Limit",		/* LIMIT		      */
+			"Tok_SGI_Dir_Local",		/* LOCAL		      */
+			"Tok_SGI_Dir_L1cacheline",	/* L1CACHELINE                */
+			"Tok_SGI_Dir_L2cacheline",	/* L2CACHELINE                */
+			"Tok_SGI_Dir_Minconcurrent",	/* MINCONCURRENT	      */
+			"Tok_SGI_Dir_Mp_Schedtype",	/* MP_SCHEDTYPE		      */
+			"Tok_SGI_Dir_Ncpus_Chunk",	/* NCPUS_CHUNK		      */
+			"Tok_SGI_Dir_Nest",		/* NEST			      */
+			"Tok_SGI_Dir_Noargumentaliasing",	/* NOARGUMENTALIASING	      */
+			"Tok_SGI_Dir_Noblocking",		/* NO BLOCKING  	      */
+			"Tok_SGI_Dir_Noboundsviolations",	/* NO BOUNDS VIOLATIONS       */
+			"Tok_SGI_Dir_Noconcurrentcall",	/* NO CONCURRENT CALL         */
+			"Tok_SGI_Dir_Noconcurrentize",   	/* NO CONCURRENTIZE           */
+			"Tok_SGI_Dir_Noequivalencehazard",/* NO EQUIVALENCE HAZARD      */
+			"Tok_SGI_Dir_Nofission",		/* NO FISSION   	      */
+			"Tok_SGI_Dir_Nofusion",		/* NO FUSION	   	      */
+			"Tok_SGI_Dir_Noinline",		/* NO INLINE    	      */
+			"Tok_SGI_Dir_Nointerchange",	/* NO INTERCHANGE	      */
+			"Tok_SGI_Dir_Noipa",		/* NO IPA      		      */
+			"Tok_SGI_Dir_Nolastvalueneeded",	/* NO LASTVALUE NEEDED        */
+			"Tok_SGI_Dir_Nolastvaluesneeded",	/* NO LASTVALUES NEEDED       */
+			"Tok_SGI_Dir_Norecurrence",	/* NO RECURRENCE              */
+			"Tok_SGI_Dir_Nosync",		/* NO SYNC                    */
+			"Tok_SGI_Dir_Notemporariesforconstantarguments",
+                                     /* NO TEMPORARIES FOR CONSTANT ARGUMENTS */
+			"Tok_SGI_Dir_Nowait",		/* NOWAIT		      */
+			"Tok_SGI_Dir_Numchunks",	/* NUMCHUNKS		      */
+			"Tok_SGI_Dir_Onto",		/* ONTO			      */
+			"Tok_SGI_Dir_Opaque",		/* OPAQUE       	      */
+			"Tok_SGI_Dir_Optional",		/* OPTIONAL     	      */
+#ifdef KEY /* Bug 2660 */
+			"Tok_SGI_Dir_Options",		/* OPTIONS     	      */
+#endif /* KEY Bug 2660 */
+			"Tok_SGI_Dir_Ordered",		/* ORDERED		      */
+			"Tok_SGI_Dir_Page",      	/* PAGE      		      */
+			"Tok_SGI_Dir_Page_Place",	/* PAGE_PLACE		      */
+			"Tok_SGI_Dir_Parallel",		/* PARALLEL		      */
+			"Tok_SGI_Dir_Paralleldo",	/* PARALLEL DO		      */
+			"Tok_SGI_Dir_Pdo",		/* PDO			      */
+			"Tok_SGI_Dir_Permutation",	/* PERMUTATION                */
+			"Tok_SGI_Dir_Prefetch",		/* PREFETCH		      */
+			"Tok_SGI_Dir_Prefetch_Manual",	/* PREFETCH_MANUAL	      */
+			"Tok_SGI_Dir_Prefetch_Ref",	/* PREFETCH_REF		      */
+			"Tok_SGI_Dir_Prefetch_Ref_Disable",/* PREFETCH_REF_DISABLE      */
+			"Tok_SGI_Dir_Private",		/* PRIVATE		      */
+			"Tok_SGI_Dir_Psection",		/* PSECTION		      */
+			"Tok_SGI_Dir_Psections",		/* PSECTIONS		      */
+			"Tok_SGI_Dir_Purpleconditional",	/* PURPLECONDITIONAL	      */
+			"Tok_SGI_Dir_Purpleunconditional",/* PURPLEUNCONDITIONAL	      */
+			"Tok_SGI_Dir_Redistribute",	/* REDISTRIBUTE		      */
+			"Tok_SGI_Dir_Reduction",	/* REDUCTION		      */
+			"Tok_SGI_Dir_Regionbegin",	/* REGIONBEGIN		      */
+			"Tok_SGI_Dir_Regionend",	/* REGIONEND		      */
+			"Tok_SGI_Dir_Relation",		/* RELATION                   */
+			"Tok_SGI_Dir_Routine",		/* ROUTINE		      */
+			"Tok_SGI_Dir_Runtime",		/* RUNTIME		      */
+			"Tok_SGI_Dir_Section",		/* SECTION		      */
+			"Tok_SGI_Dir_Section_Gp",	/* SECTION_GP		      */
+			"Tok_SGI_Dir_Section_Non_Gp",	/* SECTION_NON_GP	      */
+			"Tok_SGI_Dir_Serial",		/* SERIAL		      */
+			"Tok_SGI_Dir_Share",		/* SHARE		      */
+			"Tok_SGI_Dir_Shared",		/* SHARED		      */
+			"Tok_SGI_Dir_Simple",		/* SIMPLE		      */
+			"Tok_SGI_Dir_Single",		/* SINGLE		      */
+			"Tok_SGI_Dir_Singleprocess",	/* SINGLE PROCESS	      */
+			"Tok_SGI_Dir_Size",		/* SIZE			      */
+			"Tok_SGI_Dir_Static",		/* STATIC		      */
+			"Tok_SGI_Dir_Stride",		/* STRIDE		      */
+			"Tok_SGI_Dir_Unroll",		/* UNROLL		      */
+			"Tok_SGI_Dir_Usecompress",	/* USE COMPRESS               */
+			"Tok_SGI_Dir_Usecontrolledstore",	/* USE CONTROLLED STORE       */
+			"Tok_SGI_Dir_Useexpand",	/* USE EXPAND                 */
+			"Tok_SGI_Dir_Usegather",	/* USE GATHER                 */
+			"Tok_SGI_Dir_Usescatter",	/* USE SCATTER                */
+			"Tok_SGI_Dir_Temporariesforconstantarguments",
+                                     /* TEMPORARIES FOR CONSTANT ARGUMENTS    */
+			"Tok_SGI_Dir_Thread",		/* THREAD		      */
+			"Tok_SGI_Dir_Tile",		/* TILE  		      */
+			"Tok_SGI_Dir_Vector",		/* VECTOR		      */
+			"Tok_SGI_Dir_End",		/* End of SGI directives      */
+
+			"Tok_Open_Mp_Dir_Start",	/* Start of open mp directives*/
+                	"Tok_Open_Mp_Dir_Affinity",	/* AFFINITY                   */
+                	"Tok_Open_Mp_Dir_Atomic",	/* ATOMIC                     */
+                	"Tok_Open_Mp_Dir_Barrier",	/* BARRIER                    */
+                	"Tok_Open_Mp_Dir_Copyin",	/* COPYIN                     */
+                	"Tok_Open_Mp_Dir_Copyprivate",	/* COPYPRIVATE          */ /* by jhs, 02/7/5 */
+                	"Tok_Open_Mp_Dir_Critical",	/* CRITICAL                   */
+                	"Tok_Open_Mp_Dir_Data",		/* DATA                       */
+                	"Tok_Open_Mp_Dir_Default",	/* DEFAULT                    */
+                	"Tok_Open_Mp_Dir_Distribute",	/* DISTRIBUTE                 */
+                	"Tok_Open_Mp_Dir_Distribute_Reshape", /* DISTRIBUTE_RESHAPE     */
+                	"Tok_Open_Mp_Dir_Do",           /* DO                         */
+                	"Tok_Open_Mp_Dir_Dynamic",      /* DYNAMIC                    */
+                	"Tok_Open_Mp_Dir_Endcritical",  /* END CRITICAL               */
+                	"Tok_Open_Mp_Dir_Enddo",        /* END DO                     */
+                	"Tok_Open_Mp_Dir_Endparallel",    /* END PARALLEL               */
+                	"Tok_Open_Mp_Dir_Endparalleldo",  /* END PARALLEL DO            */
+                	"Tok_Open_Mp_Dir_Endparallelsections", /* END PARALLEL SECTIONS */
+                	"Tok_Open_Mp_Dir_Endparallelworkshare", /* END PARALLEL WORKSHARE */ 
+                	"Tok_Open_Mp_Dir_Endmaster",      /* END MASTER                 */
+                	"Tok_Open_Mp_Dir_Endordered",     /* END ORDERED                */
+                	"Tok_Open_Mp_Dir_Endsections",    /* END SECTIONS               */
+                	"Tok_Open_Mp_Dir_Endsingle",      /* END SINGLE                 */
+                	"Tok_Open_Mp_Dir_Endworkshare", /* END WORKSHARE */ 
+                	"Tok_Open_Mp_Dir_Firstprivate",   /* FIRSTPRIVATE               */
+                	"Tok_Open_Mp_Dir_Flush",          /* FLUSH                      */
+                	"Tok_Open_Mp_Dir_Guided",         /* GUIDED                     */
+                	"Tok_Open_Mp_Dir_If",             /* IF                         */
+                	"Tok_Open_Mp_Dir_Lastprivate",    /* LASTPRIVATE                */
+                	"Tok_Open_Mp_Dir_Master",         /* MASTER                     */
+                	"Tok_Open_Mp_Dir_Nest",           /* NEST                       */
+                	"Tok_Open_Mp_Dir_None",           /* NONE                       */
+                	"Tok_Open_Mp_Dir_Nowait",         /* NOWAIT                     */
+                	"Tok_Open_Mp_Dir_Num_Threads", /* NUM_THREADS */ 
+                	"Tok_Open_Mp_Dir_Onto",           /* ONTO                       */
+                	"Tok_Open_Mp_Dir_Ordered",        /* ORDERED                    */
+                	"Tok_Open_Mp_Dir_Page_Place",     /* PAGE PLACE                 */
+                	"Tok_Open_Mp_Dir_Parallel",       /* PARALLEL                   */
+                	"Tok_Open_Mp_Dir_Paralleldo",     /* PARALLEL DO                */
+                	"Tok_Open_Mp_Dir_Parallelsections",  /* PARALLEL SECTIONS */
+                	"Tok_Open_Mp_Dir_Parallelworkshare", /* PARALLEL WORKSHARE */ 
+                	"Tok_Open_Mp_Dir_Private",        /* PRIVATE                    */
+                	"Tok_Open_Mp_Dir_Redistribute",   /* REDISTRIBUTE               */
+                	"Tok_Open_Mp_Dir_Reduction",      /* REDUCTION                  */
+                	"Tok_Open_Mp_Dir_Runtime",        /* RUNTIME                    */
+                	"Tok_Open_Mp_Dir_Schedule",       /* SCHEDULE                   */
+                	"Tok_Open_Mp_Dir_Section",        /* SECTION                    */
+                	"Tok_Open_Mp_Dir_Sections",       /* SECTIONS                   */
+                	"Tok_Open_Mp_Dir_Shared",         /* SHARED                     */
+                	"Tok_Open_Mp_Dir_Single",         /* SINGLE                     */
+                	"Tok_Open_Mp_Dir_Static",         /* STATIC                     */
+                	"Tok_Open_Mp_Dir_Thread",         /* THREAD                     */
+                	"Tok_Open_Mp_Dir_Threadprivate",  /* THREADPRIVATE              */
+                	"Tok_Open_Mp_Dir_Workshare", /* WORKSHARE */ 
+                	"Tok_Open_Mp_Dir_End",            /* End of Open Mp directives  */
+                	/* the above is added by jhs, 04/03/08 */
+			
 			"Tok_Dbg_Sytb",		/* Tok_Dbg_Sytb		*/
 			"Tok_Dbg_Stmt",		/* Tok_Dbg_Stmt		*/
+			
 			"Tok_Punct_Colon",	/* Tok_Punct_Colon	*/
 			"Tok_Punct_Colon_Colon",/* Tok_Punct_Colon_Colon*/
 			"Tok_Punct_Comma",	/* Tok_Punct_Comma	*/
@@ -2037,6 +2295,7 @@ static char	*dv_whole_def_str[] = {
 
 static char *open_mp_dir_opr_str[] = {
                          "IF clause",
+			 "NUM_THREADS clause",
                          "PRIVATE clause",
                          "SHARED clause",
                          "FIRSTPRIVATE clause",
@@ -2052,7 +2311,8 @@ static char *open_mp_dir_opr_str[] = {
 			 "IS_THREAD clause",
 			 "THREAD_DATA clause",
 			 "ONTO clause",
-			 "NEST clause"
+			 "NEST clause",
+                         "COPYPRIVATE clause"
 		};
 
 static char *mp_dir_opr_str[] = {

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -257,6 +261,19 @@ static tok_list offon_tokens[] = {
 	NULL
 };
 
+#ifdef KEY /* Bug 5921 */
+/*
+ * Default clears all flags in assign_info, but for some options (e.g. "-S"),
+ * we want the default to be the same as "on". Use these with parse_topt to
+ * accomplish that.
+ */
+static tok_list dflt_on_tokens[] = {
+	"off",		1,
+	"on",		0,
+	NULL
+};
+#endif /* KEY Bug 5921 */
+
 /*
  *	DEFOPT helps initialize the _Ae_option_parse_info[] table.
  */
@@ -375,8 +392,18 @@ parse_info _Ae_option_parse_info[] = {
   DEFOPT("-s"		, s_fstrct	, parse_s	, NULL		, 1 ,"\
   -s ft                 File type: cos, sbin, tape, text, u, or unblocked"),
   
+#ifdef KEY /* Bug 5921 */
+  /*
+   * Historically, "-S off" meant S_comsep == 0, which nonsensically meant to
+   * use commas in list-directed output. We want "-S on" to be the default, so
+   * "on" now sets S_comsep == 0 which now means not to use commas.
+   */
+  DEFOPT("-S"		, S_comsep	, parse_topt	, dflt_on_tokens, 1 ,"\
+  -S on/off             Don't/do use comma as separator in list_directed output"),
+#else /* KEY Bug 5921 */
   DEFOPT("-S"		, S_comsep	, parse_topt	, offon_tokens	, 1 ,"\
   -S on/off             Use comma as separator in list_directed output"),
+#endif /* KEY Bug 5921 */
 
   DEFOPT("-t"		, t_tmpfil	, NULL		, NULL		, 1 ,"\
   -t                    Temporary (scratch) file"),
@@ -399,8 +426,19 @@ parse_info _Ae_option_parse_info[] = {
   DEFOPT("-x"		, x_parallel	, parse_topt	, offon_tokens	, E ,"\
   -x on/off             Specify O_PARALLEL on open(2)"),
 
+#ifdef KEY /* Bug 5921 */
+  /*
+   * Historically, "-y off" meant y_reptcnt == 0, which nonsensically meant to
+   * emit a repeat count in list-directed output. We want "-y on" to be the
+   * default, so "on" now sets y_reptcnt == 0, which now means not to use a
+   * repeat count.
+   */
+  DEFOPT("-y"		, y_reptcnt	, parse_topt	, dflt_on_tokens, 1 ,"\
+  -y on/off             Don't/do produce repeat count for list_directed output"),
+#else /* KEY Bug 5921 */
   DEFOPT("-y"		, y_reptcnt	, parse_topt	, offon_tokens	, 1 ,"\
   -y on/off             Produce repeat count for list_directed output"),
+#endif /* KEY Bug 5921 */
 
   DEFOPT("-Y"		, Y_nl_skip	, parse_topt	, offon_tokens	, 1 ,"\
   -Y on/off             Skip namelist input record if group name mismatch"),

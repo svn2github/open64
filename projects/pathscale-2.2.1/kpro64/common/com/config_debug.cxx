@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -110,6 +114,10 @@ static DEBUG_FLAGS Default_DEBUG = {
   ALIGN_NORMAL,			/* control ldl/ldr generation */
   TRUE,				/* ipalno version check */
   FALSE,        FALSE,          /* conformance_check */
+#ifdef KEY
+  TRUE,                         /* emit .eh_frame for backtrace */
+  FALSE,	FALSE,		/* zero_uv */
+#endif
 
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
@@ -148,6 +156,10 @@ DEBUG_FLAGS Initial_DEBUG = {
   ALIGN_NORMAL,			/* control ldl/ldr generation */
   TRUE,				/* ipalno version check */
   FALSE,        FALSE,          /* conformance_check */
+#ifdef KEY
+  TRUE,                         /* emit .eh_frame for backtrace */
+  FALSE,	FALSE,		/* zero_uv */
+#endif
 
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
 };
@@ -245,6 +257,10 @@ static OPTION_DESC Options_DEBUG[] = {
       0, 0, 0, &ID.trap_uv_rjustify,	&ID.trap_uv_rjustify_set,
 	"" },
 
+    { OVK_BOOL, OV_VISIBLE,	TRUE, "zero_uninitialized",	"",
+      0, 0, 0, &ID.zero_uv,		&ID.zero_uv_set,
+	"Set uninitialized variables to zero" },
+
     { OVK_BOOL, OV_INTERNAL,	TRUE, "trunc_check",		"",
       0, 0, 0, &ID.trunc_check,	&ID.trunc_check_set,
 	"Check 64- to 32-bit assignments for truncation" },
@@ -298,6 +314,16 @@ static OPTION_DESC Options_DEBUG[] = {
     { OVK_REPLACED, OV_INTERNAL,	TRUE, "trapuv",		NULL,
       0, 0, 0,	const_cast<char*>("-DEBUG:trap_uninitialized"),	NULL,
       "Trap references to uninitialized variables" },
+
+    { OVK_REPLACED, OV_INTERNAL,	TRUE, "zerouv",		NULL,
+      0, 0, 0,	const_cast<char*>("-DEBUG:zero_uninitialized"),	NULL,
+      "Set uninitialized variables to zero" },
+
+#ifdef KEY
+    { OVK_BOOL, OV_VISIBLE,	FALSE, "eh_frame",	"",
+      0, 0, 0, &ID.emit_ehframe,	NULL,
+	"Emit .eh_frame section even for non-C++ programs if this flag is set" },
+#endif
 
     { OVK_COUNT }		    /* List terminator -- must be last */
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -166,6 +166,9 @@ static const char source_file[] = __FILE__;
 
 INT32 EBO_Opt_Level_Default = 5;
 INT32 EBO_Opt_Level = 5;
+#ifdef KEY
+INT32 EBO_Opt_Mask = -1;
+#endif
 BOOL  CG_skip_local_ebo = FALSE;
 
 INT EBO_tninfo_number = 0;
@@ -208,6 +211,185 @@ BOOL EBO_Trace_Hash_Search  = FALSE;
 
 static BOOL in_delay_slot = FALSE;
 static BOOL rerun_cflow = FALSE;
+
+#ifdef KEY
+/* ===================================================================== */
+/* Track register pressure within a basic block:                         */
+/* ===================================================================== */
+
+// Number of registers available in each register class.
+static int avail_regs_count[ISA_REGISTER_CLASS_MAX+1];
+
+// Map OP to the change in the number of registers used at OP.
+static OP_MAP Regs_Delta_Map[ISA_REGISTER_CLASS_MAX+1];
+
+// Map TN to EBO_REG_ENTRY for the current BB.
+static hTN_MAP regs_map = NULL;
+
+// Based on code in hb_sched.h.
+typedef union {
+  void *ptr;
+  struct {
+    unsigned int def_count : 15;
+    unsigned int last_use_op_num : 15;	// OP where TN is last used in BB
+    unsigned int reg_assigned : 1;
+  }s;
+} EBO_REG_ENTRY;
+
+#define EBO_REG_ENTRY_ptr(re)			(re.ptr)
+#define EBO_REG_ENTRY_def_count(re)		(re.s.def_count)
+#define EBO_REG_ENTRY_reg_assigned(re)		(re.s.reg_assigned)
+#define EBO_REG_ENTRY_last_use_OP_num(re)	(re.s.last_use_op_num)
+
+// Determine the change in register pressure at each OP in the BB.  Based on
+// code in hb_sched.cxx.
+static void
+Estimate_Reg_Usage (BB *bb, MEM_POOL *pool)
+{
+  OP *op;
+  EBO_REG_ENTRY reginfo;
+  INT32 global_regs_used[ISA_REGISTER_CLASS_MAX+1],
+	regs_delta[ISA_REGISTER_CLASS_MAX+1];
+  ISA_REGISTER_CLASS cl;
+  INT i, op_num = 0;
+
+  regs_map = hTN_MAP_Create(pool);
+
+  FOR_ALL_ISA_REGISTER_CLASS(cl) {
+    global_regs_used[cl] = 0;
+  }
+
+  // Build regs_map.  Count the number of GTNs and dedicated TNs referenced in
+  // the basic block.
+  FOR_ALL_BB_OPs_FWD (bb, op) {
+    op_num++;
+    for (i = 0; i < OP_results(op); i++) {
+      TN *result_tn = OP_result(op, i);
+      EBO_REG_ENTRY_ptr(reginfo) =  hTN_MAP_Get (regs_map, result_tn);
+      EBO_REG_ENTRY_def_count(reginfo)++;
+      if (TN_is_global_reg(result_tn) || TN_is_dedicated(result_tn)) {
+	if (!EBO_REG_ENTRY_reg_assigned(reginfo)) {
+	  cl = TN_register_class(result_tn);
+	  global_regs_used[cl]++;
+	  EBO_REG_ENTRY_reg_assigned(reginfo) = TRUE;
+	}
+      }
+      hTN_MAP_Set (regs_map, result_tn, EBO_REG_ENTRY_ptr(reginfo));
+    }
+    for (i = 0; i < OP_opnds(op); i++) {
+      TN *opnd_tn = OP_opnd(op,i);
+      if (TN_is_constant(opnd_tn)) continue;
+      if (TN_is_global_reg(opnd_tn) || TN_is_dedicated(opnd_tn)) {
+        EBO_REG_ENTRY_ptr(reginfo) = hTN_MAP_Get (regs_map, opnd_tn);
+	if (!EBO_REG_ENTRY_reg_assigned(reginfo)) {
+	  cl = TN_register_class(opnd_tn);
+	  global_regs_used[cl]++;
+	  EBO_REG_ENTRY_reg_assigned(reginfo) = TRUE;
+	  hTN_MAP_Set (regs_map, opnd_tn, EBO_REG_ENTRY_ptr(reginfo));
+	}
+      }
+    }
+  }
+
+  // Determine the change in register pressure at each OP.
+  FOR_ALL_BB_OPs_REV (bb, op) {
+    FOR_ALL_ISA_REGISTER_CLASS(cl) {
+      regs_delta[cl] = 0;
+    }
+    for (i = 0; i < OP_results(op); i++) {
+      TN *result_tn = OP_result(op, i);
+      EBO_REG_ENTRY_ptr(reginfo) = hTN_MAP_Get (regs_map, result_tn);
+      EBO_REG_ENTRY_def_count(reginfo)--;
+      if (EBO_REG_ENTRY_def_count(reginfo) == 0 &&
+	  EBO_REG_ENTRY_reg_assigned(reginfo)) 
+	{
+	  ISA_REGISTER_CLASS cl = TN_register_class(result_tn);
+	  regs_delta[cl]++;	// delta for forward BB traversal
+	  EBO_REG_ENTRY_reg_assigned(reginfo) = FALSE;
+	}
+      hTN_MAP_Set (regs_map, result_tn, EBO_REG_ENTRY_ptr(reginfo));
+    }
+    for (i = 0; i < OP_opnds(op); i++) {
+      TN *opnd_tn = OP_opnd(op,i);
+      if (TN_is_constant(opnd_tn)) continue;
+      EBO_REG_ENTRY_ptr(reginfo) = hTN_MAP_Get (regs_map, opnd_tn);
+      if (!EBO_REG_ENTRY_reg_assigned(reginfo)) {
+	ISA_REGISTER_CLASS cl = TN_register_class(opnd_tn);
+	regs_delta[cl]--;	// delta for forward BB traversal
+	EBO_REG_ENTRY_reg_assigned(reginfo) = TRUE;
+	if (EBO_REG_ENTRY_last_use_OP_num(reginfo) == 0)
+	  EBO_REG_ENTRY_last_use_OP_num(reginfo) = op_num;
+	hTN_MAP_Set (regs_map, opnd_tn, EBO_REG_ENTRY_ptr(reginfo));
+      }
+    }
+    // Account for global register usage by adding the globals to the first
+    // OP's delta.
+    if (op_num == 1) {
+      FOR_ALL_ISA_REGISTER_CLASS(cl) {
+	regs_delta[cl] += global_regs_used[cl];
+      }
+    }
+    // Record the deltas.
+    FOR_ALL_ISA_REGISTER_CLASS(cl) {
+      OP_MAP32_Set(Regs_Delta_Map[cl], op, regs_delta[cl]);
+    }
+    op_num--;
+  }
+}
+
+// Extend the live range of TN to OP_NUM.
+static void
+Extend_Live_Range (int *regs_used, int *last_fat_point, int op_num,
+		   EBO_TN_INFO *tninfo, EBO_REG_ENTRY reginfo, BB *bb)
+{
+  int i;
+  ISA_REGISTER_CLASS cl = TN_register_class(tninfo->local_tn);
+  int regs_avail = avail_regs_count[cl];
+
+  // Determine the OP that previously last uses the live range.
+  int last_use_op = (tninfo->in_bb == bb) ? 
+		      EBO_REG_ENTRY_last_use_OP_num(reginfo) : 1;
+  // Update register usage and fat point.
+  for (i = op_num - 1; i >= last_use_op; i--) {
+    EBO_REG(regs_used, cl, i)++;
+    if (EBO_REG(regs_used, cl, i) > regs_avail) {
+      last_fat_point[cl] = i;
+      // Don't update register usage before the fat point since we don't care
+      // about those usages.
+      break;
+    }
+  }
+
+  // Extend live range to include the OP at op_num.
+  EBO_REG_ENTRY_last_use_OP_num(reginfo) = op_num;
+  hTN_MAP_Set(regs_map, tninfo->local_tn, EBO_REG_ENTRY_ptr(reginfo));
+}
+
+// Update the register usage.  Adjust the fat points to indicate register file
+// overflow.  CSE will not extend a TN's live range beyond a fat point.
+static void
+Update_Reg_Usage (OP *op, int op_num, int *regs_used, int *last_fat_point,
+		  BOOL op_is_deleted_load)
+{
+  ISA_REGISTER_CLASS cl;
+
+  FOR_ALL_ISA_REGISTER_CLASS(cl) {
+    int regs_delta_at_op = OP_MAP32_Get(Regs_Delta_Map[cl], op);
+    int regs_avail = avail_regs_count[cl];
+    int regs_used_after_op =
+	  EBO_REG(regs_used, cl, op_num-1) + regs_delta_at_op;
+    if (regs_used_after_op > regs_avail)
+      last_fat_point[cl] = op_num;
+    EBO_REG(regs_used, cl, op_num) = regs_used_after_op;
+  }
+
+  // If OP is a deleted load, then no register is needed for the result.
+  if (op_is_deleted_load) {
+    cl = TN_register_class(OP_result(op, 0));
+    EBO_REG(regs_used, cl, op_num)--;
+  }
+}
+#endif
 
 /* ===================================================================== */
 
@@ -374,9 +556,6 @@ BOOL EBO_Fix_Same_Res_Op (OP *op,
 
 }
 
-#if __GNUC__ >= 3
-inline
-#endif
 BOOL TN_live_out_of(TN *tn, BB *bb)
 /* -----------------------------------------------------------------------
  * Requires: global liveness info up-to-date
@@ -526,6 +705,26 @@ void EBO_Init(void)
   EBO_num_opinfo_entries = 0;
   EBO_opinfo_entries_reused = 0;
   EBO_trace_pfx = "<ebo> ";
+
+#ifdef KEY
+  // Find the number of registers available in each register class.
+  ISA_REGISTER_CLASS cl;
+  FOR_ALL_ISA_REGISTER_CLASS(cl) {
+    REGISTER_SET reg_set = REGISTER_CLASS_allocatable(cl);
+    REGISTER reg;
+    avail_regs_count[cl] = 0;
+    for (reg = REGISTER_SET_Choose(reg_set);
+	 reg != REGISTER_UNDEFINED;
+	 reg = REGISTER_SET_Choose_Next(reg_set, reg)) {
+      avail_regs_count[cl]++;
+    }
+    // Tune the number of registers available for CSE.
+    if (cl == ISA_REGISTER_CLASS_integer)
+      avail_regs_count[cl] += CG_cse_regs;
+    else if (cl == ISA_REGISTER_CLASS_float)
+      avail_regs_count[cl] += CG_sse_cse_regs;
+  }
+#endif
 }
 
 
@@ -541,6 +740,11 @@ static void EBO_Start()
   EBO_tninfo_table = TN_MAP_Create();
 
 #ifdef KEY
+  ISA_REGISTER_CLASS cl;
+  FOR_ALL_ISA_REGISTER_CLASS(cl) {
+    Regs_Delta_Map[cl] = OP_MAP32_Create();
+  }
+
   EBO_Special_Start( &MEM_local_pool );
 #endif // KEY
 }
@@ -553,6 +757,12 @@ static void EBO_Finish(void)
  */
 {
 #ifdef KEY
+  ISA_REGISTER_CLASS cl;
+  FOR_ALL_ISA_REGISTER_CLASS(cl) {
+    OP_MAP_Delete(Regs_Delta_Map[cl]);
+    Regs_Delta_Map[cl] = NULL;
+  }
+
   EBO_Special_Finish();
 #endif
 
@@ -813,7 +1023,10 @@ find_duplicate_mem_op (BB *bb,
                        OP *op,
                        TN **opnd_tn,
                        EBO_TN_INFO **opnd_tninfo,
-                       EBO_TN_INFO **actual_tninfo)
+                       EBO_TN_INFO **actual_tninfo,
+		       int op_num,
+		       int *regs_used,
+		       int *last_fat_point)
 /* -----------------------------------------------------------------------
  * Requires: 
  * Returns TRUE if the operands of each OP are identical.
@@ -827,6 +1040,14 @@ find_duplicate_mem_op (BB *bb,
   EBO_OP_INFO *adjacent_location = NULL;
   INT64 adjacent_offset_pred;
   INT64 adjacent_offset_succ;
+#ifdef KEY
+  // TRUE if OP is inside the live range of the replacement TN.
+  BOOL inside_lr = TRUE;
+  // If extending the live range of the replacement TN, this is the replacement
+  // TN's tninfo.
+  EBO_TN_INFO *extend_lr_tninfo = NULL;
+  EBO_REG_ENTRY reginfo;
+#endif
 
   if (op == NULL) return FALSE;
 
@@ -862,6 +1083,14 @@ find_duplicate_mem_op (BB *bb,
 #ifdef TARG_X8664
   const INT succ_index_idx = TOP_Find_Operand_Use(OP_code(op),OU_index);
   const INT succ_scale_idx = TOP_Find_Operand_Use(OP_code(op),OU_scale);
+  // For bug 5809, don't CSE "xmm = mov offset(base)" because this increases
+  // xmm registers pressure, causing LRA to spill a lot.
+  if (CG_sse_load_execute != 0 &&
+      OP_load(op) &&
+      succ_index_idx == -1 &&
+      TN_register_class(OP_result(op, 0)) == ISA_REGISTER_CLASS_float) {
+    return FALSE;
+  }
   TN* succ_index_tn = (succ_index_idx >= 0) ? opnd_tn[succ_index_idx] : NULL;
   EBO_TN_INFO* succ_index_tninfo = (succ_index_idx >= 0) ? opnd_tninfo[succ_index_idx] : NULL;
   TN* succ_scale_tn = (succ_scale_idx >= 0) ? opnd_tn[succ_scale_idx] : NULL;
@@ -1209,6 +1438,25 @@ find_duplicate_mem_op (BB *bb,
             }
             break;
           }
+#ifdef KEY
+	  // See if a register is available to hold the stored value.
+	  EBO_REG_ENTRY_ptr(reginfo) = hTN_MAP_Get(regs_map, pred_tn);
+	  if (!TN_is_global_reg(pred_tn) &&
+	      // OP is not inside the live range of the replacement TN?
+	      !(inside_lr = (EBO_REG_ENTRY_last_use_OP_num(reginfo)>=op_num)) &&
+	      // No register available to hold the loaded value?
+	      opinfo->op_num < last_fat_point[TN_register_class(pred_tn)]) {
+            if (EBO_Trace_Hash_Search) {
+              #pragma mips_frequency_hint NEVER
+              fprintf(TFile,"%sMemory match found, but no register available to keep stored value\n\t",
+                            EBO_trace_pfx);
+              Print_OP_No_SrcLine(pred_op);
+            }
+            break;
+	  }
+	  if (!inside_lr)
+	    extend_lr_tninfo = opinfo->actual_opnd[pred_stored_idx];
+#endif
         }
       } else {
         TN *pred_tn = OP_result(pred_op,0);
@@ -1223,6 +1471,25 @@ find_duplicate_mem_op (BB *bb,
             }
             break;
           }
+#ifdef KEY
+	  // See if a register is available to hold the loaded value.
+	  EBO_REG_ENTRY_ptr(reginfo) = hTN_MAP_Get(regs_map, pred_tn);
+	  if (!TN_is_global_reg(pred_tn) &&
+	      // OP is not inside the live range of the replacement TN?
+	      !(inside_lr = (EBO_REG_ENTRY_last_use_OP_num(reginfo)>=op_num)) &&
+	      // No register available to hold the loaded value?
+	      opinfo->op_num < last_fat_point[TN_register_class(pred_tn)]) {
+            if (EBO_Trace_Hash_Search) {
+              #pragma mips_frequency_hint NEVER
+              fprintf(TFile,"%sMemory match found, but no register available to keep loaded value\n\t",
+                            EBO_trace_pfx);
+              Print_OP_No_SrcLine(pred_op);
+            }
+            break;
+	  }
+	  if (!inside_lr)
+	    extend_lr_tninfo = opinfo->actual_rslt[0];
+#endif
         }
       }
     }
@@ -1251,6 +1518,11 @@ find_duplicate_mem_op (BB *bb,
       }
 
       if (op_replaced) {
+#ifdef KEY
+	if (extend_lr_tninfo != NULL)
+	  Extend_Live_Range(regs_used, last_fat_point, op_num, extend_lr_tninfo,
+			    reginfo, bb);
+#endif
         return TRUE;
       } else {
        /* If we matched once and failed to eliminate it,
@@ -1614,6 +1886,10 @@ Find_BB_TNs (BB *bb)
 {
   OP *op;
   BOOL no_barriers_encountered = TRUE;
+#ifdef KEY
+  OP *op_with_reg_usage_info, *next_op_with_reg_usage_info;
+  INT op_count = 0;
+#endif
 
   if (EBO_Trace_Execution) {
     #pragma mips_frequency_hint NEVER
@@ -1621,6 +1897,10 @@ Find_BB_TNs (BB *bb)
             EBO_trace_pfx,BB_id(bb),EBO_in_peep?" - peep ":" ");
     Print_BB(bb);
   }
+
+#ifdef KEY
+  Estimate_Reg_Usage(bb, &MEM_local_pool);
+#endif
 
 #ifdef TARG_X8664
   const BOOL do_load_execute = ( CG_load_execute > 0 ) && !EBO_in_pre && !EBO_in_loop;
@@ -1640,12 +1920,37 @@ Find_BB_TNs (BB *bb)
   FOR_ALL_BB_OPs (bb, op) {
     INT nopnds = OP_opnds(op);
     if (nopnds > max_opnds) max_opnds = nopnds;
+#ifdef KEY
+    op_count++;
+#endif
   }
   TN **opnd_tn = TYPE_ALLOCA_N(TN *, max_opnds);
   EBO_TN_INFO **opnd_tninfo = TYPE_ALLOCA_N(EBO_TN_INFO *, max_opnds);
   EBO_TN_INFO **orig_tninfo = TYPE_ALLOCA_N(EBO_TN_INFO *, max_opnds);
 
   in_delay_slot = FALSE;
+
+#ifdef KEY
+  int op_num = 0;
+  int *regs_used;
+  // For CSE purposes, a fat point is where register demand exceeds the number
+  // of registers available.  It is represented as a OP number.
+  int last_fat_point[ISA_REGISTER_CLASS_MAX+1];
+  ISA_REGISTER_CLASS cl;
+
+  // Initialize register usage and fat points.
+  regs_used = (int*)alloca((ISA_REGISTER_CLASS_MAX+1)*(op_count+1)*sizeof(int));
+  memset (regs_used, 0,
+	  (ISA_REGISTER_CLASS_MAX+1) * (op_count+1) * sizeof(int));
+  FOR_ALL_ISA_REGISTER_CLASS(cl) {
+    last_fat_point[cl] = 0;
+  }
+
+  // Identify the next OP that has register usage info generated by
+  // Estimate_Reg_Usage.  EBO opts may create replacement OPs, whose register
+  // info we haven't compute.
+  op_with_reg_usage_info = BB_first_op(bb);
+#endif
 
   FOR_ALL_BB_OPs (bb, op) {
     TN *tn;
@@ -1665,6 +1970,14 @@ Find_BB_TNs (BB *bb)
 
    /* The assumption is that this can never occur, but make sure it doesn't! */
     FmtAssert(num_opnds <= max_opnds, ("dynamic array allocation was too small!"));
+
+#ifdef KEY
+    // Must sync op_num with the op_num in Estimate_Reg_Usage.
+    if (op == op_with_reg_usage_info) {
+      op_num++;
+      next_op_with_reg_usage_info = OP_next(op);
+    }
+#endif
 
     if (CGTARG_Is_OP_Barrier(op) || OP_access_reg_bank(op)) {
       if (Special_Sequence(op, NULL, NULL)) {
@@ -1686,7 +1999,12 @@ Find_BB_TNs (BB *bb)
       }
     }
 
-    if ((num_opnds == 0) && (OP_results(op) == 0)) continue;
+    if ((num_opnds == 0) && (OP_results(op) == 0))
+#ifdef KEY
+      goto finish;
+#else
+      continue;
+#endif
 
     if (EBO_Trace_Data_Flow) {
       fprintf(TFile,"%sProcess OP\n\t",EBO_trace_pfx); Print_OP_No_SrcLine(op);
@@ -1717,6 +2035,7 @@ Find_BB_TNs (BB *bb)
       if (tn == NULL || TN_is_constant(tn) || TN_is_label(tn)) {
         continue;
       }
+
 #ifdef KEY
       // Don't handle asm OPs where a result may have to be the same as a src
       // operand.  The asm can have multiple such results, but the EBO code
@@ -1893,6 +2212,12 @@ Find_BB_TNs (BB *bb)
         tn = tninfo->replacement_tn;
         tninfo = tninfo->replacement_tninfo;
 
+#ifdef KEY
+	EBO_REG_ENTRY reginfo;
+	BOOL inside_lr = TRUE;
+	// opinfo of OP defining the replacement TN
+	EBO_OP_INFO *pred_opinfo = locate_opinfo_entry(tninfo);
+#endif
         if (!TN_is_constant(tn) &&
             (!OP_store(op) ||
              (opndnum != TOP_Find_Operand_Use(OP_code(op),OU_storeval)) ||
@@ -1916,7 +2241,19 @@ Find_BB_TNs (BB *bb)
             (TN_is_fpu_int(old_tn) == TN_is_fpu_int(tn_replace)) &&
             ((OP_results(op) == 0) ||
              !OP_uniq_res(op) ||
-             !tn_registers_identical(tn, OP_result(op,0))) ) {
+             !tn_registers_identical(tn, OP_result(op,0)))
+#ifdef KEY
+            && (TN_is_global_reg(tn_replace) ||
+	    	// OP is inside the live range of the replacement TN?
+		(EBO_REG_ENTRY_ptr(reginfo) = hTN_MAP_Get(regs_map,tn_replace),
+		 inside_lr =
+		   (EBO_REG_ENTRY_last_use_OP_num(reginfo) >= op_num)) ||
+		// Register available for CSE?
+		(pred_opinfo == NULL ||
+		 (pred_opinfo->op_num >=
+		    last_fat_point[TN_register_class(tn_replace)])))
+#endif
+	   ) {
          /* The original TN can be "physically" replaced with another TN. */
          /* Put the new TN in the expression,           */
          /* decrement the use count of the previous TN, */
@@ -1955,6 +2292,13 @@ Find_BB_TNs (BB *bb)
          /* Update information about the actual expression. */
           orig_tninfo[opndnum] = tninfo;
 
+#ifdef KEY
+	  // Extend the live range of the replacement TN if OP is outside of
+	  // this live range.
+	  if (!inside_lr)
+	    Extend_Live_Range(regs_used, last_fat_point, op_num, tninfo,
+			      reginfo, bb);
+#endif
         } /* replace the operand with another TN. */
       }
 
@@ -2002,10 +2346,12 @@ Find_BB_TNs (BB *bb)
       }
       if (!op_replaced &&
           no_barriers_encountered) {
-        op_replaced = find_duplicate_mem_op (bb, op, opnd_tn, opnd_tninfo, orig_tninfo);
+        op_replaced = find_duplicate_mem_op (bb, op, opnd_tn, opnd_tninfo,
+					     orig_tninfo, op_num, regs_used,
+					     last_fat_point);
       }
 #ifdef TARG_X8664
-      if (WOPT_Enable_Aggstr_Reduction && 
+      if (WOPT_Enable_Autoaggstr_Reduction_Threshold > 0 && 
 	  LNO_Run_Prefetch != AGGRESSIVE_PREFETCH &&
 	  !EBO_in_peep && !op_replaced && OP_prefetch(op)) {
 	op_replaced = Delete_Unwanted_Prefetches(op);
@@ -2095,16 +2441,19 @@ Find_BB_TNs (BB *bb)
       }
 
 #ifdef TARG_X8664
-#ifndef USE_ORG_LOAD_EXEC
       if( do_load_execute  &&
 	  !op_replaced     &&
 	  !OP_effectively_copy(op) ){
 	op_replaced = EBO_Load_Execution( op, opnd_tn, orig_tninfo );
       }
-#endif
+
       if( !op_replaced     &&
 	  !OP_effectively_copy(op) ){
 	op_replaced = EBO_Lea_Insertion( op, opnd_tn, orig_tninfo );
+      }
+      if (!op_replaced &&  
+	  !OP_effectively_copy(op) ) {
+	op_replaced = EBO_Fold_Load_Duplicate( op, opnd_tn, orig_tninfo );
       }
       if (!op_replaced && TOP_is_move_ext( OP_code(op) ))
 	op_replaced = Special_Sequence( op, opnd_tn, orig_tninfo );
@@ -2116,6 +2465,14 @@ Find_BB_TNs (BB *bb)
         fprintf(TFile,"%sin BB:%d remove simplified op - ",EBO_trace_pfx,BB_id(bb));
         Print_OP_No_SrcLine(op);
       }
+#ifdef KEY
+      // If the deleted OP is a load, then update the source register usage (in
+      // case the src live range(s) ends here) but don't reserve a register for
+      // the result.
+      // If the deleted OP is an ALU OP being replaced by a load-execute, then
+      // update the src and dest as usual.
+      Update_Reg_Usage(op, op_num, regs_used, last_fat_point, OP_load(op));
+#endif
       remove_uses (num_opnds, orig_tninfo);
       OP_Change_To_Noop(op);
     } else {
@@ -2124,6 +2481,10 @@ Find_BB_TNs (BB *bb)
 
       FmtAssert(((EBO_last_opinfo != NULL) && (EBO_last_opinfo->in_op == op)),
                   ("OP wasn't added to hash table"));
+
+#ifdef KEY
+      EBO_last_opinfo->op_num = op_num;
+#endif
 
      /* Special processing for the result TNs */
       resnum = OP_results(op);
@@ -2213,6 +2574,18 @@ Find_BB_TNs (BB *bb)
     }
 
     if (PROC_has_branch_delay_slot()) in_delay_slot = OP_xfer(op);
+
+#ifdef KEY
+finish:
+    // Update the register usage.  Identify the next OP with register usage
+    // info.
+    Is_True(op_num <= op_count, ("Find_BB_TNs: wrong op_num"));
+    if (op == op_with_reg_usage_info) {
+      op_with_reg_usage_info = next_op_with_reg_usage_info;
+      if (!op_replaced)
+	Update_Reg_Usage(op, op_num, regs_used, last_fat_point, FALSE);
+    }
+#endif
   }
 
   return no_barriers_encountered;
@@ -2594,6 +2967,9 @@ EBO_Add_BB_to_EB (BB * bb)
   EBO_OP_INFO *save_last_opinfo = EBO_last_opinfo;
   BBLIST *succ_list;
   BOOL normal_conditions;
+#ifdef KEY
+  hTN_MAP save_regs_map = regs_map;
+#endif
 
   if (EBO_Trace_Execution) {
     #pragma mips_frequency_hint NEVER
@@ -2645,6 +3021,9 @@ EBO_Add_BB_to_EB (BB * bb)
  /* Remove information about TN's and OP's in this block. */
   backup_tninfo_list(save_last_tninfo);
   backup_opinfo_list(save_last_opinfo);
+#ifdef KEY
+  regs_map = save_regs_map;
+#endif
 
   return;
 }

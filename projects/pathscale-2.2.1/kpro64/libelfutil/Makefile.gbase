@@ -49,29 +49,12 @@ endif
 LIBRARY = libelfutil$(XTND).a
 DSO     = libelfutil$(XTND).so
 
-ifeq ($(BUILD_COMPILER), EDG)
-CVERSION = -xansi
-WOFF     = -fullwarn
-else
-CVERSION =
-WOFF     =
-endif
-
 LCOPTS   = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS   = -D_SYSV -DSYSV
 
-ifeq ($(BUILD_OS), IRIX)
-LCINCS   = -I$(BUILD_BASE)/../include -I$(ROOT)/usr/include
-else
-LCINCS = -I$(BUILD_AREA)/include/libelf
-endif
+LCINCS = -I$(BUILD_TOT)/include
 
 TARGETS = $(LIBRARY)
-
-ifeq ($(BUILD_OS), IRIX)
-CFILES += \
-	disassembler.c
-endif
 
 XLATECFILES = \
 	xlate_init_elf.c \
@@ -110,12 +93,6 @@ XLATEOBJECTS = $(XLATECFILES:.c=.o)
 LIBOBJECTS = \
 	$(XLATEOBJECTS)
 
-ifeq ($(BUILD_OS), IRIX)
-LIBOBJECTS += \
-	disassembler32.o \
-	disassembler64.o
-endif
-
 default: first $(TARGETS) last
 
 first:
@@ -134,14 +111,6 @@ install: default
 include $(COMMONRULES)
 
 VPATH =  $(BUILD_BASE)
-
-ifeq ($(BUILD_OS), IRIX)
-disassembler32.o: disassembler.c
-	$(CCF) -c -o disassembler32.o $(BUILD_BASE)/disassembler.c
-
-disassembler64.o: disassembler.c
-	$(CCF) -c -D_64BIT_OBJECTS -o disassembler64.o $(BUILD_BASE)/disassembler.c
-endif
 
 $(LIBRARY): $(LIBOBJECTS)
 	$(ar) cru $@ $^

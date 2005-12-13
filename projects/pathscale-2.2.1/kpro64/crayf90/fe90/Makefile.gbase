@@ -71,9 +71,6 @@ include $(COMMONDEFS)
 #  Set environment variables
 #
 #----------------------------------------------------------------------
-ifeq ($(BUILD_COMPILER), EDG)
-CVERSION  =  -xansi
-endif
 
 #----------------------------------------------------------------------
 #  Compiler Options
@@ -89,7 +86,6 @@ endif
 
 ifeq ($(BUILD_ARCH), MIPS3)
 TARGDEFS  = -DTARG_MIPS
-WOFF = -woff 1107,1174,1209,1685,1185,1155,1506,1552,1196,1498,1692
 endif
 
 #----------------------------------------------------------------------
@@ -178,9 +174,7 @@ LDIRT =
 
 VPATH    =  $(FE90_DIR)
 
-ifneq ($(BUILD_COMPILER), EDG)
 LCDEFS = -funsigned-char
-endif
 ifeq ($(BUILD_OS), LINUX)
 LCDEFS += -D_LINUX_LINUX
 else
@@ -258,9 +252,18 @@ include $(COMMONRULES)
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
 
+
+# We have bootstrapping problems due to the fix for bug 4656, so (kludge)
+# if it fails with the new -intrinsic=EVERY option, try it without.
+# At present, we build only IA32, so no need to do it in the "else" clause
+# (which appears to be wrong anyway.)
+
 fold.o:fold.f
 ifeq ($(BUILD_ARCH), IA32)
-	$(F90) -m32 $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f
+	if $(F90) -intrinsic=EVERY -m32 -mno-sse2 $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f; \
+	then : ; \
+	else $(F90) -m32 -mno-sse2 $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f; \
+	fi
 else
-	$(F90) -m32 $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f
+	$(F90) -m32 -mno-sse2 $(FFLAGS) -c $(CRAYF90_DIR)/fe90/fold.f
 endif

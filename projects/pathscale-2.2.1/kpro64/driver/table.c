@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -67,6 +67,10 @@ typedef enum {
 	needs_string,		/* option needs string arg */
 	needs_string_or_dash,	/* same as needs_string but also allow '-' */
 	needs_directory,	/* option needs directory arg */
+#ifdef KEY
+	needs_directory_or_null, /* option takes directory arg; if no dir arg
+				    is seen, ignore the option altogether */
+#endif
 	needs_decimal,		/* option needs decimal arg */
 	combo 			/* is combination of options */
 } syntax_t; 
@@ -142,6 +146,9 @@ find_name(char *s)
 		case needs_string_or_dash:
 		case needs_string:
 		case needs_directory:
+#ifdef KEY
+		case needs_directory_or_null:
+#endif
 			len = strlen(options[i].name);
 			if ((strncmp(s, options[i].name, len) == 0)
 			    /* isgraph includes underscore and % */
@@ -210,6 +217,12 @@ set_option_name(char *name, char *s, int *num_letters)
 				break;
 			case 'D':
 				f = needs_directory;
+#ifdef KEY
+				if (*(ps+2) == '?') {
+				  ps++;
+				  f = needs_directory_or_null;
+				}
+#endif
 				break;
 			}
 			ps++;
@@ -247,6 +260,9 @@ set_flag_name(option_info_t *opt)
 	case needs_directory:
 	case needs_decimal:
 	case complicated:
+#ifdef KEY
+	case needs_directory_or_null:
+#endif
 		/* add trailing __ to distinguish with no-arg case */
 		/* use two _ to distinguish from -I- case */
 		*pf = '_';
@@ -390,7 +406,69 @@ static int reverse_strcmp(const void* x, const void* y) {
   return strcmp(*y1, *x1);
 }
 
-/* read table from stdin, without assuming options section is sorted. */
+/*
+ * Find options that have the same mangled name.
+ */
+option_info_t *find_by_flag(char *name, int last)
+{
+	int i;
+
+	for (i = 0; i < last; i++) {
+		if (strcmp(options[i].flag, name) == 0)
+			return &options[i];
+	}
+	return NULL;
+}
+
+/*
+ * Compare options for approximate equality.
+ */
+static int compare_options(option_info_t *a, option_info_t *b)
+{
+	option_list_t *oa, *ob;
+	
+	if (a->languages != b->languages)
+		return 0;
+	if (a->phases != b->phases)
+		return 0;
+	if (a->phases != b->phases)
+		return 0;
+	if (strcmp(a->action, b->action) != 0)
+		return 0;
+
+	for (oa = a->implies, ob = b->implies;; oa = oa->next, ob = ob->next) {
+		if ((oa != NULL) ^ (ob != NULL))
+			return 0;
+		if (strcmp(oa->name, ob->name) != 0)
+			return 0;
+	}
+	
+	return 1;
+}
+
+/*
+ * Check repeated definitions of a flag, to ensure they are all
+ * identical.
+ */
+static void check_dups(void)
+{
+	int i;
+	
+	for (i = 1; i < num_options; i++) {
+		option_info_t *opt = find_by_flag(options[i].flag, i);
+		if (opt == NULL)
+			continue;
+		if (!compare_options(&options[i], opt)) {
+			fprintf(stderr, "Error: %s and %s are not identical\n",
+				options[i].name, opt->name);
+			exit(1);
+		}
+	}
+}
+
+/*
+ * Read table from stdin, without assuming options section is sorted.
+ */
 static void read_table(void) 
 {
 	char line[512];
@@ -496,6 +574,8 @@ static void read_table(void)
             INCREMENT_INDEX(i, MAX_OPTIONS);
         }
 
+	check_dups();
+	
         /* Read and process the COMBINATIONS section */
         if (section != COMBINATIONS) {
           internal_error("COMBINATIONS section not found");
@@ -610,7 +690,8 @@ write_option_names (void)
 	FILE *f;
 	f = begin_file("option_names.h");
 	for (i = 0; i < num_options; i++) {
-		fprintf(f, "#define %s %d\n", options[i].flag, i);
+		if (!find_by_flag(options[i].flag, i))
+			fprintf(f, "#define %s %d\n", options[i].flag, i);
 		if (options[i].toggle) {
 			/* get var after "toggle(&" */
 			strcpy(buffer, ((char*)options[i].action)+8);
@@ -681,6 +762,8 @@ write_init_options (void)
 	fprintf(f, "\toptions = (option_info_t *) malloc(max_options*sizeof(option_info_t));\n");
 
 	for (i = 0; i < num_options; i++) {
+		if (find_by_flag(options[i].flag, i))
+			continue;
 		if (table_for_phase) {
 		    fprintf(f, "\tcreate_option_info(%d,\"%s\",",
 			    i, options[i].name);
@@ -743,6 +826,8 @@ write_get_option (void)
 			i++;
 			continue;
 		}
+		if (find_by_flag(options[i].flag, i))
+			continue;
 		if (options[i].name[1] == '\0')	/* special case "-" */
 			fprintf(f, "case '\\0':\n");
 		else
@@ -787,6 +872,9 @@ write_get_option (void)
 		    case needs_string:
 		    case needs_directory:
 		    case needs_decimal:
+#ifdef KEY
+		    case needs_directory_or_null:
+#endif
 			/* require this to be a separate arg */
 			fprintf(f, "\tif (!is_new_arg) break;\n");
 			/* for cases where base is > 1 letter,
@@ -799,7 +887,11 @@ write_get_option (void)
 			} /* else -<single-letter> */
 			if (options[i].syntax == needs_decimal) {
 				fprintf(f, "\tif (is_decimal(next_string(argv,argi))) {\n");
-			} else if (options[i].syntax == needs_directory) {
+			} else if (options[i].syntax == needs_directory
+#ifdef KEY
+				   || options[i].syntax == needs_directory_or_null
+#endif
+				   ) {
 				fprintf(f, "\tif (want_directory(next_string(argv,argi))) {\n");
 			}
 			fprintf(f, "\t\toptargs = get_optarg(argv, argi);\n");
@@ -810,21 +902,45 @@ write_get_option (void)
 			if (options[i].syntax == needs_string_or_dash)
 			  fprintf(f, "\t\treturn add_string_option_or_dash(%s,optargs);\n", 
 				  options[i].flag);
+#ifdef KEY
+			else if (options[i].syntax == needs_directory)
+			  fprintf(f, "\t\treturn add_any_string_option(%s,optargs);\n", 
+				  options[i].flag);
+#endif
 			else
 			  fprintf(f, "\t\treturn add_string_option(%s,optargs);\n", 
 				  options[i].flag);
 			fprintf(f, "\t\t/* NOTREACHED */\n");
-			if (options[i].syntax == needs_directory) {
+			if (options[i].syntax == needs_directory
+#ifdef KEY
+			    || options[i].syntax == needs_directory_or_null
+#endif
+			    ) {
 				fprintf(f, "\t} else if (!is_last_char(argv,argi)) {\n");
 				fprintf(f, "\t\tif (fullwarn) {\n");
 				fprintf(f, "\t\t\twarning(\"%%s does not refer to a valid directory\", option_name);\n");
 				fprintf(f, "\t\t}\n");
 				fprintf(f, "\t\toptargs = get_optarg(argv,argi);\n");
 				fprintf(f, "\t\tget_next_arg(argi);\n");
+#ifdef KEY
+				fprintf(f, "\t\treturn add_any_string_option(%s,optargs);\n", 
+					options[i].flag);
+#else
 				fprintf(f, "\t\treturn add_string_option(%s,optargs);\n", 
 					options[i].flag);
+#endif
 				fprintf(f, "\t\t/* NOTREACHED */\n");
 			}
+#ifdef KEY
+			// Ignore %D? option if no dir arg is found by changing
+			// them into -dummy.
+			if (options[i].syntax == needs_directory_or_null) {
+				fprintf(f, "\t} else {\n");
+				fprintf(f, "\t  optargs = current_string(argv,argi);\n");
+				fprintf(f, "\t  get_next_arg(argi);\n");
+				fprintf(f, "\t  return O_dummy;\n");
+			}
+#endif
 			if (options[i].syntax != needs_string
 			    && options[i].syntax != needs_string_or_dash
 					) {
@@ -936,12 +1052,13 @@ write_opt_action (void)
 	fprintf(f, "{\n");
 	fprintf(f, "switch (optflag) {\n");
 	for (i = 0; i < num_options; i++) {
-		if (!options[i].internal && options[i].syntax != combo) {
-			if (!EMPTY(options[i].action)) {
-				fprintf(f, "case %s:\n", options[i].flag);
-				fprintf(f, "\t%s\n", options[i].action);
-				fprintf(f, "\tbreak;\n");
-			}
+		if (!options[i].internal &&
+		    options[i].syntax != combo &&
+		    !EMPTY(options[i].action) &&
+		    find_by_flag(options[i].flag, i) == NULL) {
+			fprintf(f, "case %s:\n", options[i].flag);
+			fprintf(f, "\t%s\n", options[i].action);
+			fprintf(f, "\tbreak;\n");
 		}
 	}
 	fprintf(f, "}\n");
@@ -953,6 +1070,9 @@ write_opt_action (void)
         fprintf(f, "switch (optflag) {\n");
 	for (i = 0; i < num_options; i++) {
 		if (options[i].toggle) {
+			if (find_by_flag(options[i].flag, i))
+				continue;
+
 			fprintf(f, "case %s:\n", options[i].flag);
 			/* get var after "toggle(&" */
 			strcpy(buf, options[i].action+8);
@@ -1004,6 +1124,8 @@ write_check_combos (void)
 	fprintf(f, "{\n");
 	for (i = 0; i < num_options; i++) {
 		if (options[i].syntax == combo && !EMPTY(options[i].action)) {
+			if (find_by_flag(options[i].flag, i))
+				continue;
 			fprintf(f, "\tif (option_was_seen(%s)) {\n",
 				options[i].flag);
 			if (strcmp(options[i].action, "WARNING") == 0) {
@@ -1025,6 +1147,8 @@ write_check_combos (void)
 		if (options[i].syntax == combo && !EMPTY(options[i].action)
 			&& strcmp(options[i].action, "WARNING") == 0 )
 		{
+			if (find_by_flag(options[i].flag, i))
+				continue;
 			fprintf(f, "\tcase %s:\n", options[i].flag);
 			n++;
 		}
@@ -1040,6 +1164,8 @@ write_check_combos (void)
 	fprintf(f, "{\n");
 	for (i = 0; i < num_options; i++) {
 		if (options[i].syntax == combo) {
+			if (find_by_flag(options[i].flag, i))
+				continue;
 			q = options[i].combo_list;
 			if (q == NULL) internal_error("empty combo_list?");
 			fprintf(f, "\tif (");

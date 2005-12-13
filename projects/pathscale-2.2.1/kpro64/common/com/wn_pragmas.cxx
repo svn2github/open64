@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -258,6 +258,11 @@ WN_PRAGMA_DESC WN_pragmas[] = {
 #ifdef KEY
   { PUSER_LNO, WN_PRAGMA_SCOPE_SPECIAL,	"FORALL" },
 #endif
+  { PUSER_MP, WN_PRAGMA_SCOPE_POINT,    "COPYPRIVATE" }, /* by jhs, 02.9.3 */
+  { PUSER_MP, WN_PRAGMA_SCOPE_POINT,	"PARALLEL_WORKSHARE" }, /* by jhs, 04.3.10 */
+  { PUSER_MP, WN_PRAGMA_SCOPE_ON,	"PWORKSHARE_BEGIN" }, /* by jhs, 04.3.10 */
+  { PUSER_MP, WN_PRAGMA_SCOPE_OFF,	"PWORKSHARE_END" }, /* by jhs, 04.3.10 */
+  { PUSER_MP, WN_PRAGMA_SCOPE_SPECIAL,  "THREADPRIVATE" }, /* by jhs, 02.9.18 */
 
   { PUSER_NULL,	WN_PRAGMA_SCOPE_UNKNOWN, NULL }	/* MAX_WN_PRAGMA */
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -258,6 +258,17 @@ _f_open(
 	atstr	= NULL;
 	aifound	= _assign_asgcmd_info(fname, unum, gamask, &ai, &atstr,
 			     olptr->oerr);
+#ifdef KEY /* Bug 4924 */
+        /* Ignore "-F f77.mips" if the file is not sequential and thus has no
+	 * headers. Otherwise, we would select an ffio layer which gives a
+	 * runtime error on non-sequential files. Today f77.mips is the only
+	 * value we support; if we supported some other value which permitted
+	 * non-sequential access, this test would need to be made more precise.
+	 */
+        if (!is_seq) {
+	  ai.F_filter_flg = 0;
+	}
+#endif /* KEY Bug 4924 */
 
 	if (aifound == -1) {
 		freeit(fname);
@@ -733,16 +744,21 @@ _f_open(
 			{
 				int	neg1;
 
-				neg1	= -1;
-				errn	= _setpos(css, cup, &neg1, 1);
+				/* Bug 4478. Ignore POSITION='APPEND' for things that can't seek. */
 
-				if (errn != 0)
+				if (cup->useek) {
+
+				  neg1	= -1;
+				  errn	= _setpos(css, cup, &neg1, 1);
+
+				  if (errn != 0)
 					goto open_error;
 
-				errn	= _unit_bksp(cup);
+				  errn	= _unit_bksp(cup);
 
-				if (errn != 0)
+				  if (errn != 0)
 					goto open_error;
+				}
 			}
 			break;
 

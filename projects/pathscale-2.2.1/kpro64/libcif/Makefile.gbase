@@ -1,4 +1,4 @@
-#
+# -*- makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -39,13 +39,7 @@
 
 include $(COMMONDEFS)
 
-ifeq ($(BUILD_COMPILER), EDG)
-CVERSION = -xansi -OPT:Olimit=3500
-else
-CVERSION = -ansi -fwritable-strings
-endif
-
-LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
+LCOPTS = -ansi $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS =
 LCINCS += -I$(BUILD_BASE)
 

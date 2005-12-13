@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -239,6 +239,11 @@ cwh_auxst_free(void)
     l = cwh_auxst_find_list(o,l_COMLIST);
     cwh_auxst_free_list(&l);
 
+#ifdef KEY /* Bug 5271 */
+    l = cwh_auxst_find_list(o,l_PU_COMLIST);
+    cwh_auxst_free_list(&l);
+#endif /* KEY Bug 5271 */
+
     l = cwh_auxst_find_list(o,l_ALTENTRY);
     cwh_auxst_free_list(&l);
 
@@ -346,6 +351,12 @@ cwh_auxst_find_list(AUXST * o, enum list_name list)
     l = AUXST_Commons(o);
     break;
 
+#ifdef KEY /* Bug 5271 */
+  case l_PU_COMLIST:
+    l = AUXST_PU_Commons(o);
+    break;
+#endif /* KEY Bug 5271 */
+
   case l_ALTENTRY:
     l = AUXST_Altentries(o);
     break;
@@ -412,6 +423,10 @@ cwh_auxst_add_item(ST * parent, ST *st, enum list_name list)
 
   if (list == l_COMLIST) 
     b = TRUE;
+#ifdef KEY /* Bug 5271 */
+  if (list == l_PU_COMLIST) 
+    b = TRUE;
+#endif /* KEY Bug 5271 */
 
   o = cwh_auxst_find(parent,TRUE);
   c = cwh_auxst_find_list(o, list);
@@ -476,6 +491,12 @@ cwh_auxst_add_list(ST * parent, LIST *l, enum list_name list)
     *AUXST_Commons(o) = *l ;
     break;
 
+#ifdef KEY /* Bug 5271 */
+  case l_PU_COMLIST:
+    *AUXST_PU_Commons(o) = *l ;
+    break;
+#endif /* KEY Bug 5271 */
+
   case l_ALTENTRY:
     *AUXST_Altentries(o) = *l ;
     break;
@@ -539,6 +560,30 @@ cwh_auxst_next_element(ST * parent, ITEM *i, enum list_name list)
 
   return (i);
 }
+
+#ifdef KEY /* Bug 5271 */
+/*===================================================
+ *
+ * cwh_clear_common_list
+ *
+ * Remove common variables left over from earlier program units so that the
+ * Dwarf symbol table doesn't "accumulate" them as compilation proceeds
+ *
+ ====================================================
+*/
+extern void
+cwh_clear_PU_common_list(ST *st)
+{
+    AUXST *o = cwh_auxst_find(st,TRUE);
+    LIST *c = cwh_auxst_find_list(o, l_PU_COMLIST);
+    LIST *d = c;
+    cwh_auxst_free_list(&c);
+    // cwh_auxst_free_list sets its arg ptr to null, but leaves the pointee
+    // containing stale values!
+    d->first = d->last = NULL;
+    d->nitems = 0;
+}
+#endif /* KEY Bug 5271 */
 
 /*===================================================
  *
@@ -984,6 +1029,29 @@ cwh_auxst_distr_preg(ST * st)
   return (AUXST_DstrPreg(o)) ;
 }
 
+#ifdef KEY /* Bug 4901 */
+/*===============================================
+ *
+ * cwh_auxst_clear_stem_name
+ *
+ * Clears the stem for a DST name.
+ * 
+ *===============================================
+ */ 
+extern void
+cwh_auxst_clear_stem_name(ST * st)
+{
+  AUXST *o = cwh_auxst_find(st, FALSE);
+  if (o) {
+    char *name = AUXST_Stem(o);
+    if (name) {
+      free(AUXST_Stem(o));
+      AUXST_Stem(o) = NULL;
+    }
+  }
+}
+#endif /* KEY Bug 4901 */
+
 /*===============================================
  *
  * cwh_extern_stem_name
@@ -1279,7 +1347,7 @@ cwh_auxst_dump_list (LIST * l, BOOL verbose)
 
   while (i != NULL) {
     if (I_element(i) == NULL) 
-      printf ("     < NULL ITEM ??>\n");
+      printf ("     < NULL ITEM ?>\n");
     else {
       if (verbose) 
 	DUMP_ST(I_element(i));
@@ -1431,6 +1499,14 @@ cwh_auxst_dump (ST * st)
     printf ("  common items: \n") ;
     cwh_auxst_dump_list(l,FALSE);
   }
+
+#ifdef KEY /* Bug 5271 */
+  l = cwh_auxst_find_list(o,l_PU_COMLIST);
+  if (L_first(l) != NULL){
+    printf ("  common items in current program unit: \n") ;
+    cwh_auxst_dump_list(l,FALSE);
+  }
+#endif /* KEY Bug 5271 */
 
   l = cwh_auxst_find_list(o,l_EQVLIST);
   if (L_first(l) != NULL){

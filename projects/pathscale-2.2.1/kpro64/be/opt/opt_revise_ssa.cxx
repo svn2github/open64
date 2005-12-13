@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -254,7 +254,7 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
       WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(cr->Aux_id()));
       WN_set_ty(&wn, cr->Lod_ty());
       WN_set_field_id(&wn, 0);
-      WN_map_id(&wn) = 0;
+      WN_set_map_id(&wn, 0);
       if (_tracing)
         fdump_wn(TFile, &wn);
 
@@ -353,7 +353,7 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld(void)
 	  WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lhs->Aux_id()));
 	  WN_set_ty(&wn, lhs->Lod_ty());
 	  WN_set_field_id(&wn, 0);
-	  WN_map_id(&wn) = 0;
+	  WN_set_map_id(&wn, 0);
 	  if (_tracing)
 	    fdump_wn(TFile, &wn);
 
@@ -433,13 +433,19 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
     Expand_ST_into_base_and_ofst(_opt_stab->St(lda->Lda_aux_id()),
 	    			 _opt_stab->St_ofst(lda->Lda_aux_id()),
 				 &lda_st, &ofst);
-    if (lda_st == lda->Lda_base_st()) // may be different in preopt on f90
-      WN_store_offset(&wn) -= ofst - _opt_stab->St_ofst(lda->Lda_aux_id());
+    if (lda_st == lda->Lda_base_st()) { // may be different in preopt on f90
+      if (_opt_stab->St_chain_map()->Lookup(ST_st_idx(lda_st)) != NULL)
+	WN_st_idx(&wn) = ST_st_idx(lda_st); // bug 6293
+      else {
+	WN_store_offset(&wn) -= ofst - _opt_stab->St_ofst(lda->Lda_aux_id());
+	WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
+      }
+    } else
 #endif
     WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
     WN_set_ty(&wn, cr->Ilod_ty());
     WN_set_field_id(&wn, cr->I_field_id());
-    WN_map_id(&wn) = 0;
+    WN_set_map_id(&wn, 0);
     if (_tracing)
       fdump_wn(TFile, &wn);
 
@@ -538,13 +544,19 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 	  Expand_ST_into_base_and_ofst(_opt_stab->St(lda->Lda_aux_id()),
 				       _opt_stab->St_ofst(lda->Lda_aux_id()),
 				       &lda_st, &ofst);
-	  if (lda_st == lda->Lda_base_st())// may be different for preopt on f90
-	    WN_store_offset(&wn) -= ofst - _opt_stab->St_ofst(lda->Lda_aux_id());
+	  if (lda_st == lda->Lda_base_st()){//may be different for preopt on f90
+            if (_opt_stab->St_chain_map()->Lookup(ST_st_idx(lda_st)) != NULL)
+	      WN_st_idx(&wn) = ST_st_idx(lda_st); // bug 6293
+	    else {
+	      WN_store_offset(&wn) -= ofst - _opt_stab->St_ofst(lda->Lda_aux_id());
+	      WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
+	    }
+	  } else
 #endif
 	  WN_st_idx(&wn) = ST_st_idx(_opt_stab->St(lda->Lda_aux_id()));
 	  WN_set_ty(&wn, lhs->Ilod_ty());
 	  WN_set_field_id(&wn, lhs->I_field_id());
-	  WN_map_id(&wn) = 0;
+	  WN_set_map_id(&wn, 0);
 	  if (_tracing)
 	    fdump_wn(TFile, &wn);
 
@@ -601,7 +613,7 @@ OPT_REVISE_SSA::Update_phis(BB_NODE *bb)
       TY_IDX ty = TY_IDX_ZERO;
       ST *st = _opt_stab->St(i);
       if (st != NULL) ty = ST_type(st);
-      if (sym->Mtype()==MTYPE_M)
+      if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
          rtype = sym->Mtype();
       else
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
@@ -655,7 +667,7 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
     TY_IDX ty = TY_IDX_ZERO;
     ST *st = _opt_stab->St(i);
     if (st != NULL) ty = ST_type(st);
-    if (sym->Mtype()==MTYPE_M)
+    if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
         rtype = sym->Mtype();
     else
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
@@ -689,7 +701,7 @@ OPT_REVISE_SSA::Update_chi_list_for_old_var(STMTREP *stmt, AUX_ID i)
 
 	
     sym = _opt_stab->Aux_stab_entry(i);
-    if (sym->Mtype()==MTYPE_M)
+    if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
         rtype = sym->Mtype();
     else
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 
@@ -797,7 +809,7 @@ OPT_REVISE_SSA::Insert_mu_and_chi_list_for_new_var(STMTREP *stmt, AUX_ID i)
     if (st != NULL) ty = ST_type(st);
     
     MTYPE rtype;
-    if (sym->Mtype()==MTYPE_M)
+    if (sym->Mtype()==MTYPE_M || MTYPE_is_vector(sym->Mtype()))
         rtype = sym->Mtype();
     else
         rtype = Mtype_from_mtype_class_and_size(sym->Mclass(), 

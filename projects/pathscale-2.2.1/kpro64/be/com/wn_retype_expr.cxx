@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -380,9 +380,12 @@ RETYPE_EXPR_expr(WN *tree, BOOL can_be_32bit, BOOL addr_expr)
   case OPR_PARM:
   case OPR_TAS:
   case OPR_RND: case OPR_TRUNC: case OPR_CEIL: case OPR_FLOOR:
+#ifdef TARG_X8664
   case OPR_REPLICATE:
   case OPR_REDUCE_ADD: case OPR_REDUCE_MPY: 
   case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:
+  case OPR_SHUFFLE:
+#endif // TARG_X8664
     WN_kid0(tree) = RETYPE_EXPR_expr(WN_kid0(tree), FALSE, FALSE);
     return tree;
 

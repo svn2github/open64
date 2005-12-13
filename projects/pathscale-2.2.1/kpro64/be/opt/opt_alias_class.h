@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -663,6 +663,8 @@ public:
   void                Classify_memops(WN *);
 
   IDTYPE              Alias_class(const WN *) const;
+
+  void                Copy_alias_class(const WN *, WN *);
 
   BOOL                Non_alloca_memop(IDTYPE) const;
 

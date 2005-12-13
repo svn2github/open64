@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -179,19 +179,21 @@ BOOL CGTARG_Enable_Brlikely = TRUE;
 #ifdef TARG_X8664
 BOOL Enable_Fill_Delay_Slots = FALSE;
 BOOL GCM_Enable_Fill_Delay_Slots = FALSE;
-BOOL CG_use_movlpd = FALSE;
+BOOL CG_use_movlpd = TRUE;
 BOOL CG_use_setcc = TRUE;
 BOOL CG_use_short_form = FALSE;
 UINT64 CG_p2align_freq = 10000;
 UINT32 CG_p2align_max_skip_bytes = 3;
-UINT32 CG_movnti = 1024;
+UINT32 CG_movnti = 1000;
 BOOL CG_use_incdec = FALSE;
 BOOL CG_use_xortozero = FALSE;
+BOOL CG_use_test = FALSE;
 BOOL CG_fold_shiftadd = FALSE;
 BOOL CG_use_prefetchnta = FALSE;
 BOOL CG_idivbyconst_opt = TRUE;
 BOOL CG_fold_constimul = TRUE;
 BOOL CG_cloop = TRUE;
+BOOL CG_use_lddqu = FALSE;
 #else
 BOOL Enable_Fill_Delay_Slots = TRUE;
 BOOL GCM_Enable_Fill_Delay_Slots = TRUE;
@@ -226,6 +228,9 @@ const char *CGEXP_sthint_L1;
 const char *CGEXP_sthint_L2;
 
 BOOL LRA_do_reorder = FALSE;
+#ifdef TARG_X8664
+BOOL LRA_prefer_legacy_regs = FALSE;
+#endif
 
 BOOL GRA_use_old_conflict = FALSE;
 BOOL GRA_shrink_wrap      = TRUE;
@@ -313,8 +318,11 @@ BOOL CG_min_spill_loc_size = FALSE;
 BOOL CG_min_stack_size = FALSE;
 BOOL flag_test_coverage = FALSE;
 OPTION_LIST *Arc_Profile_Region = NULL;
+INT32 CG_cse_regs = INT32_MAX - 1000;
+INT32 CG_sse_cse_regs = INT32_MAX - 1000;
 #endif
 #ifdef TARG_X8664
+INT32 CG_sse_load_execute = 0;
 INT32 CG_load_execute = 1;
 BOOL CG_loadbw_execute = FALSE;
 BOOL CG_p2align = FALSE;

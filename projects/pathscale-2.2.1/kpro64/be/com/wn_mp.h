@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -110,7 +114,14 @@ typedef enum {
   MPP_PDO,
   MPP_ORPHANED_PDO,
   MPP_PARALLEL_DO,
-  MPP_PARALLEL_REGION
+  MPP_PARALLEL_REGION,
+  MPP_MASTER,
+  MPP_ORPHANED_MASTER,
+#ifdef KEY /* Bug 4828 */
+  MPP_WORKSHARE,
+  MPP_ORPHANED_WORKSHARE,
+  MPP_ORPHAN
+#endif
 } MP_process_type;
 
 extern WN * Gen_OMP_Begin_SPR (MP_process_type mpt);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -317,7 +317,8 @@ static	char		*p_tasking_context[] = {
         		"Context_Omp_Firstprivate",
         		"Context_Omp_Lastprivate",
         		"Context_Omp_Copyin",
-			"Context_Omp_Affinity",
+        		"Context_Omp_Copyprivate", /* by jhs, 02/7/22 */
+        		"Context_Omp_Affinity",
 			"Context_Omp_Nest"
 						 };
 
@@ -1260,7 +1261,7 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
    		boolean			ignore_types;
    		long64			inc;
    		opnd_type		l_opnd;
-   		int			first_task_idx		= NULL_IDX;
+   		int			first_task_idx		= NULL_IDX; /* by jhs, 02.9.25 */
    		int			last_task_idx		= NULL_IDX;
 		int			line;
    		int			list_array[OPEN_MP_LIST_CNT];
@@ -1289,13 +1290,14 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
    		int			task_wdist_idx;
    		long			which;
    		long			assertion;
-   		int			task_if_idx		= 0;
+   		int			task_if_idx		= 0; /* by jhs, 02.9.5 */
+   		int			task_num_threads_idx = 0; /* by jhs, 02.7.20 */
    		char			*criticalname  		= 0;
    		long			level    		= 0;
    		long			span    		= 1;
    		long			point    		= 0;
    		long			scheduletype		= 0;
-   		int			schedulechunk		= 0;
+   		int			schedulechunk		= 0; /* by jhs, 02.9.25 */
    		long			schedtype		= 0;
    		long			chunkcount		= 0;
    		long			threadcount		= 0;
@@ -1777,7 +1779,7 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
          fei_object_ref(PDG_AT_IDX(ir_idx),
                         whole_subscript,
                         whole_substring,
-                        ATD_DATA_INIT(ir_idx));
+                        0);
 #else
          fei_object_ref(PDG_AT_IDX(ir_idx),
                         whole_subscript,
@@ -3742,6 +3744,33 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
         }
         break;
 
+
+
+#ifdef KEY /* Bug 1324 */
+   case Erf_Opr :
+	cvrt_exp_to_pdg(IR_IDX_L(ir_idx), 
+			IR_FLD_L(ir_idx));
+        basic = get_basic_type(IR_TYPE_IDX(ir_idx),0, NULL_IDX);
+	PDG_DBG_PRINT_START
+	PDG_DBG_PRINT_C("fei_erf");
+	PDG_DBG_PRINT_END
+# ifdef _ENABLE_FEI
+	fei_erf(basic, 0);
+# endif
+	break;
+
+   case Erfc_Opr :
+	cvrt_exp_to_pdg(IR_IDX_L(ir_idx), 
+			IR_FLD_L(ir_idx));
+        basic = get_basic_type(IR_TYPE_IDX(ir_idx),0, NULL_IDX);
+	PDG_DBG_PRINT_START
+	PDG_DBG_PRINT_C("fei_erfc");
+	PDG_DBG_PRINT_END
+# ifdef _ENABLE_FEI
+	fei_erf(basic, 1);
+# endif
+	break;
+#endif /* KEY Bug 1324 */
 
 
 
@@ -6694,6 +6723,34 @@ CONTINUE:
 
         if (IR_IDX_R(ir_idx) != NULL_IDX &&
             IR_LIST_CNT_R(ir_idx) > 0) {
+#ifdef KEY /* Bug 4602 */
+	   /* The %val() operator doesn't appear in the tree, except as the
+	    * absence of an Aloc_Opr at the top of the subtree representing
+	    * the formal argument. For a scalar, this works fine because
+	    * cvrt_exp_to_pdg() computes the value if there's not an Aloc_Opr,
+	    * and computes the address if there is. For a subscripted array,
+	    * cvrt_exp_to_pdg normally computes a WHIRL ARRAY op, and relies
+	    * on some operator or assignment node above it to emit a WHIRL
+	    * LOAD op for the array element. We need that LOAD op when the
+	    * ALoc_Opr is missing; but it's hard for cvrt_exp_to_pdg to
+	    * know that the Subscript_Opr is a formal argument; and it's hard
+	    * for fei_call to know which of its arguments were missing the
+	    * Aloc_Opr in the tree; so we create an ugly special case here.
+	    */
+	   if (IR_FLD_R(ir_idx) == IL_Tbl_Idx) {
+	     for (int arg_il_idx = IR_IDX_R(ir_idx);
+	       arg_il_idx != NULL_IDX;
+	       arg_il_idx = IL_NEXT_LIST_IDX(arg_il_idx)) {
+	       int arg_idx = IL_IDX(arg_il_idx);
+	       int arg_fld = IL_FLD(arg_il_idx);
+	       cvrt_exp_to_pdg(arg_idx, arg_fld);
+	       if (arg_fld == IR_Tbl_Idx && IR_OPR(arg_idx) == Subscript_Opr) {
+		 fei_array_element_by_value();
+	         }
+	       }
+	     }
+	   else
+#endif /* KEY Bug 4602 */
            cvrt_exp_to_pdg(IR_IDX_R(ir_idx), 
                            IR_FLD_R(ir_idx));
         }
@@ -8297,6 +8354,24 @@ CONTINUE:
 # endif
         break;
 
+#ifdef KEY /* Bug 2660 */
+   case Options_Dir_Opr:
+	{
+        char *c1 = (char *) &CN_CONST(IR_IDX_L(ir_idx));
+
+        PDG_DBG_PRINT_START
+        PDG_DBG_PRINT_C("fei_options");
+        PDG_DBG_PRINT_S("(1) c1", c1);
+        PDG_DBG_PRINT_END
+
+# if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
+# ifdef _ENABLE_FEI
+	fei_options(c1);
+# endif
+# endif
+	}
+        break;
+#endif /* KEY Bug 2660 */
 
 
 
@@ -9352,8 +9427,10 @@ CONTINUE:
    case Do_Open_Mp_Opr:
    case Sections_Open_Mp_Opr:
    case Single_Open_Mp_Opr:
+   case Workshare_Open_Mp_Opr:
    case Paralleldo_Open_Mp_Opr:
    case Parallelsections_Open_Mp_Opr:
+   case Parallelworkshare_Open_Mp_Opr:
         list_idx1 = IR_IDX_L(ir_idx);
 
         for (i = 0; i < OPEN_MP_LIST_CNT; i++) {
@@ -9366,6 +9443,12 @@ CONTINUE:
         if (IL_FLD(list_array[OPEN_MP_IF_IDX]) == AT_Tbl_Idx) {
            send_attr_ntry(IL_IDX(list_array[OPEN_MP_IF_IDX]));
            task_if_idx = PDG_AT_IDX(IL_IDX(list_array[OPEN_MP_IF_IDX]));
+        }
+
+	/* process NUM_THREADS clause */ /* by jhs, 02/7/20 */
+        if(IL_FLD(list_array[OPEN_MP_NUM_THREADS]) == AT_Tbl_Idx){
+        	send_attr_ntry(IL_IDX(list_array[OPEN_MP_NUM_THREADS]));
+        	task_num_threads_idx = PDG_AT_IDX(IL_IDX(list_array[OPEN_MP_NUM_THREADS]));
         }
 
 
@@ -9506,10 +9589,7 @@ CONTINUE:
            while (list_idx2) {
               if (IL_FLD(list_idx2) == IR_Tbl_Idx &&
                   IL_FLD(list_idx3) == IL_Tbl_Idx) {
-                 list_idx4 = IL_IDX(list_idx3);
-                 while (list_idx4) {
-
-                    switch (IR_OPR(IL_IDX(list_idx2))) {
+                 switch (IR_OPR(IL_IDX(list_idx2))) {
                     case Max_Opr :   
                          context = Context_Omp_Reduction_Max;
                          break;
@@ -9546,7 +9626,9 @@ CONTINUE:
                     case Neqv_Opr :   
                          context = Context_Omp_Reduction_Neqv;
                          break;
-                    }
+                 }
+                 list_idx4 = IL_IDX(list_idx3);
+                 while (list_idx4) {
 
                     if (IL_FLD(list_idx4) == AT_Tbl_Idx) {
                        send_attr_ntry(IL_IDX(list_idx4));
@@ -9720,19 +9802,19 @@ CONTINUE:
 
 
 
-
-
         switch (IR_OPR(ir_idx)) {
 
         case Parallel_Open_Mp_Opr:
            PDG_DBG_PRINT_START
            PDG_DBG_PRINT_C("fei_parallel_open_mp");
            PDG_DBG_PRINT_D("(1) if idx", task_if_idx);
-           PDG_DBG_PRINT_LD("(2) defaultt", defaultt);
+           PDG_DBG_PRINT_D("(2) num_threads idx", task_num_threads_idx); /* by jhs, 02/7/20 */
+           PDG_DBG_PRINT_LD("(3) defaultt", defaultt);
            PDG_DBG_PRINT_END
 
 # ifdef _ENABLE_FEI
            fei_parallel_open_mp(task_if_idx,
+           			    task_num_threads_idx, /* by jhs, 02/7/20 */
                                 defaultt);
 
 # endif
@@ -9789,25 +9871,49 @@ CONTINUE:
 # endif
            break;
 
+        case Workshare_Open_Mp_Opr:
+	   PDG_DBG_PRINT_START
+	   PDG_DBG_PRINT_C("fei_workshare_open_mp");
+	   PDG_DBG_PRINT_END
 
+# ifdef _ENABLE_FEI
+	   fei_workshare_open_mp();
+# endif
+	   break;
 
+	case Parallelworkshare_Open_Mp_Opr:
+	   PDG_DBG_PRINT_START
+	   PDG_DBG_PRINT_C("fei_parallelworkshare_open_mp");
+	   PDG_DBG_PRINT_D("(1) if idx", task_if_idx);
+	   PDG_DBG_PRINT_D("(2) num_threads idx", task_num_threads_idx);
+	   PDG_DBG_PRINT_LD("(3) defaultt", defaultt);
+	   PDG_DBG_PRINT_END
+
+# ifdef _ENABLE_FEI
+	   fei_parallelworkshare_open_mp(task_if_idx,
+				task_num_threads_idx,
+				defaultt);
+# endif
+	   break;
 
         case Paralleldo_Open_Mp_Opr:
            PDG_DBG_PRINT_START
            PDG_DBG_PRINT_C("fei_paralleldo_open_mp");
            PDG_DBG_PRINT_D("(1) if idx", task_if_idx);
-           PDG_DBG_PRINT_LD("(2) defaultt", defaultt);
-           PDG_DBG_PRINT_LD("(3) ordered", ordered);
-           PDG_DBG_PRINT_LD("(4) scheduletype", scheduletype);
-           PDG_DBG_PRINT_D("(5) schedulechunk", schedulechunk);
-           PDG_DBG_PRINT_LD("(6) threadcount", threadcount);
-           PDG_DBG_PRINT_LD("(7) datacount", datacount);
-           PDG_DBG_PRINT_LD("(8) ontocount", ontocount);
+           PDG_DBG_PRINT_D("(2) num_threads idx", task_num_threads_idx); /* by jhs, 02/7/20 */
+           PDG_DBG_PRINT_LD("(3) defaultt", defaultt);
+           PDG_DBG_PRINT_LD("(4) ordered", ordered);
+           PDG_DBG_PRINT_LD("(5) scheduletype", scheduletype);
+           PDG_DBG_PRINT_D("(6) schedulechunk", schedulechunk);
+           PDG_DBG_PRINT_LD("(7) threadcount", threadcount);
+           PDG_DBG_PRINT_LD("(8) datacount", datacount);
+           PDG_DBG_PRINT_LD("(9) ontocount", ontocount);
            PDG_DBG_PRINT_END
 
 
 # ifdef _ENABLE_FEI
            fei_paralleldo_open_mp(task_if_idx,
+       			      task_num_threads_idx, /* by jhs, 02/7/20 */
                                   defaultt,
                                   ordered,
                                   scheduletype,
@@ -9818,20 +9924,18 @@ CONTINUE:
 # endif
            break;
 
-
-
-
-
         case Parallelsections_Open_Mp_Opr:
            PDG_DBG_PRINT_START
            PDG_DBG_PRINT_C("fei_parallelsections_open_mp");
            PDG_DBG_PRINT_D("(1) if idx", task_if_idx);
-           PDG_DBG_PRINT_LD("(2) defaultt", defaultt);
+           PDG_DBG_PRINT_D("(2) num_threads idx", task_num_threads_idx); /* by jhs, 02/7/20 */
+           PDG_DBG_PRINT_LD("(3) defaultt", defaultt);
            PDG_DBG_PRINT_END
 
 
 # ifdef _ENABLE_FEI
            fei_parallelsections_open_mp(task_if_idx,
+           				     task_num_threads_idx, /* by jhs, 02/7/20 */
                                         defaultt);
 # endif
            break;
@@ -9839,7 +9943,30 @@ CONTINUE:
         break;
 
 
+     case Endworkshare_Open_Mp_Opr:
+	if (IR_FLD_L(ir_idx) == CN_Tbl_Idx) {
+	   nowait = (long) CN_INT_TO_C(IR_IDX_L(ir_idx));
+	}
 
+	PDG_DBG_PRINT_START
+	PDG_DBG_PRINT_C("fei_endworkshare_open_mp");
+	PDG_DBG_PRINT_LD("(1) nowait", nowait);
+	PDG_DBG_PRINT_END
+
+# ifdef _ENABLE_FEI
+	fei_endworkshare_open_mp(nowait);
+# endif
+	break;
+
+     case Endparallelworkshare_Open_Mp_Opr:
+	PDG_DBG_PRINT_START
+	PDG_DBG_PRINT_C("fei_endparallelworkshare_open_mp");
+	PDG_DBG_PRINT_END
+
+# ifdef _ENABLE_FEI
+	fei_endparallelworkshare_open_mp();
+# endif
+	break;
 
      case Barrier_Open_Mp_Opr:
         PDG_DBG_PRINT_START
@@ -9995,10 +10122,38 @@ CONTINUE:
 
 
      case Endsingle_Open_Mp_Opr:
-        if (IR_FLD_L(ir_idx) == CN_Tbl_Idx) {
-           nowait = (long) CN_INT_TO_C(IR_IDX_L(ir_idx));
-        }
+     	/* the following is added and modified by jhs, 02/7/22 */
+        list_idx1 = IR_IDX_L(ir_idx);
 
+	 if(IL_FLD(list_idx1) == CN_Tbl_Idx){ /* NOWAIT clause */
+           nowait = (long) CN_INT_TO_C(IL_IDX(list_idx1));
+	 }
+	 else if(IL_FLD(IL_NEXT_LIST_IDX(list_idx1)) == IL_Tbl_Idx){/* COPYPRIVATE clause */
+           list_idx2 = IL_IDX(IL_NEXT_LIST_IDX(list_idx1));
+
+           while (list_idx2) {
+              if (IL_FLD(list_idx2) == AT_Tbl_Idx) {
+                 send_attr_ntry(IL_IDX(list_idx2));
+
+                 PDG_DBG_PRINT_START
+                 PDG_DBG_PRINT_C("fei_task_var");
+                 PDG_DBG_PRINT_LD("(1) PDG_AT_IDX",
+                                         PDG_AT_IDX(IL_IDX(list_idx2)));
+                 PDG_DBG_PRINT_S("(2) context",
+                                   p_tasking_context[Context_Omp_Copyprivate]);
+                 PDG_DBG_PRINT_END
+
+# ifdef _ENABLE_FEI
+                 last_task_idx = fei_task_var(PDG_AT_IDX(IL_IDX(list_idx2)),
+                                              Context_Omp_Copyprivate);
+# endif
+
+              }
+
+              list_idx2 = IL_NEXT_LIST_IDX(list_idx2);
+           }
+	 }
+     	/* the above is added and modified by jhs, 02/7/22 */
         PDG_DBG_PRINT_START
         PDG_DBG_PRINT_C("fei_endsingle_open_mp");
         PDG_DBG_PRINT_LD("(1) nowait", nowait);

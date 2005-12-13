@@ -1,6 +1,6 @@
 /*
 
-  Copyright 2004 PathScale, Inc.  All Rights Reserved.
+  Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -57,10 +57,10 @@ static	last_msg_queue_type	last_msg_queue[LAST_MSG_QUEUE_SIZE]	= {
 					{0,0,0}};
 
        char	*command_name;	
-       char	 group_code[]	= "cf90";
+       char	 group_code[]	= "cf95";
 
 # if defined(_TARGET_OS_LINUX)
-       char      message_prefix[]       = PSC_NAME_PREFIX "f90";
+       char      message_prefix[]       = PSC_NAME_PREFIX "f95";
 # elif defined(_TARGET_OS_IRIX)
        char      message_prefix[]       = "f90";
 # else

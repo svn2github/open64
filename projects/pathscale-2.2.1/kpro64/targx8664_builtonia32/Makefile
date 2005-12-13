@@ -47,15 +47,17 @@ INCLUDE_SUBDIRS := \
 #  Next, all of the libraries are built because the tools depend on them.
 #
 LIBRARY_SUBDIRS := \
+	libelf \
+	libdwarf \
 	libfortran \
 	libF77 \
 	libu \
 	libm \
 	libmv \
-	libinstr \
+	libinstr2 \
 	libfoobar \
-	libpscrt
-
+	libpscrt \
+        libopenmp
 
 #
 #  Finally, the compiler tools (components) are built.

@@ -59,7 +59,6 @@ include $(COMMONDEFS)
 #               by setting LOCAL_BE_DIR in localdefs
 #----------------------------------------------------------------------
 ifdef LOCAL_BE_DIR
-CVERSION  =  -xansi
 TARG_BE_DIR = $(TARGDIR)/$(LOCAL_BE_DIR)
 else
 TARG_BE_DIR = $(TARGDIR)/be
@@ -130,18 +129,12 @@ IPA_OBJS = $(IPA_SRCS:.c=.o)
 
 IPA_CXX_OBJS = $(IPA_CXX_SRCS:.cxx=.o)
 
-ifeq ($(BUILD_COMPILER), EDG)
-WOFF = -fullwarn -woff 1171,1172,1174,1201,1209,1375 -LANG:packed=on
-else
-WOFF =
-endif
-
 VPATH    =  $(SRC_DIRS)
 
 LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
-LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS) $(WOFF)
+LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS)
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(LCINCS)
 LASOPTS = $(STD_COMPILE_OPTS)
@@ -156,11 +149,7 @@ TARGETS = gen_cord
 
 LDIRT = be.so ii_files
 
-ifeq ($(BUILD_OS), IRIX)
-LLDLIBS = -lmangle -lgen
-else
 LLDLIBS = 
-endif
 
 default: first $(TARGETS) 
 first: 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 
@@ -183,6 +183,22 @@ add_string_option_or_dash (int flag, char *arg)
 	return add_derived_option(flag, arg);
 }
 
+#ifdef KEY
+/* Same as add_string_option but add '-' if arg consists of only '-', and
+   also add strings that begin with '-'. */
+int 
+add_any_string_option (int flag, char *arg)
+{
+	/* check that there is an argument after the option */
+	char *s = get_option_name(flag);
+	if (arg == NULL) {
+		parse_error(get_option_name(flag), "no argument given for option");
+		return flag;
+	}
+	return add_derived_option(flag, arg);
+}
+#endif
+
 /* do initial pass through args to check for options that affect driver */
 void
 check_for_driver_controls (int argc, char *argv[])
@@ -327,6 +343,15 @@ parse_R_option (char **argv, int *argi)
 }
 
 #ifdef KEY
+static int
+parse_e_option (char **argv, int *argi)
+{
+  // For -efoo, pass "-Wl,-efoo" to linker.  Bug 6832.
+  optargs = argv[*argi];
+  get_next_arg(argi);
+  return add_string_option(O_WlC, optargs);
+}
+
 /* need to hand code -Xlinker option since the generic code doesn't like
    the arg string to begin with - */
 static int

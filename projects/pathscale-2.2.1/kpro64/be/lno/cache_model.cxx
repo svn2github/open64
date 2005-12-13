@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3499,6 +3499,12 @@ extern COMPUTE_FOOTPRINT_RVAL Compute_Footprint(
       // different lists.  Generally the right thing (e.g. for common
       // block elements).
       INT esz = n->Element_Size();
+#ifdef KEY
+      // Bug 6273 - when calculating footprint of an MMILOAD or MISTORE,
+      // use the appropriate element size. 
+      if (esz == 0)
+	esz = WN_element_size(n->Wn);
+#endif
       if (Debug_Cache_Model >= 4)
         fprintf(TFile, "-> arl entry from base %d, insertion info\n", ix);
 

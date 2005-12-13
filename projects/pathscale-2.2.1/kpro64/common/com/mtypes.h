@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -86,7 +86,6 @@ static char *mtypes_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #define MTYPE_F10	12	/*  80-bit IEEE floating point */
 #define MTYPE_F16	13	/* 128-bit IEEE floating point */
 
-/* Define non-machine simulated types that are used in the compiler: */
 #define MTYPE_STR	14	/* char strings - TCONs only */
 #define MTYPE_STRING	MTYPE_STR
 #define MTYPE_FQ	15	/* for SGI long double */
@@ -101,23 +100,29 @@ static char *mtypes_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #define MTYPE_A8	23	/* 64-bit address */
 #define MTYPE_C10	24	/*  80-bit IEEE floating point complex */
 #define MTYPE_C16	25	/* 128-bit IEEE floating point complex */
-#ifndef TARG_X8664
 #define MTYPE_I16       26      /* 128-bit signed integer              */
 #define MTYPE_U16       27      /* 128-bit unsigned integer            */
 
-/* must define MTYPE_LAST as the index of the last one defined. */
-#define MTYPE_LAST	27	/* Must be defined */
-#else
-#define MTYPE_V16I1     26      /* 128-bit vector of signed bytes            */
-#define MTYPE_V16I2     27      /* 128-bit vector of signed short ints       */
-#define MTYPE_V16I4     28      /* 128-bit vector of signed ints             */
-#define MTYPE_V16I8     29      /* 128-bit vector of signed long long ints   */
-#define MTYPE_V16F4     30      /* 128-bit vector of signed floats           */
-#define MTYPE_V16F8     31      /* 128-bit vector of signed doubles          */
+#ifdef TARG_X8664
+#define MTYPE_V16C4	28	/* vector type for C4 */
+#define MTYPE_V16C8	29	/* vector type for C8 */
+#define MTYPE_V16I1     30      /* 128-bit vector of signed bytes            */
+#define MTYPE_V16I2     31      /* 128-bit vector of signed short ints       */
+#define MTYPE_V16I4     32      /* 128-bit vector of signed ints             */
+#define MTYPE_V16I8     33      /* 128-bit vector of signed long long ints   */
+#define MTYPE_V16F4     34      /* 128-bit vector of signed floats           */
+#define MTYPE_V16F8     35      /* 128-bit vector of signed doubles          */
+
+#define MTYPE_V8I1      36      /* 64-bit vector of signed bytes */
+#define MTYPE_V8I2      37      /* 64-bit vector of signed short ints */
+#define MTYPE_V8I4      38      /* 64-bit vector of signed ints */
+#define MTYPE_V8F4      39      /* 64-bit vector of signed floats */
 
 /* must define MTYPE_LAST as the index of the last one defined. */
-#define MTYPE_LAST	31	/* Must be defined */
-#endif /* TARG_X8664 */
+#define MTYPE_LAST	39	/* Must be defined */
+#else
+#define MTYPE_LAST	27	/* Must be defined */
+#endif // TARG_X8664
 
 /* Define the type: */
 typedef UINT8	TYPE_ID;
@@ -131,6 +136,9 @@ typedef mUINT8	mTYPE_ID;
 #define MTYPE_CLASS_UNSIGNED	0x08
 #define MTYPE_CLASS_STR		0x10
 #define MTYPE_CLASS_VECTOR	0x20
+#ifdef KEY
+#define MTYPE_CLASS_SVECTOR	0x60 // 2 bits for short vector (64-bit vector)
+#endif
 #define MTYPE_CLASS_UNSIGNED_INTEGER (MTYPE_CLASS_UNSIGNED|MTYPE_CLASS_INTEGER)
 #define MTYPE_CLASS_COMPLEX_FLOAT (MTYPE_CLASS_COMPLEX|MTYPE_CLASS_FLOAT)
 
@@ -184,6 +192,7 @@ extern TYPE_DESC Machine_Types[];
 #define MTYPE_is_complex(n)	(MTYPE_type_class(n) & MTYPE_CLASS_COMPLEX)
 #define MTYPE_is_vector(n)	(MTYPE_type_class(n) & MTYPE_CLASS_VECTOR)
 #ifdef KEY
+#define MTYPE_is_short_vector(n) (MTYPE_type_class(n)==MTYPE_CLASS_SVECTOR)
 #define MTYPE_is_str(n)		(MTYPE_type_class(n)==MTYPE_CLASS_STR)
 #else
 #define MTYPE_is_str(n)		(MTYPE_type_class(n)==MTYPE_STR)

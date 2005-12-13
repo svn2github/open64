@@ -1,12 +1,15 @@
-Copyright 2004 PathScale, Inc.  All Rights Reserved.
+Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
 
 The following members of the PathScale(TM) Compiler Suite team and others
 have contributed to this release:
 
 David Allison
+Kevin Ball
 Jeremy Brown
 Gautam Chakrabarti
+Steve Correll
 Fred Chow
+Mark Debbage
 Tom Elken
 John Gregor
 Dimitar Haralanov
@@ -19,6 +22,7 @@ Jane McKean
 Kannan Narayanan
 Bryan O'Sullivan
 Duncan Poole
+Jim Strother
 Robert Walsh
 Yan Xie
 Betsy Zeller

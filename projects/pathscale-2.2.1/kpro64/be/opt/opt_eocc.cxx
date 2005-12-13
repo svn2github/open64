@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -59,6 +64,7 @@
 #pragma hdrstop
 
 
+#include "erglob.h"
 #include "opt_htable.h"
 #include "opt_ssa.h"
 #include "opt_etable.h"
@@ -121,6 +127,9 @@ CODEREP::Exp_has_e_num(void) const
     return FALSE;
   case OPR_INTRINSIC_OP:
     return WOPT_Enable_Move_Intrinsicop;
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
   case OPR_CVT:
 //    return !Cvt_is_nop();
   case OPR_CVTL:

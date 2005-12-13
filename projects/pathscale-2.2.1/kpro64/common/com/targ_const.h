@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -162,6 +162,12 @@ struct TCON {
 	    mUINT32 u1, u0, u3, u2;	/* Individual unsigned words */
 #endif
 	} uval;
+#ifdef KEY 
+	struct {
+	    mINT64 ll0;
+	    mINT64 ll1;
+	} llval;
+#endif
 	mINT32 word0;			/* for getting the first integer word */
 	mINT64 i0;			/* Signed integer */
 	mUINT64 k0;			/* Unsigned integer */
@@ -298,7 +304,8 @@ extern TCON Host_To_Targ_Float ( TYPE_ID ctype, double fvalue );
 extern TCON Host_To_Targ_Float_4 ( TYPE_ID ctype, float fvalue );
 extern TCON Host_To_Targ_Quad  ( QUAD_TYPE fvalue );
 #ifdef TARG_X8664
-  extern TCON Create_Simd_Const ( TYPE_ID ctype, TCON t );
+extern TCON Create_Simd_Const ( TYPE_ID ctype, TCON t );
+extern TCON Create_Simd_Prog_Const ( TYPE_ID ctype, INT64 val );
 #endif 
 
 /* Convert a TCON to a double or a quad: */

@@ -38,21 +38,15 @@
 
 include	$(COMMONDEFS)
 
-ifeq ($(BUILD_COMPILER), EDG)
-CVERSION =
+LCOPTS += -ansi -DTARG_IA64 -I. -I$(BUILD_TOT)/clibinc -D _LITTLE_ENDIAN -D__mips
 LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
-WOFF = -fullwarn -woff 1209,1174
-else
-CVERSION =-fwritable-strings -ansi -DTARG_IA64 -I. -I/usr/include -I$(BUILD_TOT)/clibinc -D _LITTLE_ENDIAN -D__mips
-LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
-endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 LCDEFS += -DInsist_On -DDEBUG_IR
 endif
 
 ifeq ($(BUILD_ARCH),IA32)
-F90 += -m32
+F90 += -m32 -mno-sse2
 endif
 
 F90FLAGS = $(OPTIMIZER) $(CSTYLE)
@@ -122,14 +116,8 @@ endif
 endif
 endif
 
-ifeq ($(BUILD_OS), IRIX)
-ARITH_SRC += \
-	native.c \
-	no_intrin.c
-else
 ARITH_SRC += \
 	cray1_sim.c
-endif
 
 CFILES= $(ARITH_SRC)
 

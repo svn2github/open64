@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -231,6 +231,10 @@ enum AUXF_FLAGS {
   AUXF_MP_REDUCTION  = 0x200,      // marked reduction in MP pragma
   AUXF_DONT_REPLACE_IV = 0x400,    // do not replace this IV by another IV
   AUXF_NO_SPRE       = 0x800,      // disable SPRE for this var
+#ifdef KEY
+  AUXF_MP_NO_DSE     = 0x800,	   // disable dead store elim due to MP regions
+  				   // (not when phase is MAINOPT_PHASE)
+#endif
   AUXF_EPRE_TEMP     = 0x1000,     // PREG introduced by EPRE
   AUXF_SPRE_TEMP     = 0x2000,     // PREG introduced by SPRE
   AUXF_SIGN_EXTD     = 0x4000,     // Is sign extended set by LPRE
@@ -465,6 +469,10 @@ public:
   void     Set_dont_replace_iv(void)  { _flags |= AUXF_DONT_REPLACE_IV; }
   BOOL     No_spre(void) const        { return _flags & AUXF_NO_SPRE; }
   void     Set_no_spre(void)          { _flags |= AUXF_NO_SPRE; }
+#ifdef KEY
+  BOOL     Mp_no_dse(void) const        { return _flags & AUXF_MP_NO_DSE; }
+  void     Set_mp_no_dse(void)          { _flags |= AUXF_MP_NO_DSE; }
+#endif
   BOOL     EPRE_temp(void) const      { return _flags & AUXF_EPRE_TEMP; }
   void     Set_EPRE_temp(void)        { _flags |= AUXF_EPRE_TEMP; }
   BOOL     SPRE_temp(void) const      { return _flags & AUXF_SPRE_TEMP; }
@@ -693,7 +701,7 @@ public:
   BOOL	   Zero_vers(void)	      { return flags & VS_ZERO_VERS; }
   void	   Set_Zero_vers(void)	      { flags |= VS_ZERO_VERS; }
 
-  void     Print(FILE *fp=stderr) const;
+  void     Print(FILE *fp, VER_ID ver_id) const;
   void     Print_use(WN *wn, FILE *fp=stderr) const;
   void     Print_use(PHI_NODE *phi, BB_NODE *bb, FILE *fp) const;
 };
@@ -1207,6 +1215,9 @@ public:
 
   //  Update POINTS_TO info from an array node
   void     Analyze_Range(WN *, POINTS_TO *);
+
+  ID_MAP<ST_CHAIN_INFO *, ST_IDX>  *St_chain_map(void) const
+  		{ return st_chain_map; }
 
   // used for dce's extra alias analysis to describe that something
   // is aliased with all globals

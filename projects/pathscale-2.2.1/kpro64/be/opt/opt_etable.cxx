@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -1578,6 +1578,11 @@ EXP_WORKLST::Is_the_same_as(const CODEREP *cr)
     if (cr->Opr() == OPR_INTRINSIC_OP &&
 	cr->Intrinsic() != Exp()->Intrinsic())
       return FALSE;
+#ifdef KEY
+    else if (cr->Opr() == OPR_PURE_CALL_OP &&
+             cr->Call_op_aux_id() != Exp()->Call_op_aux_id())
+      return FALSE;
+#endif
     else if (cr->Opr() == OPR_CVTL && cr->Offset() != Exp()->Offset())
       return FALSE;
     else if ((cr->Opr() == OPR_EXTRACT_BITS || cr->Opr() == OPR_COMPOSE_BITS)
@@ -2270,7 +2275,11 @@ ETABLE::Alloc_and_generate_cur_expr(const CODEREP *result_expr,
       // Rehash_tree_rec will clone the ivar_occ data structure.
       newcr->Set_ivar_mu_node(CXX_NEW(MU_NODE(*result_expr->Ivar_mu_node()), mpool));
 					      
-    } else if (newcr->Kind() == CK_OP && newcr->Opr() == OPR_INTRINSIC_OP) {
+    } else if (newcr->Kind() == CK_OP && (newcr->Opr() == OPR_INTRINSIC_OP
+#ifdef KEY
+	       || newcr->Opr() == OPR_PURE_CALL_OP
+#endif
+      )) {
       for (INT i = 0; i < newcr->Kid_count(); i++) {
 	CODEREP *kid = result_expr->Opnd(i);
 	CODEREP *newkid = CXX_NEW_VARIANT(CODEREP(*kid), kid->Extra_space_used(), mpool);
@@ -2429,6 +2438,15 @@ ETABLE::Perform_deferred_ocopy_and_get_new_exprs(EXP_WORKLST *const worklist)
       Bottom_up_cr(stmt, 0, new_rhs, FALSE, URGENT_INSERT,
 		   0, OPCODE_UNKNOWN, worklist->Exclude_sr_cand());
     }
+#ifdef KEY // bug 4674: restore original expression in occurrence node so later
+    	   // reapplication of SSAPRE due to second order effect will be OK
+    if (occ->Occurrence()->Kind() != worklist->Exp()->Kind()) {
+      Is_True(occ->Occurrence()->Opr() == OPR_CVT ||
+              occ->Occurrence()->Opr() == OPR_CVTL,
+	      ("ETABLE::Deferred_ocopy: inconsistent expression operation\n"));
+      occ->Set_occurrence(occ->Occurrence()->Opnd(0));
+    }
+#endif
   }
 }
 
@@ -3550,8 +3568,28 @@ ETABLE::Replace_occurs(EXP_OCCURS *occur, OCCUR_REPLACEMENT *repl)
 	CODEREP *new_rhs = Rehash_and_replace(stmt->Rhs(), occur, repl, FALSE,
 					      stmt->Op());
 
+#ifdef KEY // bug 5980: there can be duplicate real occur nodes inserted due
+	   // to LFTR
+	if (new_rhs == NULL) {
+#ifdef Is_True_On
+  	  EXP_WORKLST *worklist = Get_worklst(occur->Occurrence());
+	  EXP_ALL_OCCURS_ITER exp_occ_iter(worklist->Real_occurs().Head(),
+			   NULL, NULL, NULL, NULL); /* only real occurrences */
+	  EXP_OCCURS *oc;
+	  FOR_ALL_NODE(oc, exp_occ_iter, Init()) {
+	    if (oc == occur)
+	      FmtAssert(FALSE,("ETABLE::Replace_occurs: RHS must need rehash"));
+	    if (oc->Stmt() == occur->Stmt() && 
+		oc->Stmt_kid_num() == occur->Stmt_kid_num())
+	      break; // found the earlier duplicate real occur, so no error
+	  }
+#endif
+	  break;
+	}
+#else
 	Is_True(new_rhs != NULL,
 		("ETABLE::Replace_occurs: RHS must need rehash"));
+#endif
 	stmt->Set_rhs(new_rhs);
 
 	// Let the IV update status of the statement be reanalyzed.
@@ -4258,6 +4296,9 @@ ETABLE::Perform_PRE_optimization(void)
   }
 #endif
 
+  Is_Trace(Tracing(),
+  	   (TFile, "NEWPRE: initial worklist has %d candidates\n", _cur_e_num));
+
   EXP_WORKLST *cur_worklst;
   EXP_WORKLST_ITER2 worklst_iter(Exp_worklst(), Urgent_worklst());
   Lftr()->Set_exp_iter(&worklst_iter);	// for use when moving worklsts around
@@ -4279,7 +4320,8 @@ ETABLE::Perform_PRE_optimization(void)
     OPT_POOL_Push(Per_expr_pool(), -1);
 
     Is_Trace(Tracing(),
-	     (TFile, "\nprocessing %dth expression\n", cur_worklst_idx));
+	     (TFile, "\nprocessing %dth expression b=%s\n", cur_worklst_idx,
+	      cur_worklst->Exp()->Print_bit()));
     Is_Trace_cmd(Tracing(),cur_worklst->Exp()->Print(0,TFile));
     Is_Trace_cmd(Tracing(),cur_worklst->Print(TFile, Lftr()->Exp_hash(cur_worklst)));
 
@@ -4388,6 +4430,9 @@ ETABLE::Perform_PRE_optimization(void)
 #endif
 
       } // bypass by DownSafety step
+
+      Is_Trace(Tracing(),
+  	       (TFile, "NEWPRE: entire worklist has %d candidates\n", _cur_e_num));
 
       Opt_tlog("New_PRE", 0,
 	       "%d-th expression: Inserts=%d, Saves=%d, Reloads=%d, Temp phis=%d, Hoisted=%d",
@@ -4894,6 +4939,10 @@ XTABLE::Lexically_identical(CODEREP *cr1, CODEREP *cr2) const
     // check additional fields for specific opcodes
     if (cr1->Opr() == OPR_INTRINSIC_OP)
       if (cr1->Intrinsic() != cr2->Intrinsic()) return FALSE;
+#ifdef KEY
+    if (cr1->Opr() == OPR_PURE_CALL_OP)
+      if (cr1->Call_op_aux_id() != cr2->Call_op_aux_id()) return FALSE;
+#endif
     if (cr1->Opr() == OPR_CVTL)
       if (cr1->Offset() != cr2->Offset()) return FALSE;
   }
@@ -4920,7 +4969,11 @@ XTABLE::Hash(CODEREP *cr) const
   }
   // CK_OP
   IDX_32 hvalue = 0;
-  if (cr->Opr() != OPR_INTRINSIC_OP) {
+  if (cr->Opr() != OPR_INTRINSIC_OP
+#ifdef KEY
+      && cr->Opr() != OPR_PURE_CALL_OP
+#endif
+     ) {
     for (INT32 i = 0; i < cr->Kid_count(); i++)
       hvalue += Hashvalue(cr->Opnd(i));
   }
@@ -4945,7 +4998,11 @@ XTABLE::Is_compound(CODEREP *cr) const
   // CK_OP
   if (cr->Is_isop_flag_set(ISOP_SSAPRE_OMITTED))
     return TRUE;
-  if (cr->Opr() != OPR_INTRINSIC_OP) {
+  if (cr->Opr() != OPR_INTRINSIC_OP
+#ifdef KEY
+      && cr->Opr() != OPR_PURE_CALL_OP
+#endif
+     ) {
     for (INT32 i = 0; i < cr->Kid_count(); i++)
       if (! cr->Opnd(i)->Is_non_volatile_terminal(_opt_stab)) 
         return TRUE;
@@ -4996,6 +5053,7 @@ XTABLE::Add_nonterm(CODEREP *cr)
 
 // PARM nodes (only due to INTRINSIC_OP here) are skipped and not entered 
 // into XTABLE
+// KEY: PARM nodes of PURE_CALL_OP are also skipped here.
 void
 XTABLE::Bottom_up_cr(CODEREP *cr)
 {
@@ -5016,7 +5074,11 @@ XTABLE::Bottom_up_cr(CODEREP *cr)
     return;
     }
   case CK_OP: {
-    if (cr->Opr() != OPR_INTRINSIC_OP) {
+    if (cr->Opr() != OPR_INTRINSIC_OP
+#ifdef KEY
+        && cr->Opr() != OPR_PURE_CALL_OP
+#endif
+       ) {
       for (INT32 i=0; i < cr->Kid_count(); i++) 
         Bottom_up_cr(cr->Opnd(i));
       Add_nonterm(cr);

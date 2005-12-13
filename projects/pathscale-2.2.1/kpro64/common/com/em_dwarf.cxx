@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -44,8 +44,8 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 
 #include <stdio.h>
 
-#include <elf.h>
-#include <libelf.h>
+#include "libelf/libelf.h"
+#include "elf_stuff.h"
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
@@ -57,6 +57,7 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 #include "targ_em_dwarf.h"
 #ifdef KEY
 #include "config_targ.h"  // For Is_Target_64bit() 
+#include "config_debug.h" // For DEBUG_Emit_Ehframe
 #endif
 
 
@@ -266,9 +267,7 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 {
   Dwarf_Unsigned flags;
   char *augmenter;
-#ifdef KEY
   Dwarf_Unsigned personality=0;
-#endif // KEY
 
 #define EXT_OP(v)  (DW_CFA_extended | v)
   static unsigned char init_bytes[] = TARG_INIT_BYTES;
@@ -293,7 +292,6 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
   dw_dbg = dwarf_producer_init_b (flags, setup_new_section_for_dwarf, 
 		      0, 0, &dw_error);
 
-#ifdef KEY
   if (is_cplus)	/* may have eh info */
   {
     	if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
@@ -320,41 +318,51 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 	}
   }
   else
-	augmenter = "";
-#else
-  if (is_cplus)	/* may have eh info */
-	augmenter = DW_CIE_AUGMENTER_STRING_V0;
-  else
-	augmenter = "";
-#endif
+    // Bug 7278 - implement "zR" CFA augmentation for non-C++ code.
+    if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
+      augmenter = PIC_NONCPLUS_DW_CIE_AUGMENTER_STRING_V0;
+    else
+      augmenter = "";
+
+  char *cie_augmenter;
+  Dwarf_Small code_alignent_factor;
+  Dwarf_Small return_reg;
+  Dwarf_Ptr cie_init_bytes;
+  Dwarf_Unsigned cie_init_byte_len;
 
 #ifdef TARG_X8664
-  cie_index = dwarf_add_frame_cie (dw_dbg, "", // augmenter
-		    1, data_alignment_factor,
-		    // In common/com/em_dwarf.cxx, we have 
-		    // target description only for x86_64. So, we need to 
-		    // specify what is the right column for x86.
-		    Is_Target_64bit() ? DW_FRAME_RA_COL: 0x8,
+  code_alignent_factor = 1;
+  cie_augmenter = "";
+  return_reg = Is_Target_64bit() ? DW_FRAME_RA_COL : 0x8;
+  // We have target description only for x86_64.  So we need to
+  // specify what is the right column for x86.
+  cie_init_bytes = Is_Target_64bit() ? init_bytes :  init_x86_bytes;
+  cie_init_byte_len = Is_Target_64bit()
+    ? sizeof(init_bytes) : sizeof(init_x86_bytes);
 #else
-  cie_index = dwarf_add_frame_cie (dw_dbg, augmenter,
-		    4, data_alignment_factor,
-		    DW_FRAME_RA_COL,
-#endif // TARG_X8664
-#ifdef KEY
-		    0, // no personality
-		    (Gen_PIC_Call_Shared || Gen_PIC_Shared),
-		    is_64bit,
-		    Is_Target_64bit() ? init_bytes :  init_x86_bytes, 
-		    Is_Target_64bit() ? sizeof(init_bytes) : sizeof(init_x86_bytes), 
-		    &dw_error);
-#else
-		    init_bytes, sizeof(init_bytes), &dw_error);
-#endif // KEY
+  code_alignent_factor = 4;
+  cie_augmenter = augmenter;
+  return_reg = DW_FRAME_RA_COL;
+  cie_init_bytes = init_bytes;
+  cie_init_byte_len = sizeof(init_bytes);
+#endif
+
+  cie_index = dwf_add_frame_cie (dw_dbg,
+				 cie_augmenter,
+				 code_alignent_factor,
+				 data_alignment_factor,
+				 return_reg,
+				 0, // no personality
+				 (Gen_PIC_Call_Shared || Gen_PIC_Shared),
+				 is_64bit,
+				 cie_init_bytes,
+				 cie_init_byte_len,
+				 &dw_error);
 
 #ifdef KEY
-  // Generate a CIE for .eh_frame only if it is C++
-  if (is_cplus)
-    eh_cie_index = dwarf_add_ehframe_cie (dw_dbg, augmenter,
+  // Generate a CIE for .eh_frame only if it is C++ or if -DEBUG:eh_frame=on
+  if (is_cplus || DEBUG_Emit_Ehframe)
+    eh_cie_index = dwf_add_ehframe_cie (dw_dbg, augmenter,
 		    1, data_alignment_factor,
 		    // In common/com/em_dwarf.cxx, we have 
 		    // target description only for x86_64. So, we need to 
@@ -714,7 +722,7 @@ void Em_Dwarf_Process_PU (Dwarf_Unsigned begin_label,
   	return;
 
   if (eh_offset == DW_DLX_NO_EH_OFFSET)	/* no exception handler */
-  	dwarf_add_ehframe_fde_b (dw_dbg, eh_fde, PU_die, eh_cie_index, 
+  	dwf_add_ehframe_fde_b (dw_dbg, eh_fde, PU_die, eh_cie_index, 
 			       begin_offset,
 			       0 /* dummy code length */,
 			       (Dwarf_Unsigned) begin_label,
@@ -722,7 +730,7 @@ void Em_Dwarf_Process_PU (Dwarf_Unsigned begin_label,
 			       end_offset,
 			       &dw_error);
   else
-  	dwarf_add_ehframe_info_b (dw_dbg, eh_fde, PU_die, eh_cie_index, 
+  	dwf_add_ehframe_info_b (dw_dbg, eh_fde, PU_die, eh_cie_index, 
 				begin_offset,
 				0 /* dummy code length */,
 				(Dwarf_Unsigned) begin_label,
@@ -731,3 +739,31 @@ void Em_Dwarf_Process_PU (Dwarf_Unsigned begin_label,
 				eh_offset, eh_symindex, &dw_error);
 #endif
 }
+#ifdef TARG_X8664
+void Em_Dwarf_Add_PU_Entries (Dwarf_Unsigned begin_label,
+			      Dwarf_Unsigned end_label,
+			      INT32          begin_offset,
+			      INT32          end_offset,
+			      Dwarf_P_Die    PU_die, 
+			      Dwarf_P_Fde    fde)
+{
+  dwarf_add_AT_targ_address_b (dw_dbg, PU_die, DW_AT_low_pc,
+			       begin_offset,
+			       (Dwarf_Unsigned) begin_label,
+			       &dw_error);
+  dwarf_add_AT_targ_address_b (dw_dbg, PU_die, DW_AT_high_pc,
+			       end_offset, (Dwarf_Unsigned) end_label,
+			       &dw_error);
+
+  if (fde == NULL)
+    return;
+  /* emit the debug_frame information for this procedure. */
+  dwarf_add_frame_fde_b (dw_dbg, fde, PU_die, cie_index, 
+  		         begin_offset,
+			 0 /* dummy code length */,
+			 (Dwarf_Unsigned) begin_label,
+			 (Dwarf_Unsigned) end_label,
+			 end_offset,
+			 &dw_error);
+}
+#endif

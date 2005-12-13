@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -503,7 +507,11 @@ Is_Array_Param(const WN *curr_nd)
     WN *parent = LWN_Get_Parent(curr_nd);
     if ((WN_operator(parent) == OPR_PARM) &&
         (OPCODE_is_call(WN_opcode(LWN_Get_Parent(parent))) ||
-         WN_operator(LWN_Get_Parent(parent)) == OPR_INTRINSIC_OP))
+         WN_operator(LWN_Get_Parent(parent)) == OPR_INTRINSIC_OP
+#ifdef KEY
+         || WN_operator(LWN_Get_Parent(parent)) == OPR_PURE_CALL_OP
+#endif
+	 ))
       return TRUE;
   }
     

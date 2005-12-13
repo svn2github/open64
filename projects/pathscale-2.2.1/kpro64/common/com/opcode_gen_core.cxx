@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1019,6 +1019,23 @@ struct OPERATOR_info_struct OPERATOR_info[OPERATOR_LAST+1] = {
    1 /* nkids */,
    OPERATOR_MAPCAT_OEXP /* mapcat */,
    OPERATOR_PROPERTY_expression},
+#endif
+
+#ifdef KEY
+  {"OPR_PURE_CALL_OP",
+   -1 /* nkids */,
+   OPERATOR_MAPCAT_OEXP /* mapcat */,
+   OPERATOR_PROPERTY_expression           |
+   OPERATOR_PROPERTY_flags                |
+   OPERATOR_PROPERTY_sym},
+#endif
+
+#ifdef TARG_X8664
+  {"OPR_SHUFFLE",
+   1 /* nkids */,
+   OPERATOR_MAPCAT_OEXP /* mapcat */,
+   OPERATOR_PROPERTY_expression           |
+   OPERATOR_PROPERTY_offset},
 #endif /* TARG_X8664 */
 };
 
@@ -1050,17 +1067,24 @@ Is_MTYPE_b [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   0, /* MTYPE_I16     */
+#ifndef TARG_X8664
   0  /* MTYPE_U16     */
 #else
+  0, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   0, /* MTYPE_V16I1   */
   0, /* MTYPE_V16I2   */
   0, /* MTYPE_V16I4   */
   0, /* MTYPE_V16I8   */
   0, /* MTYPE_V16F4   */
-  0  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  0, /* MTYPE_V16F8   */
+  0, /* MTYPE_V8I1    */
+  0, /* MTYPE_V8I2    */
+  0, /* MTYPE_V8I4    */
+  0  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1091,17 +1115,24 @@ Is_MTYPE_b_f_i_M_p_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1132,17 +1163,24 @@ Is_MTYPE_b_f_i_M_p_V_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1173,17 +1211,24 @@ Is_MTYPE_b_f_i_M_p_s_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1214,17 +1259,24 @@ Is_MTYPE_b_f_i_p_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1255,17 +1307,24 @@ Is_MTYPE_bs_I1_I2_I4_I8 [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   0, /* MTYPE_I16     */
+#ifndef TARG_X8664
   0  /* MTYPE_U16     */
 #else
+  0, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   0, /* MTYPE_V16I1   */
   0, /* MTYPE_V16I2   */
   0, /* MTYPE_V16I4   */
   0, /* MTYPE_V16I8   */
   0, /* MTYPE_V16F4   */
-  0  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  0, /* MTYPE_V16F8   */
+  0, /* MTYPE_V8I1    */
+  0, /* MTYPE_V8I2    */
+  0, /* MTYPE_V8I4    */
+  0  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1296,17 +1355,24 @@ Is_MTYPE_bs_U1_U2_U4_U8 [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   0, /* MTYPE_I16     */
+#ifndef TARG_X8664
   0  /* MTYPE_U16     */
 #else
+  0, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   0, /* MTYPE_V16I1   */
   0, /* MTYPE_V16I2   */
   0, /* MTYPE_V16I4   */
   0, /* MTYPE_V16I8   */
   0, /* MTYPE_V16F4   */
-  0  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  0, /* MTYPE_V16F8   */
+  0, /* MTYPE_V8I1    */
+  0, /* MTYPE_V8I2    */
+  0, /* MTYPE_V8I4    */
+  0  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1337,17 +1403,24 @@ Is_MTYPE_b_bs_f_i_p_s_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1378,17 +1451,24 @@ Is_MTYPE_b_bs_f_i_M_p_s_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1419,17 +1499,24 @@ Is_MTYPE_f [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   0, /* MTYPE_I16     */
+#ifndef TARG_X8664
   0  /* MTYPE_U16     */
 #else
+  0, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   0, /* MTYPE_V16I1   */
   0, /* MTYPE_V16I2   */
   0, /* MTYPE_V16I4   */
   0, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  0, /* MTYPE_V8I1    */
+  0, /* MTYPE_V8I2    */
+  0, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1460,17 +1547,24 @@ Is_MTYPE_f_I4_I8_I16 [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   0  /* MTYPE_U16     */
 #else
+  0, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  0, /* MTYPE_V8I1    */
+  0, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1501,17 +1595,24 @@ Is_MTYPE_f_i_M_p_V_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1542,17 +1643,24 @@ Is_MTYPE_f_i_M_p_s_V_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1583,17 +1691,24 @@ Is_MTYPE_f_i_M_p_s_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1624,17 +1739,24 @@ Is_MTYPE_f_i_M_p_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1665,17 +1787,24 @@ Is_MTYPE_f_i_M_z [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1706,17 +1835,24 @@ Is_MTYPE_f_i [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1747,17 +1883,24 @@ Is_MTYPE_f_i_p [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1788,17 +1931,24 @@ Is_MTYPE_f_i_p_s_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1829,17 +1979,24 @@ Is_MTYPE_f_i_p_z [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1870,17 +2027,24 @@ Is_MTYPE_f_i_z [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1911,17 +2075,24 @@ Is_MTYPE_f_z [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   0, /* MTYPE_I16     */
+#ifndef TARG_X8664
   0  /* MTYPE_U16     */
 #else
+  0, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   0, /* MTYPE_V16I1   */
   0, /* MTYPE_V16I2   */
   0, /* MTYPE_V16I4   */
   0, /* MTYPE_V16I8   */
   1, /* MTYPE_V16F4   */
-  1  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  1, /* MTYPE_V16F8   */
+  0, /* MTYPE_V8I1    */
+  0, /* MTYPE_V8I2    */
+  0, /* MTYPE_V8I4    */
+  1  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1952,17 +2123,24 @@ Is_MTYPE_i [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   0, /* MTYPE_V16F4   */
-  0  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  0, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  0  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -1993,17 +2171,24 @@ Is_MTYPE_b_i_p [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   0, /* MTYPE_V16F4   */
-  0  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  0, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  0  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -2034,17 +2219,24 @@ Is_MTYPE_p [MTYPE_LAST+1] = {
   1, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   0, /* MTYPE_I16     */
+#ifndef TARG_X8664
   0  /* MTYPE_U16     */
 #else
+  0, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   0, /* MTYPE_V16I1   */
   0, /* MTYPE_V16I2   */
   0, /* MTYPE_V16I4   */
   0, /* MTYPE_V16I8   */
   0, /* MTYPE_V16F4   */
-  0  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  0, /* MTYPE_V16F8   */
+  0, /* MTYPE_V8I1    */
+  0, /* MTYPE_V8I2    */
+  0, /* MTYPE_V8I4    */
+  0  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -2075,17 +2267,24 @@ Is_MTYPE_s [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   0, /* MTYPE_I16     */
+#ifndef TARG_X8664
   0  /* MTYPE_U16     */
 #else
+  0, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   0, /* MTYPE_V16I1   */
   0, /* MTYPE_V16I2   */
   0, /* MTYPE_V16I4   */
   0, /* MTYPE_V16I8   */
   0, /* MTYPE_V16F4   */
-  0  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  0, /* MTYPE_V16F8   */
+  0, /* MTYPE_V8I1    */
+  0, /* MTYPE_V8I2    */
+  0, /* MTYPE_V8I4    */
+  0  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -2116,17 +2315,24 @@ Is_MTYPE_b_i_s [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   0, /* MTYPE_C10     */
   0, /* MTYPE_C16     */
-#ifndef TARG_X8664
   1, /* MTYPE_I16     */
+#ifndef TARG_X8664
   1  /* MTYPE_U16     */
 #else
+  1, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
   1, /* MTYPE_V16I1   */
   1, /* MTYPE_V16I2   */
   1, /* MTYPE_V16I4   */
   1, /* MTYPE_V16I8   */
   0, /* MTYPE_V16F4   */
-  0  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  0, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  0  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
 static BOOL
@@ -2157,19 +2363,74 @@ Is_MTYPE_z [MTYPE_LAST+1] = {
   0, /* MTYPE_A8      */
   1, /* MTYPE_C10     */
   1, /* MTYPE_C16     */
-#ifndef TARG_X8664
   0, /* MTYPE_I16     */
+#ifndef TARG_X8664
   0  /* MTYPE_U16     */
 #else
+  0, /* MTYPE_U16     */
+  1, /* MTYPE_V16C4   */
+  1, /* MTYPE_V16C8   */
   0, /* MTYPE_V16I1   */
   0, /* MTYPE_V16I2   */
   0, /* MTYPE_V16I4   */
   0, /* MTYPE_V16I8   */
   0, /* MTYPE_V16F4   */
-  0  /* MTYPE_V16F8   */
-#endif /* TARG_X8664 */
+  0, /* MTYPE_V16F8   */
+  0, /* MTYPE_V8I1    */
+  0, /* MTYPE_V8I2    */
+  0, /* MTYPE_V8I4    */
+  0  /* MTYPE_V8F4    */
+#endif // TARG_X8664
 };
 
+// 64-bit vector of integers
+static BOOL
+Is_MTYPE_64v_i [MTYPE_LAST+1] = {
+  0, /* MTYPE_UNKNOWN */
+  0, /* MTYPE_B       */
+  0, /* MTYPE_I1      */
+  0, /* MTYPE_I2      */
+  0, /* MTYPE_I4      */
+  0, /* MTYPE_I8      */
+  0, /* MTYPE_U1      */
+  0, /* MTYPE_U2      */
+  0, /* MTYPE_U4      */
+  0, /* MTYPE_U8      */
+  0, /* MTYPE_F4      */
+  0, /* MTYPE_F8      */
+  0, /* MTYPE_F10     */
+  0, /* MTYPE_F16     */
+  0, /* MTYPE_STR     */
+  0, /* MTYPE_FQ      */
+  0, /* MTYPE_M       */
+  0, /* MTYPE_C4      */
+  0, /* MTYPE_C8      */
+  0, /* MTYPE_CQ      */
+  0, /* MTYPE_V       */
+  0, /* MTYPE_BS      */
+  0, /* MTYPE_A4      */
+  0, /* MTYPE_A8      */
+  0, /* MTYPE_C10     */
+  0, /* MTYPE_C16     */
+  0, /* MTYPE_I16     */
+#ifndef TARG_X8664
+  0  /* MTYPE_U16     */
+#else
+  0, /* MTYPE_U16     */
+  0, /* MTYPE_V16C4   */
+  0, /* MTYPE_V16C8   */
+  0, /* MTYPE_V16I1   */
+  0, /* MTYPE_V16I2   */
+  0, /* MTYPE_V16I4   */
+  0, /* MTYPE_V16I8   */
+  0, /* MTYPE_V16F4   */
+  0, /* MTYPE_V16F8   */
+  1, /* MTYPE_V8I1    */
+  1, /* MTYPE_V8I2    */
+  1, /* MTYPE_V8I4    */
+  0  /* MTYPE_V8F4    */
+#endif // TARG_X8664
+};
 
 void
 breakpoint ()
@@ -2428,12 +2689,17 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
         }
 #ifdef TARG_X8664
 	// [RTYPE] & [DESC]  : could be one of the vector MTYPEs
-	valid  = valid | ((rtype == MTYPE_V16I1 && desc == MTYPE_V16I1) || 
+	valid  = valid || ((rtype == MTYPE_V16I1 && desc == MTYPE_V16I1) || 
 			  (rtype == MTYPE_V16I2 && desc == MTYPE_V16I2) || 
 			  (rtype == MTYPE_V16I4 && desc == MTYPE_V16I4) || 
 			  (rtype == MTYPE_V16I8 && desc == MTYPE_V16I8) ||
 			  (rtype == MTYPE_V16F4 && desc == MTYPE_V16F4) || 
-			  (rtype == MTYPE_V16F8 && desc == MTYPE_V16F8));
+			  (rtype == MTYPE_V16F8 && desc == MTYPE_V16F8) ||
+			  (rtype == MTYPE_V16C4 && desc == MTYPE_V16C4) ||
+			  (rtype == MTYPE_V16C8 && desc == MTYPE_V16C8));
+
+	valid = valid || (Is_MTYPE_64v_i [desc] && Is_MTYPE_64v_i [rtype] &&
+	                  rtype == desc);
 #endif /* TARG_X8664 */
         break;
 
@@ -2483,7 +2749,8 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 	valid = valid | (rtype == MTYPE_V && 
 			 (desc == MTYPE_V16I1 || desc == MTYPE_V16I2 || 
 			  desc == MTYPE_V16I4 || desc == MTYPE_V16I8 || 
-			  desc == MTYPE_V16F4 || desc == MTYPE_V16F8));
+			  desc == MTYPE_V16F4 || desc == MTYPE_V16F8 ||
+			  desc == MTYPE_V16C4 || desc == MTYPE_V16C8));
 #endif /* TARG_X8664 */
         break;
 
@@ -2516,7 +2783,9 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 	valid =	((rtype == MTYPE_I1 || rtype == MTYPE_I2 || 
 		  rtype == MTYPE_I4 || rtype == MTYPE_I8 || 
 		  rtype == MTYPE_F4 || rtype == MTYPE_F8 ||
+		  rtype == MTYPE_FQ ||
 		  rtype == MTYPE_C4 || rtype == MTYPE_C8 ||
+		  rtype == MTYPE_V16C4 || rtype == MTYPE_V16C8 ||
 		  rtype == MTYPE_V16F4 || rtype == MTYPE_V16F8 ||
 		  rtype == MTYPE_V16I1 || rtype == MTYPE_V16I2 ||
 		  rtype == MTYPE_V16I4 || rtype == MTYPE_V16I8) &&
@@ -2569,6 +2838,7 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 		 (rtype == MTYPE_V16I2 && desc == MTYPE_I2) ||
 		 (rtype == MTYPE_V16I4 && desc == MTYPE_I4) ||
 		 (rtype == MTYPE_V16I8 && desc == MTYPE_I8) ||
+		 (rtype == MTYPE_V16C4 && desc == MTYPE_F8) ||
 		 (rtype == MTYPE_V16F4 && desc == MTYPE_F4) ||
 		 (rtype == MTYPE_V16F8 && desc == MTYPE_F8));
 	break;
@@ -2590,7 +2860,17 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 
       case OPR_REDUCE_MAX: case OPR_REDUCE_MIN:
 	valid = ((desc == MTYPE_V16F4 && rtype == MTYPE_F4) ||
-		 (desc == MTYPE_V16F8 && rtype == MTYPE_F8));
+		 (desc == MTYPE_V16F8 && rtype == MTYPE_F8) ||
+		 (desc == MTYPE_V16I1 && rtype == MTYPE_I1) ||
+		 (desc == MTYPE_V16I2 && rtype == MTYPE_I2) ||
+		 (desc == MTYPE_V16I4 && rtype == MTYPE_I4));
+	break;
+      case OPR_PURE_CALL_OP:
+	valid = Is_MTYPE_f_i_M_p_s_z [rtype] && desc == MTYPE_V;
+	break;
+      case OPR_SHUFFLE:
+        valid = (desc == rtype &&
+		 MTYPE_is_vector(desc));
 	break;
 #endif /* TARG_X8664 */
       default:
@@ -2609,8 +2889,8 @@ BOOL
 Is_Valid_Opcode_FUNC (OPCODE opc)
 {
   OPERATOR opr   = (OPERATOR) (((UINT32) opc) & 0xFF);
-  TYPE_ID  rtype = (TYPE_ID)  ((((UINT32) opc) >> 8) & 0x1F);
-  TYPE_ID  desc  = (TYPE_ID)  ((((UINT32) opc) >> 13) & 0x1F);
+  TYPE_ID  rtype = (TYPE_ID)  ((((UINT32) opc) >> 8) & 0x3F);
+  TYPE_ID  desc  = (TYPE_ID)  ((((UINT32) opc) >> 14) & 0x3F);
 
   return Is_Valid_Opcode_Parts (opr, rtype, desc);
 }
@@ -2924,6 +3204,15 @@ OPCODE_name (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
       sprintf (buffer, "OPC_%s%s%s", MTYPE_name(rtype), MTYPE_name(desc), &OPERATOR_info [opr]._name [4]);
       break;
 
+    case OPR_PURE_CALL_OP:
+      // [RTYPE] : f,i,M,p,s,z [DESC] : V
+      sprintf (buffer, "OPC_%s%s", MTYPE_name(rtype), &OPERATOR_info [opr]._name [4]);
+      break;
+
+    case OPR_SHUFFLE:
+      sprintf (buffer, "OPC_%s%s%s", MTYPE_name(rtype), MTYPE_name(desc), &OPERATOR_info [opr]._name [4]);
+      break;
+
 #endif /* TARG_X8664 */
     default:
       buffer [0] = 0;
@@ -2937,8 +3226,8 @@ char*
 OPCODE_name (OPCODE opc)
 {
   OPERATOR opr   = (OPERATOR) (((UINT32) opc) & 0xFF);
-  TYPE_ID  rtype = (TYPE_ID)  ((((UINT32) opc) >> 8) & 0x1F);
-  TYPE_ID  desc  = (TYPE_ID)  ((((UINT32) opc) >> 13) & 0x1F);
+  TYPE_ID  rtype = (TYPE_ID)  ((((UINT32) opc) >> 8) & 0x3F);
+  TYPE_ID  desc  = (TYPE_ID)  ((((UINT32) opc) >> 14) & 0x3F);
 
   return OPCODE_name (opr, rtype, desc);
 }

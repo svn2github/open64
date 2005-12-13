@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -221,6 +221,22 @@ Is_Cmp_Eq_IV (WN* cmp, SYMBOL symindex)
   return FALSE;
 }
 
+static BOOL
+compared_operand_has_index (WN *opnd, SYMBOL symindex)
+{
+  if (WN_operator(opnd) == OPR_LDID) {
+    SYMBOL sym = SYMBOL(opnd);
+    if (sym == symindex)
+      return TRUE;
+
+  } else
+    for (INT kid = 0; kid < WN_kid_count(opnd); kid ++)
+      if (compared_operand_has_index (WN_kid(opnd, kid), symindex))
+	return TRUE;
+
+  return FALSE;
+}
+
 static BOOL 
 Is_HoistIf_Amenable (WN* stmt, WN* innerloop)
 {
@@ -260,11 +276,15 @@ Is_HoistIf_Amenable (WN* stmt, WN* innerloop)
 	sym0 = SYMBOL(tmp_opnd0);
 	if (sym0 == symindex)
 	  found_index = TRUE;
+	if (found_index && compared_operand_has_index(tmp_opnd1, symindex))
+	  return FALSE;
       }  
       if (WN_operator(tmp_opnd1) == OPR_LDID) {
 	sym1 = SYMBOL(tmp_opnd1);
 	if (sym1 == symindex)
 	  found_index = TRUE;
+	if (found_index && compared_operand_has_index(tmp_opnd0, symindex))
+	  return FALSE;
       }
       if (!found_index)
 	return FALSE; 
@@ -283,11 +303,15 @@ Is_HoistIf_Amenable (WN* stmt, WN* innerloop)
 	sym0 = SYMBOL(tmp_opnd0);
 	if (sym0 == symindex)
 	  found_index = TRUE;
+	if (found_index && compared_operand_has_index(tmp_opnd1, symindex))
+	  return FALSE;
       }  
       if (WN_operator(tmp_opnd1) == OPR_LDID) {
 	sym1 = SYMBOL(tmp_opnd1);
 	if (sym1 == symindex)
 	  found_index = TRUE;
+	if (found_index && compared_operand_has_index(tmp_opnd0, symindex))
+	  return FALSE;
       }
       if (!found_index)
 	return FALSE;            
@@ -297,11 +321,15 @@ Is_HoistIf_Amenable (WN* stmt, WN* innerloop)
 	SYMBOL sym0 = SYMBOL(opnd0);
 	if (sym0 == symindex)
 	  found_index = TRUE;
+	if (found_index && compared_operand_has_index(opnd1, symindex))
+	  return FALSE;
       }
       if (WN_operator(opnd1) == OPR_LDID) {
 	SYMBOL sym1 = SYMBOL(opnd1);
 	if (sym1 == symindex)
 	  found_index = TRUE;
+	if (found_index && compared_operand_has_index(opnd0, symindex))
+	  return FALSE;
       }
       if (!found_index)
 	return FALSE;
@@ -884,6 +912,12 @@ HoistIf (WN* innerloop)
     LWN_Parentize(stmt);
     LWN_Set_Parent(stmt, LWN_Get_Parent(innerloop));
   }
+  if (debug_hoistif) {
+    printf("(%s:%d) ", 
+      Src_File_Name,
+      Srcpos_To_Line(WN_Get_Linenum(innerloop)));
+      printf("Hoist If succeeded on loop.\n");
+    }      
   return 1;
 }
 

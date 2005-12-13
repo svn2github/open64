@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -76,8 +76,8 @@ extern Dwarf_P_Fde Build_Fde_For_Proc (Dwarf_P_Debug  dw_dbg,
 #endif // TARG_X8664
 
 extern void Check_Dwarf_Rel(const Elf32_Rel &);
-extern void Check_Dwarf_Rel(const Elf64_Rel &);
-extern void Check_Dwarf_Rela(const Elf64_Rela &);
+extern void Check_Dwarf_Rel(const Elf64_AltRel &);
+extern void Check_Dwarf_Rela(const Elf64_AltRela &);
 extern void Check_Dwarf_Rela(const Elf32_Rela &);
 extern BOOL Is_Dwarf_Section_To_Emit(const char *name);
 

@@ -118,6 +118,13 @@ DEFTREECODE (COMPOUND_LITERAL_EXPR, "compound_literal_expr", 'e', 1)
    scope, the CLEANUP_EXPR must be run.  */
 DEFTREECODE (CLEANUP_STMT, "cleanup_stmt", 'e', 2)
 
+#ifdef KEY
+/* A OMP_MARKER_STMT marks the start/finish of OpenMP constructs. The 
+   parser adds this marker as appropriate, and kgccfe will later expand
+   these appropriately based on the type of marker */
+DEFTREECODE (OMP_MARKER_STMT, "omp_marker_stmt", 'e', 0)
+#endif // KEY
+
 /*
 Local variables:
 mode:c

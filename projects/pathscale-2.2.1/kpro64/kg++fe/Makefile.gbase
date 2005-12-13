@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-#  Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+#  Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
 #  File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
 #  front-ends to GNU 3.2.2 release.
 #
@@ -59,11 +59,6 @@ include $(COMMONDEFS)
 #----------------------------------------------------------------------
 #  Set environment variables
 #----------------------------------------------------------------------
-ifeq ($(BUILD_COMPILER), SGI)
-CVERSION = -xansi
-else
-CVERSION =
-endif
 
 #----------------------------------------------------------------------
 #  Compiler Options
@@ -105,9 +100,7 @@ HOSTDEFS += -DMONGOOSE_CIF
 HOSTDEFS += -DSGI_RAG_BACKEND
 HOSTDEFS += -DSGI_MONGOOSE
 HOSTDEFS += -DHANDLE_PRAGMA_WEAK
-ifneq ($(BUILD_COMPILER), SGI)
 HOSTDEFS += -DMIPSEL
-endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 HOSTDEFS += -DIs_True_On
@@ -137,15 +130,10 @@ COMMON_TARG_INFO_ACCESS_DIR = $(BUILD_TOT)/common/targ_info/access
 COMMON_UTIL_DIR		= $(BUILD_TOT)/common/util
 COMMON_UTIL_TARG_DIR	= $(BUILD_TOT)/common/util/$(BUILD_TARGET_DIR)
 
-ifeq ($(BUILD_OS), IRIX)
-INCLUDE_DIR 		= $(BUILD_TOT)/include
-else
 INCLUDE_DIR 		= $(BUILD_AREA)/include
-endif
 
 GNU_DIR			= $(BUILD_BASE)/gnu
 GNU_CONFIG_DIR		= $(BUILD_BASE)/gnu/config
-GNU_COMMON_DIR          = $(BUILD_TOT)/kgnu_common
 
 GNU_TARG_DIR = $(GNU_DIR)/$(BUILD_TARGET_DIR)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/$(BUILD_TARGET_DIR)
@@ -191,7 +179,8 @@ INC_DIRS =		\
   $(GNU_TARG_DIR)	\
   $(GNU_CONFIG_DIR)	\
   $(GNU_CONFIG_TARG_DIR) \
-  $(GNU_COMMON_DIR)/include \
+  $(BUILD_TOT)/include/gnu \
+  $(BUILD_TOT)/include \
   $(GNU_CP_DIR)
 
 #----------------------------------------------------------------------
@@ -203,12 +192,15 @@ FE_C_SRCS =		\
   main.c
 
 FE_CXX_SRCS =		\
+  omp_directive.cxx	\
   rt_symtab.cxx		\
   tree_symtab.cxx       \
   wfe_decl.cxx          \
   wfe_dst.cxx           \
   wfe_expr.cxx		\
   wfe_misc.cxx          \
+  wfe_omp_check_stack.cxx \
+  wfe_omp_directives.cxx \
   wfe_stmt.cxx
 
 COMMON_COM_CXX_SRCS =	\
@@ -281,11 +273,6 @@ LC++OPTS = $(STD_COMPILE_OPTS)
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(LCINCS)
 
-ifeq ($(BUILD_COMPILER), GNU)
-LCOPTS += -fwritable-strings
-LC++OPTS += -fwritable-strings
-endif
-
 # setup stuff to build shared or non-shared
 GLDOPTS = $(STD_LOAD_OPTS)
 
@@ -314,17 +301,9 @@ CMPLRS_OBJS  = $(TARG_CMPLRS_DIR)/libcmplrs.a
 LIBIBERTY_OBJS = $(TARG_LIBIBERTY_DIR)/libiberty.a
 LIBGNU_OBJS = $(TARG_GNU_DIR)/libgfecc.a
 
+LLDOPTS = -Wl,--export-dynamic
 LLDLIBS = $(LIBGNU_OBJS) $(COMUTIL_OBJS) $(LIBIBERTY_OBJS)
-ifeq ($(BUILD_OS), IRIX)
-LLDLIBS += -lm -lcmplrs -Bstatic -lffio -Bdynamic
-else
 LLDLIBS += -lm $(CMPLRS_OBJS)
-ifeq ($(BUILD_HOST), IA64)
-ifeq ($(BUILD_COMPILER), SGI)
-LDFLAGS += -Wl,-relax
-endif
-endif
-endif
 
 default: first $(TARGETS) last
 
@@ -367,3 +346,4 @@ ifeq (gcc,$(firstword $(CCNAME)))
    wfe_stmt.o: OPTIMIZER = -O -fno-inline
  endif
 endif
+wn_util.o: HOSTDEFS += -DMONGOOSE_BE

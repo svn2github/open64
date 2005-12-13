@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -199,7 +199,11 @@ add_string (string_list_t *list, char *s)
 
 /* add each blank-separated string to list */
 void
-add_multi_strings (string_list_t *list, char *s)
+add_multi_strings (string_list_t *list, char *s
+#ifdef KEY
+			, boolean only_one
+#endif
+		  )
 {
 	/* first copy into new string area */
 	char *new = string_copy(s);
@@ -211,6 +215,10 @@ add_multi_strings (string_list_t *list, char *s)
 				*t = NIL;
 				add_existing_string(list, new);
 				new = t+1;	/* set to next string */
+#ifdef KEY
+				if (only_one)
+				    break;
+#endif
 			}
 		}
 	}
@@ -282,7 +290,6 @@ ends_with(const char *s, const char *sfx)
 	return NULL;
 }
 
-#ifdef KEY
 /* must call this before using a string pair list */
 string_pair_list_t *
 init_string_pair_list (void)
@@ -309,4 +316,15 @@ add_string_pair (string_pair_list_t *list, char *key, char *val)
     list->tail = p;
   }
 }
-#endif	// KEY
+
+int string_list_size(const string_list_t *l)
+{
+  const string_item_t *i;
+  int len = 0;
+
+  FOREACH_STRING(i, l) {
+    len += 1;
+  }
+
+  return len;
+}

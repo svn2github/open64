@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -81,9 +81,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/vintr_f
 #include "lwn_util.h"
 #include "ff_utils.h"
 #include "lnoutils.h"
+#include "lnopt_main.h"
 #include "scalar_expand.h"
 #include "fission.h"
-#include "lnopt_main.h"
 #include "opt_du.h"
 #include "dep_graph.h"
 #include "btree.h"
@@ -99,6 +99,10 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/vintr_f
 #include "prompf.h"
 #include "anl_driver.h"
 #include "intrn_info.h"
+#ifdef KEY
+#include "wn_simp.h"            // for WN_Simp_Compare_Trees
+#include "config_opt.h"         // for CIS_Allowed
+#endif
 
 #pragma weak New_Construct_Id
 
@@ -789,6 +793,25 @@ void Gather_Intrinsic_Ops(
 
 #ifdef KEY
 WN * Loop_being_replaced=NULL;
+
+typedef enum {
+  SIN = 0,
+  COS = 1,
+  OTHER = 2
+} INTRN_TYPE;
+
+INTRN_TYPE Intrinsic_Type (INTRINSIC intr_id) {
+  switch(intr_id) {
+  case INTRN_F4COS:
+  case INTRN_F8COS:
+    return COS;
+  case INTRN_F4SIN:
+  case INTRN_F8SIN:
+    return SIN;
+  default:
+    return OTHER;
+  }
+}
 #endif
 // Fission a inner loop 'innerloop' such that the intrinsic ops inside
 // can be separated and be vectorized
@@ -810,6 +833,12 @@ static INT Vintrinsic_Fission(WN* innerloop)
     return 0;
   }
 
+#ifdef TARG_X8664
+  // Disregard the remainder loop from SIMD vectorizer.
+  if (dli->Is_Generally_Unimportant()) {
+    return 0;
+  }
+#endif
   // if there are too few iterations, we will not fission
   if (dli->Est_Num_Iterations < Iteration_Count_Threshold)
     return 0;
@@ -886,6 +915,35 @@ static INT Vintrinsic_Fission(WN* innerloop)
     return 0;
   }
 
+#ifdef KEY
+  if (CIS_Allowed) {
+    // Bug 3887 - If the loop contains calls to SIN and COS with identical
+    // arguments, then it is preferrable to convert them to SINCOS inside
+    // be/opt/opt_combine.cxx. Vectorizing the loop will inhibit that
+    // optimization. Screen these loops here.
+    for (INT i=0; i<intrinsic_ops->Elements(); i++) {
+      WN* intrini = intrinsic_ops->Top_nth(i).Wn;
+      INTRN_TYPE typei = Intrinsic_Type(WN_intrinsic(intrini));
+      if (typei != SIN && typei != COS)
+	continue;
+      WN* arg_intrini = WN_kid0(intrini);
+      for (INT j=i+1; j<intrinsic_ops->Elements(); j++) {
+	WN* intrinj = intrinsic_ops->Top_nth(j).Wn;
+	INTRN_TYPE typej = Intrinsic_Type(WN_intrinsic(intrinj));
+	if (typej != SIN && typej != COS)
+	  continue;
+	if (typei == typej)
+	  continue;
+	WN* arg_intrinj = WN_kid0(intrinj);
+	if (WN_Simp_Compare_Trees(arg_intrini, arg_intrinj) == 0) {
+	  CXX_DELETE(dep_g_p, &VINTR_FIS_default_pool);
+	  MEM_POOL_Pop(&VINTR_FIS_default_pool);
+	  return 0;	
+	}
+      }
+    }  
+  }
+#endif
   STACK_OF_WN *vec_intrinsic_ops=
     CXX_NEW(STACK_OF_WN(&VINTR_FIS_default_pool),&VINTR_FIS_default_pool);
 
@@ -947,7 +1005,16 @@ static INT Vintrinsic_Fission(WN* innerloop)
         Variant_Array(stmt,use,adg) && 
         Is_Proper_Descendant(use, WN_kid0(stmt))) {
       if (!Split_Array(stmt,use,adg)) {
+#ifndef TARG_X8664
         FmtAssert(0, ("Failed to split using array"));
+#else
+        // Due to SIMD, we reach the dependence graph (edge) limit sooner.
+	// If that is the case, then Split_Array will fail and we should return 
+	// without performing vectorization.
+        CXX_DELETE(dep_g_p, &VINTR_FIS_default_pool);
+        MEM_POOL_Pop(&VINTR_FIS_default_pool);
+        return 0;
+#endif
       }
     }
 

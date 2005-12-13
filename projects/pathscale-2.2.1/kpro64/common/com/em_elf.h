@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -209,7 +213,7 @@ Em_Add_New_Rela (
  * For the 32bit case, emit multiple relocations.
  */
 extern void
-Em_Add_New_Composite_Rela ( Elf64_Rela *preloc, pSCNINFO scninfo );
+Em_Add_New_Composite_Rela ( Elf64_AltRela *preloc, pSCNINFO scninfo );
 
 /* Change the origin for the section.  Subsequent calls to
  * Em_Add_Bytes_To_Scn will add stuff at the new origin.
@@ -233,7 +237,7 @@ Em_Change_Section_Alignment ( pSCNINFO scn, Elf64_Word scn_align );
 extern Elf64_Xword 
 Em_Add_Bytes_To_Scn (
     pSCNINFO scninfo,
-    void *input_buf,
+    const void *input_buf,
     Elf64_Xword length,
     Elf64_Word align);
 

@@ -1,5 +1,6 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+/* -*- c++ -*-
+ *
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -43,6 +44,7 @@
 #include <stdio.h>
 #include <set>
 #include <algorithm>
+#include <memory>
 
 // Forward references
 class PQS_MANAGER;
@@ -134,7 +136,7 @@ public:
 #ifdef PQS_USE_MEMPOOLS
    typedef mempool_allocator<T> set_allocator_type;
 #else
-   typedef std::__alloc set_allocator_type; // for gcc 3.2
+   typedef std::allocator<T> set_allocator_type; // for gcc 3.2
 #endif
    typedef std::set<T,C,set_allocator_type> set_type;
    typedef typename set_type::iterator set_iterator_type;

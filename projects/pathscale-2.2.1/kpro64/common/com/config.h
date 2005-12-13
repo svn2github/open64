@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -375,6 +375,11 @@ extern BOOL LANG_Ansi_Setjmp_Set;
 extern BOOL LANG_Ignore_Carriage_Return_On;
 extern BOOL LANG_Ignore_Carriage_Return_Set;
 
+#ifdef KEY /* Bug 3405 */
+extern BOOL LANG_IEEE_Minus_Zero_On;
+extern BOOL LANG_IEEE_Minus_Zero_Set;
+#endif /* KEY Bug 3405 */
+
 extern BOOL C_Restrict_On;
 extern BOOL C_Restrict_Set;
 
@@ -400,6 +405,7 @@ extern BOOL LANG_Symtab_Verify_On;
 extern BOOL LANG_Symtab_Verify_Set;
 #ifdef KEY
 extern BOOL LANG_Formal_Deref_Unsafe;
+extern BOOL LANG_Math_Errno;
 #endif
 
 extern BOOL WHIRL_Mtype_A_On;
@@ -568,10 +574,11 @@ extern INT32 Const_Copy_TN_CNT;
 extern INT32 Gopt_TN_CNT;
 extern BOOL Enable_BB_Splitting; /* Split long basic blocks? */
 extern INT32 Split_BB_Length;	/* split BBs that are > than this */
-#define DEF_BBLENGTH	 300	/* default value for Split_BB_Length */
 #if defined(TARG_IA32) || defined(TARG_X8664)
+#define DEF_BBLENGTH	 1300	/* default value for Split_BB_Length */
 #define MIN_BBLENGTH	 5	/* allow smaller due to fewer regs and CISC */
 #else
+#define DEF_BBLENGTH	 300	/* default value for Split_BB_Length */
 #define MIN_BBLENGTH	 100	/* don't let the value get too small */
 #endif
 #define MAX_BBLENGTH	5000	/* don't let the value get too big */
@@ -704,6 +711,11 @@ extern BOOL Force_Large_Stack_Model;
 /* Force stack frame to use frame pointer */
 extern BOOL Force_Frame_Pointer;
 extern BOOL Force_Frame_Pointer_Set;
+
+/* Cause lowerer to change MTYPE_C8 datatype to MTYPE_V16C8 for SSE3. */
+extern BOOL Vcast_Complex;
+extern BOOL Vcast_Complex_Set;
+
 /* Use g77 ABI (affects complex and real function return values) */
 extern BOOL F2c_Abi;
 extern BOOL F2c_Abi_Set;
@@ -775,6 +787,9 @@ BOOL Query_Skiplist ( SKIPLIST *slist, INT32 elmt );
 /* SKIPLIST for All Optimizations */
 extern SKIPLIST *Optimization_Skip_List;     /* Processed list */
 extern SKIPLIST *Region_Skip_List;	     /* regions to skip, processed */
+#ifdef KEY
+extern SKIPLIST *Goto_Skip_List;     	     /* Processed list */
+#endif
 
 /* ====================================================================
  *

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -368,6 +368,9 @@ Prepare_Source ( void )
   return FALSE;
 }
 
+#ifdef KEY
+extern void WFE_Omp_Init (void);
+#endif // KEY
 
 
 void
@@ -407,6 +410,9 @@ WFE_Init (INT argc, char **argv, char **envp )
   Initialize_Symbol_Tables (TRUE);
   WFE_Stmt_Stack_Init ();
   WFE_Stmt_Init ();
+#ifdef KEY
+  WFE_Omp_Init ();
+#endif
   WFE_Expr_Init ();
   WHIRL_Mldid_Mstid_On = TRUE;
   WN_Simp_Fold_LDA = TRUE;  // fold (LDA offset) + const to LDA (offset+const)
@@ -505,6 +511,10 @@ char * WFE_Stmt_Kind_Name [wfe_stmk_last+1] = {
   "'switch'",
   "'comma'",
   "'rcomma'",
+#ifdef KEY
+  "'temp_cleanup'",
+  "'dummy'",
+#endif // KEY
   "'last'"
 };
 
@@ -748,5 +758,25 @@ WFE_Get_Guard_Var()
   Get_ST(t);
   guard_vars.push_back(t);	// Push new guard variable onto stack.
   return t;
+}
+
+// Currently this function is only used for searching func_entry, but it
+// is intended to be a general utility function.
+WN *
+WFE_Find_Stmt_In_Stack (WFE_STMT_KIND kind)
+{
+  WN_STMT * sp = wn_stmt_sp;
+  Is_True (sp, ("Null WN stack pointer"));
+
+  while (sp->kind != wfe_stmk_func_entry)
+  {
+    if (sp->kind == kind)
+      break;
+    sp--;
+    Is_True (sp, ("FUNC_ENTRY node not found"));
+  }
+  FmtAssert (sp->kind == kind, ("Stmt kind not found in stack"));
+  Is_True (sp->wn, ("Null WN stmt in apparently valid stack location"));
+  return sp->wn;
 }
 #endif

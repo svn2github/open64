@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -300,6 +300,9 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
     case OPR_FORWARD_BARRIER:
     case OPR_BACKWARD_BARRIER:
     case OPR_DEALLOCA:
+#ifdef KEY
+    case OPR_PURE_CALL_OP:
+#endif
       {
 	wn = WN_Create(exp->Op(), exp->Kid_count());
 	if (opr == OPR_ARRAY) {
@@ -308,6 +311,11 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	else if ( opr == OPR_INTRINSIC_CALL || opr == OPR_INTRINSIC_OP ) {
 	  WN_intrinsic(wn) = exp->Intrinsic();
 	}
+#ifdef KEY
+	else if ( opr == OPR_PURE_CALL_OP ) {
+	  WN_st_idx (wn) = exp->Call_op_aux_id();
+	}
+#endif
 
 	for (INT i = 0; i < exp->Kid_count(); i++) {
 	  CODEREP *opnd = exp->Get_opnd(i);
@@ -341,14 +349,15 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 // Fix bug 1766
               if (ty == MTYPE_I1 || ty == MTYPE_I2 || ty == MTYPE_U1 || ty == MTYPE_U2)
                 WN_kid(wn, i) = WN_Int_Type_Conversion( WN_kid(WN_kid(wn, i),0), ty );
-              else{
+              else if (exp->Asm_input_rtype() != exp->Asm_input_dsctype()){
                 WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
                 WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
               }
             }
             else{
               WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
-	      if (WN_desc(WN_kid(wn, i)) != MTYPE_V)
+	      if (WN_desc(WN_kid(wn, i)) != MTYPE_V &&
+		  exp->Asm_input_rtype() != exp->Asm_input_dsctype())
                 WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
             }
           } 
@@ -414,7 +423,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	    exp->Set_dsctyp(WN_rtype(opnd0));
 #endif
 #ifdef KEY // bug 3347: fix INTCONSTs unnecessarily made 64-bit
-	  else if (Is_Target_32bit() && ! OPERATOR_is_compare(exp->Opr()) &&
+	  else if (! OPERATOR_is_compare(exp->Opr()) &&
 	      	   MTYPE_byte_size(exp->Dtyp()) == 4) {
 	    if (WN_operator(opnd0) == OPR_INTCONST && 
 		MTYPE_byte_size(WN_rtype(opnd0)) == 8) {
@@ -423,8 +432,8 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	      	      ("Inconsistent INTCONST type"));
 #else
 	      if ((WN_const_val(opnd0) << 32 >> 32) == WN_const_val(opnd0))
+	        WN_set_rtype(opnd0, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd0)));
 #endif
-	      WN_set_rtype(opnd0, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd0)));
 	    }
 	    if (WN_operator(opnd1) == OPR_INTCONST && 
 		MTYPE_byte_size(WN_rtype(opnd1)) == 8) {
@@ -433,10 +442,31 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	      	      ("Inconsistent INTCONST type"));
 #else
 	      if ((WN_const_val(opnd1) << 32 >> 32) == WN_const_val(opnd1))
+	        WN_set_rtype(opnd1, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd1)));
 #endif
+	    }
+	    if (OPCODE_is_load(WN_opcode(opnd0)) && 
+		MTYPE_byte_size(WN_rtype(opnd0)) == 8 &&
+		MTYPE_byte_size(WN_desc(opnd0)) == 4) {
+	      WN_set_rtype(opnd0, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd0)));
+	    }
+	    if (OPCODE_is_load(WN_opcode(opnd1)) && 
+		MTYPE_byte_size(WN_rtype(opnd1)) == 8 &&
+		MTYPE_byte_size(WN_desc(opnd1)) == 4) {
 	      WN_set_rtype(opnd1, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd1)));
 	    }
 	  }
+	else if (exp->Opr() == OPR_MPY && MTYPE_byte_size(exp->Dtyp()) == 8 &&
+	         (MTYPE_byte_size(exp->Dtyp()) != MTYPE_byte_size(WN_rtype(opnd0)) ||
+	          MTYPE_byte_size(exp->Dtyp()) != MTYPE_byte_size(WN_rtype(opnd1))))
+	    {
+	      if (WN_operator(opnd0) != OPR_INTCONST)
+		if (MTYPE_byte_size(WN_rtype(opnd0)) != 8)
+	    	  opnd0 = WN_Cvt(WN_rtype(opnd0), exp->Dtyp(), opnd0);
+	      if (WN_operator(opnd1) != OPR_INTCONST)
+		if (MTYPE_byte_size(WN_rtype(opnd1)) != 8)
+	    	  opnd1 = WN_Cvt(WN_rtype(opnd1), exp->Dtyp(), opnd1);
+	    }
 #endif
 	  wn = WN_CreateExp2(exp->Op(), opnd0, opnd1);
 	} else if (exp->Kid_count() == 3) {
@@ -477,6 +507,19 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	Is_True(pt != NULL, ("Reference parameter has NULL POINTS_TO."));
 	emitter->Alias_Mgr()->Gen_alias_id(wn, pt);
       }
+#ifdef KEY // bug 7766
+      else if (IS_FORTRAN && exp->Ilod_base()->Kind() == CK_LDA &&
+	       ! WN_Parm_By_Reference(wn)) {
+	WN_Set_Parm_By_Reference(wn);
+	Set_ST_addr_passed(exp->Ilod_base()->Lda_base_st());
+	AUX_ID vp_idx = exp->Ilod_base()->Lda_aux_id();
+	emitter->Alias_Mgr()->Gen_alias_id(wn, emitter->Opt_stab()->Points_to(vp_idx));
+	MU_NODE *mnode = CXX_NEW(MU_NODE, emitter->Mem_pool());
+	mnode->Init(vp_idx);
+	mnode->Set_OPND(emitter->Htable()->Ssa()->Get_zero_version_CR(vp_idx, emitter->Opt_stab(), 0));
+	exp->Set_ivar_mu_node(mnode);
+      }
+#endif
     }
     else if ( exp->Opr() == OPR_ILOADX ) {
       WN *kid0 = Gen_exp_wn(exp->Ilod_base(), emitter);
@@ -868,6 +911,14 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	        ("Gen_stmt_wn: non-boolean value stored to boolean variable"));
 	  WN_set_rtype(rhs_wn, MTYPE_B);
 	}
+#ifdef KEY // bug 5224
+	if (OPERATOR_is_load(WN_operator(rhs_wn)) &&
+	    MTYPE_byte_size(WN_rtype(rhs_wn)) < MTYPE_byte_size(lhs->Dsctyp())){
+	  Is_True(MTYPE_is_integral(WN_rtype(rhs_wn)),
+		  ("Gen_stmt_wn: inconsistent sizes in float type assignment"));
+	  WN_set_rtype(rhs_wn, Mtype_TransferSize(lhs->Dsctyp(), WN_rtype(rhs_wn)));
+	}
+#endif
 	rwn = WN_CreateStid(opcode, lhs_offset, st, ty_idx, rhs_wn, field_id);
 	if ( emitter->Do_rvi() ) {
 	  Warn_todo( "Gen_stmt_wn: do not adjust bitpos by 1" );
@@ -943,6 +994,18 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       WN_store_offset(rwn) = lhs->Offset();
       WN_set_ty(rwn, lhs->Ilod_base_ty());
       WN_set_field_id(rwn, lhs->I_field_id());
+#ifdef TARG_X8664 // bug 6910
+      if (emitter->Htable()->Phase() != MAINOPT_PHASE &&
+	  WN_operator(rhs_wn) == OPR_INTCONST &&
+	  MTYPE_byte_size(WN_rtype(rhs_wn)) < MTYPE_byte_size(lhs->Dsctyp()))
+	WN_set_rtype(rhs_wn, Mtype_TransferSize(lhs->Dsctyp(), WN_rtype(rhs_wn)));
+#endif
+#ifdef TARG_X8664
+      if (Is_Target_32bit() && MTYPE_byte_size(WN_rtype(rhs_wn)) == 8 &&
+	  WN_operator(rhs_wn) == OPR_INTCONST && 
+	  MTYPE_byte_size(lhs->Dsctyp()) < 8)
+	WN_set_rtype(rhs_wn, Mtype_TransferSize(MTYPE_I4, WN_rtype(rhs_wn)));
+#endif
       emitter->Alias_Mgr()->
 	Gen_alias_id(rwn, lhs->Points_to(emitter->Opt_stab()));
       if (emitter->Gen_lno_info())
@@ -1038,6 +1101,13 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
   case OPR_RETURN_VAL:
     rwn = WN_COPY_Tree_With_Map(srep->Orig_wn());
     rhs_wn = Gen_exp_wn( srep->Rhs(), emitter );
+#ifdef KEY // bug 5224
+    if (srep->Opr() == OPR_RETURN_VAL &&
+	OPERATOR_is_load(WN_operator(rhs_wn)) &&
+	MTYPE_byte_size(WN_rtype(rhs_wn)) < MTYPE_byte_size(WN_rtype(rwn))){
+      WN_set_rtype(rhs_wn, Mtype_TransferSize(WN_rtype(rwn), WN_rtype(rhs_wn)));
+    }
+#endif
     WN_kid0(rwn) = rhs_wn;
     break;
   

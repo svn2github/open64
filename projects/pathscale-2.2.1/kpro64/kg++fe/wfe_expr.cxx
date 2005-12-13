@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -92,6 +92,9 @@ extern void warning (char*,...);	// from gnu
 #include "tree_cmp.h"
 
 // #define WFE_DEBUG
+#ifdef KEY
+extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
+#endif // KEY
 
 LABEL_IDX loop_expr_exit_label = 0; // exit label for LOOP_EXPRs
 
@@ -279,6 +282,9 @@ struct operator_from_tree_t {
   STMT_EXPR,               "stmt_expr",               'e', 1,  OPERATOR_UNKNOWN,
   COMPOUND_LITERAL_EXPR,   "compound_literal_expr",   'e', 1,  OPERATOR_UNKNOWN,
   CLEANUP_STMT,            "cleanup_stmt",            'e', 2,  OPERATOR_UNKNOWN,
+#ifdef KEY
+  OMP_MARKER_STMT,         "omp_marker_stmt",         'e', 0,  OPERATOR_UNKNOWN,
+#endif // KEY
   LAST_C_TREE_CODE,        "last_c_tree_code",          0, 0,  OPERATOR_UNKNOWN,
 
 #ifdef GPLUSPLUS_FE
@@ -357,6 +363,12 @@ struct operator_from_tree_t {
 };
 
 #ifdef KEY
+static bool WFE_Call_Returns_Ptr_To_Member_Func (tree exp);
+
+static WN *WFE_Expand_Ptr_To_Member_Func_Call_Expr (tree exp,
+	     TY_IDX nop_ty_idx, TYPE_ID rtype, TYPE_ID desc,
+	     WN_OFFSET offset = 0, UINT field_id = 0);
+
 // The words in 'buf' are in target order. Convert them to host order
 // in place. 'buf' is a two word array.
 void
@@ -706,28 +718,21 @@ WFE_Save_Expr (tree save_exp,
 #endif
     wfe_save_expr_stack [i].st  = 0;
 #ifdef KEY
-    // If exp is a CALL_EXPR that returns a ptr-to-member-function, then the
-    // return value is a record which contains the ptr-to-member-function.  If
-    // the ABI requires this record to be returned in memory, create a temp
-    // record so that we can tell WFE_Expand_Expr to put the return value
-    // there.  (This code also appears in WFE_Expand_Expr's case for
-    // COMPONENT_REF.  If this code is needed again, put it into a separate
-    // function.)  Bug 3400.
-    if (TREE_CODE(exp) == CALL_EXPR &&
-	TYPE_PTRMEMFUNC_P(TREE_TYPE(exp)) &&
-	TY_return_in_mem(ty_idx)) {
-      ST *tmp_st = New_ST (CURRENT_SYMTAB);
-      ST_Init(tmp_st, Save_Str("__ptr_to_mem_func"), CLASS_VAR,
-	      SCLASS_AUTO, EXPORT_LOCAL, ty_idx);
-      WN *target_wn = WN_Lda(Pointer_Mtype, ST_ofst(tmp_st), tmp_st);
-      WFE_Expand_Expr (exp, TRUE, nop_ty_idx, ty_idx, 0, 0, FALSE,
-		       FALSE, target_wn);
-      wn = WN_CreateLdid(OPR_LDID, Widen_Mtype(mtype), mtype,
-			 ST_ofst(tmp_st), tmp_st, ty_idx, 0);
+    // If exp is a CALL_EXPR that returns a ptr-to-member-function, then call
+    // WFE_Expand_Ptr_To_Member_Func_Call_Expr to expand it.  Otherwise, call
+    // WFE_Expand_Expr to do regular expansion.  Bug 3400.
+    if (WFE_Call_Returns_Ptr_To_Member_Func(exp)) {
+      TYPE_ID desc = TY_mtype(Get_TY(TREE_TYPE(exp)));
+      wn = WFE_Expand_Ptr_To_Member_Func_Call_Expr(exp, nop_ty_idx,
+						   Widen_Mtype(desc), desc);
     } else
 #endif
     wn = WFE_Expand_Expr (exp);
+
     st = Gen_Temp_Symbol (ty_idx, "__save_expr");
+#ifdef KEY
+    WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#endif
     WFE_Set_ST_Addr_Saved (wn);
     wn = WN_Stid (mtype, 0, st, ty_idx, wn);
     WFE_Stmt_Append (wn, Get_Srcpos());
@@ -780,7 +785,7 @@ WFE_Array_Expr(tree exp,
     // also for the time being do not support VLAs within structs
     if (st != base_st) {
       FmtAssert (component_ty_idx == 0,
-                 ("VLAs within struct not currently implemented"));
+                 ("Variable Length Arrays within struct not currently implemented"));
       wn = WN_Ldid (Pointer_Mtype, 0, base_st, ST_type (base_st));
     }
     else
@@ -850,8 +855,13 @@ WFE_Array_Expr(tree exp,
   else if (code == ARRAY_REF) { // recursive call
     WN *wn0, *wn1, *wn2;
     TY_IDX ty_idx0;
+#ifdef KEY  // Bug 5831.
+    wn0 = WFE_Array_Expr(TREE_OPERAND (exp, 0), &ty_idx0, 0,
+			 component_offset, field_id);
+#else
     wn0 = WFE_Array_Expr(TREE_OPERAND (exp, 0), &ty_idx0, component_ty_idx,
 			 component_offset, field_id);
+#endif
     Is_True(TY_kind(ty_idx0) == KIND_ARRAY,
 	    ("WFE_Array_Expr: arg 0 of ARRAY_REF not of type KIND_ARRAY"));
     ARB_HANDLE arb = TY_arb(ty_idx0);
@@ -860,10 +870,40 @@ WFE_Array_Expr(tree exp,
 	ARB_const_lbnd(arb)) {
       if (ARB_const_ubnd(arb))
         wn1 = WN_Intconst(MTYPE_I4, ARB_ubnd_val(arb) - ARB_lbnd_val(arb) + 1);
+#ifdef KEY
+      // Variable upper bound.  Bug 4692.
+      else if (ARB_ubnd_var(arb)) {
+        ST *ubnd_st = &St_Table[ARB_ubnd_var(arb)];
+	wn1 = WN_Binary(OPR_SUB, MTYPE_I4,
+			WN_Ldid(MTYPE_I4, 0, ubnd_st, ST_type(ubnd_st)),
+			WN_Intconst(MTYPE_I4, ARB_lbnd_val(arb) - 1));
+      }
+#endif
       else
         wn1 = WN_Intconst(MTYPE_I4, 0);
       wn2 = WFE_Expand_Expr (TREE_OPERAND (exp, 1));
+#ifdef KEY
+      // Expand the current dimension by growing the array just expanded.  Bug
+      // 4692.
+      if (TREE_CODE(TREE_OPERAND(exp, 0)) == ARRAY_REF) {
+        Is_True(WN_operator(wn0) == OPR_ARRAY,
+		("WFE_Array_Expr: ARRAY_REF not translated to OPR_ARRAY"));
+	int old_kid_count = WN_kid_count(wn0);
+	int new_kid_count = old_kid_count + 2;
+	wn = WN_Create(OPR_ARRAY, Pointer_Mtype, MTYPE_V, new_kid_count);
+	for (int kid = 0; kid < (old_kid_count >> 1); kid++) {
+	  WN_kid(wn, kid + 1) = WN_kid(wn0, kid + 1);
+	  WN_kid(wn, (new_kid_count >> 1) + kid + 1) =
+	    WN_kid(wn0, (old_kid_count >> 1) + kid + 1);
+	}
+	WN_kid(wn, 0) = WN_kid(wn0, 0);
+	WN_kid(wn, new_kid_count >> 1) = wn1;
+	WN_kid(wn, new_kid_count - 1) = wn2;
+	WN_Delete(wn0);
+      } else
+#endif
       wn = WN_Ternary(OPR_ARRAY, Pointer_Mtype, wn0, wn1, wn2);
+
       WN_element_size(wn) = TY_size(Get_TY (TREE_TYPE(exp)));
     }
     else Is_True(FALSE,
@@ -882,6 +922,22 @@ WFE_Array_Expr(tree exp,
     ST *st = WFE_Generate_Temp_For_Initialized_Aggregate (arg0, "");
     wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
     *ty_idx = component_ty_idx == 0 ? ST_type(st) : component_ty_idx;
+    return wn;
+  } else if (code == TARGET_EXPR) {
+    wn = WFE_Expand_Expr(exp);
+    Is_True(WN_operator(wn) == OPR_LDID,
+	    ("WFE_Array_Expr: OPR_LDID not found"));
+    ST *st = WN_st(wn);
+    wn = WN_Lda (Pointer_Mtype, ST_ofst(st)+component_offset, st, field_id);
+    if (component_ty_idx == 0)
+      *ty_idx = ST_type(st);
+    else {
+      *ty_idx = component_ty_idx;
+      if (TY_align(ST_type(st)) < TY_align(component_ty_idx))
+	Set_TY_align(*ty_idx, TY_align(ST_type(st)));//pick more stringent align
+    }
+    Is_True(TY_kind(*ty_idx) == KIND_ARRAY,
+	    ("WFE_Array_Expr: ARRAY_REF base not of type KIND_ARRAY"));
     return wn;
   }
 #endif /* KEY */
@@ -1311,8 +1367,8 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
 		  ("WFE_Lhs_Of_Modify_Expr: component_offset nonzero"));
 	TY_IDX tidx = Get_TY(ptr_type);
 	// Check object has no copy constructor.
-	FmtAssert(!WFE_call_copy_constructor(rhs_wn, addr_wn, tidx, type),
-	    ("WFE_Lhs_Of_Modify_Expr: should not call copy constructor"));
+	FmtAssert(!WFE_has_copy_constructor(type),
+	    ("WFE_Lhs_Of_Modify_Expr: object needs copy constructor"));
       }
 #endif
       wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, desc, component_offset, 
@@ -1822,6 +1878,9 @@ WFE_Address_Of(tree arg0)
   case VAR_DECL:
   case PARM_DECL:
   case FUNCTION_DECL:
+#ifdef KEY
+  case RESULT_DECL:	// bug 3878
+#endif
     {
       st = Get_ST (arg0);
       ty_idx = ST_type (st);
@@ -1845,7 +1904,7 @@ WFE_Address_Of(tree arg0)
       if (code0 == VAR_DECL &&
           st != ST_base(st)) {
         FmtAssert (ST_ofst (st) == 0,
-                   ("VLA within struct not currently implemented"));
+                   ("Variable Length Arrays within struct not currently implemented"));
         wn = WN_Ldid (Pointer_Mtype, 0, ST_base(st), ST_type(ST_base(st)));
       }
       else
@@ -1871,7 +1930,7 @@ WFE_Address_Of(tree arg0)
     {
       TCON tcon;
       tcon = Host_To_Targ_String (MTYPE_STRING,
-                                  TREE_STRING_POINTER(arg0),
+                                  const_cast<char*>TREE_STRING_POINTER(arg0),
                                   TREE_STRING_LENGTH(arg0));
       ty_idx = Get_TY(TREE_TYPE(arg0));
       st = New_Const_Sym (Enter_tcon (tcon), ty_idx);
@@ -1993,6 +2052,54 @@ WFE_Address_Of(tree arg0)
       wn = WN_Lda (Pointer_Mtype,  ST_ofst (st), st);
     }
     break;
+
+    // bug 5532, 5609
+    case REALPART_EXPR:
+    {
+      wn = WFE_Expand_Expr (TREE_OPERAND (arg0, 0));
+      if (WN_operator (wn) == OPR_ILOAD)
+        wn = WN_kid0 (wn);
+      else Fail_FmtAssertion ("WFE_Address_Of: NYI for REALPART_EXPR");
+    }
+    break;
+
+    case IMAGPART_EXPR:
+    {
+      wn = WFE_Expand_Expr (TREE_OPERAND (arg0, 0));
+      if (WN_operator (wn) == OPR_ILOAD)
+      {
+        wn0 = WN_kid0 (wn);
+	TYPE_ID imag_mtype;
+	switch (WN_rtype (wn))
+	{
+	  case MTYPE_C4:
+	    imag_mtype = MTYPE_F4;
+	    break;
+	  case MTYPE_C8:
+	    imag_mtype = MTYPE_F8;
+	    break;
+	  case MTYPE_CQ:
+	    imag_mtype = MTYPE_FQ;
+	    break;
+	  default:
+	    Fail_FmtAssertion ("WFE_Address_Of: Unexpected rtype in IMAGPART_EXPR");
+	}
+	INT ofst;
+	if (imag_mtype == MTYPE_FQ)
+	{
+#ifdef TARG_X8664
+	  if (Is_Target_32bit()) ofst = 12; else
+#endif // TARG_X8664
+	  ofst = 16;
+	}
+	else ofst = MTYPE_byte_size (imag_mtype);
+
+	wn1 = WN_Intconst (Pointer_Mtype, ofst);
+	wn  = WN_Binary (OPR_ADD, Pointer_Mtype, wn0, wn1);
+      }
+      else Fail_FmtAssertion ("WFE_Address_Of: NYI for IMAGPART_EXPR");
+    }
+    break;
 #endif
 
   default:
@@ -2028,6 +2135,7 @@ static WN *WFE_x8664_va_arg(WN *ap_wn, BOOL isfloat, TY_IDX ty_idx, BOOL twice)
   WFE_Stmt_Append (wn, Get_Srcpos ());
 
   ST *arg_temp_st = Gen_Temp_Symbol(Make_Pointer_Type(ty_idx), ".va_arg");
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, arg_temp_st);
   /* compute reg_save_area+gp_offset/fp_offset and store to arg_temp_st */
   wn0 = WN_Iload(MTYPE_I4, !isfloat ? 0 : 4, MTYPE_To_TY(MTYPE_I4), 
       		 WN_CopyNode(ap_wn));
@@ -2102,6 +2210,7 @@ static WN *WFE_x8664_va_arg_2_mixed(WN *ap_wn, BOOL isfloat0, BOOL isfloat1,
 
   /* allocate a temporary location to assemble the structure value */
   ST *struct_temp_st = Gen_Temp_Symbol(ty_idx, ".va_arg_struct");
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, struct_temp_st);
 
   /* compute reg_save_area+gp_offset and store dereferenced value to 
    * struct_temp_st */
@@ -2141,6 +2250,7 @@ static WN *WFE_x8664_va_arg_2_mixed(WN *ap_wn, BOOL isfloat0, BOOL isfloat1,
 
   /* put the address of struct_temp_st in arg_temp_st */
   ST *arg_temp_st = Gen_Temp_Symbol(Make_Pointer_Type(ty_idx), ".va_arg");
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, arg_temp_st);
   wn = WN_Lda(Pointer_Mtype, 0, struct_temp_st, 0);
   Set_ST_addr_saved(struct_temp_st);
   wn = WN_Stid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx), wn);
@@ -2194,6 +2304,7 @@ static WN *WFE_x8664_va_arg_2_float(WN *ap_wn, TY_IDX ty_idx)
 
   /* allocate a temporary location to assemble the structure value */
   ST *struct_temp_st = Gen_Temp_Symbol(ty_idx, ".va_arg_struct");
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, struct_temp_st);
 
   /* compute reg_save_area+fp_offset and store 1st dereferenced value to 
    * struct_temp_st */
@@ -2224,6 +2335,7 @@ static WN *WFE_x8664_va_arg_2_float(WN *ap_wn, TY_IDX ty_idx)
 
   /* put the address of struct_temp_st in arg_temp_st */
   ST *arg_temp_st = Gen_Temp_Symbol(Make_Pointer_Type(ty_idx), ".va_arg");
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, arg_temp_st);
   wn = WN_Lda(Pointer_Mtype, 0, struct_temp_st, 0);
   Set_ST_addr_saved(struct_temp_st);
   wn = WN_Stid(Pointer_Mtype, 0, arg_temp_st, Make_Pointer_Type(ty_idx), wn);
@@ -2418,6 +2530,9 @@ WFE_Expand_Expr (tree exp,
             st = WN_st (WN_kid0 (wn1));
           else {
             st = Gen_Temp_Symbol (ty_idx, "__bind_expr");
+#ifdef KEY
+  	    WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#endif
             WFE_Set_ST_Addr_Saved (WN_kid0 (wn1));
             wn0 = WN_Stid (mtype, 0, st, ty_idx, WN_kid0 (wn1));
             WFE_Stmt_Append (wn0, Get_Srcpos ());
@@ -2522,29 +2637,20 @@ WFE_Expand_Expr (tree exp,
 			      Get_Srcpos());
 	    }
 	  }
-	  // If the initializer has a copy constructor, then either call the
-	  // copy constructor to copy the result into the target ST, or have
-	  // WFE_Expand_Expr expand the result directly into the target ST.  It
-	  // is wrong to put the result into a temp and then use a MLDID-MSTID
-	  // to copy from the temp to ST.
+	  // If the initializer returns the object in memory, then make sure
+	  // the type doesn't require a copy constructor, since such types
+	  // sometimes require one.
 	  else if (TY_return_in_mem(Get_TY(TREE_TYPE(t)))) {
 	    if (TREE_CODE(t) == VAR_DECL ||
 		TREE_CODE(t) == PARM_DECL) {
-	      // The initializer is a var or parm.  Call the copy constructor
-	      // to copy it into the target.
+	      // The initializer is a var or parm.  We need to insert copy.
+	      // First make sure type has no copy constructor.
 	      WN *rhs_wn = WFE_Expand_Expr (t);
-	      WN *target_wn = WN_Lda (Pointer_Mtype, 0, st, 0);
 	      tree type = TREE_TYPE(TREE_OPERAND(exp, 0));
-	      TY_IDX tidx = Get_TY(type);
-	      BOOL copied = WFE_call_copy_constructor(rhs_wn, target_wn, tidx,
-						      type);
-	      // If there is no copy constructor after all, do plain copy.
-	      // (This means TY_return_in_mem=1 doesn't imply existence of copy
-	      // constructor.  Need to rework kg++fe based on this fact.)
-	      if (!copied) {
-		WFE_Stmt_Append(WN_Stid (mtype, ST_ofst(st), st, ty, rhs_wn),
-				Get_Srcpos());
-	      }
+	      Is_True(!WFE_has_copy_constructor(type),
+		      ("WFE_Expand_Expr: type require copy constructor"));
+	      WFE_Stmt_Append(WN_Stid (mtype, ST_ofst(st), st, ty, rhs_wn),
+			      Get_Srcpos());
 	    } else {
 	      // The initializer is an expression.  Try to expand it directly
 	      // into the target.
@@ -2850,7 +2956,7 @@ WFE_Expand_Expr (tree exp,
       {
 	TCON tcon;
 	tcon = Host_To_Targ_String (MTYPE_STRING,
-				    TREE_STRING_POINTER(exp),
+				    const_cast<char*>TREE_STRING_POINTER(exp),
 				    TREE_STRING_LENGTH(exp));
 	ty_idx = Get_TY(TREE_TYPE(exp));
 	st = New_Const_Sym (Enter_tcon (tcon), ty_idx);
@@ -3011,26 +3117,17 @@ WFE_Expand_Expr (tree exp,
                    ("WFE_Expand_Expr: DECL_FIELD_ID used but not set"));
 
 	// If arg0 is a CALL_EXPR that returns a ptr-to-member-function, then
-	// the return value is a record which contains the
-	// ptr-to-member-function.  If the ABI requires this record to be
-	// returned in memory, create a temp record so that we can tell
-	// WFE_Expand_Expr to put the return value there.  Bug 3400, 3427.
-	if (TREE_CODE(arg0) == CALL_EXPR &&
-	    TYPE_PTRMEMFUNC_P(TREE_TYPE(arg0)) &&
-	    TY_return_in_mem(Get_TY(TREE_TYPE(arg0)))) {
-	  TY_IDX arg0_ty_idx = Get_TY(TREE_TYPE(arg0));
-	  ST *st = New_ST (CURRENT_SYMTAB);
-	  ST_Init(st, Save_Str("__ptr_to_mem_func"), CLASS_VAR,
-		  SCLASS_AUTO, EXPORT_LOCAL, arg0_ty_idx);
-	  target_wn = WN_Lda(Pointer_Mtype, ST_ofst(st), st);
-	  wn = WFE_Expand_Expr (arg0, TRUE, nop_ty_idx, ty_idx, 0, 0, FALSE,
-				FALSE, target_wn);
+	// call WFE_Expand_Ptr_To_Member_Func_Call_Expr to expand it.
+	// Otherwise, call WFE_Expand_Expr to do regular expansion.
+	// Bug 3400, 3427.
+	if (WFE_Call_Returns_Ptr_To_Member_Func(arg0)) {
 	  tree field0 = TYPE_FIELDS(TREE_TYPE(arg0));
+	  // Get_TY(TREE_TYPE(field0)) is valid only if
+	  // WFE_Call_Returns_Ptr_To_Member_Func(arg0)) is TRUE.  Bug 6022.
 	  TYPE_ID desc = TY_mtype(Get_TY(TREE_TYPE(field0)));
-	  wn = WN_CreateLdid(OPR_LDID, Pointer_Mtype, desc,
-			     ST_ofst(st)+component_offset, st,
-			     MTYPE_To_TY(desc), field_id + DECL_FIELD_ID(arg1));
-			      
+	  wn = WFE_Expand_Ptr_To_Member_Func_Call_Expr (arg0, nop_ty_idx,
+		  Pointer_Mtype, desc, component_offset,
+		  field_id + DECL_FIELD_ID(arg1));
 	} else
 #endif
         wn = WFE_Expand_Expr (arg0, TRUE, nop_ty_idx, ty_idx, ofst+component_offset,
@@ -3321,6 +3418,9 @@ WFE_Expand_Expr (tree exp,
 	  DevWarn("CLEANUP_POINT_EXPR: expressson has side effects");
 	  ty_idx = Get_TY (TREE_TYPE(exp));
 	  st = Gen_Temp_Symbol (ty_idx, "__cleanup_point_expr");
+#ifdef KEY
+  	  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#endif
 	  TYPE_ID mtype = TY_mtype (ty_idx);
 	  WFE_Set_ST_Addr_Saved (wn);
 	  wn = WN_Stid (mtype, 0, st, ty_idx, wn);
@@ -3381,6 +3481,9 @@ WFE_Expand_Expr (tree exp,
       DevWarn ("Encountered EMPTY_CLASS_EXPR at line %d\n", lineno);
       ty_idx = Get_TY (TREE_TYPE(exp));
       st = Gen_Temp_Symbol (ty_idx, "__empty_class_expr");
+#ifdef KEY
+      WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
+#endif
       wn = WN_Ldid (TY_mtype (ty_idx), 0, st, ty_idx);
       break;
 #endif /* GLPUSPLUFE */
@@ -3406,19 +3509,19 @@ WFE_Expand_Expr (tree exp,
     case CEIL_DIV_EXPR:
       {
 #ifdef KEY
-// Why don't we have the same code here as in the C front-end?
 	TYPE_ID etype = TY_mtype(Get_TY(TREE_TYPE(exp)));
         wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
         wn1 = WFE_Expand_Expr (TREE_OPERAND (exp, 1));
         wn  = WN_Binary (Operator_From_Tree [code].opr,
                          Widen_Mtype(etype), wn0, wn1);
 	
-	// bug 2649
+	// bug 2649, 5503
 	if ((MTYPE_is_integral(etype)) &&
 	    (Widen_Mtype(etype) != etype) &&
 	    (TY_size (Get_TY(TREE_TYPE(exp))) < 32) &&
-	    (code == LSHIFT_EXPR || code == BIT_XOR_EXPR
-	     || code == BIT_IOR_EXPR))
+	     (code == PLUS_EXPR || code == MINUS_EXPR || 
+	     code == MULT_EXPR || code == LSHIFT_EXPR || 
+	     code == BIT_XOR_EXPR || code == BIT_IOR_EXPR))
 	  wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(etype), MTYPE_V,
 	                     TY_size (Get_TY(TREE_TYPE(exp))) * 8, wn);
 #else
@@ -3769,7 +3872,20 @@ WFE_Expand_Expr (tree exp,
       {
 	if (TREE_CODE(TREE_OPERAND(exp, 1)) == ERROR_MARK)
 	    break;
+#ifdef KEY
+	// If TREE_OPERAND(exp, 1) is a CALL_EXPR that returns a
+	// ptr-to-member-function, then call
+	// WFE_Expand_Ptr_To_Member_Func_Call_Expr to expand it.  Otherwise,
+	// call WFE_Expand_Expr to do regular expansion.  Bug 4737.
+	tree exp_opnd1 = TREE_OPERAND(exp, 1);
+	if (WFE_Call_Returns_Ptr_To_Member_Func(exp_opnd1)) {
+	  TYPE_ID desc = TY_mtype(Get_TY(TREE_TYPE(exp_opnd1)));
+	  wn1 = WFE_Expand_Ptr_To_Member_Func_Call_Expr(exp_opnd1, 0,
+						       Widen_Mtype(desc), desc);
+        } else
+#endif
         wn1 = WFE_Expand_Expr (TREE_OPERAND (exp, 1)); // r.h.s.
+
 	wn  = WFE_Lhs_Of_Modify_Expr(code, TREE_OPERAND (exp, 0), need_result, 
 				     0, 0, 0, FALSE, wn1, 0, FALSE, FALSE);
       }
@@ -4226,28 +4342,52 @@ WFE_Expand_Expr (tree exp,
 
 #ifdef KEY
               case BUILT_IN_EXP:
+		// bug 3390
+		// If return type is void, generate an intrinsic assuming
+		// double (so if it is without side-effects, optimizer can 
+		// remove it)
+		if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+
                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4EXP;
                 else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8EXP;
                 else Fail_FmtAssertion ("unexpected mtype for intrinsic 'exp'");
 		intrinsic_op = TRUE;
                 break;
+
+	    case BUILT_IN_POW:
+	        FmtAssert(ret_mtype == MTYPE_F8, 
+			  ("unexpected mtype for intrinsic 'pow'"));
+		iopc = INTRN_F8EXPEXPR;
+		intrinsic_op = TRUE;
+		break;
 #endif // KEY
 
               case BUILT_IN_CONSTANT_P:
               {
-		DevWarn ("Encountered BUILT_IN_CONSTANT_P: at line %d\n",
-                         lineno);
                 tree arg = TREE_VALUE (TREE_OPERAND (exp, 1));
                 STRIP_NOPS (arg);
                 if (really_constant_p (arg)
                     || (TREE_CODE (arg) == ADDR_EXPR
                         && TREE_CODE (TREE_OPERAND (arg, 0)) == STRING_CST))
+		{
                   wn = WN_Intconst (MTYPE_I4, 1);
+		  whirl_generated = TRUE; // KEY
+		}
+#ifdef KEY_bug1058
+// If not yet compile-time constant, let the backend decide if it is 
+// a constant
+		else
+		{
+		  iopc = INTRN_CONSTANT_P;
+		  intrinsic_op = TRUE;
+		}
+#else
 
                 else
                   wn = WN_Intconst (MTYPE_I4, 0);
 //                wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
                 whirl_generated = TRUE;
+#endif // KEY
                 break;
               }
 #if 0
@@ -4349,6 +4489,8 @@ WFE_Expand_Expr (tree exp,
 		  ST* alloca_st_0 = 
 		    Gen_Temp_Symbol (ty_idx, 
 				     "__builtin_apply_alloca0");
+		  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL,
+						       alloca_st_0);
 		  WN *alloca_0 = 
 		    WN_CreateAlloca (WN_CreateIntconst (OPC_I4INTCONST, 0));
 		  WN *alloca_kid0 = alloca_0;
@@ -4359,6 +4501,8 @@ WFE_Expand_Expr (tree exp,
 		  ST *alloca_st_1 = 
 		    Gen_Temp_Symbol (ty_idx, 
 				     "__builtin_apply_alloca1");
+		  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL,
+		  				       alloca_st_1);
 		  WN *alloca_1 = WN_CreateAlloca (kid2);
 		  WN *alloca_kid1 = alloca_1;
 		  alloca_kid1 = WN_Stid (Pointer_Mtype, 
@@ -4470,6 +4614,62 @@ WFE_Expand_Expr (tree exp,
                 if (ret_mtype == MTYPE_V)
                   ret_mtype = MTYPE_I4;
                 break;
+
+	      case BUILT_IN_EXTEND_POINTER:
+		wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+		whirl_generated = TRUE;
+	        break;
+	
+	      case BUILT_IN_POPCOUNT:
+	      case BUILT_IN_POPCOUNTL:
+	      case BUILT_IN_POPCOUNTLL:
+	        iopc = INTRN_POPCOUNT;
+		intrinsic_op = TRUE;
+		break;
+	
+	      case BUILT_IN_CTZ:
+	      case BUILT_IN_CTZL:
+	      case BUILT_IN_CTZLL:
+	        iopc = INTRN_CTZ;
+		intrinsic_op = TRUE;
+		break;
+
+	      case BUILT_IN_TRAP:
+		call_wn = WN_Create (OPR_CALL, MTYPE_V, MTYPE_V, 0);
+		st = Get_ST (TREE_OPERAND (arg0, 0));
+		Set_ST_name_idx (st, Save_Str ("abort"));
+		WN_st_idx (call_wn) = ST_st_idx (st);
+		WN_Set_Linenum (call_wn, Get_Srcpos());
+		WN_Set_Call_Default_Flags (call_wn);
+		WFE_Stmt_Append (call_wn, Get_Srcpos());
+		whirl_generated = TRUE;
+		break;
+
+	      case BUILT_IN_PREFETCH:
+	        {
+		  // prefetch address
+		  tree pf_arg = TREE_OPERAND (exp, 1);
+		  WN * pf_addr = WFE_Expand_Expr (TREE_VALUE (pf_arg));
+		  // Note 2nd/3rd argument optional
+		  // read/write access
+		  pf_arg = TREE_CHAIN (pf_arg);
+		  UINT32 pf_flag = 0;
+		  int access = 0;
+		  if (pf_arg && TREE_CODE (TREE_VALUE (pf_arg)) == INTEGER_CST)
+		    access = Get_Integer_Value (TREE_VALUE (pf_arg));
+		  if (access == 0)
+		    PF_SET_READ (pf_flag);
+		  else // should be 1 (write access)
+		    PF_SET_WRITE (pf_flag);
+		  // Ignore 3rd argument which gives a measure of temporal
+		  // locality. LNO does analyze the temporal locality, but
+		  // not sure what is a good way to encode it in PREFETCH.
+		  PF_SET_MANUAL (pf_flag); // manual prefetch
+		  WFE_Stmt_Append (WN_CreatePrefetch (0, pf_flag, pf_addr),
+		                   Get_Srcpos());
+		  whirl_generated = TRUE;
+		}
+		break;
 #endif
 
 	      default:
@@ -4647,15 +4847,22 @@ WFE_Expand_Expr (tree exp,
 	  if (ret_mtype == MTYPE_M) { // copy the -1 preg to a temp area
 
 	    TY_IDX ret_ty_idx = ty_idx;
+#ifndef KEY
+// bug 3735: the compiler cannot arbitrarily change the alignment of
+// individual structures
 	    if (Aggregate_Alignment > 0 &&
 		Aggregate_Alignment > TY_align (ret_ty_idx))
 	      Set_TY_align (ret_ty_idx, Aggregate_Alignment);
+#endif // !KEY
             if (TY_align (ret_ty_idx) < MTYPE_align_best(Spill_Int_Mtype))
               Set_TY_align (ret_ty_idx, MTYPE_align_best(Spill_Int_Mtype));
 	    ST *ret_st = Gen_Temp_Symbol(ret_ty_idx, 
 		  st ? Index_To_Str(Save_Str2(".Mreturn.",
 					      ST_name(ST_st_idx(st))))
 		     : ".Mreturn.");
+#ifdef KEY
+	    WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, ret_st);
+#endif
 
 	    if (!return_in_mem) {
 	      wn1 = WN_Stid (ret_mtype, 0, ret_st, ty_idx, wn1);
@@ -4965,7 +5172,6 @@ WFE_Expand_Expr (tree exp,
 
     case EXC_PTR_EXPR:
     {
-      DevWarn ("Check implementation of EXC_PTR_EXPR: at line %d\n", lineno);
       if (key_exceptions)
       {
 	ST_IDX exc_ptr_st = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().unused)));
@@ -5142,3 +5348,44 @@ WFE_Tree_Node_Name (tree op)
 {
   return Operator_From_Tree [TREE_CODE (op)].name;
 }
+
+#ifdef KEY
+// g++ uses a record to hold a ptr-to-member-function.  Return TRUE iff EXP is
+// a CALL_EXPR that returns a ptr-to-member-function and the ABI requires that
+// such a record be returned in memory.
+//
+// Invoke WFE_Expand_Ptr_To_Member_Func_Call_Expr to expand such calls.  The
+// routine creates a temp record for the ptr-to-member-function and invokes
+// WFE_Expand_Expr to expand the return value there.
+static bool
+WFE_Call_Returns_Ptr_To_Member_Func (tree exp)
+{
+  TY_IDX exp_ty_idx = Get_TY(TREE_TYPE(exp));
+  if (TREE_CODE(exp) == CALL_EXPR &&
+      TYPE_PTRMEMFUNC_P(TREE_TYPE(exp)) &&
+      TY_return_in_mem(exp_ty_idx)) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+// See comment for WFE_Call_Returns_Ptr_To_Member_Func.
+static WN*
+WFE_Expand_Ptr_To_Member_Func_Call_Expr (tree exp, TY_IDX nop_ty_idx,
+					 TYPE_ID rtype, TYPE_ID desc,
+					 WN_OFFSET offset, UINT field_id)
+{
+  TY_IDX exp_ty_idx = Get_TY(TREE_TYPE(exp));
+  WN *wn;
+  ST *st = New_ST (CURRENT_SYMTAB);
+
+  ST_Init(st, Save_Str("__ptr_to_mem_func"), CLASS_VAR, SCLASS_AUTO,
+	  EXPORT_LOCAL, exp_ty_idx);
+  WN *target_wn = WN_Lda(Pointer_Mtype, ST_ofst(st), st);
+  WFE_Expand_Expr(exp, TRUE, nop_ty_idx, exp_ty_idx, 0, 0, FALSE, FALSE,
+		  target_wn);
+  wn = WN_CreateLdid(OPR_LDID, rtype, desc, ST_ofst(st) + offset,
+		     st, exp_ty_idx, field_id);
+  return wn;
+}
+#endif

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,8 +47,19 @@
 
 #include <time.h>
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+void
+pathf90_ltime(pathf90_i4 *clock, pathf90_i4 *t)
+
+#else
+
 extern void
 ltime_ (int *clock, int *t)
+
+#endif /* KEY Bug 1683 */
 {
 	int i;
 	int *l;

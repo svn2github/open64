@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -44,6 +44,7 @@
 #endif // USE_PCH
 #pragma hdrstop
 
+#include "lnopt_main.h"
 #include "dnf.h"
 
 

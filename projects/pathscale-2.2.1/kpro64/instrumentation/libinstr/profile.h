@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -110,6 +110,13 @@ extern void Profile_Value_Init( PU_PROFILE_HANDLE pu_handle, INT32 num_values );
 
 extern void Profile_Value( PU_PROFILE_HANDLE pu_handle,
 			   INT32 inst_id, INT64 value );
+
+extern void Profile_Value_FP_Bin_Init( PU_PROFILE_HANDLE pu_handle, 
+				       INT32 num_values );
+
+extern void Profile_Value_FP_Bin( PU_PROFILE_HANDLE pu_handle,
+			          INT32 inst_id, 
+				  double value0, double value1 );
 #endif
 
 extern void Profile_Loop_Init(PU_PROFILE_HANDLE pu_handle, INT32 num_loops);

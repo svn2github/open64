@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -739,8 +739,12 @@ WN *craytype_wn)
   }
 
   DevAssert((se),("Can't find an array section or an array to use"));
+#ifdef KEY
+  DevAssert((tarray != 0),("Missing TY"));
+#else
   DevAssert((tarray != NULL),("Missing TY"));
-  
+#endif
+
   element_size = WN_element_size(se);
   if (element_size < 0) {
      element_size = -element_size;

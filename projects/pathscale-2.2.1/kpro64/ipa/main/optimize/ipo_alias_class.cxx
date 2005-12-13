@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1142,6 +1142,10 @@ IP_ALIAS_CLASSIFICATION::Classify_deref_of_expr(IP_ALIAS_CLASS_MEMBER        *lh
 	  IP_ALIAS_CLASS_MEMBER *rhs_member =
 	    Class_of_base_id(WN_base_id(expr))->Representative();
 	  if (rhs_member->Alias_class()->Sort() == IP_ACR_REF_TYPE) {
+#ifdef KEY
+	    if (Ty_Table[WN_ty (expr)].kind == KIND_POINTER)
+	      directly_dereferenced = TRUE;
+#endif // KEY
 	    if (directly_dereferenced) {
 	      // Join unconditionally; the lhs_member's class should
 	      // eventually become a pointer, even if it isn't
@@ -1544,9 +1548,11 @@ IP_ALIAS_CLASSIFICATION::Callee_saves_no_parms(const WN *const call_wn)
 BOOL
 IP_ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
 {
-#if 1
+#ifndef KEY
   return WN_Call_Does_Mem_Alloc(call_wn);
 #else
+  if (WN_Call_Does_Mem_Alloc(call_wn))
+    return TRUE;
   if (WN_operator(call_wn) == OPR_CALL) {
     const ST *const st = WN_st(call_wn);
 
@@ -1575,7 +1581,7 @@ IP_ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
 BOOL
 IP_ALIAS_CLASSIFICATION::Callee_returns_new_memory(const ST *const st)
 {
-#if 0
+#ifdef KEY
   // Cheap hack for now, to test performance. This should be based on
   // some real mechanism in the future instead of cheesebag hacks.
   if ((strcmp("malloc", ST_name(st)) == 0) ||

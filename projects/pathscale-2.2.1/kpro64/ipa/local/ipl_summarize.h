@@ -1,5 +1,6 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+/* -*- c++ -*-
+ *
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -269,6 +270,9 @@ public:
     }
 
 }; // SUMMARY_PROC_INFO
+
+extern void
+Init_Aux_Symbol_Info (SYMTAB_IDX level);
 
 // ======================================================================
 

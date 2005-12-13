@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -555,6 +555,8 @@ _wrfmt(
                                             *p = linebuf[k];
                                           for (; *p ; p++)
                                             *p = 0;
+					  // Bug 3992
+					  field = width;
                                         }
 #endif
                                  }

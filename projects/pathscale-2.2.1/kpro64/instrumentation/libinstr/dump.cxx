@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -204,6 +204,23 @@ namespace {
 	dest.push_back( info );
       }
     }
+
+    static void Convert_Value_FP_Bin_Profile( 
+			   vector<FB_Info_Value_FP_Bin>& dest,
+			   const Value_FP_Bin_Profile_Vector& src )
+    {
+      dest.reserve (src.size ());
+	
+      for( Value_FP_Bin_Profile_Vector::const_iterator first(src.begin ());
+	   first != src.end (); ++first ){
+	FB_Info_Value_FP_Bin info( first->exe_counter,
+				   first->zopnd0,
+				   first->zopnd1,
+				   first->uopnd0,
+				   first->uopnd1 );
+	dest.push_back( info );
+      }
+    }
 #endif
 
     template <class T>
@@ -299,10 +316,10 @@ namespace {
 
 	POSITION pos (offset, profile.size ());
 
-	FWRITE (&(profile.front ()), sizeof(T::value_type),
+	FWRITE (&(profile.front ()), sizeof(typename T::value_type),
 		profile.size (), fp, ERR_WRITE, fname);
 
-	offset += profile.size () * sizeof(T::value_type);
+	offset += profile.size () * sizeof(typename T::value_type);
 	return pos;
     }
 
@@ -433,6 +450,15 @@ Dump_PU_Profile(FILE *fp, PU_PROFILE_HANDLE pu_handle, char * fname,
     pos = Dump_PU_Profile( fp, offset, fb_info, fname );
     pu_hdr.pu_value_offset = pos.offset;
     pu_hdr.pu_num_value_entries = pos.num_entries;
+  }
+
+  {
+    vector<FB_Info_Value_FP_Bin> fb_info;
+    Convert_Value_FP_Bin_Profile( fb_info, 
+				  pu_handle->Get_Value_FP_Bin_Table() );
+    pos = Dump_PU_Profile( fp, offset, fb_info, fname );
+    pu_hdr.pu_value_fp_bin_offset = pos.offset;
+    pu_hdr.pu_num_value_fp_bin_entries = pos.num_entries;
   }
 #endif
 

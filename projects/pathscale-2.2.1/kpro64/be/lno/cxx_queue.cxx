@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -36,6 +40,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include "cxx_memory.h"
+#include "errors.h"
 #include "cxx_queue.h"
 
 #ifndef __GNUC__

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -93,7 +93,9 @@ static	int	gen_auto_length(int, opnd_type *);
 static  void    gen_branch_around_ir(int, int, int);
 static  int     gen_darg_branch_test(int);
 static	boolean	gen_ir_at_this_entry(int, int);
+#ifndef KEY /* Bug 4955 */
 static	void	gen_present_ir(int, int, int);
+#endif /* KEY Bug 4955 */
 static	void	gen_single_automatic_allocate(int);
 static	void	gen_tmp_eq_zero_ir(int);
 static  void	insert_argchck_calls(int, int);
@@ -1587,11 +1589,20 @@ void	array_dim_resolution(int 	attr_idx,
 
          if (ATD_IGNORE_TKR(attr_idx)) {
             AT_DCL_ERR(attr_idx)	= TRUE;
+#ifdef KEY /* Bug 5040 */
+            PRINTMSG(AT_DEF_LINE(attr_idx), 1459, Error, 
+                     AT_DEF_COLUMN(attr_idx),
+                     AT_OBJ_NAME_PTR(attr_idx),
+                     "IGNORE_TKR",
+                     "assumed-shape DIMENSION",
+		     AT_DEF_LINE(attr_idx));
+#else /* KEY Bug 5040 */
             PRINTMSG(AT_DEF_LINE(attr_idx), 1459, Error, 
                      AT_DEF_COLUMN(attr_idx),
                      AT_OBJ_NAME_PTR(attr_idx),
                      "IGNORE_TKR",
                      "assumed-shape DIMENSION");
+#endif /* KEY Bug 5040 */
          }
 
 # if defined(_TARGET_OS_MAX)
@@ -5967,6 +5978,9 @@ static	void	attr_semantics(int	attr_idx,
 
 # elif defined(_TARGET_OS_SOLARIS) || (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
 
+#ifdef KEY /* Bug 7299 */
+	 /* We want to use default pointer type for Cray pointers */
+#else /* KEY Bug 7299 */
          if (TARGET_32BIT_DOUBLE_WORD_STORAGE_TYPE(ATD_TYPE_IDX(attr_idx))) {
 
             if (ATD_PTR_TYPE_SET(pointer_idx)) {
@@ -5993,6 +6007,7 @@ static	void	attr_semantics(int	attr_idx,
                         AT_OBJ_NAME_PTR(pointer_idx));
             }
          }  /* Else type uses default pointer type */
+#endif /* KEY Bug 7299 */
 
 # endif
          ATD_PTR_TYPE_SET(pointer_idx) = TRUE;
@@ -6183,6 +6198,20 @@ static	void	attr_semantics(int	attr_idx,
                }
             }
          }
+#ifdef KEY /* Bug 4865 */
+	 /* Setting AT_SEMANTICS_DONE on the result variable here bypasses the
+          * code inside a later call to function attr_semantics(rslt_idx)
+	  * which would perform default initialization if the result variable
+	  * is a derived type that needs it.
+	  * Since we don't know why the original author wanted to bypass most
+	  * of the execution of that function, it seems safer to force the
+	  * initialization here than to remove the bypassing. */
+	 
+	 if (TYP_TYPE(type_idx) == Structure &&
+	    ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx))) {
+            gen_entry_dope_code(rslt_idx);
+	 }
+#endif /* KEY Bug 4865 */
          AT_SEMANTICS_DONE(rslt_idx) = TRUE;
       }
 
@@ -7913,9 +7942,15 @@ static	void	gen_tmp_eq_zero_ir(int		attr_idx)
 |*	 NONE								      *|
 |*									      *|
 \******************************************************************************/
+#ifdef KEY /* Bug 4955 */
+void	gen_present_ir(int	attr_idx,
+			       int	start_sh_idx,
+                               int	end_sh_idx)
+#else /* KEY Bug 4955 */
 static	void	gen_present_ir(int	attr_idx,
 			       int	start_sh_idx,
                                int	end_sh_idx)
+#endif /* KEY Bug 4955 */
 {
    int		br_around_opt;
    int		br_idx;

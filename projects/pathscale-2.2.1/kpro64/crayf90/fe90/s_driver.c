@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -655,8 +659,13 @@ static void	attr_link_resolution(void)
 
          AT_PRIVATE(attr_idx) = AT_PRIVATE(SCP_ATTR_IDX(curr_scp_idx));
       }
-
-      if (LN_DEF_LOC(name_idx)) {
+#ifdef KEY
+      if (LN_DEF_LOC(name_idx) || 
+          (AT_OBJ_CLASS(attr_idx) == Interface && 
+           strncasecmp(AT_OBJ_NAME_PTR(attr_idx), "omp_",4)==0)) {
+#else
+      if (LN_DEF_LOC(name_idx)) { 
+#endif
          continue;
       }
 

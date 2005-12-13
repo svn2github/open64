@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3937,9 +3937,16 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
             PRINTMSG(line, 943, Comment, col);
          }
 
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
          COPY_OPND(opnd, IL_OPND(list2_idx));
          cast_to_cg_default(&opnd, &start_exp_desc);
          COPY_OPND(IL_OPND(list2_idx), opnd);
+#endif /* KEY Bug 4709 */
 
          /************************\
          |* do do terminal value *|
@@ -3997,9 +4004,16 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
             PRINTMSG(line, 943, Comment, col);
          }
 
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
          COPY_OPND(opnd, IL_OPND(list2_idx));
          cast_to_cg_default(&opnd, &end_exp_desc);
          COPY_OPND(IL_OPND(list2_idx), opnd);
+#endif /* KEY */
 
 
          /********************************\
@@ -4081,9 +4095,16 @@ static boolean io_list_semantics(opnd_type     *top_opnd,
                }
             }
 
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
             COPY_OPND(opnd, IL_OPND(list2_idx));
             cast_to_cg_default(&opnd, &inc_exp_desc);
             COPY_OPND(IL_OPND(list2_idx), opnd);
+#endif /* KEY */
 
          }
          else {
@@ -7070,7 +7091,14 @@ static int change_section_to_do(int	*list_idx)
 
                COPY_OPND(tmp_opnd, IL_OPND(tmp_list_idx));
                set_up_exp_desc(&tmp_opnd, &exp_desc);
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
                cast_to_cg_default(&tmp_opnd, &exp_desc);
+#endif /* KEY */
                COPY_OPND(IL_OPND(tmp_list_idx), tmp_opnd);
 
                /* third is end opnd */
@@ -7085,7 +7113,14 @@ static int change_section_to_do(int	*list_idx)
 
                COPY_OPND(tmp_opnd, IL_OPND(tmp_list_idx));
                set_up_exp_desc(&tmp_opnd, &exp_desc);
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
                cast_to_cg_default(&tmp_opnd, &exp_desc);
+#endif /* KEY */
                COPY_OPND(IL_OPND(tmp_list_idx), tmp_opnd);
 
                /* fourth is stride opnd */
@@ -7100,7 +7135,14 @@ static int change_section_to_do(int	*list_idx)
                   
                COPY_OPND(tmp_opnd, IL_OPND(tmp_list_idx));
                set_up_exp_desc(&tmp_opnd, &exp_desc);
+#ifdef KEY /* Bug 4709 */
+         /* Converting array bounds from Integer_8 to Integer_4 breaks
+	  * customer code which uses large array bounds, and isn't
+	  * correct for our 64-bit-oriented runtime.
+	  */
+#else
                cast_to_cg_default(&tmp_opnd, &exp_desc);
+#endif /* KEY */
                COPY_OPND(IL_OPND(tmp_list_idx), tmp_opnd);
 
                /* replace triplet with tmp control variable */

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -846,6 +850,20 @@ extern void Pad_Degenerates()
         pad_size += set_size/20 + (set_size - mod);
       }
       size += pad_size;
+#ifdef TARG_X8664
+      /* Bug 4902 - Avoid the Store and Load Forward [31:12] penalty. */
+      if (!Is_Target_Anyx86() && !Is_Target_EM64T() && 
+	  !Is_Target_Pentium4() && size >= 4096) {
+	UINT tmp = size;
+	tmp = ~tmp;
+	tmp += 1;
+	tmp = ~tmp;
+	if ((tmp & size) == 0) { // power of 2 >= 4096
+	  pad_size += 64; // cache line size
+          size += pad_size;
+	}
+      }
+#endif
       if (pad_size) {
         static INT count;
         char name[64];

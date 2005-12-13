@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -78,7 +78,11 @@
 # include "config_opt.h"
 # endif
 
+#ifdef BACK_END
+BOOL WN_Simp_Fold_ILOAD = TRUE;
+#else
 BOOL WN_Simp_Fold_ILOAD = FALSE;
+#endif
 
 BOOL WN_Simp_Fold_LDA = FALSE;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -71,19 +71,20 @@ void MHD::Initialize()
   Loop_Overhead_Memref    = 1;
   TLB_NoBlocking_Model    = TRUE;
 
-  // Bugs 2471, 2580, 2627
+  // Bugs 2471, 2580, 2627, 3093
   Loop_Overhead_Base      = 18;
-  TLB_Trustworthiness     = 20;
+  TLB_Trustworthiness     = 21;
 
   switch (Target) {
   case TARGET_opteron:
+  case TARGET_anyx86:
     L[0] = MHD_LEVEL(MHD_TYPE_CACHE, 	// Type
                      64*1024, 		// Size
                      64,		// Line Size
                      11,		// Clean Miss Penalty
                      11,		// Dirty Miss Penalty
                      2,			// Associativity
-		     64,		// TLB Entries
+		     32,		// TLB Entries
                      4*1024,		// Page Size
                      50,		// TLB Clean Miss Penalty ?
                      50,		// TLB Dirty Miss Penalty ?
@@ -99,7 +100,7 @@ void MHD::Initialize()
                      11,		// Clean Miss Penalty
                      11,		// Dirty Miss Penalty
                      2,			// Associativity
-		     1088,		// TLB Entries
+		     32,		// TLB Entries
                      4*1024,		// Page Size
                      50,		// TLB Clean Miss Penalty ?
                      50,		// TLB Dirty Miss Penalty ?
@@ -109,18 +110,51 @@ void MHD::Initialize()
                      50);		// Pct_Excess_Writes_Nonhidable ?
     break;
   case TARGET_athlon:
-  case TARGET_pentium4:
     L[0] = MHD_LEVEL(MHD_TYPE_CACHE, 	// Type
                      64*1024, 		// Size
                      64,		// Line Size
                      27,		// Clean Miss Penalty
                      27,		// Dirty Miss Penalty
                      2,			// Associativity
-		     40,		// TLB Entries
+		     32,		// TLB Entries
                      4*1024,		// Page Size
                      5,			// TLB Clean Miss Penalty ?
                      5,			// TLB Dirty Miss Penalty ?
                      2.0,		// Typical Outstanding Loads ?
+                     0.8,		// Load_OP_Overlap_1 ?
+                     0.4,		// Load_OP_Overlap_2 ?
+                     50);		// Pct_Excess_Writes_Nonhidable ?
+    break;
+  // TODO: Fine-tune pentium4/xeon/em64t parameters
+  case TARGET_pentium4:
+  case TARGET_xeon:
+    L[0] = MHD_LEVEL(MHD_TYPE_CACHE, 	// Type
+                     8*1024, 		// Size
+                     64,		// Line Size
+                     27,		// Clean Miss Penalty
+                     27,		// Dirty Miss Penalty
+                     4,			// Associativity
+		     64,		// TLB Entries
+                     4*1024,		// Page Size
+                     5,			// TLB Clean Miss Penalty ?
+                     5,			// TLB Dirty Miss Penalty ?
+                     2.0,		// Typical Outstanding Loads ?
+                     0.8,		// Load_OP_Overlap_1 ?
+                     0.4,		// Load_OP_Overlap_2 ?
+                     50);		// Pct_Excess_Writes_Nonhidable ?
+    break;
+  case TARGET_em64t:
+    L[0] = MHD_LEVEL(MHD_TYPE_CACHE, 	// Type
+                     64*1024, 		// Size
+                     64,		// Line Size
+                     11,		// Clean Miss Penalty
+                     11,		// Dirty Miss Penalty
+                     2,			// Associativity
+		     32,		// TLB Entries
+                     4*1024,		// Page Size
+                     50,		// TLB Clean Miss Penalty ?
+                     50,		// TLB Dirty Miss Penalty ?
+                     6.0,		// Typical Outstanding Loads ?
                      0.8,		// Load_OP_Overlap_1 ?
                      0.4,		// Load_OP_Overlap_2 ?
                      50);		// Pct_Excess_Writes_Nonhidable ?
@@ -133,6 +167,7 @@ void MHD::Initialize()
   
   switch (Target) {
   case TARGET_opteron:
+  case TARGET_anyx86:
     // TODO: this might be too generous: in multiple processor situations,
     // there is a cost to loading the shared bus/memory.
     L[1] = MHD_LEVEL(MHD_TYPE_CACHE, 
@@ -141,7 +176,7 @@ void MHD::Initialize()
                      150,
                      200, // ? 
                      16,  
-                     64,
+                     512,
                      4*1024, 
                      50, // ?
                      50, // ?
@@ -159,7 +194,7 @@ void MHD::Initialize()
                      150,
                      200, // ? 
                      16,  
-                     1088,
+                     512,
                      4*1024, 
                      50, // ?
                      50, // ?
@@ -169,7 +204,6 @@ void MHD::Initialize()
                      LNO_Run_Prefetch ? 25 : 50);  // ?
     break;
   case TARGET_athlon:
-  case TARGET_pentium4:
     // TODO: this might be too generous: in multiple processor situations,
     // there is a cost to loading the shared bus/memory.
     L[1] = MHD_LEVEL(MHD_TYPE_CACHE, 
@@ -182,6 +216,40 @@ void MHD::Initialize()
                      4*1024, 
                      52, // ?
                      52, // ?
+                     LNO_Run_Prefetch ? 1.8: 1.0,  // ?
+                     LNO_Run_Prefetch ? 0.7 : 0.1,  // ?
+                     LNO_Run_Prefetch ? 0.3 : 0.05, // ?
+                     LNO_Run_Prefetch ? 25 : 50);  // ?
+    break;
+  // TODO: Fine-tune pentium4/xeon/em64t parameters
+  case TARGET_pentium4:
+  case TARGET_xeon:
+    L[1] = MHD_LEVEL(MHD_TYPE_CACHE, 
+                     1*1024*1024, 
+                     64, 
+                     103,
+                     103, // ? 
+                     16,  
+                     256,
+                     4*1024, 
+                     52, // ?
+                     52, // ?
+                     LNO_Run_Prefetch ? 1.8: 1.0,  // ?
+                     LNO_Run_Prefetch ? 0.7 : 0.1,  // ?
+                     LNO_Run_Prefetch ? 0.3 : 0.05, // ?
+                     LNO_Run_Prefetch ? 25 : 50);  // ?
+    break;
+  case TARGET_em64t:
+    L[1] = MHD_LEVEL(MHD_TYPE_CACHE, 
+                     1*1024*1024, 
+                     64, 
+                     150,
+                     200, // ? 
+                     16,  
+                     512,
+                     4*1024, 
+                     50, // ?
+                     50, // ?
                      LNO_Run_Prefetch ? 1.8: 1.0,  // ?
                      LNO_Run_Prefetch ? 0.7 : 0.1,  // ?
                      LNO_Run_Prefetch ? 0.3 : 0.05, // ?

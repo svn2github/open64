@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -557,6 +557,10 @@ extern WN *LWN_CreateCvtl(OPCODE opc,
 			 INT16 cvtl_bits,
 			 WN *kid0);
 
+#ifdef KEY
+// Count number of prefetches generated for a particular loop.
+extern INT Num_Prefetches;
+#endif
 extern WN *LWN_CreatePrefetch (WN_OFFSET offset,
                                UINT32 flag,
                                WN* addr);

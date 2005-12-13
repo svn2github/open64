@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -67,7 +67,9 @@
 #ifdef BACK_END
 #include "region_util.h"
 #endif
-
+#ifdef KEY
+#include "config_opt.h"
+#endif
 /*-------------------------------------------------------------*/
 /* initialize the stack, it contains tree nodes                */
 /*-------------------------------------------------------------*/
@@ -1008,7 +1010,234 @@ extern WN *WN_LOOP_LowerBound( const WN *loop )
   /* todo: handle other kinds of stores? */
   return NULL;
 }
+#ifdef KEY
+static WN *WN_CreateDivceil(TYPE_ID type, WN *kid0, WN *kid1)
+{
+  OPCODE op = OPCODE_make_op(OPR_INTRINSIC_OP, type, MTYPE_V);
+  INT i;
+  WN *kids[2];
+  kids[0] = kid0;
+  kids[1] = kid1;
+  INT nkids = 2;
+                                                                                                                                                             
+  for (i = 0; i < nkids; i++) {
+    if (WN_operator(kids[i]) != OPR_PARM) {
+      TYPE_ID type = WN_rtype(kids[i]);
+      kids[i] = WN_CreateParm(type, kids[i], Be_Type_Tbl(type),
+                               WN_PARM_BY_VALUE);
+    }
+  }
+                                                                                                                                                             
+  INTRINSIC intrinsic;
+  switch (type) {
+    case MTYPE_I4:
+      intrinsic = INTRN_I4DIVCEIL;
+      break;
+    case MTYPE_I8:
+      intrinsic = INTRN_I8DIVCEIL;
+      break;
+    case MTYPE_U4:
+      intrinsic = INTRN_U4DIVCEIL;
+      break;
+    case MTYPE_U8:
+      intrinsic = INTRN_U8DIVCEIL;
+      break;
+    default:
+      FmtAssert(FALSE,
+                ("Cannot create DIVCEIL intrinsic of type %d\n", type));
+  }
+                                                                                                                                                             
+  WN *wn = WN_Create_Intrinsic(op, intrinsic, 2, kids);
+                                                                                                                                                             
+  return (wn);
+}
 
+static WN *WN_CreateDivfloor(TYPE_ID type, WN *kid0, WN *kid1)
+{
+  OPCODE op = OPCODE_make_op(OPR_INTRINSIC_OP, type, MTYPE_V);
+  INT i;
+  WN *kids[2];
+  kids[0] = kid0;
+  kids[1] = kid1;
+  INT nkids = 2;
+                                                                                                                                                             
+  for (i = 0; i < nkids; i++) {
+    if (WN_operator(kids[i]) != OPR_PARM) {
+      TYPE_ID type = WN_rtype(kids[i]);
+      kids[i] = WN_CreateParm(type, kids[i], Be_Type_Tbl(type),
+                               WN_PARM_BY_VALUE);
+    }
+  }
+                                                                                                                                                             
+  INTRINSIC intrinsic;
+  switch (type) {
+    case MTYPE_I4:
+      intrinsic = INTRN_I4DIVFLOOR;
+      break;
+    case MTYPE_I8:
+      intrinsic = INTRN_I8DIVFLOOR;
+      break;
+    case MTYPE_U4:
+      intrinsic = INTRN_U4DIVFLOOR;
+      break;
+    case MTYPE_U8:
+      intrinsic = INTRN_U8DIVFLOOR;
+      break;
+    default:
+      FmtAssert(FALSE,
+                ("Cannot create DIVFLOOR intrinsic of type %d\n", type));
+  }
+                                                                                                                                                             
+  WN *wn = WN_Create_Intrinsic(op, intrinsic, 2, kids);
+                                                                                                                                                             
+  return (wn);
+}
+
+static void Flip_Le_And_Ge(WN* wn)
+{
+  OPCODE    opc = WN_opcode(wn);
+  OPERATOR  opr = OPCODE_operator(opc);
+  switch (opr) {
+   case OPR_GE: opr = OPR_LE; break;
+   case OPR_LE: opr = OPR_GE; break;
+   case OPR_GT: opr = OPR_LT; break;
+   case OPR_LT: opr = OPR_GT; break;
+   default: FmtAssert(0, ("Bad call to Flip_Le_And_Ge")); break;
+  }
+  WN_set_opcode(wn, OPCODE_make_op(opr, OPCODE_rtype(opc), OPCODE_desc(opc)));
+}
+
+static INT WN_Symbol_Count(WN* wn, const ST_IDX sym, const WN_OFFSET ofst)
+{
+  INT rval = (WN_operator(wn) == OPR_LDID 
+              && sym == WN_st_idx(wn)
+              && ofst == WN_load_offset(wn))
+    ? 1 : 0;
+  for (INT k = 0; k < WN_kid_count(wn); k++)
+    rval += WN_Symbol_Count(WN_kid(wn,k), sym, ofst);
+  return rval;
+}
+
+static BOOL WN_Solve_For(WN* wn_top, const ST_IDX sym, const WN_OFFSET ofst)
+{
+  BOOL       ok = FALSE;
+  INT        lcount = WN_Symbol_Count(WN_kid0(wn_top), sym, ofst);
+  INT        rcount = WN_Symbol_Count(WN_kid1(wn_top), sym, ofst);
+  OPERATOR opr_base = WN_operator(wn_top);
+  FmtAssert(opr_base == OPR_GT || opr_base == OPR_LT || opr_base == OPR_LE
+    || opr_base == OPR_GE, ("Solve_For() called with bad RELOP"));
+  if (!(lcount == 1 && rcount == 0) && !(lcount == 0 && rcount == 1)) {
+    return FALSE;
+  }
+
+  // put variable on lhs for the moment
+  if (rcount) {
+    Flip_Le_And_Ge(wn_top);
+    WN* wn0 = WN_kid0(wn_top);
+    WN_kid0(wn_top) = WN_kid1(wn_top);
+    WN_kid1(wn_top) = wn0;
+  }
+  WN*        l = WN_kid0(wn_top);
+  WN*        r = WN_kid1(wn_top);
+  while (1) {
+    // invariant at this location: the index is somewhere on the left (l))
+    // invariant at this location: l and r will be wn_top's kids
+    OPCODE     lopc = WN_opcode(l);
+    OPERATOR   lopr = OPCODE_operator(lopc);
+    // have we successfully solved for the index variable?
+    if (OPCODE_is_load(lopc)) {
+      ok = TRUE;
+      break;
+    }
+    if (lopr == OPR_NEG) {
+      Flip_Le_And_Ge(wn_top);
+      TYPE_ID  type = WN_rtype(r);
+      OPCODE   negop = OPCODE_make_op(OPR_NEG, type, MTYPE_V);
+      r = WN_CreateExp1(negop, r);
+      l = WN_kid0(l);
+      continue;
+    }
+    // A CVT of an expression containing the index varible
+    // or any other single kid node is bad news at this point.
+    if (lopr == OPR_CVT || WN_kid_count(l) == 1)
+      return FALSE;
+    lcount = WN_Symbol_Count(WN_kid0(l), sym, ofst);
+    rcount = WN_Symbol_Count(WN_kid1(l), sym, ofst);
+    Is_True((lcount == 1 && rcount == 0) ||
+            (lcount == 0 && rcount == 1),
+            ("Impossible: Counts messed up %d %d", lcount, rcount));
+    if (rcount) {
+      if (lopr == OPR_SUB) {
+        // in order to commute below, must change sign and mul right size
+        // through by -1.
+        Flip_Le_And_Ge(wn_top);
+        TYPE_ID  type = WN_rtype(r);
+#ifdef TARG_X8664
+        // Bug 2014 - complement the type if original type is unsigned because
+        // we are going to negate and we have to obey the sign-extension rules
+        // for Opteron Code generation.
+        if (MTYPE_is_unsigned(type)) type = MTYPE_complement(type);
+#endif
+        OPCODE   negop = OPCODE_make_op(OPR_NEG, type, MTYPE_V);
+        r = WN_CreateExp1(negop, r);
+      }
+      else if (lopr != OPR_ADD && lopr != OPR_MPY) // commutative
+        break;
+      WN* wn0 = WN_kid0(l);
+      WN_kid0(l) = WN_kid1(l);
+      WN_kid1(l) = wn0;
+    }
+    WN*        ll = WN_kid0(l);
+    WN*        lr = WN_kid1(l);
+    if (lopr == OPR_MPY) {
+      TYPE_ID   type = OPCODE_rtype(lopc);
+      switch (type) {
+       case MTYPE_I4:
+       case MTYPE_I8:
+       case MTYPE_U8:
+        break;
+       default:
+        goto out;        // escape before we change any code.
+      }
+      // rhs of mul must be a const so we know if we are dividing
+      // through by a positive or negative.  Besides, it fits the
+      // expected normalized pattern.
+      OPCODE   lropc = WN_opcode(lr);
+      if (OPCODE_operator(lropc) != OPR_INTCONST)
+        break;
+      INT v = WN_const_val(lr);
+      if (v < 0) {
+        Flip_Le_And_Ge(wn_top);
+        WN_const_val(lr) = -v;
+        OPCODE negop = OPCODE_make_op(OPR_NEG, OPCODE_rtype(lropc), MTYPE_V);
+        r = WN_CreateExp1(negop, r);
+      }
+      BOOL use_ceil = WN_operator(wn_top) == OPR_GE
+        || WN_operator(wn_top) == OPR_LT;
+      if (use_ceil)
+        r = WN_CreateDivceil(type, r, lr);
+      else
+        r = WN_CreateDivfloor(type, r, lr);
+      WN_Delete(l);
+      l = ll;
+    }
+    else if (lopr == OPR_ADD || lopr == OPR_SUB) {
+      WN_kid0(l) = r;
+      WN_kid1(l) = lr;
+      r = l;
+      l = ll;
+      WN_set_opcode(r, OPCODE_make_op(lopr == OPR_ADD ? OPR_SUB : OPR_ADD,
+                                      OPCODE_rtype(lopc), OPCODE_desc(lopc)));
+    }
+    else
+      return FALSE;
+  }
+ out:
+  WN_kid0(wn_top) = l;
+  WN_kid1(wn_top) = r;
+  return ok;
+}                                     
+#endif                                                                                                     
 /*-------------------------------------------------------------*/
 /* Determine the upper bound of the loop, which is basically   */
 /* the value which can not be exceeded (going in either        */
@@ -1020,14 +1249,20 @@ extern WN *WN_LOOP_LowerBound( const WN *loop )
 /* is always on the rhs:  iv <,<=,==,!=,>=,> upper bound       */
 /* If unable to determine it, returns NULL.                    */
 /*-------------------------------------------------------------*/
-
+#ifdef KEY
+extern WN *WN_LOOP_UpperBound( const WN *loop, OPCODE *compare,
+                               BOOL     enhanced)
+#else
 extern WN *WN_LOOP_UpperBound( const WN *loop, OPCODE *compare )
+#endif
 {
   WN *iv;		/* induction variable */
   ST_IDX iv_st;		/*   it's symbol table entry */
   WN_OFFSET iv_ofst;	/*   it's offset from st */
   WN *end;		/* ending condition */
+  WN *new_end;
   OPCODE end_opc;	/*   and its opcode */
+ 
 
   /* what is the induction variable?  needed to know if the end
    * condition compares against it
@@ -1056,7 +1291,16 @@ extern WN *WN_LOOP_UpperBound( const WN *loop, OPCODE *compare )
     *compare = wn_loop_reverse_compare( end_opc );
     return WN_kid0(end);
   }
-
+#ifdef KEY
+  if (enhanced){
+    new_end = WN_COPY_Tree_With_Map(end);
+    if (WN_Solve_For(new_end, iv_st, iv_ofst) &&
+        wn_loop_ref_matches_var( WN_kid0(new_end), iv_st, iv_ofst ) ) {
+      *compare = end_opc;
+      return WN_kid1(new_end);
+    }
+  }
+#endif
   /* if we get here, we must not have figured out the upper bound */
   *compare = OPCODE_UNKNOWN;
   return NULL;
@@ -1136,7 +1380,11 @@ extern WN *WN_LOOP_Increment( const WN *loop, BOOL *is_incr )
 /* Determine the trip count, which may be a LDID, or INTCONST  */
 /* If unable to determine it, returns NULL.                    */
 /*-------------------------------------------------------------*/
+#ifdef KEY
+extern WN *WN_LOOP_TripCount(const WN *loop, BOOL enhanced)
+#else
 extern WN *WN_LOOP_TripCount(const WN *loop)
+#endif
 {
   WN *lb;			/* lower bound of loop */
   WN *ub;			/* upper bound of loop */
@@ -1158,7 +1406,7 @@ extern WN *WN_LOOP_TripCount(const WN *loop)
   if ( lb == NULL )
     return NULL;
 
-  ub = WN_LOOP_UpperBound( loop, &ub_compare );
+  ub = WN_LOOP_UpperBound( loop, &ub_compare, enhanced );
   if ( ub == NULL )
     return NULL;
 
@@ -1298,6 +1546,7 @@ static inline BOOL Pragma_is_Parallel_Region (WN_PRAGMA_ID pragma) {
   case WN_PRAGMA_PARALLEL_BEGIN:
   case WN_PRAGMA_PARALLEL_SECTIONS:
   case WN_PRAGMA_PARALLEL_DO:
+  case WN_PRAGMA_PARALLEL_WORKSHARE:
   case WN_PRAGMA_DOACROSS:
     return TRUE;
   default:
@@ -1316,10 +1565,12 @@ static inline BOOL Pragma_is_Work_Sharing (WN_PRAGMA_ID pragma) {
   switch (pragma) {
   case WN_PRAGMA_PARALLEL_SECTIONS:
   case WN_PRAGMA_PARALLEL_DO:
+  case WN_PRAGMA_PARALLEL_WORKSHARE:
   case WN_PRAGMA_DOACROSS:
   case WN_PRAGMA_PDO_BEGIN:
   case WN_PRAGMA_PSECTION_BEGIN:
   case WN_PRAGMA_SINGLE_PROCESS_BEGIN:
+  case WN_PRAGMA_PWORKSHARE_BEGIN:
     return TRUE;
   default:
     return FALSE;
@@ -1388,6 +1639,28 @@ extern void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
       WN_PRAGMA_ID pragma = (WN_PRAGMA_ID) WN_pragma(pragma_wn);
 
       if (Pragma_is_Parallel_Region(pragma)) {
+#ifdef KEY
+        // Don't insert the pragma if it is already there.
+        // This is, however, not required for correctness/performance
+        // The problem of duplicate pragmas seems to be more severe for
+        // the shared pragma.
+        {
+          WN * pwn = pragma_wn;
+          BOOL match = FALSE;
+          while (pwn)
+          {
+            if (WN_st_idx (pwn) == ST_st_idx (st) &&
+                (WN_PRAGMA_ID) WN_pragma (pwn) == pragma_id)
+            {
+              match = TRUE;
+              break;
+            }
+            pwn = WN_next (pwn);
+          }
+          if (match)
+            continue; // process next region
+        }
+#endif // KEY
         WN *shared_pwn = WN_CreatePragma (pragma_id, st, ofst, 0);
         if (make_compiler_generated) {
           WN_set_pragma_compiler_generated(shared_pwn);
@@ -1420,7 +1693,12 @@ extern void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
 
         WN_INSERT_BlockBefore (WN_region_pragmas(region_wn), NULL, shared_pwn);
 
-        if (parent_map) {
+#ifdef KEY
+        if (parent_map != WN_MAP_UNDEFINED)
+#else
+        if (parent_map)
+#endif
+        {
           WN_MAP_Set(parent_map,
                      shared_pwn, (void*)WN_region_pragmas(region_wn));
         }
@@ -1461,10 +1739,22 @@ extern void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
         if (make_compiler_generated) {
           WN_set_pragma_compiler_generated(local_pwn);
         }
+#ifdef KEY /* Bug 4828 */
+        WN *last = WN_last(WN_region_pragmas(region_wn));
+        if (last && 
+            WN_opcode(last) == OPC_PRAGMA &&
+            WN_pragma(last) == WN_PRAGMA_END_MARKER)
+          WN_INSERT_BlockBefore (WN_region_pragmas(region_wn), last, local_pwn);
+        else
+#endif
+          WN_INSERT_BlockBefore (WN_region_pragmas(region_wn), NULL, local_pwn);
 
-        WN_INSERT_BlockBefore (WN_region_pragmas(region_wn), NULL, local_pwn);
-
-        if (parent_map) {
+#ifdef KEY
+        if (parent_map != WN_MAP_UNDEFINED)
+#else
+        if (parent_map)
+#endif
+        {
           WN_MAP_Set(parent_map,local_pwn,(void*)WN_region_pragmas(region_wn));
         }
         need_pragma = FALSE;

@@ -68,15 +68,10 @@ headers: install
 exports:
 
 #
-# Check for IRIX, then for ia32 ia64
+# Check for ia32, ia64
 #
 install: $(_FORCE) 
-ifeq ($(BUILD_OS), IRIX)
-	cd $(BUILD_BASE); \
-	$(INSTALL) -m 444 -F /usr/include $(PUBLIC_HFILES);
-else
 	cd $(BUILD_BASE); \
 	$(INSTALL) -d $(ROOT)/usr/include
 	cd $(BUILD_BASE); \
 	$(INSTALL) -m 444 $(PUBLIC_HFILES) $(ROOT)/usr/include
-endif

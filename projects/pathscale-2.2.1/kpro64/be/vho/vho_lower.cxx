@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -93,6 +93,9 @@ typedef enum {
 #define Reset_ST_addr_taken_saved(st)  Reset_ST_addr_saved(st)
 
 #pragma set woff 1172
+#ifdef KEY
+static INT current_pu_id = -1;
+#endif
 
 static BOOL
 VHO_WN_is_zero ( WN * wn )
@@ -239,6 +242,10 @@ static WN      * VHO_Switch_Index;         /* load of switch index           */
 static WN      * VHO_Switch_Default_Goto;  /* goto switch default label      */
 static WN      * VHO_Switch_Stmt;          /* switch statement               */
 static FB_FREQ   VHO_Switch_Default_Freq;  /* goto switch default freq       */
+
+#ifdef KEY
+static BOOL VHO_In_MP_Region_Pragma = FALSE;
+#endif // KEY
 
 /* Variables related to struct lowering */
 
@@ -1196,9 +1203,17 @@ VHO_Get_Field_List ( WN_OFFSET offset, TY_IDX sty_idx )
 	TY_IDX  ety_idx;
 		  
         ety_idx = Ty_Table [fty_idx].Etype();
+#ifdef KEY // bug 5273: array element size can be zero
+	if (TY_size(Ty_Table[ety_idx]) == 0)
+	  array_elem_num = 0;
+	else {
+#endif
         Is_True (TY_size(Ty_Table [fty_idx])%TY_size(Ty_Table [ety_idx]) == 0,
                        ("unexpected array type"));
         array_elem_num = TY_size(Ty_Table [fty_idx])/TY_size(Ty_Table [ety_idx]);
+#ifdef KEY // bug 5273
+	}
+#endif
         // Is_True (VHO_Struct_Nfields + array_elem_num < 255,
         //            ("number of flattened fields exceeds limit");
         if (VHO_Struct_Nfields + array_elem_num >= 255) {
@@ -1582,6 +1597,16 @@ VHO_Lower_Mstid (WN * wn)
 
     src_ty_idx = WN_ty(src_value);
     
+#ifdef KEY // bug 7741
+    if ((bytes == 4 || bytes == 8) && TY_size(src_ty_idx) == bytes) {
+      // change MTYPE_M to MTYPE_U[48]
+      TYPE_ID mtype = (bytes == 4) ? MTYPE_U4 : MTYPE_U8;
+      WN_set_desc(wn, mtype);
+      WN_set_rtype(src_value, mtype);
+      WN_set_desc(src_value, mtype);
+    }
+    else
+#endif
     if(   TY_align(src_ty_idx) == TY_align(dst_ty_idx)
        && TY_kind(src_ty_idx) == KIND_STRUCT
        && TY_is_packed(Ty_Table[src_ty_idx]) == FALSE
@@ -2093,18 +2118,56 @@ vho_lower_comma ( WN * wn, WN *block, BOOL_INFO * bool_info )
 
       else {
 
-        PREG_NUM preg    = Create_Preg (rtype, vho_lower_comma_name);
-        ST*      preg_st = MTYPE_To_PREG (rtype);
-        OPCODE   opcode  = OPCODE_make_op (OPR_STID, MTYPE_V, rtype);
-        wn = WN_CreateStid (opcode, preg, preg_st, ty_idx, result);
-        WN_Set_Linenum ( wn, VHO_Srcpos );
-        WN_INSERT_BlockLast (comma_block, wn);
-        opcode = OPCODE_make_op (OPR_LDID, rtype, rtype);
-        result = WN_CreateLdid (opcode, preg, preg_st, ty_idx);
+#ifdef KEY
+	if (VHO_In_MP_Region_Pragma)
+	{ // Use a temporary symbol instead of a preg
+	  ST * comma_st = Gen_Temp_Symbol (MTYPE_TO_TY_array[rtype], "_comma");
+	  wn = WN_Stid (rtype, 0, comma_st, ty_idx, result);
+          WN_Set_Linenum ( wn, VHO_Srcpos );
+          WN_INSERT_BlockLast (comma_block, wn);
+	  result = WN_Ldid (rtype, 0, comma_st, ty_idx);
+	}
+	else
+#endif // KEY
+	{
+          PREG_NUM preg    = Create_Preg (rtype, vho_lower_comma_name);
+          ST*      preg_st = MTYPE_To_PREG (rtype);
+          OPCODE   opcode  = OPCODE_make_op (OPR_STID, MTYPE_V, rtype);
+          wn = WN_CreateStid (opcode, preg, preg_st, ty_idx, result);
+          WN_Set_Linenum ( wn, VHO_Srcpos );
+          WN_INSERT_BlockLast (comma_block, wn);
+          opcode = OPCODE_make_op (OPR_LDID, rtype, rtype);
+          result = WN_CreateLdid (opcode, preg, preg_st, ty_idx);
+	}
       }
     }
 
-    WN_INSERT_BlockLast ( block, comma_block );
+#ifdef KEY
+    if (VHO_In_MP_Region_Pragma && WN_operator (result) == OPR_LDID &&
+        ST_class (WN_st (result)) == CLASS_PREG)
+    {
+      // This can be caused by inlining of a call inside an xpragma, where
+      // we need to use a temporary instead of a preg.
+      TYPE_ID rtype = WN_rtype (result);
+      ST * comma_st = Gen_Temp_Symbol (MTYPE_TO_TY_array[rtype], "_comma");
+      WN * stid = WN_Stid (rtype, 0, comma_st, WN_ty (result), result);
+      WN_Set_Linenum (stid, VHO_Srcpos);
+      WN_INSERT_BlockLast (comma_block, stid);
+      result = WN_Ldid (rtype, 0, comma_st, WN_ty (result));
+    }
+
+    // If this comma node is inside an atomic pragma, insert the lowered
+    // comma block before the pragma node, since omp-lowerer expects the
+    // atomic store to be the next stmt after the pragma
+    WN * last = WN_last (block);
+    if (last && WN_operator (last) == OPR_PRAGMA &&
+        WN_pragma (last) == WN_PRAGMA_ATOMIC)
+    {
+      WN_INSERT_BlockBefore ( block, WN_last (block), comma_block );
+    }
+    else
+#endif // KEY
+      WN_INSERT_BlockLast ( block, comma_block );
   }
 
   if ( WN_first(result_block) ) {
@@ -2913,6 +2976,10 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
     //                                     END_IF
 
     ty_idx = WN_ty(lwn);
+#ifdef KEY // bug 5179
+    if (WN_field_id(lwn) != 0)
+      ty_idx = get_field_type(ty_idx, WN_field_id(lwn));
+#endif
     ST* temp = Gen_Temp_Symbol (ty_idx, ".mcselect");
 
     wn = WN_CreateStid (OPR_STID, MTYPE_V, MTYPE_M,
@@ -2965,15 +3032,15 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
 
       if ( has_side_effects == FALSE ) {
 
-        /* kt ? kt : 0 => kt */
-        if (    WN_operator(test) == OPR_NE
-             && VHO_WN_is_zero(WN_kid1(test))
-             && WN_Simp_Compare_Trees  ( WN_kid0(test), lwn ) == 0
-             && WN_Simp_Compare_Trees ( WN_kid1(test), rwn ) == 0 ) {
-
-          wn = test;
-          return wn;
-        }
+        /* kt != 0 ? kt : 0 => kt */
+#ifdef KEY // bug 5363 and bug 5817
+        if ( ( ! MTYPE_is_float(WN_desc(test)) || ! Force_IEEE_Comparisons) &&
+	     WN_operator(test) == OPR_NE && 
+	     VHO_WN_is_zero(WN_kid1(test)) && 
+	     WN_Simp_Compare_Trees ( WN_kid0(test), lwn ) == 0 &&
+	     VHO_WN_is_zero(rwn) ) 
+          return lwn;
+#endif
 
 #ifdef KEY
 	/* (a-b) >= 0 ? (a-b) : (b-a) => abs(a-b) */
@@ -3625,6 +3692,68 @@ vho_lower_combine_loads ( WN * wn )
   return wn;
 } /* vho_lower_combine_loads */
 
+#ifdef KEY
+// Utility function to traverse through an aggregate type and determine
+// if any field/element is floating-point: bug 7770
+// Called by vho_lower_mparm(), if there is any FP field, the mparm cannot
+// be transformed.
+// Return 1 if OK to transform, 0 if cannot be transformed.
+static inline BOOL
+traverse_struct (const TY_IDX ty)
+{
+  Is_True (TY_size(ty) <= 8, ("Type size cannot exceed 8"));
+  if (TY_kind (ty) == KIND_STRUCT)
+  {
+    FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty));
+    do
+    {
+      FLD_HANDLE fld(fld_iter);
+      if (TY_size(FLD_type(fld)) == 0)
+        continue;
+      if (!traverse_struct (FLD_type(fld))) return 0;
+    } while (!FLD_last_field(fld_iter++));
+  }
+  else if (TY_kind (ty) == KIND_ARRAY)
+    return traverse_struct (TY_etype (ty));
+  else
+    switch (TY_mtype (ty))
+    {
+      case MTYPE_F4:
+      case MTYPE_F8:
+      case MTYPE_C4: return 0;
+      default: return 1;
+    }
+
+  return 1;
+}
+
+// If the struct under MPARM is of size 4 or 8, change LDID from M
+// type to the appropriate type (U4/U8).
+static inline WN *
+vho_lower_mparm (WN * wn)
+{
+  WN * kid = WN_kid0 (wn);
+  if (WN_opcode (kid) != OPC_MMLDID) return wn;
+
+  TY_IDX ty = WN_ty (kid);
+  INT64 bytes = TY_size (ty);
+
+  if (VHO_Struct_Opt &&
+      (bytes == 4 || bytes == 8) &&
+      TY_size (WN_ty (wn)) == bytes &&
+      ST_class (WN_st (kid)) != CLASS_PREG &&
+      (Is_Target_32bit() ||
+       traverse_struct (WN_ty (wn))))
+  {
+    TYPE_ID mtype = (bytes == 4) ? MTYPE_U4 : MTYPE_U8;
+    WN_set_rtype (wn, mtype);
+    WN_set_rtype (kid, mtype);
+    WN_set_desc (kid, mtype);
+  }
+
+  return wn;
+}
+#endif
 
 /* ============================================================================
  *
@@ -3907,6 +4036,9 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info )
 
     case OPR_PARM:
 
+#ifdef KEY // bug 7741
+      wn = vho_lower_mparm (wn);
+#endif
       WN_kid0(wn) = vho_lower_expr (WN_kid0(wn), block, NULL);
       break;
 
@@ -3952,6 +4084,11 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info )
                                  WN_Binary (OPR_SUB, shift_rtype,
                                             WN_Intconst (shift_rtype, size),
                                             wn1));
+#ifdef TARG_X8664 // bug 4552
+      if (size < MTYPE_size_min(rtype))
+	lshift = WN_CreateCvtl(OPR_CVTL, Mtype_TransferSign(MTYPE_U4, rtype), 
+				MTYPE_V, size, lshift);
+#endif
       wn  = WN_Bior (rtype, lshift, rshift);
       break;
     }
@@ -4861,6 +4998,76 @@ static WN *
 vho_lower_region ( WN * wn, WN * block )
 {
   WN_region_body(wn) = vho_lower_block ( WN_region_body(wn) );
+  
+  INT region_id = WN_region_id(wn);
+  if ((WN_region_kind(wn) == REGION_KIND_MP) &&
+      (current_pu_id < VHO_Disable_MP_PU_Before ||
+       current_pu_id > VHO_Disable_MP_PU_After ||
+       current_pu_id == VHO_Disable_MP_PU_Equal ||
+       region_id < VHO_Disable_MP_Local_Before ||
+       region_id > VHO_Disable_MP_Local_After ||
+       region_id == VHO_Disable_MP_Local_Equal)) {
+    WN* region_body = WN_region_body(wn);
+    WN* stmt = WN_first(region_body);
+    WN* next_stmt;
+    while(stmt) {
+      next_stmt = WN_next(stmt);
+      WN_INSERT_BlockLast(block, stmt);
+      stmt = next_stmt;
+    }
+    WN_next(wn) = WN_prev(wn) = NULL;
+    return NULL;
+  }
+
+  // Lower pragmas for MP regions
+  if (WN_region_kind(wn) == REGION_KIND_MP)
+  {
+#ifdef Is_True_On
+    {
+      // Verify the assumption that WN_region_pragmas does not contain any
+      // non-pragma node before lowering
+      // e.g. C++ EH region nodes can contain non-pragma nodes here.
+      WN * pragmas = WN_first (WN_region_pragmas (wn));
+      while (pragmas)
+      {
+	// use fmtassert if common/com is built without debug
+        FmtAssert (WN_operator(pragmas) == OPR_PRAGMA ||
+	           WN_operator(pragmas) == OPR_XPRAGMA,
+		   ("Unexpected node in region pragmas"));
+	pragmas = WN_next (pragmas);
+      }
+    }
+#endif // Is_True_On
+
+    VHO_In_MP_Region_Pragma = TRUE;
+    WN_region_pragmas(wn) = vho_lower_block ( WN_region_pragmas(wn) );
+    VHO_In_MP_Region_Pragma = FALSE;
+
+    WN * iter = WN_first (WN_region_pragmas (wn));
+
+    while (iter)
+    {
+      // move any non-pragma stmt to before the region
+      // bug 5130: also move inline-pragmas outside
+      if ((WN_operator (iter) != OPR_PRAGMA  ||
+           (WN_pragma (iter) == WN_PRAGMA_INLINE_BODY_START ||
+	    WN_pragma (iter) == WN_PRAGMA_INLINE_BODY_END)) &&
+          WN_operator (iter) != OPR_XPRAGMA)
+      {
+        WN * move  = iter;
+        // increment
+        iter = WN_next (iter);
+	// fail in debug mode, a pragma must be the last node
+	Is_True (WN_next (move), ("Pragma node not found in region pragmas"));
+	// remove the node from region-pragmas
+	move = WN_EXTRACT_FromBlock (WN_region_pragmas (wn), move);
+
+        WN_INSERT_BlockLast (block, move);
+      }
+      else iter = WN_next (iter);
+    }
+  }
+
   // bug 2631:
   // If we have a COMPGOTO stmt inside the region, move it outside the
   // region.
@@ -4913,15 +5120,35 @@ vho_lower_do_loop ( WN * wn, WN *block )
   LABEL_Init (New_LABEL (CURRENT_SYMTAB, bool_info.false_label),
 	0, LKIND_DEFAULT);
 
+#ifdef KEY // bug 6299
+  start = WN_start(wn);
+  WN_kid0(start) = vho_lower_expr ( WN_kid0(start), lower_block, &bool_info );
+#else
   start = vho_lower_expr ( WN_start(wn), lower_block, &bool_info );
 
   FmtAssert ( WN_first(lower_block) == NULL,
               ( "lowering of do loop start generated statements" ) );
+#endif
 
   end = vho_lower_expr ( WN_end(wn), lower_block, &bool_info );
 
+#ifndef KEY
   FmtAssert ( WN_first(lower_block) == NULL,
               ( "lowering of do loop test generated statements" ) );
+#else
+#ifdef Is_True_On
+  // relax assertion, and convert it to debug mode
+  Is_True (WN_first (lower_block) == NULL ||
+           PU_c_lang (Get_Current_PU())  ||
+           PU_cxx_lang (Get_Current_PU()) || 
+	   Instrumentation_Enabled,
+           ("lowering of do loop test generated statements in Fortran"));
+#endif
+  // Relax it for DO_LOOP generated for C/C++ OpenMP, when the termination
+  // test has function call
+  if (WN_first (lower_block))
+    WN_INSERT_BlockLast (block, lower_block);
+#endif // KEY
 
   step = vho_lower_expr ( WN_step(wn), lower_block, &bool_info );
 
@@ -5899,6 +6126,428 @@ Eliminate_Temp_In_While(WN *test_wn)
 } //Eliminate_Temp_In_While
 // LLC (A) 
 
+#ifdef KEY
+static BOOL Is_Loop_Suitable_For_Misc_Loop_Fusion ( WN * wn, WN * block)
+{
+  // Check if the inner do loops can be fused.
+  WN *body = WN_while_body(wn);
+  WN *stmt = WN_first(body);
+  WN *preloop = NULL;
+  WN *mainloop = NULL;
+  WN *postloop = NULL;
+
+  while(stmt) {
+    if (WN_operator(stmt) == OPR_DO_LOOP &&
+	WN_next(stmt) && WN_operator(WN_next(stmt)) == OPR_STID &&
+	WN_desc(WN_next(stmt)) == MTYPE_I4 &&
+	WN_next(WN_next(stmt)) && 
+	WN_operator(WN_next(WN_next(stmt))) == OPR_DO_LOOP &&
+	WN_next(WN_next(WN_next(stmt))) &&
+	WN_operator(WN_next(WN_next(WN_next(stmt)))) == OPR_DO_LOOP) {
+      if (preloop != NULL)
+	return FALSE;
+      preloop = stmt;
+      mainloop = WN_next(WN_next(stmt));
+      postloop = WN_next(WN_next(WN_next(stmt)));
+      // preloop and postloop should have only one stmt.
+      if (!WN_do_body(preloop) || !WN_do_body(postloop) ||
+	  !WN_first(WN_do_body(preloop)) || 
+	  !WN_first(WN_do_body(postloop)) ||
+	  (WN_next(WN_first(WN_do_body(preloop))) &&
+	   (WN_operator(WN_next(WN_first(WN_do_body(preloop)))) != 
+	    OPR_LABEL ||
+	    WN_next(WN_next(WN_first(WN_do_body(preloop)))))) ||
+	  (WN_next(WN_first(WN_do_body(postloop))) &&
+	   (WN_operator(WN_next(WN_first(WN_do_body(postloop)))) != 
+	    OPR_LABEL ||
+	    WN_next(WN_next(WN_first(WN_do_body(postloop)))))) ||
+	  WN_operator(WN_first(WN_do_body(preloop))) != OPR_ISTORE ||
+	  WN_operator(WN_first(WN_do_body(postloop))) != OPR_ISTORE ||
+	  !WN_start(preloop) || !WN_kid0(WN_start(preloop)) ||
+	  !WN_start(mainloop) || !WN_kid0(WN_start(mainloop)) ||
+	  !WN_start(postloop) || !WN_kid0(WN_start(postloop)) ||
+	  WN_Simp_Compare_Trees(WN_kid0(WN_start(preloop)),
+				WN_kid0(WN_start(mainloop))) != 0 ||
+	  WN_Simp_Compare_Trees(WN_kid0(WN_start(preloop)),
+				WN_kid0(WN_start(postloop))) != 0 ||
+	  !WN_end(preloop) || 
+	  WN_operator(WN_end(preloop)) != OPR_GT ||
+	  !WN_end(postloop) || 
+	  WN_operator(WN_end(postloop)) != OPR_GT ||
+	  !WN_end(mainloop) || 
+	  WN_operator(WN_end(mainloop)) != OPR_GT ||
+	  WN_Simp_Compare_Trees(WN_kid0(WN_end(preloop)),
+				WN_kid0(WN_end(postloop))) != 0 ||
+	  WN_Simp_Compare_Trees(WN_kid0(WN_end(preloop)),
+				WN_kid0(WN_end(mainloop))) != 0)
+	preloop = mainloop = postloop = NULL;
+    }
+    stmt = WN_next(stmt);
+  }
+  
+  return preloop != NULL;
+}
+
+static void Rename_Subscripts ( WN *to, WN *from, WN *node)
+{
+  if (WN_operator(node) == OPR_LDID &&
+      WN_offset(node) == WN_offset(from))
+    WN_offset(node) = WN_offset(to);
+
+  // Recurse
+  for (INT kid = 0; kid < WN_kid_count(node); kid ++)
+    Rename_Subscripts(to, from, WN_kid(node, kid));
+}
+
+static void Misc_Loop_Fusion ( WN * wn, WN * block )
+{
+  if (!VHO_Enable_Misc_Loop_Fusion)
+    return;
+
+  if (!Is_Loop_Suitable_For_Misc_Loop_Fusion(wn, block))
+    return;
+  
+  // Collect the do loops to be fused.
+  WN *body = WN_while_body(wn);
+  WN *stmt = WN_first(body);
+  WN *preloop = NULL;
+  WN *mainloop = NULL;
+  WN *postloop = NULL;
+  while(stmt) {
+    if (WN_operator(stmt) == OPR_DO_LOOP &&
+	WN_next(stmt) && WN_operator(WN_next(stmt)) == OPR_STID &&
+	WN_desc(WN_next(stmt)) == MTYPE_I4 &&
+	WN_next(WN_next(stmt)) && 
+	WN_operator(WN_next(WN_next(stmt))) == OPR_DO_LOOP &&
+	WN_next(WN_next(WN_next(stmt))) &&
+	WN_operator(WN_next(WN_next(WN_next(stmt)))) == OPR_DO_LOOP) {
+      preloop = stmt;
+      mainloop = WN_next(WN_next(stmt));
+      postloop = WN_next(WN_next(WN_next(stmt)));
+      break;
+    }
+    stmt = WN_next(stmt);
+  }
+  FmtAssert(preloop && mainloop && postloop, 
+	    ("Handle this case in Misc_Loop_Fusion"));
+  
+  // Fuse the loops.
+  WN *preloopbody = WN_COPY_Tree(WN_do_body(preloop));
+  WN *mainloopbody = WN_do_body(mainloop);
+  WN *postloopbody = WN_COPY_Tree(WN_do_body(postloop));
+
+  Rename_Subscripts(WN_index(mainloop), WN_index(preloop), 
+		    WN_first(preloopbody));
+  Rename_Subscripts(WN_index(mainloop), WN_index(postloop), 
+		    WN_first(postloopbody));
+
+  // Fuse and move definitions and uses closer together.
+  WN *innerloop = WN_first(mainloopbody);
+  while (innerloop) {
+    if (WN_operator(innerloop) == OPR_DO_LOOP)
+      break;
+    innerloop = WN_next(innerloop);
+  }
+
+  // another safety check.
+  if (!innerloop || !WN_next(innerloop) || !WN_next(WN_next(innerloop)))
+    return;
+
+  WN_INSERT_BlockAfter ( mainloopbody, innerloop, WN_first(preloopbody));
+  WN_INSERT_BlockAfter ( mainloopbody, WN_next(WN_next(innerloop)), 
+			 WN_first(postloopbody));
+
+  WN_next(WN_prev(preloop)) = WN_next(preloop);
+  WN_prev(WN_next(preloop)) = WN_prev(preloop);
+  WN_next(mainloop) = WN_next(postloop);
+  WN_prev(WN_next(postloop)) = mainloop;
+
+  WN_DELETE_Tree(preloop);
+  WN_DELETE_Tree(postloop);
+
+  return;
+}
+
+static WN *vho_lower_while_do ( WN * wn, WN *block );
+
+static BOOL Iload_Inside (WN* wn)
+{
+  if (WN_operator(wn) == OPR_ILOAD)
+    return TRUE;
+  else {
+    for (INT kid = 0; kid < WN_kid_count(wn); kid ++)
+      if (Iload_Inside(WN_kid(wn, kid))) return TRUE;
+  }
+  return FALSE;
+}
+
+static WN* Find_Iload_Iload_Opnd ( WN* wn )
+{
+  if (WN_operator(wn) == OPR_ILOAD) {
+    if (Iload_Inside(WN_kid0(wn)))
+      return wn;
+    else
+      return NULL;
+  } else {
+    WN* opnd = NULL;
+    WN* tree;
+    for (INT kid = 0; kid < WN_kid_count(wn); kid ++) {
+      if (tree = Find_Iload_Iload_Opnd(WN_kid(wn, kid))) {
+	// If more than one iload_iload_opnd then return nothing
+	if (opnd && tree) return NULL; 
+	else opnd = tree;
+      }      
+    }
+    return opnd;
+  }
+}
+
+static BOOL 
+Is_Loop_Suitable_For_Misc_Loop_Distribute_And_Interchange(WN* wn, WN* block)
+{
+  WN* last = WN_last(block);
+  if (!last) return FALSE;
+  if (WN_operator(last) != OPR_STID) {
+    if (WN_operator(last) != OPR_LABEL) return FALSE;
+    if (!WN_prev(last) ||
+	WN_operator(last = WN_prev(last)) != OPR_STID) return FALSE;
+  }
+  ST* index_outerloop = WN_st(last);
+  WN* test_outerloop = WN_while_test(wn);
+  if (!OPCODE_is_compare(WN_opcode(test_outerloop))) return FALSE;
+  BOOL index_matches = FALSE;
+  if (WN_operator(WN_kid0(test_outerloop)) == OPR_LDID &&
+      WN_st(WN_kid0(test_outerloop)) == index_outerloop)
+    index_matches = TRUE;    
+  if (WN_operator(WN_kid1(test_outerloop)) == OPR_LDID &&
+      WN_st(WN_kid1(test_outerloop)) == index_outerloop)
+    index_matches = TRUE;    
+  if (!index_matches)
+    return FALSE;
+
+  // The body of the loop should contain an assignment statement then an 
+  // if-statement that contains another loop then a label statement and a
+  // statement to update the loop variable.
+  WN* loop_body = WN_while_body(wn);
+  if (!WN_first(loop_body) ||
+      WN_operator(WN_first(loop_body)) != OPR_ISTORE) return FALSE;
+  if (!WN_next(WN_first(loop_body)) ||
+      WN_operator(WN_next(WN_first(loop_body))) != OPR_IF) return FALSE;
+  if (!WN_next(WN_next(WN_first(loop_body))) ||
+      WN_operator(WN_next(WN_next(WN_first(loop_body)))) != OPR_LABEL) return FALSE;
+  if (!WN_next(WN_next(WN_next(WN_first(loop_body)))) ||
+      WN_operator(WN_next(WN_next(WN_next(WN_first(loop_body))))) != OPR_STID) 
+    return FALSE;
+  if (WN_first(WN_else(WN_next(WN_first(loop_body))))) return FALSE;
+  WN* if_then_body = WN_then(WN_next(WN_first(loop_body)));
+  if (!WN_first(if_then_body) ||
+      WN_operator(WN_first(if_then_body)) != OPR_STID) return FALSE;
+  BOOL label_found = FALSE;  
+  if (!WN_next(WN_first(if_then_body))) return FALSE;
+  if (WN_operator(WN_next(WN_first(if_then_body))) != OPR_WHILE_DO) {
+    if (WN_operator(WN_next(WN_first(if_then_body))) != OPR_LABEL)
+      return FALSE;
+    else
+      label_found = TRUE;
+  }
+ 
+  // Is it safe and useful to do this distribution and interchange based on the 
+  // access patterns? If not, then return FALSE.
+  WN *innerloop = WN_next(WN_first(if_then_body));
+  if (label_found) innerloop = WN_next(WN_next(WN_first(if_then_body)));
+  WN *body = WN_while_body(innerloop);
+  WN* stmt;
+  if (!WN_first(body) || WN_operator(stmt = WN_first(body)) != OPR_ISTORE ||
+      !WN_next(stmt) || WN_operator(WN_next(stmt)) != OPR_LABEL ||
+      !WN_next(WN_next(stmt)) || 
+      WN_operator(WN_next(WN_next(stmt))) != OPR_STID ||
+      WN_next(WN_next(WN_next(stmt)))) return FALSE;
+  // Find the operand that is ILOAD(ILOAD(...))
+  WN* opnd;
+  WN* opnd_base;
+  WN* result_base;
+  if (!(opnd = Find_Iload_Iload_Opnd(WN_kid0(stmt))))
+    return FALSE;
+  if (WN_operator(WN_kid1(stmt)) != OPR_ADD ||
+      WN_operator(WN_kid1(WN_kid1(stmt))) != OPR_MPY ||
+      WN_operator(result_base = WN_kid0(WN_kid1(stmt))) != OPR_LDID)
+    return FALSE;
+  WN *low_index, *high_index;
+  if (WN_operator(low_index = WN_kid0(opnd)) != OPR_ADD ||
+      WN_operator(WN_kid0(WN_kid0(opnd))) != OPR_ILOAD ||
+      WN_operator(high_index = WN_kid0(WN_kid0(WN_kid0(opnd)))) != OPR_ADD ||
+      WN_operator(opnd_base = WN_kid0(WN_kid0(WN_kid0(WN_kid0(opnd))))) != OPR_LDID)
+    return FALSE;
+  // Extract the loop indices from the access.
+  if (WN_operator(WN_kid1(low_index)) != OPR_MPY ||
+      WN_operator(WN_kid1(high_index)) != OPR_MPY)
+    return FALSE;
+
+  low_index = WN_kid0(WN_kid1(low_index));
+  high_index = WN_kid0(WN_kid1(high_index));
+
+  if (WN_operator(low_index) != OPR_LDID &&
+      WN_operator(low_index) != OPR_CVT)
+    return FALSE;
+  if (WN_operator(low_index) == OPR_CVT)
+    if (WN_operator(low_index = WN_kid0(low_index)) != OPR_LDID)
+      return FALSE;
+  if (WN_operator(high_index) != OPR_LDID &&
+      WN_operator(high_index) != OPR_CVT)
+    return FALSE;
+  if (WN_operator(high_index) == OPR_CVT)
+    if (WN_operator(high_index = WN_kid0(high_index)) != OPR_LDID)
+      return FALSE;
+  
+  if (WN_st(low_index) != index_outerloop) // not a candidate for interchange
+    return FALSE;
+
+  if (WN_st(result_base) == WN_st(opnd_base))
+    return FALSE;
+  
+  return TRUE;
+}
+
+// Transform:
+//
+//   do i
+//     stmt-i
+//     if (G(i))
+//       do j
+//         = array[j][i]
+//       enddo
+//     endif
+//   enddo
+//
+// to:
+//
+//   do i
+//     stmt-i
+//   enddo
+//   do j
+//     do i
+//       if (G(i))
+//         = array[j][i]
+//       endif
+//     enddo
+//   enddo
+// Here array[j][i] is actually declared as **array and dependence information 
+// is missing for LNO to do this transformation automatically.
+// 
+// - Courtesy bug 3581.
+static WN* Misc_Loop_Distribute_And_Interchange (WN* wn, WN* block)
+{
+  if (!VHO_Enable_Misc_Loop_Transformation)
+    return NULL;
+
+  if (!Is_Loop_Suitable_For_Misc_Loop_Distribute_And_Interchange(wn, block))
+    return NULL;
+
+  WN* last = WN_last(block);
+  if (WN_operator(last) == OPR_LABEL)
+    last = WN_prev(last);
+  WN* start_i_loop = WN_COPY_Tree(last);
+  WN* end_i_loop = 
+    WN_COPY_Tree(WN_next(WN_next(WN_next(WN_first(WN_while_body(wn))))));
+  WN* pre_loop = WN_COPY_Tree(wn);
+  if (Cur_PU_Feedback) {
+    const FB_Info_Loop fb_info = Cur_PU_Feedback->Query_loop(wn);
+    Cur_PU_Feedback->Annot_loop( pre_loop, fb_info );
+    Cur_PU_Feedback->FB_duplicate( WN_while_test(wn), WN_while_test(pre_loop) );
+  }
+  LABEL_IDX pre_loop_label_idx;
+  LABEL_Init (New_LABEL (CURRENT_SYMTAB, pre_loop_label_idx),
+	      0, LKIND_DEFAULT);
+  WN* pre_loop_label = WN_CreateLabel( (ST_IDX) 0, pre_loop_label_idx, 0, NULL);
+  WN_Set_Linenum(pre_loop_label, VHO_Srcpos);
+  WN* while_body = WN_while_body(pre_loop);
+  WN_DELETE_Tree(WN_next(WN_first(while_body)));
+  WN_DELETE_Tree(WN_next(WN_next(WN_first(while_body))));
+  WN_next(WN_first(while_body)) = pre_loop_label;
+  WN_next(pre_loop_label) = end_i_loop;
+  pre_loop = vho_lower_while_do(pre_loop, block);
+  WN_INSERT_BlockLast ( block, pre_loop );
+
+  WN* start_j_loop = 
+    WN_COPY_Tree(WN_first(WN_then(WN_next(WN_first(WN_while_body(wn))))));
+  WN_INSERT_BlockLast ( block, start_j_loop ); 
+  WN* post_loop = 
+    WN_next(WN_first(WN_then(WN_next(WN_first(WN_while_body(wn))))));
+  WN* orig_loop = post_loop;
+  if (WN_operator(post_loop) == OPR_LABEL)
+    post_loop = WN_COPY_Tree(orig_loop = WN_next(post_loop));
+  else
+    post_loop = WN_COPY_Tree(post_loop);
+  if (Cur_PU_Feedback) {
+    const FB_Info_Loop fb_info_outer = Cur_PU_Feedback->Query_loop(wn);
+    const FB_Info_Loop fb_info_inner = Cur_PU_Feedback->Query_loop(orig_loop);
+    FB_Info_Loop fb_info = fb_info_outer;
+    fb_info.freq_iterate._value = 
+      fb_info.freq_out._value * 
+      ( fb_info_inner.freq_iterate._value/fb_info_inner.freq_out._value );
+    fb_info.freq_back._value = fb_info.freq_iterate._value - 
+      fb_info.freq_positive._value;
+    Cur_PU_Feedback->Annot_loop( post_loop, fb_info );
+  }
+  LABEL_IDX post_loop_label_idx;
+  LABEL_Init (New_LABEL (CURRENT_SYMTAB, post_loop_label_idx),
+	      0, LKIND_DEFAULT);
+  WN* post_loop_label = WN_CreateLabel( (ST_IDX) 0, post_loop_label_idx, 0, NULL);
+  WN_Set_Linenum(post_loop_label, VHO_Srcpos);
+  WN* end_j_loop = WN_next(WN_first(WN_while_body(post_loop)));
+  WN_DELETE_Tree(WN_first(WN_while_body(post_loop)));
+  WN_first(WN_while_body(post_loop)) = start_i_loop;
+  WN* j_loop_body = WN_COPY_Tree(wn);
+  WN* i_loop_body = WN_while_body(j_loop_body);
+  WN_DELETE_Tree(WN_first(i_loop_body));
+  WN_first(i_loop_body) = WN_next(WN_first(i_loop_body));
+  WN* if_stmt = WN_first(i_loop_body);
+  if (Cur_PU_Feedback) {
+    const FB_Info_Loop fb_info_outer = Cur_PU_Feedback->Query_loop(post_loop);
+    const FB_Info_Loop fb_info_orig = Cur_PU_Feedback->Query_loop(wn);
+    FB_Info_Loop fb_info = fb_info_outer;
+    fb_info.freq_zero = fb_info_outer.freq_zero;
+    fb_info.freq_positive = fb_info_outer.freq_iterate;
+    fb_info.freq_out = fb_info_outer.freq_iterate;
+    fb_info.freq_exit = fb_info_outer.freq_iterate;
+    fb_info.freq_iterate = fb_info_outer.freq_iterate;
+    fb_info.freq_iterate._value *= (fb_info_orig.freq_iterate._value /
+				    fb_info_orig.freq_positive._value);
+    fb_info.freq_back._value = fb_info.freq_iterate._value - 
+      fb_info.freq_positive._value;
+    Cur_PU_Feedback->Annot_loop( j_loop_body, fb_info );
+
+    const FB_Info_Branch& info_branch_orig = 
+          Cur_PU_Feedback->Query_branch( WN_next(WN_first(WN_while_body(wn))));
+    FB_Info_Branch info_branch = info_branch_orig;
+    info_branch.freq_taken._value = 
+      fb_info.freq_iterate._value * (info_branch_orig.freq_taken._value /
+				     (info_branch_orig.freq_taken._value +
+				      info_branch_orig.freq_not_taken._value));
+    info_branch.freq_not_taken._value = 
+      fb_info.freq_iterate._value - info_branch.freq_taken._value;
+    Cur_PU_Feedback->Annot_branch( if_stmt, 
+    				   FB_Info_Branch( info_branch.freq_taken,
+                                                   info_branch.freq_not_taken,
+					           OPR_IF ));
+  }
+  WN* stmt;
+  if (WN_operator(stmt = WN_next(WN_first(WN_then(if_stmt)))) == OPR_WHILE_DO)
+    WN_first(WN_then(if_stmt)) = WN_first(WN_while_body(stmt));
+  else
+    WN_first(WN_then(if_stmt)) = WN_first(WN_while_body(WN_next(stmt)));
+  WN_DELETE_Tree(WN_next(WN_first(WN_then(if_stmt))));
+  WN_next(WN_first(WN_then(if_stmt))) = NULL;
+  WN_next(WN_first(WN_while_body(post_loop))) = j_loop_body;
+  WN_next(WN_next(WN_first(WN_while_body(post_loop)))) = post_loop_label;
+  WN_next(WN_next(WN_next(WN_first(WN_while_body(post_loop))))) = end_j_loop;
+  
+  post_loop = vho_lower_while_do(post_loop, block);
+
+  WN_DELETE_Tree(wn);
+  return post_loop;
+}
+#endif
 
 static WN *
 vho_lower_while_do ( WN * wn, WN *block )
@@ -5913,6 +6562,11 @@ vho_lower_while_do ( WN * wn, WN *block )
   WN        * rcomma_block;
   PREG_NUM    last_preg;
 
+#ifdef KEY
+  WN* return_block = Misc_Loop_Distribute_And_Interchange(wn, block);
+  if (return_block) return return_block;
+  Misc_Loop_Fusion(wn, block);
+#endif
   while_body = vho_lower_block (WN_while_body(wn));
 
   test_block = WN_CreateBlock ();
@@ -6711,6 +7365,9 @@ vho_lower_entry ( WN * wn )
   last_preg = PREG_Table_Size (CURRENT_SYMTAB);
 
   VHO_Srcpos = WN_Get_Linenum(wn);
+#ifdef KEY
+  current_pu_id ++;
+#endif
 
   /* See if we need to lower the pu */
   if (    PU_has_very_high_whirl (Get_Current_PU ()) == FALSE

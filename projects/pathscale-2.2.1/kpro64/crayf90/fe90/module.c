@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -497,10 +501,14 @@ static	void allocate_mod_link_tbl(int		size)
 |*	NONE								      *|
 |*									      *|
 |* Returns:								      *|
-|*	NOTHING								      *|
+|*	false if we printed error 855 saying we won't create module file      *|
 |*									      *|
 \******************************************************************************/
+#ifdef KEY /* Bug 3477 */
+extern	boolean	create_mod_info_file(void)
+#else
 extern	void	create_mod_info_file(void)
+#endif /* KEY Bug 3477 */
 {
    		int		 ga_idx;
 		FILE		*fp_file_ptr;
@@ -593,9 +601,13 @@ extern	void	create_mod_info_file(void)
                   AT_DEF_COLUMN(module_attr_idx),
                   AT_OBJ_NAME_PTR(module_attr_idx));
 
+#ifdef KEY /* Bug 3477 */
+	 return FALSE;
+#else
          if (SCP_IN_ERR(MAIN_SCP_IDX)) {
             return;
          }
+#endif /* KEY Bug 3477 */
       }
       else {  /* Inline information file */
          PRINTMSG(AT_DEF_LINE(module_attr_idx), 1322, Error,
@@ -899,7 +911,11 @@ extern	void	create_mod_info_file(void)
 
    TRACE (Func_Exit, "create_mod_info_file", NULL);
 
+#ifdef KEY /* Bug 3477 */
+   return TRUE;
+#else
    return;
+#endif /* KEY Bug 3477 */
 
 }  /* create_mod_info_file */
 
@@ -3571,6 +3587,9 @@ extern	void  output_mod_info_file(void)
 #     endif
    }
 
+#ifdef KEY /* Bug 3474 */
+   Uint save_file_idx = SCP_FILE_PATH_IDX(curr_scp_idx);
+#endif /* KEY Bug 3474 */
    SCP_FILE_PATH_IDX(curr_scp_idx) = NULL_IDX;
 
    if (ATP_PGM_UNIT(module_attr_idx) == Module) {
@@ -3579,10 +3598,18 @@ extern	void  output_mod_info_file(void)
    }
 
    if (mod_file_ptr == NULL) {
+#ifdef KEY /* Bug 3474 */
+      PRINTMSG(AT_DEF_LINE(module_attr_idx), 1665, Error,
+               AT_DEF_COLUMN(module_attr_idx),
+               AT_OBJ_NAME_PTR(module_attr_idx),
+               FP_NAME_PTR(save_file_idx),
+	       strerror(errno));
+#else
       PRINTMSG(AT_DEF_LINE(module_attr_idx), 1665, Error,
                AT_DEF_COLUMN(module_attr_idx),
                AT_OBJ_NAME_PTR(module_attr_idx),
                FP_NAME_PTR(SCP_FILE_PATH_IDX(curr_scp_idx)));
+#endif /* KEY Bug 3474 */
       goto EXIT;
    }
 
@@ -5251,9 +5278,15 @@ FOUND:
          AT_DCL_ERR(module_attr_idx) = TRUE;
       }
       else if (MD_DEFAULT_INTEGER_TYPE != INTEGER_DEFAULT_TYPE) {
+#ifdef KEY /* Bug 7359 */
+         PRINTMSG(AT_DEF_LINE(module_attr_idx), 623, Warning,
+                  AT_DEF_COLUMN(module_attr_idx),
+                  AT_OBJ_NAME_PTR(module_attr_idx));
+#else /* KEY Bug 7359 */
          PRINTMSG(AT_DEF_LINE(module_attr_idx), 623, Error,
                   AT_DEF_COLUMN(module_attr_idx),
                   AT_OBJ_NAME_PTR(module_attr_idx));
+#endif /* KEY Bug 7359 */
          AT_DCL_ERR(module_attr_idx) = TRUE;
       }
 

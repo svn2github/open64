@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -195,23 +195,31 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_I4ADD, "+"},
   {OPC_F4ADD, "+"},
   {OPC_C4ADD, "+"},
-#ifdef KEY
+#ifdef TARG_X8664
   {OPC_V16I1ADD, "+"},
   {OPC_V16I2ADD, "+"},
   {OPC_V16I4ADD, "+"},
   {OPC_V16I8ADD, "+"},
   {OPC_V16F4ADD, "+"},
   {OPC_V16F8ADD, "+"},
+  {OPC_V16C4ADD, "+"},
+  {OPC_V16C8ADD, "+"},
   {OPC_V16I1SUB, "-"},
   {OPC_V16I2SUB, "-"},
   {OPC_V16I4SUB, "-"},
   {OPC_V16I8SUB, "-"},
   {OPC_V16F4SUB, "-"},
   {OPC_V16F8SUB, "-"},
+  {OPC_V16C4SUB, "-"},
+  {OPC_V16C8SUB, "-"},
   {OPC_V16F4MPY, "*"},
   {OPC_V16F4DIV, "/"},
   {OPC_V16F8MPY, "*"},
   {OPC_V16F8DIV, "/"},
+  {OPC_V16C4MPY, "*"},
+  {OPC_V16C4DIV, "/"},
+  {OPC_V16C8MPY, "*"},
+  {OPC_V16C8DIV, "/"},
   {OPC_V16F8F8REPLICA, "REPLICA"},
   {OPC_V16F4SQRT, "SQRT"},
   {OPC_V16F8SQRT, "SQRT"},
@@ -221,7 +229,7 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_V16I8NEG, "-"},
   {OPC_V16F4NEG, "-"},
   {OPC_V16F8NEG, "-"},
-#endif /* KEY */
+#endif /* TARG_X8664 */
   {OPC_U8SUB, "-"},
   {OPC_FQSUB, "-"},
   {OPC_I8SUB, "-"},
@@ -280,6 +288,12 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_V16F8MIN, "MIN"},
   {OPC_V16F4MAX, "MAX"},
   {OPC_V16F8MAX, "MAX"},
+  {OPC_V16I1MAX, "MAX"},
+  {OPC_V16I2MAX, "MAX"},
+  {OPC_V16I4MAX, "MAX"},
+  {OPC_V16I1MIN, "MIN"},
+  {OPC_V16I2MIN, "MIN"},
+  {OPC_V16I4MIN, "MIN"},
 #endif
   {OPC_I4BAND, "IAND"},
   {OPC_U8BAND, "IAND"},
@@ -341,7 +355,7 @@ static const FNAME_PARTIALMAP Fname_Map[] =
   {OPC_BI8GT, ".GT."},
   {OPC_BU4GT, ".GT."},
   {OPC_BF8GT, ".GT."},
-#ifdef KEY
+#ifdef TARG_X8664
   {OPC_V16I8V16F8GT, ".GT."},
   {OPC_V16I8V16F8LT, ".LT."},
   {OPC_V16I8V16F8GE, ".GE."},

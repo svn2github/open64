@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -135,7 +135,11 @@ static const char *Error_File_Name = NULL;	/* Error file name */
 static FILE *Trace_File = NULL;		/* File descriptor */
 
 /* Source file location: */
+#ifdef KEY /* Bug 4469 */
+static char  source_file_name[FILENAME_MAX + 1];
+#else
 static char  source_file_name[256];
+#endif /* KEY Bug 4469 */
 static char *Source_File_Name = &source_file_name[0];
 static INT   Source_Line = ERROR_LINE_UNKNOWN;	/* Line number */
 
@@ -417,7 +421,11 @@ Set_Error_Source ( const char *filename )
     Source_File_Name = NULL;
   } else {
     Source_File_Name = &source_file_name[0];
+#ifdef KEY /* Bug 4469 */
+    strncpy ( Source_File_Name, filename, sizeof source_file_name );
+#else
     strcpy ( Source_File_Name, filename );
+#endif /* KEY Bug 4469 */
   }
 }
 
@@ -629,6 +637,27 @@ Find_Error_Desc ( INT ecode )
   /* We didn't find it -- return the global unknown error code: */
   return Find_Error_Desc ( EC_Undef_Code );
 }
+
+
+static FILE *Crash_File;
+
+static BOOL
+Init_Crash_Report (void)
+{
+  if (Crash_File != NULL)
+    return TRUE;
+  
+  char *name = getenv("PSC_CRASH_REPORT");
+
+  if (name == NULL)
+    return FALSE;
+
+  if ((Crash_File = fopen(name, "a")) == NULL)
+    return FALSE;
+
+  return TRUE;
+}
+
 
 /* ====================================================================
  *
@@ -642,6 +671,24 @@ Find_Error_Desc ( INT ecode )
  */
 
 static void
+Emit ( FILE *File,
+       char *msg,
+       char *hmsg,
+       char *emsg,
+       BOOL report_location )
+{
+  if ( report_location ) {
+    fputs ( msg, File );
+  }
+  fputs ( hmsg, File );
+  fputs ( emsg, File );
+  fflush ( File );
+  if ( do_traceback ) {
+    dump_backtrace ( File );
+  }
+}
+
+static void
 Emit_Message (
   char *hmsg,		/* Header line of message */
   char *emsg )		/* Error line of message */
@@ -653,43 +700,33 @@ Emit_Message (
   if ( Compiler_File != NULL ) {
     sprintf ( msg, "\n### Assertion failure at line %d of %s:\n",
 	      Compiler_Line, Compiler_File );
-    fputs ( msg, stderr );
-    Compiler_File = NULL;
     report_location = TRUE;
   }
 
   /* Write to standard error first: */
-  fputs ( hmsg, stderr );
-  fputs ( emsg, stderr );
-  fflush ( stderr );
-  if ( do_traceback ) {
-      dump_backtrace ( stderr );
-      do_traceback = false;
+  Emit ( stderr, msg, hmsg, emsg, report_location );
+  
+  /* Then dump to crash report file if enabled: */
+  if ( Init_Crash_Report() ) {
+    Emit ( Crash_File, msg, hmsg, emsg, report_location );
+  }
+  
+  if ( Compiler_File != NULL ) {
+    Compiler_File = NULL;
   }
   
   /* Then write to error file if enabled: */
   if ( Init_Error_File() ) {
-    if ( report_location )  fputs ( msg, Error_File );
-    fputs ( hmsg, Error_File );
-    fputs ( emsg, Error_File );
-    fflush ( Error_File );
-    if ( do_traceback ) {
-	dump_backtrace ( Error_File );
-	do_traceback = false;
-    }
+    Emit ( Error_File, msg, hmsg, emsg, report_location );
   }
 
   /* Finally write to trace file: */
   if ( Trace_File != NULL ) {
-    if ( report_location )  fputs ( msg, Trace_File );
-    fputs ( hmsg, Trace_File );
-    fputs ( emsg, Trace_File );
-    fflush ( Trace_File );
-    if ( do_traceback ) {
-	dump_backtrace ( Trace_File );
-	do_traceback = false;
-    }
+    Emit ( Trace_File, msg, hmsg, emsg, report_location );
   }
+
+  if ( do_traceback )
+    do_traceback = false;
 }
 
 /* ====================================================================

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -60,7 +60,8 @@
 #include "strtab.h"                 
 #include "stab.h"                  
 #include "irbdata.h"              
-#include "dwarf_DST_mem.h"       
+#include "dwarf_DST_mem.h"
+#include "elf_stuff.h"
 #include "pu_info.h"
 #include "config_targ.h" 
 #include "config_elf_targ.h"

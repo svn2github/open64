@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -115,6 +115,9 @@ static char *source_file = __FILE__;
 #include "wn_util.h"
 #include "f90_utils.h"
 #include "targ_sim.h"
+#ifdef KEY /* Bug 4260 */
+#include "../../../clibinc/cray/io_byteswap.h"
+#endif /* KEY Bug 4260 */
 
 /* FE includes */
 
@@ -435,6 +438,29 @@ fei_push_pattern_con ( INTPTR cdx )
       cwh_stk_push(st,PCONST_item);
    }
 }
+#ifdef KEY /* Bug 4602 */
+/*===============================================
+ *
+ * fei_arg_by_value
+ *
+ * If the tos is an array, generate a LOAD for it.
+ * Used to implement %val() for an actual argument
+ * which is an array element
+ *
+ *===============================================
+ */ 
+extern void
+fei_array_element_by_value() {
+  TY_IDX save_type = cwh_stk_get_TY();
+  enum item_class save_class = cwh_stk_get_class();
+  WN *wn = cwh_stk_pop_WN();
+
+  if (wn != NULL && cwh_addr_is_array(wn)) {
+    wn = cwh_addr_load_WN(wn, 0, save_type);
+    }
+  cwh_stk_push_typed(wn, save_class, save_type);
+  }
+#endif /* KEY Bug 4602 */
 
 
 /*===============================================
@@ -3002,6 +3028,26 @@ cwh_stmt_add_pragma(WN_PRAGMA_ID  wn_pragma_id,
   cwh_block_append(wn);
 }
 
+#ifdef KEY /* Bug 2660 */
+/*===============================================
+ *
+ * cwh_stmt_add_options_pragma
+ *
+ * Generate a PRAGMA OPTIONS node and add it to the pragma
+ * block for the current program unit.
+ *
+ *===============================================
+ */ 
+extern void
+cwh_stmt_add_options_pragma(ST *st)
+{
+  /* Imitate handling of command-line switch -chunk=n; see
+   * cwh_stmt_add_parallel_pragmas */
+  WN *wn = WN_CreatePragma(WN_PRAGMA_OPTIONS, st, 0, 0);
+  cwh_stmt_add_to_preamble(wn,block_pu);
+}
+#endif /* KEY Bug 2660 */
+
 /*===============================================
  *
  * cwh_stmt_add_xpragma
@@ -3231,7 +3277,7 @@ fei_doloop(INT32	line)
        lb = cwh_preg_temp_save("doloop_lb",lb);
      }
    }
-
+    
    if (canonicalize) {
 
      /* Initialize lcv  - it needs a temp */
@@ -3248,7 +3294,11 @@ fei_doloop(INT32	line)
      }
 
      /* Compute iteration count */
+#ifdef KEY // Bug 4660
+     temp  = cwh_addr_extent(WN_COPY_Tree(lb),ub,stride);
+#else
      temp  = cwh_addr_extent(wc,ub,stride);
+#endif
      count = cwh_convert_to_ty(temp,doloop_ty);
 
      if (WNOPR(count) != OPR_INTCONST) {
@@ -3854,7 +3904,9 @@ cwh_stmt_init_pu(ST * st, INT32 lineno)
   if (strcmp(ST_name(st), "MAIN__") == 0 &&
       compiler_bin != NULL) {
     size_t str_len = strlen(compiler_bin) + 1;
-    char *psc_str = (char *) alloca(str_len);
+    // Bug: should not use alloca when passing psc_str out of this function
+    // char *psc_str = (char *) alloca(str_len);
+    char *psc_str = (char *) malloc(str_len*sizeof(char));
     strcpy(psc_str, compiler_bin);
     // create an array of chars initialized to psc_str
     TY_IDX str_ty_idx;
@@ -3875,7 +3927,8 @@ cwh_stmt_init_pu(ST * st, INT32 lineno)
     Set_ARB_const_ubnd (arb);
     Set_ARB_ubnd_val (arb, str_len);
     ST *str_st = New_ST(GLOBAL_SYMTAB);
-    cwh_auxst_clear(st);
+    // Bug 3713 - (typo) should be clearing auxst for str_st and not st here
+    cwh_auxst_clear(str_st);
     ST_Init(str_st, Save_Str("__pathscale_compiler"), CLASS_VAR, SCLASS_DGLOBAL,
     	    EXPORT_PREEMPTIBLE, str_ty_idx);
     Set_ST_is_initialized(str_st);
@@ -3883,6 +3936,24 @@ cwh_stmt_init_pu(ST * st, INT32 lineno)
     INITV_IDX inv = New_INITV();
     INITV_Init_String(inv, psc_str, str_len);
     Set_INITO_val(inito, inv);
+#ifdef KEY /* Bug 4260 */
+    /* If command line switch "-byteswap" or "-convert" appeared, export a
+     * global data variable of type I*4 to the runtime system to reflect the
+     * switch.
+     */
+    if (IO_DEFAULT != io_byteswap) {
+      TY_IDX int_ty_idx = MTYPE_To_TY(MTYPE_I4);
+      ST *io_byteswap_st = New_ST(GLOBAL_SYMTAB);
+      cwh_auxst_clear(io_byteswap_st);
+      ST_Init(io_byteswap_st, Save_Str("__io_byteswap_value"), CLASS_VAR,
+	SCLASS_DGLOBAL, EXPORT_PREEMPTIBLE, int_ty_idx);
+      Set_ST_is_initialized(io_byteswap_st);
+      INITO_IDX inito = New_INITO(io_byteswap_st);
+      INITV_IDX inv = New_INITV();
+      INITV_Init_Integer(inv, MTYPE_I4, io_byteswap, 1);
+      Set_INITO_val(inito, inv);
+    }
+#endif /* KEY Bug 4260 */
   }
 #endif
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -72,6 +72,15 @@
 
 #include "fio.h"
 
+#ifdef KEY /* Bug 1683 */
+static _f_int fputcf90_(_f_int *u, char *c, int clen);
+extern _f_int8 fputcf90_8_(_f_int8 *u, char *c, int clen);
+extern _f_int8 fputcf90_8_4_(_f_int4 *u, char *c, int clen);
+extern _f_int4 fputcf90_4_8_(_f_int8 *u, char *c, int clen);
+static int putc_(char *c, int clen);
+static _f_int4 putcf90_(char *c, int clen);
+extern _f_int8 putcf90_8_(char *c, int clen);
+#else
 extern int __fputc_f90(int *u, char *c, int clen);
 extern _f_int fputcf90_(_f_int *u, char *c, int clen);
 extern _f_int8 fputcf90_8_(_f_int8 *u, char *c, int clen);
@@ -80,13 +89,37 @@ extern _f_int4 fputcf90_4_8_(_f_int8 *u, char *c, int clen);
 extern int putc_(char *c, int clen);
 extern _f_int4 putcf90_(char *c, int clen);
 extern _f_int8 putcf90_8_(char *c, int clen);
+#endif /* KEY Bug 1683 */
 
+#ifdef KEY /* Bug 1683 */
+int
+__fputc_f90(int *u, char *c, int *status, int clen)
+{
+	int junk;
+	status = (status == 0) ? (&junk) : status;
+	return *status = fputcf90_(u, c, clen);
+}
+
+int
+pathf90_fput(char *c, int *status, int clen)
+{
+	int junk;
+	status = (status == 0) ? (&junk) : status;
+	return *status = putc_(c, clen);
+}
+
+#else
 int
 __fputc_f90(int *u, char *c, int clen)
 {
 	return fputcf90_(u, c, clen);
 }
+#endif /* KEY Bug 1683 */
 
+#ifdef KEY /* Bug 1683 */
+/* Don't pollute the Fortran namespace with library functions */
+static
+#endif /* KEY Bug 1683 */
 _f_int
 fputcf90_(_f_int *u, char *c, int clen)
 {
@@ -101,6 +134,18 @@ fputcf90_(_f_int *u, char *c, int clen)
 	
 	/* lock the unit */
 	STMT_BEGIN( unum, 0, T_WSF, NULL,  &cfs, cup);
+#ifdef KEY /* Bug 1683 */
+	/* Copied from rf90.c; list-directed uses SEQ, so we do too */
+	if (cup == NULL) {	/* If not connected */
+	  int stat;
+	  int errf = 0;
+
+	  cup= _imp_open(&cfs, SEQ, FMT, unum, errf, &stat);
+	  if (0 == cup) {
+	    return errno = stat;
+	  }
+	}
+#endif /* KEY Bug 1683 */
 
 	if (unum < 0 || !cup)
 		return((errno=FEIVUNIT));
@@ -178,6 +223,10 @@ fputcf90_4_8_(_f_int8 *u, char *c, int clen)
  *
  */
 
+#ifdef KEY /* Bug 1683 */
+/* Don't pollute the Fortran namespace with library functions */
+static
+#endif /* KEY Bug 1683 */
 int
 putc_(char *c, int clen)
 {
@@ -185,6 +234,10 @@ putc_(char *c, int clen)
 	return fputcf90_(&stdout_unit, c, clen);
 }
 
+#ifdef KEY /* Bug 1683 */
+/* Don't pollute the Fortran namespace with library functions */
+static
+#endif /* KEY Bug 1683 */
 _f_int4
 putcf90_(char *c, int clen)
 {

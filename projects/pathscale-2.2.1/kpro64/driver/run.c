@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -53,7 +53,6 @@
 #include <sys/times.h>
 #include <sys/procfs.h>
 #include <limits.h>
-#include <stdarg.h>
 #include <alloca.h>
 #include <cmplrs/rcodes.h>
 #include "run.h"
@@ -103,7 +102,7 @@ static void my_execv(const char *name, char *const argv[])
     }
 			
     execv(name, argv);
-    error("cannot exec %s", name);
+    error("cannot exec %s: %m", name);
     cleanup ();
     do_exit (RC_SYSTEM_ERROR);
     /* NOTREACHED */
@@ -168,7 +167,19 @@ run_simple_program (char *name, char **argv, char *output)
 			return;
 		} else if(WIFSIGNALED(waitstatus)){
 			termsig = WTERMSIG(waitstatus);
-			error("%s died due to signal %d", name, termsig);
+			switch (termsig) {
+			case SIGHUP:
+			case SIGINT:
+			case SIGQUIT:
+			case SIGKILL:
+			case SIGTERM:
+				error("%s died due to signal %d", name, termsig);
+				break;
+			default:
+				internal_error("%s died due to signal %d",
+					       name, termsig);
+				break;
+			}
 			if(waitstatus & WCOREFLAG) {
 				error("core dumped");
 			}
@@ -377,7 +388,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 		      sprintf(new_env,"%s/%s:%s",root,env_val,env_val);
 		      env_val = new_env;
 		   }
-		   modulepath = getenv("FORTRAN_SYSTEM_MODULES");
+		   modulepath = string_copy(getenv("FORTRAN_SYSTEM_MODULES"));
 		   if (modulepath != NULL) {
 		      /* Append env_val to FORTRAN_SYSTEM_MODULES */
 		      if (modulepath[strlen(modulepath)-1] == ':') {
@@ -526,7 +537,14 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 			} 
 			if (internal_err) {
 				if (phase == P_ld || phase == P_ldplus ||
+#ifdef KEY
+				    phase == P_gas ||	// bug 4846
+#endif
 				    phase == P_gcpp || phase == P_gcpp_plus) {
+					if (phase == P_gas)
+						internal_error_occurred = 1;
+					log_error("%s returned non-zero status %d",
+						  name, status);
 					nomsg_error(status);
 				} else {
 					internal_error("%s returned non-zero status %d",
@@ -549,7 +567,19 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 			return;
 		} else if(WIFSIGNALED(waitstatus)){
 			termsig = WTERMSIG(waitstatus);
-			error("%s died due to signal %d", name, termsig);
+			switch (termsig) {
+			case SIGHUP:
+			case SIGINT:
+			case SIGQUIT:
+			case SIGKILL:
+			case SIGTERM:
+				error("%s died due to signal %d", name, termsig);
+				break;
+			default:
+				internal_error("%s died due to signal %d",
+					       name, termsig);
+				break;
+			}
 			if(waitstatus & WCOREFLAG) {
 				error("core dumped");
 			}

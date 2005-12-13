@@ -132,15 +132,7 @@ LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(LIBINSTR_HEADER_DIRS))
 
-ifeq ($(BUILD_COMPILER), EDG)
-CVERSION  =  -xansi
-WOFF = -fullwarn -woff 1172,1174,1201,1202,1209,1356,1375
-WOFF = -fullwarn
-# allows unused parameters
-OPTIMIZER += -woff 3201
-endif
-
-LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS) $(WOFF)
+LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS)
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(LCINCS)
 LASOPTS = $(STD_COMPILE_OPTS)
@@ -165,10 +157,6 @@ DSOSTARTOPT_N32 = $(DSOSTARTOPT)
 # File containing the list of symbols exported outside of libinstr.so
 #----------------------------------------------------------------------
 
-ifeq ($(BUILD_OS), IRIX)
-EXPORT_LIST = -exports_file $(SO_LOCATION_DIR)/Exported
-endif
-
 #----------------------------------------------------------------------
 #  Define target
 #----------------------------------------------------------------------
@@ -192,17 +180,9 @@ endif
 #--------------------------------------------------------------------
 #  Variables describing additional sources, objects, and libraries
 #----------------------------------------------------------------------
-ifeq ($(BUILD_OS), IRIX)
-LLDLIBS += -none -lm
-else
 LLDLIBS += 
-endif
 
-ifeq ($(BUILD_OS), IRIX)
-default: so_locations $(TARGETS) last
-else
 default: $(TARGETS) last
-endif
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -527,6 +527,7 @@ void PF_LOOPNODE::Process_Loop () {
 #ifdef KEY
   DO_LOOP_INFO *dli = (DO_LOOP_INFO *) WN_MAP_Get(LNO_Info_Map, _code);
   BOOL single_small_trip_loop = FALSE; 
+  BOOL simple_copy_loop = FALSE;
  
   if (LNO_Run_Prefetch != AGGRESSIVE_PREFETCH && dli->Is_Inner) {
     // Check if loop is not inside a nested loop (outermost loop) and if the
@@ -540,9 +541,38 @@ void PF_LOOPNODE::Process_Loop () {
 	 (dli->Num_Iterations_Symbolic &&
 	  LNO_Assume_Unknown_Trip_Count < 100)))
       single_small_trip_loop = TRUE; 
+#ifdef TARG_X8664
+    // For simple copy loop, the data may not be prefetched early enough for 
+    // next iteration - bug 4522.
+    {
+      WN* stmt = WN_first(w /* do loop body */);
+      if ( stmt && !WN_next(stmt) /* only statement in the loop */ && 
+           OPCODE_is_store(WN_opcode(stmt)) &&
+	   ( OPCODE_is_load(WN_opcode(WN_kid0(stmt))) ||
+	     ( WN_operator(WN_kid0(stmt)) == OPR_PAREN &&
+	       OPCODE_is_load(WN_opcode(WN_kid0(WN_kid0(stmt)))) ) ) )
+	simple_copy_loop = TRUE;
+      if ( simple_copy_loop ) {
+	// For streaming copy loops (that use non-temporal stores), eliminating
+	// prefetches slow down code by ~1.3%
+	if ( !dli->Num_Iterations_Symbolic ) {
+	  /* Refer to CGTARG_LOOP_Optimize for working set size calculation.
+	     The calculation here is simplified to handle a ISTORE(ILOAD).
+	  */
+	  INT trip_count = dli->Est_Num_Iterations;
+	  INT bytes = 2 * MTYPE_byte_size(WN_desc(stmt)) /* load + store */;
+	  INT size = trip_count * bytes;
+	  if ( size > 1000*1024 /* default for -CG:movnti */ )
+	    /* candidate for non-temporal store conversion */
+	    simple_copy_loop = FALSE;  
+	}
+      }
+    }
+#endif
   }
   if ((LNO_Run_Prefetch > SOME_PREFETCH || 
        (LNO_Run_Prefetch == SOME_PREFETCH && !Is_Multi_BB (w))) &&
+      !simple_copy_loop &&
       !single_small_trip_loop)
 #endif
     Process_Refs (w);

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -222,7 +226,11 @@ cif_stmt_type	mapped_stmt_type[] =
 			CIF_Forall_Stmt,      /* Forall_Stmt */
 			CIF_Forall_Construct, /* Forall_Construct_Stmt */
                         CIF_End_Forall_Stmt,  /* End_Forall_Stmt    */
-                        CIF_Not_Exact 		/* Else_Where_Mask_Stmt    */
+                        CIF_Not_Exact,		/* Else_Where_Mask_Stmt    */
+
+			CIF_Not_Exact,		/* Volatile_Stmt */
+			CIF_Not_Exact,		/* Open_MP_End_Parallel_Workshare_Stmt */
+			CIF_Not_Exact		/* Open_MP_End_Workshare_Stmt */
                        };
 
 

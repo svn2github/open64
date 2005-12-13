@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -77,7 +82,8 @@ private:
   // Determine if the coderep is a variable defined by an IV-update
   BOOL Defined_by_iv_update(const CODEREP *use_cr, const CODEREP *def_cr,
 			    CODEREP *invar, BB_NODE *use_bb,
-			    const CODEREP *cand_expr) const;
+			    const CODEREP *cand_expr,
+			    BOOL aggstr_cand = FALSE) const;
 
   // Determine if the coderep is a variable defined by an IV-update
   // (or chain of updates), and that the final rhs of the iv-update is
@@ -85,7 +91,8 @@ private:
   BOOL Defined_by_iv_update_no_def(CODEREP *use_cr, 
 				   BB_NODE *def_bb, CODEREP **def_cr,
 				   CODEREP *invar, BB_NODE *use_bb,
-				   const CODEREP *cand_expr) const;
+				   const CODEREP *cand_expr,
+				   BOOL aggstr_cand = FALSE) const;
 
   // Return the induction variable in this candidate that we are 
   // strength-reducing, as well as the multiplier (null if 1).
@@ -100,7 +107,8 @@ private:
 			    const CODEREP *last,
 			          CODEREP *invar,
 			          BB_NODE *innermost_use_bb,
-			    const CODEREP *cand_expr) const;
+			    const CODEREP *cand_expr,
+			    BOOL aggstr_cand) const;
 
   // Determine if an expression is loop-invariant for its occurrence
   // in BB.
@@ -143,7 +151,8 @@ public:
       case OPR_SUB:
       case OPR_NEG:
       case OPR_CVT:
-	return MTYPE_is_integral(OPCODE_rtype(opc));
+	return MTYPE_is_integral(OPCODE_rtype(opc)) &&
+	       ! MTYPE_is_vector(OPCODE_rtype(opc));
       default:
 	return FALSE;
       }
@@ -183,7 +192,8 @@ public:
   // increment amount, and whether or not it's an increment or
   // decrement
   BOOL Find_iv_and_incr(STMTREP *stmt, CODEREP **updated_iv,
-			CODEREP **incr_amt, BOOL *is_add) const;
+			CODEREP **incr_amt, BOOL *is_add,
+			BOOL aggstr_cand = FALSE) const;
 
   // Find the definition of the variable, following the u-d chain
   // until we get a real store to the variable, and return its rhs.

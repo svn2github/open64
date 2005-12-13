@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -55,7 +55,7 @@ static char *dwarf_DST_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/comm
 #define dwarf_DST_version 0x0
 
 
-#include "dwarf.h"
+#include "dwarf_stuff.h"
 #include "dwarf_DST_mem.h"
 #include "symtab_idx.h"	/* defines ST_IDX */
 #include "srcpos.h"  /* defines USRCPOS */
@@ -348,6 +348,24 @@ typedef struct DST_file_name
 #define DST_FILE_NAME_next(f) ((f)->next)
 
 
+#ifdef KEY
+/* Holds info necessary for the macros.
+ */
+typedef struct DST_macinfo
+{
+  DST_STR_IDX macro;
+  UINT fileno;
+  UINT lineno;
+  DST_DW_tag tag;
+  DST_MACR_IDX next;
+} DST_MACR;
+
+#define DST_MACR_fileno(attr) ((attr)->fileno)
+#define DST_MACR_lineno(attr) ((attr)->lineno)
+#define DST_MACR_macro(attr)  ((attr)->macro)
+#define DST_MACR_tag(attr)    ((attr)->tag)
+#define DST_MACR_next(attr)   ((attr)->next)
+#endif
 
 /* This structure definition encapsulates the information kept for each
  * type of .debug_info entry.  The "attributes" can be any of the records
@@ -1168,6 +1186,36 @@ typedef struct DST_ptr_to_member_type
 #define DST_FILE_IDX_TO_PTR(i) ((DST_FILE_NAME *)DST_idx_to_string(i))
 #define DST_DIR_IDX_TO_PTR(i) ((DST_INCLUDE_DIR *)DST_idx_to_string(i))
 #define DST_STR_IDX_TO_PTR(i) ((char *)DST_idx_to_string(i))
+#ifdef KEY
+#define DST_MACR_IDX_TO_PTR(i) ((DST_MACR *)DST_idx_to_string(i))
+#endif
+
+#ifdef KEY
+/* [tag==DW_TAG_namelist]
+*/
+typedef struct DST_namelist
+{
+   USRCPOS      decl;      /* Source location */
+   DST_STR_IDX  name;      /* Name of type */
+   DST_CHILDREN child;     /* namelist items (DW_TAG_namelist_item entries) */
+} DST_NAMELIST;
+
+#define DST_NAMELIST_decl(attr) ((attr)->decl)
+#define DST_NAMELIST_name(attr) ((attr)->name)
+#define DST_NAMELIST_first_child(attr) ((attr)->child.first)
+#define DST_NAMELIST_last_child(attr) ((attr)->child.last)
+
+/* [tag==DW_TAG_namelist_item]
+*/
+typedef struct DST_namelist_item
+{
+   USRCPOS      decl;      /* Source location */
+   DST_STR_IDX  name;      /* Name of type */
+} DST_NAMELIST_ITEM;
+
+#define DST_NAMELIST_ITEM_decl(attr) ((attr)->decl)
+#define DST_NAMELIST_ITEM_name(attr) ((attr)->name)
+#endif
 
 
 

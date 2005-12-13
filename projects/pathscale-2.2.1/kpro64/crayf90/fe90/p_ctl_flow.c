@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -107,6 +111,9 @@ void parse_allocate_stmt (void)
    opnd_type    opnd;
    boolean      parsed_ok = TRUE;
    token_type   stat_token;
+#ifdef KEY /* Bug 4897 */
+   boolean	first_trip = TRUE;
+#endif /* KEY Bug 4897 */
 
 
    TRACE (Func_Entry, "parse_allocate_stmt", NULL);
@@ -136,6 +143,13 @@ void parse_allocate_stmt (void)
 
       if (MATCHED_TOKEN_CLASS(Tok_Class_Id)) {
 
+#ifdef KEY /* Bug 4897 */
+	/* On first trip through this loop, "stat=" is not allowed */
+        if (first_trip == TRUE) {
+	  first_trip = FALSE;
+	  }
+	else {
+#endif /* KEY Bug 4897 */
          if (strcmp(TOKEN_STR(token),"STAT") == 0) {
             stat_token = token;
 
@@ -161,6 +175,9 @@ void parse_allocate_stmt (void)
                }
             } /* if (matched_specific_token(Tok_Punct_Eq, Tok_Class_Punct)) */
          } /* if (strcmp(TOKEN_STR(token),"STAT")) */
+#ifdef KEY /* Bug 4897 */
+        }
+#endif /* KEY Bug 4897 */
 
          NTR_IR_LIST_TBL(list1_idx);
 
@@ -385,7 +402,55 @@ EXIT:
    return;
 
 }  /* parse_assign_stmt */
-
+#ifdef KEY /* Bug 3018 */
+
+/******************************************************************************\
+|*									      *|
+|* Description:								      *|
+|*      This handles the G77 intrinsics which have both a function form and a *|
+|*      subroutine form. When we find ourselves about to call as a subroutine *|
+|*      an intrinsic which appears in the intrin_tbl as a function, we call   *|
+|*      this function "switch_to_subroutine" to search                        *|
+|*      the host symbol table for the same name with INTRIN_SUBR_SUFFIX       *|
+|*      appended. If we find such a name, we use that instead: thus a         *|
+|*      function call to "etime" uses the ETIME entry, but a subroutine call  *|
+|*      to "etime" uses the ETIME:Subroutine entry.                           *|
+|*      If we don't find a subroutine version of the intrinsic, we return     *|
+|*      NULL and let the compiler proceed with its (dubious) original         *|
+|*      behavior: if you didn't explicitly declare it to be an intrinsic,     *|
+|*      you get an external subroutine call rather than an error message      *|
+|*      telling you that the intrinsic is only available as a function.       *|
+|*      Might be nice to fix that someday.                                    *|
+|*									      *|
+|* Input parameters:							      *|
+|*	Intrinsic name (in global variable "token")                           *|
+|*									      *|
+|* Output parameters:							      *|
+|*	Host name index for name with suffix appended			      *|
+|*	Local name index for name with suffix appended			      *|
+|*									      *|
+|* Returns:								      *|
+|*	Host attribute index for subroutine version of the intrinsic, or      *|
+|*      NULL_IDX if there isn't one                                               *|
+|*									      *|
+\******************************************************************************/
+int switch_to_subroutine(int *host_name_idx, int *name_idx)
+{
+  /* srch_host_sym_tbl appears to take an ordinary char*, but actually it
+   * assumes the char* lies inside a token in which the trailing chars are
+   * zeroed so that it can compare words rather than bytes. */
+  token_type subr_name = token;
+  strcat(TOKEN_STR(subr_name), INTRIN_SUBR_SUFFIX);
+  TOKEN_LEN(subr_name) += ((sizeof INTRIN_SUBR_SUFFIX) - 1);
+  int host_attr_idx = srch_host_sym_tbl(
+    TOKEN_STR(subr_name), TOKEN_LEN(subr_name), host_name_idx, TRUE);
+  if (host_attr_idx != NULL_IDX) {
+    token = subr_name;
+    srch_sym_tbl(TOKEN_STR(token), TOKEN_LEN(token), name_idx);
+  }
+  return host_attr_idx;
+}
+#endif /* KEY Bug 3018 */
 
 /******************************************************************************\
 |*									      *|
@@ -443,7 +508,34 @@ void parse_call_stmt (void)
       attr_idx = srch_sym_tbl(TOKEN_STR(token), 
                               TOKEN_LEN(token),
                               &name_idx);
+#ifdef KEY
+      if (AT_OBJ_CLASS(attr_idx) == Pgm_Unit &&
+          strncasecmp(TOKEN_STR(token), "omp_",4) == 0){
+         host_attr_idx = srch_host_sym_tbl(TOKEN_STR(token),
+                                           TOKEN_LEN(token), 
+                                           &host_name_idx,
+                                           TRUE);
+         if (host_attr_idx)
+           attr_idx = NULL_IDX;
+      }
+#endif
 
+#ifdef KEY /* Bug 3018 */
+      /* If we picked up an intrinsic function due to an "intrinsic"
+       * declaration, ignore that in case it's a G77 intrinsic which comes in
+       * both function and subroutine forms. Setting "attr_idx" to null forces
+       * us to follow the logic for the ambiguous case (that is, the case with
+       * no explicit declaration) within which we attempt to switch to the
+       * subroutine form. If we can't, we'll issue an error.
+       */
+      int explicit_intrinsic_decl = FALSE;
+      if (AT_IS_INTRIN(attr_idx) &&
+	  AT_OBJ_CLASS(attr_idx) == Interface &&
+	  ATI_INTERFACE_CLASS(attr_idx) == Generic_Function_Interface) {
+	 explicit_intrinsic_decl = TRUE;
+         attr_idx = NULL_IDX;
+      }
+#endif /* KEY Bug 3018 */
       if (attr_idx != NULL_IDX) {
          host_attr_idx = attr_idx;
 
@@ -485,7 +577,38 @@ void parse_call_stmt (void)
                 AT_OBJ_CLASS(host_attr_idx) == Interface &&
                 ATI_INTERFACE_CLASS(host_attr_idx) == 
                                                    Generic_Function_Interface) {
-               host_attr_idx = NULL_IDX;
+#ifdef KEY /* Bug 3018 */
+	      int switch_attr_idx = switch_to_subroutine(&host_name_idx,
+	        &name_idx);
+	      if (NULL_IDX == switch_attr_idx) {
+		/* If we saw an explicit "intrinsic" declaration, then
+		 * the act of calling a function as a subroutine is an
+		 * error. Otherwise (see bug 4367) it's a warning, and
+		 * we treat it if we had seen an "external" declaration.
+		 */
+		if (explicit_intrinsic_decl) {
+		  if (fnd_semantic_err(Obj_Use_Extern_Subr, 
+					    line,
+					    col,
+					    host_attr_idx,
+					    TRUE)) {
+		     parse_err_flush(Find_EOS, NULL);
+		     parsed_ok = FALSE;
+		     goto EXIT;
+		  }
+		}
+		else {
+		  PRINTMSG(line, 1675, Warning, col,
+		    AT_OBJ_NAME_PTR(host_attr_idx));
+		  host_attr_idx = NULL_IDX;
+		}
+	      }
+	      else {
+		host_attr_idx = switch_attr_idx;
+	      }
+#else
+	      host_attr_idx = NULL_IDX;
+#endif /* KEY Bug 3018 */
             }
          }
 
@@ -1810,6 +1933,10 @@ void parse_do_stmt (void)
                LA_CH_CLASS == Ch_Class_Digit   ||
                LA_CH_VALUE == USCORE           || 
                LA_CH_VALUE == DOLLAR           ||
+#ifdef KEY /* Bug 4690 */
+	       /* We have reached the "=" in something like "do while = 1, 2" */
+               LA_CH_VALUE == EQUAL  ||
+#endif /* KEY Bug 4690 */
                LA_CH_VALUE == AT_SIGN) {
          reset_lex(TOKEN_BUF_IDX(token), TOKEN_STMT_NUM(token));
          goto CHECK_FOR_VARIABLE;

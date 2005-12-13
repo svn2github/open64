@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -89,6 +89,9 @@ typedef struct string_list_rec {
 /* must call this before using a string list */
 extern string_list_t * init_string_list (void);
 
+/* return number of elements in list */
+extern int string_list_size(const string_list_t *l);
+
 /* add string to end of list */
 extern void add_string (string_list_t *list, char *s);
 
@@ -96,7 +99,11 @@ extern void add_string (string_list_t *list, char *s);
 extern void add_after_string (string_list_t *list, string_item_t *item, char *s);
 
 /* add each blank-separated substring to end of list */
+#ifndef KEY
 extern void add_multi_strings (string_list_t *list, char *s);
+#else
+extern void add_multi_strings (string_list_t *list, char *s, boolean only_one);
+#endif
 
 /* add string to end of list if not already in list */
 extern void add_string_if_new (string_list_t *list, char *s);
@@ -117,7 +124,6 @@ extern const char *ends_with(const char *s, const char *sfx);
 	for (p = list->head; p != NULL; p = p->next)
 #define STRING_NAME(p)	(p->name)
 
-#ifdef KEY
 /* linked list of string pairs */
 typedef struct string_pair_item_rec {
 	char *key;
@@ -140,5 +146,5 @@ extern void add_string_pair (string_pair_list_t *list, char *key, char *val);
 	for (p = list->head; p != NULL; p = p->next)
 #define STRING_PAIR_KEY(p)	(p->key)
 #define STRING_PAIR_VAL(p)	(p->val)
-#endif	// KEY
+
 #endif

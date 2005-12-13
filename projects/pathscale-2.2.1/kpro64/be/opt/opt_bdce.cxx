@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -204,15 +204,17 @@ BITWISE_DCE::Fill_lower_bits(UINT64 bitmask)
 }
 
 // ====================================================================
-// Bits_in_ivar - return a bit mask representing all the bits in the indirect
-// variable; if type size is larger than 64 bits, must be a floating point
+// Bits_in_type - return a bit mask representing all the bits in the given
+// mtype; if type size is larger than 64 bits, must be a floating point
 // type, and will return UINT64_MAX.
 // ====================================================================
 inline UINT64
 BITWISE_DCE::Bits_in_type(MTYPE dt)
 {
+#ifndef KEY
   Is_True(dt != MTYPE_UNKNOWN, ("BITWISE_DCE::Bits_in_type: type is unknown"));
-  if (dt == MTYPE_V || dt == MTYPE_M)
+#endif
+  if (dt == MTYPE_V || dt == MTYPE_M || dt == MTYPE_UNKNOWN)
     return UINT64_MAX;
   UINT64 vsize = MTYPE_size_min(dt);
   return Bitmask_of_size(vsize);
@@ -369,7 +371,7 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
 
   case CK_VAR:
     new_livebits = live_bits & Bits_in_var(cr);
-    if ((MTYPE_signed(cr->Dsctyp()) || MTYPE_size_min(cr->Dsctyp() == 32)) &&
+    if ((MTYPE_signed(cr->Dsctyp()) || MTYPE_size_min(cr->Dsctyp()) == 32) &&
 	(live_bits >> MTYPE_size_min(cr->Dsctyp())) != 0) {
       // make the sign bit live
       new_livebits |= (1 << (MTYPE_size_min(cr->Dsctyp()) - 1)); 
@@ -396,7 +398,7 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
       }
 
       new_livebits = live_bits & Bits_in_type(cr->Dsctyp());
-      if ((MTYPE_signed(cr->Dsctyp()) || MTYPE_size_min(cr->Dsctyp() == 32)) &&
+      if ((MTYPE_signed(cr->Dsctyp()) || MTYPE_size_min(cr->Dsctyp()) == 32) &&
           (live_bits >> MTYPE_size_min(cr->Dsctyp())) != 0) {
         // make the sign bit live
         new_livebits |= (1 << (MTYPE_size_min(cr->Dsctyp()) - 1)); 
@@ -517,12 +519,13 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
     case OPR_REALPART: case OPR_IMAGPART:
     case OPR_HIGHPART: case OPR_LOWPART:
     case OPR_TAS:
-#ifdef KEY
+#ifdef TARG_X8664
     case OPR_REPLICATE:
     case OPR_REDUCE_ADD:
     case OPR_REDUCE_MPY:
     case OPR_REDUCE_MAX:
     case OPR_REDUCE_MIN:
+    case OPR_SHUFFLE:
 #endif
       if (visit_all)
 	Mark_tree_bits_live(cr->Opnd(0), Bits_in_type(dsctyp), stmt_visit);
@@ -586,6 +589,12 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
         Mark_tree_bits_live(cr->Opnd(0), new_livebits &
 			    cr->Opnd(1)->Const_val(), stmt_visit);
       else Mark_tree_bits_live(cr->Opnd(0), new_livebits, stmt_visit);
+      return;
+
+    case OPR_RROTATE:
+      Mark_tree_bits_live(cr->Opnd(1), Bits_in_type(dsctyp), stmt_visit);
+      new_livebits = Livebits(cr) & Bits_in_type(dtyp);
+      Mark_tree_bits_live(cr->Opnd(0), new_livebits, stmt_visit);
       return;
 
     case OPR_LSHR:
@@ -700,6 +709,9 @@ BITWISE_DCE::Mark_tree_bits_live(CODEREP *cr, UINT64 live_bits,
     case OPR_FORWARD_BARRIER: case OPR_BACKWARD_BARRIER:
     case OPR_ALLOCA: case OPR_DEALLOCA:
     case OPR_ASM_STMT: case OPR_ASM_INPUT:
+#ifdef KEY
+    case OPR_PURE_CALL_OP:
+#endif
       if (visit_all) {
 	for (i = 0; i < cr->Kid_count(); i++) {
 	  Mark_tree_bits_live(cr->Opnd(i), UINT64_MAX, stmt_visit);
@@ -1053,8 +1065,8 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
 	return FALSE;
       }
 #ifdef TARG_X8664 // suppress this optimization since not yet in sync with 
-      		  // CG about assumptions for sign extension (bug 1046)
-      else if (MTYPE_size_min(dtyp) == 32 && Is_Target_64bit())
+      		  // CG about assumptions for sign extension (bugs 1046, 7228)
+      else if (MTYPE_size_min(dtyp) == 32)
 	return FALSE;
 #endif
       else return Redundant_cvtl(sign_xtd, to_bit, from_bit, opnd->Defstmt()->Rhs());

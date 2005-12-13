@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -69,6 +69,7 @@ static char *rcs_id = 	opt_cfg_CXX"$Revision: 1.1.1.1 $";
 #include "erglob.h"
 #include "tracing.h"
 #include "config_targ.h"
+#include "config_opt.h"		// For Instrumentation_Enabled
 #include "region_util.h"
 #include "fb_whirl.h"		// For TP_FEEDBACK_CFG
 #include "opt_cfg.h"
@@ -77,6 +78,7 @@ static char *rcs_id = 	opt_cfg_CXX"$Revision: 1.1.1.1 $";
 #include "opt_util.h"
 #include "opt_wn.h"
 #include "opt_config.h"
+#include "opt_alias_class.h"
 #include "bb_node_set.h"
 #include "opt_ssa.h"
 #include "opt_tail.h"
@@ -1159,7 +1161,7 @@ CFG::Is_simple_expr(WN *wn) {
 #if defined(TARG_IA32) || defined(TARG_X8664)
   if (! MTYPE_is_integral(WN_rtype(wn)))
     return 0;
-  if (opr == OPR_NEG || opr == OPR_ABS)
+  if (opr == OPR_NEG || opr == OPR_ABS || opr == OPR_CVTL)
     return Is_simple_expr(WN_kid0(wn));
   if (opr == OPR_ADD || opr == OPR_SUB || opr == OPR_NEG ||
       opr == OPR_SHL || opr == OPR_ASHR || opr == OPR_LSHR ||
@@ -1175,6 +1177,151 @@ CFG::Is_simple_expr(WN *wn) {
   }
 #endif
   return 0;
+}
+
+// ====================================================================
+// copy the address expression tree recursively
+// ====================================================================
+static WN *Copy_addr_expr(WN *wn, ALIAS_CLASSIFICATION *ac)
+{
+  if (wn == NULL)
+    return NULL;
+  WN *new_wn = WN_CopyNode(wn);
+  if (OPERATOR_has_aux(WN_operator(wn)))
+    WN_set_aux(new_wn, WN_aux(wn)); // setting mapping to indicate ST_is_aux
+  else if (OPERATOR_is_load(WN_operator(wn)) || WN_operator(wn) == OPR_LDA) {
+    ac->Copy_alias_class(wn, new_wn);
+    IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn);
+    if (ip_alias_class != OPTIMISTIC_AC_ID)
+      WN_MAP32_Set(WN_MAP_ALIAS_CLASS, new_wn, ip_alias_class);
+  }
+  for (INT i = 0; i < WN_kid_count(wn); i++) {
+    WN *kid = WN_kid(wn, i);
+    if (kid)
+      WN_kid(new_wn, i) = Copy_addr_expr(kid, ac);
+    else WN_kid(new_wn, i) = NULL;
+  }
+  return new_wn;
+}
+
+// ====================================================================
+// check if the two address expressions are the same; only handle common 
+// operators in address expressions; use WN_aux (not WN_st) field for LDID nodes
+// ====================================================================
+static BOOL Same_addr_expr(WN *wn1, WN *wn2)
+{
+  if (WN_opcode(wn1) != WN_opcode(wn2))
+    return FALSE;
+  switch (WN_operator(wn1)) {
+    case OPR_INTCONST: 
+      return WN_const_val(wn1) == WN_const_val(wn2);
+    case OPR_LDA:
+      if (WN_lda_offset(wn1) != WN_lda_offset(wn2))
+	return FALSE;
+      return WN_aux(wn1) == WN_aux(wn2);
+    case OPR_LDBITS:
+      if (WN_bit_offset(wn1) != WN_bit_offset(wn2))
+	return FALSE;
+      if (WN_bit_size(wn1) != WN_bit_size(wn2))
+	return FALSE;
+      // fall thru
+    case OPR_LDID:
+      return WN_aux(wn1) == WN_aux(wn2);
+    case OPR_ILDBITS:
+      if (WN_bit_offset(wn1) != WN_bit_offset(wn2))
+	return FALSE;
+      if (WN_bit_size(wn1) != WN_bit_size(wn2))
+	return FALSE;
+      // fall thru
+    case OPR_ILOAD:
+      if (WN_load_offset(wn1) != WN_load_offset(wn2))
+	return FALSE;
+      return Same_addr_expr(WN_kid0(wn1), WN_kid0(wn2));
+    case OPR_CVTL:
+      if (WN_cvtl_bits(wn1) != WN_cvtl_bits(wn2))
+	return FALSE;
+      // fall thru
+    case OPR_CVT: case OPR_NEG: case OPR_ABS:
+      return Same_addr_expr(WN_kid0(wn1), WN_kid0(wn2));
+    case OPR_ADD: case OPR_SUB: case OPR_MPY: case OPR_DIV: case OPR_MOD:
+    case OPR_REM: case OPR_MAX: case OPR_MIN: case OPR_EQ: case OPR_NE:
+    case OPR_GE: case OPR_GT: case OPR_LE: case OPR_LT: case OPR_BAND:
+    case OPR_BIOR: case OPR_BNOR: case OPR_BXOR: case OPR_SHL: 
+    case OPR_ASHR: case OPR_LSHR:
+      return Same_addr_expr(WN_kid0(wn1), WN_kid0(wn2)) &&
+             Same_addr_expr(WN_kid1(wn1), WN_kid1(wn2));
+    case OPR_SELECT:
+      return Same_addr_expr(WN_kid0(wn1), WN_kid0(wn2)) &&
+             Same_addr_expr(WN_kid1(wn1), WN_kid1(wn2)) &&
+             Same_addr_expr(WN_kid2(wn1), WN_kid2(wn2));
+    case OPR_ARRAY:
+      if (WN_num_dim(wn1) != WN_num_dim(wn2))
+	return FALSE;
+      if (WN_element_size(wn1) != WN_element_size(wn2))
+	return FALSE;
+      if (!Same_addr_expr(WN_array_base(wn1), WN_array_base(wn2)))
+	return FALSE;
+      for (INT i=0; i < WN_num_dim(wn1); i++) {
+	if (!Same_addr_expr(WN_array_index(wn1, i), WN_array_index(wn2, i)))
+	  return FALSE;
+	if (!Same_addr_expr(WN_array_dim(wn1, i), WN_array_dim(wn2, i)))
+	  return FALSE;
+      }
+      return TRUE;
+    default:  // operators not common in address expressions
+      return FALSE;
+  }
+  return FALSE;
+}
+
+// ====================================================================
+// find if there is an ILOAD in the expression wn with the same address expr
+// ====================================================================
+static BOOL Has_iload_with_same_addr_expr(WN *addr_expr, WN *wn)
+{
+  if (WN_operator(wn) == OPR_ILOAD) {
+    if (Same_addr_expr(WN_kid0(wn), addr_expr))
+      return TRUE;
+  }
+  else if (WN_operator(wn) == OPR_ISTORE) {
+    if (Same_addr_expr(WN_kid1(wn), addr_expr))
+      return TRUE;
+  }
+  for (INT i = 0; i < WN_kid_count(wn); i++) {
+    WN *kid = WN_kid(wn, i);
+    if (Has_iload_with_same_addr_expr(addr_expr, kid))
+      return TRUE;
+  }
+  return FALSE;
+}
+
+// ====================================================================
+// wn1 and wn2 are store nodes; check if they are storing to identical targets
+// ====================================================================
+static BOOL Same_store_target(WN *wn1, WN *wn2)
+{
+  OPERATOR opr1 = WN_operator(wn1);
+  OPERATOR opr2 = WN_operator(wn2);
+  if (opr1 != opr2)
+    return FALSE;
+  if (WN_desc(wn1) != WN_desc(wn2))
+    return FALSE;
+  if (opr1 == OPR_STID) 
+    return WN_aux(wn1) == WN_aux(wn2);
+  if (opr1 == OPR_STBITS) 
+    return WN_aux(wn1) == WN_aux(wn2) && 
+    	   WN_bit_offset(wn1) == WN_bit_offset(wn2) &&
+	   WN_bit_size(wn1) == WN_bit_size(wn2);
+  // ISTORE/ISTBITS
+  if (WN_store_offset(wn1) != WN_store_offset(wn2))
+    return FALSE;
+  if (WN_ty(wn1) != WN_ty(wn2))
+    return FALSE;
+  if (opr1 == OPR_ISTBITS &&
+      (WN_bit_offset(wn1) != WN_bit_offset(wn2) ||
+       WN_bit_size(wn1) != WN_bit_size(wn2)))
+    return FALSE;
+  return Same_addr_expr(WN_kid1(wn1), WN_kid1(wn2));
 }
 
 // ====================================================================
@@ -1262,6 +1409,9 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
   //   the same variable.
   //
   if (WOPT_Enable_Simple_If_Conv &&
+#ifdef KEY // bug 5684: deleting branches interferes with branch profiling
+      ! Instrumentation_Enabled &&
+#endif
 
       // is beneficial for ISA supporting cmov
 #ifdef TARG_MIPS
@@ -1270,6 +1420,7 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 #ifdef KEY  // do not if-convert if it has either empty then or else part and it
       // is the only statement in the BB since CG's cflow can be quite effective
       ((!empty_else && !empty_then) ||
+       WOPT_Enable_If_Conv_Limit > 6 ||
        WN_next(wn) != NULL || // no next statement in BB
        (_current_bb->Firststmt() != NULL && // no previous statement in BB
         (_current_bb->Firststmt() != _current_bb->Laststmt() || // prev is LABEL
@@ -1280,24 +1431,27 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
       (!empty_else ||
        !empty_then) && 
 
-      // either the else-stmt is empty or has one STID assignment
+      // either the else-stmt is empty or has one  assignment
       (empty_else ||
        (WN_first(else_wn) == WN_last(else_wn) &&
-	WN_operator(WN_first(else_wn)) == OPR_STID)) &&
+        OPERATOR_is_store(WN_operator(WN_first(else_wn))))) &&
 
-      // either the then-stmt is empty or has one STID assignment
+      // either the then-stmt is empty or has one assignment
       (empty_then ||
        (WN_first(then_wn) == WN_last(then_wn) &&
-	WN_operator(WN_first(then_wn)) == OPR_STID)) &&
+        OPERATOR_is_store(WN_operator(WN_first(then_wn))))) &&
 
-      // both the then and else are empty or has one STID statement
-      // storing to the same variable.
+      // both the then and else are empty or has one assignment with same lhs
       (empty_else ||
        empty_then ||
-       WN_aux(WN_first(else_wn)) == WN_aux(WN_first(then_wn)))) {
+       Same_store_target(WN_first(else_wn), 
+       			 WN_first(then_wn))) ) { 
 
-    // Get the STID from either the first statement of the non-empty block
+    // Get the store from either the first statement of the non-empty block
     WN *stmt = WN_first(empty_then ? else_wn : then_wn);
+
+    if (WN_operator(stmt) == OPR_MSTORE)
+      goto skip_if_conversion;
 
     // Get the desc type
     MTYPE dsctyp = WN_desc(stmt);
@@ -1307,17 +1461,55 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
       // MTYPE_M
       goto skip_if_conversion;
     }
+
+    if (! WOPT_Enable_If_Conv_For_Istore &&
+        (WN_operator(stmt) == OPR_ISTORE || WN_operator(stmt) == OPR_ISTBITS))
+      goto skip_if_conversion;
+
+    if (WN_operator(stmt) == OPR_STID || WN_operator(stmt) == OPR_STBITS) {
+      if (_opt_stab->Is_volatile(WN_aux(stmt)))
+	goto skip_if_conversion;
+    }
+    else {
+      if (TY_is_volatile(WN_ty(stmt)))
+	goto skip_if_conversion;
+    }
+
+    if ((WN_operator(stmt) == OPR_STBITS || WN_operator(stmt) == OPR_ISTBITS) &&
+	(empty_then || empty_else)) 
+      goto skip_if_conversion;
+
 #ifdef KEY
     if (!OPCODE_Can_Be_Speculative(OPC_I4I4ILOAD)) {
-      if (!empty_then) {
-        ST *st = _opt_stab->St(WN_aux(WN_first(then_wn)));
-        if (ST_sclass(st) == SCLASS_FORMAL_REF)
-	  goto skip_if_conversion; // may be storing into read-only data (bug 12
+      if (WN_operator(stmt) == OPR_STID || WN_operator(stmt) == OPR_STBITS) {
+	if (!empty_then) {
+	  ST *st = _opt_stab->St(WN_aux(WN_first(then_wn)));
+	  if (ST_sclass(st) == SCLASS_FORMAL_REF)
+	    goto skip_if_conversion; // may be storing into read-only data (bug 12
+	}
+	if (!empty_else) {
+	  ST *st = _opt_stab->St(WN_aux(WN_first(else_wn)));
+	  if (ST_sclass(st) == SCLASS_FORMAL_REF)
+	    goto skip_if_conversion; // may be storing into read-only data (bug 12
+	}
       }
-      if (!empty_else) {
-        ST *st = _opt_stab->St(WN_aux(WN_first(else_wn)));
-        if (ST_sclass(st) == SCLASS_FORMAL_REF)
-	  goto skip_if_conversion; // may be storing into read-only data (bug 12
+      else if (empty_then || empty_else) {
+	// because need to generate an extra ILOAD, see that a similar ILOAD has
+	// occurred unconditionally; check currently limited to conditional expr
+	// plus previous 2 statements
+	WN *addr_expr = WN_kid1(stmt);
+	if (! Has_iload_with_same_addr_expr(addr_expr, if_test)) {
+	  // check previous statement
+	  if (_current_bb->Laststmt() == NULL) 
+	    goto skip_if_conversion;
+	  if (! Has_iload_with_same_addr_expr(addr_expr, _current_bb->Laststmt()))
+	  {
+	    if (WN_prev(_current_bb->Laststmt()) == NULL) 
+	      goto skip_if_conversion;
+	    if (!Has_iload_with_same_addr_expr(addr_expr, WN_prev(_current_bb->Laststmt())))
+	      goto skip_if_conversion;
+	  }
+	}
       }
     }
 #endif
@@ -1327,25 +1519,45 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
 #endif /* TARG_X8664 */
     WN *load = NULL;
     WN *store = WN_CopyNode(stmt);
-    WN_set_aux(store, WN_aux(stmt));   // setting mapping to indicate ST_is_aux
+    WN_set_map_id(store, WN_map_id(stmt));
+    if (WN_operator(stmt) == OPR_STID || WN_operator(stmt) == OPR_STBITS)
+      WN_set_aux(store, WN_aux(stmt)); // setting mapping to indicate ST_is_aux
 
-    // Generate a LDID <var> for the empty block
+    // Generate a load for the empty block
     if (empty_then || empty_else) {
-      load = WN_Ldid(dsctyp,
-		     WN_offset(stmt),
-		     (ST_IDX) WN_aux(stmt),
-		     WN_ty(stmt),
-		     WN_field_id(stmt));
-      WN_set_aux(load, WN_aux(stmt)); // setting mapping to indicate ST_is_aux
+      if (WN_operator(stmt) == OPR_STID) {
+	load = WN_Ldid(dsctyp,
+		       WN_offset(stmt),
+		       (ST_IDX) WN_aux(stmt),
+		       WN_ty(stmt),
+		       WN_field_id(stmt));
+	WN_set_aux(load, WN_aux(stmt)); // setting mapping to indicate ST_is_aux
+      }
+      else {
+	MTYPE rtype = WN_rtype(WN_kid0(stmt));
+	if (MTYPE_byte_size(rtype) < MTYPE_byte_size(dsctyp))
+	  rtype = dsctyp;// rtype should never be smaller than dsctyp (bug 6910)
+	else rtype = Mtype_TransferSign(dsctyp, rtype);
+	load = WN_CreateIload(OPR_ILOAD, 
+			      rtype,
+			      dsctyp,
+			      WN_offset(stmt), TY_pointed(WN_ty(stmt)),
+			      WN_ty(stmt), 
+			      Copy_addr_expr(WN_kid1(stmt), _opt_stab->Alias_classification()), 
+			      WN_field_id(stmt));
+	// copy alias class info from the ISTORE node
+	_opt_stab->Alias_classification()->Copy_alias_class(stmt, load);
+	IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, stmt);
+	if (ip_alias_class != OPTIMISTIC_AC_ID)
+	  WN_MAP32_Set(WN_MAP_ALIAS_CLASS, load, ip_alias_class);
+      }
     }
     WN *then_expr = empty_then ? load : WN_kid0(WN_first(then_wn));
     WN *else_expr = empty_else ? load : WN_kid0(WN_first(else_wn));
     INT lanswer, ranswer;
 
     // profitability check
-    if ( // The STID <var> is not volatile
-      !_opt_stab->Is_volatile(WN_aux(store)) &&
-      
+    if (
 #if !defined(TARG_IA32) && !defined(TARG_X8664)
       // The expr in the then-block can be speculated and non-volatile,
       // is a const or LDA.
@@ -1355,9 +1567,9 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
       // is a const or LDA.
       Is_simple_expr(else_expr) 
 #else // allow simple expressions of up to 4 leaf nodes
-      (lanswer = Is_simple_expr(then_expr)) && 
+      (lanswer = (empty_then ? 1 : Is_simple_expr(then_expr))) && 
 
-      (ranswer = Is_simple_expr(else_expr)) && 
+      (ranswer = (empty_else ? 1 : Is_simple_expr(else_expr))) && 
 
       (lanswer + ranswer) <= WOPT_Enable_If_Conv_Limit
 #endif
@@ -1381,7 +1593,7 @@ CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
     }
   }
 
-#ifdef TARG_X8664
+#ifdef KEY
  skip_if_conversion:
 #endif /* TARG_X8664 */
   // we need a merge block, but don't connect it yet
@@ -4533,7 +4745,7 @@ CFG::Find_enclosing_region_bb( BB_NODE *bb, WN_PRAGMA_ID region_pragma )
 		  // not in this region
 		  break;
 		}
-	      }
+      }
 	    }
 	  }
 	}
@@ -4544,6 +4756,38 @@ CFG::Find_enclosing_region_bb( BB_NODE *bb, WN_PRAGMA_ID region_pragma )
   // didn't find it
   return NULL;
 }
+
+#ifdef KEY
+// ====================================================================
+// Find a parallel region that dominates the given BB.
+// Note that the region encloses "bb" and does not start with it
+// ====================================================================
+BB_NODE*
+CFG::Find_enclosing_parallel_region_bb( BB_NODE *bb)
+{
+  for ( BB_NODE *dom = bb->Idom(); dom != NULL; dom = dom->Idom() ) {
+    if ( dom->Kind() == BB_REGIONSTART && dom->MP_region()) {
+      // OK, we've found a matching region, but does it include
+      // the given block?
+      BB_REGION *dom_region = dom->Regioninfo();
+      for ( BB_NODE *region_bb = dom_region->Region_start();
+	    region_bb != NULL;
+	    region_bb = region_bb->Next() )
+      {
+	if ( region_bb == bb ) {
+	  return dom;
+	}
+	else if ( region_bb == dom_region->Region_end() ) {
+	  // not in this region
+	  break;
+	}
+      }
+    }
+  }
+  // didn't find it
+  return NULL;
+}
+#endif
 
 // ====================================================================
 // Determine if this loop is the outermost one in a parallel region

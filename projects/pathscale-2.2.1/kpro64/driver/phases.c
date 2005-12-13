@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 
@@ -37,7 +37,6 @@
 
 */
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -45,6 +44,8 @@
 #include <errno.h>
 #include <sys/param.h>
 #include <sys/utsname.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include "pathscale_defs.h"
 
 #include "phases.h"
@@ -74,7 +75,6 @@ char *command_line = NULL;	/* original command line */
 char *fb_phase = NULL;         /* from -fb_phase=<phase> */
 char *fb_type = NULL;          /* from -fb_type=<type> */
 char *source_file = NULL;
-extern char *target_cpu;
 boolean multiple_source_files = FALSE;
 
 boolean keep_mp = FALSE;
@@ -122,6 +122,9 @@ static void add_command_line_arg(string_list_t *args, char *sourcefile);
 
 static void do_f90_common_args(string_list_t *args) ;
 static void set_f90_source_form(string_list_t *args,boolean set_line_length) ;
+#ifdef KEY
+static void set_stack_size();
+#endif
 
 static phases_t
 post_fe_phase (void);
@@ -164,7 +167,12 @@ add_implied_string (string_list_t *list, int iflag)
 
 	if (option_has_blank(iflag))
 		/* add a string for each blank-separated sub-string. */
+#ifndef KEY
 		add_multi_strings(list, iname);
+#else
+		/* for -MT, only recognize the first blank (bug 982) */
+		add_multi_strings(list, iname, strncmp(iname, "-MT", 3) == 0);
+#endif
 	else {
 	        /* Fix for BUG 249 */
 		if ( strcmp(iname, "-MD") ==0 ) {
@@ -283,6 +291,42 @@ add_language_option ( string_list_t *args )
 	break;
   }
 }
+
+/* ====================================================================
+ *
+ * add_targ_options
+ *
+ * Add -TARG options to the back-end.
+ *
+ * ====================================================================
+ */
+
+static void
+add_targ_options ( string_list_t *args )
+{
+  // -TARG:processor=xxx
+  if (target_cpu != NULL) {
+    char buf[100];
+    sprintf(buf, "-TARG:processor=%s", target_cpu);
+    add_string(args, buf);
+  }
+
+  // SSE2, SSE3, 3DNow
+  if (sse2 == TRUE)
+    add_string(args, "-TARG:sse2=on");
+  else
+    add_string(args, "-TARG:sse2=off");
+
+  if (sse3 == TRUE)
+    add_string(args, "-TARG:sse3=on");
+  else
+    add_string(args, "-TARG:sse3=off");
+
+  if (m3dnow == TRUE)
+    add_string(args, "-TARG:3dnow=on");
+  else
+    add_string(args, "-TARG:3dnow=off");
+}
 
 static char basebuf[4096];
 
@@ -361,72 +405,20 @@ add_arg(string_list_t *args, const char *format, ...)
 /* Keep this in sync with print_file_path over in opt_actions.c. */
 
 static void
-set_library_paths(string_list_t *args, boolean native)
+set_library_paths(string_list_t *args)
 {
 	char *root_prefix = directory_path(get_executable_dir());
-	char *gcc_v_path, *gcc_path;
 	char *our_path;
-	char *lib_path;
 	
 	if (abi == ABI_N32) {
-		asprintf(&gcc_v_path,
-			 "%s/lib/gcc-lib/" PSC_TARGET "/"
-			 PSC_GCC_VERSION "/32",
-			 root_prefix);
-		asprintf(&gcc_path, "%s/lib/gcc-lib/" PSC_TARGET "/lib",
-			 root_prefix);
-		asprintf(&lib_path, "%s/" PSC_TARGET "/lib", root_prefix);
 		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION "/32",
 			 root_prefix);
 	} else {
-		asprintf(&gcc_v_path,
-			 "%s/lib/gcc-lib/" PSC_TARGET "/" PSC_GCC_VERSION,
-			 root_prefix);
-		asprintf(&gcc_path, "%s/lib/gcc-lib/" PSC_TARGET "/lib64",
-			 root_prefix);
-		asprintf(&lib_path, "%s/" PSC_TARGET "/lib64", root_prefix);
 		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION, root_prefix);
 	}
 	
 	add_string(args, concat_strings("-L", our_path));
-	add_string(args, concat_strings("-L", gcc_v_path));
-	add_string(args, concat_strings("-L", gcc_path));
 
-	if (!option_was_seen(O_nostdlib)) {
-		add_string(args, concat_strings("-Wl,-rpath,", gcc_v_path));
-		add_string(args, concat_strings("-Wl,-rpath,", gcc_path));
-	}
-	
-	if (native) {
-		FILE *f;
-		char buf[512];
-
-		if (abi == ABI_N32) {
-			add_string(args, "-L/lib");
-			add_string(args, "-L/usr/lib");
-		} else {
-			add_string(args, "-L/lib64");
-			add_string(args, "-L/usr/lib64");
-		}
-
-		// Add directories in /etc/ld.so.conf.  Our linker won't look
-		// in there because it is a cross linker.
-		f = fopen ("/etc/ld.so.conf", "r");
-		if (f == NULL) {
-			internal_error ("cannot open /etc/ld.so.conf");
-		}
-		while (fscanf (f, "%s", buf) != EOF) {
-			add_string (args, concat_strings ("-Wl,-rpath-link,",
-							  buf));
-		}
-		fclose (f);
-	}
-
-	add_string(args, concat_strings("-L", lib_path));
-
-	free(gcc_v_path);
-	free(gcc_path);
-	free(lib_path);
 	free(our_path);
 }
 
@@ -504,18 +496,6 @@ fix_name_by_lang(char *name)
 	return new_name;
 }
 		
-static void add_target_cpu(string_list_t *args)
-{
-	if (target_cpu) {
-		add_string(args, concat_strings("-TARG:processor=",
-						target_cpu));
-		if (abi == ABI_N32) {
-			add_string(args, "-TARG:abi=n32");
-		}
-	}
-}
-
-
 static void
 add_inc_path(string_list_t *args, const char *fmt, ...)
 	__attribute__((format (printf, 2, 3)));
@@ -536,6 +516,65 @@ add_inc_path(string_list_t *args, const char *fmt, ...)
 	va_end(ap);
 }
 
+boolean platform_is_64bit(void)
+{
+	static boolean _64bit_set;
+	static boolean _64bit;
+
+	if (!_64bit_set) {
+		struct utsname u;
+
+		uname(&u);
+
+		_64bit = strcmp(u.machine, "x86_64") == 0;
+		
+		_64bit_set = TRUE;
+	}
+
+	return _64bit;
+}
+
+boolean
+target_is_native(void)
+{
+	static boolean native;
+	static boolean native_set;
+
+	if (!native_set) {
+		if (platform_is_64bit()) {
+			native = abi != ABI_N32;
+		} else {
+			native = abi == ABI_N32;
+		}
+
+		native_set = TRUE;
+	}
+	
+	return native;
+}
+
+#ifdef KEY
+// Like add_file_args but add args that must precede options specified on the
+// command line.
+static void
+add_file_args_first (string_list_t *args, phases_t index)
+{
+  switch (index) {
+    case P_gcpp:
+    case P_gcpp_plus:
+      // -Dfoo before user options, since user might specify -Ufoo.  Bug 6874.
+      if (option_was_seen(O_pthread))
+	add_string(args, "-D_REENTRANT");
+      if (!option_was_seen(O_no_pathcc)) {
+	add_string(args, "-D__PATHSCALE__=\"" PSC_FULL_VERSION "\"");
+	add_string(args, "-D__PATHCC__=" PSC_MAJOR_VERSION);
+	add_string(args, "-D__PATHCC_MINOR__=" PSC_MINOR_VERSION);
+	add_string(args, "-D__PATHCC_PATCHLEVEL__=" PSC_PATCH_LEVEL);
+      }
+  }
+}
+#endif
+
 static void
 add_file_args (string_list_t *args, phases_t index)
 {
@@ -543,16 +582,7 @@ add_file_args (string_list_t *args, phases_t index)
 	char *temp;
 	string_item_t *p;
 	char *count_file_name;
-	struct utsname u;
-	boolean native = FALSE;
 	char *the_file = fix_name_by_phase(source_file, index);
-
-	uname(&u);
-	if (strcmp(u.machine, "x86_64") == 0)
-		native = abi != ABI_N32;
-	else if (strlen(u.machine) == 4 && u.machine[0] == 'i' &&
-		 u.machine[2] == '8' && u.machine[3] == '6')
-		native = abi == ABI_N32;
 
 	/* current_phase is used to say which file might be the last output 
 	 * file and thus might need a local name rather than a tmp name */
@@ -608,17 +638,12 @@ add_file_args (string_list_t *args, phases_t index)
 	case P_gcpp_plus:
 		if (show_but_not_run)
 			add_string(args, "-###");
-		if (option_was_seen(O_pthread))
-			add_string(args, "-D_REENTRANT");
-		if (!option_was_seen(O_no_pathcc)) {
-			add_string(args, "-D__PATHSCALE__=\"" PSC_FULL_VERSION "\"");
-			add_string(args, "-D__PATHCC__=" PSC_MAJOR_VERSION);
-			add_string(args, "-D__PATHCC_MINOR__=" PSC_MINOR_VERSION);
-			add_string(args, "-D__PATHCC_PATCHLEVEL__=" PSC_PATCH_LEVEL);
-		}
-
 		if( abi == ABI_N32 ){
 		  add_string(args, "-m32");
+		}
+
+		if( ospace == TRUE ){	// bug 4953
+		  add_string(args, "-Os");
 		}
 		
 		switch (source_lang) {
@@ -631,6 +656,8 @@ add_file_args (string_list_t *args, phases_t index)
 		case L_f77:
 		case L_f90:
 			add_string(args, "-traditional");
+			if (!option_was_seen(O_Wendif_labels))
+				add_string(args, "-Wno-endif-labels");
 		case L_cc:
 		default:
 			add_string(args, "-xc");
@@ -638,38 +665,30 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 
 		if (!option_was_seen(O_nostdinc)) {
-			char *base_path, *root_prefix;
-
-			root_prefix = directory_path(get_executable_dir());
-			asprintf(&base_path,
-				 "%s/lib/gcc-lib/" PSC_TARGET "/" PSC_GCC_VERSION,
-				 root_prefix);
-
+			char *root = directory_path(get_executable_dir());
+			add_inc_path(args, "%s/include/" PSC_FULL_VERSION,
+				     root);
 			if (source_lang == L_CC) {
-				char *abi_prefix = abi == ABI_N32 ? "/32" : "";
-				
-				add_inc_path(args, "%s%s/include/c++",
-					     base_path, abi_prefix);
-				add_inc_path(args, "%s%s/include/c++/" PSC_TARGET,
-					     base_path, abi_prefix);
-				add_inc_path(args, "%s%s/include/c++/backward",
-					     base_path, abi_prefix);
+				int v[4];
+				get_gcc_version(v, 4);
+				if (v[0] > 3 || (v[0] == 3 && v[1] >= 3)) {
+					add_inc_path(args, "%s/include/"
+						     PSC_FULL_VERSION
+						     "/backward",
+						     root);
+				}
 			}
-			add_inc_path(args, "/usr/local/include");
-			add_inc_path(args, "%s/include", base_path);
-			if (!native)
-				add_inc_path(args, "%s/" PSC_TARGET "/include",
-					     root_prefix);
-			add_inc_path(args, "/usr/include");
-
-			free(base_path);
+			add_inc_path(args, "%s/include", root);
 		}
 		
 		// Call gcc preprocessor using "gcc -E ...".
 		add_string(args, "-E");
-		// Cause our gcc to read in keyspec.  Among other things, this
-		// will define __GNUC_MAJOR__ to 2 and __GNUC_MINOR__ to 96.
 
+#ifdef TARG_X8664 
+		// Add a workaround for bug 3082 and bug 6186.
+		add_string(args, "-mfpmath=387");
+#endif
+		
 		add_string(args, input_source);
 		if (option_was_seen(O_E) && outfile != NULL) {
 			add_string(args, "-o");
@@ -770,6 +789,7 @@ add_file_args (string_list_t *args, phases_t index)
 		replace_string( args, "-fpic", "" );
 		replace_string( args, "-fPIC", "" );
 
+#ifndef KEY	// -dsm no longer supported.  Bug 4406.
                 /* create .rii file */
                 if (option_was_seen(O_dsm)) {
                     if (outfile != NULL && !multiple_source_files
@@ -781,7 +801,7 @@ add_file_args (string_list_t *args, phases_t index)
                                                                   "rii"));
                     add_string(args,  buf);
                 }
-
+#endif
 		sprintf(buf, "-fB,%s", construct_name(the_file,"B"));
  		add_string(args, buf); 
 		if (keep_listing) {
@@ -809,6 +829,13 @@ add_file_args (string_list_t *args, phases_t index)
 		     new (libftn.so.2) library. */
 		  add_string(args,"-TENV:io_library=mips");
 		}
+#ifdef KEY
+		{
+		  char *root = directory_path(get_executable_dir());
+		  sprintf (buf, "-include=%s/include/" PSC_FULL_VERSION, root);
+		  add_string(args, buf);
+		}
+#endif
 
 		if (dashdash_flag)
 		  add_string(args,"--");
@@ -858,6 +885,7 @@ add_file_args (string_list_t *args, phases_t index)
 			add_string(args, "-Ca");
 		}
 
+#ifndef KEY	// -dsm no longer supported.  Bug 4406.
                 /* create .rii file */
                 if (option_was_seen(O_dsm)) {
                     if (outfile != NULL && !multiple_source_files
@@ -869,7 +897,7 @@ add_file_args (string_list_t *args, phases_t index)
                                                                   "rii"));
                     add_string(args,  buf);
                 }
-
+#endif
 		sprintf(buf, "-fB,%s", construct_name(the_file,"B"));
  		add_string(args, buf); 
 		sprintf(buf, "-fC,%s", construct_given_name(the_file,"T",TRUE));
@@ -887,6 +915,14 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 		do_f90_common_args(args) ;
 
+#ifdef KEY
+		{
+		  char *root = directory_path(get_executable_dir());
+		  sprintf (buf, "-include=%s/include/" PSC_FULL_VERSION, root);
+		  add_string(args, buf);
+		}
+#endif
+
                 if (Disable_open_mp) {
                    add_string(args,"-disable_open_mp");
                 }
@@ -894,14 +930,23 @@ add_file_args (string_list_t *args, phases_t index)
                 if (Disable_old_mp) {
                    add_string(args,"-disable_old_mp");
                 }
-
 		if (dashdash_flag)
 		  add_string(args,"--");
 		add_string(args, input_source);
+
+		if (option_was_seen(O_E) && outfile != NULL) {
+			add_string(args, "-o");
+			add_string(args, outfile);
+		}
+
 		break;
 
 	case P_c_gfe:
 	case P_cplus_gfe:
+		if (sse2 == TRUE)
+			add_string(args, "-msse2");
+		// add -msse3 later when fe support is available
+
 		if (show_but_not_run)
 			add_string(args, "-###");
 		add_string(args, "-dx");
@@ -926,9 +971,6 @@ add_file_args (string_list_t *args, phases_t index)
 		if( fmath_errno == 0 )
 		  add_string(args, "-fno-math-errno");
 
-		if (index == P_cplus_gfe)
-		  add_string(args, "-fno-common");
-
 		add_string(args, "-dumpbase");
 #ifndef KEY
 		add_string(args, drop_path(the_file));
@@ -949,7 +991,6 @@ add_file_args (string_list_t *args, phases_t index)
 		    sprintf(buf, "-fB,%s",
 			    construct_name(the_file,"B"));
 		add_string (args, buf);
-		add_target_cpu (args);
 		sprintf (buf, "-fI,%s", construct_name(the_file,"I"));
 		add_string (args, buf);
 		if (dashdash_flag)
@@ -958,7 +999,6 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 	case P_ipl:
 		add_language_option ( args );
-		add_target_cpu (args);
 		if (source_kind == S_B)
 		    sprintf (buf, "-fB,%s", the_file);
 		else
@@ -985,7 +1025,10 @@ add_file_args (string_list_t *args, phases_t index)
 		if (outfile != NULL && last_phase == current_phase
 	 			    && !multiple_source_files
 				    && !(remember_last_phase == P_any_ld &&
-				         (option_was_seen(O_dsm) ||
+				         (
+#ifndef KEY	// -dsm no longer supported.  Bug 4406.
+					  option_was_seen(O_dsm) ||
+#endif
 				          (invoked_lang==L_CC))))
 			{
 			  sprintf(buf, "-fo,%s", outfile);
@@ -1007,7 +1050,7 @@ add_file_args (string_list_t *args, phases_t index)
 		break; 
 	case P_be:
 		add_language_option ( args );
-		add_target_cpu(args);
+		add_targ_options ( args );
 
 		if (invoked_lang == L_f77) {
 		  if (use_craylibs == TRUE) {
@@ -1090,8 +1133,11 @@ add_file_args (string_list_t *args, phases_t index)
 		        if (outfile != NULL
 					&& last_phase == current_phase
 	 				&& !multiple_source_files
+#ifndef KEY	// -dsm no longer supported.  Bug 4406.
 					&& !(remember_last_phase == P_any_ld &&
-				         option_was_seen(O_dsm) ))
+				         option_was_seen(O_dsm) )
+#endif
+					 )
 			  {
 			    sprintf(buf, "-fo,%s", outfile);
 			  } else {
@@ -1107,6 +1153,12 @@ add_file_args (string_list_t *args, phases_t index)
 		break;
 	case P_as:
 	case P_gas:
+#ifdef KEY
+		if (source_lang == L_as &&
+		    glevel >= 2) {
+		  add_string(args, "-g");	// bug 5990
+		}
+#endif
 		if (dashdash_flag)
 		  add_string(args,"--");
 		if (show_but_not_run)
@@ -1134,12 +1186,14 @@ add_file_args (string_list_t *args, phases_t index)
 		if (outfile != NULL
 			&& last_phase == current_phase
 	 		&& !multiple_source_files
+#ifndef KEY	// -dsm no longer supported.  Bug 4406.
 			&& !(remember_last_phase == P_any_ld &&
-			         option_was_seen(O_dsm) ))
+			         option_was_seen(O_dsm) )
+#endif
+			 )
 		{
 			add_string(args, outfile);
 		} else {
-#ifdef KEY
 			// bug 2025
 			// Create .o files in /tmp in case the src dir is not
 			// writable.
@@ -1149,7 +1203,6 @@ add_file_args (string_list_t *args, phases_t index)
 			  char *temp_obj_file = get_object_file (the_file);
 			  add_string(args, temp_obj_file);
 			} else
-#endif	// KEY
 			add_string(args, construct_given_name(the_file,"o",
 			  (keep_flag || multiple_source_files || ((shared == RELOCATABLE) && (ipa == TRUE))) ? TRUE : FALSE));
 		}
@@ -1167,7 +1220,7 @@ add_file_args (string_list_t *args, phases_t index)
 			add_string(args, "-###");
 		if( abi == ABI_N32 )
 		  add_string(args, "-m32");
-		set_library_paths(args, native);
+		set_library_paths(args);
 		if (outfile != NULL) {
 			add_string(args, "-o");
 			add_string(args, outfile);
@@ -1186,7 +1239,7 @@ add_file_args (string_list_t *args, phases_t index)
 		/* add lib paths for standard libraries */
 		append_libraries_to_list (args);
 
-		set_library_paths(args, native);
+		set_library_paths(args);
 
 		/* -shared only adds user objects, no predefined stuff */
 		if ((shared != DSO_SHARED) && (shared != RELOCATABLE)
@@ -1308,15 +1361,89 @@ add_file_args (string_list_t *args, phases_t index)
 	}
 }
 
+/*
+ * You'd think it would be easy to figure out the name of libgcc_s,
+ * but noooooo.  The gcc developers, in their infinite wisdom, call it
+ * libgcc_s for a native compiler, but libgcc_s_32 for a
+ * 64-bit-to-32-bit cross compiler.
+ */
+static const char *
+get_libgcc_s_name(void)
+{
+	if (abi == ABI_N32 && platform_is_64bit())
+		return "gcc_s_32";
+	return "gcc_s";
+}
+
+/*
+ * Oh, and did we mention that most of gcc's little helpers go into
+ * the <blah>/32 directory, with the sole exception of libgcc_s_32.so?
+ * It goes in the <blah> directory.  Ya gotta love it, folks.
+ *
+ * But wait - there's more!  Red Hat tuck libgcc_s.so away under
+ * gcc-lib somewhere, but SuSE keep it in /usr/lib{,64}.
+ */
+static void
+add_libgcc_s(string_list_t *args)
+{
+	const char *libgcc_s = get_libgcc_s_name();
+	static int path_set;
+	string_item_t *p;
+	char *name = NULL;
+
+	// This function may be invoked multiple times, so we only set
+	// the search path once, but add the -l part whenever
+	// required.
+
+	if (!path_set) {
+		for (p = get_library_dirs()->head; p != NULL; p = p->next) {
+			free(name);
+			asprintf(&name, "%s/lib%s.so", p->name, libgcc_s);
+			if (file_exists(name)) {
+				add_arg(args, "-L%s", p->name);
+				path_set = 1;
+				break;
+			}
+
+			free(name);
+			asprintf(&name, "%s/../lib%s.so", p->name, libgcc_s);
+			if (file_exists(name)) {
+				add_arg(args, "-L%s/..", p->name);
+				path_set = 1;
+				break;
+			}
+		}
+
+		free(name);
+
+		// It's not an error if we don't find the library,
+		// because different distros keep it in different
+		// places.
+	}
+	
+	add_library(args, libgcc_s);
+}
+
 static void
 add_final_ld_args (string_list_t *args)
 {
+#ifdef TARG_X8664 
+        extern boolean link_with_mathlib;
+#if 0 // Bug 4813 - acml_mv is not in yet.
+        if ((link_with_mathlib || source_lang == L_CC) && 
+	    option_was_seen(O_m64) && 
+	    strcmp(target_cpu, "em64t") && strcmp(target_cpu, "anyx86"))
+          // Bug 4680 - Link with libacml_mv by default.
+	  add_library(args, "acml_mv");
+#endif
+#endif
 	if (option_was_seen(O_nodefaultlibs) || option_was_seen(O_nostdlib)) {
+	    // If -compat-gcc, link with pscrt even if -nostdlib.  Bug 4551.
+	    if (option_was_seen(O_compat_gcc) && !option_was_seen(O_fno_fast_stdlib))
+		add_library(args, "pscrt");
 	    return;
 	}
 	
-	add_library(args, "pscrt");
-
 	if (shared != RELOCATABLE) {
 	    if (invoked_lang == L_f90) {
 		if (!option_was_seen(O_shared)) {
@@ -1326,25 +1453,49 @@ add_final_ld_args (string_list_t *args)
 		if (!option_was_seen(O_shared)) {
 			add_library(args, PSC_NAME_PREFIX "fstart");
 		}
+		add_string(args, "-lmv");
+		add_string(args, "-lm" PSC_NAME_PREFIX);
+		add_string(args, "-lm");
 		add_library(args, "mv");
 		add_library(args, "m" PSC_NAME_PREFIX);
 		add_library(args, "m");
 	    }
-	    if (option_was_seen(O_pthread) || option_was_seen(O_mp))
-		add_library(args, "pthread");
-	    if (option_was_seen(O_mp))
-		add_library(args, "mp");
+#ifdef KEY
+	    if (option_was_seen(O_mp) ||
+		option_was_seen(O_apo)) {	// bug 6334
+                add_string(args, "-lopenmp");
+            }
+#else
+	    if (option_was_seen(O_mp)) {
+                add_string(args, "-lmp");
+            }
+#endif
+#ifdef KEY  // bug 4230
+	    if (option_was_seen(O_pthread) ||
+		option_was_seen(O_mp) ||
+		option_was_seen(O_apo)) {	// bug 6334
+		add_string(args, "-lpthread");
+	    }
+#endif
 	}
+
+	// Put pscrt after all the libraries that are built with PathScale
+	// compilers, since those libraries could use PathScale routines.
+	// Bug 3995.
+	if (!option_was_seen(O_fno_fast_stdlib))
+	    add_library(args, "pscrt");
+
 	if (ipa == TRUE) {
 	    	if (invoked_lang == L_CC) {
 			add_library(args, "stdc++");
 	    	}
-		if (invoked_lang == L_CC && !option_was_seen(O_static))
-			add_library (args, "gcc_s");
+		if (invoked_lang == L_CC && !option_was_seen(O_static)) {
+			add_libgcc_s (args);
+		}
 		add_library (args, "gcc");
 		add_library (args, "c");
 		if (invoked_lang == L_CC && !option_was_seen(O_static))
-			add_library (args, "gcc_s");
+			add_libgcc_s (args);
 		add_library(args, "gcc");
 	}
 	if (shared != RELOCATABLE) {
@@ -1352,7 +1503,10 @@ add_final_ld_args (string_list_t *args)
 	    /* Once -fbuiltin is used, some functions, i.e., __sincos, are only
 	       provided by libmblah.a lib.
 	    */
-	    add_library(args, "m" PSC_NAME_PREFIX);
+	    if (invoked_lang != L_cc) {
+	      add_library(args, "mv");			// bug 5527
+	      add_library(args, "m" PSC_NAME_PREFIX);	// bug 3092
+	    }
 	  }
 	}
 	if (ipa == TRUE) {
@@ -1460,11 +1614,14 @@ determine_phase_order (void)
 			cpp_phase = P_cplus_cpp;
 		}
 	} else if (source_lang == L_cc) {
+#ifndef KEY		// bug 5495
 		if (option_was_seen(O_mp)) {
 			/* power C */
                         cpp_phase = P_cpp;
 		}
-		else if (option_was_seen(O_usegfe)) {
+		else
+#endif
+		if (option_was_seen(O_usegfe)) {
 			cpp_phase = P_gcpp;
 		} else {
 			cpp_phase = P_c_cpp;
@@ -1477,6 +1634,23 @@ determine_phase_order (void)
 			cpp_phase = P_f_cpp;
 		}
 	} else if (source_lang == L_f90) {
+#ifdef KEY // bug 5946
+	   if (option_was_seen(O_ftpp)) {
+	      cpp_phase = P_cppf90_fe;
+	   } else if (option_was_seen(O_cpp)
+		|| option_was_seen(O_P) 
+		|| option_was_seen(O_E)
+		|| (!option_was_seen(O_nocpp) &&
+		    (source_kind == S_F || source_kind == S_F90)))
+	   {
+	      if (option_was_seen(O_usegfe))
+	      	cpp_phase = P_gcpp; 
+	      else
+	      	cpp_phase = P_cpp; 
+	   } else {
+	      cpp_phase = P_NONE;
+	   }
+#else
 	   if (option_was_seen(O_cpp)) {
 	      if (option_was_seen(O_usegfe))
 	      	cpp_phase = P_gcpp; 
@@ -1490,6 +1664,7 @@ determine_phase_order (void)
 	   } else {
 	      cpp_phase = P_NONE;
 	   }
+#endif
 	} else if (source_lang == L_as
 		&& (abi == ABI_I32 || abi == ABI_I64 || abi == ABI_IA32))
 	{
@@ -1755,9 +1930,8 @@ add_instr_archive (string_list_t* args)
       }
 
       add_library (args, "instr");
-      add_library (args, "stdc++");
       if (!option_was_seen(O_static))
-	add_library (args, "gcc_s");
+	add_libgcc_s (args);
     } else {
       fprintf (stderr, "Unknown profile types %#lx\n", profile_type & ~f);
     }
@@ -1818,6 +1992,8 @@ init_phase_names (void)
   if (rval <= 0) {
     strncpy(path, orig_program_name, sizeof(path));
     rval = strlen(path);
+  } else {
+    path[rval] = '\0';		// readlink doesn't append NULL
   }
 
   // Extract command from command path.  If command path is
@@ -2058,6 +2234,11 @@ run_compiler (int argc, char *argv[])
         obtain_license (get_phase_dir (P_be), argc, argv) ;
 #endif
 
+#ifdef KEY
+	// Set stack size to the hard limit.  Bug 3212.
+	set_stack_size();
+#endif
+
 	for (i = 0; phase_order[i] != P_NONE; i++) {
 
 	        /* special case where the frontend decided that
@@ -2075,6 +2256,7 @@ run_compiler (int argc, char *argv[])
 			   run_pixie ();
 		} else {
 			args = init_string_list();
+			add_file_args_first (args, phase_order[i]);  // bug 6874
 			copy_phase_options (args, phase_order[i]);
 			if (!cmd_line_updated &&
 			    phase_order[i] > P_any_optfe &&
@@ -2123,6 +2305,7 @@ run_compiler (int argc, char *argv[])
 			     * Update the instantiation information file
 			     * with the new command line, if applicable.
 			     */
+#ifndef KEY	// -dsm no longer supported.  Bug 4406.
 		            if (option_was_seen(O_dsm)) {
 		                if (outfile != NULL && !multiple_source_files
 					&& remember_last_phase != P_any_ld)
@@ -2137,6 +2320,7 @@ run_compiler (int argc, char *argv[])
 			        update_instantiation_info_file(
                                         rii_file_name,source_file);
 		            }
+#endif
 			    if (prelink_flag && source_lang == L_CC) {
 		  		if (outfile != NULL && !multiple_source_files
 				      	  && remember_last_phase != P_any_ld) 
@@ -2265,8 +2449,8 @@ int quote_shell_arg(char *p, char *buf)
 }
 
 
-static int saved_argc;
-static char **saved_argv;
+int saved_argc;
+char **saved_argv;
 static int curr_argc;
 static int add_c = 0;
 
@@ -2380,7 +2564,11 @@ static void write_command_string_into_file(FILE *cmdfile,
     fprintf(cmdfile, "%s %s", command_line, sourcefile);
     if (outfile != NULL        && 
 	!multiple_source_files && 
-	(!option_was_seen(O_dsm) && invoked_lang != L_CC ||
+	(
+#ifndef KEY	// -dsm no longer supported.  Bug 4406.
+	 !option_was_seen(O_dsm) &&
+#endif
+	 invoked_lang != L_CC ||
          !for_ii_file || remember_last_phase != P_any_ld)) {
 	/* Got a "cc -c -o foo foo.o", so emit the object file name */
 	fprintf(cmdfile, " -o %s", outfile);
@@ -2581,17 +2769,6 @@ add_ipl_cmd_string (int iflag)
     /* Assume inside a FOREACH_IMPLIED_OPTION iteration */
     char *name = get_current_implied_name();
     
-    /* For the first one, build the string list initialized with
-     * the command name and -non_shared if necessary:
-     */
-    if (ipl_cmds == 0) {
-      ipl_cmds = init_string_list ();
-      add_string (ipl_cmds, program_name);
-      if ( shared == NON_SHARED ) {
-	add_string (ipl_cmds, "-non_shared");
-      }
-    }
-    
     /* If this is not one of the driver-recognized options, then
      * we need to prefix it with -Wb, -- doing so also requires
      * replacing internal spaces with commas:
@@ -2625,7 +2802,7 @@ add_ipl_cmd_string (int iflag)
     
     /* Add the option (possibly with blanks) to the list: */
     if (strcmp(name,"-dsm_clone")!=0)
-      add_multi_strings (ipl_cmds, name);
+      add_multi_strings (ipl_cmds, name, FALSE);
   }
 } /* add_ipl_cmd_string */
 
@@ -2636,6 +2813,17 @@ save_ipl_commands (void)
     int i;
     int iflag;
 
+    /* Build the string list initialized with the command name and -non_shared
+     * if necessary:
+     */
+    if (ipl_cmds == 0) {
+      ipl_cmds = init_string_list ();
+      add_string (ipl_cmds, program_name);
+      if ( shared == NON_SHARED ) {
+	add_string (ipl_cmds, "-non_shared");
+      }
+    }
+    
     FOREACH_OPTION_SEEN(i) {
 	if ( i == O_Unrecognized || i == O_show )
 	    continue;
@@ -2646,13 +2834,16 @@ save_ipl_commands (void)
 	}
     }
 
+    // Add -TARG options.
+    add_targ_options(ipl_cmds);
+
 } /* save_ipl_commands */
 
 
 
 /*
  * set the freeform/fixedform switch appropriately 
- * for mfef90 and ftpp. Also set the line length for ftpp, but only in 
+ * for mfef95 and ftpp. Also set the line length for ftpp, but only in 
  * fixed form.
  */
 static void
@@ -2692,4 +2883,42 @@ do_f90_common_args(string_list_t *args)
    set_f90_source_form(args,FALSE);
 
    add_string(args,"-LANG:=F90");
+#ifdef KEY /* Bug 4210 */
+   if (0 != f90_module_dir) {
+     /* -J is already prepended */
+     add_string(args, f90_module_dir);
+     }
+#endif /* KEY Bug 4210 */
 }
+
+#ifdef KEY
+// Set the stack size to the hard limit.
+static void
+set_stack_size()
+{
+  struct rlimit rl;
+  rlim_t max_stack;
+
+  // Read old limit.
+  if (getrlimit(RLIMIT_STACK, &rl) == -1) {
+    warning("cannot read stack size limit");
+    return;
+  }
+  if (rl.rlim_cur == RLIM_INFINITY) {
+    return;
+  }
+
+  // Set new limit.
+  max_stack = rl.rlim_max;
+  rl.rlim_cur = max_stack;
+  if (setrlimit(RLIMIT_STACK, &rl) == -1) {
+    warning("cannot change stack size limit");
+    return;
+  }
+  if (getrlimit(RLIMIT_STACK, &rl) == -1 ||
+      rl.rlim_cur != max_stack) {
+    warning("cannot change stack size limit");
+    return;
+  }
+}
+#endif

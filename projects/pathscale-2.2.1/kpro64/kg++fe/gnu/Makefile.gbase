@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-#  Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+#  Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
 #  File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++ 
 #  front-ends to GNU 3.3.1 release.
 #
@@ -59,11 +59,6 @@ include $(COMMONDEFS)
 #----------------------------------------------------------------------
 #  Set environment variables
 #----------------------------------------------------------------------
-ifeq ($(BUILD_COMPILER), SGI)
-CVERSION = -xansi
-else
-CVERSION =
-endif
 
 #----------------------------------------------------------------------
 #  Compiler Options
@@ -112,9 +107,7 @@ HOSTDEFS += -DMONGOOSE_CIF
 
 HOSTDEFS += -DSGI_RAG_BACKEND
 HOSTDEFS += -DSGI_MONGOOSE
-ifneq ($(BUILD_COMPILER), SGI)
 HOSTDEFS += -DMIPSEL
-endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 HOSTDEFS += -DIs_True_On
@@ -143,15 +136,10 @@ COMMON_TARG_INFO_ACCESS_DIR = $(BUILD_TOT)/common/targ_info/access
 COMMON_UTIL_DIR		= $(BUILD_TOT)/common/util
 COMMON_UTIL_TARG_DIR	= $(BUILD_TOT)/common/util/$(BUILD_TARGET_DIR)
 
-ifeq ($(BUILD_OS), IRIX)
-INCLUDE_DIR 		= $(BUILD_TOT)/include
-else
 INCLUDE_DIR 		= $(BUILD_AREA)/include
-endif
 
 GNU_DIR			= $(BUILD_BASE)
 GNU_CONFIG_DIR		= $(BUILD_BASE)/config
-GNU_COMMON_DIR		= $(BUILD_TOT)/kgnu_common
 
 GNU_TARG_DIR = $(GNU_DIR)/$(BUILD_TARGET_DIR)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/$(BUILD_TARGET_DIR)
@@ -164,7 +152,7 @@ GNU_TARG_DIR = $(GNU_DIR)/i386
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/i386
 endif
 ifeq ($(BUILD_TARGET), MIPS)
-GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/MIPS
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/mips
 endif
 
 GNU_CP_DIR		= $(BUILD_BASE)/cp
@@ -191,7 +179,7 @@ INC_DIRS =		\
   $(GNU_TARG_DIR)	\
   $(GNU_CONFIG_DIR)	\
   $(GNU_CONFIG_TARG_DIR)\
-  $(GNU_COMMON_DIR)/include
+  $(BUILD_TOT)/include/gnu
 
 SRC_DIRS +=		\
   $(GNU_CP_DIR)
@@ -262,7 +250,6 @@ GNU_SRCS =		\
   floatlib.c		\
   flow.c		\
   fold-const.c		\
-  fp-test.c		\
   function.c		\
   gccspec.c		\
   gcov.c		\
@@ -321,7 +308,6 @@ GNU_SRCS =		\
   ra-colorize.c         \
   ra-debug.c            \
   ra-rewrite.c		\
-  read-rtl.c		\
   real.c		\
   recog.c		\
   regclass.c		\
@@ -375,6 +361,7 @@ ifeq ($(BUILD_TARGET), MIPS)
   GNU_SRCS += mips.c
 endif
 
+# Move lex.c down to after parse.c since it needs the generated parse.h
 GNU_CP_UNIQ_SRCS =	\
   call.c		\
   class.c		\
@@ -389,11 +376,11 @@ GNU_CP_UNIQ_SRCS =	\
   friend.c		\
   g++spec.c		\
   init.c		\
-  lex.c			\
   mangle.c		\
   method.c		\
   optimize.c		\
   parse.c		\
+  lex.c			\
   pt.c			\
   ptree.c		\
   repo.c		\
@@ -430,7 +417,9 @@ GNU_GEN =		\
 	insn-output.c	\
 	insn-peep.c	\
 	insn-attr.h	\
-	insn-attrtab.c
+	insn-attrtab.c  \
+	parse.c         \
+	parse.h
 
 VPATH    =  $(SRC_DIRS)
 
@@ -441,11 +430,6 @@ LCINCS = $(addprefix -I, $(INC_DIRS))
 LC++OPTS = $(STD_COMPILE_OPTS)
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(LCINCS)
-
-ifneq ($(BUILD_COMPILER), EDG)
-LCOPTS += -fwritable-strings -w
-LC++OPTS += -fwritable-strings -w
-endif
 
 # setup stuff to build shared or non-shared
 GLDOPTS = $(STD_LOAD_OPTS)
@@ -477,11 +461,7 @@ CSUP_OBJS    = $(TARG_CSUP_DIR)/libcsup.a
 LIBIBERTY_OBJS = $(TARG_LIBIBERTY_DIR)/libiberty.a
 
 LLDLIBS = $(COMUTIL_OBJS) $(LIBIBERTY_OBJS)
-ifeq ($(BUILD_OS), IRIX)
-LLDLIBS += -lm -lcmplrs -Bstatic -lffio -Bdynamic
-else
 LLDLIBS += -lm $(CMPLRS_OBJS) $(CSUP_OBJS)
-endif
 
 default: first $(TARGETS) last
 
@@ -538,6 +518,12 @@ X8664_OR_MIPS = 1
 endif
 
 include $(BUILD_TOT)/kgccfe/gnu/frobnicate-version.mk
+
+parse.c: parse.y
+	@-rm -f $(<:.y=.[ch])
+	@echo 'BISON: Expect 33 shift/reduce, 58 reduce/reduce conflicts'
+	$(bison) -d -o $@ $<
+	@grep '#define YYEMPTY' $@ >> $(@:.c=.h)
 
 #ifdef X8664_OR_MIPS -- disable for x86-64
 ifdef MIPS
@@ -801,3 +787,7 @@ gengenrtl : gengenrtl.o $(HOST_LIBDEPS)
 gengenrtl.o : gengenrtl.c $(RTL_BASE_H) system.h real.h
 	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $<
 endif
+
+# The obstack code in the gcc front end causes warnings with gcc 3.3.3
+# and above.
+decl.o read-rtl.o tree.o: ERROR_ON_WARNINGS =

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,6 +39,7 @@
 
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/driver/main.c,v $ $Revision: 1.1.1.1 $";
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -71,6 +72,7 @@ int show_version;
 boolean show_copyright;
 boolean dump_version;
 boolean show_search_path;
+boolean show_defaults;
 
 extern void check_for_combos(void);
 extern boolean is_replacement_combo(int);
@@ -83,17 +85,26 @@ static void check_makedepend_flags (void);
 static void mark_used (void);
 static void dump_args (char *msg);
 static void print_help_msg (void);
+static void print_defaults (void);
+static void append_default_options (int *argc, char *(*argv[]));
+static void append_psc_genflags (int *argc, char *(*argv[]));
+static void print_search_path (void);
 
 static string_list_t *files;
 static string_list_t *file_suffixes;
 string_list_t *feedback_files;
 
-static char compiler_version[] = INCLUDE_STAMP;
+boolean parsing_default_options = FALSE;
+boolean drop_option;
+
+#ifdef TARG_X8664
+boolean link_with_mathlib;
+#endif
+
+const char compiler_version[] = INCLUDE_STAMP;
 static void set_executable_dir (void);
 
-#ifdef KEY
 static void prescan_options (int argc, char *argv[]);
-#endif
 
 static void no_args(void)
 {
@@ -111,6 +122,16 @@ main (int argc, char *argv[])
 	int base_flag;
 	string_item_t *p, *q;
 	int num_files = 0;
+#ifdef KEY
+	char *unrecognized_dashdash_option_name = NULL;
+#endif
+
+	/* Add the contents of PSC_GENFLAGS to the command line */
+	append_psc_genflags(&argc, &argv);
+
+	// Append the default options in compiler.defaults to argv so that they
+	// are parsed along with the command line options.
+	append_default_options(&argc, &argv);
 
 	save_command_line(argc, argv);		/* for prelinker    */	
 	program_name = drop_path(argv[0]);	/* don't print path */
@@ -121,7 +142,9 @@ main (int argc, char *argv[])
 	feedback_files = init_string_list ();	/* for cord feedback files */
 	init_options();
 	init_temp_files();
+	init_crash_reporting();
 	init_count_files();
+	init_error_list();
 	init_option_seen();
 	init_objects();
 
@@ -157,21 +180,42 @@ main (int argc, char *argv[])
 	remove_phase_for_option(O_A,P_f90_cpp);
 	remove_phase_for_option(O_E,P_f90_cpp);
 
-#ifdef KEY
 	// First check for the existence of certain options anywhere in the
 	// command line, because these options affect the behavior of other
 	// actions.
 	prescan_options(argc, argv);
-#endif
 
 	i = 1;
 	while (i < argc) {
 		option_name = argv[i];
+
+		// See if we are parsing the compiler default options.  Ignore
+		// a default option if it conflicts with any command line
+		// option.
+		if (!strcmp(option_name, "-default_options")) {
+		  parsing_default_options = TRUE;
+		  i++;
+		  continue;
+		}
+
 		set_current_arg_pos(i);
 		if (argv[i][0] == '-' && !dashdash_flag) {
 			flag = get_option(&i, argv);
 			if (flag == O_Unrecognized) { 
 				if (print_warnings) {
+#ifdef KEY
+				    // For unrecognized dashdash options, delay
+				    // giving error message until we know
+				    // pathcc is not called as a linker.  If
+				    // pathcc is called as a linker, silently
+				    // ignore all dashdash options, including
+				    // unrecognized ones, in order to mimick
+				    // gcc behavior.  Bug 4736.
+				    if (!strncmp(option_name, "--", 2)) {
+				      unrecognized_dashdash_option_name =
+				        option_name;
+				    } else
+#endif
 				    /* print as error or not at all? */
 				    parse_error(option_name, "unknown flag");
 				}
@@ -194,23 +238,24 @@ main (int argc, char *argv[])
 				base_flag = flag;
 			}
 
-#ifdef KEY
+			drop_option = FALSE;
+			// Sets drop_option to TRUE if option should be ignored.
+			opt_action(base_flag);
+
 			// Add options that are potentially linker options, in
 			// case pathcc is called as a linker.
-			if (is_maybe_linker_option(base_flag)) {
-				add_maybe_linker_option(base_flag);
-			} else
-#endif
-			if (is_object_option(base_flag)) {
-				/* put in separate object list */
-				add_object (base_flag, optargs);
-				source_kind = S_o;
-			} else {
-				/* add unique real flag to list */
-				add_option_seen (flag);
+			if (!drop_option) {
+			  if (is_maybe_linker_option(base_flag)) {
+			    add_maybe_linker_option(base_flag);
+			  } else if (is_object_option(base_flag)) {
+			    /* put in separate object list */
+			    add_object (base_flag, optargs);
+			    source_kind = S_o;
+			  } else {
+			    /* add unique real flag to list */
+			    add_option_seen (flag);
+			  }
 			}
-
-			opt_action(base_flag);
 		} else if (argv[i][0] == '+') {
 			check_old_CC_options(argv[i]);
 			i++;
@@ -259,12 +304,17 @@ main (int argc, char *argv[])
 		}
 	}
 
-#ifdef KEY
 	// By now we know if pathcc is called as a linker.  If so, turned all
 	// the potential linker options into real linker options; otherwise
 	// delete them.
 	finalize_maybe_linker_options (num_files == 0);
-#endif
+
+	// If pathcc is not called as a linker, complain about unrecognized
+	// dashdash options.  Bug 4736.
+	if (num_files > 0 &&
+	    unrecognized_dashdash_option_name != NULL) {
+	  parse_error(unrecognized_dashdash_option_name, "unknown flag");
+	}
 
 	/* Check target specifications for consistency: */
 	Check_Target ();
@@ -277,15 +327,16 @@ main (int argc, char *argv[])
 	}
 
         if (show_version) {
-            fprintf(stderr, "PathScale EKO Compiler Suite(TM): Version %s\n",
-		    compiler_version);
+            fprintf(stderr, "PathScale EKOPath(TM) Compiler Suite: "
+		    "Version %s\n", compiler_version);
 	    if (show_version > 1) {
 		fprintf(stderr, "ChangeSet: %s (%s)\n", cset_rev, cset_key);
 		fprintf(stderr, "Built by: %s@%s in %s\n", build_user,
 			build_host, build_root);
 	    }
             fprintf(stderr, "Built on: %s\n", build_date);
-            fprintf(stderr, "gcc version " PSC_GCC_VERSION
+            fprintf(stderr, "Thread model: posix\n");	// Bug 4608.
+            fprintf(stderr, "GNU gcc version " PSC_GCC_VERSION
                     " (PathScale " PSC_FULL_VERSION " driver)\n");
         }
 	if (show_copyright) {
@@ -295,7 +346,7 @@ main (int argc, char *argv[])
 
 	    fprintf(stderr, "Copyright 2000, 2001 Silicon Graphics, Inc.  "
 		    "All Rights Reserved.\n");
-	    fprintf(stderr, "Copyright 2002, 2003, 2004 PathScale, Inc.  "
+	    fprintf(stderr, "Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  "
 		    "All Rights Reserved.\n");
 
 	    fprintf(stderr, "See complete copyright, patent and legal notices "
@@ -305,11 +356,10 @@ main (int argc, char *argv[])
 		    strlen(exe_dir) - 4, exe_dir);
 	}
 	if (show_search_path) {
-		char *exe_dir = get_executable_dir();
-		fprintf (stderr, "install: %.*s\n", strlen(exe_dir) - 4,
-			 exe_dir);
-		fprintf (stderr, "programs: %s\n", get_phase_dir (P_be));
-		fprintf (stderr, "libraries: %s\n", get_phase_dir (P_library));
+		print_search_path();
+	}
+	if (show_defaults) {
+	  print_defaults();
 	}
 
 	if (argc == 1)
@@ -332,6 +382,11 @@ main (int argc, char *argv[])
 		if (read_stdin) {
 			source_file = "-";
 			if (option_was_seen(O_E)) {
+#ifdef KEY
+				// Lang might already be set with "-x lang".
+				// Bug 4179.
+				if (source_lang == L_NONE)
+#endif
 				source_lang = L_cpp;
 			} else {
 				source_kind = get_source_kind(source_file);
@@ -363,11 +418,19 @@ main (int argc, char *argv[])
 
 	/* check for certain combinations of options */
 	check_for_combos();
-#ifdef KEY
 	if ((option_was_seen(O_fpic) ||
 	     option_was_seen(O_fPIC))
 	     && mem_model == M_MEDIUM) {
 	  error("unimplemented: code model medium not supported in PIC mode");
+	}
+#ifdef KEY
+	if (option_was_seen(O_trapuv) &&
+	    abi == ABI_N32 &&
+	    !option_was_seen(O_msse2)) {
+	  // Don't support -trapuv for x87 because the processor would trap
+	  // while storing NaN to local vars using "fstpl".  Bug 5920.
+	  warning("-trapuv not supported for 32-bit ABI without SSE2; disabling -trapuv");
+	  set_option_unseen(O_trapuv);
 	}
 #endif
 
@@ -422,8 +485,11 @@ main (int argc, char *argv[])
  * ??? why not just have ar and dsm prelink be set in determine_phase_order?
  */
 	if ((multiple_source_files || 
-	     option_was_seen(O_ar) ||
-             option_was_seen(O_dsm)) && 
+	     option_was_seen(O_ar)
+#ifndef KEY	// -dsm no longer supported.  Bug 4406.
+             || option_was_seen(O_dsm)
+#endif
+	     ) && 
 	     ((last_phase == P_any_ld) && (shared != RELOCATABLE)) || 
 	     (last_phase == P_pixie)) {
 		/* compile all files to object files, do ld later */
@@ -491,9 +557,7 @@ main (int argc, char *argv[])
 	}
 	if (has_errors()) {
 		cleanup();
-#ifdef KEY
 		cleanup_temp_objects();
-#endif
 		return error_status;
 	}
 
@@ -504,16 +568,16 @@ main (int argc, char *argv[])
 		source_kind = S_o;
 		source_lang = get_source_lang(source_kind);
 
+#ifndef KEY	// -dsm_clone no longer supported.  Bug 4406.
 		if (option_was_seen(O_dsm_clone)) {
           	    run_dsm_prelink();
           	    if (has_errors()) {
                       cleanup();
-#ifdef KEY
 		      cleanup_temp_objects();
-#endif
                       return error_status;
                     }
                 }
+#endif
 		if (option_was_seen(O_ar)) {
 		   run_ar();
 		}
@@ -526,9 +590,7 @@ main (int argc, char *argv[])
 	if (dump_outfile_to_stdout == TRUE)
 	  dump_file_to_stdout(outfile);
 	cleanup();
-#ifdef KEY
 	cleanup_temp_objects();
-#endif
 	return error_status;
 }
 
@@ -544,11 +606,19 @@ static void set_executable_dir (void) {
   if (dir == NULL) return;	
 
   /* If installed in a bin directory; get phases and stuff from
-     a peer directory. */
+   * a peer directory.
+   *
+   * NOTE: This is *not* the only place where file paths are defined.
+   * If you change the location of a phase (such as the linker) here,
+   * you must look over in the ipa/common directory for paths to
+   * change when the compiler is invoked with -ipa.
+   *
+   * In addition, you may also need to modify other search paths here
+   * in driver-land.
+   */
   ldir = drop_path (dir);
   if (strcmp (ldir, "bin") == 0) {
     char *basedir = directory_path (dir);
-    substitute_phase_dirs ("/usr/bin", basedir, "/" PSC_TARGET "/bin");
     substitute_phase_dirs ("/usr/lib", basedir, "/lib/" PSC_FULL_VERSION);
     substitute_phase_dirs ("/usr/lib/" PSC_NAME_PREFIX "cc-lib",
 			   basedir, "/lib/" PSC_FULL_VERSION);
@@ -753,6 +823,7 @@ static struct explicit_lang {
 	{ "c", S_c, L_cc, },
 	{ "c++", S_C, L_CC, },
 	{ "c++-cpp-output", S_ii, L_CC, },
+	{ "c++-header", S_C, L_CC, },
 	{ "c-header", S_c, L_cc, },
 	{ "cpp-output", S_i, L_cc, },
 	{ "f77", S_f90, L_f77, },
@@ -785,20 +856,322 @@ void set_explicit_lang(const char *flag, const char *lang)
 	}
 }
 
-#ifdef KEY
 // Quick and dirty way to scan for options that must be parsed first.
 static void
 prescan_options (int argc, char *argv[])
 {
   int i;
   for (i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-ipa") == 0) {
+    if (!strcasecmp(argv[i], "-ipa") ||
+	!strcmp(argv[i], "-Ofast")) {	// -Ofast implies -ipa.  Bug 3856.
       ipa = TRUE;
     } else if (strcmp(argv[i], "-keep") == 0) {	// bug 2181
       keep_flag = TRUE;
     } else if (strcmp(argv[i], "-save_temps") == 0) {
       keep_flag = TRUE;
+    } else if (strcmp(argv[i], "-compat-gcc") == 0) {
+      compat_gcc = TRUE;
     }
   }
 }
-#endif	// KEY
+
+static void
+print_defaults()
+{
+  fprintf(stderr, "Compiler defaults (truncated): ");
+
+  // -O level
+  if (olevel == UNDEFINED)
+    fprintf(stderr, " -O2");
+  else
+    fprintf(stderr, " -O%d", olevel);
+
+  // target CPU
+  if (target_cpu != NULL)
+    fprintf(stderr, " -mcpu=%s", target_cpu);
+  else
+    internal_error("no default target cpu");
+
+  // ABI
+  switch (abi) {
+    case ABI_N32:	fprintf(stderr, " -m32"); break;
+    case ABI_64:	fprintf(stderr, " -m64"); break;
+    default:		internal_error("unknown default ABI");
+  }
+
+  // SSE, SSE2, SSE3, 3DNow
+  fprintf(stderr, " -msse=on");
+  fprintf(stderr, " -msse2=%s", sse2 == TRUE ? "on" : "off");
+  fprintf(stderr, " -msse3=%s", sse3 == TRUE ? "on" : "off");
+  fprintf(stderr, " -m3dnow=%s", m3dnow == TRUE ? "on" : "off");
+
+  fprintf(stderr, "\n");
+}
+
+static int
+read_compiler_defaults(FILE *f, string_list_t *default_options_list)
+{
+  int count = 0;
+  char *p, *string, buf[1000];
+  while (fgets(buf, 999, f) != NULL) {
+    // Parse one line.  Ignore anything after '#'.
+    string = NULL;
+    boolean end_of_line = FALSE;
+    for (p = buf; ; p++) {
+      // Detect end of line.
+      if (*p == '#' || *p == '\n' || *p == '\0') {
+	end_of_line = TRUE;
+	*p = '\0';		// Treat '#' same as '\0'.
+      }
+      if (*p == ' ' || *p == '\t' || *p == '\0') {
+	// White space or end of line.  Save the option just seen if any.
+        if (string != NULL) {
+	  *p = '\0';
+	  add_string(default_options_list, string);
+	  count++;
+	  string = NULL;
+	}
+      } else {
+	// Non-white space char.  Mark the beginning of option if necessary.
+	if (string == NULL)
+	  string = p;
+      }
+      // Quit if end of line.
+      if (end_of_line)
+        break;
+    }
+  }
+  return count;
+}
+
+// Append the default options in compiler.defaults to the command line options.
+static void
+append_default_options (int *argc, char *(*argv[]))
+{
+  char *compiler_defaults_path =
+	 string_copy(getenv("PSC_COMPILER_DEFAULTS_PATH"));
+  int default_options_count = 0;
+  string_list_t *default_options_list = init_string_list();
+
+  // If the environment variable PSC_COMPILER_DEFAULTS_PATH is not set, then
+  // look for the defaults file in /opt/pathscale/etc.
+  if (compiler_defaults_path == NULL) {
+    compiler_defaults_path = strdup("/opt/pathscale/etc");
+  }
+
+  // Search for the defaults file in the colon-separated compiler default
+  // paths.  Read in the first defaults file found.
+  while (compiler_defaults_path) {
+    char *p, *path;
+    path = compiler_defaults_path;
+    for (p = path; ; p++) {
+      if (*p == '\0') {
+	compiler_defaults_path = NULL;
+	break;
+      } else if (*p == ':') {
+	*p = '\0';
+	compiler_defaults_path = p + 1;
+	break;
+      }
+    }
+    // Path is one path in the colon-separated paths.  See if it contains the
+    // defaults file.
+    FILE *f;
+    char buf[1000];
+    strcpy(buf, path);
+    strcat(buf, "/compiler.defaults");
+    if ((f = fopen(buf, "r")) != NULL) {
+      default_options_count = read_compiler_defaults(f, default_options_list);
+      fclose(f);
+      break;
+    }
+  }
+
+  // Append the default options to the command line options.
+  {
+    int new_argc = *argc + default_options_count + 1;
+    char **new_argv = malloc(new_argc * sizeof(char*));
+    int i, index;
+
+    // Copy command line options to new argv;
+    for (index = 0; index < *argc; index++) {
+      new_argv[index] = (*argv)[index];
+    }
+
+    // Mark the beginning of default options.
+    new_argv[index++] = "-default_options";
+
+    // Copy default options to new argv.
+    string_item_t *p;
+    for (p = default_options_list->head; p != NULL; p = p->next) {
+      new_argv[index++] = p->name;
+    }
+
+    // Return new argc and argv.
+    *argc = new_argc;
+    *argv = new_argv;
+  }
+}
+
+/* Read the contents of the PSC_GENFLAGS environment variable and add
+ * them to the command-line options. */
+static void
+append_psc_genflags (int *argc, char *(*argv[]))
+{
+  char * default_opt = string_copy(getenv("PSC_GENFLAGS"));
+  char * p, * q;
+  char ** new_argv;
+  int new_argc, fin = 0;
+
+  if (default_opt) {
+    new_argc = *argc;
+    new_argv = (char **) calloc (*argc, sizeof (char *));
+    memcpy (new_argv, *argv, *argc * sizeof (char *));
+    for (p = default_opt, q = default_opt; fin == 0; p++) {
+      switch (*p) {
+      case '\0':
+	fin = 1;
+      case ' ':
+	*p = '\0';
+	new_argc++;
+	new_argv = (char **) realloc (new_argv, new_argc * (sizeof (char *)));
+	new_argv [new_argc-1] = strdup (q);
+	q = p+1;
+	break;
+      default:
+	break;
+      }
+    }
+    *argc = new_argc;
+    *argv = new_argv;
+  }
+
+  /* We only want to do this substitution once. */
+  unsetenv ("PSC_GENFLAGS");
+}
+
+static FILE *
+read_gcc_output(char *cmdline)
+{
+	char *gcc_path = get_full_phase_name(P_ld);
+	char *gcc_cmd = NULL;
+	FILE *fp = NULL;
+
+	if (asprintf(&gcc_cmd, "%s %s", gcc_path, cmdline) == -1) {
+		internal_error("cannot allocate memory");
+		goto bail;
+	}
+
+	if ((fp = popen(gcc_cmd, "r")) == NULL) {
+		internal_error("cannot execute linker");
+		fp = NULL;
+	}
+
+bail:
+	free(gcc_path);
+	free(gcc_cmd);
+	return fp;
+}
+
+/* Print the installation path and the paths searched for binaries and
+ * libraries. Portions of this code are cribbed from
+ * set_library_paths() in phases.c. */
+static void
+print_search_path ()
+{
+	char *exe_dir = get_executable_dir();
+	string_list_t *libdirs = init_string_list();
+	
+	char *root_prefix = directory_path(get_executable_dir());
+	char *our_path;
+	FILE *fp;
+	string_item_t *p;
+	char *gcc_lib_ptr;
+	int buflen;
+	
+	printf ("install: %.*s\n", strlen(exe_dir) - 4, exe_dir);
+	printf ("programs: %s:%s\n", exe_dir, get_phase_dir (P_be));
+	
+	if (abi == ABI_N32) {
+		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION "/32",
+			 root_prefix);
+	} else {
+		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION, root_prefix);
+	}
+	
+	/* Add our libraries */
+	add_string(libdirs, our_path);
+
+	if (abi == ABI_N32) {
+		add_string(libdirs, ":/lib");
+		add_string(libdirs, ":/usr/lib");
+	} else {
+		add_string(libdirs, ":/lib64");
+		add_string(libdirs, ":/usr/lib64");
+	}
+	
+	if ((fp = read_gcc_output ("-print-search-dirs"))) {
+		char buf[BUFSIZ];
+		while (fgets (buf, BUFSIZ, fp) != NULL) {
+			if (strncmp (buf, "libraries", 9) == 0) {
+				gcc_lib_ptr = strchr (buf, '/');
+				/* Strip the newline */
+				buflen = strlen (buf);
+				buf[buflen-2] = '\0';
+				if (gcc_lib_ptr) {
+					add_string (libdirs, concat_strings (":", gcc_lib_ptr));
+				}
+			}
+		}
+		pclose (fp);
+	}
+
+	fputs ("libraries: ", stdout);
+	for (p = libdirs->head; p != NULL; p = p->next) {
+		fputs (p->name, stdout);
+	}
+	putc('\n', stdout);
+
+	free (our_path);
+}
+
+
+const char *
+get_gcc_version(int *v, int nv)
+{
+	static char version[128];
+	static int major;
+	static int minor;
+	static int patch;
+
+	if (version[0] == '\0') {
+		FILE *fp = read_gcc_output("-dumpversion");
+		char *c;
+		fread(version, 1, sizeof(version) - 1, fp);
+		pclose(fp);
+
+		version[sizeof(version) - 1] = '\0';
+		
+		if ((c = strchr(version, '\n'))) {
+			*c = '\0';
+		}
+	}
+
+	if (v) {
+		char *l = version + strlen(version);
+		char *a;
+		int i;
+
+		for (i = 0, a = version; i < nv; i++) {
+			char *d;
+			if (a < l && isdigit(*a)) {
+				v[i] = strtol(a, &d, 10);
+				a = d + 1;
+			} else {
+				v[i] = 0;
+			}
+		}
+	}
+	
+	return version;
+}

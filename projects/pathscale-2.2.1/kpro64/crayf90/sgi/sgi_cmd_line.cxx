@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -59,6 +59,12 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sg
 #include "erlib.h"
 #include "tracing.h"
 #include "err_host.tab"
+#ifdef KEY /* Bug 4607 */
+#  include "path_intrinsic_list.h"
+#endif /* KEY Bug 4607 */
+#ifdef KEY /* Bug 4260 */
+#include "../../../clibinc/cray/io_byteswap.h"
+#endif /* KEY Bug 4260 */
 
 /* conversion includes */
 #include "sgi_cmd_line.h"
@@ -105,7 +111,11 @@ BOOL global_schedtype_pragma_set = FALSE;
 
 BOOL process_cri_mp_pragmas=FALSE;
 
+#ifdef KEY
+BOOL disable_old_mp = TRUE;		// bug 4406
+#else
 BOOL disable_old_mp = FALSE;
+#endif
 BOOL disable_open_mp = FALSE;
 
 BOOL FE_Call_Never_Return = TRUE;
@@ -118,6 +128,13 @@ BOOL FE_Call_Never_Return = TRUE;
  */
 static MEM_POOL FE_Mempool_s;
 MEM_POOL *FE_Mempool=&FE_Mempool_s;
+
+#ifdef KEY /* Bug 4719 */
+char *preprocessor_output_file;
+#endif /* KEY Bug 4719 */
+#ifdef KEY /* Bug 4260 */
+int io_byteswap = IO_DEFAULT;
+#endif /* KEY Bug 4260 */
 
 /* ====================================================================
  *
@@ -318,6 +335,11 @@ void Process_Command_Line (INT argc, char ** argv)
 	 cp = argv[i]+1;	/* Pointer to next flag	character */
 	 if (Process_Command_Line_Group(cp, Common_Option_Groups)) {
 	    pass_option = FALSE;
+#ifdef KEY /* Bug 3405 */
+            if (LANG_IEEE_Minus_Zero_On) {
+	      add_cray_args("-ez");
+	    }
+#else
             switch ( *cp++ ) {
               case 'L':
                if ((strncmp(cp, "ANG:IEEE_minus_zero", 19) == 0) &&
@@ -326,6 +348,7 @@ void Process_Command_Line (INT argc, char ** argv)
                   add_cray_args("-ez");
                }
             }
+#endif /* KEY Bug 3405 */
          } else if (Process_Command_Line_Group(cp, FE_Option_Groups)) {
 	    pass_option = FALSE;
 	 } else {
@@ -352,6 +375,15 @@ void Process_Command_Line (INT argc, char ** argv)
 	       }
 	       break;
 
+#ifdef KEY /* Bug 4260 */
+	     case 'b':
+	       if (strcmp(cp, "yteswapio")==0) {
+		  io_byteswap = IO_SWAP;
+	          pass_option = FALSE;
+	       }
+	       break;
+#endif /* KEY Bug 4260 */
+
 	     case 'c':
 	       if (strcmp(cp,"ol72")==0) {
 		  pass_option = FALSE;
@@ -375,6 +407,29 @@ void Process_Command_Line (INT argc, char ** argv)
 		 process_cri_mp_pragmas = TRUE;
 		 add_cray_args("-Otask1");
                }
+#ifdef KEY /* Bug 4260 */
+	       else if (strcmp(cp,"onvert")==0) {
+		 pass_option = FALSE;
+		 cp = argv[++i]; /* Get next argument */
+		 if (strcmp(cp, "native")==0) {
+		   io_byteswap = IO_NATIVE;
+		 } else if (strcmp(cp, "big_endian")==0 ||
+		   strcmp(cp, "big-endian")==0) {
+		   io_byteswap = IO_BIG_ENDIAN;
+		 } else if (strcmp(cp, "little_endian")==0 ||
+		   strcmp(cp, "little-endian")==0) {
+		   io_byteswap = IO_LITTLE_ENDIAN;
+		 } else {
+		   /* No way to report error here, so back up and pass -convert
+		    * to the Cray front end which will complain about that. Not
+		    * perfect, but the driver should intercept errors before we
+		    * reach this spot anyway.
+		    */
+		   cp = argv[--i] + 1;
+		   pass_option = TRUE;
+		 }
+               }
+#endif /* KEY Bug 4260 */
 	       break;
 
 	     case 'd':
@@ -573,6 +628,14 @@ void Process_Command_Line (INT argc, char ** argv)
 		  add_cray_args("-slogical8");
 		  pass_option = FALSE;
 	       }
+#ifdef KEY /* Bug 4607 */
+#  define NTRINSIC "ntrinsic="
+#  define NTRINSIC_LEN ((sizeof NTRINSIC) - 1)
+               else if (0 == strncmp(cp, NTRINSIC, NTRINSIC_LEN)) {
+	          path_intrinsic_list.add(cp + NTRINSIC_LEN, 1);
+		  pass_option = FALSE;
+	       }
+#endif /* KEY Bug 4607 */
 		  
 	       break;
 
@@ -657,7 +720,27 @@ void Process_Command_Line (INT argc, char ** argv)
                   add_cray_args("-dN");
                   pass_option = FALSE;
                }
+#ifdef KEY /* Bug 4607 */
+#  define OINTRINSIC "o-intrinsic="
+#  define OINTRINSIC_LEN ((sizeof OINTRINSIC) - 1)
+               else if (0 == strncmp(cp, OINTRINSIC, OINTRINSIC_LEN)) {
+	          path_intrinsic_list.add(cp + OINTRINSIC_LEN, 0);
+		  pass_option = FALSE;
+	       }
+#endif /* KEY Bug 4607 */
 	       break;
+
+#ifdef KEY /* Bug 4719 */
+	     case 'o':
+	       // We don't have access to the error machinery in the fe90
+	       // directory, so reporting trouble is hard; hopefully the
+	       // compiler driver diagnoses errors for us.
+	       if ((i + 1) < argc) {
+		 preprocessor_output_file = strdup(argv[++i]);
+		 }
+	       pass_option = FALSE;
+	       break;
+#endif /* KEY Bug 4719 */
 
 	     case 'O':		/* Optimization level: */
 	       Opt_Level = Get_Numeric_Flag

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -566,12 +566,17 @@ return_point:
 #else
       const FB_Info_Loop fb_info = Cur_PU_Feedback->Query_loop(wn);
 
-      if (fb_info.freq_iterate._value > 0) {
-	dli->Est_Num_Iterations = (INT64) (fb_info.freq_iterate._value);
+      if (!LNO_Ignore_Feedback && fb_info.freq_iterate._value > 0) {
+	// This is still an estimate because we are averaging over as many 
+	// times the loop was executed.
+	dli->Est_Num_Iterations = (INT64) ( ( fb_info.freq_back._value +
+					      fb_info.freq_out._value ) / 
+					    fb_info.freq_positive._value );
 	dli->Num_Iterations_Symbolic = FALSE;
 	dli->Num_Iterations_Profile=TRUE;
 	if (LNO_Verbose)
-	  fprintf(stdout, "Iteration counts from profile %lld\n", dli->Est_Num_Iterations);
+	  fprintf(stdout, "Iteration counts from profile %lld\n", 
+		  dli->Est_Num_Iterations);
       }
 #endif
     }

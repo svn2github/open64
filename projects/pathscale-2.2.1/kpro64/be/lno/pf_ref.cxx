@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -159,6 +159,9 @@
 #define minof(x, y) (((x)<(y)) ? (x) : (y))
 #define minmaxof(mn, mx, item) (((item) < (min)) ? ((min) = (item)) : (((item) > (max)) ? ((max) = (item)) : 0))
 
+#ifdef KEY
+#define ABS(a) ((a<0)?-(a):(a))
+#endif
 
 extern WN_MAP LNO_Info_Map;
 
@@ -571,7 +574,7 @@ INT64 PF_LG::Distance_LR (WN* ref, FRAC* dvec) {
   WN* my_iload_wn = LWN_Get_Parent(ref);
   WN* lr_iload_wn = LWN_Get_Parent(Get_Ref(Get_LeadingRef()));
 
-  return ((INT64) ((WN_element_size (ref)*step)+
+  return ((INT64) ((ABS(WN_element_size (ref))*step)+
                    (WN_offset(my_iload_wn)-WN_offset(lr_iload_wn))));
 }
 
@@ -1247,7 +1250,7 @@ void PF_LG::Split_LG () {
     else maxdist = maxdist_2L;
 
     // First convert maxdist to iters rather than bytes
-    INT64 sz = (INT) WN_element_size(Get_Ref(_leading_ref));
+    INT64 sz = (INT) ABS(WN_element_size(Get_Ref(_leading_ref)));
     maxdist = (maxdist+sz-1)/sz;
     if ((_max_iter[stride_one_loop]-_min_iter[stride_one_loop]) < maxdist) {
       // update the spread
@@ -1591,7 +1594,7 @@ PF_VOLUME PF_LG::Volume () {
     }
     if (stride < INT_INFINITY) {
       // "stride" elements
-      stride = stride * (INT) WN_element_size(Get_Ref(_leading_ref));
+      stride = stride * (INT) ABS(WN_element_size(Get_Ref(_leading_ref)));
       // now stride is in bytes. Is it within a cache line?
       if (stride < Cache.LineSize(1)) {
         INT vec = Cache.LineSize(1)/stride;
@@ -2122,7 +2125,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
       offset = WN_store_offset (parent_ref);
       break;
     default:
-      FmtAssert (NULL, ("Parent of array ref not a load/store\n"));
+      FmtAssert (false, ("Parent of array ref not a load/store\n"));
       break;
     }
 
@@ -2435,7 +2438,7 @@ void PF_LG::Gen_Pref_Node (PF_SORTED_REFS* srefs, mINT16 start, mINT16 stop,
         PF_PTR_set_conf_2L(tmp, confidence);
         break;
       default:
-        Is_True (NULL, ("Error in level type\n"));
+        Is_True (FALSE, ("Error in level type\n"));
         break;
       }
     }
@@ -2752,7 +2755,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
   //     or if s-o-loop is backward and s-o-loop index has a +ve coeff
   
   _stride_forward = 1;  // default
-  _stride_one_size = (mINT16) WN_element_size(wn_array); // default
+  _stride_one_size = (mINT16) ABS(WN_element_size(wn_array)); // default
   if (i == -1) {
     // no stride one loop
     _stride_forward = 0;
@@ -2794,7 +2797,7 @@ PF_UGS::PF_UGS (WN* wn_array, PF_BASE_ARRAY* myba) : _refs (PF_mpool) {
 
     if (i >= 0) {
       // add up the stride in the dimensions inner to "i"
-      _stride_in_enclosing_loop = (mINT16) WN_element_size(wn_array); // default
+      _stride_in_enclosing_loop = (mINT16) ABS(WN_element_size(wn_array)); // default
       for (INT j=aa->Num_Vec()-1; j>i; j--) {
         WN* dim_wn = NULL;
         if (j < WN_num_dim(wn_array)) dim_wn = WN_array_dim(wn_array, j);
@@ -3136,7 +3139,7 @@ void PF_UGS::ComputePFVec (PF_LEVEL level, PF_LOCLOOP locloop) {
       }
       // now stride is the increment (in elements) in stride-one dimension
       // find element size, are that many elements still within cache line?
-      stride = stride * WN_element_size(_refs.Bottom_nth(0));
+      stride = stride * ABS(WN_element_size(_refs.Bottom_nth(0)));
 
         // check that it doesn't exceed cache line size
       if (stride > linesize) return;
@@ -3192,7 +3195,7 @@ void PF_UGS::ComputePFVec (PF_LEVEL level, PF_LOCLOOP locloop) {
   stride = abs(stride);
   // now stride is the increment (in elements) in the stride-one dimension
   // find element size, see if that many elements are still within a cache line
-  stride = stride * WN_element_size(_refs.Bottom_nth(0));
+  stride = stride * ABS(WN_element_size(_refs.Bottom_nth(0)));
 
   // check that it doesn't exceed cache line size
   if (stride > linesize) return;

@@ -81,9 +81,6 @@ endif
 ifeq ($(BUILD_OPTIMIZE), NODEBUG)
 OPTIMIZER = -O3
 F90FLAGS =
- ifeq ($(BUILD_ARCH), IA32)
-OPTIMIZER = -O0
- endif
 endif
 
 FC = $(F90) -c -Wf,-eQ

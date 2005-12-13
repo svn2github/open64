@@ -1,6 +1,6 @@
 /* 
 
-  Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+  Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -21,8 +21,8 @@
   with this program; if not, write the Free Software Foundation, Inc., 59
   Temple Place - Suite 330, Boston MA 02111-1307, USA.
 
-  Contact information:  PathScale, Inc., 477 N. Mathilda Avenue,
-  Sunnvale, CA 94085, USA, or:
+  Contact information:  PathScale, Inc., 2071 Stierlin Court, Suite 200,
+  Mountain View CA 94043, USA, or:
 
   http://www.pathscale.com
 

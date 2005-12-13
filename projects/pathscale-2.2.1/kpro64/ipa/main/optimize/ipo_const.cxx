@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1142,7 +1142,7 @@ IPA_Propagate_Constants (IPA_NODE* n, BOOL delete_const_param)
 				    WN_func_pragmas(w),
 				    WN_func_varrefs(w)); 
 
-    WN_map_id(func_node) = WN_map_id(w);
+    WN_set_map_id(func_node, WN_map_id(w));
     WN_linenum(func_node) = WN_linenum(w);
     // copy over all the kids from the original node to this node
     // excluding nodes that are constant
@@ -1258,6 +1258,9 @@ Reset_param_list (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
     WN* new_call = WN_Call (rtype, desc, used_param_count + fake_param_count,
 			    WN_st(call));
     WN_call_flag (new_call) = WN_call_flag (call);
+#ifdef KEY
+    WN_Set_Linenum (new_call, WN_Get_Linenum (call));
+#endif // KEY
 
     if (caller->Has_frequency ())
 	IPA_WN_MAP32_Set (Current_Map_Tab, WN_MAP_FEEDBACK, new_call,

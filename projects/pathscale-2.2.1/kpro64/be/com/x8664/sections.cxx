@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,10 +39,9 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-#include <elf.h>
+#include "elf_stuff.h"
 #include "sections.h"
 
-#define SHF_IA_64_SHORT	SHF_MIPS_GPREL
 #define INST_BYTES 16
 
 SECTION Sections[_SEC_INDEX_MAX] = {
@@ -149,6 +148,10 @@ SECTION Sections[_SEC_INDEX_MAX] = {
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
 	SHT_PROGBITS, 0,
      INT64_MAX, "_MIPS_distr_array", 0},
+  {_SEC_DATA_REL_RO,  NULL,
+     0|SHF_WRITE|SHF_ALLOC,
+	SHT_PROGBITS, 0,
+     INT64_MAX, ".data.rel.ro.local", 0},
 };
 
 extern SECTION_IDX

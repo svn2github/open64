@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified October 3, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.3.1 release.
  */
@@ -732,6 +732,11 @@ int flag_really_no_inline = 1;
 #else
 int flag_really_no_inline = 2;
 #endif /* SGI_MONGOOSE */
+
+#ifdef KEY
+/* Is OpenMP enabled? */
+int flag_openmp = 0;
+#endif // KEY
 
 /* Nonzero means that we should emit static const variables
    regardless of whether or not optimization is turned on.  */
@@ -2216,6 +2221,10 @@ pop_srcloc ()
   lineno = input_file_stack->line;
 }
 
+#ifdef KEY
+extern void WFE_Alias_Finish (void);
+#endif // KEY
+
 /* Compile an entire translation unit.  Write a file of assembly
    output and various debugging dumps.  */
 
@@ -2276,6 +2285,9 @@ compile_file (name)
   /* Write out any pending weak symbol declarations.  */
 
   weak_finish ();
+#ifdef KEY
+  WFE_Alias_Finish ();
+#endif // KEY
 
 #ifndef SGI_MONGOOSE
   /* Do dbx symbols.  */
@@ -4496,6 +4508,14 @@ independent_decode_option (argc, argv)
       return 2;
     }
 
+#ifdef KEY
+  if (!strcmp (arg, "mp"))
+  {
+    flag_openmp = 1;
+    return 1;
+  }
+#endif // KEY
+
   if (*arg == 'Y')
     arg++;
 
@@ -4991,6 +5011,11 @@ general_init (argv0)
   init_ttree ();
 }
 
+
+#ifdef KEY
+extern int Opt_Level;
+#endif // KEY
+
 /* Parse command line options and set default flag values, called
    after language-independent option-independent initialization.  Do
    minimal options processing.  Outputting diagnostics is OK, but GC
@@ -5058,6 +5083,10 @@ parse_options_and_default_flags (argc, argv)
 	    }
 	}
     }
+
+#ifdef KEY
+  Opt_Level = optimize;
+#endif
 
   if (!optimize)
     {
@@ -5216,6 +5245,11 @@ parse_options_and_default_flags (argc, argv)
 	  i++;
 	}
     }
+
+#ifdef KEY
+  // bug 5635: Disable it silently even if the user enabled -finline
+  flag_no_inline = 1;
+#endif /* KEY */
 
   if (flag_pie)
     flag_pic = flag_pie;

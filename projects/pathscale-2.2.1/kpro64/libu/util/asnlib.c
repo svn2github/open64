@@ -42,6 +42,9 @@
 #include <errno.h>
 #ifndef	_ABSOFT
 #include <malloc.h>
+#ifdef KEY /* Bug 4260 */
+#include <stdlib.h>	/* For getenv */
+#endif /* KEY Bug 4260 */
 #else
 #include <stdlib.h>
 #endif
@@ -98,7 +101,15 @@ ASSIGN(
 
 #else
 
+#ifdef KEY /* Bug 4260 */
+/* SGI historically provided this  function, but we don't want it to collide
+ * with a user-coded Fortran procedure "assign" which will also emit "assign_"
+ */
+#pragma weak assign_ = __assign
+__assign(
+#else /* KEY Bug 4260 */
 assign_(
+#endif /* KEY Bug 4260 */
 	char	*cmdargs_ptr,	/* Fortran string containing assign request */
 	_f_int	*ier,		/* required error status variable. */
 	int	cmdargs_len)	/* length of cmdargs string */
@@ -190,7 +201,11 @@ ffassign(char *cmd)
 #ifdef	_UNICOS
 	ASSIGN (_cptofcd(cmd,strlen(cmd)), &ier);
 #else
+#ifdef KEY /* Bug 4260 */
+	__assign(cmd, &ier, strlen(cmd));
+#else /* KEY Bug 4260 */
 	assign_(cmd, &ier, strlen(cmd));
+#endif /* KEY Bug 4260 */
 #endif
 	if (ier != 0) {
 		errno	= ier;
@@ -1131,3 +1146,84 @@ printf("_lae_process_opts exit <%s>\n",*attr_string);
 */
 	return(0);
 }
+
+#ifdef KEY /* Bug 4260 */
+/* If byteswap options appeared on command line, front end will emit a strong
+ * definition for this along with the Fortran main program. */
+#pragma weak __io_byteswap_value
+int __io_byteswap_value = IO_DEFAULT;
+
+/* "assign" command options for big- and little-endian conversion */
+static char *options[2] = {
+  "-F f77.mips -N be",
+  "-F f77.vax -N ia64",
+  };
+
+/* Must issue "assign" command for "g:su" and "g:du" (using "g:all" would
+ * attempt to swap bytes on formatted files and give a runtime error) */
+static char sequential_vs_direct[2] = "sd";
+
+/*
+ * Call this from _OPEN (so it is protected by the concurrency lock that
+ * _OPEN sets) to initialize "assign" state based on  __io_byteswap_value; it
+ * will execute on the first call, and return without doing anything on
+ * subsequent calls.
+ */
+void
+__io_byteswap() {
+
+  /* Either no command-line option, or __io_byteswap has already executed. */
+  if (IO_DEFAULT == __io_byteswap_value) {
+    return;
+  }
+
+  /* Warn that FILENV overrides compile-time options */
+  char *filenv = getenv(ASSIGN_ENV_VAR);
+  if (filenv && *filenv) {
+    _lwarn(FWFILENV);
+  }
+
+  else {
+
+    int opt = -1;
+    switch (__io_byteswap_value) {
+      case IO_NATIVE:
+	/* No swapping */
+	break;
+      case IO_SWAP:
+  #     ifdef _LITTLE_ENDIAN
+	 opt = 0;
+  #     else
+	 opt = 1;
+  #     endif /* _LITTLE_ENDIAN */
+	break;
+      case IO_BIG_ENDIAN:
+  #     ifdef _LITTLE_ENDIAN
+	 opt = 0;
+  #     endif /* _LITTLE_ENDIAN */
+	break;
+      case IO_LITTLE_ENDIAN:
+  #     ifndef _LITTLE_ENDIAN
+	 opt = 1;
+  #     endif /* _LITTLE_ENDIAN */
+	break;
+    }
+    if (-1 != opt) {
+      int i;
+      for (i = 0; i <= 1; i += 1) {
+	int err;
+	char buffer[256];
+	snprintf(buffer, sizeof buffer, "assign %s g:%cu", options[opt],
+	  sequential_vs_direct[i]);
+	__assign(buffer, &err, strlen(buffer));
+	if (err) {
+	  _lwarn(err); /* Expect an "errno" value */
+	}
+      }
+    }
+  }
+
+  /* Ensure that subsequent calls to __io_byteswap will do nothing. */
+  __io_byteswap_value = IO_DEFAULT;
+}
+#endif /* KEY Bug 4260 */

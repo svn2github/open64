@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -92,6 +92,7 @@
 #include "cgtarget.h"
 #include "calls.h"
 #include "cg_loop.h"
+#include "config_lno.h"  // for LNO_Prefetch_Ahead
 
 UINT32 CGTARG_branch_taken_penalty;
 BOOL CGTARG_branch_taken_penalty_overridden = FALSE;
@@ -121,7 +122,13 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   const TOP topcode = OP_code(memop);
 
   if (TOP_is_vector_op(topcode))
-    return 16;
+    if (topcode == TOP_stlpd || topcode == TOP_stlps ||
+	topcode == TOP_ldlpd || topcode == TOP_ldlps ||
+	topcode == TOP_sthpd || topcode == TOP_sthps ||
+	topcode == TOP_ldhpd || topcode == TOP_ldhps)
+      return 8;
+    else
+      return 16;
 
   if( OP_store( memop ) ){
     const int opnd = OP_find_opnd_use( memop, OU_storeval );
@@ -263,8 +270,14 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_cvtsi2ss_x:
   case TOP_cvtsi2ss_xx:
   case TOP_cvtsi2ss_xxx:
+  case TOP_lock_add32:
+  case TOP_lock_adc32:
+  case TOP_lock_and32:
+  case TOP_lock_or32:
+  case TOP_lock_xor32:
+  case TOP_lock_sub32:
     return 4;
-      
+
   case TOP_xorx64:
   case TOP_xorxx64:
   case TOP_xorxxx64:
@@ -330,6 +343,20 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_cvtsi2ssq_x:
   case TOP_cvtsi2ssq_xx:
   case TOP_cvtsi2ssq_xxx:
+  case TOP_lock_add64:
+  case TOP_lock_and64:
+  case TOP_lock_or64:
+  case TOP_lock_xor64:
+  case TOP_lock_sub64:
+  case TOP_fmovsldupx:
+  case TOP_fmovshdupx:
+  case TOP_fmovddupx:
+  case TOP_fmovsldupxx:
+  case TOP_fmovshdupxx:
+  case TOP_fmovddupxx:
+  case TOP_fmovsldupxxx:
+  case TOP_fmovshdupxxx:
+  case TOP_fmovddupxxx:
     return 8;
 
   case TOP_fldt:
@@ -1649,6 +1676,7 @@ INT CGTARG_Copy_Operand(OP *op)
   case TOP_movapd:
   case TOP_movaps:
   case TOP_fmov:
+  case TOP_mov64_m:
     return 0;
 
   case TOP_mov32:
@@ -1681,6 +1709,11 @@ INT CGTARG_Copy_Operand(OP *op)
 	opr == TOP_movsd || opr == TOP_movss ||
 	opr == TOP_fmov )
       return 0;
+  }
+
+  if( OP_cond_move( op ) &&
+      TNs_Are_Equivalent( OP_result(op,0), OP_opnd(op,0) ) ){
+    return 0;
   }
 
   return -1;
@@ -2265,12 +2298,65 @@ CGTARG_Generate_Countdown_Loop ( TN *trip_count_tn,
   return;  
 }
 
+STACK<OP*> Working_Set(Malloc_Mem_Pool);
+
+static inline TN* OP_opnd_use( OP* op, ISA_OPERAND_USE use )
+{
+  const int indx = OP_find_opnd_use( op, use );
+  return ( indx >= 0 ) ? OP_opnd( op, indx ) : NULL;
+}
+
+// Bug 3774 - Compute total working set size by counting
+// all disjoint source and destination bytes in the loop.
+BOOL Op_In_Working_Set ( OP* op )
+{
+  /* address = ofst + base + index * scale */
+  struct ADDRESS_COMPONENT {
+    TN* index;
+    TN* base;
+    TN* offset;
+    TN* scale;
+  } a, b;
+
+  bzero( &a, sizeof(a) );
+  a.scale  = OP_opnd_use( op, OU_scale );
+  a.base   = OP_opnd_use( op, OU_base );
+  a.index  = OP_opnd_use( op, OU_index );
+  a.offset = OP_opnd_use( op, OU_offset );
+  if (a.scale == NULL)
+    a.scale = Gen_Literal_TN( 1, 4 );
+
+  for (INT i = 0; i < Working_Set.Elements(); i++) {
+    OP* last = Working_Set.Top_nth(i);
+
+    bzero( &b, sizeof(b) );
+    b.scale  = OP_opnd_use( last, OU_scale );
+    b.base   = OP_opnd_use( last, OU_base );
+    b.index  = OP_opnd_use( last, OU_index );
+    b.offset = OP_opnd_use( last, OU_offset );    
+    if (b.scale == NULL)
+      b.scale = Gen_Literal_TN(1, 4);
+
+    if (((a.base && b.base && TNs_Are_Equivalent(b.base, a.base)) ||
+         (!a.base && !b.base)) &&
+	((a.index && b.index && TNs_Are_Equivalent(b.index, a.index)) ||
+	 (!a.index && !b.index)) && 	
+	TN_value(b.offset) == TN_value(a.offset) &&
+	TN_value(b.scale) == TN_value(a.scale))
+      return TRUE;
+  }
+  
+  Working_Set.Push(op);
+  return FALSE;
+}
 
 /* Convert temporal stores to non-temporal stores if the amount of data that
    <loop> will access is larger than the cache can provide.
  */
 void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
 {
+  if (!CG_movnti) return;
+  
   UINT32 trip_count = 0;
   TN* trip_count_tn = CG_LOOP_Trip_Count(loop);
   BB* body = LOOP_DESCR_loophead(loop);
@@ -2289,14 +2375,18 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
   OP* op = NULL;
   INT64 size = 0;
 
+  Working_Set.Clear();
+
   /* First, estimate the totol size (in bytes) that this loop will
      bring to the cache.
   */
 
   FOR_ALL_BB_OPs_FWD( body, op ){
     if( TOP_is_vector_op( OP_code(op) ) &&
-	OP_store( op )                  &&
-	!TOP_is_nt_store( OP_code(op) ) ){
+	( ( OP_store( op )                  &&
+	    !TOP_is_nt_store( OP_code(op) ) ) ||
+	  OP_load(op) ) && 
+	!Op_In_Working_Set( op ) ) {
       size += CGTARG_Mem_Ref_Bytes( op );
     }
   }
@@ -2318,6 +2408,29 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
       const ISA_ENUM_CLASS_VALUE pfhint = TN_enum( OP_opnd(op,0) );
       if( pfhint == ECV_pfhint_L1_store )
 	OP_Change_To_Noop( op );
+      
+      // Bug 5280 - prefetch ahead by 10 lines automatically if 
+      // stores are to be converted to non-temporal stores.
+      // Assumes cache line size is 64 bytes.
+      else if ( pfhint == ECV_pfhint_L1_L2_load && LNO_Prefetch_Ahead == 2 ) {
+	INT opnd_num = OP_find_opnd_use(op, OU_offset);
+	if (opnd_num >= 0 &&
+	    TN_has_value(OP_opnd(op, opnd_num))) {
+	  TN *tn = OP_opnd(op, opnd_num);
+	  Set_OP_opnd(op, opnd_num,
+		      Gen_Literal_TN(TN_value(tn) + 64*8, TN_size(tn)));
+	}
+      }
+
+      if ( pfhint == ECV_pfhint_L1_L2_load ) {
+	switch(OP_code(op)) {
+	case TOP_prefetcht0:   OP_Change_Opcode(op, TOP_prefetchnta); break;
+	case TOP_prefetcht0x:  OP_Change_Opcode(op, TOP_prefetchntax); break;
+	case TOP_prefetcht0xx: OP_Change_Opcode(op, TOP_prefetchntaxx); break;
+	default: FmtAssert(FALSE, ("NYI"));
+	}
+      }	
+
       continue;
     }
 
@@ -2346,9 +2459,8 @@ void CGTARG_LOOP_Optimize( LOOP_DESCR* loop )
     case TOP_storexx64: new_top = TOP_storentixx64; break;
     }
 
-    if( new_top != TOP_UNDEFINED ){
+    if( new_top != TOP_UNDEFINED )
       OP_Change_Opcode( op, new_top );
-    }
   }
 }
 
@@ -2392,6 +2504,16 @@ CGTARG_Init_Asm_Constraints (void)
   asm_constraint_index = 0;
 }
 
+#define CONST_OK_FOR_LETTER(VALUE, C)                           \
+  ((C) == 'I' ? (VALUE) >= 0 && (VALUE) <= 31                   \
+   : (C) == 'J' ? (VALUE) >= 0 && (VALUE) <= 63                 \
+   : (C) == 'K' ? (VALUE) >= -128 && (VALUE) <= 127             \
+   : (C) == 'L' ? (VALUE) == 0xff || (VALUE) == 0xffff          \
+   : (C) == 'M' ? (VALUE) >= 0 && (VALUE) <= 3                  \
+   : (C) == 'N' ? (VALUE) >= 0 && (VALUE) <= 255                \
+   : (C) == 'i' ? (VALUE) >= 0 && (VALUE) <= 0xffffffff         \
+   : (C) == 'n' ? 1                                             \
+   : 0)
 
 // -----------------------------------------------------------------------
 // Given a constraint for an ASM parameter, and the load of the matching
@@ -2435,7 +2557,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   
   // prefer register/memory over immediates; this isn't optimal, 
   // but we may not always be able to generate an immediate
-  static const char* immediates = "in";
+  static const char* immediates = "inIJKLMNO";
   // Bug 950
   // The '#' in a constraint is inconsequential or it is just a typo
   static const char* hash = "#";
@@ -2447,6 +2569,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
   }
 
   TN* ret_tn;
+  BOOL first = FALSE, second = FALSE, third = FALSE, fourth = FALSE;
   
   // TODO: check that the operand satisifies immediate range constraint
   if (strchr(immediates, *constraint))
@@ -2460,13 +2583,19 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
               ("Cannot find immediate operand for ASM"));
     ret_tn = Gen_Literal_TN(WN_const_val(load), 
                             MTYPE_bit_size(WN_rtype(load))/8);
+    // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
+    FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint), 
+     ("The value of immediate operand supplied is not within expected range."));
   }
   // digit constraint means that we should reuse a previous operand
   else if (isdigit(*constraint))
   {
-    INT prev_index = *constraint - '0';
-    FmtAssert(asm_constraint_tn[prev_index], 
-              ("numeric matching constraint refers to NULL value"));
+    // TODO: make sure that frontend checks that string is number
+    INT prev_index = strtol(constraint, NULL, 10);
+    if (prev_index < 0 || prev_index >= asm_constraint_index ||
+        ! asm_constraint_tn[prev_index] ) {
+       FmtAssert( FALSE, ("invalid matching constraint reference") );
+    }
     ret_tn = asm_constraint_tn[prev_index];
   }
   else if (strchr("m", *constraint) || strchr("g", *constraint))
@@ -2609,14 +2738,21 @@ CGTARG_TN_And_Name_For_Asm_Constraint (char *constraint, TYPE_ID mtype,
 	case '6':
 	case '7':
 	case '8':
-	case '9':
-		i = *constraint - '0';
-		FmtAssert(asm_constraint_tn[i], 
-		    ("numeric matching constraint refers to NULL value"));
+	case '9': {
+                i = strtol(constraint, NULL, 10);
+                if (i < 0 || i >= asm_constraint_index || ! asm_constraint_tn[i] ) {
+                    FmtAssert( FALSE, ("invalid matching constraint reference") );
+                }
+
+                *tn = asm_constraint_tn[i];
+                asm_constraint_tn[asm_constraint_index] = *tn;
+
+                *name = asm_constraint_name[i];
+                strcpy(asm_constraint_name[asm_constraint_index],*name);
+
 		++asm_constraint_index;
-		*tn = asm_constraint_tn[i];
-		*name = asm_constraint_name[i];
 		return;
+        }
 	case 'i':
 		// let caller figure out the name
 		*tn = NULL;
@@ -2636,6 +2772,7 @@ CGTARG_TN_And_Name_For_Asm_Constraint (char *constraint, TYPE_ID mtype,
 	    	sprintf(asm_constraint_name[asm_constraint_index], "%s", 
 			*name);
 	}
+
 	*name = asm_constraint_name[asm_constraint_index];
 	++asm_constraint_index;
 }
@@ -2703,7 +2840,7 @@ CGTARG_Modified_Asm_Opnd_Name(char modifier, TN* tn, char *tn_name)
    offset tn, later phase in Modify_Asm_String will generate
    the right offset and base info.   (bug#3111)
 */
-TN* CGTARG_Process_Asm_m_constraint( WN* load, OPS* ops )
+TN* CGTARG_Process_Asm_m_constraint( WN* load, void** offset, OPS* ops )
 {
   Is_True( load != NULL, ("Asm_m_constraint: load is NULL") );
   TN* asm_opnd = NULL;
@@ -2713,14 +2850,61 @@ TN* CGTARG_Process_Asm_m_constraint( WN* load, OPS* ops )
     asm_opnd = OP_iadd(lda_op) ? OP_opnd( lda_op, 1 ) : OP_opnd( lda_op, 0 );
     OPS_Remove_Op( ops, lda_op );
 
+  } else if( WN_operator(load) == OPR_ADD ){
+    OP* add_op = OPS_last( ops );
+    TN* ofst_tn = OP_opnd( add_op, 1 );
+
+    if( !TN_is_constant(ofst_tn) )
+      return NULL;
+
+    *offset = (void*)Gen_Literal_TN( TN_value(ofst_tn), 4 );
+
+    asm_opnd = OP_opnd( add_op, 0 );
+    OPS_Remove_Op( ops, add_op );
+
+    /* Do some pattern matching to save one register by removing
+       duplicated load.
+    */
+
+    OP* ld_op = OPS_last(ops);
+    if( ld_op != NULL  &&
+	OP_load(ld_op) &&
+	OP_result(ld_op,0) == asm_opnd ){
+
+      for( OP* prev_ld = OP_prev(ld_op);
+	   prev_ld != NULL;
+	   prev_ld = OP_prev(prev_ld) ){
+
+	if( OP_store(prev_ld) )
+	  break;
+
+	if( OP_load(prev_ld) &&
+	    OP_opnds(prev_ld) == OP_opnds(ld_op) ){
+	  bool match = true;
+	  for( int i = 0; i < OP_opnds(ld_op); i++ ){
+	    if( OP_opnd(prev_ld,i) != OP_opnd(ld_op,i) ){
+	      match = false;
+	      break;
+	    }
+	  }
+
+	  if( match ){
+	    OPS_Remove_Op( ops, ld_op );
+	    asm_opnd = OP_result( prev_ld, 0 );
+	    break;
+	  }
+	}
+      }
+    }
+
+  } else if( WN_operator(load) == OPR_LDID ){
+    ;
+
   } else {
     DevWarn( "Asm_m_constraint: Unsupported opcode (%s)",
 	     OPCODE_name(WN_opcode(load)) );
     return NULL;
   }
-
-  Is_True( TN_is_symbol(asm_opnd) && TN_is_constant(asm_opnd),
-	   ("Asm_m_constraint: lda has no symbol") );
 
   return asm_opnd;
 }

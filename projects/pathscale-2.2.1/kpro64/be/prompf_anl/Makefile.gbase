@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -69,7 +69,6 @@ include $(COMMONDEFS)
 #----------------------------------------------------------------------
 #  Set environment variables
 #----------------------------------------------------------------------
-CVERSION  =  -xansi
 
 #----------------------------------------------------------------------
 #  Compiler Options
@@ -192,7 +191,7 @@ LCOPTS = $(STD_COMPILE_OPTS) -fullwarn $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 
-LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS) -fullwarn $(WOFF)
+LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS)
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(LCINCS)
 

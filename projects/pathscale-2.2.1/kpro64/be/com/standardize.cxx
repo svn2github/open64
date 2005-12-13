@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -343,9 +347,15 @@ WN_Upper_Bound_Standardize(WN   *doloop,
     WN_offset(WN_index(doloop)));
   opc = WN_opcode(ub = WN_end(doloop));
   opr = OPCODE_operator(opc);
+#ifndef KEY
   FmtAssert(opr == OPR_LT || opr == OPR_LE,
             ("surprise operator %s returned from WN_Solve_For()",
              OPCODE_name(opc)));
+#else
+  FmtAssert(opr == OPR_GE || opr == OPR_LE,
+            ("surprise operator %s returned from WN_Solve_For()",
+             OPCODE_name(opc)));
+#endif
   if (ok == FALSE) {
     FmtAssert(ok_to_fail, 
       ("Upper_Bound_Standardize() could not solve for induction variable")); 

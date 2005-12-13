@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Process declarations and variables for C compiler.
@@ -60,7 +60,10 @@ Boston, MA 02111-1307, USA.  */
 #endif
 
 #ifdef KEY
-extern add_duplicates (tree, tree);
+extern void add_duplicates (tree, tree);
+extern void gxx_emits_decl PARAMS ((tree));
+extern void push_mp_local_vars PARAMS ((tree));
+extern bool In_MP_Region;
 #endif
 static tree grokparms				PARAMS ((tree));
 static const char *redeclaration_error_message	PARAMS ((tree, tree));
@@ -682,6 +685,17 @@ struct cp_binding_level GTY(())
 
 /* The binding level currently in effect.  */
 
+#ifdef KEY
+static void inline
+copy_to_current_binding_level (struct cp_binding_level * level)
+{
+  if (cfun && cp_function_chain->bindings)
+    cp_function_chain->bindings = level;
+  else
+    scope_chain->bindings = level;
+}
+#endif // KEY
+
 #define current_binding_level			\
   (cfun && cp_function_chain->bindings		\
    ? cp_function_chain->bindings		\
@@ -734,7 +748,11 @@ push_binding_level (newlevel, tag_transparent, keep)
      are active.  */
   memset ((char*) newlevel, 0, sizeof (struct cp_binding_level));
   newlevel->level_chain = current_binding_level;
+#ifdef KEY
+  copy_to_current_binding_level (newlevel);
+#else
   current_binding_level = newlevel;
+#endif // KEY
   newlevel->tag_transparent = tag_transparent;
   newlevel->more_cleanups_ok = 1;
 
@@ -790,7 +808,11 @@ pop_binding_level ()
     }
   {
     register struct cp_binding_level *level = current_binding_level;
+#ifdef KEY
+    copy_to_current_binding_level (current_binding_level->level_chain);
+#else
     current_binding_level = current_binding_level->level_chain;
+#endif // KEY
     level->level_chain = free_binding_level;
     if (level->parm_flag != 2)
       binding_table_free (level->type_decls);
@@ -807,7 +829,13 @@ static void
 suspend_binding_level ()
 {
   if (class_binding_level)
+  {
+#ifdef KEY
+    copy_to_current_binding_level (class_binding_level);
+#else
     current_binding_level = class_binding_level;
+#endif // KEY
+  }
 
   if (NAMESPACE_LEVEL (global_namespace))
     my_friendly_assert (!global_scope_p (current_binding_level), 20030527);
@@ -826,7 +854,11 @@ suspend_binding_level ()
         }
       is_class_level = 0;
     }
+#ifdef KEY
+  copy_to_current_binding_level (current_binding_level->level_chain);
+#else
   current_binding_level = current_binding_level->level_chain;
+#endif // KEY
   find_class_binding_level ();
 }
 
@@ -839,7 +871,11 @@ resume_binding_level (b)
   my_friendly_assert(!class_binding_level, 386);
   /* Also, resuming a non-directly nested namespace is a no-no.  */
   my_friendly_assert(b->level_chain == current_binding_level, 386);
+#ifdef KEY
+  copy_to_current_binding_level (b);
+#else
   current_binding_level = b;
+#endif // KEY
   if (ENABLE_SCOPE_CHECKING)
     {
       b->binding_depth = binding_depth;
@@ -4562,9 +4598,17 @@ pushdecl_with_scope (x, level)
   else
     {
       b = current_binding_level;
+#ifdef KEY
+      copy_to_current_binding_level (level);
+#else
       current_binding_level = level;
+#endif // KEY
       x = pushdecl (x);
+#ifdef KEY
+      copy_to_current_binding_level (b);
+#else
       current_binding_level = b;
+#endif // KEY
     }
   current_function_decl = function_decl;
   POP_TIMEVAR_AND_RETURN (TV_NAME_LOOKUP, x);
@@ -6963,7 +7007,11 @@ cxx_init_decl_processing ()
   current_lang_name = lang_name_c;
 
   current_function_decl = NULL_TREE;
+#ifdef KEY
+  copy_to_current_binding_level (NULL_BINDING_LEVEL);
+#else
   current_binding_level = NULL_BINDING_LEVEL;
+#endif // KEY
   free_binding_level = NULL_BINDING_LEVEL;
 
   build_common_tree_nodes (flag_signed_char);
@@ -10812,10 +10860,18 @@ grokdeclarator (declarator, declspecs, decl_context, initialized, attrlist)
   if (decl_context == NORMAL && !toplevel_bindings_p ())
     {
       struct cp_binding_level *b = current_binding_level;
+#ifdef KEY
+      copy_to_current_binding_level (b->level_chain);
+#else
       current_binding_level = b->level_chain;
+#endif // KEY
       if (current_binding_level != 0 && toplevel_bindings_p ())
 	decl_context = PARM;
+#ifdef KEY
+      copy_to_current_binding_level (b);
+#else
       current_binding_level = b;
+#endif // KEY
     }
 
   if (name == NULL)
@@ -12644,6 +12700,10 @@ grokdeclarator (declarator, declspecs, decl_context, initialized, attrlist)
     if (!processing_template_decl)
       c_apply_type_quals_to_decl (type_quals, decl);
 
+#ifdef KEY
+    if (In_MP_Region && decl && TREE_CODE (decl) == VAR_DECL)
+      push_mp_local_vars (decl);
+#endif /* KEY */
     return decl;
   }
 }
@@ -14452,7 +14512,11 @@ start_function (declspecs, declarator, attrs, flags)
      FIXME factor out the non-RTL stuff.  */
   bl = current_binding_level;
   init_function_start (decl1, input_filename, lineno);
+#ifdef KEY
+  copy_to_current_binding_level (bl);
+#else
   current_binding_level = bl;
+#endif // KEY
 
   /* Even though we're inside a function body, we still don't want to
      call expand_expr to calculate the size of a variable-sized array.

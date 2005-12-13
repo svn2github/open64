@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -170,6 +174,9 @@ static char *erbe_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/com/er
 #define EC_DRA_indirect_call     EC_BASE_BE+144  /* */
 #define EC_DRA_clone_altentry    EC_BASE_BE+145  /* */
 #define EC_DRA_bad_clone_request EC_BASE_BE+146  /* str, str */
+#ifdef KEY
+#define EC_MPLOWER_copyin_st     EC_BASE_BE+147
+#endif
 
 #ifdef __cplusplus
 }

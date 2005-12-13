@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1587,6 +1587,26 @@ static void SNL_Transform(WN* wn,
   SNL_REGION    region;
   BOOL          changed;
 
+#ifdef KEY 
+  // Bug 6420 - After forward substitution from HMB, loop bounds may become
+  // compile-time constants. In that event, we should update the estimated
+  // number of iterations. Otherwise, the models will assume an estimated
+  // iteration count of 100 (without feedback), and produce unroll factors 
+  // greater than max iteration possible. This behavior is incorrect. When 
+  // Est_Num_Iterations can be updated, this will also produce a better model
+  // for the loop. The reason this bug got exposed is because of 
+  // -WOPT:prop_dope=off. Now, pre-optimizer does not propagate dope vectors
+  // including the ones in loop upper bounds. So, propagating constant loop
+  // upper bounds (dope vector extent is a compile-time constant) is left to 
+  // forward substitution in hoist messy bounds.
+  for (INT i = 0; i < ni.Dostack().Elements(); i ++) {
+    WN*           loop = ni.Dostack().Bottom_nth(i);
+    DO_LOOP_INFO* dli = Get_Do_Loop_Info(loop);
+    DOLOOP_STACK stack(&LNO_local_pool);
+    Build_Doloop_Stack(loop, &stack);
+    dli->Set_Est_Num_Iterations(&stack);
+  }
+#endif
   region = Do_Automatic_Transformation(wn, nloops, &ni, &changed);
 
   if (snl_debug) {

@@ -352,7 +352,14 @@ C     Set lengths, stride and bit offsets
 
       SWAP   = 1
 
+#undef KEY
+#define KEY
+#ifdef KEY /* Bug 7702 */
+/* Treat logical just like integer in case bit pattern is important */
+      GOTO (100,200,300,400,200,600), TYPE
+#else /* KEY Bug 7702 */
       GOTO (100,200,300,400,500,600), TYPE
+#endif /* KEY Bug 7702 */
 
 C     TYPE = 1  (Typeless)                                  ************
 C

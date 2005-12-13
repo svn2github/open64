@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -102,6 +102,30 @@ static BOOL Is_Reduction_In_Prallel_Region(WN* scalar_ref)
   return FALSE;
 }
 
+#ifdef KEY
+static BOOL Is_Shared_Or_Reduction_In_Prallel_Region(WN* scalar_ref)
+{
+  WN* wn=scalar_ref;
+  while (wn) {
+    WN* mp_region=Get_MP_Region(wn);
+    if (!mp_region)
+      return FALSE;
+    WN* pragmas=WN_region_pragmas(mp_region);
+    WN* next_wn=WN_first(pragmas);
+    while (next_wn) {
+      if (WN_opcode(next_wn)==OPC_PRAGMA)
+        if ((WN_PRAGMA_ID)WN_pragma(next_wn)==WN_PRAGMA_SHARED ||
+	    (WN_PRAGMA_ID)WN_pragma(next_wn)==WN_PRAGMA_REDUCTION) {
+	  if (WN_st(scalar_ref)==WN_st(next_wn))
+	    return TRUE;
+        }
+      next_wn=WN_next(next_wn);
+    }
+    wn=LWN_Get_Parent(mp_region);
+  }
+  return FALSE;
+}
+#endif
 extern BOOL Edge_Is_Reduction_Dependence(
 EINDEX16 edge,
 ARRAY_DIRECTED_GRAPH16 *dg,
@@ -571,9 +595,6 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
      can_rename = FALSE;
   }
 
-#ifdef KEY
-  WN* home = NULL;
-#endif
   // for each reference in the equivalence class, check if it is FUNC_ENTRY
   // and if it has the same name as the variable to be renamed
   // in addition, we do not rename for volatiles and scalars with
@@ -585,18 +606,21 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
     if (OPCODE_has_sym(WN_opcode(scalar_ref))) {
       SYMBOL temp_symbol(scalar_ref);
       OPERATOR opr=WN_operator(scalar_ref);
-#ifdef KEY
-      if (opr == OPR_LDID) home = scalar_ref;
-#endif
       if ((opr!=OPR_STID && opr!=OPR_LDID) || (ref_symbol!=temp_symbol))
         can_rename= FALSE;
       else if (TY_is_volatile(WN_ty(scalar_ref)))
 	can_rename = FALSE;
       else if (WN_desc(scalar_ref)!=desc_type)
 	can_rename = FALSE;
+#ifndef KEY
       else if (Is_Reduction_In_Prallel_Region(scalar_ref))
 	can_rename = FALSE;
-#ifdef KEY
+#else
+      // Bug 6904 - cannot rename scalars that are shared variables in an
+      // enclosing MP region. This combines the test for reduction variables.
+      else if (Contains_MP && 
+	       Is_Shared_Or_Reduction_In_Prallel_Region(scalar_ref))
+	can_rename = FALSE;
       // Can not create CVT/CVTL for bit-field later on. 
       else if ((opr == OPR_STID) && WN_desc(scalar_ref) == MTYPE_BS)
 	can_rename = FALSE;
@@ -610,17 +634,7 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
   }
   if (can_rename) {
 
-#ifndef KEY  
     SYMBOL new_symbol=Create_Preg_Symbol(ref_symbol.Name(), ref_symbol.Type);
-#else
-#if 0
-    SYMBOL new_symbol=Create_Preg_Symbol_Homed(ref_symbol.Name(), 
-					       ref_symbol.Type, 
-					       LWN_Copy_Tree(home));
-#else
-    SYMBOL new_symbol=Create_Preg_Symbol(ref_symbol.Name(), ref_symbol.Type);
-#endif
-#endif
     if (LNO_Verbose) { 
       fprintf(stdout, " Renaming %s\n", ref_symbol.Name());
       fprintf(TFile, " Renaming %s\n", ref_symbol.Name());

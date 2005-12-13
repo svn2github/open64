@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -950,7 +950,11 @@ extern SNL_DEP_MATRIX** Inv_Dep_Info(WN* wn_outer,
       continue; 
     BOOL Is_Wn_Array = opr == OPR_ILOAD || opr == OPR_ISTORE; 
     VINDEX16 v = dg->Get_Vertex(wn);
-    if (v == 0 && (opr == OPR_LDID || opr == OPR_STID))
+    if (v == 0 
+#ifndef KEY // bug 7451
+        && (opr == OPR_LDID || opr == OPR_STID)
+#endif
+	)
       continue; 
     for (e = dg->Get_Out_Edge(v); e != 0; e = dg->Get_Next_Out_Edge(e)) {
       if (edge_table.Find(e))
@@ -2179,6 +2183,16 @@ static void Mark_Threadprivate_Loops_Traverse(WN* wn_tree)
 	&& (ST_base(WN_st(wn_tree)) != WN_st(wn_tree) 
 	&& ST_sclass(ST_base(WN_st(wn_tree))) == SCLASS_COMMON
 	&& ST_is_thread_private(ST_base(WN_st(wn_tree)))
+#ifdef KEY
+	// Bug 6652 - after OMP_Prelower (Rename_Threadprivate_COMMON), 
+	// thread private common variables are renamed and the
+	// new variables do not carry the thread_private property.
+	// Use the special symbol name here to catch that case.
+	// Perhaps, the other tests are redundant.
+	// FYI, call to Rename_Threadprivate_COMMON in OMP_Prelower
+	// was added at Pathscale.
+        || strncmp(ST_name(WN_st(wn_tree)), "__ppthd_common_", 15) == 0
+#endif
 	|| ST_is_thread_private(WN_st(wn_tree)))) {
       for (WN* wn = wn_tree; wn != NULL; wn = LWN_Get_Parent(wn)) {
 	if (WN_operator(wn) == OPR_DO_LOOP) {
@@ -2275,6 +2289,15 @@ extern void IPA_LNO_Unevaluate_Call_Infos(WN* func_nd)
 extern void Auto_Parallelization(PU_Info* current_pu, 
 				 WN* func_nd)
 {
+#ifdef KEY // bug 7259
+  static INT pu_num = -1;
+  pu_num ++;
+  if (pu_num > LNO_Dummy_Skip_After ||
+      pu_num < LNO_Dummy_Skip_Before ||
+      pu_num == LNO_Dummy_Skip_Equal)
+    return;
+#endif
+
   extern BOOL running_cross_loop_analysis;
 
   if (!(Run_autopar && LNO_Run_AP > 0) 

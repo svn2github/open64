@@ -1,4 +1,9 @@
 //-*-c++-*-
+
+/*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
 // ====================================================================
 // ====================================================================
 //
@@ -63,6 +68,7 @@
 #include "opt_alias_interface.h"
 #include "opt_wn.h"
 #include "opt_du.h"
+#include "erglob.h"
 #include "opt_htable.h"
 #include "wodriver.h"
 

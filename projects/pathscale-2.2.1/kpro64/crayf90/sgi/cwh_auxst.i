@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -99,6 +99,19 @@ typedef struct alist {
  - stptr:   pointer back to the ST, to clean up.
  - altentry:list of alternate entry point STs (DST) associated with procedure.
  - comlist: list of STs of elements of common block, associated with COMMON ST. (DST)   
+ ifdef KEY  * Bug 5271 * 
+ - pu_comlist: whereas comlist accumulates variables belonging to a common
+            block across all program units, this contains only members known to
+	    the current program unit. Before this fix, the Dwarf ST also
+	    accumulated members, so the last program unit in the compilation
+	    would know about members that only appeared in other compilation
+	    units (bad when "x" means two different things in two different
+	    instances of a particular common block!)
+	    Clearing "comlist" at the beginning of each new program
+	    unit fixed the Dwarf ST problem, but caused the WHIRL st to repeat
+	    a member for each program unit even if that member was identical
+	    in every program unit.
+ endif  * KEY Bug 5271 * 
  - nlist:   list of STs which comprise this namelist.
  - rlist:   list of return varbl STs for a alternate entry point's shared temp 
  - splitlist:	list of child STs if this parent common block is split
@@ -121,6 +134,9 @@ typedef struct auxst {
 	ST      * stptr    ;
 	LIST      altentry ;	
 	LIST      comlist  ;
+#ifdef KEY /* Bug 5271 */
+	LIST      pu_comlist  ;
+#endif /* KEY Bug 5271 */
 	LIST      nlist    ;
 	LIST      rlist    ;
 	LIST	  splitlist;
@@ -158,6 +174,9 @@ typedef struct auxst {
 #define AUXST_Stem(o)         ((o)->stem) 
 
 #define AUXST_Commons(o)      ((LIST *) &(o)->comlist) 
+#ifdef KEY /* Bug 5271 */
+#define AUXST_PU_Commons(o)      ((LIST *) &(o)->pu_comlist) 
+#endif /* KEY Bug 5271 */
 #define AUXST_Namelist(o)     ((LIST *) &(o)->nlist)
 #define AUXST_RtnTemps(o)     ((LIST *) &(o)->rlist)
 #define AUXST_SplitCommons(o) ((LIST *) &(o)->splitlist)

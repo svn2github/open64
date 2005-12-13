@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -143,6 +143,11 @@ extern void __profile_icall(void * pu_handle, int icall_id, void * called_fun_ad
   // Profile routines for value
   extern void __profile_value_init(void *pu_handle, int num_values);
   extern void __profile_value(void * pu_handle, int inst_id, INT64 value );
+
+  // Profile routines for value_fp_bin
+  extern void __profile_value_fp_bin_init(void *pu_handle, int num_values);
+  extern void __profile_value_fp_bin(void * pu_handle, int inst_id, 
+				     double value_fp_0, double value_fp_1 );
 #endif
 
 // PU level cleanup 

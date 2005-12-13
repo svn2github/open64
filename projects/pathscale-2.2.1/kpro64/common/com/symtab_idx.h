@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -58,7 +62,7 @@ typedef mUINT32 ST_ATTR_IDX;		// idx to st_attr table
 typedef mUINT32 BLK_IDX;		// idx to block table
 typedef mUINT32 INITO_IDX;		// idx to initialized object table
 typedef mUINT32 INITV_IDX;		// idx to initial value table
-typedef mUINT32 STR_IDX;		// idx to string table
+typedef mUINT64 STR_IDX;		// idx to string table
 typedef mUINT8  SYMTAB_IDX;		// idx to scope array
 
 // Reserved values for each index type.

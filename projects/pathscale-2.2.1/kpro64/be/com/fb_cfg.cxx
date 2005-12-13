@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -945,6 +945,15 @@ FB_CFG::Walk_WN_statement( WN *wn )
 #ifdef KEY
   case OPR_PREFETCH:
   case OPR_PREFETCHX:
+    break;
+  case OPR_REGION:
+    {
+      FB_NODEX nx_body = New_node();
+      if ( FB_NODEX_VALID( Curr() ) )
+	Add_edge( Curr(), nx_body );
+      Set_curr( nx_body );
+      Walk_WN_statement( WN_region_body(wn) );
+    }
     break;
 #endif
 

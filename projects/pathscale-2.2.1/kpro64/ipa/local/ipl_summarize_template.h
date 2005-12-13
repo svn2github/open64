@@ -1,5 +1,6 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+/* -*- c++ -*-
+ *
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1059,7 +1060,57 @@ inline void get_parent_if ( WN ** p, WN ** b )
   *p = parent;
   *b = block;
 }
+
+// Return the loop-nesting containing the node w. If it is inside 1 loop,
+// return 1, and ..
+static inline INT get_loopnest (WN * w)
+{
+  WN * parent = LWN_Get_Parent (w);
+  INT loopnest = 0;
+
+  while (parent)
+  {
+    switch (WN_operator (parent))
+    {
+	case OPR_DO_LOOP:
+	case OPR_WHILE_DO:
+	case OPR_DO_WHILE:
+	    loopnest++;
+	    break;
+        default:
+	    break;
+    }
+    parent = LWN_Get_Parent (parent);
+  }
+
+  return loopnest;
+}
 #endif
+
+static BOOL
+is_variable_dim_array(TY_IDX ty)
+{
+    if (TY_kind(ty) == KIND_POINTER)
+	ty = TY_pointed(ty);
+
+    if (TY_kind(ty) == KIND_ARRAY) {
+	ARB_ITER arb_iter = Make_arb_iter (ARB_HANDLE (TY_arb(ty)));
+        UINT dim = ARB_dimension (arb_iter);
+        for (UINT i = 0; i < dim; ++i) {
+            ARB_HANDLE arb (arb_iter);
+            if (!(ARB_const_lbnd(arb) && ARB_const_stride(arb)))
+		return TRUE;
+            else if (!ARB_const_ubnd(arb)) {
+		if (ARB_ubnd_var(arb) != 0)  // this is not C's array pointers written as a[]
+	            return TRUE;
+	    }
+            ++arb_iter;
+	}
+	return is_variable_dim_array(TY_etype(ty));
+    }
+
+    return FALSE;
+}
 
 //-----------------------------------------------------------
 // summary procedure node
@@ -1072,7 +1123,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     SUMMARY_PROCEDURE *proc = New_procedure ();
     WN* w2, *alt_wn;
     ST *st = WN_st (w);
+#ifndef KEY
     INT loopnest = 0;
+#endif // !KEY
     INT pu_first_formal_idx = 0;
     INT pu_last_formal_idx = 0;
     INT pu_first_actual_idx = 0;
@@ -1085,7 +1138,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     BOOL Has_local_pragma = FALSE;
 #ifdef KEY
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback;
-    SUMMARY_CALLSITE* icall_site[100];
+    INT icall_site[100];
     INT icall_cnt = 0;
 #else
     BOOL Do_reorder=!Do_Altentry && Cur_PU_Feedback&& IPA_Enable_Reorder;//and other things, such as Feedback_Enabled[PROFILE_PHASE_BEFORE_LNO]
@@ -1251,7 +1304,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	case OPR_DO_LOOP:
 	case OPR_WHILE_DO:
 	case OPR_DO_WHILE:
+#ifndef KEY // disable buggy loopnest computation
 	    loopnest++;
+#endif // !KEY
 	    if(Do_reorder){
 	    	FB_Info_Loop fb_info=Cur_PU_Feedback->Query_loop( w2);
 		loop_count=(UINT64) fb_info.freq_iterate.Value();
@@ -1334,7 +1389,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		    probability = if_map[parent].not_taken;
 	      }
 	    }
-            Process_callsite (w2, proc->Get_callsite_count (), loopnest, probability);
+            Process_callsite (w2, proc->Get_callsite_count (), get_loopnest (w2), probability);
 #else
             Process_callsite (w2, proc->Get_callsite_count (), loopnest);
 #endif
@@ -1346,7 +1401,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		WN_operator(w2) == OPR_ICALL ){
 	      FB_FREQ freq = Cur_PU_Feedback->Query(w2, FB_EDGE_CALL_INCOMING);
 	      if( freq.Known() ){
-		icall_site[icall_cnt] = Get_callsite( Get_callsite_idx() );
+		icall_site[icall_cnt] =  Get_callsite_idx();
 		icall_cnt++;
 	      }
 	    }
@@ -1360,7 +1415,11 @@ SUMMARIZE<program>::Process_procedure (WN* w)
         } 
 
 	case OPR_INTRINSIC_CALL:
+#ifdef KEY
+	    Process_callsite (w2, proc->Get_callsite_count (), get_loopnest (w2));
+#else
 	    Process_callsite (w2, proc->Get_callsite_count (), loopnest);
+#endif
 	    proc->Incr_callsite_count ();
 	    Direct_Mod_Ref = TRUE;
 	    break;
@@ -1426,6 +1485,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 // Set mod_ref for fortran io statements like 'write', otherwise a routine
 // just containing a 'write' can get deleted by ipa-dce
 	    Direct_Mod_Ref = TRUE;
+	    proc->Set_has_side_effect ();
 #endif
 	    Process_IO(w2);
 	    break;
@@ -1461,7 +1521,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		    proc->Set_has_formal_pragma();
 	      
 		if (PU_has_alloca (Get_Current_PU ()) && 
-			is_variable_dim_array(ST_type(st)))
+		    is_variable_dim_array(ST_type(st)))
 		    // Local VLAs with PRAGMA
 		    proc->Set_has_formal_pragma();
 
@@ -1513,6 +1573,10 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 	    if ((WN_pragma(w2) == WN_PRAGMA_DOACROSS) ||
 		(WN_pragma(w2) == WN_PRAGMA_PARALLEL_DO) ||
 		(WN_pragma(w2) == WN_PRAGMA_PARALLEL_BEGIN) ||
+#ifdef KEY
+		// bug 4543
+		(WN_pragma(w2) == WN_PRAGMA_THREADPRIVATE) ||
+#endif // KEY
 		(WN_pragma(w2) == WN_PRAGMA_PARALLEL_SECTIONS)) 
 		proc->Set_has_noinline_parallel_pragma();
 
@@ -1522,8 +1586,39 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		Has_pdo_pragma = TRUE;
 
 	    if (WN_has_pragma_with_side_effect(w2))
+#ifdef KEY
+                proc->Set_has_pragma_side_effect();
+#else
                 proc->Set_has_side_effect();
+#endif
 
+#ifdef KEY
+            if (WN_pragma(w2) == WN_PRAGMA_THREADPRIVATE)
+            {
+              ST * thdprv_st = ST_ptr (WN_pragma_arg2(w2));
+              WN_pragma_arg2(w2) = Get_symbol_index (thdprv_st);
+              Record_global_ref (w2, thdprv_st, OPR_PRAGMA, TRUE);
+
+              // increment modcount
+              INT index = Global_hash_table->Find (thdprv_st);
+              Is_True (index > 0, ("Invalid global symbol index"));
+              SUMMARY_GLOBAL * global = Get_global (index - 1);
+              global->Set_dmod ();
+              global->Inc_modcount ();
+              Get_symbol (global->Get_symbol_index ())->Set_modcount ();
+            }
+
+            // Consider any global symbol in pragma node
+            if (st &&
+                ST_level (st) == GLOBAL_SYMTAB &&
+                ST_class (st) == CLASS_VAR)
+            {
+              // bugs 4428, 5290: summarize the symbol, and increment its
+              // ref count so that IPA DVE does not remove it.
+              Record_global_ref (w2, st, OPR_PRAGMA, TRUE);
+            }
+#endif
+              
 	    // now, inline pragmas are part of the function body
 	    Process_pragma_node (w2);
 	    break;
@@ -1582,7 +1677,9 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 		    case OPC_DO_LOOP:
 		    case OPC_WHILE_DO:
 		    case OPC_DO_WHILE:
+#ifndef KEY // disable buggy loopnest computation
 			loopnest--;
+#endif // !KEY
 			if(Do_reorder){
 			    loop_count_stack->Pop();
 			}
@@ -1615,7 +1712,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
     FmtAssert( icall_cnt < sizeof(icall_site) / sizeof(icall_site[0]),
 	       ("icall array is too small.") );
     for( int i = 0; i < icall_cnt; i++ ){
-      SUMMARY_CALLSITE* icall_info = icall_site[i];
+      SUMMARY_CALLSITE* icall_info = Get_callsite (icall_site[i]);
       SUMMARY_CALLSITE* callsite = New_callsite ();
 
       callsite->Set_callsite_id( proc->Get_callsite_count()  );
@@ -1950,31 +2047,6 @@ SUMMARIZE<program>::Process_callsite (WN *w, INT id, INT loopnest, float probabi
 
 } // SUMMARIZE::Process_callsite
 
-static BOOL
-is_variable_dim_array(TY_IDX ty)
-{
-    if (TY_kind(ty) == KIND_POINTER)
-	ty = TY_pointed(ty);
-
-    if (TY_kind(ty) == KIND_ARRAY) {
-	ARB_ITER arb_iter = Make_arb_iter (ARB_HANDLE (TY_arb(ty)));
-        UINT dim = ARB_dimension (arb_iter);
-        for (UINT i = 0; i < dim; ++i) {
-            ARB_HANDLE arb (arb_iter);
-            if (!(ARB_const_lbnd(arb) && ARB_const_stride(arb)))
-		return TRUE;
-            else if (!ARB_const_ubnd(arb)) {
-		if (ARB_ubnd_var(arb) != 0)  // this is not C's array pointers written as a[]
-	            return TRUE;
-	    }
-            ++arb_iter;
-	}
-	return is_variable_dim_array(TY_etype(ty));
-    }
-
-    return FALSE;
-}
-
 
 // process formal parameters
 template <PROGRAM program>
@@ -2087,6 +2159,14 @@ SUMMARIZE<program>::Process_actual (WN* w)
           actual->Set_ty(parm_ty);
           if (OPERATOR_has_sym(opr)) {
             actual->Set_symbol_index(Get_symbol_index(WN_st(kid))); 
+#ifdef KEY
+          // bug 6229: Process any constant string instead of 
+          // treating it as an indirect ref.
+          ST * actual_st = WN_st (kid);
+          if (opr == OPR_LDA && ST_class (actual_st) == CLASS_CONST &&
+              TY_kind (ST_type (actual_st)) == KIND_ARRAY)
+            w = WN_kid0(w);
+#endif
           }
         }
       }
@@ -2537,6 +2617,12 @@ SUMMARIZE<program>:: Record_struct_access(WN *wn, mUINT64 loop_count)
             }// fill in all such pointer_tys
         }
     }
+
+#ifdef KEY
+    Is_True(fld_id <= cur_summary->Get_flatten_flds(),
+	    ("Record_struct_access: illegal field ID"));
+#endif
+
     // process wn, Inc access_info to cur_summary
     cur_summary->Inc_fld_count(fld_id, loop_count);
     return;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -157,6 +157,9 @@ CGTARG_Is_OP_Barrier(OP *op)
 #else
     return (WN_Asm_Clobbers_Mem(ASM_OP_wn(asm_info)));
 #endif
+  } else if (OP_code(op) == TOP_fwd_bar ||	// bug 4850
+	     OP_code(op) == TOP_bwd_bar) {
+    return TRUE;
   } else
     return FALSE;
 }

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1994,6 +1998,20 @@ cwh_io_analyse_io_item(WN *tree, IMPDO_INFO *impdo_set, int mode)
        new_impdo_set = (IMPDO_INFO *) malloc(sizeof(IMPDO_INFO));
        Impdo_index(new_impdo_set) = WN_st(WN_index(tree));
        Impdo_next(new_impdo_set) = impdo_set;
+
+#ifdef KEY /* Bug 3279 */
+       // Runtime library can interpret the implied-do loop internally only if
+       // the indices are type integer*4 (see "struct dovarlist" in
+       // dopexfer.c or "struct ioarray_entry" member "dovar" in f90io.h.)
+       {
+	 if (MTYPE_I4 != TY_mtype(WN_type(WN_index(tree))) ||
+	     MTYPE_I4 != WN_rtype(WN_start(tree)) ||
+	     MTYPE_I4 != WN_rtype(WN_end(tree)) ||
+	     MTYPE_I4 != WN_rtype(WN_step(tree))) {
+	   return TRUE;
+	   }
+       }
+#endif /* KEY Bug 3279 */
        
        visited = ST_auxst_visited(index);
        if (visited) {

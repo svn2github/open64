@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -111,9 +111,11 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cw
 #include "cwh_stab.h"
 #include "cwh_stab.i"
 #include "cwh_dst.h"
+#ifdef KEY
+#include "cwh_directive.h"
+#endif
 #include "cwh_mkdepend.h"
 #include "sgi_cmd_line.h"
-
 /*===================================================
  *
  * fei_next_func_idx
@@ -345,7 +347,7 @@ fei_proc_def(char         *name_string,
   Set_PU_prototype (pu, ty);
   Set_PU_f90_lang (pu);
 
-#ifdef KEY
+#ifdef TARG_X8664
   if (Check_FF2C_Script(name_string, 1))
     Set_PU_ff2c_abi(pu);
 #endif  
@@ -883,6 +885,16 @@ fei_object(char * name_string,
       st = cwh_auxst_cri_pointee(ST_base(ptr),0);
     } else {
       st = cwh_stab_seen_common_element(cast_to_ST(p->item),off,name_string);
+#ifdef KEY /* Bug 5271 */
+      /* We're about to skip the creation of a new ST for this common variable
+       * because it has already appeared in the same common block in a
+       * previous program unit. Make sure we emit a Dwarf symbol for it in
+       * the current program unit.
+       */
+      if (st) {
+	cwh_auxst_add_item(ST_base(st),st,l_PU_COMLIST) ;
+	}
+#endif /* KEY Bug 5271 */
     }
     
     if (st) {
@@ -1183,6 +1195,13 @@ fei_object(char * name_string,
     if (IS_COMMON(ST_base(st))) {
       if (sym_class != CRI_Pointee)
 	cwh_auxst_add_item(ST_base(st),st,l_COMLIST) ;
+#ifdef KEY /* Bug 5271 */
+	/* For a particular item which appears in the same common block in more
+	 * than one program unit, this code executes only the first time. The
+	 * remaining occurrences are handled elsewhere.
+	 */
+	cwh_auxst_add_item(ST_base(st),st,l_PU_COMLIST) ;
+#endif /* KEY Bug 5271 */
 
     } else if (eq) {
       cwh_auxst_add_item(ST_base(st),st,l_EQVLIST);
@@ -1279,6 +1298,10 @@ fei_seg (char        * name_string,
       if (test_flag(flag_bits,FEI_SEG_THREADPRIVATE)) {
 	Set_ST_is_thread_private(st);
         Set_ST_not_gprel(st);
+// Bug 3836
+#ifdef KEY
+        cwh_directive_set_PU_flags(FALSE);
+#endif
       }
 
       if (test_flag(flag_bits,FEI_SEG_MODULE)) 
@@ -1296,7 +1319,17 @@ fei_seg (char        * name_string,
       if (test_flag(flag_bits,FEI_SEG_THREADPRIVATE)) {
 	Set_ST_is_thread_private(st);
         Set_ST_not_gprel(st);
+// Bug 3836
+#ifdef KEY
+        cwh_directive_set_PU_flags(FALSE);
+#endif
       }
+#ifdef KEY /* Bug 5271 */
+      /* Start accumulating a new list of variables appearing in this common
+       * block in this program unit.
+       */
+      cwh_clear_PU_common_list(st);
+#endif /* KEY Bug 5271 */
     }
 
     /* add to list of COMMONs requiring DST info */
@@ -1455,6 +1488,9 @@ fei_namelist(char  * name_string,
   cwh_auxst_clear(st);
   ST_Init(st, Save_Str(name_string), CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL, ty);
   Set_ST_is_temp_var(st);
+#ifdef KEY
+  Set_ST_is_namelist(st);
+#endif
   Set_ST_ofst(st, 0);
 
   p = cwh_stab_packet(cast_to_void(st),is_ST) ;
@@ -2217,7 +2253,13 @@ cwh_stab_split_common(ST * c, FIELDS fp_table, INT32 nf)
 	                           FIELDS_last_offset(i-1)); 
 	    cwh_stab_emit_split(nc,fp_table,first, i-1);
 	    cwh_auxst_add_item(c,nc, l_SPLITLIST);
-	    if (ST_is_thread_private(c)) Set_ST_is_thread_private(nc);
+	    if (ST_is_thread_private(c)){
+              Set_ST_is_thread_private(nc);
+// Bug 3836
+#ifdef KEY
+              cwh_directive_set_PU_flags(FALSE);
+#endif
+            }
 	    first = i;
 	    first_offset = FIELDS_first_offset(i);
 	    full_split_last_array = -1;
@@ -2371,8 +2413,13 @@ cwh_stab_split_ST(ST * c, INT64 low_off, INT64 high_off)
 
   Set_ST_is_split_common(st) ;
 
-  if (ST_is_thread_private(c)) 
+  if (ST_is_thread_private(c)) {
     Set_ST_is_thread_private(st);
+// Bug 3836
+#ifdef KEY
+    cwh_directive_set_PU_flags(FALSE);
+#endif
+  }
 
   Set_TY_split(Ty_Table[ST_type(st)]);
 
@@ -3036,7 +3083,7 @@ cwh_stab_mk_fn_0args(char *name, ST_EXPORT eclass,SYMTAB_IDX level,TY_IDX rty)
 
   Set_ST_ofst(st, 0);
 
-#ifdef KEY
+#ifdef TARG_X8664
   PU_IDX pu_idx = ST_pu(st);
   PU& pu_rec = Pu_Table[pu_idx];
   if (Check_FF2C_Script(name, 1))

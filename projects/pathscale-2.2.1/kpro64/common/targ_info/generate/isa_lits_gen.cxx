@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -198,8 +202,8 @@ void ISA_Create_Lit_Class(const char* name, LIT_CLASS_TYPE type, ...)
   va_list ap;
   LIT_RANGE range;
   bool is_signed = type == SIGNED;
-  long long min = is_signed ? LONGLONG_MAX : ULONGLONG_MAX;
-  long long max = is_signed ? LONGLONG_MIN : 0;
+  long long min = is_signed ? LONG_LONG_MAX : ULONG_LONG_MAX;
+  long long max = is_signed ? LONG_LONG_MIN : 0;
   int num_ranges = 0;
 
   // Find the smallest min and largest max for all ranges, and

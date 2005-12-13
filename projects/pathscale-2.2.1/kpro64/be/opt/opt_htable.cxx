@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -156,6 +156,60 @@ CODEREP::Is_ivar_volatile( void ) const
   return FALSE;
 }
 
+#ifdef KEY
+// ====================================================================
+// Check if the region node BB contains a WN_PRAGMA_LOCAL pragma for the symbol
+// ====================================================================
+static BOOL Symbol_mp_local_in_region(BB_NODE *bb, 
+				      OPT_STAB *opt_stab, 
+				      AUX_ID aux_id) {
+  Is_True(bb->Kind() == BB_REGIONSTART,
+  	  ("Symbol_mp_local_in_region: bad bb argument"));
+  WN *wn;
+  ST *st;
+  // try whirl
+  STMT_ITER stmt_iter;
+  FOR_ALL_ELEM(wn, stmt_iter, Init(bb->Firststmt(), bb->Laststmt())) {
+    if (WN_opcode(wn) == OPC_PRAGMA && 
+	((WN_PRAGMA_ID)WN_pragma(wn) == WN_PRAGMA_LOCAL ||
+	 (WN_PRAGMA_ID)WN_pragma(wn) == WN_PRAGMA_FIRSTPRIVATE ||
+	 (WN_PRAGMA_ID)WN_pragma(wn) == WN_PRAGMA_LASTLOCAL)) {
+      st = WN_st(wn);
+      if (ST_sclass(st) == SCLASS_FORMAL && !ST_is_value_parm(st)) {
+        if (aux_id == opt_stab->Find_vsym_with_base(st))
+	  return TRUE;
+      }
+      else {
+	if (aux_id == opt_stab->Find_sym_with_st_and_ofst(st, WN_pragma_arg1(wn)))
+	  return TRUE;
+      }
+    }
+  }
+  // try stmtrep
+  STMTREP     *stmt;
+  STMTREP_ITER srep_iter(bb->Stmtlist());
+  FOR_ALL_NODE(stmt, srep_iter, Init()) {
+    if ( stmt->Op() == OPC_PRAGMA ) {
+      wn = stmt->Orig_wn();
+      if ((WN_PRAGMA_ID)WN_pragma(wn) == WN_PRAGMA_LOCAL ||
+	  (WN_PRAGMA_ID)WN_pragma(wn) == WN_PRAGMA_FIRSTPRIVATE ||
+	  (WN_PRAGMA_ID)WN_pragma(wn) == WN_PRAGMA_LASTLOCAL) {
+        st = WN_st(wn);
+        if (ST_sclass(st) == SCLASS_FORMAL && !ST_is_value_parm(st)) {
+          if (aux_id == opt_stab->Find_vsym_with_base(st))
+	    return TRUE;
+        }
+        else {
+	  if (aux_id == opt_stab->Find_sym_with_st_and_ofst(st, WN_pragma_arg1(wn)))
+	    return TRUE;
+	}
+      }
+    }
+  }
+  return FALSE;
+}
+#endif
+
 /* CVTL-RELATED start (correctness) */
 static BOOL Sign_extended(MTYPE dtyp, MTYPE dsctyp)
 {
@@ -253,6 +307,11 @@ CODEREP::Copy(const CODEREP &cr)
       Set_asm_input_dsctype(cr.Asm_input_dsctype());
 #endif
       break;
+#ifdef KEY
+    case OPR_PURE_CALL_OP:
+      Set_call_op_aux_id (cr.Call_op_aux_id());
+      break;
+#endif
     }
   }
   else if (kind == CK_IVAR) {
@@ -455,6 +514,12 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
 	if (Intrinsic() != cr->Intrinsic())
 	  return FALSE;
 	break;
+#ifdef KEY
+      case OPR_PURE_CALL_OP:
+        if (Call_op_aux_id() != cr->Call_op_aux_id())
+	  return FALSE;
+	break;
+#endif
       }
       return TRUE;
     } else
@@ -512,6 +577,10 @@ CODEREP::Match(CODEREP* cr, INT32 mu_vsym_depth, OPT_STAB *sym)
 	TY_IDX ivar_addr_ty = Ilod_base_ty();
 	TY_IDX cr_addr_ty = cr->Ilod_base_ty();
 	if (ivar_addr_ty != cr_addr_ty) {
+#ifdef KEY // bug 3621
+	  if (Dsctyp() == MTYPE_BS || cr->Dsctyp() == MTYPE_BS)
+	    return FALSE;
+#endif
 	  if (! ivar_addr_ty || ! cr_addr_ty)
 	    return FALSE;
 	  if (TY_kind(ivar_addr_ty) != KIND_POINTER)
@@ -733,6 +802,11 @@ CODEREP::Print_node(INT32 indent, FILE *fp) const
     case OPR_ASM_INPUT:
       fprintf(fp, " opnd:%d", Asm_opnd_num());
       break;
+#ifdef KEY
+    case OPR_PURE_CALL_OP:
+      fprintf(fp, " %d", Call_op_aux_id());
+      break;
+#endif
     }
     break;
   case CK_IVAR:
@@ -913,6 +987,9 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
   case OPR_INTRINSIC_CALL:
   case OPR_INTRINSIC_OP:
   case OPR_TAS:
+#ifdef KEY
+  case OPR_PURE_CALL_OP:
+#endif
     return MTYPE_UNKNOWN;
 
   case OPR_CEIL:
@@ -1791,8 +1868,14 @@ CODEMAP::Add_bin_node_and_fold(OPCODE op,
       do_canonicalization = !Canonicalize_compare(cr, bb, &modified);
       return Hash_Op(cr, do_canonicalization);
     }
-    else
+    else {
+#ifdef TARG_X8664 // bug 4518
+      if (crtmp->Kind() == CK_CONST && crtmp->Dtyp() == MTYPE_U4 && 
+	  (MTYPE_signed(kid0->Dtyp()) || MTYPE_signed(kid1->Dtyp()))) 
+	return Add_const(MTYPE_I4, crtmp->Const_val());
+#endif
       return crtmp;
+    }
   }
   if (WOPT_Enable_Canon_Compare && _phase == MAINOPT_PHASE && bb)
     do_canonicalization = !Canonicalize_compare(cr, bb, &modified);
@@ -1876,6 +1959,10 @@ CODEMAP::Canon_add_sub(WN       *wn,
   if (opr == OPR_ADD)
     ccr->Set_scale(ccr->Scale() + kid1.Scale());
   else ccr->Set_scale(ccr->Scale() - kid1.Scale());
+#ifdef KEY // bug 5557
+  if (MTYPE_byte_size(WN_rtype(wn)) == 4)
+    ccr->Set_scale(ccr->Scale() << 32 >> 32);
+#endif
   if (kid1.Tree() == NULL) 
     return propagated;
   if (ccr->Tree() == NULL) {
@@ -2022,6 +2109,9 @@ CODEMAP::Canon_cvt(WN       *wn,
     return propagated;
 
   if ( WOPT_Enable_Cvt_Folding && 
+#ifdef TARG_X8664 // bug 5851
+       ! Is_Target_32bit() &&
+#endif
       (op == OPC_I8U4CVT || op == OPC_U8U4CVT) && 
       WN_operator(kid) == OPR_LSHR ) {
     WN *bits = WN_kid1(kid);
@@ -3140,6 +3230,9 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 	    oper == OPR_ICALL ||
 	    oper == OPR_INTRINSIC_CALL ||
 	    oper == OPR_INTRINSIC_OP ||
+#ifdef KEY
+	    oper == OPR_PURE_CALL_OP ||
+#endif
 	    oper == OPR_FORWARD_BARRIER ||
 	    oper == OPR_BACKWARD_BARRIER) {
     if ( WOPT_Enable_Combine_Operations ) {
@@ -3164,7 +3257,17 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     if (oper == OPR_INTRINSIC_CALL ) {
       cr->Set_intrinsic(WN_intrinsic(wn));
     }
-    else if ( oper == OPR_INTRINSIC_OP ) {
+    else if ( oper == OPR_INTRINSIC_OP
+#ifdef KEY
+	      || oper == OPR_PURE_CALL_OP
+#endif
+            ) {
+
+#ifdef KEY
+      if (oper == OPR_PURE_CALL_OP)
+        cr->Set_call_op_aux_id (WN_st_idx(wn));
+      else
+#endif
       cr->Set_intrinsic(WN_intrinsic(wn));
       // pv324295
       if (propagated) { // may have propagated all constants to the INTR_OP
@@ -3322,6 +3425,11 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 	cr->Set_op_bit_offset(WN_bit_offset(wn));
 	cr->Set_op_bit_size(WN_bit_size(wn));
 	break;
+#ifdef KEY
+      case OPR_PURE_CALL_OP:
+	cr->Set_call_op_aux_id (WN_st_idx(wn));
+        break;
+#endif
     }
 
     BOOL do_canonicalization = TRUE;
@@ -3680,6 +3788,22 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
       opt_stab->Du_set_coderep(du, Lhs());
     }
 
+#ifdef KEY // bug 5131: mark mp-shared variables defined in MP region 
+    if (htable->Phase() != MAINOPT_PHASE && PU_has_mp(Get_Current_PU())) {
+      BOOL is_mp_local = FALSE;
+      if (Bb()->MP_region()) {
+	BB_NODE *regionbb = Bb();
+	if (regionbb->Kind() == BB_REGIONSTART) 
+	  is_mp_local = Symbol_mp_local_in_region(regionbb, opt_stab, Lhs()->Aux_id());
+	while (! is_mp_local && 
+	       (regionbb = htable->Cfg()->Find_enclosing_parallel_region_bb(regionbb)) != NULL)
+	  is_mp_local = Symbol_mp_local_in_region(regionbb, opt_stab, Lhs()->Aux_id());
+      }
+      if (! is_mp_local)
+	Lhs()->Set_mp_shared();
+    }
+#endif
+
     opt_stab->Push_coderep(Lhs()->Aux_id(), Lhs());
 
     if (Rhs()->Kind() == CK_VAR &&
@@ -3963,7 +4087,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
   case OPR_PRAGMA:
   case OPR_XPRAGMA:
     copy_wn = WN_CopyNode(Wn());
-    WN_map_id(copy_wn) = WN_map_id(Wn());
+    WN_set_map_id(copy_wn, WN_map_id(Wn()));
     Set_orig_wn(copy_wn);
     return;
 
@@ -3975,7 +4099,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
   case OPR_PREFETCH:
     // pre-allocate the Prefetch wn
     copy_wn = WN_CopyNode(Wn());
-    WN_map_id(copy_wn) = WN_map_id(Wn());
+    WN_set_map_id(copy_wn, WN_map_id(Wn()));
     Set_prefetch_wn(copy_wn);
     // update the pf_pointer to point to the STMTREP
     // opt_stab->Update_pf_list(Wn(), this);
@@ -4142,7 +4266,9 @@ CODEREP::Get_ivar_vsym(void) const
 
     // search the chi list
     Is_True(OPERATOR_is_scalar_istore (Ivar_defstmt()->Opr()) ||
-	    Ivar_defstmt()->Opr() == OPR_MSTORE, ("IVAR not defined by ISTORE/MSTORE."));
+            OPERATOR_is_scalar_store (Ivar_defstmt()->Opr()) ||
+	    Ivar_defstmt()->Opr() == OPR_MSTORE, 
+	    ("IVAR not defined by ISTORE/MSTORE/STID."));
     CHI_LIST_ITER chi_iter;
     CHI_NODE *cnode;
     CHI_LIST *chi_list = Ivar_defstmt()->Chi_list();

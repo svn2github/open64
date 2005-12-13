@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -124,7 +124,11 @@ _lmessage(int errn, char *severity, va_list args)
 
 	if (flmn < BASE) {
 		mcnm	= "sys";
+#ifdef KEY /* Bug 4452 */
+		smsg	= "UNRECOVERABLE error on system request\nlib-%d: %s";
+#else /* KEY Bug 4452 */
 		smsg	= "UNRECOVERABLE error on system request";
+#endif /* KEY Bug 4452 */
 #ifdef	_UNICOS
 		/*
 		 * Provide a back-up error message for those errors
@@ -145,6 +149,13 @@ _lmessage(int errn, char *severity, va_list args)
 		 */
 
 		bmsg	= strerror(flmn);
+#ifdef KEY /* Bug 4452 */
+		/* Write these messages and return, because we won't be able
+		 * to find flmn in the message catalog.
+		 */
+		fprintf(stderr, smsg, flmn, bmsg);
+		return;
+#endif /* KEY Bug 4452 */
 #endif
 	}
 	else
@@ -213,7 +224,23 @@ _lmessage(int errn, char *severity, va_list args)
 
 	/* Retrieve the raw message text */
 
+#ifdef KEY /* bug 6682 */
+	/* If we can't get the NLS message, print something lest the user
+	 * think that the boilerplate surrounding the missing message (e.g.
+	 * "Unit n not connected") is the real problem. Usual cause is a
+	 * C-coded "main" which hides the Fortran runtime "main".
+	 */
+	char *cgm_result;
+	if (((nl_catd) -1) == mcfd ||
+	  0 ==
+	    (cgm_result = catgetmsg(mcfd, NL_MSGSET, flmn, &mbuf[1], MAXMLN)) ||
+	  0 == *cgm_result) {
+	  strcpy(mbuf,
+	    "\nUnable to find error message (check NLSPATH, file lib.cat)");
+	}
+#else /* KEY bug 6682 */
 	(void) catgetmsg(mcfd, NL_MSGSET, flmn, &mbuf[1], MAXMLN);
+#endif /* KEY bug 6682 */
 
 	/* Edit the message */
 

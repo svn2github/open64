@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -55,8 +59,40 @@
 #endif
 #include "externals.h"
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_getcwd(char *path, pathf90_i4 *status, int len)
+{
+	char	*p;
+	char	pathname[MAXPATHLEN];
+	pathf90_i4 junk;
+	status = (0 == status) ? (&junk) : status;
+
+/* Bug 3349: Modern Unix should have 2-arg getcwd; if the target OS is
+ * unexpected, the code should fail instead of silently compiling with
+ * neither getwd nor getcwd .
+ */
+#  ifdef __linux
+	p = getcwd(pathname,MAXPATHLEN);
+#  else
+#    error "Check function getwd/getcwd signature"
+#  endif
+
+	b_char(pathname, path, len);
+	if (p)
+		return(*status = 0);
+	else
+		return(*status = errno);
+}
+
+#else
+
 extern long
 getcwd_(char *path, int len)
+
 {
 	char	*p;
 	char	pathname[MAXPATHLEN];
@@ -91,3 +127,5 @@ getcwd_(char *path, int len)
 		return(errno);
 #endif
 }
+
+#endif /* KEY Bug 1683 */

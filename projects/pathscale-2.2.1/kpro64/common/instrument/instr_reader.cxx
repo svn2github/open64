@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -62,7 +62,7 @@
 #include "instr_memory.h"
 
 template <class _Key> struct hash { };
-struct hash<UINT64> {
+template <> struct hash<UINT64> {
   size_t operator()(const UINT64 x)const{return (size_t)x;}
 };
 
@@ -221,6 +221,11 @@ Get_PU_Profile(char *pu_name, char *src_fname, FILE *fp, char *fb_fname,
 #ifdef KEY
   pu_handle->pu_size = pu_hdr_entry.pu_size;
   pu_handle->runtime_fun_address = pu_hdr_entry.runtime_fun_address;
+  if (fb_fname) 
+  {
+    pu_handle->fb_name = (char *) malloc (strlen (fb_fname) + 1);
+    strcpy (pu_handle->fb_name, fb_fname);
+  }
 #endif
 
   read_invoke_profile(   pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
@@ -232,6 +237,7 @@ Get_PU_Profile(char *pu_name, char *src_fname, FILE *fp, char *fb_fname,
   read_call_profile(     pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
 #ifdef KEY
   read_value_profile(    pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
+  read_value_fp_bin_profile(pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
 #endif
   read_icall_profile(    pu_handle, pu_hdr_entry, pu_ofst, fp, fb_fname );
 
@@ -385,6 +391,23 @@ Get_Branch_Table_Size(PU_PROFILE_HANDLE pu_handle)
 }
 
 #ifdef KEY
+FB_Info_Value_FP_Bin& Get_Value_FP_Bin_Profile(PU_PROFILE_HANDLE pu_handle, 
+					       INT32 id)
+{
+  FB_Value_FP_Bin_Vector& Value_FP_Bin_Table = 
+    pu_handle->Get_Value_FP_Bin_Table();
+  return Value_FP_Bin_Table[id];
+}
+
+// Given a PU handle, returns the size of the branch table for that PU.
+
+size_t Get_Value_FP_Bin_Table_Size(PU_PROFILE_HANDLE pu_handle)
+{
+  FB_Value_FP_Bin_Vector& Value_FP_Bin_Table = 
+    pu_handle->Get_Value_FP_Bin_Table();
+  return Value_FP_Bin_Table.size();
+}
+
 FB_Info_Value& Get_Value_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id)
 {
   FB_Value_Vector& Value_Table = pu_handle->Get_Value_Table();
@@ -773,6 +796,24 @@ read_icall_profile(PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 }
 
 #ifdef KEY
+void read_value_fp_bin_profile( PU_PROFILE_HANDLE pu_handle, 
+				Pu_Hdr& pu_hdr_entry,
+				long pu_ofst, FILE *fp, char *fname )
+{
+  FB_Value_FP_Bin_Vector& Value_FP_Bin_Table = 
+    pu_handle->Get_Value_FP_Bin_Table();
+
+  Is_True (Value_FP_Bin_Table.empty (), ("pu_handle not empty"));
+
+  Value_FP_Bin_Table.resize(pu_hdr_entry.pu_num_value_fp_bin_entries);
+
+  FSEEK(fp, pu_ofst + pu_hdr_entry.pu_value_fp_bin_offset, 
+	SEEK_SET, ERR_POS, fname);
+ 
+  FREAD (&(Value_FP_Bin_Table.front ()), sizeof(FB_Info_Value_FP_Bin),
+	 pu_hdr_entry.pu_num_value_fp_bin_entries, fp, ERR_READ, fname);
+}
+
 void read_value_profile( PU_PROFILE_HANDLE pu_handle, Pu_Hdr& pu_hdr_entry,
 			 long pu_ofst, FILE *fp, char *fname )
 {

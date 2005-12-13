@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -107,6 +107,7 @@ extern void WFE_Set_ST_Addr_Saved (WN *);
 // Convert inplace target order words in 'buf' to host order. 'buf' is a two
 // word array. 
 extern void WFE_Convert_To_Host_Order (long *buf);
+extern nesting * wfe_nesting_stack, * wfe_cond_stack, * wfe_loop_stack, * wfe_case_stack;
 #endif
 
 #endif /* __cplusplus */

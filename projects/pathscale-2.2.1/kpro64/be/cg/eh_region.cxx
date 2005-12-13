@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,6 +48,8 @@
 
 #include <algorithm>
 #include <vector>
+#include "libelf/libelf.h"
+#include "dwarf_stuff.h"
 #include "defs.h"
 #include "errors.h"
 #include "tracing.h"
@@ -68,6 +70,9 @@
 #include "whirl2ops.h"
 #include "label_util.h"
 
+extern "C" {
+#include "pro_encode_nm.h"
+}
 
 /*
  * eh_region.cxx is responsible for building the EH range tables
@@ -497,6 +502,9 @@ struct IS_SIB_RANGE {
   }
 };
 
+#if defined(KEY) && defined(TARG_MIPS)
+static BOOL Is_Target_64bit (void) { return TRUE; }
+#endif
 
 static LABEL_IDX Duplicate_LABEL (LABEL_IDX oldi)
 {
@@ -589,6 +597,11 @@ void EH_Set_Has_Call(EH_RANGE* p)
 
 /*
  * EH_Prune_Range_list has four phases:
+ *  (0) ** KEY ** CG cflow (cflow_unreachable) may have deleted 
+ *      BBs which will result in removal of EHRANGEs. If such
+ *      a range is a parent of another range, fix the parent
+ *      pointer in the kid. (bug 5600)
+ *
  *  (1) The adjustment field of each range is set to the number
  *      of ranges prior to this one which contain no call and
  *      will therefore be eliminated.
@@ -613,6 +626,18 @@ struct HAS_NO_CALL_OR_HAS_NULL_OR_UNREACHABLE_LABEL {
     return true;
     }
 };
+
+#ifdef KEY
+struct FIX_PARENT
+{
+  bool operator() (EH_RANGE& r)
+  {
+    while (r.parent &&
+           HAS_NO_CALL_OR_HAS_NULL_OR_UNREACHABLE_LABEL() (*(r.parent)))
+      r.parent = r.parent->parent;
+  }
+};
+#endif // KEY
 
 struct SET_ADJUSTMENT {
   INT32 amount;
@@ -664,6 +689,9 @@ EH_Prune_Range_List(void)
     return;
   }
 
+#ifdef KEY
+  for_each  (first, last, FIX_PARENT());
+#endif // KEY
   for_each  (first, last, SET_ADJUSTMENT());
   for_each  (first, last, CLEAR_USED());
   for_each  (first, last, SET_ADJUSTMENT_TO_PARENT_ADJUSTMENT());
@@ -672,6 +700,12 @@ EH_Prune_Range_List(void)
                HAS_NO_CALL_OR_HAS_NULL_OR_UNREACHABLE_LABEL()), 
     last);
   for_each  (range_list.begin(), range_list.end(), ADJUST_PARENT());
+
+#if defined(KEY) && defined(Is_True_On)
+  for (INT i=0; i<range_list.size(); i++)
+    Is_True (&range_list[i] != range_list[i].parent,
+       ("EH_Prune_Range_List end: kid == parent"));
+#endif // Is_True_On
 } 
 
 struct COMPARE_RANGES {
@@ -833,6 +867,67 @@ inline INT16 parent_offset(INT32 i)
 
 
 #ifdef KEY
+// bug 3416: The exception ranges in exception table must be sorted in
+// increasing order of call-site address. The problem shows up when we
+// generate nested regions due to code like "if (foo()) bar();".
+// So flatten the regions here to remove overlap between parent and child
+// regions. As a side-effect, add new ranges resulting from the splits.
+// Assumption: a parent region is always listed after its children (even if
+// not immediately after). The caller of this function must, therefore, sort
+// the list before calling.
+// Transformation:
+// R1_begin:
+//    R2_begin:
+//    R2_end:
+// R1_end:
+//
+// R2_end - R2_begin  ===>    R2_begin - R1_begin
+// R1_end - R1_begin          R2_end - R2_begin
+//                            R1_end - R2_end (bug 3736)
+//
+// TODO: Check if the new regions created have any call, if not, don't
+// create, or delete the region.
+static void flatten_regions (void)
+{
+  vector<EH_RANGE> new_ranges;
+  int i=0;
+  while (i < range_list.size() - 1)
+  {
+    if (range_list[i].parent) 
+    {
+      int first_child, last_child;
+      first_child = last_child = i++;
+      // search for the parent
+      while (range_list[first_child].parent != &range_list[i])
+      {
+        if (range_list[i].parent == range_list[first_child].parent)
+	{
+          range_list[i].parent = NULL;
+	  last_child = i;
+	}
+	i++;
+      }
+      // 'i' has the parent
+      EH_RANGE new_range (range_list[i].rid);
+      new_range.start_label = range_list[last_child].end_label;
+      new_range.end_label = range_list[i].end_label;
+      new_range.end_bb = range_list[i].end_bb;
+      new_range.has_call = range_list[i].has_call; // not accurate
+      new_ranges.push_back (new_range);
+
+      // Update the parent now to end before the 1st child
+      range_list[i].end_label = range_list[first_child].start_label;
+      range_list[i].end_bb = Get_Label_BB (range_list[i].end_label);
+      range_list[first_child].parent = NULL;
+      i = first_child + 1; // start over
+    }
+    else i++;
+  }
+
+  for (vector<EH_RANGE>::iterator iter = new_ranges.begin();
+       iter != new_ranges.end(); ++iter)
+    range_list.add_range (*iter);
+}
 
 #include <map>
 using namespace std;
@@ -908,11 +1003,6 @@ Create_Type_Filter_Map (void)
   return ino;
 }
 
-#include <libelf.h>
-#include <libdwarf.h>
-extern "C" {
-#include <pro_encode_nm.h>
-}
 // This function returns the size of an LEB128 encoding of value. We do
 // not use the encoding however. We emit the unencoded value with the LEB128
 // directive.
@@ -1007,7 +1097,14 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
 	    if (next_sym < 0)
 	    	catch_all = false;
 	}
+
+	// If there is no landing pad for this region, there should not be
+	// a catch-all clause for it.
+	if (catch_all && !pad_label) catch_all = false;
 	// action field
+	// Check if we have any action for this eh-region, if not, emit 0
+	// for action start marker.
+	bool zero_action = false;
 	if (sym < 0) // eh spec offset
 	{
     	    INITV_Set_VAL (Initv_Table[action],
@@ -1023,6 +1120,7 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
 	else 
 	{
 	    INITV_Set_ZERO (Initv_Table[action], MTYPE_I4, 1);
+	    zero_action = true;
 	    bytes_for_filter = 1;
 	}
 
@@ -1032,7 +1130,14 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
 	    action_chains.push_back (action);
 
 	    // action start marker for call-site record
-	    INITV_Set_VAL (Initv_Table[first_action],
+	    if (zero_action && !INITV_next (next_initv))
+	    {
+	      // There is no action-record for this eh-region, so mark the
+	      // action-record ofst as zero.
+	      INITV_Set_ZERO (Initv_Table[first_action], MTYPE_I4, 1);
+	    }
+	    else
+	      INITV_Set_VAL (Initv_Table[first_action],
 		Enter_tcon (Host_To_Targ (MTYPE_I4, running_ofst)), 1);
 	    // store offset into first action **Note: not the filter, but offset to it
 	    Set_INITV_next (pad, first_action);
@@ -1160,6 +1265,14 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
   type_filter_map.clear();
 }
 
+// Temporary workaround
+struct SET_NOT_USED {
+  SET_NOT_USED() {}
+  void operator()(EH_RANGE& r) {
+      Set_ST_is_not_used(INITO_st(r.ereg_supp));
+  }
+};
+
 #else
 static void
 Create_INITO_For_Range_Table(ST * st, ST * pu)
@@ -1223,8 +1336,25 @@ EH_Write_Range_Table(WN * wn)
     eh_pu_range_st = NULL;
     return;
   }
+
+#ifdef KEY
+  // C++ exceptions not yet supported within MP regions.
+  if (PU_mp_lower_generated (Get_Current_PU ()))
+  {
+    EH_RANGE_LIST::iterator first(range_list.begin());
+    EH_RANGE_LIST::iterator last(range_list.end());
+    for_each  (first, last, SET_NOT_USED());
+    eh_pu_range_st = NULL;
+    return;
+  }
+#endif // KEY
+
   fix_mask_ranges();
   reorder_range_list();
+#ifdef KEY
+  flatten_regions();
+  reorder_range_list();
+#endif
 
   ST * st = ST_For_Range_Table(wn);
   eh_pu_range_st = st;

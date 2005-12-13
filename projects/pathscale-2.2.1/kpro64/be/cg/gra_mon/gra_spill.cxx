@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -359,6 +359,13 @@ LRANGE_Spill_Below( LRANGE* lrange, GRA_BB* gbb )
   //
   (void) lrange->Find_LUNIT_For_GBB(gbb, &lunit);
 
+#ifdef KEY
+  if (GRA_optimize_boundary) {
+    // Always spill after the last define.  If no such define, spill at the top
+    // of the BB.
+    TN_Spill_Below(tn,st,gbb,TRUE);
+  } else
+#endif
   TN_Spill_Below(tn,st,gbb,lunit && lunit->True_Reference());
 }
 
@@ -382,6 +389,13 @@ LRANGE_Restore_Above( LRANGE* lrange, GRA_BB* gbb )
   //
   (void) lrange->Find_LUNIT_For_GBB(gbb, &lunit);
 
+#ifdef KEY
+  if (GRA_optimize_boundary) {
+    // Always restore before the first use.  If no such use, restore at the
+    // bottom of the BB.
+    TN_Restore_Above(tn,st,gbb,TRUE);
+  } else
+#endif
   TN_Restore_Above(tn,st,gbb,lunit && lunit->True_Reference());
 }
 
@@ -1229,7 +1243,8 @@ Mark_Live_In( LRANGE* lrange, SPILL_LIST* load_list, SPILL_LIST* store_list )
 
 /////////////////////////////////////
 static BOOL
-Has_Successor_Not_In_LRANGE( GRA_BB* gbb, LRANGE* lrange )
+Has_Successor_Not_In_LRANGE( GRA_BB* gbb, LRANGE* lrange,
+			     GRA_BB* exclude_succ = NULL)
 /////////////////////////////////////
 //
 //  Is there a successor of <gbb> which is not a member of <lrange>?
@@ -1243,10 +1258,99 @@ Has_Successor_Not_In_LRANGE( GRA_BB* gbb, LRANGE* lrange )
 
     if ( ! lrange->Contains_BB(succ) )
       return TRUE;
+
+#ifdef KEY
+    if (GRA_optimize_boundary) {
+      // If <succ> is a boundary BB where <lrange> is not live-in, then
+      // <lrange>'s register could be used by another lrange at the beginning
+      // of <succ>.  Without more info, consider <succ> to be a member of
+      // another lrange.
+      if (succ != exclude_succ) {
+	LRANGE_BOUNDARY_BB *boundary_bb = lrange->Get_Boundary_Bb(succ->Bb());
+	if (boundary_bb != NULL &&
+	    ! boundary_bb->Is_Live_In())
+	  return TRUE;
+      }
+    }
+#endif
   }
 
   return FALSE;
 }
+
+#ifdef KEY
+/////////////////////////////////////
+static BOOL
+Reg_Used_Before_By_Other_TNs(LUNIT* lunit)
+/////////////////////////////////////
+// Return TRUE if <lunit>'s register is used by other TNs between the start of
+// the BB and the OP that uses <lunit>'s TN.
+/////////////////////////////////////
+{
+  OP *op;
+  BB *bb = lunit->Gbb()->Bb();
+  TN *tn = lunit->Lrange()->Tn();
+  REGISTER reg = lunit->Lrange()->Reg();
+
+  for (op = BB_first_op(bb); op != NULL; op = OP_next(op)) {
+    // Check source operands.
+    for (int i = OP_opnds(op) - 1; i >= 0; i--) {
+      TN *opnd_tn = OP_opnd(op, i);
+      // If this is <lunit>'s TN, then the register is not used by other TNs.
+      if (opnd_tn == tn)
+	return FALSE;
+      LRANGE *lr = lrange_mgr.Get(opnd_tn);
+      if (lr != NULL && lr->Allocated() && lr->Reg() == reg)
+	return TRUE;
+    }
+    // Check result operands.
+    for (int i = OP_results(op) - 1; i >= 0; i--) {
+      TN *result_tn = OP_result(op, i);
+      LRANGE *lr = lrange_mgr.Get(result_tn);
+      if (lr != NULL && lr->Allocated() && lr->Reg() == reg)
+	return TRUE;
+    }
+  }
+  // <tn> does not appear in the BB, which means there is no OP that uses it.
+  return FALSE;
+}
+
+static BOOL
+Reg_Used_After_By_Other_TNs(LUNIT* lunit)
+/////////////////////////////////////
+// Return TRUE if <lunit>'s register is used by other TNs between the OP that
+// defines <lunit>'s TN and the end of the BB.
+/////////////////////////////////////
+{
+  OP *op;
+  BB *bb = lunit->Gbb()->Bb();
+  TN *tn = lunit->Lrange()->Tn();
+  REGISTER reg = lunit->Lrange()->Reg();
+
+  for (op = BB_last_op(bb); op != NULL; op = OP_prev(op)) {
+    // Check result operands.
+    for (int i = OP_results(op) - 1; i >= 0; i--) {
+      TN *result_tn = OP_result(op, i);
+      // If this is <lunit>'s TN, then the register is not used by other TNs.
+      if (result_tn == tn)
+	return FALSE;
+      LRANGE *lr = lrange_mgr.Get(result_tn);
+      if (lr != NULL && lr->Allocated() && lr->Reg() == reg)
+	return TRUE;
+    }
+    // Check source operands.
+    for (int i = OP_opnds(op) - 1; i >= 0; i--) {
+      TN *opnd_tn = OP_opnd(op, i);
+      LRANGE *lr = lrange_mgr.Get(opnd_tn);
+      if (lr != NULL && lr->Allocated() && lr->Reg() == reg)
+	return TRUE;
+    }
+  }
+  // <tn> does not appear in the BB, which means there is no OP that defines
+  // it.
+  return FALSE;
+}
+#endif
 
 /////////////////////////////////////
 static void
@@ -1324,14 +1428,34 @@ Move_Restore_Out_Of_LRANGE( LUNIT* lunit , SPILL_LIST** spill_list)
       if (BB_call(bb) && ! gbb->Is_Live_Out_LRANGE(lrange) && ! callee_saves ) {
         return FALSE;
       }
+#ifdef KEY
+      if (GRA_optimize_boundary) {
+	// If pred is a boundary BB, see if lrange is live-out of it.  If not,
+	// the register might be used by another lrange.
+	if (! lrange->Contains_Internal_BB(gbb)) {
+	  LRANGE_BOUNDARY_BB *boundary_bb = lrange->Get_Boundary_Bb(gbb->Bb());
+	  if (! boundary_bb->Is_Live_Out())
+	    return FALSE;
+        }
+      }
+#endif
       do_move = TRUE;
     } else {
       // Small possible optimization -- check for callee saves.
-      if (Has_Successor_Not_In_LRANGE(gbb,lrange) || BB_call(bb)) {
-	return FALSE;
-      } else if (BB_rid(bb) != BB_rid(lunit->Gbb()->Bb())) {
-	return FALSE;
+      GRA_BB *exclude_succ = NULL;
+#ifdef KEY
+      if (GRA_optimize_boundary) {
+	// When checking for succ not in lrange, don't check if the succ is the
+	// current BB.  Reg_Used_Before_By_Other_TNs will decide if the
+	// register is available in the current BB.
+        exclude_succ = lunit->Gbb();
       }
+#endif
+      if (Has_Successor_Not_In_LRANGE(gbb,lrange,exclude_succ) || BB_call(bb))
+	return FALSE;
+      else if (BB_rid(bb) != BB_rid(lunit->Gbb()->Bb()))
+	return FALSE;
+
       load_count++;
     }
   }
@@ -1343,6 +1467,18 @@ Move_Restore_Out_Of_LRANGE( LUNIT* lunit , SPILL_LIST** spill_list)
     // Don't increase spill count under opt space
     return FALSE;
   }
+
+#ifdef KEY
+  if (GRA_optimize_boundary) {
+    // "Restore above" means to restore just before the first use of the TN in
+    // the BB.  We can move the restore to a pred BB only if the register is
+    // not used by other TNs between the start of the BB and the first use of
+    // this TN.
+    if (Reg_Used_Before_By_Other_TNs(lunit))
+      return FALSE;
+  }
+#endif
+
   GRA_Trace_Place_LRANGE_GBB("moving load out",lrange,lunit->Gbb());
 
   // Move to predecessor out of the live range
@@ -1441,7 +1577,8 @@ Needs_Spill( LRANGE* lrange, GRA_BB* gbb )
 
 /////////////////////////////////////
 static BOOL
-Has_Predecessor_Not_In_LRANGE( GRA_BB *gbb, LRANGE* lrange )
+Has_Predecessor_Not_In_LRANGE( GRA_BB *gbb, LRANGE* lrange,
+			       GRA_BB *exclude_pred = NULL)
 /////////////////////////////////////
 //
 //  Is there a predecessor of <gbb> which is not a member of <lrange>?
@@ -1461,6 +1598,20 @@ Has_Predecessor_Not_In_LRANGE( GRA_BB *gbb, LRANGE* lrange )
       return TRUE;
     if ( BB_call(pred->Bb()) && not_call_saved )
       return TRUE;
+#ifdef KEY
+    if (GRA_optimize_boundary) {
+      // If <pred> is a boundary BB where <lrange> is not live-out, then
+      // <lrange>'s register could be used by another lrange at the end of
+      // <pred>.  Without more info, consider <pred> to be a member of another
+      // lrange.
+      if (pred != exclude_pred) {
+	LRANGE_BOUNDARY_BB *boundary_bb = lrange->Get_Boundary_Bb(pred->Bb());
+	if (boundary_bb != NULL &&
+	    ! boundary_bb->Is_Live_Out())
+	  return TRUE;
+      }
+    }
+#endif
   }
 
   return FALSE;
@@ -1523,9 +1674,19 @@ Move_Spill_Out_Of_LRANGE( LUNIT* lunit , SPILL_LIST** spill_list)
   for (iter.Succs_Init(lunit->Gbb()); ! iter.Done(); iter.Step()) {
     GRA_BB* gbb = iter.Current();
 
+    GRA_BB *exclude_pred = NULL;
+#ifdef KEY
+    if (GRA_optimize_boundary) {
+      // When checking for pred not in lrange, don't check if the pred is the
+      // current BB.  Reg_Used_After_By_Other_TNs will decide if the register
+      // is available in the current BB.
+      exclude_pred = lunit->Gbb();
+    }
+#endif
+
     if ( ! Needs_Spill(lrange,gbb) )
       has_successor_not_needing_spill = TRUE;
-    else if ( Has_Predecessor_Not_In_LRANGE(gbb,lrange) )
+    else if ( Has_Predecessor_Not_In_LRANGE(gbb,lrange,exclude_pred) )
       return FALSE;
     else if ( BB_rid(gbb->Bb()) != BB_rid(lunit->Gbb()->Bb()))
       return FALSE;
@@ -1542,6 +1703,16 @@ Move_Spill_Out_Of_LRANGE( LUNIT* lunit , SPILL_LIST** spill_list)
     //
     return FALSE;
   }
+
+#ifdef KEY
+  if (GRA_optimize_boundary) {
+    // "Spill below" means to spill just after the last define of the TN in the
+    // BB.  We can move the spill to a succ BB only if the register is not used
+    // by other TNs between the last define of the TN and the end of the BB.
+    if (Reg_Used_After_By_Other_TNs(lunit))
+      return FALSE;
+  }
+#endif
 
   GRA_Trace_Place_LRANGE_GBB("moving store out",lrange,lunit->Gbb());
 
@@ -1871,6 +2042,14 @@ Optimize_Placement(void)
           }
 
 	} else if ( moved_reload && GRA_remove_spills &&
+#ifdef KEY
+		   // No_Successor_Has_Restore assumes gbb is inside lrange.
+		   // It tests if all of gbb's succs are also inside lrange and
+		   // without restores.  If so, the spill in gbb is not needed.
+		   // If gbb is outside lrange, then the spill in gbb is always
+		   // needed.  Bug 6835.
+		   split_lrange->Contains_BB(gbb) &&
+#endif
 		   No_Successor_Has_Restore(sl, split_lrange)) {
 	  //
 	  // no reload along path from this block, so no need to store

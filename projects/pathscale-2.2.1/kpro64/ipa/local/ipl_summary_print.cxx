@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -135,7 +135,11 @@ SUMMARY_PROCEDURE::Print (FILE *fp, INT32 id) const
     if (Has_mp_needs_lno() )
       fputs (", mp needs lno", fp);
 
+#ifdef KEY
+    if (Has_pragma_side_effect() )
+#else
     if (Has_side_effect() )
+#endif
       fputs (", has side effect pragmas", fp);
 
     if (Has_messy_regions() )

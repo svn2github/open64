@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -64,6 +64,9 @@
 
 extern BOOL  VHO_Force_Lowering;
 extern BOOL  VHO_Struct_Opt;
+#ifdef KEY
+extern BOOL  VHO_Struct_Opt_Set;
+#endif
 extern BOOL  VHO_Recycle_Pregs;
 extern BOOL  VHO_Combine_Loads;
 extern INT32 VHO_Switch_Density;
@@ -82,6 +85,15 @@ extern BOOL  VHO_Use_Do_While;
 #ifdef KEY
 extern BOOL  VHO_Enable_Simple_If_Conv; // Enable simple if-conv at VHO lowering
 extern INT32 VHO_Enable_If_Conv_Limit;  // Maximum overhead allowed after ifconv
+extern BOOL  VHO_Enable_Misc_Loop_Transformation; // Enable loop transformation
+extern BOOL  VHO_Enable_Misc_Loop_Fusion; // Enable loop fusion
+
+extern INT32 VHO_Disable_MP_PU_Before;
+extern INT32 VHO_Disable_MP_PU_After;
+extern INT32 VHO_Disable_MP_PU_Equal;
+extern INT32 VHO_Disable_MP_Local_Before;
+extern INT32 VHO_Disable_MP_Local_After;
+extern INT32 VHO_Disable_MP_Local_Equal;
 #endif
 #endif /* config_vho_INCLUDED */
 

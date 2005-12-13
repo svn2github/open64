@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -185,8 +189,26 @@ second_(void)
 #include <limits.h>
 #include <sys/times.h>
 
+#ifdef KEY /* Bug 1683 */
+
+#include "../../libU77/pathf90_libU_intrin.h"
+
+_f_real
+pathf90_second(_f_real *seconds)
+{
+  _f_real junk, tarray[2];
+  seconds = (0 == seconds) ? (&junk) : seconds;
+  /* "etime" uses getrusage, which generates better results; g77 returns
+   * only user time, so we do likewise */
+  pathf90_etime(tarray);
+  return *seconds = tarray[0];
+}
+
+#else
+
 _f_real
 second_(void)
+
 {
 	struct tms      buf;
 	double		timeval;
@@ -202,3 +224,5 @@ second_(void)
 	return ((_f_real)timeval);
 }
 #endif	/* non-UNICOS systems */
+
+#endif /* KEY Bug 1683 */

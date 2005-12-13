@@ -1,4 +1,4 @@
-#
+# -*- Makefile -*-
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -61,10 +61,6 @@ include $(COMMONDEFS)
 #               be retargeted (e.g., for building opt with different options)
 #               by setting LOCAL_OPT_DIR in localdefs
 #----------------------------------------------------------------------
-
-ifeq ($(BUILD_COMPILER), EDG)
-CVERSION  =  -xansi
-endif
 
 ifdef LOCAL_BE_DIR
 TARG_BE_DIR = $(TARGDIR)/$(LOCAL_BE_DIR)
@@ -153,6 +149,7 @@ HEADER_DIRS = \
   $(BE_VHO_DIR)		\
   $(BE_REGION_DIR)      \
   $(TARGDIR)/be         \
+  $(BUILD_TOT)/include
 
 IPA_LOCAL_CXX_SRCS = \
 	loop_info.cxx \
@@ -207,11 +204,7 @@ LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 
-ifeq ($(BUILD_COMPILER), EDG)
-LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS) -fullwarn -woff 1171,1172,1174,1201,1209,1375
-else
 LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS) 
-endif
 
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(LCINCS)
@@ -219,17 +212,9 @@ LASOPTS = $(STD_COMPILE_OPTS)
 LASDEFS = $(HOSTDEFS) $(TARGDEFS)
 LASINCS = $(LCINCS)
 
-ifeq ($(BUILD_COMPILER), EDG)
-WOFF = -fullwarn
-endif
-
 GLDOPTS = $(STD_LOAD_OPTS) $(LD_QUICKSTART_INFO)
 
-ifeq ($(BUILD_COMPILER), EDG)
-DSOSTARTOPT = -check_registry $(TARG_BE_DIR)/so_locations -Wl,-no_unresolved
-else
 DSOSTARTOPT = 
-endif
 DSOSTARTOPT_32 = $(DSOSTARTOPT)
 DSOSTARTOPT_N32 = $(DSOSTARTOPT)
 
@@ -243,17 +228,10 @@ endif
 #----------------------------------------------------------------------
 # File containing the list of symbols exported outside of ipl.so
 #----------------------------------------------------------------------
-ifeq ($(BUILD_COMPILER), EDG)
-EXPORT_LIST = -exports_file $(IPA_LOCAL_DIR)/Exported
-endif
 
 TARGETS = ipl.so
 
 LDIRT = be.so wopt.so be ipl ii_files
-
-ifeq ($(BUILD_COMPILER), EDG)
-LLDLIBS = -none
-endif
 
 default: first $(TARGETS) last
 

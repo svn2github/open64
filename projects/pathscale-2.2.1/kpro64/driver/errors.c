@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -37,12 +37,13 @@
 */
 
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <cmplrs/rcodes.h>
 #include "errors.h"
+#include "string_utils.h"
 
 status_codes error_status = RC_OKAY;
+int internal_error_occurred;
 char *program_name;
 boolean print_warnings = TRUE;
 boolean fullwarn = FALSE;
@@ -50,6 +51,14 @@ boolean pass_exit_codes = FALSE;
 
 static int errors = 0;
 static int previous_errors = 0;
+
+string_list_t *error_list = NULL;
+
+void
+init_error_list(void)
+{
+	error_list = init_string_list();
+}
 
 static void
 set_error_status (status_codes e)
@@ -64,6 +73,27 @@ set_error_status (status_codes e)
 			error_status = e;
 		}
 	}
+}
+
+void
+vlog_error(char *format, va_list ap)
+{
+	char *msg;
+
+	if (vasprintf(&msg, format, ap) == -1)
+		return;
+
+	add_string(error_list, msg);
+}
+
+void
+log_error(char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	vlog_error(format, ap);
+	va_end(ap);
 }
 
 void
@@ -139,6 +169,12 @@ internal_error (char *format, ...)
 	vfprintf(stderr, format, args);
 	fprintf(stderr, "\n");
 	va_end (args);
+
+	va_start (args, format);
+	vlog_error (format, args);
+	va_end (args);
+
+	internal_error_occurred = 1;
 	set_error_status(RC_INTERNAL_ERROR);
 	errors++;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -237,6 +237,13 @@ fei_task_var( INT32	sym_idx,
         cwh_stk_push(wn, WN_item);
         task_var_count++;
         break;
+    /* added by jhs, 02/7/22 */
+    case Context_Omp_Copyprivate:
+        wn = WN_CreatePragma(WN_PRAGMA_COPYPRIVATE, (ST *)p->item, 0, /*offset=*/0);
+     	WN_set_pragma_omp(wn);
+        cwh_stk_push(wn, WN_item);
+        task_var_count++;
+    	 break;
     case Context_Omp_Reduction_Max:
     case Context_Omp_Reduction_Min:
     case Context_Omp_Reduction_Band:
@@ -1691,6 +1698,16 @@ fei_prefetch(int   n1,
   cwh_stmt_add_pragma(WN_PRAGMA_PREFETCH,FALSE,(ST_IDX) NULL,n1,n2);
 }
 
+#ifdef KEY /* Bug 2660 */
+static ST *cwh_create_str_st(char *string);
+
+void
+fei_options(char *n1)
+{
+  ST *st = cwh_create_str_st(n1);
+  cwh_stmt_add_options_pragma(st);
+}
+#endif /* KEY Bug 2660 */
 
 void
 fei_prefetch_manual( int   n )
@@ -1861,11 +1878,12 @@ fei_endguard (INT32 task_x, INT32 guard_num, INT32 lineno )
  *
  * fei_parallelsections_open_mp
  *
- *
+ * updated: by jhs, 02/7/20
  *===============================================
 */
 void
 fei_parallelsections_open_mp(int task_if_idx,
+			     int task_num_threads_idx,
                              int defaultt)
 {
   WN *body;
@@ -1876,6 +1894,7 @@ fei_parallelsections_open_mp(int task_if_idx,
   /* now attach all applicable pragmas */
 
   cwh_directive_load_value_pragma(task_if_idx,WN_PRAGMA_IF,TRUE);
+  cwh_directive_load_value_pragma(task_num_threads_idx, WN_PRAGMA_NUMTHREADS, TRUE);
 
   if (defaultt) {     /* there is a DEFAULT clause */
 
@@ -1899,6 +1918,7 @@ fei_parallelsections_open_mp(int task_if_idx,
 */ 
 void 
 fei_paralleldo_open_mp (int task_if_idx,
+			int task_num_threads_idx,
 			int defaultt,
 			int ordered,
 			int scheduletype,
@@ -1920,6 +1940,7 @@ fei_paralleldo_open_mp (int task_if_idx,
   /* now attach all applicable pragmas */
 
   cwh_directive_load_value_pragma(task_if_idx,WN_PRAGMA_IF,TRUE);
+  cwh_directive_load_value_pragma(task_num_threads_idx, WN_PRAGMA_NUMTHREADS, TRUE);
 
   if (defaultt) {      /* there is a DEFAULT clause */
 
@@ -2044,15 +2065,115 @@ fei_do_open_mp (int ordered,
 
 /*===============================================
  *
+ * fei_workshare_open_mp 
+ * 
+ * create a new region & make body current block
+ * 
+ *===============================================
+*/ 
+void
+fei_workshare_open_mp (void)
+{
+  WN *body;
+
+  body = cwh_mp_region(WN_PRAGMA_PWORKSHARE_BEGIN,0,0,0,0,0,1);
+
+  cwh_block_set_current(body);
+
+  cwh_directive_set_PU_flags(FALSE);
+}
+
+/*===============================================
+ *
+ * fei_endworkshare_open_mp 
+ * 
+ * similar to ending any other parallel loop, but we may need to add
+ * a NOWAIT pragma to the region pragma list.
+ * 
+ *===============================================
+*/ 
+extern void 
+fei_endworkshare_open_mp     ( INT32 nowait )
+{
+  cwh_directive_pop_and_nowait(nowait,TRUE);
+}
+
+/*===============================================
+ *
+ * fei_endparallelworkshare_open_mp 
+ * 
+ *===============================================
+*/ 
+extern void 
+fei_endparallelworkshare_open_mp   ( void )
+{
+  cwh_directive_pop_and_nowait(FALSE,TRUE);
+}
+
+/*===============================================
+ *
+ * fei_parallelworkshare_open_mp 
+ * 
+ *===============================================
+*/ 
+void 
+fei_parallelworkshare_open_mp(INT32 task_if_idx,
+		     INT32 task_num_threads_idx,
+		     INT32 defaultt) 
+{
+  WN *body;
+
+  task_nest_count = 0;
+  body = cwh_mp_region(WN_PRAGMA_PARALLEL_WORKSHARE,0,0,0,0,0,TRUE);
+
+  /* now attach all applicable pragmas */
+
+  cwh_directive_load_value_pragma(task_if_idx,WN_PRAGMA_IF, TRUE);
+  cwh_directive_load_value_pragma(task_num_threads_idx, WN_PRAGMA_NUMTHREADS, TRUE);
+
+  if (defaultt) {     /* there is a DEFAULT clause */
+
+    DevAssert((defaultt > 0 && defaultt < MAX_PRAGMA_DEFAULT),("Odd defaultt"));
+    cwh_stmt_add_pragma(WN_PRAGMA_DEFAULT,TRUE,(ST_IDX) NULL,defaultt);
+  }
+
+  /* append statements to region body */
+  cwh_block_set_current(body);
+
+  cwh_directive_set_PU_flags(FALSE);
+}
+
+/*===============================================
+ *
  * fei_parallel_open_mp 
  * 
  *===============================================
 */ 
 void 
 fei_parallel_open_mp(int task_if_idx,
+		     int task_num_threads_idx,
 		     int defaultt) 
 {
-  cwh_parallel (task_if_idx, defaultt, 1);
+  WN *body;
+
+  task_nest_count = 0;
+  body = cwh_mp_region(WN_PRAGMA_PARALLEL_BEGIN,0,0,0,0,0,TRUE);
+
+  /* now attach all applicable pragmas */
+
+  cwh_directive_load_value_pragma(task_if_idx,WN_PRAGMA_IF, TRUE);
+  cwh_directive_load_value_pragma(task_num_threads_idx, WN_PRAGMA_NUMTHREADS, TRUE);
+
+  if (defaultt) {     /* there is a DEFAULT clause */
+
+    DevAssert((defaultt > 0 && defaultt < MAX_PRAGMA_DEFAULT),("Odd defaultt"));
+    cwh_stmt_add_pragma(WN_PRAGMA_DEFAULT,FALSE,(ST_IDX) NULL,defaultt);
+  }
+
+  /* append statements to region body */
+  cwh_block_set_current(body);
+
+  cwh_directive_set_PU_flags(FALSE);
 }
 /*===============================================
  *
@@ -2223,7 +2344,40 @@ fei_ordered_open_mp         ( void )
 extern void 
 fei_endsingle_open_mp       ( int nowait )
 {
-  cwh_directive_pop_and_nowait(nowait,TRUE);
+  WN *region, *wn ;
+  WN * pragma_blk ;
+  WN * old_blk ;
+  WN_PRAGMA_ID  p ;
+
+  region = cwh_block_pop_region();
+  
+  pragma_blk = WN_region_pragmas(region);
+  old_blk = cwh_block_exchange_current(pragma_blk);
+
+  while (task_var_count) {
+    wn = cwh_stk_pop_WN();
+
+#if 0
+    if ((WN_operator(wn) == OPR_PRAGMA) && 
+	(WN_pragma(wn) == WN_PRAGMA_COPYPRIVATE)) 
+#else
+    if (WN_operator(wn) == OPR_PRAGMA)
+#endif
+      cwh_block_append(wn);
+    task_var_count--;
+  }
+  
+  if (nowait) 
+    p = WN_PRAGMA_NOWAIT;
+  else 
+    p = WN_PRAGMA_END_MARKER;
+
+  wn = WN_CreatePragma (p, (ST_IDX) NULL, 0, 0);
+
+  WN_set_pragma_omp(wn);
+  cwh_block_append(wn);
+
+  cwh_block_set_current(old_blk);
 }
 
 /*===============================================
@@ -2464,8 +2618,14 @@ cwh_directive_pragma_to_region(WN * prag, WN * region)
  * 
  *================================================================
 */
-static void
+// Bug 3836
+#ifdef KEY
+extern void 
 cwh_directive_set_PU_flags(BOOL nested)
+#else
+static void 
+cwh_directive_set_PU_flags(BOOL nested)
+#endif
 {
   Set_PU_has_mp (Get_Current_PU ());
   Set_FILE_INFO_has_mp (File_info);

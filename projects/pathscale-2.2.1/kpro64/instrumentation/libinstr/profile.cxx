@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -694,6 +694,32 @@ void Profile_Value( PU_PROFILE_HANDLE pu_handle, INT32 inst_id, INT64 value )
       entry->num_values = TNV / 2;
     }
   }    
+}
+
+void Profile_Value_FP_Bin_Init( PU_PROFILE_HANDLE pu_handle, INT32 num_values )
+{
+  Value_FP_Bin_Profile_Vector& Value_FP_Bin_Table = 
+    pu_handle->Get_Value_FP_Bin_Table();
+
+  if( Value_FP_Bin_Table.empty() ){
+    Value_FP_Bin_Table.resize(num_values);
+  }
+}
+
+// Update appropriate profile information for a value.
+
+void Profile_Value_FP_Bin( PU_PROFILE_HANDLE pu_handle, INT32 inst_id, 
+			   double value_fp_0, double value_fp_1 )
+{
+  Value_FP_Bin_Profile_Vector& Value_FP_Bin_Table = 
+    pu_handle->Get_Value_FP_Bin_Table();
+  Value_FP_Bin_Profile* entry = &Value_FP_Bin_Table[inst_id];
+
+  entry->exe_counter++;
+  if (value_fp_0 == 0.0) entry->zopnd0 ++;
+  if (value_fp_1 == 0.0) entry->zopnd1 ++;
+  if (value_fp_0 == 1.0) entry->uopnd0 ++;
+  if (value_fp_1 == 1.0) entry->uopnd1 ++;
 }
 #endif
 

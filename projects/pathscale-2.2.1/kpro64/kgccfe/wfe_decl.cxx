@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -56,6 +56,7 @@
 #ifdef KEY
 // To get HW_WIDE_INT ifor flags.h */
 #include "gnu/hwint.h"
+#include "erglob.h"  // EC_Unimplemented_Feature
 #endif /* KEY */
 #include "gnu/flags.h"
 extern "C" {
@@ -113,6 +114,9 @@ static MEM_POOL Map_Mem_Pool;
 ST* WFE_Vararg_Start_ST;
 #ifdef KEY
 bool defer_function = FALSE;
+extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
+vector <pair<tree, tree> > alias_vector;
+static BOOL finish_alias = FALSE;
 #endif
 
 // Because we build inito's piecemeal via calls into wfe for each piece,
@@ -259,6 +263,10 @@ WFE_Start_Function (tree fndecl)
         Current_Map_Tab = NULL;
     }
 
+#ifdef KEY
+    wfe_nesting_stack = wfe_loop_stack = wfe_case_stack = wfe_cond_stack = NULL;
+#endif // KEY
+
     /* set up the mem pool for the map table and predefined mappings */
     if (!map_mempool_initialized) {
         MEM_POOL_Initialize(&Map_Mem_Pool,"Map_Mem_Pool",FALSE);
@@ -272,6 +280,10 @@ WFE_Start_Function (tree fndecl)
     /* create the map table for the next PU */
     (void)WN_MAP_TAB_Create(&Map_Mem_Pool);
 
+#ifdef KEY
+    if (CURRENT_SYMTAB > 1)
+      ErrMsg (EC_Unimplemented_Feature, "Nested functions");
+#endif
     New_Scope (CURRENT_SYMTAB + 1, Malloc_Mem_Pool, TRUE);
 
     // handle VLAs in the declaration
@@ -1293,6 +1305,11 @@ Gen_Assign_Of_Init_Val (ST *st, tree init, UINT offset, UINT array_elem_offset,
 	WFE_Set_ST_Addr_Saved (init_wn);
 	WN *wn = WN_Stid (mtype, ST_ofst(st) + offset, st,
 		ty, init_wn, field_id);
+#ifdef KEY
+	if (WFE_Stmt_Top_Kind() == wfe_stmk_for_cond)
+	  WFE_Stmt_Append_Before (wn, Get_Srcpos());
+	else
+#endif
 	WFE_Stmt_Append(wn, Get_Srcpos());
 	if (! is_bit_field) 
 	  bytes += TY_size(ty);
@@ -1371,7 +1388,8 @@ Traverse_Aggregate_Array (
   // Bug 2373 - pad for multi-dimensional arrays correctly  
   if (gen_initv) {
     init = CONSTRUCTOR_ELTS(init_list);
-    if (TY_kind(ty) == KIND_ARRAY) {
+    if (init /* Bug 3720 - initialization list could be empty */ && 
+	TY_kind(ty) == KIND_ARRAY) {
       INT index = Get_Integer_Value(TREE_PURPOSE(init));
       while (index > 0) {
 	Traverse_Aggregate_Pad (st, gen_initv, esize, current_offset);
@@ -2150,20 +2168,36 @@ WFE_Decl (tree decl)
   return;
 }
 
+// If we have not yet seen the base_decl, it may be handled later in
+// WFE_Weak_Finish (if it is weak), or in WFE_Alias_Finish (if the base_decl
+// has been declared after the alias declaration). We also defer expansion
+// for FUNCTION_DECL, because processing of the function defn (possibly
+// later) will change the sclass, and we want to give the correct sclass
+// to decl.
+// The global variable finish_alias determines if we can postpone alias
+// processing any further. finish_alias == TRUE implies we cannot postpone.
+//
 void
 WFE_Assemble_Alias (tree decl, tree target)
 {
-  DevWarn ("__attribute alias encountered at line %d", lineno);
+#ifdef Is_True_On
+  if (!finish_alias)
+    DevWarn ("__attribute alias encountered at line %d", lineno);
+#endif
   tree base_decl = lookup_name (target);
 #ifndef KEY
   FmtAssert (base_decl != NULL,
              ("undeclared base symbol %s not yet declared in __attribute__ alias is not currently implemented",
               IDENTIFIER_POINTER (target)));
 #else
-  // We fix up weak declarations later in WFE_Weak_Finish; 
-  // so this case is okay to return.
-  if (base_decl == NULL)
+  if ((base_decl == NULL || TREE_CODE (decl) == FUNCTION_DECL) && 
+      !finish_alias)
+  {
+    // add to vector if it is not weak (weak: handled in WFE_Weak_Finish)
+    if (!DECL_WEAK (decl))
+      alias_vector.push_back (std::make_pair (decl, target));
     return;
+  }
 #endif // KEY 
   ST *base_st = Get_ST (base_decl);
   ST *st = Get_ST (decl);
@@ -2182,6 +2216,16 @@ WFE_Assemble_Alias (tree decl, tree target)
       Set_ST_init_value_zero (st);
 #endif
   }
+#ifdef KEY
+  // bug 4981: symbol class of ST must match that of the target
+  if (ST_sym_class (st) != ST_sym_class (base_st))
+    ErrMsg (EC_Ill_Alias, ST_name (st), ST_name (base_st));
+
+  // bug 5145
+  // The above stmt ensures same symbol class for st/base_st.
+  if (ST_sym_class (base_st) == CLASS_FUNC)
+    Set_PU_no_delete (Pu_Table [ST_pu (base_st)]);
+#endif // KEY
 /*
   if (ST_is_initialized (base_st)) {
     Set_ST_is_initialized (st);
@@ -2256,6 +2300,9 @@ WFE_Alloca_0 (void)
   WN *wn;
   TY_IDX ty_idx = Make_Pointer_Type (Be_Type_Tbl (MTYPE_V), FALSE);
   ST* alloca_st = Gen_Temp_Symbol (ty_idx, "__alloca");
+#ifdef KEY
+  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, alloca_st);
+#endif
   wn = WN_CreateAlloca (WN_CreateIntconst (OPC_I4INTCONST, 0));
   wn = WN_Stid (Pointer_Mtype, 0, alloca_st, ty_idx, wn);
   WFE_Stmt_Append (wn, Get_Srcpos());
@@ -2275,6 +2322,10 @@ WFE_Alloca_ST (tree decl)
   Set_ST_pt_to_unique_mem (alloca_st);
   Set_ST_base_idx (st, ST_st_idx (alloca_st));
   WN *swn = WFE_Expand_Expr (TYPE_SIZE(TREE_TYPE(decl)));
+#ifdef KEY  // TYPE_SIZE is size of array in bits.  Convert to bytes.  Bug 6887.
+  TYPE_ID mtype = WN_rtype(swn);
+  swn = WN_Div(mtype, swn, WN_Intconst(mtype, BITSPERBYTE));
+#endif
   WN *wn  = WN_CreateAlloca (swn);
   wn = WN_Stid (Pointer_Mtype, 0, alloca_st, ST_type (alloca_st), wn);
   WFE_Stmt_Append (wn, Get_Srcpos());
@@ -2376,6 +2427,11 @@ WFE_Resolve_Duplicate_Decls (tree olddecl, tree newdecl)
 void
 WFE_Add_Weak ()
 {
+#ifdef KEY
+  // bug 4916
+  if (!weak_decls)
+    return;
+#endif // KEY
   tree decl = 
 	  lookup_name (get_identifier (IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME 
 				  (TREE_VALUE (weak_decls)))));
@@ -2454,3 +2510,14 @@ WFE_Weak_Finish ()
     }
   }
 } /* WFE_Weak_Finish */
+
+#ifdef KEY
+extern "C" void
+WFE_Alias_Finish (void)
+{
+  finish_alias = TRUE;
+  for (INT i=0; i<alias_vector.size(); i++)
+    WFE_Assemble_Alias (alias_vector[i].first, alias_vector[i].second);
+  alias_vector.clear ();
+}
+#endif // KEY

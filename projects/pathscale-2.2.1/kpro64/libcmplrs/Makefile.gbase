@@ -39,19 +39,8 @@
 
 include	$(COMMONDEFS)
 
-ifeq ($(BUILD_COMPILER), EDG)
-CVERSION = -xansi
-else
-CVERSION =
-endif
-
 LCOPTS   = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
-ifeq ($(BUILD_COMPILER), EDG)
-LCDEFS   = -D_SYSV -DSYSV -fullwarn
-else
 LCDEFS   = -D_SYSV -DSYSV
-endif
-WOFF     =
 LCINCS  += -I$(BUILD_TOT)/include/cmplrs
 
 LIBRARY = libcmplrs.a
@@ -62,12 +51,6 @@ TARGETS = $(LIBRARY)
 CFILES = \
 	array_alloc.c \
 	make_depend.c
-
-ifeq ($(BUILD_OS), IRIX)
-CFILES += \
-	elfmap.c \
-	events.c
-endif
 
 default: first $(TARGETS) last
 

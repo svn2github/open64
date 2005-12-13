@@ -89,10 +89,8 @@ include $(COMMONDEFS)
 #  Set environment variables
 #----------------------------------------------------------------------
 ifdef LOCAL_BE_DIR
-CVERSION  =  -xansi
 TARG_BE_DIR = $(TARGDIR)/$(LOCAL_BE_DIR)
 else
-CVERSION = 
 TARG_BE_DIR = $(TARGDIR)/be
 endif
 
@@ -115,8 +113,6 @@ endif
 
 # TMP: add _NEW_SYMTAB until lno gets cleaned up
 HOSTDEFS += -D_NEW_SYMTAB
-
-WOFF = -fullwarn
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
@@ -171,7 +167,8 @@ HEADER_DIRS = \
   $(BE_CG_DIR)          \
   $(BE_BE_DIR)		\
   $(IPA_IPL_DIR)	\
-  $(BE_PROMPF_DIR)      
+  $(BE_PROMPF_DIR)	\
+  $(BUILD_TOT)/include
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
@@ -200,7 +197,6 @@ BE_LNOPT_NLX_CXX_SRCS = \
   fusion.cxx			\
   fiz_fuse.cxx			\
   inner_fission.cxx		\
-  simd.cxx			\
   lnopt_hoistif.cxx		\
   vintr_fis.cxx			\
   ff_utils.cxx			\
@@ -292,6 +288,9 @@ BE_LNOPT_NLX_CXX_SRCS = \
   lnotarget.cxx			\
   init.cxx	
 
+ifeq ($(BUILD_TARGET), X8664)
+BE_LNOPT_NLX_CXX_SRCS += simd.cxx
+endif
 
 BE_LNOPT_LX_CXX_SRCS = \
   lx_ipl_lno_util.cxx		\
@@ -306,11 +305,7 @@ BE_LNOPT_LX_CXX_SRCS = \
 
 BE_LNOPT_LX_CXX_SRCS = lx_prompf_anl.cxx
 
-ifeq ($(BUILD_OS), IRIX)
-BE_LNOPT_CXX_SRCS = $(BE_LNOPT_NLX_CXX_SRCS) 
-else 
 BE_LNOPT_CXX_SRCS = $(BE_LNOPT_NLX_CXX_SRCS) $(BE_LNOPT_LX_CXX_SRCS)
-endif
 
 ifeq ($(BUILD_PCH), USE_PCH)
 LNOPT_PCH_OBJS = $(BE_LNOPT_CXX_SRCS:.cxx=.o)
@@ -329,16 +324,7 @@ LNOPT_SRCS = \
 LNOPT_OBJS = $(LNOPT_SRCS:.c=.o)
 LNOPT_CXX_OBJS = $(LNOPT_CXX_SRCS:.cxx=.o)
 
-ifeq ($(BUILD_OS), IRIX)
-LNOPT_DSOS = $(TARG_OPT_DIR)/wopt.so $(TARG_BE)/be.so $(TARG_IPL_DIR)/ipl.so
-else
 LNOPT_DSOS = wopt.so be.so ipl.so
-ifeq ($(BUILD_HOST), IA64)
-ifeq ($(BUILD_COMPILER), SGI)
-STD_DSO_LOADOPTS += -Wl,-relax
-endif
-endif
-endif
 
 # extra files to be removed with make clobber
 LDIRT = ii_files *.pch
@@ -346,22 +332,13 @@ LDIRT = ii_files *.pch
 VPATH    =  $(SRC_DIRS)
 
 LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
-ifneq ($(BUILD_COMPILER), EDG)
-LCOPTS += -fwritable-strings
-endif
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 ifeq ($(BUILD_OS), LINUX)
 LCINCS += -I$(BUILD_AREA)/include
 endif
 
-ifeq ($(BUILD_COMPILER), EDG)
-WOFF = -fullwarn -woff 1172,1174,1209,1375
-else
-WOFF = 
-endif
-
-LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS) $(WOFF) $(PCH_OPTS)
+LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS) $(PCH_OPTS)
 LC++DEFS = $(HOSTDEFS) $(TARGDEFS)
 LC++INCS = $(addprefix -I, $(HEADER_DIRS))
 
@@ -384,11 +361,7 @@ endif
 #----------------------------------------------------------------------
 # File containing the list of symbols exported outside of cg.so
 #----------------------------------------------------------------------
-ifeq ($(BUILD_COMPILER), EDG)
-EXPORT_LIST = -exports_file $(BE_LNOPT_DIR)/Exported
-else
 EXPORT_LIST =
-endif
 
 #----------------------------------------------------------------------
 #  Define target
@@ -403,9 +376,6 @@ endif
 #----------------------------------------------------------------------
 #  Variables describing additional sources, objects, and libraries
 #----------------------------------------------------------------------
-ifeq ($(BUILD_COMPILER), EDG)
-LLDLIBS += -none -lm
-endif
 
 default: first $(TARGETS) last
 
@@ -510,9 +480,5 @@ include $(COMMONRULES)
 #  Special case rules for files that want to be individualistic
 #----------------------------------------------------------------------
 
-ifeq ($(BUILD_COMPILER), EDG)
-DSONAMEOPT = -soname lno.so
-else
 DSONAMEOPT =
-endif
 

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -344,8 +348,8 @@ LU_MAT<T>::LU_MAT(const LU_MAT<T>& a, MEM_POOL* pool) :
 
 template<class T>
 LU_MAT<T>::LU_MAT(const LU_MAT<T>& a) :
-        _pool(a.pool),
-        _lu(0,0,pool),
+        _pool(a._pool),
+        _lu(0,0,a._pool),
         _interch(NULL),
         _cpvt(NULL),
         _interch_sz(0),

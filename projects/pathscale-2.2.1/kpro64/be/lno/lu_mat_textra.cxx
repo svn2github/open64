@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -56,6 +56,7 @@
 static char *rcs_id =   lu_mat_textra_CXX "$Revision: 1.1.1.1 $";
 
 
+#include "lnopt_main.h"
 #include "mat.h"
 #include "lu_mat.h"
 

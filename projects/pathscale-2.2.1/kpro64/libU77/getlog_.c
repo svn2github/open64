@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -45,8 +49,19 @@
 #include <unistd.h>
 #include "externals.h"
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+void
+pathf90_getlog(char *name, int len)
+
+#else
+
 extern void
 getlog_(char *name, int len)
+
+#endif /* KEY Bug 1683 */
 {
 	char *l = getlogin();
 

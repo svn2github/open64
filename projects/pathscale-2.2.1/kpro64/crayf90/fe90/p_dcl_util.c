@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -1672,9 +1676,15 @@ boolean merge_access(int		attr_idx,
    else {
 
       if (AT_ACCESS_SET(attr_idx)) {  /* Duplicate declaration */
+#ifdef KEY /* Bug 5040 */
+         PRINTMSG(line, 1259, ansi_or_warning(), column,
+                  AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx),
+                  (access == Public) ? "PUBLIC":"PRIVATE");
+#else /* KEY Bug 5040 */
          PRINTMSG(line, 1259, Ansi, column,
                   AT_OBJ_NAME_PTR(attr_idx),
                   (access == Public) ? "PUBLIC":"PRIVATE");
+#endif /* KEY Bug 5040 */
       }
 
       AT_PRIVATE(attr_idx)	= access;
@@ -1748,9 +1758,15 @@ boolean merge_allocatable(boolean chk_semantics,
       if (!fnd_err) {
 
          if (ATD_ALLOCATABLE(attr_idx)) {
+#ifdef KEY /* Bug 5040 */
+            PRINTMSG(line, 1259, ansi_or_warning(), column,
+                     AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx),
+                     "ALLOCATABLE");
+#else /* KEY Bug 5040 */
             PRINTMSG(line, 1259, Ansi, column,
                      AT_OBJ_NAME_PTR(attr_idx),
                      "ALLOCATABLE");
+#endif /* KEY Bug 5040 */
          }
          ATD_ALLOCATABLE(attr_idx) = TRUE;
          ATD_IM_A_DOPE(attr_idx)   = TRUE;
@@ -1841,9 +1857,15 @@ boolean merge_automatic(boolean		chk_semantics,
       if (!fnd_err) {
 
          if (ATD_STACK(attr_idx)) {
+#ifdef KEY /* Bug 5040 */
+            PRINTMSG(line, 1259, ansi_or_warning(), column,
+                     AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx),
+                     "AUTOMATIC");
+#else /* KEY Bug 5040 */
             PRINTMSG(line, 1259, Ansi, column,
                      AT_OBJ_NAME_PTR(attr_idx),
                      "AUTOMATIC");
+#endif /* KEY Bug 5040 */
          }
          ATD_STACK(attr_idx) = TRUE;
       }
@@ -1992,6 +2014,16 @@ boolean merge_dimension(int	attr_idx,
                   }
 
                   if (same) {
+#ifdef KEY /* Bug 5040 */
+                     PRINTMSG(line, 1259, ansi_or_warning(), column, 
+                              AT_OBJ_NAME_PTR(rslt_idx), AT_DEF_LINE(attr_idx),
+			      "DIMENSION");
+                  }
+                  else {
+                     PRINTMSG(line, 554, Error, column, 
+                              AT_OBJ_NAME_PTR(rslt_idx), "DIMENSION",
+                              "DIMENSION", AT_DEF_LINE(rslt_idx));
+#else /* KEY Bug 5040 */
                      PRINTMSG(line, 1259, Ansi, column, 
                               AT_OBJ_NAME_PTR(rslt_idx), "DIMENSION");
                   }
@@ -1999,6 +2031,7 @@ boolean merge_dimension(int	attr_idx,
                      PRINTMSG(line, 554, Error, column, 
                               AT_OBJ_NAME_PTR(rslt_idx), "DIMENSION",
                               "DIMENSION");
+#endif /* KEY Bug 5040 */
                   }
                }
                else {
@@ -2090,12 +2123,23 @@ boolean merge_dimension(int	attr_idx,
             }
 
             if (same) {
+#ifdef KEY /* Bug 5040 */
+               PRINTMSG(line, 1259, ansi_or_warning(), column, 
+                        AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx),
+			"DIMENSION");
+            }
+            else {
+               PRINTMSG(line, 554, Error, column, 
+                        AT_OBJ_NAME_PTR(attr_idx), "DIMENSION", "DIMENSION",
+			AT_DEF_LINE(attr_idx));
+#else /* KEY Bug 5040 */
                PRINTMSG(line, 1259, Ansi, column, 
                         AT_OBJ_NAME_PTR(attr_idx), "DIMENSION");
             }
             else {
                PRINTMSG(line, 554, Error, column, 
                         AT_OBJ_NAME_PTR(attr_idx), "DIMENSION", "DIMENSION");
+#endif /* KEY Bug 5040 */
             }
          }
          else {
@@ -2230,9 +2274,15 @@ boolean merge_external(boolean	chk_semantics,
       else {
 
          if (ATP_DCL_EXTERNAL(attr_idx)) {
+#ifdef KEY /* Bug 5040 */
+            PRINTMSG(line, 1259, ansi_or_warning(), column, 
+                     AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx),
+                     "EXTERNAL");
+#else /* KEY Bug 5040 */
             PRINTMSG(line, 1259, Ansi, column, 
                      AT_OBJ_NAME_PTR(attr_idx),
                      "EXTERNAL");
+#endif /* KEY Bug 5040 */
          }
 
          if (ATP_PROC(attr_idx) == Unknown_Proc) {
@@ -2308,12 +2358,21 @@ boolean merge_intent(boolean		chk_semantics,
          if (ATD_INTENT(attr_idx) != Intent_Unseen) {
 
             if (ATD_INTENT(attr_idx) == new_intent) {
+#ifdef KEY /* Bug 5040 */
+               PRINTMSG(line, 1259, ansi_or_warning(), column,
+	         AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "INTENT");
+            }
+            else {  /* The intent is different */
+               PRINTMSG(line, 554, Error, column, AT_OBJ_NAME_PTR(attr_idx),
+                        "INTENT", "INTENT", AT_DEF_LINE(attr_idx));
+#else /* KEY Bug 5040 */
                PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx),
                         "INTENT");
             }
             else {  /* The intent is different */
                PRINTMSG(line, 554, Error, column, AT_OBJ_NAME_PTR(attr_idx),
                         "INTENT", "INTENT");
+#endif /* KEY Bug 5040 */
             }
          }
       }
@@ -2380,8 +2439,13 @@ boolean merge_intrinsic(boolean	chk_semantics,
    else if (AT_IS_INTRIN(attr_idx) && AT_OBJ_CLASS(attr_idx) == Interface) {
 
       if (ATI_DCL_INTRINSIC(attr_idx)) {
+#ifdef KEY /* Bug 5040 */
+         PRINTMSG(line, 1259, ansi_or_warning(), column,
+	   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "INTRINSIC");
+#else /* KEY Bug 5040 */
          PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx),
                   "INTRINSIC");
+#endif /* KEY Bug 5040 */
       }
       ATI_DCL_INTRINSIC(attr_idx) = TRUE;
    }
@@ -2562,8 +2626,13 @@ boolean merge_optional (boolean	chk_semantics,
                                  TRUE);
 
       if (!chk_err && AT_OPTIONAL(attr_idx)) {
+#ifdef KEY /* Bug 5040 */
+         PRINTMSG(line, 1259, ansi_or_warning(), column,
+	   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "OPTIONAL");
+#else /* KEY Bug 5040 */
          PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx),
                   "OPTIONAL");
+#endif /* KEY Bug 5040 */
       }
    }
    else {
@@ -2661,8 +2730,13 @@ boolean merge_pointer(boolean	chk_semantics,
       if (!fnd_err) {
 
          if (ATD_POINTER(attr_idx)) {
+#ifdef KEY /* Bug 5040 */
+            PRINTMSG(line, 1259, ansi_or_warning(), column,
+	      AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "POINTER");
+#else /* KEY Bug 5040 */
             PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx),
                      "POINTER");
+#endif /* KEY Bug 5040 */
          }
          ATD_POINTER(attr_idx)   = TRUE;
          ATD_IM_A_DOPE(attr_idx) = TRUE;
@@ -2716,7 +2790,12 @@ boolean merge_save(boolean	chk_semantics,
       fnd_err = fnd_semantic_err(Obj_Saved, line, column, attr_idx, TRUE);
 
       if (!fnd_err && ATD_SAVED(attr_idx)) {
+#ifdef KEY /* Bug 5040 */
+         PRINTMSG(line, 1259, ansi_or_warning(), column,
+	   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "SAVE");
+#else /* KEY Bug 5040 */
          PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx), "SAVE");
+#endif /* KEY Bug 5040 */
       }
    }
    else {
@@ -2806,7 +2885,12 @@ boolean merge_target(boolean	chk_semantics,
    if (!fnd_err) {
 
       if (!fnd_err && ATD_TARGET(attr_idx)) {
+#ifdef KEY /* Bug 5040 */
+         PRINTMSG(line, 1259, ansi_or_warning(), column,
+	   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "TARGET");
+#else /* KEY Bug 5040 */
          PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx),"TARGET");
+#endif /* KEY Bug 5040 */
       }
       ATD_TARGET(attr_idx) = TRUE;
    }
@@ -3965,8 +4049,13 @@ boolean merge_volatile(boolean	chk_semantics,
       fnd_err = fnd_semantic_err(Obj_Volatile, line, column, attr_idx, TRUE);
 
       if (!fnd_err && ATD_VOLATILE(attr_idx)) {
+#ifdef KEY /* Bug 5040 */
+         PRINTMSG(line, 1259, ansi_or_warning(), column,
+	   AT_OBJ_NAME_PTR(attr_idx), AT_DEF_LINE(attr_idx), "VOLATILE");
+#else /* KEY Bug 5040 */
          PRINTMSG(line, 1259, Ansi, column, AT_OBJ_NAME_PTR(attr_idx), 
                   "VOLATILE");
+#endif /* KEY Bug 5040 */
       }
    }
    else {

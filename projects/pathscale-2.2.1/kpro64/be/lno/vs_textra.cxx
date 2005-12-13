@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -62,6 +62,7 @@ static char *rcs_id =   vs_textra_CXX "$Revision: 1.1.1.1 $";
 
 
 #include <sys/types.h>
+#include "lnopt_main.h"
 #include "vs.h"
 #include "lnoutils.h"
 #include "frac.h"

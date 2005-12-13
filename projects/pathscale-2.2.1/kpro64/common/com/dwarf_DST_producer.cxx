@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -39,7 +39,9 @@
 
 #include "dwarf_DST_producer.h"
 #include "errors.h"        /* in ../common/util */
-
+#ifdef KEY
+#include <ctype.h>         /* for 'isdigit' */
+#endif
 
 
          /*---------------------------------*
@@ -72,9 +74,15 @@ static DST_FILE_IDX       last_file_name = DST_INVALID_INIT;
 static DST_INFO_IDX       last_info_idx = DST_INVALID_INIT;
 static DST_INFO_IDX       file_scope_info = DST_INVALID_INIT;
 static DST_INFO_IDX       forced_exit_info = DST_INVALID_INIT;
+#ifdef KEY
+static DST_MACR_IDX       last_macro = DST_INVALID_INIT;
+#endif
 
 static mUINT16            num_file_names = 0;
 static mUINT16            num_incl_dirs = 0;
+#ifdef KEY
+static mUINT16            num_macros = 0;
+#endif
   
 static BOOL               begin_PU = FALSE;
 static mINT32             file_scope_locks = 0;
@@ -98,6 +106,9 @@ static mINT32             file_scope_locks = 0;
 #define DST_mk_dir() (DST_mk(DST_INCLUDE_DIR));
 #define DST_mk_info() (DST_mk(DST_INFO));
 #define DST_mk_attr(type) (DST_mk(type));
+#ifdef KEY
+#define DST_mk_macro() (DST_mk(DST_MACR));
+#endif
 
 #if defined(MONGOOSE_BE)
 /*	Don't call DST_enter_mk in the backend */
@@ -130,7 +141,15 @@ DST_mk_name(const char *s)
    /* A general string may be an empty string, while a name attribute
     * must contain at least one non-null character or else it is invalid.
     */
+#ifndef KEY
    if ((s != NULL) && (*s != '\0'))
+#else
+     // related to bug 1717 - struct and union types get 
+     // anonymous type names like ._0, ._1, etc.
+     // Avoid generating these names.
+   if ((s != NULL) && (*s != '\0') && 
+       !(*s == '.' && s[1] == '_' && isdigit(s[2])))
+#endif
    {
       str_idx = DST_allocate(strlen(s) + 1, DST_char_align);
       (void)strcpy(DST_STR_IDX_TO_PTR(str_idx), s);
@@ -320,6 +339,13 @@ DST_number_of_files(void)
    return num_file_names;
 }
 
+#ifdef KEY
+mUINT16
+DST_number_of_macros(void)
+{
+   return num_macros;
+}
+#endif
 
    /*------------------------------------------------
     * Creation of .debug_macinfo section information
@@ -2255,3 +2281,161 @@ DST_mk_subroutine_type(USRCPOS      decl,            /* Source location */
    return DST_init_info(info_idx, DW_TAG_subroutine_type, flag, attr_idx);
 }
 
+#ifdef KEY
+/* Create a DW_TAG_namelist entry
+ */
+DST_INFO_IDX
+DST_mk_namelist(USRCPOS decl, /* source location */
+		char *name)
+{
+  DST_INFO_IDX         info_idx;
+  DST_ATTR_IDX         attr_idx;
+  DST_flag             flag = DST_no_flag;
+  DST_NAMELIST *attr;
+  
+#if !(defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER))
+  DST_enter_mk(DST_making_dbg_info, last_info_idx);
+#endif
+  
+  info_idx = DST_mk_info();
+  attr_idx = DST_mk_attr(DST_NAMELIST);
+  attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_NAMELIST);
+  DST_NAMELIST_decl(attr) = decl;
+  DST_NAMELIST_name(attr) = DST_mk_name(name);
+  DST_NAMELIST_first_child(attr) = DST_INVALID_IDX;
+  DST_NAMELIST_last_child(attr) = DST_INVALID_IDX;
+  return DST_init_info(info_idx, DW_TAG_namelist, flag, attr_idx);
+}
+
+/* Create a DW_TAG_namelist_item entry
+ */
+DST_INFO_IDX
+DST_mk_namelist_item(USRCPOS decl, /* source location */
+		     char *name)
+{
+  DST_INFO_IDX         info_idx;
+  DST_ATTR_IDX         attr_idx;
+  DST_flag             flag = DST_no_flag;
+  DST_NAMELIST_ITEM *attr;
+  
+#if !(defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER))
+  DST_enter_mk(DST_making_dbg_info, last_info_idx);
+#endif
+  
+  info_idx = DST_mk_info();
+  attr_idx = DST_mk_attr(DST_NAMELIST_ITEM);
+  attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_NAMELIST_ITEM);
+  DST_NAMELIST_ITEM_decl(attr) = decl;
+  DST_NAMELIST_ITEM_name(attr) = DST_mk_name(name);
+  return DST_init_info(info_idx, DW_TAG_namelist_item, flag, attr_idx);
+}
+
+/* Define/Undef a macro. 
+ */
+DST_MACR_IDX 
+DST_mk_macr (UINT lineno, /* line number of macro */
+	     char *macro, /* The macro */
+	     INT  tag     /* DW_MACINFO_* */)
+{
+  DST_MACR *m_ptr, *prev_ptr;
+  DST_MACR_IDX m_idx;
+
+  /* Reset pstate and the memory block used for allocation */
+  if (DST_IS_NULL(last_macro))
+    {
+      DST_begin_block(DST_macro_info_block); /* First file entry */
+      pstate = DST_making_macinfo;
+    }
+#if !(defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER))
+  else
+    DST_enter_mk(DST_making_macinfo, last_macro);
+#endif
+  
+  /* Create the entry */
+  m_idx  = DST_mk_macro();
+  m_ptr  = DST_MACR_IDX_TO_PTR(m_idx);
+  DST_MACR_macro(m_ptr) = DST_mk_string(macro);
+  DST_MACR_lineno(m_ptr) = lineno;
+  DST_MACR_tag(m_ptr) = tag;
+  DST_MACR_next(m_ptr) = DST_INVALID_IDX;
+  if (!DST_IS_NULL(last_macro))
+    {
+      prev_ptr = DST_MACR_IDX_TO_PTR(last_macro);
+      DST_MACR_next(prev_ptr) = m_idx;
+    }
+  last_macro = m_idx;
+  num_macros += 1;
+  return m_idx;
+}
+
+/* Start a file for macinfo section.
+ */
+DST_MACR_IDX 
+DST_mk_macr_start_file (UINT lineno, /* a line number */
+			UINT fileno  /* a file number */)
+{
+  DST_MACR *m_ptr, *prev_ptr;
+  DST_MACR_IDX m_idx;
+
+  /* Reset pstate and the memory block used for allocation */
+  if (DST_IS_NULL(last_macro))
+    {
+      DST_begin_block(DST_macro_info_block); /* First file entry */
+      pstate = DST_making_macinfo;
+    }
+#if !(defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER))
+  else
+    DST_enter_mk(DST_making_macinfo, last_macro);
+#endif
+  
+  /* Create the entry */
+  m_idx  = DST_mk_macro();
+  m_ptr  = DST_MACR_IDX_TO_PTR(m_idx);
+  DST_MACR_lineno(m_ptr) = lineno;
+  DST_MACR_fileno(m_ptr) = fileno;
+  DST_MACR_tag(m_ptr) = DW_MACINFO_start_file;
+  DST_MACR_next(m_ptr) = DST_INVALID_IDX;
+  if (!DST_IS_NULL(last_macro))
+    {
+      prev_ptr = DST_MACR_IDX_TO_PTR(last_macro);
+      DST_MACR_next(prev_ptr) = m_idx;
+    }
+  last_macro = m_idx;
+  num_macros += 1;
+  return m_idx;
+}
+
+/* End a file for the macinfo section.
+ */
+DST_MACR_IDX 
+DST_mk_macr_end_file (void)
+{
+  DST_MACR *m_ptr, *prev_ptr;
+  DST_MACR_IDX m_idx;
+
+  /* Reset pstate and the memory block used for allocation */
+  if (DST_IS_NULL(last_macro))
+    {
+      DST_begin_block(DST_macro_info_block); /* First file entry */
+      pstate = DST_making_macinfo;
+    }
+#if !(defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER))
+  else
+    DST_enter_mk(DST_making_macinfo, last_macro);
+#endif
+  
+  /* Create the entry */
+  m_idx  = DST_mk_macro();
+  m_ptr  = DST_MACR_IDX_TO_PTR(m_idx);
+  DST_MACR_tag(m_ptr) = DW_MACINFO_end_file;
+  DST_MACR_next(m_ptr) = DST_INVALID_IDX;
+  if (!DST_IS_NULL(last_macro))
+    {
+      prev_ptr = DST_MACR_IDX_TO_PTR(last_macro);
+      DST_MACR_next(prev_ptr) = m_idx;
+    }
+  last_macro = m_idx;
+  num_macros += 1;
+  return m_idx;
+}
+#endif

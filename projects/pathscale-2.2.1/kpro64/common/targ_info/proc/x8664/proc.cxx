@@ -44,6 +44,7 @@ main ()
 {
   PROC_Create( "x8664",
 	       "opteron",
+	       "em64t",
 	       NULL );
 }
 

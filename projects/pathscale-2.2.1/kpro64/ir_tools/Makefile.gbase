@@ -38,13 +38,7 @@
 
 include	$(COMMONDEFS)
 
-CVERSION =
 LCOPTS += $(STD_COMPILE_OPTS) $(STD_C_OPTS)
-ifeq ($(BUILD_COMPILER), EDG)
-WOFF += -fullwarn
-else
-WOFF +=
-endif
 HOSTDEFS += -DIR_TOOLS
 HOSTDEFS += -D_NEW_SYMTAB
 ifeq ($(BUILD_COMPILER), GNU)
@@ -74,11 +68,7 @@ LC++DEFS += $(HOSTDEFS) $(TARGDEFS)
 GLDOPTS = $(STD_LOAD_OPTS)
 
 LIBCOMUTIL = $(BUILD_AREA)/libcomutil/libcomutil.a
-ifeq ($(BUILD_COMPILER), EDG)
-LLDLIBS	= $(LIBCOMUTIL) -lgen -lm
-else
 LLDLIBS	= $(LIBCOMUTIL) -lm
-endif
 
 TARGETS = ir_b2a ir_size ir_sel ir_all
 
@@ -89,7 +79,7 @@ COMMON_COM_TARG_DIR= $(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR)
 LDIRT = ir_a2b ir_sel
 
 LCINCS = -I$(BUILD_BASE) -I$(COMMON_COM_DIR) -I$(COMMON_COM_TARG_DIR) \
-	-I$(COMMON_UTIL_DIR) $(XINC)
+	-I$(COMMON_UTIL_DIR) $(XINC) -I$(BUILD_TOT)/include
 ifeq ($(BUILD_OS), LINUX)
 LCINCS += -I$(BUILD_AREA)/include/libelf
 endif
@@ -182,4 +172,5 @@ ir_size: $(OBJECTS) ir_size.o ir_b2a
 
 ir_walker: $(OBJECTS) ir_walker.o
 	$(link.c++f) -o ir_walker ir_walker.o $(OBJECTS) $(LDFLAGS)
+wn_util.o: HOSTDEFS += -DMONGOOSE_BE
 

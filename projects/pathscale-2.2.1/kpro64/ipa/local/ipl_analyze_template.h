@@ -1,5 +1,6 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+/* -*- c++ -*-
+ *
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1431,6 +1432,19 @@ SUMMARIZE<program>:: Record_global_ref (WN* w, ST *s, OPERATOR op, BOOL refcount
 {
     SUMMARY_GLOBAL *global = NULL;
 
+#ifdef KEY
+    FmtAssert((WN_operator(w) == OPR_LDID) ||
+	      (WN_operator(w) == OPR_ILOAD) ||
+	      (WN_operator(w) == OPR_LDA) ||
+	      (WN_operator(w) == OPR_PRAGMA),
+	      ("Expecting LDID/ILOAD/LDA/PRAGMA in Record_Global_Ref "));
+
+    // don't bother with constants and register variables
+    if ((ST_class(s) == CLASS_CONST) ||
+	(ST_class(s) == CLASS_PREG)) {
+	return;
+    }
+#else
     FmtAssert((WN_operator(w) == OPR_LDID) ||
 	      (WN_operator(w) == OPR_ILOAD) ||
 	      (WN_operator(w) == OPR_LDA),
@@ -1442,6 +1456,7 @@ SUMMARIZE<program>:: Record_global_ref (WN* w, ST *s, OPERATOR op, BOOL refcount
 	(ST_class(WN_st(w)) == CLASS_PREG)) {
 	return;
     }
+#endif
 
     if ( Trace_Modref ) {
 	fprintf ( TFile, " global %s referenced", ST_name(s) );
@@ -1467,6 +1482,10 @@ SUMMARIZE<program>:: Record_global_ref (WN* w, ST *s, OPERATOR op, BOOL refcount
 	global->Set_dref();
 	break;
     case OPR_ILOAD:
+#ifdef KEY
+        if (IPA_Enable_Pure_Call_Opt)
+          Get_procedure (Get_procedure_idx())->Set_has_side_effect();
+#endif
 	global->Set_iref();
 	break;
     case OPR_LDA:
@@ -1507,6 +1526,10 @@ SUMMARIZE<program>:: Record_ref_formal ( WN* w )
     switch ( WN_operator(w) ) {
 
     case OPR_ILOAD:
+#ifdef KEY
+        if (IPA_Enable_Pure_Call_Opt)
+          Get_procedure (Get_procedure_idx())->Set_has_side_effect();
+#endif
 	switch ( WN_operator(WN_kid0(w)) ) {
 	case OPR_ARRAY:
 	    w2 = WN_array_base(WN_kid0(w));
@@ -1615,6 +1638,10 @@ SUMMARIZE<program>:: Record_ref_all_formal ( WN* w, BOOL parm_store )
 
     switch ( WN_operator(w) ) {
     case OPR_ILOAD:
+#ifdef KEY
+        if (IPA_Enable_Pure_Call_Opt)
+          Get_procedure (Get_procedure_idx())->Set_has_side_effect();
+#endif
 	switch ( WN_operator(WN_kid0(w)) ) {
 	case OPR_ARRAY:
 	    w2 = WN_array_base(WN_kid0(w));
@@ -1746,6 +1773,39 @@ SUMMARIZE<program>:: Check_kid_ref (WN* w)
 } // SUMMARIZE::Check_kid_ref
 
 
+static void
+Record_unknown_memory_op (WN* wn)
+{
+  if (WN_operator(wn) == OPR_ARRAY) {
+    WN* base = WN_array_base(wn);
+    OPERATOR base_opr = WN_operator(base);
+    if (OPERATOR_has_sym(base_opr)) {
+      if (base_opr == OPR_LDA) {
+        return;
+      }
+      ST* base_st = WN_st(base);        
+      switch (ST_sclass(base_st)) {
+        case SCLASS_FORMAL:
+        case SCLASS_FORMAL_REF: 
+        case SCLASS_AUTO:
+        case SCLASS_PSTATIC: {
+          TY_IDX ty = ST_type(base_st);
+          if (TY_kind(ty) == KIND_ARRAY ||
+              (TY_kind(ty) == KIND_POINTER && 
+               TY_kind(TY_pointed(ty)) == KIND_ARRAY)) {
+            return;
+          }
+        }
+      }
+    }
+  }
+  
+  // we didn't recongnize memory location as known
+  Summary->Get_procedure(Summary->Get_procedure_idx())->
+    Set_has_incomplete_array_info();
+}
+
+
 //-----------------------------------------------------------
 // record global variables that have been referenced
 //-----------------------------------------------------------
@@ -1761,6 +1821,12 @@ SUMMARIZE<program>:: Record_ref (WN *w)
     if ( Trace_Modref )
 	fprintf (TFile, "<mr> Record_Ref -- %s:", OPCODE_name(WN_opcode(w)) );
 
+#ifdef KEY
+    // Covers all ILOADs.
+    if (WN_operator (w) == OPR_ILOAD)
+      if (IPA_Enable_Pure_Call_Opt)
+        Get_procedure (Get_procedure_idx())->Set_has_side_effect();
+#endif // KEY
 
     // note, we should NOT be recording actual parameters as being
     // referenced (seema).
@@ -1793,6 +1859,25 @@ SUMMARIZE<program>:: Record_ref (WN *w)
 	    s = ST_base (s);
     } else
 	s = NULL;
+
+#ifdef KEY
+    // Consider any access of globals
+    if (s)
+      switch (ST_sclass(s))
+      {
+        case SCLASS_EXTERN:
+	case SCLASS_UGLOBAL:
+	case SCLASS_DGLOBAL:
+	case SCLASS_FSTATIC:
+	case SCLASS_COMMON:
+          if (IPA_Enable_Pure_Call_Opt)
+            Get_procedure (Get_procedure_idx())->Set_has_side_effect();
+	  break;
+
+	default:
+	  break;
+      }
+#endif // KEY
 
     switch (WN_operator(w)) {
 
@@ -1949,6 +2034,11 @@ SUMMARIZE<program>::Record_global_dmod (const WN* w, const WN *rhs,
 	fprintf ( TFile, " global %s modified", ST_name(WN_st(w)) );
     }
 
+#ifdef KEY
+    if (IPA_Enable_Pure_Call_Opt)
+      Get_procedure (Get_procedure_idx())->Set_has_side_effect();
+#endif
+
     INT index = Global_hash_table->Find (s);
 
     if (index == 0) {
@@ -1987,6 +2077,18 @@ SUMMARIZE<program>:: Record_mod_formal ( WN* w )
 {
     INT i;
     WN* w2;
+
+#ifdef KEY
+    if (IPA_Enable_Pure_Call_Opt)
+    {
+      ST * tmp_st = WN_st (w);
+      if (ST_st_idx (tmp_st) != ST_base_idx (tmp_st) && 
+          !ST_is_weak_symbol (tmp_st))
+	tmp_st = ST_base (tmp_st);
+      if (ST_sclass (tmp_st) == SCLASS_FORMAL_REF)
+        Get_procedure (Get_procedure_idx())->Set_has_side_effect();
+    }
+#endif
 
     switch ( WN_operator(w) ) {
 
@@ -2078,6 +2180,11 @@ SUMMARIZE<program>:: Record_mod_common (WN *w, const ST *st)
     return;
   }
 
+#ifdef KEY
+  if (IPA_Enable_Pure_Call_Opt)
+    Get_procedure (Get_procedure_idx())->Set_has_side_effect();
+#endif
+
   SUMMARY_GLOBAL* global;
   INT index = Global_hash_table->Find(st);
 
@@ -2095,39 +2202,6 @@ SUMMARIZE<program>:: Record_mod_common (WN *w, const ST *st)
   Get_symbol(global->Get_symbol_index())->Set_modcount();
 
 } // SUMMARIZE::Record_mod_common
-
-
-static void
-Record_unknown_memory_op (WN* wn)
-{
-  if (WN_operator(wn) == OPR_ARRAY) {
-    WN* base = WN_array_base(wn);
-    OPERATOR base_opr = WN_operator(base);
-    if (OPERATOR_has_sym(base_opr)) {
-      if (base_opr == OPR_LDA) {
-        return;
-      }
-      ST* base_st = WN_st(base);        
-      switch (ST_sclass(base_st)) {
-        case SCLASS_FORMAL:
-        case SCLASS_FORMAL_REF: 
-        case SCLASS_AUTO:
-        case SCLASS_PSTATIC: {
-          TY_IDX ty = ST_type(base_st);
-          if (TY_kind(ty) == KIND_ARRAY ||
-              (TY_kind(ty) == KIND_POINTER && 
-               TY_kind(TY_pointed(ty)) == KIND_ARRAY)) {
-            return;
-          }
-        }
-      }
-    }
-  }
-  
-  // we didn't recongnize memory location as known
-  Summary->Get_procedure(Summary->Get_procedure_idx())->
-    Set_has_incomplete_array_info();
-}
           
 
 //-----------------------------------------------------------
@@ -2147,6 +2221,13 @@ SUMMARIZE<program>:: Record_mod (WN* w)
 
     const ST* st;
     const WN* w2;
+
+#ifdef KEY
+    // Consider all ISTOREs
+    if (WN_operator (w) == OPR_ISTORE)
+      if (IPA_Enable_Pure_Call_Opt)
+        Get_procedure (Get_procedure_idx())->Set_has_side_effect();
+#endif // KEY
 
     switch (PU_src_lang (Get_Current_PU ())) {
     case PU_C_LANG:
@@ -2172,6 +2253,11 @@ SUMMARIZE<program>:: Record_mod (WN* w)
 		case SCLASS_FSTATIC:
 		    Record_global_dmod (w2, WN_kid0(w), st);
 		    break;
+#ifdef KEY
+                default:
+    		    if (IPA_Enable_Pure_Call_Opt)
+      		      Get_procedure (Get_procedure_idx())->Set_has_side_effect();
+#endif
 		}
 	    } else {
 		// can't find the mod target, record as an indirect mod

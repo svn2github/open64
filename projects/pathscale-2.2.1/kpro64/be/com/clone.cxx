@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -336,7 +336,7 @@ IPO_CLONE::Copy_Node (const WN *src_wn)
     }
 
     wn->common = src_wn->common;
-    WN_map_id(wn) = (WN_MAP_ID) (-1);
+    WN_set_map_id(wn, (WN_MAP_ID) (-1));
 
     WN_Copy_u1u2 (wn, src_wn);
     WN_Copy_u3 (wn, src_wn);
@@ -626,6 +626,7 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 #ifdef KEY
 	if (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG)
 	{
+#if 0
 	// For lang other than C++, the copy below won't be done anyway 
 	// since it depends on sclass. But then prevent the unnecessary loop
 	// for other languages.
@@ -636,6 +637,15 @@ IPO_SYMTAB::Copy_Local_Tables(BOOL label_only)
 	    if (ST_sclass(INITO_st(copy)) == SCLASS_EH_REGION_SUPP)
 	    	(*_cloned_scope_tab[_cloned_level].inito_tab).Insert (copy);
 	  }
+#else
+	    // bug 4091: for C++ copy all INITOs
+	    // We really need to clone only the EH initos here, but if
+	    // we only clone them, we will need to do lots of fixups.
+            (void)Copy_array_range(*_orig_scope_tab[_orig_level].inito_tab, 
+			           *_cloned_scope_tab[_cloned_level].inito_tab, 
+			           start_idx, 
+			           (_orig_scope_tab[_orig_level].inito_tab)->Size());
+#endif
 	}
 #endif
   }

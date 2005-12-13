@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -484,7 +488,11 @@ i4 *dim)
       ap1 = array_p + a_offs ;
 
       for ( k = 0 ; k < ll1 ; k ++ )  {
+#ifdef KEY /* Bug 4039 */
+	*(ui16 *)result_p = *(ui16 *)ap1 ;
+#else /* KEY Bug 4039 */
 	*(r16 *)result_p = *(r16 *)ap1 ;
+#endif /* KEY Bug 4039 */
 	result_p += r_stride ;
 	ap1 += a_stride ;
       }
@@ -492,7 +500,11 @@ i4 *dim)
       ap2 = array_p ;
 
       for ( k = 0 ; k < ll2 ; k ++ ) {
+#ifdef KEY /* Bug 4039 */
+	*(ui16 *)result_p = *(ui16 *)ap2 ;
+#else /* KEY Bug 4039 */
 	*(r16 *)result_p = *(r16 *)ap2 ;
+#endif /* KEY Bug 4039 */
 	result_p += r_stride ;
 
 	ap2 += a_stride ;

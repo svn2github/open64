@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -46,10 +46,10 @@
 
 #include <sys/types.h>
 #include "defs.h"
+#include "lnopt_main.h"
 #include "mat.h"
 #include "cxx_base.h"
 #include "access_vector.h"
-#include "lnopt_main.h"
 #include "snl.h"
 #include "opt_du.h" 
 #include "lwn_util.h"
@@ -869,7 +869,12 @@ void SX_INFO::Update_Reduction_Loop_Stmts(WN* wn_inner)
         continue; 
       } 
       REDUCTION_TYPE rt = red_manager->Which_Reduction(wn_def);
+#ifdef KEY // Bug 6288 - if not part of a reduction, continue.
+      if (rt == RED_NONE) 
+	continue;
+#else
       FmtAssert(rt != RED_NONE, ("Should be part of a reduction"));
+#endif
       USE_LIST *use_list = Du_Mgr->Du_Get_Use(wn_def);
       FmtAssert(use_list != NULL, ("Expected a use list"));
       USE_LIST_ITER iter(use_list);

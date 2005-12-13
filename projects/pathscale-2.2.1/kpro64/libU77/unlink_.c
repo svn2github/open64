@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 1999-2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -47,6 +51,29 @@
 #include <stdlib.h>
 #include "externals.h"
 
+#ifdef KEY /* Bug 1683 */
+
+#include "pathf90_libU_intrin.h"
+
+pathf90_i4
+pathf90_unlink(char *fname, pathf90_i4 *status, int namlen)
+{
+        pathf90_i4 junk;
+	status = (0 == status) ? (&junk) : status;
+
+	if (!bufarg && !(bufarg=malloc(bufarglen=namlen+1)))
+		return(*status = (errno=F_ERSPACE));
+	else if (bufarglen <= namlen && !(bufarg=realloc(bufarg, bufarglen=namlen+1)))
+		return(*status = (errno=F_ERSPACE));
+	g_char(fname, namlen, bufarg);
+	if (0 != unlink(bufarg)) {
+	  return *status = errno;
+	  }
+	return *status = 0;
+}
+
+#else
+
 int32
 unlink_(char *fname, int32 namlen)
 {
@@ -58,3 +85,5 @@ unlink_(char *fname, int32 namlen)
 	g_char(fname, namlen, bufarg);
 	return( (int32) unlink(bufarg) );
 }
+
+#endif /* KEY Bug 1683 */

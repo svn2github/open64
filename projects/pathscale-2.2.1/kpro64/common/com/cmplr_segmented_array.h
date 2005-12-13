@@ -1,5 +1,6 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+/* -*- c++ -*-
+ *
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -257,8 +258,8 @@ public:
 template <class T, UINT block_size = 128>
 class RELATED_SEGMENTED_ARRAY : public growing_table {
 private:
-    
-    std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> > map;
+    typedef std::pair<T *, BOOL> thingy;
+    std::vector<thingy, mempool_allocator<thingy> > map;
     MEM_POOL *pool;
     UINT max_size;			// total # of elements allocated
     INT block_base;			// idx of the beginning of
@@ -358,7 +359,7 @@ public:
   ~RELATED_SEGMENTED_ARRAY() {
     // Free memory from blocks. Map memory gets freed when the map
     // vector is destructed.
-    for (typename std::vector<std::pair<T *, BOOL>, mempool_allocator<T *> >::iterator
+    for (typename std::vector<thingy, mempool_allocator<thingy> >::iterator
 	   entry = map.begin();
 	 entry != map.end();
 	 ++entry) {

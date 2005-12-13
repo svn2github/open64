@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001, Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -108,6 +112,16 @@ _unit_trunc(unit *cup)
 			if (LIBFTRUNC(fileno(iop), flength) == -1) 
 #endif
 				return(errno);
+#ifdef KEY /* Bug 5386 */
+			/* Until Fedora Core 3, this code never encountered
+			 * a Unix system that required an "fflush" here. But
+			 * without it, the FC3 stdio code doesn't notice that
+			 * we've bypassed stdio and truncated the file, and
+			 * to be honest, it seems like blind dumb luck that
+			 * other systems haven't encountered a problem here.
+			 */
+			fflush(iop);
+#endif /* KEY Bug 5386 */
 		}
 		break;
 

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -62,8 +62,26 @@ extern void gxx_emits_decl (tree t);
 // Add a VAR_DECL typeinfo to be emitted
 extern void gxx_emits_typeinfos (tree);
 
-// Add VAR_DECLs that are to be expanded last.
-extern void defer_emit_var_decl (tree);
+// Add VAR_DECLs and TYPE_DECLs that are to be expanded last.
+extern void defer_decl (tree);
+
+// Add asm statements declared at file scope
+extern void gxx_emits_asm (char *);
+
+// Add struct fields whose type we want to expand last.
+extern void defer_field (tree, FLD_HANDLE);
+
+// Add type whose DST info we want to create last.
+extern void defer_DST_type (tree, TY_IDX, TY_IDX);
+
+// Add DSTs for the defered types.
+extern void add_deferred_DST_types();
+
+// Interface description in .cxx file
+extern void template_substituted (tree, tree, tree);
+extern tree get_substituted (tree, tree);
+extern void push_mp_local_vars (tree);
+extern tree pop_mp_local_vars (void);
 #endif /* KEY */
 
 /* called for each aggregate initialization */
@@ -92,7 +110,11 @@ extern void WFE_Finish_Aggregate_Init (void);
 extern ST *WFE_Generate_Temp_For_Initialized_Aggregate (tree init, char *name);
 
 /* handle __attribute__ ((alias)) */
+#ifdef KEY
+extern BOOL WFE_Assemble_Alias (tree decl, tree target);
+#else
 extern void WFE_Assemble_Alias (tree decl, tree target);
+#endif
 
 /* handle __attribute__ ((constructor)) */
 extern void WFE_Assemble_Constructor (char *name);

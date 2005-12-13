@@ -57,6 +57,10 @@ endif
 
 LCDEFS += -DKEY 
 
+# Get the date of the build for perpetual licenses
+psc_build_date := $(shell date '+"%F/%T"')
+LCDEFS += -DPSC_BUILD_DATE='$(psc_build_date)'
+
 # Remove the following line to disable the PathScale subscription checking software
 LCDEFS += -DPSCSUB
 

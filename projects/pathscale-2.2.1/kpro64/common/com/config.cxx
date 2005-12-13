@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 
@@ -80,7 +80,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/con
 #endif /* ~FRONT_F90 */
 #endif /*  FRONT_END */
 #include <ctype.h>	/* For isdigit */
-#include <elf.h>
+#include "elf_stuff.h"
 
 #define USE_STANDARD_TYPES 1
 #include "defs.h"
@@ -249,8 +249,20 @@ BOOL LANG_Ignore_Carriage_Return_Set = FALSE;
 # ifdef KEY
 BOOL LANG_Read_Write_Const = FALSE;
 BOOL LANG_Formal_Deref_Unsafe = FALSE;
-BOOL LANG_Copy_Inout = TRUE;
+BOOL LANG_Copy_Inout = FALSE;
+BOOL LANG_Copy_Inout_Set = FALSE;
+BOOL LANG_Ignore_Target_Attribute = FALSE;
+BOOL LANG_Ignore_Target_Attribute_Set = FALSE;
+UINT32 LANG_Copy_Inout_Level = 1;
+// LANG_Math_Errno is FALSE if -fno-math-errno
+// -LANG:math_errno=off => do not set errno
+BOOL LANG_Math_Errno = TRUE; // set errno after calling math functions
+BOOL LANG_Math_Errno_Set = FALSE;
 # endif
+# ifdef KEY /* Bug 3405 */
+BOOL LANG_IEEE_Minus_Zero_On = FALSE;
+BOOL LANG_IEEE_Minus_Zero_Set = FALSE;
+# endif /* KEY Bug 3405 */
 
 BOOL LANG_Pch;
 BOOL LANG_Pch_Set;
@@ -331,6 +343,11 @@ BOOL Force_Large_Stack_Model = FALSE;
 // We set it to TRUE in the backend for C++ source, the user can override
 BOOL Force_Frame_Pointer = FALSE;
 BOOL Force_Frame_Pointer_Set = FALSE;
+
+// Cause lowerer to cast MTYPE_C8 datatype to MTYPE_V16C8 for SSE3.
+BOOL Vcast_Complex = FALSE;
+BOOL Vcast_Complex_Set = FALSE;
+
 /* Use g77 ABI (affect complex and single float return values) */
 BOOL F2c_Abi = FALSE;
 BOOL F2c_Abi_Set = FALSE;
@@ -663,10 +680,26 @@ static OPTION_DESC Options_LANG[] = {
     { OVK_BOOL, OV_VISIBLE,	FALSE, "formal_deref_unsafe",		"",
       0, 0, 0,	&LANG_Formal_Deref_Unsafe,	&LANG_Formal_Deref_Unsafe,
       "FORTRAN: the dereference of a formal parameter is unsafe, so do not speculate such dereferences" },
-    { OVK_BOOL, OV_VISIBLE,	TRUE, "copyinout",		"",
-      0, 0, 0,	&LANG_Copy_Inout,	&LANG_Copy_Inout,
-      "FORTRAN: create a tempoarary array to improve the locality" },
+    { OVK_BOOL, OV_VISIBLE,	FALSE, "copyinout",		"",
+      0, 0, 0,	&LANG_Copy_Inout,	&LANG_Copy_Inout_Set,
+      "FORTRAN: In a loop, pass noncontiguous array by copy-in-out to improve locality" },
+    { OVK_BOOL, OV_VISIBLE,	FALSE, "ignore_target_attribute",	"",
+      0, 0, 0,	&LANG_Ignore_Target_Attribute,	&LANG_Ignore_Target_Attribute_Set,
+      "FORTRAN: Assume no actual parameter has the 'target' attribute" },
+    { OVK_UINT32, OV_VISIBLE,	FALSE, "copyiolevel",		"",
+      0, 0, INT32_MAX,	&LANG_Copy_Inout_Level,	NULL,
+      "FORTRAN: Relax constraints on 'copyinout'" },
 # endif
+# ifdef KEY
+    /* Bug 3405 */
+    { OVK_BOOL, OV_VISIBLE,	TRUE, "IEEE_minus_zero",		"",
+      0, 0, 0,	&LANG_IEEE_Minus_Zero_On,	&LANG_IEEE_Minus_Zero_Set,
+      "FORTRAN: SIGN intrinsic considers -0.0 input to be negative" },
+
+    { OVK_BOOL, OV_INTERNAL,	TRUE, "math_errno",		"",
+      0, 0, 0,	&LANG_Math_Errno,	&LANG_Math_Errno_Set,
+      "C/C++: Set errno after calling math functions" },
+# endif /* KEY */
 
     { OVK_COUNT }		    /* List terminator -- must be last */
 };
@@ -789,7 +822,12 @@ BOOL CG_mem_intrinsics = TRUE;		/* for memory intrinsic expansion */
 INT32 CG_memmove_inst_count = 16;	/* for intrinsic expansion of bzero etc */
 BOOL CG_memmove_inst_count_overridden = FALSE;
 BOOL CG_bcopy_cannot_overlap = FALSE;	/* for intrinsic expansion of bcopy */
+#ifdef KEY
+// For memcpy, src and dest cannot overlap
+BOOL CG_memcpy_cannot_overlap = TRUE;	/* for intrinsic expansion of memcpy */
+#else
 BOOL CG_memcpy_cannot_overlap = FALSE;	/* for intrinsic expansion of memcpy */
+#endif
 BOOL CG_memmove_cannot_overlap = FALSE;	/* for intrinsic expansion of memmove */
 BOOL CG_memmove_nonconst = FALSE;	/* expand mem intrinsics unknown size */
 
@@ -1012,12 +1050,6 @@ Configure_Ofast ( void )
     Roundoff_Set = TRUE;
   }
 
-#ifdef KEY
-  if( !Target_SSE2_Set ){
-    Target_SSE2 = TRUE;
-  }
-#endif // KEY
-
   if ( ! Div_Split_Set ) {
     Div_Split_Allowed = TRUE;
     Div_Split_Set = TRUE;
@@ -1146,8 +1178,11 @@ Configure (void)
 
   if (Force_GP_Prolog) Force_Jalr = TRUE;
 #ifdef TARG_X8664
-  if ( Opt_Level > 2 && Is_Target_SSE2() )
+  // Bug 1039 - align aggregates to 16-byte for all optimization levels
+  if ( Is_Target_SSE2() )
     Aggregate_Alignment = 16;
+  if ( !Vcast_Complex_Set && Opt_Level > 1 )
+    Vcast_Complex = TRUE;
 #endif
 }
 
@@ -1266,10 +1301,30 @@ Configure_Source ( char	*filename )
   Optimization_Skip_List = Build_Skiplist ( Opt_Skip );
   /* Are we skipping any regions for optimization? */
   Region_Skip_List = Build_Skiplist ( Region_Skip );
+#ifdef KEY
+  /* Are we skipping any PUs for goto conversion? */
+  Goto_Skip_List = Build_Skiplist ( Goto_Skip );
+#endif
 
   /* F90 is a recursive language, so this needs to be set */
   if (!LANG_Recursive_Set && Language == LANG_F90)
      LANG_Recursive = TRUE;
+
+#ifdef KEY
+  /* Turn on -LANG:copyinout by default at -O2: */
+  if ( ! LANG_Copy_Inout_Set && Opt_Level >= 2 ) {
+    LANG_Copy_Inout = TRUE;
+  }
+
+  /* Turn on -VHO:struct_opt by default at -O1: */
+  if ( ! VHO_Struct_Opt_Set && Opt_Level >= 1 ) {
+    VHO_Struct_Opt = TRUE;
+  }
+  /* Turn on -VHO:cselect_opt by default at -O1: */
+  if ( ! VHO_Cselect_Opt_Set && Opt_Level >= 1 ) {
+    VHO_Cselect_Opt = TRUE;
+  }
+#endif
 
   /* Since there seems to be little compile time reason not to be aggressive, 
    * make the folder aggressive by default
@@ -1398,7 +1453,7 @@ Configure_Source ( char	*filename )
 
 #ifdef TARG_X8664
     if( !Fast_ANINT_Set ){
-      Fast_ANINT_Allowed = Roundoff_Level >= ROUNDOFF_ASSOC;
+      Fast_ANINT_Allowed = Roundoff_Level >= ROUNDOFF_ANY;	// bug 7835
     }
 #endif
     if (!Fast_Complex_Set)
@@ -1705,10 +1760,12 @@ Build_Skiplist ( OPTION_LIST *olist )
 	++count, ol = OLIST_next(ol) )
   {
     if ( !strncmp ( "skip_a", OLIST_opt(ol), 6 ) ||
-	 !strncmp ( "region_skip_a", OLIST_opt(ol), 13 ) ) {
+	 !strncmp ( "region_skip_a", OLIST_opt(ol), 13 ) ||
+	 !strncmp ( "goto_skip_a", OLIST_opt(ol), 11 ) ) {
       Set_SKIPLIST_kind ( sl, count, SK_AFTER );
     } else if ( !strncmp ( "skip_b", OLIST_opt(ol), 6 ) ||
-	        !strncmp ( "region_skip_b", OLIST_opt(ol), 13 ) ) {
+	        !strncmp ( "region_skip_b", OLIST_opt(ol), 13 ) ||
+	        !strncmp ( "goto_skip_b", OLIST_opt(ol), 11 ) ) {
       Set_SKIPLIST_kind ( sl, count, SK_BEFORE );
     } else {
       Set_SKIPLIST_kind ( sl, count, SK_EQUAL );

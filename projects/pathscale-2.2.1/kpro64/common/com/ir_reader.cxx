@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -926,6 +926,9 @@ static void ir_put_wn(WN * wn, INT indent)
 
     case OPR_INTRINSIC_OP:
     case OPR_ARRAYEXP:
+#ifdef KEY
+    case OPR_PURE_CALL_OP:
+#endif
       fprintf(ir_ofile, " %d", WN_kid_count(wn));
       break;
 
@@ -1026,7 +1029,7 @@ static void ir_put_wn(WN * wn, INT indent)
     }
 
     if (OPCODE_has_field_id(opcode) && WN_field_id(wn)) {
-	fprintf(ir_ofile, " <field_id:%d>", WN_field_id(wn));
+	fprintf(ir_ofile, " <field_id:%u>", WN_field_id(wn));
     }
     
 

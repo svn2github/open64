@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -347,6 +347,8 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
 
     case MTYPE_F4:
     case MTYPE_F8:
+    case MTYPE_V16F4:
+    case MTYPE_V16F8:
       info.count = 1;
       info.mtype [0] = mtype;
       info.preg  [0] = PR_first_reg(SIM_INFO.flt_results);
@@ -594,6 +596,9 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	  ploc.reg = 0;
 	break;
 	
+    case MTYPE_V16I4:
+    case MTYPE_V16F4:
+    case MTYPE_V16F8:
     case MTYPE_F4:
     case MTYPE_F8:
         ++Current_Float_Param_Num;
@@ -604,6 +609,12 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	    rpad = MTYPE_RegisterSize(SIM_INFO.flt_type) - ploc.size;
 	}
 	break;
+
+    case MTYPE_V8I1:
+    case MTYPE_V8I2:
+    case MTYPE_V8I4:
+      ploc.reg = 0; // pass in memory
+      break;
 
     case MTYPE_CQ:
     case MTYPE_FQ:
@@ -687,7 +698,9 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	      }
 	    }
 	  }
-	  if (n == 0) { // passed in memory
+	  // bug 3926: for -m32, we pass in memory even if n > 0, so check
+	  // for reg.
+	  if (n == 0 || ploc.reg == 0) { // passed in memory
 	    INT psize = TY_size (ty) / MTYPE_RegisterSize(SIM_INFO.int_type);
 	    /* round up */
 	    if ((TY_size (ty) % MTYPE_RegisterSize(SIM_INFO.int_type)) != 0)

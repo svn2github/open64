@@ -1,5 +1,8 @@
 /*
+ * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ */
 
+/*
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -661,9 +664,29 @@ void AEQUIV::Handle_Call(WN *wn, VINDEX16 v)
     LOCAL_ARRAY_DESC *lad = _la_hash_table->Find(WN_st(wn));
     if (lad) {
       if (WN_operator(LWN_Get_Parent(wn)) == OPR_ARRAY) {
+#ifndef KEY
         lad->_is_read = TRUE;
         lad->_is_written = TRUE;
         _cyclic_bit_vector->Bottom_nth(v)->Set(lad->_id);
+#else
+	// Bug 5651 - handle Fortran Pass By Reference
+	// If the parameter is passed by reference then the address could be 
+	// taken inside the callee unless the PARM node has the flag 
+	// WN_PARM_PASSED_NOT_SAVED set (IPA or the compiler front-end could
+	// do this).
+	if (WN_operator(LWN_Get_Parent(LWN_Get_Parent(wn))) == OPR_PARM &&
+	    // The condition above guarantees a pass by reference.
+	    !(WN_flag(LWN_Get_Parent(LWN_Get_Parent(wn))) &
+	      WN_PARM_PASSED_NOT_SAVED)) {
+	  FmtAssert(WN_flag(LWN_Get_Parent(LWN_Get_Parent(wn))) &
+		    WN_PARM_BY_REFERENCE, ("Handle this case"));
+	  lad->_address_taken = TRUE;
+	} else {
+	  lad->_is_read = TRUE;
+	  lad->_is_written = TRUE;
+	  _cyclic_bit_vector->Bottom_nth(v)->Set(lad->_id);
+	}	  
+#endif
       } else {
 	lad->_address_taken = TRUE;
       }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -53,6 +53,8 @@ extern char *fb_phase;         /* phase for -fb_phase */
 extern char *fb_type;          /* type for -fb_type */
 
 extern char *ldpath_for_pixie;  /* Tell pixie where to find ld */
+extern int saved_argc;		/* original argc */
+extern char **saved_argv;	/* original argv */
 extern char *command_line;	/* original command line */
 
 extern boolean keep_mp;		/* keep pfa/pca file */
@@ -107,6 +109,8 @@ extern void add_minus_c_option(void);
 /* save user options for ipl */
 extern void save_ipl_commands (void);
 extern char *dirname(char *const s);
+
+int quote_shell_arg (char *p, char *buf);
 
 // Change the phase names based on run-time info.
 extern void init_phase_names (void);

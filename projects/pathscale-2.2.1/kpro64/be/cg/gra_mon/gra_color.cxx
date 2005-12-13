@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -79,10 +79,16 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/gra_mon/
 #include "gra_interfere.h"
 #ifdef TARG_X8664
 #include "targ_sim.h"
+#include "whirl2ops.h"
 #endif
 
 INT32 GRA_local_forced_max = DEFAULT_FORCED_LOCAL_MAX;
     // How many locals to force allocate (out of the number requested by LRA)?
+
+#ifdef TARG_X8664
+BOOL GRA_grant_special_regs = FALSE;
+BOOL GRA_local_forced_max_set = FALSE;
+#endif
 
 BOOL GRA_avoid_glue_references_for_locals = TRUE;
   // Try to grant the forced locals from the set of registers not also used in 
@@ -481,6 +487,84 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
     return Choose_Anything(lrange,allowed);
 }
 
+#ifdef TARG_X8664
+/////////////////////////////////////
+static REGISTER_SET
+Find_Single_Register_Subclasses(GRA_BB *gbb)
+/////////////////////////////////////
+//
+// Find operands and results that must use a special register.  Return these
+// registers.
+//
+/////////////////////////////////////
+{
+  // Hard code rax/rcx/rdx into the search for speed.
+  int rax = 0, rcx = 0, rdx = 0;
+  REGISTER_SET grants = REGISTER_SET_EMPTY_SET;
+  OP *op;
+
+  if (GRA_grant_special_regs) {
+    // Force GRA to grant the special registers.
+    rax = rcx = rdx = 1;
+  } else {
+    FOR_ALL_BB_OPs (gbb->Bb(), op) {
+      ASM_OP_ANNOT *asm_info = (OP_code(op) == TOP_asm) ? 
+		      (ASM_OP_ANNOT*) OP_MAP_Get(OP_Asm_Map, op) : NULL;
+      INT i;
+      for (i = 0; i < OP_opnds(op); i++) {
+        ISA_REGISTER_SUBCLASS subclass = asm_info ?
+          ASM_OP_opnd_subclass(asm_info)[i] : OP_opnd_reg_subclass(op, i);
+        rax |= (subclass == ISA_REGISTER_SUBCLASS_rax);
+        rcx |= (subclass == ISA_REGISTER_SUBCLASS_rcx);
+        rdx |= (subclass == ISA_REGISTER_SUBCLASS_rdx);
+      }
+      for (i = 0; i < OP_results(op); i++) {
+        ISA_REGISTER_SUBCLASS subclass = asm_info ?
+          ASM_OP_result_subclass(asm_info)[i] : OP_result_reg_subclass(op, i);
+        rax |= (subclass == ISA_REGISTER_SUBCLASS_rax);
+        rcx |= (subclass == ISA_REGISTER_SUBCLASS_rcx);
+        rdx |= (subclass == ISA_REGISTER_SUBCLASS_rdx);
+      }
+      if (rax & rcx & rdx)
+        break;
+    }
+  }
+
+  // Stuff the registers into the register set.
+  if (rax)
+    grants = REGISTER_SET_Union1(grants, RAX);
+  if (rcx)
+    grants = REGISTER_SET_Union1(grants, RCX);
+  if (rdx)
+    grants = REGISTER_SET_Union1(grants, RDX);
+
+  // If the last OP in BB is a ijump or icall, make sure LRA have enough
+  // register(s) for it.  LRA cannot spill around the OP because it cannot
+  // insert reloads after it.  Don't give parameter registers, and don't give
+  // RAX which is set to 0 before the call.  Bug 7366.
+  OP *last_op = BB_last_op(gbb->Bb());
+  if (last_op) {
+    switch (OP_code(last_op)) {
+      case TOP_ijmpx:
+      case TOP_ijmpxxx:
+      case TOP_icallx:
+      case TOP_icallxxx:
+	// One register for either base or index.
+	grants = REGISTER_SET_Union1(grants, Is_Target_32bit() ? RCX : R10);
+	break;
+      case TOP_ijmpxx:
+      case TOP_icallxx:
+	// One register for base and one for index.
+	grants = REGISTER_SET_Union1(grants, Is_Target_32bit() ? RCX : R10);
+	grants = REGISTER_SET_Union1(grants, Is_Target_32bit() ? RDX : R11);
+	break;
+    }
+  }
+
+  return grants;
+}
+#endif
+
 /////////////////////////////////////
 static void
 Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
@@ -502,30 +586,28 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
   // so simple of a choice, particularly in the general purpose registers
   // with the register stack.
   //
-  if (GRA_local_forced_max == DEFAULT_FORCED_LOCAL_MAX) {
+  if (GRA_LOCAL_FORCED_MAX(rc) == DEFAULT_FORCED_LOCAL_MAX) {
     INT rc_size = (REGISTER_CLASS_last_register(rc) - REGISTER_MIN) + 1;
 #ifdef KEY
-    rc_local_forced_max = GRA_local_forced_max;
+    rc_local_forced_max = GRA_LOCAL_FORCED_MAX(rc);
 #else
-    rc_local_forced_max = Min(GRA_local_forced_max, rc_size/8);
+    rc_local_forced_max = Min(GRA_LOCAL_FORCED_MAX(rc), rc_size/8);
 #endif
   } else {
+#ifndef KEY // cannot use this code because with user-assigned registers via
+	// asm("reg-name"), there will be less allocatable registers resulting
+	// in 0 register granted to LRA (bug 3663)
     INT rc_size = REGISTER_SET_Size(REGISTER_CLASS_allocatable(rc));
-#ifdef KEY
-    if (rc_size <= 4) {
-#else
     if (rc_size <= 8) {
-#endif
      /* There are not enough registers in this class to support this option. */
       return;
     }
-#ifndef KEY
-    if (rc_size < GRA_local_forced_max*2) {
+    if (rc_size < GRA_LOCAL_FORCED_MAX(rc)*2) {
      /* Don't allow a request for more than half of the available registers. */
       rc_local_forced_max = rc_size/2;
     } else {
 #endif
-      rc_local_forced_max = GRA_local_forced_max;
+      rc_local_forced_max = GRA_LOCAL_FORCED_MAX(rc);
 #ifndef KEY
     }
 #endif
@@ -535,15 +617,18 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
     INT i;
     GRA_BB* gbb = iter.Current();
     INT regs_to_grant = Min(gbb->Register_Girth(rc),rc_local_forced_max);
-#ifdef TARG_X8664 // always give RAX, RCX and RDX to LRA
+#ifdef TARG_X8664
+    // Give the special-purpose registers refereneced in the BB to LRA.  On the
+    // x86, only integer registers have special purpose.
     if (rc == ISA_REGISTER_CLASS_integer) {
-      gbb->Make_Register_Used(ISA_REGISTER_CLASS_integer, RAX);
-      gbb->Make_Register_Used(ISA_REGISTER_CLASS_integer, RCX);
-      gbb->Make_Register_Used(ISA_REGISTER_CLASS_integer, RDX);
-      GRA_GRANT_Local_Register(gbb, ISA_REGISTER_CLASS_integer, RAX);
-      GRA_GRANT_Local_Register(gbb, ISA_REGISTER_CLASS_integer, RCX);
-      GRA_GRANT_Local_Register(gbb, ISA_REGISTER_CLASS_integer, RDX);
-      regs_to_grant -= 3;
+      REGISTER_SET special_regs = Find_Single_Register_Subclasses(gbb);
+      for (REGISTER reg = REGISTER_SET_Choose(special_regs);
+	   reg != REGISTER_UNDEFINED;
+	   reg = REGISTER_SET_Choose_Next(special_regs, reg)) {
+	gbb->Make_Register_Used(ISA_REGISTER_CLASS_integer, reg);
+	GRA_GRANT_Local_Register(gbb, ISA_REGISTER_CLASS_integer, reg);
+	regs_to_grant--;
+      }
     }
 #endif
     for ( i = regs_to_grant;
@@ -590,10 +675,12 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
         GRA_GRANT_Local_Register(gbb,rc,reg);
       }
       else {
+#ifdef TARG_X8664
 	if( Is_Target_64bit() ){
 	  DevWarn("Couldn't force allocate %d registers in rc %d for BB:%d",
 		  i,rc,BB_id(gbb->Bb()));
 	}
+#endif
         break;
       }
     }
@@ -987,6 +1074,11 @@ GRA_Color_Complement( GRA_REGION* region )
 			      split_alloc_lr->Format(buff)));
 	priority_count += split_alloc_lr->Priority();
       } else if (!Choose_Register(lr, region)) {
+#ifdef KEY // bug 3552: never split saved-TNs
+	if (lr->Tn_Is_Save_Reg())
+          GRA_Note_Spill(lr);
+	else
+#endif
         if (!LRANGE_Split(lr,&iter,&split_alloc_lr) ||
 	    (split_alloc_lr->Priority() < 0.0F &&
 	     !Must_Split(split_alloc_lr))) {

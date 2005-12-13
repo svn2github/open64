@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -73,12 +73,6 @@
 ***
 ***	    none
 ***
-**/
-
-/** $Revision: 1.1.1.1 $
-*** $Date: 2005/10/21 19:00:00 $
-*** $Author: marcel $
-*** $Source: /proj/osprey/CVS/open64/osprey1.0/common/com/wintrinsic.h,v $
 **/
 
 #ifndef wintrinsic_INCLUDED
@@ -1079,8 +1073,8 @@ typedef enum {
   INTRN_VA_START   = 768,
   INTRN_SAVE_XMMS  = 769,
 
-  /* EH stuff */
-  INTRN_LANDING_PAD_ENTRY = 770,
+  /* builtins */
+  INTRN_CONSTANT_P = 770,
 
   /* C99 builtins */
   INTRN_ISGREATER       = 771,
@@ -1094,7 +1088,138 @@ typedef enum {
   INTRN_SUBSU2          = 777,
   INTRN_SUBSV16I2       = 778,
 
-  INTRINSIC_LAST  = 778
+  /* g++ 3.4 builtins */
+  INTRN_POPCOUNT        = 779,
+  INTRN_CTZ             = 780,
+
+#ifdef TARG_X8664
+  /* Shorter vector math functions */
+  INTRN_V16F4SIN        = 781,
+  INTRN_V16F4EXP        = 782,
+  INTRN_V16F4EXPEXPR    = 783,
+  INTRN_V16F4LOG        = 784,
+  INTRN_V16F4COS        = 785,
+  INTRN_V16F8SIN        = 786,
+  INTRN_V16F8EXP        = 787,
+  INTRN_V16F8LOG        = 788,
+  INTRN_V16F8COS        = 789,
+  INTRN_V16F8EXPEXPR    = 790,
+  INTRN_V16F8LOG10      = 791,
+  INTRN_V16F8SINCOS     = 792,
+
+  /* Intrinsic to represent a complex C8 multiply (multiply and addsub) */
+  INTRN_V16C8MPY_ADDSUB = 793,
+  
+  /* Intrinsic to represent complex C8 conjugate */
+  INTRN_V16C8CONJG      = 794,
+
+  /* GNU x8664 builtins */
+  INTRN_PADDSB	        = 795,
+  INTRN_PADDSW          = 796,
+  INTRN_PSUBSB          = 797,
+  INTRN_PSUBSW          = 798,
+  INTRN_PADDUSB         = 799,
+  INTRN_PADDUSW         = 800,
+  INTRN_PSUBUSB         = 801,
+  INTRN_PSUBUSW         = 802,
+  INTRN_PMULLW          = 803,
+  INTRN_PMULHW          = 804,
+  INTRN_PAND            = 805,
+  INTRN_PCMPEQB         = 806,
+  INTRN_PCMPEQW         = 807,
+  INTRN_PCMPEQD         = 808,
+  INTRN_PCMPGTB         = 809,
+  INTRN_PCMPGTW         = 810,
+  INTRN_PCMPGTD         = 811,
+  INTRN_PUNPCKHBW       = 812,
+  INTRN_PUNPCKHWD       = 813,
+  INTRN_PUNPCKHDQ       = 814,
+  INTRN_PUNPCKLBW       = 815,
+  INTRN_PUNPCKLWD       = 816,
+  INTRN_PUNPCKLDQ       = 817,
+  INTRN_PACKSSWB        = 818,
+  INTRN_PACKSSDW        = 819,
+  INTRN_PACKUSWB        = 820,
+  INTRN_PMULHUW         = 821,
+  INTRN_PAVGB           = 822,
+  INTRN_PAVGW           = 823,
+  INTRN_PSADBW          = 824,
+  INTRN_PMAXUB          = 825,
+  INTRN_PMAXSW          = 826,
+  INTRN_PMINUB          = 827,
+  INTRN_PMINSW          = 828,
+  INTRN_PEXTRW0         = 829,
+  INTRN_PEXTRW1         = 830,
+  INTRN_PEXTRW2         = 831,
+  INTRN_PEXTRW3         = 832,
+  INTRN_PINSRW0         = 833,
+  INTRN_PINSRW1         = 834,
+  INTRN_PINSRW2         = 835,
+  INTRN_PINSRW3         = 836,
+  INTRN_PMOVMSKB        = 837,
+  INTRN_MOVNTQ          = 838,
+  INTRN_SFENCE          = 839,
+  INTRN_COMIEQSS        = 840,
+  INTRN_ADDPS           = 841,
+  INTRN_SUBPS           = 842,
+  INTRN_MULPS           = 843,
+  INTRN_DIVPS           = 844,
+  INTRN_ADDSS           = 845,
+  INTRN_SUBSS           = 846,
+  INTRN_MULSS           = 847,
+  INTRN_DIVSS           = 848,
+  INTRN_CMPEQPS         = 849,
+  INTRN_CMPLTPS         = 850,
+  INTRN_CMPLEPS         = 851,
+  INTRN_CMPGTPS         = 852,
+  INTRN_CMPGEPS         = 853,
+  INTRN_CMPUNORDPS      = 854,
+  INTRN_CMPNEQPS        = 855,
+  INTRN_CMPNLTPS        = 856,
+  INTRN_CMPNLEPS        = 857,
+  INTRN_CMPNGTPS        = 858,
+  INTRN_CMPNGEPS        = 859,
+  INTRN_CMPORDPS        = 860,
+  INTRN_CMPEQSS         = 861,
+  INTRN_CMPLTSS         = 862,
+  INTRN_CMPLESS         = 863,
+  INTRN_CMPUNORDSS      = 864,
+  INTRN_CMPNEQSS        = 865,
+  INTRN_CMPNLTSS        = 866,
+  INTRN_CMPNLESS        = 867,
+  INTRN_CMPORDSS        = 868,
+  INTRN_MAXPS           = 869,
+  INTRN_MAXSS           = 870,
+  INTRN_MINPS           = 871,
+  INTRN_MINSS           = 872,
+  INTRN_ANDPS           = 873,
+  INTRN_ANDNPS          = 874,
+  INTRN_ORPS            = 875,
+  INTRN_XORPS           = 876,
+  INTRN_MOVSS           = 877,
+  INTRN_MOVHLPS         = 878,
+  INTRN_MOVLHPS         = 879,
+  INTRN_UNPCKHPS        = 880,
+  INTRN_UNPCKLPS        = 881,
+  INTRN_RCPPS           = 882,
+  INTRN_RSQRTPS         = 883,
+  INTRN_SQRTPS          = 884,
+  INTRN_RCPSS           = 885,
+  INTRN_RSQRTSS         = 886,
+  INTRN_SQRTSS          = 887,
+  INTRN_SHUFPS          = 888,
+  INTRN_EMMS            = 889,
+  INTRN_PADDQ           = 890,
+  INTRN_PSUBQ           = 891,
+  INTRN_UNIMP_PURE      = 892,
+  INTRN_UNIMP           = 893,
+  INTRN_LOADAPS         = 894,
+  INTRN_STOREAPS        = 895,
+    
+  INTRINSIC_LAST  = 895
+#else
+  INTRINSIC_LAST  = 780
+#endif // TARG_X8664
 #else
   INTRINSIC_LAST  = 762
 #endif

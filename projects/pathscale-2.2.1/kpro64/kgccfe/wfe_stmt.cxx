@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -58,6 +58,9 @@
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
 #include "targ_sim.h"
+#ifdef KEY
+#include "const.h"
+#endif
 #include <ctype.h>
 
 extern "C" int decode_reg_name (char*);
@@ -326,7 +329,14 @@ WFE_Expand_Exit_Loop_If_False (struct nesting *whichloop, tree cond)
   FmtAssert (loop_info_stack [loop_info_i].whichloop == whichloop,
              ("WFE_Expand_Exit_Loop_If_False: loop mismatch"));
   loop_info_stack [loop_info_i].exit_loop_if_false = TRUE;
+#ifdef KEY
+  if (cond)
+    test       = WFE_Expand_Expr_With_Sequence_Point (cond, Boolean_type);
+  else  // no terminating condition (bug 6098)
+    test       = WN_Intconst (Boolean_type, 1);
+#else
   test       = WFE_Expand_Expr_With_Sequence_Point (cond, Boolean_type);
+#endif // KEY
   while_body = WFE_Stmt_Pop (wfe_stmk_while_body);
   switch (loop_info_stack [loop_info_i].continue_info) {
     case CONTINUE_NONE:
@@ -476,8 +486,15 @@ WFE_Expand_End_Case (tree orig_index)
                                def_goto,
                                switch_info_stack [switch_info_i].exit_label_idx);
   switch_block = WFE_Stmt_Pop (wfe_stmk_switch);
+#ifndef KEY
   WFE_Stmt_Append (switch_wn, Get_Srcpos ());
   WFE_Stmt_Append (switch_block, Get_Srcpos ());
+#else
+  // Bug 4328 - use the line number in switch_block for both nodes. 
+  // The current srcpos will point to the line after the switch construct.
+  WFE_Stmt_Append (switch_wn, WN_Get_Linenum(switch_block));
+  WFE_Stmt_Append (switch_block, WN_Get_Linenum(switch_block));  
+#endif
   wn = WN_CreateLabel ((ST_IDX) 0,
                        switch_info_stack [switch_info_i].exit_label_idx,
                        0, NULL);
@@ -530,14 +547,7 @@ WFE_Expand_Exit_Something (struct nesting *n,
   }
   else
   if (n == loop_stack) {
-#ifndef KEY
     if (n == loop_info_stack [loop_info_i].whichloop) {
-#else
-    // We do not use a stack for STMT_EXPR Nodes for simplicity hence the
-    // n and whichloop may not match. The case where we may have nested 
-    // loops will be caught and asserted inside the caller.
-    if (1) {
-#endif 
       if (exit_label_idx == 0) {
         New_LABEL (CURRENT_SYMTAB, exit_label_idx);
         *label_idx = exit_label_idx;
@@ -1113,6 +1123,15 @@ Wfe_Expand_Asm_Operands (tree  string,
   // Side effects of copy-out operands occur after the asm. Kind of
   // weird, but that's what GCC does.
   opnd_num = 0;
+#ifdef KEY 
+  // Bug 5622
+  // If (constraint_by_address(constraint_string)) is true then,
+  // this operand is by address, and gets represented as an
+  // ASM_INPUT even though the user told us it's an output.
+  // This should be factored when memory operand constraints (+m) appear 
+  // before other output constraints that are both read & write.
+  INT nonmem_opnd_num = 0;
+#endif
   for (tail = outputs;
        tail;
        tail = TREE_CHAIN (tail), ++opnd_num)
@@ -1151,8 +1170,15 @@ Wfe_Expand_Asm_Operands (tree  string,
 
 	    // Make up a numeric matching constraint string for the
 	    // input operand we're going to add.
+#ifdef KEY
+	    sprintf(input_opnd_constraint, "%d", nonmem_opnd_num);
+#else
 	    sprintf(input_opnd_constraint, "%d", opnd_num);
+#endif
 	  }
+#ifdef KEY
+	nonmem_opnd_num ++;
+#endif
 
 	WN *output_rvalue_wn = WFE_Lhs_Of_Modify_Expr (MODIFY_EXPR,
 						       output,
@@ -1254,5 +1280,105 @@ WFE_Null_ST_References (tree* node)
   }
 
   return 0;
+}
+
+// Set up loopnest info
+void
+WFE_Start_Do_Loop (struct nesting * whichloop)
+{
+  if (++loop_info_i == loop_info_max) {
+
+    loop_info_max   = ENLARGE(loop_info_max);
+    loop_info_stack = (LOOP_INFO *) realloc (loop_info_stack,
+                                             loop_info_max * sizeof (LOOP_INFO));
+  }
+
+  loop_info_stack [loop_info_i].whichloop          = whichloop;
+  loop_info_stack [loop_info_i].continue_info      = CONTINUE_NONE;
+  loop_info_stack [loop_info_i].continue_label_idx = 0;
+  loop_info_stack [loop_info_i].exit_label_idx     = 0;
+  loop_info_stack [loop_info_i].exit_loop_if_false = FALSE;
+  loop_info_stack [loop_info_i].continue_here      = FALSE;
+
+  LABEL_IDX continue_label_idx;
+  New_LABEL (CURRENT_SYMTAB, continue_label_idx);
+  loop_info_stack [loop_info_i].continue_label_idx = continue_label_idx;
+
+} // WFE_Start_Do_Loop
+
+// Marks the end of the loop-body, not done with the loop yet
+void
+WFE_End_Do_Loop (struct nesting * whichloop)
+{
+  FmtAssert (loop_info_i >= 0, ("WFE_End_Do_Loop: no loops"));
+  FmtAssert (loop_info_stack [loop_info_i].whichloop == whichloop,
+             ("WFE_End_Do_Loop: loop mismatch"));
+  // Emit continue label
+  WFE_Stmt_Append (
+    WN_CreateLabel ((ST_IDX) 0,
+                    loop_info_stack [loop_info_i].continue_label_idx,
+                    0, NULL), Get_Srcpos());
+
+} // WFE_End_Do_Loop
+
+// Marks the end of the loop, now expanding statements after the loop
+void
+WFE_Terminate_Do_Loop (struct nesting * whichloop)
+{
+  FmtAssert (loop_info_i >= 0, ("WFE_Terminate_Do_Loop: no loops"));
+  FmtAssert (loop_info_stack [loop_info_i].whichloop == whichloop,
+             ("WFE_Terminate_Do_Loop: loop mismatch"));
+
+  // Emit break-label after the loop
+  if (loop_info_stack [loop_info_i].exit_label_idx)
+    WFE_Stmt_Append (
+      WN_CreateLabel ((ST_IDX) 0,
+                      loop_info_stack [loop_info_i].exit_label_idx,
+                      0, NULL), Get_Srcpos());
+  --loop_info_i;
+} // WFE_Terminate_Do_Loop
+
+// This function is intended to be a general function to handle different
+// pragmas (other than openmp pragmas). Currently it handles
+// #pragma options, mips_frequency_hint
+//
+void
+WFE_Expand_Pragma (tree exp)
+{
+  switch (exp->omp.choice)
+  {
+    case options_dir:
+    { // pragma options
+      TCON tcon;
+      exp = (tree) exp->omp.omp_clause_list;
+      tcon = Host_To_Targ_String (MTYPE_STRING,
+                                  TREE_STRING_POINTER(exp),
+                                  TREE_STRING_LENGTH(exp) - 1 /*ignore \0*/);
+      TY_IDX ty_idx = Get_TY(TREE_TYPE(exp));
+      ST * st = New_Const_Sym (Enter_tcon (tcon), ty_idx);  
+      TREE_STRING_ST (exp) = st;
+      WN * wn = WN_CreatePragma (WN_PRAGMA_OPTIONS, st, 0, 0);
+      WN * func_wn = WFE_Find_Stmt_In_Stack (wfe_stmk_func_entry);
+      WN_INSERT_BlockLast (WN_func_pragmas(func_wn), wn);
+      break;
+    }
+    case exec_freq_dir:
+    { // pragma mips_frequency_hint
+      MIPS_FREQUENCY_HINT freq_hint;
+      Is_True (TREE_CODE ((tree) exp->omp.omp_clause_list) == STRING_CST,
+               ("Expected string constant with mips_frequency_hint"));
+      const char * hint = TREE_STRING_POINTER ((tree) exp->omp.omp_clause_list);
+
+      if (!strcmp (hint, "never")) freq_hint = FREQUENCY_HINT_NEVER;
+      else if (!strcmp (hint, "init")) freq_hint = FREQUENCY_HINT_INIT;
+      else if (!strcmp (hint, "frequent")) freq_hint = FREQUENCY_HINT_FREQUENT;
+      else // Invalid mips_frequency_hint
+        break;
+
+      WN * wn = WN_CreatePragma (WN_PRAGMA_MIPS_FREQUENCY_HINT, (ST*)NULL, freq_hint, 0);
+      WFE_Stmt_Append (wn, Get_Srcpos());
+      break;
+    }
+  }
 }
 #endif

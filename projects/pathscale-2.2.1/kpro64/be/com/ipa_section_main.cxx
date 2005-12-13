@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -78,7 +78,7 @@ mINT32
 SYSTEM_OF_EQUATIONS::_work_rows_eq;
 mINT32
 SYSTEM_OF_EQUATIONS::_work_rows;
-MEM_POOL*
+template <> MEM_POOL*
 MAT<int>::_default_pool;
 #endif
 

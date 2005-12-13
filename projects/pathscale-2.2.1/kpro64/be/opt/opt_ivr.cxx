@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -741,7 +741,11 @@ CODEREP::Propagatable_along_path(const BB_NODE *dest /* inclusive */,
     for  (INT32 i = 0; i < Kid_count(); i++) 
       if (! Opnd(i)->Propagatable_along_path(dest, src))
 	return FALSE;
-    if (Opr() == OPR_INTRINSIC_OP)
+    if (Opr() == OPR_INTRINSIC_OP
+#ifdef KEY
+	|| Opr() == OPR_PURE_CALL_OP
+#endif
+       )
       return FALSE;
     return TRUE;
   }
@@ -775,7 +779,11 @@ CODEREP::Propagatable_into_loop(const BB_LOOP *loop) const
     for  (INT32 i = 0; i < Kid_count(); i++) 
       if (! Opnd(i)->Propagatable_into_loop(loop))
 	return FALSE;
-    if (Opr() == OPR_INTRINSIC_OP)
+    if (Opr() == OPR_INTRINSIC_OP
+#ifdef KEY
+	|| Opr() == OPR_PURE_CALL_OP
+#endif
+       )
       return FALSE;
     return TRUE;
   }
@@ -814,7 +822,11 @@ CODEREP::Propagatable_for_ivr(OPT_STAB *sym) const
       return FALSE;
     // Reference 644395 for situations when INTRINSIC_OP cannot be
     // copy propagated.
-    if (Opr() == OPR_INTRINSIC_OP)
+    if (Opr() == OPR_INTRINSIC_OP
+#ifdef KEY
+	|| Opr() == OPR_PURE_CALL_OP
+#endif
+       )
       return FALSE;
     return TRUE;
   }
@@ -1259,6 +1271,23 @@ IVR::Choose_primary_IV(const BB_LOOP *loop)
       }
 
       IDTYPE new_temp = Opt_stab()->Create_preg( mtype, "whiledo_var" );
+
+#ifdef KEY // bug 5778
+      if (ST_class(Opt_stab()->St(new_temp)) != CLASS_PREG &&
+	  Phase() != MAINOPT_PHASE && loop->Body()->MP_region()) {
+	// add a WN_PRAGMA_LOCAL pragma to the enclosing OMP parallel region
+	BB_NODE *regionbb = loop->Body();
+	while (regionbb != NULL && regionbb->Kind() != BB_REGIONSTART)
+	  regionbb = Cfg()->Find_enclosing_parallel_region_bb(regionbb);
+	if (regionbb != NULL) { // there is an enclosing OMP parallel region
+	  WN *pragmawn = WN_CreatePragma(WN_PRAGMA_LOCAL, 
+	  				 Opt_stab()->St(new_temp), 0, 0);
+          STMTREP *pragmastmt = regionbb->Add_stmtnode(pragmawn, 
+						       Htable()->Mem_pool());
+	  pragmastmt->Set_orig_wn(pragmawn);
+	}
+      }
+#endif
 
       Add_new_auxid_to_entry_chis(new_temp, Cfg(), Htable(), Opt_stab());
 
@@ -1884,6 +1913,13 @@ IVR::Compute_trip_count(const OPCODE cmp_opc,
 	// (init - bound) / (-step)
 	OPCODE subop = OPCODE_make_op(OPR_SUB, dtype, MTYPE_V);
 	CODEREP *diff = Htable()->Add_bin_node_and_fold(subop, init, bound);
+#ifdef KEY // bug 3738
+	if (MTYPE_byte_size(var->Dsctyp()) < 4) {
+	  diff = Htable()->Add_unary_node(
+	  			OPCODE_make_op(OPR_CVTL, dtype, MTYPE_V), diff);
+	  diff->Set_offset(MTYPE_size_min(var->Dsctyp()));
+	}
+#endif
 	CODEREP *neg_step = Htable()->Add_const(tripcount_type, -
                                                 step->Const_val());
 

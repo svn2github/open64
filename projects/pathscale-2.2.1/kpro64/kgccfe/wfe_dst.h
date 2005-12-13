@@ -1,5 +1,5 @@
 /* 
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
    File modified June 20, 2003 by PathScale, Inc. to update Open64 C/C++ 
    front-ends to GNU 3.2.2 release.
  */
@@ -139,6 +139,12 @@ extern "C" {
 
 /* set current line number and current file */
 extern void WFE_Set_Line_And_File (unsigned int line, const char *file);
+#ifdef KEY
+extern void WFE_Macro_Define (unsigned int line, const char* buffer);
+extern void WFE_Macro_Undef (unsigned int line, const char* buffer);
+extern void WFE_Macro_Start_File (unsigned int lineno, unsigned int fileno);
+extern void WFE_Macro_End_File (void);
+#endif
 
 #ifdef __cplusplus
 }

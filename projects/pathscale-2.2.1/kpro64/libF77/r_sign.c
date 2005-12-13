@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -66,3 +66,16 @@ float x;
 x = (a >= 0.0F ? a : - a);
 return( b >= 0.0F ? x : -x);
 }
+
+#ifdef KEY /* Bug 3405 */
+/* Copy IEEE sign bit from b to a */
+float rIsign(float *a, float *b)
+{
+#define SIGN 0x80000000
+  unsigned int aval = *(unsigned int *)a;
+  unsigned int bval = *(unsigned int *)b;
+  aval = (aval & ~SIGN) | (bval & SIGN);
+  return *(float *)&aval;
+}
+#endif /* KEY Bug 3405 */
+

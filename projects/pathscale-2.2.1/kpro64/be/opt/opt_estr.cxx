@@ -1,7 +1,7 @@
 //-*-c++-*-
 
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 // ====================================================================
@@ -415,13 +415,20 @@ Str_red_get_fixed_operand( const CODEREP *cr, INT which_opnd )
 
 BOOL
 STR_RED::Find_iv_and_incr( STMTREP *stmt, CODEREP **updated_iv,
-			   CODEREP **incr_amt, BOOL *is_add ) const
+			   CODEREP **incr_amt, BOOL *is_add,
+			   BOOL aggstr_cand ) const
 {
   CODEREP *lhs = stmt->Lhs();
   CODEREP *rhs = stmt->Rhs();
 
   Is_True( lhs->Kind() == CK_VAR,
     ("STR_RED::Find_iv_and_incr: Lhs not a var") );
+
+  if (aggstr_cand)
+    // check if the number of induction expression injured by this stmt
+    // exceeds the threshold 
+    if (stmt->Str_red_num() >= WOPT_Enable_Autoaggstr_Reduction_Threshold)
+      return FALSE;
 
   // it's possible we've CSE'd the rhs of the iv update, so we need
   // to find the true update.  Only true if we already know the stmt
@@ -637,7 +644,8 @@ STR_RED::Updated_by_iv_update(const CODEREP *first,
 			      const CODEREP *last,
 			            CODEREP *invar,
 			            BB_NODE *innermost_use_bb,
-			      const CODEREP *cand_expr) const
+			      const CODEREP *cand_expr,
+			            BOOL aggstr_cand) const
 {
   Is_True( first->Kind() == CK_VAR && last->Kind() == CK_VAR,
     ("STR_RED::Updated_by_iv_update: non-VARs") );
@@ -653,6 +661,12 @@ STR_RED::Updated_by_iv_update(const CODEREP *first,
   }
 
   STMTREP *last_def = last->Defstmt();
+
+  if (aggstr_cand)
+    // check if the number of induction expression injured by this stmt
+    // exceeds the threshold 
+    if (last_def->Str_red_num() >= WOPT_Enable_Autoaggstr_Reduction_Threshold)
+      return FALSE;
 
   // Continue following the chain of IV updates only if the innermost
   // loop containing last_def also contains the point of eventual use
@@ -681,7 +695,7 @@ STR_RED::Updated_by_iv_update(const CODEREP *first,
 	// so continue up until we stop finding iv updates, or we find
 	// first.
 	return Updated_by_iv_update(first, iv_on_rhs, invar,
-				    innermost_use_bb, cand_expr);
+				    innermost_use_bb, cand_expr, aggstr_cand);
       }
     }
   }
@@ -708,7 +722,8 @@ STR_RED::Defined_by_iv_update(const CODEREP *use_cr,
 			      const CODEREP *def_cr,
 			            CODEREP *invar,
 			            BB_NODE *use_bb,
-			      const CODEREP *cand_expr) const
+			      const CODEREP *cand_expr,
+			            BOOL aggstr_cand) const
 {
   Is_True(use_cr->Kind() != CK_OP, ("STR_RED::Defined_by_iv_update:  CK_OP"));
 
@@ -735,7 +750,7 @@ STR_RED::Defined_by_iv_update(const CODEREP *use_cr,
       PHI_OPND_ITER phi_opnd_iter(phi);
       CODEREP *opnd;
       FOR_ALL_ELEM(opnd, phi_opnd_iter, Init()) {
-	if (Updated_by_iv_update(def_cr, opnd, invar, use_bb, cand_expr)) {
+	if (Updated_by_iv_update(def_cr, opnd, invar, use_bb, cand_expr, aggstr_cand)) {
 	  return TRUE;
 	}
       }
@@ -753,7 +768,7 @@ STR_RED::Defined_by_iv_update(const CODEREP *use_cr,
 	     (TFile, "        use:\n"));
     Is_Trace_cmd(Tracing() && WOPT_Enable_Verbose,
 		 use_cr->Print(3, TFile));
-    if (Updated_by_iv_update(def_cr, use_cr, invar, use_bb, use_cr)) {
+    if (Updated_by_iv_update(def_cr, use_cr, invar, use_bb, use_cr, aggstr_cand)) {
       Is_Trace(Tracing() && WOPT_Enable_Verbose,
 	       (TFile, "STR_RED::Defined_by_iv_update: "
 		"updated_by_iv_update --> TRUE\n"));
@@ -781,7 +796,8 @@ STR_RED::Defined_by_iv_update_no_def(      CODEREP *use_cr,
 				           CODEREP **def_cr,
 				           CODEREP *invar,
 				           BB_NODE *use_bb,
-				     const CODEREP *cand_expr) const
+				     const CODEREP *cand_expr,
+				           BOOL aggstr_cand) const
 {
   Is_Trace(Tracing() && WOPT_Enable_Verbose,
 	   (TFile, "STR_RED::Defined_by_iv_update_no_def: use:\n"));
@@ -843,7 +859,7 @@ STR_RED::Defined_by_iv_update_no_def(      CODEREP *use_cr,
       CODEREP *new_use_cr, *dummy_incr;
       BOOL dummy_is_add;
       if ( Find_iv_and_incr( use_cr_def, &new_use_cr, 
-			     &dummy_incr, &dummy_is_add ) )
+			     &dummy_incr, &dummy_is_add, aggstr_cand ) )
       {
 	// determine if the invar value is indeed invariant with
 	// respect to this update
@@ -969,13 +985,6 @@ STR_RED::Candidate( const CODEREP *cr,
 		    BB_NODE *use_bb ) const
 {
   const OPERATOR opr = cr->Opr();
-#ifdef TARG_X8664
-  if (! WOPT_Enable_Aggstr_Reduction) {
-      if (opr == OPR_ADD || opr == OPR_SUB) {
-          return FALSE ;
-      }
-  }
-#endif
   switch ( opr ) {
     case OPR_ADD:
     case OPR_SUB:
@@ -984,7 +993,8 @@ STR_RED::Candidate( const CODEREP *cr,
       // i+k
       // i-k
       if ( Defined_by_iv_update(use_opnd0, def_opnd0,
-      				use_opnd1, use_bb, cr))
+      				use_opnd1, use_bb, cr, 
+				opr == OPR_ADD || opr == OPR_SUB))
       {
 	if (Is_cvt_linear(use_opnd0) &&
 	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd0->Dtyp())) {
@@ -996,7 +1006,8 @@ STR_RED::Candidate( const CODEREP *cr,
       // k+i
       // k-i
       if ( Defined_by_iv_update(use_opnd1, def_opnd1,
-				use_opnd0, use_bb, cr))
+				use_opnd0, use_bb, cr,
+				opr == OPR_ADD || opr == OPR_SUB))
       {
         if (Is_cvt_linear(use_opnd1) &&
 	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd1->Dtyp())) {
@@ -1049,13 +1060,6 @@ STR_RED::Candidate_phi_res( const CODEREP *cr,
 {
   CODEREP *def_opnd;
   const OPERATOR opr = cr->Opr();
-#ifdef TARG_X8664
-  if (! WOPT_Enable_Aggstr_Reduction) {
-      if (opr == OPR_ADD || opr == OPR_SUB) {
-          return FALSE ;
-      }
-  }
-#endif
   switch ( opr ) {
     case OPR_ADD:
     case OPR_SUB:
@@ -1064,7 +1068,8 @@ STR_RED::Candidate_phi_res( const CODEREP *cr,
       // i+k
       // i-k
       if ( Defined_by_iv_update_no_def(use_opnd0, def_bb, &def_opnd,
-				       use_opnd1, use_bb, cr))
+				       use_opnd1, use_bb, cr,
+				       opr == OPR_ADD || opr == OPR_SUB))
       {
 	if (Is_cvt_linear(use_opnd0) &&
 	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd0->Dtyp())) {
@@ -1076,7 +1081,8 @@ STR_RED::Candidate_phi_res( const CODEREP *cr,
       // k+i
       // k-i
       if ( Defined_by_iv_update_no_def(use_opnd1, def_bb, &def_opnd,
-				       use_opnd0, use_bb, cr))
+				       use_opnd0, use_bb, cr,
+				       opr == OPR_ADD || opr == OPR_SUB))
       {
 	if (Is_cvt_linear(use_opnd1) &&
 	    Is_implicit_cvt_linear(cr->Dtyp(), use_opnd1->Dtyp())) {
@@ -1274,7 +1280,11 @@ STR_RED::Find_iv_and_mult_phi_res( const EXP_OCCURS *def, CODEREP **iv_def,
         *multiplier = use_cr->Opnd(0);
       }
       else if ( opr == OPR_SUB) {
+#ifndef TARG_X8664
         *multiplier = Htable()->Add_const(OPCODE_rtype(use_cr->Op()),-1);
+#else // bug 4518
+        *multiplier = Htable()->Add_const(Mtype_TransferSign(MTYPE_I4, OPCODE_rtype(use_cr->Op())),-1);
+#endif
       }
       else { // opr == OPR_ADD
 	// multiplier is 1
@@ -1303,7 +1313,11 @@ STR_RED::Find_iv_and_mult_phi_res( const EXP_OCCURS *def, CODEREP **iv_def,
     *iv_use = use_cr->Opnd(0);
     // *iv_def already set
     if ( opr == OPR_NEG ) {
+#ifndef TARG_X8664
       CODEREP *multi = Htable()->Add_const(OPCODE_rtype(use_cr->Op()),-1);
+#else // bug 4518
+      CODEREP *multi = Htable()->Add_const(Mtype_TransferSign(MTYPE_I4, OPCODE_rtype(use_cr->Op())),-1);
+#endif
       *multiplier = multi;
     }
     else if ( opr == OPR_CVT ) {

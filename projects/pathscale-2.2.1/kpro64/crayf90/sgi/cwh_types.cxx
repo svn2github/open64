@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -2319,6 +2319,11 @@ cwh_types_get_dope_info(INT32 crayfield, INT32 *offset, INT32 *rshift,
    size = dope_bsize[real_field];
    ty_size = MTYPE_size_best(*ty);
    
+#ifdef KEY /* Bug 6371 */
+   if (size == (sizeof(1LL) * CHAR_BIT)) {
+      *mask = 0;
+   } else
+#endif /* KEY Bug 6371 */
    if (size != 0) {
       *mask = (1LL << size) - 1;
    } else {
