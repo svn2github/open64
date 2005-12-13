@@ -38,8 +38,8 @@
  */
 #define USE_STANDARD_TYPES
 #include <stdarg.h>
-#include <malloc.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "vstring.h"
 #include "errors.h"

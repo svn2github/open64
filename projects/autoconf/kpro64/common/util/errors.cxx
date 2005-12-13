@@ -76,7 +76,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifndef linux
+#ifdef irix
 #define _LANGUAGE_C			/* work around system header bug */
 extern "C" {
 #include <sys/fpu.h>			/* we don't have a C++ sys/fpu.h */
@@ -85,7 +85,7 @@ extern "C" {
 #include <sys/syssgi.h>
 #endif
 
-#ifdef KEY
+#if defined(linux) && defined(KEY)
 #include <execinfo.h>
 #endif
 
@@ -205,7 +205,7 @@ static bool do_traceback = false;
 #define Phase_List(n)	(Phases[n].descriptors)
 #define Phase_Name(n)	(Phases[n].name)
 
-#ifndef linux
+#ifdef irix
 extern char *sys_siglist[];
 #endif
 
@@ -220,7 +220,7 @@ extern void Rag_Handle_Woff_Args(char	*wstring);
 
 static void dump_backtrace(FILE *fp = stderr, size_t start_frame = 1)
 {
-#ifdef KEY
+#if defined(linux) && defined(KEY)
     const int nframes = 32;
     void *buf[nframes];
     char **strings;
@@ -314,14 +314,14 @@ Handle_Signals ( void )
     setup_signal_handler (SIGILL);
     setup_signal_handler (SIGTRAP);
     setup_signal_handler (SIGIOT);
-#ifndef linux
+#ifdef irix
     setup_signal_handler (SIGEMT);
 #endif
     setup_signal_handler (SIGFPE);
     setup_signal_handler (SIGBUS);
     setup_signal_handler (SIGSEGV);
     setup_signal_handler (SIGTERM);
-#ifndef linux
+#ifdef irix
     syssgi(SGI_SET_FP_PRECISE, 1);
     set_fpc_csr(get_fpc_csr() & ~FPCSR_FLUSH_ZERO);
     syssgi(SGI_SET_FP_PRESERVE, 1);

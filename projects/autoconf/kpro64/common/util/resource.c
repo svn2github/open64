@@ -166,7 +166,7 @@ Get_Resources (
 
     /* Get the elapsed time: */
 #if (1)
-#ifndef linux
+#ifdef irix
     gettimeofday(&now);
 #else
     gettimeofday(&now, NULL);
@@ -318,7 +318,7 @@ Resource_Init ( void )
 {
     /* Initialize elapsed time base: */
 #if (1)
-#ifndef linux
+#ifdef irix
     gettimeofday(&start_time);
 #else
     gettimeofday(&start_time, NULL);

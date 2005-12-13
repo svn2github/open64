@@ -39,7 +39,7 @@
 
 
 #include <sys/types.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <strings.h>
 #include "defs.h"
 #include "mempool.h"

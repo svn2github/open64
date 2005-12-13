@@ -47,9 +47,6 @@
  */
 
 
-#ifndef _LP64
-#include <sgidefs.h>
-#endif /* _LP64 */
 #include <math.h>
 #include "defs.h"
 #include "quad.h"
