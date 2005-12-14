@@ -153,7 +153,7 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
-SUBDIRS = targ_info arith libcif libcmplrs common
+SUBDIRS = targ_info arith libcif libcmplrs common libelf
 all: all-recursive
 
 .SUFFIXES:

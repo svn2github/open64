@@ -15,6 +15,72 @@
    */
 #undef HAVE_ALLOCA_H
 
+/* Define to 1 if you have the <ar.h> header file. */
+#undef HAVE_AR_H
+
+/* Define to 1 if you have the <elf.h> header file. */
+#undef HAVE_ELF_H
+
+/* Define to 1 if you have the <fcntl.h> header file. */
+#undef HAVE_FCNTL_H
+
+/* Define to 1 if you have the `ftruncate' function. */
+#undef HAVE_FTRUNCATE
+
+/* Define to 1 if you have the <gelf.h> header file. */
+#undef HAVE_GELF_H
+
+/* Define to 1 if you have the `getpagesize' function. */
+#undef HAVE_GETPAGESIZE
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the <libelf.h> header file. */
+#undef HAVE_LIBELF_H
+
+/* Define to 1 if you have the `memcmp' function. */
+#undef HAVE_MEMCMP
+
+/* Define to 1 if you have the `memcpy' function. */
+#undef HAVE_MEMCPY
+
+/* Define to 1 if you have the `memmove' function. */
+#undef HAVE_MEMMOVE
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the `memset' function. */
+#undef HAVE_MEMSET
+
+/* Define to 1 if you have a working `mmap' system call. */
+#undef HAVE_MMAP
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the <sys/elf.h> header file. */
+#undef HAVE_SYS_ELF_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
 /* Name of package */
 #undef PACKAGE
 
@@ -33,6 +99,18 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
+/* The size of a `int', as computed by sizeof. */
+#undef SIZEOF_INT
+
+/* The size of a `long', as computed by sizeof. */
+#undef SIZEOF_LONG
+
+/* The size of a `long long', as computed by sizeof. */
+#undef SIZEOF_LONG_LONG
+
+/* The size of a `short', as computed by sizeof. */
+#undef SIZEOF_SHORT
+
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be
    automatically deduced at run-time.
@@ -40,6 +118,9 @@
 	STACK_DIRECTION < 0 => grows toward lower addresses
 	STACK_DIRECTION = 0 => direction of growth unknown */
 #undef STACK_DIRECTION
+
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
 
 /* Define when building an ia64 compiler */
 #undef TARG_IA64
@@ -49,3 +130,42 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* Define to `<elf.h>' or `<sys/elf.h>' if one of them is present. */
+#undef __LIBELF_HEADER_ELF_H
+
+/* Define if Elf32_Dyn is declared in <link.h>. */
+#undef __LIBELF_NEED_LINK_H
+
+/* Define to a 16-bit signed integer type if one exists. */
+#undef __libelf_i16_t
+
+/* Define to a 32-bit signed integer type if one exists. */
+#undef __libelf_i32_t
+
+/* Define to a 64-bit signed integer type if one exists. */
+#undef __libelf_i64_t
+
+/* Define to a 16-bit unsigned integer type if one exists. */
+#undef __libelf_u16_t
+
+/* Define to a 32-bit unsigned integer type if one exists. */
+#undef __libelf_u32_t
+
+/* Define to a 64-bit unsigned integer type if one exists. */
+#undef __libelf_u64_t
+
+/* Define to empty if `const' does not conform to ANSI C. */
+#undef const
+
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
+#undef inline
+#endif
+
+/* Define to `long' if <sys/types.h> does not define. */
+#undef off_t
+
+/* Define to `unsigned' if <sys/types.h> does not define. */
+#undef size_t
