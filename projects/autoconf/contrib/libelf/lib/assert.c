@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 assert.c - assert function for libelf.
 Copyright (C) 1999 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -24,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <private.h>
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: assert.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: assert.c,v 1.1 1999/11/04 19:16:36 michael Exp $";
 #endif /* lint */
 
 #include <stdio.h>

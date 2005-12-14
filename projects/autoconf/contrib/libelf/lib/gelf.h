@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 gelf.h - public header file for libelf.
 Copyright (C) 2000 - 2001 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -21,7 +17,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* @(#) $Id: gelf.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* @(#) $Id: gelf.h,v 1.8 2001/10/05 19:05:25 michael Exp $ */
 
 #ifndef _GELF_H
 #define _GELF_H

@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 strptr.c - implementation of the elf_strptr(3) function.
 Copyright (C) 1995 - 2000, 2003 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -24,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <private.h>
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: strptr.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: strptr.c,v 1.7 2003/05/18 15:01:36 michael Exp $";
 #endif /* lint */
 
 char*

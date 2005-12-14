@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 opt.delscn.c - implementation of the elf_delscn(3) function.
 Copyright (C) 1995 - 2001 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -24,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <private.h>
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: opt.delscn.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: opt.delscn.c,v 1.8 2001/10/08 15:57:10 michael Exp $";
 #endif /* lint */
 
 static size_t

@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 nlist.c - implementation of the nlist(3) function.
 Copyright (C) 1995 - 2002 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -25,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <nlist.h>
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: nlist.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: nlist.c,v 1.7 2002/06/11 18:53:55 michael Exp $";
 #endif /* lint */
 
 #if HAVE_FCNTL_H

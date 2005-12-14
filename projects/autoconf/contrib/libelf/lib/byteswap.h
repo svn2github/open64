@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 byteswap.h - functions and macros for byte swapping.
 Copyright (C) 1995 - 2001 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -21,7 +17,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* @(#) $Id: byteswap.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* @(#) $Id: byteswap.h,v 1.3 2001/10/03 20:48:16 michael Exp $ */
 
 #ifndef _BYTESWAP_H
 #define _BYTESWAP_H

@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 cook.c - read and translate ELF files.
 Copyright (C) 1995 - 2002 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -24,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <private.h>
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: cook.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: cook.c,v 1.21 2003/01/02 16:40:22 michael Exp $";
 #endif /* lint */
 
 const Elf_Scn _elf_scn_init = INIT_SCN;

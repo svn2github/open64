@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 32.getphdr.c - implementation of the elf{32,64}_getphdr(3) functions.
 Copyright (C) 1995 - 2000 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -24,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <private.h>
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: 32.getphdr.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: 32.getphdr.c,v 1.7 2000/03/26 03:00:20 michael Exp $";
 #endif /* lint */
 
 char*

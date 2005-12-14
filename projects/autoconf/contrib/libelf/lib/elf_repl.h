@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 elf_repl.h - public header file for systems that lack it.
 Copyright (C) 1995 - 2002 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -21,7 +17,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* @(#) $Id: elf_repl.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* @(#) $Id: elf_repl.h,v 1.13 2003/10/25 15:22:59 michael Exp $ */
 
 /*
  * NEVER INCLUDE THIS FILE DIRECTLY - USE <libelf.h> INSTEAD!

@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 private.h - private definitions for libelf.
 Copyright (C) 1995 - 2003 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -21,7 +17,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* @(#) $Id: private.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* @(#) $Id: private.h,v 1.26 2003/05/24 16:55:58 michael Exp $ */
 
 #ifndef _PRIVATE_H
 #define _PRIVATE_H

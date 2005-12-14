@@ -2,7 +2,7 @@
 # Copyright (C) 1995 - 2003 Michael Riepe <michael@stud.uni-hannover.de>
 # Process this file with autoconf to produce a configure script.
 
-# @(#) $Id: configure.in,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $
+# @(#) $Id: configure.in,v 1.28 2003/11/06 16:49:54 michael Exp $
 
 AC_INIT(VERSION)
 AC_CONFIG_HEADER(config.h lib/sys_elf.h)

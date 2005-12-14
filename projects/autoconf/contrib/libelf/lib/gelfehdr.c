@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 gelfehdr.c - gelf_* translation functions.
 Copyright (C) 2000 - 2001 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -26,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #if __LIBELF64
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: gelfehdr.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: gelfehdr.c,v 1.3 2001/10/07 19:33:03 michael Exp $";
 #endif /* lint */
 
 #define check_and_copy(type, d, s, name, eret)		\

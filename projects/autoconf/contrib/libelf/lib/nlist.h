@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 nlist.h - public header file for nlist(3).
 Copyright (C) 1995 - 1998 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -21,7 +17,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* @(#) $Id: nlist.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* @(#) $Id: nlist.h,v 1.3 1998/06/01 19:47:24 michael Exp $ */
 
 #ifndef _NLIST_H
 #define _NLIST_H

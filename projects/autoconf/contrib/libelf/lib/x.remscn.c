@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 x.remscn.c - implementation of the elfx_remscn(3) function.
 Copyright (C) 1995 - 2001, 2003 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -24,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <private.h>
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: x.remscn.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: x.remscn.c,v 1.11 2003/10/09 21:09:51 michael Exp $";
 #endif /* lint */
 
 size_t

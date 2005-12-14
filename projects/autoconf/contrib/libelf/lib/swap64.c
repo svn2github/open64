@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 swap64.c - 64-bit byte swapping functions.
 Copyright (C) 1995 - 2001 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -27,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #if __LIBELF64
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: swap64.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: swap64.c,v 1.2 2001/10/07 19:33:03 michael Exp $";
 #endif /* lint */
 
 __libelf_u64_t

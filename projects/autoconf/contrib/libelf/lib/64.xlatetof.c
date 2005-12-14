@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 64.xlatetof.c - implementation of the elf64_xlateto[fm](3) functions.
 Copyright (C) 1995 - 2002 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -28,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #if __LIBELF64
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: 64.xlatetof.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: 64.xlatetof.c,v 1.17 2002/12/22 20:08:48 michael Exp $";
 #endif /* lint */
 
 /*

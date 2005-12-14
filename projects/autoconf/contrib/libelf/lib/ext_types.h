@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 ext_types.h - external representation of ELF data types.
 Copyright (C) 1995 - 1998 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -21,7 +17,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* @(#) $Id: ext_types.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+/* @(#) $Id: ext_types.h,v 1.5 2001/10/05 16:00:50 michael Exp $ */
 
 #ifndef _EXT_TYPES_H
 #define _EXT_TYPES_H

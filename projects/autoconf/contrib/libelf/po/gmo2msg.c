@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 gmo2msg.c - create X/Open message source file for libelf.
 Copyright (C) 1996 - 2002 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -22,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: gmo2msg.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: gmo2msg.c,v 1.6 2002/12/14 17:43:13 michael Exp $";
 #endif /* lint */
 
 #include <stdlib.h>

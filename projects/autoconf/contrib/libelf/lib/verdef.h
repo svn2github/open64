@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 verdef.h - copy versioning information.
 Copyright (C) 2001 - 2003 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -22,7 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
 #ifndef lint
-static const char verdef_h_rcsid[] = "@(#) $Id: verdef.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char verdef_h_rcsid[] = "@(#) $Id: verdef.h,v 1.8 2003/05/12 13:35:37 michael Exp $";
 #endif /* lint */
 
 #if VER_DEF_CURRENT != 1

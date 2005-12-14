@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 getarsym.c - implementation of the elf_getarsym(3) function.
 Copyright (C) 1995 - 1998 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -25,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <byteswap.h>
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: getarsym.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: getarsym.c,v 1.3 1998/06/12 19:42:24 michael Exp $";
 #endif /* lint */
 
 Elf_Arsym*

@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 memset.c - replacement for memset(3), using duff's device.
 Copyright (C) 1995 - 1998 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -26,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #endif /* HAVE_CONFIG_H */
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: memset.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: memset.c,v 1.5 1998/11/27 21:25:19 michael Exp $";
 #endif /* lint */
 
 #include <sys/types.h>

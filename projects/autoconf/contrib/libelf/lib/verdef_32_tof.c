@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 verdef_32_tof.c - copy 32-bit versioning information.
 Copyright (C) 2001 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -28,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #if __LIBELF_SYMBOL_VERSIONS
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: verdef_32_tof.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: verdef_32_tof.c,v 1.1 2001/10/07 20:03:02 michael Exp $";
 #endif /* lint */
 
 typedef Elf32_Verdaux		verdaux_mtype;

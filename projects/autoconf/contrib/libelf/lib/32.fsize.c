@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 32.fsize.c - implementation of the elf{32,64}_fsize(3) functions.
 Copyright (C) 1995 - 2001 Michael Riepe <michael@stud.uni-hannover.de>
 
@@ -25,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <ext_types.h>
 
 #ifndef lint
-static const char rcsid[] = "@(#) $Id: 32.fsize.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $";
+static const char rcsid[] = "@(#) $Id: 32.fsize.c,v 1.9 2001/10/05 19:05:25 michael Exp $";
 #endif /* lint */
 
 const size_t
