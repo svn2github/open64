@@ -31,7 +31,7 @@
 
 
 
-$Header: /proj/osprey/CVS/open64/osprey1.0/libdwarf/dwarfdump/globals.h,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+$Header: /plroot/cmplrs.src/v7.4.4m/.RCS/PL/dwarfdump/RCS/globals.h,v 1.18 2003/10/03 16:19:09 davea Exp $ */
 #ifndef globals_INCLUDED
 #define globals_INCLUDED
 

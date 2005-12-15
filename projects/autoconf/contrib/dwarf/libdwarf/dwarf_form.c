@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000,2002,2004  Silicon Graphics, Inc.  All Rights Reserved.
 

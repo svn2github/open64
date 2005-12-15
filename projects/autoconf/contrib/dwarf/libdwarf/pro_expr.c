@@ -1,8 +1,4 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000,2004 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -349,7 +345,7 @@ dwarf_add_expr_gen(Dwarf_P_Expr expr,
 	   our (process) address space we are in big trouble anyway
 	   (internal error in libdwarf or in libdwarf caller). Compiler 
 	   may warn about cast to pointer. */
-	WRITE_UNALIGNED(dbg, operand, (const void *) (unsigned long) val1,
+	WRITE_UNALIGNED(dbg, operand, (const void *) val1,
 			sizeof(val1), 1);
 	operand_size = 1;
 	break;
@@ -368,7 +364,7 @@ dwarf_add_expr_gen(Dwarf_P_Expr expr,
 	   our (process) address space we are in big trouble anyway
 	   (internal error in libdwarf or in libdwarf caller). Compiler 
 	   may warn about cast to pointer. */
-	WRITE_UNALIGNED(dbg, operand, (const void *) (unsigned long) val1,
+	WRITE_UNALIGNED(dbg, operand, (const void *) val1,
 			sizeof(val1), 1);
 	operand_size = 1;
 	break;
@@ -549,5 +545,5 @@ dwarf_expr_into_block(Dwarf_P_Expr expr,
        Dwarf_Addr is at least as large as a pointer. Which is a
        requirement of libdwarf so must be satisfied (some compilers
        emit a warning about the following line). */
-    return ((Dwarf_Addr) (unsigned long) & (expr->ex_byte_stream[0]));
+    return ((Dwarf_Addr) & (expr->ex_byte_stream[0]));
 }

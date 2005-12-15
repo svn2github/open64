@@ -31,7 +31,7 @@
 
 
 
-$Header: /proj/osprey/CVS/open64/osprey1.0/libdwarf/dwarfdump/print_sections.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+$Header: /plroot/cmplrs.src/v7.4.4m/.RCS/PL/dwarfdump/RCS/print_sections.c,v 1.55 2003/10/07 02:50:13 davea Exp $ */
 #include "globals.h"
 #include "dwarf_names.h"
 

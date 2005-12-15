@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2004 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -43,6 +39,6 @@
 
    dwarf_macro.h
 
-   $Revision: 1.1.1.1 $    $Date: 2005/10/21 19:00:00 $
+   $Revision: 1.3 $    $Date: 2001/09/18 19:23:55 $
 
 */

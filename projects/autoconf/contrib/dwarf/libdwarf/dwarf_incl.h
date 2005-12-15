@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000, 2002, 2004 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -50,7 +46,8 @@
 #endif
 
 #include <limits.h>
-#include "dwarf_stuff.h"
+#include <libdwarf.h>
+#include <dwarf.h>
 
 #include "dwarf_base_types.h"
 #include "dwarf_alloc.h"

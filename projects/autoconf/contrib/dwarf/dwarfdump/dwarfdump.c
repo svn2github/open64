@@ -30,7 +30,7 @@
   http://oss.sgi.com/projects/GenInfo/NoticeExplan
 
 
-$Header: /proj/osprey/CVS/open64/osprey1.0/libdwarf/dwarfdump/dwarfdump.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+$Header: /plroot/cmplrs.src/v7.4.4m/.RCS/PL/dwarfdump/RCS/dwarfdump.c,v 1.38 2004/05/07 21:17:56 davea Exp $ */
 #include "globals.h"
 
 /* for 'open' */

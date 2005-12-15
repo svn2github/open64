@@ -1,11 +1,7 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
    dwarf_addr_finder.h
-   $Source: /proj/osprey/CVS/open64/osprey1.0/libdwarf/libdwarf/cmplrs/dwarf_addr_finder.h,v $
-   $Date: 2005/10/21 19:00:00 $
+   $Source: /plroot/cmplrs.src/v7.4.4m/.RCS/PL/include/cmplrs/RCS/dwarf_addr_finder.h,v $
+   $Date: 2002/06/11 17:49:06 $
 
    Defines user interface.
 

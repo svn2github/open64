@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000,2002,2004 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -283,8 +279,8 @@ const char *_dwarf_errmsgs[] = {
     "DW_DLE_DF_POP_EMPTY_STACK(191)",
     "DW_DLE_DF_ALLOC_FAIL(192)",
     "DW_DLE_DF_FRAME_DECODING_ERROR(193)",
-    "DW_DLE_DEBUG_LOC_SECTION_SHORT(194)",
-    "DW_DLE_LAST_CHILD_ISNT(195)"
+
+
 
 };
 

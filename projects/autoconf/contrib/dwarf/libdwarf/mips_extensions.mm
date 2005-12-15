@@ -1,5 +1,5 @@
-\." $Revision: 1.1.1.1 $
-\." $Date: 2005/10/21 19:00:00 $
+\." $Revision: 1.7 $
+\." $Date: 2001/08/29 17:02:11 $
 \."
 \."
 \." the following line may be removed if the ff ligature works on your machine

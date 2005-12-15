@@ -1,8 +1,4 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000,2004 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -287,20 +283,9 @@ dwarf_add_AT_signed_const(Dwarf_P_Debug dbg,
 	}
     }
 
-    /* Compute the number of bytes needed to hold constant.
-       gdb seems to treat all the DW_FORM_data forms as unsigned, so
-       if we have a negative number we need to encode it as signed
-       data. */
-    new_attr = (Dwarf_P_Attribute)
-	_dwarf_p_get_alloc(NULL, sizeof(struct Dwarf_P_Attribute_s));
-    if (new_attr == NULL) {
-	_dwarf_p_error(NULL, error, DW_DLE_ALLOC_FAIL);
-	return ((Dwarf_P_Attribute) DW_DLV_BADADDR);
-    }
-
-    if (value < 0) {
-	attr_form = DW_FORM_sdata;
-    } else if (value >= SCHAR_MIN && value <= SCHAR_MAX) {
+    /* 
+       Compute the number of bytes needed to hold constant. */
+    if (value >= SCHAR_MIN && value <= SCHAR_MAX) {
 	attr_form = DW_FORM_data1;
 	size = 1;
     } else if (value >= SHRT_MIN && value <= SHRT_MAX) {
@@ -314,6 +299,13 @@ dwarf_add_AT_signed_const(Dwarf_P_Debug dbg,
 	size = 8;
     }
 
+    new_attr = (Dwarf_P_Attribute)
+	_dwarf_p_get_alloc(dbg, sizeof(struct Dwarf_P_Attribute_s));
+    if (new_attr == NULL) {
+	_dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL);
+	return ((Dwarf_P_Attribute) DW_DLV_BADADDR);
+    }
+
     new_attr->ar_attribute = attr;
     new_attr->ar_attribute_form = attr_form;
     new_attr->ar_rel_type = R_MIPS_NONE;
@@ -322,35 +314,14 @@ dwarf_add_AT_signed_const(Dwarf_P_Debug dbg,
     new_attr->ar_nbytes = size;
     new_attr->ar_next = 0;
 
-    if (attr_form == DW_FORM_sdata) {
-        int leb_size;
-        char encode_buffer[ENCODE_SPACE_NEEDED];
-        int res;
-
-        res = _dwarf_pro_encode_signed_leb128_nm(
-	    value, &leb_size,
-	    encode_buffer,sizeof(encode_buffer));
-        if (res != DW_DLV_OK) {
-            _dwarf_p_error(NULL, error, DW_DLE_ALLOC_FAIL);
-            return (Dwarf_P_Attribute) DW_DLV_BADADDR;
-        }
-        new_attr->ar_data = (char *) _dwarf_p_get_alloc(NULL, leb_size);
-        if (new_attr->ar_data == NULL) {
-            _dwarf_p_error(NULL, error, DW_DLE_ALLOC_FAIL);
-            return (Dwarf_P_Attribute) DW_DLV_BADADDR;
-        }
-        memcpy(new_attr->ar_data,encode_buffer,leb_size);
-        new_attr->ar_nbytes = leb_size;
-    } else {
-	new_attr->ar_data = (char *) _dwarf_p_get_alloc(dbg, size);
-	if (new_attr->ar_data == NULL) {
-	    _dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL);
-	    return ((Dwarf_P_Attribute) DW_DLV_BADADDR);
-	}
-	WRITE_UNALIGNED(dbg, new_attr->ar_data,
-			(const void *) &value, sizeof(value), size);
+    new_attr->ar_data = (char *)
+	_dwarf_p_get_alloc(dbg, size);
+    if (new_attr->ar_data == NULL) {
+	_dwarf_p_error(dbg, error, DW_DLE_ALLOC_FAIL);
+	return ((Dwarf_P_Attribute) DW_DLV_BADADDR);
     }
-
+    WRITE_UNALIGNED(dbg, new_attr->ar_data,
+		    (const void *) &value, sizeof(value), size);
 
     /* add attribute to the die */
     _dwarf_pro_add_at_to_die(ownerdie, new_attr);

@@ -1,8 +1,4 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000,2002,2004 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -146,10 +142,9 @@ typedef struct Dwarf_P_Per_Reloc_Sect_s *Dwarf_P_Per_Reloc_Sect;
 #define         DEBUG_WEAKNAMES 10
 #define         DEBUG_MACINFO   11
 #define         DEBUG_LOC   12
-#define         EH_FRAME    13
 
     /* number of debug_* sections not including the relocations */
-#define         NUM_DEBUG_SECTIONS      EH_FRAME + 1
+#define         NUM_DEBUG_SECTIONS      DEBUG_LOC + 1
 
 
 struct Dwarf_P_Die_s {
@@ -161,7 +156,6 @@ struct Dwarf_P_Die_s {
     Dwarf_P_Die di_child;	/* first child */
     Dwarf_P_Die di_left;	/* left sibling */
     Dwarf_P_Die di_right;	/* right sibling */
-    Dwarf_P_Die di_last_child;  /* last of children */
     Dwarf_P_Attribute di_attrs;	/* list of attributes */
     Dwarf_P_Attribute di_last_attr;	/* last attribute */
     int di_n_attr;		/* number of attributes */
@@ -367,16 +361,6 @@ struct Dwarf_P_Debug_s {
     Dwarf_P_Fde de_frame_fdes;
     Dwarf_P_Fde de_last_fde;
     Dwarf_Unsigned de_n_fde;
-
-    /* List of cie's for the exception handling unit */
-    Dwarf_P_Cie de_eh_frame_cies;
-    Dwarf_P_Cie de_eh_last_cie;
-    Dwarf_Unsigned de_eh_n_cie;
-
-    /* Singly-linked list of fde's for the exception handling unit */
-    Dwarf_P_Fde de_eh_frame_fdes;
-    Dwarf_P_Fde de_eh_last_fde;
-    Dwarf_Unsigned de_eh_n_fde;
 
     /* First die, leads to all others */
     Dwarf_P_Die de_dies;

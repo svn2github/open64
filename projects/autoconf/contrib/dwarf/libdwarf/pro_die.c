@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
 
   Copyright (C) 2000,2004 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -78,7 +74,6 @@ dwarf_new_die(Dwarf_P_Debug dbg,
     new_die->di_left = NULL;
     new_die->di_right = NULL;
     new_die->di_child = NULL;
-    new_die->di_last_child = NULL;
     new_die->di_tag = tag;
     ret_die =
 	dwarf_die_link(new_die, parent, child, left, right, error);
@@ -102,90 +97,52 @@ dwarf_die_link(Dwarf_P_Die new_die,
     if (parent != NULL) {
 	n_nulls++;
 	new_die->di_parent = parent;
-	if (parent->di_child) {
-	    /* we maintain a pointer to the last child
-	     * so that we can append children quickly
-	     */
+	if (parent->di_child) {	/* got to traverse the child's siblings 
+				 */
+	    Dwarf_P_Die curdie;
 
-	    Dwarf_P_Die curdie = parent->di_last_child;
-
-	    /* find last_child pointer if without */
-	    if (curdie == NULL) {
-	        curdie = parent->di_child;
-	        while (curdie->di_right != NULL) {
-	            curdie = curdie->di_right; 
-                }
-	    }
-
-	    if (curdie->di_right != NULL) {
-	        DWARF_P_DBG_ERROR(NULL, DW_DLE_LAST_CHILD_ISNT,
-				  (Dwarf_P_Die) DW_DLV_BADADDR);
-
-            }
-
-	    curdie->di_right = new_die;	       /* attach to sibling list */
-	    new_die->di_left = curdie;	       /* back pointer */
-	    parent->di_last_child = new_die;   /* last in list */
-	} else {
+	    curdie = parent->di_child;
+	    while (curdie->di_right)
+		curdie = curdie->di_right;
+	    curdie->di_right = new_die;	/* attach to sibling list */
+	    new_die->di_left = curdie;	/* back pointer */
+	} else
 	    parent->di_child = new_die;
-	    parent->di_last_child = new_die;
-        }
     }
     if (child != NULL) {
 	n_nulls++;
-
-	Dwarf_P_Die curdie = child;
 	new_die->di_child = child;
-	new_die->di_last_child = NULL;
-
-	/* add parent pointer */
 	if (child->di_parent) {
 	    DWARF_P_DBG_ERROR(NULL, DW_DLE_PARENT_EXISTS,
 			      (Dwarf_P_Die) DW_DLV_BADADDR);
-	}
-	child->di_parent = new_die;
+	} else
+	    child->di_parent = new_die;
     }
     if (left != NULL) {
 	n_nulls++;
 	new_die->di_left = left;
-
-	Dwarf_P_Die prtdie = left->di_parent;
-
-	if (left->di_right) {
-            /* already a right sibl, lets insert */
+	if (left->di_right)	/* there's already a right sibl, lets
+				   insert */
 	    new_die->di_right = left->di_right;
-	    left->di_right->di_left = new_die;
-        } else {
-            /* last in list update parent */
-            if (prtdie != NULL) {
-               prtdie->di_last_child = new_die;
-            }
-        }
 	left->di_right = new_die;
-
 	/* add parent pointer */
 	if (new_die->di_parent) {
 	    DWARF_P_DBG_ERROR(NULL, DW_DLE_PARENT_EXISTS,
 			      (Dwarf_P_Die) DW_DLV_BADADDR);
-	}
-	new_die->di_parent = prtdie;
-
+	} else
+	    new_die->di_parent = left->di_parent;
     }
     if (right != NULL) {
 	n_nulls++;
 	new_die->di_right = right;
-	if (right->di_left) {
-	    /* left sibl exists, try inserting */
+	if (right->di_left)	/* left sibl exists, try inserting */
 	    new_die->di_left = right->di_left;
-	    right->di_left->di_right = new_die;
-	}
 	right->di_left = new_die;
-
 	if (new_die->di_parent) {
 	    DWARF_P_DBG_ERROR(NULL, DW_DLE_PARENT_EXISTS,
 			      (Dwarf_P_Die) DW_DLV_BADADDR);
-	}
-	new_die->di_parent = right->di_parent;
+	} else
+	    new_die->di_parent = right->di_parent;
     }
     if (n_nulls > 1) {		/* multiple neighbors, error */
 	DWARF_P_DBG_ERROR(NULL, DW_DLE_EXTRA_NEIGHBORS,

@@ -1,7 +1,7 @@
 '\"#ident	"%W%"
-'\" $Source: /proj/osprey/CVS/open64/osprey1.0/libdwarf/libdwarf/dwarf.v2.mm,v $
+'\" $Source: /plroot/cmplrs.src/v7.4.4m/.RCS/PL/libdwarf/RCS/dwarf.v2.mm,v $
 '\"
-'\" $Revision: 1.1.1.1 $
+'\" $Revision: 1.2 $
 '\"
 '\" DESCRIPTION
 '\"
@@ -48,11 +48,7 @@
 '\"	specification being made available from UNIX System Laboratories or 
 '\"	UNIX International members.
 '\"
-'\" $Log: dwarf.v2.mm,v $
-'\" Revision 1.1.1.1  2005/10/21 19:00:00  marcel
-'\" Import of PathScale, version 2.2.1
-'\"
-'\"
+'\" $Log$
 '\" Revision 1.1  1994/05/18 18:50:42  davea
 '\" Initial revision
 '\"

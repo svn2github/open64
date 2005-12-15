@@ -1,8 +1,4 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
- */
-
-/*
   Copyright (C) 2000, 2001, 2003, 2004 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -45,7 +41,7 @@ extern "C" {
 
 /*
 	dwarf.h   DWARF  debugging information values
-	$Revision: 1.1.1.1 $    $Date: 2005/10/21 19:00:00 $    
+	$Revision: 1.31 $    $Date: 2004/10/27 23:24:15 $    
 
 	The comment "DWARF3" appears where there are
 	new entries from DWARF3, and other comments apply

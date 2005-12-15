@@ -31,7 +31,7 @@
 
 
 
-$Header: /proj/osprey/CVS/open64/osprey1.0/libdwarf/dwarfdump/print_reloc.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
+$Header: /plroot/cmplrs.src/v7.4.4m/.RCS/PL/dwarfdump/RCS/print_reloc.c,v 1.9 2001/01/16 17:47:55 davea Exp $ */
 
 #include "globals.h"
 
@@ -375,8 +375,8 @@ static void print_reloc_information_64(int section_no, Dwarf_Small *buf,
 	/* This works for the Elf64_Rel in linux
 	*/
 	Elf64_Rel *p = (Elf64_Rel *) (buf + off);
-	printf("%5lu\t<%3lld> %-34s%s\n", (unsigned long int) (p->r_offset), 
-	       (long long) ELF64_R_SYM(p->r_info), 
+	printf("%5lu\t<%3d> %-34s%s\n", (unsigned long int) (p->r_offset), 
+	       ELF64_R_SYM(p->r_info), 
 	       sym_data[ELF64_R_SYM(p->r_info) - 1].name, 
 	       get_reloc_type_names(ELF64_R_TYPE(p->r_info)));
 #else
