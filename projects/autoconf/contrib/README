@@ -3,6 +3,10 @@ code found in this directory.  The intend of this file is to
 demystify the origins of the source code as well as to keep
 a track record of the versions used.
 
-libelf
+dwarf/
+	version: 20050318
+	from: http://reality.sgi.com/davea/dwarf.html
+
+libelf/
 	version: 0.8.5
 	from: http://www.mr511.de/software/english.html
