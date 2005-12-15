@@ -49,13 +49,6 @@
 //  $Author: marcel $
 //  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_pseudo_gen.cxx,v $
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-#ifdef HAVE_ALLOCA_H
-#include <alloca.h>
-#endif
-
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -338,7 +331,7 @@ void order_pseudos(int *machine_to_pseudo_index, int *pseudo_to_machine_index)
 {
   int i;
   std::list<PSEUDO_OP_INFO *>::iterator ps_iter;
-  PSEUDO_OP_INFO **vec = (PSEUDO_OP_INFO **)alloca(sizeof(PSEUDO_OP_INFO *) * num_pseudos);
+  PSEUDO_OP_INFO **vec = (PSEUDO_OP_INFO **)malloc(sizeof(PSEUDO_OP_INFO *) * num_pseudos);
 
   for (i = 0; i < TOP_count; ++i) {
     machine_to_pseudo_index[i] = num_pseudos;
@@ -380,6 +373,8 @@ void order_pseudos(int *machine_to_pseudo_index, int *pseudo_to_machine_index)
       /*NOTREACHED*/
     }
   }
+
+  free(vec);
 }
 
 

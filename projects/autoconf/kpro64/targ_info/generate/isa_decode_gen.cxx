@@ -49,13 +49,6 @@
 //  $Author: marcel $
 //  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_decode_gen.cxx,v $
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-#ifdef HAVE_ALLOCA_H
-#include <alloca.h>
-#endif
-
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -275,7 +268,7 @@ static void Visit_State(STATE state, FILE *f, VISIT_KIND vk)
   indent += 2;
   ntrans = 1 << state->u.i.width;
 
-  nonfinals = (STATE *)alloca(sizeof(struct state) * ntrans);
+  nonfinals = (STATE *)malloc(sizeof(struct state) * ntrans);
   n_nonfinals = 0;
   for (i = 0; i < ntrans; ++i) {
     STATE newstate = state->u.i.transition[i];
@@ -357,6 +350,9 @@ static void Visit_State(STATE state, FILE *f, VISIT_KIND vk)
   } else if (vk == VISIT_GEN_CODE) {
     if (n_nonfinals) fprintf(f, "%*s}\n", indent, "");
   }
+
+  free(nonfinals);
+
   indent -= 2;
 }
 
