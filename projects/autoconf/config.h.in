@@ -134,11 +134,23 @@
 /* Version number of package */
 #undef VERSION
 
+/* Define if your system supports 64-bit ELF. */
+#undef __LIBELF64
+
+/* Define if you have an Irix system with 64-bit ELF support. */
+#undef __LIBELF64_IRIX
+
+/* Define if symbol versioning uses GNU section types. */
+#undef __LIBELF_GNU_SYMBOL_VERSIONS
+
 /* Define to `<elf.h>' or `<sys/elf.h>' if one of them is present. */
 #undef __LIBELF_HEADER_ELF_H
 
-/* Define if Elf32_Dyn is declared in <link.h>. */
-#undef __LIBELF_NEED_LINK_H
+/* Define if symbol versioning uses Sun section types. */
+#undef __LIBELF_SUN_SYMBOL_VERSIONS
+
+/* Define if your system supports symbol versioning. */
+#undef __LIBELF_SYMBOL_VERSIONS
 
 /* Define to a 16-bit signed integer type if one exists. */
 #undef __libelf_i16_t
