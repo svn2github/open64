@@ -67,6 +67,22 @@ fi
 AC_TYPE_OFF_T
 AC_TYPE_SIZE_T
 
+# For libdwarf
+AC_TRY_COMPILE([], [__uint32_t p; p = 3;],
+    AC_DEFINE(HAVE___UINT32_T, 1,
+	[See if __uint32_t is predefined in the compiler.]))
+AC_TRY_COMPILE([], [__uint64_t p; p = 3;],
+    AC_DEFINE(HAVE___UINT64_T, 1,
+	[See if __uint64_t is predefined in the compiler.]))
+
+# For libdwarf
+AC_TRY_COMPILE([#include <sys/types.h>], [__uint32_t p; p = 3;],
+    AC_DEFINE(HAVE___UINT32_T_IN_SYS_TYPES_H, 1,
+	[Define 1 if sys/types.h defines __uint32_t.]))
+AC_TRY_COMPILE([#include <sys/types.h>], [__uint64_t p; p = 3;],
+    AC_DEFINE(HAVE___UINT64_T_IN_SYS_TYPES_H, 1,
+	[Define 1 if sys/types.h defines __uint64_t.]))
+
 #
 # Check for structures (none yet)
 #
@@ -194,9 +210,18 @@ AH_TEMPLATE(HAVE_STRSIGNAL, [Define if you have the strsignal(3) function.])
 
 AC_CHECK_FUNCS([ftruncate memcmp memcpy memmove memset strsignal])
 
+# For libdwarf
+AC_DEFINE(HAVE_ELF64_GETEHDR,1,[We have elf64_getehdr() in our libelf.a.])
+AC_DEFINE(HAVE_ELF64_GETSHDR,1,[We have elf64_getshdr() in our libelf.a.])
+
 #
 # Check for system services (none yet)
 #
+
+#
+# Set features
+#
+AC_DEFINE(HAVE_OLD_DWARF2_32BIT_OFFSET,1,[DWARF2 32-bit section offsets.])
 
 AC_CONFIG_FILES([Makefile
 		 kpro64/Makefile
@@ -204,6 +229,7 @@ AC_CONFIG_FILES([Makefile
 		 kpro64/common/Makefile
 		 kpro64/libcif/Makefile
 		 kpro64/libcmplrs/Makefile
+		 kpro64/libdwarf/Makefile
 		 kpro64/libelf/Makefile
 		 kpro64/targ_info/Makefile])
 AC_OUTPUT
