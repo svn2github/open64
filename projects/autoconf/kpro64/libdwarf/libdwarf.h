@@ -161,6 +161,11 @@ enum Dwarf_Rel_Type {
 		dwarf_drt_none, /* should not get to caller */
                 dwarf_drt_data_reloc, /* simple normal relocation */
                 dwarf_drt_segment_rel, /* special reloc, exceptions*/
+		dwarf_drt_cie_label, /* simple string */
+		dwarf_drt_data_reloc_by_str_id, /* drd_symbol_index==str_idx */
+		dwarf_drt_first_of_length_pair_create_second,
+		/* similar to the next, but first create/put the 2nd
+		   symbol here */
                 dwarf_drt_first_of_length_pair,/* this and drt_second 
 				for .word end - begin
 			 	case */
@@ -468,9 +473,10 @@ typedef void  (*Dwarf_Handler)(Dwarf_Error /*error*/, Dwarf_Ptr /*errarg*/);
 #define DW_DLE_DF_ALLOC_FAIL                   	192
 #define DW_DLE_DF_FRAME_DECODING_ERROR         	193
 #define DW_DLE_DEBUG_LOC_SECTION_SHORT         	194
+#define DW_DLE_LAST_CHILD_ISNT                  195
 
     /* DW_DLE_LAST MUST EQUAL LAST ERROR NUMBER */
-#define DW_DLE_LAST        			194
+#define DW_DLE_LAST        			195
 #define DW_DLE_LO_USER     0x10000
 
         /* taken as meaning 'undefined value', this is not

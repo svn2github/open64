@@ -304,6 +304,7 @@ dwarf_undef_macro(Dwarf_P_Debug dbg,
     return DW_DLV_OK;
 }
 
+/* Write line number first, then file index. */
 int
 dwarf_start_macro_file(Dwarf_P_Debug dbg,
 		       Dwarf_Unsigned fileindex,
@@ -324,13 +325,19 @@ dwarf_start_macro_file(Dwarf_P_Debug dbg,
 	_dwarf_p_error(NULL, error, compose_error_type);
 	return (DW_DLV_ERROR);
     }
+    res = libdwarf_compose_add_line(dbg, linenumber,
+				    &compose_error_type);
+    if (res != DW_DLV_OK) {
+	_dwarf_p_error(NULL, error, compose_error_type);
+	return (DW_DLV_ERROR);
+    }
     res = libdwarf_compose_add_line(dbg, fileindex,
 				    &compose_error_type);
     if (res != DW_DLV_OK) {
 	_dwarf_p_error(NULL, error, compose_error_type);
 	return (DW_DLV_ERROR);
     }
-    res = libdwarf_compose_add_line(dbg, linenumber,
+    res = libdwarf_compose_complete(dbg,
 				    &compose_error_type);
     if (res != DW_DLV_OK) {
 	_dwarf_p_error(NULL, error, compose_error_type);
@@ -361,6 +368,12 @@ dwarf_end_macro_file(Dwarf_P_Debug dbg, Dwarf_Error * error)
     if (res != DW_DLV_OK) {
 	_dwarf_p_error(NULL, error, compose_error_type);
 	return (DW_DLV_ERROR);
+    }
+    res = libdwarf_compose_complete(dbg,
+				    &compose_error_type);
+    if (res != DW_DLV_OK) {
+        _dwarf_p_error(NULL, error, compose_error_type);
+        return(DW_DLV_ERROR);
     }
     return DW_DLV_OK;
 }
@@ -464,9 +477,6 @@ _dwarf_pro_transform_macro_info_to_disk(Dwarf_P_Debug dbg,
 	_dwarf_p_dealloc(dbg, (Dwarf_Small *) m_prev);
 	m_prev = 0;
     }
-
-    dbg->de_first_macinfo = NULL;
-    dbg->de_current_macinfo = NULL;
 
     return (int) dbg->de_n_debug_sect;
 }

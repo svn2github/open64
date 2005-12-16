@@ -68,6 +68,7 @@ struct Dwarf_P_Cie_s {
     Dwarf_Ubyte cie_code_align;	/* alignment of code */
     Dwarf_Sbyte cie_data_align;
     Dwarf_Ubyte cie_ret_reg;	/* return register # */
+    Dwarf_Unsigned cie_personality; /* personality routine */
     char *cie_inst;		/* initial instruction */
     long cie_inst_bytes;
     /* no of init_inst */

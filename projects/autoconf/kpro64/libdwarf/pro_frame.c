@@ -91,6 +91,7 @@ dwarf_add_frame_cie(Dwarf_P_Debug dbg,
     curcie->cie_code_align = code_align;
     curcie->cie_data_align = data_align;
     curcie->cie_ret_reg = return_reg;
+    curcie->cie_personality = 0;
     curcie->cie_inst = (char *) init_bytes;
     curcie->cie_inst_bytes = (long) init_n_bytes;
     curcie->cie_next = NULL;
@@ -359,6 +360,22 @@ dwarf_add_fde_inst(Dwarf_P_Fde fde,
 
     switch (op) {
 
+#ifdef TARG_X8664
+	case DW_CFA_advance_loc4:
+	    // We will use 2 half-words to copy the labels; cg will later
+	    // fix the relocatable symbols.
+	    dh = val1;
+	    ptr = (char *) _dwarf_p_get_alloc(NULL, 4);
+	    if (ptr == NULL) {
+	      _dwarf_p_error(NULL, error, DW_DLE_STRING_ALLOC);
+	      return((Dwarf_P_Fde)DW_DLV_BADADDR);
+	    }
+	    memcpy((void *)ptr, (const void *)&dh,2);
+	    dh = val2;
+	    memcpy((void *)ptr+2, (const void *)&dh,2);
+	    nbytes = 4;
+	    break;
+#endif // TARG_X8664
     case DW_CFA_advance_loc:
 	if (val1 <= 0x3f) {
 	    db = val1;
