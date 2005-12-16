@@ -35,8 +35,12 @@
 
 */
 
-#include "config.h"
-#include "dwarf_stuff.h"
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <libdwarf/dwarf_stuff.h>
+
 #include "libdwarfdefs.h"
 #include <stdio.h>
 #include <stdlib.h>
