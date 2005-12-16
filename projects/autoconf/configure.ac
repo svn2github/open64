@@ -67,10 +67,6 @@ fi
 AC_TYPE_OFF_T
 AC_TYPE_SIZE_T
 
-# The following applies to Solaris. We don't care about that now
-AH_TEMPLATE(__LIBELF_NEED_LINK_H,
-    [Define if Elf32_Dyn is declared in <link.h>.])
-
 #
 # Check for structures (none yet)
 #
@@ -112,6 +108,76 @@ else
 	AC_DEFINE(__libelf_u64_t, unsigned long long)
     fi
 fi
+
+AC_CACHE_CHECK([for struct Elf64_Ehdr], libelf_cv_struct_elf64_ehdr,
+    AC_TRY_COMPILE([#include __LIBELF_HEADER_ELF_H], [Elf64_Ehdr x],
+	[libelf_cv_struct_elf64_ehdr=yes], [libelf_cv_struct_elf64_ehdr=no]))
+
+AC_CACHE_CHECK([for struct Elf64_Rel], libelf_cv_struct_elf64_rel,
+    AC_TRY_COMPILE([#include __LIBELF_HEADER_ELF_H],
+	[Elf64_Rel x; x.r_info = 1], [libelf_cv_struct_elf64_rel=yes],
+	AC_TRY_COMPILE([#include __LIBELF_HEADER_ELF_H],
+	    [Elf64_Rel x; x.r_sym = 1], [libelf_cv_struct_elf64_rel=irix],
+	    [libelf_cv_struct_elf64_rel=no])))
+
+AH_TEMPLATE(__LIBELF64,
+    [Define if your system supports 64-bit ELF.])
+
+AH_TEMPLATE(__LIBELF64_IRIX,
+    [Define if you have an Irix system with 64-bit ELF support.])
+
+case "$libelf_cv_struct_elf64_ehdr:$libelf_cv_struct_elf64_rel" in
+    yes:yes)
+	AC_DEFINE(__LIBELF64)
+	;;
+    yes:irix)
+	AC_DEFINE(__LIBELF64)
+	AC_DEFINE(__LIBELF64_IRIX)
+	;;
+    *)
+	AC_MSG_ERROR([*** Missing 64-bit ELF support], 1)
+	;;
+esac
+
+AC_CACHE_CHECK([for Elf32_Verdef], libelf_cv_verdef32,
+    AC_TRY_COMPILE([#include __LIBELF_HEADER_ELF_H],
+	[Elf32_Verdef d; Elf32_Verdaux a; Elf32_Verneed n; Elf32_Vernaux b;],
+	[libelf_cv_verdef32=yes], [libelf_cv_verdef32=no]))
+
+AC_CACHE_CHECK([for Elf64_Verdef], libelf_cv_verdef64,
+    AC_TRY_COMPILE([#include __LIBELF_HEADER_ELF_H],
+	[Elf64_Verdef d; Elf64_Verdaux a; Elf64_Verneed n; Elf64_Vernaux b;],
+	[libelf_cv_verdef64=yes], [libelf_cv_verdef64=no]))
+
+AC_CACHE_CHECK([for SHT_SUNW_verdef], libelf_cv_sun_verdef,
+    AC_TRY_COMPILE([#include __LIBELF_HEADER_ELF_H],
+	[Elf32_Word x = SHT_SUNW_verdef + SHT_SUNW_verneed + SHT_SUNW_versym],
+	[libelf_cv_sun_verdef=yes], [libelf_cv_sun_verdef=no]))
+
+AC_CACHE_CHECK([for SHT_GNU_verdef], libelf_cv_gnu_verdef,
+    AC_TRY_COMPILE([#include __LIBELF_HEADER_ELF_H],
+	[Elf32_Word x = SHT_GNU_verdef + SHT_GNU_verneed + SHT_GNU_versym],
+	[libelf_cv_gnu_verdef=yes], [libelf_cv_gnu_verdef=no]))
+
+AH_TEMPLATE(__LIBELF_SYMBOL_VERSIONS,
+    [Define if your system supports symbol versioning.])
+
+AH_TEMPLATE(__LIBELF_SUN_SYMBOL_VERSIONS,
+    [Define if symbol versioning uses Sun section types.])
+
+AH_TEMPLATE(__LIBELF_GNU_SYMBOL_VERSIONS,
+    [Define if symbol versioning uses GNU section types.])
+
+case "$libelf_cv_verdef32:$libelf_cv_verdef64" in
+    yes:yes)
+	AC_DEFINE(__LIBELF_SYMBOL_VERSIONS)
+	if test "$libelf_cv_sun_verdef" = yes; then
+	    AC_DEFINE(__LIBELF_SUN_SYMBOL_VERSIONS)
+	elif test "$libelf_cv_gnu_verdef" = yes; then
+	    AC_DEFINE(__LIBELF_GNU_SYMBOL_VERSIONS)
+	fi
+	;;
+esac
 
 #
 # Check for library functions
