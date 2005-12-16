@@ -21,8 +21,7 @@
 #include <config.h>
 #endif
 
-#include <libdwarf/dwarf_stuff.h>
-
+#include "dwarf_stuff.h"
 #include "libdwarfdefs.h"
 #include <stdio.h>
 #include <stdlib.h>
