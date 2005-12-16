@@ -124,8 +124,9 @@ AH_TEMPLATE(HAVE_MEMCMP, [Define if you have the memcmp(3) function.])
 AH_TEMPLATE(HAVE_MEMCPY, [Define if you have the memcpy(3) function.])
 AH_TEMPLATE(HAVE_MEMMOVE, [Define if you have the memmove(3) function.])
 AH_TEMPLATE(HAVE_MEMSET, [Define if you have the memset(3) function.])
+AH_TEMPLATE(HAVE_STRSIGNAL, [Define if you have the strsignal(3) function.])
 
-AC_CHECK_FUNCS([ftruncate memcmp memcpy memmove memset])
+AC_CHECK_FUNCS([ftruncate memcmp memcpy memmove memset strsignal])
 
 #
 # Check for system services (none yet)

@@ -67,6 +67,10 @@
  * ====================================================================
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #define USE_STANDARD_TYPES
 #include <stdarg.h>
 #include <stdlib.h>
@@ -237,6 +241,17 @@ static void dump_backtrace(FILE *fp = stderr, size_t start_frame = 1)
     fflush(fp);
 #endif
 }
+
+#ifndef HAVE_STRSIGNAL
+static char *
+strsignal(int sig)
+{
+	static char buffer[32];
+
+	sprintf(buffer, "Signal %d", sig);
+	return buffer;
+}
+#endif
 
 
 /* ====================================================================
