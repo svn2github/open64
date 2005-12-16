@@ -523,7 +523,7 @@ _dwarf_pro_generate_debugline(Dwarf_P_Debug dbg, Dwarf_Error * error)
 		    sizeof(du), uwordb_size);
     data += uwordb_size;
 
-    dh = VERSION;
+    dh = PRO_VERSION;
     WRITE_UNALIGNED(dbg, (void *) data, (const void *) &dh,
 		    sizeof(dh), sizeof(Dwarf_Half));
     data += sizeof(Dwarf_Half);
