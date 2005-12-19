@@ -51,16 +51,8 @@ $Date: 2005/10/21 19:00:00 $
 The following go with the size of the address space that
 can be used given how the library is compiled.
 */
-#if _MIPS_SIM == _MIPS_SIM_ABI64
-
-typedef __uint64_t Uword;
-typedef __int64_t  Sword;
-
-#else
-typedef __uint32_t Uword;
-typedef __int32_t  Sword;
-
-#endif
+typedef long Uword;
+typedef long Sword;
 
 /* 
    The following are 64 bits always , since we
@@ -74,15 +66,6 @@ typedef __uint64_t Xuword;
 typedef __int64_t  Xsword;
 
 #define INSTRUCTION_SIZE 4
-
-#undef _LIBELF_XTND_EXPANDED_DATA /* libelf internal #define */
-#ifdef _LIBELF_XTND_64            /* public documented #define */
-#if  (_MIPS_SZLONG == 32)
-/* When building for a 32bit abi, use extended definition if requested */
-#   define _LIBELF_XTND_EXPANDED_DATA   1
-#endif
-#endif
-
 
 /*
 The following prevent accidental calls from xtdn lib to non-xtnd
