@@ -61,7 +61,6 @@
 #include "libXlate.h"
 #include <cmplrs/xlate.h>
 #include <cmplrs/leb128.h>
-#include <bstring.h> /* for bzero */
 #include <string.h> /* for memcpy */
 #include <stdlib.h>
 #include "xlateTypes.h"

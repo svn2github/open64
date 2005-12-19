@@ -116,7 +116,7 @@ int xlate_pro_init(xlate_table_pro *    ret_table,
    if(newtab == NULL) {
         return XLATE_TB_STATUS_ALLOC_FAIL;
    }
-   bzero(newtab,sizeof(struct xlate_table_pro_s));
+   memset(newtab, 0, sizeof(struct xlate_table_pro_s));
 
    newtab->tb_con_table = compose_with_table;
    newtab->tb_is64bit = is64Bit;
