@@ -68,16 +68,15 @@ UINT32 comma_list_byte_count = 0;
 
 #ifdef KEY
 #ifdef TARG_X8664
-#define LINKER_NAME "gcc"
-#define LINKER_NAME_WITH_SLASH "/gcc"
+  #define LINKER_NAME "gcc"
+  #define LINKER_NAME_WITH_SLASH "/gcc"
+#elif defined(TARG_X8664)
+  #define LINKER_NAME "ld"
+  #define LINKER_NAME_WITH_SLASH "/ld"
+  #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
 #else
-#error /* unknown cross compiler target */
+  #error /* unknown cross compiler target */
 #endif
-
-#else
-#define LINKER_NAME "ld"
-#define LINKER_NAME_WITH_SLASH "/ld"
-#define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
 #endif /* KEY */
 
 static char* concat_names(char* a , char* b)
