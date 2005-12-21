@@ -77,7 +77,6 @@ static int default_proc = UNDEFINED;
 int instrumentation_invoked = UNDEFINED;
 int profile_type = 0;
 boolean ftz_crt = FALSE;
-int isa = UNDEFINED;
 int proc = UNDEFINED;
 static int target_supported_abi = UNDEFINED;
 static boolean target_supports_sse2 = FALSE;
@@ -583,6 +582,7 @@ Check_Target ( void )
 	      abi, isa, proc );
   }
 
+#ifdef TARG_X8664
   if (target_cpu == NULL) {
     set_cpu ("opteron", M_ARCH);	// Default to Opteron.
     if (abi == UNDEFINED) {
@@ -593,6 +593,7 @@ Check_Target ( void )
 	add_option_seen (O_m32);
       }
   }
+#endif
 
   if (abi == UNDEFINED) {
 #ifdef TARG_IA64

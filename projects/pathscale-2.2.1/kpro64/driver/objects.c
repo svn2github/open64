@@ -230,10 +230,14 @@ add_object (int flag, char *arg)
 		    strcmp(arg, "mpath") == 0) {	// bug 5184
 			/* add -lmv -lmblah */
 			if (xpg_flag && invoked_lang == L_f77) {
+#if !defined(TARG_IA64)
 				add_library(lib_objects, "mv");
+#endif
 				add_library(lib_objects, "m" PSC_NAME_PREFIX);
 			} else {
+#if !defined(TARG_IA64)
 				add_library(objects, "mv");
+#endif
 				add_library(objects, "m" PSC_NAME_PREFIX);
 			}
 			if (invoked_lang == L_CC) {
@@ -413,17 +417,35 @@ find_crt_path (char *crtname)
 		}
         }
 	/* not found */
-	if (option_was_seen(O_nostdlib) || option_was_seen(O_L)) {
+	if (option_was_seen(O_nostdlib)) {
 		error("crt files not found in any -L directories:");
         	for (p = library_dirs->head; p != NULL; p = p->next) {
 			fprintf(stderr, "\t%s/%s\n", p->name, crtname);
 		}
 		return crtname;
-	} else {
-		/* use default */
-		sprintf(buf, "%s/%s", get_phase_dir(P_startup), crtname);
-		return string_copy(buf);
-	}
+ 	}
+
+        sprintf (buf, "%s/%s", get_phase_dir(P_be), crtname);
+        if (file_exists(buf)) { return string_copy(buf); }
+
+        sprintf (buf, "%s/%s", get_phase_dir(P_library), crtname);
+        if (file_exists(buf)) { return string_copy(buf); }
+
+        sprintf (buf, "%s/%s", get_phase_dir(P_alt_library), crtname);
+        if (file_exists(buf)) { return string_copy(buf); }
+
+        if (option_was_seen(O_L)) {
+		error("crt files not found in any -L directories:");
+        	for (p = library_dirs->head; p != NULL; p = p->next) {
+			fprintf(stderr, "\t%s/%s\n", p->name, crtname);
+		}
+		
+		return crtname;
+ 	}
+
+	/* use default */
+	sprintf(buf, "%s/%s", get_phase_dir(P_startup), crtname);
+	return string_copy(buf);
 }
 
 // Check whether the option should be turned into a linker option when pathcc

@@ -118,11 +118,16 @@ set_defaults (void)
 	prepend_option_seen(O_cpp_assembly);
 	prepend_option_seen(O_prelink);
 	prepend_option_seen(O_demangle);
-	if (shared == UNDEFINED && abi == ABI_IA32) {
-		toggle(&shared,NON_SHARED);
-#ifndef KEY
-		prepend_option_seen(O_non_shared);
-#endif
+	if (shared == UNDEFINED) {
+		if (abi == ABI_IA32) {
+			toggle(&shared,NON_SHARED);
+	   	} else { 
+			toggle (&shared, CALL_SHARED);
+			prepend_option_seen(O_call_shared);
+		}
+	} else if (shared != CALL_SHARED) {
+		flag = add_string_option(O_OPT_, "Olegacy=TRUE");
+		add_option_seen (flag);
 	}
 	if (!is_toggled(isstatic)) {
 		toggle(&isstatic,1);

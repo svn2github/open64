@@ -270,8 +270,8 @@ I-include=%D  ;		FTN     ffe,PFA     "-include=%D"
 I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	""
 % KEY	support only -fpic, -fno-pic, -static, -shared, -pic1
-%-call_shared	toggle(&shared,CALL_SHARED);	ALL	NONE	PIC_FLAGS_1
-%	"call-shared PIC code"
+-call_shared	toggle(&shared,CALL_SHARED);	ALL	NONE	PIC_FLAGS_1
+	"call-shared PIC code"
 %-shared 	toggle(&shared,DSO_SHARED);	ALL	l	PIC_FLAGS_2
 %	"dso-shared PIC code"
 -shared 	toggle(&shared,DSO_SHARED);	ALL	l	-TENV:PIC -shared
@@ -280,8 +280,8 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 %	"compile non-shared (no DSO's)"
 -pic1		;		ALL	NONE	-TENV:CPIC
 	""
-%-pic2		;		ALL	NONE	-TENV:PIC
-%	""
+-pic2		;		ALL	NONE	-TENV:PIC
+	""
 
 % This option turns on everything of interest to SPEC:
 -Ofast  Process_Ofast("");		ALL	NONE	""
@@ -602,6 +602,17 @@ I-D_LANGUAGE_FORTRAN	;		FTN	cpp	self
 	""
 -gstabs3	warn_ignored(option_name);	ALL	NONE	""
 	""
+#define ABII32_DEFS     "-D_ILP32 -Amodel(ilp32)"
+#define ABII64_DEFS     "-D_LP64"
+#define ABIIA32_DEFS    "-D_ILP32 -Amodel(ilp32)"
+-i32    toggle(&abi,ABI_I32);       ALL     pwrc,PFA,mpc        "-i32" ABII32_DEFS "-TARG:abi=i32 -D__ia64=1"
+        ""
+-i64     toggle(&abi,ABI_I64);       ALL     pwrc,PFA,mpc       "-i64" ABII64_DEFS "-TARG:abi=i64 -D__ia64=1"
+        ""
+-ia32   toggle(&abi,ABI_IA32);       ALL     pwrc,PFA,mpc       "-ia32" ABIIA32_DEFS "-TARG:abi=ia32 -D__ia32=1"
+        ""
+-itanium toggle(&isa,ISA_IA641);        ALL     NONE    "-i64"
+        ""
 
 %%% COMBINATIONS
 % !-non_shared means "-non_shared not specified"

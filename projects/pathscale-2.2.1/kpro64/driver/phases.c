@@ -311,6 +311,7 @@ add_targ_options ( string_list_t *args )
     add_string(args, buf);
   }
 
+#ifdef TARG_X8664
   // SSE2, SSE3, 3DNow
   if (sse2 == TRUE)
     add_string(args, "-TARG:sse2=on");
@@ -326,8 +327,9 @@ add_targ_options ( string_list_t *args )
     add_string(args, "-TARG:3dnow=on");
   else
     add_string(args, "-TARG:3dnow=off");
+#endif
 }
-
+
 static char basebuf[4096];
 
 char *driver_basename(char *const s)
@@ -420,6 +422,11 @@ set_library_paths(string_list_t *args)
 	add_string(args, concat_strings("-L", our_path));
 
 	free(our_path);
+    	our_path = get_phase_dir(P_library);
+    	add_string (args, concat_strings("-L", our_path));
+
+    	our_path= get_phase_dir(P_alt_library);
+    	add_string (args, concat_strings("-L", our_path));
 }
 
 /*
@@ -552,6 +559,24 @@ target_is_native(void)
 	
 	return native;
 }
+
+#ifdef CROSS_COMPILATION 
+/* there should be a portable way the specify the dynamic loader
+ * for the targeting system.
+ */
+static const char* dynamic_linker
+#ifdef TARG_IA64
+   = "/lib/ld-linux-ia64.so.2"
+#endif
+;
+static void
+specify_dyn_linker (string_list_t *args) {
+        if (shared == CALL_SHARED) {
+                add_string(args, "-dynamic-linker");
+                add_string(args, (char*)dynamic_linker);
+        }
+}
+#endif /* CROSS_COMPILATION */
 
 #ifdef KEY
 // Like add_file_args but add args that must precede options specified on the
@@ -1179,7 +1204,9 @@ add_file_args (string_list_t *args, phases_t index)
 		  }
 		}
 		current_phase = P_any_as;
+#if !defined(TARG_IA64) && !defined(CROSS_COMPILATION)
 		add_string(args, "-c");		// gcc -c
+#endif
 		add_string(args, "-o");
 		/* cc -c -o <file> puts output from as in <file>,
 		 * unless there are multiple source files. */
@@ -1436,13 +1463,13 @@ add_final_ld_args (string_list_t *args)
           // Bug 4680 - Link with libacml_mv by default.
 	  add_library(args, "acml_mv");
 #endif
-#endif
 	if (option_was_seen(O_nodefaultlibs) || option_was_seen(O_nostdlib)) {
 	    // If -compat-gcc, link with pscrt even if -nostdlib.  Bug 4551.
 	    if (option_was_seen(O_compat_gcc) && !option_was_seen(O_fno_fast_stdlib))
 		add_library(args, "pscrt");
 	    return;
 	}
+#endif
 	
 	if (shared != RELOCATABLE) {
 	    if (invoked_lang == L_f90) {
@@ -1479,13 +1506,16 @@ add_final_ld_args (string_list_t *args)
 #endif
 	}
 
+#ifdef TARG_X8664
 	// Put pscrt after all the libraries that are built with PathScale
 	// compilers, since those libraries could use PathScale routines.
 	// Bug 3995.
 	if (!option_was_seen(O_fno_fast_stdlib))
 	    add_library(args, "pscrt");
+#endif
 
-	if (ipa == TRUE) {
+#if !defined(TARG_X8664)
+	if (shared != DSO_SHARED && shared != RELOCATABLE) {
 	    	if (invoked_lang == L_CC) {
 			add_library(args, "stdc++");
 	    	}
@@ -1498,6 +1528,7 @@ add_final_ld_args (string_list_t *args)
 			add_libgcc_s (args);
 		add_library(args, "gcc");
 	}
+#endif
 	if (shared != RELOCATABLE) {
 	  if ( fbuiltin != 0 ) {
 	    /* Once -fbuiltin is used, some functions, i.e., __sincos, are only
@@ -1509,12 +1540,12 @@ add_final_ld_args (string_list_t *args)
 	    }
 	  }
 	}
-	if (ipa == TRUE) {
-	  if (shared != DSO_SHARED && shared != RELOCATABLE) {
-	    add_string(args, find_crt_path("crtend.o"));
-	    add_string(args, find_crt_path("crtn.o"));
-	  }
+#if !defined(TARG_X8664)
+	if (shared != DSO_SHARED && shared != RELOCATABLE) {
+		add_string(args, find_crt_path("crtend.o"));
+		add_string(args, find_crt_path("crtn.o"));
 	}
+#endif
 }
 
 
@@ -1550,6 +1581,38 @@ postprocess_ld_args (string_list_t *args)
 	    add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
 	}
     }
+}
+
+static void
+add_rpath_link_option (string_list_t *args) {
+
+	add_string (args,"-rpath-link");
+	add_string (args,get_phase_dir(P_alt_library));
+	/*
+	 * For some reason, our cross linker won't find libraries in some 
+	 * directories unless it's told about them with -rpath-link.
+	 * Here, we scan all -L flags
+	 * and pass them as -rpath-link flags, 
+	 * too.
+	 */
+	for (string_item_t* p = args->head; p != NULL; p = p->next) {
+		char *dir = NULL;
+		if (strncmp(p->name, "-L", 2))
+			continue;
+
+		if (strlen(p->name) > 2) {
+			dir = p->name + 2;
+		} else if (p->next) {
+			dir = p->next->name;
+		}
+
+#if defined(TARG_IA64) && defined(CROSS_COMPILATION)
+		add_after_string(args, p, dir);
+		add_after_string(args, p, "-rpath-link");
+#else
+		add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
+#endif
+	}
 }
 
 #define MAX_PHASE_ORDER 10
@@ -1970,6 +2033,7 @@ init_phase_info (void)
 		/* add toolroot as prefix to phase dirs */
                 prefix_all_phase_dirs(PHASE_MASK, toolroot);
 	}
+	get_phases_real_path ();
 	comp_target_root = getenv("COMP_TARGET_ROOT");
 	if (comp_target_root != NULL) {
 		/* add comp_target_root as prefix to phase dirs */
@@ -2061,12 +2125,17 @@ run_ld (void)
 	if (ipa == TRUE) {
 		ldphase = P_ipa_link;
 	}
+#ifdef CROSS_COMPILATION 
+	else 
+		ldphase = P_collect;
+#else
 	else if (invoked_lang == L_CC) {
 		ldphase = P_ldplus;
 	}
 	else {
 		ldphase = P_ld;
 	}
+#endif
 
 	if (ipa == TRUE) {
 	    ldpath = get_phase_dir (ldphase);
@@ -2096,8 +2165,11 @@ run_ld (void)
 	copy_phase_options (args, ldphase);
 
 	if (invoked_lang == L_CC) {
-	    if (!multiple_source_files && !((shared == RELOCATABLE) && (ipa == TRUE) && (outfile == NULL)) && !keep_flag)
+	    if (!multiple_source_files && 
+	        !((shared == RELOCATABLE) && 
+	         (ipa == TRUE) && (outfile == NULL)) && !keep_flag) {
 		mark_saved_object_for_cleanup();
+	    }
 	}
 	add_file_args (args, ldphase);
 
@@ -2109,6 +2181,8 @@ run_ld (void)
   	else
 	    append_objects_to_list (args);
 
+	specify_dyn_linker (args);
+
 #if defined(KEY) && defined(TARG_MIPS)
 	add_string(args, "-mips64");	// call gcc with -mips64
 #endif
@@ -2116,6 +2190,7 @@ run_ld (void)
 	add_instr_archive (args);
 
 	add_final_ld_args (args);
+	add_rpath_link_option (args);
 	postprocess_ld_args (args);
 
 	run_phase (ldphase, ldpath, args);
@@ -2230,7 +2305,7 @@ run_compiler (int argc, char *argv[])
 	}
 	input_source = source_file;
 
-#ifdef PSCSUB
+#if defined(PSCSUB) && !defined(TARG_IA64)
         obtain_license (get_phase_dir (P_be), argc, argv) ;
 #endif
 
