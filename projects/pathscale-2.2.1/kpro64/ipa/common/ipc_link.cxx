@@ -70,7 +70,7 @@ UINT32 comma_list_byte_count = 0;
 #ifdef TARG_X8664
   #define LINKER_NAME "gcc"
   #define LINKER_NAME_WITH_SLASH "/gcc"
-#elif defined(TARG_X8664)
+#elif defined(TARG_IA64)
   #define LINKER_NAME "ld"
   #define LINKER_NAME_WITH_SLASH "/ld"
   #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
