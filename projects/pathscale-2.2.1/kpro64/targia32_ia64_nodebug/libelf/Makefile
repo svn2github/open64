@@ -42,7 +42,7 @@
 #
 BUILD_AREA     = ..
 BUILD_TOT      = ../..
-BUILD_BASE     = ../../kgnu_common/libelf
+BUILD_BASE     = ../../libelf
 BUILD_ROOTS    = TARGET
 BUILD_ABI      = I32BIT
 BUILD_ARCH     = IA32
