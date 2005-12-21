@@ -41,7 +41,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "pathscale_defs.h"
+#include "lib_phase_dir.h"
 #include "lang_defs.h"
 #include "file_utils.h"
 #include "string_utils.h"
@@ -72,13 +72,6 @@ static lang_info_t language_info[] = {
 	{'I',	0x80000000,	{"int"}},		/* Internal option */
 };
 
-#define NAMEPREFIX	""
-#define BINPATH		"/usr/bin"
-#define LIBPATH		"/usr/lib"
-#define ALTLIBPATH	LIBPATH
-#define PHASEPATH	"/usr/lib/" PSC_NAME_PREFIX "cc-lib"
-#define GNUPHASEPATH    PHASEPATH
-
 typedef struct phase_struct {
 	char key;
 	mask_t mask;
@@ -99,8 +92,8 @@ static phase_info_t phase_info[] = {
    /* invoke gcc driver directly rather than cpp
     * because cpp can have different paths, reads spec file,
     * and may eventually be merged with cc1. */
-   {'p',  0x0000000000000020LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* gcpp */
-   {'p',  0x0000000000000040LL,	NAMEPREFIX "g++", BINPATH, FALSE}, /* gcpp_plus */
+   {'p',  0x0000000000000020LL,	NAMEPREFIX "gcc", ALTBINPATH, FALSE}, /* gcpp */
+   {'p',  0x0000000000000040LL,	NAMEPREFIX "g++", ALTBINPATH, FALSE}, /* gcpp_plus */
    {'p',  0x0000000000000080LL,	"fec",	 PHASEPATH,	FALSE},	/* c_cpp */
    {'p',  0x0000000000000100LL, "cpp",   PHASEPATH,     FALSE}, /* cplus_cpp */
    {'p',  0x0000000000000200LL,	"mfef77",PHASEPATH,	FALSE},	/* f_cpp */
@@ -148,14 +141,23 @@ static phase_info_t phase_info[] = {
    /* We use 'B' for options to be passed to be via ipacom. */
 
    {'a',  0x0000001000000000LL,	"asm",	PHASEPATH,	FALSE},	/* as */
+#if defined(KEY) && !defined(CROSS_COMPILATION)
    {'a',  0x0000002000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* gcc */
+#else
+   {'a',  0x0000002000000000LL,	"as",	BINPATH,	FALSE},	/* gas */
+#endif
    {'a',  0x0000003000000000LL,	"",	"",		FALSE},	/* any_as */
 
    {'d',  0x0000008000000000LL, "dsm_prelink", PHASEPATH,FALSE},/* dsm_prelink*/
    {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH,TRUE},	/* ipa_link */
-   {'l',  0x0000020000000000LL,	"collect2", GNUPHASEPATH,TRUE},	/* collect */
+   {'l',  0x0000020000000000LL,	"ld", BINPATH, TRUE},	/* collect */
+#if defined(KEY) && !defined(CROSS_COMPILATION)
    {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* ld */
    {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE}, /* ldplus */
+#else
+   {'l',  0x0000040000000000LL,	"ld", BINPATH, FALSE}, /* ld */
+   {'l',  0x0000080000000000LL,	"ld", BINPATH, FALSE}, /* ldplus */
+#endif
    {'l',  0x01000f0000000000LL,	"",	"",		TRUE},	/* any_ld */
    {'c',  0x0000100000000000LL, "cord", BINPATH,	FALSE},	/* cord */
    {'x',  0x0000200000000000LL, "pixie", BINPATH,   FALSE}, /* pixie */
@@ -360,7 +362,23 @@ get_phase_dir (phases_t index)
 	return phase_info[index].dir;
 }
 
-/* return LD_LIBRARY_PATH, if needed */
+void
+get_phases_real_path (void) {
+#ifdef PATH_MAX
+       char pathstr[PATH_MAX];
+#else
+       char pathstr[4096];
+#endif
+       phases_t i;
+       for (i = P_NONE; i < P_LAST; i++) {
+               if (!phase_info[i].dir) { continue; }
+               char* p = realpath (phase_info[i].dir, pathstr);
+               if (p && strcmp (p, phase_info[i].dir)) {
+                       phase_info[i].dir = string_copy (p);
+               }
+       }
+}
+
 char *
 get_phase_ld_library_path (phases_t index)
 {

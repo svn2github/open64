@@ -54,6 +54,40 @@
 
 #include "pathscale_defs.h"
 
+#if defined(linux) && defined(TARG_IA64)
+    #if CROSS_COMPILATION
+	    #define NAMEPREFIX	""
+	    #define INTERPOSE   "ia64-pathscale-linux"
+    #else
+	    #define NAMEPREFIX	""
+	    #define INTERPOSE   ""
+    #endif 
+
+    #define BINPATH		"/usr/" INTERPOSE "/bin"
+
+    #ifdef CROSS_COMPILATION
+        #define ALTBINPATH  "/usr/" INTERPOSE "/altbin"
+    #else
+        #define ALTBINPATH  BINPATH
+    #endif 
+
+    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-pathscale-linux/1.0" 
+    #define ALTLIBPATH	"/usr/" INTERPOSE "/lib"
+
+    #define PHASEPATH	    LIBPATH
+    #define GNUPHASEPATH	LIBPATH
+
+#elif defined(linux) && defined(TARG_IA32)
+
+    #define NAMEPREFIX	 ""
+    #define BINPATH		 "/usr/bin"
+    #define ALTBINPATH   BINPATH
+    #define LIBPATH		 "/usr/lib"
+    #define ALTLIBPATH	 LIBPATH
+    #define PHASEPATH	 "/usr/ia32-sgi-linux/bin"
+    #define GNUPHASEPATH "/lib"
+
+#else
 #define NAMEPREFIX	""
 #define BINPATH		PSC_INSTALL_PREFIX "/bin"
 #define ALTBINPATH	BINPATH
@@ -61,5 +95,6 @@
 #define ALTLIBPATH	LIBPATH
 #define PHASEPATH	PSC_INSTALL_PREFIX "/lib"
 #define GNUPHASEPATH	PSC_INSTALL_PREFIX "/lib/gcc-lib/" PSC_TARGET "/" PSC_GCC_VERSION
+#endif
 
 #endif /* lib_phase_dir_INCLUDED */

@@ -487,6 +487,7 @@ public:
   void New_Node(NODE_ID id, const char *label, const NODE_TYPE& nt );
   void New_Edge(const EDGE_ID& id, const EDGE_TYPE& et,
 		NODE_ID src, NODE_ID dst);
+  void Delete_Edge(const EDGE_ID& id);
   DA_ACK Update_End();
 };
 

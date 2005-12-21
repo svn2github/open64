@@ -57,9 +57,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <bstring.h>
-#include <elf.h>
+#include <elf_stuff.h>
 #include <elfaccess.h>
-#include <libelf.h>
+#include <libelf/libelf.h>
 #include <stamp.h>
 #include <alloca.h>
 #include <cmplrs/leb128.h>

@@ -61,11 +61,20 @@ extern short int __get_eh_table_version (struct exception_descriptor *);
 #endif
 
 #ifndef LIBGCC2_LONG_DOUBLE_TYPE_SIZE
-#define LIBGCC2_LONG_DOUBLE_TYPE_SIZE LONG_DOUBLE_TYPE_SIZE
+#if defined(TARG_IA64) && defined(CROSS_COMPILATION)
+ #define LIBGCC2_LONG_DOUBLE_TYPE_SIZE 96
+#else
+ #define LIBGCC2_LONG_DOUBLE_TYPE_SIZE LONG_DOUBLE_TYPE_SIZE
+#endif
 #endif
 
 #ifndef MIN_UNITS_PER_WORD
-#define MIN_UNITS_PER_WORD UNITS_PER_WORD
+/* an ugly work around for 32-to-64 bit cross compilation */
+#if defined(TARG_IA64) && defined(CROSS_COMPILATION)
+  #define MIN_UNITS_PER_WORD 4
+#else
+  #define MIN_UNITS_PER_WORD UNITS_PER_WORD
+#endif
 #endif
 
 /* In the first part of this file, we are interfacing to calls generated

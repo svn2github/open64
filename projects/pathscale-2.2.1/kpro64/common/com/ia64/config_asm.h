@@ -220,8 +220,8 @@ extern char *AS_ADDRESS_UNALIGNED;
 #define ASM_DIR_ALIGN(p, s)             fprintf(Asm_File, "\t%s %d\n", AS_ALIGN,STB_align(s));
 
 /* gas .skip fills with zeroes */
-#define ASM_DIR_ZERO(fl, l)	fprintf(fl, "\t%s %d\n", AS_SPACE, l) 
-#define ASM_DIR_SKIP(fl, l) 	fprintf(fl, "\t%s %d\n", AS_SPACE, l)
+#define ASM_DIR_ZERO(fl, l)	fprintf(fl, "\t%s %lld\n", AS_SPACE, (INT64)l) 
+#define ASM_DIR_SKIP(fl, l) 	fprintf(fl, "\t%s %lld\n", AS_SPACE, (INT64)l)
   
 #ifdef __cplusplus
 }

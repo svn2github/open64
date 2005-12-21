@@ -76,7 +76,7 @@ extern "C" {
 #endif
 
 extern void
-TI_Initialize (ABI_PROPERTIES_ABI, ISA_SUBSET, PROCESSOR, char *tpath);
+TI_Initialize (ABI_PROPERTIES_ABI, ISA_SUBSET, PROCESSOR, char *tpath, char* version);
 
 #ifdef __cplusplus
 }

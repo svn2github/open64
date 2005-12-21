@@ -276,7 +276,8 @@ DaVinci::IO::In_Line()
 #define FT_UPDATE_BEGIN      FTAG(1 << 13)
 #define FT_NEW_NODE          FTAG(1 << 14)
 #define FT_NEW_EDGE          FTAG(1 << 15)
-#define FT_UPDATE_END        FTAG(1 << 16)
+#define FT_DELETE_EDGE       FTAG(1 << 16)
+#define FT_UPDATE_END        FTAG(1 << 17)
 
 #define BASE_SET ( \
    FT_DAVINCI | FT_TITLE | FT_SHOW_STATUS | FT_SHOW_MESSAGE  \
@@ -1094,6 +1095,21 @@ DaVinci::New_Edge(const EDGE_ID&   id,
 	       id.src, id.dst );
   Emit_Attr( et );
   _io.Out_Fmt( "],\"%x\",\"%x\")", src, dst);
+  _edge_cnt += 1;
+}
+
+void
+DaVinci::Delete_Edge(const EDGE_ID&   id)
+{
+  if ( ! Usage_Ok( FT_DELETE_EDGE,
+         (FT_UPDATE_BEGIN|FT_NEW_NODE|FT_NEW_EDGE|FT_DELETE_EDGE) ) ) {
+    return;
+  }
+  if ( _edge_cnt == 0 ) {
+    _io.Out_Fmt( "],[" );  // end new_node + begin new_edge list.
+  }
+  _io.Out_Fmt( "%sdelete_edge(\"%x:%x\")", (_edge_cnt > 0 ? "," : ""),
+	       id.src, id.dst );
   _edge_cnt += 1;
 }
 

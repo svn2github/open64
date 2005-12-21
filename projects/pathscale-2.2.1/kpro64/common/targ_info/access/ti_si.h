@@ -422,10 +422,8 @@ inline UINT SI_RESOURCE_Bit_Index( SI_RESOURCE* res )
 }
 
 extern const INT SI_resource_count;
-#pragma weak SI_resource_count
 
 extern SI_RESOURCE* const SI_resources[];
-#pragma weak SI_resources
 
 inline const char* SI_RESOURCE_ID_Name( SI_RESOURCE_ID id )
 {

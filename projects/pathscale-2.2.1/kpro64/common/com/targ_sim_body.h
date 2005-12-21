@@ -141,11 +141,7 @@ typedef struct subprogram_interface {
 
 // gcc and edg have different restrictions on how to do a forward decl
 // of an initialized object.
-#if (__GNUC__ == 2)
-static SIM SIM_Info[];
-#else
 extern SIM SIM_Info[];
-#endif
 #define SIM_INFO	SIM_Info[Target_ABI]
 
 #define SIM_varargs_floats	((SIM_INFO.flags & SIM_VARARGS_FLOATS) != 0)

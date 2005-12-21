@@ -139,6 +139,31 @@ typedef enum {
 	T_CalcDom_CU,		/* Calculate_Dominators 
 				 * (this time is included in callers time) */
 	T_CalcDom_Comp,
+
+	T_Ipfec_Profiling_CU,	/* Ipfec Profiling */
+	T_Ipfec_Profiling_Comp,
+	T_Ipfec_Region_CU,	/* Ipfec Region Formation */
+	T_Ipfec_Region_Comp,
+	T_Ipfec_If_Conv_CU,	/* Ipfec If-Conversion */
+	T_Ipfec_If_Conv_Comp,
+	T_Ipfec_PRDB_CU,	/* Ipfec PRDB */
+	T_Ipfec_PRDB_Comp,
+	T_Ipfec_GLOS_CU,	/* Ipfec global scheduling */
+	T_Ipfec_GLOS_MISC1_CU,
+	T_Ipfec_GLOS_MISC2_CU,
+	T_Ipfec_GLOS_Comp,
+	T_Ipfec_LOCS_CU,	/* Ipfec local scheduling */
+	T_Ipfec_LOCS_Comp,
+	T_Ipfec_Speculation_CU,	/* Ipfec Speculation */
+	T_Ipfec_Speculation_Comp,
+	T_Ipfec_Multi_Branch_CU,	/* Ipfec Multiple branch */
+	T_Ipfec_Multi_Branch_Comp,
+
+#ifdef SPECMT_LT
+        T_SPECMT_BG,
+        T_SPECMT_PA,
+#endif
+		
 	T_LAST			/* Last index defined */
 } TIMER_ID;
 

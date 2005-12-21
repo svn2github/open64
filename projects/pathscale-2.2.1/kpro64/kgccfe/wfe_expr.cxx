@@ -3910,7 +3910,7 @@ WFE_Expand_Expr (tree exp,
 		}
                 break;
 
-#ifdef KEY
+#if 0 /* turn off for the timing being due to bug */
 	    case BUILT_IN_FLOOR:
 	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);

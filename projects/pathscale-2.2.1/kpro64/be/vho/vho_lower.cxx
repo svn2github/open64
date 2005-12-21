@@ -3042,7 +3042,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
           return lwn;
 #endif
 
-#ifdef KEY
+#if !defined(TARG_IA64)
 	/* (a-b) >= 0 ? (a-b) : (b-a) => abs(a-b) */
         if( ( WN_operator(test) == OPR_GT ||
 	      WN_operator(test) == OPR_GE ) &&
@@ -7015,6 +7015,7 @@ vho_lower_if ( WN * wn, WN *block )
    */
 
   WN* test = WN_if_test(wn);  
+#if !defined(TARG_IA64)
   if ( WN_operator(test) == OPR_GT &&
        WN_rtype(test) == MTYPE_I4 &&
        WN_desc(test) == MTYPE_U4 &&
@@ -7063,6 +7064,7 @@ vho_lower_if ( WN * wn, WN *block )
       return wn;
     }
   }
+#endif
 
   // If-Convert:
   //   if <compare>

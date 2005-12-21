@@ -371,8 +371,12 @@ Em_Dwarf_Begin (BOOL is_64bit, BOOL dwarf_trace, BOOL is_cplus,
 		    personality,
 		    (Gen_PIC_Call_Shared || Gen_PIC_Shared),
 		    is_64bit,
+#ifdef TARG_X8664
 		    Is_Target_64bit() ? init_bytes :  init_x86_bytes, 
 		    Is_Target_64bit() ? sizeof(init_bytes) : sizeof(init_x86_bytes), 
+#else
+		    init_bytes, sizeof(init_bytes),
+#endif
 		    &dw_error);
 #endif // KEY
 

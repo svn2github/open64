@@ -178,6 +178,8 @@ extern void substitute_phase_dirs (char *orig_dir, char *new_dir, char *leaf);
 extern void set_phase_dir (mask_t mask, char *path);
 /* prefix with path all phase dirs that match the mask */
 extern void prefix_all_phase_dirs (mask_t mask, char *path);
+/* replace all symbol link with real path */
+extern void get_phases_real_path (void);
 /* append with path all phase dirs that match the mask */
 extern void append_all_phase_dirs (mask_t mask, char *path);
 /* append path to end of phase dir */

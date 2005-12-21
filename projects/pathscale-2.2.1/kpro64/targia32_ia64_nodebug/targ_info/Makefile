@@ -41,7 +41,7 @@
 #
 BUILD_AREA     = ..
 BUILD_TOT      = ../..
-BUILD_BASE     = ../../common/targ_info
+BUILD_BASE     = ../../common/ipfec_targ_info
 BUILD_ROOTS    = TARGET
 BUILD_ABI      = I32BIT
 BUILD_ARCH     = IA32
@@ -52,7 +52,7 @@ BUILD_INSTALL  = DEFAULT
 BUILD_TARGET   = IA64
 BUILD_COMPILER = GNU
 BUILD_OS       = LINUX
-
+ORC_TARG       = KAPI
 
 #ifdef IRIX
 # smake

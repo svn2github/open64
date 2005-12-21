@@ -92,6 +92,7 @@ extern pSCNINFO Interface_Scn;
   /*
    * section flags that are the same other than the enum
    */
+#undef SHF_MERGE 
 #define SHF_MERGE         SHF_IRIX_MERGE
 #define SHF_NOSTRIP       SHF_MIPS_NOSTRIP
 

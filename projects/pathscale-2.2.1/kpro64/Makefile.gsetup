@@ -200,6 +200,11 @@ ifdef BUILD_ARCH
  endif
  endif
  endif
+
+  ifneq ($(BUILD_ARCH), $(BUILD_TARGET))
+      STD_COMPILE_OPTS += -DCROSS_COMPILATION 
+ endif
+
 else
   ABORT_BUILD = BUILD_ARCH not defined!
 endif
@@ -285,11 +290,10 @@ else
 endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
-   OPTIMIZER = -g
+   OPTIMIZER = -g -O0
 else
  ifeq ($(BUILD_OPTIMIZE), NODEBUG)
-# -IPA can't be used on libraries, not default
-   OPTIMIZER = -O0
+   OPTIMIZER = -O2
  else
    OPTIMIZER = $(BUILD_OPTIMIZE)
  endif
@@ -410,10 +414,10 @@ endif
 
 ifeq ($(BUILD_TYPE), SHARED)
  ifeq ($(BUILD_BOTH),)
-  STD_COMPILE_OPTS = -fPIC
+  STD_COMPILE_OPTS += -fPIC
  endif
 else
-  STD_COMPILE_OPTS = 
+  STD_COMPILE_OPTS += 
 endif
 
 ifeq ($(BUILD_ARCH), MIPS1)
@@ -453,11 +457,7 @@ ifeq ($(BUILD_TARGET), IA32)
 STD_COMPILE_OPTS += -DEMULATE_LONGLONG
 endif
 
-BK_ROOT := $(shell bk root)
-export BK_ROOT
-bm ?= $(BK_ROOT)/../buildmeister
-export bm
-include $(BK_ROOT)/pathscale/defs.mk
+include ${BUILD_TOT}/../defs.mk
 
 STD_C_OPTS = -std=gnu99 -D_GNU_SOURCE
 ERROR_ON_WARNINGS = -Werror

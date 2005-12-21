@@ -32,11 +32,15 @@
 
 */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 
-#include <elf.h>
+#include <elf_stuff.h>
 #include "sections.h"
 
+#ifndef SHF_IA_64_SHORT	
 #define SHF_IA_64_SHORT	SHF_MIPS_GPREL
+#endif
 #define INST_BYTES 16
 
 SECTION Sections[_SEC_INDEX_MAX] = {

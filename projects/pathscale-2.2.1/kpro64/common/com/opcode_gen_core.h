@@ -268,6 +268,9 @@ typedef enum {
 #elif defined(TARG_MIPS)
   OPR_PURE_CALL_OP = 139,
   OPERATOR_LAST = 139
+#elif defined(KEY)
+  OPR_PURE_CALL_OP = 139,
+  OPERATOR_LAST = 139
 #else
   OPERATOR_LAST = 138
 #endif /* TARG_X8664 */

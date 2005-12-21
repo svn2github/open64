@@ -362,6 +362,8 @@ load_components (INT argc, char **argv)
 
     if (Run_cg) {
       Get_Phase_Args (PHASE_CG, &phase_argc, &phase_argv);
+      load_so ("orc_ict.so", CG_Path, Show_Progress);
+      load_so ("orc_intel.so", CG_Path, Show_Progress);
       load_so ("cg.so", CG_Path, Show_Progress);
       CG_Process_Command_Line (phase_argc, phase_argv, argc, argv);
     }

@@ -55,7 +55,7 @@
  * ====================================================================
  */
 
-#include <elf.h>
+#include <elf_stuff.h>
 #include <ctype.h>
 
 #define USE_STANDARD_TYPES 1 
@@ -320,7 +320,7 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
         fprintf ( fl, "\t%s\t\"", AS_STRING );
         for (INT i = 0; i < sizeof(TCON_R16(tc)); i++)
 	  fprintf ( fl, "\\x%02x", *(p+i) );
-	fprintf(fl, "\"\t%s quad %#lg\n", ASM_CMNT, TCON_R16(tc) );
+	fprintf(fl, "\"\t%s quad %#Lg\n", ASM_CMNT, TCON_R16(tc) );
 	--rc;
 	break;
 	}
@@ -331,13 +331,13 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
         fprintf ( fl, "\t%s\t\"", AS_STRING );
         for (i = 0; i < sizeof(TCON_R16(tc)); i++)
 	  fprintf ( fl, "\\x%02x", *(p+i) );
-	fprintf(fl, "\"\t%s complex quad real part %#lg\n", ASM_CMNT, TCON_R16(tc) );
+	fprintf(fl, "\"\t%s complex quad real part %#Lg\n", ASM_CMNT, TCON_R16(tc) );
 
         p = (char *) & TCON_IR16(tc);
         fprintf ( fl, "\t%s\t\"", AS_STRING );
         for (i = 0; i < sizeof(TCON_IR16(tc)); i++)
 	  fprintf ( fl, "\\x%02x", *(p+i) );
-	fprintf(fl, "\"\t%s complex quad imag part %#lg\n", ASM_CMNT, TCON_IR16(tc) );
+	fprintf(fl, "\"\t%s complex quad imag part %#Lg\n", ASM_CMNT, TCON_IR16(tc) );
 	--rc;
 	break;
 	}

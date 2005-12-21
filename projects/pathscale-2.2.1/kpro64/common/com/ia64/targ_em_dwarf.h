@@ -31,7 +31,7 @@
   http://oss.sgi.com/projects/GenInfo/NoticeExplan
 
 */
-
+#include <libdwarf.h>
 
 #define DWARF_TARGET_FLAG	DW_DLC_ISA_IA64
 

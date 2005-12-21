@@ -67,6 +67,7 @@
 #define TCON_iv1(c)	((c).cmplxval.ival.v1)
 #define TCON_iv2(c)	((c).cmplxval.ival.v2)
 #define TCON_iv3(c)	((c).cmplxval.ival.v3)
+#define TCON_word0(c)	((c).vals.word0)
 #define TCON_u0(c)	((c).vals.uval.u0)
 #define TCON_u1(c)	((c).vals.uval.u1)
 #define TCON_u2(c)	((c).vals.uval.u2)

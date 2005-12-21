@@ -668,6 +668,8 @@ extern BOOL Fill_Delay_Slots;	/* Attempt to fill branch delay slots */
 extern BOOL Enable_GDSE;	/* Do global dead store elimination */
 extern BOOL Enable_CG_Peephole;	/* Enable peephole optimization in cgprep */
 extern BOOL Optimize_CVTL_Exp;	/* Optimize expansion of CVTL operators */
+extern BOOL Enable_EBO_Post_Proc_Rgn; /* Enable ebo after global scheduling */
+extern BOOL Optimine_CVTL_Exp;	/* Optimize expansion of CVTL operators */
 extern BOOL Enable_CVT_Opt;	/* Optimize expansion of CVT operators */
 extern BOOL Indexed_Loads_Allowed; /* enable generation of indexed loads/stores */
 extern BOOL Early_MP_Processing; /* Do MP lowering before LNO/PREOPT */

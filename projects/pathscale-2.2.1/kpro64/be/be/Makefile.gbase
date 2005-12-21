@@ -327,10 +327,7 @@ COMMON_COM_TARG_CXX_SRCS =	\
   targ_sim.cxx
 
 COMMON_TARG_INFO_ACCESS_SRCS=\
-  ti_init.c		\
-  ti_res.c		\
-  ti_res_count.c	\
-  ti_res_res.c
+  ti_init.c
 
 ifeq ($(BUILD_TARGET), X8664)
 COMMON_UTIL_QUAD_SRCS = \
@@ -562,6 +559,8 @@ BE_DSO_OPTS += $(LOCAL_BE_LIBS)
 LDFLAGS += $(LOCAL_BE_LIBS)
 endif
 
+LDFLAGS += -Wl,--allow-shlib-undefined
+
 ifeq ($(BUILD_VARIANT), MEM_STATS)
 BE_DSO_OPTS +=  -lmalloc
 LDFLAGS += -lmalloc
@@ -729,11 +728,6 @@ be.so:  $(BE_C_OBJS) $(BE_CXX_OBJS) $(COMMON_COM_PCH_OBJS) $(BE_COM_PCH_OBJS) \
 		-o $@ $(BE_DSO_OPTS)
 
 else
-ifeq ($(BUILD_OS), LINUX)
-LINK_TARGET_SO = $(TARGET_SO)
-else
-LINK_TARGET_SO =
-endif
 be.so:	$(BE_C_OBJS) $(BE_CXX_OBJS) $(BE_AS_OBJS) $(BE_BE_DIR)/so_locations \
 		$(EXPORT_FILE_BE_SO)
 	$(link.c++f) $(STD_DSO_LOADOPTS) $(EXPORT_LIST_BE_SO) $(BE_C_OBJS) \
