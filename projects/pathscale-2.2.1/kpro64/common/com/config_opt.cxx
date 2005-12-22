@@ -218,6 +218,8 @@ BOOL Instrumentation_Enabled = FALSE;
 UINT32 Instrumentation_Actions = 0;
 BOOL Instrumentation_Unique_Output = FALSE; // always create unique output
 OPTION_LIST *Feedback_Option = NULL;
+BOOL Outlining_Enabled = FALSE;
+BOOL Instrumentation_Enabled_Before = FALSE;
 
 #ifdef KEY
 BOOL   Asm_Memory = FALSE;
