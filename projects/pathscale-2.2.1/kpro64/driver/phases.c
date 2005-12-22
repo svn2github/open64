@@ -1558,29 +1558,6 @@ postprocess_ld_args (string_list_t *args)
 	if (prof_lib_exists("c"))
 	    add_library(args, "c");
     }
-	    
-    /*
-     * For some reason, our cross linker won't find libraries in some
-     * directories unless it's told about them with -rpath-link.
-     * Here, we scan all -L flags and pass them as -rpath-link flags,
-     * too.
-     */
-
-    for (p = args->head; p != NULL; p = p->next) {
-	char *dir = NULL;
-	if (strncmp(p->name, "-L", 2))
-	    continue;
-	
-	if (strlen(p->name) > 2) {
-	    dir = p->name + 2;
-	}
-	else if (p->next) {
-	    dir = p->next->name;
-	}
-	if (dir) {
-	    add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
-	}
-    }
 }
 
 static void
