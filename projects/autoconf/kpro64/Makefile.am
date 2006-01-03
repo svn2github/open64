@@ -1,1 +1,1 @@
-SUBDIRS = targ_info arith libcif libcmplrs common libelf libdwarf libelfutil
+SUBDIRS = targ_info arith libcif libcmplrs common libelf libdwarf libelfutil libunwind

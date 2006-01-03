@@ -232,5 +232,6 @@ AC_CONFIG_FILES([Makefile
 		 kpro64/libdwarf/Makefile
 		 kpro64/libelf/Makefile
 		 kpro64/libelfutil/Makefile
+		 kpro64/libunwind/Makefile
 		 kpro64/targ_info/Makefile])
 AC_OUTPUT
