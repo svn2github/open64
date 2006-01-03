@@ -37,19 +37,32 @@
 
 */
 
-
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <elf.h>
 #include <sys/unwindP.h>
 
-#define USE_STANDARD_TYPES 1
-#include "defs.h"
-#include <elf.h>
-#include "elf_stuff.h"
-#include "em_elf.h"
+#include <../common/com/defs.h>
+#include <../common/com/em_elf.h>
 
+#ifndef ELF64_FSZ_WORD
+#define ELF64_FSZ_WORD	sizeof(Elf64_Word)
+#endif
+#ifndef ELF64_FSZ_XWORD
+#define ELF64_FSZ_XWORD	sizeof(Elf64_Xword)
+#endif
+
+#ifndef R_IA64_SEGREL64MSB
+#define R_IA64_SEGREL64MSB	0x5e		/* word64 MSB: @segrel(S + A) */
+#endif
+
+#ifndef SHT_IA_64_UNWIND
+#define SHT_IA_64_UNWIND	(SHT_LOPROC + 1)
+#endif
+
+#ifndef SHF_IRIX_NOSTRIP
+#define	SHF_IRIX_NOSTRIP	0
+#endif
 
 
 /* unwind table and/or unwind info dumping to elf */
@@ -73,13 +86,13 @@ __unw_error_t unwind_dump2elf(char *unwind_table_ptr,
 	}
 
 	/* create elf sections */
-	scninfo_table = Em_New_Section(IA64_UNWIND, SHT_IA64_UNWIND,
-				SHF_ALLOC | SHF_IRIX_NOSTRIP,
-				(Elf64_Xword)sizeof(__unw_table_entry_t),
+	scninfo_table = Em_New_Section(".IA_64.unwind", SHT_IA_64_UNWIND,
+				SHF_ALLOC | SHF_LINK_ORDER | SHF_IRIX_NOSTRIP,
+				sizeof(__unw_table_entry_t),
 				ELF64_FSZ_WORD);
-	scninfo_info = Em_New_Section(IA64_UNWIND_INFO, SHT_IA64_UNWIND_INFO,
+	scninfo_info = Em_New_Section(".IA_64.unwind_info", SHT_PROGBITS,
 				SHF_ALLOC | SHF_IRIX_NOSTRIP,
-				(Elf64_Xword)sizeof(__unw_dbl_word_t),
+				sizeof(__unw_dbl_word_t),
 				ELF64_FSZ_XWORD);
 
 	/* get symbol indices for the elf sections needed for relocations */
