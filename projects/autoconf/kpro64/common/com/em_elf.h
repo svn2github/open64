@@ -370,7 +370,7 @@ Em_Add_New_Content (
 extern void
 Em_Add_New_Option (
     unsigned char option_kind,
-    Elf32_Section option_section,
+    Elf32_Half option_section,
     Elf32_Word option_info,
     void *buffer,
     unsigned char length);
