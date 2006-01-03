@@ -29,6 +29,10 @@
 #include "pro_incl.h"
 #include "pro_expr.h"
 
+#ifndef R_MIPS_NONE
+#define R_MIPS_NONE	0
+#endif
+
 /* adds an attribute to a die */
 extern void _dwarf_pro_add_at_to_die(Dwarf_P_Die die,
 				     Dwarf_P_Attribute attr);
