@@ -341,18 +341,18 @@ Em_Add_New_Content (
 /* Add a new entry to the .options section. */
 extern void
 Em_Add_New_Option (
-    Elf32_Byte option_kind,
+    unsigned char option_kind,
     Elf32_Section option_section,
     Elf32_Word option_info,
     void *buffer,
-    Elf32_Byte length);
+    unsigned char length);
 
 /* Add a new entry to the .interface section. */
 
 extern void
 Em_Add_New_Interface (
     Elf64_Word length,
-    Elf64_Byte *data);
+    unsigned char *data);
 
 /* Add a comment string;
  * if the string contains no colons (':'),
