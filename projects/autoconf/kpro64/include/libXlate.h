@@ -58,7 +58,6 @@ extern "C" {
 
 */
 
-#include "libelf/libelf.h" /* sets _LIBELF_XTND_EXPANDED_DATA if appropriate */
 #include "dwarf.h"
 #include "libdwarf.h"
 
