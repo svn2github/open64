@@ -71,6 +71,34 @@ extern pSCNINFO Symtab_Info;
 extern BOOL     Sixtyfour_Bit;
 extern pSCNINFO Options_Scn;
 
+typedef struct
+{
+  Elf64_Addr	r_offset;
+  unsigned char	r_type;			/* 1st relocation op type */
+  unsigned char	r_type2;		/* 2nd relocation op type */
+  unsigned char	r_type3;		/* 3rd relocation op type */
+  unsigned char	r_ssym;			/* Special symbol */
+  Elf64_Word	r_sym;			/* Symbol index */
+} Elf64_AltRel;
+
+typedef struct {
+  Elf64_Addr	r_offset;
+  unsigned char	r_type;			/* 1st relocation op type */
+  unsigned char	r_type2;		/* 2nd relocation op type */
+  unsigned char	r_type3;		/* 3rd relocation op type */
+  unsigned char	r_ssym;			/* Special symbol */
+  Elf64_Word	r_sym;			/* Symbol index */
+  Elf64_Sxword	r_addend;
+} Elf64_AltRela;
+
+/* Values for the r_ssym field: */
+typedef enum {
+  RSS_UNDEF = 0,	/* Undefined */
+  RSS_GP    = 1,	/* Context pointer (gp) value */
+  RSS_GP0   = 2,	/* gp value used to create object being relocated */
+  RSS_LOC   = 3		/* Address of location being relocated */
+} Elf64_Rel_Ssym;
+
 /* Given a file name 'ofilename', this procedure opens the file. If the 
    flag 'update' is true, it opens the already existing elf file for
    updating. Otherwise it creates a new file. The 'elf64' argument 
