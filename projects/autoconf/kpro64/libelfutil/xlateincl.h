@@ -49,14 +49,11 @@
 
 */
 
-#ifndef _LP64
-#include <sgidefs.h>
-#endif /* _LP64 */
 #include <stdio.h> /* for debug printf and for NULL decl */
 #include "xlatebase.h"
 #include "syn.h"
 #include <elf.h>
-#include "libelf/libelf.h"
+#include <libelf.h>
 #include "dwarf_stuff.h"
 #include "libXlate.h"
 #include <cmplrs/xlate.h>
@@ -67,3 +64,14 @@
 #include "xlate_proTypes.h"
 #include "xlatexterns.h"
 #include "xlate_pro_externs.h"
+
+#ifndef SHT_MIPS_XLATE
+#define SHT_MIPS_XLATE		(SHT_LOPROC + 24)
+#endif
+#ifndef SHT_MIPS_XLATE_DEBUG
+#define SHT_MIPS_XLATE_DEBUG	(SHT_LOPROC + 25)
+#endif
+#ifndef SHT_MIPS_XLATE_OLD
+#define SHT_MIPS_XLATE_OLD	(SHT_LOPROC + 28)
+#endif
+
