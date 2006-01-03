@@ -191,8 +191,9 @@ libelfutil_a_SOURCES = lebdecodes32.c lebdecodes64.c lebdecodeu32.c \
 	xlate_pro_disk_header.c xlate_pro_disk_next_block.c \
 	xlate_pro_init.c xlate_update_for_movement.c
 
-AM_CPPFLAGS = -I${srcdir}/../include -I${srcdir}/../libdwarf \
-	-I${top_srcdir}/contrib/dwarf/libdwarf
+AM_CPPFLAGS = -I${srcdir}/../include \
+	-I${srcdir}/../libdwarf -I${top_srcdir}/contrib/dwarf/libdwarf \
+	-I${srcdir}/.. -I${top_srcdir}/contrib/libelf/lib
 
 all: all-am
 
