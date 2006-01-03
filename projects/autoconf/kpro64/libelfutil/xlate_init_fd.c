@@ -65,11 +65,7 @@ xlate_init_fd(int fd, int open_debug_table,
 	return XLATE_TB_STATUS_ELF_VERSION_BAD;
    }
 
-#ifdef linux
    elf = elf_begin(fd,ELF_C_READ,NULL);
-#else
-   elf = elf_begin(fd,ELF_C_READ_MMAP,NULL);
-#endif
    if(elf == NULL) {
 	return XLATE_TB_STATUS_ELF_BEGIN_BAD;
    }
