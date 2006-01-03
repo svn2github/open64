@@ -42,9 +42,6 @@
     $Date: 2005/10/21 19:00:00 $
 */
 
-#ifndef _LP64
-#include <sgidefs.h>
-#endif /* _LP64 */
 #include <cmplrs/leb128.h>
 
 #define TRUE 1

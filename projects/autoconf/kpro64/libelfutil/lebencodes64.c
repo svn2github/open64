@@ -42,9 +42,6 @@
 
 */
 
-#ifndef _LP64
-#include <sgidefs.h>
-#endif /* _LP64 */
 #include <cmplrs/leb128.h>
 
 
