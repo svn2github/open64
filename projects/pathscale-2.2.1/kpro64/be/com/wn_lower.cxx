@@ -10095,7 +10095,7 @@ static WN *lower_branch(WN *block, WN *tree, LOWER_ACTIONS actions)
   WN * const kid = lower_expr(block, WN_kid0(tree), actions);
   WN_kid0(tree) = kid;
 
-#ifndef KEY
+#if !defined(KEY) || defined(TARG_IA64)
   if (WN_operator(kid) == OPR_LNOT)
 #else
     // Bugs 5220, 5286 (preserve ordered comparisons at WHIRL level because
