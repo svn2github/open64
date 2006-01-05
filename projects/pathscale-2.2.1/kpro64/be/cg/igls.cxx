@@ -51,6 +51,8 @@
 //
 // =======================================================================
 // =======================================================================
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 
 #include <alloca.h>
 #include <math.h>
@@ -89,7 +91,6 @@
 
 #include "bb.h"
 #include "op.h"
-#include "scheduler.h"
 
 // ======================================================================
 // IGLS_Schedule_Region 
@@ -340,6 +341,8 @@ IGLS_Schedule_Region (BOOL before_regalloc)
       //we must reset the flags of ops and bbs.
       if (should_we_schedule && should_we_local_schedule &&
 	  (!skip_bb || resched)) {
+
+        extern void Clean_Up (BB* bb);
         Clean_Up(bb); 
         Reset_BB_scheduled(bb);  
   
