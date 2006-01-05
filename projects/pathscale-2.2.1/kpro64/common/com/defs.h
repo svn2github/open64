@@ -85,6 +85,11 @@ static char *defs_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/co
 #include <string.h>
 #include <bstring.h>	/* for bzero */
 
+#ifndef __STDC_CONSTANT_MACROS
+#define __STDC_CONSTANT_MACROS
+#endif
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
