@@ -525,7 +525,7 @@ private:
        *
        */ 
 
-    #define MAX_TRY_VERSION INT32_MAX
+    #define MAX_TRY_VERSION (0x7fffffff)
     #define MIN_TRY_VERSION 0 
     INT32  _try_version ;
 

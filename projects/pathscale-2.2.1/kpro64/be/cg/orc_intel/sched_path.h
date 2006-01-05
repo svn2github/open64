@@ -68,7 +68,7 @@
     /* EXEC_PATH_ID stuff 
      */
 typedef INT32 EXEC_PATH_ID;
-#define EXEC_PATH_MAX_ID (INT32_MAX)
+#define EXEC_PATH_MAX_ID (0x7fffffff)
 #define INVALID_EXEC_PATH_ID        (EXEC_PATH_ID(-1))
 #define EXEC_PATH_ID_IS_INVALID(x)  ((x) < 0 || (x) > EXEC_PATH_MAX_ID)
 #define ASSIGN_INVALID_EXEC_PATH_ID(x)  ((x) = -1)

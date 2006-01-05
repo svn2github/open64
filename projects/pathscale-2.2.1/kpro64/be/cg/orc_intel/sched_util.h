@@ -264,7 +264,7 @@ typedef REACH_PROB PROBABILITY;
      * ======================================================================
      */
 typedef INT16 CYCLE ;
-#define CYCLE_MAX  INT16_MAX
+#define CYCLE_MAX  (0x7fff)
 
 typedef UINT32 OP_EXT_FLAG;
 
