@@ -4189,7 +4189,9 @@ IF_CONVERTOR::IF_CONVERTOR(REGION_TREE *region_tree)
         if (Is_In_Abnormal_Loop(region))
             continue;
 
-        
+        if (region->Region_Type () == IMPROPER) 
+            continue;
+
         Calculate_Dominators();
   
         // do something to initialize 
