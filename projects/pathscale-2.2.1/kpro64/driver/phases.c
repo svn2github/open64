@@ -1519,13 +1519,17 @@ add_final_ld_args (string_list_t *args)
 	    	if (invoked_lang == L_CC) {
 			add_library(args, "stdc++");
 	    	}
+#ifndef TARG_IA64
 		if (invoked_lang == L_CC && !option_was_seen(O_static)) {
 			add_libgcc_s (args);
 		}
+#endif
 		add_library (args, "gcc");
 		add_library (args, "c");
+#ifndef TARG_IA64
 		if (invoked_lang == L_CC && !option_was_seen(O_static))
 			add_libgcc_s (args);
+#endif
 		add_library(args, "gcc");
 	}
 #endif
@@ -1970,8 +1974,10 @@ add_instr_archive (string_list_t* args)
       }
 
       add_library (args, "instr");
+#ifndef TARG_IA64
       if (!option_was_seen(O_static))
 	add_libgcc_s (args);
+#endif
     } else {
       fprintf (stderr, "Unknown profile types %#lx\n", profile_type & ~f);
     }
