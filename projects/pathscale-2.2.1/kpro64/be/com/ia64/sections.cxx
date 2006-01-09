@@ -122,6 +122,16 @@ SECTION Sections[_SEC_INDEX_MAX] = {
 	SHT_PROGBITS, 0, 
      INT64_MAX, MIPS_EH_REGION_SUPP, 0},
 #else
+#ifdef KEY
+  {_SEC_EH_REGION,      NULL,
+     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
+        SHT_PROGBITS, 0,
+     INT64_MAX, ".except_table", 0},
+  {_SEC_EH_REGION_SUPP, NULL,
+     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
+        SHT_PROGBITS, 0,
+     INT64_MAX, ".except_table_supp", 0},
+#else
   // It's not yet clear what to do about the EH_REGION sections on Linux
   {_SEC_EH_REGION,      NULL,
      0,
@@ -131,6 +141,7 @@ SECTION Sections[_SEC_INDEX_MAX] = {
      0,
         0, 0,
      0, ".unknown", 0},
+#endif /* KEY */
 #endif
   {_SEC_DISTR_ARRAY,  NULL,
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
