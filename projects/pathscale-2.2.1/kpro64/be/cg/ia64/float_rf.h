@@ -61,8 +61,10 @@
 #ifndef __STDC_LIMIT_MACROS
  #define __STDC_LIMIT_MACROS
 #endif
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
+#ifndef __STDC_LIMIT_MACROS
+ #define __STDC_LIMIT_MACROS
+ #include <stdint.h>
+#endif
 #else
 #include <inttypes.h>
 #endif
