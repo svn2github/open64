@@ -76,7 +76,7 @@
 #include "wn_util.h"
 #include "opcode.h"
 #include "ir_reader.h"
-#include "config.h"
+#include "config_global.h"
 #include "xstats.h"
 #include "targ_sim.h"
 #include "timing.h"

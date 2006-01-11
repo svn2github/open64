@@ -89,7 +89,7 @@ static char *rcs_id = region_init_CXX"$Revision: 1.1.1.1 $";
 #include "region_util.h"	// RID structure
 #include "tracing.h"		// TFile
 #include "erglob.h"		// EC_Rgn_Ill_Entry
-#include "config.h"		// Region_Skip_List
+#include "config_global.h"		// Region_Skip_List
 #include "cxx_memory.h"		// CXX_NEW
 #include "region_whirl_templates.h"	// REGION_search_block
 
