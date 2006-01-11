@@ -77,7 +77,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/g++fe/wfe_dst.
 
 #include "defs.h"
 #include "glob.h"
-#include "config.h"
+#include "config_global.h"
 #include "dwarf_DST_producer.h"
 #include "dwarf_DST_dump.h"
 #include "file_util.h"  /* From common/util */

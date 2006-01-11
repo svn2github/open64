@@ -26,7 +26,7 @@
 
 #include "defs.h"
 #include "glob.h"
-#include "config.h"
+#include "config_global.h"
 #include "wn.h"
 #include "wn_util.h"
 
