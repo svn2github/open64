@@ -52,10 +52,19 @@
 // ====================================================================
 // ====================================================================
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #define ONST(x, y) (y)
 
 #define __STDC_LIMIT_MACROS
-#include <alloca.h>             // alloca
 #include <unistd.h>             // write
 #include <stdint.h>
 

@@ -43,7 +43,16 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #include <strings.h>
 
 #include <ext/hash_map>			// stl hash table

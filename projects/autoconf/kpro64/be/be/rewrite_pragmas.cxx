@@ -32,6 +32,15 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #include "wn.h"
 #include "stab.h"
@@ -41,7 +50,6 @@
 #include "config_targ.h"
 #include "wn_util.h"
 #include "region_util.h"
-#include <alloca.h>
 #include "data_layout.h"
 
 extern "C" {
