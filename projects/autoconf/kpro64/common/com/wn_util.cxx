@@ -55,7 +55,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <bstring.h>	/* has bcopy */
 #include "defs.h"
 #include "stab.h"
 #include "wn.h"
