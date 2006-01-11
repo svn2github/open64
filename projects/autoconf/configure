@@ -8123,7 +8123,7 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-                                                                                                              ac_config_files="$ac_config_files Makefile kpro64/Makefile kpro64/arith/Makefile kpro64/common/Makefile kpro64/libcif/Makefile kpro64/libcmplrs/Makefile kpro64/libdwarf/Makefile kpro64/libelf/Makefile kpro64/libelfutil/Makefile kpro64/libunwind/Makefile kpro64/targ_info/Makefile"
+                                                                                                                                  ac_config_files="$ac_config_files Makefile kpro64/Makefile kpro64/arith/Makefile kpro64/be/Makefile kpro64/be/be/Makefile kpro64/common/Makefile kpro64/libcif/Makefile kpro64/libcmplrs/Makefile kpro64/libdwarf/Makefile kpro64/libelf/Makefile kpro64/libelfutil/Makefile kpro64/libunwind/Makefile kpro64/targ_info/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -8684,6 +8684,8 @@ do
   "Makefile" ) CONFIG_FILES="$CONFIG_FILES Makefile" ;;
   "kpro64/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/Makefile" ;;
   "kpro64/arith/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/arith/Makefile" ;;
+  "kpro64/be/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/be/Makefile" ;;
+  "kpro64/be/be/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/be/be/Makefile" ;;
   "kpro64/common/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/common/Makefile" ;;
   "kpro64/libcif/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/libcif/Makefile" ;;
   "kpro64/libcmplrs/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/libcmplrs/Makefile" ;;
