@@ -226,6 +226,8 @@ AC_DEFINE(HAVE_OLD_DWARF2_32BIT_OFFSET,1,[DWARF2 32-bit section offsets.])
 AC_CONFIG_FILES([Makefile
 		 kpro64/Makefile
 		 kpro64/arith/Makefile
+		 kpro64/be/Makefile
+		 kpro64/be/be/Makefile
 		 kpro64/common/Makefile
 		 kpro64/libcif/Makefile
 		 kpro64/libcmplrs/Makefile
