@@ -47,7 +47,7 @@
 #include "wn.h"
 #include "opcode.h"
 #include "config_targ.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_debug.h"
 #include "tracing.h"
 #include "opt_alias_interface.h"

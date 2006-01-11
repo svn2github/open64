@@ -39,7 +39,7 @@
 #pragma hdrstop
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "errors.h"
 #include "erglob.h"
 #include "tracing.h"

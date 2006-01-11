@@ -51,7 +51,7 @@
 #include "targ_const.h"
 #include "const.h"
 #include "strtab.h"
-#include "config.h"
+#include "config_global.h"
 #include "wn_util.h"
 #include "fb_whirl.h"
 

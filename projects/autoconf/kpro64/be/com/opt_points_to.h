@@ -37,7 +37,7 @@
 #define opt_points_to_INCLUDED	"opt_points_to.h"
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "cxx_base.h"
 #include "cxx_memory.h"		// for CXX_NEW
 #include "opcode.h"

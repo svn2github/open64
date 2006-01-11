@@ -66,7 +66,7 @@
 #include "defs.h"
 #include "erglob.h"
 #include "erbe.h"
-#include "config.h"
+#include "config_global.h"
 #include "tracing.h"
 #include "strtab.h"
 #include "stab.h"

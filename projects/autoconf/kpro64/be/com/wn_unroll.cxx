@@ -31,7 +31,7 @@
 #pragma hdrstop
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "opt_config.h"
 #include "errors.h"
 #include "erglob.h"

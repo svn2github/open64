@@ -54,7 +54,7 @@
  */
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_targ.h"
 #include "mtypes.h"
 #include "stab.h"
