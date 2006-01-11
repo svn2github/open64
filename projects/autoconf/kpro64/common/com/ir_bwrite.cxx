@@ -42,13 +42,13 @@
 #include "common_com_pch.h"
 #endif /* USE_PCH */
 #pragma hdrstop
+
+#include <elf.h>
 #include <unistd.h>		    /* for unlink() */
 #include <fcntl.h>		    /* for open() */
 #include <sys/mman.h>		    /* for mmap() */
-#include <alloca.h>		    /* for alloca() */
 #include <signal.h>		    /* for signal() */
 #include <errno.h>		    /* for system error code */
-#include "elf_stuff.h"		    /* for all Elf stuff */
 #include <sys/elf_whirl.h>	    /* for WHIRL sections' sh_info */
 #include <cmplrs/rcodes.h>
 
@@ -88,6 +88,17 @@
 #include "ir_bread.h"
 #include "tracing.h"                /* TEMPORARY FOR ROBERT'S DEBUGGING */
 
+#define ET_IR           (ET_LOPROC + 0)
+
+#ifndef SHT_MIPS_WHIRL
+#define SHT_MIPS_WHIRL       0x70000026
+#endif
+
+#define ELF_COMMENT	".comment"
+#define ELF_SHSTRTAB	".shstrtab"
+#define ELF_STRTAB	".strtab"
+#define ELF_SYMTAB	".symtab"
+
 #ifdef BACK_END
 #include "glob.h"
 #include "pf_cg.h"
@@ -120,7 +131,7 @@ extern void Depgraph_Write (void *depgraph, Output_File *fl, WN_MAP off_map);
     mmap((void *)(addr), (size_t)(len), (int)(prot), (int)(flags),	\
 	 (int)(fd), (off_t)(off))
 
-#ifndef linux
+#ifdef __irix__
 #define MUNMAP(addr, len)						\
     munmap((void *)(addr), (size_t)(len))
 #else
@@ -136,7 +147,7 @@ static void (*old_sigbus) (int);   /* the previous signal handler */
 
 Output_File *Current_Output = 0;
 
-#ifdef linux
+#ifndef __irix__
 #define MAPPED_SIZE 0x400000
 #endif
 
@@ -294,7 +305,7 @@ write_output (UINT64 e_shoff, const typename ELF::Elf_Shdr& strtab_sec,
     typename ELF::Elf_Ehdr* ehdr = (typename ELF::Elf_Ehdr *) fl->map_addr;
     strcpy ((char *) ehdr->e_ident, ELFMAG);
     ehdr->e_ident[EI_CLASS] = tag.Elf_class ();
-#ifndef linux
+#ifdef __irix__
     ehdr->e_ident[EI_DATA] = ELFDATA2MSB; /* assume MSB for now */
 #else
     ehdr->e_ident[EI_DATA] = ELFDATA2LSB; /* assume LSB for now */
@@ -422,7 +433,7 @@ WN_open_output (char *file_name)
     if (fl->output_fd < 0)
 	return NULL;
 
-#ifdef linux
+#ifndef __irix__
     ftruncate(fl->output_fd, MAPPED_SIZE);
 #endif
 
@@ -1424,7 +1435,7 @@ Close_Output_Info (void)
 }
 
 
-#ifdef linux
+#ifndef __irix__
 extern "C" void
 WN_write_elf_symtab (const void* symtab, UINT64 size, UINT64 entsize,
 		     UINT align, Output_File* fl)
@@ -1451,7 +1462,7 @@ WN_write_elf_symtab (const void* symtab, UINT64 size, UINT64 entsize,
     cur_section->shdr.sh_link = strtab_idx;
     cur_section->shdr.sh_entsize = entsize;
 } // WN_write_elf_symtab
-#endif // linux
+#endif
 #endif // OWN_ERROR_PACKAGE
 
 

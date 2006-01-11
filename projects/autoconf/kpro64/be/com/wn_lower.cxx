@@ -39,20 +39,30 @@
 
 //-*-c++-*-
 
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
 #ifdef USE_PCH
 #include "be_com_pch.h"
 #endif /* USE_PCH */
 #pragma hdrstop
-#include <values.h>
-#include <isam.h>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
+
+#include <isam.h>
 #include <sys/signal.h>
 #include <elf.h>
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_asm.h"
 #include "config_debug.h"
 #include "config_opt.h"
@@ -8831,7 +8841,7 @@ static WN *lower_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
 }
 
 
-#ifdef linux
+#ifndef __irix__
 /* ====================================================================
  *
  * WN *lower_cis_intrinsic(WN *block, WN *tree, LOWER_ACTIONS actions)
@@ -8945,7 +8955,7 @@ static WN *lower_intrinsic_op(WN *block, WN *tree, LOWER_ACTIONS actions)
   Is_True(OPCODE_is_intrinsic(op),
 	  ("expression is not intrinsic"));
 
-#ifdef linux
+#ifndef __irix__
   switch (id) {
   case INTRN_F4CIS:
   case INTRN_F8CIS:
@@ -10032,7 +10042,7 @@ static WN *lower_assert(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 	/* __C_runtime_error ( BRK_RANGE, PU_name, line_no, fmt, ...);
 	 */
-#ifndef linux 
+#ifdef __irix__
 	kids[0] = WN_Intconst ( MTYPE_I4, BRK_RANGE );
 #else
 	fprintf(stderr, "Don't know how to do BRK_RANGE\n");
@@ -10057,7 +10067,7 @@ static WN *lower_assert(WN *block, WN *tree, LOWER_ACTIONS actions)
 	trap = WN_Create_Intrinsic ( OPC_VINTRINSIC_CALL,
 				     INTRN_RT_ERR, 4, kids );
       } else {
-#ifndef linux
+#ifdef __irix__
 	trap = WN_CreateTrap ( BRK_RANGE );
 #else   
 	fprintf(stderr, "Don't know how to do BRK_RANGE\n");

@@ -36,12 +36,23 @@
 
 */
 
-#define __STDC_LIMIT_MACROS
-#include <stdint.h>
 #ifdef USE_PCH
 #include "be_com_pch.h"
 #endif /* USE_PCH */
 #pragma hdrstop
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 
 /* Header of wn_mp_dg.cxx
 *  csc.
@@ -51,7 +62,6 @@
 
 #define USE_STANDARD_TYPES          /* override unwanted defines in "defs.h" */
 
-#include <bstring.h>
 #include "wn.h"
 #include "wn_util.h"
 #include "erglob.h"
@@ -76,7 +86,6 @@
 #include <string.h>
 
 #include <elf.h>
-#include "alloca.h"
 #include "cxx_template.h"
 #include "defs.h"
 #include "glob.h"
@@ -108,7 +117,7 @@
 #include "dwarf_DST.h"
 #include "dwarf_DST_producer.h"
 #include "dwarf_DST_mem.h"
-#include "config.h"
+#include "config_global.h"
 #include "standardize.h"
 #include "irbdata.h"
 #include "omp_lower.h"
@@ -5691,7 +5700,7 @@ Post_MP_Processing (WN * pu)
   // Localize the variables
   INT32 vsize = (local_count + 1) * sizeof(VAR_TABLE);
   var_table = (VAR_TABLE *) alloca (vsize);
-  bzero (var_table, vsize);
+  memset(var_table, 0, vsize);
 
   mpt = MPP_ORPHAN;
 
@@ -6889,7 +6898,7 @@ static WN *Gen_MP_Workshare_Region(WN *workshare_region)
     WN *nested_alloca_block = NULL;
 
     vt = (VAR_TABLE *) alloca((vt_size + 1) * sizeof(VAR_TABLE));
-    bzero(vt, (vt_size + 1) * sizeof(VAR_TABLE));
+    memset(vt, 0, (vt_size + 1) * sizeof(VAR_TABLE));
     Create_Local_Variables(vt, NULL, NULL, nested_local_nodes,
                            NULL, NULL,
                            NULL, &nested_alloca_block);
@@ -7038,7 +7047,7 @@ static WN *Gen_MP_SingleProcess_Region(WN *single_region)
     WN *nested_alloca_block = NULL, *firstprivate_block = NULL;
 
     vt = (VAR_TABLE *) alloca((vt_size + 1) * sizeof(VAR_TABLE));
-    bzero(vt, (vt_size + 1) * sizeof(VAR_TABLE));
+    memset(vt, 0, (vt_size + 1) * sizeof(VAR_TABLE));
     Create_Local_Variables(vt, NULL, NULL, nested_local_nodes,
                            nested_firstprivate_nodes, &firstprivate_block,
                            NULL, &nested_alloca_block);
@@ -10317,7 +10326,7 @@ Process_PDO ( WN * tree )
         // privatize within DO_LOOP but not code before or after it
       vsize = (nested_local_count + 1) * sizeof(VAR_TABLE);
       nested_var_table = (VAR_TABLE *) alloca ( vsize );
-      bzero ( nested_var_table, vsize );
+      memset(nested_var_table, 0, vsize);
       Create_Local_Variables ( nested_var_table, nested_reduction_nodes,
 			       nested_lastlocal_nodes, nested_local_nodes,
 			       nested_firstprivate_nodes,
@@ -10355,7 +10364,7 @@ Process_PDO ( WN * tree )
       // Use local versions of the global tables.
       INT32 vsize_l = (nested_local_count + 1) * sizeof (VAR_TABLE);
       VAR_TABLE * nested_var_table_l = (VAR_TABLE *) alloca (vsize_l);
-      bzero ( nested_var_table_l, vsize_l );
+      memset(nested_var_table_l, 0, vsize_l);
       Create_Local_Variables ( nested_var_table_l, nested_reduction_nodes,
 			       nested_lastlocal_nodes, nested_local_nodes,
 			       nested_firstprivate_nodes,
@@ -11402,7 +11411,7 @@ static void Localize_in_serialized_parallel (void)
 {
   INT32 vsize_l = (local_count + 1) * sizeof(VAR_TABLE);
   VAR_TABLE * var_table_l = (VAR_TABLE *) alloca ( vsize_l );
-  bzero ( var_table_l, vsize_l );
+  memset(var_table_l, 0, vsize_l);
   Create_Local_Variables ( var_table_l, reduction_nodes, lastlocal_nodes,
                            local_nodes, firstprivate_nodes,
 			   &firstprivate_block, NULL, &alloca_block );
@@ -11554,17 +11563,17 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
   lsize = sizeof(LABEL_INFO_TABLE) * LABEL_Table_Size(CURRENT_SYMTAB);
   label_info_table = (LABEL_INFO_TABLE *) alloca ( lsize );
-  bzero ( label_info_table, lsize );
+  memset(label_info_table, 0, lsize);
 
   ssize = 4096 * sizeof(SHARED_TABLE);
   shared_table = (SHARED_TABLE *) alloca ( ssize );
-  bzero ( shared_table, ssize );
+  memset(shared_table, 0, ssize);
 
   if (mpid_size == 0) {
     mpid_size = 1028;
     msize = mpid_size * sizeof(MPID_TABLE);
     mpid_table = (MPID_TABLE *) malloc ( msize );
-    bzero ( mpid_table, msize );
+    memset(mpid_table, 0, msize);
   }
 
   pu_has_eh = PU_has_exc_scopes(Get_Current_PU());
@@ -12182,7 +12191,7 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
     vsize = (local_count + 1) * sizeof(VAR_TABLE);
     var_table = (VAR_TABLE *) alloca ( vsize );
-    bzero ( var_table, vsize );
+    memset(var_table, 0, vsize);
 
     fp = WN_LdidPreg ( Pointer_type, Frame_Pointer_Preg_Offset );
 
@@ -12320,7 +12329,7 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
     vsize = (local_count + 1) * sizeof(VAR_TABLE);
     var_table = (VAR_TABLE *) alloca ( vsize );
-    bzero ( var_table, vsize );
+    memset(var_table, 0, vsize);
 
     fp = WN_LdidPreg ( Pointer_type, Frame_Pointer_Preg_Offset );
 
@@ -12681,7 +12690,7 @@ LowerMP_PU_Init()
     region_id = 0;
     lock_id = 0;
     if (mpid_size > 0)
-      bzero ( mpid_table, mpid_size * sizeof(MPID_TABLE) );
+      memset(mpid_table, 0, mpid_size * sizeof(MPID_TABLE));
       // ignore pu_chunk_node and pu_mpsched_node from prior PU; no need to
       // deallocate it since Whirl mempool gets popped at end of compiling
       // the PU

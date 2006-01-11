@@ -80,7 +80,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/con
 #endif /* ~FRONT_F90 */
 #endif /*  FRONT_END */
 #include <ctype.h>	/* For isdigit */
-#include "elf_stuff.h"
+#include <elf.h>
 
 #define USE_STANDARD_TYPES 1
 #include "defs.h"

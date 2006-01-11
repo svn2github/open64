@@ -77,7 +77,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/com/dep_gra
 
 #define USE_STANDARD_TYPES	    /* override unwanted defines in "defs.h" */
 
-#include <bstring.h>
 #include "wn.h"
 #include "erglob.h"
 #include "errors.h"
@@ -94,7 +93,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/com/dep_gra
 
 #ifdef LNO
 #include "call_info.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_cache.h"
 #include "errors.h"
 #include "erbe.h"

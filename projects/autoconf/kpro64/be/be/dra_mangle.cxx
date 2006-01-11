@@ -48,7 +48,16 @@
 // ====================================================================
 // ====================================================================
 
-#include <alloca.h>             // alloca
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #include <elf.h>
 
 #include "defs.h"               // standard definitions
@@ -66,17 +75,17 @@
 #include "strtab.h"             // Save_Str
 #include "wn_util.h"            // WN_DELETE
 #include "dwarf_DST.h"          // DST_IDX
-#include "config.h"             // Run_ipl, Run_cg
+#include "config_global.h"      // Run_ipl, Run_cg
 #include "cg.h"                 // CG_Change_Elf_Symbol_To_Undefined
 
 #include "dra_internal.h"       // Internal DRA interface
 
-#ifdef __linux__
+#ifndef __irix__
 extern void (*CG_Change_Elf_Symbol_To_Undefined_p) (ST*);
 #define CG_Change_Elf_Symbol_To_Undefined (*CG_Change_Elf_Symbol_To_Undefined_p)
 #else
 #pragma weak CG_Change_Elf_Symbol_To_Undefined
-#endif // __linux__
+#endif
 
 // =====================================================================
 //

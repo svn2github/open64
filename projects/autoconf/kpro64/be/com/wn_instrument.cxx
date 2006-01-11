@@ -108,7 +108,7 @@
 #include "glob.h"
 #include "errors.h"
 #include "be_symtab.h"
-#include "vho_lower.h"
+#include "../vho/vho_lower.h"
 #include "fb_whirl.h"
 #include "wn_instrument.h"
 

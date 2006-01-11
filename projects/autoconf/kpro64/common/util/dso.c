@@ -32,8 +32,16 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #include <stdio.h>		    /* for fprintf() */
 #include <string.h>
 #include <dlfcn.h>		    /* for sgidladd(), dlerror() */
@@ -69,7 +77,7 @@ load_so (char *soname, char *path, BOOL verbose)
         full_path = soname;
     }
 
-#ifndef linux
+#ifdef ___irix__
     if (sgidladd (full_path, RTLD_LAZY) == NULL)
 #else
     if (dlopen (full_path, RTLD_NOW | RTLD_GLOBAL) == NULL)

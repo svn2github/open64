@@ -81,11 +81,14 @@
 
 #endif /* _USE_PROFILE_ERROR_ROUTINES */
 
-
 #define FSEEK(_fd, _position, whence, _error_message, _error_arg) \
      if (fseek(_fd, _position, whence) != 0) \
            profile_error(_error_message, _error_arg);
 
+/* TIOCFLUSH was documented to use FREAD/FWRITE on FreeBSD (at least).
+   Hence, FREAD and FWRITE are defined in <fcntl.h>.
+*/ 
+#undef FREAD
 #define FREAD(_buffer, _size, _nitems, _fp, _error_message, _error_arg) \
         if (fread((void *)_buffer, _size, _nitems, _fp) != _nitems) \
            profile_error(_error_message, _error_arg);

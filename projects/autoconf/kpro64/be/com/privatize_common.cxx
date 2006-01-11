@@ -55,13 +55,22 @@
  * Rename_Privatized_COMMON()
  * ==================================================================== */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #include <elf.h>
 #include <stdio.h>
 
 #include "privatize_common.h"
 
-#include "config.h"     // for Debug_Level
+#include "config_global.h"     // for Debug_Level
 #include "dwarf_DST.h"  // for DST_IDX and DST_INFO_IDX
 #include "pu_info.h"    // for Current_PU_Info
 #include "strtab.h"

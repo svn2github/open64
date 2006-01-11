@@ -36,18 +36,24 @@
 
 */
 
-
-
 #ifdef USE_PCH
 #include "be_com_pch.h"
 #endif /* USE_PCH */
 #pragma hdrstop
-#include <math.h>
-#include <values.h>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
+#include <stdlib.h>
+#include <math.h>
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_debug.h"
 #include "config_opt.h"
 #include "config_TARG.h"
@@ -64,7 +70,6 @@
 #include "fb_whirl.h"
 #include "be_symtab.h"
 #include "intrn_info.h"
-
 
 #if (__GNUC__ == 2)
 //

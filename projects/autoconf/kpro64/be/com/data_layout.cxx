@@ -65,7 +65,7 @@
 #include "defs.h"
 #include "erglob.h"
 #include "erbe.h"
-#include "config.h"
+#include "config_global.h"
 #include "tracing.h"
 #include "strtab.h"
 #include "stab.h"
@@ -2331,7 +2331,7 @@ INT64 Finalize_Stack_Frame (void)
 	if (Trace_Frame) fprintf(TFile, "<lay> stack-model underflowed\n");
 
   {	/* check that stacksize does not exceed system max */
-#if defined(linux)
+#ifndef __irix__
         struct rlimit rlp;
         getrlimit(RLIMIT_STACK, &rlp);
 #else

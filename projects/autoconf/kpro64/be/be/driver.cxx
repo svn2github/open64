@@ -53,6 +53,10 @@
  * ====================================================================
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <sys/types.h>
 #include <elf.h>		    /* for wn.h */
 #include <cmplrs/rcodes.h>
@@ -76,7 +80,7 @@
 #include "pu_info.h"		    /* for PU_Info */
 #include "ir_bread.h"		    /* for Read_Global_Info() */
 #include "ir_bwrite.h"		    /* for Write_Global_Info(), etc. */
-#include "config.h"		    /* for LNO_Path, etc. */
+#include "config_global.h"	    /* for LNO_Path, etc. */
 #include "config_opt.h"             /* for Instrumentation_Enabled */
 #include "config_list.h"	    /* for List_Enabled, etc. */
 #include "config_lno.h"		    /* for LNO_Run_Lego, etc. */
@@ -137,7 +141,7 @@ extern void Set_addr_saved_stmt (WN *, BOOL);
 extern void Initialize_Targ_Info(void);
 
 // symbols defined in cg.so
-#ifdef __linux__
+#ifndef __irix__
 
 extern void (*CG_Process_Command_Line_p) (INT, char **, INT, char **);
 #define CG_Process_Command_Line (*CG_Process_Command_Line_p)
@@ -171,10 +175,10 @@ extern void (*EH_Generate_Range_List_p) (WN *);
 #pragma weak EH_Generate_Range_List
 
 
-#endif // __linux__
+#endif
 
 // symbols defined in wopt.so
-#ifdef __linux__
+#ifndef __irix__
 
 extern void (*wopt_main_p) (INT argc, char **argv, INT, char **);
 #define wopt_main (*wopt_main_p)
@@ -215,10 +219,10 @@ extern BOOL (*Verify_alias_p) (ALIAS_MANAGER *, WN *);
 #pragma weak Delete_Du_Manager
 #pragma weak Verify_alias
 
-#endif // __linux__
+#endif
 
 // symbols defined in lno.so
-#ifdef __linux__
+#ifndef __irix__
 
 extern void (*lno_main_p) (INT, char**, INT, char**);
 #define lno_main (*lno_main_p)
@@ -239,11 +243,11 @@ extern WN* (*Perform_Loop_Nest_Optimization_p) (PU_Info*, WN*, WN*, BOOL);
 #pragma weak Lno_Fini
 #pragma weak Perform_Loop_Nest_Optimization
 
-#endif // __linux__
+#endif
 
 // symbols defined in ipl.so
 
-#ifdef __linux__
+#ifndef __irix__
 
 extern void (*Ipl_Extra_Output_p) (Output_File *);
 #define Ipl_Extra_Output (*Ipl_Extra_Output_p)
@@ -274,7 +278,7 @@ extern void (*Preprocess_struct_access_p)(void);
 #pragma weak Ipl_Extra_Output
 #pragma weak Perform_Procedure_Summary_Phase
 
-#endif // __linux__
+#endif
 
 #include "w2c_weak.h"
 #include "w2f_weak.h"

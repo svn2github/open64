@@ -54,6 +54,10 @@
  * OMP_Prelower() : Transform Open MP pragmas to same form as MP ones
  * ==================================================================== */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <sys/types.h>
@@ -79,9 +83,9 @@
 #include "wn_simp.h"
 #include "strtab.h"
 #include "region_util.h"
-#include "config.h"
+#include "config_global.h"
 #include "prompf.h"
-#include "anl_driver.h"
+#include "../prompf_anl/anl_driver.h"
 #include "cxx_memory.h"
 #include "wb_buffer.h"
 #include "wb_carray.h"

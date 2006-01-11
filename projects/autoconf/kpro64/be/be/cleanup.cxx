@@ -69,9 +69,9 @@
 #include "wn.h"			    /* for ir_bread.h */
 #include "pu_info.h"		    /* for ir_bread.h */
 #include "ir_bread.h"		    /* Free_Input_Info () */
-#include "anl_driver.h"		    /* Prompf related */
-#include "w2c_driver.h"		    /* Whirl2c related */
-#include "w2f_driver.h"		    /* Whirl2f related */
+#include "../prompf_anl/anl_driver.h"	/* Prompf related */
+#include "../whirl2c/w2c_driver.h"	/* Whirl2c related */
+#include "../whirl2f/w2f_driver.h"	/* Whirl2f related */
 #include "instr_reader.h"
 #include "be_symtab.h"
 
@@ -87,7 +87,7 @@ BOOL Whirl2c_loaded = FALSE;
 #include "w2c_weak.h"
 #include "w2f_weak.h"
 
-#ifndef __linux__
+#ifdef __irix__
 #pragma weak Anl_Cleanup
 #endif
 
@@ -155,7 +155,7 @@ Cleanup_Files (BOOL report,         /* Report errors during cleanup? */
        W2C_Cleanup();
     if (Whirl2f_loaded)
        W2F_Cleanup();
-#ifndef __linux__
+#ifdef __irix__
     if (Prompf_anl_loaded)
        Anl_Cleanup();
 #endif

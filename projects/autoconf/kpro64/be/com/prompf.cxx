@@ -52,7 +52,7 @@
 #include "stab.h"
 #include "cxx_template.h"
 #include "cxx_memory.h" 
-#include "anl_driver.h"
+#include "../prompf_anl/anl_driver.h"
 #include "prompf.h"
 #include "ir_reader.h"
 #include "targ_sim.h"

@@ -44,7 +44,6 @@
 #include "be_com_pch.h"
 #endif /* USE_PCH */
 #pragma hdrstop
-#include <values.h>
 #include <isam.h>
 #include "defs.h"
 #include "strtab.h"
@@ -52,7 +51,7 @@
 #include "wn.h"
 #include "wn_util.h"
 #include "wio.h"
-#include "config.h"
+#include "config_global.h"
 #include "targ_sim.h"
 #include "targ_const.h"
 #include "targ_const_private.h"

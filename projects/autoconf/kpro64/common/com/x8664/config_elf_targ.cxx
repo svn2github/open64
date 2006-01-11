@@ -54,12 +54,17 @@
  * ====================================================================
  */
 
-#include "elf_stuff.h"
-#include <sys/elf_whirl.h>
+#include <elf.h>
+
 #include "defs.h"
 #include "erglob.h"
 #include "tracing.h"
 #include "config_elf_targ.h"
+
+// XXX Needs better abstraction overall
+#ifndef EF_IRIX_ABI64
+#define EF_IRIX_ABI64	0
+#endif
 
 /* ====================================================================
  *

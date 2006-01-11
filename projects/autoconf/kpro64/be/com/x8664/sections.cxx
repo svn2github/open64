@@ -39,8 +39,20 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-#include "elf_stuff.h"
+#include <elf.h>
 #include "sections.h"
+
+#undef SHF_IA_64_SHORT
+#define SHF_IA_64_SHORT	0
+
+#undef SHF_MIPS_LOCAL
+#define SHF_MIPS_LOCAL 0
+
+#undef SHF_MIPS_MERGE
+#define SHF_MIPS_MERGE 0
+
+#undef SHF_MIPS_NAMES
+#define SHF_MIPS_NAMES 0
 
 #define INST_BYTES 16
 
@@ -52,15 +64,15 @@ SECTION Sections[_SEC_INDEX_MAX] = {
   {_SEC_TEXT,	NULL,
      0|SHF_EXECINSTR|SHF_ALLOC,
 	SHT_PROGBITS, INST_BYTES, 
-     INT64_MAX, ELF_TEXT, 0},
+     INT64_MAX, ".text", 0},
   {_SEC_DATA,	NULL,
      0|SHF_WRITE|SHF_ALLOC, 
 	SHT_PROGBITS, 0, 
-     INT64_MAX, ELF_DATA, 0},
+     INT64_MAX, ".data", 0},
   {_SEC_SDATA,	NULL,
      0|SHF_WRITE|SHF_IA_64_SHORT|SHF_ALLOC,
 	SHT_PROGBITS, 0, 
-     INT32_MAX, MIPS_SDATA, 0},
+     INT32_MAX, ".sdata", 0},
   {_SEC_LDATA,	NULL,
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_LOCAL,
 	SHT_PROGBITS, 0, 
@@ -68,61 +80,43 @@ SECTION Sections[_SEC_INDEX_MAX] = {
   {_SEC_RDATA,	NULL,
      0|SHF_ALLOC,
 	SHT_PROGBITS, 0, 
-     INT64_MAX, ELF_RODATA, 0},
+     INT64_MAX, ".rodata", 0},
   {_SEC_SRDATA,	NULL,
      0|SHF_IA_64_SHORT|SHF_ALLOC,
 	SHT_PROGBITS, 0, 
-     INT32_MAX, MIPS_SRDATA, 0},
+     INT32_MAX, ".srdata", 0},
   {_SEC_LIT4,	NULL,
      0|SHF_IA_64_SHORT|SHF_ALLOC|SHF_MIPS_MERGE,
 	SHT_PROGBITS, 4, 
-     INT32_MAX, MIPS_LIT4, 0},
+     INT32_MAX, ".lit4", 0},
   {_SEC_LIT8,	NULL,
      0|SHF_IA_64_SHORT|SHF_ALLOC|SHF_MIPS_MERGE,
 	SHT_PROGBITS, 8, 
-     INT32_MAX, MIPS_LIT8, 0},
+     INT32_MAX, ".lit8", 0},
   {_SEC_LIT16,	NULL,
      0|SHF_IA_64_SHORT|SHF_ALLOC|SHF_MIPS_MERGE,
 	SHT_PROGBITS, 16, 
-     INT32_MAX, MIPS_LIT16, 0},
+     INT32_MAX, ".lit16", 0},
   {_SEC_BSS,	NULL,
      0|SHF_WRITE|SHF_ALLOC,
 	SHT_NOBITS, 0, 
-     INT64_MAX, ELF_BSS, 0},
+     INT64_MAX, ".bss", 0},
   {_SEC_SBSS,	NULL,
      0|SHF_WRITE|SHF_IA_64_SHORT|SHF_ALLOC,
 	SHT_NOBITS, 0, 
-     INT64_MAX, MIPS_SBSS, 0},
-#ifndef linux
-  {_SEC_LBSS,	NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_LOCAL,
-	SHT_NOBITS, 0, 
-     INT64_MAX, MIPS_LBSS, 0},
-#else
-  // There is no MIPS_LBSS section on Linux, but we need a space holder
+     INT64_MAX, ".sbss", 0},
   {_SEC_LBSS,   NULL,
      0,
         0, 0,
      0, ".unknown", 0},
-#endif
   {_SEC_GOT,	NULL,
      0|SHF_IA_64_SHORT|SHF_ALLOC,
 	SHT_PROGBITS, 0, 
-     INT32_MAX, ELF_GOT, 0},
+     INT32_MAX, ".got", 0},
   {_SEC_CPLINIT,	NULL,
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
 	SHT_PROGBITS, 0, 
      INT64_MAX, "__cplinit", 0},
-#ifndef linux
-  {_SEC_EH_REGION,	NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
-	SHT_PROGBITS, 0, 
-     INT64_MAX, MIPS_EH_REGION, 0},
-  {_SEC_EH_REGION_SUPP,	NULL,
-     0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
-	SHT_PROGBITS, 0, 
-     INT64_MAX, MIPS_EH_REGION_SUPP, 0},
-#else
 #ifdef KEY
   {_SEC_EH_REGION,      NULL,
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
@@ -133,7 +127,7 @@ SECTION Sections[_SEC_INDEX_MAX] = {
         SHT_PROGBITS, 0,
      INT64_MAX, ".except_table_supp", 0},
 #else
-  // It's not yet clear what to do about the EH_REGION sections on Linux
+  // It's not yet clear what to do about the EH_REGION sections
   {_SEC_EH_REGION,      NULL,
      0,
         0, 0,
@@ -143,7 +137,6 @@ SECTION Sections[_SEC_INDEX_MAX] = {
         0, 0,
      0, ".unknown", 0},
 #endif // KEY
-#endif
   {_SEC_DISTR_ARRAY,  NULL,
      0|SHF_WRITE|SHF_ALLOC|SHF_MIPS_NAMES,
 	SHT_PROGBITS, 0,
