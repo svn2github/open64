@@ -46,7 +46,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sg
 /* SGI includes */
 #include "stamp.h"
 #include "defs.h"
-#include "config.h"  
+#include "config_global.h"  
 #include "config_debug.h"  
 #include "file_util.h"
 #include "flags.h"

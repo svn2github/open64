@@ -56,7 +56,7 @@ extern "C" {
 #include "defs.h"
 #include "errors.h"
 #include "err_host.h"
-#include "config.h"
+#include "config_global.h"
 
 void Cleanup_Files FAIL
 /* int  Op_Name FAIL */

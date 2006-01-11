@@ -71,7 +71,7 @@ static char *source_file = __FILE__;
 #include "stab.h"
 #include "strtab.h"
 #include "errors.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_targ.h"
 #include "wn.h"
 #include "const.h"
