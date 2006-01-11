@@ -59,7 +59,7 @@ c_int_model.c -- c data type models
 #include "config_targ.h"
 #ifdef KEY
 #include "gnu_config.h"
-#include "config.h"	/* for Target_Byte_Sex */
+#include "config_global.h"	/* for Target_Byte_Sex */
 #endif /* KEY */
 
 TARGET_INT_MODEL Target_Int_Model = TARGET_INT_ILP32;
