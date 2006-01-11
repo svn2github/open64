@@ -56,7 +56,7 @@
 #include <cmplrs/rcodes.h>	    /* for exit return status */
 
 #include "defs.h"
-#include "config.h"		    /* for Configure() */
+#include "config_global.h"		    /* for Configure() */
 #include "config_ipa.h"		    /* for INLINE/IPA options */
 #include "flags.h"		    /* for Common_Option_Groups */
 #include "file_util.h"		    /* New_Extension() */

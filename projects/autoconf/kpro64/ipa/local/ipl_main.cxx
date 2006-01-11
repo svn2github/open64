@@ -83,7 +83,7 @@
 #include "ipl_array_bread_write.h"  // for Init_write_asections
 #include "optimizer.h"		    // for struct DU_MANAGER ...
 #include "ipl_driver.h"		    // for extern "C" declaration
-#include "config.h"		    // for Run_preopt
+#include "config_global.h"		    // for Run_preopt
 #include "config_debug.h"
 #include "config_opt.h"
 #include "config_ipa.h"

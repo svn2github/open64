@@ -65,7 +65,7 @@
 #include <ar.h>         /* for support of -INLINE:library= */
 #include <sys/errno.h>  /* for EBADF */
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_ipa.h"	/* -INLINE/-IPA group options */
 #include "strtab.h"	/* strtab support for Inline_.*_Strtab */
 #include "erglob.h"	/* Include the error numbers */

@@ -71,7 +71,7 @@
 #include "wn.h"			    // WN
 #include "wn_map.h"		    // WN_MAP, WN_MAP_TAB
 #include "stab.h"		    // ST, TY
-#include "config.h"             // WHIRL_Comma_Rcomma_On
+#include "config_global.h"             // WHIRL_Comma_Rcomma_On
 #include "config_ipa.h"		// IPA_Enable_*, IPA_Max_Depth, ...
 #include "dwarf_DST_mem.h"	// DST_TYPE, DST_IDX
 #include "pu_info.h"		// PU_Info

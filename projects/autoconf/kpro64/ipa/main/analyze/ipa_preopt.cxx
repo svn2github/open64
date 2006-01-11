@@ -64,7 +64,7 @@
 #define BACK_END                        // config.h needs it
 #endif
 #include "be_symtab.h"                  // BE_ST
-#include "config.h"                     // Run_preopt, Run_ipl
+#include "config_global.h"                     // Run_preopt, Run_ipl
 #include "dso.h"                        // load_so
 #include "erglob.h"                     // ErrMsg
 #include "glob.h"                       // Show_Progress

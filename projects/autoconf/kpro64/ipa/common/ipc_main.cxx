@@ -44,7 +44,7 @@
 
 #include "errors.h"			/* for Set_Error_Phase() */
 #include "glob.h"			/* for Cleanup_Files() */
-#include "config.h"			/* for Preconfigure() */
+#include "config_global.h"			/* for Preconfigure() */
 #include "config_list.h" 
 #include "config_targ.h"		/* for Target_ABI */
 #include "wn.h"				/* for Dont_Use_WN_Free_List() */

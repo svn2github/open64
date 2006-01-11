@@ -45,7 +45,7 @@
 #include <assert.h>
 #define USE_STANDARD_TYPES          /* override unwanted defines in defs.h */
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "wn.h"                 // for ipc_bread.h
 #include "strtab.h"             // for ipc_file.h, ipc_option.h
 #include "stab.h"               // for ipc_file.h

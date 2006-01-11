@@ -69,7 +69,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analy
 
 #define USE_STANDARD_TYPES
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "erglob.h"		/* Include the error tables */
 #include "file_util.h"		/* for creating trace filename */
 #include "flags.h"		/* for OPTION_LIST, etc. */
