@@ -94,7 +94,7 @@
 #include "targ_sim.h"
 #include "tracing.h"
 #include "stblock.h"
-#include "config.h" 		// LANG_Recursive
+#include "config_global.h" 		// LANG_Recursive
 #include "wn_util.h"
 #include "wn_simp.h"
 #include "mempool.h"

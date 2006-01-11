@@ -73,7 +73,7 @@ static char *rcs_id = 	opt_rviwn_CXX"$Revision: 1.1.1.1 $";
 #include "stab.h"
 #include "wn.h"
 #include "wn_util.h"
-#include "config.h"
+#include "config_global.h"
 #include "cxx_memory.h"
 
 #include "w2op.h"

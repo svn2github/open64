@@ -61,7 +61,7 @@ static char *rcs_id = opt_estr_CXX"$Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "cxx_memory.h"
 
 #include "opt_base.h"

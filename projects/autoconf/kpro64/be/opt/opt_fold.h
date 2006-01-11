@@ -68,9 +68,7 @@ static char *opt_foldrcs_id = opt_fold_INCLUDED"$Revision: 1.1.1.1 $";
 #include "opt_htable.h"		// for CODEREP
 #endif
 
-#ifndef config_INCLUDED
-#include "config.h"		// for Force_IEEE_Comparisons
-#endif
+#include "config_global.h"	// for Force_IEEE_Comparisons
 
 class FOLD
 {

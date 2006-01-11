@@ -74,7 +74,7 @@ static char *rcs_id = 	opt_ssa_CXX"$Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "errors.h"
 #include "erglob.h"
 #include "glob.h"	// for Cur_PU_Name

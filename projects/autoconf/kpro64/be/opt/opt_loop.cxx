@@ -86,7 +86,7 @@ static char *rcs_id = 	opt_loop_CXX"$Revision: 1.1.1.1 $";
 #include <algorithm>
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "errors.h"
 #include "erglob.h"
 #include "tracing.h"

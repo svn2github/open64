@@ -62,7 +62,7 @@
 #include <sys/elf_whirl.h>	    /* for WHIRL_REVISION */
 
 #include "defs.h"
-#include "config.h"		/* for Run_wopt, etc.		*/
+#include "config_global.h"	/* for Run_wopt, etc.		*/
 #include "config_debug.h"	/* for DEBUG_Ir_Version_Check	*/
 #include "glob.h"		/* for Irb_File_Name, Ipa_File_Name */
 #include "timing.h"		/* for T_Optimize_CU		*/

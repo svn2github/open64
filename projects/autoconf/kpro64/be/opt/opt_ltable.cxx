@@ -68,7 +68,7 @@
 #include "data_layout.h"
 #include "w2op.h"
 #include "wn_core.h"
-#include "config.h"
+#include "config_global.h"
 
 #include "opt_base.h"
 #include "opt_bb.h"

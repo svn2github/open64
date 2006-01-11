@@ -70,7 +70,7 @@ static char *rcs_id = 	opt_combine_CXX"$Revision: 1.1.1.1 $";
 
 #include <sys/types.h>
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_opt.h"
 #include "mempool.h"
 #include "tracing.h"

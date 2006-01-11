@@ -76,7 +76,7 @@ static char *rcs_id = 	opt_region_emit_CXX"$Revision: 1.1.1.1 $";
 #include "opt_htable.h"
 #include "opt_region_emit.h"
 #include "opt_mu_chi.h"
-#include "config.h"
+#include "config_global.h"
 
 #include "bitset.h"
 

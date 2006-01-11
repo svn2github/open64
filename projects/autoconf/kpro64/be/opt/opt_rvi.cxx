@@ -69,7 +69,7 @@ static char *rcs_id = 	opt_rvi_CXX"$Revision: 1.1.1.1 $";
 #include "defs.h"
 #include "errors.h"
 #include "erglob.h"
-#include "config.h"
+#include "config_global.h"
 #include "tracing.h"
 #include "wn.h"
 #include "wn_lower.h"

@@ -100,7 +100,7 @@
 #include "errors.h"
 #include "erbe.h"
 #include "stblock.h"
-#include "config.h"			// Alias_Pointer_Parms
+#include "config_global.h"			// Alias_Pointer_Parms
 #include "config_opt.h"
 #include "config_ipa.h"			// IPA_Enable_Alias_Class
 #include "region_util.h"		// RID, POINTS_TO_SET

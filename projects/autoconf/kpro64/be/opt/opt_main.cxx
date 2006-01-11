@@ -310,7 +310,7 @@
 #include "glob.h"		/* for Feedback_File_Name	*/
 #include "config_targ.h"
 #include "config_ipa.h"         /* IPA_Enable_Alias_Class       */
-#include "config.h"		/* Query_Skiplist		*/
+#include "config_global.h"	/* Query_Skiplist		*/
 #include "wn.h"
 #include "wn_simp.h"
 #include "wn_lower.h"

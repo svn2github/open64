@@ -72,7 +72,7 @@
 #define opt_ssu_CXX    "opt_ssu.cxx"
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "errors.h"
 #include "erglob.h"
 #include "glob.h"	// for Cur_PU_Name

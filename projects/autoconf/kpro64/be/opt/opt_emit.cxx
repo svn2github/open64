@@ -85,7 +85,7 @@ static char *rcs_id = 	opt_emit_CXX"$Revision: 1.1.1.1 $";
 #include "region_util.h"
 #include "pu_info.h"		// Set_PU_Info_state
 
-#include "config.h"
+#include "config_global.h"
 #include "opt_config.h"
 #include "opt_base.h"
 #include "opt_config.h"

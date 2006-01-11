@@ -112,7 +112,7 @@ static char *rcs_id = 	opt_tail_CXX"$Revision: 1.1.1.1 $";
 #include "opt_sym.h"
 #include "ttype.h"
 #include "wn.h"
-#include "config.h"
+#include "config_global.h"
 #include "stab.h"
 
 

@@ -93,7 +93,7 @@ static char *rcs_id = 	opt_wn_CXX"$Revision: 1.1.1.1 $";
 #include "opt_alias_interface.h"
 #include "opt_points_to.h"
 #include "opt_alias_rule.h"
-#include "config.h"		// Alias_Pointer_Parms
+#include "config_global.h"	// Alias_Pointer_Parms
 #include "config_opt.h"		// for Delay_U64_Lowering
 #include "opt_cvtl_rule.h"
 #include "opt_main.h"
