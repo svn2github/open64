@@ -259,6 +259,11 @@
 static char *config_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#undef HAVE_CONFIG_H
+#endif
+
 #include "config_host.h"	/* in TARGET/com */
 #include "config_targ.h"	/* in TARGET/com */
 #ifndef linux
