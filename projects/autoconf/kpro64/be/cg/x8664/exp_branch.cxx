@@ -43,7 +43,7 @@
 #include "erglob.h"
 #include "ercg.h"
 #include "tracing.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_TARG.h"
 #include "tn.h"
 #include "cg_flags.h"

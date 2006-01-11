@@ -46,7 +46,7 @@
 #include "op_list.h"
 #include "ti_res_count.h"
 #include "register.h"
-#include "config.h"
+#include "config_global.h"
 #include "tn_prop.h"
 #include "bb.h"
 #include "cgtarget.h"

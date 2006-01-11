@@ -70,7 +70,7 @@
 #include "flags.h"
 #include "tracing.h"
 #include "util.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_asm.h"
 #include "config_list.h"
 #include "config_debug.h"

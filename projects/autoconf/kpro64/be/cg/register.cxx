@@ -63,7 +63,7 @@
 #include "errors.h"
 #include "tracing.h"
 #include "mempool.h"
-#include "config.h"
+#include "config_global.h"
 #include "glob.h"
 #include "util.h"
 #include "calls.h"

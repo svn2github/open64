@@ -70,7 +70,7 @@
 #include "erbe.h"
 #include "erglob.h"
 #include "tracing.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_TARG.h"
 #include "topcode.h"
 #include "targ_isa_lits.h"

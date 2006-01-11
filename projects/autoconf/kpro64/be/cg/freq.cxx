@@ -58,7 +58,7 @@
 #include <alloca.h>
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "errors.h"
 #include "mempool.h"
 #include "tracing.h"

@@ -73,7 +73,7 @@
 #include <stdarg.h>
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "tracing.h"
 #include "erglob.h"
 #include "printsrc.h"

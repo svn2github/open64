@@ -44,7 +44,7 @@
 #include "glob.h"
 #include "flags.h"
 #include "tracing.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_asm.h"
 #include "be_util.h"
 #include "cgir.h"

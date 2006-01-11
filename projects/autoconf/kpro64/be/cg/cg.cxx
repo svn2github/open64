@@ -60,7 +60,7 @@
 #include "cg.h"
 #include "cg_internal.h"
 #include "cg_flags.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_list.h"
 #include "tracing.h"
 #include "timing.h"

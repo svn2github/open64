@@ -59,7 +59,7 @@
 #include "irbdata.h"
 #include "strtab.h"
 #include "stblock.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_opt.h"
 #include "xstats.h"
 #include "eh_region.h"

@@ -57,7 +57,7 @@
 #include <alloca.h>
 #include <math.h>
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_TARG.h"
 #include "mempool.h"
 #include "bb.h"

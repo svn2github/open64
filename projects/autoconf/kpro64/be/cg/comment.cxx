@@ -56,7 +56,7 @@
  */
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "errors.h"
 #include "config_asm.h"
 

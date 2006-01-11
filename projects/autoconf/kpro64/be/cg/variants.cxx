@@ -55,7 +55,7 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/cg/v
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "glob.h"
 #include "erglob.h"
 #include "erbe.h"

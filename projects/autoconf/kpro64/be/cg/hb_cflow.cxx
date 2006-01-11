@@ -38,7 +38,7 @@
 
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "cg_flags.h"
 #include "bb.h"
 #include "hb.h"

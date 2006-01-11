@@ -62,7 +62,7 @@
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "erglob.h"
 #include "ercg.h"
 #include "glob.h"

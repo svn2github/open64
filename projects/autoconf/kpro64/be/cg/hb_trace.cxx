@@ -38,7 +38,7 @@
 
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "mempool.h"
 #include "tracing.h"
 #include "timing.h"

@@ -39,7 +39,7 @@
 
 #include <queue>
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "tracing.h"
 #include "timing.h"
 #include "cgir.h"

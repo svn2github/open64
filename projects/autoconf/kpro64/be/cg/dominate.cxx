@@ -52,7 +52,7 @@
  */
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "erglob.h"
 #include "erbe.h"
 #include "tracing.h"

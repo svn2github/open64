@@ -72,7 +72,7 @@
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_asm.h"
 #include "config_TARG.h"
 #include "config_debug.h"

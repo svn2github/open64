@@ -65,7 +65,7 @@
 #include <stdio.h>
 #include "defs.h"
 #include "symtab.h"
-#include "config.h"
+#include "config_global.h"
 #include "tracing.h"
 #include "erglob.h"
 #include "const.h"

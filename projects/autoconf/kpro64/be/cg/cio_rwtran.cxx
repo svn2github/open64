@@ -142,7 +142,7 @@ static const char rcs_id[] = "";
 #include <alloca.h>
 #include "defs.h"
 #include "resource.h"
-#include "config.h"
+#include "config_global.h"
 #include "errors.h"
 #include "mempool.h"
 #include "cg.h"

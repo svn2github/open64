@@ -61,7 +61,7 @@
 #include "erglob.h"
 #include "ercg.h"
 #include "glob.h"
-#include "config.h"
+#include "config_global.h"
 #include "xstats.h"
 #include "bitset.h"
 #include "wn.h"

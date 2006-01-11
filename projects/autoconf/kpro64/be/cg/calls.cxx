@@ -66,7 +66,7 @@
 #include "glob.h"
 #include "tracing.h"
 #include "config_targ.h"
-#include "config.h"
+#include "config_global.h"
 
 #include "symtab.h"
 #include "strtab.h"

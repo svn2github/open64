@@ -127,7 +127,7 @@
 #include <set>
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "errors.h"
 #include "mempool.h"
 #include "cg_flags.h"

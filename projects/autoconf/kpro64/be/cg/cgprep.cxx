@@ -69,7 +69,7 @@
 #include "register.h"
 #include "op_list.h"
 #include "cg_loop.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_TARG.h"
 #include "cg.h"
 #include "tracing.h"
