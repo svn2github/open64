@@ -67,6 +67,11 @@
 static char *defs_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/defs.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#undef HAVE_CONFIG_H
+#endif
+
 #define PROTOTYPES 1
 /* We always want Insist error messages: */
 #define Insist_On 1
@@ -193,7 +198,7 @@ extern "C" {
 
 
 /* Allow inline keyword, making it 'static' for debugging if Is_True_On */
-#ifdef _LANGUAGE_C
+#ifndef __cplusplus
 #ifndef inline
 #ifdef Is_True_On
 #define inline static
