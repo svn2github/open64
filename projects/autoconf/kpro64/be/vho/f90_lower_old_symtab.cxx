@@ -44,7 +44,7 @@
 #include "wn_util.h"
 #include "stblock.h"
 #include "ir_reader.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_opt.h"
 #include "targ_sim.h"
 #include "targ_const.h"

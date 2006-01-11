@@ -45,7 +45,7 @@
 #ifndef FRONT_END
 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_opt.h"
 #include "mempool.h"
 #include "wn.h"
