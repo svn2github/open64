@@ -55,9 +55,9 @@
  */
 
 #include <sys/types.h>		    // for pid_t
+#include <sys/wait.h>		    // for waitpid()
 #include <unistd.h>		    // for fork(), pipe(), etc.
 #include <signal.h>		    // for SIGINT
-#include <wait.h>		    // for waitpid()
 #include <stdarg.h>                 // for varargs.
 #include <time.h>
 #include <string.h>
