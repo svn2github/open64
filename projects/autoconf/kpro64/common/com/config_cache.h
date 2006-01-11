@@ -362,7 +362,7 @@ typedef struct MHD_LEVEL {
   INT32	  TLB_Miss_Penalty;
   BOOL	  TLB_MP_Set;
 
-#if defined(_LANGUAGE_C_PLUS_PLUS)
+#if defined(__cplusplus)
   void      operator = (const MHD_LEVEL&);
   void      Print(FILE* f) const;
   void      Merge_Options(const MHD_LEVEL& o);
@@ -407,7 +407,7 @@ typedef struct MHD {
   BOOL      TLB_NoBlocking_Model;
   MHD_LEVEL L[MHD_MAX_LEVELS];
 
-#if defined(_LANGUAGE_C_PLUS_PLUS)
+#if defined(__cplusplus)
   INT       First();
   INT       Next(INT);
   void      Merge_Options(const MHD&);
