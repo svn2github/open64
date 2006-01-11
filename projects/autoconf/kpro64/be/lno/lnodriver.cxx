@@ -69,7 +69,7 @@
 #include <sys/types.h>	 
 #include "pu_info.h" 
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_lno.h"
 #include "config_debug.h"	    /* for DEBUG_Ir_Version_Check */
 #include "errors.h"

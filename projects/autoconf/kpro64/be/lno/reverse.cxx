@@ -57,7 +57,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/reverse
 #include "stdlib.h"
 #include "lwn_util.h"
 #include "strtab.h"
-#include "config.h"
+#include "config_global.h"
 #include "optimizer.h"
 #include "opt_du.h"
 #include "name.h"

@@ -86,7 +86,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/zmult.c
 #include "lwn_util.h"
 #include "opt_du.h"
 #include "reduc.h"
-#include "config.h"
+#include "config_global.h"
 #include "targ_const.h"
 
 static BOOL Process_If(WN *if_wn, ARRAY_DIRECTED_GRAPH16 *dep_graph);

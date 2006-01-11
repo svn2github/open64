@@ -56,7 +56,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/move.cx
 
 #include "pu_info.h"
 #include "lnoutils.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_cache.h"
 #include "config_lno.h"
 #include "lnopt_main.h"

@@ -36,7 +36,7 @@
 #include <elf.h>                    /* for wn.h */
 #include "wn.h"                     /* for WN */
 #include "defs.h"                   /* for pu_info.h */
-#include "config.h"                 /* for LNO_Path, etc. */
+#include "config_global.h"          /* for LNO_Path, etc. */
 #include "pu_info.h"                /* for PU_Info */
 #include "anl_driver.h"             /* for Anl_Process_Command_Line, etc. */
 

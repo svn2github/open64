@@ -93,7 +93,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lego_lo
 #include "lego_pragma.h"
 #include "scalar_expand.h"
 #include "lego_affinity.h"
-#include "config.h"
+#include "config_global.h"
 #include "prompf.h"
 #include "anl_driver.h"
 #include "region_util.h"

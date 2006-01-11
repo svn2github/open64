@@ -41,7 +41,7 @@
 #include <sys/types.h>
 
 #include "lnopt_main.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_lno.h"
 #include "strtab.h"
 #include "stab.h"

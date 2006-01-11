@@ -97,7 +97,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/can.cxx
 #include "erbe.h"
 #include "snl_utils.h"
 #include "lego_util.h"
-#include "config.h"
+#include "config_global.h"
 #include "be_util.h"
 
 extern BOOL Run_autopar_save; 

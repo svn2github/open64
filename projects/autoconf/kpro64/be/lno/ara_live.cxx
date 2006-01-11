@@ -74,7 +74,7 @@
 #include "lwn_util.h"
 #include "opt_alias_interface.h"
 #include "opt_du.h"
-#include "config.h"
+#include "config_global.h"
 #include "snl_xbounds.h"
 #include "debug.h"
 #include "parmodel.h"

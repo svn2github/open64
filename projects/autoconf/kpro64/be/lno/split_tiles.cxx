@@ -46,7 +46,7 @@
 #include "lwn_util.h"
 #include "lnoutils.h"
 #include "prompf.h"
-#include "config.h"
+#include "config_global.h"
 #include "debug.h"
 #include "glob.h"
 #include "lnopt_main.h"

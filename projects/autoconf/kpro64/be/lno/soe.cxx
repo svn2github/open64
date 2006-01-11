@@ -93,7 +93,7 @@
 #endif 
 
 #ifdef KEY
-#include "config.h"                                  // for Allow_wrap_around_opt
+#include "config_global.h"			// for Allow_wrap_around_opt
 #endif
 
 //-----------------------------------------------------------------------

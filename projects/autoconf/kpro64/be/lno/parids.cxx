@@ -48,7 +48,7 @@
 #include "prompf.h"
 #include "anl_driver.h"
 #include "lego_util.h"
-#include "config.h"
+#include "config_global.h"
 #include "fiz_fuse.h"
 #include "debug.h"
 #include "glob.h"

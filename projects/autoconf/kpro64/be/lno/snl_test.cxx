@@ -77,7 +77,7 @@ static char *rcs_id =   snl_test_CXX "$Revision: 1.1.1.1 $";
 #include "fiz_fuse.h"
 #include "array_bounds.h"
 #include "small_trips.h" 
-#include "config.h"
+#include "config_global.h"
 #include "split_tiles.h"
 
 static void SNL_Optimize_Bounds_With_Access_Vectors(WN* wn_loop, 

@@ -346,7 +346,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/model.c
 #include "lwn_util.h"
 #include "cache_model.h"
 #include "reduc.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_TARG.h"
 #include "config_cache.h"
 #include "config_lno.h"

@@ -55,7 +55,7 @@
 #include "opt_du.h"
 #include "lnoutils.h"
 #include "lwn_util.h"
-#include "config.h" 
+#include "config_global.h" 
 #include "config_lno.h"
 #include "anl_driver.h"
 #include "prompf.h"

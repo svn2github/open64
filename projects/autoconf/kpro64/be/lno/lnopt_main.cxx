@@ -99,7 +99,7 @@
 #include "soe.h"
 #include "cond.h"
 #include "lnopt_main.h"
-#include "config.h"
+#include "config_global.h"
 #include "be_util.h"
 #include "aequiv.h"
 #include "sclrze.h"

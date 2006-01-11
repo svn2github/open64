@@ -140,7 +140,7 @@
 //          opt_du.h
 //          opt_alias_interface.h
 
-#include "config.h" 
+#include "config_global.h" 
 //          config_host.h
 //          config_targ.h
 

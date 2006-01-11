@@ -74,7 +74,7 @@
 #include "const.h"
 #include "targ_const.h"
 #include "parmodel.h"
-#include "config.h"
+#include "config_global.h"
 #include "prompf.h"
 #include "anl_driver.h"
 #include "stab.h"
