@@ -36,7 +36,7 @@
 #include <elf.h>                    /* for wn.h */
 #include "wn.h"                     /* for WN */
 #include "defs.h"		    /* for pu_info.h */ 
-#include "config.h"                 /* for LNO_Path, etc. */
+#include "config_global.h"          /* for LNO_Path, etc. */
 #include "pu_info.h"		    /* for PU_Info */ 
 #include "w2c_driver.h"             /* for W2C_Process_Command_Line, etc. */
 #include "w2f_driver.h"             /* for W2F_Process_Command_Line, etc. */

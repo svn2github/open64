@@ -55,7 +55,7 @@
 
 #include "defs.h"            // Basic types, such as INT32
 
-#include "config.h"
+#include "config_global.h"
 #include "erglob.h"          // For errors.h and EC definitions
 #include "glob.h"            // Irb_File_Name and Src_File_Name
 #include "wn.h"              // WN nodes
