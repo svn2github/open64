@@ -91,7 +91,7 @@
 #include <limits.h>
 #include <fp_class.h>
 #include "defs.h"
-#include "config.h"
+#include "config_global.h"
 #include "config_asm.h"
 #include "erglob.h"
 #include "tracing.h"

@@ -64,7 +64,7 @@
 #include "file_util.h"		    /* for New_Extension() */
 #include "phase.h"		    /* for phase_ogroup_table */
 #include "flags.h"		    /* for Process_Command_Line_Group() */
-#include "config.h"		    /* for Debug_Level */
+#include "config_global.h"	    /* for Debug_Level */
 #include "config_list.h"
 #include "timing.h"		    /* for Initialize_Timing() */
 #include "tracing.h"		    /* for Set_Trace() */

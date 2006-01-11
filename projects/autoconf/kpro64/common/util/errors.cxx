@@ -97,7 +97,7 @@ extern "C" {
 #include <cmplrs/rcodes.h>
 #include "defs.h"
 #ifdef AWAITING_NEWCOMP /* needed? */
-#include "config.h"
+#include "config_global.h"
 #endif /* AWAITING_NEWCOMP */
 #define IN_ERRORS_C
 #include "errors.h"
