@@ -57,7 +57,7 @@
 #include "erglob.h"
 #include "errors.h"
 #include "err_host.tab"
-#include "config.h"
+#include "config_global.h"
 #include "config_opt.h"
 #include "tracing.h"
 #include "profile_com.h"
