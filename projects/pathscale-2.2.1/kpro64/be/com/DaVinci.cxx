@@ -763,9 +763,9 @@ DaVinci::DaVinci(MEM_POOL *m, FILE *_trace_fp, bool usage_check) :
   }
   _display_ok = true;
 
-  Emit_Do( "set(font_size(6))" );  // more? provide external control.
-  Emit_Do( "set(gap_height(40))" );
-  Emit_Do( "set(gap_width(20))" );
+  Emit_Do( "set(font_size(10))" );  // more? provide external control.
+  Emit_Do( "set(gap_height(10))" );
+  Emit_Do( "set(gap_width(10))" );
 }
 
 DaVinci::~DaVinci()
