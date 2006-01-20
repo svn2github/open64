@@ -84,7 +84,7 @@ BOOL Show_OPT_Warnings = TRUE;          /* Display OPT warning messages */
 OPTION_LIST *Alias_Option = NULL;
 BOOL Alias_Pointer_Parms = TRUE;        /* Parms ptr indep? */
 BOOL Alias_Pointer_Cray = FALSE;        /* Cray pointer semantics? */
-BOOL Alias_Pointer_Types = FALSE;	/* Ptrs to distinct basic types indep? */
+BOOL Alias_Pointer_Types = TRUE;	/* Ptrs to distinct basic types indep? */
 BOOL Alias_Not_In_Union  = FALSE;	/* Ptrs point to non-union types */
 BOOL Alias_Pointer_Strongly_Typed = FALSE; /* Ptrs to distinct types indep? */
 BOOL Alias_Pointer_Named_Data = FALSE;	/* No pointers to named data? */
@@ -175,6 +175,7 @@ SKIPLIST *Goto_Skip_List = NULL;		/* Processed list */
 #endif
 
 /***** Miscellaneous -OPT: group options *****/
+BOOL Olegacy = FALSE;    /* -OPT:Olegacy to resume original default flag*/
 char *Ofast = NULL;		/* -OPT:Ofast platform name */
 BOOL OPT_Pad_Common = FALSE;	/* Do internal common block padding? */
 BOOL OPT_Reorg_Common = FALSE;	/* Do common block reorganization (split)? */
@@ -673,6 +674,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL, OV_VISIBLE,     FALSE, "ansi_setjmp",           "ansi_setjmp",
     0, 0, 0,  &LANG_Ansi_Setjmp_On,   &LANG_Ansi_Setjmp_Set,
     "C/C++: enable optimization of functions with calls to setjmp" },
+
+  { OVK_BOOL,   OV_SHY,       FALSE, "Olegacy",    "Olegacy",
+    0, 0, 0,    &Olegacy,               NULL,
+    "default options for performance on shared and alias" },
 
 #ifdef __linux__
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wfe_dfe",	"wfe_dfe",
