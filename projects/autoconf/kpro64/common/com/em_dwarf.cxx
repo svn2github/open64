@@ -44,7 +44,6 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 
 #include <stdio.h>
 
-#include "libelf/libelf.h"
 #include "elf_stuff.h"
 
 #define	USE_STANDARD_TYPES 1

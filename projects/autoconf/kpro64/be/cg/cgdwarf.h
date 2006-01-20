@@ -41,7 +41,7 @@
 #ifndef cgdwarf_INCLUDED
 #define cgdwarf_INCLUDED
 
-#include "libelf/libelf.h"
+#include <libelf.h>
 #include <libdwarf.h>
 #include "dwarf_DST_mem.h"
 

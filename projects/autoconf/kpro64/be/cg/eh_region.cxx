@@ -48,7 +48,6 @@
 
 #include <algorithm>
 #include <vector>
-#include "libelf/libelf.h"
 #include "dwarf_stuff.h"
 #include "defs.h"
 #include "errors.h"
