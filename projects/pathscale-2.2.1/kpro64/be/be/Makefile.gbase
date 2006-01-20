@@ -760,5 +760,5 @@ install.pure:: pure
 
 ifeq (gcc,$(firstword $(CCNAME)))
 # work around gcc bug optimizing this file on ia32
-flags.o: OPTIMIZER = -O0
+flags.o: OPTIMIZER = -O0 -g
 endif
