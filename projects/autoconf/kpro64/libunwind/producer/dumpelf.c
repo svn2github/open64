@@ -39,30 +39,12 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <elf.h>
 #include <sys/unwindP.h>
 
-#include <../common/com/defs.h>
-#include <../common/com/em_elf.h>
-
-#ifndef ELF64_FSZ_WORD
-#define ELF64_FSZ_WORD	sizeof(Elf64_Word)
-#endif
-#ifndef ELF64_FSZ_XWORD
-#define ELF64_FSZ_XWORD	sizeof(Elf64_Xword)
-#endif
-
-#ifndef R_IA64_SEGREL64MSB
-#define R_IA64_SEGREL64MSB	0x5e		/* word64 MSB: @segrel(S + A) */
-#endif
-
-#ifndef SHT_IA_64_UNWIND
-#define SHT_IA_64_UNWIND	(SHT_LOPROC + 1)
-#endif
-
-#ifndef SHF_IRIX_NOSTRIP
-#define	SHF_IRIX_NOSTRIP	0
-#endif
+#define USE_STANDARD_TYPES 1
+#include "elf_stuff.h"
+#include "../common/com/defs.h"
+#include "../common/com/em_elf.h"
 
 
 /* unwind table and/or unwind info dumping to elf */
@@ -86,12 +68,14 @@ __unw_error_t unwind_dump2elf(char *unwind_table_ptr,
 	}
 
 	/* create elf sections */
-	scninfo_table = Em_New_Section(".IA_64.unwind", SHT_IA_64_UNWIND,
-				SHF_ALLOC | SHF_LINK_ORDER | SHF_IRIX_NOSTRIP,
+	scninfo_table = Em_New_Section(ELF_IA_64_UNWIND,
+				SHT_IA_64_UNWIND,
+				SHF_ALLOC | SHF_MIPS_NOSTRIP,
 				sizeof(__unw_table_entry_t),
 				ELF64_FSZ_WORD);
-	scninfo_info = Em_New_Section(".IA_64.unwind_info", SHT_PROGBITS,
-				SHF_ALLOC | SHF_IRIX_NOSTRIP,
+	scninfo_info = Em_New_Section(ELF_IA_64_UNWIND_INFO,
+				SHT_IA_64_UNWIND_INFO,
+				SHF_ALLOC | SHF_MIPS_NOSTRIP,
 				sizeof(__unw_dbl_word_t),
 				ELF64_FSZ_XWORD);
 
@@ -110,20 +94,20 @@ __unw_error_t unwind_dump2elf(char *unwind_table_ptr,
 	for (i = 0; i < unwind_table_size_in_entries; i++) {
 		Em_Add_Bytes_To_Scn(scninfo_table, (void *)&zero_offset,
 			(Elf64_Xword)sizeof(__unw_addr_t), ELF64_FSZ_WORD);
-		Em_Add_New_Rela(symindex_text, (unsigned char)R_IA64_SEGREL64MSB,
+		Em_Add_New_Rela(symindex_text, R_IA_64_SEGREL64MSB,
 			(Elf64_Addr)(i*sizeof(__unw_table_entry_t)),
 			(Elf64_Sxword)unwind_table[i]._start,
 			scninfo_table);
 		Em_Add_Bytes_To_Scn(scninfo_table, (void *)&zero_offset,
 			(Elf64_Xword)sizeof(__unw_addr_t), ELF64_FSZ_WORD);
-		Em_Add_New_Rela(symindex_text, (unsigned char)R_IA64_SEGREL64MSB,
+		Em_Add_New_Rela(symindex_text, R_IA_64_SEGREL64MSB,
 			(Elf64_Addr)(i*sizeof(__unw_table_entry_t) +
 							1*sizeof(__unw_addr_t)),
 			(Elf64_Sxword)unwind_table[i]._end,
 			scninfo_table);
 		Em_Add_Bytes_To_Scn(scninfo_table, (void *)&zero_offset,
 			(Elf64_Xword)sizeof(__unw_addr_t), ELF64_FSZ_WORD);
-		Em_Add_New_Rela(symindex_info, (unsigned char)R_IA64_SEGREL64MSB,
+		Em_Add_New_Rela(symindex_info, R_IA_64_SEGREL64MSB,
 			(Elf64_Addr)(i*sizeof(__unw_table_entry_t) +
 							2*sizeof(__unw_addr_t)),
 			(Elf64_Sxword)unwind_table[i]._info,

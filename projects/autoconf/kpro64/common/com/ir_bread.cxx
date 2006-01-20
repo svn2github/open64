@@ -43,12 +43,12 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 
-#include <elf.h>
 #include <unistd.h>		    /* for close(), etc. */
 #include <sys/stat.h>		    /* for fstat() */
 #include <sys/mman.h>		    /* for mmap() */
 #include <fcntl.h>		    /* for open() */
 #include <errno.h>		    /* for error code */
+#include "elf_stuff.h"
 #include <sys/elf_whirl.h>	    /* for WHIRL sections */
 
 #define USE_STANDARD_TYPES	    /* override unwanted defines in "defs.h" */
@@ -85,21 +85,6 @@
 #include "ir_bwrite.h"
 #include "ir_bcom.h"
 #include "ir_bread.h"
-
-/* ELF file is a 32-bit or 64-bit WHIRL file */
-#define ET_IR           (ET_LOPROC + 0)
-
-#ifndef IS_ELF
-#define IS_ELF(e)       \
-        ((e).e_ident[EI_MAG0] == ELFMAG0 && (e).e_ident[EI_MAG1] == ELFMAG1 && \
-         (e).e_ident[EI_MAG2] == ELFMAG2 && (e).e_ident[EI_MAG3] == ELFMAG3)
-#endif
-
-#ifndef SHT_MIPS_WHIRL
-#define SHT_MIPS_WHIRL       0x70000026
-#endif
-
-#define ELF_COMMENT    ".comment"
 
 #if defined(BACK_END)
 #include "xstats.h"

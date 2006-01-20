@@ -43,7 +43,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <elf.h>
 #include <fcntl.h> 
 #include <errno.h>
 #include <signal.h>
@@ -60,6 +59,7 @@
 #include "stab.h"                  
 #include "irbdata.h"              
 #include "dwarf_DST_mem.h"
+#include "elf_stuff.h"
 #include "pu_info.h"
 #include "config_targ.h" 
 #include "config_elf_targ.h"
@@ -68,21 +68,6 @@
 #include "ir_bcom.h"
 #include "ipa_lno_info.h"
 #include "ipl_summary.h"
-
-// Put this here for now.  Later move it on to /usr/include/sys/elf.h and 
-// change SHT_MIPS_NUM to 42.  
-#define SHT_MIPS_IPALNO	(SHT_LOPROC + 42)
-
-/* ELF file is a 32-bit or 64-bit WHIRL file */
-#define ET_IR		(ET_LOPROC + 0)
-
-#ifndef IS_ELF
-#define IS_ELF(e)	\
-	((e).e_ident[EI_MAG0] == ELFMAG0 && (e).e_ident[EI_MAG1] == ELFMAG1 && \
-	 (e).e_ident[EI_MAG2] == ELFMAG2 && (e).e_ident[EI_MAG3] == ELFMAG3)
-#endif
-
-#define ELF_SHSTRTAB	".shstrtab"
 
 #ifdef linux
 #define MAPPED_SIZE 0x400000

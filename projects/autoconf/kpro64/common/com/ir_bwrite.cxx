@@ -43,12 +43,12 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 
-#include <elf.h>
 #include <unistd.h>		    /* for unlink() */
 #include <fcntl.h>		    /* for open() */
 #include <sys/mman.h>		    /* for mmap() */
 #include <signal.h>		    /* for signal() */
 #include <errno.h>		    /* for system error code */
+#include "elf_stuff.h"
 #include <sys/elf_whirl.h>	    /* for WHIRL sections' sh_info */
 #include <cmplrs/rcodes.h>
 
@@ -87,17 +87,6 @@
 #include "ir_bcom.h"
 #include "ir_bread.h"
 #include "tracing.h"                /* TEMPORARY FOR ROBERT'S DEBUGGING */
-
-#define ET_IR           (ET_LOPROC + 0)
-
-#ifndef SHT_MIPS_WHIRL
-#define SHT_MIPS_WHIRL       0x70000026
-#endif
-
-#define ELF_COMMENT	".comment"
-#define ELF_SHSTRTAB	".shstrtab"
-#define ELF_STRTAB	".strtab"
-#define ELF_SYMTAB	".symtab"
 
 #ifdef BACK_END
 #include "glob.h"
