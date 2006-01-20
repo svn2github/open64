@@ -62,10 +62,8 @@
 #include <sys/types.h>
 #include <stdio.h>
 #endif
-#include <bstring.h>
 #include "elf_stuff.h"
 #include <elfaccess.h>
-#include "libelf/libelf.h"
 #include <stdlib.h>
 #include <cmplrs/elf_interfaces.h>
 
@@ -249,7 +247,7 @@ Initialize_Interface_Description(
   INTERFACE_SCN *desc,		/* modified based on inputs */
   ST *symbol )			/* symbol to associate with desc */
 {
-  bzero( desc, sizeof(*desc) );
+  memset(desc, 0, sizeof(*desc));
 
   if ( symbol != NULL ) {
     TY_IDX sym_type = ST_pu_type(symbol);
@@ -300,7 +298,7 @@ Is_Duplicate_Interface_Description( INTERFACE_SCN *desc )
 	  tmpiface != NULL;
 	  tmpiface = pINTERFACE_SCN_next(tmpiface) )
     {
-      if ( bcmp(tmpiface,desc,sizeof(*desc)) == 0 )
+      if ( memcmp(tmpiface,desc,sizeof(*desc)) == 0 )
 	return ( TRUE );
 
       /* TODO: When we start adding parameters, we can do even
@@ -606,7 +604,7 @@ Add_Parameter_Descriptor(
 #endif /* IFACE_SCN_FULL_DEBUG */
 
   pd = TYPE_SRC_ALLOC(PARM_DESCRIPTOR);
-  bzero(pd, sizeof(PARM_DESCRIPTOR));
+  memset(pd, 0, sizeof(PARM_DESCRIPTOR));
   if (pPARM_PROFILE_first(current_profile) == NULL) {
     pPARM_PROFILE_first(current_profile) = pd;
     pPARM_PROFILE_last(current_profile) = pd;
@@ -639,7 +637,7 @@ Add_Result_Descriptor(
   mUINT8 nbytes;
 
   pd = TYPE_SRC_ALLOC(PARM_DESCRIPTOR);
-  bzero(pd, sizeof(PARM_DESCRIPTOR));
+  memset(pd, 0, sizeof(PARM_DESCRIPTOR));
   nbytes = Classify_Type(pd, ret_type, 0);
   pPARM_PROFILE_parm_count(current_profile) += 1;
   pPARM_PROFILE_var_size(current_profile) += nbytes;
@@ -685,7 +683,7 @@ Set_Parameter_Info(
                     : Setup_Output_Parameter_Locations(func_type);
 
   pp = TYPE_SRC_ALLOC(PARM_PROFILE);
-  bzero(pp, sizeof(PARM_PROFILE));
+  memset(pp, 0, sizeof(PARM_PROFILE));
 
   /* Todo:  share this code with Calc_Actual_Area??? */
 
@@ -1019,7 +1017,7 @@ Emit_Interface_Scn( INTERFACE_SCN *iface_scn )
     
   if (need_auxiliary_pcnt)
     pINTERFACE_SCN_eid(iface_scn).pcnt = 255;
-  bcopy(&pINTERFACE_SCN_eid(iface_scn), idp, 8);
+  memcpy(idp, &pINTERFACE_SCN_eid(iface_scn), 8);
   idp += 8;
     
 
@@ -1048,7 +1046,7 @@ Emit_Interface_Scn( INTERFACE_SCN *iface_scn )
       *(idp++) = (pPARM_DESCRIPTOR_fundamental_type(pd));
       
       if (pPARM_DESCRIPTOR_flags(pd) & PDMF_SIZE) {
-	bcopy(&pPARM_DESCRIPTOR_size(pd), idp, 4);
+	memcpy(idp, &pPARM_DESCRIPTOR_size(pd), 4);
 	idp += 4;
       }
       
@@ -1068,7 +1066,7 @@ Emit_Interface_Scn( INTERFACE_SCN *iface_scn )
       *(idp++) = (pPARM_DESCRIPTOR_fundamental_type(pd));
       
       if (pPARM_DESCRIPTOR_flags(pd) & PDMF_SIZE) {
-	bcopy(&pPARM_DESCRIPTOR_size(pd), idp, 4);
+	memcpy(idp, &pPARM_DESCRIPTOR_size(pd), 4);
 	idp += 4;
       }
       
@@ -1164,7 +1162,7 @@ Interface_Scn_Begin_File( void )
   }
 
   /* init a hash table to hold the entries until we're done */
-  bzero( Iface_Scn_Hash_Table, sizeof(Iface_Scn_Hash_Table) );
+  memset(Iface_Scn_Hash_Table, 0, sizeof(Iface_Scn_Hash_Table));
   Iface_Scn_Hash_Count = 0;
 }
 

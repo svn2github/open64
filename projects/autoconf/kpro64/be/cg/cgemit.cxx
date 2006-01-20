@@ -53,6 +53,15 @@
  * ====================================================================
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
@@ -61,13 +70,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <bstring.h>
 #include "elf_stuff.h"
 #include <elfaccess.h>
-#include <alloca.h>
-#include <stdlib.h>
 #include <cmplrs/rcodes.h>
-#include <stamp.h>
 #include <vector>
 
 #define	USE_STANDARD_TYPES 1
@@ -92,7 +97,7 @@
 #include "cgir.h"
 #include "import.h"
 #include "opt_alias_interface.h"	/* for Print_alias_info */
-#include "anl_driver.h"			/* for Anl_File_Path */
+#include "../prompf_anl/anl_driver.h"	/* for Anl_File_Path */
 #include "ti_asm.h"
 #include "ti_errors.h"
 #include "targ_proc_properties.h"
@@ -187,7 +192,7 @@ extern BOOL profile_arcs;
  * ====================================================================
  */
 
-#ifdef linux
+#ifndef __irix__
 BOOL CG_emit_asm_dwarf    = TRUE;
 BOOL CG_emit_unwind_info  = TRUE;
 #ifdef TARG_IA64
@@ -454,19 +459,19 @@ st_other_for_sym (ST *sym)
 
   switch (ST_export(sym)) {
     case EXPORT_HIDDEN:
-      symother = STO_HIDDEN;
+      symother = STV_HIDDEN;
       break;
     case EXPORT_PROTECTED:
-      symother = STO_PROTECTED;
+      symother = STV_PROTECTED;
       break;
     case EXPORT_INTERNAL:
-      symother = STO_INTERNAL;
+      symother = STV_INTERNAL;
       break;
     case EXPORT_OPTIONAL:
-      symother = STO_OPTIONAL;
+      symother = STV_DEFAULT;
       break;
     default:
-      symother = STO_DEFAULT;
+      symother = STV_DEFAULT;
       break;
   }
   return symother;
@@ -495,7 +500,7 @@ add_reloc_type (Elf64_AltRela *preloc, unsigned char reloc_type, pSCNINFO scn)
   if (REL64_type3(*preloc) != 0) {
     Elf64_Addr sv_offset = REL_offset(*preloc);
     Em_Add_New_Composite_Rela (preloc, scn);
-    bzero (preloc, sizeof (Elf64_Rela));
+    memset (preloc, 0, sizeof (Elf64_Rela));
     REL_offset(*preloc) = sv_offset;
     REL64_type(*preloc) = reloc_type;
   }
@@ -1635,7 +1640,7 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 		 * Usually, when val is small, 
 		 * we put val in instruction and use .rel.
 		 */
-	  	Em_Add_New_Rela (EMT_Put_Elf_Symbol (st), R_MIPS_GPREL, PC, 
+	  	Em_Add_New_Rela (EMT_Put_Elf_Symbol (st), R_MIPS_GPREL16, PC, 
 			val, PU_section);
 	      	val = 0;
 	  }
@@ -1650,7 +1655,7 @@ static INT r_assemble_binary ( OP *op, BB *bb, ISA_PACK_INST *pinst )
 	    FmtAssert (ISA_LC_Value_In_Class(val, LC_simm16),
 		("immediate value %lld too large for GPREL relocation", val));
 #endif
-	    Em_Add_New_Rel (EMT_Put_Elf_Symbol (st), R_MIPS_GPREL, PC,
+	    Em_Add_New_Rel (EMT_Put_Elf_Symbol (st), R_MIPS_GPREL16, PC,
 			  PU_section);
 	  }
 	}
@@ -6259,12 +6264,12 @@ EMT_Begin_File (
       unlink(Obj_File_Name);
     }
 
-    buff = (char *) alloca (strlen("be") + sizeof(INCLUDE_STAMP) + 
+    buff = (char *) alloca (strlen("be") + sizeof(PACKAGE_VERSION) + 
 			    strlen(ism_name) + strlen(Obj_File_Name) + 4);
     if (*ism_name != '\0')
-	sprintf(buff, "be::%s-%s:%s", INCLUDE_STAMP, ism_name, Obj_File_Name);
+	sprintf(buff, "be::%s-%s:%s", PACKAGE_VERSION, ism_name, Obj_File_Name);
     else
-	sprintf(buff, "be::%s:%s", INCLUDE_STAMP, Obj_File_Name);
+	sprintf(buff, "be::%s:%s", PACKAGE_VERSION, Obj_File_Name);
     Em_Add_Comment (buff);
     if ( ! DEBUG_Optimize_Space) {
     	buff = (char *) alloca (strlen("be-options") + strlen(options) + 4);
@@ -6292,7 +6297,7 @@ EMT_Begin_File (
       fputs ( "\t.set\tnomacro\n", Asm_File );
 #endif
     fprintf ( Asm_File, "\t%s  %s::%s\n", ASM_CMNT, process_name, 
-			    INCLUDE_STAMP );
+			    PACKAGE_VERSION );
     if (*ism_name != '\0')
     	fprintf ( Asm_File, "\t%s%s\t%s\n", ASM_CMNT, "ism", ism_name);
     List_Compile_Options ( Asm_File, "\t"ASM_CMNT, FALSE, TRUE, TRUE );
@@ -6415,7 +6420,7 @@ Emit_Options (void)
   // don't emit anything for symtab.s
   if (!Emit_Global_Data)
   {
-    fputs ("\t.ident\t\"#EKOPath Version " PSC_FULL_VERSION " :", Asm_File);
+    fputs ("\t.ident\t\"#EKOPath Version " PACKAGE_VERSION " :", Asm_File);
     fprintf (Asm_File, " %s compiled with : ", Src_File_Name);
     // 0th is 'be', (be_command_line_argc-1)th is filename
     for (INT cmds=1; cmds < be_command_line_argc-1; ++cmds)
@@ -6528,7 +6533,7 @@ EMT_End_File( void )
 				newname,
 				0 /* offset */, 
 				0 /* size */,
-				STB_GLOBAL, STT_OBJECT, STO_INTERNAL,
+				STB_GLOBAL, STT_OBJECT, STV_INTERNAL,
 				Em_Get_Section_Index (em_scn[STB_scninfo_idx(sym)].scninfo));
 		}
 		if (Assembly) {

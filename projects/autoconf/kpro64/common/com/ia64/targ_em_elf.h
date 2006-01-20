@@ -105,16 +105,16 @@ extern pSCNINFO Interface_Scn;
   /*
    * section names
    */
-#define SECT_OPTIONS_NAME IA64_OPTIONS
-#define SECT_EVENTS_NAME  IA64_EVENTS
-#define SECT_IFACE_NAME   IA64_INTERFACES
-#define SECT_CONTENT_NAME MIPS_CONTENT
-  
+#define SECT_OPTIONS_NAME ELF_IA64_OPTIONS
+#define SECT_EVENTS_NAME  ELF_IA64_EVENTS
+#define SECT_IFACE_NAME   ELF_IA64_INTERFACES
+#define SECT_CONTENT_NAME ELF_MIPS_CONTENT
+ 
 inline void
 Set_Elf_Version (unsigned char *e_ident)
 {
 	/* temporary version until final objects */
-	e_ident[EI_TVERSION] = EV_T_CURRENT;
+	e_ident[EI_VERSION] = EV_CURRENT;
 }
 
 #ifdef __cplusplus

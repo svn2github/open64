@@ -40,8 +40,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "elf_stuff.h"
+#include "defs.h"
+#include "em_elf.h"
 #include <elfaccess.h>
-#include "libelf/libelf.h"
 #include "libdwarf.h"
 #include "targ_em_dwarf.h"
 #include <assert.h>	// temporary

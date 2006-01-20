@@ -39,11 +39,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "libelf/libelf.h"
 #include <sys/unwindP.h>
 #include <list>
 #include "elf_stuff.h"
 #include <elfaccess.h>
+#include <libelf.h>
 
 #include "defs.h"
 #include "erglob.h"
@@ -829,7 +829,7 @@ Emit_Unwind_Directives_For_OP(OP *op, FILE *f)
 }
 
 
-
+#if 0
 static void
 Add_Prologue_Header (__unw_info_t *uinfo, UINT64 size)
 {
@@ -1049,6 +1049,7 @@ unwind_dump2asm (char *unwind_table_ptr,
 	last_info_size = unwind_info_size;
 	last_table_size = unwind_table_size;
 }
+#endif
 
 /* construct the fde for the current procedure. */
 extern Dwarf_P_Fde
@@ -1066,20 +1067,24 @@ Build_Fde_For_Proc (Dwarf_P_Debug dw_dbg, BB *firstbb,
 		    INT       low_pc,
 		    INT       high_pc)
 {
-  __unw_info_t *uinfo = NULL;
-  __unw_error_t st;
   Dwarf_Error dw_error;
   Dwarf_P_Fde fde;
+#if 0
+  __unw_info_t *uinfo = NULL;
+  __unw_error_t st;
+#endif
 
   if ( ! CG_emit_unwind_info) return NULL;
   if ( CG_emit_unwind_directives) return NULL;
   // else emit unwind info directly as data
 
+#if 0
   st = unwind_info_initialize(&uinfo, low_pc, high_pc);
   Is_True(st == __UNW_OK, ("unwind_info initialize error (%d)", st));
 
   // process info we've collected and create the unwind descriptors
   Create_Unwind_Descriptors (uinfo);
+#endif
 
 #if 0	// enable
   if (unwind_info_add_personality_routine_info (uinfo, 
@@ -1087,8 +1092,10 @@ Build_Fde_For_Proc (Dwarf_P_Debug dw_dbg, BB *firstbb,
     DevWarn ("Personality routine info not added: NULL unwind info");
 #endif
 
+#if 0
   st = unwind_info_finalize(uinfo);
   FmtAssert(st == __UNW_OK, ("unwind_info finalize error (%d)", st));
+#endif
 
   if (has_asm)
 	DevWarn("no unwind info cause PU has asm");

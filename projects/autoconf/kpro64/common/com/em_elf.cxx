@@ -54,18 +54,24 @@
  * ====================================================================
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <bstring.h>
 #include "elf_stuff.h"
 #include <elfaccess.h>
-#include "libelf/libelf.h"
-#include <stamp.h>
-#include <alloca.h>
+#include <libelf.h>
 #include <assert.h>
 #include <cmplrs/leb128.h>
 #include <cmplrs/elf_interfaces.h>
@@ -141,8 +147,8 @@ Increase_Data_Buffer_Size ( pSCNINFO scninfo, Elf64_Xword newsize )
   if ( newbuf == NULL ) {
     ErrMsg ( EC_No_Mem, "Increase_Data_Buffer_Size" );
   }
-  bzero ( newbuf + (INTPS) SCNINFO_limit(scninfo),
-	  newsize32 - (INT32) SCNINFO_limit(scninfo) );
+  memset(newbuf + (INTPS)SCNINFO_limit(scninfo), 0,
+	  newsize32 - (INT32)SCNINFO_limit(scninfo));
 
   SCNINFO_buffer(scninfo) = newbuf;
   SCNINFO_limit(scninfo) = newsize32;
@@ -1063,12 +1069,10 @@ Set_Current_Location (pSCNINFO scn, BOOL is_events, Elf64_Word ev_ofst)
 /* Add an interface descriptor to the .interfaces section. */
 
 void
-Em_Add_New_Interface ( 
-    Elf64_Word length, 
-    Elf64_Byte *data )
+Em_Add_New_Interface(Elf64_Word length, unsigned char *data)
 {
     if ( Interface_Scn == NULL) {
-	Interface_Scn = Em_New_Section (SECT_IFACE_NAME, SHT_IRIX_IFACE,
+	Interface_Scn = Em_New_Section (SECT_IFACE_NAME, SHT_MIPS_IFACE,
 		      SHF_NOSTRIP, ELF32_FSZ_WORD, ELF32_FSZ_WORD);
 	Em_Set_sh_link (Interface_Scn, SCNINFO_index(Symtab_Info));
     }
@@ -1090,9 +1094,9 @@ Em_Add_Comment (char *s)
 				      0, 0, sizeof(char));
     }
     if (strchr(s,':') == NULL) {
-	buff = (char *) alloca (strlen(s) + sizeof(INCLUDE_STAMP) + 
+	buff = (char *) alloca (strlen(s) + sizeof(PACKAGE_VERSION) + 
 				strlen(object_file_name) + 4);
-	sprintf(buff, "%s::%s:%s", s, INCLUDE_STAMP, object_file_name);
+	sprintf(buff, "%s::%s:%s", s, PACKAGE_VERSION, object_file_name);
     } else {
 	buff = s;
     }
@@ -1188,7 +1192,7 @@ Read_Section (pSCNINFO scninfo, Elf64_Word scndx)
     Elf_Scn *scn;
 
     /* initialize the SCNINFO to all zeros */
-    bzero (scninfo, sizeof(SCNINFO));
+    memset(scninfo, 0, sizeof(SCNINFO));
     scn = elf_getscn (Elf_Ptr, scndx);
     scndata = elf_getdata (scn, (Elf_Data *)0);
     elf_flagscn (scn, ELF_C_SET, ELF_F_DIRTY);
@@ -1337,7 +1341,7 @@ pSCNINFO Em_New_Section (
     scninfo = (pSCNINFO) malloc (sizeof (SCNINFO));
     if (scninfo == NULL) 
 	ErrMsg ( EC_No_Mem, "Em_New_Section" );
-    bzero (scninfo, sizeof(SCNINFO));
+    memset(scninfo, 0, sizeof(SCNINFO));
     scn = Create_New_Section (scnname, scntype, scnflags, scnentsize);
     SCNINFO_scnptr(scninfo) = scn;
     SCNINFO_align(scninfo) = scnalign;
