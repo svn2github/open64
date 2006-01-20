@@ -1,1 +1,1 @@
-SUBDIRS = be
+SUBDIRS = be cg

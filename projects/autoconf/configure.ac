@@ -228,6 +228,7 @@ AC_CONFIG_FILES([Makefile
 		 kpro64/arith/Makefile
 		 kpro64/be/Makefile
 		 kpro64/be/be/Makefile
+		 kpro64/be/cg/Makefile
 		 kpro64/common/Makefile
 		 kpro64/libcif/Makefile
 		 kpro64/libcmplrs/Makefile
