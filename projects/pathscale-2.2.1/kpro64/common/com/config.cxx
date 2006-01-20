@@ -302,6 +302,10 @@ BOOL Malloc_Free_On     = TRUE;
 BOOL Alloca_Dealloca_On = TRUE;
 BOOL Barrier_Lvalues_On = TRUE;
 
+BOOL Use_Call_Shared_Link = FALSE;
+BOOL Gp_Save_Restore_Opt = TRUE;
+BOOL Gp_Rel_Aggresive_Opt = TRUE;
+
 /***** F90 Heap/stack allocation threshold */
 INT32 Heap_Allocation_Threshold=-1;      /* Allocate objects > this on the heap 
 					 * (-1 means always use stack), 0 always use heap
@@ -1080,7 +1084,42 @@ Configure_Ofast ( void )
   /* Get platform and its associated options: */
   Configure_Platform ( Ofast );
 }
-
+
+/*==============================================================
+* Configure_Olegacy
+*
+* Set default call-shared and alias=typed if legacy is NULL
+* Set default non-shared and alias=notyped otherwise
+* in_FE indicates that whether this is invoked in FE
+*===============================================================
+*/
+extern BOOL Olegacy;
+
+void
+Configure_Olegacy (BOOL in_FE)
+{
+  if(!in_FE) {
+    /* We assume that the driver has defaulted CALL-SHARED and alias=typed. */
+    /* First set the options that are common to all targets: */
+    if ( ! Olegacy ) {
+      Use_Call_Shared_Link = TRUE;
+      if(Alias_Pointer_Types_Set) {
+        Alias_Pointer_Types = TRUE;
+        Alias_Pointer_Types_Set = TRUE;
+      }
+    }
+    else {
+      Use_Call_Shared_Link = FALSE;
+      if(Alias_Pointer_Types_Set) {
+        Alias_Pointer_Types = FALSE;
+        Alias_Pointer_Types_Set = TRUE;
+      }
+    }
+  } else {
+    if(Olegacy) Use_Call_Shared_Link = FALSE;
+  }
+}
+
 /* ====================================================================
  *
  * Configure
@@ -1120,6 +1159,11 @@ Configure (void)
 #ifdef KEEP_WHIRLSTATS
   atexit(whirlstats);
 #endif
+
+  /* Resume original settings or PRO64 if Olegacy flag is set;
+   * and set default settings otherwise
+   */
+  Configure_Olegacy(FALSE);
 
   /* Configure the alias options first so the list is processed and
    * we can tell for -OPT:Ofast below what overrides have occurred:

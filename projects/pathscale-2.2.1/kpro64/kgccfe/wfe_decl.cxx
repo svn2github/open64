@@ -291,8 +291,17 @@ WFE_Start_Function (tree fndecl)
     WFE_Stmt_Push (vla_block, wfe_stmk_func_body, Get_Srcpos());
 
     ST        *func_st;
-    ST_EXPORT  eclass = TREE_PUBLIC(fndecl) ? EXPORT_PREEMPTIBLE
-                                            : EXPORT_LOCAL;
+    ST_EXPORT  eclass;
+
+    //This is a work around to avoid redundant save/restore gp
+    if(TREE_PUBLIC(fndecl)) {
+        if( Gp_Save_Restore_Opt && Use_Call_Shared_Link)
+            eclass = EXPORT_PROTECTED;
+        else
+            eclass = EXPORT_PREEMPTIBLE;
+    } else {
+       eclass = EXPORT_LOCAL;
+    }
 
 #ifdef KEY
     bool extern_inline = FALSE;

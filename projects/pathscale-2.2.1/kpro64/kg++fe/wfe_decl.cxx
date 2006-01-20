@@ -1016,7 +1016,8 @@ WFE_Start_Function (tree fndecl)
     // candidate.
     ST_EXPORT  eclass;
     if (TREE_PUBLIC(fndecl) || DECL_WEAK(fndecl)) {
-      if (DECL_INLINE(fndecl) || !DECL_WEAK(fndecl))
+      if (Gp_Save_Restore_Opt && Use_Call_Shared_Link &&
+          (DECL_INLINE(fndecl) || !DECL_WEAK(fndecl)))
 	eclass = EXPORT_PROTECTED;
       else eclass = EXPORT_PREEMPTIBLE;
     }
