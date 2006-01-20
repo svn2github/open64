@@ -139,7 +139,16 @@ static const char source_file[] = __FILE__;
 static const char rcs_id[] = "";
 #endif /* _KEEP_RCS_ID */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #include "defs.h"
 #include "resource.h"
 #include "config_global.h"

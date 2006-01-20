@@ -36,11 +36,18 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-#include <alloca.h>
 #include "defs.h"
 #include "tracing.h"
 #include "cgir.h"

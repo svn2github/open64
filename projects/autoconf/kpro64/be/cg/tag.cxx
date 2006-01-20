@@ -32,10 +32,16 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-// Tag Utilities
-
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+ 
+#include <stdlib.h>
+
 #include "tag.h"
 #include "symtab.h"
 #include "be_util.h"

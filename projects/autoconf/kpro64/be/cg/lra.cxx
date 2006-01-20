@@ -62,7 +62,6 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-#include <alloca.h>
 
 #include "defs.h"
 #include "mempool.h"

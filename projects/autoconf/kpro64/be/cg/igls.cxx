@@ -58,7 +58,6 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-#include <alloca.h>
 #include <math.h>
 #include "defs.h"
 #include "config_global.h"

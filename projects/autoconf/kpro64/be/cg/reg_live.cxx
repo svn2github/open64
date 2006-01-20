@@ -56,7 +56,6 @@
  * =======================================================================
  */
 
-#include <alloca.h>
 #include "defs.h"
 #include "config_global.h"
 #include "mempool.h"

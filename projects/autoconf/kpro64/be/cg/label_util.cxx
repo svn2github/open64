@@ -32,10 +32,16 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-// Label Utilities
-
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+ 
+#include <stdlib.h>
+
 #include "defs.h"
 #include "mempool.h"
 #include "label_util.h"
