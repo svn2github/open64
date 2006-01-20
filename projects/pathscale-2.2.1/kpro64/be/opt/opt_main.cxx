@@ -1167,7 +1167,7 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       WN_retype_expr(wn_tree);
 #endif
 
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_IA64)
     WN_unroll(wn_tree);
 #endif
 
