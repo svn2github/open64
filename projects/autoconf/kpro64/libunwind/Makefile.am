@@ -5,4 +5,4 @@ libunwind_a_SOURCES = body.c bsp.c bspstore.c dump.c dumpelf.c fpsr.c \
 
 VPATH = ${srcdir}/producer ${srcdir}/utils
 
-AM_CPPFLAGS = -D__MIPS_AND_IA64_ELF_H -I${srcdir}/../include -I../targ_info
+AM_CPPFLAGS = -I${srcdir}/../include -I../targ_info

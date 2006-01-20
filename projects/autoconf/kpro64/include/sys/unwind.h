@@ -37,8 +37,6 @@
 #ifndef __SYS_UNWIND_H
 #define __SYS_UNWIND_H
 
-#if defined(__ia64) || defined(__MIPS_AND_IA64_ELF_H)
 #include <sys/ia64/unwind.h>
-#endif
 
 #endif
