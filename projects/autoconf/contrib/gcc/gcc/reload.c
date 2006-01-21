@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Search an insn for pseudo regs that must be in hard regs and are not.
    Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -106,10 +102,6 @@ a register with any other reload.  */
 #include "output.h"
 #include "function.h"
 #include "toplev.h"
-#ifdef SGI_MONGOOSE
-// To get definition of MODE_BASE_REG_CLASS
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 #ifndef REGISTER_MOVE_COST
 #define REGISTER_MOVE_COST(m, x, y) 2

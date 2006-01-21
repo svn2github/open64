@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Basic block reordering routines for the GNU compiler.
    Copyright (C) 2000, 2002 Free Software Foundation, Inc.
 
@@ -86,14 +82,8 @@
 
 #include "config.h"
 #include "system.h"
-#ifndef SGI_MONGOOSE
 #include "tree.h"
 #include "rtl.h"
-#else
-// To get definitions of tree and rtx in tree.h as typdefs defined in rtl.h
-#include "rtl.h"
-#include "tree.h"
-#endif /* SGI_MONGOOSE */
 #include "hard-reg-set.h"
 #include "basic-block.h"
 #include "flags.h"

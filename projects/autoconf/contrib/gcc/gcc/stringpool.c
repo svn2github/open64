@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* String pool for GCC.
    Copyright (C) 2000, 2001 Free Software Foundation, Inc.
 
@@ -34,10 +30,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "config.h"
 #include "system.h"
 #include "ggc.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "hashtable.h"
 
@@ -103,8 +95,6 @@ ggc_alloc_string (contents, length)
 /* Return an IDENTIFIER_NODE whose name is TEXT (a null-terminated string).
    If an identifier with that name has previously been referred to,
    the same node is returned this time.  */
-
-#undef get_identifier
 
 tree
 get_identifier (text)

@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Definitions for C++ parsing and type checking.
    Copyright (C) 1987, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
    2000, 2001, 2002, 2003 Free Software Foundation, Inc.
@@ -1201,14 +1197,7 @@ struct lang_type_class GTY(())
   /* There are some bits left to fill out a 32-bit word.  Keep track
      of this by updating the size of this bitfield whenever you add or
      remove a flag.  */
-#ifdef KEY
-  /* 1 if the copy constructor is implicitly defined instead of user defined.
-     */
-  unsigned has_implicit_copy_constructor : 1;
-  unsigned dummy : 4;
-#else
   unsigned dummy : 5;
-#endif
 
   tree primary_base;
   tree vfields;
@@ -1225,11 +1214,6 @@ struct lang_type_class GTY(())
   tree decl_list;
   tree template_info;
   tree befriending_classes;
-#ifdef KEY
-  /* The copy constructor to use if the WHIRL translator needs to copy objects.
-     */
-  tree copy_constructor;
-#endif
 };
 
 struct lang_type_ptrmem GTY(())
@@ -1323,17 +1307,6 @@ struct lang_type GTY(())
 /* Nonzero means that this type has been redefined.  In this case, if
    convenient, don't reprocess any methods that appear in its redefinition.  */
 #define TYPE_REDEFINED(NODE) (LANG_TYPE_CLASS_CHECK (NODE)->redefined)
-
-#ifdef KEY
-/* Nonzero means this type's copy constructor is implicitly defined instead of
-   user defined. */
-#define TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR(NODE) \
-  (LANG_TYPE_CLASS_CHECK (NODE)->has_implicit_copy_constructor)
-
-/* The copy constructor to use if the WHIRL translator needs to copy objects. */
-#define CLASSTYPE_COPY_CONSTRUCTOR(NODE) \
-  (LANG_TYPE_CLASS_CHECK (NODE)->copy_constructor)
-#endif
 
 /* Nonzero means that this _CLASSTYPE node overloads operator().  */
 #define TYPE_OVERLOADS_CALL_EXPR(NODE) \
@@ -1867,12 +1840,6 @@ struct lang_decl GTY(())
 	   THUNK_DELTA.  */
 	HOST_WIDE_INT delta;
 
-#ifdef KEY
-	/* If the named return value optimization is applied to the function,
-	   this is the VAR_DECL of the named return object. */
-	tree named_return_object;
-#endif
-
 	/* In an overloaded operator, this is the value of
 	   DECL_OVERLOADED_OPERATOR_P.  */
 	enum tree_code operator_code;
@@ -2014,13 +1981,6 @@ struct lang_decl GTY(())
    cloned.  */
 #define DECL_CLONED_FUNCTION(NODE) \
   (DECL_LANG_SPECIFIC (NODE)->u.f.cloned_function)
-
-#ifdef KEY
-/* If the named return value optimization is applied to the function, this is
-   the VAR_DECL of the named return object. */
-#define DECL_NAMED_RETURN_OBJECT(NODE) \
-  (DECL_LANG_SPECIFIC (NODE)->u.f.named_return_object)
-#endif
 
 /* Nonzero if NODE has DECL_DISCRIMINATOR and not DECL_ACCESS.  */
 #define DECL_DISCRIMINATOR_P(NODE)	\
@@ -3050,12 +3010,8 @@ struct lang_decl GTY(())
 
 /* An integer indicating how many bytes should be subtracted from the
    `this' pointer when this function is called.  */
-#ifdef KEY
-#define THUNK_DELTA(DECL) (DECL_CHECK (DECL)->decl.thunk_delta)
-#else
 #define THUNK_DELTA(DECL) \
   (DECL_LANG_SPECIFIC (DECL)->u.f.delta)
-#endif /* KEY */
 
 /* A tree indicating how many bytes should be subtracted from the
    vtable for the `this' pointer to find the vcall offset.  (The vptr
@@ -3667,7 +3623,7 @@ extern tree type_passed_as                      PARAMS ((tree));
 extern tree convert_for_arg_passing             PARAMS ((tree, tree));
 extern tree cp_convert_parm_for_inlining        PARAMS ((tree, tree, tree));
 extern int is_properly_derived_from             PARAMS ((tree, tree));
-extern tree initialize_reference                PARAMS ((tree, tree, tree, tree *));
+extern tree initialize_reference                PARAMS ((tree, tree, tree));
 extern tree make_temporary_var_for_ref_to_temp  (tree, tree);
 extern tree strip_top_quals                     PARAMS ((tree));
 extern tree perform_implicit_conversion         PARAMS ((tree, tree));
@@ -3740,7 +3696,6 @@ extern void adjust_clone_args			PARAMS ((tree));
 /* decl.c */
 extern int global_bindings_p			PARAMS ((void));
 extern int kept_level_p				PARAMS ((void));
-extern bool innermost_scope_is_class_p          (void);
 extern tree getdecls				PARAMS ((void));
 extern void pushlevel				PARAMS ((int));
 extern tree poplevel				PARAMS ((int,int, int));
@@ -4450,7 +4405,7 @@ extern tree build_x_indirect_ref		PARAMS ((tree, const char *));
 extern tree build_indirect_ref			PARAMS ((tree, const char *));
 extern tree build_array_ref			PARAMS ((tree, tree));
 extern tree get_member_function_from_ptrfunc	PARAMS ((tree *, tree));
-extern tree build_function_call_real		PARAMS ((tree, tree, int));
+extern tree build_function_call_real		PARAMS ((tree, tree, int, int));
 extern tree build_function_call_maybe		PARAMS ((tree, tree));
 extern tree convert_arguments			PARAMS ((tree, tree, tree, int));
 extern tree build_x_binary_op			PARAMS ((enum tree_code, tree, tree));

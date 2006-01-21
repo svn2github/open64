@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Generate information regarding function declarations and definitions based
    on information stored in GCC's tree structure.  This code implements the
    -aux-info option.
@@ -30,10 +26,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "system.h"
 #include "toplev.h"
 #include "flags.h"
-#ifdef SGI_MONGOOSE
-// to get typdef tree in rtl.h
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "c-tree.h"
 

@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Register renaming for the GNU compiler.
    Copyright (C) 2000, 2001, 2002 Free Software Foundation, Inc.
 
@@ -39,10 +35,6 @@
 #include "flags.h"
 #include "toplev.h"
 #include "obstack.h"
-#ifdef SGI_MONGOOSE
-// To get definition of MODE_BASE_REG_CLASS
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 #ifndef REG_MODE_OK_FOR_BASE_P
 #define REG_MODE_OK_FOR_BASE_P(REGNO, MODE) REG_OK_FOR_BASE_P (REGNO)

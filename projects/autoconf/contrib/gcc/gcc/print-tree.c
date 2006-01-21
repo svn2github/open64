@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Prints out tree in human readable form - GNU C-compiler
    Copyright (C) 1990, 1991, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
    2001, 2002 Free Software Foundation, Inc.
@@ -26,10 +22,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "real.h"
 #include "ggc.h"
@@ -47,28 +39,6 @@ struct bucket
 };
 
 static struct bucket **table;
-
-#ifdef SGI_MONGOOSE
-/* Print the node NODE to the specified file for debugging. */
-void
-print_tree (FILE *file, tree node)
-{
-#if (GCC_VERSION >= 3000)
-  char *object = (char *) really_call_malloc (0);
-  table = (struct bucket **) really_call_malloc (HASH_SIZE * sizeof (struct bucket *));
-  really_call_bzero ((char *) table, HASH_SIZE * sizeof (struct bucket *));
-#else
-  char *object = (char *) malloc (0);
-  table = (struct bucket **) malloc (HASH_SIZE * sizeof (struct bucket *));
-  bzero ((char *) table, HASH_SIZE * sizeof (struct bucket *));
-#endif
-                                                                                 
-  print_node (file, "", node, 0);
-  table = 0;
-  free (object);
-  fprintf (file, "\n");
-}
-#endif /* SGI_MONGOOSE */
 
 /* Print the node NODE on standard error, for debugging.
    Most nodes referred to by this one are printed recursively
@@ -468,12 +438,6 @@ print_node (file, prefix, node, indent)
       print_node (file, "arguments", DECL_ARGUMENTS (node), indent + 4);
       print_node (file, "result", DECL_RESULT_FLD (node), indent + 4);
       print_node_brief (file, "initial", DECL_INITIAL (node), indent + 4);
-#ifdef SGI_MONGOOSE
-      if(DECL_DST_IDX(node).block != -1  || DECL_DST_IDX(node).offset != -1) {
-         fprintf(file," dst idx %d %d ", TYPE_DST_IDX(node).block,
-                        TYPE_DST_IDX(node).offset);
-      }
-#endif /* SGI_MONGOOSE */
 
       (*lang_hooks.print_decl) (file, node, indent);
 
@@ -609,15 +573,6 @@ print_node (file, prefix, node, indent)
 
       if (TYPE_CONTEXT (node))
 	print_node_brief (file, "context", TYPE_CONTEXT (node), indent + 4);
-#ifdef SGI_MONGOOSE
-      if(TYPE_TY_IDX(node)) fprintf(file," ty_idx %u",TYPE_TY_IDX(node));
-      if(TYPE_FIELD_IDS_USED(node)) fprintf(file," ids_used %u",
-                TYPE_FIELD_IDS_USED(node));
-      if(TYPE_DST_IDX(node).block != -1  || TYPE_DST_IDX(node).offset != -1) {
-         fprintf(file," dst idx %d %d ", TYPE_DST_IDX(node).block,
-                        TYPE_DST_IDX(node).offset);
-      }
-#endif /* SGI_MONGOOSE */
 
       (*lang_hooks.print_type) (file, node, indent);
 

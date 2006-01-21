@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Generate code from machine description to recognize rtl as insns.
    Copyright (C) 1987, 1988, 1992, 1993, 1994, 1995, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.

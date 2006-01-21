@@ -796,7 +796,7 @@ find_base_value (src)
 	    return reg_base_value[regno];
 	}
 
-      return 0;
+      return src;
 
     case MEM:
       /* Check for an argument passed in memory.  Only record in the

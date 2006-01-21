@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Dwarf2 assembler output helper routines.
    Copyright (C) 2001, 2002 Free Software Foundation, Inc.
 
@@ -26,14 +22,8 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "config.h"
 #include "system.h"
 #include "flags.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "output.h"
 #include "target.h"
 #include "dwarf2asm.h"

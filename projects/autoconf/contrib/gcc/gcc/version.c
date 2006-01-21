@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 #include "ansidecl.h"
 #include "version.h"
 
@@ -10,7 +6,7 @@
    please modify this string to indicate that, e.g. by putting your
    organization's name in parentheses at the end of the string.  */
 
-const char version_string[] = "3.3.1 20030915 (Red Hat Linux 3.3.1-5)";
+const char version_string[] = "3.3.1";
 
 /* This is the location of the online document giving instructions for
    reporting bugs.  If you distribute a modified version of GCC,
@@ -19,8 +15,4 @@ const char version_string[] = "3.3.1 20030915 (Red Hat Linux 3.3.1-5)";
    forward us bugs reported to you, if you determine that they are
    not bugs in your modifications.)  */
 
-#ifdef KEY
-const char bug_report_url[] = "<URL:http://www.pathscale.com/support.html>";
-#else
-const char bug_report_url[] = "<URL:http://bugzilla.redhat.com/bugzilla>";
-#endif
+const char bug_report_url[] = "<URL:http://gcc.gnu.org/bugs.html>";

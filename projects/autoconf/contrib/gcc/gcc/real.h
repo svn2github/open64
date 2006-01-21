@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Definitions of floating-point access for GNU compiler.
    Copyright (C) 1989, 1991, 1994, 1996, 1997, 1998,
    1999, 2000, 2002 Free Software Foundation, Inc.
@@ -46,12 +42,7 @@ enum real_value_class {
 
 struct real_value GTY(())
 {
-#if defined(KEY) && defined(__cplusplus)
-        // cannot use C++ keywork class
-  ENUM_BITFIELD (real_value_class) cl : 2;
-#else
   ENUM_BITFIELD (real_value_class) class : 2;
-#endif // KEY && __cpluscplus
   unsigned int sign : 1;
   signed int exp : EXP_BITS;
   unsigned long sig[SIGSZ];

@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Utility routines for data type conversion for GNU C.
    Copyright (C) 1987, 1988, 1991, 1992, 1993, 1994, 1995, 1997,
    1998 Free Software Foundation, Inc.
@@ -29,10 +25,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "flags.h"
 #include "convert.h"
@@ -164,7 +156,6 @@ convert_to_integer (type, expr)
 
       if (TREE_CODE_CLASS (ex_form) == '<')
 	{
-	  expr = copy_node (expr);
 	  TREE_TYPE (expr) = type;
 	  return expr;
 	}
@@ -173,7 +164,6 @@ convert_to_integer (type, expr)
 	       || ex_form == TRUTH_OR_EXPR || ex_form == TRUTH_ORIF_EXPR
 	       || ex_form == TRUTH_XOR_EXPR)
 	{
-	  expr = copy_node (expr);
 	  TREE_OPERAND (expr, 0) = convert (type, TREE_OPERAND (expr, 0));
 	  TREE_OPERAND (expr, 1) = convert (type, TREE_OPERAND (expr, 1));
 	  TREE_TYPE (expr) = type;
@@ -182,7 +172,6 @@ convert_to_integer (type, expr)
 
       else if (ex_form == TRUTH_NOT_EXPR)
 	{
-	  expr = copy_node (expr);
 	  TREE_OPERAND (expr, 0) = convert (type, TREE_OPERAND (expr, 0));
 	  TREE_TYPE (expr) = type;
 	  return expr;

@@ -1,5 +1,5 @@
 /* Prototypes of target machine for GNU compiler for Xtensa.
-   Copyright 2001,2002 Free Software Foundation, Inc.
+   Copyright 2001,2002,2003 Free Software Foundation, Inc.
    Contributed by Bob Wilson (bwilson@tensilica.com) at Tensilica.
 
 This file is part of GCC.
@@ -78,7 +78,7 @@ extern char * xtensa_emit_call PARAMS ((int, rtx *));
 
 #ifdef TREE_CODE
 extern void init_cumulative_args PARAMS ((CUMULATIVE_ARGS *, tree, rtx));
-extern void xtensa_va_start PARAMS ((int, tree, rtx));
+extern void xtensa_va_start PARAMS ((tree, rtx));
 extern rtx xtensa_va_arg PARAMS ((tree, tree));
 #endif /* TREE_CODE */
 
@@ -109,8 +109,6 @@ extern int xtensa_mem_offset PARAMS ((unsigned, enum machine_mode));
 extern void xtensa_setup_frame_addresses PARAMS ((void));
 extern int xtensa_dbx_register_number PARAMS ((int));
 extern void override_options PARAMS ((void));
-extern void xtensa_declare_object
-  PARAMS ((FILE *, char *, char *, char *, int));
 extern long compute_frame_size PARAMS ((int));
 extern int xtensa_frame_pointer_required PARAMS ((void));
 extern void xtensa_function_prologue PARAMS ((FILE *, int));

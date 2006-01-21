@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Output sdb-format symbol table information from GNU compiler.
    Copyright (C) 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
    2000, 2001, 2002 Free Software Foundation, Inc.
@@ -47,10 +43,6 @@ AT&T C compiler.  From the example below I would conclude the following:
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "debug.h"
 #include "tree.h"
 #include "ggc.h"
@@ -59,9 +51,7 @@ static GTY(()) tree anonymous_types;
 
 #ifdef SDB_DEBUGGING_INFO
 
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "regs.h"
 #include "flags.h"
 #include "insn-config.h"

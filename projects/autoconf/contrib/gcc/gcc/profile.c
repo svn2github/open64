@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Calculate branch probabilities, and basic block execution counts.
    Copyright (C) 1990, 1991, 1992, 1993, 1994, 1996, 1997, 1998, 1999,
    2000, 2001  Free Software Foundation, Inc.
@@ -90,10 +86,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "profile.h"
 #include "libfuncs.h"
 #include "langhooks.h"
-#ifdef SGI_MONGOOSE
-// To get GCOV_TYPE_SIZE
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 /* Additional information about the edges we need.  */
 struct edge_info {

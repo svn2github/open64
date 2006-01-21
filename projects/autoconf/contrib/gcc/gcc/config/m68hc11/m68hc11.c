@@ -1,5 +1,5 @@
 /* Subroutines for code generation on Motorola 68HC11 and 68HC12.
-   Copyright (C) 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
+   Copyright (C) 1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
    Contributed by Stephane Carrez (stcarrez@nerim.fr)
 
 This file is part of GNU CC.
@@ -66,19 +66,19 @@ static int register_indirect_p PARAMS((rtx, enum machine_mode, int));
 static rtx m68hc11_expand_compare PARAMS((enum rtx_code, rtx, rtx));
 static int must_parenthesize PARAMS ((rtx));
 static int m68hc11_shift_cost PARAMS ((enum machine_mode, rtx, int));
+static int autoinc_mode PARAMS ((rtx));
+static int m68hc11_make_autoinc_notes PARAMS ((rtx*, void*));
 static int m68hc11_auto_inc_p PARAMS ((rtx));
 static tree m68hc11_handle_fntype_attribute PARAMS ((tree *, tree, tree, int, bool *));
 const struct attribute_spec m68hc11_attribute_table[];
 
 void create_regs_rtx PARAMS ((void));
-static void m68hc11_add_gc_roots PARAMS ((void));
 
 static void asm_print_register PARAMS ((FILE *, int));
 static void m68hc11_output_function_epilogue PARAMS ((FILE *, HOST_WIDE_INT));
 static void m68hc11_asm_out_constructor PARAMS ((rtx, int));
 static void m68hc11_asm_out_destructor PARAMS ((rtx, int));
-
-rtx m68hc11_soft_tmp_reg;
+static void m68hc11_encode_section_info PARAMS((tree, int));
 
 /* Must be set to 1 to produce debug messages.  */
 int debug_m6811 = 0;
@@ -88,17 +88,22 @@ extern FILE *asm_out_file;
 rtx ix_reg;
 rtx iy_reg;
 rtx d_reg;
-rtx da_reg;
-rtx stack_push_word;
-rtx stack_pop_word;
+rtx m68hc11_soft_tmp_reg;
+static GTY(()) rtx stack_push_word;
+static GTY(()) rtx stack_pop_word;
+static GTY(()) rtx z_reg;
+static GTY(()) rtx z_reg_qi;
 static int regs_inited = 0;
-static rtx z_reg;
 
 /* Set to 1 by expand_prologue() when the function is an interrupt handler.  */
 int current_function_interrupt;
 
 /* Set to 1 by expand_prologue() when the function is a trap handler.  */
 int current_function_trap;
+
+/* Set to 1 when the current function is placed in 68HC12 banked
+   memory and must return with rtc.  */
+int current_function_far;
 
 /* Min offset that is valid for the indirect addressing mode.  */
 HOST_WIDE_INT m68hc11_min_offset = 0;
@@ -219,13 +224,14 @@ static int nb_soft_regs;
 #undef TARGET_ASM_FUNCTION_EPILOGUE
 #define TARGET_ASM_FUNCTION_EPILOGUE m68hc11_output_function_epilogue
 
+#undef TARGET_ENCODE_SECTION_INFO
+#define TARGET_ENCODE_SECTION_INFO  m68hc11_encode_section_info
+
 struct gcc_target targetm = TARGET_INITIALIZER;
 
 int
 m68hc11_override_options ()
 {
-  m68hc11_add_gc_roots ();
-
   memset (m68hc11_reg_valid_for_index, 0,
 	  sizeof (m68hc11_reg_valid_for_index));
   memset (m68hc11_reg_valid_for_base, 0, sizeof (m68hc11_reg_valid_for_base));
@@ -247,7 +253,7 @@ m68hc11_override_options ()
         target_flags &= ~TARGET_DEFAULT;
 
       if (!TARGET_M6812)
-        target_flags &= ~TARGET_AUTO_INC_DEC;
+        target_flags &= ~(TARGET_AUTO_INC_DEC | TARGET_MIN_MAX);
       m68hc11_cost = &m6811_cost;
       m68hc11_min_offset = 0;
       m68hc11_max_offset = 256;
@@ -281,25 +287,13 @@ m68hc11_override_options ()
       target_flags |= MASK_NO_DIRECT_MODE;
       if (m68hc11_soft_reg_count == 0)
 	m68hc11_soft_reg_count = "0";
+
+      if (TARGET_LONG_CALLS)
+        current_function_far = 1;
     }
   return 0;
 }
 
-
-int
-m68hc11_optimization_options (level, size)
-     int level ATTRIBUTE_UNUSED;
-     int size;
-{
-  /* When optimizing for size, do not reorder basic blocks because
-     it duplicates some insns for speed and this results in larder code.
-     This reordering can still be enabled but explicitly.  */
-  if (size)
-    {
-      flag_reorder_blocks = 0;
-    }
-  return 0;
-}
 
 void
 m68hc11_conditional_register_usage ()
@@ -341,7 +335,6 @@ create_regs_rtx ()
   ix_reg = gen_rtx (REG, HImode, HARD_X_REGNUM);
   iy_reg = gen_rtx (REG, HImode, HARD_Y_REGNUM);
   d_reg = gen_rtx (REG, HImode, HARD_D_REGNUM);
-  da_reg = gen_rtx (REG, QImode, HARD_A_REGNUM);
   m68hc11_soft_tmp_reg = gen_rtx (REG, HImode, SOFT_TMP_REGNUM);
 
   stack_push_word = gen_rtx (MEM, HImode,
@@ -389,6 +382,23 @@ hard_regno_mode_ok (regno, mode)
     default:
       return 0;
     }
+}
+
+int
+m68hc11_hard_regno_rename_ok (reg1, reg2)
+     int reg1, reg2;
+{
+  /* Don't accept renaming to Z register.  We will replace it to
+     X,Y or D during machine reorg pass.  */
+  if (reg2 == HARD_Z_REGNUM)
+    return 0;
+
+  /* Don't accept renaming D,X to Y register as the code will be bigger.  */
+  if (TARGET_M6811 && reg2 == HARD_Y_REGNUM
+      && (D_REGNO_P (reg1) || X_REGNO_P (reg1)))
+    return 0;
+
+  return 1;
 }
 
 enum reg_class
@@ -658,7 +668,7 @@ go_if_legitimate_address_internal (operand, mode, strict)
      enum machine_mode mode;
      int strict;
 {
-  if (CONSTANT_ADDRESS_P (operand))
+  if (CONSTANT_ADDRESS_P (operand) && TARGET_M6812)
     {
       /* Reject the global variables if they are too wide.  This forces
          a load of their address in a register and generates smaller code.  */
@@ -1006,6 +1016,9 @@ d_register_operand (operand, mode)
      rtx operand;
      enum machine_mode mode ATTRIBUTE_UNUSED;
 {
+  if (GET_MODE (operand) != mode && mode != VOIDmode)
+    return 0;
+
   if (GET_CODE (operand) == SUBREG)
     operand = XEXP (operand, 0);
 
@@ -1020,6 +1033,9 @@ hard_addr_reg_operand (operand, mode)
      rtx operand;
      enum machine_mode mode ATTRIBUTE_UNUSED;
 {
+  if (GET_MODE (operand) != mode && mode != VOIDmode)
+    return 0;
+
   if (GET_CODE (operand) == SUBREG)
     operand = XEXP (operand, 0);
 
@@ -1032,8 +1048,11 @@ hard_addr_reg_operand (operand, mode)
 int
 hard_reg_operand (operand, mode)
      rtx operand;
-     enum machine_mode mode ATTRIBUTE_UNUSED;
+     enum machine_mode mode;
 {
+  if (GET_MODE (operand) != mode && mode != VOIDmode)
+    return 0;
+
   if (GET_CODE (operand) == SUBREG)
     operand = XEXP (operand, 0);
 
@@ -1109,6 +1128,14 @@ symbolic_memory_operand (op, mode)
 }
 
 int
+m68hc11_eq_compare_operator (op, mode)
+     register rtx op;
+     enum machine_mode mode ATTRIBUTE_UNUSED;
+{
+  return GET_CODE (op) == EQ || GET_CODE (op) == NE;
+}
+
+int
 m68hc11_logical_operator (op, mode)
      register rtx op;
      enum machine_mode mode ATTRIBUTE_UNUSED;
@@ -1137,6 +1164,16 @@ m68hc11_non_shift_operator (op, mode)
     || GET_CODE (op) == PLUS || GET_CODE (op) == MINUS;
 }
 
+/* Return true if op is a shift operator.  */
+int
+m68hc11_shift_operator (op, mode)
+     register rtx op;
+     enum machine_mode mode ATTRIBUTE_UNUSED;
+{
+  return GET_CODE (op) == ROTATE || GET_CODE (op) == ROTATERT
+    || GET_CODE (op) == LSHIFTRT || GET_CODE (op) == ASHIFT
+    || GET_CODE (op) == ASHIFTRT;
+}
 
 int
 m68hc11_unary_operator (op, mode)
@@ -1202,8 +1239,15 @@ const struct attribute_spec m68hc11_attribute_table[] =
   /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler } */
   { "interrupt", 0, 0, false, true,  true,  m68hc11_handle_fntype_attribute },
   { "trap",      0, 0, false, true,  true,  m68hc11_handle_fntype_attribute },
+  { "far",       0, 0, false, true,  true,  m68hc11_handle_fntype_attribute },
+  { "near",      0, 0, false, true,  true,  m68hc11_handle_fntype_attribute },
   { NULL,        0, 0, false, false, false, NULL }
 };
+
+/* Keep track of the symbol which has a `trap' attribute and which uses
+   the `swi' calling convention.  Since there is only one trap, we only
+   record one such symbol.  If there are several, a warning is reported.  */
+static rtx trap_handler_symbol = 0;
 
 /* Handle an attribute requiring a FUNCTION_TYPE, FIELD_DECL or TYPE_DECL;
    arguments as in struct attribute_spec.handler.  */
@@ -1216,6 +1260,7 @@ m68hc11_handle_fntype_attribute (node, name, args, flags, no_add_attrs)
      bool *no_add_attrs;
 {
   if (TREE_CODE (*node) != FUNCTION_TYPE
+      && TREE_CODE (*node) != METHOD_TYPE
       && TREE_CODE (*node) != FIELD_DECL
       && TREE_CODE (*node) != TYPE_DECL)
     {
@@ -1227,29 +1272,67 @@ m68hc11_handle_fntype_attribute (node, name, args, flags, no_add_attrs)
   return NULL_TREE;
 }
 
-/* Define this macro if references to a symbol must be treated
-   differently depending on something about the variable or function
-   named by the symbol (such as what section it is in).
+/* We want to recognize trap handlers so that we handle calls to traps
+   in a special manner (by issuing the trap).  This information is stored
+   in SYMBOL_REF_FLAG.  */
 
-   For the 68HC11, we want to recognize trap handlers so that we
-   handle calls to traps in a special manner (by issuing the trap).
-   This information is stored in SYMBOL_REF_FLAG.  */
-void
-m68hc11_encode_section_info (decl)
+static void
+m68hc11_encode_section_info (decl, first)
      tree decl;
+     int first ATTRIBUTE_UNUSED;
 {
   tree func_attr;
   int trap_handler;
+  int is_far = 0;
   rtx rtl;
-
+  
   if (TREE_CODE (decl) != FUNCTION_DECL)
     return;
 
   rtl = DECL_RTL (decl);
 
   func_attr = TYPE_ATTRIBUTES (TREE_TYPE (decl));
+
+
+  if (lookup_attribute ("far", func_attr) != NULL_TREE)
+    is_far = 1;
+  else if (lookup_attribute ("near", func_attr) == NULL_TREE)
+    is_far = TARGET_LONG_CALLS != 0;
+
   trap_handler = lookup_attribute ("trap", func_attr) != NULL_TREE;
-  SYMBOL_REF_FLAG (XEXP (rtl, 0)) = trap_handler;
+  if (trap_handler && is_far)
+    {
+      warning ("`trap' and `far' attributes are not compatible, ignoring `far'");
+      trap_handler = 0;
+    }
+  if (trap_handler)
+    {
+      if (trap_handler_symbol != 0)
+        warning ("`trap' attribute is already used");
+      else
+        trap_handler_symbol = XEXP (rtl, 0);
+    }
+  SYMBOL_REF_FLAG (XEXP (rtl, 0)) = is_far;
+}
+
+int
+m68hc11_is_far_symbol (sym)
+     rtx sym;
+{
+  if (GET_CODE (sym) == MEM)
+    sym = XEXP (sym, 0);
+
+  return SYMBOL_REF_FLAG (sym);
+}
+
+int
+m68hc11_is_trap_symbol (sym)
+     rtx sym;
+{
+  if (GET_CODE (sym) == MEM)
+    sym = XEXP (sym, 0);
+
+  return trap_handler_symbol != 0 && rtx_equal_p (trap_handler_symbol, sym);
 }
 
 
@@ -1289,9 +1372,22 @@ m68hc11_initial_elimination_offset (from, to)
   /* For a trap handler, we must take into account the registers which
      are pushed on the stack during the trap (except the PC).  */
   func_attr = TYPE_ATTRIBUTES (TREE_TYPE (current_function_decl));
+
+  if (lookup_attribute ("far", func_attr) != 0)
+    current_function_far = 1;
+  else if (lookup_attribute ("near", func_attr) != 0)
+    current_function_far = 0;
+  else
+    current_function_far = TARGET_LONG_CALLS != 0;
+
   trap_handler = lookup_attribute ("trap", func_attr) != NULL_TREE;
   if (trap_handler && from == ARG_POINTER_REGNUM)
     size = 7;
+
+  /* For a function using 'call/rtc' we must take into account the
+     page register which is pushed in the call.  */
+  else if (current_function_far && from == ARG_POINTER_REGNUM)
+    size = 1;
   else
     size = 0;
 
@@ -1455,74 +1551,6 @@ m68hc11_function_arg (cum, mode, type, named)
   return NULL_RTX;
 }
 
-/* The "standard" implementation of va_start: just assign `nextarg' to
-   the variable.  */
-void
-m68hc11_expand_builtin_va_start (stdarg_p, valist, nextarg)
-     int stdarg_p ATTRIBUTE_UNUSED;
-     tree valist;
-     rtx nextarg;
-{
-  tree t;
-
-  /* SCz: the default implementation in builtins.c adjust the
-     nextarg using UNITS_PER_WORD.  This works only with -mshort
-     and fails when integers are 32-bit.  Here is the correct way.  */
-  if (!stdarg_p)
-    nextarg = plus_constant (nextarg, -INT_TYPE_SIZE / 8);
-
-  t = build (MODIFY_EXPR, TREE_TYPE (valist), valist,
-	     make_tree (ptr_type_node, nextarg));
-  TREE_SIDE_EFFECTS (t) = 1;
-
-  expand_expr (t, const0_rtx, VOIDmode, EXPAND_NORMAL);
-}
-
-rtx
-m68hc11_va_arg (valist, type)
-     tree valist;
-     tree type;
-{
-  tree addr_tree, t;
-  HOST_WIDE_INT align;
-  HOST_WIDE_INT rounded_size;
-  rtx addr;
-  int pad_direction;
-
-  /* Compute the rounded size of the type.  */
-  align = PARM_BOUNDARY / BITS_PER_UNIT;
-  rounded_size = (((int_size_in_bytes (type) + align - 1) / align) * align);
-
-  /* Get AP.  */
-  addr_tree = valist;
-  pad_direction = m68hc11_function_arg_padding (TYPE_MODE (type), type);
-
-  if (pad_direction == downward)
-    {
-      /* Small args are padded downward.  */
-
-      HOST_WIDE_INT adj;
-      adj = TREE_INT_CST_LOW (TYPE_SIZE (type)) / BITS_PER_UNIT;
-      if (rounded_size > align)
-	adj = rounded_size;
-
-      addr_tree = build (PLUS_EXPR, TREE_TYPE (addr_tree), addr_tree,
-			 build_int_2 (rounded_size - adj, 0));
-    }
-
-  addr = expand_expr (addr_tree, NULL_RTX, Pmode, EXPAND_NORMAL);
-  addr = copy_to_reg (addr);
-
-  /* Compute new value for AP.  */
-  t = build (MODIFY_EXPR, TREE_TYPE (valist), valist,
-	     build (PLUS_EXPR, TREE_TYPE (valist), valist,
-		    build_int_2 (rounded_size, 0)));
-  TREE_SIDE_EFFECTS (t) = 1;
-  expand_expr (t, const0_rtx, VOIDmode, EXPAND_NORMAL);
-
-  return addr;
-}
-
 /* If defined, a C expression which determines whether, and in which direction,
    to pad out an argument with extra space.  The value should be of type
    `enum direction': either `upward' to pad above the argument,
@@ -1646,6 +1674,12 @@ expand_prologue ()
   current_function_interrupt = lookup_attribute ("interrupt",
 						 func_attr) != NULL_TREE;
   current_function_trap = lookup_attribute ("trap", func_attr) != NULL_TREE;
+  if (lookup_attribute ("far", func_attr) != NULL_TREE)
+    current_function_far = 1;
+  else if (lookup_attribute ("near", func_attr) != NULL_TREE)
+    current_function_far = 0;
+  else
+    current_function_far = TARGET_LONG_CALLS != 0;
 
   /* Get the scratch register to build the frame and push registers.
      If the first argument is a 32-bit quantity, the D+X registers
@@ -1655,6 +1689,10 @@ expand_prologue ()
     scratch = iy_reg;
   else
     scratch = ix_reg;
+
+  /* Save current stack frame.  */
+  if (frame_pointer_needed)
+    emit_move_after_reload (stack_push_word, hard_frame_pointer_rtx, scratch);
 
   /* For an interrupt handler, we must preserve _.tmp, _.z and _.xy.
      Other soft registers in page0 need not to be saved because they
@@ -1670,17 +1708,13 @@ expand_prologue ()
 			      scratch);
     }
 
-  /* Save current stack frame.  */
-  if (frame_pointer_needed)
-    emit_move_after_reload (stack_push_word, hard_frame_pointer_rtx, scratch);
-
   /* Allocate local variables.  */
   if (TARGET_M6812 && (size > 4 || size == 3))
     {
       emit_insn (gen_addhi3 (stack_pointer_rtx,
 			     stack_pointer_rtx, GEN_INT (-size)));
     }
-  else if (size > 8)
+  else if ((!optimize_size && size > 8) || (optimize_size && size > 10))
     {
       rtx insn;
 
@@ -1747,7 +1781,7 @@ expand_epilogue ()
   else
     return_size = GET_MODE_SIZE (GET_MODE (current_function_return_rtx));
 
-  if (return_size > HARD_REG_SIZE)
+  if (return_size > HARD_REG_SIZE && return_size <= 2 * HARD_REG_SIZE)
     scratch = iy_reg;
   else
     scratch = ix_reg;
@@ -1768,7 +1802,7 @@ expand_epilogue ()
       emit_insn (gen_addhi3 (stack_pointer_rtx,
 			     stack_pointer_rtx, GEN_INT (size)));
     }
-  else if (size > 8)
+  else if ((!optimize_size && size > 8) || (optimize_size && size > 10))
     {
       rtx insn;
 
@@ -1794,10 +1828,6 @@ expand_epilogue ()
 			       stack_pointer_rtx, GEN_INT (1)));
     }
 
-  /* Restore previous frame pointer.  */
-  if (frame_pointer_needed)
-    emit_move_after_reload (hard_frame_pointer_rtx, stack_pop_word, scratch);
-
   /* For an interrupt handler, restore ZTMP, ZREG and XYREG.  */
   if (current_function_interrupt)
     {
@@ -1807,6 +1837,10 @@ expand_epilogue ()
 			      stack_pop_word, scratch);
       emit_move_after_reload (m68hc11_soft_tmp_reg, stack_pop_word, scratch);
     }
+
+  /* Restore previous frame pointer.  */
+  if (frame_pointer_needed)
+    emit_move_after_reload (hard_frame_pointer_rtx, stack_pop_word, scratch);
 
   /* If the trap handler returns some value, copy the value
      in D, X onto the stack so that the rti will pop the return value
@@ -1877,7 +1911,7 @@ m68hc11_gen_lowpart (mode, x)
 	  if (mode == SImode)
 	    return GEN_INT (l[0]);
 
-	  return GEN_INT (trunc_int_for_mode (l[0], HImode));
+	  return gen_int_mode (l[0], HImode);
 	}
       else
 	{
@@ -1886,7 +1920,7 @@ m68hc11_gen_lowpart (mode, x)
       if (mode == SImode)
 	return GEN_INT (l[0]);
       else if (mode == HImode && GET_MODE (x) == SFmode)
-	return GEN_INT (trunc_int_for_mode (l[0], HImode));
+	return gen_int_mode (l[0], HImode);
       else
 	abort ();
     }
@@ -1954,7 +1988,7 @@ m68hc11_gen_highpart (mode, x)
 	  if (mode == SImode)
 	    return GEN_INT (l[1]);
 
-	  return GEN_INT (trunc_int_for_mode ((l[1] >> 16), HImode));
+	  return gen_int_mode ((l[1] >> 16), HImode);
 	}
       else
 	{
@@ -1964,7 +1998,7 @@ m68hc11_gen_highpart (mode, x)
       if (mode == SImode)
 	return GEN_INT (l[1]);
       else if (mode == HImode && GET_MODE_CLASS (GET_MODE (x)) == MODE_FLOAT)
-	return GEN_INT (trunc_int_for_mode ((l[0] >> 16), HImode));
+	return gen_int_mode ((l[0] >> 16), HImode);
       else
 	abort ();
     }
@@ -1974,11 +2008,11 @@ m68hc11_gen_highpart (mode, x)
 
       if (mode == QImode)
 	{
-	  return GEN_INT (trunc_int_for_mode (val >> 8, QImode));
+	  return gen_int_mode (val >> 8, QImode);
 	}
       else if (mode == HImode)
 	{
-	  return GEN_INT (trunc_int_for_mode (val >> 16, HImode));
+	  return gen_int_mode (val >> 16, HImode);
 	}
     }
   if (mode == QImode && D_REG_P (x))
@@ -2125,7 +2159,7 @@ asm_print_register (file, regno)
   if (TARGET_NO_DIRECT_MODE && name[0] == '*')
     name++;
 
-  asm_fprintf (file, "%s", name);
+  fprintf (file, "%s", name);
 }
 
 /* A C compound statement to output to stdio stream STREAM the
@@ -2174,7 +2208,7 @@ print_operand (file, op, letter)
   else if (letter == 'T')
     {
       asm_print_register (file, SOFT_TMP_REGNUM);
-      asm_fprintf (file, "+1");
+      fprintf (file, "+1");
       return;
     }
   else if (letter == '#')
@@ -2187,7 +2221,11 @@ print_operand (file, op, letter)
       if (letter == 'b' && S_REG_P (op))
 	{
 	  asm_print_register (file, REGNO (op));
-	  asm_fprintf (file, "+1");
+	  fprintf (file, "+1");
+	}
+      else if (letter == 'b' && D_REG_P (op))
+	{
+	  asm_print_register (file, HARD_B_REGNUM);
 	}
       else
 	{
@@ -2204,7 +2242,7 @@ print_operand (file, op, letter)
 	asm_fprintf (file, "%0I%%hi(");
 
       output_addr_const (file, op);
-      asm_fprintf (file, ")");
+      fprintf (file, ")");
       return;
     }
 
@@ -2230,7 +2268,7 @@ print_operand (file, op, letter)
 	case PRE_DEC:
 	  if (TARGET_M6812)
 	    {
-	      asm_fprintf (file, "%u,-", GET_MODE_SIZE (GET_MODE (op)));
+	      fprintf (file, "%u,-", GET_MODE_SIZE (GET_MODE (op)));
 	      asm_print_register (file, REGNO (XEXP (base, 0)));
 	    }
 	  else
@@ -2240,9 +2278,9 @@ print_operand (file, op, letter)
 	case POST_DEC:
 	  if (TARGET_M6812)
 	    {
-	      asm_fprintf (file, "%u,", GET_MODE_SIZE (GET_MODE (op)));
+	      fprintf (file, "%u,", GET_MODE_SIZE (GET_MODE (op)));
 	      asm_print_register (file, REGNO (XEXP (base, 0)));
-	      asm_fprintf (file, "-");
+	      fprintf (file, "-");
 	    }
 	  else
 	    abort ();
@@ -2251,9 +2289,9 @@ print_operand (file, op, letter)
 	case POST_INC:
 	  if (TARGET_M6812)
 	    {
-	      asm_fprintf (file, "%u,", GET_MODE_SIZE (GET_MODE (op)));
+	      fprintf (file, "%u,", GET_MODE_SIZE (GET_MODE (op)));
 	      asm_print_register (file, REGNO (XEXP (base, 0)));
-	      asm_fprintf (file, "+");
+	      fprintf (file, "+");
 	    }
 	  else
 	    abort ();
@@ -2262,7 +2300,7 @@ print_operand (file, op, letter)
 	case PRE_INC:
 	  if (TARGET_M6812)
 	    {
-	      asm_fprintf (file, "%u,+", GET_MODE_SIZE (GET_MODE (op)));
+	      fprintf (file, "%u,+", GET_MODE_SIZE (GET_MODE (op)));
 	      asm_print_register (file, REGNO (XEXP (base, 0)));
 	    }
 	  else
@@ -2286,11 +2324,10 @@ print_operand (file, op, letter)
   else if (GET_CODE (op) == CONST_DOUBLE
 	   && (GET_MODE (op) == DFmode || GET_MODE (op) == XFmode))
     {
-      REAL_VALUE_TYPE r;
       char dstr[30];
 
-      REAL_VALUE_FROM_CONST_DOUBLE (r, op);
-      REAL_VALUE_TO_DECIMAL (r, "%.20g", dstr);
+      real_to_decimal (dstr, CONST_DOUBLE_REAL_VALUE (op),
+		       sizeof (dstr), 0, 1);
       asm_fprintf (file, "%I0r%s", dstr);
     }
   else
@@ -2303,11 +2340,11 @@ print_operand (file, op, letter)
         need_parenthesize = must_parenthesize (op);
 
       if (need_parenthesize)
-        asm_fprintf (file, "(");
+        fprintf (file, "(");
 
       output_addr_const (file, op);
       if (need_parenthesize)
-        asm_fprintf (file, ")");
+        fprintf (file, ")");
     }
 }
 
@@ -2376,7 +2413,7 @@ print_operand_address (file, addr)
       if (!REG_P (addr) || !REG_OK_FOR_BASE_STRICT_P (addr))
 	abort ();
 
-      asm_fprintf (file, "0,");
+      fprintf (file, "0,");
       asm_print_register (file, REGNO (addr));
       break;
 
@@ -2387,7 +2424,7 @@ print_operand_address (file, addr)
 	case PRE_DEC:
 	  if (TARGET_M6812)
 	    {
-	      asm_fprintf (file, "%u,-", GET_MODE_SIZE (GET_MODE (addr)));
+	      fprintf (file, "%u,-", GET_MODE_SIZE (GET_MODE (addr)));
 	      asm_print_register (file, REGNO (XEXP (base, 0)));
 	    }
 	  else
@@ -2397,9 +2434,9 @@ print_operand_address (file, addr)
 	case POST_DEC:
 	  if (TARGET_M6812)
 	    {
-	      asm_fprintf (file, "%u,", GET_MODE_SIZE (GET_MODE (addr)));
+	      fprintf (file, "%u,", GET_MODE_SIZE (GET_MODE (addr)));
 	      asm_print_register (file, REGNO (XEXP (base, 0)));
-	      asm_fprintf (file, "-");
+	      fprintf (file, "-");
 	    }
 	  else
 	    abort ();
@@ -2408,9 +2445,9 @@ print_operand_address (file, addr)
 	case POST_INC:
 	  if (TARGET_M6812)
 	    {
-	      asm_fprintf (file, "%u,", GET_MODE_SIZE (GET_MODE (addr)));
+	      fprintf (file, "%u,", GET_MODE_SIZE (GET_MODE (addr)));
 	      asm_print_register (file, REGNO (XEXP (base, 0)));
-	      asm_fprintf (file, "+");
+	      fprintf (file, "+");
 	    }
 	  else
 	    abort ();
@@ -2419,7 +2456,7 @@ print_operand_address (file, addr)
 	case PRE_INC:
 	  if (TARGET_M6812)
 	    {
-	      asm_fprintf (file, "%u,+", GET_MODE_SIZE (GET_MODE (addr)));
+	      fprintf (file, "%u,+", GET_MODE_SIZE (GET_MODE (addr)));
 	      asm_print_register (file, REGNO (XEXP (base, 0)));
 	    }
 	  else
@@ -2429,11 +2466,11 @@ print_operand_address (file, addr)
 	default:
 	  need_parenthesis = must_parenthesize (base);
 	  if (need_parenthesis)
-	    asm_fprintf (file, "(");
+	    fprintf (file, "(");
 
 	  output_addr_const (file, base);
 	  if (need_parenthesis)
-	    asm_fprintf (file, ")");
+	    fprintf (file, ")");
 	  break;
 	}
       break;
@@ -2451,13 +2488,13 @@ print_operand_address (file, addr)
 	  need_parenthesis = must_parenthesize (addr);
 
 	  if (need_parenthesis)
-	    asm_fprintf (file, "(");
+	    fprintf (file, "(");
 
 	  output_addr_const (file, base);
-	  asm_fprintf (file, "+");
+	  fprintf (file, "+");
 	  output_addr_const (file, offset);
 	  if (need_parenthesis)
-	    asm_fprintf (file, ")");
+	    fprintf (file, ")");
 	}
       else if (REG_P (base) && REG_OK_FOR_BASE_STRICT_P (base))
 	{
@@ -2466,7 +2503,7 @@ print_operand_address (file, addr)
 	      if (TARGET_M6812)
 		{
 		  asm_print_register (file, REGNO (offset));
-		  asm_fprintf (file, ",");
+		  fprintf (file, ",");
 		  asm_print_register (file, REGNO (base));
 		}
 	      else
@@ -2476,12 +2513,12 @@ print_operand_address (file, addr)
 	    {
               need_parenthesis = must_parenthesize (offset);
               if (need_parenthesis)
-                asm_fprintf (file, "(");
+                fprintf (file, "(");
 
 	      output_addr_const (file, offset);
               if (need_parenthesis)
-                asm_fprintf (file, ")");
-	      asm_fprintf (file, ",");
+                fprintf (file, ")");
+	      fprintf (file, ",");
 	      asm_print_register (file, REGNO (base));
 	    }
 	}
@@ -2495,17 +2532,17 @@ print_operand_address (file, addr)
       if (GET_CODE (addr) == CONST_INT
 	  && INTVAL (addr) < 0x8000 && INTVAL (addr) >= -0x8000)
 	{
-	  asm_fprintf (file, "%d", INTVAL (addr));
+	  fprintf (file, HOST_WIDE_INT_PRINT_DEC, INTVAL (addr));
 	}
       else
 	{
 	  need_parenthesis = must_parenthesize (addr);
 	  if (need_parenthesis)
-	    asm_fprintf (file, "(");
+	    fprintf (file, "(");
 
 	  output_addr_const (file, addr);
 	  if (need_parenthesis)
-	    asm_fprintf (file, ")");
+	    fprintf (file, ")");
 	}
       break;
     }
@@ -3241,6 +3278,17 @@ m68hc11_gen_movhi (insn, operands)
 	{
 	  if (SP_REG_P (operands[0]))
 	    output_asm_insn ("lds\t%1", operands);
+	  else if (0 /* REG_WAS_0 note is boggus;  don't rely on it.  */
+                   && !D_REG_P (operands[0])
+                   && GET_CODE (operands[1]) == CONST_INT
+                   && (INTVAL (operands[1]) == 1 || INTVAL (operands[1]) == -1)
+                   && find_reg_note (insn, REG_WAS_0, 0))
+            {
+              if (INTVAL (operands[1]) == 1)
+                output_asm_insn ("in%0", operands);
+              else
+                output_asm_insn ("de%0", operands);
+            }
 	  else
 	    output_asm_insn ("ld%0\t%1", operands);
 	}
@@ -3406,10 +3454,16 @@ m68hc11_gen_movhi (insn, operands)
                   output_asm_insn ("xgdx", operands);
                   CC_STATUS_INIT;
                 }
-              else
+              else if (!optimize_size)
                 {
                   output_asm_insn ("sty\t%t1", operands);
                   output_asm_insn ("ldx\t%t1", operands);
+                }
+              else
+                {
+                  CC_STATUS_INIT;
+                  output_asm_insn ("pshy", operands);
+                  output_asm_insn ("pulx", operands);
                 }
 	    }
 	  else if (SP_REG_P (operands[1]))
@@ -3418,6 +3472,16 @@ m68hc11_gen_movhi (insn, operands)
 	      cc_status = cc_prev_status;
 	      output_asm_insn ("tsx", operands);
 	    }
+	  else if (0 /* REG_WAS_0 note is boggus;  don't rely on it.  */
+                   && GET_CODE (operands[1]) == CONST_INT
+                   && (INTVAL (operands[1]) == 1 || INTVAL (operands[1]) == -1)
+                   && find_reg_note (insn, REG_WAS_0, 0))
+            {
+              if (INTVAL (operands[1]) == 1)
+                output_asm_insn ("in%0", operands);
+              else
+                output_asm_insn ("de%0", operands);
+            }
 	  else
 	    {
 	      output_asm_insn ("ldx\t%1", operands);
@@ -3448,10 +3512,16 @@ m68hc11_gen_movhi (insn, operands)
                   output_asm_insn ("xgdy", operands);
                   CC_STATUS_INIT;
                 }
-              else
+              else if (!optimize_size)
                 {
                   output_asm_insn ("stx\t%t1", operands);
                   output_asm_insn ("ldy\t%t1", operands);
+                }
+              else
+                {
+                  CC_STATUS_INIT;
+                  output_asm_insn ("pshx", operands);
+                  output_asm_insn ("puly", operands);
                 }
 	    }
 	  else if (SP_REG_P (operands[1]))
@@ -3460,7 +3530,17 @@ m68hc11_gen_movhi (insn, operands)
 	      cc_status = cc_prev_status;
 	      output_asm_insn ("tsy", operands);
 	    }
-	  else
+	  else if (0 /* REG_WAS_0 note is boggus;  don't rely on it.  */
+                   && GET_CODE (operands[1]) == CONST_INT
+                   && (INTVAL (operands[1]) == 1 || INTVAL (operands[1]) == -1)
+                   && find_reg_note (insn, REG_WAS_0, 0))
+            {
+              if (INTVAL (operands[1]) == 1)
+                output_asm_insn ("in%0", operands);
+              else
+                output_asm_insn ("de%0", operands);
+            }
+          else
 	    {
 	      output_asm_insn ("ldy\t%1", operands);
 	    }
@@ -3700,6 +3780,16 @@ m68hc11_gen_movqi (insn, operands)
 		  output_asm_insn ("ldab\t%T0", operands);
 		}
 	    }
+	  else if (0 /* REG_WAS_0 note is boggus;  don't rely on it.  */
+                   && GET_CODE (operands[1]) == CONST_INT
+                   && (INTVAL (operands[1]) == 1 || INTVAL (operands[1]) == -1)
+                   && find_reg_note (insn, REG_WAS_0, 0))
+            {
+              if (INTVAL (operands[1]) == 1)
+                output_asm_insn ("inc%b0", operands);
+              else
+                output_asm_insn ("dec%b0", operands);
+            }          
 	  else if (!DB_REG_P (operands[1]) && !D_REG_P (operands[1])
 		   && !DA_REG_P (operands[1]))
 	    {
@@ -3908,15 +3998,15 @@ m68hc11_gen_rotate (code, insn, operands)
 
   if (val > 0)
     {
-      /* Set the carry to bit-15, but don't change D yet.  */
-      if (GET_MODE (operands[0]) != QImode)
-        {
-          output_asm_insn ("asra", operands);
-          output_asm_insn ("rola", operands);
-        }
-
       while (--val >= 0)
         {
+          /* Set the carry to bit-15, but don't change D yet.  */
+          if (GET_MODE (operands[0]) != QImode)
+            {
+              output_asm_insn ("asra", operands);
+              output_asm_insn ("rola", operands);
+            }
+
           /* Rotate B first to move the carry to bit-0.  */
           if (D_REG_P (operands[0]))
             output_asm_insn ("rolb", operands);
@@ -3927,14 +4017,12 @@ m68hc11_gen_rotate (code, insn, operands)
     }
   else
     {
-      /* Set the carry to bit-8 of D.  */
-      if (val != 0 && GET_MODE (operands[0]) != QImode)
-        {
-          output_asm_insn ("tap", operands);
-        }
-      
       while (++val <= 0)
         {
+          /* Set the carry to bit-8 of D.  */
+          if (GET_MODE (operands[0]) != QImode)
+            output_asm_insn ("tap", operands);
+
           /* Rotate B first to move the carry to bit-7.  */
           if (D_REG_P (operands[0]))
             output_asm_insn ("rorb", operands);
@@ -4130,8 +4218,6 @@ struct replace_info
   int z_loaded_with_sp;
 };
 
-static rtx z_reg_qi;
-
 static int m68hc11_check_z_replacement PARAMS ((rtx, struct replace_info *));
 static void m68hc11_find_z_replacement PARAMS ((rtx, struct replace_info *));
 static void m68hc11_z_replacement PARAMS ((rtx));
@@ -4231,7 +4317,7 @@ m68hc11_check_z_replacement (insn, info)
 		  info->need_save_z = 0;
 		  info->found_call = 1;
 		  info->regno = SOFT_Z_REGNUM;
-		  info->last = insn;
+		  info->last = NEXT_INSN (insn);
 		}
 	      return 0;
 	    }
@@ -4365,7 +4451,13 @@ m68hc11_check_z_replacement (insn, info)
 		      info->z_died = 1;
 		      info->need_save_z = 0;
 		    }
-		  else
+		  else if (TARGET_M6812 && side_effects_p (src))
+                    {
+                      info->last = 0;
+                      info->must_restore_reg = 0;
+                      return 0;
+                    }
+                  else
 		    {
 		      info->save_before_last = 1;
 		    }
@@ -4442,7 +4534,13 @@ m68hc11_check_z_replacement (insn, info)
 		      info->z_died = 1;
 		      info->need_save_z = 0;
 		    }
-		  else
+		  else if (TARGET_M6812 && side_effects_p (src))
+                    {
+                      info->last = 0;
+                      info->must_restore_reg = 0;
+                      return 0;
+                    }
+                  else
 		    {
 		      info->save_before_last = 1;
 		    }
@@ -4900,6 +4998,7 @@ m68hc11_z_replacement (insn)
 
       body = PATTERN (insn);
       if (GET_CODE (body) == SET || GET_CODE (body) == PARALLEL
+          || GET_CODE (body) == ASM_OPERANDS
 	  || GET_CODE (insn) == CALL_INSN || GET_CODE (insn) == JUMP_INSN)
 	{
           rtx note;
@@ -5084,6 +5183,12 @@ m68hc11_reorg (first)
   int split_done = 0;
   rtx insn;
 
+  compute_bb_for_insn ();
+
+  /* ??? update_life_info_in_dirty_blocks fails to terminate during
+     non-optimizing bootstrap.
+
+     update_life_info (NULL, UPDATE_LIFE_GLOBAL_RM_NOTES, PROP_DEATH_NOTES); */
   z_replacement_completed = 0;
   z_reg = gen_rtx (REG, HImode, HARD_Z_REGNUM);
 
@@ -5103,7 +5208,6 @@ m68hc11_reorg (first)
      This happens quite often when 32-bit or above patterns are split.  */
   if (optimize > 0 && split_done)
     {
-      find_basic_blocks (first, max_reg_num (), 0);
       reload_cse_regs (first);
     }
 
@@ -5133,7 +5237,6 @@ m68hc11_reorg (first)
             }
         }
 
-      find_basic_blocks (first, max_reg_num (), 0);
       life_analysis (first, 0, PROP_REG_INFO | PROP_DEATH_NOTES);
     }
 
@@ -5199,7 +5302,7 @@ m68hc11_memory_move_cost (mode, class, in)
   else
     {
       if (GET_MODE_SIZE (mode) <= 2)
-	return COSTS_N_INSNS (2);
+	return COSTS_N_INSNS (3);
       else
 	return COSTS_N_INSNS (4);
     }
@@ -5531,27 +5634,21 @@ m68hc11_asm_file_start (out, main_file)
      const char *main_file;
 {
   fprintf (out, ";;;-----------------------------------------\n");
-  fprintf (out, ";;; Start MC68HC11 gcc assembly output\n");
+  fprintf (out, ";;; Start %s gcc assembly output\n",
+           TARGET_M6811
+           ? "MC68HC11"
+           : TARGET_M68S12 ? "MC68HCS12" : "MC68HC12");
   fprintf (out, ";;; gcc compiler %s\n", version_string);
   print_options (out);
   fprintf (out, ";;;-----------------------------------------\n");
   output_file_directive (out, main_file);
+
+  if (TARGET_SHORT)
+    fprintf (out, "\t.mode mshort\n");
+  else
+    fprintf (out, "\t.mode mlong\n");
 }
 
-
-static void
-m68hc11_add_gc_roots ()
-{
-  ggc_add_rtx_root (&m68hc11_soft_tmp_reg, 1);
-  ggc_add_rtx_root (&ix_reg, 1);
-  ggc_add_rtx_root (&iy_reg, 1);
-  ggc_add_rtx_root (&d_reg, 1);
-  ggc_add_rtx_root (&da_reg, 1);
-  ggc_add_rtx_root (&z_reg, 1);
-  ggc_add_rtx_root (&z_reg_qi, 1);
-  ggc_add_rtx_root (&stack_push_word, 1);
-  ggc_add_rtx_root (&stack_pop_word, 1);
-}
 
 static void
 m68hc11_asm_out_constructor (symbol, priority)
@@ -5570,3 +5667,5 @@ m68hc11_asm_out_destructor (symbol, priority)
   default_dtor_section_asm_out_destructor (symbol, priority);
   fprintf (asm_out_file, "\t.globl\t__do_global_dtors\n");
 }
+
+#include "gt-m68hc11.h"

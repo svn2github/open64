@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Generate from machine description:
    - some flags HAVE_... saying which simple standard instructions are
    available for this machine.
@@ -229,11 +225,7 @@ gen_insn (insn)
       printf ("#define HAVE_%s (", name);
       for (p = XSTR (insn, 2); *p; p++)
 	{
-#ifndef SGI_MONGOOSE
 	  if (IS_VSPACE (*p))
-#else
-          if (*p == '\n')
-#endif /* SGI_MONGOOSE */
 	    fputs (" \\\n", stdout);
 	  else
 	    putchar (*p);

@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Call-backs for C++ error reporting.
    This code is non-reentrant.
    Copyright (C) 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2002
@@ -32,9 +28,6 @@ Boston, MA 02111-1307, USA.  */
 #include "flags.h"
 #include "diagnostic.h"
 #include "langhooks-def.h"
-#ifdef KEY
-#include "defaults.h"
-#endif
 
 enum pad { none, before, after };
 

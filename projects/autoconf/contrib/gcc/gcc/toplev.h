@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* toplev.h - Various declarations for functions found in toplev.c
    Copyright (C) 1998, 1999, 2000, 2001 Free Software Foundation, Inc.
 
@@ -137,7 +133,4 @@ extern bool fast_math_flags_set_p	PARAMS ((void));
 extern int exact_log2_wide             PARAMS ((unsigned HOST_WIDE_INT));
 extern int floor_log2_wide             PARAMS ((unsigned HOST_WIDE_INT));
 
-#ifdef SGI_MONGOOSE
-extern void dump_parse_tree    PARAMS ((char *, union tree_node *));
-#endif /* SGI_MONGOOSE */
 #endif /* ! GCC_TOPLEV_H */

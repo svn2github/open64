@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Definitions for CPP library.
    Copyright (C) 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002
    Free Software Foundation, Inc.
@@ -285,9 +281,6 @@ struct cpp_options
   /* Nonzero means don't print warning messages.  */
   unsigned char inhibit_warnings;
 
-  /* Nonzero means complain about deprecated features.  */
-  unsigned char warn_deprecated;
-
   /* Nonzero means don't suppress warnings from system headers.  */
   unsigned char warn_system_headers;
 
@@ -494,11 +487,7 @@ struct cpp_hashnode
   {
     cpp_macro *macro;			/* If a macro.  */
     struct answer *answers;		/* Answers to an assertion.  */
-#ifdef SGI_MONGOOSE
-    enum cpp_ttype operator_code;       /* Code for a named operator.  */
-#else
     enum cpp_ttype operator;		/* Code for a named operator.  */
-#endif /* SGI_MONGOOSE */
     enum builtin_type builtin;		/* Code for a builtin macro.  */
   } value;
 };

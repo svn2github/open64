@@ -95,28 +95,22 @@ function output(lib) {
   if (inherit[lib])
     output(inherit[lib]);
 
-  empty=1
+  printf("%s {\n", lib);
+  sawglobal = 0;
   for (sym in ver)
     if ((ver[sym] == lib) && (sym in def))
       {
-	if (empty)
+	if (!sawglobal)
 	  {
-	    printf("%s {\n", lib);
 	    printf("  global:\n");
-	    empty = 0;
+	    sawglobal = 1;
 	  }
 	printf("\t%s;\n", sym);
 	if (dotsyms)
 	  printf("\t.%s;\n", sym);
       }
 
-  if (empty)
-    {
-      for (l in libs)
-	if (inherit[l] == lib)
-	  inherit[l] = inherit[lib];
-    }
-  else if (inherit[lib])
+  if (inherit[lib])
     printf("} %s;\n", inherit[lib]);
   else
     printf ("\n  local:\n\t*;\n};\n");

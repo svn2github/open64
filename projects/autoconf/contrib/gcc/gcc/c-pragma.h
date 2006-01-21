@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Pragma related interfaces.
    Copyright (C) 1995, 1998, 1999, 2000, 2001, 2002
    Free Software Foundation, Inc.
@@ -36,9 +32,7 @@ extern struct cpp_reader* parse_in;
 #ifdef HANDLE_SYSV_PRAGMA
 #if ((defined (ASM_WEAKEN_LABEL) && defined (ASM_OUTPUT_WEAK_ALIAS)) \
      || defined (ASM_WEAKEN_DECL))
-# ifndef HANDLE_PRAGMA_WEAK
-#  define HANDLE_PRAGMA_WEAK SUPPORTS_WEAK
-# endif
+#define HANDLE_PRAGMA_WEAK SUPPORTS_WEAK
 #endif
 
 /* We always support #pragma pack for SYSV pragmas.  */
@@ -47,10 +41,6 @@ extern struct cpp_reader* parse_in;
 #endif
 #endif /* HANDLE_SYSV_PRAGMA */
 
-
-#ifdef SGI_MONGOOSE
-extern tree weak_decls;
-#endif /* SGI_MONGOOSE */
 
 #ifdef HANDLE_PRAGMA_PACK_PUSH_POP
 /* If we are supporting #pragma pack(push... then we automatically

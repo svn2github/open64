@@ -79,7 +79,7 @@ Boston, MA 02111-1307, USA.  */
 #undef ASM_SPEC
 #define ASM_SPEC "\
 %{v:-V} %{Qy:} %{!Qn:-Qy} %{n} %{T} %{Ym,*} %{Wa,*:%*} -s \
-%{fpic|fpie|fPIC|fPIE:-K PIC} \
+%{fpic:-K PIC} %{fPIC:-K PIC} \
 %(asm_cpu) \
 "
 

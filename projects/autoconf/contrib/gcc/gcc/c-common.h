@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Definitions for c-common.c.
    Copyright (C) 1987, 1993, 1994, 1995, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -28,9 +24,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "splay-tree.h"
 #include "cpplib.h"
-#ifdef KEY
-#include "omp_types.h"
-#endif
 
 /* Usage of TREE_LANG_FLAG_?:
    0: COMPOUND_STMT_NO_SCOPE (in COMPOUND_STMT).
@@ -93,7 +86,7 @@ enum rid
   RID_PUBLIC,   RID_PRIVATE,  RID_PROTECTED,
   RID_TEMPLATE, RID_NULL,     RID_CATCH,
   RID_DELETE,   RID_FALSE,    RID_NAMESPACE,
-  RID_NEW,      RID_OFFSETOF, RID_OPERATOR, RID_THIS,
+  RID_NEW,      RID_OPERATOR, RID_THIS,
   RID_THROW,    RID_TRUE,     RID_TRY,
   RID_TYPENAME, RID_TYPEID,   RID_USING,
 
@@ -548,10 +541,6 @@ extern int warn_bad_function_cast;
 /* Warn about traditional constructs whose meanings changed in ANSI C.  */
 
 extern int warn_traditional;
-
-/* Nonzero means warn for a declaration found after a statement.  */
-
-extern int warn_declaration_after_statement;
 
 /* Nonzero means warn for non-prototype function decls
    or non-prototyped defs without previous prototype.  */
@@ -1044,16 +1033,8 @@ extern tree strip_array_types                   PARAMS ((tree));
 #define LABEL_STMT_LABEL(NODE)  TREE_OPERAND (LABEL_STMT_CHECK (NODE), 0)
 
 /* COMPOUND_LITERAL_EXPR accessors.  */
-#ifndef SGI_MONGOOSE
 #define COMPOUND_LITERAL_EXPR_DECL_STMT(NODE)		\
   TREE_OPERAND (COMPOUND_LITERAL_EXPR_CHECK (NODE), 0)
-#else
-// I can not see where COMPOUND_LITERAL_EXPR_CHECK is defined in gcc-3.2.2
-// It appears just a regular check to see if the node is of correct type
-// We can do without it.
-#define COMPOUND_LITERAL_EXPR_DECL_STMT(NODE)           \
-          TREE_OPERAND (NODE, 0)
-#endif /* SGI_MONGOOSE */
 #define COMPOUND_LITERAL_EXPR_DECL(NODE)			\
   DECL_STMT_DECL (COMPOUND_LITERAL_EXPR_DECL_STMT (NODE))
 
@@ -1106,16 +1087,8 @@ extern tree strip_array_types                   PARAMS ((tree));
   TREE_OPERAND (CLEANUP_STMT_CHECK (NODE), 1)
 
 /* The filename we are changing to as of this FILE_STMT.  */
-#ifndef SGI_MONGOOSE
 #define FILE_STMT_FILENAME_NODE(NODE) \
   (TREE_OPERAND (FILE_STMT_CHECK (NODE), 0))
-#else
-// I can not see where FILE_STMT_CHECK is defined in gcc-3.2.2
-// It appears just a regular check to see if the node is of correct type
-// We can do without it.
-#define FILE_STMT_FILENAME_NODE(NODE) \
-  (TREE_OPERAND (NODE, 0))
-#endif /* SGI_MONGOOSE */
 #define FILE_STMT_FILENAME(NODE) \
   (IDENTIFIER_POINTER (FILE_STMT_FILENAME_NODE (NODE)))
 
@@ -1275,12 +1248,5 @@ struct c_fileinfo *get_fileinfo			PARAMS ((const char *));
 extern void dump_time_statistics		PARAMS ((void));
 
 extern int c_dump_tree				PARAMS ((void *, tree));
-
-#ifdef KEY
-// This function takes a void *, and the type of pointer
-// depends on the 1st argument
-extern tree build_omp_stmt                      PARAMS ((enum omp_tree_type,
-                                                         void *));
-#endif
 
 #endif /* ! GCC_C_COMMON_H */

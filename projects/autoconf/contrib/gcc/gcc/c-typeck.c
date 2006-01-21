@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Build expressions with type checking for C compiler.
    Copyright (C) 1987, 1988, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
    1998, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -2589,38 +2585,6 @@ build_binary_op (code, orig_op0, orig_op1, convert_p)
   if (build_type == NULL_TREE)
     build_type = result_type;
 
-#ifdef TARG_X8664
-  // Let wn_lower handle it.
-#if 0
- { // Bug 940
-   if (!TARGET_64BIT && 
-       TREE_CODE (build_type) == INTEGER_TYPE &&
-       (code == TRUNC_DIV_EXPR || code == TRUNC_MOD_EXPR) && 
-       TREE_INT_CST_LOW (TYPE_SIZE (build_type)) == 64) {
-     tree call_expr;
-     tree call;
-     tree arg_list = tree_cons (NULL_TREE, op1, NULL_TREE);     
-     if (code == TRUNC_DIV_EXPR) {
-       if (TREE_UNSIGNED(build_type)) 
-	 call = built_in_decls[BUILT_IN_UIDIV3];
-       else
-	 call = built_in_decls[BUILT_IN_IDIV3];
-     } else {
-       if (TREE_UNSIGNED(build_type)) 
-	 call = built_in_decls[BUILT_IN_UIMOD3];
-       else
-	 call = built_in_decls[BUILT_IN_IMOD3];
-     }
-     arg_list = tree_cons (NULL_TREE, op0, arg_list);
-     call_expr = build1 (ADDR_EXPR, build_pointer_type (call), call);
-     call_expr = build (CALL_EXPR, TREE_TYPE (TREE_TYPE (call)), call_expr, 
-			arg_list, NULL_TREE);
-     TREE_SIDE_EFFECTS (call_expr) = 1;
-     return call_expr;
-   }     
- }
-#endif
-#endif
   {
     tree result = build (resultcode, build_type, op0, op1);
     tree folded;
@@ -4754,9 +4718,6 @@ digest_init (type, init, require_constant)
 	   || typ1 == signed_char_type_node
 	   || typ1 == unsigned_char_type_node
 	   || typ1 == unsigned_wchar_type_node
-#ifdef KEY
-           || typ1 == long_integer_type_node
-#endif
 	   || typ1 == signed_wchar_type_node)
 	  && ((inside_init && TREE_CODE (inside_init) == STRING_CST)))
 	{
@@ -5166,12 +5127,6 @@ finish_init ()
 {
   struct initializer_stack *p = initializer_stack;
 
-#ifdef SGI_MONGOOSE
-  if (constructor_incremental) {
-        WFE_Finish_Aggregate_Init ();
-  }
-#endif /* SGI_MONGOOSE */
-
   /* Output subconstants (string constants, usually)
      that were referenced within this initializer and saved up.
      Must do this if and only if we called defer_addressed_constants.  */
@@ -5223,9 +5178,6 @@ really_start_incremental_init (type)
   if (type == 0)
     type = TREE_TYPE (constructor_decl);
 
-#ifdef SGI_MONGOOSE
-  dump_parse_tree ("really_start_incremental_init", constructor_decl);
-#endif /* SGI_MONGOOSE */
   p->type = constructor_type;
   p->fields = constructor_fields;
   p->index = constructor_index;
@@ -5327,9 +5279,6 @@ push_init_level (implicit)
   struct constructor_stack *p;
   tree value = NULL_TREE;
 
-#ifdef SGI_MONGOOSE
-   dump_parse_tree ("push_init_level", NULL);
-#endif /* SGI_MONGOOSE */
   /* If we've exhausted any levels that didn't have braces,
      pop them now.  */
   while (constructor_stack->implicit)
@@ -5523,9 +5472,6 @@ pop_init_level (implicit)
   struct constructor_stack *p;
   tree constructor = 0;
 
-#ifdef SGI_MONGOOSE
-   dump_parse_tree ("pop_init_level", NULL);
-#endif /* SGI_MONGOOSE */
   if (implicit == 0)
     {
       /* When we come to an explicit close brace,
@@ -5796,8 +5742,6 @@ set_init_index (first, last)
     error_init ("nonconstant array index in initializer");
   else if (TREE_CODE (constructor_type) != ARRAY_TYPE)
     error_init ("array index in non-array initializer");
-  else if (tree_int_cst_sgn (first) == -1)
-    error_init ("array index in initializer exceeds array bounds");
   else if (constructor_max_index
 	   && tree_int_cst_lt (constructor_max_index, first))
     error_init ("array index in initializer exceeds array bounds");
@@ -6281,9 +6225,6 @@ output_init_element (value, type, field, pending)
      tree value, type, field;
      int pending;
 {
-#ifdef SGI_MONGOOSE
-   dump_parse_tree ("output_init_element", value);
-#endif /* SGI_MONGOOSE */
   if (TREE_CODE (TREE_TYPE (value)) == FUNCTION_TYPE
       || (TREE_CODE (TREE_TYPE (value)) == ARRAY_TYPE
 	  && !(TREE_CODE (value) == STRING_CST

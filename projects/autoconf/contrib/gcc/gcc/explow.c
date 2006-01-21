@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Subroutines for manipulating rtx's in semantically interesting ways.
    Copyright (C) 1987, 1991, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -39,10 +35,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "ggc.h"
 #include "recog.h"
 #include "langhooks.h"
-#ifdef SGI_MONGOOSE
-// To get PREFERRED_STACK_BOUNDARY
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 static rtx break_out_memory_refs	PARAMS ((rtx));
 static void emit_stack_probe		PARAMS ((rtx));

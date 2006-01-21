@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Functions related to building classes and their related objects.
    Copyright (C) 1987, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002  Free Software Foundation, Inc.
@@ -38,9 +34,6 @@ Boston, MA 02111-1307, USA.  */
 #include "ggc.h"
 #include "lex.h"
 #include "target.h"
-#ifdef SGI_MONGOOSE
-#include "defaults.h"   // get TARGET_VTABLE_USES_DESCRIPTORS
-#endif
 
 /* The number of nested classes being processed.  If we are not in the
    scope of any class, this is zero.  */
@@ -2870,9 +2863,6 @@ add_implicitly_declared_members (t, cant_have_default_ctor,
 				 /*const_p=*/!cant_have_const_cctor);
       TREE_CHAIN (default_fn) = implicit_fns;
       implicit_fns = default_fn;
-#ifdef KEY
-      TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR (t) = 1;
-#endif
     }
 
   /* Assignment operator.  */
@@ -4189,20 +4179,6 @@ clone_function_decl (fn, update_method_vec_p)
       clone = build_clone (fn, complete_ctor_identifier);
       if (update_method_vec_p)
 	add_method (DECL_CONTEXT (clone), clone, /*error_p=*/0);
-#ifdef KEY
-      /* Identify the copy constructor for use by the WHIRL translator to copy
-	 objects. */
-      {
-	tree type = TYPE_METHOD_BASETYPE (TREE_TYPE (clone));
-	if (!TYPE_HAS_IMPLICIT_COPY_CONSTRUCTOR (type) &&
-	    DECL_COPY_CONSTRUCTOR_P (clone)) {
-	  if (!DECL_COMPLETE_CONSTRUCTOR_P (clone))
-	    abort ();
-	  CLASSTYPE_COPY_CONSTRUCTOR (type) = clone;
-	}
-      }
-#endif
-
       clone = build_clone (fn, base_ctor_identifier);
       if (update_method_vec_p)
 	add_method (DECL_CONTEXT (clone), clone, /*error_p=*/0);
@@ -5066,15 +5042,6 @@ layout_class_type (tree t, tree *virtuals_p)
 	     field to the size of its declared type; the rest of the
 	     field is effectively invisible.  */
 	  DECL_SIZE (field) = TYPE_SIZE (type);
-	  /* We must also reset the DECL_MODE of the field.  */
-	  if (abi_version_at_least (2))
-	    DECL_MODE (field) = TYPE_MODE (type);
-	  else if (warn_abi
-		   && DECL_MODE (field) != TYPE_MODE (type))
-	    /* Versions of G++ before G++ 3.4 did not reset the
-	       DECL_MODE.  */
-	    warning ("the offset of `%D' may not be ABI-compliant and may "
-		     "change in a future version of GCC", field);
 	}
       else
 	{
@@ -5212,10 +5179,6 @@ layout_class_type (tree t, tree *virtuals_p)
 	    DECL_FIELD_OFFSET (*next_field) = DECL_FIELD_OFFSET (field);
 	    DECL_FIELD_BIT_OFFSET (*next_field)
 	      = DECL_FIELD_BIT_OFFSET (field);
-#ifdef KEY
-	    DECL_SIZE (*next_field) = DECL_SIZE (field);
-            DECL_SIZE_UNIT (*next_field) = DECL_SIZE_UNIT (field);
-#endif // KEY
 	    next_field = &TREE_CHAIN (*next_field);
 	  }
 
@@ -6715,7 +6678,7 @@ maybe_note_name_used_in_class (name, decl)
   splay_tree names_used;
 
   /* If we're not defining a class, there's nothing to do.  */
-  if (!innermost_scope_is_class_p ())
+  if (!current_class_type || !TYPE_BEING_DEFINED (current_class_type))
     return;
   
   /* If there's already a binding for this NAME, then we don't have

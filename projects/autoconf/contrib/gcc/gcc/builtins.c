@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Expand builtin functions.
    Copyright (C) 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -78,7 +74,7 @@ const char *const built_in_names[(int) END_BUILTINS] =
 tree built_in_decls[(int) END_BUILTINS];
 
 static int get_pointer_alignment	PARAMS ((tree, unsigned int));
-static tree c_strlen			PARAMS ((tree, int));
+static tree c_strlen			PARAMS ((tree));
 static const char *c_getstr		PARAMS ((tree));
 static rtx c_readstr			PARAMS ((const char *,
 						 enum machine_mode));
@@ -122,14 +118,7 @@ static rtx expand_builtin_strcspn	PARAMS ((tree, rtx,
 						 enum machine_mode));
 static rtx expand_builtin_memcpy	PARAMS ((tree, rtx,
 						 enum machine_mode));
-static rtx expand_builtin_mempcpy	PARAMS ((tree, rtx,
-						 enum machine_mode, int));
-static rtx expand_builtin_memmove	PARAMS ((tree, rtx,
-						 enum machine_mode));
-static rtx expand_builtin_bcopy		PARAMS ((tree));
 static rtx expand_builtin_strcpy	PARAMS ((tree, rtx,
-						 enum machine_mode));
-static rtx expand_builtin_stpcpy	PARAMS ((tree, rtx,
 						 enum machine_mode));
 static rtx builtin_strncpy_read_str	PARAMS ((PTR, HOST_WIDE_INT,
 						 enum machine_mode));
@@ -155,7 +144,6 @@ static rtx expand_builtin_alloca	PARAMS ((tree, rtx));
 static rtx expand_builtin_ffs		PARAMS ((tree, rtx, rtx));
 static rtx expand_builtin_frame_address	PARAMS ((tree));
 static rtx expand_builtin_fputs		PARAMS ((tree, int, int));
-static rtx expand_builtin_sprintf	PARAMS ((tree, rtx, enum machine_mode));
 static tree stabilize_va_list		PARAMS ((tree, int));
 static rtx expand_builtin_expect	PARAMS ((tree, rtx));
 static tree fold_builtin_constant_p	PARAMS ((tree));
@@ -164,7 +152,6 @@ static tree fold_builtin_inf		PARAMS ((tree, int));
 static tree fold_builtin_nan		PARAMS ((tree, tree, int));
 static tree build_function_call_expr	PARAMS ((tree, tree));
 static int validate_arglist		PARAMS ((tree, ...));
-static bool readonly_data_expr		PARAMS ((tree));
 
 /* Return the alignment in bits of EXP, a pointer valued expression.
    But don't return more than MAX_ALIGN no matter what.
@@ -240,43 +227,19 @@ get_pointer_alignment (exp, max_align)
    way, because it could contain a zero byte in the middle.
    TREE_STRING_LENGTH is the size of the character array, not the string.
 
-   ONLY_VALUE should be non-zero if the result is not going to be emitted
-   into the instruction stream and zero if it si going to be expanded.
-   E.g. with i++ ? "foo" : "bar", if ONLY_VALUE is non-zero, constant 3
-   is returned, otherwise NULL, since
-   len = c_strlen (src, 1); if (len) expand_expr (len, ...); would not
-   evaluate the side-effects.
-
    The value returned is of type `ssizetype'.
 
    Unfortunately, string_constant can't access the values of const char
    arrays with initializers, so neither can we do so here.  */
 
 static tree
-c_strlen (src, only_value)
+c_strlen (src)
      tree src;
-     int only_value;
 {
   tree offset_node;
   HOST_WIDE_INT offset;
   int max;
   const char *ptr;
-
-  STRIP_NOPS (src);
-  if (TREE_CODE (src) == COND_EXPR
-      && (only_value || !TREE_SIDE_EFFECTS (TREE_OPERAND (src, 0))))
-    {
-      tree len1, len2;
-
-      len1 = c_strlen (TREE_OPERAND (src, 1), only_value);
-      len2 = c_strlen (TREE_OPERAND (src, 2), only_value);
-      if (tree_int_cst_equal (len1, len2))
-	return len1;
-    }
-
-  if (TREE_CODE (src) == COMPOUND_EXPR
-      && (only_value || !TREE_SIDE_EFFECTS (TREE_OPERAND (src, 0))))
-    src = TREE_OPERAND (src, 1);
 
   src = string_constant (src, &offset_node);
   if (src == 0)
@@ -1559,12 +1522,6 @@ expand_builtin_mathfn (exp, target, subtarget)
     case BUILT_IN_COSF:
     case BUILT_IN_COSL:
       builtin_optab = cos_optab; break;
-#ifdef KEY
-    case BUILT_IN_FLOOR:
-    case BUILT_IN_FLOORF:
-    case BUILT_IN_FLOORL:
-    case BUILT_IN_POW:
-#endif
     case BUILT_IN_SQRT:
     case BUILT_IN_SQRTF:
     case BUILT_IN_SQRTL:
@@ -1655,30 +1612,14 @@ expand_builtin_strlen (exp, target)
   else
     {
       rtx pat;
-      tree len, src = TREE_VALUE (arglist);
+      tree src = TREE_VALUE (arglist);
+
+      int align
+	= get_pointer_alignment (src, BIGGEST_ALIGNMENT) / BITS_PER_UNIT;
+
       rtx result, src_reg, char_rtx, before_strlen;
       enum machine_mode insn_mode = value_mode, char_mode;
       enum insn_code icode = CODE_FOR_nothing;
-      int align;
-
-      /* If the length can be computed at compile-time, return it.  */
-      len = c_strlen (src, 0);
-      if (len)
-	return expand_expr (len, target, value_mode, EXPAND_NORMAL);
-
-      /* If the length can be computed at compile-time and is constant
-	 integer, but there are side-effects in src, evaluate
-	 src for side-effects, then return len.
-	 E.g. x = strlen (i++ ? "xfoo" + 1 : "bar");
-	 can be optimized into: i++; x = 3;  */
-      len = c_strlen (src, 1);
-      if (len && TREE_CODE (len) == INTEGER_CST)
-	{
-	  expand_expr (src, const0_rtx, VOIDmode, EXPAND_NORMAL);
-	  return expand_expr (len, target, value_mode, EXPAND_NORMAL);
-	}
-
-      align = get_pointer_alignment (src, BIGGEST_ALIGNMENT) / BITS_PER_UNIT;
 
       /* If SRC is not a pointer type, don't do this operation inline.  */
       if (align == 0)
@@ -1761,7 +1702,6 @@ expand_builtin_strstr (arglist, target, mode)
      rtx target;
      enum machine_mode mode;
 {
-#ifndef SGI_MONGOOSE
   if (!validate_arglist (arglist, POINTER_TYPE, POINTER_TYPE, VOID_TYPE))
     return 0;
   else
@@ -1806,9 +1746,6 @@ expand_builtin_strstr (arglist, target, mode)
       return expand_expr (build_function_call_expr (fn, arglist),
 			  target, mode, EXPAND_NORMAL);
     }
-#else
-  return 0;
-#endif /* SGI_MONGOOSE */
 }
 
 /* Expand a call to the strchr builtin.  Return 0 if we failed the
@@ -1867,7 +1804,6 @@ expand_builtin_strrchr (arglist, target, mode)
      rtx target;
      enum machine_mode mode;
 {
-#ifndef SGI_MONGOOSE
   if (!validate_arglist (arglist, POINTER_TYPE, INTEGER_TYPE, VOID_TYPE))
     return 0;
   else
@@ -1910,9 +1846,6 @@ expand_builtin_strrchr (arglist, target, mode)
       return expand_expr (build_function_call_expr (fn, arglist),
 			  target, mode, EXPAND_NORMAL);
     }
-#else
-  return 0;
-#endif /* SGI_MONGOOSE */
 }
 
 /* Expand a call to the strpbrk builtin.  Return 0 if we failed the
@@ -1925,7 +1858,6 @@ expand_builtin_strpbrk (arglist, target, mode)
      rtx target;
      enum machine_mode mode;
 {
-#ifndef SGI_MONGOOSE
   if (!validate_arglist (arglist, POINTER_TYPE, POINTER_TYPE, VOID_TYPE))
     return 0;
   else
@@ -1976,9 +1908,6 @@ expand_builtin_strpbrk (arglist, target, mode)
       return expand_expr (build_function_call_expr (fn, arglist),
 			  target, mode, EXPAND_NORMAL);
     }
-#else
-  return 0;
-#endif /* SGI_MONGOOSE */
 }
 
 /* Callback routine for store_by_pieces.  Read GET_MODE_BITSIZE (MODE)
@@ -2002,9 +1931,10 @@ builtin_memcpy_read_str (data, offset, mode)
 }
 
 /* Expand a call to the memcpy builtin, with arguments in ARGLIST.
-   Return 0 if we failed, the caller should emit a normal call,
-   otherwise try to get the result in TARGET, if convenient (and in
-   mode MODE if that's convenient).  */
+   Return 0 if we failed, the caller should emit a normal call, otherwise
+   try to get the result in TARGET, if convenient (and in mode MODE if
+   that's convenient).  */
+
 static rtx
 expand_builtin_memcpy (arglist, target, mode)
      tree arglist;
@@ -2020,6 +1950,7 @@ expand_builtin_memcpy (arglist, target, mode)
       tree src = TREE_VALUE (TREE_CHAIN (arglist));
       tree len = TREE_VALUE (TREE_CHAIN (TREE_CHAIN (arglist)));
       const char *src_str;
+
       unsigned int src_align = get_pointer_alignment (src, BIGGEST_ALIGNMENT);
       unsigned int dest_align
 	= get_pointer_alignment (dest, BIGGEST_ALIGNMENT);
@@ -2056,9 +1987,9 @@ expand_builtin_memcpy (arglist, target, mode)
 	  && can_store_by_pieces (INTVAL (len_rtx), builtin_memcpy_read_str,
 				  (PTR) src_str, dest_align))
 	{
-	  dest_mem = store_by_pieces (dest_mem, INTVAL (len_rtx),
-				      builtin_memcpy_read_str,
-				      (PTR) src_str, dest_align, 0);
+	  store_by_pieces (dest_mem, INTVAL (len_rtx),
+			   builtin_memcpy_read_str,
+			   (PTR) src_str, dest_align);
 	  dest_mem = force_operand (XEXP (dest_mem, 0), NULL_RTX);
 #ifdef POINTERS_EXTEND_UNSIGNED
 	  if (GET_MODE (dest_mem) != ptr_mode)
@@ -2082,197 +2013,9 @@ expand_builtin_memcpy (arglist, target, mode)
 	    dest_addr = convert_memory_address (ptr_mode, dest_addr);
 #endif
 	}
+
       return dest_addr;
     }
-}
-
-/* Expand a call to the mempcpy builtin, with arguments in ARGLIST.
-   Return 0 if we failed the caller should emit a normal call,
-   otherwise try to get the result in TARGET, if convenient (and in
-   mode MODE if that's convenient).  If ENDP is 0 return the
-   destination pointer, if ENDP is 1 return the end pointer ala
-   mempcpy, and if ENDP is 2 return the end pointer minus one ala
-   stpcpy.  */
-
-static rtx
-expand_builtin_mempcpy (arglist, target, mode, endp)
-     tree arglist;
-     rtx target;
-     enum machine_mode mode;
-     int endp;
-{
-  if (!validate_arglist (arglist,
-			 POINTER_TYPE, POINTER_TYPE, INTEGER_TYPE, VOID_TYPE))
-      return 0;
-  /* If return value is ignored, transform mempcpy into memcpy.  */
-  else if (target == const0_rtx)
-    {
-      tree fn = built_in_decls[BUILT_IN_MEMCPY];
-
-      if (!fn)
-	return 0;
-
-      return expand_expr (build_function_call_expr (fn, arglist),
-			  target, mode, EXPAND_NORMAL);
-    }
-  else
-    {
-      tree dest = TREE_VALUE (arglist);
-      tree src = TREE_VALUE (TREE_CHAIN (arglist));
-      tree len = TREE_VALUE (TREE_CHAIN (TREE_CHAIN (arglist)));
-      const char *src_str;
-      unsigned int src_align = get_pointer_alignment (src, BIGGEST_ALIGNMENT);
-      unsigned int dest_align
-	= get_pointer_alignment (dest, BIGGEST_ALIGNMENT);
-      rtx dest_mem, src_mem, len_rtx;
-
-      /* If DEST is not a pointer type or LEN is not constant,
-	 call the normal function.  */
-      if (dest_align == 0 || !host_integerp (len, 1))
-	return 0;
-
-      /* If the LEN parameter is zero, return DEST.  */
-      if (tree_low_cst (len, 1) == 0)
-	{
-	  /* Evaluate and ignore SRC in case it has side-effects.  */
-	  expand_expr (src, const0_rtx, VOIDmode, EXPAND_NORMAL);
-	  return expand_expr (dest, target, mode, EXPAND_NORMAL);
-	}
-
-      /* If either SRC is not a pointer type, don't do this
-         operation in-line.  */
-      if (src_align == 0)
-	return 0;
-
-      len_rtx = expand_expr (len, NULL_RTX, VOIDmode, 0);
-      src_str = c_getstr (src);
-
-      /* If SRC is a string constant and block move would be done
-	 by pieces, we can avoid loading the string from memory
-	 and only stored the computed constants.  */
-      if (src_str
-	  && GET_CODE (len_rtx) == CONST_INT
-	  && (unsigned HOST_WIDE_INT) INTVAL (len_rtx) <= strlen (src_str) + 1
-	  && can_store_by_pieces (INTVAL (len_rtx), builtin_memcpy_read_str,
-				  (PTR) src_str, dest_align))
-	{
-	  dest_mem = get_memory_rtx (dest);
-	  set_mem_align (dest_mem, dest_align);
-	  dest_mem = store_by_pieces (dest_mem, INTVAL (len_rtx),
-				      builtin_memcpy_read_str,
-				      (PTR) src_str, dest_align, endp);
-	  dest_mem = force_operand (XEXP (dest_mem, 0), NULL_RTX);
-#ifdef POINTERS_EXTEND_UNSIGNED
-	  if (GET_MODE (dest_mem) != ptr_mode)
-	    dest_mem = convert_memory_address (ptr_mode, dest_mem);
-#endif
-	  return dest_mem;
-	}
-
-      if (GET_CODE (len_rtx) == CONST_INT
-	  && can_move_by_pieces (INTVAL (len_rtx),
-				 MIN (dest_align, src_align)))
-	{
-	  dest_mem = get_memory_rtx (dest);
-	  set_mem_align (dest_mem, dest_align);
-	  src_mem = get_memory_rtx (src);
-	  set_mem_align (src_mem, src_align);
-	  dest_mem = move_by_pieces (dest_mem, src_mem, INTVAL (len_rtx),
-				     MIN (dest_align, src_align), endp);
-	  dest_mem = force_operand (XEXP (dest_mem, 0), NULL_RTX);
-#ifdef POINTERS_EXTEND_UNSIGNED
-	  if (GET_MODE (dest_mem) != ptr_mode)
-	    dest_mem = convert_memory_address (ptr_mode, dest_mem);
-#endif
-	  return dest_mem;
-	}
-
-      return 0;
-    }
-}
-
-/* Expand expression EXP, which is a call to the memmove builtin.  Return 0
-   if we failed the caller should emit a normal call.  */
-
-static rtx
-expand_builtin_memmove (arglist, target, mode)
-     tree arglist;
-     rtx target;
-     enum machine_mode mode;
-{
-  if (!validate_arglist (arglist,
-			 POINTER_TYPE, POINTER_TYPE, INTEGER_TYPE, VOID_TYPE))
-    return 0;
-  else
-    {
-      tree dest = TREE_VALUE (arglist);
-      tree src = TREE_VALUE (TREE_CHAIN (arglist));
-      tree len = TREE_VALUE (TREE_CHAIN (TREE_CHAIN (arglist)));
-
-      unsigned int src_align = get_pointer_alignment (src, BIGGEST_ALIGNMENT);
-      unsigned int dest_align
-	= get_pointer_alignment (dest, BIGGEST_ALIGNMENT);
-
-      /* If DEST is not a pointer type, call the normal function.  */
-      if (dest_align == 0)
-	return 0;
-
-      /* If the LEN parameter is zero, return DEST.  */
-      if (host_integerp (len, 1) && tree_low_cst (len, 1) == 0)
-	{
-	  /* Evaluate and ignore SRC in case it has side-effects.  */
-	  expand_expr (src, const0_rtx, VOIDmode, EXPAND_NORMAL);
-	  return expand_expr (dest, target, mode, EXPAND_NORMAL);
-	}
-
-      /* If either SRC is not a pointer type, don't do this
-         operation in-line.  */
-      if (src_align == 0)
-	return 0;
-
-      /* If src is categorized for a readonly section we can use
-	 normal memcpy.  */
-      if (readonly_data_expr (src))
-        {
-	  tree const fn = built_in_decls[BUILT_IN_MEMCPY];
-	  if (!fn)
-	    return 0;
-	  return expand_expr (build_function_call_expr (fn, arglist),
-			      target, mode, EXPAND_NORMAL);
-	}
-
-      /* Otherwise, call the normal function.  */
-      return 0;
-   }
-}
-
-/* Expand expression EXP, which is a call to the bcopy builtin.  Return 0
-   if we failed the caller should emit a normal call.  */
-
-static rtx
-expand_builtin_bcopy (arglist)
-     tree arglist;
-{
-  tree src, dest, size, newarglist;
-
-  if (!validate_arglist (arglist,
-			 POINTER_TYPE, POINTER_TYPE, INTEGER_TYPE, VOID_TYPE))
-    return NULL_RTX;
-
-  src = TREE_VALUE (arglist);
-  dest = TREE_VALUE (TREE_CHAIN (arglist));
-  size = TREE_VALUE (TREE_CHAIN (TREE_CHAIN (arglist)));
-
-  /* New argument list transforming bcopy(ptr x, ptr y, int z) to
-     memmove(ptr y, ptr x, size_t z).   This is done this way
-     so that if it isn't expanded inline, we fallback to
-     calling bcopy instead of memmove.  */
-
-  newarglist = build_tree_list (NULL_TREE, convert (sizetype, size));
-  newarglist = tree_cons (NULL_TREE, src, newarglist);
-  newarglist = tree_cons (NULL_TREE, dest, newarglist);
-
-  return expand_builtin_memmove (newarglist, const0_rtx, VOIDmode);
 }
 
 /* Expand expression EXP, which is a call to the strcpy builtin.  Return 0
@@ -2297,7 +2040,7 @@ expand_builtin_strcpy (exp, target, mode)
     return 0;
 
   src = TREE_VALUE (TREE_CHAIN (arglist));
-  len = c_strlen (src, 1);
+  len = c_strlen (src);
   if (len == 0 || TREE_SIDE_EFFECTS (len))
     return 0;
 
@@ -2308,50 +2051,6 @@ expand_builtin_strcpy (exp, target, mode)
   arglist = tree_cons (NULL_TREE, dst, arglist);
   return expand_expr (build_function_call_expr (fn, arglist),
 		      target, mode, EXPAND_NORMAL);
-}
-
-/* Expand a call to the stpcpy builtin, with arguments in ARGLIST.
-   Return 0 if we failed the caller should emit a normal call,
-   otherwise try to get the result in TARGET, if convenient (and in
-   mode MODE if that's convenient).  */
-
-static rtx
-expand_builtin_stpcpy (arglist, target, mode)
-     tree arglist;
-     rtx target;
-     enum machine_mode mode;
-{
-  if (!validate_arglist (arglist, POINTER_TYPE, POINTER_TYPE, VOID_TYPE))
-    return 0;
-  else
-    {
-      tree newarglist;
-      tree src, len;
-
-      /* If return value is ignored, transform stpcpy into strcpy.  */
-      if (target == const0_rtx)
-	{
-	  tree fn = built_in_decls[BUILT_IN_STRCPY];
-	  if (!fn)
-	    return 0;
-
-	  return expand_expr (build_function_call_expr (fn, arglist),
-			      target, mode, EXPAND_NORMAL);
-	}
-
-      /* Ensure we get an actual string whose length can be evaluated at
-         compile-time, not an expression containing a string.  This is
-         because the latter will potentially produce pessimized code
-         when used to produce the return value.  */
-      src = TREE_VALUE (TREE_CHAIN (arglist));
-      if (! c_getstr (src) || ! (len = c_strlen (src, 0)))
-	return 0;
-
-      len = fold (size_binop (PLUS_EXPR, len, ssize_int (1)));
-      newarglist = copy_list (arglist);
-      chainon (newarglist, build_tree_list (NULL_TREE, len));
-      return expand_builtin_mempcpy (newarglist, target, mode, /*endp=*/2);
-    }
 }
 
 /* Callback routine for store_by_pieces.  Read GET_MODE_BITSIZE (MODE)
@@ -2386,7 +2085,7 @@ expand_builtin_strncpy (arglist, target, mode)
     return 0;
   else
     {
-      tree slen = c_strlen (TREE_VALUE (TREE_CHAIN (arglist)), 1);
+      tree slen = c_strlen (TREE_VALUE (TREE_CHAIN (arglist)));
       tree len = TREE_VALUE (TREE_CHAIN (TREE_CHAIN (arglist)));
       tree fn;
 
@@ -2432,7 +2131,7 @@ expand_builtin_strncpy (arglist, target, mode)
 	  dest_mem = get_memory_rtx (dest);
 	  store_by_pieces (dest_mem, tree_low_cst (len, 1),
 			   builtin_strncpy_read_str,
-			   (PTR) p, dest_align, 0);
+			   (PTR) p, dest_align);
 	  dest_mem = force_operand (XEXP (dest_mem, 0), NULL_RTX);
 #ifdef POINTERS_EXTEND_UNSIGNED
 	  if (GET_MODE (dest_mem) != ptr_mode)
@@ -2562,7 +2261,7 @@ expand_builtin_memset (exp, target, mode)
 	  dest_mem = get_memory_rtx (dest);
 	  store_by_pieces (dest_mem, tree_low_cst (len, 1),
 			   builtin_memset_gen_str,
-			   (PTR) val_rtx, dest_align, 0);
+			   (PTR) val_rtx, dest_align);
 	  dest_mem = force_operand (XEXP (dest_mem, 0), NULL_RTX);
 #ifdef POINTERS_EXTEND_UNSIGNED
 	  if (GET_MODE (dest_mem) != ptr_mode)
@@ -2586,7 +2285,7 @@ expand_builtin_memset (exp, target, mode)
 	  dest_mem = get_memory_rtx (dest);
 	  store_by_pieces (dest_mem, tree_low_cst (len, 1),
 			   builtin_memset_read_str,
-			   (PTR) &c, dest_align, 0);
+			   (PTR) &c, dest_align);
 	  dest_mem = force_operand (XEXP (dest_mem, 0), NULL_RTX);
 #ifdef POINTERS_EXTEND_UNSIGNED
 	  if (GET_MODE (dest_mem) != ptr_mode)
@@ -2649,7 +2348,7 @@ expand_builtin_bzero (exp)
   return result;
 }
 
-/* Expand expression EXP, which is a call to the memcmp built-in function.
+/* Expand expression EXP, which is a call to the memcmp or the strcmp builtin.
    ARGLIST is the argument list for this call.  Return 0 if we failed and the
    caller should emit a normal call, otherwise try to get the result in
    TARGET, if convenient (and in mode MODE, if that's convenient).  */
@@ -2714,7 +2413,7 @@ expand_builtin_memcmp (exp, arglist, target, mode)
       return expand_expr (result, target, mode, EXPAND_NORMAL);
     }
 
-#if defined HAVE_cmpmemsi || defined HAVE_cmpstrsi
+#ifdef HAVE_cmpstrsi
   {
     rtx arg1_rtx, arg2_rtx, arg3_rtx;
     rtx result;
@@ -2724,19 +2423,8 @@ expand_builtin_memcmp (exp, arglist, target, mode)
       = get_pointer_alignment (arg1, BIGGEST_ALIGNMENT) / BITS_PER_UNIT;
     int arg2_align
       = get_pointer_alignment (arg2, BIGGEST_ALIGNMENT) / BITS_PER_UNIT;
-    enum machine_mode insn_mode;
-
-#ifdef HAVE_cmpmemsi
-    if (HAVE_cmpmemsi)
-      insn_mode = insn_data[(int) CODE_FOR_cmpmemsi].operand[0].mode;
-    else
-#endif
-#ifdef HAVE_cmpstrsi
-    if (HAVE_cmpstrsi)
-      insn_mode = insn_data[(int) CODE_FOR_cmpstrsi].operand[0].mode;
-    else
-#endif
-      return 0;     
+    enum machine_mode insn_mode
+      = insn_data[(int) CODE_FOR_cmpstrsi].operand[0].mode;
 
     /* If we don't have POINTER_TYPE, call the function.  */
     if (arg1_align == 0 || arg2_align == 0)
@@ -2752,19 +2440,11 @@ expand_builtin_memcmp (exp, arglist, target, mode)
     arg1_rtx = get_memory_rtx (arg1);
     arg2_rtx = get_memory_rtx (arg2);
     arg3_rtx = expand_expr (len, NULL_RTX, VOIDmode, 0);
-#ifdef HAVE_cmpmemsi
-    if (HAVE_cmpmemsi)
-      insn = gen_cmpmemsi (result, arg1_rtx, arg2_rtx, arg3_rtx,
-			   GEN_INT (MIN (arg1_align, arg2_align)));
+    if (!HAVE_cmpstrsi)
+      insn = NULL_RTX;
     else
-#endif
-#ifdef HAVE_cmpstrsi
-    if (HAVE_cmpstrsi)
       insn = gen_cmpstrsi (result, arg1_rtx, arg2_rtx, arg3_rtx,
 			   GEN_INT (MIN (arg1_align, arg2_align)));
-    else
-#endif
-      abort ();
 
     if (insn)
       emit_insn (insn);
@@ -2805,7 +2485,7 @@ expand_builtin_strcmp (exp, target, mode)
      enum machine_mode mode;
 {
   tree arglist = TREE_OPERAND (exp, 1);
-  tree arg1, arg2;
+  tree arg1, arg2, len, len2, fn;
   const char *p1, *p2;
 
   if (!validate_arglist (arglist, POINTER_TYPE, POINTER_TYPE, VOID_TYPE))
@@ -2841,88 +2521,51 @@ expand_builtin_strcmp (exp, target, mode)
       return expand_expr (result, target, mode, EXPAND_NORMAL);
     }
 
-#ifdef HAVE_cmpstrsi
-  if (HAVE_cmpstrsi)
-  {
-    tree len, len1, len2;
-    rtx arg1_rtx, arg2_rtx, arg3_rtx;
-    rtx result, insn;
+  len = c_strlen (arg1);
+  len2 = c_strlen (arg2);
 
-    int arg1_align
-      = get_pointer_alignment (arg1, BIGGEST_ALIGNMENT) / BITS_PER_UNIT;
-    int arg2_align
-      = get_pointer_alignment (arg2, BIGGEST_ALIGNMENT) / BITS_PER_UNIT;
-    enum machine_mode insn_mode
-      = insn_data[(int) CODE_FOR_cmpstrsi].operand[0].mode;
+  if (len)
+    len = size_binop (PLUS_EXPR, ssize_int (1), len);
 
-    len1 = c_strlen (arg1, 1);
-    len2 = c_strlen (arg2, 1);
+  if (len2)
+    len2 = size_binop (PLUS_EXPR, ssize_int (1), len2);
 
-    if (len1)
-      len1 = size_binop (PLUS_EXPR, ssize_int (1), len1);
-    if (len2)
-      len2 = size_binop (PLUS_EXPR, ssize_int (1), len2);
+  /* If we don't have a constant length for the first, use the length
+     of the second, if we know it.  We don't require a constant for
+     this case; some cost analysis could be done if both are available
+     but neither is constant.  For now, assume they're equally cheap
+     unless one has side effects.
 
-    /* If we don't have a constant length for the first, use the length
-       of the second, if we know it.  We don't require a constant for
-       this case; some cost analysis could be done if both are available
-       but neither is constant.  For now, assume they're equally cheap,
-       unless one has side effects.  If both strings have constant lengths,
-       use the smaller.  */
+     If both strings have constant lengths, use the smaller.  This
+     could arise if optimization results in strcpy being called with
+     two fixed strings, or if the code was machine-generated.  We should
+     add some code to the `memcmp' handler below to deal with such
+     situations, someday.  */
 
-    if (!len1)
-      len = len2;
-    else if (!len2)
-      len = len1;
-    else if (TREE_SIDE_EFFECTS (len1))
-      len = len2;
-    else if (TREE_SIDE_EFFECTS (len2))
-      len = len1;
-    else if (TREE_CODE (len1) != INTEGER_CST)
-      len = len2;
-    else if (TREE_CODE (len2) != INTEGER_CST)
-      len = len1;
-    else if (tree_int_cst_lt (len1, len2))
-      len = len1;
-    else
-      len = len2;
+  if (!len || TREE_CODE (len) != INTEGER_CST)
+    {
+      if (len2 && !TREE_SIDE_EFFECTS (len2))
+	len = len2;
+      else if (len == 0)
+	return 0;
+    }
+  else if (len2 && TREE_CODE (len2) == INTEGER_CST
+	   && tree_int_cst_lt (len2, len))
+    len = len2;
 
-    /* If both arguments have side effects, we cannot optimize.  */
-    if (!len || TREE_SIDE_EFFECTS (len))
-      return 0;
+  /* If both arguments have side effects, we cannot optimize.  */
+  if (TREE_SIDE_EFFECTS (len))
+    return 0;
 
-    /* If we don't have POINTER_TYPE, call the function.  */
-    if (arg1_align == 0 || arg2_align == 0)
-      return 0;
+  fn = built_in_decls[BUILT_IN_MEMCMP];
+  if (!fn)
+    return 0;
 
-    /* Make a place to write the result of the instruction.  */
-    result = target;
-    if (! (result != 0
-	   && GET_CODE (result) == REG && GET_MODE (result) == insn_mode
-	   && REGNO (result) >= FIRST_PSEUDO_REGISTER))
-      result = gen_reg_rtx (insn_mode);
-
-    arg1_rtx = get_memory_rtx (arg1);
-    arg2_rtx = get_memory_rtx (arg2);
-    arg3_rtx = expand_expr (len, NULL_RTX, VOIDmode, 0);
-    insn = gen_cmpstrsi (result, arg1_rtx, arg2_rtx, arg3_rtx,
-			 GEN_INT (MIN (arg1_align, arg2_align)));
-    if (!insn)
-      return 0;
-
-    emit_insn (insn);
-
-    /* Return the value in the proper mode for this function.  */
-    mode = TYPE_MODE (TREE_TYPE (exp));
-    if (GET_MODE (result) == mode)
-      return result;
-    if (target == 0)
-      return convert_to_mode (mode, result, 0);
-    convert_move (target, result, 0);
-    return target;
-  }
-#endif
-  return 0;
+  arglist = build_tree_list (NULL_TREE, len);
+  arglist = tree_cons (NULL_TREE, arg2, arglist);
+  arglist = tree_cons (NULL_TREE, arg1, arglist);
+  return expand_expr (build_function_call_expr (fn, arglist),
+		      target, mode, EXPAND_NORMAL);
 }
 
 /* Expand expression EXP, which is a call to the strncmp builtin.  Return 0
@@ -2936,6 +2579,7 @@ expand_builtin_strncmp (exp, target, mode)
      enum machine_mode mode;
 {
   tree arglist = TREE_OPERAND (exp, 1);
+  tree fn, newarglist, len = 0;
   tree arg1, arg2, arg3;
   const char *p1, *p2;
 
@@ -2989,93 +2633,41 @@ expand_builtin_strncmp (exp, target, mode)
     }
 
   /* If c_strlen can determine an expression for one of the string
-     lengths, and it doesn't have side effects, then emit cmpstrsi
-     using length MIN(strlen(string)+1, arg3).  */
-#ifdef HAVE_cmpstrsi
-  if (HAVE_cmpstrsi)
-  {
-    tree len, len1, len2;
-    rtx arg1_rtx, arg2_rtx, arg3_rtx;
-    rtx result, insn;
+     lengths, and it doesn't have side effects, then call
+     expand_builtin_memcmp() using length MIN(strlen(string)+1, arg3).  */
 
-    int arg1_align
-      = get_pointer_alignment (arg1, BIGGEST_ALIGNMENT) / BITS_PER_UNIT;
-    int arg2_align
-      = get_pointer_alignment (arg2, BIGGEST_ALIGNMENT) / BITS_PER_UNIT;
-    enum machine_mode insn_mode
-      = insn_data[(int) CODE_FOR_cmpstrsi].operand[0].mode;
+  /* Perhaps one of the strings is really constant, if so prefer
+     that constant length over the other string's length.  */
+  if (p1)
+    len = c_strlen (arg1);
+  else if (p2)
+    len = c_strlen (arg2);
 
-    len1 = c_strlen (arg1, 1);
-    len2 = c_strlen (arg2, 1);
+  /* If we still don't have a len, try either string arg as long
+     as they don't have side effects.  */
+  if (!len && !TREE_SIDE_EFFECTS (arg1))
+    len = c_strlen (arg1);
+  if (!len && !TREE_SIDE_EFFECTS (arg2))
+    len = c_strlen (arg2);
+  /* If we still don't have a length, punt.  */
+  if (!len)
+    return 0;
 
-    if (len1)
-      len1 = size_binop (PLUS_EXPR, ssize_int (1), len1);
-    if (len2)
-      len2 = size_binop (PLUS_EXPR, ssize_int (1), len2);
+  fn = built_in_decls[BUILT_IN_MEMCMP];
+  if (!fn)
+    return 0;
 
-    /* If we don't have a constant length for the first, use the length
-       of the second, if we know it.  We don't require a constant for
-       this case; some cost analysis could be done if both are available
-       but neither is constant.  For now, assume they're equally cheap,
-       unless one has side effects.  If both strings have constant lengths,
-       use the smaller.  */
+  /* Add one to the string length.  */
+  len = fold (size_binop (PLUS_EXPR, len, ssize_int (1)));
 
-    if (!len1)
-      len = len2;
-    else if (!len2)
-      len = len1;
-    else if (TREE_SIDE_EFFECTS (len1))
-      len = len2;
-    else if (TREE_SIDE_EFFECTS (len2))
-      len = len1;
-    else if (TREE_CODE (len1) != INTEGER_CST)
-      len = len2;
-    else if (TREE_CODE (len2) != INTEGER_CST)
-      len = len1;
-    else if (tree_int_cst_lt (len1, len2))
-      len = len1;
-    else
-      len = len2;
+  /* The actual new length parameter is MIN(len,arg3).  */
+  len = fold (build (MIN_EXPR, TREE_TYPE (len), len, arg3));
 
-    /* If both arguments have side effects, we cannot optimize.  */
-    if (!len || TREE_SIDE_EFFECTS (len))
-      return 0;
-
-    /* The actual new length parameter is MIN(len,arg3).  */
-    len = fold (build (MIN_EXPR, TREE_TYPE (len), len, arg3));
-
-    /* If we don't have POINTER_TYPE, call the function.  */
-    if (arg1_align == 0 || arg2_align == 0)
-      return 0;
-
-    /* Make a place to write the result of the instruction.  */
-    result = target;
-    if (! (result != 0
-	   && GET_CODE (result) == REG && GET_MODE (result) == insn_mode
-	   && REGNO (result) >= FIRST_PSEUDO_REGISTER))
-      result = gen_reg_rtx (insn_mode);
-
-    arg1_rtx = get_memory_rtx (arg1);
-    arg2_rtx = get_memory_rtx (arg2);
-    arg3_rtx = expand_expr (len, NULL_RTX, VOIDmode, 0);
-    insn = gen_cmpstrsi (result, arg1_rtx, arg2_rtx, arg3_rtx,
-			 GEN_INT (MIN (arg1_align, arg2_align)));
-    if (!insn)
-      return 0;
-
-    emit_insn (insn);
-
-    /* Return the value in the proper mode for this function.  */
-    mode = TYPE_MODE (TREE_TYPE (exp));
-    if (GET_MODE (result) == mode)
-      return result;
-    if (target == 0)
-      return convert_to_mode (mode, result, 0);
-    convert_move (target, result, 0);
-    return target;
-  }
-#endif
-  return 0;
+  newarglist = build_tree_list (NULL_TREE, len);
+  newarglist = tree_cons (NULL_TREE, arg2, newarglist);
+  newarglist = tree_cons (NULL_TREE, arg1, newarglist);
+  return expand_expr (build_function_call_expr (fn, newarglist),
+		      target, mode, EXPAND_NORMAL);
 }
 
 /* Expand expression EXP, which is a call to the strcat builtin.
@@ -3114,7 +2706,6 @@ expand_builtin_strncat (arglist, target, mode)
      rtx target;
      enum machine_mode mode;
 {
-#ifndef SGI_MONGOOSE
   if (!validate_arglist (arglist,
 			 POINTER_TYPE, POINTER_TYPE, INTEGER_TYPE, VOID_TYPE))
     return 0;
@@ -3155,9 +2746,6 @@ expand_builtin_strncat (arglist, target, mode)
 	}
       return 0;
     }
-#else
-  return 0;
-#endif /* SGI_MONGOOSE */
 }
 
 /* Expand expression EXP, which is a call to the strspn builtin.
@@ -3831,7 +3419,6 @@ expand_builtin_ffs (arglist, target, subtarget)
   return target;
 }
 
-#ifndef SGI_MONGOOSE
 /* If the string passed to fputs is a constant and is one character
    long, we attempt to transform this call into __builtin_fputc().  */
 
@@ -3858,7 +3445,7 @@ expand_builtin_fputs (arglist, ignore, unlocked)
 
   /* Get the length of the string passed to fputs.  If the length
      can't be determined, punt.  */
-  if (!(len = c_strlen (TREE_VALUE (arglist), 1))
+  if (!(len = c_strlen (TREE_VALUE (arglist)))
       || TREE_CODE (len) != INTEGER_CST)
     return 0;
 
@@ -3914,7 +3501,6 @@ expand_builtin_fputs (arglist, ignore, unlocked)
 		      (ignore ? const0_rtx : NULL_RTX),
 		      VOIDmode, EXPAND_NORMAL);
 }
-#endif /* SGI_MONGOOSE */
 
 /* Expand a call to __builtin_expect.  We return our argument and emit a
    NOTE_INSN_EXPECTED_VALUE note.  This is the expansion of __builtin_expect in
@@ -3984,7 +3570,6 @@ expand_builtin_expect_jump (exp, if_false_label, if_true_label)
     {
       int num_jumps = 0;
       rtx insn;
-      int save_pending_stack_adjust = pending_stack_adjust;
 
       /* If we fail to locate an appropriate conditional jump, we'll
 	 fall back to normal evaluation.  Ensure that the expression
@@ -4080,10 +3665,7 @@ expand_builtin_expect_jump (exp, if_false_label, if_true_label)
       /* If no jumps were modified, fail and do __builtin_expect the normal
 	 way.  */
       if (num_jumps == 0)
-	{
-	  ret = NULL_RTX;
-	  pending_stack_adjust = save_pending_stack_adjust;
-	}
+	ret = NULL_RTX;
     }
 
   return ret;
@@ -4099,94 +3681,6 @@ expand_builtin_trap ()
 #endif
     emit_library_call (abort_libfunc, LCT_NORETURN, VOIDmode, 0);
   emit_barrier ();
-}
-  
-/* Expand a call to sprintf with argument list ARGLIST.  Return 0 if
-   a normal call should be emitted rather than expanding the function
-   inline.  If convenient, the result should be placed in TARGET with
-   mode MODE.  */
-
-static rtx
-expand_builtin_sprintf (arglist, target, mode)
-     tree arglist;
-     rtx target;
-     enum machine_mode mode;
-{
-  tree orig_arglist, dest, fmt;
-  const char *fmt_str;
-
-  orig_arglist = arglist;
-
-  /* Verify the required arguments in the original call.  */
-  if (! arglist)
-    return 0;
-  dest = TREE_VALUE (arglist);
-  if (TREE_CODE (TREE_TYPE (dest)) != POINTER_TYPE)
-    return 0;
-  arglist = TREE_CHAIN (arglist);
-  if (! arglist)
-    return 0;
-  fmt = TREE_VALUE (arglist);
-  if (TREE_CODE (TREE_TYPE (dest)) != POINTER_TYPE)
-    return 0;
-  arglist = TREE_CHAIN (arglist);
-
-  /* Check whether the format is a literal string constant.  */
-  fmt_str = c_getstr (fmt);
-  if (fmt_str == NULL)
-    return 0;
-
-  /* If the format doesn't contain % args or %%, use strcpy.  */
-  if (strchr (fmt_str, '%') == 0)
-    {
-      tree fn = built_in_decls[BUILT_IN_STRCPY];
-      tree exp;
-
-      if (arglist || ! fn)
-	return 0;
-      expand_expr (build_function_call_expr (fn, orig_arglist),
-		   const0_rtx, VOIDmode, EXPAND_NORMAL);
-      if (target == const0_rtx)
-	return const0_rtx;
-      exp = build_int_2 (strlen (fmt_str), 0);
-      exp = fold (build1 (NOP_EXPR, integer_type_node, exp));
-      return expand_expr (exp, target, mode, EXPAND_NORMAL);
-    }
-  /* If the format is "%s", use strcpy if the result isn't used.  */
-  else if (strcmp (fmt_str, "%s") == 0)
-    {
-      tree fn, arg, len;
-      fn = built_in_decls[BUILT_IN_STRCPY];
-
-      if (! fn)
-	return 0;
-
-      if (! arglist || TREE_CHAIN (arglist))
-	return 0;
-      arg = TREE_VALUE (arglist);
-      if (TREE_CODE (TREE_TYPE (arg)) != POINTER_TYPE)
-	return 0;
-
-      if (target != const0_rtx)
-	{
-	  len = c_strlen (arg, 1);
-	  if (! len || TREE_CODE (len) != INTEGER_CST)
-	    return 0;
-	}
-      else
-	len = NULL_TREE;
-
-      arglist = build_tree_list (NULL_TREE, arg);
-      arglist = tree_cons (NULL_TREE, dest, arglist);
-      expand_expr (build_function_call_expr (fn, arglist),
-		   const0_rtx, VOIDmode, EXPAND_NORMAL);
-
-      if (target == const0_rtx)
-	return const0_rtx;
-      return expand_expr (len, target, mode, EXPAND_NORMAL);
-    }
-
-  return 0;
 }
 
 /* Expand an expression EXP that calls a built-in function,
@@ -4213,33 +3707,11 @@ expand_builtin (exp, target, subtarget, mode, ignore)
   if (DECL_BUILT_IN_CLASS (fndecl) == BUILT_IN_MD)
     return (*targetm.expand_builtin) (exp, target, subtarget, mode, ignore);
 
-#ifdef KEY
-  // Some GNU header files call built-ins directly.  For those built-ins not
-  // supported by Open64, turn them into function calls.
-  switch (fcode) {
-    case BUILT_IN_STRCHR:
-    case BUILT_IN_STRRCHR:
-    case BUILT_IN_STRSTR:
-    case BUILT_IN_STRPBRK:
-    case BUILT_IN_MEMSET:	// use the PathScale library memset
-      return expand_call (exp, target, ignore);
-                                                                                
-    default:
-      break;
-  }
-#endif
-
   /* When not optimizing, generate calls to library functions for a certain
      set of builtins.  */
   if (!optimize && !CALLED_AS_BUILT_IN (fndecl))
     switch (fcode)
       {
-#ifdef KEY
-      case BUILT_IN_FLOOR:
-      case BUILT_IN_FLOORF:
-      case BUILT_IN_FLOORL:
-      case BUILT_IN_POW:
-#endif
       case BUILT_IN_SQRT:
       case BUILT_IN_SQRTF:
       case BUILT_IN_SQRTL:
@@ -4255,24 +3727,14 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       case BUILT_IN_MEMSET:
       case BUILT_IN_MEMCPY:
       case BUILT_IN_MEMCMP:
-      case BUILT_IN_MEMPCPY:
-      case BUILT_IN_MEMMOVE:
       case BUILT_IN_BCMP:
       case BUILT_IN_BZERO:
-      case BUILT_IN_BCOPY:
-#ifndef SGI_MONGOOSE
       case BUILT_IN_INDEX:
       case BUILT_IN_RINDEX:
-#endif /* SGI_MONGOOSE */
-      case BUILT_IN_SPRINTF:
-      case BUILT_IN_STPCPY:
-#ifndef SGI_MONGOOSE
       case BUILT_IN_STRCHR:
       case BUILT_IN_STRRCHR:
-#endif /* SGI_MONGOOSE */
       case BUILT_IN_STRLEN:
       case BUILT_IN_STRCPY:
-#ifndef SGI_MONGOOSE
       case BUILT_IN_STRNCPY:
       case BUILT_IN_STRNCMP:
       case BUILT_IN_STRSTR:
@@ -4281,17 +3743,14 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       case BUILT_IN_STRNCAT:
       case BUILT_IN_STRSPN:
       case BUILT_IN_STRCSPN:
-#endif /* SGI_MONGOOSE */
       case BUILT_IN_STRCMP:
       case BUILT_IN_FFS:
-#ifndef SGI_MONGOOSE
       case BUILT_IN_PUTCHAR:
       case BUILT_IN_PUTS:
       case BUILT_IN_PRINTF:
       case BUILT_IN_FPUTC:
       case BUILT_IN_FPUTS:
       case BUILT_IN_FWRITE:
-#endif /* SGI_MONGOOSE */
       case BUILT_IN_PUTCHAR_UNLOCKED:
       case BUILT_IN_PUTS_UNLOCKED:
       case BUILT_IN_PRINTF_UNLOCKED:
@@ -4303,36 +3762,6 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       default:
 	break;
       }
-
-  /* The built-in function expanders test for target == const0_rtx
-     to determine whether the function's result will be ignored.  */
-  if (ignore)
-    target = const0_rtx;
-
-  /* If the result of a pure or const built-in function is ignored, and
-     none of its arguments are volatile, we can avoid expanding the
-     built-in call and just evaluate the arguments for side-effects.  */
-  if (target == const0_rtx
-      && (DECL_IS_PURE (fndecl) || TREE_READONLY (fndecl)))
-    {
-      bool volatilep = false;
-      tree arg;
-
-      for (arg = arglist; arg; arg = TREE_CHAIN (arg))
-	if (TREE_THIS_VOLATILE (TREE_VALUE (arg)))
-	  {
-	    volatilep = true;
-	    break;
-	  }
-
-      if (! volatilep)
-	{
-	  for (arg = arglist; arg; arg = TREE_CHAIN (arg))
-	    expand_expr (TREE_VALUE (arg), const0_rtx,
-			 VOIDmode, EXPAND_NORMAL);
-	  return const0_rtx;
-	}
-    }
 
   switch (fcode)
     {
@@ -4375,12 +3804,6 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 	 because of possible accuracy problems.  */
       if (! flag_unsafe_math_optimizations)
 	break;
-#ifdef KEY
-    case BUILT_IN_FLOOR:
-    case BUILT_IN_FLOORF:
-    case BUILT_IN_FLOORL:
-    case BUILT_IN_POW:
-#endif
     case BUILT_IN_SQRT:
     case BUILT_IN_SQRTF:
     case BUILT_IN_SQRTL:
@@ -4483,21 +3906,12 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 	return target;
       break;
 
-#ifndef SGI_MONGOOSE
     case BUILT_IN_STRNCPY:
       target = expand_builtin_strncpy (arglist, target, mode);
       if (target)
 	return target;
       break;
-#endif /* SGI_MONGOOSE */
 
-    case BUILT_IN_STPCPY:
-      target = expand_builtin_stpcpy (arglist, target, mode);
-      if (target)
-	return target;
-      break;
-
-#ifndef SGI_MONGOOSE
     case BUILT_IN_STRCAT:
       target = expand_builtin_strcat (arglist, target, mode);
       if (target)
@@ -4547,28 +3961,9 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       if (target)
 	return target;
       break;
-#endif /* SGI_MONGOOSE */
 
     case BUILT_IN_MEMCPY:
       target = expand_builtin_memcpy (arglist, target, mode);
-      if (target)
-	return target;
-      break;
-
-    case BUILT_IN_MEMPCPY:
-      target = expand_builtin_mempcpy (arglist, target, mode, /*endp=*/ 1);
-      if (target)
-	return target;
-      break;
-
-    case BUILT_IN_MEMMOVE:
-      target = expand_builtin_memmove (arglist, target, mode);
-      if (target)
-	return target;
-      break;
-
-    case BUILT_IN_BCOPY:
-      target = expand_builtin_bcopy (arglist);
       if (target)
 	return target;
       break;
@@ -4591,13 +3986,11 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 	return target;
       break;
 
-#ifndef SGI_MONGOOSE
     case BUILT_IN_STRNCMP:
       target = expand_builtin_strncmp (exp, target, mode);
       if (target)
 	return target;
       break;
-#endif /* SGI_MONGOOSE */
 
     case BUILT_IN_BCMP:
     case BUILT_IN_MEMCMP:
@@ -4606,13 +3999,11 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 	return target;
       break;
 
-#ifndef SGI_MONGOOSE
     case BUILT_IN_SETJMP:
       target = expand_builtin_setjmp (arglist, target);
       if (target)
 	return target;
       break;
-#endif /* SGI_MONGOOSE */
 
       /* __builtin_longjmp is passed a pointer to an array of five words.
 	 It's similar to the C library longjmp function but works with
@@ -4622,7 +4013,6 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 	break;
       else
 	{
-#ifndef KEY
 	  rtx buf_addr = expand_expr (TREE_VALUE (arglist), subtarget,
 				      VOIDmode, 0);
 	  rtx value = expand_expr (TREE_VALUE (TREE_CHAIN (arglist)),
@@ -4635,7 +4025,6 @@ expand_builtin (exp, target, subtarget, mode, ignore)
 	    }
 
 	  expand_builtin_longjmp (buf_addr, value);
-#endif /* !KEY */
 	  return const0_rtx;
 	}
 
@@ -4643,7 +4032,6 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       expand_builtin_trap ();
       return const0_rtx;
 
-#ifndef SGI_MONGOOSE
     case BUILT_IN_FPUTS:
       target = expand_builtin_fputs (arglist, ignore,/*unlocked=*/ 0);
       if (target)
@@ -4651,13 +4039,6 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       break;
     case BUILT_IN_FPUTS_UNLOCKED:
       target = expand_builtin_fputs (arglist, ignore,/*unlocked=*/ 1);
-      if (target)
-	return target;
-      break;
-#endif /* SGI_MONGOOSE */
-
-    case BUILT_IN_SPRINTF:
-      target = expand_builtin_sprintf (arglist, target, mode);
       if (target)
 	return target;
       break;
@@ -4687,9 +4068,6 @@ expand_builtin (exp, target, subtarget, mode, ignore)
     case BUILT_IN_EH_RETURN_DATA_REGNO:
       return expand_builtin_eh_return_data_regno (arglist);
 #endif
-    /* Apply gcc patch to support __builtin_extend_pointer */
-    case BUILT_IN_EXTEND_POINTER:
-      return expand_builtin_extend_pointer (TREE_VALUE (arglist));
     case BUILT_IN_VA_START:
     case BUILT_IN_STDARG_START:
       return expand_builtin_va_start (arglist);
@@ -4699,11 +4077,10 @@ expand_builtin (exp, target, subtarget, mode, ignore)
       return expand_builtin_va_copy (arglist);
     case BUILT_IN_EXPECT:
       return expand_builtin_expect (arglist, target);
-#ifndef SGI_MONGOOSE
     case BUILT_IN_PREFETCH:
       expand_builtin_prefetch (arglist);
       return const0_rtx;
-#endif /* SGI_MONGOOSE */
+
 
     default:	/* just do library call, if unknown builtin */
       if (!DECL_ASSEMBLER_NAME_SET_P (fndecl))
@@ -4833,7 +4210,7 @@ fold_builtin (exp)
     case BUILT_IN_STRLEN:
       if (validate_arglist (arglist, POINTER_TYPE, VOID_TYPE))
 	{
-	  tree len = c_strlen (TREE_VALUE (arglist), 0);
+	  tree len = c_strlen (TREE_VALUE (arglist));
 	  if (len)
 	    {
 	      /* Convert from the internal "sizetype" type to "size_t".  */
@@ -4895,14 +4272,8 @@ validate_arglist VPARAMS ((tree arglist, ...))
   enum tree_code code;
   int res = 0;
 
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, arglist);
   VA_FIXEDARG (ap, tree, arglist);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, arglist);
-#endif /* SGI_MONGOOSE */
 
   do
     {
@@ -4934,11 +4305,7 @@ validate_arglist VPARAMS ((tree arglist, ...))
   /* We need gotos here since we can only have one VA_CLOSE in a
      function.  */
  end: ;
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
 
   return res;
 }
@@ -4962,31 +4329,3 @@ default_expand_builtin (exp, target, subtarget, mode, ignore)
 {
   return NULL_RTX;
 }
-
-/* Returns true is EXP represents data that would potentially reside
-   in a readonly section.  */
-
-static bool
-readonly_data_expr (exp)
-     tree exp;
-{
-  STRIP_NOPS (exp);
-
-  if (TREE_CODE (exp) == ADDR_EXPR)
-    return decl_readonly_section (TREE_OPERAND (exp, 0), 0);
-  else
-    return false;
-}
-
-#ifdef SGI_MONGOOSE
-tree
-c_strlen_exported (src)
-             tree src;
-{
-#ifdef KEY
-  return c_strlen(src, 0);
-#else
-  return c_strlen(src);
-#endif // KEY
-}
-#endif /* SGI_MONGOOSE */

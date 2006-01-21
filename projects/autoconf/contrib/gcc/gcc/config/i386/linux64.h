@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Definitions for AMD x86-64 running Linux-based GNU systems with ELF format.
    Copyright (C) 2001, 2002, 2003 Free Software Foundation, Inc.
    Contributed by Jan Hubicka <jh@suse.cz>, based on linux.h.
@@ -75,18 +71,18 @@ Boston, MA 02111-1307, USA.  */
       %{!m32:%{!dynamic-linker:-dynamic-linker /lib64/ld-linux-x86-64.so.2}}} \
     %{static:-static}}"
 
+#undef  STARTFILE_SPEC
+#define STARTFILE_SPEC \
+  "%{!shared: \
+     %{pg:gcrt1.o%s} %{!pg:%{p:gcrt1.o%s} \
+     %{!p:%{profile:gcrt1.o%s} %{!profile:crt1.o%s}}}} \
+   crti.o%s %{static:crtbeginT.o%s} \
+   %{!static:%{!shared:crtbegin.o%s} %{shared:crtbeginS.o%s}}"
+
+#undef  ENDFILE_SPEC
+#define ENDFILE_SPEC "%{!shared:crtend.o%s} %{shared:crtendS.o%s} crtn.o%s"
+
 #define MULTILIB_DEFAULTS { "m64" }
-
-/* We arrange for the whole %fs segment to map the tls area.  */
-#undef TARGET_TLS_DIRECT_SEG_REFS_DEFAULT
-#define TARGET_TLS_DIRECT_SEG_REFS_DEFAULT MASK_TLS_DIRECT_SEG_REFS
-
-#define SUBTARGET_FILE_END(FILE) \
-  do {									\
-    named_section_flags (".note.GNU-stack",				\
-			 SECTION_DEBUG					\
-			 | (trampolines_created ? SECTION_CODE : 0));	\
-  } while (0)
 
 /* Do code reading to identify a signal frame, and set the frame
    state data appropriately.  See unwind-dw2.c for the structs.  

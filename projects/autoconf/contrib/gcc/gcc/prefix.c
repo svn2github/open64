@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Utility to update paths from internal to external forms.
    Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002
    Free Software Foundation, Inc.
@@ -75,11 +71,6 @@ Boston, MA 02111-1307, USA.  */
 #include <windows.h>
 #endif
 #include "prefix.h"
-
-#ifdef SGI_MONGOOSE
-#undef PREFIX
-#define PREFIX ""
-#endif /* SGI_MONGOOSE */
 
 static const char *std_prefix = PREFIX;
 

@@ -1,5 +1,5 @@
 /* Definitions of Tensilica's Xtensa target machine for GNU compiler.
-   Copyright 2001,2002 Free Software Foundation, Inc.
+   Copyright 2001,2002,2003 Free Software Foundation, Inc.
    Contributed by Bob Wilson (bwilson@tensilica.com) at Tensilica.
 
 This file is part of GCC.
@@ -191,25 +191,31 @@ extern unsigned xtensa_current_frame_size;
 
 
 #define OVERRIDE_OPTIONS override_options ()
+
+/* Target CPU builtins.  */
+#define TARGET_CPU_CPP_BUILTINS()					\
+  do {									\
+    builtin_assert ("cpu=xtensa");					\
+    builtin_assert ("machine=xtensa");					\
+    builtin_define ("__XTENSA__");					\
+    builtin_define (TARGET_BIG_ENDIAN ? "__XTENSA_EB__" : "__XTENSA_EL__"); \
+    if (!TARGET_HARD_FLOAT)						\
+      builtin_define ("__XTENSA_SOFT_FLOAT__");				\
+    if (flag_pic)							\
+      {									\
+        builtin_define ("__PIC__");					\
+        builtin_define ("__pic__");					\
+      }									\
+  } while (0)
 
-#if XCHAL_HAVE_BE
-#define CPP_ENDIAN_SPEC "\
-  %{mlittle-endian:-D__XTENSA_EL__} \
-  %{!mlittle-endian:-D__XTENSA_EB__} "
-#else /* !XCHAL_HAVE_BE */
-#define CPP_ENDIAN_SPEC "\
-  %{mbig-endian:-D__XTENSA_EB__} \
-  %{!mbig-endian:-D__XTENSA_EL__} "
-#endif /* !XCHAL_HAVE_BE */
+#define CPP_SPEC " %(subtarget_cpp_spec) "
 
-#if XCHAL_HAVE_FP
-#define CPP_FLOAT_SPEC "%{msoft-float:-D__XTENSA_SOFT_FLOAT__}"
-#else
-#define CPP_FLOAT_SPEC "%{!mhard-float:-D__XTENSA_SOFT_FLOAT__}"
+#ifndef SUBTARGET_CPP_SPEC
+#define SUBTARGET_CPP_SPEC ""
 #endif
 
-#undef CPP_SPEC
-#define CPP_SPEC CPP_ENDIAN_SPEC CPP_FLOAT_SPEC
+#define EXTRA_SPECS							\
+  { "subtarget_cpp_spec", SUBTARGET_CPP_SPEC },
 
 /* Define this to set the endianness to use in libgcc2.c, which can
    not depend on target_flags.  */
@@ -221,10 +227,6 @@ extern unsigned xtensa_current_frame_size;
 
 /* Target machine storage layout */
 
-/* Define in order to support both big and little endian float formats
-   in the same gcc binary.  */
-#define REAL_ARITHMETIC
-
 /* Define this if most significant bit is lowest numbered
    in instructions that operate on numbered bit-fields.  */
 #define BITS_BIG_ENDIAN (TARGET_BIG_ENDIAN != 0)
@@ -235,11 +237,6 @@ extern unsigned xtensa_current_frame_size;
 /* Define this if most significant word of a multiword number is the lowest. */
 #define WORDS_BIG_ENDIAN (TARGET_BIG_ENDIAN != 0)
 
-/* Number of bits in an addressable storage unit */
-#define BITS_PER_UNIT 8
-
-/* Width in bits of a "word", which is the contents of a machine register.  */
-#define BITS_PER_WORD 32
 #define MAX_BITS_PER_WORD 32
 
 /* Width of a word, in units (bytes).  */
@@ -251,16 +248,13 @@ extern unsigned xtensa_current_frame_size;
 
 /* Size in bits of various types on the target machine.  */
 #define INT_TYPE_SIZE 32
-#define MAX_INT_TYPE_SIZE 32
 #define SHORT_TYPE_SIZE 16
 #define LONG_TYPE_SIZE 32
 #define MAX_LONG_TYPE_SIZE 32
 #define LONG_LONG_TYPE_SIZE 64
-#define CHAR_TYPE_SIZE BITS_PER_UNIT
 #define FLOAT_TYPE_SIZE 32
 #define DOUBLE_TYPE_SIZE 64
 #define LONG_DOUBLE_TYPE_SIZE 64
-#define POINTER_SIZE 32
 
 /* Allocation boundary (in *bits*) for storing pointers in memory.  */
 #define POINTER_BOUNDARY 32
@@ -360,7 +354,6 @@ extern unsigned xtensa_current_frame_size;
    0 - 15	AR[0] - AR[15]
    16		FRAME_POINTER (fake = initial sp)
    17		ARG_POINTER (fake = initial sp + framesize)
-   18           LOOP_COUNT (loop count special register)
    18		BR[0] for floating-point CC
    19 - 34	FR[0] - FR[15]
    35		MAC16 accumulator */
@@ -409,10 +402,11 @@ extern unsigned xtensa_current_frame_size;
    have been exhausted.  */
 
 #define REG_ALLOC_ORDER \
-{  8,  9, 10, 11, 12, 13, 14, 15,  7,  6,  5,  4,  3,  2, 19, \
-  20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, \
+{  8,  9, 10, 11, 12, 13, 14, 15,  7,  6,  5,  4,  3,  2, \
+  18, \
+  19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, \
    0,  1, 16, 17, \
-  36, \
+  35, \
 }
 
 #define ORDER_REGS_FOR_LOCAL_ALLOC order_regs_for_local_alloc ()
@@ -438,11 +432,6 @@ extern int leaf_function;
 #define GP_REG_FIRST 0
 #define GP_REG_LAST  17
 #define GP_REG_NUM   (GP_REG_LAST - GP_REG_FIRST + 1)
-
-/* Special registers */
-#define SPEC_REG_FIRST 18
-#define SPEC_REG_LAST  18
-#define SPEC_REG_NUM   (SPEC_REG_LAST - SPEC_REG_FIRST + 1)
 
 /* Coprocessor registers */
 #define BR_REG_FIRST 18
@@ -487,9 +476,6 @@ extern char xtensa_hard_regno_mode_ok[][FIRST_PSEUDO_REGISTER];
     GET_MODE_CLASS (MODE1) == MODE_COMPLEX_FLOAT)			\
    == (GET_MODE_CLASS (MODE2) == MODE_FLOAT ||				\
        GET_MODE_CLASS (MODE2) == MODE_COMPLEX_FLOAT))
-
-/* Register to use for LCOUNT special register.  */
-#define COUNT_REGISTER_REGNUM (SPEC_REG_FIRST + 0)
 
 /* Register to use for pushing function arguments.  */
 #define STACK_POINTER_REGNUM (GP_REG_FIRST + 1)
@@ -805,13 +791,13 @@ extern enum reg_class xtensa_char_to_class[256];
 /* Don't worry about compatibility with PCC.  */
 #define DEFAULT_PCC_STRUCT_RETURN 0
 
-/* For Xtensa, we would like to be able to return up to 6 words in
-   memory but GCC cannot support that.  The return value must be given
-   one of the standard MODE_INT modes, and there is no 6 word mode.
-   Instead, if we try to return a 6 word structure, GCC selects the
-   next biggest mode (OImode, 8 words) and then the register allocator
-   fails because there is no 8-register group beginning with a10.  So
-   we have to fall back on the next largest size which is 4 words... */
+/* For Xtensa, up to 4 words can be returned in registers.  (It would
+   have been nice to allow up to 6 words in registers but GCC cannot
+   support that.  The return value must be given one of the standard
+   MODE_INT modes, and there is no 6 word mode.  Instead, if we try to
+   return a 6 word structure, GCC selects the next biggest mode
+   (OImode, 8 words) and then the register allocator fails because
+   there is no 8-register group beginning with a10.)  */
 #define RETURN_IN_MEMORY(TYPE)						\
   ((unsigned HOST_WIDE_INT) int_size_in_bytes (TYPE) > 4 * UNITS_PER_WORD)
 
@@ -866,9 +852,6 @@ extern enum reg_class xtensa_char_to_class[256];
    the stack. */
 #define FUNCTION_ARG_REGNO_P(N)						\
   ((N) >= GP_OUTGOING_ARG_FIRST && (N) <= GP_OUTGOING_ARG_LAST)
-
-/* Use IEEE floating-point format.  */
-#define TARGET_FLOAT_FORMAT IEEE_FLOAT_FORMAT
 
 /* Define a data type for recording info about an argument list
    during the scan of that argument list.  This data type should
@@ -1044,8 +1027,8 @@ typedef struct xtensa_args {
   xtensa_builtin_saveregs
 
 /* Implement `va_start' for varargs and stdarg.  */
-#define EXPAND_BUILTIN_VA_START(stdarg, valist, nextarg) \
-  xtensa_va_start (stdarg, valist, nextarg)
+#define EXPAND_BUILTIN_VA_START(valist, nextarg) \
+  xtensa_va_start (valist, nextarg)
 
 /* Implement `va_arg'.  */
 #define EXPAND_BUILTIN_VA_ARG(valist, type) \
@@ -1137,21 +1120,21 @@ typedef struct xtensa_args {
 #define MAX_REGS_PER_ADDRESS 1
 
 /* Identify valid Xtensa addresses.  */
-#define GO_IF_LEGITIMATE_ADDRESS(MODE, X, ADDR)				\
+#define GO_IF_LEGITIMATE_ADDRESS(MODE, ADDR, LABEL)			\
   do {									\
-    rtx xinsn = (X);							\
+    rtx xinsn = (ADDR);							\
 									\
     /* allow constant pool addresses */					\
     if ((MODE) != BLKmode && GET_MODE_SIZE (MODE) >= UNITS_PER_WORD	\
 	&& constantpool_address_p (xinsn))				\
-      goto ADDR;							\
+      goto LABEL;							\
 									\
     while (GET_CODE (xinsn) == SUBREG)					\
       xinsn = SUBREG_REG (xinsn);					\
 									\
     /* allow base registers */						\
     if (GET_CODE (xinsn) == REG && REG_OK_FOR_BASE_P (xinsn))		\
-      goto ADDR;							\
+      goto LABEL;							\
 									\
     /* check for "register + offset" addressing */			\
     if (GET_CODE (xinsn) == PLUS)					\
@@ -1182,7 +1165,7 @@ typedef struct xtensa_args {
 	    && code1 == CONST_INT					\
 	    && xtensa_mem_offset (INTVAL (xplus1), (MODE)))		\
 	  {								\
-	    goto ADDR;							\
+	    goto LABEL;							\
 	  }								\
       }									\
   } while (0)
@@ -1255,14 +1238,6 @@ typedef struct xtensa_args {
       goto LABEL;							\
   } while (0)
 
-/* If we are referencing a function that is static, make the SYMBOL_REF
-   special so that we can generate direct calls to it even with -fpic.  */
-#define ENCODE_SECTION_INFO(DECL)					\
-  do {									\
-    if (TREE_CODE (DECL) == FUNCTION_DECL && ! TREE_PUBLIC (DECL))	\
-      SYMBOL_REF_FLAG (XEXP (DECL_RTL (DECL), 0)) = 1;			\
-  } while (0)
-
 /* Specify the machine mode that this machine uses
    for the index in the tablejump instruction.  */
 #define CASE_VECTOR_MODE (SImode)
@@ -1271,12 +1246,6 @@ typedef struct xtensa_args {
    to contain offsets from the address of the table.
    Do not define this if the table should contain absolute addresses.  */
 /* #define CASE_VECTOR_PC_RELATIVE */
-
-/* Specify the tree operation to be used to convert reals to integers.  */
-#define IMPLICIT_FIX_EXPR FIX_ROUND_EXPR
-
-/* This is the kind of divide that is easiest to do in the general case.  */
-#define EASY_DIV_EXPR TRUNC_DIV_EXPR
 
 /* Define this as 1 if 'char' should by default be signed; else as 0.  */
 #define DEFAULT_SIGNED_CHAR 0
@@ -1568,32 +1537,12 @@ typedef struct xtensa_args {
       goto FAIL;							\
   } while (0)
 
+/* Globalizing directive for a label.  */
+#define GLOBAL_ASM_OP "\t.global\t"
 
-/* This is how to output the definition of a user-level label named NAME,
-   such as the label on a static function or variable NAME. */
-#define ASM_OUTPUT_LABEL(STREAM, NAME)					\
-  do {									\
-    assemble_name (STREAM, NAME);					\
-    fputs (":\n", STREAM);						\
-  } while (0)
-
-/* This is how to output a command to make the user-level label named NAME
-   defined for reference from other files.  */
-#define ASM_GLOBALIZE_LABEL(STREAM, NAME)				\
-  do {									\
-    fputs ("\t.global\t", STREAM);					\
-    assemble_name (STREAM, NAME);					\
-    fputs ("\n", STREAM);						\
-  } while (0)
-
-/* This says how to define a global common symbol.  */
-#define ASM_OUTPUT_COMMON(STREAM, NAME, SIZE, ROUNDED)			\
-  xtensa_declare_object (STREAM, NAME, "\n\t.comm\t", ",%u\n", (SIZE))
-
-/* This says how to define a local common symbol (ie, not visible to
-   linker).  */
-#define ASM_OUTPUT_LOCAL(STREAM, NAME, SIZE, ROUNDED)			\
-  xtensa_declare_object (STREAM, NAME, "\n\t.lcomm\t", ",%u\n", (SIZE))
+/* Declare an uninitialized external linkage data object.  */
+#define ASM_OUTPUT_ALIGNED_BSS(FILE, DECL, NAME, SIZE, ALIGN) \
+  asm_output_aligned_bss (FILE, DECL, NAME, SIZE, ALIGN)
 
 /* This is how to output an element of a case-vector that is absolute.  */
 #define ASM_OUTPUT_ADDR_VEC_ELT(STREAM, VALUE)				\
@@ -1639,8 +1588,9 @@ typedef struct xtensa_args {
 
 
 /* Define the strings to put out for each section in the object file.  */
-#define TEXT_SECTION_ASM_OP	"\t.text"  	/* instructions */
-#define DATA_SECTION_ASM_OP	"\t.data" 	/* large data */
+#define TEXT_SECTION_ASM_OP	"\t.text"
+#define DATA_SECTION_ASM_OP	"\t.data"
+#define BSS_SECTION_ASM_OP	"\t.section\t.bss"
 
 
 /* Define output to appear before the constant pool.  If the function

@@ -1,29 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of version 2 of the GNU General Public License as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it would be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
- *
- * Further, this software is distributed without any warranty that it is
- * free of the rightful claim of any third person regarding infringement 
- * or the like.  Any license provided herein, whether implied or 
- * otherwise, applies only to this software file.  Patent licenses, if 
- * any, provided herein do not apply to combinations of this program with 
- * other software, or any other product whatsoever.  
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write the Free Software Foundation, Inc., 59
- * Temple Place - Suite 330, Boston MA 02111-1307, USA.
- *
- * File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++
- * front-ends to GNU 3.3.1 release.
- */
-
 /* HOST_WIDE_INT definitions for the GNU compiler.
    Copyright (C) 1998, 2002 Free Software Foundation, Inc.
 
@@ -49,13 +23,11 @@
 #else
 /* If we're here and we're GCC, assume this is stage 2+ of a bootstrap
    and 'long long' has the width of the *target*'s long long.  */
-#ifndef SGI_MONGOOSE
 # if GCC_VERSION > 3000
 #  define HOST_BITS_PER_LONGLONG LONG_LONG_TYPE_SIZE
 # endif /* gcc */
 #endif
 #endif /* no long long */
-#endif 
 
 /* Find the largest host integer type and set its size and type.  */
 

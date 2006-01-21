@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* This file contains the definitions and documentation for the common
    tree codes used in the GNU C and C++ compilers (see c-common.def
    for the standard codes).  
@@ -27,10 +23,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "function.h"
 #include "splay-tree.h"
@@ -40,9 +32,7 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "toplev.h"
 #include "flags.h"
 #include "ggc.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "expr.h"
 #include "output.h"
 #include "timevar.h"
@@ -583,19 +573,6 @@ build_continue_stmt ()
   return (build_stmt (CONTINUE_STMT));
 }
 
-#ifdef KEY
-/* Build a omp-marker statement node and return it */
-tree
-build_omp_stmt (enum omp_tree_type c, void * p)
-{
-  tree t = build_stmt (OMP_MARKER_STMT);
-  t->omp.choice = c;
-  t->omp.omp_clause_list = p;
-                                                                                
-  return t;
-}
-#endif
-
 /* Generate the RTL for a CONTINUE_STMT.  */
 
 void
@@ -884,11 +861,6 @@ expand_stmt (t)
 	case CLEANUP_STMT:
 	  genrtl_decl_cleanup (t);
 	  break;
-
-#ifdef KEY
-	case OMP_MARKER_STMT:
-	  break;
-#endif
 
 	default:
 	  if (lang_expand_stmt)

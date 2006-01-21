@@ -1,7 +1,3 @@
-/* 
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* This file contains the definitions and documentation for the
    tree codes used in the GNU C compiler.
    Copyright (C) 1987, 1988, 1993, 1995, 1997, 1998, 2000, 2001
@@ -54,13 +50,6 @@ DEFTREECODE (ERROR_MARK, "error_mark", 'x', 0)
    There is only one IDENTIFIER_NODE ever made for any particular name.
    Use `get_identifier' to get it (or create it, the first time).  */
 DEFTREECODE (IDENTIFIER_NODE, "identifier_node", 'x', ((LANG_HOOKS_IDENTIFIER_SIZE - sizeof (struct tree_common) + sizeof (tree) - 1) / sizeof (tree)))
-
-#ifdef SGI_MONGOOSE
-/* Used to hold information to identify an operator (or combination
-   of two operators) considered as a `noun' rather than a `verb'.
-   The first operand is encoded in the TREE_TYPE field.  */
-DEFTREECODE (OP_IDENTIFIER, "op_identifier", 'x', 2)
-#endif /* SGI_MONGOOSE */
 
 /* Has the TREE_VALUE and TREE_PURPOSE fields.  */
 /* These nodes are made into lists by chaining through the
@@ -283,11 +272,7 @@ DEFTREECODE (VECTOR_CST, "vector_cst", 'c', 3)
 
 /* Contents are TREE_STRING_LENGTH and TREE_STRING_POINTER fields.
    Also there is TREE_CST_RTL.  */
-#ifdef SGI_MONGOOSE
-DEFTREECODE (STRING_CST, "string_cst", 'c', 4)
-#else
 DEFTREECODE (STRING_CST, "string_cst", 'c', 3)
-#endif /* SGI_MONGOOSE */
 
 /* Declarations.  All references to names are represented as ..._DECL nodes.
    The decls in one binding context are chained through the TREE_CHAIN field.
@@ -617,12 +602,6 @@ DEFTREECODE (FIX_ROUND_EXPR, "fix_round_expr", '1', 1)
 /* Conversion of an integer to a real.  */
 DEFTREECODE (FLOAT_EXPR, "float_expr", '1', 1)
 
-#ifdef SGI_MONGOOSE
-/* Exponentiation.  Operands may have any types;
-   constraints on value type are not known yet.  */
-DEFTREECODE (EXPON_EXPR, "expon_expr", '2', 2)
-#endif /* SGI_MONGOOSE */
-
 /* Unary negation.  */
 DEFTREECODE (NEGATE_EXPR, "negate_expr", '1', 1)
 
@@ -815,20 +794,6 @@ DEFTREECODE (TRY_FINALLY_EXPR, "try_finally", 'e', 2)
    of where the subroutine should return to.  */
 DEFTREECODE (GOTO_SUBROUTINE_EXPR, "goto_subroutine", 'e', 2)
 
-
-#ifdef SGI_MONGOOSE
-/* Pop the top element off the dynamic handler chain.  Used in
-   conjunction with setjmp/longjmp based exception handling, see
-   except.c for more details.  This is meant to be used only by the
-   exception handling backend, expand_dhc_cleanup specifically.  */
-DEFTREECODE (POPDHC_EXPR, "popdhc_expr", 's', 0)
-
-/* Pop the top element off the dynamic cleanup chain.  Used in
-   conjunction with the exception handling.  This is meant to be used
-   only by the exception handling backend.  */
-DEFTREECODE (POPDCC_EXPR, "popdcc_expr", 's', 0)
-#endif /* SGI_MONGOOSE */
-
 /* These types of expressions have no useful value,
    and always have side effects.  */
 

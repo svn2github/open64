@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Basic error reporting routines.
    Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
 
@@ -43,22 +39,12 @@ int have_error = 0;
 void
 warning VPARAMS ((const char *format, ...))
 {
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, format);
   VA_FIXEDARG (ap, const char *, format);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, format);
-#endif /* SGI_MONGOOSE */
 
   fprintf (stderr, "%s: warning: ", progname);
   vfprintf (stderr, format, ap);
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
   fputc('\n', stderr);
 }
 
@@ -68,22 +54,12 @@ warning VPARAMS ((const char *format, ...))
 void
 error VPARAMS ((const char *format, ...))
 {
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, format);
   VA_FIXEDARG (ap, const char *, format);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, format);
-#endif /* SGI_MONGOOSE */
 
   fprintf (stderr, "%s: ", progname);
   vfprintf (stderr, format, ap);
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
   fputc('\n', stderr);
 
   have_error = 1;
@@ -95,22 +71,12 @@ error VPARAMS ((const char *format, ...))
 void
 fatal VPARAMS ((const char *format, ...))
 {
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, format);
   VA_FIXEDARG (ap, const char *, format);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, format);
-#endif /* SGI_MONGOOSE */
 
   fprintf (stderr, "%s: ", progname);
   vfprintf (stderr, format, ap);
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
   fputc('\n', stderr);
   exit (FATAL_EXIT_CODE);
 }
@@ -120,22 +86,12 @@ fatal VPARAMS ((const char *format, ...))
 void
 internal_error VPARAMS ((const char *format, ...))
 {
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, format);
   VA_FIXEDARG (ap, const char *, format);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, format);
-#endif /* SGI_MONGOOSE */
 
   fprintf (stderr, "%s: Internal error: ", progname);
   vfprintf (stderr, format, ap);
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
   fputc ('\n', stderr);
   exit (FATAL_EXIT_CODE);
 }

@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Output Dwarf format symbol table information from the GNU C compiler.
    Copyright (C) 1992, 1993, 1995, 1996, 1997, 1998, 2002,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -571,16 +567,10 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #ifdef DWARF_DEBUGGING_INFO
 #include "system.h"
 #include "dwarf.h"
-#ifdef SGI_MONGOOSE
-// To get typde def of tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "flags.h"
 #include "function.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "hard-reg-set.h"
 #include "insn-config.h"
 #include "reload.h"
@@ -590,10 +580,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "tm_p.h"
 #include "debug.h"
 #include "langhooks.h"
-#ifdef SGI_MONGOOSE
-// To get DWARF_FRAME_REGISTERS
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 /* NOTE: In the comments in this file, many references are made to
    so called "Debugging Information Entries".  For the sake of brevity,

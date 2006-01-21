@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* real.c - software floating point emulation.
    Copyright (C) 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2002, 2003 Free Software Foundation, Inc.
@@ -27,10 +23,6 @@
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "toplev.h"
 #include "real.h"

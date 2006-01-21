@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Control flow graph building code for GNU compiler.
    Copyright (C) 1987, 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
@@ -38,14 +34,8 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// to get type def of tree in rtl.h for tree.h
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "hard-reg-set.h"
 #include "basic-block.h"
 #include "regs.h"

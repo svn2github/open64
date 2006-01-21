@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Convert function calls to rtl insns, for GNU C compiler.
    Copyright (C) 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998
    1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
@@ -32,10 +28,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "libfuncs.h"
 #include "function.h"
 #include "regs.h"
-#ifdef SGI_MONGOOSE
-// To define HAVE_call and HAVE_call_value
-#include "insn-flags.h"
-#endif /* SGI_MONGOOSE */
 #include "toplev.h"
 #include "output.h"
 #include "tm_p.h"
@@ -44,10 +36,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "langhooks.h"
 #include "target.h"
 #include "except.h"
-#ifdef SGI_MONGOOSE
-// how am I supoosed to get FUNCTION_ARG_REG_LITTLE_ENDIAN, PUSH_ARGS, etc.
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 #if !defined FUNCTION_OK_FOR_SIBCALL
 #define FUNCTION_OK_FOR_SIBCALL(DECL) 1
@@ -652,10 +640,6 @@ emit_call_1 (funexp, fndecl, funtype, stack_size, rounded_stack_size,
   /* Restore this now, so that we do defer pops for this call's args
      if the context of the call as a whole permits.  */
   inhibit_defer_pop = old_inhibit_defer_pop;
-
-  /* Don't bother cleaning up after a noreturn function.  */
-  if (ecf_flags & (ECF_NORETURN | ECF_LONGJMP))
-    return;
 
   if (n_popped > 0)
     {
@@ -1860,13 +1844,9 @@ try_to_integrate (fndecl, actparms, target, ignore, type, structure_value_addr)
 
   timevar_push (TV_INTEGRATION);
 
-#ifdef SGI_MONGOOSE
-  temp = (rtx) (HOST_WIDE_INT) -1;
-#else
   temp = expand_inline_function (fndecl, actparms, target,
 				 ignore, type,
 				 structure_value_addr);
-#endif /* SGI_MONGOOSE */
 
   timevar_pop (TV_INTEGRATION);
 
@@ -3121,7 +3101,6 @@ expand_call (exp, target, ignore)
 
       /* Verify that we've deallocated all the stack we used.  */
       if (pass
-	  && ! (flags & (ECF_NORETURN | ECF_LONGJMP))
 	  && old_stack_allocated != stack_pointer_delta - pending_stack_adjust)
 	abort ();
 
@@ -3215,10 +3194,6 @@ expand_call (exp, target, ignore)
 	    }
 
 	  emit_barrier_after (last);
-
-	  /* Stack adjustments after a noreturn call are dead code.  */
-	  stack_pointer_delta = old_stack_allocated;
-	  pending_stack_adjust = 0;
 	}
 
       if (flags & ECF_LONGJMP)
@@ -4042,23 +4017,9 @@ emit_library_call_value_1 (retval, orgfun, value, fn_type, outmode, nargs, p)
 		       (save_mode,
 			plus_constant (argblock,
 				       argvec[argnum].offset.constant)));
-		  if (save_mode == BLKmode)
-		    {
-		      argvec[argnum].save_area
-			= assign_stack_temp (BLKmode,
-				             argvec[argnum].size.constant, 0);
+		  argvec[argnum].save_area = gen_reg_rtx (save_mode);
 
-		      emit_block_move (validize_mem (argvec[argnum].save_area),
-			  	       stack_area,
-				       GEN_INT (argvec[argnum].size.constant),
-				       BLOCK_OP_CALL_PARM);
-		    }
-		  else
-		    {
-		      argvec[argnum].save_area = gen_reg_rtx (save_mode);
-
-		      emit_move_insn (argvec[argnum].save_area, stack_area);
-		    }
+		  emit_move_insn (argvec[argnum].save_area, stack_area);
 		}
 	    }
 
@@ -4298,13 +4259,7 @@ emit_library_call_value_1 (retval, orgfun, value, fn_type, outmode, nargs, p)
 			      plus_constant (argblock,
 					     argvec[count].offset.constant)));
 
-	    if (save_mode == BLKmode)
-	      emit_block_move (stack_area,
-		  	       validize_mem (argvec[count].save_area),
-			       GEN_INT (argvec[count].size.constant),
-			       BLOCK_OP_CALL_PARM);
-	    else
-	      emit_move_insn (stack_area, argvec[count].save_area);
+	    emit_move_insn (stack_area, argvec[count].save_area);
 	  }
 
       highest_outgoing_arg_in_use = initial_highest_arg_in_use;
@@ -4333,25 +4288,15 @@ void
 emit_library_call VPARAMS((rtx orgfun, enum libcall_type fn_type,
 			   enum machine_mode outmode, int nargs, ...))
 {
-#ifndef SGI_MONGOOSE
   VA_OPEN (p, nargs);
   VA_FIXEDARG (p, rtx, orgfun);
   VA_FIXEDARG (p, int, fn_type);
   VA_FIXEDARG (p, enum machine_mode, outmode);
   VA_FIXEDARG (p, int, nargs);
-#else
-  va_list p;
-                                                                                
-  VA_START (p, nargs);
-#endif /* SGI_MONGOOSE */
 
   emit_library_call_value_1 (0, orgfun, NULL_RTX, fn_type, outmode, nargs, p);
 
-#ifndef SGI_MONGOOSE
   VA_CLOSE (p);
-#else
-  va_end (p);
-#endif /* SGI_MONGOOSE */
 }
 
 /* Like emit_library_call except that an extra argument, VALUE,
@@ -4369,27 +4314,17 @@ emit_library_call_value VPARAMS((rtx orgfun, rtx value,
 {
   rtx result;
   
-#ifndef SGI_MONGOOSE
   VA_OPEN (p, nargs);
   VA_FIXEDARG (p, rtx, orgfun);
   VA_FIXEDARG (p, rtx, value);
   VA_FIXEDARG (p, int, fn_type);
   VA_FIXEDARG (p, enum machine_mode, outmode);
   VA_FIXEDARG (p, int, nargs);
-#else
-  va_list p;
-                                                                                
-  VA_START (p, nargs);
-#endif /* SGI_MONGOOSE */
 
   result = emit_library_call_value_1 (1, orgfun, value, fn_type, outmode,
 				      nargs, p);
 
-#ifndef SGI_MONGOOSE
   VA_CLOSE (p);
-#else
-  va_end (p);
-#endif /* SGI_MONGOOSE */
 
   return result;
 }

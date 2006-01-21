@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Tree-dumping functionality for intermediate representation.
    Copyright (C) 1999, 2000, 2002 Free Software Foundation, Inc.
    Written by Mark Mitchell <mark@codesourcery.com>
@@ -25,10 +21,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "splay-tree.h"
 #include "diagnostic.h"
@@ -263,12 +255,6 @@ dequeue_and_dump (di)
 
   /* Print the node index.  */
   dump_index (di, index);
-
-#ifdef KEY
-  /* Print address of node for easier debugging. */
-  fprintf (di->stream, "%p  ", t);
-#endif /* KEY */
-
   /* And the type of node this is.  */
   if (dni->binfo_p)
     code_name = "binfo";

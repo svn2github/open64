@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Various diagnostic subroutines for the GNU C language.
    Copyright (C) 2000, 2001 Free Software Foundation, Inc.
    Contributed by Gabriel Dos Reis <gdr@codesourcery.com>
@@ -25,10 +21,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "c-tree.h"
 #include "tm_p.h"
@@ -41,40 +33,11 @@ void
 pedwarn_c99 VPARAMS ((const char *msgid, ...))
 {
   diagnostic_info diagnostic;
-
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, msgid);
   VA_FIXEDARG (ap, const char *, msgid);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, msgid);
-#endif /* SGI_MONGOOSE */
 
   diagnostic_set_info (&diagnostic, msgid, &ap, input_filename, lineno,
                        flag_isoc99 ? pedantic_error_kind () : DK_WARNING);
   report_diagnostic (&diagnostic);
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
-}
-
-/* Issue an ISO C90 pedantic warning MSGID.  This function is supposed to
-   be used for matters that are allowed in ISO C99 but not supported in
-   ISO C90, thus we explicitly don't pedwarn when C99 is specified.
-   (There is no flag_c90.)  */
-
-void
-pedwarn_c90 (const char *msgid, ...)
-{
-  diagnostic_info diagnostic;
-  va_list ap;
-
-  va_start (ap, msgid);
-  diagnostic_set_info (&diagnostic, msgid, &ap, input_filename, lineno,
-                       flag_isoc99 ? DK_WARNING : pedantic_error_kind ());
-  report_diagnostic (&diagnostic);
-  va_end (ap);
 }

@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Emit RTL for the GNU C-Compiler expander.
    Copyright (C) 1987, 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -1151,7 +1147,6 @@ gen_realpart (mode, x)
      enum machine_mode mode;
      rtx x;
 {
-#ifndef SGI_MONGOOSE
   if (WORDS_BIG_ENDIAN
       && GET_MODE_BITSIZE (mode) < BITS_PER_WORD
       && REG_P (x)
@@ -1159,11 +1154,6 @@ gen_realpart (mode, x)
     internal_error
       ("can't access real part of complex value in hard register");
   else if (WORDS_BIG_ENDIAN)
-#else
-  if (GET_CODE (x) == CONCAT && GET_MODE (XEXP (x, 0)) == mode)
-    return XEXP (x, 0);
-  else if (WORDS_BIG_ENDIAN)
-#endif
     return gen_highpart (mode, x);
   else
     return gen_lowpart (mode, x);
@@ -1248,16 +1238,7 @@ gen_lowpart (mode, x)
   else if (GET_CODE (x) == ADDRESSOF)
     return gen_lowpart (mode, force_reg (GET_MODE (x), x));
   else
-#ifdef SGI_MONGOOSE
-#ifdef KEY
-// gen_rtx_CONST_DOUBLE does not exist
-    return immed_double_const (0, 0, mode);
-#else
-    return gen_rtx_CONST_DOUBLE (mode, NULL_RTX, 0);
-#endif // KEY
-#else
     abort ();
-#endif /* SGI_MONGOOSE */
 }
 
 /* Like `gen_lowpart', but refer to the most significant part.
@@ -1287,16 +1268,7 @@ gen_highpart (mode, x)
     result = validize_mem (result);
 
   if (!result)
-#ifdef SGI_MONGOOSE
-#ifdef KEY
-// gen_rtx_CONST_DOUBLE does not exist
-    return immed_double_const (0, 0, mode);
-#else
-    return gen_rtx_CONST_DOUBLE (mode, NULL_RTX, 0);
-#endif // KEY
-#else
     abort ();
-#endif /* SGI_MONGOOSE */
   return result;
 }
 
@@ -5292,13 +5264,8 @@ gen_const_vector_0 (mode)
   for (i = 0; i < units; ++i)
     RTVEC_ELT (v, i) = CONST0_RTX (inner);
 
-#ifndef SGI_MONGOOSE
   tem = gen_rtx_raw_CONST_VECTOR (mode, v);
   return tem;
-#else
-  // gen_rtx_CONST_VECTOR not defined anywhere
-  return NULL;
-#endif /* SGI_MONGOOSE */
 }
 
 /* Generate a vector like gen_rtx_raw_CONST_VEC, but use the zero vector when

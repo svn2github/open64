@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Generate code from machine description to compute values of attributes.
    Copyright (C) 1991, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2002 Free Software Foundation, Inc.
@@ -725,20 +721,10 @@ attr_rtx VPARAMS ((enum rtx_code code, ...))
 {
   rtx result;
   
-#ifndef SGI_MONGOOSE
   VA_OPEN (p, code);
   VA_FIXEDARG (p, enum rtx_code, code);
-#else
-  va_list p;
-                                                                                 
-  VA_START (p, code);
-#endif /* SGI_MONGOOSE */
   result = attr_rtx_1 (code, p);
-#ifndef SGI_MONGOOSE
   VA_CLOSE (p);
-#else
-  va_end (p);
-#endif /* SGI_MONGOOSE */
   return result;
 }
 
@@ -752,25 +738,15 @@ attr_printf VPARAMS ((unsigned int len, const char *fmt, ...))
 {
   char str[256];
 
-#ifndef SGI_MONGOOSE
   VA_OPEN (p, fmt);
   VA_FIXEDARG (p, unsigned int, len);
   VA_FIXEDARG (p, const char *, fmt);
-#else
-  va_list p;
-                                                                                 
-  VA_START (p, fmt);
-#endif /* SGI_MONGOOSE */
   
   if (len > sizeof str - 1) /* Leave room for \0.  */
     abort ();
 
   vsprintf (str, fmt, p);
-#ifndef SGI_MONGOOSE
   VA_CLOSE (p);
-#else
-  va_end (p);
-#endif /* SGI_MONGOOSE */
 
   return attr_string (str, strlen (str));
 }
@@ -2440,11 +2416,6 @@ substitute_address (exp, no_address_fn, address_fn)
   return (*no_address_fn) (exp);
 }
 
-
-#ifdef SGI_MONGOOSE
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#endif /* SGI_MONGOOSE */
-
 /* Make new attributes from the `length' attribute.  The following are made,
    each corresponding to a function called from `shorten_branches' or
    `get_attr_length':
@@ -6245,9 +6216,7 @@ from the machine description file `md'.  */\n\n");
   make_length_attrs ();
 
   /* Perform any possible optimizations to speed up compilation.  */
-#ifndef SGI_MONGOOSE
   optimize_attrs ();
-#endif /* SGI_MONGOOSE */
 
   /* Now write out all the `gen_attr_...' routines.  Do these before the
      special routines (specifically before write_function_unit_info), so

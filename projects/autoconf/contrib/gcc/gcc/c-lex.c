@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Mainly the interface between cpplib and the C front ends.
    Copyright (C) 1987, 1988, 1989, 1992, 1994, 1995, 1996, 1997
    1998, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -43,9 +39,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "tm_p.h"
 #include "splay-tree.h"
 #include "debug.h"
-#ifdef SGI_MONGOOSE
-#include "wfe_dst.h"
-#endif /* SGI_MONGOOSE */
 
 #ifdef MULTIBYTE_CHARS
 #include "mbchar.h"
@@ -160,9 +153,7 @@ c_common_parse_file (set_yydebug)
   warning ("YYDEBUG not defined");
 #endif
 
-#ifndef SGI_MONGOOSE
   (*debug_hooks->start_source_file) (lineno, input_filename);
-#endif /* SGI_MONGOOSE */
   cpp_finish_options (parse_in);
 
   yyparse ();
@@ -238,9 +229,6 @@ cb_ident (pfile, line, str)
      unsigned int line ATTRIBUTE_UNUSED;
      const cpp_string *str ATTRIBUTE_UNUSED;
 {
-#ifndef SGI_MONGOOSE
-// can not find a place to define rdata_section (defined in mips.h,
-// but not included anywhere : CORRECT)
 #ifdef ASM_OUTPUT_IDENT
   if (! flag_no_ident)
     {
@@ -249,7 +237,6 @@ cb_ident (pfile, line, str)
       ASM_OUTPUT_IDENT (asm_out_file, TREE_STRING_POINTER (value));
     }
 #endif
-#endif /* SGI_MONGOOSE */
 }
 
 /* Called at the start of every non-empty line.  TOKEN is the first
@@ -258,16 +245,9 @@ static void
 cb_line_change (pfile, token, parsing_args)
      cpp_reader *pfile ATTRIBUTE_UNUSED;
      const cpp_token *token;
-     int parsing_args;
+     int parsing_args ATTRIBUTE_UNUSED;
 {
-  if (token->type == CPP_EOF || parsing_args)
-    return;
-
   src_lineno = SOURCE_LINE (map, token->line);
-
-#ifdef SGI_MONGOOSE
-  WFE_Set_Line_And_File (lineno, input_filename);
-#endif /* SGI_MONGOOSE */
 }
 
 static void
@@ -289,9 +269,7 @@ cb_file_change (pfile, new_map)
 
 	  lineno = included_at;
 	  push_srcloc (new_map->to_file, 1);
-#ifndef KEY
 	  (*debug_hooks->start_source_file) (included_at, new_map->to_file);
-#endif // !KEY
 #ifndef NO_IMPLICIT_EXTERN_C
 	  if (c_header_level)
 	    ++c_header_level;
@@ -315,9 +293,7 @@ cb_file_change (pfile, new_map)
 #endif
       pop_srcloc ();
       
-#ifndef KEY
       (*debug_hooks->end_source_file) (to_line);
-#endif // !KEY
     }
 
   update_header_times (new_map->to_file);
@@ -328,10 +304,6 @@ cb_file_change (pfile, new_map)
 
   /* Hook for C++.  */
   extract_interface_info ();
-
-#ifdef SGI_MONGOOSE
-  WFE_Set_Line_And_File (lineno, input_filename);
-#endif /* SGI_MONGOOSE */
 }
 
 static void
@@ -692,13 +664,6 @@ utf8_extend_token (c)
   while (shift);
 }
 #endif
-
-#ifdef KEY
-bool in_omp_pragma = FALSE;
-// TRUE implies we have seen a CPP_HASH, and we have done lookahead
-// to identify the specific type of pragma.
-extern bool last_token_omp_hash;
-#endif
 
 int
 c_lex (value)
@@ -712,20 +677,6 @@ c_lex (value)
     tok = cpp_get_token (parse_in);
   while (tok->type == CPP_PADDING);
   timevar_pop (TV_CPP);
-
-#ifdef KEY
-  if (last_token_omp_hash && tok->type == CPP_NAME)
-  {
-    last_token_omp_hash = FALSE;
-    tree name = HT_IDENT_TO_GCC_IDENT (HT_NODE (tok->val.node));
-    if (TREE_CODE (name) == IDENTIFIER_NODE &&
-        !strcmp (IDENTIFIER_POINTER (name), "pragma"))
-    {
-      tok = cpp_get_token (parse_in);
-      in_omp_pragma = TRUE;
-    }
-  }
-#endif // KEY
 
   /* The C++ front end does horrible things with the current line
      number.  To ensure an accurate line number, we must reset it

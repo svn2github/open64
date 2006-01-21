@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Subroutines used by or related to instruction recognition.
    Copyright (C) 1987, 1988, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -41,10 +37,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "basic-block.h"
 #include "output.h"
 #include "reload.h"
-#ifdef SGI_MONGOOSE
-// To get definition of MODE_BASE_REG_CLASS
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 #ifndef STACK_PUSH_CODE
 #ifdef STACK_GROWS_DOWNWARD

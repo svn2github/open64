@@ -1,5 +1,5 @@
 /* Definitions for GCC.  Part of the machine description for CRIS.
-   Copyright (C) 1998, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
+   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
    Contributed by Axis Communications.  Written by Hans-Peter Nilsson.
 
 This file is part of GCC.
@@ -115,18 +115,8 @@ extern const char *cris_elinux_stacksize_str;
 /* Also provide canonical vN definitions when user specifies an alias.
    Note that -melf overrides -maout.  */
 
-/* The `-$' is here mostly due to the integrated preprocessor not
-   handling the builtin expansion of "#define __REGISTER_PREFIX__ $"
-   gracefully.  This is slightly redundant although not incorrect.
-   We're quite alone defining REGISTER_PREFIX as "$" so it's unlikely
-   someone will fight for us.  This year in the mountains.
-   Note that for -melinux and -mlinux, command-line -isystem options are
-   emitted both before and after the synthesized one.  We can't remove all
-   of them: a %{<isystem} will only remove the first one and %{<isystem*}
-   will not do TRT.  Those extra occurrences are harmless anyway.  */
 #define CPP_SPEC \
- "-$ -D__CRIS_ABI_version=2\
-  %{mtune=*:-D__tune_%* %{mtune=v*:-D__CRIS_arch_tune=%*}}\
+ "%{mtune=*:-D__tune_%* %{mtune=v*:-D__CRIS_arch_tune=%*}}\
    %{mtune=etrax4:-D__tune_v3 -D__CRIS_arch_tune=3}\
    %{mtune=etrax100:-D__tune_v8 -D__CRIS_arch_tune=8}\
    %{mtune=svinto:-D__tune_v8 -D__CRIS_arch_tune=8}\
@@ -150,8 +140,7 @@ extern const char *cris_elinux_stacksize_str;
 
 /* For the cris-*-elf subtarget.  */
 #define CRIS_CPP_SUBTARGET_SPEC \
- "-D__ELF__\
-  %{mbest-lib-options:\
+ "%{mbest-lib-options:\
    %{!moverride-best-lib-options:\
     %{!march=*:%{!metrax*:%{!mcpu=*:-D__tune_v10 -D__CRIS_arch_tune=10}}}}}"
 
@@ -211,7 +200,7 @@ extern const char *cris_elinux_stacksize_str;
 #define CRIS_LINK_SUBTARGET_SPEC \
  "-mcriself\
   %{sim2:%{!T*:-Tdata 0x4000000 -Tbss 0x8000000}}\
-  %{O2|O3: --gc-sections}"
+  %{!r:%{O2|O3: --gc-sections}}"
 
 /* Which library to get.  The only difference from the default is to get
    libsc.a if -sim is given to the driver.  Repeat -lc -lsysX
@@ -255,8 +244,23 @@ extern const char *cris_elinux_stacksize_str;
 
 /* Node: Run-time Target */
 
-/* Only keep the non-varying ones here.  */
-#define CPP_PREDEFINES	"-Dcris -DCRIS -DGNU_CRIS"
+#define TARGET_CPU_CPP_BUILTINS()		\
+  do						\
+    {						\
+      builtin_define_std ("cris");		\
+      builtin_define_std ("CRIS");		\
+      builtin_define_std ("GNU_CRIS");		\
+      builtin_define ("__CRIS_ABI_version=2");	\
+    }						\
+  while (0)
+
+#define TARGET_OS_CPP_BUILTINS()		\
+  do						\
+    {						\
+      builtin_define ("__ELF__");		\
+    }						\
+  while (0)
+
 
 /* This needs to be at least 32 bits.  */
 extern int target_flags;
@@ -476,13 +480,7 @@ extern int target_flags;
    post-increment on DImode indirect.  */
 #define WORDS_BIG_ENDIAN 0
 
-#define BITS_PER_UNIT 8
-
-#define BITS_PER_WORD 32
-
 #define UNITS_PER_WORD 4
-
-#define POINTER_SIZE 32
 
 /* A combination of defining PROMOTE_MODE, PROMOTE_FUNCTION_ARGS,
    PROMOTE_FOR_CALL_ONLY and *not* defining PROMOTE_PROTOTYPES gives the
@@ -962,9 +960,8 @@ enum reg_class {NO_REGS, ALL_REGS, LIM_REG_CLASSES};
 struct cum_args {int regs;};
 
 /* The regs member is an integer, the number of arguments got into
-   registers so far, and lib is nonzero if init_cumulative_args was
-   found to generate a call to a library function.  */
-#define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, INDIRECT)	  \
+   registers so far.  */
+#define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, INDIRECT)	\
  ((CUM).regs = 0)
 
 #define FUNCTION_ARG_ADVANCE(CUM, MODE, TYPE, NAMED)		\
@@ -1019,10 +1016,6 @@ struct cum_args {int regs;};
 #define ELIGIBLE_FOR_EPILOGUE_DELAY(INSN, N) \
   cris_eligible_for_epilogue_delay (INSN)
 
-#define ASM_OUTPUT_MI_THUNK(FILE, THUNK_FNDECL, DELTA, FUNCTION) \
- cris_asm_output_mi_thunk(FILE, THUNK_FNDECL, DELTA, FUNCTION)
-
-
 /* Node: Profiling */
 
 #define FUNCTION_PROFILER(FILE, LABELNO)  \
@@ -1036,7 +1029,7 @@ struct cum_args {int regs;};
 
 /* We save the register number of the first anonymous argument in
    first_vararg_reg, and take care of this in the function prologue.
-   This behaviour is used by at least one more port (the ARM?), but
+   This behavior is used by at least one more port (the ARM?), but
    may be unsafe when compiling nested functions.  (With varargs? Hairy.)
    Note that nested-functions is a GNU C extension.
 
@@ -1050,8 +1043,7 @@ struct cum_args {int regs;};
       if (TARGET_PDEBUG)						\
 	{								\
 	  fprintf (asm_out_file,					\
-		   "\n; VA:: %s: %d args before, anon @ #%d, %dtime\n",	\
-		   current_function_varargs ? "OLD" : "ANSI",		\
+		   "\n; VA:: ANSI: %d args before, anon @ #%d, %dtime\n", \
 		   (ARGSSF).regs, PRETEND, SECOND);			\
 	}								\
     }									\
@@ -1249,7 +1241,7 @@ struct cum_args {int regs;};
 
 /* For now, don't do anything.  GCC does a good job most often.
 
-    Maybe we could do something about gcc:s misbehaviour when it
+    Maybe we could do something about gcc:s misbehavior when it
    recalculates frame offsets for local variables, from fp+offs to
    sp+offs.  The resulting address expression gets screwed up
    sometimes, but I'm not sure that it may be fixed here, since it is
@@ -1257,8 +1249,7 @@ struct cum_args {int regs;};
    FIXME: Check and adjust for gcc-2.9x.  */
 #define LEGITIMIZE_ADDRESS(X, OLDX, MODE, WIN) {}
 
-/* Functionality import from EGCS.
-   Kludge to solve Axis-990219: Work around imperfection in
+/* Kludge to solve Axis-990219: Work around imperfection in
    reload_load_address1:
     (plus (sign_extend (mem:qi (reg))) (reg))
    should be reloaded as (plus (reg) (reg)), not
@@ -1266,9 +1257,8 @@ struct cum_args {int regs;};
    There are no checks that reload_load_address_1 "reloads"
    addresses correctly, so invalidness is not caught or
    corrected.
-    When the right thing happens, the "something_reloaded" kludge can
-   be removed.  The right thing does not appear to happen for
-   EGCS CVS as of this date (above).  */
+    When the right thing happens in reload, the kludge can
+   be removed; still not as of 2003-02-27.  */
 
 #define LEGITIMIZE_RELOAD_ADDRESS(X, MODE, OPNUM, TYPE, IND_LEVELS, WIN) \
   do									\
@@ -1448,10 +1438,6 @@ struct cum_args {int regs;};
 /* The jump table is immediately connected to the preceding insn.  */
 #define JUMP_TABLES_IN_TEXT_SECTION 1
 
-/* We need to code in PIC-specific flags into SYMBOL_REF_FLAG.  */
-
-#define ENCODE_SECTION_INFO(EXP) cris_encode_section_info (EXP)
-
 /* We pull a little trick to register the _fini function with atexit,
    after (presumably) registering the eh frame info, since we don't handle
    _fini (a.k.a. ___fini_start) in crt0 or have a crti for "pure" ELF.  If
@@ -1585,22 +1571,8 @@ call_ ## FUNC (void)						\
 
 /* Node: Label Output */
 
-#define ASM_OUTPUT_LABEL(FILE, NAME)		\
-  do						\
-    {						\
-      assemble_name (FILE, NAME);		\
-      fputs (":\n", FILE);			\
-    }						\
-  while (0)
-
-#define ASM_GLOBALIZE_LABEL(FILE, NAME)		\
-  do						\
-    {						\
-      fputs ("\t.global ", FILE);		\
-      assemble_name (FILE, NAME);		\
-      fputs ("\n", FILE);			\
-    }						\
-  while (0)
+/* Globalizing directive for a label.  */
+#define GLOBAL_ASM_OP "\t.global "
 
 #define SUPPORTS_WEAK 1
 
@@ -1752,10 +1724,6 @@ call_ ## FUNC (void)						\
 /* Node: SDB and DWARF */
 /* (no definitions) */
 
-/* Node: Cross-compilation */
-#define REAL_ARITHMETIC
-
-
 /* Node: Misc */
 
 /* FIXME: Check this one more time.  */
@@ -1766,6 +1734,8 @@ call_ ## FUNC (void)						\
   {PLUS, IOR, AND, UMIN}},				\
  {"cris_operand_extend_operator",			\
   {PLUS, MINUS, UMIN}},					\
+ {"cris_additive_operand_extend_operator",		\
+  {PLUS, MINUS}},					\
  {"cris_extend_operator",				\
   {ZERO_EXTEND, SIGN_EXTEND}},				\
  {"cris_plus_or_bound_operator",			\

@@ -298,11 +298,11 @@ xscale-*-*)
 	;;
 i[34567]86-*-*)
 	cpu_type=i386
-	extra_headers="mmintrin.h xmmintrin.h emmintrin.h pmmintrin.h"
+	extra_headers="mmintrin.h xmmintrin.h"
 	;;
 x86_64-*-*)
 	cpu_type=i386
-	extra_headers="mmintrin.h xmmintrin.h emmintrin.h pmmintrin.h"
+	extra_headers="mmintrin.h xmmintrin.h"
 	;;
 ia64-*-*)
 	extra_headers=ia64intrin.h
@@ -961,11 +961,13 @@ hppa*64*-*-hpux11*)
 	then
 		target_cpu_default="${target_cpu_default}|MASK_GNU_LD"
 	fi
-	case x${enable_threads} in
-	xyes | xposix )
-		thread_file=posix 
-		;;
-	esac
+#	if [ x$enable_threads = x ]; then
+#	    enable_threads=$have_pthread_h
+#	fi
+#	if [ x$enable_threads = xyes ]; then
+#		thread_file='dce'
+#		tmake_file="${tmake_file} pa/t-dce-thr"
+#	fi
 	install_headers_dir=install-headers-cpio
 	;;
 hppa1.1-*-hpux11* | hppa2*-*-hpux11*)
@@ -974,11 +976,13 @@ hppa1.1-*-hpux11* | hppa2*-*-hpux11*)
 	xm_defines=POSIX
 	tmake_file="pa/t-pa pa/t-pa-hpux pa/t-hpux-shlib"
 	xmake_file="pa/x-ada"
-	case x${enable_threads} in
-	xyes | xposix )
-		thread_file=posix 
-		;;
-	esac
+#	if test x$enable_threads = x; then
+#	    enable_threads=$have_pthread_h
+#	fi
+#	if test x$enable_threads = xyes; then
+#		thread_file='dce'
+#		tmake_file="${tmake_file} pa/t-dce-thr"
+#	fi
 	install_headers_dir=install-headers-cpio
 	use_collect2=yes
 	;;
@@ -987,11 +991,13 @@ hppa1.0-*-hpux11*)
 	xm_defines=POSIX
 	tmake_file="pa/t-pa pa/t-pa-hpux pa/t-hpux-shlib"
 	xmake_file="pa/x-ada"
-	case x${enable_threads} in
-	xyes | xposix )
-		thread_file=posix 
-		;;
-	esac
+#	if test x$enable_threads = x; then
+#	    enable_threads=$have_pthread_h
+#	fi
+#	if test x$enable_threads = xyes; then
+#		thread_file='dce'
+#		tmake_file="${tmake_file} pa/t-dce-thr"
+#	fi
 	install_headers_dir=install-headers-cpio
 	use_collect2=yes
 	;;
@@ -1238,13 +1244,15 @@ i[34567]86-*-rtems*)
 i[34567]86-*-sco3.2v5*)	# 80386 running SCO Open Server 5
 	xm_defines=POSIX
 	install_headers_dir=install-headers-cpio
-	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h i386/sco5.h"
+	tm_file="${tm_file} i386/unix.h i386/att.h i386/sco5.h"
 	if test x$gas = xyes
 	then
 		tm_file="usegas.h ${tm_file}"
+		tmake_file=i386/t-sco5gas
+	else
+		tmake_file=i386/t-sco5
 	fi
-	tmake_file=i386/t-sco5
-	extra_parts="crtbegin.o crtend.o"
+	extra_parts="crti.o crtbegin.o crtend.o crtbeginS.o crtendS.o"
 	;;
 i[34567]86-*-solaris2*)
 	xm_defines="POSIX SMALL_ARG_MAX"
@@ -1478,19 +1486,14 @@ ia64*-*-linux*)
 	tmake_file="t-slibgcc-elf-ver t-linux ia64/t-ia64 ia64/t-glibc"
 	target_cpu_default="MASK_GNU_AS|MASK_GNU_LD"
 	extra_parts="crtbegin.o crtend.o crtbeginS.o crtendS.o crtfastmath.o"
-	if test x"$use_libunwind_exceptions" = xyes; then
-	  tmake_file="$tmake_file t-libunwind"
-	fi
 	;;
 ia64*-*-hpux*)
 	tm_file="${tm_file} dbxelf.h elfos.h svr4.h ia64/sysv4.h ia64/hpux.h ia64/hpux_longdouble.h"
 	tmake_file="ia64/t-ia64 ia64/t-hpux"
 	target_cpu_default="MASK_GNU_AS"
-	case x$enable_threads in
-	xyes | xposix )
-		thread_file=posix
-		;;
-	esac
+	if test x$enable_threads = xyes; then
+		thread_file='posix'
+	fi
 	use_collect2=no
 	c_target_objs="ia64-c.o"
 	cxx_target_objs="ia64-c.o"
@@ -2020,14 +2023,9 @@ powerpc-*-openbsd*)
 	extra_headers=
 	;;
 powerpc64-*-linux*)
-	tm_file="rs6000/biarch64.h ${tm_file} dbxelf.h elfos.h svr4.h freebsd-spec.h rs6000/sysv4.h"
-	case x$with_cpu in
-	x|xpowerpc64|xdefault64) tm_file="${tm_file} rs6000/default64.h";;
-	esac
-	tm_file="${tm_file} rs6000/linux64.h"
+	tm_file="${tm_file} dbxelf.h elfos.h svr4.h freebsd-spec.h rs6000/sysv4.h rs6000/linux64.h"
 	out_file=rs6000/rs6000.c
-	tmake_file="rs6000/t-ppcos t-slibgcc-elf-ver t-linux rs6000/t-ppccomm rs6000/t-linux64"
-	xmake_file=rs6000/x-linux64
+	tmake_file="rs6000/t-rs6000 t-slibgcc-elf-ver t-linux rs6000/t-linux64"
 	;;
 powerpc64-*-gnu*)
 	tm_file="${cpu_type}/${cpu_type}.h elfos.h svr4.h freebsd-spec.h gnu.h rs6000/sysv4.h rs6000/linux64.h rs6000/gnu.h"
@@ -2214,7 +2212,7 @@ rs6000-ibm-aix4.[12]* | powerpc-ibm-aix4.[12]*)
 	;;
 rs6000-ibm-aix4.[3456789]* | powerpc-ibm-aix4.[3456789]*)
 	xm_defines=POSIX
-	tm_file="rs6000/biarch64.h ${tm_file} rs6000/aix.h rs6000/aix43.h rs6000/xcoff.h"
+	tm_file="${tm_file} rs6000/aix.h rs6000/aix43.h rs6000/xcoff.h"
 	tmake_file=rs6000/t-aix43
 	use_collect2=yes
 	thread_file='aix'
@@ -2222,7 +2220,7 @@ rs6000-ibm-aix4.[3456789]* | powerpc-ibm-aix4.[3456789]*)
 	;;
 rs6000-ibm-aix5.1.* | powerpc-ibm-aix5.1.*)
 	xm_defines=POSIX
-	tm_file="rs6000/biarch64.h ${tm_file} rs6000/aix.h rs6000/aix51.h rs6000/xcoff.h"
+	tm_file="${tm_file} rs6000/aix.h rs6000/aix51.h rs6000/xcoff.h"
 	tmake_file=rs6000/t-aix43
 	use_collect2=yes
 	thread_file='aix'
@@ -2310,7 +2308,7 @@ sh-*-rtems*)
 	fi
 	;;
 sh-*-linux* | sh[2346lbe]*-*-linux*)
-	tmake_file="sh/t-sh sh/t-elf"
+	tmake_file="sh/t-sh sh/t-elf sh/t-linux"
 	case $machine in
 	sh*be-*-* | sh*eb-*-*) ;;
 	*)
@@ -2318,7 +2316,6 @@ sh-*-linux* | sh[2346lbe]*-*-linux*)
 		tmake_file="${tmake_file} sh/t-le"
 		;;
 	esac
-	tmake_file="${tmake_file} sh/t-linux"
 	tm_file="${tm_file} dbxelf.h elfos.h svr4.h sh/elf.h sh/linux.h"
 	gas=yes gnu_ld=yes
 	case $machine in
@@ -2951,7 +2948,7 @@ powerpc*-*-* | rs6000-*-*)
                 tm_file="$tm_file rs6000/altivec-defs.h"
         fi
 	case "x$with_cpu" in
-		x | xdefault32 | xdefault64)
+		x)
 			;;
 
 		xcommon | xpower | xpower2 | xpower3 | xpowerpc | xpowerpc64 \

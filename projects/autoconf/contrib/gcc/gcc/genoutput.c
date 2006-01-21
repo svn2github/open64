@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Generate code from to output assembler insns as recognized from rtl.
    Copyright (C) 1987, 1988, 1992, 1994, 1995, 1997, 1998, 1999, 2000
    Free Software Foundation, Inc.
@@ -235,9 +231,6 @@ output_prologue ()
   printf ("#include \"real.h\"\n");
   printf ("#include \"insn-config.h\"\n\n");
   printf ("#include \"conditions.h\"\n");
-#ifdef SGI_MONGOOSE
-  printf ("#include \"insn-flags.h\"\n");
-#endif /* SGI_MONGOOSE */
   printf ("#include \"insn-attr.h\"\n\n");
   printf ("#include \"recog.h\"\n\n");
   printf ("#include \"toplev.h\"\n");
@@ -366,7 +359,6 @@ output_insn_data ()
 	  printf ("    0,\n");
 	  break;
 	case INSN_OUTPUT_FORMAT_SINGLE:
-#ifndef SGI_MONGOOSE
 	  {
 	    const char *p = d->template;
 	    char prev = 0;
@@ -388,9 +380,6 @@ output_insn_data ()
 	      }
 	    printf ("\",\n");
 	  }
-#else
-          printf ("    \"%s\",\n", d->template);
-#endif /* SGI_MONGOOSE */
 	  break;
 	case INSN_OUTPUT_FORMAT_MULTI:
 	case INSN_OUTPUT_FORMAT_FUNCTION:
@@ -714,11 +703,7 @@ process_template (d, template)
 	    cp++;
 
 	  printf ("  \"");
-#ifndef SGI_MONGOOSE
 	  while (!IS_VSPACE (*cp) && *cp != '\0')
-#else
-          while (*cp != '\n' && *cp != '\0')
-#endif /* SGI_MONGOOSE */
 	    {
 	      putchar (*cp);
 	      cp++;

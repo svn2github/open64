@@ -1,9 +1,3 @@
-/*
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
-   File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++
-   front-ends to GNU 3.3.1 release.
- */
-
 /* intl.h - internationalization
    Copyright 1998, 2001 Free Software Foundation, Inc.
 
@@ -44,13 +38,7 @@
 #endif
 
 #ifdef ENABLE_NLS
-#ifdef KEY
-#ifdef SGI_MONGOOSE
-# define gcc_init_libintl()     /* nothing */
-#else
 extern void gcc_init_libintl PARAMS ((void));
-#endif /* SGI_MONGOOSE */
-#endif /* KEY */
 #else
 /* Stubs.  */
 # undef textdomain

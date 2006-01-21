@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* CPP Library - lexical analysis.
    Copyright (C) 2000, 2001, 2002 Free Software Foundation, Inc.
    Contributed by Per Bothner, 1994-95.
@@ -33,11 +29,6 @@ Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #include "mbchar.h"
 #include <locale.h>
 #endif
-
-#ifdef SGI_MONGOOSE
-// To get TARGET_*, WCHAR_UNSIGNED
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 /* Tokens with SPELL_STRING store their spelling in the token list,
    and it's length in the token->val.name.len.  */
@@ -111,10 +102,6 @@ cpp_ideq (token, string)
   return !ustrcmp (NODE_NAME (token->val.node), (const uchar *) string);
 }
 
-#ifdef KEY
-extern bool in_omp_pragma;
-bool seen_omp_paren = FALSE;
-#endif
 /* Call when meeting a newline, assumed to be in buffer->cur[-1].
    Returns with buffer->cur pointing to the character immediately
    following the newline (combination).  */
@@ -835,83 +822,6 @@ _cpp_temp_token (pfile)
   return result;
 }
 
-#ifdef KEY
-enum pragma_type
-{
-  INVALID,
-  OMP,
-  OPTIONS,
-  EXEC_FREQ
-};
-
-static enum pragma_type current_pragma = INVALID;
-bool last_token_omp_hash = FALSE;
-static cpp_token *
-_cpp_omp_token (cpp_reader * pfile)
-{
-  cpp_buffer * buffer = pfile->buffer;
-  cpp_token * result = NULL;
-
-  const unsigned char *c = buffer->cur;
-  const unsigned char *rlimit = buffer->rlimit;
-
-  while (*c == ' ' || *c == '\t') c++;
-
-  int len = 6; // strlen "pragma"
-  if ((rlimit - c) < len || memcmp (c, "pragma", len))
-    return NULL;
-
-  c += len;
-
-  while (c < rlimit && (*c == ' ' || *c == '\t')) c++;
-
-  len = 3; // now, strlen "omp"
-  if ((rlimit - c) >= len && !memcmp (c, "omp", len))
-  {
-     result = _cpp_lex_direct (pfile); // found #pragma omp
-     current_pragma = OMP;
-  }
-  else if ((rlimit - c) >= strlen ("options") &&
-           !memcmp (c, "options", strlen ("options")))
-  {
-     result = _cpp_lex_direct (pfile);
-     current_pragma = OPTIONS;
-  }
-  else if (((rlimit - c) >= strlen ("mips_frequency_hint") &&
-            !memcmp (c, "mips_frequency_hint", strlen ("mips_frequency_hint")))
-	   || ((rlimit - c) >= strlen ("frequency_hint") &&
-	       !memcmp (c, "frequency_hint", strlen ("frequency_hint"))))
-  {
-     result = _cpp_lex_direct (pfile);
-     current_pragma = EXEC_FREQ;
-  }
-
-  return result;
-}
-
-// Skips the rest of the line till before the newline. Currently called
-// on seeing an OpenMP pragma when OpenMP is not enabled.
-static void
-skip_to_end_of_line (cpp_reader * pfile)
-{
-  cpp_buffer * buffer = pfile->buffer;
-  cppchar_t c;
-
-  while (buffer->cur != buffer->rlimit)
-  {
-    c = *buffer->cur++;
-    if (c == '\n')
-    {
-      // push back the newline into buffer
-      buffer->cur--;
-      break;
-    }
-  }
-}
-
-extern int flag_openmp;
-#endif /* KEY */
-
 /* Lex a token into RESULT (external interface).  Takes care of issues
    like directive handling, token lookahead, multiple include
    optimization and skipping.  */
@@ -935,41 +845,7 @@ _cpp_lex_token (pfile)
 	  result = pfile->cur_token++;
 	}
       else
-      {
 	result = _cpp_lex_direct (pfile);
-#ifdef KEY
-	if (in_omp_pragma && *(pfile->buffer->cur-1) == '\n')
-	  return result;
-#endif
-      }
-
-#ifdef KEY
-      if ((result->flags & BOL) && result->type == CPP_HASH &&
-          pfile->state.parsing_args != 1)
-      {
-        // do a lookahead to find if it is OpenMP pragma
-	cpp_token * omp_res = _cpp_omp_token (pfile);
-	if (omp_res)
-	{
-	  if (flag_openmp && current_pragma == OMP)
-	  {
-	    last_token_omp_hash = TRUE;
-	    return omp_res;
-	  }
-	  else if (current_pragma == OPTIONS ||
-                   current_pragma == EXEC_FREQ)
-	  {
-	    last_token_omp_hash = TRUE;
-	    return omp_res;
-	  } // potentially more else statements here.
-	  else
-	  {
-	    skip_to_end_of_line (pfile);
-	    continue;
-	  }
-	}
-      }
-#endif // KEY
 
       if (result->flags & BOL)
 	{
@@ -1095,16 +971,6 @@ _cpp_lex_direct (pfile)
   c = *buffer->cur++;
   result->col = CPP_BUF_COLUMN (buffer, buffer->cur);
 
-#ifdef KEY
-  if (in_omp_pragma && c == '\n')
-  {
-	  buffer->saved_flags = BOL;
-	  result->type = CPP_NAME;
-          result->val.node = (cpp_hashnode *)
-	       ht_lookup (pfile->hash_table, buffer->cur-1, 1, HT_ALLOC);
-          return result;
-  }
-#endif
  trigraph:
   switch (c)
     {
@@ -1205,11 +1071,7 @@ _cpp_lex_direct (pfile)
       if (result->val.node->flags & NODE_OPERATOR)
 	{
 	  result->flags |= NAMED_OP;
-#ifdef SGI_MONGOOSE
-          result->type = result->val.node->value.operator_code;
-#else
 	  result->type = result->val.node->value.operator;
-#endif /* SGI_MONGOOSE */
 	}
       break;
 
@@ -1459,11 +1321,7 @@ _cpp_lex_direct (pfile)
 
     case '~': result->type = CPP_COMPL; break;
     case ',': result->type = CPP_COMMA; break;
-    case '(': result->type = CPP_OPEN_PAREN;
-#ifdef KEY
-              if (in_omp_pragma) seen_omp_paren = TRUE;
-#endif /* KEY */
-              break;
+    case '(': result->type = CPP_OPEN_PAREN; break;
     case ')': result->type = CPP_CLOSE_PAREN; break;
     case '[': result->type = CPP_OPEN_SQUARE; break;
     case ']': result->type = CPP_CLOSE_SQUARE; break;

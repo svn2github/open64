@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* General-purpose hooks.
    Copyright (C) 2002 Free Software Foundation, Inc.
 
@@ -25,11 +21,6 @@ Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 #ifndef GCC_HOOKS_H
 #define GCC_HOOKS_H
-
-#ifdef SGI_MONGOOSE
-// to include type def of 'tree'
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 
 bool hook_bool_void_false PARAMS ((void));
 bool hook_bool_tree_false PARAMS ((tree));

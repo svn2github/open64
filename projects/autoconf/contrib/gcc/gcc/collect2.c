@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Collect static initialization info into data structures that can be
    traversed by C++ initialization and finalization routines.
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998,
@@ -308,7 +304,6 @@ static int ignore_library	PARAMS ((const char *));
 #endif
 static char *extract_string	PARAMS ((const char **));
 
-#ifndef SGI_MONGOOSE
 #ifndef HAVE_DUP2
 static int dup2 PARAMS ((int, int));
 static int
@@ -331,7 +326,6 @@ dup2 (oldfd, newfd)
   return fd;
 }
 #endif /* ! HAVE_DUP2 */
-#endif /* SGI_MONGOOSE */
 
 /* Delete tempfiles and exit function.  */
 
@@ -367,21 +361,11 @@ collect_exit (status)
 void
 notice VPARAMS ((const char *msgid, ...))
 {
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, msgid);
   VA_FIXEDARG (ap, const char *, msgid);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, msgid);
-#endif /* SGI_MONGOOSE */
 
   vfprintf (stderr, _(msgid), ap);
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
 }
 
 /* Die when sys call fails.  */
@@ -391,23 +375,13 @@ fatal_perror VPARAMS ((const char * msgid, ...))
 {
   int e = errno;
 
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, msgid);
   VA_FIXEDARG (ap, const char *, msgid);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, msgid);
-#endif /* SGI_MONGOOSE */
 
   fprintf (stderr, "collect2: ");
   vfprintf (stderr, _(msgid), ap);
   fprintf (stderr, ": %s\n", xstrerror (e));
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
 
   collect_exit (FATAL_EXIT_CODE);
 }
@@ -417,23 +391,13 @@ fatal_perror VPARAMS ((const char * msgid, ...))
 void
 fatal VPARAMS ((const char * msgid, ...))
 {
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, msgid);
   VA_FIXEDARG (ap, const char *, msgid);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, msgid);
-#endif /* SGI_MONGOOSE */
   
   fprintf (stderr, "collect2: ");
   vfprintf (stderr, _(msgid), ap);
   fprintf (stderr, "\n");
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
 
   collect_exit (FATAL_EXIT_CODE);
 }
@@ -443,23 +407,13 @@ fatal VPARAMS ((const char * msgid, ...))
 void
 error VPARAMS ((const char * msgid, ...))
 {
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, msgid);
   VA_FIXEDARG (ap, const char *, msgid);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, msgid);
-#endif /* SGI_MONGOOSE */
 
   fprintf (stderr, "collect2: ");
   vfprintf (stderr, _(msgid), ap);
   fprintf (stderr, "\n");
-#ifndef SGI_MONGOOSE
   VA_CLOSE(ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
 }
 
 /* In case obstack is linked in, and abort is defined to fancy_abort,
@@ -546,12 +500,7 @@ dump_file (name)
     {
       int c;
       while (c = getc (stream),
-#ifndef SGI_MONGOOSE
 	     c != EOF && (ISIDNUM (c) || c == '$' || c == '.'))
-#else
-             // ISIDNUM was defined in gcc-3.2.2/include/safe-ctype.h
-             c != EOF && (ISALNUM (c) || c == '_' || c == '$' || c == '.'))
-#endif /* SGI_MONGOOSE */
 	obstack_1grow (&temporary_obstack, c);
       if (obstack_object_size (&temporary_obstack) > 0)
 	{

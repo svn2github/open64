@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Convert tree expression to rtl instructions, for GNU compiler.
    Copyright (C) 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
    2000, 2001, 2002, 2003 Free Software Foundation, Inc.
@@ -36,10 +32,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "function.h"
 #include "insn-config.h"
 #include "insn-attr.h"
-#ifdef SGI_MONGOOSE
-// To get HAVE_tablejump
-#include "insn-flags.h"
-#endif /* SGI_MONGOOSE */
 /* Include expr.h after insn-config.h so we get HAVE_conditional_move.  */
 #include "expr.h"
 #include "optabs.h"
@@ -53,10 +45,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "langhooks.h"
 #include "intl.h"
 #include "tm_p.h"
-#ifdef SGI_MONGOOSE
-// To get FUNCTION_ARG_REG_LITTLE_ENDIAN, etc.
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 /* Decide whether a function's arguments should be processed
    from first to last or from last to first.
@@ -1437,15 +1425,6 @@ convert_modes (mode, oldmode, x, unsignedp)
       return gen_lowpart (mode, x);
     }
 
-  /* Converting from integer constant into mode is always equivalent to an
-     subreg operation.  */
-  if (VECTOR_MODE_P (mode) && GET_MODE (x) == VOIDmode)
-    {
-      if (GET_MODE_BITSIZE (mode) != GET_MODE_BITSIZE (oldmode))
-	abort ();
-      return simplify_gen_subreg (mode, x, oldmode, 0);
-    }
-
   temp = gen_reg_rtx (mode);
   convert_move (temp, x, unsignedp);
   return temp;
@@ -1469,18 +1448,6 @@ convert_modes (mode, oldmode, x, unsignedp)
 
 #define STORE_MAX_PIECES  MIN (MOVE_MAX_PIECES, 2 * sizeof (HOST_WIDE_INT))
 
-/* Determine whether the LEN bytes can be moved by using several move
-   instructions.  Return nonzero if a call to move_by_pieces should
-   succeed.  */
-
-int
-can_move_by_pieces (len, align)
-     unsigned HOST_WIDE_INT len;
-     unsigned int align;
-{
-  return MOVE_BY_PIECES_P (len, align);
-}
-
 /* Generate several move instructions to copy LEN bytes from block FROM to
    block TO.  (These are MEM rtx's with BLKmode).  The caller must pass FROM
    and TO through protect_from_queue before calling.
@@ -1488,18 +1455,13 @@ can_move_by_pieces (len, align)
    If PUSH_ROUNDING is defined and TO is NULL, emit_single_push_insn is
    used to push FROM to the stack.
 
-   ALIGN is maximum alignment we can assume.
+   ALIGN is maximum alignment we can assume.  */
 
-   If ENDP is 0 return to, if ENDP is 1 return memory at the end ala
-   mempcpy, and if ENDP is 2 return memory the end minus one byte ala
-   stpcpy.  */
-
-rtx
-move_by_pieces (to, from, len, align, endp)
+void
+move_by_pieces (to, from, len, align)
      rtx to, from;
      unsigned HOST_WIDE_INT len;
      unsigned int align;
-     int endp;
 {
   struct move_by_pieces data;
   rtx to_addr, from_addr = XEXP (from, 0);
@@ -1611,36 +1573,6 @@ move_by_pieces (to, from, len, align, endp)
   /* The code above should have handled everything.  */
   if (data.len > 0)
     abort ();
-
-  if (endp)
-    {
-      rtx to1;
-
-      if (data.reverse)
-	abort ();
-      if (data.autinc_to)
-	{
-	  if (endp == 2)
-	    {
-	      if (HAVE_POST_INCREMENT && data.explicit_inc_to > 0)
-		emit_insn (gen_add2_insn (data.to_addr, constm1_rtx));
-	      else
-		data.to_addr = copy_addr_to_reg (plus_constant (data.to_addr,
-								-1));
-	    }
-	  to1 = adjust_automodify_address (data.to, QImode, data.to_addr,
-					   data.offset);
-	}
-      else
-	{
-	  if (endp == 2)
-	    --data.offset;
-	  to1 = adjust_address (data.to, QImode, data.offset);
-	}
-      return to1;
-    }
-  else
-    return data.to;
 }
 
 /* Return number of insns required to move L bytes by pieces.
@@ -1817,11 +1749,8 @@ emit_block_move (x, y, size, method)
       set_mem_size (y, size);
     }
 
-  if (size == const0_rtx)
-    ;
-  else if (GET_CODE (size) == CONST_INT
-	   && MOVE_BY_PIECES_P (INTVAL (size), align))
-    move_by_pieces (x, y, INTVAL (size), align, 0);
+  if (GET_CODE (size) == CONST_INT && MOVE_BY_PIECES_P (INTVAL (size), align))
+    move_by_pieces (x, y, INTVAL (size), align);
   else if (emit_block_move_via_movstr (x, y, size, align))
     ;
   else if (may_use_call)
@@ -2057,14 +1986,15 @@ emit_block_move_via_libcall (dst, src, size)
 
 static GTY(()) tree block_move_fn;
 
-void
-init_block_move_fn (asmspec)
-     const char *asmspec;
+static tree
+emit_block_move_libcall_fn (for_call)
+      int for_call;
 {
-  if (!block_move_fn)
-    {
-      tree args, fn;
+  static bool emitted_extern;
+  tree fn = block_move_fn, args;
 
+  if (!fn)
+    {
       if (TARGET_MEM_FUNCTIONS)
 	{
 	  fn = get_identifier ("memcpy");
@@ -2089,30 +2019,14 @@ init_block_move_fn (asmspec)
       block_move_fn = fn;
     }
 
-  if (asmspec)
-    {
-      SET_DECL_RTL (block_move_fn, NULL_RTX);
-      SET_DECL_ASSEMBLER_NAME (block_move_fn, get_identifier (asmspec));
-    }
-}
-
-static tree
-emit_block_move_libcall_fn (for_call)
-     int for_call;
-{
-  static bool emitted_extern;
-
-  if (!block_move_fn)
-    init_block_move_fn (NULL);
-
   if (for_call && !emitted_extern)
     {
       emitted_extern = true;
-      make_decl_rtl (block_move_fn, NULL);
-      assemble_external (block_move_fn);
+      make_decl_rtl (fn, NULL);
+      assemble_external (fn);
     }
 
-  return block_move_fn;
+  return fn;
 }
 
 /* A subroutine of emit_block_move.  Copy the data via an explicit
@@ -2812,28 +2726,20 @@ can_store_by_pieces (len, constfun, constfundata, align)
 /* Generate several move instructions to store LEN bytes generated by
    CONSTFUN to block TO.  (A MEM rtx with BLKmode).  CONSTFUNDATA is a
    pointer which will be passed as argument in every CONSTFUN call.
-   ALIGN is maximum alignment we can assume.
-   If ENDP is 0 return to, if ENDP is 1 return memory at the end ala
-   mempcpy, and if ENDP is 2 return memory the end minus one byte ala
-   stpcpy.  */
+   ALIGN is maximum alignment we can assume.  */
 
-rtx
-store_by_pieces (to, len, constfun, constfundata, align, endp)
+void
+store_by_pieces (to, len, constfun, constfundata, align)
      rtx to;
      unsigned HOST_WIDE_INT len;
      rtx (*constfun) PARAMS ((PTR, HOST_WIDE_INT, enum machine_mode));
      PTR constfundata;
      unsigned int align;
-     int endp;
 {
   struct store_by_pieces data;
 
   if (len == 0)
-    {
-      if (endp == 2)
-	abort ();
-      return to;
-    }
+    return;
 
   if (! MOVE_BY_PIECES_P (len, align))
     abort ();
@@ -2843,35 +2749,6 @@ store_by_pieces (to, len, constfun, constfundata, align, endp)
   data.len = len;
   data.to = to;
   store_by_pieces_1 (&data, align);
-  if (endp)
-    {
-      rtx to1;
-
-      if (data.reverse)
-	abort ();
-      if (data.autinc_to)
-	{
-	  if (endp == 2)
-	    {
-	      if (HAVE_POST_INCREMENT && data.explicit_inc_to > 0)
-		emit_insn (gen_add2_insn (data.to_addr, constm1_rtx));
-	      else
-		data.to_addr = copy_addr_to_reg (plus_constant (data.to_addr,
-								-1));
-	    }
-	  to1 = adjust_automodify_address (data.to, QImode, data.to_addr,
-					   data.offset);
-	}
-      else
-	{
-	  if (endp == 2)
-	    --data.offset;
-	  to1 = adjust_address (data.to, QImode, data.offset);
-	}
-      return to1;
-    }
-  else
-    return data.to;
 }
 
 /* Generate several move instructions to clear LEN bytes of block TO.  (A MEM
@@ -3059,7 +2936,7 @@ clear_storage (object, size)
       object = protect_from_queue (object, 1);
       size = protect_from_queue (size, 0);
 
-      if (size == const0_rtx)
+      if (GET_CODE (size) == CONST_INT && INTVAL (size) == 0)
 	;
       else if (GET_CODE (size) == CONST_INT
 	  && CLEAR_BY_PIECES_P (INTVAL (size), align))
@@ -3215,14 +3092,15 @@ clear_storage_via_libcall (object, size)
 
 static GTY(()) tree block_clear_fn;
 
-void
-init_block_clear_fn (asmspec)
-     const char *asmspec;
+static tree
+clear_storage_libcall_fn (for_call)
+     int for_call;
 {
-  if (!block_clear_fn)
-    {
-      tree fn, args;
+  static bool emitted_extern;
+  tree fn = block_clear_fn, args;
 
+  if (!fn)
+    {
       if (TARGET_MEM_FUNCTIONS)
 	{
 	  fn = get_identifier ("memset");
@@ -3246,30 +3124,14 @@ init_block_clear_fn (asmspec)
       block_clear_fn = fn;
     }
 
-  if (asmspec)
-    {
-      SET_DECL_RTL (block_clear_fn, NULL_RTX);
-      SET_DECL_ASSEMBLER_NAME (block_clear_fn, get_identifier (asmspec));
-    }
-}
-
-static tree
-clear_storage_libcall_fn (for_call)
-     int for_call;
-{
-  static bool emitted_extern;
-
-  if (!block_clear_fn)
-    init_block_clear_fn (NULL);
-
   if (for_call && !emitted_extern)
     {
       emitted_extern = true;
-      make_decl_rtl (block_clear_fn, NULL);
-      assemble_external (block_clear_fn);
+      make_decl_rtl (fn, NULL);
+      assemble_external (fn);
     }
 
-  return block_clear_fn;
+  return fn;
 }
 
 /* Generate code to copy Y into X.
@@ -3290,10 +3152,8 @@ emit_move_insn (x, y)
   x = protect_from_queue (x, 1);
   y = protect_from_queue (y, 0);
 
-#ifndef KEY
   if (mode == BLKmode || (GET_MODE (y) != mode && GET_MODE (y) != VOIDmode))
     abort ();
-#endif
 
   /* Never force constant_p_rtx to memory.  */
   if (GET_CODE (y) == CONSTANT_P_RTX)
@@ -3934,7 +3794,7 @@ emit_push_insn (x, mode, type, size, align, partial, reg, extra,
 	      && where_pad != none && where_pad != stack_direction)
 	    anti_adjust_stack (GEN_INT (extra));
 
-	  move_by_pieces (NULL, xinner, INTVAL (size) - used, align, 0);
+	  move_by_pieces (NULL, xinner, INTVAL (size) - used, align);
 	}
       else
 #endif /* PUSH_ROUNDING  */
@@ -9128,10 +8988,6 @@ expand_expr (exp, target, tmode, modifier)
 
 	store_expr (exp1, target, modifier == EXPAND_STACK_PARM ? 2 : 0);
 
-#ifdef KEY
-	if (cleanups)
-		TREE_LANG_FLAG_7 (exp) = 1;
-#endif
 	expand_decl_cleanup_eh (NULL_TREE, cleanups, CLEANUP_EH_ONLY (exp));
 
 	return target;

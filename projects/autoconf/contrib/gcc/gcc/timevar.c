@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Timing variables for measuring compiler performance.
    Copyright (C) 2000 Free Software Foundation, Inc.
    Contributed by Alex Samuel <samuel@codesourcery.com>
@@ -35,15 +31,10 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include <sys/resource.h>
 #endif
 
-#ifndef SGI_MONGOOSE
-// defined in /usr/include/time.h; why redefine?
 #ifndef HAVE_CLOCK_T
 typedef int clock_t;
 #endif
-#endif /* SGI_MONGOOSE */
 
-#ifndef SGI_MONGOOSE
-// defined in /usr/include/sys/times.h; why redefine?
 #ifndef HAVE_STRUCT_TMS
 struct tms
 {
@@ -53,7 +44,6 @@ struct tms
   clock_t tms_cstime;
 };
 #endif
-#endif /* SGI_MONGOOSE */
 
 #if defined HAVE_DECL_GETRUSAGE && !HAVE_DECL_GETRUSAGE
 extern int getrusage PARAMS ((int, struct rusage *));

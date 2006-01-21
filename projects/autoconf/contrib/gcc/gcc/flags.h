@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Compilation switch flag definitions for GCC.
    Copyright (C) 1987, 1988, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2002
    Free Software Foundation, Inc.
@@ -476,26 +472,10 @@ extern int flag_pedantic_errors;
 
 extern int flag_pic;
 
-/* Nonzero if we are compiling position independent code for executable.
-   1 vs 2 for a target-dependent "small" or "large" mode.  */
-      
-extern int flag_pie;
-      
-/* Nonzero if we are compiling code for a shared library, zero for
-   executable.  */
-
-extern int flag_shlib;
-
 /* Nonzero means generate extra code for exception handling and enable
    exception handling.  */
 
 extern int flag_exceptions;
-
-#ifdef KEY
-/* Nonzero means enable implementation of KEY exception handling */
-extern int key_exceptions;
-extern int opt_regions;
-#endif
 
 /* Nonzero means generate frame unwind info table when supported */
 
@@ -548,16 +528,6 @@ extern int flag_dump_rtl_in_asm;
 /* -fgnu-linker specifies use of the GNU linker for initializations.
    -fno-gnu-linker says that collect will be used.  */
 extern int flag_gnu_linker;
-
-#ifdef SGI_MONGOOSE
-                                                                                
-/* -dC causes asm operand constraints that aren't valid or supported
-   for the target machine to force the entire containing asm statement
-   to be discarded. This is a temporary hack. RK 990428 */
-                                                                                
-extern int flag_bad_asm_constraint_kills_stmt;
-                                                                                
-#endif /* SGI_MONGOOSE */
 
 /* Tag all structures with __attribute__(packed) */
 extern int flag_pack_struct;

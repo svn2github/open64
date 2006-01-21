@@ -1,9 +1,3 @@
-/*
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
-   File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++
-   front-ends to GNU 3.3.1 release.
- */
-
 /* Top level of GNU C compiler
    Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
@@ -45,14 +39,8 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #endif
 
 #include "input.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tm_p.h"
 #include "flags.h"
 #include "insn-attr.h"
@@ -83,10 +71,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "target.h"
 #include "langhooks.h"
 #include "cfglayout.h"
-#ifdef SGI_MONGOOSE
-// To get TARGET_ALLOWS_PROFILING_WITHOUT_FRAME_POINTER
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 #if defined (DWARF2_UNWIND_INFO) || defined (DWARF2_DEBUGGING_INFO)
 #include "dwarf2out.h"
@@ -125,16 +109,7 @@ static void finalize PARAMS ((void));
 static void set_target_switch PARAMS ((const char *));
 
 static void crash_signal PARAMS ((int)) ATTRIBUTE_NORETURN;
-#ifdef SGI_MONGOOSE
-#ifdef KEY
-extern void mark_referenced_funcs PARAMS ((tree));
-extern void gxx_emits_decl PARAMS ((tree));
-#endif /* KEY */
-void compile_file PARAMS ((char *));
-int parse_tree_dump = 0;
-#else
 static void compile_file PARAMS ((void));
-#endif /* SGI_MONGOOSE */
 static void display_help PARAMS ((void));
 static void display_target_options PARAMS ((void));
 
@@ -277,9 +252,6 @@ enum dump_file_index
   DFI_bbro,
   DFI_mach,
   DFI_dbr,
-#ifdef SGI_MONGOOSE
-  DFI_sgi_parse_tree,
-#endif /* SGI_MONGOOSE */
   DFI_MAX
 };
 
@@ -329,13 +301,6 @@ static struct dump_file_info dump_file[DFI_MAX] =
   { "bbro",	'B', 1, 0, 0 },
   { "mach",	'M', 1, 0, 0 },
   { "dbr",	'd', 0, 0, 0 },
-#ifdef SGI_MONGOOSE
-#ifdef KEY
-  { "tree", 'P', 0, 0, 0 },
-#else
-  { "sgi_parse_tree", 'P', 0, 0, 0 },
-#endif
-#endif /* SGI_MONGOOSE */
 };
 
 static int open_dump_file PARAMS ((enum dump_file_index, tree));
@@ -445,19 +410,7 @@ int in_system_header = 0;
 
 /* Don't print functions as they are compiled.  -quiet.  */
 
-#ifdef SGI_MONGOOSE
-int quiet_flag = 1;
-#else
 int quiet_flag = 0;
-#endif /* SGI_MONGOOSE */
-                                                                                 
-#ifdef SGI_MONGOOSE
-#ifdef KEY
-int pstatic_as_global = 1;
-#else
-int pstatic_as_global = 0;
-#endif
-#endif /* SGI_MONGOOSE */
 
 /* Print times taken by the various passes.  -ftime-report.  */
 
@@ -723,21 +676,12 @@ int flag_keep_inline_functions;
 
 /* Nonzero means that functions will not be inlined.  */
 
-#ifdef KEY
-int flag_no_inline = 1; // disable GNU inliner
-#else
 int flag_no_inline = 2;
-#endif // KEY
 
 /* Nonzero means that we don't want inlining by virtue of -fno-inline,
    not just because the tree inliner turned us off.  */
 
 int flag_really_no_inline = 2;
-
-#ifdef KEY
-/* Is OpenMP enabled? */
-int flag_openmp = 0;
-#endif // KEY
 
 /* Nonzero means that we should emit static const variables
    regardless of whether or not optimization is turned on.  */
@@ -766,17 +710,6 @@ int flag_delayed_branch;
 
 int flag_pic;
 
-/* Nonzero if we are compiling position independent code for executable.
-   The value is 1 if we are doing "small" pic; value is 2 if we're doing
-   "large" pic.  */
-
-int flag_pie;
-
-/* Nonzero if we are compiling code for a shared library, zero for
-   executable.  */
-
-int flag_shlib;
-
 /* Set to the default thread-local storage (tls) model to use.  */
 
 enum tls_model flag_tls_default = TLS_MODEL_GLOBAL_DYNAMIC;
@@ -785,11 +718,6 @@ enum tls_model flag_tls_default = TLS_MODEL_GLOBAL_DYNAMIC;
    exception handling.  */
 
 int flag_exceptions;
-
-#ifdef KEY
-int key_exceptions;
-int opt_regions;
-#endif // KEY
 
 /* Nonzero means generate frame unwind info table when supported.  */
 
@@ -861,16 +789,6 @@ int flag_verbose_asm = 0;
    to be a catchall for printing debug information in the assembler file.  */
 
 int flag_debug_asm = 0;
-
-#ifdef SGI_MONGOOSE
-
-/* -dC causes asm operand constraints that aren't valid or supported
-   for the target machine to force the entire containing asm statement
-   to be discarded. This is a temporary hack. RK 990428 */
-
-int flag_bad_asm_constraint_kills_stmt = 0;
-
-#endif /* SGI_MONGOOSE */
 
 /* -dP causes the rtl to be emitted as a comment in assembly.  */
 
@@ -1164,18 +1082,8 @@ static const lang_independent_options f_options[] =
   {"pic", &flag_pic, 1,
    N_("Generate position independent code, if possible") },
   {"PIC", &flag_pic, 2, ""},
-  {"pie", &flag_pie, 1,
-   N_("Generate position independent code for executables, if possible") },
-  {"PIE", &flag_pie, 2, ""},
-#ifndef KEY
   {"exceptions", &flag_exceptions, 1,
    N_("Enable exception handling") },
-#else
-  {"exceptions", &key_exceptions, 1,
-   N_("Enable exception handling") },
-  {"optimize-regions", &opt_regions, 1,
-   N_("Optimize EH region formation") },
-#endif
   {"unwind-tables", &flag_unwind_tables, 1,
    N_("Just generate unwind tables for exception handling") },
   {"asynchronous-unwind-tables", &flag_asynchronous_unwind_tables, 1,
@@ -1365,9 +1273,6 @@ documented_lang_options[] =
   { "-Wconversion",
     N_("Warn about possibly confusing type conversions") },
   { "-Wno-conversion", "" },
-  { "-Wdeclaration-after-statement",
-    N_("Warn when a declaration is found after a statement") },
-  { "-Wno-declaration-after-statement", "" },
   { "-Wdiv-by-zero", "" },
   { "-Wno-div-by-zero",
     N_("Do not warn about compile-time integer division by zero") },
@@ -1695,10 +1600,6 @@ FILE *asm_out_file;
 FILE *aux_info_file;
 FILE *rtl_dump_file = NULL;
 
-#ifdef SGI_MONGOOSE
-FILE *tree_dump_file = NULL;
-#endif /* SGI_MONGOOSE */
-
 /* Decode the string P as an integral parameter.
    If the string is indeed an integer return its numeric value else
    issue an Invalid Option error for the option PNAME and return DEFVAL.
@@ -1730,23 +1631,6 @@ read_integral_parameter (p, pname, defval)
   return atoi (p);
 }
 
-
-#ifdef SGI_MONGOOSE
-void
-dump_parse_tree (char *msg, tree node)
-{
-  if (parse_tree_dump) {
-#ifdef KEY
-        fprintf (rtl_dump_file, "%s:\n", msg);
-        print_tree (rtl_dump_file, node);
-#else
-        fprintf (tree_dump_file, "%s:\n", msg);
-        print_tree (tree_dump_file, node);
-#endif
-  }
-}
-#endif /* SGI_MONGOOSE */
-
 /* This calls abort and is used to avoid problems when abort is a macro.
    It is used when we need to pass the address of abort.  */
 
@@ -2177,9 +2061,7 @@ check_global_declarations (vec, len)
       if (errorcount == 0 && sorrycount == 0)
 	{
 	  timevar_push (TV_SYMOUT);
-#ifndef SGI_MONGOOSE
 	  (*debug_hooks->global_decl) (decl);
-#endif /* SGI_MONGOOSE */
 	  timevar_pop (TV_SYMOUT);
 	}
     }
@@ -2233,21 +2115,10 @@ pop_srcloc ()
 /* Compile an entire translation unit.  Write a file of assembly
    output and various debugging dumps.  */
 
-#ifndef SGI_MONGOOSE
 static void
 compile_file ()
-#else
-void
-compile_file (name)
-     char *name;
-#endif /* SGI_MONGOOSE */
 {
   /* Initialize yet another pass.  */
-
-#ifdef KEY
-  if (aux_base_name == 0)
-        aux_base_name = name ? name : "gccaux";
-#endif // KEY
 
   init_final (main_input_filename);
   init_branch_prob (aux_base_name);
@@ -2261,13 +2132,6 @@ compile_file (name)
   /* In case there were missing block closers,
      get us back to the global binding level.  */
   (*lang_hooks.clear_binding_stack) ();
-
-#ifdef SGI_MONGOOSE
-  if (parse_tree_dump)
-    {
-      close_dump_file (DFI_sgi_parse_tree, NULL, NULL_RTX);
-    }
-#endif /* SGI_MONGOOSE */
 
   /* Compilation is now finished except for writing
      what's left of the symbol table output.  */
@@ -2291,7 +2155,6 @@ compile_file (name)
 
   weak_finish ();
 
-#ifndef KEY
   /* Do dbx symbols.  */
   timevar_push (TV_SYMOUT);
 
@@ -2302,7 +2165,6 @@ compile_file (name)
 
   (*debug_hooks->finish) (main_input_filename);
   timevar_pop (TV_SYMOUT);
-#endif /* KEY */
 
   /* Output some stuff at end of file if nec.  */
 
@@ -2321,11 +2183,9 @@ compile_file (name)
       timevar_pop (TV_DUMP);
     }
 
-#ifndef SGI_MONGOOSE
 #ifdef ASM_FILE_END
   ASM_FILE_END (asm_out_file);
 #endif
-#endif /* SGI_MONGOOSE */
 
   /* Attach a special .ident directive to the end of the file to identify
      the version of GCC which compiled this code.  The format of the .ident
@@ -2343,18 +2203,6 @@ compile_file (name)
       close_dump_file (DFI_combine, NULL, NULL_RTX);
       timevar_pop (TV_DUMP);
     }
-
-#ifdef SGI_MONGOOSE
-  /* Since open64 calls compile_file directly, we need to do finalization
-     here rather than in do_compile.  In fact, when SGI_MONGOOSE is
-     defined, do_compile only does initialization; it does not call
-     compile_file ().  */
-  finalize ();
-
-  /* Stop timing and print the times.  */
-  timevar_stop (TV_TOTAL);
-  timevar_print (stderr);
-#endif /* SGI_MONGOOSE */
 }
 
 /* This is called from various places for FUNCTION_DECL, VAR_DECL,
@@ -2395,13 +2243,6 @@ rest_of_decl_compilation (decl, asmspec, top_level, at_end)
 	alias = TREE_VALUE (TREE_VALUE (alias));
 	alias = get_identifier (TREE_STRING_POINTER (alias));
 	assemble_alias (decl, alias);
-#ifdef KEY
-	// Put aliases into the list of decls emitted by g++ so that we can
-	// iterate through the list when expanding aliases to WHIRL.  An An
-	// alias can be expanded only if its target, which can be another
-	// alias, is expanded.  Bug 4393.
-	gxx_emits_decl (decl);
-#endif
       }
   }
 
@@ -2433,15 +2274,6 @@ rest_of_decl_compilation (decl, asmspec, top_level, at_end)
 	{
 	  SET_DECL_RTL (decl, NULL_RTX);
 	  make_decl_rtl (decl, asmspec);
-#ifdef SGI_MONGOOSE
-#ifdef KEY
-	  // If a VAR_DECL's DECL_ASMREG is non-zero, then DECL_ASMREG-1 is the
-	  // register number assigned through an "asm".
-          DECL_ASMREG(decl) = decode_reg_name (asmspec) + 1;
-#else
-          WFE_Record_Asmspec_For_ST (decl, asmspec, decode_reg_name (asmspec));
-#endif /* KEY */
-#endif /* SGI_MONGOOSE */
 	}
       else
 	{
@@ -2735,20 +2567,11 @@ rest_of_compilation (decl)
   rtx_equal_function_value_matters = 0;
   purge_hard_subreg_sets (get_insns ());
 
-#ifdef KEY
-  goto turn_rtl_into_assembler_code;
-#endif
-
   /* Early return if there were errors.  We can run afoul of our
      consistency checks, and there's not really much point in fixing them.
      Don't return yet if -Wreturn-type; we need to do cleanup_cfg.  */
-  if (((rtl_dump_and_exit || flag_syntax_only) 
-#ifndef KEY
-	/* Will die in "instantiate_virtual_regs_1" if we
-         continue. so no return type warnings */
-	&& !warn_return_type
-#endif
-      ) || errorcount || sorrycount)
+  if (((rtl_dump_and_exit || flag_syntax_only) && !warn_return_type)
+      || errorcount || sorrycount)
     goto exit_rest_of_compilation;
 
   timevar_push (TV_JUMP);
@@ -3638,24 +3461,6 @@ rest_of_compilation (decl)
 #endif
 
 #ifdef STACK_REGS
-
-#if defined (HAVE_ATTR_length)
-  /* If flow2 creates new instructions which need splitting
-     and scheduling after reload is not done, they might not be
-     splitten until final which doesn't allow splitting
-     if HAVE_ATTR_length.  */
-#ifdef INSN_SCHEDULING
-  if (optimize && !flag_schedule_insns_after_reload)
-#else
-  if (optimize)
-#endif
-    {
-      timevar_push (TV_SHORTEN_BRANCH);
-      split_all_insns (1);
-      timevar_pop (TV_SHORTEN_BRANCH);
-    }
-#endif
-
   timevar_push (TV_REG_STACK);
   open_dump_file (DFI_stack, decl);
 
@@ -3744,34 +3549,6 @@ rest_of_compilation (decl)
        of other functions later in this translation unit.  */
     TREE_NOTHROW (current_function_decl) = 1;
 
-#ifdef KEY
-  // Run final() in order to find all the functions that are called from the
-  // current function.  The called functions will have their
-  // TREE_SYMBOL_REFERENCED flag set, which will cause those functions to be
-  // emitted.  This is the only way to emit functions that GCC defers emitting.
-
-  turn_rtl_into_assembler_code:
-
-  // Add the function to the list of functions to be emitted.  Emitting only
-  // the functions in the global namespace and the functions defined as methods
-  // within class definitions are not enough, because methods that are defined
-  // as standalone are missed, such as C::foo:
-  //   struct A {virtual void foo()=0;};
-  //   struct B {virtual void foo()=0;};
-  //   struct C : public A, public B {virtual void foo();};
-  //   void C::foo() {}
-  // Func_emitted_by_gxx is a catch-all for all functions that g++ turns into
-  // assembler.
-  //
-  // (Gxx_emits_funcs adds the function to the list of decls that are emitted
-  // by g++ into assembly.  The list is a hack to catch all such functions.
-  // The correct way is to find all the places where g++ decides that the
-  // function should be emitted, and then put the fndecl into the top-level
-  // namespace using pushdecl_top_level(fndecl).)
-
-  gxx_emits_decl (decl);
-#endif
-
   /* Now turn the rtl into assembler code.  */
 
   timevar_push (TV_FINAL);
@@ -3810,10 +3587,6 @@ rest_of_compilation (decl)
 
     if (! quiet_flag)
       fflush (asm_out_file);
-
-#ifdef KEY
-    goto exit_rest_of_compilation;
-#endif
 
     /* Release all memory allocated by flow.  */
     free_basic_block_vars (0);
@@ -4117,27 +3890,13 @@ decode_d_option (arg)
       case 'A':
 	flag_debug_asm = 1;
 	break;
-#ifdef SGI_MONGOOSE
-      case 'C':
-        flag_bad_asm_constraint_kills_stmt = 1;
-        break;
-#endif /* SGI_MONGOOSE */
       case 'p':
 	flag_print_asm_name = 1;
 	break;
-#ifdef SGI_MONGOOSE
-      case 'P':
-        parse_tree_dump = 1;
-#ifdef KEY
-        dump_file[DFI_sgi_parse_tree].enabled = 1;
-#endif
-        break;
-#else
       case 'P':
 	flag_dump_rtl_in_asm = 1;
 	flag_print_asm_name = 1;
 	break;
-#endif /* SGI_MONGOOSE */
       case 'v':
 	graph_dump_format = vcg;
 	break;
@@ -4434,12 +4193,8 @@ ignoring option `%s' due to invalid debug level specification",
 		}
 	    }
 
-#ifndef KEY
-	  // Debugging is handled by the WHIRL front-end. Ignore what Gnu
-	  // has to say.
 	  if (type == NO_DEBUG)
 	    warning ("`%s': unknown or unsupported -g option", arg - 2);
-#endif // KEY
 
 	  /* Does it conflict with an already selected type?  */
 	  if (type_explicitly_set_p
@@ -4461,13 +4216,9 @@ ignoring option `%s' due to invalid debug level specification",
 		  type_explicitly_set_p = da->debug_type != NO_DEBUG;
 		}
 
-#ifdef KEY
-              write_symbols = NO_DEBUG;
-#else
 	      write_symbols = (level == 0
 			       ? NO_DEBUG
 			       : selected_debug_type);
-#endif // KEY
 	      use_gnu_debug_info_extensions = da->use_extensions_p;
 	      debug_info_level = (enum debug_info_level) level;
 	    }
@@ -4559,14 +4310,6 @@ independent_decode_option (argc, argv)
       return 2;
     }
 
-#ifdef KEY
-  if (!strcmp (arg, "mp"))
-  {
-    flag_openmp = 1;
-    return 1;
-  }
-#endif /* KEY */
-
   if (*arg == 'Y')
     arg++;
 
@@ -4609,10 +4352,6 @@ independent_decode_option (argc, argv)
 	pedantic = 1;
       else if (!strcmp (arg, "pedantic-errors"))
 	flag_pedantic_errors = pedantic = 1;
-#ifdef SGI_MONGOOSE
-      else if (!strcmp (arg, "pstatic_as_global"))
-        pstatic_as_global = 1;
-#endif /* SGI_MONGOOSE */
       else if (arg[1] == 0)
 	profile_flag = 1;
       else
@@ -4747,16 +4486,6 @@ independent_decode_option (argc, argv)
   return 1;
 }
 
-
-#ifdef SGI_MONGOOSE
-void
-check_gnu_errors (int *error_count, int *sorry_count)
-{
-  *error_count = errorcount;
-  *sorry_count = sorrycount;
-}
-#endif /* SGI_MONGOOSE */
-
 /* Decode -m switches.  */
 /* Decode the switch -mNAME.  */
 
@@ -4822,8 +4551,6 @@ print_version (file, indent)
 	   , indent, *indent != 0 ? " " : "",
 	   lang_hooks.name, version_string, TARGET_NAME,
 	   indent, __VERSION__);
-  //extern const char bk_cset_key[], bk_cset_rev[];
-  //fnotice (file, "Revision %s (%s)\n", bk_cset_rev, bk_cset_key);
   fnotice (file, "%s%sGGC heuristics: --param ggc-min-expand=%d --param ggc-min-heapsize=%d\n",
 	   indent, *indent != 0 ? " " : "",
 	   PARAM_VALUE (GGC_MIN_EXPAND), PARAM_VALUE (GGC_MIN_HEAPSIZE));
@@ -4952,14 +4679,6 @@ static void
 init_asm_output (name)
      const char *name;
 {
-#ifdef KEY
-  asm_out_file = fopen ("/dev/null", "w");
-  return;
-#endif  // KEY
-
-#ifdef SGI_MONGOOSE
-  asm_out_file = NULL;
-#else
   if (name == NULL && asm_file_name == 0)
     asm_out_file = stdout;
   else
@@ -5005,7 +4724,6 @@ init_asm_output (name)
 	}
 #endif
     }
-#endif /* SGI_MONGOOSE */
 }
 
 /* Initialization of the front end environment, before command line
@@ -5059,10 +4777,6 @@ general_init (argv0)
   init_ttree ();
 }
 
-#ifdef KEY
-extern int Opt_Level;
-#endif // KEY
-
 /* Parse command line options and set default flag values, called
    after language-independent option-independent initialization.  Do
    minimal options processing.  Outputting diagnostics is OK, but GC
@@ -5106,12 +4820,6 @@ parse_options_and_default_flags (argc, argv)
 	  /* Handle -Os, -O2, -O3, -O69, ...  */
 	  char *p = &argv[i][2];
 
-#ifdef SGI_MONGOOSE
-          if (!strncmp(p, "PT:", 3))
-            {
-            }
-          else
-#endif /* SGI_MONGOOSE */
 	  if ((p[0] == 's') && (p[1] == 0))
 	    {
 	      optimize_size = 1;
@@ -5130,10 +4838,6 @@ parse_options_and_default_flags (argc, argv)
 	    }
 	}
     }
-
-#ifdef KEY
-  Opt_Level = optimize;
-#endif
 
   if (!optimize)
     {
@@ -5160,12 +4864,7 @@ parse_options_and_default_flags (argc, argv)
 
   if (optimize >= 2)
     {
-#ifndef KEY	// Disable gcc's sibling call optimization because it may
-		// inline away some functions that kg++fe doesn't inline,
-		// resulting in the code calling undefined functions under
-		// kg++fe.  Bug 3397.
       flag_optimize_sibling_calls = 1;
-#endif
       flag_cse_follow_jumps = 1;
       flag_cse_skip_blocks = 1;
       flag_gcse = 1;
@@ -5297,21 +4996,6 @@ parse_options_and_default_flags (argc, argv)
 	  i++;
 	}
     }
-
-#if 0
-  // undo fix of bug 2254
-  if (key_exceptions)
-  {
-      set_param_value ("max-inline-insns", 440);
-      set_param_value ("max-inline-insns-single", 220);
-      set_param_value ("min-inline-insns", 80);
-  }
-#endif
-
-  if (flag_pie)
-    flag_pic = flag_pie;
-  if (flag_pic && !flag_pie)
-    flag_shlib = 1;
 
   if (flag_no_inline == 2)
     flag_no_inline = 0;
@@ -5522,13 +5206,6 @@ process_options ()
 static void
 backend_init ()
 {
-
-#ifdef SGI_MONGOOSE
-  if (parse_tree_dump) {
-    open_dump_file (DFI_sgi_parse_tree, NULL);
-  }
-#endif /* SGI_MONGOOSE */
-
   /* init_emit_once uses reg_raw_mode and therefore must be called
      after init_regs which initialized reg_raw_mode.  */
   init_regs ();
@@ -5591,7 +5268,6 @@ lang_dependent_init (name)
   /* Put an entry on the input file stack for the main input file.  */
   push_srcloc (input_filename, 0);
 
-#ifndef SGI_MONGOOSE
   /* If dbx symbol table desired, initialize writing it and output the
      predefined types.  */
   timevar_push (TV_SYMOUT);
@@ -5606,7 +5282,6 @@ lang_dependent_init (name)
   (*debug_hooks->init) (name);
 
   timevar_pop (TV_SYMOUT);
-#endif /* SGI_MONGOOSE */
 
   return 1;
 }
@@ -5628,7 +5303,6 @@ finalize ()
      whether fclose returns an error, since the pages might still be on the
      buffer chain while the file is open.  */
 
-#ifndef SGI_MONGOOSE
   if (asm_out_file)
     {
       if (ferror (asm_out_file) != 0)
@@ -5636,7 +5310,6 @@ finalize ()
       if (fclose (asm_out_file) != 0)
 	fatal_io_error ("error closing %s", asm_file_name);
     }
-#endif /* SGI_MONGOOSE */
 
   /* Do whatever is necessary to finish printing the graphs.  */
   if (graph_dump_format != no_graph)
@@ -5671,37 +5344,6 @@ finalize ()
 }
 
 /* Initialize the compiler, and compile the input file.  */
-
-#ifdef SGI_MONGOOSE
-static const char * // KEY
-do_init_compile ()
-{
-  /* All command line options have been parsed; allow the front end to
-     perform consistency checks, etc.  */
-  bool no_backend = (*lang_hooks.post_options) ();
-
-  /* The bulk of command line switch processing.  */
-  process_options ();
-                                                                                 
-  /* We cannot start timing until after options are processed since that
-     says if we run timers or not.  */
-  init_timevar ();
-  timevar_start (TV_TOTAL);
-                                                                                 
-  /* Language-independent initialization.  Also sets up GC, identifier
-     hashes etc.  */
-#ifdef KEY
-  backend_init ();
-#else
-  lang_independent_init ();
-#endif // KEY
-                                                                                 
-  /* Language-dependent initialization.  Returns true on success.  */
-  if (lang_dependent_init (filename))
-    return main_input_filename;
-}
-#endif /* SGI_MONGOOSE */
-
 static void
 do_compile ()
 {
@@ -5739,12 +5381,7 @@ do_compile ()
 
   /* Language-dependent initialization.  Returns true on success.  */
   if (lang_dependent_init (filename))
-#ifndef SGI_MONGOOSE
-    // compile_file will be called directly from gccfe
     compile_file ();
-#else
-  ;
-#endif /* SGI_MONGOOSE */
 
   finalize ();
 
@@ -5760,17 +5397,10 @@ do_compile ()
 
    It is not safe to call this function more than once.  */
 
-#ifdef SGI_MONGOOSE
-const char * // KEY
-gnu_init (argc, argv)
-     int argc;
-     char **argv;
-#else
 int
 toplev_main (argc, argv)
      int argc;
      char **argv;
-#endif /* SGI_MONGOOSE */
 {
   /* Initialization of GCC's environment, and diagnostics.  */
   general_init (argv[0]);
@@ -5781,14 +5411,10 @@ toplev_main (argc, argv)
 
   /* Exit early if we can (e.g. -help).  */
   if (!exit_after_options)
-#ifndef SGI_MONGOOSE
     do_compile ();
-#else
-  return do_init_compile();
-#endif /* SGI_MONGOOSE */
 
   if (errorcount || sorrycount)
-    return (const char *)(FATAL_EXIT_CODE);
+    return (FATAL_EXIT_CODE);
 
-  return (const char *)(SUCCESS_EXIT_CODE);
+  return (SUCCESS_EXIT_CODE);
 }

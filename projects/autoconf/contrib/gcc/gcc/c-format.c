@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Check calls to formatted I/O functions (-Wformat).
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
    2001, 2002 Free Software Foundation, Inc.
@@ -25,10 +21,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// to get type def of tree in rtl.h for tree.h
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "flags.h"
 #include "toplev.h"
@@ -1006,15 +998,9 @@ status_warning VPARAMS ((int *status, const char *msgid, ...))
 {
   diagnostic_info diagnostic ;
 
-#ifndef SGI_MONGOOSE
   VA_OPEN (ap, msgid);
   VA_FIXEDARG (ap, int *, status);
   VA_FIXEDARG (ap, const char *, msgid);
-#else
-  va_list ap;
-                                                                                
-  VA_START (ap, msgid);
-#endif /* SGI_MONGOOSE */
 
   if (status)
     *status = 1;
@@ -1026,11 +1012,7 @@ status_warning VPARAMS ((int *status, const char *msgid, ...))
       report_diagnostic (&diagnostic);
     }
 
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif /* SGI_MONGOOSE */
 }
 
 /* Variables used by the checking of $ operand number formats.  */

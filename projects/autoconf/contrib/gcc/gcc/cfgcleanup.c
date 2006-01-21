@@ -125,8 +125,6 @@ try_simplify_condjump (cbranch_block)
   basic_block jump_block, jump_dest_block, cbranch_dest_block;
   edge cbranch_jump_edge, cbranch_fallthru_edge;
   rtx cbranch_insn;
-  rtx insn, next;
-  rtx end;
 
   /* Verify that there are exactly two successors.  */
   if (!cbranch_block->succ
@@ -179,26 +177,6 @@ try_simplify_condjump (cbranch_block)
   cbranch_fallthru_edge->flags &= ~EDGE_FALLTHRU;
   update_br_prob_note (cbranch_block);
 
-  end = jump_block->end;
-  /* Deleting a block may produce unreachable code warning even when we are
-     not deleting anything live.  Supress it by moving all the line number
-     notes out of the block.  */
-  for (insn = jump_block->head; insn != NEXT_INSN (jump_block->end);
-       insn = next)
-    {
-      next = NEXT_INSN (insn);
-      if (GET_CODE (insn) == NOTE && NOTE_LINE_NUMBER (insn) > 0)
-	{
-	  if (insn == jump_block->end)
-	    {
-	      jump_block->end = PREV_INSN (insn);
-	      if (insn == end)
-	        break;
-	    }
-	  reorder_insns_nobb (insn, insn, end);
-	  end = insn;
-	}
-    }
   /* Delete the block with the unconditional jump, and clean up the mess.  */
   flow_delete_block (jump_block);
   tidy_fallthru_edge (cbranch_jump_edge, cbranch_block, cbranch_dest_block);
@@ -1317,17 +1295,15 @@ outgoing_edges_match (mode, bb1, bb2)
 	return false;
     }
 
-  /* Ensure the same EH region.  */
-  {
-    rtx n1 = find_reg_note (bb1->end, REG_EH_REGION, 0);
-    rtx n2 = find_reg_note (bb2->end, REG_EH_REGION, 0);
+  /* In case we do have EH edges, ensure we are in the same region.  */
+  if (nehedges1)
+    {
+      rtx n1 = find_reg_note (bb1->end, REG_EH_REGION, 0);
+      rtx n2 = find_reg_note (bb2->end, REG_EH_REGION, 0);
 
-    if (!n1 && n2)
-      return false;
-
-    if (n1 && (!n2 || XEXP (n1, 0) != XEXP (n2, 0)))
-      return false;
-  }
+      if (XEXP (n1, 0) != XEXP (n2, 0))
+	return false;
+    }
 
   /* We don't need to match the rest of edges as above checks should be enought
      to ensure that they are equivalent.  */

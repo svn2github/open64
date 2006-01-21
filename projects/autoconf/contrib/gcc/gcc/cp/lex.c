@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Separate lexical analyzer for GNU C++.
    Copyright (C) 1987, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -210,10 +206,6 @@ cxx_init_options ()
 
   /* Default exceptions on.  */
   flag_exceptions = 1;
-#ifdef KEY
-  key_exceptions = 1;
-  opt_regions = 0;
-#endif
   /* By default wrap lines at 80 characters.  Is getenv ("COLUMNS")
      preferable?  */
   diagnostic_line_cutoff (global_dc) = 80;
@@ -359,8 +351,6 @@ static const struct resword reswords[] =
   { "__inline__",	RID_INLINE,	0 },
   { "__label__",	RID_LABEL,	0 },
   { "__null",		RID_NULL,	0 },
-  { "__offsetof",       RID_OFFSETOF,   0 },
-  { "__offsetof__",     RID_OFFSETOF,   0 },
   { "__real",		RID_REALPART,	0 },
   { "__real__",		RID_REALPART,	0 },
   { "__restrict",	RID_RESTRICT,	0 },
@@ -536,7 +526,6 @@ const short rid_to_yy[RID_MAX] =
   /* RID_FALSE */	CXX_FALSE,
   /* RID_NAMESPACE */	NAMESPACE,
   /* RID_NEW */		NEW,
-  /* RID_OFFSETOF */	OFFSETOF,
   /* RID_OPERATOR */	OPERATOR,
   /* RID_THIS */	THIS,
   /* RID_THROW */	THROW,

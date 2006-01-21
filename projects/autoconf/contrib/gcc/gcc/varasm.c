@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Output variables, constants and external declarations, for GNU compiler.
    Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997,
    1998, 1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
@@ -56,16 +52,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "xcoffout.h"		/* Needed for external data
 				   declarations for e.g. AIX 4.x.  */
 #endif
-
-#ifdef SGI_MONGOOSE
-#include "defaults.h"   // to get SUPPORTS_WEAK
-#endif  // SGI_MONGOOSE
-
-#ifdef KEY
-#include "diagnostic.h"	// errorcount, sorrycount
-extern void gxx_emits_decl PARAMS ((tree));
-extern void gxx_emits_asm PARAMS ((char *));
-#endif  // KEY
 
 #ifndef TRAMPOLINE_ALIGNMENT
 #define TRAMPOLINE_ALIGNMENT FUNCTION_BOUNDARY
@@ -188,6 +174,7 @@ static void asm_output_aligned_bss	PARAMS ((FILE *, tree, const char *,
 static hashval_t const_str_htab_hash	PARAMS ((const void *x));
 static int const_str_htab_eq		PARAMS ((const void *x, const void *y));
 static bool asm_emit_uninitialised	PARAMS ((tree, const char*, int, int));
+static void resolve_unique_section	PARAMS ((tree, int, int));
 static void mark_weak                   PARAMS ((tree));
 
 static enum in_section { no_section, in_text, in_data, in_named
@@ -473,7 +460,7 @@ named_section (decl, name, reloc)
 
 /* If required, set DECL_SECTION_NAME to a unique name.  */
 
-void
+static void
 resolve_unique_section (decl, reloc, flag_function_or_data_sections)
      tree decl;
      int reloc ATTRIBUTE_UNUSED;
@@ -525,10 +512,6 @@ asm_output_bss (file, decl, name, size, rounded)
 #ifdef ASM_DECLARE_OBJECT_NAME
   last_assemble_variable_decl = decl;
   ASM_DECLARE_OBJECT_NAME (file, name, decl);
-#ifdef KEY
-  DECL_EMITTED_BY_GXX (decl) = 1;
-  gxx_emits_decl (decl);
-#endif
 #else
   /* Standard thing is just output label for the object.  */
   ASM_OUTPUT_LABEL (file, name);
@@ -557,10 +540,6 @@ asm_output_aligned_bss (file, decl, name, size, align)
 #ifdef ASM_DECLARE_OBJECT_NAME
   last_assemble_variable_decl = decl;
   ASM_DECLARE_OBJECT_NAME (file, name, decl);
-#ifdef KEY
-  DECL_EMITTED_BY_GXX (decl) = 1;
-  gxx_emits_decl (decl);
-#endif
 #else
   /* Standard thing is just output label for the object.  */
   ASM_OUTPUT_LABEL (file, name);
@@ -845,9 +824,6 @@ make_decl_rtl (decl, asmspec)
   new_name = name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl));
 
   reg_number = decode_reg_name (asmspec);
-#ifdef KEY
-  if (TREE_CODE(decl) == FUNCTION_DECL)
-#endif  /* KEY */
   if (reg_number == -2)
     {
       /* ASMSPEC is given, and not the name of a register.  Mark the
@@ -1017,9 +993,6 @@ assemble_asm (string)
   if (TREE_CODE (string) == ADDR_EXPR)
     string = TREE_OPERAND (string, 0);
 
-#ifdef KEY
-  gxx_emits_asm ((char *)TREE_STRING_POINTER (string));
-#endif // KEY
   fprintf (asm_out_file, "\t%s\n", TREE_STRING_POINTER (string));
 }
 
@@ -1269,10 +1242,6 @@ void
 assemble_zeros (size)
      int size;
 {
-#ifdef KEY
-  return;
-#endif
-
   /* Do no output if -fsyntax-only.  */
   if (flag_syntax_only)
     return;
@@ -1536,10 +1505,6 @@ assemble_variable (decl, top_level, at_end, dont_output_data)
     }
 
   name = XSTR (XEXP (decl_rtl, 0), 0);
-#ifdef KEY
-  // Translate DECL into WHIRL.
-  gxx_emits_decl (decl);
-#else
   if (TREE_PUBLIC (decl) && DECL_NAME (decl)
       && ! first_global_object_name
       && ! (DECL_COMMON (decl) && (DECL_INITIAL (decl) == 0
@@ -1595,7 +1560,6 @@ assemble_variable (decl, top_level, at_end, dont_output_data)
      from it in get_pointer_alignment.  */
   DECL_ALIGN (decl) = align;
   set_mem_align (decl_rtl, align);
-#endif  /* KEY */
 
   if (TREE_PUBLIC (decl))
     maybe_assemble_visibility (decl);
@@ -1626,7 +1590,6 @@ assemble_variable (decl, top_level, at_end, dont_output_data)
 	       && !TREE_READONLY (decl)
 	       && initializer_zerop (DECL_INITIAL (decl))))
     {
-#ifndef KEY
       unsigned HOST_WIDE_INT size = tree_low_cst (DECL_SIZE_UNIT (decl), 1);
       unsigned HOST_WIDE_INT rounded = size;
 
@@ -1650,7 +1613,6 @@ assemble_variable (decl, top_level, at_end, dont_output_data)
       /* If the target cannot output uninitialized but not common global data
 	 in .bss, then we have to use .data, so fall through.  */
       if (asm_emit_uninitialised (decl, name, size, rounded))
-#endif  /* KEY */
 	return;
     }
 
@@ -1680,10 +1642,6 @@ assemble_variable (decl, top_level, at_end, dont_output_data)
 #ifdef ASM_DECLARE_OBJECT_NAME
   last_assemble_variable_decl = decl;
   ASM_DECLARE_OBJECT_NAME (asm_out_file, name, decl);
-#ifdef KEY
-  DECL_EMITTED_BY_GXX (decl) = 1;
-  gxx_emits_decl (decl);
-#endif
 #else
   /* Standard thing is just output label for the object.  */
   ASM_OUTPUT_LABEL (asm_out_file, name);
@@ -1747,14 +1705,12 @@ void
 assemble_external (decl)
      tree decl ATTRIBUTE_UNUSED;
 {
-#ifndef SGI_MONGOOSE
   /* Because most platforms do not define ASM_OUTPUT_EXTERNAL, the
      main body of this code is only rarely exercised.  To provide some
      testing, on all platforms, we make sure that the ASM_OUT_FILE is
      open.  If it's not, we should not be calling this function.  */
   if (!asm_out_file)
     abort ();
-#endif  /* SGI_MONGOOSE */
 
 #ifdef ASM_OUTPUT_EXTERNAL
   if (DECL_P (decl) && DECL_EXTERNAL (decl) && TREE_PUBLIC (decl))
@@ -1996,9 +1952,6 @@ assemble_integer (x, size, align, force)
   if ((*targetm.asm_out.integer) (x, size, aligned_p))
     return true;
 
-#ifdef KEY
-  return true;
-#else
   /* If the object is a multi-byte one, try splitting it up.  Split
      it into words it if is multi-word, otherwise split it into bytes.  */
   if (size > 1)
@@ -2031,7 +1984,6 @@ assemble_integer (x, size, align, force)
     abort ();
 
   return false;
-#endif  // KEY
 }
 
 void
@@ -2710,7 +2662,6 @@ output_constant_def (exp, defer)
   int labelno = -1;
   rtx rtl;
 
-
   /* We can't just use the saved RTL if this is a deferred string constant
      and we are not to defer anymore.  */
   if (TREE_CODE (exp) != INTEGER_CST && TREE_CST_RTL (exp)
@@ -2874,7 +2825,6 @@ output_constant_def_contents (exp, reloc, labelno)
      int labelno;
 {
   int align;
-  HOST_WIDE_INT size;
 
   /* Align the location counter as required by EXP's data type.  */
   align = TYPE_ALIGN (TREE_TYPE (exp));
@@ -2892,24 +2842,17 @@ output_constant_def_contents (exp, reloc, labelno)
       ASM_OUTPUT_ALIGN (asm_out_file, floor_log2 (align / BITS_PER_UNIT));
     }
 
-  size = int_size_in_bytes (TREE_TYPE (exp));
-  if (TREE_CODE (exp) == STRING_CST)
-    size = MAX (TREE_STRING_LENGTH (exp), size);
-
-  /* Do any machine/system dependent processing of the constant.  */
-#ifdef ASM_DECLARE_CONSTANT_NAME
-  {
-    char label[256];
-    ASM_GENERATE_INTERNAL_LABEL (label, "LC", labelno);
-    ASM_DECLARE_CONSTANT_NAME (asm_out_file, label, exp, size);
-  }
-#else
-  /* Standard thing is just output label for the constant.  */
+  /* Output the label itself.  */
   ASM_OUTPUT_INTERNAL_LABEL (asm_out_file, "LC", labelno);
-#endif /* ASM_DECLARE_CONSTANT_NAME */
 
   /* Output the value of EXP.  */
-  output_constant (exp, size, align);
+  output_constant (exp,
+		   (TREE_CODE (exp) == STRING_CST
+		    ? MAX (TREE_STRING_LENGTH (exp),
+			   int_size_in_bytes (TREE_TYPE (exp)))
+		    : int_size_in_bytes (TREE_TYPE (exp))),
+		   align);
+
 }
 
 /* Used in the hash tables to avoid outputting the same constant
@@ -3673,11 +3616,6 @@ mark_constants (x)
 	case 'n':
 	case 'u':
 	case 'B':
-#ifdef KEY
-        // Encounter this in ADDRESSOF rtx.  Normally ADDRESSOF rtx's are
-        // removed by the GCC back-end, which we skipped.
-        case 't':
-#endif
 	  break;
 
 	default:
@@ -3829,27 +3767,11 @@ initializer_constant_valid_p (value, endtype)
 	   || TREE_CODE (TREE_TYPE (value)) == RECORD_TYPE)
 	  && TREE_CONSTANT (value)
 	  && CONSTRUCTOR_ELTS (value))
-	{
-	  tree elt;
-	  bool absolute = true;
+	return
+	  initializer_constant_valid_p (TREE_VALUE (CONSTRUCTOR_ELTS (value)),
+					endtype);
 
-	  for (elt = CONSTRUCTOR_ELTS (value); elt; elt = TREE_CHAIN (elt))
-	    {
-	      tree reloc;
-	      value = TREE_VALUE (elt);
-	      reloc = initializer_constant_valid_p (value, TREE_TYPE (value));
-	      if (!reloc)
-		return NULL_TREE;
-	      if (reloc != null_pointer_node)
-		absolute = false;
-	    }
-	  /* For a non-absolute relocation, there is no single
-	     variable that can be "the variable that determines the
-	     relocation."  */
-	  return absolute ? null_pointer_node : error_mark_node;
-	}
-
-      return TREE_STATIC (value) ? null_pointer_node : NULL_TREE;
+      return TREE_STATIC (value) ? null_pointer_node : 0;
 
     case INTEGER_CST:
     case VECTOR_CST:
@@ -4105,19 +4027,15 @@ output_constant (exp, size, align)
       if (TREE_CODE (exp) != REAL_CST)
 	error ("initializer for floating value is not a floating constant");
 
-#ifndef KEY
       assemble_real (TREE_REAL_CST (exp),
 		     mode_for_size (size * BITS_PER_UNIT, MODE_FLOAT, 0),
 		     align);
-#endif
       break;
 
     case COMPLEX_TYPE:
-#ifndef KEY
       output_constant (TREE_REALPART (exp), thissize / 2, align);
       output_constant (TREE_IMAGPART (exp), thissize / 2,
 		       min_align (align, BITS_PER_UNIT * (thissize / 2)));
-#endif
       break;
 
     case ARRAY_TYPE:
@@ -4129,10 +4047,8 @@ output_constant (exp, size, align)
 	}
       else if (TREE_CODE (exp) == STRING_CST)
 	{
-#ifndef KEY
 	  thissize = MIN (TREE_STRING_LENGTH (exp), size);
 	  assemble_string (TREE_STRING_POINTER (exp), thissize);
-#endif
 	}
       else if (TREE_CODE (exp) == VECTOR_CST)
 	{
@@ -4165,21 +4081,15 @@ output_constant (exp, size, align)
 
     case SET_TYPE:
       if (TREE_CODE (exp) == INTEGER_CST)
-#ifdef KEY
-        ;
-#else
 	assemble_integer (expand_expr (exp, NULL_RTX,
 				       VOIDmode, EXPAND_INITIALIZER),
 			  thissize, align, 1);
-#endif
       else if (TREE_CODE (exp) == CONSTRUCTOR)
 	{
 	  unsigned char *buffer = (unsigned char *) alloca (thissize);
 	  if (get_set_constructor_bytes (exp, buffer, thissize))
 	    abort ();
-#ifndef KEY
 	  assemble_string ((char *) buffer, thissize);
-#endif
 	}
       else
 	error ("unknown set constructor type");
@@ -4548,10 +4458,7 @@ output_constructor (exp, size, align)
 
 /* This TREE_LIST contains any weak symbol declarations waiting
    to be emitted.  */
-#ifndef SGI_MONGOOSE
-static 
-#endif
-GTY(()) tree weak_decls;
+static GTY(()) tree weak_decls;
 
 /* Mark DECL as weak.  */
 
@@ -4624,8 +4531,6 @@ merge_weak (newdecl, olddecl)
     mark_weak (newdecl);
 }
 
-extern void WFE_Add_Weak (void); // KEY
-extern void WFE_Weak_Finish (void); // KEY
 /* Declare DECL to be a weak symbol.  */
 
 void
@@ -4644,10 +4549,6 @@ declare_weak (decl)
   else
     warning_with_decl (decl, "weak declaration of `%s' not supported");
 
-#ifdef SGI_MONGOOSE
-  WFE_Add_Weak();
-#endif
-
   mark_weak (decl);
 }
 
@@ -4656,12 +4557,6 @@ declare_weak (decl)
 void
 weak_finish ()
 {
-#ifdef SGI_MONGOOSE
-#ifdef KEY
-  if (errorcount == 0 && sorrycount == 0)	// bug 4748, 5596
-#endif
-  WFE_Weak_Finish();
-#else
   tree t;
 
   for (t = weak_decls; t; t = TREE_CHAIN (t))
@@ -4685,7 +4580,6 @@ weak_finish ()
 #endif
 #endif
     }
-#endif  // SGI_MONGOOSE
 }
 
 /* Emit the assembly bits to indicate that DECL is globally visible.  */
@@ -4731,10 +4625,6 @@ assemble_alias (decl, target)
      tree decl, target ATTRIBUTE_UNUSED;
 {
   const char *name;
-
-#ifdef KEY
-  DECL_ALIAS_TARGET (decl) = target;
-#endif
 
   /* We must force creation of DECL_RTL for debug info generation, even though
      we don't use it here.  */
@@ -5531,7 +5421,7 @@ bool
 default_binds_local_p (exp)
      tree exp;
 {
-  return default_binds_local_p_1 (exp, flag_shlib);
+  return default_binds_local_p_1 (exp, flag_pic);
 }
 
 bool

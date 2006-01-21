@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Garbage collection for the GNU compiler.
    Copyright (C) 1998, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
 
@@ -27,13 +23,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 /* Symbols are marked with `ggc' for `gcc gc' so as not to interfere with
    an external gc library that might be linked in.  */
-
-#ifdef SGI_MONGOOSE
-// MIPS/genrtl.c needs ggc_p
-/* Language-specific code defines this variable to be either one (if
-   it wants garbage collection), or zero (if it does not).  */
-extern int ggc_p;
-#endif
 
 /* Constants for general use.  */
 extern const char empty_string[];	/* empty string */

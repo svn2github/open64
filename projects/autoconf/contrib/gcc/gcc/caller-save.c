@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Save and restore call-clobbered registers which are live across a call.
    Copyright (C) 1989, 1992, 1994, 1995, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -37,10 +33,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "expr.h"
 #include "toplev.h"
 #include "tm_p.h"
-#ifdef SGI_MONGOOSE
-// To get definition of MODE_BASE_REG_CLASS
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 #ifndef MAX_MOVE_MAX
 #define MAX_MOVE_MAX MOVE_MAX

@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Language-dependent node constructors for parse phase of GNU compiler.
    Copyright (C) 1987, 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -37,9 +33,6 @@ Boston, MA 02111-1307, USA.  */
 #include "integrate.h"
 #include "tree-inline.h"
 #include "target.h"
-#ifdef SGI_MONGOOSE
-#include "defaults.h"   // get SUPPORTS_INIT_PRIORITY
-#endif
 
 static tree bot_manip PARAMS ((tree *, int *, void *));
 static tree bot_replace PARAMS ((tree *, int *, void *));
@@ -2278,14 +2271,6 @@ cp_cannot_inline_tree_fn (fnp)
       DECL_UNINLINABLE (fn) = 1;
       return 1;
     }
-
-#ifdef KEY
-  if (flag_exceptions && TYPE_RAISES_EXCEPTIONS (TREE_TYPE (fn)))
-    {
-      DECL_UNINLINABLE (fn) = 1;
-      return 1;
-    }
-#endif
 
   return 0;
 }

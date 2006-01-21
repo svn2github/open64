@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Process declarations and variables for C compiler.
    Copyright (C) 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
    2001, 2002 Free Software Foundation, Inc.
@@ -33,15 +29,9 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "config.h"
 #include "system.h"
 #include "intl.h"
-#ifdef SGI_MONGOOSE
-// to get type def of tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "tree-inline.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "flags.h"
 #include "function.h"
 #include "output.h"
@@ -58,12 +48,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "c-pragma.h"
 #include "libfuncs.h"
 #include "except.h"
-#ifdef SGI_MONGOOSE
-// To get BOOL_TYPE_SIZE
-#include "defaults.h"
-#include "wfe_decl.h"
-extern ST * Create_ST_For_Tree (tree);
-#endif /* SGI_MONGOOSE */
 
 /* In grokdeclarator, distinguish syntactic contexts of declarators.  */
 enum decl_context
@@ -74,10 +58,6 @@ enum decl_context
   BITFIELD,			/* Likewise but with specified width */
   TYPENAME};			/* Typename (inside cast or sizeof)  */
 
-#ifdef SGI_MONGOOSE
-/* Do GC */
-int ggc_p = 1;
-#endif /* SGI_MONGOOSE */
 
 /* Nonzero if we have seen an invalid cross reference
    to a struct, union, or enum, but not yet printed the message.  */
@@ -305,7 +285,6 @@ static tree c_make_fname_decl           PARAMS ((tree, int));
 static void c_expand_body               PARAMS ((tree, int, int));
 static void warn_if_shadowing		PARAMS ((tree, tree));
 static bool flexible_array_type_p	PARAMS ((tree));
-static int field_decl_cmp		PARAMS ((const PTR, const PTR));
 static tree set_save_expr_context	PARAMS ((tree *, int *, void *));
 
 /* States indicating how grokdeclarator() should handle declspecs marked
@@ -1450,10 +1429,6 @@ duplicate_decls (newdecl, olddecl, different_binding_level)
 	  DECL_NO_LIMIT_STACK (newdecl) |= DECL_NO_LIMIT_STACK (olddecl);
 	  DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (newdecl)
 	    |= DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (olddecl);
-#ifdef SGI_MONGOOSE
-          DECL_SYSCALL_LINKAGE(newdecl) |= DECL_SYSCALL_LINKAGE(olddecl);
-          DECL_WIDEN_RETVAL(newdecl) |= DECL_WIDEN_RETVAL(olddecl);
-#endif /* SGI_MONGOOSE */
 	}
     }
   /* If cannot merge, then use the new type and qualifiers,
@@ -1499,10 +1474,6 @@ duplicate_decls (newdecl, olddecl, different_binding_level)
     }
   else
     {
-#ifdef SGI_MONGOOSE
-      if (TREE_CODE(olddecl) == VAR_DECL && DECL_ST(olddecl))
-        WFE_Resolve_Duplicate_Decls (olddecl, newdecl);
-#endif /* SGI_MONGOOSE */
       TREE_STATIC (olddecl) = TREE_STATIC (newdecl);
       TREE_PUBLIC (olddecl) = TREE_PUBLIC (newdecl);
     }
@@ -1590,40 +1561,17 @@ duplicate_decls (newdecl, olddecl, different_binding_level)
 	}
     }
   if (different_binding_level)
-#ifdef SGI_MONGOOSE
-    {
-      if (DECL_ST(olddecl) == 0)
-        DECL_ST(olddecl) = Create_ST_For_Tree (olddecl);
-      DECL_ST(newdecl) = DECL_ST(olddecl);
-#endif /* SGI_MONGOOSE */
     return 0;
-#ifdef SGI_MONGOOSE
-    }
-#endif /* SGI_MONGOOSE */
 
   /* Copy most of the decl-specific fields of NEWDECL into OLDDECL.
      But preserve OLDDECL's DECL_UID.  */
   {
     unsigned olddecl_uid = DECL_UID (olddecl);
-#ifdef SGI_MONGOOSE
-    ST* st  = DECL_ST(olddecl);
-#ifndef KEY /* DECL_ST2 obsolete */
-    ST* st2 = DECL_ST2(olddecl);
-#endif
-#endif /* SGI_MONGOOSE */
 
     memcpy ((char *) olddecl + sizeof (struct tree_common),
 	    (char *) newdecl + sizeof (struct tree_common),
 	    sizeof (struct tree_decl) - sizeof (struct tree_common));
     DECL_UID (olddecl) = olddecl_uid;
-#ifdef SGI_MONGOOSE
-    DECL_ST (olddecl) = st;
-    DECL_ST (newdecl) = st;
-#ifndef KEY /* DECL_ST2 obsolete */
-    DECL_ST2 (olddecl) = st2;
-    DECL_ST2 (newdecl) = st2;
-#endif
-#endif /* SGI_MONGOOSE */
   }
 
   /* NEWDECL contains the merged attribute lists.
@@ -2063,10 +2011,8 @@ pushdecl (x)
 
 	  while (TREE_CODE (element) == ARRAY_TYPE)
 	    element = TREE_TYPE (element);
-	  if ((TREE_CODE (element) == RECORD_TYPE
-	       || TREE_CODE (element) == UNION_TYPE)
-	      && (TREE_CODE (x) != TYPE_DECL
-		  || TREE_CODE (TREE_TYPE (x)) == ARRAY_TYPE))
+	  if (TREE_CODE (element) == RECORD_TYPE
+	      || TREE_CODE (element) == UNION_TYPE)
 	    b->incomplete_list = tree_cons (NULL_TREE, x, b->incomplete_list);
 	}
     }
@@ -3142,41 +3088,12 @@ finish_decl (decl, init, asmspec_tree)
 	TREE_USED (decl) = 1;
     }
 
-  /* If this is a function and an assembler name is specified, reset DECL_RTL
-     so we can give it its new name.  Also, update built_in_decls if it
-     was a normal built-in.  */
+  /* If this is a function and an assembler name is specified, it isn't
+     builtin any more.  Also reset DECL_RTL so we can give it its new
+     name.  */
   if (TREE_CODE (decl) == FUNCTION_DECL && asmspec)
     {
-      if (DECL_BUILT_IN_CLASS (decl) == BUILT_IN_NORMAL)
-	{
-	  tree builtin = built_in_decls [DECL_FUNCTION_CODE (decl)];
-	  rtx *libfunc = NULL;
-	  SET_DECL_RTL (builtin, NULL_RTX);
-	  SET_DECL_ASSEMBLER_NAME (builtin, get_identifier (asmspec));
-#ifdef TARGET_MEM_FUNCTIONS
-	  if (DECL_FUNCTION_CODE (decl) == BUILT_IN_MEMCPY)
-	    init_block_move_fn (asmspec);
-	  else if (DECL_FUNCTION_CODE (decl) == BUILT_IN_MEMSET)
-	    init_block_clear_fn (asmspec);
-#else
-	  if (DECL_FUNCTION_CODE (decl) == BUILT_IN_BCOPY)
-	    init_block_move_fn (asmspec);
-	  else if (DECL_FUNCTION_CODE (decl) == BUILT_IN_BZERO)
-	    init_block_clear_fn (asmspec);
-#endif
-	  switch (DECL_FUNCTION_CODE (decl))
-	    {
-	    case BUILT_IN_MEMCPY: libfunc = &memcpy_libfunc; break;
-	    case BUILT_IN_MEMMOVE: libfunc = &memmove_libfunc; break;
-	    case BUILT_IN_BCOPY: libfunc = &bcopy_libfunc; break;
-	    case BUILT_IN_MEMCMP: libfunc = &memcmp_libfunc; break;
-	    case BUILT_IN_MEMSET: libfunc = &memset_libfunc; break;
-	    case BUILT_IN_BZERO: libfunc = &bzero_libfunc; break;
-	    default: break;
-	    }
-	  if (libfunc)
-	    *libfunc = XEXP (DECL_RTL (builtin), 0);
-	}
+      DECL_BUILT_IN_CLASS (decl) = NOT_BUILT_IN;
       SET_DECL_RTL (decl, NULL_RTX);
       SET_DECL_ASSEMBLER_NAME (decl, get_identifier (asmspec));
     }
@@ -3249,17 +3166,6 @@ finish_decl (decl, init, asmspec_tree)
 	}
     }
 
-#ifdef SGI_MONGOOSE
-  if (TREE_CODE (decl) != FUNCTION_DECL
-      && TREE_CODE (decl) != PARM_DECL
-      && DECL_INITIAL (decl) != 0
-      && DECL_INITIAL (decl) != error_mark_node)
-    {
-      dump_parse_tree ("c-decl init", decl);
-      WFE_Initialize_Decl (decl);
-    }
-#endif /* SGI_MONGOOSE */
-
   if (TREE_CODE (decl) == TYPE_DECL)
     {
       /* This is a no-op in c-lang.c or something real in objc-act.c.  */
@@ -3267,10 +3173,6 @@ finish_decl (decl, init, asmspec_tree)
 	objc_check_decl (decl);
       rest_of_decl_compilation (decl, NULL, DECL_CONTEXT (decl) == 0, 0);
     }
-
-#ifdef SGI_MONGOOSE
-  WFE_Decl (decl);
-#endif /* SGI_MONGOOSE */
 
   /* At the end of a declaration, throw away any variable type sizes
      of types defined inside that declaration.  There is no use
@@ -5212,28 +5114,6 @@ grokfield (filename, line, declarator, declspecs, width)
   return value;
 }
 
-/* Function to help qsort sort FIELD_DECLs by name order.  */
-
-
-static int
-field_decl_cmp (xp, yp)
-      const PTR xp;
-      const PTR yp;
-{
-  tree *x = (tree *)xp, *y = (tree *)yp;
-  
-  if (DECL_NAME (*x) == DECL_NAME (*y))
-    return 0;
-  if (DECL_NAME (*x) == NULL)
-    return -1;
-  if (DECL_NAME (*y) == NULL)
-    return 1;
-  if (DECL_NAME (*x) < DECL_NAME (*y))
-    return -1;
-  return 1;
-}
- 
-
 /* Fill in the fields of a RECORD_TYPE or UNION_TYPE node, T.
    FIELDLIST is a chain of FIELD_DECL nodes for the fields.
    ATTRIBUTES are attributes to be applied to the structure.  */
@@ -5478,53 +5358,6 @@ finish_struct (t, fieldlist, attributes)
 
   TYPE_FIELDS (t) = fieldlist;
 
-  /* If there are lots of fields, sort so we can look through them fast.
-    We arbitrarily consider 16 or more elts to be "a lot".  */
-
-  {
-    int len = 0;
-
-    for (x = fieldlist; x; x = TREE_CHAIN (x))
-      {
-        if (len > 15 || DECL_NAME (x) == NULL)
-          break;
-        len += 1;
-      }
-
-    if (len > 15)
-      {
-        tree *field_array;
-        char *space;
-        
-        len += list_length (x);
-  
-        /* Use the same allocation policy here that make_node uses, to
-          ensure that this lives as long as the rest of the struct decl.
-          All decls in an inline function need to be saved.  */
-  
-        space = ggc_alloc (sizeof (struct lang_type) + len * sizeof (tree));
-        
-        len = 0;
-	field_array = &(((struct lang_type *) space)->elts[0]);
-        for (x = fieldlist; x; x = TREE_CHAIN (x))
-          {
-            field_array[len++] = x;
-          
-            /* if there is anonymous struct or unoin break out of the loop */
-            if (DECL_NAME (x) == NULL)
-              break;
-          }
-        /* found no anonymous struct/union add the TYPE_LANG_SPECIFIC. */
-        if (x == NULL)
-          {
-            TYPE_LANG_SPECIFIC (t) = (struct lang_type *) space;
-            TYPE_LANG_SPECIFIC (t)->len = len;
-            field_array = &TYPE_LANG_SPECIFIC (t)->elts[0];
-            qsort (field_array, len, sizeof (tree), field_decl_cmp);
-          }
-      }
-  }
-  
   for (x = TYPE_MAIN_VARIANT (t); x; x = TYPE_NEXT_VARIANT (x))
     {
       TYPE_FIELDS (x) = TYPE_FIELDS (t);
@@ -5558,8 +5391,7 @@ finish_struct (t, fieldlist, attributes)
 	      && TREE_CODE (decl) != TYPE_DECL)
 	    {
 	      layout_decl (decl, 0);
-	      /* This is a no-op in c-lang.c or something real in
-		 objc-act.c.  */
+	      /* This is a no-op in c-lang.c or something real in objc-act.c.  */
 	      if (flag_objc)
 		objc_check_decl (decl);
 	      rest_of_decl_compilation (decl, NULL, toplevel, 0);
@@ -5595,11 +5427,7 @@ finish_struct (t, fieldlist, attributes)
 		  else
 		    current_binding_level->incomplete_list = TREE_CHAIN (x);
 		}
-	      else
-		prev = x;
 	    }
-	  else
-	    prev = x;
 	}
     }
 
@@ -5765,12 +5593,10 @@ finish_enum (enumtype, values, attributes)
 	     when comparing integers with enumerators that fit in the
 	     int range.  When -pedantic is given, build_enumerator()
 	     would have already taken care of those that don't fit.  */
-#ifndef SGI_MONGOOSE
 	  if (int_fits_type_p (DECL_INITIAL (enu), enum_value_type))
 	    DECL_INITIAL (enu) = convert (enum_value_type, DECL_INITIAL (enu));
 	  else
 	    DECL_INITIAL (enu) = convert (enumtype, DECL_INITIAL (enu));
-#endif /* SGI_MONGOOSE */
 
 	  TREE_PURPOSE (pair) = DECL_NAME (enu);
 	  TREE_VALUE (pair) = DECL_INITIAL (enu);
@@ -6541,13 +6367,6 @@ store_parm_decls ()
   cfun->x_dont_save_pending_sizes_p = 1;
 
   warn_shadow = saved_warn_shadow;
-
-#ifdef SGI_MONGOOSE
-  if (c_function_varargs)
-    mark_varargs();
-  dump_parse_tree ("store_parm_decls", fndecl);
-  WFE_Start_Function (fndecl);
-#endif /* SGI_MONGOOSE */
 }
 
 /* Finish up a function declaration and compile that function
@@ -6620,13 +6439,6 @@ finish_function (nested, can_defer_p)
 	 inline function, as we might never be compiled separately.  */
       && DECL_INLINE (fndecl))
     warning ("no return statement in function returning non-void");
-
-  /* With just -W, complain only if function returns both with
-     and without a value.  */
-  if (extra_warnings
-      && current_function_returns_value
-      && current_function_returns_null)
-    warning ("this function may return with or without a value");
 
   /* Clear out memory we no longer need.  */
   free_after_parsing (cfun);
@@ -6780,10 +6592,6 @@ c_expand_body (fndecl, nested_p, can_defer_p)
   /* Generate the RTL for this function.  */
   expand_stmt (DECL_SAVED_TREE (fndecl));
 
-#ifdef SGI_MONGOOSE
-   WFE_Finish_Function();
-#endif /* SGI_MONGOOSE */
-
   /* Keep the function body if it's needed for inlining or dumping.  */
   if (uninlinable && !dump_enabled_p (TDI_all))
     {
@@ -6815,6 +6623,13 @@ c_expand_body (fndecl, nested_p, can_defer_p)
   /* Undo the GC context switch.  */
   if (nested_p)
     ggc_pop_context ();
+
+  /* With just -W, complain only if function returns both with
+     and without a value.  */
+  if (extra_warnings
+      && current_function_returns_value
+      && current_function_returns_null)
+    warning ("this function may return with or without a value");
 
   /* If requested, warn about function definitions where the function will
      return a value (usually of some struct or union type) which itself will
@@ -6859,30 +6674,20 @@ c_expand_body (fndecl, nested_p, can_defer_p)
 
   if (DECL_STATIC_CONSTRUCTOR (fndecl))
     {
-#ifndef SGI_MONGOOSE
       if (targetm.have_ctors_dtors)
 	(* targetm.asm_out.constructor) (XEXP (DECL_RTL (fndecl), 0),
 				         DEFAULT_INIT_PRIORITY);
       else
 	static_ctors = tree_cons (NULL_TREE, fndecl, static_ctors);
-#else
-      WFE_Assemble_Constructor (IDENTIFIER_POINTER
-                                (DECL_ASSEMBLER_NAME (fndecl)));
-#endif /* SGI_MONGOOSE */
     }
 
   if (DECL_STATIC_DESTRUCTOR (fndecl))
     {
-#ifndef SGI_MONGOOSE
       if (targetm.have_ctors_dtors)
 	(* targetm.asm_out.destructor) (XEXP (DECL_RTL (fndecl), 0),
 				        DEFAULT_INIT_PRIORITY);
       else
 	static_dtors = tree_cons (NULL_TREE, fndecl, static_dtors);
-#else
-      WFE_Assemble_Destructor (IDENTIFIER_POINTER
-                               (DECL_ASSEMBLER_NAME (fndecl)));
-#endif /* SGI_MONGOOSE */
     }
 
   if (nested_p)

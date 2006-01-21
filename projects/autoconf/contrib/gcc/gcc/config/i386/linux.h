@@ -40,10 +40,6 @@ Boston, MA 02111-1307, USA.  */
 #undef DEFAULT_PCC_STRUCT_RETURN
 #define DEFAULT_PCC_STRUCT_RETURN 1
 
-/* We arrange for the whole %gs segment to map the tls area.  */
-#undef TARGET_TLS_DIRECT_SEG_REFS_DEFAULT
-#define TARGET_TLS_DIRECT_SEG_REFS_DEFAULT MASK_TLS_DIRECT_SEG_REFS
-
 #undef ASM_COMMENT_START
 #define ASM_COMMENT_START "#"
 
@@ -55,7 +51,7 @@ Boston, MA 02111-1307, USA.  */
    To the best of my knowledge, no Linux libc has required the label
    argument to mcount.  */
 
-#define NO_PROFILE_COUNTERS	1
+#define NO_PROFILE_COUNTERS
 
 #undef MCOUNT_NAME
 #define MCOUNT_NAME "mcount"
@@ -223,13 +219,6 @@ Boston, MA 02111-1307, USA.  */
 	   "addl\t$_GLOBAL_OFFSET_TABLE_+[.-.LPR%=],%0"			\
 	   : "=d"(BASE))
 #endif
-
-#define SUBTARGET_FILE_END(FILE) \
-  do {									\
-    named_section_flags (".note.GNU-stack",				\
-			 SECTION_DEBUG					\
-			 | (trampolines_created ? SECTION_CODE : 0));	\
-  } while (0)
 
 /* Do code reading to identify a signal frame, and set the frame
    state data appropriately.  See unwind-dw2.c for the structs.  */

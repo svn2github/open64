@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Definitions of various defaults for tm.h macros.
    Copyright (C) 1992, 1996, 1997, 1998, 1999, 2000, 2001, 2002
    Free Software Foundation, Inc.
@@ -227,7 +223,6 @@ do { fputs (integer_asm_op (POINTER_SIZE / UNITS_PER_WORD, TRUE), FILE); \
 #endif
 
 /* This determines whether or not we support weak symbols.  */
-#ifndef SGI_MONGOOSE
 #ifndef SUPPORTS_WEAK
 #if defined (ASM_WEAKEN_LABEL) || defined (ASM_WEAKEN_DECL)
 #define SUPPORTS_WEAK 1
@@ -235,9 +230,6 @@ do { fputs (integer_asm_op (POINTER_SIZE / UNITS_PER_WORD, TRUE), FILE); \
 #define SUPPORTS_WEAK 0
 #endif
 #endif
-#else
-#define SUPPORTS_WEAK 1
-#endif /* SGI_MONGOOSE */
 
 /* This determines whether or not we support link-once semantics.  */
 #ifndef SUPPORTS_ONE_ONLY
@@ -282,14 +274,11 @@ do { fputs (integer_asm_op (POINTER_SIZE / UNITS_PER_WORD, TRUE), FILE); \
 #define LINK_ELIMINATE_DUPLICATE_LDIRECTORIES 0
 #endif /* LINK_ELIMINATE_DUPLICATE_LDIRECTORIES */
 
-#ifndef KEY     // Don't need to support DWARF when writing assembly,
-                // since the assembly will be thrown away anyway.
 /* If we have a definition of INCOMING_RETURN_ADDR_RTX, assume that
    the rest of the DWARF 2 frame unwind support is also provided.  */
 #if !defined (DWARF2_UNWIND_INFO) && defined (INCOMING_RETURN_ADDR_RTX)
 #define DWARF2_UNWIND_INFO 1
 #endif
-#endif  // KEY
 
 /* If we have named sections, and we're using crtstuff to run ctors,
    use them for registering eh frame information.  */
@@ -487,11 +476,6 @@ do { fputs (integer_asm_op (POINTER_SIZE / UNITS_PER_WORD, TRUE), FILE); \
 #ifndef DEFAULT_GDB_EXTENSIONS
 #define DEFAULT_GDB_EXTENSIONS 1
 #endif
-
-#ifdef KEY
-#undef PREFERRED_DEBUGGING_TYPE
-#define PREFERRED_DEBUGGING_TYPE NO_DEBUG
-#endif // KEY
 
 /* If more than one debugging type is supported, you must define
    PREFERRED_DEBUGGING_TYPE to choose a format in a system-dependent way.

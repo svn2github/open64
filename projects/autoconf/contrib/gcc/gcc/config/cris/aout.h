@@ -48,6 +48,9 @@ Boston, MA 02111-1307, USA.  */
     %{!sim:%{pg:gcrt0.o%s}\
      %{!pg:%{p:mcrt0.o%s}%{!p:crt0.o%s}}}}}"
 
+/* Override cris.h define.  */
+#undef ENDFILE_SPEC
+
 /* Which library to get.  The only difference from the default is to get
    libsc.a if -sim is given to the driver.  Repeat -lc -lsysX
    {X=sim,linux}, because libsysX needs (at least) errno from libc, and
@@ -64,8 +67,7 @@ Boston, MA 02111-1307, USA.  */
 
 #undef CRIS_CPP_SUBTARGET_SPEC
 #define CRIS_CPP_SUBTARGET_SPEC \
- "-D__AOUT__\
-  %{melinux:-D__gnu_linux__ -D__linux__ -D__unix__ -D__elinux__ -D__uclinux__\
+ "%{melinux:-D__gnu_linux__ -D__linux__ -D__unix__ -D__elinux__ -D__uclinux__\
     %{!nostdinc:\
       %{!mbest-lib-options:%{isystem*}}\
       -isystem elinux/include%s\
@@ -117,6 +119,19 @@ Boston, MA 02111-1307, USA.  */
 
 #undef CRIS_SUBTARGET_DEFAULT
 #define CRIS_SUBTARGET_DEFAULT 0
+
+
+/* Node: Run-time Target */
+
+/* For the cris-*-aout subtarget.  */
+#undef TARGET_OS_CPP_BUILTINS
+#define TARGET_OS_CPP_BUILTINS()		\
+  do						\
+    {						\
+      builtin_define ("__AOUT__");		\
+    }						\
+  while (0)
+
 
 /* Node: Storage Layout */
 
@@ -277,7 +292,7 @@ Boston, MA 02111-1307, USA.  */
 #define SET_ASM_OP	"\t.set\t"
 
 #define ASM_OUTPUT_EXTERNAL_LIBCALL(FILE, FUN)	\
-  ASM_GLOBALIZE_LABEL (FILE, XSTR (FUN, 0))
+  (*targetm.asm_out.globalize_label) (FILE, XSTR (FUN, 0))
 
 #define ASM_WEAKEN_LABEL(FILE, NAME) 	\
   do					\
@@ -288,42 +303,30 @@ Boston, MA 02111-1307, USA.  */
     }					\
   while (0)
 
-#define ASM_DECLARE_FUNCTION_NAME(FILE, NAME, DECL)	\
-  do							\
-    {							\
-      fprintf (FILE, "%s", TYPE_ASM_OP);		\
-      assemble_name (FILE, NAME);			\
-      putc (',', FILE);					\
-      fprintf (FILE, TYPE_OPERAND_FMT, "function");	\
-      putc ('\n', FILE);				\
-      							\
-      ASM_OUTPUT_LABEL(FILE, NAME);			\
-    }							\
+#define ASM_DECLARE_FUNCTION_NAME(FILE, NAME, DECL)		\
+  do								\
+    {								\
+      ASM_OUTPUT_TYPE_DIRECTIVE (FILE, NAME, "function");	\
+      ASM_OUTPUT_LABEL(FILE, NAME);				\
+    }								\
   while (0)
 
 #define ASM_DECLARE_OBJECT_NAME(FILE, NAME, DECL)		\
   do								\
     {								\
-      fprintf (FILE, "%s", TYPE_ASM_OP);			\
-      assemble_name (FILE, NAME);				\
-      putc (',', FILE);						\
-      fprintf (FILE, TYPE_OPERAND_FMT, "object");		\
-      putc ('\n', FILE);					\
-      								\
+      HOST_WIDE_INT size;					\
+								\
+      ASM_OUTPUT_TYPE_DIRECTIVE (FILE, NAME, "object");		\
+								\
       size_directive_output = 0;				\
-      								\
       if (!flag_inhibit_size_directive				\
 	  && (DECL) && DECL_SIZE (DECL))			\
 	{							\
 	  size_directive_output = 1;				\
-	  fprintf (FILE, "%s", SIZE_ASM_OP);			\
-	  assemble_name (FILE, NAME);				\
-	  putc (',', FILE);					\
-	  fprintf (FILE, HOST_WIDE_INT_PRINT_DEC,		\
-		   int_size_in_bytes (TREE_TYPE (DECL)));	\
-	  fputc ('\n', FILE);					\
+          size = int_size_in_bytes (TREE_TYPE (DECL));		\
+          ASM_OUTPUT_SIZE_DIRECTIVE (FILE, NAME, size);		\
 	}							\
-      								\
+								\
       ASM_OUTPUT_LABEL (FILE, NAME);				\
     }								\
   while (0)
@@ -332,6 +335,7 @@ Boston, MA 02111-1307, USA.  */
   do								\
     {								\
       const char *name = XSTR (XEXP (DECL_RTL (DECL), 0), 0);	\
+      HOST_WIDE_INT size;					\
       								\
       if (!flag_inhibit_size_directive				\
 	  && DECL_SIZE (DECL)					\
@@ -340,12 +344,8 @@ Boston, MA 02111-1307, USA.  */
 	  && !size_directive_output)				\
 	{							\
 	  size_directive_output = 1;				\
-	  fprintf (FILE, "%s", SIZE_ASM_OP);			\
-	  assemble_name (FILE, name);				\
-	  putc (',', FILE);					\
-	  fprintf (FILE, HOST_WIDE_INT_PRINT_DEC,		\
-		   int_size_in_bytes (TREE_TYPE (DECL))); 	\
-	  fputc ('\n', FILE);					\
+	  size = int_size_in_bytes (TREE_TYPE (DECL));		\
+	  ASM_OUTPUT_SIZE_DIRECTIVE (FILE, name, size);		\
 	}							\
     }								\
   while (0)
@@ -354,25 +354,16 @@ Boston, MA 02111-1307, USA.  */
   do								\
     {								\
       if (!flag_inhibit_size_directive)				\
-	{							\
-	  char label[256];					\
-	  static int labelno;					\
-	  							\
-	  labelno++;						\
-	  							\
-	  ASM_GENERATE_INTERNAL_LABEL (label, "Lfe", labelno);	\
-	  ASM_OUTPUT_INTERNAL_LABEL (FILE, "Lfe", labelno);	\
-	  							\
-	  fprintf (FILE, "%s", SIZE_ASM_OP);			\
-	  assemble_name (FILE, (FNAME));			\
-	  fprintf (FILE, ",");					\
-	  assemble_name (FILE, label);				\
-	  fprintf (FILE, "-");					\
-	  assemble_name (FILE, (FNAME));			\
-	  putc ('\n', FILE);					\
-	}							\
+	ASM_OUTPUT_MEASURED_SIZE (FILE, FNAME);			\
     }								\
   while (0)
+
+/* The configure machinery invokes the assembler without options, which is
+   not how gcc invokes it.  Without options, the multi-target assembler
+   will probably be found, which is ELF by default.  To counter that, we
+   need to override ELF auto-host.h config stuff which we know collides
+   with a.out.  */
+#undef HAVE_GAS_HIDDEN
 
 
 /* Node: Alignment Output */
@@ -390,7 +381,7 @@ Boston, MA 02111-1307, USA.  */
 
 /* Node: Misc */
 
-#define HANDLE_SYSV_PRAGMA
+#define HANDLE_SYSV_PRAGMA 1
 
 /* In theory, this one isn't necessary, but over time, external tools have
    been primed on names with "." rather than "$".  */

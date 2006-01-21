@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* CPP Library.
    Copyright (C) 1986, 1987, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -31,10 +27,6 @@ Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #include "intl.h"
 #include "mkdeps.h"
 #include "cppdefault.h"
-#ifdef SGI_MONGOOSE
-// To get SUPPORTS_ONE_ONLY
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 /* Windows does not natively support inodes, and neither does MSDOS.
    Cygwin's emulation can generate non-unique inodes, so don't use it.
@@ -537,7 +529,6 @@ cpp_create_reader (lang)
   CPP_OPTION (pfile, tabstop) = 8;
   CPP_OPTION (pfile, operator_names) = 1;
   CPP_OPTION (pfile, warn_endif_labels) = 1;
-  CPP_OPTION (pfile, warn_deprecated) = 1;
   CPP_OPTION (pfile, warn_long_long) = !CPP_OPTION (pfile, c99);
 
   CPP_OPTION (pfile, pending) =
@@ -719,11 +710,7 @@ mark_named_operators (pfile)
     {
       cpp_hashnode *hp = cpp_lookup (pfile, b->name, b->len);
       hp->flags |= NODE_OPERATOR;
-#ifdef SGI_MONGOOSE
-      hp->value.operator_code = b->value;
-#else
       hp->value.operator = b->value;
-#endif /* SGI_MONGOOSE */
     }
 }
 

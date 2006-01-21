@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Support routines for the various generation passes.
    Copyright (C) 2000, 2001, 2002 Free Software Foundation, Inc.
 
@@ -111,24 +107,15 @@ static char *save_string PARAMS ((const char *, int));
 void
 message_with_line VPARAMS ((int lineno, const char *msg, ...))
 {
-#ifdef SGI_MONGOOSE
-  va_list ap;
-  VA_START (ap, msg);
-#else
   VA_OPEN (ap, msg);
   VA_FIXEDARG (ap, int, lineno);
   VA_FIXEDARG (ap, const char *, msg);
-#endif /* SGI_MONGOOSE */
 
   fprintf (stderr, "%s:%d: ", read_rtx_filename, lineno);
   vfprintf (stderr, msg, ap);
   fputc ('\n', stderr);
 
-#ifndef SGI_MONGOOSE
   VA_CLOSE (ap);
-#else
-  va_end (ap);
-#endif
 }
 
 /* Make a version of gen_rtx_CONST_INT so that GEN_INT can be used in
@@ -1172,56 +1159,3 @@ scan_comma_elt (pstr)
   *pstr = p;
   return start;
 }
-
-#ifndef KEY // We should get these now from libiberty
-#ifdef SGI_MONGOOSE
-/* Until we can use the versions in libiberty.  */
-char *
-xstrdup (input)
-  const char *input;
-{
-  register size_t len = strlen (input) + 1;
-  register char *output = xmalloc (len);
-  memcpy (output, input, len);
-  return output;
-}
-                                                                                 
-PTR
-xrealloc (old, size)
-  PTR old;
-  size_t size;
-{
-  register PTR ptr;
-  if (old)
-#if (GCC_VERSION >= 3000)
-    ptr = (PTR) really_call_realloc (old, size);
-#else
-    ptr = (PTR) realloc (old, size);
-#endif
-  else
-#if (GCC_VERSION >= 3000)
-    ptr = (PTR) really_call_malloc (size);
-#else
-    ptr = (PTR) malloc (size);
-#endif
-  if (!ptr)
-    fatal ("virtual memory exhausted");
-  return ptr;
-}
-                                                                                 
-PTR
-xmalloc (size)
-  size_t size;
-{
-#if (GCC_VERSION >= 3000)
-  register PTR val = (PTR) really_call_malloc (size);
-#else
-  register PTR val = (PTR) malloc (size);
-#endif
-                                                                                 
-  if (val == 0)
-    fatal ("virtual memory exhausted");
-  return val;
-}
-#endif /* SGI_MONGOOSE */
-#endif // !KEY

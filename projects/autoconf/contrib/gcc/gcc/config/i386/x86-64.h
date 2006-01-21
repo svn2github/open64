@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* OS independent definitions for AMD x86-64.
    Copyright (C) 2001 Free Software Foundation, Inc.
    Contributed by Bo Thorsen <bo@suse.de>.
@@ -31,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
   (TARGET_64BIT ? dbx64_register_map[n] : svr4_dbx_register_map[n])
 
 /* Output assembler code to FILE to call the profiler.  */
-#define NO_PROFILE_COUNTERS	1
+#define NO_PROFILE_COUNTERS
 
 #undef MCOUNT_NAME
 #define MCOUNT_NAME "mcount"
@@ -82,20 +78,11 @@ Boston, MA 02111-1307, USA.  */
    x86-64 ABI specifies DWARF2.  */
 
 #undef DWARF_DEBUGGING_INFO
-#ifndef KEY     // Don't need to support DWARF when writing assembly,
-                // since the assembly will be thrown away anyway.
 #define DWARF2_DEBUGGING_INFO 1
 #define DWARF2_UNWIND_INFO 1
-#endif  // KEY
 /* Incorrectly autodetected in cross compilation.  */
 #undef HAVE_AS_DWARF2_DEBUG_LINE
-#ifndef KEY     // Don't need to support DWARF when writing assembly,
-                // since the assembly will be thrown away anyway.
 #define HAVE_AS_DWARF2_DEBUG_LINE
-#endif  // KEY
 
 #undef PREFERRED_DEBUGGING_TYPE
-#ifndef KEY     // Don't need to support DWARF when writing assembly,
-                // since the assembly will be thrown away anyway.
 #define PREFERRED_DEBUGGING_TYPE DWARF2_DEBUG
-#endif  // KEY

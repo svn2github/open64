@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Generate code from machine description to emit insns as rtl.
    Copyright (C) 1987, 1988, 1991, 1994, 1995, 1997, 1998, 1999, 2000, 2001
    Free Software Foundation, Inc.
@@ -838,9 +834,6 @@ from the machine description file `md'.  */\n\n");
   printf ("#include \"real.h\"\n");
   printf ("#include \"flags.h\"\n");
   printf ("#include \"output.h\"\n");
-#ifdef SGI_MONGOOSE
-  printf ("#include \"insn-flags.h\"\n");
-#endif /* SGI_MONGOOSE */
   printf ("#include \"insn-config.h\"\n");
   printf ("#include \"hard-reg-set.h\"\n");
   printf ("#include \"recog.h\"\n");
@@ -904,23 +897,3 @@ get_insn_name (code)
 {
   return NULL;
 }
-
-#ifndef KEY	// We should get it now from libiberty
-#ifdef SGI_MONGOOSE
-PTR
-xcalloc (nmemb, size)
-  size_t nmemb;
-  size_t size;
-{
-  register PTR ptr;
-#if (GCC_VERSION >= 3000)
-  ptr = (PTR) really_call_calloc (nmemb, size);
-#else
-  ptr = (PTR) calloc (nmemb, size);
-#endif
-  if (!ptr)
-    fatal ("virtual memory exhausted");
-  return ptr;
-}
-#endif /* SGI_MONGOOSE */
-#endif // !KEY

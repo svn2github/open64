@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* fix-header.c - Make C header file suitable for C++.
    Copyright (C) 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001 Free Software Foundation, Inc.
@@ -98,10 +94,7 @@ int warnings = 0;
 int missing_extern_C_count = 0;
 #endif
 
-#ifndef SGI_MONGOOSE
-// Can not find this header file in gcc-3.2.2 source tree */
 #include "xsys-protos.h"
-#endif /* SGI_MONGOOSE */
 
 #ifdef FIXPROTO_IGNORE_LIST
 /* This is a currently unused feature.  */

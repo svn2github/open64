@@ -54,23 +54,13 @@ Boston, MA 02111-1307, USA.  */
 			 %{!profile:crt1.o%s}}}} \
    crti.o%s %{!shared:crtbegin.o%s} %{shared:crtbeginS.o%s}"
 #else
-#if defined HAVE_LD_PIE
-#define STARTFILE_SPEC \
-  "%{!shared: \
-     %{pg:gcrt1.o%s} %{!pg:%{p:gcrt1.o%s} \
-		       %{!p:%{profile:gcrt1.o%s} \
-			 %{!profile:%{pie:Scrt1.o%s}%{!pie:crt1.o%s}}}}} \
-   crti.o%s %{static:crtbeginT.o%s}\
-   %{!static:%{!shared:%{!pie:crtbegin.o%s}} %{shared|pie:crtbeginS.o%s}}"
-#else
 #define STARTFILE_SPEC \
   "%{!shared: \
      %{pg:gcrt1.o%s} %{!pg:%{p:gcrt1.o%s} \
 		       %{!p:%{profile:gcrt1.o%s} \
 			 %{!profile:crt1.o%s}}}} \
    crti.o%s %{static:crtbeginT.o%s}\
-   %{!static:%{!shared:%{!pie:crtbegin.o%s}} %{shared|pie:crtbeginS.o%s}}"
-#endif
+   %{!static:%{!shared:crtbegin.o%s} %{shared:crtbeginS.o%s}}"
 #endif
 
 /* Provide a ENDFILE_SPEC appropriate for GNU/Linux.  Here we tack on
@@ -81,7 +71,7 @@ Boston, MA 02111-1307, USA.  */
 
 #undef	ENDFILE_SPEC
 #define ENDFILE_SPEC \
-  "%{!shared:%{!pie:crtend.o%s}} %{shared|pie:crtendS.o%s} crtn.o%s"
+  "%{!shared:crtend.o%s} %{shared:crtendS.o%s} crtn.o%s"
 
 /* This is for -profile to use -lc_p instead of -lc.  */
 #ifndef CC1_SPEC
@@ -117,9 +107,6 @@ Boston, MA 02111-1307, USA.  */
 #if !defined(USE_GNULIBC_1) && defined(HAVE_LD_EH_FRAME_HDR)
 #define LINK_EH_SPEC "%{!static:--eh-frame-hdr} "
 #endif
-
-#define LINK_GCC_C_SEQUENCE_SPEC \
-  "%{static:--start-group} %G %L %{static:--end-group}%{!static:%G}"
 
 /* Define this so we can compile MS code for use with WINE.  */
 #define HANDLE_PRAGMA_PACK_PUSH_POP

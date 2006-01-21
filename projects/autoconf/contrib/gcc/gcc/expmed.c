@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Medium-level subroutines: convert bit-field store and extract
    and shifts, multiplies and divides to rtl instructions.
    Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
@@ -884,11 +880,6 @@ store_split_bit_field (op0, bitsize, bitpos, value)
     unit = BITS_PER_WORD;
   else
     unit = MIN (MEM_ALIGN (op0), BITS_PER_WORD);
-
-#ifdef SGI_MONGOOSE
-  if (unit == 0)
-    return;
-#endif /* SGI_MONGOOSE */
 
   /* If VALUE is a constant other than a CONST_INT, get it into a register in
      WORD_MODE.  If we can do this using gen_lowpart_common, do so.  Note

@@ -173,11 +173,10 @@ conditions_mutex_p (cond1, cond2)
 }
 
 /* Add ELEM wrapped in an INSN_LIST with reg note kind DEP_TYPE to the
-   LOG_LINKS of INSN, if not already there.  DEP_TYPE indicates the
-   type of dependence that this link represents.  The function returns
-   nonzero if a new entry has been added to insn's LOG_LINK.  */
+   LOG_LINKS of INSN, if not already there.  DEP_TYPE indicates the type
+   of dependence that this link represents.  */
 
-int
+void
 add_dependence (insn, elem, dep_type)
      rtx insn;
      rtx elem;
@@ -189,13 +188,13 @@ add_dependence (insn, elem, dep_type)
 
   /* Don't depend an insn on itself.  */
   if (insn == elem)
-    return 0;
+    return;
 
   /* We can get a dependency on deleted insns due to optimizations in
      the register allocation and reloading or due to splitting.  Any
      such dependency is useless and can be ignored.  */
   if (GET_CODE (elem) == NOTE)
-    return 0;
+    return;
 
   /* flow.c doesn't handle conditional lifetimes entirely correctly;
      calls mess up the conditional lifetimes.  */
@@ -214,7 +213,7 @@ add_dependence (insn, elem, dep_type)
 	  /* Make sure second instruction doesn't affect condition of first
 	     instruction if switched.  */
 	  && !modified_in_p (cond2, insn))
-	return 0;
+	return;
     }
 
   /* If elem is part of a sequence that must be scheduled together, then
@@ -241,7 +240,7 @@ add_dependence (insn, elem, dep_type)
 
       /* Again, don't depend an insn on itself.  */
       if (insn == next)
-	return 0;
+	return;
 
       /* Make the dependence to NEXT, the last insn of the group, instead
          of the original ELEM.  */
@@ -259,7 +258,7 @@ add_dependence (insn, elem, dep_type)
      elem is a CALL is still required.  */
   if (GET_CODE (insn) == CALL_INSN
       && (INSN_BB (elem) != INSN_BB (insn)))
-    return 0;
+    return;
 #endif
 
   /* If we already have a dependency for ELEM, then we do not need to
@@ -283,7 +282,7 @@ add_dependence (insn, elem, dep_type)
       else
 	present_p = 0;
       if (present_p && (int) dep_type >= (int) present_dep_type)
-	return 0;
+	return;
     }
 #endif
 
@@ -308,7 +307,7 @@ add_dependence (insn, elem, dep_type)
 		abort ();
 	    }
 #endif
-	  
+
 	  /* If this is a more restrictive type of dependence than the existing
 	     one, then change the existing dependence to this type.  */
 	  if ((int) dep_type < (int) REG_NOTE_KIND (link))
@@ -330,8 +329,8 @@ add_dependence (insn, elem, dep_type)
 			 INSN_LUID (elem));
 	    }
 #endif
-	  return 0;
-	}
+	  return;
+      }
   /* Might want to check one level of transitivity to save conses.  */
 
   link = alloc_INSN_LIST (elem, LOG_LINKS (insn));
@@ -353,7 +352,6 @@ add_dependence (insn, elem, dep_type)
 	SET_BIT (output_dependency_cache[INSN_LUID (insn)], INSN_LUID (elem));
     }
 #endif
-  return 1;
 }
 
 /* A convenience wrapper to operate on an entire list.  */
@@ -1422,46 +1420,6 @@ sched_analyze (deps, head, tail)
   abort ();
 }
 
-
-/* The following function adds forward dependence (FROM, TO) with
-   given DEP_TYPE.  The forward dependence should be not exist before.  */
-
-void
-add_forward_dependence (from, to, dep_type)
-     rtx from;
-     rtx to;
-     enum reg_note dep_type;
-{
-  rtx new_link;
-
-#ifdef ENABLE_CHECKING
-  /* If add_dependence is working properly there should never
-     be notes, deleted insns or duplicates in the backward
-     links.  Thus we need not check for them here.
-     
-     However, if we have enabled checking we might as well go
-     ahead and verify that add_dependence worked properly.  */
-  if (GET_CODE (from) == NOTE
-      || INSN_DELETED_P (from)
-      || (forward_dependency_cache != NULL
-	  && TEST_BIT (forward_dependency_cache[INSN_LUID (from)],
-		       INSN_LUID (to)))
-      || (forward_dependency_cache == NULL
-	  && find_insn_list (to, INSN_DEPEND (from))))
-    abort ();
-  if (forward_dependency_cache != NULL)
-    SET_BIT (forward_dependency_cache[INSN_LUID (from)],
-	     INSN_LUID (to));
-#endif
-  
-  new_link = alloc_INSN_LIST (to, INSN_DEPEND (from));
-  
-  PUT_REG_NOTE_KIND (new_link, dep_type);
-  
-  INSN_DEPEND (from) = new_link;
-  INSN_DEP_COUNT (to) += 1;
-}
-
 /* Examine insns in the range [ HEAD, TAIL ] and Use the backward
    dependences from LOG_LINKS to build forward dependences in
    INSN_DEPEND.  */
@@ -1472,6 +1430,7 @@ compute_forward_dependences (head, tail)
 {
   rtx insn, link;
   rtx next_tail;
+  enum reg_note dep_type;
 
   next_tail = NEXT_INSN (tail);
   for (insn = head; insn != next_tail; insn = NEXT_INSN (insn))
@@ -1482,8 +1441,41 @@ compute_forward_dependences (head, tail)
       insn = group_leader (insn);
 
       for (link = LOG_LINKS (insn); link; link = XEXP (link, 1))
-	add_forward_dependence (group_leader (XEXP (link, 0)), insn,
-				REG_NOTE_KIND (link));
+	{
+	  rtx x = group_leader (XEXP (link, 0));
+	  rtx new_link;
+
+	  if (x != XEXP (link, 0))
+	    continue;
+
+#ifdef ENABLE_CHECKING
+	  /* If add_dependence is working properly there should never
+	     be notes, deleted insns or duplicates in the backward
+	     links.  Thus we need not check for them here.
+
+	     However, if we have enabled checking we might as well go
+	     ahead and verify that add_dependence worked properly.  */
+	  if (GET_CODE (x) == NOTE
+	      || INSN_DELETED_P (x)
+	      || (forward_dependency_cache != NULL
+		  && TEST_BIT (forward_dependency_cache[INSN_LUID (x)],
+			       INSN_LUID (insn)))
+	      || (forward_dependency_cache == NULL
+		  && find_insn_list (insn, INSN_DEPEND (x))))
+	    abort ();
+	  if (forward_dependency_cache != NULL)
+	    SET_BIT (forward_dependency_cache[INSN_LUID (x)],
+		     INSN_LUID (insn));
+#endif
+
+	  new_link = alloc_INSN_LIST (insn, INSN_DEPEND (x));
+
+	  dep_type = REG_NOTE_KIND (link);
+	  PUT_REG_NOTE_KIND (new_link, dep_type);
+
+	  INSN_DEPEND (x) = new_link;
+	  INSN_DEP_COUNT (insn) += 1;
+	}
     }
 }
 

@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Language-independent node constructors for parse phase of GNU compiler.
    Copyright (C) 1987, 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -36,10 +32,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "config.h"
 #include "system.h"
 #include "flags.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "real.h"
 #include "tm_p.h"
@@ -51,11 +43,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "output.h"
 #include "target.h"
 #include "langhooks.h"
-
-#ifdef KEY
-#include "c-common.h"
-extern void erase_duplicates (tree);
-#endif
 
 /* obstack.[ch] explicitly declined to prototype this.  */
 extern int _obstack_allocated_p PARAMS ((struct obstack *h, PTR obj));
@@ -189,10 +176,6 @@ tree_size (node)
     case '<':  /* a comparison expression */
     case '1':  /* a unary arithmetic expression */
     case '2':  /* a binary arithmetic expression */
-#ifdef KEY
-      if (code == OMP_MARKER_STMT)
-        return sizeof (struct tree_omp);
-#endif // KEY
       return (sizeof (struct tree_exp)
 	      + TREE_CODE_LENGTH (code) * sizeof (char *) - sizeof (char *));
 
@@ -341,13 +324,6 @@ make_node (code)
 
       /* We have not yet computed the alias set for this type.  */
       TYPE_ALIAS_SET (t) = -1;
-#ifdef SGI_MONGOOSE
-      {
-        // Relys on duplicating the *implementation* of DST_INVALID_INIT
-        static struct mongoose_gcc_DST_IDX di = {-1,-1};
-        TYPE_DST_IDX(t) = di;
-      }
-#endif /* SGI_MONGOOSE */
       break;
 
     case 'c':
@@ -1517,11 +1493,6 @@ tree_node_structure (t)
 {
   enum tree_code code = TREE_CODE (t);
   
-#ifdef KEY
-  if (code == OMP_MARKER_STMT)
-    return TS_OMP;
-#endif
-
   switch (TREE_CODE_CLASS (code))
     {
     case 'd':	return TS_DECL;
@@ -2464,13 +2435,6 @@ build_decl (code, name, type)
   else if (code == FUNCTION_DECL)
     DECL_MODE (t) = FUNCTION_MODE;
 
-#ifdef KEY
-  // Remove t from the map that tracks duplicate FUNCTION_DECL's.  T could be
-  // using the same memory as an earlier node that was added to the map and
-  // later garbage-collected.
-  if (code == FUNCTION_DECL)
-    erase_duplicates (t);
-#endif
   return t;
 }
 
@@ -4387,7 +4351,7 @@ const char *flag_random_seed;
 /* Set up a default flag_random_seed value, if there wasn't one already.  */
 
 void
-default_flag_random_seed ()
+default_flag_random_seed (void)
 {
   unsigned HOST_WIDE_INT value;
   char *new_random_seed;
@@ -4396,19 +4360,6 @@ default_flag_random_seed ()
     return;
 
   /* Get some more or less random data.  */
-#ifdef KEY	// bug 3099
-  {
-    int i;
-    value = 0;
-    if (main_input_filename) {
-      for (i = 0; i < strlen (main_input_filename); i++) {
-	value = (value << 1) ^ main_input_filename[i];
-      }
-    } else {
-      value = getpid ();
-    }
-  }
-#else
 #ifdef HAVE_GETTIMEOFDAY
  {
    struct timeval tv;
@@ -4419,7 +4370,6 @@ default_flag_random_seed ()
  }
 #else
   value = getpid ();
-#endif
 #endif
 
   /* This slightly overestimates the space required.  */
@@ -4824,11 +4774,6 @@ build_common_tree_nodes_2 (short_double)
   long_double_type_node = make_node (REAL_TYPE);
   TYPE_PRECISION (long_double_type_node) = LONG_DOUBLE_TYPE_SIZE;
   layout_type (long_double_type_node);
-
-  float_ptr_type_node = build_pointer_type (float_type_node);
-  double_ptr_type_node = build_pointer_type (double_type_node);
-  long_double_ptr_type_node = build_pointer_type (long_double_type_node);
-  integer_ptr_type_node = build_pointer_type (integer_type_node);
 
   complex_integer_type_node = make_node (COMPLEX_TYPE);
   TREE_TYPE (complex_integer_type_node) = integer_type_node;

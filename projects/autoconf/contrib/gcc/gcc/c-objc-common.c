@@ -1,9 +1,3 @@
-/*
-   Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
-   File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++
-   front-ends to GNU 3.3.1 release.
- */
-
 /* Some code common to C and ObjC front ends.
    Copyright (C) 2001 Free Software Foundation, Inc.
 
@@ -26,14 +20,8 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// to get type def of tree in rtl.h for tree.h
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "insn-config.h"
 #include "integrate.h"
 #include "expr.h"

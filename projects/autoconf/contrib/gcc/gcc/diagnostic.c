@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Language-independent diagnostic subroutines for the GNU Compiler Collection
    Copyright (C) 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
    Contributed by Gabriel Dos Reis <gdr@codesourcery.com>
@@ -31,10 +27,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #undef FLOAT /* This is for hpux. They should change hpux.  */
 #undef FFS  /* Some systems define this in param.h.  */
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "tm_p.h"
 #include "flags.h"

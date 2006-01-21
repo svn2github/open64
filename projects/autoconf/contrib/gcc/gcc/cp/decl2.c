@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Process declarations and variables for C compiler.
    Copyright (C) 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
@@ -50,14 +46,6 @@ Boston, MA 02111-1307, USA.  */
 #include "target.h"
 #include "c-common.h"
 #include "timevar.h"
-#ifdef SGI_MONGOOSE
-#include "defaults.h"   // get DEFAULT_USE_CXA_ATEXIT
-#endif
-
-#ifdef KEY
-extern void gxx_emits_decl PARAMS ((tree));
-#endif // KEY
-
 extern cpp_reader *parse_in;
 
 /* This structure contains information about the initializations
@@ -121,13 +109,6 @@ extern int spew_debug;
 /* Nonzero if we're done parsing and into end-of-file activities.  */
 
 int at_eof;
-
-#ifdef SGI_MONGOOSE
-/* If this variable is defined to a non-NULL value, it will be called
-   after the file has been completely parsed.  */
-                                                                                 
-void (*back_end_hook) PARAMS ((tree));
-#endif  /* SGI_MONGOOSE */
 
 /* Functions called along with real static constructors and destructors.  */
 
@@ -2228,9 +2209,7 @@ finish_objects (method_type, initp, body)
   /* When only doing semantic analysis, and no RTL generation, we
      can't call functions that directly emit assembly code; there is
      no assembly file in which to put the code.  */
-#ifndef KEY
   if (flag_syntax_only)
-#endif
     return;
 
   if (targetm.have_ctors_dtors)
@@ -2986,13 +2965,6 @@ finish_file ()
 	      if (flag_syntax_only)
 		TREE_ASM_WRITTEN (decl) = 1;
 	      reconsider = 1;
-
-#ifdef KEY
-              // Since this function is emitted by g++, tell the WHIRL
-              // translator to translate it into WHIRL.  This catches functions
-              // that are deferred by g++, such as those marked "inline".
-              gxx_emits_decl (decl);
-#endif
 	    }
 	}
 
@@ -3082,13 +3054,6 @@ finish_file ()
 	dump_end (TDI_all, stream);
       }
   }
-
-#ifdef SGI_MONGOOSE
-  /* If there's some tool that wants to examine the entire translation
-     unit, let it do so now.  */
-  if (back_end_hook)
-    (*back_end_hook) (global_namespace);
-#endif  /* SGI_MONGOOSE */
   
   timevar_pop (TV_VARCONST);
 
@@ -4172,8 +4137,6 @@ add_function (k, fn)
   /* We must find only functions, or exactly one non-function.  */
   if (!k->functions) 
     k->functions = fn;
-  else if (fn == k->functions)
-    ;
   else if (is_overloaded_fn (k->functions) && is_overloaded_fn (fn))
     k->functions = build_overload (fn, k->functions);
   else

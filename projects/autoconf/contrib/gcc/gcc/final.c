@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Convert RTL to assembler code and output it, for GNU compiler.
    Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997,
    1998, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -51,13 +47,8 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "config.h"
 #include "system.h"
 
-#ifdef SGI_MONGOOSE
-#include "rtl.h"        // to get type def of tree
-#endif  // SGI_MONGOOSE
 #include "tree.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif  // SGI_MONGOOSE
 #include "tm_p.h"
 #include "regs.h"
 #include "insn-config.h"
@@ -79,10 +70,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "expr.h"
 #include "profile.h"
 #include "cfglayout.h"
-#ifdef SGI_MONGOOSE
-#include "defaults.h"           // To get GCOV_TYPE_SIZE
-#include "insn-addr.h"
-#endif /* SGI_MONGOOSE */
 
 #ifdef XCOFF_DEBUGGING_INFO
 #include "xcoffout.h"		/* Needed for external data
@@ -251,10 +238,6 @@ static int final_addr_vec_align PARAMS ((rtx));
 #ifdef HAVE_ATTR_length
 static int align_fuzz		PARAMS ((rtx, rtx, int, unsigned));
 #endif
-
-#ifdef KEY
-static void mark_referenced_symbols (rtx);
-#endif  // KEY
 
 /* Initialize data in final at the beginning of a compilation.  */
 
@@ -1721,7 +1704,7 @@ profile_function (file)
      FILE *file ATTRIBUTE_UNUSED;
 {
 #ifndef NO_PROFILE_COUNTERS
-# define NO_PROFILE_COUNTERS	0
+  int align = MIN (BIGGEST_ALIGNMENT, LONG_TYPE_SIZE);
 #endif
 #if defined(ASM_OUTPUT_REG_PUSH)
 #if defined(STRUCT_VALUE_INCOMING_REGNUM) || defined(STRUCT_VALUE_REGNUM)
@@ -1732,14 +1715,12 @@ profile_function (file)
 #endif
 #endif /* ASM_OUTPUT_REG_PUSH */
 
-  if (! NO_PROFILE_COUNTERS)
-    {
-      int align = MIN (BIGGEST_ALIGNMENT, LONG_TYPE_SIZE);
-      data_section ();
-      ASM_OUTPUT_ALIGN (file, floor_log2 (align / BITS_PER_UNIT));
-      ASM_OUTPUT_INTERNAL_LABEL (file, "LP", current_function_funcdef_no);
-      assemble_integer (const0_rtx, LONG_TYPE_SIZE / BITS_PER_UNIT, align, 1);
-    }
+#ifndef NO_PROFILE_COUNTERS
+  data_section ();
+  ASM_OUTPUT_ALIGN (file, floor_log2 (align / BITS_PER_UNIT));
+  ASM_OUTPUT_INTERNAL_LABEL (file, "LP", current_function_funcdef_no);
+  assemble_integer (const0_rtx, LONG_TYPE_SIZE / BITS_PER_UNIT, align, 1);
+#endif
 
   function_section (current_function_decl);
 
@@ -1906,7 +1887,6 @@ final (first, file, optimize, prescan)
   /* Output the insns.  */
   for (insn = NEXT_INSN (first); insn;)
     {
-#ifndef KEY
 #ifdef HAVE_ATTR_length
       if ((unsigned) INSN_UID (insn) >= INSN_ADDRESSES_SIZE ())
 	{
@@ -1920,7 +1900,6 @@ final (first, file, optimize, prescan)
       else
 	insn_current_address = INSN_ADDRESSES (INSN_UID (insn));
 #endif /* HAVE_ATTR_length */
-#endif /* KEY */
 
       insn = final_scan_insn (insn, file, optimize, prescan, 0);
     }
@@ -2017,11 +1996,6 @@ final_scan_insn (insn, file, optimize, prescan, nopeepholes)
      int prescan;
      int nopeepholes ATTRIBUTE_UNUSED;
 {
-#ifdef KEY
-  mark_referenced_symbols (insn);
-  return NEXT_INSN (insn);
-#else
-
 #ifdef HAVE_cc0
   rtx set;
 #endif
@@ -2870,7 +2844,6 @@ final_scan_insn (insn, file, optimize, prescan, nopeepholes)
       }
     }
   return NEXT_INSN (insn);
-#endif  // KEY
 }
 
 /* Output debugging info to the assembler file FILE
@@ -4195,51 +4168,3 @@ leaf_renumber_regs_insn (in_rtx)
       }
 }
 #endif
-
-#ifdef KEY
-// Find all the SYMBOL_REF's in X and mark their symbols as being referenced.
-void
-mark_referenced_symbols (rtx x)
-{
-  int i, j;
-  const char *fmt;
-                                                                                 
-  if (!x)
-    return;
-                                                                                 
-  if (GET_CODE (x) == SYMBOL_REF) {
-    const char *name = XSTR (x, 0);
-    const char *real_name;
-    tree id;
-                                                                                 
-    if (!name)
-      abort();
-                                                                                 
-    // Code copied from assemble_name in varasm.c.
-    //STRIP_NAME_ENCODING (real_name, name);
-    // avoid poisoned STRIP_NAME_ENCODING
-    real_name = (* targetm.strip_name_encoding) (name);
-                                                                                 
-    id = maybe_get_identifier (real_name);
-    if (id)
-      TREE_SYMBOL_REFERENCED (id) = 1;
-    return;
-                                                                                 
-  } else if (GET_CODE (x) == CALL_PLACEHOLDER) {
-    rtx tem;
-    for (tem = XEXP (x, 0); tem != 0; tem = NEXT_INSN (tem))
-      mark_referenced_symbols (tem);
-    return;
-  }
-                                                                                 
-  fmt = GET_RTX_FORMAT (GET_CODE (x));
-  for (i = 0; i < GET_RTX_LENGTH (GET_CODE (x)); i++)
-    {
-      if (fmt[i] == 'e')
-        mark_referenced_symbols (XEXP (x, i));
-      else if (fmt[i] == 'E')
-        for (j = 0; j < XVECLEN (x, i); j++)
-          mark_referenced_symbols (XVECEXP (x, i, j));
-    }
-}
-#endif // KEY

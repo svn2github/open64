@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* RTL reader for GNU C Compiler.
    Copyright (C) 1987, 1988, 1991, 1994, 1997, 1998, 1999, 2000, 2001, 2002
    Free Software Foundation, Inc.
@@ -187,7 +183,6 @@ read_name (str, infile)
 
   *p = 0;
 
-#ifndef SGI_MONGOOSE
   if (md_constants)
     {
       /* Do constant expansion.  */
@@ -206,7 +201,6 @@ read_name (str, infile)
       if (p != str)
 	strcpy (str, p);
     }
-#endif /* SGI_MONGOOSE */
 }
 
 /* Subroutine of the string readers.  Handles backslash escapes.
@@ -431,7 +425,6 @@ def_name_eq_p (def1, def2)
 /* INFILE is a FILE pointer to read text from.  TMP_CHAR is a buffer suitable
    to read a name or number into.  Process a define_constants directive,
    starting with the optional space after the "define_constants".  */
-#ifndef SGI_MONGOOSE
 static void
 read_constants (infile, tmp_char)
      FILE *infile;
@@ -486,7 +479,6 @@ read_constants (infile, tmp_char)
   if (c != ')')
     fatal_expected_char (infile, ')', c);
 }
-#endif /* SGI_MONGOOSE */
 
 /* For every constant definition, call CALLBACK with two arguments:
    a pointer a pointer to the constant definition and INFO.
@@ -496,10 +488,8 @@ traverse_md_constants (callback, info)
      htab_trav callback;
      void *info;
 {
-#ifndef SGI_MONGOOSE
   if (md_constants)
     htab_traverse (md_constants, callback, info);
-#endif
 }
 
 static void
@@ -570,13 +560,11 @@ again:
 
   tmp_code = UNKNOWN;
 
-#ifndef SGI_MONGOOSE
   if (! strcmp (tmp_char, "define_constants"))
     {
       read_constants (infile, tmp_char);
       goto again;
     }
-#endif /* SGI_MONGOOSE */
   for (i = 0; i < NUM_RTX_CODE; i++)
     if (! strcmp (tmp_char, GET_RTX_NAME (i)))
       {

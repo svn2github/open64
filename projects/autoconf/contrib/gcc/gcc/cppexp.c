@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Parse C expressions for cpplib.
    Copyright (C) 1987, 1992, 1994, 1995, 1997, 1998, 1999, 2000, 2001,
    2002 Free Software Foundation.
@@ -26,10 +22,6 @@ Boston, MA 02111-1307, USA.  */
 #include "system.h"
 #include "cpplib.h"
 #include "cpphash.h"
-#ifdef SGI_MONGOOSE
-// To get WCHAR_UNSIGNED
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 #define PART_PRECISION (sizeof (cpp_num_part) * CHAR_BIT)
 #define HALF_MASK (~(cpp_num_part) 0 >> (PART_PRECISION / 2))

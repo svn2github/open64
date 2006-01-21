@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Exception Handling interface routines.
    Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002
    Free Software Foundation, Inc.
@@ -24,10 +20,6 @@ along with GCC; see the file COPYING.  If not, write to the Free
 Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 02111-1307, USA.  */
 
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 
 #ifndef GCC_VARRAY_H
 struct varray_head_tag;
@@ -130,8 +122,6 @@ extern rtx expand_builtin_frob_return_addr	PARAMS ((tree));
 extern rtx expand_builtin_dwarf_sp_column	PARAMS ((void));
 extern void expand_builtin_eh_return		PARAMS ((tree, tree));
 extern void expand_eh_return			PARAMS ((void));
-/* from gcc patch */
-extern rtx expand_builtin_extend_pointer	PARAMS ((tree));
 extern rtx get_exception_pointer		PARAMS ((struct function *));
 extern int duplicate_eh_regions			PARAMS ((struct function *,
 						 struct inline_remap *));
@@ -190,9 +180,4 @@ extern tree (*lang_eh_runtime_type) PARAMS ((tree));
 # endif
 #else
 # define USING_SJLJ_EXCEPTIONS		MUST_USE_SJLJ_EXCEPTIONS
-#endif
-
-#ifdef KEY
-#undef USING_SJLJ_EXCEPTIONS
-#define USING_SJLJ_EXCEPTIONS  0
 #endif

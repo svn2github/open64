@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Generate code to initialize optabs from machine description.
    Copyright (C) 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000 Free Software Foundation, Inc.
@@ -335,10 +331,6 @@ from the machine description file `md'.  */\n\n");
   printf ("#include \"system.h\"\n");
   printf ("#include \"rtl.h\"\n");
   printf ("#include \"flags.h\"\n");
-#ifdef SGI_MONGOOSE
-  printf ("#include \"insn-flags.h\"\n");
-  printf ("#include \"insn-codes.h\"\n");
-#endif
   printf ("#include \"insn-config.h\"\n");
   printf ("#include \"recog.h\"\n");
   printf ("#include \"expr.h\"\n");

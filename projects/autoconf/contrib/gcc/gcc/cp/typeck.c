@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Build expressions with type checking for C++ compiler.
    Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -46,9 +42,6 @@ Boston, MA 02111-1307, USA.  */
 #include "toplev.h"
 #include "diagnostic.h"
 #include "target.h"
-#ifdef SGI_MONGOOSE
-#include "defaults.h"   // get TARGET_VTABLE_USES_DESCRIPTORS
-#endif
 
 static tree convert_for_assignment PARAMS ((tree, tree, const char *, tree,
 					  int));
@@ -2648,9 +2641,9 @@ get_member_function_from_ptrfunc (instance_ptrptr, function)
 }
 
 tree
-build_function_call_real (function, params, flags)
+build_function_call_real (function, params, require_complete, flags)
      tree function, params;
-     int flags;
+     int require_complete, flags;
 {
   register tree fntype, fndecl;
   register tree coerced_params;
@@ -2764,7 +2757,7 @@ tree
 build_function_call (function, params)
      tree function, params;
 {
-  return build_function_call_real (function, params, LOOKUP_NORMAL);
+  return build_function_call_real (function, params, 1, LOOKUP_NORMAL);
 }
 
 /* Convert the actual parameter expressions in the list VALUES
@@ -4746,13 +4739,12 @@ build_static_cast (type, expr)
 					  (TREE_TYPE (type))))
       && at_least_as_qualified_p (TREE_TYPE (type), intype))
     {
-      /* There is a standard conversion from "D*" to "B*" even if "B"
-	 is ambiguous or inaccessible.  Therefore, we ask lookup_base
-	 to check these conditions.  */
-      tree base = lookup_base (TREE_TYPE (type), intype, ba_check, NULL);
+      /* At this point we have checked all of the conditions except
+	 that B is not a virtual base class of D.  That will be
+	 checked by build_base_path.  */
+      tree base = lookup_base (TREE_TYPE (type), intype, ba_any, NULL);
 
-      /* Convert from "B*" to "D*".  This function will check that "B"
-	 is not a virtual base of "D".  */
+      /* Convert from B* to D*.  */
       expr = build_base_path (MINUS_EXPR, build_address (expr), 
 			      base, /*nonnull=*/false);
       /* Convert the pointer to a reference -- but then remember that
@@ -4811,7 +4803,7 @@ build_static_cast (type, expr)
 
       check_for_casting_away_constness (intype, type);
       base = lookup_base (TREE_TYPE (type), TREE_TYPE (intype), 
-			  ba_check, NULL);
+			  ba_check | ba_quiet, NULL);
       return build_base_path (MINUS_EXPR, expr, base, /*nonnull=*/false);
     }
   if ((TYPE_PTRMEM_P (type) && TYPE_PTRMEM_P (intype))
@@ -5245,10 +5237,6 @@ build_modify_expr (lhs, modifycode, rhs)
 		    TREE_OPERAND (lhs, 0), newrhs);
 
     case MODIFY_EXPR:
-      if (TREE_SIDE_EFFECTS (TREE_OPERAND (lhs, 0)))
-	lhs = build (TREE_CODE (lhs), TREE_TYPE (lhs),
-		     stabilize_reference (TREE_OPERAND (lhs, 0)),
-		     TREE_OPERAND (lhs, 1));
       newrhs = build_modify_expr (TREE_OPERAND (lhs, 0), modifycode, rhs);
       if (newrhs == error_mark_node)
 	return error_mark_node;
@@ -5454,9 +5442,6 @@ build_modify_expr (lhs, modifycode, rhs)
 	}
     }
 
-#ifdef KEY
-  // Copy code from gcc-3.3.1 to fix bug 1885.  (This kg++fe is based on the
-  // non-standard version gcc "3.3.1 20030915 (Red Hat Linux 3.3.1-5)".)
   if (TREE_CODE (lhstype) != REFERENCE_TYPE)
     {
       if (TREE_SIDE_EFFECTS (lhs))
@@ -5464,7 +5449,6 @@ build_modify_expr (lhs, modifycode, rhs)
       if (TREE_SIDE_EFFECTS (newrhs))
 	newrhs = stabilize_reference (newrhs);
     }
-#endif
 
   /* Convert new value to destination type.  */
 
@@ -6116,8 +6100,7 @@ convert_for_initialization (exp, type, rhs, flags, errtype, fndecl, parmnum)
 
       if (fndecl)
 	savew = warningcount, savee = errorcount;
-      rhs = initialize_reference (type, rhs, /*decl=*/NULL_TREE,
-				  /*cleanup=*/NULL);
+      rhs = initialize_reference (type, rhs, /*decl=*/NULL_TREE);
       if (fndecl)
 	{
 	  if (warningcount > savew)
@@ -6398,22 +6381,9 @@ check_return_expr (retval)
 			   (TREE_TYPE (retval))),
 			  (TYPE_MAIN_VARIANT
 			   (TREE_TYPE (TREE_TYPE (current_function_decl))))))
-	{
-	  current_function_return_value = retval;
-#ifdef KEY
-	  /* Tell the WHIRL front-end this is the named return value. */
-	  DECL_NAMED_RETURN_OBJECT(current_function_decl) = retval;
-#endif
-	}
+	current_function_return_value = retval;
       else
-	{
-	  current_function_return_value = error_mark_node;
-#ifdef KEY
-	  /* Tell the WHIRL front-end that the named return value optimization
-	     is not applied. */
-	  DECL_NAMED_RETURN_OBJECT(current_function_decl) = NULL_TREE;
-#endif
-	}
+	current_function_return_value = error_mark_node;
     }
 
   /* We don't need to do any conversions when there's nothing being

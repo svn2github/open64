@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Expands front end tree to back end RTL for GNU C-Compiler
    Copyright (C) 1987, 1988, 1989, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
    1998, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -63,13 +59,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "tm_p.h"
 #include "integrate.h"
 #include "langhooks.h"
-#ifdef SGI_MONGOOSE
-#ifndef KEY	// We should not use this file any more
-#include "MIPS/elf.h"
-#endif // !KEY
-// To get PREFERRED_STACK_BOUNDARY
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 #ifndef TRAMPOLINE_ALIGNMENT
 #define TRAMPOLINE_ALIGNMENT FUNCTION_BOUNDARY
@@ -132,9 +121,6 @@ int current_function_uses_only_leaf_regs;
    calls.c:emit_library_call_value_1 uses it to set up
    post-instantiation libcalls.  */
 int virtuals_instantiated;
-
-/* Nonzero if at least one trampoline has been created.  */
-int trampolines_created;
 
 /* Assign unique numbers to labels generated for profiling, debugging, etc.  */
 static int funcdef_no;
@@ -2712,7 +2698,6 @@ optimize_bit_field (body, insn, equiv_mem)
      rtx insn;
      rtx *equiv_mem;
 {
-#ifndef SGI_MONGOOSE
   rtx bitfield;
   int destflag;
   rtx seq = 0;
@@ -2855,7 +2840,6 @@ optimize_bit_field (body, insn, equiv_mem)
 	    emit_insn_before (seq, insn);
 	}
     }
-#endif /* SGI_MONGOOSE */
 }
 
 /* These routines are responsible for converting virtual register references
@@ -6846,17 +6830,6 @@ expand_function_end (filename, line, end_bindings)
   tree link;
   rtx clobber_after;
 
-#ifdef SGI_MONGOOSE
-#ifdef KEY
-  /* Fix for bug 592. */
-  /* Outside function body, can't compute type's actual size
-     until next function's body starts.  */
-  immediate_size_expand--;
-#endif
-
-  return;
-#endif /* SGI_MONGOOSE */
-
   finish_expr_for_function ();
 
   /* If arg_pointer_save_area was referenced only from a nested
@@ -6906,7 +6879,6 @@ expand_function_end (filename, line, end_bindings)
       emit_block_move (blktramp, initial_trampoline,
 		       GEN_INT (TRAMPOLINE_SIZE), BLOCK_OP_NORMAL);
 #endif
-      trampolines_created = 1;
       INITIALIZE_TRAMPOLINE (tramp, XEXP (DECL_RTL (function), 0), context);
       seq = get_insns ();
       end_sequence ();

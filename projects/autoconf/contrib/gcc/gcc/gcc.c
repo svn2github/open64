@@ -622,14 +622,6 @@ proper position among the other output files.  */
 #define LINK_GCC_C_SEQUENCE_SPEC "%G %L %G"
 #endif
 
-#ifndef LINK_PIE_SPEC
-#ifdef HAVE_LD_PIE
-#define LINK_PIE_SPEC "%{pie:-pie} "
-#else
-#define LINK_PIE_SPEC "%{pie:} "
-#endif
-#endif
-
 /* -u* was put back because both BSD and SysV seem to support it.  */
 /* %{static:} simply prevents an error message if the target machine
    doesn't handle -static.  */
@@ -639,8 +631,8 @@ proper position among the other output files.  */
 #ifndef LINK_COMMAND_SPEC
 #define LINK_COMMAND_SPEC "\
 %{!fsyntax-only:%{!c:%{!M:%{!MM:%{!E:%{!S:\
-    %(linker) %l " LINK_PIE_SPEC "%X %{o*} %{A} %{d} %{e*} %{m} %{N} %{n} %{r}\
-    %{s} %{t} %{u*} %{x} %{z} %{Z} %{!A:%{!nostdlib:%{!nostartfiles:%S}}}\
+    %(linker) %l %X %{o*} %{A} %{d} %{e*} %{m} %{N} %{n} %{r} %{s} %{t}\
+    %{u*} %{x} %{z} %{Z} %{!A:%{!nostdlib:%{!nostartfiles:%S}}}\
     %{static:} %{L*} %(link_libgcc) %o %{!nostdlib:%{!nodefaultlibs:%(link_gcc_c_sequence)}}\
     %{!A:%{!nostdlib:%{!nostartfiles:%E}}} %{T*} }}}}}}"
 #endif
@@ -965,7 +957,6 @@ static const struct option_map option_map[] =
    {"--param", "--param", "a"},
    {"--pedantic", "-pedantic", 0},
    {"--pedantic-errors", "-pedantic-errors", 0},
-   {"--pie", "-pie", 0},
    {"--pipe", "-pipe", 0},
    {"--prefix", "-B", "a"},
    {"--preprocess", "-E", 0},
@@ -1564,9 +1555,6 @@ init_spec ()
 			    "-lgcc_s"
 #else
 			    "-lgcc_s%M"
-#endif
-#ifdef USE_LIBUNWIND_EXCEPTIONS
-			    " -lunwind"
 #endif
 			    ,
 			    "-lgcc",
@@ -3269,10 +3257,6 @@ process_command (argc, argv)
 	{
 	  /* translate_options () has turned --version into -fversion.  */
 	  printf (_("%s (GCC) %s\n"), programname, version_string);
-	  extern const char bk_cset_key[], bk_cset_rev[];
-	  printf (_("Revision %s (%s)\n"), bk_cset_rev, bk_cset_key);
-	  fputs (_("Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
-		 stdout);
 	  fputs (_("Copyright (C) 2003 Free Software Foundation, Inc.\n"),
 		 stdout);
 	  fputs (_("This is free software; see the source for copying conditions.  There is NO\n\

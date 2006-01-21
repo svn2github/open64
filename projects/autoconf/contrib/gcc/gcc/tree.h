@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Front-end tree definitions for GNU compiler.
    Copyright (C) 1989, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
    2001, 2002 Free Software Foundation, Inc.
@@ -42,16 +38,6 @@ enum tree_code {
 };
 
 #undef DEFTREECODE
-
-#ifdef SGI_MONGOOSE
-typedef unsigned int LABEL_IDX;
-struct mongoose_gcc_DST_IDX {unsigned int block; unsigned int offset; };
-#if defined(__cplusplus)
-class ST;
-#else
-typedef struct st ST;
-#endif /* __cplusplus */
-#endif /* SGI_MONGOOSE */
 
 /* Number of language-independent tree codes.  */
 #define NUM_TREE_CODES ((int) LAST_AND_UNUSED_TREE_CODE)
@@ -150,11 +136,7 @@ struct tree_common GTY(())
   unsigned readonly_flag : 1;
   unsigned unsigned_flag : 1;
   unsigned asm_written_flag: 1;
-#ifdef KEY
-  unsigned not_emitted_by_gxx : 1;
-#else
   unsigned unused_0 : 1;
-#endif
 
   unsigned used_flag : 1;
   unsigned nothrow_flag : 1;
@@ -172,11 +154,7 @@ struct tree_common GTY(())
   unsigned lang_flag_4 : 1;
   unsigned lang_flag_5 : 1;
   unsigned lang_flag_6 : 1;
-#ifdef KEY
-  unsigned lang_flag_7 : 1;
-#else
   unsigned unused_1 : 1;
-#endif
 };
 
 /* The following table lists the uses of each of the above flags and
@@ -224,8 +202,6 @@ struct tree_common GTY(())
            TREE_LIST or TREE_VEC
        TREE_PRIVATE in
            ..._DECL
-       TREE_SYMBOL_REFERENCED_BY_WHIRL in	// KEY
-           IDENTIFIER_NODE
 
    protected_flag:
 
@@ -568,21 +544,10 @@ extern void tree_vec_elt_check_failed PARAMS ((int, int, const char *,
    occur in constant expressions.  */
 #define TREE_CONSTANT_OVERFLOW(NODE) ((NODE)->common.static_flag)
 
-#ifdef KEY
-#define TREE_NOT_EMITTED_BY_GXX(NODE) \
-  (IDENTIFIER_NODE_CHECK (DECL_ASSEMBLER_NAME (NODE))->common.not_emitted_by_gxx)
-#endif
-
 /* In an IDENTIFIER_NODE, this means that assemble_name was called with
    this string as an argument.  */
 #define TREE_SYMBOL_REFERENCED(NODE) \
   (IDENTIFIER_NODE_CHECK (NODE)->common.static_flag)
-#ifdef KEY
-/* In an IDENTIFIER_NODE, this means the function with this assembler_name was
-   called from WHIRL. */
-#define TREE_SYMBOL_REFERENCED_BY_WHIRL(NODE) \
-  (IDENTIFIER_NODE_CHECK (NODE)->common.private_flag)
-#endif
 
 /* In an INTEGER_CST, REAL_CST, COMPLEX_CST, or VECTOR_CST, this means
    there was an overflow in folding, and no warning has been issued
@@ -733,10 +698,6 @@ extern void tree_vec_elt_check_failed PARAMS ((int, int, const char *,
 #define TREE_LANG_FLAG_4(NODE) ((NODE)->common.lang_flag_4)
 #define TREE_LANG_FLAG_5(NODE) ((NODE)->common.lang_flag_5)
 #define TREE_LANG_FLAG_6(NODE) ((NODE)->common.lang_flag_6)
-#ifdef KEY
-/* Inside a TARGET_EXPR, keep track if GNU is emitting the cleanup */
-#define TREE_LANG_FLAG_7(NODE) ((NODE)->common.lang_flag_7)
-#endif
 
 /* Define additional fields and accessors for nodes representing constants.  */
 
@@ -798,9 +759,6 @@ struct tree_real_cst GTY(())
 /* In a STRING_CST */
 #define TREE_STRING_LENGTH(NODE) (STRING_CST_CHECK (NODE)->string.length)
 #define TREE_STRING_POINTER(NODE) (STRING_CST_CHECK (NODE)->string.pointer)
-#ifdef KEY
-#define TREE_STRING_ST(NODE) (STRING_CST_CHECK (NODE)->string.st)
-#endif /* KEY */
 
 struct tree_string GTY(())
 {
@@ -808,9 +766,6 @@ struct tree_string GTY(())
   rtx rtl;	/* acts as link to register transfer language (rtl) info */
   int length;
   const char *pointer;
-#ifdef SGI_MONGOOSE
-  ST *st;     /* for storing whirl symtab idx */
-#endif /* SGI_MONGOOSE */
 };
 
 /* In a COMPLEX_CST node.  */
@@ -826,15 +781,7 @@ struct tree_complex GTY(())
 };
 
 /* In a VECTOR_CST node.  */
-#ifndef SGI_MONGOOSE
 #define TREE_VECTOR_CST_ELTS(NODE) (VECTOR_CST_CHECK (NODE)->vector.elements)
-#define TREE_VECTOR_CST_ELTS(NODE) (VECTOR_CST_CHECK (NODE)->vector.elements)
-#else
-// I can not see where VECTOR_CST_CHECK is defined in gcc-3.2.2
-// It appears just a regular check to see if the node is of correct type
-// We can do without it.
-#define TREE_VECTOR_CST_ELTS(NODE) (NODE->vector.elements)
-#endif /* SGI_MONGOOSE */
 
 struct tree_vector GTY(())
 {
@@ -849,16 +796,8 @@ struct tree_vector GTY(())
 
 #define IDENTIFIER_LENGTH(NODE) \
   (IDENTIFIER_NODE_CHECK (NODE)->identifier.id.len)
-
-#ifndef SGI_MONGOOSE
 #define IDENTIFIER_POINTER(NODE) \
   ((const char *) IDENTIFIER_NODE_CHECK (NODE)->identifier.id.str)
-#else
-// can not return a const char * if return type is char *
-#define IDENTIFIER_POINTER(NODE) \
-  ((char *)IDENTIFIER_NODE_CHECK (NODE)->identifier.id.str)
-#endif /* SGI_MONGOOSE */
-
 #define IDENTIFIER_HASH_VALUE(NODE) \
   (IDENTIFIER_NODE_CHECK (NODE)->identifier.id.hash_value)
 
@@ -1094,18 +1033,6 @@ struct tree_block GTY(())
    neither a RECORD_TYPE, QUAL_UNION_TYPE, nor a UNION_TYPE.  */
 #define TYPE_BINFO(NODE) (TYPE_CHECK (NODE)->type.binfo)
 
-#ifdef SGI_MONGOOSE
-/* WHIRL TY idx */
-#define TYPE_TY_IDX(NODE) (TYPE_CHECK (NODE)->type.ty_idx)
-#define TYPE_FIELD_IDS_USED(NODE) (TYPE_CHECK (NODE)->type.field_ids_used)
-/* Because we are using a local struct (no DST directly visible)
-   (forced because DST id is a POD struct)
-   and wish to use gcc-consistent terminology, DST clients
-   must copy into/out-of struct mongoose_gcc_DST_IDX before/after
-   using the following */
-#define TYPE_DST_IDX(NODE) (TYPE_CHECK(NODE)->type.dst_id)
-#endif /* SGI_MONGOOSE */
-
 /* The (language-specific) typed-based alias set for this type.
    Objects whose TYPE_ALIAS_SETs are different cannot alias each
    other.  If the TYPE_ALIAS_SET is -1, no alias set has yet been
@@ -1226,16 +1153,8 @@ struct tree_block GTY(())
   TYPE_MAX_VALUE (ARRAY_TYPE_CHECK (ARRAY_TYPE))
 
 /* For a VECTOR_TYPE, this is the number of sub-parts of the vector.  */
-#ifndef SGI_MONGOOSE
 #define TYPE_VECTOR_SUBPARTS(VECTOR_TYPE) \
   GET_MODE_NUNITS (VECTOR_TYPE_CHECK (VECTOR_TYPE)->type.mode)
-#else
-// I can not see where VECTOR_TYPE_CHECK is defined in gcc-3.2.2
-// It appears just a regular check to see if the node is of correct type
-// We can do without it.
-#define TYPE_VECTOR_SUBPARTS(VECTOR_TYPE) \
-  GET_MODE_NUNITS (VECTOR_TYPE->type.mode)
-#endif /* SGI_MONGOOSE */
 
   /* Indicates that objects of this type must be initialized by calling a
    function when they are created.  */
@@ -1365,19 +1284,6 @@ struct tree_type GTY(())
   HOST_WIDE_INT alias_set;
   /* Points to a structure whose details depend on the language in use.  */
   struct lang_type *lang_specific;
-#ifdef SGI_MONGOOSE
-  unsigned int ty_idx;  /* whirl type idx */
-  unsigned int field_ids_used;  /* for structs and unions only; 0 otherwise */
-  struct mongoose_gcc_DST_IDX dst_id; /* whirl DST */
-#ifdef KEY
-  /* These are methods that GCC generates directly to RTL and assembly without
-     having their function trees entered into the top-level namespace.
-     Examples are in-charge and not-in-charge constructors, whose RTL and
-     assembly are generated right after the functions are cloned.  Chain these
-     functions here so the WHIRL can be emitted for them. */
-  tree extra_methods;
-#endif /* KEY */
-#endif /* SGI_MONGOOSE */
 };
 
 /* Define accessor macros for information about type inheritance
@@ -1555,11 +1461,6 @@ struct tree_type GTY(())
    values for parameters are encoded in the type of the function,
    not in the PARM_DECL slot.  */
 #define DECL_INITIAL(NODE) (DECL_CHECK (NODE)->decl.initial)
-#ifdef KEY
-#define DECL_INITIAL_2(NODE) (DECL_CHECK (NODE)->decl.initial_2)
-#define DECL_ALIAS_TARGET(NODE) (DECL_CHECK (NODE)->decl.alias_target)
-#define DECL_ALIAS_TARGET_DECL(NODE) (DECL_CHECK (NODE)->decl.initial_2)
-#endif  /* KEY */
 /* For a PARM_DECL, records the data type used to pass the argument,
    which may be different from the type seen in the program.  */
 #define DECL_ARG_TYPE(NODE) (PARM_DECL_CHECK (NODE)->decl.initial)
@@ -1696,23 +1597,6 @@ struct tree_type GTY(())
 
 /* Language-specific decl information.  */
 #define DECL_LANG_SPECIFIC(NODE) (DECL_CHECK (NODE)->decl.lang_specific)
-
-#ifdef SGI_MONGOOSE
-/* WHIRL symtab idx */
-#define DECL_ST(NODE) (DECL_CHECK (NODE)->decl.sgi_u1.st)
-#ifndef KEY	// DECL_ST2 obsolete
-#define DECL_ST2(NODE) (DECL_CHECK (NODE)->decl.sgi_u2.st2)
-#endif
-/* field number within the enclosing struct */
-#define DECL_FIELD_ID(NODE) (DECL_CHECK (NODE)->decl.sgi_u1.field_id)
-#define DECL_DST_IDX(NODE) (TYPE_CHECK(NODE)->decl.decl_dst_id)
-#endif /* SGI_MONGOOSE */
-
-#ifdef KEY
-/* In a VAR_DECL, if DECL_ASMREG is non-zero, then DECL_ASMREG is the register
-   number assigned through an "asm". */
-#define DECL_ASMREG(NODE) (DECL_CHECK (NODE)->decl.thunk_delta)
-#endif
 
 /* In a VAR_DECL or FUNCTION_DECL,
    nonzero means external reference:
@@ -1909,25 +1793,6 @@ struct tree_type GTY(())
    argument's depth.  */
 #define DECL_POINTER_DEPTH(DECL) (DECL_CHECK (DECL)->decl.pointer_depth)
 
-#ifdef SGI_MONGOOSE
-/* Used to indicate that this FUNCTION_DECL has syscall_linkage */
-#define DECL_SYSCALL_LINKAGE(NODE) (DECL_CHECK (NODE)->decl.syscall_linkage_flag)
-
-/* Used to indicate that this FUNCTION_DECL return needs to be widened */
-#define DECL_WIDEN_RETVAL(NODE) (DECL_CHECK (NODE)->decl.widen_retval_flag)
-#endif /* SGI_MONGOOSE */
-
-#ifdef KEY
-/* Used to indicate that this decl is emitted by g++, regardless of the decl's
-   other attributes such as weak or external. */
-#define DECL_EMITTED_BY_GXX(NODE) (DECL_CHECK (NODE)->decl.emitted_by_gxx)
-
-#ifdef KEY
-/* Used to mark a threadprivate variable in OpenMP */
-#define DECL_THREADPRIVATE(NODE) (DECL_CHECK (NODE)->decl.threadprivate_flag)
-#endif
-#endif
-
 struct function;
 
 struct tree_decl GTY(())
@@ -1970,9 +1835,7 @@ struct tree_decl GTY(())
   unsigned uninlinable : 1;
   unsigned thread_local_flag : 1;
   unsigned inlined_function_flag : 1;
-#ifdef KEY
-  unsigned threadprivate_flag : 1;
-#endif /* KEY */
+  /* One unused bit.  */
 
   unsigned lang_flag_0 : 1;
   unsigned lang_flag_1 : 1;
@@ -1982,17 +1845,6 @@ struct tree_decl GTY(())
   unsigned lang_flag_5 : 1;
   unsigned lang_flag_6 : 1;
   unsigned lang_flag_7 : 1;
-
-#ifdef SGI_MONGOOSE
-  unsigned syscall_linkage_flag : 1;    /* has syscall_linkage attribute */
-  unsigned widen_retval_flag : 1;       /* widen return value attribute */
-#endif /* SGI_MONGOOSE */
-#ifdef KEY
-  unsigned emitted_by_gxx : 1;		/* g++ emitted the decl to assembly.
-					   This flag is only set for those
-					   decl's where kg++fe normally would
-					   assume the decl is not emitted. */
-#endif
 
   union tree_decl_u1 {
     /* In a FUNCTION_DECL for which DECL_BUILT_IN holds, this is
@@ -2015,14 +1867,6 @@ struct tree_decl GTY(())
   tree arguments;	/* Also used for DECL_FIELD_OFFSET */
   tree result;	/* Also used for DECL_BIT_FIELD_TYPE */
   tree initial;	/* Also used for DECL_QUALIFIER */
-#ifdef KEY
-  tree initial_2;       /* For thunks, saved value of initial. */
-  tree alias_target;    /* The decl is an alias for this symbol. */
-  /* In the original GCC code, THUNK_DELTA maps to u1.i, which collides with
-     DECL_NUM_STMTS which also maps to u1.i.  Create a unique field for the
-     thunk delta. */
-  HOST_WIDE_INT thunk_delta;
-#endif /* KEY */
   tree abstract_origin;
   tree assembler_name;
   tree section_name;
@@ -2053,35 +1897,7 @@ struct tree_decl GTY(())
   HOST_WIDE_INT pointer_alias_set;
   /* Points to a structure whose details depend on the language in use.  */
   struct lang_decl *lang_specific;
-
-#ifdef SGI_MONGOOSE
-  unsigned symtab_idx    : 8;  /* whirl SYMTAB_IDX */
-  unsigned label_defined : 1;
-                                                                                 
-  union {
-    ST *st;                   /* whirl ST entry for symbol if st_allocated */
-    LABEL_IDX label_idx;
-    unsigned int field_id;    /* field id within the enclosing struct */
-  } sgi_u1;
-#ifndef KEY	// st2 obsolete
-  union {
-    ST *st2;
-  } sgi_u2;
-#endif
-  struct mongoose_gcc_DST_IDX decl_dst_id; /* whirl DST */
-#endif /* SGI_MONGOOSE */
 };
-
-#ifdef KEY
-#include "omp_types.h"
-struct tree_omp GTY(())
-{
-  struct tree_common common;
-  enum omp_tree_type choice;
-  void * omp_clause_list;
-};
-#endif /* KEY */
-
 
 enum tree_node_structure_enum {
   TS_COMMON,
@@ -2097,9 +1913,6 @@ enum tree_node_structure_enum {
   TS_VEC,
   TS_EXP,
   TS_BLOCK,
-#ifdef KEY
-  TS_OMP,
-#endif
   LAST_TS_ENUM
 };
 
@@ -2123,9 +1936,6 @@ union tree_node GTY ((ptr_alias (union lang_tree_node),
   struct tree_vec GTY ((tag ("TS_VEC"))) vec;
   struct tree_exp GTY ((tag ("TS_EXP"))) exp;
   struct tree_block GTY ((tag ("TS_BLOCK"))) block;
-#ifdef KEY
-  struct tree_omp GTY ((tag ("TS_OMP"))) omp;
-#endif
  };
 
 /* Standard named or nameless data types of the C compiler.  */
@@ -2149,11 +1959,6 @@ enum tree_index
   TI_INTEGER_ONE,
   TI_INTEGER_MINUS_ONE,
   TI_NULL_POINTER,
-
-  TI_FLOAT_PTR_TYPE,
-  TI_DOUBLE_PTR_TYPE,
-  TI_LONG_DOUBLE_PTR_TYPE,
-  TI_INTEGER_PTR_TYPE,
 
   TI_SIZE_ZERO,
   TI_SIZE_ONE,
@@ -2237,11 +2042,6 @@ extern GTY(()) tree global_trees[TI_MAX];
 #define bitsize_unit_node		global_trees[TI_BITSIZE_UNIT]
 
 #define null_pointer_node		global_trees[TI_NULL_POINTER]
-
-#define float_ptr_type_node             global_trees[TI_FLOAT_PTR_TYPE]
-#define double_ptr_type_node            global_trees[TI_DOUBLE_PTR_TYPE]
-#define long_double_ptr_type_node       global_trees[TI_LONG_DOUBLE_PTR_TYPE]
-#define integer_ptr_type_node           global_trees[TI_INTEGER_PTR_TYPE]
 
 #define float_type_node			global_trees[TI_FLOAT_TYPE]
 #define double_type_node		global_trees[TI_DOUBLE_TYPE]
@@ -2417,13 +2217,6 @@ extern tree make_tree_vec		PARAMS ((int));
    The name is supplied as a char *.  */
 
 extern tree get_identifier		PARAMS ((const char *));
-
-#if GCC_VERSION >= 3000
-#define get_identifier(str) \
-  (__builtin_constant_p (str)						\
-   ? get_identifier_with_length ((str), (unsigned) strlen (str))	\
-   : (get_identifier) (str))
-#endif
 
 /* Identical to get_identifier, except that the length is assumed
    known.  */
@@ -2815,11 +2608,7 @@ extern tree nreverse			PARAMS ((tree));
 /* Returns the length of a chain of nodes
    (number of chain pointers to follow before reaching a null pointer).  */
 
-#if defined(SGI_MONGOOSE) && defined(__cplusplus)
-extern "C" int list_length              PARAMS ((tree));
-#else
 extern int list_length			PARAMS ((tree));
-#endif /* SGI_MONGOOSE */
 
 /* Returns the number of FIELD_DECLs in a type.  */
 
@@ -3220,9 +3009,6 @@ extern void print_rtl			PARAMS ((FILE *, rtx));
 /* In print-tree.c */
 extern void debug_tree			PARAMS ((tree));
 #ifdef BUFSIZ
-#ifdef SGI_MONGOOSE
-extern void print_tree                  PARAMS ((FILE *, tree));
-#endif /* SGI_MONGOOSE */
 extern void print_node			PARAMS ((FILE *, const char *, tree,
 						 int));
 extern void print_node_brief		PARAMS ((FILE *, const char *, tree,
@@ -3274,7 +3060,6 @@ extern int supports_one_only		PARAMS ((void));
 extern void variable_section		PARAMS ((tree, int));
 enum tls_model decl_tls_model		PARAMS ((tree));
 enum symbol_visibility decl_visibility	PARAMS ((tree));
-extern void resolve_unique_section	PARAMS ((tree, int, int));
 
 /* In fold-const.c */
 extern int div_and_round_double		PARAMS ((enum tree_code, int,

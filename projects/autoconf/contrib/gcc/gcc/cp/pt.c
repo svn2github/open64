@@ -1,8 +1,3 @@
-/*
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
-   File modified February 23, 2005 by PathScale, Inc. to add OpenMP support.
- */
-
 /* Handle parameterized types (templates) for GNU C++.
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
    2001, 2002  Free Software Foundation, Inc.
@@ -62,10 +57,6 @@ typedef int (*tree_fn_t) PARAMS ((tree, void*));
 static GTY(()) tree pending_templates;
 static tree last_pending_template;
 
-#ifdef KEY
-static bool regenerating_decl_from_template = false;
-#endif
-
 int processing_template_parmlist;
 static int template_header_count;
 
@@ -104,7 +95,7 @@ static void pop_access_scope PARAMS ((tree));
 static int resolve_overloaded_unification PARAMS ((tree, tree, tree, tree,
 						   unification_kind_t, int));
 static int try_one_overload PARAMS ((tree, tree, tree, tree, tree,
-				     unification_kind_t, int, bool));
+				     unification_kind_t, int));
 static int unify PARAMS ((tree, tree, tree, tree, int));
 static void add_pending_template PARAMS ((tree));
 static void reopen_tinst_level PARAMS ((tree));
@@ -4000,8 +3991,7 @@ lookup_template_function (fns, arglist)
   if (fns == error_mark_node || arglist == error_mark_node)
     return error_mark_node;
 
-  if (fns == NULL_TREE
-      || TREE_CODE (fns) == FUNCTION_DECL)
+  if (fns == NULL_TREE)
     {
       error ("non-template used as template");
       return error_mark_node;
@@ -6574,11 +6564,6 @@ tsubst_call_declarator_parms (parms, args, complain, in_decl)
   return new_parms;
 }
 
-#ifdef KEY
-extern void template_substituted (tree, tree, tree);
-extern int flag_openmp;
-#endif /* KEY */
-
 /* Take the tree structure T and replace template parameters used
    therein with the argument vector ARGS.  IN_DECL is an associated
    decl for diagnostics.  If an error occurs, returns ERROR_MARK_NODE.
@@ -6602,9 +6587,6 @@ tsubst (t, args, complain, in_decl)
      tree in_decl;
 {
   tree type, r;
-#ifdef KEY
-  tree new_t;
-#endif
 
   if (t == NULL_TREE || t == error_mark_node
       || t == integer_type_node
@@ -6631,23 +6613,7 @@ tsubst (t, args, complain, in_decl)
     return error_mark_node;
 
   if (DECL_P (t))
-  {
-#ifdef KEY
-    new_t = tsubst_decl (t, args, type, complain);
-    /* For now do it for var- and parm-decls when -mp is passed */
-    if (flag_openmp)
-    {
-      // If it is a parm-decl, wait for it to be regenerated. See comments
-      // for regenerate_decl_from_template
-      if ((TREE_CODE (t) == VAR_DECL) ||
-          (TREE_CODE (t) == PARM_DECL && regenerating_decl_from_template))
-        template_substituted (t, new_t, current_function_decl);
-    }
-    return new_t;
-#else
     return tsubst_decl (t, args, type, complain);
-#endif /* KEY */
-  }
 
   switch (TREE_CODE (t))
     {
@@ -7729,11 +7695,6 @@ tsubst_expr (t, args, complain, in_decl)
 	prep_stmt (t);
 
 	stmt = begin_for_stmt ();
-#ifdef KEY
-	// Propagate flag to indicate if it is an OpenMP FOR loop and should
-	// be expanded using WHIRL DO_LOOP.
-	TREE_ADDRESSABLE (stmt) = TREE_ADDRESSABLE (t);
-#endif
 	tsubst_expr (FOR_INIT_STMT (t), args, complain, in_decl);
 	finish_for_init_stmt (stmt);
 	finish_for_cond (tsubst_expr (FOR_COND (t),
@@ -7936,14 +7897,6 @@ tsubst_expr (t, args, complain, in_decl)
       prep_stmt (t);
       tsubst (TREE_TYPE (t), args, complain, NULL_TREE);
       break;
-
-#ifdef KEY
-    // Build an exact copy of the OMP statement, during template
-    // instantiation
-    case OMP_MARKER_STMT:
-      add_stmt (build_omp_stmt (t->omp.choice, (void *)t->omp.omp_clause_list));
-      break;
-#endif
 
     default:
       abort ();
@@ -8484,15 +8437,9 @@ resolve_overloaded_unification (tparms, targs, parm, arg, strict,
 {
   tree tempargs = copy_node (targs);
   int good = 0;
-  bool addr_p;
 
   if (TREE_CODE (arg) == ADDR_EXPR)
-    {
-      arg = TREE_OPERAND (arg, 0);
-      addr_p = true;
-    }
-  else
-    addr_p = false;
+    arg = TREE_OPERAND (arg, 0);
 
   if (TREE_CODE (arg) == COMPONENT_REF)
     /* Handle `&x' where `x' is some static or non-static member
@@ -8528,8 +8475,10 @@ resolve_overloaded_unification (tparms, targs, parm, arg, strict,
 	  if (subargs)
 	    {
 	      elem = tsubst (TREE_TYPE (fn), subargs, tf_none, NULL_TREE);
-	      good += try_one_overload (tparms, targs, tempargs, parm, 
-					elem, strict, sub_strict, addr_p);
+	      if (TREE_CODE (elem) == METHOD_TYPE)
+		elem = build_ptrmemfunc_type (build_pointer_type (elem));
+	      good += try_one_overload (tparms, targs, tempargs, parm, elem,
+					strict, sub_strict);
 	    }
 	}
     }
@@ -8537,9 +8486,14 @@ resolve_overloaded_unification (tparms, targs, parm, arg, strict,
 	   || TREE_CODE (arg) == FUNCTION_DECL)
     {
       for (; arg; arg = OVL_NEXT (arg))
-	good += try_one_overload (tparms, targs, tempargs, parm,
-				  TREE_TYPE (OVL_CURRENT (arg)),
-				  strict, sub_strict, addr_p);
+	{
+	  tree type = TREE_TYPE (OVL_CURRENT (arg));
+	  if (TREE_CODE (type) == METHOD_TYPE)
+	    type = build_ptrmemfunc_type (build_pointer_type (type));
+	  good += try_one_overload (tparms, targs, tempargs, parm,
+				    type,
+				    strict, sub_strict);
+	}
     }
   else
     abort ();
@@ -8568,20 +8522,14 @@ resolve_overloaded_unification (tparms, targs, parm, arg, strict,
 /* Subroutine of resolve_overloaded_unification; does deduction for a single
    overload.  Fills TARGS with any deduced arguments, or error_mark_node if
    different overloads deduce different arguments for a given parm.
-   ADDR_P is true if the expression for which deduction is being
-   performed was of the form "& fn" rather than simply "fn".
-
    Returns 1 on success.  */
 
 static int
-try_one_overload (tree tparms,
-		  tree orig_targs,
-		  tree targs, 
-		  tree parm, 
-		  tree arg, 
-		  unification_kind_t strict,
-		  int sub_strict,
-		  bool addr_p)
+try_one_overload (tparms, orig_targs, targs, parm, arg, strict,
+		  sub_strict)
+     tree tparms, orig_targs, targs, parm, arg;
+     unification_kind_t strict;
+     int sub_strict;
 {
   int nargs;
   tree tempargs;
@@ -8596,11 +8544,6 @@ try_one_overload (tree tparms,
 
   if (uses_template_parms (arg))
     return 1;
-
-  if (TREE_CODE (arg) == METHOD_TYPE)
-    arg = build_ptrmemfunc_type (build_pointer_type (arg));
-  else if (addr_p)
-    arg = build_pointer_type (arg);
 
   sub_strict |= maybe_adjust_types_for_deduction (strict, &parm, &arg);
 
@@ -10465,15 +10408,9 @@ instantiate_decl (d, defer_ok)
   if (need_push)
     push_to_top_level ();
 
-#ifdef KEY
-  regenerating_decl_from_template = true;
-#endif
   /* Regenerate the declaration in case the template has been modified
      by a subsequent redeclaration.  */
   regenerate_decl_from_template (d, td);
-#ifdef KEY
-  regenerating_decl_from_template = false;
-#endif
   
   /* We already set the file and line above.  Reset them now in case
      they changed as a result of calling regenerate_decl_from_template.  */

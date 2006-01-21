@@ -1,97 +1,10 @@
-2003-09-14  Mark Mitchell  <mark@codesourcery.com>
+2003-08-04  Release Manager
 
-	PR c++/3907
-	* cp-tree.h (innermost_scope_is_class_p): New function.
-	* class.c (maybe_note_name_used_in_class): Refine test for whether
-	or not we are in a class scope.
-	* decl.c (innermost_scope_is_class_p): Define.
+	* GCC 3.3.1 Released.
 
-2003-09-14  Mark Mitchell  <mark@codesourcery.com>
+2003-08-04  Release Manager
 
-	* class.c (layout_class_type): Make DECL_MODE match TYPE_MODE for
-	an bit-field whose width exceeds that of its type.
-
-2003-09-09  Steven Bosscher  <steven@gcc.gnu.org>
-
-	PR c++/11595
-	* decl.c (define_label): Remove unreachable timevar pop.
-	Always return the decl, even if the definition is invalid.
-
-2003-09-08  Mark Mitchell  <mark@codesourcery.com>
-
-	PR c++/11786
-	* decl2.c (add_function): Do not complain about seeing the same
-	non-function twice.
-
-2003-09-08  Mark Mitchell  <mark@codesourcery.com>
-
-	PR c++/5296
-	* pt.c (try_one_overload): Add addr_p parameter.
-	(resolve_overloaded_unification): Pass it.
-
-2003-09-07  Jason Merrill  <jason@redhat.com>
-
-	PR c++/12181
-	* typeck.c (build_modify_expr): Don't always stabilize the lhs and
-	rhs.  Do stabilize the lhs of a MODIFY_EXPR used on the lhs.
-
-2003-09-06  Mark Mitchell  <mark@codesourcery.com>
-
-	PR c++/11867
-	* call.c (standard_conversion): Improve comments.
-	(perform_direct_initialization): Make sure we return an expression
-	of the correct type.
-	* typeck.c (build_static_cast): Check for ambiguity and
-	accessibility when performing conversions.
-
-2003-09-05  Mark Mitchell  <mark@codesourcery.com>
-
-	PR c++/12163
-	* call.c (perform_direct_initialization): Correct logic for
-	direct-initialization of a class type.
-
-	PR c++/12146
-	* pt.c (lookup_template_function): Robustify.
-
-2003-09-04  Mark Mitchell  <mark@codesourcery.com>
-
-	Revert this patch:
-	* class.c (include_empty_classes): Correct logic for ABI version 1.
-
-2003-09-03  Mark Mitchell  <mark@codesourcery.com>
-
-	PR c++/12053
-	* class.c (include_empty_classes): Correct logic for ABI version 1.
-
-2003-09-01  Mark Mitchell  <mark@codesourcery.com>
-
-	PR c++/12114
-	* cp-tree.h (initialize_reference): Change prototype.
-	* call.c (initialize_reference): Add cleanup parameter.
-	* decl.c (grok_reference_init): Likewise.
-	(check_initializer): Likewise.
-	(cp_finish_decl): Insert a CLEANUP_STMT if necessary.
-	(duplicate_decls): When replacing an anticipated builtin, do not
-	honor TREE_NOTHROW.
-	* typeck.c (convert_for_initialization): Correct call to
-	initialize_reference.
-
-2003-08-29  Mark Mitchell  <mark@codesourcery.com>
-
-	PR c++/11928
-	* search.c (add_conversions): Avoid adding two conversion
-	operators for the same type.
-
-2003-08-20  Kaveh R. Ghazi  <ghazi@caip.rutgers.edu>
-
-	* cp-tree.h (build_function_call_real): Remove unused parameter.
-	* typeck.c (build_function_call_real): Likewise.  Caller changed.
-	* decl.c (binding_table_reverse_maybe_remap): Initialize variable.
-
-2003-08-19  Gabriel Dos Reis  <gdr@integrable-solutions.net>
-
-	PR c++/5293
-	* call.c (initialize_reference): Improve diagnostic.
+	* GCC 3.3.1 Released.
 
 2003-08-04  Mark Mitchell  <mark@codesourcery.com>
 
@@ -300,17 +213,6 @@
 	PR c++/5754
 	* parse.y (structsp): Improve error handling of invalid nested
 	template classes.
-
-2003-06-21  Jakub Jelinek  <jakub@redhat.com>
-
-	* method.c (thunk_labelno): New variable.
-	(make_alias_for_thunk): New function.
-	(use_thunk): Use it if defined ASM_OUTPUT_DEF.  Put the thunk
-	into the same section as the function it is calling.
-	Include gt-cp-method.h.
-	* Make-lang.in (gt-cp-method.h): Depend on s-gtype.
-	(cp/method.o): Depend on gt-cp-method.h.
-	* config-lang.in (gtfiles): Add $(srcdir)/cp/method.c.
 
 2003-06-23  Jakub Jelinek  <jakub@redhat.com>
 
@@ -592,12 +494,6 @@
 	PR c++/10661
 	* pt.c (instantiate_class_template): Also instantiate our
 	enclosing class.
-
-2002-05-24  Jakub Jelinek  <jakub@redhat.com>
-
-	PR c++/6794
-	* decl.c (cp_make_fname_decl): If outside of function, emit
-	the variable immediately.
 
 2003-05-13  Release Manager
 

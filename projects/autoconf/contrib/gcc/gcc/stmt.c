@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Expands front end tree to back end RTL for GNU C-Compiler
    Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997,
    1998, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -58,10 +54,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "ggc.h"
 #include "langhooks.h"
 #include "predict.h"
-
-#ifdef SGI_MONGOOSE
-#include "defaults.h"
-#endif /* SGI_MONGOOSE */
 
 /* Assume that case vectors are not pc-relative.  */
 #ifndef CASE_VECTOR_PC_RELATIVE
@@ -1743,8 +1735,8 @@ expand_asm_operands (string, outputs, inputs, clobbers, vol, filename, line)
 	    }
 	  else
 	    {
-	      warning ("use of memory input without lvalue in asm operand %d is deprecated",
-		       i + noutputs);
+	      warning ("use of memory input without lvalue in "
+		       "asm operand %d is deprecated", i + noutputs);
 
 	      if (CONSTANT_P (op))
 		{
@@ -3078,7 +3070,6 @@ expand_return (retval)
 
   last_insn = get_last_insn ();
 
-#ifndef SGI_MONGOOSE
   /* Distribute return down conditional expr if either of the sides
      may involve tail recursion (see test below).  This enhances the number
      of tail recursions we see.  Don't do this always since it can produce
@@ -3111,7 +3102,6 @@ expand_return (retval)
       end_cleanup_deferral ();
       return;
     }
-#endif /* SGI_MONGOOSE */
 
   result_rtl = DECL_RTL (DECL_RESULT (current_function_decl));
 

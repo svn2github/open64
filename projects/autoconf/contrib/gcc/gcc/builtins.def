@@ -1,9 +1,3 @@
-/*
-   Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
-   File modified October 9, 2003 by PathScale, Inc. to update Open64 C/C++
-   front-ends to GNU 3.3.1 release.
- */
-
 /* This file contains the definitions and documentation for the
    builtins used in the GNU compiler.
    Copyright (C) 2000, 2001 Free Software Foundation, Inc.
@@ -144,17 +138,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
   DEF_BUILTIN (X, (const char *) NULL, NOT_BUILT_IN, BT_LAST,	\
 	       BT_LAST, false, false, false, ATTR_NOTHROW_LIST)
 
-#undef ATTR_MATHFN_FPROUNDING
-#define ATTR_MATHFN_FPROUNDING (flag_unsafe_math_optimizations ? \
-        ATTR_CONST_NOTHROW_LIST : ATTR_PURE_NOTHROW_LIST)
-
-#undef ATTR_MATHFN_FPROUNDING_ERRNO
-#define ATTR_MATHFN_FPROUNDING_ERRNO (flag_errno_math ? \
-        ATTR_NOTHROW_LIST : ATTR_MATHFN_FPROUNDING)
-
-#undef ATTR_MATHFN_FPROUNDING_STORE
-#define ATTR_MATHFN_FPROUNDING_STORE ATTR_NOTHROW_LIST
-
 /* If SMALL_STACK is defined, then `alloca' is only defined in its
    `__builtin' form.  */
 #if SMALL_STACK  
@@ -238,20 +221,13 @@ DEF_UNUSED_BUILTIN(BUILT_IN_FCEIL)
 DEF_UNUSED_BUILTIN(BUILT_IN_FMOD)
 DEF_UNUSED_BUILTIN(BUILT_IN_FREM)
 
-/* The system prototypes for `bzero', 'bcopy' and `bcmp' functions
-   have many variations, so don't specify parameters to avoid conflicts.
-   The expand_* functions check the argument types anyway.  */
+/* The system prototypes for `bzero' and `bcmp' functions have many
+   variations, so don't specify parameters to avoid conflicts.  The
+   expand_* functions check the argument types anyway.  */
 DEF_BUILTIN (BUILT_IN_BZERO,
 	     "__builtin_bzero",
 	     BUILT_IN_NORMAL,
 	     BT_FN_VOID_PTR_SIZE, 
-	     BT_FN_VOID_VAR,
-	     true, true, true,
-	     ATTR_NOTHROW_LIST)
-DEF_BUILTIN (BUILT_IN_BCOPY,
-	     "__builtin_bcopy",
-	     BUILT_IN_NORMAL,
-	     BT_FN_VOID_CONST_PTR_PTR_SIZE,
 	     BT_FN_VOID_VAR,
 	     true, true, true,
 	     ATTR_NOTHROW_LIST)
@@ -280,10 +256,6 @@ DEF_LIB_BUILTIN(BUILT_IN_MEMCPY,
 		"__builtin_memcpy",
 		BT_FN_PTR_PTR_CONST_PTR_SIZE,
 		ATTR_NOTHROW_LIST)
-DEF_LIB_BUILTIN(BUILT_IN_MEMMOVE,
-		"__builtin_memmove",
-		BT_FN_PTR_PTR_CONST_PTR_SIZE,
-		ATTR_NOTHROW_LIST)
 DEF_LIB_BUILTIN(BUILT_IN_MEMCMP,
 		"__builtin_memcmp",
 		BT_FN_INT_CONST_PTR_CONST_PTR_SIZE,
@@ -291,10 +263,6 @@ DEF_LIB_BUILTIN(BUILT_IN_MEMCMP,
 DEF_LIB_BUILTIN(BUILT_IN_MEMSET,
 		"__builtin_memset",
 		BT_FN_PTR_PTR_INT_SIZE,
-		ATTR_NOTHROW_LIST)
-DEF_EXT_LIB_BUILTIN(BUILT_IN_MEMPCPY,
-		"__builtin_mempcpy",
-		BT_FN_PTR_PTR_CONST_PTR_SIZE,
 		ATTR_NOTHROW_LIST)
 
 DEF_LIB_BUILTIN(BUILT_IN_STRCAT,
@@ -304,10 +272,6 @@ DEF_LIB_BUILTIN(BUILT_IN_STRCAT,
 DEF_LIB_BUILTIN(BUILT_IN_STRNCAT,
 		"__builtin_strncat",
 		BT_FN_STRING_STRING_CONST_STRING_SIZE,
-		ATTR_NOTHROW_LIST)
-DEF_EXT_LIB_BUILTIN(BUILT_IN_STPCPY,
-		"__builtin_stpcpy",
-		BT_FN_STRING_STRING_CONST_STRING,
 		ATTR_NOTHROW_LIST)
 DEF_LIB_BUILTIN(BUILT_IN_STRCPY,
 		"__builtin_strcpy",
@@ -353,364 +317,6 @@ DEF_LIB_BUILTIN(BUILT_IN_STRRCHR,
 		"__builtin_strrchr",
 		BT_FN_STRING_CONST_STRING_INT,
 		ATTR_PURE_NOTHROW_LIST)
-
-#ifdef KEY
-DEF_LIB_BUILTIN(BUILT_IN_FLOOR,
-                "__builtin_floor",
-                BT_FN_DOUBLE_DOUBLE,
-		flag_errno_math ? ATTR_NOTHROW_LIST
-                                : (flag_unsafe_math_optimizations
-                                   ? ATTR_CONST_NOTHROW_LIST
-                                   : ATTR_PURE_NOTHROW_LIST))
-DEF_LIB_BUILTIN(BUILT_IN_FLOORF,
-                "__builtin_floorf",
-                BT_FN_FLOAT_FLOAT,
-		flag_errno_math ? ATTR_NOTHROW_LIST
-                                : (flag_unsafe_math_optimizations
-                                   ? ATTR_CONST_NOTHROW_LIST
-                                   : ATTR_PURE_NOTHROW_LIST))
-
-DEF_LIB_BUILTIN(BUILT_IN_FLOORL,
-                "__builtin_floorl",
-                BT_FN_LONG_DOUBLE_LONG_DOUBLE,
-                flag_errno_math ? ATTR_NOTHROW_LIST
-                                : (flag_unsafe_math_optimizations
-                                   ? ATTR_CONST_NOTHROW_LIST
-                                   : ATTR_PURE_NOTHROW_LIST))
-
-DEF_LIB_BUILTIN(BUILT_IN_POW,
-		"__builtin_pow",
-		BT_FN_DOUBLE_DOUBLE_DOUBLE,
-		flag_errno_math ? ATTR_NOTHROW_LIST
-		                : (flag_unsafe_math_optimizations
-                                   ? ATTR_CONST_NOTHROW_LIST
-                                   : ATTR_PURE_NOTHROW_LIST))
-
-#else
-// This part is ! KEY. Comment out the following since we are not using
-// the following builtins any more. If we ever need the following, change
-// the definitions to take 2 parameters, not 1. For bug 3793.
-#ifdef TARG_X8664
-DEF_LIB_BUILTIN(BUILT_IN_IDIV3,
-		"__builtin___divdi3",
-		BT_FN_LONGLONG_LONGLONG,
-		flag_errno_math ? ATTR_NOTHROW_LIST
-                                : (flag_unsafe_math_optimizations
-                                   ? ATTR_CONST_NOTHROW_LIST
-                                   : ATTR_PURE_NOTHROW_LIST))
-
-DEF_LIB_BUILTIN(BUILT_IN_UIDIV3,
-		"__builtin___udivdi3",
-		BT_FN_LONGLONGUNSIGNED_LONGLONGUNSIGNED,
-		flag_errno_math ? ATTR_NOTHROW_LIST
-                                : (flag_unsafe_math_optimizations
-                                   ? ATTR_CONST_NOTHROW_LIST
-                                   : ATTR_PURE_NOTHROW_LIST))
-
-DEF_LIB_BUILTIN(BUILT_IN_IMOD3,
-		"__builtin___moddi3",
-		BT_FN_LONGLONG_LONGLONG,
-		flag_errno_math ? ATTR_NOTHROW_LIST
-                                : (flag_unsafe_math_optimizations
-                                   ? ATTR_CONST_NOTHROW_LIST
-                                   : ATTR_PURE_NOTHROW_LIST))
-
-DEF_LIB_BUILTIN(BUILT_IN_UIMOD3,
-		"__builtin___umoddi3",
-		BT_FN_LONGLONGUNSIGNED_LONGLONGUNSIGNED,
-		flag_errno_math ? ATTR_NOTHROW_LIST
-                                : (flag_unsafe_math_optimizations
-                                   ? ATTR_CONST_NOTHROW_LIST
-                                   : ATTR_PURE_NOTHROW_LIST))
-#endif  // TARG_X8664
-#endif  // KEY
-
-DEF_LIB_BUILTIN(BUILT_IN_ACOS,
-                "__builtin_acos",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ACOSF,
-                "__builtin_acosf",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ACOSH,
-                "__builtin_acosh",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ACOSHF,
-                "__builtin_acoshf",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ACOSHL,
-                "__builtin_acoshl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ACOSL,
-               "__builtin_acosl",
-               BT_FN_LONGDOUBLE_LONGDOUBLE,
-               ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_LIB_BUILTIN(BUILT_IN_ASIN,
-                "__builtin_asin",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ASINF,
-               "__builtin_asinf",
-               BT_FN_FLOAT_FLOAT,
-               ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ASINH,
-                "__builtin_asinh",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_C99_BUILTIN(BUILT_IN_ASINHF,
-                "__builtin_asinhf",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_C99_BUILTIN(BUILT_IN_ASINHL,
-                "__builtin_asinhl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_C99_BUILTIN(BUILT_IN_ASINL,
-                "__builtin_asinl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_LIB_BUILTIN(BUILT_IN_ATAN,
-                "__builtin_atan",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_LIB_BUILTIN(BUILT_IN_ATAN2,
-                "__builtin_atan2",
-                BT_FN_DOUBLE_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ATAN2F,
-                "__builtin_atan2f",
-                BT_FN_FLOAT_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ATAN2L,
-                "__builtin_atan2l",
-                BT_FN_LONGDOUBLE_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ATANF,
-                "__builtin_atanf",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_C99_BUILTIN(BUILT_IN_ATANH,
-                "__builtin_atanh",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ATANHF,
-                "__builtin_atanhf",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ATANHL,
-                "__builtin_atanhl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_ATANL,
-                "__builtin_atanl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_LIB_BUILTIN(BUILT_IN_CEIL,
-                "__builtin_ceil",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_CONST_NOTHROW_LIST)
-
-DEF_C99_BUILTIN(BUILT_IN_CEILF,
-                "__builtin_ceilf",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_CONST_NOTHROW_LIST)
-
-DEF_C99_BUILTIN(BUILT_IN_CEILL,
-                "__builtin_ceill",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_CONST_NOTHROW_LIST)
-
-DEF_C99_BUILTIN(BUILT_IN_FMODF,
-                "__builtin_fmodf",
-                BT_FN_FLOAT_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_FMODL,
-                "__builtin_fmodl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_LIB_BUILTIN(BUILT_IN_FREXP,
-                "__builtin_frexp",
-                BT_FN_DOUBLE_DOUBLE_INTPTR,
-                ATTR_MATHFN_FPROUNDING_STORE)
-
-DEF_C99_BUILTIN(BUILT_IN_FREXPF,
-                "__builtin_frexpf",
-                BT_FN_FLOAT_FLOAT_INTPTR,
-                ATTR_MATHFN_FPROUNDING_STORE)
-
-DEF_C99_BUILTIN(BUILT_IN_FREXPL,
-                "__builtin_frexpl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE_INTPTR,
-                ATTR_MATHFN_FPROUNDING_STORE)
-
-DEF_LIB_BUILTIN(BUILT_IN_LDEXP,
-                "__builtin_ldexp",
-                BT_FN_DOUBLE_DOUBLE_INT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_LDEXPF,
-                "__builtin_ldexpf",
-                BT_FN_FLOAT_FLOAT_INT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_LDEXPL,
-                "__builtin_ldexpl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE_INT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_LIB_BUILTIN(BUILT_IN_LOG10,
-                "__builtin_log10",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_LOG10F,
-                "__builtin_log10f",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_LOG10L,
-                "__builtin_log10l",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_LIB_BUILTIN(BUILT_IN_MODF,
-                "__builtin_modf",
-                BT_FN_DOUBLE_DOUBLE_DOUBLEPTR,
-                ATTR_MATHFN_FPROUNDING_STORE)
-
-DEF_C99_BUILTIN(BUILT_IN_MODFF,
-                "__builtin_modff",
-                BT_FN_FLOAT_FLOAT_FLOATPTR,
-                ATTR_MATHFN_FPROUNDING_STORE)
-
-DEF_C99_BUILTIN(BUILT_IN_MODFL,
-                "__builtin_modfl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE_LONGDOUBLEPTR,
-                ATTR_MATHFN_FPROUNDING_STORE)
-
-DEF_C99_BUILTIN(BUILT_IN_POWF,
-                "__builtin_powf",
-                BT_FN_FLOAT_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_POWL,
-                "__builtin_powl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_LIB_BUILTIN(BUILT_IN_SINH,
-                "__builtin_sinh",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_SINHF,
-                "__builtin_sinhf",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_SINHL,
-                "__builtin_sinhl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_TANF,
-                "__builtin_tanf",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_LIB_BUILTIN(BUILT_IN_TANH,
-                "__builtin_tanh",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_C99_BUILTIN(BUILT_IN_TANHF,
-                "__builtin_tanhf",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_C99_BUILTIN(BUILT_IN_TANHL,
-                "__builtin_tanhl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_C99_BUILTIN(BUILT_IN_TANL,
-                "__builtin_tanl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING)
-
-DEF_LIB_BUILTIN(BUILT_IN_COSH,
-                "__builtin_cosh",
-                BT_FN_DOUBLE_DOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_COSHF,
-                "__builtin_coshf",
-                BT_FN_FLOAT_FLOAT,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_C99_BUILTIN(BUILT_IN_COSHL,
-                "__builtin_coshl",
-                BT_FN_LONGDOUBLE_LONGDOUBLE,
-                ATTR_MATHFN_FPROUNDING_ERRNO)
-
-DEF_GCC_BUILTIN(BUILT_IN_POPCOUNT,
-                "__builtin_popcount",
-                BT_FN_INT_INT,
-                ATTR_CONST_NOTHROW_LIST)
-
-DEF_GCC_BUILTIN(BUILT_IN_POPCOUNTL,
-                "__builtin_popcountl",
-                BT_FN_INT_LONG,
-                ATTR_CONST_NOTHROW_LIST)
-
-DEF_GCC_BUILTIN(BUILT_IN_POPCOUNTLL,
-                "__builtin_popcountll",
-                BT_FN_INT_LONGLONG,
-                ATTR_CONST_NOTHROW_LIST)
-
-DEF_GCC_BUILTIN(BUILT_IN_CTZ,
-                "__builtin_ctz",
-                BT_FN_INT_INT,
-                ATTR_CONST_NOTHROW_LIST)
-
-DEF_GCC_BUILTIN(BUILT_IN_CTZL,
-                "__builtin_ctzl",
-                BT_FN_INT_LONG,
-                ATTR_CONST_NOTHROW_LIST)
-
-DEF_GCC_BUILTIN(BUILT_IN_CTZLL,
-                "__builtin_ctzll",
-                BT_FN_INT_LONGLONG,
-                ATTR_CONST_NOTHROW_LIST)
-
-/* **************** GNU 3.4 builtins end here **************** */
 
 DEF_LIB_BUILTIN(BUILT_IN_SQRT,
 		"__builtin_sqrt",
@@ -902,16 +508,6 @@ DEF_GCC_BUILTIN(BUILT_IN_RETURN,
 		"__builtin_return",
 		BT_FN_VOID_PTR,
 		ATTR_NORETURN_NOTHROW_LIST)
-#ifdef KEY
-DEF_LIB_BUILTIN(BUILT_IN_SETJMP,
-		"__builtin_setjmp",
-		BT_FN_INT_PTR,
-		ATTR_NULL)
-DEF_LIB_BUILTIN(BUILT_IN_LONGJMP,
-		"__builtin_longjmp",
-		BT_FN_VOID_PTR_INT,
-		ATTR_NORETURN_NOTHROW_LIST)
-#else
 DEF_GCC_BUILTIN(BUILT_IN_SETJMP,
 		"__builtin_setjmp",
 		BT_FN_INT_PTR,
@@ -920,7 +516,6 @@ DEF_GCC_BUILTIN(BUILT_IN_LONGJMP,
 		"__builtin_longjmp",
 		BT_FN_VOID_PTR_INT,
 		ATTR_NORETURN_NOTHROW_LIST)
-#endif /* KEY */
 DEF_GCC_BUILTIN(BUILT_IN_TRAP,
 		"__builtin_trap",
 		BT_FN_VOID,
@@ -932,17 +527,10 @@ DEF_GCC_BUILTIN(BUILT_IN_PREFETCH,
 
 /* stdio.h builtins (without FILE *).  */
 
-#ifdef KEY
-DEF_LIB_BUILTIN(BUILT_IN_PRINTF,
-		"__builtin_printf",
-		BT_FN_INT_CONST_STRING_VAR,
-		ATTR_FORMAT_PRINTF_1_2)
-#else
 DEF_FRONT_END_LIB_BUILTIN(BUILT_IN_PRINTF,
 			  "__builtin_printf",
 			  BT_FN_INT_CONST_STRING_VAR,
 			  ATTR_FORMAT_PRINTF_1_2)
-#endif /* KEY */
 DEF_LIB_BUILTIN(BUILT_IN_PUTCHAR,
 		"__builtin_putchar",
 		BT_FN_INT_INT,
@@ -1010,17 +598,10 @@ DEF_FALLBACK_BUILTIN(BUILT_IN_FWRITE,
 		     "__builtin_fwrite",
 		     BT_FN_SIZE_CONST_PTR_SIZE_SIZE_PTR,
 		      ATTR_NOTHROW_LIST)
-#ifdef KEY
-DEF_LIB_BUILTIN(BUILT_IN_FPRINTF,
-		"__builtin_fprintf",
-		BT_FN_INT_PTR_CONST_STRING_VAR,
-		ATTR_FORMAT_PRINTF_2_3)
-#else
 DEF_FRONT_END_LIB_BUILTIN(BUILT_IN_FPRINTF,
 			 "__builtin_fprintf",
 			 BT_FN_INT_PTR_CONST_STRING_VAR,
 			 ATTR_FORMAT_PRINTF_2_3)
-#endif /* KEY */
 
 /* stdio unlocked builtins (without FILE *).  */
 
@@ -1054,12 +635,10 @@ DEF_BUILTIN (BUILT_IN_FPUTS_UNLOCKED,
 DEF_EXT_FALLBACK_BUILTIN(BUILT_IN_FWRITE_UNLOCKED,
 			 "__builtin_fwrite_unlocked",
 			 BT_FN_SIZE_CONST_PTR_SIZE_SIZE_PTR)
-#ifndef SGI_MONGOOSE
 DEF_EXT_FRONT_END_LIB_BUILTIN(BUILT_IN_FPRINTF_UNLOCKED,
 			      "__builtin_fprintf_unlocked",
 			      BT_FN_INT_PTR_CONST_STRING_VAR,
 			      ATTR_FORMAT_PRINTF_2_3)
-#endif /* SGI_MONGOOSE */
 
   /* ISO C99 floating point unordered comparisons.  */
 DEF_GCC_BUILTIN(BUILT_IN_ISGREATER, 
@@ -1143,12 +722,6 @@ DEF_GCC_BUILTIN(BUILT_IN_EXPECT,
 		"__builtin_expect",
 		BT_FN_LONG_LONG_LONG,
 		ATTR_NULL)
-
-/* From gcc patch to support __builtin_extend_pointer */
-DEF_GCC_BUILTIN(BUILT_IN_EXTEND_POINTER,
-                "__builtin_extend_pointer",
-                BT_FN_WORD_PTR,
-                ATTR_CONST_NOTHROW_LIST)
 
 /* C++ extensions */
 DEF_UNUSED_BUILTIN(BUILT_IN_NEW)

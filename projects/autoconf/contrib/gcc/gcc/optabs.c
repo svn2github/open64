@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Expand the basic unary and binary arithmetic operations, for GNU compiler.
    Copyright (C) 1987, 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
    1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
@@ -3420,40 +3416,6 @@ prepare_cmp_insn (px, py, pcomparison, size, pmode, punsignedp, purpose)
 
       if (size == 0)
 	abort ();
-#ifdef HAVE_cmpmemqi
-      if (HAVE_cmpmemqi
-	  && GET_CODE (size) == CONST_INT
-	  && INTVAL (size) < (1 << GET_MODE_BITSIZE (QImode)))
-	{
-	  result_mode = insn_data[(int) CODE_FOR_cmpmemqi].operand[0].mode;
-	  result = gen_reg_rtx (result_mode);
-	  emit_insn (gen_cmpmemqi (result, x, y, size, opalign));
-	}
-      else
-#endif
-#ifdef HAVE_cmpmemhi
-      if (HAVE_cmpmemhi
-	  && GET_CODE (size) == CONST_INT
-	  && INTVAL (size) < (1 << GET_MODE_BITSIZE (HImode)))
-	{
-	  result_mode = insn_data[(int) CODE_FOR_cmpmemhi].operand[0].mode;
-	  result = gen_reg_rtx (result_mode);
-	  emit_insn (gen_cmpmemhi (result, x, y, size, opalign));
-	}
-      else
-#endif
-#ifdef HAVE_cmpmemsi
-      if (HAVE_cmpmemsi)
-	{
-	  result_mode = insn_data[(int) CODE_FOR_cmpmemsi].operand[0].mode;
-	  result = gen_reg_rtx (result_mode);
-	  size = protect_from_queue (size, 0);
-	  emit_insn (gen_cmpmemsi (result, x, y,
-				   convert_to_mode (SImode, size, 1),
-				   opalign));
-	}
-      else
-#endif
 #ifdef HAVE_cmpstrqi
       if (HAVE_cmpstrqi
 	  && GET_CODE (size) == CONST_INT
@@ -4568,8 +4530,6 @@ expand_float (to, from, unsignedp)
 	  }
       }
 
-#ifndef SGI_MONGOOSE
-
   /* Unsigned integer, and no way to convert directly.
      Convert as signed, then conditionally adjust the result.  */
   if (unsignedp)
@@ -4682,7 +4642,6 @@ expand_float (to, from, unsignedp)
       emit_label (label);
       goto done;
     }
-#endif /* SGI_MONGOOSE */
 
   /* No hardware instruction available; call a library routine to convert from
      SImode, DImode, or TImode into SFmode, DFmode, XFmode, or TFmode.  */

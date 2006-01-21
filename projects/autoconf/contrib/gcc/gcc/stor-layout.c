@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* C-compiler utilities for types and variables storage layout
    Copyright (C) 1987, 1988, 1992, 1993, 1994, 1995, 1996, 1996, 1998,
    1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
@@ -26,14 +22,8 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typedef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tm_p.h"
 #include "flags.h"
 #include "function.h"
@@ -522,37 +512,6 @@ set_lang_adjust_rli (f)
 {
   lang_adjust_rli = f;
 }
-
-#ifdef SGI_MONGOOSE
-/* assign field ids (field numbers); because of forward declarations, needs to
-   call itself recursively if a nested record has not yet been processed */
-static void
-assign_field_ids (tree rec)
-{
-  register tree field;
-  int next_field_id;
-  int fields_in_field;
-                                                                                 
-  if (TYPE_FIELD_IDS_USED(rec) > 0)
-    return; /* already done before */
-  next_field_id = 1;
-  for (field = TYPE_FIELDS (rec); field; field = TREE_CHAIN (field))
-    {
-      DECL_FIELD_ID(field) = next_field_id;
-      fields_in_field = TYPE_FIELD_IDS_USED(TREE_TYPE(field));
-      if (fields_in_field == 0 &&
-          (TREE_CODE(TREE_TYPE(field)) == RECORD_TYPE ||
-           TREE_CODE(TREE_TYPE(field)) == UNION_TYPE ||
-           TREE_CODE(TREE_TYPE(field)) == QUAL_UNION_TYPE)) {
-          assign_field_ids(TREE_TYPE(field));
-          fields_in_field = TYPE_FIELD_IDS_USED(TREE_TYPE(field));
-        }
-      next_field_id += fields_in_field + 1;
-    }
-  /* set the total number of field ids used in this record */
-  TYPE_FIELD_IDS_USED(rec) = next_field_id - 1;
-}
-#endif /* SGI_MONGOOSE */
 
 /* Begin laying out type T, which may be a RECORD_TYPE, UNION_TYPE, or
    QUAL_UNION_TYPE.  Return a pointer to a struct record_layout_info which
@@ -1831,9 +1790,6 @@ layout_type (type)
 
 	/* Finish laying out the record.  */
 	finish_record_layout (rli, /*free_p=*/true);
-#ifdef SGI_MONGOOSE
-      assign_field_ids(type);
-#endif /* SGI_MONGOOSE */
       }
       break;
 

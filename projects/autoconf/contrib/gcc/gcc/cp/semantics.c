@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Perform the semantic phase of parsing, i.e., the process of
    building tree structure, checking semantic consistency, and
    building RTL.  These routines are used both during actual parsing
@@ -2342,15 +2338,6 @@ expand_body (fn)
   if (flag_syntax_only)
     return;
 
-#ifdef KEY
-  /* Assume all copy constructors are needed because pathCC needs to
-     copy objects returned from procedure calls. */
-  if (DECL_COPY_CONSTRUCTOR_P (fn) &&
-      DECL_COMPLETE_CONSTRUCTOR_P (fn) &&
-      DECL_ASSEMBLER_NAME_SET_P (fn))
-    TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (fn)) = 1;
-#endif
-
   /* If possible, avoid generating RTL for this function.  Instead,
      just record it as an inline function, and wait until end-of-file
      to decide whether to write it out or not.  */
@@ -2433,11 +2420,9 @@ expand_body (fn)
     /* We might need the body of this function so that we can expand
        it inline somewhere else.  */
     ;
-#ifndef SGI_MONGOOSE
   else
     /* We don't need the body; blow it away.  */
     DECL_SAVED_TREE (fn) = NULL_TREE;
-#endif  /* SGI_MONGOOSE */
 
   /* And restore the current source position.  */
   current_function_decl = saved_function;

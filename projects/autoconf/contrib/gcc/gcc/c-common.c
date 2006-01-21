@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Subroutines shared by all languages that are variants of C.
    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
    2001, 2002 Free Software Foundation, Inc.
@@ -25,19 +21,13 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get def of tree type
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "real.h"
 #include "flags.h"
 #include "toplev.h"
 #include "output.h"
 #include "c-pragma.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "ggc.h"
 #include "expr.h"
 #include "c-common.h"
@@ -383,10 +373,6 @@ int warn_bad_function_cast;
 /* Warn about traditional constructs whose meanings changed in ANSI C.  */
 
 int warn_traditional;
-
-/* Nonzero means warn for a declaration found after a statement.  */
-
-int warn_declaration_after_statement;
 
 /* Nonzero means warn for non-prototype function decls
    or non-prototyped defs without previous prototype.  */
@@ -785,12 +771,6 @@ static tree handle_nothrow_attribute	PARAMS ((tree *, tree, tree, int,
 						 bool *));
 static tree handle_cleanup_attribute	PARAMS ((tree *, tree, tree, int,
 						 bool *));
-#ifdef SGI_MONGOOSE
-static tree handle_syscall_linkage_attribute PARAMS ((tree *, tree, tree, int,
-                                                     bool *));
-static tree handle_widenretval_attribute     PARAMS ((tree *, tree, tree, int,
-                                                     bool *));
-#endif
 static tree vector_size_helper PARAMS ((tree, tree));
 
 static void check_function_nonnull	PARAMS ((tree, tree));
@@ -881,14 +861,6 @@ const struct attribute_spec c_common_attribute_table[] =
   { "may_alias",	      0, 0, false, true, false, NULL },
   { "cleanup",		      1, 1, true, false, false,
 			      handle_cleanup_attribute },
-#ifdef SGI_MONGOOSE
-  { "syscall_linkage",        0, 0, true, false, false,
-                              handle_syscall_linkage_attribute },
-  { "readonlyargs",           0, 0, true, false, false,
-                              handle_syscall_linkage_attribute },
-  { "widenretval",            0, 0, true, false, false,
-                              handle_widenretval_attribute },
-#endif
   { NULL,                     0, 0, false, false, false, NULL }
 };
 
@@ -2804,17 +2776,9 @@ c_common_truthvalue_conversion (expr)
       return expr;
 
     case INTEGER_CST:
-#ifdef KEY // bug 2684
-      if (TREE_CONSTANT_OVERFLOW (expr))
-      	break;
-#endif
       return integer_zerop (expr) ? boolean_false_node : boolean_true_node;
 
     case REAL_CST:
-#ifdef KEY // bug 2684
-      if (TREE_CONSTANT_OVERFLOW (expr))
-      	break;
-#endif
       return real_zerop (expr) ? boolean_false_node : boolean_true_node;
 
     case ADDR_EXPR:
@@ -3591,22 +3555,21 @@ c_common_nodes_and_builtins ()
 		    BOTH_P, FALLBACK_P, NONANSI_P, ATTRS)		\
   if (NAME)								\
     {									\
-      const char *__name__ = NAME;					\
       tree decl;							\
 									\
-      if (strncmp (__name__, "__builtin_", strlen ("__builtin_")) != 0)	\
+      if (strncmp (NAME, "__builtin_", strlen ("__builtin_")) != 0)	\
 	abort ();							\
 									\
       if (!BOTH_P)							\
-	decl = builtin_function (__name__, builtin_types[TYPE], ENUM,	\
+	decl = builtin_function (NAME, builtin_types[TYPE], ENUM,	\
 				 CLASS,					\
 				 (FALLBACK_P				\
-				  ? (__name__ + strlen ("__builtin_"))	\
+				  ? (NAME + strlen ("__builtin_"))	\
 				  : NULL),				\
 				 built_in_attributes[(int) ATTRS]);	\
       else								\
-	decl = builtin_function_2 (__name__,				\
-				   __name__ + strlen ("__builtin_"),	\
+	decl = builtin_function_2 (NAME,				\
+				   NAME + strlen ("__builtin_"),	\
 				   builtin_types[TYPE],			\
 				   builtin_types[LIBTYPE],		\
 				   ENUM,				\
@@ -3851,12 +3814,6 @@ expand_unordered_cmp (function, params, unordered_code, ordered_code)
       return error_mark_node;
     }
 
-#ifdef KEY
-  // bug 3183: don't generate "unordered" tree-codes, instead just generate
-  // a call to the builtin.
-  if (MODE_HAS_NANS (TYPE_MODE (type))) return NULL_TREE;
-#endif
-
   if (unordered_code == UNORDERED_EXPR)
     {
       if (MODE_HAS_NANS (TYPE_MODE (type)))
@@ -3979,9 +3936,6 @@ statement_code_p (code)
     case ASM_STMT:
     case FILE_STMT:
     case CASE_LABEL:
-#ifdef KEY
-    case OMP_MARKER_STMT:
-#endif
       return 1;
 
     default:
@@ -4473,7 +4427,6 @@ c_expand_builtin (exp, target, tmode, modifier)
 
   switch (fcode)
     {
-#ifndef SGI_MONGOOSE
     case BUILT_IN_PRINTF:
       target = c_expand_builtin_printf (arglist, target, tmode,
 					modifier, ignore, /*unlocked=*/ 0);
@@ -4501,7 +4454,6 @@ c_expand_builtin (exp, target, tmode, modifier)
       if (target)
 	return target;
       break;
-#endif /* SGI_MONGOOSE */
 
     default:			/* just do library call, if unknown builtin */
       error ("built-in function `%s' not currently supported",
@@ -4548,7 +4500,6 @@ is_valid_printf_arglist (arglist)
   return ! diagnostic_occurred;
 }
 
-#ifndef SGI_MONGOOSE
 /* If the arguments passed to printf are suitable for optimizations,
    we attempt to transform the call.  */
 static rtx
@@ -4735,7 +4686,6 @@ c_expand_builtin_fprintf (arglist, target, tmode, modifier, ignore, unlocked)
 		      (ignore ? const0_rtx : target),
 		      tmode, modifier);
 }
-#endif /* SGI_MONGOOSE */
 
 
 /* Given a boolean expression ARG, return a tree representing an increment
@@ -6390,92 +6340,6 @@ handle_vector_size_attribute (node, name, args, flags, no_add_attrs)
 
   return NULL_TREE;
 }
-
-#ifdef SGI_MONGOOSE
-/* Handle a "syscall_linkage" attribute; arguments as in
-   struct attribute_spec.handler.  */
-                                                                                
-static tree
-handle_syscall_linkage_attribute (node, name, args, flags, no_add_attrs)
-     tree *node;
-     tree name;
-     tree args;
-     int flags ATTRIBUTE_UNUSED;
-     bool *no_add_attrs;
-{
-  int arg_num;
-  tree argument;
-  tree decl = *node;
-  tree type = TREE_TYPE (decl);
-                                                                                
-  if (TREE_CODE (decl) != FUNCTION_DECL)
-    {
-      error_with_decl (decl,
-                       "argument format specified for non-function `%s'");
-      return NULL_TREE;
-    }
-  argument = TYPE_ARG_TYPES (type);
-                                                                                
-  /* check that no args are fp */
-  for (argument = TYPE_ARG_TYPES(type); argument;
-       argument = TREE_CHAIN(argument))
-    {
-      if (FLOAT_TYPE_P (TREE_VALUE (argument)))
-        {
-          warning ("readonlyargs/syscall_linkage won't work when floating point args");
-          continue;
-        }
-    }
-  DECL_SYSCALL_LINKAGE (decl) = 1;
-                                                                                
-  return NULL_TREE;
-}
-                                                                                
-/* Handle a "widenretval" attribute; arguments as in
-   struct attribute_spec.handler.  */
-                                                                                
-static tree
-handle_widenretval_attribute (node, name, args, flags, no_add_attrs)
-     tree *node;
-     tree name;
-     tree args;
-     int flags ATTRIBUTE_UNUSED;
-     bool *no_add_attrs;
-{
-  int arg_num;
-  tree argument;
-  tree decl = *node;
-  tree type = TREE_TYPE (decl);
-                                                                                
-  if (TREE_CODE (decl) != FUNCTION_DECL)
-    {
-      error_with_decl (decl,
-                       "argument format specified for non-function `%s'");
-      return NULL_TREE;
-    }
-                                                                                
-  /* ignore functions returing void or pointers */
-  if ((TREE_CODE (TREE_TYPE (type)) == VOID_TYPE) ||
-      POINTER_TYPE_P (TREE_TYPE (type)))
-    {
-      return NULL_TREE;
-    }
-                                                                                
-  /* check that return is of integral type */
-  if (!INTEGRAL_TYPE_P (TREE_TYPE (type)))
-    {
-      warning ("widenretval won't work for non integral returns");
-      return NULL_TREE;
-    }
-                                                                                
-  /* check that return is of integral type of size < 8*/
-  if (!(TYPE_PRECISION(TREE_TYPE (type)) < TYPE_PRECISION(long_long_integer_type_node)))
-    {
-      return NULL_TREE;
-    }
-  DECL_WIDEN_RETVAL (decl) = 1;
-}
-#endif /* SGI_MONGOOSE */
 
 /* HACK.  GROSS.  This is absolutely disgusting.  I wish there was a
    better way.

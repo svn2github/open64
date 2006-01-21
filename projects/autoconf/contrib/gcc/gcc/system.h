@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Get common system includes and various definitions and declarations based
    on autoconf macros.
    Copyright (C) 1998, 1999, 2000, 2001, 2002 Free Software Foundation, Inc.
@@ -331,13 +327,11 @@ extern PTR realloc PARAMS ((PTR, size_t));
 
 /* If the system doesn't provide strsignal, we get it defined in
    libiberty but no declaration is supplied.  */
-#ifndef SGI_MONGOOSE
 #ifndef HAVE_STRSIGNAL
 # ifndef strsignal
 extern const char *strsignal PARAMS ((int));
 # endif
 #endif
-#endif  /* SGI_MONGOOSE */
 
 #ifdef HAVE_GETRLIMIT
 # if defined (HAVE_DECL_GETRLIMIT) && !HAVE_DECL_GETRLIMIT
@@ -557,19 +551,6 @@ extern void abort PARAMS ((void));
 typedef char _Bool;
 # endif
 # define bool _Bool
-#if defined SGI_MONGOOSE
-#if GCC_VERSION < 3000
-# if HAVE__BOOL
-#undef bool
-#define bool bool
-#undef HAVE__BOOL
-# endif
-#else
-#ifdef __cplusplus
-#undef bool     /* bool is a builtin in g++ */
-#endif
-#endif  /* GCC_VERSION */
-#endif  /* SGI_MONGOOSE */
 # define true 1
 # define false 0
 #endif
@@ -601,9 +582,7 @@ typedef char _Bool;
 #ifdef IN_GCC
 #undef calloc
 #undef strdup
-#ifndef SGI_MONGOOSE    // Don't poison because STL uses these functions.
  #pragma GCC poison calloc strdup
-#endif
 
 #if defined(FLEX_SCANNER) || defined (YYBISON)
 /* Flex and bison use malloc and realloc.  Yuk.  */
@@ -612,9 +591,7 @@ typedef char _Bool;
 #else
 #undef malloc
 #undef realloc
-#ifndef KEY
  #pragma GCC poison malloc realloc
-#endif // !KEY
 #endif
 
 /* Old target macros that have moved to the target hooks structure.  */
@@ -653,10 +630,6 @@ typedef char _Bool;
 	LANG_HOOKS_MARK_TREE
 
 #endif /* IN_GCC */
-
-#ifdef SGI_MONGOOSE
-#define really_call_bzero bzero
-#endif
 
 /* Note: not all uses of the `index' token (e.g. variable names and
    structure members) have been eliminated.  */

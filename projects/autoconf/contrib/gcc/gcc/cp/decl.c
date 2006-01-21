@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Process declarations and variables for C compiler.
    Copyright (C) 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
    2001, 2002, 2003  Free Software Foundation, Inc.
@@ -55,16 +51,7 @@ Boston, MA 02111-1307, USA.  */
 #include "debug.h"
 #include "timevar.h"
 #include "input.h"
-#ifdef SGI_MONGOOSE
-#include "defaults.h"   // get BOOL_TYPE_SIZE
-#endif
 
-#ifdef KEY
-extern void add_duplicates (tree, tree);
-extern void gxx_emits_decl PARAMS ((tree));
-extern void push_mp_local_vars PARAMS ((tree));
-extern bool In_MP_Region;
-#endif
 static tree grokparms				PARAMS ((tree));
 static const char *redeclaration_error_message	PARAMS ((tree, tree));
 
@@ -85,7 +72,7 @@ static tree lookup_tag_reverse PARAMS ((tree, tree));
 static tree lookup_name_real PARAMS ((tree, int, int, int));
 static void push_local_name PARAMS ((tree));
 static void warn_extern_redeclared_static PARAMS ((tree, tree));
-static tree grok_reference_init PARAMS ((tree, tree, tree, tree *));
+static tree grok_reference_init PARAMS ((tree, tree, tree));
 static tree grokfndecl PARAMS ((tree, tree, tree, tree, int,
 			      enum overload_flags, tree,
 			      tree, int, int, int, int, int, int, tree));
@@ -136,7 +123,7 @@ static void pop_labels PARAMS ((tree));
 static void maybe_deduce_size_from_array_init PARAMS ((tree, tree));
 static void layout_var_decl PARAMS ((tree));
 static void maybe_commonize_var PARAMS ((tree));
-static tree check_initializer (tree, tree, int, tree *);
+static tree check_initializer (tree, tree, int);
 static void make_rtl_for_nonlocal_decl PARAMS ((tree, tree, const char *));
 static void save_function_data PARAMS ((tree));
 static void check_function_type PARAMS ((tree, tree));
@@ -474,7 +461,7 @@ binding_table_reverse_maybe_remap (binding_table table, tree type, tree name)
 {
   const size_t chain_count = table->chain_count;
   binding_entry entry = NULL;
-  binding_entry *p = NULL;
+  binding_entry *p;
   size_t i;
 
   for (i = 0; i < chain_count && entry == NULL; ++i)
@@ -685,17 +672,6 @@ struct cp_binding_level GTY(())
 
 /* The binding level currently in effect.  */
 
-#ifdef KEY
-static void inline
-copy_to_current_binding_level (struct cp_binding_level * level)
-{
-  if (cfun && cp_function_chain->bindings)
-    cp_function_chain->bindings = level;
-  else
-    scope_chain->bindings = level;
-}
-#endif // KEY
-
 #define current_binding_level			\
   (cfun && cp_function_chain->bindings		\
    ? cp_function_chain->bindings		\
@@ -748,11 +724,7 @@ push_binding_level (newlevel, tag_transparent, keep)
      are active.  */
   memset ((char*) newlevel, 0, sizeof (struct cp_binding_level));
   newlevel->level_chain = current_binding_level;
-#ifdef KEY
-  copy_to_current_binding_level (newlevel);
-#else
   current_binding_level = newlevel;
-#endif // KEY
   newlevel->tag_transparent = tag_transparent;
   newlevel->more_cleanups_ok = 1;
 
@@ -808,11 +780,7 @@ pop_binding_level ()
     }
   {
     register struct cp_binding_level *level = current_binding_level;
-#ifdef KEY
-    copy_to_current_binding_level (current_binding_level->level_chain);
-#else
     current_binding_level = current_binding_level->level_chain;
-#endif // KEY
     level->level_chain = free_binding_level;
     if (level->parm_flag != 2)
       binding_table_free (level->type_decls);
@@ -829,13 +797,7 @@ static void
 suspend_binding_level ()
 {
   if (class_binding_level)
-  {
-#ifdef KEY
-    copy_to_current_binding_level (class_binding_level);
-#else
     current_binding_level = class_binding_level;
-#endif // KEY
-  }
 
   if (NAMESPACE_LEVEL (global_namespace))
     my_friendly_assert (!global_scope_p (current_binding_level), 20030527);
@@ -854,11 +816,7 @@ suspend_binding_level ()
         }
       is_class_level = 0;
     }
-#ifdef KEY
-  copy_to_current_binding_level (current_binding_level->level_chain);
-#else
   current_binding_level = current_binding_level->level_chain;
-#endif // KEY
   find_class_binding_level ();
 }
 
@@ -871,11 +829,7 @@ resume_binding_level (b)
   my_friendly_assert(!class_binding_level, 386);
   /* Also, resuming a non-directly nested namespace is a no-no.  */
   my_friendly_assert(b->level_chain == current_binding_level, 386);
-#ifdef KEY
-  copy_to_current_binding_level (b);
-#else
   current_binding_level = b;
-#endif // KEY
   if (ENABLE_SCOPE_CHECKING)
     {
       b->binding_depth = binding_depth;
@@ -966,14 +920,6 @@ kept_level_p ()
 	  || current_binding_level->names != NULL_TREE
 	  || (current_binding_level->type_decls != NULL
 	      && !current_binding_level->tag_transparent));
-}
-
-/* Returns the kind of the innermost scope.  */
-
-bool
-innermost_scope_is_class_p ()
-{
-  return current_binding_level->parm_flag == 2;
 }
 
 static void
@@ -2543,12 +2489,6 @@ push_namespace (name)
     {
       /* Make a new namespace, binding the name to it.  */
       d = build_lang_decl (NAMESPACE_DECL, name, void_type_node);
-
-#ifdef KEY
-      /* Tell the WHIRL translator about the new namespace. */
-      gxx_emits_decl (d);
-#endif
-
       /* The global namespace is not pushed, and the global binding
 	 level is set elsewhere.  */
       if (!global)
@@ -3286,11 +3226,6 @@ decls_match (newdecl, olddecl)
 				 COMPARE_REDECLARATION);
     }
 
-#ifdef KEY
-  // Limit it to FUNCTION_DECL for now
-  if (types_match && TREE_CODE (newdecl) == FUNCTION_DECL)
-  	add_duplicates (newdecl, olddecl);
-#endif
   return types_match;
 }
 
@@ -3445,9 +3380,9 @@ duplicate_decls (newdecl, olddecl)
           if (DECL_ANTICIPATED (olddecl))
             ;  /* Do nothing yet.  */
 	  else if ((DECL_EXTERN_C_P (newdecl)
-		    && DECL_EXTERN_C_P (olddecl))
-		   || compparms (TYPE_ARG_TYPES (TREE_TYPE (newdecl)),
-				 TYPE_ARG_TYPES (TREE_TYPE (olddecl))))
+	       && DECL_EXTERN_C_P (olddecl))
+	      || compparms (TYPE_ARG_TYPES (TREE_TYPE (newdecl)),
+			    TYPE_ARG_TYPES (TREE_TYPE (olddecl))))
 	    {
 	      /* A near match; override the builtin.  */
 
@@ -3473,10 +3408,6 @@ duplicate_decls (newdecl, olddecl)
 	 for anitipated built-ins, for exception lists, etc...  */
       else if (DECL_ANTICIPATED (olddecl))
 	TREE_TYPE (olddecl) = TREE_TYPE (newdecl);
-
-      /* Whether or not the builtin can throw exceptions has no
-	 bearing on this declarator.  */
-      TREE_NOTHROW (olddecl) = 0;
 
       if (DECL_THIS_STATIC (newdecl) && !DECL_THIS_STATIC (olddecl))
 	{
@@ -4598,17 +4529,9 @@ pushdecl_with_scope (x, level)
   else
     {
       b = current_binding_level;
-#ifdef KEY
-      copy_to_current_binding_level (level);
-#else
       current_binding_level = level;
-#endif // KEY
       x = pushdecl (x);
-#ifdef KEY
-      copy_to_current_binding_level (b);
-#else
       current_binding_level = b;
-#endif // KEY
     }
   current_function_decl = function_decl;
   POP_TIMEVAR_AND_RETURN (TV_NAME_LOOKUP, x);
@@ -5475,7 +5398,8 @@ check_goto (decl)
 }
 
 /* Define a label, specifying the location in the source file.
-   Return the LABEL_DECL node for the label.  */
+   Return the LABEL_DECL node for the label, if the definition is valid.
+   Otherwise return 0.  */
 
 tree
 define_label (filename, line, name)
@@ -5502,7 +5426,10 @@ define_label (filename, line, name)
     pedwarn ("label named wchar_t");
 
   if (DECL_INITIAL (decl) != NULL_TREE)
-    error ("duplicate label `%D'", decl);
+    {
+      error ("duplicate label `%D'", decl);
+      POP_TIMEVAR_AND_RETURN (TV_NAME_LOOKUP, NULL_TREE);
+    }
   else
     {
       /* Mark label as having been defined.  */
@@ -5516,10 +5443,9 @@ define_label (filename, line, name)
 	  ent->binding_level = current_binding_level;
 	}
       check_previous_gotos (decl);
+      POP_TIMEVAR_AND_RETURN (TV_NAME_LOOKUP, decl);
     }
-
   timevar_pop (TV_NAME_LOOKUP);
-  return decl;
 }
 
 struct cp_switch
@@ -7007,11 +6933,7 @@ cxx_init_decl_processing ()
   current_lang_name = lang_name_c;
 
   current_function_decl = NULL_TREE;
-#ifdef KEY
-  copy_to_current_binding_level (NULL_BINDING_LEVEL);
-#else
   current_binding_level = NULL_BINDING_LEVEL;
-#endif // KEY
   free_binding_level = NULL_BINDING_LEVEL;
 
   build_common_tree_nodes (flag_signed_char);
@@ -7235,10 +7157,7 @@ cp_make_fname_decl (id, type_dep)
   TREE_USED (decl) = 1;
 
   cp_finish_decl (decl, init, NULL_TREE, LOOKUP_ONLYCONVERTING);
-
-  if (!current_function_decl)
-    rest_of_decl_compilation (decl, 0, 1, 0);
-
+      
   return decl;
 }
 
@@ -7980,18 +7899,15 @@ start_decl_1 (decl)
     DECL_INITIAL (decl) = NULL_TREE;
 }
 
-/* Handle initialization of references.  DECL, TYPE, and INIT have the
-   same meaning as in cp_finish_decl.  *CLEANUP must be NULL on entry,
-   but will be set to a new CLEANUP_STMT if a temporary is created
-   that must be destroeyd subsequently.
-
-   Returns an initializer expression to use to initialize DECL, or
-   NULL if the initialization can be performed statically.
+/* Handle initialization of references.
+   These three arguments are from `cp_finish_decl', and have the
+   same meaning here that they do there.
 
    Quotes on semantics can be found in ARM 8.4.3.  */
-  
+
 static tree
-grok_reference_init (tree decl, tree type, tree init, tree *cleanup)
+grok_reference_init (decl, type, init)
+     tree decl, type, init;
 {
   tree tmp;
 
@@ -8033,7 +7949,7 @@ grok_reference_init (tree decl, tree type, tree init, tree *cleanup)
      DECL_INITIAL for local references (instead assigning to them
      explicitly); we need to allow the temporary to be initialized
      first.  */
-  tmp = initialize_reference (type, init, decl, cleanup);
+  tmp = initialize_reference (type, init, decl);
 
   if (tmp == error_mark_node)
     return NULL_TREE;
@@ -8464,14 +8380,13 @@ reshape_init (tree type, tree *initp)
 }
 
 /* Verify INIT (the initializer for DECL), and record the
-   initialization in DECL_INITIAL, if appropriate.  CLEANUP is as for
-   grok_reference_init.
+   initialization in DECL_INITIAL, if appropriate.  
 
    If the return value is non-NULL, it is an expression that must be
    evaluated dynamically to initialize DECL.  */
 
 static tree
-check_initializer (tree decl, tree init, int flags, tree *cleanup)
+check_initializer (tree decl, tree init, int flags)
 {
   tree type = TREE_TYPE (decl);
 
@@ -8521,7 +8436,7 @@ check_initializer (tree decl, tree init, int flags, tree *cleanup)
       init = NULL_TREE;
     }
   else if (!DECL_EXTERNAL (decl) && TREE_CODE (type) == REFERENCE_TYPE)
-    init = grok_reference_init (decl, type, init, cleanup);
+    init = grok_reference_init (decl, type, init);
   else if (init)
     {
       if (TREE_CODE (init) == CONSTRUCTOR && TREE_HAS_CONSTRUCTOR (init))
@@ -8830,9 +8745,8 @@ cp_finish_decl (decl, init, asmspec_tree, flags)
      tree asmspec_tree;
      int flags;
 {
-  tree type;
+  register tree type;
   tree ttype = NULL_TREE;
-  tree cleanup;
   const char *asmspec = NULL;
   int was_readonly = 0;
 
@@ -8842,9 +8756,6 @@ cp_finish_decl (decl, init, asmspec_tree, flags)
 	error ("assignment (not initialization) in declaration");
       return;
     }
-
-  /* Assume no cleanup is required.  */
-  cleanup = NULL_TREE;
 
   /* If a name was specified, get the string.  */
   if (global_scope_p (current_binding_level))
@@ -8946,7 +8857,7 @@ cp_finish_decl (decl, init, asmspec_tree, flags)
       make_decl_rtl (decl, asmspec);
     }
   else if (TREE_CODE (decl) == RESULT_DECL)
-    init = check_initializer (decl, init, flags, &cleanup);
+    init = check_initializer (decl, init, flags);
   else if (TREE_CODE (decl) == VAR_DECL)
     {
       /* Only PODs can have thread-local storage.  Other types may require
@@ -8963,7 +8874,7 @@ cp_finish_decl (decl, init, asmspec_tree, flags)
 	     is *not* defined.  */
 	  && (!DECL_EXTERNAL (decl) || init))
 	{
-	  init = check_initializer (decl, init, flags, &cleanup);
+	  init = check_initializer (decl, init, flags);
 	  /* Thread-local storage cannot be dynamically initialized.  */
 	  if (DECL_THREAD_LOCAL (decl) && init)
 	    {
@@ -9081,11 +8992,6 @@ cp_finish_decl (decl, init, asmspec_tree, flags)
 	  pop_nested_class ();
       }
     }
-
-  /* If a CLEANUP_STMT was created to destroy a temporary bound to a
-     reference, insert it in the statement-tree now.  */
-  if (cleanup)
-    add_stmt (cleanup);
 
  finish_end:
 
@@ -10860,18 +10766,10 @@ grokdeclarator (declarator, declspecs, decl_context, initialized, attrlist)
   if (decl_context == NORMAL && !toplevel_bindings_p ())
     {
       struct cp_binding_level *b = current_binding_level;
-#ifdef KEY
-      copy_to_current_binding_level (b->level_chain);
-#else
       current_binding_level = b->level_chain;
-#endif // KEY
       if (current_binding_level != 0 && toplevel_bindings_p ())
 	decl_context = PARM;
-#ifdef KEY
-      copy_to_current_binding_level (b);
-#else
       current_binding_level = b;
-#endif // KEY
     }
 
   if (name == NULL)
@@ -12700,10 +12598,6 @@ grokdeclarator (declarator, declspecs, decl_context, initialized, attrlist)
     if (!processing_template_decl)
       c_apply_type_quals_to_decl (type_quals, decl);
 
-#ifdef KEY
-    if (In_MP_Region && decl && TREE_CODE (decl) == VAR_DECL)
-      push_mp_local_vars (decl);
-#endif /* KEY */
     return decl;
   }
 }
@@ -14512,11 +14406,7 @@ start_function (declspecs, declarator, attrs, flags)
      FIXME factor out the non-RTL stuff.  */
   bl = current_binding_level;
   init_function_start (decl1, input_filename, lineno);
-#ifdef KEY
-  copy_to_current_binding_level (bl);
-#else
   current_binding_level = bl;
-#endif // KEY
 
   /* Even though we're inside a function body, we still don't want to
      call expand_expr to calculate the size of a variable-sized array.
@@ -15072,14 +14962,6 @@ finish_function (flags)
       tree outer;
 
       if (r != error_mark_node
-#ifdef KEY
-	  /* The WHIRL front-end assumes there is a fake first parm when
-	     handling nrv.  According to assign_parms in function.c, for the
-	     fake parm to exist, these conditions must be true besides
-	     aggregate_value_p. */
-	  && !current_function_returns_pcc_struct
-	  && struct_value_incoming_rtx == 0
-#endif
 	  /* This is only worth doing for fns that return in memory--and
 	     simpler, since we don't have to worry about promoted modes.  */
 	  && aggregate_value_p (TREE_TYPE (TREE_TYPE (fndecl)))
@@ -15096,16 +14978,9 @@ finish_function (flags)
 					nullify_returns_r, r);
 	}
       else
-	{
-	  /* Clear it so genrtl_start_function and declare_return_variable
-	     know we're not optimizing.  */
-	  current_function_return_value = NULL_TREE;
-#ifdef KEY
-	  /* Tell WHIRL front-end that the named return value optimization is
-	     not done for this function. */
-	  DECL_NAMED_RETURN_OBJECT (fndecl) = NULL_TREE;
-#endif
-	}
+	/* Clear it so genrtl_start_function and declare_return_variable
+	   know we're not optimizing.  */
+	current_function_return_value = NULL_TREE;
     }
 
   /* Remember that we were in class scope.  */

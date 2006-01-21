@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Control and data flow functions for trees.
    Copyright 2001, 2002 Free Software Foundation, Inc.
    Contributed by Alexandre Oliva <aoliva@redhat.com>
@@ -163,9 +159,6 @@ remap_decl (decl, id)
       /* Make a copy of the variable or label.  */
       t = copy_decl_for_inlining (decl, fn,
 				  VARRAY_TREE (id->fns, 0));
-
-      if (TREE_CODE (t) == LABEL_DECL)
-	DECL_TOO_LATE (t) = 0;
 
       /* The decl T could be a dynamic array or other variable size type,
 	 in which case some fields need to be remapped because they may
@@ -1633,13 +1626,6 @@ walk_tree (tp, func, data, htab_)
       for (i = 0; i < len; ++i)
 	WALK_SUBTREE (TREE_OPERAND (*tp, i));
 
-#ifdef SGI_MONGOOSE
-      /* various EXPRs can have VLAs in their type trees, which need
-         to have decls remapped; see comment in remap_decl.  */
-      if (TREE_TYPE (*tp) && TREE_TYPE (*tp) != ERROR_MARK
-          && code == NOP_EXPR)
-        WALK_SUBTREE (TREE_TYPE (*tp));
-#endif /* SGI_MONGOOSE */
 #ifndef INLINER_FOR_JAVA
       /* For statements, we also walk the chain so that we cover the
 	 entire statement tree.  */
@@ -1675,16 +1661,6 @@ walk_tree (tp, func, data, htab_)
     {
       WALK_SUBTREE (TYPE_SIZE (*tp));
       WALK_SUBTREE (TYPE_SIZE_UNIT (*tp));
-#ifdef SGI_MONGOOSE
-      if ((code == POINTER_TYPE || code == REFERENCE_TYPE
-           || code == ARRAY_TYPE)
-          && variably_modified_type_p (TREE_TYPE (*tp)))
-        WALK_SUBTREE (TREE_TYPE (*tp));
-      if (code == ARRAY_TYPE
-          && TYPE_DOMAIN (*tp))
-        WALK_SUBTREE (TYPE_MAX_VALUE (TYPE_DOMAIN (*tp)));
-
-#endif  /* SGI_MONGOOSE */
       /* Also examine various special fields, below.  */
     }
 

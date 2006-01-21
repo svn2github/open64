@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Do-nothing debug hooks for GCC.
    Copyright (C) 2001, 2002 Free Software Foundation, Inc.
 
@@ -21,10 +17,6 @@ Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "debug.h"
 
 /* The do-nothing debug hooks.  */

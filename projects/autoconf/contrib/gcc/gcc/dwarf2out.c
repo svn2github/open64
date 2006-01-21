@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Output Dwarf2 format symbol table information from the GNU C compiler.
    Copyright (C) 1992, 1993, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002
    Free Software Foundation, Inc.
@@ -40,16 +36,10 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 
 #include "config.h"
 #include "system.h"
-#ifdef SGI_MONGOOSE
-// To get typdef tree
-#include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "tree.h"
 #include "flags.h"
 #include "real.h"
-#ifndef SGI_MONGOOSE
 #include "rtl.h"
-#endif /* SGI_MONGOOSE */
 #include "hard-reg-set.h"
 #include "regs.h"
 #include "insn-config.h"
@@ -73,11 +63,6 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #include "langhooks.h"
 #include "hashtable.h"
 #include "hashtab.h"
-#ifdef SGI_MONGOOSE
-// To define DWARF2_UNWIND_INFO
-#include "defaults.h"
-#include "wfe_dst.h"
-#endif /* SGI_MONGOOSE */
 
 #ifdef DWARF2_DEBUGGING_INFO
 static void dwarf2out_source_line	PARAMS ((unsigned int, const char *));
@@ -7732,11 +7717,9 @@ base_type_die (type)
       /* Carefully distinguish the C character types, without messing
          up if the language is not C. Note that we check only for the names
          that contain spaces; other names might occur by coincidence in other
-         languages, so we only check if main variant is char_type_node.  */
+         languages.  */
       if (! (TYPE_PRECISION (type) == CHAR_TYPE_SIZE
 	     && (type == char_type_node
-		 || (TYPE_MAIN_VARIANT (type) == char_type_node
-		     && ! strcmp (type_name, "char"))
 		 || ! strcmp (type_name, "signed char")
 		 || ! strcmp (type_name, "unsigned char"))))
 	{
@@ -11068,19 +11051,15 @@ gen_inlined_subroutine_die (stmt, context_die, depth)
      dw_die_ref context_die;
      int depth;
 {
-  tree decl = block_ultimate_origin (stmt);
-
-  /* Emit info for the abstract instance first, if we haven't yet.  We
-     must emit this even if the block is abstract, otherwise when we
-     emit the block below (or elsewhere), we may end up trying to emit
-     a die whose origin die hasn't been emitted, and crashing.  */
-  dwarf2out_abstract_function (decl);
-
   if (! BLOCK_ABSTRACT (stmt))
     {
       dw_die_ref subr_die
 	= new_die (DW_TAG_inlined_subroutine, context_die, stmt);
+      tree decl = block_ultimate_origin (stmt);
       char label[MAX_ARTIFICIAL_LABEL_BYTES];
+
+      /* Emit info for the abstract instance first, if we haven't yet.  */
+      dwarf2out_abstract_function (decl);
 
       add_abstract_origin_attribute (subr_die, decl);
       ASM_GENERATE_INTERNAL_LABEL (label, BLOCK_BEGIN_LABEL,
@@ -12390,7 +12369,6 @@ dwarf2out_start_source_file (lineno, filename)
      unsigned int lineno;
      const char *filename;
 {
-#ifndef KEY
   if (flag_eliminate_dwarf2_dups && !is_main_source)
     {
       /* Record the beginning of the file for break_out_includes.  */
@@ -12399,16 +12377,11 @@ dwarf2out_start_source_file (lineno, filename)
       bincl_die = new_die (DW_TAG_GNU_BINCL, comp_unit_die, NULL);
       add_AT_string (bincl_die, DW_AT_name, filename);
     }
-#endif
 
   is_main_source = 0;
 
   if (debug_info_level >= DINFO_LEVEL_VERBOSE)
     {
-#ifdef KEY
-      WFE_Macro_Start_File(lineno, lookup_filename (filename));
-      return;
-#endif
       named_section_flags (DEBUG_MACINFO_SECTION, SECTION_DEBUG);
       dw2_asm_output_data (1, DW_MACINFO_start_file, "Start new file");
       dw2_asm_output_data_uleb128 (lineno, "Included from line number %d",
@@ -12424,18 +12397,12 @@ static void
 dwarf2out_end_source_file (lineno)
      unsigned int lineno ATTRIBUTE_UNUSED;
 {
-#ifndef KEY
   if (flag_eliminate_dwarf2_dups)
     /* Record the end of the file for break_out_includes.  */
     new_die (DW_TAG_GNU_EINCL, comp_unit_die, NULL);
-#endif
 
   if (debug_info_level >= DINFO_LEVEL_VERBOSE)
     {
-#ifdef KEY
-      WFE_Macro_End_File();
-      return;
-#endif
       named_section_flags (DEBUG_MACINFO_SECTION, SECTION_DEBUG);
       dw2_asm_output_data (1, DW_MACINFO_end_file, "End file");
     }
@@ -12452,10 +12419,6 @@ dwarf2out_define (lineno, buffer)
 {
   if (debug_info_level >= DINFO_LEVEL_VERBOSE)
     {
-#ifdef SGI_MONGOOSE
-      WFE_Macro_Define(lineno, buffer);
-      return;
-#endif
       named_section_flags (DEBUG_MACINFO_SECTION, SECTION_DEBUG);
       dw2_asm_output_data (1, DW_MACINFO_define, "Define macro");
       dw2_asm_output_data_uleb128 (lineno, "At line number %d", lineno);
@@ -12474,10 +12437,6 @@ dwarf2out_undef (lineno, buffer)
 {
   if (debug_info_level >= DINFO_LEVEL_VERBOSE)
     {
-#ifdef SGI_MONGOOSE
-      WFE_Macro_Undef(lineno, buffer);
-      return;
-#endif
       named_section_flags (DEBUG_MACINFO_SECTION, SECTION_DEBUG);
       dw2_asm_output_data (1, DW_MACINFO_undef, "Undefine macro");
       dw2_asm_output_data_uleb128 (lineno, "At line number %d", lineno);
@@ -12624,22 +12583,6 @@ dwarf2out_finish (input_filename)
 {
   limbo_die_node *node, *next_node;
   dw_die_ref die = 0;
-
-  if (get_AT (comp_unit_die, DW_AT_comp_dir) == NULL)
-    {
-      char *wd = getpwd ();
-      unsigned i;
-
-      if (wd != NULL)
-	{
-	  for (i = 1; i < file_table.in_use; i++)
-	    if (file_table.table[i][0] != DIR_SEPARATOR)
-	      {
-		add_AT_string (comp_unit_die, DW_AT_comp_dir, wd);
-		break;
-	      }
-	}
-    }
 
   /* Traverse the limbo die list, and add parent/child links.  The only
      dies without parents that should be here are concrete instances of
