@@ -8,7 +8,7 @@ dwarf/
 	from: http://reality.sgi.com/davea/dwarf.html
 
 gcc/
-	version: 3.3.1
+	version: 3.3.2
 	from: http://gcc.gnu.org/
 	tarballs: gcc-core, gcc-g++
 	notes: libstdc++v3 not imported
