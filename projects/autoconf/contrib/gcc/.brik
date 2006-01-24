@@ -14,13 +14,13 @@
 2411687152b     ./boehm-gc/BCC_MAKEFILE
  394605993b     ./boehm-gc/blacklst.c
  971406525b     ./boehm-gc/callprocs
-4155691129b     ./boehm-gc/ChangeLog
+3646085849b     ./boehm-gc/ChangeLog
 2542310219b     ./boehm-gc/checksums.c
 1272640704b     ./boehm-gc/config.guess
 4182969326b     ./boehm-gc/config.sub
-2472545041b     ./boehm-gc/configure
+2350970747b     ./boehm-gc/configure
 2331870630b     ./boehm-gc/configure.host
-1266343671b     ./boehm-gc/configure.in
+ 725430640b     ./boehm-gc/configure.in
 3430717956b     ./boehm-gc/cord/cordbscs.c
  473686535b     ./boehm-gc/cord/cordprnt.c
 1796537586b     ./boehm-gc/cord/cordtest.c
@@ -162,11 +162,11 @@
  332085760b     ./boehm-gc/version.h
  205379550b     ./boehm-gc/WCC_MAKEFILE
   62682092b     ./boehm-gc/win32_threads.c
-2171734350b     ./BUGS
-2989600426b     ./bugs.html
-2254080160b     ./ChangeLog
+ 971684819b     ./BUGS
+4173866843b     ./bugs.html
+ 934441312b     ./ChangeLog
  430854799b     ./config/acinclude.m4
-1571744625b     ./config/ChangeLog
+1748632144b     ./config/ChangeLog
 3794184949b     ./config.guess
 2016379063b     ./config.if
  636889995b     ./config/mh-a68bsd
@@ -200,7 +200,7 @@
 3478341494b     ./config/mh-ppcpic
  633311229b     ./config/mh-riscos
 3265825290b     ./config/mh-s390pic
- 883433131b     ./config/mh-sco
+2299205241b     ./config/mh-sco
  612532950b     ./config/mh-solaris
 1399222241b     ./config/mh-sparcpic
 1335785638b     ./config/mh-sysv
@@ -218,22 +218,22 @@
 2659154290b     ./config/mt-wince
  537897852b     ./config.sub
 4143692422b     ./configure
-2116386303b     ./configure.in
+2474773756b     ./configure.in
 1948950130b     ./contrib/analyze_brprob
-3735472459b     ./contrib/ChangeLog
+1043864154b     ./contrib/ChangeLog
  550196746b     ./contrib/compare_tests
 2828387446b     ./contrib/convert_to_f2c
 2929939770b     ./contrib/convert_to_g2c
 2025073358b     ./contrib/download_f2c
 1336632236b     ./contrib/gccbug.el
-2292355102b     ./contrib/gcc_build
+4190705069b     ./contrib/gcc_build
  349855123b     ./contrib/gcc_update
- 109296376b     ./contrib/gennews
+ 752127234b     ./contrib/gennews
 4256039795b     ./contrib/index-prop
 3683285493b     ./contrib/newcvsroot
 3406928738b     ./contrib/paranoia.cc
 3661855799b     ./contrib/regression/btest-gcc.sh
-2871919057b     ./contrib/regression/ChangeLog
+3682328122b     ./contrib/regression/ChangeLog
 1435553453b     ./contrib/regression/objs-gcc.sh
 1757898889b     ./contrib/regression/README
 3103378580b     ./contrib/regression/site.exp
@@ -244,12 +244,12 @@
 2171125041b     ./COPYING
  508743035b     ./COPYING.LIB
 2864072627b     ./.cvsignore
-4097910241b     ./FAQ
-2227615908b     ./faq.html
+ 998335541b     ./FAQ
+1764901825b     ./faq.html
   54199525b     ./fastjar/acinclude.m4
 1369101675b     ./fastjar/aclocal.m4
 1005262133b     ./fastjar/AUTHORS
-1926225893b     ./fastjar/ChangeLog
+2435650698b     ./fastjar/ChangeLog
 1745615150b     ./fastjar/CHANGES
 3743222129b     ./fastjar/compress.c
 1169302702b     ./fastjar/compress.h
@@ -260,19 +260,19 @@
 3707811223b     ./fastjar/.cvsignore
 2553867110b     ./fastjar/dostime.c
  446939748b     ./fastjar/dostime.h
-1044518281b     ./fastjar/fastjar.info
-2806177633b     ./fastjar/fastjar.texi
- 378877939b     ./fastjar/grepjar.1
+3900501519b     ./fastjar/fastjar.info
+3589129523b     ./fastjar/fastjar.texi
+2261192900b     ./fastjar/grepjar.1
 2770615802b     ./fastjar/INSTALL
 2331671736b     ./fastjar/install-defs.sh.in
 1178077958b     ./fastjar/install-sh
-2922712869b     ./fastjar/jar.1
+1406665953b     ./fastjar/jar.1
 2281221680b     ./fastjar/jargrep.c
 4062871816b     ./fastjar/jargrep.h
 2905933595b     ./fastjar/jartool.c
 2754304773b     ./fastjar/jartool.h
- 443848619b     ./fastjar/Makefile.am
- 232400679b     ./fastjar/Makefile.in
+1805291518b     ./fastjar/Makefile.am
+2841639681b     ./fastjar/Makefile.in
  990942143b     ./fastjar/missing
 1455437353b     ./fastjar/mkinstalldirs
 4038493440b     ./fastjar/NEWS
@@ -284,7 +284,7 @@
 2215240433b     ./gcc/ABOUT-GCC-NLS
 1413896246b     ./gcc/ABOUT-NLS
 3729933059b     ./gcc/acconfig.h
- 674177543b     ./gcc/aclocal.m4
+4067360570b     ./gcc/aclocal.m4
 3476755371b     ./gcc/ada/1aexcept.adb
 3022880533b     ./gcc/ada/1aexcept.ads
 2251433832b     ./gcc/ada/1ic.ads
@@ -725,7 +725,7 @@
  819907824b     ./gcc/ada/casing.adb
  383971693b     ./gcc/ada/casing.ads
 2658802005b     ./gcc/ada/ceinfo.adb
-3789399917b     ./gcc/ada/ChangeLog
+2122962180b     ./gcc/ada/ChangeLog
 2766796861b     ./gcc/ada/checks.adb
 2020343191b     ./gcc/ada/checks.ads
 1422160412b     ./gcc/ada/cio.c
@@ -919,18 +919,18 @@
 2304496705b     ./gcc/ada/gnatprep.adb
 2739505905b     ./gcc/ada/gnatprep.ads
 2618438921b     ./gcc/ada/gnatpsta.adb
-1370385931b     ./gcc/ada/gnat_rm.info
+2704394259b     ./gcc/ada/gnat_rm.info
 2672136726b     ./gcc/ada/gnat_rm.texi
 4056210887b     ./gcc/ada/gnat-style.info
 4283135334b     ./gcc/ada/gnat-style.texi
 2087208411b     ./gcc/ada/gnat_ug.texi
-2520572795b     ./gcc/ada/gnat_ug_unx.info
+ 606904986b     ./gcc/ada/gnat_ug_unx.info
  804303635b     ./gcc/ada/gnat_ug_unx.texi
-4283818481b     ./gcc/ada/gnat_ug_vms.info
+2054672295b     ./gcc/ada/gnat_ug_vms.info
 1719659850b     ./gcc/ada/gnat_ug_vms.texi
-4198303969b     ./gcc/ada/gnat_ug_vxw.info
+3136932359b     ./gcc/ada/gnat_ug_vxw.info
 1705774003b     ./gcc/ada/gnat_ug_vxw.texi
-4196616963b     ./gcc/ada/gnat_ug_wnt.info
+2763851577b     ./gcc/ada/gnat_ug_wnt.info
 1236505387b     ./gcc/ada/gnat_ug_wnt.texi
 3334144073b     ./gcc/ada/gnatvsn.adb
 1947192708b     ./gcc/ada/gnatvsn.ads
@@ -1677,37 +1677,37 @@
 3573112600b     ./gcc/ada/xsinfo.adb
 4190686960b     ./gcc/ada/xsnames.adb
  511048883b     ./gcc/ada/xtreeprs.adb
- 713637432b     ./gcc/alias.c
+2840631424b     ./gcc/alias.c
 3329204760b     ./gcc/attribs.c
  661204297b     ./gcc/basic-block.h
 3868878276b     ./gcc/bb-reorder.c
 3592689596b     ./gcc/bitmap.c
 3888731700b     ./gcc/bitmap.h
  866389233b     ./gcc/builtin-attrs.def
-3936494214b     ./gcc/builtins.c
+ 148394392b     ./gcc/builtins.c
 3399851061b     ./gcc/builtins.def
 2231934789b     ./gcc/builtin-types.def
 1937217650b     ./gcc/caller-save.c
-1503808242b     ./gcc/calls.c
+1946827628b     ./gcc/calls.c
  266754123b     ./gcc/c-aux-info.c
 1775829814b     ./gcc/c-common.c
 1911269762b     ./gcc/c-common.def
 3230227898b     ./gcc/c-common.h
 2498727911b     ./gcc/c-config-lang.in
 4223371978b     ./gcc/c-convert.c
-1421132265b     ./gcc/c-decl.c
+ 579906276b     ./gcc/c-decl.c
  420078897b     ./gcc/c-dump.c
 3988343334b     ./gcc/c-errors.c
 1424850360b     ./gcc/cfganal.c
 2497073643b     ./gcc/cfgbuild.c
 2570201327b     ./gcc/cfg.c
-2826252714b     ./gcc/cfgcleanup.c
+ 830773923b     ./gcc/cfgcleanup.c
 2495299687b     ./gcc/cfglayout.c
  397535119b     ./gcc/cfglayout.h
-2523244100b     ./gcc/cfgloop.c
-3924472751b     ./gcc/cfgrtl.c
+3649311558b     ./gcc/cfgloop.c
+ 847004601b     ./gcc/cfgrtl.c
 1308520655b     ./gcc/c-format.c
-3543327092b     ./gcc/ChangeLog
+2444607425b     ./gcc/ChangeLog
 4112479902b     ./gcc/ChangeLog.0
 3216066841b     ./gcc/ChangeLog.1
 2323556130b     ./gcc/ChangeLog.2
@@ -1718,17 +1718,17 @@
 1208082050b     ./gcc/ChangeLog.7
 3235050590b     ./gcc/ChangeLog.lib
 2967450474b     ./gcc/c-lang.c
-1290114788b     ./gcc/c-lex.c
- 906643159b     ./gcc/c-objc-common.c
-2549935202b     ./gcc/collect2.c
+ 940015516b     ./gcc/c-lex.c
+ 615654456b     ./gcc/c-objc-common.c
+ 600457259b     ./gcc/collect2.c
 1843868705b     ./gcc/collect2.h
-4226959394b     ./gcc/combine.c
+2227256180b     ./gcc/combine.c
 4122382037b     ./gcc/conditions.h
 3915788506b     ./gcc/config/alpha/alpha32.h
-1744690274b     ./gcc/config/alpha/alpha.c
-1117342680b     ./gcc/config/alpha/alpha.h
+3673620331b     ./gcc/config/alpha/alpha.c
+1346602339b     ./gcc/config/alpha/alpha.h
 1081521208b     ./gcc/config/alpha/alpha-interix.h
- 670734235b     ./gcc/config/alpha/alpha.md
+3145148145b     ./gcc/config/alpha/alpha.md
 1148890194b     ./gcc/config/alpha/alpha-protos.h
 1407988137b     ./gcc/config/alpha/crtfastmath.c
 1689355033b     ./gcc/config/alpha/elf.h
@@ -1739,7 +1739,7 @@
 2439445430b     ./gcc/config/alpha/gnu.h
 2998860143b     ./gcc/config/alpha/lib1funcs.asm
 3980115873b     ./gcc/config/alpha/linux-elf.h
-1799302733b     ./gcc/config/alpha/linux.h
+2178551847b     ./gcc/config/alpha/linux.h
 1246797152b     ./gcc/config/alpha/netbsd.h
 3083238444b     ./gcc/config/alpha/openbsd.h
 1148914945b     ./gcc/config/alpha/osf5.h
@@ -1795,7 +1795,7 @@
  259208134b     ./gcc/config/arm/elf.h
 4010625370b     ./gcc/config/arm/freebsd.h
 3355567723b     ./gcc/config/arm/lib1funcs.asm
-4115592483b     ./gcc/config/arm/linux-elf.h
+2684835712b     ./gcc/config/arm/linux-elf.h
 2410223095b     ./gcc/config/arm/linux-gas.h
  816029099b     ./gcc/config/arm/netbsd-elf.h
 3559608348b     ./gcc/config/arm/netbsd.h
@@ -1865,7 +1865,7 @@
 3101942541b     ./gcc/config/darwin.c
 4059801364b     ./gcc/config/darwin-c.c
 3226016932b     ./gcc/config/darwin-crt2.c
-1934403156b     ./gcc/config/darwin.h
+3020045688b     ./gcc/config/darwin.h
 1838012452b     ./gcc/config/darwin-protos.h
 2063159136b     ./gcc/config/dbxcoff.h
  741369544b     ./gcc/config/dbxelf.h
@@ -1913,7 +1913,7 @@
 3087488293b     ./gcc/config/frv/ulltod.c
  788903798b     ./gcc/config/frv/ulltof.c
  946276139b     ./gcc/config/frv/umodi.c
- 435140269b     ./gcc/config.gcc
+2730027050b     ./gcc/config.gcc
 2184744613b     ./gcc/config/gnu.h
 2188992916b     ./gcc/config/gofast.h
 1315260558b     ./gcc/config.guess
@@ -1923,7 +1923,7 @@
 4087866448b     ./gcc/config/h8300/fixunssfsi.c
  913149092b     ./gcc/config/h8300/h8300.c
 2515220433b     ./gcc/config/h8300/h8300.h
-3672026458b     ./gcc/config/h8300/h8300.md
+2784078000b     ./gcc/config/h8300/h8300.md
 2922330864b     ./gcc/config/h8300/h8300-protos.h
 1484792841b     ./gcc/config/h8300/lib1funcs.asm
  186420544b     ./gcc/config/h8300/rtems.h
@@ -1959,7 +1959,7 @@
  240648641b     ./gcc/config/i386/gstabs.h
  798942156b     ./gcc/config/i386/gthr-win32.c
 3155216183b     ./gcc/config/i386/i386-aout.h
- 513525318b     ./gcc/config/i386/i386.c
+ 184235754b     ./gcc/config/i386/i386.c
 2124176398b     ./gcc/config/i386/i386-coff.h
 3652974168b     ./gcc/config/i386/i386elf.h
 1387308539b     ./gcc/config/i386/i386.h
@@ -1988,12 +1988,12 @@
 3476241273b     ./gcc/config/i386/ppro.md
 1986050166b     ./gcc/config/i386/ptx4-i.h
  574801934b     ./gcc/config/i386/rtemself.h
-2639545373b     ./gcc/config/i386/sco5.h
+3499499073b     ./gcc/config/i386/sco5.h
  425477609b     ./gcc/config/i386/sol2-c1.asm
 1565106149b     ./gcc/config/i386/sol2-ci.asm
 4008317666b     ./gcc/config/i386/sol2-cn.asm
 2045686122b     ./gcc/config/i386/sol2-gc1.asm
-1534089268b     ./gcc/config/i386/sol2.h
+3525567971b     ./gcc/config/i386/sol2.h
 2491384943b     ./gcc/config/i386/svr3dbx.h
 4076081204b     ./gcc/config/i386/svr3gas.h
 3846064431b     ./gcc/config/i386/svr3.ifile
@@ -2014,8 +2014,7 @@
   92801654b     ./gcc/config/i386/t-netware
  709063989b     ./gcc/config/i386/t-openbsd
  422823583b     ./gcc/config/i386/t-rtems-i386
-1649755892b     ./gcc/config/i386/t-sco5
-1098748916b     ./gcc/config/i386/t-sco5gas
+2334743380b     ./gcc/config/i386/t-sco5
 2786912378b     ./gcc/config/i386/t-sol2
 3128852740b     ./gcc/config/i386/t-svr3dbx
 2977164768b     ./gcc/config/i386/t-udk
@@ -2056,17 +2055,17 @@
 1650540400b     ./gcc/config/ia64/elf.h
 2446839914b     ./gcc/config/ia64/fde-glibc.c
 2020318486b     ./gcc/config/ia64/freebsd.h
-1838314585b     ./gcc/config/ia64/hpux.h
+ 145205945b     ./gcc/config/ia64/hpux.h
 3568056609b     ./gcc/config/ia64/hpux_longdouble.h
-2403073370b     ./gcc/config/ia64/ia64.c
+3496380550b     ./gcc/config/ia64/ia64.c
 1964471896b     ./gcc/config/ia64/ia64-c.c
- 201253163b     ./gcc/config/ia64/ia64.h
+ 776147292b     ./gcc/config/ia64/ia64.h
  511545686b     ./gcc/config/ia64/ia64intrin.h
-2554824206b     ./gcc/config/ia64/ia64.md
+2724938558b     ./gcc/config/ia64/ia64.md
  342783782b     ./gcc/config/ia64/ia64-modes.def
-2015129861b     ./gcc/config/ia64/ia64-protos.h
+3227157966b     ./gcc/config/ia64/ia64-protos.h
 3488320870b     ./gcc/config/ia64/lib1funcs.asm
-2361471520b     ./gcc/config/ia64/libgcc-ia64.ver
+2632266533b     ./gcc/config/ia64/libgcc-ia64.ver
 3882388711b     ./gcc/config/ia64/linux.h
 3940638341b     ./gcc/config/ia64/quadlib.c
 4206796904b     ./gcc/config/ia64/sysv4.h
@@ -2075,9 +2074,9 @@
 1051208108b     ./gcc/config/ia64/t-hpux
  308156643b     ./gcc/config/ia64/t-ia64
 2759923269b     ./gcc/config/ia64/unwind-aix.c
-3214954256b     ./gcc/config/ia64/unwind-ia64.c
+1278555130b     ./gcc/config/ia64/unwind-ia64.c
 2355075302b     ./gcc/config/ia64/unwind-ia64.h
-3315675899b     ./gcc/config.in
+1745697809b     ./gcc/config.in
 3221870490b     ./gcc/config/interix3.h
  782966245b     ./gcc/config/interix.h
 1877317600b     ./gcc/config/ip2k/crt0.S
@@ -2090,14 +2089,14 @@
 3774321010b     ./gcc/config/libgcc-glibc.ver
  431681775b     ./gcc/config/libgloss.h
 1132125030b     ./gcc/config/linux-aout.h
-3792279926b     ./gcc/config/linux.h
+3480817898b     ./gcc/config/linux.h
  836960090b     ./gcc/config/lynx.h
 1696444785b     ./gcc/config/lynx-ng.h
 2460604231b     ./gcc/config/m32r/initfini.c
-2654083948b     ./gcc/config/m32r/m32r.c
-2114240739b     ./gcc/config/m32r/m32r.h
-3502142620b     ./gcc/config/m32r/m32r.md
- 822298781b     ./gcc/config/m32r/m32r-protos.h
+3082370632b     ./gcc/config/m32r/m32r.c
+ 582485384b     ./gcc/config/m32r/m32r.h
+3253973863b     ./gcc/config/m32r/m32r.md
+4238084767b     ./gcc/config/m32r/m32r-protos.h
 3043182144b     ./gcc/config/m32r/t-m32r
 2563624329b     ./gcc/config/m68hc11/larith.asm
 3705868201b     ./gcc/config/m68hc11/m68hc11.c
@@ -2106,7 +2105,7 @@
 2108112324b     ./gcc/config/m68hc11/m68hc11.md
 3203494610b     ./gcc/config/m68hc11/m68hc11-protos.h
  900567272b     ./gcc/config/m68hc11/m68hc12.h
-4223184266b     ./gcc/config/m68hc11/t-m68hc11-gas
+ 414967778b     ./gcc/config/m68hc11/t-m68hc11-gas
 4152566641b     ./gcc/config/m68k/3b1g.h
  950165799b     ./gcc/config/m68k/3b1.h
 3699861513b     ./gcc/config/m68k/amix.h
@@ -2162,7 +2161,7 @@
 1845413337b     ./gcc/config/m68k/t-hp320
 1601671577b     ./gcc/config/m68k/t-linux
 1601671577b     ./gcc/config/m68k/t-linux-aout
- 591505405b     ./gcc/config/m68k/t-m68kbare
+2871905384b     ./gcc/config/m68k/t-m68kbare
 1376927127b     ./gcc/config/m68k/t-m68kelf
 2312371323b     ./gcc/config/m68k/t-mot3300
 1278563328b     ./gcc/config/m68k/t-mot3300-gald
@@ -2171,6 +2170,7 @@
 3937644742b     ./gcc/config/m68k/t-openbsd
  888720875b     ./gcc/config/m68k/tower-as.h
 2265492461b     ./gcc/config/m68k/tower.h
+1448405083b     ./gcc/config/m68k/t-rtems
 2710264317b     ./gcc/config/m68k/t-vxworks68
 1353236462b     ./gcc/config/m68k/vxm68k.h
 1448728884b     ./gcc/config/m88k/aout-dbx.h
@@ -2246,6 +2246,7 @@
 1205295560b     ./gcc/config/mips/t-isa3264
  382304214b     ./gcc/config/mips/t-mips
 4201375008b     ./gcc/config/mips/t-r3900
+3243475203b     ./gcc/config/mips/t-rtems
 2079451253b     ./gcc/config/mips/t-sr71k
  550681837b     ./gcc/config/mips/t-vr
  568075896b     ./gcc/config/mips/vr.h
@@ -2292,18 +2293,18 @@
 2968109913b     ./gcc/config/pa/pa32-linux.h
 4077989132b     ./gcc/config/pa/pa32-regs.h
 1229145373b     ./gcc/config/pa/pa-64.h
-3956852599b     ./gcc/config/pa/pa64-hpux.h
+1058350505b     ./gcc/config/pa/pa64-hpux.h
 2920878761b     ./gcc/config/pa/pa64-linux.h
  653142328b     ./gcc/config/pa/pa64-regs.h
 3813586304b     ./gcc/config/pa/pa64-start.h
-1456283762b     ./gcc/config/pa/pa.c
+1461752469b     ./gcc/config/pa/pa.c
  921995916b     ./gcc/config/pa/pa.h
 3786607524b     ./gcc/config/pa/pa-hiux.h
-4284123246b     ./gcc/config/pa/pa-hpux10.h
-1075128895b     ./gcc/config/pa/pa-hpux11.h
+3365446155b     ./gcc/config/pa/pa-hpux10.h
+1196664519b     ./gcc/config/pa/pa-hpux11.h
 1833709162b     ./gcc/config/pa/pa-hpux7.h
 3124002443b     ./gcc/config/pa/pa-hpux9.h
-4187284900b     ./gcc/config/pa/pa-hpux.h
+ 605433968b     ./gcc/config/pa/pa-hpux.h
  469628573b     ./gcc/config/pa/pa-linux.h
 1569454373b     ./gcc/config/pa/pa.md
 1508149926b     ./gcc/config/pa/pa-modes.def
@@ -2363,19 +2364,19 @@
 3977992822b     ./gcc/config/rs6000/eabispe.h
 2165084479b     ./gcc/config/rs6000/freebsd.h
  977386394b     ./gcc/config/rs6000/gnu.h
- 573951816b     ./gcc/config/rs6000/linux64.h
+1412389761b     ./gcc/config/rs6000/linux64.h
 1351560312b     ./gcc/config/rs6000/linuxaltivec.h
-4231910920b     ./gcc/config/rs6000/linux.h
+1443196669b     ./gcc/config/rs6000/linux.h
 1826004816b     ./gcc/config/rs6000/lynx.h
  662544262b     ./gcc/config/rs6000/mach.h
 1820610909b     ./gcc/config/rs6000/milli.exp
 3596315410b     ./gcc/config/rs6000/netbsd.h
 1801910688b     ./gcc/config/rs6000/ppc64-fp.c
 1765497648b     ./gcc/config/rs6000/ppc-asm.h
-1804222180b     ./gcc/config/rs6000/rs6000.c
+3209769093b     ./gcc/config/rs6000/rs6000.c
 1345436052b     ./gcc/config/rs6000/rs6000-c.c
 3590135572b     ./gcc/config/rs6000/rs6000.h
-3037047642b     ./gcc/config/rs6000/rs6000.md
+1596117806b     ./gcc/config/rs6000/rs6000.md
 3173719444b     ./gcc/config/rs6000/rs6000-modes.def
  528775605b     ./gcc/config/rs6000/rs6000-protos.h
  255651415b     ./gcc/config/rs6000/rtems.h
@@ -2422,7 +2423,7 @@
 3224910313b     ./gcc/config/sh/elf.h
 1949707998b     ./gcc/config/sh/embed-elf.h
 2071066204b     ./gcc/config/sh/lib1funcs.asm
-1797013974b     ./gcc/config/sh/linux.h
+ 979530234b     ./gcc/config/sh/linux.h
 3434577439b     ./gcc/config/sh/little.h
 3344891430b     ./gcc/config/sh/netbsd-elf.h
 2022181827b     ./gcc/config/sh/rtemself.h
@@ -2459,9 +2460,9 @@
 2939495704b     ./gcc/config/sparc/lb1spc.asm
 1395104248b     ./gcc/config/sparc/lb1spl.asm
 1761187951b     ./gcc/config/sparc/libgcc-sparc-glibc.ver
- 358368202b     ./gcc/config/sparc/linux64.h
+ 890665079b     ./gcc/config/sparc/linux64.h
   34002579b     ./gcc/config/sparc/linux-aout.h
-1478480193b     ./gcc/config/sparc/linux.h
+3987833697b     ./gcc/config/sparc/linux.h
 1314010724b     ./gcc/config/sparc/litecoff.h
 2270102558b     ./gcc/config/sparc/liteelf.h
 2424336991b     ./gcc/config/sparc/lite.h
@@ -2477,7 +2478,7 @@
 1579903847b     ./gcc/config/sparc/sol2-64.h
 3203477114b     ./gcc/config/sparc/sol26-sld.h
 1333200498b     ./gcc/config/sparc/sol2-bi.h
-1463670426b     ./gcc/config/sparc/sol2-c1.asm
+2592132520b     ./gcc/config/sparc/sol2-c1.asm
 3288323690b     ./gcc/config/sparc/sol2-ci.asm
 2004370404b     ./gcc/config/sparc/sol2-cn.asm
  878755050b     ./gcc/config/sparc/sol2-gas-bi.h
@@ -2488,10 +2489,10 @@
 3549760155b     ./gcc/config/sparc/sp64-elf.h
 3128199560b     ./gcc/config/sparc/sp86x-aout.h
  632930923b     ./gcc/config/sparc/sp86x-elf.h
-3021873799b     ./gcc/config/sparc/sparc.c
+2951430128b     ./gcc/config/sparc/sparc.c
  433855780b     ./gcc/config/sparc/sparc.h
  113806067b     ./gcc/config/sparc/sparclet.md
-1731086724b     ./gcc/config/sparc/sparc.md
+1259137706b     ./gcc/config/sparc/sparc.md
    5497380b     ./gcc/config/sparc/sparc-modes.def
 2593826026b     ./gcc/config/sparc/sparc-protos.h
  842964351b     ./gcc/config/sparc/splet.h
@@ -2530,13 +2531,14 @@
 3561720924b     ./gcc/config/stormy16/t-stormy16
 2525748108b     ./gcc/config/svr3.h
 2147853147b     ./gcc/config/svr4.h
-1134445490b     ./gcc/config/t-darwin
+1733958440b     ./gcc/config/t-darwin
 2749923948b     ./gcc/config/t-freebsd
 3853732254b     ./gcc/config/t-freebsd-thread
 2512129728b     ./gcc/config/t-gnu
  825269638b     ./gcc/config/t-interix
 4174365071b     ./gcc/config/t-libc-ok
 2753685882b     ./gcc/config/t-libgcc-pic
+2687879286b     ./gcc/config/t-libunwind
 2752897962b     ./gcc/config/t-linux
  825269638b     ./gcc/config/t-linux-aout
 4098486992b     ./gcc/config/t-linux-gnulibc1
@@ -2551,9 +2553,9 @@
  321200235b     ./gcc/config/t-svr4
  937080303b     ./gcc/config/udivmod.c
 2590328114b     ./gcc/config/udivmodsi4.c
-2066956329b     ./gcc/configure
+2426675102b     ./gcc/configure
 2239237249b     ./gcc/configure.frag
-4153635196b     ./gcc/configure.in
+3433367808b     ./gcc/configure.in
 1401546799b     ./gcc/config/usegas.h
 1979686065b     ./gcc/config/v850/lib1funcs.asm
 3345272584b     ./gcc/config/v850/rtems.h
@@ -2597,31 +2599,31 @@
 1231075891b     ./gcc/c-parse.c
 2637246862b     ./gcc/c-parse.in
 1656602684b     ./gcc/c-parse.y
-1503091984b     ./gcc/cp/call.c
+1395283318b     ./gcc/cp/call.c
 2726184849b     ./gcc/cp/cfns.gperf
 3403558692b     ./gcc/cp/cfns.h
-3450579153b     ./gcc/cp/ChangeLog
+2127780464b     ./gcc/cp/ChangeLog
  190176486b     ./gcc/cp/ChangeLog.1
   97583749b     ./gcc/cp/ChangeLog.2
 2546444747b     ./gcc/cp/ChangeLog.egcs
-4074195484b     ./gcc/cp/class.c
+ 840174612b     ./gcc/cp/class.c
 4001109630b     ./gcc/cp/config-lang.in
 3345049029b     ./gcc/cp/cp-lang.c
 2277233898b     ./gcc/cp/cp-tree.def
-2674204807b     ./gcc/cp/cp-tree.h
+2040135329b     ./gcc/cp/cp-tree.h
 1230086821b     ./gcc/cp/.cvsignore
 1969471444b     ./gcc/cp/cvt.c
-2344086294b     ./gcc/cp/decl2.c
-2398845726b     ./gcc/cp/decl.c
+1843026114b     ./gcc/cp/decl2.c
+1186021619b     ./gcc/cp/decl.c
 1385119476b     ./gcc/cp/decl.h
  757230858b     ./gcc/cp/dump.c
 1424479906b     ./gcc/cp/error.c
  452521469b     ./gcc/cp/except.c
 1201332681b     ./gcc/cp/expr.c
-3417476079b     ./gcc/cp/friend.c
+1270190491b     ./gcc/cp/friend.c
 1574667259b     ./gcc/cp/g++.1
  729602332b     ./gcc/cp/g++spec.c
- 226965055b     ./gcc/cp/init.c
+3323910007b     ./gcc/cp/init.c
 1486125690b     ./gcc/cp/lang-options.h
 2659645047b     ./gcc/cp/lang-specs.h
 2140565483b     ./gcc/cp/lex.c
@@ -2633,7 +2635,7 @@
 3193855424b     ./gcc/cp/operators.def
 1390979693b     ./gcc/cp/optimize.c
  439273656b     ./gcc/cp/parse.c
-4183531307b     ./gcc/cp/parse.h
+1860010587b     ./gcc/cp/parse.h
 2206367944b     ./gcc/cp/parse.y
 1602205564b     ./gcc/cppdefault.c
 2551769006b     ./gcc/cppdefault.h
@@ -2644,12 +2646,12 @@
 1755335704b     ./gcc/cpphash.h
 1758176761b     ./gcc/cppinit.c
 3206802280b     ./gcc/cpplex.c
-4012594622b     ./gcc/cpplib.c
+3323456088b     ./gcc/cpplib.c
 2894228879b     ./gcc/cpplib.h
 1301003990b     ./gcc/cppmacro.c
-3118400845b     ./gcc/cppmain.c
+4012085958b     ./gcc/cppmain.c
 2457788577b     ./gcc/cppspec.c
-3843078991b     ./gcc/cp/pt.c
+1471038424b     ./gcc/cp/pt.c
 1890705605b     ./gcc/cpptrad.c
  660118186b     ./gcc/cp/ptree.c
 3843981782b     ./gcc/c-pragma.c
@@ -2658,20 +2660,20 @@
 1364992996b     ./gcc/c-pretty-print.c
  322270390b     ./gcc/c-pretty-print.h
 4034613095b     ./gcc/cp/rtti.c
- 887151904b     ./gcc/cp/search.c
+ 645435452b     ./gcc/cp/search.c
 1948405158b     ./gcc/cp/semantics.c
 1129915797b     ./gcc/cp/spew.c
-4056721053b     ./gcc/cp/tree.c
- 144086378b     ./gcc/cp/typeck2.c
-4087141601b     ./gcc/cp/typeck.c
+4048187454b     ./gcc/cp/tree.c
+1959780068b     ./gcc/cp/typeck2.c
+ 545237975b     ./gcc/cp/typeck.c
 3987640245b     ./gcc/crtstuff.c
-2684723874b     ./gcc/cse.c
+4070757557b     ./gcc/cse.c
 1095744296b     ./gcc/cselib.c
 2819991749b     ./gcc/cselib.h
 2307648174b     ./gcc/c-semantics.c
  216805921b     ./gcc/cstamp-h.in
 3323894092b     ./gcc/c-tree.h
-2917639237b     ./gcc/c-typeck.c
+1266267684b     ./gcc/c-typeck.c
 1308782881b     ./gcc/.cvsignore
 4202760861b     ./gcc/dbxout.c
 2583180678b     ./gcc/dbxout.h
@@ -2691,7 +2693,7 @@
 3399730921b     ./gcc/doc/configterms.texi
  874591811b     ./gcc/doc/contrib.texi
 2272556046b     ./gcc/doc/contribute.texi
-1601456494b     ./gcc/doc/cpp.1
+2817450277b     ./gcc/doc/cpp.1
 4226490983b     ./gcc/doc/cppenv.texi
  818116428b     ./gcc/doc/cpp.info
 4128300115b     ./gcc/doc/cppinternals.info
@@ -2700,31 +2702,31 @@
 1183227635b     ./gcc/doc/cpp.texi
  982930533b     ./gcc/doc/c-tree.texi
 1123688643b     ./gcc/doc/.cvsignore
-1798857281b     ./gcc/doc/extend.texi
+3830403079b     ./gcc/doc/extend.texi
  803819253b     ./gcc/doc/fragments.texi
 2401477723b     ./gcc/doc/frontends.texi
-  32821813b     ./gcc/doc/fsf-funding.7
-1979961433b     ./gcc/doc/gcc.1
-1639973729b     ./gcc/doc/gcc.info
-1401869286b     ./gcc/doc/gccinstall.info
- 582428438b     ./gcc/doc/gccint.info
+ 737064711b     ./gcc/doc/fsf-funding.7
+3672915547b     ./gcc/doc/gcc.1
+2879597060b     ./gcc/doc/gcc.info
+1525034435b     ./gcc/doc/gccinstall.info
+1436299138b     ./gcc/doc/gccint.info
 4222820739b     ./gcc/doc/gccint.texi
 1998340815b     ./gcc/doc/gcc.texi
-1834076335b     ./gcc/doc/gcov.1
+3672734819b     ./gcc/doc/gcov.1
  799484262b     ./gcc/doc/gcov.texi
-3279795360b     ./gcc/doc/gfdl.7
+2654046990b     ./gcc/doc/gfdl.7
 4217859569b     ./gcc/doc/gnu.texi
- 911918480b     ./gcc/doc/gpl.7
+2692696284b     ./gcc/doc/gpl.7
 2598049702b     ./gcc/doc/gty.texi
 2874371193b     ./gcc/doc/headerdirs.texi
 1425599017b     ./gcc/doc/hostconfig.texi
 3288537183b     ./gcc/doc/include/fdl.texi
 2048065465b     ./gcc/doc/include/funding.texi
- 911493169b     ./gcc/doc/include/gcc-common.texi
+4074697841b     ./gcc/doc/include/gcc-common.texi
 3092587370b     ./gcc/doc/include/gpl.texi
  124394628b     ./gcc/doc/include/texinfo.tex
 3427634226b     ./gcc/doc/install-old.texi
- 143873088b     ./gcc/doc/install.texi
+ 800471831b     ./gcc/doc/install.texi
 1451529977b     ./gcc/doc/install.texi2html
 3000332536b     ./gcc/doc/interface.texi
 2525709574b     ./gcc/doc/invoke.texi
@@ -2738,7 +2740,7 @@
 1759580304b     ./gcc/doc/service.texi
 3166516007b     ./gcc/doc/sourcebuild.texi
 3565606796b     ./gcc/doc/standards.texi
-2315196493b     ./gcc/doc/tm.texi
+2405268332b     ./gcc/doc/tm.texi
  128574166b     ./gcc/doc/trouble.texi
 3258612192b     ./gcc/doloop.c
 1146162220b     ./gcc/dominance.c
@@ -2747,7 +2749,7 @@
 4027179154b     ./gcc/dwarf2asm.c
  538758205b     ./gcc/dwarf2asm.h
 1582620025b     ./gcc/dwarf2.h
-1730888572b     ./gcc/dwarf2out.c
+2150551288b     ./gcc/dwarf2out.c
 3517290530b     ./gcc/dwarf2out.h
  109276966b     ./gcc/dwarf.h
 3351836985b     ./gcc/dwarfout.c
@@ -2760,7 +2762,7 @@
 3819344801b     ./gcc/except.h
 1662793030b     ./gcc/explow.c
 2338822673b     ./gcc/expmed.c
-1148786081b     ./gcc/expr.c
+2359221535b     ./gcc/expr.c
 1872989667b     ./gcc/expr.h
 1934744031b     ./gcc/f/ansify.c
 1172411862b     ./gcc/f/bad.c
@@ -2771,10 +2773,10 @@
 3553474552b     ./gcc/f/bld.c
 3286267604b     ./gcc/f/bld.h
 2128697889b     ./gcc/f/bld-op.def
-4041685179b     ./gcc/f/BUGS
+1837378607b     ./gcc/f/BUGS
  235013049b     ./gcc/f/bugs0.texi
 3922562500b     ./gcc/f/bugs.texi
-1580679890b     ./gcc/f/ChangeLog
+2243337282b     ./gcc/f/ChangeLog
 3233190569b     ./gcc/f/ChangeLog.0
 3391364885b     ./gcc/f/com.c
 3386200382b     ./gcc/f/com.h
@@ -2789,8 +2791,8 @@
  417834755b     ./gcc/f/expr.h
  333493781b     ./gcc/f/ffe.texi
  782070966b     ./gcc/f/fini.c
- 738705303b     ./gcc/f/g77.1
-3735550962b     ./gcc/f/g77.info
+1828195012b     ./gcc/f/g77.1
+ 235598750b     ./gcc/f/g77.info
 1023118578b     ./gcc/f/g77spec.c
 3302596636b     ./gcc/f/g77.texi
 4062822261b     ./gcc/f/global.c
@@ -2811,14 +2813,14 @@
 3418049706b     ./gcc/f/intrin.h
 2907149479b     ./gcc/f/invoke.texi
 4178345561b     ./gcc/fix-header.c
- 766031417b     ./gcc/fixinc/check.tpl
+ 353743878b     ./gcc/fixinc/check.tpl
 1043093163b     ./gcc/fixinc/fixfixes.c
 1862241894b     ./gcc/fixinc/fixinc.dgux
   15758129b     ./gcc/fixinc/fixinc.interix
 1824978333b     ./gcc/fixinc/fixincl.c
 2267967746b     ./gcc/fixinc/fixincl.sh
 2178021789b     ./gcc/fixinc/fixincl.tpl
-2076362356b     ./gcc/fixinc/fixincl.x
+1748144386b     ./gcc/fixinc/fixincl.x
 1474597097b     ./gcc/fixinc/fixinc.ptx
 3187846170b     ./gcc/fixinc/fixinc.svr4
 1864448151b     ./gcc/fixinc/fixinc.winnt
@@ -2829,7 +2831,7 @@
 2003329934b     ./gcc/fixinc/genfixes
 2190395998b     ./gcc/fixinc/gnu-regex.c
 1403987073b     ./gcc/fixinc/gnu-regex.h
-  91473779b     ./gcc/fixinc/inclhack.def
+1730486141b     ./gcc/fixinc/inclhack.def
  333067513b     ./gcc/fixinc/Makefile.in
 1990838210b     ./gcc/fixinc/mkfixinc.sh
 1834585069b     ./gcc/fixinc/procopen.c
@@ -2838,6 +2840,7 @@
 3490851801b     ./gcc/fixinc/server.h
 1165473466b     ./gcc/fixinc/tests/base/ansi/math.h
 3124694417b     ./gcc/fixinc/tests/base/ansi/stdlib.h
+ 483312381b     ./gcc/fixinc/tests/base/ansi/string.h
 2980092932b     ./gcc/fixinc/tests/base/arch/i960/archI960.h
 1062137968b     ./gcc/fixinc/tests/base/arpa/inet.h
  935781122b     ./gcc/fixinc/tests/base/assert.h
@@ -2857,11 +2860,11 @@
 2670651204b     ./gcc/fixinc/tests/base/libgen.h
 1854625388b     ./gcc/fixinc/tests/base/machine/cpu.h
  114078425b     ./gcc/fixinc/tests/base/malloc.h
-2313686563b     ./gcc/fixinc/tests/base/math.h
+ 213949517b     ./gcc/fixinc/tests/base/math.h
 2373596333b     ./gcc/fixinc/tests/base/netdnet/dnetdb.h
 4211518276b     ./gcc/fixinc/tests/base/netinet/ip.h
 3107111098b     ./gcc/fixinc/tests/base/pixrect/memvar.h
-3253666839b     ./gcc/fixinc/tests/base/pthread.h
+2157512402b     ./gcc/fixinc/tests/base/pthread.h
 2876721819b     ./gcc/fixinc/tests/base/regex.h
  351364386b     ./gcc/fixinc/tests/base/reg_types.h
 2249464053b     ./gcc/fixinc/tests/base/rpc/auth.h
@@ -2874,12 +2877,13 @@
 1583769396b     ./gcc/fixinc/tests/base/stdio.h
 1529509815b     ./gcc/fixinc/tests/base/stdio_tag.h
  298829255b     ./gcc/fixinc/tests/base/stdlib.h
+2274134488b     ./gcc/fixinc/tests/base/string.h
 2907849084b     ./gcc/fixinc/tests/base/strings.h
  482468002b     ./gcc/fixinc/tests/base/sundev/vuid_event.h
 1807434691b     ./gcc/fixinc/tests/base/sunwindow/win_lock.h
  124945712b     ./gcc/fixinc/tests/base/sym.h
 3921290193b     ./gcc/fixinc/tests/base/sys/asm.h
-  54324049b     ./gcc/fixinc/tests/base/sys/byteorder.h
+1997294699b     ./gcc/fixinc/tests/base/sys/byteorder.h
 1224260027b     ./gcc/fixinc/tests/base/sys/cdefs.h
 1406575472b     ./gcc/fixinc/tests/base/sys/file.h
 3052695740b     ./gcc/fixinc/tests/base/sys/ioctl.h
@@ -2887,6 +2891,7 @@
  645497489b     ./gcc/fixinc/tests/base/sys/machine.h
 1230050207b     ./gcc/fixinc/tests/base/sys/mman.h
 3800154687b     ./gcc/fixinc/tests/base/sys/param.h
+2763839202b     ./gcc/fixinc/tests/base/sys/regset.h
 3041640682b     ./gcc/fixinc/tests/base/sys/signal.h
   85483121b     ./gcc/fixinc/tests/base/sys/socket.h
 2450632911b     ./gcc/fixinc/tests/base/sys/spinlock.h
@@ -2922,7 +2927,7 @@
 1633854048b     ./gcc/f/malloc.h
 2687881356b     ./gcc/f/name.c
  558328466b     ./gcc/f/name.h
- 559255786b     ./gcc/f/NEWS
+2173085709b     ./gcc/f/NEWS
 3453379674b     ./gcc/f/news0.texi
 2025578594b     ./gcc/f/news.texi
   77254354b     ./gcc/fold-const.c
@@ -2981,14 +2986,14 @@
 2232338664b     ./gcc/f/top.h
 3443401298b     ./gcc/f/type.c
 2499934202b     ./gcc/f/type.h
-2589414035b     ./gcc/function.c
+1462737491b     ./gcc/function.c
 2092834276b     ./gcc/function.h
 3058774034b     ./gcc/future.options
  316201735b     ./gcc/f/where.c
 3857741668b     ./gcc/f/where.h
 3783840564b     ./gcc/gbl-ctors.h
 1115769236b     ./gcc/gccbug.in
-3359207208b     ./gcc/gcc.c
+2921634145b     ./gcc/gcc.c
 4230721321b     ./gcc/gcc.h
 3093644366b     ./gcc/gcc.hlp
 2622773729b     ./gcc/gccspec.c
@@ -3011,7 +3016,7 @@
  904540311b     ./gcc/gengenrtl.c
 2765427045b     ./gcc/gengtype.c
 1706925807b     ./gcc/gengtype.h
-3357288863b     ./gcc/gengtype-lex.c
+ 362087221b     ./gcc/gengtype-lex.c
 3137000585b     ./gcc/gengtype-lex.l
  283432982b     ./gcc/gengtype-yacc.c
 2625416625b     ./gcc/gengtype-yacc.h
@@ -3067,7 +3072,7 @@
 3129523647b     ./gcc/integrate.h
 3847321727b     ./gcc/intl/bindtextdom.c
 3277280645b     ./gcc/intl.c
- 908602716b     ./gcc/intl/ChangeLog
+2907030698b     ./gcc/intl/ChangeLog
 3698301396b     ./gcc/intl/config.charset
 3683549278b     ./gcc/intl/dcgettext.c
 1537282354b     ./gcc/intl/dcigettext.c
@@ -3102,7 +3107,7 @@
  674770997b     ./gcc/java/buffer.c
 1535113190b     ./gcc/java/buffer.h
 2471190840b     ./gcc/java/builtins.c
-1405334807b     ./gcc/java/ChangeLog
+ 711626241b     ./gcc/java/ChangeLog
 2409493226b     ./gcc/java/chartables.h
 1669534513b     ./gcc/java/check-init.c
 1987085295b     ./gcc/java/class.c
@@ -3113,12 +3118,12 @@
 2447326245b     ./gcc/java/decl.c
  808662179b     ./gcc/java/except.c
 3550734029b     ./gcc/java/expr.c
- 293857630b     ./gcc/java/gcj.1
-1181101193b     ./gcc/java/gcjh.1
+4140633080b     ./gcc/java/gcj.1
+ 650127821b     ./gcc/java/gcjh.1
 3037774527b     ./gcc/java/gcj.info
 3613529008b     ./gcc/java/gcj.texi
  533046670b     ./gcc/java/gen-table.pl
-1411986171b     ./gcc/java/gij.1
+1159065701b     ./gcc/java/gij.1
  871232158b     ./gcc/java/gjavah.c
 1545050516b     ./gcc/java/java-except.h
 1953641142b     ./gcc/java/java-opcodes.h
@@ -3127,7 +3132,7 @@
 2113802419b     ./gcc/java/java-tree.def
 1585333829b     ./gcc/java/java-tree.h
 1618392854b     ./gcc/java/jcf-depend.c
-1309423528b     ./gcc/java/jcf-dump.1
+1330782242b     ./gcc/java/jcf-dump.1
  989986345b     ./gcc/java/jcf-dump.c
 1096034698b     ./gcc/java/jcf.h
  265802933b     ./gcc/java/jcf-io.c
@@ -3135,9 +3140,9 @@
 3649177865b     ./gcc/java/jcf-path.c
 3469145485b     ./gcc/java/jcf-reader.c
 2779561656b     ./gcc/java/jcf-write.c
-2954054827b     ./gcc/java/jv-convert.1
+1607884657b     ./gcc/java/jv-convert.1
 3805988298b     ./gcc/java/jvgenmain.c
- 240446804b     ./gcc/java/jv-scan.1
+2969973964b     ./gcc/java/jv-scan.1
 1608362154b     ./gcc/java/jv-scan.c
 1503112447b     ./gcc/java/jvspec.c
 1823669543b     ./gcc/java/keyword.gperf
@@ -3150,13 +3155,13 @@
  827934844b     ./gcc/java/Make-lang.in
 3475732428b     ./gcc/java/mangle.c
 1178542691b     ./gcc/java/mangle_name.c
-2451677701b     ./gcc/java/parse.c
+1612011901b     ./gcc/java/parse.c
 1819635606b     ./gcc/java/parse.h
- 997050303b     ./gcc/java/parse-scan.c
+1406773240b     ./gcc/java/parse-scan.c
  222108707b     ./gcc/java/parse-scan.y
 3662037178b     ./gcc/java/parse.y
-   6813413b     ./gcc/java/rmic.1
-2076065631b     ./gcc/java/rmiregistry.1
+2458901806b     ./gcc/java/rmic.1
+3179582836b     ./gcc/java/rmiregistry.1
 4133292138b     ./gcc/java/typeck.c
 3461608157b     ./gcc/java/verify.c
 3887545656b     ./gcc/java/win32-host.c
@@ -3173,7 +3178,7 @@
   95519294b     ./gcc/libfuncs.h
 1895885741b     ./gcc/libgcc2.c
 3322762549b     ./gcc/libgcc2.h
- 279804516b     ./gcc/libgcc-std.ver
+1203905598b     ./gcc/libgcc-std.ver
 2497915666b     ./gcc/limitx.h
 1045880008b     ./gcc/limity.h
 1060915850b     ./gcc/line-map.c
@@ -3182,12 +3187,12 @@
 2979000969b     ./gcc/local-alloc.c
 1812783525b     ./gcc/location.h
 3570672314b     ./gcc/longlong.h
-2167532150b     ./gcc/loop.c
-2947339148b     ./gcc/loop.h
+3976331173b     ./gcc/loop.c
+3228595845b     ./gcc/loop.h
 1751002388b     ./gcc/machmode.def
 2912025978b     ./gcc/machmode.h
  189930733b     ./gcc/main.c
- 372306726b     ./gcc/Makefile.in
+ 892780542b     ./gcc/Makefile.in
 2927199649b     ./gcc/mbchar.c
 1508701785b     ./gcc/mbchar.h
  886384654b     ./gcc/mips-tdump.c
@@ -3197,11 +3202,11 @@
 3976112005b     ./gcc/mkdeps.h
   27366989b     ./gcc/mkheaders.in
  827441351b     ./gcc/mkinstalldirs
-1322684481b     ./gcc/mklibgcc.in
+3700388981b     ./gcc/mklibgcc.in
 4201050746b     ./gcc/mkmap-flat.awk
-1180430107b     ./gcc/mkmap-symver.awk
+2348443687b     ./gcc/mkmap-symver.awk
 1597314052b     ./gcc/move-if-change
-2142801929b     ./gcc/NEWS
+ 492608708b     ./gcc/NEWS
  753535702b     ./gcc/objc/config-lang.in
 1966957144b     ./gcc/objc/.cvsignore
  588115418b     ./gcc/objc/lang-options.h
@@ -3223,7 +3228,7 @@
  984476649b     ./gcc/params.h
 3291441019b     ./gcc/po/be.gmo
 3594423100b     ./gcc/po/be.po
-1668679948b     ./gcc/po/ChangeLog
+1199822984b     ./gcc/po/ChangeLog
  958960227b     ./gcc/po/da.gmo
  473883872b     ./gcc/po/da.po
  389901689b     ./gcc/po/de.gmo
@@ -3273,11 +3278,11 @@
 1380845695b     ./gcc/regmove.c
  886698666b     ./gcc/regrename.c
 4261713084b     ./gcc/regs.h
- 388866387b     ./gcc/reg-stack.c
+2988316224b     ./gcc/reg-stack.c
 1851607546b     ./gcc/reload1.c
 2803735528b     ./gcc/reload.c
 3481272321b     ./gcc/reload.h
-4020213172b     ./gcc/reorg.c
+ 926972925b     ./gcc/reorg.c
  249014842b     ./gcc/resource.c
 2605579460b     ./gcc/resource.h
 3358091595b     ./gcc/rtlanal.c
@@ -3288,7 +3293,7 @@
 1290811844b     ./gcc/sbitmap.c
    7124827b     ./gcc/sbitmap.h
   75721905b     ./gcc/scan.c
-1157934170b     ./gcc/scan-decls.c
+1193388276b     ./gcc/scan-decls.c
  339714129b     ./gcc/scan.h
 3912741047b     ./gcc/scan-types.sh
 2704776331b     ./gcc/sched-deps.c
@@ -3308,15 +3313,15 @@
 3490823511b     ./gcc/ssa.h
  661640452b     ./gcc/stab.def
  471587796b     ./gcc/stack.h
-1990422131b     ./gcc/stmt.c
-2148442539b     ./gcc/stor-layout.c
+2279062054b     ./gcc/stmt.c
+ 859696767b     ./gcc/stor-layout.c
 3600592812b     ./gcc/stringpool.c
  567176141b     ./gcc/sys-protos.h
 1032468258b     ./gcc/system.h
  482558466b     ./gcc/sys-types.h
 3943359312b     ./gcc/target-def.h
 1185210674b     ./gcc/target.h
-2810119787b     ./gcc/testsuite/ChangeLog
+ 776473652b     ./gcc/testsuite/ChangeLog
 1101480727b     ./gcc/testsuite/config/default.exp
 3657217366b     ./gcc/testsuite/consistency.vlad/layout/a-char.c
 2814769741b     ./gcc/testsuite/consistency.vlad/layout/a-double.c
@@ -5363,6 +5368,10 @@
  139115612b     ./gcc/testsuite/gcc.c-torture/compile/20030604-1.c
 3168385659b     ./gcc/testsuite/gcc.c-torture/compile/20030625-1.c
 1844731542b     ./gcc/testsuite/gcc.c-torture/compile/20030703-1.c
+ 421671839b     ./gcc/testsuite/gcc.c-torture/compile/20030821-1.c
+ 144576078b     ./gcc/testsuite/gcc.c-torture/compile/20030907-1.c
+3163338462b     ./gcc/testsuite/gcc.c-torture/compile/20031002-1.c
+1569879978b     ./gcc/testsuite/gcc.c-torture/compile/20031011-1.c
  375311401b     ./gcc/testsuite/gcc.c-torture/compile/900116-1.c
 4181931788b     ./gcc/testsuite/gcc.c-torture/compile/900216-1.c
  426860692b     ./gcc/testsuite/gcc.c-torture/compile/900313-1.c
@@ -5673,6 +5682,7 @@
 2677779184b     ./gcc/testsuite/gcc.c-torture/compile/trunctfdf.c
 3723113555b     ./gcc/testsuite/gcc.c-torture/compile/widechar-1.c
 2985433108b     ./gcc/testsuite/gcc.c-torture/compile/zero-strct-1.c
+1339023163b     ./gcc/testsuite/gcc.c-torture/compile/zero-strct-2.c
 1530761060b     ./gcc/testsuite/gcc.c-torture/execute/20000112-1.c
 2481066019b     ./gcc/testsuite/gcc.c-torture/execute/20000113-1.c
 1162771092b     ./gcc/testsuite/gcc.c-torture/execute/20000121-1.c
@@ -5894,6 +5904,7 @@
    4701210b     ./gcc/testsuite/gcc.c-torture/execute/20030613-1.c
 1633117452b     ./gcc/testsuite/gcc.c-torture/execute/20030714-1.c
  966093144b     ./gcc/testsuite/gcc.c-torture/execute/20030715-1.c
+ 479976333b     ./gcc/testsuite/gcc.c-torture/execute/20030907-1.c
   37158978b     ./gcc/testsuite/gcc.c-torture/execute/900409-1.c
 1241514475b     ./gcc/testsuite/gcc.c-torture/execute/920202-1.c
  651529975b     ./gcc/testsuite/gcc.c-torture/execute/920302-1.c
@@ -6763,7 +6774,7 @@
 2738421039b     ./gcc/testsuite/gcc.dg/20020310-1.c
  767384458b     ./gcc/testsuite/gcc.dg/20020312-1.c
 2062142429b     ./gcc/testsuite/gcc.dg/20020312-2.c
-3842300935b     ./gcc/testsuite/gcc.dg/20020313-1.c
+ 353733237b     ./gcc/testsuite/gcc.dg/20020313-1.c
  663674028b     ./gcc/testsuite/gcc.dg/20020319-1.c
 3802202669b     ./gcc/testsuite/gcc.dg/20020326-1.c
  575770214b     ./gcc/testsuite/gcc.dg/20020411-1.c
@@ -6808,9 +6819,13 @@
 1058638767b     ./gcc/testsuite/gcc.dg/20030414-1.c
  562276436b     ./gcc/testsuite/gcc.dg/20030625-1.c
  234439247b     ./gcc/testsuite/gcc.dg/20030627-1.c
+2034015147b     ./gcc/testsuite/gcc.dg/20030702-1.c
  633614653b     ./gcc/testsuite/gcc.dg/20030708-1.c
  432289486b     ./gcc/testsuite/gcc.dg/20030717-1.c
 2732676543b     ./gcc/testsuite/gcc.dg/20030721-1.c
+2613783087b     ./gcc/testsuite/gcc.dg/20030815-1.c
+3262950551b     ./gcc/testsuite/gcc.dg/20031002-1.c
+3703962415b     ./gcc/testsuite/gcc.dg/20031009-1.c
 1577979025b     ./gcc/testsuite/gcc.dg/920413-1.c
 2176221389b     ./gcc/testsuite/gcc.dg/940409-1.c
 1567764883b     ./gcc/testsuite/gcc.dg/940510-1.c
@@ -6887,6 +6902,7 @@
  719825537b     ./gcc/testsuite/gcc.dg/bitfld-4.c
  331669473b     ./gcc/testsuite/gcc.dg/bitfld-5.c
 2721476408b     ./gcc/testsuite/gcc.dg/bitfld-6.c
+2770733918b     ./gcc/testsuite/gcc.dg/builtin-apply1.c
 1594168367b     ./gcc/testsuite/gcc.dg/builtin-choose-expr.c
   10093864b     ./gcc/testsuite/gcc.dg/builtin-inf-1.c
 2462561678b     ./gcc/testsuite/gcc.dg/builtin-prefetch-1.c
@@ -6897,6 +6913,7 @@
 4098525451b     ./gcc/testsuite/gcc.dg/c90-array-lval-3.c
 3655088604b     ./gcc/testsuite/gcc.dg/c90-array-lval-4.c
 1572913366b     ./gcc/testsuite/gcc.dg/c90-array-lval-5.c
+  25327060b     ./gcc/testsuite/gcc.dg/c90-array-lval-6.c
 4018159207b     ./gcc/testsuite/gcc.dg/c90-complex-1.c
 3681535923b     ./gcc/testsuite/gcc.dg/c90-complit-1.c
 1705314837b     ./gcc/testsuite/gcc.dg/c90-const-expr-1.c
@@ -6929,6 +6946,7 @@
  533861407b     ./gcc/testsuite/gcc.dg/c99-array-lval-3.c
 2215212813b     ./gcc/testsuite/gcc.dg/c99-array-lval-4.c
 3070583409b     ./gcc/testsuite/gcc.dg/c99-array-lval-5.c
+ 144287683b     ./gcc/testsuite/gcc.dg/c99-array-lval-6.c
 1817213908b     ./gcc/testsuite/gcc.dg/c99-array-nonobj-1.c
 2980400116b     ./gcc/testsuite/gcc.dg/c99-bool-1.c
 2269932988b     ./gcc/testsuite/gcc.dg/c99-complex-1.c
@@ -7177,9 +7195,10 @@
 1107840471b     ./gcc/testsuite/gcc.dg/cpp/redef1.c
 1601641321b     ./gcc/testsuite/gcc.dg/cpp/redef2.c
 2157179075b     ./gcc/testsuite/gcc.dg/cpp/redef3.c
+2746819393b     ./gcc/testsuite/gcc.dg/cpp/separate-1.c
 2020720031b     ./gcc/testsuite/gcc.dg/cpp/skipping2.c
 3846911977b     ./gcc/testsuite/gcc.dg/cpp/skipping.c
-3873271528b     ./gcc/testsuite/gcc.dg/cpp/spacing1.c
+3826080641b     ./gcc/testsuite/gcc.dg/cpp/spacing1.c
 1299147601b     ./gcc/testsuite/gcc.dg/cpp/spacing2.c
 3081823659b     ./gcc/testsuite/gcc.dg/cpp/strify1.c
 3973832195b     ./gcc/testsuite/gcc.dg/cpp/strify2.c
@@ -7287,8 +7306,10 @@
 2112571638b     ./gcc/testsuite/gcc.dg/cpp/widestr1.c
 3886684794b     ./gcc/testsuite/gcc.dg/cpp/Wsignprom.c
 1685485063b     ./gcc/testsuite/gcc.dg/cpp/Wtrigraphs.c
+2373291318b     ./gcc/testsuite/gcc.dg/cpp/Wunknown-pragmas-1.c
 3786746146b     ./gcc/testsuite/gcc.dg/cpp/Wunused.c
 2247214341b     ./gcc/testsuite/gcc.dg/cpp/Wunused.h
+ 966111785b     ./gcc/testsuite/gcc.dg/darwin-abi-1.c
 3955692120b     ./gcc/testsuite/gcc.dg/darwin-ld-1.c
 3377797610b     ./gcc/testsuite/gcc.dg/darwin-ld-2.c
  858483839b     ./gcc/testsuite/gcc.dg/darwin-ld-3.c
@@ -7438,7 +7459,7 @@
 2954420820b     ./gcc/testsuite/gcc.dg/mmix-1.c
 2663557248b     ./gcc/testsuite/gcc.dg/m-un-1.c
 2341407016b     ./gcc/testsuite/gcc.dg/m-un-2.c
-3356258804b     ./gcc/testsuite/gcc.dg/nest.c
+2607910125b     ./gcc/testsuite/gcc.dg/nest.c
  167742958b     ./gcc/testsuite/gcc.dg/no-builtin-1.c
 2208318132b     ./gcc/testsuite/gcc.dg/noncompile/20000901-1.c
 3562764821b     ./gcc/testsuite/gcc.dg/noncompile/20001228-1.c
@@ -7449,6 +7470,7 @@
 3055182962b     ./gcc/testsuite/gcc.dg/noncompile/20020207-1.c
 3889627347b     ./gcc/testsuite/gcc.dg/noncompile/20020213-1.c
 1457569280b     ./gcc/testsuite/gcc.dg/noncompile/20020220-1.c
+2121631552b     ./gcc/testsuite/gcc.dg/noncompile/20030818-1.c
 2964160251b     ./gcc/testsuite/gcc.dg/noncompile/920507-1.c
 2161867266b     ./gcc/testsuite/gcc.dg/noncompile/920616-2.c
 1066215762b     ./gcc/testsuite/gcc.dg/noncompile/920721-2.c
@@ -7509,7 +7531,7 @@
 2879526504b     ./gcc/testsuite/gcc.dg/return-type-3.c
 3862146754b     ./gcc/testsuite/gcc.dg/sequence-pt-1.c
 3997091992b     ./gcc/testsuite/gcc.dg/setjmp-1.c
-1999251039b     ./gcc/testsuite/gcc.dg/sibcall-1.c
+4257734656b     ./gcc/testsuite/gcc.dg/sibcall-1.c
 2394881430b     ./gcc/testsuite/gcc.dg/sibcall-2.c
 2328366575b     ./gcc/testsuite/gcc.dg/sibcall-3.c
  348731556b     ./gcc/testsuite/gcc.dg/sibcall-4.c
@@ -7559,6 +7581,7 @@
 1890682509b     ./gcc/testsuite/gcc.dg/typedef-init.c
 1892637986b     ./gcc/testsuite/gcc.dg/typeof-1.c
 2805647153b     ./gcc/testsuite/gcc.dg/typespec-1.c
+2282506048b     ./gcc/testsuite/gcc.dg/ultrasp10.c
 1860858242b     ./gcc/testsuite/gcc.dg/ultrasp1.c
  789972216b     ./gcc/testsuite/gcc.dg/ultrasp2.c
 2708772692b     ./gcc/testsuite/gcc.dg/ultrasp3.c
@@ -7578,7 +7601,7 @@
  390912088b     ./gcc/testsuite/gcc.dg/uninit-9.c
 2047101897b     ./gcc/testsuite/gcc.dg/uninit-A.c
 3967573468b     ./gcc/testsuite/gcc.dg/uninit-B.c
-2467264013b     ./gcc/testsuite/gcc.dg/uninit-C.c
+ 871237670b     ./gcc/testsuite/gcc.dg/uninit-C.c
 3652858704b     ./gcc/testsuite/gcc.dg/unordered-1.c
  977726966b     ./gcc/testsuite/gcc.dg/unused-1.c
 3484455791b     ./gcc/testsuite/gcc.dg/unused-2.c
@@ -7630,6 +7653,8 @@
 2078992029b     ./gcc/testsuite/gcc.dg/Wunknownprag.c
 1674197654b     ./gcc/testsuite/gcc.dg/Wunreachable-1.c
 3581949676b     ./gcc/testsuite/gcc.dg/Wunreachable-2.c
+4265013314b     ./gcc/testsuite/gcc.dg/Wunreachable-6.c
+ 154937648b     ./gcc/testsuite/gcc.dg/Wunreachable-7.c
 1769759078b     ./gcc/testsuite/gcc.misc-tests/acker1.c
 1443030966b     ./gcc/testsuite/gcc.misc-tests/acker1.exp
  278378178b     ./gcc/testsuite/gcc.misc-tests/arm-isr.c
@@ -7673,7 +7698,7 @@
 2266643451b     ./gcc/testsuite/gcc.misc-tests/i386-pf-none-1.c
 2697809529b     ./gcc/testsuite/gcc.misc-tests/i386-pf-sse-1.c
 2256410310b     ./gcc/testsuite/gcc.misc-tests/i386-prefetch.exp
-3414573605b     ./gcc/testsuite/gcc.misc-tests/linkage.exp
+1438262609b     ./gcc/testsuite/gcc.misc-tests/linkage.exp
 2071381157b     ./gcc/testsuite/gcc.misc-tests/linkage-x.c
 3975807378b     ./gcc/testsuite/gcc.misc-tests/linkage-y.c
 2874350784b     ./gcc/testsuite/gcc.misc-tests/matrix1.c
@@ -7684,6 +7709,8 @@
 3220093576b     ./gcc/testsuite/gcc.misc-tests/sieve.exp
 4235385594b     ./gcc/testsuite/gcc.misc-tests/sort2.c
  232815709b     ./gcc/testsuite/gcc.misc-tests/sort2.exp
+3879806733b     ./gcc/testsuite/g++.dg/abi/bitfield11.C
+ 633990831b     ./gcc/testsuite/g++.dg/abi/bitfield12.C
  885716516b     ./gcc/testsuite/g++.dg/abi/bitfield1.C
  479436735b     ./gcc/testsuite/g++.dg/abi/bitfield2.C
 3225280346b     ./gcc/testsuite/g++.dg/abi/bitfield3.C
@@ -7871,6 +7898,7 @@
 3604468645b     ./gcc/testsuite/g++.dg/eh/ctor1.C
 2992503335b     ./gcc/testsuite/g++.dg/eh/ctor2.C
 3380022165b     ./gcc/testsuite/g++.dg/eh/dead1.C
+3753867915b     ./gcc/testsuite/g++.dg/eh/delayslot1.C
 2869281563b     ./gcc/testsuite/g++.dg/eh/dtor1.C
 3289569863b     ./gcc/testsuite/g++.dg/eh/filter1.C
 1460645953b     ./gcc/testsuite/g++.dg/eh/filter2.C
@@ -7899,6 +7927,7 @@
 1242918408b     ./gcc/testsuite/g++.dg/expr/anew3.C
 2363098696b     ./gcc/testsuite/g++.dg/expr/anew4.C
 3540714573b     ./gcc/testsuite/g++.dg/expr/cast1.C
+1287092719b     ./gcc/testsuite/g++.dg/expr/comma1.C
  880147168b     ./gcc/testsuite/g++.dg/expr/cond1.C
 3467644215b     ./gcc/testsuite/g++.dg/expr/dtor1.C
 1191085278b     ./gcc/testsuite/g++.dg/expr/member-of-incomplete-type-1.C
@@ -7906,6 +7935,8 @@
  176841758b     ./gcc/testsuite/g++.dg/expr/static_cast1.C
  305119696b     ./gcc/testsuite/g++.dg/expr/static_cast2.C
 1996013771b     ./gcc/testsuite/g++.dg/expr/static_cast3.C
+ 672086049b     ./gcc/testsuite/g++.dg/expr/static_cast4.C
+3771989345b     ./gcc/testsuite/g++.dg/expr/static_cast5.C
   10818138b     ./gcc/testsuite/g++.dg/ext/align1.C
  161719849b     ./gcc/testsuite/g++.dg/ext/alignof1.C
 1838999152b     ./gcc/testsuite/g++.dg/ext/anon-struct1.C
@@ -7920,6 +7951,7 @@
 3822844850b     ./gcc/testsuite/g++.dg/ext/attrib4.C
 3467041206b     ./gcc/testsuite/g++.dg/ext/attrib5.C
 2936155890b     ./gcc/testsuite/g++.dg/ext/attrib6.C
+1969936708b     ./gcc/testsuite/g++.dg/ext/attrib8.C
 2703749043b     ./gcc/testsuite/g++.dg/ext/conv1.C
 3998238765b     ./gcc/testsuite/g++.dg/ext/desig1.C
 1844149136b     ./gcc/testsuite/g++.dg/ext/dllexport1.C
@@ -7966,7 +7998,9 @@
 1226473169b     ./gcc/testsuite/g++.dg/inherit/access5.C
 3439912284b     ./gcc/testsuite/g++.dg/inherit/base1.C
 3472745263b     ./gcc/testsuite/g++.dg/inherit/cond1.C
+2011214219b     ./gcc/testsuite/g++.dg/inherit/conv1.C
 3404023551b     ./gcc/testsuite/g++.dg/inherit/covariant1.C
+1224112180b     ./gcc/testsuite/g++.dg/inherit/error1.C
 2543191854b     ./gcc/testsuite/g++.dg/inherit/namespace-as-base.C
 4167951109b     ./gcc/testsuite/g++.dg/inherit/null1.C
 2478211972b     ./gcc/testsuite/g++.dg/inherit/operator1.C
@@ -7980,6 +8014,7 @@
 2391219706b     ./gcc/testsuite/g++.dg/inherit/using3.C
 1997208530b     ./gcc/testsuite/g++.dg/init/addr-const1.C
 1409346264b     ./gcc/testsuite/g++.dg/init/aggr1.C
+1025630251b     ./gcc/testsuite/g++.dg/init/array11.C
 4149172890b     ./gcc/testsuite/g++.dg/init/array1.C
 3157994593b     ./gcc/testsuite/g++.dg/init/array2.C
 3175368870b     ./gcc/testsuite/g++.dg/init/array3.C
@@ -8014,6 +8049,7 @@
 2065836625b     ./gcc/testsuite/g++.dg/init/new5.C
 3584312984b     ./gcc/testsuite/g++.dg/init/new6.C
 2240525756b     ./gcc/testsuite/g++.dg/init/new7.C
+2021239480b     ./gcc/testsuite/g++.dg/init/new9.C
 1015198831b     ./gcc/testsuite/g++.dg/init/pm1.C
 1446834658b     ./gcc/testsuite/g++.dg/init/pm2.C
 3206400652b     ./gcc/testsuite/g++.dg/init/ref1.C
@@ -8022,8 +8058,11 @@
  327983634b     ./gcc/testsuite/g++.dg/init/ref5.C
 4081692652b     ./gcc/testsuite/g++.dg/init/ref6.C
 2855903834b     ./gcc/testsuite/g++.dg/init/ref7.C
+3389778468b     ./gcc/testsuite/g++.dg/init/ref8.C
+2843431707b     ./gcc/testsuite/g++.dg/init/ref9.C
 1760232845b     ./gcc/testsuite/g++.dg/init/static1.C
  710300032b     ./gcc/testsuite/g++.dg/init/string1.C
+1661800402b     ./gcc/testsuite/g++.dg/init/struct1.C
 4082145348b     ./gcc/testsuite/g++.dg/lookup/anon1.C
 3674515572b     ./gcc/testsuite/g++.dg/lookup/anon2.C
 4033472976b     ./gcc/testsuite/g++.dg/lookup/class-member-1.C
@@ -8034,6 +8073,7 @@
 3013908110b     ./gcc/testsuite/g++.dg/lookup/disamb1.C
 1698581993b     ./gcc/testsuite/g++.dg/lookup/forscope1.C
 3727433793b     ./gcc/testsuite/g++.dg/lookup/friend1.C
+4002587758b     ./gcc/testsuite/g++.dg/lookup/koenig2.C
  766167426b     ./gcc/testsuite/g++.dg/lookup/pretty1.C
 1562081572b     ./gcc/testsuite/g++.dg/lookup/ptrmem1.C
 2830406633b     ./gcc/testsuite/g++.dg/lookup/scoped1.C
@@ -8051,7 +8091,10 @@
 1878509122b     ./gcc/testsuite/g++.dg/opt/anonunion1.C
  845836056b     ./gcc/testsuite/g++.dg/opt/asm1.C
 4275274967b     ./gcc/testsuite/g++.dg/opt/cfg1.C
+1436628306b     ./gcc/testsuite/g++.dg/opt/cfg2.C
+ 923628046b     ./gcc/testsuite/g++.dg/opt/cfg3.C
 1484527337b     ./gcc/testsuite/g++.dg/opt/cleanup1.C
+1343255310b     ./gcc/testsuite/g++.dg/opt/cond1.C
 3120356664b     ./gcc/testsuite/g++.dg/opt/conj1.C
 4054451892b     ./gcc/testsuite/g++.dg/opt/conj2.C
 2033783153b     ./gcc/testsuite/g++.dg/opt/const1.C
@@ -8060,12 +8103,14 @@
 1501006084b     ./gcc/testsuite/g++.dg/opt/cse2.C
 1685294627b     ./gcc/testsuite/g++.dg/opt/dtor1.C
 3659366294b     ./gcc/testsuite/g++.dg/opt/emptyunion.C
+3038238314b     ./gcc/testsuite/g++.dg/opt/float1.C
 3770486737b     ./gcc/testsuite/g++.dg/opt/inline1.C
 2869206713b     ./gcc/testsuite/g++.dg/opt/inline2.C
 3194356521b     ./gcc/testsuite/g++.dg/opt/inline3.C
 2860828140b     ./gcc/testsuite/g++.dg/opt/inline4.C
  373643534b     ./gcc/testsuite/g++.dg/opt/local1.C
 3146403914b     ./gcc/testsuite/g++.dg/opt/longbranch1.C
+3172021311b     ./gcc/testsuite/g++.dg/opt/longbranch2.C
 2026702440b     ./gcc/testsuite/g++.dg/opt/mmx1.C
 2857034604b     ./gcc/testsuite/g++.dg/opt/nrv1.C
 2448700667b     ./gcc/testsuite/g++.dg/opt/nrv2.C
@@ -8078,6 +8123,7 @@
 1496969096b     ./gcc/testsuite/g++.dg/opt/ptrintsum1.C
 1663667381b     ./gcc/testsuite/g++.dg/opt/ptrmem1.C
 3284968679b     ./gcc/testsuite/g++.dg/opt/ptrmem2.C
+3593075142b     ./gcc/testsuite/g++.dg/opt/reg-stack2.C
  571185401b     ./gcc/testsuite/g++.dg/opt/reg-stack.C
 1557651694b     ./gcc/testsuite/g++.dg/opt/reload1.C
 3765450094b     ./gcc/testsuite/g++.dg/opt/stack1.C
@@ -8085,6 +8131,7 @@
  684782459b     ./gcc/testsuite/g++.dg/opt/static2.C
 3942616977b     ./gcc/testsuite/g++.dg/opt/strength-reduce.C
 4154721541b     ./gcc/testsuite/g++.dg/opt/thunk1.C
+1853312151b     ./gcc/testsuite/g++.dg/opt/unroll1.C
 4029726050b     ./gcc/testsuite/g++.dg/opt/vt1.C
  686527483b     ./gcc/testsuite/g++.dg/other/access1.C
 3285252373b     ./gcc/testsuite/g++.dg/other/anon2.C
@@ -8117,7 +8164,7 @@
 2143945221b     ./gcc/testsuite/g++.dg/other/linkage1.C
 1678560039b     ./gcc/testsuite/g++.dg/other/new1.C
  786983178b     ./gcc/testsuite/g++.dg/other/offsetof1.C
-1786437900b     ./gcc/testsuite/g++.dg/other/packed1.C
+3016873217b     ./gcc/testsuite/g++.dg/other/packed1.C
 1073045139b     ./gcc/testsuite/g++.dg/other/pragma-ep-1.C
  198088036b     ./gcc/testsuite/g++.dg/other/pragma-re-1.C
 1453288357b     ./gcc/testsuite/g++.dg/other/ptrmem1.C
@@ -8133,12 +8180,14 @@
 2421396411b     ./gcc/testsuite/g++.dg/overload/ambig1.C
  492684594b     ./gcc/testsuite/g++.dg/overload/builtin1.C
 2593583015b     ./gcc/testsuite/g++.dg/overload/builtin2.C
+2392782743b     ./gcc/testsuite/g++.dg/overload/builtin3.C
 3775778165b     ./gcc/testsuite/g++.dg/overload/cond1.C
 1110519878b     ./gcc/testsuite/g++.dg/overload/error1.C
 1362696676b     ./gcc/testsuite/g++.dg/overload/member1.C
 3780752279b     ./gcc/testsuite/g++.dg/overload/member2.C
 4213646402b     ./gcc/testsuite/g++.dg/overload/operator1.C
 3588815363b     ./gcc/testsuite/g++.dg/overload/pmf1.C
+3836696775b     ./gcc/testsuite/g++.dg/overload/template1.C
 1828032968b     ./gcc/testsuite/g++.dg/parse/angle-bracket.C
 3621016079b     ./gcc/testsuite/g++.dg/parse/attr1.C
 1209396293b     ./gcc/testsuite/g++.dg/parse/class1.C
@@ -8159,13 +8208,14 @@
  402996652b     ./gcc/testsuite/g++.dg/parse/namespace8.C
 1437124593b     ./gcc/testsuite/g++.dg/parse/namespace9.C
 3024323785b     ./gcc/testsuite/g++.dg/parse/octal1.C
-1189423005b     ./gcc/testsuite/g++.dg/parse/parameter-declaration-1.C
+2612344954b     ./gcc/testsuite/g++.dg/parse/parameter-declaration-1.C
 2118699314b     ./gcc/testsuite/g++.dg/parse/ptrmem1.C
 4289007099b     ./gcc/testsuite/g++.dg/parse/saved1.C
   19296994b     ./gcc/testsuite/g++.dg/parse/stack1.C
 1402579554b     ./gcc/testsuite/g++.dg/parse/stmtexpr1.C
 2804352074b     ./gcc/testsuite/g++.dg/parse/stmtexpr2.C
  254645785b     ./gcc/testsuite/g++.dg/parse/stmtexpr3.C
+3518048033b     ./gcc/testsuite/g++.dg/parse/template12.C
 1537348229b     ./gcc/testsuite/g++.dg/parse/template8.C
 1641234101b     ./gcc/testsuite/g++.dg/parse/typedef1.C
  465475026b     ./gcc/testsuite/g++.dg/parse/varmod1.C
@@ -8173,6 +8223,8 @@
  438642550b     ./gcc/testsuite/g++.dg/rtti/crash1.C
 1433046709b     ./gcc/testsuite/g++.dg/rtti/cv1.C
 1829490760b     ./gcc/testsuite/g++.dg/rtti/dyncast1.C
+ 432043063b     ./gcc/testsuite/g++.dg/rtti/typeid2.C
+1187117877b     ./gcc/testsuite/g++.dg/rtti/typeid3.C
  370035332b     ./gcc/testsuite/g++.dg/special/conpr-1.C
 1217683257b     ./gcc/testsuite/g++.dg/special/conpr-2a.C
  641456338b     ./gcc/testsuite/g++.dg/special/conpr-2.C
@@ -8204,9 +8256,11 @@
   41330039b     ./gcc/testsuite/g++.dg/template/conv7.C
 4153551346b     ./gcc/testsuite/g++.dg/template/conv8.C
 2083292273b     ./gcc/testsuite/g++.dg/template/copy1.C
+3424550778b     ./gcc/testsuite/g++.dg/template/crash11.C
  611422239b     ./gcc/testsuite/g++.dg/template/crash1.C
 3568011765b     ./gcc/testsuite/g++.dg/template/crash2.C
 3886517071b     ./gcc/testsuite/g++.dg/template/crash8.C
+3865899580b     ./gcc/testsuite/g++.dg/template/crash9.C
 3504290323b     ./gcc/testsuite/g++.dg/template/ctor1.C
 2330430995b     ./gcc/testsuite/g++.dg/template/ctor2.C
 1215391925b     ./gcc/testsuite/g++.dg/template/decl1.C
@@ -8224,6 +8278,7 @@
 4292587643b     ./gcc/testsuite/g++.dg/template/friend17.C
 4039879103b     ./gcc/testsuite/g++.dg/template/friend18.C
 1697588661b     ./gcc/testsuite/g++.dg/template/friend20.C
+2719895390b     ./gcc/testsuite/g++.dg/template/friend25.C
 3302501697b     ./gcc/testsuite/g++.dg/template/friend3.C
 2426122237b     ./gcc/testsuite/g++.dg/template/friend4.C
 3560434139b     ./gcc/testsuite/g++.dg/template/friend5.C
@@ -8262,7 +8317,7 @@
  601175114b     ./gcc/testsuite/g++.dg/template/ptrmem1.C
 3748090308b     ./gcc/testsuite/g++.dg/template/ptrmem2.C
 1552975789b     ./gcc/testsuite/g++.dg/template/ptrmem3.C
-1140102843b     ./gcc/testsuite/g++.dg/template/ptrmem4.C
+3864682907b     ./gcc/testsuite/g++.dg/template/ptrmem4.C
 1117759327b     ./gcc/testsuite/g++.dg/template/qual1.C
 4043559007b     ./gcc/testsuite/g++.dg/template/qualttp10.C
  265969049b     ./gcc/testsuite/g++.dg/template/qualttp11.C
@@ -8290,7 +8345,7 @@
 2809672487b     ./gcc/testsuite/g++.dg/template/restrict1.C
 1942107252b     ./gcc/testsuite/g++.dg/template/sizeof1.C
 1028564434b     ./gcc/testsuite/g++.dg/template/sizeof2.C
- 975447277b     ./gcc/testsuite/g++.dg/template/spec10.C
+2086014865b     ./gcc/testsuite/g++.dg/template/spec10.C
 2914549620b     ./gcc/testsuite/g++.dg/template/spec1.C
 2378483146b     ./gcc/testsuite/g++.dg/template/spec2.C
 4044137217b     ./gcc/testsuite/g++.dg/template/spec3.C
@@ -8326,7 +8381,7 @@
 1569401313b     ./gcc/testsuite/g++.dg/tls/diag-1.C
 2646101455b     ./gcc/testsuite/g++.dg/tls/diag-2.C
 2984687092b     ./gcc/testsuite/g++.dg/tls/init-1.C
- 225284648b     ./gcc/testsuite/g++.dg/tls/init-2.C
+3742529525b     ./gcc/testsuite/g++.dg/tls/init-2.C
 1820185551b     ./gcc/testsuite/g++.dg/tls/tls.exp
  472549683b     ./gcc/testsuite/g++.dg/tls/trivial.C
 3534874517b     ./gcc/testsuite/g++.dg/warn/compare1.C
@@ -8362,7 +8417,7 @@
 1155806507b     ./gcc/testsuite/g++.old-deja/g++.abi/arraynew.C
 3647855758b     ./gcc/testsuite/g++.old-deja/g++.abi/bitfields.C
 2026386788b     ./gcc/testsuite/g++.old-deja/g++.abi/crash1.C
-1147144784b     ./gcc/testsuite/g++.old-deja/g++.abi/cxa_vec.C
+2856768338b     ./gcc/testsuite/g++.old-deja/g++.abi/cxa_vec.C
 4096109742b     ./gcc/testsuite/g++.old-deja/g++.abi/empty2.C
 1878628007b     ./gcc/testsuite/g++.old-deja/g++.abi/empty3.C
 2936636767b     ./gcc/testsuite/g++.old-deja/g++.abi/empty.C
@@ -8959,7 +9014,7 @@
 3350275577b     ./gcc/testsuite/g++.old-deja/g++.ext/attrib2.C
 1053733436b     ./gcc/testsuite/g++.old-deja/g++.ext/attrib3.C
 1626467181b     ./gcc/testsuite/g++.old-deja/g++.ext/attrib4.C
-3199258020b     ./gcc/testsuite/g++.old-deja/g++.ext/attrib5.C
+1442836994b     ./gcc/testsuite/g++.old-deja/g++.ext/attrib5.C
 1231673353b     ./gcc/testsuite/g++.old-deja/g++.ext/attrib6.C
 1172027159b     ./gcc/testsuite/g++.old-deja/g++.ext/bound1.C
 2395600799b     ./gcc/testsuite/g++.old-deja/g++.ext/constructor.C
@@ -10028,7 +10083,7 @@
  630939157b     ./gcc/testsuite/g++.old-deja/g++.mike/thunk3.C
 4259046108b     ./gcc/testsuite/g++.old-deja/g++.mike/unroll1.C
 1164439917b     ./gcc/testsuite/g++.old-deja/g++.mike/virt1.C
-2927817139b     ./gcc/testsuite/g++.old-deja/g++.mike/virt2.C
+2441611493b     ./gcc/testsuite/g++.old-deja/g++.mike/virt2.C
 1772591600b     ./gcc/testsuite/g++.old-deja/g++.mike/virt3.C
 2392194899b     ./gcc/testsuite/g++.old-deja/g++.mike/virt4.C
 2478016121b     ./gcc/testsuite/g++.old-deja/g++.mike/virt5.C
@@ -10163,7 +10218,7 @@
 3099602163b     ./gcc/testsuite/g++.old-deja/g++.ns/using7.C
  396388537b     ./gcc/testsuite/g++.old-deja/g++.ns/using8.C
  536814910b     ./gcc/testsuite/g++.old-deja/g++.ns/using9.C
-3727468093b     ./gcc/testsuite/g++.old-deja/g++.oliva/ChangeLog
+3363076077b     ./gcc/testsuite/g++.old-deja/g++.oliva/ChangeLog
 3728265872b     ./gcc/testsuite/g++.old-deja/g++.oliva/ctor1.C
 3026414575b     ./gcc/testsuite/g++.old-deja/g++.oliva/delete1.C
 3639944207b     ./gcc/testsuite/g++.old-deja/g++.oliva/delete2.C
@@ -11782,24 +11837,24 @@
  459055346b     ./gcc/testsuite/treelang/a01gcci01.c
 2293023639b     ./gcc/testsuite/treelang/a01gcci01.tree
 1160413650b     ./gcc/testsuite/treelang/a01gcco01runpgm
-3365937537b     ./gcc/testsuite/treelang/ChangeLog
+ 937678774b     ./gcc/testsuite/treelang/ChangeLog
 2484589993b     ./gcc/testsuite/treelang/Makefile.in
 1917546689b     ./gcc/testsuite/treelang/treetests.exp
 1194399710b     ./gcc/timevar.c
 2017483246b     ./gcc/timevar.def
   70728940b     ./gcc/timevar.h
-4177260386b     ./gcc/tlink.c
-4030870941b     ./gcc/toplev.c
+2501087508b     ./gcc/tlink.c
+  59174352b     ./gcc/toplev.c
 2285258868b     ./gcc/toplev.h
 3423640720b     ./gcc/tracer.c
- 429462420b     ./gcc/tree.c
+3323639773b     ./gcc/tree.c
  266537813b     ./gcc/tree.def
 3233962690b     ./gcc/tree-dump.c
 3355334157b     ./gcc/tree-dump.h
-2955209321b     ./gcc/tree.h
+3372102658b     ./gcc/tree.h
 2369766666b     ./gcc/tree-inline.c
 3754771676b     ./gcc/tree-inline.h
-4081182088b     ./gcc/treelang/ChangeLog
+ 871226491b     ./gcc/treelang/ChangeLog
 1636615662b     ./gcc/treelang/config-lang.in
 1245022634b     ./gcc/treelang/.cvsignore
 3755575041b     ./gcc/treelang/lang-options.h
@@ -11815,28 +11870,29 @@
 4292976636b     ./gcc/treelang/treetree.h
 2170053915b     ./gcc/tsystem.h
 4139263293b     ./gcc/typeclass.h
-3025263902b     ./gcc/unroll.c
+1580612335b     ./gcc/unroll.c
  821072330b     ./gcc/unwind-c.c
-   2177795b     ./gcc/unwind-dw2.c
+ 586184029b     ./gcc/unwind-dw2.c
 4197489626b     ./gcc/unwind-dw2-fde.c
 2891582256b     ./gcc/unwind-dw2-fde-darwin.c
 4043744940b     ./gcc/unwind-dw2-fde-glibc.c
 1040599635b     ./gcc/unwind-dw2-fde.h
-3814087766b     ./gcc/unwind.h
+2380024293b     ./gcc/unwind.h
 1020619093b     ./gcc/unwind.inc
+2030699993b     ./gcc/unwind-libunwind.c
  703686593b     ./gcc/unwind-pe.h
 2302719627b     ./gcc/unwind-sjlj.c
-3016171086b     ./gcc/varasm.c
+3315793682b     ./gcc/varasm.c
 2835975751b     ./gcc/varray.c
 1175263363b     ./gcc/varray.h
-3539879049b     ./gcc/version.c
+1537458113b     ./gcc/version.c
 3311075015b     ./gcc/version.h
 1174103923b     ./gcc/vmsdbg.h
 3947609636b     ./gcc/vmsdbgout.c
 1306126748b     ./gcc/xcoffout.c
 1199287060b     ./gcc/xcoffout.h
  815071723b     ./include/ansidecl.h
-2161328101b     ./include/ChangeLog
+3047773923b     ./include/ChangeLog
 2171125041b     ./include/COPYING
 3196744694b     ./include/demangle.h
  524172850b     ./include/dyn-string.h
@@ -11867,12 +11923,12 @@
    2397948b     ./INSTALL/old.html
 2229468985b     ./INSTALL/README
  656627656b     ./install-sh
-2424715401b     ./INSTALL/specific.html
+ 778202268b     ./INSTALL/specific.html
 1404181894b     ./INSTALL/test.html
 2266217259b     ./libf2c/aclocal.m4
-3649867255b     ./libf2c/ChangeLog
+2585465394b     ./libf2c/ChangeLog
 1973941211b     ./libf2c/changes.netlib
-1081212729b     ./libf2c/configure
+2076327479b     ./libf2c/configure
 2026513347b     ./libf2c/configure.in
 2487502900b     ./libf2c/disclaimer.netlib
 4252437873b     ./libf2c/f2cext.c
@@ -12129,11 +12185,11 @@
 1812706554b     ./libffi/acconfig.h
 2067133813b     ./libffi/acinclude.m4
  724319761b     ./libffi/aclocal.m4
-2856466476b     ./libffi/ChangeLog
+1636369445b     ./libffi/ChangeLog
 2702617959b     ./libffi/ChangeLog.libgcj
 1481682558b     ./libffi/ChangeLog.v1
-1474348907b     ./libffi/configure
- 530068231b     ./libffi/configure.in
+1642766366b     ./libffi/configure
+3275746772b     ./libffi/configure.in
 3275597189b     ./libffi/fficonfig.h.in
 3309556484b     ./libffi/include/ffi_common.h
 1733019211b     ./libffi/include/ffi.h.in
@@ -12196,7 +12252,7 @@
 1033916047b     ./libiberty/bsearch.c
 2389959529b     ./libiberty/bzero.c
 1591293922b     ./libiberty/calloc.c
-2200937096b     ./libiberty/ChangeLog
+ 233187465b     ./libiberty/ChangeLog
 2264262326b     ./libiberty/choose-temp.c
 2557767520b     ./libiberty/clock.c
 3170582338b     ./libiberty/concat.c
@@ -12306,10 +12362,10 @@
 3744134120b     ./libjava/aclocal.m4
 3784840223b     ./libjava/addr2name.awk
 1162779077b     ./libjava/boehm.cc
- 576718938b     ./libjava/ChangeLog
+3199467562b     ./libjava/ChangeLog
 3473562392b     ./libjava/ChangeLog-1999
 2385951174b     ./libjava/ChangeLog-2001
-2705793388b     ./libjava/configure
+4057856725b     ./libjava/configure
 1341552609b     ./libjava/configure.host
 3029277452b     ./libjava/configure.in
 2171125041b     ./libjava/COPYING
@@ -12731,7 +12787,7 @@
 1821380608b     ./libjava/include/.cvsignore
 1108817619b     ./libjava/include/default-signal.h
  833024369b     ./libjava/include/dwarf2-signal.h
-1300618817b     ./libjava/include/i386-signal.h
+1608416031b     ./libjava/include/i386-signal.h
  590982531b     ./libjava/include/java-assert.h
  890969256b     ./libjava/include/java-chardecomp.h
 3721703006b     ./libjava/include/java-chartables.h
@@ -13130,9 +13186,9 @@
 2046387247b     ./libjava/java/io/LineNumberInputStream.java
 1977393201b     ./libjava/java/io/LineNumberReader.java
  873510583b     ./libjava/java/io/natFileDescriptorEcos.cc
-3852237539b     ./libjava/java/io/natFileDescriptorPosix.cc
+ 474317936b     ./libjava/java/io/natFileDescriptorPosix.cc
 1364932101b     ./libjava/java/io/natFileDescriptorWin32.cc
-2467702739b     ./libjava/java/io/natFilePosix.cc
+3966839745b     ./libjava/java/io/natFilePosix.cc
 3758140118b     ./libjava/java/io/natFileWin32.cc
  459733413b     ./libjava/java/io/natObjectInputStream.cc
  439868232b     ./libjava/java/io/natVMObjectStreamClass.cc
@@ -14226,7 +14282,7 @@
  464053222b     ./libjava/libltdl/acconfig.h
 1486261890b     ./libjava/libltdl/acinclude.m4
 2748542911b     ./libjava/libltdl/aclocal.m4
-1252505715b     ./libjava/libltdl/ChangeLog
+1352649985b     ./libjava/libltdl/ChangeLog
 3229611250b     ./libjava/libltdl/config.h.in
 3663840013b     ./libjava/libltdl/configure
  586017012b     ./libjava/libltdl/configure.in
@@ -14305,7 +14361,7 @@
  718503864b     ./libjava/org/xml/sax/XMLReader.java
 2522783030b     ./libjava/posix.cc
 1371529945b     ./libjava/posix-threads.cc
- 110444835b     ./libjava/prims.cc
+ 229817601b     ./libjava/prims.cc
 3199155412b     ./libjava/README
 3770005913b     ./libjava/resolve.cc
 2710913388b     ./libjava/scripts/classes.pl
@@ -14329,7 +14385,7 @@
 2334349943b     ./libjava/sysdep/sh/locks.h
 2903495760b     ./libjava/sysdep/sparc/locks.h
 1725741696b     ./libjava/sysdep/x86-64/locks.h
-3405146074b     ./libjava/testsuite/ChangeLog
+2105390128b     ./libjava/testsuite/ChangeLog
 1230501773b     ./libjava/testsuite/config/default.exp
 3718926011b     ./libjava/testsuite/libjava.compile/abstr.java
 2888415448b     ./libjava/testsuite/libjava.compile/abstr.xfail
@@ -14824,10 +14880,10 @@
  295719627b     ./libjava/win32-threads.cc
 3981227345b     ./libobjc/aclocal.m4
 2023635858b     ./libobjc/archive.c
-3854879097b     ./libobjc/ChangeLog
+4251769240b     ./libobjc/ChangeLog
 1187612736b     ./libobjc/class.c
 1748737547b     ./libobjc/config.h.in
-3718287267b     ./libobjc/configure
+ 216167108b     ./libobjc/configure
  944229002b     ./libobjc/configure.in
 2269926719b     ./libobjc/encoding.c
 1957395429b     ./libobjc/gc.c
@@ -14878,9 +14934,9 @@
 2005277748b     ./libobjc/thr-vxworks.c
 2963027857b     ./libobjc/thr-win32.c
 1476631381b     ./libstdc++-v3/acconfig.h
-2367959340b     ./libstdc++-v3/acinclude.m4
- 625369417b     ./libstdc++-v3/aclocal.m4
- 512211710b     ./libstdc++-v3/ChangeLog
+2565448560b     ./libstdc++-v3/acinclude.m4
+3043939341b     ./libstdc++-v3/aclocal.m4
+3102548050b     ./libstdc++-v3/ChangeLog
 1996982572b     ./libstdc++-v3/ChangeLog-2000
 3665233589b     ./libstdc++-v3/ChangeLog-2001
 3829016086b     ./libstdc++-v3/config/abi/alpha-freebsd5/baseline_symbols.txt
@@ -14902,7 +14958,7 @@
 4160964918b     ./libstdc++-v3/config/cpu/i386/atomicity.h
 1602541359b     ./libstdc++-v3/config/cpu/i486/atomicity.h
  193432505b     ./libstdc++-v3/config/cpu/ia64/atomicity.h
-1265572143b     ./libstdc++-v3/config/cpu/m68k/atomicity.h
+2353535463b     ./libstdc++-v3/config/cpu/m68k/atomicity.h
 4070465676b     ./libstdc++-v3/config/cpu/mips/atomicity.h
  915792421b     ./libstdc++-v3/config/cpu/powerpc/atomicity.h
 3930061484b     ./libstdc++-v3/config/cpu/s390/atomicity.h
@@ -14923,7 +14979,7 @@
 1369267090b     ./libstdc++-v3/config/locale/generic/codecvt_members.cc
 2005861251b     ./libstdc++-v3/config/locale/generic/codecvt_specializations.h
 4228611347b     ./libstdc++-v3/config/locale/generic/collate_members.cc
-1221593163b     ./libstdc++-v3/config/locale/generic/ctype_members.cc
+1931177604b     ./libstdc++-v3/config/locale/generic/ctype_members.cc
  474184383b     ./libstdc++-v3/config/locale/generic/messages_members.cc
  177225482b     ./libstdc++-v3/config/locale/generic/messages_members.h
   45184175b     ./libstdc++-v3/config/locale/generic/monetary_members.cc
@@ -14935,7 +14991,7 @@
  490906006b     ./libstdc++-v3/config/locale/gnu/c++locale_internal.h
 2712762793b     ./libstdc++-v3/config/locale/gnu/codecvt_members.cc
 1792931968b     ./libstdc++-v3/config/locale/gnu/collate_members.cc
-2503295949b     ./libstdc++-v3/config/locale/gnu/ctype_members.cc
+ 429457042b     ./libstdc++-v3/config/locale/gnu/ctype_members.cc
  440357314b     ./libstdc++-v3/config/locale/gnu/messages_members.cc
 2781776822b     ./libstdc++-v3/config/locale/gnu/messages_members.h
  875064597b     ./libstdc++-v3/config/locale/gnu/monetary_members.cc
@@ -14965,7 +15021,7 @@
 2200168434b     ./libstdc++-v3/config/os/djgpp/ctype_noninline.h
 1128798661b     ./libstdc++-v3/config/os/djgpp/os_defines.h
 1770894154b     ./libstdc++-v3/config/os/generic/ctype_base.h
-2893983699b     ./libstdc++-v3/config/os/generic/ctype_inline.h
+1348586866b     ./libstdc++-v3/config/os/generic/ctype_inline.h
 2814302307b     ./libstdc++-v3/config/os/generic/ctype_noninline.h
 2662031339b     ./libstdc++-v3/config/os/generic/os_defines.h
  585502053b     ./libstdc++-v3/config/os/gnu-linux/ctype_base.h
@@ -14975,7 +15031,7 @@
 2727448261b     ./libstdc++-v3/config/os/hpux/ctype_base.h
  577770049b     ./libstdc++-v3/config/os/hpux/ctype_inline.h
 3255050061b     ./libstdc++-v3/config/os/hpux/ctype_noninline.h
- 621273857b     ./libstdc++-v3/config/os/hpux/os_defines.h
+1063087697b     ./libstdc++-v3/config/os/hpux/os_defines.h
  805235121b     ./libstdc++-v3/config/os/irix/irix5.2/atomicity.h
  734403019b     ./libstdc++-v3/config/os/irix/irix5.2/ctype_base.h
 2703839638b     ./libstdc++-v3/config/os/irix/irix5.2/ctype_inline.h
@@ -15014,9 +15070,9 @@
 3459761118b     ./libstdc++-v3/config/os/windiss/ctype_inline.h
  273313682b     ./libstdc++-v3/config/os/windiss/ctype_noninline.h
 2207004934b     ./libstdc++-v3/config/os/windiss/os_defines.h
-3793167097b     ./libstdc++-v3/configure
+3057615828b     ./libstdc++-v3/configure
 2677676702b     ./libstdc++-v3/configure.in
-2731797763b     ./libstdc++-v3/configure.target
+2975501078b     ./libstdc++-v3/configure.target
 1779001880b     ./libstdc++-v3/docs/doxygen/doxygroups.cc
 3218460995b     ./libstdc++-v3/docs/doxygen/filter
  970775578b     ./libstdc++-v3/docs/doxygen/filter.sed
@@ -15126,7 +15182,7 @@
 2377036917b     ./libstdc++-v3/include/bits/basic_string.h
  925690662b     ./libstdc++-v3/include/bits/basic_string.tcc
 3126573300b     ./libstdc++-v3/include/bits/boost_concept_check.h
-1161953688b     ./libstdc++-v3/include/bits/c++config
+2418149102b     ./libstdc++-v3/include/bits/c++config
  994369839b     ./libstdc++-v3/include/bits/char_traits.h
  694818237b     ./libstdc++-v3/include/bits/codecvt.h
 4105193573b     ./libstdc++-v3/include/bits/concept_check.h
@@ -15139,7 +15195,7 @@
 1117238130b     ./libstdc++-v3/include/bits/gslice.h
 3095889165b     ./libstdc++-v3/include/bits/indirect_array.h
 1700217390b     ./libstdc++-v3/include/bits/ios_base.h
-2739149156b     ./libstdc++-v3/include/bits/istream.tcc
+4218369762b     ./libstdc++-v3/include/bits/istream.tcc
 3496463763b     ./libstdc++-v3/include/bits/list.tcc
  837416971b     ./libstdc++-v3/include/bits/locale_classes.h
 1832292610b     ./libstdc++-v3/include/bits/locale_facets.h
@@ -15151,7 +15207,7 @@
 3530846268b     ./libstdc++-v3/include/bits/slice_array.h
 3555571522b     ./libstdc++-v3/include/bits/sstream.tcc
 3316800061b     ./libstdc++-v3/include/bits/stl_algobase.h
-1569010907b     ./libstdc++-v3/include/bits/stl_algo.h
+1522343897b     ./libstdc++-v3/include/bits/stl_algo.h
 2417140750b     ./libstdc++-v3/include/bits/stl_alloc.h
  840750803b     ./libstdc++-v3/include/bits/stl_bvector.h
 3302543196b     ./libstdc++-v3/include/bits/stl_construct.h
@@ -15258,8 +15314,8 @@
 2805137138b     ./libstdc++-v3/include/ext/stl_hash_fun.h
 3897129258b     ./libstdc++-v3/include/ext/stl_hashtable.h
  984888269b     ./libstdc++-v3/include/ext/stl_rope.h
- 261894093b     ./libstdc++-v3/include/Makefile.am
-  61602503b     ./libstdc++-v3/include/Makefile.in
+3252604710b     ./libstdc++-v3/include/Makefile.am
+2117932589b     ./libstdc++-v3/include/Makefile.in
 4064711400b     ./libstdc++-v3/include/std/std_algorithm.h
 3911856756b     ./libstdc++-v3/include/std/std_bitset.h
 1807119215b     ./libstdc++-v3/include/std/std_complex.h
@@ -15289,7 +15345,7 @@
 4158492065b     ./libstdc++-v3/include/std/std_utility.h
 2660730597b     ./libstdc++-v3/include/std/std_valarray.h
 3713138538b     ./libstdc++-v3/include/std/std_vector.h
- 941518905b     ./libstdc++-v3/libio/ChangeLog
+ 702995762b     ./libstdc++-v3/libio/ChangeLog
 2122576197b     ./libstdc++-v3/libio/filedoalloc.c
 3590060213b     ./libstdc++-v3/libio/fileops.c
  314955067b     ./libstdc++-v3/libio/_G_config.h
@@ -15316,7 +15372,7 @@
 3226432156b     ./libstdc++-v3/libmath/signbitf.c
  706230946b     ./libstdc++-v3/libmath/signbitl.c
  517957737b     ./libstdc++-v3/libmath/stubs.c
-1326026004b     ./libstdc++-v3/libsupc++/cxxabi.h
+1938961486b     ./libstdc++-v3/libsupc++/cxxabi.h
 3887473586b     ./libstdc++-v3/libsupc++/del_op.cc
 2108254126b     ./libstdc++-v3/libsupc++/del_opnt.cc
  998297127b     ./libstdc++-v3/libsupc++/del_opv.cc
@@ -15684,17 +15740,17 @@
 1685222676b     ./libstdc++-v3/testsuite/thread/pthread4.cc
 3647024336b     ./libstdc++-v3/testsuite/thread/pthread5.cc
 1701874201b     ./libstdc++-v3/testsuite/thread/pthread6.cc
-1879354273b     ./libtool.m4
+3719830716b     ./libtool.m4
 3680999751b     ./ltcf-c.sh
  809573867b     ./ltcf-cxx.sh
 2744413125b     ./ltcf-gcj.sh
  910615352b     ./ltconfig
 1562969795b     ./ltmain.sh
- 255464805b     ./MAINTAINERS
- 961111943b     ./maintainer-scripts/ChangeLog
+ 941537411b     ./MAINTAINERS
+1059991613b     ./maintainer-scripts/ChangeLog
 3655238705b     ./maintainer-scripts/crontab
 4171969357b     ./maintainer-scripts/doc_exclude
-3816605504b     ./maintainer-scripts/gcc_release
+2394357728b     ./maintainer-scripts/gcc_release
 3126840705b     ./maintainer-scripts/README
  449123050b     ./maintainer-scripts/snapshot-index.html
  865042342b     ./maintainer-scripts/snapshot-README
@@ -15719,10 +15775,10 @@
 2360440520b     ./zlib/algorithm.txt
 1537725969b     ./zlib/amiga/Makefile.pup
 3919607569b     ./zlib/amiga/Makefile.sas
-2950221985b     ./zlib/ChangeLog
-1415461458b     ./zlib/ChangeLog.gcj
+3041793522b     ./zlib/ChangeLog
+ 642840868b     ./zlib/ChangeLog.gcj
 1397025471b     ./zlib/compress.c
- 165956115b     ./zlib/configure
+3790213997b     ./zlib/configure
 1753606500b     ./zlib/configure.in
  215845136b     ./zlib/contrib/asm386/gvmat32.asm
 4143184108b     ./zlib/contrib/asm386/gvmat32c.c
