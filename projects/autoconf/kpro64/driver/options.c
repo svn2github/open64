@@ -37,7 +37,7 @@
 */
 
 
-#include <malloc.h>
+#include <stdlib.h>
 #include "phases.h"
 #include "options.h"
 #include "string_utils.h"

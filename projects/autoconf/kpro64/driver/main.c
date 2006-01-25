@@ -36,6 +36,9 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/driver/main.c,v $ $Revision: 1.1.1.1 $";
 
@@ -43,7 +46,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/driver/main.c,
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
-#include <stamp.h>
 #include <cmplrs/rcodes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -101,7 +103,7 @@ boolean drop_option;
 boolean link_with_mathlib;
 #endif
 
-const char compiler_version[] = INCLUDE_STAMP;
+const char compiler_version[] = PACKAGE_VERSION;
 static void set_executable_dir (void);
 
 static void prescan_options (int argc, char *argv[]);
@@ -323,7 +325,7 @@ main (int argc, char *argv[])
 	    if (option_was_seen(O_compat_gcc))
 		puts(PSC_GCC_VERSION);
 	    else
-		puts(PSC_FULL_VERSION);
+		puts(PACKAGE_VERSION);
 	}
 
         if (show_version) {
@@ -337,7 +339,7 @@ main (int argc, char *argv[])
             fprintf(stderr, "Built on: %s\n", build_date);
             fprintf(stderr, "Thread model: posix\n");	// Bug 4608.
             fprintf(stderr, "GNU gcc version " PSC_GCC_VERSION
-                    " (PathScale " PSC_FULL_VERSION " driver)\n");
+                    " (PathScale " PACKAGE_VERSION " driver)\n");
         }
 	if (show_copyright) {
 	    if (show_version)
@@ -352,7 +354,7 @@ main (int argc, char *argv[])
 	    fprintf(stderr, "See complete copyright, patent and legal notices "
 		    "in the\n");
 	    fprintf(stderr, "%.*s/share/doc/pathscale-compilers-" 
-	    	    PSC_FULL_VERSION "/LEGAL.pdf file.\n",
+	    	    PACKAGE_VERSION "/LEGAL.pdf file.\n",
 		    strlen(exe_dir) - 4, exe_dir);
 	}
 	if (show_search_path) {
@@ -619,9 +621,9 @@ static void set_executable_dir (void) {
   ldir = drop_path (dir);
   if (strcmp (ldir, "bin") == 0) {
     char *basedir = directory_path (dir);
-    substitute_phase_dirs ("/usr/lib", basedir, "/lib/" PSC_FULL_VERSION);
+    substitute_phase_dirs ("/usr/lib", basedir, "/lib/" PACKAGE_VERSION);
     substitute_phase_dirs ("/usr/lib/" PSC_NAME_PREFIX "cc-lib",
-			   basedir, "/lib/" PSC_FULL_VERSION);
+			   basedir, "/lib/" PACKAGE_VERSION);
     substitute_phase_dirs ("/usr/include", basedir, "/include");
     return;
   }
@@ -1093,10 +1095,10 @@ print_search_path ()
 	printf ("programs: %s:%s\n", exe_dir, get_phase_dir (P_be));
 	
 	if (abi == ABI_N32) {
-		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION "/32",
+		asprintf(&our_path, "%s/lib/" PACKAGE_VERSION "/32",
 			 root_prefix);
 	} else {
-		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION, root_prefix);
+		asprintf(&our_path, "%s/lib/" PACKAGE_VERSION, root_prefix);
 	}
 	
 	/* Add our libraries */

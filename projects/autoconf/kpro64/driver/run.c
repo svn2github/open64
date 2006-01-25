@@ -36,6 +36,13 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,12 +55,10 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <malloc.h>
 #include <sys/param.h>
 #include <sys/times.h>
 #include <sys/procfs.h>
 #include <limits.h>
-#include <alloca.h>
 #include <cmplrs/rcodes.h>
 #include "run.h"
 #include "string_utils.h"
@@ -64,6 +69,9 @@
 #include "file_utils.h"
 #include "pathscale_defs.h"
 
+#ifndef CLK_TCK
+#define CLK_TCK		HZ
+#endif
 
 boolean show_flag = FALSE;
 boolean show_but_not_run = FALSE;
@@ -412,7 +420,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 
 		/* Tell IPA where to find the driver. */
 		my_putenv ("COMPILER_BIN", "%s/" PSC_NAME_PREFIX "cc-"
-			   PSC_FULL_VERSION, get_executable_dir());
+			   PACKAGE_VERSION, get_executable_dir());
 
 		my_execv(name, argv);
 	} else {
@@ -658,13 +666,13 @@ print_time (char *phase)
 
     time1 = times (&tm1);
     utime = (double)(tm1.tms_utime + tm1.tms_cutime -
-		     tm0.tms_utime - tm0.tms_cutime) / (double)HZ;
+		     tm0.tms_utime - tm0.tms_cutime) / (double)CLK_TCK;
     stime = (double)(tm1.tms_stime + tm1.tms_cstime -
-		     tm0.tms_stime - tm0.tms_cstime) / (double)HZ;
+		     tm0.tms_stime - tm0.tms_cstime) / (double)CLK_TCK;
     wtime = time1 - time0;
 
     fprintf (stderr, "%s phase time:  %.2fu %.2fs %lu:%04.1f %.0f%%\n",
-		phase, utime, stime, wtime / (60*HZ),
-		(double)(wtime % (60*HZ)) / (double)HZ,
-		(utime + stime) / ((double)wtime / (double)HZ) * 100.0);
+		phase, utime, stime, wtime / (60*CLK_TCK),
+		(double)(wtime % (60*CLK_TCK)) / (double)CLK_TCK,
+		(utime + stime) / ((double)wtime / (double)CLK_TCK) * 100.0);
 }

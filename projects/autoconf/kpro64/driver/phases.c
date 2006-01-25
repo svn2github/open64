@@ -37,6 +37,10 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -411,10 +415,10 @@ set_library_paths(string_list_t *args)
 	char *our_path;
 	
 	if (abi == ABI_N32) {
-		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION "/32",
+		asprintf(&our_path, "%s/lib/" PACKAGE_VERSION "/32",
 			 root_prefix);
 	} else {
-		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION, root_prefix);
+		asprintf(&our_path, "%s/lib/" PACKAGE_VERSION, root_prefix);
 	}
 	
 	add_string(args, concat_strings("-L", our_path));
@@ -566,7 +570,7 @@ add_file_args_first (string_list_t *args, phases_t index)
       if (option_was_seen(O_pthread))
 	add_string(args, "-D_REENTRANT");
       if (!option_was_seen(O_no_pathcc)) {
-	add_string(args, "-D__PATHSCALE__=\"" PSC_FULL_VERSION "\"");
+	add_string(args, "-D__PATHSCALE__=\"" PACKAGE_VERSION "\"");
 	add_string(args, "-D__PATHCC__=" PSC_MAJOR_VERSION);
 	add_string(args, "-D__PATHCC_MINOR__=" PSC_MINOR_VERSION);
 	add_string(args, "-D__PATHCC_PATCHLEVEL__=" PSC_PATCH_LEVEL);
@@ -666,14 +670,14 @@ add_file_args (string_list_t *args, phases_t index)
 
 		if (!option_was_seen(O_nostdinc)) {
 			char *root = directory_path(get_executable_dir());
-			add_inc_path(args, "%s/include/" PSC_FULL_VERSION,
+			add_inc_path(args, "%s/include/" PACKAGE_VERSION,
 				     root);
 			if (source_lang == L_CC) {
 				int v[4];
 				get_gcc_version(v, 4);
 				if (v[0] > 3 || (v[0] == 3 && v[1] >= 3)) {
 					add_inc_path(args, "%s/include/"
-						     PSC_FULL_VERSION
+						     PACKAGE_VERSION
 						     "/backward",
 						     root);
 				}
@@ -832,7 +836,7 @@ add_file_args (string_list_t *args, phases_t index)
 #ifdef KEY
 		{
 		  char *root = directory_path(get_executable_dir());
-		  sprintf (buf, "-include=%s/include/" PSC_FULL_VERSION, root);
+		  sprintf (buf, "-include=%s/include/" PACKAGE_VERSION, root);
 		  add_string(args, buf);
 		}
 #endif
@@ -918,7 +922,7 @@ add_file_args (string_list_t *args, phases_t index)
 #ifdef KEY
 		{
 		  char *root = directory_path(get_executable_dir());
-		  sprintf (buf, "-include=%s/include/" PSC_FULL_VERSION, root);
+		  sprintf (buf, "-include=%s/include/" PACKAGE_VERSION, root);
 		  add_string(args, buf);
 		}
 #endif
@@ -2017,7 +2021,7 @@ init_phase_names (void)
   //   command:  mips64el-key-linux-keycc-
   //   prefix:   mips64el-key-linux-
   prefix = strdup(cmd);
-  if ((x = strstr(prefix, "-" PSC_FULL_VERSION))) {
+  if ((x = strstr(prefix, "-" PACKAGE_VERSION))) {
     *x = '\0';
   }
   // Skip all trailing '-', if any.

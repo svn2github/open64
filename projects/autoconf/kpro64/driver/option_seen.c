@@ -37,8 +37,8 @@
 */
 
 
-#include <malloc.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "option_seen.h"
 #include "options.h"
 #include "option_names.h"

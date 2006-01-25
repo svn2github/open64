@@ -36,8 +36,14 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -204,8 +210,10 @@ int prof_lib_exists(const char *lib)
 
 void add_library(string_list_t *list, const char *lib)
 {
+    struct prof_lib *l;
+
     if (option_was_seen(O_pg)) {
-	for (struct prof_lib *l = prof_libs; l->name; l++) {
+	for (l = prof_libs; l->name; l++) {
 	    if (strcmp(l->name, lib) != 0)
 		continue;
 	    if (!l->always && !prof_lib_exists(lib))

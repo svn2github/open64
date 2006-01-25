@@ -36,6 +36,9 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <string.h>
 #include <stdlib.h>
@@ -1014,9 +1017,10 @@ check_convert_name(char *name)
 	  "little_endian",
 	  "little-endian",
 	  "native"
-	  };
-	for (int i = 0; i < ((sizeof legal_names) / (sizeof *legal_names));
-	  i += 1) {
+	};
+	int i;
+
+	for (i = 0; i < (sizeof(legal_names) / sizeof(*legal_names)); i += 1) {
 	  if (0 == strcmp(name, legal_names[i])) {
 	    return;
 	  }
@@ -1421,7 +1425,7 @@ print_file_path (char *fname, int exe)
    * so try combining into one search.
    */
 
-  if (print_relative_path("lib/" PSC_FULL_VERSION, fname))
+  if (print_relative_path("lib/" PACKAGE_VERSION, fname))
     return;
 
   if (print_phase_path(P_be, fname))
@@ -1586,6 +1590,8 @@ get_auto_cpu_name ()
 static void
 set_cpu(char *name, m_flag flag_type)
 {
+  int i;
+
   // If parsing the default options, don't change the target cpu if it is
   // already set.
   if (parsing_default_options &&
@@ -1614,7 +1620,7 @@ set_cpu(char *name, m_flag flag_type)
       return;
   }
 
-  for (int i = 0; supported_cpu_types[i].cpu_name; i++) {
+  for (i = 0; supported_cpu_types[i].cpu_name; i++) {
     if (strcmp(name, supported_cpu_types[i].cpu_name) == 0) {
       target_cpu = supported_cpu_types[i].target_name;
       target_supported_abi = supported_cpu_types[i].abi;

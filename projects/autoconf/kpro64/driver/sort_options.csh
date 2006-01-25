@@ -40,7 +40,7 @@ set dir = $1
 set file = $2
 shift
 shift
-/lib/cpp -traditional -P $* $dir/$file > tmp.options.cpp
+${CPP} -traditional -P $* - < $dir/$file > tmp.options.cpp
 awk -f $dir/sort_options.awk tmp.options.cpp
 # note that some linux versions of sort are broken,
 # so we actually re-sort within table for safety.

@@ -36,6 +36,9 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 /*
  * OPTIONS that are not simple enough to handle in the table
@@ -44,7 +47,6 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include <stamp.h>
 #include "string_utils.h"
 #include "options.h"
 #include "option_seen.h"
@@ -58,7 +60,7 @@
 
 int endian = UNDEFINED;
 
-static char compiler_version[] = INCLUDE_STAMP;
+static char compiler_version[] = PACKAGE_VERSION;
 
 void
 set_defaults (void)

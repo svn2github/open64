@@ -36,6 +36,9 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 /* this is used by both table and the driver */
 #include <stdio.h>
@@ -409,7 +412,7 @@ get_named_language (char *name)
 	char *p;
 	char *nomen = strdup(name);
 
-	if ((p = strstr(nomen, "-" PSC_FULL_VERSION))) {
+	if ((p = strstr(nomen, "-" PACKAGE_VERSION))) {
 	    *p = '\0';
 	    name = nomen;
 	}

@@ -39,7 +39,6 @@
 
 #include <string.h>
 #include <ctype.h>
-#include <malloc.h>
 #include <stdlib.h>
 #include <getopt.h>
 #include "string_utils.h"

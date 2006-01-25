@@ -21,20 +21,22 @@
  * Temple Place - Suite 330, Boston MA 02111-1307, USA.
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <wait.h>
+#include <sys/wait.h>
 
 #include "lang_defs.h"
 #include "license.h"
 #include "pathscale_defs.h"
 #include "run.h"
-
-#define VERSION "1.1"
 
 int subverbose ;
 char subflags[100*1024] ;
@@ -128,9 +130,9 @@ void obtain_license (char *exedir, int argc, char *argv[]) {
         argvec[0] = exename ;
         argvec[1] = "Compiler" ;
         argvec[2] = language ;
-        argvec[3] = PSC_BUILD_DATE ;
+        argvec[3] = __DATE__ ;
         argvec[4] = subflags ;
-        argvec[5] = PSC_FULL_VERSION ;
+        argvec[5] = PACKAGE_VERSION ;
         argvec[6] = NULL ;
         if (subverbose) {
             argvec[6] = "--v" ;
