@@ -769,8 +769,20 @@ CODEREP::Print(INT indent, FILE *fp) const
       fprintf(fp, "%d/cr%d", Ivar_mu_node()->OPND()->Aux_id(), 
 	      Ivar_mu_node()->OPND()->Coderep_id());
     fprintf(fp, ">\n"); 
-  } else
+  } else {
+#ifdef Is_True_On
+    extern COMP_UNIT* g_comp_unit;
+    if (Kind () == CK_VAR) {
+      ST* st = g_comp_unit->Opt_stab()->St (Aux_id());
+      if (st && ST_class(st) != CLASS_PREG) {
+        fprintf (fp, " #%s", ST_name(st));
+      }
+    } else if (Kind() == CK_LDA) {
+      fprintf (fp, " #%s", g_comp_unit->Opt_stab()->St_name(Lda_aux_id()));
+    }
+#endif
     fprintf(fp, "\n");
+  }
 }
 
 void
