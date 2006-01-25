@@ -119,7 +119,7 @@ static struct cvt_rule {
 #elif defined(TARG_IA32)
   { nop, nop, nop, nop,U8I4, nop,U8U1,U8U2,U8U4, nop} //to U8
 #else
-  { nop, U8B, nop, nop,U8U4, nop,U8U1,U8U2, nop, nop} //to U8
+  { nop, U8B, nop, nop,U8I4, nop,U8U1,U8U2, nop, nop} //to U8
 #endif
 };
 
