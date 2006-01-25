@@ -230,6 +230,7 @@ AC_CONFIG_FILES([Makefile
 		 kpro64/be/be/Makefile
 		 kpro64/be/cg/Makefile
 		 kpro64/common/Makefile
+		 kpro64/driver/Makefile
 		 kpro64/libcif/Makefile
 		 kpro64/libcmplrs/Makefile
 		 kpro64/libdwarf/Makefile
