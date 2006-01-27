@@ -51,8 +51,9 @@ ARFLAGS = cru
 libiberty_a_AR = $(AR) $(ARFLAGS)
 libiberty_a_LIBADD =
 am_libiberty_a_OBJECTS = concat.$(OBJEXT) getruntime.$(OBJEXT) \
-	hashtab.$(OBJEXT) safe-ctype.$(OBJEXT) xexit.$(OBJEXT) \
-	xmalloc.$(OBJEXT) xmemdup.$(OBJEXT) xstrdup.$(OBJEXT)
+	hashtab.$(OBJEXT) obstack.$(OBJEXT) safe-ctype.$(OBJEXT) \
+	xexit.$(OBJEXT) xmalloc.$(OBJEXT) xmemdup.$(OBJEXT) \
+	xstrdup.$(OBJEXT)
 libiberty_a_OBJECTS = $(am_libiberty_a_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -66,7 +67,7 @@ DIST_SOURCES = $(libiberty_a_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-VPATH = ${SRCDIR}
+VPATH = ${_topgcc}/libiberty
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMDEP_FALSE = @AMDEP_FALSE@
@@ -177,11 +178,11 @@ target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
 noinst_LIBRARIES = libiberty.a
-libiberty_a_SOURCES = concat.c getruntime.c hashtab.c safe-ctype.c xexit.c \
-	xmalloc.c xmemdup.c xstrdup.c
+libiberty_a_SOURCES = concat.c getruntime.c hashtab.c obstack.c safe-ctype.c \
+	xexit.c xmalloc.c xmemdup.c xstrdup.c
 
-SRCDIR = ${top_srcdir}/contrib/gcc/libiberty
-AM_CPPFLAGS = -I${SRCDIR}
+_topgcc = ${top_srcdir}/contrib/gcc
+AM_CPPFLAGS = -I${_topgcc}/libiberty -I${_topgcc}/include
 all: all-am
 
 .SUFFIXES:
@@ -232,6 +233,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/concat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getruntime.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hashtab.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/obstack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/safe-ctype.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xexit.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xmalloc.Po@am__quote@
