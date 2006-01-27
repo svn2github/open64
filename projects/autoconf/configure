@@ -310,7 +310,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar TARG_SUBDIR CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE CXX CXXFLAGS ac_ct_CXX CXXDEPMODE am__fastdepCXX_TRUE am__fastdepCXX_FALSE F77 FFLAGS ac_ct_F77 RANLIB ac_ct_RANLIB CPP EGREP ALLOCA LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar TARG_SUBDIR CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE CXX CXXFLAGS ac_ct_CXX CXXDEPMODE am__fastdepCXX_TRUE am__fastdepCXX_FALSE F77 FFLAGS ac_ct_F77 RANLIB ac_ct_RANLIB CPP EGREP ALLOCA GCC_EXTRA_MODES GCC_FULL_HEADERS_CONFIG GCC_HEADERS_CONFIG GCC_HEADERS_HCONFIG GCC_HEADERS_TM_P GCC_MD_FILE GCC_OUT_FILE GCC_TARGET_ALIAS GCC_TARGET_CPU_DEFAULT GCC_TM_DEFINES GCC_TM_FILE GCC_XM_DEFINES_CONFIG GCC_XM_DEFINES_HCONFIG LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -3851,13 +3851,77 @@ fi
 
 
 #
-# Check for libraries (none yet)
+# Check for libraries
 #
+
+
+echo "$as_me:$LINENO: checking for GNU C library" >&5
+echo $ECHO_N "checking for GNU C library... $ECHO_C" >&6
+if test "${gcc_cv_glibc+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <features.h>
+int
+main ()
+{
+   #if ! (defined __GLIBC__ || defined __GNU_LIBRARY__)
+	    #error Not a GNU C library system
+	    #endif
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  gcc_cv_glibc=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+gcc_cv_glibc=no
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $gcc_cv_glibc" >&5
+echo "${ECHO_T}$gcc_cv_glibc" >&6
+if test $gcc_cv_glibc = yes; then
+    cat >>confdefs.h <<\_ACEOF
+#define _GNU_SOURCE 1
+_ACEOF
+
+fi
 
 #
 # Check for header files
 #
-
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -4519,6 +4583,169 @@ done
 
 
 
+
+
+
+
+
+
+
+
+
+
+for ac_header in limits.h time.h sys/resource.h sys/times.h
+do
+as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
+if eval "test \"\${$as_ac_Header+set}\" = set"; then
+  echo "$as_me:$LINENO: checking for $ac_header" >&5
+echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6
+if eval "test \"\${$as_ac_Header+set}\" = set"; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+fi
+echo "$as_me:$LINENO: result: `eval echo '${'$as_ac_Header'}'`" >&5
+echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
+else
+  # Is the header compilable?
+echo "$as_me:$LINENO: checking $ac_header usability" >&5
+echo $ECHO_N "checking $ac_header usability... $ECHO_C" >&6
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+#include <$ac_header>
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_header_compiler=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_header_compiler=no
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
+echo "${ECHO_T}$ac_header_compiler" >&6
+
+# Is the header present?
+echo "$as_me:$LINENO: checking $ac_header presence" >&5
+echo $ECHO_N "checking $ac_header presence... $ECHO_C" >&6
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <$ac_header>
+_ACEOF
+if { (eval echo "$as_me:$LINENO: \"$ac_cpp conftest.$ac_ext\"") >&5
+  (eval $ac_cpp conftest.$ac_ext) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null; then
+  if test -s conftest.err; then
+    ac_cpp_err=$ac_c_preproc_warn_flag
+    ac_cpp_err=$ac_cpp_err$ac_c_werror_flag
+  else
+    ac_cpp_err=
+  fi
+else
+  ac_cpp_err=yes
+fi
+if test -z "$ac_cpp_err"; then
+  ac_header_preproc=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  ac_header_preproc=no
+fi
+rm -f conftest.err conftest.$ac_ext
+echo "$as_me:$LINENO: result: $ac_header_preproc" >&5
+echo "${ECHO_T}$ac_header_preproc" >&6
+
+# So?  What about this header?
+case $ac_header_compiler:$ac_header_preproc:$ac_c_preproc_warn_flag in
+  yes:no: )
+    { echo "$as_me:$LINENO: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&5
+echo "$as_me: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the compiler's result" >&5
+echo "$as_me: WARNING: $ac_header: proceeding with the compiler's result" >&2;}
+    ac_header_preproc=yes
+    ;;
+  no:yes:* )
+    { echo "$as_me:$LINENO: WARNING: $ac_header: present but cannot be compiled" >&5
+echo "$as_me: WARNING: $ac_header: present but cannot be compiled" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header:     check for missing prerequisite headers?" >&5
+echo "$as_me: WARNING: $ac_header:     check for missing prerequisite headers?" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: see the Autoconf documentation" >&5
+echo "$as_me: WARNING: $ac_header: see the Autoconf documentation" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header:     section \"Present But Cannot Be Compiled\"" >&5
+echo "$as_me: WARNING: $ac_header:     section \"Present But Cannot Be Compiled\"" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the preprocessor's result" >&5
+echo "$as_me: WARNING: $ac_header: proceeding with the preprocessor's result" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: in the future, the compiler will take precedence" >&5
+echo "$as_me: WARNING: $ac_header: in the future, the compiler will take precedence" >&2;}
+    (
+      cat <<\_ASBOX
+## --------------------------------- ##
+## Report this to The Open64 Project ##
+## --------------------------------- ##
+_ASBOX
+    ) |
+      sed "s/^/$as_me: WARNING:     /" >&2
+    ;;
+esac
+echo "$as_me:$LINENO: checking for $ac_header" >&5
+echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6
+if eval "test \"\${$as_ac_Header+set}\" = set"; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  eval "$as_ac_Header=\$ac_header_preproc"
+fi
+echo "$as_me:$LINENO: result: `eval echo '${'$as_ac_Header'}'`" >&5
+echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
+
+fi
+if test `eval echo '${'$as_ac_Header'}'` = yes; then
+  cat >>confdefs.h <<_ACEOF
+#define `echo "HAVE_$ac_header" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+
+done
+
+
+
+
+
 if test "$ac_cv_header_elf_h" = yes; then
     cat >>confdefs.h <<\_ACEOF
 #define __LIBELF_HEADER_ELF_H <elf.h>
@@ -4668,6 +4895,138 @@ _ACEOF
 
 fi
 
+echo "$as_me:$LINENO: checking for clock_t" >&5
+echo $ECHO_N "checking for clock_t... $ECHO_C" >&6
+if test "${ac_cv_type_clock_t+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <time.h>
+
+int
+main ()
+{
+if ((clock_t *) 0)
+  return 0;
+if (sizeof (clock_t))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_type_clock_t=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_type_clock_t=no
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_type_clock_t" >&5
+echo "${ECHO_T}$ac_cv_type_clock_t" >&6
+if test $ac_cv_type_clock_t = yes; then
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_CLOCK_T 1
+_ACEOF
+
+
+fi
+
+echo "$as_me:$LINENO: checking for struct tms" >&5
+echo $ECHO_N "checking for struct tms... $ECHO_C" >&6
+if test "${ac_cv_type_struct_tms+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <sys/times.h>
+
+int
+main ()
+{
+if ((struct tms *) 0)
+  return 0;
+if (sizeof (struct tms))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_type_struct_tms=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_type_struct_tms=no
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_type_struct_tms" >&5
+echo "${ECHO_T}$ac_cv_type_struct_tms" >&6
+if test $ac_cv_type_struct_tms = yes; then
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_STRUCT_TMS 1
+_ACEOF
+
+
+fi
+
 
 # For libdwarf
 cat >conftest.$ac_ext <<_ACEOF
@@ -4766,8 +5125,6 @@ sed 's/^/| /' conftest.$ac_ext >&5
 
 fi
 rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
-
-# For libdwarf
 cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -8123,7 +8480,55 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-                                                                                                                                                      ac_config_files="$ac_config_files Makefile kpro64/Makefile kpro64/arith/Makefile kpro64/be/Makefile kpro64/be/be/Makefile kpro64/be/cg/Makefile kpro64/common/Makefile kpro64/driver/Makefile kpro64/libcif/Makefile kpro64/libcmplrs/Makefile kpro64/libdwarf/Makefile kpro64/libelf/Makefile kpro64/libelfutil/Makefile kpro64/libunwind/Makefile kpro64/targ_info/Makefile"
+our_srcdir=$srcdir
+srcdir=$our_srcdir/contrib/gcc/gcc
+for machine in $build $host $target; do
+    . ${srcdir}/config.gcc
+done
+srcdir=$our_srcdir
+
+GCC_MD_FILE="${md_file:-$cpu_type/$cpu_type.md}"
+GCC_OUT_FILE="${out_file:-$cpu_type/$cpu_type.c}"
+GCC_TM_FILE="${tm_file:-$cpu_type/$cpu_type.h} defaults.h"
+
+GCC_EXTRA_MODES="$extra_modes"
+GCC_HEADERS_CONFIG="ansidecl.h ${host_xm_file} ${GCC_TM_FILE}"
+GCC_HEADERS_HCONFIG="auto-build.h ansidecl.h ${build_xm_file} ${GCC_TM_FILE}"
+GCC_HEADERS_TM_P="${tm_p_file}"
+GCC_TARGET_ALIAS="${target_alias:-${target}}"
+GCC_TARGET_CPU_DEFAULT="$target_cpu_default"
+GCC_TM_DEFINES="$tm_defines"
+GCC_XM_DEFINES_CONFIG="$host_xm_defines"
+GCC_XM_DEFINES_HCONFIG="$build_xm_defines"
+
+fl=
+for H in $GCC_HEADERS_CONFIG; do
+    case $H in
+	ansidecl.h)	fl="$fl \$(_topgcc)/include/$H";;
+	defaults.h)	fl="$fl \$(_topgcc)/gcc/$H";;
+	*)		fl="$fl \$(_topgcc)/gcc/config/$H";;
+    esac
+done
+GCC_FULL_HEADERS_CONFIG="$fl"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                                                                                                                  ac_config_files="$ac_config_files Makefile kpro64/Makefile kpro64/arith/Makefile kpro64/be/Makefile kpro64/be/be/Makefile kpro64/be/cg/Makefile kpro64/common/Makefile kpro64/driver/Makefile kpro64/gcc/Makefile kpro64/gcc/c/Makefile kpro64/gcc/common/Makefile kpro64/gcc/config/Makefile kpro64/gcc/cpp/Makefile kpro64/gcc/libiberty/Makefile kpro64/libcif/Makefile kpro64/libcmplrs/Makefile kpro64/libdwarf/Makefile kpro64/libelf/Makefile kpro64/libelfutil/Makefile kpro64/libunwind/Makefile kpro64/targ_info/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -8689,6 +9094,12 @@ do
   "kpro64/be/cg/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/be/cg/Makefile" ;;
   "kpro64/common/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/common/Makefile" ;;
   "kpro64/driver/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/driver/Makefile" ;;
+  "kpro64/gcc/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/gcc/Makefile" ;;
+  "kpro64/gcc/c/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/gcc/c/Makefile" ;;
+  "kpro64/gcc/common/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/gcc/common/Makefile" ;;
+  "kpro64/gcc/config/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/gcc/config/Makefile" ;;
+  "kpro64/gcc/cpp/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/gcc/cpp/Makefile" ;;
+  "kpro64/gcc/libiberty/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/gcc/libiberty/Makefile" ;;
   "kpro64/libcif/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/libcif/Makefile" ;;
   "kpro64/libcmplrs/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/libcmplrs/Makefile" ;;
   "kpro64/libdwarf/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/libdwarf/Makefile" ;;
@@ -8848,6 +9259,19 @@ s,@ac_ct_RANLIB@,$ac_ct_RANLIB,;t t
 s,@CPP@,$CPP,;t t
 s,@EGREP@,$EGREP,;t t
 s,@ALLOCA@,$ALLOCA,;t t
+s,@GCC_EXTRA_MODES@,$GCC_EXTRA_MODES,;t t
+s,@GCC_FULL_HEADERS_CONFIG@,$GCC_FULL_HEADERS_CONFIG,;t t
+s,@GCC_HEADERS_CONFIG@,$GCC_HEADERS_CONFIG,;t t
+s,@GCC_HEADERS_HCONFIG@,$GCC_HEADERS_HCONFIG,;t t
+s,@GCC_HEADERS_TM_P@,$GCC_HEADERS_TM_P,;t t
+s,@GCC_MD_FILE@,$GCC_MD_FILE,;t t
+s,@GCC_OUT_FILE@,$GCC_OUT_FILE,;t t
+s,@GCC_TARGET_ALIAS@,$GCC_TARGET_ALIAS,;t t
+s,@GCC_TARGET_CPU_DEFAULT@,$GCC_TARGET_CPU_DEFAULT,;t t
+s,@GCC_TM_DEFINES@,$GCC_TM_DEFINES,;t t
+s,@GCC_TM_FILE@,$GCC_TM_FILE,;t t
+s,@GCC_XM_DEFINES_CONFIG@,$GCC_XM_DEFINES_CONFIG,;t t
+s,@GCC_XM_DEFINES_HCONFIG@,$GCC_XM_DEFINES_HCONFIG,;t t
 s,@LIBOBJS@,$LIBOBJS,;t t
 s,@LTLIBOBJS@,$LTLIBOBJS,;t t
 CEOF
