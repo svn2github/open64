@@ -4,4 +4,5 @@ libgcc_c_a_SOURCES = c-aux-info.c c-convert.c c-decl.c c-errors.c c-lang.c \
 
 _topgcc = ${top_srcdir}/contrib/gcc
 VPATH = ${_topgcc}/gcc
-AM_CPPFLAGS = -DIN_GCC -I${_topgcc}/gcc -I${_topgcc}/gcc/config -I../config
+AM_CPPFLAGS = -DIN_GCC -I${_topgcc}/gcc -I${_topgcc}/gcc/config \
+	-I${_topgcc}/include -I../config

@@ -7,4 +7,4 @@ libgcc_cpp_a_SOURCES = call.c class.c cp-lang.c cvt.c decl.c decl2.c dump.c \
 _topgcc = ${top_srcdir}/contrib/gcc
 VPATH = ${_topgcc}/gcc/cp
 AM_CPPFLAGS = -DIN_GCC -I${_topgcc}/gcc -I${_topgcc}/gcc/config \
-	-I${_topgcc}/gcc/cp -I../config
+	-I${_topgcc}/gcc/cp -I${_topgcc}/include -I../config
