@@ -2,9 +2,7 @@ AC_PREREQ(2.59)
 AC_INIT([The Open64 compiler suite], [2.0], [The Open64 Project], [occ])
 AC_CONFIG_HEADERS([config.h])
 
-AC_CANONICAL_BUILD
-AC_CANONICAL_HOST
-AC_CANONICAL_TARGET
+AC_CANONICAL_SYSTEM
 
 AM_INIT_AUTOMAKE
 
@@ -33,8 +31,19 @@ AC_PROG_INSTALL
 AC_PROG_RANLIB
 
 #
-# Check for libraries (none yet)
+# Check for libraries
 #
+AH_TEMPLATE(_GNU_SOURCE, [Always define this when using the GNU C Library])
+AC_CACHE_CHECK([for GNU C library], gcc_cv_glibc,
+    AC_TRY_COMPILE([#include <features.h>],
+	[   #if ! (defined __GLIBC__ || defined __GNU_LIBRARY__)
+	    #error Not a GNU C library system
+	    #endif
+	],
+	[gcc_cv_glibc=yes], [gcc_cv_glibc=no]))
+if test $gcc_cv_glibc = yes; then
+    AC_DEFINE(_GNU_SOURCE, 1)
+fi
 
 #
 # Check for header files
@@ -49,6 +58,15 @@ AH_TEMPLATE(HAVE_LIBELF_H, [Define if you have the <libelf.h> header file.])
 AH_TEMPLATE(HAVE_SYS_ELF_H, [Define if you have the <sys/elf.h> header file.])
 
 AC_CHECK_HEADERS([ar.h elf.h fcntl.h gelf.h libelf.h sys/elf.h])
+
+AH_TEMPLATE(HAVE_LIMITS_H, [Define if you have the <limits.h> header file.])
+AH_TEMPLATE(HAVE_TIME_H, [Define if you have the <time.h> header file.])
+AH_TEMPLATE(HAVE_SYS_RESOURCE_H,
+    [Define if you have the <sys/resource.h> header file.])
+AH_TEMPLATE(HAVE_SYS_TIMES_H,
+    [Define if you have the <sys/times.h> header file.])
+
+AC_CHECK_HEADERS([limits.h time.h sys/resource.h sys/times.h])
 
 AH_TEMPLATE(__LIBELF_HEADER_ELF_H,
     [Define to `<elf.h>' or `<sys/elf.h>' if one of them is present.])
@@ -66,6 +84,8 @@ fi
 #
 AC_TYPE_OFF_T
 AC_TYPE_SIZE_T
+AC_CHECK_TYPES(clock_t,,,[#include <time.h>])
+AC_CHECK_TYPES(struct tms,,,[#include <sys/times.h>])
 
 # For libdwarf
 AC_TRY_COMPILE([], [__uint32_t p; p = 3;],
@@ -74,8 +94,6 @@ AC_TRY_COMPILE([], [__uint32_t p; p = 3;],
 AC_TRY_COMPILE([], [__uint64_t p; p = 3;],
     AC_DEFINE(HAVE___UINT64_T, 1,
 	[See if __uint64_t is predefined in the compiler.]))
-
-# For libdwarf
 AC_TRY_COMPILE([#include <sys/types.h>], [__uint32_t p; p = 3;],
     AC_DEFINE(HAVE___UINT32_T_IN_SYS_TYPES_H, 1,
 	[Define 1 if sys/types.h defines __uint32_t.]))
@@ -223,6 +241,58 @@ AC_DEFINE(HAVE_ELF64_GETSHDR,1,[We have elf64_getshdr() in our libelf.a.])
 #
 AC_DEFINE(HAVE_OLD_DWARF2_32BIT_OFFSET,1,[DWARF2 32-bit section offsets.])
 
+our_srcdir=$srcdir
+srcdir=$our_srcdir/contrib/gcc/gcc
+for machine in $build $host $target; do
+    . ${srcdir}/config.gcc
+done
+srcdir=$our_srcdir
+
+GCC_MD_FILE="${md_file:-$cpu_type/$cpu_type.md}"
+GCC_OUT_FILE="${out_file:-$cpu_type/$cpu_type.c}"
+GCC_TM_FILE="${tm_file:-$cpu_type/$cpu_type.h} defaults.h"
+
+GCC_EXTRA_MODES="$extra_modes"
+GCC_HEADERS_CONFIG="ansidecl.h ${host_xm_file} ${GCC_TM_FILE}"
+GCC_HEADERS_HCONFIG="auto-build.h ansidecl.h ${build_xm_file} ${GCC_TM_FILE}"
+GCC_HEADERS_TM_P="${tm_p_file}"
+GCC_TARGET_ALIAS="${target_alias:-${target}}"
+GCC_TARGET_CPU_DEFAULT="$target_cpu_default"
+GCC_TM_DEFINES="$tm_defines"
+GCC_XM_DEFINES_CONFIG="$host_xm_defines"
+GCC_XM_DEFINES_HCONFIG="$build_xm_defines"
+
+fl=
+for H in $GCC_HEADERS_CONFIG; do
+    case $H in
+	ansidecl.h)	fl="$fl \$(_topgcc)/include/$H";;
+	defaults.h)	fl="$fl \$(_topgcc)/gcc/$H";;
+	*)		fl="$fl \$(_topgcc)/gcc/config/$H";;
+    esac
+done
+GCC_FULL_HEADERS_CONFIG="$fl"
+
+AC_SUBST(GCC_EXTRA_MODES)
+AC_SUBST(GCC_FULL_HEADERS_CONFIG)
+AC_SUBST(GCC_HEADERS_CONFIG)
+AC_SUBST(GCC_HEADERS_HCONFIG)
+AC_SUBST(GCC_HEADERS_TM_P)
+AC_SUBST(GCC_MD_FILE)
+AC_SUBST(GCC_OUT_FILE)
+AC_SUBST(GCC_TARGET_ALIAS)
+AC_SUBST(GCC_TARGET_CPU_DEFAULT)
+AC_SUBST(GCC_TM_DEFINES)
+AC_SUBST(GCC_TM_FILE)
+AC_SUBST(GCC_XM_DEFINES_CONFIG)
+AC_SUBST(GCC_XM_DEFINES_HCONFIG)
+
+AH_VERBATIM([IN_GCC],
+    [	/* Include GCC's config header when appropriate. */
+	#ifdef IN_GCC
+	#include "kpro64/gcc/config/gcc-config.h"
+	#endif
+    ]) 
+
 AC_CONFIG_FILES([Makefile
 		 kpro64/Makefile
 		 kpro64/arith/Makefile
@@ -231,6 +301,12 @@ AC_CONFIG_FILES([Makefile
 		 kpro64/be/cg/Makefile
 		 kpro64/common/Makefile
 		 kpro64/driver/Makefile
+		 kpro64/gcc/Makefile
+		 kpro64/gcc/c/Makefile
+		 kpro64/gcc/common/Makefile
+		 kpro64/gcc/config/Makefile
+		 kpro64/gcc/cpp/Makefile
+		 kpro64/gcc/libiberty/Makefile
 		 kpro64/libcif/Makefile
 		 kpro64/libcmplrs/Makefile
 		 kpro64/libdwarf/Makefile
