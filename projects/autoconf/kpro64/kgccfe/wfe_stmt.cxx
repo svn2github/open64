@@ -38,32 +38,38 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
+#include <ctype.h>
 #include "defs.h"
 #include "glob.h"
 #include "config_global.h"
 #include "wn.h"
 #include "wn_util.h"
-
-#include "gnu_config.h"
-#include "gnu/system.h"
-
 #include "srcpos.h"
-#include "gnu/flags.h"
-#include "gnu/tree.h"
-#include "insn-config.h"	// MAX_RECOG_OPERANDS
+#include "insn-config.h"        // MAX_RECOG_OPERANDS
 #include "ir_reader.h"
+#include "targ_sim.h"
+#include "const.h"
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#include <output.h>
+#undef IN_GCC
+extern int flag_bad_asm_constraint_kills_stmt;
+extern int flag_no_common;
+};
+
 #include "tree_symtab.h"
 #include "wfe_misc.h"
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
-#include "targ_sim.h"
-#ifdef KEY
-#include "const.h"
-#endif
-#include <ctype.h>
-
-extern "C" int decode_reg_name (char*);
+#include "omp_types.h"
 
 #define ENLARGE(x) (x + (x >> 1))
 
@@ -129,19 +135,19 @@ WFE_Stmt_Init (void)
 {
   if_else_info_max   = 32;
   if_else_info_i     = -1;
-  if_else_info_stack = (BOOL *) malloc (sizeof (BOOL) * if_else_info_max);
+  if_else_info_stack = (BOOL *)xmalloc(sizeof(BOOL) * if_else_info_max);
   loop_info_max      = 32;
   loop_info_i        = -1;
-  loop_info_stack    = (LOOP_INFO *) malloc (sizeof (LOOP_INFO) * loop_info_max);
+  loop_info_stack    = (LOOP_INFO *)xmalloc(sizeof(LOOP_INFO) * loop_info_max);
   switch_info_max    = 32;
   switch_info_i      = -1;
-  switch_info_stack  = (SWITCH_INFO *) malloc (sizeof (SWITCH_INFO) * switch_info_max);
+  switch_info_stack  = (SWITCH_INFO *)xmalloc(sizeof(SWITCH_INFO) * switch_info_max);
   case_info_max      = 32;
   case_info_i        = -1;
-  case_info_stack    = (CASE_INFO *) malloc (sizeof (CASE_INFO) * case_info_max);
+  case_info_stack    = (CASE_INFO *)xmalloc(sizeof(CASE_INFO) * case_info_max);
   undefined_labels_max   = 32;
   undefined_labels_i     = -1;
-  undefined_labels_stack = (LABEL_INFO *) malloc (sizeof (LABEL_INFO) * undefined_labels_max);
+  undefined_labels_stack = (LABEL_INFO *)xmalloc(sizeof(LABEL_INFO) * undefined_labels_max);
 } /* WFE_Stmt_Init */
 
 void
@@ -155,7 +161,7 @@ WFE_Expand_Start_Cond (tree cond, int exitflag)
   if (++if_else_info_i == if_else_info_max) {
 
     if_else_info_max   = ENLARGE(if_else_info_max);
-    if_else_info_stack = (BOOL *) realloc (if_else_info_stack,
+    if_else_info_stack = (BOOL *)xrealloc (if_else_info_stack,
                                            if_else_info_max * sizeof (BOOL));
   }
 
@@ -197,7 +203,7 @@ WFE_Expand_Start_Loop (int exitflag, struct nesting *whichloop)
   if (++loop_info_i == loop_info_max) {
 
     loop_info_max   = ENLARGE(loop_info_max);
-    loop_info_stack = (LOOP_INFO *) realloc (loop_info_stack,
+    loop_info_stack = (LOOP_INFO *)xrealloc (loop_info_stack,
                                              loop_info_max * sizeof (LOOP_INFO));
   }
 
@@ -364,7 +370,7 @@ WFE_Expand_Start_Case (int exit_flag, tree expr, tree type, char *printname)
   if (++switch_info_i == switch_info_max) {
 
     switch_info_max   = ENLARGE(switch_info_max);
-    switch_info_stack = (SWITCH_INFO *) realloc (switch_info_stack,
+    switch_info_stack = (SWITCH_INFO *)xrealloc (switch_info_stack,
                                              switch_info_max * sizeof (SWITCH_INFO));
   }
   switch_info_stack [switch_info_i].index             = index;
@@ -391,24 +397,24 @@ WFE_Add_Case_Node (tree low, tree high, tree label)
   if (++case_info_i == case_info_max) {
 
     case_info_max   = ENLARGE(case_info_max);
-    case_info_stack = (CASE_INFO *) realloc (case_info_stack,
+    case_info_stack = (CASE_INFO *)xrealloc (case_info_stack,
                                              case_info_max * sizeof (CASE_INFO));
   }
   case_info_stack [case_info_i].case_lower_bound_value = WN_const_val (lower_bound);
   case_info_stack [case_info_i].case_upper_bound_value = WN_const_val (upper_bound);
 #ifdef KEY
-  if (label->decl.sgi_u1.label_idx != (LABEL_IDX) 0)
-    case_label_idx = label->decl.sgi_u1.label_idx;
+  if (DECL_WHIRL_LABEL_GET(label) != (LABEL_IDX) 0)
+    case_label_idx = DECL_WHIRL_LABEL_GET(label);
   else {
 #endif
-  FmtAssert (label->decl.sgi_u1.label_idx == (LABEL_IDX) 0,
+  FmtAssert (DECL_WHIRL_LABEL_GET(label) == (LABEL_IDX) 0,
              ("WFE_Add_Case_Node: label already defined"));
   New_LABEL (CURRENT_SYMTAB, case_label_idx);
 #ifdef KEY
   }
 #endif
-  label->decl.sgi_u1.label_idx = case_label_idx;
-  label->decl.label_defined = TRUE;
+  DECL_WHIRL_LABEL_SET(label, case_label_idx);
+  DECL_WHIRL_LABEL_DEFINED(label) = TRUE;
   case_info_stack [case_info_i].case_label_idx = case_label_idx;
   wn = WN_CreateLabel ((ST_IDX) 0, case_label_idx, 0, NULL);
   WFE_Stmt_Append (wn, Get_Srcpos ());
@@ -512,16 +518,16 @@ WFE_Record_Switch_Default_Label (tree label)
 #ifdef KEY
 // Fix bug 951. If we have already formed the label (during expansion
 // of STMT_EXPR), don't do it again (when called from GNU code)
-  if (label->decl.sgi_u1.label_idx != (LABEL_IDX) 0)
-      default_label_idx = label->decl.sgi_u1.label_idx;
+  if (DECL_WHIRL_LABEL_GET(label) != (LABEL_IDX) 0)
+      default_label_idx = DECL_WHIRL_LABEL_GET(label);
   else
 #else
   FmtAssert (label->decl.sgi_u1.label_idx == (LABEL_IDX) 0,
              ("WFE_Record_Switch_Default_Label: label already defined"));
 #endif
   New_LABEL (CURRENT_SYMTAB, default_label_idx);
-  label->decl.sgi_u1.label_idx = default_label_idx;
-  label->decl.label_defined = TRUE;
+  DECL_WHIRL_LABEL_SET(label, default_label_idx);
+  DECL_WHIRL_LABEL_DEFINED(label) = TRUE;
   switch_info_stack [switch_info_i].default_label_idx = default_label_idx;
   wn = WN_CreateLabel ((ST_IDX) 0, default_label_idx, 0, NULL);
   WFE_Stmt_Append (wn, Get_Srcpos ());
@@ -562,18 +568,18 @@ WFE_Expand_Exit_Something (struct nesting *n,
 LABEL_IDX
 WFE_Get_LABEL (tree label, int def)
 {
-  LABEL_IDX label_idx  = label->decl.sgi_u1.label_idx;
-  LABEL_IDX symtab_idx = label->decl.symtab_idx;
+  LABEL_IDX label_idx  = DECL_WHIRL_LABEL_GET(label);
+  LABEL_IDX symtab_idx = DECL_WHIRL_SYMTAB_IDX(label);
 
   if (label_idx == 0) {
     LABEL_Init (New_LABEL (CURRENT_SYMTAB, label_idx), 0, LKIND_DEFAULT);
-    label->decl.sgi_u1.label_idx = label_idx;
-    label->decl.symtab_idx   = CURRENT_SYMTAB;
+    DECL_WHIRL_LABEL_SET(label, label_idx);
+    DECL_WHIRL_SYMTAB_IDX(label) = CURRENT_SYMTAB;
     if (!def) {
       if (++undefined_labels_i == undefined_labels_max) {
         undefined_labels_max   = ENLARGE(undefined_labels_max);
         undefined_labels_stack =
-          (LABEL_INFO *) realloc (undefined_labels_stack,
+          (LABEL_INFO *)xrealloc (undefined_labels_stack,
                                   undefined_labels_max * sizeof (LABEL_INFO));
       }
       undefined_labels_stack [undefined_labels_i].label_idx  = label_idx;
@@ -593,8 +599,8 @@ WFE_Get_LABEL (tree label, int def)
     }
 /*
     else {
-      if (label->decl.label_defined)
-        FmtAssert (label->decl.symtab_idx == CURRENT_SYMTAB,
+      if (DECL_WHIRL_LABEL_DEFINED(label))
+        FmtAssert (DECL_WHIRL_SYMTAB_IDX(label) == CURRENT_SYMTAB,
                    ("jumping to a label not defined in current function"));
     }
 */
@@ -614,11 +620,11 @@ void
 WFE_Expand_Label (tree label)
 {
   LABEL_IDX label_idx = WFE_Get_LABEL (label, TRUE);
-  label->decl.symtab_idx = CURRENT_SYMTAB;
+  DECL_WHIRL_SYMTAB_IDX(label) = CURRENT_SYMTAB;
 //fprintf (stderr, "\n");
-  if (!label->decl.label_defined) {
+  if (!DECL_WHIRL_LABEL_DEFINED(label)) {
     WN *wn;
-    label->decl.label_defined = TRUE;
+    DECL_WHIRL_LABEL_DEFINED(label) = TRUE;
     wn = WN_CreateLabel ((ST_IDX) 0, label_idx, 0, NULL);
     WFE_Stmt_Append (wn, Get_Srcpos ());
   }
@@ -630,8 +636,8 @@ WFE_Expand_Goto (tree label)
   WN *wn;
   LABEL_IDX label_idx = WFE_Get_LABEL (label, FALSE);
   if ((CURRENT_SYMTAB > GLOBAL_SYMTAB + 1) &&
-      (label->decl.symtab_idx < CURRENT_SYMTAB))
-    wn = WN_CreateGotoOuterBlock (label_idx, label->decl.symtab_idx);
+      (DECL_WHIRL_SYMTAB_IDX(label) < CURRENT_SYMTAB))
+    wn = WN_CreateGotoOuterBlock (label_idx, DECL_WHIRL_SYMTAB_IDX(label));
   else
     wn = WN_CreateGoto ((ST_IDX) NULL, label_idx);
   WFE_Stmt_Append (wn, Get_Srcpos());
@@ -687,7 +693,7 @@ WFE_Expand_Return (tree retval)
         }
       }
       WFE_Set_ST_Addr_Saved (rhs_wn);
-      if (DECL_WIDEN_RETVAL(current_function_decl)) {
+      if (DECL_WHIRL_WIDEN_RETVAL(current_function_decl)) {
 	TYPE_ID old_rtype = WN_rtype(rhs_wn);
 	TYPE_ID new_rtype = MTYPE_is_signed (old_rtype) ? MTYPE_I8 : MTYPE_U8;
 	rhs_wn = WN_Cvt (old_rtype, new_rtype, rhs_wn);
@@ -804,7 +810,7 @@ st_of_new_temp_for_expr(const WN *expr)
 // need to keep track of what kind of constraint a numeric constraint
 // refers to (by address or not).  So keep list of constraints.
 
-static char *operand_constraint_array[MAX_RECOG_OPERANDS];
+static const char *operand_constraint_array[MAX_RECOG_OPERANDS];
 
 static BOOL
 constraint_by_address (const char *s)
@@ -889,7 +895,7 @@ Wfe_Expand_Asm_Operands (tree  string,
   int ninputs = list_length (inputs);
 
   tree tail;
-  char *constraint_string;
+  const char *constraint_string;
 
   // Keep list of output operand constraints so that we know
   // what a numeric constraint refers to.
@@ -949,7 +955,7 @@ Wfe_Expand_Asm_Operands (tree  string,
     }
 
   WN *asm_wn = WN_CreateAsm_Stmt (ninputs + 2,
-				  TREE_STRING_POINTER (string));
+			(char*)(uintptr_t)TREE_STRING_POINTER (string));
 
   WN *clobber_block = WN_CreateBlock ();
 
@@ -957,7 +963,7 @@ Wfe_Expand_Asm_Operands (tree  string,
 
   for (tail = clobbers; tail; tail = TREE_CHAIN (tail))
     {
-      char *clobber_string =
+      const char *clobber_string =
 	TREE_STRING_POINTER (TREE_VALUE (tail));
 
       WN *clobber_pragma = NULL;
@@ -1047,7 +1053,8 @@ Wfe_Expand_Asm_Operands (tree  string,
 	FmtAssert(addr_of_lvalue != NULL,
 		  ("WFE_Expand_Asm_Operands: output operand must be lvalue"));
 	WN_kid (asm_wn, i) =
-	  WN_CreateAsm_Input (constraint_string, opnd_num, addr_of_lvalue);
+	  WN_CreateAsm_Input ((char*)(uintptr_t)constraint_string,
+			opnd_num, addr_of_lvalue);
 	++i;
       }
       ++opnd_num;
@@ -1112,7 +1119,8 @@ Wfe_Expand_Asm_Operands (tree  string,
       }
 
       WN_kid (asm_wn, i) =
-	WN_CreateAsm_Input (constraint_string, opnd_num, input_rvalue);
+	WN_CreateAsm_Input ((char*)(uintptr_t)constraint_string,
+			opnd_num, input_rvalue);
       ++i;
       ++opnd_num;
     }
@@ -1166,7 +1174,8 @@ Wfe_Expand_Asm_Operands (tree  string,
 	if (plus_modifier)
 	  {
 	    // de-plus the output operand's constraint string.
-	    constraint_string = remove_plus_modifier(constraint_string);
+	    constraint_string = remove_plus_modifier(
+				xstrdup(constraint_string));
 
 	    // Make up a numeric matching constraint string for the
 	    // input operand we're going to add.
@@ -1269,14 +1278,14 @@ WFE_Null_ST_References (tree* node)
 {
   if ( TREE_CODE (*node) == VAR_DECL )
   {
-    ST_SCLASS sc = ST_sclass (DECL_ST (*node));
+    ST_SCLASS sc = ST_sclass (DECL_WHIRL_ST_GET (*node));
 
     // Don't null out global symbols
     if ( sc != SCLASS_DGLOBAL &&
          sc != SCLASS_EXTERN &&
          sc != SCLASS_FSTATIC &&
          sc != SCLASS_UGLOBAL )
-      DECL_ST(*node) = NULL;
+      DECL_WHIRL_ST_SET(*node, NULL);
   }
 
   return 0;
@@ -1289,7 +1298,7 @@ WFE_Start_Do_Loop (struct nesting * whichloop)
   if (++loop_info_i == loop_info_max) {
 
     loop_info_max   = ENLARGE(loop_info_max);
-    loop_info_stack = (LOOP_INFO *) realloc (loop_info_stack,
+    loop_info_stack = (LOOP_INFO *)xrealloc (loop_info_stack,
                                              loop_info_max * sizeof (LOOP_INFO));
   }
 
@@ -1345,18 +1354,18 @@ WFE_Terminate_Do_Loop (struct nesting * whichloop)
 void
 WFE_Expand_Pragma (tree exp)
 {
-  switch (exp->omp.choice)
+  switch (exp->whirl_omp.choice)
   {
     case options_dir:
     { // pragma options
       TCON tcon;
-      exp = (tree) exp->omp.omp_clause_list;
+      exp = (tree) exp->whirl_omp.clauses;
       tcon = Host_To_Targ_String (MTYPE_STRING,
-                                  TREE_STRING_POINTER(exp),
+                                  (char*)(uintptr_t)TREE_STRING_POINTER(exp),
                                   TREE_STRING_LENGTH(exp) - 1 /*ignore \0*/);
       TY_IDX ty_idx = Get_TY(TREE_TYPE(exp));
       ST * st = New_Const_Sym (Enter_tcon (tcon), ty_idx);  
-      TREE_STRING_ST (exp) = st;
+      TREE_STRING_WHIRL_ST_SET (exp, st);
       WN * wn = WN_CreatePragma (WN_PRAGMA_OPTIONS, st, 0, 0);
       WN * func_wn = WFE_Find_Stmt_In_Stack (wfe_stmk_func_entry);
       WN_INSERT_BlockLast (WN_func_pragmas(func_wn), wn);
@@ -1365,9 +1374,9 @@ WFE_Expand_Pragma (tree exp)
     case exec_freq_dir:
     { // pragma mips_frequency_hint
       MIPS_FREQUENCY_HINT freq_hint;
-      Is_True (TREE_CODE ((tree) exp->omp.omp_clause_list) == STRING_CST,
+      Is_True (TREE_CODE ((tree) exp->whirl_omp.clauses) == STRING_CST,
                ("Expected string constant with mips_frequency_hint"));
-      const char * hint = TREE_STRING_POINTER ((tree) exp->omp.omp_clause_list);
+      const char * hint = TREE_STRING_POINTER ((tree) exp->whirl_omp.clauses);
 
       if (!strcmp (hint, "never")) freq_hint = FREQUENCY_HINT_NEVER;
       else if (!strcmp (hint, "init")) freq_hint = FREQUENCY_HINT_INIT;

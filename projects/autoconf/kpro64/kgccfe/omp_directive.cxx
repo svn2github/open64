@@ -21,29 +21,32 @@
  * Temple Place - Suite 330, Boston MA 02111-1307, USA.
  */
 
+#include <stdio.h>
+
 #include "defs.h"
 #include "glob.h"
 #include "config_global.h"
 #include "wn.h"
 #include "wn_util.h"
-
-#include "gnu_config.h"
-#include "system.h"
-
 #include "srcpos.h"
-#include "tree.h"
-
-#include "wfe_expr.h"
-#include "wfe_misc.h"
-#include "omp_types.h"
-#include "omp_directive.h"
-#include "wfe_omp_directives.h"
-#include "wfe_omp_check_stack.h"
-
-#include <stdio.h>
 #include "errors.h"
 #include "const.h"
- 
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#undef IN_GCC
+};
+
+#include "omp_types.h"
+#include "omp_directive.h"
+#include "wfe_expr.h"
+#include "wfe_misc.h"
+#include "wfe_omp_check_stack.h"
+#include "wfe_omp_directives.h"
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Concatenate two chains of nodes (chained through TREE_CHAIN)
@@ -159,7 +162,7 @@ void prepare_com_clause ( tree  clause_tree, ST_list * * clause_st )
      for (t = clause_tree; t; t = TREE_CHAIN (t))
        {      
          st = Get_Pre_ST (TREE_VALUE(t));
-       	 stlist = (struct ST_list *) malloc(sizeof(struct ST_list));
+       	 stlist = new ST_list;
          stlist->st = st ;
          stlist->next = *clause_st;
          * clause_st = stlist;
@@ -216,7 +219,7 @@ void prepare_reduction_clause
                 st = Get_Pre_ST (TREE_VALUE(t));
                 wn = WN_CreatePragma(WN_PRAGMA_REDUCTION, st, 0, op_code);
                 WN_set_pragma_omp(wn);
-       	        wnlist = (struct WN_list *) malloc(sizeof(struct WN_list));
+       	        wnlist = new WN_list;
                 wnlist->wn = wn;
                 wnlist->next = *reduction_clause_wn;
                 *reduction_clause_wn = wnlist;
@@ -344,7 +347,7 @@ expand_start_parallel (struct parallel_clause_list * clause_list)
      for (cl = clause_list; cl != NULL; cl = cl->next)
        {
           if ( cl->type == p_reduction ) {
-          	 rl = (struct reduction_list *) malloc(sizeof(struct reduction_list));
+          	 rl = new struct reduction_list;
              rl->node = cl->node.reduction_node;
              rl->next = reduction_clause_list;
              reduction_clause_list = rl;
@@ -383,7 +386,7 @@ expand_start_parallel (struct parallel_clause_list * clause_list)
 
      prepare_reduction_clause ( reduction_clause_list, &reduction_clause_wn );    
 
-     parallel_clause_wn = (struct Parallel_clause_wn_type *) malloc(sizeof(Parallel_clause_wn_type)); 
+     parallel_clause_wn = new Parallel_clause_wn_type; 
 
      parallel_clause_wn-> if_clause = if_clause_wn;
      parallel_clause_wn-> num_threads_clause = num_threads_clause_wn;
@@ -513,7 +516,7 @@ expand_start_for (struct for_clause_list * clause_list)
      for (cl = clause_list; cl != NULL; cl = cl->next)
        {
           if ( cl->type == f_reduction ) {
-          	 rl = (struct reduction_list *) malloc(sizeof(struct reduction_list));
+          	 rl = new reduction_list;
              rl->node = cl->node.reduction_node;
              rl->next = reduction_clause_list;
              reduction_clause_list = rl;
@@ -577,7 +580,7 @@ expand_start_for (struct for_clause_list * clause_list)
      }
 
 
-     for_clause_wn = (struct For_clause_wn_type *) malloc(sizeof(For_clause_wn_type)); 
+     for_clause_wn = new For_clause_wn_type; 
 
      for_clause_wn-> private_clause = private_clause_st;
      for_clause_wn-> firstprivate_clause = firstprivate_clause_st;
@@ -685,7 +688,7 @@ expand_start_sections (struct sections_clause_list * clause_list)
      for (cl = clause_list; cl != NULL; cl = cl->next)
        {
           if ( cl->type == sections_reduction ) {
-          	 rl = (struct reduction_list *) malloc(sizeof(struct reduction_list));
+          	 rl = new reduction_list;
              rl->node = cl->node.reduction_node;
              rl->next = reduction_clause_list;
              reduction_clause_list = rl;
@@ -707,11 +710,9 @@ expand_start_sections (struct sections_clause_list * clause_list)
 
      prepare_com_clause ( lastprivate_clause_tree, &lastprivate_clause_st );
      
-     prepare_reduction_clause ( reduction_clause_list, &reduction_clause_wn );    
+     prepare_reduction_clause ( reduction_clause_list, &reduction_clause_wn );
 
-
-
-     sections_clause_wn = (struct Sections_clause_wn_type *) malloc(sizeof(Sections_clause_wn_type)); 
+     sections_clause_wn = new Sections_clause_wn_type; 
 
      sections_clause_wn-> private_clause = private_clause_st;
      sections_clause_wn-> firstprivate_clause = firstprivate_clause_st;
@@ -843,7 +844,7 @@ expand_start_single (struct single_clause_list * clause_list)
 
      prepare_com_clause ( copyprivate_clause_tree, &copyprivate_clause_st );
      
-     single_clause_wn = (struct Single_clause_wn_type *) malloc(sizeof(Single_clause_wn_type)); 
+     single_clause_wn = new Single_clause_wn_type; 
 
      single_clause_wn-> private_clause = private_clause_st;
      single_clause_wn-> firstprivate_clause = firstprivate_clause_st;
@@ -1011,7 +1012,7 @@ expand_start_parallel_for (struct parallel_for_clause_list * clause_list)
      for (cl = clause_list; cl != NULL; cl = cl->next)
        {
           if ( cl->type == p_for_reduction ) {
-          	 rl = (struct reduction_list *) malloc(sizeof(struct reduction_list));
+          	 rl = new reduction_list;
              rl->node = cl->node.reduction_node;
              rl->next = reduction_clause_list;
              reduction_clause_list = rl;
@@ -1088,8 +1089,7 @@ expand_start_parallel_for (struct parallel_for_clause_list * clause_list)
         schedule_2_clause_wn.chunk_size_wn = wn;
      }
 
-     parallel_for_clause_wn = 
-     	(struct Parallel_for_clause_wn_type *) malloc(sizeof(Parallel_for_clause_wn_type)); 
+     parallel_for_clause_wn = new Parallel_for_clause_wn_type; 
 
      parallel_for_clause_wn-> if_clause = if_clause_wn;
      parallel_for_clause_wn-> num_threads_clause = num_threads_clause_wn;
@@ -1244,7 +1244,7 @@ expand_start_parallel_sections( struct parallel_sections_clause_list * clause_li
      for (cl = clause_list; cl != NULL; cl = cl->next)
        {
           if ( cl->type == p_sections_reduction ) {
-          	 rl = (struct reduction_list *) malloc(sizeof(struct reduction_list));
+          	 rl = new reduction_list;
              rl->node = cl->node.reduction_node;
              rl->next = reduction_clause_list;
              reduction_clause_list = rl;
@@ -1286,8 +1286,7 @@ expand_start_parallel_sections( struct parallel_sections_clause_list * clause_li
 
      prepare_com_clause ( lastprivate_clause_tree, &lastprivate_clause_st );
 
-     parallel_sections_clause_wn = 
-     	(struct Parallel_sections_clause_wn_type *) malloc(sizeof(Parallel_sections_clause_wn_type)); 
+     parallel_sections_clause_wn = new Parallel_sections_clause_wn_type; 
 
      parallel_sections_clause_wn-> if_clause = if_clause_wn;
      parallel_sections_clause_wn-> num_threads_clause = num_threads_clause_wn;
@@ -1331,14 +1330,15 @@ void expand_end_master ( )
 
 void expand_start_critical( tree region_phrase )
 {
-    char *critical_name = NULL;
+    char * critical_name = NULL;
     ST *st = NULL;        
     TCON           tcon;
     TY_IDX ty;
 
     if (region_phrase)
       {
-         critical_name = IDENTIFIER_POINTER (region_phrase);
+	/* XXX deconst! */
+         critical_name = (char*)(uintptr_t)IDENTIFIER_POINTER (region_phrase);
          tcon = Host_To_Targ_String ( MTYPE_STRING, critical_name, strlen(critical_name));
          st = Gen_String_Sym (&tcon, MTYPE_To_TY(MTYPE_STRING), FALSE );
       }
@@ -1441,7 +1441,7 @@ void  expand_flush ( tree flush_variables)
     for (t = flush_variables; t; t = TREE_CHAIN (t))
     { 
        WN *wn = WFE_Expand_Expr(TREE_VALUE(t));
-       wnlist = (struct WN_list *) malloc(sizeof(struct WN_list));
+       wnlist = new WN_list;
        wnlist->wn = WN_CopyNode (wn) ;
        wnlist->next = flush_wn_list;
        flush_wn_list = wnlist;
@@ -1465,7 +1465,7 @@ void  expand_threadprivate ( tree threadprivate_variables)
     for (t = threadprivate_variables; t; t = TREE_CHAIN (t))
     { 
        st = Get_Pre_ST (TREE_VALUE(t));
-       stlist = (struct ST_list *) malloc(sizeof(struct ST_list));
+       stlist = new ST_list;
        stlist->st = st ;
        stlist->next = threadprivate_st;
        threadprivate_st = stlist;
@@ -1581,7 +1581,7 @@ void expand_start_do_loop (tree init_expr, tree logical_expr, tree incr_expr, st
     	   
     	 if(code==VAR_DECL)
          	{
-  			  tst=DECL_ST(init_expr);
+  			  tst= DECL_WHIRL_ST_GET(init_expr);
    		      index = WN_CreateIdname(0,tst);
               WFE_Stmt_Push (WN_CreateBlock (), wfe_stmk_comma, Get_Srcpos());
               
@@ -1732,7 +1732,7 @@ build_parallel_clause_list (tree t,
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  parallel_clause_list * result = (parallel_clause_list *) malloc (sizeof (parallel_clause_list));
+  parallel_clause_list * result = new parallel_clause_list;
 
   result->type = p_type;
   result->next = NULL;
@@ -1784,7 +1784,7 @@ build_for_clause_list (tree t, for_clause_type f_type, schedule_kind_type s_kind
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  for_clause_list * result = (for_clause_list *) malloc (sizeof (for_clause_list));
+  for_clause_list * result = new for_clause_list;
 
   result->type = f_type;
   result->next = NULL;
@@ -1839,7 +1839,7 @@ build_sections_clause_list (tree t, sections_clause_type s_type, reduction_op_ty
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  sections_clause_list * result = (sections_clause_list *) malloc (sizeof (sections_clause_list));
+  sections_clause_list * result = new sections_clause_list;
 
   result->type = s_type;
   result->next = NULL;
@@ -1888,7 +1888,7 @@ build_single_clause_list (tree t, single_clause_type s_type)
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  struct single_clause_list * result = (single_clause_list *) malloc (sizeof (single_clause_list));
+  struct single_clause_list * result = new single_clause_list;
 
   result->type = s_type;
   result->next = NULL;
@@ -1936,7 +1936,7 @@ build_parallel_for_clause_list (tree t,
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  struct parallel_for_clause_list * result = (parallel_for_clause_list *) malloc (sizeof (parallel_for_clause_list));
+  struct parallel_for_clause_list * result = new parallel_for_clause_list;
 
   result->type = p_type;
   result->next = NULL;
@@ -2002,7 +2002,7 @@ build_parallel_sections_clause_list (tree t, parallel_sections_clause_type p_typ
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  parallel_sections_clause_list * result = (parallel_sections_clause_list *) malloc (sizeof (parallel_sections_clause_list));
+  parallel_sections_clause_list * result = new parallel_sections_clause_list;
 
   result->type = p_type;
   result->next = NULL;

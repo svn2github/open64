@@ -60,13 +60,14 @@ AH_TEMPLATE(HAVE_SYS_ELF_H, [Define if you have the <sys/elf.h> header file.])
 AC_CHECK_HEADERS([ar.h elf.h fcntl.h gelf.h libelf.h sys/elf.h])
 
 AH_TEMPLATE(HAVE_LIMITS_H, [Define if you have the <limits.h> header file.])
+AH_TEMPLATE(HAVE_STDBOOL_H, [Define if you have the <stdbool.h> header file.])
 AH_TEMPLATE(HAVE_TIME_H, [Define if you have the <time.h> header file.])
 AH_TEMPLATE(HAVE_SYS_RESOURCE_H,
     [Define if you have the <sys/resource.h> header file.])
 AH_TEMPLATE(HAVE_SYS_TIMES_H,
     [Define if you have the <sys/times.h> header file.])
 
-AC_CHECK_HEADERS([limits.h time.h sys/resource.h sys/times.h])
+AC_CHECK_HEADERS([limits.h stdbool.h time.h sys/resource.h sys/times.h])
 
 AH_TEMPLATE(__LIBELF_HEADER_ELF_H,
     [Define to `<elf.h>' or `<sys/elf.h>' if one of them is present.])
@@ -84,6 +85,7 @@ fi
 #
 AC_TYPE_OFF_T
 AC_TYPE_SIZE_T
+AC_CHECK_TYPES(_Bool,,,[])
 AC_CHECK_TYPES(clock_t,,,[#include <time.h>])
 AC_CHECK_TYPES(struct tms,,,[#include <sys/times.h>])
 
@@ -307,6 +309,7 @@ AC_CONFIG_FILES([Makefile
 		 kpro64/gcc/config/Makefile
 		 kpro64/gcc/cpp/Makefile
 		 kpro64/gcc/libiberty/Makefile
+		 kpro64/kgccfe/Makefile
 		 kpro64/libcif/Makefile
 		 kpro64/libcmplrs/Makefile
 		 kpro64/libdwarf/Makefile

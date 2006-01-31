@@ -44,13 +44,28 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-/* translate gnu decl trees to symtab references */
-
-#include <values.h>
 #include "defs.h"
 #include "errors.h"
-#include "gnu_config.h"
+#include "symtab.h"
+#include "strtab.h"
+#include "wn.h"
+#include "ir_reader.h"
+#include <cmplrs/rcodes.h>
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#undef IN_GCC
+extern int flag_no_common;
+};
+
+#if 0
 #ifdef KEY
 // To get HW_WIDE_INT ifor flags.h */
 #include "gnu/hwint.h"
@@ -61,35 +76,18 @@ extern "C" {
 #include "gnu/tree.h"
 #include "gnu/toplev.h"
 }
-#if defined(TARG_IA32) || defined(TARG_X8664)
-// the definition in gnu/config/i386/i386.h causes problem
-// with the enumeration in common/com/ia32/config_targ.h
-#undef TARGET_PENTIUM
-#endif /* TARG_IA32 */
+#endif
 
-#ifdef KEY 
-#ifdef TARG_MIPS
-// ABI_N32 is defined in config/MIPS/mips.h and conflicts with 
-// common/com/MIPS/config_targ.h
-#undef ABI_N32
-#endif /* TARG_MIPS */
-#endif /* KEY */
-
-#include "symtab.h"
-#include "strtab.h"
 #include "tree_symtab.h"
-#include "wn.h"
 #include "wfe_expr.h"
 #include "wfe_misc.h"
 #include "wfe_dst.h"
-#include "ir_reader.h"
-#include <cmplrs/rcodes.h>
 
 extern FILE *tree_dump_file; // For debugging only
 
 extern INT pstatic_as_global;
 
-static char*
+static const char*
 Get_Name (tree node)
 {
 	static UINT anon_num = 0;
@@ -118,7 +116,7 @@ extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
 BOOL
 Is_shared_mp_var (tree decl_node)
 {
-  ST * st = DECL_ST (decl_node);
+  ST * st = DECL_WHIRL_ST_GET(decl_node);
 
   if (st && ST_sclass (st) == SCLASS_AUTO)
     return TRUE;
@@ -156,11 +154,12 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		if (TYPE_RESTRICT(type_tree))
 			Set_TY_is_restrict (idx);
 #endif
-		TYPE_TY_IDX(type_tree) = idx;
+		TYPE_WHIRL_IDX(type_tree) = idx;
 		if(Debug_Level >= 2) {
 		  struct mongoose_gcc_DST_IDX dst = 
 		    Create_DST_type_For_Tree(type_tree,idx,orig_idx);
-		  TYPE_DST_IDX(type_tree) = dst;
+		  TYPE_WHIRL_BLOCK(type_tree) = dst.block;
+		  TYPE_WHIRL_OFFSET(type_tree) = dst.offset;
 		}
 		return idx;
 	}
@@ -387,7 +386,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #ifdef KEY
 		    // bug 4086: see comments "throw away any variable
 		    // type sizes ..." in finish_decl().
-		    else if (!TYPE_DEFER_EXPANSION (type_tree))
+		    else if (!TYPE_WHIRL_DEFER_EXPANSION (type_tree))
 #else
 		    else
 #endif
@@ -444,7 +443,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		if (variable_size
 #ifdef KEY
 		    // bug 4086
-		    && !TYPE_DEFER_EXPANSION (type_tree)
+		    && !TYPE_WHIRL_DEFER_EXPANSION (type_tree)
 #endif
 		   ) {
 			WN *swn, *wn;
@@ -499,7 +498,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		if (align == 0) align = 1;	// in case incomplete type
 		Set_TY_align (idx, align);
 		// set idx now in case recurse thru fields
-		TYPE_TY_IDX(type_tree) = idx;	
+		TYPE_WHIRL_IDX(type_tree) = idx;	
 
 		// to handle nested structs and avoid entering flds
 		// into wrong struct, make two passes over the fields.
@@ -748,11 +747,12 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 	if (TYPE_RESTRICT(type_tree))
 		Set_TY_is_restrict (idx);
 #endif
-	TYPE_TY_IDX(type_tree) = idx;
+	TYPE_WHIRL_IDX(type_tree) = idx;
 	if(Debug_Level >= 2) {
 	  struct mongoose_gcc_DST_IDX dst = 
 	    Create_DST_type_For_Tree(type_tree,idx,orig_idx);
-	  TYPE_DST_IDX(type_tree) = dst;
+	  TYPE_WHIRL_BLOCK(type_tree) = dst.block;
+	  TYPE_WHIRL_OFFSET(type_tree) = dst.offset;
 	}
 	return idx;
 }
@@ -763,7 +763,8 @@ Create_DST_For_Tree (tree decl_node, ST* st)
 {
   struct mongoose_gcc_DST_IDX dst =
     Create_DST_decl_For_Tree(decl_node,st);
-  DECL_DST_IDX(decl_node) = dst; 
+  DECL_WHIRL_BLOCK(decl_node) = dst.block;
+  DECL_WHIRL_OFFSET(decl_node) = dst.offset;
   return;
 }
 #endif
@@ -773,7 +774,7 @@ Create_ST_For_Tree (tree decl_node)
 {
   TY_IDX     ty_idx;
   ST*        st;
-  char      *name;
+  const char *name;
   ST_SCLASS  sclass;
   ST_EXPORT  eclass;
   SYMTAB_IDX level;
@@ -794,7 +795,7 @@ Create_ST_For_Tree (tree decl_node)
       {
         TY_IDX func_ty_idx = Get_TY(TREE_TYPE(decl_node));
 
-        if (DECL_WIDEN_RETVAL (decl_node)) {
+        if (DECL_WHIRL_WIDEN_RETVAL (decl_node)) {
 /*
           extern tree long_long_integer_type_node;
           extern tree long_long_unsigned_type_node;
@@ -809,7 +810,7 @@ Create_ST_For_Tree (tree decl_node)
           TY_IDX old_func_ty_idx = func_ty_idx;
           func_ty_idx = Create_TY_For_Tree (type_tree, TY_IDX_ZERO);
           TREE_TYPE (type_tree) = ret_type_tree;
-          TYPE_TY_IDX(type_tree) = old_func_ty_idx;
+          TYPE_WHIRL_IDX(type_tree) = old_func_ty_idx;
         }
 
         sclass = SCLASS_EXTERN;
@@ -825,8 +826,8 @@ Create_ST_For_Tree (tree decl_node)
 
 #ifdef KEY	// Fix bug # 34
 // gcc sometimes adds a '*' and itself handles it this way while outputing
-	char * check_for_star = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (
-								decl_node));
+	const char * check_for_star = IDENTIFIER_POINTER
+				(DECL_ASSEMBLER_NAME (decl_node));
 	if (*check_for_star == '*')
 	    check_for_star++;
         ST_Init (st, Save_Str (check_for_star),
@@ -886,7 +887,7 @@ Create_ST_For_Tree (tree decl_node)
 // bugs 2647, 2681
 // Promote it if we are sure the function containing this var has been
 // inlined.
-		    || DECL_PROMOTE_STATIC (decl_node)
+		    || DECL_WHIRL_PROMOTE_STATIC (decl_node)
 #endif
 		   )
 			level = GLOBAL_SYMTAB;
@@ -895,8 +896,8 @@ Create_ST_For_Tree (tree decl_node)
               }
               else {
 		sclass = SCLASS_AUTO;
-		level = decl_node->decl.symtab_idx ?
-                        decl_node->decl.symtab_idx : CURRENT_SYMTAB;
+		level = DECL_WHIRL_SYMTAB_IDX(decl_node) ?
+                        DECL_WHIRL_SYMTAB_IDX(decl_node) : CURRENT_SYMTAB;
               }
               eclass = EXPORT_LOCAL;
             }
@@ -947,7 +948,7 @@ Create_ST_For_Tree (tree decl_node)
       break;
   }
 
-  DECL_ST(decl_node) = st;
+  DECL_WHIRL_ST_SET(decl_node, st);
 
   if ((DECL_WEAK (decl_node)) && (TREE_CODE (decl_node) != PARM_DECL)) {
     Set_ST_is_weak_symbol (st);
@@ -967,7 +968,7 @@ Create_ST_For_Tree (tree decl_node)
     Set_ST_has_named_section (st);
   }
 
-  if (DECL_SYSCALL_LINKAGE (decl_node)) {
+  if (DECL_WHIRL_SYSCALL (decl_node)) {
 	Set_PU_has_syscall_linkage (Pu_Table [ST_pu(st)]);
   }
   if(Debug_Level >= 2) {
@@ -975,8 +976,9 @@ Create_ST_For_Tree (tree decl_node)
     // Bug 559
     if (ST_sclass(st) != SCLASS_EXTERN) {
       DST_INFO_IDX dst_idx ;
-      struct mongoose_gcc_DST_IDX tdst
-	= DECL_DST_IDX(decl_node);
+      struct mongoose_gcc_DST_IDX tdst;
+      tdst.block = DECL_WHIRL_BLOCK(decl_node);
+      tdst.offset = DECL_WHIRL_OFFSET(decl_node);
       cp_to_dst_from_tree(&dst_idx,&tdst);
       // Bug 6679 - when the variables inside the second definition of an 
       // "extern inline" function (with an attribute) are encountered, there
@@ -995,13 +997,15 @@ Create_ST_For_Tree (tree decl_node)
       } else {
 	struct mongoose_gcc_DST_IDX dst =
 	  Create_DST_decl_For_Tree(decl_node,st);
-	DECL_DST_IDX(decl_node) = dst;
+	DECL_WHIRL_BLOCK(decl_node) = dst.block;
+	DECL_WHIRL_OFFSET(decl_node) = dst.offset;
       }
     }
 #else
      struct mongoose_gcc_DST_IDX dst =
        Create_DST_decl_For_Tree(decl_node,st);
-     DECL_DST_IDX(decl_node) = dst;
+     DECL_WHIRL_BLOCK(decl_node) = dst.block;
+     DECL_WHIRL_OFFSET(decl_node) = dst.offset;
 #endif
   }
   return st;

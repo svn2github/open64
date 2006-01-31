@@ -46,6 +46,9 @@
 
 #include <cmplrs/rcodes.h>
 
+#define	BITSPERBYTE	8
+
+
 extern TY_IDX Create_TY_For_Tree (tree, TY_IDX idx = TY_IDX_ZERO);
 extern "C" ST* Create_ST_For_Tree (tree);
 #ifdef KEY
@@ -62,7 +65,7 @@ Get_TY (tree type_tree)
 {
 	if (TREE_CODE(type_tree) == ERROR_MARK)
 	    exit (RC_USER_ERROR);
-	TY_IDX idx = TYPE_TY_IDX(type_tree);
+	TY_IDX idx = TYPE_WHIRL_IDX(type_tree);
         if (idx != 0) {
 	    if (TREE_CODE(type_tree) == RECORD_TYPE ||
 	        TREE_CODE(type_tree) == UNION_TYPE) {
@@ -83,7 +86,7 @@ Get_TY (tree type_tree)
 inline ST *
 Get_ST (tree decl_tree)
 {
-	ST *st = DECL_ST(decl_tree);
+	ST *st = DECL_WHIRL_ST_GET(decl_tree);
         if (st != NULL) {
 #ifndef KEY
 		if (TREE_CODE(decl_tree) == VAR_DECL &&

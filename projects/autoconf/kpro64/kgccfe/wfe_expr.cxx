@@ -44,8 +44,10 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-#include <values.h>
 #include "defs.h"
 #include "glob.h"
 #include "config_global.h"
@@ -54,60 +56,33 @@
 #include "targ_sim.h"
 #include "const.h"
 #include "c_int_model.h"
-
-// #include "gnu/MIPS/config.h"
-#include "gnu_config.h"
-#ifdef KEY 
-// To get HW_WIDE_INT ifor flags.h */
-#include "gnu/hwint.h"
-#endif /* KEY */
-#include "gnu/flags.h"
-#include "gnu/system.h"
-
-#ifdef KEY
-extern "C" {
-#include "gnu/machmode.h"
-}
-#else
-#include "gnu/machmode.h"
-#endif // KEY
-
-extern "C" {
-#include "gnu/tree.h"
-extern void warning (char*,...);	// from gnu
-extern tree c_strlen_exported (tree);
-#include "gnu/function.h"
-}
-
-#ifdef GPLUSPLUS_FE
-#include "gnu/cp/cp-tree.h"
-#endif /* GPLUSPLUS_FE */
-
 #include "ir_reader.h"
+#include <cmplrs/rcodes.h>
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#define operator oprtr
+#include <c-common.h>
+#undef operator
+#define class klass
+#include <real.h>
+#undef class
+#include <toplev.h>
+#include <function.h>
+#undef IN_GCC
+extern int flag_errno_math;
+extern int flag_no_common;
+extern tree c_strlen_whirl(tree);
+};
+
 #include "tree_symtab.h"
 #include "wfe_misc.h"
-#ifdef KEY // get REAL_VALUE_TYPE
-extern "C" {
-#include "real.h"
-}
-#endif // KEY
 #include "wfe_decl.h"
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
-#include <cmplrs/rcodes.h>
-
-#ifdef KEY
-/* Codes of tree nodes */
-
-#define DEFTREECODE(SYM, STRING, TYPE, NARGS)   SYM,
-
-enum c_tree_code {
-  C_DUMMY_TREE_CODE = LAST_AND_UNUSED_TREE_CODE,
-#include "gnu/c-common.def"
-  LAST_C_TREE_CODE
-};
-#undef DEFTREECODE
-#endif /* KEY */
 #include "tree_cmp.h"
 
 // #define WFE_DEBUG
@@ -602,14 +577,14 @@ WFE_Expand_End_Stmt_Expr (tree t)
     if (wfe_bind_expr_stack == NULL) {
       wfe_bind_expr_stack_max = 32;
       wfe_bind_expr_stack     =
-        (WFE_BIND_EXPR *) malloc (wfe_bind_expr_stack_max *
+        (WFE_BIND_EXPR *) xmalloc (wfe_bind_expr_stack_max *
                                   sizeof (WFE_BIND_EXPR));
     }
     else {
       wfe_bind_expr_stack_max = wfe_bind_expr_stack_max +
                                 (wfe_bind_expr_stack_max >> 1);
       wfe_bind_expr_stack     =
-        (WFE_BIND_EXPR *) realloc (wfe_bind_expr_stack,
+        (WFE_BIND_EXPR *) xrealloc (wfe_bind_expr_stack,
                                    wfe_bind_expr_stack_max *
                                    sizeof (WFE_BIND_EXPR));
     }
@@ -655,14 +630,14 @@ WFE_Save_Expr (tree save_exp)
     if (wfe_save_expr_stack == NULL) {
       wfe_save_expr_stack_max = 32;
       wfe_save_expr_stack     =
-        (WFE_SAVE_EXPR *) malloc (wfe_save_expr_stack_max *
+        (WFE_SAVE_EXPR *) xmalloc (wfe_save_expr_stack_max *
                                   sizeof (WFE_SAVE_EXPR));
     }
     else {
       wfe_save_expr_stack_max = wfe_save_expr_stack_max +
                                 (wfe_save_expr_stack_max >> 1);
       wfe_save_expr_stack     =
-        (WFE_SAVE_EXPR *) realloc (wfe_save_expr_stack,
+        (WFE_SAVE_EXPR *) xrealloc (wfe_save_expr_stack,
                                    wfe_save_expr_stack_max *
                                    sizeof (WFE_SAVE_EXPR));
     }
@@ -735,7 +710,7 @@ WFE_Array_Expr(tree exp,
 				Get_Integer_Value(DECL_FIELD_BIT_OFFSET(arg1)))
 			      / BITSPERBYTE;
     return WFE_Array_Expr(arg0, ty_idx, ty_idx0, ofst + component_offset,
-			  field_id + DECL_FIELD_ID(arg1));
+			  field_id + DECL_WHIRL_FIELD_GET(arg1));
   }
   else if (code == VAR_DECL || code == PARM_DECL) {
     ST *st = Get_ST (exp);
@@ -772,7 +747,7 @@ WFE_Array_Expr(tree exp,
   }
   else if (code == STRING_CST) {
     wn = WFE_Expand_Expr(exp);
-    *ty_idx = ST_type (TREE_STRING_ST (exp));
+    *ty_idx = ST_type (TREE_STRING_WHIRL_ST_GET (exp));
     return wn;
   }
   else if (code == INDIRECT_REF) {
@@ -946,8 +921,9 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
     else ofst = 0;
     wn = WFE_Lhs_Of_Modify_Expr(assign_code, arg0, need_result, ty_idx0, 
 				ofst+component_offset,
-			        field_id + DECL_FIELD_ID(arg1), is_bit_field, 
-				rhs_wn, rhs_preg_num, is_realpart, is_imagpart);
+			        field_id + DECL_WHIRL_FIELD_GET(arg1),
+				is_bit_field, rhs_wn, rhs_preg_num,
+				is_realpart, is_imagpart);
     return wn;
   }
 
@@ -2571,12 +2547,12 @@ WFE_Expand_Expr (tree exp,
 	    {
               TCON tcon;
               tcon = Host_To_Targ_String (MTYPE_STRING,
-                                          TREE_STRING_POINTER(arg0),
-                                          TREE_STRING_LENGTH(arg0));
+				(char*)(uintptr_t)TREE_STRING_POINTER(arg0),
+				TREE_STRING_LENGTH(arg0));
               ty_idx = Get_TY(TREE_TYPE(arg0));
               st = New_Const_Sym (Enter_tcon (tcon), ty_idx);
 	      wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
-	      TREE_STRING_ST (arg0) = st;
+	      TREE_STRING_WHIRL_ST_SET (arg0, st);
 	    }
 	    break;
 
@@ -2591,7 +2567,7 @@ WFE_Expand_Expr (tree exp,
             {
               DevWarn ("taking address of a label at line %d", lineno);
               LABEL_IDX label_idx = WFE_Get_LABEL (arg0, FALSE);
-              FmtAssert (arg0->decl.symtab_idx == CURRENT_SYMTAB,
+              FmtAssert (DECL_WHIRL_SYMTAB_IDX(arg0) == CURRENT_SYMTAB,
                          ("line %d: taking address of a label not defined in current function currently not implemented", lineno));
               wn = WN_LdaLabel (Pointer_Mtype, label_idx);
 	      Set_LABEL_addr_saved (label_idx);
@@ -2946,12 +2922,12 @@ WFE_Expand_Expr (tree exp,
       {
 	TCON tcon;
 	tcon = Host_To_Targ_String (MTYPE_STRING,
-				    TREE_STRING_POINTER(exp),
-				    TREE_STRING_LENGTH(exp));
+			(char*)(uintptr_t)TREE_STRING_POINTER(exp),
+			TREE_STRING_LENGTH(exp));
 	ty_idx = Get_TY(TREE_TYPE(exp));
 	st = New_Const_Sym (Enter_tcon (tcon), ty_idx);
 	wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
-	TREE_STRING_ST (exp) = st;
+	TREE_STRING_WHIRL_ST_SET (exp, st);
       }
       break;
 
@@ -3101,8 +3077,10 @@ WFE_Expand_Expr (tree exp,
 			        Get_Integer_Value(DECL_FIELD_BIT_OFFSET(arg1)))
 			      / BITSPERBYTE;
 	else ofst = 0;
-        wn = WFE_Expand_Expr (arg0, TRUE, nop_ty_idx, ty_idx, ofst+component_offset,
-			      field_id + DECL_FIELD_ID(arg1), is_bit_field);
+        wn = WFE_Expand_Expr (arg0, TRUE, nop_ty_idx, ty_idx,
+				ofst + component_offset,
+				field_id + DECL_WHIRL_FIELD_GET(arg1),
+				is_bit_field);
 #ifdef KEY
 	// For code such as (p->a = q->a).b, the gnu tree is:
 	//   component_ref
@@ -3120,14 +3098,14 @@ WFE_Expand_Expr (tree exp,
             wn = WN_CreateIload(OPR_ILOAD, rtype, desc,
 			        ofst + component_offset, ty_idx,
 			        Make_Pointer_Type (ty_idx, FALSE), WN_kid0(wn),
-			        field_id + DECL_FIELD_ID(arg1));
+			        field_id + DECL_WHIRL_FIELD_GET(arg1));
 	  } 
 	  else if (WN_operator(wn) == OPR_LDID) {
 	    WN_set_rtype(wn, rtype);
 	    WN_set_desc(wn, desc);
 	    WN_offset(wn) = WN_offset(wn)+ofst+component_offset;
 	    WN_set_ty(wn, ty_idx);
-	    WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
+	    WN_set_field_id(wn, field_id + DECL_WHIRL_FIELD_GET(arg1));
 	  } 
 	}
 	// bug 6122
@@ -3150,7 +3128,8 @@ WFE_Expand_Expr (tree exp,
 	  WFE_Stmt_Append (wn, Get_Srcpos());
 	  // Load correct field from temp symbol
 	  wn = WN_Ldid (TY_mtype (ty_idx), ofst + component_offset,
-	                temp, temp_ty_idx, field_id + DECL_FIELD_ID(arg1));
+	                temp, temp_ty_idx,
+			field_id + DECL_WHIRL_FIELD_GET(arg1));
 	}
 #endif
       }
@@ -3872,9 +3851,9 @@ WFE_Expand_Expr (tree exp,
 		else {
 		  arg1 = TREE_VALUE (arglist);
 		  arg2 = TREE_VALUE (TREE_CHAIN (arglist));
-		  tree len1 = c_strlen_exported (arg1);
+		  tree len1 = c_strlen_whirl (arg1);
 		  if (len1) {
-		    tree len2 = c_strlen_exported (arg2);
+		    tree len2 = c_strlen_whirl (arg2);
 		    if (len2) {
 		      char *ptr1 = get_string_pointer (WFE_Expand_Expr (arg1));
 		      char *ptr2 = get_string_pointer (WFE_Expand_Expr (arg2));
@@ -3898,7 +3877,7 @@ WFE_Expand_Expr (tree exp,
 		  break;
 		else {
 		  tree src = TREE_VALUE (arglist);
-		  tree len = c_strlen_exported (src);
+		  tree len = c_strlen_whirl (src);
 		  if (len) {
 		    wn = WFE_Expand_Expr (len);
 		    whirl_generated = TRUE;
@@ -4256,10 +4235,12 @@ WFE_Expand_Expr (tree exp,
 		break;
 
 #ifdef KEY
+#if notyet
 	      case BUILT_IN_EXTEND_POINTER:
 	        wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
 		whirl_generated = TRUE;
 		break;
+#endif
 
 	      case BUILT_IN_TRAP:
 		call_wn = WN_Create (OPR_CALL, MTYPE_V, MTYPE_V, 0);
@@ -4427,7 +4408,7 @@ WFE_Expand_Expr (tree exp,
 	  }
 	  else {
             call_wn = WN_Create (OPR_CALL, ret_mtype, MTYPE_V, num_args);
-            ST *st2 = DECL_ST2 (TREE_OPERAND (arg0, 0));
+            ST *st2 = (ST*)DECL_WHIRL_ST2 (TREE_OPERAND (arg0, 0));
             if (Opt_Level > 0 && st2) {
               WN_st_idx (call_wn) = ST_st_idx (st2);
             }
@@ -4976,7 +4957,7 @@ WFE_Expand_Expr (tree exp,
       {
 	DevWarn ("taking address of a label at line %d", lineno);
 	LABEL_IDX label_idx = WFE_Get_LABEL (arg0, FALSE);
-	FmtAssert (arg0->decl.symtab_idx == CURRENT_SYMTAB,
+	FmtAssert (DECL_WHIRL_SYMTAB_IDX(arg0) == CURRENT_SYMTAB,
 		   ("line %d: taking address of a label not defined in current function currently not implemented", lineno));
 	wn = WN_LdaLabel (Pointer_Mtype, label_idx);
 	Set_LABEL_addr_saved (label_idx);
@@ -5102,8 +5083,8 @@ WFE_Expand_Expr (tree exp,
      {
        tree label = TREE_OPERAND (exp, 0);
        LABEL_IDX label_idx = WFE_Get_LABEL (label, TRUE);
-       label->decl.symtab_idx = CURRENT_SYMTAB;
-       label->decl.label_defined = TRUE;
+       DECL_WHIRL_SYMTAB_IDX(label) = CURRENT_SYMTAB;
+       DECL_WHIRL_LABEL_DEFINED(label) = TRUE;
        WN *wn_tmp = WN_CreateLabel ((ST_IDX) 0, label_idx, 0, NULL);
        WFE_Stmt_Append (wn_tmp, Get_Srcpos ());
      }
@@ -5292,7 +5273,7 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       LABEL_IDX *label_idx = (LABEL_IDX *)malloc(sizeof(LABEL_IDX));
+       LABEL_IDX *label_idx = new LABEL_IDX;
        *label_idx = 0;
 
        if (wfe_nesting_stack == wfe_case_stack)

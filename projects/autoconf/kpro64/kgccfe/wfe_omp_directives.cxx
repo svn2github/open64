@@ -21,23 +21,30 @@
  * Temple Place - Suite 330, Boston MA 02111-1307, USA.
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-#include "gnu_config.h"
-#include "system.h"
-#include "gnu/tree.h"
-
+#include "defs.h"
 #include "wn.h"
+#include "errors.h"
+#include "const.h"
+#include "erglob.h"
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#undef IN_GCC
+};
+
 #include "wfe_misc.h"
 #include "wfe_stmt.h"
 #include "omp_types.h"
 #include "omp_directive.h"
 #include "wfe_omp_directives.h"
 #include "wfe_omp_check_stack.h"
-
-#include "stdio.h"
-#include "errors.h"
-#include "const.h"
-#include "erglob.h"
 
 BOOL Trace_Omp = FALSE;
 

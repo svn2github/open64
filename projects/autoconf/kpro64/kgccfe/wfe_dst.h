@@ -117,6 +117,11 @@ extern void DST_write_to_dotB(void);
 
 extern DST_INFO_IDX DST_Create_Subprogram (ST *func_st,tree fndecl);
 
+struct mongoose_gcc_DST_IDX {
+	unsigned int block;
+	unsigned int offset;
+};
+
 extern DST_INFO_IDX DST_Get_Comp_Unit (void);
 extern struct mongoose_gcc_DST_IDX Create_DST_type_For_Tree(
 	tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignoreconst = false, bool ignorevolatile = false) ;

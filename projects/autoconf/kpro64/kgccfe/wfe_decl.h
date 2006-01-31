@@ -79,65 +79,65 @@ extern bool defer_function;
 #endif /* KEY */
 
 /* called for each aggregate initialization */
-extern void WFE_Start_Aggregate_Init (tree decl);
+void WFE_Start_Aggregate_Init (tree decl);
 
 /* add padding to aggregate initialization */
-extern void WFE_Add_Aggregate_Init_Padding (INT size);
+void WFE_Add_Aggregate_Init_Padding (INT size);
 
 /* add integer to aggregate initialization */
-extern void WFE_Add_Aggregate_Init_Integer (INT64 val, INT size);
+void WFE_Add_Aggregate_Init_Integer (INT64 val, INT size);
 
 /* add double to aggregate initialization */
-extern void WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE val, INT size);
+void WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE val, INT size);
 
 /* add string to aggregate initialization */
-extern void WFE_Add_Aggregate_Init_String (const char *s, INT size);
+void WFE_Add_Aggregate_Init_String (const char *s, INT size);
 
 /* add address to aggregate initialization */
-extern void WFE_Add_Aggregate_Init_Address (tree t);
+void WFE_Add_Aggregate_Init_Address (tree t);
 
 /* finish aggregate init, and set size if not previously known */
-extern void WFE_Finish_Aggregate_Init (void);
+void WFE_Finish_Aggregate_Init (void);
 
 /* generate a temp with extension 'name' having the initialization as specified
    by 'init' */
-extern ST *WFE_Generate_Temp_For_Initialized_Aggregate (tree init, char *name);
+ST *WFE_Generate_Temp_For_Initialized_Aggregate (tree init, char *name);
 
 /* handle __attribute__ ((alias)) */
-extern void WFE_Assemble_Alias (tree decl, tree target);
+void WFE_Assemble_Alias (tree decl, tree target);
 
 /* handle __attribute__ ((constructor)) */
-extern void WFE_Assemble_Constructor (const char *name);
+void WFE_Assemble_Constructor (const char *name);
 
 /* handle __attribute__ ((destructor)) */
-extern void WFE_Assemble_Destructor (const char *name);
+void WFE_Assemble_Destructor (const char *name);
 
 /* call this routine when have a decl that doesn't have an initialization */
-extern void WFE_Decl (tree decl);
+void WFE_Decl (tree decl);
 
 /* call this routine to determine the return address ST at specified level */
-extern ST *WFE_Get_Return_Address_ST (int level);
+ST *WFE_Get_Return_Address_ST (int level);
 
 /* call this routine to save the SP for first alloca in a scope */
-extern ST *WFE_Alloca_0 (void);
+ST *WFE_Alloca_0 (void);
 
 /* call this routine to assign ST for VLA as well as allocate space for it */
-extern ST *WFE_Alloca_ST (tree decl);
+ST *WFE_Alloca_ST (tree decl);
 
 /* call this routine to deallocate STs for VLA */
-extern void WFE_Dealloca (ST *alloca0_st, tree vars);
+void WFE_Dealloca (ST *alloca0_st, tree vars);
 
 /* call this routine to record variables assigned to registers using asm */
-extern void WFE_Record_Asmspec_For_ST (tree decl, const char *asmspec, int reg);
+void WFE_Record_Asmspec_For_ST (tree decl, const char *asmspec, int reg);
 
 /* call this routine to resolve conflicts between duplicate declarations */
-extern void WFE_Resolve_Duplicate_Decls (tree olddecl, tree newdecl);
+void WFE_Resolve_Duplicate_Decls (tree olddecl, tree newdecl);
 
 /* call this routine to process pragma weak on encountering pragma */
-extern void WFE_Add_Weak();
+void WFE_Add_Weak();
 
 /* call this routine to process pragma weak declarations at end */
-extern void WFE_Weak_Finish();
+void WFE_Weak_Finish();
 
 /* variable to keep track track of ST to be used for varargs */
 extern ST *WFE_Vararg_Start_ST;

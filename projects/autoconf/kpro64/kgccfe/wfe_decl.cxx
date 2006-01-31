@@ -47,39 +47,14 @@
 
 // translate gnu decl trees to whirl
 
-#include <values.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <sys/types.h>
 #include <elf.h>
 #include "defs.h"
 #include "errors.h"
-#include "gnu_config.h"
-#ifdef KEY
-// To get HW_WIDE_INT ifor flags.h */
-#include "gnu/hwint.h"
-#include "erglob.h"  // EC_Unimplemented_Feature
-#endif /* KEY */
-#include "gnu/flags.h"
-extern "C" {
-#include "gnu/system.h"
-#include "gnu/tree.h"
-#include "gnu/toplev.h"
-#include "function.h"
-#include "c-pragma.h"
-}
-#if defined(TARG_IA32) || defined(TARG_X8664)
-// the definition in gnu/config/i386/i386.h causes problem
-// with the enumeration in common/com/ia32/config_targ.h
-#undef TARGET_PENTIUM
-#endif /* TARG_IA32 */
-
-#ifdef KEY 
-#ifdef TARG_MIPS
-// ABI_N32 is defined in config/MIPS/mips.h and conflicts with 
-// common/com/MIPS/config_targ.h
-#undef ABI_N32
-#endif /* TARG_MIPS */
-#endif /* KEY */
-
 #include "glob.h"
 #include "wn.h"
 #include "wn_util.h"
@@ -88,19 +63,33 @@ extern "C" {
 #include "pu_info.h"
 #include "ir_bwrite.h"
 #include "ir_reader.h"
-#include "tree_symtab.h"
-#ifdef KEY // get REAL_VALUE_TYPE
+#include "erglob.h"
+
 extern "C" {
-#include "real.h"
-#include "c-common.h"
-}
-#endif // KEY
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#define operator oprtr
+#include <c-common.h>
+#undef operator
+#define class klass
+#include <real.h>
+#undef class
+#include <toplev.h>
+#undef IN_GCC
+extern int flag_no_common;
+};
+
+#include "tree_symtab.h"
 #include "wfe_decl.h"
 #include "wfe_misc.h"
 #include "wfe_dst.h"
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
-#include "tree_cmp.h"
+
+extern int optimize;
+extern tree weak_decls;
 
 extern FILE *tree_dump_file; // for debugging only
 
@@ -298,13 +287,13 @@ WFE_Start_Function (tree fndecl)
     bool extern_inline = FALSE;
 #endif
     if (DECL_INLINE (fndecl) && TREE_PUBLIC (fndecl)) {
-      if (DECL_EXTERNAL (fndecl) && DECL_ST2 (fndecl) == 0) {
+      if (DECL_EXTERNAL (fndecl) && DECL_WHIRL_ST2 (fndecl) == NULL) {
         // encountered first extern inline definition
-        ST *oldst = DECL_ST (fndecl);
-        DECL_ST (fndecl) = 0;
+        ST *oldst = DECL_WHIRL_ST_GET(fndecl);
+        DECL_WHIRL_ST_SET(fndecl, NULL);
         func_st =  Get_ST (fndecl);
-        DECL_ST (fndecl) = oldst;
-        DECL_ST2 (fndecl) = func_st;
+        DECL_WHIRL_ST_SET(fndecl, oldst);
+        DECL_WHIRL_ST2 (fndecl) = (char*)func_st;
 #ifdef KEY // bugs 2178, 2152
 	extern_inline = TRUE;
 #endif // KEY
@@ -313,7 +302,7 @@ WFE_Start_Function (tree fndecl)
       else {
         // encountered second definition, the earlier one was extern inline
         func_st = Get_ST (fndecl);
-        DECL_ST2 (fndecl) = 0;
+        DECL_WHIRL_ST2 (fndecl) = NULL;
       }
     }
     else
@@ -338,14 +327,14 @@ WFE_Start_Function (tree fndecl)
     }
 
     // bug 2395
-    if (DECL_NOINLINE_ATTRIB (fndecl))
+    if (DECL_WHIRL_NOINLINE (fndecl))
 	Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
 
     // bug 2646
     // If there is an 'always_inline' attribute, and the function definition
     // is before the call(s), GNU fe will do it. If the definition is after
     // any call, we need to handle it here.
-    if (DECL_ALWAYS_INLINE_ATTRIB (fndecl))
+    if (DECL_WHIRL_ALWAYS_INLINE (fndecl))
     	Set_PU_must_inline (Pu_Table [ST_pu (func_st)]);
 // Fix Bug# 45 (comments below)
     Scope_tab [Current_scope].st = func_st;
@@ -420,7 +409,10 @@ WFE_Start_Function (tree fndecl)
     	(have_dst_idx (fndecl)))
     {
 	DST_INFO_IDX id;
-        cp_to_dst_from_tree (&id, &DECL_DST_IDX (fndecl));
+	struct mongoose_gcc_DST_IDX dst;
+	dst.block = DECL_WHIRL_BLOCK(fndecl);
+	dst.offset = DECL_WHIRL_OFFSET(fndecl);
+        cp_to_dst_from_tree (&id, &dst);
 	PU_Info_pu_dst (pu_info) = id;
     }
     else
@@ -430,7 +422,8 @@ WFE_Start_Function (tree fndecl)
 	{
 	    struct mongoose_gcc_DST_IDX var_idx;
 	    cp_to_tree_from_dst (&var_idx, &PU_Info_pu_dst (pu_info));
-	    DECL_DST_IDX (fndecl) = var_idx;
+	    DECL_WHIRL_BLOCK (fndecl) = var_idx.block;
+	    DECL_WHIRL_OFFSET (fndecl) = var_idx.offset;
     	}
     }
 #else
@@ -844,8 +837,8 @@ WFE_Add_Aggregate_Init_Address (tree init)
   case STRING_CST:
 	{
 	TCON tcon = Host_To_Targ_String (MTYPE_STRING,
-				       TREE_STRING_POINTER(init),
-				       TREE_STRING_LENGTH(init));
+			(char *)(uintptr_t)TREE_STRING_POINTER(init),
+			TREE_STRING_LENGTH(init));
 	ST *const_st = New_Const_Sym (Enter_tcon (tcon), 
 		Get_TY(TREE_TYPE(init)));
       	WFE_Add_Aggregate_Init_Symbol (const_st);
@@ -1826,7 +1819,7 @@ Add_Inito_For_Tree (tree init, tree decl, ST *st)
 	if (TREE_CODE(kid) == VAR_DECL ||
 	    TREE_CODE(kid) == FUNCTION_DECL ||
 #ifdef KEY
-	    TREE_CODE(kid) == COMPOUND_LITERAL_EXPR ||
+	    (int)TREE_CODE(kid) == (int)COMPOUND_LITERAL_EXPR ||
 	    // Bug 956
 	    TREE_CODE(kid) == LABEL_DECL ||
 #endif // KEY
@@ -2342,8 +2335,8 @@ WFE_Dealloca (ST *alloca_st, tree vars)
   ST   *base_st;
 
   for (decl =vars; decl; decl = TREE_CHAIN (decl))
-    if (TREE_CODE (decl) == VAR_DECL && DECL_ST (decl)) {
-      st = DECL_ST (decl);
+    if (TREE_CODE (decl) == VAR_DECL && DECL_WHIRL_ST_GET(decl)) {
+      st = DECL_WHIRL_ST_GET(decl);
       base_st = ST_base (st);
       if (st != base_st)
         ++nkids;
@@ -2354,8 +2347,8 @@ WFE_Dealloca (ST *alloca_st, tree vars)
   nkids = 0;
 
   for (decl =vars; decl; decl = TREE_CHAIN (decl))
-    if (TREE_CODE (decl) == VAR_DECL && DECL_ST (decl)) {
-      st = DECL_ST (decl);
+    if (TREE_CODE (decl) == VAR_DECL && DECL_WHIRL_ST_GET(decl)) {
+      st = DECL_WHIRL_ST_GET(decl);
       base_st = ST_base (st);
       if (st != base_st)
         WN_kid (wn, ++nkids) = WN_Ldid (Pointer_Mtype, 0, base_st, ST_type (base_st));
@@ -2384,7 +2377,7 @@ WFE_Record_Asmspec_For_ST (tree decl, const char *asmspec, int reg)
 void
 WFE_Resolve_Duplicate_Decls (tree olddecl, tree newdecl)
 {
-  ST     *st      = DECL_ST(olddecl);
+  ST     *st      = DECL_WHIRL_ST_GET(olddecl);
   tree    newtype = TREE_TYPE(newdecl);
   tree    newsize = TYPE_SIZE(newtype);
   TY_IDX  ty      = ST_type (st);
@@ -2436,7 +2429,7 @@ WFE_Add_Weak ()
 	  lookup_name (get_identifier (IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME 
 				  (TREE_VALUE (weak_decls)))));
   if (decl) {
-    ST *st = DECL_ST (decl);
+    ST *st = DECL_WHIRL_ST_GET(decl);
     if (st)
       Set_ST_is_weak_symbol (st);
   }
@@ -2457,7 +2450,7 @@ WFE_Weak_Finish ()
 			IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME
 			       	(TREE_VALUE (t))));
       else {
-        ST *st = DECL_ST (decl);
+        ST *st = DECL_WHIRL_ST_GET(decl);
 	if (st == NULL && TREE_VALUE(t)) {
 	  st = Get_ST (decl);
 	}
@@ -2473,7 +2466,7 @@ WFE_Weak_Finish ()
 		#pragma weak", 
 	        IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (TREE_VALUE(t))));
             else {
-              ST *base_st = DECL_ST (base_decl);
+              ST *base_st = DECL_WHIRL_ST_GET(base_decl);
               if (base_st)
                 Set_ST_strong_idx (*st, ST_st_idx (base_st));
             }
@@ -2498,7 +2491,7 @@ WFE_Weak_Finish ()
 		#pragma weak", 
 		     IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (TREE_VALUE(t))));
 	  else {
-	    ST *base_st = DECL_ST (base_decl);
+	    ST *base_st = DECL_WHIRL_ST_GET(base_decl);
 	    if (ST_is_weak_symbol (st) && ST_sclass(st) != SCLASS_EXTERN)
 	      Clear_ST_is_weak_symbol (st); 
 	    else if (base_st)

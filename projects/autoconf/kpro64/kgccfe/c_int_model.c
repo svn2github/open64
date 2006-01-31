@@ -53,13 +53,14 @@ c_int_model.c -- c data type models
 
 */
 
-#include "ansidecl.h"  // For definition of PARAMS
 #include "defs.h"
 #include "c_int_model.h"
 #include "config_targ.h"
 #ifdef KEY
-#include "gnu_config.h"
 #include "config_global.h"	/* for Target_Byte_Sex */
+#define IN_GCC
+#include <gcc-config.h>
+#undef IN_GCC
 #endif /* KEY */
 
 TARGET_INT_MODEL Target_Int_Model = TARGET_INT_ILP32;

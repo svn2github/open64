@@ -73,32 +73,9 @@
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/gccfe/wfe_dst.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-#include <values.h>
-
-#include "defs.h"
-#include "glob.h"
-#include "config_global.h"
-#include "dwarf_DST_producer.h"
-#include "dwarf_DST_dump.h"
-#include "file_util.h"  /* From common/util */
-#include "srcpos.h"
-#include "symtab.h"
-#include "gnu_config.h"
-#ifdef KEY
-// To get HW_WIDE_INT ifor flags.h */
-#include "gnu/hwint.h"
-#endif /* KEY */
-#include "gnu/flags.h"
-extern "C" {
-#include "gnu/system.h"
-#include "gnu/tree.h"
-// #include "gnu/toplev.h"
-}
-
-#include "wfe_misc.h"
-#include "wfe_dst.h"
-#include "wfe_expr.h"
-#include "tree_symtab.h"
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>   /* For accessing file statistics (stat()) */
@@ -107,9 +84,30 @@ extern "C" {
 #include <string>
 #include <vector>
 #include <map>
-#ifdef KEY
-#include "stamp.h"	/* For INCLUDE_STAMP */
-#endif
+
+#include "defs.h"
+#include "glob.h"
+#include "config_global.h"
+#include "dwarf_DST_producer.h"
+#include "file_util.h"  /* From common/util */
+#include "srcpos.h"
+#include "symtab.h"
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#include <toplev.h>
+#undef IN_GCC
+extern int flag_no_common;
+};
+
+#include "wfe_misc.h"
+#include "wfe_dst.h"
+#include "wfe_expr.h"
+#include "tree_symtab.h"
+
 extern const char *dump_base_name ;             // in toplev.c
 
 extern FILE *tree_dump_file; //for debugging only
@@ -236,7 +234,8 @@ DST_get_context(tree intree)
 	    break;
 	case FUNCTION_DECL: {
 		// This is a normal case!
-		l_tree_idx = DECL_DST_IDX(ltree);
+		l_tree_idx.block = DECL_WHIRL_BLOCK(ltree);
+		l_tree_idx.offset = DECL_WHIRL_OFFSET(ltree);
 		cp_to_dst_from_tree(&l_dst_idx,&l_tree_idx);
 #ifdef KEY
 		// Bug 1825 - it may happen that we have not yet produced the
@@ -314,7 +313,7 @@ Get_Dir_Dst_Info (char *name)
 #ifdef KEY
 	// We have to create a new home for name because memory
 	// will be freed once the caller exits. 
-	char *new_name = (char *)malloc((strlen(name)+1)*sizeof(char));
+	char *new_name = (char*)xmalloc(strlen(name) + 1);
 	strcpy(new_name, name);
 	name = new_name;
 #endif
@@ -348,7 +347,7 @@ Get_File_Dst_Info (const char *name, UINT dir)
 #ifdef KEY
 	// We have to create a new home for name because memory
 	// will be freed once the caller exits. 
-	char *new_name = (char *)malloc((strlen(name)+1)*sizeof(char));
+	char *new_name = (char *)xmalloc(strlen(name) + 1);
 	strcpy(new_name, name);
 	name = new_name;
 #endif
@@ -409,8 +408,8 @@ DST_get_command_line_options(INT32 num_copts,
   char      ch;
   INT32     record_option;
 
-  selected_opt = (char **)malloc(sizeof(char*) * num_copts);
-  opt_size = (INT32 *)malloc(sizeof(INT32) * num_copts);
+  selected_opt = (char **)xmalloc(sizeof(char*) * num_copts);
+  opt_size = (INT32 *)xmalloc(sizeof(INT32) * num_copts);
   
   for (i = 1; i <= num_copts; i++)
   {
@@ -440,11 +439,11 @@ DST_get_command_line_options(INT32 num_copts,
   
   if (strlength == 0)
   {
-     rtrn = (char *)calloc(1, 1); /* An empty string */
+     rtrn = (char *)xcalloc(1, 1); /* An empty string */
   }
   else
   {
-     rtrn = (char *)malloc(strlength);
+     rtrn = (char *)xmalloc(strlength);
      cp = rtrn;
 
      /* Append the selected options to the string (rtrn) */
@@ -472,7 +471,7 @@ Get_Name (tree node)
 		buf[0] = 0;
                 return buf;
   }
-  char *name = buf;
+  const char *name = buf;
   buf[0] = 0;
 
 #define DANAME(d) ((TREE_CODE_CLASS(TREE_CODE(d)) =='d')? \
@@ -501,7 +500,7 @@ Get_Name (tree node)
         } 
   } else {
   }
-  return name;
+  return (char*)(uintptr_t)name;
 }
 
 static void
@@ -663,13 +662,6 @@ DST_enter_struct_union_members(tree parent_tree,
 	}
 	DST_append_child(parent_idx,field_idx);
 
-
-        //struct mongoose_gcc_DST_IDX mdst;
-        //cp_to_tree_from_dst(&mdst,&field_idx);
-        //TYPE_DST_IDX(ftype) = mdst;
-
-	
-
     }
 
     return ;
@@ -682,8 +674,9 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 		INT tsize)
 { 
     DST_INFO_IDX dst_idx ;
-    struct mongoose_gcc_DST_IDX tdst
-      = TYPE_DST_IDX(type_tree);
+    struct mongoose_gcc_DST_IDX tdst;
+    tdst.block = TYPE_WHIRL_BLOCK(type_tree);
+    tdst.offset = TYPE_WHIRL_OFFSET(type_tree);
     cp_to_dst_from_tree(&dst_idx,&tdst);
 
     DST_INFO_IDX current_scope_idx =
@@ -731,7 +724,8 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 	// if this has ptr to itself inside.
         struct mongoose_gcc_DST_IDX mdst;
         cp_to_tree_from_dst(&mdst,&dst_idx);
-        TYPE_DST_IDX(type_tree) = mdst;
+	TYPE_WHIRL_BLOCK(type_tree) = mdst.block;
+	TYPE_WHIRL_OFFSET(type_tree) = mdst.offset;
 
 	// now can do the members.
 	DST_enter_struct_union_members(type_tree,dst_idx);
@@ -749,8 +743,10 @@ DST_enter_enum(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 		INT tsize)
 { 
    DST_INFO_IDX dst_idx;
-   struct mongoose_gcc_DST_IDX tdst
-      = TYPE_DST_IDX(type_tree);
+   struct mongoose_gcc_DST_IDX tdst;
+   tdst.block = TYPE_WHIRL_BLOCK(type_tree);
+   tdst.offset = TYPE_WHIRL_OFFSET(type_tree);
+
    cp_to_dst_from_tree(&dst_idx,&tdst);
 
    if(TREE_CODE_CLASS(TREE_CODE(type_tree)) != 't') {
@@ -782,8 +778,8 @@ DST_enter_enum(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 
       struct mongoose_gcc_DST_IDX mdst;
       cp_to_tree_from_dst(&mdst,&t_dst_idx);
-      TYPE_DST_IDX(type_tree) = mdst;
-
+      TYPE_WHIRL_BLOCK(type_tree) = mdst.block;
+      TYPE_WHIRL_OFFSET(type_tree) = mdst.offset;
 
       DST_CONST_VALUE enumerator;
       if(tsize == 8) {
@@ -804,7 +800,7 @@ DST_enter_enum(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
          // file, so lets leave it out. Temporarily.
          //USRCPOS_srcpos(src) = Get_Srcpos();
          USRCPOS_clear(src);
-         char *name2 = IDENTIFIER_POINTER(TREE_PURPOSE(enum_entry));
+         const char *name2 = IDENTIFIER_POINTER(TREE_PURPOSE(enum_entry));
 
          if (tsize == 8) {
 	   DST_CONST_VALUE_form_data8(enumerator) = 
@@ -815,7 +811,7 @@ DST_enter_enum(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
          }
 
 	 DST_INFO_IDX ed = DST_mk_enumerator(src,
-				name2,
+				(char*)(uintptr_t)name2,
 				enumerator);
 	 DST_append_child(t_dst_idx,ed);
 	
@@ -1002,8 +998,10 @@ static DST_INFO_IDX
 DST_enter_array_type(tree type_tree, TY_IDX ttidx  , TY_IDX idx,INT tsize)
 { 
    DST_INFO_IDX dst_idx;
-   struct mongoose_gcc_DST_IDX tdst
-      = TYPE_DST_IDX(type_tree);
+   struct mongoose_gcc_DST_IDX tdst;
+   tdst.block = TYPE_WHIRL_BLOCK(type_tree);
+   tdst.offset = TYPE_WHIRL_OFFSET(type_tree);
+
    cp_to_dst_from_tree(&dst_idx,&tdst);
 
    if(TREE_CODE_CLASS(TREE_CODE(type_tree)) != 't') {
@@ -1023,9 +1021,11 @@ DST_enter_array_type(tree type_tree, TY_IDX ttidx  , TY_IDX idx,INT tsize)
       //if tsize == 0, is incomplete array
 
       tree elt_tree = TREE_TYPE(type_tree);
-      TY_IDX itx = TYPE_TY_IDX(elt_tree);
-      struct mongoose_gcc_DST_IDX amdst
-                          = TYPE_DST_IDX(type_tree);
+      TY_IDX itx = TYPE_WHIRL_IDX(elt_tree);
+      struct mongoose_gcc_DST_IDX amdst;
+      amdst.block = TYPE_WHIRL_BLOCK(type_tree);
+      amdst.offset = TYPE_WHIRL_OFFSET(type_tree);
+
       cp_to_dst_from_tree(&dst_idx,&amdst);
 
       // not created yet, so create
@@ -1081,7 +1081,8 @@ DST_enter_array_type(tree type_tree, TY_IDX ttidx  , TY_IDX idx,INT tsize)
 
       struct mongoose_gcc_DST_IDX mdst;
       cp_to_tree_from_dst(&mdst,&dst_idx);
-      TYPE_DST_IDX(type_tree) = mdst;
+      TYPE_WHIRL_BLOCK(type_tree) = mdst.block;
+      TYPE_WHIRL_OFFSET(type_tree) = mdst.offset;
     }
     return dst_idx;
 }
@@ -1132,21 +1133,6 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		idx = Get_TY (TYPE_MAIN_VARIANT(type_tree));
 
 #ifndef KEY
-		// The following code always a return an invalid DST_IDX. This 
-		// causes the back-end to skip DW_AT_type for any variable 
-		// declared to be of a user-defined type (which is a typedef 
-		// of a base type).
-    
-		//if (TYPE_READONLY(type_tree))
-		//	Set_TY_is_const (idx);
-		//if (TYPE_VOLATILE(type_tree))
-		//	Set_TY_is_volatile (idx);
-		// restrict qualifier not supported by gcc
-		//TYPE_TY_IDX(type_tree) = idx;
-		//return idx;
-		// FIX	      
-		//hack so rest of gnu need know nothing of DST 
-
 		cp_to_tree_from_dst(&actual_retval,&dst_idx);
 		return actual_retval;
 #endif
@@ -1187,10 +1173,12 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 			tsize = Get_Integer_Value(type_size) / BITSPERBYTE;
    }
    if (!ignoreconst && TYPE_READONLY (type_tree)) {
-       struct mongoose_gcc_DST_IDX tdst = TYPE_DST_IDX(type_tree);
+       struct mongoose_gcc_DST_IDX tdst;
+       tdst.block = TYPE_WHIRL_BLOCK(type_tree);
+       tdst.offset = TYPE_WHIRL_OFFSET(type_tree);
        cp_to_dst_from_tree(&dst_idx,&tdst);
        if(DST_IS_NULL(dst_idx)) {
-            TY_IDX itx = TYPE_TY_IDX(type_tree);
+            TY_IDX itx = TYPE_WHIRL_IDX(type_tree);
             struct mongoose_gcc_DST_IDX unqualtype = Create_DST_type_For_Tree (type_tree, itx, idx, true, false) ;
             DST_INFO_IDX unqual_dst;
 
@@ -1202,16 +1190,19 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 
             struct mongoose_gcc_DST_IDX qual_dst_idx;
             cp_to_tree_from_dst(&qual_dst_idx,&dst_idx);
-            TYPE_DST_IDX(type_tree) = qual_dst_idx;
+	    TYPE_WHIRL_BLOCK(type_tree) = qual_dst_idx.block;
+	    TYPE_WHIRL_OFFSET(type_tree) = qual_dst_idx.offset;
        }
        cp_to_tree_from_dst(&actual_retval,&dst_idx);
        return actual_retval;
    }
    if (!ignorevolatile && TYPE_VOLATILE (type_tree)) {
-       struct mongoose_gcc_DST_IDX tdst = TYPE_DST_IDX(type_tree);
+       struct mongoose_gcc_DST_IDX tdst;
+       tdst.block = TYPE_WHIRL_BLOCK(type_tree);
+       tdst.offset = TYPE_WHIRL_OFFSET(type_tree);
        cp_to_dst_from_tree(&dst_idx,&tdst);
        if(DST_IS_NULL(dst_idx)) {
-            TY_IDX itx = TYPE_TY_IDX(type_tree);
+            TY_IDX itx = TYPE_WHIRL_IDX(type_tree);
             struct mongoose_gcc_DST_IDX unqualtype = Create_DST_type_For_Tree (type_tree, itx, idx, true, true) ;
             DST_INFO_IDX unqual_dst;
 
@@ -1223,7 +1214,8 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 
             struct mongoose_gcc_DST_IDX qual_dst_idx;
             cp_to_tree_from_dst(&qual_dst_idx,&dst_idx);
-            TYPE_DST_IDX(type_tree) = qual_dst_idx;
+	    TYPE_WHIRL_BLOCK(type_tree) = qual_dst_idx.block;
+	    TYPE_WHIRL_OFFSET(type_tree) = qual_dst_idx.offset;
        }
        cp_to_tree_from_dst(&actual_retval,&dst_idx);
        return actual_retval;
@@ -1326,13 +1318,14 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 		break;
     case REFERENCE_TYPE:
 	       {
-                struct mongoose_gcc_DST_IDX tdst
-                  = TYPE_DST_IDX(type_tree);
+                struct mongoose_gcc_DST_IDX tdst;
+		tdst.block = TYPE_WHIRL_BLOCK(type_tree);
+		tdst.offset = TYPE_WHIRL_OFFSET(type_tree);
                 cp_to_dst_from_tree(&dst_idx,&tdst);
 		if(DST_IS_NULL(dst_idx)) {
 
 		  tree ttree = TREE_TYPE(type_tree);
-	          TY_IDX itx = TYPE_TY_IDX(ttree);
+	          TY_IDX itx = TYPE_WHIRL_IDX(ttree);
                   struct mongoose_gcc_DST_IDX inner =
 		    Create_DST_type_For_Tree (ttree,itx, idx);
 
@@ -1349,7 +1342,8 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 
                   struct mongoose_gcc_DST_IDX ptr_dst_idx;
 		  cp_to_tree_from_dst(&ptr_dst_idx,&dst_idx);
-		  TYPE_DST_IDX(type_tree) = ptr_dst_idx;
+		  TYPE_WHIRL_BLOCK(type_tree) = ptr_dst_idx.block;
+		  TYPE_WHIRL_OFFSET(type_tree) = ptr_dst_idx.offset;
 		}
                }
 		break;
@@ -1361,13 +1355,14 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
                else
 #endif
 	       {
-                struct mongoose_gcc_DST_IDX tdst
-                  = TYPE_DST_IDX(type_tree);
+                struct mongoose_gcc_DST_IDX tdst;
+		tdst.block = TYPE_WHIRL_BLOCK(type_tree);
+		tdst.offset = TYPE_WHIRL_OFFSET(type_tree);
                 cp_to_dst_from_tree(&dst_idx,&tdst);
                 if(DST_IS_NULL(dst_idx)) {
 
 		  tree ttree = TREE_TYPE(type_tree);
-	          TY_IDX itx = TYPE_TY_IDX(ttree);
+	          TY_IDX itx = TYPE_WHIRL_IDX(ttree);
                   struct mongoose_gcc_DST_IDX inner =
 		  Create_DST_type_For_Tree (ttree,itx, idx);
 
@@ -1385,7 +1380,8 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 
                   struct mongoose_gcc_DST_IDX ptr_dst_idx;
 		  cp_to_tree_from_dst(&ptr_dst_idx,&dst_idx);
-		  TYPE_DST_IDX(type_tree) = ptr_dst_idx;
+		  TYPE_WHIRL_BLOCK(type_tree) = ptr_dst_idx.block;
+		  TYPE_WHIRL_OFFSET(type_tree) = ptr_dst_idx.offset;
                  }
                }
 	       break;
@@ -1482,14 +1478,7 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
     default:
 		FmtAssert(FALSE, ("Get_TY unexpected tree_type"));
     }
-    //if (TYPE_READONLY(type_tree))
-//		Set_TY_is_const (idx);
- //   if (TYPE_VOLATILE(type_tree))
-//		Set_TY_is_volatile (idx);
-    // restrict qualifier not supported by gcc
- //   TYPE_TY_IDX(type_tree) = idx;
-	
-    
+ 
     // hack so rest of gnu need know nothing of DST 
     cp_to_tree_from_dst(&actual_retval,&dst_idx);
     return actual_retval;
@@ -1508,15 +1497,15 @@ same_dst_idx(struct mongoose_gcc_DST_IDX s1, struct mongoose_gcc_DST_IDX s2)
 
 #ifdef KEY
 // basically the same as what we do initially in Create_DST_decl_For_Tree
-extern bool
+bool
 have_dst_idx (tree decl)
 {
-    struct mongoose_gcc_DST_IDX var_idx;
+    struct mongoose_gcc_DST_IDX dst, var_idx;
     DST_INFO_IDX dst_idx = DST_INVALID_INIT;
-    
     cp_to_tree_from_dst(&var_idx,&dst_idx);
-
-    return (!same_dst_idx (DECL_DST_IDX(decl), var_idx));
+    dst.block = DECL_WHIRL_BLOCK(decl);
+    dst.offset = DECL_WHIRL_OFFSET(decl);
+    return (!same_dst_idx (dst, var_idx));
 }
 #endif // KEY
 
@@ -1533,7 +1522,8 @@ Create_DST_decl_For_Tree(
   struct mongoose_gcc_DST_IDX cur_idx;
 
   // If we have already processed this, do not do it again...
-  cur_idx = DECL_DST_IDX(decl);
+  cur_idx.block = DECL_WHIRL_BLOCK(decl);
+  cur_idx.offset = DECL_WHIRL_OFFSET(decl);
   if(!same_dst_idx(cur_idx,var_idx)) {
 	return cur_idx;
   }
@@ -1693,8 +1683,8 @@ DST_Create_type(ST *typ_decl, tree decl)
     basetypes[names] = dst_idx;
     struct mongoose_gcc_DST_IDX mdst;
     cp_to_tree_from_dst(&mdst,&dst_idx);
-    TYPE_DST_IDX(undt) = mdst;
-
+    TYPE_WHIRL_BLOCK(undt) = mdst.block;
+    TYPE_WHIRL_OFFSET(undt) = mdst.offset;
     return dst_idx;
 }
 
@@ -1721,8 +1711,9 @@ DST_Create_Parmvar(ST *var_st, tree param)
     TY_IDX ty_idx = Get_TY(type); 
 
 
-    struct mongoose_gcc_DST_IDX type_gcc_dst =
-                          DECL_DST_IDX(param);
+    struct mongoose_gcc_DST_IDX type_gcc_dst;
+    type_gcc_dst.block = DECL_WHIRL_BLOCK(param);
+    type_gcc_dst.offset = DECL_WHIRL_OFFSET(param);
     cp_to_dst_from_tree(&dtype,&type_gcc_dst);
     return dtype;
 }
@@ -1743,8 +1734,9 @@ DST_Create_var(ST *var_st, tree decl)
     DST_INFO_IDX type;
 
 
-    struct mongoose_gcc_DST_IDX type_gcc_dst = 
-			TYPE_DST_IDX(TREE_TYPE(decl));
+    struct mongoose_gcc_DST_IDX type_gcc_dst;
+    type_gcc_dst.block = TYPE_WHIRL_BLOCK(TREE_TYPE(decl));
+    type_gcc_dst.offset = TYPE_WHIRL_OFFSET(TREE_TYPE(decl));
     cp_to_dst_from_tree(&type,&type_gcc_dst);
 #ifdef KEY
     DST_INFO_IDX current_scope_idx =
@@ -1803,8 +1795,9 @@ DST_enter_param_vars(tree fndecl,tree parameter_list)
     USRCPOS src;
     USRCPOS_srcpos(src) = Get_Srcpos();
 
-    struct mongoose_gcc_DST_IDX  tree_parent_idx =
-                DECL_DST_IDX(fndecl);
+    struct mongoose_gcc_DST_IDX  tree_parent_idx;
+    tree_parent_idx.block = DECL_WHIRL_BLOCK(fndecl);
+    tree_parent_idx.offset = DECL_WHIRL_OFFSET(fndecl);
     DST_INFO_IDX parent;
     cp_to_dst_from_tree(&parent,&tree_parent_idx);
 
@@ -1828,9 +1821,9 @@ DST_enter_param_vars(tree fndecl,tree parameter_list)
         TY_IDX ty_idx = Get_TY(type);
 
 
-	struct mongoose_gcc_DST_IDX ty_tree_idx
-	    = TYPE_DST_IDX(type);
-
+	struct mongoose_gcc_DST_IDX ty_tree_idx;
+	ty_tree_idx.block = TYPE_WHIRL_BLOCK(type);
+	ty_tree_idx.offset = TYPE_WHIRL_OFFSET(type);
 	cp_to_dst_from_tree(&type_idx,&ty_tree_idx);
 
 	char *name = Get_Name(pdecl);
@@ -1850,7 +1843,8 @@ DST_enter_param_vars(tree fndecl,tree parameter_list)
 	struct mongoose_gcc_DST_IDX decl_gcc_dst;
 	cp_to_tree_from_dst(&decl_gcc_dst,&param_idx);
 
-	DECL_DST_IDX(pdecl) = decl_gcc_dst;
+	DECL_WHIRL_BLOCK(pdecl) = decl_gcc_dst.block;
+	DECL_WHIRL_OFFSET(pdecl) = decl_gcc_dst.offset;
 
 	DST_append_child(parent,param_idx);
       }
@@ -1899,8 +1893,8 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
          //ret_g_idx = Create_DST_type_For_Tree( restype,
 	 //	itx,
 	 //	0 ); //FIX
-	 ret_g_idx = TYPE_DST_IDX(restype);
-
+	 ret_g_idx.block = TYPE_WHIRL_BLOCK(restype);
+	 ret_g_idx.offset = TYPE_WHIRL_OFFSET(restype);
          cp_to_dst_from_tree(&ret_dst,&ret_g_idx);
 	}
 
@@ -1938,7 +1932,8 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
     cp_to_tree_from_dst(&fn_dst_idx,&dst);
     
     if(fndecl) {
-	DECL_DST_IDX(fndecl) =  fn_dst_idx;
+	DECL_WHIRL_BLOCK(fndecl) = fn_dst_idx.block;
+	DECL_WHIRL_OFFSET(fndecl) = fn_dst_idx.offset;
     }
 
     // Now we create the argument info itself, relying
@@ -2042,10 +2037,9 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
    comp_info = DST_get_command_line_options(num_copts, copts);
 #else
    // Bug 178 - AT_producer should be the name of the compiler and version info
-   comp_info = (char *)malloc(sizeof(char)*100);   
+   comp_info = (char *)xmalloc(sizeof(char)*100);   
    strcpy(comp_info, "pathcc ");
-   if (INCLUDE_STAMP)
-     strcat(comp_info, INCLUDE_STAMP);
+   strcat(comp_info, PACKAGE_VERSION);
 #endif
 
    {
