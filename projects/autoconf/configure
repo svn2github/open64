@@ -4593,7 +4593,10 @@ done
 
 
 
-for ac_header in limits.h time.h sys/resource.h sys/times.h
+
+
+
+for ac_header in limits.h stdbool.h time.h sys/resource.h sys/times.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
@@ -4892,6 +4895,71 @@ else
 cat >>confdefs.h <<_ACEOF
 #define size_t unsigned
 _ACEOF
+
+fi
+
+echo "$as_me:$LINENO: checking for _Bool" >&5
+echo $ECHO_N "checking for _Bool... $ECHO_C" >&6
+if test "${ac_cv_type__Bool+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+int
+main ()
+{
+if ((_Bool *) 0)
+  return 0;
+if (sizeof (_Bool))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_type__Bool=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_type__Bool=no
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_type__Bool" >&5
+echo "${ECHO_T}$ac_cv_type__Bool" >&6
+if test $ac_cv_type__Bool = yes; then
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE__BOOL 1
+_ACEOF
+
 
 fi
 
@@ -8528,7 +8596,7 @@ GCC_FULL_HEADERS_CONFIG="$fl"
 
 
 
-                                                                                                                                                                                                                  ac_config_files="$ac_config_files Makefile kpro64/Makefile kpro64/arith/Makefile kpro64/be/Makefile kpro64/be/be/Makefile kpro64/be/cg/Makefile kpro64/common/Makefile kpro64/driver/Makefile kpro64/gcc/Makefile kpro64/gcc/c/Makefile kpro64/gcc/common/Makefile kpro64/gcc/config/Makefile kpro64/gcc/cpp/Makefile kpro64/gcc/libiberty/Makefile kpro64/libcif/Makefile kpro64/libcmplrs/Makefile kpro64/libdwarf/Makefile kpro64/libelf/Makefile kpro64/libelfutil/Makefile kpro64/libunwind/Makefile kpro64/targ_info/Makefile"
+                                                                                                                                                                                                                            ac_config_files="$ac_config_files Makefile kpro64/Makefile kpro64/arith/Makefile kpro64/be/Makefile kpro64/be/be/Makefile kpro64/be/cg/Makefile kpro64/common/Makefile kpro64/driver/Makefile kpro64/gcc/Makefile kpro64/gcc/c/Makefile kpro64/gcc/common/Makefile kpro64/gcc/config/Makefile kpro64/gcc/cpp/Makefile kpro64/gcc/libiberty/Makefile kpro64/kgccfe/Makefile kpro64/libcif/Makefile kpro64/libcmplrs/Makefile kpro64/libdwarf/Makefile kpro64/libelf/Makefile kpro64/libelfutil/Makefile kpro64/libunwind/Makefile kpro64/targ_info/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -9100,6 +9168,7 @@ do
   "kpro64/gcc/config/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/gcc/config/Makefile" ;;
   "kpro64/gcc/cpp/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/gcc/cpp/Makefile" ;;
   "kpro64/gcc/libiberty/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/gcc/libiberty/Makefile" ;;
+  "kpro64/kgccfe/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/kgccfe/Makefile" ;;
   "kpro64/libcif/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/libcif/Makefile" ;;
   "kpro64/libcmplrs/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/libcmplrs/Makefile" ;;
   "kpro64/libdwarf/Makefile" ) CONFIG_FILES="$CONFIG_FILES kpro64/libdwarf/Makefile" ;;

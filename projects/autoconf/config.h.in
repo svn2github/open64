@@ -72,6 +72,9 @@
 /* DWARF2 32-bit section offsets. */
 #undef HAVE_OLD_DWARF2_32BIT_OFFSET
 
+/* Define to 1 if you have the <stdbool.h> header file. */
+#undef HAVE_STDBOOL_H
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
 
@@ -110,6 +113,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* Define to 1 if the system has the type `_Bool'. */
+#undef HAVE__BOOL
 
 /* See if __uint32_t is predefined in the compiler. */
 #undef HAVE___UINT32_T
