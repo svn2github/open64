@@ -287,13 +287,13 @@ WFE_Start_Function (tree fndecl)
     bool extern_inline = FALSE;
 #endif
     if (DECL_INLINE (fndecl) && TREE_PUBLIC (fndecl)) {
-      if (DECL_EXTERNAL (fndecl) && DECL_WHIRL_ST2 (fndecl) == NULL) {
+      if (DECL_EXTERNAL (fndecl) && DECL_WHIRL_ST2_GET (fndecl) == NULL) {
         // encountered first extern inline definition
         ST *oldst = DECL_WHIRL_ST_GET(fndecl);
         DECL_WHIRL_ST_SET(fndecl, NULL);
         func_st =  Get_ST (fndecl);
         DECL_WHIRL_ST_SET(fndecl, oldst);
-        DECL_WHIRL_ST2 (fndecl) = (char*)func_st;
+        DECL_WHIRL_ST2_SET (fndecl, func_st);
 #ifdef KEY // bugs 2178, 2152
 	extern_inline = TRUE;
 #endif // KEY
@@ -302,7 +302,7 @@ WFE_Start_Function (tree fndecl)
       else {
         // encountered second definition, the earlier one was extern inline
         func_st = Get_ST (fndecl);
-        DECL_WHIRL_ST2 (fndecl) = NULL;
+        DECL_WHIRL_ST2_SET (fndecl, NULL);
       }
     }
     else

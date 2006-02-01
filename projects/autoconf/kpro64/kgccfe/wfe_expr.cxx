@@ -4408,7 +4408,7 @@ WFE_Expand_Expr (tree exp,
 	  }
 	  else {
             call_wn = WN_Create (OPR_CALL, ret_mtype, MTYPE_V, num_args);
-            ST *st2 = (ST*)DECL_WHIRL_ST2 (TREE_OPERAND (arg0, 0));
+            ST *st2 = DECL_WHIRL_ST2_GET (TREE_OPERAND (arg0, 0));
             if (Opt_Level > 0 && st2) {
               WN_st_idx (call_wn) = ST_st_idx (st2);
             }
