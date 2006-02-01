@@ -24,7 +24,7 @@
 #ifndef _GCCFE_OMP_DIRECIVES_H_
 #define _GCCFE_OMP_DIRECIVES_H_
 
-#ifdef _LANGUAGE_C_PLUS_PLUS
+#if defined(__cplusplus)
 extern "C"{
 #endif
 
@@ -138,7 +138,7 @@ extern void expand_end_do_loop(void);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _LANGUAGE_C_PLUS_PLUS
+#if defined(__cplusplus)
 }
 #endif
 

@@ -47,27 +47,10 @@
 
 // translate gnu decl trees to whirl
 
-#include <values.h>
 #include <sys/types.h>
 #include <elf.h>
 #include "defs.h"
 #include "errors.h"
-#include "gnu_config.h"
-#ifdef KEY	// get HW_WIDE_INT for flags.h
-#include "gnu/hwint.h"
-#endif	/* KEY */
-#include "gnu/flags.h"
-extern "C" {
-#include "gnu/system.h"
-#include "gnu/toplev.h"
-#include "gnu/tree.h"
-#include "cp-tree.h"
-#include "c-pragma.h"
-#ifdef KEY // get REAL_VALUE_TYPE
-#include "real.h"
-#endif // KEY
-}
-#undef TARGET_PENTIUM // hack around macro definition in gnu
 #include "glob.h"
 #include "wn.h"
 #include "wn_util.h"
@@ -76,6 +59,25 @@ extern "C" {
 #include "pu_info.h"
 #include "ir_bwrite.h"
 #include "ir_reader.h"
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#define operator oprtr
+#include <cp/cp-tree.h>
+#undef operator
+#define class klass
+#include <real.h>
+#undef class
+#undef IN_GCC
+extern int flag_exceptions;
+extern int flag_keep_inline_functions;
+extern int key_exceptions;
+extern int opt_regions;
+};
+
 #include "wfe_decl.h"
 #include "wfe_misc.h"
 #include "wfe_dst.h"
@@ -83,9 +85,7 @@ extern "C" {
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
 #include "tree_cmp.h"
-#ifdef KEY
 #include "wfe_dst.h" // DST_enter_member_function
-#endif
 
 extern "C" void check_gnu_errors (int *, int *);
 #ifdef KEY
@@ -114,7 +114,7 @@ Init_Deferred_Function_Stack()
   deferred_function_max   = 32;
   deferred_function_i     = -1;
   deferred_function_stack =
-    (tree *) malloc (sizeof (tree) * deferred_function_max);
+    (tree *) xmalloc (sizeof (tree) * deferred_function_max);
 }
 
 void
@@ -129,7 +129,7 @@ Push_Deferred_Function (tree decl)
   if (++deferred_function_i == deferred_function_max) {
     deferred_function_max = 2 * deferred_function_max;
     deferred_function_stack =
-      (tree *) realloc (deferred_function_stack,
+      (tree *) xrealloc (deferred_function_stack,
 			deferred_function_max * sizeof(tree));
   }
 
@@ -155,7 +155,7 @@ Init_Deferred_Decl_Init_Stack ()
   deferred_decl_init_max   = 32;
   deferred_decl_init_i     = -1;
   deferred_decl_init_stack =
-    (tree *) malloc (sizeof (tree) * deferred_decl_init_max);
+    (tree *) xmalloc (sizeof (tree) * deferred_decl_init_max);
 } /* Init_Deferred_Decl_Init_Stack */
 
 void
@@ -164,7 +164,7 @@ Push_Deferred_Decl_Init (tree decl)
   if (++deferred_decl_init_i == deferred_decl_init_max) {
     deferred_decl_init_max = 2 * deferred_decl_init_max;
     deferred_decl_init_stack =
-      (tree *) realloc (deferred_decl_init_stack,
+      (tree *) xrealloc (deferred_decl_init_stack,
 			deferred_decl_init_max * sizeof(tree));
   }
 
@@ -330,8 +330,8 @@ std::vector<DST_defer_type_info *> defer_DST_types;
 void
 defer_DST_type (tree t, TY_IDX ttidx, TY_IDX idx)
 {
-  DST_defer_type_info *p =
-    (DST_defer_type_info *) calloc(1, sizeof(DST_defer_type_info));
+  DST_defer_type_info *p = 
+    (DST_defer_type_info *) xcalloc(1, sizeof(DST_defer_type_info));
   p->t = t;
   p->ttidx = ttidx;
   p->idx = idx;
@@ -342,7 +342,7 @@ void
 defer_DST_member_function (tree context, tree fndecl)
 {
   DST_defer_misc_info *p =
-    (DST_defer_misc_info *) calloc(1, sizeof(DST_defer_misc_info));
+    (DST_defer_misc_info *) xcalloc(1, sizeof(DST_defer_misc_info));
   p->u1.member_func.context = context;
   p->u1.member_func.fndecl = fndecl;
   p->is_member_function = 1;
@@ -375,7 +375,7 @@ WFE_Expand_Function_Body (tree decl)
       DECL_COMPLETE_CONSTRUCTOR_P(decl) &&
       // check for reference by WHIRL
       DECL_ASSEMBLER_NAME(decl) &&
-      !TREE_SYMBOL_REFERENCED_BY_WHIRL(DECL_ASSEMBLER_NAME(decl))) {
+      !IDENTIFIER_WHIRL_REFERENCED(DECL_ASSEMBLER_NAME(decl))) {
     return 0;
   }
 
@@ -581,8 +581,8 @@ void WFE_Expand_Decl(tree decl)
       }
 #ifdef KEY
       // Handle decls that are aliases for other decls.  Bug 3841.
-      else if (DECL_ALIAS_TARGET(decl)) {
-	WFE_Assemble_Alias(decl, DECL_ALIAS_TARGET(decl));
+      else if (DECL_WHIRL_ALIAS_TARGET(decl)) {
+	WFE_Assemble_Alias(decl, DECL_WHIRL_ALIAS_TARGET(decl));
 	return;
       }
 #endif
@@ -697,17 +697,17 @@ void WFE_Expand_Decl(tree decl)
 // here should not harm. And this should be able to prevent expansion of some
 // really useless/unreferenced symbols.
 // FIXME: If we can use the flag TREE_SYMBOL_REFERENCED as below, we should
-// remove uses/definitions of TREE_NOT_EMITTED_BY_GXX.
+// remove uses/definitions of IDENTIFIER_WHIRL_NOT_EMITTED.
 	if (DECL_ASSEMBLER_NAME_SET_P(decl) && 
-	    TREE_NOT_EMITTED_BY_GXX(decl) &&
+	    IDENTIFIER_WHIRL_NOT_EMITTED(decl) &&
 	    !TREE_SYMBOL_REFERENCED(DECL_ASSEMBLER_NAME(decl))) {
 	  expanded_decl(decl) = TRUE;
 	  return;
 	}
 
       // Handle decls that are aliases for other decls.  Bug 3841.
-      if (DECL_ALIAS_TARGET(decl)) {
-	WFE_Assemble_Alias(decl, DECL_ALIAS_TARGET(decl));
+      if (DECL_WHIRL_ALIAS_TARGET(decl)) {
+	WFE_Assemble_Alias(decl, DECL_WHIRL_ALIAS_TARGET(decl));
 	return;
       }
 
@@ -2858,9 +2858,9 @@ WFE_Assemble_Alias (tree decl, tree target)
   //     }
   //   }
   // Bug 4393.
-  if (DECL_ALIAS_TARGET_DECL(decl)) {
+  if (DECL_WHIRL_SAVED_INITIAL(decl)) {
     // Get the target's decl that we found and saved.
-    base_decl = DECL_ALIAS_TARGET_DECL(decl);
+    base_decl = DECL_WHIRL_SAVED_INITIAL(decl);
   } else {
     // Look for target's decl in the current namespace.
     tree subdecl;
@@ -2881,7 +2881,7 @@ WFE_Assemble_Alias (tree decl, tree target)
 	return FALSE;
       Is_True(FALSE, ("WFE_Assemble_Alias: cannot find decl for alias target"));
     }
-    DECL_ALIAS_TARGET_DECL(decl) = base_decl;
+    DECL_WHIRL_SAVED_INITIAL(decl) = base_decl;
   }
   // Don't expand alias until the target is expanded, so that we can set st's
   // sclass to base_st's sclass.  This may take more than one iteration since
@@ -3301,7 +3301,7 @@ decl_is_needed_vtable (tree decl)
 #ifdef KEY
       // As shown by bug 3133, some objects are emitted by g++ even though they
       // are weak and external.
-      if (DECL_EMITTED_BY_GXX(fn)) {
+      if (DECL_WHIRL_IS_EMITTED(fn)) {
 	needed = TRUE;
 	break;
       }
@@ -3460,8 +3460,8 @@ WFE_Expand_Top_Level_Decl (tree top_level_decl)
         if (TREE_CODE(decl) == FUNCTION_DECL) {
 	  if (DECL_THUNK_P(decl))
 	    WFE_Generate_Thunk(decl);
-	  else if (DECL_ALIAS_TARGET(decl))	// Bug 4393.
-	    changed |= WFE_Assemble_Alias(decl, DECL_ALIAS_TARGET(decl));
+	  else if (DECL_WHIRL_ALIAS_TARGET(decl))	// Bug 4393.
+	    changed |= WFE_Assemble_Alias(decl, DECL_WHIRL_ALIAS_TARGET(decl));
 	  else        
 	    changed |= WFE_Expand_Function_Body(decl);
 	  // Bugs 4471, 3041, 3531, 3572, 4563.
@@ -3490,7 +3490,7 @@ WFE_Expand_Top_Level_Decl (tree top_level_decl)
 	        skip = TRUE;
 	      else if (DECL_THUNK_P(decl)) {
 		// Skip thunk to constructors and destructors.  Bug 6427.
-	        tree addr = DECL_INITIAL_2(decl);
+	        tree addr = DECL_WHIRL_SAVED_INITIAL(decl);
 		Is_True(TREE_CODE(addr) == ADDR_EXPR &&
 			TREE_CODE(TREE_OPERAND(addr, 0)) == FUNCTION_DECL,
 			("WFE_Expand_Top_Level_Decl: invalid thunk decl"));
@@ -3650,18 +3650,18 @@ add_deferred_DST_types()
 // Get the target function that the thunk transfers control to.  The target is
 // an ADDR_EXPR saved in DECL_INITIAL.  However, in GCC 3.2, the ADDR_EXPR in
 // DECL_INITIAL could have been replaced by a BLOCK node.  In that case, get
-// the ADDR_EXPR from DECL_INITIAL_2, which saves ADDR_EXPR for just this
-// purpose.
+// the ADDR_EXPR from DECL_WHIRL_SAVED_INITIAL, which saves ADDR_EXPR for just
+// this purpose.
 static tree
 WFE_get_thunk_target (tree decl)
 {
   if (TREE_CODE (DECL_INITIAL(decl)) == ADDR_EXPR) {
     return DECL_INITIAL(decl);
   } else {
-    Is_True(DECL_INITIAL_2(decl) &&
-	    TREE_CODE(DECL_INITIAL_2(decl)) == ADDR_EXPR,
+    Is_True(DECL_WHIRL_SAVED_INITIAL(decl) &&
+	    TREE_CODE(DECL_WHIRL_SAVED_INITIAL(decl)) == ADDR_EXPR,
            ("ADDR_EXPR not found for thunk"));
-    return DECL_INITIAL_2(decl);
+    return DECL_WHIRL_SAVED_INITIAL(decl);
   }
 }
 
@@ -3676,7 +3676,7 @@ WFE_Handle_Named_Return_Value (tree fn)
   // Quit if the nrv opt was not done to this function.  If there is nrv,
   // current_function_return_value is the VAR_DECL of the local object to be
   // returned.
-  tree named_ret_obj = DECL_NAMED_RETURN_OBJECT(fn);
+  tree named_ret_obj = DECL_WHIRL_NAMED_RETURN_OBJECT(fn);
   if (named_ret_obj == NULL_TREE)
     return;
 

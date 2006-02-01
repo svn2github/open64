@@ -1,2 +1,2 @@
 SUBDIRS = targ_info arith libcif libcmplrs common libelf libdwarf libelfutil \
-	libunwind be driver gcc kgccfe
+	libunwind be driver gcc kgccfe kg++fe

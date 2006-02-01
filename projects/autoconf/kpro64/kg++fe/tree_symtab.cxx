@@ -47,33 +47,32 @@
 
 /* translate gnu decl trees to symtab references */
 
-#include <values.h>
+#include <map>
 #include "defs.h"
 #include "errors.h"
-#include "gnu_config.h"
-#ifdef KEY	// get HW_WIDE_INT for flags.h
-#include "gnu/hwint.h"
-#endif	/* KEY */
-#include "gnu/flags.h"
-extern "C" {
-#include "gnu/system.h"
-#include "gnu/tree.h"
-#include "cp-tree.h"
-}
-#undef TARGET_PENTIUM // hack around macro definition in gnu
 #include "symtab.h"
 #include "strtab.h"
 #include "wn.h"
+#include "ir_reader.h"
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#define operator oprtr
+#include <cp/cp-tree.h>
+#undef operator
+#undef IN_GCC
+extern int flag_no_common;
+};
+
 #include "wfe_expr.h"
 #include "wfe_decl.h"
 #include "wfe_misc.h"
 #include "wfe_dst.h"
-#include "ir_reader.h"
 #include "tree_symtab.h"
-#ifdef KEY
 #include "wfe_stmt.h"
-#include <map>
-#endif
 #include "tree_cmp.h"
 
 extern INT pstatic_as_global;
@@ -1067,7 +1066,7 @@ Create_ST_For_Tree (tree decl_node)
   // For variables with asm register assignments, don't use the assembler
   // names because they are of the form "%rbx".
   if (TREE_CODE(decl_node) == VAR_DECL &&
-      DECL_ASMREG(decl_node) != 0) {
+      DECL_WHIRL_ASMREG_GET(decl_node) != 0) {
     FmtAssert (DECL_NAME (decl_node),
 	       ("Create_ST_For_Tree: DECL_NAME null"));
     name = (char *) IDENTIFIER_POINTER (DECL_NAME (decl_node));
@@ -1131,7 +1130,7 @@ Create_ST_For_Tree (tree decl_node)
         st = New_ST (GLOBAL_SYMTAB);
 
 #ifdef KEY	// Fix bug # 34, 3356
-	char *p = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl_node));
+	const char *p = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl_node));
 	if (*p == '*')
 	  p++;
         ST_Init (st, Save_Str(p),
@@ -1275,7 +1274,7 @@ Create_ST_For_Tree (tree decl_node)
 #endif // KEY
         ST_Init (st, Save_Str(name), CLASS_VAR, sclass, eclass, ty_idx);
 #ifdef KEY
-	if (TREE_CODE (decl_node) == VAR_DECL && DECL_THREADPRIVATE (decl_node))
+	if (TREE_CODE (decl_node) == VAR_DECL && DECL_WHIRL_THREADPRIVATE (decl_node))
 	  Set_ST_is_thread_private (st);
 	if (TREE_CODE (decl_node) == VAR_DECL && anon_st)
 	  WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
@@ -1351,9 +1350,9 @@ Create_ST_For_Tree (tree decl_node)
   // If VAR_DECL has a non-zero DECL_ASMREG, then DECL_ASMREG-1 is the register
   // number assigned by an "asm".
   if (TREE_CODE(decl_node) == VAR_DECL &&
-      DECL_ASMREG(decl_node) != 0) {
+      DECL_WHIRL_ASMREG_GET(decl_node) != 0) {
     extern PREG_NUM Map_Reg_To_Preg []; // defined in common/com/arch/config_targ.cxx
-    int reg = DECL_ASMREG(decl_node) - 1;
+    int reg = DECL_WHIRL_ASMREG_GET(decl_node) - 1;
     PREG_NUM preg = Map_Reg_To_Preg [reg];
     FmtAssert (preg >= 0,
                ("mapping register %d to preg failed\n", reg));
@@ -1387,7 +1386,7 @@ Create_ST_For_Tree (tree decl_node)
        // Make weak symbols for:
        //   extern "C" int bar() __attribute__ ((weak, alias("foo")))
        // Bug 3841.
-       || DECL_ALIAS_TARGET(decl_node))
+       || DECL_WHIRL_ALIAS_TARGET(decl_node))
 #endif
       ) {
     Set_ST_is_weak_symbol (st);

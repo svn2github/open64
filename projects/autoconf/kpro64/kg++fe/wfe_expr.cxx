@@ -45,7 +45,6 @@
 */
 
 
-#include <values.h>
 #include "defs.h"
 #include "glob.h"
 #include "config_global.h"
@@ -53,36 +52,28 @@
 #include "wn_util.h"
 #include "targ_sim.h"
 #include "const.h"
-#include "c_int_model.h"
-
-#include "gnu_config.h"
-#include "gnu/system.h"
-
-#ifdef KEY
-#include "gnu/flags.h"
-extern "C" {
-// needs "C" linkage
-#endif // KEY
-
-#include "gnu/machmode.h"
-
-#ifdef KEY
-}
-#endif // KEY
-
-extern "C" {
-#include "gnu/system.h"
-#include "gnu/tree.h"
-extern void warning (char*,...);	// from gnu
-#ifdef GPLUSPLUS_FE
-#include "gnu/cp/cp-tree.h"
-#endif /* GPLUSPLUS_FE */
-#ifdef KEY
-#include "real.h"
-#endif // KEY
-}
-
 #include "ir_reader.h"
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h> 
+#include <system.h>
+#include <tree.h> 
+#define operator oprtr
+#include <cp/cp-tree.h>
+#undef operator
+#define class klass
+#include <real.h>
+#undef class
+#include <toplev.h>
+#undef IN_GCC 
+extern int flag_errno_math;
+extern int key_exceptions;
+extern int opt_regions;
+extern tree c_strlen_whirl(tree);
+};
+
+#include "c_int_model.h"
 #include "wfe_misc.h"
 #include "wfe_dst.h"
 #include "tree_symtab.h"
@@ -627,14 +618,14 @@ WFE_Expand_End_Stmt_Expr (tree t)
     if (wfe_bind_expr_stack == NULL) {
       wfe_bind_expr_stack_max = 32;
       wfe_bind_expr_stack     =
-        (WFE_BIND_EXPR *) malloc (wfe_bind_expr_stack_max *
+        (WFE_BIND_EXPR *) xmalloc (wfe_bind_expr_stack_max *
                                   sizeof (WFE_BIND_EXPR));
     }
     else {
       wfe_bind_expr_stack_max = wfe_bind_expr_stack_max +
                                 (wfe_bind_expr_stack_max >> 1);
       wfe_bind_expr_stack     =
-        (WFE_BIND_EXPR *) realloc (wfe_bind_expr_stack,
+        (WFE_BIND_EXPR *) xrealloc (wfe_bind_expr_stack,
                                    wfe_bind_expr_stack_max *
                                    sizeof (WFE_BIND_EXPR));
     }
@@ -698,14 +689,14 @@ WFE_Save_Expr (tree save_exp,
       if (wfe_save_expr_stack == NULL) {
         wfe_save_expr_stack_max = 32;
         wfe_save_expr_stack     =
-          (WFE_SAVE_EXPR *) malloc (wfe_save_expr_stack_max *
+          (WFE_SAVE_EXPR *) xmalloc (wfe_save_expr_stack_max *
                                     sizeof (WFE_SAVE_EXPR));
       }
       else {
         wfe_save_expr_stack_max = wfe_save_expr_stack_max +
                                   (wfe_save_expr_stack_max >> 1);
         wfe_save_expr_stack     =
-          (WFE_SAVE_EXPR *) realloc (wfe_save_expr_stack,
+          (WFE_SAVE_EXPR *) xrealloc (wfe_save_expr_stack,
                                      wfe_save_expr_stack_max *
                                      sizeof (WFE_SAVE_EXPR));
       }
@@ -2680,7 +2671,7 @@ WFE_Expand_Expr (tree exp,
         if (TREE_OPERAND(exp, 2) 
 #ifdef KEY
 // We should not be emitting all cleanups
-	&& TREE_LANG_FLAG_7 (exp)
+	&& TREE_WHIRL_CLEANUP_EMITTED (exp)
 #endif
 	)
 #ifdef KEY
@@ -4090,7 +4081,7 @@ WFE_Expand_Expr (tree exp,
 
 #ifdef KEY
 	  if (DECL_ASSEMBLER_NAME(func))
-	    TREE_SYMBOL_REFERENCED_BY_WHIRL(DECL_ASSEMBLER_NAME(func)) = 1;
+	    IDENTIFIER_WHIRL_REFERENCED(DECL_ASSEMBLER_NAME(func)) = 1;
 #endif
           
 	  if (DECL_BUILT_IN (func)) {
@@ -4250,9 +4241,9 @@ WFE_Expand_Expr (tree exp,
 		else {
 		  arg1 = TREE_VALUE (arglist);
 		  arg2 = TREE_VALUE (TREE_CHAIN (arglist));
-		  tree len1 = c_strlen (arg1);
+		  tree len1 = c_strlen_whirl (arg1);
 		  if (len1) {
-		    tree len2 = c_strlen (arg2);
+		    tree len2 = c_strlen_whirl (arg2);
 		    if (len2) {
 		      char *ptr1 = get_string_pointer (WFE_Expand_Expr (arg1));
 		      char *ptr2 = get_string_pointer (WFE_Expand_Expr (arg2));
@@ -4280,7 +4271,7 @@ WFE_Expand_Expr (tree exp,
 		  break;
 		else {
 		  tree src = TREE_VALUE (arglist);
-		  tree len = c_strlen (src);
+		  tree len = c_strlen_whirl (src);
 		  if (len) {
 		    wn = WFE_Expand_Expr (len);
 		    whirl_generated = TRUE;
@@ -4614,12 +4605,12 @@ WFE_Expand_Expr (tree exp,
                 if (ret_mtype == MTYPE_V)
                   ret_mtype = MTYPE_I4;
                 break;
-
+#if notyet
 	      case BUILT_IN_EXTEND_POINTER:
 		wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
 		whirl_generated = TRUE;
 	        break;
-	
+
 	      case BUILT_IN_POPCOUNT:
 	      case BUILT_IN_POPCOUNTL:
 	      case BUILT_IN_POPCOUNTLL:
@@ -4633,7 +4624,7 @@ WFE_Expand_Expr (tree exp,
 	        iopc = INTRN_CTZ;
 		intrinsic_op = TRUE;
 		break;
-
+#endif
 	      case BUILT_IN_TRAP:
 		call_wn = WN_Create (OPR_CALL, MTYPE_V, MTYPE_V, 0);
 		st = Get_ST (TREE_OPERAND (arg0, 0));

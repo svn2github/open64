@@ -24,47 +24,47 @@
  * front-ends to GNU 3.3.1 release.
  */
 
+#include <ctype.h>
 #include "defs.h"
 #include "glob.h"
 #include "config_global.h"
 #include "wn.h"
 #include "wn_util.h"
-
-extern "C" {
-#include "gnu_config.h"
-}
-#include "gnu/system.h"
-
 #include "srcpos.h"
-#include "gnu/machmode.h"
-extern "C" {
-#include "gnu/system.h"
-#include "gnu/tree.h"
-#include "cp-tree.h"
-#include "gnu/output.h"         // For decode_reg_name
-}
-#include "gnu/flags.h"
-#undef TARGET_PENTIUM  // hack around macro definition in gnu
 #include "insn-config.h"	// MAX_RECOG_OPERANDS
+#include "ir_reader.h"
+#include "targ_sim.h"
+#include "const.h"
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#define operator oprtr
+#include <cp/cp-tree.h>
+#undef operator
+#include <toplev.h>
+#include <output.h>
+#undef IN_GCC
+extern int flag_bad_asm_constraint_kills_stmt;
+extern int key_exceptions;
+extern int opt_regions;
+};
+
 #include "wfe_misc.h"
 #include "wfe_dst.h"
-#include "ir_reader.h"
 #include "wfe_expr.h"
 #include "wfe_stmt.h"
 #include "wfe_decl.h"
 #include "tree_symtab.h"
-#include "targ_sim.h"
-#include <ctype.h>
 #include "tree_cmp.h"
+#include "omp_types.h"
 
 #ifdef KEY
-#include "wn.h"		// New_Region_Id()
-#include "const.h"
 int make_symbols_weak = FALSE;	// if TRUE, emit all new symbols as weak
 bool in_cleanup = FALSE;	// TRUE if we are expanding code to be executed during stack unwinding
 #endif // KEY
-
-extern "C" void error (const char *, ...);
 
 // #define WFE_DEBUG 
 
@@ -339,7 +339,7 @@ Push_Scope_Cleanup (tree t)
   if (++scope_cleanup_i == scope_cleanup_max) {
     scope_cleanup_max = ENLARGE (scope_cleanup_max);
     scope_cleanup_stack =
-      (SCOPE_CLEANUP_INFO *) realloc (scope_cleanup_stack,
+      (SCOPE_CLEANUP_INFO *) xrealloc (scope_cleanup_stack,
 	 	        scope_cleanup_max * sizeof (SCOPE_CLEANUP_INFO));
   }
 
@@ -375,7 +375,7 @@ Push_Handler_Info (tree handler, vector<tree> *v,
    if (++handler_info_i == handler_info_max) {
     handler_info_max = ENLARGE (handler_info_max);
     handler_info_stack =
-      (HANDLER_INFO *) realloc (handler_info_stack,
+      (HANDLER_INFO *) xrealloc (handler_info_stack,
                         handler_info_max * sizeof (HANDLER_INFO));
   }
 
@@ -400,7 +400,7 @@ Push_Handler_Info (tree handler, LABEL_IDX label_idx)
    if (++handler_info_i == handler_info_max) {
     handler_info_max = ENLARGE (handler_info_max);
     handler_info_stack =
-      (HANDLER_INFO *) realloc (handler_info_stack,
+      (HANDLER_INFO *) xrealloc (handler_info_stack,
                         handler_info_max * sizeof (HANDLER_INFO));
   }
 
@@ -415,7 +415,7 @@ Push_EH_Cleanup (tree cleanup, LABEL_IDX label_idx, LABEL_IDX goto_idx)
   if (++eh_cleanup_i == eh_cleanup_max) {
     eh_cleanup_max = ENLARGE (eh_cleanup_max);
     eh_cleanup_stack =
-      (EH_CLEANUP_INFO *) realloc (eh_cleanup_stack,
+      (EH_CLEANUP_INFO *) xrealloc (eh_cleanup_stack,
 			    eh_cleanup_max * sizeof (EH_CLEANUP_INFO));
   }
 
@@ -745,7 +745,7 @@ Push_Scope (tree t)
   if (++scope_i == scope_max) {
     scope_max = ENLARGE (scope_max);
     scope_stack =
-      (tree *) realloc (scope_stack,
+      (tree *) xrealloc (scope_stack,
 	 	        scope_max * sizeof (tree));
   }
   scope_stack[scope_i] = t;
@@ -772,7 +772,7 @@ Push_Temp_Cleanup (tree t, bool is_cleanup
   if (++temp_cleanup_i == temp_cleanup_max) {
     temp_cleanup_max = ENLARGE (temp_cleanup_max);
     temp_cleanup_stack =
-      (TEMP_CLEANUP_INFO *) realloc (temp_cleanup_stack,
+      (TEMP_CLEANUP_INFO *) xrealloc (temp_cleanup_stack,
 				     temp_cleanup_max * 
                                        sizeof (TEMP_CLEANUP_INFO));
   }
@@ -883,7 +883,7 @@ WFE_Record_Loop_Switch (int tree_code)
   if (++break_continue_info_i == break_continue_info_max) {
     break_continue_info_max = ENLARGE (break_continue_info_max);
     break_continue_info_stack =
-      (BREAK_CONTINUE_INFO *) realloc (break_continue_info_stack,
+      (BREAK_CONTINUE_INFO *) xrealloc (break_continue_info_stack,
 				       break_continue_info_max *
 					 sizeof (BREAK_CONTINUE_INFO));
   }
@@ -940,7 +940,7 @@ WFE_Expand_Case (tree low, tree high)
 				      : WFE_Expand_Expr(high);
     if (++case_info_i == case_info_max) {
       case_info_max   = ENLARGE(case_info_max);
-      case_info_stack = (CASE_INFO *) realloc (case_info_stack,
+      case_info_stack = (CASE_INFO *) xrealloc (case_info_stack,
                                                case_info_max * sizeof (CASE_INFO));
     }
 
@@ -1527,7 +1527,7 @@ WFE_Get_LABEL (tree label, int def)
       if (++undefined_labels_i == undefined_labels_max) {
         undefined_labels_max   = ENLARGE(undefined_labels_max);
         undefined_labels_stack =
-          (LABEL_INFO *) realloc (undefined_labels_stack,
+          (LABEL_INFO *) xrealloc (undefined_labels_stack,
                                   undefined_labels_max * sizeof (LABEL_INFO));
       }
       undefined_labels_stack [undefined_labels_i].label_idx  = label_idx;
@@ -1580,55 +1580,55 @@ WFE_Stmt_Init (void)
   if_else_info_max   = 32;
   if_else_info_i     = -1;
   if_else_info_stack = 
-    (BOOL *) malloc (sizeof (BOOL) * if_else_info_max);
+    (BOOL *) xmalloc (sizeof (BOOL) * if_else_info_max);
 
   case_info_max      = 32;
   case_info_i        = -1;
   case_info_stack    = 
-    (CASE_INFO *) malloc (sizeof (CASE_INFO) * case_info_max);
+    (CASE_INFO *) xmalloc (sizeof (CASE_INFO) * case_info_max);
 
   switch_info_max    = 32;
   switch_info_i      = -1;
   switch_info_stack  = 
-    (SWITCH_INFO *) malloc (sizeof (SWITCH_INFO) * switch_info_max);
+    (SWITCH_INFO *) xmalloc (sizeof (SWITCH_INFO) * switch_info_max);
 
   break_continue_info_max   = 32;
   break_continue_info_i     = -1;
   break_continue_info_stack = 
-    (BREAK_CONTINUE_INFO *) malloc (sizeof (BREAK_CONTINUE_INFO) *
+    (BREAK_CONTINUE_INFO *) xmalloc (sizeof (BREAK_CONTINUE_INFO) *
                                     break_continue_info_max);
 
   undefined_labels_max   = 32;
   undefined_labels_i     = -1;
   undefined_labels_stack = 
-    (LABEL_INFO *) malloc (sizeof (LABEL_INFO) * undefined_labels_max);
+    (LABEL_INFO *) xmalloc (sizeof (LABEL_INFO) * undefined_labels_max);
 
   scope_cleanup_max      = 32;
   scope_cleanup_i  	 = -1;
   scope_cleanup_stack    =
-    (SCOPE_CLEANUP_INFO *) malloc (sizeof (SCOPE_CLEANUP_INFO) * 
+    (SCOPE_CLEANUP_INFO *) xmalloc (sizeof (SCOPE_CLEANUP_INFO) * 
 				   scope_cleanup_max);
 
   scope_max    	         = 32;
   scope_i  	         = -1;
   scope_stack            =
-    (tree *) malloc (sizeof (tree) * scope_max);
+    (tree *) xmalloc (sizeof (tree) * scope_max);
 
   temp_cleanup_max       = 32;
   temp_cleanup_i	 = -1;
   temp_cleanup_stack	 =
-    (TEMP_CLEANUP_INFO *) malloc (sizeof (TEMP_CLEANUP_INFO) * 
+    (TEMP_CLEANUP_INFO *) xmalloc (sizeof (TEMP_CLEANUP_INFO) * 
 				  temp_cleanup_max);
 
   handler_info_max	 = 32;
   handler_info_i	 = -1;
   handler_info_stack     =
-    (HANDLER_INFO *) malloc (sizeof(HANDLER_INFO) * handler_info_max);
+    (HANDLER_INFO *) xmalloc (sizeof(HANDLER_INFO) * handler_info_max);
 
   eh_cleanup_max	 = 32;
   eh_cleanup_i		 = -1;
   eh_cleanup_stack	 =
-    (EH_CLEANUP_INFO *) malloc (sizeof (EH_CLEANUP_INFO) * eh_cleanup_max);
+    (EH_CLEANUP_INFO *) xmalloc (sizeof (EH_CLEANUP_INFO) * eh_cleanup_max);
 
   scope_number           = 0;
 } /* WFE_Stmt_Init */
@@ -2490,7 +2490,7 @@ WFE_Expand_Start_Case (tree selector)
   WFE_Stmt_Push (switch_block, wfe_stmk_switch, Get_Srcpos());
   if (++switch_info_i == switch_info_max) {
     switch_info_max   = ENLARGE(switch_info_max);
-    switch_info_stack = (SWITCH_INFO *) realloc (switch_info_stack,
+    switch_info_stack = (SWITCH_INFO *) xrealloc (switch_info_stack,
                                                  switch_info_max * sizeof (SWITCH_INFO));
   }
   switch_info_stack [switch_info_i].index             = index;
@@ -2664,11 +2664,11 @@ Get_typeinfo_var (tree t)
 	ti_var = IDENTIFIER_GLOBAL_VALUE (mangle_typeinfo_for_type(t));
     FmtAssert (ti_var, ("Typeinfo of handler unavailable"));
     if (DECL_ASSEMBLER_NAME_SET_P (ti_var) && 
-    	TREE_NOT_EMITTED_BY_GXX (ti_var) && 
+    	IDENTIFIER_WHIRL_NOT_EMITTED (ti_var) && 
 	!TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (ti_var)))
     {
 	// Add it to the vector so that we emit them later
-	TREE_NOT_EMITTED_BY_GXX (ti_var) = 0;
+	IDENTIFIER_WHIRL_NOT_EMITTED (ti_var) = 0;
 	TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (ti_var)) = 1;
 	gxx_emits_typeinfos (ti_var);
     }
@@ -3618,22 +3618,22 @@ WFE_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 static void
 WFE_Expand_Omp (tree stmt)
 {
-  switch (stmt->omp.choice)
+  switch (stmt->whirl_omp.choice)
   {
     case parallel_dir_b:
-      expand_start_parallel ((struct parallel_clause_list *) stmt->omp.omp_clause_list);
+      expand_start_parallel ((struct parallel_clause_list *) stmt->whirl_omp.clauses);
       break;
     case parallel_dir_e:
       expand_end_parallel ();
       break;
     case for_dir_b:
-      expand_start_for ((struct for_clause_list *) stmt->omp.omp_clause_list);
+      expand_start_for ((struct for_clause_list *) stmt->whirl_omp.clauses);
       break;
     case for_dir_e:
       expand_end_for ();
       break;
     case sections_cons_b:
-      expand_start_sections ((struct sections_clause_list *) stmt->omp.omp_clause_list);
+      expand_start_sections ((struct sections_clause_list *) stmt->whirl_omp.clauses);
       break;
     case sections_cons_e:
       expand_end_sections ();
@@ -3645,18 +3645,18 @@ WFE_Expand_Omp (tree stmt)
       expand_end_section ();
       break;
     case single_cons_b:
-      expand_start_single ((struct single_clause_list *) stmt->omp.omp_clause_list);      break;
+      expand_start_single ((struct single_clause_list *) stmt->whirl_omp.clauses);      break;
     case single_cons_e:
       expand_end_single ();
       break;
     case par_for_cons_b:
-      expand_start_parallel_for ((struct parallel_for_clause_list *) stmt->omp.omp_clause_list);
+      expand_start_parallel_for ((struct parallel_for_clause_list *) stmt->whirl_omp.clauses);
       break;
     case par_for_cons_e:
       expand_end_parallel_for ();
       break;
     case par_sctn_cons_b:
-      expand_start_parallel_sections ((struct parallel_sections_clause_list *) stmt->omp.omp_clause_list);
+      expand_start_parallel_sections ((struct parallel_sections_clause_list *) stmt->whirl_omp.clauses);
       break;
     case par_sctn_cons_e:
       expand_end_parallel_sections ();
@@ -3668,7 +3668,7 @@ WFE_Expand_Omp (tree stmt)
       expand_end_master ();
       break;
     case critical_cons_b:
-      expand_start_critical ((tree) stmt->omp.omp_clause_list);
+      expand_start_critical ((tree) stmt->whirl_omp.clauses);
       break;
     case critical_cons_e:
       expand_end_critical ();
@@ -3677,7 +3677,7 @@ WFE_Expand_Omp (tree stmt)
       expand_barrier ();
       break;
     case flush_dir:
-      expand_flush ((tree) stmt->omp.omp_clause_list);
+      expand_flush ((tree) stmt->whirl_omp.clauses);
       break;
     case atomic_cons_b:
       expand_start_atomic ();
@@ -3692,7 +3692,7 @@ WFE_Expand_Omp (tree stmt)
       expand_end_ordered ();
       break;
     case thdprv_dir:
-      expand_threadprivate ((tree) stmt->omp.omp_clause_list);
+      expand_threadprivate ((tree) stmt->whirl_omp.clauses);
       break;
     case options_dir:
     case exec_freq_dir:
@@ -4019,7 +4019,7 @@ bool
 WFE_has_copy_constructor (tree type)
 {
   if (CLASS_TYPE_P(type) &&
-      CLASSTYPE_COPY_CONSTRUCTOR(type) != NULL)
+      CLASSTYPE_WHIRL_COPY_CTOR(type) != NULL)
     return TRUE;
 
   return FALSE;
@@ -4070,12 +4070,12 @@ Add_Current_Scope_Alloca_St (ST * st, int idx)
 void
 WFE_Expand_Pragma (tree exp)
 {
-  switch (exp->omp.choice)
+  switch (exp->whirl_omp.choice)
   {
     case options_dir:
     { // pragma options
       TCON tcon;
-      exp = (tree) exp->omp.omp_clause_list;
+      exp = (tree) exp->whirl_omp.clauses;
       tcon = Host_To_Targ_String (MTYPE_STRING,
                                   const_cast<char*>TREE_STRING_POINTER(exp),
                                   TREE_STRING_LENGTH(exp) - 1 /* ignore \0 */);
@@ -4092,7 +4092,7 @@ WFE_Expand_Pragma (tree exp)
       MIPS_FREQUENCY_HINT freq_hint;
       Is_True (TREE_CODE ((tree) exp->omp.omp_clause_list) == STRING_CST,
                ("Expected string constant with mips_frequency_hint"));
-      const char * hint = TREE_STRING_POINTER ((tree) exp->omp.omp_clause_list);                                                                                
+      const char * hint = TREE_STRING_POINTER ((tree) exp->whirl_omp.clauses);                                                                                
       if (!strcmp (hint, "never")) freq_hint = FREQUENCY_HINT_NEVER;
       else if (!strcmp (hint, "init")) freq_hint = FREQUENCY_HINT_INIT;
       else if (!strcmp (hint, "frequent")) freq_hint = FREQUENCY_HINT_FREQUENT;

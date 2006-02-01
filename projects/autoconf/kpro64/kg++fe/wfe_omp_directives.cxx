@@ -21,16 +21,27 @@
  * Temple Place - Suite 330, Boston MA 02111-1307, USA.
  */
 
-#include "gnu_config.h"
-#include "system.h"
-extern "C"
-{
-#include "gnu/tree.h"
-#include "cp-tree.h"
-}
+#include <stdio.h>
+#include <stack>
 
+#include "defs.h"
+#include "errors.h"
+#include "erglob.h"
 #include "wn.h"
 #include "wn_util.h"
+#include "const.h"
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#define operator oprtr
+#include <cp/cp-tree.h>
+#undef operator
+#undef IN_GCC
+};
+
 #include "wfe_misc.h"
 #include "wfe_stmt.h"
 #include "omp_types.h"
@@ -39,12 +50,6 @@ extern "C"
 #include "wfe_omp_check_stack.h"
 #include "tree_symtab.h"
 
-#include "stdio.h"
-#include "errors.h"
-#include "const.h"
-#include "erglob.h"
-
-#include <stack>
 // The structure of the stack is expected to be:
 //   dtor1
 //   dtor2

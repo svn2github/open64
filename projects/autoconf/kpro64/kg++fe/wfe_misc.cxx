@@ -30,8 +30,8 @@
    Revised to support Tensilica processors and to improve overall performance
  */
 
-#include <values.h>
 #include <sys/types.h>
+#include <stdarg.h>
 #include <elf.h>
 #include "defs.h"
 #include "config_global.h"
@@ -48,17 +48,7 @@
 #include "tracing.h"
 #include "util.h"
 #include "errors.h"
-// #include "cmd_line.h"
 #include "err_host.tab"
-#include <stdarg.h>
-#include "gnu_config.h"
-extern "C" {
-#include "gnu/system.h"
-#include "gnu/tree.h"
-}
-#ifdef KEY
-#include "gnu/flags.h"
-#endif
 #include "wn.h"
 #include "wn_util.h"
 #include "wn_simp.h"
@@ -66,15 +56,33 @@ extern "C" {
 #include "pu_info.h"
 #include "ir_reader.h"
 #include "ir_bwrite.h"
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#undef IN_GCC
+extern int key_exceptions;
+extern int opt_regions;
+
+enum debug_info_level
+{
+  DINFO_LEVEL_NONE,     /* Write no debugging info.  */
+  DINFO_LEVEL_TERSE,    /* Write minimal info to support tracebacks only.  */
+  DINFO_LEVEL_NORMAL,   /* Write info for all declarations (and line table). */
+  DINFO_LEVEL_VERBOSE   /* Write normal info plus #define/#undef info.  */
+};
+extern enum debug_info_level debug_info_level;
+};
+
 #include "wfe_decl.h"
 #include "wfe_expr.h"
 #include "wfe_dst.h"
 #include "wfe_misc.h"
 #include "wfe_stmt.h"
 #include "c_int_model.h"
-#ifdef KEY
 #include "tree_symtab.h"
-#endif
 
 int WFE_Keep_Zero_Length_Structs = TRUE;
 
@@ -101,22 +109,6 @@ static void WFE_Guard_Var_Init();
 // we set the following flag.
 bool Did_Not_Terminate_Region = FALSE;
 #endif
-#ifndef KEY
-// The following taken from gnu/flags.h
-// our #include of flags.h gets common/util/flags.h instead
-enum debug_info_level
-{
-  DINFO_LEVEL_NONE,     /* Write no debugging info.  */
-  DINFO_LEVEL_TERSE,    /* Write minimal info to support tracebacks only.  */
-  DINFO_LEVEL_NORMAL,   /* Write info for all declarations (and line table). */
-  DINFO_LEVEL_VERBOSE   /* Write normal info plus #define/#undef info.  */
-};
-#endif // !KEY
-
-/* Specify how much debugging info to generate.  */
-extern enum debug_info_level debug_info_level;
-// End gnu/flags.h data decl
-
 
 
 /* ====================================================================
@@ -298,7 +290,7 @@ Prepare_Source ( void )
 
       /* Copy the given source name: */
       len = strlen ( Argv[i] );
-      Src_File_Name = (char *) malloc (len+5);
+      Src_File_Name = (char *) xmalloc (len+5);
       strcpy ( Src_File_Name, Argv[i] );
 
       /* We've got a source file name -- open other files.
@@ -522,7 +514,7 @@ static void
 WFE_Stmt_Stack_Init (void)
 {
   wn_stmt_stack_size = WN_STMT_STACK_SIZE;
-  wn_stmt_stack      = (WN_STMT *) malloc (sizeof (WN_STMT) *
+  wn_stmt_stack      = (WN_STMT *) xmalloc (sizeof (WN_STMT) *
                                            wn_stmt_stack_size );
   wn_stmt_sp         = wn_stmt_stack - 1;
   wn_stmt_stack_last = wn_stmt_stack + wn_stmt_stack_size - 1;
@@ -551,7 +543,7 @@ WFE_Stmt_Push (WN* wn, WFE_STMT_KIND kind, SRCPOS srcpos)
   if (wn_stmt_sp == wn_stmt_stack_last) {
     new_stack_size = ENLARGE(wn_stmt_stack_size);
     wn_stmt_stack =
-      (WN_STMT *) realloc (wn_stmt_stack, new_stack_size * sizeof (WN_STMT));
+      (WN_STMT *) xrealloc (wn_stmt_stack, new_stack_size * sizeof (WN_STMT));
     wn_stmt_sp = wn_stmt_stack + wn_stmt_stack_size - 1;
     wn_stmt_stack_size = new_stack_size;
     wn_stmt_stack_last = wn_stmt_stack + wn_stmt_stack_size - 1;

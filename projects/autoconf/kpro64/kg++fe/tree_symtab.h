@@ -46,6 +46,8 @@
 
 #include "wfe_dst.h"
 
+#define BITSPERBYTE     8
+
 extern TY_IDX Create_TY_For_Tree (tree, TY_IDX idx = TY_IDX_ZERO);
 extern "C" ST* Create_ST_For_Tree (tree);
 

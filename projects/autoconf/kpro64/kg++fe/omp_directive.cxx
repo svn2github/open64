@@ -21,18 +21,27 @@
  * Temple Place - Suite 330, Boston MA 02111-1307, USA.
  */
 
+#include <stdio.h>
+
 #include "defs.h"
 #include "glob.h"
 #include "config_global.h"
 #include "wn.h"
 #include "wn_util.h"
-
-#include "gnu_config.h"
-#include "system.h"
-
 #include "srcpos.h"
-#include "tree.h"
-#include "c-common.h"
+#include "errors.h"
+#include "const.h"
+
+extern "C" {
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#define operator oprtr
+#include <c-common.h>
+#undef operator
+#undef IN_GCC
+};
 
 #include "tree_symtab.h"
 #include "wfe_expr.h"
@@ -43,9 +52,6 @@
 #include "wfe_omp_directives.h"
 #include "wfe_omp_check_stack.h"
 
-#include <stdio.h>
-#include "errors.h"
-#include "const.h"
  
 // tree chainon (tree, tree):
 // Concatenate two chains of nodes (chained through TREE_CHAIN)
@@ -151,7 +157,7 @@ void prepare_com_clause (tree  clause_tree, ST_list **clause_st)
      if (!clause_tree)
      {
        // clause must be private
-       stlist = (struct ST_list *) malloc (sizeof (struct ST_list));
+       stlist = new ST_list;
        stlist->var = NULL; // marker
        stlist->next = NULL;
        if (!last)
@@ -177,7 +183,7 @@ void prepare_com_clause (tree  clause_tree, ST_list **clause_st)
            var = tsubst_var;
 
          st = Get_Pre_ST (var); // st unused
-       	 stlist = (struct ST_list *) malloc(sizeof(struct ST_list));
+       	 stlist = new ST_list;
          stlist->var = var ;
          stlist->next = NULL;
          if (!last)
@@ -248,7 +254,7 @@ void prepare_reduction_clause (reduction_list *reduction_clause_list,
                   st = Get_Pre_ST (var);
                 wn = WN_CreatePragma(WN_PRAGMA_REDUCTION, st, 0, op_code);
                 WN_set_pragma_omp(wn);
-       	        wnlist = (struct WN_list *) malloc(sizeof(struct WN_list));
+       	        wnlist = new WN_list;
                 wnlist->wn = wn;
                 wnlist->next = *reduction_clause_wn;
                 *reduction_clause_wn = wnlist;
@@ -363,7 +369,7 @@ expand_start_parallel (struct parallel_clause_list * clause_list)
      for (cl = clause_list; cl != NULL; cl = cl->next)
        {
           if ( cl->type == p_reduction ) {
-             rl = (reduction_list *) malloc(sizeof(reduction_list));
+             rl = new reduction_list;
              rl->node = cl->node.reduction_node;
              rl->next = reduction_clause_list;
              reduction_clause_list = rl;
@@ -503,7 +509,7 @@ expand_start_for (struct for_clause_list * clause_list)
      for (cl = clause_list; cl != NULL; cl = cl->next)
        {
           if ( cl->type == f_reduction ) {
-          	 rl = (struct reduction_list *) malloc(sizeof(struct reduction_list));
+          	 rl = new reduction_list;
              rl->node = cl->node.reduction_node;
              rl->next = reduction_clause_list;
              reduction_clause_list = rl;
@@ -645,7 +651,7 @@ expand_start_sections (struct sections_clause_list * clause_list)
      for (cl = clause_list; cl != NULL; cl = cl->next)
        {
           if ( cl->type == sections_reduction ) {
-          	 rl = (struct reduction_list *) malloc(sizeof(struct reduction_list));
+          	 rl = new reduction_list;
              rl->node = cl->node.reduction_node;
              rl->next = reduction_clause_list;
              reduction_clause_list = rl;
@@ -915,7 +921,7 @@ expand_start_parallel_for (struct parallel_for_clause_list * clause_list)
      for (cl = clause_list; cl != NULL; cl = cl->next)
        {
           if ( cl->type == p_for_reduction ) {
-          	 rl = (struct reduction_list *) malloc(sizeof(struct reduction_list));
+          	 rl = new reduction_list;
              rl->node = cl->node.reduction_node;
              rl->next = reduction_clause_list;
              reduction_clause_list = rl;
@@ -1113,7 +1119,7 @@ expand_start_parallel_sections( struct parallel_sections_clause_list * clause_li
      for (cl = clause_list; cl != NULL; cl = cl->next)
      {
           if ( cl->type == p_sections_reduction ) {
-          	 rl = (struct reduction_list *) malloc(sizeof(struct reduction_list));
+          	 rl = new reduction_list;
              rl->node = cl->node.reduction_node;
              rl->next = reduction_clause_list;
              reduction_clause_list = rl;
@@ -1178,7 +1184,7 @@ void expand_end_master ( )
 
 void expand_start_critical( tree region_phrase )
 {
-    char *critical_name = NULL;
+    const char *critical_name = NULL;
     ST *st = NULL;        
     TCON           tcon;
     TY_IDX ty;
@@ -1186,12 +1192,14 @@ void expand_start_critical( tree region_phrase )
     if (region_phrase)
       {
          critical_name = IDENTIFIER_POINTER (region_phrase);
-         tcon = Host_To_Targ_String ( MTYPE_STRING, critical_name, strlen(critical_name));
+         tcon = Host_To_Targ_String ( MTYPE_STRING,
+			(char*)(uintptr_t)critical_name,
+			strlen(critical_name));
          st = Gen_String_Sym (&tcon, MTYPE_To_TY(MTYPE_STRING), FALSE );
       }
     if (Trace_Omp)
       printf("critical name is %s \n",critical_name);
-    WFE_expand_start_critical ( st,critical_name );
+    WFE_expand_start_critical(st, (char*)(uintptr_t)critical_name);
 }
  
 void expand_end_critical (  )
@@ -1281,7 +1289,7 @@ void  expand_flush (tree flush_variables)
     for (t = flush_variables; t; t = TREE_CHAIN (t))
     { 
        WN *wn = WFE_Expand_Expr(TREE_VALUE(t));
-       wnlist = (struct WN_list *) malloc(sizeof(struct WN_list));
+       wnlist = new WN_list;
        wnlist->wn = WN_CopyNode (wn) ;
        wnlist->next = flush_wn_list;
        flush_wn_list = wnlist;
@@ -1296,7 +1304,7 @@ void  expand_threadprivate (tree threadprivate_variables)
     register tree t = NULL;
     for (t = threadprivate_variables; t; t = TREE_CHAIN (t))
     { 
-       DECL_THREADPRIVATE (TREE_VALUE(t)) = 1;
+       DECL_WHIRL_THREADPRIVATE (TREE_VALUE(t)) = 1;
     }
 }
 
@@ -1559,7 +1567,7 @@ build_parallel_clause_list (tree t,
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  parallel_clause_list * result = (parallel_clause_list *) malloc (sizeof (parallel_clause_list));
+  parallel_clause_list * result = new parallel_clause_list;
 
   result->type = p_type;
   result->next = NULL;
@@ -1610,7 +1618,7 @@ build_for_clause_list (tree t, for_clause_type f_type, schedule_kind_type s_kind
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  for_clause_list * result = (for_clause_list *) malloc (sizeof (for_clause_list));
+  for_clause_list * result = new for_clause_list;
 
   result->type = f_type;
   result->next = NULL;
@@ -1665,7 +1673,7 @@ build_sections_clause_list (tree t, sections_clause_type s_type, reduction_op_ty
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  sections_clause_list * result = (sections_clause_list *) malloc (sizeof (sections_clause_list));
+  sections_clause_list * result = new sections_clause_list;
 
   result->type = s_type;
   result->next = NULL;
@@ -1713,7 +1721,7 @@ build_single_clause_list (tree t, single_clause_type s_type)
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  struct single_clause_list * result = (single_clause_list *) malloc (sizeof (single_clause_list));
+  struct single_clause_list * result = new single_clause_list;
 
   result->type = s_type;
   result->next = NULL;
@@ -1761,7 +1769,7 @@ build_parallel_for_clause_list (tree t,
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  struct parallel_for_clause_list * result = (parallel_for_clause_list *) malloc (sizeof (parallel_for_clause_list));
+  struct parallel_for_clause_list * result = new parallel_for_clause_list;
 
   result->type = p_type;
   result->next = NULL;
@@ -1826,7 +1834,7 @@ build_parallel_sections_clause_list (tree t, parallel_sections_clause_type p_typ
   // mark the end of the current clause
   seen_omp_paren = FALSE;
 
-  parallel_sections_clause_list * result = (parallel_sections_clause_list *) malloc (sizeof (parallel_sections_clause_list));
+  parallel_sections_clause_list * result = new parallel_sections_clause_list;
 
   result->type = p_type;
   result->next = NULL;

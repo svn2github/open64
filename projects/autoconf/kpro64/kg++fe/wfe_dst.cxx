@@ -73,7 +73,13 @@ static char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/g++fe/wfe_dst.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-#include <values.h>
+#include <sys/types.h>
+#include <sys/stat.h>   /* For accessing file statistics (stat()) */
+#include <sys/param.h>  /* For MAXHOSTNAMELEN */
+#include <unistd.h>     /* for gethostname() and getcwd() */
+#include <string>
+#include <vector>
+#include <map>
 
 #include "defs.h"
 #include "glob.h"
@@ -83,30 +89,24 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/g++fe/wfe_dst.
 #include "file_util.h"  /* From common/util */
 #include "srcpos.h"
 #include "symtab.h"
-#include "gnu_config.h"
-#ifdef KEY	// get HW_WIDE_INT for flags.h
-#include "gnu/hwint.h"
-#endif	/* KEY */
-#include "gnu/flags.h"
+
 extern "C" {
-#include "gnu/system.h"
-#include "gnu/tree.h"
-#include "cp-tree.h"
-}
+#define IN_GCC
+#include <gcc-config.h>
+#include <system.h>
+#include <tree.h>
+#define operator oprtr
+#include <cp/cp-tree.h>
+#undef operator
+#undef IN_GCC 
+};
+
 #include "wfe_misc.h"
 #include "wfe_dst.h"
 #include "wfe_expr.h"
 #include "tree_symtab.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>   /* For accessing file statistics (stat()) */
-#include <sys/param.h>  /* For MAXHOSTNAMELEN */
-#include <unistd.h>     /* for gethostname() and getcwd() */
-#include <string>
-#include <vector>
-#include <map>
 #ifdef KEY
-#include "stamp.h"	/* For INCLUDE_STAMP */
 #include "demangle.h"
 extern "C" char *cplus_demangle (const char *, int);
 #endif
@@ -268,7 +268,7 @@ Get_Dir_Dst_Info (char *name)
 #ifdef KEY
 	// We have to create a new home for name because memory
 	// will be freed once the caller exits. 
-	char *new_name = (char *)malloc((strlen(name)+1)*sizeof(char));
+	char *new_name = (char *)xmalloc((strlen(name)+1));
 	strcpy(new_name, name);
 	name = new_name;
 #endif
@@ -302,7 +302,7 @@ Get_File_Dst_Info (char *name, UINT dir)
 #ifdef KEY
 	// We have to create a new home for name because memory
 	// will be freed once the caller exits. 
-	char *new_name = (char *)malloc((strlen(name)+1)*sizeof(char));
+	char *new_name = (char *)xmalloc((strlen(name)+1));
 	strcpy(new_name, name);
 	name = new_name;
 #endif
@@ -363,8 +363,8 @@ DST_get_command_line_options(INT32 num_copts,
   char      ch;
   INT32     record_option;
 
-  selected_opt = (char **)malloc(sizeof(char*) * num_copts);
-  opt_size = (INT32 *)malloc(sizeof(INT32) * num_copts);
+  selected_opt = (char **)xmalloc(sizeof(char*) * num_copts);
+  opt_size = (INT32 *)xmalloc(sizeof(INT32) * num_copts);
   
   for (i = 1; i <= num_copts; i++)
   {
@@ -394,11 +394,11 @@ DST_get_command_line_options(INT32 num_copts,
   
   if (strlength == 0)
   {
-     rtrn = (char *)calloc(1, 1); /* An empty string */
+     rtrn = (char *)xcalloc(1, 1); /* An empty string */
   }
   else
   {
-     rtrn = (char *)malloc(strlength);
+     rtrn = (char *)xmalloc(strlength);
      cp = rtrn;
 
      /* Append the selected options to the string (rtrn) */
@@ -416,7 +416,7 @@ DST_get_command_line_options(INT32 num_copts,
   return rtrn;
 } /* DST_get_command_line_options */
 
-static char *
+static const char *
 Get_Name (tree node)
 {
   static char buf[64];
@@ -426,7 +426,7 @@ Get_Name (tree node)
 		buf[0] = 0;
                 return buf;
   }
-  char *name = buf;
+  const char *name = buf;
   buf[0] = 0;
 
 #define DANAME(d) ((TREE_CODE_CLASS(TREE_CODE(d)) =='d')? \
@@ -474,9 +474,9 @@ DST_enter_static_data_mem(tree  parent_tree,
     int isbit = 0;
     DST_INFO_IDX field_idx = DST_INVALID_INIT;
 
-    char * linkage_name = 
+    const char * linkage_name = 
   		IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME (field));
-    char * mem_name = Get_Name(field);
+    const char * mem_name = Get_Name(field);
 
 
     tree ftype = TREE_TYPE(field);
@@ -503,7 +503,7 @@ DST_enter_static_data_mem(tree  parent_tree,
 
     field_idx = DST_mk_variable(
         src,         // srcpos
-        mem_name,  // user typed name, not mangled
+        (char*)(uintptr_t)mem_name,  // user typed name, not mangled
         fidx,        // user typed type name here (typedef type perhaps).
         0,           // offset (fortran uses non zero )
         (void*) base, // underlying type here, not typedef.
@@ -525,7 +525,8 @@ DST_enter_static_data_mem(tree  parent_tree,
 
 #ifdef KEY
     if(mem_name && linkage_name && strcmp(mem_name, linkage_name)) {
-       DST_add_linkage_name_to_variable(field_idx, linkage_name);
+       DST_add_linkage_name_to_variable(field_idx,
+		(char*)(uintptr_t)linkage_name);
     }
 #else
     // FIXME: need a data version of this.
@@ -589,13 +590,13 @@ DST_enter_member_function( tree parent_tree,
 
 #ifdef KEY
     // bug 1736.  Why is the name of the operator omitted?  Let's not do that
-    char *basename = IDENTIFIER_POINTER (DECL_NAME (fndecl));
+    const char *basename = IDENTIFIER_POINTER (DECL_NAME (fndecl));
 #else
     char * basename = 
 	IDENTIFIER_OPNAME_P(DECL_NAME(fndecl))? 0 :
 	IDENTIFIER_POINTER (DECL_NAME (fndecl));
 #endif
-    char * linkage_name = 
+    const char * linkage_name = 
 	IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME (fndecl));
 #ifdef KEY
     // Bug 3846
@@ -650,7 +651,7 @@ DST_enter_member_function( tree parent_tree,
 
     dst = DST_mk_subprogram(
         src,			// srcpos
-        basename,
+        (char*)(uintptr_t)basename,
         ret_dst,        	// return type
         DST_INVALID_IDX,        // Index to alias for weak is set later
         (void*) 0,              // index to fe routine for st_idx
@@ -693,7 +694,8 @@ DST_enter_member_function( tree parent_tree,
 
     }
     if(basename && linkage_name && strcmp(basename, linkage_name)) {
-       DST_add_linkage_name_to_subprogram(dst, linkage_name);
+       DST_add_linkage_name_to_subprogram(dst,
+		(char*)(uintptr_t)linkage_name);
     }
     DECL_DST_SPECIFICATION_IDX(fndecl) = dst;
 }
@@ -729,7 +731,7 @@ DST_enter_normal_field(tree  parent_tree,
 	   isbit = 1;
     }
     DST_INFO_IDX field_idx = DST_INVALID_INIT;
-    char *field_name = Get_Name((field));
+    const char *field_name = Get_Name((field));
 
 #ifdef KEY
     // bug 1718
@@ -814,7 +816,7 @@ UINT align = TYPE_ALIGN(ftype)/BITSPERBYTE;
 	    accessibility = 0;
 	  field_idx = DST_mk_member(
 		src,
-		field_name,
+		(char*)(uintptr_t)field_name,
 		fidx, // field type	
 		fld_offset_bytes, // field offset in bytes
 			0, // no container (size zero)
@@ -875,7 +877,7 @@ UINT align = TYPE_ALIGN(ftype)/BITSPERBYTE;
 	    accessibility = 0;
 	  field_idx = DST_mk_member(
 			src,
-			field_name,
+			(char*)(uintptr_t)field_name,
 			fidx	,      // field type	
                         container_off,    // container offset in bytes
 			tsize,         // container size, bytes
@@ -1026,7 +1028,7 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
         USRCPOS_clear(src);
 #endif // KEY
 
-	char *name = Get_Name(type_tree);
+	const char *name = Get_Name(type_tree);
 
 #ifdef KEY
         // bug 1718
@@ -1037,14 +1039,14 @@ DST_enter_struct_union(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 
 	if(TREE_CODE(type_tree) == RECORD_TYPE) {
 	   dst_idx = DST_mk_structure_type(src,
-		  name , // struct tag name
+		  (char*)(uintptr_t)name , // struct tag name
 		  tsize,
 		  DST_INVALID_IDX, // not inlined
 		   TREE_PURPOSE(type_tree)== 0   // 1 if incomplete
 		   );
 	} else if (TREE_CODE(type_tree) == UNION_TYPE) {
 	   dst_idx = DST_mk_union_type(src,
-		  name  , // union tag name
+		  (char*)(uintptr_t)name  , // union tag name
 		  tsize,
 		  DST_INVALID_IDX, // not inlined
 		   TREE_PURPOSE(type_tree)== 0   // arg 1 if incomplete
@@ -1164,11 +1166,11 @@ DST_enter_enum(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 #else
       USRCPOS_clear(src);
 #endif // KEY
-      char *name1 = Get_Name(type_tree);
+      const char *name1 = Get_Name(type_tree);
       tree enum_entry = TYPE_VALUES(type_tree);
       DST_size_t e_tsize =  tsize;
       t_dst_idx = DST_mk_enumeration_type( src,
-                           name1,
+                           (char*)(uintptr_t)name1,
                            e_tsize, // Type size.
                            DST_INVALID_IDX, // Not inlined.
                            (enum_entry==NULL_TREE)); // Pass non-zero 
@@ -1201,7 +1203,7 @@ DST_enter_enum(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
 #else
          USRCPOS_clear(src);
 #endif // KEY
-         char *name2 = 
+         const char *name2 = 
 		  IDENTIFIER_POINTER(TREE_PURPOSE(enum_entry));
 
          if (tsize == 8) {
@@ -1213,7 +1215,7 @@ DST_enter_enum(tree type_tree, TY_IDX ttidx  , TY_IDX idx,
          }
 
 	 DST_INFO_IDX ed = DST_mk_enumerator(src,
-				name2,
+				(char*)(uintptr_t)name2,
 				enumerator);
 	 DST_append_child(t_dst_idx,ed);
 	
@@ -1500,7 +1502,7 @@ DST_construct_pointer_to_member(tree type_tree)
     USRCPOS_clear(src);
 #endif // KEY
 
-    char *name1 = 0;
+    const char *name1 = 0;
     if(DECL_ORIGINAL_TYPE(type_tree)== 0) {
       // not a typedef type.
       name1 =  Get_Name(TREE_TYPE(type_tree));
@@ -1549,7 +1551,7 @@ DST_construct_pointer_to_member(tree type_tree)
 
     DST_INFO_IDX lidx =
 	DST_mk_ptr_to_member_type(src,
-		  name1, //name, I expect it to be empty 
+		  (char*)(uintptr_t)name1, //name, I expect it to be empty 
 		  mdst	, //type of member
 		  container_dst); //type of class
     return lidx;
@@ -1624,7 +1626,7 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 	current_scope_idx = DST_get_context(TYPE_CONTEXT(type_tree));
     }
 
-    char *name1 = Get_Name(type_tree);
+    const char *name1 = Get_Name(type_tree);
 
     TYPE_ID mtype;
     INT tsize;
@@ -1767,7 +1769,7 @@ Create_DST_type_For_Tree (tree type_tree, TY_IDX ttidx  , TY_IDX idx, bool ignor
 #endif
                        {
                        dst_idx = DST_mk_basetype(
-                                name1,encoding,tsize);
+                                (char*)(uintptr_t)name1,encoding,tsize);
                        basetypes[names] = dst_idx;
 		       DST_append_child(comp_unit_idx,dst_idx);
                        }
@@ -2045,7 +2047,7 @@ DST_Create_type(ST *typ_decl, tree decl)
 
 
 
-    char *name1 = 0; 
+    const char *name1 = 0; 
     if(DECL_ORIGINAL_TYPE(decl)== 0) {
       // not a typedef type.
       name1 =  Get_Name(TREE_TYPE(decl));
@@ -2098,7 +2100,7 @@ DST_Create_type(ST *typ_decl, tree decl)
 		/* struct/union fwd decl TY_IDX=*/ 0);
 
     dst_idx = DST_mk_typedef( src,
-                          name1, // new type name we are defining
+                          (char*)(uintptr_t)name1, // new type name we are defining
                           dst, // type of typedef
                           DST_INVALID_IDX);
     DST_append_child(current_scope_idx,dst_idx);
@@ -2159,7 +2161,7 @@ DST_find_class_member(char * linkage_name_in, tree myrecord)
     {
         if(TREE_CODE(field) == VAR_DECL) {
 
-             char * linkage_name =
+             const char * linkage_name =
                         IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME (field));
 	     if(linkage_name && 
 			(strcmp(linkage_name,  linkage_name_in) == 0)) {
@@ -2176,7 +2178,7 @@ DST_find_class_member(char * linkage_name_in, tree myrecord)
              // We want only ones user coded.
              continue;
            } else {
-	     char * linkage_name = 
+	     const char * linkage_name = 
 		   IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME (methods));
 	     if(linkage_name &&
 			(strcmp(linkage_name,  linkage_name_in) == 0)) {
@@ -2218,9 +2220,9 @@ DST_Create_var(ST *var_st, tree decl)
      // FIXME: does not remove other externals...
 
     }
-    char *field_name = Get_Name(decl);
+    const char *field_name = Get_Name(decl);
 #ifdef KEY
-    char *linkage_name = "";	
+    const char *linkage_name = "";	
     if (!DECL_ARTIFICIAL (decl) && DECL_NAME(decl))
       linkage_name = IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME (decl));
 #else
@@ -2233,7 +2235,7 @@ DST_Create_var(ST *var_st, tree decl)
     if(context && TREE_CODE(context) == RECORD_TYPE) {
 	/*look for  static data member decl*/
 	class_var_idx =
-		DST_find_class_member(linkage_name, context);
+		DST_find_class_member((char*)(uintptr_t)linkage_name, context);
 	if(!DST_IS_NULL(class_var_idx)) {
 		class_var_found_member = 1;
 		field_name = 0; // we will use DW_AT_specification
@@ -2243,7 +2245,7 @@ DST_Create_var(ST *var_st, tree decl)
 	// Field name should now have the class name and ::
 	// prepended, per dwarf2
 	// Save_Str2 can glob 2 pieces together.
-	char *classname = Get_Name(context);
+	const char *classname = Get_Name(context);
 	if(classname && !class_var_found_member) {
 	   int len = strlen(classname);
 	   char* newname = new char[len+5 
@@ -2307,7 +2309,7 @@ DST_Create_var(ST *var_st, tree decl)
 	if (TREE_CODE(field) == FIELD_DECL ||
 	    TREE_CODE(field) == VAR_DECL) {
 	  dst = DST_mk_variable(src,                    // srcpos
-				field_name,
+				(char*)(uintptr_t)field_name,
 				TYPE_DST_IDX(TREE_TYPE(field)),
 				0,  // offset (fortran uses non zero )
 				(void*) ST_st_idx(var_st), // underlying type here, not typedef.
@@ -2327,7 +2329,7 @@ DST_Create_var(ST *var_st, tree decl)
 #endif
     dst = DST_mk_variable(
         src,                    // srcpos
-        field_name,
+        (char*)(uintptr_t)field_name,
         type,    // user typed type name here (typedef type perhaps).
 	0,  // offset (fortran uses non zero )
         (void*) ST_st_idx(var_st), // underlying type here, not typedef.
@@ -2429,7 +2431,7 @@ DST_enter_param_vars(tree fndecl,
 
 	type_idx = TYPE_DST_IDX(type);
 	
-	char *name = Get_Name(pdecl);
+	const char *name = Get_Name(pdecl);
 	
 	DST_INFO_IDX initinfo = DST_INVALID_IDX;
         //tree initl = DECL_INITIAL(pdecl);
@@ -2450,7 +2452,7 @@ DST_enter_param_vars(tree fndecl,
 
 	param_idx = DST_mk_formal_parameter(
 		src,
-		name,
+		(char*)(uintptr_t)name,
 		type_idx,
 		(void* )loc, // So backend can get location.
 			// For a formal in abstract root
@@ -2521,7 +2523,7 @@ DST_enter_param_vars(tree fndecl,
 
 	type_idx = TYPE_DST_IDX(type);
 
-	char *name = Get_Name(pdecl);
+	const char *name = Get_Name(pdecl);
 
 	DST_INFO_IDX initinfo = DST_INVALID_IDX;
         //tree initl = DECL_INITIAL(pdecl);
@@ -2542,7 +2544,7 @@ DST_enter_param_vars(tree fndecl,
 
 	param_idx = DST_mk_formal_parameter(
 		src,
-		name,
+		(char*)(uintptr_t)name,
 		type_idx,
 		(void* )loc, // So backend can get location.
 			// For a formal in abstract root
@@ -2633,7 +2635,7 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
     char * basename = 
 	IDENTIFIER_POINTER (DECL_NAME (fndecl));
 #else
-    char * basename;
+    const char * basename;
     if (fndecl)
 	basename = IDENTIFIER_POINTER (DECL_NAME (fndecl));
     else
@@ -2666,7 +2668,7 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
     }
 #endif
 
-    char * funcname = basename;
+    const char * funcname = basename;
     int is_abstract_root = 0;
     DST_INFO_IDX class_func_idx = DST_INVALID_INIT;
     int class_func_found_member = 0;
@@ -2691,7 +2693,7 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
         // Field name should now have the class name and ::
         // prepended, per dwarf2
         // Save_Str2 can glob 2 pieces together.
-        char *classname = Get_Name(context);
+        const char *classname = Get_Name(context);
         if(classname && !class_func_found_member) {
            int len = strlen(classname);
            char* newname = new char[len+5
@@ -2717,7 +2719,7 @@ DST_Create_Subprogram (ST *func_st,tree fndecl)
 
     dst = DST_mk_subprogram(
         src,			// srcpos
-        funcname,
+        (char*)(uintptr_t)funcname,
         ret_dst,        	// return type
         DST_INVALID_IDX,        // Index to alias for weak is set later
         (void*) fstidx,         // index to fe routine for st_idx
@@ -2863,10 +2865,9 @@ DST_build(int num_copts, /* Number of options passed to fec(c) */
 #ifndef KEY
    comp_info = DST_get_command_line_options(num_copts, copts);
 #else
-   comp_info = (char *)malloc(sizeof(char)*100);   
+   comp_info = (char *)xmalloc(sizeof(char)*100);   
    strcpy(comp_info, "pathCC ");
-   if (INCLUDE_STAMP)
-     strcat(comp_info, INCLUDE_STAMP);
+   strcat(comp_info, PACKAGE_VERSION);
 #endif
 
    {
