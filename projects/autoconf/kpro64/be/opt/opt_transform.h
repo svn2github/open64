@@ -414,13 +414,13 @@ void transform_stopped();
 void check_transform_stop_at(int bb_id, int stmt_id);
 #endif
 
-template <class TRANSFORM, class CACHE = PER_PU_CACHE, class VERSION = DONT_TRACK_CUR_VERSION>
+template <class TRANSFORM, class CACHE = PER_PU_CACHE, class Version = DONT_TRACK_CUR_VERSION>
 struct UPDATE {
   CODEMAP          *_htable; 
   CFG              *_cfg;
   BOOL              _trace;
   TRANSFORM        *_trans;      // coderep transform function
-  VERSION           _version;
+  Version           _version;
   CACHE             _cache;
 
   CODEMAP *Htable() const { return _htable; }
@@ -448,9 +448,9 @@ struct UPDATE {
 
 
 
-template <class TRANSFORM, class CACHE, class VERSION>
+template <class TRANSFORM, class CACHE, class Version>
 CODEREP *
-UPDATE<TRANSFORM, CACHE, VERSION>::Process_CR(CODEREP *cr, bool is_mu, STMTREP *stmt, BB_NODE *bb)
+UPDATE<TRANSFORM, CACHE, Version>::Process_CR(CODEREP *cr, bool is_mu, STMTREP *stmt, BB_NODE *bb)
 {
   typename CACHE::key_type key = Get_cache_key((typename CACHE::key_type)NULL, stmt, bb);
   CODEREP *newcr = _cache.Lookup(cr, key);
@@ -464,9 +464,9 @@ UPDATE<TRANSFORM, CACHE, VERSION>::Process_CR(CODEREP *cr, bool is_mu, STMTREP *
 }  
 
 
-template <class TRANSFORM, class CACHE, class VERSION>
+template <class TRANSFORM, class CACHE, class Version>
 CODEREP *
-UPDATE<TRANSFORM, CACHE, VERSION>::Process_CR_no_repeat(CODEREP *cr, bool is_mu, STMTREP *stmt, BB_NODE *bb)
+UPDATE<TRANSFORM, CACHE, Version>::Process_CR_no_repeat(CODEREP *cr, bool is_mu, STMTREP *stmt, BB_NODE *bb)
 {
   CODEREP *simp = _trans->Apply_cr(cr, is_mu, stmt, bb, Htable());
   if (simp) {
@@ -553,9 +553,9 @@ UPDATE<TRANSFORM, CACHE, VERSION>::Process_CR_no_repeat(CODEREP *cr, bool is_mu,
 }
 
 
-template <class TRANSFORM, class CACHE, class VERSION>
+template <class TRANSFORM, class CACHE, class Version>
 void
-UPDATE<TRANSFORM, CACHE, VERSION>::Process_SR(STMTREP *stmt, BB_NODE *bb)
+UPDATE<TRANSFORM, CACHE, Version>::Process_SR(STMTREP *stmt, BB_NODE *bb)
 {
   _trans->Apply_sr(stmt, bb, Htable());
 
@@ -584,9 +584,9 @@ UPDATE<TRANSFORM, CACHE, VERSION>::Process_SR(STMTREP *stmt, BB_NODE *bb)
 }
 
 
-template <class TRANSFORM, class CACHE, class VERSION>
+template <class TRANSFORM, class CACHE, class Version>
 void
-UPDATE<TRANSFORM, CACHE, VERSION>::Process_BB(BB_NODE *bb)
+UPDATE<TRANSFORM, CACHE, Version>::Process_BB(BB_NODE *bb)
 {
   _trans->Apply_bb(bb, Htable());
 
@@ -611,9 +611,9 @@ UPDATE<TRANSFORM, CACHE, VERSION>::Process_BB(BB_NODE *bb)
 }
 
 
-template <class TRANSFORM, class CACHE, class VERSION>
+template <class TRANSFORM, class CACHE, class Version>
 void
-UPDATE<TRANSFORM, CACHE, VERSION>::Process_PU(BB_NODE *bb)
+UPDATE<TRANSFORM, CACHE, Version>::Process_PU(BB_NODE *bb)
 {
   Process_BB(bb);
 
