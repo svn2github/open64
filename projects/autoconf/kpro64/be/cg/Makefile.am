@@ -91,15 +91,5 @@ AM_CPPFLAGS = -DBACK_END -DKEY -DMONGOOSE_BE \
 	-I${srcdir}/../../targ_info/access \
 	-I${top_srcdir}/contrib/libelf/lib
 
-#	-I${srcdir}/../cg \
-#	-I${srcdir}/../com/${TARG_SUBDIR} \
-#	-I${srcdir}/../lno \
-#	-I${srcdir}/../opt \
-#	-I${srcdir}/../../ipa/common \
-#	-I${srcdir}/../../ipa/local \
-#	-I${srcdir}/../../ipa/main/analyze \
-#	-I${srcdir}/../../ipa/main/optimize \
-#
-
 VPATH = ${srcdir} ${srcdir}/gra_mon ${srcdir}/${TARG_SUBDIR} \
 	${srcdir}/../../common/com ${srcdir}/../../common/com/${TARG_SUBDIR}
