@@ -157,7 +157,6 @@
 #pragma hdrstop
 
 #include <stdarg.h>
-#include <alloca.h>
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>

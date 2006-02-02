@@ -49,7 +49,6 @@
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/move.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-#include <alloca.h>
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>

@@ -78,7 +78,6 @@
 #include "prompf.h"
 #include "anl_driver.h"
 #include "stab.h"
-#include <alloca.h>
 #include "fiz_fuse.h"
 #include "parids.h"
 #include "call_info.h"

@@ -1398,6 +1398,16 @@
 static char *rcs_id = cache_model_CXX "$Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #include <sys/types.h>
 #include <math.h>
 
@@ -1405,7 +1415,6 @@ static char *rcs_id = cache_model_CXX "$Revision: 1.1.1.1 $";
 #include "model.h"
 #include "cache_model.h"
 #include "lnopt_main.h"
-#include "alloca.h"
 #include "lu_mat.h"
 #include "vs.h"
 #include "config_targ.h"

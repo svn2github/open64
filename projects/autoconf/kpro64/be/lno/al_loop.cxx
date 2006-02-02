@@ -72,7 +72,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/al_loop
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>
-#include <alloca.h>
 
 #include "pu_info.h"
 #include "lnopt_main.h"

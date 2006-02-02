@@ -439,7 +439,6 @@ static char *model_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/m
 #endif
 
 #define USE_STANDARD_TYPES
-#include <bstring.h>
 #include "defs.h"
 #ifndef access_vector_INCLUDED
 #include "access_vector.h"

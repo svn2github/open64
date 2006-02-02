@@ -55,8 +55,17 @@
 #define snl_test_CXX      "snl_test.cxx"
 static char *rcs_id =   snl_test_CXX "$Revision: 1.1.1.1 $";
 
-#include <sys/types.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
+#include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>
 

@@ -91,7 +91,6 @@ static char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lego_io.cxx,v $ $Revision: 1.1.1.1 $";
 
 #include <sys/types.h>
-#include <alloca.h>
 #include <ctype.h>
 #include <limits.h>
 

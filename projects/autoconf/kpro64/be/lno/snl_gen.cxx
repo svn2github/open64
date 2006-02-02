@@ -58,7 +58,6 @@
 static char *rcs_id =   snl_CXX "$Revision: 1.1.1.1 $";
 
 #include <sys/types.h>
-#include <alloca.h>
 #include "snl.h"
 #include "snl_xbounds.h"
 #include "config_targ.h"

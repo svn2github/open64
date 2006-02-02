@@ -334,7 +334,6 @@ static char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/model.cxx,v $ $Revision: 1.1.1.1 $";
 
 #include <sys/types.h>
-#include <alloca.h>
 #include <math.h>
 
 #include "model.h"
@@ -3625,7 +3624,7 @@ COST_V::COST_V() {
 void COST_V::Push(UINT16 latency, UINT16 distance, MEM_POOL *pool) {
   if (_length == _alloc_length) {
     COST *tmp = CXX_NEW_ARRAY(COST,((INT) 2*_alloc_length),pool);
-    bcopy(_costs,tmp,_length*sizeof(COST));
+    memcpy(tmp, _costs, _length*sizeof(COST));
     CXX_DELETE_ARRAY(_costs,pool);
     _costs = tmp;
     _alloc_length *= 2;

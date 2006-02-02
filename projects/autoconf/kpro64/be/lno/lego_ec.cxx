@@ -41,7 +41,6 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>
-#include <alloca.h>
 
 #include "pu_info.h"
 #include "defs.h"

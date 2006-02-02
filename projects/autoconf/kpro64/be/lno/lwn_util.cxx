@@ -45,7 +45,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <bstring.h> /* has bcopy */
 #include <sys/types.h>
 
 #include "defs.h"

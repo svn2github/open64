@@ -46,7 +46,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lego_sk
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>
-#include <alloca.h>
 
 #include "pu_info.h"
 #include "lnoutils.h"

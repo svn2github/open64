@@ -131,6 +131,16 @@
 #endif // USE_PCH
 #pragma hdrstop
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #define CACHE_LINE_SIZE 128
 
 #include "prefetch.h"
@@ -147,7 +157,6 @@
 #include "whirl2src.h"
 #include "dep.h"
 #include "tlog.h"
-#include "alloca.h"
 #include "targ_sim.h"
 
 #include "w2c_weak.h"

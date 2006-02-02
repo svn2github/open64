@@ -47,7 +47,6 @@
 #include "access_vector.h"
 #include "ipl_lno_util.h"
 #include "ipl_summary.h"
-#include <alloca.h>
 #include "ipa_cost_util.h"
 #include "call_info.h" 
 #include "be_util.h" 

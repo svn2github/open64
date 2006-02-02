@@ -507,7 +507,7 @@ static PROJECTED_REGION* Projected_Region_To_Memory(IPA_LNO_READ_FILE*
   PROJECTED_NODE* pn = IPA_LNO_File->Projected_Node(pr->Get_id());
   PROJECTED_NODE* pn_memory = (PROJECTED_NODE*)
     MEM_POOL_Alloc(mem_pool, pr_count * sizeof(PROJECTED_NODE));
-  bcopy(pn, pn_memory, pr_count * sizeof(PROJECTED_NODE));
+  memcpy(pn_memory, pn, pr_count * sizeof(PROJECTED_NODE));
 
   INT i;
   for (i = 0; i < pr_count; i++)

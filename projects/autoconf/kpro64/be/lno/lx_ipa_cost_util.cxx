@@ -32,6 +32,15 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #include <elf.h>
 #include <sys/elf_whirl.h>
@@ -41,7 +50,6 @@
 #include "access_vector.h"
 #include "ipl_lno_util.h"
 #include "ipl_summary.h"
-#include <alloca.h>
 #include "ipa_cost_util.h"
 #include "be_util.h" 
 
@@ -146,7 +154,7 @@ static INT IPL_EX_Copy_Value(DYN_ARRAY<SUMMARY_VALUE>* sv,
   INT sv_new_index = sv->Newidx();
   SUMMARY_VALUE* svv_old = &(*sv)[sv_old_index];
   SUMMARY_VALUE* svv_new = &(*sv)[sv_new_index];
-  bcopy(svv_old, svv_new, sizeof(SUMMARY_VALUE));
+  memcpy(svv_new, svv_old, sizeof(SUMMARY_VALUE));
   return sv_new_index;
 }
 
@@ -163,7 +171,7 @@ static INT IPL_EX_Copy_Expr(DYN_ARRAY<SUMMARY_EXPR>* sx,
   INT sx_new_index = sx->Newidx();
   SUMMARY_EXPR* sxx_old = &(*sx)[sx_old_index];
   SUMMARY_EXPR* sxx_new = &(*sx)[sx_new_index];
-  bcopy(sxx_old, sxx_new, sizeof(SUMMARY_EXPR));
+  memcpy(sxx_new, sxx_old, sizeof(SUMMARY_EXPR));
   return sx_new_index;
 }
 
@@ -399,7 +407,7 @@ static void Eliminate_Expr(DYN_ARRAY<SUMMARY_EXPR>* sx,
   for (i = expr_index + 1; i <= sx->Lastidx(); i++) { 
     SUMMARY_EXPR* sxx_old = &(*sx)[i]; 
     SUMMARY_EXPR* sxx_new = &(*sx)[i-1]; 
-    bcopy(sxx_old, sxx_new, sizeof(SUMMARY_EXPR));
+    memcpy(sxx_new, sxx_old, sizeof(SUMMARY_EXPR));
   } 
   sx->Decidx();
 } 
@@ -477,7 +485,7 @@ extern void IPL_EX_Eliminate_Value(DYN_ARRAY<SUMMARY_VALUE>* sv,
   for (INT i = value_index + 1; i <= sv->Lastidx(); i++) {
     SUMMARY_VALUE* svv_old = &(*sv)[i];
     SUMMARY_VALUE* svv_new = &(*sv)[i-1];
-    bcopy(svv_old, svv_new, sizeof(SUMMARY_VALUE));
+    memcpy(svv_new, svv_old, sizeof(SUMMARY_VALUE));
   }
   sv->Decidx();
   for (i = 0; i <= sx->Lastidx(); i++) {
@@ -565,7 +573,7 @@ static void IPL_EXS_Sort_Exprs(DYN_ARRAY<SUMMARY_VALUE>* sv,
     = (SUMMARY_EXPR*) alloca(index_count * sizeof(SUMMARY_EXPR));
   for (i = 0; i <= sx->Lastidx(); i++) {
     SUMMARY_EXPR* sxx = &(*sx)[i];
-    bcopy(sxx, &new_exprs[new_index[i]], sizeof(SUMMARY_EXPR));
+    memcpy(&new_exprs[new_index[i]], sxx, sizeof(SUMMARY_EXPR));
   }
   sx->Resetidx();
   for (i = 0; i < index_count; i++)

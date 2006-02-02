@@ -65,7 +65,6 @@ static char **rcs_dummy[] = { &rcs_id, (char **)&rcs_dummy,
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>
-#include <alloca.h>
 
 #include "pu_info.h"
 #include "stdlib.h" 

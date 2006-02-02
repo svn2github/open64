@@ -123,8 +123,16 @@
 //
 // ***********************************************************************
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>
@@ -147,7 +155,6 @@
 #include "data_layout.h"
 #include "lego_affinity.h"
 #include "region_util.h"
-#include <alloca.h>
 #include "prompf.h"
 #include "anl_driver.h"
 #include "tile.h"

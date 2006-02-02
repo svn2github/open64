@@ -707,7 +707,7 @@ Add_Access(ACCESS_VECTOR *av, const INT32 coeff[],
   
   mINT32 *v = CXX_NEW_ARRAY(mINT32, vsz, &LNO_local_pool);
 
-  bzero(v, sizeof(mINT32) * vsz);
+  memset(v, 0, sizeof(mINT32) * vsz);
 
   // set the value of matrix A
   if (coeff!=NULL) 
@@ -797,7 +797,7 @@ Add_Bound(ACCESS_VECTOR *av,
   
   mINT32 *v = CXX_NEW_ARRAY(mINT32, vsz, &LNO_local_pool);
 
-  bzero(v, sizeof(mINT32) * vsz);
+  memset(v, 0, sizeof(mINT32) * vsz);
 
   if (av) {
     // Loop indices

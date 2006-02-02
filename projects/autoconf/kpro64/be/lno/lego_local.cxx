@@ -76,7 +76,6 @@ static char *source_file = __FILE__;
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/lego_local.cxx,v $";
 
 #include <sys/types.h>
-#include <alloca.h>
 #include <ctype.h>
 #include <limits.h>
 

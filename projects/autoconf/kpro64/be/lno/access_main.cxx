@@ -76,7 +76,6 @@
 #pragma hdrstop
 
 #include <sys/types.h>
-#include <alloca.h>
 
 #include "call_info.h"
 #include "defs.h"

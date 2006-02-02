@@ -56,7 +56,6 @@
 static char *rcs_id =   snl_dist_CXX "$Revision: 1.1.1.1 $";
 
 #include <sys/types.h>
-#include <alloca.h>
 #include <ctype.h>
 #include <limits.h>
 

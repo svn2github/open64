@@ -41,7 +41,6 @@
 #pragma hdrstop
 
 #include <sys/types.h>
-#include <alloca.h>
 #include "pu_info.h"
 #include "lwn_util.h"
 #include "lnoutils.h"

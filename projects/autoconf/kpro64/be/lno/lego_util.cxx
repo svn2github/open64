@@ -60,7 +60,6 @@
 
 static char *source_file = __FILE__;
 
-#include <alloca.h>
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>

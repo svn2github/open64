@@ -218,8 +218,17 @@
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/lno/minvariant.cxx,v $ $Revision: 1.1.1.1 $";
 #endif
 
-#include <sys/types.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
+#include <sys/types.h>
 #include "defs.h"
 #include "wn.h"
 #include "cxx_memory.h"
