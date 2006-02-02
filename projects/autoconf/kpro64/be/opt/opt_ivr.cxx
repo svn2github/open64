@@ -95,6 +95,16 @@
 static char *rcs_id = 	opt_ivr_CXX"$Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #define USE_STANDARD_TYPES
 
 #include "defs.h"

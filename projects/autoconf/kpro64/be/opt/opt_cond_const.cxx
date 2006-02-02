@@ -62,6 +62,15 @@
 // ====================================================================
 // ====================================================================
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H    
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #include <set>
 #include <map>

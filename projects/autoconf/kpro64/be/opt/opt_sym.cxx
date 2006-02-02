@@ -79,6 +79,15 @@
 #endif // USE_PCH
 #pragma hdrstop
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
@@ -123,7 +132,6 @@
 //
 extern "C" {
 #include "targ_const.h"
-#include "stdlib.h"
 char *Targ_Print( char *fmt, TCON cvalue );
 }
 

@@ -58,6 +58,16 @@
 static char *rcs_id =   opt_lftr2_CXX"$Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #include "opt_lftr2.h"		// LFTR class
 #include "config_wopt.h"	// WOPT_Enable_LFTR2
 #include "opt_fold.h"		// FOLD class
