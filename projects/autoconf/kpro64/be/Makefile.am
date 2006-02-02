@@ -1,1 +1,1 @@
-SUBDIRS = be cg opt
+SUBDIRS = be cg lno opt
