@@ -227,7 +227,7 @@ INT Set_opt_phase(INT32 *phase_id, char *subphase)
   void  *curr_mem;
 
   if (Get_Trace(TKIND_INFO, TINFO_TIME)) {
-    curr_time = clock() / (CLOCKS_PER_SEC / 1000);
+    curr_time = (int)((double)clock() / ((double)CLOCKS_PER_SEC / 1000.0));
     curr_mem  = sbrk(0);
     times[curr_phase] += (curr_time - prev_time);
     mem[curr_phase] += (char *) curr_mem - (char *) prev_mem;
