@@ -166,7 +166,7 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
-SUBDIRS = be cg opt
+SUBDIRS = be cg lno opt
 all: all-recursive
 
 .SUFFIXES:
