@@ -51,12 +51,12 @@
 // ====================================================================
 
 
+#include <sys/types.h>              // for pid_t
+#include <sys/wait.h>               // for waitpid()
 #include <stdio.h>
 #include <signal.h>
-#include <sys/types.h>              // for pid_t
 #include <unistd.h>                 // for fork(), pipe(), etc.
 #include <signal.h>                 // for SIGINT
-#include <wait.h>                   // for waitpid()
 
 #define USE_STANDARD_TYPES
 #include "defs.h"

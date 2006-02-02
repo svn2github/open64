@@ -110,7 +110,6 @@
 #include "cxx_memory.h"
 #include "config_targ.h" // needed for Pointer_type
 
-#include "opt_sys.h"            // BZERO definition
 #include "opt_defs.h"
 #include "opt_cfg.h"
 #include "opt_ssa.h"

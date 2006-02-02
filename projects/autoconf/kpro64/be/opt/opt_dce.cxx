@@ -79,7 +79,6 @@
 #include "opt_base.h"
 #include "opt_bb.h"
 #include "opt_config.h"
-#include "opt_sys.h"
 #include "bb_node_set.h"
 #include "idx_32_set.h"
 #include "opt_cfg.h"
@@ -396,11 +395,11 @@ public:
 	if ( WOPT_Enable_DCE_Branch ) {
 	  _cond_eval = TYPE_OPT_POOL_ALLOC_N( COND_EVAL, 
 		cfg->Loc_pool(), cfg->Total_bb_count(), DCE_DUMP_FLAG );
-	  BZERO( _cond_eval, sizeof(COND_EVAL)*cfg->Total_bb_count());
+	  memset(_cond_eval, 0, sizeof(COND_EVAL)*cfg->Total_bb_count());
 
 	  _cond_coderep = TYPE_OPT_POOL_ALLOC_N( CODEREP*, 
 		cfg->Loc_pool(), cfg->Total_bb_count(), DCE_DUMP_FLAG );
-	  BZERO(_cond_coderep,sizeof(CODEREP*)*cfg->Total_bb_count());
+	  memset(_cond_coderep, 0, sizeof(CODEREP*)*cfg->Total_bb_count());
 	}
 	else {
 	  _cond_eval = NULL;

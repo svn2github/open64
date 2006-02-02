@@ -105,7 +105,6 @@ static char *rcs_id = 	opt_tail_CXX"$Revision: 1.1.1.1 $";
 #include "tracing.h"
 #include "cxx_memory.h"
 
-#include "opt_sys.h"
 #include "opt_cfg.h"
 #include "opt_defs.h"
 #include "bb_node_set.h"

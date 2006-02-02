@@ -75,7 +75,6 @@
 #include "w2op.h"
 #include "config_opt.h"         // for Delay_U64_Lowering
 
-#include "opt_sys.h"            // BZERO definition
 #include "opt_config.h"
 #include "opt_wn.h"
 #include "opt_util.h"
@@ -93,8 +92,6 @@
 #include "bb_node_set.h"
 #include "opt_bb.h"
 #include "opt_cvtl_rule.h"
-
-#include <strings.h>   // bcopy
 
 EXP_KIDS_ITER::EXP_KIDS_ITER(mUINT32 cnt, CODEREP **kp)
 {
@@ -1567,7 +1564,7 @@ CODEMAP::Alloc_hash_vec(void)
   // called by the constructor
   hash_vec = CXX_NEW_ARRAY(CODEREP*, size+1, mem_pool);
   if (hash_vec == NULL) ErrMsg ( EC_No_Mem, "CODEREP::Alloc_hash_vec" );
-  BZERO(hash_vec, sizeof(CODEREP*) * (size+1));
+  memset(hash_vec, 0, sizeof(CODEREP*) * (size+1));
 }
 
 void
@@ -3165,11 +3162,11 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 
     CODEREP *lbase = base_ccr.Tree() ? base_ccr.Tree() :
     				       Add_const(Pointer_type, (INT64) 0);
-#ifndef linux
+#ifdef __irix__
     FmtAssert(sizeof(num_byte) == sizeof(TY_IDX),
 	      ("CODEMAP::Add_expr: Cannot union MLOAD size with "
 	       "Ilod_base_ty"));
-#endif /* linux */
+#endif
     retv = Add_idef(op, opt_stab->Get_occ(wn), NULL,
 		    opt_stab->Get_mem_mu_node(wn),
 		    WN_rtype(wn),
@@ -4004,11 +4001,11 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 
       CODEREP *lbase = ( base_ccr.Tree() ? base_ccr.Tree() :
 			 htable->Add_const(Pointer_type, (INT64) 0) );
-#ifndef linux
+#ifdef __irix__
       FmtAssert(sizeof(num_byte) == sizeof(TY_IDX),
 		("CODEMAP::Add_expr: Cannot union MSTORE size with "
 		 "Ilod_base_ty"));
-#endif /* linux */
+#endif
       Set_lhs(htable->Add_idef(opc, opt_stab->Get_occ(Wn()), 
 			       this, NULL,
 			       MTYPE_M,
@@ -5296,7 +5293,7 @@ CODEMAP::Insert_var_phi(CODEREP *new_lhs, BB_NODE *bb)
 
 void STMTREP::Clone(STMTREP *sr, CODEMAP *htable, MEM_POOL *pool)
 {
-  bcopy(sr,this,sizeof(STMTREP));
+  memcpy(this, sr, sizeof(STMTREP));
   
   Set_Next(NULL); Set_Prev(NULL);
 

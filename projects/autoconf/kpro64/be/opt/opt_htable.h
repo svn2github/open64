@@ -59,10 +59,6 @@
 #ifndef opt_htable_INCLUDED
 #define opt_htable_INCLUDED "opt_htable.h"
 
-#ifndef __ALLOCA_H
-#include <alloca.h>
-#endif
-
 #ifndef ERRORS_INCLUDED
 #include "errors.h"
 #endif

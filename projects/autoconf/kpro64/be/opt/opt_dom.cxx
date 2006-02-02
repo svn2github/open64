@@ -80,7 +80,6 @@ static char *rcs_id = 	opt_dom_CXX"$Revision: 1.1.1.1 $";
 #include "tracing.h"
 #include "cxx_memory.h"
 
-#include "opt_sys.h"
 #include "opt_cfg.h"
 #include "opt_defs.h"
 #include "bb_node_set.h"
@@ -271,7 +270,7 @@ DOM_INFO::DOM_INFO( const CFG *cfg, MEM_POOL *mempool )
   // clear out the array
   // WARNING: I'm assuming that no real constructor is called for
   // each element of the array
-  BZERO( recs, bbs*sizeof(recs[0]) );
+  memset( recs, 0, bbs*sizeof(recs[0]) );
 
   // now init anything that doesn't need to be zero
   for ( INT i = 0; i < bbs; i++ ) {

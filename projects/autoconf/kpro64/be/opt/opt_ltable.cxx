@@ -80,7 +80,6 @@
 #include "opt_htable.h"
 #include "opt_main.h"
 #include "opt_ssa.h"
-#include "opt_sys.h"
 #include "opt_util.h"
 #include "tracing.h"
 #include "opt_lftr2.h"

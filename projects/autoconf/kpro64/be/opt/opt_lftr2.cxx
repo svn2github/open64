@@ -60,7 +60,6 @@ static char *rcs_id =   opt_lftr2_CXX"$Revision: 1.1.1.1 $";
 
 #include "opt_lftr2.h"		// LFTR class
 #include "config_wopt.h"	// WOPT_Enable_LFTR2
-#include "opt_sys.h"		// BZERO
 #include "opt_fold.h"		// FOLD class
 #include "idx_32_set.h"
 
@@ -138,7 +137,7 @@ LFTR::Alloc_hash_vec(INT32 hash_size)
   _hash_vec = CXX_NEW_ARRAY(LFTR_VAR *, _hash_size+1, &_mem_pool);
   if (_hash_vec == NULL)
     ErrMsg (EC_No_Mem, "LFTR::Alloc_hash_vec, hash_vec");
-  BZERO(_hash_vec, sizeof(LFTR_VAR *) * (_hash_size+1));
+  memset(_hash_vec, 0, sizeof(LFTR_VAR *) * (_hash_size+1));
 
   Is_Trace(Trace(),(TFile,"LFTR::Alloc_hash_vec(%d)\n",hash_size));
 }

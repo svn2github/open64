@@ -125,8 +125,8 @@ public:
 				      _loc_pool);
       _usecnt = (UINT8 *) CXX_NEW_ARRAY(UINT8, _htable->Coderep_id_cnt(),
 				      _loc_pool);
-      BZERO(_livebits, _htable->Coderep_id_cnt() * sizeof(UINT64));
-      BZERO(_usecnt, _htable->Coderep_id_cnt() * sizeof(UINT8));
+      memset(_livebits, 0, _htable->Coderep_id_cnt() * sizeof(UINT64));
+      memset(_usecnt, 0, _htable->Coderep_id_cnt() * sizeof(UINT8));
 
       _cd_bbs = (BB_NODE_SET *) CXX_NEW(BB_NODE_SET(_cfg->Last_bb_id()+1, _cfg,
 					_loc_pool, BBNS_EMPTY), _loc_pool);

@@ -67,7 +67,6 @@
 #include "tracing.h"
 #include "config_targ.h"
 #include "opt_util.h"
-#include "opt_sys.h"
 #include "opt_bb.h"
 #include "opt_main.h"
 
@@ -147,11 +146,11 @@ public:
       _iloads = (UINT16 *) CXX_NEW_ARRAY(UINT16, Cfg()->Total_bb_count(), &_mpool);
       _istores = (UINT16 *) CXX_NEW_ARRAY(UINT16, Cfg()->Total_bb_count(), &_mpool);
       _freq = (UINT32 *) CXX_NEW_ARRAY(UINT32, Cfg()->Total_bb_count(), &_mpool);
-      BZERO(_loads, Cfg()->Total_bb_count()*sizeof(_loads[0]));
-      BZERO(_stores, Cfg()->Total_bb_count()*sizeof(_stores[0]));
-      BZERO(_iloads, Cfg()->Total_bb_count()*sizeof(_iloads[0]));
-      BZERO(_istores, Cfg()->Total_bb_count()*sizeof(_istores[0]));
-      BZERO(_freq, Cfg()->Total_bb_count()*sizeof(_freq[0]));
+      memset(_loads, 0, Cfg()->Total_bb_count()*sizeof(_loads[0]));
+      memset(_stores, 0, Cfg()->Total_bb_count()*sizeof(_stores[0]));
+      memset(_iloads, 0, Cfg()->Total_bb_count()*sizeof(_iloads[0]));
+      memset(_istores, 0, Cfg()->Total_bb_count()*sizeof(_istores[0]));
+      memset(_freq, 0, Cfg()->Total_bb_count()*sizeof(_freq[0]));
 
       _weighted_total_loads = _weighted_total_stores = 
 	_weighted_total_iloads = _weighted_total_istores = 0;

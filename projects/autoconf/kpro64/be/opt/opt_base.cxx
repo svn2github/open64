@@ -79,7 +79,6 @@ static char *rcs_id = 	opt_base_CXX"$Revision: 1.1.1.1 $";
 #include "erglob.h"
 #include "cxx_memory.h"
 
-#include "opt_sys.h"
 #include "opt_base.h"
 
 
@@ -91,7 +90,7 @@ MAP::Alloc_hash_vec()
 {
   hash_vec = CXX_NEW_ARRAY(MAP_LIST_P, size+1, mem_pool);
   if ( hash_vec == NULL ) ErrMsg ( EC_No_Mem, "MAP::Alloc_hash_vec" );
-  BZERO(hash_vec, sizeof(MAP_LIST_P) * (size+1));
+  memset(hash_vec, 0, sizeof(MAP_LIST_P) * (size+1));
 }
 
 void

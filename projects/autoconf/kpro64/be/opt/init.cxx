@@ -61,7 +61,7 @@
 // ====================================================================
 
 
-#ifdef __linux__
+#ifndef __irix__
 
 #include "defs.h"
 #include "optimizer.h"
@@ -133,4 +133,4 @@ struct WOPT_INIT
     }
 } Wopt_Initializer;
 
-#endif // __linux__
+#endif

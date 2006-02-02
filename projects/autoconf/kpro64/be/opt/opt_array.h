@@ -63,7 +63,6 @@ typedef struct mem_pool MEM_POOL;
 
 #include "defs.h"
 #include "opt_defs.h"
-#include "opt_sys.h"
 
 
 //----------------------------------------------------------------------------
@@ -155,7 +154,7 @@ void
 ARRAY<TT>::Bzero_array(void)
 {
   if (_array != NULL)
-    BZERO(_array,sizeof(TT) * _size);
+    memset(_array, 0, sizeof(TT) * _size);
 }
 
 #endif //opt_array_INCLUDED

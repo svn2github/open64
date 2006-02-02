@@ -73,7 +73,6 @@
 #include "opt_htable.h"
 #include "opt_main.h"
 #include "opt_ssa.h"
-#include "opt_sys.h"
 #include "opt_util.h"
 #include "tracing.h"
 #include "opt_lftr2.h"
@@ -154,7 +153,7 @@ EXP_PHI::Init(EXP_ID e_num, INT opnd_count, BB_NODE *bb, MEM_POOL *pool)
   _result = NULL;
   Set_uses((USE_LIST_ENTRY *) NULL);
   _vec = (PHI_ELEM*) CXX_NEW_ARRAY(PHI_ELEM, opnd_count, pool);
-  BZERO(_vec, sizeof(PHI_ELEM) * opnd_count);
+  memset(_vec, 0, sizeof(PHI_ELEM) * opnd_count);
 }
 
 void
@@ -4543,7 +4542,7 @@ ETABLE::Perform_PRE_optimization(void)
 void
 ETABLE::Clear_dpo_exp_phi(void)
 {
-  BZERO( _dpo_exp_phi, Cfg()->Total_bb_count()*sizeof(_dpo_exp_phi[0]));
+  memset(_dpo_exp_phi, 0, Cfg()->Total_bb_count()*sizeof(_dpo_exp_phi[0]));
 }
     
 void
@@ -4597,7 +4596,7 @@ void
 ETABLE::Per_worklst_cleanup(EXP_WORKLST *exp_worklst) const
 {
   // Clear phi pred cr
-  BZERO(_phi_pred_cr, Cfg()->Total_bb_count() * sizeof(_phi_pred_cr[0]));
+  memset(_phi_pred_cr, 0, Cfg()->Total_bb_count() * sizeof(_phi_pred_cr[0]));
 
   // Clear LFTR Def_occur() pointers (comp occurs live across worklsts)
   Lftr()->Clear_def_occurs(exp_worklst);
