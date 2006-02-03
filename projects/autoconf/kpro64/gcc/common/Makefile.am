@@ -37,6 +37,6 @@ libgcc_common_a_SOURCES = \
 
 _topgcc = ${top_srcdir}/contrib/gcc
 VPATH = ${_topgcc}/gcc
-AM_CPPFLAGS = -DIN_GCC -DPREFIX=\"\" -DTARGET_NAME=\"${GCC_TARGET_ALIAS}\" \
+AM_CPPFLAGS = -DIN_GCC -DPREFIX=\"${prefix}\" -DTARGET_NAME=\"${GCC_TARGET_ALIAS}\" \
 	-I${_topgcc}/gcc -I${_topgcc}/gcc/config -I${_topgcc}/include \
 	-I../config
