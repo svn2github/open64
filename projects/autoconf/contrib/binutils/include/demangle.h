@@ -46,10 +46,9 @@ extern "C" {
 #define DMGL_EDG	 (1 << 13)
 #define DMGL_GNU_V3	 (1 << 14)
 #define DMGL_GNAT	 (1 << 15)
-#define DMGL_COMPAQ	 (1 << 16)
 
 /* If none of these are set, use 'current_demangling_style' as the default. */
-#define DMGL_STYLE_MASK (DMGL_AUTO|DMGL_GNU|DMGL_LUCID|DMGL_ARM|DMGL_HP|DMGL_EDG|DMGL_GNU_V3|DMGL_JAVA|DMGL_GNAT|DMGL_COMPAQ)
+#define DMGL_STYLE_MASK (DMGL_AUTO|DMGL_GNU|DMGL_LUCID|DMGL_ARM|DMGL_HP|DMGL_EDG|DMGL_GNU_V3|DMGL_JAVA|DMGL_GNAT)
 
 /* Enumeration of possible demangling styles.
 
@@ -61,19 +60,17 @@ extern "C" {
 
 extern enum demangling_styles
 {
-  first_demangling = 0,
-  no_demangling = 0,
-  auto_demangling,
-  gnu_demangling,
-  lucid_demangling,
-  arm_demangling,
-  hp_demangling,
-  edg_demangling,
-  gnu_v3_demangling,
-  java_demangling,
-  gnat_demangling,
-  compaq_demangling,
-  unknown_demangling
+  no_demangling = -1,
+  unknown_demangling = 0,
+  auto_demangling = DMGL_AUTO,
+  gnu_demangling = DMGL_GNU,
+  lucid_demangling = DMGL_LUCID,
+  arm_demangling = DMGL_ARM,
+  hp_demangling = DMGL_HP,
+  edg_demangling = DMGL_EDG,
+  gnu_v3_demangling = DMGL_GNU_V3,
+  java_demangling = DMGL_JAVA,
+  gnat_demangling = DMGL_GNAT
 } current_demangling_style;
 
 /* Define string names for the various demangling styles. */
@@ -88,7 +85,6 @@ extern enum demangling_styles
 #define GNU_V3_DEMANGLING_STYLE_STRING        "gnu-v3"
 #define JAVA_DEMANGLING_STYLE_STRING          "java"
 #define GNAT_DEMANGLING_STYLE_STRING          "gnat"
-#define COMPAQ_DEMANGLING_STYLE_STRING	      "compaq"
 
 /* Some macros to test what demangling style is active. */
 
@@ -102,31 +98,19 @@ extern enum demangling_styles
 #define GNU_V3_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_GNU_V3)
 #define JAVA_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_JAVA)
 #define GNAT_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_GNAT)
-#define COMPAQ_DEMANGLING (((int) CURRENT_DEMANGLING_STYLE) & DMGL_COMPAQ)
-
-typedef char * (*demangle_function) PARAMS ((const char *,
-					     enum demangling_styles,
-					     int));
 
 /* Provide information about the available demangle styles. This code is
    pulled from gdb into libiberty because it is useful to binutils also.  */
 
-extern struct demangler_engine
+extern const struct demangler_engine
 {
   const char *const demangling_style_name;
-  const int demangling_style;
-  int demangling_options;
+  const enum demangling_styles demangling_style;
   const char *const demangling_style_doc;
-  demangle_function df;
 } libiberty_demanglers[];
 
 extern char *
 cplus_demangle PARAMS ((const char *mangled, int options));
-
-extern char *
-cplus_demangle_with_style PARAMS ((const char *mangled,
-				   enum demangling_styles style,
-				   int options));
 
 extern int
 cplus_demangle_opname PARAMS ((const char *opname, char *result, int options));
@@ -541,29 +525,6 @@ cplus_demangle_print PARAMS ((int options,
 			      const struct demangle_component *tree,
 			      int estimated_length,
 			      size_t *p_allocated_size));
-
-extern char *
-demangle_symbol PARAMS ((const char *mangled));
-
-extern char *
-demangle_symbol_with_style PARAMS ((const char *mangled,
-				    enum demangling_styles style));
-
-extern char *
-demangle_symbol_with_options PARAMS ((const char *mangled,
-				      int options));
-
-extern char *
-demangle_symbol_with_style_options PARAMS ((const char *mangled,
-					    enum demangling_styles style,
-					    int options));
-
-extern int
-init_demangler PARAMS ((const char *style, const char *options,
-			const char *demangler));
-
-extern const char *
-get_demangler_list PARAMS ((void));
 
 #ifdef __cplusplus
 }

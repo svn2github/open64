@@ -326,10 +326,6 @@ BFD32_BACKENDS = \
 	xtensa-isa.lo \
 	xtensa-modules.lo
 
-BFD32_BACKENDS += \
-	ipa_cmdline.lo \
-	ipa_ld.lo
-
 BFD32_BACKENDS_CFILES = \
 	aout-adobe.c \
 	aout-arm.c \
@@ -493,10 +489,6 @@ BFD32_BACKENDS_CFILES = \
 	xtensa-isa.c \
 	xtensa-modules.c
 
-BFD32_BACKENDS_CFILES += \
-	ipa_cmdline.c \
-	ipa_ld.c
-
 # The .o files needed by all of the 64 bit vectors that are configured into
 # target_vector in targets.c if configured with --enable-targets=all
 # and --enable-64-bit-bfd.
@@ -596,14 +588,13 @@ CFILES = $(SOURCE_CFILES) $(BUILD_CFILES)
 SOURCE_HFILES = \
 	aout-target.h aoutf1.h aoutx.h coffcode.h coffswap.h ecoffswap.h \
 	elf-bfd.h elf-hppa.h elf32-arm.h elf32-hppa.h \
-	elf64-hppa.h elfcode.h elfcore.h elflink.h \
+	elf64-hppa.h elfcode.h elfcore.h \
 	freebsd.h genlink.h go32stub.h \
 	libaout.h libbfd.h libcoff.h libecoff.h libhppa.h libieee.h \
 	libnlm.h liboasys.h libpei.h libxcoff.h mach-o.h \
 	netbsd.h nlm-target.h nlmcode.h nlmswap.h ns32k.h \
 	pef.h pef-traceback.h peicode.h som.h version.h \
-	vms.h xcoff-target.h xsym.h \
-	ipa_cmdline.h ipa_ld.h
+	vms.h xcoff-target.h xsym.h
 
 ## ... and all .h files which are in the build tree.
 BUILD_HFILES = \
@@ -1169,7 +1160,7 @@ elf32-fr30.lo: elf32-fr30.c $(INCDIR)/filenames.h elf-bfd.h \
 elf32-frv.lo: elf32-frv.c $(INCDIR)/filenames.h elf-bfd.h \
   $(INCDIR)/elf/common.h $(INCDIR)/elf/internal.h $(INCDIR)/elf/external.h \
   $(INCDIR)/bfdlink.h $(INCDIR)/elf/frv.h $(INCDIR)/elf/reloc-macros.h \
-  elf32-target.h
+  $(INCDIR)/hashtab.h elf32-target.h
 elf32-gen.lo: elf32-gen.c $(INCDIR)/filenames.h elf-bfd.h \
   $(INCDIR)/elf/common.h $(INCDIR)/elf/internal.h $(INCDIR)/elf/external.h \
   $(INCDIR)/bfdlink.h elf32-target.h
@@ -1319,10 +1310,10 @@ elf32-xtensa.lo: elf32-xtensa.c $(INCDIR)/filenames.h \
 elf32.lo: elf32.c elfcode.h $(INCDIR)/filenames.h $(INCDIR)/libiberty.h \
   $(INCDIR)/bfdlink.h elf-bfd.h $(INCDIR)/elf/common.h \
   $(INCDIR)/elf/internal.h $(INCDIR)/elf/external.h elfcore.h \
-  elflink.h $(INCDIR)/safe-ctype.h
+  $(INCDIR)/safe-ctype.h
 elflink.lo: elflink.c $(INCDIR)/filenames.h $(INCDIR)/bfdlink.h \
   elf-bfd.h $(INCDIR)/elf/common.h $(INCDIR)/elf/internal.h \
-  $(INCDIR)/elf/external.h
+  $(INCDIR)/elf/external.h $(INCDIR)/libiberty.h
 elf-strtab.lo: elf-strtab.c $(INCDIR)/filenames.h elf-bfd.h \
   $(INCDIR)/elf/common.h $(INCDIR)/elf/internal.h $(INCDIR)/elf/external.h \
   $(INCDIR)/bfdlink.h $(INCDIR)/hashtab.h $(INCDIR)/libiberty.h
@@ -1601,7 +1592,7 @@ elf64-sparc.lo: elf64-sparc.c $(INCDIR)/filenames.h \
 elf64.lo: elf64.c elfcode.h $(INCDIR)/filenames.h $(INCDIR)/libiberty.h \
   $(INCDIR)/bfdlink.h elf-bfd.h $(INCDIR)/elf/common.h \
   $(INCDIR)/elf/internal.h $(INCDIR)/elf/external.h elfcore.h \
-  elflink.h $(INCDIR)/safe-ctype.h
+  $(INCDIR)/safe-ctype.h
 mmo.lo: mmo.c $(INCDIR)/filenames.h $(INCDIR)/libiberty.h \
   $(INCDIR)/elf/mmix.h $(INCDIR)/elf/reloc-macros.h $(INCDIR)/opcode/mmix.h
 nlm32-alpha.lo: nlm32-alpha.c $(INCDIR)/filenames.h \
@@ -1638,8 +1629,4 @@ peigen.lo: peigen.c $(INCDIR)/filenames.h $(INCDIR)/coff/internal.h \
 pepigen.lo: pepigen.c $(INCDIR)/filenames.h $(INCDIR)/coff/internal.h \
   $(INCDIR)/coff/ia64.h $(INCDIR)/coff/external.h $(INCDIR)/coff/pe.h \
   libcoff.h $(INCDIR)/bfdlink.h libpei.h
-
-+ipa_cmdline.lo: ipa_cmdline.c ipa_cmdline.h
-+ipa_ld.lo: ipa_ld.c ipa_ld.h
-
 # IF YOU PUT ANYTHING HERE IT WILL GO AWAY

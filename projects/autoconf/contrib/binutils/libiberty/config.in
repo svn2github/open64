@@ -374,12 +374,3 @@
 
 /* Define as `fork' if `vfork' does not work. */
 #undef vfork
-
-/* Define if you have the <dlfcn.h> header file.  */
-#undef HAVE_DLFCN_H
-
-/* Define if weak symbol works. */
-#undef HAVE_WEAK_SYMBOL
-
-/* Define if dlopen exists. */
-#undef HAVE_DLOPEN

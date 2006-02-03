@@ -1,6 +1,6 @@
 /* PowerPC-specific support for 32-bit ELF
-   Copyright 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003
-   Free Software Foundation, Inc.
+   Copyright 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
+   2004 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Cygnus Support.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -1816,10 +1816,7 @@ ppc_elf_relax_section (bfd *abfd,
       symaddr = tsec->output_section->vma + tsec->output_offset + toff;
 
       roff = irel->r_offset;
-
-      reladdr = (isec->output_section->vma
-		 + isec->output_offset
-		 + roff);
+      reladdr = isec->output_section->vma + isec->output_offset + roff;
 
       /* If the branch is in range, no need to do anything.  */
       if (symaddr - reladdr + max_branch_offset < 2 * max_branch_offset)
@@ -2395,7 +2392,7 @@ elf_create_pointer_linker_section (bfd *abfd,
       /* Make sure this symbol is output as a dynamic symbol.  */
       if (h->dynindx == -1)
 	{
-	  if (! _bfd_elf_link_record_dynamic_symbol (info, h))
+	  if (! bfd_elf_link_record_dynamic_symbol (info, h))
 	    return FALSE;
 	}
 
@@ -2688,7 +2685,7 @@ ppc_elf_create_linker_section (bfd *abfd,
       lsect->sym_hash = h;
 
       if (info->shared
-	  && ! _bfd_elf_link_record_dynamic_symbol (info, h))
+	  && ! bfd_elf_link_record_dynamic_symbol (info, h))
 	return NULL;
     }
 
@@ -2996,17 +2993,6 @@ ppc_elf_adjust_dynamic_symbol (struct bfd_link_info *info,
   return TRUE;
 }
 
-/* This is the condition under which finish_dynamic_symbol will be
-   called from elflink.h.  If elflink.h doesn't call our
-   finish_dynamic_symbol routine, we'll need to do something about
-   initializing any .plt and .got entries in relocate_section.  */
-#define WILL_CALL_FINISH_DYNAMIC_SYMBOL(DYN, SHARED, H) \
-  ((DYN)								\
-   && ((SHARED)								\
-       || ((H)->elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) == 0)	\
-   && ((H)->dynindx != -1						\
-       || ((H)->elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) != 0))
-
 /* Of those relocs that might be copied as dynamic relocs, this macro
    selects those that must be copied when linking a shared library,
    even when the symbol is local.  */
@@ -3045,7 +3031,7 @@ allocate_dynrelocs (struct elf_link_hash_entry *h, void *inf)
       if (h->dynindx == -1
 	  && (h->elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) == 0)
 	{
-	  if (! bfd_elf32_link_record_dynamic_symbol (info, h))
+	  if (! bfd_elf_link_record_dynamic_symbol (info, h))
 	    return FALSE;
 	}
 
@@ -3108,7 +3094,7 @@ allocate_dynrelocs (struct elf_link_hash_entry *h, void *inf)
       if (eh->elf.dynindx == -1
 	  && (eh->elf.elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) == 0)
 	{
-	  if (!bfd_elf32_link_record_dynamic_symbol (info, &eh->elf))
+	  if (!bfd_elf_link_record_dynamic_symbol (info, &eh->elf))
 	    return FALSE;
 	}
 
@@ -3198,7 +3184,7 @@ allocate_dynrelocs (struct elf_link_hash_entry *h, void *inf)
 	  && h->root.type == bfd_link_hash_undefweak
 	  && (h->elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) == 0)
 	{
-	  if (! bfd_elf32_link_record_dynamic_symbol (info, h))
+	  if (! bfd_elf_link_record_dynamic_symbol (info, h))
 	    return FALSE;
 	}
     }
@@ -3217,7 +3203,7 @@ allocate_dynrelocs (struct elf_link_hash_entry *h, void *inf)
 	  if (h->dynindx == -1
 	      && (h->elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) == 0)
 	    {
-	      if (! bfd_elf64_link_record_dynamic_symbol (info, h))
+	      if (! bfd_elf_link_record_dynamic_symbol (info, h))
 		return FALSE;
 	    }
 
@@ -3473,7 +3459,7 @@ ppc_elf_size_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
 	 the .dynamic section.  The DT_DEBUG entry is filled in by the
 	 dynamic linker and used by the debugger.  */
 #define add_dynamic_entry(TAG, VAL) \
-  bfd_elf32_add_dynamic_entry (info, (TAG), (VAL))
+  _bfd_elf_add_dynamic_entry (info, TAG, VAL)
 
       if (info->executable)
 	{
@@ -3809,14 +3795,14 @@ ppc_elf_check_relocs (bfd *abfd,
 	  /* This relocation describes the C++ object vtable hierarchy.
 	     Reconstruct it for later use during GC.  */
 	case R_PPC_GNU_VTINHERIT:
-	  if (!_bfd_elf32_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
+	  if (!bfd_elf_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
 	    return FALSE;
 	  break;
 
 	  /* This relocation describes which C++ vtable entries are actually
 	     used.  Record for later use during GC.  */
 	case R_PPC_GNU_VTENTRY:
-	  if (!_bfd_elf32_gc_record_vtentry (abfd, sec, h, rel->r_addend))
+	  if (!bfd_elf_gc_record_vtentry (abfd, sec, h, rel->r_addend))
 	    return FALSE;
 	  break;
 
@@ -3896,8 +3882,6 @@ ppc_elf_check_relocs (bfd *abfd,
 	     dynamic library if we manage to avoid copy relocs for the
 	     symbol.  */
 	  if ((info->shared
-	       && ((sec->flags & SEC_DEBUGGING) == 0
-		   || (sec->flags & SEC_ALLOC) != 0)
 	       && (MUST_BE_DYN_RELOC (r_type)
 		   || (h != NULL
 		       && (! info->symbolic
@@ -4381,7 +4365,7 @@ ppc_elf_tls_optimize (bfd *obfd ATTRIBUTE_UNUSED,
 static bfd_boolean
 ppc_elf_add_symbol_hook (bfd *abfd,
 			 struct bfd_link_info *info,
-			 const Elf_Internal_Sym *sym,
+			 Elf_Internal_Sym *sym,
 			 const char **namep ATTRIBUTE_UNUSED,
 			 flagword *flagsp ATTRIBUTE_UNUSED,
 			 asection **secp,
@@ -4706,10 +4690,10 @@ ppc_elf_relocate_section (bfd *output_bfd,
 	}
       else
 	{
-	  RELOC_FOR_GLOBAL_SYMBOL (h, sym_hashes, r_symndx,
-				   symtab_hdr, relocation, sec,
-				   unresolved_reloc, info,
-				   warned);
+	  RELOC_FOR_GLOBAL_SYMBOL (info, input_bfd, input_section, rel,
+				   r_symndx, symtab_hdr, sym_hashes,
+				   h, sec, relocation,
+				   unresolved_reloc, warned);
 
 	  sym_name = h->root.root.string;
 	}
@@ -5301,8 +5285,6 @@ ppc_elf_relocate_section (bfd *output_bfd,
 	  /* Fall thru.  */
 
 	  if ((info->shared
-	       && ((input_section->flags & SEC_DEBUGGING) == 0
-		   || (input_section->flags & SEC_ALLOC) != 0)
 	       && (h == NULL
 		   || ELF_ST_VISIBILITY (h->other) == STV_DEFAULT
 		   || h->root.type != bfd_link_hash_undefweak)

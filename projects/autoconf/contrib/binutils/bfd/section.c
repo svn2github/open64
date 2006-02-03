@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Object file "section" support for the BFD library.
    Copyright 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
    2000, 2001, 2002, 2003
@@ -614,9 +610,7 @@ static const asymbol global_syms[] =
   GLOBAL_SYM_INIT (BFD_COM_SECTION_NAME, &bfd_com_section),
   GLOBAL_SYM_INIT (BFD_UND_SECTION_NAME, &bfd_und_section),
   GLOBAL_SYM_INIT (BFD_ABS_SECTION_NAME, &bfd_abs_section),
-  GLOBAL_SYM_INIT (BFD_IND_SECTION_NAME, &bfd_ind_section),
-  GLOBAL_SYM_INIT (BFD_WHD_SECTION_NAME, &bfd_whirl_data_section),
-  GLOBAL_SYM_INIT (BFD_WHT_SECTION_NAME, &bfd_whirl_text_section),
+  GLOBAL_SYM_INIT (BFD_IND_SECTION_NAME, &bfd_ind_section)
 };
 
 #define STD_SECTION(SEC, FLAGS, SYM, NAME, IDX)				\
@@ -670,10 +664,6 @@ STD_SECTION (bfd_com_section, SEC_IS_COMMON, bfd_com_symbol,
 STD_SECTION (bfd_und_section, 0, bfd_und_symbol, BFD_UND_SECTION_NAME, 1);
 STD_SECTION (bfd_abs_section, 0, bfd_abs_symbol, BFD_ABS_SECTION_NAME, 2);
 STD_SECTION (bfd_ind_section, 0, bfd_ind_symbol, BFD_IND_SECTION_NAME, 3);
-STD_SECTION (bfd_whirl_data_section, 0, bfd_whirl_data_symbol,
-	     BFD_WHD_SECTION_NAME, 4); /* IPA_LINK */
-STD_SECTION (bfd_whirl_text_section, 0, bfd_whirl_text_symbol,
-	     BFD_WHT_SECTION_NAME, 5); /* IPA_LINK */
 #undef STD_SECTION
 
 struct section_hash_entry
@@ -903,12 +893,6 @@ bfd_make_section_old_way (bfd *abfd, const char *name)
 
   if (strcmp (name, BFD_IND_SECTION_NAME) == 0)
     return bfd_ind_section_ptr;
-
-  if (strcmp (name, BFD_WHD_SECTION_NAME) == 0)
-    return bfd_whirl_data_section_ptr;
-
-  if (strcmp (name, BFD_WHT_SECTION_NAME) == 0)
-    return bfd_whirl_text_section_ptr;
 
   sh = section_hash_lookup (&abfd->section_htab, name, TRUE, FALSE);
   if (sh == NULL)

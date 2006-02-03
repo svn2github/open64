@@ -170,10 +170,6 @@ case $os in
 	-hiux*)
 		os=-hiuxwe2
 		;;
-	-mvs*)
-		os=-mvs
-		basic_machine=i370-ibm
-		;;
 	-sco5)
 		os=-sco3.2v5
 		basic_machine=`echo $1 | sed -e 's/86-.*/86-pc/'`
@@ -589,7 +585,7 @@ case $basic_machine in
 		basic_machine=hppa1.1-hp
 		os=-proelf
 		;;
-	i370*)
+	i370-ibm* | ibm*)
 		basic_machine=i370-ibm
 		;;
 # I'm not sure what "Sysv32" means.  Should this be sysv3.2?

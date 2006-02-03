@@ -577,7 +577,7 @@ ld_new_OBJECTS =  ldgram.$(OBJEXT) ldlex.$(OBJEXT) lexsup.$(OBJEXT) \
 ldlang.$(OBJEXT) mri.$(OBJEXT) ldctor.$(OBJEXT) ldmain.$(OBJEXT) \
 ldwrite.$(OBJEXT) ldexp.$(OBJEXT) ldemul.$(OBJEXT) ldver.$(OBJEXT) \
 ldmisc.$(OBJEXT) ldfile.$(OBJEXT) ldcref.$(OBJEXT)
-ld_new_LDFLAGS = -export-dynamic	# needed for IPA
+ld_new_LDFLAGS = 
 LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
 LEXLIB = @LEXLIB@
 YLWRAP = $(top_srcdir)/../ylwrap
@@ -708,7 +708,7 @@ maintainer-clean-libtool:
 
 ld-new$(EXEEXT): $(ld_new_OBJECTS) $(ld_new_DEPENDENCIES)
 	@rm -f ld-new$(EXEEXT)
-	$(LINK) $(ld_new_LDFLAGS) $(ld_new_OBJECTS) $(ld_new_LDADD) $(LIBS) -ldl
+	$(LINK) $(ld_new_LDFLAGS) $(ld_new_OBJECTS) $(ld_new_LDADD) $(LIBS)
 .l.c:
 	$(LEX) $(AM_LFLAGS) $(LFLAGS) $< && mv $(LEX_OUTPUT_ROOT).c $@
 .y.c:
@@ -1360,7 +1360,7 @@ eelf32bmip.c: $(srcdir)/emulparams/elf32bmip.sh \
   $(srcdir)/emultempl/elf32.em $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} elf32bmip "$(tdir_elf32bmip)"
 eelf32bsmip.c: $(srcdir)/emulparams/elf32bsmip.sh \
-  $(srcdir)/emulparams/elf32bmip.sh $(srcdir)/emultempl/mipself.em \
+  $(srcdir)/emulparams/elf32bmip.sh $(srcdir)/emultempl/irix.em \
   $(srcdir)/emultempl/elf32.em $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} elf32bsmip "$(tdir_elf32bsmip)"
 eelf32btsmip.c: $(srcdir)/emulparams/elf32btsmip.sh \
@@ -1391,6 +1391,7 @@ eelf32elmip.c: $(srcdir)/emulparams/elf32elmip.sh \
   $(srcdir)/emultempl/elf32.em $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} elf32elmip "$(tdir_elf32elmip)"
 eelf32bmipn32.c: $(srcdir)/emulparams/elf32bmipn32.sh \
+  $(srcdir)/emultempl/irix.em \
   $(srcdir)/emultempl/elf32.em $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} elf32bmipn32 "$(tdir_elf32bmipn32)"
 eelf32l4300.c: $(srcdir)/emulparams/elf32l4300.sh \
@@ -1507,7 +1508,7 @@ eelf64_sparc_fbsd.c: $(srcdir)/emulparams/elf64_sparc_fbsd.sh \
   $(srcdir)/emultempl/elf32.em $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} elf64_sparc_fbsd "$(tdir_elf64_sparc_fbsd)"
 eelf64bmip.c: $(srcdir)/emulparams/elf64bmip.sh \
-  $(srcdir)/emulparams/elf32bmipn32.sh \
+  $(srcdir)/emulparams/elf32bmipn32.sh $(srcdir)/emultempl/irix.em \
   $(srcdir)/emultempl/elf32.em $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} elf64bmip "$(tdir_elf64bmip)"
 eelf64mmix.c: $(srcdir)/emulparams/elf64mmix.sh \

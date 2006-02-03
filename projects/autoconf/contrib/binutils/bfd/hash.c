@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* hash.c -- hash table routines for BFD
    Copyright 1993, 1994, 1995, 1997, 1999, 2001, 2002, 2003
    Free Software Foundation, Inc.
@@ -474,8 +470,6 @@ bfd_hash_allocate (table, size)
   ret = objalloc_alloc ((struct objalloc *) table->memory, size);
   if (ret == NULL && size != 0)
     bfd_set_error (bfd_error_no_memory);
-  /* For invalid_section_owner.  */
-  memset (ret, 0, size);
   return ret;
 }
 

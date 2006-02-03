@@ -1,10 +1,6 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Main program of GNU linker.
    Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001,
-   2002, 2003
+   2002, 2003, 2004
    Free Software Foundation, Inc.
    Written by Steve Chamberlain steve@cygnus.com
 
@@ -46,12 +42,6 @@
 #include "ldemul.h"
 #include "ldctor.h"
 
-
-#ifdef IPA_LINK
-#include "ipa_ld.h"
-#include "ipa_cmdline.h"
-#endif
-
 /* Somewhere above, sys/stat.h got included.  */
 #if !defined(S_ISDIR) && defined(S_IFDIR)
 #define	S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
@@ -67,12 +57,6 @@ extern void *sbrk ();
 
 #ifndef TARGET_SYSTEM_ROOT
 #define TARGET_SYSTEM_ROOT ""
-#endif
-
-#ifdef IPA_LINK
-int main PARAMS ((int, char **, char **));
-#else
-int main PARAMS ((int, char **));
 #endif
 
 /* EXPORTS */
@@ -108,6 +92,10 @@ bfd_boolean version_printed;
 
 /* Nonzero means link in every member of an archive.  */
 bfd_boolean whole_archive;
+
+/* Nonzero means create DT_NEEDED entries only if a dynamic library
+   actually satisfies some reference in a regular object.  */
+bfd_boolean as_needed;
 
 /* TRUE if we should demangle symbol names.  */
 bfd_boolean demangling;
@@ -152,18 +140,6 @@ static bfd_boolean unattached_reloc
 static bfd_boolean notice
   (struct bfd_link_info *, const char *, bfd *, asection *, bfd_vma);
 
-#ifdef IPA_LINK
-bfd_boolean is_ipa = FALSE;
-
-    /* I have to call this through ld because otherwise
-       ipa_ld.o will get pulled in whether it is wanted
-       or not. */
-int ld_set_ndx(bfd *abfd)
-{
-    return ipa_set_ndx(abfd);
-}
-#endif
-
 static struct bfd_link_callbacks link_callbacks =
 {
   add_archive_element,
@@ -194,15 +170,11 @@ remove_output (void)
     }
 }
 
-void *licenseclient ;         // dummy for be.so
-
 int
-main (int argc, char **argv, char **envp)
+main (int argc, char **argv)
 {
   char *emulation;
   long start_time = get_run_time ();
-
-  ipa_search_command_line(argc, argv, envp);
 
 #if defined (HAVE_SETLOCALE) && defined (HAVE_LC_MESSAGES)
   setlocale (LC_MESSAGES, "");
@@ -492,13 +464,6 @@ main (int argc, char **argv, char **envp)
     }
 
   lang_process ();
-
-#ifdef IPA_LINK
-  if (is_ipa) {
-    cleanup_symtab_for_ipa();
-    (*p_ipa_driver) (ipa_argc, ipa_argv);
-  }
-#endif
 
   /* Print error messages for any missing symbols, for any warning
      symbols, and possibly multiple definitions.  */
@@ -1003,12 +968,10 @@ multiple_definition (struct bfd_link_info *info ATTRIBUTE_UNUSED,
 	  && bfd_is_abs_section (nsec->output_section)))
     return TRUE;
 
+  einfo (_("%X%C: multiple definition of `%T'\n"),
+	 nbfd, nsec, nval, name);
   if (obfd != NULL)
-    {
-      einfo (_("%X%C: multiple definition of `%T'\n"),
-	     nbfd, nsec, nval, name);
-      einfo (_("%D: first defined here\n"), obfd, osec, oval);
-    }
+    einfo (_("%D: first defined here\n"), obfd, osec, oval);
 
   if (command_line.relax)
     {
@@ -1241,7 +1204,8 @@ warning_callback (struct bfd_link_info *info ATTRIBUTE_UNUSED,
       info.asymbols = asymbols;
       bfd_map_over_sections (abfd, warning_find_reloc, &info);
 
-      // 'deprecated' warning removed by KEY
+      if (! info.found)
+	einfo ("%B: %s\n", abfd, warning);
 
       if (entry == NULL)
 	free (asymbols);

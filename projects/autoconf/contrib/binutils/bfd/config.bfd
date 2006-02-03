@@ -89,12 +89,17 @@ esac
 
 case "${targ}" in
   mips*-dec-bsd*)
-    echo "This target is obsolete and has been removed." 
+    echo "This target is obsolete and has been removed."
+    exit 1
+    ;;
+
+  mips*-*-mach3*)
+    echo "This target is obsolete and has been removed."
     exit 1
     ;;
 
   mips*-*-pe*)
-    echo "This target is obsolete and has been removed." 
+    echo "This target is obsolete and has been removed."
     exit 1
     ;;
 
@@ -329,10 +334,15 @@ case "${targ}" in
     targ_defvec=bfd_elf32_fr30_vec
     ;;
 
-  frv-*-elf | frv-*-*linux*)
+  frv-*-elf)
     targ_defvec=bfd_elf32_frv_vec
+    targ_selvecs=bfd_elf32_frvfdpic_vec
     ;;
 
+  frv-*-*linux*)
+    targ_defvec=bfd_elf32_frvfdpic_vec
+    targ_selvecs=bfd_elf32_frv_vec
+    ;;
 
   h8300*-*-elf)
     targ_defvec=bfd_elf32_h8300_vec
@@ -459,6 +469,7 @@ case "${targ}" in
   i[3-7]86-*-netbsdelf* | i[3-7]86-*-netbsd*-gnu* | i[3-7]86-*-knetbsd*-gnu)
     targ_defvec=bfd_elf32_i386_vec
     targ_selvecs=i386netbsd_vec
+    targ64_selvecs=bfd_elf64_x86_64_vec
     ;;
   i[3-7]86-*-netbsdpe*)
     targ_defvec=i386pe_vec
@@ -493,7 +504,7 @@ case "${targ}" in
     targ_defvec=bfd_elf64_x86_64_vec
     targ_selvecs="bfd_elf32_i386_vec i386coff_vec bfd_efi_app_ia32_vec"
     ;;
-  x86_64-*-netbsd*)
+  x86_64-*-netbsd* | x86_64-*-openbsd*)
     targ_defvec=bfd_elf64_x86_64_vec
     targ_selvecs="bfd_elf32_i386_vec i386netbsd_vec i386coff_vec bfd_efi_app_ia32_vec"
     ;;
@@ -761,10 +772,6 @@ case "${targ}" in
     targ_defvec=bfd_elf32_bigmips_vec
     targ_selvecs="bfd_elf32_littlemips_vec bfd_elf64_bigmips_vec bfd_elf64_littlemips_vec ecoff_big_vec ecoff_little_vec"
     ;;
-  mips*-dec-mach3*)
-    targ_defvec=aout_mips_little_vec
-    targ_cflags=-DSTAT_FOR_EXEC
-    ;;
   mips*-dec-* | mips*el-*-ecoff*)
     targ_defvec=ecoff_little_vec
     targ_selvecs=ecoff_big_vec
@@ -790,10 +797,6 @@ case "${targ}" in
   mips*-*-lnews*)
     targ_defvec=ecoff_biglittle_vec
     targ_selvecs="ecoff_little_vec ecoff_big_vec"
-    ;;
-  mips*-*-mach3*)
-    targ_defvec=aout_mips_little_vec
-    targ_cflags=-DSTAT_FOR_EXEC
     ;;
   mips*-*-sysv4*)
     targ_defvec=bfd_elf32_tradbigmips_vec
@@ -875,12 +878,12 @@ case "${targ}" in
     targ_defvec=bfd_elf32_openrisc_vec
     ;;
 
-  or32-*-coff | or32-*-rtems*)
+  or32-*-coff)
     targ_defvec=or32coff_big_vec
     targ_underscore=yes
     ;;
 
-  or32-*-elf)
+  or32-*-elf | or32-*-rtems*)
     targ_defvec=bfd_elf32_or32_big_vec
     ;;
 
@@ -1089,7 +1092,12 @@ case "${targ}" in
 #endif
     targ_underscore=yes
     ;;
-  sh-*-elf* | sh[1234]*-elf* | sh-*-rtemself* | sh-*-kaos*)
+  sh-*-rtemscoff*)
+    targ_defvec=shcoff_vec
+    targ_selvecs="shcoff_vec shlcoff_vec shcoff_small_vec shlcoff_small_vec"
+    targ_underscore=yes
+    ;;
+  sh-*-elf* | sh[1234]*-elf* | sh-*-rtems* | sh-*-kaos*)
     targ_defvec=bfd_elf32_sh_vec
     targ_selvecs="bfd_elf32_shl_vec shcoff_vec shlcoff_vec shcoff_small_vec shlcoff_small_vec"
 #ifdef BFD64
@@ -1115,7 +1123,7 @@ case "${targ}" in
     # compiled correctly.
     targ_selvecs="$targ_selvecs shcoff_vec shlcoff_vec shcoff_small_vec shlcoff_small_vec"
     ;;
-  sh-*-* | sh-*-rtems*)
+  sh-*-*)
     targ_defvec=shcoff_vec
     targ_selvecs="shcoff_vec shlcoff_vec shcoff_small_vec shlcoff_small_vec"
     targ_underscore=yes

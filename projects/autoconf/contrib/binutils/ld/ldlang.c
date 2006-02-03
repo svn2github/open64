@@ -1,7 +1,3 @@
-/*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Linker command language support.
    Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
    2001, 2002, 2003, 2004
@@ -45,33 +41,8 @@
 #include "demangle.h"
 #include "hashtab.h"
 
-#ifdef KEY
-#include "ipa_ld.h"
-#include "elf-bfd.h"
-#include "libbfd.h"
-#include "aout/ar.h"		// struct ar_hdr
-
-#if !defined(EF_IRIX_ABI64)
-#define EF_IRIX_ABI64   0x00000010
-#endif
-#endif
-
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) & (((TYPE*) 0)->MEMBER))
-#endif
-
-#ifdef IPA_LINK
-extern bfd_boolean is_ipa;
-
-extern bfd_boolean
-ipa_is_whirl(bfd *);
-
-extern void
-ipa_process_whirl ( bfd *);
-
-#ifdef KEY
-extern void (*p_Ipalink_ErrMsg_EC_outfile)(char *);
-#endif
 #endif
 
 /* Locals variables.  */
@@ -474,6 +445,7 @@ new_afile (const char *name,
   p->next = NULL;
   p->symbol_count = 0;
   p->dynamic = config.dynamic_link;
+  p->as_needed = as_needed;
   p->whole_archive = whole_archive;
   p->loaded = FALSE;
   lang_statement_append (&input_file_chain,
@@ -1130,10 +1102,6 @@ lang_add_section (lang_statement_list_type *ptr,
 	  flags &= ~ (SEC_MERGE | SEC_STRINGS);
 	}
 
-      /* For now make .tbss normal section.  */
-      if ((flags & SEC_THREAD_LOCAL) && ! link_info.relocatable)
-	flags |= SEC_LOAD;
-
       section->output_section->flags |= flags;
 
       if (flags & SEC_MERGE)
@@ -1468,102 +1436,6 @@ load_symbols (lang_input_statement_type *entry,
       break;
 
     case bfd_archive:
-#ifdef KEY
-      // Go through archive to make sure it does not contain both regular and
-      // WHIRL objects.
-      if (is_ipa) {
-	bfd_boolean seen_nonwhirl_obj = FALSE;
-	bfd_boolean seen_whirl_obj = FALSE;
-	bfd_boolean mixed = FALSE;	// TRUE if archive has mixed objects
-	bfd *member = NULL;
-
-	member = bfd_openr_next_archived_file (entry->the_bfd, member);
-	while (member != NULL) {
-	  if (!bfd_check_format (member, bfd_object)) {
-	    einfo (_("%F%B: member %B in archive is not an object\n"),
-		   entry->the_bfd, member);
-	    break;
-	  }
-
-	  // it's an object
-	  if (ipa_is_whirl (member)) {	// WHIRL object
-	    seen_whirl_obj = TRUE;
-	    if (seen_nonwhirl_obj) {
-	      mixed = TRUE;
-	    } else {
-	      char *buf;
-	      struct ar_hdr *p_hdr;
-	      size_t parsed_size;
-	      // Process the WHIRL object.
-	      if (! bfd_link_add_symbols (member, &link_info)) {
-	        einfo (_("%F%B: could not read symbols from member %B in archive: %E\n"),
-		       entry->the_bfd, member);
-	        entry->loaded = FALSE;
-		return FALSE;
-	      }
-	      ld_set_cur_obj(member);
-	      p_hdr = arch_hdr(member);
-	      parsed_size = strtol (p_hdr->ar_size, NULL, 10);
-	      if ((buf = bfd_alloc(member, parsed_size)) == NULL) {
-		einfo(_("%F%B: bfd_alloc failed for member %B\n"),
-		      entry->the_bfd, member);
-	      }
-	      if (bfd_seek(member, 0, SEEK_SET) != 0) {
-		einfo(_("%F%B: bfd_seek failed for member %B\n"),
-		      entry->the_bfd, member);
-	      }
-	      if (bfd_bread(buf, parsed_size, member) != parsed_size) {
-		einfo(_("%F%B: bfd_read failed for member %B\n"),
-		      entry->the_bfd, member);
-	      }
-	      member->usrdata = buf;
-	      if ((elf_elfheader(member)->e_flags & EF_IRIX_ABI64) == 0)
-	        (*p_process_whirl32) ((void *)member,
-				elf_elfheader (member)->e_shnum,
-				member->usrdata+elf_elfheader(member)->e_shoff,
-				0, /* check_whirl_revision */
-				member->filename);
-	      else
-	        (*p_process_whirl64) ((void *)member,
-				elf_elfheader (member)->e_shnum,
-				member->usrdata+elf_elfheader(member)->e_shoff,
-				0, /* check_whirl_revision */
-				member->filename);
-
-	      // Since it is not a regular object archive, don't pass it to the
-	      // linker.
-	      // Prepend "../" to relative pathname since linking is done
-	      // inside the ipa temp dir.  Bug 6165.
-	      (*p_ipa_erase_link_flag)
-	       ((*p_ipa_add_parent_dir_to_relative_pathname)
-	         (entry->local_sym_name));
-	    }
-	  } else {			// non-WHIRL object
-	    seen_nonwhirl_obj = TRUE;
-	    if (seen_whirl_obj) {
-	      mixed = TRUE;
-	    }
-	  }
-
-	  // Give error if the archive contains both regular and WHIRL objects.
-	  if (mixed) {
-	    einfo(_("%F%B: cannot mix regular and ipa objects in same archive\n"),
-		  entry->the_bfd);
-	    entry->loaded = FALSE;
-	    return FALSE;
-	  }
-
-	  member = bfd_openr_next_archived_file (entry->the_bfd, member);
-	}
-
-	// Done processing WHIRL-object archive.
-	if (seen_whirl_obj) {
-	  entry->loaded = TRUE;
-	  return TRUE;
-	}
-      }
-#endif
-
       if (entry->whole_archive)
 	{
 	  bfd *member = NULL;
@@ -1604,22 +1476,6 @@ load_symbols (lang_input_statement_type *entry,
     entry->loaded = TRUE;
   else
     einfo (_("%F%B: could not read symbols: %E\n"), entry->the_bfd);
-
-#ifdef IPA_LINK
-  if (is_ipa) {
-    switch (bfd_get_format (entry->the_bfd)) {
-      default:
-        break;
-
-      case bfd_object:
-        ld_set_cur_obj(entry->the_bfd);
-        if (ipa_is_whirl(entry->the_bfd)) {
-          ipa_process_whirl(entry->the_bfd);
-        }
-        break;
-    }
-  }
-#endif
 
   return entry->loaded;
 }
@@ -1889,11 +1745,7 @@ open_output (const char *name)
       if (bfd_get_error () == bfd_error_invalid_target)
 	einfo (_("%P%F: target %s not found\n"), output_target);
 
-#ifdef KEY	// bug 3956
-      (*p_Ipalink_ErrMsg_EC_outfile)(name);
-#else
       einfo (_("%P%F: cannot open output file %s: %E\n"), name);
-#endif
     }
 
   delete_output_file_on_failure = TRUE;
@@ -1991,7 +1843,7 @@ open_input_bfds (lang_statement_union_type *s, bfd_boolean force)
 	  /* Maybe we should load the file's symbols.  */
 	  if (s->wild_statement.filename
 	      && ! wildcardp (s->wild_statement.filename))
-	    (void) lookup_name (s->wild_statement.filename);
+	    lookup_name (s->wild_statement.filename);
 	  open_input_bfds (s->wild_statement.children.head, force);
 	  break;
 	case lang_group_statement_enum:
@@ -2915,8 +2767,11 @@ size_input_section (lang_statement_union_type **this_ptr,
 }
 
 #define IGNORE_SECTION(bfd, s) \
-  (((bfd_get_section_flags (bfd, s) & (SEC_ALLOC | SEC_NEVER_LOAD))	\
-    != SEC_ALLOC)							\
+  (((bfd_get_section_flags (bfd, s) & SEC_THREAD_LOCAL)			\
+    ? ((bfd_get_section_flags (bfd, s) & (SEC_LOAD | SEC_NEVER_LOAD))	\
+       != SEC_LOAD)							\
+    :  ((bfd_get_section_flags (bfd, s) & (SEC_ALLOC | SEC_NEVER_LOAD)) \
+	!= SEC_ALLOC))							\
    || bfd_section_size (bfd, s) == 0)
 
 /* Check to see if any allocated sections overlap with other allocated
@@ -3166,15 +3021,17 @@ lang_size_sections_1
 
 	    if (bfd_is_abs_section (os->bfd_section))
 	      ASSERT (after == os->bfd_section->vma);
-	    else if ((os->bfd_section->flags & SEC_HAS_CONTENTS) == 0
-		     && (os->bfd_section->flags & SEC_THREAD_LOCAL)
-		     && ! link_info.relocatable)
-	      os->bfd_section->_raw_size = 0;
 	    else
 	      os->bfd_section->_raw_size
 		= TO_SIZE (after - os->bfd_section->vma);
 
-	    dot = os->bfd_section->vma + TO_ADDR (os->bfd_section->_raw_size);
+	    dot = os->bfd_section->vma;
+	    /* .tbss sections effectively have zero size.  */
+	    if ((os->bfd_section->flags & SEC_HAS_CONTENTS) != 0
+		|| (os->bfd_section->flags & SEC_THREAD_LOCAL) == 0
+		|| link_info.relocatable)
+	      dot += TO_ADDR (os->bfd_section->_raw_size);
+
 	    os->processed = 1;
 
 	    if (os->update_dot_tree != 0)
@@ -3492,8 +3349,7 @@ lang_do_assignments_1
 	    if (os->bfd_section != NULL)
 	      {
 		dot = os->bfd_section->vma;
-		(void) lang_do_assignments_1 (os->children.head, os,
-					      os->fill, dot);
+		lang_do_assignments_1 (os->children.head, os, os->fill, dot);
 		dot = (os->bfd_section->vma
 		       + TO_ADDR (os->bfd_section->_raw_size));
 
@@ -4082,24 +3938,6 @@ lang_for_each_file (void (*func) (lang_input_statement_type *))
     }
 }
 
-#if 0
-
-/* Not used.  */
-
-void
-lang_for_each_input_section (void (*func) (bfd *ab, asection *as))
-{
-  LANG_FOR_EACH_INPUT_STATEMENT (f)
-    {
-      asection *s;
-
-      for (s = f->the_bfd->sections; s != NULL; s = s->next)
-	func (f->the_bfd, s);
-    }
-}
-
-#endif
-
 void
 ldlang_add_file (lang_input_statement_type *entry)
 {
@@ -4336,11 +4174,6 @@ lang_process (void)
   link_info.gc_sym_list = &entry_symbol;
   if (entry_symbol.name == NULL)
     link_info.gc_sym_list = ldlang_undef_chain_list_head;
-
-#ifdef IPA_LINK
-  if (is_ipa)
-    return;
-#endif
 
   ldemul_after_open ();
 

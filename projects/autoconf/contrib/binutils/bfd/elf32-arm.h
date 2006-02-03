@@ -1,5 +1,6 @@
 /* 32-bit ELF support for ARM
-   Copyright 1998, 1999, 2000, 2001, 2002, 2003 Free Software Foundation, Inc.
+   Copyright 1998, 1999, 2000, 2001, 2002, 2003, 2004
+   Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -1208,18 +1209,6 @@ elf32_arm_to_thumb_stub (info, name, input_bfd, output_bfd, input_section,
   return TRUE;
 }
 
-/* This is the condition under which elf32_arm_finish_dynamic_symbol
-   will be called from elflink.h.  If elflink.h doesn't call our
-   finish_dynamic_symbol routine, we'll need to do something about
-   initializing any .plt and .got entries in elf32_arm_relocate_section
-   and elf32_arm_final_link_relocate.  */
-#define WILL_CALL_FINISH_DYNAMIC_SYMBOL(DYN, SHARED, H)			\
-  ((DYN)								\
-   && ((SHARED)							 	\
-       || ((H)->elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) == 0)	\
-   && ((H)->dynindx != -1						\
-       || ((H)->elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) != 0))
-
 /* Perform a relocation as part of a final link.  */
 
 static bfd_reloc_status_type
@@ -1337,6 +1326,8 @@ elf32_arm_final_link_relocate (howto, input_bfd, output_bfd,
 	 into the output file to be resolved at run time.  */
       if (info->shared
 	  && (input_section->flags & SEC_ALLOC)
+	  && (r_type != R_ARM_REL32
+	      || !SYMBOL_CALLS_LOCAL (info, h))
 	  && (h == NULL
 	      || ELF_ST_VISIBILITY (h->other) == STV_DEFAULT
 	      || h->root.type != bfd_link_hash_undefweak)
@@ -2124,10 +2115,10 @@ elf32_arm_relocate_section (output_bfd, info, input_bfd, input_section,
 	  bfd_boolean warned;
 	  bfd_boolean unresolved_reloc;
 
-	  RELOC_FOR_GLOBAL_SYMBOL (h, sym_hashes, r_symndx,
-				   symtab_hdr, relocation,
-				   sec, unresolved_reloc, info,
-				   warned);
+	  RELOC_FOR_GLOBAL_SYMBOL (info, input_bfd, input_section, rel,
+				   r_symndx, symtab_hdr, sym_hashes,
+				   h, sec, relocation,
+				   unresolved_reloc, warned);
 	  
 	  if (unresolved_reloc || relocation != 0)
 	    {
@@ -2139,6 +2130,8 @@ elf32_arm_relocate_section (output_bfd, info, input_bfd, input_section,
 	        case R_ARM_PC24:
 	        case R_ARM_ABS32:
 		case R_ARM_THM_PC22:
+	        case R_ARM_PLT32:
+
 	          if (info->shared
 	              && (
 			  (!info->symbolic && h->dynindx != -1)
@@ -2169,11 +2162,6 @@ elf32_arm_relocate_section (output_bfd, info, input_bfd, input_section,
 	                  || (!info->symbolic && h->dynindx != -1)
 	                  || (h->elf_link_hash_flags
 			      & ELF_LINK_HASH_DEF_REGULAR) == 0))
-	            relocation = 0;
-		  break;
-
-	        case R_ARM_PLT32:
-	          if (h->plt.offset != (bfd_vma)-1)
 	            relocation = 0;
 		  break;
 
@@ -2430,11 +2418,16 @@ elf32_arm_merge_private_bfd_data (ibfd, obfd)
      not, its flags may not have been initialised either, but it
      cannot actually cause any incompatibility.  Do not short-circuit
      dynamic objects; their section list may be emptied by
-     elf_link_add_object_symbols.  */
+    elf_link_add_object_symbols.
 
+    Also check to see if there are no code sections in the input.
+    In this case there is no need to check for code specific flags.
+    XXX - do we need to worry about floating-point format compatability
+    in data sections ?  */
   if (!(ibfd->flags & DYNAMIC))
     {
       bfd_boolean null_input_bfd = TRUE;
+      bfd_boolean only_data_sections = TRUE;
 
       for (sec = ibfd->sections; sec != NULL; sec = sec->next)
 	{
@@ -2442,11 +2435,17 @@ elf32_arm_merge_private_bfd_data (ibfd, obfd)
 	  if (strcmp (sec->name, ".glue_7")
 	      && strcmp (sec->name, ".glue_7t"))
 	    {
+	      if ((bfd_get_section_flags (ibfd, sec)
+		   & (SEC_LOAD | SEC_CODE | SEC_HAS_CONTENTS))
+		  == (SEC_LOAD | SEC_CODE | SEC_HAS_CONTENTS))
+	    	only_data_sections = FALSE;
+
 	      null_input_bfd = FALSE;
 	      break;
 	    }
 	}
-      if (null_input_bfd)
+
+      if (null_input_bfd || only_data_sections)
 	return TRUE;
     }
 
@@ -2967,7 +2966,8 @@ elf32_arm_check_relocs (abfd, info, sec, relocs)
 	    if (info->shared
 		&& (sec->flags & SEC_ALLOC) != 0
 		&& ((ELF32_R_TYPE (rel->r_info) != R_ARM_PC24
-		     && ELF32_R_TYPE (rel->r_info) != R_ARM_PLT32)
+		     && ELF32_R_TYPE (rel->r_info) != R_ARM_PLT32
+		     && ELF32_R_TYPE (rel->r_info) != R_ARM_REL32)
 		    || (h != NULL
 			&& (! info->symbolic
 			    || (h->elf_link_hash_flags
@@ -3056,14 +3056,14 @@ elf32_arm_check_relocs (abfd, info, sec, relocs)
         /* This relocation describes the C++ object vtable hierarchy.
            Reconstruct it for later use during GC.  */
         case R_ARM_GNU_VTINHERIT:
-          if (!_bfd_elf32_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
+          if (!bfd_elf_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
             return FALSE;
           break;
 
         /* This relocation describes which C++ vtable entries are actually
            used.  Record for later use during GC.  */
         case R_ARM_GNU_VTENTRY:
-          if (!_bfd_elf32_gc_record_vtentry (abfd, sec, h, rel->r_offset))
+          if (!bfd_elf_gc_record_vtentry (abfd, sec, h, rel->r_offset))
             return FALSE;
           break;
         }
@@ -3319,7 +3319,7 @@ allocate_dynrelocs (h, inf)
       if (h->dynindx == -1
 	  && (h->elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) == 0)
 	{
-	  if (! bfd_elf32_link_record_dynamic_symbol (info, h))
+	  if (! bfd_elf_link_record_dynamic_symbol (info, h))
 	    return FALSE;
 	}
 
@@ -3379,7 +3379,7 @@ allocate_dynrelocs (h, inf)
       if (h->dynindx == -1
 	  && (h->elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) == 0)
 	{
-	  if (! bfd_elf32_link_record_dynamic_symbol (info, h))
+	  if (! bfd_elf_link_record_dynamic_symbol (info, h))
 	    return FALSE;
 	}
 
@@ -3432,7 +3432,7 @@ allocate_dynrelocs (h, inf)
 	  if (h->dynindx == -1
 	      && (h->elf_link_hash_flags & ELF_LINK_FORCED_LOCAL) == 0)
 	    {
-	      if (! bfd_elf32_link_record_dynamic_symbol (info, h))
+	      if (! bfd_elf_link_record_dynamic_symbol (info, h))
 		return FALSE;
 	    }
 
@@ -3641,7 +3641,7 @@ elf32_arm_size_dynamic_sections (output_bfd, info)
 	 the .dynamic section.  The DT_DEBUG entry is filled in by the
 	 dynamic linker and used by the debugger.  */
 #define add_dynamic_entry(TAG, VAL) \
-  bfd_elf32_add_dynamic_entry (info, (bfd_vma) (TAG), (bfd_vma) (VAL))
+  _bfd_elf_add_dynamic_entry (info, TAG, VAL)
 
       if (!info->shared)
 	{

@@ -158,7 +158,7 @@ AC_SUBST_FILE(host_makefile_frag)
 # It's OK to check for header files.  Although the compiler may not be
 # able to link anything, it had better be able to at least compile
 # something.
-AC_CHECK_HEADERS(sys/file.h sys/param.h limits.h stdlib.h malloc.h string.h unistd.h strings.h sys/time.h time.h sys/resource.h sys/stat.h sys/mman.h fcntl.h alloca.h sys/pstat.h sys/sysmp.h sys/sysinfo.h machine/hal_sysinfo.h sys/table.h sys/sysctl.h sys/systemcfg.h dlfcn.h)
+AC_CHECK_HEADERS(sys/file.h sys/param.h limits.h stdlib.h malloc.h string.h unistd.h strings.h sys/time.h time.h sys/resource.h sys/stat.h sys/mman.h fcntl.h alloca.h sys/pstat.h sys/sysmp.h sys/sysinfo.h machine/hal_sysinfo.h sys/table.h sys/sysctl.h sys/systemcfg.h)
 AC_HEADER_SYS_WAIT
 AC_HEADER_TIME
 
@@ -169,17 +169,6 @@ AC_CHECK_TYPE(uintptr_t, unsigned long)
 # definition.  So define HAVE_UINTPTR_T in case any imported code
 # relies on it.
 AC_DEFINE(HAVE_UINTPTR_T, 1, [Define if you have the \`uintptr_t' type.])
-
-LIBIBERTY_HAVE_WEAK_SYMBOL
-if test $libiberty_cv_have_weak_symbol = yes; then
-  # demangler may use dlopen. 
-  AC_SEARCH_LIBS(dlopen, dl,
-		 libiberty_cv_have_dlopen=yes,
-		 libiberty_cv_have_dlopen=no)
-  if test $libiberty_cv_have_dlopen = yes; then
-    AC_DEFINE(HAVE_DLOPEN, 1, [Define if dlopen exists.])
-  fi
-fi
 
 AC_TYPE_PID_T
 

@@ -1,10 +1,6 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* linker.c -- BFD linker routines
-   Copyright 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003
-   Free Software Foundation, Inc.
+   Copyright 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
+   2003, 2004 Free Software Foundation, Inc.
    Written by Steve Chamberlain and Ian Lance Taylor, Cygnus Support
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -431,10 +427,6 @@ static bfd_boolean default_indirect_link_order
   (bfd *, struct bfd_link_info *, asection *, struct bfd_link_order *,
    bfd_boolean);
 
-extern bfd_boolean ipa_is_whirl(bfd *) __attribute__((weak));
-bfd_boolean is_ipa __attribute__((weak)) = 0;
-
-
 /* The link hash table structure is defined in bfdlink.h.  It provides
    a base hash table which the backend specific hash tables are built
    upon.  */
@@ -531,10 +523,14 @@ bfd_wrapped_link_hash_lookup (bfd *abfd,
   if (info->wrap_hash != NULL)
     {
       const char *l;
+      char prefix = '\0';
 
       l = string;
-      if (*l == bfd_get_symbol_leading_char (abfd))
-	++l;
+      if (*l == bfd_get_symbol_leading_char (abfd) || *l == info->wrap_char)
+	{
+	  prefix = *l;
+	  ++l;
+	}
 
 #undef WRAP
 #define WRAP "__wrap_"
@@ -552,8 +548,7 @@ bfd_wrapped_link_hash_lookup (bfd *abfd,
 	  if (n == NULL)
 	    return NULL;
 
-	  /* Note that symbol_leading_char may be '\0'.  */
-	  n[0] = bfd_get_symbol_leading_char (abfd);
+	  n[0] = prefix;
 	  n[1] = '\0';
 	  strcat (n, WRAP);
 	  strcat (n, l);
@@ -584,8 +579,7 @@ bfd_wrapped_link_hash_lookup (bfd *abfd,
 	  if (n == NULL)
 	    return NULL;
 
-	  /* Note that symbol_leading_char may be '\0'.  */
-	  n[0] = bfd_get_symbol_leading_char (abfd);
+	  n[0] = prefix;
 	  n[1] = '\0';
 	  strcat (n, l + sizeof REAL - 1);
 	  h = bfd_link_hash_lookup (info->hash, n, create, TRUE, follow);
@@ -1588,10 +1582,6 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	  {
 	    enum bfd_link_hash_type oldtype;
 
-            if (is_ipa && !ipa_is_whirl(abfd))
-              /* We only change definitions for WHIRL object symbols. */
-              break;
-
 	    /* Define a symbol.  */
 	    oldtype = h->type;
 	    if (action == DEFW)
@@ -1599,11 +1589,6 @@ _bfd_generic_link_add_one_symbol (struct bfd_link_info *info,
 	    else
 	      h->type = bfd_link_hash_defined;
 	    h->u.def.section = section;
-            if (is_ipa) 
-	      {
-		h->u.def.section = (asection *) abfd;
-		h->u.def.invalid_section_owner = 1;	/* Added by KEY. */
-	      }
 	    h->u.def.value = value;
 
 	    /* If we have been asked to, we act like collect2 and

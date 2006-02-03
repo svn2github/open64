@@ -1,10 +1,6 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
 /* Parse options for the GNU linker.
    Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-   2001, 2002, 2003
+   2001, 2002, 2003, 2004
    Free Software Foundation, Inc.
 
    This file is part of GLD, the Gnu Linker.
@@ -73,7 +69,6 @@ enum option_values
   OPTION_CREF,
   OPTION_DEFSYM,
   OPTION_DEMANGLE,
-  OPTION_DEMANGLER,
   OPTION_DYNAMIC_LINKER,
   OPTION_EB,
   OPTION_EL,
@@ -117,6 +112,8 @@ enum option_values
   OPTION_SPLIT_BY_RELOC,
   OPTION_SPLIT_BY_FILE ,
   OPTION_WHOLE_ARCHIVE,
+  OPTION_AS_NEEDED,
+  OPTION_NO_AS_NEEDED,
   OPTION_WRAP,
   OPTION_FORCE_EXE_SUFFIX,
   OPTION_GC_SECTIONS,
@@ -145,19 +142,7 @@ enum option_values
   OPTION_PIE,
   OPTION_UNRESOLVED_SYMBOLS,
   OPTION_WARN_UNRESOLVED_SYMBOLS,
-  OPTION_ERROR_UNRESOLVED_SYMBOLS,
-  OPTION_KEEP,
-  OPTION_SHOW,
-  OPTION_IPA,
-  OPTION_DEFAULT_GROUP,
-  OPTION_IPA_GROUP,
-  OPTION_INLINE_GROUP,
-  OPTION_INTERNAL_GROUP,
-  OPTION_AR_MEMBERS,
-  OPTION_IPACOM,
-  OPTION_OPT_GROUP,
-  OPTION_TENV_GROUP,
-  OPTION_LINKER_ONLY,
+  OPTION_ERROR_UNRESOLVED_SYMBOLS
 };
 
 /* The long options.  This structure is used for both the option
@@ -330,8 +315,6 @@ static const struct ld_option ld_options[] =
       '\0', N_("SYMBOL=EXPRESSION"), N_("Define a symbol"), TWO_DASHES },
   { {"demangle", optional_argument, NULL, OPTION_DEMANGLE},
       '\0', N_("[=STYLE]"), N_("Demangle symbol names [using STYLE]"), TWO_DASHES },
-  { {"demangler", no_argument, NULL, OPTION_DEMANGLER},
-      '\0', "DSO:FUNCTION", N_("Set DSO and demangler function"), TWO_DASHES },
   { {"embedded-relocs", no_argument, NULL, OPTION_EMBEDDED_RELOCS},
       '\0', NULL, N_("Generate embedded relocs"), TWO_DASHES},
   { {"fini", required_argument, NULL, OPTION_FINI},
@@ -457,35 +440,12 @@ static const struct ld_option ld_options[] =
      TWO_DASHES },
   { {"whole-archive", no_argument, NULL, OPTION_WHOLE_ARCHIVE},
       '\0', NULL, N_("Include all objects from following archives"), TWO_DASHES },
+  { {"as-needed", no_argument, NULL, OPTION_AS_NEEDED},
+      '\0', NULL, N_("Only set DT_NEEDED for following dynamic libs if used"), TWO_DASHES },
+  { {"no-as-needed", no_argument, NULL, OPTION_NO_AS_NEEDED},
+      '\0', NULL, N_("Always set DT_NEEDED for following dynamic libs"), TWO_DASHES },
   { {"wrap", required_argument, NULL, OPTION_WRAP},
-      '\0', N_("SYMBOL"), N_("Use wrapper functions for SYMBOL"), TWO_DASHES },
-#ifdef IPA_LINK
-  { {"ipa", no_argument, NULL, OPTION_IPA},
-      '\0', NULL, N_("Use Inter Process Analysis"), TWO_DASHES },
-  { {"show", no_argument, NULL, OPTION_SHOW},
-      '\0', NULL, N_("If IPA then show phases, otherwise unused"), ONE_DASH },
-  { {"keep", no_argument, NULL, OPTION_KEEP},
-      '\0', NULL, N_("Don't delete intermediate files"), TWO_DASHES },
-  { {"DEFAULT", no_argument, NULL, OPTION_DEFAULT_GROUP},
-      '\0', NULL, N_("Message about xxxxxx"), TWO_DASHES },
-  { {"IPA:", no_argument, NULL, OPTION_IPA_GROUP},
-      '\0', NULL, N_("Options passed to IPA"), TWO_DASHES },
-  { {"INLINE:", no_argument, NULL, OPTION_INLINE_GROUP},
-      '\0', NULL, N_("Options passed to inliner during ipa phase"), TWO_DASHES },
-  { {"INTERNAL:", no_argument, NULL, OPTION_INTERNAL_GROUP},
-      '\0', NULL, N_("Non-user options passed to the backend during ipa phase"),
-      TWO_DASHES },
-  { {"ar_members", required_argument, NULL, OPTION_AR_MEMBERS},
-      '\0', NULL, N_("Designates specific objects within an archive"), TWO_DASHES },
-  { {"ipacom", no_argument, NULL, OPTION_IPACOM},
-      '\0', NULL, N_("Message about xxxxxx"), TWO_DASHES },
-  { {"OPT:", no_argument, NULL, OPTION_OPT_GROUP},
-      '\0', NULL, N_("Optimization options passed to backend during ipa phase"), TWO_DASHES },
-  { {"TENV:", no_argument, NULL, OPTION_TENV_GROUP},
-      '\0', NULL, N_("Target environment options passed to backend during ipa phase"), TWO_DASHES },
-  { {"pg", no_argument, NULL, OPTION_LINKER_ONLY},
-      '\0', NULL, N_("-pg flag passed to ipa_link should be passed over to the final linker"), ONE_DASH },
-#endif
+      '\0', N_("SYMBOL"), N_("Use wrapper functions for SYMBOL"), TWO_DASHES }
 };
 
 #define OPTION_COUNT ARRAY_SIZE (ld_options)
@@ -502,8 +462,6 @@ parse_args (unsigned argc, char **argv)
   struct option *really_longopts;
   int last_optind;
   enum report_method how_to_report_unresolved_symbols = RM_GENERATE_ERROR;
-  const char *demangler = NULL, *style = NULL;
-  int extend = 0;
 
   shortopts = xmalloc (OPTION_COUNT * 3 + 2);
   longopts = xmalloc (sizeof (*longopts) * (OPTION_COUNT + 1));
@@ -554,58 +512,6 @@ parse_args (unsigned argc, char **argv)
   really_longopts[irl].name = NULL;
 
   ldemul_add_options (is, &shortopts, il, &longopts, irl, &really_longopts);
-
-  /* Turn "-Wl,foo,bar" options into "foo bar" options.  This allows
-     us to accept the same option syntax as gcc, which means that the
-     compiler driver doesn't have to care whether it's calling gcc or
-     the IPA linker to do linking.  */
-  
-  for (i = 1; i < argc; i++)
-    {
-      if (strncmp("-Wl,", argv[i], 4) == 0)
-	{
-	  int j, c = 0;
-	  
-	  for (j = 4; argv[i][j]; j++)
-	    {
-	      if (argv[i][j] == ',')
-		c++;
-	    }
-
-	  extend += c;
-	}
-    }
-  
-  {
-    char **new_argv;
-    int new_argc = argc + extend;
-    int j;
-      
-    new_argv = xmalloc(sizeof(*new_argv) * (new_argc + 1));
-
-    new_argv[0] = argv[0];
-      
-    for (i = j = 1; i < argc; i++)
-      {
-	if (strncmp("-Wl,", argv[i], 4) == 0)
-	  {
-	    char *s = new_argv[j++] = xstrdup(argv[i] + 4);
-
-	    while ((s = strchr(s, ',')))
-	      {
-		*s = '\0';
-		new_argv[j++] = ++s;
-	      }
-	  }
-	else
-	  {
-	    new_argv[j++] = argv[i];
-	  }
-      }
-    new_argv[j++] = NULL;
-    argv = new_argv;
-    argc = new_argc;
-  }
 
   /* The -G option is ambiguous on different platforms.  Sometimes it
      specifies the largest data size to put into the small data
@@ -734,27 +640,9 @@ parse_args (unsigned argc, char **argv)
 	  break;
 	case OPTION_CALL_SHARED:
 	  config.dynamic_link = TRUE;
-	  /* When linking against shared libraries, the default behaviour is
-	     to report any unresolved references.  Although strictly speaking
-	     it is not a failure to encounter unresolved symbols at link time
-	     - the symbol *might* be available at load time - it is a strong
-	     indication that the resulting executable will not work.  Plus it
-	     is necessary for the correct execution of the autoconf package,
-	     which needs to be able to detect functions that are not provided
-	     by the host OS.  */
-	  if (link_info.unresolved_syms_in_objects == RM_NOT_YET_SET)
-	    link_info.unresolved_syms_in_objects = how_to_report_unresolved_symbols;
-	  if (link_info.unresolved_syms_in_shared_libs == RM_NOT_YET_SET)
-	    link_info.unresolved_syms_in_shared_libs = how_to_report_unresolved_symbols;
 	  break;
 	case OPTION_NON_SHARED:
 	  config.dynamic_link = FALSE;
-	  /* When linking against static libraries, the default
-	     behaviour is to report any unresolved references.  */
-	  if (link_info.unresolved_syms_in_objects == RM_NOT_YET_SET)
-	    link_info.unresolved_syms_in_objects = how_to_report_unresolved_symbols;
-	  if (link_info.unresolved_syms_in_shared_libs == RM_NOT_YET_SET)
-	    link_info.unresolved_syms_in_shared_libs = how_to_report_unresolved_symbols;
 	  break;
 	case OPTION_CREF:
 	  command_line.cref = TRUE;
@@ -775,10 +663,16 @@ parse_args (unsigned argc, char **argv)
 	case OPTION_DEMANGLE:
 	  demangling = TRUE;
 	  if (optarg != NULL)
-	    style = optarg;
-	  break;
-	case OPTION_DEMANGLER:
-	  demangler = optarg;
+	    {
+	      enum demangling_styles style;
+
+	      style = cplus_demangle_name_to_style (optarg);
+	      if (style == unknown_demangling)
+		einfo (_("%F%P: unknown demangling style `%s'"),
+		       optarg);
+
+	      cplus_demangle_set_style (style);
+	    }
 	  break;
 	case 'I':		/* Used on Solaris.  */
 	case OPTION_DYNAMIC_LINKER:
@@ -843,7 +737,6 @@ parse_args (unsigned argc, char **argv)
 	  command_line.gc_sections = TRUE;
 	  break;
 	case OPTION_HELP:
-	  init_demangler (style, NULL, demangler);
 	  help ();
 	  xexit (0);
 	  break;
@@ -1251,6 +1144,12 @@ parse_args (unsigned argc, char **argv)
 	case OPTION_WHOLE_ARCHIVE:
 	  whole_archive = TRUE;
 	  break;
+	case OPTION_AS_NEEDED:
+	  as_needed = TRUE;
+	  break;
+	case OPTION_NO_AS_NEEDED:
+	  as_needed = FALSE;
+	  break;
 	case OPTION_WRAP:
 	  add_wrap (optarg);
 	  break;
@@ -1322,30 +1221,6 @@ parse_args (unsigned argc, char **argv)
 	case OPTION_FINI:
 	  link_info.fini_function = optarg;
 	  break;
-
-#ifdef IPA_LINK
-        /* These are options that just get passed to ipa */
-        case OPTION_KEEP:
-        case OPTION_DEFAULT_GROUP:
-        case OPTION_IPA_GROUP:
-        case OPTION_INLINE_GROUP:
-        case OPTION_INTERNAL_GROUP:
-        case OPTION_IPACOM:
-        case OPTION_OPT_GROUP:
-        case OPTION_TENV_GROUP:
-        case OPTION_IPA:
-        case OPTION_SHOW:
-          break;
-	case OPTION_LINKER_ONLY:
-	  /* Ignore */
-	  break;
-
-        case OPTION_AR_MEMBERS:
-          lang_add_input_file ( optarg,
-                                lang_input_file_is_file_enum,
-                                (char *) NULL);
-          break;
-#endif
 	}
     }
 
@@ -1365,8 +1240,6 @@ parse_args (unsigned argc, char **argv)
   if (link_info.unresolved_syms_in_shared_libs == RM_NOT_YET_SET)
     /* FIXME: Should we allow emulations a chance to set this ?  */
     link_info.unresolved_syms_in_shared_libs = how_to_report_unresolved_symbols;
-
-  init_demangler (style, NULL, demangler);
 }
 
 /* Add the (colon-separated) elements of DIRLIST_PTR to the
@@ -1509,9 +1382,6 @@ help (void)
   printf (_("%s: emulation specific options:\n"), program_name);
   ldemul_list_emulation_options (stdout);
   printf ("\n");
-
-  printf (_("\nSupported demangler style: %s\n\n"),
- 	  get_demangler_list ());
 
   printf (_("Report bugs to %s\n"), REPORT_BUGS_TO);
 }

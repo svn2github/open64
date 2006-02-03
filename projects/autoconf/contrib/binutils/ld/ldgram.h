@@ -1,9 +1,5 @@
-/*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
- */
-
-#ifndef BISON_LDGRAM_H
-# define BISON_LDGRAM_H
+#ifndef BISON_Y_TAB_H
+# define BISON_Y_TAB_H
 
 #ifndef YYSTYPE
 typedef union {
@@ -147,4 +143,4 @@ typedef union {
 
 extern YYSTYPE yylval;
 
-#endif /* not BISON_LDGRAM_H */
+#endif /* not BISON_Y_TAB_H */

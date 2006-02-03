@@ -1,6 +1,6 @@
 /* Generic target-file-type support for the BFD library.
    Copyright 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999,
-   2000, 2001, 2002, 2003
+   2000, 2001, 2002, 2003, 2004
    Free Software Foundation, Inc.
    Written by Cygnus Support.
 
@@ -203,26 +203,26 @@ DESCRIPTION
 .  {* Entries for byte swapping for data. These are different from the
 .     other entry points, since they don't take a BFD asthe first argument.
 .     Certain other handlers could do the same.  *}
-.  bfd_vma        (*bfd_getx64) (const bfd_byte *);
-.  bfd_signed_vma (*bfd_getx_signed_64) (const bfd_byte *);
-.  void           (*bfd_putx64) (bfd_vma, bfd_byte *);
-.  bfd_vma        (*bfd_getx32) (const bfd_byte *);
-.  bfd_signed_vma (*bfd_getx_signed_32) (const bfd_byte *);
-.  void           (*bfd_putx32) (bfd_vma, bfd_byte *);
-.  bfd_vma        (*bfd_getx16) (const bfd_byte *);
-.  bfd_signed_vma (*bfd_getx_signed_16) (const bfd_byte *);
-.  void           (*bfd_putx16) (bfd_vma, bfd_byte *);
+.  bfd_uint64_t   (*bfd_getx64) (const void *);
+.  bfd_int64_t    (*bfd_getx_signed_64) (const void *);
+.  void           (*bfd_putx64) (bfd_uint64_t, void *);
+.  bfd_vma        (*bfd_getx32) (const void *);
+.  bfd_signed_vma (*bfd_getx_signed_32) (const void *);
+.  void           (*bfd_putx32) (bfd_vma, void *);
+.  bfd_vma        (*bfd_getx16) (const void *);
+.  bfd_signed_vma (*bfd_getx_signed_16) (const void *);
+.  void           (*bfd_putx16) (bfd_vma, void *);
 .
 .  {* Byte swapping for the headers.  *}
-.  bfd_vma        (*bfd_h_getx64) (const bfd_byte *);
-.  bfd_signed_vma (*bfd_h_getx_signed_64) (const bfd_byte *);
-.  void           (*bfd_h_putx64) (bfd_vma, bfd_byte *);
-.  bfd_vma        (*bfd_h_getx32) (const bfd_byte *);
-.  bfd_signed_vma (*bfd_h_getx_signed_32) (const bfd_byte *);
-.  void           (*bfd_h_putx32) (bfd_vma, bfd_byte *);
-.  bfd_vma        (*bfd_h_getx16) (const bfd_byte *);
-.  bfd_signed_vma (*bfd_h_getx_signed_16) (const bfd_byte *);
-.  void           (*bfd_h_putx16) (bfd_vma, bfd_byte *);
+.  bfd_uint64_t   (*bfd_h_getx64) (const void *);
+.  bfd_int64_t    (*bfd_h_getx_signed_64) (const void *);
+.  void           (*bfd_h_putx64) (bfd_uint64_t, void *);
+.  bfd_vma        (*bfd_h_getx32) (const void *);
+.  bfd_signed_vma (*bfd_h_getx_signed_32) (const void *);
+.  void           (*bfd_h_putx32) (bfd_vma, void *);
+.  bfd_vma        (*bfd_h_getx16) (const void *);
+.  bfd_signed_vma (*bfd_h_getx_signed_16) (const void *);
+.  void           (*bfd_h_putx16) (bfd_vma, void *);
 .
 .  {* Format dependent routines: these are vectors of entry points
 .     within the target vector structure, one for each format to check.  *}
@@ -523,6 +523,7 @@ extern const bfd_target bfd_elf32_d30v_vec;
 extern const bfd_target bfd_elf32_dlx_big_vec;
 extern const bfd_target bfd_elf32_fr30_vec;
 extern const bfd_target bfd_elf32_frv_vec;
+extern const bfd_target bfd_elf32_frvfdpic_vec;
 extern const bfd_target bfd_elf32_h8300_vec;
 extern const bfd_target bfd_elf32_hppa_linux_vec;
 extern const bfd_target bfd_elf32_hppa_vec;
@@ -813,6 +814,7 @@ static const bfd_target * const _bfd_target_vector[] = {
 	&bfd_elf32_dlx_big_vec,
 	&bfd_elf32_fr30_vec,
 	&bfd_elf32_frv_vec,
+	&bfd_elf32_frvfdpic_vec,
 	&bfd_elf32_h8300_vec,
 	&bfd_elf32_hppa_linux_vec,
 	&bfd_elf32_hppa_vec,

@@ -332,7 +332,8 @@ shle*-*-elf* | sh[1234]*le*-*-elf | shle*-*-kaos*)
 			targ_emul=shlelf
 			targ_extra_emuls="shelf shl sh"
 			;;
-sh-*-elf* | sh[1234]*-*-elf | sh-*-rtemself* | sh-*-kaos* | sh-*-vxworks)
+sh-*-rtemscoff*)	targ_emul=sh; targ_extra_emuls=shl ;;
+sh-*-elf* | sh[1234]*-*-elf | sh-*-rtems* | sh-*-kaos* | sh-*-vxworks)
 			targ_emul=shelf
 			targ_extra_emuls="shlelf sh shl"
 			;;
@@ -341,7 +342,7 @@ sh-*-nto*)		targ_emul=shelf_nto
 			;;
 sh-*-pe)		targ_emul=shpe ;
 			targ_extra_ofiles="deffilep.o pe-dll.o" ;;
-sh-*-*|sh-*-rtems*)	targ_emul=sh; targ_extra_emuls=shl ;;
+sh-*-*)			targ_emul=sh; targ_extra_emuls=shl ;;
 sh64le-*-elf*)
 			targ_emul=shlelf
 			targ_extra_emuls="shelf shlelf32 shelf32 shlelf64 shelf64"
@@ -407,7 +408,6 @@ mips*-sgi-irix6*)	targ_emul=elf32bmipn32
 mips*-sgi-irix*)	targ_emul=mipsbig ;;
 mips*el-*-ecoff*)	targ_emul=mipsidtl ;;
 mips*-*-ecoff*)		targ_emul=mipsidt ;;
-mips*-dec-bsd*)		targ_emul=mipsbsd ;;
 mips*el-*-netbsd*)	targ_emul=elf32lmip
 			targ_extra_emuls="elf32bmip"
 			;;
@@ -472,7 +472,7 @@ ns32k-*-netbsd* | ns32k-pc532-lites*) targ_emul=ns32knbsd ;;
 openrisc-*-*)		targ_emul=elf32openrisc ;;
 or32-*-coff)		targ_emul=or32 ;;
 or32-*-elf)		targ_emul=or32elf ;;
-or32-*-rtems)           targ_emul=or32 ;;
+or32-*-rtems*)          targ_emul=or32elf ;;
 pdp11-*-*)		targ_emul=pdp11 ;;
 pjl*-*-*)	        targ_emul=pjlelf ; targ_extra_emuls="elf_i386" ;;
 pj*-*-*)	        targ_emul=pjelf ;;
