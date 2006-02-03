@@ -3,6 +3,10 @@ code found in this directory.  The intend of this file is to
 demystify the origins of the source code as well as to keep
 a track record of the versions used.
 
+binutils/
+	version: 2.15
+	from: http://www.gnu.org/software/binutils
+
 dwarf/
 	version: 20050318
 	from: http://reality.sgi.com/davea/dwarf.html
