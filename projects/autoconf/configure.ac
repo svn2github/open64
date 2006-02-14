@@ -303,6 +303,8 @@ AC_CONFIG_FILES([Makefile
 		 kpro64/be/cg/Makefile
 		 kpro64/be/lno/Makefile
 		 kpro64/be/opt/Makefile
+		 kpro64/be/whirl2c/Makefile
+		 kpro64/be/whirl2f/Makefile
 		 kpro64/common/Makefile
 		 kpro64/driver/Makefile
 		 kpro64/gcc/Makefile
