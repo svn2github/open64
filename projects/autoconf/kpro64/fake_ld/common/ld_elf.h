@@ -45,7 +45,7 @@
 #include <elf.h>
 #include "elfaccess.h"
 #include "sys/elf_whirl.h"
-#include "libelf/libelf.h"
+#include <libelf.h>
 
 #ifdef _64BIT_OBJECTS
 

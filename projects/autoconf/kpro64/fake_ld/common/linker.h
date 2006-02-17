@@ -49,7 +49,6 @@
 
 #include <sys/types.h>
 #include <cmplrs/host.h>
-#include <bstring.h>
 #include <string.h>
 #include <sys/inst.h>
 #include <elf.h>

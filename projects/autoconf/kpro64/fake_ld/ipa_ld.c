@@ -90,7 +90,7 @@ reload (an_object_file_ptr pobj, string path)
 
     unread_sections (pobj);
     unread_obj (pobj, FALSE);
-    BZERO (pobj, sizeof(an_object_file));
+    memset(pobj, 0, sizeof(an_object_file));
     pobj->other_name = old_name;
     pobj->other_name_ndx = old_name_index;
     pobj->name = path;
