@@ -313,6 +313,9 @@ AC_CONFIG_FILES([Makefile
 		 kpro64/gcc/config/Makefile
 		 kpro64/gcc/cpp/Makefile
 		 kpro64/gcc/libiberty/Makefile
+		 kpro64/ipa/Makefile
+		 kpro64/ipa/local/Makefile
+		 kpro64/ipa/main/Makefile
 		 kpro64/kg++fe/Makefile
 		 kpro64/kgccfe/Makefile
 		 kpro64/libcif/Makefile
