@@ -109,20 +109,18 @@ ST_to_Elfsym (const ST* st, typename ELF::Elf_Sym& elfsym, const ELF& tag)
 
     switch (ST_export(st)) {
     case EXPORT_INTERNAL:
-	elfsym.st_other = STO_INTERNAL;
+	elfsym.st_other = STV_INTERNAL;
 	break;
     case EXPORT_HIDDEN:
-	elfsym.st_other = STO_HIDDEN;
+	elfsym.st_other = STV_HIDDEN;
 	break;
     case EXPORT_PROTECTED:
-	elfsym.st_other = STO_PROTECTED;
+	elfsym.st_other = STV_PROTECTED;
 	break;
     case EXPORT_OPTIONAL:
-	elfsym.st_other = STO_OPTIONAL;
-	break;
     case EXPORT_PREEMPTIBLE:
     default:
-	elfsym.st_other = STO_DEFAULT;
+	elfsym.st_other = STV_DEFAULT;
 	break;
     }
 } // ST_to_Elfsym
