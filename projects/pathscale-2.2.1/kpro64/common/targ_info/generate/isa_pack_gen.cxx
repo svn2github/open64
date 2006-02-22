@@ -457,9 +457,9 @@ void ISA_Pack_End(void)
   const char * const isa_pack_null_format = 
 			"  { %-22s, %2d, %2d,   %*d },  /* %s */\n";
   const char * const isa_pack_operand_format = 
-			"  { %-22s, %2d, %2d, 0x%0*llx },  /* %s, OPND%d */\n";
+			"  { %-22s, %2d, %2d, 0x%0*llxLL },  /* %s, OPND%d */\n";
   const char * const isa_pack_result_format = 
-			"  { %-22s, %2d, %2d, 0x%0*llx },  /* %s, RESULT%d */\n";
+			"  { %-22s, %2d, %2d, 0x%0*llxLL },  /* %s, RESULT%d */\n";
   int init_digits;
   int mask_digits;
   int top;
@@ -646,7 +646,7 @@ void ISA_Pack_End(void)
     op_assembly *op_pack = op_packs[top];
     fprintf(cfile, "  {");
     for (w = 0; w < inst_words; ++w) {
-      fprintf(cfile, " 0x%0*llx,",
+      fprintf(cfile, " 0x%0*llxLL,",
 		     init_digits, op_pack ? op_pack->opcode_mask[w] : 0LL);
     }
     fprintf(cfile, " }, /* %s */\n", TOP_Name((TOP)top));

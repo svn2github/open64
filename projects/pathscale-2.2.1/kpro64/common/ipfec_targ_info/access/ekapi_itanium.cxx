@@ -183,8 +183,8 @@ void RESOURCE::Output_All( FILE* fd )
     fprintf(fd,"\n};\n");
   
     // Print RRW SI_RRW_initializer and SI_RRW_overuse_mask;
-    fprintf(fd, "const SI_RRW SI_RRW_initializer = 0x%llx;\n", init_rrw);
-    fprintf(fd, "const SI_RRW SI_RRW_overuse_mask = 0x%llx;\n", over_rrw);
+    fprintf(fd, "const SI_RRW SI_RRW_initializer = 0x%llxLL;\n", init_rrw);
+    fprintf(fd, "const SI_RRW SI_RRW_overuse_mask = 0x%llxLL;\n", over_rrw);
     fprintf(fd, "const int SI_issue_slot_count = %d;\n", 0);
     fprintf(fd, "SI_ISSUE_SLOT * const SI_issue_slots[1] = {0};\n\n");
   
@@ -318,7 +318,7 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
         fprintf(fd, "  %d", res_req_cycle);
         for(i=0; i<res_req_cycle; i++)
         {
-            fprintf(fd, ",\n  0x%llx", rrw[i]);
+            fprintf(fd, ",\n  0x%llxLL", rrw[i]);
         }
         
         fprintf(fd, "\n};\n");        
@@ -326,7 +326,7 @@ void SCHE_INFO::Output_SI(void *pknobs, FILE *fd)
         fprintf(fd, "static const SI_RESOURCE_ID_SET %s[] = {\n", id_set_name.Vname());        
         for(i=0; i<res_req_cycle; i++)
         {
-            fprintf(fd, "  0x%llx", rrw_id[i]);
+            fprintf(fd, "  0x%llxLL", rrw_id[i]);
             if (i != res_req_cycle -1) fprintf(fd, ",\n");
         }
         

@@ -513,7 +513,7 @@ void Bundle_Generator(void *pknobs, GEN_MODE mode)
       mask |= 1ULL;
     }
     mask = mask << start_bit;
-    fprintf(c_file, " 0x%016llx },",
+    fprintf(c_file, " %#016llxLL },",
             mask );
 
     char *comment = strdup(bundle_comp_name);
