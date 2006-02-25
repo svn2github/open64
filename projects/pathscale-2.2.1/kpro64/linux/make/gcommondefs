@@ -75,21 +75,28 @@ AWK	= awk
 
 SIZEDEFS = -D_LONGLONG -D_MIPS_SZINT=32
 ifeq ($(BUILD_ABI), 64BIT)
-_MIPS_SZLONG := 64
-SIZEDEFS += -D_MIPS_SZPTR=64 -D_MIPS_SZLONG=$(_MIPS_SZLONG) -D_LP64
+  _MIPS_SZLONG := 64
+  SIZEDEFS += -D_MIPS_SZPTR=64 -D_MIPS_SZLONG=$(_MIPS_SZLONG) -D_LP64
 else
-SIZEDEFS += -D_MIPS_SZPTR=32 -D_MIPS_SZLONG=32
+  ifeq ($(BUILD_ABI), I64BIT)
+    _MIPS_SZLONG := 64
+    SIZEDEFS += -D_MIPS_SZPTR=64 -D_MIPS_SZLONG=$(_MIPS_SZLONG) -D_LP64
+  else
+    SIZEDEFS += -D_MIPS_SZPTR=32 -D_MIPS_SZLONG=32
+  endif
 endif
+
 ifeq ($(BUILD_OS), LINUX)
 ENDIAN = -D_MIPSEL
 else
 ENDIAN = -D_MIPSEB
 endif
 
+
 ifeq ($(BUILD_COMPILER), GNU)
-ASNAME = gcc -m32
-CCNAME = gcc -m32
-C++NAME = g++ -m32
+ASNAME = gcc 
+CCNAME = gcc
+C++NAME = g++
 ifeq ($(BUILD_ARCH), X8664)
 CCNAME  = $(PSC_NAME_PREFIX)cc -march=anyx86
 C++NAME = $(PSC_NAME_PREFIX)CC -march=anyx86
@@ -101,7 +108,7 @@ endif
 AR      = ar
 F90 = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90 -march=anyx86
 ifeq ($(BUILD_TARGET), IA32)
-F90 += -m32 -mno-sse2
+F90 += -mno-sse2
 endif
 F77 = $(F90)
 endif
