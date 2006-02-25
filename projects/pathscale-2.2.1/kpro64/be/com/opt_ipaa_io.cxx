@@ -122,7 +122,7 @@ IPAA_CALLSITES_Write ( void *callsites, Output_File *fl )
     nxt_offset -= cur_offset;
   }
   IPAA_CALLSITES_ADDR(cur_offset)->_callsites =
-      (IPAA_CALLSITE *)nxt_offset;
+      (IPAA_CALLSITE *)(INTPTR)nxt_offset;
 
 }
 
@@ -168,7 +168,7 @@ IPAA_LOCAL_MAP_Write ( void *localmap, Output_File *fl )
 				 sizeof(mINT16), 0, fl);
   }
   IPAA_LOCAL_MAP_ADDR(cur_offset)->_symtab_id =
-      (mINT16 *)(nxt_offset - cur_offset);
+      (mINT16 *)(INTPTR)(nxt_offset - cur_offset);
 
   /* write out the _st_id array */
   nxt_offset = (Elf64_Word)-1;
@@ -178,6 +178,6 @@ IPAA_LOCAL_MAP_Write ( void *localmap, Output_File *fl )
 				 sizeof(mINT32), 0, fl);
   }
   IPAA_LOCAL_MAP_ADDR(cur_offset)->_st_id =
-      (mINT32 *)(nxt_offset - cur_offset);
+      (mINT32 *)(INTPTR)(nxt_offset - cur_offset);
 
 }

@@ -1633,7 +1633,7 @@ Build_Fde_For_Proc (Dwarf_P_Debug dw_dbg, BB *firstbb,
   else if ( ! simple_unwind)
 	DevWarn("no unwind info cause PU is too complicated");
   if (simple_unwind) {
-	unwind_process (unwind_dump2asm, (void*)(high_pc-low_pc));
+	unwind_process (unwind_dump2asm, (void*)(INTPTR)(high_pc-low_pc));
   }
   return NULL;	// no fde when generate unwind stuff
 }

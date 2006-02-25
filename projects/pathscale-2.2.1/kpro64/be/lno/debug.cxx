@@ -2043,7 +2043,7 @@ void DV_DEPS_CALLBACK::Node_Select(const INT n_ids,
 {
   ARRAY_DIRECTED_GRAPH16 *dg = Array_Dependence_Graph;
   for (INT i = 0; i < n_ids; ++i) {
-    VINDEX16 v = VINDEX16(INT(id_array[i]));
+    VINDEX16 v = VINDEX16(INTPTR(id_array[i]));
     WN *wn = dg->Get_Wn(v);
     fprintf(stdout, "V ");
     this_node(wn);
@@ -2058,8 +2058,8 @@ static ARRAY_DIRECTED_GRAPH16* Current_Dependence_Graph = NULL;
 void DV_DEPS_CALLBACK::Edge_Select(const EDGE_ID& edge_id) 
 {
   ARRAY_DIRECTED_GRAPH16 *dg = Current_Dependence_Graph;
-  VINDEX16 v_src = VINDEX16(INT(edge_id.src));
-  VINDEX16 v_dst = VINDEX16(INT(edge_id.dst));
+  VINDEX16 v_src = VINDEX16(INTPTR(edge_id.src));
+  VINDEX16 v_dst = VINDEX16(INTPTR(edge_id.dst));
   EINDEX16 e;
 
   for (e = dg->Get_Out_Edge(v_src); e; e = dg->Get_Next_Out_Edge(e)) 
@@ -2143,11 +2143,11 @@ static void WB_DAV_draw_deps_loop(ARRAY_DIRECTED_GRAPH16* dg,
  	nt_local = nt_box_blue;
       } 
     }  
-    DV_deps->Node_Begin(NODE_ID(INT(v)), vnum_buffer, nt_local);
+    DV_deps->Node_Begin(NODE_ID(INTPTR(v)), vnum_buffer, nt_local);
     for (EINDEX16 e = dg->Get_Out_Edge(v); e; e = dg->Get_Next_Out_Edge(e)) {
       VINDEX16 v2 = dg->Get_Sink(e);
-      DV_deps->Out_Edge(EDGE_ID(NODE_ID(INT(v)), NODE_ID(INT(v2))),
-			et, NODE_ID(INT(v2)));
+      DV_deps->Out_Edge(EDGE_ID(NODE_ID(INTPTR(v)), NODE_ID(INTPTR(v2))),
+			et, NODE_ID(INTPTR(v2)));
     }
     DV_deps->Node_End();
   }
@@ -2281,9 +2281,9 @@ static void WB_DAV_draw_deps_ref(ARRAY_DIRECTED_GRAPH16* dg,
     } 
     if (vl != v) { 
       ht->Enter(vl, 1);
-      DV_deps->Node_Begin(NODE_ID(INT(vl)), vnum_buffer, nt_local);
-      DV_deps->Out_Edge(EDGE_ID(NODE_ID(INT(vl)), NODE_ID(INT(v))),
-	et, NODE_ID(INT(v)));
+      DV_deps->Node_Begin(NODE_ID(INTPTR(vl)), vnum_buffer, nt_local);
+      DV_deps->Out_Edge(EDGE_ID(NODE_ID(INTPTR(vl)), NODE_ID(INTPTR(v))),
+	et, NODE_ID(INTPTR(v)));
       DV_deps->Node_End();
     } 
   } 
@@ -2297,12 +2297,12 @@ static void WB_DAV_draw_deps_ref(ARRAY_DIRECTED_GRAPH16* dg,
   } else { 
     nt_local = nt_circle_blue;
   } 
-  DV_deps->Node_Begin(NODE_ID(INT(v)), vnum_buffer, nt_local);
+  DV_deps->Node_Begin(NODE_ID(INTPTR(v)), vnum_buffer, nt_local);
   EINDEX16 e;
   for (e = dg->Get_Out_Edge(v); e; e = dg->Get_Next_Out_Edge(e)) {
     VINDEX16 v2 = dg->Get_Sink(e);
-    DV_deps->Out_Edge(EDGE_ID(NODE_ID(INT(v)), NODE_ID(INT(v2))),
-      et, NODE_ID(INT(v2)));
+    DV_deps->Out_Edge(EDGE_ID(NODE_ID(INTPTR(v)), NODE_ID(INTPTR(v2))),
+      et, NODE_ID(INTPTR(v2)));
   } 
   DV_deps->Node_End();
   ht->Enter(v, 1);
@@ -2320,7 +2320,7 @@ static void WB_DAV_draw_deps_ref(ARRAY_DIRECTED_GRAPH16* dg,
       } 
       char vnum_buffer[BUFFER_MAX];
       sprintf(vnum_buffer, "%d", v2);
-      DV_deps->Node_Begin(NODE_ID(INT(v2)), vnum_buffer, nt_local);
+      DV_deps->Node_Begin(NODE_ID(INTPTR(v2)), vnum_buffer, nt_local);
       DV_deps->Node_End();
     }
   }

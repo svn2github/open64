@@ -111,7 +111,7 @@ static char* get_linker_name(int argc, char** argv)
     if (where_am_i) {
 	char *slash = strrchr (where_am_i, '/');
 	asprintf (&linker_name, "%.*s/../" PSC_TARGET "/bin/" LINKER_NAME,
-		  slash - where_am_i, where_am_i);
+		  (int)(slash - where_am_i), where_am_i);
 	if (file_exists (linker_name)) {
 	    return linker_name;
 	}

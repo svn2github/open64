@@ -444,7 +444,7 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 	ai->Set_byte_ofst(0);
 	ai->Set_byte_size(0);
 	ai->Set_bit_ofst_size(0, 0);
-	ai->Set_base((ST*)ver);
+	ai->Set_base((ST*)(INTPTR)ver);
       }
       else {
 	ai->Set_expr_kind(EXPR_IS_ADDR);
@@ -454,7 +454,7 @@ void OPT_STAB::Simplify_Pointer_Ver(VER_ID ver, POINTS_TO *ai)
 	ai->Set_byte_size(0);
 	ai->Set_bit_ofst_size(0, 0);
 	ai->Set_global();
-	ai->Set_base((ST*)ver);
+	ai->Set_base((ST*)(INTPTR)ver);
       }
     }
     break;

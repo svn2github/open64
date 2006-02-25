@@ -689,23 +689,23 @@ read_file (char *filename, off_t* mapped_size, char* file_revision)
 
     fd = open (filename, O_RDONLY);
     if (fd < 0)
-	return (void *) ERROR_RETURN;
+	return (void *) (INTPTR) ERROR_RETURN;
 
     if (fstat (fd, &stat_buf) != 0)
-	return (void *) ERROR_RETURN;
+	return (void *) (INTPTR) ERROR_RETURN;
 
     map_addr = (char *) mmap (0, stat_buf.st_size, PROT_READ|PROT_WRITE,
 			      MAP_PRIVATE, fd, 0);
-    if (map_addr == (char *)(ERROR_VALUE)) {
+    if (map_addr == (char *)(INTPTR)(ERROR_VALUE)) {
 	close (fd);
-	return (void *) ERROR_RETURN;
+	return (void *) (INTPTR) ERROR_RETURN;
     }
 
     close (fd);
 
     if ((st = WN_massage_input (map_addr, stat_buf.st_size,file_revision)) <= 0) {
 	munmap (map_addr, stat_buf.st_size);
-	return (void *) (st);
+	return (void *) (INTPTR) (st);
     }
 
     /* if everything is fine, save the size of the file */ 
@@ -736,7 +736,7 @@ WN_open_input (char *filename, off_t *mapped_size)
 {
     if (filename == 0) {
 	errno = ENOENT;
-	return (void *) ERROR_RETURN;
+	return (void *) (INTPTR) ERROR_RETURN;
     }
 
     errno = 0;
@@ -755,7 +755,7 @@ WN_inline_open_file(char* file_name, off_t *mapped_size, char* file_revision)
 {
     if (file_name == 0) {
 	errno = ENOENT;
-	return (void *) ERROR_RETURN;
+	return (void *) (INTPTR) ERROR_RETURN;
     }
 
     errno = 0;
@@ -779,14 +779,14 @@ WN_get_PU_Infos (void *handle, INT32 *p_num_PUs)
     PU_Info *pu_tree;
 
     OFFSET_AND_SIZE shdr = get_section (handle, SHT_MIPS_WHIRL, WT_PU_SECTION);
-    if (shdr.offset == 0) return (PU_Info *)ERROR_RETURN;
+    if (shdr.offset == 0) return (PU_Info *)(INTPTR)ERROR_RETURN;
 
     base = (char *) handle + shdr.offset;
     size = shdr.size;
 
     pu_tree = Read_PU_Infos (base, size, p_num_PUs);
     if (pu_tree == (PU_Info *)ERROR_VALUE)
-	return (PU_Info *)ERROR_RETURN;
+	return (PU_Info *)(INTPTR)ERROR_RETURN;
 
     return pu_tree;
 }
@@ -799,7 +799,7 @@ WN_get_section_base (void *handle, INT sect)
     char *base;
 
     OFFSET_AND_SIZE shdr = get_section (handle, SHT_MIPS_WHIRL, sect);
-    if (shdr.offset == 0) return (void *) ERROR_RETURN;
+    if (shdr.offset == 0) return (void *) (INTPTR)ERROR_RETURN;
 
     base = (char *) handle + shdr.offset;
     return (void *) base;
@@ -820,10 +820,10 @@ WN_get_proc_sym (PU_Info *pu)
     if (st == Subsect_InMem)
 	return &St_Table[PU_Info_proc_sym(pu)];
     if (st != Subsect_Exists)
-	return (ST *) ERROR_RETURN;
+	return (ST *) (INTPTR) ERROR_RETURN;
     ST *ps = &St_Table[PU_Info_proc_sym(pu)];
     if (ps == NULL)
-	return (ST *) ERROR_RETURN;
+	return (ST *) (INTPTR) ERROR_RETURN;
     
     Set_PU_Info_state(pu, WT_PROC_SYM, Subsect_InMem);
 
@@ -849,17 +849,17 @@ WN_get_tree (void *handle, PU_Info *pu)
     if (st == Subsect_InMem)
 	return PU_Info_tree_ptr(pu);
     if (st != Subsect_Exists)
-	return (WN *) ERROR_RETURN;
+	return (WN *) (INTPTR) ERROR_RETURN;
 
     offset = PU_Info_subsect_offset(pu, WT_TREE);
     size = PU_Info_subsect_size(pu, WT_TREE);
 
     OFFSET_AND_SIZE shdr = get_section (handle, SHT_MIPS_WHIRL, WT_PU_SECTION);
-    if (shdr.offset == 0) return (WN *) ERROR_RETURN;
+    if (shdr.offset == 0) return (WN *) (INTPTR) ERROR_RETURN;
 
     if (offset + size > shdr.size) {
 	errno = EINVAL;
-	return (WN *) ERROR_RETURN;
+	return (WN *) (INTPTR) ERROR_RETURN;
     }
 
     section_base = (char *) handle + shdr.offset;
@@ -1008,7 +1008,7 @@ WN_get_depgraph (void *handle, PU_Info *pu)
     Current_Map_Tab = PU_Info_maptab(pu);
 
     if (st == Subsect_Written)
-	return (void *) ERROR_RETURN;
+	return (void *) (INTPTR) ERROR_RETURN;
     if (st == Subsect_InMem)
 	return PU_Info_depgraph_ptr(pu);
     if (st != Subsect_Exists) {
@@ -1020,11 +1020,11 @@ WN_get_depgraph (void *handle, PU_Info *pu)
     size = PU_Info_subsect_size(pu, WT_DEPGRAPH);
 
     OFFSET_AND_SIZE shdr = get_section (handle, SHT_MIPS_WHIRL, WT_PU_SECTION);
-    if (shdr.offset == 0) return (void *) ERROR_RETURN;
+    if (shdr.offset == 0) return (void *) (INTPTR) ERROR_RETURN;
 
     if (offset + size >= shdr.size) {
 	errno = EINVAL;
-	return (void *) ERROR_RETURN;
+	return (void *) (INTPTR) ERROR_RETURN;
     }
 
     /* find the start of the tree subsection */

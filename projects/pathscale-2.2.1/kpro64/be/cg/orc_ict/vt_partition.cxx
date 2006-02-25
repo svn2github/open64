@@ -225,8 +225,8 @@ void draw_partition_graph (PARTITION_GRAPH *pg, const char *mes = NULL)
                 if (! drawn_pnodes.Is_In(child_pnode))
                     drawn_pnodes.Push_Back(child_pnode);
 
-                dv.Out_Edge ( EDGE_ID ( NODE_ID(edge_id_number++),
-                                        NODE_ID(edge_id_number++) ),
+                dv.Out_Edge ( EDGE_ID ( NODE_ID((void*)(INTPTR)edge_id_number++),
+                                        NODE_ID((void*)(INTPTR)edge_id_number++) ),
                               et, NODE_ID (child_pnode));
             }
         }

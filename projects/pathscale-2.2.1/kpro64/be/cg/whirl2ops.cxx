@@ -1104,7 +1104,7 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
 	}
       }
 
-      TN_MAP_Set( TN_To_PREG_Map, tn, (void *)preg_num );
+      TN_MAP_Set( TN_To_PREG_Map, tn, (void *)(INTPTR)preg_num );
 
       if (Is_Predicate_REGISTER_CLASS(TN_register_class(tn))) {
 
@@ -1115,7 +1115,7 @@ PREG_To_TN (ST *preg_st, PREG_NUM preg_num)
 		("don't support homeable or rematerializable predicate preg"));
 	PREG_NUM preg2_num = preg_num + 1;
 	TN *tn2 = Build_TN_Of_Mtype (mtype);
-	TN_MAP_Set( TN_To_PREG_Map, tn2, (void *)preg2_num );
+	TN_MAP_Set( TN_To_PREG_Map, tn2, (void *)(INTPTR)preg2_num );
 	PREG_To_TN_Array[preg2_num] = tn2;
 	PREG_To_TN_Mtype[preg2_num] = mtype;
       }
@@ -1420,7 +1420,7 @@ Handle_Call_Site (WN *call, OPERATOR call_opr)
 		caller_gp_tn = Gen_Register_TN ( ISA_REGISTER_CLASS_integer, 
 			Pointer_Size);
 		TN_MAP_Set( TN_To_PREG_Map, caller_gp_tn, 
-			(void *)Caller_GP_Preg );
+			(void *)(INTPTR)Caller_GP_Preg );
 		PREG_To_TN_Array[ Caller_GP_Preg ] = caller_gp_tn;
 		PREG_To_TN_Mtype[ Caller_GP_Preg ] = TY_mtype(Spill_Int_Type);
 	}
@@ -3053,7 +3053,7 @@ BB *
 Add_Label (LABEL_IDX label)
 {
   BB *bb = Start_New_Basic_Block ();
-  BB_Add_Annotation (bb, ANNOT_LABEL, (void *)label);
+  BB_Add_Annotation (bb, ANNOT_LABEL, (void *)(INTPTR)label);
   FmtAssert (Get_Label_BB(label) == NULL,
 	("Add_Label: Label %s defined more than once", LABEL_name(label)));
   Set_Label_BB (label,bb);
@@ -3408,7 +3408,7 @@ static void Build_CFG(void)
 	  label = ANNOT_label(ant);
 	} else {
 	  label = Gen_Temp_Label();
-	  BB_Add_Annotation (region_entry, ANNOT_LABEL, (void *)label);
+	  BB_Add_Annotation (region_entry, ANNOT_LABEL, (void *)(INTPTR)label);
 	  Set_Label_BB (label,region_entry);
 	}
 	target_tn = Gen_Label_TN (label, 0);
@@ -3854,7 +3854,7 @@ Handle_ASM (const WN* asm_wn)
         sprintf(preg_name,"_asm_result_%d",WN_pragma_asm_opnd_num(out_pragma));
 	new_preg = Create_Preg (TY_mtype(ST_type(WN_st(load))), preg_name);
 	Realloc_Preg_To_TN_Arrays (new_preg);
-        TN_MAP_Set(TN_To_PREG_Map, tn, (void*)new_preg);
+        TN_MAP_Set(TN_To_PREG_Map, tn, (void*)(INTPTR)new_preg);
         PREG_To_TN_Array[new_preg] = tn;
         PREG_To_TN_Mtype[new_preg] = TY_mtype(ST_type(WN_st(load)));
       }
@@ -4078,7 +4078,7 @@ static void Expand_Statement (WN *stmt)
 	Handle_Entry(stmt);
 	bb = BB_LIST_first(Entry_BB_Head);
         Set_BB_handler(bb);
-	BB_Add_Annotation (bb, ANNOT_LABEL, (void *)label);
+	BB_Add_Annotation (bb, ANNOT_LABEL, (void *)(INTPTR)label);
 	FmtAssert (Get_Label_BB(label) == NULL,
        		("Label %s defined more than once", LABEL_name(label)));
 	Set_Label_BB (label,bb);
@@ -4168,7 +4168,7 @@ Handle_INTRINSIC_CALL (WN *intrncall)
 
   if (OPS_first(&loop_ops) != NULL && label != LABEL_IDX_ZERO) {
 	BB *bb = Start_New_Basic_Block ();
-	BB_Add_Annotation (bb, ANNOT_LABEL, (void *)label);
+	BB_Add_Annotation (bb, ANNOT_LABEL, (void *)(INTPTR)label);
 	Set_Label_BB (label,bb);
   	BB_branch_wn(bb) = WN_Create(OPC_FALSEBR,1);
   	WN_label_number(BB_branch_wn(bb)) = label;

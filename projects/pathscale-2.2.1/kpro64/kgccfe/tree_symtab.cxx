@@ -997,7 +997,7 @@ Create_ST_For_Tree (tree decl_node)
 	DST_ATTR_IDX attr_idx = DST_INFO_attributes(info_ptr);
 	DST_VARIABLE *attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_VARIABLE);
 	DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = 
-	  (void *)ST_st_idx(st);
+	  (void *)(INTPTR)ST_st_idx(st);
       } else {
 	struct mongoose_gcc_DST_IDX dst =
 	  Create_DST_decl_For_Tree(decl_node,st);

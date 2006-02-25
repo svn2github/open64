@@ -996,7 +996,7 @@ public:
 					return (TY_IDX)(INTPTR)u2.isivar.base[2]; }
   void      Set_ilod_ty(TY_IDX ty)    { Is_True(Kind() == CK_IVAR,
 				       ("CODEREP::Set_ilod_ty, illegal kind"));
-					u2.isivar.base[2] = (CODEREP*)ty; }
+					u2.isivar.base[2] = (CODEREP*)(INTPTR)ty; }
   CODEREP  *Mstore_size(void) const   { Is_True(Kind() == CK_IVAR,
 				       ("CODEREP::Mstore_size, illegal kind"));
 					return u2.isivar.base[4]; }
@@ -1017,7 +1017,7 @@ public:
 					return (TY_IDX)(INTPTR) u2.isivar.base[4]; }
   void      Set_ilod_base_ty(TY_IDX ty){ Is_True(Kind() == CK_IVAR,
 						 ("CODEREP::Set_ilod_base_ty, illegal kind"));
-					 u2.isivar.base[4] = (CODEREP*)ty; }
+					 u2.isivar.base[4] = (CODEREP*)(INTPTR)ty; }
 
   void      Set_ivar_mu_node(MU_NODE *mu){ Is_True(Kind() == CK_IVAR,
 						   ("CODEREP::Set_ivar_mu_node, illegal kind"));

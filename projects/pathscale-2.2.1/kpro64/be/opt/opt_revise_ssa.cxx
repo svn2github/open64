@@ -1211,7 +1211,7 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 			  OPCODE_make_op(OPR_ILOAD, lhs->Dtyp(), lhs->Dsctyp()),
 			  lhs->Scalar_ivar_occ(), stmt, NULL/*mu*/,
 			  lhs->Dtyp(), lhs->Dsctyp(), lhs->Ilod_ty(), 0, 
-			  lhs->Offset(), (CODEREP *)Make_Pointer_Type(Void_Type), 
+			  lhs->Offset(), (CODEREP *)(INTPTR)Make_Pointer_Type(Void_Type), 
    		      NULL, lhs->Istr_base()));
 	  stmt->Set_opr(OPR_ISTORE);
 	}

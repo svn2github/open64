@@ -101,7 +101,7 @@ private:
   		    NODE_INFO_ALLOC;
     template <class _Ptr_Tp>
     struct ptr_hash {
-        size_t operator()(_Ptr_Tp __x) const { return UINT(__x); }
+        size_t operator()(_Ptr_Tp __x) const { return UINT(INTPTR(__x)); }
     };
 
     typedef __gnu_cxx::hash_map<REGIONAL_CFG_NODE*, NODE_INFO,

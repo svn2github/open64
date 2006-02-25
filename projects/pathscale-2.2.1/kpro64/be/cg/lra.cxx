@@ -323,7 +323,7 @@ LRA_TN_Allocate_Register(TN *tn, REGISTER reg)
   // we're computing fat points.
   //
   if (use_fat_point_regs && reg > REGISTER_MAX) {
-    hTN_MAP_Set(fat_point_regs_map, tn, (void *) reg);
+    hTN_MAP_Set(fat_point_regs_map, tn, (void *)(INTPTR)reg);
   } else {
     TN_Allocate_Register(tn, reg);
   }

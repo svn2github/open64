@@ -2018,7 +2018,7 @@ OPT_FEEDBACK::Draw() const
     else if ( freq.Guess() )    nt = &nt_guess;
 
     // Add the node and its outgoing edges to the daVinci graph
-    DV->Node_Begin( NODE_ID(INT(nx)), Node_label(nx), *nt );
+    DV->Node_Begin( NODE_ID(INTPTR(nx)), Node_label(nx), *nt );
     for ( INT t = 0; t < node.outgoing_edges.size(); t++ ) {
       IDTYPE ex = node.outgoing_edges[t];
       const OPT_FB_EDGE& edge = _fb_opt_edges[ex];
@@ -2030,8 +2030,8 @@ OPT_FEEDBACK::Draw() const
       else if ( edge.freq.Initialized() )  et = &et_unknown;
 
       IDTYPE nx_dst = edge.destination;
-      DV->Out_Edge( EDGE_ID(NODE_ID(INT(nx)), NODE_ID(INT(nx_dst))),
-		    *et, NODE_ID(INT(nx_dst)) );
+      DV->Out_Edge( EDGE_ID(NODE_ID(INTPTR(nx)), NODE_ID(INTPTR(nx_dst))),
+		    *et, NODE_ID(INTPTR(nx_dst)) );
     }
     DV->Node_End();
 

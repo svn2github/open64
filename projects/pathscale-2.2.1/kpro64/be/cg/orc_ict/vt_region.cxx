@@ -182,7 +182,7 @@ Regional_CFG_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
     REGIONAL_CFG_NODE* node;
     for (INT32 i = 0; i < n_ids; ++i) {
         node = (REGIONAL_CFG_NODE*) id_array[i];
-        if ( ((INT32)node) > _pseudo_node_num)
+        if ( ((INT32)(INTPTR)node) > _pseudo_node_num)
             if ( node -> Is_Region() )
                 draw_regional_cfg ( node -> Region_Node() );
             else draw_bb_op ( node -> BB_Node() );
@@ -304,10 +304,10 @@ void draw_regional_cfg (REGION *r,const char *mes)
                 label_info_item.dest_node_id = NODE_ID (kid_node);
                 label_info_vector.push_back (label_info_item);
 
-                dv.Out_Edge (EDGE_ID (NODE_ID (being_drawn_node),
-                                      NODE_ID (pseudo_node_id)),
+                dv.Out_Edge (EDGE_ID (NODE_ID ((INTPTR)being_drawn_node),
+                                      NODE_ID ((INTPTR)pseudo_node_id)),
                              et_source,
-                             NODE_ID (pseudo_node_id));
+                             NODE_ID ((INTPTR)pseudo_node_id));
 
                 pseudo_node_id ++;        // count the number of labels
             }
@@ -331,8 +331,8 @@ void draw_regional_cfg (REGION *r,const char *mes)
             sprintf(nlabel,"%#.2f / %#.2f", label_info_vector [i].prob,
                                             label_info_vector [i].freq);
             Is_True(strlen(nlabel) < 64, ("Node Label buf overflowed"));
-            dv.Node_Begin (NODE_ID (i), nlabel, nt_pseudo);
-            dv.Out_Edge(EDGE_ID(NODE_ID(i),label_info_vector[i].dest_node_id),
+            dv.Node_Begin (NODE_ID ((INTPTR)i), nlabel, nt_pseudo);
+            dv.Out_Edge(EDGE_ID(NODE_ID((INTPTR)i),label_info_vector[i].dest_node_id),
                         et_destination,
                         label_info_vector [i].dest_node_id );
             dv.Node_End ();
@@ -534,7 +534,7 @@ Global_CFG_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
     BB* node;
     for (INT32 i = 0; i < n_ids; ++i) {
         node =  (BB*) id_array[i];
-        if ( ((INT32)node) > _pseudo_node_num)
+        if ( ((INT32)(INTPTR)node) > _pseudo_node_num)
             draw_bb_op ( (BB*) node );
     }
 }
@@ -643,9 +643,9 @@ draw_global_cfg(const char *mes)
                 label_info_item.dest_node_id = NODE_ID (succ_bb);
                 label_info_vector.push_back (label_info_item);
 
-                dv.Out_Edge (EDGE_ID (NODE_ID (bb), NODE_ID (pseudo_node_id)),
+                dv.Out_Edge (EDGE_ID (NODE_ID (bb), NODE_ID ((INTPTR)pseudo_node_id)),
                              et_source,
-                             NODE_ID (pseudo_node_id));
+                             NODE_ID ((INTPTR)pseudo_node_id));
 
                 pseudo_node_id ++;        // count the number of labels
             }
@@ -667,8 +667,8 @@ draw_global_cfg(const char *mes)
             sprintf(nlabel,"%#.2f / %#.2f", label_info_vector [i].prob,
                                             label_info_vector [i].freq);
             Is_True(strlen(nlabel) < 64, ("Node Label buf overflowed"));
-            dv.Node_Begin (NODE_ID (i), nlabel, nt_pseudo);
-            dv.Out_Edge(EDGE_ID(NODE_ID(i),label_info_vector[i].dest_node_id),
+            dv.Node_Begin (NODE_ID ((INTPTR)i), nlabel, nt_pseudo);
+            dv.Out_Edge(EDGE_ID(NODE_ID((INTPTR)i),label_info_vector[i].dest_node_id),
                         et_destination,
                         label_info_vector [i].dest_node_id );
             dv.Node_End ();

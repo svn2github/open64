@@ -510,10 +510,10 @@ public:
   // comes either from a WN or is generated internally
   BB_NODE     *Get_bb_from_label(INT32 l) const
                                 { return (BB_NODE*)
-				       _label_map->Get_val((POINTER)l);
+				       _label_map->Get_val((POINTER)(INTPTR)l);
 				}
   void         Append_label_map (INT32 labnum, BB_NODE *bb)
-				{ _label_map->Add_map((POINTER)labnum,
+				{ _label_map->Add_map((POINTER)(INTPTR)labnum,
 						      (POINTER)bb); 
 				  bb->Set_labnam(labnum);
 				}

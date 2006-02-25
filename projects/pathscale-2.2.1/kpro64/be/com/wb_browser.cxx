@@ -457,7 +457,7 @@ void WB_BROWSER::Set_Node()
 {
   INT node;
   Buffer().Scan_HexInteger(&node);
-  Set_Cnode((WN*) node);
+  Set_Cnode((WN*) (INTPTR)node);
   Print_This_Node(Cnode());
 }
 

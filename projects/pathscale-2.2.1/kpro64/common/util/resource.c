@@ -203,7 +203,7 @@ Get_Resources (
 #endif
 
     /* Get the memory information */
-    r->memory = (INT) sbrk(0);
+    r->memory = (INT64)sbrk(0);
     r->freemem = 0;
 }
 

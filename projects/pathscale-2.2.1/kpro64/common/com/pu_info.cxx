@@ -116,7 +116,7 @@ number_PU_Infos (PU_Info *pu_tree, INT num_PUs)
     for (pu = pu_tree; pu; pu = PU_Info_next(pu)) {
 
 	/* stash the array index in the map table field */
-	PU_Info_maptab(pu) = (struct wn_map_tab *)num_PUs;
+	PU_Info_maptab(pu) = (struct wn_map_tab *)(INTPTR)num_PUs;
 
 	num_PUs += 1;
 

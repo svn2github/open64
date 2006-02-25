@@ -1041,11 +1041,11 @@ WN_write_prefetch (PU_Info *pu, WN_MAP off_map, Output_File *fl)
 	/* change the WN pointers to offsets. Store a -1 if NULL pointer */
         PF_PTR_ADDR(cur_offset)->wn_pref_1L =
           ((pf_ptr->wn_pref_1L) ?
-           (WN *) WN_MAP32_Get(off_map, pf_ptr->wn_pref_1L) :
+           (WN *) (INTPTR) WN_MAP32_Get(off_map, pf_ptr->wn_pref_1L) :
            (WN *) -1);
 	PF_PTR_ADDR(cur_offset)->wn_pref_2L =
           ((pf_ptr->wn_pref_2L) ?
-           (WN *) WN_MAP32_Get(off_map, pf_ptr->wn_pref_2L) :
+           (WN *) (INTPTR) WN_MAP32_Get(off_map, pf_ptr->wn_pref_2L) :
            (WN *) -1);
     }
 

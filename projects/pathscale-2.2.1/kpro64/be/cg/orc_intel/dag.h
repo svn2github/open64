@@ -167,7 +167,7 @@ private:
 
     template <class _Ptr_Tp>
     struct ptr_hash {
-        size_t operator()(_Ptr_Tp __x) const { return UINT(__x); }
+        size_t operator()(_Ptr_Tp __x) const { return (UINT)(INTPTR)(__x); }
     };
 
     /* Mapping: TN -> OPs

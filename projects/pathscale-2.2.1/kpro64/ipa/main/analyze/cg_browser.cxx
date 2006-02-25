@@ -631,12 +631,12 @@ void CG_BROWSER::Set_Node(FILE* fp)
   INT node;
   Buffer().Scan_HexInteger(&node);
   IPA_GRAPH* ipa_graph = Ipa_Cg()->Graph(); 
-  NODE_INDEX v = Find_Vertex((IPA_NODE*) node);
+  NODE_INDEX v = Find_Vertex((IPA_NODE*)(INTPTR) node);
   if (v == INVALID_NODE_INDEX) { 
     Error_Cleanup();
     return; 
   } 
-  Set_Cnode((IPA_NODE*) node);
+  Set_Cnode((IPA_NODE*)(INTPTR)node);
   Set_Cvertex(v);
   Print_This_Node(fp, Cnode(), Cvertex());
 }

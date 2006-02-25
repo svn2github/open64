@@ -5609,7 +5609,7 @@ simpnode SIMPNODE_SimplifyCvtl(OPCODE opc, INT16 cvtl_bits, simpnode k0)
    result = simp_cvtl(opc,cvtl_bits,k0);
 
    if (result) {
-      SHOW_TREE(opc,k0,(simpnode) cvtl_bits, result);
+      SHOW_TREE(opc,k0,(simpnode) (INTPTR) cvtl_bits, result);
    }
    return (result);
 }

@@ -525,7 +525,7 @@ void HASH_TABLE<SIG_TYPE,DATA_TYPE> :: Remove (
   SIG_TYPE signature ) 
 {
   typedef HASH_ELEMENT<SIG_TYPE,DATA_TYPE> *HASH_ELEMENTP;
-  HASH_ELEMENTP hash_element = _data[abs((INT)signature) % _num_elements];
+  HASH_ELEMENTP hash_element = _data[abs((INT)(INTPTR)signature) % _num_elements];
 
   if (hash_element->_signature == signature) {
     _data[abs((INT)(INTPS)signature) % _num_elements] = hash_element->_next;

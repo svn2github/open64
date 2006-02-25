@@ -407,7 +407,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 #else
 	    prev = ir_b_write_tree(wn, base_offset, fl, off_map);
 #endif
-	    WN_first(WN_ADDR(node_offset)) = (WN *) prev;
+	    WN_first(WN_ADDR(node_offset)) = (WN *) (INTPTR) prev;
 
 	    while (wn = WN_next(wn)) {
 #if defined(KEY) && !defined(FRONT_END) && !defined(IR_TOOLS)
@@ -416,12 +416,12 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 		this_node = ir_b_write_tree(wn, base_offset, fl, off_map);
 #endif
 		/* fill in the correct next/prev offsets (in place of -1) */
-		WN_next(WN_ADDR(prev + base_offset)) = (WN *) this_node;
-		WN_prev(WN_ADDR(this_node + base_offset)) = (WN *) prev;
+		WN_next(WN_ADDR(prev + base_offset)) = (WN *) (INTPTR) this_node;
+		WN_prev(WN_ADDR(this_node + base_offset)) = (WN *)(INTPTR)prev;
 		prev = this_node;
 	    }
 
-	    WN_last(WN_ADDR(node_offset)) = (WN *) prev;
+	    WN_last(WN_ADDR(node_offset)) = (WN *) (INTPTR) prev;
 	}
     } else if (!OPCODE_is_leaf(opcode)) {
 	register int i;
@@ -439,7 +439,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 		kid = ir_b_write_tree (WN_kid(node, i), base_offset,
 				       fl, off_map);
 #endif
-		WN_kid(WN_ADDR(node_offset), i) = (WN *) kid;
+		WN_kid(WN_ADDR(node_offset), i) = (WN *) (INTPTR) kid;
 	    }
 	}
     }

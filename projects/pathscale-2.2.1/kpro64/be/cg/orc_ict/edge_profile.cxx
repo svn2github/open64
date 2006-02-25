@@ -2030,7 +2030,7 @@ void Change_BB_Label( BB* bb,LABEL_IDX i )
   if ( annt != NULL )
   {
     BB_annotations( bb ) = ANNOT_Unlink( BB_annotations( bb ), annt );
-    BB_Add_Annotation( bb,ANNOT_LABEL,( void * )i );
+    BB_Add_Annotation( bb,ANNOT_LABEL,(void *)(INTPTR)i);
   }
 }
 

@@ -304,9 +304,9 @@ static void SNL_SPL_Sort_Stack(DOLOOP_STACK* outer_do_stack,
 			       STACK<INT>* tile_size_stack) 
 {
   for (INT i = 0; i < outer_do_stack->Elements(); i++) { 
-    INT compare_tag = (INT) outer_do_stack->Bottom_nth(i); 
+    INT compare_tag = (INT)(INTPTR) outer_do_stack->Bottom_nth(i); 
     for (INT j = i + 1; j < outer_do_stack->Elements(); j++) { 
-      INT current_tag = (INT) outer_do_stack->Bottom_nth(j); 
+      INT current_tag = (INT)(INTPTR) outer_do_stack->Bottom_nth(j); 
       if (current_tag < compare_tag) { 
 	WN* outer_loop = outer_do_stack->Bottom_nth(i); 
 	outer_do_stack->Bottom_nth(i) = outer_do_stack->Bottom_nth(j); 

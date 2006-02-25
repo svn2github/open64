@@ -3053,7 +3053,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     retv = Add_idef(op, opt_stab->Get_occ(wn), NULL,
 		    opt_stab->Get_mem_mu_node(wn), WN_rtype(wn),
 		    WN_desc(wn), WN_ty(wn), WN_field_id(wn),
-		    base_ccr.Scale(), (CODEREP *) WN_load_addr_ty(wn),
+		    base_ccr.Scale(), (CODEREP *)(INTPTR) WN_load_addr_ty(wn),
 		    lbase, NULL);
     Is_True(retv->Kind()==CK_IVAR || (retv->Kind()==CK_OP
 				      && (retv->Opr()==OPR_CVT ||
@@ -3143,7 +3143,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
     retv = Add_idef(op, opt_stab->Get_occ(wn), NULL,
 		    opt_stab->Get_mem_mu_node(wn), WN_rtype(wn),
 		    WN_desc(wn), WN_ty(wn), WN_field_id(wn),
-		    (mINT32)(INTPTR)index, (CODEREP *) WN_load_addr_ty(wn), base, NULL);
+		    (mINT32)(INTPTR)index, (CODEREP *)(INTPTR) WN_load_addr_ty(wn), base, NULL);
     Is_True(retv->Kind()==CK_IVAR||(retv->Kind()==CK_OP
 				    && (retv->Opr()==OPR_CVT ||
 					retv->Opr()==OPR_CVTL)),
@@ -3957,7 +3957,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 				  TY_pointed(ilod_base_ty),
 				  WN_field_id(Wn()),
 				  base_ccr.Scale(),
-				  (CODEREP *) ilod_base_ty, NULL, lbase) );
+				  (CODEREP *)(INTPTR) ilod_base_ty, NULL, lbase) );
       }
       if (Lhs()->Is_ivar_volatile())
 	Set_volatile_stmt();
@@ -3987,7 +3987,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 				TY_pointed(ilod_base_ty),
 				WN_field_id(Wn()),
 				(mINT32)(INTPTR)index,
-				(CODEREP *) ilod_base_ty, NULL, lbase) );
+				(CODEREP *)(INTPTR) ilod_base_ty, NULL, lbase) );
       if (Lhs()->Is_ivar_volatile())
 	Set_volatile_stmt();
     }
@@ -4079,7 +4079,7 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
   case OPR_CALL:
     Set_call_flags(WN_call_flag(Wn()));
     if (OPCODE_has_aux(WN_opcode(Wn())))
-      Set_st(opt_stab->St((IDTYPE)WN_st(Wn())));
+      Set_st(opt_stab->St((IDTYPE)(INTPTR)WN_st(Wn())));
     else
       Set_st(WN_st(Wn()));
     return;

@@ -588,7 +588,7 @@ sort_by_slack (const void *opsch1, const void *opsch2)
   INT slack1 = OPSCH_lstart((OPSCH*) opsch1) - OPSCH_estart((OPSCH*) opsch1);
   INT slack2 = OPSCH_lstart((OPSCH*) opsch2) - OPSCH_estart((OPSCH*) opsch2);
  
-  return ((OPSCH*) slack1 < (OPSCH*) slack2);
+  return ((OPSCH*)(INTPTR) slack1 < (OPSCH*)(INTPTR) slack2);
 }
  
 // ======================================================================

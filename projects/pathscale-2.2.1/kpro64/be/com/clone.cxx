@@ -931,7 +931,7 @@ void
 IPO_SYMTAB::Set_Cloned_INITO (INITO *old_inito, INITO_IDX new_inito)
 {
 
-  _hash_maps->Insert(old_inito, (void *)new_inito);
+  _hash_maps->Insert(old_inito, (void *)(INTPTR)new_inito);
 }
 
 INITV_IDX

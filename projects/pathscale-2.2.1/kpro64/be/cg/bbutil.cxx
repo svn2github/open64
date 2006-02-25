@@ -1626,7 +1626,7 @@ Gen_Label_For_BB(BB *bb)
   LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
 
   Set_Label_BB (lab, bb);
-  BB_Add_Annotation (bb, ANNOT_LABEL, (void *)lab);
+  BB_Add_Annotation (bb, ANNOT_LABEL, (void *)(INTPTR)lab);
   return lab;
 
 #undef EXTRA_NAME_LEN

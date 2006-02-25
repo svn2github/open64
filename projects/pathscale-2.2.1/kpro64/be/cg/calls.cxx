@@ -232,7 +232,7 @@ Setup_GP_TN_For_PU( ST *pu)
   }
 
   /* initialize the gp map */
-  TN_MAP_Set( TN_To_PREG_Map, GP_TN, (void *)GP_Preg );
+  TN_MAP_Set( TN_To_PREG_Map, GP_TN, (void *)(INTPTR)GP_Preg );
   PREG_To_TN_Array[ GP_Preg ] = GP_TN;
   PREG_To_TN_Mtype[ GP_Preg ] = TY_mtype(Spill_Int_Type);
 
@@ -300,7 +300,7 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
       SAVE_tn(Return_Address_Reg) = Build_TN_Like(RA_TN);
       Set_TN_save_creg (SAVE_tn(Return_Address_Reg), TN_class_reg(RA_TN));
       TN_MAP_Set( TN_To_PREG_Map, SAVE_tn(Return_Address_Reg),
-		  (void *)Return_Preg );
+		  (void *)(INTPTR)Return_Preg );
       PREG_To_TN_Array[ Return_Preg ] = SAVE_tn(Return_Address_Reg);
       PREG_To_TN_Mtype[ Return_Preg ] = Spill_Int_Mtype;
     }
@@ -491,7 +491,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
 				ISA_REGISTER_CLASS_integer, Pointer_Size);
   			Set_TN_save_creg (Caller_FP_TN, TN_class_reg(FP_TN));
   			TN_MAP_Set( TN_To_PREG_Map, Caller_FP_TN, 
-				(void *)Caller_FP_Preg );
+				(void *)(INTPTR)Caller_FP_Preg );
   			PREG_To_TN_Array[ Caller_FP_Preg ] = Caller_FP_TN;
   			PREG_To_TN_Mtype[ Caller_FP_Preg ] = TY_mtype(Spill_Int_Type);
         	}
@@ -606,7 +606,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
 	  Caller_GP_TN = Gen_Register_TN (
 		ISA_REGISTER_CLASS_integer, Pointer_Size);
 	  Set_TN_save_creg (Caller_GP_TN, TN_class_reg(GP_TN));
-	  TN_MAP_Set( TN_To_PREG_Map, Caller_GP_TN, (void *)Caller_GP_Preg );
+	  TN_MAP_Set( TN_To_PREG_Map, Caller_GP_TN, (void *)(INTPTR)Caller_GP_Preg );
 	  PREG_To_TN_Array[ Caller_GP_Preg ] = Caller_GP_TN;
 	  PREG_To_TN_Mtype[ Caller_GP_Preg ] = TY_mtype(Spill_Int_Type);
 	}
@@ -1303,7 +1303,7 @@ Generate_Exit (
 	else {
 	  Caller_GP_TN = Gen_Register_TN (
 		ISA_REGISTER_CLASS_integer, Pointer_Size);
-	  TN_MAP_Set( TN_To_PREG_Map, Caller_GP_TN, (void *)Caller_GP_Preg );
+	  TN_MAP_Set( TN_To_PREG_Map, Caller_GP_TN, (void *)(INTPTR)Caller_GP_Preg );
 	  PREG_To_TN_Array[ Caller_GP_Preg ] = Caller_GP_TN;
 	  PREG_To_TN_Mtype[ Caller_GP_Preg ] = TY_mtype(Spill_Int_Type);
 	}
@@ -1396,7 +1396,7 @@ Generate_Exit (
       else {
 	Caller_FP_TN = Gen_Register_TN (
 		ISA_REGISTER_CLASS_integer, Pointer_Size);
-	TN_MAP_Set( TN_To_PREG_Map, Caller_FP_TN, (void *)Caller_FP_Preg );
+	TN_MAP_Set( TN_To_PREG_Map, Caller_FP_TN, (void *)(INTPTR)Caller_FP_Preg );
 	PREG_To_TN_Array[ Caller_FP_Preg ] = Caller_FP_TN;
   	PREG_To_TN_Mtype[ Caller_FP_Preg ] = TY_mtype(Spill_Int_Type);
       }

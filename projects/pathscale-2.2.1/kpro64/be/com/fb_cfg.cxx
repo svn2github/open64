@@ -1987,16 +1987,16 @@ FB_CFG::Draw() const
     else if ( ! freq.Known() )               nt = &nt_unknown;
 
     // Add the node and its outgoing edges to the daVinci graph;
-    DV->Node_Begin( NODE_ID(INT(nx)), Node_label(nx), *nt );
+    DV->Node_Begin( NODE_ID(INTPTR(nx)), Node_label(nx), *nt );
     for ( t = 0; t < node.undelayed_succs; ++t ) {
       dst_nx = node.succs[t];
-      DV->Out_Edge( EDGE_ID(NODE_ID(INT(nx)), NODE_ID(INT(dst_nx))),
-		    et_advancing, NODE_ID(INT(dst_nx)) );
+      DV->Out_Edge( EDGE_ID(NODE_ID(INTPTR(nx)), NODE_ID(INTPTR(dst_nx))),
+		    et_advancing, NODE_ID(INTPTR(dst_nx)) );
     }
     for ( ; t < node.succs.size(); ++t ) {
       dst_nx = node.succs[t];
-      DV->Out_Edge( EDGE_ID(NODE_ID(INT(nx)), NODE_ID(INT(dst_nx))),
-		    et_delayed, NODE_ID(INT(dst_nx)) );
+      DV->Out_Edge( EDGE_ID(NODE_ID(INTPTR(nx)), NODE_ID(INTPTR(dst_nx))),
+		    et_delayed, NODE_ID(INTPTR(dst_nx)) );
     }
     DV->Node_End();
 

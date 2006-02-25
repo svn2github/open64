@@ -501,7 +501,7 @@ public:
       DIRECTED_GRAPH16<ARRAY_EDGE16,ARRAY_VERTEX16>::Add_Vertex();
     if (result != 0) {
       _v[result].Wn = wn;
-      WN_MAP_Set(_map,wn, (void *) (UINT) result);
+      WN_MAP_Set(_map,wn, (void *)(INTPTR)(UINT) result);
     }
     return result;
   }
@@ -529,7 +529,7 @@ public:
 
   void Set_Wn(VINDEX16 v, WN* wn) {
     _v[v].Wn=wn;
-    WN_MAP_Set(_map, _v[v].Wn, (void*)(UINT)v);
+    WN_MAP_Set(_map, _v[v].Wn, (void*)(INTPTR)(UINT)v);
   }
 
   void Delete_Vertex(WN *wn) {

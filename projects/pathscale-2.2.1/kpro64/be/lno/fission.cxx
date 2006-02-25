@@ -507,7 +507,7 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
         stmt = WN_first(WN_do_body(in_loop));
 	stmt;
 	stmt = WN_next(stmt), i++) {
-	if ((mUINT32)(WN_MAP_Get(dep_graph_map, stmt)) != i)
+	if ((mUINT32)(INTPTR)(WN_MAP_Get(dep_graph_map, stmt)) != i)
 	    mapping_is_illegal = TRUE;
   }
 
@@ -539,7 +539,7 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
 
     BOOL current_loop_has_loops_or_regions = FALSE;
     for (sink_stmt=begin_stmt,
-	 sink_v=(mUINT32)WN_MAP_Get(dep_graph_map, begin_stmt),
+	 sink_v=(mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, begin_stmt),
          // TODO: need to get a 16 bit mapping later
 	 end_v = sink_v;
 	 sink_v <= end_v;
@@ -648,7 +648,7 @@ WN_MAP dep_graph_map, DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
       // automatically
       VINDEX16 scc_id;
       scc_id = dep_g_p->Get_Scc_Id(
-        (mUINT32)WN_MAP_Get(dep_graph_map, stmt));
+        (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt));
       scc[scc_id].Append(stmt, pool);  
     }
 
@@ -781,8 +781,8 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
 	  WN* stmt1 = sdg->Get_Wn(v1);
 
           EINDEX16 e1=dep_g_p->Add_Unique_Edge(
-            (mUINT32)WN_MAP_Get(dep_graph_map, stmt),
-            (mUINT32)WN_MAP_Get(dep_graph_map, stmt1));
+            (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt),
+            (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt1));
 
           if (e1==0) {
             DevWarn("Statement scc graph too big");
@@ -826,11 +826,11 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
       stmt_node; stmt_node = stmt_iter_1.Next()) {
       stmt1 = stmt_node->Get_Stmt();
       EINDEX16 e1=dep_g_p->Add_Unique_Edge(
-        (mUINT32)WN_MAP_Get(dep_graph_map, stmt),
-        (mUINT32)WN_MAP_Get(dep_graph_map, stmt1));
+        (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt),
+        (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt1));
       EINDEX16 e2=dep_g_p->Add_Unique_Edge(
-        (mUINT32)WN_MAP_Get(dep_graph_map, stmt1),
-        (mUINT32)WN_MAP_Get(dep_graph_map, stmt));
+        (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt1),
+        (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt));
       if (e1==0 || e2==0) {
         DevWarn("Statement scc graph too big");
         INT m=loop.Newidx();
@@ -857,11 +857,11 @@ DYN_ARRAY<FF_STMT_LIST>& loop, MEM_POOL* pool)
       stmt_node; stmt_node = stmt_iter_2.Next()) {
       stmt1 = stmt_node->Get_Stmt();
       EINDEX16 e1=dep_g_p->Add_Unique_Edge(
-        (mUINT32)WN_MAP_Get(dep_graph_map, stmt),
-        (mUINT32)WN_MAP_Get(dep_graph_map, stmt1));
+        (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt),
+        (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt1));
       EINDEX16 e2=dep_g_p->Add_Unique_Edge(
-        (mUINT32)WN_MAP_Get(dep_graph_map, stmt1),
-        (mUINT32)WN_MAP_Get(dep_graph_map, stmt));
+        (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt1),
+        (mUINT32)(INTPTR)WN_MAP_Get(dep_graph_map, stmt));
       if (e1==0 || e2==0) {
         DevWarn("Statement scc graph too big");
         INT m=loop.Newidx();
@@ -1044,7 +1044,7 @@ WN_MAP loop_map, FF_STMT_LIST *stl_1, FF_STMT_LIST *stl_2)
 
     while(stmt_node_p = loop[i].Remove_Headnode()) {
       stmt = stmt_node_p->Get_Stmt();
-      WN_MAP_Set(loop_map, stmt, (void*)(i+1));
+      WN_MAP_Set(loop_map, stmt, (void*)(INTPTR)(i+1));
     }
   }
 
@@ -1341,7 +1341,7 @@ WN_MAP loop_map, UINT32 total_loops, FF_STMT_LIST *stl_1, FF_STMT_LIST *stl_2)
     loop.Initidx(total_loops-1);
     WN* loop_body = WN_do_body(in_loop);
     for (wn=WN_first(loop_body); wn; wn=WN_next(wn)) {
-      INT loop_id = (INT32)WN_MAP_Get(loop_map, wn)-1;
+      INT loop_id = (INT32)(INTPTR)WN_MAP_Get(loop_map, wn)-1;
       loop[loop_id].Append(wn, &FISSION_default_pool);
     }
     

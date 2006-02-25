@@ -421,7 +421,7 @@ BB_DAG_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
         succ_nodes = _dag_ops_info.Dependencies ( node, dumped );
         if (dumped) {
             for (INT32 i=0 ; i<succ_nodes.size() ; i++ ) {
-                _dv -> Delete_Edge ( EDGE_ID ( node , (NODE_ID)i ));
+                _dv -> Delete_Edge ( EDGE_ID ( node , (NODE_ID)(INTPTR)i ));
             }
             dumped = FALSE;
         }   // of if
@@ -440,7 +440,7 @@ BB_DAG_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
                     // to identify the edge's dependence kind
                     et.Color(Dependence_Color(tmp_dep_info.kind));
                 }
-                _dv -> New_Edge ( EDGE_ID ( node , (NODE_ID) i ), et,
+                _dv -> New_Edge ( EDGE_ID ( node , (NODE_ID)(INTPTR) i ), et,
                                   node, (NODE_ID) tmp_dep_info.dest_op );
             }   // of for(INT32 ...)
             dumped = TRUE;
@@ -527,7 +527,7 @@ Regioanl_DAG_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
                 // all odd number.
                 if (dumped) {
                     for (INT32 i=0 ; i<succ_nodes.size() ; i++ ) {
-                        _dv -> Delete_Edge (EDGE_ID (node ,NODE_ID(2*i+1)));
+                        _dv -> Delete_Edge (EDGE_ID (node ,NODE_ID((INTPTR)(2*i+1))));
                     }
                     dumped = FALSE;
                 }   // of if
@@ -546,7 +546,7 @@ Regioanl_DAG_Callback::Node_Select(const INT n_ids, const NODE_ID id_array[])
                             // to identify the edge's dependence kind
                             et.Color(Dependence_Color(tmp_dep_info.kind));
                         }
-                        _dv -> New_Edge (EDGE_ID (node,NODE_ID(2*i+1)), et,
+                        _dv -> New_Edge (EDGE_ID (node,NODE_ID((void*)INTPTR(2*i+1))), et,
                                          node,(NODE_ID)tmp_dep_info.dest_op);
                     }   // of for(INT32 ...)
                     dumped = TRUE;
@@ -684,7 +684,7 @@ void draw_bb_dependence_graph(BB *bb,const char *mes)
             if (    ((CG_DEP_PREBR != kind) && (CG_DEP_POSTBR != kind)) ||
                     show_branch_edge   ) {
                 dv.Out_Edge ( EDGE_ID ( NODE_ID(op),
-                                        NODE_ID(edge_id_number ++)),
+                                        NODE_ID(INTPTR(edge_id_number ++))),
                               et, NODE_ID (arc->succ));
             }; // of if
         } // of for( ARC* ... )
@@ -885,7 +885,7 @@ void draw_regional_dependence_graph(REGION *r,const char *mes)
                         if (((CG_DEP_PREBR != kind)&&(CG_DEP_POSTBR != kind))
                             || show_branch_edge   ) {
                             dv.Out_Edge ( EDGE_ID ( NODE_ID(op),
-                                          NODE_ID(2* edge_id_number++ )),
+                                          NODE_ID(INTPTR(2* edge_id_number++))),
                                           et, NODE_ID (arc->succ));
                         }
                     } // of for( ARC* ... )
