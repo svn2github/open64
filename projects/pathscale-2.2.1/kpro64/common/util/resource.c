@@ -79,8 +79,14 @@ struct resources {
     TIME_INFO	utime;	/* User cpu time */
     TIME_INFO	stime;	/* System cpu time */
     TIME_INFO	etime;	/* Elapsed time */
-    INT memory;		/* Memory used (bytes) */
-    INT freemem;	/* Free memory allocated */
+    /* 32 bits are enought to hold the value of memory usage. However, 
+     * in the process of keeping track of memory usage, <memory> is 
+     * used sometimes to hold the value of pointer. e.g the value 
+     * return from sbrk(), therefore, memory should be 64bits long 
+     * on 64bit environment. 
+     */
+    INTPTR memory;	/* Memory used (bytes) */
+    INTPTR freemem;	/* Free memory allocated */
 };
 
 /* The following structure contains the latest absolute and the
@@ -203,7 +209,7 @@ Get_Resources (
 #endif
 
     /* Get the memory information */
-    r->memory = (INT64)sbrk(0);
+    r->memory = (INTPTR)sbrk(0);
     r->freemem = 0;
 }
 
@@ -522,6 +528,6 @@ Resource_Report (
 	      res->etime.secs, res->etime.usecs/10000 );
 #endif
     fprintf ( file, "\tmemory:\t%8x\n\tfree:\t%8x\n",
-	      res->memory, res->freemem );
+	      (INT)res->memory, (INT)res->freemem);
 }
 
