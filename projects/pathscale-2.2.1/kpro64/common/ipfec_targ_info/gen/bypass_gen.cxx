@@ -451,10 +451,8 @@ void Print_All_Bypass(void *pknobs, FILE *h_file, FILE *c_file)
     fprintf(c_file, "}/* End of Adjust Latency*/\n\n");
 
     // clean memory
-    std::map <int, char*>::iterator iter;
-    for (iter = oddfunc_pair.begin(); iter!=oddfunc_pair.end(); iter++) {
-        oddfunc_pair.erase(iter);
-    }
+    oddfunc_pair.clear ();
+
 }/* end of Print_Bypass() */
 
 void Print_FU_Class(void *pknobs, FILE *h_file, FILE *c_file)
