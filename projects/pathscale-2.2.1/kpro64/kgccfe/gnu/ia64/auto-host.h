@@ -301,8 +301,12 @@
 /* The number of bytes in type int */
 #define SIZEOF_INT 4
 
+#ifdef CROSS_COMPILATION 
 /* The number of bytes in type long */
 #define SIZEOF_LONG 4
+#else
+#define SIZEOF_LONG 8
+#endif
 
 /* The number of bytes in type long long */
 #define SIZEOF_LONG_LONG 8
