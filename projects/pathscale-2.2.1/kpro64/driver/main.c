@@ -353,7 +353,7 @@ main (int argc, char *argv[])
 		    "in the\n");
 	    fprintf(stderr, "%.*s/share/doc/pathscale-compilers-" 
 	    	    PSC_FULL_VERSION "/LEGAL.pdf file.\n",
-		    strlen(exe_dir) - 4, exe_dir);
+		    (int)(strlen(exe_dir) - 4), exe_dir);
 	}
 	if (show_search_path) {
 		print_search_path();
@@ -1089,7 +1089,7 @@ print_search_path ()
 	char *gcc_lib_ptr;
 	int buflen;
 	
-	printf ("install: %.*s\n", strlen(exe_dir) - 4, exe_dir);
+	printf ("install: %.*s\n", (int)(strlen(exe_dir) - 4), exe_dir);
 	printf ("programs: %s:%s\n", exe_dir, get_phase_dir (P_be));
 	
 	if (abi == ABI_N32) {

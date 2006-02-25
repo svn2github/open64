@@ -1368,7 +1368,7 @@ print_magic_path(const char *base, const char *fname)
       goto good;
     
     if (ends_with(base, "/lib64")) {
-      asprintf(&path, "%.*s/%s", strlen(base) - 2, base, fname);
+      asprintf(&path, "%.*s/%s", (int)(strlen(base) - 2), base, fname);
 
       if (file_exists(path))
 	goto good;

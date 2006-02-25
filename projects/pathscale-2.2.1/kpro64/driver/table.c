@@ -881,9 +881,9 @@ write_get_option (void)
 			 * check that whole string matches */
 			if (strlen(options[i].name) > 2) {
 				fprintf(f, "\tif (strncmp(argv[*argi],\"%s\",%d) == 0) {\n",
-				    options[i].name, strlen(options[i].name));
+				    options[i].name, (int)strlen(options[i].name));
 				fprintf(f, "\t\tend_option(argv, argi, %d);\n",
-					strlen(options[i].name));
+					(int)strlen(options[i].name));
 			} /* else -<single-letter> */
 			if (options[i].syntax == needs_decimal) {
 				fprintf(f, "\tif (is_decimal(next_string(argv,argi))) {\n");
@@ -955,7 +955,7 @@ write_get_option (void)
 			 * check that whole string matches */
 			if (strlen(options[i].name) > 2) {
 				fprintf(f, "\tif (strncmp(argv[*argi],\"%s\",%d) == 0) {\n",
-				    options[i].name, strlen(options[i].name));
+				    options[i].name, (int)strlen(options[i].name));
 			}
 			fprintf(f, "\t\treturn parse_%s_option(argv, argi);\n",
 				options[i].name+1);

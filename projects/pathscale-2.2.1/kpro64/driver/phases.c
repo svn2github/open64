@@ -1204,7 +1204,7 @@ add_file_args (string_list_t *args, phases_t index)
 		  }
 		}
 		current_phase = P_any_as;
-#if !defined(TARG_IA64) && !defined(CROSS_COMPILATION)
+#if defined(KEY) && !defined(CROSS_COMPILATION)
 		add_string(args, "-c");		// gcc -c
 #endif
 		add_string(args, "-o");
@@ -1452,7 +1452,7 @@ add_libgcc_s(string_list_t *args)
 }
 
 static void
-add_final_ld_args (string_list_t *args)
+add_final_ld_args (string_list_t *args, phases_t ld_phase)
 {
 #ifdef TARG_X8664 
         extern boolean link_with_mathlib;
@@ -1515,7 +1515,10 @@ add_final_ld_args (string_list_t *args)
 #endif
 
 #if !defined(TARG_X8664)
-	if (shared != DSO_SHARED && shared != RELOCATABLE) {
+	/* if ld_phase != P_collet, gcc or g++ is used for the link purpose, 
+	 * lib{stdc++,gcc,c,etc}.{so,a} are taken care by gcc/g++ itself.
+	 */
+	if (shared != DSO_SHARED && shared != RELOCATABLE && ld_phase == P_collect) {
 	    	if (invoked_lang == L_CC) {
 			add_library(args, "stdc++");
 	    	}
@@ -1545,7 +1548,7 @@ add_final_ld_args (string_list_t *args)
 	  }
 	}
 #if !defined(TARG_X8664)
-	if (shared != DSO_SHARED && shared != RELOCATABLE) {
+	if (shared != DSO_SHARED && shared != RELOCATABLE && ld_phase == P_collect) {
 		add_string(args, find_crt_path("crtend.o"));
 		add_string(args, find_crt_path("crtn.o"));
 	}
@@ -2113,10 +2116,12 @@ run_ld (void)
 		ldphase = P_collect;
 #else
 	else if (invoked_lang == L_CC) {
-		ldphase = P_ldplus;
-	}
-	else {
-		ldphase = P_ld;
+		ldphase = P_ldplus; // let g++ let care 
+	} if (invoked_lang == L_cc) {
+		ldphase = P_ld;	    // let gcc let care
+	} else {
+		// using ld directly so we have more control on the link-phase.
+		ldphase = P_collect; 
 	}
 #endif
 
@@ -2164,7 +2169,9 @@ run_ld (void)
   	else
 	    append_objects_to_list (args);
 
+#ifdef CROSS_COMPILATION 
 	specify_dyn_linker (args);
+#endif
 
 #if defined(KEY) && defined(TARG_MIPS)
 	add_string(args, "-mips64");	// call gcc with -mips64
@@ -2172,8 +2179,10 @@ run_ld (void)
 
 	add_instr_archive (args);
 
-	add_final_ld_args (args);
-	add_rpath_link_option (args);
+	add_final_ld_args (args,ldphase);
+	if (ldphase == P_collect) {
+		add_rpath_link_option (args);
+	}
 	postprocess_ld_args (args);
 
 	run_phase (ldphase, ldpath, args);
