@@ -324,7 +324,7 @@ void Gen_Table_Map_n_Body(FILE *cxxfile)
                 fprintf(cxxfile, ",\n\t");
             first = false;
             fprintf(cxxfile, "{%d, ptn%d} /* position %d */",
-                    PTN_table[index].size(), index, value++);
+                    (INT)PTN_table[index].size(), index, value++);
         }
     }
     fprintf(cxxfile, "\n};\n\n");

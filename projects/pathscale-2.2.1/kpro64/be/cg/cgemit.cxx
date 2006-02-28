@@ -3596,7 +3596,7 @@ Trace_Init_Loc ( INT scn_idx, Elf64_Xword scn_ofst, INT32 repeat)
    * add context-specific information:
    */
   fprintf ( TFile, "<init>: Section %s (offset %4lld x%d): ",
-	    ST_name(em_scn[scn_idx].sym), scn_ofst, repeat );
+	    ST_name(em_scn[scn_idx].sym), (INT64)scn_ofst, repeat );
 }
 
 /* ====================================================================
@@ -3668,7 +3668,7 @@ Write_Symbol (
     #pragma mips_frequency_hint NEVER
     Trace_Init_Loc (scn_idx, scn_ofst, repeat);
     fprintf ( TFile, "SYM " );
-    fprintf ( TFile, "%s %+lld\n", ST_name(sym), sym_ofst );
+    fprintf ( TFile, "%s %+lld\n", ST_name(sym), (INT64)sym_ofst );
   }
 
   /* make sure is allocated */
@@ -3739,11 +3739,11 @@ Write_Symbol (
 	else if (ST_class(sym) == CLASS_FUNC && AS_FPTR && ! Get_Trace(TP_EMIT,0x2000)) {
 		fprintf (Asm_File, " %s(", AS_FPTR);
 		EMT_Write_Qualified_Name (Asm_File, sym);
-		fprintf (Asm_File, " %+lld)\n", sym_ofst);
+		fprintf (Asm_File, " %+lld)\n", (INT64)sym_ofst);
 	}
 	else {
 		EMT_Write_Qualified_Name (Asm_File, sym);
-		fprintf (Asm_File, " %+lld\n", sym_ofst);
+		fprintf (Asm_File, " %+lld\n", (INT64)sym_ofst);
 	}
 	if (ST_class(sym) == CLASS_FUNC) {
 		fprintf (Asm_File, "\t%s\t", AS_TYPE);
@@ -3783,7 +3783,7 @@ Write_Label (
     #pragma mips_frequency_hint NEVER
     Trace_Init_Loc (scn_idx, scn_ofst, repeat);
     fprintf ( TFile, "LAB (%d) ", (INT)lab );
-    fprintf ( TFile, "%s %+lld\n", LABEL_name(lab), lab_ofst );
+    fprintf ( TFile, "%s %+lld\n", LABEL_name(lab), (INT64)lab_ofst );
   }
 
 #ifdef TODO
@@ -3834,7 +3834,7 @@ Write_Label (
 		AS_ADDRESS : AS_ADDRESS_UNALIGNED);
 	fprintf (Asm_File, "%s", LABEL_name(lab));
 	if (lab_ofst != 0)
-		fprintf (Asm_File, " %+lld", lab_ofst);
+		fprintf (Asm_File, " %+lld", (INT64)lab_ofst);
 	fprintf (Asm_File, "\n");
     } 
     if (Object_Code) {

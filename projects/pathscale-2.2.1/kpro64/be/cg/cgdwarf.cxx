@@ -169,9 +169,9 @@ Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
   if (Trace_Dwarf) {
     fprintf(TFile,
 	    "New CGD_Symtab entry: %u --> (CGD_%s,%llu)\n",
-	    CGD_Symtab.size() - 1,
+	    (UINT32)(CGD_Symtab.size() - 1),
 	    (type == CGD_LABIDX ? "LABIDX" : "ELFSYM"),
-	    index);
+	    (UINT64)index);
   }
   Dwarf_Unsigned handle = CGD_Symtab.size() - 1;
   if (type == CGD_LABIDX) {
@@ -192,9 +192,9 @@ Dwarf_Unsigned Cg_Dwarf_Symtab_Entry(CGD_SYMTAB_ENTRY_TYPE  type,
       fprintf(TFile,
 	      "pu_idx: %d; label: %d %s; ofst: %llu; base: %u\n",
 	      CGD_Symtab[handle].label_info.pu_idx,
-	      (int)sidx,
+	      (INT)sidx,
 	      Index_To_Str(sidx),
-	      CGD_Symtab[handle].label_info.offset,
+	      (UINT64)CGD_Symtab[handle].label_info.offset,
 	      CGD_Symtab[handle].label_info.base_sym);
     }
     FmtAssert(pu_base_sym_idx != 0,
@@ -220,9 +220,9 @@ Elf64_Word Cg_Dwarf_Translate_Symidx(Dwarf_Unsigned idx_from_sym_reloc)
 	  ("Cg_Dwarf_Translate_Symidx: Index %llu out of bounds (%lu)",
 	   idx_from_sym_reloc, CGD_Symtab.size()));
   if (Trace_Dwarf) {
-    fprintf(TFile, "Translating %llu ", idx_from_sym_reloc);
+    fprintf(TFile, "Translating %llu ", (UINT64)idx_from_sym_reloc);
     fflush(TFile);
-    fprintf(TFile, "to %llu\n", CGD_Symtab[idx_from_sym_reloc].index);
+    fprintf(TFile, "to %llu\n", (UINT64)CGD_Symtab[idx_from_sym_reloc].index);
   }
   Is_True(CGD_Symtab[idx_from_sym_reloc].type == CGD_ELFSYM,
 	  ("Cg_Dwarf_Translate_Symidx: Unexpected entry type"));
@@ -235,12 +235,12 @@ Elf64_Word Cg_Dwarf_Translate_Offset(Dwarf_Unsigned idx_from_sym_reloc)
 	  ("Cg_Dwarf_Translate_Offset: Index %llu out of bounds (%lu)",
 	   idx_from_sym_reloc, CGD_Symtab.size()));
   if (Trace_Dwarf) {
-    fprintf(TFile, "Translating %llu ", idx_from_sym_reloc);
+    fprintf(TFile, "Translating %llu ", (UINT64)idx_from_sym_reloc);
     fflush(TFile);
     fprintf(TFile, "through index %llu ",
-	    CGD_Symtab[idx_from_sym_reloc].index);
+	    (UINT64)CGD_Symtab[idx_from_sym_reloc].index);
     fprintf(TFile, "to %lld\n",
-	    Get_Label_Offset(CGD_Symtab[idx_from_sym_reloc].index));
+	    (INT64)Get_Label_Offset(CGD_Symtab[idx_from_sym_reloc].index));
   }
   Is_True(CGD_Symtab[idx_from_sym_reloc].type == CGD_LABIDX,
 	  ("Cg_Dward_Translate_Offset: Unexpected entry type"));
@@ -256,17 +256,17 @@ Cg_Dwarf_Translate_To_Elf(Dwarf_Unsigned  idx_from_sym_reloc,
 	  ("Cg_Dwarf_Translate_Offset: Index %llu out of bounds (%lu)",
 	   idx_from_sym_reloc, CGD_Symtab.size()));
   if (Trace_Dwarf) {
-    fprintf(TFile, "Translating %llu ", idx_from_sym_reloc);
+    fprintf(TFile, "Translating %llu ", (UINT64)idx_from_sym_reloc);
     fflush(TFile);
     fprintf(TFile, "through index %llu ",
-	    CGD_Symtab[idx_from_sym_reloc].index);
+	    (UINT64)CGD_Symtab[idx_from_sym_reloc].index);
   }
   if (CGD_Symtab[idx_from_sym_reloc].type == CGD_LABIDX) {
     *elf_symbol = CGD_Symtab[idx_from_sym_reloc].label_info.base_sym;
     *elf_offset = CGD_Symtab[idx_from_sym_reloc].label_info.offset;
     if (Trace_Dwarf) {
       fprintf(TFile, "to elfsym %s + 0x%llx\n",
-	      Em_Get_Symbol_Name(*elf_symbol), *elf_offset);
+	      Em_Get_Symbol_Name(*elf_symbol), (UINT64)(*elf_offset));
     }
   }
   else  {

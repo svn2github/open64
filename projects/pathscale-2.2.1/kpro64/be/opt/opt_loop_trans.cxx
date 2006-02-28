@@ -375,7 +375,7 @@ void generate_loop_butterfly_zones(COMP_UNIT *cu,
 	OPT_POOL_Pop(&MEM_local_pool, -1);
 	if (trace)
 	  fprintf(TFile, "new_loop size=%d, butterfly size=%d\n",
-		  new_loop.size(), ends.size());
+		  (INT)new_loop.size(), (INT)ends.size());
 	if (coverage * 100 >= min_coverage && new_loop.size() > ends.size()) {
 	  if (trace) {
 	    print_vertex_set(&new_loop, TFile);

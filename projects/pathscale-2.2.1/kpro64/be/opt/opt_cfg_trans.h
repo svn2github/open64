@@ -452,7 +452,7 @@ inline void topological_sort(Graph& in, Vertex_id root, Container& out)
 template <class Graph>
 void print_nodes(Graph& g, FILE *fp=stdout)
 {
-  fprintf(fp, "number of nodes %d: ", g.size());
+  fprintf(fp, "number of nodes %d: ", (INT)g.size());
   for (typename Graph::cluster_iterator n = g.cluster_begin(); 
        n != g.cluster_end();
        ++n) {

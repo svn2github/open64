@@ -723,7 +723,7 @@ SWP_ALLOCATOR::_print_status(FILE *outf)
 	    "Need more registers; "
 	    "gave up after allocating %d (of %d) lifetimes.\n"
 	    "The last allocation ran the register count up to %d\n", 
-	    _num_allocated_lifetimes, _lifetime.size(), num_allocated_regs());
+	    _num_allocated_lifetimes, (INT)_lifetime.size(), num_allocated_regs());
     break;
 
   default:

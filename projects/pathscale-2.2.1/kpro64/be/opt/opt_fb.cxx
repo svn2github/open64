@@ -1746,13 +1746,13 @@ OPT_FEEDBACK::Print( FILE *fp ) const
   fprintf( fp, "OPT_FEEDBACK annotation:\n" );
 
   // Display nodes
-  fprintf( fp, "%d nodes:\n", _fb_opt_nodes.size() - 1 );
+  fprintf( fp, "%d nodes:\n", (INT)(_fb_opt_nodes.size() - 1) );
   for ( IDTYPE nx = 1; nx < _fb_opt_nodes.size(); nx++ ) {
     _fb_opt_nodes[nx].Print( nx, fp );
   }
 
   // Display edges
-  fprintf( fp, "%d edges:\n", _fb_opt_edges.size() - 1 );
+  fprintf( fp, "%d edges:\n", (INT)(_fb_opt_edges.size() - 1) );
   for ( IDTYPE ex = 1; ex < _fb_opt_edges.size(); ex++ ) {
     _fb_opt_edges[ex].Print( ex, fp );
   }
@@ -1874,7 +1874,7 @@ OPT_FEEDBACK::Verify( CFG *cfg, const char *const phase )
       valid = false;
       if ( _trace )
 	fprintf( TFile, "  CFG bb%d missing feedback! (_fb_opt_nodes.size()"
-		 " = %d)\n", bb->Id(), _fb_opt_nodes.size() );
+		 " = %d)\n", bb->Id(), (INT)_fb_opt_nodes.size() );
     }
     const OPT_FB_NODE& node = _fb_opt_nodes[bb->Id()];
 

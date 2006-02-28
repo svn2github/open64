@@ -754,7 +754,7 @@ HB_Block_Select(HB* candidate, BOOL profitable_ifc)
       break; // Stop looking
     }
     if (HB_Trace(HB_TRACE_SELECT)) {
-      fprintf(HB_TFile, "<HB> examining %d paths\n", hb_paths.size());
+      fprintf(HB_TFile, "<HB> examining %d paths\n", (INT)hb_paths.size());
     }
     if (hb_paths.size() > HB_MAX_PATHS) {
       if (HB_Trace(HB_TRACE_SELECT)) {

@@ -190,7 +190,7 @@ void Interleave_Base_Update(op_vec_type::iterator first, op_vec_type::iterator l
 
     if (trace) {
       fprintf(TFile, "<recur> TN%d replaces the %d-th occurrence of TN%d\n",
-	      TN_number(newtn), p - first, TN_number(tn));
+	      TN_number(newtn), (INT)(p - first), TN_number(tn));
     }
 
     // Update uses in other operations

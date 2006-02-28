@@ -4671,8 +4671,8 @@ REGIONAL_CFG::Print(FILE *f) {
 
      if ( Get_Trace(TP_A_REGION, TT_RGN_CFG_DUMP)){
         fprintf(f,"#REGIONAL_CFG_NODE:%d  ", _seq_num);
-        fprintf(f,"#entries:%d  ", _entries.size());
-        fprintf(f,"#exits:%d\n", _exits.size());
+        fprintf(f,"#entries:%d  ", (INT)_entries.size());
+        fprintf(f,"#exits:%d\n", (INT)_exits.size());
       
         for (NODE_VECTOR_ITER iter = _node_set.begin();
             iter != _node_set.end();iter++) {
