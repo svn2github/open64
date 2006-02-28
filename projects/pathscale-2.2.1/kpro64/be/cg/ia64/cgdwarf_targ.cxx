@@ -1587,7 +1587,7 @@ unwind_dump2asm (char *unwind_table_ptr,
 	// dump section in 8-byte chunks
 	fprintf(Asm_File, ".Lunwind_info_%d:\n", Current_PU_Count());
 	for (i = last_info_size; i < unwind_info_size; i+=8) {
-		fprintf(Asm_File, "\t%s %#llx\n", AS_DWORD, *(__uint64_t *)(unwind_info_ptr+i));
+		fprintf(Asm_File, "\t%s %#llx\n", AS_DWORD, (UINT64)*(__uint64_t *)(unwind_info_ptr+i));
 	}
 	fprintf(Asm_File, "\t%s %s\n", AS_SECTION, IA64_UNWIND);
 	// should always be 3 double-words
