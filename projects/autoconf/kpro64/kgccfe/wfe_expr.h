@@ -107,7 +107,8 @@ extern void WFE_Set_ST_Addr_Saved (WN *);
 // Convert inplace target order words in 'buf' to host order. 'buf' is a two
 // word array. 
 extern void WFE_Convert_To_Host_Order (long *buf);
-extern nesting * wfe_nesting_stack, * wfe_cond_stack, * wfe_loop_stack, * wfe_case_stack;
+
+extern void reset_nesting();
 #endif
 
 #endif /* __cplusplus */

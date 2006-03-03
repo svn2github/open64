@@ -85,7 +85,7 @@ extern "C" {
 
 extern FILE *tree_dump_file; // For debugging only
 
-extern INT pstatic_as_global;
+INT pstatic_as_global = 1;
 
 static const char*
 Get_Name (tree node)

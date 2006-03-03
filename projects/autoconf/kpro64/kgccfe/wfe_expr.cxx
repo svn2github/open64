@@ -76,6 +76,7 @@ extern "C" {
 extern int flag_errno_math;
 extern int flag_no_common;
 extern tree c_strlen_whirl(tree);
+extern void process_omp_stmt(tree);
 };
 
 #include "tree_symtab.h"
@@ -85,6 +86,63 @@ extern tree c_strlen_whirl(tree);
 #include "wfe_stmt.h"
 #include "tree_cmp.h"
 
+// bug 3180: Use a stack of struct nesting to handle nested 
+// loops/switch/case in a STMT_EXPR
+struct wfe_nest 
+{
+    struct wfe_nest *all;
+    struct wfe_nest *next;
+    LABEL_IDX label;
+};
+
+static struct wfe_nest *wfe_nesting_stack;
+static struct wfe_nest *wfe_case_stack;
+static struct wfe_nest *wfe_cond_stack;
+static struct wfe_nest *wfe_loop_stack;
+
+void
+reset_nesting()
+{
+    wfe_nesting_stack = NULL;
+    wfe_case_stack = NULL;
+    wfe_cond_stack = NULL;
+    wfe_loop_stack = NULL;
+}
+
+static struct wfe_nest *
+new_nesting(struct wfe_nest *next, struct wfe_nest *all, LABEL_IDX label)
+{
+    struct wfe_nest *n = (struct wfe_nest *)xmalloc(sizeof(struct wfe_nest));
+    n->all = all;
+    n->next = next;
+    n->label = label;
+    return (n);
+}
+
+static inline LABEL_IDX
+get_nesting_label(struct wfe_nest *n)
+{
+    return (n->label);
+}
+
+static void
+popstack(struct wfe_nest *target)
+{
+    struct wfe_nest *cur;
+
+    do {
+	cur = wfe_nesting_stack;
+	if (wfe_loop_stack == cur)
+	    wfe_loop_stack = wfe_loop_stack->next;
+	if (wfe_cond_stack == cur)
+	    wfe_cond_stack = wfe_cond_stack->next;
+	if (wfe_case_stack == cur)
+	    wfe_case_stack = wfe_case_stack->next;
+	wfe_nesting_stack = cur->all;
+	free(cur);
+    } while (cur != target); 
+}
+
 // #define WFE_DEBUG
 
 extern void dump_ty_idx (TY_IDX);
@@ -92,7 +150,7 @@ extern void dump_ty_idx (TY_IDX);
 extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
 #endif // KEY
 
-extern "C" int get_expr_stmts_for_value (void);
+extern "C" int whirl_expr_stmts_for_value (void);
 
 struct operator_from_tree_t {
   int      tree_code;
@@ -103,7 +161,6 @@ struct operator_from_tree_t {
 } Operator_From_Tree [] = {
   ERROR_MARK,              "error_mark",              'x', 0,  OPERATOR_UNKNOWN,
   IDENTIFIER_NODE,         "identifier_node",         'x', -1, OPERATOR_UNKNOWN,
-  OP_IDENTIFIER,           "op_identifier",           'x', 2,  OPERATOR_UNKNOWN,
   TREE_LIST,               "tree_list",               'x', 2,  OPERATOR_UNKNOWN,
   TREE_VEC,                "tree_vec",                'x', 2,  OPERATOR_UNKNOWN,
   BLOCK,                   "block",                   'b', 0,  OPERATOR_UNKNOWN,
@@ -187,7 +244,6 @@ struct operator_from_tree_t {
   FIX_FLOOR_EXPR,          "fix_floor_expr",          '1', 1,  OPERATOR_UNKNOWN,
   FIX_ROUND_EXPR,          "fix_round_expr",          '1', 1,  OPERATOR_UNKNOWN,
   FLOAT_EXPR,              "float_expr",              '1', 1,  OPERATOR_UNKNOWN,
-  EXPON_EXPR,              "expon_expr",              '2', 2,  OPERATOR_UNKNOWN,
   NEGATE_EXPR,             "negate_expr",             '1', 1,  OPR_NEG,
   MIN_EXPR,                "min_expr",                '2', 2,  OPR_MIN,
   MAX_EXPR,                "max_expr",                '2', 2,  OPR_MAX,
@@ -248,8 +304,6 @@ struct operator_from_tree_t {
   TRY_CATCH_EXPR,          "try_catch_expr",          'e', 2,  OPERATOR_UNKNOWN,
   TRY_FINALLY_EXPR,        "try_finally",             'e', 2,  OPERATOR_UNKNOWN,
   GOTO_SUBROUTINE_EXPR,    "goto_subroutine",         'e', 2,  OPERATOR_UNKNOWN,
-  POPDHC_EXPR,             "popdhc_expr",             's', 0,  OPERATOR_UNKNOWN,
-  POPDCC_EXPR,             "popdcc_expr",             's', 0,  OPERATOR_UNKNOWN,
   LABEL_EXPR,              "label_expr",              's', 1,  OPERATOR_UNKNOWN,
   GOTO_EXPR,               "goto_expr",               's', 1,  OPERATOR_UNKNOWN,
   RETURN_EXPR,             "return_expr",             's', 1,  OPERATOR_UNKNOWN,
@@ -260,6 +314,12 @@ struct operator_from_tree_t {
   EXPR_WITH_FILE_LOCATION, "expr_with_file_location", 'e', 3,  OPERATOR_UNKNOWN,
   SWITCH_EXPR,             "switch_expr",             'e', 2,  OPERATOR_UNKNOWN,
   EXC_PTR_EXPR,            "exc_ptr_expr",            'e', 0,  OPERATOR_UNKNOWN,
+
+  OP_IDENTIFIER,           "op_identifier",           'x', 2,  OPERATOR_UNKNOWN,
+  EXPON_EXPR,              "expon_expr",              '2', 2,  OPERATOR_UNKNOWN,
+  POPDHC_EXPR,             "popdhc_expr",             's', 0,  OPERATOR_UNKNOWN,
+  POPDCC_EXPR,             "popdcc_expr",             's', 0,  OPERATOR_UNKNOWN,
+
   LAST_AND_UNUSED_TREE_CODE,"last_and_unused_tree_code",0, 0,  OPERATOR_UNKNOWN,
 
   SRCLOC,                  "srcloc",                  'x', 2,  OPERATOR_UNKNOWN,
@@ -2033,28 +2093,7 @@ traverse_tree_chain (tree op1)
   }
 }
 
-// bug 3180: Use a stack of struct nesting to handle nested 
-// loops/switch/case in a STMT_EXPR
-struct nesting * wfe_nesting_stack;
-struct nesting * wfe_cond_stack;
-struct nesting * wfe_loop_stack;
-struct nesting * wfe_case_stack;
-extern "C"
-{
-// malloc a structure
-extern struct nesting * alloc_nesting (void);
-// initialize fields in struct (1st parameter)
-extern void construct_nesting ( struct nesting *,
-				struct nesting *,
-				struct nesting *,
-				LABEL_IDX);
-// mimic POPSTACK in gnu/stmt.c
-extern void popstack (struct nesting *);
-extern LABEL_IDX get_nesting_label (struct nesting *);
-
 // process pragma statements, function definition in c-semantics.c
-extern void process_omp_stmt (tree);
-}
 
 static TY_IDX
 get_field_type (TY_IDX struct_type, UINT field_id)
@@ -5041,9 +5080,8 @@ WFE_Expand_Expr (tree exp,
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
 
-       struct nesting * cond_nest = alloc_nesting();
-       construct_nesting (cond_nest, wfe_cond_stack, wfe_nesting_stack, 0);
-
+       struct wfe_nest *cond_nest = new_nesting(wfe_cond_stack,
+		wfe_nesting_stack, 0);
        wfe_nesting_stack = wfe_cond_stack = cond_nest;
 
        tree cond = TREE_OPERAND (exp, 0); // IF_COND
@@ -5104,9 +5142,8 @@ WFE_Expand_Expr (tree exp,
        if (init)
          WFE_Expand_Expr (init, FALSE);
 
-       struct nesting *loop_nest= alloc_nesting();
-       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack, 0);
-
+       struct wfe_nest *loop_nest = new_nesting(wfe_loop_stack,
+	       wfe_nesting_stack, 0);
        wfe_nesting_stack = wfe_loop_stack = loop_nest;
 
        WFE_Expand_Start_Loop (1, loop_nest);
@@ -5139,9 +5176,8 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       struct nesting *loop_nest = alloc_nesting();
-       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack, 0);
-
+       struct wfe_nest *loop_nest = new_nesting(wfe_loop_stack,
+	       wfe_nesting_stack, 0);
        wfe_nesting_stack = wfe_loop_stack = loop_nest;
 
        WFE_Expand_Start_Loop (1, loop_nest);
@@ -5170,9 +5206,8 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       struct nesting *loop_nest = alloc_nesting();
-       construct_nesting (loop_nest, wfe_loop_stack, wfe_nesting_stack, 0);
-
+       struct wfe_nest *loop_nest = new_nesting(wfe_loop_stack,
+	       wfe_nesting_stack, 0);
        wfe_nesting_stack = wfe_loop_stack = loop_nest;
 
        WFE_Expand_Start_Loop (1, loop_nest);
@@ -5218,10 +5253,8 @@ WFE_Expand_Expr (tree exp,
        LABEL_IDX switch_exit_label_idx;
 
        New_LABEL (CURRENT_SYMTAB, switch_exit_label_idx);
-       struct nesting * case_nest = alloc_nesting();
-       construct_nesting (case_nest, wfe_case_stack, wfe_nesting_stack, 
-       			  switch_exit_label_idx);
-
+       struct wfe_nest * case_nest = new_nesting(wfe_case_stack,
+	       wfe_nesting_stack, switch_exit_label_idx);
        wfe_nesting_stack = wfe_case_stack = case_nest;
 
        // The condition is in SWITCH_COND (exp)
@@ -5273,15 +5306,13 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
-       LABEL_IDX *label_idx = new LABEL_IDX;
-       *label_idx = 0;
+	LABEL_IDX label_idx;
 
-       if (wfe_nesting_stack == wfe_case_stack)
-         *label_idx = get_nesting_label (wfe_case_stack);
+       label_idx = (wfe_nesting_stack == wfe_case_stack)
+	       ? get_nesting_label(wfe_case_stack) : 0;
+       WFE_Expand_Exit_Something(wfe_nesting_stack, wfe_cond_stack,
+	       wfe_loop_stack, wfe_case_stack, label_idx);
 
-       WFE_Expand_Exit_Something (wfe_nesting_stack, wfe_cond_stack, 
-       				wfe_loop_stack, wfe_case_stack, label_idx);
-       free (label_idx);
        break;
      }
 
@@ -5314,7 +5345,10 @@ WFE_Expand_Expr (tree exp,
        // If the control flows here, it can only be introduced here
        // by expansion of STMT_EXPR. Otherwise, it would have been 
        // handled in gnu/ files.
+	abort();
+#if 0
        process_omp_stmt (exp);
+#endif
        break;
      }
 #endif
@@ -5352,12 +5386,12 @@ void WFE_One_Stmt (tree exp)
 {
   WN *wn;
   wfe_save_expr_stack_last = -1; // to minimize searches
-  if (get_expr_stmts_for_value ())
+  if (whirl_expr_stmts_for_value ())
     wn = WFE_Expand_Expr_With_Sequence_Point (exp, TY_mtype (Get_TY (TREE_TYPE (exp))));
   else
     wn = WFE_Expand_Expr_With_Sequence_Point (exp, MTYPE_V);
   if (wn) {
-    if (get_expr_stmts_for_value ()) {
+    if (whirl_expr_stmts_for_value ()) {
       wn = WN_CreateEval (wn);
       WFE_Stmt_Append (wn, Get_Srcpos ());
       return;

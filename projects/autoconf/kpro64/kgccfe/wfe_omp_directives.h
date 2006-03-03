@@ -174,9 +174,9 @@ extern void  WFE_expand_flush (WN_list *flush_variables);
 
 extern void  WFE_expand_threadprivate (ST_list *threadprivate_variables);
 
-extern void WFE_expand_start_do_loop (WN *, WN *, WN *, WN *, struct nesting *);
+extern void WFE_expand_start_do_loop(WN *, WN *, WN *, WN *, struct wfe_nest *);
 
-extern void WFE_expand_end_do_loop (struct nesting *);
+extern void WFE_expand_end_do_loop (struct wfe_nest *);
 
 extern BOOL Trace_Omp;
 #endif

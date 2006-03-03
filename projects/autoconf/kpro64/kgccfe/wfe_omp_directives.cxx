@@ -2590,7 +2590,8 @@ void WFE_expand_threadprivate (ST_list *threadprivate_variables)
 
 ///////// do loop expander ////////
 
-void WFE_expand_start_do_loop(WN * index, WN * start, WN * end, WN * step, struct nesting * nest)
+void WFE_expand_start_do_loop(WN * index, WN * start, WN * end, WN * step,
+	struct wfe_nest * nest)
 {
      WN *doloop;
 
@@ -2604,7 +2605,7 @@ void WFE_expand_start_do_loop(WN * index, WN * start, WN * end, WN * step, struc
      WFE_Start_Do_Loop (nest);
 }
 
-void WFE_expand_end_do_loop (struct nesting * nest)
+void WFE_expand_end_do_loop (struct wfe_nest * nest)
 {
      WFE_End_Do_Loop (nest);
      WFE_Stmt_Pop (wfe_stmk_for_body);

@@ -61,8 +61,9 @@ extern "C" {
 #include <tree.h>
 #include <output.h>
 #undef IN_GCC
-extern int flag_bad_asm_constraint_kills_stmt;
 extern int flag_no_common;
+
+int flag_bad_asm_constraint_kills_stmt = 1;
 };
 
 #include "tree_symtab.h"
@@ -84,9 +85,9 @@ enum LOOP_CONTINUE_INFO {
   CONTINUE_ELSEWHERE_HERE, // for
   CONTINUE_HERE_ELSEWHERE  // do while
 };
-  
+
 typedef struct loop_info_t {
-  struct nesting     *whichloop;
+  struct wfe_nest    *whichloop;
   LOOP_CONTINUE_INFO  continue_info;
   LABEL_IDX           continue_label_idx;
   LABEL_IDX           exit_label_idx;
@@ -196,7 +197,7 @@ WFE_Expand_End_Cond (void)
 } /* WFE_Expand_End_Cond */
 
 void
-WFE_Expand_Start_Loop (int exitflag, struct nesting *whichloop)
+WFE_Expand_Start_Loop (int exitflag, struct wfe_nest *whichloop)
 {
   WN* while_body;
 
@@ -219,7 +220,8 @@ WFE_Expand_Start_Loop (int exitflag, struct nesting *whichloop)
 } /* WFE_Expand_Start_Loop */
 
 void
-WFE_Expand_Start_Loop_Continue_Elsewhere (int exitflag, struct nesting *whichloop)
+WFE_Expand_Start_Loop_Continue_Elsewhere (int exitflag,
+	struct wfe_nest *whichloop)
 {
   FmtAssert (loop_info_i >= 0,
              ("WFE_Expand_Start_Loop_Continue_Elsewhere: no loops"));
@@ -302,7 +304,7 @@ WFE_Expand_End_Loop (void)
 } /* WFE_Expand_End_Loop */
 
 void
-WFE_Expand_Continue_Loop (struct nesting *whichloop)
+WFE_Expand_Continue_Loop (struct wfe_nest *whichloop)
 {
   FmtAssert (loop_info_i >= 0,
              ("WFE_Expand_Continue_Loop: no loops"));
@@ -318,13 +320,13 @@ WFE_Expand_Continue_Loop (struct nesting *whichloop)
 } /* WFE_Expand_Continue_Loop */
 
 void
-WFE_Expand_Exit_Loop (struct nesting *whichloop)
+WFE_Expand_Exit_Loop (struct wfe_nest *whichloop)
 {
   Fail_FmtAssertion ("WFE_Expand_Exit_Loop: unexpected state"); 
 } /* WFE_Expand_Exit_Loop */
 
 void
-WFE_Expand_Exit_Loop_If_False (struct nesting *whichloop, tree cond)
+WFE_Expand_Exit_Loop_If_False (struct wfe_nest *whichloop, tree cond)
 {
   WN* while_stmt;
   WN* test;
@@ -534,36 +536,26 @@ WFE_Record_Switch_Default_Label (tree label)
 } /* WFE_Record_Switch_Default_Label */
 
 void
-WFE_Expand_Exit_Something (struct nesting *n,
-                           struct nesting *cond_stack,
-                           struct nesting *loop_stack,
-                           struct nesting *case_stack,
-                           LABEL_IDX      *label_idx)
+WFE_Expand_Exit_Something (struct wfe_nest *nest, struct wfe_nest *cond,
+	struct wfe_nest *loop, struct wfe_nest *kase, LABEL_IDX label)
 {
-  LABEL_IDX  exit_label_idx = *label_idx;
-  WN        *wn;
-  if (n == case_stack) {
-    if (exit_label_idx == 0) {
-      New_LABEL (CURRENT_SYMTAB, exit_label_idx);
-      *label_idx = exit_label_idx;
-      switch_info_stack [switch_info_i].exit_label_idx = exit_label_idx;
-    }
-    wn = WN_CreateGoto (exit_label_idx);
+    WN *wn;
+
+    if (nest == kase) {
+	if (label == 0) {
+	    New_LABEL (CURRENT_SYMTAB, label);
+	    switch_info_stack [switch_info_i].exit_label_idx = label;
+	}
+    } else if (nest == loop &&
+	    nest == loop_info_stack [loop_info_i].whichloop) {
+	New_LABEL (CURRENT_SYMTAB, label);
+	loop_info_stack [loop_info_i].exit_label_idx = label;
+    } else
+	return;
+
+    wn = WN_CreateGoto (label);
     WFE_Stmt_Append (wn, Get_Srcpos ());
-  }
-  else
-  if (n == loop_stack) {
-    if (n == loop_info_stack [loop_info_i].whichloop) {
-      if (exit_label_idx == 0) {
-        New_LABEL (CURRENT_SYMTAB, exit_label_idx);
-        *label_idx = exit_label_idx;
-        loop_info_stack [loop_info_i].exit_label_idx = exit_label_idx;
-      }
-      wn = WN_CreateGoto (exit_label_idx);
-      WFE_Stmt_Append (wn, Get_Srcpos ());
-    }
-  }
-} /* WFE_Expand_Exit_Something */
+}
 
 LABEL_IDX
 WFE_Get_LABEL (tree label, int def)
@@ -1293,7 +1285,7 @@ WFE_Null_ST_References (tree* node)
 
 // Set up loopnest info
 void
-WFE_Start_Do_Loop (struct nesting * whichloop)
+WFE_Start_Do_Loop (struct wfe_nest *whichloop)
 {
   if (++loop_info_i == loop_info_max) {
 
@@ -1317,7 +1309,7 @@ WFE_Start_Do_Loop (struct nesting * whichloop)
 
 // Marks the end of the loop-body, not done with the loop yet
 void
-WFE_End_Do_Loop (struct nesting * whichloop)
+WFE_End_Do_Loop (struct wfe_nest *whichloop)
 {
   FmtAssert (loop_info_i >= 0, ("WFE_End_Do_Loop: no loops"));
   FmtAssert (loop_info_stack [loop_info_i].whichloop == whichloop,
@@ -1332,7 +1324,7 @@ WFE_End_Do_Loop (struct nesting * whichloop)
 
 // Marks the end of the loop, now expanding statements after the loop
 void
-WFE_Terminate_Do_Loop (struct nesting * whichloop)
+WFE_Terminate_Do_Loop (struct wfe_nest *whichloop)
 {
   FmtAssert (loop_info_i >= 0, ("WFE_Terminate_Do_Loop: no loops"));
   FmtAssert (loop_info_stack [loop_info_i].whichloop == whichloop,

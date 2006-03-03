@@ -45,45 +45,50 @@
 #include <cmplrs/rcodes.h>
 #include "wfe_misc.h"
 #include "glob.h"
-// #include "cmd_line.h"
 
-// gnu_init returns file to compile, like t.i (not t.c!)
-extern char * gnu_init (INT argc, char **argv, char **envp);
+#define IN_GCC
+#include <config.h>
+#include <system.h>
+#include <diagnostic.h>
+#undef IN_GCC
+extern const char *main_input_filename;
+extern void compile_file ();
 
-extern void compile_file (const char *);
-extern void check_gnu_errors (INT *, INT *);
+static int saved_argc;
+static char **saved_argv;
+static char **saved_envp;
 
-int
-main ( 
-  INT argc,	/* Number of command line arguments */
-  char **argv,	/* Array of command line arguments */
-  char **envp)	/* Array of environment pointers */
+void whirl_compile_file()
 {
-	INT error_count, sorry_count;
-	BOOL need_inliner;
-	
-	Orig_Src_File_Name = gnu_init (argc, argv, envp);
-	WFE_Init (argc, argv, envp);	/* sgi initialization */
-	WFE_File_Init (argc, argv);	/* inits per source file */
+	Orig_Src_File_Name = main_input_filename;
 
-	if (Orig_Src_File_Name == NULL) {
-		exit (RC_OKAY);
-	}
+	WFE_Init (saved_argc, saved_argv, saved_envp);
+	WFE_File_Init (saved_argc, saved_argv);
 
-	compile_file (Orig_Src_File_Name);
+	compile_file();
 
 	WFE_File_Finish ();
         WFE_Finish ();
+}
 
-	check_gnu_errors (&error_count, &sorry_count);
-	if (error_count)
-		exit (RC_USER_ERROR);
-	if (sorry_count)
-		exit (RC_USER_ERROR);
+int main(int argc, char *argv[], char *envp[])
+{
+	INT error_count, sorry_count;
+	BOOL need_inliner;
+	int exitcode;
+
+	saved_argc = argc;
+	saved_argv = argv;
+	saved_envp = envp;
+
+	/* GCC foo */
+	exitcode = toplev_main(argc, argv);
+	if (exitcode)
+		exit(exitcode);
 
 	WFE_Check_Errors (&error_count, &sorry_count, &need_inliner);
 	if (error_count)
-    		Terminate (RC_INTERNAL_ERROR) ;
+		Terminate (RC_INTERNAL_ERROR) ;
   	if (need_inliner)
 		exit ( RC_NEED_INLINER );
 

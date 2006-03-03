@@ -253,7 +253,7 @@ WFE_Start_Function (tree fndecl)
     }
 
 #ifdef KEY
-    wfe_nesting_stack = wfe_loop_stack = wfe_case_stack = wfe_cond_stack = NULL;
+    reset_nesting();
 #endif // KEY
 
     /* set up the mem pool for the map table and predefined mappings */

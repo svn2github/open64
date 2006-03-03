@@ -45,6 +45,8 @@
 #ifndef wn_stmt_INCLUDED
 #define wn_stmt_INCLUDED
 
+struct wfe_nest;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -55,13 +57,15 @@ extern void WFE_Expand_Start_Cond (tree cond, int exitflag);
 extern void WFE_Expand_Start_Else (void);
 extern void WFE_Expand_End_Cond (void);
 
-extern void WFE_Expand_Start_Loop (int exitflag, struct nesting *whichloop);
-extern void WFE_Expand_Start_Loop_Continue_Elsewhere (int exitflag, struct nesting *whichloop);
+extern void WFE_Expand_Start_Loop (int exitflag, struct wfe_nest *whichloop);
+extern void WFE_Expand_Start_Loop_Continue_Elsewhere (int exitflag,
+    struct wfe_nest *whichloop);
 extern void WFE_Expand_Loop_Continue_Here (void);
 extern void WFE_Expand_End_Loop (void);
-extern void WFE_Expand_Continue_Loop (struct nesting *whichloop);
-extern void WFE_Expand_Exit_Loop (struct nesting *whichloop);
-extern void WFE_Expand_Exit_Loop_If_False (struct nesting *whichloop, tree cond);
+extern void WFE_Expand_Continue_Loop (struct wfe_nest *whichloop);
+extern void WFE_Expand_Exit_Loop (struct wfe_nest *whichloop);
+extern void WFE_Expand_Exit_Loop_If_False (struct wfe_nest *whichloop,
+    tree cond);
 
 extern void WFE_Expand_Start_Case (int exit_flag, tree expr, tree type, char *printname);
 extern void WFE_Expand_Start_Case_Dummy (void);
@@ -71,11 +75,9 @@ extern void WFE_Expand_End_Case_Dummy (void);
 extern void WFE_Expand_End_Case (tree orig_index);
 extern void WFE_Expand_Label (tree label);
 extern void WFE_Expand_Goto (tree label);
-extern void WFE_Expand_Exit_Something (struct nesting *n,
-                                struct nesting *cond_stack,
-                                struct nesting *loop_stack,
-                                struct nesting *case_stack,
-                                LABEL_IDX      *label_idx);
+extern void WFE_Expand_Exit_Something (struct wfe_nest *nest,
+    struct wfe_nest *cond, struct wfe_nest *loop, struct wfe_nest *kase,
+    LABEL_IDX label_idx);
 extern void WFE_Record_Switch_Default_Label (tree label);
 extern void WFE_Expand_Return (tree retval);
 extern void WFE_Check_Undefined_Labels (void);
@@ -92,9 +94,9 @@ extern LABEL_IDX WFE_Get_LABEL (tree label, int def);
 extern int WFE_Emit_Side_Effects_Pending (tree* node);
 extern int WFE_Null_ST_References (tree* node);
 
-extern void WFE_Start_Do_Loop (struct nesting *);
-extern void WFE_End_Do_Loop (struct nesting *);
-extern void WFE_Terminate_Do_Loop (struct nesting *);
+extern void WFE_Start_Do_Loop (struct wfe_nest *);
+extern void WFE_End_Do_Loop (struct wfe_nest *);
+extern void WFE_Terminate_Do_Loop (struct wfe_nest *);
 extern void WFE_Expand_Pragma (tree);
 #endif
 
