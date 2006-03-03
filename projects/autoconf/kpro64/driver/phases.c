@@ -65,6 +65,7 @@
 #include "objects.h"
 #include "opt_actions.h"
 #include "profile_type.h"    /* for PROFILE_TYPE */
+#include "version.h"
 
 #include "license.h"
 
@@ -571,8 +572,10 @@ add_file_args_first (string_list_t *args, phases_t index)
 	add_string(args, "-D_REENTRANT");
       if (!option_was_seen(O_no_pathcc)) {
 	add_string(args, "-D__PATHSCALE__=\"" PACKAGE_VERSION "\"");
-	add_string(args, "-D__PATHCC__=" PSC_MAJOR_VERSION);
-	add_string(args, "-D__PATHCC_MINOR__=" PSC_MINOR_VERSION);
+	add_string_concat(args, "-D__PATHCC__=", major_version,
+	    (char *)NULL);
+	add_string_concat(args, "-D__PATHCC_MINOR__=", minor_version,
+	    (char *)NULL);
       }
   }
 }
