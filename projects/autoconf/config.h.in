@@ -21,6 +21,9 @@
 /* Define to 1 if the system has the type `clock_t'. */
 #undef HAVE_CLOCK_T
 
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#undef HAVE_DLFCN_H
+
 /* We have elf64_getehdr() in our libelf.a. */
 #undef HAVE_ELF64_GETEHDR
 
