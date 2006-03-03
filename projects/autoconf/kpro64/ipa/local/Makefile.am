@@ -1,9 +1,10 @@
-noinst_LIBRARIES = libipl.a
-libipl_a_SOURCES = ipa_cost_util.cxx ipa_section.cxx ipa_section_main.cxx \
+pkglib_LTLIBRARIES = ipl.la
+ipl_la_SOURCES = ipa_cost_util.cxx ipa_section.cxx ipa_section_main.cxx \
 	ipa_section_print.cxx ipl_array_bread_write.cxx ipl_bread_write.cxx \
 	ipl_elfsym.cxx ipl_linex.cxx ipl_main.cxx ipl_outline.cxx \
 	ipl_reorder.cxx ipl_summarize_util.cxx ipl_summary_print.cxx \
 	ipl_tlog.cxx init.cxx loop_info.cxx reshape.cxx wb_ipl_summary.cxx
+ipl_la_LDFLAGS = -avoid-version -module
 
 AM_CPPFLAGS = -DIPA_SUMMARY -DKEY -DMONGOOSE_BE \
 	-I../../be/be \

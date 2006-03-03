@@ -1,5 +1,5 @@
-noinst_LIBRARIES = libelf.a
-libelf_a_SOURCES = 32.fsize.c 32.getehdr.c 32.getphdr.c 32.getshdr.c \
+pkglib_LTLIBRARIES = libelf.la
+libelf_la_SOURCES = 32.fsize.c 32.getehdr.c 32.getphdr.c 32.getshdr.c \
 	32.newehdr.c 32.newphdr.c 32.xlatetof.c 64.xlatetof.c assert.c \
 	begin.c checksum.c cntl.c cook.c data.c end.c errmsg.c errno.c \
 	fill.c flag.c gelfehdr.c gelfphdr.c gelfshdr.c gelftrans.c \

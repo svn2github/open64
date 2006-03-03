@@ -1,5 +1,5 @@
-noinst_LIBRARIES = libcg.a
-libcg_a_SOURCES = annotations.cxx bb_map.cxx bblist.cxx bbutil.cxx calls.cxx \
+pkglib_LTLIBRARIES = cg.la
+cg_la_SOURCES = annotations.cxx bb_map.cxx bblist.cxx bbutil.cxx calls.cxx \
 	cflow.cxx cg.cxx cg_cflow.cxx cg_convert_x87.cxx cg_db_op.cxx \
 	cg_dep_graph.cxx cg_flags.cxx cg_flags_arch.cxx cg_gcov.cxx \
 	cg_loop.cxx cg_loop_mii.cxx cg_loop_recur.cxx cg_loop_scc.cxx \
@@ -23,6 +23,10 @@ libcg_a_SOURCES = annotations.cxx bb_map.cxx bblist.cxx bbutil.cxx calls.cxx \
 	register.cxx register_targ.cxx tag.cxx targ_em_const.cxx \
 	targ_em_dwarf.cxx targ_em_elf.cxx tn_map.cxx tnutil.cxx variants.cxx \
 	whirl2ops.cxx
+cg_la_LDFLAGS = -avoid-version -module
+cg_la_LIBADD = ../be/libbe.la ../../libdwarf/libdwarf.la \
+	../../libelf/libelf.la ../../libelfutil/libelfutil.a \
+	../../libunwind/libunwind.a
 
 GENSRCS = bb_list.cxx bb_set.cxx cg_loop_scc_prop.cxx gra_bb_list.cxx \
 	gtn_set.cxx lrange_list.cxx lrange_set.cxx op_list.cxx st_list.cxx \
@@ -30,7 +34,7 @@ GENSRCS = bb_list.cxx bb_set.cxx cg_loop_scc_prop.cxx gra_bb_list.cxx \
 
 GENHDRS = $(patsubst %.cxx,%.h,${GENSRCS})
 
-nodist_libcg_a_SOURCES = ${GENSRCS}
+nodist_cg_la_SOURCES = ${GENSRCS}
 
 BUILT_SOURCES = ${GENSRCS} ${GENHDRS}
 CLEANFILES = ${GENSRCS} ${GENHDRS}

@@ -132,7 +132,7 @@ proc_properties_gen_SOURCES = gen_util.cxx proc_properties.cxx \
 nodist_proc_properties_gen_SOURCES = targ_proc.c
 proc_properties_gen.${OBJEXT}: targ_proc.h
 
-AM_CPPFLAGS = -I${srcdir}/generate
+AM_CPPFLAGS = ${PIC_FLAGS} -I${srcdir}/generate
 
 VPATH = ${srcdir}/abi/${TARG_SUBDIR} ${srcdir}/access ${srcdir}/generate \
 	${srcdir}/isa/${TARG_SUBDIR} ${srcdir}/proc/${TARG_SUBDIR}

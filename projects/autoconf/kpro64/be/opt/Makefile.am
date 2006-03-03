@@ -1,5 +1,5 @@
-noinst_LIBRARIES = libopt.a
-libopt_a_SOURCES = init.cxx opt_alias_analysis.cxx opt_alias_class.cxx \
+pkglib_LTLIBRARIES = wopt.la
+wopt_la_SOURCES = init.cxx opt_alias_analysis.cxx opt_alias_class.cxx \
 	opt_base.cxx opt_bb.cxx opt_bdce.cxx opt_bool.cxx opt_canon.cxx \
 	opt_cfg.cxx opt_cfg_trans.cxx opt_combine.cxx opt_cond_const.cxx \
 	opt_count.cxx opt_cse.cxx opt_daVinci.cxx opt_dbg.cxx opt_dce.cxx \
@@ -16,6 +16,7 @@ libopt_a_SOURCES = init.cxx opt_alias_analysis.cxx opt_alias_class.cxx \
 	opt_ssu.cxx opt_stable.cxx opt_sym.cxx opt_tail.cxx opt_u64_lower.cxx \
 	opt_util.cxx opt_verify.cxx opt_vn.cxx opt_vn_expr.cxx opt_vnfre.cxx \
 	opt_whirlview.cxx opt_wn.cxx wodriver.cxx
+wopt_la_LDFLAGS = -avoid-version -module
 
 AM_CPPFLAGS = -DBACK_END -DKEY -DMONGOOSE_BE \
 	-I../be -I../../targ_info \

@@ -6,8 +6,13 @@ AC_CANONICAL_SYSTEM
 
 AM_INIT_AUTOMAKE
 
+AC_DISABLE_STATIC
+
+AM_CONDITIONAL(TARG_IA64, test $target_cpu = ia64)
+AM_CONDITIONAL(TARG_X8664, test $target_cpu = x86_64)
+
 case $target_cpu in
-    amd64|x86_64|i386)
+    x86_64)
 	AC_DEFINE(TARG_X8664,1,[Define when building an amd64 compiler])
 	TARG_SUBDIR=x8664
 	;;
@@ -19,7 +24,7 @@ case $target_cpu in
 	AC_MSG_ERROR([*** Unsupported target architecture: $target_cpu], 1)
 	;;
 esac
-AC_SUBST([TARG_SUBDIR])
+AC_SUBST(TARG_SUBDIR)
 
 #
 # Check for programs
@@ -28,11 +33,14 @@ AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_F77
 AC_PROG_INSTALL
+AC_PROG_LIBTOOL
 AC_PROG_RANLIB
 
 #
 # Check for libraries
 #
+AC_CHECK_LIB(dl, dlopen, LIBS="$LIBS -ldl")
+
 AH_TEMPLATE(_GNU_SOURCE, [Always define this when using the GNU C Library])
 AC_CACHE_CHECK([for GNU C library], gcc_cv_glibc,
     AC_TRY_COMPILE([#include <features.h>],
@@ -116,6 +124,9 @@ AC_CHECK_SIZEOF(short,2)
 AC_CHECK_SIZEOF(int,4)
 AC_CHECK_SIZEOF(long,0)
 AC_CHECK_SIZEOF(long long,0)
+
+PIC_FLAGS="$lt_prog_compiler_pic"
+AC_SUBST(PIC_FLAGS)
 
 AH_TEMPLATE(__libelf_i16_t,
     [Define to a 16-bit signed integer type if one exists.])

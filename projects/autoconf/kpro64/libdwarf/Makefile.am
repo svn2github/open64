@@ -1,5 +1,5 @@
-noinst_LIBRARIES = libdwarf.a
-libdwarf_a_SOURCES = dwarf_abbrev.c dwarf_addr_finder.c dwarf_alloc.c \
+pkglib_LTLIBRARIES = libdwarf.la
+libdwarf_la_SOURCES = dwarf_abbrev.c dwarf_addr_finder.c dwarf_alloc.c \
 	dwarf_arange.c dwarf_die_deliv.c dwarf_error.c dwarf_form.c \
 	dwarf_frame.c dwarf_funcs.c dwarf_global.c dwarf_init_finish.c \
 	dwarf_leb.c dwarf_line.c dwarf_loc.c dwarf_macro.c \
@@ -11,8 +11,10 @@ libdwarf_a_SOURCES = dwarf_abbrev.c dwarf_addr_finder.c dwarf_alloc.c \
 	pro_init.c pro_line.c pro_macinfo.c pro_pubnames.c pro_reloc.c \
 	pro_reloc_stream.c pro_reloc_symbolic.c pro_section.c pro_types.c \
 	pro_vars.c pro_weaks.c
+libdwarf_la_LIBADD = ../libelf/libelf.la
 
 VPATH = ${srcdir} ${top_srcdir}/contrib/dwarf/libdwarf
-AM_CPPFLAGS = -DHAVE_LIBELF_H -DKEY -I- -I${top_srcdir}/contrib/dwarf/libdwarf \
+AM_CPPFLAGS = -DHAVE_LIBELF_H -DKEY \
+	-I- -I${top_srcdir}/contrib/dwarf/libdwarf \
 	-I${top_builddir} -I${top_srcdir}/kpro64 \
 	-I${top_srcdir}/contrib/libelf/lib

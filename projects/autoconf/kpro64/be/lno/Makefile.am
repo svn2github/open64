@@ -1,5 +1,5 @@
-noinst_LIBRARIES = liblno.a
-liblno_a_SOURCES = access_main.cxx access_vector.cxx aequiv.cxx al_loop.cxx \
+pkglib_LTLIBRARIES = lno.la
+lno_la_SOURCES = access_main.cxx access_vector.cxx aequiv.cxx al_loop.cxx \
 	al_ref.cxx ara.cxx ara_live.cxx ara_loop.cxx ara_region.cxx \
 	ara_utils.cxx array_bounds.cxx array_lower.cxx autod.cxx \
 	cache_model.cxx call_info.cxx can.cxx cond.cxx cross_cache.cxx \
@@ -21,6 +21,8 @@ liblno_a_SOURCES = access_main.cxx access_vector.cxx aequiv.cxx al_loop.cxx \
 	snl_inv.cxx snl_nest.cxx snl_test.cxx snl_trans.cxx snl_utils.cxx \
 	snl_xbounds.cxx soe.cxx split_tiles.cxx sxlimit.cxx sxlist.cxx \
 	tile.cxx vintr_fis.cxx vs_textra.cxx wind_down.cxx zmult.cxx 
+lno_la_LDFLAGS = -avoid-version -module
+lno_la_LIBADD = ../be/libbe.la
 
 AM_CPPFLAGS = -D_NEW_SYMTAB -DBACK_END -DKEY -DLNO -DMONGOOSE_BE \
 	-I../be -I../../targ_info \

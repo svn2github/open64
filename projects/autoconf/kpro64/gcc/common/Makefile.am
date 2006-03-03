@@ -1,4 +1,10 @@
 noinst_LIBRARIES = libgcc_common.a
+
+if TARG_X8664
+_trgt_sources = i386.c
+_trgt_cfgdir = i386
+endif
+
 libgcc_common_a_SOURCES = \
 	alias.c attribs.c \
 	bb-reorder.c bitmap.c builtins.c \
@@ -33,10 +39,13 @@ libgcc_common_a_SOURCES = \
 	timevar.c toplev.c tracer.c tree.c tree-dump.c tree-inline.c \
 	unroll.c \
 	varasm.c varray.c version.c vmsdbgout.c \
-	xcoffout.c
+	xcoffout.c \
+	${_trgt_sources}
 
 _topgcc = ${top_srcdir}/contrib/gcc
-VPATH = ${_topgcc}/gcc
-AM_CPPFLAGS = -DIN_GCC -DPREFIX=\"${prefix}\" -DTARGET_NAME=\"${GCC_TARGET_ALIAS}\" \
-	-I${_topgcc}/gcc -I${_topgcc}/gcc/config -I${_topgcc}/include \
+VPATH = ${_topgcc}/gcc ${_topgcc}/gcc/config/${_trgt_cfgdir}
+AM_CPPFLAGS = -DIN_GCC -DPREFIX=\"${prefix}\" \
+	-DTARGET_NAME=\"${GCC_TARGET_ALIAS}\" \
+	-I${_topgcc}/gcc -I${_topgcc}/gcc/config \
+	-I${_topgcc}/gcc/config/${_trgt_cfgdir} -I${_topgcc}/include \
 	-I../config

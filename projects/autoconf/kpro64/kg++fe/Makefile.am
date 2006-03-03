@@ -1,7 +1,12 @@
-noinst_LIBRARIES = libgppfe.a
-libgppfe_a_SOURCES = c_int_model.c main.c omp_directive.cxx rt_symtab.cxx \
+libexec_PROGRAMS = gfecc
+gfecc_SOURCES = c_int_model.c main.c omp_directive.cxx rt_symtab.cxx \
 	tree_symtab.cxx wfe_decl.cxx wfe_dst.cxx wfe_expr.cxx wfe_misc.cxx \
 	wfe_omp_check_stack.cxx wfe_omp_directives.cxx wfe_stmt.cxx
+
+LDADD = ../be/be/libbe.la ../common/libcomutil.a ../targ_info/libtarginfo.a \
+        ../gcc/cpp/libgcc_cpp.a ../gcc/common/libgcc_common.a \
+        ../gcc/libiberty/libiberty.a \
+        -lstdc++
 
 _topgcc = ${top_srcdir}/contrib/gcc
 AM_CPPFLAGS = -DCFE -DFRONT_END -DFRONT_END_CPLUSPLUS -DKEY -DMONGOOSE_CIF \
