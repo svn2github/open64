@@ -1,11 +1,16 @@
-BUILT_SOURCES = genrtl.c gtype-desc.c insn-attr.h insn-attrtab.c insn-codes.h \
-	insn-emit.c insn-extract.c insn-flags.h insn-opinit.c insn-output.c \
-	insn-peep.c insn-recog.c options.h
+BUILT_SOURCES = configargs.h genrtl.c gtype-desc.c insn-attr.h insn-attrtab.c \
+	insn-codes.h insn-emit.c insn-extract.c insn-flags.h insn-opinit.c \
+	insn-output.c insn-peep.c insn-recog.c multilib.h options.h specs.h
 CLEANFILES=
 
 LDADD = ../libiberty/libiberty.a -lm
 
 _topgcc = ${top_srcdir}/contrib/gcc
+
+CLEANFILES += configargs.h
+configargs.h:
+	echo 'static const char configuration_arguments[] = "Open64";' > $@
+	echo 'static const char thread_model[] = "posix";' >> $@
 
 CLEANFILES += genrtl.c genrtl.h
 genrtl.h: gengenrtl
@@ -110,9 +115,21 @@ CLEANFILES += insn-recog.c
 insn-recog.c: genrecog
 	./genrecog ${_topgcc}/gcc/config/${GCC_MD_FILE} > $@
 
+CLEANFILES += multilib.h
+multilib.h:
+	echo 'static const char *const multilib_raw[] = { ". ;", NULL };' > $@
+	echo 'static const char *const multilib_matches_raw[] = { NULL };' >> $@
+	echo 'static const char *multilib_extra = "";' >> $@
+	echo 'static const char *const multilib_exclusions_raw[] = { NULL };' >> $@
+	echo 'static const char *multilib_options = "";' >> $@
+
 CLEANFILES += options.h
-options.h: Makefile
+options.h:
 	echo '#include "cp/lang-options.h"' > $@
+
+CLEANFILES += specs.h
+specs.h:
+	echo '#include "cp/lang-specs.h"' > $@
 
 noinst_PROGRAMS = genattr genattrtab gencheck gencodes genconditions \
 	genconfig genconstants genemit genextract genflags gengenrtl \
@@ -189,7 +206,7 @@ gcc-config.h: Makefile
 	echo "#define HAVE_AS_GOTOFF_IN_DATA 0" >> $@
 
 CLEANFILES += gencheck.h
-gencheck.h: Makefile
+gencheck.h:
 	echo '#include "cp/cp-tree.def"' > $@
 
 CLEANFILES += hconfig.h
