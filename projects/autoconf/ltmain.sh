@@ -1973,6 +1973,22 @@ EOF
     eval sys_lib_search_path=\"$sys_lib_search_path_spec\"
     eval sys_lib_dlsearch_path=\"$sys_lib_dlsearch_path_spec\"
 
+    # XXX Fix for Linux/amd64, where native libraries are *NOT*
+    # in lib, but in lib64. Dumbasses...
+    if test `uname` = Linux -a `uname -m` = x86_64; then
+      slsps=$sys_lib_search_path
+      sys_lib_search_path=""
+      for slsp in $slsps; do
+	if test -d $slsp; then
+	  slsp=`(cd $slsp; pwd)`
+	  if test -d ${slsp}64; then
+	    sys_lib_search_path="$sys_lib_search_path ${slsp}64"
+	  fi
+	  sys_lib_search_path="$sys_lib_search_path $slsp"
+	fi
+      done
+    fi
+
     output_objdir=`$echo "X$output" | $Xsed -e 's%/[^/]*$%%'`
     if test "X$output_objdir" = "X$output"; then
       output_objdir="$objdir"
