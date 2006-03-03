@@ -51,7 +51,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/driver/main.c,
 #include <sys/stat.h>
 #include <errno.h>
 #include <time.h>
-#include "pathscale_defs.h"
 #include "string_utils.h"
 #include "options.h"
 #include "option_seen.h"

@@ -50,7 +50,6 @@
 #include <sys/utsname.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include "pathscale_defs.h"
 
 #include "phases.h"
 #include "options.h"

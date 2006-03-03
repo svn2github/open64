@@ -35,7 +35,6 @@
 
 #include "lang_defs.h"
 #include "license.h"
-#include "pathscale_defs.h"
 #include "run.h"
 
 int subverbose ;

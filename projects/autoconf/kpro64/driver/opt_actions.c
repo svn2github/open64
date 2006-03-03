@@ -56,7 +56,6 @@
 #include "string_utils.h"
 #include "get_options.h"
 #include "objects.h"
-#include "pathscale_defs.h"
 #include "phases.h"
 #include "run.h"
 #include "profile_type.h" /* for enum PROFILE_TYPE */

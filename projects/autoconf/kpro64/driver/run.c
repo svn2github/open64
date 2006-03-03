@@ -67,7 +67,6 @@
 #include "phases.h"
 #include "opt_actions.h"
 #include "file_utils.h"
-#include "pathscale_defs.h"
 
 #ifndef CLK_TCK
 #define CLK_TCK		HZ
