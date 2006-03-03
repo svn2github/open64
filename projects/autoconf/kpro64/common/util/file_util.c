@@ -94,7 +94,6 @@ Same_File ( file1, file2 )
   return ( d1.st_ino == d2.st_ino ) && ( d1.st_dev == d2.st_dev );
 }
 
-#ifndef MONGOOSE_BE
 /* ====================================================================
  *
  * Find_File
@@ -154,7 +153,6 @@ Has_Extension ( name, ext )
   /* Otherwise compare the tail of name to ext: */
   return ( strcmp ( &name[nlen-elen], ext ) == 0 );
 }
-#endif /* MONGOOSE_BE */
 
 
 /* ====================================================================
@@ -221,7 +219,6 @@ Remove_Extension ( name )
 }
 
 
-#ifndef MONGOOSE_BE
 /* ====================================================================
  *
  * Make_Temp_File
@@ -309,7 +306,6 @@ Full_Path_Name ( base, path, pathlen )
   strcat (path, base);
   return path;
 }
-#endif /* MONGOOSE_BE */
 
 /* ====================================================================
  *
@@ -341,7 +337,6 @@ Last_Pathname_Component ( char *pname )
 } /*end: Last_Pathname_Component */
 
 
-#ifndef MONGOOSE_BE
 /* Eliminates "//", "/.", and "/.." from the path, to the extent that it
  * is possible.
  * "//"      -> "/"
@@ -422,4 +417,3 @@ Make_Absolute_Path (char *filename)
    (void)normalize_path(normalized);
    return normalized;
 }
-#endif /* MONGOOSE_BE */

@@ -110,11 +110,9 @@ extern "C" {
 #include "errdesc.h"
 #include "vstring.h"
 
-#ifdef MONGOOSE_BE
 #include "wn.h"
 #include "wn_map.h"
 #include "ir_reader.h"
-#endif
 
 
 /* ====================================================================
@@ -194,20 +192,18 @@ static SEVERITY_DESCRIPTOR Severities[] = {
  * ====================================================================
  */
 
-#ifdef MONGOOSE_BE
 #include "err_host.tab"		    /* for error tables */
-#else /* MONGOOSE_BE */
+
 /* these table pointers get pointed at the client's tables */
-static ERROR_DESC_TABLE *Phases = NULL;
-static const char **host_errlist = NULL;
-#endif /* MONGOOSE_BE */
+static ERROR_DESC_TABLE *_Phases = Phases;
+static const char **_host_errlist = host_errlist;
 
 static bool do_traceback = false;
 
 /* The access functions: */
-#define Phase_Num(n)	(Phases[n].phase)
-#define Phase_List(n)	(Phases[n].descriptors)
-#define Phase_Name(n)	(Phases[n].name)
+#define Phase_Num(n)	(_Phases[n].phase)
+#define Phase_List(n)	(_Phases[n].descriptors)
+#define Phase_Name(n)	(_Phases[n].name)
 
 #ifdef irix
 extern char *sys_siglist[];
@@ -445,7 +441,6 @@ Set_Error_Source ( const char *filename )
 }
 
 
-#ifdef MONGOOSE_BE
 /* ====================================================================
  *
  * Set_Error_Srcpos
@@ -465,7 +460,6 @@ Set_Error_Srcpos ( SRCPOS srcpos )
   IR_Srcpos_Filename(srcpos, &fname, &dname);
   Set_Error_Source(fname);
 }
-#endif
 
 
 /* ====================================================================
@@ -867,7 +861,7 @@ ErrMsg_Report_Nonuser ( ERROR_DESC *edesc, INT ecode, INT line,
 
       case ET_SYSERR:	parm = (INTPS) va_arg(vp,int);
       			if (parm < 0) {
-			  mparm[pnum] = (INTPS) host_errlist[-parm];
+			  mparm[pnum] = (INTPS) _host_errlist[-parm];
 			} else {
 			  errno = 0;
 			  char *err_str = strerror(parm);
@@ -1032,7 +1026,7 @@ ErrMsg_Report_User (ERROR_DESC *edesc, INT ecode, INT line,
 
       case ET_SYSERR:	parm = (INTPS) va_arg(vp,int);
       			if (parm < 0) {
-			  mparm[pnum] = (INTPS) host_errlist[-parm];
+			  mparm[pnum] = (INTPS) _host_errlist[-parm];
 			} else {
 			  errno = 0;
 			  char *err_str = strerror(parm);
@@ -1145,7 +1139,6 @@ ErrMsgLine ( INT ecode, INT line, ... )
 }
 
 
-#ifdef MONGOOSE_BE
 /* ================================================================= */
 
 void
@@ -1162,7 +1155,7 @@ ErrMsgSrcpos ( INT ecode, SRCPOS srcpos, ... )
   ErrMsg_Report ( ecode, line, fname, vp );
   va_end ( vp );
 }
-#endif
+
 
 /* ====================================================================
  *
@@ -1374,7 +1367,6 @@ Get_Current_Phase_Number( void )
 }
 
 
-#ifndef MONGOOSE_BE
 /* ====================================================================
  *
  * Set_Error_Tables
@@ -1385,23 +1377,22 @@ Get_Current_Phase_Number( void )
  * ====================================================================
  */
 
-extern void Set_Error_Tables( 
+void Set_Error_Tables( 
   ERROR_DESC_TABLE *edt,
   const char *errlist[] )
 {
-  Phases = edt;
-  host_errlist = errlist;
+  _Phases = edt;
+  _host_errlist = errlist;
 }
-#endif /* MONGOOSE_BE */
 
 extern void
 Set_Error_Descriptor (INT phase, ERROR_DESC *descriptor)
 {
     register INT i = 0;
 
-    while (Phases[i].phase != -1) {
-	if (Phases[i].phase == phase) {
-	    Phases[i].descriptors = descriptor;
+    while (_Phases[i].phase != -1) {
+	if (_Phases[i].phase == phase) {
+	    _Phases[i].descriptors = descriptor;
 	    return;
 	}
 	i++;
