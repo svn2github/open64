@@ -28,4 +28,5 @@ extern const char *const build_root;
 extern const char *const build_host;
 extern const char *const build_user;
 extern const char *const build_date;
+extern const char *const gcc_version;
 #endif

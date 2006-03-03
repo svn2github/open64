@@ -323,7 +323,7 @@ main (int argc, char *argv[])
 
 	if (dump_version) {
 	    if (option_was_seen(O_compat_gcc))
-		puts(PSC_GCC_VERSION);
+		printf("%s", gcc_version);
 	    else
 		puts(PACKAGE_VERSION);
 	}
@@ -338,8 +338,8 @@ main (int argc, char *argv[])
 	    }
             fprintf(stderr, "Built on: %s\n", build_date);
             fprintf(stderr, "Thread model: posix\n");	// Bug 4608.
-            fprintf(stderr, "GNU gcc version " PSC_GCC_VERSION
-                    " (PathScale " PACKAGE_VERSION " driver)\n");
+            fprintf(stderr, "GNU gcc version %s (PathScale " PACKAGE_VERSION
+		" driver)\n", gcc_version);
         }
 	if (show_copyright) {
 	    if (show_version)
