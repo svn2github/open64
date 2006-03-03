@@ -573,7 +573,6 @@ add_file_args_first (string_list_t *args, phases_t index)
 	add_string(args, "-D__PATHSCALE__=\"" PACKAGE_VERSION "\"");
 	add_string(args, "-D__PATHCC__=" PSC_MAJOR_VERSION);
 	add_string(args, "-D__PATHCC_MINOR__=" PSC_MINOR_VERSION);
-	add_string(args, "-D__PATHCC_PATCHLEVEL__=" PSC_PATCH_LEVEL);
       }
   }
 }
