@@ -40,6 +40,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+
 #include "string_utils.h"
 
 #define BLANK	' '
@@ -194,6 +196,39 @@ add_string (string_list_t *list, char *s)
 {
 	/* don't worry about blanks in this version of add_string */
 	add_existing_string (list, string_copy(s));
+}
+
+void
+add_string_concat(string_list_t *list, ...)
+{
+	va_list ap;
+	const char *s;
+	char *buf, *bufp;
+	size_t sz;
+
+	sz = 0;
+	va_start(ap, list);
+	while (1) {
+		s = va_arg(ap, const char *);
+		if (s == NULL)
+			break;
+		sz += strlen(s);
+	}
+	va_end(ap);
+	if (sz == 0)
+		return;
+	buf = bufp = (char *)malloc(sz + 1);
+	if (buf == NULL)
+		abort();
+	va_start(ap, list);
+	while (1) {
+		s = va_arg(ap, const char *);
+		if (s == NULL)
+			break;
+		bufp += sprintf(bufp, "%s", s);
+	}
+	va_end(ap);
+	add_existing_string (list, buf);
 }
 
 /* add each blank-separated string to list */

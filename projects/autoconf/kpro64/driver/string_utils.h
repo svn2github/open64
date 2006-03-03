@@ -94,6 +94,7 @@ extern int string_list_size(const string_list_t *l);
 
 /* add string to end of list */
 extern void add_string (string_list_t *list, char *s);
+extern void add_string_concat (string_list_t *list, ...);
 
 /* add string after item in list */
 extern void add_after_string (string_list_t *list, string_item_t *item, char *s);
