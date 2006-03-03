@@ -157,7 +157,7 @@ KAPI_Initialize2( char *pchDelta, char *pchBaseline, char *pchToolname )
       fprintf( stderr, "+KAPI_Initialize2 < %s %s %s > %d\n", 
                       pchDelta ? pchDelta : "NULL", 
                       pchBaseline ? pchBaseline : "NULL", 
-                      pchToolname,  (INT)(INTPTR)pknobs );
+                      pchToolname,  (int)(long)pknobs );
    }
 
    if ( fpDelta ) {
@@ -219,7 +219,7 @@ KAPI_Finalize( void *pConfig )
    stn_t *pstn,*pstnNext;
 
    if ( kapi_fTrace_Msgs_On  ) {
-      fprintf( stderr, "+KAPI_Finalize < %d\n", (INT)(INTPTR)pknobs );
+      fprintf( stderr, "+KAPI_Finalize < %d\n", (int)(long)pknobs );
    }
    if ( pConfig ) {
 	  kapi_free_ia64_mem(pknobs);
