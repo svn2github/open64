@@ -87,7 +87,8 @@ extern int opt_regions;
 #include "tree_cmp.h"
 #include "wfe_dst.h" // DST_enter_member_function
 
-extern "C" void check_gnu_errors (int *, int *);
+extern "C" int gnu_errors();
+
 #ifdef KEY
 extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
 #ifdef Is_True_On
@@ -559,15 +560,6 @@ void WFE_Expand_Decl(tree decl)
 {
   Is_True(decl != NULL && TREE_CODE_CLASS(TREE_CODE(decl)) == 'd',
           ("Argument to WFE_Expand_Decl isn't a decl node"));
-/*
-  int error_count, sorry_count;
-  if (decl == global_namespace) {
-   check_gnu_errors (&error_count, &sorry_count);
-   if (error_count || sorry_count)
-     return;
-    Init_Deferred_Function_Stack();
-  }
-*/
   switch (TREE_CODE(decl)) { 
 
     case CONST_DECL:
@@ -3417,15 +3409,13 @@ extern "C"
 void
 WFE_Expand_Top_Level_Decl (tree top_level_decl)
 {
-  int error_count, sorry_count;
 #ifdef KEY
   tree old_namespace_decl = curr_namespace_decl;
   curr_namespace_decl = top_level_decl;
 #endif
 
   if (top_level_decl == global_namespace) {
-   check_gnu_errors (&error_count, &sorry_count);
-   if (error_count || sorry_count)
+   if (gnu_errors())
      return;
     Init_Deferred_Function_Stack();
     Init_Deferred_Decl_Init_Stack();

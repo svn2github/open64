@@ -47,9 +47,10 @@ extern "C" {
 #include <toplev.h>
 #include <output.h>
 #undef IN_GCC
-extern int flag_bad_asm_constraint_kills_stmt;
-extern int key_exceptions;
-extern int opt_regions;
+
+int flag_bad_asm_constraint_kills_stmt = 1;
+int key_exceptions = 0;
+int opt_regions = 0;
 };
 
 #include "wfe_misc.h"

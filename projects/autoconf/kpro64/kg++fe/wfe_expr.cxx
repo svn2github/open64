@@ -98,7 +98,6 @@ struct operator_from_tree_t {
 } Operator_From_Tree [] = {
   ERROR_MARK,              "error_mark",              'x', 0,  OPERATOR_UNKNOWN,
   IDENTIFIER_NODE,         "identifier_node",         'x', -1, OPERATOR_UNKNOWN,
-  OP_IDENTIFIER,           "op_identifier",           'x', 2,  OPERATOR_UNKNOWN,
   TREE_LIST,               "tree_list",               'x', 2,  OPERATOR_UNKNOWN,
   TREE_VEC,                "tree_vec",                'x', 2,  OPERATOR_UNKNOWN,
   BLOCK,                   "block",                   'b', 0,  OPERATOR_UNKNOWN,
@@ -174,7 +173,6 @@ struct operator_from_tree_t {
   FIX_FLOOR_EXPR,          "fix_floor_expr",          '1', 1,  OPERATOR_UNKNOWN,
   FIX_ROUND_EXPR,          "fix_round_expr",          '1', 1,  OPERATOR_UNKNOWN,
   FLOAT_EXPR,              "float_expr",              '1', 1,  OPERATOR_UNKNOWN,
-  EXPON_EXPR,              "expon_expr",              '2', 2,  OPERATOR_UNKNOWN,
   NEGATE_EXPR,             "negate_expr",             '1', 1,  OPR_NEG,
   MIN_EXPR,                "min_expr",                '2', 2,  OPR_MIN,
   MAX_EXPR,                "max_expr",                '2', 2,  OPR_MAX,
@@ -235,8 +233,6 @@ struct operator_from_tree_t {
   TRY_CATCH_EXPR,          "try_catch_expr",          'e', 2,  OPERATOR_UNKNOWN,
   TRY_FINALLY_EXPR,        "try_finally",             'e', 2,  OPERATOR_UNKNOWN,
   GOTO_SUBROUTINE_EXPR,    "goto_subroutine",         'e', 2,  OPERATOR_UNKNOWN,
-  POPDHC_EXPR,             "popdhc_expr",             's', 0,  OPERATOR_UNKNOWN,
-  POPDCC_EXPR,             "popdcc_expr",             's', 0,  OPERATOR_UNKNOWN,
   LABEL_EXPR,              "label_expr",              's', 1,  OPERATOR_UNKNOWN,
   GOTO_EXPR,               "goto_expr",               's', 1,  OPERATOR_UNKNOWN,
   RETURN_EXPR,             "return_expr",             's', 1,  OPERATOR_UNKNOWN,
@@ -247,6 +243,12 @@ struct operator_from_tree_t {
   EXPR_WITH_FILE_LOCATION, "expr_with_file_location", 'e', 3,  OPERATOR_UNKNOWN,
   SWITCH_EXPR,             "switch_expr",             'e', 2,  OPERATOR_UNKNOWN,
   EXC_PTR_EXPR,            "exc_ptr_expr",            'e', 0,  OPERATOR_UNKNOWN,
+
+  OP_IDENTIFIER,           "op_identifier",           'x', 2,  OPERATOR_UNKNOWN,
+  EXPON_EXPR,              "expon_expr",              '2', 2,  OPERATOR_UNKNOWN,
+  POPDHC_EXPR,             "popdhc_expr",             's', 0,  OPERATOR_UNKNOWN,
+  POPDCC_EXPR,             "popdcc_expr",             's', 0,  OPERATOR_UNKNOWN,
+
   LAST_AND_UNUSED_TREE_CODE,"last_and_unused_tree_code",0, 0,  OPERATOR_UNKNOWN,
 
   SRCLOC,                  "srcloc",                  'x', 2,  OPERATOR_UNKNOWN,

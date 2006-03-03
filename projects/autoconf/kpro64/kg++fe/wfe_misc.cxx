@@ -48,7 +48,6 @@
 #include "tracing.h"
 #include "util.h"
 #include "errors.h"
-#include "err_host.tab"
 #include "wn.h"
 #include "wn_util.h"
 #include "wn_simp.h"
@@ -118,9 +117,6 @@ bool Did_Not_Terminate_Region = FALSE;
  * ====================================================================
  */
 
-/*       MAX_DEBUG_LEVEL	2  :: Defined in flags.h */
-# define DEF_DEBUG_LEVEL	0
-INT8 Debug_Level = DEF_DEBUG_LEVEL;	/* -gn:	debug level */
 # define MAX_MSG_LEVEL 2
 # define DEF_MSG_LEVEL 2
 
@@ -150,75 +146,6 @@ static BOOL Echo_Flag =	FALSE;	/* Echo command	lines */
 static BOOL Delete_IR_File = FALSE;	/* Delete SGIR file when done */
 
 
-/* ====================================================================
- *
- * Cleanup_Files
- *
- * Close all per-source	files involved in a compilation	and prepare the
- * global variables for	the next source.  This routine is externalized
- * for signal cleanup; the report parameter allows suppressing of error
- * reporting during such cleanup.
- *
- * ====================================================================
- */
-
-void
-Cleanup_Files (	BOOL report, BOOL delete_dotofile )
-{
-  /* No	current	line number for	errors:	*/
-  Set_Error_Line (ERROR_LINE_UNKNOWN);
-
-  /* Close source file:	*/
-  if ( Src_File	!= NULL	&& Src_File != stdin &&	fclose (Src_File) ) {
-    if ( report	) ErrMsg ( EC_Src_Close, Src_File_Name,	errno );
-  }
-  Src_File = NULL;
-
-  /* Close and delete SGIR file: */
-  if ( IR_File != NULL && fclose (IR_File) ) {
-    if ( report	) ErrMsg ( EC_IR_Close,	IR_File_Name, errno );
-  }
-  IR_File = NULL;
-  if ( Delete_IR_File && unlink	(IR_File_Name) ) {
-    if ( report	) ErrMsg ( EC_IR_Delete, IR_File_Name, errno );
-  }
-
-  /* Close listing file: */
-  if ( Lst_File	!= NULL	&& Lst_File != stdout && fclose	(Lst_File) ) {
-    if ( report	) ErrMsg ( EC_Lst_Close, Lst_File_Name,	errno );
-  }
-  Lst_File = NULL;
-
-  /* Close trace file: */
-  Set_Trace_File ( NULL	);
-
-  /* Disable timing file: */
-  Tim_File = NULL;
-
-  /* Finally close error file: */
-  Set_Error_File ( NULL	);
-  Set_Error_Source ( NULL );
-}
-
-/* ====================================================================
- *
- * Terminate
- *
- * Do any necessary cleanup and	terminate the program with the given
- * status.
- *
- * ====================================================================
- */
-
-void
-Terminate ( INT status )
-{
-  /* Close and delete files as necessary: */
-  Cleanup_Files	( FALSE, FALSE);
-
-  exit (status);
-}
-
 /* ====================================================================
  *
  * Prepare_Source
@@ -368,7 +295,6 @@ extern void WFE_Omp_Init (void);
 void
 WFE_Init (INT argc, char **argv, char **envp )
 {
-  Set_Error_Tables ( Phases, host_errlist );
 #ifdef KEY
   Initialize_C_Int_Model();
 #endif

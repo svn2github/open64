@@ -41,6 +41,7 @@ extern "C" {
 #include <c-common.h>
 #undef operator
 #undef IN_GCC
+extern int whirl_omp_paren_seen;
 };
 
 #include "tree_symtab.h"
@@ -53,75 +54,6 @@ extern "C" {
 #include "wfe_omp_check_stack.h"
 
  
-// tree chainon (tree, tree):
-// Concatenate two chains of nodes (chained through TREE_CHAIN)
-// by modifying the last node in chain 1 to point to chain 2.
-// This is the Lisp primitive `nconc'. 
-//
-// This function has been obsoleted out. By modifying the last node
-// it used to modify the 'tree's attached to omp statements. But we
-// need to keep these attached info unchanged for processing template-
-// instantiated versions of functions, where 2 instantiations contain
-// the same tree attached to its omp statements.
-// The removal of this function also results in simpler code.
-
-// the following two functions only for debugging
-
-void
-print_tree (FILE *file, tree node)
-{
-  print_node_brief (file, "", node, 0);
-
-  fprintf (file, "\n");
-}
-
-void
-print_node_brief (FILE *file, const char *prefix, tree node, int indent)
-{
-  char class1;
-
-  if (node == 0)
-    return;
-
-  class1 = TREE_CODE_CLASS (TREE_CODE (node));
-
-  /* Always print the slot this node is in, and its code, address and
-     name if any.  */
-  if (indent > 0)
-    fprintf (file, " ");
-  fprintf (file, "%s <%s ", prefix, tree_code_name[(int) TREE_CODE (node)]);
-  fprintf (file, HOST_PTR_PRINTF, (char *) node);
-
-  if (class1 == 'd')
-    {
-      if (DECL_NAME (node))
-	fprintf (file, " %s", IDENTIFIER_POINTER (DECL_NAME (node)));
-    }
-  else if (class1 == 't')
-    {
-      if (TYPE_NAME (node))
-	{
-	  if (TREE_CODE (TYPE_NAME (node)) == IDENTIFIER_NODE)
-	    fprintf (file, " %s", IDENTIFIER_POINTER (TYPE_NAME (node)));
-	  else if (TREE_CODE (TYPE_NAME (node)) == TYPE_DECL
-		   && DECL_NAME (TYPE_NAME (node)))
-	    fprintf (file, " %s",
-		     IDENTIFIER_POINTER (DECL_NAME (TYPE_NAME (node))));
-	}
-    }
-  if (TREE_CODE (node) == IDENTIFIER_NODE)
-    fprintf (file, " %s", IDENTIFIER_POINTER (node));
-
-  fprintf (file, ">");
-
-  if (TREE_CODE (node) == TREE_LIST)
-  	{
-	  print_node_brief (file, "purpose", TREE_PURPOSE (node), indent + 4);
-	  print_node_brief (file, "value", TREE_VALUE (node), indent + 4);
-	  print_node_brief (file, "chain", TREE_CHAIN (node), indent + 4);
-  	}
-}
-
 /*
  * return a previously created ST associated with a var-decl.
  */
@@ -1556,7 +1488,6 @@ chain_parallel_list_on (struct parallel_clause_list * pclause_list, struct paral
 // in variable-list. So if we have seen the '(' before a variable-list
 // (seen_omp_paren == TRUE), and have not seen the ')' after the variable-list,
 // then don't treat the var-names as OpenMP keywords.
-extern bool seen_omp_paren;
 
 struct parallel_clause_list *
 build_parallel_clause_list (tree t, 
@@ -1565,7 +1496,7 @@ build_parallel_clause_list (tree t,
 			    reduction_op_type red_op)
 {
   // mark the end of the current clause
-  seen_omp_paren = FALSE;
+  whirl_omp_paren_seen = 0;
 
   parallel_clause_list * result = new parallel_clause_list;
 
@@ -1616,7 +1547,7 @@ struct for_clause_list *
 build_for_clause_list (tree t, for_clause_type f_type, schedule_kind_type s_kind, reduction_op_type red_op)
 {
   // mark the end of the current clause
-  seen_omp_paren = FALSE;
+  whirl_omp_paren_seen = 0;
 
   for_clause_list * result = new for_clause_list;
 
@@ -1671,7 +1602,7 @@ struct sections_clause_list *
 build_sections_clause_list (tree t, sections_clause_type s_type, reduction_op_type red_op)
 {
   // mark the end of the current clause
-  seen_omp_paren = FALSE;
+  whirl_omp_paren_seen = 0;
 
   sections_clause_list * result = new sections_clause_list;
 
@@ -1719,7 +1650,7 @@ struct single_clause_list *
 build_single_clause_list (tree t, single_clause_type s_type)
 {
   // mark the end of the current clause
-  seen_omp_paren = FALSE;
+  whirl_omp_paren_seen = 0;
 
   struct single_clause_list * result = new single_clause_list;
 
@@ -1767,7 +1698,7 @@ build_parallel_for_clause_list (tree t,
 				reduction_op_type red_op)
 {
   // mark the end of the current clause
-  seen_omp_paren = FALSE;
+  whirl_omp_paren_seen = 0;
 
   struct parallel_for_clause_list * result = new parallel_for_clause_list;
 
@@ -1832,7 +1763,7 @@ struct parallel_sections_clause_list *
 build_parallel_sections_clause_list (tree t, parallel_sections_clause_type p_type, default_type d_type, reduction_op_type red_op)
 {
   // mark the end of the current clause
-  seen_omp_paren = FALSE;
+  whirl_omp_paren_seen = 0;
 
   parallel_sections_clause_list * result = new parallel_sections_clause_list;
 

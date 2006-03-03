@@ -45,83 +45,59 @@
 #include <cmplrs/rcodes.h>
 #include "wfe_misc.h"
 #include "glob.h"
-// #include "cmd_line.h"
 
-extern const char * gnu_init (INT argc, char **argv, char **envp);
+#define IN_GCC
+#include <config.h>
+#include <system.h>
+#include <diagnostic.h>
+#undef IN_GCC
+extern const char *main_input_filename;
+extern void compile_file ();
 
-static INT argc_save;
-static char **argv_save;
-static char **envp_save;
-extern INT32 Opt_Level;
-extern BOOL  Enable_WFE_DFE;
+static int saved_argc;
+static char **saved_argv;
+static char **saved_envp;
 
-static int WFE_Compile_File_Invoked = 0;
-
-struct tree;
-
-extern void WFE_Expand_Top_Level_Decl (struct tree *);
-extern void weak_finish ();
-
-void WFE_Compile_File (struct tree *decl)
+void whirl_compile_file()
 {
-  WFE_Compile_File_Invoked = 1;
-  WFE_Init (argc_save, argv_save, envp_save);	/* sgi initialization */
-  WFE_File_Init (argc_save, argv_save);	/* inits per source file */
-  WFE_Expand_Top_Level_Decl (decl);
-  weak_finish ();
-  WFE_File_Finish ();
-  WFE_Finish ();
+	Orig_Src_File_Name = main_input_filename;
+
+	WFE_Init (saved_argc, saved_argv, saved_envp);
+	WFE_File_Init (saved_argc, saved_argv);
+
+	compile_file();
+
+	WFE_File_Finish ();
+	WFE_Finish ();
 }
 
-void (*back_end_hook) (struct tree *) = &WFE_Compile_File;
-
-extern void compile_file (const char *);
-extern void check_gnu_errors (INT *, INT *);
+int gnu_errors()
+{
+	return (diagnostic_kind_count (global_dc, DK_ERROR) ||
+		diagnostic_kind_count (global_dc, DK_SORRY)) ? 1 : 0;
+}
 
 int
-main ( 
-  INT argc,	/* Number of command line arguments */
-  char **argv,	/* Array of command line arguments */
-  char **envp)	/* Array of environment pointers */
+main(int argc, char *argv[], char *envp[])
 {
 	INT error_count, sorry_count;
 	BOOL need_inliner;
-	
-	argc_save = argc;
-	argv_save = argv;
-	envp_save = envp;
+	int exitcode;
 
-#ifdef KEY
-	Orig_Src_File_Name = (char *) gnu_init (argc, argv, envp);
-#else
-	Orig_Src_File_Name = gnu_init (argc, argv, envp);
-#endif
+	saved_argc = argc;
+	saved_argv = argv;
+	saved_envp = envp;
 
-	if (Orig_Src_File_Name == NULL) {
-		exit (RC_OKAY);
-	}
-
-	compile_file (Orig_Src_File_Name);
-
-	check_gnu_errors (&error_count, &sorry_count);
-	if (error_count)
-		exit (RC_USER_ERROR);
-	if (sorry_count)
-		exit (RC_USER_ERROR);
+	/* GCC foo */
+	exitcode = toplev_main(argc, argv);
+	if (exitcode)
+		exit(exitcode);
 
 	WFE_Check_Errors (&error_count, &sorry_count, &need_inliner);
 	if (error_count)
-    		Terminate (RC_INTERNAL_ERROR) ;
-  	if (need_inliner &&
-            ((!Enable_WFE_DFE) || (Opt_Level > 1)))
+		Terminate (RC_INTERNAL_ERROR) ;
+	if (need_inliner)
 		exit ( RC_NEED_INLINER );
-
-	if (!WFE_Compile_File_Invoked) {
-		WFE_Init (argc_save, argv_save, envp_save);
-		WFE_File_Init (argc_save, argv_save);
-		WFE_File_Finish ();
-		WFE_Finish ();
-	}
 
 	exit (RC_OKAY);
 }

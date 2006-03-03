@@ -75,7 +75,7 @@ extern int flag_no_common;
 #include "wfe_stmt.h"
 #include "tree_cmp.h"
 
-extern INT pstatic_as_global;
+INT pstatic_as_global = 1;
 
 extern FILE *tree_dump_file; /* for debugging */
 extern void Push_Deferred_Function(tree);
