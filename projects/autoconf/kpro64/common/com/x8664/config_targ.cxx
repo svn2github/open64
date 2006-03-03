@@ -209,8 +209,6 @@ BOOL Has_GP_Groups = FALSE;
  * ( TOP_Find_Operand_Use( OP_code(op), OU_offset ) >= 0 ) */
 BOOL Use_Load_Store_Offset = TRUE;
 
-#if defined (FRONT_END_C) || defined (FRONT_END_CPLUSPLUS)
-
 // This should be in synch with (order of registers in) reg_names in the 
 // Gnu front-end and definition of preg order in common/com/arch/targ_sim.h
 PREG_NUM Map_Reg_To_Preg [] = {
@@ -269,8 +267,6 @@ PREG_NUM Map_Reg_To_Preg [] = {
   0x020 /* xmm15    */,
   -1
 };
-
-#endif /* defined (FRONT_END_C) || defined (FRONT_END_CPLUSPLUS) */
 
 
 /* ====================================================================

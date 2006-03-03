@@ -316,9 +316,7 @@ static INT32 AddToDUMPDEP(WN *node)
 
  ========================================================================*/
 
-#ifndef MONGOOSE_BE
 static FILE *ir_file;
-#endif
 static FILE *ir_ofile;
 static INT  ir_line;
 #ifdef IR_TOOLS	
@@ -356,7 +354,6 @@ extern BOOL IR_set_dump_order(BOOL prefix)
 }
 
 
-#ifndef MONGOOSE_BE
 extern void IR_reader_finish(void)
 {
   MEM_POOL_Pop(&MEM_local_pool);
@@ -408,8 +405,6 @@ extern void IR_close_output(void)
   if (ir_ofile != NULL && ir_ofile != stdout)
     fclose(ir_ofile);
 }
-#endif /* MONGOOSE_BE */
-
 
 /*========================================================================
 

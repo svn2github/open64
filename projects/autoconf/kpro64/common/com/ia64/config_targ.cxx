@@ -201,8 +201,6 @@ BOOL Has_GP_Groups = FALSE;
  * ( TOP_Find_Operand_Use( OP_code(op), OU_offset ) >= 0 ) */
 BOOL Use_Load_Store_Offset = FALSE;
 
-#if defined (FRONT_END_C) || defined (FRONT_END_CPLUSPLUS)
-
 PREG_NUM Map_Reg_To_Preg [] = {
   /* General registers. */
   0x000, 0x001, 0x002, 0x003, 0x004, 0x005, 0x006, 0x007,
@@ -254,8 +252,6 @@ PREG_NUM Map_Reg_To_Preg [] = {
   /* FP */
      -1
 };
-
-#endif /* defined (FRONT_END_C) || defined (FRONT_END_CPLUSPLUS) */
 
 
 /* ====================================================================

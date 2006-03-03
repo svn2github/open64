@@ -179,13 +179,7 @@ static BOOL Inside_A_Routine = FALSE;
  */
 
 /* Should we report pragma errors?  Yes in FE, maybe in BE: */
-BOOL Diag_On_Pragmas 
-#ifdef FRONT_END
-			= TRUE
-#else /* ! FRONT_END */
-			= TRUE
-#endif
-;
+BOOL Diag_On_Pragmas = TRUE;
 
 /* Should we report control errors?
  * Yes initially; later Diag_On_Pragmas:
