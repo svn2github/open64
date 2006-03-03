@@ -66,7 +66,6 @@
 #include "defs.h"
 #include "dso.h"		    /* for load_so() */
 #include "errors.h"		    /* Set_Error_Tables(), etc. */
-#include "err_host.tab"		    /* load all the error messages */
 #include "erglob.h"		    /* for EC_ errmsg */
 #include "erauxdesc.h"		    /* for BE error messages */
 #include "mempool.h"		    /* for MEM_Initialze()  */
@@ -95,10 +94,10 @@
 #include "wodriver.h"		    /* for wopt_main, etc. */
 #include "lnodriver.h"		    /* for lno_main, etc. */
 #include "ipl_driver.h"		    /* for ipl_main. etc. */
-#include "w2c_driver.h"		    /* for W2C_Process_Command_Line, etc. */
-#include "w2f_driver.h"		    /* for W2F_Process_Command_Line, etc. */
-#include "prp_driver.h"		    /* for Prp_Process_Command_Line, etc. */
-#include "anl_driver.h"		    /* for Anl_Process_Command_Line, etc. */
+#include "whirl2c/w2c_driver.h"	    /* for W2C_Process_Command_Line, etc. */
+#include "whirl2f/w2f_driver.h"	    /* for W2F_Process_Command_Line, etc. */
+#include "purple2/prp_driver.h"	    /* for Prp_Process_Command_Line, etc. */
+#include "prompf_anl/anl_driver.h"  /* for Anl_Process_Command_Line, etc. */
 #include "region_util.h"	    /* for Regions_Around_Inner_Loops */
 #include "region_main.h"	    /* for REGION_* driver specific routines */
 #include "cg/cg.h"	            /* for CG PU-level routines */
@@ -107,7 +106,7 @@
 #include "dwarf_DST.h"	    	    /* for Orig_PU_Name */
 #include "fb_whirl.h"		    /* for FEEDBACK */
 #include "eh_region.h"		    /* for EH_Generate_Range_List, etc. */
-#include "vho_lower.h"
+#include "vho/vho_lower.h"
 #include "iter.h"		    /* PU iterator for loops */
 #include "dra_export.h"             /* for DRA routines */
 #include "ti_init.h"		    /* for targ_info */
@@ -132,7 +131,7 @@
 #endif
 
 #ifdef KEY
-#include "demangle.h"
+#include "../../gcc/include/demangle.h"
 extern "C" char *cplus_demangle (const char *, int);
 extern void Recompute_addr_saved_stmt (WN *);
 extern void Set_addr_saved_stmt (WN *, BOOL);
