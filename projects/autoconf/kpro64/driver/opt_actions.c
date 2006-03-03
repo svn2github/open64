@@ -1635,4 +1635,16 @@ set_cpu(char *name, m_flag flag_type)
   }
 }
 
+void
+dumpmachine()
+{
+#if TARG_X8664
+	printf("amd64\n");
+#endif
+#if TARG_IA64
+	printf("ia64\n");
+#endif
+}
+
+
 #include "opt_action.i"

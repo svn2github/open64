@@ -238,7 +238,7 @@ static void my_putenv(const char *name, const char *fmt, ...)
 char *
 get_binutils_lib_path(void)
 {
-	static const char *binutils_library_path = "../i686-pc-linux-gnu/" PSC_TARGET "/lib";
+	static const char *binutils_library_path = "../i686-pc-linux-gnu/lib";
 	char *my_path;
 	
 	asprintf(&my_path, "%s/%s", get_executable_dir(),

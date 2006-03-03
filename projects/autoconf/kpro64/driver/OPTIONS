@@ -1078,7 +1078,7 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 --help	;		ALL	NONE	""
 	"print list of possible options"
--dumpmachine	{printf(PSC_TARGET "\n"); execute_flag=FALSE;}	ALL	NONE	""
+-dumpmachine	{dumpmachine(); execute_flag=FALSE;}	ALL	NONE	""
 	"Print the compiler's target machine"
 %%% C language options
 -flang-isoc9x	;		Cc	f	self

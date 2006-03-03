@@ -66,12 +66,12 @@ static lang_info_t language_info[] = {
 	{'N',	0x00000000,	{""}},		/* NONE */
 	{'A',	0x0fffffff,	{""}},		/* ALL */
 	{'p',	0x00000001,	{"cpp"}},		/* cpp */
-	{'c',	0x00000002,	{"cc", PSC_NAME_PREFIX "cc", PSC_TARGET "-" PSC_NAME_PREFIX "cc","gcc","c89"}},	/* cc */
-	{'C',	0x00000004,	{"CC", PSC_NAME_PREFIX "CC", PSC_NAME_PREFIX "++","g++"}},	/* c++ */
-	{'f',	0x00000008,	{"f77", PSC_NAME_PREFIX "f77","gf77","fort77"}}, /* f77 */
-	{'F',	0x00000010,	{"f90", PSC_NAME_PREFIX "f95"}},		/* f90/95 */
-	{'a',	0x00000020,	{"as", PSC_NAME_PREFIX "as","gas"}},		/* as */
-	{'l',	0x00000040,	{"ld", PSC_NAME_PREFIX "ld"}},		/* ld */
+	{'c',	0x00000002,	{"cc", PSC_NAME_PREFIX "cc", "gcc", "c89"}},	/* cc */
+	{'C',	0x00000004,	{"CC", PSC_NAME_PREFIX "CC", "c++", PSC_NAME_PREFIX "c++", "g++"}}, /* c++ */
+	{'f',	0x00000008,	{"f77", PSC_NAME_PREFIX "f77", "g77", "fort77"}}, /* f77 */
+	{'F',	0x00000010,	{"f90", PSC_NAME_PREFIX "f95"}}, /* f90/95 */
+	{'a',	0x00000020,	{"as", PSC_NAME_PREFIX "as","gas"}}, /* as */
+	{'l',	0x00000040,	{"ld", PSC_NAME_PREFIX "ld"}}, /* ld */
 	{'I',	0x80000000,	{"int"}},		/* Internal option */
 };
 
