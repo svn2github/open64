@@ -134,7 +134,6 @@ main (int argc, char *argv[])
 	feedback_files = init_string_list ();	/* for cord feedback files */
 	init_options();
 	init_temp_files();
-	init_crash_reporting();
 	init_count_files();
 	init_error_list();
 	init_option_seen();

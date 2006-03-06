@@ -225,29 +225,6 @@ init_count_files (void)
         count_files = init_string_list();
 }
 
-static char *report_file;
-
-void
-init_crash_reporting (void)
-{
-	if ((report_file = getenv("PSC_CRASH_REPORT")) != NULL)
-		goto bail;
-
-	if (asprintf(&report_file, "%s/ekopath_crash_XXXXXX", tmpdir) == -1) {
-		report_file = NULL;
-		goto bail;
-	}
-	
-	if (mkstemp(report_file) == -1) {
-		report_file = NULL;
-		goto bail;
-	}
-	
-	setenv("PSC_CRASH_REPORT", report_file, 1);
-bail:
-	return;
-}
-
 static int save_count;
 
 static int
@@ -330,37 +307,7 @@ save_cpp_output (char *path)
 	fprintf(ofp, "  Built by %s@%s in %s\n", build_user,
 		build_host, build_root);
 	fprintf(ofp, "  Build date %s\n", build_date);
-	
-	if (report_file) {
-		int newline = 1;
-		struct stat st;
-		FILE *rfp;
 
-		if (stat(report_file, &st) == -1)
-			goto no_report;
-		
-		if (st.st_size == 0)
-			goto no_report;
-
-		fprintf(ofp, "\nDetailed problem report:\n");
-		if ((rfp = fopen(report_file, "r")) == NULL) {
-			goto no_report;
-		}
-
-		while (fgets(buf, sizeof(buf), rfp) != NULL) {
-			int len = strlen(buf);
-			if (newline)
-				fputs("  ", ofp);
-			fputs(buf, ofp);
-			newline = buf[len - 1] == '\n';
-		}
-		if (!newline)
-			putc('\n', ofp);
-
-		fclose(rfp);
-	}
-
-no_report:	
 	if (string_list_size(error_list)) {
 		string_item_t *i;
 		fprintf(ofp, "\nInformation from compiler driver:\n");
@@ -456,8 +403,5 @@ cleanup_temp_objects ()
       internal_error("cannot unlink temp object file %s", s);
       perror(program_name);
     }
-  }
-  if (report_file) {
-    unlink(report_file);
   }
 }
