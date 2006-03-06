@@ -88,7 +88,6 @@ static void dump_args (char *msg);
 static void print_help_msg (void);
 static void print_defaults (void);
 static void append_default_options (int *argc, char *(*argv[]));
-static void append_psc_genflags (int *argc, char *(*argv[]));
 static void print_search_path (void);
 
 static string_list_t *files;
