@@ -127,9 +127,6 @@ main (int argc, char *argv[])
 	char *unrecognized_dashdash_option_name = NULL;
 #endif
 
-	/* Add the contents of PSC_GENFLAGS to the command line */
-	append_psc_genflags(&argc, &argv);
-
 	// Append the default options in compiler.defaults to argv so that they
 	// are parsed along with the command line options.
 	append_default_options(&argc, &argv);
@@ -1012,43 +1009,6 @@ append_default_options (int *argc, char *(*argv[]))
     *argc = new_argc;
     *argv = new_argv;
   }
-}
-
-/* Read the contents of the PSC_GENFLAGS environment variable and add
- * them to the command-line options. */
-static void
-append_psc_genflags (int *argc, char *(*argv[]))
-{
-  char * default_opt = string_copy(getenv("PSC_GENFLAGS"));
-  char * p, * q;
-  char ** new_argv;
-  int new_argc, fin = 0;
-
-  if (default_opt) {
-    new_argc = *argc;
-    new_argv = (char **) calloc (*argc, sizeof (char *));
-    memcpy (new_argv, *argv, *argc * sizeof (char *));
-    for (p = default_opt, q = default_opt; fin == 0; p++) {
-      switch (*p) {
-      case '\0':
-	fin = 1;
-      case ' ':
-	*p = '\0';
-	new_argc++;
-	new_argv = (char **) realloc (new_argv, new_argc * (sizeof (char *)));
-	new_argv [new_argc-1] = strdup (q);
-	q = p+1;
-	break;
-      default:
-	break;
-      }
-    }
-    *argc = new_argc;
-    *argv = new_argv;
-  }
-
-  /* We only want to do this substitution once. */
-  unsetenv ("PSC_GENFLAGS");
 }
 
 static FILE *
