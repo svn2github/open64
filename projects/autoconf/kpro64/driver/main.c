@@ -87,7 +87,6 @@ static void mark_used (void);
 static void dump_args (char *msg);
 static void print_help_msg (void);
 static void print_defaults (void);
-static void append_default_options (int *argc, char *(*argv[]));
 static void print_search_path (void);
 
 static string_list_t *files;
@@ -125,10 +124,6 @@ main (int argc, char *argv[])
 #ifdef KEY
 	char *unrecognized_dashdash_option_name = NULL;
 #endif
-
-	// Append the default options in compiler.defaults to argv so that they
-	// are parsed along with the command line options.
-	append_default_options(&argc, &argv);
 
 	save_command_line(argc, argv);		/* for prelinker    */	
 	program_name = drop_path(argv[0]);	/* don't print path */
@@ -939,75 +934,6 @@ read_compiler_defaults(FILE *f, string_list_t *default_options_list)
     }
   }
   return count;
-}
-
-// Append the default options in compiler.defaults to the command line options.
-static void
-append_default_options (int *argc, char *(*argv[]))
-{
-  char *compiler_defaults_path =
-	 string_copy(getenv("PSC_COMPILER_DEFAULTS_PATH"));
-  int default_options_count = 0;
-  string_list_t *default_options_list = init_string_list();
-
-  // If the environment variable PSC_COMPILER_DEFAULTS_PATH is not set, then
-  // look for the defaults file in /opt/pathscale/etc.
-  if (compiler_defaults_path == NULL) {
-    compiler_defaults_path = strdup("/opt/pathscale/etc");
-  }
-
-  // Search for the defaults file in the colon-separated compiler default
-  // paths.  Read in the first defaults file found.
-  while (compiler_defaults_path) {
-    char *p, *path;
-    path = compiler_defaults_path;
-    for (p = path; ; p++) {
-      if (*p == '\0') {
-	compiler_defaults_path = NULL;
-	break;
-      } else if (*p == ':') {
-	*p = '\0';
-	compiler_defaults_path = p + 1;
-	break;
-      }
-    }
-    // Path is one path in the colon-separated paths.  See if it contains the
-    // defaults file.
-    FILE *f;
-    char buf[1000];
-    strcpy(buf, path);
-    strcat(buf, "/compiler.defaults");
-    if ((f = fopen(buf, "r")) != NULL) {
-      default_options_count = read_compiler_defaults(f, default_options_list);
-      fclose(f);
-      break;
-    }
-  }
-
-  // Append the default options to the command line options.
-  {
-    int new_argc = *argc + default_options_count + 1;
-    char **new_argv = malloc(new_argc * sizeof(char*));
-    int i, index;
-
-    // Copy command line options to new argv;
-    for (index = 0; index < *argc; index++) {
-      new_argv[index] = (*argv)[index];
-    }
-
-    // Mark the beginning of default options.
-    new_argv[index++] = "-default_options";
-
-    // Copy default options to new argv.
-    string_item_t *p;
-    for (p = default_options_list->head; p != NULL; p = p->next) {
-      new_argv[index++] = p->name;
-    }
-
-    // Return new argc and argv.
-    *argc = new_argc;
-    *argv = new_argv;
-  }
 }
 
 static FILE *
