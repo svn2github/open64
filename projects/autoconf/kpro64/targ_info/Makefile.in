@@ -15,6 +15,7 @@
 @SET_MAKE@
 
 
+
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
@@ -44,7 +45,7 @@ noinst_PROGRAMS = abi_properties_gen$(EXEEXT) isa_bundle_gen$(EXEEXT) \
 	isa_pack_gen$(EXEEXT) isa_print_gen$(EXEEXT) \
 	isa_properties_gen$(EXEEXT) isa_pseudo_gen$(EXEEXT) \
 	isa_registers_gen$(EXEEXT) isa_subset_gen$(EXEEXT) \
-	proc_gen$(EXEEXT) proc_properties_gen$(EXEEXT)
+	proc_gen$(EXEEXT) proc_properties_gen$(EXEEXT) $(am__EXEEXT_1)
 subdir = kpro64/targ_info
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -56,6 +57,10 @@ CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 LIBRARIES = $(noinst_LIBRARIES)
 ARFLAGS = cru
+libsigen_a_AR = $(AR) $(ARFLAGS)
+libsigen_a_LIBADD =
+am_libsigen_a_OBJECTS = si_gen.$(OBJEXT)
+libsigen_a_OBJECTS = $(am_libsigen_a_OBJECTS)
 libtarginfo_a_AR = $(AR) $(ARFLAGS)
 libtarginfo_a_LIBADD =
 am_libtarginfo_a_OBJECTS = ti_asm.$(OBJEXT) ti_bundle.$(OBJEXT) \
@@ -72,6 +77,25 @@ am__objects_1 = targ_abi_properties.$(OBJEXT) \
 nodist_libtarginfo_a_OBJECTS = $(am__objects_1)
 libtarginfo_a_OBJECTS = $(am_libtarginfo_a_OBJECTS) \
 	$(nodist_libtarginfo_a_OBJECTS)
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
+am__installdirs = "$(DESTDIR)$(pkglibdir)"
+pkglibLTLIBRARIES_INSTALL = $(INSTALL)
+LTLIBRARIES = $(pkglib_LTLIBRARIES)
+em64t_la_LIBADD =
+am_em64t_la_OBJECTS = em64t.lo
+em64t_la_OBJECTS = $(am_em64t_la_OBJECTS)
+@TARG_X8664_TRUE@am_em64t_la_rpath = -rpath $(pkglibdir)
+opteron_la_LIBADD =
+am_opteron_la_OBJECTS = opteron.lo
+opteron_la_OBJECTS = $(am_opteron_la_OBJECTS)
+@TARG_X8664_TRUE@am_opteron_la_rpath = -rpath $(pkglibdir)
+@TARG_X8664_TRUE@am__EXEEXT_1 = em64t_si_gen$(EXEEXT) \
+@TARG_X8664_TRUE@	opteron_si_gen$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 am_abi_properties_gen_OBJECTS = gen_util.$(OBJEXT) \
 	abi_properties.$(OBJEXT) abi_properties_gen.$(OBJEXT)
@@ -80,6 +104,10 @@ nodist_abi_properties_gen_OBJECTS = targ_isa_registers.$(OBJEXT) \
 abi_properties_gen_OBJECTS = $(am_abi_properties_gen_OBJECTS) \
 	$(nodist_abi_properties_gen_OBJECTS)
 abi_properties_gen_LDADD = $(LDADD)
+am_em64t_si_gen_OBJECTS = em64t_si.$(OBJEXT)
+em64t_si_gen_OBJECTS = $(am_em64t_si_gen_OBJECTS)
+am__DEPENDENCIES_1 = libsigen.a libtarginfo.a
+em64t_si_gen_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_isa_bundle_gen_OBJECTS = gen_util.$(OBJEXT) isa_bundle.$(OBJEXT) \
 	isa_bundle_gen.$(OBJEXT)
 nodist_isa_bundle_gen_OBJECTS = targ_isa_properties.$(OBJEXT) \
@@ -163,6 +191,9 @@ nodist_isa_subset_gen_OBJECTS = topcode.$(OBJEXT)
 isa_subset_gen_OBJECTS = $(am_isa_subset_gen_OBJECTS) \
 	$(nodist_isa_subset_gen_OBJECTS)
 isa_subset_gen_LDADD = $(LDADD)
+am_opteron_si_gen_OBJECTS = opteron_si.$(OBJEXT)
+opteron_si_gen_OBJECTS = $(am_opteron_si_gen_OBJECTS)
+opteron_si_gen_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_proc_gen_OBJECTS = gen_util.$(OBJEXT) proc.$(OBJEXT) \
 	proc_gen.$(OBJEXT)
 proc_gen_OBJECTS = $(am_proc_gen_OBJECTS)
@@ -192,32 +223,35 @@ LTCXXCOMPILE = $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) \
 CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(libtarginfo_a_SOURCES) $(nodist_libtarginfo_a_SOURCES) \
-	$(abi_properties_gen_SOURCES) \
-	$(nodist_abi_properties_gen_SOURCES) $(isa_bundle_gen_SOURCES) \
-	$(nodist_isa_bundle_gen_SOURCES) $(isa_decode_gen_SOURCES) \
-	$(nodist_isa_decode_gen_SOURCES) $(isa_enums_gen_SOURCES) \
-	$(isa_gen_SOURCES) $(isa_hazards_gen_SOURCES) \
-	$(nodist_isa_hazards_gen_SOURCES) $(isa_lits_gen_SOURCES) \
-	$(isa_operands_gen_SOURCES) $(nodist_isa_operands_gen_SOURCES) \
-	$(isa_pack_gen_SOURCES) $(nodist_isa_pack_gen_SOURCES) \
-	$(isa_print_gen_SOURCES) $(nodist_isa_print_gen_SOURCES) \
-	$(isa_properties_gen_SOURCES) \
+SOURCES = $(libsigen_a_SOURCES) $(libtarginfo_a_SOURCES) \
+	$(nodist_libtarginfo_a_SOURCES) $(em64t_la_SOURCES) \
+	$(opteron_la_SOURCES) $(abi_properties_gen_SOURCES) \
+	$(nodist_abi_properties_gen_SOURCES) $(em64t_si_gen_SOURCES) \
+	$(isa_bundle_gen_SOURCES) $(nodist_isa_bundle_gen_SOURCES) \
+	$(isa_decode_gen_SOURCES) $(nodist_isa_decode_gen_SOURCES) \
+	$(isa_enums_gen_SOURCES) $(isa_gen_SOURCES) \
+	$(isa_hazards_gen_SOURCES) $(nodist_isa_hazards_gen_SOURCES) \
+	$(isa_lits_gen_SOURCES) $(isa_operands_gen_SOURCES) \
+	$(nodist_isa_operands_gen_SOURCES) $(isa_pack_gen_SOURCES) \
+	$(nodist_isa_pack_gen_SOURCES) $(isa_print_gen_SOURCES) \
+	$(nodist_isa_print_gen_SOURCES) $(isa_properties_gen_SOURCES) \
 	$(nodist_isa_properties_gen_SOURCES) $(isa_pseudo_gen_SOURCES) \
 	$(nodist_isa_pseudo_gen_SOURCES) $(isa_registers_gen_SOURCES) \
 	$(nodist_isa_registers_gen_SOURCES) $(isa_subset_gen_SOURCES) \
-	$(nodist_isa_subset_gen_SOURCES) $(proc_gen_SOURCES) \
-	$(proc_properties_gen_SOURCES) \
+	$(nodist_isa_subset_gen_SOURCES) $(opteron_si_gen_SOURCES) \
+	$(proc_gen_SOURCES) $(proc_properties_gen_SOURCES) \
 	$(nodist_proc_properties_gen_SOURCES)
-DIST_SOURCES = $(libtarginfo_a_SOURCES) $(abi_properties_gen_SOURCES) \
+DIST_SOURCES = $(libsigen_a_SOURCES) $(libtarginfo_a_SOURCES) \
+	$(em64t_la_SOURCES) $(opteron_la_SOURCES) \
+	$(abi_properties_gen_SOURCES) $(em64t_si_gen_SOURCES) \
 	$(isa_bundle_gen_SOURCES) $(isa_decode_gen_SOURCES) \
 	$(isa_enums_gen_SOURCES) $(isa_gen_SOURCES) \
 	$(isa_hazards_gen_SOURCES) $(isa_lits_gen_SOURCES) \
 	$(isa_operands_gen_SOURCES) $(isa_pack_gen_SOURCES) \
 	$(isa_print_gen_SOURCES) $(isa_properties_gen_SOURCES) \
 	$(isa_pseudo_gen_SOURCES) $(isa_registers_gen_SOURCES) \
-	$(isa_subset_gen_SOURCES) $(proc_gen_SOURCES) \
-	$(proc_properties_gen_SOURCES)
+	$(isa_subset_gen_SOURCES) $(opteron_si_gen_SOURCES) \
+	$(proc_gen_SOURCES) $(proc_properties_gen_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -344,8 +378,11 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
-noinst_LIBRARIES = libtarginfo.a
+noinst_LIBRARIES = libsigen.a libtarginfo.a
 libtarginfo_a_SOURCES = ti_asm.c ti_bundle.c ti_errors.c ti_latency.c
+libsigen_a_SOURCES = si_gen.cxx
+@TARG_X8664_TRUE@pkglib_LTLIBRARIES = em64t.la opteron.la
+@TARG_X8664_TRUE@_targ_tools = em64t_si_gen opteron_si_gen
 GENSRCS = targ_abi_properties.c targ_isa_bundle.c targ_isa_decode.c \
 	targ_isa_enums.c targ_isa_hazards.c targ_isa_lits.c \
 	targ_isa_operands.c targ_isa_pack.c targ_isa_print.c \
@@ -355,8 +392,10 @@ GENSRCS = targ_abi_properties.c targ_isa_bundle.c targ_isa_decode.c \
 GENHDRS = $(patsubst %.c,%.h,${GENSRCS})
 GENXPRT = $(patsubst %.c,%.Exported,${GENSRCS})
 nodist_libtarginfo_a_SOURCES = ${GENSRCS}
-BUILT_SOURCES = ${GENSRCS} ${GENHDRS}
-CLEANFILES = ${GENSRCS} ${GENHDRS} ${GENXPRT}
+BUILT_SOURCES = ${GENSRCS} ${GENHDRS} ${em64t_la_SOURCES} \
+	${opteron_la_SOURCES}
+CLEANFILES = ${GENSRCS} ${GENHDRS} ${GENXPRT} ${em64t_la_SOURCES} \
+	${opteron_la_SOURCES}
 abi_properties_gen_SOURCES = gen_util.cxx abi_properties.cxx \
 	abi_properties_gen.cxx
 
@@ -397,7 +436,19 @@ proc_properties_gen_SOURCES = gen_util.cxx proc_properties.cxx \
 	proc_properties_gen.cxx
 
 nodist_proc_properties_gen_SOURCES = targ_proc.c
-AM_CPPFLAGS = ${PIC_FLAGS} -I${srcdir}/generate
+
+#
+# X8664
+#
+em64t_la_SOURCES = em64t.c
+em64t_la_LDFLAGS = -avoid-version -module
+em64t_si_gen_SOURCES = em64t_si.cxx
+em64t_si_gen_LDADD = ${noinst_LIBRARIES}
+opteron_la_SOURCES = opteron.c
+opteron_la_LDFLAGS = -avoid-version -module
+opteron_si_gen_SOURCES = opteron_si.cxx
+opteron_si_gen_LDADD = ${noinst_LIBRARIES}
+AM_CPPFLAGS = ${PIC_FLAGS} -I${srcdir}/access -I${srcdir}/generate
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -435,10 +486,45 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 
 clean-noinstLIBRARIES:
 	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
+libsigen.a: $(libsigen_a_OBJECTS) $(libsigen_a_DEPENDENCIES) 
+	-rm -f libsigen.a
+	$(libsigen_a_AR) libsigen.a $(libsigen_a_OBJECTS) $(libsigen_a_LIBADD)
+	$(RANLIB) libsigen.a
 libtarginfo.a: $(libtarginfo_a_OBJECTS) $(libtarginfo_a_DEPENDENCIES) 
 	-rm -f libtarginfo.a
 	$(libtarginfo_a_AR) libtarginfo.a $(libtarginfo_a_OBJECTS) $(libtarginfo_a_LIBADD)
 	$(RANLIB) libtarginfo.a
+install-pkglibLTLIBRARIES: $(pkglib_LTLIBRARIES)
+	@$(NORMAL_INSTALL)
+	test -z "$(pkglibdir)" || $(mkdir_p) "$(DESTDIR)$(pkglibdir)"
+	@list='$(pkglib_LTLIBRARIES)'; for p in $$list; do \
+	  if test -f $$p; then \
+	    f=$(am__strip_dir) \
+	    echo " $(LIBTOOL) --mode=install $(pkglibLTLIBRARIES_INSTALL) $(INSTALL_STRIP_FLAG) '$$p' '$(DESTDIR)$(pkglibdir)/$$f'"; \
+	    $(LIBTOOL) --mode=install $(pkglibLTLIBRARIES_INSTALL) $(INSTALL_STRIP_FLAG) "$$p" "$(DESTDIR)$(pkglibdir)/$$f"; \
+	  else :; fi; \
+	done
+
+uninstall-pkglibLTLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	@set -x; list='$(pkglib_LTLIBRARIES)'; for p in $$list; do \
+	  p=$(am__strip_dir) \
+	  echo " $(LIBTOOL) --mode=uninstall rm -f '$(DESTDIR)$(pkglibdir)/$$p'"; \
+	  $(LIBTOOL) --mode=uninstall rm -f "$(DESTDIR)$(pkglibdir)/$$p"; \
+	done
+
+clean-pkglibLTLIBRARIES:
+	-test -z "$(pkglib_LTLIBRARIES)" || rm -f $(pkglib_LTLIBRARIES)
+	@list='$(pkglib_LTLIBRARIES)'; for p in $$list; do \
+	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
+	  test "$$dir" != "$$p" || dir=.; \
+	  echo "rm -f \"$${dir}/so_locations\""; \
+	  rm -f "$${dir}/so_locations"; \
+	done
+em64t.la: $(em64t_la_OBJECTS) $(em64t_la_DEPENDENCIES) 
+	$(LINK) $(am_em64t_la_rpath) $(em64t_la_LDFLAGS) $(em64t_la_OBJECTS) $(em64t_la_LIBADD) $(LIBS)
+opteron.la: $(opteron_la_OBJECTS) $(opteron_la_DEPENDENCIES) 
+	$(LINK) $(am_opteron_la_rpath) $(opteron_la_LDFLAGS) $(opteron_la_OBJECTS) $(opteron_la_LIBADD) $(LIBS)
 
 clean-noinstPROGRAMS:
 	@list='$(noinst_PROGRAMS)'; for p in $$list; do \
@@ -449,6 +535,9 @@ clean-noinstPROGRAMS:
 abi_properties_gen$(EXEEXT): $(abi_properties_gen_OBJECTS) $(abi_properties_gen_DEPENDENCIES) 
 	@rm -f abi_properties_gen$(EXEEXT)
 	$(CXXLINK) $(abi_properties_gen_LDFLAGS) $(abi_properties_gen_OBJECTS) $(abi_properties_gen_LDADD) $(LIBS)
+em64t_si_gen$(EXEEXT): $(em64t_si_gen_OBJECTS) $(em64t_si_gen_DEPENDENCIES) 
+	@rm -f em64t_si_gen$(EXEEXT)
+	$(CXXLINK) $(em64t_si_gen_LDFLAGS) $(em64t_si_gen_OBJECTS) $(em64t_si_gen_LDADD) $(LIBS)
 isa_bundle_gen$(EXEEXT): $(isa_bundle_gen_OBJECTS) $(isa_bundle_gen_DEPENDENCIES) 
 	@rm -f isa_bundle_gen$(EXEEXT)
 	$(CXXLINK) $(isa_bundle_gen_LDFLAGS) $(isa_bundle_gen_OBJECTS) $(isa_bundle_gen_LDADD) $(LIBS)
@@ -488,6 +577,9 @@ isa_registers_gen$(EXEEXT): $(isa_registers_gen_OBJECTS) $(isa_registers_gen_DEP
 isa_subset_gen$(EXEEXT): $(isa_subset_gen_OBJECTS) $(isa_subset_gen_DEPENDENCIES) 
 	@rm -f isa_subset_gen$(EXEEXT)
 	$(CXXLINK) $(isa_subset_gen_LDFLAGS) $(isa_subset_gen_OBJECTS) $(isa_subset_gen_LDADD) $(LIBS)
+opteron_si_gen$(EXEEXT): $(opteron_si_gen_OBJECTS) $(opteron_si_gen_DEPENDENCIES) 
+	@rm -f opteron_si_gen$(EXEEXT)
+	$(CXXLINK) $(opteron_si_gen_LDFLAGS) $(opteron_si_gen_OBJECTS) $(opteron_si_gen_LDADD) $(LIBS)
 proc_gen$(EXEEXT): $(proc_gen_OBJECTS) $(proc_gen_DEPENDENCIES) 
 	@rm -f proc_gen$(EXEEXT)
 	$(CXXLINK) $(proc_gen_LDFLAGS) $(proc_gen_OBJECTS) $(proc_gen_LDADD) $(LIBS)
@@ -503,6 +595,8 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/abi_properties.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/abi_properties_gen.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/em64t.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/em64t_si.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gen_util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/isa.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/isa_bundle.Po@am__quote@
@@ -530,10 +624,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/isa_registers_gen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/isa_subset.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/isa_subset_gen.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/opteron.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/opteron_si.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proc_gen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proc_properties.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proc_properties_gen.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/si_gen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/targ_abi_properties.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/targ_isa_bundle.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/targ_isa_decode.Po@am__quote@
@@ -685,8 +782,11 @@ distdir: $(DISTFILES)
 check-am: all-am
 check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
-all-am: Makefile $(LIBRARIES) $(PROGRAMS)
+all-am: Makefile $(LIBRARIES) $(LTLIBRARIES) $(PROGRAMS)
 installdirs:
+	for dir in "$(DESTDIR)$(pkglibdir)"; do \
+	  test -z "$$dir" || $(mkdir_p) "$$dir"; \
+	done
 install: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) install-am
 install-exec: install-exec-am
@@ -717,7 +817,7 @@ maintainer-clean-generic:
 clean: clean-am
 
 clean-am: clean-generic clean-libtool clean-noinstLIBRARIES \
-	clean-noinstPROGRAMS mostlyclean-am
+	clean-noinstPROGRAMS clean-pkglibLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -737,7 +837,7 @@ info-am:
 
 install-data-am:
 
-install-exec-am:
+install-exec-am: install-pkglibLTLIBRARIES
 
 install-info: install-info-am
 
@@ -763,19 +863,21 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-info-am
+uninstall-am: uninstall-info-am uninstall-pkglibLTLIBRARIES
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
-	clean-libtool clean-noinstLIBRARIES clean-noinstPROGRAMS ctags \
-	distclean distclean-compile distclean-generic \
-	distclean-libtool distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-exec install-exec-am install-info \
-	install-info-am install-man install-strip installcheck \
+	clean-libtool clean-noinstLIBRARIES clean-noinstPROGRAMS \
+	clean-pkglibLTLIBRARIES ctags distclean distclean-compile \
+	distclean-generic distclean-libtool distclean-tags distdir dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-data install-data-am install-exec install-exec-am \
+	install-info install-info-am install-man \
+	install-pkglibLTLIBRARIES install-strip installcheck \
 	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags uninstall uninstall-am uninstall-info-am
+	tags uninstall uninstall-am uninstall-info-am \
+	uninstall-pkglibLTLIBRARIES
 
 
 targ_abi_properties.c: abi_properties_gen
@@ -839,6 +941,12 @@ isa_registers.${OBJEXT}: targ_isa_subset.h
 isa_subset.${OBJEXT}: topcode.h
 isa_subset_gen.${OBJEXT}: topcode.h
 proc_properties_gen.${OBJEXT}: targ_proc.h
+
+em64t.c: em64t_si_gen
+	./$<
+
+opteron.c: opteron_si_gen
+	./$<
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:
