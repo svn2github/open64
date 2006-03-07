@@ -48,30 +48,33 @@
 #include "file_utils.h"
 #include "string_utils.h"
 #include "errors.h"
+
 char *ldpath_for_pixie = NULL;
+
 /*
  * If you change any of these keys, be sure to also change the keys
  * in the OPTIONS table.
  */
 
-#define MAX_LANG_NAMES 5
+#define MAX_LANG_NAMES 4
 typedef struct lang_struct {
 	char key;
 	mask_t mask;
 	char *name[MAX_LANG_NAMES];	/* list of strings */
 } lang_info_t;
+
 /* languages_t is index into language_info array */
 static lang_info_t language_info[] = {
 	{'N',	0x00000000,	{""}},		/* NONE */
 	{'A',	0x0fffffff,	{""}},		/* ALL */
-	{'p',	0x00000001,	{"cpp"}},		/* cpp */
-	{'c',	0x00000002,	{"cc", PSC_NAME_PREFIX "cc", "gcc", "c89"}},	/* cc */
-	{'C',	0x00000004,	{"CC", PSC_NAME_PREFIX "CC", "c++", PSC_NAME_PREFIX "c++", "g++"}}, /* c++ */
-	{'f',	0x00000008,	{"f77", PSC_NAME_PREFIX "f77", "g77", "fort77"}}, /* f77 */
-	{'F',	0x00000010,	{"f90", PSC_NAME_PREFIX "f95"}}, /* f90/95 */
-	{'a',	0x00000020,	{"as", PSC_NAME_PREFIX "as","gas"}}, /* as */
-	{'l',	0x00000040,	{"ld", PSC_NAME_PREFIX "ld"}}, /* ld */
-	{'I',	0x80000000,	{"int"}},		/* Internal option */
+	{'p',	0x00000001,	{"cpp"}},
+	{'c',	0x00000002,	{"cc", "c89", "c99"}},
+	{'C',	0x00000004,	{"CC", "c++", "g++"}},
+	{'f',	0x00000008,	{"f77", "g77"}},
+	{'F',	0x00000010,	{"f90", "f95"}},
+	{'a',	0x00000020,	{"as"}},
+	{'l',	0x00000040,	{"ld"}},
+	{'I',	0x80000000,	{"int"}},	/* Internal option */
 };
 
 #define NAMEPREFIX	""
@@ -406,37 +409,42 @@ get_lang_name (languages_t index)
 languages_t
 get_named_language (char *name)
 {
-	languages_t i, lang = L_NONE;
+	static char version_suffix[] = "-" PACKAGE_VERSION;
+	char *nm, *p;
+	size_t nmlen;
+	languages_t i;
 	int j;
-	char *p;
-	char *nomen = strdup(name);
 
-	if ((p = strstr(nomen, "-" PACKAGE_VERSION))) {
-	    *p = '\0';
-	    name = nomen;
+	nm = strdup(name);
+	nmlen = strlen(nm);
+
+	p = nm + nmlen - sizeof(version_suffix) + 1;
+	if (p >= nm && !strcmp(p, version_suffix)) {
+		*p = '\0';
+		nmlen -= sizeof(version_suffix) - 1;
 	}
-	
+
 	for (i = L_NONE; i < L_LAST; i++) {
-	    for (j = 0; j < MAX_LANG_NAMES && language_info[i].name[j] != NULL; j++) {
-		/* skip if blank string */
-		if (*language_info[i].name[j] == NIL) 
-			continue;
-		/* look for language name at end of string */
-		p = name+strlen(name)-strlen(language_info[i].name[j]);
-		if (strcmp(language_info[i].name[j], p) == 0) {
-			/* as does not invoke ld */
-			if (i == L_as)
-			    last_phase = P_any_as;
-			lang = i;
-			goto done;
+		for (j = 0;
+		     j < MAX_LANG_NAMES && language_info[i].name[j] != NULL;
+		     j++) {
+			/* skip if blank string */
+			if (*language_info[i].name[j] == '\0') 
+				continue;
+			/* look for language name at end of string */
+			p = nm + nmlen - strlen(language_info[i].name[j]);
+			if (p >= nm && !strcmp(language_info[i].name[j], p)) {
+				/* as does not invoke ld */
+				if (i == L_as)
+					last_phase = P_any_as;
+				free(nm);
+				return i;
+			}
 		}
-	    }
 	}
 	internal_error("unknown language (%s)", name);
-
- done:
-	free(nomen);
-	return lang;
+	free(nm);
+	return L_NONE;
 }
 
 source_kind_t
