@@ -142,14 +142,6 @@ main (int argc, char *argv[])
 	invoked_lang = get_named_language(program_name);
 	check_for_driver_controls (argc, argv);
 
-        if (0 && time(NULL) > 1080719999) {
-            fprintf(stderr, "This software has expired.\n"
-		    "Please contact PathScale, Inc. at "
-		    "http://www.pathscale.com for infomation on\n"
-		    "upgrade options.\n");
-            do_exit(1);
-        }
-
 	/* Try to find where the compiler is located and set the phase
 	   and library directories appropriately. */
 	set_executable_dir();
