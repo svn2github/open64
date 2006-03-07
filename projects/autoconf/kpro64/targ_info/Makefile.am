@@ -1,5 +1,11 @@
-noinst_LIBRARIES = libtarginfo.a
+noinst_LIBRARIES = libsigen.a libtarginfo.a
 libtarginfo_a_SOURCES = ti_asm.c ti_bundle.c ti_errors.c ti_latency.c
+libsigen_a_SOURCES = si_gen.cxx
+
+if TARG_X8664
+pkglib_LTLIBRARIES = em64t.la opteron.la
+_targ_tools = em64t_si_gen opteron_si_gen
+endif
 
 GENSRCS = targ_abi_properties.c targ_isa_bundle.c targ_isa_decode.c \
 	targ_isa_enums.c targ_isa_hazards.c targ_isa_lits.c \
@@ -66,7 +72,7 @@ noinst_PROGRAMS = abi_properties_gen isa_bundle_gen isa_decode_gen \
 	isa_enums_gen isa_gen isa_hazards_gen isa_lits_gen \
 	isa_operands_gen isa_pack_gen isa_print_gen isa_properties_gen \
 	isa_pseudo_gen isa_registers_gen isa_subset_gen proc_gen \
-	proc_properties_gen
+	proc_properties_gen ${_targ_tools}
 
 abi_properties_gen_SOURCES = gen_util.cxx abi_properties.cxx \
 	abi_properties_gen.cxx
@@ -132,7 +138,34 @@ proc_properties_gen_SOURCES = gen_util.cxx proc_properties.cxx \
 nodist_proc_properties_gen_SOURCES = targ_proc.c
 proc_properties_gen.${OBJEXT}: targ_proc.h
 
-AM_CPPFLAGS = ${PIC_FLAGS} -I${srcdir}/generate
+#
+# X8664
+#
+em64t_la_SOURCES = em64t.c
+em64t_la_LDFLAGS = -avoid-version -module
+
+BUILT_SOURCES += ${em64t_la_SOURCES}
+CLEANFILES += ${em64t_la_SOURCES}
+
+em64t.c: em64t_si_gen
+	./$<
+
+em64t_si_gen_SOURCES = em64t_si.cxx
+em64t_si_gen_LDADD = ${noinst_LIBRARIES}
+
+opteron_la_SOURCES = opteron.c
+opteron_la_LDFLAGS = -avoid-version -module
+
+BUILT_SOURCES += ${opteron_la_SOURCES}
+CLEANFILES += ${opteron_la_SOURCES}
+
+opteron.c: opteron_si_gen
+	./$<
+
+opteron_si_gen_SOURCES = opteron_si.cxx
+opteron_si_gen_LDADD = ${noinst_LIBRARIES}
+
+AM_CPPFLAGS = ${PIC_FLAGS} -I${srcdir}/access -I${srcdir}/generate
 
 VPATH = ${srcdir}/abi/${TARG_SUBDIR} ${srcdir}/access ${srcdir}/generate \
 	${srcdir}/isa/${TARG_SUBDIR} ${srcdir}/proc/${TARG_SUBDIR}
