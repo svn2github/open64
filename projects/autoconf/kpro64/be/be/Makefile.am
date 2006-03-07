@@ -29,8 +29,10 @@ libbe_la_SOURCES = be_symtab.cxx be_util.cxx be_version.cxx betarget.cxx \
 	wn.cxx wn_fio.cxx wn_instrument.cxx wn_lower.cxx wn_map.cxx wn_mp.cxx \
 	wn_pragmas.cxx wn_retype_expr.cxx wn_simp.cxx wn_unroll.cxx \
 	wn_util.cxx wn_verifier.cxx wutil.cxx xstats.cxx
-libbe_la_LDFLAGS = -no-undefined
-libbe_la_LIBADD = ../../common/libcomutil.a ../../targ_info/libtarginfo.a
+libbe_la_DEPENDENCIES = ../../common/libcomutil.a ../../targ_info/libtarginfo.a
+libbe_la_LDFLAGS = -no-undefined -Wl,--whole-archive \
+	-Wl,../../common/libcomutil.a -Wl,../../targ_info/libtarginfo.a \
+	-Wl,--no-whole-archive
 
 GENSRCS = preg_list.cxx
 GENHDRS = $(patsubst %.cxx,%.h,${GENSRCS})
