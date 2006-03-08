@@ -54,9 +54,9 @@ am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 am__installdirs = "$(DESTDIR)$(pkglibdir)"
 pkglibLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
-cg_la_DEPENDENCIES = ../be/libbe.la ../../libdwarf/libdwarf.la \
-	../../libelf/libelf.la ../../libelfutil/libelfutil.a \
-	../../libunwind/libunwind.a
+cg_la_DEPENDENCIES = ../../libelfutil/libelfutil.a \
+	../../libunwind/libunwind.a ../be/libbe.la \
+	../../libdwarf/libdwarf.la ../../libelf/libelf.la
 am_cg_la_OBJECTS = annotations.lo bb_map.lo bblist.lo bbutil.lo \
 	calls.lo cflow.lo cg.lo cg_cflow.lo cg_convert_x87.lo \
 	cg_db_op.lo cg_dep_graph.lo cg_flags.lo cg_flags_arch.lo \
@@ -254,9 +254,8 @@ cg_la_SOURCES = annotations.cxx bb_map.cxx bblist.cxx bbutil.cxx calls.cxx \
 	whirl2ops.cxx
 
 cg_la_LDFLAGS = -avoid-version -module
-cg_la_LIBADD = ../be/libbe.la ../../libdwarf/libdwarf.la \
-	../../libelf/libelf.la ../../libelfutil/libelfutil.a \
-	../../libunwind/libunwind.a
+cg_la_LIBADD = ../../libelfutil/libelfutil.a ../../libunwind/libunwind.a \
+	../be/libbe.la ../../libdwarf/libdwarf.la ../../libelf/libelf.la
 
 GENSRCS = bb_list.cxx bb_set.cxx cg_loop_scc_prop.cxx gra_bb_list.cxx \
 	gtn_set.cxx lrange_list.cxx lrange_set.cxx op_list.cxx st_list.cxx \
