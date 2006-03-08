@@ -24,9 +24,8 @@ cg_la_SOURCES = annotations.cxx bb_map.cxx bblist.cxx bbutil.cxx calls.cxx \
 	targ_em_dwarf.cxx targ_em_elf.cxx tn_map.cxx tnutil.cxx variants.cxx \
 	whirl2ops.cxx
 cg_la_LDFLAGS = -avoid-version -module
-cg_la_LIBADD = ../be/libbe.la ../../libdwarf/libdwarf.la \
-	../../libelf/libelf.la ../../libelfutil/libelfutil.a \
-	../../libunwind/libunwind.a
+cg_la_LIBADD = ../../libelfutil/libelfutil.a ../../libunwind/libunwind.a \
+	../be/libbe.la ../../libdwarf/libdwarf.la ../../libelf/libelf.la
 
 GENSRCS = bb_list.cxx bb_set.cxx cg_loop_scc_prop.cxx gra_bb_list.cxx \
 	gtn_set.cxx lrange_list.cxx lrange_set.cxx op_list.cxx st_list.cxx \
