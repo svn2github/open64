@@ -36,6 +36,15 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
@@ -47,7 +56,6 @@
 #include "access_vector.h"
 #include "ipl_lno_util.h"
 #include "ipl_summary.h"
-#include <alloca.h>
 #include "ipa_cost_util.h"
 #include "be_util.h" 
 
