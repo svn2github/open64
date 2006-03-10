@@ -53,6 +53,7 @@ int key_exceptions = 0;
 int opt_regions = 0;
 };
 
+#include "c_int_model.h"
 #include "wfe_misc.h"
 #include "wfe_dst.h"
 #include "wfe_expr.h"

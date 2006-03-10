@@ -77,6 +77,10 @@ typedef enum {
 } TARGET_INT_MODEL;
 extern TARGET_INT_MODEL Target_Int_Model;
 
+#ifndef TARGET_64BIT
+#define TARGET_64BIT	(!TARGET_ILP32)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

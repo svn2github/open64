@@ -78,6 +78,7 @@ extern int key_exceptions;
 extern int opt_regions;
 };
 
+#include "c_int_model.h"
 #include "wfe_decl.h"
 #include "wfe_misc.h"
 #include "wfe_dst.h"
