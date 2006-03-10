@@ -76,8 +76,9 @@ am__libgcc_common_a_SOURCES_DIST = alias.c attribs.c bb-reorder.c \
 	ssa.c ssa-ccp.c ssa-dce.c stmt.c stor-layout.c stringpool.c \
 	timevar.c toplev.c tracer.c tree.c tree-dump.c tree-inline.c \
 	unroll.c varasm.c varray.c version.c vmsdbgout.c xcoffout.c \
-	i386.c
-@TARG_X8664_TRUE@am__objects_1 = i386.$(OBJEXT)
+	ia64.c i386.c
+@TARG_IA64_FALSE@@TARG_X8664_TRUE@am__objects_1 = i386.$(OBJEXT)
+@TARG_IA64_TRUE@am__objects_1 = ia64.$(OBJEXT)
 am_libgcc_common_a_OBJECTS = alias.$(OBJEXT) attribs.$(OBJEXT) \
 	bb-reorder.$(OBJEXT) bitmap.$(OBJEXT) builtins.$(OBJEXT) \
 	c-common.$(OBJEXT) c-dump.$(OBJEXT) c-format.$(OBJEXT) \
@@ -265,7 +266,9 @@ target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
 noinst_LIBRARIES = libgcc_common.a
+@TARG_IA64_TRUE@_trgt_sources = ia64.c
 @TARG_X8664_TRUE@_trgt_sources = i386.c
+@TARG_IA64_TRUE@_trgt_cfgdir = ia64
 @TARG_X8664_TRUE@_trgt_cfgdir = i386
 libgcc_common_a_SOURCES = \
 	alias.c attribs.c \
@@ -426,6 +429,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hashtable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hooks.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/i386.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ia64.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ifcvt.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/insn-attrtab.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/insn-emit.Po@am__quote@

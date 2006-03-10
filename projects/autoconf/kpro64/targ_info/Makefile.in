@@ -46,6 +46,12 @@ noinst_PROGRAMS = abi_properties_gen$(EXEEXT) isa_bundle_gen$(EXEEXT) \
 	isa_properties_gen$(EXEEXT) isa_pseudo_gen$(EXEEXT) \
 	isa_registers_gen$(EXEEXT) isa_subset_gen$(EXEEXT) \
 	proc_gen$(EXEEXT) proc_properties_gen$(EXEEXT) $(am__EXEEXT_1)
+@TARG_X8664_TRUE@am__append_1 = ${em64t_la_SOURCES} \
+@TARG_X8664_TRUE@	${opteron_la_SOURCES}
+@TARG_X8664_TRUE@am__append_2 = ${em64t_la_SOURCES} \
+@TARG_X8664_TRUE@	${opteron_la_SOURCES}
+@TARG_IA64_TRUE@am__append_3 = ${itanium_la_SOURCES}
+@TARG_IA64_TRUE@am__append_4 = ${itanium_la_SOURCES}
 subdir = kpro64/targ_info
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -87,15 +93,24 @@ am__installdirs = "$(DESTDIR)$(pkglibdir)"
 pkglibLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
 em64t_la_LIBADD =
-am_em64t_la_OBJECTS = em64t.lo
+am__em64t_la_SOURCES_DIST = em64t.c
+@TARG_X8664_TRUE@am_em64t_la_OBJECTS = em64t.lo
 em64t_la_OBJECTS = $(am_em64t_la_OBJECTS)
 @TARG_X8664_TRUE@am_em64t_la_rpath = -rpath $(pkglibdir)
+itanium_la_LIBADD =
+am__itanium_la_SOURCES_DIST = itanium.c
+@TARG_IA64_TRUE@am_itanium_la_OBJECTS = itanium.lo
+itanium_la_OBJECTS = $(am_itanium_la_OBJECTS)
+@TARG_IA64_TRUE@am_itanium_la_rpath = -rpath $(pkglibdir)
 opteron_la_LIBADD =
-am_opteron_la_OBJECTS = opteron.lo
+am__opteron_la_SOURCES_DIST = opteron.c
+@TARG_X8664_TRUE@am_opteron_la_OBJECTS = opteron.lo
 opteron_la_OBJECTS = $(am_opteron_la_OBJECTS)
 @TARG_X8664_TRUE@am_opteron_la_rpath = -rpath $(pkglibdir)
-@TARG_X8664_TRUE@am__EXEEXT_1 = em64t_si_gen$(EXEEXT) \
-@TARG_X8664_TRUE@	opteron_si_gen$(EXEEXT)
+@TARG_IA64_FALSE@@TARG_X8664_TRUE@am__EXEEXT_1 =  \
+@TARG_IA64_FALSE@@TARG_X8664_TRUE@	em64t_si_gen$(EXEEXT) \
+@TARG_IA64_FALSE@@TARG_X8664_TRUE@	opteron_si_gen$(EXEEXT)
+@TARG_IA64_TRUE@am__EXEEXT_1 = itanium_si_gen$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 am_abi_properties_gen_OBJECTS = gen_util.$(OBJEXT) \
 	abi_properties.$(OBJEXT) abi_properties_gen.$(OBJEXT)
@@ -104,10 +119,11 @@ nodist_abi_properties_gen_OBJECTS = targ_isa_registers.$(OBJEXT) \
 abi_properties_gen_OBJECTS = $(am_abi_properties_gen_OBJECTS) \
 	$(nodist_abi_properties_gen_OBJECTS)
 abi_properties_gen_LDADD = $(LDADD)
-am_em64t_si_gen_OBJECTS = em64t_si.$(OBJEXT)
+am__em64t_si_gen_SOURCES_DIST = em64t_si.cxx
+@TARG_X8664_TRUE@am_em64t_si_gen_OBJECTS = em64t_si.$(OBJEXT)
 em64t_si_gen_OBJECTS = $(am_em64t_si_gen_OBJECTS)
 am__DEPENDENCIES_1 = libsigen.a libtarginfo.a
-em64t_si_gen_DEPENDENCIES = $(am__DEPENDENCIES_1)
+@TARG_X8664_TRUE@em64t_si_gen_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_isa_bundle_gen_OBJECTS = gen_util.$(OBJEXT) isa_bundle.$(OBJEXT) \
 	isa_bundle_gen.$(OBJEXT)
 nodist_isa_bundle_gen_OBJECTS = targ_isa_properties.$(OBJEXT) \
@@ -191,9 +207,14 @@ nodist_isa_subset_gen_OBJECTS = topcode.$(OBJEXT)
 isa_subset_gen_OBJECTS = $(am_isa_subset_gen_OBJECTS) \
 	$(nodist_isa_subset_gen_OBJECTS)
 isa_subset_gen_LDADD = $(LDADD)
-am_opteron_si_gen_OBJECTS = opteron_si.$(OBJEXT)
+am__itanium_si_gen_SOURCES_DIST = itanium_si.cxx
+@TARG_IA64_TRUE@am_itanium_si_gen_OBJECTS = itanium_si.$(OBJEXT)
+itanium_si_gen_OBJECTS = $(am_itanium_si_gen_OBJECTS)
+@TARG_IA64_TRUE@itanium_si_gen_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am__opteron_si_gen_SOURCES_DIST = opteron_si.cxx
+@TARG_X8664_TRUE@am_opteron_si_gen_OBJECTS = opteron_si.$(OBJEXT)
 opteron_si_gen_OBJECTS = $(am_opteron_si_gen_OBJECTS)
-opteron_si_gen_DEPENDENCIES = $(am__DEPENDENCIES_1)
+@TARG_X8664_TRUE@opteron_si_gen_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_proc_gen_OBJECTS = gen_util.$(OBJEXT) proc.$(OBJEXT) \
 	proc_gen.$(OBJEXT)
 proc_gen_OBJECTS = $(am_proc_gen_OBJECTS)
@@ -225,7 +246,8 @@ CXXLINK = $(LIBTOOL) --tag=CXX --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(libsigen_a_SOURCES) $(libtarginfo_a_SOURCES) \
 	$(nodist_libtarginfo_a_SOURCES) $(em64t_la_SOURCES) \
-	$(opteron_la_SOURCES) $(abi_properties_gen_SOURCES) \
+	$(itanium_la_SOURCES) $(opteron_la_SOURCES) \
+	$(abi_properties_gen_SOURCES) \
 	$(nodist_abi_properties_gen_SOURCES) $(em64t_si_gen_SOURCES) \
 	$(isa_bundle_gen_SOURCES) $(nodist_isa_bundle_gen_SOURCES) \
 	$(isa_decode_gen_SOURCES) $(nodist_isa_decode_gen_SOURCES) \
@@ -238,20 +260,23 @@ SOURCES = $(libsigen_a_SOURCES) $(libtarginfo_a_SOURCES) \
 	$(nodist_isa_properties_gen_SOURCES) $(isa_pseudo_gen_SOURCES) \
 	$(nodist_isa_pseudo_gen_SOURCES) $(isa_registers_gen_SOURCES) \
 	$(nodist_isa_registers_gen_SOURCES) $(isa_subset_gen_SOURCES) \
-	$(nodist_isa_subset_gen_SOURCES) $(opteron_si_gen_SOURCES) \
-	$(proc_gen_SOURCES) $(proc_properties_gen_SOURCES) \
+	$(nodist_isa_subset_gen_SOURCES) $(itanium_si_gen_SOURCES) \
+	$(opteron_si_gen_SOURCES) $(proc_gen_SOURCES) \
+	$(proc_properties_gen_SOURCES) \
 	$(nodist_proc_properties_gen_SOURCES)
 DIST_SOURCES = $(libsigen_a_SOURCES) $(libtarginfo_a_SOURCES) \
-	$(em64t_la_SOURCES) $(opteron_la_SOURCES) \
-	$(abi_properties_gen_SOURCES) $(em64t_si_gen_SOURCES) \
-	$(isa_bundle_gen_SOURCES) $(isa_decode_gen_SOURCES) \
-	$(isa_enums_gen_SOURCES) $(isa_gen_SOURCES) \
-	$(isa_hazards_gen_SOURCES) $(isa_lits_gen_SOURCES) \
-	$(isa_operands_gen_SOURCES) $(isa_pack_gen_SOURCES) \
-	$(isa_print_gen_SOURCES) $(isa_properties_gen_SOURCES) \
-	$(isa_pseudo_gen_SOURCES) $(isa_registers_gen_SOURCES) \
-	$(isa_subset_gen_SOURCES) $(opteron_si_gen_SOURCES) \
-	$(proc_gen_SOURCES) $(proc_properties_gen_SOURCES)
+	$(am__em64t_la_SOURCES_DIST) $(am__itanium_la_SOURCES_DIST) \
+	$(am__opteron_la_SOURCES_DIST) $(abi_properties_gen_SOURCES) \
+	$(am__em64t_si_gen_SOURCES_DIST) $(isa_bundle_gen_SOURCES) \
+	$(isa_decode_gen_SOURCES) $(isa_enums_gen_SOURCES) \
+	$(isa_gen_SOURCES) $(isa_hazards_gen_SOURCES) \
+	$(isa_lits_gen_SOURCES) $(isa_operands_gen_SOURCES) \
+	$(isa_pack_gen_SOURCES) $(isa_print_gen_SOURCES) \
+	$(isa_properties_gen_SOURCES) $(isa_pseudo_gen_SOURCES) \
+	$(isa_registers_gen_SOURCES) $(isa_subset_gen_SOURCES) \
+	$(am__itanium_si_gen_SOURCES_DIST) \
+	$(am__opteron_si_gen_SOURCES_DIST) $(proc_gen_SOURCES) \
+	$(proc_properties_gen_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -381,7 +406,9 @@ target_vendor = @target_vendor@
 noinst_LIBRARIES = libsigen.a libtarginfo.a
 libtarginfo_a_SOURCES = ti_asm.c ti_bundle.c ti_errors.c ti_latency.c
 libsigen_a_SOURCES = si_gen.cxx
+@TARG_IA64_TRUE@pkglib_LTLIBRARIES = itanium.la
 @TARG_X8664_TRUE@pkglib_LTLIBRARIES = em64t.la opteron.la
+@TARG_IA64_TRUE@_targ_tools = itanium_si_gen
 @TARG_X8664_TRUE@_targ_tools = em64t_si_gen opteron_si_gen
 GENSRCS = targ_abi_properties.c targ_isa_bundle.c targ_isa_decode.c \
 	targ_isa_enums.c targ_isa_hazards.c targ_isa_lits.c \
@@ -392,10 +419,9 @@ GENSRCS = targ_abi_properties.c targ_isa_bundle.c targ_isa_decode.c \
 GENHDRS = $(patsubst %.c,%.h,${GENSRCS})
 GENXPRT = $(patsubst %.c,%.Exported,${GENSRCS})
 nodist_libtarginfo_a_SOURCES = ${GENSRCS}
-BUILT_SOURCES = ${GENSRCS} ${GENHDRS} ${em64t_la_SOURCES} \
-	${opteron_la_SOURCES}
-CLEANFILES = ${GENSRCS} ${GENHDRS} ${GENXPRT} ${em64t_la_SOURCES} \
-	${opteron_la_SOURCES}
+BUILT_SOURCES = ${GENSRCS} ${GENHDRS} $(am__append_1) $(am__append_3)
+CLEANFILES = ${GENSRCS} ${GENHDRS} ${GENXPRT} $(am__append_2) \
+	$(am__append_4)
 abi_properties_gen_SOURCES = gen_util.cxx abi_properties.cxx \
 	abi_properties_gen.cxx
 
@@ -440,14 +466,22 @@ nodist_proc_properties_gen_SOURCES = targ_proc.c
 #
 # X8664
 #
-em64t_la_SOURCES = em64t.c
-em64t_la_LDFLAGS = -avoid-version -module
-em64t_si_gen_SOURCES = em64t_si.cxx
-em64t_si_gen_LDADD = ${noinst_LIBRARIES}
-opteron_la_SOURCES = opteron.c
-opteron_la_LDFLAGS = -avoid-version -module
-opteron_si_gen_SOURCES = opteron_si.cxx
-opteron_si_gen_LDADD = ${noinst_LIBRARIES}
+@TARG_X8664_TRUE@em64t_la_SOURCES = em64t.c
+@TARG_X8664_TRUE@em64t_la_LDFLAGS = -avoid-version -module
+@TARG_X8664_TRUE@em64t_si_gen_SOURCES = em64t_si.cxx
+@TARG_X8664_TRUE@em64t_si_gen_LDADD = ${noinst_LIBRARIES}
+@TARG_X8664_TRUE@opteron_la_SOURCES = opteron.c
+@TARG_X8664_TRUE@opteron_la_LDFLAGS = -avoid-version -module
+@TARG_X8664_TRUE@opteron_si_gen_SOURCES = opteron_si.cxx
+@TARG_X8664_TRUE@opteron_si_gen_LDADD = ${noinst_LIBRARIES}
+
+#
+# IA64
+# 
+@TARG_IA64_TRUE@itanium_la_SOURCES = itanium.c
+@TARG_IA64_TRUE@itanium_la_LDFLAGS = -avoid-version -module
+@TARG_IA64_TRUE@itanium_si_gen_SOURCES = itanium_si.cxx
+@TARG_IA64_TRUE@itanium_si_gen_LDADD = ${noinst_LIBRARIES}
 AM_CPPFLAGS = ${PIC_FLAGS} -I${srcdir}/access -I${srcdir}/generate
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -523,6 +557,8 @@ clean-pkglibLTLIBRARIES:
 	done
 em64t.la: $(em64t_la_OBJECTS) $(em64t_la_DEPENDENCIES) 
 	$(LINK) $(am_em64t_la_rpath) $(em64t_la_LDFLAGS) $(em64t_la_OBJECTS) $(em64t_la_LIBADD) $(LIBS)
+itanium.la: $(itanium_la_OBJECTS) $(itanium_la_DEPENDENCIES) 
+	$(LINK) $(am_itanium_la_rpath) $(itanium_la_LDFLAGS) $(itanium_la_OBJECTS) $(itanium_la_LIBADD) $(LIBS)
 opteron.la: $(opteron_la_OBJECTS) $(opteron_la_DEPENDENCIES) 
 	$(LINK) $(am_opteron_la_rpath) $(opteron_la_LDFLAGS) $(opteron_la_OBJECTS) $(opteron_la_LIBADD) $(LIBS)
 
@@ -577,6 +613,9 @@ isa_registers_gen$(EXEEXT): $(isa_registers_gen_OBJECTS) $(isa_registers_gen_DEP
 isa_subset_gen$(EXEEXT): $(isa_subset_gen_OBJECTS) $(isa_subset_gen_DEPENDENCIES) 
 	@rm -f isa_subset_gen$(EXEEXT)
 	$(CXXLINK) $(isa_subset_gen_LDFLAGS) $(isa_subset_gen_OBJECTS) $(isa_subset_gen_LDADD) $(LIBS)
+itanium_si_gen$(EXEEXT): $(itanium_si_gen_OBJECTS) $(itanium_si_gen_DEPENDENCIES) 
+	@rm -f itanium_si_gen$(EXEEXT)
+	$(CXXLINK) $(itanium_si_gen_LDFLAGS) $(itanium_si_gen_OBJECTS) $(itanium_si_gen_LDADD) $(LIBS)
 opteron_si_gen$(EXEEXT): $(opteron_si_gen_OBJECTS) $(opteron_si_gen_DEPENDENCIES) 
 	@rm -f opteron_si_gen$(EXEEXT)
 	$(CXXLINK) $(opteron_si_gen_LDFLAGS) $(opteron_si_gen_OBJECTS) $(opteron_si_gen_LDADD) $(LIBS)
@@ -624,6 +663,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/isa_registers_gen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/isa_subset.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/isa_subset_gen.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/itanium.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/itanium_si.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/opteron.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/opteron_si.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proc.Po@am__quote@
@@ -942,11 +983,14 @@ isa_subset.${OBJEXT}: topcode.h
 isa_subset_gen.${OBJEXT}: topcode.h
 proc_properties_gen.${OBJEXT}: targ_proc.h
 
-em64t.c: em64t_si_gen
-	./$<
+@TARG_X8664_TRUE@em64t.c: em64t_si_gen
+@TARG_X8664_TRUE@	./$<
 
-opteron.c: opteron_si_gen
-	./$<
+@TARG_X8664_TRUE@opteron.c: opteron_si_gen
+@TARG_X8664_TRUE@	./$<
+
+@TARG_IA64_TRUE@itanium.c: itanium_si_gen
+@TARG_IA64_TRUE@	./$<
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:
