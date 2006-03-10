@@ -7,6 +7,11 @@ pkglib_LTLIBRARIES = em64t.la opteron.la
 _targ_tools = em64t_si_gen opteron_si_gen
 endif
 
+if TARG_IA64
+pkglib_LTLIBRARIES = itanium.la
+_targ_tools = itanium_si_gen
+endif
+
 GENSRCS = targ_abi_properties.c targ_isa_bundle.c targ_isa_decode.c \
 	targ_isa_enums.c targ_isa_hazards.c targ_isa_lits.c \
 	targ_isa_operands.c targ_isa_pack.c targ_isa_print.c \
@@ -141,6 +146,7 @@ proc_properties_gen.${OBJEXT}: targ_proc.h
 #
 # X8664
 #
+if TARG_X8664
 em64t_la_SOURCES = em64t.c
 em64t_la_LDFLAGS = -avoid-version -module
 
@@ -164,6 +170,24 @@ opteron.c: opteron_si_gen
 
 opteron_si_gen_SOURCES = opteron_si.cxx
 opteron_si_gen_LDADD = ${noinst_LIBRARIES}
+endif
+
+#
+# IA64
+# 
+if TARG_IA64
+itanium_la_SOURCES = itanium.c
+itanium_la_LDFLAGS = -avoid-version -module
+
+BUILT_SOURCES += ${itanium_la_SOURCES}
+CLEANFILES += ${itanium_la_SOURCES}
+
+itanium.c: itanium_si_gen
+	./$<
+
+itanium_si_gen_SOURCES = itanium_si.cxx
+itanium_si_gen_LDADD = ${noinst_LIBRARIES}
+endif
 
 AM_CPPFLAGS = ${PIC_FLAGS} -I${srcdir}/access -I${srcdir}/generate
 
