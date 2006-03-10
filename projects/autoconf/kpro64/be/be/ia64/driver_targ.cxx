@@ -70,6 +70,9 @@ void Initialize_Targ_Info(void)
   case TARGET_ITANIUM:
     proc = PROCESSOR_itanium;
     break;
+  case TARGET_ITANIUM2:
+    proc = PROCESSOR_itanium2;
+    break;
   default:
     FmtAssert(FALSE, ("targinfo doesn't handle target: %s\n", Targ_Name(Target)));
     /*NOTREACHED*/
