@@ -77,12 +77,10 @@ static lang_info_t language_info[] = {
 	{'I',	0x80000000,	{"int"}},	/* Internal option */
 };
 
-#define NAMEPREFIX	""
 #define BINPATH		"/usr/bin"
 #define LIBPATH		"/usr/lib"
-#define ALTLIBPATH	LIBPATH
-#define PHASEPATH	"/usr/lib/" PSC_NAME_PREFIX "cc-lib"
-#define GNUPHASEPATH    PHASEPATH
+#define LIBEXECPATH	"/usr/libexec"
+#define PHASEPATH	"/usr/lib/" PACKAGE
 
 typedef struct phase_struct {
 	char key;
@@ -100,12 +98,12 @@ static phase_info_t phase_info[] = {
    {'m',  0x0000000000000008LL,	"m4",	BINPATH,	FALSE},	/* m4 */
    {'r',  0x0000000000000001LL,	"ratfor",BINPATH,	FALSE},	/* ratfor */
 
-   {'p',  0x0000000000000010LL,	"cpp",	PHASEPATH,	FALSE},	/* cpp */
+   {'p',  0x0000000000000010LL,	"cpp",	BINPATH,	FALSE},	/* cpp */
    /* invoke gcc driver directly rather than cpp
     * because cpp can have different paths, reads spec file,
     * and may eventually be merged with cc1. */
-   {'p',  0x0000000000000020LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* gcpp */
-   {'p',  0x0000000000000040LL,	NAMEPREFIX "g++", BINPATH, FALSE}, /* gcpp_plus */
+   {'p',  0x0000000000000020LL,	"gcc", BINPATH, FALSE}, /* gcpp */
+   {'p',  0x0000000000000040LL,	"g++", BINPATH, FALSE}, /* gcpp_plus */
    {'p',  0x0000000000000080LL,	"fec",	 PHASEPATH,	FALSE},	/* c_cpp */
    {'p',  0x0000000000000100LL, "cpp",   PHASEPATH,     FALSE}, /* cplus_cpp */
    {'p',  0x0000000000000200LL,	"mfef77",PHASEPATH,	FALSE},	/* f_cpp */
@@ -135,8 +133,8 @@ static phase_info_t phase_info[] = {
    {'f',  0x0000000000020000LL, "mfef77",PHASEPATH,     FALSE}, /* cppf_fe */
    {'f',  0x0000000000040000LL,	"mfef95",PHASEPATH,	FALSE},	/* f90_fe */
    {'f',  0x0000000000080000LL,	"mfef95",PHASEPATH,	FALSE},	/* cppf90_fe */
-   {'f',  0x0000000000100000LL,	"gfec",PHASEPATH,	TRUE }, /* c_gfe */
-   {'f',  0x0000000000200000LL,	"gfecc",PHASEPATH,	TRUE }, /* cplus_gfe */
+   {'f',  0x0000000000100000LL,	NAME_PREFIX "gfec",LIBEXECPATH,	TRUE }, /* c_gfe */
+   {'f',  0x0000000000200000LL,	NAME_PREFIX "gfecc",LIBEXECPATH,	TRUE }, /* cplus_gfe */
    /* place-holder for generic fe, whose mask unites all fe's; */
    /* this is so -Wf will apply to whatever fe is being invoked. */
    {'f',  0x0000000000ff0000LL,	"",	"",		FALSE},	/* any_fe */
@@ -149,18 +147,18 @@ static phase_info_t phase_info[] = {
    {'i',  0x0000000020000000LL,	"ipl",	PHASEPATH,	TRUE},	/* ipl */
    {'i',  0x00000000f0000000LL,	"",	"",		TRUE},	/* ipl, inline*/
 
-   {'b',  0x0000000100000000LL,	"be",	PHASEPATH,	TRUE},	/* be */
+   {'b',  0x0000000100000000LL,	NAME_PREFIX "be", LIBEXECPATH,	TRUE},	/* be */
    /* We use 'B' for options to be passed to be via ipacom. */
 
    {'a',  0x0000001000000000LL,	"asm",	PHASEPATH,	FALSE},	/* as */
-   {'a',  0x0000002000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* gcc */
+   {'a',  0x0000002000000000LL,	"gcc", BINPATH, FALSE}, /* gcc */
    {'a',  0x0000003000000000LL,	"",	"",		FALSE},	/* any_as */
 
    {'d',  0x0000008000000000LL, "dsm_prelink", PHASEPATH,FALSE},/* dsm_prelink*/
-   {'j',  0x0000010000000000LL,	"ipa_link", GNUPHASEPATH,TRUE},	/* ipa_link */
-   {'l',  0x0000020000000000LL,	"collect2", GNUPHASEPATH,TRUE},	/* collect */
-   {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE}, /* ld */
-   {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE}, /* ldplus */
+   {'j',  0x0000010000000000LL,	"ipa_link", PHASEPATH,TRUE},	/* ipa_link */
+   {'l',  0x0000020000000000LL,	"collect2", PHASEPATH,TRUE},	/* collect */
+   {'l',  0x0000040000000000LL,	"gcc", BINPATH, FALSE}, /* ld */
+   {'l',  0x0000080000000000LL,	"g++", BINPATH, FALSE}, /* ldplus */
    {'l',  0x01000f0000000000LL,	"",	"",		TRUE},	/* any_ld */
    {'c',  0x0000100000000000LL, "cord", BINPATH,	FALSE},	/* cord */
    {'x',  0x0000200000000000LL, "pixie", BINPATH,   FALSE}, /* pixie */
@@ -171,7 +169,7 @@ static phase_info_t phase_info[] = {
    {'S',  0x0010000000000000LL,	"crt",	LIBPATH,	FALSE},	/* startup */
    {'I',  0x0020000000000000LL,	"inc",	"/usr/include",	FALSE},	/* include */
    {'L',  0x0040000000000000LL,	"lib",	LIBPATH,	FALSE},	/* library */
-   {'L',  0x0080000000000000LL,	"alib",	ALTLIBPATH,	FALSE},	/* alt_library */
+   {'L',  0x0080000000000000LL,	"alib",	LIBPATH,	FALSE},	/* alt_library */
 };
 mask_t PHASE_MASK=
           0x000fffffffffffffLL;
