@@ -87,6 +87,7 @@ main()
   superscalar = PROC_Property_Create ("is_superscalar");
   Processor_Group (superscalar,
 			PROCESSOR_itanium,
+			PROCESSOR_itanium2,
 			PROCESSOR_UNDEFINED);
 
   /* Does the target execute insts as sequence of bundles, or require 
@@ -96,6 +97,7 @@ main()
   bundles = PROC_Property_Create ("has_bundles");
   Processor_Group (bundles,
 			PROCESSOR_itanium,
+			PROCESSOR_itanium2,
 			PROCESSOR_UNDEFINED);
 
   /* Does the target support delayed_exception mechanism, i.e ability to
@@ -105,6 +107,7 @@ main()
   delayed_exception = PROC_Property_Create ("has_delayed_exception");
   Processor_Group (delayed_exception,
 			PROCESSOR_itanium,
+			PROCESSOR_itanium2,
 			PROCESSOR_UNDEFINED);
 
   /* Does the target have a fast recip instruction? 
