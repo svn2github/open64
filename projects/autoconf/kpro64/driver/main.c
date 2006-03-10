@@ -602,10 +602,10 @@ static void set_executable_dir (void) {
   ldir = drop_path (dir);
   if (strcmp (ldir, "bin") == 0) {
     char *basedir = directory_path (dir);
-    substitute_phase_dirs ("/usr/lib", basedir, "/lib/" PACKAGE_VERSION);
-    substitute_phase_dirs ("/usr/lib/" PSC_NAME_PREFIX "cc-lib",
-			   basedir, "/lib/" PACKAGE_VERSION);
     substitute_phase_dirs ("/usr/include", basedir, "/include");
+    substitute_phase_dirs ("/usr/lib", basedir, "/lib");
+    substitute_phase_dirs ("/usr/lib/" PACKAGE, basedir, "/lib/" PACKAGE);
+    substitute_phase_dirs ("/usr/libexec", basedir, "/libexec");
     return;
   }
 
