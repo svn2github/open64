@@ -163,9 +163,8 @@ static BOOL clone_incr_overridden = FALSE;
 static BOOL clone_min_incr_overridden = FALSE;
 static BOOL clone_max_incr_overridden = FALSE;
 static BOOL CFLOW_Enable_Clone_overridden = FALSE;
-#ifdef TARG_X8664
+
 BOOL cg_load_execute_overridden = FALSE;
-#endif
 
 /* Keep	a copy of the command line options for assembly	output:	*/
 static char *option_string;

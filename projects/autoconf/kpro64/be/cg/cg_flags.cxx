@@ -321,9 +321,9 @@ OPTION_LIST *Arc_Profile_Region = NULL;
 INT32 CG_cse_regs = INT32_MAX - 1000;
 INT32 CG_sse_cse_regs = INT32_MAX - 1000;
 #endif
+INT32 CG_load_execute = 1;
 #ifdef TARG_X8664
 INT32 CG_sse_load_execute = 0;
-INT32 CG_load_execute = 1;
 BOOL CG_loadbw_execute = FALSE;
 BOOL CG_p2align = FALSE;
 #endif

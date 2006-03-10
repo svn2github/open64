@@ -1508,7 +1508,7 @@ LRANGE::Remove_Boundary_Bb( BB *target_bb )
 
 /////////////////////////////////////
 // Return TRUE if the lrange is live-in in this boundary BB.
-inline BOOL
+BOOL
 LRANGE_BOUNDARY_BB::Is_Live_In(void)
 {
   return gbb->Is_Live_In_LRANGE(lrange);
@@ -1516,7 +1516,7 @@ LRANGE_BOUNDARY_BB::Is_Live_In(void)
 
 /////////////////////////////////////
 // Return TRUE if the lrange is live-out in this boundary BB.
-inline BOOL
+BOOL
 LRANGE_BOUNDARY_BB::Is_Live_Out(void)
 {
   return gbb->Is_Live_Out_LRANGE(lrange);

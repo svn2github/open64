@@ -117,11 +117,7 @@ TN* Create_TN_Pair( TN*, TYPE_ID );
 void Create_TN_Pair( TN*, TN* );
 #endif /* TARG_X8664 */
 
-#ifndef KEY
-extern TN* Expand_Immediate_Into_Register (TN *src, OPS *ops);
-#else
 extern TN* Expand_Immediate_Into_Register (TN *src, BOOL is_64bit, OPS *ops);
-#endif
 extern BOOL Expand_Special_And_Immed(TN *dest, TN *src1, INT64 imm, OPS *ops);
 
 /* enumerate the different kinds of shifts */
@@ -133,13 +129,8 @@ extern void Expand_Rrotate (TN *result, TN *src1, TN *src2, TYPE_ID rtype, TYPE_
 
 /* in exp_loadstore: */
 extern void Expand_Lda (TN *dest, TN *src, OPS *ops);
-#if defined(TARG_MIPS) || defined(TARG_X8664)
-extern void Expand_Load (OPCODE opcode, TN *result, TN *src1, TN *src2, OPS *ops);
-extern void Expand_Store (TYPE_ID mtype, TN *src1, TN *src2, TN *src3, OPS *ops);
-#else
-extern void Expand_Load (OPCODE opcode, TN *result, TN *src1, TN *src2, VARIANT variant, OPS *ops);
-extern void Expand_Store (TYPE_ID mtype, TN *src1, TN *src2, TN *src3, VARIANT variant, OPS *ops);
-#endif
+extern void Expand_Load (OPCODE opcode, TN *result, TN *src1, TN *src2, OPS *ops, VARIANT variant = V_NONE);
+extern void Expand_Store (TYPE_ID mtype, TN *src1, TN *src2, TN *src3, OPS *ops, VARIANT variant = V_NONE);
 extern void Expand_Misaligned_Load (OPCODE op, TN *result, TN *base, TN *disp, VARIANT variant, OPS *ops);
 extern void Expand_Misaligned_Store (TYPE_ID mtype, TN *obj_tn, TN *base_tn, TN *disp_tn, VARIANT variant, OPS *ops);
 extern void Expand_Lda_Label (TN *dest, TN *lab, OPS *ops);

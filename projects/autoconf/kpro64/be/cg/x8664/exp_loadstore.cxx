@@ -239,7 +239,7 @@ static void Expand_Split_Load( OPCODE opcode,
 
 
 void
-Expand_Load (OPCODE opcode, TN *result, TN *base, TN *ofst, OPS *ops)
+Expand_Load (OPCODE opcode, TN *result, TN *base, TN *ofst, OPS *ops, VARIANT v)
 {
   if( OP_NEED_PAIR( OPCODE_rtype(opcode) ) ){
     Expand_Split_Load( opcode, result, base, ofst, ops );
@@ -431,7 +431,7 @@ static void Expand_Split_Store( TYPE_ID mtype,
 
 
 void
-Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, OPS *ops)
+Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, OPS *ops, VARIANT v)
 {
   TOP top =
     Pick_Store_Instruction( mtype, base, ofst, TN_register_class(src) );

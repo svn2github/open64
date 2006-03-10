@@ -1,9 +1,18 @@
 pkglib_LTLIBRARIES = cg.la
+
+if TARG_X8664
+_trgt_sources = cg_convert_x87.cxx cg_sched.cxx 
+endif
+
+if TARG_IA64
+_trgt_sources = float_rf.cxx
+endif
+
 cg_la_SOURCES = annotations.cxx bb_map.cxx bblist.cxx bbutil.cxx calls.cxx \
-	cflow.cxx cg.cxx cg_cflow.cxx cg_convert_x87.cxx cg_db_op.cxx \
-	cg_dep_graph.cxx cg_flags.cxx cg_flags_arch.cxx cg_gcov.cxx \
-	cg_loop.cxx cg_loop_mii.cxx cg_loop_recur.cxx cg_loop_scc.cxx \
-	cg_region.cxx cg_sched.cxx cg_sched_est.cxx cg_spill.cxx cg_swp.cxx \
+	cflow.cxx cg.cxx cg_cflow.cxx cg_db_op.cxx cg_dep_graph.cxx \
+	cg_flags.cxx cg_flags_arch.cxx cg_gcov.cxx cg_loop.cxx \
+	cg_loop_mii.cxx cg_loop_recur.cxx cg_loop_scc.cxx cg_region.cxx \
+	cg_sched_est.cxx cg_spill.cxx cg_swp.cxx \
 	cg_swp_allocator.cxx cg_swp_bundle.cxx cg_swp_emit.cxx \
 	cg_swp_sched.cxx cg_swp_target.cxx cg_thr.cxx cg_vector.cxx \
 	cgdriver.cxx cgdwarf.cxx cgdwarf_targ.cxx cgemit.cxx cgemit_targ.cxx \
@@ -22,7 +31,7 @@ cg_la_SOURCES = annotations.cxx bb_map.cxx bblist.cxx bbutil.cxx calls.cxx \
 	note.cxx op_map.cxx oputil.cxx pqs.cxx pqs_cg.cxx reg_live.cxx \
 	register.cxx register_targ.cxx tag.cxx targ_em_const.cxx \
 	targ_em_dwarf.cxx targ_em_elf.cxx tn_map.cxx tnutil.cxx variants.cxx \
-	whirl2ops.cxx
+	whirl2ops.cxx ${_trgt_sources}
 cg_la_LDFLAGS = -avoid-version -module
 cg_la_LIBADD = ../../libelfutil/libelfutil.a ../../libunwind/libunwind.a \
 	../be/libbe.la ../../libdwarf/libdwarf.la ../../libelf/libelf.la

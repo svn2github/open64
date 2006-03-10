@@ -134,9 +134,7 @@ TN_MAP TN_To_PREG_Map;
 BB_MAP BBs_Map = NULL;
 #endif
 
-#ifdef TARG_X8664
 extern BOOL cg_load_execute_overridden;
-#endif
 
 /* WOPT alias manager */
 struct ALIAS_MANAGER *Alias_Manager;

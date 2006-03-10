@@ -57,14 +57,45 @@ LTLIBRARIES = $(pkglib_LTLIBRARIES)
 cg_la_DEPENDENCIES = ../../libelfutil/libelfutil.a \
 	../../libunwind/libunwind.a ../be/libbe.la \
 	../../libdwarf/libdwarf.la ../../libelf/libelf.la
+am__cg_la_SOURCES_DIST = annotations.cxx bb_map.cxx bblist.cxx \
+	bbutil.cxx calls.cxx cflow.cxx cg.cxx cg_cflow.cxx \
+	cg_db_op.cxx cg_dep_graph.cxx cg_flags.cxx cg_flags_arch.cxx \
+	cg_gcov.cxx cg_loop.cxx cg_loop_mii.cxx cg_loop_recur.cxx \
+	cg_loop_scc.cxx cg_region.cxx cg_sched_est.cxx cg_spill.cxx \
+	cg_swp.cxx cg_swp_allocator.cxx cg_swp_bundle.cxx \
+	cg_swp_emit.cxx cg_swp_sched.cxx cg_swp_target.cxx cg_thr.cxx \
+	cg_vector.cxx cgdriver.cxx cgdwarf.cxx cgdwarf_targ.cxx \
+	cgemit.cxx cgemit_targ.cxx cgexp.cxx cgprep.cxx cgtarget.cxx \
+	cio_rwtran.cxx comment.cxx dominate.cxx ebo.cxx \
+	ebo_special.cxx eh_region.cxx em_dwarf.cxx em_elf.cxx \
+	entry_exit_targ.cxx exp_branch.cxx exp_divrem.cxx \
+	exp_loadstore.cxx exp_predicate.cxx expand.cxx findloops.cxx \
+	freq.cxx gcm.cxx gra.cxx gra_bb.cxx gra_cflow.cxx \
+	gra_color.cxx gra_create.cxx gra_grant.cxx gra_interfere.cxx \
+	gra_live.cxx gra_loop.cxx gra_lrange.cxx \
+	gra_lrange_subuniverse.cxx gra_lrange_vset.cxx gra_lunit.cxx \
+	gra_pref.cxx gra_region.cxx gra_spill.cxx gra_split.cxx \
+	gra_trace.cxx gtn_tn_set.cxx gtn_universe.cxx hb.cxx \
+	hb_block_select.cxx hb_cflow.cxx hb_hazards.cxx \
+	hb_id_candidates.cxx hb_if_convert.cxx hb_sched.cxx \
+	hb_tail_duplication.cxx hb_trace.cxx iface_scn.cxx igls.cxx \
+	init.cxx label_util.cxx localize.cxx lra.cxx note.cxx \
+	op_map.cxx oputil.cxx pqs.cxx pqs_cg.cxx reg_live.cxx \
+	register.cxx register_targ.cxx tag.cxx targ_em_const.cxx \
+	targ_em_dwarf.cxx targ_em_elf.cxx tn_map.cxx tnutil.cxx \
+	variants.cxx whirl2ops.cxx float_rf.cxx cg_convert_x87.cxx \
+	cg_sched.cxx
+@TARG_IA64_FALSE@@TARG_X8664_TRUE@am__objects_1 = cg_convert_x87.lo \
+@TARG_IA64_FALSE@@TARG_X8664_TRUE@	cg_sched.lo
+@TARG_IA64_TRUE@am__objects_1 = float_rf.lo
 am_cg_la_OBJECTS = annotations.lo bb_map.lo bblist.lo bbutil.lo \
-	calls.lo cflow.lo cg.lo cg_cflow.lo cg_convert_x87.lo \
-	cg_db_op.lo cg_dep_graph.lo cg_flags.lo cg_flags_arch.lo \
-	cg_gcov.lo cg_loop.lo cg_loop_mii.lo cg_loop_recur.lo \
-	cg_loop_scc.lo cg_region.lo cg_sched.lo cg_sched_est.lo \
-	cg_spill.lo cg_swp.lo cg_swp_allocator.lo cg_swp_bundle.lo \
-	cg_swp_emit.lo cg_swp_sched.lo cg_swp_target.lo cg_thr.lo \
-	cg_vector.lo cgdriver.lo cgdwarf.lo cgdwarf_targ.lo cgemit.lo \
+	calls.lo cflow.lo cg.lo cg_cflow.lo cg_db_op.lo \
+	cg_dep_graph.lo cg_flags.lo cg_flags_arch.lo cg_gcov.lo \
+	cg_loop.lo cg_loop_mii.lo cg_loop_recur.lo cg_loop_scc.lo \
+	cg_region.lo cg_sched_est.lo cg_spill.lo cg_swp.lo \
+	cg_swp_allocator.lo cg_swp_bundle.lo cg_swp_emit.lo \
+	cg_swp_sched.lo cg_swp_target.lo cg_thr.lo cg_vector.lo \
+	cgdriver.lo cgdwarf.lo cgdwarf_targ.lo cgemit.lo \
 	cgemit_targ.lo cgexp.lo cgprep.lo cgtarget.lo cio_rwtran.lo \
 	comment.lo dominate.lo ebo.lo ebo_special.lo eh_region.lo \
 	em_dwarf.lo em_elf.lo entry_exit_targ.lo exp_branch.lo \
@@ -81,12 +112,13 @@ am_cg_la_OBJECTS = annotations.lo bb_map.lo bblist.lo bbutil.lo \
 	init.lo label_util.lo localize.lo lra.lo note.lo op_map.lo \
 	oputil.lo pqs.lo pqs_cg.lo reg_live.lo register.lo \
 	register_targ.lo tag.lo targ_em_const.lo targ_em_dwarf.lo \
-	targ_em_elf.lo tn_map.lo tnutil.lo variants.lo whirl2ops.lo
-am__objects_1 = bb_list.lo bb_set.lo cg_loop_scc_prop.lo \
+	targ_em_elf.lo tn_map.lo tnutil.lo variants.lo whirl2ops.lo \
+	$(am__objects_1)
+am__objects_2 = bb_list.lo bb_set.lo cg_loop_scc_prop.lo \
 	gra_bb_list.lo gtn_set.lo lrange_list.lo lrange_set.lo \
 	op_list.lo st_list.lo tn_list.lo tn_prop.lo tn_set.lo \
 	void_list.lo
-nodist_cg_la_OBJECTS = $(am__objects_1)
+nodist_cg_la_OBJECTS = $(am__objects_2)
 cg_la_OBJECTS = $(am_cg_la_OBJECTS) $(nodist_cg_la_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -100,7 +132,7 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(cg_la_SOURCES) $(nodist_cg_la_SOURCES)
-DIST_SOURCES = $(cg_la_SOURCES)
+DIST_SOURCES = $(am__cg_la_SOURCES_DIST)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -228,11 +260,13 @@ target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
 pkglib_LTLIBRARIES = cg.la
+@TARG_IA64_TRUE@_trgt_sources = float_rf.cxx
+@TARG_X8664_TRUE@_trgt_sources = cg_convert_x87.cxx cg_sched.cxx 
 cg_la_SOURCES = annotations.cxx bb_map.cxx bblist.cxx bbutil.cxx calls.cxx \
-	cflow.cxx cg.cxx cg_cflow.cxx cg_convert_x87.cxx cg_db_op.cxx \
-	cg_dep_graph.cxx cg_flags.cxx cg_flags_arch.cxx cg_gcov.cxx \
-	cg_loop.cxx cg_loop_mii.cxx cg_loop_recur.cxx cg_loop_scc.cxx \
-	cg_region.cxx cg_sched.cxx cg_sched_est.cxx cg_spill.cxx cg_swp.cxx \
+	cflow.cxx cg.cxx cg_cflow.cxx cg_db_op.cxx cg_dep_graph.cxx \
+	cg_flags.cxx cg_flags_arch.cxx cg_gcov.cxx cg_loop.cxx \
+	cg_loop_mii.cxx cg_loop_recur.cxx cg_loop_scc.cxx cg_region.cxx \
+	cg_sched_est.cxx cg_spill.cxx cg_swp.cxx \
 	cg_swp_allocator.cxx cg_swp_bundle.cxx cg_swp_emit.cxx \
 	cg_swp_sched.cxx cg_swp_target.cxx cg_thr.cxx cg_vector.cxx \
 	cgdriver.cxx cgdwarf.cxx cgdwarf_targ.cxx cgemit.cxx cgemit_targ.cxx \
@@ -251,7 +285,7 @@ cg_la_SOURCES = annotations.cxx bb_map.cxx bblist.cxx bbutil.cxx calls.cxx \
 	note.cxx op_map.cxx oputil.cxx pqs.cxx pqs_cg.cxx reg_live.cxx \
 	register.cxx register_targ.cxx tag.cxx targ_em_const.cxx \
 	targ_em_dwarf.cxx targ_em_elf.cxx tn_map.cxx tnutil.cxx variants.cxx \
-	whirl2ops.cxx
+	whirl2ops.cxx ${_trgt_sources}
 
 cg_la_LDFLAGS = -avoid-version -module
 cg_la_LIBADD = ../../libelfutil/libelfutil.a ../../libunwind/libunwind.a \
@@ -408,6 +442,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/exp_predicate.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/expand.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/findloops.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/float_rf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/freq.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gcm.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gra.Plo@am__quote@

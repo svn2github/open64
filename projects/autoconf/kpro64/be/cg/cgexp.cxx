@@ -154,11 +154,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Misaligned_Load ( opcode, result, op1, op2, variant, ops);
 	}
 	else {
-#if defined(TARG_MIPS) || defined(TARG_X8664)
 		Expand_Load (opcode, result, op1, op2, ops);
-#else
-		Expand_Load (opcode, result, op1, op2, variant, ops);
-#endif
 	}
 	break;
   case OPR_ISTORE:
@@ -167,11 +163,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Misaligned_Store (desc, op1, op2, op3, variant, ops);
 	}
 	else {
-#if defined(TARG_MIPS) || defined(TARG_X8664)
 		Expand_Store (desc, op1, op2, op3, ops);
-#else
-		Expand_Store (desc, op1, op2, op3, variant, ops);
-#endif
 	}
 	break;
   case OPR_ABS:

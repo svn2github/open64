@@ -4571,10 +4571,8 @@ CGTARG_Init_Asm_Constraints (void)
 // argument passed to ASM (possibly NULL), choose an appropriate TN for it
 // -----------------------------------------------------------------------
 extern TN* 
-CGTARG_TN_For_Asm_Operand (const char* constraint, 
-                           const WN* load,
-                           TN* pref_tn,
-                           ISA_REGISTER_SUBCLASS* subclass)
+CGTARG_TN_For_Asm_Operand (const char* constraint, const WN* load, TN* pref_tn,
+	ISA_REGISTER_SUBCLASS* subclass, TYPE_ID type)
 {
   // skip constraint modifiers:
   // = input and output parameters are separated in the WHIRL for ASM

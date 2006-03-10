@@ -2192,7 +2192,9 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch)
 
   // Insert the scheduled list of instructions into the bb.
   Put_Sched_Vector_Into_BB (bb, bbsch, priority_fn->Is_Fwd_Schedule() );
+#ifdef TARG_X8664
   LOCS_Fwd_Scheduling = org_LOCS_Fwd_Scheduling;
+#endif
 #endif
 }
 

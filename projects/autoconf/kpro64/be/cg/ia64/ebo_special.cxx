@@ -107,6 +107,16 @@ static const char source_file[] = __FILE__;
 
 /* ===================================================================== */
 
+/* Initialize and finalize ebo special routines. */
+void
+EBO_Special_Start (MEM_POOL *pool)
+{
+}
+
+void
+EBO_Special_Finish (void)
+{
+}
 
 /*
  * Identify OP's that contain a constant and operate in a way that

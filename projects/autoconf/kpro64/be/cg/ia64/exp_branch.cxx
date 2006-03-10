@@ -144,7 +144,7 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
 		if (ISA_LC_Value_In_Class(TN_value(*src1), lc))
 		    cmp = cmp_i;
 		else
-		    *src1 = Expand_Immediate_Into_Register(*src1, ops);
+		    *src1 = Expand_Immediate_Into_Register(*src1, TRUE, ops);
 	}
 
 	return cmp;
@@ -287,8 +287,8 @@ void Exp_Call (OPERATOR opr, TN *return_address, TN *target, OPS *ops)
       // target is at 0(target), gp at 8(target)
       OPCODE opc = OPCODE_make_op (OPR_LDID, Pointer_Mtype, Pointer_Mtype);
       TN *tmp1 = Build_TN_Of_Mtype (Pointer_Mtype);
-      Expand_Load (opc, GP_TN, target, Gen_Literal_TN(8, 4), V_NONE, ops);
-      Expand_Load (opc, tmp1, target, Gen_Literal_TN(0, 4), V_NONE, ops);
+      Expand_Load (opc, GP_TN, target, Gen_Literal_TN(8, 4), ops);
+      Expand_Load (opc, tmp1, target, Gen_Literal_TN(0, 4), ops);
       target = tmp1;
     }
     /*FALLTHROUGH*/

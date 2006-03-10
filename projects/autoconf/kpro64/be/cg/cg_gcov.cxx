@@ -1400,9 +1400,10 @@ CG_Instrument_Arcs()
 	  tgt_label = Gen_Label_For_BB( bb_succ );
 #ifdef TARG_X8664
 	  Build_OP( TOP_jmp, Gen_Label_TN(tgt_label, 0), &new_ops);
+#elif TARG_IA64
+	  Build_OP( TOP_br_cond, Gen_Label_TN(tgt_label, 0), &new_ops);
 #else
-	  // mips
-	  Build_OP( TOP_j, Gen_Label_TN(tgt_label, 0), &new_ops);
+	  Build_OP( TOP_some_jump_instruction, Gen_Label_TN(tgt_label, 0), &new_ops);
 #endif
 	  FmtAssert(TN_is_label( tgt_tn ), ("should be branch target label"));
 	}

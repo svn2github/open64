@@ -659,9 +659,11 @@ extern OPTION_LIST *Arc_Profile_Region;
 extern INT32 CG_cse_regs;
 extern INT32 CG_sse_cse_regs;
 #endif
+
+extern INT32 CG_load_execute;
+
 #ifdef TARG_X8664
 extern INT32 CG_sse_load_execute;
-extern INT32 CG_load_execute;
 extern BOOL CG_use_movlpd;
 extern BOOL CG_use_setcc;
 extern BOOL CG_use_short_form;

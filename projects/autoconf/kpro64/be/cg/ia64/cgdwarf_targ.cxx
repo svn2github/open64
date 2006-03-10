@@ -35,9 +35,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <libelf.h>
 #include <sys/unwindP.h>
-#include <list.h>
+
+#include <list>
 
 #include "defs.h"
 #include "erglob.h"
@@ -50,6 +50,7 @@
 #include "cgir.h"
 #include "register.h"
 #include "tn_map.h"
+#include "elf_stuff.h"
 #include "em_elf.h"
 #include "em_dwarf.h"
 #include "cgtarget.h"
@@ -105,8 +106,8 @@ typedef struct unwind_elem {
 } UNWIND_ELEM;
 
 // use list not slist cause append to end
-static list < UNWIND_ELEM > ue_list;
-static list < UNWIND_ELEM >::iterator ue_iter;
+static std::list < UNWIND_ELEM > ue_list;
+static std::list < UNWIND_ELEM >::iterator ue_iter;
 static UINT last_when;
 static BOOL simple_unwind = FALSE;
 static BOOL has_asm = FALSE;
@@ -852,10 +853,10 @@ Propagate_Save_Restore_State (PR_BITSET *entry_state,
 }
 
 static UNWIND_ELEM
-Find_Prev_Save_UE_For_BB (list < UNWIND_ELEM > prev_ue, BB *bb, UINT level)
+Find_Prev_Save_UE_For_BB (std::list < UNWIND_ELEM > prev_ue, BB *bb, UINT level)
 {
   BBLIST *blst;
-  list < UNWIND_ELEM >::iterator prev_iter;
+  std::list < UNWIND_ELEM >::iterator prev_iter;
   FOR_ALL_BB_PREDS (bb, blst) {
 	// find ue in nbb that does a save
   	for (prev_iter = prev_ue.begin(); prev_iter != prev_ue.end(); ++prev_iter) {
@@ -879,9 +880,9 @@ Find_Prev_Save_UE_For_BB (list < UNWIND_ELEM > prev_ue, BB *bb, UINT level)
 
 // overload some routines to add unwind elements
 static void
-Add_UE (list < UNWIND_ELEM > prev_ue, PR_TYPE p, UINT when, BB *bb)
+Add_UE (std::list < UNWIND_ELEM > prev_ue, PR_TYPE p, UINT when, BB *bb)
 {
-  list < UNWIND_ELEM >::iterator prev_iter;
+  std::list < UNWIND_ELEM >::iterator prev_iter;
   UNWIND_ELEM ue;
   ue.kind = UE_UNDEFINED;
   UINT num_found = 0;
@@ -1002,7 +1003,7 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 
   PR_TYPE p;
   // keep list of ue's for each pr.
-  list < UNWIND_ELEM > pr_last_info[PR_LAST];
+  std::list < UNWIND_ELEM > pr_last_info[PR_LAST];
   for (ue_iter = ue_list.begin(); ue_iter != ue_list.end(); ++ue_iter) {
 		p = CR_To_PR (ue_iter->rc_reg);
 		// put last ue for bb on list
@@ -1128,7 +1129,7 @@ Is_Unwind_Simple (void)
 static void
 Insert_Epilogs (void)
 {
-  list < UNWIND_ELEM >::iterator prev_ue;
+  std::list < UNWIND_ELEM >::iterator prev_ue;
   UNWIND_ELEM ue;
   for (ue_iter = ue_list.begin(); ue_iter != ue_list.end(); ++ue_iter) {
     switch (ue_iter->kind) {
@@ -1157,7 +1158,7 @@ Insert_Epilogs (void)
 static void
 Compute_Region_Sizes (void)
 {
-  list < UNWIND_ELEM >::iterator current_ue = ue_list.end();
+  std::list < UNWIND_ELEM >::iterator current_ue = ue_list.end();
   for (ue_iter = ue_list.begin(); ue_iter != ue_list.end(); ++ue_iter) {
     switch (ue_iter->kind) {
     case UE_CREATE_FRAME:
@@ -1581,13 +1582,13 @@ unwind_dump2asm (char *unwind_table_ptr,
                         unwind_table_size/sizeof(__unw_table_entry_t);
 	fprintf(Asm_File, "// emit unwind info\n");
 	// gas knows what attributes to give unwind sections
-	fprintf(Asm_File, "\t%s %s\n", AS_SECTION, IA64_UNWIND_INFO);
+	fprintf(Asm_File, "\t%s %s\n", AS_SECTION, ELF_IA_64_UNWIND_INFO);
 	// dump section in 8-byte chunks
 	fprintf(Asm_File, ".Lunwind_info_%d:\n", Current_PU_Count());
 	for (i = last_info_size; i < unwind_info_size; i+=8) {
 		fprintf(Asm_File, "\t%s %#llx\n", AS_DWORD, *(__uint64_t *)(unwind_info_ptr+i));
 	}
-	fprintf(Asm_File, "\t%s %s\n", AS_SECTION, IA64_UNWIND);
+	fprintf(Asm_File, "\t%s %s\n", AS_SECTION, ELF_IA_64_UNWIND);
 	// should always be 3 double-words
 	i = last_table_size;
 	fprintf(Asm_File, "\t%s @segrel(%s#)\n", AS_DWORD, Cur_PU_Name);
@@ -1649,7 +1650,7 @@ Check_Dwarf_Rel(const Elf32_Rel &current_reloc)
 }
 
 void
-Check_Dwarf_Rel(const Elf64_Rel &current_reloc)
+Check_Dwarf_Rel(const Elf64_AltRel &current_reloc)
 {
   FmtAssert(REL64_type(current_reloc) == R_IA_64_DIR64MSB,
 	    ("Unimplemented 64-bit relocation type %d",
@@ -1657,7 +1658,7 @@ Check_Dwarf_Rel(const Elf64_Rel &current_reloc)
 }
 
 void
-Check_Dwarf_Rela(const Elf64_Rela &current_reloc)
+Check_Dwarf_Rela(const Elf64_AltRela &current_reloc)
 {
   FmtAssert(FALSE,
 	    ("Unimplemented 64-bit relocation type %d",

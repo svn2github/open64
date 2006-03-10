@@ -35,7 +35,7 @@
 
 /* CGEXP routines for loads and stores */
 #include <elf.h>
-#include <vector.h>
+#include <vector>
 #include "defs.h"
 #include "em_elf.h"
 #include "erglob.h"
@@ -149,7 +149,7 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc)
 
 void
 Expand_Load (OPCODE opcode, TN *result, TN *base, TN *ofst, 
-	     VARIANT variant, OPS *ops)
+	     OPS *ops, VARIANT variant)
 {
   TYPE_ID mtype = OPCODE_desc(opcode);
   TOP top = Pick_Load_Instruction (OPCODE_rtype(opcode), mtype);
@@ -241,7 +241,7 @@ Pick_Store_Instruction (TYPE_ID mtype)
 
 void
 Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, 
-	      VARIANT variant, OPS *ops)
+	      OPS *ops, VARIANT variant)
 {
   TOP top = Pick_Store_Instruction (mtype);
   ISA_ENUM_CLASS_VALUE sthint = Pick_Store_Hint (variant);
@@ -396,7 +396,7 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
   {
     INT idx = i ^ endian_xor;
     tmpV[idx] = Build_TN_Of_Mtype(rtype);
-    Expand_Load ( new_opcode, tmpV[idx], base, disp, variant, ops);
+    Expand_Load ( new_opcode, tmpV[idx], base, disp, ops, variant);
     if (i < nLoads-1) Adjust_Addr_TNs ( top, &base, &disp, alignment, ops);
   }
 
@@ -467,7 +467,7 @@ Expand_Composed_Store (TYPE_ID mtype, TN *obj, TN *base, TN *disp, VARIANT varia
 
   if (Target_Byte_Sex == BIG_ENDIAN)
     Adjust_Addr_TNs ( top, &base, &disp, MTYPE_alignment(mtype)-alignment, ops);
-  Expand_Store ( new_desc, obj, base, disp, variant, ops); 
+  Expand_Store ( new_desc, obj, base, disp, ops, variant); 
 
   while(--nStores >0)
   {
@@ -479,7 +479,7 @@ Expand_Composed_Store (TYPE_ID mtype, TN *obj, TN *base, TN *disp, VARIANT varia
 	  Adjust_Addr_TNs ( top, &base, &disp, -alignment, ops);
 	else Adjust_Addr_TNs ( top, &base, &disp, alignment, ops);
 
-	Expand_Store ( new_desc, obj, base, disp, variant, ops); 
+	Expand_Store ( new_desc, obj, base, disp, ops, variant); 
   }
 }
 
@@ -584,7 +584,7 @@ Exp_Ldst (
 	// load is of address, not of result type
 	Expand_Load (OPCODE_make_signed_op(OPR_LDID, 
 			Pointer_Mtype, Pointer_Mtype, FALSE),
-		tmp2, tmp1, Gen_Literal_TN (0, 4), variant, &newops);
+		tmp2, tmp1, Gen_Literal_TN (0, 4), &newops, variant);
 	// got address should not alias
       	Set_OP_no_alias(OPS_last(&newops));
 	base_tn = tmp2;
@@ -598,14 +598,14 @@ Exp_Ldst (
   if (is_store) {
 	if (V_align_all(variant) == 0)
 		Expand_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, 
-			variant, &newops);
+			&newops, variant);
   	else 
 		Expand_Misaligned_Store (OPCODE_desc(opcode), tn, 
 			base_tn, ofst_tn, variant, &newops);
   }
   else if (is_load) {
 	if (V_align_all(variant) == 0)
-		Expand_Load (opcode, tn, base_tn, ofst_tn, variant, &newops);
+		Expand_Load (opcode, tn, base_tn, ofst_tn, &newops, variant);
   	else 
 		Expand_Misaligned_Load (opcode, tn, 
 			base_tn, ofst_tn, variant, &newops);
@@ -804,5 +804,5 @@ Expand_Lda_Label (TN *dest, TN *lab, OPS *ops)
 	Expand_Load (
 		// load is of address, not of result type
 		OPCODE_make_op(OPR_LDID, Pointer_Mtype, Pointer_Mtype),
-		dest, tmp1, Gen_Literal_TN (0, 4), V_NONE, ops);
+		dest, tmp1, Gen_Literal_TN (0, 4), ops);
 }

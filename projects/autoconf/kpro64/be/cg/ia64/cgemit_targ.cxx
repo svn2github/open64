@@ -50,13 +50,12 @@
  */
 
 
-#include <elf.h>
-
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
 #include "targ_isa_lits.h"
 #include "vstring.h"
 #include "config_asm.h"
+#include "elf_stuff.h"
 #include "em_elf.h"
 #include "symtab.h"
 #include "tn.h"

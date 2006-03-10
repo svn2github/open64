@@ -33,8 +33,11 @@
 */
 
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
+
 #define USE_STANDARD_TYPES
-#include <vector.h>
+#include <vector>
 #include <list>
 #include "defs.h"
 #include "errors.h"

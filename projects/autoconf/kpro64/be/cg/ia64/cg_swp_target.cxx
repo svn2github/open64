@@ -45,8 +45,11 @@
  * =======================================================================
  * ======================================================================= */
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
+
 #define USE_STANDARD_TYPES
-#include <map.h>
+#include <map>
 #include "defs.h"
 #include "mempool.h"
 #include "tn.h"
@@ -317,7 +320,7 @@ void Remove_Invariant_Predicates(CG_LOOP& cl, bool trace)
   // transform each invariant predicate into a new variant predicate
   //  initialized in the prolog.
   //
-  map<TN*, TN*> tn_map;
+  std::map<TN*, TN*> tn_map;
   OPS prolog_ops = OPS_EMPTY;
   OPS body_ops = OPS_EMPTY;
   FOR_ALL_BB_OPs(body, op) {
@@ -493,8 +496,8 @@ struct TN_DU {
 //
 struct TN_DU_MAP {
 
-  typedef map<TN *, TN_DU>::iterator iterator;
-  map<TN *, TN_DU> TN_DU_map;
+  typedef std::map<TN *, TN_DU>::iterator iterator;
+  std::map<TN *, TN_DU> TN_DU_map;
 
   iterator begin() {
     return TN_DU_map.begin();

@@ -99,6 +99,17 @@ static BOOL Disable_Const_Mult_Opt = FALSE;
  * but for now we can use other routine that create a real dup tn. */
 #define DUP_TN(tn)	Dup_TN_Even_If_Dedicated(tn)
 
+/* XXX */
+static BB* last_bb = NULL;
+static TN *last_true_tn = NULL, *last_false_tn = NULL;
+
+void HB_Reinit_Pred ()
+{
+  last_true_tn = NULL;
+  last_false_tn = NULL;
+  last_bb = NULL;
+}
+
 static TOP
 Pick_Imm_Form_TOP (TOP regform)
 {
@@ -208,7 +219,7 @@ Expand_Immediate (TN *dest, TN *src, BOOL is_signed, OPS *ops)
 }
 
 TN*
-Expand_Immediate_Into_Register (TN *src, OPS *ops)
+Expand_Immediate_Into_Register (TN *src, BOOL is_64bit, OPS *ops)
 {
 	/* load into reg and do reg case */
   	TN *tmp = Build_TN_Of_Mtype (MTYPE_I8);
@@ -231,7 +242,7 @@ Expand_Add (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 		if (ISA_LC_Value_In_Class ( val, LC_i14)) {
   			new_opcode = TOP_adds;
 		} else {
-			src1 = Expand_Immediate_Into_Register (src1, ops);
+			src1 = Expand_Immediate_Into_Register (src1, TRUE, ops);
   			new_opcode = TOP_add;
 		}
 	} else if ( TN_is_symbol(src1) ) {
@@ -241,11 +252,13 @@ Expand_Add (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 		else {
 			ST *base;
 			INT64 ofst;
-			Base_Symbol_And_Offset_For_Addressing (TN_var(src1), TN_offset(src1), &base, &ofst);
+			Base_Symbol_And_Offset_For_Addressing (TN_var(src1),
+				TN_offset(src1), &base, &ofst);
 			if (ISA_LC_Value_In_Class ( ofst, LC_i14)) {
   				new_opcode = TOP_adds;
 			} else {
-				src1 = Expand_Immediate_Into_Register (src1, ops);
+				src1 = Expand_Immediate_Into_Register (src1,
+					TRUE, ops);
   				new_opcode = TOP_add;
 			}
 		}
@@ -274,10 +287,10 @@ Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 		if (ISA_LC_Value_In_Class ( val, LC_i8)) {
 			new_opcode = TOP_sub_i;
 		} else {
-			src1 = Expand_Immediate_Into_Register (src1, ops);
+			src1 = Expand_Immediate_Into_Register (src1, TRUE, ops);
 		}
 	} else if ( TN_is_symbol(src1) ) {
-		src1 = Expand_Immediate_Into_Register (src1, ops);
+		src1 = Expand_Immediate_Into_Register (src1, TRUE, ops);
 	} else {
       		FmtAssert(FALSE,("unexpected constant in Expand_Sub"));
 	}
@@ -292,7 +305,7 @@ Expand_Sub (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 			Expand_Add (result, src1, src2, mtype, ops);
 			return;
 		} else {
-			src2 = Expand_Immediate_Into_Register (src2, ops);
+			src2 = Expand_Immediate_Into_Register (src2, TRUE, ops);
 		}
 	} else if ( TN_is_symbol(src2) ) {
 		/* symbolic constant; return negative of value */
@@ -1170,7 +1183,7 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     }
   }
   if (TN_has_value(src2)) {
-    src2 = Expand_Immediate_Into_Register (src2, ops);
+    src2 = Expand_Immediate_Into_Register (src2, TRUE, ops);
   }
 
   /* Optimize any special cases
@@ -1229,7 +1242,7 @@ Expand_High_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   TOP new_opcode;
 
   if (TN_has_value(src2)) {
-	src2 = Expand_Immediate_Into_Register (src2, ops);
+	src2 = Expand_Immediate_Into_Register (src2, TRUE, ops);
   }
   /* mov to fp, xmpy move back */
   TN *fdest, *fsrc1, *fsrc2;
@@ -1401,7 +1414,7 @@ Expand_Binary_And_Or (TOP action, TN *dest, TN *src1, TN *src2, TYPE_ID mtype, O
 	{
 		return;
 	} else {
-		src2 = Expand_Immediate_Into_Register (src2, ops);
+		src2 = Expand_Immediate_Into_Register (src2, TRUE, ops);
 	}
   }
   Build_OP (action, dest, True_TN, src1, src2, ops);
@@ -3198,7 +3211,8 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops)
 }
 
 void
-Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN * /* op1 */, OPS *ops)
+Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TYPE_ID mtype,
+	OPS *ops)
 {
   switch (id) {
   case INTRN_GETF_EXP:
@@ -3447,7 +3461,7 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2, OPS *ops,
         Expand_Load (
                 // load is of address, not of result type
                 OPCODE_make_op(OPR_LDID, Pointer_Mtype, Pointer_Mtype),
-                orig_value, op0, Gen_Literal_TN (0, 4), V_NONE, ops);
+                orig_value, op0, Gen_Literal_TN (0, 4), ops);
 
 	*label = Gen_Temp_Label();
 	Expand_Add (new_value, orig_value, op1, size_mtype, loop_ops);
