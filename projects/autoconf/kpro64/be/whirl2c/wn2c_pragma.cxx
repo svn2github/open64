@@ -59,7 +59,6 @@
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2c/wn2c_pragma.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-#include "alloca.h"
 #include "whirl2c_common.h"
 #include "w2cf_parentize.h"  /* For W2CF_Get_Parent */
 #include "pf_cg.h"

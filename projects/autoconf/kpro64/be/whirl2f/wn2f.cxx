@@ -69,7 +69,16 @@
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2f/wn2f.cxx,v $ $Revision: 1.1.1.1 $";
 #endif
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #include "whirl2f_common.h"
 #include "PUinfo.h"          /* From be/whirl2c directory */
 #include "wn2f.h"
