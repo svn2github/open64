@@ -212,7 +212,8 @@ nodist_driver_SOURCES = ${GENSRCS}
 BUILT_SOURCES = ${GENSRCS} ${GENHDRS}
 CLEANFILES = ${GENSRCS} ${GENHDRS} .OPTIONS
 table_SOURCES = errors.c file_utils.c lang_defs.c string_utils.c table.c
-AM_CPPFLAGS = -DKEY -DLITTLE_ENDIAN_HOST -DPSC_NAME_PREFIX=\"o\" \
+name_prefix := $(shell echo "" | sed -e "${transform}")
+AM_CPPFLAGS = -DKEY -DLITTLE_ENDIAN_HOST -DNAME_PREFIX=\"${name_prefix}\" -DPSC_NAME_PREFIX=\"o\" \
 	-I${srcdir}/../common/com -I${srcdir}/../include
 
 all: $(BUILT_SOURCES)
