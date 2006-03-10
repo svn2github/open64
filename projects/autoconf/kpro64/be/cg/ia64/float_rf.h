@@ -49,18 +49,10 @@
 #ifndef float_rf_INCLUDED
 #define float_rf_INCLUDED
 
-#ifdef _MIPSEL
+#ifndef _MIPSEB
 #define TARGETEL 1
-#endif
-
-#ifdef _MIPSEB
-#define TARGETEB 1
-#endif
-
-#ifdef linux
-#include <stdint.h>
 #else
-#include <inttypes.h>
+#define TARGETEB 1
 #endif
 
 /*************************** structs.h ***************************/
@@ -149,12 +141,6 @@ typedef	union {
 #endif
 
 /*************************** externs.h ***************************/
-
-#ifndef _STRUCTS_H_
-#endif
-
-#if defined(linux)
-#endif
 
 extern "C" {
     uint64_t mul64(uint64_t, uint64_t, uint64_t *);
