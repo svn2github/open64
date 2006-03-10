@@ -65,6 +65,9 @@ c_int_model.c -- c data type models
 
 TARGET_INT_MODEL Target_Int_Model = TARGET_INT_ILP32;
 
+#ifndef TARGET_64BIT
+#define	TARGET_64BIT	(!TARGET_ILP32)
+#endif
 
 #if defined(CFE) || defined(FFE)
 /* New variables */
