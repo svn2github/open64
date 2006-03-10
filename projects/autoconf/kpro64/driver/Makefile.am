@@ -23,5 +23,7 @@ check_combos.c implicits.c ${GENHDRS}: .OPTIONS
 version.c: gen_version.csh
 	csh -f $< > $@
 
-AM_CPPFLAGS = -DKEY -DLITTLE_ENDIAN_HOST -DPSC_NAME_PREFIX=\"o\" \
+name_prefix:=$(shell echo "" | sed -e "${transform}")
+
+AM_CPPFLAGS = -DKEY -DLITTLE_ENDIAN_HOST -DNAME_PREFIX=\"${name_prefix}\" -DPSC_NAME_PREFIX=\"o\" \
 	-I${srcdir}/../common/com -I${srcdir}/../include
