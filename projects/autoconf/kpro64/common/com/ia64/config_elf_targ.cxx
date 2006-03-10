@@ -68,7 +68,7 @@
  */
 void Config_Target_From_ELF (Elf64_Word e_flags, BOOL *is_64bit, INT *isa)
 {
-  *is_64bit = (e_flags & EF_IRIX_ABI64);
+  *is_64bit = (e_flags & EF_IA_64_ABI64);
 
   *isa = 1;
 }
@@ -86,7 +86,7 @@ Elf32_Word Config_ELF_From_Target(BOOL is_64bit, BOOL old_abi, INT isa)
 {
   Elf32_Word e_flags = 0;
 
-  if (is_64bit) e_flags |= EF_IRIX_ABI64;
+  if (is_64bit) e_flags |= EF_IA_64_ABI64;
 
   return e_flags;
 }

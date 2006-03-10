@@ -56,12 +56,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <bstring.h>
 #include <elf.h>
 #include <elfaccess.h>
 #include <libelf.h>
-#include <stamp.h>
-#include <alloca.h>
 #include <cmplrs/leb128.h>
 #include <cmplrs/elf_interfaces.h>
 #include <sys/unwindP.h>
@@ -107,11 +104,11 @@ void Em_Write_Reginfo (
 /* Add new entry to the .options section. */
 void
 Em_Add_New_Option (
-    Elf32_Byte option_kind, 
+    unsigned char option_kind, 
     Elf32_Section option_section, 
     Elf32_Word option_info, 
     void *buffer, 
-    Elf32_Byte length)
+    unsigned char length)
 {
     Elf_Options option;
 #if 0 // don't put out options period. Its not defined in ABI

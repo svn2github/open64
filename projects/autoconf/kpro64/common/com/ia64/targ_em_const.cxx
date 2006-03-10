@@ -89,6 +89,25 @@ Has_Control_Char (char *str, INT len)
 	return FALSE;
 }
 
+static void 
+emit_bytes( FILE *fl, char *str, INT32 len )
+{
+#define MAXIMUM_LEN 8
+  INT ch, i;
+  INT16 n_on_line = 0;
+  for ( i=0; i<len; ++i ) {
+    ch = str[i];
+    fprintf ( fl, n_on_line ? ", " : "\t%s\t", AS_BYTE );
+    fprintf ( fl, "0x%x", ch );
+    n_on_line++;
+    if ( n_on_line == MAXIMUM_LEN ) {
+      fprintf ( fl, "\n" );
+      n_on_line = 0;
+    }
+  }
+#undef MAXIMUM_LEN
+}
+
 /* ====================================================================
  *
  * Targ_Emit_String
@@ -358,6 +377,139 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
     }
   }
 } /* Targ_Emit_Const */
+
+#ifdef KEY
+const char * ULEBDIR = ".uleb128";
+const char * SLEBDIR = ".sleb128";
+
+// Version of Targ_Emit_Const to emit exception handling constants, which
+// use the .uleb128 directive
+// Encode the constants if required according to 'format'
+void
+Targ_Emit_EH_Const (FILE *fl,       /* File to which to write */
+                 TCON tc,           /* Constant to be written */
+                 BOOL add_null,     /* whether to add null to strings */
+                 INTSC rc,          /* Repeat count */
+                 INTSC loc,         /* Location (i.e. offset from some base) */
+                 INT format)        /* Indicates encoding */
+{
+    Is_True ( rc > 0, ("Targ_Emit_Const: repeat count is %d", rc ) );
+    const char * encoding = ULEBDIR;
+
+    if (format == INITVFLAGS_ACTION_REC)
+        encoding = SLEBDIR;
+    
+    /* loc only used here (in a comment in the output file) */
+    fprintf(fl, "\t%s offset %1ld\n", ASM_CMNT, loc);
+
+    /* Loop until the repeat count is exhausted. For simple constants we'll
+     * optimize the emission, otherwise we just repeat the whole directive.
+     */
+    while (rc) {
+      switch (TCON_ty(tc)) {
+      case MTYPE_I1:
+      case MTYPE_U1:
+        Emit_Repeated_Constant ( fl, encoding, TCON_v0(tc) & 0xff, rc, 10 );
+        rc = 0;
+        break;
+
+      case MTYPE_I2:
+      case MTYPE_U2:
+        Emit_Repeated_Constant ( fl, encoding, TCON_v0(tc) & 0xffff, rc, 8 );
+        rc = 0;
+        break;
+
+      case MTYPE_I4:
+      case MTYPE_U4:
+        Emit_Repeated_Constant ( fl, encoding, TCON_v0(tc), rc, 4 );
+        rc = 0;
+        break;
+
+      case MTYPE_I8:
+      case MTYPE_U8:
+        Emit_Repeated_Constant ( fl, encoding, TCON_I8(tc), rc, 2 );
+        rc = 0;
+        break;
+
+      case MTYPE_F4: {
+        Emit_Repeated_Constant ( fl, encoding, TCON_ival(tc), rc, 4 );
+        rc = 0;
+        break;
+        }
+
+      case MTYPE_C4: {
+        INT i;
+        char *p = (char *) & TCON_R4(tc);
+        emit_bytes( fl, p, sizeof(TCON_R4(tc)) );
+        fprintf(fl, "\t%s complex float real part %#g\n", ASM_CMNT, TCON_R4(tc) );
+
+        p = (char *) & TCON_IR4(tc);
+        emit_bytes( fl, p, sizeof(TCON_IR4(tc)) );
+        fprintf(fl, "\t%s complex float imag part %#g\n", ASM_CMNT, TCON_IR4(tc) );
+        --rc;
+        break;
+        }
+
+      case MTYPE_F8: {
+	char *p = (char*)&TCON_R8(tc);
+	emit_bytes(fl, p, sizeof(TCON_R8(tc)));
+        fprintf(fl, "\t%s double %#g\n", ASM_CMNT, TCON_R8(tc) );
+        --rc;
+        break;
+        }
+
+      case MTYPE_C8: {
+        INT i;
+        char *p = (char *) & TCON_R8(tc);
+        emit_bytes( fl, p, sizeof(TCON_R8(tc)) );
+        fprintf(fl, "\t%s complex double real part %#g\n", ASM_CMNT, TCON_R8(tc) );
+
+        p = (char *) & TCON_IR8(tc);
+        emit_bytes( fl, p, sizeof(TCON_IR8(tc)) );
+        fprintf(fl, "\t%s complex double imag part %#g\n", ASM_CMNT, TCON_IR8(tc) );
+        --rc;
+        break;
+        }
+
+      case MTYPE_FQ: {
+        char *p = (char *) & TCON_R16(tc);
+        emit_bytes( fl, p, sizeof(TCON_R16(tc)) );
+        fprintf(fl, "\t%s quad %#Lg\n", ASM_CMNT, TCON_R16(tc) );
+        --rc;
+        break;
+        }
+
+      case MTYPE_CQ: {
+        INT i;
+        char *p = (char *) & TCON_R16(tc);
+        emit_bytes( fl, p, sizeof(TCON_R16(tc)) );
+        fprintf(fl, "\t%s complex quad real part %#Lg\n", ASM_CMNT, TCON_R16(tc) );
+
+        p = (char *) & TCON_IR16(tc);
+        emit_bytes( fl, p, sizeof(TCON_IR16(tc)) );
+        fprintf(fl, "\t%s complex quad imag part %#Lg\n", ASM_CMNT, TCON_IR16(tc) );
+        --rc;
+        break;
+        }
+
+      case MTYPE_STRING: {
+        INTSC count;
+        for (count=0; count<rc; ++count) {
+          char *p = Index_to_char_array (TCON_cp(tc));
+          Targ_Emit_String ( fl, p, TCON_len(tc) + (add_null ? 1 : 0), 0 );
+        }
+        rc = 0;
+        break;
+        }
+
+      default:
+        ErrMsg ( EC_Inv_Mtype, Mtype_Name(TCON_ty(tc)),
+                "Targ_Emit_Const" );
+    }
+  }
+} /* Targ_Emit_EH_Const */
+#endif // KEY
+
 
 #if defined(BACK_END) || defined(QIKKI_BE)
 /* ====================================================================
