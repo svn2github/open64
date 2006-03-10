@@ -43,7 +43,8 @@
 main ()
 {
   PROC_Create ( "ia64",
-	"itanium",
+	"itanium",	/* Merced */
+	"itanium2",	/* McKinley, Madison */
 	NULL
   );
 }
