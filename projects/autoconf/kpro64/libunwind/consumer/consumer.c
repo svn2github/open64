@@ -53,10 +53,10 @@
 */
 #include <fcntl.h>
 #include <unistd.h>
+#include <elf.h>
 #include <rld_interface.h>
 #include <objlist.h>
 #include <obj_list.h>
-#include <elf.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -159,26 +159,15 @@ void unwind_debugger_init(int (*dbg_unwind_table_addr_arg)(__uint64_t,
 /* and to calculate the runtime displacement and */
 /* the text segment runtime address for a given IP */
 /* if r_debug is deficient. This should be temporary */
-static __unw_error_t unwind_get_obj_phdr( const char* name,
-    char *dsoname,
-#if (_MIPS_SZPTR== 64)
-    __uint64_t *load_address,
-#else
-    __uint32_t *load_address,
-#endif
-    Elf64_Phdr **phdr,
-    Elf64_Half *phnum )
+static __unw_error_t unwind_get_obj_phdr( const char* name, char *dsoname,
+    uintptr_t *load_address, Elf64_Phdr **phdr, Elf64_Half *phnum )
 {
     pid_t pid = getpid();
 
     char mapname[ FILENAME_MAX ];
     char fname[ FILENAME_MAX ];
+    uintptr_t l_addr;
     __uint32_t inode, device;
-#if (_MIPS_SZPTR== 64)
-    __uint64_t l_addr;
-#else
-    __uint32_t l_addr;
-#endif
 
     FILE* f;
     char line[5000];
@@ -221,8 +210,8 @@ static __unw_error_t unwind_get_obj_phdr( const char* name,
     l_addr = 0;
     while( !l_addr && fgets( line, sizeof(line), f ) && !feof( f ))
     {
-        __uint64_t addr, dum1, dum2;
-        __uint32_t min, maj, in;
+        unsigned long long addr, dum1, dum2;
+        unsigned int min, maj, in;
         char perm[5];
         if( sscanf( line, "%llx-%llx %s %llx %x:%x %d %s",
                &addr, &dum1, &perm, &dum2, &maj, &min, &in, fname ) )
@@ -277,11 +266,7 @@ static __unw_error_t unwind_get_obj_data(__uint64_t ip,
 	if (_r_debug.r_map) {
 		while (obj) {
 			__uint64_t region_start = 0L, region_end = 0L;
-#if (_MIPS_SZPTR == 64)
-                        __uint64_t l_addr;
-#else
-                        __uint32_t l_addr;
-#endif
+			uintptr_t l_addr;
 
                         Elf64_Half phnum;
                         char objname[ FILENAME_MAX ], *l_name;
@@ -289,7 +274,9 @@ static __unw_error_t unwind_get_obj_data(__uint64_t ip,
                                 unwind_output(
                                         "unwind_get_obj_data() INTERNAL MSG: obj %s @%llx (%llx, %d) for ip = %llx", 
                                         obj->l_name, 
-                                        obj->l_addr, obj->l_phdr, obj->l_phnum, ip );
+                                        (unsigned long long)obj->l_addr,
+					(unsigned long long)obj->l_phdr,
+					obj->l_phnum, (unsigned long long)ip);
                         }
                         if( !*obj->l_name /* executable case */
                              || !obj->l_phdr   /* abnormal case - should not happen */
@@ -324,7 +311,7 @@ static __unw_error_t unwind_get_obj_data(__uint64_t ip,
 			for (i = 0; i < (__uint64_t)phnum; i++) {
 				if ((PT_LOAD == (*phdr)[i].p_type) &&
 						((PF_R | PF_X) == (*phdr)[i].p_flags)) {
-			                *runtime_offset = l_addr- (__uint64_t)(*phdr)[i].p_vaddr;
+			                *runtime_offset = l_addr- (uintptr_t)(*phdr)[i].p_vaddr;
 					region_start = (__uint64_t)(*phdr)[i].p_vaddr
                                              + *runtime_offset;
 					region_end = region_start +
@@ -362,23 +349,13 @@ static __unw_error_t unwind_get_obj_data(__uint64_t ip,
 	}
 #endif // FOR_GDB
 	if (_unwind_verbose >= __UNW_VERBOSE_INTERNAL_MSGS) {
-		unwind_output("%s %s 0x%llx for ip=0x%llx",
+		unwind_output("%s %s %p for ip=0x%llx",
 			"unwind_get_obj_data() INTERNAL MSG:",
-			"found elf header @",
-#if (_MIPS_SZLONG == 32)
-			(unsigned long long)(__uint32_t)*ehdr,
-#else
-			(unsigned long long)*ehdr,
-#endif
+			"found elf header @", *ehdr,
 			(unsigned long long)ip);
-		unwind_output("%s %s 0x%llx for ip=0x%llx",
+		unwind_output("%s %s %p for ip=0x%llx",
 			"unwind_get_obj_data() INTERNAL MSG:",
-			"found program header @",
-#if (_MIPS_SZLONG == 32)
-			(unsigned long long)(__uint32_t)*phdr,
-#else
-			(unsigned long long)*phdr,
-#endif
+			"found program header @", *phdr,
 			(unsigned long long)ip);
 		unwind_output("%s %s 0x%llx for ip=0x%llx",
 			"unwind_get_obj_data() INTERNAL MSG:",
@@ -485,11 +462,7 @@ static __unw_error_t unwind_restore_gp(__uint64_t ip,
 	}
 
 	/* find GP value */
-#if (_MIPS_SZLONG == 32)
-	for (dynptr = (Elf64_Dyn *)(__uint32_t)dyn_addr; DT_NULL != dynptr->d_tag; dynptr++) {
-#else
-	for (dynptr = (Elf64_Dyn *)dyn_addr; DT_NULL != dynptr->d_tag; dynptr++) {
-#endif
+	for (dynptr = (Elf64_Dyn *)(uintptr_t)dyn_addr; DT_NULL != dynptr->d_tag; dynptr++) {
 /* FIXXXX   DT_MIPS_GP_VALUE should be DT_PLTGOT */
 		if (DT_MIPS_GP_VALUE == dynptr->d_tag) {
 			*gp = (__uint64_t)dynptr->d_un.d_ptr;
@@ -616,13 +589,9 @@ __unw_error_t unwind_state_stack_push(__unw_state_info_t **ptr) {
 			}
 			close(dzfd);
 			if (_unwind_verbose >= __UNW_VERBOSE_INTERNAL_MSGS) {
-				unwind_output("%s re-mmaped _unwind_state_stack @ 0x%llx, total_size=%llu*%u",
+				unwind_output("%s re-mmaped _unwind_state_stack @ %p, total_size=%llu*%u",
 					"unwind_state_stack_push() INTERNAL MSG:",
-#if (_MIPS_SZLONG == 32)
-					(unsigned long long)(__uint32_t)_unwind_state_stack,
-#else
-					(unsigned long long)_unwind_state_stack,
-#endif
+					_unwind_state_stack,
 					(unsigned long long)_unwind_state_stack_total_size,
 					sizeof(__unw_state_info_t));
 			}
@@ -637,13 +606,9 @@ __unw_error_t unwind_state_stack_push(__unw_state_info_t **ptr) {
 			(size_t)((_unwind_state_stack_total_size/2) *
 			sizeof(__unw_state_info_t)));
 		if (_unwind_verbose >= __UNW_VERBOSE_INTERNAL_MSGS) {
-			unwind_output("%s munmapped previous _unwind_state_stack @ 0x%llx",
+			unwind_output("%s munmapped previous _unwind_state_stack @ %p",
 				"unwind_state_stack_push() INTERNAL MSG:",
-#if (_MIPS_SZLONG == 32)
-				(unsigned long long)(__uint32_t)prev_unwind_state_stack);
-#else
-				(unsigned long long)prev_unwind_state_stack);
-#endif
+				prev_unwind_state_stack);
 		}
 	}
 
@@ -779,13 +744,8 @@ __unw_error_t unwind_init(void) {
 			}
 			close(dzfd);
 			if (_unwind_verbose >= __UNW_VERBOSE_INTERNAL_MSGS) {
-				unwind_output("%s mmaped _unwind_state_stack @ 0x%llx, total_size=%llu*%u",
-					"unwind_init() INTERNAL MSG:",
-#if (_MIPS_SZLONG == 32)
-					(unsigned long long)(__uint32_t)_unwind_state_stack,
-#else
-					(unsigned long long)_unwind_state_stack,
-#endif
+				unwind_output("%s mmaped _unwind_state_stack @ %p, total_size=%llu*%u",
+					"unwind_init() INTERNAL MSG:", _unwind_state_stack,
 					(unsigned long long)_unwind_state_stack_total_size,
 					sizeof(__unw_state_info_t));
 			}
@@ -824,13 +784,9 @@ __unw_error_t unwind_fini(void) {
 				(size_t)(_unwind_state_stack_total_size *
 				sizeof(__unw_state_info_t)));
 			if (_unwind_verbose >= __UNW_VERBOSE_INTERNAL_MSGS) {
-				unwind_output("%s munmapped _unwind_state_stack @ 0x%llx",
+				unwind_output("%s munmapped _unwind_state_stack @ %p",
 					"unwind_fini() INTERNAL MSG:",
-#if (_MIPS_SZLONG == 32)
-					(unsigned long long)(__uint32_t)_unwind_state_stack);
-#else
-					(unsigned long long)_unwind_state_stack);
-#endif
+					_unwind_state_stack);
 			}
 		}
 
@@ -980,11 +936,7 @@ __unw_error_t unwind_frame(unw_sigcontext_t *scp) {
 	}
 #endif
 
-#if (_MIPS_SZLONG == 32)
-	unwind_table = (__unw_table_entry_t *)(__uint32_t)unwind_table_addr;
-#else
-	unwind_table = (__unw_table_entry_t *)unwind_table_addr;
-#endif
+	unwind_table = (__unw_table_entry_t *)(uintptr_t)unwind_table_addr;
 
 	/* fixup IP to be an segment-relative offset */
 	ip -= (__unw_addr_t)text_segment_addr;
@@ -1019,11 +971,7 @@ unwind_output("unwind_table_entry_compare: Coucou");
 	addr = unwind_info_addr + (__uint64_t)ptr->_info
 	         - unwind_info_target_addr;
 #endif
-#if (_MIPS_SZLONG == 32)
-	unwind_info = (__unw_info_t *)(__uint32_t) addr;
-#else
-	unwind_info = (__unw_info_t *)addr;
-#endif
+	unwind_info = (__unw_info_t *)(uintptr_t)addr;
 
 	/* entry found in the unwind table but the unwind info has zero size, */
 	/* so assume defaults */
