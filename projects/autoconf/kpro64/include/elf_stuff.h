@@ -589,8 +589,17 @@ typedef Elf_Ifd Elf_Interface_Descriptor;  /* for compatibility */
 #ifndef R_IA_64_DIR64LSB
 #define R_IA_64_DIR64LSB	0x27
 #endif
+#ifndef R_IA_64_GPREL22
+#define R_IA_64_GPREL22		0x2a
+#endif
+#ifndef R_IA_64_LTOFF22
+#define R_IA_64_LTOFF22		0x32
+#endif
 #ifndef R_IA_64_PCREL21B
 #define	R_IA_64_PCREL21B	0x49
+#endif
+#ifndef R_IA_64_LTOFF_FPTR22
+#define R_IA_64_LTOFF_FPTR22	0x52
 #endif
 #ifndef R_IA_64_SEGREL32LSB
 #define R_IA_64_SEGREL32LSB	0x5d
