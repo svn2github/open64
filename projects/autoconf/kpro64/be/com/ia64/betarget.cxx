@@ -187,41 +187,16 @@ Can_Do_Fast_Remainder (TYPE_ID mtype, INT64 dividend)
  *
  * ====================================================================
  */
-extern INT
+INT
 Multiply_Limit( BOOL is_64bit, INT64 val)
 {
-  INT limit = 0;
-
-  if (is_64bit)	{ /* 64-bit multiply */
-    switch( Target ) {
-    case TARGET_ITANIUM:	limit = 14; break;
-    default:		limit = 14; break;
-    }
-  } else { /* 32-bit multiply */
-    switch( Target ) {
-    case TARGET_ITANIUM:	limit = 14; break;
-    default:		limit = 14; break;
-    }
-  }
-  return limit;
+	return 14;
 }
 
-extern INT
+INT
 Divide_Limit ( BOOL is_64bit)
 {
-  INT limit = 0;
-  if (is_64bit)	{ /* 64-bit divide */
-    switch( Target ) {
-    case TARGET_ITANIUM:	limit = 50; break;
-    default:		limit = 50; break;
-    }
-  } else { /* 32-bit divide */
-    switch( Target ) {
-    case TARGET_ITANIUM:	limit = 50; break;
-    default:		limit = 50; break;
-    }
-  }
-  return ( limit );
+	return 50;
 }
 
 /* Count # instructions needed to do multiply with shifts and adds.
@@ -298,16 +273,7 @@ Can_Do_Fast_Multiply (TYPE_ID mtype, INT64 val)
  */
 INT Copy_Quantum_Ratio(void)
 {
-  INT32  ratio;
-
-  //  Lmt_DevWarn(1, ("Copy_Quantum_Ratio needs work"));
-  // I don't think it still needs work
-  switch(Target) {
-  case TARGET_ITANIUM:	ratio=	4; break;
-  default:		ratio=	4; break;
-  }
-
-  return ratio;    
+	return 4;
 }
 
 /* Does <val> fit in a signed word of length <bits>?
