@@ -637,7 +637,7 @@ VN_LITERAL_EXPR::is_equal_to(CONST_PTR expr) const
 	    truth = TCON_v1(other_tcon) == TCON_v1(_tcon);
 	 else if (this_mty == MTYPE_F4 && 
 	          TCON_R4(other_tcon) == 0 && TCON_R4(_tcon) == 0)
-	    truth = TCON_word0(other_tcon) == TCON_word0(_tcon);
+	    truth = TCON_ival(other_tcon) == TCON_ival(_tcon);
 #endif
 	 else
 	 {
