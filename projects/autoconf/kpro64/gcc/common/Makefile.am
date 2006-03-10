@@ -5,6 +5,11 @@ _trgt_sources = i386.c
 _trgt_cfgdir = i386
 endif
 
+if TARG_IA64
+_trgt_sources = ia64.c
+_trgt_cfgdir = ia64
+endif
+
 libgcc_common_a_SOURCES = \
 	alias.c attribs.c \
 	bb-reorder.c bitmap.c builtins.c \
