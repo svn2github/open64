@@ -586,20 +586,17 @@ Check_Target ( void )
   }
 
   if (target_cpu == NULL) {
+#ifdef TARG_X8664
     set_cpu ("opteron", M_ARCH);	// Default to Opteron.
-    if (abi == UNDEFINED) {
-      abi = (get_platform_abi() == ABI_64) ? ABI_64 : ABI_N32;
-      if (abi == ABI_64)
-	add_option_seen (O_m64);
-      else
-	add_option_seen (O_m32);
-      }
+#elif TARG_IA64
+    set_cpu("itanium", M_ARCH);
+#endif
   }
 
   if (abi == UNDEFINED) {
 #ifdef TARG_IA64
 	toggle(&abi, ABI_I64);
-    	add_option_seen ( O_i64 );
+    	/* add_option_seen ( O_i64 ); */
 #elif TARG_IA32
 	toggle(&abi, ABI_IA32);
     	add_option_seen ( O_ia32 );
@@ -1505,9 +1502,10 @@ static struct
   { "pentium4",	"pentium4",	ABI_N32,	TRUE,	FALSE },
   { "xeon",	"xeon",		ABI_N32,	TRUE,	FALSE },
   { "em64t",	"em64t",	ABI_64,		TRUE,	TRUE },
+  { "itanium",	"itanium",	ABI_64,		FALSE,	FALSE },
   { NULL,	NULL, },
 };
-  
+ 
 char *target_cpu = NULL;
 
 // Get the platform's default ABI.

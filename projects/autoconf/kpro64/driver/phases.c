@@ -315,6 +315,7 @@ add_targ_options ( string_list_t *args )
     add_string(args, buf);
   }
 
+#if TARG_X8664
   // SSE2, SSE3, 3DNow
   if (sse2 == TRUE)
     add_string(args, "-TARG:sse2=on");
@@ -330,6 +331,7 @@ add_targ_options ( string_list_t *args )
     add_string(args, "-TARG:3dnow=on");
   else
     add_string(args, "-TARG:3dnow=off");
+#endif
 }
 
 static char basebuf[4096];
