@@ -242,7 +242,6 @@ Initialize_Timing ( BOOL enable )
  * ====================================================================
  */
 
-#ifndef MONGOOSE_BE
 void
 Clear_Timer ( INT Timer_ID )
 {
@@ -250,7 +249,6 @@ Clear_Timer ( INT Timer_ID )
     Resource_Accum ( Timer(Timer_ID), RR_Clear );
   }
 }
-#endif /* MONGOOSE_BE */
 
 void
 Start_Timer ( INT Timer_ID )
