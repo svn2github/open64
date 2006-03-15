@@ -687,7 +687,6 @@ Trace_To_Stderr(void)
 }
   
 
-#ifndef MONGOOSE_BE
 /* ====================================================================
  *
  * Nest_Indent
@@ -703,4 +702,3 @@ Nest_Indent ( FILE *fp )
 {
   fprintf ( fp, "%*c", ( INDENT * ( trace_stack(0,0) - 1 ) ), ' ' );
 }
-#endif /* MONGOOSE_BE */

@@ -260,7 +260,6 @@ BS_ResizeD(
   return set;
 }
 
-#ifndef MONGOOSE_BE
 /* ====================================================================
  *
  *  BS_Range
@@ -279,7 +278,6 @@ BS_Range(
 {
   return BS_RangeD(BS_Create(high + 1,pool),low,high,bad_pool);
 }
-#endif /* MONGOOSE_BE */
 
 /* ====================================================================
  *

@@ -47,7 +47,6 @@ extern pid_t wait(INT *statptr);	/* Currently not defined with
 					 *  prototype in sys/wait.h
                                          */
 
-#ifndef MONGOOSE_BE
 /* ====================================================================
  *
  * Execute
@@ -133,7 +132,6 @@ Get_Environment_Value (
   /* Not found: */
   return def;
 }
-#endif /* MONGOOSE_BE */
 
 /* ====================================================================
  *
@@ -157,7 +155,6 @@ Check_Range (
   return def;
 }
 
-#ifndef MONGOOSE_BE
 /* ====================================================================
  *
  * Indent
@@ -179,7 +176,6 @@ Indent (
   }
   while ( indent-- > 0 ) fprintf ( f, " " );
 }
-#endif /* MONGOOSE_BE */
 
 /* ====================================================================
  *

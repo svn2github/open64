@@ -49,12 +49,10 @@ static char *Version = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/util/m
 static int getsp ( int a );
 static int fra ( int a );
 static char *savestr ( char *str );
-#ifndef MONGOOSE_BE
 static void make_ftab ( void );
-#endif /* MONGOOSE_BE */
 static struct frec *search_in_ftab ( int adr );
 
-#if mips
+#ifdef __mips__
 static int ftab_problems = 0;
 /*--------------------------------------------------------------
  * extremely dependent on mips calling convention. returns sp
@@ -111,7 +109,6 @@ static struct frec *main_fr;
 static struct frec *trst_fr;
 static char *tmpname = "                              ";
 
-#ifndef MONGOOSE_BE
 static void make_ftab()
 {
     FILE *fp;
@@ -163,7 +160,7 @@ static void make_ftab()
     fclose(fp);
     cf->addr = 0x7fffffff;
 }
-#endif /* MONGOOSE_BE */
+
 /*----------------------------------------------------------------------
  *	do it by binary search
  *--------------------------------------------------------------------*/
@@ -183,24 +180,16 @@ static struct frec *search_in_ftab(int adr)
 
 static struct frec *this_func;
 
-#ifndef MONGOOSE_BE
 int trace_stack(prfunc, prfile)
     int prfunc, prfile;
 {
     int sp, ra, fc;
     struct frec *cf;
 
-#ifndef BACK_END
-    return ( 1 ); /* STREICH: figure out what's wrong later... */
-#endif /* BACK_END */
-
-#define SPOFST -36
-    /*sp = ((int) &sp) + SPOFST;*/
     fc = 0;
     sp = getsp(0);
     if (ftab_problems == 0 && ftab == NULL)
 	make_ftab();
-    /*cf = trst_fr;*/
     cf = search_in_ftab(getra());
     /* RAT: There is a bug in odump which sometimes causes it not
      *	to find the whole procedure table.  So search_in_ftab will
@@ -224,45 +213,12 @@ int trace_stack(prfunc, prfile)
     return fc;
 }
 
-#endif /* MONGOOSE_BE */
-
 #else	/* not mips */
 
-#if A_UX
-
-struct x {
-  struct x *next;
-};
-
-stack_lev(b)
-  int b;
-{
-  struct x *l = (struct x *) (((int)(&b)) - 8);
-  int a = 0;
-  while (l) {
-    a++;
-    l = l->next;
-  }
-  return a;
-}
-
-trace_stack(a, b)
-{
-  return stack_lev()-1;
-}
-
-#else	/* not A_UX */
-
-char **__Argv;
-
 /*ARGSUSED*/
-int trace_stack(a, b)
-  int a;
-  int b;
+int trace_stack(int prfunc, int prfile)
 {
   return 1;	/* not implemented */
 }
 
-#endif	/* not A_UX */
 #endif	/* not mips */
-

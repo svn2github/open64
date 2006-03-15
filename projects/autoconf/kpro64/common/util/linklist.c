@@ -135,7 +135,6 @@ static LST_ITM *list_malloc(void);
 # define item_free(itm) ((LST_next(itm)=list_items), (list_items=(itm)))
 #endif	/* LNK_LST_CHECK not defined */
 
-#ifndef MONGOOSE_BE
 /* ====================================================================
  *
  *  static LST_ITM *list_malloc()
@@ -196,7 +195,6 @@ list_malloc ( void )
 
   return itm;
 }
-#endif /* MONGOOSE_BE */
 
 #ifdef Is_True_On
 /* ====================================================================
@@ -282,7 +280,6 @@ Free_All_List_Items ( void )
   block_item_hdr = NULL;
 }
 
-#ifndef MONGOOSE_BE
 /* ====================================================================
  *
  *  void ARY_Init_List(LNK_LST_ARY *ary, INT32 n_elems)
@@ -311,6 +308,7 @@ ARY_Init_List ( LNK_LST_ARY *ary, INT32 n_elems )
   for (i=0; i<n_elems; ++i, ++lst)
     Init_List( lst );
 }
+
 /* ====================================================================
  *
  *  void Free_List(LNK_LST *lst)
@@ -388,7 +386,6 @@ Validate_List ( LNK_LST *lst )
   }
   return TRUE;
 }
-#endif /* MONGOOSE_BE */
 
 #ifndef STORE_LIST_LEN
 /* ====================================================================
@@ -418,7 +415,6 @@ LST_Len ( LNK_LST *lst )
 }
 #endif      /* STORE_LIST_LEN not defined */
 
-#ifndef MONGOOSE_BE
 /* ====================================================================
  *
  *  BOOL Add_Item(LNK_LST *lst, tlst_val val)
@@ -974,4 +970,3 @@ ARY_List_Print ( ary, msg, arg1, arg2, arg3 )
     fprintf(TFile,"\n");
   }
 }
-#endif /* MONGOOSE_BE */
