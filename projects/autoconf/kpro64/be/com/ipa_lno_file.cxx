@@ -69,9 +69,7 @@
 #include "ipa_lno_info.h"
 #include "ipl_summary.h"
 
-#ifdef linux
 #define MAPPED_SIZE 0x400000
-#endif
 
 // Put this here for now.  Later move it on to /usr/sys/include/elfwhirl.h? 
 static char IPALNO_REVISION[] = "IPALNO:1.1"; 
@@ -263,9 +261,7 @@ void IPA_LNO_WRITE_FILE::Open_Write_File(char *file_name)
     return;
   } 
 
-#ifdef linux
-    ftruncate(ofl->output_fd, MAPPED_SIZE);
-#endif
+  ftruncate(ofl->output_fd, MAPPED_SIZE);
 
   ofl->section_list = NULL;
   ofl->cur_section = NULL;

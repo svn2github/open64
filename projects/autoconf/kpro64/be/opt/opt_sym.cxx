@@ -1955,13 +1955,9 @@ OPT_STAB::Make_st_group(void)
 	  sorted[i]->Byte_size() * 8 : sorted[i]->Bit_size();
         if (ofst < hi) {
            // Merge
-#ifndef __irix__
 //         hi = (( hi > ofst + size ) ?  hi : ofst + size ) ;
            if (hi < ofst + size)
              hi = ofst + size;
-#else
-           hi = max(hi, (INT64) (ofst + size));
-#endif
            AUX_ID new_tail = aux_stab.Idx(sorted[i]);
            aux_stab[st_group_tail].Set_st_group( new_tail );
            aux_stab[new_tail].Set_st_group(st_group_head);

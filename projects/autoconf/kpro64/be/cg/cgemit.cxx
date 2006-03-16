@@ -192,7 +192,6 @@ extern BOOL profile_arcs;
  * ====================================================================
  */
 
-#ifndef __irix__
 BOOL CG_emit_asm_dwarf    = TRUE;
 BOOL CG_emit_unwind_info  = TRUE;
 #ifdef TARG_IA64
@@ -201,15 +200,9 @@ BOOL CG_emit_unwind_directives = TRUE;
 BOOL CG_emit_unwind_info_Set = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #endif
-#else
-BOOL CG_emit_asm_dwarf    = FALSE;
-BOOL CG_emit_unwind_info  = FALSE;
-BOOL CG_emit_unwind_directives = FALSE;
-#endif
-#ifdef KEY
+
 BOOL CG_emit_non_gas_syntax = FALSE;
 BOOL CG_inhibit_size_directive = FALSE;
-#endif
 
 static BOOL generate_dwarf = FALSE;
 static BOOL generate_elf_symbols = FALSE;

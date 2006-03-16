@@ -80,12 +80,8 @@
 
 #include "dra_internal.h"       // Internal DRA interface
 
-#ifndef __irix__
 extern void (*CG_Change_Elf_Symbol_To_Undefined_p) (ST*);
 #define CG_Change_Elf_Symbol_To_Undefined (*CG_Change_Elf_Symbol_To_Undefined_p)
-#else
-#pragma weak CG_Change_Elf_Symbol_To_Undefined
-#endif
 
 // =====================================================================
 //

@@ -2667,29 +2667,7 @@ Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos)
 			file_table[file_idx].file_size);
 		}
 		file_table[file_idx].already_processed = TRUE;
-#ifndef linux
-		// for irix, only need .file when new file,
-		// as subsequent .locs use file number.
-		if (Assembly) {
-                   CGEMIT_Prn_File_Dir_In_Asm(usrcpos,
-			incl_table[include_idx].path_name,
-			file_table[file_idx].filename);
-		}
-#endif
 	}
-#ifdef linux
-#ifndef KEY	// skip here because already generated at beginning
-	// For linux, emit .file whenever file changes,
-	// as it applies to all following  line directives,
-	// whatever the spelling.
-  	if (Assembly) {
-		include_idx = file_table[file_idx].incl_index;
-                CGEMIT_Prn_File_Dir_In_Asm(usrcpos,
-			incl_table[include_idx].path_name,
-			file_table[file_idx].filename);
-	}
-#endif
-#endif
   }
 
   // now do line number:
@@ -2733,7 +2711,6 @@ static void check_reloc_fmt_and_size(Elf64_Word     reloc_scn_type,
 {
 }
 
-#ifdef linux
 struct UINT32_unaligned {
   UINT32 val;
 } __attribute__ ((aligned(1)));
@@ -2741,19 +2718,6 @@ struct UINT32_unaligned {
 struct UINT64_unaligned {
   UINT64 val;
 } __attribute__ ((aligned(1)));
-#else
-#pragma pack(1)
-struct UINT32_unaligned {
-  UINT32 val;
-};
-
-struct UINT64_unaligned {
-  UINT64 val;
-};
-#pragma pack(0)
-#endif /* linux */
-
-
 
 // These are intended to be file-local, and the unnamed namespace
 // tells c++ to make them file-local

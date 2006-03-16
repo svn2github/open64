@@ -2736,10 +2736,8 @@ static void Read_Pragma_Data_Affinity (WN* do_wn, WN* rwn) {
                  "affinity must be for an array reference (ignoring).");
     return;
   }
-#ifdef __linux
-  // Nothing we can do about this for now.
-  return;
-#endif
+
+#if 0
   // list of do-loops to which we have attached a lego-info
   // if we run into an error, then we must undo the lego-info for
   // eachof them
@@ -2901,6 +2899,7 @@ static void Read_Pragma_Data_Affinity (WN* do_wn, WN* rwn) {
       }
     }
 #endif
+#endif
 } /* Read_Pragma_Affinity */
 
 /***********************************************************************
@@ -3041,13 +3040,9 @@ static BOOL Check_Expr (WN* expr_wn, SYMBOL* index_sym,
  * Do all the thread-affinity processing and return.
  *
  ***********************************************************************/
-static void Read_Pragma_Thread_Affinity (WN* pwn, WN* do_wn, WN* rwn) {
-
-#ifdef __linux
-  // Nothing we can do about this for now.
-  return; 
-#endif 
-
+static void Read_Pragma_Thread_Affinity (WN* pwn, WN* do_wn, WN* rwn)
+{
+#if 0
   // Walk the pragmas, until we find the thread-affinity pragma
   while (rwn) {
     if ((WN_opcode(rwn) == OPC_XPRAGMA) &&
@@ -3178,8 +3173,6 @@ static void Read_Pragma_Thread_Affinity (WN* pwn, WN* do_wn, WN* rwn) {
   LNO_Build_If_Access(if_wn, stack);
   CXX_DELETE(stack, &LNO_local_pool);
 
-  return;
-
 #if 0
   // generate call to mp_my_threadnum, store into preg
   OPCODE callop = OPCODE_make_op(OPR_CALL, MTYPE_I4, MTYPE_V);
@@ -3231,7 +3224,7 @@ static void Read_Pragma_Thread_Affinity (WN* pwn, WN* do_wn, WN* rwn) {
   LNO_Build_If_Access(if_wn, stack);
   CXX_DELETE(stack, &LNO_local_pool);
 
-  return;
+#endif
 #endif
 } /* Read_Pragma_Thread_Affinity */
 

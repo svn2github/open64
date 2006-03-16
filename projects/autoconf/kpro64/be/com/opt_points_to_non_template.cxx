@@ -52,13 +52,8 @@
 #include "opt_sym.h"
 #include "opt_util.h"
 
-#ifdef __linux__
 extern AUX_ID (*WN_aux_p) (const WN*);
 #define WN_aux (*WN_aux_p)
-#else
-#pragma weak WN_aux__GPC2WN
-#endif // __linux__
-
 
 // ************************************************************************
 //

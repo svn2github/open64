@@ -37,11 +37,6 @@
 */
 
 
-// This file contains only Linux-specific code and should be entirely
-// #ifdef'd out for Irix.
-
-#ifdef __linux__
-
 // Work around the "undefined weak symbol" bug in Linux.
 //
 // The run-time linker in Linux only resolves undefined weak symbols once
@@ -57,19 +52,13 @@
 //
 // In the main program where the symbol (my_data) is referenced:
 //
-// #ifdef __linux__
 // int* my_data_p;
 // #define my_data (*my_data_p)
-// #else
-// extern int my_data;
-// #pragma weak my_data
-// #endif
 //
 // In the dso where the symbol is defined:
 //
 // int my_data;
 //
-// #ifdef __linux__
 // extern int* my_data_p;
 // void __init ()
 // {
@@ -163,9 +152,7 @@ void (*Ipl_Fini_p) ();
 void (*ipl_main_p) (INT, char **);
 void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*, ALIAS_MANAGER*,
 					   void*);
-#ifdef KEY
 void (*Preprocess_struct_access_p) (void);
-#endif
 
 // symbols from whirl2c.so 
 
@@ -231,5 +218,3 @@ void (*W2F_Translate_Stid_Lhs_p)(char *strbuf, UINT bufsize,
   ST *stid_st, mINT64 stid_ofst, TY_IDX stid_ty, TYPE_ID stid_mtype);
 void (*W2F_Translate_Wn_p)(FILE *outfile, WN *wn);
 void (*W2F_Translate_Wn_Str_p)(char *strbuf, UINT bufsize, WN *wn);
-
-#endif // __linux__

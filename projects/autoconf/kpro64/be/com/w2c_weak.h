@@ -42,8 +42,6 @@
 // and used in be, be.so and lno.so
 // (additional ones may be needed for prompf_anl.so)
 
-#ifdef __linux__
-
 extern void (*W2C_Cleanup_p)(void);
 extern void (*W2C_Init_p)(void);
 extern void (*W2C_Outfile_Fini_p)(BOOL emit_global_decls);
@@ -74,24 +72,5 @@ extern void (*W2C_Translate_Wn_p)(FILE *outfile, const WN *wn);
 #define W2C_Should_Emit_Nested_PUs (*W2C_Should_Emit_Nested_PUs_p)
 #define W2C_Translate_Istore_Lhs (*W2C_Translate_Istore_Lhs_p)
 #define W2C_Translate_Wn (*W2C_Translate_Wn_p)
-
-#else // __linux__
-
-#pragma weak W2C_Cleanup
-#pragma weak W2C_Init
-#pragma weak W2C_Outfile_Fini
-#pragma weak W2C_Outfile_Init
-#pragma weak W2C_Outfile_Translate_Pu
-#pragma weak W2C_Pop_PU
-#pragma weak W2C_Process_Command_Line
-#pragma weak W2C_Push_PU
-#pragma weak W2C_Set_Frequency_Map
-#pragma weak W2C_Set_Prompf_Emission
-#pragma weak W2C_Should_Emit_Nested_PUs
-#pragma weak W2C_Translate_Istore_Lhs
-#pragma weak W2C_Translate_Wn
-#pragma weak W2C_Translate_Wn_Str
-
-#endif // __linux__
 
 #endif // w2c_weak_INCLUDED

@@ -87,11 +87,6 @@ BOOL Whirl2c_loaded = FALSE;
 #include "w2c_weak.h"
 #include "w2f_weak.h"
 
-#ifdef __irix__
-#pragma weak Anl_Cleanup
-#endif
-
-
 /* ====================================================================
  *
  * Cleanup_Files
@@ -155,10 +150,6 @@ Cleanup_Files (BOOL report,         /* Report errors during cleanup? */
        W2C_Cleanup();
     if (Whirl2f_loaded)
        W2F_Cleanup();
-#ifdef __irix__
-    if (Prompf_anl_loaded)
-       Anl_Cleanup();
-#endif
 
     /* Close trace file: */
     Set_Trace_File ( NULL );

@@ -61,8 +61,6 @@
 // ====================================================================
 
 
-#ifndef __irix__
-
 #include "defs.h"
 #include "optimizer.h"
 #include "opt_alias_interface.h"
@@ -132,5 +130,3 @@ struct WOPT_INIT
 	Defbb_p = &CODEREP::Defbb;
     }
 } Wopt_Initializer;
-
-#endif

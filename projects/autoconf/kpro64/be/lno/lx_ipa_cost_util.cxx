@@ -55,15 +55,7 @@
 
 // From be/com/ipa_cost_util.cxx:
 
-#if !defined(linux)
-#ifdef IPA_SUMMARY
-#include "ipl_summary.h"
-#else 
-#include "ipa_trace.h"
-#endif
-#endif 
-
-#if !defined(linux)
+#if 0
 
 // Forward declaration.
 
@@ -1309,7 +1301,7 @@ extern void IPL_EX_Add_Expr_Offsets(DYN_ARRAY<SUMMARY_EXPR>* sx,
   }
 }
 
-#if !defined(linux) 
+#if 0
 //-----------------------------------------------------------------------
 // NAME: Print_Exprs
 // FUNCTION: Print a representation of the pair ('sv','sx') to the file 

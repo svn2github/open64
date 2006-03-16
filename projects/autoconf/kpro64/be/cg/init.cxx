@@ -33,17 +33,10 @@
 */
 
 
-// This file contains only Linux-specific code and should be entirely
-// #ifdef'd out for Irix.
-
-// Work around the "undefined weak symbol" bug in Linux.
-//
 // see comments in be/com/weak.cxx.
 //
 // This file define initialization of pointer variables to symbols defined
 // in cg.so but referenced in be/be.so.
-
-#ifdef __linux__
 
 #include "defs.h"
 #include "cgdriver.h"
@@ -80,5 +73,3 @@ struct CG_INIT
 	EH_Generate_Range_List_p = EH_Generate_Range_List;
     }
 } Cg_Initializer;
-
-#endif // __linux__

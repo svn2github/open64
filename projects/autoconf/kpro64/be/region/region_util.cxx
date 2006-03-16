@@ -70,12 +70,8 @@
 /* this next header should be after the external declarations in the others */
 #include "pragma_weak.h"	/* weak pragmas for Valid_alias...	*/
 
-#ifdef __linux__
 extern void (*Print_points_to_p) (FILE *fp, POINTS_TO *ptmp);
 #define Print_points_to (*Print_points_to_p)
-#else
-#pragma weak Print_points_to
-#endif
 
 // Emit 'T' or 'F' in the print routines for BOOLs
 #define tf(x) ((x) ? 'T' : 'F')

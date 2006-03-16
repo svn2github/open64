@@ -188,7 +188,7 @@ Whirl2Src_Emit (FILE* fp, WN* wn)
   }
 }
 
-#ifndef __linux__
+#if 0
 
 // These functions are needed only for prompf_anl.so
 
@@ -264,5 +264,4 @@ Whirl2Src_Translate_Istore_Str(char *str_buf,
       FmtAssert (FALSE, ("Unknown source language type"));
   }
 }
-
-#endif // __linux__
+#endif

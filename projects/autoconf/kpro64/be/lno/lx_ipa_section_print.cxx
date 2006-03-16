@@ -67,7 +67,7 @@
 
 #ifndef IPA_SUMMARY
 
-#if !defined(linux) 
+#if 0
 #include "ipc_file.h"           // IP_FILE_HDR
 #include "ipc_symtab_merge.h"   // Aux_Pu_Table
 #include "ipo_defs.h"           // IPA_NODE_CONTEXT
@@ -76,9 +76,7 @@
 // file static arrays used to get access to summary 
 // information when print methods are invoked from IPA
 static SUMMARY_SYMBOL* IPA_Symbol = NULL;
-#endif
 
-#if !defined(linux) 
 void
 Init_IPA_Print_Arrays (IPA_NODE* node)
 {
@@ -471,7 +469,7 @@ void TERM::IPA_LNO_Print_File(FILE* fp,
   fprintf(fp, "\n");
 } 
 
-#if !defined(linux) 
+#if 0
 //====================================================================
 //       Print the information written out to file
 //====================================================================
@@ -805,7 +803,7 @@ void PROJECTED_REGION::IPA_LNO_Print_File(FILE* fp,
   fprintf(fp, "\n");
 }
 
-#if !defined(linux)  
+#if 0
 //===================================================================
 //      Print the projected region 
 //===================================================================
@@ -899,5 +897,4 @@ CFG_NODE_INFO::Print(FILE *fp)
   }
   fprintf(fp," +++++++++SCALAR_INFO_FINISHED+++++++++\n");
 }
-
 #endif

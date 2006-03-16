@@ -3171,11 +3171,6 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 
     CODEREP *lbase = base_ccr.Tree() ? base_ccr.Tree() :
     				       Add_const(Pointer_type, (INT64) 0);
-#ifdef __irix__
-    FmtAssert(sizeof(num_byte) == sizeof(TY_IDX),
-	      ("CODEMAP::Add_expr: Cannot union MLOAD size with "
-	       "Ilod_base_ty"));
-#endif
     retv = Add_idef(op, opt_stab->Get_occ(wn), NULL,
 		    opt_stab->Get_mem_mu_node(wn),
 		    WN_rtype(wn),
@@ -4010,11 +4005,6 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 
       CODEREP *lbase = ( base_ccr.Tree() ? base_ccr.Tree() :
 			 htable->Add_const(Pointer_type, (INT64) 0) );
-#ifdef __irix__
-      FmtAssert(sizeof(num_byte) == sizeof(TY_IDX),
-		("CODEMAP::Add_expr: Cannot union MSTORE size with "
-		 "Ilod_base_ty"));
-#endif
       Set_lhs(htable->Add_idef(opc, opt_stab->Get_occ(Wn()), 
 			       this, NULL,
 			       MTYPE_M,

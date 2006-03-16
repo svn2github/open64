@@ -711,11 +711,6 @@ Zero_rf =
 
 #include <stdio.h>
 
-#if !defined(linux)
-#include <inttypes.h>
-#endif
-
-
 static
 unsigned short
 recip_table[256] = {
@@ -3461,12 +3456,7 @@ uint32_t neg;
 
 #include <stdio.h>
 
-#if !defined(linux)
-#include <inttypes.h>
-#else
 #include <sys/types.h>
-#endif
-
 
 /*
 	round to nearest

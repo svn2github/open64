@@ -140,7 +140,6 @@ extern void Set_addr_saved_stmt (WN *, BOOL);
 extern void Initialize_Targ_Info(void);
 
 // symbols defined in cg.so
-#ifndef __irix__
 
 extern void (*CG_Process_Command_Line_p) (INT, char **, INT, char **);
 #define CG_Process_Command_Line (*CG_Process_Command_Line_p)
@@ -163,21 +162,7 @@ extern WN* (*CG_Generate_Code_p) (WN*, ALIAS_MANAGER*, DST_IDX, BOOL);
 extern void (*EH_Generate_Range_List_p) (WN *);
 #define EH_Generate_Range_List (*EH_Generate_Range_List_p)
 
-#else
-
-#pragma weak CG_Process_Command_Line
-#pragma weak CG_Init
-#pragma weak CG_Fini
-#pragma weak CG_PU_Finalize
-#pragma weak CG_PU_Initialize
-#pragma weak CG_Generate_Code
-#pragma weak EH_Generate_Range_List
-
-
-#endif
-
 // symbols defined in wopt.so
-#ifndef __irix__
 
 extern void (*wopt_main_p) (INT argc, char **argv, INT, char **);
 #define wopt_main (*wopt_main_p)
@@ -206,22 +191,7 @@ extern void (*Delete_Du_Manager_p) (DU_MANAGER *, MEM_POOL *);
 extern BOOL (*Verify_alias_p) (ALIAS_MANAGER *, WN *);
 #define Verify_alias (*Verify_alias_p)
 
-#else
-
-#pragma weak wopt_main
-#pragma weak Wopt_Init
-#pragma weak Wopt_Fini
-#pragma weak Perform_Global_Optimization
-#pragma weak Perform_Preopt_Optimization
-#pragma weak Pre_Optimizer
-#pragma weak Create_Du_Manager
-#pragma weak Delete_Du_Manager
-#pragma weak Verify_alias
-
-#endif
-
 // symbols defined in lno.so
-#ifndef __irix__
 
 extern void (*lno_main_p) (INT, char**, INT, char**);
 #define lno_main (*lno_main_p)
@@ -235,18 +205,7 @@ extern void (*Lno_Fini_p) ();
 extern WN* (*Perform_Loop_Nest_Optimization_p) (PU_Info*, WN*, WN*, BOOL);
 #define Perform_Loop_Nest_Optimization (*Perform_Loop_Nest_Optimization_p)
 
-#else 
-
-#pragma weak lno_main
-#pragma weak Lno_Init
-#pragma weak Lno_Fini
-#pragma weak Perform_Loop_Nest_Optimization
-
-#endif
-
 // symbols defined in ipl.so
-
-#ifndef __irix__
 
 extern void (*Ipl_Extra_Output_p) (Output_File *);
 #define Ipl_Extra_Output (*Ipl_Extra_Output_p)
@@ -264,20 +223,8 @@ extern void (*Perform_Procedure_Summary_Phase_p) (WN*, DU_MANAGER*,
 						  ALIAS_MANAGER*, void*);
 #define Perform_Procedure_Summary_Phase (*Perform_Procedure_Summary_Phase_p)
 
-#ifdef KEY	// bug 3672
 extern void (*Preprocess_struct_access_p)(void);
 #define Preprocess_struct_access (*Preprocess_struct_access_p)
-#endif
-
-#else
-
-#pragma weak ipl_main
-#pragma weak Ipl_Init
-#pragma weak Ipl_Fini
-#pragma weak Ipl_Extra_Output
-#pragma weak Perform_Procedure_Summary_Phase
-
-#endif
 
 #include "w2c_weak.h"
 #include "w2f_weak.h"
@@ -286,17 +233,16 @@ extern void (*Preprocess_struct_access_p)(void);
 #pragma weak Prp_Needs_Whirl2c
 #pragma weak Prp_Needs_Whirl2f
 #pragma weak Prp_Init
-#pragma weak Prp_Instrument_And_EmitSrc
 #pragma weak Prp_Fini
+#pragma weak Prp_Instrument_And_EmitSrc
 
-#pragma weak Anl_Cleanup
 #pragma weak Anl_Process_Command_Line
 #pragma weak Anl_Needs_Whirl2c
 #pragma weak Anl_Needs_Whirl2f
 #pragma weak Anl_Init
+#pragma weak Anl_Fini
 #pragma weak Anl_Init_Map
 #pragma weak Anl_Static_Analysis
-#pragma weak Anl_Fini
 
 #ifndef __GNUC__
 #pragma weak Prompf_Emit_Whirl_to_Source__GP7pu_infoP2WN

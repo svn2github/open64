@@ -43,8 +43,6 @@
 // This file define initialization of pointer variables to symbols defined
 // in lno.so but referenced in be/be.so.
 
-#ifdef __linux__
-
 #include "defs.h"
 #include "wn.h"
 #include "pu_info.h"
@@ -108,5 +106,3 @@ struct W2F_INIT
       W2F_Translate_Wn_Str_p = W2F_Translate_Wn_Str;
     }
 } W2F_Initializer;
-
-#endif // __linux__

@@ -88,9 +88,6 @@
 #include "ipl_summarize_util.h"
 #include "ipl_main.h"
 #include "ipl_array_bread_write.h"
-#if !defined(linux)
-#include "ipa_section_main.h"
-#endif
 #include "ipa_lno_file.h"
 #include "ipl_lno_util.h"
 
@@ -102,22 +99,18 @@ BOOL Trace_Sections = FALSE;
 
 IVAR_ARRAY *Ivar = NULL;
 
-#if !defined(linux)
+#if 0
 // Maps used to carry over the loop and array access info
 LOOPINFO_TO_DLI_MAP*             IPL_Loopinfo_Map     = NULL;
 PROJ_REGION_TO_ACCESS_ARRAY_MAP* IPL_Access_Array_Map = NULL;
-#endif
 
-#if !defined(linux)
 mINT32
 SYSTEM_OF_EQUATIONS::_work_cols;
 mINT32
 SYSTEM_OF_EQUATIONS::_work_rows_eq;
 mINT32
 SYSTEM_OF_EQUATIONS::_work_rows;
-#endif 
 
-#if !defined(linux) 
 //====================================================================
 // initialize ivar and ivar global arrays
 //====================================================================
@@ -231,7 +224,7 @@ LOOPINFO::Build_linex(ACCESS_VECTOR* av)
 // create the mapping from the do loop info which contains access
 // vectors to the loop-info structure
 //====================================================================
-#if !defined(linux)
+#if 0
 void
 LOOPINFO::Map_do_loop_info(DO_LOOP_INFO_BASE *dli)
 {
@@ -532,7 +525,7 @@ PROJECTED_NODE::Set_to_kernel_image(PROJECTED_NODE* pn_kernel,
     Reset_is_unprojected();
 } 
 
-#if !defined(linux)
+#if 0
 //====================================================================
 // project this region onto the loop
 //
@@ -769,7 +762,7 @@ void LINEX::Substitute_Lindex(INT lindex,
   Simplify();
 } 
 
-#if !defined(linux) 			
+#if 0
 //==================================================================
 // set the region according to the SOE, pivot_row and stride
 //===================================================================
@@ -898,9 +891,7 @@ PROJECTED_REGION::Set_region(SYSTEM_OF_EQUATIONS* soe,
     }
   } 
 }
-#endif
 
-#if !defined(linux)
 //========================================================================
 //
 // Determine if two inequalities are actually one equality.
@@ -916,9 +907,7 @@ is_equality(const SYSTEM_OF_EQUATIONS *soe, const INT i, const INT j)
 
   return (soe->Work_Const(i) + soe->Work_Const(j) == 0);
 }
-#endif 
 
-#if !defined(linux)
 //=========================================================================
 // set the linexs
 // Set_Axle in LNO's code
@@ -1169,7 +1158,7 @@ PROJECTED_REGION::PROJECTED_REGION(ACCESS_ARRAY* array,
   Set_Mem_Pool(m);
 
   // enter PROJECTED_REGION* to ACCESS_ARRAY* mapping into hash table
-#if !defined(linux)
+#if 0
   if (in_ipl) {
     IPL_Access_Array_Map->Enter(this, array);
   }
@@ -1208,7 +1197,7 @@ PROJECTED_REGION::PROJECTED_REGION(ACCESS_ARRAY* array,
     return;
   }
 
-#if !defined(linux) 
+#if 0
   // update kernel information; add a kernel to this region
   BOOL match = TRUE;
   PROJECTED_KERNEL_ARRAY* kernels = loop->Get_kernels();
@@ -1253,7 +1242,7 @@ PROJECTED_REGION::PROJECTED_REGION(ACCESS_ARRAY* array,
 #endif
 }
 
-#if !defined(linux) 
+#if 0
 //===================================================================
 // compare 2 regions, 
 // 0 ---- cannot compare
@@ -1390,9 +1379,7 @@ PROJECTED_REGION::Compare(PROJECTED_REGION *b)
   return result;
 
 }
-#endif 
 
-#if !defined(linux)  
 //===================================================================
 // Add a linex to the system of equations
 // for UB and LB, similar to Add_Access
@@ -1573,7 +1560,7 @@ Is_nested_within(WN* inner, WN* outer)
   return FALSE;
 }
 
-#if !defined(linux) 
+#if 0
 //==================================================
 // Return the number of loops surrounding this loop
 //==================================================
@@ -1603,9 +1590,7 @@ Get_surrounding_loop_count(LOOPINFO *l)
 #endif
   return count;
 }
-#endif
 
-#if !defined(linux)
 //---------------------------------------------------------------
 // Return the parent loop given the loopinfo of the current loop
 //---------------------------------------------------------------
@@ -1622,9 +1607,7 @@ Get_parent(LOOPINFO *l)
  }
  return NULL;
 }
-#endif
 
-#if !defined(linux)
 //===================================================================
 // project the kernel
 // given a kernel, find its region of access AFTER all the enclosing
@@ -1778,9 +1761,7 @@ PROJECTED_KERNEL::Project(mUINT8 level, LOOPINFO* loop)
 pop_and_return:
   MEM_POOL_Pop(local_array_pool);
 }
-#endif
 
-#if !defined(linux)
 //===================================================================
 // create a projected kernel given the initial region of the array
 //===================================================================
@@ -1848,7 +1829,7 @@ REGION_ARRAYS::Copy_write(REGION_ARRAYS *r)
   Set_element_size(r->Get_element_size());
 }
 
-#if !defined(linux)
+#if 0
 //===================================================================
 // kill set for array regions
 //===================================================================
@@ -1889,9 +1870,7 @@ CFG_NODE_INFO::Add_def_array(PROJECTED_REGION* p,
     fprintf(stdout, "finished adding array kill node \n");
   }
 }
-#endif 
 
-#if !defined(linux)
 //===================================================================
 // kill set for array regions
 //===================================================================
@@ -1933,9 +1912,7 @@ CFG_NODE_INFO::Add_may_def_array(PROJECTED_REGION* p,
     fprintf(stdout, "finished adding array kill node \n");
   }
 }
-#endif 
 
-#if !defined(linux) 
 //===================================================================
 // upwardly exposed use set for for array regions
 //===================================================================
@@ -1968,9 +1945,7 @@ CFG_NODE_INFO::Add_use_array(PROJECTED_REGION *p,
   idx = proj_array->Newidx();
   (*proj_array)[idx].Set_projected_region(p);
 }
-#endif 
 
-#if !defined(linux) 
 //===================================================================
 // upwardly exposed use set for for array regions
 //===================================================================
@@ -2002,9 +1977,7 @@ CFG_NODE_INFO::Add_may_use_array(PROJECTED_REGION *p,
   idx = proj_array->Newidx();
   (*proj_array)[idx].Set_projected_region(p);
 }
-#endif 
 
-#if !defined (linux) 
 //===================================================================
 // store the array sections passed 
 //===================================================================
@@ -2045,9 +2018,7 @@ CFG_NODE_INFO::Add_array_param(PROJECTED_REGION *p,
   actual->Set_pass_type(PASS_ARRAY_SECTION);
   actual->Set_index(call_idx);
 }
-#endif 
 
-#if !defined(linux)
 //===================================================================
 // store the array sections passed
 //===================================================================
@@ -2472,7 +2443,7 @@ ARRAY_SUMMARY::Record_tlogs(TERM_ARRAY *tarray, INT offset)
      }
 }
 
-#if !defined(linux) 
+#if 0
 //-----------------------------------------------------------------------
 // NAME: PROJECTED_KERNEL::Set_Difference
 // FUNCTION: Set the "_difference" field in the PROJECTED_KERNEL to 

@@ -32,9 +32,17 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/unwindP.h>
 
 #include <list>
@@ -977,7 +985,6 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
   // entry, local-save, local-restore, and exit state.
   // first fill in the local state info with changes that happen in that bb.
 
-#ifdef linux
   PR_BITSET *entry_state         =
 	(PR_BITSET *) alloca((PU_BB_Count+1) * sizeof(PR_BITSET));
   PR_BITSET *local_save_state    =
@@ -986,12 +993,6 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 	(PR_BITSET *) alloca((PU_BB_Count+1) * sizeof(PR_BITSET));
   PR_BITSET *exit_state          =
 	(PR_BITSET *) alloca((PU_BB_Count+1) * sizeof(PR_BITSET));
-#else
-  PR_BITSET entry_state[PU_BB_Count+1];
-  PR_BITSET local_save_state[PU_BB_Count+1];
-  PR_BITSET local_restore_state[PU_BB_Count+1];
-  PR_BITSET exit_state[PU_BB_Count+1];
-#endif /* linux */
 
   // mark all saves/restores in local state
   Mark_Local_Saves_Restores (local_save_state, local_restore_state);

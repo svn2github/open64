@@ -36,6 +36,15 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #include <queue>
 #include "defs.h"
@@ -203,13 +212,8 @@ Check_HB_For_PQS_Suitability(BB_SET* selected_hb, BB* bb_entry)
   BB *bb;
   GTN_SET *pgtn_defs = GTN_SET_Create(GTN_UNIVERSE_size, &MEM_local_pool);
   GTN_SET *pgtn_uses = GTN_SET_Create(GTN_UNIVERSE_size, &MEM_local_pool);
-#ifdef linux
   mINT16   *count_pgtns = (mINT16 *) alloca ((Last_TN + 1) * sizeof(mINT16));
   bzero(count_pgtns, (Last_TN+1) * sizeof(mINT16));
-#else
-  mINT16   count_pgtns[Last_TN + 1];  // predicate GTNs
-  bzero(count_pgtns, sizeof(count_pgtns));
-#endif /* linux */
 
   FOR_ALL_BB_SET_members (selected_hb, bb) {
     OP *op;
