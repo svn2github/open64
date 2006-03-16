@@ -52,13 +52,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/ia6
 void
 Preconfigure_Host ( void )
 {
-#if HOST_IS_LITTLE_ENDIAN
-  Host_Byte_Sex = LITTLE_ENDIAN;
-#else
-  Host_Byte_Sex = BIG_ENDIAN;
-#endif
-
-  return;
 }
 
 
@@ -74,7 +67,6 @@ Preconfigure_Host ( void )
 void
 Configure_Host ( void )
 {
-  return;
 }
 
 

@@ -77,19 +77,8 @@
 
 typedef STR_IDX STR_INDEX;
 
-#ifdef linux
-
-#define STR_INDEX_size(xxx) (xxx & 0xff)
-#define STR_INDEX_index(xxx) (xxx >> 8)
-
-#else
-
-static inline mUINT8
-STR_INDEX_size (STR_INDEX idx)		{ return idx & 0xff; }
-static inline STR_INDEX
-STR_INDEX_index (STR_INDEX idx)		{ return idx >> 8; }
-
-#endif /* linux */
+#define STR_INDEX_size(xxx) ((xxx) & 0xff)
+#define STR_INDEX_index(xxx) ((xxx) >> 8)
 
 static inline STR_INDEX
 make_STR_INDEX (UINT32 size, STR_INDEX idx)

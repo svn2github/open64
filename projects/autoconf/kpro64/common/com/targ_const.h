@@ -149,14 +149,14 @@ struct TCON {
 
     union {
 	struct {
-#if HOST_IS_LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 	    mINT32 v0, v1, v2, v3;	/* Individual signed words */
 #else
 	    mINT32 v1, v0, v3, v2;	/* Individual signed words */
 #endif
 	} ival;
 	struct {
-#if HOST_IS_LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 	    mUINT32 u0, u1, u2, u3;	/* Individual unsigned words */
 #else
 	    mUINT32 u1, u0, u3, u2;	/* Individual unsigned words */
@@ -181,7 +181,7 @@ struct TCON {
     } vals;
     union {
 	struct {
-#if HOST_IS_LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 	    mINT32 v0, v1, v2, v3;	/* Individual signed words */
 #else
 	    mINT32 v1, v0, v3, v2;	/* Individual signed words */

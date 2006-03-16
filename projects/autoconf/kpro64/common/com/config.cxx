@@ -843,10 +843,8 @@ INT32 Split_BB_Length = DEF_BBLENGTH;
 BOOL Enable_SWP = FALSE;		/* but see cgdriver.c */
 BOOL Enable_SWP_overridden = FALSE;
 
-/***** What is the byte	sex of the host	and target? *****/
-UINT8 Host_Byte_Sex = BIG_ENDIAN;	/* Set in config_host.c	*/
-UINT8 Target_Byte_Sex =	BIG_ENDIAN;	/* Set in config_targ.c	*/
-BOOL  Same_Byte_Sex = TRUE;		/* Set in config_targ.c	*/
+/***** What is the byte	sex of the target? *****/
+UINT16 Target_Byte_Sex = 0;	/* Set in config_targ.c	*/
 
 /***** Miscellaneous code generation options *****/
 BOOL Use_Base_Ptrs = TRUE;	/* Explicit ptrs to .DATA./.RDATA? */

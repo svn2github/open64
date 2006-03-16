@@ -205,9 +205,7 @@ BOOL Section_For_Each_Function = FALSE;
 BOOL Inline_Intrinsics_Early=FALSE;    /* Inline intrinsics just after VHO */
 BOOL Enable_extract_compose=TRUE;     /* This is also forced off for MIPS and IA32 in
 					  config_targ.cxx */
-#ifdef __linux__
 BOOL Enable_WFE_DFE = FALSE;
-#endif /* __linux __ */
 
 
 /***** Instrummentation Related Options *****/
@@ -672,11 +670,9 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,  &LANG_Ansi_Setjmp_On,   &LANG_Ansi_Setjmp_Set,
     "C/C++: enable optimization of functions with calls to setjmp" },
 
-#ifdef __linux__
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wfe_dfe",	"wfe_dfe",
     0, 0, 0,	&Enable_WFE_DFE,	NULL,
     "Enable dead function elimination in the frontend" },
-#endif /* __linux__ */
 
   /* Obsolete options: */
 

@@ -74,15 +74,20 @@ extern "C" {
 static char *config_host_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config_host.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-/* What is the byte sex of the host?  Note that the variable
- * Host_Byte_Sex is set based on this definition in config_host.c.
- */
 #ifndef linux
-#define HOST_IS_BIG_ENDIAN	1
-#define HOST_IS_LITTLE_ENDIAN	0
+#include <sys/endian.h>
 #else
-#define HOST_IS_BIG_ENDIAN	0
-#define HOST_IS_LITTLE_ENDIAN	1
+#include <endian.h>
+#endif
+
+#if !defined BYTE_ORDER || !defined LITTLE_ENDIAN || !defined BIG_ENDIAN
+#error BYTE_ORDER, LITTLE_ENDIAN and/or BIG_ENDIAN not defined
+#endif
+#if BIG_ENDIAN == LITTLE_ENDIAN
+#error BIG_ENDIAN equals LITTLE_ENDIAN
+#endif
+#if BYTE_ORDER != BIG_ENDIAN && BYTE_ORDER != LITTLE_ENDIAN
+#error BYTE_ORDER is neither BIG_ENDIAN nor LITTLE_ENDIAN
 #endif
 
 /* Does the host (compiler) support quad-precision floating point? */

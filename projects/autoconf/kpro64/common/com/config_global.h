@@ -266,11 +266,6 @@ static char *config_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 
 #include "config_host.h"	/* in TARGET/com */
 #include "config_targ.h"	/* in TARGET/com */
-#ifndef linux
-#include <sys/endian.h>		/* for BIG_ENDIAN, LITTLE_ENDIAN */
-#else
-#include <endian.h>		/* for BIG_ENDIAN, LITTLE_ENDIAN */
-#endif
 #include "mempool.h"	/* Include the "fundamental" routines */
 #include "flags.h"
 
@@ -587,9 +582,7 @@ extern INT32 Split_BB_Length;	/* split BBs that are > than this */
 #define MAX_BBLENGTH	5000	/* don't let the value get too big */
 
 /***** What is the byte sex of the host and target? *****/
-extern UINT8 Host_Byte_Sex;	/* Set in config_host.c */
-extern UINT8 Target_Byte_Sex;	/* Set in config_targ.c */
-extern BOOL  Same_Byte_Sex;	/* Set in config_targ.c */
+extern UINT16 Target_Byte_Sex;	/* Set in config_targ.c */
 
 extern INT32 iolist_reuse_limit;
 

@@ -565,12 +565,7 @@ void
 Configure_Target ( void )
 {
 
-#if defined(linux)
   Target_Byte_Sex = LITTLE_ENDIAN;
-#else  
-  Target_Byte_Sex = BIG_ENDIAN;
-#endif
-  Same_Byte_Sex = ( Target_Byte_Sex == Host_Byte_Sex );
 
   Gen_PIC_Calls = FALSE;
   GP_Is_Preserved = FALSE;

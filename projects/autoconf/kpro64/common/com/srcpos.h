@@ -36,7 +36,7 @@
 #ifndef srcpos_INCLUDED
 #define srcpos_INCLUDED
 
-#include "config_host.h"	/* for HOST_IS_LITTLE_ENDIAN */
+#include "config_host.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -107,11 +107,11 @@ typedef union source_position {
 #define SRCPOS_bb_begin(s) 	(((USRCPOS *)&(s))->t.bb_begin)
 #define SRCPOS_linenum(s) 	(((USRCPOS *)&(s))->t.linenum)
 
-#if HOST_IS_LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 #define Srcpos_To_Line(s)	((mINT32)((s)>>32))
 #else
 #define Srcpos_To_Line(s)	((mINT32)(s))
-#endif /* HOST_IS_LITTLE_ENDIAN */
+#endif
 
 #ifdef __cplusplus
 }

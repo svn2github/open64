@@ -3198,12 +3198,10 @@ static simpnode  simp_band( OPCODE opc,
 		 SIMP_Is_Int_Constant(SIMPNODE_kid1(k0)) && // KEY
 		 (MTYPE_bit_size(SIMPNODE_rtype(k0)) == MTYPE_bit_size(ty))) {
 	 INT32 shift_count = SIMP_Int_ConstVal(SIMPNODE_kid1(k0));
-#ifdef KEY
 	 // When expanding into extract, need to take care of the endianness.
 	 // See gcc.c-torture/execute/200201271-1.c 
-	 if (Target_Byte_Sex != Host_Byte_Sex)
+	 if (Target_Byte_Sex != BYTE_ORDER)
 	   shift_count = MTYPE_bit_size(ty) - shift_count - log2((UINT64)c1+1);
-#endif
          mask_bits = create_bitmask(MTYPE_bit_size(ty) - shift_count);
 	 if ((mask_bits & c1) == mask_bits) {
 	   SHOW_RULE("(j LSHR c2) & c1)");
@@ -3389,27 +3387,23 @@ static simpnode  simp_bior( OPCODE opc,
    {
      
      UINT64 dep_mask = create_bitmask(SIMPNODE_op_bit_size(k1))<<SIMPNODE_op_bit_offset(k1);
-#ifdef KEY
      // When expanding into deposit, need to take care of the endianness.
-     if (Target_Byte_Sex != Host_Byte_Sex)
+     if (Target_Byte_Sex != BYTE_ORDER)
        dep_mask = create_bitmask(SIMPNODE_op_bit_size(k1)) <<
 	 (MTYPE_bit_size(ty) - SIMPNODE_op_bit_offset(k1) - SIMPNODE_op_bit_size(k1));
-#endif
      UINT64 type_mask = create_bitmask(MTYPE_bit_size(ty));
      c1 = SIMP_Int_ConstVal(SIMPNODE_kid1(k0));
      if (((dep_mask & c1) == 0) && (((dep_mask | c1) & type_mask) == type_mask)) {
        SHOW_RULE("(j&mask)|compose(0,k)");
        r = SIMPNODE_SimpCreateDeposit(SIMPNODE_opcode(k1),SIMPNODE_op_bit_offset(k1),
 				      SIMPNODE_op_bit_size(k1),SIMPNODE_kid0(k0),SIMPNODE_kid1(k1));
-#ifdef KEY
        // When expanding into deposit, need to take care of the endianness.
-       if (Target_Byte_Sex != Host_Byte_Sex)
+       if (Target_Byte_Sex != BYTE_ORDER)
 	 r = SIMPNODE_SimpCreateDeposit(SIMPNODE_opcode(k1), 
 					MTYPE_bit_size(ty) - 
 					SIMPNODE_op_bit_offset(k1) - 
 					SIMPNODE_op_bit_size(k1),
 					SIMPNODE_op_bit_size(k1),SIMPNODE_kid0(k0),SIMPNODE_kid1(k1));
-#endif       
        SIMP_DELETE(SIMPNODE_kid1(k0));
        SIMP_DELETE(SIMPNODE_kid0(k1));
        SIMP_DELETE(k0);
@@ -3427,14 +3421,12 @@ static simpnode  simp_bior( OPCODE opc,
        SHOW_RULE("(J&mask1) | (k & mask2)");
        r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),0,log2((UINT64)c1+1),
 				      SIMPNODE_kid0(k1),SIMPNODE_kid0(k0));
-#ifdef KEY
        // When expanding into deposit, need to take care of the endianness.
-       if (Target_Byte_Sex != Host_Byte_Sex)
+       if (Target_Byte_Sex != BYTE_ORDER)
 	 r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),
 					MTYPE_bit_size(ty)-log2((UINT64)c1+1), 
 					log2((UINT64)c1+1),
 					SIMPNODE_kid0(k1),SIMPNODE_kid0(k0));
-#endif
        SIMP_DELETE(SIMPNODE_kid1(k0));
        SIMP_DELETE(SIMPNODE_kid1(k1));
        SIMP_DELETE(k0);
@@ -3443,14 +3435,12 @@ static simpnode  simp_bior( OPCODE opc,
        SHOW_RULE("(J&mask2) | (k & mask1)");
        r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),0,log2((UINT64)c2+1),
 				      SIMPNODE_kid0(k0),SIMPNODE_kid0(k1));
-#ifdef KEY
        // When expanding into deposit, need to take care of the endianness.
-       if (Target_Byte_Sex != Host_Byte_Sex)
+       if (Target_Byte_Sex != BYTE_ORDER)
          r = SIMPNODE_SimpCreateDeposit(OPC_FROM_OPR(OPR_COMPOSE_BITS,ty),
 					MTYPE_bit_size(ty)-log2((UINT64)c2+1), 
 					log2((UINT64)c2+1),
 					SIMPNODE_kid0(k0),SIMPNODE_kid0(k1));
-#endif
        SIMP_DELETE(SIMPNODE_kid1(k0));
        SIMP_DELETE(SIMPNODE_kid1(k1));
        SIMP_DELETE(k0);
@@ -3993,11 +3983,9 @@ static simpnode  simp_shift( OPCODE opc,
 	   INT16 boffset = c1 - c2;
 	   INT16 bsize = shift_size - c1;
 	   if (bsize < 1) bsize = 1;
-#ifdef KEY
 	   // When expanding into extract, need to take care of the endianness.
-	   if (Target_Byte_Sex != Host_Byte_Sex)
+	   if (Target_Byte_Sex != BYTE_ORDER)
 	     boffset = MTYPE_bit_size(ty) - boffset - bsize;
-#endif
 	   r = SIMPNODE_SimpCreateExtract(shift_size == 32 ? OPC_U4EXTRACT_BITS : OPC_U8EXTRACT_BITS,
 				       boffset, bsize,
 				       SIMPNODE_kid0(k0));
@@ -4020,11 +4008,9 @@ static simpnode  simp_shift( OPCODE opc,
 	   INT16 boffset = c1 - c2;
 	   INT16 bsize = shift_size - c1;
 	   if (bsize < 1) bsize = 1;
-#ifdef KEY
 	   // When expanding into extract, need to take care of the endianness.
-	   if (Target_Byte_Sex != Host_Byte_Sex)
+	   if (Target_Byte_Sex != BYTE_ORDER)
 	     boffset = MTYPE_bit_size(ty) - boffset - bsize;
-#endif
 	   r = SIMPNODE_SimpCreateExtract(shift_size == 32 ? OPC_I4EXTRACT_BITS : OPC_I8EXTRACT_BITS,
 				       boffset, bsize,
 				       SIMPNODE_kid0(k0));
@@ -4035,11 +4021,9 @@ static simpnode  simp_shift( OPCODE opc,
       } else if (firstop == OPR_BAND && op == OPR_SHL &&
 		 SIMP_Is_Int_Constant(SIMPNODE_kid1(k0))) /* KEY */{
 	 c2 = SIMP_Int_ConstVal(SIMPNODE_kid1(k0));
-#ifdef KEY
 	 // When expanding into deposit, need to take care of the endianness.
-	 if (Target_Byte_Sex != Host_Byte_Sex)
+	 if (Target_Byte_Sex != BYTE_ORDER)
 	   c1 = MTYPE_bit_size(ty) - c1 - log2((UINT64)c2+1);
-#endif
 	 /* See if the mask is all 1's in the right places */
 	 mask = create_bitmask(shift_size-c1);
 	 if ((c2 & mask) == mask) {

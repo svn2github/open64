@@ -421,20 +421,18 @@ struct operator_from_tree_t {
 #endif /* GPLUSPLUSFE */
 };
 
-#ifdef KEY
 // The words in 'buf' are in target order. Convert them to host order
 // in place. 'buf' is a two word array.
 void
 WFE_Convert_To_Host_Order (long *buf)
 {
-  if (!Same_Byte_Sex)
+  if (Target_Byte_Sex != BYTE_ORDER)
     {
       long t = buf[0];
       buf[0] = buf[1];
       buf[1] = t;
     }
 }
-#endif
 
 // check whether the WHIRL operator has subsumed cvtl in its semantics
 // (intended only for integer operations)
@@ -4872,14 +4870,12 @@ WFE_Expand_Expr (tree exp,
         wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -rounded_size,
 			     ap_ty_idx, Make_Pointer_Type (ap_ty_idx, FALSE),
 			     ap_load);
-#ifdef KEY
-	if (Target_Byte_Sex != Host_Byte_Sex)
+	if (Target_Byte_Sex != BYTE_ORDER)
           wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, 
 			  ((MTYPE_size_min(mtype)==32)?4:0)-rounded_size, 
 			  ap_ty_idx, 
 			  Make_Pointer_Type (ap_ty_idx, FALSE),
 			  ap_load);
-#endif
       }
       break;
 

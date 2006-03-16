@@ -355,7 +355,6 @@ struct operator_from_tree_t {
 #endif /* GPLUSPLUSFE */
 };
 
-#ifdef KEY
 static bool WFE_Call_Returns_Ptr_To_Member_Func (tree exp);
 
 static WN *WFE_Expand_Ptr_To_Member_Func_Call_Expr (tree exp,
@@ -367,7 +366,7 @@ static WN *WFE_Expand_Ptr_To_Member_Func_Call_Expr (tree exp,
 void
 WFE_Convert_To_Host_Order (long *buf)
 {
-  if (!Same_Byte_Sex)
+  if (Target_Byte_Sex != BYTE_ORDER)
     {
       int t = buf[0];
       buf[0] = buf[1];
@@ -416,7 +415,6 @@ WFE_add_guard_var (tree guard_var, WN *value_wn)
     ("WFE_add_guard_var: unexpected WN operator"));
   WN_INSERT_BlockFirst(wn, stid);
 }
-#endif
 
 // check whether the WHIRL operator has subsumed cvtl in its semantics
 // (intended only for integer operations)
@@ -5144,14 +5142,12 @@ WFE_Expand_Expr (tree exp,
         wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -rounded_size,
 			     ty_idx, Make_Pointer_Type (ty_idx, FALSE),
 			     WN_Ldid (Pointer_Mtype, 0, st, ST_type (st)));
-#ifdef KEY
-	if (Target_Byte_Sex != Host_Byte_Sex)
+	if (Target_Byte_Sex != BYTE_ORDER)
           wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, 
 			  ((MTYPE_size_min(mtype)==32)?4:0)-rounded_size, 
 			  ap_ty_idx, 
 			  Make_Pointer_Type (ap_ty_idx, FALSE),
 			  ap_load);
-#endif
       }
       break;
 

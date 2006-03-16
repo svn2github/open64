@@ -1305,7 +1305,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 
     case OPC_U4TAS:
     case OPC_I4TAS:
-#if 0 // not needed when HOST_IS_LITTLE_ENDIAN is true
+#if BYTE_ORDER == BIG_ENDIAN
       /* Need to move the bits if the source is an F4 */
       if (TCON_ty(c0) == MTYPE_F4) {
 	 TCON_v0(c0) = TCON_v1(c0);
@@ -1316,7 +1316,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       break;
 
     case OPC_F4TAS:
-#if 0 // not needed when HOST_IS_LITTLE_ENDIAN is true
+#if BYTE_ORDER == BIG_ENDIAN
       /* Need to move the bits if the source is not an F4 */
       if (TCON_ty(c0) != MTYPE_F4) {
 	 TCON_v1(c0) = TCON_v0(c0);
@@ -4464,7 +4464,7 @@ Tcon_To_Str(buf, v)
  *--------------------------------------------------------------------*/
 
 /*
- * Throughout this routine, if Same_Byte_Sex, then perform no
+ * Throughout this routine, if Target_Byte_Sex==BYTE_ORDER, then perform no
  * transformation on data string, otherwise perform byte-sex-change on
  * data.  We always have to copy to a local buffer in case the argument
  * buffer is not aligned properly.
@@ -4489,7 +4489,7 @@ Str_To_Tcon(TYPE_ID ty, char *buf)
       break;
     case MTYPE_I2:
     case MTYPE_U2: /* We want to sign-extend here; we'll truncate later */
-      if (Same_Byte_Sex) {
+      if (Target_Byte_Sex == BYTE_ORDER) {
 	tbuf[0] = buf[0];
 	tbuf[1] = buf[1];
       } else {
@@ -4503,7 +4503,7 @@ Str_To_Tcon(TYPE_ID ty, char *buf)
     case MTYPE_U4:
       /* if host and target byte order are different, we might want to do 
 	 something here */
-      if (Same_Byte_Sex) {
+      if (Target_Byte_Sex == BYTE_ORDER) {
 	tbuf[0] = buf[0];
 	tbuf[1] = buf[1];
 	tbuf[2] = buf[2];
@@ -4521,7 +4521,7 @@ Str_To_Tcon(TYPE_ID ty, char *buf)
     case MTYPE_U8:
       /* if host and target byte order are different, we might want to do 
 	 something here */
-      if (Same_Byte_Sex) {
+      if (Target_Byte_Sex == BYTE_ORDER) {
 	tbuf[0] = buf[0];
 	tbuf[1] = buf[1];
 	tbuf[2] = buf[2];
@@ -4565,7 +4565,7 @@ Str_To_Tcon(TYPE_ID ty, char *buf)
 	 source must give same object on whatever machine the compiler 
 	 is hosted.
        */
-      if (Same_Byte_Sex) {
+      if (Target_Byte_Sex == BYTE_ORDER) {
 	tbuf[0] = buf[0];
 	tbuf[1] = buf[1];
 	tbuf[2] = buf[2];
@@ -4581,7 +4581,7 @@ Str_To_Tcon(TYPE_ID ty, char *buf)
       break;
 
     case MTYPE_F8:
-      if (Same_Byte_Sex) {
+      if (Target_Byte_Sex == BYTE_ORDER) {
 	tbuf[0] = buf[0];
 	tbuf[1] = buf[1];
 	tbuf[2] = buf[2];
@@ -4690,7 +4690,7 @@ Bit_Str_To_Tcon ( TYPE_ID ty, char *arg_buf )
        * sure we put it in the proper place depending on the host's
        * endianness.
        */
-#if HOST_IS_BIG_ENDIAN
+#if BYTE_ORDER == BIG_ENDIAN
       TCON_v1(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
       TCON_v0(c) = (buf[7] << 24) | (buf[6] << 16) | (buf[5] << 8) | buf[4];
 #else
@@ -4707,7 +4707,7 @@ Bit_Str_To_Tcon ( TYPE_ID ty, char *arg_buf )
        * sure we put it in the proper place depending on the host's
        * endianness.
        */
-#if HOST_IS_BIG_ENDIAN
+#if BYTE_ORDER == BIG_ENDIAN
       TCON_v3(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
       TCON_v2(c) = (buf[7] << 24) | (buf[6] << 16) | (buf[5] << 8) | buf[4];
       TCON_v1(c) = (buf[11] << 24) | (buf[10] << 16) | (buf[9] << 8) | buf[8];
