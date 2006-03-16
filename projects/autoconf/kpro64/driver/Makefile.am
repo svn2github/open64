@@ -25,5 +25,5 @@ version.c: gen_version.csh
 
 name_prefix:=$(shell echo "" | sed -e "${transform}")
 
-AM_CPPFLAGS = -DKEY -DLITTLE_ENDIAN_HOST -DNAME_PREFIX=\"${name_prefix}\" -DPSC_NAME_PREFIX=\"o\" \
+AM_CPPFLAGS = -DKEY -DNAME_PREFIX=\"${name_prefix}\" -DPSC_NAME_PREFIX=\"o\" \
 	-I${srcdir}/../common/com -I${srcdir}/../include

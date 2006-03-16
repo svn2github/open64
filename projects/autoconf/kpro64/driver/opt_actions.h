@@ -43,9 +43,6 @@
 
 #define UNDEFINED	-1	/* for any undefined option */
 
-#define ENDIAN_BIG	0
-#define ENDIAN_LITTLE	1
-
 #define EXTENDED_ANSI	0
 #define KR_ANSI		1
 #define STRICT_ANSI	2

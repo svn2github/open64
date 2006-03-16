@@ -58,8 +58,6 @@
 #include "get_options.h"
 #include "phases.h"
 
-int endian = UNDEFINED;
-
 static char compiler_version[] = PACKAGE_VERSION;
 
 void
@@ -90,21 +88,6 @@ set_defaults (void)
 			prepend_option_seen(flag);
 		}
 	  }
-	}
-	if (endian == UNDEFINED) {
-#ifdef TARG_MIPS
-		/* Default to little-endian -JMB */
-		toggle(&endian, ENDIAN_LITTLE);
-		prepend_option_seen(O_EL);
-		prepend_option_seen(O_mlittle_endian);
-#else
-#ifdef LITTLE_ENDIAN_HOST
-		toggle(&endian, ENDIAN_LITTLE);
-#else
-		toggle(&endian, ENDIAN_BIG);
-		prepend_option_seen(O_EB);
-#endif
-#endif
 	}
 
 	prepend_option_seen(O_usegfe);
