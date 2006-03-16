@@ -32,8 +32,4 @@ struct ELF32
     }
 };
 
-#if defined(__sgi) && defined(mips)
-#define __ALWAYS_USE_64BIT_ELF__
-#endif
-
 #endif // ir_elf_INCLUDED
