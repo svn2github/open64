@@ -38,30 +38,10 @@ static const char source_file[] = __FILE__;
 static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/util/resource.c,v $ $Revision: 1.1.1.1 $";
 #endif
 
-#if (1)
-# include <sys/time.h>
-# include <sys/resource.h>
-  typedef struct rusage time_buf_t;
-#else
-# include <sys/param.h>
-# include <sys/types.h>
-# include <sys/times.h>
-# include <time.h>
-  typedef struct tms time_buf_t;
-#endif
-
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <unistd.h>
 #include <string.h>
-/* Hack: These were defined in sys/param.h and will be redefined in defs.h
- * if we don't prevent it.  TODO: Really defs.h should check to see if they are
- * defined before defining them.
- */
-#ifdef MAX
-#undef MAX
-#endif
-#ifdef MIN
-#undef MIN
-#endif
 
 #include "defs.h"
 #include "resource.h"
@@ -107,14 +87,10 @@ static void Accum_Delta_Resource ( RESOURCES *delta,
                               RESOURCES *summary );
 
 /* We need a few buffers for internal use: */
-static time_buf_t tbuf;
+static struct rusage tbuf;
 static RESOURCES curtime, deltime;
 static RSTATE runtime;
-#if (1)
 static struct timeval start_time;
-#else
-static INT start_time;	/* Initial date/time */
-#endif
 static INT initialized = 0;
 
 /* ====================================================================
@@ -155,52 +131,24 @@ Get_Resources (
     RESOURCES *r
 )
 {
-#if (1)
     struct timeval now;
-#else
-    INT secs, frac;
-#endif
 
     /* Initialize if the user didn't: */
     if ( ! initialized ) Resource_Init ();
 
     /* Get the elapsed time: */
-#if (1)
-#ifdef irix
-    gettimeofday(&now);
-#else
     gettimeofday(&now, NULL);
-#endif
     r->etime.secs  = now.tv_sec  - start_time.tv_sec;
     r->etime.usecs = now.tv_usec - start_time.tv_usec;
-#else
-    r->etime.secs  = time (0) - start_time;
-    r->etime.usecs = 0;
-#endif
 
     /* Get the CPU time information from the system: */
-#if (1)
     getrusage (RUSAGE_SELF, &tbuf);
-#else
-    (void) times (&tbuf);
-#endif
 
     /* Transfer it to caller's structure: */
-#if (1)
     r->utime.secs  = tbuf.ru_utime.tv_sec;
     r->utime.usecs = tbuf.ru_utime.tv_usec;
     r->stime.secs  = tbuf.ru_stime.tv_sec;
     r->stime.usecs = tbuf.ru_stime.tv_usec;
-#else
-    secs = tbuf.tms_utime / HZ;
-    frac = tbuf.tms_utime - (secs*HZ);
-    r->utime.secs  = secs;
-    r->utime.usecs = frac * (1000000/HZ);
-    secs = tbuf.tms_stime / HZ;
-    frac = tbuf.tms_stime - (secs*HZ);
-    r->stime.secs  = secs;
-    r->stime.usecs = frac * (1000000/HZ);
-#endif
 
     /* Get the memory information */
     r->memory = (INT) sbrk(0);
@@ -317,15 +265,7 @@ void
 Resource_Init ( void )
 {
     /* Initialize elapsed time base: */
-#if (1)
-#ifdef irix
-    gettimeofday(&start_time);
-#else
     gettimeofday(&start_time, NULL);
-#endif
-#else
-    start_time = time (0);
-#endif
     initialized = 1;
 
     /* Initialize the process initialization structure: */
@@ -510,17 +450,10 @@ Resource_Report (
     /* Report: */
     if ( title && *title ) fprintf ( file, "%s\n", title );
     fprintf ( file,
-#if (1)
       "\tuser:\t%4d.%06d\n\tsystem:\t%4d.%06d\n\telapsed: %4d.%06d\n",
 	      res->utime.secs, res->utime.usecs,
 	      res->stime.secs, res->stime.usecs,
 	      res->etime.secs, res->etime.usecs );
-#else
-      "\tuser:\t%4d.%03d\n\tsystem:\t%4d.%03d\n\telapsed: %4d.%02d\n",
-	      res->utime.secs, res->utime.usecs/1000,
-	      res->stime.secs, res->stime.usecs/1000,
-	      res->etime.secs, res->etime.usecs/10000 );
-#endif
     fprintf ( file, "\tmemory:\t%8x\n\tfree:\t%8x\n",
 	      res->memory, res->freemem );
 }

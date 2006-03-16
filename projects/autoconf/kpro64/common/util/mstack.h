@@ -63,22 +63,7 @@ static char *stack_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/u
 #endif /* _KEEP_RCS_ID */
 
 
-#if mips
-
 extern int trace_stack ( int prfunc, int prfile );
-
-#else
-#if A_UX
-
-extern int stack_lev ( int b );
-extern int trace_stack ( int a, int b );
-
-#else
-
-extern int trace_stack ( int a, int b );
-
-#endif /* A_UX */
-#endif /* mips */
 
 #ifdef __cplusplus
 }
