@@ -1408,11 +1408,7 @@ static INT Vintrinsic_Fission(WN* innerloop)
     LWN_Copy_Def_Use(arrayx,startx,Du_Mgr);
     if (WN_operator(WN_kid0(arrayx))==OPR_LDA) {
       ST* arrayx_st=WN_st(WN_kid0(arrayx));
-#ifdef _NEW_SYMTAB
       Clear_ST_addr_not_passed(arrayx_st);
-#else
-      Set_ST_addr_taken_passed(arrayx_st);
-#endif
     }
     startx = LWN_CreateExp2(addr_add_opc, startx,
                    WN_CreateIntconst(addr_intconst_opc, WN_offset(iload)));
@@ -1461,11 +1457,7 @@ static INT Vintrinsic_Fission(WN* innerloop)
     LWN_Copy_Def_Use(arrayy,starty,Du_Mgr);
     if (WN_operator(WN_kid0(arrayy))==OPR_LDA) {
       ST* arrayy_st=WN_st(WN_kid0(arrayy));
-#ifdef _NEW_SYMTAB
       Clear_ST_addr_not_passed(arrayy_st);
-#else
-      Set_ST_addr_taken_passed(arrayy_st);
-#endif
     }
     starty = LWN_CreateExp2(addr_add_opc, starty,
                    WN_CreateIntconst(addr_intconst_opc, WN_offset(istore)));

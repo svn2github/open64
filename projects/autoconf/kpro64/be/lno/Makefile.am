@@ -12,7 +12,7 @@ lno_la_SOURCES = access_main.cxx access_vector.cxx aequiv.cxx al_loop.cxx \
 	lego_pragma.cxx lego_skew.cxx lego_util.cxx lno_bv.cxx lno_scc.cxx \
 	lno_split.cxx lnodriver.cxx lnopt_hoistif.cxx lnopt_main.cxx \
 	lnotarget.cxx lnoutils.cxx lu_mat_textra.cxx lwn_util.cxx \
-	lx_prompf_anl.cxx mat_textra.cxx mem_sim.cxx minvariant.cxx \
+	lx_prompf_anl.cxx mat_textra.cxx minvariant.cxx \
 	model.cxx move.cxx name.cxx oinvar.cxx outer.cxx pad.cxx parallel.cxx \
 	parids.cxx parmodel.cxx permute.cxx pf_loop.cxx pf_manual.cxx \
 	pf_ref.cxx prefetch.cxx reduc.cxx reverse.cxx scalar_expand.cxx \
@@ -24,7 +24,7 @@ lno_la_SOURCES = access_main.cxx access_vector.cxx aequiv.cxx al_loop.cxx \
 lno_la_LDFLAGS = -avoid-version -module
 lno_la_LIBADD = ../be/libbe.la
 
-AM_CPPFLAGS = -D_NEW_SYMTAB -DBACK_END -DKEY -DLNO -DMONGOOSE_BE \
+AM_CPPFLAGS = -DBACK_END -DKEY -DLNO -DMONGOOSE_BE \
 	-I../be -I../../targ_info \
 	-I${srcdir}/../be \
 	-I${srcdir}/../cg \

@@ -881,22 +881,14 @@ static void Transform_Code(STACK<WN_PAIR_EC> *cse_stack, WN *loop, BOOL all_inva
   }
   length = strlen(preg_name);
   sprintf(&preg_name[length],"_%d",0);
-#ifdef _NEW_SYMTAB
   preg_array[0] = Create_Preg(type,preg_name);
-#else
-  preg_array[0] = Create_Preg(type,preg_name,NULL);
-#endif
   INT i;
   for (i=1; i<number_sums; i++) {
     if (all_invariant) {
       preg_array[i] = preg_array[0]; // only need one , since they're the same
     } else {
       sprintf(&preg_name[length],"_%d",i);
-#ifdef _NEW_SYMTAB
       preg_array[i] = Create_Preg(type,preg_name);
-#else
-      preg_array[i] = Create_Preg(type,preg_name,NULL);
-#endif
     }
   }
 

@@ -1343,11 +1343,7 @@ void ACCESS_ARRAY::Set_Array(WN *wn, DOLOOP_STACK *stack)
 #ifdef LNO
   if (_num_vec == 1) {
     if (WN_operator(base) == OPR_LDA) {
-#ifdef _NEW_SYMTAB
       if (ST_base_idx(WN_st(base)) != ST_st_idx(WN_st(base)) &&
-#else
-      if ((ST_sclass(WN_st(base)) == SCLASS_BASED) &&
-#endif
           (ST_sclass(ST_base(WN_st(base))) == SCLASS_COMMON)) {
 	WN *array_dim = WN_array_dim(wn,0);
 	if (WN_operator(array_dim) == OPR_INTCONST) {

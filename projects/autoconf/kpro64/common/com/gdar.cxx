@@ -55,9 +55,7 @@
  * ====================================================================
  */
 
-#ifdef _NEW_SYMTAB
-// TODO_NEW_SYMTAB: figure out what needs to be done
-#else
+#if 0
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -607,4 +605,4 @@ void Process_GDAR (char *gdar_filename, SYMTAB *global_symtab,
   return;
 
 }
-#endif /* _NEW_SYMTAB */
+#endif

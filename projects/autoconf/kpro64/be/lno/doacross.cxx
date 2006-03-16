@@ -289,11 +289,7 @@ extern WN* Parallelize_Doacross_Loop(
   }
 
   // create my_pid=pid
-#ifdef _NEW_SYMTAB
   WN_OFFSET preg_num = Create_Preg(index_type, "my_pid");
-#else
-  WN_OFFSET preg_num = Create_Preg(index_type, "my_pid", NULL);
-#endif
   WN* pid_ldid=LWN_CreateLdid(op_ldid, WN_start(processor_loop));
   du->Add_Def_Use(WN_start(processor_loop), pid_ldid);
   du->Add_Def_Use(WN_step(processor_loop), pid_ldid);
@@ -304,11 +300,7 @@ extern WN* Parallelize_Doacross_Loop(
 	LWN_Get_Parent(outer_doacross), outer_doacross, my_pid_stid);
 
   // create my_step=1
-#ifdef _NEW_SYMTAB
   preg_num = Create_Preg(sync_array_type, "my_step");
-#else
-  preg_num = Create_Preg(sync_array_type, "my_step", NULL);
-#endif
   WN* my_step_stid = LWN_CreateStid(op_long_stid, preg_num,
 	sync_array_type_preg_st, Be_Type_Tbl(sync_array_type),
 	LWN_Make_Icon(sync_array_type, 1));
@@ -427,11 +419,7 @@ extern WN* Parallelize_Doacross_Loop(
     if (sync_tile_distances[1]!= NULL_DIST) {	// dependence from upper stripe
 
       // create upper_pid=pid-1
-#ifdef _NEW_SYMTAB
       preg_num = Create_Preg(index_type, "upper_pid");
-#else
-      preg_num = Create_Preg(index_type, "upper_pid", NULL);
-#endif
       WN* pid_ldid=LWN_CreateLdid(op_ldid, WN_start(processor_loop));
       du->Add_Def_Use(WN_start(processor_loop), pid_ldid);
       du->Add_Def_Use(WN_step(processor_loop), pid_ldid);
@@ -447,11 +435,7 @@ extern WN* Parallelize_Doacross_Loop(
 	LWN_Get_Parent(outer_doacross), outer_doacross, upper_pid_stid);
 
       // create step_upper=0, i.e. initialization
-#ifdef _NEW_SYMTAB
       preg_num = Create_Preg(sync_array_type, "step_upper");
-#else
-      preg_num = Create_Preg(sync_array_type, "step_upper", NULL);
-#endif
       WN* step_upper_stid = LWN_CreateStid(op_long_stid, preg_num,
                                            sync_array_type_preg_st,
                                            Be_Type_Tbl(sync_array_type),
@@ -531,11 +515,7 @@ extern WN* Parallelize_Doacross_Loop(
     if (sync_tile_distances[0]!= NULL_DIST) { // dependence from lower stripe
 
       // create lower_pid=pid+1
-#ifdef _NEW_SYMTAB
       preg_num = Create_Preg(index_type, "lower_pid");
-#else
-      preg_num = Create_Preg(index_type, "lower_pid", NULL);
-#endif
       WN* pid_ldid=LWN_CreateLdid(op_ldid, WN_start(processor_loop));
       du->Add_Def_Use(WN_start(processor_loop), pid_ldid);
       du->Add_Def_Use(WN_step(processor_loop), pid_ldid);
@@ -551,11 +531,7 @@ extern WN* Parallelize_Doacross_Loop(
 	LWN_Get_Parent(outer_doacross), outer_doacross, lower_pid_stid);
 
       // create step_lower=0, i.e. initialization
-#ifdef _NEW_SYMTAB
       preg_num = Create_Preg(sync_array_type, "step_lower");
-#else
-      preg_num = Create_Preg(sync_array_type, "step_lower", NULL);
-#endif
       WN* step_lower_stid = LWN_CreateStid(op_long_stid, preg_num,
                                            sync_array_type_preg_st,
                                            Be_Type_Tbl(sync_array_type),
@@ -801,7 +777,6 @@ static void Create_Sync_Structure () {
   BOOL is_global=TRUE;
   BOOL is_local=FALSE;
   
-#ifdef _NEW_SYMTAB
   TY_IDX array_ty_idx;
   TY& array_ty = New_TY(array_ty_idx);
   TY_Init (array_ty,
@@ -819,32 +794,6 @@ static void Create_Sync_Structure () {
   Set_TY_arb(array_ty,arb);
   Sync_Array_Ptr_Ty=Make_Pointer_Type(array_ty_idx);
   Set_TY_ptr_as_array(Sync_Array_Ptr_Ty);
-
-#else
-  TY_IDX array_ty          = New_TY(is_global);
-  TY_IDX array_ty_idx = array_ty; 
-  TY_kind(array_ty)     = KIND_ARRAY;
-  TY_btype(array_ty)    = MTYPE_M;
-
-  ARI *ari = New_ARI (1, is_global);
-  ARI_etype(ari)        = Be_Type_Tbl(MTYPE_I8);
-  ARI_const_zofst(ari)  = TRUE;
-  ARI_zofst_val(ari)    = 0;
-  ARB_const_lbnd(ARI_bnd(ari,0))    = TRUE;
-  ARB_lbnd_val(ARI_bnd(ari,0))      = 0;
-  ARB_const_ubnd(ARI_bnd(ari,0))    = TRUE;
-  ARB_ubnd_val(ARI_bnd(ari,0))      = 1024*16-1;
-  				    // has to be in sync with libmp/dsmcrt.c
-  ARB_const_stride(ARI_bnd(ari,0))  = TRUE;
-  ARB_stride_val(ARI_bnd(ari,0))    = 1;
-  TY_size(array_ty)     = 1024*128; // has to be in sync with libmp/dsmcrt.c
-  TY_align(array_ty)    = 8;
-  TY_name(array_ty)     = Save_Str ("array_I8");
-  TY_arinfo(array_ty)   = ari;
-  Enter_TY (array_ty);
-  Sync_Array_Ptr_Ty=Make_Pointer_Type(array_ty);
-  Set_TY_ptr_as_array(Sync_Array_Ptr_Ty);
-#endif
 
   ST* st        = New_ST(is_global ? GLOBAL_SYMTAB : CURRENT_SYMTAB);
   ST_Init (st,
@@ -963,11 +912,7 @@ static WN* Create_Initialize_Loop (WN* processor_loop,
   }
  
   // create loop to initialize protion of sync_array
-#ifdef _NEW_SYMTAB
   WN_OFFSET preg_num = Create_Preg(index_type, "sync_init");
-#else
-  WN_OFFSET preg_num = Create_Preg(index_type, "sync_init", NULL);
-#endif
 
   WN* loop_start = LWN_CreateStid(
 			op_stid, 

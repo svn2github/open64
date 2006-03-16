@@ -202,11 +202,7 @@ static void Increment_Loop_Depths           (WN* wn);
 static DISTR_ARRAY* New_DACT (WN** pwn, ST* array_st, INT ndims);
 static BOOL Check_Expr (WN* expr_wn, SYMBOL* index_sym,
                         INT32* coeff, INT32* constant);
-#ifdef _NEW_SYMTAB
 static ST* Lookup_Variable(char *nm, INT stab);
-#else
-static ST* Lookup_Variable(char *nm, SYMTAB *stab);
-#endif
 static ST* Create_Global_Variable (char* nm, TYPE_ID type, ST* array_st,
                                    INT32 i);
 static ST* Create_Local_Variable (char* nm, TYPE_ID type, ST* array_st,
@@ -593,7 +589,6 @@ void DISTR_ARRAY::Print (FILE* fp) const {
  * Lookup up the variable in the symbol table
  *
  ***********************************************************************/
-#ifdef _NEW_SYMTAB
 static ST* Lookup_Variable(char *nm, INT stab)
 {
   ST *st;
@@ -606,19 +601,6 @@ static ST* Lookup_Variable(char *nm, INT stab)
 
   return NULL;
 }
-#else
-static ST* Lookup_Variable(char *nm, SYMTAB *stab)
-{
-  ST *st;
-
-  FOR_ALL_SYMBOLS(stab, st) {
-    if ((ST_class(st) == CLASS_VAR) && (strcmp(ST_name(st), nm) == 0))
-      return st;
-  }
-
-  return NULL;
-}
-#endif
 
 /***********************************************************************
  *
@@ -639,11 +621,7 @@ static ST* Create_Global_Variable (char* nm, TYPE_ID type, ST* array_st,
   }
 
   // See if the variable already exists
-#ifdef _NEW_SYMTAB
   ST *st = Lookup_Variable(name, GLOBAL_SYMTAB);
-#else
-  ST *st = Lookup_Variable(name, Global_Symtab);
-#endif
   if (st) return st;
 
   // Create a new variable
@@ -722,13 +700,8 @@ static ST* New_DART (ST* array_st) {
   /* never lookup for locals. */
   ST* dart_st;
   if (isglobal) {
-#ifdef _NEW_SYMTAB
     dart_st = Lookup_Variable(name, 
                               isglobal ? GLOBAL_SYMTAB : CURRENT_SYMTAB);
-#else
-    dart_st = Lookup_Variable(name, 
-                              isglobal ? Global_Symtab : Current_Symtab);
-#endif
     if (dart_st) return dart_st;
   }
 
@@ -766,7 +739,6 @@ static ST* New_DART (ST* array_st) {
  * in a common block. Return the ST entry for the common block.
  *
  ***********************************************************************/
-#ifdef _NEW_SYMTAB
 static ST* Create_Common_Block (ST* array_st, INT numdim) {
   Is_True (ST_isCommon(array_st),
            ("Create_Common_Block called with non-COMMON ST (%s)",
@@ -863,115 +835,6 @@ static ST* Create_Common_Block (ST* array_st, INT numdim) {
   CXX_DELETE_ARRAY (name, LEGO_pool);
   return st;
 } /* Create_Common_Block */
-
-#else  // _NEW_SYMTAB
-
-static ST* Create_Common_Block (ST* array_st, INT numdim) {
-  Is_True (ST_isCommon(array_st),
-           ("Create_Common_Block called with non-COMMON ST (%s)",
-            ST_name(array_st)));
-  char *name;
-  name = CXX_NEW_ARRAY (char, (strlen(ST_name(ST_base(array_st)))+
-                               strlen(ST_name(array_st))+11),
-                        LEGO_pool);
-  
-  ST *base_st = ST_base(array_st);
-  Is_True (ST_class(base_st) == CLASS_VAR,
-           ("Base of common (%s) not CLASS_VAR", ST_name(base_st)));
-  Is_True (ST_sclass(base_st) == SCLASS_COMMON,
-           ("Base of common (%s) not SCLASS_COMMON", ST_name(base_st)));
-  Is_True (!ST_is_global(base_st) && !ST_is_global(array_st),
-           ("Array %s or base %s not in local ST",
-            ST_name(array_st), ST_name(base_st)));
-
-  /* Declare type of the array for each of dimsize and numprocs */
-  TY_IDX array_ty          = New_TY(FALSE);
-  TY_kind(array_ty)     = KIND_ARRAY;
-  TY_btype(array_ty)    = MTYPE_M;
-
-  ARI *ari = New_ARI (1, FALSE);
-  ARI_etype(ari)        = Be_Type_Tbl(MTYPE_I8);
-  ARI_const_zofst(ari)  = TRUE;
-  ARI_zofst_val(ari)    = 0;
-  ARB_const_lbnd(ARI_bnd(ari,0))    = TRUE;
-  ARB_lbnd_val(ARI_bnd(ari,0))      = 0;
-  ARB_const_ubnd(ARI_bnd(ari,0))    = TRUE;
-  ARB_ubnd_val(ARI_bnd(ari,0))      = numdim-1;
-  ARB_const_stride(ARI_bnd(ari,0))  = TRUE;
-  ARB_stride_val(ARI_bnd(ari,0))    = 1;
-  TY_size(array_ty)     = numdim*TY_size(Be_Type_Tbl(MTYPE_I8));
-  TY_align(array_ty)    = 8;
-  TY_name(array_ty)     = Save_Str ("array_I8");
-  TY_arinfo(array_ty)   = ari;
-  Enter_TY (array_ty);
-
-  /* Create a struct for the common */
-  FLD *field, *next;
-  field = New_FLD (4, FALSE);
-  FLD_name(field)   = Save_Str("dart");
-  FLD_type(field)   = DART_ptr_TY;
-  FLD_ofst(field)   = 0;
-  FLD_flags(field)  = 0;
-
-  next = FLD_next(field);
-  TY_IDX element_type  = TY_AR_etype(Get_Array_Type(array_st));
-  TY_IDX array_type    =
-    Make_Pointer_Type(Make_Pointer_Type(element_type));
-  Set_TY_ptr_as_array(array_type);
-  Set_TY_ptr_as_array(TY_pointed(array_type));
-  FLD_type(next)    = array_type;
-  FLD_name(next)    = Save_Str(ST_name(array_st));
-  // Ordinarily the following is correct, but we want to always reserve
-  // 8 bytes regardless of the size of the pointer -- 4 (-n32) or 8 (-64)
-  // FLD_ofst(next)    = TY_size(DART_ptr_TY);
-  FLD_ofst(next)    = TY_size(Be_Type_Tbl(MTYPE_I8));
-  FLD_flags(next)   = 0;
-
-  next = FLD_next(next);
-  FLD_name(next)    = Save_Str("dimsize_array");
-  FLD_type(next)    = array_ty;
-  // again, reserve 8 bytes regardless of pointer size
-  FLD_ofst(next)    = 2*TY_size(Be_Type_Tbl(MTYPE_I8));
-  FLD_flags(next)   = 0;
-  
-  next = FLD_next(next);
-  FLD_name(next)    = Save_Str("numprocs_array");
-  FLD_type(next)    = array_ty;
-  FLD_ofst(next)    = TY_size(array_ty) + 2*TY_size(Be_Type_Tbl(MTYPE_I8));
-  FLD_flags(next)   = 0;
-  
-  /* Create a struct type with the above fields */
-  TY_IDX struct_ty = New_TY(FALSE);
-  TY_kind(struct_ty)    = KIND_STRUCT;
-  TY_btype(struct_ty)   = MTYPE_M;
-  char ty_name[64]; sprintf (ty_name, "BKblock_ty_%d", numdim);
-  TY_name(struct_ty)    = Save_Str(ty_name);
-  TY_flist(struct_ty)   = field;
-  TY_size(struct_ty)    = 2*TY_size(array_ty)+2*TY_size(Be_Type_Tbl(MTYPE_I8));
-  TY_align(struct_ty)   = 8;
-  Enter_TY(struct_ty);
-                           
-
-  /* Now create the ST entry */
-  sprintf (name, "_%s_%s_BKblock", ST_name(ST_base(array_st)),
-           ST_name(array_st));
-  ST *st        = New_ST(CURRENT_SYMTAB);
-  ST_Init (st,
-           Save_Str(name),
-           CLASS_VAR,
-           SCLASS_COMMON,
-           EXPORT_PREEMPTIBLE,
-           struct_ty);
-  ST_base(st)   = st;
-  // the variables in this common block are initialized at program startup
-  // and never changed for the duration of the program. So mark them as
-  // such -- wopt does better optimizations with this bit.
-  Set_ST_is_const_var(st);
-  
-  CXX_DELETE_ARRAY (name, LEGO_pool);
-  return st;
-} /* Create_Common_Block */
-#endif
 
 
 /***********************************************************************
@@ -1104,25 +967,15 @@ DISTR_INFO::DISTR_INFO (mBOOL isreshaped, INT numdim, SYMBOL* array) {
 
       // non-constant bounds -- look at the type of the WHIRL tree
       if (!TY_AR_const_lbnd(_orig_ty, i)) {
-#ifdef _NEW_SYMTAB
         ST* dim_var = ST_ptr(TY_AR_lbnd_var(_orig_ty, i));
         TYPE_ID dim_type = ST_type(dim_var);
-#else
-	WN *dim_wn = TY_AR_lbnd_tree(_orig_ty,i);
-        TY *dim_type = Be_Type_Tbl(WN_rtype(dim_wn));
-#endif
         if (TY_size(dim_type) <= small_index_size)
           continue;
         else break;
       }
       if (!TY_AR_const_ubnd(_orig_ty, i)) {
-#ifdef _NEW_SYMTAB
         ST* dim_var = ST_ptr(TY_AR_ubnd_var(_orig_ty, i));
         TYPE_ID dim_type = ST_type(dim_var);
-#else
-        WN* dim_wn = TY_AR_ubnd_tree(_orig_ty, i);
-        TY* dim_type = Be_Type_Tbl(WN_rtype(dim_wn));
-#endif
         if (TY_size(dim_type) <= small_index_size)
           continue;
         else break;
@@ -1146,11 +999,7 @@ DISTR_INFO::DISTR_INFO (mBOOL isreshaped, INT numdim, SYMBOL* array) {
     char* tmps = ST_name(array_st);
     sprintf (name, "_%s_dart", ((strlen(tmps) < 50) ? tmps : "LongName"));
     
-#ifdef _NEW_SYMTAB
     _dart_st = New_ST(GLOBAL_SYMTAB);
-#else
-    _dart_st = New_ST(CURRENT_SYMTAB);
-#endif
     ST_Init (_dart_st,
              Save_Str(name),
              CLASS_VAR,
@@ -1170,11 +1019,7 @@ DISTR_INFO::DISTR_INFO (mBOOL isreshaped, INT numdim, SYMBOL* array) {
       Set_TY_ptr_as_array(TY_pointed(array_type));
       sprintf (name, "_%s_array", ((strlen(tmps) < 50) ? tmps : "LongName"));
 
-#ifdef _NEW_SYMTAB    
       ST* array_common_st = New_ST(GLOBAL_SYMTAB);
-#else
-      ST* array_common_st = New_ST(CURRENT_SYMTAB);
-#endif
       ST_Init (array_common_st,
                Save_Str(name),
                CLASS_VAR,
@@ -1237,11 +1082,7 @@ DISTR_INFO::DISTR_INFO (mBOOL isreshaped, INT numdim, SYMBOL* array) {
       sprintf (name, "_%s_dart_dimsize_%d", ((strlen(ST_name(array_st)) < 40)
                                              ? ST_name(array_st) :
                                              "LongName"), i);
-#ifdef _NEW_SYMTAB
       ST* st = New_ST(GLOBAL_SYMTAB);
-#else
-      ST* st = New_ST(CURRENT_SYMTAB);
-#endif
       ST_Init (st,
                Save_Str(name),
                CLASS_VAR,
@@ -1258,11 +1099,7 @@ DISTR_INFO::DISTR_INFO (mBOOL isreshaped, INT numdim, SYMBOL* array) {
       sprintf (name, "_%s_dart_numprocs_%d",((strlen(ST_name(array_st)) < 40)
                                              ? ST_name(array_st) :
                                              "LongName"), i);
-#ifdef _NEW_SYMTAB
       st = New_ST(GLOBAL_SYMTAB);
-#else
-      st = New_ST(CURRENT_SYMTAB);
-#endif
       ST_Init (st,
                Save_Str(name),
                CLASS_VAR,

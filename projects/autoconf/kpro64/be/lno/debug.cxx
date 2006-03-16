@@ -3187,25 +3187,18 @@ static void WB_find_symbols()
   s[i] = '\0';
   skip_to_separator(SKIP_ALPHANUMERIC);
   BOOL test_substring = s[0] == '\'';
-#ifdef _NEW_SYMTAB
   FOREACH_SYMBOL(CURRENT_SYMTAB, st, i) {
-#else
-  SYMTAB* symtab = Current_Symtab;
-  for (st = SYMTAB_symbols(symtab); st != NULL; st = ST_next(st)) {
-#endif
     if ((!test_substring && strcmp(ST_name(st), s) == 0
         || test_substring && Is_Substring(&s[1], ST_name(st)))) {
       Print_ST(stdout, st, TRUE);
     }
   }
-#ifdef _NEW_SYMTAB
   FOREACH_SYMBOL(GLOBAL_SYMTAB, st, i) {
     if ((!test_substring && strcmp(ST_name(st), s) == 0
         || test_substring && Is_Substring(&s[1], ST_name(st)))) {
       Print_ST(stdout, st, TRUE);
     }
   }
-#endif
 }
 
 //-----------------------------------------------------------------------

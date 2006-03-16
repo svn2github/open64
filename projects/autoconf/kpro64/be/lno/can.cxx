@@ -1321,19 +1321,11 @@ static void Copy_Loads_In_Bound(WN *do_loop, WN *wn, BOOL is_start)
     OPCODE ldid_opc = OPCODE_make_op(OPR_LDID,Promote_Type(type),type);
     OPCODE stid_opc = OPCODE_make_op(OPR_STID,MTYPE_V,type);
     WN_OFFSET preg_num;
-#ifdef _NEW_SYMTAB
     if (is_start) {
       preg_num = Create_Preg(type, "lb");
     } else {
       preg_num = Create_Preg(type, "ub");
     }
-#else
-    if (is_start) {
-      preg_num = Create_Preg(type, "lb",NULL);
-    } else {
-      preg_num = Create_Preg(type, "ub",NULL);
-    }
-#endif
     WN *ldid = WN_CreateLdid(ldid_opc,preg_num,preg_st,Be_Type_Tbl(type));
     LWN_Set_Parent(ldid,parent);
     Create_alias(Alias_Mgr,ldid);

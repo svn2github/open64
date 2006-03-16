@@ -342,7 +342,6 @@ next_pri:
 	!Overlap_Local_Array(_def.Bottom_nth(i)->Array()) &&
 	!Overlap_Exposed_Array(_def.Bottom_nth(i)->Array())) {
       ST* st = _def.Bottom_nth(i)->Array().St();
-#ifdef _NEW_SYMTAB
       if (ST_class(st) == CLASS_VAR && 
 	  (ST_sclass(st) == SCLASS_AUTO) &&
 	  ST_addr_not_saved(st) && 
@@ -351,15 +350,6 @@ next_pri:
 	  (!ST_is_initialized(st)) &&
 	  !ST_has_nested_ref(st) &&
 	  (!ST_is_reshaped(st)) &&
-#else
-      if (ST_symclass(st) == CLASS_VAR && 
-	  (ST_sclass(st) == SCLASS_AUTO) &&
-	  !ST_addr_taken_saved(st) && !ST_addr_taken_passed(st) &&
-	  (ST_size(st)>0) &&
-	  (!ST_is_initialized(st)) &&
-	  !ST_has_nested_ref(st) &&
-	  (!ST_is_reshaped(st)) &&
-#endif
 	  (TY_kind(ST_type(st)) == KIND_ARRAY)) {
 	ARA_LOOP_INFO *cur_p = _parent;
 	while (cur_p) {

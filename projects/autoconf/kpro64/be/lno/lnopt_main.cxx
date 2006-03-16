@@ -708,11 +708,7 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
   BOOL simp_fold_iload_save = WN_Simp_Fold_ILOAD;
   WN_Simp_Fold_ILOAD = FALSE;
 
-#ifdef _NEW_SYMTAB
   if (!LNO_Run_Lego_Set) LNO_Run_Lego = PU_mp_needs_lno(Get_Current_PU());
-#else
-  if (!LNO_Run_Lego_Set) LNO_Run_Lego = SYMTAB_mp_needs_lno(Current_Symtab);
-#endif
 
   extern BOOL Run_lno;
   // from this point on:
@@ -1022,12 +1018,6 @@ return_point:
   if (!prompf_dumped)
     Prompf_Dump(current_pu, func_nd); 
   Prompf_Post_Dump(current_pu, func_nd);
-#ifndef _NEW_SYMTAB
-  if (LNO_Mem_Sim) {
-    void Instrument_Mem_Sim (WN *wn);
-    Instrument_Mem_Sim (func_nd);
-  }
-#endif
   Run_autopar = Run_autopar_save;
   Roundoff_Level = Roundoff_Level_Save;
 

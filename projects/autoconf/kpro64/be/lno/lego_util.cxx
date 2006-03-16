@@ -93,7 +93,6 @@ extern mBOOL Single_Loop_Coeff(ACCESS_VECTOR *av, INT64 *stride, INT64 *offset,
 VAR_KIND ST_Var_Kind (ST* array_st) {
   VAR_KIND retval;
 
-#ifdef _NEW_SYMTAB
   switch (ST_sclass(array_st)) {
     /******** locals ********/
   case SCLASS_PSTATIC:  /* Statically-allocated data with PU scope */
@@ -145,62 +144,6 @@ VAR_KIND ST_Var_Kind (ST* array_st) {
            ("ST %s: is in Global_Symtab, but we don't think it is global\n",
             ST_name(array_st)));
 
-#else
-  switch (ST_sclass(array_st)) {
-    /******** locals ********/
-  case SCLASS_PSTATIC:  /* Statically-allocated data with PU scope */
-  case SCLASS_AUTO:     /* Local stack user variable */
-    retval = var_local;
-    break;
-  case SCLASS_FORMAL:   /* Formal parameter */
-    retval = var_formal;
-    break;
-
-    /******** globals ********/
-  case SCLASS_FSTATIC:  /* Statically-allocated data with file scope,
-                         * i.e. Fortran SAVE, C static */
-  case SCLASS_EXTERN:   /* Unallocated C external data or text */
-  case SCLASS_UGLOBAL:  /* Uninitialized C global data: provisionally
-                         * allocated but allocation may be preempted
-                         * by another module -- equivalent to Fortran
-                         * uninitialized COMMON */
-  case SCLASS_DGLOBAL:  /* Defined (initialized) C global data:
-                         * allocated in this module
-                         */
-    retval = var_global;
-    break;
-
-  /* Fortran commmon.
-   * (or possibly local, if it was an assumed size array allocated
-   * using alloca).
-   */
-  case SCLASS_BASED:    /* Data pointed to by another datum */
-    if (ST_sclass(ST_base(array_st)) == SCLASS_COMMON)
-      retval = var_common;
-    else if (ST_sclass(ST_base(array_st)) == SCLASS_AUTO)
-      retval = var_local;
-    else 
-      FmtAssert(FALSE, ("ST (%s) is BASED, but base is not a COMMON or AUTO\n",
-                        ST_name(array_st)));
-    break;
-  case SCLASS_COMMON:   /* Fortran common block */
-    FmtAssert (FALSE, ("SCLASS of array (%s) is a COMMON", ST_name(array_st)));
-    break;
-
-  /*** illegal values */
-  case SCLASS_TEXT:     /* Executable code */
-  case SCLASS_THREAD:   /* Fortran per-thread local data block */
-  case SCLASS_REG:      /* Register variable (PREG) */
-  default:
-    FmtAssert (FALSE, ("Unexpected SCLASS (%d) of distributed array\n",
-                       ST_sclass(array_st)));
-    break;
-  }
-  Is_True ((retval != var_global) || (ST_is_global(array_st)),
-           ("ST %s: is in Global_Symtab, but we don't think it is global\n",
-            ST_name(array_st)));
-#endif
-
   return retval;
 }
 
@@ -218,11 +161,7 @@ extern TY_IDX Get_Original_Type (ST* st) {
 
   if (ST_class(st) != CLASS_VAR) return ST_type(st);
 
-#ifdef _NEW_SYMTAB
   if (ST_level(st) == GLOBAL_SYMTAB && ST_is_reshaped(st)) {
-#else
-  if (ST_is_global(st) && ST_is_reshaped(st)) {
-#endif
 
     DISTR_GLOBAL_INFO* dgi = da_global->Find(st);
 

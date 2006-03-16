@@ -978,17 +978,10 @@ static void Rename_Labels_Gotos (WN* newbody) {
     // Store the label for labels(i) in old_label(i),
     // so that next pass can find the new label easily in labels(i)
     WN* label_wn = labels.Bottom_nth(i);
-#ifdef _NEW_SYMTAB
     LABEL_IDX new_label;
     (void) New_LABEL (CURRENT_SYMTAB, new_label);
     old_label.Push (WN_label_number(label_wn));
     WN_label_number(label_wn) = new_label;
-#else
-    INT32 new_label = ++SYMTAB_last_label(Current_Symtab);
-    old_label.Push (WN_label_number(label_wn));
-    WN_label_number(label_wn) = new_label;
-    WN_st(label_wn) = NULL;     // not a user created label
-#endif
   }
   Is_True (old_label.Elements() == labels.Elements(),
            ("Mismatch while walking labels"));
@@ -1003,9 +996,6 @@ static void Rename_Labels_Gotos (WN* newbody) {
     if (j == old_label.Elements()) continue;
     // Else change to the new label
     WN_label_number(goto_wn) = WN_label_number(labels.Bottom_nth(j));
-#ifndef _NEW_SYMTAB
-    WN_st(goto_wn) = NULL;
-#endif
   }
 }
 

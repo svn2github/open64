@@ -754,11 +754,7 @@ static void Copy_Array(WN *orig_array, ST* local_st, WN *IO_node,
     sprintf(name,"copy_%d",i);
     WN_OFFSET index_var_num;
     ST* index_var_st;
-#ifdef _NEW_SYMTAB
     index_var_num = Create_Preg(index_type,name);
-#else
-    index_var_num = Create_Preg(index_type,name,NULL);
-#endif
     index_var_st = MTYPE_To_PREG(index_type);
     WN *index = WN_CreateIdname(index_var_num,index_var_st);
     WN *start = LWN_CreateStid(OPCODE_make_op(OPR_STID,MTYPE_V,index_type),
@@ -1130,11 +1126,7 @@ static void Copy_Array_Section(WN *orig_array, ST* local_st, WN *IO_node,
     sprintf(name,"copy_%d",i);
     WN_OFFSET index_var_num;
     ST *index_var_st;
-#ifdef _NEW_SYMTAB
     index_var_num = Create_Preg(index_type,name);
-#else
-    index_var_num = Create_Preg(index_type,name,NULL);
-#endif
     index_var_st = MTYPE_To_PREG(index_type);
     Replace_Symbol(loop,
 		   SYMBOL(WN_st(WN_index(implied_loop)),

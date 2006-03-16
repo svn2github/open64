@@ -463,11 +463,7 @@ void ARRAY_LOWER_REF::Lower_Array_Param(void)
   Is_True(param_num >= 0, ("Lower_Array_Param: Bad parameter number\n")); 
 
   if (callee_ty) {
-#ifdef _NEW_SYMTAB
     TYLIST_IDX curr_ty = TY_parms(callee_ty);
-#else
-    struct tylist *curr_ty = FTI_parms(TY_ftinfo(callee_ty));
-#endif
     if (curr_ty) {
       for (i = 0; i < param_num; i++) {
         curr_ty = TYLIST_next(curr_ty);
@@ -475,11 +471,7 @@ void ARRAY_LOWER_REF::Lower_Array_Param(void)
         // than the actuals we're passing. in which case don't do anything.
         if (curr_ty == TY_IDX_ZERO) break;
       }
-#ifdef _NEW_SYMTAB
       Set_TYLIST_type(curr_ty,distr_ty);
-#else
-      if (curr_ty) TYLIST_item(curr_ty) = distr_ty;
-#endif
     }
     else if (WN_operator(call_nd) == OPR_ICALL) {
       ErrMsgSrcpos(EC_LNO_Generic, WN_Get_Linenum(call_nd),

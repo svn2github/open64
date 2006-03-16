@@ -180,7 +180,6 @@ Lno_Init (void)
 {
     Set_Error_Phase ( "LNO Initialization" );
 
-#ifdef _NEW_SYMTAB
     if ((LNO_Run_Lego_Set && LNO_Run_Lego) ||
         (!LNO_Run_Lego_Set && FILE_INFO_needs_lno(File_info)))
       Lego_File_Init ();
@@ -189,18 +188,6 @@ Lno_Init (void)
 
     if (FILE_INFO_has_mp(File_info)) 
       Mp_File_Init(); 
-
-#else
-    if ((LNO_Run_Lego_Set && LNO_Run_Lego) ||
-	 (!LNO_Run_Lego_Set && SYMTAB_mp_needs_lno(Global_Symtab)))
-      Lego_File_Init ();
-    else if (Run_Dsm_Check)
-      Generate_Runtime_Stuff ();
-
-    if (SYMTAB_has_mp(Global_Symtab))
-      Mp_File_Init();
-#endif
-
 
     if (Run_autopar && LNO_IPA_Enabled) 
       IPA_LNO_File = IPA_LNO_Open_Input_File("IPA.LNO"); 
@@ -320,13 +307,8 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
 void
 Lno_Fini (void)
 {
-#ifdef _NEW_SYMTAB
   if ((LNO_Run_Lego_Set && LNO_Run_Lego) ||
       (!LNO_Run_Lego_Set && FILE_INFO_needs_lno(File_info))) {
-#else
-  if ((LNO_Run_Lego_Set && LNO_Run_Lego) ||
-      (!LNO_Run_Lego_Set && SYMTAB_mp_needs_lno(Global_Symtab))) {
-#endif
     Lego_File_Fini ();
     /* This bit is now maintained throughout compilation.
      * Clear_FILE_INFO_needs_lno(File_info) /

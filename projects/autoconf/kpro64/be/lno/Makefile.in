@@ -69,13 +69,13 @@ am_lno_la_OBJECTS = access_main.lo access_vector.lo aequiv.lo \
 	lego_pragma.lo lego_skew.lo lego_util.lo lno_bv.lo lno_scc.lo \
 	lno_split.lo lnodriver.lo lnopt_hoistif.lo lnopt_main.lo \
 	lnotarget.lo lnoutils.lo lu_mat_textra.lo lwn_util.lo \
-	lx_prompf_anl.lo mat_textra.lo mem_sim.lo minvariant.lo \
-	model.lo move.lo name.lo oinvar.lo outer.lo pad.lo parallel.lo \
-	parids.lo parmodel.lo permute.lo pf_loop.lo pf_manual.lo \
-	pf_ref.lo prefetch.lo reduc.lo reverse.lo scalar_expand.lo \
-	sclrze.lo sdlist.lo shackle.lo shackle_ifs.lo shackle_mem.lo \
-	simd.lo small_trips.lo snl_deps.lo snl_dist.lo snl_gen.lo \
-	snl_inv.lo snl_nest.lo snl_test.lo snl_trans.lo snl_utils.lo \
+	lx_prompf_anl.lo mat_textra.lo minvariant.lo model.lo move.lo \
+	name.lo oinvar.lo outer.lo pad.lo parallel.lo parids.lo \
+	parmodel.lo permute.lo pf_loop.lo pf_manual.lo pf_ref.lo \
+	prefetch.lo reduc.lo reverse.lo scalar_expand.lo sclrze.lo \
+	sdlist.lo shackle.lo shackle_ifs.lo shackle_mem.lo simd.lo \
+	small_trips.lo snl_deps.lo snl_dist.lo snl_gen.lo snl_inv.lo \
+	snl_nest.lo snl_test.lo snl_trans.lo snl_utils.lo \
 	snl_xbounds.lo soe.lo split_tiles.lo sxlimit.lo sxlist.lo \
 	tile.lo vintr_fis.lo vs_textra.lo wind_down.lo zmult.lo
 lno_la_OBJECTS = $(am_lno_la_OBJECTS)
@@ -230,7 +230,7 @@ lno_la_SOURCES = access_main.cxx access_vector.cxx aequiv.cxx al_loop.cxx \
 	lego_pragma.cxx lego_skew.cxx lego_util.cxx lno_bv.cxx lno_scc.cxx \
 	lno_split.cxx lnodriver.cxx lnopt_hoistif.cxx lnopt_main.cxx \
 	lnotarget.cxx lnoutils.cxx lu_mat_textra.cxx lwn_util.cxx \
-	lx_prompf_anl.cxx mat_textra.cxx mem_sim.cxx minvariant.cxx \
+	lx_prompf_anl.cxx mat_textra.cxx minvariant.cxx \
 	model.cxx move.cxx name.cxx oinvar.cxx outer.cxx pad.cxx parallel.cxx \
 	parids.cxx parmodel.cxx permute.cxx pf_loop.cxx pf_manual.cxx \
 	pf_ref.cxx prefetch.cxx reduc.cxx reverse.cxx scalar_expand.cxx \
@@ -242,7 +242,7 @@ lno_la_SOURCES = access_main.cxx access_vector.cxx aequiv.cxx al_loop.cxx \
 
 lno_la_LDFLAGS = -avoid-version -module
 lno_la_LIBADD = ../be/libbe.la
-AM_CPPFLAGS = -D_NEW_SYMTAB -DBACK_END -DKEY -DLNO -DMONGOOSE_BE \
+AM_CPPFLAGS = -DBACK_END -DKEY -DLNO -DMONGOOSE_BE \
 	-I../be -I../../targ_info \
 	-I${srcdir}/../be \
 	-I${srcdir}/../cg \
@@ -393,7 +393,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lwn_util.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lx_prompf_anl.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mat_textra.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mem_sim.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/minvariant.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/model.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/move.Plo@am__quote@

@@ -539,17 +539,10 @@ extern WN *Split_Using_Preg(WN *statement, WN *split_point,
     new_name[length] = '_';
     new_name[length+1] = '1';
     new_name[length+2] = 0;
-#ifdef _NEW_SYMTAB
     preg_num = Create_Preg(type,new_name);
   } else {
     preg_num = Create_Preg(type,NULL);
   }
-#else
-    preg_num = Create_Preg(type,new_name, NULL);
-  } else {
-    preg_num = Create_Preg(type,NULL,NULL);
-  }
-#endif
 
   // load the preg at split point
   WN *split_point_parent = LWN_Get_Parent(split_point);

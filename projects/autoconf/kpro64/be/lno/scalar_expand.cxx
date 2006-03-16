@@ -1979,11 +1979,7 @@ extern WN* Get_Expansion_Space(SYMBOL se_ptrsym,
   FmtAssert(rreg1 != 0 && rreg2 == 0, ("Bad pointer type ret regs"));
 
   if (use_sp) {
-#ifdef _NEW_SYMTAB
     Set_PU_has_alloca(Get_Current_PU());
-#else
-    Set_SYMTAB_has_alloca(Current_Symtab);
-#endif
     WN_intrinsic(call) =
       Pointer_Size == 8 ? INTRN_U8I8ALLOCA : INTRN_U4I4ALLOCA;
   }

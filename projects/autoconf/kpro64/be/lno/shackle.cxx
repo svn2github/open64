@@ -385,68 +385,6 @@ SHACKLE_INFO::SHACKLE_INFO(const ST *st,
 			   TYPE_ID   type,
 			   BOOL      inquire_info)
 {
-#ifndef _NEW_SYMTAB
-  // Does st correspond to an array type? 
-  TY_IDX ty = Shackle_Is_Array_Type (ST_type (st));
-  INT32 i;
-  const INT32 _default_shackle_size = 0;
-
-  _pool = pool;
-  _next_loop_count = 0;
-  _st_is_reshaped = FALSE;
-  if (ty != TY_IDX_ZERO) {
-    _st = st;
-    _ndim = ARI_ndims (TY_arinfo (ty));
-    _is_shackled = CXX_NEW_ARRAY (BOOL, _ndim, pool);
-    _shackle_sizes = CXX_NEW_ARRAY (INT32, _ndim, pool);
-    _loop_stmts = CXX_NEW_ARRAY (WN *, _ndim, pool);
-    _array_bounds = ARI_bnds (TY_arinfo (ty));
-    _type_to_give = type;
-    // Initialize conditions:
-    for (i = 0; i < _ndim; i++) {
-      if (inquire_info) {
-	INT32 size;
-	scanf("%d", &size);
-	if (size > 0) {
-	  _is_shackled[i] = TRUE;
-	  _shackle_sizes[i] = size;
-	  _loop_stmts[i] = NULL;
-	} else {
-	  _is_shackled[i] = FALSE;
-	  _shackle_sizes[i] = 0;
-	  _loop_stmts[i] = NULL;
-	}
-      } else { // default conditions..
-
-	// Fix the comment in the next few lines - for the moment
-	// we'll always shackle even if we don't have constant
-	// symbolic upper and lower bounds
-	/*
-	  This weird NULL != was introduced bec. if I have a 
-	  declaration like int y(*), the size of y is not known
-	  and the expression appears as a NULL expr upper bnd 
-	  if ((ARB_const_lbnd (_array_bounds[i]) ||
-	  (NULL != ARB_lbnd_tree (_array_bounds[i]))) &&
-	  (ARB_const_ubnd (_array_bounds[i]) ||
-	  (NULL != ARB_ubnd_tree (_array_bounds[i]))))
-	  */
-	_is_shackled[i] = TRUE;
-	_shackle_sizes[i] = _default_shackle_size;
-	_loop_stmts[i] = NULL;
-      }
-    }
-
-  }
-  else {
-    _st = NULL;
-    _ndim = 0;
-    _is_shackled = NULL;
-    _shackle_sizes = NULL;
-    _array_bounds = NULL;
-    _loop_stmts = NULL;
-    _type_to_give = MTYPE_V;
-  }
-#else
   TY_IDX ty = Shackle_Is_Array_Type (ST_type (st));
   INT32 i;
   const INT32 _default_shackle_size = 0;
@@ -514,7 +452,6 @@ SHACKLE_INFO::SHACKLE_INFO(const ST *st,
     _loop_stmts = NULL;
     _type_to_give = MTYPE_V;
   }
-#endif
 }
 
 INT32
@@ -1019,40 +956,7 @@ Augment_Simple_Basic_Shackle (QUEUE<WN *>          *s,
     }
   }    
 }
-#ifndef _NEW_SYMTAB
-static QUEUE<SHACKLE_INFO*> *
-_xcreate_shackle_map_for_arrays_in_func(WN *main_snl,
-					WN *func_nd)
-{
-  QUEUE<SHACKLE_INFO *> *si;
-  ST                    *st;
-  TY_IDX                 ty;
-  SHACKLE_INFO          *sh;
-  TYPE_ID                type;
-  SYMTAB_IDX             symtab = Current_Symtab;
 
-  si = CXX_NEW (QUEUE<SHACKLE_INFO *> (&shackle_default_pool),
-		&shackle_default_pool);
-  /* We go through each of the symbols in the symtab. If it is
-     an array (i.e. declared in the usual manner), or a pointer
-     to an array type - (as would happen when we are passing 
-     ararys as formal parameters), then, we create a shackle
-     info structure for this node, and add it to the return */
-  type = Find_Highest_Type_Of_Loop (main_snl);
-  for (st = SYMTAB_symbols (symtab); NULL != st; 
-       st = ST_next (st)) {
-    ty = Shackle_Is_Array_Type (ST_type (st));
-    if (NULL != ty) {
-      sh = CXX_NEW (SHACKLE_INFO (st, func_nd, 
-				  &shackle_default_pool,
-				  type, FALSE),
-		    &shackle_default_pool);
-      si->Add_Tail_Q (sh);
-    }
-  }
-  return si;
-}
-#else
 static QUEUE<SHACKLE_INFO*> *
 _xcreate_shackle_map_for_arrays_in_func(WN *main_snl,
 					WN *func_nd)
@@ -1105,7 +1009,6 @@ _xcreate_shackle_map_for_arrays_in_func(WN *main_snl,
   }
   return si;
 }
-#endif
 
 SHACKLE_INFO *
 Shackle_Info_For_Symbol(QUEUE<SHACKLE_INFO *> *shq,

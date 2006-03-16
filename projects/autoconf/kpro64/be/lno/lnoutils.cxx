@@ -1305,11 +1305,7 @@ extern WN* LWN_Integer_Casts(WN* tree, TYPE_ID to, TYPE_ID from)
 
 SYMBOL Create_Preg_Symbol(const char* name, TYPE_ID type)
 {
-#ifdef _NEW_SYMTAB
   PREG_NUM reg = Create_Preg(type, (char*)name);
-#else
-  PREG_NUM reg = Create_Preg(type, (char*)name, NULL);
-#endif
   return SYMBOL(MTYPE_To_PREG(type), reg, type);
 }
 
@@ -1340,7 +1336,6 @@ ST* Lookup_Function_Name(const char* name)
   }
 
   st = New_ST(GLOBAL_SYMTAB);
-#ifdef _NEW_SYMTAB
   TY_IDX ty_idx;
   TY& ty = New_TY (ty_idx);
   TY_Init (ty,
@@ -1349,19 +1344,6 @@ ST* Lookup_Function_Name(const char* name)
            MTYPE_UNKNOWN,
            Save_Str("__intrinsic_lno"));
   Set_TY_align(ty_idx, 0);
-#else
-  st = New_ST(TRUE);
-  ST_name(st) = Save_Str((char*)name);
-  ST_class(st) = CLASS_FUNC;
-  TY *ty = New_TY(TRUE); // global type
-  TY_name(ty) = Save_Str("__intrinsic_lno");
-  TY_kind(ty) = KIND_FUNCTION;
-  Set_TY_align(ty, 0);
-  Set_TY_size(ty, 0);
-#endif
-
-
-#ifdef _NEW_SYMTAB
 
   TYLIST_IDX tylist_idx;
   TYLIST&    tylist_head = New_TYLIST (tylist_idx);
@@ -1386,28 +1368,6 @@ ST* Lookup_Function_Name(const char* name)
            SCLASS_EXTERN,
            EXPORT_PREEMPTIBLE,
            ty_idx);
-
-#else
-  TY_ftinfo(ty) = New_FTI(0, TRUE); // global type with no specified parms
-  Enter_TY(ty);
-  if (strcmp(ST_name(st), "__builtin_malloc")==0)
-  {
-  
-    // Create a function type, which returns an (void *).
-    // TODO: Use intrinsics when they are fully supported.
-    //
-    TY_ret_type(ty) = Make_Pointer_Type(Be_Type_Tbl(MTYPE_U1));
-  } else if (strcmp(ST_name(st), "__builtin_free")==0) {
-    TY_ret_type(ty) = Void_Type;
-  } else {
-  
-    // Create a function type, which returns an I4.
-    // TODO: Use intrinsics when they are fully supported.
-    //
-    TY_ret_type(ty) = Be_Type_Tbl(MTYPE_I4); // returns an int
-  }
-  ST_type(st) = ty;
-#endif
 
   Set_ST_sclass(st, SCLASS_TEXT);
   Enter_ST(st);
@@ -3870,13 +3830,8 @@ BOOL Is_Local_Array_Reference(WN* array)
   OPERATOR base_oper = WN_operator(base);
   if ((base_oper == OPR_LDID) || (base_oper == OPR_LDA)) {
     ST *st = WN_st(base);
-#ifdef _NEW_SYMTAB
     if (ST_level(st) == CURRENT_SYMTAB &&
 	ST_base_idx(st) == ST_st_idx(st))
-#else
-    if (ST_symtab_id(st) == SYMTAB_id(Current_Symtab) &&
-	 ST_sclass(st) != SCLASS_BASED)
-#endif
       return TRUE;
   }
   return FALSE;

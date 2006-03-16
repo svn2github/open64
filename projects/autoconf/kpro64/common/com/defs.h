@@ -335,7 +335,7 @@ typedef mUINT64 mTARG_UINT;
  * files which need them, e.g. to use /usr/include expansions which
  * require them.
  */
-#if 0 /* !defined(USE_STANDARD_TYPES) && !defined(_NEW_SYMTAB) */
+#if 0 /* !defined(USE_STANDARD_TYPES) */
 # define short	SYNTAX_ERROR_short
 # define int	SYNTAX_ERROR_int
 # define long	SYNTAX_ERROR_long

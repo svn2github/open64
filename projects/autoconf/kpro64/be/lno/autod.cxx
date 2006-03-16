@@ -222,13 +222,8 @@ void ARRAY_DESCRIPTOR::Distribute_Array(WN *insert_point)
   LNO_Run_Lego = TRUE;
   distributed_something=TRUE;
   distributed_something_pu=TRUE;
-#ifdef _NEW_SYMTAB
   Set_PU_mp_needs_lno(Get_Current_PU());
   Set_FILE_INFO_needs_lno(File_info);
-#else
-  Set_SYMTAB_mp_needs_lno(Current_Symtab);
-  Set_SYMTAB_mp_needs_lno(Global_Symtab);
-#endif
 
 
   // Generate the pragmas
@@ -320,15 +315,9 @@ void DISTRIBUTION::Process_Memory(WN *wn)
   ARRAY_DESCR_TREE *tree;
   ARRAY_DESCR_STACK *stack;
 
-#ifdef _NEW_SYMTAB
   if ((ST_class(st) == CLASS_VAR) && !ST_is_not_used(st) &&
       ST_addr_not_saved(st) && 
       (TY_size(ST_type(st)) > 150000) &&
-#else
-  if ((ST_symclass(st) == CLASS_VAR) && !ST_is_not_used(st) &&
-      !ST_addr_taken_saved(st) && 
-      (ST_size(st) > 150000) && 
-#endif
       (!ST_is_reshaped(st)) &&
       (TY_kind(ST_type(st)) == KIND_ARRAY) &&
       (!da_hash || !da_hash->Find(st))) {
@@ -342,11 +331,7 @@ void DISTRIBUTION::Process_Memory(WN *wn)
 	return;
       }
     } else if (ST_sclass(st) == SCLASS_COMMON || 
-#ifdef _NEW_SYMTAB
 	((ST_base_idx(st) != ST_st_idx(st)) && 
-#else
-	((ST_sclass(st) == SCLASS_BASED) && 
-#endif
 	 (ST_sclass(ST_base(st)) == SCLASS_COMMON))) {
       // a good global array
       tree = _globals;
@@ -839,7 +824,6 @@ void TRANSPOSE_DIRECTED_GRAPH16::Clear_Values()
 
 BOOL TRANSPOSE_DIRECTED_GRAPH16::Local_Array(ST *st)
 {
-#ifdef _NEW_SYMTAB
   if ((ST_class(st) == CLASS_VAR) && 
       (TY_size(ST_type(st)) > 0) &&
       (TY_kind(ST_type(st)) == KIND_ARRAY) &&
@@ -848,17 +832,6 @@ BOOL TRANSPOSE_DIRECTED_GRAPH16::Local_Array(ST *st)
       (!ST_has_nested_ref(st)) &&
       (!ST_is_equivalenced(st)) && 
       (!da_hash || !da_hash->Find(st))) {
-#else
-  if ((ST_symclass(st) == CLASS_VAR) && 
-      (ST_size(st) > 0) &&
-      (TY_kind(ST_type(st)) == KIND_ARRAY) &&
-      (ST_sclass(st) == SCLASS_AUTO) &&
-      (!ST_is_initialized(st)) &&
-      (!ST_has_nested_ref(st)) &&
-      (!ST_is_non_contiguous(st)) &&
-      (!ST_is_equivalenced(st)) && 
-      (!da_hash || !da_hash->Find(st))) {
-#endif
     return TRUE;
   } else {
     return FALSE;

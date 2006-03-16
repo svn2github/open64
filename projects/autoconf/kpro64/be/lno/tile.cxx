@@ -1139,11 +1139,7 @@ static WN* Mp_Layout_Call(WN* wn_loop,
   // Arg 2: Onto array
   OPCODE op_lda = OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V);
   WN* wn_onto = WN_CreateLda(op_lda, 0, ty_i8_ptr, st_onto);
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(st_onto);
-#else
-  Set_ST_addr_taken_passed(st_onto);
-#endif
   wn_parm = WN_CreateParm(Pointer_type, wn_onto, ty_i8_ptr,
     WN_PARM_BY_REFERENCE);
   LWN_Set_Parent(wn_onto, wn_parm);
@@ -1153,11 +1149,7 @@ static WN* Mp_Layout_Call(WN* wn_loop,
   // Arg 3: Layout array
   op_lda = OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V);
   WN* wn_layout = WN_CreateLda(op_lda, 0, ty_i8_ptr, st_layout);
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(st_layout);
-#else
-  Set_ST_addr_taken_passed(st_layout);
-#endif
   wn_parm = WN_CreateParm(Pointer_type, wn_layout, ty_i8_ptr,
     WN_PARM_BY_REFERENCE);
   LWN_Set_Parent(wn_layout, wn_parm);
@@ -2519,11 +2511,7 @@ static WN* Mp_Coordinate_Call(WN* wn_loop,
   // Arg 0: Layout array
   OPCODE op_lda = OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V);
   WN* wn_layout = WN_CreateLda(op_lda, 0, ty_i8_ptr, st_layout); 
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(st_layout);
-#else
-  Set_ST_addr_taken_passed(st_layout);
-#endif
   WN* wn_parm = WN_CreateParm(Pointer_type, wn_layout, ty_i8_ptr, 
     WN_PARM_BY_REFERENCE);
   LWN_Set_Parent(wn_layout, wn_parm);
@@ -2561,11 +2549,7 @@ static WN* Mp_Coordinate_Call(WN* wn_loop,
   // Arg 3: Coordinate array 
   op_lda = OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V);
   WN* wn_coordinate = WN_CreateLda(op_lda, 0, ty_i8_ptr, st_coordinates); 
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(st_coordinates);
-#else
-  Set_ST_addr_taken_passed(st_coordinates);
-#endif
   wn_parm = WN_CreateParm(Pointer_type, wn_coordinate, ty_i8_ptr, 
     WN_PARM_BY_REFERENCE);
   LWN_Set_Parent(wn_coordinate, wn_parm);

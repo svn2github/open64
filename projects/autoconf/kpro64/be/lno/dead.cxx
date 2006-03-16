@@ -221,17 +221,10 @@ extern void Process_Store(WN *store_wn, VINDEX16 v,
 		  preg_name[length] = '_';
 		  preg_name[length+1] = '1';
 		  preg_name[length+2] = 0;
-#ifdef _NEW_SYMTAB
 		  preg_num = Create_Preg(type,preg_name);
 		} else {
 		  preg_num = Create_Preg(type, NULL);
 		}
-#else
-		  preg_num = Create_Preg(type,preg_name, NULL);
-		} else {
-		  preg_num = Create_Preg(type, NULL, NULL);
-		}
-#endif
 
 	        // replace A[i] = x with preg = x
 	        OPCODE preg_s_opcode = OPCODE_make_op(OPR_STID,MTYPE_V,type);

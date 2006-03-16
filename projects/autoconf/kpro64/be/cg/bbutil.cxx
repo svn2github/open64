@@ -2073,8 +2073,6 @@ Change_Switchtable_Entries(
 	 */
 	lab = Gen_Label_For_BB(new_target);
 
-	// labels don't get allocated in _NEW_SYMTAB.
-
 	changed = TRUE;
       }
       Set_INITV_lab(initv, lab);

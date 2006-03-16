@@ -1341,11 +1341,7 @@ WN* Generate_Runtime_Cyclic_Bounds(DISTR_INFO *dinfo,
   OPCODE lda_op = OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V);
   TY_IDX i8_ptr_ty = Make_Pointer_Type(Be_Type_Tbl(MTYPE_I8));
   kid = WN_CreateLda(lda_op,temp_lb->WN_Offset(),i8_ptr_ty, temp_lb->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(temp_lb->St());
-#else
-  Set_ST_addr_taken_passed(temp_lb->St());
-#endif
   parm_wn = WN_CreateParm(Pointer_type, kid, i8_ptr_ty, WN_PARM_BY_REFERENCE);
   LWN_Set_Parent(kid, parm_wn);
   WN_kid(call_wn, 8) = parm_wn;
@@ -1372,11 +1368,7 @@ WN* Generate_Runtime_Cyclic_Bounds(DISTR_INFO *dinfo,
     WN_PRAGMA_LOCAL);
 
   kid = WN_CreateLda(lda_op, temp_ub->WN_Offset(),i8_ptr_ty,temp_ub->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(temp_ub->St());
-#else
-  Set_ST_addr_taken_passed(temp_ub->St());
-#endif
   parm_wn = WN_CreateParm(Pointer_type, kid, i8_ptr_ty, WN_PARM_BY_REFERENCE);
   LWN_Set_Parent(kid, parm_wn);
   WN_kid(call_wn, 9) = parm_wn;
@@ -1404,11 +1396,7 @@ WN* Generate_Runtime_Cyclic_Bounds(DISTR_INFO *dinfo,
 
   kid = WN_CreateLda(lda_op, temp_step->WN_Offset(), i8_ptr_ty, 
     temp_step->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(temp_step->St());
-#else
-  Set_ST_addr_taken_passed(temp_step->St());
-#endif
   parm_wn = WN_CreateParm(Pointer_type, kid, i8_ptr_ty, WN_PARM_BY_REFERENCE);
   LWN_Set_Parent(kid, parm_wn);
   WN_kid(call_wn, 10) = parm_wn;
@@ -1437,11 +1425,7 @@ WN* Generate_Runtime_Cyclic_Bounds(DISTR_INFO *dinfo,
   TY_IDX i4_ptr_ty = Make_Pointer_Type(Be_Type_Tbl(MTYPE_I4));
   kid = WN_CreateLda(lda_op, temp_last->WN_Offset(), i4_ptr_ty, 
     temp_last->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(temp_last->St());
-#else
-  Set_ST_addr_taken_passed(temp_last->St());
-#endif
   parm_wn = WN_CreateParm(Pointer_type, kid, i4_ptr_ty, WN_PARM_BY_REFERENCE);
   Create_local_alias(Alias_Mgr, parm_wn); 
   LWN_Set_Parent(kid, parm_wn);
@@ -1606,11 +1590,7 @@ static WN* Generate_Dynamic_Bounds(LEGO_INFO *lego_info,
   OPCODE lda_op = OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V);
   TY_IDX i8_ptr_ty = Make_Pointer_Type(Be_Type_Tbl(MTYPE_I8));
   kid = WN_CreateLda(lda_op,temp_lb->WN_Offset(),i8_ptr_ty, temp_lb->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(temp_lb->St());
-#else
-  Set_ST_addr_taken_passed(temp_lb->St());
-#endif
   parm_wn = WN_CreateParm(Pointer_type, kid, i8_ptr_ty, WN_PARM_BY_REFERENCE);
   LWN_Set_Parent(kid, parm_wn);
   WN_kid(call_wn, 10) = parm_wn;
@@ -1638,11 +1618,7 @@ static WN* Generate_Dynamic_Bounds(LEGO_INFO *lego_info,
     WN_PRAGMA_LOCAL);
 
   kid = WN_CreateLda(lda_op,temp_ub->WN_Offset(),i8_ptr_ty, temp_ub->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(temp_ub->St());
-#else
-  Set_ST_addr_taken_passed(temp_ub->St());
-#endif
   parm_wn = WN_CreateParm(Pointer_type, kid, i8_ptr_ty, WN_PARM_BY_REFERENCE);
   LWN_Set_Parent(kid, parm_wn);
   WN_kid(call_wn, 11) = parm_wn;
@@ -1671,11 +1647,7 @@ static WN* Generate_Dynamic_Bounds(LEGO_INFO *lego_info,
 
   kid = WN_CreateLda(lda_op, temp_step->WN_Offset(), i8_ptr_ty, 
     temp_step->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(temp_step->St());
-#else
-  Set_ST_addr_taken_passed(temp_step->St());
-#endif
   parm_wn = WN_CreateParm(Pointer_type, kid, i8_ptr_ty, WN_PARM_BY_REFERENCE);
   LWN_Set_Parent(kid, parm_wn);
   WN_kid(call_wn, 12) = parm_wn;
@@ -1704,11 +1676,7 @@ static WN* Generate_Dynamic_Bounds(LEGO_INFO *lego_info,
   OPCODE op_lda = OPCODE_make_op(OPR_LDA, Pointer_type, MTYPE_V);
   kid = WN_CreateLda(op_lda, is_last->WN_Offset(), i4_ptr_ty,
                      is_last->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(is_last->St());
-#else
-  Set_ST_addr_taken_passed(is_last->St());
-#endif
   parm_wn = WN_CreateParm(Pointer_type, kid, i4_ptr_ty, 
     WN_PARM_BY_REFERENCE);
   Create_local_alias(Alias_Mgr, parm_wn); 
@@ -1856,11 +1824,7 @@ static WN* Generate_Simple_Bounds(const WN* wn_loop,
   TY_IDX i8_ptr_ty = Make_Pointer_Type(Be_Type_Tbl(MTYPE_I8));
   WN* wn_kid = WN_CreateLda(op_lda, temp_lb->WN_Offset(), i8_ptr_ty, 
     temp_lb->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(temp_lb->St());
-#else
-  Set_ST_addr_taken_passed(temp_lb->St());
-#endif
   wn_parm=WN_CreateParm(Pointer_type, wn_kid, i8_ptr_ty, WN_PARM_BY_REFERENCE);
   WN_kid(wn_call, 5) = wn_parm;
   LWN_Set_Parent(wn_parm, wn_call);
@@ -1886,11 +1850,7 @@ static WN* Generate_Simple_Bounds(const WN* wn_loop,
     &LNO_default_pool);
   wn_kid = WN_CreateLda(op_lda, temp_ub->WN_Offset(), i8_ptr_ty, 
     temp_ub->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(temp_ub->St());
-#else
-  Set_ST_addr_taken_passed(temp_ub->St());
-#endif
   wn_parm=WN_CreateParm(Pointer_type, wn_kid, i8_ptr_ty, WN_PARM_BY_REFERENCE);
   WN_kid(wn_call, 6) = wn_parm;
   LWN_Set_Parent(wn_parm, wn_call);
@@ -1917,11 +1877,7 @@ static WN* Generate_Simple_Bounds(const WN* wn_loop,
   TY_IDX i4_ptr_ty = Make_Pointer_Type(Be_Type_Tbl(MTYPE_I4));
   wn_kid = WN_CreateLda(op_lda, is_last->WN_Offset(), i4_ptr_ty,
     is_last->St());
-#ifdef _NEW_SYMTAB
   Clear_ST_addr_not_passed(is_last->St());
-#else
-  Set_ST_addr_taken_passed(is_last->St());
-#endif
   wn_parm=WN_CreateParm(Pointer_type, wn_kid, i4_ptr_ty, WN_PARM_BY_REFERENCE);
   Create_local_alias(Alias_Mgr, wn_parm); 
   WN_kid(wn_call, 7) = wn_parm;

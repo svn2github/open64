@@ -125,11 +125,7 @@ void Scalarize_Arrays(ARRAY_DIRECTED_GRAPH16 *dep_graph,
         if ((base_oper == OPR_LDID) || (base_oper == OPR_LDA)) {
           ST *st = WN_st(base);
           // is it local
-#ifdef _NEW_SYMTAB
           if (ST_level(st) == CURRENT_SYMTAB) {
-#else
-          if (ST_symtab_id(st) == SYMTAB_id(Current_Symtab)) {
-#endif
 	    if (ST_sclass(st) == SCLASS_AUTO &&
 		ST_base_idx(st) == ST_st_idx(st)) {
 	      if (!ST_has_nested_ref(st)) {
@@ -226,17 +222,10 @@ static void Process_Store(WN *store_wn, VINDEX16 v,
 		  preg_name[length] = '_';
 		  preg_name[length+1] = '1';
 		  preg_name[length+2] = 0;
-#ifdef _NEW_SYMTAB
                   preg_num = Create_Preg(type,preg_name); 
                 } else {
                   preg_num = Create_Preg(type, NULL); 
                 }
-#else
-                  preg_num = Create_Preg(type,preg_name, NULL); 
-                } else {
-                  preg_num = Create_Preg(type, NULL, NULL); 
-                }
-#endif
 	        // replace A[i] = x with "preg = x; A[i] = preg"
 	        OPCODE preg_s_opcode = OPCODE_make_op(OPR_STID,MTYPE_V,type);
 		// Insert CVTL if necessary (854441)

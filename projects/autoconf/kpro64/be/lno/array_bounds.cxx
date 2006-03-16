@@ -247,11 +247,7 @@ static void HMB_Replace_Messy_Bounds(WN* wn_exp,
   } else { 
     WN* wn_exp_copy = LWN_Copy_Tree(wn_exp);
     LWN_Copy_Def_Use(wn_exp, wn_exp_copy, du);
-#ifdef _NEW_SYMTAB
     WN_OFFSET preg_num = Create_Preg(type, name);
-#else
-    WN_OFFSET preg_num = Create_Preg(type, name, NULL);
-#endif
     ST* preg_st = MTYPE_To_PREG(type);
     WN* wn_stid = LWN_CreateStid(preg_s_opcode, preg_num, preg_st,
                                  Be_Type_Tbl(type), wn_exp_copy);
@@ -1040,11 +1036,7 @@ static void HMB_Hoist_Expressions(WN* wn_loop,
     TYPE_ID type = WN_rtype(wn_pattern); 
     OPCODE preg_l_opcode = OPCODE_make_op(OPR_LDID, Promote_Type(type), type);
     OPCODE preg_s_opcode = OPCODE_make_op(OPR_STID, MTYPE_V, type);
-#ifdef _NEW_SYMTAB
     WN_OFFSET preg_num = Create_Preg(type, buffer);
-#else
-    WN_OFFSET preg_num = Create_Preg(type, buffer, NULL);
-#endif
     ST* preg_st = MTYPE_To_PREG(type);
     WN* wn_hoist_place = Hoistable_Place(wn_pattern, du); 
     WN* wn_parent = LWN_Get_Parent(wn_pattern);

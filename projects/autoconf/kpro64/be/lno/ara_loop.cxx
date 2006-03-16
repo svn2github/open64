@@ -3765,15 +3765,9 @@ ARA_LOOP_INFO::Generate_Parallel_Pragma()
 
     if (!PU_has_mp(Get_Current_PU()))
       Mp_File_Init();     
-#ifdef _NEW_SYMTAB
     Set_PU_has_mp(Get_Current_PU());
     Set_PU_has_region(Get_Current_PU());
     Set_PU_uplevel(Get_Current_PU());
-#else
-    Set_SYMTAB_has_mp(Current_Symtab);
-    Set_SYMTAB_has_rgn(Current_Symtab);
-    Set_SYMTAB_uplevel(Current_Symtab);
-#endif
 
     Set_Enclosing_If_Has_Region(region);
     if (Index_Variable_Live_At_Exit(_loop)) { 
@@ -4177,15 +4171,9 @@ ARA_LOOP_INFO::Generate_Copyout_Loop()
     
   if (!PU_has_mp(Get_Current_PU()))
     Mp_File_Init();     
-#ifdef _NEW_SYMTAB
     Set_PU_has_mp(Get_Current_PU());
     Set_PU_has_region(Get_Current_PU());
     Set_PU_uplevel(Get_Current_PU());
-#else
-    Set_SYMTAB_has_mp(Current_Symtab);
-    Set_SYMTAB_has_rgn(Current_Symtab);
-    Set_SYMTAB_uplevel(Current_Symtab);
-#endif
   Create_Single_Region(wn_after_loop, NULL); 
   Set_Enclosing_If_Has_Region(region);
   if (Index_Variable_Live_At_Exit(_loop)) { 

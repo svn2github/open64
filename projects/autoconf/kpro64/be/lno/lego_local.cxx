@@ -511,7 +511,6 @@ Copy_Array(DISTR_INFO* di, ST *local_st, WN *mp_region, WN *tmp_array_def,
     index_type = MTYPE_I4;
   }
 
-#ifdef _NEW_SYMTAB
   TY_IDX element_type;
   ARB_HANDLE arb;
   if (TY_kind(ST_type(array_st)) == KIND_POINTER) {
@@ -522,18 +521,6 @@ Copy_Array(DISTR_INFO* di, ST *local_st, WN *mp_region, WN *tmp_array_def,
     element_type = TY_AR_etype(ST_type(array_st));
   }
   TYPE_ID machine_element_type = TY_mtype(element_type);
-#else
-  ARI *ari;
-  TY_IDX element_type;
-  if (TY_kind(ST_type(array_st)) == KIND_POINTER) {
-    ari = TY_arinfo(TY_pointed(ST_type(array_st)));
-    element_type = TY_AR_etype(TY_pointed(ST_type(array_st)));
-  } else { // TY_kind(ST_type(array_st)) == KIND_ARRAY
-    ari = TY_arinfo(ST_type(array_st));
-    element_type = TY_AR_etype(ST_type(array_st));
-  }
-  TYPE_ID machine_element_type = TY_btype(element_type);
-#endif
 
   char name[20];
   WN **loop_starts = CXX_NEW_ARRAY(WN *,num_dim,&LNO_local_pool);
@@ -544,16 +531,9 @@ Copy_Array(DISTR_INFO* di, ST *local_st, WN *mp_region, WN *tmp_array_def,
     sprintf(name,"copy_%d",i);
     WN_OFFSET index_var_num;
     ST *index_var_st;
-#ifdef _NEW_SYMTAB
     index_var_num = Create_Preg(index_type,name);
-#else
-    index_var_num = Create_Preg(index_type,name,NULL);
-#endif
     index_var_st = MTYPE_To_PREG(index_type);
     WN *index = WN_CreateIdname(index_var_num,index_var_st);
-#ifndef _NEW_SYMTAB
-    ARB arb=ARI_bnd(ari,i);
-#endif
 
     WN *start;
 /* These lines don't do anything, why are they here DEM?

@@ -621,20 +621,12 @@ static void Hack_AltEntry_Rewrite_Formals (WN* rhs) {
   if (rhs == NULL) return;
   if (WN_operator(rhs) == OPR_LDID) {
     ST* st = WN_st(rhs);
-#ifdef _NEW_SYMTAB
     if (ST_sclass(st) == SCLASS_AUTO && ST_is_temp_var(st)) {
-#else
-    if (ST_sclass(st) == SCLASS_AUTO && ST_temp(st)) {
-#endif
       // can we find a formal_ref with the same name?
 
       ST* fst;
-#ifdef _NEW_SYMTAB
       INT i;
       FOREACH_SYMBOL (CURRENT_SYMTAB,fst,i) {
-#else
-      FOR_ALL_SYMBOLS(Current_Symtab, fst) {
-#endif
         if (ST_class(fst) == CLASS_VAR &&
             ST_type(fst) == ST_type(st) &&
             strcmp(ST_name(fst), ST_name(st)) == 0 &&
@@ -894,11 +886,7 @@ extern void Rewrite_Reshaped_Commons (WN* wn) {
     // however, by the time we see them (after array lowering)
     // all LDAs of common arrays have been converted to LDIDs
     ST* st = WN_st(wn);
-#ifdef _NEW_SYMTAB
     if (ST_base_idx(st) != ST_st_idx(st) &&
-#else
-    if (ST_sclass(st) == SCLASS_BASED &&
-#endif
         ST_sclass(ST_base(st)) == SCLASS_COMMON) {
       // common
       DISTR_INFO* dinfo = da_hash->Find(st);
@@ -916,11 +904,7 @@ extern void Rewrite_Reshaped_Commons (WN* wn) {
        WN_operator(wn) != OPR_ILOAD && WN_operator(wn) != OPR_ISTORE)) {
     // memory op, but not ILOAD or ISTORE (for those we follow addr-kid).
     ST* st = WN_st(wn);
-#ifdef _NEW_SYMTAB
     if (ST_base_idx(st) != ST_st_idx(st) &&
-#else
-    if (ST_sclass(st) == SCLASS_BASED &&
-#endif
         ST_sclass(ST_base(st)) == SCLASS_COMMON) {
       // common
       DISTR_INFO* dinfo = da_hash->Find(st);
@@ -1349,7 +1333,6 @@ static WN* Get_Array_Dimension_LB (TY_IDX array_ty, INT i) {
 
   if (TY_AR_const_lbnd(array_ty, i))
     return LWN_Make_Icon (MTYPE_I8, TY_AR_lbnd_val(array_ty,i));
-#ifdef _NEW_SYMTAB
   else {
     ST_IDX st_idx = TY_AR_lbnd_var(array_ty,i);
     TYPE_ID type = TY_mtype(ST_type(st_idx));
@@ -1357,9 +1340,6 @@ static WN* Get_Array_Dimension_LB (TY_IDX array_ty, INT i) {
     return WN_CreateLdid(OPCODE_make_op(OPR_LDID,Promote_Type(type),type),
                          0, ST_ptr(st_idx),type);
   } 
-#else
-  else return LWN_Copy_Tree (TY_AR_lbnd_tree(array_ty, i));
-#endif
 } /* Get_Array_Dimension_LB */
 
 /***********************************************************************
@@ -1405,7 +1385,6 @@ extern WN* Get_Array_Dimension_Size (TY_IDX array_ty, INT i) {
     WN *ubnd_wn, *lbnd_wn, *stride_wn;
     if (TY_AR_const_ubnd(array_ty,i))
       ubnd_wn = LWN_Make_Icon(MTYPE_I8, TY_AR_ubnd_val(array_ty, i));
-#ifdef _NEW_SYMTAB
     else {
       ST_IDX st_idx = TY_AR_ubnd_var(array_ty,i);
       TYPE_ID type = TY_mtype(ST_type(st_idx));
@@ -1413,15 +1392,11 @@ extern WN* Get_Array_Dimension_Size (TY_IDX array_ty, INT i) {
       ubnd_wn=WN_CreateLdid(OPCODE_make_op(OPR_LDID,Promote_Type(type),type),
                             0, ST_ptr(st_idx),type);
     } 
-#else
-    else ubnd_wn = LWN_Copy_Tree (TY_AR_ubnd_tree(array_ty, i));
-#endif
 
     if (TY_AR_const_lbnd(array_ty, i))
       if (TY_AR_lbnd_val(array_ty, i) == 1) lbnd_wn = NULL;
       else lbnd_wn = LWN_Make_Icon(MTYPE_I8, 
                                    TY_AR_lbnd_val(array_ty,i));
-#ifdef _NEW_SYMTAB
     else {
       ST_IDX st_idx = TY_AR_lbnd_var(array_ty,i);
       TYPE_ID type = TY_mtype(ST_type(st_idx));
@@ -1429,9 +1404,6 @@ extern WN* Get_Array_Dimension_Size (TY_IDX array_ty, INT i) {
       lbnd_wn = WN_CreateLdid(OPCODE_make_op(OPR_LDID,Promote_Type(type),type),
                               0, ST_ptr(st_idx),type);
     } 
-#else
-    else lbnd_wn = LWN_Copy_Tree (TY_AR_lbnd_tree(array_ty, i));
-#endif
 
     if (TY_AR_const_stride(array_ty, i))
       if (TY_AR_stride_val(array_ty, i) == elem_size) 
@@ -1445,15 +1417,11 @@ extern WN* Get_Array_Dimension_Size (TY_IDX array_ty, INT i) {
         DevWarn ("Stride on distributed array is not 1");
       }
     else {
-#ifdef _NEW_SYMTAB
       ST_IDX st_idx = TY_AR_stride_var(array_ty,i);
       TYPE_ID type = TY_mtype(ST_type(st_idx));
       // TODO: fix alias and du info
       stride_wn=WN_CreateLdid(OPCODE_make_op(OPR_LDID,Promote_Type(type),type),
                               0, ST_ptr(st_idx),type);
-#else
-      stride_wn = LWN_Copy_Tree (TY_AR_stride_tree(array_ty, i));
-#endif
       stride_wn = AWN_Div_Safe (MTYPE_I8,
                                 stride_wn,
                                 LWN_Make_Icon(MTYPE_I8,elem_size));
@@ -1932,7 +1900,6 @@ static TY_IDX Section_Variable_TY (INT ndim, INT32 name_length) {
     char ty_name[64];
     sprintf (ty_name, "distr_array_data_ty_%d", sz);
 
-#ifdef _NEW_SYMTAB
     TY& new_ty = New_TY (da_ty[sz]);
     TY_Init (new_ty,
              sz,
@@ -1949,27 +1916,6 @@ static TY_IDX Section_Variable_TY (INT ndim, INT32 name_length) {
     Set_TY_arb(new_ty,arb);
     Set_TY_etype(new_ty,Be_Type_Tbl(MTYPE_I1));
 
-#else
-    da_ty[sz] = New_TY (TRUE);
-    TY_kind(da_ty[sz]) =  KIND_ARRAY;
-
-    ARI* ari = New_ARI (1, TRUE);
-    ARI_etype (ari)        = Be_Type_Tbl(MTYPE_I1); // byte
-    ARI_const_zofst(ari)   = TRUE;
-    ARI_zofst_val(ari)     = 0;
-
-    ARB_const_lbnd(ARI_bnd(ari,0)) = TRUE;
-    ARB_lbnd_val(ARI_bnd(ari,0)) = 0;
-    ARB_const_ubnd(ARI_bnd(ari,0)) = TRUE;
-    ARB_ubnd_val(ARI_bnd(ari,0)) = sz;
-    ARB_const_stride(ARI_bnd(ari,0)) = TRUE;
-    ARB_stride_val(ARI_bnd(ari,0)) = 1;
-
-    TY_size(da_ty[sz]) = sz;
-    TY_align(da_ty[sz]) = 8;
-    TY_name(da_ty[sz]) = Save_Str (ty_name);
-    TY_arinfo(da_ty[sz]) = ari;
-#endif
     Enter_TY (da_ty[sz]);
   }
   return da_ty[sz];
@@ -2134,11 +2080,7 @@ static void Process_Global_Distribute (DISTR_ARRAY* dact) {
                          1, ino, inv);                // name of array
   if (dinfo->IsReshaped()) {
     Reshape_ST_Entry (dinfo);
-#ifdef _NEW_SYMTAB
     if (ST_level(array_st) == GLOBAL_SYMTAB) {
-#else
-    if (ST_is_global(array_st)) {
-#endif
       /* i.e. it is in the global symbol table,
        * so F_S_L did not call Allocate_Object on it.
        */
@@ -2194,7 +2136,6 @@ extern ST* Create_Local_Array_ST (char* array_name,
   char name[64];
   ST* st;
 
-#ifdef _NEW_SYMTAB
   ARB_HANDLE arb = New_ARB();
   ARB_Init(arb,0,num-1,1);
   Set_ARB_first_dimen (arb);
@@ -2214,29 +2155,6 @@ extern ST* Create_Local_Array_ST (char* array_name,
   Set_TY_align(ty_idx,8);
   Set_TY_etype(arr_ty,ty);
 
-#else
-
-  ARI *ari;
-  ari = New_ARI (1, FALSE);
-  ARI_etype(ari) = ty;
-  ARB_const_lbnd(ARI_bnd(ari, 0)) = TRUE;
-  ARB_const_ubnd(ARI_bnd(ari, 0)) = TRUE;
-  ARB_const_stride(ARI_bnd(ari, 0)) = TRUE;
-  ARB_lbnd_val(ARI_bnd(ari, 0)) = 0;
-  ARB_ubnd_val(ARI_bnd(ari, 0)) = num-1;
-  ARB_stride_val(ARI_bnd(ari, 0)) = 1;
-  
-
-  TY_IDX arr_ty = New_TY(FALSE);
-  TY_kind(arr_ty) = KIND_ARRAY;
-  TY_btype(arr_ty) = MTYPE_M;
-  TY_arinfo(arr_ty) = ari;
-  sprintf (name, "_%s_ty%d", ((strlen(array_name)<50)?
-                                           array_name : "LongName") , num);
-  TY_name(arr_ty) = Save_Str(name);
-  TY_size(arr_ty) = TY_size(ty)*num;
-  TY_align(arr_ty) = 8;
-#endif
   Enter_TY(arr_ty);
   
 
@@ -2362,11 +2280,7 @@ static WN* Gen_Alloc_Reshape (DISTR_ARRAY* dact, BOOL do_exit, WN* prev_wn) {
 static void Reshape_ST_Entry (DISTR_INFO* dinfo) {
   ST* array_st = dinfo->Array_ST();
 
-#ifdef _NEW_SYMTAB
   if (ST_level(array_st) == GLOBAL_SYMTAB &&
-#else
-  if (ST_is_global(array_st) &&
-#endif
       (da_global->Find(array_st)) &&
       (TY_kind(ST_type(array_st)) == KIND_POINTER)) {
     // this ST has already been reshaped
@@ -2389,11 +2303,7 @@ static void Reshape_ST_Entry (DISTR_INFO* dinfo) {
    * Catch the common case, and update other variables in the common.
    */
   if (Has_Base_Block(array_st)) {
-#ifdef _NEW_SYMTAB
   if (ST_base_idx(array_st) != ST_st_idx(array_st)) {
-#else
-  if (ST_sclass(array_st) == SCLASS_BASED) {
-#endif
       if (ST_sclass(ST_base(array_st)) == SCLASS_COMMON) {
         // is a common
         ST* st;
@@ -2402,24 +2312,15 @@ static void Reshape_ST_Entry (DISTR_INFO* dinfo) {
         // reduce stuff by some multiple of 16 bytes (the largest alignment)
         // to avoid screwing up the alignment of following objects.
 
-#ifdef _NEW_SYMTAB
         mINT64 delta = (TY_size(ST_type(array_st))/16)*16;
         if (delta == TY_size(ST_type(array_st))) {
-#else
-        mINT64 delta = (ST_size(array_st)/16)*16;
-        if (delta == ST_size(array_st)) {
-#endif
           // avoid reducing by the entire size, since this might have the
           // unfortunate side-effect of making the common disappear altogether.
           delta = delta - 16;
         }
         if (delta > 0) {
-#ifdef _NEW_SYMTAB
           INT i;
           FOREACH_SYMBOL (GLOBAL_SYMTAB,st,i)
-#else
-          FOR_ALL_SYMBOLS(Current_Symtab, st)
-#endif
             {
               if ((ST_base(st) == ST_base(array_st)) && (st != array_st)) {
                 VB_PRINT(printf ("Reshape_ST_Entry: ");
@@ -2480,18 +2381,9 @@ static void Reshape_ST_Entry (DISTR_INFO* dinfo) {
     }
   }
 
-#ifdef _NEW_SYMTAB
   Set_ST_type(array_st,new_ty);
   Set_TY_ptr_as_array(new_ty);
   Set_TY_ptr_as_array(TY_pointed(new_ty));
-#else
-  ST_type(array_st) = Make_Pointer_Type(Make_Pointer_Type
-                                        (TY_AR_etype(array_ty),
-                                         ST_is_global(array_st)),
-                                        ST_is_global(array_st));
-  Set_TY_ptr_as_array(ST_type(array_st));
-  Set_TY_ptr_as_array(TY_pointed(ST_type(array_st)));
-#endif
   Set_ST_pt_to_unique_mem(array_st);
   Set_ST_pt_to_compiler_generated_mem(array_st);
 }
@@ -2504,7 +2396,6 @@ static ST* Declare_Func_Zero_Arg (char* ty_name, char* st_name,
   INT nparms = 0;
   TY_IDX voidpty = Make_Pointer_Type (Be_Type_Tbl(MTYPE_V));
 
-#ifdef _NEW_SYMTAB
   TY& new_ty = New_TY(func_ty);
   TY_Init (new_ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, Save_Str(ty_name));
   Set_TY_has_prototype(func_ty);
@@ -2517,19 +2408,6 @@ static ST* Declare_Func_Zero_Arg (char* ty_name, char* st_name,
   TYLIST& tylist_tail = New_TYLIST (tylist_idx);
   Tylist_Table [tylist_idx] = 0;
   Set_TY_tylist (new_ty, first_tylist_idx);
-
-#else
-  func_ty = New_TY(TRUE);
-  TY_kind(func_ty) = KIND_FUNCTION;
-  TY_btype(func_ty) = MTYPE_UNKNOWN;
-  Set_TY_has_prototype(func_ty);
-  TY_ftinfo(func_ty) = New_FTI (nparms, TRUE /* global/local */ );
-  TY_name(func_ty) = Save_Str(ty_name);
-  TY_size(func_ty) = TY_size(voidpty);
-  TY_align(func_ty) = TY_align(voidpty);
-  TY_ret_type(func_ty) = ret_ty;
-  Enter_TY (func_ty);
-#endif
 
   /* Now make a PU */
   PU_IDX pu_idx;
@@ -2555,7 +2433,6 @@ static ST* Declare_Func_One_Arg (char* ty_name, char* st_name,
   TYLIST* parms;
   TY_IDX voidpty = Make_Pointer_Type (Be_Type_Tbl(MTYPE_V));
 
-#ifdef _NEW_SYMTAB
   TY& new_ty = New_TY(func_ty);
   TY_Init (new_ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, Save_Str(ty_name));
   Set_TY_has_prototype(func_ty);
@@ -2572,22 +2449,6 @@ static ST* Declare_Func_One_Arg (char* ty_name, char* st_name,
   TYLIST& tylist_tail = New_TYLIST (tylist_idx);
   Tylist_Table [tylist_idx] = 0;
   Set_TY_tylist (new_ty, first_tylist_idx);
-
-#else
-  func_ty = New_TY(TRUE);
-  TY_kind(func_ty) = KIND_FUNCTION;
-  TY_btype(func_ty) = MTYPE_UNKNOWN;
-  Set_TY_has_prototype(func_ty);
-  TY_ftinfo(func_ty) = New_FTI (nparms, TRUE /* global/local */ );
-  parms = TY_parms(func_ty);
-  TYLIST_item(&parms[0]) = arg1_ty;
-  TY_name(func_ty) = Save_Str(ty_name);
-  TY_size(func_ty) = TY_size(voidpty);
-  TY_align(func_ty) = TY_align(voidpty);
-  TY_ret_type(func_ty) = ret_ty;
-  Enter_TY (func_ty);
-
-#endif
 
   /* Now make a PU */
   PU_IDX pu_idx;
@@ -2614,7 +2475,6 @@ static ST* Declare_Func_Two_Arg (char* ty_name, char* st_name,
   TYLIST* parms;
   TY_IDX voidpty = Make_Pointer_Type (Be_Type_Tbl(MTYPE_V));
 
-#ifdef _NEW_SYMTAB
   TY& new_ty = New_TY(func_ty);
   TY_Init (new_ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, Save_Str(ty_name));
   Set_TY_has_prototype(func_ty);
@@ -2634,22 +2494,6 @@ static ST* Declare_Func_Two_Arg (char* ty_name, char* st_name,
   TYLIST& tylist_tail = New_TYLIST (tylist_idx);
   Tylist_Table [tylist_idx] = 0;
   Set_TY_tylist (new_ty, first_tylist_idx);
-#else
-
-  func_ty = New_TY(TRUE);
-  TY_kind(func_ty) = KIND_FUNCTION;
-  TY_btype(func_ty) = MTYPE_UNKNOWN;
-  Set_TY_has_prototype(func_ty);
-  TY_ftinfo(func_ty) = New_FTI (nparms, TRUE /* global/local */ );
-  parms = TY_parms(func_ty);
-  TYLIST_item(&parms[0]) = arg1_ty;
-  TYLIST_item(&parms[1]) = arg2_ty;
-  TY_name(func_ty) = Save_Str(ty_name);
-  TY_size(func_ty) = TY_size(voidpty);
-  TY_align(func_ty) = TY_align(voidpty);
-  TY_ret_type(func_ty) = ret_ty;
-  Enter_TY (func_ty);
-#endif
 
   /* Now make a PU */
   PU_IDX pu_idx;
@@ -2676,7 +2520,6 @@ static ST* Declare_Func_Three_Arg (char* ty_name, char* st_name,
   TYLIST* parms;
   TY_IDX voidpty = Make_Pointer_Type (Be_Type_Tbl(MTYPE_V));
 
-#ifdef _NEW_SYMTAB
   TY& new_ty = New_TY(func_ty);
   TY_Init (new_ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, Save_Str(ty_name));
   Set_TY_has_prototype(func_ty);
@@ -2699,24 +2542,6 @@ static ST* Declare_Func_Three_Arg (char* ty_name, char* st_name,
   TYLIST& tylist_tail = New_TYLIST (tylist_idx);
   Tylist_Table [tylist_idx] = 0;
   Set_TY_tylist (new_ty, first_tylist_idx);
-
-#else
-
-  func_ty = New_TY(TRUE);
-  TY_kind(func_ty) = KIND_FUNCTION;
-  TY_btype(func_ty) = MTYPE_UNKNOWN;
-  Set_TY_has_prototype(func_ty);
-  TY_ftinfo(func_ty) = New_FTI (nparms, TRUE /* global/local */ );
-  parms = TY_parms(func_ty);
-  TYLIST_item(&parms[0]) = arg1_ty;
-  TYLIST_item(&parms[1]) = arg2_ty;
-  TYLIST_item(&parms[2]) = arg3_ty;
-  TY_name(func_ty) = Save_Str(ty_name);
-  TY_size(func_ty) = TY_size(voidpty);
-  TY_align(func_ty) = TY_align(voidpty);
-  TY_ret_type(func_ty) = ret_ty;
-  Enter_TY (func_ty);
-#endif
 
   /* Now make a PU */
   PU_IDX pu_idx;
@@ -2744,7 +2569,6 @@ static ST* Declare_Func_N_Arg (char* ty_name, char* st_name,
   TYLIST* parms;
   TY_IDX voidpty = Make_Pointer_Type (Be_Type_Tbl(MTYPE_V)); 
 
-#ifdef _NEW_SYMTAB
   TY& new_ty = New_TY(func_ty);
   TY_Init (new_ty, 0, KIND_FUNCTION, MTYPE_UNKNOWN, Save_Str(ty_name));
   Set_TY_has_prototype(func_ty);
@@ -2763,27 +2587,6 @@ static ST* Declare_Func_N_Arg (char* ty_name, char* st_name,
   TYLIST& tylist_tail = New_TYLIST (tylist_idx);
   Tylist_Table [tylist_idx] = 0;
   Set_TY_tylist (new_ty, first_tylist_idx);
-
-#else
-
-
-  func_ty = New_TY(TRUE);
-  TY_kind(func_ty) = KIND_FUNCTION;
-  TY_btype(func_ty) = MTYPE_UNKNOWN;
-  Set_TY_has_prototype(func_ty);
-  TY_ftinfo(func_ty) = New_FTI (nparms, TRUE /* global/local */ );
-  parms = TY_parms(func_ty);
-
-  for (INT i = 0; i < nargs; i++) {
-    TYLIST_item(&parms[i]) = ty_array[i];
-  }
-
-  TY_name(func_ty) = Save_Str(ty_name);
-  TY_size(func_ty) = TY_size(voidpty);
-  TY_align(func_ty) = TY_align(voidpty);
-  TY_ret_type(func_ty) = ret_ty;
-  Enter_TY (func_ty);
-#endif
 
   /* Now make a PU */
   PU_IDX pu_idx;
@@ -2888,11 +2691,7 @@ extern void Init_Special_Lego_Mp_Call() {
   }    
 
   {
-#ifdef _NEW_SYMTAB
     TY_IDX vi4_ty = Copy_TY(Be_Type_Tbl(MTYPE_I4));
-#else
-    TY_IDX vi4_ty = Copy_TY(Be_Type_Tbl(MTYPE_I4), TRUE);
-#endif
     Set_TY_is_volatile(vi4_ty);
     ST* st;
     st             = New_ST(GLOBAL_SYMTAB);
@@ -3013,7 +2812,6 @@ void Generate_Runtime_Stuff () {
    */
 
   /* struct DISTR_DIM_RT */
-#ifdef _NEW_SYMTAB
   FLD_HANDLE fld = New_FLD ();
   FLD_HANDLE first_fld = fld;
   FLD_Init(fld,Save_Str("n"),Be_Type_Tbl(MTYPE_I8),0);
@@ -3041,45 +2839,6 @@ void Generate_Runtime_Stuff () {
            Save_Str("DISTR_DIM_RT"));
   Set_TY_fld(ty, first_fld);
   Set_TY_align(rt_dim_struct_ty,8);
-#else
-  FLD *field, *next;
-  field = New_FLD (4, TRUE);
-  FLD_name(field)   = Save_Str("n");
-  FLD_type(field)   = Be_Type_Tbl(MTYPE_I8);
-  FLD_ofst(field)   = 0;
-  FmtAssert (dart_offset_distr_n == dart_offset_flags+8,
-             ("Mismatch in n offset in DISTR_DIM_RT type decl\n"));
-  FLD_flags(field)  = 0;
-  next = FLD_next(field);
-  FLD_name(next)    = Save_Str("p");
-  FLD_type(next)    = Be_Type_Tbl(MTYPE_I8);
-  FLD_ofst(next)    = TY_size(Be_Type_Tbl(MTYPE_I8));
-  FmtAssert (dart_offset_distr_p-dart_offset_distr_n == FLD_ofst(next),
-             ("Mismatch in p offset in DISTR_DIM_RT type decl\n"));
-  FLD_flags(next)   = 0;
-  next = FLD_next(next);
-  FLD_name(next)    = Save_Str("k");
-  FLD_type(next)    = Be_Type_Tbl(MTYPE_I8);
-  FLD_ofst(next)    = TY_size(Be_Type_Tbl(MTYPE_I8)) * 2;
-  FmtAssert (dart_offset_distr_k-dart_offset_distr_n == FLD_ofst(next),
-             ("Mismatch in k offset in DISTR_DIM_RT type decl\n"));
-  FLD_flags(next)   = 0;
-  next = FLD_next(next);
-  FLD_name(next)    = Save_Str("lb");
-  FLD_type(next)    = Be_Type_Tbl(MTYPE_I8);
-  FLD_ofst(next)    = TY_size(Be_Type_Tbl(MTYPE_I8)) * 3;
-  FmtAssert (dart_offset_distr_lb-dart_offset_distr_n == FLD_ofst(next),
-             ("Mismatch in lb offset in DISTR_DIM_RT type decl\n"));
-  FLD_flags(next)   = 0;
-
-  rt_dim_struct_ty = New_TY(TRUE);
-  TY_kind(rt_dim_struct_ty) = KIND_STRUCT;
-  TY_btype(rt_dim_struct_ty) = MTYPE_M;
-  TY_name(rt_dim_struct_ty) = Save_Str("DISTR_DIM_RT");
-  TY_flist(rt_dim_struct_ty) = field;
-  TY_size(rt_dim_struct_ty) = dart_distr_size*TY_size(Be_Type_Tbl(MTYPE_I8));
-  TY_align(rt_dim_struct_ty) = 8;
-#endif
 
   Enter_TY (rt_dim_struct_ty);
   distr_ty_entries[RT_dim_struct] = rt_dim_struct_ty;
@@ -3091,7 +2850,6 @@ void Generate_Runtime_Stuff () {
 
   /* Now declare an array of rt_dim_struct_ty */
 
-#ifdef _NEW_SYMTAB
   TY_IDX arr_dim_struct_ty_idx;
   TY& arr_dim_struct_ty = New_TY(arr_dim_struct_ty_idx);
   TY_Init (arr_dim_struct_ty,
@@ -3108,29 +2866,6 @@ void Generate_Runtime_Stuff () {
   Set_TY_arb (arr_dim_struct_ty, new_arb);
   Set_TY_align(arr_dim_struct_ty_idx,8);
 
-#else
-
-  TY_IDX arr_dim_struct_ty = New_TY (TRUE);
-  TY_btype(arr_dim_struct_ty) = MTYPE_M;
-  Set_TY_kind(arr_dim_struct_ty,KIND_ARRAY);
-  ARI* new_ari = New_ARI (1, TRUE);
-  ARI_etype(new_ari) = rt_dim_struct_ty;
-  ARI_const_zofst(new_ari) = TRUE;
-  ARI_zofst_val(new_ari) = 0;
-  ARB_const_lbnd(ARI_bnd(new_ari,0)) = TRUE;
-  ARB_lbnd_val(ARI_bnd(new_ari,0)) = 0;
-  ARB_const_ubnd(ARI_bnd(new_ari,0)) = TRUE;
-  ARB_ubnd_val(ARI_bnd(new_ari,0)) = 9; /* make it 9 for whirl2c/f */
-  ARB_const_stride(ARI_bnd(new_ari,0)) = TRUE;
-  ARB_stride_val(ARI_bnd(new_ari,0)) = TY_size(rt_dim_struct_ty);
-  TY_arinfo(arr_dim_struct_ty) = new_ari;
-  TY_align(arr_dim_struct_ty) = 8;
-  TY_name(arr_dim_struct_ty) = Save_Str("DISTR_DIM_RT_ARRAY");
-  Set_TY_size(arr_dim_struct_ty,9*TY_size(rt_dim_struct_ty));
-  Enter_TY(arr_dim_struct_ty);
-#endif
-
-#ifdef _NEW_SYMTAB
   fld = New_FLD ();
   first_fld = fld;
   FLD_Init(fld,
@@ -3166,47 +2901,7 @@ void Generate_Runtime_Stuff () {
   Set_TY_fld(rt_struct_ty, first_fld);
   Set_TY_align(rt_struct_ty_idx,8);
 
-#else
-  /* struct DISTR_ARRAY_RT */
-  field = New_FLD (4, TRUE);
-  FLD_name(field)   = Save_Str("num_dim");
-  FLD_type(field)   = Be_Type_Tbl(MTYPE_I8);
-  FLD_ofst(field)   = dart_offset_num_dim;
-  FLD_flags(field)  = 0;
-  next = FLD_next(field);
-  FLD_name(next)    = Save_Str("element_size");
-  FLD_type(next)    = Be_Type_Tbl(MTYPE_I8);
-  FLD_ofst(next)    = dart_offset_element_size;
-  FmtAssert (dart_offset_element_size == TY_size(Be_Type_Tbl(MTYPE_I8)),
-             ("Mismatch in element_size offset in DISTR_ARRAY_RT decl\n"));
-  FLD_flags(next)   = 0;
-  next = FLD_next(next);
-  FLD_name(next)    = Save_Str("flags");
-  FLD_type(next)    = Be_Type_Tbl(MTYPE_I8);
-  FLD_ofst(next)    = dart_offset_flags;
-  FmtAssert (dart_offset_flags == 2*TY_size(Be_Type_Tbl(MTYPE_I8)),
-             ("Mismatch in element_size offset in DISTR_ARRAY_RT decl\n"));
-  FLD_flags(next)   = 0;
-  next = FLD_next(next);
-  FLD_name(next)    = Save_Str("distr");
-  FLD_type(next)    = arr_dim_struct_ty;
-  FLD_ofst(next)    = dart_offset_distr_n;
-  FmtAssert (dart_offset_distr_n == TY_size(Be_Type_Tbl(MTYPE_I8))*3,
-             ("Mismatch in element_size offset in DISTR_ARRAY_RT decl\n"));
-  FLD_flags(next)   = 0;
-
-  rt_struct_ty_idx = New_TY(TRUE);
-  TY_kind(rt_struct_ty_idx) = KIND_STRUCT;
-  TY_btype(rt_struct_ty_idx) = MTYPE_M;
-  TY_name(rt_struct_ty_idx) = Save_Str("DISTR_ARRAY_RT");
-  TY_flist(rt_struct_ty_idx) = field;
-  TY_size(rt_struct_ty_idx) =
-    dart_base_size*TY_size(Be_Type_Tbl(MTYPE_I8)) + TY_size(arr_dim_struct_ty);
-  TY_align(rt_struct_ty_idx) = 8;
-  Enter_TY (rt_struct_ty_idx);
-#endif
   distr_ty_entries[RT_struct] = rt_struct_ty_idx;
-
 
   /* struct DISTR_ARRAY_RT* -- pointer to struct DISTR_ARRAY_RT */
   rt_ptr_ty = Make_Pointer_Type ( rt_struct_ty_idx);
