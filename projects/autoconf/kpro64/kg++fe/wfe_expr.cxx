@@ -280,7 +280,6 @@ struct operator_from_tree_t {
 #endif // KEY
   LAST_C_TREE_CODE,        "last_c_tree_code",          0, 0,  OPERATOR_UNKNOWN,
 
-#ifdef GPLUSPLUS_FE
   OFFSET_REF,              "offset_ref",              'r', 2,  OPERATOR_UNKNOWN,
   PTRMEM_CST,              "ptrmem_cst",              'c', 2,  OPERATOR_UNKNOWN,
   NEW_EXPR,                "nw_expr",                 'e', 3,  OPERATOR_UNKNOWN,
@@ -352,7 +351,6 @@ struct operator_from_tree_t {
   AMBIG_CONV,              "ambig_conv",              'e', 1,  OPERATOR_UNKNOWN,
   RVALUE_CONV,             "rvalue_conv",             'e', 1,  OPERATOR_UNKNOWN,
   LAST_CPLUS_TREE_CODE,    "last_cplus_tree_code",     0,  0,  OPERATOR_UNKNOWN
-#endif /* GPLUSPLUSFE */
 };
 
 static bool WFE_Call_Returns_Ptr_To_Member_Func (tree exp);
@@ -591,49 +589,6 @@ WFE_Set_ST_Addr_Saved (WN *wn)
       DevWarn ("WFE_Set_ST_Addr_Saved not implemented");
   }
 } /* WFE_Set_ST_Addr_Saved */
-
-#ifndef GPLUSPLUS_FE
-typedef struct wfe_bind_expr_t {
-  tree  rtl_expr;
-  WN   *block;
-} WFE_BIND_EXPR;
-
-WFE_BIND_EXPR *wfe_bind_expr_stack       = NULL;
-INT32          wfe_bind_expr_stack_last  = -1;
-INT32          wfe_bind_expr_stack_max   = 0;
-
-void
-WFE_Expand_Start_Stmt_Expr (tree t)
-{
-  WN *block = WN_CreateBlock ();
-  WFE_Stmt_Push (block, wfe_stmk_comma, Get_Srcpos ());
-} /* WFE_Start_Stmt_Expr */
-
-void
-WFE_Expand_End_Stmt_Expr (tree t)
-{
-  WN *block = WFE_Stmt_Pop (wfe_stmk_comma);
-  ++wfe_bind_expr_stack_last;
-  if (wfe_bind_expr_stack_last == wfe_bind_expr_stack_max) {
-    if (wfe_bind_expr_stack == NULL) {
-      wfe_bind_expr_stack_max = 32;
-      wfe_bind_expr_stack     =
-        (WFE_BIND_EXPR *) xmalloc (wfe_bind_expr_stack_max *
-                                  sizeof (WFE_BIND_EXPR));
-    }
-    else {
-      wfe_bind_expr_stack_max = wfe_bind_expr_stack_max +
-                                (wfe_bind_expr_stack_max >> 1);
-      wfe_bind_expr_stack     =
-        (WFE_BIND_EXPR *) xrealloc (wfe_bind_expr_stack,
-                                   wfe_bind_expr_stack_max *
-                                   sizeof (WFE_BIND_EXPR));
-    }
-  }
-  wfe_bind_expr_stack [wfe_bind_expr_stack_last].rtl_expr = t;
-  wfe_bind_expr_stack [wfe_bind_expr_stack_last].block    = block;
-} /* WFE_End_Stmt_Expr */
-#endif /* GPLUSPLUS_FE */
 
 typedef struct wfe_save_expr_t {
   tree  exp;
@@ -983,11 +938,9 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
 
     tree arg0 = TREE_OPERAND(lhs, 0);
     tree arg1 = TREE_OPERAND(lhs, 1);
-#ifdef GPLUSPLUS_FE
     // for g++ ensure that the WHIRL type for the enclosing structure has been
     // created in order to set the field id to a non zero value
     (void) Get_TY (TREE_TYPE (arg0));
-#endif /* GPLUSPLUS_FE */
     if (component_ty_idx == 0)
       ty_idx0 = Get_TY(TREE_TYPE(lhs));
     else ty_idx0 = component_ty_idx;
@@ -2474,64 +2427,10 @@ WFE_Expand_Expr (tree exp,
       break;
 
     case BIND_EXPR:
-#ifdef GPLUSPLUS_FE
       DevWarn ("Encountered BIND_EXPR at line %d", lineno);
       // ignore the first operand as it ia a list of temporary variables
       wn = WFE_Expand_Expr (TREE_OPERAND (exp, 1));
       break;
-#else
-      {
-        INT32    i;
-        WN      *block;
-        TYPE_ID  mtype;
-        tree     t;
-
-	DevWarn ("Encountered BIND_EXPR at line %d", lineno);
-
-        for (i = wfe_bind_expr_stack_last; i >= 0; --i) {
-
-          if (wfe_bind_expr_stack [i].rtl_expr == TREE_OPERAND (exp, 1)) {
-
-            block = wfe_bind_expr_stack [i].block;
-            t     = wfe_bind_expr_stack [i].rtl_expr;
-            wfe_bind_expr_stack [i] = wfe_bind_expr_stack [wfe_bind_expr_stack_last];
-            --wfe_bind_expr_stack_last;
-            break;
-          }
-        }
-
-        FmtAssert (i >= 0,
-                   ("BIND_EXPR: did not find tree"));
-	ty_idx = Get_TY (TREE_TYPE(t));
-        mtype  = TY_mtype (ty_idx);
-	if (mtype == MTYPE_V) {
-	  WFE_Stmt_Append (block, Get_Srcpos ());
-          break;
-	}
-	else {
-	  wn0 = block;
-	  wn1 = WN_COPY_Tree (WN_last (wn0));
-	  WN_DELETE_FromBlock (wn0, WN_last (wn0));
-	  WFE_Stmt_Append (wn0, Get_Srcpos ());
-	  if (nop_ty_idx == 0 && component_ty_idx == 0) {
-	    wn = WN_kid0 (wn1);
-            break;
-	  }
-          if (WN_operator (WN_kid0 (wn1)) == OPR_LDID)
-            st = WN_st (WN_kid0 (wn1));
-          else {
-            st = Gen_Temp_Symbol (ty_idx, "__bind_expr");
-#ifdef KEY
-  	    WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
-#endif
-            WFE_Set_ST_Addr_Saved (WN_kid0 (wn1));
-            wn0 = WN_Stid (mtype, 0, st, ty_idx, WN_kid0 (wn1));
-            WFE_Stmt_Append (wn0, Get_Srcpos ());
-          }
-	}
-      }
-      /*FALLTHRU*/
-#endif /* GPLUSPLUS_FE */
 
     case TARGET_EXPR:
       {
@@ -3305,7 +3204,6 @@ WFE_Expand_Expr (tree exp,
       }
       break;
 
-#ifdef GPLUSPLUS_FE
     case EXPR_STMT:
       {
 #ifdef KEY
@@ -3477,7 +3375,6 @@ WFE_Expand_Expr (tree exp,
 #endif
       wn = WN_Ldid (TY_mtype (ty_idx), 0, st, ty_idx);
       break;
-#endif /* GLPUSPLUFE */
 
     // binary ops
     case PLUS_EXPR:
@@ -4229,59 +4126,11 @@ WFE_Expand_Expr (tree exp,
                 break;
 
               case BUILT_IN_STRCMP:
-#ifdef GPLUSPLUS_FE
 		iopc = INTRN_STRCMP;
-#else
-		if (arglist == 0
-		    /* Arg could be non-pointer if user redeclared this fcn wrong.  */
-		    || TREE_CODE (TREE_TYPE (TREE_VALUE (arglist))) != POINTER_TYPE
-		    || TREE_CHAIN (arglist) == 0
-		    || TREE_CODE (TREE_TYPE (TREE_VALUE (TREE_CHAIN (arglist)))) != POINTER_TYPE)
-		  break;
-		else {
-		  arg1 = TREE_VALUE (arglist);
-		  arg2 = TREE_VALUE (TREE_CHAIN (arglist));
-		  tree len1 = c_strlen_whirl (arg1);
-		  if (len1) {
-		    tree len2 = c_strlen_whirl (arg2);
-		    if (len2) {
-		      char *ptr1 = get_string_pointer (WFE_Expand_Expr (arg1));
-		      char *ptr2 = get_string_pointer (WFE_Expand_Expr (arg2));
-		      if (ptr1 && ptr2) {
-			wn = WN_Intconst (MTYPE_I4,
-					  strcmp (ptr1, ptr2));
-			whirl_generated = TRUE;
-			break;
-		      }
-		    }
-		  }
-		  iopc = INTRN_STRCMP;
-//		  intrinsic_op = TRUE;
-		}
-#endif /* GPLUSPLUS_FE */
                 break;
 
               case BUILT_IN_STRLEN:
-#ifdef GPLUSPLUS_FE
 		iopc = INTRN_STRLEN;
-#else
-		if (arglist == 0
-		/* Arg could be non-pointer if user redeclared this fcn wrong.  */
-		   || TREE_CODE (TREE_TYPE (TREE_VALUE (arglist))) != POINTER_TYPE)
-		  break;
-		else {
-		  tree src = TREE_VALUE (arglist);
-		  tree len = c_strlen_whirl (src);
-		  if (len) {
-		    wn = WFE_Expand_Expr (len);
-		    whirl_generated = TRUE;
-		  }
-		  else {
-		    iopc = INTRN_STRLEN;
-//		    intrinsic_op = TRUE;
-		  }
-		}
-#endif /* GPLUSPLUS_FE */
                 break;
 
 #ifdef KEY

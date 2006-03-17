@@ -1021,24 +1021,7 @@ WFE_Start_Function (tree fndecl)
                  EXPORT_LOCAL;
 #endif
 
-#ifndef GPLUSPLUS_FE
-    if (DECL_INLINE (fndecl) && TREE_PUBLIC (fndecl)) {
-      if (DECL_EXTERNAL (fndecl)) {
-        // encountered first extern inline definition
-        ST *oldst = DECL_ST (fndecl);
-        DECL_ST (fndecl) = 0;
-        func_st =  Get_ST (fndecl);
-        DECL_ST (fndecl) = oldst;
-      }
-      else {
-        // encountered second definition, the earlier one was extern inline
-        func_st = Get_ST (fndecl);
-      }
-    }
-    else
-#else
-      func_st = Get_ST (fndecl);
-#endif /* GPLUSPLUS_FE */
+    func_st = Get_ST (fndecl);
 
     Set_ST_sclass (func_st, SCLASS_TEXT);
     Set_PU_lexical_level (Pu_Table [ST_pu (func_st)], CURRENT_SYMTAB);
@@ -2912,55 +2895,6 @@ WFE_Assemble_Alias (tree decl, tree target)
 */
 } /* WFE_Assemble_Alias */
 
-#if 0
-void
-WFE_Assemble_Constructor (char *name)
-{
-  DevWarn ("__attribute__ ((constructor)) encountered at line %d", lineno);
-  tree func_decl = lookup_name (get_identifier (name), 1);
-  ST *func_st = Get_ST (func_decl);
-  INITV_IDX initv = New_INITV ();
-  INITV_Init_Symoff (initv, func_st, 0, 1);
-  ST *init_st = New_ST (GLOBAL_SYMTAB);
-  ST_Init (init_st, Save_Str2i ("__ctors", "_", ++__ctors),
-           CLASS_VAR, SCLASS_FSTATIC,
-           EXPORT_LOCAL, Make_Pointer_Type (ST_pu_type (func_st), FALSE));
-  Set_ST_is_initialized (init_st);
-  INITO_IDX inito = New_INITO (init_st, initv);
-  ST_ATTR_IDX st_attr_idx;
-  ST_ATTR&    st_attr = New_ST_ATTR (GLOBAL_SYMTAB, st_attr_idx);
-  ST_ATTR_Init (st_attr, ST_st_idx (init_st), ST_ATTR_SECTION_NAME,
-                Save_Str (".ctors"));
-  Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
-  Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
-  Set_ST_addr_saved (func_st);
-}
-
-void
-WFE_Assemble_Destructor (char *name)
-{
-  DevWarn ("__attribute__ ((destructor)) encountered at line %d", lineno);
-  tree func_decl = lookup_name (get_identifier (name), 1);
-  ST *func_st = Get_ST (func_decl);
-  INITV_IDX initv = New_INITV ();
-  INITV_Init_Symoff (initv, func_st, 0, 1);
-  ST *init_st = New_ST (GLOBAL_SYMTAB);
-  ST_Init (init_st, Save_Str2i ("__dtors", "_", ++__dtors),
-           CLASS_VAR, SCLASS_FSTATIC,
-           EXPORT_LOCAL, Make_Pointer_Type (ST_pu_type (func_st), FALSE));
-  Set_ST_is_initialized (init_st);
-  INITO_IDX inito = New_INITO (init_st, initv);
-  ST_ATTR_IDX st_attr_idx;
-  ST_ATTR&    st_attr = New_ST_ATTR (GLOBAL_SYMTAB, st_attr_idx);
-  ST_ATTR_Init (st_attr, ST_st_idx (init_st), ST_ATTR_SECTION_NAME,
-                Save_Str (".dtors"));
-  Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
-  Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
-  Set_ST_addr_saved (func_st);
-}
-
-#endif
-
 ST *
 WFE_Get_Return_Address_ST (int level)
 {
@@ -3111,23 +3045,17 @@ WFE_Resolve_Duplicate_Decls (tree olddecl, tree newdecl)
   } 
 } /* WFE_Resolve_Duplicate_Decls */
 
-/* Defined in varasm.c */
-extern tree weak_decls;
-
 
 /* Mark the ST of the first element of weak_decls as a weak symbol.
    Call this each time a decl is prepended to weak_decls (e.g., in
    declare_weak ()).  */
 void
-WFE_Add_Weak ()
+WFE_Mark_Weak (tree decl)
 {
-  tree decl = TREE_VALUE (weak_decls);
-  if (decl) {
-    ST *st = DECL_ST (decl);
-    if (st)
-      Set_ST_is_weak_symbol (st);
-  }
-} /* WFE_Add_Weak */
+  ST *st = DECL_ST(decl);
+  if (st)
+    Set_ST_is_weak_symbol (st);
+}
 
 
 /* The old definition of weak_decls included specialized code for weak
@@ -3135,7 +3063,7 @@ WFE_Add_Weak ()
    need to do to get weak aliases working again, though.  */
 
 void
-WFE_Weak_Finish ()
+WFE_Weak_Finish (tree weak_decls)
 {
   tree t;
   for (t = weak_decls; t; t = TREE_CHAIN (t)) {

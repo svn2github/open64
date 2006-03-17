@@ -117,10 +117,10 @@ extern void WFE_Assemble_Alias (tree decl, tree target);
 #endif
 
 /* handle __attribute__ ((constructor)) */
-extern void WFE_Assemble_Constructor (char *name);
+extern "C" void WFE_Assemble_Constructor (char *name);
 
 /* handle __attribute__ ((destructor)) */
-extern void WFE_Assemble_Destructor (char *name);
+extern "C" void WFE_Assemble_Destructor (char *name);
 
 /* call this routine when have a decl that doesn't have an initialization */
 extern void WFE_Decl (tree decl);
@@ -149,10 +149,10 @@ extern void WFE_Dealloca (ST *, vector<ST*> *);
 extern void WFE_Resolve_Duplicate_Decls (tree olddecl, tree newdecl);
 
 /* call this routine to process pragma weak on encountering pragma */
-extern void WFE_Add_Weak();
+extern void WFE_Mark_Weak(tree);
 
 /* call this routine to process pragma weak declarations at end */
-extern void WFE_Weak_Finish();
+extern void WFE_Weak_Finish(tree);
 
 /* get the current function declaration.  This just comes from a static
  * global variable in the absence of nested function declarations.
