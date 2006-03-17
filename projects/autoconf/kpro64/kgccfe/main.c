@@ -53,6 +53,7 @@
 #undef IN_GCC
 
 extern const char *Orig_Src_File_Name;
+extern int invoke_DST_enter_mk;
 
 static int saved_argc;
 static char **saved_argv;
@@ -77,6 +78,7 @@ int main(int argc, char *argv[], char *envp[])
 	saved_envp = envp;
 
 	Set_Error_Descriptor(EP_FE, EDESC_FE, "Front End");
+	invoke_DST_enter_mk = 1;
 
 	/* GCC foo */
 	exitcode = toplev_main(argc, argv);

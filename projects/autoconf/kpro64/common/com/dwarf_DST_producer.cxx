@@ -110,11 +110,7 @@ static mINT32             file_scope_locks = 0;
 #define DST_mk_macro() (DST_mk(DST_MACR));
 #endif
 
-#if defined(MONGOOSE_BE)
-/*	Don't call DST_enter_mk in the backend */
-/*  MONGOOSE_BE also implies _LEGO_CLONER  */
-#define DST_enter_mk(a, b) 
-#endif
+int invoke_DST_enter_mk = 0;
 
 DST_STR_IDX
 DST_mk_string(const char *s)
@@ -161,7 +157,6 @@ DST_mk_name(const char *s)
 } /* DST_mk_name */
 
 
-#if (!defined(MONGOOSE_BE))
 /* Changes pstate and current block if necessary.  Note that this
  * procedure only should be called when some storage is definitely
  * allocated and one of the global "last_????" variables are updated 
@@ -171,6 +166,9 @@ DST_mk_name(const char *s)
 static void
 DST_enter_mk(DST_PRODUCER_STATE new_state, DST_IDX last_idx)
 {
+    if (!invoke_DST_enter_mk)
+	return;
+
    if (file_scope_locks && new_state==DST_making_dbg_info)
    {
       /* The new dbg info is to be entered only at file-scope */
@@ -199,7 +197,6 @@ DST_enter_mk(DST_PRODUCER_STATE new_state, DST_IDX last_idx)
       pstate = new_state;
    }
 }
-#endif /* (!define(MONGOOSE_BE)) */
 
 #define DST_check_info_idx(required_tag, idx)\
    DST_ASSERT((DST_IS_FOREIGN_OBJ(idx)) || (DST_INFO_tag(DST_INFO_IDX_TO_PTR(idx)) == required_tag),\
@@ -255,10 +252,8 @@ DST_mk_include_dir(char *path)
       pstate = DST_making_include_dirs;
 #endif
    }
-#if !defined(_SUPPORT_IPA)
    else
       DST_enter_mk(DST_making_include_dirs, last_include_dir);
-#endif
    
    /* Create the entry */
    dir_idx  = DST_mk_dir();
@@ -309,10 +304,8 @@ DST_mk_file_name(char *file_name,
       DST_begin_block(DST_file_names_block); /* First file entry */
       pstate = DST_making_file_names;
    }
-#if !defined(_SUPPORT_IPA)
    else
       DST_enter_mk(DST_making_file_names, last_file_name);
-#endif
    
    /* Create the entry */
    f_idx  = DST_mk_file();
@@ -511,9 +504,7 @@ DST_mk_inlined_subroutine(void		*low_pc,    /* ptr to front-end label */
    DST_INLINED_SUBROUTINE *attr;
    
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
    DST_check_info_idx(DW_TAG_subprogram, abstract_origin);
    
    info_idx = DST_mk_info();
@@ -775,9 +766,7 @@ DST_mk_subprogram_memdef(USRCPOS      decl,  /* Source location */
    DST_flag        flag = DST_no_flag;
    DST_SUBPROGRAM *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
    DST_check_info_idx(DW_TAG_subprogram, spec);
    
    info_idx = DST_mk_info();
@@ -827,9 +816,7 @@ DST_mk_subprogram(USRCPOS      decl,
    DST_flag        flag = DST_no_flag;
    DST_SUBPROGRAM *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
    
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_SUBPROGRAM);
@@ -1120,9 +1107,7 @@ DST_mk_entry_point(USRCPOS      decl,
    DST_flag        flag = DST_no_flag;
    DST_ENTRY_POINT *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
    
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_ENTRY_POINT);
@@ -1150,9 +1135,7 @@ DST_mk_common_block(char	*name,
    DST_flag        flag = DST_no_flag;
    DST_COMMON_BLOCK *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
    
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_COMMON_BLOCK);
@@ -1177,9 +1160,7 @@ DST_mk_common_incl( USRCPOS      decl,
    DST_flag        flag = DST_no_flag;
    DST_COMMON_INCL *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
    
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_COMMON_INCL);
@@ -1203,9 +1184,7 @@ DST_mk_lexical_block(char         *name,         /* NULL if unnamed */
    DST_flag           flag = DST_no_flag;
    DST_LEXICAL_BLOCK *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_LEXICAL_BLOCK);
    attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_LEXICAL_BLOCK);
@@ -1254,9 +1233,7 @@ DST_mk_label(char         *name,            /* NULL if unnamed */
 
    DST_ASSERT(low_pc != NULL, "Missing low_pc value for label");
    
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);   
-#endif
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_LABEL);
    attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_LABEL);
@@ -1300,9 +1277,7 @@ DST_mk_variable_const(USRCPOS         decl, /* Source location */
    DST_flag      flag = DST_no_flag;
    DST_VARIABLE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
    
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_VARIABLE);
@@ -1334,9 +1309,7 @@ DST_mk_variable_comm( USRCPOS         decl, /* Source location */
    DST_flag      flag = DST_no_flag;
    DST_VARIABLE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
    
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_VARIABLE);
@@ -1364,9 +1337,7 @@ DST_mk_variable_memdef(USRCPOS      decl, /* Source location */
    DST_flag      flag = DST_no_flag;
    DST_VARIABLE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
    
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_VARIABLE);
@@ -1405,9 +1376,7 @@ DST_mk_variable(USRCPOS      decl,     /* Source location */
 
    DST_ASSERT(!(is_automatic && is_declaration), "automatic must be def!");
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);   
-#endif
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_VARIABLE);
    attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_VARIABLE);
@@ -1495,9 +1464,7 @@ DST_mk_formal_parameter(USRCPOS       decl,        /* Source location */
    DST_flag      flag = DST_no_flag;
    DST_FORMAL_PARAMETER *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_FORMAL_PARAMETER);
@@ -1590,9 +1557,7 @@ DST_mk_constant_def(USRCPOS         decl,  /* Source location */
    DST_flag      flag = DST_no_flag;
    DST_CONSTANT *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_CONSTANT);
@@ -1621,9 +1586,7 @@ DST_mk_constant_decl(USRCPOS       decl,  /* Source location */
    DST_flag      flag = DST_no_flag;
    DST_CONSTANT *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_CONSTANT);
@@ -1651,9 +1614,7 @@ DST_mk_basetype(char            *name,      /* Name of type */
    DST_flag      flag = DST_no_flag;
    DST_BASETYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_BASETYPE);
@@ -1676,9 +1637,7 @@ DST_mk_const_type(DST_INFO_IDX type)    /* Qualified type */
    DST_flag        flag = DST_no_flag;
    DST_CONST_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_CONST_TYPE);
@@ -1698,9 +1657,7 @@ DST_mk_volatile_type(DST_INFO_IDX type)    /* Qualified type */
    DST_flag           flag = DST_no_flag;
    DST_VOLATILE_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_VOLATILE_TYPE);
@@ -1722,9 +1679,7 @@ DST_mk_pointer_type(DST_INFO_IDX   type,          /* Type pointed to */
    DST_flag          flag = DST_no_flag;
    DST_POINTER_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_POINTER_TYPE);
@@ -1748,9 +1703,7 @@ DST_mk_reference_type(DST_INFO_IDX   type,          /* Type pointed to */
    DST_flag           flag = DST_no_flag;
    DST_REFERENCE_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_REFERENCE_TYPE);
@@ -1775,9 +1728,7 @@ DST_mk_typedef(USRCPOS       decl,            /* Source location */
    DST_flag     flag = DST_no_flag;
    DST_TYPEDEF *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_TYPEDEF);
@@ -1802,9 +1753,7 @@ DST_mk_ptr_to_member_type(USRCPOS	decl,	    /* Source location */
    DST_flag               flag = DST_no_flag;
    DST_PTR_TO_MEMBER_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_PTR_TO_MEMBER_TYPE);
@@ -1833,9 +1782,7 @@ DST_mk_array_type(USRCPOS      decl,      /* Source location */
    DST_flag        flag = DST_no_flag;
    DST_ARRAY_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_ARRAY_TYPE);
@@ -1905,9 +1852,7 @@ DST_mk_string_type(USRCPOS	   decl,	/* Source location */
    DST_flag            flag = DST_no_flag;
    DST_STRING_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_STRING_TYPE);
@@ -1938,9 +1883,7 @@ DST_mk_structure_type(USRCPOS      decl,      /* Source location */
    DST_flag            flag = DST_no_flag;
    DST_STRUCTURE_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_STRUCTURE_TYPE);
@@ -1971,9 +1914,7 @@ DST_mk_union_type(USRCPOS      decl,      /* Source location */
    DST_flag        flag = DST_no_flag;
    DST_UNION_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_UNION_TYPE);
@@ -2004,9 +1945,7 @@ DST_mk_class_type(USRCPOS      decl,      /* Source location */
    DST_flag        flag = DST_no_flag;
    DST_CLASS_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_CLASS_TYPE);
@@ -2062,9 +2001,7 @@ DST_mk_member(USRCPOS      decl,       /* Source location */
    DST_flag     flag = DST_no_flag;
    DST_MEMBER  *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_MEMBER);
@@ -2115,9 +2052,7 @@ DST_mk_inheritance(USRCPOS      decl,     /* Source location */
    DST_flag     flag = DST_no_flag;
    DST_INHERITANCE  *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_INHERITANCE);
@@ -2145,9 +2080,7 @@ DST_mk_template_type_parameter(USRCPOS      decl,     /* Source location */
    DST_flag     flag = DST_no_flag;
    DST_TEMPLATE_TYPE_PARAMETER  *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_TEMPLATE_TYPE_PARAMETER);
@@ -2173,9 +2106,7 @@ DST_mk_template_value_parameter(USRCPOS         decl,     /* Source location */
    DST_flag     flag = DST_no_flag;
    DST_TEMPLATE_VALUE_PARAMETER  *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_TEMPLATE_VALUE_PARAMETER);
@@ -2204,9 +2135,7 @@ DST_mk_enumeration_type(USRCPOS      decl,      /* Source location */
    DST_flag              flag = DST_no_flag;
    DST_ENUMERATION_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_ENUMERATION_TYPE);
@@ -2235,9 +2164,7 @@ DST_mk_enumerator(USRCPOS         decl,  /* Source location */
    DST_flag        flag = DST_no_flag;
    DST_ENUMERATOR *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_ENUMERATOR);
@@ -2263,9 +2190,7 @@ DST_mk_subroutine_type(USRCPOS      decl,            /* Source location */
    DST_flag             flag = DST_no_flag;
    DST_SUBROUTINE_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_SUBROUTINE_TYPE);
@@ -2293,9 +2218,7 @@ DST_mk_namelist(USRCPOS decl, /* source location */
   DST_flag             flag = DST_no_flag;
   DST_NAMELIST *attr;
   
-#if !defined(_SUPPORT_IPA)
   DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
   
   info_idx = DST_mk_info();
   attr_idx = DST_mk_attr(DST_NAMELIST);
@@ -2318,9 +2241,7 @@ DST_mk_namelist_item(USRCPOS decl, /* source location */
   DST_flag             flag = DST_no_flag;
   DST_NAMELIST_ITEM *attr;
   
-#if !defined(_SUPPORT_IPA)
   DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
   
   info_idx = DST_mk_info();
   attr_idx = DST_mk_attr(DST_NAMELIST_ITEM);
@@ -2346,10 +2267,8 @@ DST_mk_macr (UINT lineno, /* line number of macro */
       DST_begin_block(DST_macro_info_block); /* First file entry */
       pstate = DST_making_macinfo;
     }
-#if !defined(_SUPPORT_IPA)
   else
     DST_enter_mk(DST_making_macinfo, last_macro);
-#endif
   
   /* Create the entry */
   m_idx  = DST_mk_macro();
@@ -2383,10 +2302,8 @@ DST_mk_macr_start_file (UINT lineno, /* a line number */
       DST_begin_block(DST_macro_info_block); /* First file entry */
       pstate = DST_making_macinfo;
     }
-#if !defined(_SUPPORT_IPA)
   else
     DST_enter_mk(DST_making_macinfo, last_macro);
-#endif
   
   /* Create the entry */
   m_idx  = DST_mk_macro();
@@ -2419,10 +2336,8 @@ DST_mk_macr_end_file (void)
       DST_begin_block(DST_macro_info_block); /* First file entry */
       pstate = DST_making_macinfo;
     }
-#if !defined(_SUPPORT_IPA)
   else
     DST_enter_mk(DST_making_macinfo, last_macro);
-#endif
   
   /* Create the entry */
   m_idx  = DST_mk_macro();
