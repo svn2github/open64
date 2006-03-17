@@ -55,7 +55,7 @@
 
 extern int dis_asm(char *, unsigned long long int);
 
-#ifdef _64BIT_OBJECTS
+#if 1
 
 #define ELF_ADDR	  Elf64_Addr
 #define ELF_WORD	  Elf64_Word
@@ -86,7 +86,7 @@ extern int dis_asm(char *, unsigned long long int);
 #define DIS_REG_NAMES     dis_reg_names32
 #define HEXREG		  "0x%x"
 
-#endif /* _64BIT_OBJECTS */
+#endif
 
 /* register definitions */
 #define ZERO 	0
