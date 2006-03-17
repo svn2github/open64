@@ -202,9 +202,6 @@ DST_enter_mk(DST_PRODUCER_STATE new_state, DST_IDX last_idx)
    DST_ASSERT((DST_IS_FOREIGN_OBJ(idx)) || (DST_INFO_tag(DST_INFO_IDX_TO_PTR(idx)) == required_tag),\
 	      "Found invalid DST_info index")
 
-#if defined(_SUPPORT_IPA)
-    /* these function are not needed with _LEGO_CLONER */
-
 /* set last_file_name so that we can add more files into the files dir */
 static void 
 DST_set_last_file_name(void)
@@ -228,8 +225,6 @@ DST_set_last_include_dir(void)
     }
 }
 
-#endif
-   
 
    /*-----------------------------------------------------------
     * Creation of ordered list of directories for include files
@@ -534,9 +529,6 @@ DST_mk_inlined_subroutine(void		*low_pc,    /* ptr to front-end label */
 		       flag, attr_idx);
 }
 
-#if defined(_SUPPORT_IPA)
-    /* These are not needed with _LEGO_CLONER */
-
 void
 DST_label_add_name(DST_LABEL *attr, char *label_name)
 {
@@ -751,7 +743,7 @@ DST_mk_cross_inlined_subroutine(
 		       flag, attr_idx);
 }
 
-#endif
+
 
 /* Creates a DW_TAG_subprogram entry and returns its idx.
 */
@@ -874,9 +866,6 @@ DST_mk_subprogram(USRCPOS      decl,
 
 
 
-#if defined(_SUPPORT_IPA)
-    /* This function is not needed with _LEGO_CLONER */
-
 /* Turns an existing DW_TAG_subprogram entry into an abstract instance
  * just by setting the appropiate DW_AT_inline flag
 */
@@ -911,10 +900,8 @@ DST_subprogram_concrete_to_abstract(DST_INFO_IDX subprogram)
           DST_SUBPROGRAM_def_inline(attr) = DW_INL_inlined;
    }
 }
-#endif
 
 
-#if defined(_SUPPORT_IPA) || defined(_LEGO_CLONER)
 /* Creates a DW_TAG_subprogram entry for a cloned subroutine and returns its idx
  * 
 */
@@ -965,7 +952,6 @@ DST_mk_cloned_subprogram(USRCPOS      decl,
    DST_SET_external(flag);
   return DST_init_info(info_idx, DW_TAG_subprogram, flag, attr_idx);
 }
-#endif
 
 
 /*
@@ -1402,16 +1388,7 @@ DST_mk_variable(USRCPOS      decl,     /* Source location */
       DST_VARIABLE_def_linkage_name(attr) = DST_INVALID_IDX;
 #endif
 
-#if defined(_SUPPORT_IPA)
-   /* for IPA, low_pc is pointer
-    * to struct st_idx
-    *	Get_ST_id ((ST *)low_pc, &id, &index);
-    * has already been called before calling this routine
-    */
-      DST_ASSOC_INFO_st_idx(DST_VARIABLE_def_st (attr)) = 
-        pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)var);
-#else
-#ifdef _LEGO_CLONER
+#if defined(_SUPPORT_IPA) || defined(_LEGO_CLONER)
       if (var != NULL) {
         DST_ASSOC_INFO_st_idx(DST_VARIABLE_def_st (attr)) = 
           pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)var);
@@ -1423,11 +1400,10 @@ DST_mk_variable(USRCPOS      decl,     /* Source location */
         DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = var;
         DST_SET_assoc_fe(flag);
       }
-#else /* Front End */
+#else
       /* location is obtained through the back-end version of st */
       DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = var;
       DST_SET_assoc_fe(flag);
-#endif
 #endif
    }   
    if (is_automatic)
@@ -1476,17 +1452,7 @@ DST_mk_formal_parameter(USRCPOS       decl,        /* Source location */
        DST_FORMAL_PARAMETER_name(attr) = DST_INVALID_IDX;
    DST_FORMAL_PARAMETER_type(attr) = type;
 
-   /* location is obtained through a pointer to back-end ST entry */
-#if defined(_SUPPORT_IPA)
-   /* for IPA, parm is pointer
-    * to struct st_idx
-    *	Get_ST_id ((ST *)parm, &id, &index);
-    * has already been called before calling this routine
-    */
-   DST_ASSOC_INFO_st_idx(DST_FORMAL_PARAMETER_st (attr)) = 
-     pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)parm);
-#else
-#ifdef _LEGO_CLONER
+#if defined(_SUPPORT_IPA) || defined(_LEGO_CLONER)
    if (parm != NULL) {
      DST_ASSOC_INFO_st_idx(DST_FORMAL_PARAMETER_st (attr)) = 
        pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)parm);
@@ -1496,11 +1462,10 @@ DST_mk_formal_parameter(USRCPOS       decl,        /* Source location */
      /* since parm passed from there is always NULL  */
      DST_ASSOC_INFO_fe_ptr(DST_FORMAL_PARAMETER_st(attr)) = parm;
    }
-#else /* Front End */
+#else
    DST_ASSOC_INFO_fe_ptr(DST_FORMAL_PARAMETER_st(attr)) = parm;
    if (parm != NULL)
      DST_SET_assoc_fe(flag);
-#endif
 #endif
    
    DST_FORMAL_PARAMETER_default_val(attr) = default_val;
@@ -1529,9 +1494,7 @@ DST_mk_unspecified_parameters(USRCPOS  decl,    /* Source location */
    DST_flag                    flag = DST_no_flag;
    DST_UNSPECIFIED_PARAMETERS *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_UNSPECIFIED_PARAMETERS);
@@ -1813,9 +1776,7 @@ DST_mk_subrange_type(DST_flag is_lb_cval,
    DST_flag           flag = DST_no_flag;
    DST_SUBRANGE_TYPE *attr;
 
-#if !defined(_SUPPORT_IPA)
    DST_enter_mk(DST_making_dbg_info, last_info_idx);
-#endif
 
    info_idx = DST_mk_info();
    attr_idx = DST_mk_attr(DST_SUBRANGE_TYPE);
