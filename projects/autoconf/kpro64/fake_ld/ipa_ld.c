@@ -204,11 +204,9 @@ Count_elf_external_gots (void)
     	    	if (	(pext->used)                                  || 
 			(ELF_ST_BIND(pext->ext->st_info) == STB_WEAK) ||
 	            	(   IS_UNDEF(pext->ext->st_shndx) &&
-#ifdef _64BIT_OBJECTS
              	    	    (pext->ext->st_other == STO_HIDDEN) ||
              	    	    (	(pext->ext->st_other == STO_INTERNAL) && 
 			    	(ELF_ST_TYPE(pext->ext->st_info) == STT_OBJECT)) ||
-#endif
 	     	    	    ((IS_DEFAULT(pext)) || address_taken))) { 
 	    	    count++;
 #ifdef DEBUG
