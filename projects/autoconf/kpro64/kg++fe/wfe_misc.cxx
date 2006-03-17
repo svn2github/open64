@@ -120,12 +120,6 @@ bool Did_Not_Terminate_Region = FALSE;
 # define MAX_MSG_LEVEL 2
 # define DEF_MSG_LEVEL 2
 
-#ifdef MONGOOSE_CIF
-mUINT32 Cif_Level = 0;       	/* CIF level */
-#define MAX_CIF_LEVEL 3 
-#define DEF_CIF_LEVEL 2 
-#endif /* MONGOOSE_CIF */
-
 /* Default file	extensions: */
 #define	IRB_FILE_EXTENSION ".B"	/* ACIR file */
 #define	IRD_FILE_EXTENSION ".D"	/* Intermediate data file */
