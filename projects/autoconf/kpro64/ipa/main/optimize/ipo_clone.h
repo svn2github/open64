@@ -83,7 +83,7 @@ extern void IPO_Clone (IPA_NODE* orig_node, IPA_NODE* clone_node);
 
 extern WN* IPO_Copy_Tree (WN *);
  
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 /* this routine is responsible for updating the st entry in the call
    to reflect the call to the clone. */

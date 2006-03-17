@@ -59,7 +59,6 @@ const DST_INFO_IDX foreign_origin = DST_FOREIGN_INIT;
 #define GET_ABSTRACT_ORIGIN(x) ((caller_file_dst == callee_file_dst)? get_abstract_origin(x): foreign_origin)
 
 
-#if !defined(_STANDALONE_INLINER)
 static char *
 create_ipa_internal_name(void)
 {
@@ -88,7 +87,6 @@ create_ipa_internal_name(void)
         sprintf(name, "%s_%d", "***ipa_intnl***", num_gen_names++);
     return (name);
 }
-#endif //  !defined(_STANDALONE_INLINER)
 
 
 static DST_IDX
@@ -361,7 +359,7 @@ DST_enter_cloned_childs(DST_IDX parent,
 			+ symtab->Get_cloned_label_last_idx(),
 		symtab->Get_cloned_level() );
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
 
 	    if (DST_IS_NULL(DST_LABEL_name(attr))) {
 	        label_name = create_ipa_internal_name();
@@ -434,7 +432,7 @@ DST_enter_cloned_childs(DST_IDX parent,
 
 	    char *block_name = NULL;
 
-#if ( !defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
 
 	    if (DST_IS_NULL(DST_LEXICAL_BLOCK_name(attr))) {
 		block_name = create_ipa_internal_name();
@@ -555,7 +553,7 @@ DST_enter_cloned_childs(DST_IDX parent,
 
                 DST_STRUCTURE_TYPE *attr = DST_ATTR_IDX_TO_PTR(DST_INFO_attributes (DST_INFO_IDX_TO_PTR(child_idx)), DST_STRUCTURE_TYPE);
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
     	        Current_DST = caller_file_dst;
 #endif
 
@@ -576,13 +574,13 @@ DST_enter_cloned_childs(DST_IDX parent,
 	    if (inlined) 
 		break;
 	    else {
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
     	        Current_DST = callee_file_dst;
 #endif
 
                 DST_UNION_TYPE *attr = DST_ATTR_IDX_TO_PTR(DST_INFO_attributes (DST_INFO_IDX_TO_PTR(child_idx)), DST_UNION_TYPE);
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
     	        Current_DST = caller_file_dst;
 #endif
 
@@ -602,13 +600,13 @@ DST_enter_cloned_childs(DST_IDX parent,
 	    if (inlined) 
 		break;
 	    else {
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
     	        Current_DST = callee_file_dst;
 #endif
 
                 DST_CLASS_TYPE *attr = DST_ATTR_IDX_TO_PTR(DST_INFO_attributes (DST_INFO_IDX_TO_PTR(child_idx)), DST_CLASS_TYPE);
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
     	        Current_DST = caller_file_dst;
 #endif
 
@@ -628,13 +626,13 @@ DST_enter_cloned_childs(DST_IDX parent,
 	    if (inlined) 
 		break;
 	    else {
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
     	        Current_DST = callee_file_dst;
 #endif
 
                 DST_ENUMERATION_TYPE *attr = DST_ATTR_IDX_TO_PTR(DST_INFO_attributes (DST_INFO_IDX_TO_PTR(child_idx)), DST_ENUMERATION_TYPE);
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
     	        Current_DST = caller_file_dst;
 #endif
 
@@ -654,13 +652,13 @@ DST_enter_cloned_childs(DST_IDX parent,
 	    if (inlined) 
 	  	break;
 	    else {
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
     	        Current_DST = callee_file_dst;
 #endif
 
                 DST_SUBROUTINE_TYPE *attr = DST_ATTR_IDX_TO_PTR(DST_INFO_attributes (DST_INFO_IDX_TO_PTR(child_idx)), DST_SUBROUTINE_TYPE);
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
     	        Current_DST = caller_file_dst;
 #endif
 
@@ -676,7 +674,7 @@ DST_enter_cloned_childs(DST_IDX parent,
             }
 	    }
         }
-#if (!defined(_STANDALONE_INLINER) && !defined(_LEGO_CLONER))
+#if !defined(_LEGO_CLONER)
     	Current_DST = callee_file_dst;
 #endif
     }

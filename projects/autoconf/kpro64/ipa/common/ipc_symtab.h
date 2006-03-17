@@ -36,7 +36,7 @@
 #ifndef __IPC_SYMTAB_H__
 #define __IPC_SYMTAB_H__
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,9 +87,9 @@ extern void enter_mext64 (ST *st, LD_OBJECT_FILE *p_obj);
 }
 #endif
 
-#else // _STANDALONE_INLINER || _LIGHTWEIGHT_INLINER
+#else
 extern void Process_Global_Symtab (void* handle, IP_FILE_HDR& file_header);
-#endif // _STANDALONE_INLINER
+#endif
 
 
 #endif /* __IPC_SYMTAB_H__ */

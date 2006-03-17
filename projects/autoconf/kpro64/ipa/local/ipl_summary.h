@@ -692,10 +692,10 @@ public:
 	_bb_count = MIN (PU_WN_BB_Cnt, UINT16_MAX);
 	_stmt_count = MIN (PU_WN_Stmt_Cnt, UINT16_MAX);
 
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
 	PU_WN_BB_Cnt = 0;
 	PU_WN_Stmt_Cnt = 0;
-#endif // _STANDALONE_INLINER
+#endif
     }
     
     void Incr_altentry_count ()		{ _alt_entry_count++;}

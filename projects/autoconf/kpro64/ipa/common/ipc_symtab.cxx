@@ -140,7 +140,7 @@ get_global_symtab (IPC_GLOBAL_TABS &gtabs, FILE_INFO &finfo,
 
 #define DEFAULT_MAX_EXT_NUM	(1024)
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 inline BOOL 
 ST_is_weak_alias(const ST &st)
@@ -475,7 +475,7 @@ ipa_open_input(char *name, off_t *p_size)
 
 #endif // TARG_IA64 */
 
-#else // _STANDALONE_INLINER
+#else
 
 #include "ir_bread.h"
 void
@@ -522,4 +522,4 @@ Process_Global_Symtab (void* handle, IP_FILE_HDR& file_header)
 } /* Process_Global_Symtab */
 
 
-#endif // _STANDALONE_INLINER
+#endif

@@ -115,46 +115,6 @@ IPA_get_actual_file_array (const IP_FILE_HDR& hdr, INT32& size);
 extern IVAR* 
 IPA_get_ivar_file_array (const IP_FILE_HDR& hdr, INT32& size);
 
-#ifdef _STANDALONE_INLINER
-
-/*ARGSUSED*/
-
-// --------------------------------------------------------------
-// Functions that take IP_FILE_HDR parameter also return the size
-// of the summary array from the file. 
-// --------------------------------------------------------------
-SUMMARY_PROCEDURE* 
-IPA_get_procedure_file_array (const IP_FILE_HDR& hdr, INT32& size);
-SUMMARY_SYMBOL* 
-IPA_get_symbol_file_array (const IP_FILE_HDR& hdr, INT32& size);
-SUMMARY_GLOBAL* 
-IPA_get_global_file_array (const IP_FILE_HDR& hdr, INT32& size);
-SUMMARY_STRUCT_ACCESS*
-IPA_get_struct_access_file_array (const IP_FILE_HDR& hdr, INT32& size);
-
-
-// ---------------------------------------------------------------
-// Access to the SUMMARY arrays in the inliner always goes through
-// the file header. These access functions are provided for 
-// convinience and completeness.
-// ---------------------------------------------------------------
-SUMMARY_PROCEDURE* 
-IPA_get_procedure_array (const IPA_NODE* node);
-SUMMARY_SYMBOL* 
-IPA_get_symbol_array (const IPA_NODE* node);
-SUMMARY_GLOBAL* 
-IPA_get_global_array (const IPA_NODE* node);
-SUMMARY_CALLSITE* 
-IPA_get_callsite_array (const IPA_NODE* node);
-SUMMARY_FORMAL* 
-IPA_get_formal_array (const IPA_NODE* node);
-SUMMARY_ACTUAL* 
-IPA_get_actual_array (const IPA_NODE* node);
-SUMMARY_FEEDBACK* 
-IPA_get_feedback_array (const IPA_NODE* node);
-
-#else // _STANDALONE_INLINER
-
 // --------------------------------------------------------------
 // Functions that take IP_FILE_HDR parameter also return the size
 // of the summary array from the file. 
@@ -212,9 +172,5 @@ LOOPINFO* IPA_get_loopinfo_array (const IPA_NODE* node);
 TERM* IPA_get_term_array (const IPA_NODE* node);
 SCALAR_INFO* IPA_get_scalar_array (const IPA_NODE* node);
 SUMMARY_FEEDBACK* IPA_get_feedback_array (const IPA_NODE* node);
-
-#endif  // _STANDALONE_INLINER
-
-
 
 #endif // cxx_ipa_summary_INCLUDED

@@ -191,7 +191,7 @@ ST_TO_INITO_MAP ST_To_INITO_Map;
 COMMON_BLOCK_ELEMENTS_MAP *Common_Block_Elements_Map = NULL;
 static MEM_POOL Common_map_pool;
 
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
 
 static UINT32
 count_pregs()
@@ -217,7 +217,7 @@ get_global_st(char* symname)
     }
     return NULL;
 }
-#endif // _STANDALONE_INLINER
+#endif
 
 //----------------------------------------------------------------------
 // Auxiliary tables
@@ -226,11 +226,11 @@ void
 Initialize_Auxiliary_Tables ()
 {
     const UINT32 st_size = ST_Table_Size (GLOBAL_SYMTAB);
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
     num_predefined_st = count_pregs()+1;
-#else // _STANDALONE_INLINER
+#else
     num_predefined_st = st_size;
-#endif // _STANDALONE_INLINER
+#endif
     
     Scope_tab[GLOBAL_SYMTAB].st_tab->Register (Aux_St_Tab);
 
@@ -1465,7 +1465,7 @@ Merge_St_With_St(const IPC_GLOBAL_TABS &original_tabs,
     // the merged_st.
     //
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
     switch (ST_storage_class (original_st)) {
     case SCLASS_TEXT:
@@ -1485,7 +1485,7 @@ Merge_St_With_St(const IPC_GLOBAL_TABS &original_tabs,
 	}
 	break;
     }
-#endif // _STANDALONE_INLINER
+#endif
 
     if (ST_sym_class (original_st) != ST_sym_class (merged_st)) {
 #ifdef KEY
@@ -1593,7 +1593,7 @@ Process_Common_Element (const IPC_GLOBAL_TABS& original_tabs,
 } // Process_Common_Element
 
 
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
 
 static ST_IDX
 Merge_Global_St(UINT                   idx,
@@ -1650,7 +1650,7 @@ Merge_Global_St(UINT                   idx,
 				 original_st, NULL);
     }
 } // Merge_Global_St
-#else // _STANDALONE_INLINER
+#else
 
 static ST_IDX
 Merge_Global_St(UINT                   idx,
@@ -1737,7 +1737,7 @@ Merge_Global_St(UINT                   idx,
     }
 } // Merge_Global_St
 
-#endif // _STANDALONE_INLINER
+#endif
 
 
 // --------------------------------------------------------------

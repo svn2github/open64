@@ -98,12 +98,6 @@ extern BOOL Is_User_Not_Specified(UINT);
 extern BOOL Is_Skip_Not_Specified(char * );
 extern BOOL Is_Skip_Equal(char * );
 
-#ifdef _STANDALONE_INLINER
-extern void Process_Non_Local_Files();
-extern void Process_Non_Local_Libraries();
-#endif // _STANDALONE_INLINER
-
-
 extern INT number_of_partitions;
 
 #ifdef __cplusplus

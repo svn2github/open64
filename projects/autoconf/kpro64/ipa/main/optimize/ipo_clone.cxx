@@ -283,7 +283,7 @@ CLONED_LIST::Lookup(ST* orig_st)
   return NULL; // not found;
 }
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 //----------------------------------------------------------------------
 // fix up the symbol table entry of the call
@@ -311,4 +311,4 @@ Clone_update_st(WN *w, ST_IDX s, SYMTAB_IDX callee_sym_idx,
 
 }
 
-#endif /* // STANDALONE_INLINER */
+#endif

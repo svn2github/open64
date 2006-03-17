@@ -75,7 +75,7 @@ Machine_Type(WN* wn_argument)
   return mtype; 
 }
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 extern SUMMARY *Summary;
 extern ARRAY_SUMMARY Array_Summary;
@@ -504,6 +504,5 @@ extern PROJECTED_REGION* Projected_Region_From_Access_Array(ACCESS_ARRAY* aa,
   return CXX_NEW(PROJECTED_REGION(aa, mem_pool, NULL, FALSE, 
     IPA_LNO_File), mem_pool);
 }
-
  
-#endif // _STANDALONE_INLINER
+#endif

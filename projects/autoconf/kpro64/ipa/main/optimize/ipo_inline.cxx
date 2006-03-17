@@ -59,11 +59,11 @@
 #include "ipo_tlog_utils.h"		// for tlog
 #include "ipa_option.h"			// for Trace_IPA
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 #include "dwarf_DST_producer.h"		// for DST_*
 #include "clone_DST_utils.h"		// for DST_enter_inlined_subroutine
 #include "ipaa.h"			// IPAA_NODE_INFO
-#endif // _STANDALONE_INLINER
+#endif
 
 #include "ipo_inline.h"
 
@@ -351,7 +351,7 @@ IPA_Do_Linearization (IPA_NODE* callee_node, WN* call, SCOPE* caller_scope)
 }
 
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 #ifdef KEY
 static BOOL 
@@ -468,7 +468,7 @@ Can_Inline_Call (IPA_NODE* caller, IPA_NODE* callee, const IPA_EDGE* edge)
     
 } // Can_Inline_Call
 
-#endif // !_STANDALONE_INLINER
+#endif
 
 
 
@@ -733,7 +733,6 @@ IPO_INLINE::SubstituteFormal (ST* formal, WN* actual, INT position)
     // This code will be totally rewritten later, NO NEED TO PORT
     // IPA MODE
 #else
-#ifndef _STANDALONE_INLINER
   
     if (!IPA_Enable_Copy_Prop)
 	return FALSE;
@@ -769,144 +768,6 @@ IPO_INLINE::SubstituteFormal (ST* formal, WN* actual, INT position)
 
     return TRUE;
     
-#else
-    // INLINE MODE
-    // Do Copy Propogation in the StandAlone Inliner
-    // IF INLINE_Enable_Copy_Prop is set
-    //  return FALSE;
-    
-    if (!INLINE_Enable_Copy_Prop) {
-	return FALSE;
-    }
-    
-    
-    BOOL same_file =
-	(Caller_node ()->File_Index () == Callee_node ()->File_Index ()) ;
-
-    if (!same_file) {
-      return FALSE;
-    }
-
-    if (OPCODE_has_sym(WN_opcode(actual)) && WN_operator(actual) == OPR_LDA) {
-	ST *s = WN_st(actual);
-	TY_IDX t = WN_ty(actual);
-	if ((ST_class(s) != CLASS_CONST) && (ST_ADDR_SAVED(s))) {
-	    return FALSE;
-	}
-	
-	// If actual is a ptr to a volatile object do not substitute
-	if ((TY_kind(t)== KIND_POINTER) && TY_pointed(t) &&
-	    TY_is_volatile(TY_pointed(t))) {
-	    return FALSE;
-	}
-
-	// substitute also for actuals being structs
-	// later: fix pv 411944: substitute also for actuals being arrays
-	if ((TY_kind(ST_type(s)) == KIND_SCALAR ||
-	     ((ST_class(s) == CLASS_VAR) && TY_kind(t) == KIND_POINTER)) &&
-	    (TY_kind(ST_type(formal)) == KIND_POINTER)) {
-
-	    if ((ST_sclass(s) != SCLASS_AUTO) && 
-		(ST_sclass(s) != SCLASS_FORMAL) &&
-		// Ok to substitute actual if its a FSTATIC constant var
-		(! (ST_is_const_var(s) && (ST_sclass(s) == SCLASS_FSTATIC)))) {
-		// actual is global
-		return FALSE;
-	    }
-
-	    // make sure that the types are the same
-	    INT formal_element_size = TY_size(TY_pointed(ST_type(formal)));
-	    INT actual_element_size = TY_size(ST_type(s));
-	    // are the sizes different?
-	    // later: check for sizes of elementtype if the actual is an array
-	    if (formal_element_size != actual_element_size) {
-		return FALSE;
-	    }
-	} else {
-	    // actual is not a scalar or formal is not a pointer
-	    return FALSE;
-	}
-    }  else if (OPCODE_has_sym(WN_opcode(actual)) && 
-		WN_operator(actual) == OPR_LDID) {
-	// can also substitute if actual is LDID but be
-	// very conservative; check below
-	// a. callee has NO ISTORE
-	// b. callee is leaf at this point (ie all calls in callee inlined)
-	// c. formal is not dmod in callee : no stid to formal
-	  // actual is not lda
-	return FALSE;
-    } else {
-	// can't figure out the sizes etc
-	// actual is not LDA
-	return FALSE;
-    }
-    
-    const SUMMARY_PROCEDURE *proc_node = Callee_Summary_Proc ();
-    
-    // position of this formal entry
-    INT formal_index = proc_node->Get_formal_index();
-    
-    SUMMARY_FORMAL *formal_node =
-	Summary->Get_formal (formal_index +
-			     Get_orig_param_position (position,
-						      Callee_node ()->Cprop_Annot ()));
-
-    INT s_f_indx = formal_node->Get_symbol_index();
-
-    SUMMARY_SYMBOL *f_symbols = Summary->Get_symbol (0);
-
-    SUMMARY_CREF_SYMBOL *cref_symbols = Summary->Get_symbol_crefcount (0);
-    INT cref_indx = Summary->Find_symbol_crefcount_index(s_f_indx);
-
-    // case when actual is LDID; substitute if
-    // a. callee has NO ISTORE
-    // b. callee is leaf at this point (ie all calls in callee inlined)
-    // c. formal is not dmod in callee : no stid to formal
-    if (OPCODE_has_sym(WN_opcode(actual)) && 
-	(WN_operator(actual) == OPR_LDID) ||
-	(WN_operator(actual) == OPR_LDA)) {
-
-      if (!(OPCODE_has_sym (WN_opcode(actual)) &&
-	       WN_operator(actual) == OPR_LDA))
-        // actual is an LDID but cannot substitute
-	{
-	  return FALSE;
-	}
-    }
-
-    BOOL cdref;
-
-    // for void calls if the only cref/dref was an arg to STID into a preg
-    // then that cref/dref can be ignored.
-    if (f_symbols[s_f_indx].Is_cdref_preg_only() &&
-	WN_opcode (Call_Wn ()) == OPC_VCALL)
-      {
-	cdref = FALSE; 
-	if (Trace_CopyProp)
-		fprintf(TFile, "ignore cref/dref (due to void call) for formal: %s",ST_name(formal));
-	Inline_tlog("SubstituteFormal",0,"ignore cref/dref due to void call for formal: %s",ST_name(formal));
-      }
-    else if ( (cref_indx != -1) && 
-	     (cref_symbols[cref_indx].Get_cur_cref_count() == 0))
-      {
-	cdref = f_symbols[s_f_indx].Is_dref();
-	if (Trace_CopyProp)
-	   fprintf(TFile, "ignore cref due to refcount being 0 for formal: %s \n",ST_name(formal));
-      }
-    else 
-      cdref = f_symbols[s_f_indx].Is_dref() || f_symbols[s_f_indx].Is_cref();
-
-    
-    if (f_symbols[s_f_indx].Is_dmod() ||
-	f_symbols[s_f_indx].Is_aref() || 
-	cdref ||
-	(f_symbols[s_f_indx].Is_addr_saved())) {
-
-	return FALSE;
-    } else {
-	return TRUE;
-    }
-#endif
 #endif
 }
 
@@ -1076,100 +937,6 @@ Copy_Subscript_Expressions (IPO_INLINE_AUX& aux, IPO_INLINE& inliner)
 }
 
 
-//--------------------------------------------------------------------------
-// check if the bits need to be set
-//--------------------------------------------------------------------------
-// TK: Also do this in standalone inliner
-#ifdef _STANDALONE_INLINER
-static void
-Reset_Addr_Bits(ST* s, INT position, IPA_EDGE* edge, IPA_NODE* callee) 
-{
-    BOOL do_tracing;
-
-    //we came in through inliner copy propogation
-
-    do_tracing = Trace_CopyProp || Trace_IPA;
-
-    // get the symbols array
-    SUMMARY_SYMBOL* symbols= Summary->Get_symbol (0);
-
-    // get the entry into the symbols array
-    const SUMMARY_CALLSITE* callsites = edge->Summary_Callsite ();
-
-    INT aindx = callsites->Get_actual_index();
-    
-    INT32 sindx =
-	Summary->Get_actual (aindx +
-			     Get_orig_param_position (position,
-						      callee->Cprop_Annot ()))-> Get_symbol_index ();
-    
-
-    if (sindx == -1) {
-	if (do_tracing)
-	    fprintf(TFile, "Actual index is -1; perhaps never set?: %s\n",
-		    ST_name(s));
-	return;
-    }
-    
-    // check if a valid symbol node index has been obtained
-    SUMMARY_SYMBOL* snode = &symbols[sindx];
-
-    if (!snode->Is_local()) {
-	if (do_tracing)
-	    fprintf(TFile,
-		    "Actual is not local. ST_addr bits NOT RESET for %s\n",
-		    ST_name(s));
-	return;
-    }
-
-
-    if (snode->Is_addr_saved()) {
-	if ((ST_class(s) == CLASS_VAR) || (ST_class(s) == CLASS_FUNC)) {
-	    SET_ST_ADDR_SAVED(s);
-	    if (do_tracing)
-		fprintf(TFile, "ST_addr_saved for symbol %s is true \n",
-			ST_name(s));
-	} else if (do_tracing)
-	    fprintf(TFile, "ST_addr_saved for symbol %s NOT marked \n",
-		    ST_name(s));
-	
-    } else {			/* if (snode->Is_addr_saved()) */
-	if (do_tracing)
-	    fprintf(TFile, "ST_addr_saved for symbol %s is false\n",
-		    ST_name(s));
-	if (!snode->Is_addr_passed_inliner()) {
-	    // first time around, we need to reset this bit
-	    snode->Set_addr_passed_inliner();
-
-	    // reuse st_id bit
-	    snode->Reset_cur_addr_passed_count();
-	}
-	// incr the addr passed count
-	snode->Incr_cur_addr_passed_count();
-
-	// if count equals passed count then we can reset the
-	// addr_taken_passed bit, if the addr_saved bit has not
-	// been set
-	if (snode->Get_cur_addr_passed_count() == snode->Get_addr_count()) {
-	    RESET_ST_ADDR_SAVED(s);
-	    RESET_ST_ADDR_PASSED(s);
-	    if (do_tracing) {
-		fprintf(TFile, "ST_addr_passed and ST_addr_saved reset for %s \n", 
-			ST_name(s));
-	    }
-	}  /* all calls inlined */
-	else if (do_tracing) {
-	    // report that all calls didn't get inlined
-	    fprintf(TFile, "Addr counts for %s DIFFER; Summary says %d but current count is %d\n",
-		    ST_name(s),
-		    snode->Get_addr_count(),
-		    snode->Get_cur_addr_passed_count()); 
-	}
-    } /* else part of Is_addr_saved */
-}
-#endif // _STANDALONE_INLINER
-
-
 // If we cannot copy-propagate the actual to the callee, we generate an
 // assignment of the actual to the formal (now becomes a local variable).  In
 // this case, we have to set the dref bit of the actual.  Otherwise, when we
@@ -1192,7 +959,7 @@ Reset_Addr_Bits(ST* s, INT position, IPA_EDGE* edge, IPA_NODE* callee)
 //
 // If we don't mark p as dref, we might copy-propagate &a into p and not set
 // the addr_saved bit for a.  But we actually have "q = &a".
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 static void
 Update_formal_dref (WN *actual, IPA_NODE* caller)
 {
@@ -1222,7 +989,7 @@ Update_formal_dref (WN *actual, IPA_NODE* caller)
 	break;
     }
 } // IPO_INLINE::Update_formal_dref
-#endif // _STANDALONE_INLINER
+#endif
 
 
 //------------------------------------------------------------------
@@ -1459,14 +1226,14 @@ IPO_INLINE::IPO_INLINE (IPA_NODE *caller_node,
 
   _flags = 0; // clear the flag
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
   if (IPA_Enable_DST) {
       Set_callee_cross_file_id(DST_get_cross_file_id (Caller_dst(),
 						      Callee_dst(),
 						      Caller_file_dst(),
 						      Callee_file_dst()));
   }
-#endif // _STANDALONE_INLINER
+#endif
 
 } // IPO_INLINE::IPO_INLINE
 
@@ -1734,7 +1501,7 @@ IPO_INLINE::Clone_Callee(BOOL same_file)
 
   WN *result = copy.Clone_Tree(WN_func_body(Callee_Wn ()));
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
   if (Caller_node ()->Has_frequency ()) {
       FB_FREQ call_freq = Call_edge()->Get_frequency();
@@ -1764,7 +1531,7 @@ printf(", call_freq = %f\n", call_freq.Value());
 
       }
   }
-#endif // _STANDALONE_INLINER
+#endif
 
   return (result);
 
@@ -1960,13 +1727,13 @@ void
 IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 {
     WN* wn = iter.Wn ();
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
     // bug 3060
     // Give everything the linenum of the callsite
     // bug 6170: for lw-inliner, maintain the callee's line# information
     if (OPERATOR_has_next_prev(WN_operator(wn)))
       WN_Set_Linenum (wn, WN_Get_Linenum (Call_Wn()));
-#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#endif
     OPERATOR oper = WN_operator (wn);
     switch(oper) {
     case OPR_RETURN_VAL:
@@ -2001,13 +1768,13 @@ IPO_INLINE::Process_Op_Code (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	    TY_IDX stid_ty = WN_ty(WN_kid0(wn));
 #endif // KEY
 
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
 	    if (stid_ty == 0) { // This is potentially a COMMA node
 
 		// if (WN_operator(WN_kid0(wn)) == OPR_COMMA)
 		    stid_ty = WN_ty(WN_kid1(WN_kid0(wn)));
 	    }
-#endif // _STANDALONE_INLINER
+#endif
 	    iter.Insert (WN_Stid (MTYPE_M, 0, tmp_st, stid_ty,
 				  WN_kid0 (wn))); 
 	} else 
@@ -2894,11 +2661,11 @@ IPO_INLINE::Process_ST (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 		Set_ST_export(ST_ptr(ST_base_idx(cp)), ST_export(cp));
 	    }
 	}
-#if (defined(KEY) && (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER)))
+#if defined(_LIGHTWEIGHT_INLINER)
         if ((Is_DoAcross)  || (Is_MP_Region)) {
 	    Update_Caller_MP_Pragmas(cp, Call_Wn());
  	}
-#endif // KEY && _STANDALONE_INLINER
+#endif
   
         break;
       
@@ -2906,11 +2673,11 @@ IPO_INLINE::Process_ST (TREE_ITER& iter, IPO_INLINE_AUX& aux)
     case SCLASS_UGLOBAL:
     case SCLASS_DGLOBAL:
     case SCLASS_COMMON:
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
         if ((Is_DoAcross)  || (Is_MP_Region)) {
 	    Update_Caller_MP_Pragmas(cp, Call_Wn());
  	}
-#endif // _STANDALONE_INLINER
+#endif
 	break;
   
     case SCLASS_AUTO:
@@ -2932,7 +2699,7 @@ IPO_INLINE::Process_ST (TREE_ITER& iter, IPO_INLINE_AUX& aux)
 	break;
   
     case SCLASS_TEXT:
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 	FmtAssert(cp != NULL, ("LOCAL must have a cloned version\n"));
 #endif
 	break;
@@ -3065,7 +2832,7 @@ IPO_INLINE::Process_Copy_In (PARM_ITER parm, WN* copy_in_block)
 	    if (ST* st = Get_actual_st_if_passed (actual)) {
 		Set_ST_addr_saved (st);
 	    }
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 	    // since we generate an assignment statement, the actual now
 	    // becomes directly referenced.
 	    Update_formal_dref (actual, Caller_node ());
@@ -3989,7 +3756,7 @@ IPO_INLINE::Process()
 #endif // KEY
   }
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
   if (IPA_Enable_DST) {
     /* the following is to set DST_SUBPROGRAM_decl_inline flag
      * appropiately for the callee
@@ -4012,7 +3779,7 @@ IPO_INLINE::Process()
 				 Callee_node ()->Mem_Pool (),
 				 same_file ? 0 : Callee_cross_file_id());
   }
-#endif // _STANDALONE_INLINER
+#endif
 
 } // IPO_INLINE::Process
 

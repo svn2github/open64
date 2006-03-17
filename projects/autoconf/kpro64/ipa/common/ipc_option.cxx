@@ -78,13 +78,13 @@
 #include "ipc_file.h"
 #include "ipc_option.h"
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 #include "ipo_main.h"
 #include "ipc_partition.h" /* IP_tagged_symbol_partition */
 INT number_of_partitions = 1;
 
-#endif /* !_STANDALONE_INLINER */
+#endif
 
 
 /* ====================================================================
@@ -198,145 +198,6 @@ Is_Skip_Equal(char *name)
 {
     return (User_Specified_Skip_Info(name) == SKIP_EQUAL);
 }
-
-#ifdef _STANDALONE_INLINER
-
-#include "ipc_type_merge.h"
-#include "ipc_utils.h"
-#include "inline.h"
-
-static ARRAY_OF_STRINGS filenames;
-static ARRAY_OF_STRINGS libnames;
-static MEM_POOL Multifile_Pool;
-static BOOL multifile_mempool_initialized = FALSE;
-
-struct Process_Specified_Files {
-    void operator()(char* filename, UINT unused) { 
-	filenames.push_back(filename);
-    };
-};
-
-struct Process_Specified_Libraries {
-    void operator()(char* libname, UINT unused) { 
-	libnames.push_back(libname);
-    };
-};
-
-void
-Process_Non_Local_Files()
-{
-    if (! multifile_mempool_initialized) {
-	multifile_mempool_initialized = TRUE;
-	MEM_POOL_Initialize (&Multifile_Pool, "TY Merge Pool", 0);
-	Initialize_Type_Merging_Hash_Tables (&Multifile_Pool);
-    }
-	
-    for (int i = 0; i < filenames.size(); ++i) {
-	Process_Nonlocal_File(filenames[i], NULL);
-    }
-}
-
-
-static void
-process_archive_member (off_t offset, void* base, void *handle, int fd, char* libname)
-{
-    struct ar_hdr *header;
-    char* name;
-    char* member_name;
-    void* member_base;
-
-
-    header = (struct ar_hdr *) ((char *)base + offset);
-    name = Read_Member_Name (header, handle, Malloc_Mem_Pool);
-    member_name = (char*) MEM_POOL_Alloc(Malloc_Mem_Pool, (strlen (libname) + strlen (name) + 3));
-    sprintf (member_name, "%s(%s)", libname, name);
-
-    member_base = (char *)base + offset + sizeof(struct ar_hdr);
-    if ((UINT64)member_base & 0xf) {
-	// unaligned WHIRL object in an archive 
-	UINT64 member_file_size = atoi (header->ar_size);
-        member_base = MEM_POOL_Alloc(Malloc_Mem_Pool, member_file_size);
-	if (lseek(fd, offset, SEEK_SET) == -1 ||
-            	read (fd, member_base, member_file_size) != member_file_size) {
-	    fprintf(stderr, "Cannot read %s in %s\n", name, libname);
-	    return;
-	}
-    }
-
-    MEM_POOL_FREE (Malloc_Mem_Pool, name);	/* malloc'ed by read_member_name() */
-    
-    Process_Nonlocal_File(member_name, member_base);
-
-} /* process_archive_member */
-
-static void
-process_archive (int fd, void* base, UINT64 file_size, BOOL allflag, char* libname)
-{
-    char* sym_name;
-    off_t offset = 0;
-    void* handle;
-
-    handle = Digest_Archive (base, Malloc_Mem_Pool, file_size);
-
-    if (handle == NULL) return;
-
-    if (allflag) {
-	offset = Next_Archive_Member ((char *)base, 0, file_size);
-	while (offset) {
-	    process_archive_member (offset, base, handle, fd, libname);
-	    offset = Next_Archive_Member ((char *)base, offset, file_size);
-	}
-
-    } else {
-	for (int i = 0; i < must_routines.size(); ++i) {
-	
-	    if (offset = Defined_By_Archive (must_routines[i], handle)) {
-	        process_archive_member (offset, base, handle, fd, libname);
-	    }
-	}
-	    
-    }
-    Cleanup_Archive_Handle (handle, Malloc_Mem_Pool);
-
-} /* process_archive */
-
-static void
-process_library(char *libname)
-{
-    char *filename;
-    void *map_addr;
-    int fd;
-    struct stat stat_buf;
-
-    fd = open(libname, O_RDONLY, 0);
-
-    if ( (fd == -1) || (fstat(fd, &stat_buf) == -1) ) {
-        fprintf(stderr, "Bad library used -- %s\n", libname);
-        return;
-    }
-    map_addr = (char *) mmap ( NULL, stat_buf.st_size,
-                           (PROT_READ | PROT_WRITE),
-                           MAP_PRIVATE, fd, 0 );
-
-    process_archive(fd, map_addr, stat_buf.st_size, INLINE_All, libname);
-
-}
-
-void
-Process_Non_Local_Libraries()
-{
-    if (! multifile_mempool_initialized) {
-	multifile_mempool_initialized = TRUE;
-	MEM_POOL_Initialize (&Multifile_Pool, "TY Merge Pool", 0);
-	Initialize_Type_Merging_Hash_Tables (&Multifile_Pool);
-    }
-
-    for (int i = 0; i < libnames.size(); ++i) {
-	process_library(libnames[i]);
-    }
-}
-
-#endif // _STANDALONE_INLINER
 
 template <class DATA, class ACTION>
 static void
@@ -500,15 +361,6 @@ Process_Inline_Options ( void )
     else if ( strcmp ( OLIST_opt(ol), "in" ) == 0 ) {
       Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining(), "in" );
     }
-#ifdef _STANDALONE_INLINER
-// not yet enabled
-    else if ( strcmp ( OLIST_opt(ol), "file" ) == 0 ) {
-      Add_Symbols( OLIST_val(ol), NULL, Process_Specified_Files(), "file" );
-    }
-    else if ( strcmp ( OLIST_opt(ol), "library" ) == 0 ) {
-      Add_Symbols( OLIST_val(ol), NULL, Process_Specified_Libraries(), "library" );
-    }
-#endif // _STANDALONE_INLINER
     else {
 	char flag[256];
 	sprintf (flag, "INLINE:%s", OLIST_opt(ol));
@@ -533,14 +385,6 @@ Process_Inline_Options ( void )
     else if ( strcmp ( OLIST_opt(ol), "in" ) == 0 ) {
       Add_Symbols( OLIST_val(ol), USER_MUST_INLINE, Hash_Edges_For_Inlining() );
     }
-#ifdef _STANDALONE_INLINER
-    else if ( strcmp ( OLIST_opt(ol), "file" ) == 0 ) {
-      Add_Symbols( OLIST_val(ol), NULL, Process_Specified_Files() );
-    } 
-    else if ( strcmp ( OLIST_opt(ol), "library" ) == 0 ) {
-      Add_Symbols( OLIST_val(ol), NULL, Process_Specified_Libraries() );
-    } 
-#endif // _STANDALONE_INLINER
     else {
 	FmtAssert ( FALSE,
 		   ( "Unknown -INLINE option: %s", OLIST_opt(ol) ) );
@@ -588,7 +432,7 @@ Process_IPA_Skip_Options ( void )
 
 }
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 /*ARGSUSED*/
 static void
@@ -630,4 +474,4 @@ Process_IPA_Specfile_Options ( void )
  number_of_partitions = partition_grp;
 }
 
-#endif /* !_STANDALONE_INLINER */
+#endif

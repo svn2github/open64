@@ -59,7 +59,7 @@
 #include "fb_whirl.h"
 #endif
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 // return the callsite id of a particular call
 INT32 IPL_get_callsite_id(WN* w);
 #endif

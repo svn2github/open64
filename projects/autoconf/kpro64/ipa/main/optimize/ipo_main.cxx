@@ -367,7 +367,7 @@ Rename_Call_To_Cloned_PU (IPA_NODE *caller,
 
 } // Rename_Call_To_Cloned_PU
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
 static void Fixup_EHinfo_In_PU (IPA_NODE* node, WN * w = NULL)
 {
   if (w && WN_operator(w) == OPR_REGION && WN_region_is_EH (w) &&
@@ -436,7 +436,7 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
 
 #ifdef KEY
     Get_enclosing_region (caller, edge);
-#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
     // For C++, fix-up the summarized information in EH regions now, because
     // after inlining we won't know from which file each symbol came, making
     // it impossible to replace summary.
@@ -457,7 +457,7 @@ Inline_Call (IPA_NODE *caller, IPA_NODE *callee, IPA_EDGE *edge,
       }
       callee->Set_EHinfo_Updated();
     }
-#endif // !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#endif
 #endif // KEY
 
 #if Is_True_On
@@ -682,14 +682,14 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 	action_taken = Delete_Call (caller, callee, edge, cg);
     else if (IPA_Enable_Inline && edge->Has_Inline_Attrib () &&
 		!callee->Has_Noinline_Attrib()) {
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
       if (caller != callee) {
 #endif
 	MEM_POOL_Popper ipo_pool (&Ipo_mem_pool);
 	action_taken = Inline_Call (caller, callee, edge, cg);
 	if (action_taken) 
 	    IPO_Total_Inlined++;
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
       } else {
 	// It is a recursive call, we cannot inline it until the node and all
 	// its edges have been processed.
@@ -700,7 +700,7 @@ IPO_Process_edge (IPA_NODE* caller, IPA_NODE* callee, IPA_EDGE* edge,
 #endif
     }
     
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
     static INT pure_call_opt_count = 0;
     if (!action_taken &&
          IPA_Enable_Pure_Call_Opt && 
@@ -923,7 +923,7 @@ Perform_Transformation (IPA_NODE* caller, IPA_CALL_GRAPH* cg)
 
     }
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
     // Inline the recursive edges now.
     for (vector<inline_info>::iterator iter = inline_list.begin(); 
     	 iter != inline_list.end(); ++iter)

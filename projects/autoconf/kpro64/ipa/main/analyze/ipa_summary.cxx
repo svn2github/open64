@@ -277,7 +277,7 @@ get_feedback_array (const IPA_NODE* node)
   }
   return NULL;
 }
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
 
 // --------------------------------------------------------------
 // Functions that take IP_FILE_HDR parameter also return the size
@@ -412,8 +412,7 @@ IPA_get_feedback_array (const IPA_NODE* node)
   return NULL;
 }
 
-#else // _STANDALONE_INLINER
-
+#else
 
 #include "ipl_array_bread_write.h"      // ARRAY_SUMMARY_OUTPUT
 #include "ipa_section_annot.h"          // SECTION_FILE_ANNOT
@@ -857,4 +856,4 @@ IPA_get_feedback_array (const IPA_NODE* node)
 {
   return get_feedback_array(node); 
 }
-#endif  // _STANDALONE_INLINER
+#endif

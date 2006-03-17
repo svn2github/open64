@@ -90,7 +90,7 @@ PHI_NODE_ARRAY* Hashed_Phis;
 INT Num_Phis_On_PU_Start;
 
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 // given a call node, return the id into the callsite array
 // this is stored as a map
 INT32 IPL_get_callsite_id(WN* w)
@@ -1050,9 +1050,9 @@ Count_tree_size (FEEDBACK& fb, WN *wn, INT32 &bbs, INT32 &stmts, FB_FREQ& cycles
   if (!init_invoke_seen)
       init_invoke = freq_count;
 
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
   BOOL IPL_Enable_Unknown_Frequency = FALSE;
-#endif // _STANDALONE_INLINER
+#endif
 
   if (!freq_count.Known()) {
       if (!IPL_Enable_Unknown_Frequency) {
@@ -1283,9 +1283,9 @@ Count_tree_size_tuning (FEEDBACK& fb, WN *wn, INT32 &bbs, INT32 &stmts, FB_FREQ&
   if (!init_invoke_seen)
       init_invoke = freq_count;
 
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
   BOOL IPL_Enable_Unknown_Frequency = FALSE;
-#endif // _STANDALONE_INLINER
+#endif
 
   if (!freq_count.Known()) {
       if (!IPL_Enable_Unknown_Frequency) {

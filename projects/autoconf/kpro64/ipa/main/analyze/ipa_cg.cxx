@@ -255,11 +255,11 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
       }
   }
 }
-#endif // !_STANDALONE_INLINER
+#endif
 
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
 #include "inline.h"
-#else // _STANDALONE_INLINER
+#else
 
 //-------------------------------------------------------------------------
 // process globals
@@ -505,7 +505,7 @@ IPA_Process_File (IP_FILE_HDR& hdr)
 } // IPA_process_file
 
 
-#endif // !_STANDALONE_INLINER
+#endif
 
 static void
 Mark_inline_overrides(IPA_NODE* ipa_node, ST* st)
@@ -604,16 +604,14 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 	
     ST* st = &St_Table[st_idx];
 
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
 
     NODE_INDEX node_idx = AUX_PU_node(Aux_Pu_Table[ST_pu(st)]);
     if (node_idx != INVALID_NODE_INDEX) // Already has this node, 
 					// node is multiply defined
 	return ipa_node;
 
-#endif // _STANDALONE_INLINER
-
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#else
 
     // symbol resolution should have set the NOT_USED bit of duplicated
     // PUs
@@ -652,7 +650,7 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 	return ipa_node;
     }
 
-#endif // _STANDALONE_INLINER 
+#endif
 		
     ipa_node = 
           IPA_Call_Graph->Add_New_Node (st, file_idx, i, i);
@@ -673,11 +671,11 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 	
     Set_AUX_PU_node (Aux_Pu_Table[ST_pu (st)], cg_node);
 
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
     ipa_node->Set_Scope(Inliner_Aux_Pu_Table[ST_pu (st)]);
-#endif // _STANDALONE_INLINER
+#endif
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
     if (IPA_Enable_DFE || IPA_Enable_Picopt || IPA_Enable_Array_Sections
 	    || IPA_Enable_Relocatable_Opt) {
         if (Proc_array[i].Has_alt_entry()) {
@@ -708,7 +706,7 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
         ipa_node->Summary_Proc()->Has_pstatic())
       ipa_node->Summary_Proc()->Set_has_side_effect();
 #endif // KEY
-#endif // _STANDALONE_INLINER
+#endif
 
     Orig_Prog_Weight += ipa_node->Weight ();
 	Orig_Prog_WN_Count += (UINT32)(ipa_node->Get_wn_count());
@@ -720,7 +718,6 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
 
 #ifdef TODO
 
-#ifndef _STANDALONE_INLINER
 	// for partitioning, setting the user-specified partitions
     if (IPA_Enable_GP_Partition || IPA_Enable_SP_Partition) {
 	void *pext = linker->IP_get_mext(nme);
@@ -730,7 +727,6 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
                 ipa_node->Set_partition_internal();
 	}
     }
-#endif
 #endif // TODO
 
     if (ipa_node->Has_frequency ()) {
@@ -745,7 +741,7 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     } // else of '(REORDER_BY_EDGE_FREQ && IPA_Call_Graph_Tmp)'
 #endif
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
     // Fix summary information in node only once, i.e. for pu_reorder=2
     // in the first pass.
     if (ipa_node && (PU_src_lang (ipa_node->Get_PU()) & PU_CXX_LANG) &&
@@ -773,7 +769,7 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
                ("Attempt to change default of -IPA:pu_reorder"));
       IPA_Enable_PU_Reorder = REORDER_BY_NODE_FREQ;
     }
-#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#endif
     return ipa_node;
 	
 }
@@ -901,14 +897,14 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
         }
 #endif
 		
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
         // check to see if it is a weak symbol 
         // can't do this for inliner because the weak may be preempted
         while (ST_is_weak_symbol (callee_st) &&
                ST_st_idx (callee_st) != ST_strong_idx (*callee_st))
           /* find the corresponding strong */
           callee_st = ST_strong (callee_st);
-#endif // _STANDALONE_INLINER
+#endif
 
         Clear_ST_is_not_used (callee_st);
 
@@ -2517,7 +2513,7 @@ IPA_CALL_GRAPH::Map_Callsites (IPA_NODE* caller)
 }
 
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
 
 extern void
 Rename_Call_To_Cloned_PU (IPA_NODE *caller, 
@@ -3045,8 +3041,7 @@ IPA_CALL_GRAPH::Update_Node_After_Preopt (IPA_NODE* node,
   _preopt_node_to_new_summary_map->Enter (node, summary_ptrs);
 
 }
-
-#endif // _STANDALONE_INLINER
+#endif
 
 
 char*
@@ -3088,14 +3083,14 @@ IPA_CALL_GRAPH::Print_vobose (FILE* fp)
 }
 UINT32
 EFFECTIVE_WEIGHT (const IPA_NODE* node)  {
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
     if (IPA_Use_Effective_Size && node->Has_frequency ()) {
 	SUMMARY_FEEDBACK *fb = node->Get_feedback ();
 	return PU_Weight (fb->Get_effective_bb_count (),
 			  fb->Get_effective_stmt_count (),
 			  node->PU_Size().Call_Count ());
     } else
-#endif // _STANDALONE_INLINER
+#endif
 	return node->Weight ();
 }
 
@@ -3239,7 +3234,7 @@ fprintf(fp, SBar);
           char why[50];
           float callee_freq,edge_freq,callee_cycle_count;
 
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
     INT32 cost = callee->Weight ();
 #else
     INT32 cost = EFFECTIVE_WEIGHT (callee); 
@@ -3274,7 +3269,7 @@ fprintf(fp, SBar);
                   sprintf(why, "%d", tmp_edge->reason_id());
               }
 
-#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+#if !defined(_LIGHTWEIGHT_INLINER)
            if (tmp_edge->Has_frequency () && callee->Has_frequency () &&
                tmp_edge->Get_frequency().Known() && callee->Get_frequency().Known()) {
                hotness = compute_hotness (tmp_edge, callee, EFFECTIVE_WEIGHT(callee));

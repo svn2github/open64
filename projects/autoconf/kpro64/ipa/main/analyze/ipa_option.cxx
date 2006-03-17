@@ -161,10 +161,8 @@ Process_IPA_Options ( INT argc, char **argv )
     /* Specfile- and post-processing of -INLINE options: */
     Process_Inline_Options ();
 
-#ifndef _STANDALONE_INLINER
     /* Specfile- and post-processing of GP partition options: */
     Process_IPA_Specfile_Options ();
-#endif
 
     /* check consistency for Hard/Soft PU Limits */
     if (IPA_PU_Limit_Set) {

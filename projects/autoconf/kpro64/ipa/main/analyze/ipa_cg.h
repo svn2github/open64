@@ -715,7 +715,7 @@ public:
 
 
   SUMMARY_FEEDBACK *Get_feedback () const {
-#if (defined(_STANDALONE_INLINER) || defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
     return NULL;
 #else 
 #ifdef KEY
@@ -1267,59 +1267,41 @@ public:
 
     ~AUX_IPA_NODE () { MEM_POOL_FREE (pool, data); }
 
-// KEY: Added '|| !_STANDALONE_INLINER' to enable code for IPA in all the 
-// following functions
     NODE& operator[] (const IPA_NODE* node) {
-#if defined(_LIGHTWEIGHT_INLINER) || !defined(_STANDALONE_INLINER)
         if (node->Array_Index () >= node_size) {
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
 	    bzero (((char *)data)+size, size);
         }
-#else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
-	Is_True (node->Array_Index () < node_size, ("Subscript out of bound"));
-#endif // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	return data[node->Array_Index ()];
     }
     const NODE& operator[] (const IPA_NODE* node) const {
-#if defined(_LIGHTWEIGHT_INLINER) || !defined(_STANDALONE_INLINER)
         if (node->Array_Index () >= node_size) {
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
 	    bzero (data+size, size);
         }
-#else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
-	Is_True (node->Array_Index () < node_size, ("Subscript out of bound"));
-#endif // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	return data[node->Array_Index ()];
     }
 
     NODE& operator[] (UINT32 n_idx) {
-#if defined(_LIGHTWEIGHT_INLINER) || !defined(_STANDALONE_INLINER)
         if (n_idx >= node_size) {
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
 	    bzero (data+size, size);
         }
-#else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
-	Is_True (n_idx < node_size, ("Subscript out of bound"));
-#endif // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	return data[n_idx];
     }
     const NODE& operator[] (UINT32 n_idx) const {
-#if defined(_LIGHTWEIGHT_INLINER) || !defined(_STANDALONE_INLINER)
         if (n_idx >= node_size) {
             UINT size = sizeof(NODE) * node_size;
             node_size *= 2;
             data = (NODE*) MEM_POOL_Realloc (pool, data, size, size*2);
 	    bzero (data+size, size);
 	}
-#else // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
-	Is_True (n_idx < node_size, ("Subscript out of bound"));
-#endif // _LIGHTWEIGHT_INLINER || !_STANDALONE_INLINER
 	return data[n_idx];
     }
 }; // AUX_IPA_NODE
@@ -1506,10 +1488,10 @@ extern IPA_NODE* Main_Entry (IPA_NODE* ipan_alt);
 extern void IPA_update_summary_st_idx (const IP_FILE_HDR& hdr);
 extern char* IPA_Node_Name(IPA_NODE* node);
 
-#if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#if !defined(_LIGHTWEIGHT_INLINER)
 extern void Mark_PUs_With_File_Id (PU_Info *, UINT);
 extern BOOL Opt_Options_Inconsistent;
-#endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+#endif
 
 #ifdef _LIGHTWEIGHT_INLINER
 extern BOOL Is_Node_Inlinable_In_Call_Graph(ST_IDX idx);
