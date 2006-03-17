@@ -110,7 +110,7 @@ static mINT32             file_scope_locks = 0;
 #define DST_mk_macro() (DST_mk(DST_MACR));
 #endif
 
-int invoke_DST_enter_mk = 0;
+int DST_in_frontend = 0;
 
 DST_STR_IDX
 DST_mk_string(const char *s)
@@ -166,7 +166,7 @@ DST_mk_name(const char *s)
 static void
 DST_enter_mk(DST_PRODUCER_STATE new_state, DST_IDX last_idx)
 {
-    if (!invoke_DST_enter_mk)
+    if (!DST_in_frontend)
 	return;
 
    if (file_scope_locks && new_state==DST_making_dbg_info)
@@ -1175,26 +1175,25 @@ DST_mk_lexical_block(char         *name,         /* NULL if unnamed */
    attr_idx = DST_mk_attr(DST_LEXICAL_BLOCK);
    attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_LEXICAL_BLOCK);
    DST_LEXICAL_BLOCK_name(attr) = DST_mk_name(name);
-   if (low_pc != NULL && high_pc != NULL)
-   {
-      /* pc fields points to front-end labels, and are later converted
-       * to point to the corresponding back-end LABELs.
-      */
-#if defined(_SUPPORT_IPA) || defined(_LEGO_CLONER)
-   /* for IPA, low_pc and high_pc are pointers
-    * to struct st_idx
-    *   Get_ST_id ((ST *)low_pc, &id, &index);
-    * has already been called before calling this routine
-    */
-      DST_ASSOC_INFO_st_idx(DST_LEXICAL_BLOCK_low_pc (attr)) 
-	= pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)low_pc);
-      DST_ASSOC_INFO_st_idx(DST_LEXICAL_BLOCK_high_pc (attr)) 
-	= pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)high_pc);
-#else
-      DST_ASSOC_INFO_fe_ptr(DST_LEXICAL_BLOCK_low_pc(attr)) = low_pc;
-      DST_ASSOC_INFO_fe_ptr(DST_LEXICAL_BLOCK_high_pc(attr)) = high_pc;
-      DST_SET_assoc_fe(flag);
-#endif
+   if (low_pc != NULL && high_pc != NULL) {
+       /* pc fields points to front-end labels, and are later converted
+	* to point to the corresponding back-end LABELs.
+	*/
+       if (!DST_in_frontend) {
+	   /* for IPA, low_pc and high_pc are pointers
+	    * to struct st_idx
+	    *   Get_ST_id ((ST *)low_pc, &id, &index);
+	    * has already been called before calling this routine
+	    */
+	   DST_ASSOC_INFO_st_idx(DST_LEXICAL_BLOCK_low_pc (attr))
+		   = pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)low_pc);
+	   DST_ASSOC_INFO_st_idx(DST_LEXICAL_BLOCK_high_pc (attr)) 
+		   = pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)high_pc);
+       } else {
+	   DST_ASSOC_INFO_fe_ptr(DST_LEXICAL_BLOCK_low_pc(attr)) = low_pc;
+	   DST_ASSOC_INFO_fe_ptr(DST_LEXICAL_BLOCK_high_pc(attr)) = high_pc;
+	   DST_SET_assoc_fe(flag);
+       }
    }
    DST_LEXICAL_BLOCK_abstract_origin(attr) = abstract_origin;
    DST_LEXICAL_BLOCK_first_child(attr) = DST_INVALID_IDX;
@@ -1228,18 +1227,18 @@ DST_mk_label(char         *name,            /* NULL if unnamed */
    /* pc fields points to front-end labels, and are later converted
     * to point to the corresponding back-end LABELs.
     */
-#if defined(_SUPPORT_IPA) || defined(_LEGO_CLONER)
-   /* for IPA, low_pc is pointer
-    * to struct st_idx
-    *	Get_ST_id ((ST *)low_pc, &id, &index);
-    * has already been called before calling this routine
-    */
-   DST_ASSOC_INFO_st_idx(DST_LABEL_low_pc (attr)) 
-	= pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)low_pc);
-#else
-   DST_ASSOC_INFO_fe_ptr(DST_LABEL_low_pc(attr)) = low_pc;
-   DST_SET_assoc_fe(flag);
-#endif
+   if (!DST_in_frontend) {
+       /* for IPA, low_pc is pointer
+	* to struct st_idx
+	*	Get_ST_id ((ST *)low_pc, &id, &index);
+	* has already been called before calling this routine
+	*/
+       DST_ASSOC_INFO_st_idx(DST_LABEL_low_pc (attr)) 
+	       = pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)low_pc);
+   } else {
+       DST_ASSOC_INFO_fe_ptr(DST_LABEL_low_pc(attr)) = low_pc;
+       DST_SET_assoc_fe(flag);
+   }
 
    DST_LABEL_abstract_origin(attr) = abstract_origin;
    return DST_init_info(info_idx, DW_TAG_label, flag, attr_idx);
@@ -1388,23 +1387,22 @@ DST_mk_variable(USRCPOS      decl,     /* Source location */
       DST_VARIABLE_def_linkage_name(attr) = DST_INVALID_IDX;
 #endif
 
-#if defined(_SUPPORT_IPA) || defined(_LEGO_CLONER)
-      if (var != NULL) {
-        DST_ASSOC_INFO_st_idx(DST_VARIABLE_def_st (attr)) = 
-          pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)var);
+      if (!DST_in_frontend) {
+	  if (var != NULL) {
+	      DST_ASSOC_INFO_st_idx(DST_VARIABLE_def_st (attr)) = 
+		      pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)var);
+	  } else {
+	      /* this should only be reached from lower_mp(), */
+	      /* since var passed from there is always NULL   */
+	      /* location is obtained through the back-end version of st */
+	      DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = var;
+	      DST_SET_assoc_fe(flag);
+	  }
+      } else {
+	  /* location is obtained through the back-end version of st */
+	  DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = var;
+	  DST_SET_assoc_fe(flag);
       }
-      else {
-        /* this should only be reached from lower_mp(), */
-        /* since var passed from there is always NULL   */
-        /* location is obtained through the back-end version of st */
-        DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = var;
-        DST_SET_assoc_fe(flag);
-      }
-#else
-      /* location is obtained through the back-end version of st */
-      DST_ASSOC_INFO_fe_ptr(DST_VARIABLE_def_st(attr)) = var;
-      DST_SET_assoc_fe(flag);
-#endif
    }   
    if (is_automatic)
       DST_SET_automatic(flag);
@@ -1452,21 +1450,20 @@ DST_mk_formal_parameter(USRCPOS       decl,        /* Source location */
        DST_FORMAL_PARAMETER_name(attr) = DST_INVALID_IDX;
    DST_FORMAL_PARAMETER_type(attr) = type;
 
-#if defined(_SUPPORT_IPA) || defined(_LEGO_CLONER)
-   if (parm != NULL) {
-     DST_ASSOC_INFO_st_idx(DST_FORMAL_PARAMETER_st (attr)) = 
-       pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)parm);
+   if (!DST_in_frontend) {
+       if (parm != NULL) {
+	   DST_ASSOC_INFO_st_idx(DST_FORMAL_PARAMETER_st (attr)) = 
+		   pDST_ASSOC_INFO_st_idx((DST_ASSOC_INFO *)parm);
+       } else {
+	   /* this should only be reached from lower_mp(), */
+	   /* since parm passed from there is always NULL  */
+	   DST_ASSOC_INFO_fe_ptr(DST_FORMAL_PARAMETER_st(attr)) = parm;
+       }
+   } else {
+       DST_ASSOC_INFO_fe_ptr(DST_FORMAL_PARAMETER_st(attr)) = parm;
+       if (parm != NULL)
+	   DST_SET_assoc_fe(flag);
    }
-   else { 
-     /* this should only be reached from lower_mp(), */
-     /* since parm passed from there is always NULL  */
-     DST_ASSOC_INFO_fe_ptr(DST_FORMAL_PARAMETER_st(attr)) = parm;
-   }
-#else
-   DST_ASSOC_INFO_fe_ptr(DST_FORMAL_PARAMETER_st(attr)) = parm;
-   if (parm != NULL)
-     DST_SET_assoc_fe(flag);
-#endif
    
    DST_FORMAL_PARAMETER_default_val(attr) = default_val;
    DST_FORMAL_PARAMETER_abstract_origin(attr) = abstract_origin;
