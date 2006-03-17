@@ -415,10 +415,8 @@ fix_tree (WN *node, char *base, Elf64_Word size)
     }
 #endif
     
-#ifndef CFE
     if (opcode == OPC_REGION)
 	Set_Max_Region_Id (WN_region_id(node));
-#endif
     
 #if defined(BACK_END)
     if (opcode == OPC_ALTENTRY)
@@ -870,9 +868,7 @@ WN_get_tree (void *handle, PU_Info *pu)
     first_node = *(Elf64_Word *)tree_base;
     wn = (WN *) (tree_base + first_node);
 
-#ifndef CFE
     Set_Max_Region_Id(0);	/* reset max id for pu */
-#endif
 
     /* fix up the pointers in the WNs (Note: this must happen after the map
        table is set up because it also updates the map ID info in the

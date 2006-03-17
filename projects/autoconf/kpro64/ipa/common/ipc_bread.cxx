@@ -376,10 +376,8 @@ IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
     
              
     
-#ifndef CFE
     if (opcode == OPC_REGION)
         Set_Max_Region_Id (WN_region_id(node));
-#endif
     
 #if defined(BACK_END)
     if (opcode == OPC_ALTENTRY)
@@ -484,9 +482,7 @@ IP_READ_get_tree (void *handle, PU_Info *pu,
     Elf64_Word first_node = *(Elf64_Word *)tree_base;
     WN* wn = (WN *) (tree_base + first_node);
 
-#ifndef CFE
     Set_Max_Region_Id(0);       // Reset max id for pu 
-#endif
 
     // Fix up the pointers in the WNs, and remap symbol table indices.
 

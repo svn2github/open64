@@ -64,7 +64,6 @@ c_int_model.c -- c data type models
 
 TARGET_INT_MODEL Target_Int_Model = TARGET_INT_ILP32;
 
-#if defined(CFE) || defined(FFE)
 /* New variables */
 
 struct {
@@ -133,7 +132,6 @@ struct {
 #define CIM_long_long(x) (C_Int_Model[x].mtype_long_long)
 #define CIM_ulong_long(x) (C_Int_Model[x].mtype_ulong_long)
 #endif
-#endif /* if defined(CFE) || defined(FFE) */
 
 void Initialize_C_Int_Model( void ) {
 #ifdef TARG_MIPS 
@@ -145,7 +143,6 @@ void Initialize_C_Int_Model( void ) {
 #endif
 }
    
-#if defined(CFE) || defined(FFE)
 
 TYPE_ID FE_Int_Type_To_Mtype(int t)
 {
@@ -168,4 +165,3 @@ void Make_Int_Model_Consistent( void )
      MTYPE_size_reg(CIM_pointer(Target_Int_Model)) == 32;
 }
 
-#endif /* if defined(CFE) || defined(FFE) */
