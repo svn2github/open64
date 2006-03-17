@@ -36,7 +36,7 @@
 #ifndef __IPC_DEFS_H__
 #define __IPC_DEFS_H__
 
-#ifdef _64BIT_OBJECTS
+#if 1
 #define NAME(n) n##64
 #define QUOTENAME(n) n "64"
 #else

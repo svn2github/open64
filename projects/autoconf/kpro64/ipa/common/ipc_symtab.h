@@ -64,16 +64,8 @@ process_whirl64 (an_object_file_ptr p_obj, int nsec,
                  const Elf64_Shdr* section_table,
                  boolean check_whirl_revision, const char* file_name);
 
-
-#ifdef _64BIT_OBJECTS
-
 #pragma weak process_whirl64
-
-#else /* _64BIT_OBJECTS */
-
 #pragma weak process_whirl32
-
-#endif /* _64BIT_OBJECTS */
 
 #else /* _LD_IPA_INTERFACE */
 
