@@ -88,7 +88,7 @@
 /* Field access macros, for either .rel or .rela sections: */
 #define     REL_offset(r)	((r).r_offset)
 #define     REL32_offset(r)	REL_offset(r)
-#define     REL32_offset(r)	REL_offset(r)
+#define     REL64_offset(r)	REL_offset(r)
 
 #define     REL32_sym(r)	ELF32_R_SYM((r).r_info)
 #define Set_REL32_sym(r,v) \
@@ -113,25 +113,6 @@
 /* .rela only: */
 #define     REL_addend(r)	((r).r_addend)
 #define     REL32_addend(r)	REL_addend(r)
-#define     REL32_addend(r)	REL_addend(r)
-
-/* Model-specific selection: */
-#ifdef _64BIT_OBJECTS
-
-#define     REL_sym	REL64_sym
-#define Set_REL_sym	Set_REL64_sym
-#define     REL_type	REL64_type
-#define Set_REL_type	Set_REL64_type
-#define Set_REL_info	Set_REL64_info
-
-#else /* 32-bit objects: */
-
-#define     REL_sym	REL32_sym
-#define Set_REL_sym	Set_REL32_sym
-#define     REL_type	REL32_type
-#define Set_REL_type	Set_REL32_type
-#define Set_REL_info	Set_REL32_info
-
-#endif
+#define     REL64_addend(r)	REL_addend(r)
 
 #endif /* elfaccess_INCLUDED */
