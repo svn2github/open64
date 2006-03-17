@@ -192,7 +192,6 @@ static struct prof_lib prof_libs[] = {
     { "mpath", 1 },
     { "mv", 1 },
     { PSC_NAME_PREFIX "fortran", 1 },
-    { "pscrt", 1 },
     { NULL, 0 },
 };
 

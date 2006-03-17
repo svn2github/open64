@@ -1445,9 +1445,6 @@ add_final_ld_args (string_list_t *args)
 #endif
 #endif
 	if (option_was_seen(O_nodefaultlibs) || option_was_seen(O_nostdlib)) {
-	    // If -compat-gcc, link with pscrt even if -nostdlib.  Bug 4551.
-	    if (option_was_seen(O_compat_gcc) && !option_was_seen(O_fno_fast_stdlib))
-		add_library(args, "pscrt");
 	    return;
 	}
 	
@@ -1485,12 +1482,6 @@ add_final_ld_args (string_list_t *args)
 	    }
 #endif
 	}
-
-	// Put pscrt after all the libraries that are built with PathScale
-	// compilers, since those libraries could use PathScale routines.
-	// Bug 3995.
-	if (!option_was_seen(O_fno_fast_stdlib))
-	    add_library(args, "pscrt");
 
 	if (ipa == TRUE) {
 	    	if (invoked_lang == L_CC) {
