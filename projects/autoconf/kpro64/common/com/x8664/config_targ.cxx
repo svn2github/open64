@@ -283,24 +283,6 @@ static struct bnm {
 } bnb[4];
 static INT16 bnb_used = 0;
 
-#ifndef MONGOOSE_BE
-char *
-Abi_Name ( TARGET_ABI b)
-{
-  char *r;
-
-  switch ( b ) {
-    case ABI_n32:	return "n32";
-    case ABI_n64:	return "n64";
-    default:
-      r = bnb[bnb_used].name;
-      bnb_used = (bnb_used + 1) % 4;
-      sprintf (r, "ABI_%d", b);
-      return r;
-  }
-}
-#endif /* MONGOOSE_BE */
-
 char *
 Isa_Name ( TARGET_ISA b)
 {

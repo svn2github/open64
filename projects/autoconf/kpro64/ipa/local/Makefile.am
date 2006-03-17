@@ -6,7 +6,7 @@ ipl_la_SOURCES = ipa_cost_util.cxx ipa_section.cxx ipa_section_main.cxx \
 	ipl_tlog.cxx init.cxx loop_info.cxx reshape.cxx wb_ipl_summary.cxx
 ipl_la_LDFLAGS = -avoid-version -module
 
-AM_CPPFLAGS = -DIPA_SUMMARY -DKEY -DMONGOOSE_BE \
+AM_CPPFLAGS = -DIPA_SUMMARY -DKEY \
 	-I../../be/be \
 	-I${srcdir}/../common \
 	-I${srcdir}/../main/analyze \

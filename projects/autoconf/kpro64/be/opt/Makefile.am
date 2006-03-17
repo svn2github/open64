@@ -18,7 +18,7 @@ wopt_la_SOURCES = init.cxx opt_alias_analysis.cxx opt_alias_class.cxx \
 	opt_whirlview.cxx opt_wn.cxx wodriver.cxx
 wopt_la_LDFLAGS = -avoid-version -module
 
-AM_CPPFLAGS = -DBACK_END -DKEY -DMONGOOSE_BE \
+AM_CPPFLAGS = -DBACK_END -DKEY \
 	-I../be -I../../targ_info \
 	-I${srcdir}/../com \
 	-I${srcdir}/../region \

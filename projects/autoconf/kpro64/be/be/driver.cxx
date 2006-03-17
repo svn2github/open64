@@ -67,7 +67,6 @@
 #include "dso.h"		    /* for load_so() */
 #include "errors.h"		    /* Set_Error_Tables(), etc. */
 #include "erglob.h"		    /* for EC_ errmsg */
-#include "erauxdesc.h"		    /* for BE error messages */
 #include "mempool.h"		    /* for MEM_Initialze()  */
 #include "phase.h"		    /* for PHASE_CG */
 #include "be_util.h"                /* for Reset_Current_PU_Count(), etc */
@@ -129,6 +128,8 @@
 #include "config_wopt.h"    // for WOPT_Enable_Simple_If_Conv
 #include "output_func_start_profiler.h"
 #endif
+
+#include "erbe.desc"
 
 #ifdef KEY
 #include "../../gcc/include/demangle.h"
@@ -326,7 +327,6 @@ load_components (INT argc, char **argv)
       Get_Phase_Args (PHASE_IPL, &phase_argc, &phase_argv);
       load_so ("ipl.so", Ipl_Path, Show_Progress);
       ipl_main (phase_argc, phase_argv);
-      Set_Error_Descriptor (EP_BE, EDESC_BE);
     }
 
     if (Run_lno || Run_autopar) {
@@ -1801,6 +1801,7 @@ main (INT argc, char **argv)
   Handle_Signals ();
   MEM_Initialize ();
   Cur_PU_Name = NULL;
+  Set_Error_Descriptor (EP_BE, EDESC_BE, "Back End");
   Init_Error_Handler ( 100 );
   Set_Error_Line ( ERROR_LINE_UNKNOWN );
   Set_Error_File ( NULL );
@@ -1934,12 +1935,6 @@ main (INT argc, char **argv)
   }
 
   Phase_Init ();
-
-  if (Run_preopt || Run_wopt || Run_lno || Run_Distr_Array || Run_autopar 
-	|| Run_cg) {
-    Set_Error_Descriptor (EP_BE, EDESC_BE);
-    Set_Error_Descriptor (EP_CG, EDESC_CG);
-  }
 
   if (Tlog_File)
     Print_Tlog_Header(argc, argv);

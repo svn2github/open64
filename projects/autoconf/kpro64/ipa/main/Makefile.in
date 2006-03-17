@@ -243,7 +243,7 @@ libipa_a_SOURCES = cg_browser.cxx cg_print.cxx cg_summary.cxx cgb_carray.cxx \
 	ipo_parent.cxx ipo_split.cxx reshape.cxx sparse_bv.cxx wb_ipa.cxx \
 	wb_summary.cxx
 
-AM_CPPFLAGS = -DKEY -DMONGOOSE_BE \
+AM_CPPFLAGS = -DKEY \
 	-I../../be/be \
 	-I${srcdir}/optimize \
 	-I${srcdir}/analyze \

@@ -175,16 +175,6 @@ Em_Add_New_Undef_Symbol (
     unsigned char symother);
 
 
-/* Add a new symbol with name 'symname', size 'symsize' and symbol 
-   binding 'symbind' to the symbol table as a COMMON symbol.
-*/
-extern Elf64_Word 
-Em_Add_New_Common_Symbol (
-    char *symname, 
-    Elf64_Xword symsize, 
-    unsigned char symbind,
-    unsigned char symother);
-
 /* Add a new weak symbol entry with the name 'weakname'. Use the same
    attributes as the symbol table entry with index 'symindex'.
 */
@@ -212,9 +202,6 @@ extern void Em_Undefine_Symbol (Elf64_Word symindex);
 
 /* Set the binding for a symbol that was previously entered */
 extern void Em_Set_Symbol_Binding (Elf64_Word symindex, unsigned char symbind);
-
-extern Elf64_Addr
-Em_Get_Symbol_Value (Elf64_Word symindex);
 
 extern char *
 Em_Get_Symbol_Name (Elf64_Word symindex);

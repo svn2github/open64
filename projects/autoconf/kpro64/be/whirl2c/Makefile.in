@@ -204,7 +204,7 @@ whirl2c_la_SOURCES = init.cxx init2c.cxx PUinfo.cxx st2c.cxx stab_attr.cxx \
 	wn2c.cxx wn2c_pragma.cxx
 
 whirl2c_la_LDFLAGS = -avoid-version -module
-AM_CPPFLAGS = -DBUILD_WHIRL2C -DKEY -DMONGOOSE_BE \
+AM_CPPFLAGS = -DBUILD_WHIRL2C -DKEY \
 	-I../be \
 	-I${srcdir}/../be \
 	-I${srcdir}/../com \

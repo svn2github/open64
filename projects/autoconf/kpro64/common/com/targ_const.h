@@ -269,17 +269,11 @@ extern TCON Targ_WhirlOp ( OPCODE op, TCON left_opnd, TCON right_opnd,
 extern TCON Targ_IntrinsicOp ( UINT32 intrinsic, TCON c[],
 		     BOOL *folded /* Was operator folded? */ );
 
-/* Perform target exponentiation: */
-extern TCON Targ_Pow ( TCON mantissa, TCON exponent );
-
 /* Convert between target constants: */
 extern TCON Targ_Conv ( TYPE_ID newtype, TCON cvalue );
 
 /* Typecast between target constants (must be of same sizes): */
 extern TCON Targ_Cast ( TYPE_ID newtype, TCON cvalue );
-
-/* Convert (char *) representation of host to target constant: */
-extern TCON Targ_Atoc ( TYPE_ID ctype, char *ascii );
 
 /* Convert (char *) representation of floating-point hexadecimal constant
  * to target constant:
@@ -290,11 +284,6 @@ extern TCON Targ_Hexfptoc ( const TYPE_ID ty, const char * const str );
  * convertible to an integer type, e.g. float types are not allowed:
  */
 extern INT64 Targ_To_Host ( TCON cvalue );
-
-/* Convert to host signed integer.  The TCON must be of a type reasonably
- * convertible to an integer type, e.g. float types are not allowed:
- */
-extern INT64 Targ_To_Signed_Host ( TCON cvalue );
 
 /* Convert host integer value to a TCON of given type: */
 extern TCON Host_To_Targ ( TYPE_ID ctype, INT64 ivalue );
@@ -359,19 +348,6 @@ extern mUINT32 Targ_String_Length ( TCON cvalue );
  */
 extern char *Targ_Print ( char *fmt, TCON cvalue );
 
-/* Format the given string as a printable string, by replacing special
- * characters by the C source codes, e.g. "\n" for newline, "\003" for
- * '^C', etc.
- */
-extern BOOL Targ_Format_String (
-  char	*s,	/* String to format, */
-  INT32	slen,	/* ... of this length, */
-  char	*buf,	/* ... into this buffer, */
-  INT32	blen,	/* ... with at most this many characters, */
-  INT32	line,	/* ... with lines at most this long (0 = no limit), */
-  char *divider	/* ... divided by this string. */
-);
-
 /* Emit a constant string of exactly length len to the given file.
  * If str[len-1] is not a null byte, make it one.  loc is an offset
  * from the relevant symbol where output begins, used only for
@@ -406,18 +382,6 @@ extern void Targ_Emit_Cmt ( FILE *fl, char *cmt );
  */
 extern void Targ_Emit_Dim ( FILE *fl, struct ty *ty, INT dim );
 
-/* Put the given constant into the given buffer in target (i.e. object
- * file) format, independent of the host format, and return a pointer
- * to it:
- */
-extern char *Tcon_To_Str ( char *buf, TCON cval );
-
-/* Given a constant in target format in the given buffer, of the given
- * type, convert it to a TCON:
- */
-extern TCON Str_To_Tcon ( TYPE_ID ctype, char *buf );
-extern TCON Bit_Str_To_Tcon ( TYPE_ID ctype, char *buf );
-
 /* A target constant with value zero: */
 extern TCON Zero_I4_Tcon;
 extern TCON Zero_I8_Tcon;
@@ -433,17 +397,6 @@ extern BOOL Targ_Is_Integral ( TCON t, INT64 *iv );
 
 /* Determine whether a TCON represents a power of two: */
 extern BOOL Targ_Is_Power_Of_Two ( TCON t );
-
-/* Determin whether a TCON contains only one bit set to 1
- * If onebit is not NULL then return the bit number which is on
- */
-extern BOOL Targ_Contains_One_Bit_On ( TCON t, INT32 *onebit);
-
-/* Determine the most significant bit that is on, with 0 being the
- * least-sig bit, and type's_size - 1 being the most-sig bit.
- * If no bits are on, return FALSE.
- */
-extern BOOL Targ_Determine_High_Bit ( TCON t, INT32 *highbit );
 
 /* Hash a TCON into a 32-bit integer modulo another integer: */
 extern UINT32 Hash_TCON ( TCON * t, UINT32 modulus );

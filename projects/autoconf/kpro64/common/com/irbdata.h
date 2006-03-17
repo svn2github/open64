@@ -545,32 +545,4 @@ extern INITV_IDX
 Irb_Init_String (INT size, char *str, INT32 repeat, INITO_IDX ino,
 		 INITV_IDX inv);
 
-#ifndef MONGOOSE_BE
-
-extern INITV_IDX
-Irb_Init_Float (INT size, double value, INT32 repeat, INITO_IDX ino,
-		INITV_IDX inv);
-
-extern INITV_IDX
-Irb_Init_Float_4 (INT size, float value, INT32 repeat, INITO_IDX ino,
-		  INITV_IDX inv);
-
-extern INITV_IDX
-Irb_Init_Quad (INT size, QUAD_TYPE value, INT32 repeat, INITO_IDX ino,
-	       INITV_IDX inv);
-
-extern INITV_IDX
-Irb_Init_Complex (INT size, double real, double imag, INT32 repeat,
-		  INITO_IDX ino, INITV_IDX inv);
-
-extern INITV_IDX
-Irb_Init_Complex_4 (INT size, float real, float imag, INT32 repeat,
-		    INITO_IDX ino, INITV_IDX inv);
-
-extern INITV_IDX
-Irb_Init_Complex_Quad (INT size, QUAD_TYPE real, QUAD_TYPE imag,
-		       INT32 repeat, INITO_IDX ino, INITV_IDX inv);
-
-#endif /* MONGOOSE_BE */
-
 #endif /* irbdata_INCLUDED */

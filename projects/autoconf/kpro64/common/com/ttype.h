@@ -170,7 +170,6 @@ typedef enum {
   QUAL_FULL     = 3
 } QUAL_CHECK;
 extern BOOL Equivalent_Types ( TY_IDX, TY_IDX, QUAL_CHECK );
-extern BOOL Similar_BE_Types ( TY_IDX, TY_IDX );
 
 /* records to keep track of typedef names for debug info */
 typedef struct tpdef {

@@ -49,7 +49,7 @@ be_LDADD = libbe.la ../../gcc/libiberty/libiberty.a
 ${BUILT_SOURCES}: gen_preg_list.csh
 	csh -f $< ${srcdir}/../../common/util
 
-AM_CPPFLAGS = -D_LEGO_CLONER -DBACK_END -DKEY -DMONGOOSE_BE \
+AM_CPPFLAGS = -D_LEGO_CLONER -DBACK_END -DKEY \
 	-I../../targ_info \
 	-I${srcdir}/.. \
 	-I${srcdir}/../cg \

@@ -75,8 +75,6 @@ using Instr::vector;
 #include <vector>             // STL vector.
 #endif
 
-#ifdef MONGOOSE_BE
-
 #ifndef mempool_allocator_INCLUDED
 #include "mempool_allocator.h"
 #endif
@@ -84,8 +82,6 @@ using Instr::vector;
 #ifndef wn_INCLUDED
 #include "wn.h"
 #endif
-
-#endif // MONGOOSE_BE
 
 #define FB_TNV_FLAG_UNINIT  -1
 
@@ -187,7 +183,6 @@ struct FB_Info_Branch {
     : freq_taken(     taken ),
       freq_not_taken( not_taken ) {}
 
-#ifdef MONGOOSE_BE
   FB_Info_Branch( FB_FREQ taken, FB_FREQ not_taken, OPERATOR opr )
     : freq_taken(     opr != OPR_FALSEBR ? taken : not_taken ),
       freq_not_taken( opr != OPR_FALSEBR ? not_taken : taken ) {
@@ -196,7 +191,6 @@ struct FB_Info_Branch {
 	     || opr == OPR_IF || opr == OPR_CSELECT,
 	     ( "FB_Info_Branch found unexpected operator" ) );
   }
-#endif // MONGOOSE_BE
     
   FB_Info_Branch()
     : freq_taken(     FB_FREQ_UNINIT ),
@@ -540,7 +534,6 @@ FB_Info_Print (const T& info, const char* name, FILE *fp)
 
 // utilities and definitions only used by the back end (and not by the
 // instrumentation runtime
-#ifdef MONGOOSE_BE
 
 typedef vector<FB_Info_Invoke, mempool_allocator<FB_Info_Invoke> >
 					FB_Invoke_Vector;
@@ -775,7 +768,6 @@ inline bool FB_valid_opr_switch (const WN *wn) {
   }
 }
 
-#endif // MONGOOSE_BE
 // ====================================================================
 
 #endif

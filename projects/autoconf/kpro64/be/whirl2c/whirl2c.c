@@ -87,7 +87,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2c/whi
 #include "flags.h"	      /* for OPTION_GROUP */
 #include "pu_info.h"          /* For PU_Info */
 #include "ir_bread.h"         /* Binary WHIRL reader */
-#include "err_host.tab"       /* Include the error tables in the driver */
 
 #include "pu_info.h"          /* For PU_Info */
 #include "file_util.h"        /* for New_Extension () */

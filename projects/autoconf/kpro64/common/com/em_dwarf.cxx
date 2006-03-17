@@ -593,17 +593,6 @@ Em_Dwarf_Add_Line_Entry ( INT code_address, SRCPOS srcpos)
 }
 
 
-#ifndef MONGOOSE_BE
-/* Given a file_index, return the filename and the path for the file. */
-void
-Em_Dwarf_File_Index_To_Name (INT file_index, char **filename, char **path)
-{
-  *filename = file_table[file_index].filename;
-  *path = incl_table[file_table[file_index].incl_idx].path;
-}
-#endif /* MONGOOSE_BE */
-
-
 /* the starting offset in the text region */
 static INT Text_Start_Offset;
 static Dwarf_Unsigned Text_Start_Label;

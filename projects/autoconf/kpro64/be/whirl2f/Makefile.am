@@ -6,7 +6,7 @@ whirl2f_la_SOURCES = diagnostics.cxx init.cxx init2f.cxx PUinfo.cxx st2f.cxx \
 	wn2f_pragma.cxx
 whirl2f_la_LDFLAGS = -avoid-version -module
 
-AM_CPPFLAGS = -DBUILD_WHIRL2F -DKEY -DMONGOOSE_BE \
+AM_CPPFLAGS = -DBUILD_WHIRL2F -DKEY \
 	-I../be \
 	-I${srcdir}/../be \
 	-I${srcdir}/../com \

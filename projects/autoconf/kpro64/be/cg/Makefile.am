@@ -86,7 +86,7 @@ tn_set.cxx tn_set.h: gen_tn_set.csh
 void_list.cxx void_list.h: gen_void_list.csh
 	csh -f $< ${srcdir}/../../common/util
 
-AM_CPPFLAGS = -DBACK_END -DKEY -DMONGOOSE_BE \
+AM_CPPFLAGS = -DBACK_END -DKEY \
 	-I../be -I../../targ_info \
 	-I${srcdir}/gra_mon \
 	-I${srcdir}/${TARG_SUBDIR} \

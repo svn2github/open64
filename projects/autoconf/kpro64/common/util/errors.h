@@ -282,18 +282,13 @@ extern "C" {
  * model assumed above.
  *
  * Error database initialization should occur very early in any process
- * that will use the facilities.  This basically points the error
- * library at the process' error table structures.
- *
- *   Set_Error_Tables(
- *     ERROR_DESC_TABLE *error_descriptor_table,
- *     char *error_list )
- *
- *  To set the descript of a particular error phase:
+ * that will use the facilities.  This basically sets the descript of a
+ * particular error phase:
  *
  *   Set_Error_Descriptor (
  *     INT phase,
- *     ERROR_DESC *descriptor)
+ *     ERROR_DESC *descriptor,
+ *     const char *phasename );
  *
  * Errors will always be reported to stderr.  In addition, they should
  * be reported to a default error file where they will be preserved
@@ -517,7 +512,6 @@ extern BOOL Count_Limit_DevWarn( const char *const src_fname,
  * named by calls to Set_Error_Phase, and represent the collections
  * of error codes into header files.  All phases in use in a program
  * should be defined either here or in err_host.h, to avoid conflicts.
- * The symbol EP_LAST should also be defined in err_host.h.
  */
 #define EP_UNIX		0	/* Unix error codes */
 
@@ -525,14 +519,20 @@ extern BOOL Count_Limit_DevWarn( const char *const src_fname,
 #define EP_LIB		2	/* Program librarian codes */
 
 #define EP_LINK		3	/* Linker, object file codes */
+#define EP_IR_BUILDER	4	/* IR builder */
+
 /* The following are compiler-specific, but predefined because they
  * are common to all phases:
  */
-#define EP_FE		4	/* Compiler front end codes */
-
-#define EP_BE		5	/* Compiler back end codes (not CG) */
-#define EP_CG		6	/* Code generator codes */
-#define EP_PREDEFINED	6	/* Last predefined phase */
+#define EP_FE		5	/* Compiler front end codes */
+#define EP_BE		6	/* Compiler back end codes (not CG) */
+#define EP_CG		7	/* Code generator codes */
+#define EP_DRIVER	8	/* Compiler driver */
+#define EP_IR_READER	9	/* SGIR reader */
+#define EP_GLOB_OPT	10	/* Global optimizer */
+#define EP_GRA		11	/* Global allocator */
+#define EP_TARGET	12	/* Target-specific */
+#define EP_COUNT	EP_TARGET+1
 
 /* Predefined error parameter types: */
 #define ET_UNKNOWN	0	/* Mistake */
@@ -565,17 +565,8 @@ extern INT errno;
 extern INT Min_Error_Severity;
 extern INT Conformance_Level;
 
-/* Error table initialization.  All users of this package must call
- * this routine before emitting any error messages.
- */
-/* Incomplete type to keep ANSI happy: */
-struct error_desc_table;
-extern void Set_Error_Tables(
-  struct error_desc_table *edt,
-  const char *errlist[] );
-
 extern void
-Set_Error_Descriptor (INT, ERROR_DESC *);
+Set_Error_Descriptor (INT, ERROR_DESC *, const char *);
 
 /* Control files to report errors to: */
 extern void Set_Error_File (

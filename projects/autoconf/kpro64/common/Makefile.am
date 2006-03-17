@@ -6,7 +6,7 @@ libcomutil_a_SOURCES = bitset.c c_a_to_q.c c_q_add.c c_q_div.c c_q_mul.c \
 	util.c vstring.c
 
 VPATH = ${srcdir}/util ${srcdir}/util/${TARG_SUBDIR}
-AM_CPPFLAGS = ${PIC_FLAGS} -DKEY -DMONGOOSE_BE \
+AM_CPPFLAGS = ${PIC_FLAGS} -DKEY \
 	-I${srcdir}/com -I${srcdir}/com/${TARG_SUBDIR} \
 	-I${srcdir}/util \
 	-I${srcdir}/../include

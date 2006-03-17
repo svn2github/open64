@@ -478,8 +478,6 @@ Index_to_char_array (UINT32 idx)
 }
 
 
-#ifdef MONGOOSE_BE
-
 template <class STR, class MAP>
 void
 merge_strtab (STR_TAB<STR>& strtab, const char *buf, UINT32 size, MAP& map)
@@ -513,6 +511,4 @@ Merge_TCON_Strtab (const char *buf, UINT32 size, STR_IDX_MAP& map)
 {
     merge_strtab (TCON_strtab, buf, size, map);
 }
-
-#endif // MONGOOSE_BE
 

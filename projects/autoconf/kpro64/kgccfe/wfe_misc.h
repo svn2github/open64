@@ -44,15 +44,6 @@
 #ifndef wfe_util_INCLUDED
 #define wfe_util_INCLUDED
 
-/* add some typedefs to avoid including C++ specifi items */
-#ifndef __cplusplus
-typedef int INT;
-typedef signed int INT32;
-typedef unsigned long long UINT64;
-typedef int BOOL;
-typedef struct wn WN;
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif

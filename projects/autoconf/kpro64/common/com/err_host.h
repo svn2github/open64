@@ -78,25 +78,6 @@ extern "C" {
 static char *err_host_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/err_host.h,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-/* Define any host program-specific phase literals not defined in
- * errors.h (EP_phase):
- */
-/*	none for microcode compiler	*/
-#ifndef MONGOOSE_BE
-#define EP_DRIVER	(EP_PREDEFINED+1)	/* Compiler driver */
-#define EP_IR_BUILDER	(EP_PREDEFINED+2)	/* SGIR builder */
-#define EP_IR_READER	(EP_PREDEFINED+3)	/* SGIR reader */
-#define EP_GLOB_OPT	(EP_PREDEFINED+4)	/* Global optimizer */
-#define EP_GRA		(EP_PREDEFINED+5)	/* Global allocator */
-#define EP_TARGET	(EP_PREDEFINED+6)	/* Target-specific */
-#define EP_LAST		(EP_PREDEFINED+6)
-#endif
-
-/* Define any host program-specific error parameter kinds not defined
- * in errors.h (ET_kind):
- */
-#define ET_LAST		ET_PREDEFINED+1
-
 /* Format host program-specific error message parameters.  The caller
  * is expected to copy the formatted string out of the result before
  * calling this routine again.

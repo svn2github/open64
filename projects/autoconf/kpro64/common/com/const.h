@@ -58,19 +58,6 @@ Make_Const (TCON c);
 
 static const INT32 MAX_SYMBOLIC_CONST_NAME_LEN = 1024;
 
-#ifndef MONGOOSE_BE
-
-extern WN *
-Make_Zerocon ( TYPE_ID mtype );
-
-extern WN *
-Make_Comparison_Result_Const ( INT16 val );
-
-extern WN *
-Make_Integer_Const ( INT16 mtype, TARG_INT val );
-
-#endif /* MONGOOSE_BE */
-
 extern WN *Make_Reduction_Identity ( INT32 opr, TYPE_ID mtype );
 
 #endif /* const_INCLUDED */

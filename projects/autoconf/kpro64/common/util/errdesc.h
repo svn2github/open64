@@ -124,13 +124,6 @@ typedef struct {
 #define ED_kind(p,n)		(p->kinds[n])
 #define ED_rag_errnum(p)	(p->rag_errnum)
 
-/* Define the error descriptor table: */
-typedef struct error_desc_table {
-    INT		phase;		/* The phase number of this array */
-    ERROR_DESC *descriptors;	/* The list of error descriptors */
-    char       *name;		/* The phase name */
-} ERROR_DESC_TABLE;
-
 #ifdef __cplusplus
 }
 #endif

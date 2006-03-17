@@ -85,7 +85,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2f/whi
 #include "glob.h"             /* Irb_File_Name, Cur_PU_Name */
 #include "flags.h"	      /* for OPTION_GROUP */
 #include "pu_info.h"          /* For PU_Info */
-#include "err_host.tab"       /* Include the error tables in the driver */
 
 #include "pu_info.h"          /* For PU_Info */
 #include "w2f_driver.h"

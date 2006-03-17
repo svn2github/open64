@@ -92,9 +92,6 @@ static char *erfe_rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/g++fe/erf
 #define EC_Diff_Decl	EC_BASE_FE+22		/* str */
 #define EC_Flag_Var	EC_BASE_FE+23		/* stab */
 
-#if defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS) || \
-    defined(FRONT_END_FORTRAN)
 #define EC_Null_Backptr	EC_BASE_FE+100		/* tree,str */
-#endif /* FRONT_END_C || FRONT_END_CPLUSPLUS || FRONT_END_FORTRAN */
 
 #endif /* erfe_INCLUDED */

@@ -93,12 +93,9 @@
 #define IN_ERRORS_C
 #include "errors.h"
 #undef IN_ERRORS_C
-#include "err_host.h"
-#include "erglob.h"
 #include "file_util.h"
 #include "tracing.h"
 #include "glob.h"
-#include "errdesc.h"
 #include "vstring.h"
 
 #include "wn.h"
@@ -112,6 +109,28 @@
  *
  * ====================================================================
  */
+
+#include "erglob.desc"		/* Global error codes */
+#include "erlib.desc"		/* Program library error codes */
+#include "erlink.desc"		/* Linker error codes */
+#include "erirb.desc"		/* IR builder error codes */
+
+/* Define the error descriptor table: */
+typedef struct error_desc_table {
+    INT         phase;          /* The phase number of this array */
+    ERROR_DESC *descriptors;    /* The list of error descriptors */
+    const char *name;           /* The phase name */
+} ERROR_DESC_TABLE;
+
+static ERROR_DESC_TABLE _Phases[EP_COUNT] = 
+{
+  /* Common phases: */
+  { EP_UNIX,	NULL,		"Unix" },
+  { EP_GLOBAL,	EDESC_Globals,	"Global" },
+  { EP_LIB,	EDESC_Lib,	"Program Librarian" },
+  { EP_LINK,	EDESC_Link,	"Linker" },
+  { EP_IR_BUILDER, EDESC_Irb,	"IR Builder" },
+};
 
 INT Min_Error_Severity = ES_ADVISORY;	/* report advisory msgs or worse */
 INT Conformance_Level  = ES_IGNORE;	/* ignore conformance error */
@@ -128,11 +147,7 @@ static const char *Error_File_Name = NULL;	/* Error file name */
 static FILE *Trace_File = NULL;		/* File descriptor */
 
 /* Source file location: */
-#ifdef KEY /* Bug 4469 */
 static char  source_file_name[FILENAME_MAX + 1];
-#else
-static char  source_file_name[256];
-#endif /* KEY Bug 4469 */
 static char *Source_File_Name = &source_file_name[0];
 static INT   Source_Line = ERROR_LINE_UNKNOWN;	/* Line number */
 
@@ -183,10 +198,24 @@ static SEVERITY_DESCRIPTOR Severities[] = {
  * ====================================================================
  */
 
-#include "err_host.tab"		    /* for error tables */
+static const char *host_errlist[] = {
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        "file is locked",
+        "file has a bad magic number",
+        "file exists",
+        "file is not locked",
+};
 
 /* these table pointers get pointed at the client's tables */
-static ERROR_DESC_TABLE *_Phases = Phases;
 static const char **_host_errlist = host_errlist;
 
 static bool do_traceback = false;
@@ -411,11 +440,7 @@ Set_Error_Source ( const char *filename )
     Source_File_Name = NULL;
   } else {
     Source_File_Name = &source_file_name[0];
-#ifdef KEY /* Bug 4469 */
     strncpy ( Source_File_Name, filename, sizeof source_file_name );
-#else
-    strcpy ( Source_File_Name, filename );
-#endif /* KEY Bug 4469 */
   }
 }
 
@@ -1356,28 +1381,19 @@ Get_Current_Phase_Number( void )
  * ====================================================================
  */
 
-void Set_Error_Tables( 
-  ERROR_DESC_TABLE *edt,
-  const char *errlist[] )
-{
-  _Phases = edt;
-  _host_errlist = errlist;
-}
-
-extern void
-Set_Error_Descriptor (INT phase, ERROR_DESC *descriptor)
+void
+Set_Error_Descriptor (INT phase, ERROR_DESC *descriptor, const char *name)
 {
     register INT i = 0;
 
-    while (_Phases[i].phase != -1) {
-	if (_Phases[i].phase == phase) {
-	    _Phases[i].descriptors = descriptor;
-	    return;
-	}
-	i++;
-    }
+    FmtAssert(i > 0 && i < EP_COUNT,
+	("%s: invalid phase: %d", __func__, phase));
+    FmtAssert(_Phases[phase].phase == 0,
+	("%s: phase already has error descriptor: %d", __func__, phase));
 
-    FmtAssert (FALSE, ("Error Phase %d not initialized", phase));
+    _Phases[phase].phase = phase;
+    _Phases[phase].descriptors = descriptor;
+    _Phases[phase].name = name;
 } /* Set_Error_Descriptor */
 
 /* ====================================================================

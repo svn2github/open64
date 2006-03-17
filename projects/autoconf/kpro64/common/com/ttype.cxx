@@ -217,55 +217,6 @@ Is_Float_Type ( TY_IDX ty )
     }
     return FALSE;
 }
-
-
-#ifndef MONGOOSE_BE
-/* ====================================================================
- *
- * Similar_BE_Types
- *
- * Routine to compare two types. This routine should be called to
- * determine whether two TY records are equivalent from a back end
- * implementation point of view, i.e. whether they have the same bit
- * representation (TY_mtype).  It ignores diffences of volatile and
- * const qualifiers. 
- *
- * WARNING:  This routine is currently used to decide whether a
- * field/member is of an appropriate type for use in struct/class
- * decomposition for parameter passing in registers.  It is therefore
- * irrelevant how it behaves except for scalar and pointer types.  If
- * other users are identified, those cases can be modified as
- * appropriate for the new users.
- *
- * ====================================================================
- */
-
-BOOL
-Similar_BE_Types ( TY_IDX t1_idx, TY_IDX t2_idx )
-{
-  /* Do a quick check for identical types: */
-  if ( t1_idx == t2_idx )
-    return TRUE;
-
-  TY& t1 = Ty_Table [t1_idx];
-  TY& t2 = Ty_Table [t2_idx];
-
-  /* Insist on valid kinds: */
-  if ( TY_kind(t1) == 0 || TY_kind(t2) == 0 )
-    return FALSE;
-  
-  switch (TY_kind(t1)) {
-
-    case KIND_SCALAR:
-    case KIND_POINTER:
-      return TY_mtype(t1) == TY_mtype(t2) &&
-	     TY_size(t1) == TY_size(t2);
-
-    default:
-      return FALSE;
-  }
-}
-#endif /* MONGOOSE_BE */
 
 /* ====================================================================
  *
@@ -363,7 +314,3 @@ Equivalent_Types (TY_IDX t1, TY_IDX t2, QUAL_CHECK consider_qualifiers)
     }
 } // Equivalent_Types
 
-
-#ifndef MONGOOSE_BE
-#endif /* MONGOOSE_BE */
-

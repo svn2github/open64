@@ -299,7 +299,7 @@ GENHDRS = $(patsubst %.cxx,%.h,${GENSRCS})
 nodist_cg_la_SOURCES = ${GENSRCS}
 BUILT_SOURCES = ${GENSRCS} ${GENHDRS}
 CLEANFILES = ${GENSRCS} ${GENHDRS}
-AM_CPPFLAGS = -DBACK_END -DKEY -DMONGOOSE_BE \
+AM_CPPFLAGS = -DBACK_END -DKEY \
 	-I../be -I../../targ_info \
 	-I${srcdir}/gra_mon \
 	-I${srcdir}/${TARG_SUBDIR} \

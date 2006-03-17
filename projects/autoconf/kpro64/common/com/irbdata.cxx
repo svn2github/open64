@@ -324,64 +324,6 @@ Irb_Init_String (INT size, char *str, INT32 repeat, INITO_IDX ino,
 }
 
 
-#ifndef MONGOOSE_BE
-
-INITV_IDX
-Irb_Init_Float (INT size, double value, INT32 repeat, INITO_IDX ino,
-		INITV_IDX inv)
-{
-    TCON tc = Host_To_Targ_Float (size == 4 ? MTYPE_F4 : MTYPE_F8, value);
-    return Irb_Init_Val (ino, inv, repeat, Enter_tcon (tc));
-}
-
-INITV_IDX
-Irb_Init_Float_4 (INT size, float value, INT32 repeat, INITO_IDX ino,
-		  INITV_IDX inv)
-{
-    TCON tc = Host_To_Targ_Float_4 (size == 4 ? MTYPE_F4 : MTYPE_F8, value);
-    return Irb_Init_Val (ino, inv, repeat, Enter_tcon (tc));
-}
-
-
-INITV_IDX
-Irb_Init_Quad (INT size, QUAD_TYPE value, INT32 repeat, INITO_IDX ino,
-	       INITV_IDX inv)
-{
-    TCON tc = Host_To_Targ_Quad (value);
-    return Irb_Init_Val (ino, inv, repeat, Enter_tcon (tc));
-}
-
-
-INITV_IDX
-Irb_Init_Complex (INT size, double real, double imag, INT32 repeat,
-		  INITO_IDX ino, INITV_IDX inv) 
-{
-    TCON tc = Host_To_Targ_Complex (size == 8 ? MTYPE_C4 : MTYPE_C8, real,
-				    imag);
-    return Irb_Init_Val (ino, inv, repeat, Enter_tcon (tc));
-}
-
-
-INITV_IDX
-Irb_Init_Complex_4 (INT size, float real, float imag, INT32 repeat,
-		    INITO_IDX ino, INITV_IDX inv) 
-{
-    TCON tc = Host_To_Targ_Complex_4 (size == 8 ? MTYPE_C4 : MTYPE_C8, real,
-				      imag); 
-    return Irb_Init_Val (ino, inv, repeat, Enter_tcon (tc));
-}
-
-
-INITV_IDX
-Irb_Init_Complex_Quad (INT size, QUAD_TYPE real, QUAD_TYPE imag,
-		       INT32 repeat, INITO_IDX ino, INITV_IDX inv) 
-{
-    TCON tc = Host_To_Targ_Complex_Quad (real, imag);
-    return Irb_Init_Val (ino, inv, repeat, Enter_tcon (tc));
-}
-#endif /* MONGOOSE_BE */
-
-
 struct find_inito_predicate
 {
     ST_IDX st;

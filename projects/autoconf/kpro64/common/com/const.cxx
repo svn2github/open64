@@ -238,63 +238,6 @@ Make_Const ( TCON c )
    
 }
 
-#ifndef MONGOOSE_BE
-/* ====================================================================
- *
- * Make_Zerocon
- *
- * Make a zero node of the given type.
- *
- * ====================================================================
- */
-
-WN *
-Make_Zerocon ( TYPE_ID ty )
-{
-  return Make_Const ( Targ_Conv ( ty, Host_To_Targ ( MTYPE_I4, 0 ) ));
-}
-
-
-/* ====================================================================
- *
- * Make_Comparison_Result_Const
- *
- * Make a TRUE or FALSE node of the default comparison result type.
- *
- * ====================================================================
- */
-
-WN *
-Make_Comparison_Result_Const ( INT16 val )
-{
-  return Make_Const ( Host_To_Targ ( Comparison_Result_Mtype, val ) );
-}
-
-
-/* ====================================================================
- *
- * Make_Integer_Const
- *
- * Make an integer constant node of the given type and value.
- *
- * ====================================================================
- */
-
-WN *
-Make_Integer_Const ( INT16 mtype, TARG_INT val )
-{
-   /* Actually, in WHIRL there are no integer constants of the symbol table type */
-   /*
-    *  return Make_Const ( Host_To_Targ ( mtype, val ) );
-    */
-
-   /* NOTE: TARG_INT should be INT64 for this to work! */
-   return (WN_CreateIntconst(OPCODE_make_op(OPR_INTCONST,mtype,MTYPE_V), val));
-
-}
-
-#endif /* MONGOOSE_BE */
-
 /******************************************************************************
  This routine makes a WHIRL node representing the reduction
  identity for a given WHIRL op. For example, the reduction identity 

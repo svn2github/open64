@@ -133,9 +133,7 @@ char *Feedback_File_Name = NULL; /* Feedback file */
 char *call_graph_file_name = NULL; /* Function call graph file */
 char *cord_output_file_name = NULL; /* Output file name after function layout */
 char *cord_obj_file_name = NULL;  /* Object file name which will be reorder function layout */
-#ifndef MONGOOSE_BE
-char *Lib_File_Name = NULL;	/* Program library file	*/
-#endif 
+char *Lib_File_Name = NULL;	/* Program library file */
 char *Lib_Lock_Name = NULL;	/* Program library lock	file */
 char *DSTdump_File_Name = NULL; /* Dwarf (i.e. DST) dump file */
 char *Global_File_Name = NULL;	/* Global symbol table file */

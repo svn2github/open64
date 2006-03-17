@@ -24,7 +24,7 @@ lno_la_SOURCES = access_main.cxx access_vector.cxx aequiv.cxx al_loop.cxx \
 lno_la_LDFLAGS = -avoid-version -module
 lno_la_LIBADD = ../be/libbe.la
 
-AM_CPPFLAGS = -DBACK_END -DKEY -DLNO -DMONGOOSE_BE \
+AM_CPPFLAGS = -DBACK_END -DKEY -DLNO \
 	-I../be -I../../targ_info \
 	-I${srcdir}/../be \
 	-I${srcdir}/../cg \

@@ -179,7 +179,7 @@ DST_Init (char *start, INT32 num_blocks)
 			if (blklist[blocks[i].kind] == DST_INVALID_BLOCK_IDX)
 				blklist[blocks[i].kind] = i;
 		}
-#if defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER) || defined(MONGOOSE_BE)
+#if defined(BACK_END) || defined(_LIGHTWEIGHT_INLINER)
 		blocks[current_DST->last_block_header].allocsize = 
 			blocks[current_DST->last_block_header].size;
 #endif
@@ -195,10 +195,6 @@ set_current_dst_to_current ( void )
   current_DST->current_dst =
 	&current_DST->dst_blocks[current_DST->current_block_header];
 }
-
-/*
-#if !(defined(MONGOOSE_BE)) || defined(_STANDALONE_INLINER) || defined(_SUPPORT_IPA)
-*/
 
 static block_header *
 new_block (DST_BLOCK_KIND kind, INT32 size)
@@ -222,7 +218,7 @@ new_block (DST_BLOCK_KIND kind, INT32 size)
 	current_DST->last_block_header = last_block;
 	current_DST->current_block_header = last_block;
 
-#if defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER) || defined(MONGOOSE_BE)
+#if defined(BACK_END) || defined(_LIGHTWEIGHT_INLINER) 
 	/* force Symtab_Alloc to allocate from the Src_block, not the PU_block
 	 */
 	blocks[last_block].offset = (char*) Symtab_Alloc(allocsize,
@@ -261,7 +257,7 @@ DST_allocate (INT32 size, INT32 align)
 	block_header *current;
 	current_DST = (DST_Type *)Current_DST;
 
-#if defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER) || defined(MONGOOSE_BE)
+#if defined(BACK_END) || defined(_LIGHTWEIGHT_INLINER)
 #if 0
 	if ((current_DST->dst_blocks == current_DST->current_dst) &&
 	    (current_DST->current_dst->kind != DST_local_scope_block)) {
@@ -283,7 +279,6 @@ DST_allocate (INT32 size, INT32 align)
 	    current = current_DST->current_dst;
 #endif
 
-
 	/* Calculate the alignment padding in the current_block */
 	align_mod = current->size % align;
 	align_padding = (align_mod ? (align - align_mod) : 0);
@@ -297,7 +292,7 @@ DST_allocate (INT32 size, INT32 align)
 	 * + align_padding for this current block
 	 */
 		/* allocate new block */
-#if defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER) || defined(MONGOOSE_BE)
+#if defined(BACK_END) || defined(_LIGHTWEIGHT_INLINER)
 		current = new_block (DST_local_scope_block, size);
 #else
 		current = new_block (current->kind, size);
@@ -326,9 +321,6 @@ DST_return_to_block(DST_IDX idx)
 	current_DST->current_block_header = current_block;
 	current_DST->current_dst = &current_DST->dst_blocks[current_block];
 }
-/*
-#endif * !MONGOOSE_BE  || _STANDALONE_INLINER  || _SUPPORT_IPA */
-
 
 /* Returns a pointer to the beginning of an allocated data area.  It
  * is up to the caller to ensure that access does not occur beyond the

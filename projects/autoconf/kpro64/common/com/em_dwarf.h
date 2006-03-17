@@ -85,12 +85,6 @@ extern void Em_Dwarf_Add_File (
     Dwarf_Unsigned file_size);
 
 
-/* Given a file_index, return the filename and the path for the file. */
-extern void Em_Dwarf_File_Index_To_Name (
-    INT file_index, 
-    char **filename, 
-    char **path);
-
 /* eh_offset should be -1 if no eh region */
 extern void Em_Dwarf_Process_PU (Dwarf_Unsigned begin_label,
 				 Dwarf_Unsigned end_label,

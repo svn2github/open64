@@ -144,9 +144,6 @@ DST_get_ptr_to_firstChildField(DST_INFO *parent)
 } /* DST_get_ptr_to_firstChildField */
 
 
-/*
-#if !(defined(MONGOOSE_BE)) || defined(_STANDALONE_INLINER) || defined(_SUPPORT_IPA)
-*/
 /* Same as DST_get_ptr_to_childfield(), but for the "last_child" field.
  * For any change in this relation (e.g. by adding a new node with 
  * child attribute to the DST specification) a corresponding change 
@@ -234,8 +231,6 @@ DST_get_ptr_to_lastChildField(DST_INFO *parent)
    }
    return field_ptr;
 } /* DST_get_ptr_to_lastChildField */
-/*
-#endif * !MONGOOSE_BE || _STANDALONE_INLINER || _SUPPORT_IPA */
 
 
    /*-----------------
@@ -257,9 +252,6 @@ DST_first_child(DST_INFO_IDX parent)
 
 
 
-/* 
-#if !(defined(MONGOOSE_BE)) || defined(_STANDALONE_INLINER) || defined(_SUPPORT_IPA)
-*/
 DST_INFO_IDX
 DST_last_child(DST_INFO_IDX parent) 
 {
@@ -335,7 +327,3 @@ DST_preorder_visit(
       }
    }
 }
-/*
-#endif * MONGOOSE_BE || _STANDALONE_INLINER || _SUPPORT_IPA */
-
-

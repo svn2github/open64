@@ -659,7 +659,6 @@ WN_COPY_Tree (WN *wn)
 } /* WN_COPY_Tree */
 
 
-#ifdef MONGOOSE_BE
 /*-------------------------------------------------------------*/
 /* copy all maps of a WN                                       */
 /*-------------------------------------------------------------*/
@@ -736,7 +735,6 @@ WN_COPY_Tree_With_Map (WN *wn)
 
     return new_wn;
 } /* WN_COPY_Tree_With_Map */
-#endif /* MONGOOSE_BE */
 
 
 /*-------------------------------------------------------------*/

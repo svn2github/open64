@@ -138,9 +138,7 @@ extern char *cord_output_file_name; /* Output file name after function layout */
 extern char *cord_obj_file_name;  /* Object file name which will be reorder function layout */
 extern char *Instrumentation_File_Name; /* instrumentation file */
 extern char *Feedback_File_Name;/* feedback file produced from prof */
-#ifndef MONGOOSE_BE
 extern char *Lib_File_Name;	/* Program library file */
-#endif
 extern char *Lib_Lock_Name;	/* Program library lock file */
 extern char *DSTdump_File_Name; /* Dwarf intermediate (i.e. DST) dump file */
 extern char *Global_File_Name;	/* Global symbol table file */
@@ -170,12 +168,10 @@ extern FILE *Tim_File;		/* Timing info file (usually trace) */
   #define SPECMT_SECOND_PASS  2
 #endif
 
-#ifdef MONGOOSE_BE
 #define MMAPPED_FILE (1)	/* some components use mmap instead of
 				   stream i/o, in those cases the *_File
 				   will be set to MMAPPED_FILE to show that
 				   the file is active  */
-#endif /* MONGOOSE_BE */
 
 extern INT32 Num_Source_Files;
 

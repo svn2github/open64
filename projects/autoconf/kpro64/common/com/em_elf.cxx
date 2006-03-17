@@ -802,29 +802,6 @@ Em_Set_Symbol_Binding (Elf64_Word symindex, unsigned char symbind)
     }
 }
 
-#ifndef MONGOOSE_BE
-Elf64_Addr
-Em_Get_Symbol_Value (Elf64_Word symindex)
-{
-    if (Sixtyfour_Bit) {
-	Elf64_Sym *symtable;
-
-	symtable = (Elf64_Sym *)SCNINFO_buffer(Symtab_Info);
-	if (symindex >= (SCNINFO_size(Symtab_Info) / sizeof(Elf64_Sym)))
-	    ErrMsg (EC_Elf_Idx, symindex, "Em_Get_Symbol_Value");
-	return symtable[symindex].st_value;
-    }
-    else {
-	Elf32_Sym *symtable;
-
-	symtable = (Elf32_Sym *)SCNINFO_buffer(Symtab_Info);
-	if (symindex >= (SCNINFO_size(Symtab_Info) / sizeof(Elf32_Sym)))
-	    ErrMsg (EC_Elf_Idx, symindex, "Em_Get_Symbol_Value");
-	return symtable[symindex].st_value;
-    }
-}
-#endif /* MONGOOSE_BE */
-
 char *
 Em_Get_Symbol_Name (Elf64_Word symindex)
 {
@@ -891,23 +868,6 @@ Em_Add_New_Symbol (
     }
     return symindex;
 }
-
-
-#ifndef MONGOOSE_BE
-/* Add a new symbol with name 'symname', size 'symsize' and symbol binding
-   'symbind' to the symbol table as a COMMON symbol.
-*/
-Elf64_Word 
-Em_Add_New_Common_Symbol (
-    char *symname, 
-    Elf64_Xword symsize, 
-    unsigned char symbind,
-    unsigned char symother)
-{
-    return Em_Add_New_Symbol (symname, 0, symsize, symbind, STT_OBJECT, 
-							symother, SHN_COMMON);
-}
-#endif /* MONGOOSE_BE */
 
 /* enter a symbol with name 'symname' and type 'symtype'  as undefined 
    into the symbol table.

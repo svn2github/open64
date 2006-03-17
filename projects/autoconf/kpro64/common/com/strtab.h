@@ -141,8 +141,6 @@ Save_StrN (const char *s1, UINT32 len);
 extern char *
 Index_to_char_array (UINT32 idx);
 
-#ifdef MONGOOSE_BE
-
 #include <ext/hash_map>
 using __gnu_cxx::hash_map;
 
@@ -183,8 +181,5 @@ Merge_Strtab (const char *buf, UINT32 size, STR_IDX_MAP& map);
 
 extern void
 Merge_TCON_Strtab (const char *buf, UINT32 size, STR_IDX_MAP& map);
-
-#endif // MONGOOSE_BE
-
 
 #endif /* strtab_INCLUDED */

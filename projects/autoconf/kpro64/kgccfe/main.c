@@ -43,32 +43,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cmplrs/rcodes.h>
-#include "wfe_misc.h"
-#include "glob.h"
+
+#include "erfe.desc"            /* Front end error codes */
 
 #define IN_GCC
 #include <config.h>
 #include <system.h>
 #include <diagnostic.h>
 #undef IN_GCC
-extern const char *main_input_filename;
-extern void compile_file ();
+
+extern const char *Orig_Src_File_Name;
 
 static int saved_argc;
 static char **saved_argv;
 static char **saved_envp;
 
-void whirl_compile_file()
+void whirl_compile_file(const char *filename)
 {
-	Orig_Src_File_Name = main_input_filename;
+	Orig_Src_File_Name = filename;
 
 	WFE_Init (saved_argc, saved_argv, saved_envp);
 	WFE_File_Init (saved_argc, saved_argv);
-
-	compile_file();
-
-	WFE_File_Finish ();
-        WFE_Finish ();
 }
 
 int main(int argc, char *argv[], char *envp[])
@@ -81,8 +76,14 @@ int main(int argc, char *argv[], char *envp[])
 	saved_argv = argv;
 	saved_envp = envp;
 
+	Set_Error_Descriptor(EP_FE, EDESC_FE, "Front End");
+
 	/* GCC foo */
 	exitcode = toplev_main(argc, argv);
+
+	WFE_File_Finish ();
+        WFE_Finish ();
+
 	if (exitcode)
 		exit(exitcode);
 

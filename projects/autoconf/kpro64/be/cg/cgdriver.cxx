@@ -69,7 +69,6 @@
 #include "erglob.h"
 #include "erlib.h"
 #include "errors.h"
-#include "erauxdesc.h"
 #include "file_util.h"
 #include "glob.h"
 #include "timing.h"
@@ -105,6 +104,8 @@
 #include "cg_gcov.h"
 #include "flags.h"
 #endif
+
+#include "ercg.desc"
 
 extern void Set_File_In_Printsrc(char *);	/* defined in printsrc.c */
 
@@ -1560,8 +1561,7 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
 		   ("WHIRL revision mismatch between be.so (%s) and cg.so (%s)",
 		    Whirl_Revision, WHIRL_REVISION));
 
-    Set_Error_Descriptor (EP_BE, EDESC_BE);
-    Set_Error_Descriptor (EP_CG, EDESC_CG);
+    Set_Error_Descriptor (EP_CG, EDESC_CG, "Code Generator");
 
 #ifdef KEY
     be_command_line_args = be_argv;
