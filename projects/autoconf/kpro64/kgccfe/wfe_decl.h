@@ -134,10 +134,10 @@ void WFE_Record_Asmspec_For_ST (tree decl, const char *asmspec, int reg);
 void WFE_Resolve_Duplicate_Decls (tree olddecl, tree newdecl);
 
 /* call this routine to process pragma weak on encountering pragma */
-void WFE_Add_Weak();
+void WFE_Mark_Weak(ST *);
 
 /* call this routine to process pragma weak declarations at end */
-void WFE_Weak_Finish();
+void WFE_Weak_Finish(tree t);
 
 /* variable to keep track track of ST to be used for varargs */
 extern ST *WFE_Vararg_Start_ST;

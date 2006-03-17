@@ -53,7 +53,7 @@ PROGRAMS = $(libexec_PROGRAMS)
 am_gfec_OBJECTS = c_int_model.$(OBJEXT) main.$(OBJEXT) \
 	omp_directive.$(OBJEXT) rt_symtab.$(OBJEXT) \
 	tree_symtab.$(OBJEXT) wfe_decl.$(OBJEXT) wfe_dst.$(OBJEXT) \
-	wfe_expr.$(OBJEXT) wfe_misc.$(OBJEXT) \
+	wfe_expr.$(OBJEXT) wfe_glue.$(OBJEXT) wfe_misc.$(OBJEXT) \
 	wfe_omp_check_stack.$(OBJEXT) wfe_omp_directives.$(OBJEXT) \
 	wfe_stmt.$(OBJEXT)
 gfec_OBJECTS = $(am_gfec_OBJECTS)
@@ -206,8 +206,9 @@ target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
 gfec_SOURCES = c_int_model.c main.c omp_directive.cxx rt_symtab.cxx \
-	tree_symtab.cxx wfe_decl.cxx wfe_dst.cxx wfe_expr.cxx wfe_misc.cxx \
-	wfe_omp_check_stack.cxx wfe_omp_directives.cxx wfe_stmt.cxx
+	tree_symtab.cxx wfe_decl.cxx wfe_dst.cxx wfe_expr.cxx wfe_glue.c \
+	wfe_misc.cxx wfe_omp_check_stack.cxx wfe_omp_directives.cxx \
+	wfe_stmt.cxx
 
 LDADD = ../be/be/libbe.la ../common/libcomutil.a ../targ_info/libtarginfo.a \
 	../gcc/c/libgcc_c.a ../gcc/common/libgcc_common.a \
@@ -215,7 +216,7 @@ LDADD = ../be/be/libbe.la ../common/libcomutil.a ../targ_info/libtarginfo.a \
 	-lstdc++
 
 _topgcc = ${top_srcdir}/contrib/gcc
-AM_CPPFLAGS = -DCFE -DFRONT_END -DFRONT_END_C -DKEY -DMONGOOSE_CIF \
+AM_CPPFLAGS = -DFRONT_END -DFRONT_END_C -DKEY \
 	-I${srcdir}/../include \
 	-I${srcdir}/../common/com -I${srcdir}/../common/com/${TARG_SUBDIR} \
 	-I${srcdir}/../common/util \
@@ -303,6 +304,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wfe_decl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wfe_dst.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wfe_expr.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wfe_glue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wfe_misc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wfe_omp_check_stack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wfe_omp_directives.Po@am__quote@

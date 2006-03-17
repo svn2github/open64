@@ -89,7 +89,6 @@ extern int flag_no_common;
 #include "wfe_stmt.h"
 
 extern int optimize;
-extern tree weak_decls;
 
 extern FILE *tree_dump_file; // for debugging only
 
@@ -2418,26 +2417,15 @@ WFE_Resolve_Duplicate_Decls (tree olddecl, tree newdecl)
 
 
 void
-WFE_Add_Weak ()
+WFE_Mark_Weak (ST *st)
 {
-#ifdef KEY
-  // bug 4916
-  if (!weak_decls)
-    return;
-#endif // KEY
-  tree decl = 
-	  lookup_name (get_identifier (IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME 
-				  (TREE_VALUE (weak_decls)))));
-  if (decl) {
-    ST *st = DECL_WHIRL_ST_GET(decl);
-    if (st)
-      Set_ST_is_weak_symbol (st);
-  }
-} /* WFE_Add_Weak */
+  if (st)
+    Set_ST_is_weak_symbol (st);
+}
 
 
 void
-WFE_Weak_Finish ()
+WFE_Weak_Finish (tree weak_decls)
 {
   tree t;
   for (t = weak_decls; t; t = TREE_CHAIN(t)) {
