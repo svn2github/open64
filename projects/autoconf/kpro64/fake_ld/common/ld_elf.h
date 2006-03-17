@@ -47,7 +47,7 @@
 #include "sys/elf_whirl.h"
 #include <libelf.h>
 
-#ifdef _64BIT_OBJECTS
+#if 1
 
 #define an_elf_e_header Elf64_Ehdr			    /* Elf header */
 #define an_elf_program_header Elf64_Phdr		    /* Program header */
@@ -101,7 +101,7 @@
 
 #define ELF_WORD Elf32_Word	    /* general type */
 
-#endif /*_64BIT_OBJECTS */
+#endif
 
 #define ELF_AR_STRING_NAME      "//              "
 #undef ELF_MSYM

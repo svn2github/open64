@@ -285,17 +285,11 @@ typedef enum {
 } error_number;
 
 /* Architecture-specific definitions */
-#ifdef _64BIT_OBJECTS
+#ifdef 1
 
-#if defined(__GNUC__)
-typedef u_int64_t ADDR;	    /* 64-bit virtual address */
+typedef uint64_t ADDR;	    /* 64-bit virtual address */
 typedef int64_t OFFSET;	    /* 64-bit file offset */
 typedef int64_t FILE_SZ;    /* 64-bit file size/length */
-#else
-typedef uint64 ADDR;	    /* 64-bit virtual address */
-typedef int64 OFFSET;	    /* 64-bit file offset */
-typedef int64 FILE_SZ;	    /* 64-bit file size/length */
-#endif
 
 #define ELF_ADDR	Elf64_Addr
 #define ELF_HALF	Elf64_Half
@@ -322,9 +316,9 @@ typedef int64 FILE_SZ;	    /* 64-bit file size/length */
 
 #else
 
-typedef uint32 ADDR;		    /* 32-bit virtual address */
-typedef int32 OFFSET;		    /* 32-bit file offset */
-typedef int32 FILE_SZ;		    /* 32-bit file size/length */
+typedef uint32_t ADDR;		    /* 32-bit virtual address */
+typedef int32_t OFFSET;		    /* 32-bit file offset */
+typedef int32_t FILE_SZ;		    /* 32-bit file size/length */
 
 #define ELF_ADDR	Elf32_Addr
 #define ELF_HALF	Elf32_Half
@@ -350,7 +344,7 @@ typedef unsigned short	ELF_SECTION;
 #define _fmt_w_a      "08x"
 #define _fmt_w_s      "08x"
 
-#endif /* _64BIT_OBJECTS */
+#endif
 
 /* system and library calls */
 
