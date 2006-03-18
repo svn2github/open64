@@ -101,7 +101,7 @@ static BOOL map_mempool_initialized = FALSE;
 static MEM_POOL Map_Mem_Pool;
 ST* WFE_Vararg_Start_ST;
 #ifdef KEY
-bool defer_function = FALSE;
+int defer_function = 0;
 extern void WFE_add_pragma_to_enclosing_regions (WN_PRAGMA_ID, ST *);
 vector <pair<tree, tree> > alias_vector;
 static BOOL finish_alias = FALSE;

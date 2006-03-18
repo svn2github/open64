@@ -12,6 +12,9 @@
 
 #define	ST	void
 
+extern int defer_function;
+extern int WFE_Null_ST_References(tree *);
+
 static int omp_in_pragma;
 static int omp_last_token_hash;
 
@@ -151,7 +154,23 @@ whirl_start_function(tree t)
 void
 whirl_finish_function(tree t)
 {
+  tree pdecl;
+
+  if (t != NULL)
+    {
+      walk_tree_without_duplicates(&DECL_SAVED_TREE(t),
+				   (walk_tree_fn)WFE_Null_ST_References, NULL);
+      defer_function = 1;
+    }
+
   WFE_Finish_Function();
+
+  if (t != NULL)
+    {
+      defer_function = 0;
+      for (pdecl = DECL_ARGUMENTS (t); pdecl; pdecl = TREE_CHAIN (pdecl))
+        DECL_WHIRL_ST_SET(pdecl, NULL);
+    }
 }
 
 void

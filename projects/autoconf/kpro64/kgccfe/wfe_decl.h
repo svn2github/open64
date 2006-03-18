@@ -74,8 +74,6 @@ extern void WFE_Initialize_Nested_Decl (tree decl);
 
 // Handle to get CURRENT_SYMTAB i.e., current scope level
 extern INT WFE_Get_Current_Scope ();
-
-extern bool defer_function;
 #endif /* KEY */
 
 /* called for each aggregate initialization */
