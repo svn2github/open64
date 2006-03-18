@@ -1384,9 +1384,8 @@ Get_Current_Phase_Number( void )
 void
 Set_Error_Descriptor (INT phase, ERROR_DESC *descriptor, const char *name)
 {
-    register INT i = 0;
 
-    FmtAssert(i > 0 && i < EP_COUNT,
+    FmtAssert(phase > 0 && phase < EP_COUNT,
 	("%s: invalid phase: %d", __func__, phase));
     FmtAssert(_Phases[phase].phase == 0,
 	("%s: phase already has error descriptor: %d", __func__, phase));
