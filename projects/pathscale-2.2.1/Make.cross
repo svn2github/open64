@@ -71,89 +71,95 @@ PHONY_TARGET = $(shell for i in $(CROSS_COMPONENTS); do basename "$$i" ; done)
 all: build
 
 $(CROSS_BUILD_DIR)/driver.nue/driver driver:
-		cd $(CROSS_BUILD_DIR)/driver.nue; gmake 
+	cd $(CROSS_BUILD_DIR)/driver.nue; gmake 
 
 $(CROSS_BUILD_DIR)/gccfe/gfec gfec:
-		cd $(CROSS_BUILD_DIR)/gccfe ; gmake 
+	cd $(CROSS_BUILD_DIR)/gccfe ; gmake 
 
 $(CROSS_BUILD_DIR)/g++fe/gfecc gfecc:
-		cd $(CROSS_BUILD_DIR)/g++fe ; gmake 
+	cd $(CROSS_BUILD_DIR)/g++fe ; gmake 
 
 $(CROSS_BUILD_DIR)/be/be be:
-		cd $(CROSS_BUILD_DIR)/be ; gmake 
+	cd $(CROSS_BUILD_DIR)/be ; gmake 
 
 $(CROSS_BUILD_DIR)/be/be.so be.so:
-		cd $(CROSS_BUILD_DIR)/be ; gmake 
+	cd $(CROSS_BUILD_DIR)/be ; gmake 
 
 $(CROSS_BUILD_DIR)/cg/cg.so cg.so:
-		cd $(CROSS_BUILD_DIR)/cg ; gmake 
+	cd $(CROSS_BUILD_DIR)/cg ; gmake 
 
 $(CROSS_BUILD_DIR)/orc_ict/orc_ict.so orc_ict.so: 
-		gmake -C $(CROSS_BUILD_DIR)/orc_ict 
+	gmake -C $(CROSS_BUILD_DIR)/orc_ict 
 
 $(CROSS_BUILD_DIR)/orc_intel/orc_intel.so orc_intel.so: 
-		gmake -C $(CROSS_BUILD_DIR)/orc_intel 
+	gmake -C $(CROSS_BUILD_DIR)/orc_intel 
 
 $(CROSS_BUILD_DIR)/wopt/wopt.so wopt.so:
-		cd $(CROSS_BUILD_DIR)/wopt ; gmake 
+	cd $(CROSS_BUILD_DIR)/wopt ; gmake 
 
 $(CROSS_BUILD_DIR)/lno/lno.so lno.so:
-		cd $(CROSS_BUILD_DIR)/lno ; gmake 
+	cd $(CROSS_BUILD_DIR)/lno ; gmake 
 
 $(CROSS_BUILD_DIR)/ipa/ipa.so ipa.so:
-		cd $(CROSS_BUILD_DIR)/ipa ; gmake 
+	cd $(CROSS_BUILD_DIR)/ipa ; gmake 
 
 $(CROSS_BUILD_DIR)/ipl/ipl.so ipl.so:
-		cd $(CROSS_BUILD_DIR)/ipl ; gmake 
+	cd $(CROSS_BUILD_DIR)/ipl ; gmake 
 
 $(CROSS_BUILD_DIR)/ipl/ipl ipl:
-		cd $(CROSS_BUILD_DIR)/ipl ; gmake 
+	cd $(CROSS_BUILD_DIR)/ipl ; gmake 
 
 $(CROSS_BUILD_DIR)/lw_inline/inline inline:
-		cd $(CROSS_BUILD_DIR)/lw_inline ; gmake 
+	cd $(CROSS_BUILD_DIR)/lw_inline ; gmake 
 
 $(CROSS_BUILD_DIR)/whirl2c/whirl2c.so whirl2c.so:
-		cd $(CROSS_BUILD_DIR)/whirl2c ; gmake 
+	cd $(CROSS_BUILD_DIR)/whirl2c ; gmake 
 
 $(CROSS_BUILD_DIR)/whirl2c/whirl2c whirl2c:
-		cd $(CROSS_BUILD_DIR)/whirl2c ; gmake 
+	cd $(CROSS_BUILD_DIR)/whirl2c ; gmake 
 
 $(CROSS_BUILD_DIR)/whirl2f/whirl2f.so whirl2f.so:
-		cd $(CROSS_BUILD_DIR)/whirl2f ; gmake 
+	cd $(CROSS_BUILD_DIR)/whirl2f ; gmake 
 
 $(CROSS_BUILD_DIR)/whirl2f/whirl2f whirl2f:
-		cd $(CROSS_BUILD_DIR)/whirl2f ; gmake 
+	cd $(CROSS_BUILD_DIR)/whirl2f ; gmake 
 
 $(CROSS_BUILD_DIR)/targ_info/itanium.so itanium.so:
-		cd $(CROSS_BUILD_DIR)/targ_info ; gmake 
+	cd $(CROSS_BUILD_DIR)/targ_info ; gmake 
 
 $(CROSS_BUILD_DIR)/ir_tools/ir_b2a ir_b2a:
-		cd $(CROSS_BUILD_DIR)/ir_tools ; gmake 
+	cd $(CROSS_BUILD_DIR)/ir_tools ; gmake 
 
 $(CROSS_BUILD_DIR)/crayf90/sgi/mfef90 mfef90:
-		cd $(CROSS_BUILD_DIR)/crayf90/sgi ; gmake 
+	cd $(CROSS_BUILD_DIR)/crayf90/sgi ; gmake 
 
-$(CROSS_BUILD_DIR_LD)/ld/ld-new ld-new:
-		cd $(CROSS_BUILD_DIR_LD); ./CONFIGURE;  gmake 
+# rules for ld-new
+.PHONY: Force
+$(CROSS_BUILD_DIR_LD)/ld/ld-new ld-new: $(CROSS_BUILD_DIR_LD)/Makefile Force
+	gmake -C $(CROSS_BUILD_DIR_LD); 
+        
+$(CROSS_BUILD_DIR_LD)/Makefile:  
+	cd $(CROSS_BUILD_DIR_LD); ./CONFIGURE;  
 
-build: $(CROSS_COMPONENTS)
+
+build: ${PHONY_TARGET} 
 
 install: ;@./INSTALL.cross
 
 clobber:
-		cd $(CROSS_BUILD_DIR)/driver.nue; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/gccfe ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/g++fe ; gmake  clobber
-		cd $(CROSS_BUILD_DIR)/be ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/cg ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/wopt ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/lno ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/ipa ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/ipl ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/lw_inline ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/whirl2c ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/whirl2f ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/targ_info ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/ir_tools ; gmake clobber 
-		cd $(CROSS_BUILD_DIR)/crayf90/sgi ; gmake clobber 
-		cd $(CROSS_BUILD_DIR_LD) ; ./CLOBBER 
+	cd $(CROSS_BUILD_DIR)/driver.nue; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/gccfe ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/g++fe ; gmake  clobber
+	cd $(CROSS_BUILD_DIR)/be ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/cg ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/wopt ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/lno ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/ipa ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/ipl ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/lw_inline ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/whirl2c ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/whirl2f ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/targ_info ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/ir_tools ; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/crayf90/sgi ; gmake clobber 
+	cd $(CROSS_BUILD_DIR_LD) ; ./CLOBBER 
