@@ -71,96 +71,100 @@ PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done)
 all: build
 
 $(NATIVE_BUILD_DIR)/driver/driver driver:
-		cd $(NATIVE_BUILD_DIR)/driver; gmake 
+	cd $(NATIVE_BUILD_DIR)/driver; gmake 
 
 $(NATIVE_BUILD_DIR)/gccfe/gfec gfec:
-		cd $(NATIVE_BUILD_DIR)/gccfe ; gmake 
+	cd $(NATIVE_BUILD_DIR)/gccfe ; gmake 
 
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:
-		cd $(NATIVE_BUILD_DIR)/g++fe ; gmake 
+	cd $(NATIVE_BUILD_DIR)/g++fe ; gmake 
 
 $(NATIVE_BUILD_DIR)/be/be be:
-		cd $(NATIVE_BUILD_DIR)/be ; gmake 
+	cd $(NATIVE_BUILD_DIR)/be ; gmake 
 
 $(NATIVE_BUILD_DIR)/be/be.so be.so:
-		cd $(NATIVE_BUILD_DIR)/be ; gmake 
+	cd $(NATIVE_BUILD_DIR)/be ; gmake 
 
 $(NATIVE_BUILD_DIR)/cg/cg.so cg.so:
-		cd $(NATIVE_BUILD_DIR)/cg ; gmake 
+	cd $(NATIVE_BUILD_DIR)/cg ; gmake 
 
 $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so orc_ict.so: 
-		gmake -C $(NATIVE_BUILD_DIR)/orc_ict 
+	gmake -C $(NATIVE_BUILD_DIR)/orc_ict 
 
 $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so orc_intel.so: 
-		gmake -C $(NATIVE_BUILD_DIR)/orc_intel 
+	gmake -C $(NATIVE_BUILD_DIR)/orc_intel 
 
 $(NATIVE_BUILD_DIR)/wopt/wopt.so wopt.so:
-		cd $(NATIVE_BUILD_DIR)/wopt ; gmake 
+	cd $(NATIVE_BUILD_DIR)/wopt ; gmake 
 
 $(NATIVE_BUILD_DIR)/lno/lno.so lno.so:
-		cd $(NATIVE_BUILD_DIR)/lno ; gmake 
+	cd $(NATIVE_BUILD_DIR)/lno ; gmake 
 
 $(NATIVE_BUILD_DIR)/ipa/ipa.so ipa.so:
-		cd $(NATIVE_BUILD_DIR)/ipa ; gmake 
+	cd $(NATIVE_BUILD_DIR)/ipa ; gmake 
 
 $(NATIVE_BUILD_DIR)/ipl/ipl.so ipl.so:
-		cd $(NATIVE_BUILD_DIR)/ipl ; gmake 
+	cd $(NATIVE_BUILD_DIR)/ipl ; gmake 
 
 $(NATIVE_BUILD_DIR)/ipl/ipl ipl:
-		cd $(NATIVE_BUILD_DIR)/ipl ; gmake 
+	cd $(NATIVE_BUILD_DIR)/ipl ; gmake 
 
 $(NATIVE_BUILD_DIR)/lw_inline/inline inline:
-		cd $(NATIVE_BUILD_DIR)/lw_inline ; gmake 
+	cd $(NATIVE_BUILD_DIR)/lw_inline ; gmake 
 
 $(NATIVE_BUILD_DIR)/whirl2c/whirl2c.so whirl2c.so:
-		cd $(NATIVE_BUILD_DIR)/whirl2c ; gmake 
+	cd $(NATIVE_BUILD_DIR)/whirl2c ; gmake 
 
 $(NATIVE_BUILD_DIR)/whirl2c/whirl2c whirl2c:
-		cd $(NATIVE_BUILD_DIR)/whirl2c ; gmake 
+	cd $(NATIVE_BUILD_DIR)/whirl2c ; gmake 
 
 $(NATIVE_BUILD_DIR)/whirl2f/whirl2f.so whirl2f.so:
-		cd $(NATIVE_BUILD_DIR)/whirl2f ; gmake 
+	cd $(NATIVE_BUILD_DIR)/whirl2f ; gmake 
 
 $(NATIVE_BUILD_DIR)/whirl2f/whirl2f whirl2f:
-		cd $(NATIVE_BUILD_DIR)/whirl2f ; gmake 
+	cd $(NATIVE_BUILD_DIR)/whirl2f ; gmake 
 
 $(NATIVE_BUILD_DIR)/targ_info/itanium.so itanium.so:
-		cd $(NATIVE_BUILD_DIR)/targ_info ; gmake 
+	cd $(NATIVE_BUILD_DIR)/targ_info ; gmake 
 
 $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a:
-		cd $(NATIVE_BUILD_DIR)/ir_tools ; gmake 
+	cd $(NATIVE_BUILD_DIR)/ir_tools ; gmake 
 
 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef90 mfef90:
-		cd $(NATIVE_BUILD_DIR)/crayf90/sgi ; gmake 
+	cd $(NATIVE_BUILD_DIR)/crayf90/sgi ; gmake 
 
-$(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new:
-		cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE;  gmake 
+.PHONY: Force
+$(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
+	gmake -C $(NATIVE_BUILD_DIR_LD)
 
-build: $(NATIVE_COMPONENTS)
+$(NATIVE_BUILD_DIR_LD)/Makefile:  
+	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE;  
+
+build: ${PHONY_TARGET} 
 
 install: ;@./INSTALL.native
 
 clobber:
-		cd $(NATIVE_BUILD_DIR)/driver; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/gccfe ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/g++fe ; gmake  clobber
-		cd $(NATIVE_BUILD_DIR)/be ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/cg ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/orc_ict ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/orc_intel; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/wopt ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/lno ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/ipa ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/ipl ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/lw_inline ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/whirl2c ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/whirl2f ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/../libkapi; gmake clean 
-		cd $(NATIVE_BUILD_DIR)/targ_info ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/ir_tools ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR)/crayf90/sgi ; gmake clobber 
-		cd $(NATIVE_BUILD_DIR_LD) ; ./CLOBBER 
-		@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
-                        libiberty libunwindP ; do  \
-                        make clobber -C "$(NATIVE_BUILD_DIR)/$${i}"  ; \
-                done
+	cd $(NATIVE_BUILD_DIR)/driver; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/gccfe ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/g++fe ; gmake  clobber
+	cd $(NATIVE_BUILD_DIR)/be ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/cg ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/orc_ict ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/orc_intel; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/wopt ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/lno ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/ipa ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/ipl ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/lw_inline ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/whirl2c ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/whirl2f ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/../libkapi; gmake clean 
+	cd $(NATIVE_BUILD_DIR)/targ_info ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/ir_tools ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR)/crayf90/sgi ; gmake clobber 
+	cd $(NATIVE_BUILD_DIR_LD) ; ./CLOBBER 
+	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
+		libiberty libunwindP ; do  \
+		make clobber -C "$(NATIVE_BUILD_DIR)/$${i}"  ; \
+	done
