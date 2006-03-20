@@ -1598,7 +1598,7 @@ add_rpath_link_option (string_list_t *args) {
 		}
 
 		add_after_string(args, p, dir);
-		add_after_string(args, p, "-rpath-link,");
+		add_after_string(args, p, "-rpath-link");
 	}
 }
 
