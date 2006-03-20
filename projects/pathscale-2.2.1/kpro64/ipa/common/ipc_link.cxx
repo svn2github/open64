@@ -64,20 +64,15 @@ ARGV *current_ld_flags;
 ARGV *comma_list;
 UINT32 comma_list_byte_count = 0;
 
-#if defined(TARG_IA64) || defined(TARG_X8664)
-
 #ifdef KEY
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_IA64) && !defined(CROSS_COMPILATION) 
   #define LINKER_NAME "gcc"
   #define LINKER_NAME_WITH_SLASH "/gcc"
-#elif defined(TARG_IA64)
+#else
   #define LINKER_NAME "ld"
   #define LINKER_NAME_WITH_SLASH "/ld"
   #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
-#else
-  #error /* unknown cross compiler target */
 #endif
-#endif /* KEY */
 
 static char* concat_names(char* a , char* b)
 {
@@ -179,7 +174,7 @@ ipa_init_link_line (int argc, char** argv)
     free(buf);
 #endif
     ld_flags_part1->push_back (get_linker_name(arg_count, arg_vector));
-#ifdef TARG_IA64
+#if defined(TARG_IA64) && defined(CROSS_COMPILATION) 
     ld_flags_part1->push_back (DYNAMIC_LINKER);
 #endif
 
