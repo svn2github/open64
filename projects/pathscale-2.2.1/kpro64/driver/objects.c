@@ -118,6 +118,11 @@ find_full_path_of_gcc_file (char* const gcc_name, char* const comp_name,
         if (full_path[0] != '/') {
                 internal_error("%s path not found", comp_name);
         }
+        /* remove the trailing '\n' and/or '\r' */
+        p = full_path + strlen(full_path) - 1;
+        while (p >= full_path && (*p == '\r' || *p == '\n')) {
+            *p = '\0';
+        }
 }
 
 /* search library_dirs for the crt file */

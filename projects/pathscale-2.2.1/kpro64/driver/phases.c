@@ -1572,6 +1572,11 @@ postprocess_ld_args (string_list_t *args)
 static void
 add_rpath_link_option (string_list_t *args) {
 
+	phases_t ld_phase = determine_ld_phase (FALSE);
+	if (ld_phase == P_ld || ld_phase == P_ldplus) {
+		return; // gcc/g++ will take care
+	}
+
 	add_string (args,"-rpath-link");
 	add_string (args,get_phase_dir(P_alt_library));
 	/*
@@ -1592,12 +1597,8 @@ add_rpath_link_option (string_list_t *args) {
 			dir = p->next->name;
 		}
 
-#if defined(TARG_IA64) && defined(CROSS_COMPILATION)
 		add_after_string(args, p, dir);
-		add_after_string(args, p, "-rpath-link");
-#else
-		add_after_string(args, p, concat_strings("-Wl,-rpath-link,", dir));
-#endif
+		add_after_string(args, p, "-rpath-link,");
 	}
 }
 
@@ -2121,7 +2122,7 @@ determine_ld_phase (boolean run_ipa) {
 #else
         else if (invoked_lang == L_CC) {
                 ldphase = P_ldplus; // let g++ let care
-        } if (invoked_lang == L_cc) {
+        } else if (invoked_lang == L_cc) {
                 ldphase = P_ld;     // let gcc let care
         } else {
                 // using ld directly so we have more control on the link-phase.
