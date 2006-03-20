@@ -1518,7 +1518,8 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	/* if ld_phase != P_collet, gcc or g++ is used for the link purpose, 
 	 * lib{stdc++,gcc,c,etc}.{so,a} are taken care by gcc/g++ itself.
 	 */
-	if (shared != DSO_SHARED && shared != RELOCATABLE && ld_phase == P_collect) {
+	if (shared != DSO_SHARED && shared != RELOCATABLE && 
+	    ld_phase != P_ld && ld_phase != P_ldplus) {
 	    	if (invoked_lang == L_CC) {
 			add_library(args, "stdc++");
 	    	}
@@ -1548,7 +1549,8 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	  }
 	}
 #if !defined(TARG_X8664)
-	if (shared != DSO_SHARED && shared != RELOCATABLE && ld_phase == P_collect) {
+	if (shared != DSO_SHARED && shared != RELOCATABLE && 
+	    ld_phase != P_ld && ld_phase != P_ldplus) {
 		add_string(args, find_crt_path("crtend.o"));
 		add_string(args, find_crt_path("crtn.o"));
 	}
@@ -2101,29 +2103,42 @@ run_dsm_prelink(void)
 }
 
 
+
+/* Choose correct linker */
+phases_t
+determine_ld_phase (boolean run_ipa) {
+        phases_t ldphase;
+        if (run_ipa) {
+                ldphase = P_ipa_link;
+        }
+#ifdef CROSS_COMPILATION
+        /* We use prebuilt ld to link objects for cross compiler,
+         * TODO: build cross toolchains, let cross gcc to take care the link.
+         */
+        else {
+                ldphase = P_collect;
+        }
+#else
+        else if (invoked_lang == L_CC) {
+                ldphase = P_ldplus; // let g++ let care
+        } if (invoked_lang == L_cc) {
+                ldphase = P_ld;     // let gcc let care
+        } else {
+                // using ld directly so we have more control on the link-phase.
+                ldphase = P_collect;
+        }
+#endif
+        return ldphase;
+}
+
 void
 run_ld (void)
 {
-	phases_t ldphase;
+	phases_t ldphase; 
 	char *ldpath;
 	string_list_t *args = init_string_list();
 
-	if (ipa == TRUE) {
-		ldphase = P_ipa_link;
-	}
-#ifdef CROSS_COMPILATION 
-	else 
-		ldphase = P_collect;
-#else
-	else if (invoked_lang == L_CC) {
-		ldphase = P_ldplus; // let g++ let care 
-	} if (invoked_lang == L_cc) {
-		ldphase = P_ld;	    // let gcc let care
-	} else {
-		// using ld directly so we have more control on the link-phase.
-		ldphase = P_collect; 
-	}
-#endif
+	ldphase = determine_ld_phase (ipa == TRUE);
 
 	if (ipa == TRUE) {
 	    ldpath = get_phase_dir (ldphase);
@@ -2180,7 +2195,7 @@ run_ld (void)
 	add_instr_archive (args);
 
 	add_final_ld_args (args,ldphase);
-	if (ldphase == P_collect) {
+	if (ldphase != P_ld && ldphase != P_ldplus) {
 		add_rpath_link_option (args);
 	}
 	postprocess_ld_args (args);

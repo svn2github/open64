@@ -51,6 +51,7 @@
 #include "get_options.h"
 #include "errors.h"
 #include "lang_defs.h"
+#include "phases.h"   /* for determine_ld_phase() */
 #include "file_names.h"
 #include "file_utils.h"
 #include "pathscale_defs.h"
@@ -74,59 +75,149 @@ init_objects (void)
 	library_dirs = init_string_list();
 }
 
-static void
-init_given_crt_path (char *crt_name, char *prog_name, char *tmp_name)
-{
-	int n = 3, i = 0;
-	FILE *path_file;
-	char path[512];
-	char *p;
-	char **argv;
-	buffer_t buf;
-	if (abi == ABI_N32) {
-	  n++;
-	}
-	argv = (char **) alloca(n*sizeof(char*));
-	argv[i++] = prog_name;
-	if (abi == ABI_N32) {
-	  argv[i++] = "-m32";
-	}
-	sprintf(buf, "-print-file-name=%s", crt_name);
-	argv[i++] = buf;
-	argv[i++] = NULL;
-	run_simple_program (argv[0], argv, tmp_name);
+/* This function figure out the full path of components <comp_name>
+ * ued by the gcc/g++ <gcc_name>. The full path will be store into
+ * <full_path> by this function, the caller should set the <full_path_len>
+ * to the capacity of of <full_path> before call this function.
+ */
+void
+find_full_path_of_gcc_file (char* const gcc_name, char* const comp_name,
+                   char* full_path, int full_path_len) {
+        int n = 3, i = 0;
+        FILE *path_file;
+        char *p;
+        char **argv;
+        buffer_t buf;
+        char* tmp_name;
 
-	/* now read the path */
-	path_file = fopen(tmp_name, "r");
-	if (path_file == NULL) {
-		internal_error("couldn't open %s tmp file", crt_name);
-		return;
-	}
-	if (fgets (path, 512, path_file) == NULL) {
-		internal_error("couldn't read %s tmp file", crt_name);
-	}
-	fclose(path_file);
-	if (path[0] != '/') {
-		internal_error("%s path not found", crt_name);
-	}
-	else {
-		/* drop file name and add path to library list */
-		p = drop_path (path);
-		*p = '\0';
-		if (debug) fprintf(stderr, "%s found in %s\n", crt_name, path);
-		add_library_dir (path);
-	}
+        if (abi == ABI_N32) {
+          n++;
+        }
+        argv = (char **) alloca(n*sizeof(char*));
+        argv[i++] = gcc_name;
+        if (abi == ABI_N32) {
+          argv[i++] = "-m32";
+        }
+        sprintf(buf, "-print-file-name=%s", comp_name);
+        argv[i++] = buf;
+        argv[i++] = NULL;
+
+        tmp_name = create_temp_file_name ("gc");
+        run_simple_program (argv[0], argv, tmp_name);
+
+        /* now read the path */
+        path_file = fopen(tmp_name, "r");
+        if (path_file == NULL) {
+                internal_error("couldn't open %s tmp file", comp_name);
+                return;
+        }
+        if (fgets (full_path, full_path_len, path_file) == NULL) {
+                internal_error("couldn't read %s tmp file", comp_name);
+        }
+        fclose(path_file);
+        if (full_path[0] != '/') {
+                internal_error("%s path not found", comp_name);
+        }
 }
 
+/* search library_dirs for the crt file */
+char*
+find_crt_path (char *crtname)
+{
+        string_item_t *p;
+        buffer_t buf;
+        phases_t ld_phase;
+ 
+        /* See which phase is used to link the "TRUE" objects (i.e, 
+         * not the fake objects built by ipl.  
+         */
+        ld_phase = determine_ld_phase (FALSE);
+        if (ld_phase == P_ldplus || ld_phase == P_ld) {
+                /* it is up to gcc or g++ to link objects, let gcc/g++ to 
+                 * determine the path of crt 
+                 */
+                find_full_path_of_gcc_file (get_full_phase_name(ld_phase),
+                                         crtname, buf, sizeof(buf)); 
+                return string_copy (buf);
+        }
+
+        for (p = library_dirs->head; p != NULL; p = p->next) {
+		sprintf(buf, "%s/%s", p->name, crtname);
+		if (file_exists(buf)) {
+			return string_copy(buf);
+		}
+        }
+	/* not found */
+	if (option_was_seen(O_nostdlib)) {
+		error("crt files not found in any -L directories:");
+        	for (p = library_dirs->head; p != NULL; p = p->next) {
+			fprintf(stderr, "\t%s/%s\n", p->name, crtname);
+		}
+		return crtname;
+ 	}
+
+        sprintf (buf, "%s/%s", get_phase_dir(P_be), crtname);
+        if (file_exists(buf)) { return string_copy(buf); }
+
+        sprintf (buf, "%s/%s", get_phase_dir(P_library), crtname);
+        if (file_exists(buf)) { return string_copy(buf); }
+
+        sprintf (buf, "%s/%s", get_phase_dir(P_alt_library), crtname);
+        if (file_exists(buf)) { return string_copy(buf); }
+
+        if (option_was_seen(O_L)) {
+		error("crt files not found in any -L directories:");
+        	for (p = library_dirs->head; p != NULL; p = p->next) {
+			fprintf(stderr, "\t%s/%s\n", p->name, crtname);
+		}
+		
+		return crtname;
+ 	}
+
+	/* use default */
+	sprintf(buf, "%s/%s", get_phase_dir(P_startup), crtname);
+	return string_copy(buf);
+}
+
+static void
+init_given_crt_path (char *crtname, char *prog_name, char *tmp_name)
+{
+        char* p;
+        char buf[1024];
+        
+        p = find_crt_path (crtname);
+        strncpy (buf, p, sizeof(buf)-1);
+        buf[sizeof(buf)-1] = '\0';
+        
+        /* drop file name and add path to library list */
+        p = drop_path (&buf[0]);
+        *p = '\0';
+        if (debug) fprintf(stderr, "%s found in %s\n", crtname, &buf[0]);
+        add_library_dir (&buf[0]);
+}
 
 /* Find out where libstdc++.so file is stored.
    Invoke gcc -print-file-name=libstdc++.so to find the path.
 */
-void init_stdc_plus_plus_path( void )
+void init_stdc_plus_plus_path (void)
 {
-  char *tmp_name = create_temp_file_name( "gc" );
-  char *gcc_name = get_full_phase_name( P_ld );
-  init_given_crt_path( "libstdc++.so", gcc_name, tmp_name );
+
+        phases_t ld_phase = determine_ld_phase (FALSE);
+        if (ld_phase != P_ldplus || ld_phase != P_ld) {
+                /* use prebuilt libstdc++.so which reside at the same directory
+                 * as other phases.e.g BE, since the /path/to/be has already 
+                 * in the lib-path, we need not duplicate at this place. 
+                 */
+        } else {
+                char buf[1024];
+                char* p;
+                find_full_path_of_gcc_file (get_full_phase_name (ld_phase), 
+                                "libstdc++.so",  &buf[0], sizeof(buf));
+                p = drop_path (&buf[0]);
+                *p = '\0';
+                if (debug) fprintf(stderr, "libstdc++.so found in %s\n", &buf[0]);
+                add_library_dir (&buf[0]);
+        }
 }
 
 
@@ -222,6 +313,8 @@ void add_library(string_list_t *list, const char *lib)
 void
 add_object (int flag, char *arg)
 {
+	phases_t ld_phase = determine_ld_phase (ipa == TRUE);
+
     /* cxx_prelinker_object_list contains real objects, -objectlist flags. */
 	switch (flag) {
 	case O_l:
@@ -279,12 +372,27 @@ add_object (int flag, char *arg)
 	       break;
 	case O_WlC:
 	       add_string(objects, concat_strings("-Wl,", arg));
+	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	         add_string(objects, concat_strings("-Wl,", arg));
+	       } else {
+	         add_string(objects, arg);
+	       }
 	       break;
 	case O__whole_archive:
 	       add_string(objects, "-Wl,-whole-archive");
+	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	         add_string(objects, "-Wl,-whole-archive");
+	       } else {
+	         add_string(objects, "-whole-archive");
+	       }
 	       break;
 	case O__no_whole_archive:
 	       add_string(objects, "-Wl,-no-whole-archive");
+	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
+	         add_string(objects, "-Wl,-no-whole-archive");
+	       } else {
+	         add_string(objects, "-no-whole-archive");
+	       }
 	       break;
 	default:
 		internal_error("add_object called with not-an-object");
@@ -404,49 +512,6 @@ add_library_options (void)
 	}
 }
 
-/* search library_dirs for the crt file */
-char *
-find_crt_path (char *crtname)
-{
-        string_item_t *p;
-	buffer_t buf;
-        for (p = library_dirs->head; p != NULL; p = p->next) {
-		sprintf(buf, "%s/%s", p->name, crtname);
-		if (file_exists(buf)) {
-			return string_copy(buf);
-		}
-        }
-	/* not found */
-	if (option_was_seen(O_nostdlib)) {
-		error("crt files not found in any -L directories:");
-        	for (p = library_dirs->head; p != NULL; p = p->next) {
-			fprintf(stderr, "\t%s/%s\n", p->name, crtname);
-		}
-		return crtname;
- 	}
-
-        sprintf (buf, "%s/%s", get_phase_dir(P_be), crtname);
-        if (file_exists(buf)) { return string_copy(buf); }
-
-        sprintf (buf, "%s/%s", get_phase_dir(P_library), crtname);
-        if (file_exists(buf)) { return string_copy(buf); }
-
-        sprintf (buf, "%s/%s", get_phase_dir(P_alt_library), crtname);
-        if (file_exists(buf)) { return string_copy(buf); }
-
-        if (option_was_seen(O_L)) {
-		error("crt files not found in any -L directories:");
-        	for (p = library_dirs->head; p != NULL; p = p->next) {
-			fprintf(stderr, "\t%s/%s\n", p->name, crtname);
-		}
-		
-		return crtname;
- 	}
-
-	/* use default */
-	sprintf(buf, "%s/%s", get_phase_dir(P_startup), crtname);
-	return string_copy(buf);
-}
 
 // Check whether the option should be turned into a linker option when pathcc
 // is called as a linker.

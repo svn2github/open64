@@ -38,6 +38,7 @@
 
 
 #include "basic.h"
+#include "lang_defs.h"
 
 extern char *source_file;
 extern boolean multiple_source_files;
@@ -88,6 +89,7 @@ extern void init_phase_info (void);
 extern void run_dsm_prelink(void);
 
 /* run ld only */
+phases_t determine_ld_phase (boolean run_ipa);
 extern void run_ld (void);
 extern void run_ar (void);
 extern void run_pixie (void);
