@@ -99,7 +99,7 @@ ST_type (const ST* s) {
     switch (s->sym_class) {
     default:
 	Fail_FmtAssertion ("Invalid argument for ST_type ()");
-#ifdef TARG_X8664
+#ifdef KEY
     case CLASS_BLOCK: // this is for UpFormal_Arg_StkSeg used in va_start
 #endif
     case CLASS_VAR:
