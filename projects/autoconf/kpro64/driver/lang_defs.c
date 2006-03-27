@@ -143,7 +143,7 @@ static phase_info_t phase_info[] = {
 
    {'X',  0x0000000002000000LL, "ftnlx", PHASEPATH,	FALSE}, /* Lister */ 
 
-   {'i',  0x0000000010000000LL,	"inline",PHASEPATH,	TRUE},	/* inline */
+   {'i',  0x0000000010000000LL,	NAME_PREFIX "inline", LIBEXECPATH, TRUE}, /* inline */
    {'i',  0x0000000020000000LL,	"ipl",	PHASEPATH,	TRUE},	/* ipl */
    {'i',  0x00000000f0000000LL,	"",	"",		TRUE},	/* ipl, inline*/
 
