@@ -1159,7 +1159,7 @@ no_inline_pu_with_nested_pus(IPA_NODE* caller, IPA_GRAPH* cg)
 	const AUX_PU& aux_pu =
 	    Aux_Pu_Table [ST_pu (St_Table [PU_Info_proc_sym (pu)])];
 	const IPA_NODE* child = cg->Node_User (AUX_PU_node (aux_pu));
-#if defined(_LIGHTWEIGHT_INLINER))
+#if defined(_LIGHTWEIGHT_INLINER)
 	if (child && (!(child->Has_Inline_Attrib() || 
                   child->Has_Must_Inline_Attrib())))
 #else
