@@ -731,6 +731,12 @@ _bfd_elf_merge_symbol (bfd *abfd,
     case bfd_link_hash_defined:
     case bfd_link_hash_defweak:
       oldbfd = h->root.u.def.section->owner;
+      if (h->root.u.def.invalid_section_owner) {
+        oldbfd = (bfd*)(void*)h->root.u.def.section;
+        if (!ipa_is_whirl(oldbfd)) {
+	   bfd_assert (__FILE__, __LINE__);
+        }
+      }
       break;
 
     case bfd_link_hash_common:
