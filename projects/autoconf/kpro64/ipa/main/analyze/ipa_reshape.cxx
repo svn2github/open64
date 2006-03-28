@@ -78,7 +78,6 @@
 #include "ipa_summary.h"
 #include "ipa_cg.h"
 #include "ipa_reshape.h"
-#include <alloca.h>
 
 //-----------------------------------------------------------------------
 // NAME: Projected_Region_To_Memory

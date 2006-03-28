@@ -39,9 +39,18 @@
 
 /* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
+
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-#include <alloca.h>
 
 #include "assert.h"
 #include "defs.h"

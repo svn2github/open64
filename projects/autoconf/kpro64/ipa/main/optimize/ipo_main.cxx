@@ -60,6 +60,15 @@
 // just enough so that we can build and run ipa.  The else clause contains
 // the full (old symtab) version of the file.
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
+#include <stdlib.h>
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
@@ -68,7 +77,6 @@
 #include <elf.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <alloca.h>
 #include <cmplrs/rcodes.h>		// for RC_SYSTEM_ERROR
 #include <float.h>
 #include <ext/hash_set>

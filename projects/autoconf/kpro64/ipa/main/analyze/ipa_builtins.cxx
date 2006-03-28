@@ -36,7 +36,6 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-#include <alloca.h>
 #include "wn.h"	                        // WN
 #include "cxx_memory.h"		        // CXX_NEW
 #include "pu_info.h"                    // PU_Info

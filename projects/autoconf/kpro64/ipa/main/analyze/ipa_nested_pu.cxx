@@ -59,7 +59,6 @@
 #include <stdint.h>
 #include <elf.h>
 #include <sys/elf_whirl.h>
-#include <alloca.h>
 
 #include <ext/hash_map>
 
