@@ -39,10 +39,10 @@
 
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
-#include <elf.h>
-#include <sys/elf_whirl.h>
 #include <errno.h>
 #include <sys/types.h>
+#include "elf_stuff.h"
+#include <sys/elf_whirl.h>
 
 #include "defs.h"
 #include "wn.h"
