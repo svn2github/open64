@@ -106,6 +106,12 @@ typedef struct
 #define SHF_IA_64_SHORT		0x10000000
 #endif
 
+#ifndef SHN_MIPS_TEXT
+#define SHN_MIPS_TEXT		(SHN_LOPROC+1)
+#endif
+#ifndef SHN_MIPS_DATA
+#define SHN_MIPS_DATA		(SHN_LOPROC+2)
+#endif
 #ifndef SHN_MIPS_SCOMMON
 #define SHN_MIPS_SCOMMON	(SHN_LOPROC+3)
 #endif
