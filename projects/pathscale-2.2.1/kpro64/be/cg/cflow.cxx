@@ -7166,9 +7166,9 @@ CFLOW_Delete_Empty_BB(void)
              BB *prev_bb = BBLIST_item(prev_bbs) ;
 
              switch BBINFO_kind(prev_bb) {
+
              case BBKIND_GOTO :
-	     case BBKIND_CALL : 
-                 tgt_num = 0;
+                  tgt_num = 0;
                   break;
 
              case BBKIND_LOGIF: 
