@@ -1475,7 +1475,11 @@ Configure_Source ( char	*filename )
 #ifndef KEY
     Roundoff_Level = ROUNDOFF_ASSOC;
 #else
+#ifdef TARG_IA64
+    Roundoff_Level = ROUNDOFF_ASSOC;
+#else
     Roundoff_Level = ROUNDOFF_SIMPLE;
+#endif
 #endif
   }
   if ( Roundoff_Level > ROUNDOFF_NONE ) {
