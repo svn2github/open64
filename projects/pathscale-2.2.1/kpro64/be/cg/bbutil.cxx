@@ -1521,9 +1521,6 @@ INT BB_Copy_Annotations(BB *to_bb, BB *from_bb, ANNOTATION_KIND kind)
        ant = ANNOT_Next(ant, kind))
   {
     BB_Add_Annotation(to_bb, kind, ANNOT_info(ant));
-    if( kind == ANNOT_LABEL ){
-        Set_Label_BB( ANNOT_label(ant), to_bb );
-    }
     ++count;
   }
 
