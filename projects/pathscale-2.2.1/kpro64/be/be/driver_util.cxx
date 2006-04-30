@@ -201,6 +201,22 @@ Process_Command_Line (INT argc, char **argv)
 
 	    switch ( *cp++ ) {
               
+	    case 'I':       /* CG-specific */
+	                    /* -IPFEC: IPFEC related options */
+	        add_phase_args (PHASE_CG, argv[i]);
+	        break;  
+
+	    case 'C':       /* CG-specific */
+	                    /* -CYCLE: Cycle Counting related options */
+	        add_phase_args (PHASE_CG, argv[i]);
+	        Create_Cycle_Output = TRUE; 
+	        break;  
+
+	    case 'V':       /* CG-specific */
+	                    /* -VT: Visualization Tool related options */
+	        add_phase_args (PHASE_CG, argv[i]);
+	        break;          
+              
 	    case 'c':
 		if (strcmp (cp, "mds") == 0 && Run_ipl) {
 		    while (i < argc) {
