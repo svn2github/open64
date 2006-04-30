@@ -1854,7 +1854,8 @@ PARTITION_GRAPH::Find_Node_In_OP(TN_OP_PAIR* tn_op)
     OP* op = tn_op->second;
     PG_CONTAINER* node_set = (PG_CONTAINER*)OP_MAP_Get(_tn_node_map, op);
     if(!node_set){
-        DevWarn("Current OP-%s has no ptn node!", TOP_Name(OP_code(op)));
+        // There are too much this DevWarn to be nuisance
+        //DevWarn("Current OP-%s has no ptn node!", TOP_Name(OP_code(op)));
         return NULL;
     }
     //Is_True(node_set, "current OP has no ptn node");
