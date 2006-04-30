@@ -1279,22 +1279,6 @@ Scan_Complement_BB_For_Referenced_TNs( GRA_BB* gbb )
   Op_Of_Only_Def.Set_OPS_OF_ONLY_DEF(gbb);
   for (iter.Init(gbb), op_count=1; ! iter.Done(); iter.Step(), op_count++ ) {
     OP*  xop = iter.Current();
-     /*if (OP_call(xop)) {
-       for (INT k = 0; k < OP_opnds(xop);k++) {
-          TN *tn = OP_opnd(xop,k);
-          if (TN_is_symbol(tn)) {
-             ST *var = TN_var(tn);
-             if (ST_class(var) !=  CLASS_CONST) {
-                char *called_func = ST_name(var);
-                if (strcmp(called_func,Cur_PU_Name) == 0) {
-                    if (!gra_self_recursive) {
-                      gra_self_recursive = TRUE;
-                    }
-                }  
-              }
-          }
-       }  
-    }*/
     for ( i = OP_opnds(xop) - 1; i >= 0; --i ) {
       TN *op_tn = OP_opnd(xop, i);
       if (! TN_is_register(op_tn))
