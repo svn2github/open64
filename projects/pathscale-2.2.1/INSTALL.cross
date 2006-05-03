@@ -97,7 +97,7 @@ INSTALL_DATA_SUB () {
 
 
 INSTALL_DRIVER () {
-    INSTALL_EXEC_SUB ${AREA}/driver.nue/driver  ${PHASEPATH}/driver
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
 
     [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
     [ ! -e ${BIN_DIR}/opencc  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/opencc
