@@ -48,7 +48,6 @@ INCLUDE_SUBDIRS = \
 #  Next, all of the libraries are built because the tools depend on them.
 #
 LIBRARY_SUBDIRS = \
-	arith \
 	g++3-include \
 	libcif \
 	libcmplrs \
@@ -60,7 +59,6 @@ LIBRARY_SUBDIRS = \
 	libunwindP \
 	libunwind_gdb
 
-
 #
 #  Finally, the compiler tools (components) are built.
 #
@@ -69,8 +67,9 @@ LIBRARY_SUBDIRS = \
 #
 TOOL_SUBDIRS = \
 	be \
+	orc_ict \
+	orc_intel \
 	cg \
-	crayf90 \
 	driver \
 	dwarfdump \
 	elfdump \
@@ -88,8 +87,6 @@ TOOL_SUBDIRS = \
 	wopt \
 	gdb \
 	be_driver
-
-#	ld64
 
 
 SUBDIRS=$(INCLUDE_SUBDIRS) $(LIBRARY_SUBDIRS) $(TOOL_SUBDIRS)
