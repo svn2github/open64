@@ -596,9 +596,9 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	
 	if (ed->Has_frequency ()) {
 #ifdef KEY
-	    if(ed->Get_frequency ().Value() == 0.0)
+	    if(ed->Get_frequency ().Value() == 0.0f)
 #else
-	    if(ed->Get_frequency ()._value == 0.0)
+	    if(ed->Get_frequency ()._value == 0.0f)
 #endif
 	    {
 		ed->Set_reason_id(32);
@@ -619,11 +619,20 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 	    return FALSE;
 	}
 
+	if (callee_weight >= non_aggr_callee_limit && 
+	    hotness < (float)IPA_Min_Hotness &&
+	    ed->Summary_Callsite ()->Is_in_case_clause ()) {
+	    ed->Set_reason_id(34);
+	    Report_Reason (callee, caller, "Infrequent callee in switch statements", ed);
+	    return FALSE;
+	}
+
         if (callee_weight > IPA_PU_Minimum_Size) {
             if (combined_weight > IPA_PU_Limit) {
 		ed->Set_reason_id(26);
 		ed->Set_reason_data((float)combined_weight);
-		Report_Limit_Reason ( callee, caller, ed, "combined size(%f) exceeds -IPA:plimit=%f", combined_weight,IPA_PU_Limit  );
+		Report_Limit_Reason (callee, caller, ed, "combined size(%f) exceeds -IPA:plimit=%f", 
+	                             combined_weight,IPA_PU_Limit);
 		return FALSE;
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
 	    } 
@@ -679,7 +688,8 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
                     }
                 }
 
-                if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 0 && callee_weight > non_aggr_callee_limit) {
+                if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 0 && 
+                    callee_weight > non_aggr_callee_limit) {
                     /* Less aggressive inlining: don't inline unless it is
                      * either small, leaf, or called from a loop. 
                      */

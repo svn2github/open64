@@ -788,6 +788,8 @@ class SUMMARY_CALLSITE
 #ifdef KEY
 #define IPL_ICALL_SLOT	        0x20
 #endif
+
+#define IPL_IN_CASE_CLAUSE      0x40
     
 private:
 
@@ -865,6 +867,9 @@ public:
     void Set_probability (float p)	{ _probability = p; }
     float Get_probability () const	{ return _probability; }
 #endif
+
+    BOOL Is_in_case_clause (void) const	{ return (_state & IPL_IN_CASE_CLAUSE); }
+    void Set_in_case_clause (void)	{ _state |= IPL_IN_CASE_CLAUSE; }
 
     void Set_intrinsic()		{ _state |= IPL_INTRINSIC_FUNC; }
     BOOL Is_intrinsic() const		{ return _state & IPL_INTRINSIC_FUNC; };

@@ -564,6 +564,12 @@ private:
     void Process_eh_region (WN *);
 #endif
 
+    // Helper function of Process_procedure() 
+    void Identify_switch_clause_labels (WN* node, INT& default_lab_num, 
+      BS* &case_labels, MEM_POOL* mem);
+    void Collect_calls_in_switch (WN* first_stmt, INT default_lab_num, 
+      BS* case_label, BS* &calls_in_switch, MEM_POOL* mp);
+
 public:
 
     /* public access functions */
