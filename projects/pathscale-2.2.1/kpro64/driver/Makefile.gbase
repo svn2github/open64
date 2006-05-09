@@ -64,22 +64,8 @@ LCDEFS += -DPSC_BUILD_DATE='$(psc_build_date)'
 # Remove the following line to disable the PathScale subscription checking software
 LCDEFS += -DPSCSUB
 
-ifeq ($(BUILD_HOST), IA32)
- ifeq ($(BUILD_VARIANT), NUE)
- # NUE is special environment built on ia32 but looks like ia64
- LCDEFS += -DLITTLE_ENDIAN_HOST -DHOST_IA64
- else
- LCDEFS += -DLITTLE_ENDIAN_HOST -DHOST_IA32
- endif
-endif
-ifeq ($(BUILD_HOST), IA64)
-LCDEFS += -DLITTLE_ENDIAN_HOST -DHOST_IA64
-endif
-ifeq ($(BUILD_HOST), X8664)
-LCDEFS += -DLITTLE_ENDIAN_HOST -DHOST_IA32
-endif
-ifeq ($(BUILD_HOST), MIPS)
-LCDEFS += -DHOST_MIPS
+ifneq ($(BUILD_HOST), MIPS)
+CDEFS += -DLITTLE_ENDIAN_HOST
 endif
 
 RUN =
@@ -89,18 +75,8 @@ ifeq ($(BUILD_ARCH), IA64)
   endif
 endif
 
-ifeq ($(BUILD_VARIANT), NOOPT)
-# special driver for no optimization
-LCDEFS += -DNOOPT
-endif
-ifeq ($(BUILD_VARIANT), NUE)
-# special driver for NUE cross environment
-LCDEFS += -DNUE
-endif
-
 # don't want to use common/com/defs.h
 LCINCS	= -I. -I$(BUILD_BASE) -I$(BUILD_TOT)/common/com
-
 
 TARGETS	= driver
 
