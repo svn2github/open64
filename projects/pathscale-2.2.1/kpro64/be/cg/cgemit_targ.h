@@ -33,6 +33,8 @@
 */
 
 
+// Emit any necessary preamble directives to the assembly file.
+extern void CGEMIT_File_Preamble(void);
 
 // whether to use the base st for the reloc.
 extern BOOL CGEMIT_Use_Base_ST_For_Reloc (INT reloc, ST *st);

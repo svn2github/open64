@@ -70,6 +70,14 @@
 #include "glob.h"
 #include "cg.h" //To help emit assembly code
 
+
+void
+CGEMIT_File_Preamble(void)
+{
+    if (EMIT_explicit_bundles)
+      fprintf(Asm_File, "\t.explicit\n");
+}
+
 // file numbers in ST are 1 origin.
 // gas expects zero origin (as that is what dwarf2 uses).
 // There is a problem here: what if file 1 (ST numbering)
