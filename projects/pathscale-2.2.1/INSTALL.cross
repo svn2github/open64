@@ -97,7 +97,7 @@ INSTALL_DATA_SUB () {
 
 
 INSTALL_DRIVER () {
-    INSTALL_EXEC_SUB ${AREA}/driver.nue/driver  ${PHASEPATH}/driver
+    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
 
     [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
     [ ! -e ${BIN_DIR}/opencc  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/opencc
@@ -327,6 +327,7 @@ INSTALL_BE
 INSTALL_IPA 
 INSTALL_CG 
 INSTALL_WHIRL_STUFF 
+INSTALL_MISC
 
 cat << _EOF_
  ------------------------------------------------------------------------
@@ -351,8 +352,6 @@ INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP
 
 [ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_CROSS_UTIL
 INSTALL_PREBUILD_PHASE 
-
-INSTALL_MISC
 
 exit 0
 

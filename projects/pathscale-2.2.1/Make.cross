@@ -42,7 +42,7 @@ CROSS_BUILD_DIR_LD = kpro64/targcygnus_ia32_ia64
 
 # All CROSS compiler components:
 CROSS_COMPONENTS = \
-		$(CROSS_BUILD_DIR)/driver.nue/driver \
+		$(CROSS_BUILD_DIR)/driver/driver \
                 $(CROSS_BUILD_DIR)/be/be \
                 $(CROSS_BUILD_DIR)/be/be.so \
                 $(CROSS_BUILD_DIR)/cg/cg.so \
@@ -70,8 +70,8 @@ PHONY_TARGET = $(shell for i in $(CROSS_COMPONENTS); do basename "$$i" ; done)
 
 all: build
 
-$(CROSS_BUILD_DIR)/driver.nue/driver driver:
-	cd $(CROSS_BUILD_DIR)/driver.nue; gmake 
+$(CROSS_BUILD_DIR)/driver/driver driver:
+	cd $(CROSS_BUILD_DIR)/driver; gmake 
 
 $(CROSS_BUILD_DIR)/gccfe/gfec gfec:
 	cd $(CROSS_BUILD_DIR)/gccfe ; gmake 
@@ -147,7 +147,7 @@ build: ${PHONY_TARGET}
 install: ;@./INSTALL.cross
 
 clobber:
-	cd $(CROSS_BUILD_DIR)/driver.nue; gmake clobber 
+	cd $(CROSS_BUILD_DIR)/driver; gmake clobber 
 	cd $(CROSS_BUILD_DIR)/gccfe ; gmake clobber 
 	cd $(CROSS_BUILD_DIR)/g++fe ; gmake  clobber
 	cd $(CROSS_BUILD_DIR)/be ; gmake clobber 

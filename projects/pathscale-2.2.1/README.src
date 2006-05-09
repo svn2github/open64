@@ -135,7 +135,7 @@ These are links to
 /usr/lib/gcc-lib/ia64-sgi-linux/sgicc-1.0/driver
 
 To build the driver:
-% cd kpro64/targia32_ia64_nodebug/driver.nue; gmake
+% cd kpro64/targia32_ia64_nodebug/driver; gmake
 
 ==================================================
 C Front-End
