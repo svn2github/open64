@@ -64,9 +64,9 @@ LCDEFS += -DPSC_BUILD_DATE='$(psc_build_date)'
 # Remove the following line to disable the PathScale subscription checking software
 LCDEFS += -DPSCSUB
 
-ifneq ($(BUILD_HOST), MIPS)
+# ifneq ($(BUILD_HOST), MIPS)
 CDEFS += -DLITTLE_ENDIAN_HOST
-endif
+# endif
 
 RUN =
 ifeq ($(BUILD_ARCH), IA64)
