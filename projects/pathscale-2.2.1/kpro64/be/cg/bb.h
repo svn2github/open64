@@ -1157,12 +1157,12 @@ void BB_Prepend_Ops(BB *bb, OPS *ops);
 void BB_Insert_Op(BB *bb, OP *point, OP *op, BOOL before);
 void BB_Insert_Ops(BB *bb, OP *point, OPS *ops, BOOL before);
 
-void BB_Insert_Op_After(BB *bb, OP *point, OP *op)
+static void inline BB_Insert_Op_After(BB *bb, OP *point, OP *op)
 {
     BB_Insert_Op(bb, point, op, FALSE);
 }
 
-void BB_Insert_Op_Before(BB *bb, OP *point, OP *op)
+static void inline BB_Insert_Op_Before(BB *bb, OP *point, OP *op)
 {
     BB_Insert_Op(bb, point, op, TRUE);
 }
