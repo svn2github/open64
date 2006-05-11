@@ -135,6 +135,8 @@ INT MinDist::Compute(const SWP_OP_vector& v, INT start, INT stop, INT branch, IN
 	// the SWP stage control predicates
 	if (ARC_kind(arc) == CG_DEP_PREBR) 
 	  continue;
+	if (ARC_omega(arc) == 0)
+	  continue;
 	OP  *succ = ARC_succ(arc);
 	mindist[i][SWP_index(succ)] =
 	  MAX(mindist[i][SWP_index(succ)], ARC_latency(arc) - ARC_omega(arc) * ii);
