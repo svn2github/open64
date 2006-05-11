@@ -889,7 +889,7 @@ Add_UE (std::list < UNWIND_ELEM > prev_ue, PR_TYPE p, UINT when, BB *bb)
   UINT num_found = 0;
   for (prev_iter = prev_ue.begin(); prev_iter != prev_ue.end(); ++prev_iter) {
 	// look for save
-	if (prev_iter->kind == UE_SAVE_GR || prev_iter->kind == UE_SAVE_SP | prev_iter->kind == UE_SAVE_PSP) {
+	if (prev_iter->kind == UE_SAVE_GR || prev_iter->kind == UE_SAVE_SP || prev_iter->kind == UE_SAVE_PSP) {
 		ue = *prev_iter;
 		++num_found;
 	}
@@ -1040,7 +1040,8 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 	}
 	// in case have exit that follows exit,
 	// first copy previous label then do new label.
-	if (BB_prev(bb) != NULL && BB_exit(BB_prev(bb))) {
+	if ( BB_prev(bb) != NULL && BB_exit(BB_prev(bb)) &&
+             !BB_unreachable(BB_prev(bb)) ) {
 		// in bb that follows exit, so copy above label
 		Add_UE (UE_COPY, last_label, lwhen, bb);
 		current_state = entry_state[BB_id(BB_prev(bb))];

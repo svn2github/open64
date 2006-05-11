@@ -292,15 +292,20 @@ Target_ISA_Has_Prefetch()
 static inline UINT32
 Target_Proc_Run_Prefetch()
 {
+#ifndef KEY
   if (Is_Target_R10K())   return 1;
-#ifdef TARG_MIPS
-  if (Is_Target_Sb1())   return 1;
-#endif
-#ifdef TARG_IA64
   if (Is_Target_Itanium()) return 2; // more aggressive
+
+#else
+#ifdef TARG_MIPS
+  if (Is_Target_Sb1())   return SOME_PREFETCH;
 #endif
 #ifdef TARG_X8664
-  if (Is_Target_x86_64()) return CONSERVATIVE_PREFETCH; // more aggressive
+  if (Is_Target_x86_64()) return CONSERVATIVE_PREFETCH; 
+#endif
+#ifdef TARG_IA64
+  if (Is_Target_Itanium()) return AGGRESSIVE_PREFETCH; 
+#endif
 #endif
   return 0;
 }
