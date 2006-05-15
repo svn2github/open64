@@ -221,6 +221,7 @@ BE_OPT_CXX_SRCS = \
   opt_verify.cxx	\
   opt_whirlview.cxx     \
   opt_wn.cxx            \
+  opt_wovp.cxx          \
   opt_alias_analysis.cxx\
   opt_u64_lower.cxx     \
   opt_mtype_b.cxx	\

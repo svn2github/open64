@@ -292,6 +292,7 @@ INT32 WOPT_Enable_WN_Unroll = 1;	// 0: disable;
 					// 1: unroll only loop bodies with IFs
 					// 2: unroll all loop bodies
 #endif
+BOOL  WOPT_Enable_WOVP = TRUE; // For running write-once variable promotion
 
 
 /* ====================================================================
@@ -673,5 +674,7 @@ static OPTION_DESC Options_WOPT[] = {
   { OVK_INT32,	OV_VISIBLE,	TRUE, "unroll",	"unroll",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_WN_Unroll, NULL },
 #endif
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "wovp",	"wovp",
+    0, 0, 0,	&WOPT_Enable_WOVP, NULL },
   { OVK_COUNT }		/* List terminator -- must be last */
 };

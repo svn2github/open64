@@ -292,5 +292,6 @@ extern INT32 WOPT_Enable_WN_Unroll;	// 0: disable;
 					// 1: unroll only loop bodies with IFs
 					// 2: unroll all loop bodies
 #endif
+extern BOOL  WOPT_Enable_WOVP; // For running write-once variable promotion
 #endif /* config_wopt_INCLUDED */
 

@@ -267,6 +267,7 @@ class AUX_STAB_ENTRY
 {
   friend class OPT_STAB;  // allow OPT_STAB to access this fields directly.
   friend class SSU;	  // SSU needs to get at St_group
+  friend class WOVP;	  // WOVP needs to modify Aux_stab_entry
   // Alias information
 
 private:

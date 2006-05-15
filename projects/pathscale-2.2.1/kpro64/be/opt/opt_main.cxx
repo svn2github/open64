@@ -350,6 +350,7 @@
 
 #include "regex.h"                      // For regcomp and regexec
 #include "xstats.h"                     // For PU_WN_BB_Cnt
+#include "opt_wovp.h"     // for write once variable promotion
 
 
 extern "C" void
@@ -505,6 +506,7 @@ private:
   BOOL  _vsym_unique;
   BOOL  _while_loop;	/* cvt while-do to do-loop			*/
   BOOL  _wn_simp;	/* WHIRL node simplifier			*/
+  BOOL  _wovp; /* Write-once variable promotion   */
   BOOL  _zero_version;
   BOOL  _epre_before_ivr; // For running epre early
   BOOL  _lpre_before_ivr; // For running lpre early
@@ -551,6 +553,7 @@ private:
       WOPT_Enable_Store_PRE =
       WOPT_Enable_SSA_PRE =
       WOPT_Enable_Vsym_Unique =
+      WOPT_Enable_WOVP =
       Enable_WN_Simp =			// disable WHIRL simplifier
       // WOPT_Enable_Zero_Version =
       WOPT_Enable_Tail_Recur =
@@ -565,6 +568,7 @@ private:
       WOPT_Enable_Call_Zero_Version = FALSE;
       WOPT_Enable_Combine_Operations = FALSE;
       WOPT_Enable_Goto = FALSE;
+      WOPT_Enable_WOVP = FALSE;
       WOPT_Enable_Tail_Recur = FALSE;
       break;
 
@@ -705,6 +709,7 @@ private:
       WOPT_Enable_SSA_PRE        = _ssa_pre;
       WOPT_Enable_Verify         = _verify;
       WOPT_Enable_Vsym_Unique    = _vsym_unique;
+      WOPT_Enable_WOVP           = _wovp;
       WOPT_Enable_Zero_Version   = _zero_version;
       WOPT_Enable_Epre_Before_Ivr = _epre_before_ivr;
       break;
@@ -713,6 +718,7 @@ private:
       WOPT_Enable_Compare_Simp = _compare_simp;
       WOPT_Enable_IVR            = _ivr;
       WOPT_Enable_SLT            = _slt;
+      WOPT_Enable_WOVP           = _wovp;
       break;
     case MAINOPT_PHASE:
       WOPT_Enable_Compare_Simp = _compare_simp;
@@ -812,6 +818,7 @@ public:
     _verify = WOPT_Enable_Verify;	/* verify data structures */
     _while_loop = WOPT_Enable_While_Loop;/*cvt while-do to do-loop */
     _wn_simp = Enable_WN_Simp;
+    _wovp = WOPT_Enable_WOVP; /* Write-once variable promotion  */
     _zero_version = WOPT_Enable_Zero_Version;
     _vsym_unique = WOPT_Enable_Vsym_Unique;
     _dse_aggressive = WOPT_Enable_Dse_Aggressive;
@@ -1585,6 +1592,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
     comp_unit->Htable()->Verify_hashing();
   }
 #endif // Is_True_On
+
+  if(WOPT_Enable_WOVP){
+     WOVP wovp(comp_unit->Cfg(), comp_unit->Opt_stab());
+     wovp.Do_wovp();
+  }
 
   // If this is the optimizer phase, we have more work to do
   WN *opt_wn;
