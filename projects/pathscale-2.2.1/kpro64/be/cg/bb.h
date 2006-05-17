@@ -1,3 +1,4 @@
+
 /*
 
   Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
@@ -1148,6 +1149,8 @@ extern void Print_LOOPINFO( LOOPINFO *info );
 
 UINT16 BB_New_Op_Map_Idx(BB *bb);
 
+void BB_Insert_Op_Before(BB *bb, OP *point, OP *op);
+void BB_Insert_Op_After(BB *bb, OP *point, OP *op);
 void BB_Append_Op(BB *bb, OP *op);
 void BB_Prepend_Op(BB *bb, OP *op);
 void BB_Insert_Ops_Before(BB *bb, OP *point, OPS *ops);
@@ -1156,19 +1159,7 @@ void BB_Append_Ops(BB *bb, OPS *ops);
 void BB_Prepend_Ops(BB *bb, OPS *ops);
 void BB_Insert_Op(BB *bb, OP *point, OP *op, BOOL before);
 void BB_Insert_Ops(BB *bb, OP *point, OPS *ops, BOOL before);
-
-static void inline BB_Insert_Op_After(BB *bb, OP *point, OP *op)
-{
-    BB_Insert_Op(bb, point, op, FALSE);
-}
-
-static void inline BB_Insert_Op_Before(BB *bb, OP *point, OP *op)
-{
-    BB_Insert_Op(bb, point, op, TRUE);
-}
-
 void BB_Insert_Noops(OP *op, INT num, BOOL before);
-
 void BB_Move_Op(BB *to_bb, OP *point, BB *from_bb, OP *op, BOOL before);
 void BB_Move_Op_Before(BB *to_bb, OP *point, BB *from_bb, OP *op);
 void BB_Move_Op_After(BB *to_bb, OP *point, BB *from_bb, OP *op);

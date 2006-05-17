@@ -580,6 +580,24 @@ void BB_Insert_Op(BB *bb, OP *point, OP *op, BOOL before)
   setup_ops(bb, op, op, 1);
 }
 
+ 
+void BB_Insert_Op_Before(BB *bb, OP *point, OP *op)
+{
+  Is_True(bb, ("can't insert in NULL BB"));
+  insert_ops_before(&bb->ops, point, op, op);
+  bb->ops.length++;
+  setup_ops(bb, op, op, 1);
+}
+
+
+void BB_Insert_Op_After(BB *bb, OP *point, OP *op)
+{
+  Is_True(bb, ("can't insert in NULL BB"));
+  insert_ops_after(&bb->ops, point, op, op);
+  bb->ops.length++;
+  setup_ops(bb, op, op, 1);
+}
+
 
 void BB_Prepend_Op(BB *bb, OP *op)
 {

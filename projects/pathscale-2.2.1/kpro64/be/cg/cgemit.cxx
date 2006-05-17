@@ -4635,9 +4635,6 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
    */
   STACK_FP_Fixup_PU();
 
-  if (Assembly)
-    CGEMIT_File_Preamble();
-
   if ( Run_prompf ) {
     const char *path = Anl_File_Path();
     anl_file = fopen(path, "a");

@@ -741,13 +741,11 @@ Maximize_Min_II(
     INT latency1 = COST_latency(cp1 + i);
 
     for ( j = 0; j < len2; ++j) {
-      INT omega2   = COST_omega(cp2 + j) + omega1;
-      INT latency2 = COST_latency(cp2 + j) + latency1;
-      if (omega2 > 0) {
-	INT path_mii = Ceiling_Divide(latency2, omega2);
-	scc_mii = Max(scc_mii, path_mii);
-	mii = Max(mii, path_mii);
-      }
+      INT omega2   = COST_omega(cp2 + j);
+      INT latency2 = COST_latency(cp2 + j);
+      INT path_mii = Ceiling_Divide(latency1+latency2, omega1+omega2);
+      scc_mii = Max(scc_mii, path_mii);
+      mii = Max(mii, path_mii);
     }
   }
 
