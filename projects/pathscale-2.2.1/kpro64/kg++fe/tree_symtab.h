@@ -131,6 +131,19 @@ INT32& WEAK_WORKAROUND(ST*);
 inline TY_IDX
 Get_TY (tree type_tree)
 {
+#ifdef KEY
+// If the type is a nested record and we are generating DSTs, then
+// create the type for the enclosing record first, so that the current
+// record can be specified as a child of the parent in the DST.
+  	if (TYPE_CONTEXT(type_tree) &&
+	   (TREE_CODE(type_tree) == RECORD_TYPE ||
+	    TREE_CODE(type_tree) == UNION_TYPE) &&
+	   (TREE_CODE(TYPE_CONTEXT(type_tree)) == RECORD_TYPE ||
+	    TREE_CODE(TYPE_CONTEXT(type_tree)) == UNION_TYPE) &&
+	    !TYPE_TY_IDX(TYPE_CONTEXT(type_tree))) {
+	  	Get_TY(TYPE_CONTEXT(type_tree));      // get type for parent record
+  }
+#endif
 	TY_IDX idx = TYPE_TY_IDX(type_tree);
         if (idx > 1) {
 	    if (TREE_CODE(type_tree) == RECORD_TYPE ||

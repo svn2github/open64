@@ -937,7 +937,11 @@ DST_enter_struct_union_members(tree parent_tree,
     // Bug 3533 - Expand all member functions of classes inside ::std namespace
     // here (I don't know how to get the member functions of the classes
     // contained in ::std namespace from gxx_emitted_decl in wfe_decl.cxx).
-    tree context = DECL_CONTEXT(parent_tree);
+    // the CODE of parent_tree is RECORD_TYPE or UNION_TYPE, so we should get the type 
+    // name of it as the context, but not get the decl context(bug also in pathescale2.3)
+    FmtAssert (TREE_CODE(parent_tree) == RECORD_TYPE || TREE_CODE(parent_tree) == UNION_TYPE,
+	      ("Unexpected code for parent_tree %x\n.", TREE_CODE(parent_tree)));
+    tree context = TYPE_NAME(parent_tree);
     if (TREE_CODE(context) != TYPE_DECL ||
 	!DECL_CONTEXT(context) ||
 	TREE_CODE(DECL_CONTEXT(context)) != NAMESPACE_DECL ||

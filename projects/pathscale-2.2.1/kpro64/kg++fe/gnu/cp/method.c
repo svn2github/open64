@@ -417,6 +417,14 @@ use_thunk (thunk_fndecl, emit_p)
 
   push_to_top_level ();
 
+  /*
+   * Bookkeeping DECL_INITIAL in INITIAL_2 and emits this decl
+   * so that it will be expanded later.
+   */
+  extern void gxx_emits_decl (tree);
+  DECL_INITIAL_2 (thunk_fndecl) = DECL_INITIAL (thunk_fndecl);
+  gxx_emits_decl (thunk_fndecl);
+
   /* The back-end expects DECL_INITIAL to contain a BLOCK, so we
      create one.  */
   DECL_INITIAL (thunk_fndecl) = make_node (BLOCK);

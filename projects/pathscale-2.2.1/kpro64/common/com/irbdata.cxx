@@ -557,6 +557,7 @@ extern void dump_INITV_idx(INITV_IDX idx)
 static UINT
 Get_INITV_Size (INITV_IDX inv)
 {
+	INITV_IDX temp_inv = inv;
 	UINT size;
 	switch (INITV_kind(inv)) {
 	case INITVKIND_SYMOFF:
@@ -590,7 +591,7 @@ Get_INITV_Size (INITV_IDX inv)
 		size = 0;
 		break;
 	}
-	return size * INITV_repeat(inv);
+	return size * INITV_repeat(temp_inv);
 }
 
 /* add up size of all the initv under the inito */

@@ -2417,6 +2417,19 @@ Setup_EH_Region (bool for_unwinding)
       WN_CreateBlock(), WN_CreateBlock(), New_Region_Id(), ereg_supp), Get_Srcpos());
     Set_PU_has_region (Get_Current_PU());
     Set_PU_has_exc_scopes (Get_Current_PU());
+    
+    // The following code creat a new TY for the ST that is created 
+    // above. Because in CG, we will get the size of the ST from its
+    // TY, we should get its right size from the INITO attached with 
+    // it, and write it into a new TY
+    TY_IDX tyi;            
+    TY& zty = New_TY (tyi);
+    UINT inito_size = Get_INITO_Size(ereg_supp);
+    TY_Init (zty, inito_size, KIND_STRUCT, MTYPE_M,ereg->u1.name_idx);
+    Set_TY_align (tyi, 4);
+    ST_Init (ereg, TY_name_idx (zty),
+	     CLASS_VAR, SCLASS_EH_REGION_SUPP, EXPORT_LOCAL, tyi);
+    Set_ST_is_initialized (ereg);
 }
 #endif // KEY
 
@@ -2456,7 +2469,22 @@ WFE_Expand_Expr (tree exp,
     case ADDR_EXPR:
       wn = WFE_Address_Of(TREE_OPERAND(exp, 0));
       break;
-
+      
+    /*FDESC_EXPR:
+     *Operand0 is a function constant; result is part N of a function 
+     *descriptor of type ptr_mode. 
+     *So we should get function constant and exprand it.
+     */
+    case FDESC_EXPR:
+      {
+	tree exp_operand = TREE_OPERAND(exp, 0);
+	FmtAssert(TREE_CODE(exp_operand) == FUNCTION_DECL,("Unexpected Tree Code!!"));
+	st = Get_ST (exp_operand);
+	ty_idx = ST_type (st);
+	wn = WN_Lda (Pointer_Mtype, ST_ofst(st), st);
+      }
+      break;
+      
     case FUNCTION_DECL:
       {
 	 st = Get_ST (exp);
@@ -3307,10 +3335,24 @@ WFE_Expand_Expr (tree exp,
 
     case FIX_TRUNC_EXPR:
       {
-        wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
-	ty_idx = Get_TY (TREE_TYPE(exp));
-	TYPE_ID mtyp = Widen_Mtype(TY_mtype(ty_idx));
-	wn = WN_Trunc(WN_rtype(wn0), mtyp, wn0);
+	wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
+         ty_idx = Get_TY (TREE_TYPE(exp));
+         TYPE_ID mtype = Widen_Mtype(TY_mtype(ty_idx));
+         if(WN_operator(wn0) == OPR_CVT &&
+	    MTYPE_is_integral(WN_desc(wn0)) &&
+	    MTYPE_is_float(WN_rtype(wn0))){
+           wn1 = WN_kid0(wn0);
+           TYPE_ID kid_type = WN_rtype(wn1);
+           if(mtype == kid_type){
+             wn = wn1;
+           }
+           else{
+             wn = WN_Cvt(WN_rtype(wn1), mtype, wn1);
+           }
+         }
+         else
+           wn = WN_Trunc(WN_rtype(wn0), mtype, wn0);
+
       }
       break;
 
@@ -4294,15 +4336,25 @@ WFE_Expand_Expr (tree exp,
                 break;
 
 #ifdef KEY
-	    case BUILT_IN_FLOOR:
-	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
-	      whirl_generated = TRUE;
+	    case BUILT_IN_FLOOR:  
+              arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+              if (MTYPE_is_integral(ret_mtype))
+                wn0 = WN_CreateExp1 (OPR_FLOOR, ret_mtype , MTYPE_F8, arg_wn);
+              else{
+                wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F8, arg_wn);
+                wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+              }
+              whirl_generated = TRUE;
 	      break;
 
-	    case BUILT_IN_FLOORF:
-	      arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
+	    case BUILT_IN_FLOORF: 
+              arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
+              if (MTYPE_is_integral(ret_mtype))
+                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F4, arg_wn);
+              else{
+                wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8  , MTYPE_F4, arg_wn);
+                wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+              }
 	      whirl_generated = TRUE;
 	      break;
 

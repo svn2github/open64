@@ -3647,7 +3647,12 @@ static void Handle_Entry (WN *entry)
         PU&    pu = New_PU (pu_idx);
         PU_Init (pu, ty, CURRENT_SYMTAB);
         entry_st = New_ST (GLOBAL_SYMTAB);
-        ST_Init (entry_st, Save_Str2i ("Handler", ".", Get_WN_Label(entry)),
+	
+	// handlers from different PU might have the same name
+	// if we don't identify which PU this handler belongs to.
+	char buf[20];
+	sprintf (buf, "Handler.%d", Current_PU_Count());
+        ST_Init (entry_st, Save_Str2i (buf, ".", Get_WN_Label(entry)),
                  CLASS_FUNC, SCLASS_TEXT, EXPORT_LOCAL, (TY_IDX) pu_idx);
 	Allocate_Object(entry_st);
   }

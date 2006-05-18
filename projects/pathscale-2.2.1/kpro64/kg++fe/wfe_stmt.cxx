@@ -3243,6 +3243,20 @@ WFE_Expand_Try (tree stmt)
     	region_pragmas, WN_CreateBlock(), New_Region_Id(), ereg_supp), 
 	Get_Srcpos());
     Set_PU_has_region (Get_Current_PU());
+    
+    //The following code creat a new TY for the ST that is created
+    //above. Because in CG, we will get the size of the ST from its
+    //TY, we should get its right size from the INITO attach with 
+    //it, and write it into a new TY
+    UINT inito_size;
+    TY_IDX tyi;     
+    TY& zty = New_TY(tyi);
+    inito_size = Get_INITO_Size (ereg_supp);
+    TY_Init (zty, inito_size, KIND_STRUCT, MTYPE_M,
+	     ereg -> u1.name_idx);
+    Set_TY_align (tyi, 4);
+    ST_Init (ereg, TY_name_idx(zty),CLASS_VAR, SCLASS_EH_REGION_SUPP, EXPORT_LOCAL, tyi);
+    Set_ST_is_initialized (ereg);
   }
   vector<tree> *cleanups = new vector<tree>();
   LABEL_IDX cmp_idxs[2];

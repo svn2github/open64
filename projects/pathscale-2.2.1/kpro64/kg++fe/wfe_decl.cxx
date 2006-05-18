@@ -3323,6 +3323,19 @@ decl_is_needed_vtable (tree decl)
   return needed;
 }
 
+// Return TRUE if DECL is a needed VTT (virtual table table).
+bool
+decl_is_needed_vtt (tree decl)
+{
+  bool needed = false;
+// Assume all VTTs are needed.
+  if (DECL_NAME(decl) &&
+      IDENTIFIER_POINTER(DECL_NAME(decl)) &&
+      !strncmp("_ZTT", IDENTIFIER_POINTER(DECL_NAME(decl)), 4)) {
+	  needed = true;
+  }
+  return needed;
+}
 void
 WFE_Process_Var_Decl (tree decl)
 {
@@ -3332,7 +3345,8 @@ WFE_Process_Var_Decl (tree decl)
 //    !DECL_WEAK(decl)     &&
       !DECL_EXTERNAL(decl) &&
       !DECL_ST(decl)) {
-    if (!DECL_WEAK(decl) || decl_is_needed_vtable (decl)) {
+    if (!DECL_WEAK(decl) || decl_is_needed_vtable (decl)
+	|| decl_is_needed_vtt(decl)) {	//if decl is a needed VTT, also expand 
 #ifdef KEY
       WFE_Expand_Decl(decl);
 #else

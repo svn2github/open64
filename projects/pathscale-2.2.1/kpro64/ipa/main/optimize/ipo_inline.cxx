@@ -1896,6 +1896,19 @@ IPO_INLINE::Process_OPR_REGION(WN* wn, IPA_NODE* caller_node)
 	    }
 #endif
 	}
+	//The following code creat a new TY for the ST that is updated
+	//above.In the code above, it changes the INITO which is 
+	//attached a ST,but it don't update the size of the TY.
+	//Because in CG, we will get the size of the ST from its TY,
+	//we should get its right size from the INITO attach with it,
+	//and write it into a new TY
+	UINT inito_size = Get_INITO_Size(init_idx);
+	ST* temp_st = INITO_st (init_idx);
+	TY_IDX tyi;
+	TY& zty = New_TY (tyi);
+	TY_Init (zty, inito_size, KIND_STRUCT, MTYPE_M,temp_st->u1.name_idx);
+        Set_TY_align (tyi, 4);          
+        temp_st->u2.type = tyi;
     }
 
     Set_PU_has_region(caller_pu);
