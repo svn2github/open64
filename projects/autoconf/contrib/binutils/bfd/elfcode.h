@@ -1,6 +1,6 @@
 /* ELF executable support for BFD.
    Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-   2001, 2002, 2003 Free Software Foundation, Inc.
+   2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
 
    Written by Fred Fish @ Cygnus Support, from information published
    in "UNIX System V Release 4, Programmers Guide: ANSI C and
@@ -105,6 +105,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #define elf_canonicalize_symtab		NAME(bfd_elf,canonicalize_symtab)
 #define elf_canonicalize_dynamic_symtab \
   NAME(bfd_elf,canonicalize_dynamic_symtab)
+#define elf_get_synthetic_symtab \
+  NAME(bfd_elf,get_synthetic_symtab)
 #define elf_make_empty_symbol		NAME(bfd_elf,make_empty_symbol)
 #define elf_get_symbol_info		NAME(bfd_elf,get_symbol_info)
 #define elf_get_lineno			NAME(bfd_elf,get_lineno)
@@ -473,7 +475,6 @@ elf_object_p (bfd *abfd)
   Elf_Internal_Shdr i_shdr;
   Elf_Internal_Shdr *i_shdrp;	/* Section header table, internal form */
   unsigned int shindex;
-  char *shstrtab;		/* Internal copy of section header stringtab */
   const struct elf_backend_data *ebd;
   struct bfd_preserve preserve;
   asection *s;
@@ -678,16 +679,10 @@ elf_object_p (bfd *abfd)
 	      && (i_shdrp[shindex].sh_flags & SHF_ALLOC) != 0
 	      && i_shdrp[shindex].sh_type != SHT_NOBITS
 	      && (((i_shdrp[shindex].sh_addr - i_shdrp[shindex].sh_offset)
-		   % ebd->maxpagesize)
+		   % ebd->minpagesize)
 		  != 0))
 	    abfd->flags &= ~D_PAGED;
 	}
-    }
-
-  if (i_ehdrp->e_shstrndx && i_ehdrp->e_shoff)
-    {
-      if (! bfd_section_from_shdr (abfd, i_ehdrp->e_shstrndx))
-	goto got_no_match;
     }
 
   /* Read in the program headers.  */
@@ -715,19 +710,9 @@ elf_object_p (bfd *abfd)
 	}
     }
 
-  /* Read in the string table containing the names of the sections.  We
-     will need the base pointer to this table later.  */
-  /* We read this inline now, so that we don't have to go through
-     bfd_section_from_shdr with it (since this particular strtab is
-     used to find all of the ELF section names.) */
-
-  if (i_ehdrp->e_shstrndx != 0 && i_ehdrp->e_shoff)
+  if (i_ehdrp->e_shstrndx != 0 && i_ehdrp->e_shoff != 0)
     {
       unsigned int num_sec;
-
-      shstrtab = bfd_elf_get_str_section (abfd, i_ehdrp->e_shstrndx);
-      if (!shstrtab)
-	goto got_no_match;
 
       /* Once all of the section headers have been read and converted, we
 	 can start processing them.  Note that the first section header is
@@ -740,6 +725,10 @@ elf_object_p (bfd *abfd)
 	  if (shindex == SHN_LORESERVE - 1)
 	    shindex += SHN_HIRESERVE + 1 - SHN_LORESERVE;
 	}
+
+      /* Set up group pointers.  */
+      if (! _bfd_elf_setup_group_pointers (abfd))
+	goto got_wrong_format_error;
     }
 
   /* Let the backend double check the format and override global
@@ -1020,7 +1009,7 @@ elf_slurp_symbol_table (bfd *abfd, asymbol **symptrs, bfd_boolean dynamic)
 	  || (elf_tdata (abfd)->dynverref_section != 0
 	      && elf_tdata (abfd)->verref == NULL))
 	{
-	  if (! _bfd_elf_slurp_version_tables (abfd))
+	  if (!_bfd_elf_slurp_version_tables (abfd, FALSE))
 	    return -1;
 	}
     }
@@ -1080,9 +1069,7 @@ elf_slurp_symbol_table (bfd *abfd, asymbol **symptrs, bfd_boolean dynamic)
 	  memcpy (&sym->internal_elf_sym, isym, sizeof (Elf_Internal_Sym));
 	  sym->symbol.the_bfd = abfd;
 
-	  sym->symbol.name = bfd_elf_string_from_elf_section (abfd,
-							      hdr->sh_link,
-							      isym->st_name);
+	  sym->symbol.name = bfd_elf_sym_name (abfd, hdr, isym);
 
 	  sym->symbol.value = isym->st_value;
 
@@ -1152,6 +1139,9 @@ elf_slurp_symbol_table (bfd *abfd, asymbol **symptrs, bfd_boolean dynamic)
 	    case STT_OBJECT:
 	      sym->symbol.flags |= BSF_OBJECT;
 	      break;
+	    case STT_TLS:
+	      sym->symbol.flags |= BSF_THREAD_LOCAL;
+	      break;
 	    }
 
 	  if (dynamic)
@@ -1208,7 +1198,7 @@ error_return:
   return -1;
 }
 
-/* Read  relocations for ASECT from REL_HDR.  There are RELOC_COUNT of
+/* Read relocations for ASECT from REL_HDR.  There are RELOC_COUNT of
    them.  */
 
 static bfd_boolean
@@ -1284,11 +1274,7 @@ elf_slurp_reloc_table_from_section (bfd *abfd,
 	  ps = symbols + ELF_R_SYM (rela.r_info) - 1;
 	  s = *ps;
 
-	  /* Canonicalize ELF section symbols.  FIXME: Why?  */
-	  if ((s->flags & BSF_SECTION_SYM) == 0)
-	    relent->sym_ptr_ptr = ps;
-	  else
-	    relent->sym_ptr_ptr = s->section->symbol_ptr_ptr;
+	  relent->sym_ptr_ptr = ps;
 	}
 
       relent->addend = rela.r_addend;
@@ -1353,7 +1339,7 @@ elf_slurp_reloc_table (bfd *abfd,
 	 case because relocations against this section may use the
 	 dynamic symbol table, and in that case bfd_section_from_shdr
 	 in elf.c does not update the RELOC_COUNT.  */
-      if (asect->_raw_size == 0)
+      if (asect->size == 0)
 	return TRUE;
 
       rel_hdr = &d->this_hdr;
@@ -1513,7 +1499,7 @@ NAME(_bfd_elf,bfd_from_remote_memory)
   (bfd *templ,
    bfd_vma ehdr_vma,
    bfd_vma *loadbasep,
-   int (*target_read_memory) (bfd_vma, char *, int))
+   int (*target_read_memory) (bfd_vma, bfd_byte *, int))
 {
   Elf_External_Ehdr x_ehdr;	/* Elf file header, external form */
   Elf_Internal_Ehdr i_ehdr;	/* Elf file header, internal form */
@@ -1522,13 +1508,13 @@ NAME(_bfd_elf,bfd_from_remote_memory)
   bfd *nbfd;
   struct bfd_in_memory *bim;
   int contents_size;
-  char *contents;
+  bfd_byte *contents;
   int err;
   unsigned int i;
   bfd_vma loadbase;
 
   /* Read in the ELF header in external format.  */
-  err = target_read_memory (ehdr_vma, (char *) &x_ehdr, sizeof x_ehdr);
+  err = target_read_memory (ehdr_vma, (bfd_byte *) &x_ehdr, sizeof x_ehdr);
   if (err)
     {
       bfd_set_error (bfd_error_system_call);
@@ -1588,7 +1574,7 @@ NAME(_bfd_elf,bfd_from_remote_memory)
       bfd_set_error (bfd_error_no_memory);
       return NULL;
     }
-  err = target_read_memory (ehdr_vma + i_ehdr.e_phoff, (char *) x_phdrs,
+  err = target_read_memory (ehdr_vma + i_ehdr.e_phoff, (bfd_byte *) x_phdrs,
 			    i_ehdr.e_phnum * sizeof x_phdrs[0]);
   if (err)
     {
