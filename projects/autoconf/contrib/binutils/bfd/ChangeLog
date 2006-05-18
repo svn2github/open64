@@ -1,6 +1,135 @@
 2005-05-02  Daniel Jacobowitz  <dan@codesourcery.com>
 
 	* Makefile.am: Set RELEASE.
+	* configure.in: Bump version to 2.16.1.
+	* Makefile.in, configure: Regenerated.
+
+2005-06-06  Alan Modra  <amodra@bigpond.net.au>
+
+	* elf64-pcc.c (ppc64_elf_gc_mark_hook): For the local sym in .opd
+	case, include addend when indexing .opd section map.
+	(ppc64_elf_edit_opd): Add no_opd_opt param.  Do nothing besides
+	clear opd_adjust array if no_opd_opt set.  Tidy code.
+	Ignore zero size .opd.  Check bfd_alloc return value.
+	(ppc_stub_name): Return immediately on bfd_malloc fail.
+	* elf64-ppc.h (ppc64_elf_edit_opd): Update prototype.
+
+2005-06-03  Alan Modra  <amodra@bigpond.net.au>
+
+	PR 568
+	* elf32-i386.c (elf_i386_relocate_section): Handle zero symndx
+	for all reloc types.
+
+	Apply from mainline:
+	2005-05-12  H.J. Lu  <hongjiu.lu@intel.com>
+	* elf32-i386.c (elf_i386_relocate_section): Allow R_386_GOTOFF
+	against protected function when building executable.
+
+2005-06-03  Alan Modra  <amodra@bigpond.net.au>
+
+	* elf64-ppc.c (add_symbol_adjust): Set sym visibility to most
+	restrictive of func code and func descr for undefined syms as well
+	as defined.
+
+2005-05-29  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	Backport from mainline:
+	2005-05-29  Jakub Jelinek  <jakub@redhat.com>
+	* elfcode.h (elf_object_p): Fail if e_shoff != 0, e_shnum == 0 and
+	first shdr has sh_size == 0.  Fail if e_shnum is large to cause
+	arithmetic overflow when allocating the i_shdr array.
+	Sanity check sh_link and sh_info fields.  Fix e_shstrndx sanity check.
+
+	2005-05-18  H.J. Lu  <hongjiu.lu@intel.com>
+	* elf.c (group_signature): Undo the last change. Check if the
+	symbol table section is correct.
+
+	2005-05-17  Nick Clifton  <nickc@redhat.com>
+	* elf.c (group_signature): Check for a group section which is
+	actually a (corrupt) symbol table section in disguise and prevent
+	an infinite loop from occurring.
+
+	2005-05-17  Tavis Ormandy <taviso@gentoo.org>
+	* elf.c (bfd_section_from_shdr): Add sanity check when parsing
+	dynamic sections.
+
+	2005-05-09  Alan Modra  <amodra@bigpond.net.au>
+	* elfcode.h (elf_object_p): Add more sanity checks on elf header.
+
+2005-05-28  David Daney  <ddaney@avtrex.com>
+
+	* elfxx-mips.c (_bfd_mips_elf_finish_dynamic_sections):  Move
+	calculation of DT_RELSZ to occur after all dynamic relocations
+	are created.
+
+2005-05-26  Mark Kettenis  <kettenis@gnu.org>
+            Maciej W. Rozycki  <macro@linux-mips.org>
+
+	* elfxx-mips.c (_bfd_mips_elf_section_processing): Warn and
+	stop processing of options if one of invalid size is
+	encountered.
+	(_bfd_mips_elf_section_from_shdr): Likewise.
+	(_bfd_mips_elf_fake_sections): Reset the type of empty special
+	sections.
+
+2005-05-22  Richard Henderson  <rth@redhat.com>
+
+	* elf64-alpha.c (elf64_alpha_relax_section): Ignore non-allocated
+	sections.
+	(elf64_alpha_check_relocs): Likewise.
+	(elf64_alpha_relocate_section): Don't emit dynamic relocations to
+	non-allocated sections.
+
+2005-05-22  Richard Henderson  <rth@redhat.com>
+
+        * elf64-alpha.c (elf64_alpha_relax_with_lituse): Relax jsr to
+        undefweak to use zero register.  Call elf64_alpha_relax_got_load
+        if not all uses removed.
+        (elf64_alpha_relax_got_load): Relax undefweak to lda zero.
+        (elf64_alpha_relax_section): Handle undefweak symbols.
+        (elf64_alpha_calc_dynrel_sizes): Don't add relocs for undefweak.
+        (elf64_alpha_size_rela_got_1): Likewise.
+        (elf64_alpha_relocate_section): Likewise.
+
+2005-05-22  Richard Henderson  <rth@redhat.com>
+
+        * elf64-alpha.c (elf64_alpha_relax_section): Only operate
+        on SEC_CODE sections.
+
+2005-05-13  Bob Wilson  <bob.wilson@acm.org>
+
+	* elf32-xtensa.c (xtensa_get_property_section_name): Add missing
+	periods in linkonce_kind values.
+
+2005-05-10  Alan Modra  <amodra@bigpond.net.au>
+
+	Apply from mainline.
+	2005-05-09  Alan Modra  <amodra@bigpond.net.au>
+	* elf64-ppc.c (struct ppc64_elf_obj_tdata): Add has_dotsym.
+	(ppc64_elf_add_symbol_hook): Set has_dotsym.
+	(ppc64_elf_check_directives): Only process syms when has_dotsym.
+	(func_desc_adjust): Hide fake function descriptors when function
+	code entry is defined.
+	(adjust_opd_syms): Adjust for deleted_section becoming union field.
+
+	2005-04-05  Alan Modra  <amodra@bigpond.net.au>
+	* elf64-ppc.c (dec_dynrel_count): New function split out from
+	ppc64_elf_edit_toc, with additional code from ppc64_elf_edit_opd.
+	(ppc64_elf_edit_toc, ppc64_elf_edit_opd): Use it.
+	(ppc64_elf_tls_optimize): Likewise.
+
+	2005-04-01  Alan Modra  <amodra@bigpond.net.au>
+	* elf64-ppc.c (ppc64_elf_edit_toc): Account for dynamic relocs
+	that we no longer need.
+
+2005-05-02  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	* Makefile.am: Clear RELEASE.
+	* Makefile.in: Regenerated.
+
+2005-05-02  Daniel Jacobowitz  <dan@codesourcery.com>
+
+	* Makefile.am: Set RELEASE.
 	* configure.in: Bump version to 2.16.
 	* Makefile.in, configure: Regenerated.
 
@@ -12,9 +141,7 @@
 
 2005-04-29  Daniel Jacobowitz  <dan@codesourcery.com>
 
-	* doc/Makefile.am: Remove stamp rules.  Depend on chew.c
-	instead of $(MKDOC).
-	* aclocal.m4, Makefile.in, doc/Makefile.in: Regnerated.
+	* aclocal.m4, Makefile.in: Regenerated.
 
 2005-04-27  Nick Clifton  <nickc@redhat.com>
 

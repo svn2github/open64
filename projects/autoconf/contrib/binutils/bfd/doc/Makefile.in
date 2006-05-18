@@ -261,6 +261,9 @@ SRCIPROT = $(srcdir)/../cache.c $(srcdir)/../libbfd.c \
 TEXIDIR = $(srcdir)/../../texinfo/fsf
 info_TEXINFOS = bfd.texinfo
 MKDOC = chew$(EXEEXT_FOR_BUILD)
+INCLUDES = -I.. -I$(srcdir)/.. -I$(srcdir)/../../include \
+	-I$(srcdir)/../../intl -I../../intl
+
 LIBBFD_H_DEP = \
 	$(srcdir)/../libbfd-in.h	\
 	$(srcdir)/../init.c		\
@@ -582,11 +585,14 @@ uninstall-am:
 	uninstall uninstall-am uninstall-info-am
 
 
-$(MKDOC): chew.o
-	$(CC_FOR_BUILD) -o $(MKDOC) chew.o $(CFLAGS_FOR_BUILD) $(LDFLAGS_FOR_BUILD)
+$(MKDOC): $(srcdir)/chew.c
+	$(CC_FOR_BUILD) -o chew.$$$$ $(srcdir)/chew.c \
+	  $(CFLAGS_FOR_BUILD) $(LDFLAGS_FOR_BUILD) $(H_CFLAGS) \
+	  $(INCLUDES); \
+	$(SHELL) $(srcdir)/../../move-if-change chew.$$$$ $(MKDOC)
 
 chew.o: chew.c
-	$(CC_FOR_BUILD) -c -I.. -I$(srcdir)/.. -I$(srcdir)/../../include -I$(srcdir)/../../intl -I../../intl $(H_CFLAGS) $(CFLAGS_FOR_BUILD) $(srcdir)/chew.c
+	$(CC_FOR_BUILD) -c $(INCLUDES) $(H_CFLAGS) $(CFLAGS_FOR_BUILD) $(srcdir)/chew.c
 
 protos: libbfd.h libcoff.h bfd.h
 

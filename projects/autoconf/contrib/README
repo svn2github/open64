@@ -4,7 +4,7 @@ demystify the origins of the source code as well as to keep
 a track record of the versions used.
 
 binutils/
-	version: 2.16
+	version: 2.16.1
 	from: http://www.gnu.org/software/binutils
 
 dwarf/
