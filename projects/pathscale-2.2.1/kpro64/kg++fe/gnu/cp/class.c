@@ -5212,6 +5212,7 @@ layout_class_type (tree t, tree *virtuals_p)
 	    DECL_FIELD_OFFSET (*next_field) = DECL_FIELD_OFFSET (field);
 	    DECL_FIELD_BIT_OFFSET (*next_field)
 	      = DECL_FIELD_BIT_OFFSET (field);
+	    DECL_BIT_FIELD (*next_field) = DECL_BIT_FIELD (field);
 #ifdef KEY
 	    DECL_SIZE (*next_field) = DECL_SIZE (field);
             DECL_SIZE_UNIT (*next_field) = DECL_SIZE_UNIT (field);

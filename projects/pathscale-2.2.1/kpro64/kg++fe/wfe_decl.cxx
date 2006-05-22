@@ -1488,6 +1488,29 @@ WFE_Add_Init_Block(void)
 		// WFE_Add_Aggregate_Init_Double.  Use the former because it is
 		// newer and can handle REAL_VALUE_TYPE, which is needed for
 		// i386.
+double
+WFE_Convert_Internal_Real_to_IEEE_Double (REAL_VALUE_TYPE real) {
+  // don't use type other than long since REAL_VALUE_TO_TARGET_DOUBLE()
+  // expect the 2nd parameter is array of "long".
+  long buffer[4];
+  int compact_buffer[8];
+  REAL_VALUE_TO_TARGET_DOUBLE (real, buffer);
+  WFE_Convert_To_Host_Order(buffer);
+  // the bit-pattern returned from REAL_VALUE_TO_TARGET_DOUBLE
+  // is not in compact form -- only the low order 32bits hold
+  // th bit-pattern. if "long" is wider than 32 bits, the
+  // high order bits are undefined. In this case, we need to
+  // conver the spare bit-pattern into compact form.
+  if (sizeof(long) > 4) {
+    Is_True (sizeof(long) == 8, ("sizeof(long) shold be 64"));
+    Is_True (sizeof(int) == 4, ("sizeof(int) should be 32"));
+    for (INT i = 0; i < sizeof(buffer)/sizeof(buffer[0]); i++) {
+      compact_buffer[i] = (int)buffer[i];
+    }
+    return *(double*)(void*)&compact_buffer[0];
+  }
+  return *(double*)(void*)&buffer[0];
+}
 	
 void 
 WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
@@ -1496,6 +1519,7 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
   INITV_IDX inv = New_INITV();
   TCON    tc;
   int     t1;
+  double dtmp;
 #ifdef KEY
   long     buffer [4];
 #else	
@@ -1508,9 +1532,8 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
       tc = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &t1);
       break;
     case 8:
-      REAL_VALUE_TO_TARGET_DOUBLE (real, buffer);
-      WFE_Convert_To_Host_Order(buffer);
-      tc = Host_To_Targ_Float (MTYPE_F8, *(double *) &buffer);
+      dtmp = WFE_Convert_Internal_Real_to_IEEE_Double (real);
+      tc = Host_To_Targ_Float (MTYPE_F8, dtmp);
       break;
 #ifdef KEY
     case 12:
