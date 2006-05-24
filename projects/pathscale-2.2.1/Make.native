@@ -63,7 +63,7 @@ NATIVE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so \
                 $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so \
                 $(NATIVE_BUILD_DIR)/g++fe/gfecc \
-                #$(NATIVE_BUILD_DIR)/crayf90/sgi/mfef90 \
+                $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 \
 
 PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done) 
 .PHONY : $(PHONY_TARGET) install clean clobber
@@ -130,7 +130,7 @@ $(NATIVE_BUILD_DIR)/targ_info/itanium.so itanium.so:
 $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a:
 	cd $(NATIVE_BUILD_DIR)/ir_tools ; gmake 
 
-$(NATIVE_BUILD_DIR)/crayf90/sgi/mfef90 mfef90:
+$(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95:
 	cd $(NATIVE_BUILD_DIR)/crayf90/sgi ; gmake 
 
 .PHONY: Force

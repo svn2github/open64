@@ -2412,7 +2412,7 @@ static int compare_message_recs(const void	 *p1,
 |*									      *|
 \******************************************************************************/
 
-#define FOLD_ABORT fold_f_abort__
+#define FOLD_ABORT fold_f_abort_
 
 void FOLD_ABORT(int *oper)
 

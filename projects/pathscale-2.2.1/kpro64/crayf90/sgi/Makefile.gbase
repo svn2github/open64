@@ -269,7 +269,7 @@ LIBRARY = fe90_sgi.a
 #----------------------------------------------------------------------
 
 LIBRARIES = $(FE90_TARG_DIR)/fe90.a $(ARITH_TARG_DIR)/arith.a \
-	$(LIBCIF_TARG_DIR)/libcif.a # $(F90SGI_TARG_DIR)/libf90sgi.a
+	$(LIBCIF_TARG_DIR)/libcif.a $(F90SGI_TARG_DIR)/libf90sgi.a
 
 LLDLIBS += $(LIBRARIES)
 ifeq ($(BUILD_ARCH), IA64)
@@ -301,6 +301,7 @@ first:
 	$(call submake,$(LIBCIF_TARG_DIR))
 	$(call submake,$(ARITH_TARG_DIR))
 	$(call submake,$(FE90_TARG_DIR))
+	$(call submake,$(F90SGI_TARG_DIR))
 
 #----------------------------------------------------------------------
 #  The commands in this section are done AFTER every other target is
@@ -341,7 +342,12 @@ mfef95: $(OBJECTS) $(LIBRARIES) compiler_build_date.o
 ifeq ($(BUILD_ARCH),IA32)
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $$($(F90) -m32 -print-file-name=lib$(PSC_NAME_PREFIX)fortran.a)
 else
+ifeq ($(BUILD_COMPILER), GNU)
+	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) -lgfortran -lm
+endif
+ifeq ($(BUILD_COMPILER), PSC)
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(PSC_PREFIX)/lib/libm.a
+endif
 endif
 ifeq ($(BUILD_OS), LINUX)
 	../../../linux/tools/caterr -c cf95.cat ../../../crayf90/fe90/cf95.msgs

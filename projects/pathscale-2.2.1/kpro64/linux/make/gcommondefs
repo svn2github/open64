@@ -97,19 +97,18 @@ ifeq ($(BUILD_COMPILER), GNU)
 ASNAME = gcc 
 CCNAME = gcc
 C++NAME = g++
+F90 = gfortran
 ifeq ($(BUILD_ARCH), X8664)
 CCNAME  = $(PSC_NAME_PREFIX)cc -march=anyx86
 C++NAME = $(PSC_NAME_PREFIX)CC -march=anyx86
+F90 = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90 -march=anyx86
 endif
 ifeq ($(BUILD_TARGET), IA32)
 CCNAME  = $(PSC_NAME_PREFIX)cc -m32 -march=anyx86 -mno-sse2
 C++NAME = $(PSC_NAME_PREFIX)CC -m32 -march=anyx86 -mno-sse2
+F90 = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90 -march=anyx86 -mno-sse2
 endif
 AR      = ar
-F90 = $(PSC_ROOT_PREFIX)/bin/$(PSC_NAME_PREFIX)f90 -march=anyx86
-ifeq ($(BUILD_TARGET), IA32)
-F90 += -mno-sse2
-endif
 F77 = $(F90)
 endif
 

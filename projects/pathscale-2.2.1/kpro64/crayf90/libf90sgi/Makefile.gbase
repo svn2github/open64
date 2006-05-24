@@ -177,6 +177,16 @@ LIB_SRCS = \
 	trim.c \
 	ubound.c \
 	verify.c \
+	_powci.c \
+	_powcl.c \
+	_powdi.c \
+	_powdl.c \
+	_powii.c \
+	_powll.c \
+	_powri.c \
+	_powrl.c \
+	_powzi.c \
+	_powzl.c \
 	pow_ii.c \
 	pow_ri.c \
 	pow_di.c \

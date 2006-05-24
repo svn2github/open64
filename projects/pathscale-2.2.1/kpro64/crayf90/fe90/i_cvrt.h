@@ -45,11 +45,7 @@ extern "C" {
 
 typedef long long int          INT64;
 typedef int                    INT32;
-#ifdef TARG_IA64 /* by jhs, 02.9.25 */
-typedef unsigned long long     INTPTR;
-#else
 typedef unsigned long          INTPTR;
-#endif
 
 #define PDGCS_MPP_INIT_APPRENTICE        0
 #define PDGCS_MPP_INIT_S2P_COERCE        1

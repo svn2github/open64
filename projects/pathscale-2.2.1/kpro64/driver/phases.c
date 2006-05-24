@@ -413,10 +413,10 @@ set_library_paths(string_list_t *args)
 	char *our_path;
 	
 	if (abi == ABI_N32) {
-		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION "/32",
+		asprintf(&our_path, "%s/" PSC_FULL_VERSION "/32",
 			 root_prefix);
 	} else {
-		asprintf(&our_path, "%s/lib/" PSC_FULL_VERSION, root_prefix);
+		asprintf(&our_path, "%s/" PSC_FULL_VERSION, root_prefix);
 	}
 	
 	add_string(args, concat_strings("-L", our_path));
@@ -560,7 +560,7 @@ target_is_native(void)
 	return native;
 }
 
-#ifdef CROSS_COMPILATION 
+//#ifdef CROSS_COMPILATION 
 /* there should be a portable way the specify the dynamic loader
  * for the targeting system.
  */
@@ -576,7 +576,7 @@ specify_dyn_linker (string_list_t *args) {
                 add_string(args, (char*)dynamic_linker);
         }
 }
-#endif /* CROSS_COMPILATION */
+//#endif /* CROSS_COMPILATION */
 
 #ifdef KEY
 // Like add_file_args but add args that must precede options specified on the
@@ -1473,19 +1473,20 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	
 	if (shared != RELOCATABLE) {
 	    if (invoked_lang == L_f90) {
+		/*
 		if (!option_was_seen(O_shared)) {
 			add_library(args, PSC_NAME_PREFIX "fstart");
 		}
+		*/
 		add_library(args, PSC_NAME_PREFIX "fortran");
-		if (!option_was_seen(O_shared)) {
-			add_library(args, PSC_NAME_PREFIX "fstart");
-		}
 		add_string(args, "-lmv");
 		add_string(args, "-lm" PSC_NAME_PREFIX);
 		add_string(args, "-lm");
 		add_library(args, "mv");
 		add_library(args, "m" PSC_NAME_PREFIX);
 		add_library(args, "m");
+		add_library(args, "ffio");
+		add_library(args, "msgi");
 	    }
 #ifdef KEY
 	    if (option_was_seen(O_mp) ||
@@ -1575,9 +1576,9 @@ add_rpath_link_option (string_list_t *args) {
 	phases_t ld_phase = determine_ld_phase (FALSE);
 	if (ld_phase == P_ld || ld_phase == P_ldplus) {
 		return; // gcc/g++ will take care
-	}
-
-	add_string (args,"-rpath-link");
+	}	
+	
+ 	add_string (args,"-rpath-link");	
 	add_string (args,get_phase_dir(P_alt_library));
 	/*
 	 * For some reason, our cross linker won't find libraries in some 
@@ -2184,6 +2185,10 @@ run_ld (void)
 			       outfile == NULL ? TRUE : keep_flag));
   	else
 	    append_objects_to_list (args);
+
+    if ( invoked_lang == L_f77 || invoked_lang == L_f90) {
+        specify_dyn_linker (args); 
+    }
 
 #ifdef CROSS_COMPILATION 
 	specify_dyn_linker (args);

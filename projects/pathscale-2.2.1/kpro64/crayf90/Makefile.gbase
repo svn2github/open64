@@ -38,12 +38,13 @@
 
 include $(COMMONDEFS)
 
-BUILD_SUBDIRS = fe90 sgi
+BUILD_SUBDIRS = fe90 libf90sgi sgi
 
 default : first
 
 first:
 	$(call submake,fe90)
+	$(call submake,libf90sgi)
 	$(call submake,sgi)
 
 $(BUILD_SUBDIRS):

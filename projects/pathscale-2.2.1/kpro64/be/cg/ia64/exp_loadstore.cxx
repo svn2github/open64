@@ -707,8 +707,8 @@ Pick_Prefetch_Hint (VARIANT variant)
   static ISA_ENUM_CLASS_VALUE lfhint_L2;
   static BOOL inited = FALSE;
   if (!inited) {
-    lfhint_L1 = Get_lfhint(CGEXP_lfhint_L1, ECV_lfhint_nt2);
-    lfhint_L2 = Get_lfhint(CGEXP_lfhint_L2, ECV_lfhint_nta);
+    lfhint_L1 = Get_lfhint(CGEXP_lfhint_L1, ECV_lfhint);
+    lfhint_L2 = Get_lfhint(CGEXP_lfhint_L2, ECV_lfhint_nt1);
     inited = TRUE;
   }
 
