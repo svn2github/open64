@@ -376,15 +376,22 @@ add_object (int flag, char *arg)
 
 	       break;
 	case O_WlC:
-	       add_string(objects, concat_strings("-Wl,", arg));
 	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
 	         add_string(objects, concat_strings("-Wl,", arg));
 	       } else {
-	         add_string(objects, arg);
+	         /* the arg would look like "-F,arg1,arg2,argn", 
+	          * each token delimited by comma should be passed 
+	          * to linker separately.
+	          */
+	         char* dup_str, *next_arg;
+	         dup_str = string_copy (arg); /*so <arg> remain unchanged */
+	         next_arg = strtok (dup_str, ",");
+	         do {
+	           add_string (objects, next_arg);
+	         } while (next_arg = strtok (NULL, ","));
 	       }
 	       break;
 	case O__whole_archive:
-	       add_string(objects, "-Wl,-whole-archive");
 	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
 	         add_string(objects, "-Wl,-whole-archive");
 	       } else {
@@ -392,7 +399,6 @@ add_object (int flag, char *arg)
 	       }
 	       break;
 	case O__no_whole_archive:
-	       add_string(objects, "-Wl,-no-whole-archive");
 	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
 	         add_string(objects, "-Wl,-no-whole-archive");
 	       } else {
