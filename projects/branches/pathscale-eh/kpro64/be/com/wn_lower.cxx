@@ -180,6 +180,15 @@ static BOOL last_call_ff2c_abi; // whether the last outgoing call use this abi
  *			 Forward Declarations
  * ====================================================================
  */
+#ifdef LOW_LANDING_PAD
+#undef LOW_LANDING_PAD
+#endif
+#ifdef TARG_X8664
+#define LOW_LANDING_PAD 
+#endif
+#ifdef TARG_IA64
+#define LOW_LANDING_PAD
+#endif
 
 static WN *lower_scf(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_expr(WN *, WN *, LOWER_ACTIONS);
@@ -191,9 +200,9 @@ static WN *lower_intrinsic_op(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_if(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_stmt(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_entry(WN *, LOWER_ACTIONS);
-#ifdef TARG_X8664
+#ifdef LOW_LANDING_PAD
 static WN *lower_landing_pad_entry(WN *);
-#endif // TARG_X8664
+#endif 
 static WN *lower_eval(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_copy_tree(WN *, LOWER_ACTIONS);
 static WN *lower_emulation(WN *, WN *, LOWER_ACTIONS, BOOL &intrinsic_lowered);
@@ -10445,10 +10454,10 @@ static WN *lower_stmt(WN *block, WN *tree, LOWER_ACTIONS actions)
       info = lower_expr(infoblock, info, actions);
       WN_set_label_loop_info(tree, info);
     }
-#ifdef TARG_X8664
+#ifdef LOW_LANDING_PAD 
     if (Action(LOWER_ENTRY_EXIT) && WN_Label_Is_Handler_Begin (tree))
       tree = lower_landing_pad_entry (tree);
-#endif // TARG_X8664
+#endif
     break;
 
   case OPR_EXC_SCOPE_BEGIN:
@@ -12487,7 +12496,7 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
 }
 
 
-#ifdef TARG_X8664
+#ifdef LOW_LANDING_PAD 
 // Figure out if we need anything similar for non-X8664
 static WN *lower_landing_pad_entry(WN *tree)
 {
@@ -12497,14 +12506,30 @@ static WN *lower_landing_pad_entry(WN *tree)
   ST_IDX exc_ptr_param = TCON_uval (INITV_tc_val (INITO_val (Get_Current_PU().unused)));
   ST exc_ptr_st = St_Table[exc_ptr_param];
   // Store rax into exc_ptr variable
+#ifdef TARG_X8664
   WN *exc_ptr_rax = WN_LdidPreg (Pointer_Mtype, RAX);
+#else 
+#ifdef TARG_IA64
+  WN *exc_ptr_rax = WN_LdidPreg (Pointer_Mtype, 15); // winux, should be eh_get_reg(0), sth. like that
+#else
+#error ("TARG_IA64 not defined!")
+#endif
+#endif
   WN *exc_ptr_stid = WN_Stid (Pointer_Mtype, 0, &exc_ptr_st, 
 			ST_type(exc_ptr_st), exc_ptr_rax);
 
   ST_IDX filter_param = TCON_uval (INITV_tc_val (INITV_next (INITO_val (Get_Current_PU().unused))));
   ST filter_st = St_Table[filter_param];
   // Store rdx into filter variable
+#ifdef TARG_X8664
   WN *filter_rdx = WN_LdidPreg (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, RDX);
+#else
+#ifdef TARG_IA64
+  WN *filter_rdx = WN_LdidPreg (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, 16); // winux, should be eh_get_reg(1), sth. like that
+#else
+#error ("TARG_IA64 not defined!")
+#endif
+#endif
   WN *filter_stid = WN_Stid (Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4, 0, &filter_st, 
 			ST_type(filter_st), filter_rdx);
 
@@ -12516,7 +12541,7 @@ static WN *lower_landing_pad_entry(WN *tree)
   WN_INSERT_BlockLast (block, filter_stid);
   return block;
 }
-#endif // TARG_X8664
+#endif // LOW_LANDING_PAD
 
 
 /* ====================================================================

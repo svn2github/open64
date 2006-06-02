@@ -1130,10 +1130,77 @@ Live_Init(
                                       BB_live_use(bb),
                                       &liveness_pool);
 
+  // winux
+  /* make sure the caller_save/callee_save register are allocated to the same
+   * regs in different regions.
+   */
+  if (BB_entry(bb) &&
+      BB_prev(bb) != NULL 
+      ) { // winux
+    BB_defreach_in(bb) = GTN_SET_CopyD(BB_defreach_in(bb), force_live_gtns, &liveness_pool);
+    extern TN *Caller_GP_TN;
+    extern TN *Caller_FP_TN;
+    extern TN *Caller_Pfs_TN;
+    extern TN *ra_intsave_tn;
+    if (Caller_GP_TN) {
+    	BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_GP_TN, &liveness_pool);
+    }
+    if (ra_intsave_tn) {
+    	BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), ra_intsave_tn, &liveness_pool);
+    }
+    if (Caller_FP_TN) {
+        BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_FP_TN, &liveness_pool);
+    }
+    if (Caller_Pfs_TN) {
+        BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_Pfs_TN, &liveness_pool);
+    }
+  }
+
+  /* make sure the backup registers are not polluted since no further usage. 
+   * this happens when the control flow terminates with a non-return function
+   * throw/unwind_resume, etc.
+   */
+  if (!BB_exit(bb) &&
+       BB_succs(bb) == NULL
+       ) {
+    BB_live_out(bb) = GTN_SET_CopyD(BB_live_out(bb), force_live_gtns, &liveness_pool);
+    extern TN *Caller_GP_TN;
+    extern TN *Caller_FP_TN;
+    extern TN *Caller_Pfs_TN;
+    extern TN *ra_intsave_tn;
+    if (Caller_GP_TN) {
+	BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_GP_TN, &liveness_pool);
+    }
+    if (ra_intsave_tn) {
+	BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), ra_intsave_tn, &liveness_pool);
+    }
+    if (Caller_FP_TN) {
+	BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_FP_TN, &liveness_pool);
+    }
+    if (Caller_Pfs_TN) {
+	BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_Pfs_TN, &liveness_pool);
+    }
+  }
+  // end winux
+
   // We are no longer computing BB_defreach_gen. Make a quick pass 
   // through the bb and initialize the defreach_out set with the
   // the GTNs defined in the block.
   BB_defreach_out(bb)  = GTN_SET_ClearD(BB_defreach_out(bb));
+
+  // winux
+  /* make sure gp is restored since it will be used in other regions.
+   * this happens with the last call in first entry region.
+   */
+  if (BB_exit(bb) && BB_next(bb)) {
+    extern TN *Caller_GP_TN;
+    if (Caller_GP_TN) {
+    	BB_live_in(bb) = GTN_SET_Union1D(BB_live_in(bb), Caller_GP_TN, &liveness_pool);
+    	BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_GP_TN, &liveness_pool);
+    }
+  }
+  // end winux
+
   OP *op;
   INT i;
   FOR_ALL_BB_OPs_FWD (bb, op) {
@@ -2271,6 +2338,9 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set)
       
       // Don't rename under the following conditions.
       if (TN_is_dedicated(tn) || OP_cond_def(op) || OP_same_res(op)) continue;
+
+      extern TN* Caller_GP_TN;
+      if (tn == Caller_GP_TN && PU_has_exc_scopes(Get_Current_PU())) continue; // winux
 
       OP *last_def = (OP *) TN_MAP_Get (op_for_tn, tn);
       if (last_def != NULL) {

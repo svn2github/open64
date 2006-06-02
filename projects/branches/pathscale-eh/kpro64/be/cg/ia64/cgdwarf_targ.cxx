@@ -1069,7 +1069,8 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 	}
 
 	// add implicit changes upon entry
-	if (current_state != entry_state[bbid]) {
+ 	if (0) { // winux
+//	if (current_state != entry_state[bbid]) {
   		for (p = PR_FIRST; p < PR_LAST; INCR(p)) {
 			// ignore implicit sp changes,
 			// as label/copy should handle those.
