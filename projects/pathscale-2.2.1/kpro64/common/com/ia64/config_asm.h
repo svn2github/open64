@@ -199,6 +199,8 @@ extern char *AS_ADDRESS_UNALIGNED;
 #define AS_GPREL	"@gprel"
 #define AS_LTOFF	"@ltoff"
 #define AS_FPTR		"@fptr"
+// for function descriptor which equals to @fptr + gp
+#define AS_IPLT		"@iplt"		
 #define AS_GP_REL	((char *)0)
 #define AS_NEGATE	((char *)0)
 

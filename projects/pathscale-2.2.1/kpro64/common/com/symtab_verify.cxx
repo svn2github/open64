@@ -571,6 +571,10 @@ void INITV::Verify(UINT) const
     Is_True ( repeat1 != 0,
               (msg, "repeat1: should not be 0"));
     break;
+  case INITVKIND_SYMIPLT:		// for function discriptor
+    Is_True ( repeat1 != 0,
+              (msg, "repeat1: should not be 0"));
+    break;
   case INITVKIND_ZERO:
     Is_True ( repeat1 == 0,
               (msg, "repeat1: should be 0"));

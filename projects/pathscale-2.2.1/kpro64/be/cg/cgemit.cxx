@@ -3643,15 +3643,15 @@ Write_TCON (
 
 /* ====================================================================
  *
- * Write_Symbol
+ * Write_Symoff
  *
- * Emit a symbol value to the assembly/object file.
+ * Emit a symoff value to the assembly/object file.
  *
  * ====================================================================
  */
 
 static Elf64_Word
-Write_Symbol (
+Write_Symoff (
   ST * sym,		/* Emit the address of this symbol */
   Elf64_Sxword sym_ofst,/*   ... plus this offset */
   INT scn_idx,		/* Section to emit it in */
@@ -3664,18 +3664,6 @@ Write_Symbol (
   pSCNINFO scn = em_scn[scn_idx].scninfo;
   INT address_size = ((Use_32_Bit_Pointers) ? 4 : 8);
   
-  /* This is a temporal workaround for vtable function descriptor. 
-   * Please see Write_INITV for details.
-   * If we see repeat == 2, then we assume that it can only be the function
-   * descriptor.
-   */
-#ifdef TARG_IA64
-  if ( (Current_pu ? PU_src_lang(Get_Current_PU()) == PU_CXX_LANG : TRUE) &&
-      repeat == 2 && ST_class(sym) == CLASS_FUNC && AS_FPTR && ! Get_Trace(TP_EMIT,0x2000)) {
-      address_size = 16;
-      repeat = 1;
-  }
-#endif
   
   if ( Trace_Init ) {
     #pragma mips_frequency_hint NEVER
@@ -3689,7 +3677,7 @@ Write_Symbol (
 	Allocate_Object(sym);
 	/* if did allocate on local stack, that messes up frame length */
 	Is_True(!Has_Base_Block(sym) || Is_Global_Symbol(Base_Symbol(sym)),
-		("Write_Symbol:  too late to allocate object on stack"));
+		("Write_Symoff:  too late to allocate object on stack"));
   }
 
   /* If the symbol is a local label that has not been assigned an address, it is
@@ -3742,12 +3730,6 @@ Write_Symbol (
 	}
     }
     if (Assembly) {
-#ifdef TARG_IA64  
-	if (address_size == 16) {
-		fprintf (Asm_File, "\tdata16.ua\t");
-	}
-	else
-#endif
 	fprintf (Asm_File, "\t%s\t", 
 		(scn_ofst % address_size) == 0 ? 
 		AS_ADDRESS : AS_ADDRESS_UNALIGNED);
@@ -3756,14 +3738,7 @@ Write_Symbol (
 		fprintf (Asm_File, " %+lld\n", base_ofst);
 	}
 	else if (ST_class(sym) == CLASS_FUNC && AS_FPTR && ! Get_Trace(TP_EMIT,0x2000)) {
-#ifdef TARG_IA64
-	if (address_size == 16)
-		fprintf (Asm_File, " @iplt(");
-	else
 		fprintf (Asm_File, " %s(", AS_FPTR);
-#else
-		fprintf (Asm_File, " %s(", AS_FPTR);
-#endif
 		EMT_Write_Qualified_Name (Asm_File, sym);
 		fprintf (Asm_File, " %+lld)\n", (INT64)sym_ofst);
 	}
@@ -3781,6 +3756,77 @@ Write_Symbol (
   }
   return scn_ofst;
 }
+
+// Create a IPLT entry instead of two FPTR entries 
+// for functions descriptor under IA-64 platform
+//
+static Elf64_Word
+Write_Symiplt (
+  ST * sym,            	 	/* Emit the address of this function disciptor */
+  Elf64_Sxword sym_ofst,	/*   ... plus this offset */
+  INT scn_idx,          	/* Section to emit it in */
+  Elf64_Word scn_ofst,  	/* Section offset to emit it at */
+  INT32 repeat)         	/* Repeat count */
+{
+  INT32 i;
+  ST *basesym;
+  INT64 base_ofst = 0;
+  pSCNINFO scn = em_scn[scn_idx].scninfo;
+  INT address_size = ((Use_32_Bit_Pointers) ? 4 : 8);
+  // The function descriptor on IA64 is of 128 bits = fptr + gp
+  address_size = (address_size << 1);
+
+  if (Trace_Init)
+  {
+    #pragma mips_frequency_hint NEVER
+    Trace_Init_Loc (scn_idx, scn_ofst, repeat);
+    fprintf ( TFile, "SYMIPLT " );
+    fprintf ( TFile, "%s %+lld\n", ST_name(sym), (INT64)sym_ofst );
+  }
+  /* make sure is allocated */
+  if (!Has_Base_Block(sym))
+  {
+    Allocate_Object(sym);
+    /* if did allocate on local stack, that messes up frame length */
+    Is_True(!Has_Base_Block(sym) || Is_Global_Symbol(Base_Symbol(sym)),
+           ("Write_Symoff:  too late to allocate object on stack"));
+  }
+  
+  /* For local static symbols that do not have their own elf entry,
+   * use the base symbol; funcs always have own elf entry. */
+  basesym = sym;
+  if (Use_Separate_PU_Section (current_pu, basesym))
+    /* use PU text section rather than generic one */
+    basesym = PU_base;
+  base_ofst += sym_ofst;
+
+  if (Object_Code && repeat != 0)
+  {
+    if (Use_32_Bit_Pointers)	// GP-relative 32/64-bit addresses
+       Em_Add_New_Content (CK_GADDR_32, scn_ofst, 4*repeat, 0, scn);
+    else 
+       Em_Add_New_Content (CK_GADDR_64, scn_ofst, 8*repeat, 0, scn);
+  }
+
+  if (Object_Code)
+     Em_Add_Address_To_Scn (scn, EMT_Put_Elf_Symbol (basesym), base_ofst, 1);
+
+  if (Assembly)
+  {
+// The function descriptor on IA64 needs 128 bits
+    fprintf (Asm_File, "\tdata16.ua\t");
+
+    if(ST_class(sym) == CLASS_FUNC && AS_IPLT && ! Get_Trace(TP_EMIT,0x2000))
+    {
+      fprintf (Asm_File, " %s(", AS_IPLT);
+      EMT_Write_Qualified_Name (Asm_File, sym);
+      fprintf (Asm_File, " %+lld)\n", (INT64)sym_ofst);
+    }
+  }
+  scn_ofst += address_size;
+  return scn_ofst;
+}
+ 
 
 /* ====================================================================
  *
@@ -3970,7 +4016,10 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
       scn_ofst = Write_TCON (&INITV_tc_val(inv), scn_idx, scn_ofst, 
 			      INITV_repeat2(inv));
       break;
-
+    case INITVKIND_SYMIPLT:
+      st = &St_Table[INITV_st(inv)];
+      scn_ofst = Write_Symiplt (st, INITV_ofst(inv), scn_idx, scn_ofst, INITV_repeat1(inv));
+      break;
     case INITVKIND_SYMOFF:
       st = &St_Table[INITV_st(inv)];
       switch (ST_sclass(st)) {
@@ -3991,48 +4040,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
 	}
       
 	default:
-
-	/* The function descriptor on IA64 is of 128 bits = fptr + gp.
-	 * However, there are no INITV_KIND that can emit such type&size.
-	 * Thus, the FE emits two INITV now to allocate the slots here,
-	 * while cg only need one INITV to emit a function descriptor
-	 * annotation.
-	 * 
-	 * There are generally three ways to solve this problem:
-	 * 1) as it is here, we patch cgemit, and let it work.
-	 * 2) add some flags in INITV, so we know it is a function descriptor.
-	 * 3) add a new INITV_KIND, so we know it IS a function descriptor.
-	 * 
-	 * The final decision is still under discussion.
-	 * However, people are eager to see that vtable works, so we commit
-	 * the 1) solution now. AND, we will fix it later.
-	 *
-	 * The latter code find and merge the two INITV which allocates slots for 
-	 * function descriptor. Please see Write_Symbol for function descriptor
-	 * annotation generation.
-	 */
-#ifdef TARG_IA64 
-	{
-	  static INITV_IDX last_idx = 0;
-	  if (invidx == last_idx) return scn_ofst;
-	  
-	  last_idx = 0;
-	  if( (Current_pu ? PU_src_lang(Get_Current_PU()) == PU_CXX_LANG : TRUE)  &&	
-	      st && ST_class(st) == CLASS_FUNC && AS_FPTR && ! Get_Trace(TP_EMIT,0x2000) &&
-	      INITV_repeat1(inv) == 1 &&
-	      INITV_next(invidx) &&
-	      INITV_kind(INITV_next(invidx)) == INITVKIND_SYMOFF &&
-	      INITV_st(INITV_next(invidx)) == INITV_st(invidx) &&
-	      INITV_repeat1(Initv_Table[INITV_next(invidx)]) == 1
-	    ){
-	      invidx = INITV_next(invidx);
-	      last_idx = invidx;
-	      inv = Initv_Table[invidx];
-	      inv.repeat1 = 2;
-	  }
-	}
-#endif
-          scn_ofst = Write_Symbol ( st, INITV_ofst(inv),
+          scn_ofst = Write_Symoff ( st, INITV_ofst(inv),
 	  			      scn_idx, scn_ofst, INITV_repeat1(inv));
 	   break;
       }

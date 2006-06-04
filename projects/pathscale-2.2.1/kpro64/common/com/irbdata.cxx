@@ -142,6 +142,13 @@ INITV_Init_Symoff (INITV_IDX inv, ST *st, INT64 ofst, UINT16 repeat)
 }
 
 void
+INITV_Init_Symiplt (INITV_IDX inv, ST *st, INT64 ofst, UINT16 repeat)
+{
+    INITV_Set_SYMIPLT (Initv_Table[inv], repeat, ST_st_idx(st), ofst);
+}
+
+
+void
 INITV_Init_Label (INITV_IDX inv, LABEL_IDX lab, UINT16 repeat)
 {
     INITV_Set_LABEL (Initv_Table[inv], repeat, lab);
@@ -197,6 +204,27 @@ Irb_Init_Symoff (INITO_IDX ino, INITV_IDX inv, mUINT16 repeat, ST *st,
 } // Irb_Init_Symoff
 
 INITV_IDX
+Irb_Init_Symiplt (INITO_IDX ino, INITV_IDX inv, mUINT16 repeat, ST *st,
+		 INT64 ofst)
+{
+    INITV_IDX idx;
+    INITV& initv = Initv_Table.New_entry (idx);
+
+    add_initv (idx, ino, inv);
+
+#ifdef FRONT_END
+    // st could be zero for mutually referencing structures
+    // one such example is in CONFORM_ANSI c65.c
+    INITV_Set_SYMIPLT (initv, repeat, st ? ST_st_idx (st) : 0, ofst);
+#else
+    INITV_Set_SYMIPLT (initv, repeat, ST_st_idx (st), ofst);
+#endif /* FRONT_END */
+
+    return idx;
+} // Irb_Init_Symiplt
+
+
+INITV_IDX
 Irb_Init_Label (INITO_IDX ino, INITV_IDX inv, mUINT16 repeat, LABEL_IDX lab)
 {
     INITV_IDX idx;
@@ -205,8 +233,7 @@ Irb_Init_Label (INITO_IDX ino, INITV_IDX inv, mUINT16 repeat, LABEL_IDX lab)
     add_initv (idx, ino, inv);
     INITV_Set_LABEL (initv, repeat, lab);
     return idx;
-} // Irb_Init_Symoff
-
+}
 
 INITV_IDX
 Irb_Init_Symdiff (INITO_IDX ino, INITV_IDX inv, mUINT16 repeat, LABEL_IDX lab1,
@@ -452,6 +479,14 @@ Print_INITV (const INITV& initv)
 		 INITV_st (initv),
 		 INITV_ofst (initv), INITV_ofst (initv)); 
 	break;
+    case INITVKIND_SYMIPLT:
+	repeat = INITV_repeat1 (initv);
+	fprintf (TFile," SYMIPLT: %s(0x%x)+%d(0x%x)",
+		ST_class(INITV_st(initv)) == CLASS_CONST ?
+		"<constant>" : ST_name(INITV_st(initv)),
+		 INITV_st (initv),
+		 INITV_ofst (initv), INITV_ofst (initv)); 
+	break;
     case INITVKIND_LABEL:
 	repeat = INITV_repeat1 (initv);
 	fprintf (TFile," LABEL: %s (%d)", LABEL_name (INITV_lab (initv)),
@@ -564,6 +599,9 @@ Get_INITV_Size (INITV_IDX inv)
 	case INITVKIND_SYMDIFF:
 	case INITVKIND_LABEL:
 		size = Pointer_Size;
+		break;
+	case INITVKIND_SYMIPLT:
+		size = Pointer_Size << 1;
 		break;
 	case INITVKIND_VAL:
 		if (TCON_ty(INITV_tc_val(inv)) == MTYPE_STR)

@@ -71,7 +71,8 @@ enum INITVKIND {
     INITVKIND_PAD	= 6,
     INITVKIND_SYMDIFF	= 7,
     INITVKIND_SYMDIFF16 = 8,
-    INITVKIND_LABEL	= 9 
+    INITVKIND_LABEL	= 9,
+    INITVKIND_SYMIPLT	= 10	//just for function descriptor which equals to @fptr + gp
 };
 
 #ifdef KEY
@@ -93,10 +94,11 @@ struct INITV
 					// INITVKIND_VAL
     union {
 
-	struct {
-	    ST_IDX st;
+	struct {			// this field for SYMOFF and SYMIPLT
+	    ST_IDX st;			
 	    mINT32 ofst;
-	} sto;				// address + offset
+	} sto;				// address + offset 
+	 				
 
 	struct {
 	    LABEL_IDX lab;		// for INITVKIND_LABEL

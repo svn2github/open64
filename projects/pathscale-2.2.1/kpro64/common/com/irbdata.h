@@ -168,35 +168,41 @@ INITV_repeat (const INITV_IDX inv)
 
 inline ST_IDX
 INITV_st (const INITV& initv) {
-    INITV_read_check (initv.kind == INITVKIND_SYMOFF);
+    INITV_read_check ((initv.kind == INITVKIND_SYMOFF) ||
+		      (initv.kind == INITVKIND_SYMIPLT));
     return initv.St ();
 }
 inline ST_IDX
 INITV_st (const INITV_IDX initv) {
-    INITV_read_check (Initv_Table[initv].kind == INITVKIND_SYMOFF);
+    INITV_read_check ((Initv_Table[initv].kind == INITVKIND_SYMOFF) ||
+		      (Initv_Table[initv].kind == INITVKIND_SYMIPLT));
     return Initv_Table[initv].St ();
 }
 inline void
 Set_INITV_st (INITV_IDX inv, ST_IDX st)
 {
-    INITV_read_check (Initv_Table[inv].kind == INITVKIND_SYMOFF);
+    INITV_read_check (Initv_Table[inv].kind == INITVKIND_SYMOFF ||
+		      Initv_Table[inv].kind == INITVKIND_SYMIPLT);
     Initv_Table[inv].u.sto.st = st;
 }
 	
 inline INT32
 INITV_ofst (const INITV& initv) {
-    INITV_read_check (initv.kind == INITVKIND_SYMOFF);
+    INITV_read_check (initv.kind == INITVKIND_SYMOFF || 
+		      initv.kind == INITVKIND_SYMIPLT);
     return initv.Ofst ();
 }
 inline INT32
 INITV_ofst (const INITV_IDX initv) {
-    INITV_read_check (Initv_Table[initv].kind == INITVKIND_SYMOFF);
+    INITV_read_check (Initv_Table[initv].kind == INITVKIND_SYMOFF ||
+		      Initv_Table[initv].kind == INITVKIND_SYMIPLT);
     return Initv_Table[initv].Ofst ();
 }
 inline void
 Set_INITV_ofst (INITV_IDX inv, INT32 ofst)
 {
-    INITV_read_check (Initv_Table[inv].kind == INITVKIND_SYMOFF);
+    INITV_read_check (Initv_Table[inv].kind == INITVKIND_SYMOFF ||
+		      Initv_Table[inv].kind == INITVKIND_SYMIPLT);
     Initv_Table[inv].u.sto.ofst = ofst;
 }
 
@@ -373,6 +379,9 @@ extern void
 INITV_Init_Symoff (INITV_IDX inv, ST *st, INT64 ofst, UINT16 repeat = 1);
 
 extern void
+INITV_Init_Symiplt (INITV_IDX inv, ST *st, INT64 ofst, UINT16 repeat = 1);
+
+extern void
 INITV_Init_Label (INITV_IDX inv, LABEL_IDX lab, UINT16 repeat = 1);
 
 extern void
@@ -432,6 +441,15 @@ inline void
 INITV_Set_SYMOFF (INITV& initv, mUINT16 rp1, ST_IDX st, INT32 ofst) {
     initv.next = 0;
     initv.kind = INITVKIND_SYMOFF;
+    initv.repeat1 = rp1;
+    initv.u.sto.st = st;
+    initv.u.sto.ofst = ofst;
+}
+
+inline void
+INITV_Set_SYMIPLT (INITV& initv, mUINT16 rp1, ST_IDX st, INT32 ofst) {
+    initv.next = 0;
+    initv.kind = INITVKIND_SYMIPLT;
     initv.repeat1 = rp1;
     initv.u.sto.st = st;
     initv.u.sto.ofst = ofst;
