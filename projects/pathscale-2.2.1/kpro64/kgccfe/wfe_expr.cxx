@@ -3026,6 +3026,7 @@ WFE_Expand_Expr (tree exp,
 #endif // KEY
 	  break;
 	if (MTYPE_is_integral(mtyp) && MTYPE_is_integral(WN_rtype(wn))) {
+#ifdef TARG_X8664
 	  // For 32-bit to 64-bit conversion, make the result have the same
 	  // sign as the source.  Fix bug 480.
 	  if (MTYPE_size_min(mtyp) == 64 &&
@@ -3033,7 +3034,7 @@ WFE_Expand_Expr (tree exp,
 	      MTYPE_is_signed(mtyp) != MTYPE_is_signed(WN_rtype(wn))) {
 	    mtyp = MTYPE_complement(mtyp);
 	  }
-
+#endif
 	  if (MTYPE_size_min(mtyp) < MTYPE_size_min(WN_rtype(wn))) {
 	    if (MTYPE_size_min(mtyp) != 32)
 	      wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V,
@@ -3509,6 +3510,24 @@ WFE_Expand_Expr (tree exp,
         wn = WFE_Expand_Expr (TREE_OPERAND (exp, 0), TRUE, nop_ty_idx, 
 			      component_ty_idx, component_offset,
 			      field_id, FALSE);
+
+#ifdef Is_True_On
+	{
+	WN* tmp = wn;
+	if (WN_operator (tmp) == OPR_CVTL || WN_operator (tmp) == OPR_CVT) {
+	  tmp = WN_kid0(tmp);
+	}
+	Is_True (WN_operator(tmp) == OPR_LDID || 
+	         WN_operator(tmp) == OPR_LDBITS ||
+	         WN_operator(tmp) == OPR_ILOAD ||
+	         WN_operator(tmp) == OPR_ILDBITS, 
+		 ("Not expected operator"));
+	}
+#endif
+
+	INT bofst = Get_Integer_Value(TREE_OPERAND(exp, 2));
+	INT bsiz =Get_Integer_Value(TREE_OPERAND(exp, 1));
+
 	ty_idx = Get_TY (TREE_TYPE(exp));
 	TYPE_ID rtype = TY_mtype(ty_idx);
 	UINT siz = TY_size(ty_idx);
@@ -3533,16 +3552,32 @@ WFE_Expand_Expr (tree exp,
 	}
 #endif // KEY
 	WN_set_rtype(wn, rtype);
-	WN_set_desc(wn, desc);
-	INT bofst = Get_Integer_Value(TREE_OPERAND(exp, 2));
-	INT bsiz =Get_Integer_Value(TREE_OPERAND(exp, 1));
 	if ((bsiz & 7) == 0 &&	// field size multiple of bytes
 	    MTYPE_size_min(desc) % bsiz == 0 && // accessed loc multiple of bsiz
 	    bofst % bsiz == 0) {		// bofst multiple of bsiz
-	  // not really a bit-field extraction!
-	  if (MTYPE_signed(rtype))
-	    WN_set_desc(wn, Mtype_AlignmentClass(bsiz >> 3, MTYPE_CLASS_INTEGER));
-	  else WN_set_desc(wn, Mtype_AlignmentClass(bsiz >> 3, MTYPE_CLASS_UNSIGNED_INTEGER));
+	  // not really a bit-field extraction! 
+
+	  BOOL change_desc = FALSE;
+	  
+	  
+	  if (MTYPE_is_void (WN_desc(wn))) {
+	     /* it make not sense to change the desc and it is illegal to do that.
+	      *  (e.g. WN is CVTL.) */
+	  } else if (!MTYPE_is_integral (WN_desc(wn))) {
+	     /* change the type to integral mandatorily to ease both 
+	      * analysis and convertion etc.  */
+	     change_desc = TRUE;
+	  } else {
+	     /* We otherwise convert, say, "I4I2LDID 2 sym" into "I4I4LDID 2 sym".
+	      * There will be alignment issue. */
+	     change_desc = (MTYPE_bit_size (WN_desc(wn)) >= bsiz);
+	  }
+
+	  if (change_desc) {
+	    if (MTYPE_signed(rtype))
+	      WN_set_desc(wn, Mtype_AlignmentClass(bsiz >> 3, MTYPE_CLASS_INTEGER));
+	    else WN_set_desc(wn, Mtype_AlignmentClass(bsiz >> 3, MTYPE_CLASS_UNSIGNED_INTEGER));
+	  }
 	  WN_load_offset(wn) = WN_load_offset(wn) + (bofst >> 3);
 	} else {
 #ifdef KEY
@@ -3980,11 +4015,20 @@ WFE_Expand_Expr (tree exp,
 		break;
 
 	    case BUILT_IN_POW:
-	        FmtAssert(ret_mtype == MTYPE_F8, 
+	      // Bug 8195: If for whatever reason the pow(3) call is unused,
+	      // need_result will be false. Then, the value that this very
+	      // function assigns to ret_mtype for pow(3) is MTYPE_V. So,
+	      // just like we handle BUILT_IN_EXP above, we need to reassign
+	      // ret_mtype to MTYPE_F8.
+	      // Note that since pow[lf](3) are not builtin's(unlike the way
+	      // exp[lf]?(3)'s are), we only permit ret_mtype MTYPE_F8 here.
+	      if(ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+	      
+	      FmtAssert(ret_mtype == MTYPE_F8, 
 			  ("unexpected mtype for intrinsic 'pow'"));
-		iopc = INTRN_F8EXPEXPR;
-		intrinsic_op = TRUE;
-		break;
+	      iopc = INTRN_F8EXPEXPR;
+	      intrinsic_op = TRUE;
+	      break;
 #endif // KEY
 
               case BUILT_IN_CONSTANT_P:

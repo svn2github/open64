@@ -4407,11 +4407,19 @@ WFE_Expand_Expr (tree exp,
                 break;
 
 	    case BUILT_IN_POW:
-	        FmtAssert(ret_mtype == MTYPE_F8, 
-			  ("unexpected mtype for intrinsic 'pow'"));
-		iopc = INTRN_F8EXPEXPR;
-		intrinsic_op = TRUE;
-		break;
+	      // Bug 8195: If for whatever reason the pow(3) call is unused,
+	      // need_result will be false. Then, the value that this very
+	      // function assigns to ret_mtype for pow(3) is MTYPE_V. So,
+	      // just like we handle BUILT_IN_EXP above, we need to reassign
+	      // ret_mtype to MTYPE_F8.
+	      // Note that since pow[lf](3) are not builtin's(unlike the way
+	      // exp[lf]?(3)'s are), we only permit ret_mtype MTYPE_F8 here.
+	      if(ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+	      FmtAssert(ret_mtype == MTYPE_F8, 
+			("unexpected mtype for intrinsic 'pow'"));
+	      iopc = INTRN_F8EXPEXPR;
+	      intrinsic_op = TRUE;
+	      break;
 #endif // KEY
 
               case BUILT_IN_CONSTANT_P:
