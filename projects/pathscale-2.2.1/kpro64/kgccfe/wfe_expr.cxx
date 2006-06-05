@@ -3514,7 +3514,7 @@ WFE_Expand_Expr (tree exp,
 #ifdef Is_True_On
 	{
 	WN* tmp = wn;
-	if (WN_operator (tmp) == OPR_CVTL || WN_operator (tmp) == OPR_CVT) {
+	while (WN_operator (tmp) == OPR_CVTL || WN_operator (tmp) == OPR_CVT) {
 	  tmp = WN_kid0(tmp);
 	}
 	Is_True (WN_operator(tmp) == OPR_LDID || 
