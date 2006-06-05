@@ -2201,6 +2201,12 @@ GRA_LIVE_Compute_Local_Info(
 
   }
 
+  // winux
+  extern TN* Caller_GP_TN;
+  if (Caller_GP_TN) {
+     tmp_live_use = TN_SET_Union1D(tmp_live_use, Caller_GP_TN, &gra_live_local_pool);
+  }
+
   GRA_LIVE_Init_BB_End(bb);
 }
 
