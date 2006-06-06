@@ -2381,7 +2381,6 @@ Traverse_Aggregate_Struct (
     // if the initialization is not for the current field,
     // advance the fields till we find it
     if (field && TREE_PURPOSE(init) && TREE_CODE(TREE_PURPOSE(init)) == FIELD_DECL) {
-      DevWarn ("Encountered FIELD_DECL during initialization");
       for (;;) {
         if (field == TREE_PURPOSE(init)) {
           break;
