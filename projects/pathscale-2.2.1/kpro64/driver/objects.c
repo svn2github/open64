@@ -327,15 +327,10 @@ add_object (int flag, char *arg)
 		if (strcmp(arg, "m") == 0 ||
 		    strcmp(arg, "mpath") == 0) {	// bug 5184
 			/* add -lmv -lmblah */
+			add_library(lib_objects, "mv");
 			if (xpg_flag && invoked_lang == L_f77) {
-#if !defined(TARG_IA64)
-				add_library(lib_objects, "mv");
-#endif
 				add_library(lib_objects, "m" PSC_NAME_PREFIX);
 			} else {
-#if !defined(TARG_IA64)
-				add_library(objects, "mv");
-#endif
 				add_library(objects, "m" PSC_NAME_PREFIX);
 			}
 			if (invoked_lang == L_CC) {
@@ -436,9 +431,7 @@ append_objects_to_list (string_list_t *list)
 	    do_exit(1);
 	}
 	append_string_lists (list, objects);
-	if (xpg_flag && invoked_lang == L_f77) {
-		append_string_lists (list, lib_objects);
-	}
+	append_string_lists (list, lib_objects);
 }
 
 /* append cxx_prelinker_objects to end of list */
