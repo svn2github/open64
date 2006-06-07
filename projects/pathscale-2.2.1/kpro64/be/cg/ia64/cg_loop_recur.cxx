@@ -229,6 +229,15 @@ void Interleave_Base_Update(op_vec_type::iterator first, op_vec_type::iterator l
       Set_OP_result(op, base_res_num, newtn);
       Set_OP_omega(op, base_opnd_num, 1);
     }
+    //also replace other opnd beside base_opnd
+    { 
+      INT32 base_opnd_num = OP_base_opnd_num(op);   
+      for (int j = 0; j < OP_opnds(op); j++)
+	if (j != base_opnd_num && OP_opnd(op, j) == tn){
+	  Set_OP_opnd(op, j, newtn);
+	  Set_OP_omega(op,j, 1);
+	}
+    }
   }
   use_update.commit();
   BB_Append_Ops(prolog, &prolog_ops);
