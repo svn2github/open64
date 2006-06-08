@@ -62,7 +62,7 @@ CROSS_COMPONENTS = \
                 $(CROSS_BUILD_DIR)/gccfe/gfec \
                 $(CROSS_BUILD_DIR)/orc_ict/orc_ict.so \
                 $(CROSS_BUILD_DIR)/orc_intel/orc_intel.so \
-                #$(CROSS_BUILD_DIR)/g++fe/gfecc \
+                $(CROSS_BUILD_DIR)/g++fe/gfecc \
                 #$(CROSS_BUILD_DIR)/crayf90/sgi/mfef90 \
 
 PHONY_TARGET = $(shell for i in $(CROSS_COMPONENTS); do basename "$$i" ; done) 
