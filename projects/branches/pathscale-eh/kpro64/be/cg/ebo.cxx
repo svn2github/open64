@@ -2043,7 +2043,8 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
       if (OP_result(op,i) == RA_TN) goto op_is_needed;
       // winux
       extern TN *Caller_GP_TN;
-      if (OP_result(op,i) == Caller_GP_TN) goto op_is_needed;
+      if (OP_result(op,i) == Caller_GP_TN  && PU_has_exc_scopes(Get_Current_PU()))
+	goto op_is_needed;
     }
 
     if (op_is_needed_globally(op)) goto op_is_needed;

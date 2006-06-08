@@ -1134,9 +1134,7 @@ Live_Init(
   /* make sure the caller_save/callee_save register are allocated to the same
    * regs in different regions.
    */
-  if (BB_entry(bb) &&
-      BB_prev(bb) != NULL 
-      ) { // winux
+  if (BB_entry(bb) && BB_prev(bb)) {
     BB_defreach_in(bb) = GTN_SET_CopyD(BB_defreach_in(bb), force_live_gtns, &liveness_pool);
     extern TN *Caller_GP_TN;
     extern TN *Caller_FP_TN;
@@ -1153,6 +1151,31 @@ Live_Init(
     }
     if (Caller_Pfs_TN) {
         BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_Pfs_TN, &liveness_pool);
+    }
+  }
+
+  if (BB_exit(bb) && BB_next(bb)) {
+//    BB_live_in(bb) = GTN_SET_CopyD(BB_live_in(bb), force_live_gtns, &liveness_pool);
+    BB_live_out(bb) = GTN_SET_CopyD(BB_live_out(bb), force_live_gtns, &liveness_pool);
+    extern TN *Caller_GP_TN;
+    extern TN *Caller_FP_TN;
+    extern TN *Caller_Pfs_TN;
+    extern TN *ra_intsave_tn;
+    if (Caller_GP_TN) {
+//        BB_live_in(bb) = GTN_SET_Union1D(BB_live_in(bb), Caller_GP_TN, &liveness_pool);
+        BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_GP_TN, &liveness_pool);
+    }
+    if (ra_intsave_tn) {
+//        BB_live_in(bb) = GTN_SET_Union1D(BB_live_in(bb), ra_intsave_tn, &liveness_pool);
+        BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), ra_intsave_tn, &liveness_pool);
+    }
+    if (Caller_FP_TN) {
+//        BB_live_in(bb) = GTN_SET_Union1D(BB_live_in(bb), Caller_FP_TN, &liveness_pool);
+        BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_FP_TN, &liveness_pool);
+    }
+    if (Caller_Pfs_TN) {
+//        BB_live_in(bb) = GTN_SET_Union1D(BB_live_in(bb), Caller_Pfs_TN, &liveness_pool);
+        BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_Pfs_TN, &liveness_pool);
     }
   }
 
@@ -1187,19 +1210,6 @@ Live_Init(
   // through the bb and initialize the defreach_out set with the
   // the GTNs defined in the block.
   BB_defreach_out(bb)  = GTN_SET_ClearD(BB_defreach_out(bb));
-
-  // winux
-  /* make sure gp is restored since it will be used in other regions.
-   * this happens with the last call in first entry region.
-   */
-  if (BB_exit(bb) && BB_next(bb)) {
-    extern TN *Caller_GP_TN;
-    if (Caller_GP_TN) {
-    	BB_live_in(bb) = GTN_SET_Union1D(BB_live_in(bb), Caller_GP_TN, &liveness_pool);
-    	BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_GP_TN, &liveness_pool);
-    }
-  }
-  // end winux
 
   OP *op;
   INT i;
@@ -2203,8 +2213,8 @@ GRA_LIVE_Compute_Local_Info(
 
   // winux
   extern TN* Caller_GP_TN;
-  if (Caller_GP_TN) {
-     tmp_live_use = TN_SET_Union1D(tmp_live_use, Caller_GP_TN, &gra_live_local_pool);
+  if (Caller_GP_TN && PU_has_exc_scopes(Get_Current_PU())) {
+    tmp_live_use = TN_SET_Union1D(tmp_live_use, Caller_GP_TN, &gra_live_local_pool);
   }
 
   GRA_LIVE_Init_BB_End(bb);
@@ -2345,8 +2355,8 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set)
       // Don't rename under the following conditions.
       if (TN_is_dedicated(tn) || OP_cond_def(op) || OP_same_res(op)) continue;
 
-      extern TN* Caller_GP_TN;
-      if (tn == Caller_GP_TN && PU_has_exc_scopes(Get_Current_PU())) continue; // winux
+//      extern TN* Caller_GP_TN;
+//      if (tn == Caller_GP_TN && PU_has_exc_scopes(Get_Current_PU())) continue; // winux
 
       OP *last_def = (OP *) TN_MAP_Get (op_for_tn, tn);
       if (last_def != NULL) {
