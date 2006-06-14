@@ -259,7 +259,7 @@ GLDOPTS = $(STD_LOAD_OPTS)
 #----------------------------------------------------------------------
 
 
-TARGETS = mfef95
+TARGETS = mfef95 cf95.cat
 
 LIBRARY = fe90_sgi.a
 
@@ -324,7 +324,7 @@ exports: cf95.cat cf95.exp
 	$(INSTALL) -m 444 -F $(LANG_C_MSG_DIR) -src cf95.exp.m cf95.exp.m
 
 ifeq ($(BUILD_OS), LINUX)
-install: default cf95.cat
+install: default
 	$(STD_INSTALL) $(STD_INSTALL_EXEC_MASK) -D mfef95 $(STD_MONGOOSE_LINUX_LOC)/mfef95
 	$(STD_INSTALL) $(STD_INSTALL_EXEC_MASK) -D cf95.cat $(STD_MONGOOSE_LINUX_LOC)/cf95.cat
 else
@@ -349,9 +349,6 @@ ifeq ($(BUILD_COMPILER), PSC)
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(PSC_PREFIX)/lib/libm.a
 endif
 endif
-ifeq ($(BUILD_OS), LINUX)
-	../../../linux/tools/caterr -c cf95.cat ../../../crayf90/fe90/cf95.msgs
-endif
 
 bk_root := $(shell bk root 2>/dev/null || echo unknown)
 
@@ -374,17 +371,17 @@ cf95.i: $(FE90_DIR)/cf95.msgs
 	$(CCF) -E $(FE90_DIR)/cf95.msgs > cf95.i
 
 ifeq ($(BUILD_OS), LINUX)
-cf95.cat:
-	../../../linux/tools/caterr -c cf95.cat ../../../crayf90/fe90/cf95.msgs
+cf95.cat: ../../../crayf90/fe90/cf95.msgs
+	awk -f ../../../linux/tools/caterr.awk < ../../../crayf90/fe90/cf95.msgs | gencat -o cf95.cat
 else
 cf95.cat: cf95.i
 	rm -f cf95.cat
 	$(TOOLROOT)/usr/bin/caterr -Yc,$(TOOLROOT)/usr/bin/gencat -Ym,$(ROOT)/usr/lib/tmac/tmac.sg -c cf95.cat cf95.i
-endif
 
 cf95.exp: cf95.i
 	rm -f cf95.exp
 	$(TOOLROOT)/usr/bin/caterr -Yc,$(TOOLROOT)/usr/bin/gencat -Ym,$(ROOT)/usr/lib/tmac/tmac.sg -Yn,/usr/bin/nroff -e -c cf95.exp cf95.i
+endif
 
 #----------------------------------------------------------------------
 #  Include the usual commonrules
