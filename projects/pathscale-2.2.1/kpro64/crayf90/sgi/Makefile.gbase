@@ -343,7 +343,7 @@ ifeq ($(BUILD_ARCH),IA32)
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $$($(F90) -m32 -print-file-name=lib$(PSC_NAME_PREFIX)fortran.a)
 else
 ifeq ($(BUILD_COMPILER), GNU)
-	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) -lgfortran -lm
+	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(F90_RTLIBS) -lm
 endif
 ifeq ($(BUILD_COMPILER), PSC)
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(PSC_PREFIX)/lib/libm.a
