@@ -6061,10 +6061,10 @@ Estimate_Callee_Saves(void)
      */
     bzero(tn_count, sizeof(tn_count));
     for (tn = GTN_SET_Choose(need_reg);
-	 tn != GTN_SET_CHOOSE_FAILURE;
+	 tn && tn != GTN_SET_CHOOSE_FAILURE; // winux
 	 tn = GTN_SET_Choose_Next(need_reg, tn))
     {
-      if (!TN_is_save_reg(tn)) {
+      if (tn && !TN_is_save_reg(tn)) { // winux
 	rc = TN_register_class(tn);
 	++tn_count[rc];
       }

@@ -1126,11 +1126,10 @@ private:
     } 
     
     void Set_Visited(REGIONAL_CFG_NODE *node) {
+        Is_True (node != NULL, ("Hey!, <node> is NULL pointer"));
         if (node) {
             BS_Union1D(_visited_s,node->Id(),&_m);
-        } else {
-            DevWarn("The CFG is empty!");
-        }    
+        } 
     }
         
     void Set_Cur(REGIONAL_CFG *cfg);

@@ -2125,6 +2125,9 @@ Split_PU_Entry_BB (BB * entry_bb) {
     Is_True (!BB_Has_Already_Been_Splitted (entry_bb),
              ("BB:%d has already been splitted", BB_id(entry_bb)));
 
+    // winux
+    if (BB_handler(entry_bb)) return NULL;
+
     OP * last_op, *boundary_op, * sp_adj;
     sp_adj = BB_entry_sp_adj_op (entry_bb);
 

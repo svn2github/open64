@@ -811,7 +811,7 @@ Propagate_Save_Restore_State (PR_BITSET *entry_state,
 
   while (changed) {
 	++count;
-	if (count > 100) {	// to avoid infinite loops
+	if (count > 150) {	// to avoid infinite loops
 		DevWarn("infinite loop in propagating unwind info");
 		break;
 	}

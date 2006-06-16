@@ -2299,7 +2299,7 @@ REGIONAL_CFG::Compute_BBs_In_Region_Node(BB_VECTOR& bbs,REGIONAL_CFG_NODE *node)
         Is_True(cfg != NULL,("Cfg is NULL in compute BBs in region node."));
         region_nodes.pop();
 
-        for (TOPOLOGICAL_REGIONAL_CFG_ITER iter(cfg);iter != 0;++iter) {
+        for (SEQ_REGIONAL_CFG_ITER iter(cfg);iter != 0;++iter) {
             REGIONAL_CFG_NODE *n = *iter;
             Is_True(n != NULL,("Node is NULL in compute BBs in region node."));
 
@@ -4438,7 +4438,7 @@ REGION_TREE::Statistic(void) {
             is_root = TRUE;
         }
         
-        for (TOPOLOGICAL_REGIONAL_CFG_ITER iter(cfg);iter != 0;++iter) {
+        for (SEQ_REGIONAL_CFG_ITER iter(cfg);iter != 0;++iter) {
             REGIONAL_CFG_NODE *node = *iter;
         
             nodes++;

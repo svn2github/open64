@@ -327,15 +327,10 @@ add_object (int flag, char *arg)
 		if (strcmp(arg, "m") == 0 ||
 		    strcmp(arg, "mpath") == 0) {	// bug 5184
 			/* add -lmv -lmblah */
+			add_library(lib_objects, "mv");
 			if (xpg_flag && invoked_lang == L_f77) {
-#if !defined(TARG_IA64)
-				add_library(lib_objects, "mv");
-#endif
 				add_library(lib_objects, "m" PSC_NAME_PREFIX);
 			} else {
-#if !defined(TARG_IA64)
-				add_library(objects, "mv");
-#endif
 				add_library(objects, "m" PSC_NAME_PREFIX);
 			}
 			if (invoked_lang == L_CC) {
@@ -376,15 +371,22 @@ add_object (int flag, char *arg)
 
 	       break;
 	case O_WlC:
-	       add_string(objects, concat_strings("-Wl,", arg));
 	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
 	         add_string(objects, concat_strings("-Wl,", arg));
 	       } else {
-	         add_string(objects, arg);
+	         /* the arg would look like "-F,arg1,arg2,argn", 
+	          * each token delimited by comma should be passed 
+	          * to linker separately.
+	          */
+	         char* dup_str, *next_arg;
+	         dup_str = string_copy (arg); /*so <arg> remain unchanged */
+	         next_arg = strtok (dup_str, ",");
+	         do {
+	           add_string (objects, next_arg);
+	         } while (next_arg = strtok (NULL, ","));
 	       }
 	       break;
 	case O__whole_archive:
-	       add_string(objects, "-Wl,-whole-archive");
 	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
 	         add_string(objects, "-Wl,-whole-archive");
 	       } else {
@@ -392,7 +394,6 @@ add_object (int flag, char *arg)
 	       }
 	       break;
 	case O__no_whole_archive:
-	       add_string(objects, "-Wl,-no-whole-archive");
 	       if (ld_phase == P_ld || ld_phase == P_ldplus) {
 	         add_string(objects, "-Wl,-no-whole-archive");
 	       } else {
@@ -430,9 +431,7 @@ append_objects_to_list (string_list_t *list)
 	    do_exit(1);
 	}
 	append_string_lists (list, objects);
-	if (xpg_flag && invoked_lang == L_f77) {
-		append_string_lists (list, lib_objects);
-	}
+	append_string_lists (list, lib_objects);
 }
 
 /* append cxx_prelinker_objects to end of list */

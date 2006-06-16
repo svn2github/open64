@@ -398,7 +398,7 @@ while (0)
 
 #define DOUBLE_TYPE_SIZE 64
 
-#define LONG_DOUBLE_TYPE_SIZE 128
+#define LONG_DOUBLE_TYPE_SIZE 64 // 128 // winux
 
 /* By default we use the 80-bit Intel extended float format packaged
    in a 128-bit entity.  */

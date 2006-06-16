@@ -119,11 +119,11 @@ INITV2C_translate(TOKEN_BUFFER tokens,
 
 
 static void
-INITV2C_symoff(TOKEN_BUFFER tokens, 
+INITV2C_symbol(TOKEN_BUFFER tokens, 
 	       TY_IDX       ty, 
 	       INITV_IDX    initv)
 {
-   /* Translate a INITVKIND_SYMOFF to C, ignoring repeats, where
+   /* Translate a INITVKIND_SYMOFF and INITVKIND_SYMIPLT to C, ignoring repeats, where
     * the data location being initialized is typed as "ty".
     */
    TOKEN_BUFFER  tmp_tokens;
@@ -137,9 +137,9 @@ INITV2C_symoff(TOKEN_BUFFER tokens,
    fld_info.found_fld = FLD_HANDLE();
 
    Is_True(TY_Is_Pointer_Or_Scalar(ty),
-	   ("Unexpected lhs type in INITV2C_symoff()"));
+	   ("Unexpected lhs type in INITV2C_symbol()"));
    Is_True(ST_sym_class(St_Table[initv_st]) != CLASS_PREG, 
-	   ("Unexpected st class in INITV2C_symoff()"));      
+	   ("Unexpected st class in INITV2C_symbol()"));      
       
    /* See if we can use implicit array addressing (only relevant for 
     * zero offset).
@@ -249,7 +249,7 @@ INITV2C_symoff(TOKEN_BUFFER tokens,
       }
    }
    Append_And_Reclaim_Token_List(tokens, &tmp_tokens);
-} /* INITV2C_symoff */
+} /* INITV2C_symbol */
 
 
 static void
@@ -423,6 +423,10 @@ INITV2C_struct_fill(TOKEN_BUFFER tokens,
 	 Is_True(FALSE, ("SYMOFF initv kind in INITV2C_struct_fill()"));
 	 break;
       
+      case INITVKIND_SYMIPLT:
+	 Is_True(FALSE, ("SYMIPLT initv kind in INITV2C_struct_fill()"));
+	 break;
+
       case INITVKIND_ZERO:
       case INITVKIND_ONE:
       case INITVKIND_VAL:
@@ -675,9 +679,9 @@ INITV2C_translate(TOKEN_BUFFER tokens,
       break;
 
    case INITVKIND_SYMOFF:
-      INITV2C_symoff(tokens, ty, initv);
+   case INITVKIND_SYMIPLT:
+      INITV2C_symbol(tokens, ty, initv);
       break;
-      
    case INITVKIND_ZERO:
    case INITVKIND_ONE:
    case INITVKIND_VAL:
@@ -703,7 +707,7 @@ INITV2C_translate(TOKEN_BUFFER tokens,
    case INITVKIND_PAD:
       /* Simply ignore padding */
       break;
-
+   
    default:
       Is_True(FALSE, ("Unexpected initv kind in INITV2C_translate()"));
       break;

@@ -3316,7 +3316,17 @@ static simpnode  simp_bior( OPCODE opc,
    ty = OPCODE_rtype(opc);
 
    if (k1const) {
-      c1 = SIMP_Int_ConstVal(k1); 
+#ifdef KEY
+      if (SIMP_Is_Int_Constant (k1)) {
+         c1 = SIMP_Int_ConstVal(k1); 
+      } else if (SIMP_Is_Str_Constant (k1)) {
+         c1 = Targ_To_Host (SIMP_Str_ConstVal (k1)); 
+      } else {
+         Fail_FmtAssertion ("Not a int/str constant");
+      }
+#else
+       c1 = SIMP_Int_ConstVal(k1); 
+#endif
       if (c1 == 0) {
 	 SHOW_RULE("j|0");
 	 r = k0;

@@ -1671,11 +1671,26 @@ WFE_Add_Aggregate_Init_String (char *s, INT size)
 }
 
 void
-WFE_Add_Aggregate_Init_Symbol (ST *st, WN_OFFSET offset = 0)
+WFE_Add_Aggregate_Init_Symoff (ST *st, WN_OFFSET offset = 0)
 {
   if (aggregate_inito == 0) return;
   INITV_IDX inv = New_INITV();
   INITV_Init_Symoff (inv, st, offset);
+  Set_ST_addr_saved (st);
+  if (last_aggregate_initv != 0)
+    Set_INITV_next(last_aggregate_initv, inv);
+  else if (! not_at_root)
+    Set_INITO_val(aggregate_inito, inv);
+  last_aggregate_initv = inv;
+}
+
+
+void
+WFE_Add_Aggregate_Init_Symiplt (ST *st, WN_OFFSET offset = 0)
+{
+  if (aggregate_inito == 0) return;
+  INITV_IDX inv = New_INITV();
+  INITV_Init_Symiplt (inv, st, offset);
   Set_ST_addr_saved (st);
   if (last_aggregate_initv != 0)
     Set_INITV_next(last_aggregate_initv, inv);
@@ -1708,7 +1723,7 @@ WFE_Add_Aggregate_Init_Address (tree init)
   case FUNCTION_DECL:
 	{
 	ST *st = Get_ST (init);
-	WFE_Add_Aggregate_Init_Symbol (st);
+	WFE_Add_Aggregate_Init_Symoff (st);
 	}
 	break;
 
@@ -1725,7 +1740,7 @@ WFE_Add_Aggregate_Init_Address (tree init)
 #endif // KEY
 	ST *const_st = New_Const_Sym (Enter_tcon (tcon), 
 		Get_TY(TREE_TYPE(init)));
-      	WFE_Add_Aggregate_Init_Symbol (const_st);
+      	WFE_Add_Aggregate_Init_Symoff (const_st);
 	}
     	break;
 
@@ -1737,7 +1752,7 @@ WFE_Add_Aggregate_Init_Address (tree init)
 		FmtAssert(TREE_CODE(addr_kid) == VAR_DECL
 			|| TREE_CODE(addr_kid) == FUNCTION_DECL,
 			("expected decl under plus_expr"));
-		WFE_Add_Aggregate_Init_Symbol ( Get_ST (addr_kid),
+		WFE_Add_Aggregate_Init_Symoff ( Get_ST (addr_kid),
 			Get_Integer_Value(TREE_OPERAND(init,1)) );
 	}
 	else
@@ -1745,7 +1760,7 @@ WFE_Add_Aggregate_Init_Address (tree init)
 		WN *init_wn = WFE_Expand_Expr (init);
 		FmtAssert (WN_operator (init_wn) == OPR_LDA,
 				("expected decl under plus_expr"));
-		WFE_Add_Aggregate_Init_Symbol (WN_st (init_wn),
+		WFE_Add_Aggregate_Init_Symoff (WN_st (init_wn),
 					       WN_offset (init_wn));
 		WN_Delete (init_wn);
 	}
@@ -1768,7 +1783,7 @@ WFE_Add_Aggregate_Init_Address (tree init)
 		WN *init_wn = WFE_Expand_Expr (init);
 		FmtAssert (WN_operator (init_wn) == OPR_LDA,
 				("expected operator encountered"));
-		WFE_Add_Aggregate_Init_Symbol (WN_st (init_wn),
+		WFE_Add_Aggregate_Init_Symoff (WN_st (init_wn),
 					       WN_offset (init_wn));
 #else
                 int tmp_aggr_inito = aggregate_inito;
@@ -1776,7 +1791,7 @@ WFE_Add_Aggregate_Init_Address (tree init)
                 WN *init_wn = WFE_Expand_Expr (init);
                 aggregate_inito = tmp_aggr_inito;
                 last_aggregate_initv = tmp_last_aggregate_initv;
-                WFE_Add_Aggregate_Init_Symbol (WN_st(init_wn));
+                WFE_Add_Aggregate_Init_Symoff (WN_st(init_wn));
                 aggregate_inito = 0;
 #endif
 		WN_Delete (init_wn);
@@ -1916,7 +1931,7 @@ Add_Initv_For_Tree (tree val, UINT size)
 			FmtAssert(TREE_CODE(addr_kid) == VAR_DECL
 				  || TREE_CODE(addr_kid) == FUNCTION_DECL,
 				("expected decl under plus_expr"));
-			WFE_Add_Aggregate_Init_Symbol ( Get_ST (addr_kid),
+			WFE_Add_Aggregate_Init_Symoff ( Get_ST (addr_kid),
 			Get_Integer_Value(TREE_OPERAND(val,1)) );
 		}
 		else
@@ -1955,8 +1970,15 @@ Add_Initv_For_Tree (tree val, UINT size)
 		  break;
 		}
 #endif
+	       if (TREE_CODE(val) == FDESC_EXPR && WN_operator (init_wn) == OPR_LDA)
+	       {
+	       	       WFE_Add_Aggregate_Init_Symiplt (WN_st (init_wn),
+	                                               WN_offset (init_wn));
+	               WN_DELETE_Tree (init_wn);
+	               break;
+	        }
 		if (WN_operator (init_wn) == OPR_LDA) {
-			WFE_Add_Aggregate_Init_Symbol (WN_st (init_wn),
+			WFE_Add_Aggregate_Init_Symoff (WN_st (init_wn),
 						       WN_offset (init_wn));
 			WN_DELETE_Tree (init_wn);
 			break;
@@ -1980,7 +2002,7 @@ Add_Initv_For_Tree (tree val, UINT size)
 		    (WN_opcode (init_wn) == OPC_I8U8CVT &&
 		     WN_opcode (WN_kid0 (init_wn)) == OPC_U8LDA)) {
 			WN *kid0 = WN_kid0(init_wn);
-			WFE_Add_Aggregate_Init_Symbol (WN_st (kid0), WN_offset(kid0));
+			WFE_Add_Aggregate_Init_Symoff (WN_st (kid0), WN_offset(kid0));
 			WN_DELETE_Tree (init_wn);
 			break;
 		}
@@ -1992,14 +2014,14 @@ Add_Initv_For_Tree (tree val, UINT size)
 			WN *kid1 = WN_kid1(init_wn);
 		 	if (WN_operator(kid0) == OPR_LDA &&
 			    WN_operator(kid1) == OPR_INTCONST) {
-			  WFE_Add_Aggregate_Init_Symbol (WN_st (kid0),
+			  WFE_Add_Aggregate_Init_Symoff (WN_st (kid0),
 				     WN_offset(kid0) + WN_const_val(kid1));
 			  WN_DELETE_Tree (init_wn);
 			  break;
 			}
 		 	else if (WN_operator(kid1) == OPR_LDA &&
 			    WN_operator(kid0) == OPR_INTCONST) {
-			  WFE_Add_Aggregate_Init_Symbol (WN_st (kid1),
+			  WFE_Add_Aggregate_Init_Symoff (WN_st (kid1),
 				     WN_offset(kid1) + WN_const_val(kid0));
 			  WN_DELETE_Tree (init_wn);
 			  break;
@@ -2010,7 +2032,7 @@ Add_Initv_For_Tree (tree val, UINT size)
 			WN *kid1 = WN_kid1(init_wn);
 		 	if (WN_operator(kid0) == OPR_LDA &&
 			    WN_operator(kid1) == OPR_INTCONST) {
-			  WFE_Add_Aggregate_Init_Symbol (WN_st (kid0),
+			  WFE_Add_Aggregate_Init_Symoff (WN_st (kid0),
 				     WN_offset(kid0) - WN_const_val(kid1));
 			  WN_DELETE_Tree (init_wn);
 			  break;
@@ -2231,6 +2253,7 @@ Traverse_Aggregate_Array (
   UINT   esize         = TY_size (ety);
   tree   init;
   tree   next;
+  tree	 init_value;	// just as tmp tree for TREE_VALUE(init)'s return
 
   for (init = CONSTRUCTOR_ELTS(init_list);
        init;
@@ -2238,16 +2261,17 @@ Traverse_Aggregate_Array (
     // loop through each array element
 
     next = TREE_CHAIN(init);
+    init_value = TREE_VALUE (init);
 
-    if (TREE_CODE(TREE_VALUE(init)) == PTRMEM_CST)  {
-      TREE_VALUE(init) = cplus_expand_constant(TREE_VALUE(init));
+    if (TREE_CODE(init_value) == PTRMEM_CST)  {
+      init_value = cplus_expand_constant(TREE_VALUE(init));
     }
 
-    if (TREE_CODE(TREE_VALUE (init)) == CONSTRUCTOR) {
+    if (TREE_CODE(init_value) == CONSTRUCTOR) {
       // recursively process nested ARRAYs and STRUCTs
       // update array_elem_offset to current_offset to
       // keep track of where each array element starts
-      Traverse_Aggregate_Constructor (st, TREE_VALUE(init), TREE_TYPE(type),
+      Traverse_Aggregate_Constructor (st, init_value, TREE_TYPE(type),
                                       gen_initv, current_offset, current_offset,
                                       0);
       emitted_bytes += esize;
@@ -2257,8 +2281,22 @@ Traverse_Aggregate_Array (
       // initialize SCALARs and POINTERs
       // note that we should not be encountering bit fields
       if (gen_initv) {
-        Add_Initv_For_Tree (TREE_VALUE(init), esize);
-        emitted_bytes += esize;
+	if ((next != NULL) && (TREE_CODE (init_value) == FDESC_EXPR) &&
+	    (TREE_CODE (TREE_VALUE (next)) == FDESC_EXPR) &&
+	    (TREE_VALUE (init_value) == TREE_VALUE (TREE_VALUE (next))))
+	{  
+	  init = next;
+	  next = TREE_CHAIN(next);
+          Add_Initv_For_Tree (TREE_VALUE(init), esize);
+          emitted_bytes += (esize << 1);
+	  current_offset += (esize << 1);
+	  continue;
+	}
+	else
+	{
+	  Add_Initv_For_Tree (TREE_VALUE(init), esize);
+	  emitted_bytes += esize;
+	}
       }
       else
         Gen_Assign_Of_Init_Val (st, TREE_VALUE(init), current_offset, 0,
@@ -2343,7 +2381,6 @@ Traverse_Aggregate_Struct (
     // if the initialization is not for the current field,
     // advance the fields till we find it
     if (field && TREE_PURPOSE(init) && TREE_CODE(TREE_PURPOSE(init)) == FIELD_DECL) {
-      DevWarn ("Encountered FIELD_DECL during initialization");
       for (;;) {
         if (field == TREE_PURPOSE(init)) {
           break;
@@ -2619,7 +2656,7 @@ Add_Inito_For_Tree (tree init, ST *st)
   if (WN_operator(init_wn) == OPR_LDA) {
 	aggregate_inito = New_INITO (st);
 	not_at_root = FALSE;
-	WFE_Add_Aggregate_Init_Symbol (WN_st (init_wn), WN_offset (init_wn));
+	WFE_Add_Aggregate_Init_Symoff (WN_st (init_wn), WN_offset (init_wn));
 	return;
   }
   else
@@ -2628,7 +2665,7 @@ Add_Inito_For_Tree (tree init, ST *st)
         WN_operator(WN_kid1(init_wn)) == OPR_INTCONST) {
       aggregate_inito = New_INITO (st);
       not_at_root = FALSE;
-      WFE_Add_Aggregate_Init_Symbol (WN_st(WN_kid0(init_wn)),
+      WFE_Add_Aggregate_Init_Symoff (WN_st(WN_kid0(init_wn)),
 		WN_offset(WN_kid0(init_wn)) + WN_const_val(WN_kid1(init_wn)));
       return;
     }
@@ -2667,7 +2704,7 @@ Add_Inito_For_Tree (tree init, ST *st)
         WN_operator(WN_kid1(init_wn)) == OPR_INTCONST) {
       aggregate_inito = New_INITO (st);
       not_at_root = FALSE;
-      WFE_Add_Aggregate_Init_Symbol (WN_st(WN_kid0(init_wn)),
+      WFE_Add_Aggregate_Init_Symoff (WN_st(WN_kid0(init_wn)),
 		WN_offset(WN_kid0(init_wn)) - WN_const_val(WN_kid1(init_wn)));
       return;
     }

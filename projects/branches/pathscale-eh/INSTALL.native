@@ -330,6 +330,7 @@ INSTALL_BE
 INSTALL_IPA 
 INSTALL_CG 
 INSTALL_WHIRL_STUFF 
+INSTALL_MISC
 
 cat << _EOF_
  ------------------------------------------------------------------------
@@ -357,7 +358,6 @@ INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP
 [ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_CROSS_UTIL
 INSTALL_PREBUILD_PHASE 
 
-INSTALL_MISC
 
 exit 0
 

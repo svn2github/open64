@@ -219,6 +219,10 @@ BOOL Multi_Branch_Valid_BB(BB *bb, BB *partial_head=NULL)
             // if BB has call, it don't allow dup branch after call op.
 	    if (BB_call(bb)) return FALSE;
             if (pred_bb == BB_next(bb)) return FALSE; //fix bug in vortex 1 compiler unexpected pr (25)
+	    //if BB is a single block loop, then return false
+	    if (pred_bb ==bb){
+	      return false;
+	    }
         }
     }  
          

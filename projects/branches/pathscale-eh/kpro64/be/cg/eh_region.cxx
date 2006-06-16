@@ -392,15 +392,7 @@ static EH_RANGE_LIST range_list;
 struct ADD_EH_RANGE {
   void operator()(RID * rid) {
     if (RID_TYPE_eh(rid)) {
-#if 0	// winux
-//  	FmtAssert (WN_block_empty(WN_region_pragmas(RID_rwn(rid))), ("ADD_EH_RANGE"));
-	if (WN_block_empty(WN_region_pragmas(RID_rwn(rid))))
-		range_list.add_range(rid);		
-	else
-		Set_ST_is_not_used (INITO_st(WN_ereg_supp(RID_rwn(rid))));		
-#else
       range_list.add_range(rid);
-#endif
     }
   }
 };
@@ -805,17 +797,6 @@ inline INT16 parent_offset(INT32 i)
 typedef std::map< ST_IDX, int > 	TF_MAP;		// <type_ST_IDX, filter>
 typedef std::map< int, ST_IDX > 	FT_MAP; 	// <filter, type_ST_IDX>
 typedef std::set< ST_IDX >      	EH_PTS; 	// eh pic type set
-typedef std::map< LABEL_IDX, LABEL_IDX>	H2E_MAP;	// handler to end_eh_range
-
-
-static H2E_MAP	s_h2eMap;	// used in cgdwarf_targ.cxx
-//static void EH_Build_H2E_MAP() // this will be done in Create_INITO_For_Range_Table
-LABEL_IDX
-Find_EH_End_Label_By_Handler(LABEL_IDX lab)
-{
-	H2E_MAP::iterator it = s_h2eMap.find(lab);
-	return it != s_h2eMap.end() ? it->second: 0;
-}
 
 static void
 EH_Build_PIC_Type(ST_IDX idx)
@@ -1090,10 +1071,8 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
   INITV_IDX inv, prev_inv, cinv, inv_action, backup;
   int act_offset = 1;	// biased by 1
 
-  s_h2eMap.clear();	// reset handler to end_eh_range_bb mapping, used in cgdwarf_targ.cxx
   eh_pu_range_inito = &Inito_Table[inito];
 
-  //Check_Initv(INITO_val(Get_Current_PU().unused), stdout);
   Print_PU_EH_Entry(Get_Current_PU(), pu, stdout);
 
   /*
@@ -1164,7 +1143,6 @@ char*	cs_action;// the first action table offset (biased by 1, 0 indicates there
     bool bHasLandingPad = true;
     if (INITV_kind(first) == INITVKIND_LABEL) {
       INITV_Init_Symdiff(inv, INITV_lab(first), pu, !Use_Long_EH_Range_Offsets());
-      s_h2eMap.insert(std::make_pair(INITV_lab(first), range.end_label));
     }
     else {	// no landing pad
       INITV_Init_Integer_2(inv, MTYPE_U4, 0, 1);
@@ -1230,8 +1208,8 @@ uint16	ar_disp;
 	INITV_Init_Integer_2(cinv, MTYPE_I4, 0, 1); // ar_next
       }
       else {
-	INITV_Init_Integer_2(cinv, MTYPE_I4, 1, 1); // TODO:ar_next = 1, is it right?
-      }
+	INITV_Init_Integer_2(cinv, MTYPE_I4, 1, 1);
+      } 
       act_offset += sizeof_signed_leb128(filter) + 1;
       // end write action record
     } // end action record .for
