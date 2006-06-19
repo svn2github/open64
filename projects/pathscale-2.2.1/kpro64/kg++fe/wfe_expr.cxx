@@ -4360,7 +4360,12 @@ WFE_Expand_Expr (tree exp,
 
             case BUILT_IN_FLOORL:
               arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
-              wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
+	      if (MTYPE_is_integral(ret_mtype))
+                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
+	      else{
+		wn1 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F8, arg_wn);
+		wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
+	      }
               whirl_generated = TRUE;
               break;
 #endif
