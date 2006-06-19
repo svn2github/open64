@@ -460,6 +460,7 @@ enum OP_COND_DEF_KIND {
 #define OP_MASK_PREFETCHED   0x00800000 /* Has OP been prefetched? */
 #define OP_MASK_IF_CONVERTED 0x01000000 /*Is OP if-converted? */
 #define OP_MASK_RENAMED	0x02000000 /*Is OP renamed by GLOS */
+#define OP_MASK_SPILL_RESTORE 0x04000000 /*Is OP a spill or restore  */
 
 
 #define OP_MASK_LAST    OP_MASK_DATA_SPEC
@@ -544,6 +545,9 @@ enum OP_COND_DEF_KIND {
 # define OP_renamed(op)			(OP_flags(op) & OP_MASK_RENAMED)
 # define Set_OP_renamed(o)		(OP_flags(o) |= OP_MASK_RENAMED)
 # define Reset_OP_renamed(o)	(OP_flags(o) &= ~OP_MASK_RENAMED)
+# define OP_spill_restore(op)			(OP_flags(op) & OP_MASK_SPILL_RESTORE)
+# define Set_OP_spill_restore(o)		(OP_flags(o) |= OP_MASK_SPILL_RESTORE)
+# define Reset_OP_spill_restore(o)	(OP_flags(o) &= ~OP_MASK_SPILL_RESTORE)
 
 extern BOOL OP_cond_def( const OP*);
 extern BOOL OP_has_implicit_interactions(OP*);

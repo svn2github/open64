@@ -564,9 +564,9 @@ CGSPILL_OP_Spill_Location (OP *op)
   if (spill_ids) {
     TN *spill_tn = NULL;
 
-    if (OP_load(op) && (OP_results(op) == 1)) {
+    if (OP_load(op) && (OP_results(op) == 1) && OP_spill_restore(op)) {
       spill_tn = OP_result(op,0);
-    } else if (OP_store(op)) {
+    } else if (OP_store(op) && OP_spill_restore(op)) {
       spill_tn = OP_opnd(op,TOP_Find_Operand_Use(OP_code(op), OU_storeval));
     }
     if (spill_tn) mem_loc = TN_spill(spill_tn);
@@ -761,6 +761,8 @@ CGSPILL_Load_From_Memory (TN *tn, ST *mem_loc, OPS *ops, CGSPILL_CLIENT client,
     ld_2_ld_fill (ops);
   }
   Max_Sdata_Elt_Size = max_sdata_save;
+  if(ops->last)
+	 Set_OP_spill_restore(ops->last);
 }
 
 
@@ -802,6 +804,8 @@ CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
       fprintf(TFile, "<Rematerialize> Suppressing spill of rematerializable "
 		     "TN%d.\n", TN_number(src_tn));
     }
+    if(ops->last)
+	   Set_OP_spill_restore(ops->last);
     return;
   }
 
@@ -809,6 +813,8 @@ CGSPILL_Store_To_Memory (TN *src_tn, ST *mem_loc, OPS *ops,
   st_2_st_spill (ops);
 
   Max_Sdata_Elt_Size = max_sdata_save;
+  if(ops->last)
+	 Set_OP_spill_restore(ops->last);
 }
 
 
