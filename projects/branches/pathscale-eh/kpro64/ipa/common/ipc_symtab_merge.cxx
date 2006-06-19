@@ -340,6 +340,18 @@ void Set_INITV_symoff_st(INITV &inv, ST_IDX st_idx)
 }
 
 static inline
+ST_IDX INITV_symiplt_st( const INITV &inv)
+{       
+   return inv.u.sto.st;
+}
+    
+static inline
+void Set_INITV_symiplt_st(INITV &inv, ST_IDX st_idx)
+{       
+   inv.u.sto.st = st_idx;
+}   
+
+static inline
 ST_IDX INITV_symdiff_st( const INITV &inv)
 {
    return inv.u.stdiff.st2;
@@ -1793,6 +1805,14 @@ Merge_Global_Initv(UINT                  initv_idx,
 	    Set_INITV_symoff_st(new_initv, new_st_idx);
 	}
 	break;
+
+    case INITVKIND_SYMIPLT:
+        st_idx = INITV_symiplt_st(original_initv);
+        if (ST_IDX_level (st_idx) == GLOBAL_SYMTAB) {
+            new_st_idx = (*New_St_Idx)[st_idx];
+            Set_INITV_symiplt_st(new_initv, new_st_idx);
+        }
+        break;
 
     case INITVKIND_VAL:
 	Set_INITV_tcon (new_initv,
