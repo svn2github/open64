@@ -1956,42 +1956,50 @@ Assemble_Simulated_OP(OP *op, BB *bb)
 
 /*
  * emit labels of succ bbs if it is already marked BB_emitted // winux
+ * return last bb whose labels have been emitted already.
  */
-static BOOL
-PreEmit_BB_Label_If_Needed(OP** ops, INT max)
+static BB*
+PreEmit_BB_Label_If_Needed(OP** ops, INT max, BB* firstbb)
 {
-  if (max == 0) return FALSE;
+  if (max == 0) return firstbb;
   
-  BB *firstbb = OP_bb(ops[0]);
-  BB *lastbb = NULL;
-  for (INT slot = 1; slot < max; slot++) {
+  BB *lastbb = firstbb;
+  for (INT slot = 0; slot < max; slot++) {
     if (OP_bb(ops[slot]) != firstbb && BB_has_label(OP_bb(ops[slot]))) {
 
 	// do not emit lables twice
 	if (OP_bb(ops[slot]) == lastbb) continue;
 	
-        lastbb = OP_bb(ops[slot]);  
-	FmtAssert (BB_emitted(lastbb), ("Crossing bb bundle has a bb not emitted."));
-	/* List labels attached to BB: */
-	for (ANNOTATION *ant = ANNOT_First (BB_annotations(lastbb), ANNOT_LABEL);
+ 	do {
+            lastbb = BB_next(lastbb);
+	    
+ 	    if (BB_length(lastbb)) {
+                FmtAssert(BB_emitted(lastbb), ("crossing bb bundling must have a bb emitted."));
+            }            
+	    else {
+                Set_BB_emitted(lastbb);
+            }
+            /* List labels attached to BB: */
+	    for (ANNOTATION *ant = ANNOT_First (BB_annotations(lastbb), ANNOT_LABEL);
 	     ant != NULL;
 	     ant = ANNOT_Next (ant, ANNOT_LABEL))
-	{
-	     LABEL_IDX lab = ANNOT_label(ant);
-	     if ( Assembly ) {
-	       fprintf ( Asm_File, "%s:\t%s 0x%llx\n", 
+	    {
+	       LABEL_IDX lab = ANNOT_label(ant);
+	       if ( Assembly ) {
+	         fprintf ( Asm_File, "%s:\t%s 0x%llx\n", 
 	                LABEL_name(lab), ASM_CMNT, Get_Label_Offset(lab) );
-             }
+               }
 #ifndef TARG_IA64
-	     if (Get_Label_Offset(lab) != PC) {
-		DevWarn ("label %s offset %lld doesn't match PC %d", 
+	       if (Get_Label_Offset(lab) != PC) {
+	  	  DevWarn ("label %s offset %lld doesn't match PC %d", 
 				LABEL_name(lab), Get_Label_Offset(lab), PC);
-	     }
+	       }
 #endif
-        }
+            }
+	} while (lastbb != OP_bb(ops[slot]));
     }
   }
-  return lastbb != NULL;
+  return lastbb;
 }
 
 /* Assemble the OPs in a BB a bundle at a time.
@@ -2012,6 +2020,7 @@ Assemble_Bundles(BB *bb)
   if (BB_emitted(bb))
     return 0;
  
+  BB *last_preemit_bb = bb; // winux
   Set_BB_emitted(bb);
 
   for (op = BB_first_op(bb);;) {
@@ -2126,7 +2135,14 @@ Assemble_Bundles(BB *bb)
       fprintf(Asm_File, "\n");
     }
 
-    PreEmit_BB_Label_If_Needed(slot_op, slot); // winux
+    for (int i=0; i<ISA_MAX_SLOTS && i<slot; i++)  {
+      OP* tt  = slot_op[i];
+      if (tt) {
+         BB* bbbb = OP_bb(tt);
+         fprintf(Asm_File, "\t //%d: BB:%d\n", i, BB_id(bbbb));
+      }
+    }
+    last_preemit_bb = PreEmit_BB_Label_If_Needed(slot_op, slot, last_preemit_bb); // winux
 
     /* Assemble the bundle.
      */
