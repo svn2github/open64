@@ -1198,8 +1198,14 @@ static void Update_EHRegion_Inito_Used (WN *wn) {
 
   if (opr == OPR_REGION && WN_ereg_supp(wn)) {
     INITO_IDX ino_idx = WN_ereg_supp(wn);
-    ST *st = INITO_st(ino_idx);
-    Clear_ST_is_not_used(st);
+    // Note a special case of try label when
+    // INITV_kind(INITO_val(ino_idx)) == INITVKIND_LABEL,
+    // Shouldn't set the flag ST_IS_NOT_USED
+    // Just reserve the value which gfecc pass through
+    if (INITV_kind(INITO_val(ino_idx)) != INITVKIND_LABEL){                
+      ST *st = INITO_st(ino_idx);
+      Clear_ST_is_not_used(st);
+    }
   }
 
   // now recurse

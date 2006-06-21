@@ -1952,55 +1952,6 @@ Assemble_Simulated_OP(OP *op, BB *bb)
     ASM_DIR_TRANSFORM();
   }
 }
-
-
-/*
- * emit labels of succ bbs if it is already marked BB_emitted // winux
- * return last bb whose labels have been emitted already.
- */
-static BB*
-PreEmit_BB_Label_If_Needed(OP** ops, INT max, BB* firstbb)
-{
-  if (max == 0) return firstbb;
-  
-  BB *lastbb = firstbb;
-  for (INT slot = 0; slot < max; slot++) {
-    if (OP_bb(ops[slot]) != firstbb && BB_has_label(OP_bb(ops[slot]))) {
-
-	// do not emit lables twice
-	if (OP_bb(ops[slot]) == lastbb) continue;
-	
- 	do {
-            lastbb = BB_next(lastbb);
-	    
- 	    if (BB_length(lastbb)) {
-                FmtAssert(BB_emitted(lastbb), ("crossing bb bundling must have a bb emitted."));
-            }            
-	    else {
-                Set_BB_emitted(lastbb);
-            }
-            /* List labels attached to BB: */
-	    for (ANNOTATION *ant = ANNOT_First (BB_annotations(lastbb), ANNOT_LABEL);
-	     ant != NULL;
-	     ant = ANNOT_Next (ant, ANNOT_LABEL))
-	    {
-	       LABEL_IDX lab = ANNOT_label(ant);
-	       if ( Assembly ) {
-	         fprintf ( Asm_File, "%s:\t%s 0x%llx\n", 
-	                LABEL_name(lab), ASM_CMNT, Get_Label_Offset(lab) );
-               }
-#ifndef TARG_IA64
-	       if (Get_Label_Offset(lab) != PC) {
-	  	  DevWarn ("label %s offset %lld doesn't match PC %d", 
-				LABEL_name(lab), Get_Label_Offset(lab), PC);
-	       }
-#endif
-            }
-	} while (lastbb != OP_bb(ops[slot]));
-    }
-  }
-  return lastbb;
-}
 
 /* Assemble the OPs in a BB a bundle at a time.
  */
@@ -2020,7 +1971,6 @@ Assemble_Bundles(BB *bb)
   if (BB_emitted(bb))
     return 0;
  
-  BB *last_preemit_bb = bb; // winux
   Set_BB_emitted(bb);
 
   for (op = BB_first_op(bb);;) {
@@ -2134,15 +2084,6 @@ Assemble_Bundles(BB *bb)
       fprintf(Asm_File, ISA_PRINT_BEGIN_BUNDLE, ISA_EXEC_AsmName(ibundle));
       fprintf(Asm_File, "\n");
     }
-
-    for (int i=0; i<ISA_MAX_SLOTS && i<slot; i++)  {
-      OP* tt  = slot_op[i];
-      if (tt) {
-         BB* bbbb = OP_bb(tt);
-         fprintf(Asm_File, "\t //%d: BB:%d\n", i, BB_id(bbbb));
-      }
-    }
-    last_preemit_bb = PreEmit_BB_Label_If_Needed(slot_op, slot, last_preemit_bb); // winux
 
     /* Assemble the bundle.
      */
@@ -2413,7 +2354,6 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   }   
   
   /* List labels attached to BB: */
-  if (!BB_emitted(bb))	// winux
   for (ant = ANNOT_First (BB_annotations(bb), ANNOT_LABEL);
        ant != NULL;
        ant = ANNOT_Next (ant, ANNOT_LABEL))
@@ -4837,7 +4777,9 @@ Setup_Text_Section_For_BB (BB *bb)
 {
   BOOL cold_bb = BB_cold(bb);
   PU_base = cold_bb ? cold_base : text_base;
-  cold_bb = FALSE; // winux
+  if (PU_has_exc_scopes(Get_Current_PU()))
+	cold_bb = FALSE; // winux
+
   if (cur_section != PU_base) {
     if (Assembly) {
       fprintf (Asm_File, "\n\t%s %s\n", AS_SECTION, ST_name(PU_base));

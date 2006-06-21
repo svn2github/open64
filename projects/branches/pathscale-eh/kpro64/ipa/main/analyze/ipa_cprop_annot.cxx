@@ -732,6 +732,7 @@ Simplify_value (SUMMARY_VALUE& value)
 	// break out to see if it can further be convertd to integer constant
 	break;
 
+      case INITVKIND_SYMIPLT:
       case INITVKIND_SYMOFF:
 	  if (TY_kind (ty) != KIND_POINTER)
 	      return;

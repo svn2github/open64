@@ -170,6 +170,9 @@ BOOL Multi_Branch_Valid_BB(BB *bb, BB *partial_head=NULL)
 
 
     if (bb == NULL) return FALSE;
+
+     // make sure do not twist the label and op orders
+    if (BB_has_label(bb))	return FALSE;	// winux
     // skip list
     if (IPFEC_Query_Skiplist(mlbr_skip_bb, BB_id(bb), 
                              Current_PU_Count())) 

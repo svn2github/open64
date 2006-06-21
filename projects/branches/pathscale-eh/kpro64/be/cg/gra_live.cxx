@@ -1140,7 +1140,8 @@ Live_Init(
     /* make sure the caller_save/callee_save register are allocated to the same
      * regs in different regions.
      */
-    if (!BB_preds(bb) && BB_prev(bb)) {
+   // if (!BB_preds(bb) && BB_prev(bb)) {
+    if (!(BB_entry(bb) && !BB_prev(bb))) {
       BB_defreach_in(bb) = GTN_SET_CopyD(BB_defreach_in(bb), force_live_gtns, &liveness_pool);
       if (Caller_GP_TN) {
     	BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_GP_TN, &liveness_pool);
@@ -1160,7 +1161,8 @@ Live_Init(
       }
     }
 
-    if (!BB_succs(bb) && BB_next(bb)) {
+    //if (!BB_succs(bb) && BB_next(bb)) {
+    if (1) {
       BB_live_out(bb) = GTN_SET_CopyD(BB_live_out(bb), force_live_gtns, &liveness_pool);
       if (Caller_GP_TN) {
           BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_GP_TN, &liveness_pool);
@@ -1179,7 +1181,7 @@ Live_Init(
           GTN_UNIVERSE_Add_TN(Caller_Pfs_TN);
       }
     }
-
+#if 0
     /* make sure the backup registers are not polluted since no further usage. 
      * this happens when the control flow terminates with a non-return function
      * throw/unwind_resume, etc.
@@ -1199,6 +1201,7 @@ Live_Init(
   	BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_Pfs_TN, &liveness_pool);
       }
     }
+#endif
   }
   // end winux
 
