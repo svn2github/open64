@@ -3257,6 +3257,7 @@ WFE_Expand_Try (tree stmt)
     Set_TY_align (tyi, 4);
     ST_Init (ereg, TY_name_idx(zty),CLASS_VAR, SCLASS_EH_REGION_SUPP, EXPORT_LOCAL, tyi);
     Set_ST_is_initialized (ereg);
+    Set_ST_is_not_used (ereg);
   }
   vector<tree> *cleanups = new vector<tree>();
   LABEL_IDX cmp_idxs[2];

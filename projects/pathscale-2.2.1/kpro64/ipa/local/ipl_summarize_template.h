@@ -339,7 +339,8 @@ search_for_symoff_initv (INITV_IDX initv_idx)
 {
     while (initv_idx) {
 	const INITV& initv = Initv_Table[initv_idx];
-	if (INITV_kind (initv) == INITVKIND_SYMOFF) {
+	if (INITV_kind (initv) == INITVKIND_SYMOFF ||
+		 	INITV_kind (initv) == INITVKIND_SYMIPLT) {
 	    ST_IDX st_idx = INITV_st (initv);
 	    Aux_Symbol[st_idx].addr_saved = TRUE;
 	} else if (INITV_kind (initv) == INITVKIND_BLOCK)
@@ -502,7 +503,8 @@ struct process_compile_time_addr_saved
 	sum (s), aux_st_info (Aux_Symbol_Info[GLOBAL_SYMTAB]) {}
 
     void operator() (UINT32, const INITV* initv) const {
-	if (INITV_kind (*initv) != INITVKIND_SYMOFF)
+	if (INITV_kind (*initv) != INITVKIND_SYMOFF &&
+			INITV_kind (*initv) != INITVKIND_SYMIPLT)
 	    return;
 	ST_IDX st_idx = INITV_st (*initv);
 	if (ST_IDX_level (st_idx) != GLOBAL_SYMTAB)
