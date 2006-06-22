@@ -594,6 +594,18 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
      if (MTYPE_is_integral(desc))
        BOTH_OPNDS(c0,c1,desc);
      switch (desc) {
+       // the following is for case "desc=MTYPE_B", it will only be "1" and        // "0", but there is no macro to access this content, so only need to       // access this with TCON_I4.
+       //TCON_I4(c) is defined as TCON_v0(c) in head file.
+     case MTYPE_B: 
+       switch (opr) {
+         case OPR_EQ: TCON_I4(c0) = TCON_I4(c0) == TCON_I4(c1); break;
+         case OPR_NE: TCON_I4(c0) = TCON_I4(c0) != TCON_I4(c1); break;
+         case OPR_LT: TCON_I4(c0) = TCON_I4(c0) <  TCON_I4(c1); break;
+         case OPR_LE: TCON_I4(c0) = TCON_I4(c0) <= TCON_I4(c1); break;
+         case OPR_GT: TCON_I4(c0) = TCON_I4(c0) >  TCON_I4(c1); break;
+         case OPR_GE: TCON_I4(c0) = TCON_I4(c0) >= TCON_I4(c1); break;
+       } 
+       break;
      case MTYPE_I4: 
        switch (opr) {
          case OPR_EQ: TCON_I4(c0) = TCON_I4(c0) == TCON_I4(c1); break;
