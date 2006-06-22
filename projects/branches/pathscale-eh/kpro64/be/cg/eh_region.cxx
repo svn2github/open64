@@ -1108,6 +1108,7 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     ST* st = INITO_st(range.ereg_supp);
     if (ST_is_not_used(st)) 	continue;
 
+    Set_ST_is_not_used(st);
     INITV_IDX blk = INITO_val(range.ereg_supp);
     if (INITV_kind(blk) != INITVKIND_BLOCK) {
 	    Set_ST_is_not_used(st);

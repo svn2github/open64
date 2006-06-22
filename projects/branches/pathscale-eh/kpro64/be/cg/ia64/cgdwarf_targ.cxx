@@ -1286,9 +1286,11 @@ Emit_Unwind_Directives_For_OP(OP *op, FILE *f)
       proc_region = EPILOGUE_BODY_UREGION;
       break;
     case UE_DESTROY_FRAME:
+#if 0 // winux  temp close: Error: Epilogue count of 4294967296 exceeds number of nested prologues (0)
       fprintf(f, "%s\t.restore %s\n", 
 		 prefix,
 		 UE_Register_Name(TN_register_class(SP_TN), TN_register(SP_TN)));
+#endif 
       break;
     case UE_LABEL:
       fprintf(f, "%s\t.body\n", prefix);

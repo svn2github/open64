@@ -4135,13 +4135,18 @@ static Elf64_Word
 EH_Write_Integer_const (
         int     sym,
         INT     scn_idx,
-        Elf64_Word scn_ofst)
+        Elf64_Word scn_ofst,
+        bool    bsigned)
 {
-  if (sym < 0) {
-    char c = (char)sym;
-    unsigned char cc = *(unsigned char*)&c;
-    cc &= 0x7f;
-    fprintf(Asm_File, "\tdata1\t0x%2x\n", cc);
+  if (bsigned) {
+    if (sym < 0 && sym > -129) {
+      char c = (char)sym;
+      unsigned char cc = *(unsigned char*)&c;
+      cc &= 0x7f;
+      fprintf(Asm_File, "\tdata1\t0x%2x\n", cc);
+    }
+    else
+      fprintf(Asm_File, "\t.sleb128\t0x%x\n", sym);
   }
   else
     fprintf(Asm_File, "\t.uleb128\t0x%x\n", sym);
@@ -4151,8 +4156,9 @@ EH_Write_Integer_const (
 static Elf64_Word
 EH_Write_Integer (
         INITV_IDX inv,
-        INT     scn_idx,
-        Elf64_Word scn_ofst)
+        INT       scn_idx,
+        Elf64_Word scn_ofst, 
+        bool 	  bsigned)
 {
   int sym = 0;
   if (INITVKIND_ZERO == INITV_kind(inv))
@@ -4161,7 +4167,7 @@ EH_Write_Integer (
     sym = 1;
   else
     sym = TCON_ival(INITV_tc_val(inv));
-  return EH_Write_Integer_const(sym, scn_idx, scn_ofst);
+  return EH_Write_Integer_const(sym, scn_idx, scn_ofst, bsigned);
 }
 
 static void
@@ -4287,12 +4293,12 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
       scn_ofst = EH_Write_Sym_Diff(inv, scn_idx, scn_ofst);
     }
     else {
-      scn_ofst = EH_Write_Integer(inv, scn_idx, scn_ofst);
+      scn_ofst = EH_Write_Integer(inv, scn_idx, scn_ofst, false);
     }
 
     inv = INITV_next(inv);
     // cs_action
-    scn_ofst = EH_Write_Integer(inv, scn_idx, scn_ofst);
+    scn_ofst = EH_Write_Integer(inv, scn_idx, scn_ofst, false);
   } // end call-site iteration
 
   // end of call site table
@@ -4303,11 +4309,11 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
   inv = INITV_next(act_inv);
   for(; inv && inv != type_inv; inv = INITV_next(inv)) {
     // ar_filter
-    scn_ofst = EH_Write_Integer(inv, scn_idx, scn_ofst);
+    scn_ofst = EH_Write_Integer(inv, scn_idx, scn_ofst, true);
 
     inv = INITV_next(inv);
     // ar_next      
-    scn_ofst = EH_Write_Integer(inv, scn_idx, scn_ofst);
+    scn_ofst = EH_Write_Integer(inv, scn_idx, scn_ofst, true);
   }
   // end action table
 
@@ -4335,7 +4341,7 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
   // eh-spec table
   inv = INITV_next(eh_spec_inv);
   for(; inv; inv = INITV_next(inv)) {
-    scn_ofst = EH_Write_Integer(inv, scn_idx, scn_ofst);
+    scn_ofst = EH_Write_Integer(inv, scn_idx, scn_ofst, false);
   }
   
   
