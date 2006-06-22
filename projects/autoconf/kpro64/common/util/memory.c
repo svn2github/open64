@@ -46,6 +46,10 @@
 #include "tracing.h"
 #include "erglob.h"
 
+#if defined(linux) && defined(Is_True_On)
+#include <malloc.h>
+#endif
+
 #ifdef WITH_VALGRIND
 #include <memcheck.h>
 static int redzone_size = 0;
