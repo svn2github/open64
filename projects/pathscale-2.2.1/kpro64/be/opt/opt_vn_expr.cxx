@@ -306,6 +306,7 @@ Create_Scalar_Literal_From_Int(MTYPE mty, INT64 i)
 	 
    case MTYPE_F4:
    case MTYPE_F8:
+   case MTYPE_F10:
    case MTYPE_FQ:
       p = VN_EXPR::Create_Literal(Host_To_Targ_Float(mty, i));
       break;

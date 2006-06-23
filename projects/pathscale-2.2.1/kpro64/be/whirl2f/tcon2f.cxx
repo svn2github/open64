@@ -314,6 +314,18 @@ TCON2F_translate(TOKEN_BUFFER tokens, TCON tvalue, BOOL is_logical)
 	 Append_Token_String(tokens, strbase);
 	 break;
 
+      case MTYPE_F10:
+	 str = Targ_Print(NULL, tvalue);
+	 strbase = Remove_Trailing_Zero_Fraction(str);
+	 if (str = strchr(strbase, 'E')) /* due to bug in targ_const.h */
+	    *str = 'Q';
+	 else if (str = strchr(strbase, 'd'))
+	    *str = 'Q';
+	 else
+	    strbase = Concat2_Strings(strbase, "Q00");
+	 Append_Token_String(tokens, strbase);
+	 break;
+
       case MTYPE_FQ:
 	 str = Targ_Print(NULL, tvalue);
 	 strbase = Remove_Trailing_Zero_Fraction(str);

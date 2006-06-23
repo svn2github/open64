@@ -142,6 +142,12 @@ extern void WFE_Weak_Finish();
 /* variable to keep track track of ST to be used for varargs */
 extern ST *WFE_Vararg_Start_ST;
 
+#ifdef REAL_VALUE_TYPE
+float	WFE_Convert_Internal_Real_to_IEEE_Single(REAL_VALUE_TYPE);
+double	WFE_Convert_Internal_Real_to_IEEE_Double(REAL_VALUE_TYPE);
+long double WFE_Convert_Internal_Real_to_IEEE_Double_Extended(REAL_VALUE_TYPE);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

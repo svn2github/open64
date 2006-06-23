@@ -260,6 +260,9 @@ static void SE_Indxs_and_Bounds(WN* loops[],
 	   (wtype == MTYPE_I4 || wtype == MTYPE_U4 ||
 	    wtype == MTYPE_F4) ? 4 :
 	   (wtype == MTYPE_F8) ? 8 :
+#ifdef TARG_IA64
+           (wtype == MTYPE_F10) ? 16 :
+#endif
            (wtype == MTYPE_F16) ? 16 :
 	   (wtype == MTYPE_FQ || wtype == MTYPE_C8) ? 16 :
 	   (wtype == MTYPE_CQ) ? 32 : 0;

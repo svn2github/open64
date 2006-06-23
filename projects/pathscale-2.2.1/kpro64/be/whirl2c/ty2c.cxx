@@ -111,8 +111,8 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_PREDEF+1] =
     {"float",              "_IEEE32"},          /* MTYPE_F4 = 10 */
     {"double",             "_IEEE64"},          /* MTYPE_F8 = 11 */
 #ifndef TARG_X8664
-    {Name_Unknown_Type,    "_IEEE80"},          /* MTYPE_F10 = 12 */
-    {Name_Unknown_Type,    "_IEEE128"}  /* MTYPE_F16 = 13 = MTYPE_PREDEF */
+    {"long double",	   "_IEEE80"},          /* MTYPE_F10 = 12 */
+    {"__float128",	   "_IEEE128"}		/* MTYPE_F16 = 13 = MTYPE_PREDEF */
 #else
     {Name_Unknown_Type,        ""},             /* MTYPE_V16C4 = 12 */
     {Name_Unknown_Type,        "_IEEE128"},     /* MTYPE_F16 = 13 */

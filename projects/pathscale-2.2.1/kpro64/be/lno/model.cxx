@@ -1669,8 +1669,10 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
     // regular floating point
     else if (desc  == MTYPE_F4 || 
              desc  == MTYPE_F8 ||
+             desc  == MTYPE_F10 ||
              rtype == MTYPE_F4 ||
-             rtype == MTYPE_F8) {
+             rtype == MTYPE_F8 ||
+             rtype == MTYPE_F10) {
       // multiply-adds
       if (Target_ISA_Has_Madd() && 
           (oper == OPR_ADD || oper == OPR_SUB) && 
@@ -3330,10 +3332,6 @@ LAT_DIRECTED_GRAPH16::Add_Vertices_Op_Edges_Rec(VINDEX16 store,
            !OPERATOR_is_load(oper) &&
            oper != OPR_CONST) {
     // an fp expression
-    if (desc == MTYPE_FQ || rtype == MTYPE_FQ) {
-      return -1;
-    } 
-    // an fp expression
     if (desc  == MTYPE_FQ || 
         desc  == MTYPE_CQ || 
         rtype == MTYPE_FQ ||
@@ -3343,8 +3341,10 @@ LAT_DIRECTED_GRAPH16::Add_Vertices_Op_Edges_Rec(VINDEX16 store,
     // regular floating point
     else if (desc  == MTYPE_F4 || 
              desc  == MTYPE_F8 ||
+             desc  == MTYPE_F10 ||
              rtype == MTYPE_F4 ||
-             rtype == MTYPE_F8) {
+             rtype == MTYPE_F8 ||
+             rtype == MTYPE_F10) {
       // multiply-adds
       if (Target_ISA_Has_Madd() && 
           (oper == OPR_ADD || oper == OPR_SUB) && 
@@ -4053,8 +4053,8 @@ WN2INT *se_needed, ARRAY_REF *ar)
           SYMBOL symb(wn);
           (*num_scalar_refs)++;
           Enter(&symb, is_store, 1);
-        } else if ((type == MTYPE_C4) || (type==MTYPE_C8) ||
-                   (type == MTYPE_FQ)) {
+        } else if (type == MTYPE_C4 || type == MTYPE_C8 ||
+                   type == MTYPE_F10 || type == MTYPE_FQ) {
           SYMBOL symb(wn);
           (*num_scalar_refs)+=2;
           Enter(&symb, is_store, 2);
@@ -4142,7 +4142,8 @@ void SYMBOL_TREE::Enter_Scalar_Refs(WN *wn, ARRAY_REF *ar,
       if ((type == MTYPE_F4) || (type == MTYPE_F8)) {
         Enter(&symb, is_store, 1);
         (*num_scalar_refs)++;
-      } else if ((type == MTYPE_C4) || (type==MTYPE_C8) || (type == MTYPE_FQ)) {
+      } else if (type == MTYPE_C4 || type == MTYPE_C8 ||
+		 type == MTYPE_F10 || type == MTYPE_FQ) {
         Enter(&symb, is_store, 2);
         (*num_scalar_refs)+=2;
       } else if (type == MTYPE_CQ) {
@@ -4464,7 +4465,8 @@ REGISTER_MODEL::Count_Op(WN* wn)
     TYPE_ID ti2 = OPCODE_desc(opcode);
     if ((ti == MTYPE_C4) || (ti == MTYPE_C8) || (ti == MTYPE_CQ) ||
         (ti2 == MTYPE_C4) || (ti2 == MTYPE_C8) || (ti2 == MTYPE_CQ) ||
-        (ti == MTYPE_FQ) || (ti2 == MTYPE_FQ)) {
+        (ti == MTYPE_F10) || (ti == MTYPE_FQ) ||
+        (ti2 == MTYPE_F10) || (ti2 == MTYPE_FQ)) {
         result = 2.0;
     } else if ((ti == MTYPE_F4) || (ti == MTYPE_F8) || 
         (ti2 == MTYPE_F4) || (ti2 == MTYPE_F8)) { 

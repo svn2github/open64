@@ -598,6 +598,7 @@ static BOOL is_floating_equal(simpnode k, double d)
    switch (ty) {
     case MTYPE_F4:
     case MTYPE_F8:
+    case MTYPE_F10:
       return (d == Targ_To_Host_Float(kval));
 
     case MTYPE_FQ:
@@ -1626,20 +1627,21 @@ static simpnode  simp_recip(OPCODE opc, simpnode k0, simpnode k1,
  *  is the list of types this type can be converted into without loss of information
  */
 #define B(t) (1<<t)
-#define PRECISE_I1 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_I1)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
-#define PRECISE_I2 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
-#define PRECISE_I4 B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_I4)|B(MTYPE_I8)
-#define PRECISE_I8 B(MTYPE_FQ)|B(MTYPE_I8)
-#define PRECISE_U1 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_U1)|B(MTYPE_U2)|B(MTYPE_U4)|B(MTYPE_U8)
-#define PRECISE_U2 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_U2)|B(MTYPE_U4)|B(MTYPE_U8)
-#define PRECISE_U4 B(MTYPE_F8)|B(MTYPE_FQ)|B(MTYPE_I8)
-#define PRECISE_U8 B(MTYPE_FQ)
-#define PRECISE_F4 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ)
-#define PRECISE_F8 B(MTYPE_F8)|B(MTYPE_FQ)
+#define PRECISE_I1 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I1)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
+#define PRECISE_I2 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)
+#define PRECISE_I4 B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I4)|B(MTYPE_I8)
+#define PRECISE_I8 B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I8)
+#define PRECISE_U1 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_U1)|B(MTYPE_U2)|B(MTYPE_U4)|B(MTYPE_U8)
+#define PRECISE_U2 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_U2)|B(MTYPE_U4)|B(MTYPE_U8)
+#define PRECISE_U4 B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)|B(MTYPE_I8)
+#define PRECISE_U8 B(MTYPE_F10)|B(MTYPE_FQ)
+#define PRECISE_F4 B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)
+#define PRECISE_F8 B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ)
+#define PRECISE_F10 B(MTYPE_F10)|B(MTYPE_FQ)
 #define PRECISE_FQ B(MTYPE_FQ)
 #define TESTABLE_TYPE (B(MTYPE_U1)|B(MTYPE_U2)|B(MTYPE_U4)|B(MTYPE_U8)|\
 		       B(MTYPE_I1)|B(MTYPE_I2)|B(MTYPE_I4)|B(MTYPE_I8)|\
-		       B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_FQ))
+		       B(MTYPE_F4)|B(MTYPE_F8)|B(MTYPE_F10)|B(MTYPE_FQ))
 #define TYPEISIN(t,b) ( ((1<<(t)) & (b)) !=0)
 
 static BOOL convert_precise(TYPE_ID t1, TYPE_ID t2)
@@ -1679,6 +1681,9 @@ static BOOL convert_precise(TYPE_ID t1, TYPE_ID t2)
        case MTYPE_F8:
 	 precise_bits = PRECISE_F8;
 	 break;
+       case MTYPE_F10:
+         precise_bits = PRECISE_F10;
+         break;
        case MTYPE_FQ:
 	 precise_bits = PRECISE_FQ;
 	 break;

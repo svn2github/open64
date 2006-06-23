@@ -301,6 +301,7 @@ extern TCON Host_To_Targ ( TYPE_ID ctype, INT64 ivalue );
 
 /* Convert host floating point value to a TCON of given type: */
 extern TCON Host_To_Targ_Float ( TYPE_ID ctype, double fvalue );
+extern TCON Host_To_Targ_Float_10 ( TYPE_ID ctype, long double fvalue );
 extern TCON Host_To_Targ_Float_4 ( TYPE_ID ctype, float fvalue );
 extern TCON Host_To_Targ_Quad  ( QUAD_TYPE fvalue );
 #ifdef TARG_X8664

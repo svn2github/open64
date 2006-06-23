@@ -1419,6 +1419,9 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
         case MTYPE_I4 : case MTYPE_U4: case MTYPE_F4: load_size=4; break;
         case MTYPE_I8 : case MTYPE_U8: case MTYPE_F8: case MTYPE_C4:
 	  load_size = 8; break;
+#ifdef TARG_IA64
+	case MTYPE_F10: load_size = 16; break;
+#endif
         case MTYPE_C8 : case MTYPE_FQ: 
 	  load_size = 16; break;
         case MTYPE_CQ :

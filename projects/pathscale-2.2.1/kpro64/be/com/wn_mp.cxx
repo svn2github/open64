@@ -6302,7 +6302,7 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
       WN *new_val = Gen_MP_Load(v->new_st, v->new_offset, TRUE);
       if ( (v->reduction_opr == OPR_CAND || v->reduction_opr == OPR_CIOR) &&
            (v->mtype == MTYPE_F4 || v->mtype == MTYPE_F8 ||
-	          v->mtype == MTYPE_FQ) ) {
+	          v->mtype == MTYPE_F10 || v->mtype == MTYPE_FQ) ) {
           // convert float to integer for C operators && and || : PV 677602
         orig_val = WN_NE(v->mtype, orig_val, 
                          Make_Const(Host_To_Targ_Float(v->mtype, 0.0)));
@@ -6336,11 +6336,11 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
       if ((( restype == MTYPE_I4 || restype == MTYPE_I8 ||
               restype == MTYPE_U4 || restype == MTYPE_U8 ) &&
              ( v->mtype == MTYPE_F4 || v->mtype == MTYPE_F8 ||
-	             v->mtype == MTYPE_FQ )) ||
+	             v->mtype == MTYPE_F10 || v->mtype == MTYPE_FQ)) ||
            (( v->mtype == MTYPE_I4 || v->mtype == MTYPE_I8 ||
               v->mtype == MTYPE_U4 || v->mtype == MTYPE_U8 ) &&
              ( restype == MTYPE_F4 || restype == MTYPE_F8 ||
-	             restype == MTYPE_FQ )))
+	             restype == MTYPE_F10 || restype == MTYPE_FQ )))
         result = WN_Cvt(restype, v->mtype, result);
       else if ((restype == MTYPE_I4 || restype == MTYPE_I8 ||
               restype == MTYPE_U4 || restype == MTYPE_U8) && 
@@ -6427,7 +6427,7 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 
       if(( v->reduction_opr == OPR_CAND || v->reduction_opr == OPR_CIOR) &&
 	       ( v->mtype == MTYPE_F4 || v->mtype == MTYPE_F8 ||
-	         v->mtype == MTYPE_FQ ))
+	         v->mtype == MTYPE_F10 || v->mtype == MTYPE_FQ ))
       {
 	       wn_old_val = WN_NE( v->mtype, wn_old_val,
 	                       Make_Const( Host_To_Targ_Float( v->mtype, 0.0 )));
@@ -6459,11 +6459,11 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
       if((( restype == MTYPE_I4 || restype == MTYPE_I8 ||
 	          restype == MTYPE_U4 || restype == MTYPE_U8 ) &&
 	        ( v->mtype == MTYPE_F4 || v->mtype == MTYPE_F8 ||
-	          v->mtype == MTYPE_FQ )) ||
+	          v->mtype == MTYPE_F10 || v->mtype == MTYPE_FQ )) ||
 	       (( v->mtype == MTYPE_I4 || v->mtype == MTYPE_I8 ||
 	          v->mtype == MTYPE_U4 || v->mtype == MTYPE_U8 ) &&
 	        ( restype == MTYPE_F4 || restype == MTYPE_F8 ||
-	          restype == MTYPE_FQ )))
+	          restype == MTYPE_F10 || restype == MTYPE_FQ )))
 	      result = WN_Cvt( restype, v->mtype, result );
       else if(( restype == MTYPE_I4 || restype == MTYPE_I8 ||
 		            restype == MTYPE_U4 || restype == MTYPE_U8) &&

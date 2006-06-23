@@ -137,6 +137,7 @@ typedef enum Preg_Usage_Kind
    PREG_AS_UINT64,  /* LARGEST_iPREG_USAGE_KIND */
    PREG_AS_IEEE32,
    PREG_AS_IEEE64,
+   PREG_AS_IEEE80,
    PREG_AS_QUAD,
    PREG_AS_C4,
    PREG_AS_C8,
@@ -161,6 +162,7 @@ static const MTYPE Ukind_to_Mtype[LAST_PREG_USAGE_KIND+1] =
    MTYPE_U8, /* PREG_AS_UINT64 */
    MTYPE_F4, /* PREG_AS_IEEE32 */
    MTYPE_F8, /* PREG_AS_IEEE64 */
+   MTYPE_F10,/* PREG_AS_IEEE80 */
    MTYPE_FQ, /* PREG_AS_QUAD */
    MTYPE_C4, /* PREG_AS_C4 */
    MTYPE_C8, /* PREG_AS_C8 */
@@ -251,7 +253,10 @@ Mtype_to_Ukind(MTYPE mtype)
    case MTYPE_F8: 
       ukind = PREG_AS_IEEE64;
       break;
-   case MTYPE_FQ: 
+   case MTYPE_F10:
+      ukind = PREG_AS_IEEE80;
+      break;
+   case MTYPE_FQ:
       ukind = PREG_AS_QUAD;
       break;
    case MTYPE_C4: 

@@ -538,6 +538,7 @@ Ldid_from_mtype( MTYPE mtype )
     case MTYPE_U8:	return OPC_U8U8LDID;
     case MTYPE_F4:	return OPC_F4F4LDID;
     case MTYPE_F8:	return OPC_F8F8LDID;
+    case MTYPE_F10:	return OPC_F10F10LDID;
     case MTYPE_FQ:	return OPC_FQFQLDID;
     case MTYPE_C4:	return OPC_C4C4LDID;
     case MTYPE_C8:	return OPC_C8C8LDID;
@@ -558,8 +559,6 @@ Ldid_from_mtype( MTYPE mtype )
 #endif
 
     case MTYPE_B:
-    case MTYPE_F10:
-    case MTYPE_F16:
     case MTYPE_STRING:
     case MTYPE_M:
     case MTYPE_V:
@@ -644,7 +643,11 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 4:  return MTYPE_F4;
       case 8:  return MTYPE_F8;
       case 12:
+#if defined(TARG_IA64)
+      case 16: return MTYPE_F10;
+#else
       case 16: return MTYPE_FQ;
+#endif
     }
   }
 
@@ -724,7 +727,11 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 4:  return OPC_F4F4LDID;
       case 8:  return OPC_F8F8LDID;
       case 12:
+#if defined(TARG_IA64)
+      case 16: return OPC_F10F10LDID;
+#else
       case 16: return OPC_FQFQLDID;
+#endif
     }
   }
 
@@ -804,7 +811,11 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 4:  return OPC_F4STID;
       case 8:  return OPC_F8STID;
       case 12:
+#if defined(TARG_IA64)
+      case 16: return OPC_F10STID;
+#else
       case 16: return OPC_FQSTID;
+#endif
     }
   }
 

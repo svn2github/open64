@@ -427,6 +427,7 @@ Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level)
 
     case MTYPE_F4:
     case MTYPE_F8:
+    case MTYPE_F10:
 
       info.count = 1;
       info.mtype [0] = mtype;
@@ -733,6 +734,7 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	
     case MTYPE_F4:
     case MTYPE_F8:
+    case MTYPE_F10:
 	/* want to left-justify the object */
         ++Current_Float_Param_Num;
 	rpad = MTYPE_RegisterSize(SIM_INFO.flt_type) - ploc.size;

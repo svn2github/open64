@@ -116,7 +116,11 @@ static struct winfo {
   UINT_TYPE,     INT_TYPE,      8,  /* MTYPE_U8 */
   FLOAT_TYPE,    FLOAT_TYPE,    4,  /* MTYPE_F4 */
   FLOAT_TYPE,    FLOAT_TYPE,    8,  /* MTYPE_F8 */
+#ifdef TARG_IA64
+  FLOAT_TYPE,    FLOAT_TYPE,   16,  /* MTYPE_F10*/
+#else
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_F10*/
+#endif
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_F16*/
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_STR*/
   FLOAT_TYPE,    FLOAT_TYPE,   16,  /* MTYPE_FQ  */
@@ -2366,6 +2370,7 @@ WN *WN_ConstPowerOf2( TYPE_ID type, INT32 n)
   {
   case MTYPE_F4:
   case MTYPE_F8:
+  case MTYPE_F10:
   case MTYPE_F16:
   case MTYPE_FQ:
   case MTYPE_C4:
@@ -2394,6 +2399,7 @@ WN *WN_Floatconst( TYPE_ID type, double value)
   {
   case MTYPE_F4:
   case MTYPE_F8:
+  case MTYPE_F10:
   case MTYPE_FQ:
   case MTYPE_F16:
   case MTYPE_C4:
@@ -2441,6 +2447,7 @@ WN *WN_UVConst( TYPE_ID type)
 #endif
   case MTYPE_F4:
   case MTYPE_F8:
+  case MTYPE_F10:
   case MTYPE_FQ:
   case MTYPE_F16:
   case MTYPE_C4:
@@ -2761,13 +2768,11 @@ WN_Float_Type_Conversion( WN *wn, TYPE_ID to_type )
   /* infer the "from" type from the given whirl */
   TYPE_ID from_type = WN_rtype(wn);
 
-  Is_True( from_type == MTYPE_F4 ||
-	   from_type == MTYPE_F8 ||
-	   from_type == MTYPE_FQ,
+  Is_True( from_type == MTYPE_F4 || from_type == MTYPE_F8 ||
+	   from_type == MTYPE_F10 || from_type == MTYPE_FQ,
     ("WN_Float_Type_Conversion: unexpected from_type: %d\n",from_type));
-  Is_True( to_type == MTYPE_F4 ||
-	   to_type == MTYPE_F8 ||
-	   to_type == MTYPE_FQ,
+  Is_True( to_type == MTYPE_F4 || to_type == MTYPE_F8 ||
+	   to_type == MTYPE_F10 || to_type == MTYPE_FQ,
     ("WN_Float_Type_Conversion: unexpected to_type: %d\n", to_type) );
 
   /* quickie check */
@@ -2809,6 +2814,7 @@ WN_Type_Conversion( WN *wn, TYPE_ID to_type )
 	   from_type == MTYPE_U8 ||
 	   from_type == MTYPE_F4 ||
 	   from_type == MTYPE_F8 ||
+	   from_type == MTYPE_F10 ||
 	   from_type == MTYPE_FQ,
     ("WN_Type_Conversion: unexpected from_type: %d\n", from_type) );
   Is_True( to_type == MTYPE_I1 ||
@@ -2821,6 +2827,7 @@ WN_Type_Conversion( WN *wn, TYPE_ID to_type )
 	   to_type == MTYPE_U8 ||
 	   to_type == MTYPE_F4 ||
 	   to_type == MTYPE_F8 ||
+	   to_type == MTYPE_F10 ||
 	   to_type == MTYPE_FQ,
     ("WN_Type_Conversion: unexpected to_type: %d\n", to_type) );
 

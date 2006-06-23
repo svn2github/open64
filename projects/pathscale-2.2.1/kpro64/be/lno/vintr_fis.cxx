@@ -185,7 +185,11 @@ static INT64 MTYPE_size(TYPE_ID mtype)
 	case MTYPE_U8:		sz=8; break;
 	case MTYPE_F4:		sz=4; break;
 	case MTYPE_F8:		sz=8; break;
+#ifdef TARG_IA64
+	case MTYPE_F10:		sz=16; break;
+#else
 	case MTYPE_F10:		sz=10; break;
+#endif
 	case MTYPE_F16:		sz=16; break;
 	case MTYPE_STR:		sz=0; break;
 	case MTYPE_FQ:		sz=16; break;

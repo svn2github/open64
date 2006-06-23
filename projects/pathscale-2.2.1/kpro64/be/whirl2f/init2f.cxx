@@ -184,13 +184,15 @@ Set_Tcon_Value(TCON *tcon, MTYPE mtype, INT typesize, char *bytes)
       break;
 
    case MTYPE_F4:
-      /* TODO: export Host_To_Targ_Float_4() from be.so 
-       */
-      *tcon = Host_To_Targ_Float(mtype, rep.val.val1.f[0]);
+      *tcon = Host_To_Targ_Float_4(mtype, rep.val.val1.f[0]);
       break;
 
    case MTYPE_F8:
       *tcon = Host_To_Targ_Float(mtype, rep.val.val1.d[0]);
+      break;
+
+   case MTYPE_F10:
+      *tcon = Host_To_Targ_Float_10(mtype, rep.val.val1.q);
       break;
 
    case MTYPE_FQ:

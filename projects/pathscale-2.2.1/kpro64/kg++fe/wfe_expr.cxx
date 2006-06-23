@@ -2841,38 +2841,27 @@ WFE_Expand_Expr (tree exp,
 	tcon = Host_To_Targ_Float (TY_mtype (ty_idx), TREE_REAL_CST(exp));
 #else
 	REAL_VALUE_TYPE real = TREE_REAL_CST(exp);
-	int rval;
-
-	long rbuf [4];
-#ifdef KEY
-	INT32 rbuf_w[4]; // this is needed when long is 64-bit
-	INT32 i;
-#endif
 
 	switch (TY_mtype (ty_idx)) {
 	  case MTYPE_F4:
-	    REAL_VALUE_TO_TARGET_SINGLE (real, rval);
-	    tcon = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &rval);
+	    tcon = Host_To_Targ_Float_4 (MTYPE_F4,
+		WFE_Convert_Internal_Real_to_IEEE_Single(real));
 	    break;
+
 	  case MTYPE_F8:
-	    REAL_VALUE_TO_TARGET_DOUBLE (real, rbuf);
-#ifdef KEY
-	    WFE_Convert_To_Host_Order(rbuf);
-	    for (i = 0; i < 4; i++)
-	      rbuf_w[i] = rbuf[i];
-	    tcon = Host_To_Targ_Float (MTYPE_F8, *(double *) &rbuf_w);
-#else
-	    tcon = Host_To_Targ_Float (MTYPE_F8, *(double *) &rbuf);
-#endif
+	    tcon = Host_To_Targ_Float (MTYPE_F8,
+		WFE_Convert_Internal_Real_to_IEEE_Double(real));
 	    break;
-#if defined(TARG_IA32) || defined(TARG_X8664) 
+
+          case MTYPE_F10:
+	    tcon = Host_To_Targ_Float_10 (MTYPE_F10,
+		WFE_Convert_Internal_Real_to_IEEE_Double_Extended(real));
+            break;
+
 	  case MTYPE_FQ:
-	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, rbuf);
-	    for (i = 0; i < 4; i++)
-	      rbuf_w[i] = rbuf[i];
-	    tcon = Host_To_Targ_Quad (*(long double *) &rbuf_w);
+	    tcon = Host_To_Targ_Quad (WFE_Convert_Internal_Real_to_IEEE_Double_Extended(real));
 	    break;	    
-#endif /* TARG_IA32 */
+
 	  default:
 	    FmtAssert(FALSE, ("WFE_Expand_Expr unexpected float size"));
 	    break;
@@ -2894,56 +2883,26 @@ WFE_Expand_Expr (tree exp,
 #else
 	REAL_VALUE_TYPE real = TREE_REAL_CST(TREE_REALPART(exp));
 	REAL_VALUE_TYPE imag = TREE_REAL_CST(TREE_IMAGPART(exp));
-        int rval;
-	int ival;
-	long rbuf [4];
-	long ibuf [4];
-#ifdef KEY
-	INT32 rbuf_w [4]; // this is needed when long is 64-bit
-	INT32 ibuf_w [4]; // this is needed when long is 64-bit
-	INT32 i;
-#endif 
+
 	switch (TY_mtype (ty_idx)) {
 	  case MTYPE_C4:
-	    REAL_VALUE_TO_TARGET_SINGLE (real, rval);
-	    REAL_VALUE_TO_TARGET_SINGLE (imag, ival);
 	    tcon = Host_To_Targ_Complex_4 (MTYPE_C4,
-					   *(float *) &rval,
-					   *(float *) &ival);
+		WFE_Convert_Internal_Real_to_IEEE_Single(real),
+		WFE_Convert_Internal_Real_to_IEEE_Single(imag));
 	    break;
+
 	  case MTYPE_C8:
-	    REAL_VALUE_TO_TARGET_DOUBLE (real, rbuf);
-	    REAL_VALUE_TO_TARGET_DOUBLE (imag, ibuf);
-#ifdef KEY
-	    WFE_Convert_To_Host_Order(rbuf);
-	    WFE_Convert_To_Host_Order(ibuf);
-	    for (i = 0; i < 4; i++) {
-	      rbuf_w[i] = rbuf[i];
-	      ibuf_w[i] = ibuf[i];
-	    }
 	    tcon = Host_To_Targ_Complex (MTYPE_C8,
-					 *(double *) &rbuf_w,
-					 *(double *) &ibuf_w);
-#else
-	    tcon = Host_To_Targ_Complex (MTYPE_C8,
-					 *(double *) &rbuf,
-					 *(double *) &ibuf);
-#endif
+		WFE_Convert_Internal_Real_to_IEEE_Double(real),
+		WFE_Convert_Internal_Real_to_IEEE_Double(imag));
 	    break;
-#ifdef KEY
-	case MTYPE_CQ:
-	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, rbuf);
-	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (imag, ibuf);
-	    WFE_Convert_To_Host_Order(rbuf);
-	    WFE_Convert_To_Host_Order(ibuf);
-	    for (i = 0; i < 4; i++) {
-	      rbuf_w[i] = rbuf[i];
-	      ibuf_w[i] = ibuf[i];
-	    }
-	    tcon = Host_To_Targ_Complex_Quad( *(long double *) &rbuf_w,
-					      *(long double *) &ibuf_w );
-	  break;
-#endif
+
+	  case MTYPE_CQ:
+	    tcon = Host_To_Targ_Complex_Quad (
+		WFE_Convert_Internal_Real_to_IEEE_Double_Extended(real),
+		WFE_Convert_Internal_Real_to_IEEE_Double_Extended(imag));
+	    break;
+
 	  default:
 	    FmtAssert(FALSE, ("WFE_Expand_Expr unexpected float size"));
 	    break;

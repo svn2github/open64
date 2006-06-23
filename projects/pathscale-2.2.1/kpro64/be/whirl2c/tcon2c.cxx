@@ -287,6 +287,15 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
       Append_Token_String(tokens, strbase);
       break;
 
+    case MTYPE_F10:
+      str = Targ_Print(NULL, tvalue);
+      strbase = Remove_Trailing_Zero_Fraction(str);
+      /* Undo the 'e'->'d' conversion */
+      if ((str = strchr(strbase, 'd')) != NULL)
+         *str = 'e';
+      Append_Token_String(tokens, strbase);
+      break;
+
     case MTYPE_FQ:
       str = Targ_Print(NULL, tvalue);
       strbase = Remove_Trailing_Zero_Fraction(str);

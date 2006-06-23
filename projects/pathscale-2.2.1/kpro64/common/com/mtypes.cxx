@@ -125,8 +125,13 @@ static TYPE_ID Machine_Next_Alignment[] =
  /* MTYPE_U4	  */	MTYPE_U8,
  /* MTYPE_U8	  */	MTYPE_UNKNOWN,
  /* MTYPE_F4	  */	MTYPE_F8,
+#ifdef TARG_IA64
+ /* MTYPE_F8	  */	MTYPE_F10,
+ /* MTYPE_F10	  */	MTYPE_FQ,
+#else
  /* MTYPE_F8	  */	MTYPE_FQ,
  /* MTYPE_F10	  */	MTYPE_UNKNOWN,
+#endif
  /* MTYPE_F16	  */	MTYPE_UNKNOWN,
  /* MTYPE_STR	  */	MTYPE_UNKNOWN,
  /* MTYPE_FQ	  */	MTYPE_UNKNOWN,	
@@ -154,10 +159,18 @@ static TYPE_ID Machine_Prev_Alignment[] =
  /* MTYPE_U8	  */	MTYPE_U4,
  /* MTYPE_F4	  */	MTYPE_UNKNOWN,
  /* MTYPE_F8	  */	MTYPE_F4,
+#ifdef TARG_IA64
+ /* MTYPE_F10	  */	MTYPE_F8,
+#else
  /* MTYPE_F10	  */	MTYPE_UNKNOWN,
+#endif
  /* MTYPE_F16	  */	MTYPE_UNKNOWN,
  /* MTYPE_STR	  */	MTYPE_UNKNOWN,
+#ifdef TARG_IA64
+ /* MTYPE_FQ	  */	MTYPE_F10,
+#else
  /* MTYPE_FQ	  */	MTYPE_F8,
+#endif
  /* MTYPE_M	  */	MTYPE_UNKNOWN,
  /* MTYPE_C4	  */	MTYPE_UNKNOWN,
  /* MTYPE_C8	  */	MTYPE_C4,

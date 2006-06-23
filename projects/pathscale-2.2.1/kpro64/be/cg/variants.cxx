@@ -141,6 +141,13 @@ Negate_BR_Variant(VARIANT variant)
   case V_BR_DLT:
   case V_BR_DLE:
 
+  case V_BR_XEQ:
+  case V_BR_XNE:
+  case V_BR_XGT:
+  case V_BR_XGE:
+  case V_BR_XLT:
+  case V_BR_XLE:
+
   case V_BR_QEQ:
   case V_BR_QNE:
   case V_BR_QGT:
@@ -225,6 +232,13 @@ Invert_BR_Variant(VARIANT variant)
   case V_BR_DGE: variant = V_BR_DLE; break;
   case V_BR_DLT: variant = V_BR_DGT; break;
   case V_BR_DLE: variant = V_BR_DGE; break;
+
+  case V_BR_XEQ: variant = V_BR_XEQ; break;
+  case V_BR_XNE: variant = V_BR_XNE; break;
+  case V_BR_XGT: variant = V_BR_XLT; break;
+  case V_BR_XGE: variant = V_BR_XLE; break;
+  case V_BR_XLT: variant = V_BR_XGT; break;
+  case V_BR_XLE: variant = V_BR_XGE; break;
 
   case V_BR_QEQ: variant = V_BR_QEQ; break;
   case V_BR_QNE: variant = V_BR_QNE; break;
@@ -353,6 +367,13 @@ BR_Variant_Name(VARIANT variant)
   case V_BR_DGE:     return is_false ? "!DGE"     : "DGE";
   case V_BR_DLT:     return is_false ? "!DLT"     : "DLT";
   case V_BR_DLE:     return is_false ? "!DLE"     : "DLE";
+
+  case V_BR_XEQ:     return is_false ? "!XEQ"     : "XEQ";
+  case V_BR_XNE:     return is_false ? "!XNE"     : "XNE";
+  case V_BR_XGT:     return is_false ? "!XGT"     : "XGT";
+  case V_BR_XGE:     return is_false ? "!XGE"     : "XGE";
+  case V_BR_XLT:     return is_false ? "!XLT"     : "XLT";
+  case V_BR_XLE:     return is_false ? "!XLE"     : "XLE";
 
   case V_BR_QEQ:     return is_false ? "!QEQ"     : "QEQ";
   case V_BR_QNE:     return is_false ? "!QNE"     : "QNE";

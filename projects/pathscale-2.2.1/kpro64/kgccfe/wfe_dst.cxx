@@ -864,7 +864,7 @@ static type_trans ate_types[] = {
  8, "INTEGER*8", DW_ATE_unsigned,	/* MTYPE_U8  */
  4, "REAL_4",    DW_ATE_float,		/* MTYPE_F4  */
  8, "REAL_8",    DW_ATE_float,		/* MTYPE_F8  */
- 10,"UNK",       DW_ATE_float,		/* MTYPE_F10 */
+ 16,"REAL_10",   DW_ATE_float,		/* MTYPE_F10 */
  16,"REAL_16",   DW_ATE_float,		/* MTYPE_F16 */
  1 ,"CHAR" ,     DW_ATE_signed_char,    /* MTYPE_STR */
  16,"REAL_16",   DW_ATE_float,		/* MTYPE_FQ  */

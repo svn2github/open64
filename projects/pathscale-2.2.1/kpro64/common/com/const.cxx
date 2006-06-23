@@ -206,7 +206,10 @@ Make_Const ( TCON c )
     case MTYPE_F8:
       opc = OPC_F8CONST;
       break;
-     case MTYPE_FQ:
+    case MTYPE_F10:
+      opc = OPC_F10CONST;
+      break;
+    case MTYPE_FQ:
       opc = OPC_FQCONST;
       break;
     case MTYPE_C4:
@@ -334,6 +337,7 @@ WN * Make_Reduction_Identity ( INT32 opr, TYPE_ID mtype )
 
        case MTYPE_F4:
        case MTYPE_F8:
+       case MTYPE_F10:
        case MTYPE_FQ:
        case MTYPE_C4:
        case MTYPE_C8:
@@ -364,6 +368,7 @@ WN * Make_Reduction_Identity ( INT32 opr, TYPE_ID mtype )
 
        case MTYPE_F4:
        case MTYPE_F8:
+       case MTYPE_F10:
        case MTYPE_FQ:
        case MTYPE_C4:
        case MTYPE_C8:
@@ -410,6 +415,7 @@ WN * Make_Reduction_Identity ( INT32 opr, TYPE_ID mtype )
 
        case MTYPE_F4:
        case MTYPE_F8:
+       case MTYPE_F10:
        case MTYPE_FQ:
 	 r = Make_Const ( Host_To_Targ_Float ( ntype, -HUGE_VAL ) );
 	 break;
@@ -466,6 +472,7 @@ WN * Make_Reduction_Identity ( INT32 opr, TYPE_ID mtype )
 
        case MTYPE_F4:
        case MTYPE_F8:
+       case MTYPE_F10:
        case MTYPE_FQ:
 	 r = Make_Const ( Host_To_Targ_Float ( ntype, HUGE_VAL ) );
 	 break;
@@ -562,6 +569,7 @@ WN * Make_Reduction_Identity ( INT32 opr, TYPE_ID mtype )
 
        case MTYPE_F4:
        case MTYPE_F8:
+       case MTYPE_F10:
        case MTYPE_FQ:
         Is_True(opr == OPR_CAND || opr == OPR_CIOR,
 	        ("bad opr %d", (INT) opr));
