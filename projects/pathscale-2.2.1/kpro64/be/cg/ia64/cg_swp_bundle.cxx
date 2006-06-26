@@ -783,7 +783,9 @@ void SWP_Delete_Noop(SWP_OP_vector &op_state,
 
   for (INT i=0; i<exist_noops.size(); i++){
      INT nop_idx = exist_noops[i];
+     BB_Remove_Op(op_state[nop_idx].op->bb, op_state[nop_idx].op);
      op_state[nop_idx].op = NULL;
+     op_state[nop_idx].is_noop = FALSE;
   }
 }
 
@@ -987,6 +989,12 @@ BOOL SWP_Slot_Helper(SWP_OP_vector &op_state,
           op_state[i].op->prev = OP_Partial_Backup[i].prev;
           op_state[i].op->next = OP_Partial_Backup[i].next;
         }
+    }
+
+    //New noop generated in SWP_Update_OP_slot should be inserted into BB
+    if(op_state.size() > OP_Partial_Backup.size()) {
+	  OP* new_noop = op_state[op_state.size()-1].op;
+	  BB_Insert_Op_After(OP_bb(new_noop), new_noop->prev, new_noop);
     }
 
     // invalidate replaced_noops in op_state

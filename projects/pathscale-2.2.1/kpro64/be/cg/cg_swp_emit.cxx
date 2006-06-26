@@ -270,6 +270,15 @@ TN *SWP_REG_ASSIGNMENT::Get_Register_TN(TN *tn, INT adjustment)
   /*if (c == ISA_REGISTER_CLASS_predicate) {
     r = r + 2;
   }*/
+
+  //Bug fix. Although we don't know the size of the rotating register file
+  //at this time, obviously r can not exceed the largest register number
+  //which is determined by ISA target. This is a kind of early SWP_Fixup.
+  if (r > REGISTER_Last_Rotating_Registers(c)) {
+  	r -= REGISTER_Last_Rotating_Registers(c) - 
+		REGISTER_First_Rotating_Registers(c) + 1;
+  }
+  
   // workaround g++ bug:  Set_CLASS_REG_PAIR_reg(rp, r);
   Set_CLASS_REG_PAIR(rp, c, r);
 
