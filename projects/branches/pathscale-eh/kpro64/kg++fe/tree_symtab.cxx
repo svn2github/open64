@@ -359,14 +359,14 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #if !defined(TARG_X8664) && !defined(TARG_IA64)
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
-#endif /* _LP64 */
+#endif
 #else 
 	        // needed for compiling variable length array
 		// as in gcc.c-torture/execute/920929-1.c
 		// we need to fix the rest of the compiler 
 		// with _LP64 but seems to work fine without.	
 		case 16:  mtype = MTYPE_I8; break;
-#endif /* KEY */
+#endif
 		default:  FmtAssert(FALSE,
                                     ("Get_TY unexpected size %d", tsize));
 		}
@@ -400,12 +400,11 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
-#ifdef TARG_X8664
-		case 12: mtype = MTYPE_FQ; break;
+#if defined(TARG_IA64)
+		case 16: mtype = MTYPE_F10; break;
+#else
+		case 16: mtype = MTYPE_F16; break;
 #endif
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_IA64)
-		case 16: mtype = MTYPE_FQ; break;
-#endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
@@ -414,12 +413,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case  8:  mtype = MTYPE_C4; break;
 		case 16:  mtype = MTYPE_C8; break;
-#ifdef TARG_X8664
+#ifdef TARG_IA64
+		case 24:  mtype = MTYPE_C10; break;
+#endif
+#if defined(TARG_IA32) || defined(TARG_X8664)
 		case 24:  mtype = MTYPE_CQ; break;
 #endif
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_IA64)
 		case 32: mtype = MTYPE_CQ; break;
-#endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type

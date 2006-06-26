@@ -159,9 +159,16 @@ typedef UINT64 VARIANT;
 #define V_BR_WTOP	75	/* Mod-sched while loop (top) */
 #define V_BR_WEXIT	76	/* Mod-sched while loop (exit) */
 
-#define V_BR_ALWAYS	77	/* Unconditional branch */
-#define V_BR_NEVER	78	/* Never branch */
-#define V_BR_LAST	78	/* Last one defined */
+#define V_BR_XEQ        77      /* Double extended  A = B */
+#define V_BR_XNE        78      /* Double extended  A != B */
+#define V_BR_XGT        79      /* Double extended  A > B */
+#define V_BR_XGE        80      /* Double extended  A >= B */
+#define V_BR_XLT        81      /* Double extended  A < B */
+#define V_BR_XLE        82      /* Double extended  A <= B */
+
+#define V_BR_ALWAYS	83	/* Unconditional branch */
+#define V_BR_NEVER	84	/* Never branch */
+#define V_BR_LAST	84	/* Last one defined */
 
 /* V_BR_MASK *must* be 2^n - 1, and be at least as large as  */
 /* V_BR_LAST */

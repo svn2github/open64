@@ -123,16 +123,22 @@ Pick_Compare_TOP (VARIANT *variant, TN **src1, TN **src2, OPS *ops)
 	case V_BR_U4NE:	cmp_i = TOP_cmp4_i_ne; cmp = TOP_cmp4_ne; break; 
 	case V_BR_FEQ:	/*FALLTHROUGH*/
 	case V_BR_DEQ:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_eq; break;
+	case V_BR_XEQ:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_eq; break;
 	case V_BR_FLT:	/*FALLTHROUGH*/
 	case V_BR_DLT:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_lt; break;
+	case V_BR_XLT:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_lt; break;
 	case V_BR_FLE:	/*FALLTHROUGH*/
 	case V_BR_DLE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_le; break;
+	case V_BR_XLE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_le; break;
 	case V_BR_FNE:	/*FALLTHROUGH*/
 	case V_BR_DNE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_neq; break;
+	case V_BR_XNE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_neq; break;
 	case V_BR_FGT:	/*FALLTHROUGH*/
 	case V_BR_DGT:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_gt; break;
+	case V_BR_XGT:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_gt; break;
 	case V_BR_FGE:	/*FALLTHROUGH*/
 	case V_BR_DGE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_ge; break;
+	case V_BR_XGE:	cmp_i = TOP_UNDEFINED; cmp = TOP_fcmp_ge; break;
 	default:	cmp_i = TOP_UNDEFINED; cmp = TOP_UNDEFINED; break;
 	}
 

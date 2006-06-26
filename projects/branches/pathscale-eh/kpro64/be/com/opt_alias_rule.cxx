@@ -306,6 +306,17 @@ BOOL ALIAS_RULE::Aliased_F_Param_Rule(const POINTS_TO *mem1,
   return TRUE;
 }
 
+#ifdef KEY
+struct TY_IDX_EQ
+{
+  bool operator() (const TY_IDX ty1, const TY_IDX ty2) const
+  {
+    return TY_IDX_index (ty1) == TY_IDX_index (ty2);
+  }
+};
+
+static hash_map<const TY_IDX, INT, __gnu_cxx::hash<TY_IDX>, TY_IDX_EQ> Stripped_mtype;
+#endif
 // Implement C.1.  See opt_ailas_rule.h
 //
 //  Strip off qualifiers, signed-ness.
@@ -329,6 +340,31 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
     //    Note that enum is represented as KIND_SCALAR.
     {
       TYPE_ID mtype = TY_mtype(ty);
+#ifdef KEY
+      switch (mtype) {
+      case MTYPE_I1:
+	ret_type = (1 << MTYPE_U1); break;
+      case MTYPE_I2:
+	ret_type = (1 << MTYPE_U2); break;
+      case MTYPE_I4:
+	ret_type = (1 << MTYPE_U4); break;
+      case MTYPE_I8:
+	ret_type = (1 << MTYPE_U8); break;
+      case MTYPE_C4:
+	ret_type = (1 << MTYPE_F4); break;
+      case MTYPE_C8:
+	ret_type = (1 << MTYPE_F8); break;
+      case MTYPE_CQ:
+	ret_type = (1 << MTYPE_FQ); break;
+      case MTYPE_C10:
+	ret_type = (1 << MTYPE_F10); break;
+      case MTYPE_C16:
+	ret_type = (1 << MTYPE_F16); break;
+      default:
+        Is_True(mtype < MTYPE_PTR, ("more than 31 mtypes."));
+	ret_type = (1 << mtype); break;
+      }
+#else
       Is_True(mtype < MTYPE_PTR, ("more than 31 mtypes."));
       switch (mtype) {
       case MTYPE_I1:
@@ -342,6 +378,7 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
       default:
 	ret_type = (1 << mtype); break;
       }
+#endif
     }
     break;
   case KIND_ARRAY:  //  Get the element type of the array
@@ -354,6 +391,10 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
     break;
   case KIND_STRUCT:  // Collect the basic types of a structure recursively.
     if (!TY_fld (ty).Is_Null ()) {
+#ifdef KEY
+      if (INT32 stripped_type = /* assign */ Stripped_mtype[ty_idx])
+	return stripped_type;
+#endif
       FLD_ITER fld_iter = Make_fld_iter (TY_fld (ty));
       do {
 	ret_type |= Get_stripped_mtype (FLD_type (fld_iter));
@@ -389,6 +430,10 @@ INT32 ALIAS_RULE::Get_stripped_mtype(TY_IDX ty_idx) const
       TY_no_ansi_alias(ty))		// varargs TY:  See PV 329475.
     ret_type = ALL_TYPE;
 
+#ifdef KEY
+  if (TY_kind(ty) == KIND_STRUCT && ret_type)
+    Stripped_mtype[ty_idx] = ret_type;
+#endif
   return ret_type;
 }
   

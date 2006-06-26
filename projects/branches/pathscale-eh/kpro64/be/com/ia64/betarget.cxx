@@ -90,19 +90,22 @@ OPCODE_To_TOP (OPCODE opcode)
       else                  return TOP_UNDEFINED;
 
     case OPR_NEG:
-           if (rtype == MTYPE_F4 
-	    || rtype == MTYPE_F8) return TOP_fneg;
-      else                        return TOP_UNDEFINED;
+      if (rtype == MTYPE_F4 || rtype == MTYPE_F8 || rtype == MTYPE_F10)
+	return TOP_fneg;
+      else
+      	return TOP_UNDEFINED;
 
     case OPR_ABS:
-           if (rtype == MTYPE_F4 
-	    || rtype == MTYPE_F8) return TOP_fabs;
-      else                        return TOP_UNDEFINED;
+      if (rtype == MTYPE_F4 || rtype == MTYPE_F8 || rtype == MTYPE_F10)
+	return TOP_fabs;
+      else
+	return TOP_UNDEFINED;
 
     case OPR_PAREN:
-           if (rtype == MTYPE_F4) return TOP_nop;
-      else if (rtype == MTYPE_F8) return TOP_nop;
-      else                        return TOP_UNDEFINED;
+      if (rtype == MTYPE_F4 || rtype == MTYPE_F8 || rtype == MTYPE_F10)
+	return TOP_nop;
+      else
+	return TOP_UNDEFINED;
 
     case OPR_PARM:
       return TOP_nop;

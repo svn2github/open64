@@ -2491,6 +2491,7 @@ if (Trace_Frame) fprintf(TFile, "<lay> didn't check Gspace for %s\n", ST_NAME(st
        case MTYPE_U8:
 	 newsec = _SEC_LIT8;
 	 break;
+       case MTYPE_F10:
        case MTYPE_FQ:
 	 newsec = _SEC_LIT16;
 	 break;

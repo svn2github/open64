@@ -220,17 +220,17 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		case 2:  mtype = MTYPE_I2; break;
 		case 4:  mtype = MTYPE_I4; break;
 		case 8:  mtype = MTYPE_I8; break;
-#ifndef TARG_X8664 
+#if !defined(TARG_X8664) && !defined(TARG_IA64)
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
-#endif /* _LP64 */
-#else 
-	        // needed for compiling variable length array
+#endif
+#else
+		// needed for compiling variable length array
 		// as in gcc.c-torture/execute/920929-1.c
 		// we need to fix the rest of the compiler 
-		// with _LP64 but seems to work fine without.	
+		// with _LP64 but seems to work fine without.
 		case 16:  mtype = MTYPE_I8; break;
-#endif /* KEY */
+#endif
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		if (TREE_UNSIGNED(type_tree)) {
@@ -264,15 +264,11 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+#if defined(TARG_IA64)
+		case 16: mtype = MTYPE_F10; break;
+#else
 		case 16: mtype = MTYPE_FQ; break;
-#endif /* TARG_MIPS */
-#ifdef TARG_IA64
-		case 12: mtype = MTYPE_F10; break;
-#endif /* TARG_IA64 */
-#if defined(TARG_IA32) || defined(TARG_X8664)
-		case 12: mtype = MTYPE_FQ; break;
-#endif /* TARG_IA32 */
+#endif
 		default: FmtAssert(FALSE, ("Get_TY unexpected REAL_TYPE size %d", tsize));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
@@ -281,15 +277,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case  8: mtype = MTYPE_C4; break;
 		case 16: mtype = MTYPE_C8; break;
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
-		case 32: mtype = MTYPE_CQ; break;
-#endif /* TARG_MIPS */
 #ifdef TARG_IA64
 		case 24: mtype = MTYPE_C10; break;
-#endif /* TARG_IA64 */
+#endif
 #if defined(TARG_IA32) || defined(TARG_X8664)
 		case 24: mtype = MTYPE_CQ; break;
-#endif /* TARG_IA32 */
+#endif
+		case 32: mtype = MTYPE_CQ; break;
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type

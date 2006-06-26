@@ -1472,6 +1472,50 @@ WFE_Add_Aggregate_Init_Integer (INT64 val, INT size)
   last_aggregate_initv = inv;
 }
 
+float
+WFE_Convert_Internal_Real_to_IEEE_Single (REAL_VALUE_TYPE real)
+{
+  INT32 retval;
+
+  Is_True (sizeof(INT32) == sizeof(float),
+    ("The return value from REAL_VALUE_TO_TARGET_SINGLE() should be cast to"
+     " a integer with the same size as float"));
+  REAL_VALUE_TO_TARGET_SINGLE(real, retval);
+  return *(float*)(void*)&retval;
+}
+
+double
+WFE_Convert_Internal_Real_to_IEEE_Double (REAL_VALUE_TYPE real)
+{
+  long buffer[4];
+  int compact_buffer[8];
+
+  REAL_VALUE_TO_TARGET_DOUBLE (real, buffer);
+  WFE_Convert_To_Host_Order(buffer);
+  if (sizeof(long) > 4) {
+    for (INT i = 0; i < sizeof(buffer)/sizeof(buffer[0]); i++)
+      compact_buffer[i] = (int)buffer[i];
+    return *(double*)(void*)&compact_buffer[0];
+  }
+  return *(double*)(void*)&buffer[0];
+}
+
+long double
+WFE_Convert_Internal_Real_to_IEEE_Double_Extended (REAL_VALUE_TYPE real)
+{
+  long buffer[4];
+  int compact_buffer[8];
+
+  REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, buffer);
+  WFE_Convert_To_Host_Order(buffer);
+  if (sizeof(long) > 4) {
+    for (INT i = 0; i < sizeof(buffer)/sizeof(buffer[0]); i++)
+      compact_buffer[i] = buffer[i];
+    return *(long double*)(void*)&compact_buffer[0];
+  }
+  return *(long double*)(void*)&buffer[0];
+}
+
 static void
 WFE_Add_Init_Block(void)
 {
@@ -1484,65 +1528,26 @@ WFE_Add_Init_Block(void)
   last_aggregate_initv = inv_blk;
 }
 
-#ifdef KEY	// kgccfe uses WFE_Add_Aggregrate_Init_Real instead of
-		// WFE_Add_Aggregate_Init_Double.  Use the former because it is
-		// newer and can handle REAL_VALUE_TYPE, which is needed for
-		// i386.
-double
-WFE_Convert_Internal_Real_to_IEEE_Double (REAL_VALUE_TYPE real) {
-  // don't use type other than long since REAL_VALUE_TO_TARGET_DOUBLE()
-  // expect the 2nd parameter is array of "long".
-  long buffer[4];
-  int compact_buffer[8];
-  REAL_VALUE_TO_TARGET_DOUBLE (real, buffer);
-  WFE_Convert_To_Host_Order(buffer);
-  // the bit-pattern returned from REAL_VALUE_TO_TARGET_DOUBLE
-  // is not in compact form -- only the low order 32bits hold
-  // th bit-pattern. if "long" is wider than 32 bits, the
-  // high order bits are undefined. In this case, we need to
-  // conver the spare bit-pattern into compact form.
-  if (sizeof(long) > 4) {
-    Is_True (sizeof(long) == 8, ("sizeof(long) shold be 64"));
-    Is_True (sizeof(int) == 4, ("sizeof(int) should be 32"));
-    for (INT i = 0; i < sizeof(buffer)/sizeof(buffer[0]); i++) {
-      compact_buffer[i] = (int)buffer[i];
-    }
-    return *(double*)(void*)&compact_buffer[0];
-  }
-  return *(double*)(void*)&buffer[0];
-}
-	
 void 
 WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
 {
   if (aggregate_inito == 0) return;
   INITV_IDX inv = New_INITV();
   TCON    tc;
-  int     t1;
-  double dtmp;
-#ifdef KEY
-  long     buffer [4];
-#else	
-// KEY is already defined above, but this is just to keep what we had earlier
-  int     buffer [4];
-#endif // KEY
+
   switch (size) {
     case 4:
-      REAL_VALUE_TO_TARGET_SINGLE (real, t1);
-      tc = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &t1);
+      tc = Host_To_Targ_Float_4 (MTYPE_F4,
+	WFE_Convert_Internal_Real_to_IEEE_Single(real));
       break;
     case 8:
-      dtmp = WFE_Convert_Internal_Real_to_IEEE_Double (real);
-      tc = Host_To_Targ_Float (MTYPE_F8, dtmp);
+      tc = Host_To_Targ_Float (MTYPE_F8,
+	WFE_Convert_Internal_Real_to_IEEE_Double(real));
       break;
-#ifdef KEY
-    case 12:
     case 16:
-      REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, buffer);
-      WFE_Convert_To_Host_Order(buffer);
-      tc = Host_To_Targ_Quad (*(long double *) &buffer);
+      tc = Host_To_Targ_Float_10 (MTYPE_F10,
+	WFE_Convert_Internal_Real_to_IEEE_Double_Extended(real));
       break;
-#endif
     default:
       FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Real unexpected size"));
       break;
@@ -1555,29 +1560,6 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
   last_aggregate_initv = inv;
 } /* WGE_Add_Aggregate_Init_Real */
 
-#else
-
-void 
-WFE_Add_Aggregate_Init_Double (double val, INT size)
-{
-  if (aggregate_inito == 0) return;
-  INITV_IDX inv = New_INITV();
-  TYPE_ID mtype;
-  if (size == 4) mtype = MTYPE_F4;
-  else if (size == 8) mtype = MTYPE_F8;
-  else FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Double unexpected size"));
-  INITV_Init_Float (inv, mtype, val);
-  if (last_aggregate_initv != 0)
-    Set_INITV_next(last_aggregate_initv, inv);
-  else if (! not_at_root)
-    Set_INITO_val(aggregate_inito, inv);
-  last_aggregate_initv = inv;
-}
-#endif	// KEY
-
-#ifdef KEY	// Use the WFE_Add_Aggregrate_Init_Complex from kgccfe, because
-		// it is newer and can handle REAL_VALUE_TYPE, which is needed
-		// for i386.
 void 
 WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT size)
 {
@@ -1585,37 +1567,25 @@ WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT 
   INITV_IDX inv = New_INITV();
   TCON    rtc;
   TCON    itc;
-  int     t1;
-#ifdef KEY
-  long     buffer [4];
-#else
-// KEY is already defined above, but this is just to keep what we had earlier
-  int     buffer [4];
-#endif // KEY
+
   switch (size) {
     case 8:
-      REAL_VALUE_TO_TARGET_SINGLE (rval, t1);
-      rtc = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &t1);
-      REAL_VALUE_TO_TARGET_SINGLE (ival, t1);
-      itc = Host_To_Targ_Float_4 (MTYPE_F4, *(float *) &t1);
+      rtc = Host_To_Targ_Float_4 (MTYPE_F4, 
+        WFE_Convert_Internal_Real_to_IEEE_Single (rval));
+      itc = Host_To_Targ_Float_4 (MTYPE_F4,
+        WFE_Convert_Internal_Real_to_IEEE_Single (ival));
       break;
     case 16:
-      REAL_VALUE_TO_TARGET_DOUBLE (rval, buffer);
-      WFE_Convert_To_Host_Order(buffer);
-      rtc = Host_To_Targ_Float (MTYPE_F8, *(double *) &buffer);
-      REAL_VALUE_TO_TARGET_DOUBLE (ival, buffer);
-      WFE_Convert_To_Host_Order(buffer);
-      itc = Host_To_Targ_Float (MTYPE_F8, *(double *) &buffer);
+      rtc = Host_To_Targ_Float (MTYPE_F8,
+        WFE_Convert_Internal_Real_to_IEEE_Double (rval));
+      itc = Host_To_Targ_Float (MTYPE_F8,
+        WFE_Convert_Internal_Real_to_IEEE_Double (ival));
       break;
-    case 24:
     case 32:
-      REAL_VALUE_TO_TARGET_LONG_DOUBLE (rval, buffer);
-      WFE_Convert_To_Host_Order(buffer);
-      rtc = Host_To_Targ_Quad( *(long double *) &buffer);
-
-      REAL_VALUE_TO_TARGET_LONG_DOUBLE (ival, buffer);
-      WFE_Convert_To_Host_Order(buffer);
-      itc = Host_To_Targ_Quad( *(long double *) &buffer);    
+      rtc = Host_To_Targ_Quad (
+        WFE_Convert_Internal_Real_to_IEEE_Double_Extended (rval));
+      itc = Host_To_Targ_Quad (
+        WFE_Convert_Internal_Real_to_IEEE_Double_Extended (ival));
       break;
     default:
       FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Complex unexpected size"));
@@ -1632,30 +1602,6 @@ WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT 
   Set_INITV_next(last_aggregate_initv, inv);
   last_aggregate_initv = inv;
 }
-
-#else
-
-void 
-WFE_Add_Aggregate_Init_Complex (double rval, double ival, INT size)
-{
-  if (aggregate_inito == 0) return;
-  INITV_IDX inv = New_INITV();
-  TYPE_ID mtype;
-  if (size == 8) mtype = MTYPE_F4;
-  else if (size == 16) mtype = MTYPE_F8;
-  else FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Double unexpected size"));
-  INITV_Init_Float (inv, mtype, rval);
-  if (last_aggregate_initv != 0)
-    Set_INITV_next(last_aggregate_initv, inv);
-  else if (! not_at_root)
-    Set_INITO_val(aggregate_inito, inv);
-  last_aggregate_initv = inv;
-  inv = New_INITV();
-  INITV_Init_Float (inv, mtype, ival);
-  Set_INITV_next(last_aggregate_initv, inv);
-  last_aggregate_initv = inv;
-}
-#endif	// KEY
 
 void 
 WFE_Add_Aggregate_Init_String (char *s, INT size)

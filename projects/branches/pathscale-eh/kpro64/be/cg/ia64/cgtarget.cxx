@@ -3184,6 +3184,7 @@ CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, IN
 {
   INT src_reg, dst_reg;
   BOOL pred_is_chk, succ_is_chk;
+  TN *pred_tn = 0, *succ_tn = 0;
   const TOP pred_code = OP_code(pred_op);
   const TOP succ_code = OP_code(succ_op);
   
@@ -3193,10 +3194,16 @@ CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, IN
       if (TN_is_dedicated(src))
           src_reg = REGISTER_machine_id(TN_register_class(src), TN_register(src));
   }
+
   if (OP_results(pred_op) > 0) {
       TN *dst = OP_result(pred_op,0);
+      pred_tn = dst;
       if (TN_is_dedicated(dst))
           dst_reg = REGISTER_machine_id(TN_register_class(dst), TN_register(dst));
+  }
+
+  if (pred_code == TOP_alloc && OP_opnds(succ_op) > 1) {
+      succ_tn = OP_opnd(succ_op,1);
   }
   
   pred_is_chk = CGTARG_Is_OP_Check_Load(pred_op);  
@@ -3206,7 +3213,7 @@ CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, IN
   
   // TOP_alloc only cannot place one group with flushrs,loadrs,br.call,br1.call
   // br.ia,br.ret,clrrrb,cover,rfi;
-  if (pred_code == TOP_alloc && OP_def_use_stack_regs(succ_op)) {
+  if (pred_code == TOP_alloc && OP_def_use_stack_regs(succ_op) && (!succ_tn || !pred_tn || !TN_is_register(succ_tn) || !TN_is_register(pred_tn) ||!TNs_Are_Equivalent(succ_tn, pred_tn))) {
        *latency = 0;
   }
   if (pred_code == TOP_alloc &&

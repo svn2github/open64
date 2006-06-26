@@ -180,7 +180,7 @@ TYPE_ID Promoted_Mtype [MTYPE_LAST + 1] = {
   MTYPE_U8,       /* MTYPE_U8 */
   MTYPE_F4,       /* MTYPE_F4 */
   MTYPE_F8,       /* MTYPE_F8 */
-  MTYPE_UNKNOWN,  /* MTYPE_F10 */
+  MTYPE_F10,      /* MTYPE_F10 */
   MTYPE_UNKNOWN,  /* MTYPE_F16 */
   MTYPE_UNKNOWN,  /* MTYPE_STR */
   MTYPE_FQ,       /* MTYPE_FQ */

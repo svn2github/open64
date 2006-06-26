@@ -1235,6 +1235,10 @@ static void Update_EHRegion_Inito (WN *pu) {
   INITO *ino;
 
   // first mark all EH-region STs unused.
+  // But as a special case when INITV_kind(INITO_val(ino)) == INITVKIND_LABEL
+  // gfecc have set the flag ST_IS_NOT_USED, so though we needn't remarked 
+  // it to ST_IS_NOT_USED again, but it's OK as long as don't set this flag 
+  // when Update_EHRegion_Inito_Used.
   FOREACH_INITO (CURRENT_SYMTAB, ino, i) {
     ST *st = INITO_st(ino);
     if (ST_sclass(st) == SCLASS_EH_REGION ||
@@ -1244,7 +1248,8 @@ static void Update_EHRegion_Inito (WN *pu) {
   }
 
   // now find INITO sts that are referenced in WHIRL,
-  // and mark them used.
+  // and mark them used. 
+  // Not all the INITO sts referenced in WHIRL will be used.
   Update_EHRegion_Inito_Used (pu);
 }
 

@@ -379,6 +379,9 @@ Gather_Scatter_Scalar_Expand(WN*                                loop,
 	     wtype == MTYPE_F8 || wtype == MTYPE_C4) ? 8 :
   (wtype == MTYPE_I4 || wtype == MTYPE_U4 ||
    wtype == MTYPE_F4) ? 4 :
+#ifdef TARG_IA64
+  (wtype == MTYPE_F10) ? 16 :
+#endif
   (wtype == MTYPE_FQ || wtype == MTYPE_C8) ? 16 :
   (wtype == MTYPE_CQ) ? 32 :
   (wtype == MTYPE_I2 || wtype == MTYPE_U2) ? 2 :
@@ -879,14 +882,14 @@ INT64 Get_FP_Counts(WN* wn)
   } else if (OPCODE_is_expression(opcode) && !OPCODE_is_load(opcode) &&
 	     (oper != OPR_CONST)) {
     // an fp expression
-    if ((OPCODE_desc(opcode)==MTYPE_FQ) || (OPCODE_rtype(opcode)==MTYPE_FQ) ||
-	(OPCODE_desc(opcode)==MTYPE_CQ) || (OPCODE_rtype(opcode)==MTYPE_CQ) ||
-	(OPCODE_desc(opcode)==MTYPE_F4) || (OPCODE_desc(opcode)==MTYPE_F8) ||
-	(OPCODE_rtype(opcode)==MTYPE_F4)|| 
-	(OPCODE_rtype(opcode)==MTYPE_F8)|| (OPCODE_desc(opcode)==MTYPE_C4) || 
-	(OPCODE_desc(opcode)==MTYPE_C8) || (OPCODE_rtype(opcode)==MTYPE_C4)||
-	(OPCODE_rtype(opcode)==MTYPE_C8))  {
-      
+    if (OPCODE_desc(opcode) == MTYPE_FQ || OPCODE_rtype(opcode) == MTYPE_FQ ||
+	OPCODE_desc(opcode) == MTYPE_F10 || OPCODE_rtype(opcode) == MTYPE_F10 ||
+	OPCODE_desc(opcode) == MTYPE_F8 || OPCODE_rtype(opcode) == MTYPE_F8 ||
+	OPCODE_desc(opcode) == MTYPE_F4 || OPCODE_rtype(opcode) == MTYPE_F4 ||
+	OPCODE_desc(opcode) == MTYPE_CQ || OPCODE_rtype(opcode) == MTYPE_CQ ||
+	OPCODE_desc(opcode) == MTYPE_C8 || OPCODE_rtype(opcode) == MTYPE_C8 ||
+	OPCODE_desc(opcode) == MTYPE_C4 || OPCODE_rtype(opcode) == MTYPE_C4) {
+
       if ((oper == OPR_MAX) || (oper == OPR_MIN) || 
 	  (oper == OPR_ADD) || (oper == OPR_SUB) || (oper == OPR_MPY) ||
 	  (oper == OPR_NEG))
@@ -1316,6 +1319,8 @@ Perform_Gather_Scatter(
     DYN_ARRAY<SCALAR_NODE*> site_U4(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> use_F4(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> site_F4(&PHASE25_default_pool);
+    DYN_ARRAY<SCALAR_NODE*> use_F10(&PHASE25_default_pool);
+    DYN_ARRAY<SCALAR_NODE*> site_F10(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> use_FQ(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> site_FQ(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> use_C8(&PHASE25_default_pool);
@@ -1363,6 +1368,10 @@ Perform_Gather_Scatter(
 	use_F4.AddElement(exposed_use[i-1]->Bottom_nth(j));
 	site_F4.AddElement(exposed_site[i-1]->Bottom_nth(j));
 	break;
+      case MTYPE_F10:
+        use_F10.AddElement(exposed_use[i-1]->Bottom_nth(j));
+        site_F10.AddElement(exposed_site[i-1]->Bottom_nth(j));
+        break;
       case MTYPE_FQ:
 	use_FQ.AddElement(exposed_use[i-1]->Bottom_nth(j));
 	site_FQ.AddElement(exposed_site[i-1]->Bottom_nth(j));
@@ -1424,6 +1433,10 @@ Perform_Gather_Scatter(
       Gather_Scatter_Scalar_Expand(loop_first, ld_inc, tile_loop,
 				   loop_current, use_F4, site_F4, 
 				   if_stmt, &alloc_loop,&dealloc_loop);
+    if (use_F10.Elements())
+      Gather_Scatter_Scalar_Expand(loop_first, ld_inc, tile_loop,
+                                   loop_current, use_F10, site_F10,
+                                   if_stmt, &alloc_loop,&dealloc_loop);
     if (use_FQ.Elements()) 
       Gather_Scatter_Scalar_Expand(loop_first, ld_inc, tile_loop, 
 				   loop_current, use_FQ, site_FQ, 

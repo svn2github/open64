@@ -3176,6 +3176,11 @@ static void Gen_Iolist_PutFieldWN ( WN * block, ST * st, INT32 foffset,
 	      WN_CreateExp1 ( OPC_I4F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(wn), WN_st(wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
+      else if (vtype == MTYPE_F10)
+        wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
+              WN_CreateExp1 ( OPC_I4F10CVT,
+              WN_CreateLdid ( OPC_F10F10LDID, WN_offset(wn), WN_st(wn),
+                              Be_Type_Tbl(MTYPE_F10) )));
       else if (vtype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
 	      WN_CreateExp1 ( OPC_I4FQCVT,
@@ -3203,6 +3208,11 @@ static void Gen_Iolist_PutFieldWN ( WN * block, ST * st, INT32 foffset,
 	      WN_CreateExp1 ( OPC_I8F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(wn), WN_st(wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
+      else if (vtype == MTYPE_F10)
+        wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
+              WN_CreateExp1 ( OPC_I8F10CVT,
+              WN_CreateLdid ( OPC_F10F10LDID, WN_offset(wn), WN_st(wn),
+                              Be_Type_Tbl(MTYPE_F10) )));
       else if (vtype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
 	      WN_CreateExp1 ( OPC_I8FQCVT,
@@ -3238,6 +3248,9 @@ static void Gen_Iolist_PutFieldWN ( WN * block, ST * st, INT32 foffset,
       else if (etype == MTYPE_F8)
 	wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
 	      WN_CreateExp1 ( OPC_I4F8CVT, wn ));
+      else if (etype == MTYPE_F10)
+        wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
+              WN_CreateExp1 ( OPC_I4F10CVT, wn ));
       else if (etype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
 	      WN_CreateExp1 ( OPC_I4FQCVT, wn ));
@@ -3276,6 +3289,9 @@ static void Gen_Iolist_PutFieldWN ( WN * block, ST * st, INT32 foffset,
       else if (etype == MTYPE_F8)
 	wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
 	      WN_CreateExp1 ( OPC_I8F8CVT, wn ));
+      else if (etype == MTYPE_F10)
+        wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
+              WN_CreateExp1 ( OPC_I8F10CVT, wn ));
       else if (etype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
 	      WN_CreateExp1 ( OPC_I8FQCVT, wn ));
@@ -3548,6 +3564,10 @@ static void Gen_Io_PutFieldST ( WN * block, ST * st, FIOSTRUCT field, ST * var )
       wn = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
 	   WN_CreateExp1 ( OPC_I4F8CVT,
 	   WN_CreateLdid ( OPC_F8F8LDID, 0, var, Be_Type_Tbl(MTYPE_F8) )));
+    else if (vtype == MTYPE_F10)
+      wn = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
+           WN_CreateExp1 ( OPC_I4F10CVT,
+           WN_CreateLdid ( OPC_F10F10LDID, 0, var, Be_Type_Tbl(MTYPE_F10) )));
     else if (vtype == MTYPE_FQ)
       wn = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
 	   WN_CreateExp1 ( OPC_I4FQCVT,
@@ -3572,6 +3592,10 @@ static void Gen_Io_PutFieldST ( WN * block, ST * st, FIOSTRUCT field, ST * var )
       wn = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
 	   WN_CreateExp1 ( OPC_I8F8CVT,
 	   WN_CreateLdid ( OPC_F8F8LDID, 0, var, Be_Type_Tbl(MTYPE_F8) )));
+    else if (vtype == MTYPE_F10)
+      wn = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
+           WN_CreateExp1 ( OPC_I8F10CVT,
+           WN_CreateLdid ( OPC_F10F10LDID, 0, var, Be_Type_Tbl(MTYPE_F10) )));
     else if (vtype == MTYPE_FQ)
       wn = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
 	   WN_CreateExp1 ( OPC_I8FQCVT,
@@ -3721,6 +3745,11 @@ static void Gen_Io_PutFieldWN ( WN * block, ST * st, FIOSTRUCT field, WN * wn )
 	      WN_CreateExp1 ( OPC_I4F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(wn), WN_st(wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
+      else if (vtype == MTYPE_F10)
+        wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
+              WN_CreateExp1 ( OPC_I4F10CVT,
+              WN_CreateLdid ( OPC_F10F10LDID, WN_offset(wn), WN_st(wn),
+                              Be_Type_Tbl(MTYPE_F10) )));
       else if (vtype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
 	      WN_CreateExp1 ( OPC_I4FQCVT,
@@ -3748,6 +3777,11 @@ static void Gen_Io_PutFieldWN ( WN * block, ST * st, FIOSTRUCT field, WN * wn )
 	      WN_CreateExp1 ( OPC_I8F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(wn), WN_st(wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
+      else if (vtype == MTYPE_F10)
+        wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
+              WN_CreateExp1 ( OPC_I8F10CVT,
+              WN_CreateLdid ( OPC_F10F10LDID, WN_offset(wn), WN_st(wn),
+                              Be_Type_Tbl(MTYPE_F10) )));
       else if (vtype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
 	      WN_CreateExp1 ( OPC_I8FQCVT,
@@ -3783,6 +3817,9 @@ static void Gen_Io_PutFieldWN ( WN * block, ST * st, FIOSTRUCT field, WN * wn )
       else if (etype == MTYPE_F8)
 	wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
 	      WN_CreateExp1 ( OPC_I4F8CVT, wn ));
+      else if (etype == MTYPE_F10)
+        wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
+              WN_CreateExp1 ( OPC_I4F10CVT, wn ));
       else if (etype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I4),
 	      WN_CreateExp1 ( OPC_I4FQCVT, wn ));
@@ -3821,6 +3858,9 @@ static void Gen_Io_PutFieldWN ( WN * block, ST * st, FIOSTRUCT field, WN * wn )
       else if (etype == MTYPE_F8)
 	wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
 	      WN_CreateExp1 ( OPC_I8F8CVT, wn ));
+      else if (etype == MTYPE_F10)
+        wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
+              WN_CreateExp1 ( OPC_I8F10CVT, wn ));
       else if (etype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I8STID, foffset, st, Be_Type_Tbl(MTYPE_I8),
 	      WN_CreateExp1 ( OPC_I8FQCVT, wn ));
@@ -3915,6 +3955,11 @@ static void Gen_Io_PutKeyFieldWN ( WN * block, ST * st, WN ** wn, INT32 nkeys )
 	      WN_CreateExp1 ( OPC_I4F8CVT,
 	      WN_CreateLdid ( OPC_F8F8LDID, WN_offset(*wn), WN_st(*wn),
 			      Be_Type_Tbl(MTYPE_F8) )));
+      else if (vtype == MTYPE_F10)
+        wnx = WN_CreateStid ( OPC_I2STID, foffset, st, Be_Type_Tbl(MTYPE_I2),
+              WN_CreateExp1 ( OPC_I4F10CVT,
+              WN_CreateLdid ( OPC_F10F10LDID, WN_offset(*wn), WN_st(*wn),
+                              Be_Type_Tbl(MTYPE_F10) )));
       else if (vtype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I2STID, foffset, st, Be_Type_Tbl(MTYPE_I2),
 	      WN_CreateExp1 ( OPC_I4FQCVT,
@@ -3940,6 +3985,9 @@ static void Gen_Io_PutKeyFieldWN ( WN * block, ST * st, WN ** wn, INT32 nkeys )
       else if (etype == MTYPE_F8)
 	wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I2),
 	      WN_CreateExp1 ( OPC_I4F8CVT, *wn ));
+      else if (etype == MTYPE_F10)
+        wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I2),
+              WN_CreateExp1 ( OPC_I4F10CVT, *wn ));
       else if (etype == MTYPE_FQ)
 	wnx = WN_CreateStid ( OPC_I4STID, foffset, st, Be_Type_Tbl(MTYPE_I2),
 	      WN_CreateExp1 ( OPC_I4FQCVT, *wn ));
@@ -5006,6 +5054,7 @@ static FIOITEMTYPE get_FIT_type ( TY_IDX ty )
 	type = FIT_REAL8;
 	break;
 
+    case MTYPE_F10:
     case MTYPE_FQ:
 	type = FIT_REAL16;
 	break;
