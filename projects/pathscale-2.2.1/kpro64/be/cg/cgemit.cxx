@@ -3737,7 +3737,7 @@ Write_Symoff (
 		EMT_Write_Qualified_Name (Asm_File, basesym);
 		fprintf (Asm_File, " %+lld\n", base_ofst);
 	}
-	else if (ST_class(sym) == CLASS_FUNC && AS_FPTR && ! Get_Trace(TP_EMIT,0x2000)) {
+	else if (ST_class(sym) == CLASS_FUNC && AS_FPTR) {
 		fprintf (Asm_File, " %s(", AS_FPTR);
 		EMT_Write_Qualified_Name (Asm_File, sym);
 		fprintf (Asm_File, " %+lld)\n", (INT64)sym_ofst);
@@ -3789,7 +3789,7 @@ Write_Symiplt (
     Allocate_Object(sym);
     /* if did allocate on local stack, that messes up frame length */
     Is_True(!Has_Base_Block(sym) || Is_Global_Symbol(Base_Symbol(sym)),
-           ("Write_Symoff:  too late to allocate object on stack"));
+           ("Write_Symiplt:  too late to allocate object on stack"));
   }
   
   /* For local static symbols that do not have their own elf entry,
@@ -3816,12 +3816,13 @@ Write_Symiplt (
 // The function descriptor on IA64 needs 128 bits
     fprintf (Asm_File, "\tdata16.ua\t");
 
-    if(ST_class(sym) == CLASS_FUNC && AS_IPLT && ! Get_Trace(TP_EMIT,0x2000))
-    {
-      fprintf (Asm_File, " %s(", AS_IPLT);
-      EMT_Write_Qualified_Name (Asm_File, sym);
-      fprintf (Asm_File, " %+lld)\n", (INT64)sym_ofst);
-    }
+    FmtAssert (ST_class(sym) == CLASS_FUNC && AS_IPLT,
+	       ("IPLT entry must correspond to symbol with CLASS_FUNC!"));
+
+    fprintf (Asm_File, " %s(", AS_IPLT);
+    EMT_Write_Qualified_Name (Asm_File, sym);
+    fprintf (Asm_File, " %+lld)\n", (INT64)sym_ofst);
+
   }
   scn_ofst += address_size;
   return scn_ofst;

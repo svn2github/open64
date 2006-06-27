@@ -4322,7 +4322,7 @@ WFE_Expand_Expr (tree exp,
 	      if (MTYPE_is_integral(ret_mtype))
                 wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
 	      else{
-		wn1 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F8, arg_wn);
+		wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F8, arg_wn);
 		wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
 	      }
               whirl_generated = TRUE;

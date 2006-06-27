@@ -3153,19 +3153,6 @@ Delete_Unreachable_Blocks(void)
     BOOL unreachable_bb = BB_unreachable(bp);
     next = BB_next(bp);
    
-    /* When an EH RANGE is present, there is situations when BB with
-     * BEGIN_EH_RANGE is reachable while the corresponding BB with
-     * END_EH_RANGE is unreachable. Then, we will have to delay the 
-     * continue below after we check the labels, otherwise the EH
-     * labels will be unpaired. One thing we remember when we delay 
-     * the continue, what we do followed are all read-only actions.
-     */
-    BOOL can_remove = TRUE;
-    if(!unreachable_bb && IPFEC_Enable_Region_Formation && RGN_Formed){
-        if(Home_Region(bp)->Is_No_Further_Opt()){
-		can_remove = FALSE;
-        }
-    }
 
     /* Special handling is necessary for exception labels. A BB with
      * the 'unreachable' flag set indicates that the code in that
@@ -3210,7 +3197,7 @@ Delete_Unreachable_Blocks(void)
 	    etos = enext;
 	    etos->unreachable = unreachable_bb;
 
-	    if (unreachable_bb && can_remove) {
+	    if (unreachable_bb) {
 	      if (CFLOW_Trace_Unreach) {
 	        #pragma mips_frequency_hint NEVER
 	        fprintf(TFile, "Removing begin_eh_range label %s from BB:%d\n",
@@ -3230,7 +3217,7 @@ Delete_Unreachable_Blocks(void)
 	    etos = etos->prev;
 	    FmtAssert(etos, ("estack underflow with label %s of BB:%d",
 			     LABEL_name(lab), BB_id(bp)));
-	    if (unreachable_range && can_remove) {
+	    if (unreachable_range) {
 	      if (CFLOW_Trace_Unreach) {
 	        #pragma mips_frequency_hint NEVER
 	        fprintf(TFile, "Removing end_eh_range label %s from BB:%d\n",
@@ -3250,7 +3237,7 @@ Delete_Unreachable_Blocks(void)
 
     /* Keep scanning if we must keep this BB.
      */
-    if (!unreachable_bb || !can_remove) continue;
+    if (!unreachable_bb) continue;
 
     if (IPFEC_Enable_Speculation) {
         if (BB_Hold_Disjoint_Speculative_Code(bp)) 
