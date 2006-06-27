@@ -4246,6 +4246,14 @@ Constant_Created:
   if (result_sym != NULL) {
     tnc = Gen_Symbol_TN(result_sym, result_val, result_relocs);
   } else {
+    switch (TN_size(tnr)) {
+    case 1:     result_val &= 0x00000000000000ffLL;     break;
+    case 2:     result_val &= 0x000000000000ffffLL;     break;
+    case 4:     result_val &= 0x00000000ffffffffLL;     break; 
+    case 8:     break;
+    default:
+       FmtAssert(false, ("Invalid literal tn size: %d", TN_size(tnr)));
+    }
     tnc = Gen_Literal_TN(result_val, TN_size(tnr));
   }
   Expand_Immediate (tnr, tnc, OP_result_is_signed(op,0), &ops);
