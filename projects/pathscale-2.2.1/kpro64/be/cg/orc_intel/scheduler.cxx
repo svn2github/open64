@@ -2242,6 +2242,11 @@ SCHEDULER::Glos_Should_Sched_This_BB (BB* b) {
         return FALSE;
     }
 
+    if (IPFEC_Query_Skiplist (glos_skip_bb, BB_id(b), Current_PU_Count())) {
+        DevWarn ("BB:%d in PU%d is skipped\n", BB_id(b), Current_PU_Count());
+        return FALSE;
+    }
+
     INT32 len = BB_length(b);
     if (len > 1)  { return TRUE;  }
     if (len == 0) { return FALSE; }
@@ -2265,6 +2270,7 @@ SCHEDULER::Glos_Should_Sched_This_BB (BB* b) {
     if (BB_entry(b) || BB_exit(b)) {
         return FALSE;
     }
+
 
     return TRUE;
 }

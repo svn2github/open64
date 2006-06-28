@@ -1068,6 +1068,15 @@ static OPTION_DESC Options_SKIP[] = {
   { OVK_LIST, OV_SHY, FALSE, "locs_skip_bb_equal", "locs_skip_bb_e",
     0, 0, 4096,	&raw_locs_skip_bb, NULL,
     "" },
+  { OVK_LIST, OV_SHY, FALSE, "glos_skip_bb_before", "glos_skip_bb_b", 
+    0, 0, 4096,      &raw_glos_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "glos_skip_bb_after", "glos_skip_bb_a",
+    0, 0, 4096,	&raw_glos_skip_bb, NULL,
+    "" },
+  { OVK_LIST, OV_SHY, FALSE, "glos_skip_bb_equal", "glos_skip_bb_e",
+    0, 0, 4096,	&raw_glos_skip_bb, NULL,
+    "" },
   { OVK_LIST, OV_SHY, FALSE, "if_conv_skip_rgn_before", "if_conv_skip_rgn_b",
     0, 0, 4096,	&raw_if_conv_skip_rgn, NULL, 
     "" },
@@ -1864,6 +1873,7 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
 
    /* Getting the relative skip_list about if_conv, locs etc.*/ 
     locs_skip_bb = IPFEC_Build_Skiplist(raw_locs_skip_bb);
+    glos_skip_bb = IPFEC_Build_Skiplist(raw_glos_skip_bb);
     mlbr_skip_bb = IPFEC_Build_Skiplist(raw_mlbr_skip_bb);
 
     if_conv_skip_rgn = IPFEC_Build_Skiplist(raw_if_conv_skip_rgn);
