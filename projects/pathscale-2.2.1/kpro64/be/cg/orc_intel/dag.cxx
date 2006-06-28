@@ -241,8 +241,11 @@ DAG_BUILDER::Get_Define_OPs(OP *op, UINT8 res, CG_DEP_KIND arc_kind)
     for ( elt = BS_Choose( def_ops );
           elt != BS_CHOOSE_FAILURE && elt < OP_To_Gid(op);// ascending order
           elt = BS_Choose_Next( def_ops, elt ) ){
-      latest_op=Gid_To_OP(elt);
-      _Define_OPs.push_back(latest_op);
+      OP* tmp = Gid_To_OP(elt);
+      if (!OP_has_disjoint_predicate(tmp, op)) {
+        latest_op=Gid_To_OP(elt);
+        _Define_OPs.push_back(latest_op);
+      }
     }
         
     // push back the relative ops into _Define_OPs
@@ -285,8 +288,11 @@ DAG_BUILDER::Get_Define_OPs(OP *op, UINT8 res, CG_DEP_KIND arc_kind)
           // bypass case : i=i+1
           elt != BS_CHOOSE_FAILURE ;
           elt = BS_Choose_Next( def_ops, elt ) ){
-      nearest_op=Gid_To_OP(elt);
-      _Define_OPs.push_back(nearest_op);
+      OP* tmp = Gid_To_OP(elt);
+      if (!OP_has_disjoint_predicate(tmp, op)) {
+        nearest_op=Gid_To_OP(elt);
+        _Define_OPs.push_back(nearest_op);
+      }
     }
 
 
