@@ -3829,25 +3829,30 @@ void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
     return;
   }
 
-  if (   MTYPE_is_float(mtype)
-      && mtype == TCON_ty(tc)
-      && (mtype == MTYPE_F4 || mtype == MTYPE_F8))
-  {
-    double val = Targ_To_Host_Float(tc);
-    if (val == 1.0) {
-      // copy 1
-      Build_OP (TOP_mov_f, dest, True_TN, FOne_TN, ops);
-      return;
-    } else if (val == -1.0) {
-      // negate 1
-      Build_OP (TOP_fneg, dest, True_TN, FOne_TN, ops);
-      return;
-    } else if (val == 2.0) {
-      // 1 + 1
-      TOP fadd = (mtype == MTYPE_F4) ? TOP_fadd_s : TOP_fadd_d;
-      Build_OP (fadd, dest, True_TN, Gen_Enum_TN(ECV_sf_s0), FOne_TN, FOne_TN, ops);
-      return;
-    } else if (CGEXP_float_consts_from_ints) {
+  if (MTYPE_is_float(mtype) && mtype == TCON_ty(tc)) {
+    if (mtype == MTYPE_F4 || mtype == MTYPE_F8 || mtype == MTYPE_F10) {
+      double val = Targ_To_Host_Float(tc);
+      if (val == 1.0) {
+	// copy 1
+	Build_OP (TOP_mov_f, dest, True_TN, FOne_TN, ops);
+	return;
+      }
+      if (val == -1.0) {
+	// negate 1
+	Build_OP (TOP_fneg, dest, True_TN, FOne_TN, ops);
+	return;
+      }
+      if (val == 2.0) {
+	// 1 + 1
+	TOP fadd = (mtype == MTYPE_F4) ? TOP_fadd_s :
+		(mtype == MTYPE_F8) ? TOP_fadd_d : TOP_fadd;
+	Build_OP (fadd, dest, True_TN, Gen_Enum_TN(ECV_sf_s0), FOne_TN,
+		FOne_TN, ops);
+	return;
+      }
+    }
+    if (CGEXP_float_consts_from_ints &&
+	(mtype == MTYPE_F4 || mtype == MTYPE_F8)) {
       TN *tn = Build_TN_Of_Mtype (MTYPE_I8);
       INT64 fimm = (mtype == MTYPE_F4) ? TCON_uval(tc) : TCON_k0(tc);
       if (Targ_Is_Power_Of_Two(tc)) {
@@ -3866,14 +3871,16 @@ void Expand_Const (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
 	Build_OP (TOP_mov_i, tn, True_TN, Gen_Literal_TN(sign_exp, 4), ops);
 	CGSPILL_Attach_Intconst_Remat (tn, sign_exp);
 	Build_OP (TOP_setf_exp, dest, True_TN, tn, ops);
-      } else {
+	return;
+      }
+      if (mtype == MTYPE_F4 || mtype == MTYPE_F8) {
 	// arbitrary floating constant
 	TOP setf = (mtype == MTYPE_F4) ? TOP_setf_s : TOP_setf_d;
 	Build_OP (TOP_movl, tn, True_TN, Gen_Literal_TN(fimm, 8), ops);
 	CGSPILL_Attach_Intconst_Remat (tn, fimm);
 	Build_OP (setf, dest, True_TN, tn, ops);
+	return;
       }
-      return;
     }
   }
 
