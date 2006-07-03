@@ -845,6 +845,7 @@ static PSTRUCT pstruct;
 static void
 Setup_Struct_Parameter_Locations (TY_IDX struct_ty)
 {
+    PSTRUCT_hfa_mtype = MTYPE_V;
     PSTRUCT_struct = ! TY_is_union (struct_ty);
     PSTRUCT_first_call = TRUE;
     PSTRUCT_hfa = Struct_Is_HFA (struct_ty, No_Simulated, PSTRUCT_hfa_mtype);

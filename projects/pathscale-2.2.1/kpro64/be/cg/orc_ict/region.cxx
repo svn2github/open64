@@ -4422,10 +4422,20 @@ REGION_TREE::Statistic(void) {
 
     INT32 depth = 1;
     
-    char input[50000] = "\n";  char tmp_str[100] = "";
-        
+    char *input ;  char tmp_str[100] = "";
+
+    int size = 50000;
+
+    input = (char *)malloc(size * sizeof(char));
+
+    input[0]='\n';input[1]='\0';
+    
     for(INNERMOST_REGION_FIRST_ITER region_iter(this);
        region_iter!=0;++region_iter) {
+	if(strlen(input) > size - 1000) {
+		size += 50000;
+		input = (char *)realloc(input, size);
+	}
         i++;   
         r   = *region_iter;
         bbs   = 0;
@@ -4521,6 +4531,7 @@ REGION_TREE::Statistic(void) {
         Generate_Tlog("ARN", "Region formation statistics\n", (SRCPOS)0,
             input,"" , "", "");
     }
+    free(input);
         
 }
 
