@@ -2699,11 +2699,13 @@ WFE_Expand_Expr (tree exp,
 		}
 	      }
 	    }
-	  } else
+	  } else {
 #endif
-	  WFE_Stmt_Append(WN_Stid (mtype, ST_ofst(st), st, ty,
-		        	   WFE_Expand_Expr (t)),
-			  Get_Srcpos());
+	    WN * init = WFE_Expand_Expr (t);
+	    if (WN_operator (init) == OPR_LDA)
+	      WFE_Set_ST_Addr_Saved (init);
+	    WFE_Stmt_Append(WN_Stid (mtype, ST_ofst(st), st, ty, init), Get_Srcpos());
+	  }
 	}
         if (TREE_OPERAND(exp, 2) 
 #ifdef KEY
