@@ -196,6 +196,25 @@ Expand_Branch ( TN *targ, TN *src1, TN *src2, VARIANT variant, OPS *ops)
       TN *p2 = Build_RCLASS_TN (ISA_REGISTER_CLASS_predicate);
       TN *tn = Build_TN_Of_Mtype (MTYPE_I8);
       TOP action = (cond == V_BR_PEQ) ? TOP_cmp_ne : TOP_cmp_eq;
+      //handle when the kids of BBNE/BBEQ are inconst
+      if(TN_is_constant(src1))
+	{
+	  if(TN_value(src1) == 1)
+	    src1 = True_TN;
+	  else  if(TN_value(src1) == 0)
+	    src1 = Zero_TN;
+	  else
+	    FmtAssert(TN_value(src1) == 1 || TN_value(src1) == 0, ("unexpect operands for V_BR_PEQ/V_BR_PNE"));
+	}
+      if(TN_is_constant(src2))
+        {
+          if(TN_value(src2) == 1)
+            src1 = True_TN;
+          else  if(TN_value(src2) == 0)
+            src2 = Zero_TN;
+          else
+            FmtAssert(TN_value(src2) == 1 || TN_value(src2) == 0, ("unexpect operands for V_BR_PEQ/V_BR_PNE"));
+        }
 
       // tn = (src1 == src2)
       Build_OP (TOP_mov_i, tn, True_TN, Gen_Literal_TN(1, 8), ops);
