@@ -2691,6 +2691,46 @@ Init_Constab ()
 	Initialize_TCON_strtab (1024);	// string table for TCONs
     }
 }
+// Overriding the operator == to allow comparison of two ST
+
+// efficiently and safely. Using bcmp to compare class is incorrect
+
+// because it compares the padded space between class fields
+
+// unnecessarily
+
+BOOL
+
+ST::operator==( ST &st ) const
+
+{
+
+  if (st.u1.name_idx == u1.name_idx &&
+
+      st.flags == flags &&
+
+      st.flags_ext == flags_ext &&
+
+      st.sym_class == sym_class &&
+
+      st.storage_class == storage_class &&
+
+      st.export_class == export_class &&
+      
+      st.u2.type == u2.type &&
+
+      st.offset == offset &&
+
+      st.base_idx == base_idx &&
+
+      st.st_idx == st_idx)
+
+         return TRUE;
+
+  
+  return FALSE;
+  
+}
 
 
 #ifdef Is_True_On

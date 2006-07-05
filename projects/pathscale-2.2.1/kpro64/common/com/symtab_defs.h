@@ -205,7 +205,9 @@ public:
     void Verify(UINT level) const;
     
     void Print(FILE *f, BOOL verbose = TRUE) const;
-
+    
+    BOOL operator==(ST &st) const;
+    
 }; // ST
 
 
