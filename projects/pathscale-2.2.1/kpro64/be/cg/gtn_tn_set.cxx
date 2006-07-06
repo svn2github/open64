@@ -116,8 +116,12 @@ GTN_TN_SET_Print(GTN_SET *gtn_set, FILE *file)
 	tn != GTN_SET_CHOOSE_FAILURE;
 	tn = GTN_SET_Choose_Next(gtn_set,tn)) 
   {
-    FmtAssert(TN_is_global_reg(tn),("TN%d is not global",TN_number(tn)));
-    tn_set = TN_SET_Union1D(tn_set, tn, &local_pool);
+    if (tn) { // winux
+      FmtAssert(TN_is_global_reg(tn),("TN%d is not global",TN_number(tn)));
+      tn_set = TN_SET_Union1D(tn_set, tn, &local_pool);
+    }
+    else 
+      break;
   }
 
   TN_SET_Print(tn_set,file);

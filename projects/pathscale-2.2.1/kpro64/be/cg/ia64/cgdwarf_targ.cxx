@@ -1022,7 +1022,12 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
   INT bbid;
   UINT lwhen = 0;
   ue_iter = ue_list.begin();
+  bool copy_state = false;
+  BB *delay_copy_state_bb = NULL;	
   for (BB *bb = REGION_First_BB; bb; bb = BB_next(bb)) {
+	if (copy_state && BB_prev(bb) != NULL && BB_exit(BB_prev(bb))) {
+		delay_copy_state_bb = BB_prev(bb);
+	}
 	if (BB_unreachable(bb)) {
 		lwhen += Get_BB_When_Length(bb); 
 		continue;
@@ -1040,13 +1045,16 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 	}
 	// in case have exit that follows exit,
 	// first copy previous label then do new label.
-	if ( BB_prev(bb) != NULL && BB_exit(BB_prev(bb)) &&
-             !BB_unreachable(BB_prev(bb)) ) {
+//	if ( BB_prev(bb) != NULL && BB_exit(BB_prev(bb))) {
+	if (delay_copy_state_bb) {
 		// in bb that follows exit, so copy above label
 		Add_UE (UE_COPY, last_label, lwhen, bb);
-		current_state = entry_state[BB_id(BB_prev(bb))];
+		current_state = entry_state[BB_id(delay_copy_state_bb)];
+		delay_copy_state_bb = NULL;
+		copy_state = false;
 	}
 	if (BB_exit(bb) && BB_next(bb) != NULL) {
+		copy_state = true;
 		// if have an exit that is followed by another bb
 		// then want to create body label before exit and
 		// copy from label after exit (i.e. skip destroy frame)
@@ -1069,7 +1077,9 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 	}
 
 	// add implicit changes upon entry
-	if (current_state != entry_state[bbid]) {
+	/*co-design of entry generation, see cflow.cxx::generate_entry*/
+ 	if (0) { 
+//	if (current_state != entry_state[bbid]) {
   		for (p = PR_FIRST; p < PR_LAST; INCR(p)) {
 			// ignore implicit sp changes,
 			// as label/copy should handle those.

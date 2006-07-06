@@ -128,10 +128,17 @@ static enum {
 BOOL LC_Used_In_PU;
 
 /* TNs to save the callers GP and FP if needed */
+#if 0 // these tn are exported to gra_live.cxx::live_init for eh usage
 static TN *Caller_GP_TN;
 static TN *Caller_FP_TN;
 static TN *Caller_Pfs_TN;
 static TN *ra_intsave_tn;
+#else
+TN *Caller_GP_TN;
+TN *Caller_FP_TN;
+TN *Caller_Pfs_TN;
+TN *ra_intsave_tn;
+#endif
 
 
 
@@ -453,6 +460,13 @@ Generate_Entry (BB *bb, BOOL gra_run )
   if ((BB_rid(bb) != NULL) && ( RID_level(BB_rid(bb)) >= RL_CGSCHED )) {
   	/* don't change bb's which have already been through CG */
   	return;
+  }
+
+  /*
+  Do not generate entry code for handler entry, it is a co-design with unwind directives generation in cgdwarf_targ.cxx
+  */
+  if (BB_handler(bb)) {
+	return;
   }
 
   if ( Trace_EE ) {

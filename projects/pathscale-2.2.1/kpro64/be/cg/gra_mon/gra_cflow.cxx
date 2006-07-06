@@ -143,6 +143,7 @@ Split_Entry( BB* bb )
   BB_freq(new_entry) = BB_freq(bb);
 
   op = BB_last_op(bb);
+  if (op)
   do {
     prev_op = OP_prev(op); 
     if (OP_Is_Copy_To_Save_TN(op)) 

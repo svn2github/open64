@@ -2039,8 +2039,11 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
 
     rslt_count = OP_results(op);
     if (rslt_count == 0) goto op_is_needed;
-    for (int i = rslt_count ; i < rslt_count ; i++) {
+    for (int i = 0; i < rslt_count ; i++) {
       if (OP_result(op,i) == RA_TN) goto op_is_needed;
+      extern TN *Caller_GP_TN;
+      if (OP_result(op,i) == Caller_GP_TN  && PU_has_exc_scopes(Get_Current_PU()))
+	goto op_is_needed;
     }
 
     if (op_is_needed_globally(op)) goto op_is_needed;

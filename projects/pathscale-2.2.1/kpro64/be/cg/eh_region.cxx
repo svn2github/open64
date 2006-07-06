@@ -64,6 +64,13 @@
 #include "whirl2ops.h"
 #include "label_util.h"
 
+#include "dwarf_stuff.h"
+extern "C" {
+#include "pro_encode_nm.h"
+}
+#include <map>
+#include <set>
+
 
 /*
  * eh_region.cxx is responsible for building the EH range tables
@@ -604,6 +611,15 @@ struct ADJUST_PARENT {
   void operator()(EH_RANGE&r) {r.parent -= r.adjustment;}
 };
 
+struct FIX_PARENT_IF_TO_BE_REMOVED
+{
+  bool operator() (EH_RANGE& r)
+  {
+    while (r.parent && HAS_NO_CALL_OR_HAS_NULL_OR_UNREACHABLE_LABEL()(*r.parent))
+      r.parent = r.parent->parent;
+  }
+};
+
 void
 EH_Prune_Range_List(void)
 {
@@ -614,7 +630,7 @@ EH_Prune_Range_List(void)
     range_list.erase(first, last);
     return;
   }
-
+  std::for_each  (first, last, FIX_PARENT_IF_TO_BE_REMOVED());
   std::for_each  (first, last, SET_ADJUSTMENT());
   std::for_each  (first, last, CLEAR_USED());
   std::for_each  (first, last, SET_ADJUSTMENT_TO_PARENT_ADJUSTMENT());
@@ -746,6 +762,8 @@ ST_For_Range_Table(WN * wn)
 		      2 * offset_size;
   UINT32 size = header_size + number_of_ranges * range_size;
 
+  size = 0;
+
   TY_IDX tyi;
   TY& ty = New_TY(tyi);
   TY_Init(ty, size, KIND_STRUCT, MTYPE_M,
@@ -771,10 +789,489 @@ inline INT16 parent_offset(INT32 i)
     return (INT16) (range_list[i].parent - &range_list[i]);
 }
 
+#include <map>
+#include <set>
+typedef std::map< ST_IDX, int > 	TF_MAP;		// <type_ST_IDX, filter>
+typedef std::map< int, ST_IDX > 	FT_MAP; 	// <filter, type_ST_IDX>
+typedef std::set< ST_IDX >      	EH_PTS; 	// eh pic type set
 
+static void
+EH_Build_PIC_Type(ST_IDX idx)
+{
+  static EH_PTS pts;
+  if (pts.find(idx) != pts.end())	
+    return;
+  pts.insert(idx);
+
+  ST* st = &St_Table[idx];
+  ST* pst = New_ST(GLOBAL_SYMTAB);
+  STR_IDX pname = Save_Str2 ("DW.ref.", ST_name (st));
+  ST_Init(pst, pname, CLASS_VAR, SCLASS_DGLOBAL, EXPORT_HIDDEN, MTYPE_TO_TY_array[MTYPE_U8]);
+  Set_ST_is_weak_symbol (pst);
+  Set_ST_is_initialized (pst);
+  
+  ST_ATTR_IDX st_attr_idx;
+  ST_ATTR&    st_attr = New_ST_ATTR(GLOBAL_SYMTAB, st_attr_idx);
+  ST_ATTR_Init(st_attr, ST_st_idx(pst), ST_ATTR_SECTION_NAME, 
+               Save_Str2 (".gnu.linkonce.d.", ST_name(pst)));
+                                                                                
+  INITV_IDX iv = New_INITV();
+  INITV_Init_Symoff(iv, st, 0, 1);
+  New_INITO (ST_st_idx(pst), iv);
+  Assign_ST_To_Named_Section (pst, ST_ATTR_section_name (st_attr));
+}
+
+static int
+Get_EH_Filter_By_Type(ST_IDX idx, TF_MAP& tfmap)
+{
+  TF_MAP::iterator it;
+  it = tfmap.find(idx);
+  return (it != tfmap.end()) ? it->second : 0;
+}
+
+static ST_IDX
+Get_EH_ST_By_Filter(int filter, FT_MAP& ftmap)
+{
+  FT_MAP::iterator it;
+  it = ftmap.find(filter);
+  return (it != ftmap.end() ? it->second : 0);
+}
+
+// return max_filter
+static int
+Convert_TF_Map_To_FT_Map(TF_MAP& src, FT_MAP& dst)
+{
+  TF_MAP::iterator it;
+  int filter = 0;
+  
+  dst.clear();
+  for (it = src.begin(); it != src.end(); it++)
+  {
+    dst.insert(std::make_pair(it->second, it->first));
+    if (it->second > filter) filter = it->second;
+  }
+  return filter;
+}
+
+static INITV_IDX
+Get_TF_Map_and_EH_Spec_List(PU& pu, TF_MAP& tfmap)
+{
+  INITO_IDX ino_idx = pu.unused;
+  tfmap.clear();
+
+  if (ino_idx == INITO_IDX_ZERO) {
+    return INITV_IDX_ZERO;
+  }
+
+  INITV_IDX exc_ptr_iv = INITO_val(ino_idx);
+  INITV_IDX filter_iv  = INITV_next(exc_ptr_iv);
+  INITV_IDX tinfo      = INITV_next(filter_iv);
+  INITV_IDX eh_spec    = INITV_next(tinfo);
+
+  INITO_IDX id  = TCON_uval(INITV_tc_val(tinfo));
+
+  // tfmap init
+  if (id != INITO_IDX_ZERO) {
+    ST *st = INITO_st(id);
+    INITV_IDX blk = INITO_val(id);
+
+    while (blk != INITV_IDX_ZERO) {
+      INITV_IDX type_st_iv = INITV_blk(blk);
+      int filter = TCON_ival(INITV_tc_val(INITV_next(type_st_iv)));
+      ST_IDX    type_st_idx = 0;
+      if (INITVKIND_ZERO != INITV_kind(type_st_iv))
+        type_st_idx = TCON_uval(INITV_tc_val(type_st_iv));
+
+      if (/*(Gen_PIC_Call_Shared || Gen_PIC_Shared) &&*/ type_st_idx != 0)
+        EH_Build_PIC_Type(type_st_idx);
+      tfmap.insert(std::make_pair(type_st_idx, filter));
+      blk = INITV_next(blk);
+    }
+  }
+
+  // eh_spec blk list
+  id = TCON_uval(INITV_tc_val(eh_spec));
+  return (id != 0) ? INITV_blk(INITO_val(id)) : INITV_IDX_ZERO;
+}
+
+static void
+Print_EH_Range(EH_RANGE& range, FILE* fp)
+{
+  fprintf(fp, "==== EH_RANGE %p ====\n", &range);
+  fprintf(fp, "\t.kind        = %d\n", (int)range.kind);
+  fprintf(fp, "\t.ereg_supp   = %d\n", (int)range.ereg_supp);
+  fprintf(fp, "\t.has_call    = %d\n", (int)range.has_call);
+  fprintf(fp, "\t.start_label = %d (%d)(%s)\n", (int)range.start_label,
+	Label_Table[range.start_label].kind, LABEL_name(Label_Table[range.start_label]));
+  fprintf(fp, "\t.end_label   = %d (%d)(%s)\n", (int)range.end_label,
+	Label_Table[range.end_label].kind, LABEL_name(Label_Table[range.end_label]));
+  fprintf(fp, "\t.parent      = %p\n", range.parent);
+  
+  if (range.ereg_supp == 0)	return;
+  INITV_IDX blk = INITO_val(range.ereg_supp);
+  fprintf(fp, "%3d.\t.ereg_supp(INITO).INITV.kind = %d", blk, (int)INITV_kind(blk));
+  if (INITV_kind(blk) == INITVKIND_LABEL) {
+    LABEL& lab = Label_Table[INITV_lab(blk)];
+    fprintf(fp, ", lab:%d (%d)(%s),", INITV_lab(blk), lab.kind, LABEL_name(lab));
+  }
+  fprintf(fp, "\n");
+  
+  if (INITV_kind(blk) != INITVKIND_BLOCK)  return;
+
+  fprintf(fp, "\t.ereg_supp(INITO).INITV.kind = block, action info:\n");
+  INITV_IDX first = INITV_blk(blk);
+  for (INITV_IDX tmp = first; tmp; tmp = INITV_next(tmp)) {
+    fprintf(fp, "\t\t.INITV.kind = %d", (int)INITV_kind(tmp));
+    if (INITV_kind(tmp) == INITVKIND_LABEL) {
+      LABEL& lab = Label_Table[INITV_lab(tmp)];
+      fprintf(fp, ", lab:%d (%d)(%s),", INITV_lab(tmp), lab.kind, LABEL_name(lab));
+    }
+    if (INITV_kind(tmp) == INITVKIND_VAL) {
+      int sym = TCON_ival(INITV_tc_val(tmp));
+      fprintf(fp, ", val:0x%08x", sym);
+    }
+    fprintf(fp, "\n");
+  }
+}
+
+static void
+Print_PU_EH_Entry(PU& pu, ST* pu_st, FILE* fp)
+{
+  INITO_IDX ino_idx = pu.unused;
+/*
+.unused (INITO) = <etable (ST), exc_ptr_iv (INITV)>
+			--> exc_ptr_iv(__Exc_Ptr__)			(ST_IDX)
+			--> filter_iv (___Exc_Filter__)			(ST_IDX)
+			--> tinfo (type filter entry, 0 if none)	(INITO_IDX)
+			--> eh_spec (eh spec, 0 if none)		(INITO_IDX)
+*/
+  fprintf(fp, "==== EH ENTRY INFO for %s ====\n", ST_name(pu_st));
+  if (ino_idx == INITO_IDX_ZERO) {
+    fprintf(fp, "\tno eh entry\n");
+    return;
+  }
+
+  INITV_IDX exc_ptr_iv = INITO_val(ino_idx);
+  INITV_IDX filter_iv  = INITV_next(exc_ptr_iv);
+  INITV_IDX tinfo      = INITV_next(filter_iv);
+  INITV_IDX eh_spec    = INITV_next(tinfo);
+
+/*	id (INITO) = <typeinfo (ST), start (INITV)> (this is stored in tinfo)
+	-->	[blk <typest --> filter>]+
+*/
+  INITO_IDX id 	= TCON_uval(INITV_tc_val(tinfo));
+  ST*	    st;
+  INITV_IDX blk;
+ 
+  if (id != 0) {
+    st  = INITO_st(id);
+    blk = INITO_val(id);
+  
+    fprintf(fp, "\t.tinfo list:\n");
+    while (blk != INITV_IDX_ZERO) {
+      INITV_IDX type_st_iv = INITV_blk(blk);
+      int filter = TCON_ival(INITV_tc_val(INITV_next(type_st_iv)));
+      ST_IDX    type_st_idx = 0;
+      if (INITVKIND_ZERO != INITV_kind(type_st_iv))
+        type_st_idx = TCON_uval(INITV_tc_val(type_st_iv));
+
+      fprintf(fp, "\t\tST_IDX = 0x%08x [%s (%d)], filter = %d\n", type_st_idx,
+              type_st_idx ? ST_name(&St_Table[type_st_idx]) : "*ALL*", 
+ 	      type_st_idx ? (int)(!ST_is_not_used(&St_Table[type_st_idx])) : 0,
+	      filter);
+      blk = INITV_next(blk);
+    }
+  }
+  else
+    fprintf(fp, "\t.tinfo list: <none>\n");
+   
+/*	id (INITO) = <eh_spec (ST), start (INITV)>  (this is stored in eh_spec)
+	-->block	[ st]+
+*/  
+  id = TCON_uval(INITV_tc_val(eh_spec));
+  if (id != 0) {
+    st  = INITO_st(id);
+    blk = INITO_val(id);
+
+    fprintf(fp, "\t.eh_spec list:\n");
+    FmtAssert (INITV_kind(blk) == INITVKIND_BLOCK, ("root initv for eh_spec must be block"));
+    INITV_IDX type_st_iv = INITV_blk(blk);
+    while (type_st_iv != INITV_IDX_ZERO) {
+      ST_IDX    type_st_idx = 0;
+      if (INITVKIND_ZERO == INITV_kind(type_st_iv))
+	      break;
+      
+      type_st_idx = TCON_uval(INITV_tc_val(type_st_iv));
+      fprintf(fp, "\t\t0x%08x [%s]\n", type_st_idx, 
+              type_st_idx ? ST_name(&St_Table[type_st_idx]):"*END*");
+      type_st_iv = INITV_next(type_st_iv);
+    }
+  }
+  else
+    fprintf(fp, "\t.eh_spec list: <none>\n");  
+}
+
+static int
+sizeof_signed_leb128 (int value)
+{
+  char buff[ENCODE_SPACE_NEEDED];
+  int size;
+  int res = _dwarf_pro_encode_signed_leb128_nm (value, &size, buff, sizeof(buff));
+  FmtAssert (res == DW_DLV_OK, ("Encoding for exception table failed"));
+  return size;
+}
+
+static void
+INITV_Init_Integer_2(INITV_IDX inv, TYPE_ID mtype, INT64 val, UINT16 repeat)
+{
+    if (val == 0)
+	INITV_Set_ZERO (Initv_Table[inv], mtype, repeat);
+    else {
+    	TCON tc  = Host_To_Targ (mtype, val);
+    	INITV_Set_VAL (Initv_Table[inv], Enter_tcon(tc), repeat);
+    }
+}
+
+
+static void
+Check_Initv(INITV_IDX idx, FILE* fp)
+{
+  if (idx == 0) return;
+  fprintf(fp, "idx = %d, type = %d, val = %d\n", (int)idx, (int)INITV_kind(idx),
+      (INITV_kind(idx) == INITVKIND_VAL ? TCON_ival(INITV_tc_val(idx)) : -1));
+  FmtAssert(INITVKIND_UNK != INITV_kind(idx), ("INITV.kind = UNKNOWN\n"));
+  if (INITVKIND_BLOCK == INITV_kind(idx))
+    Check_Initv(INITV_blk(idx), fp);
+  Check_Initv(INITV_next(idx), fp);
+}
+
+static INITO* eh_pu_range_inito = NULL;
+INITO*
+EH_Get_PU_Range_INITO(bool bSetNull)
+{
+  INITO* ret = eh_pu_range_inito;
+  if (bSetNull == true)
+    eh_pu_range_inito = NULL;
+  return ret;
+}
+
+#define THU_EH_IMP 1
 static void
 Create_INITO_For_Range_Table(ST * st, ST * pu)
 {
+#if (THU_EH_IMP == 1)
+  TF_MAP tfmap;
+  FT_MAP ftmap;
+  INITV_IDX eh_spec_iv = Get_TF_Map_and_EH_Spec_List(Get_Current_PU(), tfmap);
+  INITO_IDX inito = New_INITO(st);
+  INITV_IDX inv_blk = New_INITV();
+  INITV_IDX inv, prev_inv, cinv, inv_action, backup;
+  int act_offset = 1;	// biased by 1
+
+  eh_pu_range_inito = &Inito_Table[inito];
+
+  /*
+  inito-> inv_blk -> list of INITVs (start with inv)
+
+  [inv]			-> mark where action table starts
+  call-site-table-initvS
+  [inv-action]		-> mark where type table starts
+  action-table-initvS
+  [cinv]		-> mark where eh-spec table starts
+  single-type-table	
+  eh-spec-table		
+  */
+  Set_INITO_val(inito, inv_blk);
+  inv = New_INITV();
+  INITV_Init_Block(inv_blk, inv);
+
+#define WINUX_ALLOC_INV(inv) 	\
+  prev_inv = inv;		\
+  inv = New_INITV();		\
+  Set_INITV_next(prev_inv, inv);
+
+  // prepare action table, start with cinv
+  inv_action = cinv = New_INITV();
+  INITV_Init_Integer_2(inv, MTYPE_U4, inv_action, 1);	// mark where action table start:)
+
+  // call-site table and action table  
+  for (INT32 i = 0; i < range_list.size(); i++) {
+    EH_RANGE& range = range_list[i];
+
+    if (range.ereg_supp == 0)	continue;
+    ST* st = INITO_st(range.ereg_supp);
+    if (ST_is_not_used(st)) 	continue;
+
+    Set_ST_is_not_used(st);
+    INITV_IDX blk = INITO_val(range.ereg_supp);
+    if (INITV_kind(blk) != INITVKIND_BLOCK) {
+	    Set_ST_is_not_used(st);
+	    continue;
+    }
+    FmtAssert(INITV_kind(blk) == INITVKIND_BLOCK, 
+		    ("eh_range.ereg_supp.inito.initv.kind != block, %d\n", INITV_kind(blk)));
+    
+    INITV_IDX first = INITV_blk(blk);
+   
+/*
+struct CallSiteRecord
+{
+char*	cs_start; //	offset to Start IP of current proc
+char*	cs_len;	  //	length to the next call-site?
+char*	cs_lp;	  //	ladding pad offset to lpStart
+char*	cs_action;// the first action table offset (biased by 1, 0 indicates there are no actions)
+};
+*/  // call-site record
+ 
+    // cs_start
+    WINUX_ALLOC_INV(inv)
+    INITV_Init_Symdiff(inv, range.start_label, pu, !Use_Long_EH_Range_Offsets());
+
+    // cs_len (we have to init two labels instead of Symdiff
+    WINUX_ALLOC_INV(inv)
+    INITV_Init_Label(inv, range.start_label, 1);
+    WINUX_ALLOC_INV(inv)
+    INITV_Init_Label(inv, range.end_label, 1);
+
+    // cs_lp
+    WINUX_ALLOC_INV(inv)
+    bool bHasLandingPad = true;
+    if (INITV_kind(first) == INITVKIND_LABEL) {
+      INITV_Init_Symdiff(inv, INITV_lab(first), pu, !Use_Long_EH_Range_Offsets());
+    }
+    else {	// no landing pad
+      INITV_Init_Integer_2(inv, MTYPE_U4, 0, 1);
+      bHasLandingPad = false;
+    }
+
+    // cs_action pointer
+    WINUX_ALLOC_INV(inv)
+    INITV_Init_Integer_2(inv, MTYPE_U4, act_offset, 1);
+
+/*
+struct	ActionRecord
+{
+uint16	ar_filter;	
+// 0, cleanup, 
+// >0, exception handler, ar_filter is an index to the type table, ttType.
+// <0, exception specification, ar_filter is a offset to the type list table, ttType
+// for example, throw (B,C)then ar_filter = -1, ttType[-1] = (2,3,0), ttType[2] = B, ttType[3] = C.
+uint16	ar_disp;	
+// next action record = &ar_disp + ar_disp (if ar_disp != 0)
+};
+*/  // action record
+    int ar_count = 0;
+    bool bNeedCleanup = false;
+    for (INITV_IDX next = INITV_next(first); next; next = INITV_next(next)) {
+      // begin write action record (cinv, next)
+      int filter = 0;
+      if (INITVKIND_ZERO != INITV_kind(next))
+	filter = TCON_ival(INITV_tc_val(next));
+
+      if (filter > 0) { // handler
+        filter = Get_EH_Filter_By_Type(filter, tfmap);
+	FmtAssert(bHasLandingPad, ("Landing pad must exist for handler."));
+      }
+      else if (filter < 0) {// eh-spec 
+      } 
+      else {  // filter = 0, eh-spec or catch-all or cleanup?
+        if (INITV_next(next)) {
+          INITV_IDX next_tmp = INITV_next(next);
+          if (INITVKIND_VAL == INITV_kind(next_tmp))
+            if (TCON_ival(INITV_tc_val(next_tmp)) < 0) { // eh-spec
+              continue;	// omit current mark (0)
+            }
+        }
+
+	if (bHasLandingPad == false) continue;
+
+        // catch all or clean-up
+	// FmtAssert(bHasLandingPad, ("Landing pad must exist for catch-all or cleanup."));
+	filter = Get_EH_Filter_By_Type(filter, tfmap);
+        if (filter == 0) {
+		bNeedCleanup = true;
+		continue; // cleanup
+	}
+      }
+
+      ar_count++;
+      WINUX_ALLOC_INV(cinv)
+      INITV_Init_Integer_2(cinv, MTYPE_I4, filter, 1); // ar_filter
+      
+      WINUX_ALLOC_INV(cinv)
+      if (INITV_next(next) == 0) {
+	INITV_Init_Integer_2(cinv, MTYPE_I4, 0, 1); // ar_next
+      }
+      else {
+	INITV_Init_Integer_2(cinv, MTYPE_I4, 1, 1);
+      } 
+      act_offset += sizeof_signed_leb128(filter) + 1;
+      // end write action record
+    } // end action record .for
+
+    if (bNeedCleanup && ar_count) {
+      FmtAssert(bHasLandingPad, ("Landing pad must exist for cleanup"));
+      INITV_Init_Integer_2(cinv, MTYPE_I4, 1, 1);	// reset ar_next, not finished yet
+      
+      WINUX_ALLOC_INV(cinv)
+      INITV_Init_Integer_2(cinv, MTYPE_I4, 0, 1);	// ar_filter
+      WINUX_ALLOC_INV(cinv)
+      INITV_Init_Integer_2(cinv, MTYPE_I4, 0, 1);    	// ar_next, end of action record list
+
+      act_offset += 2;
+    }
+    if (ar_count == 0)
+      INITV_Init_Integer_2(inv, MTYPE_U4, 0, 1);
+    else
+      INITV_Init_Integer_2(cinv, MTYPE_U4, 0, 1);
+      
+  } // end range_list.for
+
+  Set_INITV_next(inv, inv_action);
+
+  WINUX_ALLOC_INV(cinv)
+  backup = INITV_next(inv_action);
+  INITV_Init_Integer_2(inv_action, MTYPE_U4, cinv, 1); // mark where type table start:)
+  Set_INITV_next(inv_action, backup);
+  inv_action = cinv;
+
+  // single-type table
+  int maxft = Convert_TF_Map_To_FT_Map(tfmap, ftmap);
+  for (int i=maxft; i >= 1; i--) {
+    ST_IDX ix = Get_EH_ST_By_Filter(i, ftmap);
+    WINUX_ALLOC_INV(cinv)
+    INITV_Init_Integer_2(cinv, MTYPE_U4, ix, 1); 	// ST_IDX
+  }
+/*  
+  TF_MAP::iterator it;
+  for (it = tfmap.begin(); it != tfmap.end(); it++) {
+    WINUX_ALLOC_INV(cinv)
+    INITV_Init_Integer_2(cinv, MTYPE_U4, it->first, 1); // ST_IDX
+  }
+*/
+  WINUX_ALLOC_INV(cinv)
+  backup = INITV_next(inv_action);
+  INITV_Init_Integer_2(inv_action, MTYPE_U4, cinv, 1); // mark where eh-spec-table starts;0
+  Set_INITV_next(inv_action, backup);
+  INITV_Init_Integer_2(cinv, MTYPE_U4, cinv, 1);
+
+  // eh-spec table
+  int eh_filter = 0;
+  for (INITV_IDX next = eh_spec_iv; next; next = INITV_next(next)) {
+    WINUX_ALLOC_INV(cinv)
+    eh_filter = 0;
+    if (INITVKIND_ZERO != INITV_kind(next)) {
+      eh_filter = Get_EH_Filter_By_Type(TCON_ival(INITV_tc_val(next)), tfmap);
+    }
+    INITV_Init_Integer_2(cinv, MTYPE_I4, eh_filter, 1);
+  }
+  if (eh_filter != 0) {
+    WINUX_ALLOC_INV(cinv)
+    INITV_Init_Integer_2(cinv, MTYPE_I1, 0, 1);
+  }
+#undef WINUX_ALLOC_INV
+
+#else
   INITO_IDX inito = New_INITO(st);
   INITV_IDX inv_blk = New_INITV ();
   INITV_IDX inv;
@@ -824,6 +1321,7 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
 			   pu, !Use_Long_EH_Range_Offsets());
     prev_inv = Append_INITV(inv, INITO_IDX_ZERO, prev_inv);
   }
+#endif
 }
 
 void 

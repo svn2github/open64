@@ -1130,10 +1130,57 @@ Live_Init(
                                       BB_live_use(bb),
                                       &liveness_pool);
 
+  if (PU_has_exc_scopes(Get_Current_PU())) {
+    extern TN *Caller_GP_TN;
+    extern TN *Caller_FP_TN;
+    extern TN *Caller_Pfs_TN;
+    extern TN *ra_intsave_tn;
+    if (BB_handler(bb)) {
+      BB_defreach_in(bb) = GTN_SET_CopyD(BB_defreach_in(bb), force_live_gtns, &liveness_pool);
+      if (Caller_GP_TN) {
+        BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_GP_TN, &liveness_pool);
+        GTN_UNIVERSE_Add_TN(Caller_GP_TN);
+      }
+      if (ra_intsave_tn) {
+        BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), ra_intsave_tn, &liveness_pool);
+        GTN_UNIVERSE_Add_TN(ra_intsave_tn);
+      }
+      if (Caller_FP_TN) {
+        BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_FP_TN, &liveness_pool);
+        GTN_UNIVERSE_Add_TN(Caller_FP_TN);
+      }
+      if (Caller_Pfs_TN) {
+        BB_defreach_in(bb) = GTN_SET_Union1D(BB_defreach_in(bb), Caller_Pfs_TN, &liveness_pool);
+        GTN_UNIVERSE_Add_TN(Caller_Pfs_TN);
+      }
+    }
+    
+    if (BB_Has_Exc_Label(bb) || (!BB_exit(bb) && !BB_succs(bb))) {
+      BB_live_out(bb) = GTN_SET_CopyD(BB_live_out(bb), force_live_gtns, &liveness_pool);
+      if (Caller_GP_TN) {
+          BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_GP_TN, &liveness_pool);
+          GTN_UNIVERSE_Add_TN(Caller_GP_TN);
+      }
+      if (ra_intsave_tn) {
+          BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), ra_intsave_tn, &liveness_pool);
+          GTN_UNIVERSE_Add_TN(ra_intsave_tn);
+      }
+      if (Caller_FP_TN) {
+          BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_FP_TN, &liveness_pool);
+          GTN_UNIVERSE_Add_TN(Caller_FP_TN);
+      }
+      if (Caller_Pfs_TN) {
+          BB_live_out(bb) = GTN_SET_Union1D(BB_live_out(bb), Caller_Pfs_TN, &liveness_pool);
+          GTN_UNIVERSE_Add_TN(Caller_Pfs_TN);
+      }      
+    }
+  }
+
   // We are no longer computing BB_defreach_gen. Make a quick pass 
   // through the bb and initialize the defreach_out set with the
   // the GTNs defined in the block.
   BB_defreach_out(bb)  = GTN_SET_ClearD(BB_defreach_out(bb));
+
   OP *op;
   INT i;
   FOR_ALL_BB_OPs_FWD (bb, op) {

@@ -170,6 +170,12 @@ BOOL Multi_Branch_Valid_BB(BB *bb, BB *partial_head=NULL)
 
 
     if (bb == NULL) return FALSE;
+
+    // make sure that multiple branch can't act upon EH handler BB
+    // as well as BBs corresponding to EH range
+    if (BB_handler (bb) || BB_Has_Exc_Label (bb))
+        return FALSE;
+
     // skip list
     if (IPFEC_Query_Skiplist(mlbr_skip_bb, BB_id(bb), 
                              Current_PU_Count())) 
@@ -188,7 +194,6 @@ BOOL Multi_Branch_Valid_BB(BB *bb, BB *partial_head=NULL)
     if (BB_freq(bb) <= 0.0 && partial_head != NULL) {
         return FALSE;
     }
-
 
     if (partial_head) { 
         if (!BB_last_op(partial_head) || 
@@ -231,7 +236,7 @@ BOOL Multi_Branch_Valid_BB(BB *bb, BB *partial_head=NULL)
 
     // prev_bb branch op cannot be br.call
     if (BB_call(prev_bb)) return FALSE;
-        
+    
     // BB first op should be start of bundle;
     if (!BB_first_op(bb) || !OP_start_bundle(BB_first_op(bb))) return FALSE;
   
