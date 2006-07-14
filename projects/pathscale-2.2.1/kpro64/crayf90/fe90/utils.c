@@ -296,6 +296,9 @@ char *	 convert_to_string (long_type	*the_constant,
 # ifdef _TARGET64
       case Real_4 :
       case Real_8 :
+#ifdef TARG_IA64
+         sprintf(result, FLT_FMT, *(float_type *)the_constant);
+#else
          if (sizeof(float_type) > sizeof(float)) {
 #if defined(_HOST32)
             sprintf(result, FLT_FMT, *(float_type *)the_constant);
@@ -306,6 +309,7 @@ char *	 convert_to_string (long_type	*the_constant,
          else {
             sprintf(result, FLT_FMT, *(float_type *)the_constant);
          }
+#endif
          break;
 
       case Real_16 :
@@ -316,6 +320,11 @@ char *	 convert_to_string (long_type	*the_constant,
       case Complex_8 :
          inc = (TYP_LINEAR(type_idx) > COMPLEX_DEFAULT_TYPE) ? 2 : 1;
 
+#ifdef TARG_IA64
+         sprintf(result, "(" FLT_FMT ", " FLT_FMT ")",
+                                        *(float_type *)the_constant,
+                                        *(float_type *)(the_constant + inc));
+#else
          if (sizeof(float_type) > sizeof(float)) {
 #if defined(_HOST32)
             sprintf(result, "(" FLT_FMT ", " FLT_FMT ")",
@@ -332,6 +341,7 @@ char *	 convert_to_string (long_type	*the_constant,
                                            *(float_type *)the_constant,
                                            *(float_type *)(the_constant + inc));
          }
+#endif
          break;
 
       case Complex_16 :

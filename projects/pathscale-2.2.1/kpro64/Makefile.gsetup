@@ -460,7 +460,7 @@ endif
 include ${BUILD_TOT}/../defs.mk
 
 STD_C_OPTS = -std=gnu99 -D_GNU_SOURCE
-ERROR_ON_WARNINGS = #-Werror
+ERROR_ON_WARNINGS = -Werror
 STD_COMPILE_OPTS += -DKEY $(LOCAL_CFLAGS) $(ERROR_ON_WARNINGS)
 
 

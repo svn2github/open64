@@ -63,7 +63,7 @@ CROSS_COMPONENTS = \
                 $(CROSS_BUILD_DIR)/orc_ict/orc_ict.so \
                 $(CROSS_BUILD_DIR)/orc_intel/orc_intel.so \
                 $(CROSS_BUILD_DIR)/g++fe/gfecc \
-                #$(CROSS_BUILD_DIR)/crayf90/sgi/mfef90 \
+                $(CROSS_BUILD_DIR)/crayf90/sgi/mfef95 \
 
 PHONY_TARGET = $(shell for i in $(CROSS_COMPONENTS); do basename "$$i" ; done) 
 .PHONY : $(PHONY_TARGET) install clean clobber
@@ -130,7 +130,7 @@ $(CROSS_BUILD_DIR)/targ_info/itanium.so itanium.so:
 $(CROSS_BUILD_DIR)/ir_tools/ir_b2a ir_b2a:
 	cd $(CROSS_BUILD_DIR)/ir_tools ; gmake 
 
-$(CROSS_BUILD_DIR)/crayf90/sgi/mfef90 mfef90:
+$(CROSS_BUILD_DIR)/crayf90/sgi/mfef95 mfef95:
 	cd $(CROSS_BUILD_DIR)/crayf90/sgi ; gmake 
 
 # rules for ld-new
