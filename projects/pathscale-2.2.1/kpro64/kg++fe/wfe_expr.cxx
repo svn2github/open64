@@ -5110,15 +5110,15 @@ WFE_Expand_Expr (tree exp,
 	} // end of TARGET_64BIT
 #endif
         // code swiped from builtins.c (std_expand_builtin_va_arg)
-	INT64 align;
-	INT64 rounded_size;
 	tree type = TREE_TYPE (exp);
 	TY_IDX ty_idx = Get_TY (type);
 	TYPE_ID mtype = TY_mtype (ty_idx);
+	INT64 ty_align = TYPE_ALIGN (type) / BITSPERBYTE;
+	INT64 ty_size = int_size_in_bytes (type);
 
-        /* Compute the rounded size of the type.  */
-	align = PARM_BOUNDARY / BITS_PER_UNIT;
-	rounded_size = (((int_size_in_bytes (type) + align - 1) / align) * align);
+	INT64 align = PARM_BOUNDARY / BITS_PER_UNIT;
+	ty_size = ((ty_size + align - 1) / align) * align;
+	ty_align = ((ty_align + align - 1) / align) * align;
 
 	/* Get AP.  */
 	WN *ap = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
@@ -5139,48 +5139,35 @@ WFE_Expand_Expr (tree exp,
 #endif
 	st = WN_st (ap);
 
-#ifndef KEY
-	if (Target_Byte_Sex == BIG_ENDIAN) {
-	  Fail_FmtAssertion ("VA_ARG_EXPR not implemented for BIG_ENDIAN");
-	  INT64 adj;
-	  adj = TREE_INT_CST_LOW (TYPE_SIZE (type)) / BITS_PER_UNIT;
-	  if (rounded_size > align)
-	    adj = rounded_size;
+	wn = WN_COPY_Tree(ap_load);
 
-	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
-			  WN_Intconst (Pointer_Mtype, rounded_size - adj));
+	/* Align AP for the next argument. */
+	if (ty_align > align) {
+		wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+			WN_Intconst (Pointer_Mtype, ty_align - 1));
+		wn = WN_Binary (OPR_BAND, Pointer_Mtype, wn,
+			WN_Intconst (Pointer_Mtype, -ty_align));
 	}
 
 	/* Compute new value for AP.  */
-	wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
-			WN_Intconst (Pointer_Mtype, rounded_size));
-#else
 	if (Target_Byte_Sex == BIG_ENDIAN) {
-	  INT64 adj;
-	  adj = TREE_INT_CST_LOW (TYPE_SIZE (type)) / BITS_PER_UNIT;
-	  if (rounded_size > align)
-	    adj = rounded_size;
-	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
 			  WN_Intconst (Pointer_Mtype, 3));
 	  wn = WN_Binary (OPR_BAND, Pointer_Mtype, wn,
 			  WN_Intconst (Pointer_Mtype, -8));
-	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
-			  WN_Intconst (Pointer_Mtype, rounded_size));
-	} else
+	}
+	wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
+		WN_Intconst (Pointer_Mtype, ty_size));
 
-	/* Compute new value for AP.  */
-	wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
-			WN_Intconst (Pointer_Mtype, rounded_size));
-#endif
 	wn = WN_Stid (Pointer_Mtype, 0, st, ST_type (st), wn);
         WFE_Stmt_Append (wn, Get_Srcpos ());
-        wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -rounded_size,
+        wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, -ty_size,
 			     ty_idx, Make_Pointer_Type (ty_idx, FALSE),
 			     WN_Ldid (Pointer_Mtype, 0, st, ST_type (st)));
 #ifdef KEY
 	if (Target_Byte_Sex != Host_Byte_Sex)
           wn = WN_CreateIload (OPR_ILOAD, Widen_Mtype (mtype), mtype, 
-			  ((MTYPE_size_min(mtype)==32)?4:0)-rounded_size, 
+			  ((MTYPE_size_min(mtype)==32)?4:0)-ty_size, 
 			  ap_ty_idx, 
 			  Make_Pointer_Type (ap_ty_idx, FALSE),
 			  ap_load);
