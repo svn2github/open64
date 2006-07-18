@@ -3875,6 +3875,8 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
     return WN_kid1(tree);
 
   case OPR_LDID:
+    if (WN_class(tree) == CLASS_PREG)
+	break;
     return WN_Lda(Pointer_type, WN_load_offset(tree), WN_st(tree));
 
   case OPR_STID:
@@ -3883,23 +3885,20 @@ extern WN *make_pointer_to_node(WN *block, WN *tree)
   case OPR_ARRAY:
   case OPR_LDA:
     return tree;
-
-  default:
-    {
-      TYPE_ID	type = WN_rtype(tree);
-      ST  *st = Gen_Temp_Symbol( MTYPE_To_TY(type), "complex-temp-expr");
-      WN  *stid;
-
-      Is_True((WN_operator_is(tree, OPR_PARM)==FALSE),("bad parm"));
-      /*
-       *  store value to an addressible temporary, and take the address of that
-       */
-      stid = WN_Stid (type, 0, st, ST_type(st), tree);
-      WN_INSERT_BlockLast(block, stid);
-
-      return WN_Lda(Pointer_type, WN_store_offset(stid), st);
-    }
   }
+
+  TYPE_ID type = WN_rtype(tree);
+  ST  *st = Gen_Temp_Symbol( MTYPE_To_TY(type), "complex-temp-expr");
+  WN  *stid;
+
+  Is_True((WN_operator_is(tree, OPR_PARM)==FALSE),("bad parm"));
+  /*
+   *  store value to an addressible temporary, and take the address of that
+   */
+  stid = WN_Stid (type, 0, st, ST_type(st), tree);
+  WN_INSERT_BlockLast(block, stid);
+
+  return WN_Lda(Pointer_type, WN_store_offset(stid), st);
 }
 
 /* ====================================================================

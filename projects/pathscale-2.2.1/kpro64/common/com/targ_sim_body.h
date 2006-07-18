@@ -284,6 +284,15 @@ First_PLOC_Reg (PLOC ploc, TY_IDX parm_ty)
 	PLOC first = ploc;
 	ploc_last_offset = PLOC_total_size(ploc);
 	switch (ploc_parm_mtype) {
+	case MTYPE_F10:
+		/*
+		 * When FP types wider than a register are passed in integer
+		 * registers or onto the stack, we need multiple of such
+		 * registers or register slots. Treat them as compound types.
+		 */
+		if (!PLOC_on_stack(ploc) && IS_FLT_PREG(PLOC_reg(ploc)))
+			break;
+		/*FALLTHROUGH*/
 	case MTYPE_M:
 		Setup_Struct_Parameter_Locations (parm_ty);
 		first = Get_Struct_Parameter_Location (ploc);
@@ -337,6 +346,17 @@ Next_PLOC_Reg (PLOC prev)
 		    PLOC_reg(next) = 0;
 		}
 		break;
+	case MTYPE_F10:
+		/*
+                 * When FP types wider than a register are passed in integer
+		 * registers, we need multiple of such registers. Treat them
+		 * as compound types.
+		 */
+                if (PLOC_on_stack(prev) || !IS_FLT_PREG(PLOC_reg(prev))) {
+			next = Get_Struct_Parameter_Location (prev);
+			break;
+		}
+		/*FALLTHROUGH*/
 	default:
 		PLOC_offset(next) = ploc_last_offset;
 		PLOC_size(next) = 0; 

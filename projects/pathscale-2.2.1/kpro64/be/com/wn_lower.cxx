@@ -8341,15 +8341,15 @@ static WN *lower_mload(WN * /*block*/, WN *mload, LOWER_ACTIONS actions)
 
 /* ====================================================================
  *
- * void lower_complex_actual
+ * void lower_compound_non_struct_actual
  *
  * Perform lowering (see WN_Lower description) for complex actuals
- * This is used in fortran only , and only by value (%val)
+ * and floating-point parameters wider than a register.
  *
  *
  * ==================================================================== */
 
-static void lower_complex_actual (WN *block, WN *val, PLOC ploc,
+static void lower_compound_non_struct_actual (WN *block, WN *val, PLOC ploc,
 				  LOWER_ACTIONS actions)
 {
   WN     *size, *mload, *addr;
@@ -9546,13 +9546,25 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
     WN		*actual = WN_operator_is(parm, OPR_PARM) ? WN_kid0(parm)
                                                          : parm;
 
+    ploc = Get_Output_Parameter_Location(TY_Of_Parameter(parm));
+
     if (MTYPE_is_m(parmType))
     {
      /*
       * structure parameter
       */
-      ploc = Get_Output_Parameter_Location( TY_Of_Parameter(parm));
       lower_mload_actual (callblock, actual, ploc, actions);
+    }
+    else if (parmType == MTYPE_F10 &&
+	(PLOC_on_stack(ploc) || Is_Int_Output_Preg(PLOC_reg(ploc))))
+    {
+	/*
+	 * Make floating-point types wider than a register look like
+	 * a structure parameter because we may need to pass them in
+	 * multiple registers. This also catches arguments passed
+	 * onto the stack as IS_FLT_PREG will be false in that case.
+	 */
+	lower_compound_non_struct_actual (callblock, actual, ploc, actions);
     }
 #ifndef TARG_X8664
     else if (MTYPE_is_complex(parmType) && PU_ftn_lang(Get_Current_PU()))
@@ -9563,14 +9575,9 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
       * Note that GCC has complex type, which should go to
       * normal processing (like quads).
       */
-      ploc = Get_Output_Parameter_Location( TY_Of_Parameter(parm));
-      lower_complex_actual (callblock, actual, ploc, actions);
+      lower_compound_non_struct_actual (callblock, actual, ploc, actions);
     }
 #endif
-    else
-    {
-      ploc = Get_Output_Parameter_Location( MTYPE_To_TY(parmType));
-    }
   }
 
 #ifdef TARG_X8664
@@ -9591,13 +9598,17 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
     WN         *actual = WN_operator_is(parm, OPR_PARM) ? WN_kid0(parm) : parm;
     TY_IDX      ty;
 
-    if (MTYPE_is_m(parmType) 
-	|| (MTYPE_is_complex(parmType) && PU_ftn_lang(Get_Current_PU())) )
+    ty = TY_Of_Parameter(parm);
+    ploc = Get_Output_Parameter_Location(ty);
+
+    if (MTYPE_is_m(parmType) ||
+	(parmType == MTYPE_F10 &&
+	    (PLOC_on_stack(ploc) || Is_Int_Output_Preg(PLOC_reg(ploc)))) ||
+	(MTYPE_is_complex(parmType) && PU_ftn_lang(Get_Current_PU())) )
     {
      /*
       * already processed
       */
-      ploc = Get_Output_Parameter_Location( TY_Of_Parameter(parm));
 #ifdef TARG_X8664
       if (Preg_Offset_Is_Float(PLOC_reg(ploc))) 
         sse_args++;
@@ -9607,21 +9618,17 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
       continue;
     }
 
-    ty =  TY_Of_Parameter(parm);
-    ploc = Get_Output_Parameter_Location( MTYPE_To_TY(parmType));
-    {
-     /*
-      *  canonicalize [I,U][1,2] types (to [I,U]4
-      */
-      TYPE_ID  type = Mtype_comparison( Fix_TY_mtype(ty));
+    /*
+     *  canonicalize [I,U][1,2] types (to [I,U]4
+     */
+    TYPE_ID  type = Mtype_comparison( Fix_TY_mtype(ty));
 
-      if (parmType != type)
-      {
+    if (parmType != type)
+    {
 	DevWarn("lower_call(): line %d, parm #%d type mismatch (WN_rtype(parm)"
 		" = %s) (cannonical TY_mtype(parm))) %s)",
 		Srcpos_To_Line(WN_Get_Linenum(tree)), i,
 		Mtype_Name(parmType), Mtype_Name(type));
-      }
     }
 
 #ifdef TARG_X8664

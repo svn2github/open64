@@ -734,7 +734,6 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	
     case MTYPE_F4:
     case MTYPE_F8:
-    case MTYPE_F10:
 	/* want to left-justify the object */
         ++Current_Float_Param_Num;
 	rpad = MTYPE_RegisterSize(SIM_INFO.flt_type) - ploc.size;
@@ -746,7 +745,20 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	    ploc.vararg_reg = Get_Current_Preg_Num (SIM_INFO.int_args);
 	}
 	break;
-	
+
+    case MTYPE_F10:
+	++Current_Float_Param_Num;
+	if (Current_Param_Num > Last_Fixed_Param && !SIM_varargs_floats) {
+		/* varargs causes float args to be int regs */
+		ploc.reg = Get_Current_Preg_Num (SIM_INFO.int_args);
+		++Current_Param_Num;
+		++Last_Fixed_Param;
+	} else {
+		ploc.reg = Get_Current_Float_Preg_Num (SIM_INFO.flt_args);
+		ploc.vararg_reg = Get_Current_Preg_Num (SIM_INFO.int_args);
+	}
+	break;
+
     case MTYPE_FQ:
         ++Current_Float_Param_Num;
 	if (Current_Param_Num > Last_Fixed_Param && !SIM_varargs_floats) {
