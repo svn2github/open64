@@ -334,6 +334,7 @@ Dup_TN_Even_If_Dedicated(
  */
 static TN *ded_tns[ISA_REGISTER_CLASS_MAX + 1][REGISTER_MAX + 1];
 static TN *f4_ded_tns[REGISTER_MAX + 1];
+static TN *f10_ded_tns[REGISTER_MAX + 1];
 
 /* ====================================================================
  *
@@ -408,16 +409,21 @@ Init_Dedicated_TNs (void)
    */
   GP_TN = Create_Dedicated_TN (REGISTER_CLASS_gp, REGISTER_gp);
 
-
-    for (reg = REGISTER_MIN; 
-	 reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_float);
-	 reg++
-    ) {
+  for (reg = REGISTER_MIN; 
+       reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_float);
+       reg++) {
 	++tnum;
-        f4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
-  	Set_TN_size(f4_ded_tns[reg], 4);
-    }
-    Last_Dedicated_TN = tnum;
+	f4_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
+	Set_TN_size(f4_ded_tns[reg], 4);
+  }
+  for (reg = REGISTER_MIN; 
+       reg <= REGISTER_CLASS_last_register(ISA_REGISTER_CLASS_float);
+       reg++) {
+	++tnum;
+	f10_ded_tns[reg] = Create_Dedicated_TN(ISA_REGISTER_CLASS_float, reg);
+	Set_TN_size(f10_ded_tns[reg], 16);
+  }
+  Last_Dedicated_TN = tnum;
 }
 
 
@@ -432,11 +438,11 @@ Init_Dedicated_TNs (void)
 TN *
 Build_Dedicated_TN (ISA_REGISTER_CLASS rclass, REGISTER reg, INT size)
 {
-  // check for F4 tns; someday may have to check for F10 tns too
-  if (rclass == ISA_REGISTER_CLASS_float && size == 4
-	&& size != DEFAULT_RCLASS_SIZE(rclass) )
-  {
-	return f4_ded_tns[reg];
+  if (rclass == ISA_REGISTER_CLASS_float) {
+    if (size == 4)
+      return f4_ded_tns[reg];
+    if (size == 16)
+      return f10_ded_tns[reg];
   }
   return ded_tns[rclass][reg];
 }
