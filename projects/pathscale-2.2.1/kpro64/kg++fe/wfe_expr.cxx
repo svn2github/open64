@@ -2668,7 +2668,13 @@ WFE_Expand_Expr (tree exp,
 	  // If the initializer returns the object in memory, then make sure
 	  // the type doesn't require a copy constructor, since such types
 	  // sometimes require one.
-	  else if (TY_return_in_mem(Get_TY(TREE_TYPE(t)))) {
+	  //
+	  // Note when one stmt like "bool_expr ? Default Constructor : throw 0;"
+	  // the TY_return_in_mem(Get_TY(TREE_TYPE(t)) return 0, so add another
+	  // condition for this case.
+	  else if (TY_return_in_mem(Get_TY(TREE_TYPE(t))) || 
+		   ((TY_mtype (Get_TY(TREE_TYPE(t))) == MTYPE_M) &&
+		    (TREE_CODE(t) == COND_EXPR))) {
 	    if (TREE_CODE(t) == VAR_DECL ||
 		TREE_CODE(t) == PARM_DECL) {
 	      // The initializer is a var or parm.  We need to insert copy.
@@ -5250,7 +5256,8 @@ WFE_Expand_Expr (tree exp,
                code == THROW_EXPR    ||
 	       code == MUST_NOT_THROW_EXPR ||
 	       code == EXPR_WITH_FILE_LOCATION	||	// KEY
-               ((code == COND_EXPR) && (TY_mtype (ty_idx) == MTYPE_V)),
+	       ((code == COND_EXPR) &&  
+		((TY_mtype (ty_idx) == MTYPE_V) || (TY_mtype (ty_idx) == MTYPE_M))),
 	       ("WFE_Expand_Expr: NULL WHIRL tree for %s",
 		Operator_From_Tree [code].name));
 

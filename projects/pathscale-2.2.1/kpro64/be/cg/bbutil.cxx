@@ -2057,9 +2057,17 @@ BB_MAP BB_Depth_First_Map(BB_SET *region, BB *entry)
   } else {
     BB_LIST *entries;
     INT32 max_id = 0;
-    for (entries = Entry_BB_Head; entries; entries = BB_LIST_rest(entries))
-      max_id = map_depth_first(dfo_map, region, BB_LIST_first(entries),
-			       max_id);
+    for (entries = Entry_BB_Head; entries; entries = BB_LIST_rest(entries)) {
+      // when compile with -fno-execptions, the entry block of EH handler possibly 
+      // belongs to two separate closure sets of successor relation of Entry_BB_Head and
+      // BB_LIST_rest(Entry_BB_Head). So needn't do map_depth_first twice for the same BB.
+      FmtAssert ((region == NULL || BB_SET_MemberP(region, BB_LIST_first(entries))),
+		 ("BB_Depth_First_Map visited BB:%d twice", BB_id(BB_LIST_first(entries)))); 
+      
+      if (BB_MAP32_Get(dfo_map, BB_LIST_first(entries)) != 0)
+	continue;
+      max_id = map_depth_first (dfo_map, region, BB_LIST_first(entries), max_id);
+    }
   }
   return dfo_map;
 }

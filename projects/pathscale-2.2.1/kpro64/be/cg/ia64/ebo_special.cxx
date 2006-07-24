@@ -4245,7 +4245,36 @@ Constant_Created:
 
   if (result_sym != NULL) {
     tnc = Gen_Symbol_TN(result_sym, result_val, result_relocs);
-  } else {
+  } 
+  else {
+    switch (TN_size(tnr)) {
+    	case 1:     
+    		FmtAssert (!((tn0_uval & 0x1111111111111110 == 0x0000000000000010) && 
+			     (tn1_uval & 0x1111111111111110 == 0x0000000000000010) && 
+			     (result_val & 0x0000000000000100LL)),
+			     ("1-byte literal 0x%016llx is out-of-range", result_val));
+	  	result_val &= 0x00000000000000ffLL;
+		break;
+    	case 2:     
+    		FmtAssert (!((tn0_uval & 0x1111111111111000 == 0x0000000000001000) && 
+			     (tn1_uval & 0x1111111111111000 == 0x0000000000001000) && 
+			     (result_val & 0x0000000000010000LL)),
+			     ("2-byte literal 0x%016llx is out-of-range", result_val));
+	  	result_val &= 0x000000000000ffffLL;
+		break;
+    	case 4:     
+    		FmtAssert (!((tn0_uval & 0x1111111110000000 == 0x0000000010000000) && 
+			     (tn1_uval & 0x1111111110000000 == 0x0000000010000000) && 
+			     (result_val & 0x0000000100000000LL)),
+			     ("4-byte literal 0x%016llx is out-of-range", result_val));
+	  	result_val &= 0x00000000ffffffffLL;
+		break;
+    	case 8: 
+		break;
+    	default:
+       		FmtAssert(false, ("Invalid literal tn size: %d", TN_size(tnr)));
+    } 
+  
     tnc = Gen_Literal_TN(result_val, TN_size(tnr));
   }
   Expand_Immediate (tnr, tnc, OP_result_is_signed(op,0), &ops);
