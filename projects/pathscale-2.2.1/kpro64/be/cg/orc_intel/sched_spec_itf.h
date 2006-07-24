@@ -66,10 +66,11 @@ friend class SCHEDULER;
     SCHED_SPEC_HANDSHAKE ()  {};
     ~SCHED_SPEC_HANDSHAKE () {}; 
 
-        /* ref the comment to its definition for details
-         */
+    /* ref the comment to its definition for details */
     static BOOL Change_Load_Spec_Form (CANDIDATE* cand, 
-                INT32 cutting_set_size, BOOL* insert_chk, SCHEDULER* sched);
+                    INT32 cutting_set_size, BOOL* insert_chk, SCHEDULER* sched, 
+                    ISA_ENUM_CLASS_VALUE* ldform = NULL, 
+                    BOOL test = FALSE);
 
     static BOOL OP_Can_not_be_Candidate (OP*, SPEC_TYPE); 
 };

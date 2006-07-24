@@ -75,6 +75,8 @@ BOOL IPFEC_Enable_Postpass_LOCS = TRUE;
 BOOL IPFEC_Enable_Speculation = TRUE;
 BOOL IPFEC_Enable_Data_Speculation = TRUE;
 BOOL IPFEC_Enable_Cntl_Speculation = TRUE;
+BOOL IPFEC_Enable_FP_Ld_Speculation = TRUE;
+BOOL IPFEC_Enable_Data_Spec_Res_Aware = TRUE;
 BOOL IPFEC_Enable_Compressed_Template = TRUE;
 BOOL IPFEC_Glos_Reg_Pressure_Aware = TRUE;
 BOOL IPFEC_Stress_Spec             = FALSE;
@@ -149,6 +151,8 @@ BOOL ORC_Enable_Postpass_LOCS = TRUE;
 BOOL ORC_Enable_Speculation = TRUE;
 BOOL ORC_Enable_Data_Speculation = TRUE;
 BOOL ORC_Enable_Cntl_Speculation = TRUE;
+BOOL ORC_Enable_FP_Ld_Speculation = TRUE;
+BOOL ORC_Enable_Data_Spec_Res_Aware = TRUE;
 BOOL ORC_Enable_Compressed_Template = TRUE;
 
 BOOL ORC_Glos_Reg_Pressure_Aware = TRUE;
@@ -289,6 +293,8 @@ Copy_Ipfec_Flags (void) {
   IPFEC_Enable_Prepass_LOCS = ORC_Enable_Prepass_LOCS;
   IPFEC_Enable_Postpass_LOCS = ORC_Enable_Postpass_LOCS;
   IPFEC_Enable_Speculation = ORC_Enable_Speculation;
+  IPFEC_Enable_FP_Ld_Speculation = ORC_Enable_FP_Ld_Speculation; 
+  IPFEC_Enable_Data_Spec_Res_Aware = ORC_Enable_Data_Spec_Res_Aware; 
   IPFEC_Enable_Data_Speculation = ORC_Enable_Data_Speculation;
   IPFEC_Enable_Cntl_Speculation = ORC_Enable_Cntl_Speculation;
   IPFEC_Enable_Compressed_Template = ORC_Enable_Compressed_Template;

@@ -87,6 +87,7 @@
 #include "sched_dflow.h"
 #include "sched_heur.h"
 #include "sched_cand.h"
+#include "sched_res_aware.h"
 
     /* exported interfaces of this package 
      */
@@ -136,6 +137,7 @@ private:
         /* candidate stuff 
          */
     CAND_MGR _cand_mgr;
+    DATA_SPEC_RES_CONSTRAIT_MGR _dsrmgr;
 
                 /* find out all candidate which are potentially 
                  * scheduled into <_target_bb> */

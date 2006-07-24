@@ -1031,7 +1031,11 @@ CGTARG_Is_OP_Speculative_Load( OP *memop )
     TN *opnd_tn = OP_opnd(memop, i);
     if (TN_is_enum(opnd_tn)) {
       if (TN_enum(opnd_tn) == ECV_ldtype_s ||
-	  TN_enum(opnd_tn) == ECV_ldtype_sa) return TRUE;
+ 	  TN_enum(opnd_tn) == ECV_ldtype_sa ||
+ 	  TN_enum(opnd_tn) == ECV_fldtype_sa ||
+ 	  TN_enum(opnd_tn) == ECV_fldtype_s) {
+        return TRUE;
+      }
     }
   }
 
@@ -1055,8 +1059,12 @@ CGTARG_Is_OP_Advanced_Load( OP *memop )
   for (i = 0; i < OP_opnds(memop); ++i) {
     TN *opnd_tn = OP_opnd(memop, i);
     if (TN_is_enum(opnd_tn)) {
-      if (TN_enum(opnd_tn) == ECV_ldtype_a ||
-	  TN_enum(opnd_tn) == ECV_ldtype_sa) return TRUE;
+      if (TN_enum(opnd_tn) == ECV_ldtype_a  ||
+	  TN_enum(opnd_tn) == ECV_ldtype_sa ||
+ 	  TN_enum(opnd_tn) == ECV_fldtype_a ||
+ 	  TN_enum(opnd_tn) == ECV_fldtype_sa) {
+         return TRUE;
+      }
     }
   }
 
@@ -1089,6 +1097,22 @@ CGTARG_Is_OP_Check_Load( OP *memop )
   }
 
   return FALSE;
+}
+
+/* ====================================================================
+ *
+ * CGTARG_Is_Form_For_Advanced_Load 
+ *
+ * See interface description
+ *
+ * ====================================================================
+ */
+BOOL
+CGTARG_Is_Form_For_Advanced_Load (ISA_ENUM_CLASS_VALUE ldform) {
+    return ldform == ECV_ldtype_sa || 
+           ldform == ECV_ldtype_a ||
+           ldform == ECV_fldtype_a ||
+           ldform == ECV_fldtype_sa;
 }
 
 /* ====================================================================

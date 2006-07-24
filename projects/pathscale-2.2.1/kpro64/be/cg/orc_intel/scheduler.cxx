@@ -907,7 +907,8 @@ SCHEDULER::Get_OP_Prohibited_Spec_Type (OP *op) {
     /* 1. techanical weakness make us cannot speculate some kinds 
      *     of OPs 
      */
-    if (OP_Is_Float_Mem(op) || OP_ANNOT_OP_Def_Actual_Para (op)) {
+    if (OP_Is_Float_Mem(op) && !IPFEC_Enable_FP_Ld_Speculation || 
+        OP_ANNOT_OP_Def_Actual_Para (op)) {
         return SPEC_COMB ;
     }
 
@@ -1127,8 +1128,6 @@ OP*
 SCHEDULER::Insert_Check (OP * ld, BB * home_bb, OP* pos) {
 
     Is_True (OP_load(ld), ("OP is not load!")) ;
-    Is_True (!OP_Is_Float_Mem(ld), 
-             ("floating-point load shouldn't be spec now"));
 
     std::vector<OP*> dup_ops;
     OP *chk_op = ::Insert_CHK (ld, dup_ops, home_bb, pos, 
@@ -1208,6 +1207,15 @@ SCHEDULER::Insert_Check (OP * ld, BB * home_bb, OP* pos) {
         }
     }
 
+    /* calculate the the number-of-pending-adanced-load at the point 
+     * right before this newly inserted chk.
+     */
+    if (OP_chk_a(chk_op) && IPFEC_Enable_Data_Spec_Res_Aware) {
+        VIGILANT_PNT* vpld = _dsrmgr.Get_Vigilant_Point (ld);
+        VIGILANT_PNT* vpchk = _dsrmgr.Add_Vigilant_Point (chk_op);
+        vpchk->Set_Pending_Adv_Ld (vpld->Pending_Adv_Ld() + 1);
+    }
+
     return chk_op ;
 }
 
@@ -1232,6 +1240,7 @@ SCHEDULER::BB_Move_Op_Before (BB *to_bb, OP *point, BB *from_bb, OP *op) {
     SCHED_BB_ANNOT * bb_annot ;
     SCHED_OP_ANNOT * op_annot ;
     void           * op_heur ;
+    VIGILANT_PNT*  vgpnt = NULL;
 
     BB_OP_MAP  omap 
         = (BB_OP_MAP) BB_MAP_Get(_cg_dep_op_info, OP_bb(op));
@@ -1241,6 +1250,12 @@ SCHEDULER::BB_Move_Op_Before (BB *to_bb, OP *point, BB *from_bb, OP *op) {
     bb_annot = sched_annot.Get_BB_Annot (from_bb); 
     op_annot = bb_annot->Detach_OP_Annot (op);
     op_heur  = _heur_mgr.Detach_OP_Heur_Info (op);
+
+    /* save the vigilant point assciated with <op> */ 
+    if (_prepass && VIGILANT_PNT::Candidate (op) && 
+        IPFEC_Enable_Data_Spec_Res_Aware) {
+        vgpnt = _dsrmgr.Remove_Vigilant_Point (op);
+    }
 
     if (point) {
         ::BB_Move_Op_Before (to_bb, point, from_bb, op);
@@ -1257,6 +1272,11 @@ SCHEDULER::BB_Move_Op_Before (BB *to_bb, OP *point, BB *from_bb, OP *op) {
     bb_annot = sched_annot.Get_BB_Annot (to_bb);
     bb_annot->Attach_OP_Annot (op, op_annot) ; 
     _heur_mgr.Attach_OP_Heur_Info (op,op_heur);
+
+    /* restore the association of <op> and vigilant point */ 
+    if (vgpnt != NULL) {
+        _dsrmgr.Add_Vigilant_Point (op, vgpnt);
+    }
 }
 
     /* ===================================================
@@ -1441,6 +1461,10 @@ SCHEDULER::Gen_Compensation_Code
     if (spec_type & SPEC_CNTL) {
         Set_OP_cntl_spec  (op);
         Set_OP_orig_bb_id (op,BB_id(org_home));
+    }
+
+    if (IPFEC_Enable_Data_Spec_Res_Aware) {
+        _dsrmgr.Update_Vp_For_Compensation_Code (op, place);
     }
 
     return op ;
@@ -1688,6 +1712,30 @@ SCHEDULER::Commit_Schedule (CANDIDATE& cand) {
     BOOL cntl_spec_if_converted_code = FALSE;
     SRC_BB_INFO * src_info = _src_bb_mgr.Get_Src_Info (OP_bb(cand.Op()));
     
+    /* check resource (ALAT) constraints */ 
+    ISA_ENUM_CLASS_VALUE ldform = ECV_UNDEFINED;
+    BOOL transform = FALSE;
+    if (OP_load(op) && IPFEC_Enable_Data_Spec_Res_Aware) {
+        transform = SCHED_SPEC_HANDSHAKE::Change_Load_Spec_Form 
+            (&cand, src_info->Get_Cutting_Set()->size(),
+             &insert_chk, this, &ldform, TRUE); 
+        if (CGTARG_Is_OP_Advanced_Load(op) ||
+            transform && CGTARG_Is_Form_For_Advanced_Load (ldform)) {
+            if (_global && 
+                !_dsrmgr.Check_Res_Constraint (_region, op, src_info) ||
+                !_global && 
+                !_dsrmgr.Check_Res_Constraint (_target_bb, op)) {
+                _cand_mgr.Get_Cand_List (&cand)-> Erase_Cand (&cand);
+                return FALSE;
+            }
+        }
+    }
+
+    if (CGTARG_Is_OP_Advanced_Load (op) || OP_chk_a(op) ||
+         transform && CGTARG_Is_Form_For_Advanced_Load (ldform) &&
+         IPFEC_Enable_Data_Spec_Res_Aware) {
+        _dsrmgr.Update_Pending_Adv_Ld_Info (src_info, op);
+    }
 
         /* ref the comment rigth before Get_Up_to_Date_Spec_Type ()
          * to see why we need to get "-*CURRENT*- spec type. 
@@ -2858,7 +2906,8 @@ SCHEDULER::SCHEDULER (BB* bb, BOOL prepass,PRDB_GEN *prdb) :
         _src_bb_mgr(&_mem_pool),
         _ops_in_cur_cyc(OP_ALLOC(&_mem_pool)),
         _multiway_br_span_bbs(&_mem_pool),
-        _global(FALSE), _prepass(prepass)
+        _global(FALSE), _prepass(prepass),
+        _dsrmgr(&_mem_pool)
 {
 
     _region  = NULL;
@@ -2873,7 +2922,7 @@ SCHEDULER::SCHEDULER (BB* bb, BOOL prepass,PRDB_GEN *prdb) :
 
     _cflow_mgr.Init (_target_bb);
     sched_annot.Init (_target_bb);
-
+    _dsrmgr.Init (_target_bb);
 }
 
 SCHEDULER::SCHEDULER (struct tagRGN_INFO * rgn_info, BOOL prepass, PRDB_GEN * prdb) :
@@ -2887,7 +2936,8 @@ SCHEDULER::SCHEDULER (struct tagRGN_INFO * rgn_info, BOOL prepass, PRDB_GEN * pr
         _ops_in_cur_cyc(OP_ALLOC(&_mem_pool)),
         _heur_mgr(&_mem_pool),
         _multiway_br_span_bbs(&_mem_pool),
-        _global (TRUE), _prepass(TRUE)
+        _global (TRUE), _prepass(TRUE),
+        _dsrmgr(&_mem_pool)
 {
 
     _region = rgn_info->rgn ;
@@ -2897,7 +2947,7 @@ SCHEDULER::SCHEDULER (struct tagRGN_INFO * rgn_info, BOOL prepass, PRDB_GEN * pr
     Get_Sched_Opts (prepass);
     _cflow_mgr.Init (_region) ;
     sched_annot.Init (_region);
-
+    _dsrmgr.Init (_region);
 
     for (TOPOLOGICAL_REGIONAL_CFG_ITER cfg_iter(_region->Regional_Cfg());
          cfg_iter != 0; ++cfg_iter) {

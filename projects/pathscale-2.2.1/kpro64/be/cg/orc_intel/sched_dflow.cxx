@@ -600,8 +600,6 @@ SCHED_DFLOW_MGR::Update_Liveness_After_Upward_Sched
         return ; /* no need to update liveness */ 
     }
 
-
-
         /* step 1 : Let what <op> defs live out of target block. 
          */
     Add_Defs_Live_Out (op, src_info->Target_BB ());

@@ -83,20 +83,19 @@
  *    
  *  There are much painful experence of this little function which 
  *  serve as (a part of) handshake between scheduler and spec-package
- *  (speculation.{cxx,h}, recovery.{cxx,h}). It has ever create 
- *  10**10000 bugs. change that number if you ever encounter one. 
- *  10**10000++, 5/20/2003
+ *  (speculation.{cxx,h}, recovery.{cxx,h}). 
  *   
  * ====================================================================
  */
-
-
 BOOL
 SCHED_SPEC_HANDSHAKE :: Change_Load_Spec_Form 
     (CANDIDATE* cand, INT32 cutting_set_size, 
-     BOOL* insert_chk, SCHEDULER* sched) {
+     BOOL* insert_chk, SCHEDULER* sched, 
+     ISA_ENUM_CLASS_VALUE* ldform, /* the form <cand> should be changed to*/
+     BOOL test /*if TRUE, don't do actual transform upon <cand>*/) {
 
     *insert_chk = FALSE;
+    if (ldform) {*ldform = ECV_UNDEFINED;};
 
         /* (a): rule out cases that need not transform 
          */
@@ -174,7 +173,15 @@ SCHED_SPEC_HANDSHAKE :: Change_Load_Spec_Form
         if (!CGTARG_Is_OP_Speculative(op)) {        
             *insert_chk = TRUE; 
         }
-        Change_ld_Form(op, ECV_ldtype_sa);
+
+        if (ldform) { 
+            *ldform = OP_Is_Float_Mem(op) ? ECV_fldtype_sa: ECV_ldtype_sa;
+        }
+
+        if (!test) {
+            Change_ld_Form (op, OP_Is_Float_Mem(op) ? 
+                            ECV_fldtype_sa: ECV_ldtype_sa);
+        }
         return TRUE;
     }
 
@@ -185,7 +192,12 @@ SCHED_SPEC_HANDSHAKE :: Change_Load_Spec_Form
          */
     if (spec_type & SPEC_DATA) {
         if (!CGTARG_Is_OP_Advanced_Load(op)) {
-            Change_ld_Form(op, ECV_ldtype_a);
+            if (ldform) { 
+                *ldform = OP_Is_Float_Mem(op) ? ECV_fldtype_a: ECV_ldtype_a;
+            }
+            if (!test) {
+                Change_ld_Form(op, OP_Is_Float_Mem(op) ? ECV_fldtype_a: ECV_ldtype_a);
+            }
             return *insert_chk = TRUE;
         } else {
                 /* already in *.a form 
@@ -215,7 +227,10 @@ SCHED_SPEC_HANDSHAKE :: Change_Load_Spec_Form
         return FALSE;
     }
 
-    Change_ld_Form(op, ECV_ldtype_s);
+    if (ldform) *ldform = OP_Is_Float_Mem(op) ? ECV_fldtype_s : ECV_ldtype_s;
+    if (!test) {
+        Change_ld_Form(op, OP_Is_Float_Mem(op) ? ECV_fldtype_s : ECV_ldtype_s);
+    }
     return *insert_chk = TRUE;
 }
 

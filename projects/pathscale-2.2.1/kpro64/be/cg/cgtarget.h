@@ -596,6 +596,7 @@ extern BOOL CGTARG_Can_Be_Speculative( OP* op );
 extern BOOL CGTARG_Is_OP_Speculative(OP *op);
 extern BOOL CGTARG_Is_OP_Speculative_Load( OP* memop );
 extern BOOL CGTARG_Is_OP_Advanced_Load( OP* memop );
+extern BOOL CGTARG_Is_Form_For_Advanced_Load (ISA_ENUM_CLASS_VALUE ldform); 
 extern BOOL CGTARG_Is_OP_Check_Load( OP* memop );
 
 extern BOOL CGTARG_OP_Defs_TN( OP* op, TN* tn );

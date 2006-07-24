@@ -76,8 +76,10 @@ Change_ld_Form(OP *load_op, ISA_ENUM_CLASS_VALUE target_form)
                             ((target_form >= ECV_ldtype_s)  && (target_form <= ECV_ldtype));
     FmtAssert(compatible,("load op and ldtype not compatible."));
         
-    if( (target_form < ECV_ldtype_s) || (target_form > ECV_ldtype_sa) )
+    if(!float_op && (target_form < ECV_ldtype_s || target_form > ECV_ldtype_sa) ||
+        float_op &&  (target_form < ECV_fldtype_s || target_form > ECV_fldtype_sa)) {
         return NULL;
+    }
 
     if( TN_enum(OP_opnd(load_op, enum_ldtype_pos)) == target_form)
         return load_op;

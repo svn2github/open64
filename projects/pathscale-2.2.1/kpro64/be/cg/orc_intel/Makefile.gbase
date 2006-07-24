@@ -226,6 +226,7 @@ BE_ORC_SRCS = 		\
   sched_cand.cxx    \
   sched_seq.cxx     \
   scheduler.cxx     \
+  sched_res_aware.cxx \
   sched_rgn_info.cxx \
   speculation.cxx		\
   cggrp_microsched.cxx		\
