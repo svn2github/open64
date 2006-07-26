@@ -260,7 +260,7 @@ static void f90_character_compare(char		*ch_ptr1,
 |*	NOTHING								      *|
 |*									      *|
 \******************************************************************************/
-#define FOLD_OP fold_operation_
+#define FOLD_OP fold_operation__
 
 extern void FOLD_OP(int *,
 		    void *,
