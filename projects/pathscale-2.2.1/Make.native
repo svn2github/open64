@@ -163,7 +163,8 @@ clobber:
 	cd $(NATIVE_BUILD_DIR)/targ_info ; gmake clobber 
 	cd $(NATIVE_BUILD_DIR)/ir_tools ; gmake clobber 
 	cd $(NATIVE_BUILD_DIR)/crayf90/sgi ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/crayf90 ;     gmake clobber
+	cd $(NATIVE_BUILD_DIR)/crayf90 ; gmake clobber
+	cd $(NATIVE_BUILD_DIR)/arith ; gmake clobber
 	cd $(NATIVE_BUILD_DIR_LD) ; ./CLOBBER 
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
 		libiberty libunwindP ; do  \
