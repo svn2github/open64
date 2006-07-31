@@ -317,66 +317,36 @@ static INT
 Copy_option(OPTION_DESC *odesc, char *container, BOOL save)
 {
   void *var = ODESC_variable(odesc);
+  size_t sz = 0;
+
   Is_True(ODESC_can_change_by_pragma(odesc),
 	  ("Copy_option, trying to copy option that cannot change"));
 
-  if (save) {
-    switch (ODESC_kind(odesc)) {
-      case OVK_NONE:
-      case OVK_BOOL:
-        *((BOOL *)container) = *((BOOL *)var);
-	return sizeof(BOOL);
-      case OVK_INT32:
-	*((INT32 *)container) = *((INT32 *)var);
-	return sizeof(INT32);
-      case OVK_UINT32:
-	*((UINT32 *)container) = *((UINT32 *)var);
-	return sizeof(UINT32);
-      case OVK_INT64:
-	*((INT64 *)container) = *((INT64 *)var);
-	return sizeof(INT64);
-      case OVK_UINT64:
-	*((UINT64 *)container) = *((UINT64 *)var);
-	return sizeof(UINT64);
-      case OVK_NAME:
-      case OVK_SELF:
-	*((char **)container) = *((char **)var);
-	return sizeof(char *);
-      case OVK_LIST:
-	*((OPTION_LIST **)container) = *((OPTION_LIST **)var);
-	return sizeof(OPTION_LIST *);
-      default: /* INVALID, OBSOLETE, REPLACED, UNIMPLEMENTED */
-	return 0;
-    }
-  } else { /* restore */
-    switch (ODESC_kind(odesc)) {
-      case OVK_NONE:
-      case OVK_BOOL:
-        *((BOOL *)var) = *((BOOL *)container);
-	return sizeof(BOOL);
-      case OVK_INT32:
-	*((INT32 *)var) = *((INT32 *)container);
-	return sizeof(INT32);
-      case OVK_UINT32:
-	*((UINT32 *)var) = *((UINT32 *)container);
-	return sizeof(UINT32);
-      case OVK_INT64:
-	*((INT64 *)var) = *((INT64 *)container);
-	return sizeof(INT64);
-      case OVK_UINT64:
-	*((UINT64 *)var) = *((UINT64 *)container);
-	return sizeof(UINT64);
-      case OVK_NAME:
-      case OVK_SELF:
-	*((char **)var) = *((char **)container);
-	return sizeof(char *);
-      case OVK_LIST:
-	*((OPTION_LIST **)var) = *((OPTION_LIST **)container);
-	return sizeof(OPTION_LIST *);
-      default: /* INVALID, OBSOLETE, REPLACED, UNIMPLEMENTED */
-	return 0;
-    }
+  switch (ODESC_kind(odesc)) {
+    case OVK_NONE:
+    case OVK_BOOL:
+      sz = sizeof(BOOL);
+      break;
+    case OVK_INT32:
+    case OVK_UINT32:
+      sz = sizeof(INT32);
+      break;
+    case OVK_INT64:
+    case OVK_UINT64:
+      sz = sizeof(INT64);
+    case OVK_NAME:
+    case OVK_SELF:
+    case OVK_LIST:
+      sz = sizeof(void *);
   }
+
+  if (sz > 0) {
+    if (save)
+      memcpy(container, var, sz);
+    else
+      memcpy(var, container, sz);
+  }
+  return (sz);
 }
 
 
