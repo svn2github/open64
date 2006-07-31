@@ -59,10 +59,6 @@ ifeq ($(BUILD_ABI), N32BIT)
 EXTRA_EXPORTS += -exports_file $(BUILD_BASE)/mips3.exports 
 endif
 
-ifeq ($(BUILD_OPTIMIZE), NODEBUG)
-OPTIMIZER = -O3
-endif
-
 ifeq ($(BUILD_VARIANT), LIBMV)
 LCDEFS += -D_SW_PIPELINE
  ifeq ($(BUILD_ABI), I64BIT)
