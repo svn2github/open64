@@ -94,7 +94,6 @@ HOSTDEFS += -LANG:packed=on
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 HOSTDEFS += -DIs_True_On
-OPTIMIZER += -g -O0
 endif
 
 ifeq ($(BUILD_PCH), USE_PCH)
