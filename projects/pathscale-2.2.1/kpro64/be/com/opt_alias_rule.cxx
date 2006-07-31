@@ -143,6 +143,74 @@ ALIAS_RULE::Aliased_Ip_Classification_Rule(const POINTS_TO *const mem1,
   return aliased;
 }
 
+// return TRUE iff
+//   o. ty1 == ty2, or 
+//   o. ty1 is of aggregate and there exist a filed <f> of ty2 
+//      where Ty1_Include_Ty2(ty1, type-of-<f>) is satisfied. 
+//
+// this is helper function of Aliased_This_Ptr_Rule ().
+BOOL
+ALIAS_RULE::Ty1_Include_Ty2 (TY_IDX ty1, TY_IDX ty2) const
+{
+  if (ty1 == ty2) {
+    return TRUE;
+  }
+
+  if (TY_kind(ty2) != KIND_STRUCT) {
+    return FALSE;
+  }
+
+  FLD_ITER iter = Make_fld_iter (FLD_HANDLE (Ty_Table[ty2].Fld ()));
+  do {
+    TY_IDX field_ty = (*iter).type;
+    if (field_ty == ty1 || (TY_kind(field_ty) == KIND_STRUCT) &&
+        Ty1_Include_Ty2 (ty1, field_ty)) {
+        return TRUE;
+    }
+  } while (! FLD_last_field (iter++));
+
+  return FALSE;
+}
+
+BOOL
+ALIAS_RULE::Aliased_This_Ptr_Rule (const POINTS_TO* const mem1, 
+                       const POINTS_TO *const mem2) const
+{
+  if (!mem1->This_ptr() && !mem2->This_ptr()) {
+    // this rule is not appliable
+    return TRUE; 
+  } else if (!mem1->This_ptr()) {
+    return Aliased_This_Ptr_Rule (mem2, mem1);
+  }
+
+  if (mem2->Named() && mem2->Base () && 
+      TY_kind(ST_type(mem2->Base())) == KIND_SCALAR) {
+    // class instance cannot alias with named scalar 
+    return FALSE;
+  } else if (mem2->This_ptr ()) {
+    ST* base1 = mem1->Based_sym();
+    ST* base2 = mem2->Based_sym();
+    Is_True (base1 && base2, ("Base symbol should not be NULL"));
+    
+    if (base1 == base2 && mem1->Ofst_kind () == OFST_IS_FIXED && 
+        mem2->Ofst_kind () == OFST_IS_FIXED) {
+      // mem1 and mem2 access exactly the same instance
+      Is_True (mem1->Byte_Size() && mem2->Byte_Size(), ("has zero byte size"));
+      return mem1->Overlap(mem2);
+    } else {
+      TY_IDX ty1 = ST_type(*base1);
+      TY_IDX ty2 = ST_type(*base2);
+
+      return Ty1_Include_Ty2 (Ty_Table[ty1].Pointed(), 
+                              Ty_Table[ty2].Pointed()) ||
+             Ty1_Include_Ty2 (Ty_Table[ty2].Pointed(), 
+                              Ty_Table[ty1].Pointed());
+    }
+  }
+
+  return TRUE;
+}
+
 // Fortran-90 pointers can point only to items lacking the not_f90_target
 // attribute.
 BOOL
@@ -626,6 +694,9 @@ BOOL ALIAS_RULE::Aliased_Memop_By_Analysis(const POINTS_TO *p1, const POINTS_TO 
     return FALSE;
 
   if (Rule_enabled(IP_CLAS_RULE) && !Aliased_Ip_Classification_Rule(p1, p2))
+    return FALSE;
+
+  if (Rule_enabled(THIS_PTR_RULE) && !Aliased_This_Ptr_Rule (p1, p2)) 
     return FALSE;
 
   return TRUE;

@@ -2894,6 +2894,21 @@ OPT_STAB::Identify_vsym(WN *memop_wn)
 	  }
 	  return vsym_id;
 	}
+
+	if (ST_is_this_ptr(st) && WOPT_Enable_This_Ptr_Opt) {
+	  vsym_id = Find_vsym_with_st(st);
+	  if (vsym_id == 0) {
+	    vsym_id = Create_vsym(EXPR_IS_ADDR);
+	    AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+            vsym->Points_to()->Set_base_kind(BASE_IS_UNKNOWN);
+	    vsym->Points_to()->Set_based_sym(st); 
+	    vsym->Points_to()->Set_this_ptr();
+	    vsym->Set_st(st);
+	    vsym->Set_stype(VT_UNIQUE_VSYM);
+	  }
+	  return vsym_id;
+	}
+
 	if (WOPT_Enable_Vsym_Unique) {
 	  vsym_id = Find_vsym_with_st(st);
 	  if (vsym_id == 0) {

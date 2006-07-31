@@ -615,8 +615,8 @@ POINTS_TO::Analyze_ST(ST *st, INT64 byte_ofst, INT64 byte_size,
 
 
 //  Generate the POINTS_TO for an indirect reference based on ST
-//  This makes sense only if it is restricted, unique or it is a
-//  Fortran parameter.
+//  This makes sense only if it is restricted, unique, this-pointer
+//  reference or it is a Fortran parameter. 
 //
 void POINTS_TO::Analyze_ST_as_base(ST *st, INT64 ofst, TY_IDX ty)
 {
@@ -645,13 +645,19 @@ void POINTS_TO::Analyze_ST_as_base(ST *st, INT64 ofst, TY_IDX ty)
       Set_expr_kind(EXPR_IS_ADDR);
       Set_base_kind(BASE_IS_UNKNOWN);
       Set_ofst_kind(OFST_IS_UNKNOWN);
+    } else if (ST_is_this_ptr(st) && WOPT_Enable_This_Ptr_Opt) {
+      Set_this_ptr();
+      Set_based_sym(st);
+      Set_expr_kind(EXPR_IS_ADDR);
+      Set_base_kind(BASE_IS_UNKNOWN);
+      Set_ofst_kind(OFST_IS_UNKNOWN);
     } else if (Alias_Pointer_Cray && st != NULL && !ST_is_temp_var(st)) {
       Set_unique_pt();
       Set_based_sym(st);
       Set_expr_kind(EXPR_IS_ADDR);
       Set_base_kind(BASE_IS_UNKNOWN);
       Set_ofst_kind(OFST_IS_UNKNOWN);
-    }
+    } 
     if (Alias_Pointer_Parms && Is_FORTRAN() &&
 	ST_sclass(st) == SCLASS_FORMAL && !ST_is_value_parm(st)) {
       Set_F_param();
@@ -666,6 +672,11 @@ void POINTS_TO::Analyze_ST_as_base(ST *st, INT64 ofst, TY_IDX ty)
     Set_byte_size(0); 
 
   } else {
+
+    Is_True (!ST_is_this_ptr(st), 
+             ("I am curious about how can compiler magically generate "
+              "indirect access with address being "
+              "'LDID non-zeor-ofst this-ptr'")); 
 
     // ofst != 0.  Special case for LNO.
     // When the pt_to_unique_mem is set for an array A
@@ -769,8 +780,19 @@ void POINTS_TO::Lower_to_base(WN *wn)
     } else
       Set_ofst_kind(OFST_IS_UNKNOWN);
     Set_bit_ofst_size(0, 0);
+  } else if (This_ptr () && WOPT_Enable_This_Ptr_Opt) {
+    Set_safe_to_speculate (); // it has valid virtual address
+    if (Ofst_kind() == OFST_IS_FIXED) {
+      if (WN_object_size(wn) > 0) {
+        Set_byte_size(WN_object_size(wn));
+      } else {
+        Set_ofst_kind(OFST_IS_UNKNOWN);
+        Set_byte_size(0);
+      }
+    } else {
+      Set_byte_size(0);
+    }
   } else {
-
     Reset_safe_to_speculate();
     if (Ofst_kind() == OFST_IS_FIXED && Is_pointer() && wn != NULL) {
       Set_byte_size(Byte_Size() + WN_object_size(wn));

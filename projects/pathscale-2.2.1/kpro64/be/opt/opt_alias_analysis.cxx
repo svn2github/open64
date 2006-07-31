@@ -621,7 +621,9 @@ void OPT_STAB::Simplify_Pointer(WN *wn_addr, POINTS_TO *ai)
       if (TY_is_restrict(ty)) {
 	ai->Analyze_ST_as_base(st, WN_offset(wn_addr), WN_ty(wn_addr));
 	ai->Set_ofst_kind(OFST_IS_UNKNOWN);
-      } else
+      } else if (ST_is_this_ptr (st) && WOPT_Enable_This_Ptr_Opt) {
+	ai->Analyze_ST_as_base(st, WN_offset(wn_addr), WN_ty(wn_addr));
+      } else 
 	Simplify_Pointer_Ver(ver, ai);    // Follow the DU chain
     } else if (FFA()) {
       ai->Analyze_Ldid_Base(wn_addr, *this);

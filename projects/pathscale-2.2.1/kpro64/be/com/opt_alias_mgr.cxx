@@ -220,6 +220,10 @@ RESTRICTED_MAP::Remove_info(WN *wn)
 BOOL
 RESTRICTED_MAP::Restore_info(WN *wn, POINTS_TO *pt)
 {
+  if (pt->This_ptr() && WOPT_Enable_This_Ptr_Opt) {
+    return FALSE; 
+  }
+
   struct INFO *pinfo = (struct INFO *) WN_MAP_Get(_map, wn);
   if (pinfo != NULL) {
     pt->Set_expr_kind(EXPR_IS_ADDR);
@@ -258,6 +262,8 @@ RESTRICTED_MAP::Verify_info(const WN        *const wn,
 			    const POINTS_TO *const pt)
 {
 #if Is_True_On
+  if (pt->This_ptr() && WOPT_Enable_This_Ptr_Opt) { return; }
+
   struct INFO *pinfo = (struct INFO *) WN_MAP_Get(_map, wn);
   if (pinfo != NULL) {
     Is_True(_saved, ("RESTRICTED_MAP: Map must be saved"));
@@ -431,6 +437,9 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
       ac |= RAG_RESTRICTED_RULE;
     if (Alias_Pointer_Disjoint)
       ac |= IBM_DISJOINT_RULE;
+    if (!WOPT_Enable_This_Ptr_Opt) 
+      ac &= ~THIS_PTR_RULE;
+
     break;
   default:
     Is_True(FALSE, ("Language is unknown; mixed-language inlining illegal."));

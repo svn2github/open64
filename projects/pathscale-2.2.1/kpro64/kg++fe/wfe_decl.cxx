@@ -1164,7 +1164,12 @@ WFE_Start_Function (tree fndecl)
 	  TREE_OPERAND(pdecl, 0) = ptr_parm;
 	} else
 #endif
-	st = Get_ST(pdecl);
+	{
+	  st = Get_ST(pdecl);
+	  if (DECL_ARTIFICIAL(pdecl) && DECL_NAME(pdecl) == this_identifier) {
+	    Set_ST_is_this_ptr (st);
+	  }
+	}
       }
 
       if (!WFE_Keep_Zero_Length_Structs   &&

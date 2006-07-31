@@ -548,7 +548,22 @@ inline void
 Set_ST_is_inintialized_in_f90 (ST *s)       { s->flags_ext |= ST_IS_INITIALIZED_IN_F90; }
 inline void
 Clear_ST_is_inintialized_in_f90 (ST *s)     { s->flags_ext &= ~ST_IS_INITIALIZED_IN_F90; }
-#endif
+
+inline BOOL
+ST_is_method_func (const ST* s)	{ return s->flags_ext & ST_IS_METHOD_FUNC; }
+inline void
+Set_ST_is_method_func (ST* s) { s->flags_ext |= ST_IS_METHOD_FUNC; }
+inline void
+Reset_ST_is_method_func (ST* s) { s->flags_ext &= ~ST_IS_METHOD_FUNC; }
+
+inline BOOL
+ST_is_this_ptr (const ST* s) { return s->flags_ext & ST_IS_THIS_PTR; }
+inline void
+Set_ST_is_this_ptr (ST* s)  { s->flags_ext |= ST_IS_THIS_PTR; }
+inline void
+Reset_ST_is_this_ptr (ST* s)  { s->flags_ext &= ~ST_IS_THIS_PTR; }
+
+#endif /* KEY */
 
 //----------------------------------------------------------------------
 // access functions for PU

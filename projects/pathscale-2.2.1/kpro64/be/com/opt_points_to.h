@@ -221,9 +221,10 @@ enum PT_ATTR {
 				      // be pointed to by f90 pointer
   PT_ATTR_NOT_ALLOCA_MEM  = 0x200000, // this access can safely be
                                       // moved past stack pointer updates
-  PT_ATTR_EXTENDED        = 0x400000  // used by alias manager to represent
+  PT_ATTR_EXTENDED        = 0x400000, // used by alias manager to represent
                                       // a consecutive array of POINTS_TO
-  // 23 of 32 bits used
+  PT_ATTR_THIS_PTR        = 0x800000  // indirect access of "this" pointer
+  // 24 of 32 bits used
 };
 
 
@@ -317,6 +318,7 @@ public:
   BOOL        Unnamed(void)          const { return !Named(); }
   BOOL        Const(void)            const { return ai._attr & PT_ATTR_CONST; }
   BOOL        Restricted(void)       const { return ai._attr & PT_ATTR_RESTRICTED; }
+  BOOL        This_ptr(void)         const { return ai._attr & PT_ATTR_THIS_PTR; }
   BOOL        Unique_pt(void)        const { return ai._attr & PT_ATTR_UNIQUE_PT; }
   BOOL        F_param(void)          const { return ai._attr & PT_ATTR_F_PARAM; }
   BOOL        Dedicated(void)        const { return ai._attr & PT_ATTR_DEDICATED; }
@@ -379,6 +381,7 @@ public:
   void Set_named(void)                    { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_NAMED); }
   void Set_const(void)                    { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_CONST); }
   void Set_restricted(void)               { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_RESTRICTED); }
+  void Set_this_ptr(void)                 { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_THIS_PTR); }
   void Set_unique_pt(void)                { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_UNIQUE_PT); }
   void Set_F_param(void)                  { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_F_PARAM); }
   void Set_dedicated(void)                { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_DEDICATED); }
@@ -414,6 +417,7 @@ public:
   void Reset_named(void)                  { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NAMED); }
   void Reset_const(void)                  { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_CONST); }
   void Reset_restricted(void)             { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_RESTRICTED); }
+  void Reset_this_ptr(void)               { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_THIS_PTR) ;}
   void Reset_unique_pt(void)              { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_UNIQUE_PT); }
   void Reset_F_param(void)                { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_F_PARAM); }
   void Reset_dedicated(void)              { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_DEDICATED); }
@@ -676,7 +680,9 @@ void POINTS_TO::Analyze_Ldid_Base(WN *wn_ldid, const SYMTAB &stab)
   INT64 ofst = WN_offset(wn_ldid);
   TY_IDX ty = WN_ty(wn_ldid);
   Analyze_ST_as_base(st, ofst, ty);
-  Set_ofst_kind(OFST_IS_UNKNOWN);
+  if (!This_ptr() || !WOPT_Enable_This_Ptr_Opt) {
+    Set_ofst_kind(OFST_IS_UNKNOWN);
+  }
 }
 
 // Look for a LDA/LDID node recursively 
@@ -815,7 +821,7 @@ void POINTS_TO::Analyze_WN_expr(WN *wn, const SYMTAB &stab)
 	  }
 	} else if (WN_operator(wn_lda) == OPR_LDID) {
 	  Analyze_Ldid_Base(wn_lda, stab);
-	  Lower_to_base(NULL);
+	  Lower_to_base(This_ptr() && WOPT_Enable_This_Ptr_Opt ? wn : NULL);
 	  return;
 	}
       }

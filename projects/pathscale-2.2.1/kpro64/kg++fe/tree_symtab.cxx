@@ -1141,6 +1141,11 @@ Create_ST_For_Tree (tree decl_node)
                  Save_Str ( IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl_node))),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
 #endif
+	if (TREE_CODE(TREE_TYPE(decl_node)) == METHOD_TYPE) {
+		Set_ST_is_method_func(st);
+		st->Print (stderr, 1); // SHIT! TO BE REMOVED 
+	}
+
 	if (DECL_THUNK_P(decl_node) &&
             TREE_CODE(CP_DECL_CONTEXT(decl_node)) != NAMESPACE_DECL)
 	  Set_ST_is_weak_symbol(st);

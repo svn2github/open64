@@ -165,7 +165,10 @@ enum ST_FLAGS_EXT
     ST_ONE_PER_PU = 0x01,		// Only 1 instance per pu
     ST_COPY_CONSTRUCTOR_ST =   0x02,	// ST is copy constructor function
     ST_INITV_IN_OTHER_ST   =   0x04,    // ST is being used as an initianliation offset by other symbol
-    ST_IS_INITIALIZED_IN_F90 = 0x8
+    ST_IS_INITIALIZED_IN_F90 = 0x8, 
+    ST_IS_METHOD_FUNC	= 0x10,         // ST is c++ method function (make sense only 
+                                        // when st-class is CLASS_FUNC	
+    ST_IS_THIS_PTR      = 0x20, 	// ST is "this"-pointer
 }; // ST_FLAGS_EXT
 #endif
 
