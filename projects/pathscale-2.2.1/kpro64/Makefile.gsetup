@@ -290,10 +290,10 @@ else
 endif
 
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
-   OPTIMIZER = -g -O0
+   OPTIMIZER = -g -O1
 else
  ifeq ($(BUILD_OPTIMIZE), NODEBUG)
-   OPTIMIZER = -O2
+   OPTIMIZER = -O2 -fno-strict-aliasing
  else
    OPTIMIZER = $(BUILD_OPTIMIZE)
  endif
