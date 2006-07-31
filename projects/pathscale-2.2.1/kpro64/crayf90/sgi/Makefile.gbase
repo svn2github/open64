@@ -418,15 +418,4 @@ include $(COMMONRULES)
 #  Special case rules for files that want to be individualistic
 #----------------------------------------------------------------------
 
-ifeq (gcc,$(firstword $(CCNAME)))
-# work around ia32 gcc bug in optimizing these files
-cwh_dst.o: OPTIMIZER = -O0 
-cwh_stab.o: OPTIMIZER = -O0 
-cwh_auxst.o: OPTIMIZER = -O0
-ifeq ($(BUILD_OPTIMIZE), DEBUG)
-cwh_dst.o: OPTIMIZER += -g
-cwh_stab.o: OPTIMIZER += -g
-cwh_auxst.o: OPTIMIZER += -g
-endif
-endif
 wn_util.o: HOSTDEFS += -DMONGOOSE_BE

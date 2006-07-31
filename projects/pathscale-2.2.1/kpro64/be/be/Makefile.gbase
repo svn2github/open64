@@ -758,7 +758,3 @@ pure: $(TARGETS_PURE)
 install.pure:: pure
 	$(STD_INSTALL) $(STD_INSTALL_EXEC_MASK) -F $(STD_MONGOOSE_LOC) be.so.pure
 
-ifeq (gcc,$(firstword $(CCNAME)))
-# work around gcc bug optimizing this file on ia32
-flags.o: OPTIMIZER = -O0 -g
-endif

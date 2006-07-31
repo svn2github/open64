@@ -390,7 +390,3 @@ include $(COMMONRULES)
 
 DSONAMEOPT =
 
-ifeq (gcc,$(firstword $(CCNAME)))
-# work around gcc bug optimizing this file on ia32
-opt_cfg_trans.o: OPTIMIZER = -O0
-endif

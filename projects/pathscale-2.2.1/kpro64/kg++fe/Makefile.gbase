@@ -349,11 +349,4 @@ gfecc : $(OBJECTS) $(LIBGNU_OBJS)
 BUILD_SUBDIRS = gnu
 include $(COMMONRULES)
 
-# CCNAME is now gcc -m32
-ifeq (gcc,$(firstword $(CCNAME)))
- ifneq ($(BUILD_OPTIMIZE), DEBUG)
-# work around gcc bug optimizing this file on ia32
-   wfe_stmt.o: OPTIMIZER = -O -fno-inline
- endif
-endif
 wn_util.o: HOSTDEFS += -DMONGOOSE_BE
