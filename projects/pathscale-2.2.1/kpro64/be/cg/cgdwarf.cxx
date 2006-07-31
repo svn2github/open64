@@ -2282,28 +2282,6 @@ static void check_reloc_fmt_and_size(Elf64_Word     reloc_scn_type,
 {
 }
 
-#ifdef linux
-struct UINT32_unaligned {
-  UINT32 val;
-} __attribute__ ((aligned(1)));
-
-struct UINT64_unaligned {
-  UINT64 val;
-} __attribute__ ((aligned(1)));
-#else
-#pragma pack(1)
-struct UINT32_unaligned {
-  UINT32 val;
-};
-
-struct UINT64_unaligned {
-  UINT64 val;
-};
-#pragma pack(0)
-#endif /* linux */
-
-
-
 // These are intended to be file-local, and the unnamed namespace
 // tells c++ to make them file-local
 
@@ -2390,11 +2368,15 @@ namespace {
       	  value = loc[0];
       	  break;
       case 4:
-      	    value =  ((UINT32_unaligned *)loc)->val;
-      	    break;
+	  UINT32 buf32;
+	  memcpy(&buf32, loc, sizeof(buf32));
+	  value = buf32;
+      	  break;
       case 8:
-      	    value =  ((UINT64_unaligned *)loc)->val;
-      	    break;
+	  UINT64 buf64;
+	  memcpy(&buf64, loc, sizeof(buf64));
+	  value = buf64;
+      	  break;
       default:
       	   Fail_FmtAssertion("Impossible vsp buffer vsp_get_bytes size %d",
 			(int)size);
