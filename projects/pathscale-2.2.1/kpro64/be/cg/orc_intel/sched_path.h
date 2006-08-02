@@ -544,7 +544,7 @@ public:
 
 
 
-        /* looping over each EXEC_PATH_ID. if <check_membershit>
+        /* looping over each EXEC_PATH_ID. if <check_membership>
          * is turned on, {Next|Prev}_Path_Id will trigger assertion 
          * when it encounts an non-member <path>.
          */

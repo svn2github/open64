@@ -599,7 +599,7 @@ EXEC_PATH_SET :: First_Path_Id (void) {
      *  set this routine return INVALID_PATH_ID.
      *  
      *
-     *  if <check_membershit> is turned on, Next_Path_Id will 
+     *  if <check_membership> is turned on, Next_Path_Id will 
      *  trigger assertion when it encounts an non-member <path>.
      * 
      * ========================================================
