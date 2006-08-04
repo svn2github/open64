@@ -4249,21 +4249,21 @@ Constant_Created:
   else {
     switch (TN_size(tnr)) {
     	case 1:     
-    		FmtAssert (!((tn0_uval & 0x1111111111111110 == 0x0000000000000010) && 
-			     (tn1_uval & 0x1111111111111110 == 0x0000000000000010) && 
+    		FmtAssert (!((tn0_uval & 0x1111111111111110LL == 0x0000000000000010LL) && 
+			     (tn1_uval & 0x1111111111111110LL == 0x0000000000000010LL) && 
 			     (result_val & 0x0000000000000100LL)),
 			     ("1-byte literal 0x%016llx is out-of-range", result_val));
 	  	result_val &= 0x00000000000000ffLL;
 		break;
     	case 2:     
-    		FmtAssert (!((tn0_uval & 0x1111111111111000 == 0x0000000000001000) && 
-			     (tn1_uval & 0x1111111111111000 == 0x0000000000001000) && 
+    		FmtAssert (!((tn0_uval & 0x1111111111111000LL == 0x0000000000001000LL) && 
+			     (tn1_uval & 0x1111111111111000LL == 0x0000000000001000LL) && 
 			     (result_val & 0x0000000000010000LL)),
 			     ("2-byte literal 0x%016llx is out-of-range", result_val));
 	  	result_val &= 0x000000000000ffffLL;
 		break;
     	case 4:     
-    		FmtAssert (!((tn0_uval & 0x1111111110000000 == 0x0000000010000000) && 
+    		FmtAssert (!((tn0_uval & 0x1111111110000000LL == 0x0000000010000000LL) && 
 			     (tn1_uval & 0x1111111110000000 == 0x0000000010000000) && 
 			     (result_val & 0x0000000100000000LL)),
 			     ("4-byte literal 0x%016llx is out-of-range", result_val));
