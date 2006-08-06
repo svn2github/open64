@@ -4264,7 +4264,7 @@ Constant_Created:
 		break;
     	case 4:     
     		FmtAssert (!((tn0_uval & 0x1111111110000000LL == 0x0000000010000000LL) && 
-			     (tn1_uval & 0x1111111110000000 == 0x0000000010000000) && 
+			     (tn1_uval & 0x1111111110000000LL == 0x0000000010000000LL) && 
 			     (result_val & 0x0000000100000000LL)),
 			     ("4-byte literal 0x%016llx is out-of-range", result_val));
 	  	result_val &= 0x00000000ffffffffLL;

@@ -1953,7 +1953,7 @@ Best_Issue_Port(OPS *ops, INT stop_idx, const PATTERN_TYPE ptn, ISSUE_PORT *ip_l
 //   return TRUE when bundle new op in the same cycle with ops
 //   else return FALSE
 //
-BOOL CGGRP_Bundle_OPS(OPS *ops,OPS *new_ops,INT stop_idx=0, BOOL cyclic)
+BOOL CGGRP_Bundle_OPS(OPS *ops,OPS *new_ops,INT stop_idx, BOOL cyclic)
 {
 
     Is_True(OPS_length(ops) <= CYCLE_MAX_LENGTH, 
@@ -2215,7 +2215,7 @@ PTN_TABLE_LINE::Dump (FILE *f) {
 
 //   Note: cyclic==FALSE means this function is call from multi_branch.cxx.
 //         cyclic==TRUE means it is call from cg_swp_bundle.
-BOOL CGGRP_Bundle_OPS(OPS *ops,OP *op,INT stop_idx=0, BOOL cyclic)
+BOOL CGGRP_Bundle_OPS(OPS *ops,OP *op,INT stop_idx, BOOL cyclic)
 {
     OPS new_ops;
     OPS_Init(&new_ops);
