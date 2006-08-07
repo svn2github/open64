@@ -2155,7 +2155,19 @@ run_ld (void)
 	    if (old_ld_library_path)
 	      str = concat_strings (str, old_ld_library_path);
 	    add_string(args, str);
-
+	    
+	    char *root_prefix = directory_path(get_executable_dir());
+	    char *our_path;
+	    
+	    if (abi == ABI_N32) {
+	      asprintf(&our_path, "%s/" PSC_FULL_VERSION "/32", root_prefix);
+	    } else {
+	      asprintf(&our_path, "%s/" PSC_FULL_VERSION, root_prefix);
+	    }
+	    
+	    add_string(args, concat_strings("-L", our_path));
+	    free(our_path);
+	    
 	    init_crt_paths ();
 	    if (invoked_lang == L_CC ||
 		instrumentation_invoked == TRUE ) {

@@ -3642,6 +3642,10 @@ WFE_Expand_Expr (tree exp,
         TY_IDX ty_idx1 = Get_TY (TREE_TYPE(TREE_OPERAND (exp, 1)));
         TY_IDX ty_idx2 = Get_TY (TREE_TYPE(TREE_OPERAND (exp, 2)));
 	ty_idx = Get_TY (TREE_TYPE(exp));
+	if(ty_idx != ty_idx1 && TY_mtype(ty_idx1) != MTYPE_V)
+	  DevWarn("The type of COND_EXPR and its first kid mismatch!");
+	if(ty_idx != ty_idx2 && TY_mtype(ty_idx2) != MTYPE_V)
+	  DevWarn("The type of COND_EXPR and its second kid mismatch!"); 
 #ifdef KEY // bug 2645
 	wn0 = WFE_Expand_Expr (TREE_OPERAND (exp, 0));
 #else
@@ -3678,15 +3682,30 @@ WFE_Expand_Expr (tree exp,
 	  // that a cleanup is executed only if its part of the conditional is
 	  // executed.
 	  WFE_Guard_Var_Push();
-	  wn1 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 1),
-						     TY_mtype (ty_idx),
-						     target_wn);
+	  if(ty_idx != ty_idx1 &&
+	     Ty_Table[ty_idx].kind == KIND_POINTER &&
+	     Ty_Table[ty_idx1].kind == KIND_STRUCT) {
+	    wn1 = WFE_Address_Of (TREE_OPERAND (exp, 1));
+	  }
+	  else{
+	    wn1 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 1),
+						       TY_mtype (ty_idx),
+						       target_wn);
+	  }
+	  
 	  tree guard_var1 = WFE_Guard_Var_Pop();
 
 	  WFE_Guard_Var_Push();
-	  wn2 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 2),
-						     TY_mtype (ty_idx),
-						     target_wn);
+	  if(ty_idx != ty_idx2 &&
+	     Ty_Table[ty_idx].kind == KIND_POINTER &&
+	     Ty_Table[ty_idx2].kind == KIND_STRUCT) {
+	    wn2 = WFE_Address_Of (TREE_OPERAND (exp, 2));
+	  }
+	  else{
+	    wn2 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 2),
+						       TY_mtype (ty_idx),
+						       target_wn);
+	  }
 	  tree guard_var2 = WFE_Guard_Var_Pop();
 
 	  // Add guard variables if they are needed.
