@@ -262,33 +262,10 @@ Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst,
   }
 }
 
-/* ====================================================================
- *
- * INT32 get_variant_alignment(TYPE_ID rtype, VARIANT variant)
- *
- * Given a variant compute a valid alignment
- * return gcd of m,n;
- * Used for alignment reasons;
- *
- * ==================================================================== */
-static INT32 get_variant_alignment(TYPE_ID rtype, VARIANT variant)
-{
-  INT32 r;
-  INT32 n= V_alignment(variant);
-  INT32 m= MTYPE_alignment(rtype);
-
-  while(r = m % n)
-  {
-    m=  n;
-    n=  r;
-  }
-  return n;
-}
-
 static TYPE_ID 
 Composed_Align_Type(TYPE_ID mtype, VARIANT variant, INT32 *alignment, INT32 *partials)
 {
-  *alignment =	get_variant_alignment(mtype, variant);
+  *alignment = MIN(MTYPE_alignment(mtype), 1U << V_alignment(variant));
   *partials =	MTYPE_alignment(mtype) / *alignment;
   return Mtype_AlignmentClass( *alignment, MTYPE_CLASS_UNSIGNED_INTEGER);
 }
@@ -347,45 +324,24 @@ Adjust_Addr_TNs (
 static void
 Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT variant, OPS *ops)
 {
-  TYPE_ID rtype= OPCODE_rtype(op);
-  TYPE_ID desc = OPCODE_desc(op);
-
-  if (MTYPE_is_float(rtype))
-  {
-    TN     *load;
-
-    switch (rtype) {
-    case MTYPE_F4:
-      load = Build_TN_Of_Mtype(MTYPE_I4);
-      Expand_Composed_Load ( OPC_I4I4LDID, load, base, disp, variant, ops);
-      // setf_s moves bits into fp reg.
-      Build_OP ( TOP_setf_s, result, True_TN, load, ops );
-      break;
-    case MTYPE_F8:
-      load = Build_TN_Of_Mtype(MTYPE_I8);
-      Expand_Composed_Load ( OPC_I8I8LDID, load, base, disp, variant, ops);
-      Build_OP ( TOP_setf_d, result, True_TN, load, ops );
-      break;
-    default:
-      FmtAssert(FALSE, ("Expand_Composed_Load doesn't handle %s",
-			MTYPE_name(rtype)));
-      /*NOTREACHED*/
-    }
-    Reset_TN_is_fpu_int(result);
-    return;
-  }
-
+  TYPE_ID	rtype;
+  TYPE_ID	desc, new_desc;
   TOP		top;
   INT32		alignment, nLoads, i;
   OPCODE	new_opcode;
-  TYPE_ID	new_desc;
   TN		*tmpV[8];
 
+  rtype =	OPCODE_rtype(op);
+  desc =	OPCODE_desc(op);
   new_desc =	Composed_Align_Type(desc, variant, &alignment, &nLoads);
+
+  if (nLoads == 1) {
+    Expand_Load(op, result, base, disp, variant, ops);
+    return;
+  }
+
   new_opcode =	OPCODE_make_signed_op(OPR_LDID, rtype, new_desc, FALSE);
   top = Pick_Load_Instruction (rtype, new_desc);
-
-  Is_True(nLoads > 1, ("Expand_Composed_Load with nLoads == %d", nLoads));
 
  /* Generate the component loads, storing the result in a vector
   * of TNs. The vector is filled in such a way that the LSB is in
@@ -420,7 +376,7 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
 	     Gen_Literal_TN(i*nLoadBits, 4), Gen_Literal_TN(nLoadBits, 4), ops);
   } else {
     FmtAssert(nLoadBits == 32 && nLoads == 2,
-	      ("Expand_Composed_Load: unexpected composition"));
+	      ("%s: unexpected composition", __func__));
     Build_OP(TOP_mix4_r, result, True_TN, tmpV[1], tmpV[0], ops);
   }
 }
@@ -428,42 +384,128 @@ Expand_Composed_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT varian
 void
 Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT variant, OPS *ops)
 {
-  Expand_Composed_Load ( op, result, base, disp, variant, ops);
+  TYPE_ID rtype = OPCODE_rtype(op);
+
+  Is_True(TN_is_constant(disp), ("%s() called with variable disp", __func__));
+
+  if (MTYPE_is_float(rtype))
+  {
+    switch (rtype) {
+    case MTYPE_F4:
+      {
+	TN *tmp = Build_TN_Of_Mtype(MTYPE_I4);
+	Expand_Composed_Load(OPC_I4I4LDID, tmp, base, disp, variant, ops);
+	Build_OP(TOP_setf_s, result, True_TN, tmp, ops);
+	break;
+      }
+    case MTYPE_F8:
+      {
+	TN *tmp = Build_TN_Of_Mtype(MTYPE_I8);
+	Expand_Composed_Load(OPC_I8I8LDID, tmp, base, disp, variant, ops);
+	Build_OP(TOP_setf_d, result, True_TN, tmp, ops);
+	break;
+      }
+    case MTYPE_F10:	/* marcel */
+      {
+	TN *TRs = Build_TN_Of_Mtype(MTYPE_U8);
+	TN *TRx = Build_TN_Of_Mtype(MTYPE_U8);
+	TN *TRd = Gen_Literal_TN(8 + TN_value(disp), 8);
+
+	/*
+	 * .if BIG_ENDIAN
+	 *	ld8	TR1 = [base+disp]
+	 *	ld2	TR2 = [base+TRd]
+	 *	dep.z	TR3 = TR1, 16, 48
+	 *	dep	TRs = TR2, TR3, 0, 16
+	 *	extr.u	TR4 = TR1, 62, 2
+	 *	extr.u	TR5 = TR1, 48, 14
+	 *	dep	TRx = TR4, TR5, 16, 2
+	 * .else
+	 *	ld8	TRs = [base+disp]
+	 *	ld2	TR1 = [base+TRd]
+	 *	extr.u	TR2 = TR1, 14, 2
+	 *	dep.z	TR3 = TR1, 0, 14
+	 *	dep	TRx = TR2, TR3, 16, 2
+	 * .endif
+	 * 	adds	TRa = 3, r0
+	 *	dep	TRb = TRa, TRx, 14, 2
+	 *	setf.sig  TFs = TRs
+	 *	setf.exp  TFx = TRb
+	 *	fmerge.se result = TFx, TFs
+	 */
+	if (Target_Byte_Sex == BIG_ENDIAN) {
+	  TN *TR1 = Build_TN_Of_Mtype(MTYPE_U8);
+	  TN *TR2 = Build_TN_Of_Mtype(MTYPE_U8);
+	  TN *TR3 = Build_TN_Of_Mtype(MTYPE_U8);
+	  TN *TR4 = Build_TN_Of_Mtype(MTYPE_U8);
+	  TN *TR5 = Build_TN_Of_Mtype(MTYPE_U8);
+
+	  Expand_Composed_Load (OPC_U8U8LDID, TR1, base, disp, variant, ops);
+	  Expand_Composed_Load (OPC_U8U2LDID, TR2, base, TRd, variant, ops);
+	  Build_OP(TOP_dep_z, TR3, True_TN, TR1, Gen_Literal_TN(16, 1),
+		Gen_Literal_TN(48, 1), ops);
+	  Build_OP(TOP_dep, TRs, True_TN, TR2, TR3, Gen_Literal_TN(0, 1),
+		Gen_Literal_TN(16, 1), ops);
+	  Build_OP(TOP_extr_u, TR4, True_TN, TR1, Gen_Literal_TN(62, 1),
+		Gen_Literal_TN(2, 1), ops);
+	  Build_OP(TOP_extr_u, TR5, True_TN, TR1, Gen_Literal_TN(48, 1),
+		Gen_Literal_TN(14, 1), ops);
+	  Build_OP(TOP_dep, TRx, True_TN, TR4, TR5, Gen_Literal_TN(16, 1),
+		Gen_Literal_TN(2, 1), ops);
+	} else {
+	  TN *TR1 = Build_TN_Of_Mtype(MTYPE_U8);
+	  TN *TR2 = Build_TN_Of_Mtype(MTYPE_U8);
+	  TN *TR3 = Build_TN_Of_Mtype(MTYPE_U8);
+
+	  Expand_Composed_Load (OPC_U8U8LDID, TRs, base, disp, variant, ops);
+	  Expand_Composed_Load (OPC_U8U2LDID, TR1, base, TRd, variant, ops);
+	  Build_OP(TOP_extr_u, TR2, True_TN, TR1, Gen_Literal_TN(14, 1),
+		Gen_Literal_TN(2, 1), ops);
+	  Build_OP(TOP_dep_z, TR3, True_TN, TR1, Gen_Literal_TN(0, 1),
+		Gen_Literal_TN(14, 1), ops);
+	  Build_OP(TOP_dep, TRx, True_TN, TR2, TR3, Gen_Literal_TN(16, 1),
+		Gen_Literal_TN(2, 1), ops);
+	}
+
+	TN *TRa = Build_TN_Of_Mtype(MTYPE_U8);
+	TN *TRb = Build_TN_Of_Mtype(MTYPE_U8);
+	TN *TFs = Build_TN_Of_Mtype(MTYPE_F10);
+	TN *TFx = Build_TN_Of_Mtype(MTYPE_F10);
+
+	Build_OP(TOP_adds, TRa, True_TN, Gen_Literal_TN(3, 1), Zero_TN, ops);
+	Build_OP(TOP_dep, TRb, True_TN, TRa, TRx, Gen_Literal_TN(14, 1),
+		Gen_Literal_TN(2, 1), ops);
+	Build_OP(TOP_setf_sig, TFs, True_TN, TRs, ops);
+	Build_OP(TOP_setf_exp, TFx, True_TN, TRb, ops);
+	Build_OP(TOP_fmerge_se, result, True_TN, TFx, TFs, ops);
+	break;
+      }
+    default:
+      FmtAssert(FALSE, ("%s() doesn't handle %s", __func__,
+	      MTYPE_name(rtype)));
+      /*NOTREACHED*/
+    }
+    Reset_TN_is_fpu_int(result);
+  }
+  else
+    Expand_Composed_Load(op, result, base, disp, variant, ops);
 }
 
 
 static void
 Expand_Composed_Store (TYPE_ID mtype, TN *obj, TN *base, TN *disp, VARIANT variant, OPS *ops)
 {
-  if (MTYPE_is_float(mtype))
-  {
-    TN     *tmp;
-
-    switch (mtype) {
-    case MTYPE_F4:
-      tmp = Build_TN_Of_Mtype(MTYPE_I4);
-      Build_OP ( TOP_getf_s, tmp, True_TN, obj, ops );
-      Expand_Composed_Store (MTYPE_I4, tmp, base, disp, variant, ops);
-      break;
-    case MTYPE_F8:
-      tmp = Build_TN_Of_Mtype(MTYPE_I8);
-      Build_OP ( TOP_getf_d, tmp, True_TN, obj, ops );
-      Expand_Composed_Store (MTYPE_I8, tmp, base, disp, variant, ops);
-      break;
-    default:
-      FmtAssert(FALSE, ("Expand_Composed_Store doesn't handle %s",
-			MTYPE_name(mtype)));
-      /*NOTREACHED*/
-    }
-    return;
-  }
-
   TOP		top;
   INT32		alignment, nStores;
   TYPE_ID	new_desc;
 
   new_desc =	Composed_Align_Type(mtype, variant, &alignment, &nStores);
   top = Pick_Store_Instruction (new_desc);
+
+  if (nStores == 1) {
+    Expand_Store(mtype, obj, base, disp, variant, ops); 
+    return;
+  }
 
   if (Target_Byte_Sex == BIG_ENDIAN)
     Adjust_Addr_TNs ( top, &base, &disp, MTYPE_alignment(mtype)-alignment, ops);
@@ -484,9 +526,86 @@ Expand_Composed_Store (TYPE_ID mtype, TN *obj, TN *base, TN *disp, VARIANT varia
 }
 
 void
-Expand_Misaligned_Store (TYPE_ID mtype, TN *obj_tn, TN *base_tn, TN *disp_tn, VARIANT variant, OPS *ops)
+Expand_Misaligned_Store (TYPE_ID mtype, TN *obj, TN *base, TN *disp, VARIANT variant, OPS *ops)
 {
-  Expand_Composed_Store (mtype, obj_tn, base_tn, disp_tn, variant, ops);
+
+  Is_True(TN_is_constant(disp), ("%s() called with variable disp", __func__));
+
+  if (MTYPE_is_float(mtype)) {
+    switch (mtype) {
+    case MTYPE_F4:
+      {
+	TN *tmp = Build_TN_Of_Mtype(MTYPE_U4);
+	Build_OP(TOP_getf_s, tmp, True_TN, obj, ops);
+	Expand_Composed_Store(MTYPE_U4, tmp, base, disp, variant, ops);
+	break;
+      }
+    case MTYPE_F8:
+      {
+	TN *tmp = Build_TN_Of_Mtype(MTYPE_U8);
+	Build_OP(TOP_getf_d, tmp, True_TN, obj, ops);
+	Expand_Composed_Store(MTYPE_U8, tmp, base, disp, variant, ops);
+	break;
+      }
+    case MTYPE_F10:
+      {
+	TN *TRs = Build_TN_Of_Mtype(MTYPE_U8);
+	TN *TRx = Build_TN_Of_Mtype(MTYPE_U8);
+	TN *TRy = Build_TN_Of_Mtype(MTYPE_U8);
+ 	TN *TRd = Gen_Literal_TN(8 + TN_value(disp), 8);
+
+	/*
+	 *	getf.sig TRs = obj
+	 *	getf.exp TRx = obj
+	 *	extr.u	TRy = TRx, 16, 2
+	 * .if BIG_ENDIAN
+	 *	st2	[base+TRd] = TRs
+	 *	extr.u	TR1 = TRs, 16, 48
+	 *	dep	TR2 = TRx, TR1, 48, 14
+	 *	dep	TR3 = TRy, TR2, 62, 2
+	 *	st8	[base+disp] = TR3
+	 * .else
+	 *	st8	[base+disp] = TRs
+	 *	dep	TR1 = TRy, TRx, 14, 2
+	 *	st2	[base+TRd] = TR1
+	 * .endif
+	 */
+	Build_OP(TOP_getf_sig, TRs, True_TN, obj, ops);
+	Build_OP(TOP_getf_exp, TRx, True_TN, obj, ops);
+	Build_OP(TOP_extr_u, TRy, True_TN, TRx, Gen_Literal_TN(16, 1),
+		Gen_Literal_TN(2, 1), ops);
+
+	if (Target_Byte_Sex == BIG_ENDIAN) {
+	  TN *TR1 = Build_TN_Of_Mtype(MTYPE_U8);
+	  TN *TR2 = Build_TN_Of_Mtype(MTYPE_U8);
+	  TN *TR3 = Build_TN_Of_Mtype(MTYPE_U8);
+
+	  Expand_Composed_Store(MTYPE_U2, TRs, base, TRd, variant, ops);
+	  Build_OP(TOP_extr_u, TR1, True_TN, TRs, Gen_Literal_TN(16, 1),
+		  Gen_Literal_TN(48, 1), ops);
+	  Build_OP(TOP_dep, TR2, True_TN, TRx, TR1, Gen_Literal_TN(48, 1),
+		  Gen_Literal_TN(14, 1), ops);
+	  Build_OP(TOP_dep, TR3, True_TN, TRy, TR2, Gen_Literal_TN(62, 1),
+		  Gen_Literal_TN(2, 1), ops);
+	  Expand_Composed_Store(MTYPE_U8, TR3, base, disp, variant, ops);
+	} else {
+	  TN *TR1 = Build_TN_Of_Mtype(MTYPE_U8);
+
+	  Expand_Composed_Store(MTYPE_U8, TRs, base, disp, variant, ops);
+	  Build_OP(TOP_dep, TR1, True_TN, TRy, TRx, Gen_Literal_TN(14, 1),
+		  Gen_Literal_TN(2, 1), ops);
+	  Expand_Composed_Store(MTYPE_U2, TR1, base, TRd, variant, ops);
+	}
+	break;
+      }
+    default:
+      FmtAssert(FALSE, ("%s() doesn't handle %s", __func__,
+	    MTYPE_name(mtype)));
+      /*NOTREACHED*/
+    }
+  }
+  else
+    Expand_Composed_Store(mtype, obj, base, disp, variant, ops);
 }
 
 static void

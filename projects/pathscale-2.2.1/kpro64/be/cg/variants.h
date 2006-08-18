@@ -232,13 +232,14 @@ extern const char *BR_Variant_Name(VARIANT variant);
 #define V_ALIGN_OFFSET_UNKNOWN	0x0100	/* Is actual alignment unknown? */
 #define V_ALIGN_ALL		0x01ff	/* All alignment variant fields */
 
-#define	V_alignment(v)			((v) & V_ALIGNMENT)
+#define	V_alignment(v)			(((v) & V_ALIGNMENT) - 1)
 #define V_align_offset(v)		(((v) & V_ALIGN_OFFSET) >> 4)
 #define V_align_offset_unknown(v)	((v) & V_ALIGN_OFFSET_UNKNOWN)
 #define V_align_offset_known(v)		(!V_align_offset_unknown(v))
 #define V_align_all(v)			((v) & V_ALIGN_ALL)
 
-#define	Set_V_alignment(v,a)		((v) = ((v) & ~V_ALIGNMENT) | ((a)&V_ALIGNMENT))
+#define	Set_V_alignment(v,a)		\
+	((v) = ((v) & ~V_ALIGNMENT) | (((a) + 1) & V_ALIGNMENT))
 #define Set_V_align_offset(v,a)		((v) = ((v) & ~V_ALIGN_OFFSET) | (((a)&V_ALIGNMENT)<<4))
 #define	Set_V_align_offset_unknown(v)	((v) |= V_ALIGN_OFFSET_UNKNOWN)
 #define Set_V_align_offset_known(v)	((v) &= ~V_ALIGN_OFFSET_UNKNOWN)

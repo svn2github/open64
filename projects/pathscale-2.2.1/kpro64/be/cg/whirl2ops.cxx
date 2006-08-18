@@ -1486,12 +1486,15 @@ static VARIANT Memop_Variant(WN *memop)
 
     align = ty_align;
     if (offset) {
-      INT offset_align = offset % required_alignment;
-      if (offset_align) align = MIN(ty_align, offset_align);
+	int ofs_mod = offset % required_alignment;
+	if (ofs_mod) {
+	    int ofs_align = ffs(ofs_mod) - 1;
+	    align = MIN(ty_align, 1U << ofs_align);
+	}
     }
 
     if (align < required_alignment) {
-      Set_V_alignment(variant, align);
+      Set_V_alignment(variant, ffs(align) - 1);
      /*
       *	TODO
       *	When we have ST information we may be able to compute an
