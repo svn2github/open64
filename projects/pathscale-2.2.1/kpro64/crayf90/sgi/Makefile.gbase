@@ -364,14 +364,6 @@ else
 endif
 endif
 
-ifeq ($(BUILD_OS), LINUX)
-ifeq ($(BUILD_HOST),IA64)
-	awk -f ../../../linux/tools/caterr.awk < ../../../crayf90/fe90/cf95.msgs | gencat -o cf95.cat
-else
-	../../../linux/tools/caterr -c cf95.cat ../../../crayf90/fe90/cf95.msgs
-endif
-endif
-
 bk_root := $(shell bk root 2>/dev/null || echo unknown)
 
 compiler_build_date.c:
@@ -393,12 +385,8 @@ cf95.i: $(FE90_DIR)/cf95.msgs
 	$(CCF) -E $(FE90_DIR)/cf95.msgs > cf95.i
 
 ifeq ($(BUILD_OS), LINUX)
-cf95.cat:
-ifeq ($(BUILD_HOST),IA64)
+cf95.cat: ../../../crayf90/fe90/cf95.msgs
 	awk -f ../../../linux/tools/caterr.awk < ../../../crayf90/fe90/cf95.msgs | gencat -o cf95.cat
-else
-	../../../linux/tools/caterr -c cf95.cat ../../../crayf90/fe90/cf95.msgs
-endif
 else
 cf95.cat: cf95.i
 	rm -f cf95.cat
