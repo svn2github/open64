@@ -69,9 +69,8 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sg
 /* conversion includes */
 #include "sgi_cmd_line.h"
 #include "cwh_mkdepend.h"
-
 /* Get the compiler build data */
-#include "version.h"
+extern char * mfef90_compiler_build_date;
 
 #include <cmplrs/make_depend.h> 
 #include <stdarg.h>
@@ -819,10 +818,8 @@ void Process_Command_Line (INT argc, char ** argv)
 	       if ( strcmp(cp,"ersion") == 0) {
 		  /* -version, edg's -v */
 		  /* Print out compiler version. */
-		  fprintf(stderr, "mfef90 version %s\n", INCLUDE_STAMP);
-		  fprintf(stderr, "ChangeSet: %s (%s)\n", cset_rev, cset_key);
-		  fprintf(stderr, "Built by: %s@%s in %s\n", build_user, build_host, build_root);
-		  fprintf(stderr, "Built on: %s\n", mfef90_compiler_build_date);
+		  fprintf(stderr, "mfef90 version %s\nBuilt:%s\n",INCLUDE_STAMP,
+			  mfef90_compiler_build_date);
 		  pass_option = FALSE;
 	       }
 	       break;

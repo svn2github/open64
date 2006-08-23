@@ -364,20 +364,6 @@ else
 endif
 endif
 
-bk_root := $(shell bk root 2>/dev/null || echo unknown)
-
-compiler_build_date.c:
-	@echo 'GEN    $@'
-	@echo '#include "version.h"' > $@
-	@echo 'const char *const cset_rev = "$(shell bk -R prs -hr+ -d:I: ChangeSet || echo unknown)";' >> $@
-	@echo 'const char *const cset_key = "$(shell bk -R prs -hr+ -d:CSETKEY: ChangeSet || echo unknown)";' >> $@
-	@echo 'const char *const build_root = "$(bk_root)";' >> $@
-	@echo 'const char *const build_host = "$(shell hostname -f)";' >> $@
-	@echo 'const char *const build_user = "$(shell id -un)";' >> $@
-	@echo 'const char *const mfef90_compiler_build_date = "$(shell date +'%Y-%m-%d %H:%M:%S %z')";' >> $@
-
-.PHONY: compiler_build_date.c
-
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
 
