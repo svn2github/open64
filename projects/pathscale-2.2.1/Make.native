@@ -39,6 +39,7 @@
 NATIVE_BUILD_DIR = kpro64/targia64_ia64_nodebug
 NATIVE_BUILD_DIR_LD = kpro64/targcygnus_ia64_ia64
 
+SUBMAKE=${MAKE}
 
 # All native compiler components:
 NATIVE_COMPONENTS = \
@@ -71,102 +72,102 @@ PHONY_TARGET = $(shell for i in $(NATIVE_COMPONENTS); do basename "$$i" ; done)
 all: build
 
 $(NATIVE_BUILD_DIR)/driver/driver driver:
-	cd $(NATIVE_BUILD_DIR)/driver; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver
 
 $(NATIVE_BUILD_DIR)/gccfe/gfec gfec:
-	cd $(NATIVE_BUILD_DIR)/gccfe ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe
 
 $(NATIVE_BUILD_DIR)/g++fe/gfecc gfecc:
-	cd $(NATIVE_BUILD_DIR)/g++fe ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe
 
 $(NATIVE_BUILD_DIR)/be/be be:
-	cd $(NATIVE_BUILD_DIR)/be ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be
 
 $(NATIVE_BUILD_DIR)/be/be.so be.so:
-	cd $(NATIVE_BUILD_DIR)/be ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be
 
 $(NATIVE_BUILD_DIR)/cg/cg.so cg.so:
-	cd $(NATIVE_BUILD_DIR)/cg ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg
 
 $(NATIVE_BUILD_DIR)/orc_ict/orc_ict.so orc_ict.so: 
-	gmake -C $(NATIVE_BUILD_DIR)/orc_ict 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/orc_ict
 
 $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so orc_intel.so: 
-	gmake -C $(NATIVE_BUILD_DIR)/orc_intel 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/orc_intel
 
 $(NATIVE_BUILD_DIR)/wopt/wopt.so wopt.so:
-	cd $(NATIVE_BUILD_DIR)/wopt ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wopt
 
 $(NATIVE_BUILD_DIR)/lno/lno.so lno.so:
-	cd $(NATIVE_BUILD_DIR)/lno ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lno
 
 $(NATIVE_BUILD_DIR)/ipa/ipa.so ipa.so:
-	cd $(NATIVE_BUILD_DIR)/ipa ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipa
 
 $(NATIVE_BUILD_DIR)/ipl/ipl.so ipl.so:
-	cd $(NATIVE_BUILD_DIR)/ipl ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipl
 
 $(NATIVE_BUILD_DIR)/ipl/ipl ipl:
-	cd $(NATIVE_BUILD_DIR)/ipl ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipl
 
 $(NATIVE_BUILD_DIR)/lw_inline/inline inline:
-	cd $(NATIVE_BUILD_DIR)/lw_inline ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lw_inline
 
 $(NATIVE_BUILD_DIR)/whirl2c/whirl2c.so whirl2c.so:
-	cd $(NATIVE_BUILD_DIR)/whirl2c ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2c
 
 $(NATIVE_BUILD_DIR)/whirl2c/whirl2c whirl2c:
-	cd $(NATIVE_BUILD_DIR)/whirl2c ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2c
 
 $(NATIVE_BUILD_DIR)/whirl2f/whirl2f.so whirl2f.so:
-	cd $(NATIVE_BUILD_DIR)/whirl2f ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2f
 
 $(NATIVE_BUILD_DIR)/whirl2f/whirl2f whirl2f:
-	cd $(NATIVE_BUILD_DIR)/whirl2f ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2f
 
 $(NATIVE_BUILD_DIR)/targ_info/itanium.so itanium.so:
-	cd $(NATIVE_BUILD_DIR)/targ_info ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/targ_info
 
 $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a:
-	cd $(NATIVE_BUILD_DIR)/ir_tools ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ir_tools
 
 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95:
-	cd $(NATIVE_BUILD_DIR)/crayf90/sgi ; gmake 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90/sgi
 
 .PHONY: Force
 $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new: $(NATIVE_BUILD_DIR_LD)/Makefile Force
-	gmake -C $(NATIVE_BUILD_DIR_LD)
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR_LD)
 
 $(NATIVE_BUILD_DIR_LD)/Makefile:  
-	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE;  
+	cd $(NATIVE_BUILD_DIR_LD); ./CONFIGURE
 
 build: ${PHONY_TARGET} 
 
 install: ;@./INSTALL.native
 
 clobber:
-	cd $(NATIVE_BUILD_DIR)/driver; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/gccfe ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/g++fe ; gmake  clobber
-	cd $(NATIVE_BUILD_DIR)/be ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/cg ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/orc_ict ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/orc_intel; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/wopt ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/lno ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/ipa ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/ipl ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/lw_inline ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/whirl2c ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/whirl2f ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/../libkapi; gmake clean 
-	cd $(NATIVE_BUILD_DIR)/targ_info ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/ir_tools ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/crayf90/sgi ; gmake clobber 
-	cd $(NATIVE_BUILD_DIR)/crayf90 ; gmake clobber
-	cd $(NATIVE_BUILD_DIR)/arith ; gmake clobber
-	cd $(NATIVE_BUILD_DIR_LD) ; ./CLOBBER 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/orc_ict clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/orc_intel clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/wopt clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lno clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipa clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ipl clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/lw_inline clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2c clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/whirl2f clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/../libkapi clean 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/targ_info clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/ir_tools clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90/sgi clobber 
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/crayf90 clobber
+	$(SUBMAKE) -C $(NATIVE_BUILD_DIR)/arith clobber
+	cd $(NATIVE_BUILD_DIR_LD); ./CLOBBER 
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
 		libiberty libunwindP ; do  \
-		make clobber -C "$(NATIVE_BUILD_DIR)/$${i}"  ; \
+		$(SUBMAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
 	done
