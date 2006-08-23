@@ -326,7 +326,7 @@ GNU_SRCS =		\
   unroll.c		\
   varasm.c		\
   varray.c		\
-  version-bk.c		\
+  version.c		\
   vmsdbgout.c		\
   xcoffout.c
 
@@ -400,8 +400,6 @@ install: default
 
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
-
-include $(BUILD_TOT)/kgccfe/gnu/frobnicate-version.mk
 
 c-parse.c: c-parse.y
 	@-rm -f $(<:.y=.[ch])

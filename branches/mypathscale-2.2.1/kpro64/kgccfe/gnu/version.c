@@ -11,7 +11,6 @@
    organization's name in parentheses at the end of the string.  */
 
 const char version_string[] = "3.3.1 20030915 (Red Hat Linux 3.3.1-5)";
-
 /* This is the location of the online document giving instructions for
    reporting bugs.  If you distribute a modified version of GCC,
    please change this to refer to a document giving instructions for
@@ -19,8 +18,5 @@ const char version_string[] = "3.3.1 20030915 (Red Hat Linux 3.3.1-5)";
    forward us bugs reported to you, if you determine that they are
    not bugs in your modifications.)  */
 
-#ifdef KEY
-const char bug_report_url[] = "<URL:http://www.pathscale.com/support.html>";
-#else
-const char bug_report_url[] = "<URL:http://bugzilla.redhat.com/bugzilla>";
-#endif
+const char bug_report_url[] = "<URL:http://bugs.open64.net>";
+

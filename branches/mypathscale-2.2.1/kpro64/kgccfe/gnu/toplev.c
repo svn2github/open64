@@ -4772,12 +4772,7 @@ print_version (file, indent)
 	   lang_hooks.name, version_string, TARGET_NAME,
 	   indent, __VERSION__);
 #ifdef KEY
-  fnotice (file, "ChangeSet %s (%s)\n", cset_rev, cset_key);
-  fnotice (file, "Built by %s@%s in %s\n", build_user, build_host, build_root);
-  fnotice (file, "Built on %s\n", build_date);
 #else
-  extern const char bk_cset_key[], bk_cset_rev[];
-  fnotice (file, "Revision %s (%s)\n", bk_cset_rev, bk_cset_key);
   fnotice (file, "%s%sGGC heuristics: --param ggc-min-expand=%d --param ggc-min-heapsize=%d\n",
 	   indent, *indent != 0 ? " " : "",
 	   PARAM_VALUE (GGC_MIN_EXPAND), PARAM_VALUE (GGC_MIN_HEAPSIZE));
