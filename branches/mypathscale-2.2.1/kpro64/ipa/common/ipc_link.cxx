@@ -71,7 +71,6 @@ UINT32 comma_list_byte_count = 0;
 #else
   #define LINKER_NAME "ld"
   #define LINKER_NAME_WITH_SLASH "/ld"
-  #define DYNAMIC_LINKER "-dynamic-linker /lib/ld-linux-ia64.so.2"
 #endif
 
 static char* concat_names(char* a , char* b)
@@ -174,9 +173,6 @@ ipa_init_link_line (int argc, char** argv)
     free(buf);
 #endif
     ld_flags_part1->push_back (get_linker_name(arg_count, arg_vector));
-#if defined(TARG_IA64) && defined(CROSS_COMPILATION) 
-    ld_flags_part1->push_back (DYNAMIC_LINKER);
-#endif
 
 #else
     ld_flags_part1->push_back (arg_vector[0]);
