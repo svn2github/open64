@@ -1,7 +1,7 @@
 #!/bin/csh -f
 #
 #
-#  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
+#  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of version 2 of the GNU General Public License as
@@ -40,7 +40,7 @@ set dir = $1
 set file = $2
 shift
 shift
-/usr/lib/cpp -P $* $dir/$file > tmp.options.cpp
+cpp -traditional -P $* $dir/$file > tmp.options.cpp
 awk -f $dir/sort_options.awk tmp.options.cpp
 # note that some linux versions of sort are broken,
 # so we actually re-sort within table for safety.

@@ -56,7 +56,6 @@
 #include "option_seen.h"
 #include "option_names.h"
 #include "run.h"
-#include "version.h"
 
 extern int errno;
 
@@ -326,10 +325,6 @@ save_cpp_output (char *path)
 
 	fprintf(ofp, "Version %s build information:\n",
 		compiler_version);
-	fprintf(ofp, "  ChangeSet %s\n", cset_key);
-	fprintf(ofp, "  Built by %s@%s in %s\n", build_user,
-		build_host, build_root);
-	fprintf(ofp, "  Build date %s\n", build_date);
 	
 	if (report_file) {
 		int newline = 1;

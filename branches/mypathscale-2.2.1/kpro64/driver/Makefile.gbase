@@ -102,8 +102,7 @@ SRC_HFILES = \
 	file_names.h \
 	objects.h \
 	phases.h \
-	run.h \
-	license.h
+	run.h
 
 HFILES= \
 	$(SHARED_HFILES) \
@@ -130,9 +129,7 @@ SRC_CFILES = \
 	objects.c \
 	phases.c \
 	run.c \
-	special_options.c \
-	version_bk.c \
-	license.c
+	special_options.c 
 
 CFILES=	\
 	$(SHARED_CFILES) \
@@ -142,12 +139,13 @@ CFILES=	\
 OPTIONS_SRC = \
 	OPTIONS \
 	sort_options.csh \
+	sort_options.linux.csh \
 	sort_options.awk
 
 SRC_OBJECTS = $(SRC_CFILES:.c=.o)
 SHARED_OBJECTS = $(SHARED_CFILES:.c=.o)
 
-LDIRT = OPTIONS.P table generated $(GEN_HFILES) $(GEN_CFILES) driver version_bk.c
+LDIRT = OPTIONS.P table generated $(GEN_HFILES) $(GEN_CFILES)
 
 LANGS = as cc c89 CC f77 fort77 f90
 
@@ -202,24 +200,14 @@ table : table.o $(SHARED_OBJECTS)
 
 # invoke shell script in source tree, but put output here
 OPTIONS.P : $(OPTIONS_SRC)
+ifeq ($(BUILD_OS), IRIX)
 	$(BUILD_BASE)/sort_options.csh $(BUILD_BASE) OPTIONS $(LCDEFS) > OPTIONS.P
+else
+	$(BUILD_BASE)/sort_options.linux.csh $(BUILD_BASE) OPTIONS $(LCDEFS) > OPTIONS.P
+endif
 
 driver: $(OBJECTS)
 	$(link.ccf) -o $@ $(OBJECTS) $(LDFLAGS)
-
-bk_root := $(shell bk root 2>/dev/null || echo unknown)
-
-version_bk.c:
-	@echo 'GEN    $@'
-	@echo '#include "version.h"' > $@
-	@echo 'const char *const cset_rev = "$(shell bk -R prs -hr+ -d:I: ChangeSet || echo unknown)";' >> $@
-	@echo 'const char *const cset_key = "$(shell bk -R prs -hr+ -d:CSETKEY: ChangeSet || echo unknown)";' >> $@
-	@echo 'const char *const build_root = "$(bk_root)";' >> $@
-	@echo 'const char *const build_host = "$(shell hostname -f)";' >> $@
-	@echo 'const char *const build_user = "$(shell id -un)";' >> $@
-	@echo 'const char *const build_date = "$(shell date +'%Y-%m-%d %H:%M:%S %z')";' >> $@
-
-.PHONY: version_bk.c
 
 # need to make generated headers before compiling src files
 $(SRC_OBJECTS) : $(GEN_HFILES)

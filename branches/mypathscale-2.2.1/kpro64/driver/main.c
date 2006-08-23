@@ -63,7 +63,6 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/driver/main.c,
 #include "file_names.h"
 #include "run.h"
 #include "objects.h"
-#include "version.h"
 
 char *help_pattern;
 boolean debug;
@@ -321,12 +320,6 @@ main (int argc, char *argv[])
         if (show_version) {
             fprintf(stderr, "PathScale EKOPath(TM) Compiler Suite: "
 		    "Version %s\n", compiler_version);
-	    if (show_version > 1) {
-		fprintf(stderr, "ChangeSet: %s (%s)\n", cset_rev, cset_key);
-		fprintf(stderr, "Built by: %s@%s in %s\n", build_user,
-			build_host, build_root);
-	    }
-            fprintf(stderr, "Built on: %s\n", build_date);
             fprintf(stderr, "Thread model: posix\n");	// Bug 4608.
             fprintf(stderr, "GNU gcc version " PSC_GCC_VERSION
                     " (PathScale " PSC_FULL_VERSION " driver)\n");

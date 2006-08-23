@@ -115,6 +115,8 @@ extern boolean ftz_crt;		/* add flush-to-zero crt */
 extern char *f90_module_dir;	/* value of -module option */
 #endif /* KEY Bug 4210 */
 
+extern char * dynamic_linker;
+
 /* return whether has been toggled yet */
 extern boolean is_toggled (int obj);
 

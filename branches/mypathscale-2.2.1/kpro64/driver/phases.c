@@ -62,8 +62,6 @@
 #include "opt_actions.h"
 #include "profile_type.h"    /* for PROFILE_TYPE */
 
-#include "license.h"
-
 char *outfile = NULL;		/* from -o <outfile> */
 char *prof_file = NULL;	/* executable file for prof to work upon */
 char *fb_file = NULL;		/* from -fb_create <feedback-file> */
@@ -75,6 +73,7 @@ char *command_line = NULL;	/* original command line */
 char *fb_phase = NULL;         /* from -fb_phase=<phase> */
 char *fb_type = NULL;          /* from -fb_type=<type> */
 char *source_file = NULL;
+char *dynamic_linker = NULL;
 boolean multiple_source_files = FALSE;
 
 boolean keep_mp = FALSE;
@@ -564,17 +563,37 @@ target_is_native(void)
 /* there should be a portable way the specify the dynamic loader
  * for the targeting system.
  */
-static const char* dynamic_linker
+static const char* dynamic_linker_default
 #ifdef TARG_IA64
-   = "/lib/ld-linux-ia64.so.2"
+   = "/lib/ld-linux-ia64.so.2";
+#else
+   = NULL;
 #endif
-;
+
 static void
 specify_dyn_linker (string_list_t *args) {
         if (shared == CALL_SHARED) {
-                add_string(args, "-dynamic-linker");
-                add_string(args, (char*)dynamic_linker);
-        }
+		if( option_was_seen(O__dynamic_linker) || option_was_seen(O_dynamic_linker) ) {
+			if( dynamic_linker != NULL) {
+				add_string(args, "-dynamic-linker"); 
+                		add_string(args, (char*)dynamic_linker);
+				if ( file_exists(dynamic_linker) == FALSE ) {
+					warning("Couldn't find the specified dynamic linker on this system.");
+				}
+			
+			}
+			else {
+				internal_error("Dynamic linker flag set, but no linker name defined.");
+			}
+		}
+		else if ( dynamic_linker_default != NULL ) {
+			add_string(args, "-dynamic-linker");
+			add_string(args, (char*)dynamic_linker_default);
+        	}
+		else{
+			/* No dynamic linker defined, therefore we set nothing */
+		}
+	}
 }
 //#endif /* CROSS_COMPILATION */
 
@@ -2198,13 +2217,7 @@ run_ld (void)
   	else
 	    append_objects_to_list (args);
 
-    if ( invoked_lang == L_f77 || invoked_lang == L_f90) {
-        specify_dyn_linker (args); 
-    }
-
-#ifdef CROSS_COMPILATION 
 	specify_dyn_linker (args);
-#endif
 
 #if defined(KEY) && defined(TARG_MIPS)
 	add_string(args, "-mips64");	// call gcc with -mips64
@@ -2329,10 +2342,6 @@ run_compiler (int argc, char *argv[])
 		check_existence_of_phases();
 	}
 	input_source = source_file;
-
-#if defined(PSCSUB) && !defined(TARG_IA64)
-        obtain_license (get_phase_dir (P_be), argc, argv) ;
-#endif
 
 #ifdef KEY
 	// Set stack size to the hard limit.  Bug 3212.

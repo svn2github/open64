@@ -1798,6 +1798,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Force the use of the shared libgcc library"
 -static-libgcc	;	LINK	ld	self
 	"Force the use of the static libgcc library"
+-dynamic-linker%s	save_name(&dynamic_linker,optargs);	ALL	NONE	""
+	"Specifies the dynamic linker"
+--dynamic-linker%s	;	ALL	NONE	"-dynamic-linker%s"
+	""
 %%% Directory Options
 -I-		;		ALL	cpp	self
  	""
@@ -1976,8 +1980,6 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 --write-user-dependencies	;	ALL	NONE	"-MMD"
 	""
--subverbose	subverbose=1;	ALL 	NONE	"-subverbose"
-	"Print diagnostic information about subscription management"
 -pthread	;	ALL	NONE	""
 	"Compile with pthreads support"
 % gcc compatibility flags
