@@ -119,7 +119,11 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   OPC_C4STID,     /* MTYPE_C4 */
   OPC_C8STID,     /* MTYPE_C8 */
   OPC_CQSTID,     /* MTYPE_CQ */
-  OPC_UNKNOWN     /* MTYPE_V */
+  OPC_UNKNOWN,	  /* MTYPE_V */
+  OPC_UNKNOWN,	  /* MTYPE_BS */
+  OPC_UNKNOWN,	  /* MTYPE_A4 */
+  OPC_UNKNOWN,	  /* MTYPE_A8 */
+  OPC_C10STID,	  /* MTYPE_C10 */
 };
 
 #ifdef TODO
@@ -914,14 +918,16 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	    TY_IDX formal = base_type_of_array (ty_formal);
 	    TYPE_ID actual_type = BASETYPE (ty_actual);
 	    TYPE_ID formal_type = BASETYPE (formal);
-	    if ((actual_type == MTYPE_C8 && formal_type == MTYPE_F8) ||
-	        (actual_type == MTYPE_C4 && formal_type == MTYPE_F4))
+	    if ((actual_type == MTYPE_C10 && formal_type == MTYPE_F10) ||
+		(actual_type == MTYPE_C8 && formal_type == MTYPE_F8) ||
+		(actual_type == MTYPE_C4 && formal_type == MTYPE_F4))
 	      return TRUE;
 
 	    // Actual can be complex, and formal can be array of 1 formal or
 	    // of variable size where size should be 1.
-	    if ((actual_type == MTYPE_C8 && formal_type == MTYPE_C8) ||
-	        (actual_type == MTYPE_C4 && formal_type == MTYPE_C4))
+	    if ((actual_type == MTYPE_C10 && formal_type == MTYPE_C10) ||
+		(actual_type == MTYPE_C8 && formal_type == MTYPE_C8) ||
+		(actual_type == MTYPE_C4 && formal_type == MTYPE_C4))
 	      return TRUE;
 	  }
 	}
@@ -954,8 +960,10 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	if (INLINE_Check_Compatibility == RELAXED_CHECK)
 	{
 	  if (actual_is_array && formal_is_array &&
-	      ((actual_element_size==MTYPE_C8 && 
-	        formal_element_size==MTYPE_F8) ||
+	      ((actual_element_size==MTYPE_C10 &&
+		formal_element_size==MTYPE_F10) ||
+	       (actual_element_size==MTYPE_C8 &&
+		formal_element_size==MTYPE_F8) ||
 	       (actual_element_size==MTYPE_C4 && 
 	        formal_element_size==MTYPE_F4)))
 	  {
@@ -965,7 +973,9 @@ types_are_compatible (TY_IDX ty_actual, TY_IDX ty_formal, BOOL lang)
 	  }
 	  // the other way
 	  if (actual_is_array && formal_is_array &&
-	      ((actual_element_size==MTYPE_F8 && 
+	      ((actual_element_size==MTYPE_F10 && 
+	        formal_element_size==MTYPE_C10) ||
+	       (actual_element_size==MTYPE_F8 && 
 	        formal_element_size==MTYPE_C8) ||
 	       (actual_element_size==MTYPE_F4 && 
 	        formal_element_size==MTYPE_C4)))

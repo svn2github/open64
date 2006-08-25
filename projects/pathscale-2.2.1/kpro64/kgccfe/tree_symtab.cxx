@@ -277,13 +277,14 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 		switch (tsize) {
 		case  8: mtype = MTYPE_C4; break;
 		case 16: mtype = MTYPE_C8; break;
-#ifdef TARG_IA64
-		case 24: mtype = MTYPE_C10; break;
-#endif
 #if defined(TARG_IA32) || defined(TARG_X8664)
 		case 24: mtype = MTYPE_CQ; break;
 #endif
+#ifdef TARG_IA64
+		case 32: mtype = MTYPE_C10; break;
+#else
 		case 32: mtype = MTYPE_CQ; break;
+#endif
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type

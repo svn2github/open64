@@ -1714,10 +1714,8 @@ LOOP_MODEL::OP_Resources_R(WN* wn,
         return -1;
       }
     } 
-    else if (desc  == MTYPE_C4 || 
-             desc  == MTYPE_C8 ||
-             rtype == MTYPE_C4 ||
-             rtype == MTYPE_C8) {
+    else if (desc == MTYPE_C4 || desc == MTYPE_C8 || desc == MTYPE_C10 ||
+             rtype == MTYPE_C4 || rtype == MTYPE_C8 || rtype == MTYPE_C10) {
       if (oper == OPR_ADD || oper== OPR_SUB) {
         *num_instr += LNOTARGET_Complex_Add_Res(resource_count, rtype);
       } 
@@ -3385,10 +3383,8 @@ LAT_DIRECTED_GRAPH16::Add_Vertices_Op_Edges_Rec(VINDEX16 store,
         return -1;
       }
     }
-    else if (desc  == MTYPE_C4 || 
-             desc  == MTYPE_C8 ||
-             rtype == MTYPE_C4 ||
-             rtype == MTYPE_C8) {
+    else if (desc == MTYPE_C4 || desc == MTYPE_C8 || desc == MTYPE_C10 ||
+             rtype == MTYPE_C4 || rtype == MTYPE_C8 || rtype == MTYPE_C10) {
       if (oper == OPR_ADD || oper == OPR_SUB) {
         op_latency = LNOTARGET_Complex_Add_Lat(rtype);
       } 
@@ -4058,7 +4054,7 @@ WN2INT *se_needed, ARRAY_REF *ar)
           SYMBOL symb(wn);
           (*num_scalar_refs)+=2;
           Enter(&symb, is_store, 2);
-        } else if (type == MTYPE_CQ) {
+        } else if (type == MTYPE_C10 || type == MTYPE_CQ) {
           SYMBOL symb(wn);
           (*num_scalar_refs)+=4;
           Enter(&symb, is_store, 4);
@@ -4146,7 +4142,7 @@ void SYMBOL_TREE::Enter_Scalar_Refs(WN *wn, ARRAY_REF *ar,
 		 type == MTYPE_F10 || type == MTYPE_FQ) {
         Enter(&symb, is_store, 2);
         (*num_scalar_refs)+=2;
-      } else if (type == MTYPE_CQ) {
+      } else if (type == MTYPE_C10 || type == MTYPE_CQ) {
         Enter(&symb, is_store, 4);
         (*num_scalar_refs)+=4;
       }
@@ -4463,10 +4459,12 @@ REGISTER_MODEL::Count_Op(WN* wn)
   } else if (!OPCODE_is_leaf(opcode)) {
     TYPE_ID ti = OPCODE_rtype(opcode);
     TYPE_ID ti2 = OPCODE_desc(opcode);
-    if ((ti == MTYPE_C4) || (ti == MTYPE_C8) || (ti == MTYPE_CQ) ||
-        (ti2 == MTYPE_C4) || (ti2 == MTYPE_C8) || (ti2 == MTYPE_CQ) ||
-        (ti == MTYPE_F10) || (ti == MTYPE_FQ) ||
-        (ti2 == MTYPE_F10) || (ti2 == MTYPE_FQ)) {
+    if (ti == MTYPE_C4 || ti2 == MTYPE_C4 ||
+	ti == MTYPE_C8 || ti2 == MTYPE_C8 ||
+	ti == MTYPE_C10 || ti2 == MTYPE_C10 ||
+	ti == MTYPE_CQ || ti2 == MTYPE_CQ ||
+        ti == MTYPE_F10 || ti2 == MTYPE_F10 ||
+	ti == MTYPE_FQ || ti2 == MTYPE_FQ) {
         result = 2.0;
     } else if ((ti == MTYPE_F4) || (ti == MTYPE_F8) || 
         (ti2 == MTYPE_F4) || (ti2 == MTYPE_F8)) { 

@@ -2078,6 +2078,9 @@ WFE_Address_Of(tree arg0)
 	  case MTYPE_C8:
 	    imag_mtype = MTYPE_F8;
 	    break;
+	  case MTYPE_C10:
+	    imag_mtype = MTYPE_F10;
+	    break;
 	  case MTYPE_CQ:
 	    imag_mtype = MTYPE_FQ;
 	    break;
@@ -2903,6 +2906,12 @@ WFE_Expand_Expr (tree exp,
 	    tcon = Host_To_Targ_Complex (MTYPE_C8,
 		WFE_Convert_Internal_Real_to_IEEE_Double(real),
 		WFE_Convert_Internal_Real_to_IEEE_Double(imag));
+	    break;
+
+	  case MTYPE_C10:
+	    tcon = Host_To_Targ_Complex_10 (MTYPE_C10,
+		WFE_Convert_Internal_Real_to_IEEE_Double_Extended(real),
+		WFE_Convert_Internal_Real_to_IEEE_Double_Extended(imag));
 	    break;
 
 	  case MTYPE_CQ:

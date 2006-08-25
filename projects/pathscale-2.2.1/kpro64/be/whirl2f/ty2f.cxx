@@ -1109,6 +1109,7 @@ TY2F_scalar(TOKEN_BUFFER decl_tokens, TY_IDX ty_idx)
       
    case MTYPE_C4:
    case MTYPE_C8:
+   case MTYPE_C10:
    case MTYPE_CQ:
       base_name = "COMPLEX";
       break;

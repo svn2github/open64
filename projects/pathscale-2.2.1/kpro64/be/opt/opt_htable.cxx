@@ -1057,6 +1057,8 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
 	return MTYPE_F4;
       else if ( rtype == MTYPE_C8 )
 	return MTYPE_F8;
+      else if ( rtype == MTYPE_C10 )
+	return MTYPE_F10;
       else if ( rtype == MTYPE_CQ )
 	return MTYPE_FQ;
       else {
@@ -1074,6 +1076,8 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
 	return MTYPE_C4;
       else if ( rtype == MTYPE_F8 )
 	return MTYPE_C8;
+      else if ( rtype == MTYPE_F10 )
+	return MTYPE_C10;
       else if ( rtype == MTYPE_FQ )
 	return MTYPE_CQ;
       else {
@@ -2625,6 +2629,7 @@ CODEMAP::Add_tcon(TCON_IDX tc)
     case MTYPE_FQ:
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_C10:
     case MTYPE_CQ:
       {
         ST *new_sym = New_Const_Sym(tc, MTYPE_To_TY(mtype));

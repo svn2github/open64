@@ -309,7 +309,8 @@ TCON2C_translate(TOKEN_BUFFER tokens, TCON tvalue)
 
     case MTYPE_C4:
     case MTYPE_C8:
-   case MTYPE_CQ:
+    case MTYPE_C10:
+    case MTYPE_CQ:
       Append_Token_Special(tokens, '{');
       TCON2C_translate(tokens, Extract_Complex_Real(tvalue));
       Append_Token_Special(tokens, ',');

@@ -188,7 +188,11 @@ TYPE_ID Promoted_Mtype [MTYPE_LAST + 1] = {
   MTYPE_C4,       /* MTYPE_C4 */
   MTYPE_C8,       /* MTYPE_C8 */
   MTYPE_CQ,       /* MTYPE_CQ */
-  MTYPE_V         /* MTYPE_V */
+  MTYPE_V,        /* MTYPE_V */
+  MTYPE_UNKNOWN,  /* MTYPE_BS */
+  MTYPE_UNKNOWN,  /* MTYPE_A4 */
+  MTYPE_UNKNOWN,  /* MTYPE_A8 */
+  MTYPE_C10,      /* MTYPE_C10 */
 };
 
 #ifdef VHO_DEBUG
@@ -3720,6 +3724,7 @@ traverse_struct (const TY_IDX ty)
     {
       case MTYPE_F4:
       case MTYPE_F8:
+      case MTYPE_F10:
       case MTYPE_C4: return 0;
       default: return 1;
     }

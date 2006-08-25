@@ -1251,10 +1251,10 @@ DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,
 DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,DST_INVALID_INIT,
 DST_INVALID_INIT
 } ;
-	
+
 static type_trans ate_types[] = {
- 4, "BAD",       0,		
- 4, "UNK",       0,                     /* bit */
+ 1, "BAD",       0,			/* MTYPE_UNKNOWN */
+ 1, "LOGICAL_1", DW_ATE_boolean,	/* MTYPE_B   */
  1, "INTEGER_1", DW_ATE_signed,		/* MTYPE_I1  */
  2, "INTEGER_2", DW_ATE_signed,		/* MTYPE_I2  */
  4, "INTEGER_4", DW_ATE_signed,		/* MTYPE_I4  */
@@ -1274,11 +1274,10 @@ static type_trans ate_types[] = {
  16,"COMPLEX_8", DW_ATE_complex_float,	/* MTYPE_C8  */
  32,"COMPLEX_16",DW_ATE_complex_float,	/* MTYPE_CQ  */
  1, "VOID",      0,                     /* MTYPE_V   */
- 1, "LOGICAL_1", DW_ATE_boolean,	
- 2, "LOGICAL_2", DW_ATE_boolean,	
- 4, "LOGICAL_4", DW_ATE_boolean,	
- 8, "LOGICAL_8", DW_ATE_boolean,	
-
+ 1, "UNK",	 0,			/* MTYPE_BS  */
+ 4, "ADDRESS_4", DW_ATE_unsigned,	/* MTYPE_A4  */
+ 8, "ADDRESS_8", DW_ATE_unsigned,	/* MTYPE_A8  */
+ 32,"COMPLEX_16",DW_ATE_complex_float,	/* MTYPE_C10 */
 } ;
 
 /*===================================================

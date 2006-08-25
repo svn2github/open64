@@ -343,6 +343,7 @@ Is_Simulated_Type (TYPE_ID mtype)
 	case MTYPE_FQ: return TRUE;
 	case MTYPE_C4: return TRUE;
 	case MTYPE_C8: return TRUE;
+	case MTYPE_C10: return TRUE;
 	case MTYPE_CQ: return TRUE;
 	default:	return FALSE;
 	}
@@ -456,6 +457,7 @@ Get_Return_Info (TY_IDX rtype, Mtype_Return_Level level)
 
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_C10:
 
       if (level == Use_Simulated) {
 
@@ -777,6 +779,7 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
 	
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_C10:
     case MTYPE_CQ:
         ++Current_Float_Param_Num;
 	ploc.reg = Get_Current_Float_Preg_Num (SIM_INFO.flt_args);

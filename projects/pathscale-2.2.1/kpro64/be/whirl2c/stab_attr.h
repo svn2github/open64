@@ -326,6 +326,7 @@ inline BOOL TY_Is_Complex(TY_IDX ty)
 {
    return TY_kind(ty) == KIND_SCALAR && (TY_mtype(ty) == MTYPE_C4 ||
                                          TY_mtype(ty) == MTYPE_C8 ||
+                                         TY_mtype(ty) == MTYPE_C10 ||
                                          TY_mtype(ty) == MTYPE_CQ);
 } /* TY_Is_Complex */
 

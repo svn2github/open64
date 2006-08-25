@@ -999,6 +999,7 @@ WN2F_ldid(TOKEN_BUFFER tokens, WN *wn, WN2F_CONTEXT context)
          case MTYPE_FQ:
          case MTYPE_C4:
          case MTYPE_C8:
+         case MTYPE_C10:
          case MTYPE_CQ:
             sprintf(buffer, "reg%d", First_Float_Preg_Return_Offset);
             Append_Token_String(tokens, buffer);

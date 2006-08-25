@@ -340,6 +340,7 @@ TCON2F_translate(TOKEN_BUFFER tokens, TCON tvalue, BOOL is_logical)
 	 
       case MTYPE_C4:
       case MTYPE_C8:
+      case MTYPE_C10:
       case MTYPE_CQ:
 	 Append_Token_Special(tokens, '(');
 	 TCON2F_translate(tokens, Extract_Complex_Real(tvalue), FALSE);

@@ -90,14 +90,8 @@ typedef struct SCALAR_C_NAME
  */
 const char TY2C_Aligned_Block_Name[] = "__block";
 
-#ifndef TARG_X8664
-#define MTYPE_PREDEF MTYPE_F16
-#else
-#define MTYPE_PREDEF MTYPE_V16F8
-#endif /* TARG_X8664 */
-
 static char Name_Unknown_Type[] = "__UNKNOWN_TYPE";
-static const SCALAR_C_NAME Scalar_C_Names[MTYPE_PREDEF+1] =
+static const SCALAR_C_NAME Scalar_C_Names[MTYPE_LAST + 1] =
    {{"void",               Name_Unknown_Type},  /* MTYPE_UNKNOWN 0 */
     {"char",               "_BOOLEAN"},         /* MTYPE_B = 1 */
     {"signed char",        "_INT8"},            /* MTYPE_I1 = 2 */
@@ -110,23 +104,24 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_PREDEF+1] =
     {"unsigned long long", "_UINT64"},          /* MTYPE_U8 = 9 */
     {"float",              "_IEEE32"},          /* MTYPE_F4 = 10 */
     {"double",             "_IEEE64"},          /* MTYPE_F8 = 11 */
-#ifndef TARG_X8664
     {"long double",	   "_IEEE80"},          /* MTYPE_F10 = 12 */
-    {"__float128",	   "_IEEE128"}		/* MTYPE_F16 = 13 = MTYPE_PREDEF */
-#else
-    {Name_Unknown_Type,        ""},             /* MTYPE_V16C4 = 12 */
-    {Name_Unknown_Type,        "_IEEE128"},     /* MTYPE_F16 = 13 */
+    {"__float128",	   "_IEEE128"},		/* MTYPE_F16 = 13 */
     {Name_Unknown_Type,        ""},             /* MTYPE_STRING = 14 */
     {Name_Unknown_Type,        ""},             /* MTYPE_FQ = 15 */
     {Name_Unknown_Type,        ""},             /* MTYPE_M = 16 */
-    {Name_Unknown_Type,        ""},             /* MTYPE_C4 = 17 */
-    {Name_Unknown_Type,        ""},             /* MTYPE_C8 = 18 */
+    {"_Complex float",	   "_COMPLEX32"},	/* MTYPE_C4 = 17 */
+    {"_Complex double",	   "_COMPLEX64"},		/* MTYPE_C8 = 18 */
     {Name_Unknown_Type,        ""},             /* MTYPE_CQ = 19 */
     {Name_Unknown_Type,        ""},             /* MTYPE_V = 20 */
     {Name_Unknown_Type,        ""},             /* MTYPE_BS = 21 */
     {Name_Unknown_Type,        ""},             /* MTYPE_A4 = 22 */
     {Name_Unknown_Type,        ""},             /* MTYPE_A8 = 23 */
-    {Name_Unknown_Type,        "_CMPLX8[2]"},   /* MTYPE_V16C4 = 24 */
+    {"_Complex long double", "_COMPLEX80"},	/* MTYPE_C10 = 24 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_C16 = 25 */
+    {Name_Unknown_Type,        ""},             /* MTYPE_I16 = 26 */
+    {Name_Unknown_Type,        ""}		/* MTYPE_U16 = 27 */
+#ifdef TARG_X8664
+   ,{Name_Unknown_Type,        "_CMPLX8[2]"},   /* MTYPE_V16C4 = 24 */
     {Name_Unknown_Type,        "_CMPLX16[1]"},  /* MTYPE_V16C8 = 25 */
     {"signed char[16]",        "_INT8[16]"},    /* MTYPE_V16I1 = 26 */
     {"signed short[8]",        "_INT16[8]"},    /* MTYPE_V16I2 = 27 */
@@ -148,18 +143,14 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_PREDEF+1] =
 const char Special_Void_TypeName[] = "void";
 const char Special_String_TypeName[] = "_STRING";
 const char Special_Quad_TypeName[] = "_QUAD";
-const char Special_Complex32_TypeName[] = "_COMPLEX32";
-const char Special_Complex64_TypeName[] = "_COMPLEX64";
 const char Special_ComplexQD_TypeName[] = "_COMPLEXQD";
 
 #define GET_SPECIAL_TYPENAME(mtype)\
    ((mtype) == MTYPE_V? Special_Void_TypeName : \
     ((mtype) == MTYPE_STR? Special_String_TypeName : \
      ((mtype) == MTYPE_FQ? Special_Quad_TypeName : \
-      ((mtype) == MTYPE_C4? Special_Complex32_TypeName : \
-       ((mtype) == MTYPE_C8? Special_Complex64_TypeName : \
-	((mtype) == MTYPE_CQ? Special_ComplexQD_TypeName : \
-	 (const char *)NULL))))))
+      ((mtype) == MTYPE_CQ? Special_ComplexQD_TypeName : \
+       (const char *)NULL))))
 
 #define PTR_OR_ALIGNED_WITH_STRUCT(fld_ty, struct_align) \
    (TY_Is_Pointer(fld_ty) || TY_align(fld_ty) <= struct_align)
@@ -495,7 +486,7 @@ static void
 TY2C_scalar(TOKEN_BUFFER decl_tokens, TY_IDX ty, CONTEXT context)
 {
    Is_True(TY_Is_String(ty) ||
-	   TY_mtype(ty) <= MTYPE_PREDEF, ("Illegal type in TY2C_scalar()"));
+	   TY_mtype(ty) <= MTYPE_LAST, ("Illegal type in TY2C_scalar()"));
    Is_True(TY_mtype(ty) != MTYPE_UNKNOWN, ("Unknown type in TY2C_scalar()"));
 
    if (TY_Is_String(ty))
@@ -793,6 +784,7 @@ TY2C_initialize(CONTEXT context)
    Set_TY_is_translated_to_c(Be_Type_Tbl(MTYPE_STRING));
    Set_TY_is_translated_to_c(Be_Type_Tbl(MTYPE_C4));
    Set_TY_is_translated_to_c(Be_Type_Tbl(MTYPE_C8));
+   Set_TY_is_translated_to_c(Be_Type_Tbl(MTYPE_C10));
    Set_TY_is_translated_to_c(Be_Type_Tbl(MTYPE_CQ));
 } /* TY2C_initialize */
 
@@ -1000,7 +992,7 @@ TY2C_builtin(TY_IDX ty)
    const char *name = GET_SPECIAL_TYPENAME(TY_mtype(ty));
 
    return (name != NULL ||
-	   (TY_mtype(ty) <= MTYPE_PREDEF && 
+	   (TY_mtype(ty) <= MTYPE_LAST && 
 	    (TY_mtype(ty) != MTYPE_UNKNOWN || TY_kind(ty) == KIND_INVALID) &&
 	    Scalar_C_Names[TY_mtype(ty)].pseudo_name != NULL));
 } /* TY2C_builtin */

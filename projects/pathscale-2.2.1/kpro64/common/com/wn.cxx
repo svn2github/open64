@@ -131,7 +131,8 @@ static struct winfo {
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_V  */
   INT_TYPE,  	 UINT_TYPE,  	0,  /* MTYPE_BS */
   UINT_TYPE,     INT_TYPE,      4,  /* MTYPE_A4 */
-  UINT_TYPE,     INT_TYPE,      8   /* MTYPE_A8 */
+  UINT_TYPE,     INT_TYPE,      8,  /* MTYPE_A8 */
+  COMPLEX_TYPE,  COMPLEX_TYPE, 32,  /* MTYPE_C10 */
 };
 
 #define WTYPE_base_type(w) WINFO[w].base_type
@@ -2375,6 +2376,7 @@ WN *WN_ConstPowerOf2( TYPE_ID type, INT32 n)
   case MTYPE_FQ:
   case MTYPE_C4:
   case MTYPE_C8:
+  case MTYPE_C10:
   case MTYPE_CQ:
     {
       double val = pow( 2.0, n);
@@ -2404,6 +2406,7 @@ WN *WN_Floatconst( TYPE_ID type, double value)
   case MTYPE_F16:
   case MTYPE_C4:
   case MTYPE_C8:
+  case MTYPE_C10:
   case MTYPE_CQ:
     return Make_Const (Host_To_Targ_Float (type, value));
 #ifdef TARG_X8664
@@ -2452,6 +2455,7 @@ WN *WN_UVConst( TYPE_ID type)
   case MTYPE_F16:
   case MTYPE_C4:
   case MTYPE_C8:
+  case MTYPE_C10:
   case MTYPE_CQ:
     return Make_Const (Host_To_Targ_UV(type));
   case MTYPE_STR:

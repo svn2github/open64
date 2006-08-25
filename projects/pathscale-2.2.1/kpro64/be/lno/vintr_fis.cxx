@@ -185,7 +185,7 @@ static INT64 MTYPE_size(TYPE_ID mtype)
 	case MTYPE_U8:		sz=8; break;
 	case MTYPE_F4:		sz=4; break;
 	case MTYPE_F8:		sz=8; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
 	case MTYPE_F10:		sz=16; break;
 #else
 	case MTYPE_F10:		sz=10; break;
@@ -196,6 +196,7 @@ static INT64 MTYPE_size(TYPE_ID mtype)
 	case MTYPE_M:		sz=0; break;
 	case MTYPE_C4:		sz=8; break;
 	case MTYPE_C8:		sz=16; break;
+	case MTYPE_C10:		sz=32; break;
 	case MTYPE_CQ:		sz=32; break;
 	case MTYPE_V:		sz=0; break;
 	default:		sz=0; break;

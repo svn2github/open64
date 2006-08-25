@@ -95,6 +95,11 @@ static OPCODE Ldid_Opcode [MTYPE_LAST + 1] = {
   OPC_C4C4LDID,   /* MTYPE_C4 */
   OPC_C8C8LDID,   /* MTYPE_C8 */
   OPC_CQCQLDID,   /* MTYPE_CQ */
+  OPC_UNKNOWN,    /* MTYPE_V */
+  OPC_UNKNOWN,    /* MTYPE_BS */
+  OPC_UNKNOWN,    /* MTYPE_A4 */
+  OPC_UNKNOWN,    /* MTYPE_A8 */
+  OPC_C10C10LDID, /* MTYPE_C10 */
 };
 
 

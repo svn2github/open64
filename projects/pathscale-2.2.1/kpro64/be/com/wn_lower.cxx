@@ -337,17 +337,16 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_C4,       /* MTYPE_C4 */
   MTYPE_C8,       /* MTYPE_C8 */
   MTYPE_CQ,       /* MTYPE_CQ */
-  MTYPE_V         /* MTYPE_V */
-#ifdef KEY
- ,MTYPE_UNKNOWN,  /* MTYPE_BS */
+  MTYPE_V,        /* MTYPE_V */
+  MTYPE_UNKNOWN,  /* MTYPE_BS */
   MTYPE_UNKNOWN,  /* MTYPE_A4 */
   MTYPE_UNKNOWN,  /* MTYPE_A8 */
-  MTYPE_UNKNOWN,  /* MTYPE_C10 */
+  MTYPE_C10,	  /* MTYPE_C10 */
   MTYPE_UNKNOWN,  /* MTYPE_C16 */
   MTYPE_UNKNOWN,  /* MTYPE_I16 */
-  MTYPE_UNKNOWN   /* MTYPE_U16 */
+  MTYPE_UNKNOWN,  /* MTYPE_U16 */
 #ifdef TARG_X8664
- ,MTYPE_V16C4,    /* MTYPE_V16C4 */
+  MTYPE_V16C4,    /* MTYPE_V16C4 */
   MTYPE_V16C8,    /* MTYPE_V16C8 */
   MTYPE_V16I1,    /* MTYPE_V16I1 */
   MTYPE_V16I2,    /* MTYPE_V16I2 */
@@ -360,7 +359,6 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_V8I4,     /* MTYPE_V8I4 */
   MTYPE_V8F4      /* MTYPE_V8F4 */
 #endif // TARG_X8664
-#endif // KEY
 };
 
 /* ====================================================================
@@ -4087,6 +4085,7 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
     case MTYPE_FQ:
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_C10:
     case MTYPE_CQ:
 #ifdef TARG_X8664
     case MTYPE_V16I1:
@@ -9021,6 +9020,7 @@ static WN *lower_intrinsic_op(WN *block, WN *tree, LOWER_ACTIONS actions)
     {
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_C10:
 #ifdef TARG_X8664
       if (Is_Target_64bit())
 #endif

@@ -305,6 +305,9 @@ First_PLOC_Reg (PLOC ploc, TY_IDX parm_ty)
 	case MTYPE_FQ:
 		PLOC_size(first) = MTYPE_RegisterSize(MTYPE_F8);
 		break;
+	case MTYPE_C10:
+		PLOC_size(first) = MTYPE_RegisterSize(MTYPE_F10);
+		break;
 	}
 	return first;
 }
@@ -345,6 +348,14 @@ Next_PLOC_Reg (PLOC prev)
 		if (PLOC_reg(next) > PR_last_reg(SIM_INFO.flt_args)) {
 		    PLOC_reg(next) = 0;
 		}
+		break;
+	case MTYPE_C10:
+		PLOC_offset(next) += MTYPE_RegisterSize(MTYPE_F10);
+		if (PLOC_offset(next) == ploc_last_offset)
+			PLOC_size(next) = 0;
+		PLOC_reg(next) += PR_skip_value(SIM_INFO.flt_args);
+		if (PLOC_reg(next) > PR_last_reg(SIM_INFO.flt_args))
+			PLOC_reg(next) = 0;
 		break;
 	case MTYPE_F10:
 		/*

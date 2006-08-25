@@ -255,17 +255,14 @@ static void SE_Indxs_and_Bounds(WN* loops[],
   TYPE_ID wtype = symbol.Type;
   INT sz = (wtype == MTYPE_I1 || wtype == MTYPE_U1) ? 1 :
 	   (wtype == MTYPE_I2 || wtype == MTYPE_U2) ? 2 :  
-	   (wtype == MTYPE_I8 || wtype == MTYPE_U8 ||
-	    wtype == MTYPE_F8 || wtype == MTYPE_C4) ? 8 :
-	   (wtype == MTYPE_I4 || wtype == MTYPE_U4 ||
-	    wtype == MTYPE_F4) ? 4 :
-	   (wtype == MTYPE_F8) ? 8 :
-#ifdef TARG_IA64
+	   (wtype == MTYPE_I4 || wtype == MTYPE_U4 || wtype == MTYPE_F4) ? 4 :
+	   (wtype == MTYPE_I8 || wtype == MTYPE_U8 || wtype == MTYPE_F8 ||
+	    wtype == MTYPE_C4) ? 8 :
+#if defined(TARG_IA64)
            (wtype == MTYPE_F10) ? 16 :
 #endif
-           (wtype == MTYPE_F16) ? 16 :
-	   (wtype == MTYPE_FQ || wtype == MTYPE_C8) ? 16 :
-	   (wtype == MTYPE_CQ) ? 32 : 0;
+           (wtype == MTYPE_FQ || wtype == MTYPE_C8) ? 16 :
+	   (wtype == MTYPE_C10 || wtype == MTYPE_CQ) ? 32 : 0;
   FmtAssert(sz > 0, ("Bad type in scalar expansion"));
 
   TYPE_ID bsztype;

@@ -379,11 +379,11 @@ Gather_Scatter_Scalar_Expand(WN*                                loop,
 	     wtype == MTYPE_F8 || wtype == MTYPE_C4) ? 8 :
   (wtype == MTYPE_I4 || wtype == MTYPE_U4 ||
    wtype == MTYPE_F4) ? 4 :
-#ifdef TARG_IA64
+#if defined(TARG_IA64)
   (wtype == MTYPE_F10) ? 16 :
 #endif
   (wtype == MTYPE_FQ || wtype == MTYPE_C8) ? 16 :
-  (wtype == MTYPE_CQ) ? 32 :
+  (wtype == MTYPE_C10 || wtype == MTYPE_CQ) ? 32 :
   (wtype == MTYPE_I2 || wtype == MTYPE_U2) ? 2 :
   (wtype == MTYPE_I1 || wtype == MTYPE_U1) ? 1 : 0 ;
 
@@ -887,6 +887,7 @@ INT64 Get_FP_Counts(WN* wn)
 	OPCODE_desc(opcode) == MTYPE_F8 || OPCODE_rtype(opcode) == MTYPE_F8 ||
 	OPCODE_desc(opcode) == MTYPE_F4 || OPCODE_rtype(opcode) == MTYPE_F4 ||
 	OPCODE_desc(opcode) == MTYPE_CQ || OPCODE_rtype(opcode) == MTYPE_CQ ||
+	OPCODE_desc(opcode) == MTYPE_C10 || OPCODE_rtype(opcode) == MTYPE_C10 ||
 	OPCODE_desc(opcode) == MTYPE_C8 || OPCODE_rtype(opcode) == MTYPE_C8 ||
 	OPCODE_desc(opcode) == MTYPE_C4 || OPCODE_rtype(opcode) == MTYPE_C4) {
 
@@ -1325,6 +1326,8 @@ Perform_Gather_Scatter(
     DYN_ARRAY<SCALAR_NODE*> site_FQ(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> use_C8(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> site_C8(&PHASE25_default_pool);
+    DYN_ARRAY<SCALAR_NODE*> use_C10(&PHASE25_default_pool);
+    DYN_ARRAY<SCALAR_NODE*> site_C10(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> use_CQ(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> site_CQ(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> use_I2(&PHASE25_default_pool);
@@ -1379,6 +1382,10 @@ Perform_Gather_Scatter(
       case MTYPE_C8:
 	use_C8.AddElement(exposed_use[i-1]->Bottom_nth(j));
 	site_C8.AddElement(exposed_site[i-1]->Bottom_nth(j));
+	break;
+      case MTYPE_C10:
+	use_C10.AddElement(exposed_use[i-1]->Bottom_nth(j));
+	site_C10.AddElement(exposed_site[i-1]->Bottom_nth(j));
 	break;
       case MTYPE_CQ:
 	use_CQ.AddElement(exposed_use[i-1]->Bottom_nth(j));

@@ -1579,6 +1579,9 @@ static void Atomic_Using_Critical(WN *atomic, WN *store)
     case MTYPE_C8: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_C8");
       break;
+    case MTYPE_C10:
+      sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_C10");
+      break;
     case MTYPE_CQ: 
       sprintf(name,"%s","__OMP_CRITICAL_ATOMIC_CQ");
       break;
@@ -2400,8 +2403,10 @@ ATOMIC_Lowering_Class WN_ATOMIC_STORE_Lowering_Class(WN *store)
 	alclass = ALCLASS_CRITICAL;	/* XXX - ALCLASS_SWAP? */
 	break;
 
-    case MTYPE_U1: case MTYPE_U2: case MTYPE_I1: case MTYPE_I2:
-    case MTYPE_C4: case MTYPE_C8: case MTYPE_CQ: case MTYPE_FQ:
+    case MTYPE_I1: case MTYPE_I2:
+    case MTYPE_U1: case MTYPE_U2:
+    case MTYPE_FQ:
+    case MTYPE_C4: case MTYPE_C8: case MTYPE_C10: case MTYPE_CQ:
       alclass = ALCLASS_CRITICAL;
       break;
 

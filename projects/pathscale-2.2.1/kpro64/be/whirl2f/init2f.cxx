@@ -207,6 +207,10 @@ Set_Tcon_Value(TCON *tcon, MTYPE mtype, INT typesize, char *bytes)
      *tcon = Host_To_Targ_Complex (mtype,rep.val.val1.d[0],rep.val.val1.d[1]);
      break;
 
+   case MTYPE_C10:
+     *tcon = Host_To_Targ_Complex_10 (mtype, rep.val.val1.q, rep.val.val2.q);
+     break;
+
    case MTYPE_CQ:     
      *tcon = Host_To_Targ_Complex_Quad (rep.val.val1.q,rep.val.val2.q);
      break;

@@ -2684,6 +2684,7 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
 #if Is_True_On
   if (WN_rtype(expr) == MTYPE_C4 ||
       WN_rtype(expr) == MTYPE_C8 ||
+      WN_rtype(expr) == MTYPE_C10 ||
       WN_rtype(expr) == MTYPE_CQ) 
   {
     ErrMsg (EC_Unimplemented, "Expand_Expr: COMPLEX");

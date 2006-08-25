@@ -266,8 +266,6 @@ Check_TCON ( TCON *tc )
 
 static TCON complex_sqrt(TCON c0)
 {
-   float fr,fi,fmag;
-   double dr,di,dmag;
    TCON r;
 
    TCON_clear(r);
@@ -275,6 +273,8 @@ static TCON complex_sqrt(TCON c0)
 
    switch (TCON_ty(c0)) {
     case MTYPE_C4:
+    {
+      float fr,fi,fmag;
       fr = TCON_R4(c0);
       fi = TCON_IR4(c0);
       if( (fmag = hypotf(fr, fi)) == 0.)
@@ -288,8 +288,10 @@ static TCON complex_sqrt(TCON c0)
 	 TCON_R4(r) = fi / TCON_IR4(r) /2;
       }
       break;
-      
+    }
     case MTYPE_C8:
+    {
+      double dr,di,dmag;
       dr = TCON_R8(c0);
       di = TCON_IR8(c0);
       if( (dmag = hypot(dr, di)) == 0.)
@@ -303,9 +305,29 @@ static TCON complex_sqrt(TCON c0)
 	 TCON_R8(r) = di / TCON_IR8(r) /2;
       }
       break;
-      
+    }
+    case MTYPE_C10:
+    {
+      long double ldr,ldi,ldmag;
+      ldr = TCON_R16(c0);
+      ldi = TCON_IR16(c0);
+      if ((ldmag = hypotl(ldr, ldi)) == 0.0L)
+	TCON_R16(r) = TCON_IR16(r) = 0.0L;
+      else if (ldr > 0.0L) {
+	TCON_R16(r) = sqrtl(0.5L * (ldmag + ldr));
+	TCON_IR16(r) = ldi / TCON_R16(r) / 2.0L;
+      } else {
+	TCON_IR16(r) = sqrtl(0.5L * (ldmag - ldr));
+	if (ldi < 0.0L)
+	  TCON_IR16(r) = -TCON_IR16(r);
+	TCON_R16(r) = ldi / TCON_IR16(r) / 2.0L;
+      }
+      break;
+    }
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_CQ:
+    {
       QUAD qr,qi,qmag,rqr,rqi,q0,q05;
       INT err;
       qr = R16_To_RQ(TCON_R16(c0));
@@ -336,6 +358,7 @@ static TCON complex_sqrt(TCON c0)
       TCON_R16(r) = RQ_To_R16(rqr);
       TCON_IR16(r) = RQ_To_R16(rqi);
       break;
+    }
 #endif
 
     default:
@@ -394,7 +417,28 @@ static TCON complex_divide(TCON c0, TCON c1)
 	 TCON_IR8(r) = t1;
       }
       break;
-      
+ 
+    case MTYPE_C10:
+    {
+	long double c0r,c0i,c1r,c1i,t1,t2,t3;
+	c0r = TCON_R16(c0);
+	c0i = TCON_IR16(c0);
+	c1r = TCON_R16(c1);
+	c1i = TCON_IR16(c1);
+	if (fabsl(c1r) < fabsl(c1i)) {
+	    t2 = c1r * (c1r / c1i) + c1i;
+	    t1 = (c0i * (c1r / c1i) - c0r) / t2;
+	    t3 = (c0r * (c1r / c1i) + c0i) / t2;
+	} else {
+	    t2 = c1i * (c1i / c1r) + c1r;
+	    t1 = (c0i - c0r * (c1i / c1r)) / t2;
+	    t3 = (c0i * (c1i / c1r) + c0r) / t2;
+	}
+	TCON_R16(r) = t3;
+	TCON_IR16(r) = t1;
+	break;
+    }
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_CQ:
       {
@@ -718,6 +762,21 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
        }
        TCON_v1(c0) = 0;
        break;
+    case MTYPE_C10:
+	switch (opr) {
+	case OPR_EQ:
+	    TCON_v0(c0) = (TCON_R16(c0) == TCON_R16(c1) &&
+			   TCON_IR16(c0) == TCON_IR16(c1));
+	    break;
+	case OPR_NE:
+	    TCON_v0(c0) = (TCON_R16(c0) != TCON_R16(c1) ||
+			   TCON_IR16(c0) != TCON_IR16(c1));
+	    break;
+	}
+	TCON_v1(c0) = 0;
+	TCON_v2(c0) = 0;
+	TCON_v3(c0) = 0;
+	break;
 #ifdef TARG_NEEDS_QUAD_OPS
      case MTYPE_CQ:
        q0 = R16_To_RQ(TCON_R16(c0));
@@ -1474,6 +1533,9 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_C8TAS:
       TCON_ty(c0) = MTYPE_C8;
       break;
+    case OPC_C10TAS:
+      TCON_ty(c0) = MTYPE_C10;
+      break;
     case OPC_CQTAS:
       TCON_ty(c0) = MTYPE_CQ;
       break;
@@ -2139,6 +2201,9 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_C8RECIP:
       c0 = Targ_WhirlOp(OPC_C8DIV,Host_To_Targ_Float(MTYPE_C8,1.0),c0,folded);
       break;
+    case OPC_C10RECIP:
+      c0 = Targ_WhirlOp(OPC_C10DIV,Host_To_Targ_Float(MTYPE_C10,1.0),c0,folded);
+      break;
     case OPC_CQRECIP:
       c0 = Targ_WhirlOp(OPC_CQDIV,Host_To_Targ_Float(MTYPE_CQ,1.0),c0,folded);
       break;
@@ -2166,6 +2231,12 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_C8RSQRT:
       c0 = Targ_WhirlOp(OPC_C8SQRT,c0,c0,folded);
       if (*folded) c0 = Targ_WhirlOp(OPC_C8DIV,Host_To_Targ_Float(MTYPE_C8,1.0),c0,folded);
+      break;
+    case OPC_C10RSQRT:
+      c0 = Targ_WhirlOp(OPC_C10SQRT,c0,c0,folded);
+      if (*folded)
+	c0 = Targ_WhirlOp(OPC_C10DIV, Host_To_Targ_Float(MTYPE_C10, 1.0),
+		c0, folded);
       break;
     case OPC_CQRSQRT:
       c0 = Targ_WhirlOp(OPC_CQSQRT,c0,c0,folded);
@@ -2259,6 +2330,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_C8COMPLEX:
       TCON_IR8(c0) = TCON_R8(c1);
       TCON_ty(c0) = MTYPE_C8;
+      break;
+    case OPC_C10COMPLEX:
+      TCON_IR16(c0) = TCON_R16(c1);
+      TCON_ty(c0) = MTYPE_C10;
       break;
     case OPC_CQCOMPLEX:
       TCON_IR16(c0) = TCON_R16(c1);
@@ -2400,6 +2475,15 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       Set_TCON_R4(r, __c_sngl_q(R16_To_RQ(TCON_R16(c)), &err));
       Set_TCON_IR4(r, __c_sngl_q(R16_To_RQ(TCON_IR16(c)), &err));
       break;
+    case FROM_TO(MTYPE_CQ, MTYPE_FQ):
+      TCON_R16(r) = TCON_R16(c);
+      break;
+    case FROM_TO(MTYPE_CQ, MTYPE_F8):
+      TCON_R8(r) = __c_dble_q(R16_To_RQ(TCON_R16(c)), &err);
+      break;
+    case FROM_TO(MTYPE_CQ, MTYPE_F4):
+      Set_TCON_R4(r, __c_sngl_q(R16_To_RQ(TCON_R16(c)), &err));
+      break;
     case FROM_TO(MTYPE_CQ, MTYPE_I8):
       TCON_I8(r) = __c_ki_qint(R16_To_RQ(TCON_R16(c)), &err);
       break;
@@ -2415,15 +2499,6 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
     case FROM_TO(MTYPE_CQ, MTYPE_U2):
     case FROM_TO(MTYPE_CQ, MTYPE_U1):
       TCON_u0(r) = __c_ji_quint(R16_To_RQ(TCON_R16(c)), &err);
-      break;
-    case FROM_TO(MTYPE_CQ, MTYPE_FQ):
-      TCON_R16(r) = TCON_R16(c);
-      break;
-    case FROM_TO(MTYPE_CQ, MTYPE_F8):
-      TCON_R8(r) = __c_dble_q(R16_To_RQ(TCON_R16(c)), &err);
-      break;
-    case FROM_TO(MTYPE_CQ, MTYPE_F4):
-      Set_TCON_R4(r, __c_sngl_q(R16_To_RQ(TCON_R16(c)), &err));
       break;
 
     case FROM_TO(MTYPE_C8, MTYPE_FQ):
@@ -2454,6 +2529,14 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
     case FROM_TO(MTYPE_U1, MTYPE_FQ):
       TCON_R16(r) = RQ_To_R16(__c_q_flotju(TCON_u0(c), &err));
       break;
+    case FROM_TO(MTYPE_FQ, MTYPE_C8):
+      TCON_R8(r) = __c_dble_q(R16_To_RQ(TCON_R16(c)), &err);
+      TCON_IR8(r) = 0.0;
+      break;
+    case FROM_TO(MTYPE_FQ, MTYPE_C4):
+      Set_TCON_R4(r, __c_sngl_q(R16_To_RQ(TCON_R16(c)), &err));
+      TCON_IR4(r) = 0.0;
+      break;
     case FROM_TO(MTYPE_FQ, MTYPE_F8):
       TCON_R8(r) = __c_dble_q(R16_To_RQ(TCON_R16(c)), &err);
       break;
@@ -2468,14 +2551,6 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
     case FROM_TO(MTYPE_FQ, MTYPE_I1):
       TCON_v0(r) = __c_ji_qint(R16_To_RQ(TCON_R16(c)), &err);
       break;
-    case FROM_TO(MTYPE_FQ, MTYPE_C8):
-      TCON_R8(r) = __c_dble_q(R16_To_RQ(TCON_R16(c)), &err);
-      TCON_IR8(r) = 0.0;
-      break;
-    case FROM_TO(MTYPE_FQ, MTYPE_C4):
-      Set_TCON_R4(r, __c_sngl_q(R16_To_RQ(TCON_R16(c)), &err));
-      TCON_IR4(r) = 0.0;
-      break;
     case FROM_TO(MTYPE_FQ, MTYPE_U8):
       TCON_U8(r) = __c_ki_quint(R16_To_RQ(TCON_R16(c)), &err);
       break;
@@ -2486,68 +2561,114 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
 
+    case FROM_TO(MTYPE_C10, MTYPE_F10):
+      TCON_R16(r) = TCON_R16(c);
+      break;
     case FROM_TO(MTYPE_C8, MTYPE_F10):
-      TCON_R16(r) = TCON_R8(c);
-      break;
-    case FROM_TO(MTYPE_C4, MTYPE_F10):
-      TCON_R16(r) = TCON_R4(c);
-      break;
     case FROM_TO(MTYPE_F8, MTYPE_F10):
       TCON_R16(r) = TCON_R8(c);
       break;
+    case FROM_TO(MTYPE_C4, MTYPE_F10):
     case FROM_TO(MTYPE_F4, MTYPE_F10):
       TCON_R16(r) = TCON_R4(c);
       break;
     case FROM_TO(MTYPE_I8, MTYPE_F10):
       TCON_R16(r) = TCON_I8(c);
       break;
+    case FROM_TO(MTYPE_U8, MTYPE_F10):
+      TCON_R16(r) = TCON_U8(c);
+      break;
     case FROM_TO(MTYPE_I4, MTYPE_F10):
     case FROM_TO(MTYPE_I2, MTYPE_F10):
     case FROM_TO(MTYPE_I1, MTYPE_F10):
       TCON_R16(r) = TCON_v0(c);
-      break;
-    case FROM_TO(MTYPE_U8, MTYPE_F10):
-      TCON_R16(r) = TCON_U8(c);
       break;
     case FROM_TO(MTYPE_U4, MTYPE_F10):
     case FROM_TO(MTYPE_U2, MTYPE_F10):
     case FROM_TO(MTYPE_U1, MTYPE_F10):
       TCON_R16(r) = TCON_u0(c);
       break;
-    case FROM_TO(MTYPE_F10, MTYPE_C8):
-      TCON_R8(r) = TCON_R16(c);
-      TCON_IR8(r) = 0.0;
+
+    case FROM_TO(MTYPE_C8, MTYPE_C10):
+      TCON_R16(r) = TCON_R8(c);
+      TCON_IR16(r) = TCON_IR8(c);
       break;
-    case FROM_TO(MTYPE_F10, MTYPE_C4):
-      Set_TCON_R4(r, TCON_R16(c));
-      TCON_IR4(r) = 0.0;
+    case FROM_TO(MTYPE_C4, MTYPE_C10):
+      TCON_R16(r) = TCON_R4(c);
+      TCON_IR16(r) = TCON_IR4(c);
       break;
+    case FROM_TO(MTYPE_F10, MTYPE_C10):
+      TCON_R16(r) = TCON_R16(c);
+      TCON_IR16(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_F8, MTYPE_C10):
+      TCON_R16(r) = TCON_R8(c);
+      TCON_IR16(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_F4, MTYPE_C10):
+      TCON_R16(r) = TCON_R4(c);
+      TCON_IR16(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_I8, MTYPE_C10):
+      TCON_R16(r) = TCON_I8(c);
+      TCON_IR16(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_C10):
+      TCON_R16(r) = TCON_U8(c);
+      TCON_IR16(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_I4, MTYPE_C10):
+    case FROM_TO(MTYPE_I2, MTYPE_C10):
+    case FROM_TO(MTYPE_I1, MTYPE_C10):
+      TCON_R16(r) = TCON_v0(c);
+      TCON_IR16(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_U4, MTYPE_C10):
+    case FROM_TO(MTYPE_U2, MTYPE_C10):
+    case FROM_TO(MTYPE_U1, MTYPE_C10):
+      TCON_R16(r) = TCON_u0(c);
+      TCON_IR16(r) = 0.0L;
+      break;
+
+    case FROM_TO(MTYPE_C10, MTYPE_F8):
     case FROM_TO(MTYPE_F10, MTYPE_F8):
       TCON_R8(r) = TCON_R16(c);
       break;
-    case FROM_TO(MTYPE_F10, MTYPE_F4):
-      Set_TCON_R4(r, TCON_R16(c));
+    case FROM_TO(MTYPE_C8, MTYPE_F8):
+      TCON_R8(r) = TCON_R8(c);
       break;
-   case FROM_TO(MTYPE_F10, MTYPE_I8):
-      TCON_I8(r) = (INT64)TCON_R16(c);
+    case FROM_TO(MTYPE_C4, MTYPE_F8):
+    case FROM_TO(MTYPE_F4, MTYPE_F8):
+      TCON_R8(r) = TCON_R4(c);
       break;
-    case FROM_TO(MTYPE_F10, MTYPE_I4):
-    case FROM_TO(MTYPE_F10, MTYPE_I2):
-    case FROM_TO(MTYPE_F10, MTYPE_I1):
-      TCON_v0(r) = (INT32)TCON_R16(c);
+    case FROM_TO(MTYPE_I8, MTYPE_F8):
+      TCON_R8(r) = TCON_I8(c);
       break;
-    case FROM_TO(MTYPE_F10, MTYPE_U8):
-      TCON_U8(r) = (UINT64)TCON_R16(c);
+    case FROM_TO(MTYPE_U8, MTYPE_F8):
+      TCON_R8(r) = TCON_U8(c);
       break;
-    case FROM_TO(MTYPE_F10, MTYPE_U4):
-    case FROM_TO(MTYPE_F10, MTYPE_U2):
-    case FROM_TO(MTYPE_F10, MTYPE_U1):
-      TCON_u0(r) = (UINT32)TCON_R16(c);
+    case FROM_TO(MTYPE_I4, MTYPE_F8):
+    case FROM_TO(MTYPE_I2, MTYPE_F8):
+    case FROM_TO(MTYPE_I1, MTYPE_F8):
+      TCON_R8(r) = TCON_v0(c);
+      break;
+    case FROM_TO(MTYPE_U4, MTYPE_F8):
+    case FROM_TO(MTYPE_U2, MTYPE_F8):
+    case FROM_TO(MTYPE_U1, MTYPE_F8):
+      TCON_R8(r) = TCON_u0(c);
       break;
 
+    case FROM_TO(MTYPE_C10, MTYPE_C8):
+      TCON_R8(r) = TCON_R16(c);
+      TCON_IR8(r) = TCON_IR16(c);
+      break;
     case FROM_TO(MTYPE_C4, MTYPE_C8):
       TCON_R8(r) = TCON_R4(c);
       TCON_IR8(r) = TCON_IR4(c);
+      break;
+    case FROM_TO(MTYPE_F10, MTYPE_C8):
+      TCON_R8(r) = TCON_R16(c);
+      TCON_IR8(r) = 0.0;
       break;
     case FROM_TO(MTYPE_F8, MTYPE_C8):
       TCON_R8(r) = TCON_R8(c);
@@ -2561,14 +2682,14 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_R8(r) = TCON_I8(c);
       TCON_IR8(r) = 0.0;
       break;
+    case FROM_TO(MTYPE_U8, MTYPE_C8):
+      TCON_R8(r) = TCON_U8(c);
+      TCON_IR8(r) = 0.0;
+      break;
     case FROM_TO(MTYPE_I4, MTYPE_C8):
     case FROM_TO(MTYPE_I2, MTYPE_C8):
     case FROM_TO(MTYPE_I1, MTYPE_C8):
       TCON_R8(r) = TCON_v0(c);
-      TCON_IR8(r) = 0.0;
-      break;
-    case FROM_TO(MTYPE_U8, MTYPE_C8):
-      TCON_R8(r) = TCON_U8(c);
       TCON_IR8(r) = 0.0;
       break;
     case FROM_TO(MTYPE_U4, MTYPE_C8):
@@ -2577,11 +2698,48 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_R8(r) = TCON_u0(c);
       TCON_IR8(r) = 0.0;
       break;
+
+    case FROM_TO(MTYPE_C10, MTYPE_F4):
+    case FROM_TO(MTYPE_F10, MTYPE_F4):
+      Set_TCON_R4(r, TCON_R16(c));
+      break;
+    case FROM_TO(MTYPE_C8, MTYPE_F4):
+    case FROM_TO(MTYPE_F8, MTYPE_F4):
+      TCON_R4(r) = TCON_R8(c);
+      break;
+    case FROM_TO(MTYPE_C4, MTYPE_F4):
+      TCON_R4(r) = TCON_R4(c);
+      break;
+    case FROM_TO(MTYPE_I8, MTYPE_F4):
+      TCON_R4(r) = TCON_I8(c);
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_F4):
+      TCON_R4(r) = TCON_U8(c);
+      break;
+    case FROM_TO(MTYPE_I4, MTYPE_F4):
+    case FROM_TO(MTYPE_I2, MTYPE_F4):
+    case FROM_TO(MTYPE_I1, MTYPE_F4):
+      TCON_R4(r) = TCON_v0(c);
+      break;
+    case FROM_TO(MTYPE_U4, MTYPE_F4):
+    case FROM_TO(MTYPE_U2, MTYPE_F4):
+    case FROM_TO(MTYPE_U1, MTYPE_F4):
+      TCON_R4(r) = TCON_u0(c);
+      break;
+
+    case FROM_TO(MTYPE_C10, MTYPE_C4):
+      TCON_R4(r) = TCON_R16(c);
+      TCON_IR4(r) = TCON_IR16(c);
+      break;
     case FROM_TO(MTYPE_C8, MTYPE_C4):
       TCON_R4(r) = TCON_R8(c);
       TCON_IR4(r) = TCON_IR8(c);
       break;
-   case FROM_TO(MTYPE_F8, MTYPE_C4):
+    case FROM_TO(MTYPE_F10, MTYPE_C4):
+      Set_TCON_R4(r, TCON_R16(c));
+      TCON_IR4(r) = 0.0;
+      break;
+    case FROM_TO(MTYPE_F8, MTYPE_C4):
       TCON_R4(r) = TCON_R8(c);
       TCON_IR4(r) = 0.0;
       break;
@@ -2593,14 +2751,14 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_R4(r) = TCON_I8(c);
       TCON_IR4(r) = 0.0;
       break;
+    case FROM_TO(MTYPE_U8, MTYPE_C4):
+      TCON_R4(r) = TCON_U8(c);
+      TCON_IR4(r) = 0.0;
+      break;
     case FROM_TO(MTYPE_I4, MTYPE_C4):
     case FROM_TO(MTYPE_I2, MTYPE_C4):
     case FROM_TO(MTYPE_I1, MTYPE_C4):
       TCON_R4(r) = TCON_v0(c);
-      TCON_IR4(r) = 0.0;
-      break;
-    case FROM_TO(MTYPE_U8, MTYPE_C4):
-      TCON_R4(r) = TCON_U8(c);
       TCON_IR4(r) = 0.0;
       break;
     case FROM_TO(MTYPE_U4, MTYPE_C4):
@@ -2609,216 +2767,237 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_R4(r) = TCON_u0(c);
       TCON_IR4(r) = 0.0;
       break;
-    case FROM_TO(MTYPE_C8, MTYPE_F8):
-      TCON_R8(r) = TCON_R8(c);
-      break;
-    case FROM_TO(MTYPE_C4, MTYPE_F8):
-      TCON_R8(r) = TCON_R4(c);
-      break;
-    case FROM_TO(MTYPE_F4, MTYPE_F8):
-      TCON_R8(r) = TCON_R4(c);
-      break;
-    case FROM_TO(MTYPE_I8, MTYPE_F8):
-      TCON_R8(r) = TCON_I8(c);
-      break;
-    case FROM_TO(MTYPE_I4, MTYPE_F8):
-    case FROM_TO(MTYPE_I2, MTYPE_F8):
-    case FROM_TO(MTYPE_I1, MTYPE_F8):
-      TCON_R8(r) = TCON_v0(c);
-      break;
-    case FROM_TO(MTYPE_U8, MTYPE_F8):
-      TCON_R8(r) = TCON_U8(c);
-      break;
-    case FROM_TO(MTYPE_U4, MTYPE_F8):
-    case FROM_TO(MTYPE_U2, MTYPE_F8):
-    case FROM_TO(MTYPE_U1, MTYPE_F8):
-      TCON_R8(r) = TCON_u0(c);
-      break;
-    case FROM_TO(MTYPE_C8, MTYPE_F4):
-      TCON_R4(r) = TCON_R8(c);
-      break;
-    case FROM_TO(MTYPE_C4, MTYPE_F4):
-      TCON_R4(r) = TCON_R4(c);
-      break;
-    case FROM_TO(MTYPE_F8, MTYPE_F4):
-      TCON_R4(r) = TCON_R8(c);
-      break;
-    case FROM_TO(MTYPE_I8, MTYPE_F4):
-      TCON_R4(r) = TCON_I8(c);
-      break;
-    case FROM_TO(MTYPE_I4, MTYPE_F4):
-    case FROM_TO(MTYPE_I2, MTYPE_F4):
-    case FROM_TO(MTYPE_I1, MTYPE_F4):
-      TCON_R4(r) = TCON_v0(c);
-      break;
-    case FROM_TO(MTYPE_U8, MTYPE_F4):
-      TCON_R4(r) = TCON_U8(c);
-      break;
-    case FROM_TO(MTYPE_U4, MTYPE_F4):
-    case FROM_TO(MTYPE_U2, MTYPE_F4):
-    case FROM_TO(MTYPE_U1, MTYPE_F4):
-      TCON_R4(r) = TCON_u0(c);
+
+    case FROM_TO(MTYPE_C10, MTYPE_I8):
+    case FROM_TO(MTYPE_F10, MTYPE_I8):
+      TCON_I8(r) = (INT64)TCON_R16(c);
       break;
     case FROM_TO(MTYPE_C8, MTYPE_I8):
-      TCON_I8(r) = (INT64)TCON_R8(c);
-      break;
-    case FROM_TO(MTYPE_C4, MTYPE_I8):
-      TCON_I8(r) = (INT64)TCON_R4(c);
-      break;
     case FROM_TO(MTYPE_F8, MTYPE_I8):
       TCON_I8(r) = (INT64)TCON_R8(c);
       break;
+    case FROM_TO(MTYPE_C4, MTYPE_I8):
     case FROM_TO(MTYPE_F4, MTYPE_I8):
       TCON_I8(r) = (INT64)TCON_R4(c);
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_I8):
+      TCON_I8(r) = TCON_U8(c);
       break;
     case FROM_TO(MTYPE_I4, MTYPE_I8):
     case FROM_TO(MTYPE_I2, MTYPE_I8):
     case FROM_TO(MTYPE_I1, MTYPE_I8):
     case FROM_TO(MTYPE_B, MTYPE_I8):
-       TCON_I8(r) = TCON_v0(c);
-       break;
-    case FROM_TO(MTYPE_U8, MTYPE_I8):
-       TCON_I8(r) = TCON_U8(c);
-       break;
+      TCON_I8(r) = TCON_v0(c);
+      break;
     case FROM_TO(MTYPE_U4, MTYPE_I8):
     case FROM_TO(MTYPE_U2, MTYPE_I8):
     case FROM_TO(MTYPE_U1, MTYPE_I8):
-       TCON_I8(r) = TCON_u0(c);
-       break;
-    case FROM_TO(MTYPE_C8, MTYPE_I4):
-    case FROM_TO(MTYPE_C8, MTYPE_I2):
-    case FROM_TO(MTYPE_C8, MTYPE_I1):
-      TCON_v0(r) = (INT32)TCON_R8(c);
+      TCON_I8(r) = TCON_u0(c);
       break;
-    case FROM_TO(MTYPE_C4, MTYPE_I4):
-    case FROM_TO(MTYPE_C4, MTYPE_I2):
-    case FROM_TO(MTYPE_C4, MTYPE_I1):
-      TCON_v0(r) = (INT32)TCON_R4(c);
+
+    case FROM_TO(MTYPE_C10, MTYPE_U8):
+    case FROM_TO(MTYPE_F10, MTYPE_U8):
+      TCON_U8(r) = (UINT64)TCON_R16(c);
       break;
-    case FROM_TO(MTYPE_F8, MTYPE_I4):
-    case FROM_TO(MTYPE_F8, MTYPE_I2):
-    case FROM_TO(MTYPE_F8, MTYPE_I1):
-      TCON_v0(r) = (INT32)TCON_R8(c);
-      break;
-    case FROM_TO(MTYPE_F4, MTYPE_I4):
-    case FROM_TO(MTYPE_F4, MTYPE_I2):
-    case FROM_TO(MTYPE_F4, MTYPE_I1):
-      TCON_v0(r) = (INT32)TCON_R4(c);
-      break;
-    case FROM_TO(MTYPE_I8, MTYPE_I4):
-    case FROM_TO(MTYPE_I8, MTYPE_I2):
-    case FROM_TO(MTYPE_I8, MTYPE_I1):
-       TCON_v0(r) = TCON_I8(c);
-       break;
-    case FROM_TO(MTYPE_I4, MTYPE_I2):
-    case FROM_TO(MTYPE_I4, MTYPE_I1):
-    case FROM_TO(MTYPE_I2, MTYPE_I4):
-    case FROM_TO(MTYPE_I2, MTYPE_I1):
-    case FROM_TO(MTYPE_I1, MTYPE_I4):
-    case FROM_TO(MTYPE_I1, MTYPE_I2):
-    case FROM_TO(MTYPE_B, MTYPE_I4):
-       TCON_v0(r) = TCON_v0(c);
-       break;
-    case FROM_TO(MTYPE_U8, MTYPE_I4):
-    case FROM_TO(MTYPE_U8, MTYPE_I2):
-    case FROM_TO(MTYPE_U8, MTYPE_I1):
-       TCON_v0(r) = TCON_U8(c);
-       break;
-    case FROM_TO(MTYPE_U4, MTYPE_I4):
-    case FROM_TO(MTYPE_U4, MTYPE_I2):
-    case FROM_TO(MTYPE_U4, MTYPE_I1):
-    case FROM_TO(MTYPE_U2, MTYPE_I4):
-    case FROM_TO(MTYPE_U2, MTYPE_I2):
-    case FROM_TO(MTYPE_U2, MTYPE_I1):
-    case FROM_TO(MTYPE_U1, MTYPE_I4):
-    case FROM_TO(MTYPE_U1, MTYPE_I2):
-    case FROM_TO(MTYPE_U1, MTYPE_I1):
-       TCON_v0(r) = TCON_v0(c);
-       break;
     case FROM_TO(MTYPE_C8, MTYPE_U8):
-      TCON_U8(r) = (UINT64)TCON_R8(c);
-      break;
-    case FROM_TO(MTYPE_C4, MTYPE_U8):
-      TCON_U8(r) = (UINT64)TCON_R4(c);
-      break;
     case FROM_TO(MTYPE_F8, MTYPE_U8):
       TCON_U8(r) = (UINT64)TCON_R8(c);
       break;
+    case FROM_TO(MTYPE_C4, MTYPE_U8):
     case FROM_TO(MTYPE_F4, MTYPE_U8):
       TCON_U8(r) = (UINT64)TCON_R4(c);
       break;
     case FROM_TO(MTYPE_I8, MTYPE_U8):
-       TCON_U8(r) = TCON_I8(c);
-       break;
+      TCON_U8(r) = TCON_I8(c);
+      break;
     case FROM_TO(MTYPE_I4, MTYPE_U8):
     case FROM_TO(MTYPE_I2, MTYPE_U8):
     case FROM_TO(MTYPE_I1, MTYPE_U8):
     case FROM_TO(MTYPE_B, MTYPE_U8):
-       TCON_U8(r) = TCON_v0(c);
-       break;
+      TCON_U8(r) = TCON_v0(c);
+      break;
     case FROM_TO(MTYPE_U4, MTYPE_U8):
     case FROM_TO(MTYPE_U2, MTYPE_U8):
     case FROM_TO(MTYPE_U1, MTYPE_U8):
-       TCON_U8(r) = TCON_u0(c);
-       break;
+      TCON_U8(r) = TCON_u0(c);
+      break;
+
+    case FROM_TO(MTYPE_C10, MTYPE_I4):
+    case FROM_TO(MTYPE_F10, MTYPE_I4):
+      TCON_v0(r) = (INT32)TCON_R16(c);
+      break;
+    case FROM_TO(MTYPE_C8, MTYPE_I4):
+    case FROM_TO(MTYPE_F8, MTYPE_I4):
+      TCON_v0(r) = (INT32)TCON_R8(c);
+      break;
+    case FROM_TO(MTYPE_C4, MTYPE_I4):
+    case FROM_TO(MTYPE_F4, MTYPE_I4):
+      TCON_v0(r) = (INT32)TCON_R4(c);
+      break;
+    case FROM_TO(MTYPE_I8, MTYPE_I4):
+      TCON_v0(r) = TCON_I8(c);
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_I4):
+      TCON_v0(r) = TCON_U8(c);
+      break;
+    case FROM_TO(MTYPE_U4, MTYPE_I4):
+    case FROM_TO(MTYPE_I2, MTYPE_I4):
+    case FROM_TO(MTYPE_U2, MTYPE_I4):
+    case FROM_TO(MTYPE_I1, MTYPE_I4):
+    case FROM_TO(MTYPE_U1, MTYPE_I4):
+    case FROM_TO(MTYPE_B, MTYPE_I4):
+      TCON_v0(r) = TCON_v0(c);
+      break;
+
+    case FROM_TO(MTYPE_C10, MTYPE_U4):
+    case FROM_TO(MTYPE_F10, MTYPE_U4):
+      TCON_u0(r) = (UINT32)TCON_R16(c);
+      break;
     case FROM_TO(MTYPE_C8, MTYPE_U4):
-    case FROM_TO(MTYPE_C8, MTYPE_U2):
-    case FROM_TO(MTYPE_C8, MTYPE_U1):
+    case FROM_TO(MTYPE_F8, MTYPE_U4):
       TCON_u0(r) = (UINT32)TCON_R8(c);
       break;
     case FROM_TO(MTYPE_C4, MTYPE_U4):
-    case FROM_TO(MTYPE_C4, MTYPE_U2):
-    case FROM_TO(MTYPE_C4, MTYPE_U1):
-      TCON_u0(r) = (UINT32)TCON_R4(c);
-      break;
-    case FROM_TO(MTYPE_F8, MTYPE_U4):
-    case FROM_TO(MTYPE_F8, MTYPE_U2):
-    case FROM_TO(MTYPE_F8, MTYPE_U1):
-      TCON_u0(r) = (UINT32)TCON_R8(c);
-      break;
     case FROM_TO(MTYPE_F4, MTYPE_U4):
-    case FROM_TO(MTYPE_F4, MTYPE_U2):
-    case FROM_TO(MTYPE_F4, MTYPE_U1):
       TCON_u0(r) = (UINT32)TCON_R4(c);
       break;
     case FROM_TO(MTYPE_I8, MTYPE_U4):
-    case FROM_TO(MTYPE_I8, MTYPE_U2):
-    case FROM_TO(MTYPE_I8, MTYPE_U1):
-    case FROM_TO(MTYPE_I8, MTYPE_B):
-       TCON_u0(r) = TCON_I8(c);
-       break;
-    case FROM_TO(MTYPE_I4, MTYPE_U4):
-    case FROM_TO(MTYPE_I4, MTYPE_U2):
-    case FROM_TO(MTYPE_I4, MTYPE_U1):
-    case FROM_TO(MTYPE_I4, MTYPE_B):
-    case FROM_TO(MTYPE_I2, MTYPE_U4):
-    case FROM_TO(MTYPE_I2, MTYPE_U2):
-    case FROM_TO(MTYPE_I2, MTYPE_U1):
-    case FROM_TO(MTYPE_I2, MTYPE_B):
-    case FROM_TO(MTYPE_I1, MTYPE_U4):
-    case FROM_TO(MTYPE_I1, MTYPE_U2):
-    case FROM_TO(MTYPE_I1, MTYPE_U1):
-    case FROM_TO(MTYPE_I1, MTYPE_B):
-    case FROM_TO(MTYPE_B, MTYPE_U4):
-       TCON_v0(r) = TCON_v0(c);
-       break;
+      TCON_u0(r) = TCON_I8(c);
+      break;
     case FROM_TO(MTYPE_U8, MTYPE_U4):
-    case FROM_TO(MTYPE_U8, MTYPE_U2):
-    case FROM_TO(MTYPE_U8, MTYPE_U1):
-    case FROM_TO(MTYPE_U8, MTYPE_B):
-       TCON_u0(r) = TCON_U8(c);
-       break;
-    case FROM_TO(MTYPE_U4, MTYPE_U2):
-    case FROM_TO(MTYPE_U4, MTYPE_U1):
-    case FROM_TO(MTYPE_U4, MTYPE_B):
+      TCON_u0(r) = TCON_U8(c);
+      break;
+    case FROM_TO(MTYPE_I4, MTYPE_U4):
+    case FROM_TO(MTYPE_I2, MTYPE_U4):
     case FROM_TO(MTYPE_U2, MTYPE_U4):
-    case FROM_TO(MTYPE_U2, MTYPE_U1):
-    case FROM_TO(MTYPE_U2, MTYPE_B):
+    case FROM_TO(MTYPE_I1, MTYPE_U4):
     case FROM_TO(MTYPE_U1, MTYPE_U4):
+    case FROM_TO(MTYPE_B, MTYPE_U4):
+      TCON_v0(r) = TCON_v0(c);
+      break;
+
+    case FROM_TO(MTYPE_C10, MTYPE_I2):
+    case FROM_TO(MTYPE_F10, MTYPE_I2):
+      TCON_v0(r) = (INT32)TCON_R16(c);
+      break;
+    case FROM_TO(MTYPE_C8, MTYPE_I2):
+    case FROM_TO(MTYPE_F8, MTYPE_I2):
+      TCON_v0(r) = (INT32)TCON_R8(c);
+      break;
+    case FROM_TO(MTYPE_C4, MTYPE_I2):
+    case FROM_TO(MTYPE_F4, MTYPE_I2):
+      TCON_v0(r) = (INT32)TCON_R4(c);
+      break;
+    case FROM_TO(MTYPE_I8, MTYPE_I2):
+      TCON_v0(r) = TCON_I8(c);
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_I2):
+      TCON_v0(r) = TCON_U8(c);
+      break;
+    case FROM_TO(MTYPE_I4, MTYPE_I2):
+    case FROM_TO(MTYPE_U4, MTYPE_I2):
+    case FROM_TO(MTYPE_U2, MTYPE_I2):
+    case FROM_TO(MTYPE_I1, MTYPE_I2):
+    case FROM_TO(MTYPE_U1, MTYPE_I2):
+    case FROM_TO(MTYPE_B, MTYPE_I2):
+      TCON_v0(r) = TCON_v0(c);
+      break;
+
+    case FROM_TO(MTYPE_C10, MTYPE_U2):
+    case FROM_TO(MTYPE_F10, MTYPE_U2):
+      TCON_u0(r) = (UINT32)TCON_R16(c);
+      break;
+    case FROM_TO(MTYPE_C8, MTYPE_U2):
+    case FROM_TO(MTYPE_F8, MTYPE_U2):
+      TCON_u0(r) = (UINT32)TCON_R8(c);
+      break;
+    case FROM_TO(MTYPE_C4, MTYPE_U2):
+    case FROM_TO(MTYPE_F4, MTYPE_U2):
+      TCON_u0(r) = (UINT32)TCON_R4(c);
+      break;
+    case FROM_TO(MTYPE_I8, MTYPE_U2):
+      TCON_u0(r) = TCON_I8(c);
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_U2):
+      TCON_u0(r) = TCON_U8(c);
+      break;
+    case FROM_TO(MTYPE_I4, MTYPE_U2):
+    case FROM_TO(MTYPE_U4, MTYPE_U2):
+    case FROM_TO(MTYPE_I2, MTYPE_U2):
+    case FROM_TO(MTYPE_I1, MTYPE_U2):
     case FROM_TO(MTYPE_U1, MTYPE_U2):
+    case FROM_TO(MTYPE_B, MTYPE_U2):
+      TCON_v0(r) = TCON_v0(c);
+      break;
+
+    case FROM_TO(MTYPE_C10, MTYPE_I1):
+    case FROM_TO(MTYPE_F10, MTYPE_I1):
+      TCON_v0(r) = (INT32)TCON_R16(c);
+      break;
+    case FROM_TO(MTYPE_C8, MTYPE_I1):
+    case FROM_TO(MTYPE_F8, MTYPE_I1):
+      TCON_v0(r) = (INT32)TCON_R8(c);
+      break;
+    case FROM_TO(MTYPE_C4, MTYPE_I1):
+    case FROM_TO(MTYPE_F4, MTYPE_I1):
+      TCON_v0(r) = (INT32)TCON_R4(c);
+      break;
+    case FROM_TO(MTYPE_I8, MTYPE_I1):
+      TCON_v0(r) = TCON_I8(c);
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_I1):
+      TCON_v0(r) = TCON_U8(c);
+      break;
+    case FROM_TO(MTYPE_I4, MTYPE_I1):
+    case FROM_TO(MTYPE_U4, MTYPE_I1):
+    case FROM_TO(MTYPE_I2, MTYPE_I1):
+    case FROM_TO(MTYPE_U2, MTYPE_I1):
+    case FROM_TO(MTYPE_U1, MTYPE_I1):
+    case FROM_TO(MTYPE_B, MTYPE_I1):
+      TCON_v0(r) = TCON_v0(c);
+      break;
+
+    case FROM_TO(MTYPE_C10, MTYPE_U1):
+    case FROM_TO(MTYPE_F10, MTYPE_U1):
+      TCON_u0(r) = (UINT32)TCON_R16(c);
+      break;
+    case FROM_TO(MTYPE_C8, MTYPE_U1):
+    case FROM_TO(MTYPE_F8, MTYPE_U1):
+      TCON_u0(r) = (UINT32)TCON_R8(c);
+      break;
+    case FROM_TO(MTYPE_C4, MTYPE_U1):
+    case FROM_TO(MTYPE_F4, MTYPE_U1):
+      TCON_u0(r) = (UINT32)TCON_R4(c);
+      break;
+    case FROM_TO(MTYPE_I8, MTYPE_U1):
+      TCON_u0(r) = TCON_I8(c);
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_U1):
+      TCON_u0(r) = TCON_U8(c);
+      break;
+    case FROM_TO(MTYPE_I4, MTYPE_U1):
+    case FROM_TO(MTYPE_U4, MTYPE_U1):
+    case FROM_TO(MTYPE_I2, MTYPE_U1):
+    case FROM_TO(MTYPE_U2, MTYPE_U1):
+    case FROM_TO(MTYPE_I1, MTYPE_U1):
+    case FROM_TO(MTYPE_B, MTYPE_U1):
+      TCON_v0(r) = TCON_v0(c);
+      break;
+
+    case FROM_TO(MTYPE_I8, MTYPE_B):
+      TCON_u0(r) = TCON_I8(c);
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_B):
+      TCON_u0(r) = TCON_U8(c);
+      break;
+    case FROM_TO(MTYPE_I4, MTYPE_B):
+    case FROM_TO(MTYPE_U4, MTYPE_B):
+    case FROM_TO(MTYPE_I2, MTYPE_B):
+    case FROM_TO(MTYPE_U2, MTYPE_B):
+    case FROM_TO(MTYPE_I1, MTYPE_B):
     case FROM_TO(MTYPE_U1, MTYPE_B):
-       TCON_v0(r) = TCON_v0(c);
-       break;
+      TCON_v0(r) = TCON_v0(c);
+      break;
 
     default:
       Is_True ( FALSE, ( "Targ-Conv can not convert from %s to %s",
@@ -3239,6 +3418,18 @@ Targ_Print ( char *fmt, TCON c )
 #endif /* !(defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) */
       break;
 
+    case MTYPE_C10:
+      if (fmt == NULL)
+	fmt = "%#21.16Lg, %#21.16Lg";
+      sprintf(r, fmt, TCON_R16(c), TCON_IR16(c));
+#if !(defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS))
+      if (re = strchr(r, 'e'))
+	*re = 'd';
+      if (re = strrchr(r, 'e'))
+	*re = 'd';
+#endif /* !(defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) */
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_CQ:
       {
@@ -3405,6 +3596,7 @@ Host_To_Targ_Float ( TYPE_ID ty, double v )
      TCON_R8(c) = v;
      return c;
 
+   case MTYPE_C10:
    case MTYPE_F10:
      TCON_clear(c);
      TCON_ty(c) = ty;
@@ -3468,6 +3660,7 @@ Host_To_Targ_Float_4 ( TYPE_ID ty, float v )
      TCON_R8(c) = v;
      return c;
 
+   case MTYPE_C10:
    case MTYPE_F10:
      TCON_clear(c);
      TCON_ty(c) = ty;
@@ -3561,6 +3754,7 @@ Make_Complex ( TYPE_ID ctype, TCON real, TCON imag )
      Set_TCON_IR8(c, TCON_R8(imag));
      break;
      
+  case MTYPE_C10:
   case MTYPE_CQ:
      Set_TCON_R16(c, TCON_R16(real));
      Set_TCON_IR16(c, TCON_R16(imag));
@@ -3589,6 +3783,11 @@ Extract_Complex_Real(TCON complex)
   case MTYPE_C8:
      TCON_ty(c) = MTYPE_F8;
      Set_TCON_R8(c, TCON_R8(complex));
+     return c;
+     
+  case MTYPE_C10:
+     TCON_ty(c) = MTYPE_F10;
+     Set_TCON_R16(c, TCON_R16(complex));
      return c;
      
   case MTYPE_CQ:
@@ -3620,6 +3819,11 @@ Extract_Complex_Imag(TCON complex)
      Set_TCON_R8(c, TCON_IR8(complex));
      return c;
      
+  case MTYPE_C10:
+     TCON_ty(c) = MTYPE_F10;
+     Set_TCON_R16(c, TCON_IR16(complex));
+     return c;
+
   case MTYPE_CQ:
      TCON_ty(c) = MTYPE_FQ;
      Set_TCON_R16(c, TCON_IR16(complex));
@@ -3908,65 +4112,95 @@ Host_To_Targ_Complex ( TYPE_ID ty, double real, double imag )
 {
   TCON c;
 
+  TCON_clear(c);
+  TCON_ty(c) = ty;
+
   switch (ty) {
 
    case MTYPE_C4:
-
-     TCON_clear(c);
-     TCON_ty(c) = ty;
      TCON_R4(c) = real;
      TCON_IR4(c) = imag;
      return c;
 
    case MTYPE_C8:
-
-     TCON_clear(c);
-     TCON_ty(c) = ty;
      TCON_R8(c) = real;
      TCON_IR8(c) = imag;
      return c;
-     
-   default:
 
-     ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), "Host_To_Targ_Complex" );
-     TCON_clear(c);
+   case MTYPE_C10:
+     TCON_R16(c) = real;
+     TCON_IR16(c) = imag;
+     return c;
+
+   default:
+     ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), __func__ );
      TCON_ty(c) = MTYPE_C4;
      return c;
   }
-} /* Host_To_Targ_Complex */
+}
+
+TCON
+Host_To_Targ_Complex_10 ( TYPE_ID ty, long double real, long double imag )
+{
+  TCON c;
+
+  TCON_clear(c);
+  TCON_ty(c) = ty;
+
+  switch (ty) {
+
+   case MTYPE_C4:
+     TCON_R4(c) = real;
+     TCON_IR4(c) = imag;
+     return c;
+
+   case MTYPE_C8:
+     TCON_R8(c) = real;
+     TCON_IR8(c) = imag;
+     return c;
+
+   case MTYPE_C10:
+     TCON_R16(c) = real;
+     TCON_IR16(c) = imag;
+     return c;
+
+   default:
+     ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), __func__ );
+     TCON_ty(c) = MTYPE_C4;
+     return c;
+  }
+}
 
 TCON
 Host_To_Targ_Complex_4 ( TYPE_ID ty, float real, float imag )
 {
   TCON c;
 
+  TCON_clear(c);
+  TCON_ty(c) = ty;
+
   switch (ty) {
-
    case MTYPE_C4:
-
-     TCON_clear(c);
-     TCON_ty(c) = ty;
      TCON_R4(c) = real;
      TCON_IR4(c) = imag;
      return c;
 
    case MTYPE_C8:
-
-     TCON_clear(c);
-     TCON_ty(c) = ty;
      TCON_R8(c) = real;
      TCON_IR8(c) = imag;
      return c;
-     
-   default:
 
-     ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), "Host_To_Targ_Complex_4" );
-     TCON_clear(c);
+   case MTYPE_C10:
+     TCON_R16(c) = real;
+     TCON_IR16(c) = imag;
+     return c;
+
+   default:
+     ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), __func__ );
      TCON_ty(c) = MTYPE_C4;
      return c;
   }
-} /* Host_To_Targ_Complex_4 */
-
+}
 
 
 TCON
@@ -4074,6 +4308,11 @@ static TCON Targ_Ipower(TCON base, UINT64 exp, BOOL neg_exp, BOOL *folded, TYPE_
       mpy_op = OPC_C8MPY;
       div_op = OPC_C8RECIP;
       TCON_R8(r) = 1.0;
+      break;
+    case MTYPE_C10:
+      mpy_op = OPC_C10MPY;
+      div_op = OPC_C10RECIP;
+      TCON_R16(r) = 1.0;
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_CQ:
@@ -4795,6 +5034,7 @@ Targ_Is_Integral ( TCON tc, INT64 *iv )
     /* TODO : fix for mongoose */
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_C10:
     case MTYPE_CQ:
       return FALSE;
 
@@ -4938,6 +5178,7 @@ BOOL Targ_Is_Zero ( TCON t )
     /* TODO : fix for mongoose */
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_C10:
     case MTYPE_CQ:
     case MTYPE_STR:
       return FALSE;
@@ -5115,6 +5356,7 @@ Hash_TCON ( TCON * t, UINT32 modulus )
       hash += TCON_v0(*t) + TCON_v1(*t);
       hash += TCON_iv0(*t) + TCON_iv1(*t);
       break;
+    case MTYPE_C10:
     case MTYPE_CQ:
       hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
       hash += TCON_iv0(*t) + TCON_iv1(*t) + TCON_iv2(*t) + TCON_iv3(*t);

@@ -218,6 +218,9 @@ Make_Const ( TCON c )
     case MTYPE_C8:
       opc = OPC_C8CONST;
       break;
+    case MTYPE_C10:
+      opc = OPC_C10CONST;
+      break;
     case MTYPE_CQ:
       opc = OPC_CQCONST;
       break;
@@ -341,6 +344,7 @@ WN * Make_Reduction_Identity ( INT32 opr, TYPE_ID mtype )
        case MTYPE_FQ:
        case MTYPE_C4:
        case MTYPE_C8:
+       case MTYPE_C10:
        case MTYPE_CQ:
 	 r = Make_Const ( Host_To_Targ_Float ( ntype, 0.0 ) );
 	 break;
@@ -372,6 +376,7 @@ WN * Make_Reduction_Identity ( INT32 opr, TYPE_ID mtype )
        case MTYPE_FQ:
        case MTYPE_C4:
        case MTYPE_C8:
+       case MTYPE_C10:
        case MTYPE_CQ:
 	 r = Make_Const ( Host_To_Targ_Float ( ntype, 1.0 ) );
 	 break;

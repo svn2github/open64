@@ -137,12 +137,17 @@ static TYPE_ID Machine_Next_Alignment[] =
  /* MTYPE_FQ	  */	MTYPE_UNKNOWN,	
  /* MTYPE_M	  */	MTYPE_UNKNOWN,	
  /* MTYPE_C4	  */	MTYPE_C8,	
+#ifdef TARG_IA64
+ /* MTYPE_C8	  */	MTYPE_C10,	
+#else
  /* MTYPE_C8	  */	MTYPE_CQ,	
+#endif
  /* MTYPE_CQ	  */	MTYPE_UNKNOWN,	
  /* MTYPE_V	  */	MTYPE_UNKNOWN,
  /* MTYPE_BS	  */	MTYPE_UNKNOWN,
  /* MTYPE_A4	  */	MTYPE_UNKNOWN,
- /* MTYPE_A8	  */	MTYPE_UNKNOWN
+ /* MTYPE_A8	  */	MTYPE_UNKNOWN,
+ /* MTYPE_C10	  */	MTYPE_CQ
 };
 
 static TYPE_ID Machine_Prev_Alignment[] =
@@ -159,11 +164,7 @@ static TYPE_ID Machine_Prev_Alignment[] =
  /* MTYPE_U8	  */	MTYPE_U4,
  /* MTYPE_F4	  */	MTYPE_UNKNOWN,
  /* MTYPE_F8	  */	MTYPE_F4,
-#ifdef TARG_IA64
  /* MTYPE_F10	  */	MTYPE_F8,
-#else
- /* MTYPE_F10	  */	MTYPE_UNKNOWN,
-#endif
  /* MTYPE_F16	  */	MTYPE_UNKNOWN,
  /* MTYPE_STR	  */	MTYPE_UNKNOWN,
 #ifdef TARG_IA64
@@ -174,11 +175,16 @@ static TYPE_ID Machine_Prev_Alignment[] =
  /* MTYPE_M	  */	MTYPE_UNKNOWN,
  /* MTYPE_C4	  */	MTYPE_UNKNOWN,
  /* MTYPE_C8	  */	MTYPE_C4,
+#ifdef TARG_IA64
+ /* MTYPE_CQ	  */	MTYPE_C10,
+#else
  /* MTYPE_CQ	  */	MTYPE_C8,
+#endif
  /* MTYPE_V	  */	MTYPE_UNKNOWN,
  /* MTYPE_B	  */	MTYPE_UNKNOWN,
- /* MTYPE_U4	  */	MTYPE_UNKNOWN,
- /* MTYPE_U8	  */	MTYPE_UNKNOWN
+ /* MTYPE_A4	  */	MTYPE_UNKNOWN,
+ /* MTYPE_A8	  */	MTYPE_UNKNOWN,
+ /* MTYPE_C10	  */	MTYPE_C8
 };
 
 
@@ -332,6 +338,8 @@ TYPE_ID Mtype_complex_to_real(TYPE_ID type)
 	return MTYPE_F4;
     case MTYPE_C8:
 	return MTYPE_F8;
+    case MTYPE_C10:
+	return MTYPE_F10;
     case MTYPE_CQ:
 	return MTYPE_FQ;
     }

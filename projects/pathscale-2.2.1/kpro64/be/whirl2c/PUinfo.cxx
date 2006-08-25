@@ -141,6 +141,7 @@ typedef enum Preg_Usage_Kind
    PREG_AS_QUAD,
    PREG_AS_C4,
    PREG_AS_C8,
+   PREG_AS_C10,
    PREG_AS_CQ       /* LAST_PREG_USAGE_KIND */
 } PREG_USAGE_KIND;
 
@@ -166,6 +167,7 @@ static const MTYPE Ukind_to_Mtype[LAST_PREG_USAGE_KIND+1] =
    MTYPE_FQ, /* PREG_AS_QUAD */
    MTYPE_C4, /* PREG_AS_C4 */
    MTYPE_C8, /* PREG_AS_C8 */
+   MTYPE_C10, /* PREG_AS_C10 */
    MTYPE_CQ  /* PREG_AS_CQ */
 };
 
@@ -264,6 +266,9 @@ Mtype_to_Ukind(MTYPE mtype)
       break;
    case MTYPE_C8: 
       ukind = PREG_AS_C8;
+      break;
+   case MTYPE_C10: 
+      ukind = PREG_AS_C10;
       break;
    case MTYPE_CQ: 
       ukind = PREG_AS_CQ;

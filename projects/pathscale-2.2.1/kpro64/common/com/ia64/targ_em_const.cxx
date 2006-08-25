@@ -336,6 +336,24 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 	break;
 	}
 
+      case MTYPE_C10: {
+	INT i;
+	char *p = (char *) &TCON_R16(tc);
+	fprintf(fl, "\t%s\t\"", AS_STRING);
+	for (i = 0; i < sizeof(TCON_R16(tc)); i++)
+		fprintf(fl, "\\x%02x", *(p + i));
+	fprintf(fl, "\"\t%s complex long double real part %#Lg\n",
+	    ASM_CMNT, TCON_R16(tc));
+	p = (char *) &TCON_IR16(tc);
+	fprintf(fl, "\t%s\t\"", AS_STRING);
+	for (i = 0; i < sizeof(TCON_IR16(tc)); i++)
+		fprintf(fl, "\\x%02x", *(p + i));
+	fprintf(fl, "\"\t%s complex long double imag part %#Lg\n",
+	    ASM_CMNT, TCON_IR16(tc));
+	--rc;
+	break;
+      }
+
       case MTYPE_CQ: {
 	INT i;
         char *p = (char *) & TCON_R16(tc);
@@ -465,6 +483,16 @@ Em_Targ_Emit_Const (void *scn,	    /* Section to which to write */
             Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
         }
         break;
+
+    case MTYPE_C10:
+	for (count = 0; count < rc; count++) {
+	    long double value;
+	    value = TCON_R16(tc);
+	    Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
+	    value = TCON_IR16(tc);
+	    Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
+	}
+	break;
 
     case MTYPE_FQ:
 	for (count = 0; count < rc; count++) {

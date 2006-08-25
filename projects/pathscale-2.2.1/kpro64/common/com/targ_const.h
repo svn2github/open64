@@ -314,8 +314,9 @@ extern double Targ_To_Host_Float ( TCON fvalue );
 extern QUAD_TYPE Targ_To_Host_Quad ( TCON fvalue );
 
 /* Convert host complex value to a TCON of given type: */
-extern TCON Host_To_Targ_Complex_4 ( TYPE_ID ctype, float real, float imag );
 extern TCON Host_To_Targ_Complex ( TYPE_ID ctype, double real, double imag );
+extern TCON Host_To_Targ_Complex_10 ( TYPE_ID ctype, long double, long double );
+extern TCON Host_To_Targ_Complex_4 ( TYPE_ID ctype, float real, float imag );
 extern TCON Host_To_Targ_Complex_Quad ( QUAD_TYPE real, QUAD_TYPE imag );
 
 /* Make complex TCON from two TCONs representing real and imaginary parts. */

@@ -249,6 +249,7 @@ inline BOOL SIMP_Check (TYPE_ID rtype, simpnode x)
     if (!MTYPE_is_float (tcon_type) && !MTYPE_is_complex (tcon_type))
       return FALSE;
     if (rtype == tcon_type ||
+        (rtype == MTYPE_F10 && tcon_type == MTYPE_C10) ||
         (rtype == MTYPE_F8 && tcon_type == MTYPE_C8) ||
 	(rtype == MTYPE_F4 && tcon_type == MTYPE_C4))
       return TRUE;
@@ -375,7 +376,18 @@ inline TCON SIMP_Flt_ConstVal(simpnode x)
 
     if (rtype != tcon_type)
     {
-      if (rtype == MTYPE_F8 && tcon_type == MTYPE_C8)
+      if (rtype == MTYPE_F10 && tcon_type == MTYPE_C10)
+      {
+	TCON c;
+	if (SIMPNODE_load_offset (x) == 0)
+	  c = Extract_Complex_Real (ST_tcon_val (SIMPNODE_st(x)));
+	else if (SIMPNODE_load_offset (x) == 16)
+	  c = Extract_Complex_Imag (ST_tcon_val (SIMPNODE_st(x)));
+	else Fail_FmtAssertion ("Loading real from outside of complex value");
+
+	return c;
+      }
+      else if (rtype == MTYPE_F8 && tcon_type == MTYPE_C8)
       {
         TCON c;
         if (SIMPNODE_load_offset (x) == 0)
@@ -416,7 +428,18 @@ inline TCON SIMP_Flt_ConstVal(simpnode x)
     int ofst = SIMPNODE_const_val (SIMPNODE_array_index (arr, 0)) * 
                SIMPNODE_element_size (arr) + SIMPNODE_load_offset (base);
 
-    if (rtype == MTYPE_F8 && tcon_type == MTYPE_C8)
+    if (rtype == MTYPE_F10 && tcon_type == MTYPE_C10)
+    {
+      TCON c;
+      if (ofst == 0)
+	c = Extract_Complex_Real (ST_tcon_val (SIMPNODE_st(base)));
+      else if (ofst == 16)
+	c = Extract_Complex_Imag (ST_tcon_val (SIMPNODE_st(base)));
+      else Fail_FmtAssertion ("Loading real from outside of complex value");
+
+      return c;
+    }
+    else if (rtype == MTYPE_F8 && tcon_type == MTYPE_C8)
     {
       TCON c;
       if (ofst == 0)

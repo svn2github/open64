@@ -1424,7 +1424,7 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
 #endif
         case MTYPE_C8 : case MTYPE_FQ: 
 	  load_size = 16; break;
-        case MTYPE_CQ :
+	case MTYPE_C10: case MTYPE_CQ:
 	  load_size = 32; break;
         default: return;
       }
