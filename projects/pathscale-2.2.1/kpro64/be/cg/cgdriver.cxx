@@ -316,11 +316,11 @@ static OPTION_DESC Options_GRA[] = {
     "Turn on/off recomputation of global liveness info [Default FALSE]"
   },    
   { OVK_NAME,   OV_INTERNAL, TRUE,"call_split_freq", "",
-    0, 0, 0,	&GRA_call_split_freq_string,
+    0, 0, 0,	&GRA_call_split_freq_string, NULL,
     "Threshold frequency of block containing a call below which a caller saved register will be preferred and live ranges spanning it will be split [Default .1]"
   },    
   { OVK_NAME,   OV_INTERNAL, TRUE,"spill_count_factor", "",
-    0, 0, 0,	&GRA_spill_count_factor_string,
+    0, 0, 0,	&GRA_spill_count_factor_string, NULL,
     "Factor by which count of spills affects the priority of a split.  Only valid under OPT:space [Default 0.5]"
   },    
   
