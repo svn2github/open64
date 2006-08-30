@@ -1,6 +1,6 @@
 /*
 
-  Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+  Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -368,7 +368,11 @@ int main (int	 argc,
 
    PRINT_GL_TBL;              /* Prints to debug_file ifdef _DEBUG and -u gl */
    PRINT_GN_TBL;              /* Prints to debug_file ifdef _DEBUG and -u gn */
-
+#if defined(_DEBUG) && defined(KEY) /* Bug 8117 */
+   if (dump_flags.arg_passing) {                                  \
+      print_arg_passing(stderr);                                  \
+   }
+#endif /* defined(_DEBUG) && defined(KEY) Bug 8117 */
 
 PREPROCESS_ONLY_SKIP:
 
@@ -1159,6 +1163,25 @@ static void	make_table_changes(void)
          }
       }
    }
+
+#ifdef KEY /* Bug 5710 */
+   /* eq_ne_on_logicals_tbl is same as eq_ne_tbl, but as an extension also
+    * allows the operations .eq. and .ne. on logical operands, as standard does 
+    * via and_or_tbl (which is used for .eqv. and .neqv.) It's not clear why
+    * preceding code corrects LOGICAL_DEFAULT_TYPE for eq_ne_tbl but
+    * not and_or_tbl: however, we echo whatever those tables do. */
+   for (i = 0; i < Num_Linear_Types; i++ ) {
+      for (k = 0; k < Num_Linear_Types; k++ ) {
+	 int aot_result = and_or_tbl[i][k].type;
+	 if (aot_result >= Logical_1 && aot_result <= Logical_8) {
+	   eq_ne_on_logical_tbl[i][k] = and_or_tbl[i][k];
+	 }
+	 else {
+	   eq_ne_on_logical_tbl[i][k] = eq_ne_tbl[i][k];
+	 }
+      }
+   }
+#endif /* KEY Bug 5710 */
 
    TRACE (Func_Exit, "make_table_changes", NULL);
 

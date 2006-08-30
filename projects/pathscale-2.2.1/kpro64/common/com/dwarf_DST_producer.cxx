@@ -1189,6 +1189,63 @@ DST_mk_common_incl( USRCPOS      decl,
    return DST_init_info(info_idx, DW_TAG_common_inclusion, flag, attr_idx);
 }
 
+#ifdef KEY /* Bug 3507 */
+/* create a DW_TAG_imported_declaration and return its idx 
+ *
+*/
+DST_INFO_IDX 
+DST_mk_imported_decl( char *mangled_name,
+		    char *name)
+{
+   DST_INFO_IDX    info_idx;
+   DST_ATTR_IDX    attr_idx;
+   DST_IMPORTED_DECL *attr;
+
+#if !(defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER))
+   DST_enter_mk(DST_making_dbg_info, last_info_idx);
+#endif
+   
+   info_idx = DST_mk_info();
+   attr_idx = DST_mk_attr(DST_IMPORTED_DECL);
+   attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_IMPORTED_DECL);
+   /* I'm guessing the way to set this is to import a symbol, derived
+    * from the mangled name, which has been planted in the .debug_info
+    * section of the exporting .o file at the start of the DW_TAG_module. */
+   DST_IMPORTED_DECL_import(attr) /* = ??? */;
+   DST_IMPORTED_DECL_name(attr) = DST_mk_name(name);
+   return DST_init_info(info_idx, DW_TAG_imported_declaration, DST_no_flag,
+     attr_idx);
+}
+
+/* create a DW_TAG_imported_declaration and return its idx 
+ *
+*/
+DST_INFO_IDX 
+DST_mk_module(USRCPOS decl, /* source location */
+		  char *name)
+{
+   DST_INFO_IDX    info_idx;
+   DST_ATTR_IDX    attr_idx;
+   DST_flag        flag = DST_no_flag;
+   DST_MODULE *attr;
+
+#if !(defined(_SUPPORT_IPA) || defined(_STANDALONE_INLINER))
+   DST_enter_mk(DST_making_dbg_info, last_info_idx);
+#endif
+   
+   info_idx = DST_mk_info();
+   attr_idx = DST_mk_attr(DST_MODULE);
+   attr = DST_ATTR_IDX_TO_PTR(attr_idx, DST_MODULE);
+   DST_MODULE_decl(attr) = decl;
+   DST_MODULE_name(attr) = DST_mk_name(name);
+   DST_MODULE_first_child(attr) = DST_INVALID_IDX;
+   DST_MODULE_last_child(attr) = DST_INVALID_IDX;
+   DST_SET_declaration(flag);
+   DST_INFO_IDX t =
+     DST_init_info(info_idx, DW_TAG_module, flag, attr_idx);
+   return t;
+}
+#endif /* KEY Bug 3507 */
 
 /* Creates a DW_TAG_lexical_block entry and returns its idx.
 */

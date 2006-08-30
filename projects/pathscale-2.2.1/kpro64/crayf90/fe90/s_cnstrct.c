@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -700,6 +700,16 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
 
    if (exp_desc->rank   == 0          &&
        target_array_idx == NULL_IDX   &&
+#ifdef KEY /* Bug 572 */
+       /* We've modified the "false" branch of this "if" to handle constant
+        * pointers correctly, so we force them to take that branch. If that
+	* ever turns out not to work in some circumstance (e.g. because it
+	* creates a temp) then we'll need to figure out how to modify this
+	* branch, which isn't obvious--is it safe to create a typeless constant
+	* to hold the pointer if the constant is not associated with a temp
+	* having the correct type? */
+       (!(exp_desc->constant && exp_desc->pointer)) &&
+#endif /* KEY Bug 572 */
        exp_desc->type   != Structure) {
 
       /* create normal CN entry */
@@ -774,6 +784,11 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
       }
       else {
          ok = interpret_constructor(top_opnd, &loc_exp_desc, FALSE, &zero);
+#ifdef KEY /* Bug 572 */
+         if (!ok) {
+	   return ok;
+	 }
+#endif /* KEY Bug 572 */
         
          if (loc_exp_desc.constant) {
 
@@ -854,6 +869,20 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
       ok = interpret_constructor(top_opnd, exp_desc, TRUE, &loc_element);
 
       if (exp_desc->constant) {
+#ifdef KEY /* Bug 572 */
+	 /* If this is a constant pointer, e.g. "parameter_x%ptr_component_y",
+	  * we need to use the size of the dope vector, not the size of the
+	  * target of the pointer. */
+	 int top_idx, struct_idx;
+         if (exp_desc->pointer &&
+	    OPND_FLD((*top_opnd)) == IR_Tbl_Idx &&
+	    IR_FLD_L(top_idx = OPND_IDX((*top_opnd))) == IR_Tbl_Idx &&
+	    IR_FLD_R(struct_idx = IR_IDX_L(top_idx)) == AT_Tbl_Idx) {
+	    bits_in_constructor += stor_bit_size_of(IR_IDX_R(struct_idx),
+	      TRUE, FALSE).constant[0];
+	 }
+	 else
+#endif /* KEY Bug 572 */
          increment_count(exp_desc);
       }
 
@@ -1136,6 +1165,28 @@ boolean fold_aggragate_expression(opnd_type	*top_opnd,
          }
       }
 
+#ifdef KEY /* Bug 572 */
+      /* It's a pointer, e.g. "parameter_x%ptr_component_y", so we must
+       * mark the temporary accordingly. We must also put a "Dv_Deref_Opr"
+       * atop it, because later semantics processing demands that every
+       * pointer will have a "Dv_Deref_Opr", so that it can remove the
+       * operator if the context doesn't dictate the dereferencing. */
+      if (exp_desc->pointer) {
+	 ATD_POINTER(tmp_idx) = ATD_IM_A_DOPE(tmp_idx) = TRUE;
+	 int save_tmp_idx = tmp_idx;
+	 NTR_IR_TBL(tmp_idx);
+	 IR_OPR(tmp_idx)          = Dv_Deref_Opr;
+	 IR_LINE_NUM(tmp_idx)     = line;
+	 IR_COL_NUM(tmp_idx)      = col;
+	 IR_TYPE_IDX(tmp_idx)	= exp_desc->type_idx;
+	 IR_FLD_L(tmp_idx)        = AT_Tbl_Idx;
+	 IR_IDX_L(tmp_idx)        = save_tmp_idx;
+	 IR_LINE_NUM_L(tmp_idx)   = line;
+	 IR_COL_NUM_L(tmp_idx)    = col;
+	 OPND_FLD((*top_opnd)) = IR_Tbl_Idx;
+      }
+      else
+#endif /* KEY Bug 572 */
       OPND_FLD((*top_opnd)) = AT_Tbl_Idx;
       OPND_IDX((*top_opnd)) = tmp_idx;
       OPND_LINE_NUM((*top_opnd)) = line;
@@ -1462,6 +1513,22 @@ static boolean interpret_constructor(opnd_type		*top_opnd,
                   }
 
                }
+#ifdef KEY /* Bug 7387 */
+	       /* Special case where the constant is "null()" */
+	       else if (ATD_POINTER(attr_idx) &&
+		 ATD_CLASS(attr_idx) == Compiler_Tmp &&
+                 ATD_TMP_INIT_NOT_DONE(attr_idx) &&
+                 ATD_FLD(attr_idx) == CN_Tbl_Idx) {
+		 k = TARGET_BITS_TO_WORDS(the_cn_bit_offset);
+		 for (i = 0;
+		   i < STORAGE_WORD_SIZE(TYP_BIT_LEN(CN_TYPE_IDX(ATD_TMP_IDX(attr_idx))));
+		   i += 1, k += 1) {
+		   CP_CONSTANT(CN_POOL_IDX(the_cn_idx) + k) = 
+			       CP_CONSTANT(CN_POOL_IDX(param_cn_idx) + i);
+		 }
+		 the_cn_bit_offset += i * TARGET_BITS_PER_WORD;
+	       }
+#endif /* KEY Bug 7387 */
                else {
 
                   k = TARGET_BITS_TO_WORDS(the_cn_bit_offset);
@@ -3320,6 +3387,9 @@ DONE:
 
 }  /* interpret_implied_do */
 
+#ifdef KEY /* Bug 572 */
+boolean constant_ptr_ok = FALSE;
+#endif /* KEY Bug 572 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
@@ -3414,7 +3484,6 @@ static boolean interpret_ref(opnd_type		*top_opnd,
 
    exp_desc->type_idx	= IR_TYPE_IDX(ir_idx);
    exp_desc->type	= TYP_TYPE(exp_desc->type_idx);
-
    exp_desc->linear_type = TYP_LINEAR(exp_desc->type_idx);
 
    if (exp_desc->type == Character &&
@@ -3424,7 +3493,6 @@ static boolean interpret_ref(opnd_type		*top_opnd,
                             Le_Opr)) {
       exp_desc->linear_type = Short_Char_Const;
    }
-
 
    exp_desc->rank = rank;
    exp_desc->constant = TRUE;
@@ -3474,6 +3542,74 @@ static boolean interpret_ref(opnd_type		*top_opnd,
                                TYP_IDX(exp_desc->type_idx)));
          break;
    }
+
+#ifdef KEY /* Bug 572 */
+   /* According to the F95 standard, an entity can't have both the parameter
+    * and target attributes; and an entity can't have both the parameter and
+    * pointer attributes. But an entity which has the parameter attribute
+    * may be a structure whose component has the pointer attribute. A reference
+    * like "parameter_x%ptr_component_y" will bring us to this spot, e.g.:
+    *
+    *   type x
+    *     integer, pointer :: ptr_component_y
+    *   end type
+    *   type(x), parameter :: parameter_x = x(null())
+    *   print *, associated(parameter_x%ptr_component_y)
+    *
+    * I believe that a constant pointer is always null. An entity cannot have
+    * both "parameter" and "target" attributes, so there's no constant target
+    * which a constant pointer could point to.
+    *
+    * The strategy for processing the semantics of pointer references
+    * throughout the compiler is that expr_semantics() doesn't know whether to
+    * dereference a pointer or not, so it assumes that
+    * it should always dereference it. If the caller of expr_semantics()
+    * knows otherwise, it may call expr_semantics() and then undo the
+    * dereferencing. See, for example, assignment_stmt_semantics(): if it's a
+    * "=>" assignment, the code first calls expr_semantics() and then calls
+    * lower_ptr_asg() to remove the unwanted Dv_Deref_Opr which expr_semantics()
+    * added.
+    *
+    * That strategy doesn't work for a constant pointer. If the context really
+    * implies dereference, it's an error (because a constant pointer is always
+    * null.) If the context doesn't imply dereference, we need to know that
+    * here so that we can generate a constant representing a null dope vector.
+    *
+    * Complicating things is the fact that fold_aggragate_expression() is
+    * called from interpret_constructor() for two very purposes--to create
+    * a structure constructor, or to evaluate a component of a constant
+    * structure--and isn't told which.
+    *
+    * The compiler was apparently designed under the (pre-F95) assumption that
+    * you could never have a constant pointer (that restriction appeared at the
+    * end of section 4.4.4 in F90.) To fix this as unobtrusively as possible,
+    * we normally issue an error message, to handle the general case in which
+    * a pointer in an expression is dereferenced. We rely on the caller of
+    * expr_semantics() to set "constant_ptr_ok" in the situations where
+    * dereference is not implied and we should generate a null pointer value.
+    */
+   int component_attr = NULL_IDX;
+   if (Struct_Opr == IR_OPR(ir_idx) && AT_Tbl_Idx == IR_FLD_R(ir_idx) &&
+     ATD_POINTER(component_attr = IR_IDX_R(ir_idx))) {
+     exp_desc->pointer = TRUE;
+     if (constant_ptr_ok) {
+       num_bits = stor_bit_size_of(component_attr, TRUE, FALSE).constant[0];
+       if (Character == exp_desc->type) {
+	 if (CN_Tbl_Idx == TYP_FLD(exp_desc->type_idx)) {
+	   char_result_len = CN_INT_TO_C(TYP_IDX(exp_desc->type_idx));
+	 }
+	 else {
+	   /* If it's ever not CN_Tbl_Idx, we need to add code for that here */
+	   PRINTMSG(IR_LINE_NUM(ir_idx), 1024, Internal, IR_COL_NUM(ir_idx));
+	 }
+       }
+     }
+     else if (!count) { /* Don't generate the error twice */
+       PRINTMSG(IR_LINE_NUM(ir_idx), 1677, Error, IR_COL_NUM(ir_idx));
+       ok = FALSE;
+     }
+   }
+#endif /* KEY Bug 572 */
 
    if (count) {
 

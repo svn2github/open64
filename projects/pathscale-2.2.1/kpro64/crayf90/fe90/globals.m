@@ -456,6 +456,13 @@
 # define SET_NUMTHREADS_NAME_LEN	18
 /* OPND ACCESS */
 
+#ifdef KEY /* Bug 8117 */
+# define COPYIN_ENTRY			"_Copyin"
+# define COPYIN_NAME_LEN		((sizeof COPYIN_ENTRY) - 1)
+# define COPYOUT_ENTRY			"_Copyout"
+# define COPYOUT_NAME_LEN		((sizeof COPYOUT_ENTRY) - 1)
+#endif /* KEY Bug 8117 */
+
 # define OPND_LINE_NUM(OPND)		OPND.line_num
 # define OPND_COL_NUM(OPND)		OPND.col_num
 # define OPND_FLD(OPND)			OPND.fld

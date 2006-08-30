@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -21,13 +21,17 @@
  * Temple Place - Suite 330, Boston MA 02111-1307, USA.
  */
 
-#ifndef F90_VERSION_H
-#define F90_VERSION_H
-extern const char *const version_string;
-extern const char *const cset_rev;
-extern const char *const cset_key;
-extern const char *const build_root;
-extern const char *const build_host;
-extern const char *const build_user;
-extern const char *const mfef90_compiler_build_date;
-#endif /* ! F90_VERSION_H */
+#ifndef DECORATE_UTILS_INCLUD
+#define DECORATE_UTILS_INCLUD
+
+extern void parse_decorate_script(const char *);
+
+#if defined(__cplusplus)
+extern "C" {
+#endif /* __cplusplus */
+const char *get_symbol_decoration(char *key);
+#if defined(__cplusplus)
+}
+#endif /* __cplusplus */
+
+#endif

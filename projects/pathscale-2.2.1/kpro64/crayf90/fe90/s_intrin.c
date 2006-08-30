@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1018,9 +1018,21 @@ void    erf_intrinsic(opnd_type     *result_opnd,
                  FALSE);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
-   COPY_OPND(opnd, IR_OPND_R(ir_idx));
-   final_arg_work(&opnd, IR_IDX_L(ir_idx), IR_LIST_CNT_R(ir_idx), NULL);
-   COPY_OPND(IR_OPND_R(ir_idx), opnd);
+#ifdef KEY /* Bug 4232 */
+   /* If we're defining a statement function X which calls some
+    * other function Y, there's no need to generate code to copy
+    * into temp(s) the actual argument(s) to Y, because we will
+    * do that when the user program calls the statement function.
+    * It could be harmful to do that now, since the actual arg to
+    * Y might be a dummy arg of X, which has no actual address. */
+   if (!defining_stmt_func) {
+#endif /* KEY Bug 4232 */
+     COPY_OPND(opnd, IR_OPND_R(ir_idx));
+     final_arg_work(&opnd, IR_IDX_L(ir_idx), IR_LIST_CNT_R(ir_idx), NULL);
+     COPY_OPND(IR_OPND_R(ir_idx), opnd);
+#ifdef KEY /* Bug 4232 */
+   }
+#endif /* KEY Bug 4232 */
 # endif
 
    IR_TYPE_IDX(ir_idx) = arg_info_list[info_idx1].ed.type_idx;
@@ -4629,9 +4641,16 @@ void    length_intrinsic(opnd_type     *result_opnd,
                  FALSE);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
-   COPY_OPND(opnd, IR_OPND_R(ir_idx));
-   final_arg_work(&opnd, IR_IDX_L(ir_idx), IR_LIST_CNT_R(ir_idx), NULL);
-   COPY_OPND(IR_OPND_R(ir_idx), opnd);
+#ifdef KEY /* Bug 4232 */
+   /* See comment in erf_intrinsic() */
+   if (!defining_stmt_func) {
+#endif /* KEY Bug 4232 */
+     COPY_OPND(opnd, IR_OPND_R(ir_idx));
+     final_arg_work(&opnd, IR_IDX_L(ir_idx), IR_LIST_CNT_R(ir_idx), NULL);
+     COPY_OPND(IR_OPND_R(ir_idx), opnd);
+#ifdef KEY /* Bug 4232 */
+   }
+#endif /* KEY Bug 4232 */
 
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
    IR_RANK(ir_idx) = res_exp_desc->rank;
@@ -4750,9 +4769,16 @@ void    unit_intrinsic(opnd_type     *result_opnd,
                  FALSE);
 
 # if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX))
-   COPY_OPND(opnd, IR_OPND_R(ir_idx));
-   final_arg_work(&opnd, IR_IDX_L(ir_idx), IR_LIST_CNT_R(ir_idx), NULL);
-   COPY_OPND(IR_OPND_R(ir_idx), opnd);
+#ifdef KEY /* Bug 4232 */
+   /* See comment in erf_intrinsic() */
+   if (!defining_stmt_func) {
+#endif /* KEY Bug 4232 */
+     COPY_OPND(opnd, IR_OPND_R(ir_idx));
+     final_arg_work(&opnd, IR_IDX_L(ir_idx), IR_LIST_CNT_R(ir_idx), NULL);
+     COPY_OPND(IR_OPND_R(ir_idx), opnd);
+#ifdef KEY /* Bug 4232 */
+   }
+#endif /* KEY Bug 4232 */
 
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
    IR_RANK(ir_idx) = res_exp_desc->rank;
@@ -8448,6 +8474,51 @@ void    ishft_intrinsic(opnd_type     *result_opnd,
                    Shifta_Opr, typeless_idx, line, column,
                        NO_Tbl_Idx, NULL_IDX);
 
+#ifdef KEY /* Bug 8840 */
+   /* The horribly complicated sequence above doesn't work right (on X86 and
+    * X86_64, anyway) when the magnitude of shift amount is greater than or
+    * equal to the bit size of the data. Putting "shfta" inside a conditional
+    * move worked badly because shfta itself expands to a conditional move,
+    * and the back end generated jumps for the outer one, so we use bitwise
+    * AND with a mask instead.
+    *
+    * ishft(i, n) =>
+    *   ((abs(n) >= 32) ? 0 : -1) & shfta(i, n)
+    */
+   int abs_width_idx = gen_ir(OPND_FLD(opnd), OPND_IDX(opnd), Abs_Opr,
+     arg_info_list[info_idx2].ed.type_idx, line, column, NO_Tbl_Idx,
+     NULL_IDX);
+   int ge_width_idx = gen_ir(IR_Tbl_Idx, abs_width_idx, Ge_Opr,
+     LOGICAL_DEFAULT_TYPE, line, column, CN_Tbl_Idx, cn_idx2);
+   NTR_IR_LIST_TBL(first_idx);
+   IL_ARG_DESC_VARIANT(first_idx) = TRUE;
+   IL_FLD(first_idx) = CN_Tbl_Idx;
+   IL_IDX(first_idx) = CN_INTEGER_ZERO_IDX;
+   IL_LINE_NUM(first_idx) = line;
+   IL_COL_NUM(first_idx) =  column;
+
+   NTR_IR_LIST_TBL(second_idx);
+   IL_ARG_DESC_VARIANT(second_idx) = TRUE;
+   IL_FLD(second_idx) = CN_Tbl_Idx;
+   IL_IDX(second_idx) = CN_INTEGER_NEG_ONE_IDX;
+   IL_LINE_NUM(second_idx) = line;
+   IL_COL_NUM(second_idx) =  column;
+
+   NTR_IR_LIST_TBL(third_idx);
+   IL_ARG_DESC_VARIANT(third_idx) = TRUE;
+   IL_FLD(third_idx) = IR_Tbl_Idx;
+   IL_IDX(third_idx) = ge_width_idx;
+
+   IL_NEXT_LIST_IDX(first_idx) = second_idx;
+   IL_NEXT_LIST_IDX(second_idx) = third_idx;
+
+   int cmove_idx = gen_ir(IL_Tbl_Idx, first_idx, Cvmgt_Opr, typeless_idx, line,
+     column, NO_Tbl_Idx, NULL_IDX);
+
+   shifta_idx = gen_ir(IR_Tbl_Idx, cmove_idx, Band_Opr, typeless_idx, line,
+     column, IR_Tbl_Idx, shifta_idx);
+#endif /* KEY Bug 8840 */
+
    IR_OPR(ir_idx) = Cvrt_Opr;
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
    IR_FLD_L(ir_idx) = IR_Tbl_Idx;
@@ -9348,6 +9419,32 @@ void   system_clock_intrinsic(opnd_type     *result_opnd,
    list_idx2 = IL_NEXT_LIST_IDX(list_idx1);
    list_idx3 = IL_NEXT_LIST_IDX(list_idx2);
 
+#ifdef KEY /* Bug 6009 */
+   /* Before the fix, the specific (singly-indented) intrin_tbl entries
+    * under "system_clock" had zero in the intrin_enum member, so this function
+    * was never called and, because.the loop that processes specific entries
+    * inside complete_intrinsic_definition requires_a nonzero intrin_enum to
+    * recognize each specific entry, the integer*8 version was not created and
+    * integer*8 arguments were not allowed. The integer*4 version bypassed
+    * the call to (*intrinsic_semantics[])() but somehow emitted a working
+    * function call anyway.
+    *
+    * The integer*4 specific fcn actually had I1_MASK|I2_MASK|I4_MASK on each
+    * argument, but the runtime library function would erroneously store
+    * integer*4 values into integer*1 and integer*2 arguments.
+    *
+    * The integer*4 specific entry also has Integer*4 in the data_type member,
+    * and the integer*8 specific entry had Integer_8.
+    *
+    * I've removed all this strangeness; I wish it was an almost-working
+    * attempt to allow all combinations of integer argument types, but I
+    * don't see any evidence of that. And the tests below, which seem
+    * inexplicable (why not perform the check by putting I4_MASK in each
+    * argument entry?) weren't getting executed before, so I've removed
+    * them because they cause trouble when calling the integer*8 specific
+    * in -i4 mode.
+    */
+#else /* KEY Bug 6009 */
    if ((list_idx3 != NULL_IDX) && (IL_IDX(list_idx3) != NULL_IDX)) {
       info_idx3 = IL_ARG_DESC_IDX(list_idx3);
       if (arg_info_list[info_idx3].ed.type_idx != INTEGER_DEFAULT_TYPE) {
@@ -9371,6 +9468,7 @@ void   system_clock_intrinsic(opnd_type     *result_opnd,
                   arg_info_list[info_idx1].col);
       }
    }     
+#endif /* KEY Bug 6009 */
 
    /* must reset foldable and will_fold_later because there is no */
    /* folder for this intrinsic in constructors.                  */
@@ -15778,6 +15876,14 @@ void    pack_intrinsic(opnd_type     *result_opnd,
    res_exp_desc->rank = 1;
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
    IR_RANK(ir_idx) = res_exp_desc->rank;
+
+#ifdef KEY /* Bug 8165 */
+   /* Seems like this is a general problem which ought to be solved for
+    * intrinsics in general, but for now we'll solve it for this one. */
+   if (Character == res_exp_desc->type) {
+     res_exp_desc->char_len = arg_info_list[info_idx1].ed.char_len;
+   }
+#endif /* KEY Bug 8165 */
 
    /* must reset foldable and will_fold_later because there is no */
    /* folder for this intrinsic in constructors.                  */

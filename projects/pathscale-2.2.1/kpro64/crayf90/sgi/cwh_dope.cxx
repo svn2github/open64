@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -403,6 +403,9 @@ fei_set_dv_hdr_fld(INT32 field)
    }
    mask_complement = ~mask_complement;
       
+#ifdef KEY /* Bug 8128 */
+   int tos_class = cwh_stk_get_class();
+#endif /* KEY Bug 8128 */
    switch(cwh_stk_get_class()) {
     case ST_item:
     case ST_item_whole_array:
@@ -474,6 +477,19 @@ fei_set_dv_hdr_fld(INT32 field)
       } else {
          addr_ty = Be_Type_Tbl(ty);
       }
+#ifdef KEY /* Bug 8128 */
+      /*
+       * Special case: array of structure containing a member of type pointer.
+       * Can't generate a whole-array or array-section reference to such a
+       * member explicitly in the source program because you get error 408,
+       * "This pointer is to the right of a part-ref with nonzero rank." But
+       * it comes up implicitly when the front end tries to generate dope info.
+       */
+      if (FLD_item == tos_class && 0 < WN_kid_count(wn) &&
+         OPR_ARRSECTION == WN_operator(WN_kid(wn, 0))) {
+	 wn = F90_Wrap_ARREXP(wn) ;
+      }
+#endif /* KEY Bug 8128 */
       cwh_addr_store_WN(wn,offset,addr_ty,arg); 
       break ;
       

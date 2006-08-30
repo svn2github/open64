@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -157,6 +157,10 @@ enum	glb_tbl_idx_values	{Allocate_Attr_Idx,
 				 Ptr_Chk_Attr_Idx,
 				 Pe_Offset_Attr_Idx,
 				 Set_Numthreads_Attr_Idx,
+#ifdef KEY /* Bug 8117 */
+				 Copyin_Attr_Idx,
+				 Copyout_Attr_Idx,
+#endif /* KEY Bug 8117 */
 				 Num_Glb_Tbl_Idxs
 				};
 
@@ -2006,6 +2010,9 @@ struct	dump_flags_entry {
 	boolean		sytb			: 1;
 	boolean		typ_tbl			: 1;
 	boolean		constant_bits		: 1;
+#ifdef KEY /* Bug 8117 */
+	boolean		arg_passing		: 1;
+#endif /* KEY Bug 8117 */
 	};
 
 
@@ -2136,7 +2143,17 @@ struct  expr_semantics_args    {basic_type_type		type		: 8;
 				boolean			optional_darg	: 1;
 				boolean			pe_dim_ref	: 1;
 				boolean			dist_reshape_ref: 1;
+#ifdef KEY /* Bug 934 */
+				/* Set to indicate that we are evaluating
+				 * the RHS of an assignment of an entire
+				 * derived type, so that we can enforce
+				 * the constraint on such assigments
+				 * within pure procedures */
+				boolean                 derived_assign  : 1;
+				Uint			UNUSED2		: 5;
+#else /* KEY Bug 934 */
 				Uint			UNUSED2		: 6;
+#endif /* KEY Bug 934 */
 
                                 Uint			rank   		: 32;
 
@@ -2805,12 +2822,21 @@ extern	void		decl_semantics(void);
 extern  void		exit_compiler(int);
 extern  boolean		expr_is_symbolic_constant(opnd_type *);
 extern  boolean		expr_semantics(opnd_type *, expr_arg_type *);
+#ifdef KEY /* Bug 5710 */
+extern  int		eq_ne_on_logical(expr_arg_type *exp_desc,
+		         expr_arg_type *exp_desc_l, expr_arg_type *exp_desc_r);
+#endif /* KEY Bug 5710 */
 extern  boolean		expr_sem(opnd_type *, expr_arg_type *);
 extern	boolean		find_attr_in_il(int, int, opnd_type *);
 extern	boolean		find_attr_in_ir(int, int, opnd_type *);
 extern	boolean		find_prog_unit_tbl(int);
 extern	void		fixed_get_char(void);
 extern	void		fixed_get_char_literal(void);
+#ifdef KEY /* Bug 572 */
+/* Set TRUE before calling expr_semantics() if a constant null pointer is
+ * legal in this context. */
+extern boolean          constant_ptr_ok;
+#endif /* KEY Bug 572 */
 extern  boolean		fold_aggragate_expression(opnd_type *, expr_arg_type *,
                                                   boolean);
 extern  boolean		fold_relationals(int, int, operator_type);
@@ -2966,6 +2992,9 @@ extern  void		print_sh_tbl(boolean);
 extern  void		print_sn_tbl(void);
 extern  void		print_typ_tbl(void);
 extern  void		print_sytb(int, boolean, boolean);
+#ifdef KEY /* Bug 8117 */
+extern  void		print_arg_passing(FILE *);
+#endif /* KEY Bug 8117 */
 extern  void		print_attr_by_name(void);
 extern  void		print_ln_by_name(void);
 extern  void		print_sb_by_name(void);
@@ -3024,6 +3053,11 @@ extern	dump_flags_type		dump_flags;
 extern	long		       *dt_cmp_tbl;  /* Assumes long is word length */
 extern	int			expanded_intrinsic_list;
 extern	expr_mode_type		expr_mode;
+#ifdef KEY /* Bug 4232 */
+/* We're processing a statement function definition (rather than a call) so
+ * don't create temps to hold the arguments if they're by-reference. */
+extern  boolean			defining_stmt_func;
+#endif /* KEY Bug 4232 */
 extern	void			(*get_char) ();
 extern  void                    (*get_char_literal) ();
 extern	long			glb_tbl_idx[Num_Glb_Tbl_Idxs];
@@ -3504,7 +3538,11 @@ extern long    argchck_suppress_msg[40];
 extern int     num_argchck_suppress_msg;
 
 # ifdef _USE_FOLD_DOT_f
+#ifdef KEY /* Bug 5554 */
+extern boolean kludge_input_conversion (char *, int, boolean);
+#else /* KEY Bug 5554 */
 extern void kludge_input_conversion (char *, int);
+#endif /* KEY Bug 5554 */
 extern void kludge_output_conversion (long_type *, int, char *);
 # endif
 

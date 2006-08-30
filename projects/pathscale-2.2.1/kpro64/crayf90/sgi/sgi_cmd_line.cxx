@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -65,6 +65,9 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/sg
 #ifdef KEY /* Bug 4260 */
 #include "../../../clibinc/cray/io_byteswap.h"
 #endif /* KEY Bug 4260 */
+#ifdef KEY /* Bug 6204 */
+#include "decorate_utils.h"
+#endif /* KEY Bug 6204 */
 
 /* conversion includes */
 #include "sgi_cmd_line.h"
@@ -102,6 +105,10 @@ char *FE_gdar_filename = NULL;
 #ifdef KEY
 char *F2C_ABI_filename = NULL;
 #endif
+#ifdef KEY /* Bug 3507 */
+BOOL option_underscoring = TRUE;
+BOOL option_second_underscore = TRUE;
+#endif /* KEY Bug 3507 */
 
 INT32 global_chunk_pragma_value;
 BOOL  global_chunk_pragma_set = FALSE;
@@ -488,12 +495,18 @@ void Process_Command_Line (INT argc, char ** argv)
                } else if ( strcmp(cp,"no-second-underscore") == 0 ) {
                   add_cray_args("-dN");
                   pass_option = FALSE;
+#ifdef KEY /* Bug 3507 */
+		  option_second_underscore = FALSE;
+#endif /* KEY Bug 3507 */
                } else if ( strcmp(cp,"second-underscore") == 0 ) {
                   add_cray_args("-eN");
                   pass_option = FALSE;
                } else if ( strcmp(cp,"no-underscoring") == 0 ) {
                   add_cray_args("-dO");
                   pass_option = FALSE;
+#ifdef KEY /* Bug 3507 */
+		  option_underscoring = FALSE;
+#endif /* KEY Bug 3507 */
                } else if ( strcmp(cp,"underscoring") == 0 ) {
                   add_cray_args("-eO");
                   pass_option = FALSE;
@@ -503,6 +516,12 @@ void Process_Command_Line (INT argc, char ** argv)
 		  i++;
 	          pass_option = FALSE;
 #endif
+#ifdef KEY /* Bug 6204 */
+	       } else if ( strcmp(cp,"decorate") == 0 ) {
+		  parse_decorate_script(argv[i+1]);
+		  i++;
+	          pass_option = FALSE;
+#endif /* KEY Bug 6204 */
 	       } else { /* Filename options -- ignore these except -fb: */
 		  c = *cp++;
 		  if ( (ch=*cp++) != ',' && ch != ':' ) {

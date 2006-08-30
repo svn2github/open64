@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3257,6 +3257,11 @@ NEXT_TRIPLET_SPEC:
       else if (MATCHED_TOKEN_CLASS(Tok_Class_Op)) {
          reset_lex(TOKEN_BUF_IDX(token), TOKEN_STMT_NUM(token));
       }
+#ifdef KEY /* Bug 8564 */
+      else if (LA_CH_VALUE == LPAREN) {
+         reset_lex(TOKEN_BUF_IDX(token), TOKEN_STMT_NUM(token));
+      }
+#endif /* KEY Bug 8564 */
       else {
          parse_err_flush(Find_EOS, "index-name or mask expression");
          goto EXIT;

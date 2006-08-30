@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -702,6 +702,18 @@ extern void runtime_ptr_chk_driver(void);
 
    TRACE (Func_Entry, "cvrt_proc_to_pdg", NULL);
 
+#ifdef KEY /* Bug 3507 */
+   int attr_idx = SCP_ATTR_IDX(curr_scp_idx);
+   boolean is_module = (Module == ATP_PGM_UNIT(attr_idx));
+     
+   if (is_module) {
+     int lineno = AT_DEF_LINE(attr_idx);
+     char *file_name = global_to_local_file(lineno);
+     INT32 local_lineno = global_to_local_line_number(lineno);
+     cwh_dst_enter_module(AT_OBJ_NAME_PTR(attr_idx), file_name, local_lineno);
+   }
+#endif /* KEY Bug 3507 */
+
 PROCESS_SIBLING:
 
    /* The innermost children go thru the interface first.  The external */
@@ -844,7 +856,12 @@ PROCESS_SIBLING:
    PDG_DBG_PRINT_END
 
 # ifdef _ENABLE_FEI
+#ifdef KEY /* Bug 3507 */
+   /* If this is a module, we have already generated the Dwarf for it */
+   PDGCS_do_proc(is_module);            /* Start up the backend */
+#else /* KEY Bug 3507 */
    PDGCS_do_proc();            /* Start up the backend */
+#endif /* KEY Bug 3507 */
 # endif
 
    PDG_DBG_PRINT_START
@@ -880,6 +897,12 @@ PROCESS_SIBLING:
       curr_scp_idx = SCP_SIBLING_IDX(curr_scp_idx);
       goto PROCESS_SIBLING;
    }
+
+#ifdef KEY /* Bug 3507 */
+   if (is_module) {
+     cwh_dst_exit_module();
+   }
+#endif /* KEY Bug 3507 */
 
    TRACE (Func_Exit, "cvrt_proc_to_pdg", NULL);
 
@@ -1739,17 +1762,9 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
             PDG_DBG_PRINT_END    
 
 # ifdef _ENABLE_FEI
-/* Bug 431 */
-#ifdef KEY
-            fei_object_ref(PDG_AT_IDX(ir_idx),
-                           whole_subscript,
-                           whole_substring,
-                           ATD_DATA_INIT(ir_idx));
-#else
             fei_object_ref(PDG_AT_IDX(ir_idx),
                            whole_subscript,
                            whole_substring);
-#endif
 # endif
          }
       }
@@ -1775,16 +1790,9 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
          PDG_DBG_PRINT_END    
 
 # ifdef _ENABLE_FEI
-#ifdef KEY
-         fei_object_ref(PDG_AT_IDX(ir_idx),
-                        whole_subscript,
-                        whole_substring,
-                        0);
-#else
          fei_object_ref(PDG_AT_IDX(ir_idx),
                         whole_subscript,
                         whole_substring);
-#endif
 # endif
       }
       else if (AT_OBJ_CLASS(ir_idx) == Pgm_Unit) {
@@ -11431,12 +11439,16 @@ static void send_stor_blk(int	 sb_idx,
 	    }
          }
 
+#ifdef KEY /* Bug 6204 */
+         i = decorate(new_name, i, underscores);
+#else /* KEY Bug 6204 */
          if (on_off_flags.underscoring) {
             new_name[i++] = '_';
 	    if (on_off_flags.second_underscore && (underscores > 0)) {
 	       new_name[i++] = '_';
 	    }
 	 }
+#endif /* KEY Bug 6204 */
 
          for ( ; i < 256; i++) {
             new_name[i]	= '\0';
@@ -13563,7 +13575,11 @@ static void send_mod_file_name (void)
 
    PDG_DBG_PRINT_END
 
+#ifdef KEY /* Bug 3507 */
+   PDGCS_do_proc(1);
+#else /* KEY Bug 3507 */
    PDGCS_do_proc();
+#endif /* KEY Bug 3507 */
   
    PDG_DBG_PRINT_START
    PDG_DBG_PRINT_C("PDGCS_end_procs");

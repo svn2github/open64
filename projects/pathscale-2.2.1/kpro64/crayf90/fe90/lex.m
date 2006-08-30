@@ -114,6 +114,28 @@
 
 # ifdef _USE_FOLD_DOT_f
 
+#ifdef KEY /* Bug 5554 */
+# define CONVERT_INT_CONST(TYPE, LEN, RESULT)                                  \
+       {const_buf[(LEN)] = '\0';                                               \
+	RESULT = kludge_input_conversion(const_buf, TYPE, 0); }
+
+/* Like CONVERT_INT_CONST, but sets NEW_TYPE to indicate the type resulting
+ * from the conversion (we might have to promote to a higher precision to
+ * avoid overflow.)
+ */
+# define CONVERT_INT_CONST_AND_PROMOTE(TYPE, LEN, RESULT)            \
+       {const_buf[(LEN)] = '\0';                                               \
+	RESULT = kludge_input_conversion(const_buf, TYPE, TRUE); }
+
+# define CONVERT_REAL_CONST(TYPE, LEN, RESULT)                                 \
+       {const_buf[(LEN)] = '\0';                                               \
+	RESULT = kludge_input_conversion(const_buf, TYPE, FALSE); }
+
+# define CONVERT_DBL_CONST(TYPE, LEN, RESULT)                                  \
+       {const_buf[(LEN)] = '\0';                                               \
+	RESULT = kludge_input_conversion(const_buf, TYPE, FALSE); }
+#else /* KEY Bug 5554 */
+
 # define CONVERT_INT_CONST(TYPE, LEN, RESULT)                                  \
        {const_buf[(LEN)] = '\0';                                               \
 	kludge_input_conversion(const_buf, TYPE); }
@@ -125,6 +147,8 @@
 # define CONVERT_DBL_CONST(TYPE, LEN, RESULT)                                  \
        {const_buf[(LEN)] = '\0';                                               \
 	kludge_input_conversion(const_buf, TYPE); }
+
+#endif /* KEY Bug 5554 */
 
 # else
 

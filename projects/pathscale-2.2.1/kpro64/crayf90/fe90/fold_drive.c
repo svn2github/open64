@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -41,6 +41,10 @@
 static char USMID[] = "\n@(#)5.0_pl/sources/fold_drive.c	5.19	10/14/99 14:09:57\n";
 
 # include <stdarg.h>
+#ifdef KEY /* Bug 5554 */
+# include "stdlib.h"
+# include "errno.h"
+#endif /* KEY Bug 5554 */
 # include "defines.h"           /* Machine dependent ifdefs */
 # include "host.m"              /* Host machine dependent macros.*/
 # include "host.h"              /* Host machine dependent header.*/
@@ -3802,26 +3806,152 @@ boolean	compare_target_consts(long_type	*const1,
 
 # ifdef _USE_FOLD_DOT_f
 
+#ifdef KEY /* Bug 5554 */
 /******************************************************************************\
 |*									      *|
 |* Description:								      *|
 |*	ONLY FOR THE LINUX COMPILER. USE UNTIL ARITH IS READY.                *|
 |*									      *|
-|*      Use sscanf to convert strings to host format constants for integer    *|
-|*      and real types.  No error detection.                                  *|
+|*      Convert strings to host format constants for integer                  *|
+|*      and real types.                                                       *|
 |*									      *|
 |* Input parameters:							      *|
-|*	NONE								      *|
+|*	str: string to convert						      *|
+|*	type_idx: type suggested by context                                   *|
+|*	promote: if TRUE, ok to promote integer type to avoid overflow        *|
 |*									      *|
 |* Output parameters:							      *|
-|*	NONE								      *|
+|*	NONE                                                                  *|
 |*									      *|
 |* Returns:								      *|
-|*	NOTHING								      *|
+|*	TRUE if no error besides out-of-range occurred                        *|
 |*									      *|
 \******************************************************************************/
 
-void kludge_input_conversion (char	*str, 
+boolean kludge_input_conversion(char *str, int type_idx, boolean promote)
+{
+   long_type	number[MAX_WORDS_FOR_NUMERIC];
+
+   for (int i = 0; i < MAX_WORDS_FOR_NUMERIC; i++) {
+      number[i] = 0;
+   }
+
+   linear_type_type new_linear_type = Err_Res;
+   int new_nbytes = 0;
+   boolean range_ok = TRUE;
+   errno = 0;
+   switch (TYP_LINEAR(type_idx)) {
+   case Integer_1:
+      *(long *)number = strtol(str, (char **) 0, 10);
+      if ((*(long *)number >= -128 && *(long*)number <= 127) || !promote) {
+	break;
+      }
+      range_ok = FALSE;
+      new_linear_type = Integer_2;
+      new_nbytes = 2;
+      /* FALLTHROUGH to promote */
+
+   case Integer_2:
+      *(long *)number = strtol(str, (char **) 0, 10);
+      if ((*(long *)number >= -32768 && *(long*)number <= 32767) || !promote) {
+        break;
+	}
+      range_ok = FALSE;
+      new_linear_type = Integer_4;
+      new_nbytes = 4;
+      /* FALLTHROUGH to promote */
+
+   case Integer_4:
+      *(long *)number = strtol(str, (char **) 0, 10);
+      if (ERANGE != errno || !promote) {
+        break;
+      }
+      range_ok = FALSE;
+      new_linear_type = Integer_8;
+      new_nbytes = 8;
+      /* FALLTHROUGH to promote */
+
+   case Integer_8:
+      *(long long *)number = strtoll(str, (char **) 0, 10);
+#ifdef KEY /* Bug 8767 */
+      /* If the source program uses "-2^63", we arrive here with "2^63", not
+       * knowing whether a "-" preceded it. We surely want to give a warning
+       * because "2^63" is out of range. By trying again with "strtoull", we
+       * will give the "right" result for "-2^63", and a credible (though
+       * negative) value for "2^63". Otherwise, we clip at 2^63-1, and let
+       * the context of the constant do whatever it will do.
+       */
+      if (ERANGE == errno) {
+	unsigned long long tryagain = strtoull(str, (char **) 0, 10);
+	if (tryagain == ((unsigned long long)1) << 63) {
+	  *(unsigned long long *)number = tryagain;
+	}
+	errno = ERANGE;
+      }
+#endif /* KEY Bug 8767 */
+      range_ok = range_ok && (ERANGE != errno);
+      break;
+
+   case Real_4:
+      *(float *)number = strtof(str, (char **) 0);
+      range_ok = (ERANGE != errno);
+      break;
+
+   case Real_8:
+      *(double *)number = strtod(str, (char **) 0);
+      range_ok = (ERANGE != errno);
+      break;
+
+   case Real_16:
+      *(long double *)number = strtold(str, (char **) 0);
+      range_ok = (ERANGE != errno);
+      break;
+
+   default:
+      errno = EINVAL; /* Cause internal error below */
+      break;
+   }
+   if (!range_ok) {
+      errno = 0; /* Out-of-range is just a warning, not an error */
+      PRINTMSG(TOKEN_LINE(token), 1413, Warning, TOKEN_COLUMN(token));
+   }
+   if (Err_Res != new_linear_type) {
+      CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
+      TYP_TYPE(TYP_WORK_IDX)           = TYP_TYPE(type_idx);
+      TYP_LINEAR(TYP_WORK_IDX)         = new_linear_type;
+      TYP_DCL_VALUE(TYP_WORK_IDX)      = new_nbytes;
+      TYP_DESC(TYP_WORK_IDX)           = Kind_Typed;
+      type_idx = ntr_type_tbl();
+      }
+   TOKEN_CONST_TBL_IDX(token) = ntr_const_tbl(type_idx, FALSE, number);
+   if (errno) {
+      PRINTMSG(stmt_start_line, 626, Internal, stmt_start_col,
+		"Integer or Real type", "kludge_input_conversion");
+      return FALSE;
+   }
+   return TRUE;
+}
+#else /* KEY Bug 5554 */
+/******************************************************************************\
+|*                                                                            *|
+|* Description:                                                               *|
+|*    ONLY FOR THE LINUX COMPILER. USE UNTIL ARITH IS READY.                  *|
+|*                                                                            *|
+|*      Use sscanf to convert strings to host format constants for integer    *|
+|*      and real types.  No error detection.                                  *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*    NONE                                                                    *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*    NONE                                                                    *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*    NOTHING                                                                 *|
+|*                                                                            *|
+\******************************************************************************/
+
+void kludge_input_conversion (char	*str,
 			      int	type_idx)
 {
    int		i;
@@ -3864,6 +3994,7 @@ void kludge_input_conversion (char	*str,
                                               FALSE, 
                                               number);
 }
+#endif /* KEY Bug 5554 */
 
 /******************************************************************************\
 |*                                                                            *|

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -480,6 +480,9 @@ extern	boolean		parse_generic_spec (void);
 extern  boolean         parse_imp_do (opnd_type *);
 extern  intent_type 	parse_intent_spec (void);
 extern  void	    	parse_length_selector (int, boolean, boolean);
+#ifdef KEY /* Bug 8422 */
+extern  int		parse_non_char_kind_selector(boolean);
+#endif /* KEY Bug 8422 */
 extern	boolean		parse_type_spec (boolean);
 extern	void		parse_typed_function_stmt (void);
 

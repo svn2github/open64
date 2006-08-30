@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1480,7 +1480,9 @@ extern	int 		srch_sym_tbl(char *, int, int *);
 extern	size_offset_type	stor_bit_size_of(int, boolean, boolean);
 extern	attr_tbl_type  *sytb_var_error(char *, int);
 extern	void		use_stmt_semantics(void);
-
+#ifdef KEY /* Bug 6204 */
+int decorate(char *identifier, int name_len, int underscores);
+#endif /* KEY Bug 6204 */
 
 
 /*******************************\

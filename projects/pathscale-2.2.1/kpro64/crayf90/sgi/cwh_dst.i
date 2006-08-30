@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -56,34 +56,39 @@ DST_INVALID_INIT
 static type_trans ate_types[] = {
  4, "BAD",       0,		
  4, "UNK",       0,                     /* bit */
- 1, "INTEGER_1", DW_ATE_signed,		/* MTYPE_I1  */
- 2, "INTEGER_2", DW_ATE_signed,		/* MTYPE_I2  */
- 4, "INTEGER_4", DW_ATE_signed,		/* MTYPE_I4  */
- 8, "INTEGER_8", DW_ATE_signed,		/* MTYPE_I8  */
- 1, "INTEGER*1", DW_ATE_unsigned,	/* MTYPE_U1  */
- 2, "INTEGER*2", DW_ATE_unsigned,	/* MTYPE_U2  */
- 4, "INTEGER*4", DW_ATE_unsigned,	/* MTYPE_U4  */
- 8, "INTEGER*8", DW_ATE_unsigned,	/* MTYPE_U8  */
- 4, "REAL_4",    DW_ATE_float,		/* MTYPE_F4  */
- 8, "REAL_8",    DW_ATE_float,		/* MTYPE_F8  */
- 10,"UNK",       DW_ATE_float,		/* MTYPE_F10 */
- 16,"REAL_16",   DW_ATE_float,		/* MTYPE_F16 */
- 1 ,"CHAR" ,     DW_ATE_signed_char,    /* MTYPE_STR */
- 16,"REAL_16",   DW_ATE_float,		/* MTYPE_FQ  */
- 1, "UNK",       DW_ATE_unsigned_char,	/* MTYPE_M   */		
- 8, "COMPLEX_4", DW_ATE_complex_float,	/* MTYPE_C4  */
- 16,"COMPLEX_8", DW_ATE_complex_float,	/* MTYPE_C8  */
- 32,"COMPLEX_16",DW_ATE_complex_float,	/* MTYPE_CQ  */
- 1, "VOID",      0,                     /* MTYPE_V   */
- 1, "LOGICAL_1", DW_ATE_boolean,	
- 2, "LOGICAL_2", DW_ATE_boolean,	
- 4, "LOGICAL_4", DW_ATE_boolean,	
- 8, "LOGICAL_8", DW_ATE_boolean,	
+ 1, "integer*1", DW_ATE_signed,	/* MTYPE_I1  */
+ 2, "integer*2", DW_ATE_signed,	/* MTYPE_I2  */
+ 4, "integer*4", DW_ATE_signed,	/* MTYPE_I4  */
+ 8, "integer*8", DW_ATE_signed,	/* MTYPE_I8  */
+ 1, "integer*1", DW_ATE_unsigned,	/* MTYPE_U1  */
+ 2, "integer*2", DW_ATE_unsigned,	/* MTYPE_U2  */
+ 4, "integer*4", DW_ATE_unsigned,	/* MTYPE_U4  */
+ 8, "integer*8", DW_ATE_unsigned,	/* MTYPE_U8  */
+ 4, "real*4",    DW_ATE_float,		/* MTYPE_F4  */
+ 8, "real*8",    DW_ATE_float,		/* MTYPE_F8  */
+ 10,"UNK",        DW_ATE_float,		/* MTYPE_F10 */
+ 16,"real*16",   DW_ATE_float,		/* MTYPE_F16 */
+ 1 ,"character" , DW_ATE_signed_char,   /* MTYPE_STR */
+ 16,"real*16",   DW_ATE_float,		/* MTYPE_FQ  */
+ 1, "UNK",        DW_ATE_unsigned_char,	/* MTYPE_M   */		
+ 8, "complex*4", DW_ATE_complex_float,	/* MTYPE_C4  */
+ 16,"complex*8", DW_ATE_complex_float,	/* MTYPE_C8  */
+ 32,"complex*16",DW_ATE_complex_float,	/* MTYPE_CQ  */
+ 1, "void",      0,                     /* MTYPE_V   */
+ 1, "logical*1", DW_ATE_boolean,	
+ 2, "logical*2", DW_ATE_boolean,	
+ 4, "logical*4", DW_ATE_boolean,	
+ 8, "logical*8", DW_ATE_boolean,	
 
 } ;
 
 
 static DST_INFO_IDX current_scope_idx = DST_INVALID_INIT; /* Current scope */
+#ifdef KEY /* Bug 3507 */
+/* Current module, if any */
+static DST_INFO_IDX current_module_idx = DST_INVALID_INIT;
+static char *current_module_name = 0;
+#endif /* KEY Bug 3507 */
 static DST_INFO_IDX comp_unit_idx     = DST_INVALID_INIT; /* Compilation unit */
 
 static DST_FILE_IDX file_name_idx     = DST_INVALID_INIT; /* File names */
@@ -205,10 +210,21 @@ static DST_INFO_IDX cwh_dst_subrange(ARB_HANDLE ar)  ;
 static DST_INFO_IDX cwh_dst_member(FLD_HANDLE f,DST_INFO_IDX p) ;
 static DST_INFO_IDX cwh_dst_struct_type(TY_IDX ty) ;
 static DST_INFO_IDX cwh_dst_pointer_type(TY_IDX ty) ;
+#ifdef KEY /* Bug 3507 */
+/* If parent is not DST_INVALID_IDX, then refrain from emitting the common
+ * block itself, and attach all of the common variables directly to "parent"
+ * instead. This is used to eliminate faked-up common blocks which represent
+ * global variables in modules.  */
+static DST_INFO_IDX cwh_dst_mk_common(ST * st, DST_INFO_IDX parent);
+#else /* KEY Bug 3507 */
 static DST_INFO_IDX cwh_dst_mk_common(ST * st) ;
+#endif /* KEY Bug 3507 */
 static DST_INFO_IDX cwh_dst_mk_formal(ST * st) ;
 static DST_INFO_IDX cwh_dst_mk_variable(ST * st) ;
 static DST_INFO_IDX cwh_dst_mk_common_inclusion(ST * com, DST_IDX c) ;
+#ifdef KEY /* Bug 3507 */
+static DST_INFO_IDX cwh_dst_mk_imported_decl(char *mangled_name) ;
+#endif /* KEY Bug 3507 */
 static BOOL         cwh_dst_is_character_TY(TY_IDX ty) ;
 static DST_INFO_IDX cwh_dst_substring_type(TY_IDX ty) ;
 static DST_INFO_IDX cwh_dst_dope_type(TY_IDX  ty, ST *st, mINT64 ofst, DST_INFO_IDX p, BOOL ptr, DST_INFO_IDX *dope_ty) ;

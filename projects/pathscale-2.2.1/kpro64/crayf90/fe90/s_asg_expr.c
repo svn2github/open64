@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -120,6 +120,12 @@ static int	set_up_pe_offset_attr(void);
 static void	gen_bias_ref(opnd_type *);
 static void	linearize_pe_dims(int, int, int, int, opnd_type *);
 # endif
+#ifdef KEY /* Bug 934 */
+static boolean expr_sem_d(opnd_type *result_opnd, expr_arg_type *exp_desc,
+  boolean derived_assign);
+static boolean expr_semantics_d (opnd_type *result_opnd,
+  expr_arg_type *exp_desc, boolean derived_assign);
+#endif /* KEY Bug 934 */
 
 
 # if (defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX))
@@ -404,7 +410,12 @@ void assignment_stmt_semantics (void)
       xref_state = CIF_Symbol_Reference;
       COPY_OPND(r_opnd, IR_OPND_R(ir_idx));
       exp_desc_r.rank = 0;
+#ifdef KEY /* Bug 934 */
+      ok &= expr_semantics_d(&r_opnd, &exp_desc_r,
+        (exp_desc_l.type == Structure));
+#else /* KEY Bug 934 */
       ok &= expr_semantics(&r_opnd, &exp_desc_r);
+#endif /* KEY Bug 934 */
       COPY_OPND(IR_OPND_R(ir_idx), r_opnd);
 
       if (! ok) {
@@ -745,6 +756,14 @@ CK_WHERE:
          PRINTMSG(line, 417, Error, col);
          ok = FALSE;
       }
+#ifdef KEY /* Bug 572 */
+      /* An expression like "parameter_x%ptr_component_y" might be both a
+       * pointer and a constant, and a constant is not allowed here. */
+      if (exp_desc_l.constant) {
+         PRINTMSG(line, 326, Error, col);
+         ok = FALSE;
+      }
+#endif /* KEY Bug 572 */
 
       ok &= check_for_legal_define(&l_opnd);
 
@@ -783,8 +802,16 @@ CK_WHERE:
       xref_state = CIF_Symbol_Reference;
       COPY_OPND(r_opnd, IR_OPND_R(ir_idx));
       exp_desc_r.rank = 0;
+#ifdef KEY /* Bug 572 */
+      /* Pointer assignment definitely allows pointer on RHS */
+      int save_constant_ptr_ok = constant_ptr_ok;
+      constant_ptr_ok = TRUE;
+#endif /* KEY Bug 572 */
       ok = expr_semantics(&r_opnd, &exp_desc_r)
                        && ok;
+#ifdef KEY /* Bug 572 */
+      constant_ptr_ok = save_constant_ptr_ok;
+#endif /* KEY Bug 572 */
       COPY_OPND(IR_OPND_R(ir_idx), r_opnd);
 
       if (! ok) {
@@ -1140,6 +1167,19 @@ static void lower_ptr_asg(expr_arg_type *exp_desc_r)
 
 boolean expr_semantics (opnd_type       *result_opnd,
                         expr_arg_type   *exp_desc)
+#ifdef KEY /* Bug 934 */
+{
+  return expr_semantics_d(result_opnd, exp_desc, FALSE);
+}
+
+/*
+ * Like expr_semantics(), but capable of passing along the knowledge that
+ * we're dealing with the RHS of an assignment of an entire derived type.
+ */
+static boolean expr_semantics_d (opnd_type     *result_opnd,
+                        expr_arg_type   *exp_desc,
+			boolean		derived_assign)
+#endif /* KEY Bug 934 */
 
 {
    boolean      	ok = TRUE;
@@ -1166,7 +1206,11 @@ boolean expr_semantics (opnd_type       *result_opnd,
    target_char_len_idx          = NULL_IDX;
    target_type_idx              = NULL_IDX;
 
+#ifdef KEY /* Bug 934 */
+   ok = expr_sem_d(result_opnd, exp_desc, derived_assign);
+#else /* KEY Bug 934 */
    ok = expr_sem(result_opnd, exp_desc);
+#endif /* KEY Bug 934 */
 
    check_type_conversion        = save_check_type_conversion;
    target_array_idx             = save_target_array_idx;
@@ -1312,6 +1356,19 @@ boolean expr_semantics (opnd_type       *result_opnd,
 
 boolean expr_sem (opnd_type       *result_opnd,
                   expr_arg_type   *exp_desc)
+#ifdef KEY /* Bug 934 */
+{
+  return expr_sem_d(result_opnd, exp_desc, FALSE);
+}
+
+/*
+ * Like expr_sem(), but capable of passing in the knowledge that we're dealing
+ * with the RHS of an assignment of an entire derived type.
+ */
+static boolean expr_sem_d(opnd_type      *result_opnd,
+                  expr_arg_type   *exp_desc,
+		  boolean	  derived_assign)
+#endif /* KEY Bug 934 */
 
 {
    int                 al_list_idx;
@@ -1342,6 +1399,9 @@ boolean expr_sem (opnd_type       *result_opnd,
 
    rank_in			= exp_desc->rank;
    (*exp_desc)			= init_exp_desc;
+#ifdef KEY /* Bug 934 */
+   exp_desc->derived_assign = derived_assign;
+#endif /* KEY Bug 934 */
    exp_desc->linear_type	= TYPELESS_DEFAULT_TYPE;
    exp_desc->type_idx		= TYPELESS_DEFAULT_TYPE;
 
@@ -1556,6 +1616,11 @@ boolean expr_sem (opnd_type       *result_opnd,
             exp_desc->linear_type = TYP_LINEAR(exp_desc->type_idx);
 
             if (ATD_PURE(attr_idx) && 
+#ifdef KEY /* Bug 934 */
+		/* This constraint only applies when assigning an entire
+		 * derived type */
+                exp_desc->derived_assign &&
+#endif /* KEY Bug 934 */
                 stmt_type == Assignment_Stmt &&
                 exp_desc->type == Structure &&
                 ATT_POINTER_CPNT(TYP_IDX(exp_desc->type_idx))) {
@@ -1633,6 +1698,9 @@ boolean expr_sem (opnd_type       *result_opnd,
                 (ATD_CLASS(attr_idx) != Dummy_Argument ||
                  ! ATD_SF_DARG(attr_idx))           &&
                 ! cdir_switches.autoscope           &&
+#ifdef KEY /* Bug 8287 */
+                SB_BLK_TYPE(ATD_STOR_BLK_IDX(attr_idx)) != Threadprivate &&
+#endif /* KEY Bug 8287 */
                 ! ATD_TASK_PRIVATE(attr_idx)        &&
                 ! ATD_TASK_GETFIRST(attr_idx)       &&
                 ! ATD_TASK_LASTLOCAL(attr_idx)      &&
@@ -2317,7 +2385,14 @@ boolean expr_sem (opnd_type       *result_opnd,
                
                if (need_pure_function && 
                    AT_OBJ_CLASS(IR_IDX_L(ir_idx)) == Pgm_Unit &&
-                   !ATP_PURE(IR_IDX_L(ir_idx))) {
+#ifdef KEY /* Bug 7726 */
+	       /* Fortran 95 says every elemental function is a pure function */
+                   !(ATP_PURE(IR_IDX_L(ir_idx)) ||
+		     ATP_ELEMENTAL(IR_IDX_L(ir_idx))))
+#else /* KEY Bug 7726 */
+                   !ATP_PURE(IR_IDX_L(ir_idx)))
+#endif /* KEY Bug 7726 */
+		   {
                   /* KAY - insert call to message here */
                   ok = FALSE;
                   break;
@@ -4656,6 +4731,10 @@ boolean stmt_func_semantics(int                 stmt_func_idx)
 
    TRACE (Func_Entry, "stmt_func_semantics", NULL);
 
+#ifdef KEY /* Bug 4232 */
+   defining_stmt_func = TRUE;
+#endif /* KEY Bug 4232 */
+
    ATS_SF_SEMANTICS_DONE(stmt_func_idx) = TRUE;
 
    /* clear the ATD_SF_DARG flag */
@@ -4731,6 +4810,10 @@ boolean stmt_func_semantics(int                 stmt_func_idx)
          AT_DCL_ERR(stmt_func_idx) = TRUE;
       }
    }
+
+#ifdef KEY /* Bug 4232 */
+   defining_stmt_func = FALSE;
+#endif /* KEY Bug 4232 */
 
    TRACE (Func_Exit, "stmt_func_semantics", NULL);
 
@@ -6726,6 +6809,139 @@ EXIT:
    return(ok);
 
 }  /* concat_opr_handler */
+#ifdef KEY /* Bug 5710 */
+/*
+ * If we're allowing .eq., .ne., ==, and /= on logical operands as an
+ * extension, and this is a case of that, return true else false. When
+ * we return true, also set exp_desc->linear_type to the logical result type
+ * of the operation.
+ */
+int eq_ne_on_logical(expr_arg_type *exp_desc, expr_arg_type *exp_desc_l,
+   expr_arg_type *exp_desc_r)
+{
+   if (on_off_flags.issue_ansi_messages) {
+     return FALSE;
+   }
+   int result = EQ_NE_ON_LOGICAL(exp_desc_l->linear_type,
+     exp_desc_r->linear_type);
+   if (Err_Res == result) {
+     return FALSE;
+   }
+   if (exp_desc) {
+     exp_desc->linear_type = result;
+   }
+   return TRUE;
+}
+
+/*
+ * Do the work for an intrinsic operator within eq_opr_handler. This simply
+ * encapsulates some code that would otherwise need to appear in two different
+ * spots within that function.
+ */
+static void
+handle_intrinsic_opr(
+   expr_arg_type *exp_desc,
+   expr_arg_type *exp_desc_l,
+   expr_arg_type *exp_desc_r,
+   int line,
+   int col,
+   boolean *ok,
+   int *type_idx,
+   opnd_type *result_opnd,
+   int ir_idx,
+   long_type folded_const[])
+{
+   exp_desc->type_idx    = exp_desc->linear_type;
+   exp_desc->type        = TYP_TYPE(exp_desc->type_idx);
+
+   if (! bin_array_syntax_check(exp_desc_l, exp_desc_r,
+				exp_desc, line, col))     {
+      *ok = FALSE;
+   }
+
+   exp_desc->constant = exp_desc_l->constant &&
+			  exp_desc_r->constant;
+   exp_desc->foldable = exp_desc_l->foldable &&
+			  exp_desc_r->foldable;
+
+   exp_desc->will_fold_later = (exp_desc_l->will_fold_later &
+				exp_desc_r->will_fold_later)  |
+			       (exp_desc_l->will_fold_later &
+				exp_desc_r->foldable)         |
+			       (exp_desc_l->foldable &
+				exp_desc_r->will_fold_later);
+
+   if (opt_flags.ieeeconform &&
+       ! comp_gen_expr       &&
+       (exp_desc_l->type == Real ||
+	exp_desc_l->type == Complex ||
+	exp_desc_r->type == Real ||
+	exp_desc_r->type == Complex)) {
+
+      /* don't fold real arithmatic under ieeeconform */
+
+      exp_desc->foldable = FALSE;
+      exp_desc->will_fold_later = FALSE;
+   }
+   else if (exp_desc->foldable             &&
+	    IR_FLD_L(ir_idx) == CN_Tbl_Idx &&
+	    IR_FLD_R(ir_idx) == CN_Tbl_Idx) {
+
+      *type_idx = exp_desc->type_idx;
+
+      if (folder_driver((char *)&CN_CONST(IR_IDX_L(ir_idx)),
+			 exp_desc_l->type_idx,
+			(char *)&CN_CONST(IR_IDX_R(ir_idx)),
+			 exp_desc_r->type_idx,
+			 folded_const,
+			type_idx,
+			 line,
+			 col,
+			 2,
+			 IR_OPR(ir_idx))) {
+
+	 exp_desc->type_idx    = *type_idx;
+	 OPND_FLD((*result_opnd)) = CN_Tbl_Idx;
+	 OPND_IDX((*result_opnd)) = ntr_const_tbl(exp_desc->type_idx,
+						  FALSE,
+						  folded_const);
+
+	 exp_desc->linear_type = TYP_LINEAR(exp_desc->type_idx);
+	 OPND_LINE_NUM((*result_opnd)) = line;
+	 OPND_COL_NUM((*result_opnd))  = col;
+      }
+      else {
+	 *ok = FALSE;
+      }
+   }
+   else if (exp_desc_l->type == Character            &&
+	    exp_desc_r->type == Character            &&
+	    exp_desc_l->char_len.fld == CN_Tbl_Idx   &&
+	    CN_INT_TO_C(exp_desc_l->char_len.idx) == 0  &&
+	    exp_desc_r->char_len.fld == CN_Tbl_Idx   &&
+	    CN_INT_TO_C(exp_desc_r->char_len.idx) == 0) {
+
+      /* left and right are zero length char */
+
+      OPND_FLD((*result_opnd)) = CN_Tbl_Idx;
+      OPND_IDX((*result_opnd)) = set_up_logical_constant(folded_const, 
+							 exp_desc->type_idx, 
+			    (IR_OPR(ir_idx) == Eq_Opr) ? TRUE_VALUE : 
+							 FALSE_VALUE,
+							 TRUE);
+
+
+
+      OPND_LINE_NUM((*result_opnd)) = line;
+      OPND_COL_NUM((*result_opnd))  = col;
+
+      if (exp_desc->rank) {
+	 make_logical_array_tmp(result_opnd,
+				exp_desc);
+      }
+   }
+}
+#endif /* KEY Bug 5710 */
 
 /******************************************************************************\
 |*									      *|
@@ -6873,95 +7089,12 @@ static boolean eq_opr_handler(opnd_type		*result_opnd,
          }
       }
 
-      exp_desc->type_idx    = exp_desc->linear_type;
-      exp_desc->type        = TYP_TYPE(exp_desc->type_idx);
-
-      if (! bin_array_syntax_check(&exp_desc_l, &exp_desc_r,
-                                   exp_desc, line, col))     {
-         ok = FALSE;
-      }
-
-      exp_desc->constant = exp_desc_l.constant &&
-                             exp_desc_r.constant;
-      exp_desc->foldable = exp_desc_l.foldable &&
-                             exp_desc_r.foldable;
-
-      exp_desc->will_fold_later = (exp_desc_l.will_fold_later &
-                                   exp_desc_r.will_fold_later)  |
-                                  (exp_desc_l.will_fold_later &
-                                   exp_desc_r.foldable)         |
-                                  (exp_desc_l.foldable &
-                                   exp_desc_r.will_fold_later);
-
-      if (opt_flags.ieeeconform &&
-          ! comp_gen_expr       &&
-          (exp_desc_l.type == Real ||
-           exp_desc_l.type == Complex ||
-           exp_desc_r.type == Real ||
-           exp_desc_r.type == Complex)) {
-
-         /* don't fold real arithmatic under ieeeconform */
-
-         exp_desc->foldable = FALSE;
-         exp_desc->will_fold_later = FALSE;
-      }
-      else if (exp_desc->foldable             &&
-               IR_FLD_L(ir_idx) == CN_Tbl_Idx &&
-               IR_FLD_R(ir_idx) == CN_Tbl_Idx) {
-
-         type_idx = exp_desc->type_idx;
-
-         if (folder_driver((char *)&CN_CONST(IR_IDX_L(ir_idx)),
-                            exp_desc_l.type_idx,
-                           (char *)&CN_CONST(IR_IDX_R(ir_idx)),
-                            exp_desc_r.type_idx,
-                            folded_const,
-                           &type_idx,
-                            line,
-                            col,
-                            2,
-                            IR_OPR(ir_idx))) {
-
-            exp_desc->type_idx    = type_idx;
-            OPND_FLD((*result_opnd)) = CN_Tbl_Idx;
-            OPND_IDX((*result_opnd)) = ntr_const_tbl(exp_desc->type_idx,
-                                                     FALSE,
-                                                     folded_const);
-
-            exp_desc->linear_type = TYP_LINEAR(exp_desc->type_idx);
-            OPND_LINE_NUM((*result_opnd)) = line;
-            OPND_COL_NUM((*result_opnd))  = col;
-         }
-         else {
-            ok = FALSE;
-         }
-      }
-      else if (exp_desc_l.type == Character            &&
-               exp_desc_r.type == Character            &&
-               exp_desc_l.char_len.fld == CN_Tbl_Idx   &&
-               CN_INT_TO_C(exp_desc_l.char_len.idx) == 0  &&
-               exp_desc_r.char_len.fld == CN_Tbl_Idx   &&
-               CN_INT_TO_C(exp_desc_r.char_len.idx) == 0) {
-
-         /* left and right are zero length char */
-
-         OPND_FLD((*result_opnd)) = CN_Tbl_Idx;
-         OPND_IDX((*result_opnd)) = set_up_logical_constant(folded_const, 
-                                                            exp_desc->type_idx, 
-                               (IR_OPR(ir_idx) == Eq_Opr) ? TRUE_VALUE : 
-                                                            FALSE_VALUE,
-                                                            TRUE);
-
-
-
-         OPND_LINE_NUM((*result_opnd)) = line;
-         OPND_COL_NUM((*result_opnd))  = col;
-
-         if (exp_desc->rank) {
-            make_logical_array_tmp(result_opnd,
-                                   exp_desc);
-         }
-      }
+#ifdef KEY /* Bug 5710 */
+      handle_intrinsic_opr(exp_desc, &exp_desc_l, &exp_desc_r, line, col,
+        &ok, &type_idx, result_opnd, ir_idx, folded_const);
+#else /* KEY Bug 5710 */
+      /* Contents of handle_intrinsic_opr was previously inline here */
+#endif /* KEY Bug 5710 */
    }
    else if (resolve_ext_opr(result_opnd, TRUE, save_in_call_list,
                             (exp_desc->linear_type == Err_Res),
@@ -6972,6 +7105,18 @@ static boolean eq_opr_handler(opnd_type		*result_opnd,
 
       goto EXIT;
    }
+#ifdef KEY /* Bug 5710 */
+   /* Okay, this isn't a standard intrinsic use of .eq. or .ne.; nor is
+    * it an extension of such an operator via the "interface operator"
+    * mechanism; so check whether it's the common extension to the ANSI
+    * standard which allows those operators to be used in place of .eqv.
+    * and .neqv. with logical operands.
+    */
+   else if (eq_ne_on_logical(exp_desc, &exp_desc_l, &exp_desc_r)) {
+      handle_intrinsic_opr(exp_desc, &exp_desc_l, &exp_desc_r, line, col,
+        &ok, &type_idx, result_opnd, ir_idx, folded_const);
+   }
+#endif /* KEY Bug 5710 */
    else {
       ok = FALSE;
    }
@@ -8376,6 +8521,18 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
    COPY_OPND(opnd, IR_OPND_L(ir_idx));
    ok = expr_sem(&opnd, &exp_desc_l);
    COPY_OPND(IR_OPND_L(ir_idx), opnd);
+#ifdef KEY /* Bug 572 */
+   /* An expression like "parameter_x%ptr_component_y%other_component" is
+    * an error because a constant pointer is always null, so we can't
+    * dereference it. The constant-folding code assumes no intermediate
+    * component is a pointer, so we must catch the error here. */
+   if (exp_desc_l.constant && exp_desc_l.pointer) {
+      int line_tmp, col_tmp;
+      find_opnd_line_and_column(&IR_OPND_L(ir_idx), &line_tmp, &col_tmp);
+      PRINTMSG(line_tmp, 1677, Error, col_tmp);
+      ok = FALSE;
+   }
+#endif /* KEY Bug 572 */
 
    if (OPND_FLD(opnd) == IR_Tbl_Idx &&
        (IR_OPR(OPND_IDX(opnd)) == Substring_Opr ||

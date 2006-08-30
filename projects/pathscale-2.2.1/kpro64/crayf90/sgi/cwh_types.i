@@ -1,5 +1,7 @@
 /*
 
+  Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it

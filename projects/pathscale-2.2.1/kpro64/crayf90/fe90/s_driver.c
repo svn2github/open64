@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -350,7 +350,20 @@ PROCESS_SIBLING:
        ! SCP_IN_ERR(curr_scp_idx))              {
 
       is_function	= TRUE;
+#ifdef KEY /* Bug 7856 */
+      /* If the result type is a default-initialized structure, suppress the
+       * warning about not defining the function result. This errs in the
+       * direction of silence if some but not all components of the structure
+       * are default-initialized, but that's better than a spurious warning in
+       * the likely case where all are initialized. */
+      int typ_idx_tmp = NULL_IDX;
+      func_defined = AT_DEFINED(pgm_attr_idx) ||
+        (Derived_Type == AT_OBJ_CLASS(
+	  typ_idx_tmp = TYP_IDX(ATD_TYPE_IDX(ATP_RSLT_IDX(pgm_attr_idx)))) &&
+	ATT_DEFAULT_INITIALIZED(typ_idx_tmp));
+#else /* KEY Bug 7856 */
       func_defined	= AT_DEFINED(pgm_attr_idx);
+#endif /* KEY Bug 7856 */
       actual_arg	= AT_ACTUAL_ARG(pgm_attr_idx) || 
                           AT_ACTUAL_ARG(ATP_RSLT_IDX(pgm_attr_idx));
       func_ptr_defined	= ATD_PTR_ASSIGNED(ATP_RSLT_IDX(pgm_attr_idx));
@@ -5625,6 +5638,42 @@ void	global_name_semantics(int	def_ga_idx,
       msg_level = (GAP_PGM_UNIT(def_ga_idx) == Module || 
                    ref_pgm_unit == Module) ? Error : Warning;
 # endif
+#ifdef KEY /* Bug 7405 */
+      /* One of our customers wants to cheat and call a function as a 
+       * subroutine, which is harmless.
+       *
+       * If explicitly defined as a function but referenced as a subroutine,
+       * reduce error to a warning because we know it's harmless. If not
+       * explicitly defined anywhere, and referenced sometimes as a function
+       * but other times as a subroutine, reduce error to warning because we
+       * can't tell.
+       *
+       * If explicitly defined as a subroutine but referenced as a function,
+       * issue error because we know it's harmful.
+       *
+       * When reference precedes definition, the code leading to this point
+       * uses def_ga_idx for the reference and ref_xxx for the definition,
+       * so we need to test both combinations. Also note that F90-style
+       * definitions (interface blocks, "contains") are checked elsewhere,
+       * so loosening the checking here affects only F77-style code and
+       * doesn't bypass any required F90 constraint checks. */
+      pgm_unit_type def_pgm_unit = GAP_PGM_UNIT(def_ga_idx);
+      if (def_defined) {
+        if ((def_pgm_unit == Function) && (ref_pgm_unit == Subroutine)) {
+	  msg_level = Warning;
+	}
+      }
+      else if (ref_defined) {
+        if ((ref_pgm_unit == Function) && (def_pgm_unit == Subroutine)) {
+	  msg_level = Warning;
+	}
+      }
+      else { /* Not explicitly defined */
+        if (def_pgm_unit != ref_pgm_unit) {
+	  msg_level = Warning;
+	}
+      }
+#endif /* KEY Bug 7405 */
 
       if (def_defined) {
          msg_num = (ref_defined) ? 1282 : 1293;

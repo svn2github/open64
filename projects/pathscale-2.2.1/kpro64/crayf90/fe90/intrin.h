@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -147,12 +147,13 @@ int SIZEOF_INTRIN_FAMILIES = (sizeof intrin_families)/(sizeof *intrin_families);
  *    id_str: name the user types (but see #1 above)
  *    name_len: length of id_str (didn't they know about "strlen"?)
  *    elemental:
- *    function:
+ *    function: 1 if intrinsic is function
  *    passable: allowed to pass these to dummy args of type "external"
  *    external:
  *    optional:
  *    dope:
- *    generic: always 1--doesn't mean ANSI generic, means "unindented entry"!
+ *    generic: always 1, even for a specific like ALOG10--doesn't mean ANSI
+ *      generic, means "unindented entry"!
  *    enabled: initially 0. At execution time, after scanning the command-line
  *      options, we set this true for every intrinsic which the compiler
  *      should recognize
@@ -168,7 +169,7 @@ int SIZEOF_INTRIN_FAMILIES = (sizeof intrin_families)/(sizeof *intrin_families);
  *      else same as unindented entry
  *    name_len: length of id_str (didn't they know about "strlen"?)
  *    elemental:
- *    function:
+ *    function: 1 if intrinsic is function
  *    passable:
  *    external: 0 if ever implemented inline, 1 if always uses library function
  *    optional:
@@ -179,7 +180,13 @@ int SIZEOF_INTRIN_FAMILIES = (sizeof intrin_families)/(sizeof *intrin_families);
  *    intrin_enum: Member of intrinsic_values enum which this implementation
  *     uses to dispatch, via table intrinsic_semantics, to a function which
  *     performs semantics work for this intrinsic
- *    data_type: Result type, using constants like Real_4
+ *    data_type: Result type, using constants like Real_4. Often this is 0;
+ *     not clear whether that represents an error. It is an error in the
+ *     case where this entry represents a function in the "Specific
+ *     names for intrinsic functions" table in the standard (that is, a
+ *     function which can be passed as an actual argument): without an
+ *     explicit type, the front end gives spurious warnings and reads
+ *     variables containing trash. Otherwise, 0 magically works (so far.)
  *    families: ignored
  *
  * 6. In the doubly-indented entry:
@@ -266,7 +273,11 @@ intrin_tbl_type         intrin_tbl[] =
    {"ADJUSTR",7,1,1,0,0,0,0,0,0,0,Adjustr_Intrinsic,0,0},
       {"STRING",6,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
 {"AIMAG",5,1,1,1,0,0,1,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
+#ifdef KEY /* Bug 9060 */
+   {"AIMAG",5,1,1,0,0,0,0,0,0,0,Aimag_Intrinsic,Real_4,0},
+#else /* KEY Bug 9060 */
    {"AIMAG",5,1,1,0,0,0,0,0,0,0,Aimag_Intrinsic,0,0},
+#endif /* KEY Bug 9060 */
       {"Z",1,0,0,0,0,0,0,0,0,0,0,COMPLEX_MASK,0},
 {"AINT",4,1,1,1,0,0,1,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
    {"AINT",4,1,1,0,0,0,0,0,0,0,Aint_Intrinsic,Real_4,0},
@@ -447,7 +458,7 @@ intrin_tbl_type         intrin_tbl[] =
    {"ALOG10",6,1,1,0,0,0,0,0,0,0,Alog10_Intrinsic,Real_4,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,REAL_MASK,0},
 {"AMAX0",5,1,1,0,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"AMAX0",5,1,1,0,0,0,0,0,0,0,Amax0_Intrinsic,0,0},
+   {"AMAX0",5,1,1,0,0,0,0,0,0,0,Amax0_Intrinsic,Integer_4,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
@@ -512,7 +523,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A62",3,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
 {"AMAX1",5,1,1,0,0,0,0,1,0,2,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"AMAX1",5,1,1,0,0,0,0,0,0,0,Amax1_Intrinsic,0,0},
+   {"AMAX1",5,1,1,0,0,0,0,0,0,0,Amax1_Intrinsic,Real_4,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
@@ -576,7 +587,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A61",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
       {"A62",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
-   {"AMAX1",5,1,1,0,0,0,0,0,0,0,Amax1_Intrinsic,0,0},
+   {"AMAX1",5,1,1,0,0,0,0,0,0,0,Amax1_Intrinsic,Real_8,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,S8_MASK,0},
@@ -641,7 +652,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A62",3,0,0,0,0,1,0,0,0,0,0,S8_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,S8_MASK,0},
 {"AMIN0",5,1,1,0,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"AMIN0",5,1,1,0,0,0,0,0,0,0,Amin0_Intrinsic,0,0},
+   {"AMIN0",5,1,1,0,0,0,0,0,0,0,Amin0_Intrinsic,Integer_4,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
@@ -706,7 +717,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A62",3,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
 {"AMIN1",5,1,1,0,0,0,0,1,0,2,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"AMIN1",5,1,1,0,0,0,0,0,0,0,Amin1_Intrinsic,0,0},
+   {"AMIN1",5,1,1,0,0,0,0,0,0,0,Amin1_Intrinsic,Real_4,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
@@ -770,7 +781,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A61",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
       {"A62",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
-   {"AMIN1",5,1,1,0,0,0,0,0,0,0,Amin1_Intrinsic,0,0},
+   {"AMIN1",5,1,1,0,0,0,0,0,0,0,Amin1_Intrinsic,Real_8,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,S8_MASK,0},
@@ -1613,6 +1624,8 @@ intrin_tbl_type         intrin_tbl[] =
       {"X",1,0,0,0,0,0,0,0,0,0,0,IRC_MASK,0},
       {"Y",1,0,0,0,0,1,0,0,0,0,0,IRC_MASK,0},
       {"KIND",4,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
+{"COMMAND_ARGUMENT_COUNT",22,0,1,0,1,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY},
+   {"_Command_argument_count",23,0,1,0,1,0,0,0,0,0,Pathf90_Intrinsic,Integer_4,0},
 {"COMPARE_AND_SWAP",16,1,1,0,0,0,0,1,0,2,0,0,TRADITIONAL_FAMILY},
    {"COMPARE_AND_SWAP",16,1,1,0,0,0,0,0,1,0,Compare_And_Swap_Intrinsic,
                                                                  Logical_4,0},
@@ -1628,7 +1641,11 @@ intrin_tbl_type         intrin_tbl[] =
    {"COMPL",5,1,1,0,0,0,0,0,1,0,Compl_Intrinsic,0,0},
       {"I",1,0,0,0,0,0,0,0,0,0,0,IRP_MASK,0},
 {"CONJG",5,1,1,1,0,0,1,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
+#ifdef KEY /* Bug 9060 */
+   {"CONJG",5,1,1,0,0,0,0,0,0,0,Conjg_Intrinsic,Complex_4,0},
+#else /* KEY Bug 9060 */
    {"CONJG",5,1,1,0,0,0,0,0,0,0,Conjg_Intrinsic,0,0},
+#endif /* KEY Bug 9060 */
       {"Z",1,0,0,0,0,0,0,0,0,0,0,COMPLEX_MASK,0},
 {"COS",3,1,1,1,0,0,1,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
    {"COS",3,1,1,0,0,0,0,0,0,0,Cos_Intrinsic,Real_4,0},
@@ -2065,9 +2082,17 @@ intrin_tbl_type         intrin_tbl[] =
    {"DIGITS",6,1,1,0,0,0,0,0,0,0,Digits_Intrinsic,0,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,INTEGER_REAL_MASK,0},
 {"DIM",3,1,1,1,0,0,1,1,0,4,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
+#ifdef KEY /* Bug 9060 */
+   /* Code in p_utils.c function parse_deref assumes that when the unindented
+    * line represents a generic intrinsic interface, the first entry is the
+    * specific intrinsica having the same name. Not clear whether that's
+    * intentional or an oversight, but alphabetizing these indented entries
+    * satisfies that assumption in this particular case. :-) */
+#else
    {"IDIM",4,1,1,0,0,0,0,0,0,0,Dim_Intrinsic,0,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"Y",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
+#endif /* KEY Bug 9060 */
 # ifdef _TARGET_OS_MAX
    {"_HDIM_",6,1,1,0,1,0,0,0,0,0,Dim_Intrinsic,0,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
@@ -2076,13 +2101,18 @@ intrin_tbl_type         intrin_tbl[] =
       {"X",1,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
       {"Y",1,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
 # else
-   {"DIM",3,1,1,0,0,0,0,0,0,0,Dim_Intrinsic,0,0},
+   {"DIM",3,1,1,0,0,0,0,0,0,0,Dim_Intrinsic,Real_4,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
       {"Y",1,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
    {"DDIM",4,1,1,0,0,0,0,0,0,0,Dim_Intrinsic,0,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
       {"Y",1,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
 # endif
+#ifdef KEY /* Bug 9060 */
+   {"IDIM",4,1,1,0,0,0,0,0,0,0,Dim_Intrinsic,0,0},
+      {"X",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
+      {"Y",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
+#endif /* KEY Bug 9060 */
    {"QDIM",4,1,1,0,0,0,0,0,0,0,Dim_Intrinsic,0,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,S16_MASK,0},
       {"Y",1,0,0,0,0,0,0,0,0,0,0,S16_MASK,0},
@@ -3248,6 +3278,11 @@ intrin_tbl_type         intrin_tbl[] =
       {"UNIT",4,0,0,0,0,0,0,0,0,0,0,I4_MASK,0},
       {"OFFSET",6,0,0,0,0,0,0,0,0,0,0,I4_MASK,0},
       {"WHENCE",6,0,0,0,0,0,0,0,0,0,0,I4_MASK,0},
+{"FSEEK" INTRIN_SUBR_SUFFIX,(5 + (sizeof INTRIN_SUBR_SUFFIX) - 1),0,0,0,1,0,0,1,0,1,0,0,G77_FAMILY},
+   {"fseekf90_4_8_4_",15,0,0,0,1,0,0,0,1,0,Pathf90_Intrinsic,0,0},
+      {"UNIT",4,0,0,0,0,0,0,0,0,0,0,I4_MASK,0},
+      {"OFFSET",6,0,0,0,0,0,0,0,0,0,0,I8_MASK,0},
+      {"WHENCE",6,0,0,0,0,0,0,0,0,0,0,I4_MASK,0},
 {"FSTAT",5,0,1,0,1,0,0,1,0,1,0,0,TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
    {"pathf90_fstat",13,0,1,0,1,0,0,0,1,0,Fstat_Intrinsic,Integer_4,0},
       {"UNIT",4,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
@@ -3307,6 +3342,24 @@ intrin_tbl_type         intrin_tbl[] =
 {"GETPOS",6,1,1,0,0,0,0,1,0,1,0,0,TRADITIONAL_FAMILY},
    {"GETPOS",6,1,1,0,0,0,0,0,1,0,Getpos_Intrinsic,0,0},
       {"I",1,0,0,0,0,0,0,0,0,0,0,INTEGER_TYPELESS_MASK,0},
+{"GET_COMMAND",11,0,0,0,1,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY},
+   {"_Get_command",12,0,0,0,1,0,0,0,0,0,Pathf90_Intrinsic,0,0},
+      {"COMMAND",7,0,0,0,0,1,0,0,0,0,0,CHARACTER_MASK,0},
+      {"LENGTH",6,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
+      {"STATUS",6,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
+{"GET_COMMAND_ARGUMENT",20,0,0,0,1,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY},
+   {"_Get_command_argument",21,0,0,0,1,0,0,0,0,0,Pathf90_Intrinsic,0,0},
+      {"NUMBER",6,0,0,0,0,0,0,0,0,0,0,I4_MASK,0},
+      {"VALUE",5,0,0,0,0,1,0,0,0,0,0,CHARACTER_MASK,0},
+      {"LENGTH",6,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
+      {"STATUS",6,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
+{"GET_ENVIRONMENT_VARIABLE",24,0,0,0,1,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY},
+   {"_Get_environment_variable",25,0,0,0,1,0,0,0,0,0,Pathf90_Intrinsic,0,0},
+      {"NAME",4,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
+      {"VALUE",5,0,0,0,0,1,0,0,0,0,0,CHARACTER_MASK,0},
+      {"LENGTH",6,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
+      {"STATUS",6,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
+      {"TRIM_NAME",9,0,0,0,0,1,0,0,0,0,0,L4_MASK,0},
 {"GET_IEEE_EXCEPTIONS",19,0,0,0,0,1,0,1,0,1,0,0,TRADITIONAL_FAMILY},
    {"GET_IEEE_EXCEPTIONS",19,0,0,0,0,0,0,0,0,0,Get_Ieee_Exceptions_Intrinsic,0,0},
 # ifdef _TARGET32
@@ -3426,7 +3479,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"TARRAY",6,0,0,0,0,0,0,0,0,1,0,I8_MASK,0},
 #endif /* KEY Bug 1683 */
 {"IDIM",4,1,1,1,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"IDIM",4,1,1,0,0,0,0,0,0,0,Idim_Intrinsic,0,0},
+   {"IDIM",4,1,1,0,0,0,0,0,0,0,Idim_Intrinsic,Integer_4,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"Y",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
 {"IDINT",5,1,1,0,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
@@ -3676,12 +3729,18 @@ intrin_tbl_type         intrin_tbl[] =
       {"I",1,0,0,0,0,0,0,0,0,0,0,INTEGER_TYPELESS_MASK,0},
       {"SHIFT",5,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
 {"ISIGN",5,1,1,1,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"ISIGN",5,1,1,0,0,0,0,0,0,0,Isign_Intrinsic,0,0},
+   {"ISIGN",5,1,1,0,0,0,0,0,0,0,Isign_Intrinsic,Integer_4,0},
       {"A",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"B",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
 {"ISNAN",5,1,1,0,0,1,0,1,0,1,0,0,TRADITIONAL_FAMILY},
    {"ISNAN",5,1,1,0,0,0,0,0,0,0,Isnan_Intrinsic,0,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,REAL_MASK,0},
+{"IS_IOSTAT_END",13,0,1,0,1,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY},
+   {"_Is_iostat_end",14,0,1,0,1,0,0,0,0,0,Pathf90_Intrinsic,Logical_4,0},
+      {"I",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
+{"IS_IOSTAT_EOR",13,0,1,0,1,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY},
+   {"_Is_iostat_eor",14,0,1,0,1,0,0,0,0,0,Pathf90_Intrinsic,Logical_4,0},
+      {"I",1,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
 #ifdef KEY /* Bug 1683 */
 {"ITIME",5,0,0,0,1,0,0,1,0,1,0,0,PGI_FAMILY|G77_FAMILY},
    {"pathf90_itime",13,0,0,0,1,0,0,0,1,0,Pathf90_Intrinsic,0,0},
@@ -3957,11 +4016,11 @@ intrin_tbl_type         intrin_tbl[] =
    {"LEN_TRIM",8,1,1,0,0,0,0,0,0,0,Len_Trim_Intrinsic,Integer_4,0},
       {"STRING",6,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
 {"LGE",3,1,1,0,0,0,1,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"LGE",3,1,1,0,0,0,0,0,0,0,Lge_Intrinsic,0,0},
+   {"LGE",3,1,1,0,0,0,0,0,0,0,Lge_Intrinsic,Character_1,0},
       {"STRING_A",8,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
       {"STRING_B",8,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
 {"LGT",3,1,1,0,0,0,1,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"LGT",3,1,1,0,0,0,0,0,0,0,Lgt_Intrinsic,0,0},
+   {"LGT",3,1,1,0,0,0,0,0,0,0,Lgt_Intrinsic,Character_1,0},
       {"STRING_A",8,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
       {"STRING_B",8,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
 #ifdef KEY /* Bug 1683 */
@@ -3976,11 +4035,11 @@ intrin_tbl_type         intrin_tbl[] =
       {"STATUS",6,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
 #endif /* KEY Bug 1683 */
 {"LLE",3,1,1,0,0,0,1,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"LLE",3,1,1,0,0,0,0,0,0,0,Lle_Intrinsic,0,0},
+   {"LLE",3,1,1,0,0,0,0,0,0,0,Lle_Intrinsic,Character_1,0},
       {"STRING_A",8,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
       {"STRING_B",8,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
 {"LLT",3,1,1,0,0,0,1,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"LLT",3,1,1,0,0,0,0,0,0,0,Llt_Intrinsic,0,0},
+   {"LLT",3,1,1,0,0,0,0,0,0,0,Llt_Intrinsic,Character_1,0},
       {"STRING_A",8,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
       {"STRING_B",8,0,0,0,0,0,0,0,0,0,0,CHARACTER_MASK,0},
 #ifdef KEY /* Bug 1683 */
@@ -5285,7 +5344,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A62",3,0,0,0,0,1,0,0,0,0,0,REAL_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,REAL_MASK,0},
 {"MAX0",4,1,1,0,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"MAX0",4,1,1,0,0,0,0,0,0,0,Max0_Intrinsic,0,0},
+   {"MAX0",4,1,1,0,0,0,0,0,0,0,Max0_Intrinsic,Integer_4,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
@@ -5350,7 +5409,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A62",3,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
 {"MAX1",4,1,1,0,0,0,0,1,0,2,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"MAX1",4,1,1,0,0,0,0,0,0,0,Max1_Intrinsic,0,0},
+   {"MAX1",4,1,1,0,0,0,0,0,0,0,Max1_Intrinsic,Real_4,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
@@ -5414,7 +5473,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A61",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
       {"A62",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
-   {"MAX1",4,1,1,0,0,0,0,0,0,0,Max1_Intrinsic,0,0},
+   {"MAX1",4,1,1,0,0,0,0,0,0,0,Max1_Intrinsic,Real_8,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,S8_MASK,0},
@@ -7488,7 +7547,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A62",3,0,0,0,0,1,0,0,0,0,0,REAL_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,REAL_MASK,0},
 {"MIN0",4,1,1,0,0,0,0,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"MIN0",4,1,1,0,0,0,0,0,0,0,Min0_Intrinsic,0,0},
+   {"MIN0",4,1,1,0,0,0,0,0,0,0,Min0_Intrinsic,Integer_4,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,INTEGER_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
@@ -7553,7 +7612,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A62",3,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,INTEGER_MASK,0},
 {"MIN1",4,1,1,0,0,0,0,1,0,2,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
-   {"MIN1",4,1,1,0,0,0,0,0,0,0,Min1_Intrinsic,0,0},
+   {"MIN1",4,1,1,0,0,0,0,0,0,0,Min1_Intrinsic,Real_4,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,S4_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
@@ -7617,7 +7676,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"A61",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
       {"A62",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
       {"A63",3,0,0,0,0,1,0,0,0,0,0,S4_MASK,0},
-   {"MIN1",4,1,1,0,0,0,0,0,0,0,Min1_Intrinsic,0,0},
+   {"MIN1",4,1,1,0,0,0,0,0,0,0,Min1_Intrinsic,Real_8,0},
       {"A1",2,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
       {"A2",2,0,0,0,0,0,0,0,0,0,0,S8_MASK,0},
       {"A3",2,0,0,0,0,1,0,0,0,0,0,S8_MASK,0},
@@ -13113,6 +13172,16 @@ intrin_tbl_type         intrin_tbl[] =
       {"STATUS",6,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
 #endif /* KEY Bug 1683 */
 {"SYSTEM_CLOCK",12,0,0,0,1,0,0,1,0,2,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
+#ifdef KEY /* Bug 6009 */
+   {"_SYSTEM_CLOCK_4",15,0,0,0,1,0,0,0,0,0,System_Clock_Intrinsic,0,0},
+      {"COUNT",5,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
+      {"COUNT_RATE",10,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
+      {"COUNT_MAX",9,0,0,0,0,1,0,0,0,0,0,I4_MASK,0},
+   {"_SYSTEM_CLOCK_8",15,0,0,0,1,0,0,0,0,0,System_Clock_Intrinsic,0,0},
+      {"COUNT",5,0,0,0,0,1,0,0,0,0,0,I8_MASK,0},
+      {"COUNT_RATE",10,0,0,0,0,1,0,0,0,0,0,I8_MASK,0},
+      {"COUNT_MAX",9,0,0,0,0,1,0,0,0,0,0,I8_MASK,0},
+#else /* KEY Bug 6009 */
    {"_SYSTEM_CLOCK_4",15,0,0,0,1,0,0,0,0,0,0,Integer_4,0},
       {"COUNT",5,0,0,0,0,1,0,0,0,0,0,(I1_MASK|I2_MASK|I4_MASK),0},
       {"COUNT_RATE",10,0,0,0,0,1,0,0,0,0,0,(I1_MASK|I2_MASK|I4_MASK),0},
@@ -13121,6 +13190,7 @@ intrin_tbl_type         intrin_tbl[] =
       {"COUNT",5,0,0,0,0,1,0,0,0,0,0,I8_MASK,0},
       {"COUNT_RATE",10,0,0,0,0,1,0,0,0,0,0,I8_MASK,0},
       {"COUNT_MAX",9,0,0,0,0,1,0,0,0,0,0,I8_MASK,0},
+#endif /* KEY Bug 6009 */
 {"TAN",3,1,1,1,0,0,1,1,0,1,0,0,ANSI_FAMILY|TRADITIONAL_FAMILY|PGI_FAMILY|G77_FAMILY},
    {"TAN",3,1,1,0,0,0,0,0,0,0,Tan_Intrinsic,Real_4,0},
       {"X",1,0,0,0,0,0,0,0,0,0,0,REAL_MASK,0},

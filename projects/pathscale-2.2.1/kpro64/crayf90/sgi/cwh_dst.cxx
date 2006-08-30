@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -106,6 +106,17 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cw
 #define MAX_CWD_CHARS (256 - (MAXHOSTNAMELEN+1))
 static char  cwd_buffer[MAX_CWD_CHARS+MAXHOSTNAMELEN+1];
 #endif // KEY
+#ifdef KEY /* Bug 3507 */
+#include <string>
+#include <set>
+using namespace std;
+/* A "use x" shows up as one or two common blocks (one for initialized data,
+ * the other for uninitialized data) having faked-up names incorporating "x".
+ * We must emit only one "imported_declaration" tag even if we see two
+ * common blocks. */
+typedef set<string> module_set_t;
+static module_set_t module_set;
+#endif /* KEY Bug 3507 */
 
 char *FE_command_line = NULL;
 
@@ -212,6 +223,42 @@ cwh_dst_write(void)
    }
 
 }
+
+#ifdef KEY /* Bug 3507 */
+/* Downshift "name" in place and return "name" */
+static char *
+downshift(char *name) {
+  int len = strlen(name);
+  for (int j = 0; j < len; j += 1) {
+    name[j] = tolower(name[j]);
+  }
+  return name;
+}
+
+/*
+ * Delete the one or two trailing underscores which the compiler has appended
+ * to "name" to "decorate" it and keep it out of the C namespace. Return
+ * "name".
+ */
+static char *
+delete_trailing_underscores(char *name) {
+  int len = strlen(name);
+  if (!option_underscoring) {
+    return name;
+  }
+  if ('_' == name[len - 1]) {
+    name[len - 1] = 0;
+    if (!option_second_underscore) {
+      return name;
+    }
+    if ('_' == name[len - 2]) {
+      name[len - 2] = 0;
+    }
+  }
+  return name;
+}
+
+#endif /* KEY Bug 3507 */
 
 static void 
 cwh_dst_process_var (UINT32, ST* st)
@@ -378,6 +425,86 @@ cwh_dst_mk_const(ST * st,DST_INFO_IDX  parent)
    return;
 }
 
+#ifdef KEY /* Bug 3507 */
+/*===================================================
+ *
+ * cwh_dst_enter_module
+ *
+ * Call this on entry to a module
+ *
+ ====================================================
+*/
+extern void
+cwh_dst_enter_module(char *module_name, char *file_name, INT32 local_lineno) {
+  USRCPOS s;
+  INT32 file_num = cwh_dst_enter_path(file_name); 
+  USRCPOS_filenum(s) = file_num;
+  USRCPOS_linenum(s) = local_lineno;
+  current_module_name = downshift(strdup(module_name));
+  current_module_idx = DST_mk_module(s, current_module_name);
+  DST_append_child(comp_unit_idx,current_module_idx);
+}
+
+
+/*===================================================
+ *
+ * cwh_dst_exit_module
+ *
+ * Call this on exit from a module
+ *
+ ====================================================
+*/
+extern void
+cwh_dst_exit_module(void) {
+  current_module_idx = DST_INVALID_IDX;
+  free(current_module_name);
+  current_module_name = 0;
+}
+
+/*===================================================
+ *
+ * cwh_dst_module_vars
+ *
+ * Enter DST information for global variables and constants
+ * defined by module "en", but only for -g
+ *
+ ====================================================
+*/
+extern void
+cwh_dst_module_vars(ST *en)
+{
+  if (Debug_Level <= 0) {
+    return;
+  }
+  ITEM *com = NULL;
+  ITEM *parm = NULL;
+  DST_INFO_IDX save_current_scope_idx = current_scope_idx;
+  current_scope_idx = current_module_idx;
+  while ((com = GET_NEXT_COMMON(en,com)) != NULL) {
+    cwh_dst_mk_var(I_element(com),current_module_idx);
+  }
+  while ((parm = GET_NEXT_PARAMETER(en,parm)) != NULL) {
+    cwh_dst_process_var(1, I_element(parm));
+  }
+  For_all (St_Table, CURRENT_SYMTAB, &cwh_dst_process_var);
+  current_scope_idx = save_current_scope_idx;
+}
+
+/*
+ * Return true if this symbol is a main program which does not have an
+ * explicit user-invented name
+ */
+static int
+unnamed_main(PU &pu, ST *st) {
+  if (!PU_is_mainpu(pu)) {
+    return 0;
+  }
+  char *unmangled_name = GET_MODIFIED_NAME(st);	/* e.g. ABC or main___ */
+# define ANON_NAME "main___"
+  return unmangled_name && 0 == strcmp(unmangled_name, ANON_NAME);
+}
+#endif /* KEY Bug 3507 */
+
 /*===================================================
  *
  * cwh_dst_enter_pu
@@ -406,7 +533,18 @@ cwh_dst_enter_pu(ST *en)
 
   current_scope_idx = cwh_dst_mk_func(en);
 
+#ifdef KEY /* Bug 3507 */
+  DST_INFO_IDX parent_idx = (DST_INVALID_IDX != current_module_idx) ?
+    current_module_idx :
+    comp_unit_idx;
+  module_set.clear();
+
+  /* Intel, g77, PGI don't emit this extra entry, and it messes up the handling
+   * of named programs */
+  if (0) /* if (PU_is_mainpu(pu) && !unnamed_main(pu, en)) */
+#else /* KEY Bug 3507 */
   if (PU_is_mainpu(pu)) 
+#endif /* KEY Bug 3507 */
     cwh_dst_mk_MAIN(GET_MAIN_ST(),current_scope_idx);
 
   /* nested? so is dwarf. Save idx until parent appears */
@@ -418,13 +556,21 @@ cwh_dst_enter_pu(ST *en)
 
     cwh_dst_inner_read_DSTs(current_scope_idx);
     cwh_dst_inner_clear_DSTs();
+#ifdef KEY /* Bug 3507 */
+    DST_append_child(parent_idx,current_scope_idx);
+#else /* KEY Bug 3507 */
     DST_append_child(comp_unit_idx,current_scope_idx);
+#endif /* KEY Bug 3507 */
   }
 
   al = NULL ;
   while ((al = GET_NEXT_ALTENTRY(en,al)) != NULL) {
     i = cwh_dst_mk_func(I_element(al));
+#ifdef KEY /* Bug 3507 */
+    DST_append_child(parent_idx,i);
+#else /* KEY Bug 3507 */
     DST_append_child(comp_unit_idx,i);
+#endif /* KEY Bug 3507 */
   }
 
 
@@ -450,7 +596,13 @@ cwh_dst_enter_pu(ST *en)
 
     if (PU_lexical_level(pu) == 2)
       while ((parm = GET_NEXT_PARAMETER(en,parm)) != NULL) 
+#ifdef KEY /* Bug 3507 */
+      {
+#endif /* KEY Bug 3507 */
 	cwh_dst_process_var(1, I_element(parm));
+#ifdef KEY /* Bug 3507 */
+      }
+#endif /* KEY Bug 3507 */
 
   }
 
@@ -491,26 +643,40 @@ cwh_dst_mk_func(ST * st)
   s = GET_ST_LINENUM(st);
 
   l = NULL;  
-#ifndef KEY
-  p = GET_MODIFIED_NAME(st);
-#else
-  // Bug 2672- use the mangled name in Dwarf output to match the assembly name
-  if (PU_is_mainpu(pu)) 
-    p = ST_name(st);
+#ifdef KEY /* Bug 2672, 3507 */
+  // Bug 2672: For anonymous main program, we use the mangled name in Dwarf
+  // so as to match the assembly name
+  // Bug 3507: For explicitly named main program, use the explicit name
+  int is_unnamed_main = unnamed_main(pu, st);
+  if (is_unnamed_main)
+    p = ST_name(st);			/* e.g. ABC.in.MYMODULE or MAIN__ */
   else
-    p = GET_MODIFIED_NAME(st);
-#endif
-  if (p != NULL)
+    p = GET_MODIFIED_NAME(st);		/* e.g. ABC or main___ */
+#else
+  p = GET_MODIFIED_NAME(st);
+#endif /* KEY Bug 3672, 3507 */
+  if (p != NULL) {
+#ifdef KEY /* Bug 3507 */
+    /* We want lower case. If we ever add a case-sensitive option, we will
+     * need to eliminate this and change the compiler symtab to downshift
+     * not upshift symbols when in standard case-insensitive mode. */
+    r = downshift(l = strdup(p));
+#else /* KEY Bug 3507 */
     r = p ;
+#endif /* KEY Bug 3507 */
 
-  else {
+  } else {
     r = ST_name(st);
     n = strlen(r);
 
     if (r[n-1] == '_') {
+#ifdef KEY /* Bug 3507 */
+      r = delete_trailing_underscores(l = strdup(r));
+#else /* KEY Bug 3507 */
       l = strdup(r);
       l[n-1] = '\0';
       r = l ;
+#endif /* KEY Bug 3507 */
     }
   }
 
@@ -536,7 +702,11 @@ cwh_dst_mk_func(ST * st)
 #endif
 			  TRUE); 
 
+#ifdef KEY /* Bug 3507 */
+    if (p != NULL && !is_unnamed_main) 
+#else /* KEY Bug 3507 */
     if (p != NULL && !PU_is_mainpu(pu)) 
+#endif /* KEY Bug 3507 */
       DST_add_linkage_name_to_subprogram(i,ST_name(st));
   }
     
@@ -636,6 +806,127 @@ cwh_dst_mk_namelist_item(ST *st, DST_INFO_IDX  parent)
 }
 #endif
 
+#ifdef KEY /* Bug 3507 */
+/*
+ * Global uninitialized data from a module appears in a common block
+ * named something like:
+ *    .data.in.modulename.in.modulename_
+ * Global initialized data from a module appears in a common block like:
+ *    .data_init.in.modulename__
+ * Static local variables of a module procedure which has a nested procedure
+ * appear in a common block like:
+ *    .host.in.outerproc.in.innerproc.in.modulename_
+ * Static local variables of an external procedure which has a nested procedure
+ * appear in a common block like:
+ *    .host.in.outerproc.in.innerproc_
+ * Functions from a module appear as:
+ *    FUNCTIONNAME.in.MODULENAME
+ * These common block names seem to follow the rules for appending extra
+ * trailing underscores, where the entire name (not just the module name)
+ * is examined for underscores; thus "data_init" itself is enough to guarantee
+ * that there will be two trailing underscores under the -fsecond-underscore
+ * rule. But function names containing ".in." seem never to have even one
+ * appended extra underscore. Go figure.
+ *
+ * Testing for the mangled names seems clumsy, but at the level of
+ * ST data structures (as opposed to the front end attr table) there
+ * seems to be no other way.
+ *
+ * Here is a sample program showing how it works:
+ * module mod
+ *   integer mod_int		! .data.in.mod.in.mod_
+ *   integer :: mod_init = 4	! .data_init.in.mod__
+ * contains
+ *   subroutine outer		! OUTER.in.MOD
+ *     integer :: outer_init = 5	! .host.in.inner.in.outer.in.mod_
+ *     integer outer_int		! if -static-data, same as outer_init;
+ *     				! else not in common
+ *     print *, mod_int, mod_init
+ *   contains
+ *     subroutine inner		! INNER.in.OUTER.in.MOD
+ *       integer inner_int		! not in common
+ *       integer :: inner_init = 6	! not in common
+ *       print *, outer_int, outer_init, inner_int, inner_init
+ *     end subroutine inner
+ *   end subroutine outer
+ * end module mod
+ * subroutine sub()
+ *   integer :: sub_init = 7	! .host.in.sub_nested.in.sub_
+ *   integer sub_int		! if -static-data, like sub_init;
+ *   				! else not in common
+ * contains
+ *   subroutine sub_nested()	! SUB_NESTED.in.SUB
+ *     integer sub_nested_int	! not in common
+ *     integer :: sub_nested_init = 8 ! not in common
+ *     print *, sub_int, sub_init, sub_nested_int, sub_nested_init
+ *   end subroutine sub_nested
+ * end subroutine sub
+ */
+
+/*
+ * If this is a faked-up common block representing static local variables in a
+ * procedure having a nested procedure, return true else false.
+ */
+static int
+procedure_static_local_common_name(ST *st) {
+  #define DOT_HOST ".host.in."
+  return 0 == strncmp(DOT_HOST, ST_name(st), (sizeof DOT_HOST) - 1);
+}
+
+/*
+ * If this is a faked-up common block representing global data in a module,
+ * return true else false.
+ */
+static int
+module_common_name(ST *st) {
+  #define DOT_DATA ".data"
+  char *name = ST_name(st);
+  return 0 == strncmp(DOT_DATA, name, (sizeof DOT_DATA) - 1);
+}
+
+/*
+ * If 'st' has a name matching any of the faked-up patterns, then return a
+ * dynamically new'ed string containing the module name (which the caller
+ * should delete.) Otherwise, return 0.
+ */
+static char *extract_module_name(ST *st) {
+  #define DOT_IN_DOT ".in."
+  char *name = ST_name(st);
+  if (0 != strncmp(DOT_DATA, name, (sizeof DOT_DATA) - 1) &&
+    0 != strncmp(DOT_HOST, name, (sizeof DOT_HOST) - 1) &&
+    0 == strstr(name, DOT_IN_DOT))
+  {
+    return 0;
+  }
+
+  char *modulename = strrchr(name, '.');
+  if (0 == modulename) {
+    return 0;
+  }
+
+  int length = strlen(modulename += 1);
+  char *result = new char[length + sizeof '\0'];
+  strcpy(result, modulename);
+  return downshift(delete_trailing_underscores(result));
+  }
+
+/*
+ * Given "st" representing a common block having a faked-up name, emit
+ * an imported_declaration tag and attach it to "parent", provided it
+ * doesn't duplicate an existing imported_declaration tag in the current
+ * subprogram.
+ */
+static void
+emit_import(ST *st, char *module_name, DST_INFO_IDX parent)
+{
+  if (module_set.find(module_name) == module_set.end()) {
+    module_set.insert(string(module_name));
+    DST_INFO_IDX j = DST_mk_imported_decl(ST_name(st), module_name);
+    DST_append_child(parent, j);
+    }
+}
+#endif /* KEY Bug 3507 */
+
 /*===================================================
  *
  * cwh_dst_mk_var
@@ -696,6 +987,56 @@ cwh_dst_mk_var(ST * st,DST_INFO_IDX  parent)
 
   case SCLASS_COMMON:
   case SCLASS_DGLOBAL:
+#ifdef KEY /* Bug 3507 */
+    /*
+     * If an external or module procedure has a nested procedure, it
+     * puts its static local variables in a faked-up common block. Emit
+     * these variables without the common block.
+     */
+    if (procedure_static_local_common_name(st)) {
+      (void) cwh_dst_mk_common(st, parent);
+    }
+
+    /*
+     * Modules use faked-up common blocks to hold their global variables.
+     * Those common blocks also appear in any scope which host-associates or
+     * use-associates variables from the module.
+     */
+    else if (module_common_name(st)) {
+      char *module_name = extract_module_name(st);
+      if (current_module_name) { // We are nested inside some module
+	if (parent == current_module_idx) {
+	  // Faked-up common directly inside the module represents the
+	  // global variables themselves: emit variables without the common
+	  (void) cwh_dst_mk_common(st, parent);
+	}
+	else if (0 == strcmp(module_name, current_module_name)) {
+	  // Faked-up common representing an import into a procedure from the
+	  // same module the procedure is nested in: emit nothing
+	}
+	else {
+	  // Faked-up common representing an import into a procedure from a
+	  // module other than the one the procedure is nested in
+	  emit_import(st, module_name, parent);
+	}
+      }
+      else { // Faked-up common in an external procedure: import module
+        emit_import(st, module_name, parent);
+      }
+      delete [] module_name;
+    }
+
+    /*
+     * Normal common block
+     */
+    else {
+      i = cwh_dst_mk_common(st, DST_INVALID_IDX);
+      if (!DST_IS_NULL(i)) {
+	// common_inclusion tag is useful only if one merges duplicate commons
+	DST_append_child(parent,i);
+      }
+    }
+#else /* KEY Bug 3507 */
     i = cwh_dst_mk_common(st);
     if (!DST_IS_NULL(i)) {
       j = cwh_dst_mk_common_inclusion(st,i);
@@ -703,6 +1044,7 @@ cwh_dst_mk_var(ST * st,DST_INFO_IDX  parent)
       DST_append_child(parent,j);
       DST_append_child(parent,i);
     }
+#endif /* KEY Bug 3507 */
     break;
 
   default:
@@ -715,13 +1057,14 @@ cwh_dst_mk_var(ST * st,DST_INFO_IDX  parent)
       }
     } else if  (!ST_is_temp_var(st)) {
 #ifndef KEY
-      if (* ST_name(st) != '@') {  
+      if (* ST_name(st) != '@')
 #else
       // Bug 4834 - do not create DST entry for t$ variables which are 
       // probably compiler generated temporaries (used in I/O statements).
       if (* ST_name(st) != '@' &&
-	  strncmp(ST_name(st), "t$", sizeof(char)*2) != 0) {
+	  strncmp(ST_name(st), "t$", sizeof(char)*2) != 0)
 #endif
+      {
 	Top_ST_has_dope = cwh_dst_has_dope(ST_type(st));
 	i = cwh_dst_mk_variable(st);
 	DST_append_child(parent,i);
@@ -999,7 +1342,15 @@ cwh_dst_mk_common_inclusion(ST * com, DST_INFO_IDX c)
  *===================================================
 */
 static DST_INFO_IDX
+#ifdef KEY /* Bug 3507 */
+/* If parent is not DST_INVALID_IDX, then refrain from emitting the common
+ * block itself, and attach all of the common variables directly to "parent"
+ * instead. This is used to eliminate faked-up common blocks which represent
+ * global variables in modules.  */
+cwh_dst_mk_common(ST * st, DST_INFO_IDX parent)
+#else /* KEY Bug 3507 */
 cwh_dst_mk_common(ST * st)
+#endif /* KEY Bug 3507 */
 {
   BOOL           dr;
   DST_VARIABLE	*def_attr;
@@ -1026,10 +1377,23 @@ cwh_dst_mk_common(ST * st)
   char name[len];
   if (len) {
     strcpy(name, ST_name(st));
+#ifdef KEY /* Bug 3507 */
+    downshift(delete_trailing_underscores(name));
+#else /* KEY Bug 3507 */
     for (j = 0; j < len; j ++)
       name[ j ] = tolower(name[ j ]);
+#endif /* KEY Bug 3507 */
   }
+# ifdef KEY /* Bug 3507 */
+  if (DST_INVALID_IDX == parent) {
+    i = DST_mk_common_block(name,(void*) ST_st_idx(st)); 
+  }
+  else {
+    i = parent;
+  }
+# else /* KEY Bug 3507 */
   i = DST_mk_common_block(name,(void*) ST_st_idx(st)); 
+# endif /* KEY Bug 3507 */
 #else
   i = DST_mk_common_block(ST_name(st),(void*) ST_st_idx(st)); 
 #endif /* TARG_X8664 */

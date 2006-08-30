@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -102,6 +102,9 @@ extern "C" {
 
 #define DST_flag_info_mark         0x80000000 /* DST_info mark for traversal */
 #define DST_flag_static		   0x100000000LL /* Has no AT_data_member_location */
+#ifdef TARG_X8664
+#define DST_flag_GNU_vector        0x200000000LL /* GNU vector extension */
+#endif
 #define DST_flag_mask              0xffffffff
 
 #define DST_SET_external(flag) (flag |= DST_flag_external)
@@ -132,6 +135,9 @@ extern "C" {
 #define DST_SET_assoc_idx(flag) (flag |= DST_flag_assoc_idx)
 #define DST_SET_info_mark(flag) (flag |= DST_flag_info_mark)
 #define DST_SET_static(flag) (flag |= DST_flag_static)
+#ifdef TARG_X8664
+#define DST_SET_GNU_vector(flag) (flag |= DST_flag_GNU_vector)
+#endif
 
 #define DST_RESET_all(flag) (flag &= ~DST_flag_mask)
 #define DST_RESET_external(flag) (flag &= ~DST_flag_external)
@@ -162,6 +168,9 @@ extern "C" {
 #define DST_RESET_assoc_idx(flag) (flag &= ~DST_flag_assoc_idx)
 #define DST_RESET_info_mark(flag) (flag &= ~DST_flag_info_mark)
 #define DST_RESET_static(flag) (flag &= ~DST_flag_static)
+#ifdef TARG_X8664
+#define DST_RESET_GNU_vector(flag) (flag &= ~DST_flag_GNU_vector)
+#endif
 
 #define DST_IS_external(flag) (flag & DST_flag_external)
 #define DST_IS_declaration(flag) (flag & DST_flag_declaration)
@@ -191,6 +200,9 @@ extern "C" {
 #define DST_IS_assoc_idx(flag) (flag & DST_flag_assoc_idx)
 #define DST_IS_info_mark(flag) (flag & DST_flag_info_mark)
 #define DST_IS_static(flag) (flag & DST_flag_static)
+#ifdef TARG_X8664
+#define DST_IS_GNU_vector(flag) (flag & DST_flag_GNU_vector)
+#endif
 
 
 /* Attribute types, used to hold the values defined in "dwarf.h"
@@ -586,6 +598,26 @@ typedef struct DST_common_incl
 #define DST_COMMON_INCL_decl(attr) ((attr)->decl)
 #define DST_COMMON_INCL_com_blk(attr) ((attr)->com_blk)
 
+#ifdef KEY /* Bug 3507 */
+typedef struct DST_imported_decl
+{
+   DST_ASSOC_INFO import;  /* Get offset into .debuginfo via back-end LABEL */
+   DST_STR_IDX    name;	   /* name of included declaration (e.g. module) */
+} DST_IMPORTED_DECL;
+#define DST_IMPORTED_DECL_import(attr)  ((attr)->import)
+#define DST_IMPORTED_DECL_name(attr)  ((attr)->name)
+
+typedef struct DST_module
+{
+   USRCPOS        decl;       /* Source location */
+   DST_STR_IDX    name;       /* Name of module */
+   DST_CHILDREN   child;      /* Members of module */
+} DST_MODULE;
+#define DST_MODULE_decl(attr) ((attr)->decl)
+#define DST_MODULE_name(attr) ((attr)->name)
+#define DST_MODULE_first_child(attr) ((attr)->child.first)
+#define DST_MODULE_last_child(attr) ((attr)->child.last)
+#endif /* KEY Bug 3507 */
 
 /* [tag==DW_TAG_lexical_block]: Back-end must supply low/high pc and 
  * pc reloc info.

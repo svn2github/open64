@@ -60,6 +60,9 @@
 #include <elfaccess.h>
 #include <libelf/libelf.h>
 #include <vector>
+#ifdef KEY /* Bug 3507 */
+#include <ctype.h>
+#endif /* KEY Bug 3507 */
 
 #define	USE_STANDARD_TYPES 1
 #include "defs.h"
@@ -1399,6 +1402,23 @@ put_common_inclusion (DST_flag flag, DST_COMMON_INCL *attr, Dwarf_P_Die die)
   put_reference (DST_COMMON_INCL_com_blk(attr), DW_AT_common_reference, die);
 }
 
+#ifdef KEY /* Bug 3507 */
+static void
+put_imported_decl (DST_flag flag, DST_IMPORTED_DECL *attr, Dwarf_P_Die die)
+{
+  put_name (DST_IMPORTED_DECL_name(attr), die, pb_none);
+  /* DW_AT_import is handled specially inside function
+   Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs */
+}
+
+static void
+put_module (DST_flag flag, DST_MODULE *attr, Dwarf_P_Die die)
+{
+  put_name (DST_MODULE_name(attr), die, pb_none);
+  put_decl (DST_MODULE_decl(attr), die);
+}
+#endif /* KEY Bug 3507 */
+
 static void 
 put_string_type (DST_flag flag, DST_STRING_TYPE *attr, Dwarf_P_Die die)
 {
@@ -1422,6 +1442,20 @@ put_string_type (DST_flag flag, DST_STRING_TYPE *attr, Dwarf_P_Die die)
     put_location (DST_VARIABLE_def_st(vattr), 0, flag, die, DW_AT_string_length);
   }
 }
+
+#ifdef KEY
+static void
+put_namelist (DST_NAMELIST *attr, Dwarf_P_Die die)
+{
+  put_name (DST_NAMELIST_name(attr), die, pb_none);
+}
+
+static void
+put_namelist_item (DST_NAMELIST_ITEM *attr, Dwarf_P_Die die)
+{
+  put_name (DST_NAMELIST_ITEM_name(attr), die, pb_none);
+}
+#endif
 
 static void
 Write_Attributes (
@@ -1555,6 +1589,24 @@ Write_Attributes (
       put_string_type (flag, 
 	  DST_ATTR_IDX_TO_PTR(iattr, DST_STRING_TYPE), die);
     break;
+#ifdef KEY
+    // Bug 3704 - handle namelist and namelist items for Fortran.
+    case DW_TAG_namelist:
+      put_namelist (DST_ATTR_IDX_TO_PTR(iattr, DST_NAMELIST), die);
+      break;
+    case DW_TAG_namelist_item:
+      put_namelist_item (DST_ATTR_IDX_TO_PTR(iattr, DST_NAMELIST_ITEM), die);
+      break;
+#ifdef KEY /* Bug 3507 */
+    case DW_TAG_imported_declaration:
+      put_imported_decl(flag, 
+                        DST_ATTR_IDX_TO_PTR(iattr, DST_IMPORTED_DECL), die);
+      break;
+    case DW_TAG_module:
+      put_module(flag, DST_ATTR_IDX_TO_PTR(iattr, DST_MODULE), die);
+      break;
+#endif /* KEY Bug 3507 */
+#endif
       
    default:
       ErrMsg (EC_Unimplemented, "Write_Attributes: TAG not handled");
@@ -1665,8 +1717,14 @@ preorder_visit (
        child_idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(child_idx)))
   {
     info = DST_INFO_IDX_TO_PTR (child_idx);
+#ifdef KEY /* Bug 3507 */
+    if ((DST_INFO_tag(info) != DW_TAG_subprogram &&
+          DST_INFO_tag(info) != DW_TAG_entry_point)
+	|| DST_IS_declaration(DST_INFO_flag(info)) )
+#else /* KEY Bug 3507 */
     if (DST_INFO_tag(info) != DW_TAG_subprogram
 	|| DST_IS_declaration(DST_INFO_flag(info)) )
+#endif /* KEY Bug 3507 */
     {
       left_sibling = 
         preorder_visit (child_idx, parent, left_sibling, tree_level + 1, visit_children);
@@ -1677,6 +1735,44 @@ preorder_visit (
   }
   return die;
 }
+
+#ifdef KEY /* Bug 3507 */
+#include <map>
+using namespace std;
+/*
+ * The code generator traverses the top-level procedures without regard
+ * to whether they belong to any module. We use the DST_INFO constructed
+ * by the front end to create a mapping from each procedure which is an
+ * immediate child of the module, onto the module itself, so that we can
+ * attach those procedures to the module DIE rather than the compilation
+ * unit DIE as we otherwise would.
+ *
+ * Procedures nested inside procedures get handled correctly by the code
+ * generator's normal traversal, without any special treatment.
+ */
+typedef map<DST_INFO *, Dwarf_P_Die> DST_INFO_map_t;
+static DST_INFO_map_t DST_INFO_map;
+
+/*
+ * For the specified parent, add to DST_INFO_map a mapping from the
+ * DST_INFO for each of its children onto the corresponding
+ * parent_p_die.
+ */
+static void
+build_map(DST_INFO_IDX parent_idx, Dwarf_P_Die parent_p_die)
+{
+  for (DST_INFO_IDX child_idx = DST_first_child(parent_idx);
+       !DST_IS_NULL(child_idx); 
+       child_idx = DST_INFO_sibling(DST_INFO_IDX_TO_PTR(child_idx)))
+  {
+    DST_INFO *child_info = DST_INFO_IDX_TO_PTR (child_idx);
+    int tag = DST_INFO_tag(child_info);
+    if (tag == DW_TAG_subprogram || tag == DW_TAG_entry_point) {
+      DST_INFO_map[child_info] = parent_p_die;
+    }
+  }
+}
+#endif /* KEY Bug 3507 */
 
 /* traverse all DSTs and handle the non-pu info */
 static void
@@ -1704,7 +1800,15 @@ Traverse_Global_DST (void)
      * of the compile_unit die.
      */
     parent = CGD_enclosing_proc[GLOBAL_LEVEL];
+#ifdef KEY /* Bug 3507 */
+    Dwarf_P_Die die = preorder_visit (idx, parent, NULL, LOCAL_LEVEL,
+      TRUE /* visit children */);
+    if (DST_INFO_tag(info) == DW_TAG_module) {
+      build_map(idx, die);
+    }
+#else /* KEY Bug 3507 */
     (void) preorder_visit (idx, parent, NULL, LOCAL_LEVEL, TRUE /* visit children */);
+#endif /* KEY Bug 3507 */
     DST_SET_info_mark(DST_INFO_flag(info));	/* mark has been traversed */
   }
 }
@@ -1796,6 +1900,12 @@ Traverse_DST (ST *PU_st, DST_IDX pu_idx)
   // so reset that to 1, and keep globals combined into 0.
   nestlevel = CURRENT_SYMTAB - 1;
   parent = CGD_enclosing_proc[nestlevel-1];
+#ifdef KEY /* Bug 3507 */
+  /* Special case: procedure is an immediate child of a module */
+  if (DST_INFO_map.find(info) != DST_INFO_map.end()) {
+    parent = DST_INFO_map[info];
+  }
+#endif /* KEY Bug 3507 */
   die = preorder_visit (pu_idx, parent, NULL, nestlevel, TRUE /*visit_children*/);
   Set_Enclosing_Die (die, nestlevel);
 
@@ -2726,20 +2836,101 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
       // size to be relocated, use data4.ua
       char *reloc_name = (reloc_buffer[k].drd_length == 8)?
 			AS_ADDRESS_UNALIGNED: AS_WORD_UNALIGNED;
-
+#ifdef KEY
+      // don't want to affect other sections, although they may also need
+      // to be updated under fPIC
+      bool gen_pic = ((Gen_PIC_Call_Shared || Gen_PIC_Shared) &&
+      		       !strcmp (section_name, ".eh_frame"));
+#endif
       switch (reloc_buffer[k].drd_type) {
       case dwarf_drt_none:
 	break;
       case dwarf_drt_data_reloc:
 	fprintf(asm_file, "\t%s\t%s", reloc_name,
 		Cg_Dwarf_Name_From_Handle(reloc_buffer[k].drd_symbol_index));
+#ifdef KEY
+	if (gen_pic)
+	    fputs ("-.", asm_file);
+#endif
 	break;
 
       case dwarf_drt_segment_rel:
 	// need unaligned AS_ADDRESS for dwarf, so add .ua
 	fprintf(asm_file, "\t%s\t%s", reloc_name,
 		Cg_Dwarf_Name_From_Handle(reloc_buffer[k].drd_symbol_index));
+#ifdef KEY
+	if (gen_pic)
+	    fprintf(asm_file, "-.");
+#endif
 	break;
+#ifdef KEY
+      case dwarf_drt_cie_label: // bug 2463
+        fprintf(asm_file, "\t%s\t%s", reloc_name, ".LCIE");
+	++k; // skip the DEBUG_FRAME label that is there just as a place-holder
+	break;
+#ifdef KEY /* Bug 3507 */
+      case dwarf_drt_module:
+	{
+	  // Get the module name and lowercase it.
+	  char *module_name = 
+	    (char *)vsp.vsp_buffers[0]->sc_buffer+vsp.vsp_curbufpos+1;
+	  INT length = strlen(module_name);
+	  char *module_name_l = (char *)alloca(length+1);
+	  for (INT pos = 0; pos < length; pos ++)
+	    module_name_l[pos] = tolower(module_name[pos]);
+	  module_name_l[length] = '\0';
+	  fprintf(asm_file, "\t.globl __dm_%s\n__dm_%s:\n", 
+		  module_name_l, module_name_l);
+	  k+=2; // skip the DEBUG_INFO label place-holder
+	  // do not move the cur_byte because this data is not present in 
+	  // vsp_bytes.
+	  continue; 
+	}
+      case dwarf_drt_imported_declaration: 
+	{
+	  // Get the lowercased module name.
+	  char *module_name = 
+	    (char *)vsp.vsp_buffers[0]->sc_buffer+
+	    vsp.vsp_curbufpos-(reloc_buffer[k].drd_length+1);
+	  reloc_name = 
+#ifdef TARG_MIPS
+	    CG_emit_non_gas_syntax ? 
+	    (Use_32_Bit_Pointers ? ".word" : ".dword") :
+#endif
+	    Use_32_Bit_Pointers ? ".4byte" : ".quad";
+	  fprintf(asm_file, "\t.weak __dm_%s\n\t%s\t__dm_%s\n", module_name,
+	    reloc_name, module_name);
+	  k+=2; // skip the DEBUG_INFO label place-holder
+	  // do not move the cur_byte because this data is not present in 
+	  // vsp_bytes.
+	  continue; 
+	}
+#endif /* KEY Bug 3507 */
+      case dwarf_drt_data_reloc_by_str_id:
+	// it should be __gxx_personality_v0
+        if ((Gen_PIC_Call_Shared || Gen_PIC_Shared) && 
+	     !strcmp (&Str_Table[reloc_buffer[k].drd_symbol_index], 
+	     "__gxx_personality_v0"))
+	    fprintf (asm_file, "\t%s\tDW.ref.__gxx_personality_v0-.", reloc_name);
+ 	else
+	fprintf(asm_file, "\t%s\t%s", reloc_name,
+		&Str_Table[reloc_buffer[k].drd_symbol_index]);
+	break;
+      case dwarf_drt_first_of_length_pair_create_second:
+	{
+	static int count=1;
+	Is_True(k + 1 < reloc_count, ("unpaired first_of_length_pair"));
+	Is_True((reloc_buffer[k + 1].drd_type ==
+		 dwarf_drt_second_of_length_pair),
+		("unpaired first_of_length_pair"));
+	int this_count=count++;
+	fprintf(asm_file,".LFDE%d:\n",this_count);
+	// bug 2729
+	fprintf(asm_file, "\t%s\t.LFDE%d - .LEHCIE", reloc_name, this_count);
+	++k;
+	}
+	break;
+#endif	// KEY
       case dwarf_drt_first_of_length_pair:
 	Is_True(k + 1 < reloc_count, ("unpaired first_of_length_pair"));
 	Is_True((reloc_buffer[k + 1].drd_type ==

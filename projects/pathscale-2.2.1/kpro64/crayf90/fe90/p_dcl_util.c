@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -889,6 +889,215 @@ void	parse_length_selector(int	attr_idx,
    return;
 
 }  /* parse_length_selector */
+#ifdef KEY /* Bug 8422 */
+
+/*
+ * This is the part of parse_type_spec() which processed the "ddd" in
+ * something like "integer*ddd"; I have separated it so that it can be used
+ * for the extension which allows something like "integer i*ddd" as well
+ * (but it is not used for "character c*ddd", which was already handled by
+ * parse_length_selector().)
+ */
+int
+parse_non_char_kind_selector(boolean double_precision) {
+   if (MATCHED_TOKEN_CLASS(Tok_Class_Int_Spec)) {
+      long num	= (long) CN_INT_TO_C(TOKEN_CONST_TBL_IDX(token));
+      linear_type_type linear_type	= Err_Res;
+      int type_idx	= ATD_TYPE_IDX(AT_WORK_IDX);
+      char *type_str	= basic_type_str[TYP_TYPE(type_idx)];
+
+      switch (TYP_TYPE(type_idx)) {
+
+      case Integer:
+	    
+	 switch (num) {
+
+	 case 1:
+	    linear_type = (cmd_line_flags.s_cf77types) ?
+			  INTEGER_DEFAULT_TYPE : Integer_1;
+	    break;
+
+	 case 2:
+	    linear_type = (cmd_line_flags.s_cf77types) ?
+			  INTEGER_DEFAULT_TYPE : Integer_2;
+	    break;
+
+	 case 4:
+	    linear_type = (cmd_line_flags.s_cf77types) ?
+			  INTEGER_DEFAULT_TYPE : Integer_4;
+	    break;
+
+	 case 8:
+	    linear_type = (cmd_line_flags.s_cf77types) ?
+			  INTEGER_DEFAULT_TYPE : Integer_8;
+	    break;
+
+	 };
+
+      break;
+
+
+      case Real:
+
+	 if (double_precision) {
+	    type_str	= "DOUBLE PRECISION";
+
+	    if (num == 16) {
+
+# ifdef _TARGET_OS_MAX /* Msg was issued when DOUBLE PRECISION was parsed.*/
+	       linear_type = Real_8;
+# elif defined(_TARGET_OS_LINUX)
+	       PRINTMSG(TOKEN_LINE(token), 541, Error, 
+			TOKEN_COLUMN(token));
+# else
+	       linear_type = Real_16;
+
+	       if (!on_off_flags.enable_double_precision) {
+		  PRINTMSG(TOKEN_LINE(token), 710, Warning, 
+			   TOKEN_COLUMN(token),
+			   type_str,
+			   num);
+	       }
+# endif
+	    }
+	 }
+	 else {
+	    switch (num) {
+
+	    case 4:
+	       linear_type = (cmd_line_flags.s_cf77types) ?
+			     REAL_DEFAULT_TYPE : Real_4;
+	       break;
+
+	    case 8:
+	       linear_type = (cmd_line_flags.s_cf77types) ?
+			     REAL_DEFAULT_TYPE : Real_8;
+	       break;
+
+	    case 16:
+
+# ifdef _TARGET_OS_MAX
+	       PRINTMSG(TOKEN_LINE(token), 391, Warning,
+			TOKEN_COLUMN(token),
+			type_str, num, type_str, 8);
+	       linear_type = Real_8;
+# elif defined(_TARGET_OS_LINUX)
+	       PRINTMSG(TOKEN_LINE(token), 541, Error, 
+			TOKEN_COLUMN(token));
+# else
+	       linear_type = Real_16;
+
+	       if (!on_off_flags.enable_double_precision) {
+		  PRINTMSG(TOKEN_LINE(token), 710, Warning, 
+			   TOKEN_COLUMN(token),
+			   type_str,
+			   num);
+	       }
+# endif
+	       break;
+	    };
+	 }
+
+	 break;
+
+
+      case Complex:
+
+	 switch (num) {
+
+	 case 8:
+	    linear_type = (cmd_line_flags.s_cf77types) ?
+			  COMPLEX_DEFAULT_TYPE : Complex_4;
+	    break;
+
+	 case 16:
+	    linear_type = Complex_8;
+	    break;
+
+	 case 32:
+
+# ifdef _TARGET_OS_MAX
+	    PRINTMSG(TOKEN_LINE(token), 391, Warning, 
+		     TOKEN_COLUMN(token),
+		     type_str, num, type_str, 16);
+	    linear_type = Complex_8;
+# elif defined(_TARGET_OS_LINUX)
+	       PRINTMSG(TOKEN_LINE(token), 541, Error, 
+			TOKEN_COLUMN(token));
+# else
+	    linear_type = Complex_16;
+
+	    if (!on_off_flags.enable_double_precision) {
+	       PRINTMSG(TOKEN_LINE(token), 710, Warning, 
+			TOKEN_COLUMN(token),
+			type_str,
+			num);
+	    }
+# endif
+	    break;
+	 };
+
+	 break;
+
+
+      case Logical:
+
+	 switch (num) {
+
+	 case 1:
+	    linear_type = (cmd_line_flags.s_cf77types) ?
+			  LOGICAL_DEFAULT_TYPE : Logical_1;
+	    break;
+
+	 case 2:
+	    linear_type = (cmd_line_flags.s_cf77types) ?
+			  LOGICAL_DEFAULT_TYPE : Logical_2;
+	    break;
+
+	 case 4:
+	    linear_type = (cmd_line_flags.s_cf77types) ?
+			  LOGICAL_DEFAULT_TYPE : Logical_4;
+	    break;
+
+	 case 8:
+	    linear_type = (cmd_line_flags.s_cf77types) ?
+			  LOGICAL_DEFAULT_TYPE : Logical_8;
+	    break;
+
+	 };  /* end switch */
+
+	 break;
+
+      }  /* end switch */
+
+
+      if (linear_type == Err_Res) {
+	 PRINTMSG(TOKEN_LINE(token), 125, Error,
+		  TOKEN_COLUMN(token),
+		  num,
+		  type_str);
+      }
+      else {
+	 CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
+	 TYP_TYPE(TYP_WORK_IDX)		= TYP_TYPE(type_idx);
+	 TYP_LINEAR(TYP_WORK_IDX)		= linear_type;
+	 TYP_DCL_VALUE(TYP_WORK_IDX)	= num;
+	 TYP_DESC(TYP_WORK_IDX)		= Star_Typed;
+	 int result = ntr_type_tbl();
+
+	 PRINTMSG(TOKEN_LINE(token), 124, Ansi, 
+		  TOKEN_COLUMN(token),
+		  type_str,
+		  num);
+	 return result;
+
+      }
+   }
+   else { /* Cannot search - because of IMPLICIT calls */
+      parse_err_flush(Find_None, "scalar-int-literal-constant");
+   }
+}
+#endif /* KEY Bug 8422 */
 
 /******************************************************************************\
 |*                                                                            *|
@@ -938,14 +1147,16 @@ boolean parse_type_spec(boolean		chk_kind)
    int			 host_attr_idx;
    int			 host_name_idx;
    int			 line;
-   linear_type_type	 linear_type;
    int			 name_idx;
-   long			 num;
    boolean		 parse_err		= FALSE;
    boolean		 save_err		= FALSE;
    boolean		 type_done		= FALSE;
+#ifndef KEY /* Bug 8422 */
+   long			 num;
+   linear_type_type	 linear_type;
    int			 type_idx;
    char			*type_str;
+#endif /* KEY Bug 8422 */
 
 
    TRACE (Func_Entry, "parse_type_spec", NULL);
@@ -1348,201 +1559,10 @@ boolean parse_type_spec(boolean		chk_kind)
       else if (LA_CH_VALUE == STAR) {
          NEXT_LA_CH;			/* Skip Star */
 
-         if (MATCHED_TOKEN_CLASS(Tok_Class_Int_Spec)) {
-            num		= (long) CN_INT_TO_C(TOKEN_CONST_TBL_IDX(token));
-            linear_type	= Err_Res;
-            type_idx	= ATD_TYPE_IDX(AT_WORK_IDX);
-            type_str	= basic_type_str[TYP_TYPE(type_idx)];
-
-            switch (TYP_TYPE(type_idx)) {
-
-            case Integer:
-                  
-               switch (num) {
-
-               case 1:
-                  linear_type = (cmd_line_flags.s_cf77types) ?
-                                INTEGER_DEFAULT_TYPE : Integer_1;
-                  break;
-
-               case 2:
-                  linear_type = (cmd_line_flags.s_cf77types) ?
-                                INTEGER_DEFAULT_TYPE : Integer_2;
-                  break;
-
-               case 4:
-                  linear_type = (cmd_line_flags.s_cf77types) ?
-                                INTEGER_DEFAULT_TYPE : Integer_4;
-                  break;
-
-               case 8:
-                  linear_type = (cmd_line_flags.s_cf77types) ?
-                                INTEGER_DEFAULT_TYPE : Integer_8;
-                  break;
-
-               };
-
-            break;
-
-
-            case Real:
-
-               if (double_precision) {
-                  type_str	= "DOUBLE PRECISION";
-
-                  if (num == 16) {
-
-# ifdef _TARGET_OS_MAX /* Msg was issued when DOUBLE PRECISION was parsed.*/
-                     linear_type = Real_8;
-# elif defined(_TARGET_OS_LINUX)
-                     PRINTMSG(TOKEN_LINE(token), 541, Error, 
-                              TOKEN_COLUMN(token));
-# else
-                     linear_type = Real_16;
-
-                     if (!on_off_flags.enable_double_precision) {
-                        PRINTMSG(TOKEN_LINE(token), 710, Warning, 
-                                 TOKEN_COLUMN(token),
-                                 type_str,
-                                 num);
-                     }
-# endif
-                  }
-               }
-               else {
-                  switch (num) {
-
-                  case 4:
-                     linear_type = (cmd_line_flags.s_cf77types) ?
-                                   REAL_DEFAULT_TYPE : Real_4;
-                     break;
-
-                  case 8:
-                     linear_type = (cmd_line_flags.s_cf77types) ?
-                                   REAL_DEFAULT_TYPE : Real_8;
-                     break;
-
-                  case 16:
-
-# ifdef _TARGET_OS_MAX
-                     PRINTMSG(TOKEN_LINE(token), 391, Warning,
-                              TOKEN_COLUMN(token),
-                              type_str, num, type_str, 8);
-                     linear_type = Real_8;
-# elif defined(_TARGET_OS_LINUX)
-                     PRINTMSG(TOKEN_LINE(token), 541, Error, 
-                              TOKEN_COLUMN(token));
-# else
-                     linear_type = Real_16;
-
-                     if (!on_off_flags.enable_double_precision) {
-                        PRINTMSG(TOKEN_LINE(token), 710, Warning, 
-                                 TOKEN_COLUMN(token),
-                                 type_str,
-                                 num);
-                     }
-# endif
-                     break;
-                  };
-               }
-
-               break;
-
-
-            case Complex:
-
-               switch (num) {
-
-               case 8:
-                  linear_type = (cmd_line_flags.s_cf77types) ?
-                                COMPLEX_DEFAULT_TYPE : Complex_4;
-                  break;
-
-               case 16:
-                  linear_type = Complex_8;
-                  break;
-
-               case 32:
-
-# ifdef _TARGET_OS_MAX
-                  PRINTMSG(TOKEN_LINE(token), 391, Warning, 
-                           TOKEN_COLUMN(token),
-                           type_str, num, type_str, 16);
-                  linear_type = Complex_8;
-# elif defined(_TARGET_OS_LINUX)
-                     PRINTMSG(TOKEN_LINE(token), 541, Error, 
-                              TOKEN_COLUMN(token));
-# else
-                  linear_type = Complex_16;
-
-                  if (!on_off_flags.enable_double_precision) {
-                     PRINTMSG(TOKEN_LINE(token), 710, Warning, 
-                              TOKEN_COLUMN(token),
-                              type_str,
-                              num);
-                  }
-# endif
-                  break;
-               };
-
-               break;
-
-
-            case Logical:
-
-               switch (num) {
-
-               case 1:
-                  linear_type = (cmd_line_flags.s_cf77types) ?
-                                LOGICAL_DEFAULT_TYPE : Logical_1;
-                  break;
-
-               case 2:
-                  linear_type = (cmd_line_flags.s_cf77types) ?
-                                LOGICAL_DEFAULT_TYPE : Logical_2;
-                  break;
-
-               case 4:
-                  linear_type = (cmd_line_flags.s_cf77types) ?
-                                LOGICAL_DEFAULT_TYPE : Logical_4;
-                  break;
-
-               case 8:
-                  linear_type = (cmd_line_flags.s_cf77types) ?
-                                LOGICAL_DEFAULT_TYPE : Logical_8;
-                  break;
-
-               };  /* end switch */
-
-               break;
-
-            }  /* end switch */
-
-
-            if (linear_type == Err_Res) {
-               PRINTMSG(TOKEN_LINE(token), 125, Error,
-                        TOKEN_COLUMN(token),
-                        num,
-                        type_str);
-            }
-            else {
-               CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
-               TYP_TYPE(TYP_WORK_IDX)		= TYP_TYPE(type_idx);
-               TYP_LINEAR(TYP_WORK_IDX)		= linear_type;
-               TYP_DCL_VALUE(TYP_WORK_IDX)	= num;
-               TYP_DESC(TYP_WORK_IDX)		= Star_Typed;
-               ATD_TYPE_IDX(AT_WORK_IDX)	= ntr_type_tbl();
-
-               PRINTMSG(TOKEN_LINE(token), 124, Ansi, 
-                        TOKEN_COLUMN(token),
-                        type_str,
-                        num);
-
-            }
-         }
-         else { /* Cannot search - because of IMPLICIT calls */
-            parse_err_flush(Find_None, "scalar-int-literal-constant");
-         }
+#ifdef KEY /* Bug 8422 */
+      ATD_TYPE_IDX(AT_WORK_IDX) =
+        parse_non_char_kind_selector(double_precision);
+#endif /* KEY Bug 8422 */
       }
    }
 

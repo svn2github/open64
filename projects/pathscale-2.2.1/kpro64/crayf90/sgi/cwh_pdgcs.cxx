@@ -1,4 +1,8 @@
 /*
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -59,7 +63,7 @@ static char *source_file = __FILE__;
 
 #ifdef _KEEP_RCS_ID
 /*REFERENCED*/
-static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/crayf90/sgi/cwh_pdgcs.cxx,v $ $Revision: 1.1.1.1 $";
+static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/crayf90/sgi/SCCS/s.cwh_pdgcs.cxx $ $Revision: 1.10 $";
 #endif /* _KEEP_RCS_ID */
 
 
@@ -410,7 +414,11 @@ fei_proc_body( INT32 lineno )
  *===============================================
  */ 
 extern void 
+#ifdef KEY /* Bug 3507 */
+PDGCS_do_proc(int is_module)
+#else /* KEY Bug 3507 */
 PDGCS_do_proc(void)
+#endif /* KEY Bug 3507 */
 {
 
   WN      *wn; 
@@ -433,11 +441,26 @@ PDGCS_do_proc(void)
 
   cwh_stmt_postprocess_pu();
   wn = cwh_stmt_end_pu();
-  d  = cwh_dst_enter_pu(st);
+#ifdef KEY /* Bug 3507 */
+  /* If this is a module, we already created a DW_TAG_module, not a
+   * DW_TAG_subprogram, for it */
+  if (is_module) {
+    cwh_dst_module_vars(st);
 
-  Set_PU_Info_tree_ptr(pu, wn); 
+    Set_PU_Info_tree_ptr(pu, wn); 
+  }
+  else {
+    d  = cwh_dst_enter_pu(st);
+
+    Set_PU_Info_tree_ptr(pu, wn); 
+    Set_PU_Info_pu_dst(pu,d);
+    Set_PU_Info_cu_dst(pu,d);
+  }
+#else /* KEY Bug 3507 */
+  d  = cwh_dst_enter_pu(st);
   Set_PU_Info_pu_dst(pu,d);
   Set_PU_Info_cu_dst(pu,d);
+#endif /* KEY Bug 3507 */
 
   Set_PU_Info_state(pu, WT_SYMTAB, Subsect_InMem);
   Set_PU_Info_state(pu, WT_TREE, Subsect_InMem);

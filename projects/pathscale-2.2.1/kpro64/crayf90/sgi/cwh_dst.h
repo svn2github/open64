@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -65,6 +69,18 @@ extern void cwh_dst_include(char *name) ;
 extern void cwh_dst_write(void);
 extern mUINT16 cwh_dst_enter_path(char * file_name) ;
 extern DST_IDX cwh_dst_enter_pu(ST * st);
+#ifdef KEY /* Bug 3507 */
+extern void cwh_dst_module_vars(ST *en);
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+extern void cwh_dst_enter_module(char *module_name, char *file_name,
+  INT32 local_lineno);
+extern void cwh_dst_exit_module(void);
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+#endif /* KEY Bug 3507 */
 extern char * cwh_dst_filename_from_filenum(INT f);
 
 #endif /* CWH_DST_INCLUDED */

@@ -117,6 +117,11 @@
 # define EQ_NE_EXTN(IDXL, IDXR)                                                \
 	eq_ne_tbl[IDXL][IDXR].ext 
 
+#ifdef KEY /* Bug 5710 */
+# define EQ_NE_ON_LOGICAL(IDXL, IDXR)                                         \
+	eq_ne_on_logical_tbl[IDXL][IDXR].type
+#endif /* KEY Bug 5710 */
+
 # define LG_TYPE(IDXL, IDXR)                                                   \
 	lg_tbl[IDXL][IDXR].type
 

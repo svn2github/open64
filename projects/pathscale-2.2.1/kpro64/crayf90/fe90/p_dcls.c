@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3203,6 +3203,7 @@ EXIT:
    return;
 
 }  /* parse_stmt_func_stmt */
+
 
 /******************************************************************************\
 |*									      *|
@@ -3378,6 +3379,47 @@ void parse_type_dcl_stmt (void)
 
             case Tok_Kwd_Function:
 
+#ifdef KEY /* Bug 8261 */
+               if (MATCHED_TOKEN_CLASS(Tok_Class_Id)) {
+		 /* Allow optional "*ddd" or "*(*)" extension after function
+		  * name */
+		 if (!on_off_flags.issue_ansi_messages && LA_CH_VALUE == STAR) {
+		   possible_func = FALSE;
+		   NEXT_LA_CH;
+		   if (LA_CH_VALUE == LPAREN) {
+		     NEXT_LA_CH;
+		     if (LA_CH_VALUE == STAR) {
+		       NEXT_LA_CH;
+		       if (LA_CH_VALUE == RPAREN) {
+		         NEXT_LA_CH;
+			 possible_func = TRUE;
+		       }
+		     }
+		   }
+		   else if (MATCHED_TOKEN_CLASS(Tok_Class_Int_Spec)) {
+		     possible_func = TRUE;
+		   }
+		   if (!possible_func) {
+		     break;
+		   }
+		 }
+	         if (LA_CH_VALUE == LPAREN) {
+		  NEXT_LA_CH;
+
+                  if (LA_CH_VALUE == RPAREN || LA_CH_CLASS == Ch_Class_Letter) {
+
+                     /* TRUE = type-spec is parsed - type is in AT_WORK_IDX */
+                     /* Reset to pick up recursive, pure and elemental and  */
+                     /* the function name.  This will isolated semantics.   */
+
+                     reset_lex(buf_idx, stmt_num);
+                     AT_DCL_ERR(AT_WORK_IDX) = SH_ERR_FLG(curr_stmt_sh_idx);
+                     parse_typed_function_stmt();
+                     goto EXIT;
+		  }
+		 }
+               }
+#else /* KEY Bug 8261 */
                if (MATCHED_TOKEN_CLASS(Tok_Class_Id) && LA_CH_VALUE == LPAREN) {
                   NEXT_LA_CH;
 
@@ -3393,6 +3435,7 @@ void parse_type_dcl_stmt (void)
                      goto EXIT;
                   }
                }
+#endif /* KEY Bug 8261 */
                possible_func	= FALSE;
                break;
 
@@ -3508,7 +3551,11 @@ void parse_type_dcl_stmt (void)
          merge_external(!new_attr, id_line, id_column, attr_idx);
       }
 
-      if (LA_CH_VALUE == LPAREN) { 
+#ifdef KEY /* Bug 8260 */
+      boolean have_seen_bounds = FALSE;
+#endif /* KEY Bug 8260 */
+
+      if (LA_CH_VALUE == LPAREN) {
 
          /* If LA_CH is left paren, then a dimension spec is specified on    */
          /* the variable name.  This overrides the specification on the      */
@@ -3516,6 +3563,9 @@ void parse_type_dcl_stmt (void)
 
          new_array_idx	= parse_array_spec(attr_idx);
          need_new_array	= FALSE;
+#ifdef KEY /* Bug 8260 */
+	 have_seen_bounds = TRUE;
+#endif /* KEY Bug 8260 */
       }
 
 # ifdef _F_MINUS_MINUS
@@ -3530,14 +3580,50 @@ void parse_type_dcl_stmt (void)
          /* We are not parsing the character* part of the line, so this    */
          /* is not the length_selector.  It is the char-length on the name */
 
-         parse_length_selector(attr_idx, FALSE, FALSE);
+#ifdef KEY /* Bug 8422 */
+	 /* Handle new extension like "integer i*2" (vs old extension
+	  * "integer*2 i" or standard "character*80 c, d*40".) If -ansi,
+	  * skip this and let character-specific code below issue an error
+	  * message */
+	 if (Character != TYP_TYPE(type_idx) &&
+	    !on_off_flags.issue_ansi_messages) {
+	    NEXT_LA_CH;
+	    type_idx = parse_non_char_kind_selector(FALSE);
+	    need_new_array = FALSE;
+            if (new_attr) {
+               switch (AT_OBJ_CLASS(attr_idx)) {
+               case Data_Obj:
+               case Interface:
+                  ATD_TYPE_IDX(attr_idx)		= type_idx;
+                  break;
+
+               case Pgm_Unit:
+                  ATD_TYPE_IDX(ATP_RSLT_IDX(attr_idx))	= type_idx;
+                  break;
+               }
+            }
+	 }
+	 else
+#endif /* KEY Bug 8422 */
+	   parse_length_selector(attr_idx, FALSE, FALSE);
+
+#ifdef KEY /* Bug 8260 */
+	 /* Extension: array bounds follow the "*" instead of preceding it. */
+	 if (LA_CH_VALUE == LPAREN &&
+	    !(have_seen_bounds || on_off_flags.issue_ansi_messages)) { 
+	    new_array_idx	= parse_array_spec(attr_idx);
+	    need_new_array	= FALSE;
+	    have_seen_bounds = TRUE;
+	 }
+#endif /* KEY Bug 8260 */
 
          if (TYP_TYPE(type_idx) == Character) {
             TYP_DESC(TYP_WORK_IDX)	= TYP_DESC(type_idx);
             TYP_DCL_VALUE(TYP_WORK_IDX)	= TYP_DCL_VALUE(type_idx);
             type_idx			= ntr_type_tbl();
 
-            if (TYP_CHAR_CLASS(type_idx) != Assumed_Size_Char) {
+            if (TYP_CHAR_CLASS(type_idx) != Assumed_Size_Char)
+	    {
                need_new_array = FALSE;
             }
 
@@ -3554,6 +3640,9 @@ void parse_type_dcl_stmt (void)
                }
             }
          }
+#ifdef KEY /* Bug 8422 */
+         else if (!on_off_flags.issue_ansi_messages) { }
+#endif /* KEY Bug 8422 */
          else {		/* This must be a CHARACTER stmt to have * length.  */
             PRINTMSG(TOKEN_LINE(token), 192, Error, TOKEN_COLUMN(token));
             AT_DCL_ERR(attr_idx) = TRUE;
@@ -5947,6 +6036,10 @@ static	void	merge_parameter(boolean		 chk_semantics,
 
    a_type_idx	= ATD_TYPE_IDX(attr_idx);
 
+#ifdef KEY /* Bug 572 */
+   /* This restriction was removed from the end of section 4.4.4, "Construction
+    * of derived-type values", between Fortan 90 and Fortran 95. */
+#else /* KEY Bug 572 */
    if (TYP_TYPE(a_type_idx) == Structure && 
        ATT_POINTER_CPNT(TYP_IDX(a_type_idx))) {
       PRINTMSG(line, 691, Error, column,
@@ -5954,6 +6047,7 @@ static	void	merge_parameter(boolean		 chk_semantics,
       AT_DCL_ERR(attr_idx)	= TRUE;
       goto EXIT;
    }
+#endif /* KEY Bug 572 */
 
    /* AT_DEFINED is set, so that parameter constants can be differentiated */
    /* from compiler tmp constants.  Compiler tmp constants are created by  */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -482,6 +482,23 @@ DST_put_compile_unit(DST_flag flag, DST_COMPILE_UNIT *attr)
    DST_put_id_case_attribute(" case", DST_COMPILE_UNIT_identifier_case(attr));
 }
 
+#ifdef KEY /* Bug 3507 */
+static void
+DST_put_module(DST_flag flag, DST_MODULE *attr)
+{
+   DST_put_string(":module:");
+   DST_put_decl(DST_MODULE_decl(attr));
+   DST_put_string_attribute(" name", DST_MODULE_name(attr));
+}
+
+static void
+DST_put_imported_decl(DST_flag flag, DST_IMPORTED_DECL *attr)
+{
+   DST_put_string(":imported declaration");
+   DST_put_string_attribute(" name", DST_IMPORTED_DECL_name(attr));
+   DST_put_assoc(" import", flag, DST_IMPORTED_DECL_import(attr));
+}
+#endif /* KEY Bug 3507 */
 
 static void
 DST_put_subprogram(DST_flag flag, DST_SUBPROGRAM *attr)
@@ -605,6 +622,10 @@ DST_put_variable(DST_flag flag, DST_VARIABLE *attr)
       DST_put_string(" artificial");
    if (DST_IS_const(flag))  /* Not yet supported */
    {
+#ifdef KEY /* Bug 3507 */
+      DST_put_decl(DST_VARIABLE_decl_decl(attr));
+      DST_put_string_attribute(" name", DST_VARIABLE_decl_name(attr));
+#endif /* KEY Bug 3507 */
       DST_put_string(" a constant variable!");
    }
    else if (DST_IS_comm(flag)) 
@@ -805,6 +826,10 @@ DST_put_array_type(DST_flag flag, DST_ARRAY_TYPE *attr)
 			 DST_ARRAY_TYPE_abstract_origin(attr), FALSE);
    if (DST_IS_declaration(flag))
       DST_put_string(" declaration");
+#ifdef TARG_X8664
+   if (DST_IS_GNU_vector(flag))
+      DST_put_string(" GNU_vector");
+#endif
 }
 
 
@@ -1030,6 +1055,16 @@ DST_dump_info(INT32        indentation,
       DST_put_compile_unit(flag, 
 			   DST_ATTR_IDX_TO_PTR(iattr, DST_COMPILE_UNIT));
       break;
+#ifdef KEY /* Bug 3507 */
+   case DW_TAG_module:
+      DST_put_module(flag, 
+			 DST_ATTR_IDX_TO_PTR(iattr, DST_MODULE));
+      break;
+   case DW_TAG_imported_declaration:
+      DST_put_imported_decl(flag, 
+			 DST_ATTR_IDX_TO_PTR(iattr, DST_IMPORTED_DECL));
+      break;
+#endif /* KEY Bug 3507 */
    case DW_TAG_subprogram:
       DST_put_subprogram(flag, 
 			 DST_ATTR_IDX_TO_PTR(iattr, DST_SUBPROGRAM));

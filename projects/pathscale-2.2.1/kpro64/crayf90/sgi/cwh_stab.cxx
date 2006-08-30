@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3128,7 +3128,7 @@ cwh_stab_mk_pu(TY_IDX pty, SYMTAB_IDX level)
 INTPTR
 fei_smt_parameter(char * name_string,
    	   	  TYPE   type,
-                  INT32	 con_idx,
+               INTPTR	 con_idx,
 		  INT32	 Class,
 		  INT32	 lineno)
 

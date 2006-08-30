@@ -1,5 +1,5 @@
 $
-$  Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+$  Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
 $
 $  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 $
@@ -16422,22 +16422,27 @@ an elemental subroutine must not be *.  * is the alternate return specifier.
 .ME
 $
 $ Error : 1270
-$msg  1270 "%s" must not be defined inside of a %s subprogram.  It is in common, a dummy argument or host or use associated.
+$msg  1270 "%s" must not be modified or used as a pointer target inside of a %s subprogram, because it is in common, a dummy argument, host associated, or use associated.
 $nexp 1270
-Error : "%s" must not be defined inside of a %s subprogram.  It is in common, a dummy argument or host or use associated.
+Error : "%s" must not be modified or used as a pointer target inside of a %s subprogram, because it is in common, a dummy argument, host associated, or use associated.
 .PP
-A constraint to PURE procedures, prohibits the following dummy arguments
-from being defined within a pure subprogram:  all dummy arguments to a
-function subprogram and all dummy arguments with the INTENT(IN) attribute 
-with a subroutine subprogram.
+A PURE or ELEMENTAL procedure must be free of side effects: that is, it
+must not modify data visible outside the procedure. This ensures that it is
+safe to call such a procedure in a FORALL assignment which might optimize
+by evaluating in any order.
 
-A constraint also prohibits the name of a common, host associated or
-use associated variable from appearing in a statement that would change the
-variable's value.  The variable can be used but not redefined inside a 
-pure subprogram.
+This imposes constraints on how the procedure uses variables in common,
+variables accessed by host or use association, dummy variables with
+INTENT(IN), and (in a function) dummy variables with the POINTER attribute.
+The procedure must not modify such a variable; must not
+use such a variable as the target of a pointer assignment; and must not use it
+as an actual argument associated with a dummy argument which has INTENT(OUT),
+INTENT(INOUT), or the POINTER attribute.
 
-By definition, an elemental subprogram is pure, so the above constraints also
-apply to dummy arguments and variables within elemental subprograms.
+In addition, if the variable is a derived type containing a pointer (directly
+or via a component of derived type), the procedure must not assign it to
+another variable of derived type, because that would have the effect of a
+pointer assignment.
 .ME
 $
 $ Error : 1271
@@ -18435,7 +18440,12 @@ $nexp 1413
 Warning : This numeric constant is out of range.
 .PP
 A numeric constant was found to be out of range.  Either an integer constant
-is too large or a real constant has an exponent which is too large.
+is too large or a real constant has an exponent whose magnitude is too large.
+A too-large integer constant is promoted to a larger type if possible;
+otherwise, the constant is clipped at the maximum or minimum representable
+value. Note that in the Fortran standard, "-" is not part of the constant
+itself, so (for example) "-32768_2" is the operator "-", followed by the
+positive integer "32768" which is too large for the type "integer(kind=2)".
 .ME
 $
 $ Ansi : 1414
@@ -21544,4 +21554,13 @@ The compiler is unable to open a file. Check the permissions on the file name
 or the directory.
 .ME
 $
-$ LAST NUMBER USED : 1676
+$ Error : 1677
+$msg  1677 Invalid reference to target of null pointer constant
+$nexp 1677
+Error :  Invalid reference to target of null pointer constant
+.PP
+This pointer has the "parameter" attribute and a value of NULL, so it cannot
+appear in a context which refers to the target of the pointer.
+.ME
+$
+$ LAST NUMBER USED : 1677

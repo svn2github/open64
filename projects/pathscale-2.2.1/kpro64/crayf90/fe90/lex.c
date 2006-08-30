@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -4453,7 +4453,12 @@ static boolean convert_const(void)
          type_idx			= ntr_type_tbl();
       }
 
+#ifdef KEY /* Bug 5554 */
+      int new_type_idx;
+      CONVERT_INT_CONST_AND_PROMOTE(type_idx, TOKEN_LEN(token), result_ok);
+#else /* KEY Bug 5554 */
       CONVERT_INT_CONST(type_idx, TOKEN_LEN(token), result_ok);
+#endif /* KEY Bug 5554 */
       break;
 
    case Tok_Const_Real :

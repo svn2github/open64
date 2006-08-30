@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -635,6 +639,17 @@ boolean	create_runtime_array_constructor(opnd_type	*top_opnd,
 
       tmp_idx			= gen_compiler_tmp(line, col, Priv, TRUE);
       AT_SEMANTICS_DONE(tmp_idx)= TRUE;
+#ifdef KEY /* Bug 5515 */
+      /* We allocate the temp at a "guessed" size. Then as we store into the
+       * temp at runtime, we check for overflow and realloc if needed. Thus,
+       * no user error can cause an out-of-bounds reference. A bounds check
+       * would use the extent in the dope vector for the temp, which is
+       * erroneous because it's set to the "guessed" size and does not get
+       * updated as we reallocate the temp.
+       */
+      ATD_BOUNDS_CHECK(tmp_idx) = FALSE;
+      ATD_NOBOUNDS_CHECK(tmp_idx) = TRUE;
+#endif /* KEY Bug 5515 */
 
       ATD_TYPE_IDX(tmp_idx)	= type_idx;
 

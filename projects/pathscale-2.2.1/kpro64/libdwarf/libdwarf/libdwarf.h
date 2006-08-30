@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -45,7 +45,7 @@ extern "C" {
 #endif
 /*
 	libdwarf.h  
-	$Revision: 1.1.1.1 $ $Date: 2005/10/21 19:00:00 $
+	$Revision: 1.2 $ $Date: 05/12/05 08:59:58-08:00 $
 
 	For libdwarf producers and consumers
 
@@ -165,6 +165,10 @@ enum Dwarf_Rel_Type {
 		dwarf_drt_none, /* should not get to caller */
                 dwarf_drt_data_reloc, /* simple normal relocation */
                 dwarf_drt_segment_rel, /* special reloc, exceptions*/
+#ifdef KEY /* Bug 3507 */
+		dwarf_drt_module,               /* module name */
+		dwarf_drt_imported_declaration, /* imported declaration */
+#endif /* KEY Bug 3507 */
 		dwarf_drt_cie_label, /* simple string */
 		dwarf_drt_data_reloc_by_str_id, /* drd_symbol_index==str_idx */
 		dwarf_drt_first_of_length_pair_create_second,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -208,16 +208,9 @@ fei_user_code_start(void)
  */ 
 /*ARGSUSED*/
 extern void
-#ifdef KEY
-fei_object_ref (INTPTR  sym_idx,
-		INT32	whole_array,
-		INT32	whole_substring,
-                unsigned int    data_init )
-#else
 fei_object_ref (INTPTR  sym_idx,
 		INT32	whole_array,
 		INT32	whole_substring )
-#endif
 {
   STB_pkt *p ;
 
@@ -226,11 +219,6 @@ fei_object_ref (INTPTR  sym_idx,
 
   ST * st = cast_to_ST(p->item);
   DevAssert((st),("null st"));
-// Bug 431
-#ifdef KEY
-  if (data_init == TRUE && (ST_sclass(st) == SCLASS_PSTATIC || ST_sclass(st) == SCLASS_FSTATIC))
-    Set_ST_is_inintialized_in_f90(st);
-#endif
 
   if (whole_array) {
     cwh_stk_push(st,ST_item_whole_array) ;
@@ -274,11 +262,7 @@ fei_seg_ref (INT32   sym_idx )
 void
 fei_namelist_ref (INTPTR   sym_idx )
 {
-#ifdef KEY
-  fei_object_ref(sym_idx, 0, 0, FALSE);
-#else
   fei_object_ref(sym_idx, 0, 0);
-#endif
 }
 
 /*===============================================
@@ -551,11 +535,7 @@ fei_store ( TYPE result_type )
 	  cwh_stk_get_class() == ST_item_whole_array) {
 
 	st  = cwh_stk_pop_ST();
-#ifdef KEY
-// Bug# 1289
-        if ( !ST_is_inintialized_in_f90(st) )
-#endif
-	  cwh_addr_store_ST(st,det.off,det.type,rhs);
+	cwh_addr_store_ST(st,det.off,det.type,rhs);
 
       } else {
 
@@ -3294,8 +3274,8 @@ fei_doloop(INT32	line)
      }
 
      /* Compute iteration count */
-#ifdef KEY // Bug 4660
-     temp  = cwh_addr_extent(WN_COPY_Tree(lb),ub,stride);
+#ifdef KEY // Bug 4660, 8272
+     temp  = cwh_addr_extent(WN_COPY_Tree(lb),ub,stride_in_loop);
 #else
      temp  = cwh_addr_extent(wc,ub,stride);
 #endif

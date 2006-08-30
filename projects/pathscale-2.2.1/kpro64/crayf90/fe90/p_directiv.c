@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -566,7 +566,14 @@ int	gen_directive_ir(operator_type	operator)
 #ifdef KEY
       tmp_ir_idx = SH_NEXT_IDX(curr_stmt_sh_idx);
 #endif
+#ifdef KEY /* Bug 7498 */
+      /* ntr_sh_tbl() may change the value of sh_tbl, which is used inside
+       * SH_NEXT_IDX(), so we need an ANSI C sequence point in between. */
+      int new_stmt                              = ntr_sh_tbl();
+      SH_NEXT_IDX(curr_stmt_sh_idx)		= new_stmt;
+#else /* KEY Bug 7498 */
       SH_NEXT_IDX(curr_stmt_sh_idx)		= ntr_sh_tbl();
+#endif /* KEY Bug 7498 */
       SH_PREV_IDX(SH_NEXT_IDX(curr_stmt_sh_idx))= curr_stmt_sh_idx;
       curr_stmt_sh_idx				= SH_NEXT_IDX(curr_stmt_sh_idx);
       SH_STMT_TYPE(curr_stmt_sh_idx)		= Directive_Stmt;
@@ -10963,7 +10970,11 @@ static void parse_open_mp_directives(void)
          if (LA_CH_VALUE == LPAREN) {
             NEXT_LA_CH;
 
+#ifdef KEY /* Bug 6075 */
+	    parse_var_common_list(&opnd, FALSE);
+#else /* KEY Bug 6075 */
             parse_var_name_list(&opnd);
+#endif /* KEY Bug 6075 */
             COPY_OPND(IR_OPND_L(ir_idx), opnd);
 
             if (LA_CH_VALUE == RPAREN) {
@@ -11385,7 +11396,11 @@ static void parse_open_mp_clauses(open_mp_directive_type directive)
 
                if (LA_CH_VALUE == LPAREN) {
                   NEXT_LA_CH;
+#ifdef KEY /* Bug 6075 */
+                  parse_var_common_list(&opnd, FALSE);
+#else /* KEY Bug 6075 */
                   parse_var_name_list(&opnd);
+#endif /* KEY Bug 6075 */
 
                   if (IL_IDX(list_array[OPEN_MP_SHARED_IDX]) == NULL_IDX) {
                      COPY_OPND(IL_OPND(list_array[OPEN_MP_SHARED_IDX]), opnd);

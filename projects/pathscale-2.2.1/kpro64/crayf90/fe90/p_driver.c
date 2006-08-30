@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -169,7 +169,11 @@ void complete_intrinsic_definition(int		generic_attr)
              (strcmp("_SCAN_4", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_SIZEOF_4", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_LBOUND0_4", (char *)&intrin_tbl[j].id_str) == 0) ||
+#ifdef KEY /* Bug 6009 */
+	     /* Want to allow system_clock with i*4 arguments in -i8 mode */
+#else /* KEY Bug 6009 */
              (strcmp("_SYSTEM_CLOCK_4", (char *)&intrin_tbl[j].id_str) == 0) ||
+#endif /* KEY Bug 6009 */
              (strcmp("_ASSOCIATED_4", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_SELECTED_REAL_KIND_4", 
                      (char *)&intrin_tbl[j].id_str) == 0) ||
@@ -207,6 +211,10 @@ void complete_intrinsic_definition(int		generic_attr)
 # endif
 
       if (intrin_tbl[intrin_tbl_idx].n_specifics == 1 &&
+#ifdef KEY /* Bug 9060 */
+	  /* This appalling hackery must not affect "idim" */
+          (0 != strcmp("IDIM", (char *)&intrin_tbl[intrin_tbl_idx].id_str)) &&
+#endif /* KEY Bug 9060 */
 # if defined(_QUAD_PRECISION)
           (intrin_tbl[intrin_tbl_idx].id_str.string[0] == 'D' ||
            (intrin_tbl[intrin_tbl_idx].id_str.string[0] == 'I' &&
@@ -304,12 +312,17 @@ void complete_intrinsic_definition(int		generic_attr)
 
       AT_OBJ_CLASS(attr_idx)		= Pgm_Unit;
       AT_ELEMENTAL_INTRIN(attr_idx)	= intrin_tbl[j].elemental;
-#ifdef KEY /* Bug 4656 */
-      ATP_ELEMENTAL(attr_idx)		= intrin_tbl[j].elemental && !non_ansi;
-#else /* KEY Bug 4656 */
+#ifdef KEY /* Bug 4656 & 902 */
+      /* random_number is not elemental, but does act like an elemental
+       * by taking an array as an argument */
+      ATP_ELEMENTAL(attr_idx)		= intrin_tbl[j].elemental &&
+      					  (!non_ansi) &&
+					  (intrin_tbl[j].intrin_enum !=
+					    Random_Number_Intrinsic);
+#else /* KEY Bug 4656 & 902 */
       ATP_ELEMENTAL(attr_idx)		= intrin_tbl[j].elemental &&
                                           !(intrin_tbl[j].non_ansi);
-#endif /* KEY Bug 4656 */
+#endif /* KEY Bug 4656 & 902 */
       ATP_PURE(attr_idx)		= ATP_ELEMENTAL(attr_idx);
       ATP_PROC(attr_idx)		= Intrin_Proc;
       AT_IS_INTRIN(attr_idx)		= TRUE;
@@ -428,7 +441,11 @@ void complete_intrinsic_definition(int		generic_attr)
              (strcmp("_SCAN_8", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_SIZEOF_8", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_LBOUND0_8", (char *)&intrin_tbl[j].id_str) == 0) ||
+#ifdef KEY /* Bug 6009 */
+             /* Want to allow system_clock with i*8 args in -i4 mode */
+#else /* KEY Bug 6009 */
              (strcmp("_SYSTEM_CLOCK_8", (char *)&intrin_tbl[j].id_str) == 0) ||
+#endif /* KEY Bug 6009 */
              (strcmp("_ASSOCIATED_8", (char *)&intrin_tbl[j].id_str) == 0) ||
              (strcmp("_SELECTED_REAL_KIND_8", 
                      (char *)&intrin_tbl[j].id_str) == 0) ||
@@ -1075,7 +1092,14 @@ void parse_prog_unit (void)
          if (SH_IR_IDX(curr_stmt_sh_idx)) {
             /* maybe this should be gen_sh instead */
 
+#ifdef KEY /* Bug 7498 */
+      /* ntr_sh_tbl() may change the value of sh_tbl, which is used inside
+       * SH_NEXT_IDX(), so we need an ANSI C sequence point in between. */
+	    int new_stmt = ntr_sh_tbl();
+            SH_NEXT_IDX(curr_stmt_sh_idx) = new_stmt;
+#else /* KEY Bug 7498 */
             SH_NEXT_IDX(curr_stmt_sh_idx) = ntr_sh_tbl();
+#endif /* KEY Bug 7498 */
             SH_PREV_IDX(SH_NEXT_IDX(curr_stmt_sh_idx)) = curr_stmt_sh_idx;
             curr_stmt_sh_idx  = SH_NEXT_IDX(curr_stmt_sh_idx);
             SH_STMT_TYPE(curr_stmt_sh_idx) = Directive_Stmt;
@@ -2801,6 +2825,17 @@ static void stmt_level_semantics(void)
          case Where_Stmt:
          case Write_Stmt:
 
+#ifdef KEY /* Bug 8871 */
+	    /* If it's already a format-statement label, either it's a
+	     * duplicate or we're jumping to it illegally. Both of these
+	     * errors are reported elsewhere. Right now we just avoid
+	     * changing it to Lbl_User, because we would then attempt to
+	     * read attr fields which aren't valid (e.g.
+	     * ATL_CMIC_BLK_STMT_IDX) and possibly crash. */
+            if (Lbl_Format == ATL_CLASS(stmt_label_idx)) {
+	      break;
+	    }
+#endif /* KEY Bug 8871 */
             ATL_EXECUTABLE(stmt_label_idx)	= TRUE;
             ATL_CLASS(stmt_label_idx)		= Lbl_User;
             ATL_DEBUG_CLASS(stmt_label_idx)	= Ldbg_User_Lbl;

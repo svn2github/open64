@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -111,6 +111,10 @@ extern  char *preprocessor_output_file;
 /* Value of -byteswapio or -convert option */
 extern int io_byteswap;
 #endif /* KEY Bug 4260 */
+#ifdef KEY /* Bug 3507 */
+extern BOOL option_underscoring;
+extern BOOL option_second_underscore;
+#endif /* KEY Bug 3507 */
 
 #ifdef __cplusplus
 }

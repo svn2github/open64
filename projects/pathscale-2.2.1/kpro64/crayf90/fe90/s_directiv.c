@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -5237,67 +5237,78 @@ static void open_mp_directive_semantics(open_mp_directive_type directive)
     
 	 while (list2_idx) {
     
-	    attr_idx = IL_IDX(list2_idx);
-	    AT_LOCKED_IN(attr_idx) = TRUE;
-    
-	    while (AT_ATTR_LINK(attr_idx)) {
-	       attr_idx = AT_ATTR_LINK(attr_idx);
+#ifdef KEY /* Bug 6075 */
+            if (IL_FLD(list2_idx) == AT_Tbl_Idx) {
+#endif /* KEY Bug 6075 */
+
+	       attr_idx = IL_IDX(list2_idx);
 	       AT_LOCKED_IN(attr_idx) = TRUE;
-	    }
-    
-	    IL_IDX(list2_idx) = attr_idx;
+       
+	       while (AT_ATTR_LINK(attr_idx)) {
+		  attr_idx = AT_ATTR_LINK(attr_idx);
+		  AT_LOCKED_IN(attr_idx) = TRUE;
+	       }
+       
+	       IL_IDX(list2_idx) = attr_idx;
 
-    
-	    if (AT_OBJ_CLASS(attr_idx) == Pgm_Unit   &&
-		ATP_PROC(attr_idx)     == Dummy_Proc) {
-	       ATP_TASK_SHARED(attr_idx) = TRUE;
-	    }
-	    else if (AT_OBJ_CLASS(attr_idx) != Data_Obj) {
-               PRINTMSG(IL_LINE_NUM(list2_idx), 1473, Error,
-			IL_COL_NUM(list2_idx), 
-                        AT_OBJ_NAME_PTR(attr_idx),
-                        "SHARED", open_mp_dir_str[directive]);
-	    }
-	    else if (ATD_CLASS(attr_idx) == Constant) {
-               PRINTMSG(IL_LINE_NUM(list2_idx), 1473, Error,
-			IL_COL_NUM(list2_idx), 
-                        AT_OBJ_NAME_PTR(attr_idx),
-                        "SHARED", open_mp_dir_str[directive]);
-	    }
-            else if (AT_OBJ_CLASS(attr_idx) == Data_Obj &&
-                     ATD_CLASS(attr_idx) == CRI__Pointee) {
-               PRINTMSG(IL_LINE_NUM(list2_idx), 1477, Error,
-                        IL_COL_NUM(list2_idx),
-                        AT_OBJ_NAME_PTR(attr_idx));
+       
+	       if (AT_OBJ_CLASS(attr_idx) == Pgm_Unit   &&
+		   ATP_PROC(attr_idx)     == Dummy_Proc) {
+		  ATP_TASK_SHARED(attr_idx) = TRUE;
+	       }
+	       else if (AT_OBJ_CLASS(attr_idx) != Data_Obj) {
+		  PRINTMSG(IL_LINE_NUM(list2_idx), 1473, Error,
+			   IL_COL_NUM(list2_idx), 
+			   AT_OBJ_NAME_PTR(attr_idx),
+			   "SHARED", open_mp_dir_str[directive]);
+	       }
+	       else if (ATD_CLASS(attr_idx) == Constant) {
+		  PRINTMSG(IL_LINE_NUM(list2_idx), 1473, Error,
+			   IL_COL_NUM(list2_idx), 
+			   AT_OBJ_NAME_PTR(attr_idx),
+			   "SHARED", open_mp_dir_str[directive]);
+	       }
+	       else if (AT_OBJ_CLASS(attr_idx) == Data_Obj &&
+			ATD_CLASS(attr_idx) == CRI__Pointee) {
+		  PRINTMSG(IL_LINE_NUM(list2_idx), 1477, Error,
+			   IL_COL_NUM(list2_idx),
+			   AT_OBJ_NAME_PTR(attr_idx));
+	       }
+	       else if (multiple_clause_err(attr_idx, OPEN_MP_SHARED_IDX)) {
+		  PRINTMSG(IL_LINE_NUM(list2_idx), 1476, Error,
+			   IL_COL_NUM(list2_idx), 
+			   AT_OBJ_NAME_PTR(attr_idx));
+	       }
+	       else {
+		  ATD_TASK_SHARED(attr_idx) = TRUE;
+		  ATD_WAS_SCOPED(attr_idx) = TRUE;
+
+		  if (ATD_CLASS(attr_idx) == Variable &&
+		      ATD_AUTOMATIC(attr_idx) &&
+		      ATD_AUTO_BASE_IDX(attr_idx) != NULL_IDX &&
+		      ! ATD_TASK_SHARED(ATD_AUTO_BASE_IDX(attr_idx))) {
+
+		     ATD_TASK_SHARED(ATD_AUTO_BASE_IDX(attr_idx)) = TRUE;
+
+		     NTR_IR_LIST_TBL(list3_idx);
+		     IL_PREV_LIST_IDX(IL_IDX(list_idx)) = list3_idx;
+		     IL_NEXT_LIST_IDX(list3_idx) = IL_IDX(list_idx);
+		     IL_IDX(list_idx) = list3_idx;
+		     IL_LIST_CNT(list_idx)++;
+
+		     IL_FLD(list3_idx) = AT_Tbl_Idx;
+		     IL_IDX(list3_idx) = ATD_AUTO_BASE_IDX(attr_idx);
+		     IL_LINE_NUM(list3_idx) = IL_LINE_NUM(list2_idx);
+		     IL_COL_NUM(list3_idx) = IL_COL_NUM(list2_idx);
+		  }
+	       }
+#ifdef KEY /* Bug 6075 */
             }
-	    else if (multiple_clause_err(attr_idx, OPEN_MP_SHARED_IDX)) {
-               PRINTMSG(IL_LINE_NUM(list2_idx), 1476, Error,
-			IL_COL_NUM(list2_idx), 
-                        AT_OBJ_NAME_PTR(attr_idx));
-            }
-            else {
-	       ATD_TASK_SHARED(attr_idx) = TRUE;
-	       ATD_WAS_SCOPED(attr_idx) = TRUE;
-
-               if (ATD_CLASS(attr_idx) == Variable &&
-                   ATD_AUTOMATIC(attr_idx) &&
-                   ATD_AUTO_BASE_IDX(attr_idx) != NULL_IDX &&
-                   ! ATD_TASK_SHARED(ATD_AUTO_BASE_IDX(attr_idx))) {
-
-                  ATD_TASK_SHARED(ATD_AUTO_BASE_IDX(attr_idx)) = TRUE;
-
-                  NTR_IR_LIST_TBL(list3_idx);
-                  IL_PREV_LIST_IDX(IL_IDX(list_idx)) = list3_idx;
-                  IL_NEXT_LIST_IDX(list3_idx) = IL_IDX(list_idx);
-                  IL_IDX(list_idx) = list3_idx;
-                  IL_LIST_CNT(list_idx)++;
-
-                  IL_FLD(list3_idx) = AT_Tbl_Idx;
-                  IL_IDX(list3_idx) = ATD_AUTO_BASE_IDX(attr_idx);
-                  IL_LINE_NUM(list3_idx) = IL_LINE_NUM(list2_idx);
-                  IL_COL_NUM(list3_idx) = IL_COL_NUM(list2_idx);
-               }
+	    else {
+               /* SB_Tbl_Idx here */
+               add_common_blk_objects_to_list(list2_idx, list_idx);
 	    }
+#endif /* KEY Bug 6075 */
     
 	    list2_idx = IL_NEXT_LIST_IDX(list2_idx);
 	 }
@@ -6552,9 +6563,15 @@ static void set_open_mp_task_flags(int		ir_idx,
 
          while (list2_idx) {
 
-            attr_idx = IL_IDX(list2_idx);
+#ifdef KEY /* Bug 6075 */
+            if (IL_FLD(list2_idx) == AT_Tbl_Idx) {
+#endif /* KEY Bug 6075 */
+	       attr_idx = IL_IDX(list2_idx);
 
-            ATD_TASK_SHARED(attr_idx) = flag;
+	       ATD_TASK_SHARED(attr_idx) = flag;
+#ifdef KEY /* Bug 6075 */
+            }
+#endif /* KEY Bug 6075 */
 
             list2_idx = IL_NEXT_LIST_IDX(list2_idx);
          }

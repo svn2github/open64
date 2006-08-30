@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -4733,6 +4733,15 @@ void nullify_stmt_semantics (void)
             PRINTMSG(line, 426, Error, column);
             semantically_correct = FALSE;
          }
+#ifdef KEY /* Bug 572 */
+	 /* An expression like "parameter_x%ptr_component_y" may be both a
+	  * pointer and a constant, but a constant is not allowed here. */
+	 else if (exp_desc.constant) {
+            find_opnd_line_and_column(&opnd, &line, &column);
+	    PRINTMSG(line, 1650, Error, column);
+	    semantically_correct = FALSE;
+	 }
+#endif /* KEY Bug 572 */
          else {
 
             if (ATP_PURE(SCP_ATTR_IDX(curr_scp_idx)) ||

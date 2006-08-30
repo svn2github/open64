@@ -319,6 +319,16 @@ DST_INFO_IDX
 DST_mk_common_incl( USRCPOS      decl,
 		    DST_INFO_IDX comblk);
 
+#ifdef KEY /* Bug 3507 */
+/* create a DW_TAG_imported_declaration and return its idx 
+*/
+DST_INFO_IDX 
+DST_mk_imported_decl( char *mangled_name,
+		    char *name);
+DST_INFO_IDX 
+DST_mk_module( USRCPOS decl,
+	       char    *name);
+#endif /* KEY Bug 3507 */
 
 /* Creates a DW_TAG_lexical_block entry and returns its idx.
 */

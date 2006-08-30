@@ -73,6 +73,13 @@ DST_get_ptr_to_firstChildField(DST_INFO *parent)
       field_ptr = &DST_COMPILE_UNIT_first_child(
                       DST_ATTR_IDX_TO_PTR(attr, DST_COMPILE_UNIT));
       break;
+      
+#ifdef KEY /* Bug 3507 */
+   case DW_TAG_module:
+      field_ptr = &DST_MODULE_first_child(
+                      DST_ATTR_IDX_TO_PTR(attr, DST_MODULE));
+      break;
+#endif /* KEY Bug 3507 */
 
    case DW_TAG_subprogram:
       if (DST_IS_memdef(flag))
@@ -165,6 +172,13 @@ DST_get_ptr_to_lastChildField(DST_INFO *parent)
       field_ptr = &DST_COMPILE_UNIT_last_child(
                       DST_ATTR_IDX_TO_PTR(attr, DST_COMPILE_UNIT));
       break;
+      
+#ifdef KEY /* Bug 3507 */
+   case DW_TAG_module:
+      field_ptr = &DST_MODULE_last_child(
+		      DST_ATTR_IDX_TO_PTR(attr, DST_MODULE));
+      break;
+#endif /* KEY Bug 3507 */
 
    case DW_TAG_subprogram:
       if (DST_IS_memdef(flag))

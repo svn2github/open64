@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1581,7 +1581,23 @@ fei_ibits(TYPE type)
    
    mask = cwh_generate_bitmask(len,ty);
    x = cwh_expr_bincalc(OPR_BAND,x,mask);
+#ifdef KEY /* Bug 8547 */
+   /* If cwh_expr_bincalc() generated an unsigned integer (e.g. U4EXTRACT_BITS)
+    * we need to correct the result type to be signed, but cwh_wrap_cvtl()
+    * doesn't do anything unless the input type is smaller than 4 bytes. */
+   ty = WN_rtype(x);
+   if (ty != rty) {
+     if (MTYPE_I4 == rty || MTYPE_I8 == rty) {
+       OPCODE cvt_op = OPCODE_make_op(OPR_CVT,rty,ty);
+       x = WN_CreateExp1(cvt_op, x);
+     }
+     else {
+       x = cwh_wrap_cvtl(x, rty);
+     }
+   }
+#else /* KEY Bug 8547 */
    x = cwh_wrap_cvtl(x,rty);
+#endif /* KEY Bug 8547 */
 
    x = cwh_expr_restore_arrayexp(x,ae);
    cwh_stk_push(x,WN_item);

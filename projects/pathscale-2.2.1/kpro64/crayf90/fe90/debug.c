@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1275,6 +1275,21 @@ void	print_at(int		at_idx)
 
 }  /* print_at */
 
+#ifdef KEY
+/******************************************************************************\
+|* Like print_at_all, but for entire table                                    *|
+|* If "file" is null, use ".l" file                                           *|
+\******************************************************************************/
+void	print_at_table(FILE *file)
+{
+   init_debug_file();
+   dump_trace_info (debug_file, PU_Start, NULL, "print_at_all");
+   for (int i = 0; i < attr_tbl_idx; i += 1) {
+      dump_at_ntry(debug_file, i, TRUE);
+   }
+}
+#endif /* KEY */
+
 /******************************************************************************\
 |*									      *|
 |* Attribute Table  							      *|
@@ -1292,7 +1307,6 @@ void	print_at_all(int		at_idx)
    }
 
    return;
-
 }  /* print_at_all */
 
 /******************************************************************************\
@@ -3632,6 +3646,7 @@ PROCESS_SIBLING:
       goto PROCESS_SIBLING;
    }
 
+   fflush(debug_file);
    return;
 
 } /* print_all_text */

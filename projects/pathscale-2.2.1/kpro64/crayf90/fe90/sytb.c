@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -65,6 +65,9 @@ static char USMID[] = "\n@(#)5.0_pl/sources/sytb.c	5.25	10/27/99 16:59:36\n";
 # ifdef _WHIRL_HOST64_TARGET64
 int double_stride = 0;
 # endif /* _WHIRL_HOST64_TARGET64 */
+#ifdef KEY /* Bug 6204 */
+#include "../sgi/decorate_utils.h"
+#endif /* KEY Bug 6204 */
 
 /******************************************************************\
 |* Function prototypes of static functions declared in this file. *|
@@ -8504,6 +8507,41 @@ void	free_attr_list(int	al_idx)
    return;
 
 }  /* free_attr_list */
+#ifdef KEY /* Bug 6204 */
+
+/******************************************************************************\
+|*                                                                            *|
+|* Description: Decorate external symbol with trailing underscores, or by     *|
+|* replacing it with the symbol from the "-fdecorate" machinery    .          *|
+|*                                                                            *|
+|* Input parameters:                                                          *|
+|*      identifier: Identifier to be decorated (buffer assumed to have room)  *|
+|*      underscores: Number of underscores in identifier                      *|
+|*                                                                            *|
+|* Output parameters:                                                         *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+|* Returns:                                                                   *|
+|*      NONE                                                                  *|
+|*                                                                            *|
+\******************************************************************************/
+int decorate(char *identifier, int name_len, int underscores)
+{
+   identifier[name_len] = 0;
+   const char *decoration = get_symbol_decoration(identifier);
+   if (decoration) {
+     strcpy(identifier, decoration);
+     return strlen(identifier);
+     }
+   if (on_off_flags.underscoring) {
+      identifier[name_len++] = '_';
+      if (on_off_flags.second_underscore && (underscores > 0)) {
+	 identifier[name_len++] = '_';
+      }
+   }
+   return name_len;
+}
+#endif /* KEY Bug 6204 */
 
 /******************************************************************************\
 |*                                                                            *|
@@ -8544,6 +8582,9 @@ void	make_external_name(int	attr_idx,
 	    }
          }
 
+#ifdef KEY /* Bug 6204 */
+         i = name_len = decorate(TOKEN_STR(ext_token), name_len, underscores);
+#else /* KEY Bug 6204 */
          if (on_off_flags.underscoring) {
 	    TOKEN_STR(ext_token)[i++] = '_';
 	    name_len++;
@@ -8552,6 +8593,7 @@ void	make_external_name(int	attr_idx,
 	       name_len++;
             }
          }
+#endif /* KEY Bug 6204 */
 
          TOKEN_STR(ext_token)[i] = '\0';
          NTR_NAME_POOL(TOKEN_ID(ext_token).words, name_len, name_idx);

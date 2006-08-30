@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -755,7 +755,11 @@ extern void  PDGCS_new_proc         	  ( INT32 ir_count,
                                     	    INT32 user_sades,
                                      	    INT32 pipeline_opt_level,   
                                      	    INT32 stream_opt_level );
+#ifdef KEY /* Bug 3507 */
+extern void  PDGCS_do_proc          	  ( int is_module);
+#else /* KEY Bug 3507 */
 extern void  PDGCS_do_proc          	  ( void );
+#endif /* KEY Bug 3507 */
 extern void  PDGCS_end_procs        	  ( INT32 *code_size,
                                     	    INT32 *data_size );
 extern void  PDGCS_end_comp_unit    	  ( void );
@@ -771,16 +775,9 @@ extern void  fei_smt_original_to_qualified( INT32 qualified_st_idx,
                                             char  *original_name );
 extern void  fei_null_expr                ( void );
 extern void  fei_member_ref               ( INT32 mem_idx );
-#ifdef KEY
-extern void  fei_object_ref               ( INTPTR sym_idx,    
-                                            INT32 whole_subscript,
-                                            INT32 whole_substring,
-                                            unsigned int data_init);
-#else
 extern void  fei_object_ref               ( INTPTR sym_idx,    
                                             INT32 whole_subscript,
                                             INT32 whole_substring);
-#endif
 extern void  fei_function_ref             ( INTPTR fnc_idx );
 extern INTPTR fei_constant                 ( TYPE  type,
                                             INT32 Class,
@@ -798,7 +795,7 @@ extern INTPTR fei_pattern_con             ( TYPE  type,
                                             INT64 bitsize );
 extern INTPTR fei_smt_parameter           ( char  *name_string,
                                             TYPE  type,
-                                            INT32 con_idx,
+                                            INTPTR con_idx,
                                             INT32 Class,
                                  	    INT32 line_num );
 extern void  fei_entry_pt                 ( INTPTR st_idx );
@@ -1013,6 +1010,12 @@ extern void  fei_options       	  	  ( char * n1);
 #endif /* KEY Bug 2660 */
 extern void  fei_prefetch       	  ( INT32 n1, INT32 n2 );
 extern void  fei_prefetch_manual	  ( INT32 n );
+#ifdef KEY /* Bug 3507 */
+extern void cwh_dst_enter_module          ( char *module_name,
+					    char *filename,
+                                            INT32 local_lineno );
+extern void cwh_dst_exit_module           ( void );
+#endif /* KEY Bug 3507 */
 extern INTPTR fei_proc            	  ( char  *name_string,
                                  	    INT32 lineno,
                                  	    INT32 sym_class,

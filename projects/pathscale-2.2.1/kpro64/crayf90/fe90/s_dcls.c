@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -5502,8 +5502,44 @@ static	void	attr_semantics(int	attr_idx,
             ATD_CLASS(attr_idx) != CRI__Pointee &&
            ((ATT_POINTER_CPNT(TYP_IDX(type_idx)) ||
              ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx))) &&
-            !ATD_DATA_INIT(attr_idx)))) {
-# else
+            !ATD_DATA_INIT(attr_idx))))
+# else /* 0 */
+#   ifdef KEY /* Bug 431, (1046, 1289, 8717) */
+	   /* It appears that before the code arrived at Pathscale, in the
+	    * process of removing the "ATD_TARGET" test, somebody messed up
+	    * the grouping near the end of this impressive boolean expression,
+	    * causing bug 431. If the variable was declared with an
+	    * initializer (ATD_DATA_INIT) using a structure type which itself
+	    * has a default init (ATT_DEFAULT_INITIALIZED), we don't want to
+	    * call gen_entry_dope_code() to emit the initialization dictated
+	    * by the structure type, because the variable initialization
+	    * (which is emitted elsewhere) overrides it.
+	    *
+	    * At Pathscale, the first (and second and third) attempts to fix
+	    * bug 431 focused on suppressing the resultant WHIRL "store" via
+	    * code in fei_store(), but that caused bug 8717, because in other
+	    * circumstances the "store" is needed. Better not to emit the
+	    * unwanted type-initializer assignment into the IR in the first
+	    * place.
+	    */
+      if (!is_interface &&
+
+          (ATD_IM_A_DOPE(attr_idx) &&
+           (ATD_CLASS(attr_idx) != Dummy_Argument ||
+            (ATD_ARRAY_IDX(attr_idx) &&
+             BD_ARRAY_CLASS(ATD_ARRAY_IDX(attr_idx)) == Assumed_Shape))) ||
+
+           /* Follows is the default init check */
+
+          (TYP_TYPE(type_idx) == Structure &&
+           ATD_CLASS(attr_idx) != Constant &&
+           (ATD_CLASS(attr_idx) != Dummy_Argument ||
+              ATD_INTENT(attr_idx) == Intent_Out) &&
+            ATD_CLASS(attr_idx) != CRI__Pointee &&
+           ((ATT_POINTER_CPNT(TYP_IDX(type_idx)) ||
+             ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx))) &&
+            !ATD_DATA_INIT(attr_idx))))
+#   else /* KEY Bug 431, (1046, 1289, 8717) */
       if (!is_interface &&
 
           (ATD_IM_A_DOPE(attr_idx) &&
@@ -5520,8 +5556,10 @@ static	void	attr_semantics(int	attr_idx,
             ATD_CLASS(attr_idx) != CRI__Pointee &&
            (ATT_POINTER_CPNT(TYP_IDX(type_idx)) ||
             (ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx)) &&
-            !ATD_DATA_INIT(attr_idx))))) {
-# endif
+            !ATD_DATA_INIT(attr_idx)))))
+#   endif /* KEY Bug 431, (1046, 1289, 8717) */
+# endif /* 0 */
+      {
 
          entry_sh_idx		= curr_stmt_sh_idx;
          end_entry_sh_idx	= SH_NEXT_IDX(curr_stmt_sh_idx);
@@ -5599,12 +5637,9 @@ static	void	attr_semantics(int	attr_idx,
 
                ATD_SF_ARG_IDX(attr_idx) = tmp_idx;
             }
-# endif
+# endif /* 0 */
 
-# if 0
-	}  /* This is here, just so that {  }'s match. */
-# endif
-# endif
+# endif /* (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX)) */
          }
          else if (ATP_PGM_UNIT(pgm_attr_idx) != Blockdata &&
                   (ATD_CLASS(attr_idx) != Dummy_Argument ||
@@ -6075,7 +6110,13 @@ static	void	attr_semantics(int	attr_idx,
            ATD_CLASS(attr_idx) == Variable) &&
           !ATD_POINTER(attr_idx) &&
           !ATD_ALLOCATABLE(attr_idx) &&
-          !ATD_SAVED(attr_idx)) {
+#ifdef KEY /* Bug 7967 */
+	  /* "save<newline>" doesn't mark each individual variable in scope */
+          !(ATD_SAVED(attr_idx) || ATP_SAVE_ALL(pgm_attr_idx))
+#else /* KEY Bug 7967 */
+          !ATD_SAVED(attr_idx)
+#endif /* KEY Bug 7967 */
+	  ) {
          PRINTMSG(AT_DEF_LINE(attr_idx), 1641, Ansi,
                   AT_DEF_COLUMN(attr_idx),
                   AT_OBJ_NAME_PTR(attr_idx),
@@ -6209,6 +6250,17 @@ static	void	attr_semantics(int	attr_idx,
 	 
 	 if (TYP_TYPE(type_idx) == Structure &&
 	    ATT_DEFAULT_INITIALIZED(TYP_IDX(type_idx))) {
+#ifdef KEY /* Bug 7856 */ 
+	    /* Here's something else from attr_semantics() that we're missing.
+	     * And there's a lot more...some day consider removing all the
+	     * code inside "if (ATP_PGM_UNIT(attr_idx) == Function)" and just
+	     * calling attr_semantics(rslt_idx), and seeing what if any reason
+	     * there is to replicate an increasing fraction of attr_semantics()
+	     * here instead of just calling the function outright. */
+	    if (bd_idx != NULL_IDX) {
+	      array_dim_resolution(rslt_idx, FALSE);
+	    }
+#endif /* KEY Bug 7856 */ 
             gen_entry_dope_code(rslt_idx);
 	 }
 #endif /* KEY Bug 4865 */
@@ -10697,6 +10749,60 @@ static	void	distribution_resolution(int 	attr_idx)
 
 }  /* distribution_resolution */
 
+#ifdef KEY /* Bug 4197 */
+/*
+ * This implements the passage of the F95 standard (14.1.2.3): "If a generic
+ * name is the same as the name of a generic intrinsic procedure, the generic
+ * intrinsic procedure is not accessible if the procedures in the interface
+ * and the intrinsic procedure are not all functions or not all subroutines."
+ *
+ * For generic interfaces using interface bodies, we were able to remove
+ * the intrinsics from the interface in start_new_subpgm() before we added
+ * the user-provided procedures. But for generic interfaces using "module
+ * procedure", we added the user-provided procedures before we knew
+ * whether they were functions, and "verify_interface()" is the place to
+ * remove the intrinsics if need be.
+ *
+ * Call ignore_intrinsics() when the first specific procedure in the list
+ * disagrees with the generic interface w.r.t. function-ness. If the generic
+ * interface is intrinsic and the first specific procedure is not intrinsic,
+ * then get rid of the specific intrinsic procedures, change the interface to
+ * match the first specific procedure, and proceed with the checking. If
+ * there's still a conflict after the intrinsics are gone, this really is
+ * an error.
+ *
+ * BTW, can't test AT_INTRINSIC(interface_idx) because when one of the
+ * specific procedures named in the "module procedure" statement overloads
+ * the interface name itself, that attribute has been turned off.
+ *
+ * we rely on the fact that intrinsics follow non-intrinsics in the list.
+ */
+static boolean
+ignore_intrinsics(int first, int interface_idx, int specific_attr_idx,
+  interface_type desired_type)
+{
+  if ((!first) || ATP_PROC(specific_attr_idx) == Intrin_Proc) {
+    return 0;
+  }
+  ATI_INTERFACE_CLASS(interface_idx) = desired_type;
+  AT_IS_INTRIN(interface_idx) = FALSE;
+  for (int curr_sn_idx = ATI_FIRST_SPECIFIC_IDX(interface_idx);
+    curr_sn_idx != NULL_IDX; ) {
+    int next_sn_idx = SN_SIBLING_LINK(curr_sn_idx);
+    int next_attr_idx = SN_ATTR_IDX(next_sn_idx);
+    /* ATP_PROC tells us this is a "real" intrinsic */
+    if ((AT_OBJ_CLASS(next_attr_idx) == Pgm_Unit) &&
+      ATP_PROC(next_attr_idx) == Intrin_Proc) {
+      SN_SIBLING_LINK(curr_sn_idx) = NULL_IDX;
+      break;
+    }
+    /* AT_IS_INTRIN merely tells us this has the same name as an intrinsic */
+    AT_IS_INTRIN(next_attr_idx) = FALSE;
+    curr_sn_idx = next_sn_idx;
+  }
+  return 1;
+}
+#endif /* KEY Bug 4197 */
 /******************************************************************************\
 |*                                                                            *|
 |* Description:                                                               *|
@@ -10758,6 +10864,9 @@ static void verify_interface(int        interface_idx)
 
    curr_sn_idx = ATI_FIRST_SPECIFIC_IDX(interface_idx);
 
+#ifdef KEY /* Bug 4197 */
+   boolean first = TRUE;
+#endif /* KEY Bug 4197 */
    while (curr_sn_idx != NULL_IDX) {
       curr_attr_idx = SN_ATTR_IDX(curr_sn_idx);
 
@@ -10913,6 +11022,13 @@ static void verify_interface(int        interface_idx)
 
          if (ATP_PGM_UNIT(curr_attr_idx) == Subroutine &&
              !AT_DCL_ERR(interface_idx))               {
+#ifdef KEY /* Bug 4197 */
+            if (ignore_intrinsics(first, interface_idx, curr_attr_idx,
+	      Generic_Subroutine_Interface)) {
+	      found_intrin = FALSE;
+	      break;
+	    }
+#endif /* KEY Bug 4197 */
             PRINTMSG(AT_DEF_LINE(interface_idx), 1059, Error,
                      AT_DEF_COLUMN(interface_idx),
                      AT_OBJ_NAME_PTR(interface_idx));
@@ -10924,6 +11040,13 @@ static void verify_interface(int        interface_idx)
             
          if (ATP_PGM_UNIT(curr_attr_idx) == Function &&
              !AT_DCL_ERR(interface_idx))             {
+#ifdef KEY /* Bug 4197 */
+            if (ignore_intrinsics(first, interface_idx, curr_attr_idx,
+	      Generic_Function_Interface)) {
+	      found_intrin = FALSE;
+	      break;
+	    }
+#endif /* KEY Bug 4197 */
             PRINTMSG(AT_DEF_LINE(interface_idx), 1059, Error,
                      AT_DEF_COLUMN(interface_idx),
                      AT_OBJ_NAME_PTR(interface_idx));
@@ -11838,6 +11961,9 @@ static void verify_interface(int        interface_idx)
       }
 
       curr_sn_idx = SN_SIBLING_LINK(curr_sn_idx);
+#ifdef KEY /* Bug 4197 */
+      first = FALSE;
+#endif /* KEY Bug 4197 */
    }
 
 EXIT:

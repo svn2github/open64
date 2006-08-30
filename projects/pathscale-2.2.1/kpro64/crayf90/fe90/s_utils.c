@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -927,6 +927,16 @@ EXIT:
             }
 
             if (err_res) {
+
+#ifdef KEY /* Bug 5710, 8094 */
+	     /* If we're allowing intrinsic .eq. on logical operands as an
+	      * extension, the absence of an overloaded function is not an
+	      * error; we'll return to our caller who will use the intrinsic
+	      * operator. */
+	     if (!((Eq_Opr == IR_OPR(ir_idx) || Ne_Opr == IR_OPR(ir_idx)) &&
+	       eq_ne_on_logical(0, exp_desc_l, exp_desc_r))) {
+#endif /* KEY Bug 5710, 8094 */
+
                strcpy(type_str_l, get_basic_type_str(exp_desc_l->type_idx));
                strcpy(type_str_r, get_basic_type_str(exp_desc_r->type_idx));
 
@@ -936,6 +946,9 @@ EXIT:
                         type_str_r,
                         str_word);
                *semantically_correct = FALSE;
+#ifdef KEY /* Bug 5710 */
+	     }
+#endif /* KEY Bug 5710 */
             }
          }
       }
@@ -945,7 +958,13 @@ EXIT:
        found &&
        ATP_PROC(spec_idx) != Intrin_Proc) {
 
-      if (! ATP_PURE(spec_idx)) {
+#ifdef KEY /* Bug 7726 */
+      /* Fortran 95 says every elemental procedure is pure */
+      if (! (ATP_PURE(spec_idx) || ATP_ELEMENTAL(spec_idx)))
+#else /* KEY Bug 7726 */
+      if (! ATP_PURE(spec_idx))
+#endif /* KEY Bug 7726 */
+      {
          if (within_forall_mask_expr) {
             PRINTMSG(IR_LINE_NUM(ir_idx), 1611, Error, IR_COL_NUM(ir_idx), 
                      AT_OBJ_NAME_PTR(spec_idx),

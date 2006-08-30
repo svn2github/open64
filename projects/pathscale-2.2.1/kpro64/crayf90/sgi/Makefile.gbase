@@ -163,6 +163,7 @@ TRANS_SRCS = \
 	cwh_stab.cxx   \
 	cwh_stmt.cxx   \
 	cwh_stk.cxx    \
+        decorate_utils.cxx \
         f2c_abi_utils.cxx     \
 	sgi_cmd_line.cxx \
 	path_intrinsic_list.cxx

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1085,6 +1085,9 @@ static void init_cmd_line (void)
    dump_flags.dsm			= FALSE;
    dump_flags.cray_compatible		= FALSE;
    dump_flags.pack_half_word		= FALSE;
+#ifdef KEY /* Bug 8117 */
+   dump_flags.arg_passing		= FALSE;
+#endif /* KEY Bug 8117 */
 
    /* Set defaults for -Y CCG option flags.                                   */
 
@@ -3985,7 +3988,15 @@ static void process_u_option (char *optargs)
 
 	 dump_flags.src_dmp		= FALSE;
 	 dump_flags.stmt_dmp		= TRUE;
+#ifdef KEY /* Bug 8117 */
+	 dump_flags.arg_passing		= TRUE;
+#endif /* KEY Bug 8117 */
       }
+#ifdef KEY /* Bug 8117 */
+      else if (EQUAL_STRS(cp, "arg_passing")) {
+	 dump_flags.arg_passing		= TRUE;
+      }
+#endif /* KEY Bug 8117 */
       else if (EQUAL_STRS(cp, "bd")) {			/* bounds table       */
 	 dump_flags.bd_tbl	= TRUE;
       }

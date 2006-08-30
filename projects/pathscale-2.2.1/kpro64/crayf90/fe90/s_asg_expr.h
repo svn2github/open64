@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -4761,6 +4765,11 @@ exp_tbl_type	eq_ne_tbl[Num_Linear_Types][Num_Linear_Types] = {
         /* CRI_Parcel_Ptr_8  */   {TRUE , CG_LOGICAL_DEFAULT_TYPE }
                         }
 		};
+
+#ifdef KEY /* Bug 5710 */
+/* Like eq_ne_tbl, but extension allows operation on logical operands */
+exp_tbl_type	eq_ne_on_logical_tbl[Num_Linear_Types][Num_Linear_Types];
+#endif /* KEY Bug 5710 */
 
 exp_tbl_type	lg_tbl[Num_Linear_Types][Num_Linear_Types] = {
 /* Err_Res */		{

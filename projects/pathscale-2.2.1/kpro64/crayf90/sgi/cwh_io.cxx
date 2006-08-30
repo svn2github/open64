@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -457,7 +457,13 @@ fei_control_list(int mode)
 	  break;
 
         case CILIST_IOSTAT:
+#ifdef KEY /* Bug 7874 */
+	  ts = (FLD_item == cwh_stk_get_class()) ?
+	    cwh_stk_get_FLD_TY() :
+            cwh_stk_get_TY();
+#else /* KEY Bug 7874 */
           ts = cwh_stk_get_TY();
+#endif /* KEY Bug 7874 */
 	  wn1 = cwh_expr_address(f_NONE);
 	  if (wn1) {
             if (ts != NIL) {
