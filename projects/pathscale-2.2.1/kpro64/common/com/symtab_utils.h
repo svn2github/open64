@@ -215,6 +215,8 @@ extern ST* MTYPE_TO_PREG_array[MTYPE_LAST+1];
 /* preferred preg symbols for physical registers 
  * (point to one of above pregs, depending on ABI). */
 extern ST	*Int_Preg, *Float_Preg, *Return_Val_Preg;	/* for pseudo-registers */
+// bug fix for OSP_87
+extern ST      *Branch_Preg;
 #ifdef TARG_X8664
 extern ST* X87_Preg;
 #endif

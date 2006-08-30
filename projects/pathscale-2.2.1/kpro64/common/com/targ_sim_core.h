@@ -60,6 +60,9 @@ extern "C" {
         ((n) >= Int_Preg_Min_Offset && (n) <= Int_Preg_Max_Offset)
 #define Preg_Offset_Is_Float(n) \
         ((n) >= Float_Preg_Min_Offset && (n) <= Float_Preg_Max_Offset)
+// bug fix for OSP_87
+#define Preg_Offset_Is_Branch(n) \
+        ((n) >= Branch_Preg_Min_Offset && (n) <= Branch_Preg_Max_Offset)
 #define Preg_Offset_Is_Fcc(n) \
         ((n) >= Fcc_Preg_Min_Offset && (n) <= Fcc_Preg_Max_Offset)
 #define Preg_Is_Dedicated(n) (n <= Last_Dedicated_Preg_Offset)

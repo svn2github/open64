@@ -1339,6 +1339,11 @@ CGTARG_Preg_Register_And_Class(
     regnum = preg - Float_Preg_Min_Offset;
     rclass = ISA_REGISTER_CLASS_float;
   }
+  // bug fix for OSP_87
+  else if (Preg_Offset_Is_Branch(preg)) {
+    regnum = preg - Branch_Preg_Min_Offset;
+    rclass = ISA_REGISTER_CLASS_branch;
+  }
   else if (preg == 0) {
     /* 0 not considered part of normal int group for error purposes,
      * but in our case it can be zero_tn. */

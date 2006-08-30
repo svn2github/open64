@@ -765,12 +765,14 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 				 0);
 	}
 	else {
-	  prag = WN_CreateXpragma(WN_PRAGMA_ASM_CLOBBER,
-				  (ST_IDX) 0,
+	  // bug fix for OSP_87 & OSP_90
+          prag = WN_CreateXpragma(WN_PRAGMA_ASM_CLOBBER,
+				  (ST_IDX) p->clobber_string_idx,
 				  1);
 	  WN_kid0(prag) = WN_CreateIdname(p->preg_number,
 					  p->preg_st_idx);
-	  WN_pragma_arg2(prag) = p->clobber_string_idx;
+	  if(WN_kid0(prag) == 0)
+	    WN_pragma_arg2(prag) = p->clobber_string_idx;
 	}
 	WN_INSERT_BlockAfter(clobber_block,
 			     WN_last (clobber_block),

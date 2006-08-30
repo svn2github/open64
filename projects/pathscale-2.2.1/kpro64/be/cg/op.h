@@ -621,6 +621,9 @@ extern BOOL OP_def_return_value(OP*);
 #define OP_inst_words(o)	(ISA_PACK_Inst_Words(OP_code(o)))
 #define OP_find_opnd_use(o,u)	(TOP_Find_Operand_Use(OP_code(o),(u)))
 
+// bug fix for OSP_87 and OSP_88
+#define OP_asm(o)              (OP_code(o)==TOP_asm)
+
 inline BOOL OP_float_chk(OP *op)
 {
     mTOP opcode = OP_code(op);

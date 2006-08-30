@@ -2261,6 +2261,8 @@ Promoted_Parm_Type(const ST *formal_parm)
 ST *MTYPE_TO_PREG_array[MTYPE_LAST+1];
 
 ST *Int_Preg, *Float_Preg, *Return_Val_Preg;
+// bug fix for OSP_87
+ST *Branch_Preg;
 #ifdef TARG_X8664
 ST* X87_Preg = NULL;
 #endif
@@ -2359,6 +2361,9 @@ Setup_Preg_Pointers ()
     else
 	Float_Preg = Float64_Preg;
 
+    // bug fix for OSP_87
+    Branch_Preg = MTYPE_To_PREG(MTYPE_A8);
+    
 #ifdef TARG_X8664
     X87_Preg = MTYPE_To_PREG( MTYPE_FQ );
 #endif

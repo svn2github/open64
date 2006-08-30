@@ -3692,14 +3692,15 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
 	FmtAssert(WN_pragma(prag) == WN_PRAGMA_ASM_CLOBBER,
 		  ("Unknown pragma type for ASM clobber"));
 	CLOBBER_PRAGMA_INFO info;
+	// bug fix for OSP_87 & OSP_90
 	if (WN_opcode(prag) == OPC_XPRAGMA) {
 	  WN *kid = WN_kid0(prag);
 	  FmtAssert(WN_operator(kid) == OPR_IDNAME,
 		    ("Unknown kid operator for PREG ASM clobber"));
 	  info.preg_st_idx = WN_st_idx(kid);
 	  info.preg_number = WN_offset(kid);
-	  info.clobber_string_idx = WN_pragma_arg2(prag);
-	}
+	  info.clobber_string_idx = WN_st_idx(prag);
+        }
 	else {
 	  info.preg_st_idx = 0;
 	  info.preg_number = 0;

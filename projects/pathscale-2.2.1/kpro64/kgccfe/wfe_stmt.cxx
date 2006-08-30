@@ -726,6 +726,9 @@ idname_from_regnum (int gcc_reg)
 		st = Int_Preg;
 	else if (Preg_Offset_Is_Float(preg))
 		st = Float_Preg;
+	// bug fix for OSP_87
+	else if (Preg_Offset_Is_Branch(preg))
+	        st = Branch_Preg;
 #ifdef TARG_X8664
 	else if (Preg_Offset_Is_X87(preg))
 		st = X87_Preg;
