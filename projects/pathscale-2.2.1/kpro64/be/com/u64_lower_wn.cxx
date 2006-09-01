@@ -212,8 +212,11 @@ U64_LOWER_stmt_wn(WN *tree, BOOL leave_CVTL_at_leaf)
   case OPR_ALTENTRY:
   case OPR_PRAGMA:
   case OPR_LABEL:
-  case OPR_REGION:
   case OPR_REGION_EXIT:
+    return;
+
+  case OPR_REGION:
+    U64_LOWER_stmt_wn(WN_region_body(tree), leave_CVTL_at_leaf);
     return;
 
   case OPR_DEALLOCA:	// only kid 0 contains no node relevant to U64 lowering

@@ -93,6 +93,8 @@
 #include "vt_region.h"
 #include "vt_dag.h"
 
+#include "targ_sim.h"
+#include "ttype.h"
 
 #include <stdarg.h>       /* for va_start va_list and vnsprintf */
 #include <tlog.h>
@@ -291,6 +293,14 @@ SCHEDULER::Collect_And_Analyse_Unresolved_Dep
         move_around_paths.Resize 
             (_cflow_mgr.Get_Exec_Path_Mgr()->Path_In_Total ());
     }
+    // fix bug no. OSP_76 for implicit use of Actuals 
+    BOOL cannotspec = FALSE;
+    for (OP* prev_op = OP_prev(cand_op); prev_op; prev_op = OP_prev(prev_op)){
+        if (!OP_Scheduled(prev_op) && OP_ANNOT_OP_Def_Actual_Para (prev_op)){
+            cannotspec = TRUE;
+            break;
+        }
+    }
 
         /* step 1.a : collect some unresolved dependency, analysis 
          *            is applied upon these depencies to make desition
@@ -332,6 +342,7 @@ SCHEDULER::Collect_And_Analyse_Unresolved_Dep
         }
         
         SPEC_TYPE spec_tmp = Derive_Spec_Type_If_Violate_Dep (arc);
+        if (cannotspec) spec_tmp = SPEC_DISABLED;
         if (spec_tmp == SPEC_NONE) {
                 /* case 1: dependency we simply ignore
                  */
@@ -1198,7 +1209,16 @@ SCHEDULER::Insert_Check (OP * ld, BB * home_bb, OP* pos) {
     OP_ANNOT_Set_Cannot_Spec (chk_op);
 
     if (BB_call(OP_bb(chk_op))) {
-        
+      // fix bug no. OSP_76 for implicit use of Actuals 
+	for (CAND_LIST_ITER cand_iter(_cand_mgr.M_Ready_Cand_List ()); 
+			        !cand_iter.done ();) {
+            CANDIDATE* cand = cand_iter.cur ();
+	    if (cand && OP_ANNOT_OP_Def_Actual_Para (cand->Op()))
+	        cand_iter.erase_cur_and_advance();
+	    else
+		cand_iter.step();
+	}
+		
         for (OP * op = chk_op ; op ; op = OP_next(op)) {
             if (OP_ANNOT_OP_Def_Actual_Para (op)) {
                 new_arc_with_latency(CG_DEP_POSTCHK, chk_op, 
@@ -2019,58 +2039,68 @@ SCHEDULER::Verify (void) {
     }
 
 }
-
+// fix bug no. OSP_76 for implicit use of Actuals 
+// rewrite this function using PLOC structure to get actual argument information
 void
 SCHEDULER::Identify_Actual_Argument_Defs (BB* bb) {
-
     if (!BB_call (bb)) return ;
+    PLOC ploc;
+    TY_IDX func_type;
+    ANNOTATION *ant;
+    WN *call_wn;
+    CALLINFO *call_info;
+    ST *call_st;
+    PREG_NUM *parm;
+    INT i,j;
 
     OP * call_op = BB_xfer_op(bb) ;
     Is_True (OP_call(call_op), ("OP is not a call!"));
+	
+    ant = ANNOT_Get(BB_annotations(bb), ANNOT_CALLINFO);
+    call_info = ANNOT_callinfo(ant);
+    call_st = CALLINFO_call_st(call_info);
+    call_wn = CALLINFO_call_wn(call_info);
+    
+    func_type = call_st ? ST_pu_type(call_st) : WN_ty(call_wn);
+    ploc = Setup_Output_Parameter_Locations(func_type);
+    
+    INT num_parms = WN_num_actuals(call_wn);
+    parm = new PREG_NUM[num_parms];
+    for (i = 0; i < num_parms; i++) {
+      ploc = Get_Output_Parameter_Location (TY_Of_Parameter(WN_actual(call_wn,i)));
+      parm[i] = ploc.reg;
+    }
+    
+    if (!BB_call (bb)) return ;
 
     OP * op ;
     FOR_ALL_BB_OPs(bb, op) {
-        OP_ANNOT_Set_OP_Def_Actual_Para (op);
-    }  
-
+      OP_ANNOT_Reset_OP_Def_Actual_Para (op);
+      for (i=0; i < num_parms ; i++) {
+	for (j=0; j < OP_results(op); j++) {
+	  TN* tn = OP_result(op, j);
+	  PREG_NUM tn_reg = REGISTER_machine_id(TN_register_class(tn), TN_register(tn));
+	  if (TN_register_class(tn) == 1){
+	    tn_reg = tn_reg;
+	  }
+	  else if (TN_register_class(tn) == 2){
+	    tn_reg += REGISTER_CLASS_register_count(1);
+	  }
+	  else{
+	    continue;
+	  }
+	  if (tn_reg == parm[i]){
+	    OP_ANNOT_Set_OP_Def_Actual_Para (op);
+	    i = num_parms;
+	    break;
+	  }
+	}
+      }
+    } 
+    
     OP_ANNOT_Reset_OP_Def_Actual_Para (call_op);
-
-
-    FOR_ALL_BB_OPs_REV (bb,op) {
-        if (OP_store(op) || OP_prefetch(op)) {  
-            OP_ANNOT_Reset_OP_Def_Actual_Para (op);
-        }
-
-        BOOL safe_move_across_bb = FALSE ;
-
-        if (safe_move_across_bb) {
-            OP_ANNOT_Reset_OP_Def_Actual_Para (op);
-        }
-
-        for (ARC_LIST * list = OP_preds(op); list ; 
-             list = ARC_LIST_rest(list)) { 
-
-            ARC * arc = ARC_LIST_first (list) ;
-            if (ARC_kind(arc) == CG_DEP_REGIN && 
-                OP_bb (ARC_pred(arc)) == bb) {
-
-                OP_ANNOT_Reset_OP_Def_Actual_Para (ARC_pred(arc));
-            }
-        }
-    }
-  
-    OP_ANNOT_Reset_OP_Def_Actual_Para (call_op);
-
-    BOOL find_first_def = FALSE ;
-    FOR_ALL_BB_OPs (bb,op) {
-        if (OP_ANNOT_OP_Def_Actual_Para (op)) find_first_def = TRUE ; 
-        if (OP_load (op) && find_first_def ) { 
-            OP_ANNOT_Set_OP_Def_Actual_Para (op) ; 
-        };
-    }
-
+    delete parm;
 }
-
 
     /* ========================================================
      *

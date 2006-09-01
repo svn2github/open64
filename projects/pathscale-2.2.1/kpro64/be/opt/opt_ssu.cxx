@@ -142,7 +142,9 @@ EXP_WORKLST * SSU::SPRE_candidate(CODEREP *cr)
     Is_True(cr->Dtyp() != MTYPE_V && cr->Dtyp() != MTYPE_UNKNOWN,
 	    ("SSU::SPRE_candidate: dtyp is void or unknown"));
 #else
-    if (cr->Dtyp() == MTYPE_V || cr->Dtyp() == MTYPE_UNKNOWN)
+    // fix bug no OSP_52
+    if (cr->Dtyp() == MTYPE_V || cr->Dtyp() == MTYPE_UNKNOWN ||
+	cr->Dsctyp() == MTYPE_V || cr->Dsctyp() == MTYPE_UNKNOWN)
       Fix_var_mtypes(cr, aux);
 #endif
     WN *home_wn = cr->Rvi_home_wn(Opt_stab());
