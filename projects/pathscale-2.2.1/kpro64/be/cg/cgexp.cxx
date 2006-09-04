@@ -278,13 +278,14 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	}
 	else {
 		// both are int
-  		// only zero-extend when enlarging an unsigned value; 
+  		// zero-extend when enlarging an unsigned value, or 
+  		//   converting to smaller unsigned vlaue (e.g U4I8CVT)
 		// else sign-extend.
 		Expand_Convert_Length ( result, op1, op2, 
 			rtype, 
 			(MTYPE_is_signed(desc)
-			|| (MTYPE_bit_size(desc) > MTYPE_bit_size(rtype) ) ),
-			ops);
+			 && (MTYPE_bit_size(desc) < MTYPE_bit_size(rtype) ) ),
+			ops); // OSP_171
 	}
 	break;
   case OPR_RND:
