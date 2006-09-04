@@ -777,6 +777,7 @@ void Create_alias(ALIAS_MANAGER *am, WN *wn)
   } else {
     POINTS_TO *pt = am->New_points_to(wn);
     pt->Analyze_WN_expr(wn);
+    pt->Set_ty (WN_object_ty(wn)); // OSP_172
   }
 }
 
@@ -978,7 +979,7 @@ ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
 
   if (OPERATOR_is_store(WN_operator(wn1)) && OPERATOR_is_load(WN_operator(wn2)) ||
       OPERATOR_is_store(WN_operator(wn2)) && OPERATOR_is_load(WN_operator(wn1))) {
-    if (am->Rule()->Aliased_Memop(pt1, pt2, WN_object_ty(wn1), WN_object_ty(wn2))) 
+    if (am->Rule()->Aliased_Memop(pt1, pt2, pt1->Ty(), pt2->Ty())) // OSP-172
       return POSSIBLY_ALIASED;
   } else {
     // cannot apply ANSI type rule to STORE <--> STORE.
