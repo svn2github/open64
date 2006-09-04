@@ -185,9 +185,9 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
     INSTALL_DATA_SUB $d/init/ftz.o     ${PHASEPATH}/ftz.o
 
         # libgcc.a and libstdc++.a are deemed as "GNU link" specific archieves
-    d="${PREBUILT_LIB}/${TARG_HOST}-${TARG_OS}/gnu/" 
     for i in libstdc++.a libgcc.a ; do 
-        INSTALL_DATA_SUB ${d}/${i}  ${PHASEPATH}/$i
+        F=`gcc --print-file-name $i`
+        [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
     done
 
     return 0
