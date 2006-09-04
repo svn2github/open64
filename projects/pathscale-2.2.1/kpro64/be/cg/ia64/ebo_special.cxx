@@ -5574,7 +5574,7 @@ sxt_sequence (OP *op,
     } else if ((p_start <= result_start) &&
                ((result_start + result_length) <= (p_start + input_length))) {
      /* The result is contained within the input. */
-      result_start = 0;
+      result_start = result_start - p_start;  // OSP-170
     } else {
      /* There is some sort of overlap of fields. */
       return FALSE;
