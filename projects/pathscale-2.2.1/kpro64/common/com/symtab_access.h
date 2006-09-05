@@ -865,6 +865,14 @@ inline void
 Set_PU_mp_lower_generated (PU& pu) 	{ pu.flags |= PU_MP_LOWER_GENERATED; }
 inline void
 Clear_PU_mp_lower_generated (PU& pu)	{ pu.flags &= ~PU_MP_LOWER_GENERATED; }
+
+inline BOOL
+PU_is_operator (const PU& pu)    { return (pu.flags & PU_IS_OPERATOR) != 0; }
+inline void
+Set_PU_is_operator (PU& pu)      { pu.flags |= PU_IS_OPERATOR; }
+inline void
+Clear_PU_is_operator (PU& pu)    { pu.flags &= ~PU_IS_OPERATOR; }
+
 #endif
 #ifdef TARG_X8664
 inline BOOL

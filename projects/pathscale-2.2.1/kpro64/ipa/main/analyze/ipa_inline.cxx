@@ -70,6 +70,8 @@
 #include "ipo_defs.h"			// IPA_NODE_CONTEXT
 #endif
 
+#include "symtab_access.h"
+
 //^INLINING_TUNING
 #define MINI_APPLICATION	10000
 #define LARGE_APPLICATION	118000   //for GAP benchmark
@@ -485,6 +487,10 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     UINT32 caller_weight = caller->Weight ();
     UINT32 callee_weight = Effective_weight (callee);
     UINT32 combined_weight = Get_combined_weight (caller->PU_Size(), callee->PU_Size(), callee);
+
+    if (PU_is_operator(callee->Get_PU()) && ed->Num_Actuals() <= 2)
+      combined_weight = 1;
+
 #ifdef KEY
     float hotness = callee->Get_feedback() == NULL ? 0.0 :
       compute_hotness (ed, callee, callee_weight);       

@@ -1137,6 +1137,10 @@ Create_ST_For_Tree (tree decl_node)
 	  p++;
         ST_Init (st, Save_Str(p),
                  CLASS_FUNC, sclass, eclass, TY_IDX (pu_idx));
+
+	p = IDENTIFIER_POINTER (DECL_NAME (decl_node));
+	if (!strncmp(p,"operator",8))
+		Set_PU_is_operator(pu);
 #else
         ST_Init (st,
                  Save_Str ( IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (decl_node))),
