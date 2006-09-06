@@ -76,6 +76,17 @@ Get_TY (tree type_tree)
 	return Create_TY_For_Tree (type_tree, TY_IDX_ZERO);
 }
 
+// bug fix for OSP_133
+// return section name for corresponding ST via st_attr table
+struct find_st_attr_section_name {
+        ST_IDX st;
+	find_st_attr_section_name (const ST *s) : st (ST_st_idx (s)) {}
+
+	BOOL operator () (UINT, const ST_ATTR *st_attr) const {
+	                return (ST_ATTR_kind (*st_attr) == ST_ATTR_SECTION_NAME &&
+				ST_ATTR_st_idx (*st_attr) == st);
+	}
+};
 /*
  * either return a previously created ST associated with a
  * var-decl/parm-decl/function_decl, or create a new one.
@@ -103,8 +114,38 @@ Get_ST (tree decl_tree)
 		    !DECL_INITIAL(decl_tree)         &&
 		    TREE_STATIC(decl_tree))
 		{
-		    if (flag_no_common || DECL_SECTION_NAME(decl_tree))
+			    // bug fix for OSP_133
+		    if (flag_no_common || DECL_SECTION_NAME(decl_tree)) {
+			/* if st has declared section name, and the section name isn't 
+			 * the same as current tree node's section name attribute, store 
+			 * the new section name in the str table and assign it to st*/
+			if (DECL_SECTION_NAME(decl_tree)) {
+			    ST_ATTR_IDX st_attr_idx;
+			    ST_IDX idx = ST_st_idx (st);
+			    // search for section name attribute in st_attr table
+			    st_attr_idx = For_all_until (St_Attr_Table, 
+							 ST_IDX_level (idx),
+							 find_st_attr_section_name(st));
+			    if (st_attr_idx){
+			    STR_IDX str_index = ST_ATTR_section_name(St_Attr_Table(ST_IDX_level (idx), st_attr_idx));
+			    // only when they have different section names
+			    if(strcmp(Index_To_Str(str_index), 
+			       TREE_STRING_POINTER (DECL_SECTION_NAME (decl_tree))))
+			       Set_ST_ATTR_section_name(St_Attr_Table(ST_IDX_level (idx), st_attr_idx), 
+							Save_Str (TREE_STRING_POINTER (DECL_SECTION_NAME (decl_tree))));}
+			    // bug fix for OSP_136
+			    /* if the old tree node doesn't have section name 
+			     * attribute, create one for current tree node */
+			    else {
+			        DevWarn ("section %s specified for %s", 
+				    TREE_STRING_POINTER (DECL_SECTION_NAME (decl_tree)), ST_name (st));
+				ST_ATTR&    st_attr = New_ST_ATTR (ST_IDX_level (idx), st_attr_idx);
+				ST_ATTR_Init (st_attr, idx, ST_ATTR_SECTION_NAME, 
+					Save_Str (TREE_STRING_POINTER (DECL_SECTION_NAME (decl_tree))));
+                            }
+			}
 			Set_ST_sclass (st, SCLASS_UGLOBAL);
+		    }
 		    else {
 		      if (Debug_Level >= 2) { 
 			  // Bug 6183 

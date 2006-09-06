@@ -222,6 +222,9 @@ static SECTION_IDX Shorten_Section (ST *, SECTION_IDX);
 static void Allocate_Object_To_Section (ST *, SECTION_IDX, UINT);
 static void Allocate_Label (ST *lab);
 
+// bug fix for OSP_138
+BOOL ST_has_Predefined_Named_Section (ST *, SECTION_IDX &);
+static void Allocate_Object_To_Predefined_Named_Section (ST *, SECTION_IDX);
 
 extern BOOL
 Is_Allocated (ST *st)
@@ -964,9 +967,12 @@ Get_Section_ST_With_Given_Name (SECTION_IDX sec, ST_SCLASS sclass, STR_IDX name)
 		}
 	}
 	if (newblk == NULL) {
-		ST *blk = Get_Section_ST(sec, 0, sclass);
-		newblk = Copy_ST_Block(blk);
-		Set_ST_name_idx(newblk, name);
+		// bug fix for OSP_129
+	      if ( sec == _SEC_BSS )
+		sec = _SEC_DATA; // Alwayse Create Data section for user-defineded section
+	      ST *blk = Get_Section_ST(sec, 0, sclass);
+	      newblk = Copy_ST_Block(blk);
+	      Set_ST_name_idx(newblk, name);
 	}
 	return newblk;
 }
@@ -978,6 +984,12 @@ void
 Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 {
 	ST *newblk;
+	// bug fix for OSP_138
+	SECTION_IDX sec_idx;    
+	/* If st has section name attribute and it's same as one of the predefined section name,
+	 * it is hanled in the same way as normal st. So it isn't assigned to section here. */
+	if (ST_has_Predefined_Named_Section(st, sec_idx))
+		return;
 	if (ST_is_not_used(st))
 		return;
 	if (ST_class(st) == CLASS_FUNC) {
@@ -1001,9 +1013,13 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 		case SCLASS_FSTATIC:
 		case SCLASS_PSTATIC:
 			// must be initialized
-    			if (ST_is_constant(st)) sec = _SEC_RDATA;
-    			else sec = _SEC_DATA;
-			break;
+     			if (ST_is_constant(st)) sec = _SEC_RDATA;
+		        // bug fix for OSP_129
+			else if ( ST_is_initialized(st) )
+				sec = _SEC_DATA;
+			else
+			        sec = _SEC_BSS;	// if data is not initialized, it's still in BSS
+		        break;
 		case SCLASS_UGLOBAL:
 #ifdef KEY
     			if (ST_is_constant(st) &&	// bug 4743
@@ -2570,6 +2586,66 @@ Allocate_Label (ST *lab)
   /* this is a reference only, no storage need be allocated */
   Assign_Object_To_Section ( lab, _SEC_TEXT, 0 );
 }
+ 
+// bug fix for OSP_138
+/* =====================================================================
+ * 
+ * ST_has_Predefined_Named_Section
+ *
+ * Given a symbol table element (representing a data object) with section 
+ * name attribute, see if its section name is same as one of the predefined
+ * section's. If so, return TRUE and set sec_idx to appropriate section index.
+ * Otherwise return FALSE and set sec_idx to _SEC_DISTR_ARRAY.
+ *
+ * =====================================================================
+ */
+BOOL
+ST_has_Predefined_Named_Section(ST *st, SECTION_IDX &sec_idx) {
+
+  for (sec_idx = _SEC_UNKNOWN; sec_idx <= _SEC_DISTR_ARRAY; sec_idx ++) {
+  	if (!strcmp(Index_To_Str(Find_Section_Name_For_ST(st)), SEC_name(sec_idx)))
+  		return TRUE;
+  }
+
+  return FALSE;
+}
+
+/* =====================================================================
+ *
+ * Allocate_Object_To_Predefined_Named_Section
+ * 
+ * Given a symbol table element (representing a data object) with section
+ * name attribute which is same as one of the predefined section's and 
+ * appropriate section index, chose the appropriate section, assign the ST
+ * to that section, and allocate storage.
+ *
+ * =====================================================================
+ */
+static void
+Allocate_Object_To_Predefined_Named_Section(ST *st, SECTION_IDX sec_idx) {
+  Clear_ST_has_named_section(st);	// Clear st's flag for ST_HAS_NAMED_SECTION
+  Set_ST_base_idx(st,ST_st_idx(st));	// Set st's base index equel to st index
+  Set_ST_ofst(st,0);			// Set st's offset to 0
+
+  // if object was supposed to go into bss,
+  // but with section attribute which hase same 
+  // the same name as one of the predefined section's,
+  // then change the symbol to be initialized to 0.
+  // Otherwise, the order of generated assembly code may be wrong.
+  if (ST_storage_class (*st) == SCLASS_UGLOBAL) {
+    DevWarn("change bss symbol to be initialized to 0");
+    Set_ST_sclass(st, SCLASS_DGLOBAL);
+    Set_ST_is_initialized(st);
+    INITO_IDX ino = New_INITO(st);
+    INITV_IDX inv = New_INITV();
+    INITV_Init_Pad (inv, ST_size(st));
+    Set_INITO_val(ino, inv);
+  }
+
+  /*Assign st to appropriate section and allocate storage*/
+  Allocate_Object_To_Section ( st, sec_idx, Adjusted_Alignment(st));
+  return;
+}
 
 
 /* ====================================================================
@@ -2598,12 +2674,26 @@ Allocate_Object ( ST *st )
     Clear_ST_is_not_used(SF_Block(SFSEG_FORMAL));
   }
 
-  if (Is_Allocated(st)) return;
+  if (Is_Allocated(st))
+  	// bug fix for OSP_138
+	/* If st has section name attribute and the section name is same as
+	 * one of the predefined section, it will be processed later */
+	if (!ST_has_named_section(st))
+  		return;
+  	else if (!ST_has_Predefined_Named_Section(st, sec))
+		return;
+  
   if (ST_is_not_used(st)) return;
 
   if (ST_has_named_section(st)) {
-	STR_IDX name = Find_Section_Name_For_ST (st);
-	Assign_ST_To_Named_Section (st, name);
+	// bug fix for OSP_138
+	if (ST_has_Predefined_Named_Section(st, sec))
+		// Assign st to appropriate section
+		Allocate_Object_To_Predefined_Named_Section(st, sec);
+	else {
+		STR_IDX name = Find_Section_Name_For_ST (st);
+		Assign_ST_To_Named_Section (st, name);
+	}
 	return;
   }
   if (Has_Base_Block(st)) {

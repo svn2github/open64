@@ -570,8 +570,10 @@ IPO_SYMTAB::fix_table_entry<INITO>::operator () (UINT idx, INITO* inito) const
 inline void 
 IPO_SYMTAB::fix_table_entry<ST_ATTR>::operator () (UINT idx, ST_ATTR* st_attr) const
 {
-    Is_True (ST_ATTR_kind (*st_attr) == ST_ATTR_DEDICATED_REGISTER,
-	     ("expecting ST_ATTR_DEDICATED_REGISTER"));
+    // bug fix for OSP_125
+    Is_True (ST_ATTR_kind (*st_attr) == ST_ATTR_DEDICATED_REGISTER || 
+             ST_ATTR_kind (*st_attr) == ST_ATTR_SECTION_NAME,
+	     ("expecting ST_ATTR_DEDICATED_REGISTER or ST_ATTR_SECTION_NAME"));
     ST_IDX st_idx = ST_ATTR_st_idx (*st_attr);
     Set_ST_ATTR_st_idx (*st_attr, make_ST_IDX (ST_IDX_index (st_idx) +
 					 _sym->Get_cloned_st_last_idx(),
@@ -836,6 +838,23 @@ IPO_SYMTAB::promote_entry<ST>::operator () (UINT idx, ST* old_st) const
     }
 }
 
+// bug fix for OSP_125
+inline void
+IPO_SYMTAB::promote_entry<ST_ATTR>::operator () (UINT idx, ST_ATTR* old_attr) const
+{
+    // If the ST entry of the ST_ATTR has been promoted, then need to
+    // promote this ST_ATTR also ( only ST_ATTR_SECTION_NAME )
+    ST *orig_ST = &St_Table[ST_ATTR_st_idx (*old_attr)];
+    ST *cloned_ST = _sym->Get_Cloned_ST(orig_ST);
+    if ( cloned_ST ) {
+      ST_ATTR_IDX new_attr_idx;
+      ST_ATTR& new_attr = New_ST_ATTR(GLOBAL_SYMTAB, new_attr_idx);
+      ST_ATTR_Init(new_attr, ST_st_idx(cloned_ST),
+		   ST_ATTR_kind(*old_attr), ST_ATTR_section_name(*old_attr) );
+    }
+}
+
+
 // ======================================================================
 // Walk the ST list and for those that are PU-level static that have
 // a different base, need to fix it
@@ -882,6 +901,8 @@ IPO_SYMTAB::Promote_Statics (void)
   For_all (St_Table, _orig_level, promote_entry<ST>(this));
   For_all (St_Table, _orig_level, fix_base<ST>(this));
   For_all (Inito_Table, _orig_level, promote_entry<INITO>(this));
+  // bug fix for OSP_125
+  For_all (St_Attr_Table, _orig_level, promote_entry<ST_ATTR>(this));
 
 } // IPO_SYMTAB::Promote_Statics
 
