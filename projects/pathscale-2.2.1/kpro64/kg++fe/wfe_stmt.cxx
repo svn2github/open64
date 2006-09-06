@@ -804,6 +804,12 @@ cleanup_matches (tree candidate, tree target)
 }
 
 
+bool
+Is_Cleanup_Only (void)
+{
+  return temp_cleanup_stack[temp_cleanup_i].cleanup_eh_only;
+}
+
 void
 Do_Temp_Cleanups (tree t)
 {
@@ -3171,38 +3177,49 @@ WFE_Expand_Try (tree stmt)
   /* Set start labels for each handler. */
   Set_Handler_Labels(stmt);
 
-  Push_Scope_Cleanup (stmt);
+  // bug fix for OSP_159 & OSP_160 
+  if (!opt_regions)
+    Push_Scope_Cleanup (stmt);
 
 #ifdef KEY
-  vector<SCOPE_CLEANUP_INFO> *scope_cleanup = Get_Scope_Info ();
 // FIXME: handle temp cleanups for return from handler.
 #if 0 
   vector<TEMP_CLEANUP_INFO> *temp_cleanup = Get_Temp_Cleanup_Info ();
 #else
   vector<TEMP_CLEANUP_INFO> *temp_cleanup = 0;
 #endif
-  vector<BREAK_CONTINUE_INFO> *break_continue = Get_Break_Continue_Info ();
   int handler_count=0;
   WN * region_body;
   if (key_exceptions)
   {
     region_body = WN_CreateBlock();
     WFE_Stmt_Push (region_body, wfe_stmk_region_body, Get_Srcpos());
+    
+    // bug fix for OSP_159 & OSP_160
+    if (opt_regions)
+      Push_Scope_Cleanup (stmt);
     handler_count = cleanup_list_for_eh.size();
   }
+  vector<SCOPE_CLEANUP_INFO> *scope_cleanup = Get_Scope_Info ();
+  vector<BREAK_CONTINUE_INFO> *break_continue = Get_Break_Continue_Info ();
 #endif // KEY
 
   /* Generate code for the try-block. */
 
   for (tree s = TRY_STMTS(stmt); s; s = TREE_CHAIN(s))
     WFE_Expand_Stmt(s);
-  --scope_cleanup_i;
+  // bug fix for OSP_159 & OSP_160
+  if (!opt_regions)
+    --scope_cleanup_i;
 
 #ifdef KEY
   LABEL_IDX start = 0;
   if (key_exceptions)
   {
     WFE_Stmt_Pop (wfe_stmk_region_body);
+    // bug fix for OSP_159 & OSP_160
+    if (opt_regions)
+      --scope_cleanup_i;
     WN * region_pragmas = WN_CreateBlock();
     FmtAssert (cleanup_list_for_eh.size() >= handler_count, ("Cleanups cannot be removed here"));
     LABEL_IDX cmp_idx = scope_cleanup_stack[scope_cleanup_i+1].cmp_idx;
@@ -3932,6 +3949,11 @@ WFE_Expand_Stmt(tree stmt, WN* target_wn)
       break;
 
     case TRY_BLOCK:
+#ifdef KEY
+      // bug fix for OSP_159 & OSP_160 
+      if (opt_regions && Check_For_Call_Region ())
+        Did_Not_Terminate_Region = FALSE;
+#endif
       WFE_Expand_Try (stmt);
       break;
 

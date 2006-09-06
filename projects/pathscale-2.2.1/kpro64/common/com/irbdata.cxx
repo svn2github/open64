@@ -524,6 +524,11 @@ Print_INITV (const INITV& initv)
     fprintf (TFile, "\n");
 } // Print_INITV
 
+void 
+Print_INITV_idx (const INITV_IDX inv)
+{
+  Print_INITV (Initv_Table[inv]);
+}
 
 void
 Print_INITVs (INITV_IDX idx)

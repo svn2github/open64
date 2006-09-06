@@ -4263,7 +4263,13 @@ convert_stmt_list_to_OPs(WN *stmt)
       Is_True(rid != NULL, ("convert_stmt_list_to_OPs NULL RID"));
       if ( RID_level( rid ) < RL_CG ) { /* the region is still WHIRL */
 	region_stack_push( rid );
-	if (RID_TYPE_eh(rid)) {
+
+	// if current PU haven't any landing pad, no need to set EH label
+#ifdef OSP_OPT
+	if (RID_TYPE_eh(rid) && !PU_Need_Not_Create_LSDA ()) {
+#else 
+	if (RID_TYPE_eh(rid)) { 
+#endif
 	  EH_Set_Start_Label(RID_eh_range_ptr(rid));
         }
 
@@ -4276,7 +4282,13 @@ convert_stmt_list_to_OPs(WN *stmt)
 	if (RID_is_glue_code(rid)) {
 		In_Glue_Region = FALSE;
 	}
-	if (RID_TYPE_eh(rid)) {
+
+	// if current PU haven't any landing pad, no need to set EH label
+#ifdef OSP_OPT
+	if (RID_TYPE_eh(rid) && !PU_Need_Not_Create_LSDA ()) {
+#else 
+	if (RID_TYPE_eh(rid)) { 
+#endif
 	  EH_Set_End_Label(RID_eh_range_ptr(rid));
         }
 	rid = region_stack_pop();

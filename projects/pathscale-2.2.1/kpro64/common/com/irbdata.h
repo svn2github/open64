@@ -424,6 +424,9 @@ extern void
 Print_INITV (const INITV& initv);
 
 extern void
+Print_INITV_idx (const INITV_IDX inv_idx);
+
+extern void
 Print_INITVs (INITV_IDX initv);
 
 extern void

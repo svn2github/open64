@@ -637,6 +637,12 @@ extern char *Emit_Global_Data;	/* only emit global data */
 extern char *Read_Global_Data;	/* only read global data */
 
 extern char *Library_Name;              /* -TENV:io_library=xxx */
+
+/* -foptimize-regions implies this internal variable,
+ * which is used in cgdwarf_targ.cxx to close emit .restore directive
+ */
+extern BOOL Omit_UE_DESTROY_FRAME;  /* tmp close Epilogue overflow error */
+
 extern INT  target_io_library;
 
 #ifdef TARG_X8664

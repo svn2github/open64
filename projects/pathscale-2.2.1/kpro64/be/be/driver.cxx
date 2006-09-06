@@ -160,6 +160,10 @@ extern WN* (*CG_Generate_Code_p) (WN*, ALIAS_MANAGER*, DST_IDX, BOOL);
 extern void (*EH_Generate_Range_List_p) (WN *);
 #define EH_Generate_Range_List (*EH_Generate_Range_List_p)
 
+// used to dump information of EH related INITO
+extern void (*EH_Dump_INITOs_p) (WN *, FILE *);
+#define EH_Dump_INITOs (*EH_Dump_INITOs_p)
+
 #else
 
 #pragma weak CG_Process_Command_Line
@@ -169,7 +173,7 @@ extern void (*EH_Generate_Range_List_p) (WN *);
 #pragma weak CG_PU_Initialize
 #pragma weak CG_Generate_Code
 #pragma weak EH_Generate_Range_List
-
+#pragma weak EH_Dump_INITOs
 
 #endif // __linux__
 
@@ -1387,6 +1391,16 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
     }
 
     Update_EHRegion_Inito (pu);
+   
+    // trace the info of updated EH INITO      
+    if (Get_Trace (TP_EH, 0x0004)) {
+      fprintf (TFile, "=======================================================================\n");
+      fprintf (TFile, "\t  Used EH INITO info for PU: %s \t\n", 
+		      ST_name (current_pu->proc_sym));
+      fprintf (TFile, "\t  (After Update_EHRegion_Inito) \t\n");
+      fprintf (TFile, "=======================================================================\n");
+      EH_Dump_INITOs (pu, TFile);
+    }
 
     /* Generate EH range table for PU.  The high and low labels are
      * filled in during code generation.
@@ -1684,6 +1698,7 @@ Preorder_Process_PUs (PU_Info *current_pu)
   BOOL orig_olimit_opt = Olimit_opt;
 
   WN *pu;
+
 #ifdef TARG_X8664
   if (!Force_Frame_Pointer_Set)
   {

@@ -86,6 +86,7 @@
 #include "cg_loop.h"
 #include "pqs_cg.h"
 #include "cgtarget.h"
+#include "eh_region.h"
 
 static BB_LIST *region_entry_list;
 static BB_SET  *region_exit_set;
@@ -1129,8 +1130,14 @@ Live_Init(
   BB_live_in(bb)      = GTN_SET_CopyD(BB_live_in(bb),
                                       BB_live_use(bb),
                                       &liveness_pool);
-
+#ifdef OSP_OPT
+  /* if current PU haven't landing pad at all, 
+   * needn't to added the corresponding defreach and live info
+   */
+  if (PU_has_exc_scopes(Get_Current_PU()) && !PU_Need_Not_Create_LSDA ()) {
+#else
   if (PU_has_exc_scopes(Get_Current_PU())) {
+#endif
     extern TN *Caller_GP_TN;
     extern TN *Caller_FP_TN;
     extern TN *Caller_Pfs_TN;
@@ -1154,7 +1161,7 @@ Live_Init(
         GTN_UNIVERSE_Add_TN(Caller_Pfs_TN);
       }
     }
-    
+  
     if (BB_Has_Exc_Label(bb) || (!BB_exit(bb) && !BB_succs(bb))) {
       BB_live_out(bb) = GTN_SET_CopyD(BB_live_out(bb), force_live_gtns, &liveness_pool);
       if (Caller_GP_TN) {
@@ -1175,7 +1182,7 @@ Live_Init(
       }      
     }
   }
-
+  
   // We are no longer computing BB_defreach_gen. Make a quick pass 
   // through the bb and initialize the defreach_out set with the
   // the GTNs defined in the block.

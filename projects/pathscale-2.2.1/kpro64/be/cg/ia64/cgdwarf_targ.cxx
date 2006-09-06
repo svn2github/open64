@@ -1295,9 +1295,16 @@ Emit_Unwind_Directives_For_OP(OP *op, FILE *f)
       proc_region = EPILOGUE_BODY_UREGION;
       break;
     case UE_DESTROY_FRAME:
+      /* when -foptimize-regions, temp close the error: 
+       * Epilogue count of 4294967296 exceeds number of nested prologues (0)
+       * please refer to psABI
+       */
+      if (Omit_UE_DESTROY_FRAME)
+	break;
+      else
       fprintf(f, "%s\t.restore %s\n", 
-		 prefix,
-		 UE_Register_Name(TN_register_class(SP_TN), TN_register(SP_TN)));
+		   prefix,
+		   UE_Register_Name(TN_register_class(SP_TN), TN_register(SP_TN)));
       break;
     case UE_LABEL:
       fprintf(f, "%s\t.body\n", prefix);

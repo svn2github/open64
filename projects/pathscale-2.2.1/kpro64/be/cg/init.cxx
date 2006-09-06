@@ -65,6 +65,7 @@ extern void (*CG_Dump_Region_p) (FILE*, WN*);
 
 // from be/cg/eh_region.h
 extern void (*EH_Generate_Range_List_p) (WN *);
+extern void (*EH_Dump_INITOs_p) (WN *, FILE *);
 
 struct CG_INIT
 {
@@ -78,6 +79,7 @@ struct CG_INIT
 	CG_Generate_Code_p = CG_Generate_Code;
 	CG_Dump_Region_p = CG_Dump_Region;
 	EH_Generate_Range_List_p = EH_Generate_Range_List;
+	EH_Dump_INITOs_p = EH_Dump_INITOs;
     }
 } Cg_Initializer;
 

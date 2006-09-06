@@ -230,8 +230,8 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 #define TP_TEMP		60	/* Temporary use */
 
 #define TP_IPFEC	61	/* Actualy several phases, but all IPFEC related */
-#define TP_A_GSCHED 62  /* "AGS", Ipfec global scheduler" */
-#define TP_A_LSCHED 63  /* "ALS", Ipfec local scheduler */
+#define TP_A_GSCHED 	62  	/* "AGS", Ipfec global scheduler" */
+#define TP_A_LSCHED 	63  	/* "ALS", Ipfec local scheduler */
 #define TP_A_PROF       64      /* "APF",  "Ipfec profiling"*/
 #define TP_A_REGION     65      /* "ARN",  "Ipfec region formation"*/
 #define TP_A_IFCONV     66      /* "AIC",  "Ipfec if conversion"*/
@@ -244,12 +244,14 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 #define TP_OUTLINING	72	/* OUTLINING^$ tracing */
 #define TP_A_CANA	73	/* ACA "Ipfec cache analysis and opt" */
 
+#define TP_EH		74	/* EH "Enable trace infos of EH range and EH entry" */
+	
 /* WARNING: TP_LAST must be at least as large as the largest phase
  * number above, and TP_COUNT must be at least one larger.
  */
-#define TP_LAST		73	/* Largest valid phase number */
-#define TP_COUNT	74	/* Number of valid phase numbers */
-
+#define TP_LAST		75	/* Largest valid phase number */
+#define TP_COUNT	76	/* Number of valid phase numbers */
+	
 /* Extract the phase number from a trace option: */
 extern INT32 Get_Trace_Phase_Number ( char **cp, char *arg );
 

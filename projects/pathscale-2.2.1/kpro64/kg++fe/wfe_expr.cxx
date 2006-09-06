@@ -5010,6 +5010,12 @@ WFE_Expand_Expr (tree exp,
           WFE_Stmt_Append (wn, Get_Srcpos ());
         }
         wn = WFE_Expand_Expr (TREE_OPERAND (exp, 1), need_result);
+	// bug fix for OSP_161
+	if (opt_regions && Did_Not_Terminate_Region == TRUE)
+	{
+	  Check_For_Call_Region ();
+	  Did_Not_Terminate_Region = FALSE;
+	}  
       }
       break;
 

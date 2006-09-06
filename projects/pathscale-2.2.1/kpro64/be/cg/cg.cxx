@@ -496,8 +496,26 @@ CG_Generate_Code(
     if (frequency_verify)
       FREQ_Verify("Feedback Incorporation");
   }
+  
+  // Prior to CG optimization, EH_Prune_Range_List is called to
+  // eliminate unneeded EH ranges.  This gets rid of ranges which
+  // do not have calls or throws. 
 
   EH_Prune_Range_List();
+
+#ifdef OSP_OPT
+  // it's high time to compute pu_need_LSDA after EH_Prune_Range_List, 
+  pu_need_LSDA = !PU_Need_Not_Create_LSDA ();
+#endif 
+
+  // trace all the EH ranges 
+  if (Get_Trace (TP_EH, 0x0002)) {
+    fprintf (TFile, "\n=======================================================================\n");
+    fprintf (TFile, "\t   EH RANGE INFO for PU: %s \n", ST_name(Get_Current_PU_ST()));
+    fprintf (TFile, "\t   (After EH_Prune_Range_List) \t\n");
+    fprintf (TFile, "=======================================================================\n");
+    EH_Print_Range_List ();
+  }
 
   Optimize_Tail_Calls( Get_Current_PU_ST() );
 
@@ -1103,9 +1121,26 @@ CG_Generate_Code(
   } /* if (region */
 
   else { /* PU */
-    /* Write the EH range table. */
+    // dump EH entry info
+    if (Get_Trace (TP_EH, 0x0001)) {
+      Print_PU_EH_Entry(Get_Current_PU(), WN_st(rwn), TFile);
+    }
+    
+#ifdef OPS_OPT
+    /* Write the EH range table. 
+     * if pu_need_LSDA is set for current PU, 
+     * means no need to write EH range table
+     */
+    if (PU_has_exc_scopes(Get_Current_PU()) && pu_need_LSDA) {
+#else
     if (PU_has_exc_scopes(Get_Current_PU())) {
+#endif
       EH_Write_Range_Table(rwn);
+    }
+
+    // dump LSDA of current PU
+    if (Get_Trace (TP_EH, 0x0008)) {
+      EH_Dump_LSDA (TFile);
     }
 
     /* Emit the code for the PU. This may involve writing out the code to
@@ -1116,7 +1151,7 @@ CG_Generate_Code(
      *   - add nada's to quad-align branch targets for TFP.
      */
     Set_Error_Phase ( "Assembly" );
-    Start_Timer (   T_Emit_CU );
+    Start_Timer ( T_Emit_CU );
     if (Create_Cycle_Output)
         Cycle_Count_Initialize(Get_Current_PU_ST(), region);      
     /* Generate code to call mcount. See description of gcc -pg option.

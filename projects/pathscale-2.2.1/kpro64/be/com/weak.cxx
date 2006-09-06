@@ -152,7 +152,7 @@ void (*CG_Dump_Region_p) (FILE*, WN*);
 
 // from be/cg/eh_region.h
 void (*EH_Generate_Range_List_p) (WN *);
-
+void (*EH_Dump_INITOs_p) (WN *, FILE *);
 // ----------------------------------------------------------------------
 // symbols defined in ipl.so:
 // from ipa/local/ipl_main.cxx

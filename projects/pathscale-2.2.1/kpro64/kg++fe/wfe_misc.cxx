@@ -665,7 +665,7 @@ WFE_Stmt_Pop (WFE_STMT_KIND kind)
   WN * to_be_pushed = 0;
   if (key_exceptions && wn_stmt_sp->kind != kind)
   {
-    if (!opt_regions || !Did_Not_Terminate_Region)
+    if (!opt_regions || !Did_Not_Terminate_Region) 
     {
   	FmtAssert (wn_stmt_sp->kind == wfe_stmk_call_region_body,
              ("mismatch in statements: expected %s, got %s\n",
@@ -675,10 +675,11 @@ WFE_Stmt_Pop (WFE_STMT_KIND kind)
 	to_be_pushed = WFE_Stmt_Pop (wfe_stmk_call_region_body);
     }
     else
-    { // If we got an opportunity but did not close the region earlier in
-      // WFE_Stmt_Append, then close it now.
-    	Check_For_Call_Region ();
-	Did_Not_Terminate_Region = FALSE;
+    { 
+        // If we got an opportunity but did not close the region earlier in
+        // WFE_Stmt_Append, then close it now.
+        Check_For_Call_Region ();
+        Did_Not_Terminate_Region = FALSE;
     }
   }
 #endif // KEY

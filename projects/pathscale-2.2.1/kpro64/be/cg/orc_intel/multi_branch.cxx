@@ -174,7 +174,7 @@ BOOL Multi_Branch_Valid_BB(BB *bb, BB *partial_head=NULL)
     // make sure that multiple branch can't act upon EH handler BB
     // as well as BBs corresponding to EH range
     if (BB_handler (bb) || BB_Has_Exc_Label (bb))
-        return FALSE;
+      return FALSE;
 
     // skip list
     if (IPFEC_Query_Skiplist(mlbr_skip_bb, BB_id(bb), 

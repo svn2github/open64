@@ -742,7 +742,8 @@ mINT32 EMT_Put_Elf_Symbol (ST *sym)
 		      ST_name(sym), 0, TY_size(sym_type),
 		      symbind, STT_OBJECT, symother,
 		      ST_is_gp_relative(sym) ? SHN_MIPS_SUNDEFINED : SHN_UNDEF);
-	  if (Assembly)
+	  
+	  if (Assembly) 
 	    if (ST_is_weak_symbol(sym)) {
 	      fprintf ( Asm_File, "\t%s\t", AS_WEAK);
 	      EMT_Write_Qualified_Name(Asm_File, sym);
@@ -4197,7 +4198,6 @@ Check_Initv(INITV_IDX idx, FILE* fp)
   Check_Initv(INITV_next(idx), fp);
 }
 
-INITO* EH_Get_PU_Range_INITO(bool bSetNull);
 static void
 Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
 {
@@ -4226,7 +4226,12 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
   INITV_IDX type_inv = (INITV_IDX)TCON_uval(INITV_tc_val(act_inv));
   INITV_IDX eh_spec_inv = (INITV_IDX)TCON_uval(INITV_tc_val(type_inv));
 
-  //Check_Initv(first, stdout);
+#ifdef OSP_OPT
+  // Check_Initv(first, stdout);
+  // if no corresponding call site information, doesn't emit at all 
+  if (INITV_next(first) == act_inv)
+    return;
+#endif
 
   static int nRangeTable = 0;
   nRangeTable++;
@@ -4332,7 +4337,7 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
       fprintf(Asm_File, "\tdata8.ua\t0\n");
     else {
     //  if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
-        fprintf(Asm_File, "\tdata8.ua\t@gprel(DW.ref.%s)\n", ST_name(&St_Table[type_st_idx]));
+        fprintf(Asm_File, "\tdata8.ua\t@gprel(DW.ref.%s#)\n", ST_name(&St_Table[type_st_idx]));
     //  else
     //    fprintf(Asm_File, "\tdata8.ua\t%s\n", ST_name(&St_Table[type_st_idx]));
     }

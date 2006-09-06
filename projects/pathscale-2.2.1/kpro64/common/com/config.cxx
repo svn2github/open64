@@ -448,6 +448,9 @@ static OPTION_DESC Options_TENV[] = {
     0, 0, 0,	&PIC_Local_Names, NULL },
   { OVK_BOOL,	OV_SHY,		FALSE, "long_eh_offsets",	"long_eh", 
     0, 0, 0,	&Force_Long_EH_Range_Offsets, NULL },
+  // -foptimize-regions implies this option  
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "omit_ue_destroy_frame",	"omit_ue", 
+    0, 0, 0,	&Omit_UE_DESTROY_FRAME, NULL },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "non_volatile_GOT",	"non_v",
     0, 0, 0,	&Non_Volatile_GOT, NULL,
     "Assume GOT is non-volatile" },
@@ -875,6 +878,12 @@ char *Emit_Global_Data = NULL;	/* only emit global data */
 char *Read_Global_Data = NULL;	/* only read global data */
 
 char *Library_Name = NULL;      /* -TENV:io_library=xxx */
+
+/* -foptimize-regions implies this internal variable,
+ * which is used in cgdwarf_targ.cxx to close emit .restore directive
+ */
+BOOL Omit_UE_DESTROY_FRAME = FALSE;  /* tmp close Epilogue overflow error */
+
 INT  target_io_library;
 
 #ifdef TARG_X8664
