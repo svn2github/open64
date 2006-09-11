@@ -2868,14 +2868,20 @@ Spill_Live_Range (
   last_use = LR_last_use(spill_lr);
   if (reloadable) {
     reloadable_def = OP_VECTOR_element(Insts_Vector, first_def);
+    // If this op is not a spill load, set reloadable_def to NULL, so that 
+    // later, this spill TN will be first stored to the spill location after its first def
+    if ( reloadable_def && !Is_OP_Spill_Load (reloadable_def, TN_spill(spill_tn)) ){
+        reloadable_def = NULL;
+    }else {
 
     // mark the live ranges of operands of the reloadable_def as being
     // not available for spill. If we try to spill on of the operand
     // TNs later, we will not find the uses added by cloning the 
     // reloadable def.
     Remove_LRs_For_OP (reloadable_def);
+    }
 
-    if(!reloadable_def) spill_loc = TN_spill(spill_tn);
+    if(already_spilled) spill_loc = TN_spill(spill_tn);
 
   } else {
     // Try using the magic symbol as a last ditch effort. It is 
@@ -3033,7 +3039,7 @@ Spill_Live_Range (
          Live Range, there will have been no previous save.  So let's
          skip the following logic unless this TN has already been spilled. */
 
-      if (reloadable || (already_spilled && Is_OP_Spill_Load (op, spill_loc))) {
+      if (LR_reloadable(spill_lr) || (already_spilled && Is_OP_Spill_Load (op, spill_loc))) {
         // If the definition of the spill_tn is a load from the spill
         // location, we don't have to insert the store to memory. Actually
         // we can get rid of the load as well, since we will be loading 

@@ -937,6 +937,21 @@ SRC_BB_MGR :: _src_bb_is_qualified (BB* src, SRC_BB_INFO* its_info,
             return FALSE;
         }
 
+        //Involving too much BBs may generate a huge BB after scheduling,
+        //which will cause following LRA phase fail.
+        //So just return if the sum of BB's lengths exceeds the limit.
+        BB* bb_iter;
+        INT32 total_bb_length=0;
+        FOR_ALL_BB_SET_members(_src_bbs_set, bb_iter){
+            total_bb_length += BB_length(bb_iter);
+        }
+#if defined(TARG_IA32) || defined(TARG_X8664)
+        if(total_bb_length+BB_length(src) > Split_BB_Length)
+#else
+        if(total_bb_length+BB_length(src) > 4*Split_BB_Length)
+#endif
+            return FALSE;
+
         /* fall-thru and routine returns TRUE */
     }
 

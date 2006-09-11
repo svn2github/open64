@@ -3508,6 +3508,8 @@ static void Pad_BB_With_Noops(BB *bb, INT num)
       BB_Append_Op (bb, new_op);
     } while (--num);
   }
+  // bug fix for OSP_139
+  Set_OP_end_group(BB_last_op(bb));
 }
 
 /* ====================================================================
