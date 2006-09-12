@@ -1023,6 +1023,10 @@ CG_Generate_Code(
       Local_Insn_Sched(FALSE);
       CGGRP_Bundle();
     }
+    else if (CG_opt_level <1){
+      IPFEC_sched_care_machine = Sched_care_nothing;
+      CGGRP_Bundle();
+    }
     else{
       Local_Insn_Sched(FALSE);
     }
