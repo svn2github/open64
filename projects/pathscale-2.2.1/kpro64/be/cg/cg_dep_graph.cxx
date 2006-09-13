@@ -5020,7 +5020,7 @@ DAG_BUILDER::Build_Mem_Arcs(OP *op)
          * So, we need futher checking. 
          */
 	// bug fix for OSP_88
-	if (!OP_volatile (pred) || !OP_volatile(op) && !OP_asm(pred)) {
+	if ((!OP_volatile (pred) || !OP_volatile(op)) && !OP_asm(pred)) {
 	  Set_ARC_is_dotted(arc, TRUE);
 	  _num_data_spec_arcs++;
         }

@@ -1053,6 +1053,7 @@ Assign_ST_To_Named_Section (ST *st, STR_IDX name)
 			INITV_IDX inv = New_INITV();
 			INITV_Init_Pad (inv, ST_size(st));
 			Set_INITO_val(ino, inv);
+			Clear_ST_init_value_zero(st);
 		}
 		ST_Block_Merge (newblk, st, 0, 0, SEC_max_sec_size(sec));
 	}
@@ -2640,6 +2641,7 @@ Allocate_Object_To_Predefined_Named_Section(ST *st, SECTION_IDX sec_idx) {
     INITV_IDX inv = New_INITV();
     INITV_Init_Pad (inv, ST_size(st));
     Set_INITO_val(ino, inv);
+    Clear_ST_init_value_zero(st); 
   }
 
   /*Assign st to appropriate section and allocate storage*/

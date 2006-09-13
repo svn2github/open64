@@ -320,11 +320,23 @@ void
 CGEMIT_Weak_Alias (ST *sym, ST *strongsym) 
 {
         fprintf ( Asm_File, "\t%s\t%s#\n", AS_WEAK, ST_name(sym));
-        fprintf ( Asm_File, "\t.set %s#, %s#\n", ST_name(sym), ST_name(strongsym));
+        // bug fix for OSP_145
+	CGEMIT_Alias(sym, strongsym);
 }
 
 void
 CGEMIT_Alias (ST *sym, ST *strongsym) 
 {
-        fprintf ( Asm_File, "\t.set %s#, %s#\n", ST_name(sym), ST_name(strongsym));
+        // bug fix for OSP_145
+	fprintf ( Asm_File, "\t.set %s#, ", ST_name(sym));
+	if ( ST_is_export_local(strongsym) && ST_class(strongsym) == CLASS_VAR) {
+		// file scope local symbol
+		if (ST_level(strongsym) == GLOBAL_SYMTAB)
+			fprintf (Asm_File, "%s%s%d#\n",
+			    ST_name(strongsym), Label_Name_Separator, ST_index(strongsym));
+		else
+			Is_True(0, ("Impossible alias to a PU scope variable"));
+	}
+	else // global export symbol
+		fprintf (Asm_File, "%s#\n", ST_name(strongsym));
 }
