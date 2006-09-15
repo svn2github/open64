@@ -3913,6 +3913,7 @@ vho_lower_expr ( WN * wn, WN * block, BOOL_INFO * bool_info )
     case OPR_BNOT:
     case OPR_LNOT:
     case OPR_ALLOCA:
+    case OPR_EXTRACT_BITS:	// bug fix for OSP_184
 
       WN_kid0(wn) = vho_lower_expr (WN_kid0(wn), block, NULL);
       break;
