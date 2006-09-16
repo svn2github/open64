@@ -2225,11 +2225,29 @@ Split_PU_Entry_BB (REGION * rgn) {
 
 
 
-    /* =============================================================
+    /* ===============================================================
      *
-     *  Sink_Return_Val_OP 
+     *  Sink_Return_Val_OP: 
+     *
+     *     There is no explict def to the return register (e.g r8 - r11 
+     *  in IA64 ABI) and there is explict use to the return register. 
+     *  The live range can't be correctly identified by GRA. 
+     *  
+     *     To workaround this problem, scheduler is should guarantee 
+     * that occurrence of return value should be splitted into serveral
+     * blocks. This is a very ugly hack. At the moment I write this 
+     * comment, Jurgen is trying to attack this IR problem. The proposed
+     * soultion to this problem is to represent the implict use and def:
+     *    - actual register parameter and return values are added 
+     *      to 'call' instruction and they serve as source and result 
+     *      operands respectively.
+     *    - return value TNs are added to 'ret' instruction to suggest 
+     *      that those TNs are live at the point rigth before 'ret'.
      * 
-     * ============================================================
+     *  TODO: This ugly workaround should be removed when Jurgen's fix 
+     *    is available.
+     *
+     * ================================================================
      */
 static void
 Sink_Return_Val_OP (BB * split, BB * exit) {
@@ -2263,8 +2281,8 @@ Sink_Return_Val_OP (BB * split, BB * exit) {
         Reset_OP_Should_Sink(op);
     }
 
-    FOR_ALL_BB_OPs (split, op) {     
-        if (OP_def_return_value(op)) {
+    FOR_ALL_BB_OPs (split, op) {
+        if (OP_def_return_value(op) || OP_use_return_value(op)) {
             Set_OP_Should_Sink(op);
         }
 
@@ -2563,7 +2581,6 @@ Merge_Splitted_PU_Entry_BB (BB * splitted_entry) {
         }
     }
 
-    /* ?????????? */
     extern void Clean_Up (BB *bb);
     Clean_Up (splitted_entry);
 
@@ -2667,17 +2684,18 @@ Calculate_Dominator_Info (REGION_TREE *rgn_tree) {
     BS* empty_BB_set = BS_Create_Empty (PU_BB_Count + 2, 
                                          &MEM_phase_pool);
 
-    extern BOOL Is_Abnormal_Loop (REGION* region) ;
-
     typedef std::queue<REGION * >  _RGN_QUEUE;
     _RGN_QUEUE  rgn_queue ;
+
+    extern BOOL Is_Abnormal_Loop (REGION* region);
+    extern BOOL Is_In_Infinite_Loop (REGION* region);
 
     #define SET_RGN_IN_ABNORMAL_LOOP(x) { x = (REGION*)((INTPTR)(x) | 1); }
     #define GET_RGN(x)                  ((REGION*)(((INTPTR)(x)) & ~1))
     #define RGN_IN_ABNORMAL_LOOP(x)     ((INTPTR)(x) & 1)
 
     REGION  * rgn = rgn_tree->Root();
-    if (Is_Abnormal_Loop (rgn)) {
+    if (Is_Abnormal_Loop (rgn) || Is_In_Infinite_Loop (rgn)) {
         SET_RGN_IN_ABNORMAL_LOOP(rgn);
     }
 
@@ -2710,7 +2728,7 @@ Calculate_Dominator_Info (REGION_TREE *rgn_tree) {
              kids_iter != 0 ; ++kids_iter) {
             
             REGION * nested_rgn = *kids_iter ;
-            if (Is_Abnormal_Loop (nested_rgn)) {
+            if (Is_Abnormal_Loop (nested_rgn) || Is_In_Infinite_Loop(nested_rgn)) {
                 SET_RGN_IN_ABNORMAL_LOOP(nested_rgn);
             }
             
@@ -2722,12 +2740,31 @@ Calculate_Dominator_Info (REGION_TREE *rgn_tree) {
 BOOL
 BB1_Postdominate_BB2 (BB * bb1, BB* bb2) {
     BOOL b = BB_SET_MemberP (BB_pdom_set(bb2), bb1);
+
+    /* A "abnormal" loop is depicted by the comments to Is_Abnormal_Loop() 
+     * in if-conv.cxx. The trouble an 'abnormal' loop brings to if-conv 
+     * also plague instruction scheduling. In scheduler, BB_pdom_set() of
+     * given bb is set to empty when bb is in a abnormal loop. Therefore, 
+     * BB_pdom_set() is not always precise. To address that problem, 
+     * we double check it by going forward through CFG to examine postdorm
+     * relationship. 
+     */
     if (!b) {
         if (bb1 == bb2) return TRUE;     
+
+        INT visit_count = 0;
         for (BB* bb = BB_Unique_Successor(bb2); 
              bb != NULL; 
-             bb = BB_Unique_Successor (bb)) {
+             bb = BB_Unique_Successor (bb),visit_count++) {
             if (bb == bb1) { return TRUE; }
+            if (visit_count >= 200) {
+               /* This test serves dual purpose: 1. to save compile time,
+                *  2. to avoid falling into infinite loop --- <bb> is loop
+                *   header whose unique succssor gotos it (i.e there is 
+                *   no exit from the loop).  --- OSP_154
+                */
+              break;
+            }
         }
     }
 

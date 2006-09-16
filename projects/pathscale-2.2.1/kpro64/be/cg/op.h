@@ -557,6 +557,7 @@ extern BOOL OP_restore_b0(OP*);
 extern BOOL OP_restore_ar_pfs(OP*);
 extern BOOL OP_def_ar_lc(OP*);
 extern BOOL OP_def_return_value(OP*);
+extern BOOL OP_use_return_value(OP*); 
 
 /* Convenience access macros for properties of the OP */
 /* TODO: define all the macros for OP properties. */

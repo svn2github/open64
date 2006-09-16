@@ -1296,3 +1296,19 @@ BOOL OP_def_return_value(OP* op)
     }         
     return FALSE;
 }        
+
+BOOL OP_use_return_value (OP* op) {
+    for (INT i = 0; i < OP_opnds (op); i++) {
+        TN* opnd = OP_opnd(op, i);
+        if (TN_is_constant(opnd)) { continue; }
+
+        mTN_NUM n = TN_number(opnd);
+        if ((n >= First_Int_Preg_Return_Offset && 
+             n <= Last_Int_Preg_Return_Offset)       ||
+            (n >= First_Float_Preg_Return_Offset &&
+             n <= Last_Float_Preg_Return_Offset)) {
+            return TRUE;    
+        }
+    }         
+    return FALSE;
+}
