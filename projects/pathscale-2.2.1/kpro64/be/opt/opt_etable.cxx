@@ -536,7 +536,9 @@ EXP_OCCURS::Get_temp_cr(EXP_WORKLST *wk, CODEMAP *htable)
     if (vsize <= 32 && dtyp == MTYPE_U8 && (signess & SIGN_0_EXTD)) 
       dtyp = MTYPE_U4;
 #endif
-#else
+#elif !defined(TARG_IA64)
+    // ia64 has similar problem (inconsistent sizes for the same symbol)
+    // -- OSP_185
     if (vsize <= 32 && dtyp == MTYPE_I8 && (signess & SIGN_1_EXTD)) 
       dtyp = MTYPE_I4;
 #endif
