@@ -725,6 +725,32 @@ static BOOL RV_Tree_Has_All_Backward_Indices(WN* wn_tree,
 } 
 
 //-----------------------------------------------------------------------
+// NAME: RV_Find_Written_Indices
+// FUNCTION: Returns TRUE if all of the indices of 'wn_loop' in 'wn_tree'
+//  have been written, FALSE otherwise.
+//-----------------------------------------------------------------------
+
+static BOOL RV_Tree_Has_All_Written_Indices(WN* wn_tree,
+                                             WN* wn_loop)
+{
+  if (WN_operator(wn_tree) == OPR_STID
+      && SYMBOL(wn_tree) == SYMBOL(WN_index(wn_loop))) {
+    if (RV_Index_Sign(wn_tree) >= 0)
+      return TRUE;
+  } else if (WN_opcode(wn_tree) == OPC_BLOCK) {
+    for (WN* wn = WN_first(wn_tree); wn != NULL; wn = WN_next(wn))
+      if (RV_Tree_Has_All_Written_Indices(wn, wn_loop))
+        return TRUE;
+  } else {
+    for (INT i = 0; i < WN_kid_count(wn_tree); i++)
+      if (RV_Tree_Has_All_Written_Indices(WN_kid(wn_tree, i), wn_loop))
+        return TRUE;
+  }
+  return FALSE;
+}
+
+
+//-----------------------------------------------------------------------
 // NAME: Do_Loop_Is_Backward
 // FUNCTION: Returns TRUE if all of the do loop indices in the body of
 //   'wn_loop' have provably negative coefficients.  Otherwise, returns
@@ -739,3 +765,17 @@ extern BOOL Do_Loop_Is_Backward(WN* wn_loop)
   return RV_Tree_Has_All_Backward_Indices(WN_do_body(wn_loop), wn_loop, 
     &found_backward) && found_backward; 
 }
+
+//-----------------------------------------------------------------------
+// NAME: Do_Loop_Is_Regular
+// FUNCTION: Returns TRUE if all of the do loop indices in the body of
+// 'wn_loop' has been written.  Otherwise, returns FALSE.
+// NOTE: This is a simple algorithm that only looks at arithmetic expres-
+// sions.  It is inconclusive otherwise.
+//-----------------------------------------------------------------------
+
+extern BOOL Do_Loop_Is_Regular(WN* wn_loop)
+{
+  return !RV_Tree_Has_All_Written_Indices(WN_do_body(wn_loop), wn_loop);				
+}
+      

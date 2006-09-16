@@ -254,11 +254,11 @@ static LNO_FLAGS Default_LNO = {
 #ifdef TARG_X8664
   5,            /* Full_unrolling */
 #else
-  0,            /* Full_unrolling */
+  8,            /* Full_unrolling */
 #endif
 #ifdef KEY
   2000,         /* Full_unrolling_loop_size_limit */
-  FALSE,	/* Full_Unroll_Outer */
+  TRUE,		/* Full_Unroll_Outer */
   0,		/* Processors */
 #endif
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */
@@ -420,11 +420,11 @@ LNO_FLAGS Initial_LNO = {
 #ifdef TARG_X8664
   5,            /* Full_unrolling */
 #else
-  0,            /* Full_unrolling */
+  8,            /* Full_unrolling */
 #endif
 #ifdef KEY
   2000,         /* Full_unrolling_loop_size_limit */
-  FALSE,	/* Full_Unroll_Outer */
+  TRUE,		/* Full_Unroll_Outer */
   0,		/* Processors */
 #endif
   { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }	/* buffer[16] */

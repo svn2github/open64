@@ -1239,8 +1239,9 @@ Can_raise_to_doloop(BB_LOOP *loop, BOOL repair, CODEMAP *htable)
   // do not raise it to a DO loop.  MP loops can not have early exits,
   // so this is not an issue.  
 
+#ifndef OSP_OPT
   if (loop->Exit_early()) return RAISE(FALSE, "loop exits early");
-
+#endif
   BB_NODE *header = loop->Header();
   BB_NODE *preheader = loop->Preheader();
   BB_NODE *loopback = loop->Loopback();
@@ -1265,6 +1266,8 @@ Can_raise_to_doloop(BB_LOOP *loop, BOOL repair, CODEMAP *htable)
   if ( cmp->Kind() != CK_OP || !OPCODE_is_compare(cmp->Op()) ) 
     return RAISE(FALSE, "not a compare opcode");
 
+  if ( cmp->Get_opnd(1)->Kind() != CK_CONST && loop->Exit_early())
+    return RAISE(FALSE, "early exit without const comparison");
   // DO loop does not allow OPR_NE and OPR_EQ.
   const OPERATOR cond_opr = cmp->Opr();
   if (!(cond_opr == OPR_LE || cond_opr == OPR_GE ||

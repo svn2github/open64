@@ -429,8 +429,8 @@ Fully_Unroll_Short_Loops(WN* wn)
   }
   else if (oper == OPR_DO_LOOP    &&
            !Do_Loop_Has_Calls(wn) &&
-           !Do_Loop_Has_Exits(wn) &&
-           !Do_Loop_Has_Gotos(wn) &&
+           (!Do_Loop_Has_Exits(wn) || Do_Loop_Is_Regular(wn)) &&
+	   !Do_Loop_Has_Gotos(wn) &&
            !Do_Loop_Is_Mp(wn)     &&
            !Is_Nested_Doacross(wn) &&
            Num_Inner_Loops(wn) < MAX_INNER_LOOPS) {

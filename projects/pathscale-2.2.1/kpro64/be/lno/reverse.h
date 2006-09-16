@@ -78,4 +78,4 @@ extern BOOL RV_Is_Legal(WN* wn_loop);
 extern void RV_Reverse_Loop(WN* wn_loop);
 extern void Reverse_Loops(WN* func_nd);
 extern BOOL Do_Loop_Is_Backward(WN* wn_loop); 
-    
+extern BOOL Do_Loop_Is_Regular(WN* wn_loop);    
