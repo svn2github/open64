@@ -580,6 +580,7 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
       // we don't optimize I/O anyway yet)
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
+	dlistack->Bottom_nth(i)->Has_Conditional = TRUE;
         dlistack->Bottom_nth(i)->Has_Gotos_This_Level = TRUE;
         dlistack->Bottom_nth(i)->Has_Exits = TRUE;
       }
@@ -588,8 +589,11 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
 	     (opcode == OPC_WHILE_DO) ||
 	     (opcode == OPC_COMPGOTO) ) {
     if (opcode == OPC_GOTO || opcode == OPC_TRUEBR || opcode == OPC_FALSEBR) {
-      for (INT i=0; i<dlistack->Elements()-inside_bound-1; i++) {
+      for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
+      }
+      for (INT i=0; i<dlistack->Elements()-inside_bound-1; i++) {
+	dlistack->Bottom_nth(i)->Has_Conditional = TRUE;
       }
       // For which loops does the goto exit the loops
       WN *label = label_hash->Find(WN_label_number(wn));
@@ -603,8 +607,10 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
         }
 	INT i=0;
 	INT min = MIN(stack->Elements(),label_loops.Elements());
-	if (stack->Elements() > 0 && stack->Elements() <= label_loops.Elements())
+	if (stack->Elements() > 0 && stack->Elements() <= label_loops.Elements()) {
 	  dlistack->Top_nth(0)->Has_Gotos = TRUE;
+	  dlistack->Top_nth(0)->Has_Conditional = TRUE;
+	}
 	while (i<min &&
 	       (stack->Bottom_nth(i) == label_loops.Bottom_nth(i))) i++;
 	for (i=i; i<dlistack->Elements()-inside_bound; i++) {
@@ -615,6 +621,7 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
     } else if (opcode == OPC_DO_WHILE || opcode == OPC_WHILE_DO) {
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
+	dlistack->Bottom_nth(i)->Has_Conditional = TRUE;
       }
     } else if (opcode == OPC_RETURN){
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
@@ -623,6 +630,7 @@ static void Mark_Code(WN *wn, WN *func_nd, DOLOOP_STACK *stack,
     }else{
       for (INT i=0; i<dlistack->Elements()-inside_bound; i++) {
         dlistack->Bottom_nth(i)->Has_Gotos = TRUE;
+	dlistack->Bottom_nth(i)->Has_Conditional = TRUE;
         dlistack->Bottom_nth(i)->Has_Gotos_This_Level = TRUE;
         dlistack->Bottom_nth(i)->Has_Exits = TRUE;
       }

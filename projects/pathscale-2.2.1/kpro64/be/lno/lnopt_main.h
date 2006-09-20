@@ -118,6 +118,12 @@
 //		Any non-structured control flow, while loops or computed
 //		gotos inside this do loop.
 //
+//	mBOOL Has_Conditional
+//
+//		Any Gotos jumps to a label inside the loop body.
+//		If there is such goto, the loop cannot be unrolled,
+//		because unrolling will introduce duplicated label. 
+//
 //	mBOOL Has_Exits
 //
 //		Any gotos/returns leaving the loop
@@ -829,6 +835,7 @@ public:
   mBOOL Has_Unsummarized_Call_Cost; 
   mBOOL Has_Threadprivate; 
   mBOOL Has_Gotos;
+  mBOOL Has_Conditional;
   mBOOL Has_Gotos_This_Level;
   mBOOL Has_Exits;
   mBOOL Is_Inner;
@@ -962,6 +969,12 @@ inline BOOL Do_Loop_Has_Gotos (WN *wn)
 {
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
   return(dli && dli->Has_Gotos);
+}
+
+inline BOOL Do_Loop_Has_Conditional( WN *wn)
+{
+  DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
+  return(dli && dli->Has_Conditional);
 }
 
 inline BOOL Do_Loop_Has_Gotos_This_Level (WN *wn)
