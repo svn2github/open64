@@ -73,7 +73,7 @@ INSTALL_DATA="/usr/bin/install -D -m 644"
 
 INSTALL_EXEC_SUB () {
 
-    [ $# -ne 2 ] && echo "Syntax error INSTALL_EXEC_SUB $*" && return 1
+    [ $# -ne 2 ] && echO "!!!Component is missing, you probably need to install prebuilt binaries/archives" && return 1
     
     [ ! -e "$1" ] && echo "$1 does not exist" && return 1
 
@@ -85,7 +85,7 @@ INSTALL_EXEC_SUB () {
 
 INSTALL_DATA_SUB () {
 
-    [ $# -ne 2 ] && echo "Usage: INSTALL_DATA_SUB SRC_file DEST_file" && exit 1
+    [ $# -ne 2 ] && echo "!!!Component is missing, you probably need to install prebuilt binaries/archives" && return 1
 
     [ ! -e "$1" ] && echo "$1 does not exist" && return 1
 
