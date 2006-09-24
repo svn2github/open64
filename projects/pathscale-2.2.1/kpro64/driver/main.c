@@ -319,7 +319,7 @@ main (int argc, char *argv[])
 	}
 
         if (show_version) {
-            fprintf(stderr, "PathScale EKOPath(TM) Compiler Suite: "
+            fprintf(stderr, "Osprey Open Source Compiler Suite: "
 		    "Version %s\n", compiler_version);
 	    if (show_version > 1) {
 		fprintf(stderr, "ChangeSet: %s (%s)\n", cset_rev, cset_key);

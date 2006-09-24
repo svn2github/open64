@@ -299,9 +299,9 @@ save_cpp_output (char *path)
 	}
 	
 	now = time(NULL);
-	fprintf(ofp, "/*\n\nPathScale EKOPath(TM) compiler problem report - %s",
+	fprintf(ofp, "/*\n\nOsprey compiler problem report - %s",
 		ctime(&now));
-	fprintf(ofp, "Please report this problem to <support@pathscale.com>.\n");
+	fprintf(ofp, "Please report this problem to http://bugs.open64.net/ \n");
 	fprintf(ofp, "If possible, please attach a copy of this file with your "
 		"report.\n");
 	fprintf(ofp, "\nPLEASE NOTE: This file contains a preprocessed copy of the "
@@ -382,14 +382,14 @@ no_report:
 		}
 	}
 	
-	fprintf(ofp, "\n/* End of EKOPath problem report. */\n");
+	fprintf(ofp, "\n/* End of Osprey problem report. */\n");
 	
 	asprintf(&final_path, "%s%s", save_path, suffix);
 	rename(save_path, final_path);
 
 	if (save_count == 0) {
 		fprintf(stderr, "Please report this problem to "
-			"<support@pathscale.com>.\n");
+			"http://bugs.open64.net/\n");
 	}
 
 	fprintf(stderr, "Problem report saved as %s\n", final_path);
