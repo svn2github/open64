@@ -33,7 +33,7 @@
 #
 #
 
-VER_MAJOR="1"
+VER_MAJOR="2"
 VER_MINOR="0"
 #PATCH_LEVEL=""
 VERSION="${VER_MAJOR}.${VER_MINOR}"
@@ -63,7 +63,7 @@ INTERPOSE=
 
 AREA="kpro64/targ${BUILD_HOST}_${TARG_HOST}_nodebug"
 
-PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/${TARG_HOST}-pathscale-linux/${VERSION}/
+PHASEPATH=${ROOT}/usr/${INTERPOSE}/lib/gcc-lib/${TARG_HOST}-open64-linux/${VERSION}/
 NATIVE_LIB_DIR=${PHASEPATH}
 BIN_DIR=${ROOT}/usr/${INTERPOSE}/bin
 ALT_BIN_DIR=${ROOT}/usr/${INTERPOSE}/altbin

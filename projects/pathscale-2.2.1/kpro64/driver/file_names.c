@@ -299,7 +299,7 @@ save_cpp_output (char *path)
 	}
 	
 	now = time(NULL);
-	fprintf(ofp, "/*\n\nOsprey compiler problem report - %s",
+	fprintf(ofp, "/*\n\nOpen64 compiler problem report - %s",
 		ctime(&now));
 	fprintf(ofp, "Please report this problem to http://bugs.open64.net/ \n");
 	fprintf(ofp, "If possible, please attach a copy of this file with your "
@@ -382,7 +382,7 @@ no_report:
 		}
 	}
 	
-	fprintf(ofp, "\n/* End of Osprey problem report. */\n");
+	fprintf(ofp, "\n/* End of Open64 compiler problem report. */\n");
 	
 	asprintf(&final_path, "%s%s", save_path, suffix);
 	rename(save_path, final_path);

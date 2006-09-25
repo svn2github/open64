@@ -57,7 +57,7 @@
 #if defined(linux) && defined(TARG_IA64)
     #if CROSS_COMPILATION
 	    #define NAMEPREFIX	""
-	    #define INTERPOSE   "ia64-pathscale-linux"
+	    #define INTERPOSE   "ia64-open64-linux"
     #else
 	    #define NAMEPREFIX	""
 	    #define INTERPOSE   ""
@@ -71,7 +71,7 @@
         #define ALTBINPATH  BINPATH
     #endif 
 
-    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-pathscale-linux/1.0" 
+    #define LIBPATH	"/usr/" INTERPOSE "/lib/gcc-lib/ia64-open64-linux/2.0" 
     #define ALTLIBPATH	"/usr/" INTERPOSE "/lib"
 
     #define PHASEPATH	    LIBPATH
