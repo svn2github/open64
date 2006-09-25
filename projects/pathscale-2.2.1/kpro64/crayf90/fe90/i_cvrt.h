@@ -769,12 +769,12 @@ extern void  PDGCS_debug_init       	  ( char  *org_file_name,
 extern void  PDGCS_version_info     	  ( char  *cmp_rel, char  *cmp_ed );
 extern void  fei_module_file        	  ( char  *file_name );
 extern void  PDGCS_debug_gen_table        ( void );
-extern void  fei_smt_actual_to_generic    ( INT32 act_st_idx,
+extern void  fei_smt_actual_to_generic    ( INTPTR act_st_idx,
                                             char  *generic_name );
-extern void  fei_smt_original_to_qualified( INT32 qualified_st_idx,
+extern void  fei_smt_original_to_qualified( INTPTR qualified_st_idx,
                                             char  *original_name );
 extern void  fei_null_expr                ( void );
-extern void  fei_member_ref               ( INT32 mem_idx );
+extern void  fei_member_ref               ( INTPTR mem_idx );
 extern void  fei_object_ref               ( INTPTR sym_idx,    
                                             INT32 whole_subscript,
                                             INT32 whole_substring);
@@ -787,7 +787,7 @@ extern INTPTR fei_arith_con               ( TYPE  type,
                                             long  *start );
 extern void  fei_push_arith_con           ( INTPTR cdx );
 extern void  fei_push_pattern_con         ( INTPTR ndx );
-extern void  fei_add_use_path             ( INT32 st_idx,
+extern void  fei_add_use_path             ( INTPTR st_idx,
                                             INT32 path_idx,
                                             INT32 module_idx );
 extern INTPTR fei_pattern_con             ( TYPE  type,
@@ -826,15 +826,15 @@ extern void  fei_return                   ( INT32 return_class, TYPE type );
 extern void  fei_stop			  ( void );
 extern void  fei_case                     ( INT32 case_follows );
 extern void  fei_switch                   ( INT32 num_cases, 
- 					    INT32 default_lbl_idx );
+ 					    INTPTR default_lbl_idx );
 extern void  fei_static_begin             ( void );
-extern void  fei_static_init              ( INT32 st_idx,
+extern void  fei_static_init              ( INTPTR st_idx,
                                             INT64 offset,
                                             INT64 size,
                                             INT64 dups,
                                             INT64 stride,
                                             INT32 string_literal );
-extern void  fei_static_reloc_init        ( INT32 st_idx,
+extern void  fei_static_reloc_init        ( INTPTR st_idx,
                                  	    INT64 offset,
                                  	    INT64 size,
                                  	    INT64 dups,
@@ -842,7 +842,7 @@ extern void  fei_static_reloc_init        ( INT32 st_idx,
                                  	    INT64 relocbitoffset );
 extern void  fei_static_base              ( INTPTR st_idx );
 extern void  fei_static_subscripts        ( INT64 subscripts[] );
-extern void  fei_static_member            ( INT32 st_idx );
+extern void  fei_static_member            ( INTPTR st_idx );
 extern void  fei_static_substr            ( INT32 start );
 extern void  fei_static_simple_init       ( INT64 dup_count,
                                  	    INT64 stride,
@@ -869,8 +869,8 @@ extern void  fei_initializer              ( INT64 dup_count,
 extern void  fei_init_reloc               ( INT64 bit_offset,
                                             INT64 dup_count,
                                             INT64 stride );
-extern void  fei_label_ref                ( INT32 lbl_idx );
-extern void  fei_label_def_named          ( INT32 lbl_idx,
+extern void  fei_label_ref                ( INTPTR lbl_idx );
+extern void  fei_label_def_named          ( INTPTR lbl_idx,
                                      	    INT64 label_flag_word,
                                      	    INT32 lineno,
                                      	    INT32 sup_cnt,
@@ -890,19 +890,19 @@ extern void  fei_call                     ( INT32 num_args,
                                  	    INT32 alt_return_flag,  
                                  	    INT32 inline_setting,
                                             INT64 flags );
-extern void  fei_brtrue                	  ( INT32 lbl_idx );
+extern void  fei_brtrue                	  ( INTPTR lbl_idx );
 extern void  fei_if			  ( void );
 extern void  fei_else			  ( void );
 extern void  fei_endif			  ( void );
-extern void  fei_goto                  	  ( INT32 lbl_idx );
-extern void  fei_label_addr            	  ( INT32 idx );
+extern void  fei_goto                  	  ( INTPTR lbl_idx );
+extern void  fei_label_addr            	  ( INTPTR idx );
 extern void  fei_indirect_goto            ( INT32 num_labs,
                                             INT32 assign_goto_flag );
-extern void  fei_arith_goto               ( INT32 zero_lab,
-                                            INT32 pos_lab,
-                                            INT32 neg_lab );
+extern void  fei_arith_goto               ( INTPTR zero_lab,
+                                            INTPTR pos_lab,
+                                            INTPTR neg_lab );
 extern void  fei_proc_body                ( INT32 lineno );
-extern INT32 fei_get_segment              ( INT32 pdgcs_st_idx,
+extern INT32 fei_get_segment              ( INTPTR pdgcs_st_idx,
                                             INT32 *is_data_segment );
 extern INT32 fei_get_dist_info            ( INT32 seg_idx,
                                             INT32 dimension,
@@ -918,7 +918,7 @@ extern void  fei_user_type                ( char  *name_string,
                                             INT32 first_idx,
                                             INT64 size,
                                             INT32 sequence,
-                                            INT32 st_idx,
+                                            INTPTR st_idx,
                                             INT32 alignment );
 extern TYPE  fei_descriptor               ( INT32 flag_matrix,
                                             INT32 table_type,
@@ -938,7 +938,7 @@ extern INTPTR fei_next_func_idx           ( INT32 pgm_unit,
                                             INT32 proc,
                                             INT32 alt_entry );
 extern INT32 fei_next_symbol              ( INT32 increment );
-extern void  fei_doacross	      	  ( INT32 task_if_idx,
+extern void  fei_doacross	      	  ( INTPTR task_if_idx,
                   	          	    INT32 sched_type,
                    		  	    INT32 thread_count,
                    		  	    INT32 data_count,
@@ -952,14 +952,14 @@ extern void  fei_pdo		      	  ( INT32 sched_type,
                    		  	    INT32 onto_count,
                    		  	    INT32 reduction_count,
                    		  	    INT32 chunk_count );
-extern void  fei_paralleldo	      	  ( INT32 task_if_idx,
+extern void  fei_paralleldo	      	  ( INTPTR task_if_idx,
                   	          	    INT32 sched_type,
                    		  	    INT32 thread_count,
                    		  	    INT32 data_count,
                    		  	    INT32 onto_count,
                    		  	    INT32 reduction_count,
                    		  	    INT32 chunk_count );
-extern void  fei_parallel	          ( INT32 task_if_idx );
+extern void  fei_parallel	          ( INTPTR task_if_idx );
 extern void  fei_singleprocess	          ( void );
 extern void  fei_criticalsection          ( INT32 var_count );
 extern void  fei_endsingleprocess         ( INT32 nowait );
@@ -990,17 +990,17 @@ extern void  fei_opaque                   ( void );
 extern void  fei_purple_unconditional     ( void );
 extern void  fei_copy_in                  ( INT32 list_count );
 extern void  fei_concurrentize            ( INT32 state );
-extern void  fei_seg_ref                  ( INT32 sb_idx );
+extern void  fei_seg_ref                  ( INTPTR sb_idx );
 extern void  fei_page_place               ( void );
 extern void  fei_dynamic                  ( INT32 list_count );
 extern void  fei_fill_symbol              ( INT32 list_count, INT32 C_value );
 extern void  fei_align_symbol             ( INT32 list_count, INT32 C_value );
-extern void  fei_prefetch_ref_disable     ( INT32 array, INT32 size );
+extern void  fei_prefetch_ref_disable     ( INTPTR array, INT32 size );
 extern void  fei_prefetch_ref	          ( INT32 stride,
                               	            INT32 level,
                                		    INT32 kind,
                                		    INT32 size );
-extern void  fei_redistribute	      	  ( INT32 array,
+extern void  fei_redistribute	      	  ( INTPTR array,
                                		    INT32 dim,
                                		    INT32 distribution,
                                		    INT32 cyclic_exists,
@@ -1073,25 +1073,25 @@ extern INTPTR fei_array_dimen     	  ( INT32 flag_bits,
                                  	    INT32 distribution,
                                             INT64 upper_bound );
 extern INT32 fei_pointee         	  ( TYPE  pointee_type );
-extern INT32 fei_parallel_region 	  ( INT32 ifexpr,
-                                 	    INT32 maxcpus,
+extern INT32 fei_parallel_region 	  ( INTPTR ifexpr,
+                                 	    INTPTR maxcpus,
                                  	    INT32 context_start,
                                  	    INT32 context_end,
                                  	    INT32 lineno,
                                  	    INT32 flags );
 extern void  fei_endparallel_region       ( INT32 task_x, INT32 lineno );
-extern void  fei_doall          	  ( INT32 ifexpr,
-                                 	    INT32 maxcpus,
+extern void  fei_doall          	  ( INTPTR ifexpr,
+                                 	    INTPTR maxcpus,
                                  	    INT32 context_start,
                                  	    INT32 context_end,
                                  	    INT32 induc_symx,
                                  	    INT32 work_dist,
-                                 	    INT32 work_dist_opnd,
+                                 	    INTPTR work_dist_opnd,
                                  	    INT32 flags,
                                  	    INT32 lineno );
 extern INT32 fei_doparallel      	  ( INT32 induc_symx,
                                  	    INT32 work_dist,
-                                 	    INT32 work_dist_opnd,
+                                 	    INTPTR work_dist_opnd,
                                  	    INT32 lineno );
 extern void  fei_task_endloop   	  ( INT32 taskloop_x, 
                                             INT32 lineno,
@@ -1115,7 +1115,7 @@ extern INT32 fei_guard           	  ( INT32 guard_num, INT32 lineno );
 extern void  fei_endguard       	  ( INT32 task_x,
                                  	    INT32 guard_num,
                                  	    INT32 lineno );
-extern INT32 fei_task_var        	  ( INT32 sym_idx, INT32 context );
+extern INTPTR fei_task_var        	  ( INTPTR sym_idx, INT32 context );
 extern INT32 fei_task_wait       	  ( INT32 point, INT32 span );
 extern INT32 fei_task_send       	  ( INT32 point, INT32 task_if_idx );
 extern INT32 fei_mpp_master      	  ( INT32 lineno );
@@ -1148,18 +1148,18 @@ extern INT32 fei_mpp_distrib_dim 	  ( INT32 prev_distrib_x,
 extern void  cwh_add_to_used_files_table  ( char  *name, INT32  copy_name );
 extern void  fei_critical_open_mp         ( char  *name );
 extern void  fei_endcritical_open_mp      ( char  *name );
-extern void  fei_parallelsections_open_mp ( INT32 task_if_idx, INT32 task_num_threads_idx, INT32 defaultt );
-extern void  fei_paralleldo_open_mp       ( INT32 task_if_idx,
-                                            INT32 task_num_threads_idx,
+extern void  fei_parallelsections_open_mp ( INTPTR task_if_idx, INTPTR task_num_threads_idx, INT32 defaultt );
+extern void  fei_paralleldo_open_mp       ( INTPTR task_if_idx,
+                                            INTPTR task_num_threads_idx,
                                  	    INT32 defaultt,
                                   	    INT32 ordered,
                                   	    INT32 scheduletype,
-                                  	    INT32 schedulechunck,
+                                  	    INTPTR schedulechunck,
                                             INT32 threadcount,
                                             INT32 datacount,
                                             INT32 ontocount );
-extern void  fei_parallelworkshare_open_mp( INT32 task_if_idx,
-                                            INT32 task_num_threads_idx,
+extern void  fei_parallelworkshare_open_mp( INTPTR task_if_idx,
+                                            INTPTR task_num_threads_idx,
                                             INT32 defaultt );
 extern void  fei_workshare_open_mp        ( void );
 extern void  fei_endworkshare_open_mp     ( INT32 nowait);
@@ -1169,11 +1169,11 @@ extern void  fei_single_open_mp           ( void );
 extern void  fei_sections_open_mp         ( void );
 extern void  fei_do_open_mp               ( INT32 ordered,
                                   	    INT32 scheduletype,
-                                  	    INT32 schedulechunck,
+                                  	    INTPTR schedulechunck,
                                             INT32 threadcount,
                                             INT32 datacount,
                                             INT32 ontocount );
-extern void  fei_parallel_open_mp         ( INT32 task_if_idx, INT32 task_num_threads_idx, INT32 defaultt );
+extern void  fei_parallel_open_mp         ( INTPTR task_if_idx, INTPTR task_num_threads_idx, INT32 defaultt );
 extern void  fei_barrier_open_mp          ( void );
 extern void  fei_section_open_mp          ( void );
 extern void  fei_master_open_mp           ( void );
@@ -1477,7 +1477,7 @@ extern void  fei_new_select_case 	  ( INT64 low_value_pres,
                                  	    INT64 high_value_pres,
                                  	    INT32 case_follows );
 extern void  fei_new_select      	  ( INT32 num_cases,
-                                 	    INT32 default_label_idx );
+                                 	    INTPTR default_label_idx );
 extern TYPE  fei_dope_vector              ( INT32 num_dims, 
                                     	    TYPE  base_type,
                                      	    INT32 flags );
@@ -1577,10 +1577,10 @@ const  char *opt_vers_ID            	  ( void );
 const  char *opt_vers_number        	  ( void );
 
 
-extern void  fei_debug_mif_type_idx       ( INT32 st_idx, 
+extern void  fei_debug_mif_type_idx       ( INTPTR st_idx, 
                                             INT32 mif_type_idx,
                                             INT32 mif_table_type );
-extern void  fei_debug_obj                ( INT32 idx, 
+extern void  fei_debug_obj                ( INTPTR idx, 
                                             INT32 flags,
                                      	    INT32 classs, 
                                             char *name,
@@ -1588,27 +1588,27 @@ extern void  fei_debug_obj                ( INT32 idx,
                                             INT32 members,
                                             INT32 numinherit,
                                             INT32 firstobj );
-extern void  fei_debug_objmem             ( INT32 idx, 
+extern void  fei_debug_objmem             ( INTPTR idx, 
 					    INT32 flags,
                                             INT32 visibility, 
 					    INT32 next,
                                             char *name );
 
-extern INT32 fei_debug_obj_inherit        ( INT32 objidx,
+extern INT32 fei_debug_obj_inherit        ( INTPTR objidx,
                                             INT32 visibility );
 
-extern void  fei_debug_scope_info         ( INT32 seg_idx, 
+extern void  fei_debug_scope_info         ( INTPTR seg_idx, 
 					    INT32 start_line,
                                             INT32 end_line );
 
-extern void  fei_debug_type               ( INT32 idx, 
+extern void  fei_debug_type               ( INTPTR idx, 
 					    INT32 flags,
                                             INT32 classs, 
 					    INT32 base,
                                      	    INT32 list, 
 				            char *name );
 
-extern void  fei_debug_sym2               ( INT32 idx, 
+extern void  fei_debug_sym2               ( INTPTR idx, 
 					    char *name,
                                             INT32 next, 
 					    INT64 evalue );

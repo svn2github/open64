@@ -87,6 +87,7 @@ friend void Verify_SEME_Region(REGION *r);
 private:   
     EDGE_VECTOR         _cycles;
     EDGE_VECTOR         _backedges;
+    EDGE_VECTOR         _impedges;	// bug fix for OSP_110
     REGION_VECTOR       _imp_region;
     NODE_VECTOR         _improper_node;
     BS_VECTOR           _bs_vector; 
@@ -105,7 +106,9 @@ private:
     void                Set_Node_Dom_Set(REGIONAL_CFG_NODE *node,BS *bs);
     
     void                Collect_Backedges(void);
-    
+
+    void    	     Collect_Improper_Nodes(void);	// bug fix for OSP_110
+
     void                Construct_Loops(void);
     
     NODE_VECTOR         Detect_Loop_Scope(REGIONAL_CFG_EDGE *edge);
@@ -123,6 +126,7 @@ public:
     _improper_node(NODE_ALLOC(&_m)),
     _cycles(EDGE_ALLOC(&_m)), 
     _backedges(EDGE_ALLOC(&_m)),
+    _impedges(EDGE_ALLOC(&_m)),    // bug fix for OSP_110
     _bs_vector((r->Regional_Cfg())->_seq_num+2,(BS*)NULL,BS_ALLOC(&_m))
     {
         this->_root = r;

@@ -469,7 +469,7 @@ fei_user_type(char         *name_string,
 	      INT32         first_idx,
 	      INT64         size,
 	      INT32         sequence_arg,
-	      INT32         cr_ty_idx,
+	      INTPTR         cr_ty_idx,
 	      INT32         align)
     
 {

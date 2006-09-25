@@ -58,8 +58,8 @@ SCC_FINDER::Find_Scc(REGIONAL_CFG *cfg) {
     //Suppose the first node is not connected to a irreducible edge.
     for (TOPOLOGICAL_REGIONAL_CFG_ITER iter(cfg);iter != 0;++iter) {
         REGIONAL_CFG_NODE *node;
-        Is_True(node != NULL,("The node is NULL in Find Scc."));
         node = *iter;
+        Is_True(node != NULL,("The node is NULL in Find Scc."));
 
         if (!BS_MemberP(bs,node->Id())) {
             Strong_Components(node,dfn,low_link,bs,next_dfn);

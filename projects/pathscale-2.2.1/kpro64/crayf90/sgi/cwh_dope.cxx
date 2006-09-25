@@ -143,7 +143,7 @@ fei_dv_def(INT32 num_dims )
 
   } else if (cwh_stk_get_class() == FLD_item) {
      fld = cwh_stk_pop_FLD();
-     cwh_stk_push((void *) fld,FLD_item);
+     cwh_stk_push((void *) (INTPTR)fld,FLD_item);
      ty = FLD_type(FLD_HANDLE (fld));
      wa = cwh_expr_address(f_NONE);
      st = NULL;
@@ -281,7 +281,7 @@ fei_dv_deref(TYPE result)
 
      field_name = cwh_stk_fld_name();
      fld = cwh_stk_pop_FLD();
-     cwh_stk_push((void *)fld,FLD_item);
+     cwh_stk_push((void *)(INTPTR)fld,FLD_item);
      wn = cwh_expr_address(f_NONE);
      dope_ty = FLD_type(FLD_HANDLE (fld)); /* get the dope TY_IDX */
      ty = FLD_type(TY_fld(Ty_Table[dope_ty]));

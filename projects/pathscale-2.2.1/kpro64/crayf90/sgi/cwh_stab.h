@@ -84,7 +84,7 @@ typedef struct al {
   struct al * next ;
 }  STB_pkt;
 
-#define cast_to_SCLASS(x) ((ST_SCLASS) (INT)(x)) 
+#define cast_to_SCLASS(x) ((ST_SCLASS) (INTPS)(x)) 
 #define cast_to_LIST(x) ((LIST *) (void *)(x)) 
 
 extern STB_pkt * cwh_stab_packet(void * thing, enum is_form fm) ;

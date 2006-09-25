@@ -1284,8 +1284,8 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
    		boolean			ignore_types;
    		long64			inc;
    		opnd_type		l_opnd;
-   		int			first_task_idx		= NULL_IDX; /* by jhs, 02.9.25 */
-   		int			last_task_idx		= NULL_IDX;
+   		long			first_task_idx		= NULL_IDX; /* by jhs, 02.9.25 */
+   		long			last_task_idx		= NULL_IDX;
 		int			line;
    		int			list_array[OPEN_MP_LIST_CNT];
    		int			list_cnt;
@@ -1309,18 +1309,18 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
    		long64			stride;
    		int			t_idx;
    		int			task_tbl_idx;
-   		int			task_maxcpus_idx;
-   		int			task_wdist_idx;
+   		long			task_maxcpus_idx;
+   		long			task_wdist_idx;
    		long			which;
    		long			assertion;
-   		int			task_if_idx		= 0; /* by jhs, 02.9.5 */
-   		int			task_num_threads_idx = 0; /* by jhs, 02.7.20 */
+   		long			task_if_idx		= 0; /* by jhs, 02.9.5 */
+   		long			task_num_threads_idx = 0; /* by jhs, 02.7.20 */
    		char			*criticalname  		= 0;
    		long			level    		= 0;
    		long			span    		= 1;
    		long			point    		= 0;
    		long			scheduletype		= 0;
-   		int			schedulechunk		= 0; /* by jhs, 02.9.25 */
+   		long			schedulechunk		= 0; /* by jhs, 02.9.25 */
    		long			schedtype		= 0;
    		long			chunkcount		= 0;
    		long			threadcount		= 0;
@@ -1334,7 +1334,7 @@ static void	cvrt_exp_to_pdg(int         ir_idx,
    		long			C_value  		= 0;
    		long			prefetch_manual 	= 0;
    		long			prefetch_array  	= 0;
-   		int			redistribute_array  	= 0;
+   		long			redistribute_array  	= 0;
    		long			context  		= -1;
    		long			prefetch_size   	= -1;
    		long			prefetch_kind   	= -1;
@@ -11659,7 +11659,7 @@ static void  send_procedure(int			attr_idx,
    int			parent_idx;
    int			pdg_alt_entry_idx	= NULL_IDX;
    int			pgm_unit;
-   int			prev_idx;
+   long			prev_idx;
    int			proc;
    TYPE			type_desc;
 
@@ -12063,7 +12063,7 @@ static TYPE	send_derived_type(int	type_idx)
    int		dt_attr_idx;
    long		flag			= 0;
    int		dt_idx;
-   int		prev_idx;
+   long		prev_idx;
    int		sequence;
    int		sn_idx;
    long64  	size;
@@ -12547,7 +12547,7 @@ static void  send_namelist_group(int	ng_attr_idx)
    int		attr_idx;
    int		count;
    int		name_idx;
-   INTPTR	prev_idx;
+   long     	prev_idx;
    int		sn_idx;
 
 
@@ -13687,7 +13687,7 @@ static void  send_darg_list(int		pgm_attr_idx,
    int		attr_idx;
    int		darg_idx;
    int		end_idx;
-   int		prev_idx;
+   long		prev_idx;
    int		sn_idx;
 
 

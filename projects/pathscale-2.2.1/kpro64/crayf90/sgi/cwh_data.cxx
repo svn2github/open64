@@ -239,11 +239,11 @@ fei_static_substr( INT32 start)
  *================================================================
  */
 extern 
-void fei_static_member (INT32 st_idx )
+void fei_static_member (INTPTR st_idx )
 {
    FLD_IDX  fld ;
 
-   fld = (FLD_IDX ) cast_to_void(st_idx);
+   fld = (FLD_IDX ) (INTPTR)cast_to_void(st_idx);
 
    FLD_HANDLE f (fld);
    DevAssert((FLD_bofst(f) == 0),("Can't handle non 0 bofst"));

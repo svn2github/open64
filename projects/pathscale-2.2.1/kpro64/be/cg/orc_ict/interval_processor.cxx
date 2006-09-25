@@ -225,16 +225,46 @@ INTERVAL_PROCESSOR::Collect_Backedges(void) {
             _backedges.push_back(e);
         }        
         else {
+            // bug fix for OSP_110
+            _impedges.push_back(e);
+           /*
             if (Find_In_Vector(src,_improper_node) == _improper_node.end()) {
                 _improper_node.push_back(src);
             }
             if (Find_In_Vector(dest,_improper_node) == _improper_node.end()) {
                 _improper_node.push_back(dest);
             }
+           */
         }
     }
 }
 
+// bug fix for OSP_110
+//====================================================================
+//
+// Collect_Improper_Nodes
+// 
+// Find out all the improper nodes.
+//
+// NOTE: 
+//
+//====================================================================
+void
+INTERVAL_PROCESSOR::Collect_Improper_Nodes(void){
+    for (EDGE_VECTOR_ITER iter = _impedges.begin();iter != _impedges.end();iter++) {
+        REGIONAL_CFG_EDGE *e    = *iter;
+        REGIONAL_CFG_NODE *src  = e->Src();
+        REGIONAL_CFG_NODE *dest = e->Dest();
+ 
+
+        if (Find_In_Vector(src,_improper_node) == _improper_node.end()) {
+            _improper_node.push_back(src);
+        }
+        if (Find_In_Vector(dest,_improper_node) == _improper_node.end()){
+            _improper_node.push_back(dest);
+        }
+    }
+}
 //====================================================================
 //
 // Construct_Loops
@@ -372,7 +402,33 @@ INTERVAL_PROCESSOR::Construct_Loops(void) {
             }
             
             tar_edges = temp;
+
+            // bug fix for OSP_110
+            //---------------------------------------------------
+            // update the improper edges
+            //---------------------------------------------------
+
+            for (EDGE_VECTOR_ITER edge_iter = _impedges.begin();edge_iter != _impedges.end();edge_iter++) {
+                REGIONAL_CFG_EDGE* e = *edge_iter;
+                if(Find_In_Vector(e->Src(), loop_nodes) !=loop_nodes.end()){
+                    if(Find_In_Vector(e->Dest(), loop_nodes) ==loop_nodes.end()){
+                        REGIONAL_CFG_EDGE *new_edge = cfg->Find_Edge(r_node, e->Dest());
+                        if(new_edge != NULL){
+                            _impedges.erase(edge_iter);
+                            _impedges.push_back(new_edge);
+                        }
+                    }
+                }else if(Find_In_Vector(e->Dest(), loop_nodes) !=loop_nodes.end()){
+                    REGIONAL_CFG_EDGE *new_edge = cfg->Find_Edge(e->Src(), r_node);
+                    if(new_edge != NULL){
+                        _impedges.erase(edge_iter);
+                        _impedges.push_back(new_edge);
+                    }
+                }
+            }
+
             loop_nodes.clear();
+
         }
     }
 }    
@@ -590,7 +646,25 @@ INTERVAL_PROCESSOR::Process(void) {
     if (Get_Trace(TP_A_REGION, TT_RGN_SUMMERY)) {
         fprintf(TFile,"Finish construct loops from backedges.\n Begin find sccs.\n");
     }
+
+// bug fix for OSP_110
+    Collect_Improper_Nodes();
+
+    if (Get_Trace(TP_A_REGION, TT_RGN_SUMMERY)) {
+        fprintf(TFile,"Finish collect Improper Nodes.\n");
+    }
     
+    if (Get_Trace(TP_A_REGION, TT_RGN_DETAILED)) {
+        fprintf(TFile,"The improper nodes are:\n");
+    
+        for (NODE_VECTOR_ITER iter = _improper_node.begin();
+            iter != _improper_node.end();iter++) {
+            REGIONAL_CFG_NODE *n = *iter;
+
+            fprintf(TFile,"Node's BB Id :%d \n",BB_id(n->BB_Node()));
+        }
+    }
+		
     if (!_improper_node.empty()) {
         SCC_FINDER  *finder = CXX_NEW(SCC_FINDER(),&_m);
         REGION_TREE *tree   = _root->Tree();
