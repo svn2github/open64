@@ -184,6 +184,13 @@ ST_is_export_local (const ST *s)
 		ST_export(s) == EXPORT_LOCAL_INTERNAL);
 }
 
+// bug fix for OSP_155
+inline BOOL
+ST_is_export_hidden (const ST *s)
+{
+	return (ST_export(s) == EXPORT_HIDDEN);
+}
+
 inline TY_IDX
 ST_pu_type (const ST* s)
 {

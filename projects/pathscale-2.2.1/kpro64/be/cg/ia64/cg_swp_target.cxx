@@ -460,6 +460,14 @@ void Hoist_MOVL(CG_LOOP& cl, bool trace)
     TN *new_tn = Dup_TN(tn);
     OPS ops = OPS_EMPTY;
     Exp_COPY(tn, new_tn, &ops);
+    // bug fix for OSP_190
+    // should set the predicate control operand for the 
+    // new added op with predicate oprand tn of previous op
+    if (OP_has_predicate(op)) {
+      TN *pre_opnd_tn = OP_opnd(op, OP_PREDICATE_OPND);
+      Set_OP_opnd(ops.first, OP_PREDICATE_OPND, pre_opnd_tn);  	 
+      Set_OP_opnd(ops.last, OP_PREDICATE_OPND, pre_opnd_tn);  	 
+    }
     BB_Insert_Ops(body, op, &ops, TRUE /*before*/);
     BB_Remove_Op(body, op);
     BB_Append_Op(prolog, op);

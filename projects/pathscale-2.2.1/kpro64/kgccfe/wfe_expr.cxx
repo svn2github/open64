@@ -3092,7 +3092,12 @@ WFE_Expand_Expr (tree exp,
 	    WN_set_desc(wn, desc);
 	    WN_offset(wn) = WN_offset(wn)+ofst+component_offset;
 	    WN_set_ty(wn, ty_idx);
-	    WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
+	    // bug fix for OSP_158
+    	    // if (TY_kind(ty_idx) == KIND_SCALAR)
+	    if (TY_kind(ty_idx) != KIND_STRUCT)
+ 	      WN_set_field_id (wn, 0);	
+	    else
+	      WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
 	  } 
 	}
 	// bug 6122
@@ -3499,7 +3504,8 @@ WFE_Expand_Expr (tree exp,
 	if (siz <= 8) {
 	  if (MTYPE_signed(rtype))
 	    desc = Mtype_AlignmentClass(siz, MTYPE_CLASS_INTEGER);
-	  else desc = Mtype_AlignmentClass(siz, MTYPE_CLASS_UNSIGNED_INTEGER);
+	  else  
+            desc = Mtype_AlignmentClass(siz, MTYPE_CLASS_UNSIGNED_INTEGER);
 	  rtype = Widen_Mtype(desc);
 	}
 	else desc = rtype;
@@ -3516,6 +3522,8 @@ WFE_Expand_Expr (tree exp,
 	}
 #endif // KEY
 	WN_set_rtype(wn, rtype);
+	// bug fix for OSP_157
+	WN_set_desc (wn, desc);
 	if ((bsiz & 7) == 0 &&	// field size multiple of bytes
 	    MTYPE_size_min(desc) % bsiz == 0 && // accessed loc multiple of bsiz
 	    bofst % bsiz == 0) {		// bofst multiple of bsiz

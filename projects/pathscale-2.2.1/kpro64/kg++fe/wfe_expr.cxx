@@ -3161,7 +3161,12 @@ WFE_Expand_Expr (tree exp,
 	    WN_set_desc(wn, desc);
 	    WN_offset(wn) = WN_offset(wn)+ofst+component_offset;
 	    WN_set_ty(wn, ty_idx);
-	    WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
+	    // bug fix for OSP_157 
+	    // if (TY_kind(ty_idx) == KIND_SCALAR)
+	    if (TY_kind(ty_idx) != KIND_STRUCT)
+	      WN_set_field_id (wn, 0);
+	    else
+	      WN_set_field_id(wn, field_id + DECL_FIELD_ID(arg1));
 	  } 
 	} 
 #endif

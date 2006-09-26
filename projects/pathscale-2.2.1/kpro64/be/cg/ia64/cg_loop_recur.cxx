@@ -855,7 +855,7 @@ void Apply_Interleave(OP *op, INT new_omega,
 class Critical_Recurrence {
   static const INT NEG_INF = -999;
   std::vector< std::vector<INT> >  mindist;
-  INT size() const { mindist.size(); }
+  INT size() const {return  mindist.size(); }
 public:
   INT operator()(INT i) const { return mindist[i][i] > 0; }
   void Print(FILE *fp) const;

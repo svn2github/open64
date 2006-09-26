@@ -1410,8 +1410,8 @@ Handle_Call_Site (WN *call, OPERATOR call_opr)
 
   // if caller-save-gp and not defined in own dso, then restore gp.
   // if call_st == null, then indirect call, and assume external.
-  if (Is_Caller_Save_GP && !Constant_GP
-	&& (call_st == NULL || ST_export(call_st) == EXPORT_PREEMPTIBLE))
+  if (Is_Caller_Save_GP && !Constant_GP &&
+      (call_st == NULL || ST_export(call_st) == EXPORT_PREEMPTIBLE) || ST_is_weak_symbol(call_st))
   {
 	// restore old gp
 	// assume that okay to restore gp before return val of call
@@ -2722,7 +2722,10 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
   // instead of LAND/LIOR and boolean data is interpreted as 0/1(false/true).
 if (Is_Old_Boolean_Expression(expr))
 	{
-		if (WN_operator(parent)==OPR_SELECT) {
+		// bug fix for OSP_148
+		// Not all cases need the context for expanding this expr
+		// which means the parent may be NULL in some cases
+		if (parent && WN_operator(parent)==OPR_SELECT) {
 		  if (Trace_WhirlToOp) {
 		    fprintf(TFile, "Replace select operator\n");
 		    }

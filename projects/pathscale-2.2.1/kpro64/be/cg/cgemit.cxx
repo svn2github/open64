@@ -590,6 +590,13 @@ static void Print_Label (FILE *pfile, ST *st, INT size)
 {
     ST *base_st;
     INT64 base_ofst;
+    
+    // bug fix for OSP_155
+    if (ST_is_export_hidden(st)) {
+        fprintf ( pfile, "\t%s\t", AS_HIDDEN);
+        EMT_Write_Qualified_Name(pfile, st);
+        fprintf(pfile, "\n");
+    }
 
     if (ST_is_weak_symbol(st)) {
 	fprintf ( pfile, "\t%s\t", AS_WEAK);
@@ -601,6 +608,7 @@ static void Print_Label (FILE *pfile, ST *st, INT size)
 	EMT_Write_Qualified_Name(pfile, st);
 	fprintf(pfile, "\n");
     }
+
     if (ST_class(st) == CLASS_VAR) {
     	fprintf (pfile, "\t%s\t", AS_TYPE);
     	EMT_Write_Qualified_Name (pfile, st);
@@ -4988,6 +4996,14 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   INT64 ofst;
   INT i;
   float pu_cycle_count = 0; //PU's cycle count cbq
+  
+  // fix bug OSP_115
+  // "__inline__" is a reserved keyword in C so it's 
+  // safe(ish) to use in headers, including sys/*.h
+  // when PU is marked extern _inline_ in C, 
+  // needn't emit anything.
+  if (PU_is_extern_inline (Pu_Table[ST_pu(pu)]))
+    return;
 
   Trace_Inst	= Get_Trace ( TP_EMIT,1 );
   BOOL trace_unwind = Get_Trace (TP_EMIT, 64);

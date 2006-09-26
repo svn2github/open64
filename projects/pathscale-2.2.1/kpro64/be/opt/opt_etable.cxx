@@ -3280,6 +3280,19 @@ ETABLE::Recursive_rehash_and_replace(CODEREP           *x,
       // are currently processing the worklist in which the "repl" occurs
       // and, hence, we are done with that worklist.
       //
+
+      // bug fix for OSP_188
+      // As to expression whose operator is OPR_CVT, if the descriptor type
+      // of this expr is MTYPE_B, we should not modify the return type of
+      // it's kid, which is MTYPE_B, to some type else.
+      OPERATOR opr = OPCODE_operator(opc);
+      TYPE_ID desc = OPCODE_desc(opc);
+      if (opr == OPR_CVT && desc == MTYPE_B && x->Kind() == CK_VAR &&
+	  x->Dtyp() == MTYPE_B && x->Dsctyp() == MTYPE_B)
+	{
+	  return x;
+	}
+      
       return repl->apply(Htable(), this, occur, x);
     }
   }

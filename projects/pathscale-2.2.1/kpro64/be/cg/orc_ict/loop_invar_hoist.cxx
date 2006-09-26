@@ -643,9 +643,10 @@ LOOP_INVAR_CODE_MOTION :: Calc_Liveout_Defs (void) {
         FOR_ALL_BB_SUCCS (exit_blk, s) {
             BB* succ = BBLIST_item (s);
             if (BB_SET_MemberP (body, succ)) { continue ; }
-        
-            _liveout_defs = 
-                GTN_SET_UnionD (_liveout_defs, BB_live_in (succ), _mp);
+            // Calculate and verify Live-Range information
+	    if (BB_bbregs(succ))
+              _liveout_defs = 
+		      GTN_SET_UnionD (_liveout_defs, BB_live_in (succ), _mp);
 
         } // end of FOR...(exit_blk,s)
     } // end of for(BB_Lst_Iter...)

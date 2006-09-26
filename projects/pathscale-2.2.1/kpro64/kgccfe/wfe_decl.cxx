@@ -1064,6 +1064,12 @@ Add_Initv_For_Tree (tree val, UINT size)
 		WFE_Add_Aggregate_Init_Real (
 			TREE_REAL_CST(val), size);
 		break;
+	// bug fix for OSP_149
+	case COMPLEX_CST:
+		WFE_Add_Aggregate_Init_Complex (TREE_REAL_CST(TREE_REALPART(val)), 
+			     TREE_REAL_CST(TREE_IMAGPART(val)), size);
+		break;
+					
 	case STRING_CST:
 		WFE_Add_Aggregate_Init_String (
 			TREE_STRING_POINTER(val), size);
