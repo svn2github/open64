@@ -271,14 +271,6 @@ TN *SWP_REG_ASSIGNMENT::Get_Register_TN(TN *tn, INT adjustment)
     r = r + 2;
   }*/
 
-  //Bug fix. Although we don't know the size of the rotating register file
-  //at this time, obviously r can not exceed the largest register number
-  //which is determined by ISA target. This is a kind of early SWP_Fixup.
-  if (r > REGISTER_Last_Rotating_Registers(c)) {
-  	r -= REGISTER_Last_Rotating_Registers(c) - 
-		REGISTER_First_Rotating_Registers(c) + 1;
-  }
-  
   // workaround g++ bug:  Set_CLASS_REG_PAIR_reg(rp, r);
   Set_CLASS_REG_PAIR(rp, c, r);
 
@@ -773,7 +765,8 @@ SWP_Emit(SWP_OP_vector& op_state,
         if (!TN_is_const_reg(tn) && TN_register(tn) != REGISTER_UNDEFINED){
           ISA_REGISTER_CLASS rc = TN_register_class(tn);      
           REGISTER r = TN_register(tn);
-          if(REGISTER_SET_MemberP(all_non_rotating[rc],r)){
+          if(r <= REGISTER_MAX //OSP_43
+              && REGISTER_SET_MemberP(all_non_rotating[rc],r)){
             ROTATING_KERNEL_INFO_localdef(info).push_back(tn);
           }
         }

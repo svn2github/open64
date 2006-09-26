@@ -3315,6 +3315,7 @@ CGTARG_Adjust_Latency(OP *pred_op, OP *succ_op, CG_DEP_KIND kind, UINT8 opnd, IN
       (OP_code(succ_op)==TOP_cmp_i_eq) )
     *latency = MAX(1, *latency);
 
+  //OSP_30
   // When pred op is a fsetc and succ op is a fcvt_fx,
   // ( e.g. pred_op : fsetc.s2 79,32; succ_op : fcvt.fx.s2 f6=f8 )
   // We manually adjust the latency between them to 1, so that they can not
