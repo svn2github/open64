@@ -2393,9 +2393,17 @@ Is_CVT_Noop(WN *cvt, WN *parent)
     case OPC_F8F4CVT:
     case OPC_F4F8CVT:
 	if (WN_operator(parent) == OPR_TAS) {
-		/* for IA-64, the tas (getf) does the size conversion too,
-		 * so don't need the cvt. */
-		return TRUE;
+	  /* for IA-64, the tas (getf) does the size conversion too,
+	   * so don't need the cvt. */
+	  /* return TRUE; */
+	  /* This trick is not always safe. e.g When the kid is
+	   * F8F4CVT, and the F4 value holds a denormal number. A
+	   * simple counter example to this trick is:
+	   *    prrintf ("%g", (double)f);
+	   *  where f is of type float, and it holds demormal value
+	   *  say, 2**-127.  --- OSP-191
+	   */
+	  return FALSE;
 	}
 	break;
 #endif

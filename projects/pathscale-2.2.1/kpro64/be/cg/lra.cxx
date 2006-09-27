@@ -1373,10 +1373,10 @@ Update_Callee_Availability(BB *bb)
     FOR_ALL_ISA_REGISTER_CLASS(cl) {
       avail_set[cl] = REGISTER_SET_Union(avail_set[cl],
 					 Callee_Saved_Regs_Used[cl]);
+      FOR_ALL_REGISTER_SET_members(Callee_Saved_Regs_Used[cl], reg) {
+	avail_regs[cl].reg[reg] = TRUE;
+      }	  
     }
-    FOR_ALL_REGISTER_SET_members(Callee_Saved_Regs_Used[cl], reg) {
-      avail_regs[cl].reg[reg] = TRUE;
-    }	  
   } else if (BB_entry(bb)) {
     //
     // can't allow callee saved registers above stack adjustment in
@@ -1385,10 +1385,10 @@ Update_Callee_Availability(BB *bb)
     FOR_ALL_ISA_REGISTER_CLASS(cl) {
       avail_set[cl] = REGISTER_SET_Difference(avail_set[cl],
 					      Callee_Saved_Regs_Used[cl]);
+      FOR_ALL_REGISTER_SET_members(Callee_Saved_Regs_Used[cl], reg) {
+	avail_regs[cl].reg[reg] = FALSE;
+      }   
     }
-    FOR_ALL_REGISTER_SET_members(Callee_Saved_Regs_Used[cl], reg) {
-      avail_regs[cl].reg[reg] = FALSE;
-    }	  
   }
 }
 
