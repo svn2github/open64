@@ -233,7 +233,7 @@ init_crash_reporting (void)
 	if ((report_file = getenv("PSC_CRASH_REPORT")) != NULL)
 		goto bail;
 
-	if (asprintf(&report_file, "%s/ekopath_crash_XXXXXX", tmpdir) == -1) {
+	if (asprintf(&report_file, "%s/open64_crash_XXXXXX", tmpdir) == -1) {
 		report_file = NULL;
 		goto bail;
 	}
@@ -277,7 +277,7 @@ save_cpp_output (char *path)
 
 	if ((save_dir = getenv("PSC_PROBLEM_REPORT_DIR")) == NULL &&
 	    (home = getenv("HOME")) != NULL) {
-		asprintf(&save_dir, "%s/.ekopath-bugs", home);
+		asprintf(&save_dir, "%s/.open64-bugs", home);
 	}
 
 	if (save_dir && mkdir(save_dir, 0700) == -1 && errno != EEXIST) {
