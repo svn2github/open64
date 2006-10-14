@@ -89,6 +89,7 @@ BOOL  WOPT_Enable_Aggressive_Phi_Simp = TRUE;
 UINT32 WOPT_Enable_Autoaggstr_Reduction_Threshold = 11;
 BOOL  WOPT_Enable_Alias_ANSI = TRUE;
 BOOL  WOPT_Enable_Alias_Classification = TRUE;
+BOOL  WOPT_Enable_Aggressive_Alias_Classification = TRUE;
 BOOL  WOPT_Enable_Alias_Class_Fortran_Rule = TRUE;
 BOOL  WOPT_Enable_Alias_Qualifer = TRUE;
 BOOL  WOPT_Enable_Alias_Ragnarok_Unnamed = TRUE;
@@ -294,7 +295,6 @@ INT32 WOPT_Enable_WN_Unroll = 1;	// 0: disable;
 					// 2: unroll all loop bodies
 #endif
 BOOL  WOPT_Enable_WOVP = TRUE; // For running write-once variable promotion
-
 
 /* ====================================================================
  *
@@ -332,6 +332,8 @@ static OPTION_DESC Options_WOPT[] = {
     UINT32_MAX, 0, UINT32_MAX, &WOPT_Enable_Autoaggstr_Reduction_Threshold, NULL },
   { OVK_BOOL,   OV_VISIBLE,	TRUE, "alias_classification", "alias_class",
     0, 0, 0,    &WOPT_Enable_Alias_Classification, NULL },
+  { OVK_BOOL,   OV_VISIBLE,	TRUE, "agg_alias_classification", "agg_alias_class",
+    0, 0, 0,    &WOPT_Enable_Aggressive_Alias_Classification, NULL },
   { OVK_BOOL,   OV_VISIBLE,	TRUE, "ac_fortran", "",
     0, 0, 0,    &WOPT_Enable_Alias_Class_Fortran_Rule, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "avoid_rehash",		"",
