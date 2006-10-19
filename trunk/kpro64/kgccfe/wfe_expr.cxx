@@ -3489,6 +3489,9 @@ WFE_Expand_Expr (tree exp,
 	Is_True (WN_operator(tmp) == OPR_LDID || 
 	         WN_operator(tmp) == OPR_LDBITS ||
 	         WN_operator(tmp) == OPR_ILOAD ||
+                 // begin - bug fix for OSP_178
+                 WN_operator(tmp) == OPR_BAND ||
+                 // end - bug fix for OSP_178
 	         WN_operator(tmp) == OPR_ILDBITS, 
 		 ("Not expected operator"));
 	}
@@ -3523,7 +3526,11 @@ WFE_Expand_Expr (tree exp,
 #endif // KEY
 	WN_set_rtype(wn, rtype);
 	// bug fix for OSP_157
-	WN_set_desc (wn, desc);
+	//WN_set_desc (wn, desc);
+        // begin - bug fix for OSP_178
+        if ( WN_desc(wn) != MTYPE_V )
+	  WN_set_desc (wn, desc);
+        // end - bug fix for OSP_178
 	if ((bsiz & 7) == 0 &&	// field size multiple of bytes
 	    MTYPE_size_min(desc) % bsiz == 0 && // accessed loc multiple of bsiz
 	    bofst % bsiz == 0) {		// bofst multiple of bsiz

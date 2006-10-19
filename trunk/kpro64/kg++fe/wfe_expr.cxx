@@ -3965,7 +3965,10 @@ WFE_Expand_Expr (tree exp,
         }
 #endif // KEY
 	WN_set_rtype(wn, rtype);
-	WN_set_desc(wn, desc);
+        // begin - bug fix for OSP_178
+        if ( WN_desc(wn) != MTYPE_V )
+	  WN_set_desc(wn, desc);
+        // end - bug fix for OSP_178
 	INT bofst = Get_Integer_Value(TREE_OPERAND(exp, 2));
 	INT bsiz =Get_Integer_Value(TREE_OPERAND(exp, 1));
 	if ((bsiz & 7) == 0 &&	// field size multiple of bytes
