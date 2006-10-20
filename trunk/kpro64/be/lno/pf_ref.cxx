@@ -1659,7 +1659,17 @@ static PF_SORTED_REFS* Sort_Refvecs (PF_REFVEC_DA* refvecs, mINT16 leadingref){
     PF_REFVEC* refvec = refvecs->Bottom_nth(i);
     INT j;
     for (j=0; j<(i+1); j++) 
-      if (srefs[j].dist >= refvec->Distance()) break;
+      //OSP_196
+      //The original code is,
+      //    if (srefs[j].dist >= refvec->Distance()) break;
+      //My fix just changes the swap policy of elements with the same distance,
+      //and it still generates a sorted array of PF_SORTED_REFS, which is the 
+      //goal of this function.
+      //However, later phase will generate prefetch node for the first element of
+      //PF_SORTED_REFS, serfs[0]. And according to Todd Mowry's algorithm, 
+      //this element should be the leading reference of a reference group. 
+      //Original code doesn't keep leading reference in srefs[0].
+      if (srefs[j].dist > refvec->Distance()) break;
     if (j == (i+1)) {
       // all are smaller
       srefs[i+1].dist  = refvec->Distance();
