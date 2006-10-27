@@ -1024,10 +1024,10 @@ SSA::Get_zero_version_CR(AUX_ID aux_id, OPT_STAB *opt_stab, VER_ID du)
 				   opt_stab->St_ofst(aux_id), ty, 0, TRUE);
     cr->Set_flag(CF_MADEUP_TYPE);
     cr->Set_flag(CF_IS_ZERO_VERSION);
-    // begin - fix for bug #194 & #108
+    // begin - fix for bug OSP 194
     if( opt_stab->Is_volatile(aux_id) )
       cr->Set_var_volatile();
-    // end - fix for bug #194 & #108
+    // end - fix for bug OSP 194 
     opt_stab->Set_zero_cr(aux_id, cr);
   }
 
