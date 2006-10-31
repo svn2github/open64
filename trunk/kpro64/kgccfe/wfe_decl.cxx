@@ -1707,7 +1707,12 @@ Traverse_Aggregate_Struct (
       INT bytes_out = current_offset - FLD_ofst(fld);
       if (num_of_bytes == bytes_out) {
 	TY_IDX fld_ty = FLD_type(fld);
-	WN *init_wn = WN_Intconst (TY_mtype (fld_ty), 0);
+
+	// bug fix for OSP_94
+	//
+	TYPE_ID mtyp = TY_mtype(fld_ty);
+	mtyp = (mtyp == MTYPE_V) ? MTYPE_I4 : Widen_Mtype(mtyp);
+	WN *init_wn = WN_Intconst (mtyp, 0);
 	WN *wn = WN_Stid (MTYPE_BS, ST_ofst(st) + array_elem_offset, st,
 #ifndef KEY
 			  ty, 
