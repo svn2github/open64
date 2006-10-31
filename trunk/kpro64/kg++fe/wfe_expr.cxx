@@ -3147,7 +3147,10 @@ WFE_Expand_Expr (tree exp,
 	// modify_expr.  WFE_Lhs_Of_Modify_Expr will return an iload
 	// corresponding to p->a.  Since we want p->a.b, recreate the iload
 	// here.  Bug 3122 and 3210
-	if (TREE_CODE(arg0) == MODIFY_EXPR) {
+	//
+	// bug fix for OSP_118
+	//
+	if (TREE_CODE(arg0) == MODIFY_EXPR || TREE_CODE(arg0) == NON_LVALUE_EXPR) {
 	  TYPE_ID rtype = Widen_Mtype(TY_mtype(ty_idx));
 	  TYPE_ID desc = TY_mtype(ty_idx);
 	  if (WN_operator(wn) == OPR_ILOAD) {

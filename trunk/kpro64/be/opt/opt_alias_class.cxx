@@ -1377,6 +1377,9 @@ ALIAS_CLASSIFICATION::Assignment_may_xfer_pointer (WN* const stmt) {
   case KIND_POINTER:
     return TRUE;
 
+  case KIND_ARRAY:
+    return TRUE;
+
   case KIND_VOID:
     return WN_object_size (stmt) && (WN_object_size (stmt) >= Pointer_Size);
 

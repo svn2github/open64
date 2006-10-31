@@ -1113,7 +1113,21 @@ Wfe_Expand_Asm_Operands (tree  string,
 				 (UINT) 0);
 	}
       }
-
+      
+      // bug fix for OSP_141
+      // When considering the related ASM statement as following:
+      // __asm__ ("xma.hu %0 = %1, %2, f0": "=f" (_q):"f" ((-x)),"f" ((__di)));
+      // where "_q", "x" and "__di" are all unsigned long(MTYPE_U8)
+      // gcc can build it through type conversion, the same as we will do
+      //
+      if (*constraint_string == 'f') {
+        TYPE_ID rtype = (input_rvalue != NULL ? WN_rtype(input_rvalue) : MTYPE_F8);
+	Is_True(MTYPE_bit_size(rtype) >= 64, ("bit size must equal or greater than 64"));
+	if (WN_rtype(input_rvalue) == MTYPE_U8 || WN_rtype(input_rvalue) == MTYPE_I8) {
+	  input_rvalue = WN_CreateExp1(OPR_CVT, MTYPE_F8, WN_rtype(input_rvalue), input_rvalue);
+	}
+      }
+      
       WN_kid (asm_wn, i) =
 	WN_CreateAsm_Input (constraint_string, opnd_num, input_rvalue);
       ++i;
@@ -1165,7 +1179,19 @@ Wfe_Expand_Asm_Operands (tree  string,
 	       || TREE_CODE (output) == FIX_CEIL_EXPR)
 	  output = TREE_OPERAND (output, 0);
 #endif
-
+	
+	// bug fix for OSP_141
+	//
+	if (strchr (constraint_string, 'f') != NULL) {
+	  TY_IDX hi_ty_idx = Get_TY(TREE_TYPE(output)); 
+	  // TYPE_ID rtype = Widen_Mtype(TY_mtype(hi_ty_idx));
+	  TYPE_ID rtype = TY_mtype(hi_ty_idx);
+	  Is_True(MTYPE_bit_size(rtype) >= 64, ("bit size must equal or greater than 64"));
+	  if (rtype == MTYPE_U8 || rtype == MTYPE_I8) {
+	    Set_TY_mtype(hi_ty_idx, MTYPE_F8); 
+	  }
+	}
+	
 	if (plus_modifier)
 	  {
 	    // de-plus the output operand's constraint string.
@@ -1182,7 +1208,7 @@ Wfe_Expand_Asm_Operands (tree  string,
 #ifdef KEY
 	nonmem_opnd_num ++;
 #endif
-
+	
 	WN *output_rvalue_wn = WFE_Lhs_Of_Modify_Expr (MODIFY_EXPR,
 						       output,
 						       plus_modifier,
@@ -1208,6 +1234,14 @@ Wfe_Expand_Asm_Operands (tree  string,
 	// reference in the output operand. This duplicates work done in
 	// WFE_Lhs_Of_Modify_Expr.
 	TYPE_ID desc = TY_mtype (Get_TY (TREE_TYPE (TREE_VALUE (tail))));
+	
+	// bug fix for OSP_141
+	// 
+	if (strchr (constraint_string, 'f') != NULL) {
+	  Is_True(MTYPE_bit_size(desc) >= 64, ("bit size must equal or greater than 64"));
+	  desc = MTYPE_F8;
+	}
+	
 	ST *preg_st = MTYPE_To_PREG(desc);
 
 	ST *constraint_st = New_ST(CURRENT_SYMTAB);
