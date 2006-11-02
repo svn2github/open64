@@ -100,10 +100,10 @@ INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
 
     [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
-    [ ! -e ${BIN_DIR}/opencc  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/opencc
-    [ ! -e ${BIN_DIR}/openCC  ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openCC
-    [ ! -e ${BIN_DIR}/openc++ ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openc++
-    [ ! -e ${BIN_DIR}/openf90 ] && ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openf90
+    ln -sf ${PHASEPATH}/driver ${BIN_DIR}/opencc
+    ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openCC
+    ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openc++
+    ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openf90
 
     return 0
 }
