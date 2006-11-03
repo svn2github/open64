@@ -351,7 +351,6 @@ enum {
   DEFAULT_C_RULES = 0x0200,
 
   // C++ Rules
-  THIS_PTR_RULE = 0x1000,
   ALL_CXX_RULES = 0xf000,
   DEFAULT_CXX_RULES = 0xf000,
 
@@ -399,9 +398,6 @@ private:
   //
   // this is helper function of Aliased_This_Ptr_Rule ().
   BOOL Ty1_Include_Ty2 (TY_IDX ty1, TY_IDX ty2) const;
-
-  BOOL Aliased_This_Ptr_Rule (const POINTS_TO* const, 
-                              const POINTS_TO *const) const;
 
   //  This routine are used by alias analysis internally.
   //  Each function implements one of the alias rules.
