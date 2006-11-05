@@ -776,8 +776,17 @@ Create_ST_For_Tree (tree decl_node)
   if (TREE_CODE(decl_node) == ERROR_MARK)
     exit (RC_USER_ERROR);
 
-  if (DECL_NAME (decl_node))
+  //begin - fix for bug OSP 204
+  if (TREE_CODE (decl_node) == VAR_DECL && 
+      (TREE_STATIC(decl_node) || DECL_EXTERNAL(decl_node) || TREE_PUBLIC(decl_node) ) && 
+      DECL_ASSEMBLER_NAME(decl_node) ) {
+    name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME(decl_node));
+    if (*name == '*' ) name++;
+  }
+  else if (DECL_NAME (decl_node)) {
     name = IDENTIFIER_POINTER (DECL_NAME (decl_node));
+  }
+  //end - fix for bug OSP 204
   else {
     DevWarn ("no name for DECL_NODE");
     name = "__unknown__";
