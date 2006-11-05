@@ -431,7 +431,7 @@ inline UINT64 Parameter_Size(UINT64 sz)
 #   endif
 }
 
-inline TYPE_ID
+TYPE_ID
 Widen_Mtype (TYPE_ID t)
 {
   if (MTYPE_is_m(t))

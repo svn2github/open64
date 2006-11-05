@@ -3924,7 +3924,22 @@ REGION_TREE::Shrink (REGION *parent,REGION *kid,NODE_VECTOR nodes) {
       cfg->Erase(node);
       kid_cfg->Insert(node);
     }  
-    
+
+    /*Because in loop region, back edge has been move, so if the parent region
+    is a loop region, loop head and loop nodes must test to see if they are 
+    exit or entry */ 
+    if (parent->Region_Type() == LOOP){
+        LOOP_REGION *loop;
+        loop = (LOOP_REGION *) parent;
+        if ((Find_In_Vector(loop->Loop_Head(),nodes) == nodes.end()) 
+            && (Find_In_Vector(loop->Loop_Tail(),nodes) != nodes.end())){
+            kid_cfg->Add_To_Exits(loop->Loop_Tail());
+        }else if ((Find_In_Vector(loop->Loop_Head(),nodes) != nodes.end()) 
+            && (Find_In_Vector(loop->Loop_Tail(),nodes) == nodes.end())){
+            kid_cfg->Add_To_Entries(loop->Loop_Head());
+        }
+    }
+   
     if (kid_is_entry) {
         cfg->Add_To_Entries(kid_node);
     } 

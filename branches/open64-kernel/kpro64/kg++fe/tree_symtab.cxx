@@ -300,9 +300,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #endif
 		TYPE_TY_IDX(type_tree) = idx;
 		if(Debug_Level >= 2) {
-		  DST_INFO_IDX dst = Create_DST_type_For_Tree(type_tree,
-			idx,orig_idx);
-		  TYPE_DST_IDX(type_tree) = dst;
+		  defer_DST_type(type_tree, idx, orig_idx);
 	        }
 		TYPE_FIELD_IDS_USED(type_tree) =
 			TYPE_FIELD_IDS_USED(TYPE_MAIN_VARIANT(type_tree));

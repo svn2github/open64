@@ -2967,7 +2967,8 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
   rwn    = vho_lower_expr ( WN_kid2(wn_cselect), cflow_block2, NULL );
 
   if (    WHIRL_Mldid_Mstid_On
-       && opcode == OPC_MCSELECT ) {
+	  && opcode == OPC_MCSELECT
+	  && test != NULL)  {
 
     // CSELECT                             IF
     //  <test>                              <test>
@@ -3191,7 +3192,7 @@ vho_lower_cselect ( WN * wn_cselect, WN * block, BOOL_INFO * bool_info )
 
   else {
 
-    if ( opcode == OPC_MCSELECT ) {
+    if ( !WHIRL_Mldid_Mstid_On && opcode == OPC_MCSELECT ) {
 
       FmtAssert ( (    WN_opcode(lwn) == OPC_MLOAD
                     && WN_opcode(rwn) == OPC_MLOAD ),

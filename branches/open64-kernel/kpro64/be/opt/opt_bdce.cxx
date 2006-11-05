@@ -1069,7 +1069,11 @@ BITWISE_DCE::Redundant_cvtl(BOOL sign_xtd, INT32 to_bit, INT32 from_bit,
       else if (MTYPE_size_min(dtyp) == 32)
 	return FALSE;
 #endif
-      else return Redundant_cvtl(sign_xtd, to_bit, from_bit, opnd->Defstmt()->Rhs());
+      // bug fix for OSP_140
+      else if (opnd->Defstmt())
+        return Redundant_cvtl(sign_xtd, to_bit, from_bit, opnd->Defstmt()->Rhs());
+      else
+	return FALSE;
     }
     // load from memory
     if (Split_64_Bit_Int_Ops && to_bit == 64)

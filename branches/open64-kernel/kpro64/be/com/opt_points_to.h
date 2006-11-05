@@ -38,13 +38,13 @@
 
 #include "defs.h"
 #include "config.h"
+#include "opt_defs.h"
 #include "cxx_base.h"
 #include "cxx_memory.h"		// for CXX_NEW
 #include "opcode.h"
 #include "wn.h"
 #include "config_wopt.h"	// for WOPT_Alias_Class_Limit,
 				//     WOPT_Ip_Alias_Class_Limit
-
 
 typedef struct bs BS;
 
@@ -230,6 +230,17 @@ enum PT_ATTR {
 
 //  ALIAS_INFO is the subset of POINTS_TO that will be passed in .B file.
 //
+// _ptr, _ptr_ver and _iofst_kind are devoted to indrect access. 
+// Their meaning are self-descriptive. These three fileds, together 
+// with _{bit|byte}_{ofst|size},  are used to descibe a indirect access.
+// e.g. assume <p> is pointer to integer array. the ALIAS_INFO for 
+// access "p[13]" has: 
+//     o. _base = NULL, however, _ptr="p" and _ptr_ver=current_version_of_p
+//     o. _ofst_kind=OFST_UNKNONW however _iofst_kind=OFST_FIXED
+//     o. _bit_{ofst|size} = 0
+//     o. _byte_ofst = sizeof(int)*13
+//     o. _byte_size = sizeof(int)
+// 
 class ALIAS_INFO {
 
 friend class POINTS_TO;
@@ -247,11 +258,15 @@ friend class POINTS_TO;
 				   // of the bit field, and _bit_ofst/_bit_size
 				   // gives the bit ofst/size within the
 				   // container 
+  mUINT32	_iofst_kind :2;    // one of OFST_KIND. the kind of "offset" from _ptr. 
+  mUINT32       _ptr_is_aux_id :1; // the _ptr field is actually a aux_id, not ST*
   PT_ATTR       _attr;		   // PT_ATTR attributes
-  INT64         _byte_ofst;        // offset from base    -- controlled by _ofst_kind
-  UINT64        _byte_size;        // size of access      -- controlled by _ofst_kind
+  INT64         _byte_ofst;        // offset from base    -- controlled by _{i}ofst_kind  
+  UINT64        _byte_size;        // size of access      -- controlled by _{i}ofst_kind
   ST           *_base;             // base symbol         -- controlled by _base_kind
   ST           *_based_sym;        // for restricted pointer, Fortran ref-param ...
+  ST           *_ptr;              // pointer for indirect access 
+  VER_ID        _ptr_ver;          // the version of _ptr
   IDTYPE        _alias_class;      // which equivalence class this
 				   // memop is in, according to per-PU
 				   // analysis
@@ -289,13 +304,19 @@ private:
 
   POINTS_TO(const POINTS_TO &);
 
+  void Set_ptr_is_aux_id (void) { ai._ptr_is_aux_id = 1; }
+  void Reset_ptr_is_aux_id (void) { ai._ptr_is_aux_id = 0; }
+
 public:
   //  Member access functions
   //
   EXPR_KIND   Expr_kind(void)        const { return (EXPR_KIND) ai._expr_kind; }
   BASE_KIND   Base_kind(void)        const { return (BASE_KIND) ai._base_kind; }
   OFST_KIND   Ofst_kind(void)        const { return (OFST_KIND) ai._ofst_kind; }
+  OFST_KIND   Iofst_kind(void)       const { return (OFST_KIND) ai._iofst_kind; }
   ST          *Base(void)            const { return ai._base; }
+  ST          *Pointer(void)         const { return ai._ptr; }
+  VER_ID      Pointer_ver (void)     const { return ai._ptr_ver; }
 #if _NO_BIT_FIELDS
   mINT64      Ofst(void)             const { return ai._ofst; }
   mINT64      Size(void)             const { return ai._size; }
@@ -343,6 +364,7 @@ public:
   void Set_expr_kind(EXPR_KIND expr_kind) { ai._expr_kind = expr_kind; }
   void Set_base_kind(BASE_KIND base_kind) { ai._base_kind = base_kind; }
   void Set_ofst_kind(OFST_KIND ofst_kind) { ai._ofst_kind = ofst_kind; }
+  void Set_iofst_kind(OFST_KIND iofst_kind) { ai._iofst_kind = iofst_kind; }
   void Set_unused()			  { ai._unused = 0; }
   void Set_base(ST *base)                 { ai._base = base; }
   void Set_byte_ofst(mINT64 ofst)         { ai._byte_ofst = ofst; }
@@ -351,6 +373,10 @@ public:
       ai._bit_ofst = ofst;
       ai._bit_size = size;
   }
+  void Set_pointer (ST* ptr, BOOL is_aux_id)  { ai._ptr = ptr; 
+          is_aux_id ? Set_ptr_is_aux_id() : Reset_ptr_is_aux_id(); } 
+  BOOL Pointer_is_aux_id (void) const     { return ai._ptr_is_aux_id != 0; }
+  void Set_pointer_ver (VER_ID ver)       { ai._ptr_ver = ver; }
   void Set_based_sym(ST *sym)             { ai._based_sym = sym; }
   void Set_based_sym_depth(UINT32 d)      { ai._based_sym_depth = (d > 7) ? 7 : d; }
   void Set_alias_class(const IDTYPE alias_class)
@@ -381,7 +407,6 @@ public:
   void Set_named(void)                    { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_NAMED); }
   void Set_const(void)                    { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_CONST); }
   void Set_restricted(void)               { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_RESTRICTED); }
-  void Set_this_ptr(void)                 { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_THIS_PTR); }
   void Set_unique_pt(void)                { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_UNIQUE_PT); }
   void Set_F_param(void)                  { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_F_PARAM); }
   void Set_dedicated(void)                { ai._attr = (PT_ATTR) (ai._attr | PT_ATTR_DEDICATED); }
@@ -417,7 +442,6 @@ public:
   void Reset_named(void)                  { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NAMED); }
   void Reset_const(void)                  { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_CONST); }
   void Reset_restricted(void)             { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_RESTRICTED); }
-  void Reset_this_ptr(void)               { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_THIS_PTR) ;}
   void Reset_unique_pt(void)              { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_UNIQUE_PT); }
   void Reset_F_param(void)                { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_F_PARAM); }
   void Reset_dedicated(void)              { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_DEDICATED); }
@@ -435,14 +459,19 @@ public:
   void Reset_not_alloca_mem(void)         { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_NOT_ALLOCA_MEM); }
   void Reset_extended(void)               { ai._attr = (PT_ATTR) (ai._attr & ~PT_ATTR_EXTENDED); }
 
+  void Invalidate_ptr_info (void) { ai._ptr = NULL; ai._iofst_kind = OFST_IS_INVALID; ai._ptr_ver = (VER_ID)0; }
+
   void Init(void) {
     //  Set fields in POINTS_TO to invalid for error detection.
     Set_expr_kind(EXPR_IS_INVALID);
     Set_base_kind(BASE_IS_INVALID);
     Set_ofst_kind(OFST_IS_INVALID);
+    Set_iofst_kind(OFST_IS_INVALID);
     Set_unused();
     Set_based_sym_depth(0);
     Set_base((ST*)NULL);
+    Set_pointer ((ST*)NULL, FALSE);
+    Set_pointer_ver ((VER_ID)0);
     Set_byte_ofst(0);
     Set_byte_size(0);
     Set_bit_ofst_size(0,0);
@@ -534,6 +563,15 @@ public:
 	Set_restricted();
 	Set_based_sym(based_sym);
       }
+    }
+
+  void Copy_indirect_access_info (const POINTS_TO* p) 
+    {
+      Set_pointer (p->Pointer (), p->Pointer_is_aux_id());
+      Set_pointer_ver (p->Pointer_ver());
+      Set_iofst_kind (p->Iofst_kind ());
+      Set_byte_size (p->Byte_Size ());
+      Set_bit_ofst_size (p->Bit_Ofst (), p->Bit_Size ());
     }
 
   // Copy a POINTS_TO structure except for its sticky parts (i.e., the
@@ -680,9 +718,7 @@ void POINTS_TO::Analyze_Ldid_Base(WN *wn_ldid, const SYMTAB &stab)
   INT64 ofst = WN_offset(wn_ldid);
   TY_IDX ty = WN_ty(wn_ldid);
   Analyze_ST_as_base(st, ofst, ty);
-  if (!This_ptr() || !WOPT_Enable_This_Ptr_Opt) {
-    Set_ofst_kind(OFST_IS_UNKNOWN);
-  }
+  Set_ofst_kind(OFST_IS_UNKNOWN);
 }
 
 // Look for a LDA/LDID node recursively 
@@ -821,7 +857,7 @@ void POINTS_TO::Analyze_WN_expr(WN *wn, const SYMTAB &stab)
 	  }
 	} else if (WN_operator(wn_lda) == OPR_LDID) {
 	  Analyze_Ldid_Base(wn_lda, stab);
-	  Lower_to_base(This_ptr() && WOPT_Enable_This_Ptr_Opt ? wn : NULL);
+	  Lower_to_base(NULL);
 	  return;
 	}
       }

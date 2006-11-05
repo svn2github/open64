@@ -172,45 +172,6 @@ ALIAS_RULE::Ty1_Include_Ty2 (TY_IDX ty1, TY_IDX ty2) const
   return FALSE;
 }
 
-BOOL
-ALIAS_RULE::Aliased_This_Ptr_Rule (const POINTS_TO* const mem1, 
-                       const POINTS_TO *const mem2) const
-{
-  if (!mem1->This_ptr() && !mem2->This_ptr()) {
-    // this rule is not appliable
-    return TRUE; 
-  } else if (!mem1->This_ptr()) {
-    return Aliased_This_Ptr_Rule (mem2, mem1);
-  }
-
-  if (mem2->Named() && mem2->Base () && 
-      TY_kind(ST_type(mem2->Base())) == KIND_SCALAR) {
-    // class instance cannot alias with named scalar 
-    return FALSE;
-  } else if (mem2->This_ptr ()) {
-    ST* base1 = mem1->Based_sym();
-    ST* base2 = mem2->Based_sym();
-    Is_True (base1 && base2, ("Base symbol should not be NULL"));
-    
-    if (base1 == base2 && mem1->Ofst_kind () == OFST_IS_FIXED && 
-        mem2->Ofst_kind () == OFST_IS_FIXED) {
-      // mem1 and mem2 access exactly the same instance
-      Is_True (mem1->Byte_Size() && mem2->Byte_Size(), ("has zero byte size"));
-      return mem1->Overlap(mem2);
-    } else {
-      TY_IDX ty1 = ST_type(*base1);
-      TY_IDX ty2 = ST_type(*base2);
-
-      return Ty1_Include_Ty2 (Ty_Table[ty1].Pointed(), 
-                              Ty_Table[ty2].Pointed()) ||
-             Ty1_Include_Ty2 (Ty_Table[ty2].Pointed(), 
-                              Ty_Table[ty1].Pointed());
-    }
-  }
-
-  return TRUE;
-}
-
 // Fortran-90 pointers can point only to items lacking the not_f90_target
 // attribute.
 BOOL
@@ -276,6 +237,41 @@ BOOL ALIAS_RULE::Aliased_Indirect_Rule(const POINTS_TO *mem1, const POINTS_TO *m
   if ((mem2->Unnamed() && !mem2->Unique_pt())
       && mem1->Not_addr_saved())
     return FALSE;
+
+  if (mem1->Pointer () && mem2->Pointer () &&
+      WOPT_Enable_Pt_Keep_Track_Ptr) {
+    ST* st1 = mem1->Pointer ();
+    ST* st2 = mem2->Pointer ();
+    
+    if (st1 != st2 || 
+        mem1->Iofst_kind () != OFST_IS_FIXED ||
+        mem2->Iofst_kind () != OFST_IS_FIXED) {
+      return TRUE;
+    }
+
+    // it is impossible to disambiguate if the verions of the pointers
+    // are different.
+    if (!mem1->Pointer_is_aux_id() && 
+        !ST_is_constant (st1) && 
+        (mem1->Pointer_ver () == 0 ||
+         mem1->Pointer_ver () != mem2->Pointer_ver ())) {
+      return TRUE;
+    }
+
+    // check to see whether they overlap
+    if (mem1->Byte_Size () != 0 && mem2->Byte_Size () != 0) {
+      const POINTS_TO* high, *low;
+      if (mem1->Byte_Ofst() > mem2->Byte_Ofst()) {
+        high = mem1, low = mem2;
+      } else {
+        high = mem2, low = mem1;
+      }
+      if ((low->Byte_Ofst () + low->Byte_Size ()) <= high->Byte_Ofst()) {
+        return FALSE;
+      }
+    }
+  }
+
   return TRUE;
 }
 
@@ -694,9 +690,6 @@ BOOL ALIAS_RULE::Aliased_Memop_By_Analysis(const POINTS_TO *p1, const POINTS_TO 
     return FALSE;
 
   if (Rule_enabled(IP_CLAS_RULE) && !Aliased_Ip_Classification_Rule(p1, p2))
-    return FALSE;
-
-  if (Rule_enabled(THIS_PTR_RULE) && !Aliased_This_Ptr_Rule (p1, p2)) 
     return FALSE;
 
   return TRUE;

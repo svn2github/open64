@@ -1071,6 +1071,17 @@ Finalize_BB(BB *bp)
 {
   BOOL fill_delay_slots = (current_flags & CFLOW_FILL_DELAY_SLOTS) != 0;
 
+  // bug fix for OSP_105 & OSP_192
+  // As to those BBs, whose unreachable_bb flag is set to TRUE, 
+  // Except BBs which include EH related labels, which may not be deleted;
+  // this means that these BBs holds a dangle speculative load or chk, 
+  // which aslo needn't be deleted;
+  // NO need to manipulate these situation
+  //
+  BOOL unreachable_bb = BB_unreachable(bp);
+  if (unreachable_bb)
+    return;
+  
   switch (BBINFO_kind(bp)) {
   case BBKIND_LOGIF:
     {
@@ -3242,9 +3253,9 @@ Delete_Unreachable_Blocks(void)
     if (IPFEC_Enable_Speculation) {
         if (BB_Hold_Disjoint_Speculative_Code(bp)) 
             continue;
-        Delete_Recovery_Info_For_BB(bp);
+	
+	Delete_Recovery_Info_For_BB(bp);
     }
-
     /* Delete the contents or the whole BB, depending on whether or
      * not we need to keep some labels or not.
      */

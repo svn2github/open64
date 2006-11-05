@@ -1996,6 +1996,12 @@ Add_Initv_For_Tree (tree val, UINT size)
 			  break;
 			}
 		}
+
+		// bug fix for OSP_132
+		else if (WN_operator(init_wn) == OPR_INTCONST) {
+			WFE_Add_Aggregate_Init_Integer (WN_const_val(init_wn), size);
+			break;	      
+		}
 		FmtAssert(FALSE, ("unexpected tree code %s", 
 			tree_code_name[TREE_CODE(val)]));
 		}

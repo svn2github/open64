@@ -279,7 +279,7 @@ extern BOOL  WOPT_Enable_Lpre_Before_Ivr; // For running lpre early
 extern BOOL  WOPT_Enable_Spre_Before_Ivr; // For running spre early
 extern BOOL  WOPT_Enable_Bdce_Before_Ivr; // For running bdce early
 extern BOOL  WOPT_Enable_New_Phase_Ordering; // Enables some phases before ivr
-extern BOOL  WOPT_Enable_This_Ptr_Opt;    // For "this"-ptr alias analysis
+extern BOOL  WOPT_Enable_Pt_Keep_Track_Ptr;  // POINTS_TO keep track pointer of ild/istore
 
 #ifdef KEY
 extern BOOL  WOPT_Enable_Preserve_Mem_Opnds; // if TRUE, suppress EPRE on 
