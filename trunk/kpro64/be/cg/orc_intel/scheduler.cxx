@@ -2151,6 +2151,12 @@ SCHEDULER::Sched_Rgn_Preproc (void) {
 
         if ((*iter)->Is_Region()) continue ;
         BB * bb = (*iter)->BB_Node();
+
+        if (IPFEC_Query_Skiplist (glos_skip_bb, BB_id(bb), Current_PU_Count())) {
+           Isolate_BB_From_Sched_Scope (bb);
+           DevWarn ("BB:%d in PU%d is skipped\n", BB_id(bb), Current_PU_Count());
+        }
+
         if (BB_entry(bb) || BB_exit(bb)) continue ;
 
         Identify_Actual_Argument_Defs (bb);
@@ -2320,10 +2326,6 @@ SCHEDULER::Glos_Should_Sched_This_BB (BB* b) {
         return FALSE;
     }
 
-    if (IPFEC_Query_Skiplist (glos_skip_bb, BB_id(b), Current_PU_Count())) {
-        DevWarn ("BB:%d in PU%d is skipped\n", BB_id(b), Current_PU_Count());
-        return FALSE;
-    }
 
     INT32 len = BB_length(b);
     if (len > 1)  { return TRUE;  }
