@@ -1888,27 +1888,9 @@ Traverse_DST (ST *PU_st, DST_IDX pu_idx)
 	("Traverse_DST:  pu_idx is not a subprogram def?"));
   PU_attr = DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_SUBPROGRAM);
   assoc_info = DST_SUBPROGRAM_def_st(PU_attr);
-  
-  // bug fix for OSP_95
-  // When a PU is declared extern and later defined in the current 
-  // file with an attribute, then there will be two ST entries corresponding 
-  // to that PU. If that is the case, then the assoc_info may point to
-  // a different st_index than the PU_st. In such cases, we make use of the
-  // fact that there can be utmost one PU with a given name at a given level.
-  // If so, we can just check whether the equivalence of their PU name.
-  // BTW, we haven't emitted anything when one PU is extern and inline, 
-  // please refer to EMT_Emit_PU for more details.
-  //
-  FmtAssert ( (DST_ASSOC_INFO_st_level(assoc_info) == ST_level(PU_st)),
-	      ("Traverse_DST:  pu_idx doesn't match PU_st"));
-  ST *assoc_st = Get_ST_From_DST (assoc_info);
-  BOOL is_ext_inline = PU_is_extern_inline (Pu_Table[ST_pu(assoc_st)]);
-  char *assoc_pu_name = ST_name(Get_ST_From_DST (assoc_info));
-  
-  FmtAssert ( (is_ext_inline && !strcmp(assoc_pu_name, ST_name(PU_st))) ||
-	      (DST_ASSOC_INFO_st_index(assoc_info) == ST_index(PU_st)),
-	      ("Traverse_DST:  pu_idx doesn't match PU_st"));
-
+  FmtAssert ( (DST_ASSOC_INFO_st_level(assoc_info) == ST_level(PU_st))
+	&& (DST_ASSOC_INFO_st_index(assoc_info) == ST_index(PU_st)),
+	("Traverse_DST:  pu_idx doesn't match PU_st"));
   if (Trace_Dwarf)
     fprintf ( TFile, "Traverse_DST:  found idx [%d,%d] for %s\n",
 	pu_idx.block_idx, pu_idx.byte_idx, ST_name(PU_st));
