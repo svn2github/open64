@@ -686,7 +686,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
 		return FALSE;
 #endif // _STANDALONE_INLINER
 	    }else{ // 1.
-                if (callee_weight > IPA_Small_Callee_Limit && cg->Num_In_Edges(callee) > 1) {
+                if (callee_weight > IPA_Small_Callee_Limit && cg->Num_In_Edges(callee) > 2) {
                     /* We try to screen out callees that are too large, but
                      * accept those that have only one caller:
                      */
@@ -698,7 +698,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
                     }
                 }
 
-                if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 0 && 
+                if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 1 && 
                     callee_weight > non_aggr_callee_limit) {
                     /* Less aggressive inlining: don't inline unless it is
                      * either small, leaf, or called from a loop. 

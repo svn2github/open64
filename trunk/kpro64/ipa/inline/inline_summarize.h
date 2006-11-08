@@ -299,7 +299,7 @@ SUMMARIZE<INLINER>::Process_procedure (WN *w)
 		(WN_Fake_Call_EH_Region(w2, Parent_Map)))
 	      break;
 
-	    Process_callsite (w2, proc->Get_callsite_count (), 0);
+	    Process_callsite (w2, proc->Get_callsite_count (), get_loopnest(w2));
 	    SUMMARY_CALLSITE *callsite = Get_callsite(Get_callsite_idx());
 	    callsite->Set_wn (w2);
 	    if (BS_MemberP (calls_in_switch, WN_map_id(w2))) {
