@@ -1468,6 +1468,14 @@ TY_IDX
 WN_object_ty (const WN *wn)
 {
  if (OPCODE_is_load(WN_opcode(wn))) {
+    
+    // zhc
+    if (WN_operator(wn) == OPR_MLOAD) {
+      TY_IDX ptr_ty = WN_ty(wn);
+      Is_True (TY_kind(ptr_ty) == KIND_POINTER, ("TY of ISTORE is not KIND_POINTER."));
+      return TY_pointer(ptr_ty);
+    }
+	    
     if ((WN_operator(wn) == OPR_LDID ||
          WN_operator(wn) == OPR_ILOAD 
 #ifndef KEY
@@ -1490,6 +1498,12 @@ WN_object_ty (const WN *wn)
               ("TY of ISTORE is not KIND_POINTER."));
       ty_idx = TY_pointed(WN_ty(wn));
     }
+
+    // zhc
+    if (WN_operator(wn) == OPR_MSTORE) {
+      return ty_idx;
+    }
+    
     if (WN_field_id(wn) != 0 && TY_kind(ty_idx) == KIND_STRUCT) {
       return field_type (ty_idx, WN_field_id(wn));
     }
