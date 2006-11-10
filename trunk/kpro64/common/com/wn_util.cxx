@@ -1468,6 +1468,13 @@ TY_IDX
 WN_object_ty (const WN *wn)
 {
  if (OPCODE_is_load(WN_opcode(wn))) {
+
+    if (WN_operator(wn) == OPR_MLOAD) {
+         TY_IDX ptr_ty = WN_ty(wn);
+         Is_True (TY_kind(ptr_ty) == KIND_POINTER, ("TY of ISTORE is not KIND_POINTER."));
+         return TY_pointer(ptr_ty);
+     }
+
     if ((WN_operator(wn) == OPR_LDID ||
          WN_operator(wn) == OPR_ILOAD 
 #ifndef KEY

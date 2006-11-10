@@ -880,7 +880,6 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	    emitter->Preg_renumbering_map().Lookup(lhs->Coderep_id());
 	  if (lhs_offset == 0) {
 	    if (!aux_entry->Some_version_renumbered()) {
-	      aux_entry->Set_some_version_renumbered();
 	      lhs_offset = lhs->Offset();
 	    }
 	    else {

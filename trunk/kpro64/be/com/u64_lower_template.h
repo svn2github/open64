@@ -369,6 +369,7 @@ U64_LOWER_expr(NODE *tree, INT &maxsize,
 
   case OPR_CVT:
     if (! MTYPE_is_integral(res)) { 
+      hob_to_do = MTYPE_is_signed(desc) ? HOB_sign_xtd : HOB_zero_xtd;
       U64_LOWER_insert_cvtl_for_kid(new_nd, hob_to_do, 0, maxsize, hob_state);
       maxsize = 0; 
       if (MTYPE_is_integral(desc))
