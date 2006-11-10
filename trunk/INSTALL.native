@@ -98,12 +98,14 @@ INSTALL_DATA_SUB () {
 
 INSTALL_DRIVER () {
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${PHASEPATH}/driver
+    INSTALL_EXEC_SUB ${AREA}/driver/kdriver ${PHASEPATH}/kdriver
 
     [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
     ln -sf ${PHASEPATH}/driver ${BIN_DIR}/opencc
     ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openCC
     ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openc++
     ln -sf ${PHASEPATH}/driver ${BIN_DIR}/openf90
+    ln -sf ${PHASEPATH}/kdriver ${BIN_DIR}/kopencc
 
     return 0
 }

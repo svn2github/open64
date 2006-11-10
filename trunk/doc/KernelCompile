@@ -1,0 +1,27 @@
+KernelCompile
+
+We use a shell scripts file to handle options for kernel compilation.
+It locates in kpro64/targia64_ia64_nodebug/driver/
+
+Scripts file kdriver mainly does these things:
+1)ignores these options onlyfor GCC and do not pass them to opencc.
+  For options such as omit_frame-pointer that gcc uses for kernel
+  compilation, but are not relavant to osprey. So we must ignore them.
+2)Create and pass correct options such as -OPT:spec=off and -OPT:swp=off
+  for osprey.
+
+First, it gets all the gcc options for kernel compilation (We do not
+need to modify kernel's makefile). Then it adds essential ospry options
+and ignores some options only supported by gcc. Builds and passes
+correct options to osprey for kernel compilation.
+
+I'd like to add it as a seperate file. It is just for kernel building.
+For other application, we still use the origional driver.
+
+When we build kernel, we use it like this:
+
+  make CC=kopencc (kopencc=kdriver, just a symbol link)
+
+then, it will help us to reorgnize the options.
+That's the way we use it now.
+Good luck and enjoy it.
