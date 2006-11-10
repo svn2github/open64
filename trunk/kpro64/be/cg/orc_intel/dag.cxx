@@ -790,8 +790,8 @@ DAG_BUILDER::Find_Ancestor_BB (BB * bb, BB_VECTOR *bbv) {
                 for (CFG_PRED_NODE_ITER ps(n); ps != 0; ++ps) {
                     
                     if ((*ps)->Is_Region ()) {
-
-                        if (BS_MemberP (visited_rgns, r->Id())) continue ;
+                        //bug fix for OSP_198
+                        if (BS_MemberP (visited_rgns, (*ps)->Region_Node()->Id())) continue ;
                         nodes.push_back (*ps); 
 
                     } else {
@@ -860,8 +860,8 @@ DAG_BUILDER::Find_Successor_BB (BB * bb, BB_VECTOR *bbv) {
                 for (CFG_SUCC_NODE_ITER ps(n); ps != 0; ++ps) {
                     
                     if ((*ps)->Is_Region ()) {
-
-                        if (BS_MemberP (visited_rgns, r->Id())) continue ;
+                        // bug fix for OSP_198
+                        if (BS_MemberP (visited_rgns, (*ps)->Region_Node()->Id())) continue ;
                         nodes.push_back (*ps); 
 
                     } else {

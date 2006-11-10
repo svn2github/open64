@@ -4149,7 +4149,16 @@ static void gen_dv_stride_mult(opnd_type	*stride_opnd,
 
       OPND_FLD((*stride_opnd)) = IR_Tbl_Idx;
       OPND_IDX((*stride_opnd)) = dv_idx;
-
+#ifdef _WHIRL_HOST64_TARGET64
+	  /*
+	   if we are generating a new dope vector from an existing dope vector
+	   we do not need to generate the mulitplier
+	   About the stride muliplier:
+	   Normal vectors have a multiplier of 1
+	   Dope vector(allocatable array) has a multiplier of size(type)/size(int)
+	  */
+	  res_sm_unit_in_bits=src_sm_unit_in_bits;
+#endif
    }
    else {
       OPND_FLD((*stride_opnd)) = BD_SM_FLD(ATD_ARRAY_IDX(attr_idx), dim);

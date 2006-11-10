@@ -100,7 +100,7 @@ C++NAME = g++
 #F90 = gfortran
 #F90_RTLIBS = -lgfortran
 F90 = /opt/intel/fc/9.0/bin/ifort -assume 2underscores
-F90_RTLIBS = -L/opt/intel/fc/9.0/lib -lifcore -limf
+F90_RTLIBS = /opt/intel/fc/9.0/lib/libifcore.a /opt/intel/fc/9.0/lib/libimf.a 
 ifeq ($(BUILD_ARCH), X8664)
 CCNAME  = $(PSC_NAME_PREFIX)cc -march=anyx86
 C++NAME = $(PSC_NAME_PREFIX)CC -march=anyx86
