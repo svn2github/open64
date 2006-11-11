@@ -67,17 +67,6 @@ LIBMV_1.0 {
     vlog10f;
     vlog;
     vlogf;
-    vrd2_cos;
-    vrd2_exp;
-    vrd2_log;
-    vrd2_log10;
-    vrd2_sin;
-    vrd2_sincos;
-    vrd4_cos;
-    vrd4_exp;
-    vrd4_log;
-    vrd4_log10;
-    vrd4_sin;
     vrda_cos;
     vrda_exp;
     vrda_log;
@@ -88,10 +77,6 @@ LIBMV_1.0 {
     vrsa_expf;
     vrsa_logf;
     vrsa_powf;
-    vrs4_expf;
-    vrs4_logf;
-    vrs8_expf;
-    vrs8_logf;
     vsin;
     vsinf;
     vsqrt;

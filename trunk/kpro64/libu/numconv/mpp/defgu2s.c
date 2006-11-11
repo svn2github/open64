@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -209,94 +209,60 @@ _defgu2sd(	const long	*fca,
 		const long	*d,
 		const long	*p)
 {
+#ifdef KEY /* Bug 9020 */
+        /* Added initializations to local variable declarations; where
+	 * possible moved the local declarations from the scope of the
+	 * entire function to the most deeply nested scope possible.
+	 * Unable to establish that this bug was due to an uninitialized
+	 * variable rather than an optimizer bug, but the code is safer now. */
+#endif /* KEY Bug 9020 */
 	union{
 		FLOAT128 q;
 		FLOAT64 d;
 		int64 i;
 		int64 i64[2];
-		int32 i32[4]; } tmp;
-	FLOAT128 qhi;
-	FLOAT128 qlo;
-	FLOAT128 tmphi;
-	FLOAT128 tmplo;
-	FLOAT128 qexact_high_number;
-	FLOAT128 qexact_low_number;
-	FLOAT128 qx;
-	FLOAT128 qy;
-	FLOAT128 qa;
-	FLOAT128 qb;
-	FLOAT128 qtable_high;
-	FLOAT128 qtable_low;
-	FLOAT128 qpre_result;
-	union { FLOAT128 q[2]; int64 i64[4]; int32 i32[8];} t2;
-	union {FLOAT64 d; int64 i;} infinity;
-	long *position_pointer;
-	long field_width;
-	long flags;
-	long *l_char_address_p1;
-	long decimal_places;
-	long scale_factor;
-	long decimal_point_indicator;
-	long decimal_exponent;
-	long digit_found;
-	int64 low_number;
-	int64 mid1_number;
-	int64 mid2_number;
-	int64 mid3_number;
-	int64 high_number;
-	int32 index;
-	int32 ix;
-	int iround128;
-	int inexact;
-	long exitstatusreal;
-	int32 exp_number;
-	long blank;
-	long count;
-	long extra_zeroes;
-	long mantissa_sign;
-	long exponent_sign;
-	ieee64_t exact_high_number;
-	ieee64_t exact_low_number;
-	ieee64_t table_high;
-	ieee64_t table_low;
-	ieee64_t a,b;
-	ieee64_t x,y;
-	ieee64_t pre_result;
+		int32 i32[4]; } tmp; /* init below */
+	FLOAT128 qpre_result = 0;
+	union { FLOAT128 q[2]; int64 i64[4]; int32 i32[8];} t2; /* init below */
+	union {FLOAT64 d; int64 i;} infinity; /* init below */
+	long *position_pointer = (long *)fca;
+	long field_width = *fw;
+	long flags = *mode;
+	long *l_char_address_p1 = *lcap1;
+	long decimal_places = *d;
+	long scale_factor = *p;
+	long decimal_point_indicator = DP_NOT_FOUND;
+	long decimal_exponent = 0;
+	long digit_found = NEGATIVE;
+	int64 low_number = 0;
+	int64 mid1_number = 0;
+	int64 mid2_number = 0;
+	int64 mid3_number = 0;
+	int64 high_number = 0;
+	long exitstatusreal; /* init below */
+	int32 exp_number = 0;
+	long blank = BLANK;
+	long extra_zeroes = 0;
+	long mantissa_sign = POSITIVE;
+	long exponent_sign = POSITIVE;
+	ieee64_t pre_result = 0;
 	extern ieee64_t _POWER_OF_FIVE_TABLE[];
-	int32 temp;
-	ieee64_t high3;
-	ieee64_t high2;
-	ieee64_t high1;
+#ifdef KEY /* Bug 8105 */
+	int found_comma = 0;
+#endif /* KEY Bug 8105 */
 
 /*
 	set-up initial state
 */
-	position_pointer = (long *)fca;
-	field_width = *fw;
-	flags = *mode;
-	l_char_address_p1 = *lcap1;
-	decimal_places = *d;
-	scale_factor = *p;
+	infinity.i = PORTABLE_INFINITY;
+	tmp.i64[0] = tmp.i64[1] = 0;
+	t2.i64[0] = t2.i64[1] = t2.i64[2] = t2.i64[3] = 0;
 
 	if(DEBUGSW)
 		printf("_def:posn=%llx fw=%x flag=%x lcap1=%p *lcap1=%p d=%x p=%x\n",
 		       (long long)*fca, (int)*fw , (int)*mode, lcap1,
 		       *lcap1, (int)*d, (int)*p );
 
-	decimal_point_indicator = DP_NOT_FOUND;	/* no decimal point found */
-	decimal_exponent = 0;
-	digit_found = NEGATIVE;			/* no digits found */
-	exponent_sign = POSITIVE;
-	mantissa_sign = POSITIVE;
-	high_number = 0;
-	mid3_number = 0;
-	mid2_number = 0;
-	mid1_number = 0;
-	low_number = 0;
-	exp_number = 0;
-	extra_zeroes = 0;
-	blank = BLANK;
-	infinity.i = PORTABLE_INFINITY;
 #if defined(_SOLARIS) || (defined(_CRAYIEEE) && !defined(_LD64)) || \
     defined(__mips) || (defined(_ABSOFT) && !defined(_LD64)) || \
     defined(_LITTLE_ENDIAN)
@@ -365,6 +331,13 @@ _defgu2sd(	const long	*fca,
 #endif
 		}
 		else { /* not a numerical digit, look for [.+-DdEe ] */
+#ifdef KEY /* Bug 8105 */
+			if (',' == *position_pointer) {
+				found_comma = 1;
+				break;
+			}
+			else
+#endif /* KEY Bug 8105 */
 			if ( *position_pointer == BLANK) { /* blank */
 				if ((flags & (MODEBZ | MODEBN)) == 0) break;
 				if ((flags & MODEBZ) != 0) { /* blanks = 0 */
@@ -414,6 +387,13 @@ REALOVFL:
 					decimal_point_indicator + 1;
 		}
 		else { /* not a numerical digit, look for [.+-DdEe ] */
+#ifdef KEY /* Bug 8105 */
+			if (',' == *position_pointer) {
+				found_comma = 1;
+				break;
+			}
+			else
+#endif /* KEY Bug 8105 */
 			if ( *position_pointer == BLANK) { /* blank */
 				if ((flags & (MODEBZ | MODEBN)) == 0) break;
 				if ((flags & MODEBZ) != 0) { /* blanks = 0 */
@@ -483,6 +463,13 @@ EXPSIGN:
 			DEBUGQ("_def:building exponent:%x %x %x %x \n",exp_number)
 		}
 		else {
+#ifdef KEY /* Bug 8105 */
+			if (',' == *position_pointer) {
+				found_comma = 1;
+				goto REALEND2;
+			}
+			else
+#endif /* KEY Bug 8105 */
 			if ( *position_pointer != BLANK) goto BADCHAR;
 			if ((flags & (MODEBZ | MODEBN)) == 0) {
 				if (digit_found != POSITIVE) goto NODATA;
@@ -498,6 +485,7 @@ EXPSIGN:
 	}
 	if (extra_zeroes != 0) {
 		digit_found = POSITIVE;
+		long count = 0;
 		for (count = extra_zeroes; count != 0; count--) {
 			exp_number = exp_number*BASE;
 			if (exp_number >= EXPLIMIT) goto EXPOVFLW;
@@ -515,27 +503,27 @@ REALEND2:
 	if( (flags&MODEDP) == 0 ){
 #endif
 		/* 64- or 32-bit (half precision) */
-		exact_high_number = (ieee64_t)high_number;
-		exact_low_number = (ieee64_t)low_number;
+		ieee64_t exact_high_number = (ieee64_t)high_number;
+		ieee64_t exact_low_number = (ieee64_t)low_number;
 		exact_high_number *= scalb(1.0,BITS_INT);
 		tmp.d = exact_high_number + exact_low_number;
 		exact_low_number = (exact_high_number-tmp.d)+exact_low_number;
 		exact_high_number = tmp.d;
 		tmp.i = (tmp.i >> 27) << 27;
-		x = tmp.d;
-		y = exact_high_number - x;
+		ieee64_t x = tmp.d;
+		ieee64_t y = exact_high_number - x;
 		if (exp_number < -TABLELIM || exp_number > TABLELIM) {
 			goto EXPOVFLW;
 		}
 		else {
-			table_high = _POWER_OF_FIVE_TABLE[2*TABLELIM +
+			ieee64_t table_high = _POWER_OF_FIVE_TABLE[2*TABLELIM +
 					exp_number*2];
-			table_low = _POWER_OF_FIVE_TABLE[2*TABLELIM +
+			ieee64_t table_low = _POWER_OF_FIVE_TABLE[2*TABLELIM +
 					exp_number*2+1];
 			tmp.d = table_high;
 			tmp.i = (tmp.i >> 27) << 27;
-			a = tmp.d;
-			b = table_high - a;
+			ieee64_t a = tmp.d;
+			ieee64_t b = table_high - a;
 			pre_result = a*x + (a*y + x*b +(b*y +
 				(table_high*exact_low_number +
 				exact_high_number*table_low +
@@ -631,11 +619,12 @@ REALEND2:
 				goto REALZERO;
 
 		/* float the unsigned integer */
+		int inexact = 0;
 		_qqfloat_uint250( &t2.q[0], &inexact, &low_number,
 			&mid1_number, &mid2_number, &mid3_number,
 			&high_number);
-		qexact_high_number = t2.q[0];
-		qexact_low_number  = t2.q[1];
+		FLOAT128 qexact_high_number = t2.q[0];
+		FLOAT128 qexact_low_number  = t2.q[1];
 
 		DEBUGQ("_def:qexact_high_number:%x %x %x %x \n",
 			qexact_high_number)
@@ -646,6 +635,10 @@ REALEND2:
 		if (exp_number < (-EXPLIMIT) || (exp_number > EXPLIMIT))
 			goto EXPOVFLW;
 		else {
+			FLOAT128 qhi = 0;
+			FLOAT128 qlo = 0;
+			FLOAT128 qx = 0;
+			FLOAT128 qy = 0;
 			if( _qq_power5( &exp_number, &qhi, &qlo ) < 0 )
 				goto EXPOVFLW;
 			DEBUGQ("_def:qexact_high_number:%x %x %x %x \n",
@@ -662,7 +655,7 @@ REALEND2:
 			 * <3:2> 11: round to nearest (even, if tie),
 			 * This is round to nearest (biased) at bit 128.
 			 */
-			iround128 = 1+4;
+			int iround128 = 1+4;
 			_qmult3( &iround128,&qhi,&qlo, \
 				&qexact_high_number, &qexact_low_number, \
 				&qx, &qy);
@@ -758,6 +751,11 @@ REALZERO:
 	*status = exitstatusreal;
 
 DONE:
+#ifdef KEY /* Bug 8105 */
+        if (found_comma) {
+		*status = EX_ILLCHAR;
+	}
+#endif /* KEY Bug 8105 */
 	*lcap1 = position_pointer;
 	if ((flags & MODEHP) != 0) {
 
@@ -765,7 +763,7 @@ DONE:
 		tmp.d = pre_result;
 		if (tmp.i > PORTABLE_FLOAT_MAX) {
 			*status = EX_EXPOFLO;
-			temp = (mantissa_sign == POSITIVE) ? 0x7f800000 : 0xff800000;
+			int32 temp = (mantissa_sign == POSITIVE) ? 0x7f800000 : 0xff800000;
 			*(ieee32_t *)result = *(ieee32_t *)&temp;
 		}
 		else {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -67,6 +67,17 @@ oc_func	*_oconvtab[LAST_DATA_ED + 1];
 extern	const short	_odedtab[DVTYPE_NTYPES];
 extern	short		_o_sup_flg_tab[DVTYPE_NTYPES];
 extern	long		_o_sup_val_tab[DVTYPE_NTYPES];
+
+#ifdef KEY /* Bug 8309 */
+/* Integer base raised to the power exp */
+static int ipow(int base, int exp) {
+  int result = 1;
+  for (; exp > 0; exp -= 1) {
+    result *= base;
+  }
+  return result;
+}
+#endif /* KEY Bug 8309 */
 
 #undef	BLANK
 #define	BLANK	((long) ' ')
@@ -381,7 +392,9 @@ _wrfmt(
 					case E_ED:
 					case EN_ED:
 					case ES_ED:
+#ifndef KEY /* Bug 8309 */
 					case F_ED:
+#endif /* KEY Bug 8309 */
 					case G_ED:
 #ifdef KEY
                                                 width_zero_flag = TRUE;
@@ -402,6 +415,27 @@ _wrfmt(
 
 						width	= digits + exp + 6;
 						break;
+
+#ifdef KEY /* Bug 8309 */
+					/* For F_ED, which does
+					 * not have an exponent, we need
+					 * the number of digits indicated
+					 * by the maximum exponent.
+					 */
+					case F_ED:
+                                                width_zero_flag = TRUE;
+						if (4 == length) {
+						  width = ipow(10, DEXP4);
+						}
+						else if (8 == length) {
+						  width = ipow(10, DEXP8);
+						}
+						else {
+						  width = pow(10, DEXP16);
+						}
+						width += digits + 1 /* sign */;
+						break;
+#endif /* KEY Bug 8309 */
 
 					/*
 					 * For logical (L) data edit-
@@ -519,6 +553,12 @@ _wrfmt(
 #pragma _CRI align
 #endif
 
+#ifdef KEY /* Bug 3992 */
+			if (width_zero_flag) {
+				field = 0;
+			}
+#endif /* KEY Bug 3992 */
+
 			for (i = 0; i < kount; i++) { /* For consecutive items */
 
 				/* Convert next item */
@@ -542,7 +582,7 @@ _wrfmt(
                                           long *p = cup->ulineptr;
                                           register short counter = 0;
                                           register short k;
-                                          long linebuf[100];
+                                          long linebuf[width + 1];
                                           for ( k = 0; k < width; k++, p++) {
                                             if (*p == BLANK)
                                               continue;
@@ -553,10 +593,23 @@ _wrfmt(
                                           p = cup->ulineptr;
                                           for (k = 0; counter; counter--,p++,k++)
                                             *p = linebuf[k];
-                                          for (; *p ; p++)
+#ifdef KEY /* Bug 7990 */
+					  /* cup->ulineptr doesn't seem to be
+					   * null terminated, so this loop may
+					   * wander off the end. But it appears
+					   * to be unneeded, because in the
+					   * nonzero-width case, ngcf() doesn't
+					   * fill in any zeros, so why do so in
+					   * the zero-width case? Perhaps this
+					   * was a failed attempt to accomplish
+					   * what the fix to bug 3992 did? */
+#else /* KEY Bug 7990 */
+                                           for (; *p ; p++)
                                             *p = 0;
-					  // Bug 3992
-					  field = width;
+#endif /* KEY Bug 7990 */
+#ifdef KEY /* Bug 3992 */
+					  field += width;
+#endif /* KEY Bug 3992 */
                                         }
 #endif
                                  }
@@ -759,10 +812,15 @@ check_left:
 			break;
 
 		case Q_ED:
+#ifdef KEY /* Bug 8258 */
+			/* The VMS manual says this edit descriptor is
+			 * legal but ignored on output */
+#else /* KEY Bug 8258 */
 			/*
 			 * The Q edit-descriptor is invalid on output.
 			 */
 			stat			= FEFMTQIO;
+#endif /* KEY Bug 8258 */
 			repcnt			= repcnt - 1;
 			break;
 

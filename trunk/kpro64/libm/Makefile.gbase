@@ -59,6 +59,11 @@ ifeq ($(BUILD_ABI), N32BIT)
 EXTRA_EXPORTS += -exports_file $(BUILD_BASE)/mips3.exports 
 endif
 
+ifeq ($(BUILD_OPTIMIZE), NODEBUG)
+OPTIMIZER = -O3
+endif
+CFLAGS += -fno-fast-stdlib
+
 ifeq ($(BUILD_VARIANT), LIBMV)
 LCDEFS += -D_SW_PIPELINE
  ifeq ($(BUILD_ABI), I64BIT)
@@ -83,10 +88,18 @@ PROF_LIB = libmv_p.a
 dso_version := 1
 DSO = libmv.so.$(dso_version)
 else
+ifeq ($(BUILD_TARGET), IA64)
+LIBRARY = libmsgi.a
+PROF_LIB = libmsgi_p.a
+dso_version := 1
+DSO = libmsgi.so.$(dso_version)
+CFLAGS += -Wa,"-x assembler-with-cpp"
+else
 LIBRARY = libm$(PSC_NAME_PREFIX).a
 PROF_LIB = libm$(PSC_NAME_PREFIX)_p.a
 dso_version := 1
 DSO = libm$(PSC_NAME_PREFIX).so.$(dso_version)
+endif
 endif
 
 ifeq ($(BUILD_TYPE), NONSHARED)

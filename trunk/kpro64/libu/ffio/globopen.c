@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -71,7 +75,11 @@ struct gl_o_inf *oinf)
 	struct glob_f	*glob_info;
 	struct stat	fstat;
 	struct ffsw	clstat;
+#ifdef KEY /* Bug 1678 */
+        struct stat statbuf;
+#else /* KEY Bug 1678 */
         struct ffc_stat_s statbuf;
+#endif /* KEY Bug 1678 */
 	_ffopen_t	nextfio;
 	register int	bsblks;
 	register int	errn;

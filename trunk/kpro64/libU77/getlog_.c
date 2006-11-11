@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -49,21 +49,29 @@
 #include <unistd.h>
 #include "externals.h"
 
-#ifdef KEY /* Bug 1683 */
+#ifdef KEY /* Bug 1683, 5019 */
+
+#include <alloca.h>
 
 #include "pathf90_libU_intrin.h"
 
 void
 pathf90_getlog(char *name, int len)
+{
+	char *l = alloca(len + 1);
+	int err = getlogin_r(l, len + 1);
+
+	b_char((err == 0) ?l:" ", name, len);
+}
 
 #else
 
 extern void
 getlog_(char *name, int len)
-
-#endif /* KEY Bug 1683 */
 {
 	char *l = getlogin();
 
 	b_char(l?l:" ", name, len);
 }
+
+#endif /* KEY Bug 1683, 5019 */

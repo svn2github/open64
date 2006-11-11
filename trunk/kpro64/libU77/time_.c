@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -61,10 +61,13 @@
 #endif
 #include <string.h>
 
-#ifdef KEY /* Bug 4135 */
+#ifdef KEY /* Bug 4135, 5019 */
 
 #include "pathf90_libU_intrin.h"
 
+#include <alloca.h>
+
+#define CTIME_BUFLEN	26
 
 pathf90_i4
 pathf90_time4(void)
@@ -81,9 +84,10 @@ pathf90_time8(void)
 void
 pathf90_subr_time(char *buf, int len)
 {
+  char result[CTIME_BUFLEN];
   time_t t = time(0);
   memset(buf, ' ', len);
-  memcpy(buf, ctime(&t) + 11, (len < 8) ? len : 8);
+  memcpy(buf, ctime_r(&t, result) + 11, (len < 8) ? len : 8);
 }
 
 #else
@@ -96,7 +100,7 @@ time_(void)
 {
 	return(time(NULL));
 }
-#endif /* Bug 4135 */
+#endif /* Bug 4135, 5019 */
 
 extern void
 #if defined(__ia64) || defined(__ia32)

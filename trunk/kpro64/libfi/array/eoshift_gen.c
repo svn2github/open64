@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -386,7 +386,12 @@ i4 *dim)
   } else if (typ_sz == sizeof(r4) && ALIGNED_r4(array_p) &&  ALIGNED_r4(result_p) && ALIGNED_r4(boundary_p)) {
 
     while (counter[src_rank] < src_extent[src_rank] ) {
+#ifdef KEY /* bug 8062 */
+      /* Using IEEE FP on non-FP data might change bits during assign */
+      ui4 lfill = 0 ;
+#else /* KEY bug 8062 */
       r4 lfill = 0 ;
+#endif /* KEY bug 8062 */
 
       if (!computed_shift) {
 	switch (shf_typ_sz) {
@@ -431,16 +436,31 @@ i4 *dim)
       rp1 = result_p + r_offs1;
 
       for ( k = 0 ; k < ll1 ; k ++ )  {
+#ifdef KEY /* bug 8062 */
+	/* Using IEEE FP on non-FP data might change bits during assign */
+	*(ui4 *)rp1 = *(ui4 *)ap1 ;
+#else /* KEY bug 8062 */
 	*(r4 *)rp1 = *(r4 *)ap1 ;
+#endif /* KEY bug 8062 */
 	rp1 += r_stride ;
 	ap1 += a_stride ;
       }
 
       rp1 = result_p + r_offs2 ;
+#ifdef KEY /* bug 8062 */
+      /* Using IEEE FP on non-FP data might change bits during assign */
+      lfill = *(ui4 *) boundary_p ;
+#else /* KEY bug 8062 */
       lfill = *(r4 *) boundary_p ;
+#endif /* KEY bug 8062 */
 
       for ( k = 0 ; k < ll2 ; k ++ ) {
+#ifdef KEY /* bug 8062 */
+	/* Using IEEE FP on non-FP data might change bits during assign */
+	*(ui4 *)rp1 = lfill ;
+#else /* KEY bug 8062 */
 	*(r4 *)rp1 = lfill ;
+#endif /* KEY bug 8062 */
 	rp1 += r_stride ;
       }
 
@@ -464,7 +484,12 @@ i4 *dim)
   } else if (typ_sz == sizeof(r8) && ALIGNED_r8(array_p) &&  ALIGNED_r8(result_p) && ALIGNED_r8(boundary_p)) {
 
     while (counter[src_rank] < src_extent[src_rank] ) {
+#ifdef KEY /* bug 8062 */
+      /* Using IEEE FP on non-FP data might change bits during assign */
+      ui8 lfill = 0 ;
+#else /* KEY bug 8062 */
       r8 lfill = 0 ;
+#endif /* KEY bug 8062 */
 
       if (!computed_shift) {
 	switch (shf_typ_sz) {
@@ -509,16 +534,31 @@ i4 *dim)
       rp1 = result_p + r_offs1;
 
       for ( k = 0 ; k < ll1 ; k ++ )  {
+#ifdef KEY /* bug 8062 */
+	/* Using IEEE FP on non-FP data might change bits during assign */
+	*(ui8 *)rp1 = *(ui8 *)ap1 ;
+#else /* KEY bug 8062 */
 	*(r8 *)rp1 = *(r8 *)ap1 ;
+#endif /* KEY bug 8062 */
 	rp1 += r_stride ;
 	ap1 += a_stride ;
       }
 
       rp1 = result_p + r_offs2 ;
+#ifdef KEY /* bug 8062 */
+      /* Using IEEE FP on non-FP data might change bits during assign */
+      lfill = *(ui8 *) boundary_p ;
+#else /* KEY bug 8062 */
       lfill = *(r8 *) boundary_p ;
+#endif /* KEY bug 8062 */
 
       for ( k = 0 ; k < ll2 ; k ++ ) {
+#ifdef KEY /* bug 8062 */
+	/* Using IEEE FP on non-FP data might change bits during assign */
+	*(ui8 *)rp1 = lfill ;
+#else /* KEY bug 8062 */
 	*(r8 *)rp1 = lfill ;
+#endif /* KEY bug 8062 */
 	rp1 += r_stride ;
       }
 

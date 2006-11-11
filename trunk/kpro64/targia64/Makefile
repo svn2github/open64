@@ -48,14 +48,15 @@ INCLUDE_SUBDIRS = \
 #  Next, all of the libraries are built because the tools depend on them.
 #
 LIBRARY_SUBDIRS = \
+	init \
 	libfortran \
-	libgcc \
-	libmp \
-	libmsgi \
+	libu \
 	libmv \
+	libmsgi
+	#libgcc \
+	libmp \
 	libstdc++ \
 	libinstr \
-	libu
 
 
 #

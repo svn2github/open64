@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -91,6 +95,15 @@ enum assign_modes {
  * 			it is assigned 0 on successful return.  Otherwise
  *			a positive error code is returned.
  */
+
+#ifdef KEY /* Bug 8391 */
+/* SGI historically provided this  function, but we don't want it to collide
+ * with a user-coded Fortran procedure "assign" which will also emit "assign_"
+ */
+#pragma weak assign_ = __assign
+extern void assign_(char *, _f_int *ier, int);
+#endif  /* KEY Bug 8391 */
+
 void
 #ifdef	_UNICOS
 
@@ -102,10 +115,6 @@ ASSIGN(
 #else
 
 #ifdef KEY /* Bug 4260 */
-/* SGI historically provided this  function, but we don't want it to collide
- * with a user-coded Fortran procedure "assign" which will also emit "assign_"
- */
-#pragma weak assign_ = __assign
 __assign(
 #else /* KEY Bug 4260 */
 assign_(

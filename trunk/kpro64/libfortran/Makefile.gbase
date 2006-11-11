@@ -64,6 +64,12 @@ LCDEFS += -D_LIB_INTERNAL
 LCDEFS += -D_GNU_SOURCE
 LCDEFS += -U__mips
 endif
+ifeq ($(BUILD_HOST), IA64)
+LCDEFS += -D_WORD32
+LCDEFS += -D_LIB_INTERNAL
+LCDEFS += -D_GNU_SOURCE
+LCDEFS += -U__mips
+endif
 
 LCINCS += -I$(BUILD_TOT)/clibroot
 ifeq ($(BUILD_ABI), N32BIT)
@@ -79,8 +85,10 @@ ifeq ($(BUILD_OPTIMIZE), DEBUG)
 LCDEFS += -DLIBDEBUG -D_ASSERT_ON -DDEBUG_MTIO
 endif
 ifeq ($(BUILD_OPTIMIZE), NODEBUG)
+OPTIMIZER = -O3
 F90FLAGS =
 endif
+CFLAGS += -funwind-tables -fno-fast-stdlib
 
 FC = $(F90) -c -Wf,-eQ
 
@@ -144,7 +152,9 @@ include $(BUILD_TOT)/libfi/prodsum/prodsum.makeinclude
 # from libF77
 
 ifeq ($(BUILD_OS), LINUX)
-#  include $(BUILD_TOT)/libF77/libF77aslibfortran.gmakeinclude
+ifeq ($(BUILD_TARGET), IA64)
+  include $(BUILD_TOT)/libF77/libF77aslibfortran.gmakeinclude
+endif
 endif
 
 LCINCS += -I$(BUILD_TOT)/libfi/include

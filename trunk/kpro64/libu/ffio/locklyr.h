@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -41,6 +45,11 @@
 #include "fflock.h"
 
 
+#ifdef KEY /* Bug 6003 */
+#define LYR_LOCK(_x)	MEM_LOCK((_x)->lyr_info);
+#define LYR_UNLOCK(_x)	MEM_UNLOCK((_x)->lyr_info);
+#define COND_LYR_UNLOCK(_x)	{if ((_x)->lyr_info != NULL) LYR_UNLOCK(_x) }
+#else
 #if	defined(__mips) || defined(_LITTLE_ENDIAN)
 	/* mips only handles reg_lock now */
 #define LYR_LOCK(_x)	MEM_LOCK((unsigned long *)_x->lyr_info);
@@ -60,3 +69,4 @@
 			}
 #define COND_LYR_UNLOCK(_x)	{if (_x->lyr_info != NULL) LYR_UNLOCK(_x) }
 #endif
+#endif /* Key Bug 6003 */

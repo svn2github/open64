@@ -134,5 +134,9 @@ CFILES += \
     xarg.c \
     $(IRFILES)
 
+ifeq ($(BUILD_TARGET), IA64)
+CFILES += main.c
+endif
+
 SRC_DIRS += \
    $(BUILD_TOT)/libf/fio

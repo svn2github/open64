@@ -142,8 +142,13 @@ long
 	long	*starting_fraction_position;
 	long	*end_pointer;
 	FLOAT64	datum;
+#ifdef KEY /* Bug 8773 */
+	volatile FLOAT64	datumh;
+	volatile FLOAT64	datuml;
+#else /* KEY Bug 8773 */
 	FLOAT64	datumh;
 	FLOAT64	datuml;
+#endif /* KEY Bug 8773 */
 	FLOAT64	tableh;
 	FLOAT64	tablel;
 	FLOAT64	delta;
@@ -159,6 +164,9 @@ long
 	int32	scaleoverten;
 	int32	roundto10;
 	uint64	upper_mask1 = UPPER_MASK;
+#ifdef KEY /* Bug 9019 */
+        volatile
+#endif /* KEY Bug 9019 */
 	union	{FLOAT64 d; uint64 i;}	tmp,
 					upper,
 					lower,

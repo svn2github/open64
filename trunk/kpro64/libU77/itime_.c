@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -35,7 +35,6 @@
 /* | All Rights Reserved.                            | */
 /* --------------------------------------------------- */
 /* $Header: /proj/osprey/CVS/open64/osprey1.0/libU77/itime_.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
-/* $Header: /proj/osprey/CVS/open64/osprey1.0/libU77/itime_.c,v 1.1.1.1 2005/10/21 19:00:00 marcel Exp $ */
 /*
  *
  * return the current time in numerical form
@@ -60,21 +59,21 @@ typedef struct {
  int isec;
 } itime_struct;
 
-#ifdef KEY /* Bug 1683 */
+#ifdef KEY /* Bug 1683, 5019 */
 
 #include "pathf90_libU_intrin.h"
 
 void
 pathf90_itime(pathf90_i4 *iar)
 {
-	struct tm *lclt;
+	struct tm lclt;
 	time_t t;
 
 	t = time(0);
-	lclt = localtime(&t);
-	iar[0] = lclt->tm_hour;
-	iar[1] = lclt->tm_min;
-	iar[2] = lclt->tm_sec;
+	localtime_r(&t, &lclt);
+	iar[0] = lclt.tm_hour;
+	iar[1] = lclt.tm_min;
+	iar[2] = lclt.tm_sec;
 }
 
 #else
@@ -92,4 +91,4 @@ itime_ (itime_struct *iar)
 	iar->isec = lclt->tm_sec;
 }
 
-#endif /* KEY Bug 1683 */
+#endif /* KEY Bug 1683, 5019 */

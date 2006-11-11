@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -240,7 +240,12 @@ i4 *ncopies)
 	char * rp1;
 	rp1 = result_p  ;
 	for (k = 0 ; k < nc ; k ++ ) {
+#ifdef KEY /* bug 8062 */
+	  /* Using IEEE FP on non-FP data might change bits during assign */
+	  *(ui4 *)rp1 = *(ui4 *)array_p ;
+#else /* KEY bug 8062 */
 	  *(r4 *)rp1 = *(r4 *)array_p ;
+#endif /* KEY bug 8062 */
 	  rp1 += res_stride[res_rank-1] ;
 	}
 	result_p += r_stride ;
@@ -265,7 +270,12 @@ i4 *ncopies)
 	char * rp1;
 	rp1 = result_p  ;
 	for (k = 0 ; k < nc ; k ++ ) {
+#ifdef KEY /* bug 8062 */
+	  /* Using IEEE FP on non-FP data might change bits during assign */
+	  *(ui8 *)rp1 = *(ui8 *)array_p ;
+#else /* KEY bug 8062 */
 	  *(r8 *)rp1 = *(r8 *)array_p ;
+#endif /* KEY bug 8062 */
 	  rp1 += res_stride[res_rank-1] ;
 	}
 	result_p += r_stride ;

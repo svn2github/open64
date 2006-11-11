@@ -80,8 +80,10 @@ ifeq ($(BUILD_OPTIMIZE), DEBUG)
 LCDEFS += -DLIBDEBUG -D_ASSERT_ON -DDEBUG_MTIO
 endif
 ifeq ($(BUILD_OPTIMIZE), NODEBUG)
+OPTIMIZER = -O3
 F90FLAGS =
 endif
+CFLAGS += -fno-fast-stdlib
 
 # use the f90 compiler for fortran
 

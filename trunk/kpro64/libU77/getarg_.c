@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -38,19 +38,6 @@
  * variable argument c
 */
 #include "externals.h"
-
-#if defined(__mips)
-#ifdef FTN90_IO
-#define ARGC __Argc
-#define ARGV __Argv
-#else
-#define ARGC f77argc
-#define ARGV f77argv
-#endif
-#elif defined(__linux)
-#define ARGC f__xargc
-#define ARGV f__xargv 
-#endif
 
 #ifdef KEY /* Bug 1683 */
 

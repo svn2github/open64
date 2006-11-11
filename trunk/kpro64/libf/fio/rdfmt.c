@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -465,9 +465,23 @@ _rdfmt(
 					&css->u.fmt.u.fe.scale);
 
 				if (nstat < 0) {
+#ifdef KEY /* Bug 8105 */
+					/* VMS extension allows numeric field
+					 * to end prematurely with "," */
+					if (EX_ILLCHAR == nstat &&
+					  ',' == (*(char *)tptr)) {
+					  itemch = (tptr - cup->ulineptr) + 1;
+					}
+					else {
+					  stat	= _nicverr(nstat);
+					  if (stat > 0)
+						  goto done;
+					}
+#else /* KEY Bug 8105 */
 					stat	= _nicverr(nstat);
 					if (stat > 0)
 						goto done;
+#endif /* KEY Bug 8105 */
 				}
 
 				/* Advance data addresses */

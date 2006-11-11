@@ -39,6 +39,7 @@ CFILES += \
 	allocated.c \
 	all_gen.c  \
 	any_gen.c  \
+	copyinout.c \
 	count_gen.c \
 	cshift_gen.c \
 	eoshift_gen.c \

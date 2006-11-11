@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -921,6 +921,8 @@ typedef long xfer_func_c(unit *cup, void *uda, type_packet *tip, int mode,
 
 #ifdef	_UNICOS
 #define	INITIALIZE_LOCK(x)	{ (x) = 0; }
+#elif   defined(KEY) /* Bug 6003 */
+#define	INITIALIZE_LOCK(x)	{ if (pthread_mutex_init) pthread_mutex_init(&(x), NULL); }
 #elif	defined(__mips) || (defined(_LITTLE_ENDIAN) && defined(__sv2))
 #define INITIALIZE_LOCK(x)	{ (x) = 0; }
 #elif	defined(_SOLARIS)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -146,7 +146,11 @@ ftellf90_8_4_( _f_int 	*unump)
 
 	case  FS_TEXT:
 	case  STD:
+#ifdef KEY /* Bug 1678 */
+		pos	= ftello(cup->ufp.std);
+#else /* KEY Bug 1678 */
 		pos	= ftell(cup->ufp.std);
+#endif /* KEY Bug 1678 */
 		break;
 
 	case FS_FDC:
@@ -201,7 +205,11 @@ ftellf90_8_( _f_int8 *unump)
 
 	case  FS_TEXT:
 	case  STD:
+#ifdef KEY /* Bug 1678 */
+		pos	= ftello(cup->ufp.std);
+#else /* KEY Bug 1678 */
 		pos	= ftell(cup->ufp.std);
+#endif /* KEY Bug 1678 */
 		break;
 
 	case FS_FDC:

@@ -267,6 +267,7 @@ CFILES += \
 	charutil.c \
 	chdir_.c \
 	chmod_.c \
+	cmd_line.c \
 	ctime_.c \
 	date_.c \
 	dtime_.c \

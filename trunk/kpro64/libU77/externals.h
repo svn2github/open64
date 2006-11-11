@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -75,6 +75,30 @@ extern void _cleanup (void);			/* unknown */
   extern int f__xargc;
   extern char **f__xargv;
 #endif
+
+#ifdef __mips
+#ifdef FTN90_IO
+#define ARGC __Argc
+#else
+#define ARGC f77argc
+#endif
+#elif defined(__linux)
+#define ARGC f__xargc
+#endif
+
+#if defined(__mips)
+#ifdef FTN90_IO
+#define ARGC __Argc
+#define ARGV __Argv
+#else
+#define ARGC f77argc
+#define ARGV f77argv
+#endif
+#elif defined(__linux)
+#define ARGC f__xargc
+#define ARGV f__xargv 
+#endif
+
 
 /* these are set and used within libU77 */
 extern char *bufarg;

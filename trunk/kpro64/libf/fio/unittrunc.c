@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -54,10 +54,18 @@ typedef long long _ftelltype;
 #define LIBFTELL ftell64 
 #define LIBFTRUNC ftruncate64
 #else
+#ifdef KEY /* Bug 1678 */
+/* Need 64 bit position to support long files */
+typedef off_t _ftelltype;
+#define LIBFSEEK fseeko
+#define LIBFTELL ftello
+#define LIBFTRUNC ftruncate /* Vanilla Linux ftruncate already uses off_t */
+#else /* KEY Bug 1678 */
 typedef long _ftelltype;
 #define LIBFSEEK fseek
 #define LIBFTELL ftell
 #define LIBFTRUNC ftruncate
+#endif /* KEY Bug 1678 */
 #endif
 /*
  *	_unit_trunc()

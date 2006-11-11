@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -820,7 +824,11 @@ struct ffsw     *stat)
 	int ret;
 	int remote_index;
 	int errv = 0;
+#ifdef KEY /* Bug 1678 */
+	/* Not used */
+#else /* KEY Bug 1678 */
 	struct ffc_stat_s statbuf;
+#endif /* KEY Bug 1678 */
 
 	_glio_barrier(arp);
 

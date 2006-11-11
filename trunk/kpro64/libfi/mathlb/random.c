@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -53,7 +53,6 @@ int _rand_r(unsigned int *seed);
 /* FIX: Absoft implementation not multi-thread safe */
 #include <stdlib.h>
 #endif
-
 
 #define DEFAULTSEED 01274321477
 
@@ -271,17 +270,29 @@ void _RANGET(void *seed)
 	memcpy(seed,&randstate,sizeof(randstate));
 }
 
+#include "cray/mtlock.h"
+static plock_t mut = MEM_LOCK_INIT;
+
 void _RANSET(void *seed)
 {
+#ifdef KEY /* Bug 5019 */
+	MEM_LOCK(&mut);
+#endif /* KEY Bug 5019 */
 	memcpy(&randstate,seed,sizeof(randstate));
 	front	= randstate.index % SEED_WORDS;
 	rear	= (front + SEP) % SEED_WORDS;
+#ifdef KEY /* Bug 5019 */
+	MEM_UNLOCK(&mut);
+#endif /* KEY Bug 5019 */
 }
 
 double _RANF_8(void) 
 {
 	double		d;
 	long long	i;
+#ifdef KEY /* Bug 5019 */
+	MEM_LOCK(&mut);
+#endif /* KEY Bug 5019 */
    
 	randstate.randtbl[front] += randstate.randtbl[rear];
 
@@ -303,6 +314,9 @@ double _RANF_8(void)
 #else
 	d	= TWOMINUS52 * (double) i;
 #endif
+#ifdef KEY /* Bug 5019 */
+	MEM_UNLOCK(&mut);
+#endif /* KEY Bug 5019 */
 	return (d);
 }
 
@@ -311,6 +325,9 @@ float _RANF_4(void)
 	int	i;
 	float	f;
 
+#ifdef KEY /* Bug 5019 */
+	MEM_LOCK(&mut);
+#endif /* KEY Bug 5019 */
 	randstate.randtbl[front] += randstate.randtbl[rear];
 
 	/* 24 bits */
@@ -318,6 +335,9 @@ float _RANF_4(void)
 	front	= (front + 1) % SEED_WORDS;
 	rear	= (rear + 1) % SEED_WORDS;
 	f	= (float) TWOMINUS24 * (float) i;
+#ifdef KEY /* Bug 5019 */
+	MEM_UNLOCK(&mut);
+#endif /* KEY Bug 5019 */
 	return (f);
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -111,7 +111,11 @@ pathf90_signal8(int *sig, long long *func) {
 	else if (1 == func_val) {
 	  flag = 1;
 	  }
-	ourfunc = (void (*)()) func;
+#if (_MIPS_SZPTR == _MIPS_SZLONG)
+	ourfunc = (void (*)()) (long) func_val;
+#else /* (_MIPS_SZPTR == _MIPS_SZLONG) */
+	ourfunc = (void (*)()) func_val;
+#endif /* (_MIPS_SZPTR == _MIPS_SZLONG) */
 	return pathf90_signal(sig, ourfunc, &flag);
 }
 

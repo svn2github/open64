@@ -316,6 +316,8 @@ typedef union
 
 #define	_64BIT_MACHINE
 
+//Workaround, since these builtin function are not supported by our compiler currently. 
+#if 0
 #define	ROUNDF(f)	__builtin_round_f2ll(f)
 #define	ROUND(d)	__builtin_round_d2ll(d)
 #define	ROUNDED(ed)	__builtin_round_ed2ll(ed)
@@ -332,6 +334,29 @@ typedef union
 #define	LL2EDLO(n, x)	x = __builtin_setf_sig(x, n)
 
 #define	FMERGE(x, y)	__builtin_fmerge_se(x, y)
+#else
+#define	ROUND(d)	(int)(((d) >= 0.0) ? ((d) + 0.5) : ((d) - 0.5))
+
+#define	ROUNDF(d)	(int)((d) >= 0.0f ? ((d) + 0.5f) : ((d) - 0.5f))
+
+#define	FLT2INT(x, n)	n = *(int *)&x
+
+#define	INT2FLT(n, x)	\
+{ \
+int tmpmac; \
+tmpmac = n; \
+x = *(float *)&tmpmac; \
+}
+
+#define	DBL2LL(x, l)	l = *(long long *)&x
+
+#define	LL2DBL(l, x)	\
+{ \
+long long tmpmac; \
+tmpmac = l; \
+x = *(double *)&tmpmac; \
+}
+#endif
 
 #define	INT	long long
 #define	UINT	unsigned long long

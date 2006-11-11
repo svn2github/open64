@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -90,15 +90,16 @@ secnds_vms (float *start)
 	return( (float) hms + ((float) curtime.tv_usec / 1000000.0) - *start );
 #endif  /* _BSD */
 
-#ifdef KEY
+#ifdef KEY /* Bug 5019 */
 	if ((hms = time(0)) == -1)
 	  {
 	  perror("secnds");
 	  exit(99);
 	  }
-	t = localtime(&hms);
+	struct tm result;
+	t = localtime_r(&hms, &result);
 	return((t->tm_sec+t->tm_min*60+t->tm_hour*3600) - *start);
-#endif  /* KEY */
+#endif  /* KEY Bug 5019 */
 }
 
 defalias(secnds_vms, secnds_);
@@ -138,15 +139,16 @@ double *start;
 	return( (double) hms + ((double) curtime.tv_usec / 1000000.0) - *start );
 #endif  /* _BSD */
 
-#ifdef KEY
+#ifdef KEY /* Bug 5019 */
 	if ((hms = time(0)) == -1)
 	  {
 	  perror("secnds");
 	  exit(99);
 	  }
-	t = localtime(&hms);
+	struct tm result;
+	t = localtime_r(&hms, &result);
 	return((double) (t->tm_sec+t->tm_min*60+t->tm_hour*3600) - *start);
-#endif  /* KEY */
+#endif  /* KEY Bug 5019 */
 }
 
 defalias(dsecnds_vms, dsecnds_);

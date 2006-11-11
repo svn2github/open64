@@ -1,5 +1,5 @@
 /*
- * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -104,6 +104,10 @@ static int suppress_repeats() {
   }
 #endif /* KEY Bug 2559 */
 
+#ifdef KEY /* Bug 1678 */
+extern void	_ffconvert_stat(struct stat *src, struct stat *dest);
+#endif /* KEY Bug 1678 */
+
 /*
  *	_f_opn - fortran open
  *
@@ -144,14 +148,22 @@ int		o_sysflgs)	/* O_TRUNC/O_CREAT/O_EXCL */
 	struct fdinfo	*fio;
 	struct ffsw	ffiostat;
 	struct ffc_info_s info;
+#ifdef KEY /* Bug 1678 */
+	struct stat ffio_statbuf;
+#else /* KEY Bug 1678 */
 	struct ffc_stat_s ffio_statbuf;
+#endif /* KEY Bug 1678 */
 
 	extern int	_def_cch_bufsiz;
 #ifdef	_UNICOS_MAX
 	extern int	_def_cch_simbufsiz;
 #endif
+#ifdef KEY /* Bug 1678 */
+	/* See above */
+#else /* KEY Bug 1678 */
 	extern void	_ffconvert_stat(struct ffc_stat_s *src,
 					struct stat *dest);
+#endif /* KEY Bug 1678 */
 
 	disk_file	= 1;	/* assume a disk file */
 	not_open	= 1;	/* file is not yet open */
@@ -1199,27 +1211,15 @@ int		catcherr)
  *	would be translated into the stat structure.
  */ 
 void
+#ifdef KEY /* Bug 1678 */
+_ffconvert_stat(struct stat *src, struct stat *dest)
+#else /* KEY Bug 1678 */
 _ffconvert_stat(struct ffc_stat_s *src, struct stat *dest)
+#endif /* KEY Bug 1678 */
 {
-#ifndef KEY
 	assert ( sizeof(*src) == sizeof(*dest) );
 
 	*dest	= *(struct stat *)src;
-#else
-	dest->st_dev = src->st_dev;
-	dest->st_ino = src->st_ino;
-	dest->st_mode = src->st_mode;
-	dest->st_nlink = src->st_nlink;
-	dest->st_uid = src->st_uid;
-	dest->st_gid = src->st_gid;
-	dest->st_rdev = src->st_rdev;
-	dest->st_size = src->st_size;
-	dest->st_atime = src->st_atim;
-	dest->st_mtime = src->st_mtim;
-	dest->st_ctime = src->st_ctim;
-	dest->st_blksize = src->st_blksize;
-	dest->st_blocks = src->st_blocks;
-#endif
 
 	return;
 }

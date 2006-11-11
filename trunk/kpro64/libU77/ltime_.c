@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -47,19 +47,32 @@
 
 #include <time.h>
 
-#ifdef KEY /* Bug 1683 */
+#ifdef KEY /* Bug 1683, 5019 */
 
 #include "pathf90_libU_intrin.h"
 
 void
 pathf90_ltime(pathf90_i4 *clock, pathf90_i4 *t)
+{
+	int i;
+	struct tm temp;
+
+	localtime_r((time_t *)clock, &temp);
+	t[0] = temp.tm_sec;
+	t[1] = temp.tm_min;
+	t[2] = temp.tm_hour;
+	t[3] = temp.tm_mday;
+	t[4] = temp.tm_mon;
+	t[5] = temp.tm_year;
+	t[6] = temp.tm_wday;
+	t[7] = temp.tm_yday;
+	t[8] = temp.tm_isdst;
+}
 
 #else
 
 extern void
 ltime_ (int *clock, int *t)
-
-#endif /* KEY Bug 1683 */
 {
 	int i;
 	int *l;
@@ -68,3 +81,5 @@ ltime_ (int *clock, int *t)
 	for (i=0; i<9; i++)
 		*t++ = *l++;
 }
+
+#endif /* KEY Bug 1683, 5019 */

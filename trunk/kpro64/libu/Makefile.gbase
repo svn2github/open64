@@ -81,6 +81,13 @@ ifeq ($(BUILD_TARGET), IA32)
 LCDEFS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 endif
 
+ifeq ($(BUILD_OPTIMIZE), NODEBUG)
+#OPTIMIZER = -O3
+#Workaround. Current open64 still has bug.
+OPTIMIZER = -O0
+endif
+CFLAGS += -fno-fast-stdlib
+
 ifeq ($(BUILD_OPTIMIZE), DEBUG)
 LCDEFS += -DLIBDEBUG -D_ASSERT_ON -DDEBUG_MTIO
 endif

@@ -1,3 +1,7 @@
+/*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* USMID @(#) clibinc/liberrno.h	92.7	11/09/99 14:39:08 */
 
 /*

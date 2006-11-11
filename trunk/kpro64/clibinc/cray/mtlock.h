@@ -1,3 +1,7 @@
+/*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
 /* USMID @(#) clibinc/cray/mtlock.h	92.2	07/26/99 12:57:34 */
 
 
@@ -50,6 +54,8 @@
 #include <mutex.h>
 #elif	defined(_SOLARIS)
 #include <synch.h>
+#elif   defined(KEY) /* Bug 6003 */
+#include <pthread.h>
 #elif   defined(_LITTLE_ENDIAN) && !defined(__sv2)
 /* do not include pthread.h yet */
 #endif
@@ -67,6 +73,8 @@
 typedef unsigned long	plock_t;
 #elif	defined(_SOLARIS)
 typedef mutex_t	plock_t;
+#elif   defined(KEY) /* Bug 6003 */
+typedef pthread_mutex_t plock_t;
 #elif	defined(_LITTLE_ENDIAN) && !defined(__sv2)
 /* do not use typedef pthread_mutex_t	plock_t yet */
 typedef unsigned long	plock_t;
@@ -124,6 +132,18 @@ typedef long mpplock_t;
 #elif	defined(_SOLARIS)
 #define MEM_LOCK(lock)		mutex_lock(lock);
 #define MEM_UNLOCK(lock)	mutex_unlock(lock);
+
+#elif defined(KEY) /* Bug 6003 */
+
+/* If we're not linking with -lpthread, then weak symbol pthread_mutex_lock
+ * will be null, and we'll skip these operations, which are unnecessary in
+ * the absence of threading. */
+#pragma weak pthread_mutex_init
+#pragma weak pthread_mutex_lock
+#pragma weak pthread_mutex_unlock
+#define MEM_LOCK_INIT		PTHREAD_MUTEX_INITIALIZER
+#define MEM_LOCK(lock)          { if (pthread_mutex_lock) pthread_mutex_lock(lock); }
+#define MEM_UNLOCK(lock)        { if (pthread_mutex_unlock) pthread_mutex_unlock(lock); }
 
 #elif   defined(_LITTLE_ENDIAN) && !defined(__sv2)
 /* do not use the following yet */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -714,7 +714,13 @@ _F90_ALLOCATE_B(long size,
 		}
 	}
 
+#ifdef KEY // bug 8994: if size wraps around and become -ve under -m32, we want
+	   // 	malloc to return 0 so we know to set statvar; if 0 is passed
+	   //   to malloc, it will not return 0
+	nbytes = size;
+#else
 	nbytes = size > 0 ? size : 0;
+#endif
 
 	/* replace the use of address 1 with globals.c entity
 	 *   base	= (void *) 1;

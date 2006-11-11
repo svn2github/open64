@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -653,7 +653,17 @@ _f_open(
 			 */
 			cup->uostatus	= OS_OLD;  /* REPLACE becomes OLD */
 
+#ifdef KEY /* Bug 7749 */
+			/* Later there's code to call _unit_trunc if the
+			 * olptr->ostatus == OS_REPLACE, but _unit_trunc
+			 * does nothing for direct access files (because
+			 * it's used in other contexts where truncation
+			 * is wrong for direct access.) So we must arrange
+			 * to truncate when we open the file. */
+			oflags	= O_CREAT | O_TRUNC;
+#else /* KEY Bug 7749 */
 			oflags	= O_CREAT;
+#endif /* KEY Bug 7749 */
 			break;
 
 	} /* switch */

@@ -120,7 +120,9 @@ ifndef BUILD_COMPILER
 endif
 ifneq ($(BUILD_COMPILER), GNU)
 ifneq ($(BUILD_COMPILER), PSC)
+ifneq ($(BUILD_COMPILER), OSP)
   ABORT_BUILD = BUILD_COMPILER has bad value - $(BUILD_COMPILER)!
+endif
 endif
 endif
 

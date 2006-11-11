@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -38,7 +42,11 @@
 
 #include <fortran.h>
 
+#ifdef KEY /* Bug 8290 */
+#  include "element.h"
+#else /* KEY Bug 8290 */
 extern void _JDATE_( void *julianday, int  iffcd );
+#endif /* KEY Bug 8290 */
 
 /*
  *	Duplicate names

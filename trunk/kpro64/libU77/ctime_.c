@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -48,15 +48,18 @@
 #include <time.h>
 #include "externals.h"
 
-#ifdef KEY /* Bug 1683 */
+#ifdef KEY /* Bug 1683, 5019 */
 
 #include "pathf90_libU_intrin.h"
+
+#define CTIME_BUFLEN	26
 
 void
 pathf90_ctime4(char *str, int len, pathf90_i4 *clock)
 {
+	char buf[CTIME_BUFLEN];
 	time_t ctemp = (time_t) *clock;
-	char *s = ctime(&ctemp);
+	char *s = ctime_r(&ctemp, buf);
 	s[24] = '\0';
 	b_char(s, str, len);
 }
@@ -70,8 +73,9 @@ pathf90_subr_ctime4(pathf90_i4 *clock, char *str, int len)
 void
 pathf90_ctime8(char *str, int len, pathf90_i8 *clock)
 {
+	char buf[CTIME_BUFLEN];
 	time_t ctemp = (time_t) *clock;
-	char *s = ctime(&ctemp);
+	char *s = ctime_r(&ctemp, buf);
 	s[24] = '\0';
 	b_char(s, str, len);
 }
@@ -91,4 +95,4 @@ ctime_ (char *str, int len, int *clock)
 	s[24] = '\0';
 	b_char(s, str, len);
 }
-#endif /* KEY Bug 1683 */
+#endif /* KEY Bug 1683, 5019 */

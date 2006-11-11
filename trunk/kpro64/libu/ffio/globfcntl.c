@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -133,7 +137,11 @@ struct ffsw	*iostat)	/* pointer to status return word */
  *		The size returned reflects the global layer's idea of the 
  *		file size.
  */
+#ifdef KEY /* Bug 1678 */
+		((struct stat *)arg)->st_size = fdptr->size;
+#else /* KEY Bug 1678 */
 		((struct ffc_stat_s *)arg)->st_size = fdptr->size;
+#endif /* KEY Bug 1678 */
 		break;
 
 	case FC_ASPOLL:

@@ -1,4 +1,8 @@
 /*
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -40,6 +44,10 @@
 #include <string.h>
 #include <time.h>
 #include <sys/types.h>
+
+#ifdef KEY /* Bug 8290 */
+#include "element.h"
+#endif /* KEY Bug 8290 */
 
 /*
  *	DATE	Returns the current date in "MM/DD/YY" format.

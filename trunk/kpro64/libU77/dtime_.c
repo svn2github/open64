@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* Copyright (C) 1995, 1996 Free Software Foundation, Inc.
@@ -46,7 +46,9 @@ Boston, MA 02111-1307, USA.  */
 #include <errno.h>		/* for ENOSYS */
 #include "f2c.h"
 
-#ifdef KEY /* Bug 3018 */
+#ifdef KEY /* Bug 3018, 5019 */
+
+#include "cray/mtlock.h"
 
 #include "pathf90_libU_intrin.h"
 
@@ -56,8 +58,10 @@ pathf90_dtime (float tarray[2])
 {
   float utime, stime;
   static float old_utime = 0.0, old_stime = 0.0;
+  static plock_t mut = PTHREAD_MUTEX_INITIALIZER;
   struct rusage rbuff;
 
+  MEM_LOCK(&mut);
   if (getrusage (RUSAGE_SELF, &rbuff) != 0)
     abort ();
   utime = (float) (rbuff.ru_utime).tv_sec +
@@ -68,6 +72,8 @@ pathf90_dtime (float tarray[2])
   tarray[1] = stime - old_stime;
   old_utime = utime;
   old_stime = stime;
+  MEM_UNLOCK(&mut);
+
   return (tarray[0] + tarray[1]);
 }
 
@@ -208,4 +214,4 @@ dtime_ (real tarray[2])
   return 0.0;
 #endif /* ! HAVE_GETRUSAGE && ! HAVE_TIMES */
 }
-#endif /* KEY Bug 3018 */
+#endif /* KEY Bug 3018, 5019 */

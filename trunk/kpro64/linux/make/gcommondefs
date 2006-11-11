@@ -131,6 +131,21 @@ endif
 F77 = $(F90)
 endif
 
+ifeq ($(BUILD_COMPILER), OSP)
+ASNAME = opencc
+CCNAME = opencc
+C++NAME = openCC
+F90 = openf90
+F90_RTLIBS = -lfortran
+ifeq ($(BUILD_TARGET), IA32)
+ASNAME += -m32 -mno-sse2
+CCNAME += -m32 -mno-sse2
+C++NAME += -m32 -mno-sse2
+F90 += -m32 -mno-sse2
+endif
+F77 = $(F90)
+endif
+
 AS	= $(ASNAME) -D_SGI_SOURCE
 
 C++	= $(C++NAME) -D_SGI_SOURCE -D_LANGUAGE_C_PLUS_PLUS

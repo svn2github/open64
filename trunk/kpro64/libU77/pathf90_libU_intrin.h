@@ -1,5 +1,5 @@
 /*
-Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of version 2 of the GNU General Public License as
@@ -20,6 +20,8 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write the Free Software Foundation, Inc., 59
 Temple Place - Suite 330, Boston MA 02111-1307, USA.
 */
+
+#include "cray/mtlock.h"
 
 /*
  * The "pathf90_xxx" intrinsics provide implementations which do not interfere
@@ -67,3 +69,5 @@ extern pathf90_i4 pathf90_system(char *, pathf90_i4 *, int);
 extern pathf90_i4 pathf90_time4(void);
 extern pathf90_i8 pathf90_time8(void);
 extern pathf90_i4 pathf90_unlink(char *, pathf90_i4 *, int);
+
+extern plock_t pathf90_rand_mutex;

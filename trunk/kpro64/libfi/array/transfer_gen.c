@@ -1,5 +1,5 @@
 /*
- * Copyright 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -168,7 +168,16 @@ i4 *size)
     SET_ASSOCIATED_IN_DESC(result);
     SET_CONTIG_IN_DESC(result);
     if (GET_DV_ASCII_FROM_DESC(result)) {
+#ifdef KEY /* Bug 7859 */
+      /* Other intrinsics which contain the same pattern (test
+       * GET_DV_ASCII_FROM_DESC, then call SET_CHARPTR_IN_DESC) such as
+       * eoshift_gen.c, cshift_gen.c, etc do not multiply the size by 8.
+       * Perhaps it's left over from Cray non-byte-addressable antiquity?
+       */
+      SET_CHARPTR_IN_DESC(result,p,res_sz);
+#else /* KEY Bug 7859 */
       SET_CHARPTR_IN_DESC(result,p,res_sz << 3);
+#endif /* KEY Bug 7859 */
     }
     SET_ORIG_BS_IN_DESC(result,p) ;
     SET_ORIG_SZ_IN_DESC(result,nbytes * 8 ) ;

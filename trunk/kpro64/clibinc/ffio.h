@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /* USMID @(#) clibinc/ffio.h	92.11	11/09/99 17:20:39 */
@@ -300,6 +300,11 @@ struct ffc_chkev_s
 	int	unused2;	/* reserved */
 	};
 	
+#ifdef KEY /* Bug 1678 */
+/* This was out of sync for SuSE9 Linux -m32 when -D_FILE_OFFSET_BITS=64
+ * and -D_LARGEFILE_SOURCE were defined. Keeping a private version of
+ * "struct stat" in sync with the real version is a losing proposition. */
+#else /* KEY Bug 1678 */
 /*
  *	fffcntl FC_STAT structure
  *
@@ -478,13 +483,12 @@ struct	ffc_stat_s {
 	unsigned long	unused3[1];
 	unsigned long	unused4[1];
 	unsigned long	unused5[1];
-#ifdef KEY
-	int unused6[14]; /* needed to make same size as struct stat from /usr/include/bits/stat.h */
-#endif
 	};
 #endif /* _LP64 */
 
 #endif	/* __mips */
+
+#endif	/* KEY */
 
 /*
  *	fffcntl FC_IALLOC structure

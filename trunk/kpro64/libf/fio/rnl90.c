@@ -1,5 +1,5 @@
 /*
- * Copyright 2003, 2004 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1422,6 +1422,9 @@ _indx_nl(
 	if (arryflag) {
 		for (i = 0; i < MAXDIMS; ) {
 			long	dummy;
+#ifdef KEY /* Bug 8046 */
+			int orig_low_bound = dvdn[i].low_bound;
+#endif /* KEY Bug 8046 */
 			/* no comments in namelist input here and
 			 * skip leading blanks here only. 
 			 */
@@ -1461,8 +1464,22 @@ indxgetext:
 				/* update ulineptr */
 				SUBGTC(c);
 				GETSECTION(c);
+#ifdef KEY /* Bug 8046 */
+				/* When there's a ":" after low bound,
+				 * this is a section, not an element */
+				en1++;
+				if (field_width == 0) {
+					/* No explicit upper bound, so extent
+					 * is reduced by change (if any) in
+					 * low bound */
+					dvdn[i].extent -=
+					  (dvdn[i].low_bound - orig_low_bound);
+					goto indxgetinc;
+				}
+#else /* KEY Bug 8046 */
 				if (field_width == 0)
 					goto indxgetinc;
+#endif /* KEY Bug 8046 */
 				/* pass field_end + 1 */
 				field_end++;
 				tempbuf[0]	= 0;
@@ -1480,7 +1497,9 @@ indxgetext:
 				 */
 				dvdn[i].extent	= (*((_f_int8 *)tempbuf) -
 						   dvdn[i].low_bound) + 1;
+#ifndef KEY /* Bug 8046 */
 				en1++;
+#endif /* KEY Bug 8046 */
 indxgetinc:
 				/* point beyond subscript extent. */
 				cup->ulineptr	= field_begin + field_width;
@@ -1514,6 +1533,12 @@ indxforloop:
 					cup->ulinecnt	= cup->ulinecnt - field_width;
 				}
 			}
+#ifdef KEY /* Bug 8046 */
+			/* No ":" after low bound implies extent is 1 */
+                        else {
+				dvdn[i].extent	= 1;
+			}
+#endif /* KEY Bug 8046 */
 			/* increment the number of subscripts */
 			i++;
 			do {

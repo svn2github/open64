@@ -1,5 +1,5 @@
 /*
- * Copyright 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -407,7 +407,12 @@ DopeVectorType	*order)
     for (;;) {
       while (counter[src_rank] < src_extent[src_rank] ) {
 	for ( i = 0 ; i < a_size ; i ++ ) {
+#ifdef KEY /* bug 8062 */
+	  /* Using IEEE FP on non-FP data might change bits during assign */
+	  *(ui4 *)result_p = *(ui4 *)array_p ;
+#else /* KEY bug 8062 */
 	  *(r4 *)result_p = *(r4 *)array_p ;
+#endif /* KEY bug 8062 */
 	  array_p += a_stride ;
 	  result_p += r_stride ;
 
@@ -452,7 +457,12 @@ DopeVectorType	*order)
     for (;;) {
       while (counter[src_rank] < src_extent[src_rank] ) {
 	for ( i = 0 ; i < a_size ; i ++ ) {
+#ifdef KEY /* bug 8062 */
+	  /* Using IEEE FP on non-FP data might change bits during assign */
+	  *(ui8 *)result_p = *(ui8 *)array_p ;
+#else /* KEY bug 8062 */
 	  *(r8 *)result_p = *(r8 *)array_p ;
+#endif /* KEY bug 8062 */
 	  array_p += a_stride ;
 	  result_p += r_stride ;
 

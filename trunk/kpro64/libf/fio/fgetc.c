@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -150,25 +150,44 @@ fgetcf90_(_f_int *u, char *c, int clen)
 	  int errf = 0;
 	  cup = _imp_open(&cfs, SEQ, FMT, unum, errf, &stat);
 	  if (0 == cup) {
-	    return errno = stat;
+	    res = errno = stat;
+	    goto done;
 	  }
 	}
 #endif /* KEY Bug 1683 */
 
-	if (unum < 0 || !cup)
-		return((errno=FEIVUNIT));
+	if (unum < 0 || !cup) {
+		res = (errno=FEIVUNIT);
+		goto done;
+	}
 	
+#ifdef KEY /* Bug 9015 */
+        /* _frch sometimes gets into an endless loop returning character -1
+	 * and non-EOF status. Also, the code following the call to _frch
+	 * fails to test for 0 == status (end of record) and fails to
+	 * distinguish EOF (status < 0 but _frch doesn't return -1) from
+	 * error (_frch returns -1.) Since the code has never worked (SGI
+	 * octane exhibits the same problem) just call stdio. But this
+	 * works only for formatted I/O - still need a fix for binary or
+	 * unformatted. */
+	if (cup->ufmt) {
+	  FILE *fd = cup->ufp.std;
+	  res = fgetc(fd);
+	  if (EOF == res) {
+	     res = feof(fd) ? -1 : ferror(fd);
+	     goto done;
+	  }
+	  *c = res;
+	  res = 0;
+	  goto done;
+	}
+#endif /* KEY Bug 9015 */
 	if (_frch(cup, &buf, 1, PARTIAL, &status) == -1)
 		res	= errno;
-#ifdef KEY /* Bug 5805 */
-	/* Negative status without error implies EOF, which G77 says is -1 */
-	else if (0 > status) {
-		res = -1;
-	}
-#endif /* KEY Bug 5805 */
 
 	*c	= (char)buf;
 
+done:
 	/* unlock the unit */
 	STMT_END( cup, TF_READ, NULL,  &cfs);
 

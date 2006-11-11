@@ -1,5 +1,5 @@
 /*
- * Copyright 2004, 2005 PathScale, Inc.  All Rights Reserved.
+ * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
 /*
@@ -196,6 +196,12 @@ fill:
 			count	= chars - nchr;
 			tp	= tbuf;
 			count	= MIN(TBUFSZB, (count + 1));
+#ifdef KEY /* Bug 3797, 8405 */
+			off_t oldpos = ftello(fptr);
+			if (-1 == oldpos & ESPIPE != errno) {
+			   return IOERR;
+			}
+#endif /* KEY Bug 3797, 8405 */
 			tpinterim	= fgets((char *)tp, count, fptr);
 			if (tpinterim == NULL) {
 			/*
@@ -230,22 +236,48 @@ fill:
 			} else {
 				unsigned char	*tmpptr;
 				ncnt	= count - 1;
-#ifdef KEY /* Bug 3797 */
-				/* no newline if fgets encountered eof */
-				tmpptr	= strchr(tp, '\n');
-#ifdef KEY /* Bug 3975 */
-				char *nlptr	= memchr(tp, '\n', ncnt);
-				/* Temporary fix to deal with the situation
-				 * in which nulls appear before the newline.
-				 * Correct fix is to eliminate those nulls.
-				 */
-				if (NULL == tmpptr && NULL != nlptr) {
-					tmpptr = nlptr;
+#ifdef KEY /* Bug 3797, 8405 */
+				/* On Linux, if fgets() reads any characters
+				 * before it encounters EOF, then it doesn't
+				 * return NULL but does set feof(), so this
+				 * is where we arrive if the last record of
+				 * the file lacks '\n'. Distinguishing between
+				 * '\0' placed in the buffer by fgets() versus
+				 * a '\0' appearing in the record itself
+				 * presents a dilemma when there's no '\n'. If
+				 * we can, we use ftello() before and after the
+				 * fgets() to determine how many characters it
+				 * gave us; otherwise we use strlen() even
+				 * though it stops at the first '\0'.
+				 *
+				 * Note that it's necessary to test for
+				 * EOF before calling "memchr" to look for
+				 * '\n', because when the record is shorter
+				 * than ncnt bytes and does not end in '\n',
+				 * there might be a spurious '\n' in memory
+				 * after the '\0' which indicates the end of
+				 * the data read from the file but before the
+				 * ncnt'th byte. */
+				if (feof(fptr)) {
+					*status = EOR;
+					off_t newpos = ftello(fptr);
+					if (-1 == newpos && ESPIPE != errno) {
+					   return IOERR;
+					}
+					ncnt = (-1 == oldpos && -1 == newpos) ?
+					  strlen(tp) :
+					  (newpos - oldpos);
+					nchr += ncnt;
+					_unpack(tp, uda, ncnt, -1);
+					return nchr;
 				}
-#endif /* KEY Bug 3975 */
-#else
+				/* If not EOF, the line will either contain
+				 * '\n', or (if it was too long) it
+				 * will have "ncnt" characters. Using "memchr"
+				 * instead of "strchr" ensures that a '\0'
+				 * within the line won't stop us prematurely. */
+#endif /* KEY Bug 3797, 8405 */
 				tmpptr	= memchr(tp, '\n', ncnt);
-#endif /* KEY Bug 3797 */
 				if (tmpptr != NULL) {	/* eor */
 					*status	= EOR;
 					ncnt	= tmpptr - tp;
@@ -254,16 +286,6 @@ fill:
 					/* Return number of chars read */
 					return(nchr);
 				}
-#ifdef KEY /* Bug 3797 */
-				/* fgets got chars ending in eof, not newline */
-				else if (feof(fptr)) {
-					*status = EOR;
-					ncnt = strlen(tp);
-					nchr += ncnt;
-					_unpack(tp, uda, ncnt, -1);
-					return nchr;
-				}
-#endif /* KEY Bug 3797 */
 				_unpack(tp, uda, ncnt, -1);
 				nchr		+= ncnt;
 				uda		+= ncnt;
