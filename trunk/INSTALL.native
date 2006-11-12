@@ -116,9 +116,10 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
 
-    INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95
-    INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/cf95.cat ${PHASEPATH}/cf95.cat
-
+    if [ -f ${AREA}/crayf90/sgi/mfef95 ] ; then 
+      INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef95   ${PHASEPATH}/mfef95
+      INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/cf95.cat ${PHASEPATH}/cf95.cat
+    fi
     return 0
 }
 
