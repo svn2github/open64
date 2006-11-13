@@ -1,6 +1,0 @@
-acknowledge.tex
-ch1.tex
-ch2.tex
-ch3.tex
-ch4.tex
-preface.tex

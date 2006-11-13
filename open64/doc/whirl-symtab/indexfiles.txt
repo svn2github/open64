@@ -1,2 +1,0 @@
-symtab.tex
-whirl.tex
