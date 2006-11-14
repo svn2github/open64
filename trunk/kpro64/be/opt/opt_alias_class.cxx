@@ -1314,6 +1314,16 @@ ALIAS_CLASSIFICATION::Expr_may_containt_pointer (WN* const expr) {
   }
 
   TYPE_ID res = WN_rtype (expr); 
+  if (MTYPE_byte_size (res) == 0) {
+    // The <res> can be TYPE_M which may contain pointer. 
+    // TODO:: A better solution is to take a closer look of what in 
+    //   the MTYPE_M. However, the fix is done at the last minute of 
+    //   2.1 release. OTOH, some functions don't work with MTYPE_M, 
+    //   say WN_object_size() may return 0 when the object of MTYPE_M. 
+    //   We have to be conservative at this moment.
+    return TRUE;
+  }
+
   if (MTYPE_byte_size (res) < Pointer_Size ||
       (MTYPE_is_void (res)    || MTYPE_is_float (res) || 
        MTYPE_is_complex (res) || MTYPE_is_vector (res) || 
