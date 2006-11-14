@@ -187,8 +187,8 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         #  SGI implementation for turning on FLUSH to ZERO 
     INSTALL_DATA_SUB $d/init/ftz.o     ${PHASEPATH}/ftz.o
 
-        # libgcc.a and libstdc++.a are deemed as "GNU link" specific archieves
-    for i in libstdc++.a libgcc.a ; do 
+        # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archieves
+    for i in libgcc.a libstdc++.a libstdc++.so; do 
         F=`gcc --print-file-name $i`
         [ ! -z "$F" ] && [ -e $F ] && INSTALL_DATA_SUB $F ${PHASEPATH}/$i
     done
