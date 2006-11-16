@@ -1741,7 +1741,8 @@ Prepare_Source (void)
     /* Prepare relocatable object file name: */
     if ( Obj_File_Name == NULL ) {
 	/* Replace source file extension to get	object file: */
-	Obj_File_Name =	New_Extension (fname, OBJ_FILE_EXTENSION);
+        char *tmp_fname = tempnam(NULL, NULL);
+        Obj_File_Name = New_Extension (tmp_fname, OBJ_FILE_EXTENSION);
     }
 
 #if 0
