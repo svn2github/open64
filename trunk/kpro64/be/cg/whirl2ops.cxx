@@ -1411,7 +1411,11 @@ Handle_Call_Site (WN *call, OPERATOR call_opr)
   // if caller-save-gp and not defined in own dso, then restore gp.
   // if call_st == null, then indirect call, and assume external.
   if (Is_Caller_Save_GP && !Constant_GP &&
-      (call_st == NULL || ST_export(call_st) == EXPORT_PREEMPTIBLE) || ST_is_weak_symbol(call_st))
+      // begin - fix for OSP_211
+	  //         put the ST_is_weak_symbol condition under the guard of 
+	  //         call_st == NULL, or else it will segmentation fault.
+      (call_st == NULL || ST_export(call_st) == EXPORT_PREEMPTIBLE || ST_is_weak_symbol(call_st)) )
+	  // end   -
   {
 	// restore old gp
 	// assume that okay to restore gp before return val of call
