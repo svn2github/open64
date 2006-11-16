@@ -211,9 +211,9 @@ GRA_GRANT_Local_Register( GRA_BB* gbb, ISA_REGISTER_CLASS rc, REGISTER reg )
      In the long run, it may not even be safe if changes are made to
      how Build_Dedicated_TN works. But it works for now!
   */
-  if (!REGISTER_SET_MemberP(REGISTER_CLASS_function_value(rc), reg) ||
+  if (!REGISTER_SET_MemberP(REGISTER_CLASS_function_value(rc), reg) &&
       !BB_call(gbb->Bb()) &&
-      !GTN_SET_MemberP(BB_live_in (gbb->Bb()),Build_Dedicated_TN(rc, reg, 8)) ||
+      !GTN_SET_MemberP(BB_live_in (gbb->Bb()),Build_Dedicated_TN(rc, reg, 8)) && 
       !GTN_SET_MemberP(BB_live_out(gbb->Bb()),Build_Dedicated_TN(rc, reg, 8))) {
     GRA_Trace_Grant(gbb,rc,reg);
     GRANT_Union1D(gr,rc,reg);
