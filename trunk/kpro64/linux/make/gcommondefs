@@ -133,8 +133,8 @@ endif
 
 ifeq ($(BUILD_COMPILER), OSP)
 ASNAME = opencc
-CCNAME = opencc -OPT:alias=no_typed
-C++NAME = openCC -OPT:alias=no_typed
+CCNAME = opencc 
+C++NAME = openCC  
 F90 = openf90
 F90_RTLIBS = -lfortran
 ifeq ($(BUILD_TARGET), IA32)
