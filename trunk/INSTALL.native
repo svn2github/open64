@@ -355,8 +355,12 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES
 INSTALL_PREBUILD_OPEN64_NATIVE_LIB 
 INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES
 
-# We use /usr/lib instead.
-INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP 
+# We no longer need to install crt{begin,end}[S].o. If IPA is off, 
+# gcc/g++ instead of ld/collect2 is used as linker, and those object
+# files are taken care by gcc/g++; If IPA is on, the driver can figure
+# out the full path to it by calling 'gcc -print-file-name=crtxxx.o'.
+#
+# INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP 
 
 [ "$BUILD_HOST" != "$TARG_HOST" ] && INSTALL_CROSS_UTIL
 INSTALL_PREBUILD_PHASE 
