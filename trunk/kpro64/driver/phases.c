@@ -578,6 +578,21 @@ specify_dyn_linker (string_list_t *args) {
 }
 //#endif /* CROSS_COMPILATION */
 
+static const char* ipa_dynamic_linker
+#ifdef TARG_IA64
+   = "-Wl,/lib/ld-linux-ia64.so.2"
+#endif
+;
+
+
+static void
+specify_ipa_dyn_linker (string_list_t *args) {
+        if (shared == CALL_SHARED) {
+                add_string(args, "-Wl,-dynamic-linker");
+                add_string(args, (char*)ipa_dynamic_linker);
+        }
+}
+
 #ifdef KEY
 // Like add_file_args but add args that must precede options specified on the
 // command line.
@@ -2213,8 +2228,8 @@ run_ld (void)
 	add_instr_archive (args);
 
 	add_final_ld_args (args,ldphase);
-	if (ldphase != P_ld && ldphase != P_ldplus) {
-		add_rpath_link_option (args);
+	if ( ldphase == P_ipa_link ) {
+	  specify_ipa_dyn_linker(args);
 	}
 	postprocess_ld_args (args);
 
