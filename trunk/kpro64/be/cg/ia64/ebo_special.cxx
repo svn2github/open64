@@ -4187,12 +4187,16 @@ Fold_Constant_Expression (OP *op,
     OPS ops = OPS_EMPTY;
     TN *result1 = (result_val == 0) ? OP_result(op,1) : OP_result(op,0);
     TN *result2 = (result_val == 0) ? OP_result(op,0) : OP_result(op,1);
-    Build_OP (TOP_Is_Unconditional_Compare(opcode) ? TOP_cmp_eq_unc : TOP_cmp_eq,
-              result1, True_TN, OP_opnd(op, OP_PREDICATE_OPND), Zero_TN, Zero_TN, &ops);
-    OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
-    Build_OP (TOP_Is_Unconditional_Compare(opcode) ? TOP_cmp_eq_unc : TOP_cmp_eq,
-              True_TN, result2, OP_opnd(op, OP_PREDICATE_OPND), Zero_TN, Zero_TN, &ops);
-    OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+    if (result1 != True_TN){
+      Build_OP (TOP_Is_Unconditional_Compare(opcode) ? TOP_cmp_eq_unc : TOP_cmp_eq,
+               result1, True_TN, OP_opnd(op, OP_PREDICATE_OPND), Zero_TN, Zero_TN, &ops);
+      OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+    }
+    if (result2 != True_TN){
+      Build_OP (TOP_Is_Unconditional_Compare(opcode) ? TOP_cmp_eq_unc : TOP_cmp_eq,
+               True_TN, result2, OP_opnd(op, OP_PREDICATE_OPND), Zero_TN, Zero_TN, &ops);
+      OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+    }
 
     if (EBO_Trace_Optimization) {
       #pragma mips_frequency_hint NEVER
@@ -5910,12 +5914,16 @@ condition_optimization(OP *op,
 
    /* Replace the original operands with constants and allow
       it to be resolved by constant expression evaluation. */
-    Build_OP (opcode, r0, True_TN, prd, Zero_TN, Zero_TN, &ops);
-    OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
-    if (OP_glue(op)) Set_OP_glue(OPS_first(&ops));
-    Build_OP (opcode, True_TN, r1, prd, Zero_TN, Zero_TN, &ops);
-    OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
-    if (OP_glue(op)) Set_OP_glue(OPS_first(&ops));
+    if (r0 != True_TN) {
+      Build_OP (opcode, r0, True_TN, prd, Zero_TN, Zero_TN, &ops);
+      OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+      if (OP_glue(op)) Set_OP_glue(OPS_first(&ops));
+    }
+    if (r1 != True_TN) {
+      Build_OP (opcode, True_TN, r1, prd, Zero_TN, Zero_TN, &ops);
+      OP_srcpos(OPS_last(&ops)) = OP_srcpos(op);
+      if (OP_glue(op)) Set_OP_glue(OPS_first(&ops));
+    }
     if (EBO_in_loop) EBO_OPS_omega (&ops, opnd_tninfo[OP_PREDICATE_OPND]);
     BB_Insert_Ops(OP_bb(op), op, &ops, FALSE);
 
