@@ -328,8 +328,13 @@ main (int argc, char *argv[])
 	    }
             fprintf(stderr, "Built on: %s\n", build_date);
             fprintf(stderr, "Thread model: posix\n");	// Bug 4608.
+#if defined(TARG_IA64)
+            fprintf(stderr, "GNU gcc version " PSC_GCC_VERSION
+					  " (Open64 " PSC_FULL_VERSION " driver)\n");
+#else 
             fprintf(stderr, "GNU gcc version " PSC_GCC_VERSION
                     " (PathScale " PSC_FULL_VERSION " driver)\n");
+#endif
         }
 	if (show_copyright) {
 	    if (show_version)
