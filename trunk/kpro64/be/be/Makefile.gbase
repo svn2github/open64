@@ -684,6 +684,12 @@ c_q_sub.o: c_q_sub.c $(COMMON_COM_DIR)/defs.h $(COMMON_UTIL_DIR)/quad.h
 	$(CCF) -OPT:roundoff=0 -c $<
 endif
 
+ifeq ($(BUILD_COMPILER), OSP)
+wn_fio.o: wn_fio.cxx
+	$(CXXF) -OPT:alias=no_typed -c $<
+endif
+
+
 LDIRT += be wopt.so be.so cg.so lno.so whirl2c.so whirl2f.so purple.so prompf_anl.so
 LDIRT += ipl.so inline.so r4000.so r5000.so r8000.so r10000.so itanium.so pentium.so opteron.so
 
