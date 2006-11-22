@@ -104,7 +104,7 @@ static char* _Global_Insn_Sched_Phase_Name = "ORC:Global code motion"  ;
 static char* _Local_Insn_Sched_Phase_Name = "ORC:Local code motion" ;
 static char* _Cur_Phase_Name = NULL ;
 
-
+#define MAX_BB_LENGTH (360)
 
     /* ================================================================
      *
@@ -2399,6 +2399,12 @@ SCHEDULER::Schedule_Cycle (void) {
 
         if (!cand) { return ; }
 
+        if (BB_length (_target_bb) >= MAX_BB_LENGTH &&
+          OP_bb(cand->Op ()) != _target_bb) {
+          _cand_mgr.Get_Cand_List (cand)-> Erase_Cand (cand);
+          continue;
+        }
+
         if (!CGGRP_Issue_OP(cand->Op())) {
 
                 /* This candidate cannot be issued in current cycle
@@ -2592,6 +2598,10 @@ SCHEDULER::Need_Resched_To_Obtain_Better_Performance (void) {
 
     if (_upward_motion_num <= 0) {
         return FALSE;
+    }
+
+    if (BB_length(_target_bb) >= MAX_BB_LENGTH) {
+      return FALSE;
     }
 
     return TRUE;
