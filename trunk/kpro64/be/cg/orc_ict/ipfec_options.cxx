@@ -151,7 +151,7 @@ BOOL ORC_Enable_Postpass_LOCS = TRUE;
 BOOL ORC_Enable_Speculation = TRUE;
 BOOL ORC_Enable_Data_Speculation = TRUE;
 BOOL ORC_Enable_Cntl_Speculation = TRUE;
-BOOL ORC_Enable_FP_Ld_Speculation = FALSE;
+BOOL ORC_Enable_FP_Ld_Speculation = TRUE;
 BOOL ORC_Enable_Data_Spec_Res_Aware = TRUE;
 BOOL ORC_Enable_Compressed_Template = TRUE;
 
