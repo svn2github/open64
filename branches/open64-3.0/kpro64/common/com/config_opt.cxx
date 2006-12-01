@@ -156,8 +156,8 @@ BOOL GCM_Speculative_Ptr_Deref= TRUE;  /* allow load speculation of a memory
 BOOL GCM_Speculative_Ptr_Deref_Set=FALSE;   /* ... option seen? */
 
 /***** Limits on optimization *****/
-#define DEFAULT_OLIMIT		6000
-#define DEFAULT_O3_OLIMIT	9000	/* allow more time for -O3 compiles */
+#define DEFAULT_OLIMIT		24000
+#define DEFAULT_O3_OLIMIT	30000	/* allow more time for -O3 compiles */
 #define MAX_OLIMIT		INT32_MAX
 INT32 Olimit = DEFAULT_OLIMIT;
 static BOOL Olimit_Set = FALSE;
