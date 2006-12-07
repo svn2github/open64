@@ -734,6 +734,7 @@ static const char * const BBKIND_names[] = {
   /* 6 */	"CALL",
   /* 7 */	"REGION_EXIT",
   /* 8 */	"TAIL_CALL",
+  /* 9 */	"CHK",
 };
 /* WARNING: the order of this array must match #defines in bb.h. */
 
@@ -776,6 +777,11 @@ BB_kind(BB *bb)
    */
   if (BB_call(bb)) return BBKIND_CALL;
 
+  /* A chk bb end with a chk op
+   */
+  br = BB_last_op(bb);
+  if (BB_chk_split(bb) && br && BB_Last_chk_op(bb)) return BBKIND_CHK;// bug fix for OSP_104, OSP_105, OSP_192
+   
   /* Get the branch OP and the number of successors.
    */
   br = BB_branch_op(bb);

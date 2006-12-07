@@ -1084,7 +1084,8 @@ Finalize_BB(BB *bp)
   
   switch (BBINFO_kind(bp)) {
   case BBKIND_LOGIF:
-    {
+  case BBKIND_CHK: // bug fix for OSP_104, OSP_105, OSP_192
+  {
       INT tfirst;
       INT tcount;
       LABEL_IDX lab;
@@ -1096,7 +1097,10 @@ Finalize_BB(BB *bp)
       INT64 fall_through_offset;
       INT64 target_offset;
       OP *br = BB_branch_op(bp);
-
+      if ((br == NULL) || OP_noop(br))// bug fix for OSP_104, OSP_105, OSP_192
+      {
+         br = BB_Last_chk_op(bp);
+	}
       /* Get the fall through and the target BBs.
        */
       fall_through = BBINFO_succ_bb(bp, 1);
@@ -1616,6 +1620,7 @@ Initialize_BB_Info(void)
       continue;
 
     case BBKIND_LOGIF:
+    case BBKIND_CHK: // bug fix for OSP_104, OSP_105, OSP_192
       {
 	INT tfirst;
 	INT tcount;
@@ -1624,6 +1629,10 @@ Initialize_BB_Info(void)
 	BBLIST *target_edge;
 	BBLIST *fall_through_edge;
 	OP *br = BB_branch_op(bb);
+	if ((br == NULL) || OP_noop(br))// bug fix for OSP_104, OSP_105, OSP_192
+       {
+          br = BB_Last_chk_op(bb);  
+       }
 
 	/* Get the targets. Note that target[0] is always the "true" target.
 	 */
@@ -3321,6 +3330,7 @@ Merge_With_Pred ( BB *b, BB *pred )
   case BBKIND_LOGIF:
   case BBKIND_VARGOTO:
   case BBKIND_INDGOTO:
+  case BBKIND_CHK:// bug fix for OSP_104, OSP_105, OSP_192
     if (CFLOW_Trace_Merge) {
       #pragma mips_frequency_hint NEVER
       fprintf(TFile, "Merge_With_Pred rejecting merge of BB:%d into BB:%d (unsupported kind: %s)\n",
@@ -7064,6 +7074,7 @@ Initialize_BB_Info_For_Delete(void)
       continue;
 
     case BBKIND_LOGIF:
+    case BBKIND_CHK:// bug fix for OSP_104, OSP_105, OSP_192
       {
 	INT tfirst;
 	INT tcount;

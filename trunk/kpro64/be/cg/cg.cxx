@@ -859,6 +859,17 @@ CG_Generate_Code(
 
   
   if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
+  // bug fix for OSP_104, OSP_105, OSP_192
+  /* actually GIS and recovery phase are two parts of one phase,
+   * we shouldn't add a cflow between them, because they should 
+   * see the same cfg, 3rd cflow should after recovery phase.
+   */
+  if (IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
+     BOOL need_recalc_liveness = (Generate_Recovery_Code() > 0);
+     if (need_recalc_liveness) 
+        GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
+  }
+
   if (IPFEC_Enable_Opt_after_schedule) {
     BOOL tmp = CG_localize_tns ;
     CG_localize_tns = TRUE;
@@ -869,12 +880,6 @@ CG_Generate_Code(
   if (CG_opt_level > 1 && IPFEC_Enable_Post_Multi_Branch) {
     GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
     Post_Multi_Branch_Collect();
-  }
-
-  if (IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
-     BOOL need_recalc_liveness = (Generate_Recovery_Code() > 0);
-     if (need_recalc_liveness) 
-        GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
   }
 #ifdef Is_True_On
   if (IPFEC_Enable_BB_Verify) {
