@@ -1157,7 +1157,8 @@ OPT_REVISE_SSA::Form_extract_compose(void)
 	  AUX_STAB_ENTRY *sym = _opt_stab->Aux_stab_entry(lhs->Scalar_aux_id());
 #ifdef KEY
 	  if (sym->Is_volatile())
-	    x->Set_var_volatile();
+            //OSP 108, originally a typo. v/x
+	    v->Set_var_volatile();
 #endif
 	  v->Set_dsctyp(Mtype_from_mtype_class_and_size(MTYPE_type_class(lhs->Dtyp()), sym->Byte_size()));
 	  v->Set_dtyp(OPCODE_rtype(Ldid_from_mtype(v->Dsctyp())));
