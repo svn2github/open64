@@ -1948,7 +1948,8 @@ Find_BB_TNs (BB *bb)
           }
         }
 
-        if ((resnum == 2) && ((tnr=OP_result(op,1)) != NULL) && (tnr != True_TN)  && (tnr != Zero_TN)) {
+        // OSP 210, add one more check for FZero_TN
+        if ((resnum == 2) && ((tnr=OP_result(op,1)) != NULL) && (tnr != True_TN)  && (tnr != Zero_TN) && (tnr != FZero_TN) ) {
          /* This logic must be in sync with what ebo_special calls a "copy".       
             This instruction must actually be placing a "FALSE" condition in a predicate. */
           tninfo = EBO_last_opinfo->actual_rslt[1];
@@ -2068,6 +2069,8 @@ void EBO_Remove_Unused_Ops (BB *bb, BOOL BB_completely_processed)
 
      /* Zero_TN or True_TN for a result is a no-op. */
       if (tn == Zero_TN) continue;
+      // OSP 210, add one more check for Fzero_TN
+      if (tn == FZero_TN) continue;
       if (tn == True_TN) continue;
 
      /*load and store unat op should be needed!*/

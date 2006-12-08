@@ -1537,7 +1537,9 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 	REGISTER prefer_reg = LR_prefer_reg (clr);
 
         if (prefer_reg == REGISTER_UNDEFINED) {
-          if (TN_is_local_reg(result_tn) && (unused_tn_def[result_cl] != NULL) && !OP_side_effects(op)) {
+          //OSP 210, we need to include the side effect of volatility
+          //         so change OP_has_sideeffects to implicit_interactions
+          if (TN_is_local_reg(result_tn) && (unused_tn_def[result_cl] != NULL) && !OP_has_implicit_interactions(op)) {
             result_tn = unused_tn_def[result_cl];
             Set_OP_result(op,resnum,result_tn);
 
