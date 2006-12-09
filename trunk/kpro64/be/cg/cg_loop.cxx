@@ -4518,6 +4518,19 @@ void CG_LOOP::Determine_Unroll_Factor()
   BB *head = LOOP_DESCR_loophead(loop);
   BOOL trace = Get_Trace(TP_CGLOOP, 2);
 
+  //If pragma or directive is used to indicate the unroll times, we use the value.
+  ANNOTATION *unroll_ant = ANNOT_Get(BB_annotations(head), ANNOT_PRAGMA);
+  while (unroll_ant && WN_pragma(ANNOT_pragma(unroll_ant)) != WN_PRAGMA_UNROLL)
+    unroll_ant = ANNOT_Get(ANNOT_next(unroll_ant), ANNOT_PRAGMA);
+
+  if (unroll_ant) {
+    WN *wn = ANNOT_pragma(unroll_ant);
+    UINT32 utimes = WN_pragma_arg1(wn);
+    Is_True(utimes>0 && utimes<1024, ("Pragma 'UNROLL' has bad value"));
+    Set_unroll_factor(utimes);
+    return;
+  }
+
   Set_unroll_factor(1);
 
   if (BB_Has_Exc_Label(head)) {
@@ -4797,6 +4810,19 @@ void CG_LOOP::Determine_SWP_Unroll_Factor()
 	  ("CG_LOOP:  loop will be fully unrolled."));
 
   BB *head =  Loop_header();
+
+  //If pragma or directive is used to indicate the unroll times, we use the value.
+  ANNOTATION *unroll_ant = ANNOT_Get(BB_annotations(head), ANNOT_PRAGMA);
+  while (unroll_ant && WN_pragma(ANNOT_pragma(unroll_ant)) != WN_PRAGMA_UNROLL)
+    unroll_ant = ANNOT_Get(ANNOT_next(unroll_ant), ANNOT_PRAGMA);
+
+  if (unroll_ant) {
+    WN *wn = ANNOT_pragma(unroll_ant);
+    UINT32 utimes = WN_pragma_arg1(wn);
+    Is_True(utimes>0 && utimes<1024, ("Pragma 'UNROLL' has bad value"));
+    Set_unroll_factor(utimes);
+    return;
+  }
 
   INT loop_size = 0;
   OP *op;
