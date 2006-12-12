@@ -1036,7 +1036,16 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
     return wn;
   }
 
-  if (code == PARM_DECL || code == VAR_DECL || code == RESULT_DECL) {
+  // bug fix for OSP_150
+  // 
+  if (code == PARM_DECL || code == VAR_DECL || code == RESULT_DECL || code == TARGET_EXPR) {
+    if(code == TARGET_EXPR) {
+      WN *wn = WFE_Expand_Expr(lhs);
+      Is_True(WN_operator(wn) == OPR_LDID,
+	      ("WFE_Lhs_Of_Modify_Expr: wrong operator from TARGET_EXPR"));
+      st = WN_st(wn);
+    }
+
     TY_IDX hi_ty_idx = Get_TY(TREE_TYPE(lhs)); // type associated with field_id
     if (TREE_THIS_VOLATILE(lhs)) {
       Set_TY_is_volatile(hi_ty_idx);
@@ -1049,7 +1058,12 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
       Clear_TY_is_volatile(desc_ty_idx);
       volt = TRUE;
     }
-    st = Get_ST (lhs);
+    
+    // bug fix for OSP_150
+    // 
+    if (code != TARGET_EXPR)
+       st = Get_ST (lhs);
+
     if (ST_assigned_to_dedicated_preg (st)) {
       Set_TY_is_volatile(hi_ty_idx);
       volt = TRUE;
@@ -4367,9 +4381,13 @@ WFE_Expand_Expr (tree exp,
             case BUILT_IN_FLOORL:
               arg_wn = WFE_Expand_Expr (TREE_VALUE (TREE_OPERAND (exp, 1)));
 	      if (MTYPE_is_integral(ret_mtype))
-                wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F8, arg_wn);
+                // bug fix for OSP_201
+		// 
+		wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
 	      else{
-		wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F8, arg_wn);
+		// bug fix for OSP_201
+		//
+		wn0 = WN_CreateExp1 (OPR_FLOOR, MTYPE_I8, MTYPE_F10, arg_wn);
 		wn = WN_Cvt(WN_rtype(wn0), ret_mtype, wn0);
 	      }
               whirl_generated = TRUE;
