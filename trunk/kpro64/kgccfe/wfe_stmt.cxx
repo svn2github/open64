@@ -403,10 +403,12 @@ WFE_Add_Case_Node (tree low, tree high, tree label)
 #endif
   FmtAssert (label->decl.sgi_u1.label_idx == (LABEL_IDX) 0,
              ("WFE_Add_Case_Node: label already defined"));
-  New_LABEL (CURRENT_SYMTAB, case_label_idx);
 #ifdef KEY
   }
 #endif
+  // bug fix for OSP_96
+  //
+  New_LABEL (CURRENT_SYMTAB, case_label_idx);
   label->decl.sgi_u1.label_idx = case_label_idx;
   label->decl.label_defined = TRUE;
   case_info_stack [case_info_i].case_label_idx = case_label_idx;
