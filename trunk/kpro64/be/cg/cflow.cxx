@@ -7155,18 +7155,47 @@ CFLOW_Delete_Empty_BB(void)
   for (bp = REGION_First_BB ; bp!=NULL ; bp= next_bb) {
       next_bb =BB_next(bp) ;
       if ( BBINFO_kind(bp) == BBKIND_GOTO && !BB_length(bp) ) {
-	 // BB with EH Range labels can not be removed, even
-	 // though its length is 0 and it has no succ,
-	 // coz these labels are required by LSDA construction.
-	 if (BB_Has_Exc_Label(bp)) continue;
-         Is_True(( BBINFO_nsuccs(bp)&& BBINFO_succ_bb(bp, 0) != bp), 
-                 ("GOTO BB: %d has no succ bb or it is a loop !", BB_id(bp)));
          BBLIST *prev_bbs, *next_bbs;
          BB *prev_bb;
          BOOL can_do ;
          LABEL_IDX old_label, tgt_lable;
 
-         old_label = Gen_Label_For_BB(bp);
+	 // BB with EH Range labels can not be removed, even
+	 // though its length is 0 and it has no succ,
+	 // coz these labels are required by LSDA construction.
+         if (BB_Has_Exc_Label(bp))
+	   continue;
+
+	 // Be caution to the empty GOTO BB bp, if BB_next(bp) == NULL;
+	 // In this situation, we can remove it only when none of it's
+	 // predecessors is GOTO or LOGIF.
+	 // bug fix for OSP_208
+	 //
+	 if (BBINFO_nsuccs(bp) == 0 && next_bb == NULL) {
+	   BOOL is_removeable = TRUE;
+	   for ( prev_bbs = BB_preds(bp); prev_bbs != NULL; prev_bbs = next_bbs) {
+	     next_bbs = BBLIST_next(prev_bbs);
+	     BB *prev_bb = BBLIST_item(prev_bbs);
+	     switch BBINFO_kind(prev_bb) {
+	     	case BBKIND_GOTO :
+	     	case BBKIND_LOGIF:
+			is_removeable = FALSE;
+			break;
+
+		default:
+			continue;
+	     } 
+	   }
+	   if (is_removeable) {
+	     Delete_BB(bp, CFLOW_Trace_Empty_BB_Elim);
+	   }
+	   continue;
+	 }
+
+	 Is_True (BBINFO_nsuccs(bp), ("GOTO BB: %d has no succ bb", BB_id(bp)));
+	 Is_True (BBINFO_succ_bb(bp, 0) != bp, ("GOTO BB: %d is a loop~!", BB_id(bp)));
+	 
+	 old_label = Gen_Label_For_BB(bp);
          tgt_succ = BBINFO_succ_bb(bp, 0);
          /* if the tgt bb has no label , 
           * the previous bb must fall though to it. 

@@ -3178,7 +3178,7 @@ WFE_Expand_Expr (tree exp,
 	    WN_set_desc(wn, desc);
 	    WN_offset(wn) = WN_offset(wn)+ofst+component_offset;
 	    WN_set_ty(wn, ty_idx);
-	    // bug fix for OSP_157 
+	    // bug fix for OSP_158 
 	    // if (TY_kind(ty_idx) == KIND_SCALAR)
 	    if (TY_kind(ty_idx) != KIND_STRUCT)
 	      WN_set_field_id (wn, 0);
