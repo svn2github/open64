@@ -768,10 +768,11 @@ WFE_Expand_Return (tree retval)
 	
 	// bug fix for OSP_224 
 	// fix for unaligned memory access in 458.sjeng in spec2k6
-	// If one symbol is allocated with A bytes alignment, compiler 
-	// also need to access it with load/store B, where B <= A.
+	// If one symbol is required to A bytes alignment, it must 
+	// allocated with B bytes alignment, where B >= A.
 	// As to this bug, SCLASS_EXTERN st is defined at another file with A bytes alignment,
-	// we should NOT expand it with B bytes alignment, where B > A.
+	// we should NOT expand it with B bytes alignment, where B > A,
+	// otherwise, compile will generate ld/st B to access this st, where B > A.
 	//
         if (ty_idx == ret_ty_idx && ST_sclass(st) != SCLASS_EXTERN) {
           Set_TY_align (ty_idx, MTYPE_align_best(Spill_Int_Mtype));

@@ -3524,13 +3524,24 @@ WFE_Expand_Expr (tree exp,
 	else break;
 	}
 #endif // KEY
-	WN_set_rtype(wn, rtype);
-	// bug fix for OSP_157
-	//WN_set_desc (wn, desc);
-        // begin - bug fix for OSP_178
-        if ( WN_desc(wn) != MTYPE_V )
+
+	// bug fix for OSP_157 && OSP_178 && OSP_225 
+	// Besides, solve the unaligned memory access triggered in:
+	// 400.perlbench in spec2k6 and 253.perlbmk in spec2k,
+	// one of the concrete example: "U4U1ILOAD 2 sym" into "U4U4ILOAD 2 sym".
+	// If one symbol is allocated with A bytes alignment, compiler must access
+	// it with load/store B, where B <= A. 
+	// Please NOTE that MTYPE_bit_size(MTYPE_M) == 0.
+	// Moreover, we should NOT modify it if desc equals to MTYPE_V,
+	// like CVTL, it's descriptor type must be set MTYPE_V,
+	//
+	if (!MTYPE_is_void (WN_desc(wn)) &&
+	    (!MTYPE_is_integral (WN_desc(wn)) || MTYPE_bit_size (WN_desc(wn)) >= bsiz)) 
+	{
 	  WN_set_desc (wn, desc);
-        // end - bug fix for OSP_178
+	}
+	WN_set_rtype(wn, rtype);
+	
 	if ((bsiz & 7) == 0 &&	// field size multiple of bytes
 	    MTYPE_size_min(desc) % bsiz == 0 && // accessed loc multiple of bsiz
 	    bofst % bsiz == 0) {		// bofst multiple of bsiz
