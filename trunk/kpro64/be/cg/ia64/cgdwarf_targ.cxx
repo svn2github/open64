@@ -1022,11 +1022,13 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
   INT bbid;
   UINT lwhen = 0;
   ue_iter = ue_list.begin();
-  bool copy_state = false;
-  BB *delay_copy_state_bb = NULL;	
+  // bug fix for OSP_226
+  //
+  bool label_state = FALSE;
+  bool copy_state = FALSE;
   for (BB *bb = REGION_First_BB; bb; bb = BB_next(bb)) {
-	if (copy_state && BB_prev(bb) != NULL && BB_exit(BB_prev(bb))) {
-		delay_copy_state_bb = BB_prev(bb);
+	if (label_state && BB_prev(bb) != NULL && BB_exit(BB_prev(bb))) {
+	  copy_state = TRUE;
 	}
 	if (BB_unreachable(bb)) {
 		lwhen += Get_BB_When_Length(bb); 
@@ -1045,16 +1047,14 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 	}
 	// in case have exit that follows exit,
 	// first copy previous label then do new label.
-//	if ( BB_prev(bb) != NULL && BB_exit(BB_prev(bb))) {
-	if (delay_copy_state_bb) {
+	// if (label_state && BB_prev(bb) != NULL && BB_exit(BB_prev(bb))) {
+	if (copy_state) {
 		// in bb that follows exit, so copy above label
 		Add_UE (UE_COPY, last_label, lwhen, bb);
-		current_state = entry_state[BB_id(delay_copy_state_bb)];
-		delay_copy_state_bb = NULL;
-		copy_state = false;
+		current_state = entry_state[BB_id(BB_prev(bb))];
+		label_state = FALSE;
 	}
 	if (BB_exit(bb) && BB_next(bb) != NULL) {
-		copy_state = true;
 		// if have an exit that is followed by another bb
 		// then want to create body label before exit and
 		// copy from label after exit (i.e. skip destroy frame)
@@ -1063,6 +1063,9 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 			// comes after create_frame.
 			while (ue_iter != ue_list.end() && ue_iter->bb == bb) {
 				if (ue_iter->kind == UE_CREATE_FRAME) {
+					// bug fix for OSP_226
+					//
+					label_state = TRUE;
 					++ue_iter;
 					Add_UE (UE_LABEL, ++last_label, 
 						ue_iter->when, bb);
@@ -1071,15 +1074,18 @@ Do_Control_Flow_Analysis_Of_Unwind_Info (void)
 				++ue_iter;
 			}
 		}
-		else {
+		else {  
+			// bug fix for OSP_226
+			//
+			label_state = TRUE;
 			Add_UE (UE_LABEL, ++last_label, lwhen, bb);
 		}
 	}
 
 	// add implicit changes upon entry
-	/*co-design of entry generation, see cflow.cxx::generate_entry*/
+	// co-design of entry generation, see cflow.cxx::generate_entry
+	// if (current_state != entry_state[bbid]) {
  	if (0) { 
-//	if (current_state != entry_state[bbid]) {
   		for (p = PR_FIRST; p < PR_LAST; INCR(p)) {
 			// ignore implicit sp changes,
 			// as label/copy should handle those.
