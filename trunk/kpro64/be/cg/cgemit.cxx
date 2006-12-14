@@ -3617,8 +3617,11 @@ Trace_Init_Loc ( INT scn_idx, Elf64_Xword scn_ofst, INT32 repeat)
   /* Emit the section/offset/repeat as a line prefix -- the caller will
    * add context-specific information:
    */
-  fprintf ( TFile, "<init>: Section %s (offset %4lld x%d): ",
-	    ST_name(em_scn[scn_idx].sym), (INT64)scn_ofst, repeat );
+  // bug fix for OSP_227
+  //
+  if (em_scn[scn_idx].sym)
+    fprintf ( TFile, "<init>: Section %s (offset %4lld x%d): ",
+  	      ST_name(em_scn[scn_idx].sym), (INT64)scn_ofst, repeat );
 }
 
 /* ====================================================================
