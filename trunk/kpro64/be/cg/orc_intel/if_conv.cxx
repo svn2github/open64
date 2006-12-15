@@ -1304,7 +1304,7 @@ IF_CONVERTOR::Worth_If_Convert(AREA_CONTAINER& cand_list,
     IF_CONV_AREA  *head = *iter;
     Is_True(head != NULL, (" All if-conv types have a head-BB.\n "));
 
-    iter = iter++;
+    iter++;
     IF_CONV_AREA *succ1 = *iter;
     IF_CONV_AREA *succ2 = NULL;
     Is_True(succ1 != NULL, 
@@ -1312,7 +1312,7 @@ IF_CONVERTOR::Worth_If_Convert(AREA_CONTAINER& cand_list,
 
     if ( type == IF_THEN_ELSE_TYPE ) 
     {
-        iter = iter++;
+        iter++;
         succ2  = *iter;
     }
 
