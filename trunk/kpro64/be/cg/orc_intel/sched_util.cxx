@@ -630,6 +630,7 @@ Derive_Spec_Type_If_Violate_Dep (ARC* Arc) {
     if (pred_home != succ_home &&
         !OP_call(pred)         &&
         !OP_chk(pred)          &&
+	ARC_kind(Arc) != CG_DEP_CTLSPEC &&
         BB1_Postdominate_BB2 (succ_home, pred_home)) {
 
         return SPEC_NONE ; 
