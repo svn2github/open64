@@ -2097,8 +2097,15 @@ Gen_Assign_Of_Init_Val (ST *st, tree init, UINT offset, UINT array_elem_offset,
       return;
     }
 #endif
-
+    
     WN *init_wn = WFE_Expand_Expr (init);
+    // bug fix for OSP_229
+    //
+    if (!init_wn) {
+      Is_True(TREE_CODE(init) == COND_EXPR, 
+	      ("Must be COND_EXPR when init_wn equlas to NULL."));
+      return;
+    }
 
     if (TREE_CODE(init) == STRING_CST && TY_kind(ty) == KIND_ARRAY)
     {

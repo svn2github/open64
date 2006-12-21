@@ -3683,6 +3683,9 @@ WFE_Expand_Expr (tree exp,
 	wn0 = WFE_Expand_Expr_With_Sequence_Point (TREE_OPERAND (exp, 0),
 						   Boolean_type);
 #endif
+	// Due to a bug of handling ternary operators(i.e, COND_EXPR) in the GCC 3.3 front end,
+	// WFE_Expand_Expr convert the ternary operator to an if/else statement.
+	// 
 	if (TY_mtype (ty_idx)  == MTYPE_V ||
             TY_mtype (ty_idx1) == MTYPE_V ||
             TY_mtype (ty_idx2) == MTYPE_V) {
@@ -3756,6 +3759,15 @@ WFE_Expand_Expr (tree exp,
 			   MTYPE_V, wn0, wn1, wn2);
 	  Set_PU_has_very_high_whirl (Get_Current_PU ());
         }
+
+        // bug fix for OSP_229
+	// 
+	FmtAssert ((wn != 0 || 
+		   TY_mtype(ty_idx) == MTYPE_V ||
+                   TY_mtype(ty_idx1) == MTYPE_V || 
+		   TY_mtype(ty_idx2) == MTYPE_V),
+		  ("WFE_Expand_Expr: NULL WHIRL tree for %s", 
+		   Operator_From_Tree [code].name));
       }
       break;
 
@@ -5307,7 +5319,7 @@ WFE_Expand_Expr (tree exp,
 #endif /* WFE_DEBUG */
 
   if (need_result)
-    FmtAssert (wn != 0 || code == CALL_EXPR || code == BIND_EXPR ||
+    FmtAssert ((wn != 0 || code == CALL_EXPR || code == BIND_EXPR ||
                code == COMPOUND_STMT ||
                code == STMT_EXPR     ||
                code == EXPR_STMT     ||	// KEY
@@ -5319,8 +5331,7 @@ WFE_Expand_Expr (tree exp,
                code == THROW_EXPR    ||
 	       code == MUST_NOT_THROW_EXPR ||
 	       code == EXPR_WITH_FILE_LOCATION	||	// KEY
-	       ((code == COND_EXPR) &&  
-		((TY_mtype (ty_idx) == MTYPE_V) || (TY_mtype (ty_idx) == MTYPE_M))),
+	       code == COND_EXPR),
 	       ("WFE_Expand_Expr: NULL WHIRL tree for %s",
 		Operator_From_Tree [code].name));
 
