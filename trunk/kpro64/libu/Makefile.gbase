@@ -82,9 +82,7 @@ LCDEFS += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 endif
 
 ifeq ($(BUILD_OPTIMIZE), NODEBUG)
-#OPTIMIZER = -O3
-#Workaround. Current open64 still has bug.
-OPTIMIZER = -O0
+OPTIMIZER = -O3
 endif
 CFLAGS += -fno-fast-stdlib
 
