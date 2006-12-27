@@ -861,7 +861,7 @@ void Exp_Prefetch (TOP opc, TN* src1, TN* src2, VARIANT variant, OPS* ops)
   UINT32 pf_flags = V_pf_flags(variant);
   FmtAssert(opc == TOP_UNDEFINED,
             ("Prefetch opcode should be selected in Exp_Prefetch"));
-  opc =   (PF_GET_WRITE(pf_flags) || CG_exclusive_prefetch)
+  opc =   (PF_GET_WRITE(pf_flags) && CG_exclusive_prefetch)
 	? TOP_lfetch_excl : TOP_lfetch;
   lfhint = Pick_Prefetch_Hint(variant);
 
