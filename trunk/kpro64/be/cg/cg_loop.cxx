@@ -2499,7 +2499,7 @@ static BB *Unroll_Replicate_Body(LOOP_DESCR *loop, INT32 ntimes, BOOL unroll_ful
 	    fprintf(TFile, "<cgpref> pref wn not found.\n");
 
 	if (Prefetch_Kind_Enabled(mem_wn)) {
-	  int stride = WN_pf_stride_2L( wn ) ?  WN_pf_stride_2L( wn ) :  WN_pf_stride_1L(wn);
+	  int stride = WN_pf_stride_2L( mem_wn ) ? WN_pf_stride_2L( mem_wn ) : WN_pf_stride_1L(mem_wn);
 	  if (stride != 0 && (unrolling % stride) != 0) {
 	    if (trace_pref)
 	      fprintf(TFile, "<cgpref> pref pruned at unrolling %d.\n", unrolling);
