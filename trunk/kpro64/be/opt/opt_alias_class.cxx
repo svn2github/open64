@@ -1561,10 +1561,9 @@ ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
 
     // Cheap hack for now, to test performance. This should be based on
     // some real mechanism in the future instead of cheesebag hacks.
-    if ((strcmp("malloc", ST_name(st)) == 0) ||
-	(strcmp("alloca", ST_name(st)) == 0) ||
-	(strcmp("calloc", ST_name(st)) == 0) ||
-	(strcmp("_F90_ALLOCATE", ST_name(st)) == 0)) {
+    if ((strcmp("alloca", ST_name(st)) == 0) ||
+        (strcmp("_F90_ALLOCATE", ST_name(st)) == 0) ||
+	WOPT_Enable_Disambiguate_Heap_Obj && PU_is_malloc (Pu_Table[ST_pu(st)])) {
       return TRUE;
     }
   }

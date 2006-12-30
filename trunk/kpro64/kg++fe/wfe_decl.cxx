@@ -571,7 +571,14 @@ void WFE_Expand_Decl(tree decl)
   switch (TREE_CODE(decl)) { 
 
     case CONST_DECL:
-      DevWarn("WFE_Expand_Decl:  don't know what to do with CONST_DECL");
+      {
+      // there are too much such warnings, it is really nuisance!
+      static BOOL once_is_enough=FALSE;
+      if (!once_is_enough) {
+        DevWarn("WFE_Expand_Decl:  don't know what to do with CONST_DECL");
+        once_is_enough = TRUE;
+      }
+      }
       break;
 
     case FUNCTION_DECL:

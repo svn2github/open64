@@ -238,6 +238,20 @@ BOOL ALIAS_RULE::Aliased_Indirect_Rule(const POINTS_TO *mem1, const POINTS_TO *m
       && mem1->Not_addr_saved())
     return FALSE;
 
+  if ((mem1->Malloc_id() || mem2->Malloc_id()) &&
+      WOPT_Enable_Disambiguate_Heap_Obj) {
+    if (mem1->Named()) {
+      Is_True (mem1->Malloc_id() == 0, ("A heap object should not have name"));
+      return FALSE;
+    } else if (mem2->Named()) {
+      Is_True (mem2->Malloc_id() == 0, ("A heap object should not have name"));
+      return FALSE;
+    } else if (mem1->Malloc_id() && mem2->Malloc_id() && 
+               mem1->Malloc_id () != mem2->Malloc_id()) {
+      return FALSE;
+    }
+  }
+
   if (mem1->Pointer () && mem2->Pointer () &&
       WOPT_Enable_Pt_Keep_Track_Ptr) {
     ST* st1 = mem1->Pointer ();

@@ -954,6 +954,9 @@ private:
   void	   REGION_add_to_bound(RID *rid, AUX_ID aux_id, BOOL empty);
   BOOL	   REGION_verify_bound(RID *rid, AUX_ID aux_id);
 
+  // Misc 
+  BOOL     Its_ret_val_of_malloc (VER_ID ver);
+
   // ------------------------------------------------------------------
 
 public:

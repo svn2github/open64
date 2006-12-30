@@ -4832,6 +4832,12 @@ WFE_Expand_Expr (tree exp,
           if (DECL_INLINE (func)) {
             wfe_invoke_inliner = TRUE;
           }
+          // check to see whehter it is non-placement new operator 
+          if (num_args == 1 && 
+              (DECL_NAME(func) == ansi_opname(NEW_EXPR) ||
+               DECL_NAME(func) == ansi_opname(VEC_NEW_EXPR))) {
+            Set_PU_is_malloc (Pu_Table[ST_pu(st)]);
+          }
         }
 
         i = 0;

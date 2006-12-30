@@ -273,8 +273,29 @@ friend class POINTS_TO;
   IDTYPE        _ip_alias_class;   // which equivalence class this
 				   // memop is in, according to
 				   // whole-program analysis
+
+  // This union is used to interpret the value hold by <misc> union. Only one of the 
+  // flags is allowed to be set. <_switch> is provided to reset all flags. 
+  union {
+    mINT32 _switch;                
+    mINT32 _has_malloc_id:1;    
+  };
+
+  union {
+    mUINT64 _malloc_id;  
+  } /*misc*/; // the name for union is not necessary 
+
+  void Init_misc_alias_info (void) { _switch = 0; _malloc_id = 0; }
+
+  void Set_malloc_id (mINT64 id) { _switch = 0; _malloc_id = id; _has_malloc_id = id ? 1 : 0; };
+  mINT64 Malloc_id (void) const { return _has_malloc_id ? _malloc_id : 0; }
 };
 
+
+// alias information that are not common to all accesss can be stored in ALIAS_INFO_EXT. 
+class ALIAS_INFO_EXT {
+  INT32 _malloc_id; //  
+};
 
 // for alias classification
 const IDTYPE OPTIMISTIC_AC_ID  = 0;
@@ -358,6 +379,7 @@ public:
   BOOL        Not_f90_target(void)   const { return ai._attr & PT_ATTR_NOT_F90_TARGET; }
   BOOL        Not_alloca_mem(void)   const { return ai._attr & PT_ATTR_NOT_ALLOCA_MEM; }
   BOOL        Extended(void)         const { return ai._attr & PT_ATTR_EXTENDED; }
+  mINT64      Malloc_id (void)       const { return ai.Malloc_id (); } 
 
   //  Set members
   //
@@ -379,6 +401,7 @@ public:
   void Set_pointer_ver (VER_ID ver)       { ai._ptr_ver = ver; }
   void Set_based_sym(ST *sym)             { ai._based_sym = sym; }
   void Set_based_sym_depth(UINT32 d)      { ai._based_sym_depth = (d > 7) ? 7 : d; }
+  void Set_malloc_id (mINT64 id)          { ai.Set_malloc_id (id); }
   void Set_alias_class(const IDTYPE alias_class)
     {
       if (alias_class <= WOPT_Alias_Class_Limit) {
@@ -480,6 +503,9 @@ public:
     Set_id(0);
     Set_alias_class(OPTIMISTIC_AC_ID);
     Set_ip_alias_class(OPTIMISTIC_AC_ID);
+    Set_malloc_id (0);
+
+    ai.Init_misc_alias_info ();
 
     // The default attributes: 
     Set_attr(PT_ATTR_NONE);

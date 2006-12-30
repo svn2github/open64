@@ -3789,7 +3789,6 @@ OPT_STAB::Collect_nested_ref_info(void)
   }
 }
 
-
 void
 VER_STAB_ENTRY::Print_use(WN *wn, FILE *fp) const
 {

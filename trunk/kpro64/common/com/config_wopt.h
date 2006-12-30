@@ -97,6 +97,7 @@ extern BOOL WOPT_Enable_Aggressive_Phi_Simp;
 extern UINT32 WOPT_Enable_Autoaggstr_Reduction_Threshold;
 extern BOOL WOPT_Enable_Alias_Classification;
 extern BOOL WOPT_Enable_Aggressive_Alias_Classification;
+extern BOOL  WOPT_Enable_Disambiguate_Heap_Obj;
 extern BOOL WOPT_Enable_Alias_Class_Fortran_Rule;
 extern BOOL WOPT_Enable_Avoid_Rehash;	/* SSAPRE to try to minimize rehashing*/
 extern BOOL WOPT_Enable_Backedge_Placement; /* BB on critical backedge */

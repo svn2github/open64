@@ -873,6 +873,13 @@ Set_PU_is_operator (PU& pu)      { pu.flags |= PU_IS_OPERATOR; }
 inline void
 Clear_PU_is_operator (PU& pu)    { pu.flags &= ~PU_IS_OPERATOR; }
 
+inline BOOL
+PU_is_malloc (const PU& pu)			{ return (pu.flags & PU_IS_MALLOC) != 0; } 
+inline void
+Set_PU_is_malloc (PU& pu)			{ pu.flags |= PU_IS_MALLOC; }
+inline void
+Clear_PU_is_malloc (PU& pu)			{ pu.flags &= ~PU_IS_MALLOC; }
+
 #endif
 #ifdef TARG_X8664
 inline BOOL

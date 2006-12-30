@@ -724,7 +724,13 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				continue;
 			}
 			if (TREE_CODE(field) == CONST_DECL) {
-				DevWarn ("got CONST_DECL in field list");
+                // Just for the time being, we need to investigate 
+                // whether this criteria is reasonable. 
+                static BOOL once_is_enough=FALSE;
+                if (!once_is_enough) {
+				  DevWarn ("got CONST_DECL in field list");
+                  once_is_enough=TRUE;
+                }
 				continue;
 			}
 			if (TREE_CODE(field) == VAR_DECL) {

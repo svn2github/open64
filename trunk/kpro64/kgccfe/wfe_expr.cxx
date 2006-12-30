@@ -4491,6 +4491,9 @@ WFE_Expand_Expr (tree exp,
           if (DECL_INLINE (func)) {
             wfe_invoke_inliner = TRUE;
           }
+          if (DECL_IS_MALLOC (func)) {
+            Set_PU_is_malloc (Pu_Table[ST_pu(st)]);
+          }
         }
 
         i = 0;
