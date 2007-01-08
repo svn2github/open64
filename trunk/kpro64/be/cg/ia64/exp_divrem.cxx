@@ -62,7 +62,6 @@
 static const float_rf One_rf = { 0, 0, 0x0ffff, 0x8000000000000000ll };
 
 #define RESET_COND_DEF_LAST(ops) Set_OP_cond_def_kind(OPS_last(ops),OP_ALWAYS_UNC_DEF)
-
 /*****************************************************************************
  *
  * Floating-point division internal support routines
@@ -76,7 +75,7 @@ Expand_SGI_F10_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
   // Should be 14 operations, 9 groups
   TN *qpred;
   TN *fr, *f9, *f9a, *f9b, *f9c, *f10, *f10a, *f10b, *f10c, *f8b, *f8c, *f6a, *f7a;
-  
+
   // Make up the TN's
   qpred = Build_RCLASS_TN (ISA_REGISTER_CLASS_predicate);
   fr   = Build_TN_Of_Mtype (MTYPE_F10);
@@ -92,11 +91,11 @@ Expand_SGI_F10_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
   f8c  = Build_TN_Of_Mtype (MTYPE_F10);
   f6a  = Build_TN_Of_Mtype (MTYPE_F10);
   f7a  = Build_TN_Of_Mtype (MTYPE_F10);
-  
+
   // Do the operations
   //
   // N.B. reset Cond_def of all the ops because the definitions are not really conditional
-  // 
+  //
   Build_OP(TOP_frcpa, fr,   qpred, True_TN, Gen_Enum_TN(ECV_sf_s0), src1, src2,  ops);
   Build_OP(TOP_fnma,  f9,   qpred, Gen_Enum_TN(ECV_sf_s1), fr,   src2, FOne_TN , ops);
   RESET_COND_DEF_LAST(ops);
@@ -128,6 +127,66 @@ Expand_SGI_F10_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
   Exp_COPY(result, fr, ops);
 }
 
+
+#ifdef OSP_OPT
+static void
+Expand_I8_I8_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
+{
+  // Do an 82 bit floating-point divide
+  TN *qpred;
+  TN *f10, *f10a, *f10b, *f10c, *f11, *f11a, *f12, *f12a, *f12b, *f13;
+  
+  // Make up the TN's
+  qpred = Build_RCLASS_TN (ISA_REGISTER_CLASS_predicate);
+  f10  = Build_TN_Of_Mtype (MTYPE_F10);
+  f10a = Build_TN_Of_Mtype (MTYPE_F10);
+  f10b = Build_TN_Of_Mtype (MTYPE_F10);
+  f10c = Build_TN_Of_Mtype (MTYPE_F10);
+  f11  = Build_TN_Of_Mtype (MTYPE_F10);
+  f11a = Build_TN_Of_Mtype (MTYPE_F10);
+  f12  = Build_TN_Of_Mtype (MTYPE_F10);
+  f12a = Build_TN_Of_Mtype (MTYPE_F10);
+  f12b = Build_TN_Of_Mtype (MTYPE_F10);
+  f13  = Build_TN_Of_Mtype (MTYPE_F10);
+ 
+  // Do the operations
+  //
+  // N.B. reset Cond_def of all the ops because the definitions are not really conditional
+  // The following sequence of code is learnt from gcc routine __moddi3
+  //        frcpa.s1 f10, p6 = src1,src2
+  //(p6)    fmpy.s1 f12 = src1, f10
+  //(p6)    fnma.s1 f11 = src2, f10, f1
+  //(p6)    fma.s1 f12 = f11, f12, f12
+  //(p6)    fmpy.s1 f13 = f11, f11
+  //(p6)    fma.s1 f10 = f11, f10, f10
+  //(p6)    fma.s1 f11 = f13, f12, f12
+  //(p6)    fma.s1 f10 = f13, f10, f10
+  //(p6)    fnma.s1 f12 = src2, f11, src1
+  //(p6)    fma.s1 f10 = f12, f10, f11
+  
+  Build_OP(TOP_frcpa, f10,  qpred, True_TN, Gen_Enum_TN(ECV_sf_s1), src1,  src2, ops);
+  Build_OP(TOP_fmpy,  f12,  qpred, Gen_Enum_TN(ECV_sf_s1), src1, f10           , ops);
+  RESET_COND_DEF_LAST(ops);
+  Build_OP(TOP_fnma,  f11,  qpred, Gen_Enum_TN(ECV_sf_s1), src2, f10 , FOne_TN , ops);
+  RESET_COND_DEF_LAST(ops);
+  Build_OP(TOP_fma,   f12a, qpred, Gen_Enum_TN(ECV_sf_s1), f11,  f12 , f12     , ops);
+  RESET_COND_DEF_LAST(ops);
+  Build_OP(TOP_fmpy,  f13,  qpred, Gen_Enum_TN(ECV_sf_s1), f11,  f11           , ops);
+  RESET_COND_DEF_LAST(ops);
+  Build_OP(TOP_fma,   f10a, qpred, Gen_Enum_TN(ECV_sf_s1), f11,  f10 , f10     , ops);
+  RESET_COND_DEF_LAST(ops);
+  Build_OP(TOP_fma,   f11a, qpred, Gen_Enum_TN(ECV_sf_s1), f13,  f12a, f12a    , ops);
+  RESET_COND_DEF_LAST(ops);
+  Build_OP(TOP_fma,   f10b, qpred, Gen_Enum_TN(ECV_sf_s1), f13 , f10a, f10a    , ops);
+  RESET_COND_DEF_LAST(ops);
+  Build_OP(TOP_fnma,  f12b,  qpred, Gen_Enum_TN(ECV_sf_s1),src2, f11a, src1    , ops);
+  RESET_COND_DEF_LAST(ops);
+  Build_OP(TOP_fma,   f10, qpred, Gen_Enum_TN(ECV_sf_s1), f12b, f10b, f11a    , ops);
+
+  // Copy in case result overlaps one of the sources
+  Exp_COPY(result, f10, ops);
+}
+#endif
 
 static void
 Expand_SGI_F8_Divide(TN *result, TN *src1, TN *src2, OPS *ops)
@@ -1876,7 +1935,7 @@ Expand_Power_Of_2_Divide (TN *result, TN *numer, INT64 dvsr, TYPE_ID mtype, OPS 
   }
 }
 
-
+#ifdef OSP_OPT
 /* Expand the sequence for division and/or remainder by a variable.
  */
 static void
@@ -1895,8 +1954,9 @@ Expand_NonConst_DivRem (TN *quot, TN *rem, TN *x, TN *y, TYPE_ID mtype, OPS *ops
    *    }
    *	(qp) fcvt.fx.trunc.s1 f2=f2	# convert quot to integer
    *	if (want-remainder) {
-   *	  (qp) fnma.pc.s1 f3=f2,f13,f12	# rem = x - quot*y
-   *	  (qp) fcvt.fx.s1 f3=f3		# convert rem to integer
+   *	  (qp) minus_y = -y;
+   *	  (qp) minus_y_in_fp = setf.sig minus_y
+   *	  (qp) xma.l f3=f2, minus_y_in_fp, f12
    *	  (qp) getf.sig rem=f3		# move rem to integer unit
    *	}
    *	if (want-quotient) {
@@ -1906,8 +1966,7 @@ Expand_NonConst_DivRem (TN *quot, TN *rem, TN *x, TN *y, TYPE_ID mtype, OPS *ops
 
   INT i;
   TN *tn;
-  TN *f2, *f2a, *f2b, *f3, *f4, *f6, *f12, *f13;
-  TN *p2;
+  TN *f2, *f2a, *f2b, *f3, *f4, *f6, *f12, *f13, *x_in_fp;
   BOOL is_recip;
   BOOL is_signed = MTYPE_is_signed(mtype);
   BOOL is_double = MTYPE_is_size_double(mtype) != 0;
@@ -1933,19 +1992,16 @@ Expand_NonConst_DivRem (TN *quot, TN *rem, TN *x, TN *y, TYPE_ID mtype, OPS *ops
     y = tmp;
   }
 
-  if (is_recip) {
-    f12 = FOne_TN;
+
+  x_in_fp = f12 = Build_TN_Of_Mtype (MTYPE_F10);
+  Build_OP(TOP_setf_sig, f12, qp, x, ops);
+  tn = Build_TN_Of_Mtype (MTYPE_F8);
+  if (is_signed) {
+    Build_OP(TOP_fcvt_xf, tn, qp, f12, ops);
   } else {
-    f12 = Build_TN_Of_Mtype (MTYPE_F10);
-    Build_OP(TOP_setf_sig, f12, qp, x, ops);
-    tn = Build_TN_Of_Mtype (MTYPE_F8);
-    if (is_signed) {
-      Build_OP(TOP_fcvt_xf, tn, qp, f12, ops);
-    } else {
-      Build_OP(TOP_fcvt_xuf, tn, qp, Gen_Enum_TN(ECV_sf_s0), f12, ops);
-    }
-    f12 = tn;
+    Build_OP(TOP_fcvt_xuf, tn, qp, Gen_Enum_TN(ECV_sf_s0), f12, ops);
   }
+  f12 = tn;
 
   f13 = Build_TN_Of_Mtype (MTYPE_F10);
   Build_OP(TOP_setf_sig, f13, qp, y, ops);
@@ -1968,7 +2024,10 @@ Expand_NonConst_DivRem (TN *quot, TN *rem, TN *x, TN *y, TYPE_ID mtype, OPS *ops
     Build_OP(TOP_fma,   f2, qpred , Gen_Enum_TN(ECV_sf_s1), tn, f12, tn,  ops);
   } else {
     if (is_double) {
-      Expand_SGI_F10_Divide(f2, f12, f13, ops);
+	if (mtype == MTYPE_I8)
+            Expand_I8_I8_Divide(f2, f12, f13, ops); // Only call fast divide for I8
+	else
+            Expand_SGI_F10_Divide(f2, f12, f13, ops);
     } else {
 	  if (mtype==MTYPE_I1 ||mtype==MTYPE_I2 || mtype==MTYPE_I4 || mtype==MTYPE_U1 ||mtype==MTYPE_U2||mtype==MTYPE_U4)
 	  {
@@ -1986,27 +2045,21 @@ Expand_NonConst_DivRem (TN *quot, TN *rem, TN *x, TN *y, TYPE_ID mtype, OPS *ops
 	   f2a, qp, Gen_Enum_TN(ECV_sf_s1), f2, ops);
 
   if (rem) {
-    tn = Build_TN_Of_Mtype (MTYPE_F10);
-    if (is_signed) {
-      Build_OP(TOP_fcvt_xf, tn, qp, f2a, ops);
-    } else {
-      Build_OP(TOP_fcvt_xuf, tn, qp, Gen_Enum_TN(ECV_sf_s1), f2a, ops);
-    }
-    f2b = tn;
-    f3 = Build_TN_Of_Mtype (MTYPE_F10);
-    Build_OP(fnma, f3, qp, Gen_Enum_TN(ECV_sf_s1), f2b, f13, f12, ops);
-    tn = Build_TN_Of_Mtype (MTYPE_F10);
-    TOP fcvt_opc = is_signed ? TOP_fcvt_fx : TOP_fcvt_fxu;
-    Build_OP(fcvt_opc, tn, qp, Gen_Enum_TN(ECV_sf_s1), f3, ops);
-    f3 = tn;
-    Build_OP(TOP_getf_sig, rem, qp, f3, ops);
+      TN *minus_y = Build_TN_Like (y);
+      TN *minus_y_in_fp = Build_TN_Of_Mtype (MTYPE_F10);
+      f3 = Build_TN_Of_Mtype (MTYPE_F10);
+
+      Build_OP(TOP_sub, minus_y, qp, Zero_TN, y, ops);
+      Build_OP(TOP_setf_sig, minus_y_in_fp, qp, minus_y, ops);
+      Build_OP(TOP_xma_l, f3, qp, f2a, minus_y_in_fp, x_in_fp, ops);
+      Build_OP(TOP_getf_sig, rem, qp, f3, ops);
   }
 
   if (quot) {
     Build_OP(TOP_getf_sig, quot, qp, f2a, ops);
   }
 }
-
+#endif
 
 /******************************************************************************
  *
