@@ -144,7 +144,8 @@ static BOOL in_parallel_region = FALSE;
 // ====================================================================
 
 
-OPT_STAB::OPT_STAB(MEM_POOL *pool) : aux_stab(pool)
+OPT_STAB::OPT_STAB(MEM_POOL *pool) : aux_stab(pool), 
+  _ac_2_vsym_map(256, (IDTYPE)0, pool, FALSE)
 {
   mem_pool = pool;
   // _aux_pool = CXX_NEW(MEM_POOL, mem_pool);
@@ -184,6 +185,8 @@ OPT_STAB::OPT_STAB(MEM_POOL *pool) : aux_stab(pool)
 
   // The following are initialized in Create:
   _has_exc_handler = FALSE;
+
+  _ac_2_vsym_map.Init ();
 }
 
 
@@ -2893,33 +2896,26 @@ OPT_STAB::Identify_vsym(WN *memop_wn)
 	    }
 	  }
 	  return vsym_id;
-	}
-
-	if (WOPT_Enable_Vsym_Unique) {
-	  vsym_id = Find_vsym_with_st(st);
-	  if (vsym_id == 0) {
-	    vsym_id = Create_vsym(EXPR_IS_ANY);
-	    AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
-	    vsym->Points_to()->Set_based_sym(NULL);
-	    vsym->Set_st(st);
-	    if (direct_use) {
-	      vsym->Set_stype(VT_UNIQUE_VSYM);
-	    }
-	  }
-	  else {
-	    if (! direct_use) {
-	      AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
-	      vsym->Set_stype(VT_SPECIAL_VSYM);
-	    }
-	  }
-	  return vsym_id;
-	}
-      }
-    default:
-      addr_wn = NULL;
-    }
+	} 
+      } /* end of case-OPR_LDID */
+    }/* end of switch */
   }
   
+  if ((OPERATOR_is_load (opr) || OPERATOR_is_store (opr)) &&
+       WOPT_Enable_Vsym_Unique) {
+      IDTYPE ac = _alias_classification->Alias_class(memop_wn);
+      if (ac != OPTIMISTIC_AC_ID && ac != PESSIMISTIC_AC_ID) {
+          AUX_ID vsym_id = _ac_2_vsym_map.Lookup(ac);
+        if (vsym_id == (AUX_ID)0) {
+          vsym_id = Create_vsym(EXPR_IS_ANY);
+          AUX_STAB_ENTRY *vsym = Aux_stab_entry(vsym_id);
+          vsym->Points_to()->Set_alias_class (vsym_id);
+          _ac_2_vsym_map.Insert(ac, vsym_id);
+        }
+        return vsym_id;
+     }
+  }
+
   // return default vsym
   if (Default_vsym() == 0) {
     // Setup default vsym
